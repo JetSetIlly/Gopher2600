@@ -128,6 +128,12 @@ func newScreen(img *SdlImgui) *screen {
 	scr.crit.lastY = 0
 	scr.crit.overlay = reflection.OverlayList[0]
 
+	// start off with a buffer update to make sure the textureRenderer
+	// implementations have good information about the pixel data as soon as
+	// possible. without this, the visible screen window will jump from its
+	// initial scaling value to the correct one.
+	scr.crit.bufferUpdate = true
+
 	return scr
 }
 
@@ -230,25 +236,22 @@ func (scr *screen) NewFrame(isStable bool) error {
 
 		scr.crit.bufferUpdate = true
 
-		// if plot index has crash into the render index then
-		if scr.crit.plotIdx == scr.crit.renderIdx {
-			// we must unlock or the gui thread will not be able to process
-			// channel
-			if scr.crit.vsync {
-				scr.crit.section.Unlock()
-				scr.emuWait <- true
-				<-scr.emuWaitAck
-				scr.emuWait <- true
-				<-scr.emuWaitAck
-			} else {
-				scr.crit.section.Unlock()
-			}
-		} else {
+		// if plot index has crashed into the render index then
+		if scr.crit.plotIdx == scr.crit.renderIdx && scr.crit.vsync {
+			// we must unlock the critical section or the gui thread will not
+			// be able to process the channel
 			scr.crit.section.Unlock()
+
+			scr.emuWait <- true
+			<-scr.emuWaitAck
+			scr.emuWait <- true
+			<-scr.emuWaitAck
+
+			return nil
 		}
-	} else {
-		scr.crit.section.Unlock()
 	}
+
+	scr.crit.section.Unlock()
 
 	return nil
 }
