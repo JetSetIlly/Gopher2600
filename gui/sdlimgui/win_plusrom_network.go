@@ -27,12 +27,11 @@ const winPlusROMNetworkTitle = "PlusROM Network"
 const menuPlusROMNetworkTitle = "Network"
 
 type winPlusROMNetwork struct {
-	windowManagement
-
-	img *SdlImgui
+	img  *SdlImgui
+	open bool
 }
 
-func newWinPlusROMNetwork(img *SdlImgui) (managedWindow, error) {
+func newWinPlusROMNetwork(img *SdlImgui) (window, error) {
 	win := &winPlusROMNetwork{
 		img: img,
 	}
@@ -48,6 +47,14 @@ func (win *winPlusROMNetwork) destroy() {
 
 func (win *winPlusROMNetwork) id() string {
 	return winPlusROMNetworkTitle
+}
+
+func (win *winPlusROMNetwork) isOpen() bool {
+	return win.open
+}
+
+func (win *winPlusROMNetwork) setOpen(open bool) {
+	win.open = open
 }
 
 func (win *winPlusROMNetwork) draw() {

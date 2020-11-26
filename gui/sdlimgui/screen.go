@@ -384,6 +384,11 @@ func (scr *screen) addTextureRenderer(r textureRenderer) {
 	r.resize()
 }
 
+// unset all attached texture renderers.
+func (scr *screen) clearTextureRenderers() {
+	scr.renderers = make([]textureRenderer, 0)
+}
+
 // called by service loop.
 func (scr *screen) render() {
 	// not rendering if gui.state is Rewinding or GotoCoords. render will be

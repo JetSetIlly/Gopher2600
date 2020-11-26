@@ -22,12 +22,11 @@ import (
 const winLogTitle = "Log"
 
 type winLog struct {
-	windowManagement
-
-	img *SdlImgui
+	img  *SdlImgui
+	open bool
 }
 
-func newWinLog(img *SdlImgui) (managedWindow, error) {
+func newWinLog(img *SdlImgui) (window, error) {
 	win := &winLog{
 		img: img,
 	}
@@ -43,6 +42,14 @@ func (win *winLog) destroy() {
 
 func (win *winLog) id() string {
 	return winLogTitle
+}
+
+func (win *winLog) isOpen() bool {
+	return win.open
+}
+
+func (win *winLog) setOpen(open bool) {
+	win.open = open
 }
 
 func (win *winLog) draw() {

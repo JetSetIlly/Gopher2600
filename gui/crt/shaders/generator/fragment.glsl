@@ -256,21 +256,17 @@ void main()
 	if (Mask == 1) {
 		vec3 mask;
 
-		/* if (fract(gl_FragCoord.x * 0.5) < 0.5) { */
-
 		float oneCol = gl_FragCoord.x/gl_FragCoord.x;
 		if ( isNearEqual(mod(gl_FragCoord.x, scaling*oneCol), 0.0, oneCol) ) {
 			mask = vec3(MaskBrightness, 1.0, MaskBrightness);
 		} else {
 			mask = vec3(1.0, MaskBrightness, 1.0);
 		}
-		Out_Color = vec4(Out_Color.rgb * mask, 1.0);
+		Out_Color = vec4(Out_Color.rgb * mask, Out_Color.a);
 	}
 
 	// scanline effect
 	if (Scanlines == 1) {
-		/* if (fract(gl_FragCoord.y * 0.5) < 0.5) { */
-
 		float oneLine = gl_FragCoord.y/gl_FragCoord.y;
 		if ( isNearEqual(mod(gl_FragCoord.y, scaling*oneLine), 0.0, oneLine) ) {
 			Out_Color.a = Out_Color.a * ScanlinesBrightness;

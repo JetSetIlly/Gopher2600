@@ -27,16 +27,15 @@ import (
 const winCartStaticTitle = "Static Areas"
 
 type winCartStatic struct {
-	windowManagement
-
-	img *SdlImgui
+	img  *SdlImgui
+	open bool
 
 	// the X position of the grid header. based on the width of the column
 	// headers (we know this value after the first pass)
 	xPos float32
 }
 
-func newWinCartStatic(img *SdlImgui) (managedWindow, error) {
+func newWinCartStatic(img *SdlImgui) (window, error) {
 	win := &winCartStatic{img: img}
 
 	return win, nil
@@ -50,6 +49,14 @@ func (win *winCartStatic) destroy() {
 
 func (win *winCartStatic) id() string {
 	return winCartStaticTitle
+}
+
+func (win *winCartStatic) isOpen() bool {
+	return win.open
+}
+
+func (win *winCartStatic) setOpen(open bool) {
+	win.open = open
 }
 
 func (win *winCartStatic) draw() {

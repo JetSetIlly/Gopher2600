@@ -76,7 +76,7 @@ func (img *SdlImgui) serviceSetFeature(request featureRequest) {
 		img.wm.dbgScr.setOpen(!img.wm.dbgScr.isOpen())
 
 	case gui.ReqState:
-		img.setState(request.args[0].(gui.EmulationState))
+		img.setEmulationState(request.args[0].(gui.EmulationState))
 
 	case gui.ReqVSync:
 		img.screen.crit.section.Lock()
@@ -103,15 +103,6 @@ func (img *SdlImgui) serviceSetFeature(request featureRequest) {
 
 	case gui.ReqCRTeffects:
 		img.wm.dbgScr.crt = request.args[0].(bool)
-
-	case gui.ReqIncScale:
-		img.setScale(0.1, true)
-
-	case gui.ReqDecScale:
-		img.setScale(-0.1, true)
-
-	case gui.ReqSetScale:
-		img.setScale(request.args[0].(float32), false)
 
 	case gui.ReqAddVCS:
 		img.vcs = request.args[0].(*hardware.VCS)

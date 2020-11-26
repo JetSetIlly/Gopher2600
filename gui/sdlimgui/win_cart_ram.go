@@ -27,19 +27,18 @@ import (
 const winCartRAMTitle = "Cartridge RAM"
 
 type winCartRAM struct {
-	windowManagement
-
-	img *SdlImgui
+	img  *SdlImgui
+	open bool
 
 	// height of status line at bottom of frame. valid after first frame of a
 	// tab (although it should be same for each tab)
 	statusHeight float32
 
-	// width of mapped/unmapped indicator
+	// required dimensions of mapped/unmapped indicator
 	mappedIndicatorDim imgui.Vec2
 }
 
-func newWinCartRAM(img *SdlImgui) (managedWindow, error) {
+func newWinCartRAM(img *SdlImgui) (window, error) {
 	win := &winCartRAM{img: img}
 	return win, nil
 }
@@ -53,6 +52,14 @@ func (win *winCartRAM) destroy() {
 
 func (win *winCartRAM) id() string {
 	return winCartRAMTitle
+}
+
+func (win *winCartRAM) isOpen() bool {
+	return win.open
+}
+
+func (win *winCartRAM) setOpen(open bool) {
+	win.open = open
 }
 
 func (win *winCartRAM) draw() {

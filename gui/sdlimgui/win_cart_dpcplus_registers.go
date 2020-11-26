@@ -26,12 +26,11 @@ import (
 const winDPCplusRegistersTitle = "DPC+ Registers"
 
 type winDPCplusRegisters struct {
-	windowManagement
-
-	img *SdlImgui
+	img  *SdlImgui
+	open bool
 }
 
-func newWinDPCplusRegisters(img *SdlImgui) (managedWindow, error) {
+func newWinDPCplusRegisters(img *SdlImgui) (window, error) {
 	win := &winDPCplusRegisters{
 		img: img,
 	}
@@ -47,6 +46,14 @@ func (win *winDPCplusRegisters) destroy() {
 
 func (win *winDPCplusRegisters) id() string {
 	return winDPCplusRegistersTitle
+}
+
+func (win *winDPCplusRegisters) isOpen() bool {
+	return win.open
+}
+
+func (win *winDPCplusRegisters) setOpen(open bool) {
+	win.open = open
 }
 
 func (win *winDPCplusRegisters) draw() {

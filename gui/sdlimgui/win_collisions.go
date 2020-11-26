@@ -23,14 +23,14 @@ import (
 const winCollisionsTitle = "Collisions"
 
 type winCollisions struct {
-	windowManagement
+	img  *SdlImgui
+	open bool
 
-	img *SdlImgui
-
+	// color of collision bit
 	collisionBit imgui.PackedColor
 }
 
-func newWinCollisions(img *SdlImgui) (managedWindow, error) {
+func newWinCollisions(img *SdlImgui) (window, error) {
 	win := &winCollisions{
 		img: img,
 	}
@@ -47,6 +47,14 @@ func (win *winCollisions) destroy() {
 
 func (win *winCollisions) id() string {
 	return winCollisionsTitle
+}
+
+func (win *winCollisions) isOpen() bool {
+	return win.open
+}
+
+func (win *winCollisions) setOpen(open bool) {
+	win.open = open
 }
 
 func (win *winCollisions) draw() {

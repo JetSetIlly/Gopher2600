@@ -261,7 +261,6 @@ func play(md *modalflag.Modes, sync *mainSync) error {
 
 	mapping := md.AddString("mapping", "AUTO", "force use of cartridge mapping")
 	spec := md.AddString("tv", "AUTO", "television specification: NTSC, PAL")
-	scaling := md.AddFloat64("scale", 0.0, "television scaling")
 	crt := md.AddBool("crt", true, "apply CRT post-processing")
 	fpsCap := md.AddBool("fpscap", true, "cap fps to specification")
 	record := md.AddBool("record", false, "record user input to a file")
@@ -347,14 +346,6 @@ func play(md *modalflag.Modes, sync *mainSync) error {
 		// turn off fallback ctrl-c handling. this so that the playmode can
 		// end playback recordings gracefully
 		sync.state <- stateRequest{req: reqNoIntSig}
-
-		// set scaling value
-		if *scaling > 0.0 {
-			err = scr.SetFeature(gui.ReqSetScale, float32(*scaling))
-			if err != nil {
-				return err
-			}
-		}
 
 		err = playmode.Play(tv, scr, *record, cartload, *patchFile, *hiscore, *useSavekey)
 		if err != nil {
@@ -568,7 +559,6 @@ func perform(md *modalflag.Modes, sync *mainSync) error {
 	mapping := md.AddString("mapping", "AUTO", "force use of cartridge mapping")
 	spec := md.AddString("tv", "AUTO", "television specification: NTSC, PAL")
 	display := md.AddBool("display", false, "display TV output")
-	scaling := md.AddFloat64("scale", 0.0, "display scaling (only valid if -display=true")
 	fpsCap := md.AddBool("fpscap", true, "cap FPS to specification (only valid if -display=true)")
 	duration := md.AddString("duration", "5s", "run duration (note: there is a 2s overhead)")
 	profile := md.AddBool("profile", false, "produce cpu and memory profiling reports")
@@ -610,14 +600,6 @@ func perform(md *modalflag.Modes, sync *mainSync) error {
 
 			// fpscap for gui (see above for tv option)
 			scr.SetFeature(gui.ReqVSync, *fpsCap)
-
-			// set scaling value
-			if *scaling > 0.0 {
-				err = scr.SetFeature(gui.ReqSetScale, float32(*scaling))
-				if err != nil {
-					return err
-				}
-			}
 		}
 
 		err = performance.Check(md.Output, *profile, tv, *duration, cartload)

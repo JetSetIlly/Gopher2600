@@ -24,7 +24,6 @@ import (
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
 	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/logger"
-	"github.com/jetsetilly/gopher2600/prefs"
 
 	"github.com/inkyblackness/imgui-go/v2"
 )
@@ -34,8 +33,9 @@ const winTermTitle = "Terminal"
 const outputMaxSize = 512
 
 type winTerm struct {
-	windowManagement
 	img  *SdlImgui
+	open bool
+
 	term *term
 
 	input      string
@@ -46,12 +46,11 @@ type winTerm struct {
 	history    []string
 	historyIdx int
 
-	commandLineHeight float32
-
-	openOnError prefs.Bool
+	// height of input line at bottom of window
+	inputLineHeight float32
 }
 
-func newWinTerm(img *SdlImgui) (managedWindow, error) {
+func newWinTerm(img *SdlImgui) (window, error) {
 	win := &winTerm{
 		img:        img,
 		term:       img.term,
@@ -71,6 +70,14 @@ func (win *winTerm) id() string {
 	return winTermTitle
 }
 
+func (win *winTerm) isOpen() bool {
+	return win.open
+}
+
+func (win *winTerm) setOpen(open bool) {
+	win.open = open
+}
+
 func (win *winTerm) draw() {
 	done := false
 	for !done {
@@ -87,7 +94,7 @@ func (win *winTerm) draw() {
 				win.output = append(win.output, t)
 			}
 
-			if win.openOnError.Get().(bool) && t.style == terminal.StyleError {
+			if win.img.prefs.openOnError.Get().(bool) && t.style == terminal.StyleError {
 				win.setOpen(true)
 			}
 
@@ -112,7 +119,7 @@ func (win *winTerm) draw() {
 	imgui.PopStyleColor()
 
 	// scrollback
-	height := imguiRemainingWinHeight() - win.commandLineHeight
+	height := imguiRemainingWinHeight() - win.inputLineHeight
 	imgui.BeginChildV("scrollback", imgui.Vec2{X: 0, Y: height}, false, 0)
 
 	// make a note if scrollback has been clicked or is active. we'll use this
@@ -169,7 +176,7 @@ func (win *winTerm) draw() {
 	imgui.SameLine()
 
 	// start command line height measurement
-	commandLineHeight := imgui.CursorPosY()
+	inputLineHeight := imgui.CursorPosY()
 
 	// draw command input box
 	imgui.PushItemWidth(imgui.WindowWidth() - imgui.CursorPosX())
@@ -210,7 +217,7 @@ func (win *winTerm) draw() {
 	imgui.Spacing()
 
 	// commit command line height measurement
-	win.commandLineHeight = imgui.CursorPosY() - commandLineHeight
+	win.inputLineHeight = imgui.CursorPosY() - inputLineHeight
 
 	imgui.End()
 }

@@ -27,9 +27,10 @@ const winPlayScrTitle = "Atari VCS"
 // should rely on any lazy value
 
 type winPlayScr struct {
-	windowManagement
+	img  *SdlImgui
+	open bool
 
-	img *SdlImgui
+	// reference to screen data
 	scr *screen
 
 	// textures
@@ -55,7 +56,7 @@ type winPlayScr struct {
 	scaling float32
 }
 
-func newWinPlayScr(img *SdlImgui) managedWindow {
+func newWinPlayScr(img *SdlImgui) window {
 	win := &winPlayScr{
 		img:     img,
 		scr:     img.screen,
@@ -80,6 +81,14 @@ func (win *winPlayScr) destroy() {
 
 func (win *winPlayScr) id() string {
 	return winPlayScrTitle
+}
+
+func (win *winPlayScr) isOpen() bool {
+	return win.open
+}
+
+func (win *winPlayScr) setOpen(open bool) {
+	win.open = open
 }
 
 func (win *winPlayScr) draw() {
@@ -134,7 +143,7 @@ func (win *winPlayScr) render() {
 	}
 
 	// set screen image scaling (and image padding) based on the current window size
-	win.setScaleFromWindow(win.contentDim)
+	win.setScaleAndPadding(win.contentDim)
 
 	// get pixels
 	pixels := win.scr.crit.cropPixels
@@ -173,7 +182,7 @@ func (win *winPlayScr) getScaledHeight() float32 {
 }
 
 // must be called from with a critical section.
-func (win *winPlayScr) setScaleFromWindow(sz imgui.Vec2) {
+func (win *winPlayScr) setScaleAndPadding(sz imgui.Vec2) {
 	winAspectRatio := sz.X / sz.Y
 
 	imageW := float32(win.scr.crit.cropPixels.Bounds().Size().X)
@@ -195,9 +204,4 @@ func (win *winPlayScr) getScaling(horiz bool) float32 {
 		return pixelWidth * win.scr.aspectBias * win.scaling
 	}
 	return win.scaling
-}
-
-func (win *winPlayScr) setScaling(scaling float32) {
-	win.winDim = win.winDim.Times(scaling / win.scaling)
-	win.img.plt.window.SetSize(int32(win.winDim.X), int32(win.winDim.Y))
 }

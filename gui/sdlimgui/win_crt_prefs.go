@@ -28,16 +28,17 @@ import (
 const winCRTPrefsTitle = "CRT Preferences"
 
 type winCRTPrefs struct {
-	windowManagement
+	img  *SdlImgui
+	open bool
 
-	img *SdlImgui
+	// reference to screen data
 	scr *screen
 
+	// crt preview segment
 	crtTexture uint32
-	pixels     *image.RGBA
 }
 
-func newWinCRTPrefs(img *SdlImgui) (managedWindow, error) {
+func newWinCRTPrefs(img *SdlImgui) (window, error) {
 	win := &winCRTPrefs{
 		img: img,
 		scr: img.screen,
@@ -62,6 +63,14 @@ func (win *winCRTPrefs) id() string {
 	return winCRTPrefsTitle
 }
 
+func (win *winCRTPrefs) isOpen() bool {
+	return win.open
+}
+
+func (win *winCRTPrefs) setOpen(open bool) {
+	win.open = open
+}
+
 // height/width for detailPixels.
 const (
 	detailPixelsWidth  = 50
@@ -78,18 +87,20 @@ func (win *winCRTPrefs) draw() {
 
 	win.scr.crit.section.Lock()
 
+	// we're not too bothered about performance when the CRT prefs window is
+	// open. figure out pixels and copy to texture every draw() frame.
 	r := image.Rect(
 		specification.HorizClksHBlank+HmoveMargin, win.scr.crit.topScanline,
 		specification.HorizClksHBlank+HmoveMargin+detailPixelsWidth, win.scr.crit.topScanline+detailPixelsHeight,
 	)
-	win.pixels = win.scr.crit.pixels.SubImage(r).(*image.RGBA)
+	pixels := win.scr.crit.pixels.SubImage(r).(*image.RGBA)
 
-	gl.PixelStorei(gl.UNPACK_ROW_LENGTH, int32(win.pixels.Stride)/4)
+	gl.PixelStorei(gl.UNPACK_ROW_LENGTH, int32(pixels.Stride)/4)
 	gl.BindTexture(gl.TEXTURE_2D, win.crtTexture)
 	gl.TexImage2D(gl.TEXTURE_2D, 0,
 		gl.RGBA, detailPixelsWidth, detailPixelsHeight, 0,
 		gl.RGBA, gl.UNSIGNED_BYTE,
-		gl.Ptr(win.pixels.Pix))
+		gl.Ptr(pixels.Pix))
 
 	gl.PixelStorei(gl.UNPACK_ROW_LENGTH, 0)
 	win.scr.crit.section.Unlock()

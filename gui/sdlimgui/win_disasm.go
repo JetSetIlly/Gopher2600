@@ -29,8 +29,8 @@ import (
 const winDisasmTitle = "Disassembly"
 
 type winDisasm struct {
-	windowManagement
-	img *SdlImgui
+	img  *SdlImgui
+	open bool
 
 	// show all entries in the cartridge, even those we're not confident about
 	// being instructions.
@@ -71,7 +71,7 @@ type winDisasm struct {
 	colBreakOther   imgui.PackedColor
 }
 
-func newWinDisasm(img *SdlImgui) (managedWindow, error) {
+func newWinDisasm(img *SdlImgui) (window, error) {
 	win := &winDisasm{
 		img:       img,
 		alignOnPC: false,
@@ -92,6 +92,14 @@ func (win *winDisasm) destroy() {
 
 func (win *winDisasm) id() string {
 	return winDisasmTitle
+}
+
+func (win *winDisasm) isOpen() bool {
+	return win.open
+}
+
+func (win *winDisasm) setOpen(open bool) {
+	win.open = open
 }
 
 func (win *winDisasm) draw() {

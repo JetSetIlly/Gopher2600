@@ -30,9 +30,10 @@ import (
 const winDbgScrTitle = "TV Screen"
 
 type winDbgScr struct {
-	windowManagement
+	img  *SdlImgui
+	open bool
 
-	img *SdlImgui
+	// reference to screen data
 	scr *screen
 
 	// how to present the screen in the window
@@ -87,7 +88,7 @@ type winDbgScr struct {
 	scaling float32
 }
 
-func newWinDbgScr(img *SdlImgui) (managedWindow, error) {
+func newWinDbgScr(img *SdlImgui) (window, error) {
 	win := &winDbgScr{
 		img:     img,
 		scr:     img.screen,
@@ -122,6 +123,14 @@ func (win *winDbgScr) destroy() {
 
 func (win *winDbgScr) id() string {
 	return winDbgScrTitle
+}
+
+func (win *winDbgScr) isOpen() bool {
+	return win.open
+}
+
+func (win *winDbgScr) setOpen(open bool) {
+	win.open = open
 }
 
 func (win *winDbgScr) draw() {
@@ -511,7 +520,7 @@ func (win *winDbgScr) render() {
 	}
 
 	// set screen image scaling (and image padding) based on the current window size
-	win.setScaleFromWindow(win.contentDim)
+	win.setScaleAndPadding(win.contentDim)
 }
 
 func (win *winDbgScr) getScaledWidth(cropped bool) float32 {
@@ -528,7 +537,7 @@ func (win *winDbgScr) getScaledHeight(cropped bool) float32 {
 	return float32(win.scr.crit.pixels.Bounds().Size().Y) * win.getScaling(false)
 }
 
-func (win *winDbgScr) setScaleFromWindow(sz imgui.Vec2) {
+func (win *winDbgScr) setScaleAndPadding(sz imgui.Vec2) {
 	// must be called from with a critical section
 
 	sz.Y -= win.toolBarHeight
@@ -561,9 +570,4 @@ func (win *winDbgScr) getScaling(horiz bool) float32 {
 		return pixelWidth * win.scr.aspectBias * win.scaling
 	}
 	return win.scaling
-}
-
-func (win *winDbgScr) setScaling(scaling float32) {
-	win.rescaled = true
-	win.winDim = win.winDim.Times(scaling / win.scaling)
 }

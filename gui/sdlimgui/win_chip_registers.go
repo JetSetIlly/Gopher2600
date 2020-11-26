@@ -27,15 +27,14 @@ import (
 const winChipRegistersTitle = "Chip Registers"
 
 type winChipRegisters struct {
-	windowManagement
-
-	img *SdlImgui
+	img  *SdlImgui
+	open bool
 
 	// color of bit indicator
 	regBit imgui.PackedColor
 }
 
-func newWinChipRegisters(img *SdlImgui) (managedWindow, error) {
+func newWinChipRegisters(img *SdlImgui) (window, error) {
 	win := &winChipRegisters{
 		img: img,
 	}
@@ -52,6 +51,14 @@ func (win *winChipRegisters) destroy() {
 
 func (win *winChipRegisters) id() string {
 	return winChipRegistersTitle
+}
+
+func (win *winChipRegisters) isOpen() bool {
+	return win.open
+}
+
+func (win *winChipRegisters) setOpen(open bool) {
+	win.open = open
 }
 
 func (win *winChipRegisters) draw() {

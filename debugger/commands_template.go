@@ -113,7 +113,7 @@ var commandTemplate = []string{
 	cmdMissile + " (0|1)",
 	cmdBall,
 	cmdPlayfield,
-	cmdDisplay + " (ON|OFF|SCALE [%<scale value>P]|MASKING (ON|OFF)|DEBUG (ON|OFF)|OVERLAY (ON|OFF))", // see notes
+	cmdDisplay + " (ON|OFF|MASKING (ON|OFF)|DEBUG (ON|OFF)|OVERLAY (ON|OFF))", // see notes
 
 	// peripherals (components that might not be present)
 	cmdPlusROM + " (NICK [%<name>S]|ID [%<id>S]|HOST [%<host>S]|PATH [%<path>S])",

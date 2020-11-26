@@ -65,9 +65,6 @@ const (
 	ReqSetOverlay      FeatureReq = "ReqSetOverlay"      // bool
 	ReqToggleOverlay   FeatureReq = "ReqToggleOverlay"   // none
 	ReqCRTeffects      FeatureReq = "ReqCRTeffects"      // bool
-	ReqSetScale        FeatureReq = "ReqSetScale"        // float
-	ReqIncScale        FeatureReq = "ReqIncScale"        // none
-	ReqDecScale        FeatureReq = "ReqDecScale"        // none
 
 	// the add VCS request is used to associate the gui with an emulated VCS.
 	// a debugger does not need to send this request if it already sends a

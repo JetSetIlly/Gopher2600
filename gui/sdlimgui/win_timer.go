@@ -28,15 +28,14 @@ import (
 const winTimerTitle = "Timer"
 
 type winTimer struct {
-	windowManagement
+	img  *SdlImgui
+	open bool
 
-	img *SdlImgui
-
-	// widget dimensions
+	// required dimensions for interval dropdown
 	intervalComboDim imgui.Vec2
 }
 
-func newWinTimer(img *SdlImgui) (managedWindow, error) {
+func newWinTimer(img *SdlImgui) (window, error) {
 	win := &winTimer{
 		img: img,
 	}
@@ -53,6 +52,14 @@ func (win *winTimer) destroy() {
 
 func (win *winTimer) id() string {
 	return winTimerTitle
+}
+
+func (win *winTimer) isOpen() bool {
+	return win.open
+}
+
+func (win *winTimer) setOpen(open bool) {
+	win.open = open
 }
 
 func (win *winTimer) draw() {

@@ -55,17 +55,6 @@ func (dbg *Debugger) guiEventHandler(ev gui.Event) error {
 				case "F10":
 					// toggle overlay
 					err = dbg.scr.SetFeature(gui.ReqToggleOverlay)
-
-				// screen scaling
-				case "=":
-					// equal sign is the same as plus, for convenience
-					fallthrough
-				case "+":
-					// increase scaling
-					err = dbg.scr.SetFeature(gui.ReqIncScale)
-				case "-":
-					// decrease window scanling
-					err = dbg.scr.SetFeature(gui.ReqDecScale)
 				}
 			}
 		}

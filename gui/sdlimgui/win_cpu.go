@@ -29,11 +29,11 @@ import (
 const winCPUTitle = "CPU"
 
 type winCPU struct {
-	windowManagement
-	img *SdlImgui
+	img  *SdlImgui
+	open bool
 }
 
-func newWinCPU(img *SdlImgui) (managedWindow, error) {
+func newWinCPU(img *SdlImgui) (window, error) {
 	win := &winCPU{
 		img: img,
 	}
@@ -49,6 +49,14 @@ func (win *winCPU) destroy() {
 
 func (win *winCPU) id() string {
 	return winCPUTitle
+}
+
+func (win *winCPU) isOpen() bool {
+	return win.open
+}
+
+func (win *winCPU) setOpen(open bool) {
+	win.open = open
 }
 
 func (win *winCPU) draw() {

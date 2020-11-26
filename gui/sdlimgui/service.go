@@ -16,8 +16,6 @@
 package sdlimgui
 
 import (
-	"time"
-
 	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/logger"
 
@@ -186,7 +184,7 @@ func (img *SdlImgui) Service() {
 		// mouse motion
 		if img.isCaptured() {
 			mx, my, _ := sdl.GetMouseState()
-			if mx != img.mx || my != img.my {
+			if mx != img.mouseX || my != img.mouseY {
 				w, h := img.plt.window.GetSize()
 
 				// reduce mouse x and y coordintes to the range 0.0 to 1.0
@@ -202,8 +200,8 @@ func (img *SdlImgui) Service() {
 				default:
 					logger.Log("sdlimgui", "dropped mouse motion event")
 				}
-				img.mx = mx
-				img.my = my
+				img.mouseX = mx
+				img.mouseY = my
 			}
 		}
 	}
@@ -236,9 +234,12 @@ func (img *SdlImgui) Service() {
 	}
 
 	// sleep to help avoid 100% CPU usage
-	if !img.isPlaymode() {
-		<-time.After(time.Millisecond * 50)
-	} else {
-		<-time.After(time.Millisecond * 10)
-	}
+	<-img.servicePulse.C
 }
+
+// time periods in milliseconds that each mode sleeps for at the end of each
+// service() call. used in setPlaymode().
+const (
+	debugSleepPeriod = 50
+	playSleepPeriod  = 10
+)

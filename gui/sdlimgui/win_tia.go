@@ -24,12 +24,11 @@ import (
 const winTIATitle = "TIA"
 
 type winTIA struct {
-	windowManagement
+	img  *SdlImgui
+	open bool
 
-	img          *SdlImgui
 	popupPalette *popupPalette
-
-	strobe int32
+	strobe       int32
 
 	// widget dimensions
 	hmoveSliderWidth            float32
@@ -43,7 +42,7 @@ type winTIA struct {
 	idxPointer imgui.PackedColor
 }
 
-func newWinTIA(img *SdlImgui) (managedWindow, error) {
+func newWinTIA(img *SdlImgui) (window, error) {
 	win := &winTIA{
 		img:          img,
 		popupPalette: newPopupPalette(img),
@@ -67,6 +66,14 @@ func (win *winTIA) destroy() {
 
 func (win *winTIA) id() string {
 	return winTIATitle
+}
+
+func (win *winTIA) isOpen() bool {
+	return win.open
+}
+
+func (win *winTIA) setOpen(open bool) {
+	win.open = open
 }
 
 // draw is called by service loop.

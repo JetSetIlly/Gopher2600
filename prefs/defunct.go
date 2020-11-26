@@ -19,6 +19,7 @@ package prefs
 var defunct = []string{
 	"debugger.randpins",
 	"debugger.randstate",
+	"sdlimgui.playmode.terminalOnError",
 }
 
 // returns true if string is in list of defunct values.

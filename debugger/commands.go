@@ -1069,20 +1069,6 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		case "OFF":
 			err = dbg.scr.SetFeature(gui.ReqSetVisibility, false)
 
-		case "SCALE":
-			scl, ok := tokens.Get()
-			if !ok {
-				return curated.Errorf("value required for %s %s", cmdDisplay, action)
-			}
-
-			var scale float64
-			scale, err = strconv.ParseFloat(scl, 32)
-			if err != nil {
-				return curated.Errorf("%s %s value not valid (%s)", cmdDisplay, action, scl)
-			}
-
-			err = dbg.scr.SetFeature(gui.ReqSetScale, float32(scale))
-
 		case "MASKING":
 			action, _ := tokens.Get()
 			action = strings.ToUpper(action)

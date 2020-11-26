@@ -21,21 +21,14 @@ import (
 	"github.com/jetsetilly/gopher2600/prefs"
 )
 
-// the acceptable preferencegroups provided to initPrefs().
-type prefGroup string
-
-const (
-	prefsGrpDebugger prefGroup = "sdlimgui.debugger"
-	prefsGrpPlaymode prefGroup = "sdlimgui.playmode"
-)
-
 type Preferences struct {
 	img *SdlImgui
 	dsk *prefs.Disk
+
+	openOnError prefs.Bool
 }
 
-// preferences change subtly when switching between debugger and play modes.
-func newPreferences(img *SdlImgui, group prefGroup) (*Preferences, error) {
+func newDebugPreferences(img *SdlImgui) (*Preferences, error) {
 	p := &Preferences{img: img}
 
 	// setup preferences
@@ -48,7 +41,54 @@ func newPreferences(img *SdlImgui, group prefGroup) (*Preferences, error) {
 		return nil, err
 	}
 
-	err = p.dsk.Add(fmt.Sprintf("%s.windowSize", group), prefs.NewGeneric(
+	err = p.dsk.Add("sdlimgui.debugger.terminalOnError", &p.openOnError)
+	if err != nil {
+		return nil, err
+	}
+
+	err = p.addWindowPreferences("sdlimgui.debugger")
+	if err != nil {
+		return nil, err
+	}
+
+	// load preferences from disk
+	err = p.dsk.Load(true)
+	if err != nil {
+		return nil, err
+	}
+
+	return p, nil
+}
+
+func newPlaymodePreferences(img *SdlImgui) (*Preferences, error) {
+	p := &Preferences{img: img}
+
+	// setup preferences
+	pth, err := paths.ResourcePath("", prefs.DefaultPrefsFile)
+	if err != nil {
+		return nil, err
+	}
+	p.dsk, err = prefs.NewDisk(pth)
+	if err != nil {
+		return nil, err
+	}
+
+	err = p.addWindowPreferences("sdlimgui.playmode")
+	if err != nil {
+		return nil, err
+	}
+
+	// load preferences from disk
+	err = p.dsk.Load(true)
+	if err != nil {
+		return nil, err
+	}
+
+	return p, nil
+}
+
+func (p *Preferences) addWindowPreferences(group string) error {
+	err := p.dsk.Add(fmt.Sprintf("%s.windowSize", group), prefs.NewGeneric(
 		func(s string) error {
 			var w, h int32
 			_, err := fmt.Sscanf(s, "%d,%d", &w, &h)
@@ -59,12 +99,12 @@ func newPreferences(img *SdlImgui, group prefGroup) (*Preferences, error) {
 			return nil
 		},
 		func() string {
-			w, h := img.plt.window.GetSize()
+			w, h := p.img.plt.window.GetSize()
 			return fmt.Sprintf("%d,%d", w, h)
 		},
 	))
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	err = p.dsk.Add(fmt.Sprintf("%s.windowPos", group), prefs.NewGeneric(
@@ -79,30 +119,19 @@ func newPreferences(img *SdlImgui, group prefGroup) (*Preferences, error) {
 			// window top to the window further down and slightly to the right
 			// of where it should be. This means that the window "drifts" down
 			// the screen on subsequent loads
-			img.plt.window.SetPosition(x, y)
+			p.img.plt.window.SetPosition(x, y)
 			return nil
 		},
 		func() string {
-			x, y := img.plt.window.GetPosition()
+			x, y := p.img.plt.window.GetPosition()
 			return fmt.Sprintf("%d,%d", x, y)
 		},
 	))
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	err = p.dsk.Add(fmt.Sprintf("%s.terminalOnError", group), &img.wm.term.openOnError)
-	if err != nil {
-		return nil, err
-	}
-
-	// load preferences from disk
-	err = p.dsk.Load(true)
-	if err != nil {
-		return nil, err
-	}
-
-	return p, nil
+	return nil
 }
 
 // Load disassembly preferences and apply to the current disassembly.

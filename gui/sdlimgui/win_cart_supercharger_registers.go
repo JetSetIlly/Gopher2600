@@ -26,12 +26,11 @@ import (
 const winSuperchargerRegistersTitle = "AR Registers"
 
 type winSuperchargerRegisters struct {
-	windowManagement
-
-	img *SdlImgui
+	img  *SdlImgui
+	open bool
 }
 
-func newWinSuperchargerRegisters(img *SdlImgui) (managedWindow, error) {
+func newWinSuperchargerRegisters(img *SdlImgui) (window, error) {
 	win := &winSuperchargerRegisters{
 		img: img,
 	}
@@ -47,6 +46,14 @@ func (win *winSuperchargerRegisters) destroy() {
 
 func (win *winSuperchargerRegisters) id() string {
 	return winSuperchargerRegistersTitle
+}
+
+func (win *winSuperchargerRegisters) isOpen() bool {
+	return win.open
+}
+
+func (win *winSuperchargerRegisters) setOpen(open bool) {
+	win.open = open
 }
 
 func (win *winSuperchargerRegisters) draw() {

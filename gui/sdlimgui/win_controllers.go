@@ -26,13 +26,14 @@ import (
 const winControllersTitle = "Controllers"
 
 type winControllers struct {
-	windowManagement
-	img *SdlImgui
+	img  *SdlImgui
+	open bool
 
+	// required dimensions for controller dropdown
 	controllerComboDim imgui.Vec2
 }
 
-func newWinControllers(img *SdlImgui) (managedWindow, error) {
+func newWinControllers(img *SdlImgui) (window, error) {
 	win := &winControllers{
 		img: img,
 	}
@@ -49,6 +50,14 @@ func (win *winControllers) destroy() {
 
 func (win *winControllers) id() string {
 	return winControllersTitle
+}
+
+func (win *winControllers) isOpen() bool {
+	return win.open
+}
+
+func (win *winControllers) setOpen(open bool) {
+	win.open = open
 }
 
 func (win *winControllers) draw() {

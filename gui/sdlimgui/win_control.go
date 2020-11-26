@@ -35,19 +35,24 @@ const (
 )
 
 type winControl struct {
-	windowManagement
-	img *SdlImgui
+	img  *SdlImgui
+	open bool
 
-	rewindWaiting bool
+	// rewinding state. target is the frame number that the user wants to
+	// rewind to. pending means that the request hasn't happened yet (the
+	// request will be repeated until pending is false). waiting means the
+	// request has been made but has not completed yet.
 	rewindTarget  int32
+	rewindPending bool
+	rewindWaiting bool
 
-	// widget dimensions
+	// required dimensions of size sensitive widgets
 	stepButtonDim imgui.Vec2
 	runButtonDim  imgui.Vec2
 	fpsLabelDim   imgui.Vec2
 }
 
-func newWinControl(img *SdlImgui) (managedWindow, error) {
+func newWinControl(img *SdlImgui) (window, error) {
 	win := &winControl{
 		img: img,
 	}
@@ -65,6 +70,14 @@ func (win *winControl) destroy() {
 
 func (win *winControl) id() string {
 	return winControlTitle
+}
+
+func (win *winControl) isOpen() bool {
+	return win.open
+}
+
+func (win *winControl) setOpen(open bool) {
+	win.open = open
 }
 
 func (win *winControl) draw() {
@@ -138,43 +151,40 @@ func (win *winControl) drawRewind() {
 	e := int32(win.img.lz.Rewind.Summary.End)
 	f := int32(win.img.lz.TV.Frame)
 
-	changedThisFrame := false
+	// we want the slider to always reflect the current frame or, if a
+	// rewinding is currently taking place, it should should show the target
+	// frame.
+	if win.rewindWaiting {
+		if f == win.rewindTarget {
+			win.rewindWaiting = false
+			win.rewindTarget = f
+		} else {
+			// rewiding is still taking place so make f equal to the target frame
+			f = win.rewindTarget
+		}
+	} else {
+		// keep track of running tv frame
+		win.rewindTarget = f
+	}
 
 	// forward/backwards buttons
 	imgui.SameLine()
 	if imgui.Button("<") && win.rewindTarget > 0 {
 		win.rewindTarget--
-		win.rewindWaiting = win.img.lz.Dbg.PushRewind(int(win.rewindTarget), win.rewindTarget == e)
-		changedThisFrame = true
+		win.rewindPending = win.img.lz.Dbg.PushRewind(int(win.rewindTarget), win.rewindTarget == e)
+		win.rewindWaiting = true
 	}
 	imgui.SameLine()
 	if imgui.Button(">") && win.rewindTarget < e {
 		win.rewindTarget++
-		win.rewindWaiting = win.img.lz.Dbg.PushRewind(int(win.rewindTarget), win.rewindTarget == e)
-		changedThisFrame = true
-	}
-
-	// the < and > buttons above will affect the label of the slide below if
-	// we're not careful. use either f or rewindTarget for label, depending on
-	// whether either of those buttons have ben pressed this frame.
-	var label string
-	if changedThisFrame {
-		label = fmt.Sprintf("%d", f)
-	} else {
-		label = fmt.Sprintf("%d", win.rewindTarget)
+		win.rewindPending = win.img.lz.Dbg.PushRewind(int(win.rewindTarget), win.rewindTarget == e)
+		win.rewindWaiting = true
 	}
 
 	// rewind slider
-	if imgui.SliderIntV("##rewind", &f, s, e, label) || win.rewindWaiting {
-		if win.rewindTarget != f {
-			win.rewindWaiting = win.img.lz.Dbg.PushRewind(int(f), f == e)
-			if !win.rewindWaiting {
-				win.rewindTarget = f
-			}
-		}
-	}
-
-	if !imgui.IsItemActive() {
+	if imgui.SliderInt("##rewind", &f, s, e) || win.rewindPending {
+		win.rewindPending = win.img.lz.Dbg.PushRewind(int(f), f == e)
+		win.rewindWaiting = true
 		win.rewindTarget = f
 	}
 

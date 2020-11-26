@@ -28,15 +28,14 @@ const winSaveKeyEEPROMTitle = "SaveKey EEPROM"
 const menuSaveKeyEEPROMTitle = "EEPROM"
 
 type winSaveKeyEEPROM struct {
-	windowManagement
-
-	img *SdlImgui
+	img  *SdlImgui
+	open bool
 
 	// height of status line at bottom of window. valid after first frame
 	statusHeight float32
 }
 
-func newWinSaveKeyEEPROM(img *SdlImgui) (managedWindow, error) {
+func newWinSaveKeyEEPROM(img *SdlImgui) (window, error) {
 	win := &winSaveKeyEEPROM{img: img}
 	return win, nil
 }
@@ -49,6 +48,14 @@ func (win *winSaveKeyEEPROM) destroy() {
 
 func (win *winSaveKeyEEPROM) id() string {
 	return winSaveKeyEEPROMTitle
+}
+
+func (win *winSaveKeyEEPROM) isOpen() bool {
+	return win.open
+}
+
+func (win *winSaveKeyEEPROM) setOpen(open bool) {
+	win.open = open
 }
 
 func (win *winSaveKeyEEPROM) draw() {

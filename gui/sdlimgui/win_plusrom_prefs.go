@@ -26,12 +26,11 @@ const winPlusROMPrefsTitle = "PlusROM Preferences"
 const menuPlusROMPrefsTitle = "Preferences"
 
 type winPlusROMPrefs struct {
-	windowManagement
-
-	img *SdlImgui
+	img  *SdlImgui
+	open bool
 }
 
-func newWinPlusROMPrefs(img *SdlImgui) (managedWindow, error) {
+func newWinPlusROMPrefs(img *SdlImgui) (window, error) {
 	win := &winPlusROMPrefs{
 		img: img,
 	}
@@ -47,6 +46,14 @@ func (win *winPlusROMPrefs) destroy() {
 
 func (win *winPlusROMPrefs) id() string {
 	return winPlusROMPrefsTitle
+}
+
+func (win *winPlusROMPrefs) isOpen() bool {
+	return win.open
+}
+
+func (win *winPlusROMPrefs) setOpen(open bool) {
+	win.open = open
 }
 
 func (win *winPlusROMPrefs) draw() {

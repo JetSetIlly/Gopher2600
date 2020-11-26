@@ -30,8 +30,8 @@ import (
 const winSelectROMTitle = "Select ROM"
 
 type winSelectROM struct {
-	windowManagement
-	img *SdlImgui
+	img  *SdlImgui
+	open bool
 
 	currPath string
 	entries  []os.FileInfo
@@ -48,7 +48,7 @@ type winSelectROM struct {
 	controlHeight float32
 }
 
-func newFileSelector(img *SdlImgui) (managedWindow, error) {
+func newFileSelector(img *SdlImgui) (window, error) {
 	win := &winSelectROM{
 		img:          img,
 		showAllFiles: false,
@@ -73,6 +73,33 @@ func (win *winSelectROM) init() {
 
 func (win winSelectROM) id() string {
 	return winSelectROMTitle
+}
+
+func (win *winSelectROM) isOpen() bool {
+	return win.open
+}
+
+func (win *winSelectROM) setOpen(open bool) {
+	if open {
+		win.open = true
+
+		// goto current cartridge location
+		f, err := filepath.Abs(win.img.lz.Cart.Filename)
+		if err != nil {
+			f = win.img.lz.Cart.Filename
+		}
+
+		d := filepath.Dir(f)
+		err = win.setPath(d)
+		if err != nil {
+			logger.Log("sdlimgui", fmt.Sprintf("error setting path (%s)", d))
+		}
+		win.selectedFile = win.img.lz.Cart.Filename
+
+		return
+	}
+
+	win.open = false
 }
 
 func (win *winSelectROM) destroy() {
@@ -237,28 +264,4 @@ func (win *winSelectROM) setPath(path string) error {
 	win.selectedFile = ""
 
 	return err
-}
-
-// overriding managedWindow implementation.
-func (win *winSelectROM) setOpen(open bool) {
-	if open {
-		win.open = true
-
-		// goto current cartridge location
-		f, err := filepath.Abs(win.img.lz.Cart.Filename)
-		if err != nil {
-			f = win.img.lz.Cart.Filename
-		}
-
-		d := filepath.Dir(f)
-		err = win.setPath(d)
-		if err != nil {
-			logger.Log("sdlimgui", fmt.Sprintf("error setting path (%s)", d))
-		}
-		win.selectedFile = win.img.lz.Cart.Filename
-
-		return
-	}
-
-	win.open = false
 }

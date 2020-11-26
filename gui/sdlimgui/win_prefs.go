@@ -25,11 +25,11 @@ import (
 const winPrefsTile = "Preferences"
 
 type winPrefs struct {
-	windowManagement
-	img *SdlImgui
+	img  *SdlImgui
+	open bool
 }
 
-func newWinPrefs(img *SdlImgui) (managedWindow, error) {
+func newWinPrefs(img *SdlImgui) (window, error) {
 	win := &winPrefs{
 		img: img,
 	}
@@ -45,6 +45,14 @@ func (win *winPrefs) destroy() {
 
 func (win *winPrefs) id() string {
 	return winPrefsTile
+}
+
+func (win *winPrefs) isOpen() bool {
+	return win.open
+}
+
+func (win *winPrefs) setOpen(open bool) {
+	win.open = open
 }
 
 func (win *winPrefs) draw() {
@@ -115,12 +123,12 @@ func (win *winPrefs) drawGeneral() {
 		// if disassembly has address labels then turning symbols off may alter
 		// the vertical scrolling of the disassembly window. set alignOnPC to
 		// true to force preference change to take effect
-		win.img.wm.disasm.alignOnPC = true
+		win.img.wm.windows[winDisasmTitle].(*winDisasm).alignOnPC = true
 	}
 
-	termOnError := win.img.wm.term.openOnError.Get().(bool)
+	termOnError := win.img.prefs.openOnError.Get().(bool)
 	if imgui.Checkbox("Open Terminal on Error", &termOnError) {
-		err := win.img.wm.term.openOnError.Set(termOnError)
+		err := win.img.prefs.openOnError.Set(termOnError)
 		if err != nil {
 			logger.Log("sdlimgui", fmt.Sprintf("could not set preference value: %v", err))
 		}

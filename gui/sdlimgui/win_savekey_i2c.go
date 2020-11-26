@@ -28,9 +28,8 @@ const winSaveKeyI2CTitle = "SaveKey I2C"
 const menuSaveKeyI2CTitle = "I2C"
 
 type winSaveKeyI2C struct {
-	windowManagement
-
-	img *SdlImgui
+	img  *SdlImgui
+	open bool
 
 	// color of bit indicator
 	bit        imgui.PackedColor
@@ -39,7 +38,7 @@ type winSaveKeyI2C struct {
 	sda        imgui.PackedColor
 }
 
-func newWinSaveKeyI2C(img *SdlImgui) (managedWindow, error) {
+func newWinSaveKeyI2C(img *SdlImgui) (window, error) {
 	win := &winSaveKeyI2C{
 		img: img,
 	}
@@ -59,6 +58,14 @@ func (win *winSaveKeyI2C) destroy() {
 
 func (win *winSaveKeyI2C) id() string {
 	return winSaveKeyI2CTitle
+}
+
+func (win *winSaveKeyI2C) isOpen() bool {
+	return win.open
+}
+
+func (win *winSaveKeyI2C) setOpen(open bool) {
+	win.open = open
 }
 
 func (win *winSaveKeyI2C) draw() {

@@ -22,14 +22,14 @@ import (
 const winAudioTitle = "Audio"
 
 type winAudio struct {
-	windowManagement
-	img *SdlImgui
+	img  *SdlImgui
+	open bool
 
 	displayBuffer []float32
 	newData       chan float32
 }
 
-func newWinAudio(img *SdlImgui) (managedWindow, error) {
+func newWinAudio(img *SdlImgui) (window, error) {
 	win := &winAudio{
 		img:           img,
 		displayBuffer: make([]float32, 2048),
@@ -49,6 +49,14 @@ func (win *winAudio) destroy() {
 
 func (win *winAudio) id() string {
 	return winAudioTitle
+}
+
+func (win *winAudio) isOpen() bool {
+	return win.open
+}
+
+func (win *winAudio) setOpen(open bool) {
+	win.open = open
 }
 
 func (win *winAudio) draw() {

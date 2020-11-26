@@ -26,12 +26,11 @@ import (
 const winCartTapeTitle = "Cassette Tape"
 
 type winCartTape struct {
-	windowManagement
-
-	img *SdlImgui
+	img  *SdlImgui
+	open bool
 }
 
-func newWinCartTape(img *SdlImgui) (managedWindow, error) {
+func newWinCartTape(img *SdlImgui) (window, error) {
 	win := &winCartTape{
 		img: img,
 	}
@@ -47,6 +46,14 @@ func (win *winCartTape) destroy() {
 
 func (win *winCartTape) id() string {
 	return winCartTapeTitle
+}
+
+func (win *winCartTape) isOpen() bool {
+	return win.open
+}
+
+func (win *winCartTape) setOpen(open bool) {
+	win.open = open
 }
 
 func (win *winCartTape) draw() {

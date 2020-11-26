@@ -27,12 +27,11 @@ import (
 const winRAMTitle = "RAM"
 
 type winRAM struct {
-	windowManagement
-
-	img *SdlImgui
+	img  *SdlImgui
+	open bool
 }
 
-func newWinRAM(img *SdlImgui) (managedWindow, error) {
+func newWinRAM(img *SdlImgui) (window, error) {
 	win := &winRAM{img: img}
 	return win, nil
 }
@@ -45,6 +44,14 @@ func (win *winRAM) destroy() {
 
 func (win *winRAM) id() string {
 	return winRAMTitle
+}
+
+func (win *winRAM) isOpen() bool {
+	return win.open
+}
+
+func (win *winRAM) setOpen(open bool) {
+	win.open = open
 }
 
 func (win *winRAM) draw() {
