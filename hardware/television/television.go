@@ -142,15 +142,15 @@ func NewTelevision(spec string) (*Television, error) {
 		signals:   make([]signal.SignalAttributes, MaxSignalHistory),
 	}
 
+	// initialise frame rate limiter
+	tv.lmtr.init(tv)
+	tv.SetFPS(-1)
+
 	// set specification
 	err := tv.SetSpec(spec)
 	if err != nil {
 		return nil, err
 	}
-
-	// initialise frame rate limiter
-	tv.lmtr.init(tv)
-	tv.SetFPS(-1)
 
 	// empty list of renderers
 	tv.renderers = make([]PixelRenderer, 0)

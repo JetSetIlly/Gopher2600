@@ -57,7 +57,8 @@ type ReadEvents struct {
 	RawEvents chan func()
 
 	// RawEventsReturn is a variation of RawEvents that returns control to the
-	// input loop as soon as the function is run
+	// input loop as soon as the function is run. Useful when pushed function
+	// has side-effects that must be serviced by the input loop immediately.
 	RawEventsReturn chan func()
 }
 

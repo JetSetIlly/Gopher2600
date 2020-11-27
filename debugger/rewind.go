@@ -69,6 +69,7 @@ func (dbg *Debugger) PushRewind(fn int, last bool) bool {
 	}
 
 	doRewind := func() error {
+		state, _ := dbg.scr.GetFeature(gui.ReqState)
 		dbg.scr.SetFeatureNoError(gui.ReqState, gui.StateRewinding)
 
 		if last {
@@ -83,7 +84,7 @@ func (dbg *Debugger) PushRewind(fn int, last bool) bool {
 			}
 		}
 
-		dbg.scr.SetFeatureNoError(gui.ReqState, gui.StatePaused)
+		dbg.scr.SetFeatureNoError(gui.ReqState, state)
 		dbg.runUntilHalt = false
 
 		return nil

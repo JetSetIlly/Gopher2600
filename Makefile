@@ -1,6 +1,6 @@
 compileFlags = '-c 3 -B -wb=false'
-#profilingRom = roms/Pitfall.bin
-profilingRom = "test_roms/plusrom/sokoboo Plus.bin"
+profilingRom = roms/Pitfall.bin
+#profilingRom = "test_roms/plusrom/sokoboo Plus.bin"
 
 .PHONY: all clean tidy generate check_lint lint check_pandoc readme_spell test race profile profile_display mem_profil_debug build_assertions build release release_statsview check_upx release_upx release_upx_statsview cross_windows cross_windows_statsview cross_windows_static cross_windows_static_statsview check_gotip build_with_gotip
 

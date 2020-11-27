@@ -36,20 +36,6 @@ func (img *SdlImgui) Service() {
 
 	// do not check for events if no event channel has been set
 	if img.events != nil {
-		// loop until there are no more events to retrieve. this loop is
-		// intimately connected with the framelimiter below. what we don't want
-		// to loop for too long servicing events. however:
-		//
-		// 1. servicing just one event per frame is not enough, queued events
-		//    will take one frame on longer to resolve
-		//
-		// 2. limiting the number of events serviced per frame has the same
-		//    problem for very long queues
-		//
-		// 3. truncating events is not wanted because we may miss important
-		//    user input
-		//
-		// best solution is the poll loop
 		for ev := sdl.PollEvent(); ev != nil; ev = sdl.PollEvent() {
 			switch ev := ev.(type) {
 			// close window
@@ -68,7 +54,6 @@ func (img *SdlImgui) Service() {
 				}
 
 			case *sdl.KeyboardEvent:
-
 				// for simplicity we'll handle some keys within the GUI and
 				// pass everything else to the registered events channel
 				switch sdl.GetKeyName(ev.Keysym.Sym) {
@@ -211,16 +196,15 @@ func (img *SdlImgui) Service() {
 		img.lz.Refresh()
 	}
 
-	// Signal start of a new frame
+	// start of a new frame
 	img.plt.newFrame()
 	imgui.NewFrame()
 
-	// imgui commands
+	// draw all windows according to debug/playmode
 	img.draw()
 
-	// Rendering
+	// rendering
 	imgui.Render() // This call only creates the draw data list. Actual rendering to framebuffer is done below.
-
 	img.glsl.preRender()
 	img.screen.render()
 	img.glsl.render(img.plt.displaySize(), img.plt.framebufferSize(), imgui.RenderedDrawData())
@@ -238,7 +222,7 @@ func (img *SdlImgui) Service() {
 }
 
 // time periods in milliseconds that each mode sleeps for at the end of each
-// service() call. used in setPlaymode().
+// service() call. used to initialise a time.Ticker in setPlaymode().
 const (
 	debugSleepPeriod = 50
 	playSleepPeriod  = 10

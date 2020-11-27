@@ -52,6 +52,7 @@ func (lmtr *limiter) init(tv *Television) {
 	lmtr.tv = tv
 	lmtr.limit = true
 	lmtr.actualTime = time.Now()
+	lmtr.pulse = time.NewTicker(time.Millisecond * 10)
 }
 
 // there's no science behind when we flip from scales these values are based simply on
@@ -74,17 +75,17 @@ func (lmtr *limiter) setRate(fps float32) {
 	if fps < thresPixelScale {
 		lmtr.scale = scalePixel
 		dur := time.Duration(279000 * fps)
-		lmtr.pulse = time.NewTicker(dur)
+		lmtr.pulse.Reset(dur)
 	} else if fps < threshScanlineScale {
 		lmtr.scale = scaleScanline
 		rate := float32(1.0) / (fps * float32(lmtr.tv.state.spec.ScanlinesTotal))
 		dur, _ := time.ParseDuration(fmt.Sprintf("%fs", rate))
-		lmtr.pulse = time.NewTicker(dur)
+		lmtr.pulse.Reset(dur)
 	} else {
 		lmtr.scale = scaleFrame
 		rate := float32(1.0) / fps
 		dur, _ := time.ParseDuration(fmt.Sprintf("%fs", rate))
-		lmtr.pulse = time.NewTicker(dur)
+		lmtr.pulse.Reset(dur)
 	}
 
 	// restart acutal FPS rate measurement values
