@@ -86,19 +86,35 @@ func (img *SdlImgui) Service() {
 						switch ev.Type {
 						case sdl.KEYDOWN:
 							if ev.Repeat == 0 {
-								select {
-								case img.events <- gui.EventKeyboard{
-									Key:  sdl.GetKeyName(ev.Keysym.Sym),
-									Mod:  mod,
-									Down: true}:
+								key := sdl.GetKeyName(ev.Keysym.Sym)
+								switch key {
+								case "F11":
+									if img.isPlaymode() {
+										img.plt.toggleFullScreen()
+									}
+
+								case "F12":
+									if img.isPlaymode() {
+										img.wm.playScr.fps.open = !img.wm.playScr.fps.open
+									}
+
 								default:
-									logger.Log("sdlimgui", "dropped key down event")
+									select {
+									case img.events <- gui.EventKeyboard{
+										GUI:  img,
+										Key:  key,
+										Mod:  mod,
+										Down: true}:
+									default:
+										logger.Log("sdlimgui", "dropped key down event")
+									}
 								}
 							}
 						case sdl.KEYUP:
 							if ev.Repeat == 0 {
 								select {
 								case img.events <- gui.EventKeyboard{
+									GUI:  img,
 									Key:  sdl.GetKeyName(ev.Keysym.Sym),
 									Mod:  mod,
 									Down: false}:
@@ -139,6 +155,7 @@ func (img *SdlImgui) Service() {
 				if img.isCaptured() {
 					select {
 					case img.events <- gui.EventMouseButton{
+						GUI:    img,
 						Button: button,
 						Down:   ev.Type == sdl.MOUSEBUTTONDOWN}:
 					default:
@@ -181,7 +198,10 @@ func (img *SdlImgui) Service() {
 				y := float32(my) / float32(h)
 
 				select {
-				case img.events <- gui.EventMouseMotion{X: x, Y: y}:
+				case img.events <- gui.EventMouseMotion{
+					GUI: img,
+					X:   x, Y: y,
+				}:
 				default:
 					logger.Log("sdlimgui", "dropped mouse motion event")
 				}

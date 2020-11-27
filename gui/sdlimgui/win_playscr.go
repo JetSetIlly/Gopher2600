@@ -30,6 +30,9 @@ type winPlayScr struct {
 	img  *SdlImgui
 	open bool
 
+	// fps sub-window
+	fps *winPlayScrFPS
+
 	// reference to screen data
 	scr *screen
 
@@ -62,6 +65,8 @@ func newWinPlayScr(img *SdlImgui) window {
 		scr:     img.screen,
 		scaling: 2.0,
 	}
+
+	win.fps = newWinPlayScrFPS(win.img).(*winPlayScrFPS)
 
 	// set texture, creation of textures will be done after every call to resize()
 	gl.ActiveTexture(gl.TEXTURE0)
@@ -124,8 +129,9 @@ func (win *winPlayScr) draw() {
 	}
 
 	imgui.PopStyleColorV(2)
-
 	imgui.End()
+
+	win.fps.draw()
 }
 
 // resize() implements the textureRenderer interface.

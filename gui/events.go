@@ -37,6 +37,7 @@ const (
 
 // EventKeyboard is the data that accompanies EventKeyboard events.
 type EventKeyboard struct {
+	GUI  GUI
 	Key  string
 	Down bool
 	Mod  KeyMod
@@ -44,6 +45,8 @@ type EventKeyboard struct {
 
 // EventMouseMotion is the data that accompanies MouseEventMove events.
 type EventMouseMotion struct {
+	GUI GUI
+
 	// as a fraction of the window's dimensions
 	X float32
 	Y float32
@@ -62,12 +65,14 @@ const (
 
 // EventMouseButton is the data that accompanies MouseEventMove events.
 type EventMouseButton struct {
+	GUI    GUI
 	Button MouseButton
 	Down   bool
 }
 
 // EventDbgMouseButton is the data that accompanies MouseEventMove events.
 type EventDbgMouseButton struct {
+	GUI      GUI
 	Button   MouseButton
 	Down     bool
 	X        int

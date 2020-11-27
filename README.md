@@ -173,6 +173,11 @@ The VCS panel is controlled through the function keys of the keyboard.
 * F4 Player 0 Pro Toggle
 * F5 Player 0 Pro Toggle
 
+In playmode, the additional keys are available:
+
+* F11 Toggle Fullscreen
+* F12 Show FPS Indicator
+
 ## Debugger
 
 To run the debugger use the `DEBUG` submode
@@ -181,7 +186,7 @@ To run the debugger use the `DEBUG` submode
 
 <img src=".screenshots/debugger_frogger.png" height="400" alt="gopher2600 debugging GUI"/>
 
-Becaus the debugger is still in development, full documentation not yet available. But breifly the features we can see in this screeshot are:
+Becaus the debugger is still in development, full documentation not yet available. But briefly the features we can see in this screeshot are:
 
 The menu-bar across the top of the screen shows the `Debugger`, `VCS` and in this instance a `Cartridge` menu
 
@@ -589,7 +594,7 @@ Statsview provided by:
 
 For testing instrumentation:
 
-* https://github.com/bradleyjkemp/memviz v0.2.3
+* https://github.com/bradleyjkemp/memviz
 
 Some ideas for the fragment shader taken from:
 

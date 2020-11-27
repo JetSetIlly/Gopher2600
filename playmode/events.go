@@ -225,8 +225,13 @@ func (pl *playmode) eventHandler() (bool, error) {
 	select {
 	case <-pl.intChan:
 		return false, nil
+
 	case ev := <-pl.guiChan:
 		return pl.guiEventHandler(ev)
+
+	case ev := <-pl.rawEvents:
+		ev()
+
 	default:
 	}
 

@@ -561,12 +561,16 @@ func (tv *Television) SetFPS(fps float32) {
 
 // The requested number of frames per second. Compare with GetActualFPS()
 // to check for accuracy.
+//
+// IS goroutine safe.
 func (tv *Television) GetReqFPS() float32 {
-	return tv.lmtr.requested
+	return tv.lmtr.requested.Load().(float32)
 }
 
 // The current number of frames per second. Note that FPS measurement still
 // works even when frame capping is disabled.
+//
+// IS goroutine safe.
 func (tv *Television) GetActualFPS() float32 {
-	return tv.lmtr.actual
+	return tv.lmtr.actual.Load().(float32)
 }

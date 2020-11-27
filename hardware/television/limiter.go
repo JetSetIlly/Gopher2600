@@ -17,6 +17,7 @@ package television
 
 import (
 	"fmt"
+	"sync/atomic"
 	"time"
 )
 
@@ -35,20 +36,22 @@ type limiter struct {
 	limit bool
 
 	// the requested number of frames per second
-	requested float32
+	requested atomic.Value // float32
 
 	// event pulse
 	pulse *time.Ticker
 	scale limitScale
 
 	// measurement
-	actual         float32
+	actual         atomic.Value // float32
 	actualCt       int
 	actualCtTarget int
 	actualTime     time.Time
 }
 
 func (lmtr *limiter) init(tv *Television) {
+	lmtr.actual.Store(float32(0))
+	lmtr.requested.Store(float32(0))
 	lmtr.tv = tv
 	lmtr.limit = true
 	lmtr.actualTime = time.Now()
@@ -69,7 +72,7 @@ func (lmtr *limiter) setRate(fps float32) {
 	}
 
 	// not selected rate
-	lmtr.requested = fps
+	lmtr.requested.Store(fps)
 
 	// set scale and duration to wait according to requested FPS rate
 	if fps < thresPixelScale {
@@ -90,7 +93,7 @@ func (lmtr *limiter) setRate(fps float32) {
 
 	// restart acutal FPS rate measurement values
 	lmtr.actualCt = 0
-	lmtr.actualCtTarget = int(lmtr.requested) / 2
+	lmtr.actualCtTarget = int(lmtr.requested.Load().(float32)) / 2
 	lmtr.actualTime = time.Now()
 }
 
@@ -127,13 +130,14 @@ func (lmtr *limiter) measureActual() {
 	lmtr.actualCt++
 	if lmtr.actualCt >= lmtr.actualCtTarget {
 		t := time.Now()
-		lmtr.actual = float32(lmtr.actualCtTarget) / float32(t.Sub(lmtr.actualTime).Seconds())
+		lmtr.actual.Store(float32(lmtr.actualCtTarget) / float32(t.Sub(lmtr.actualTime).Seconds()))
 
+		actual := lmtr.actual.Load().(float32)
 		switch lmtr.scale {
 		case scaleScanline:
-			lmtr.actual /= float32(lmtr.tv.state.spec.ScanlinesTotal)
+			lmtr.actual.Store(actual / float32(lmtr.tv.state.spec.ScanlinesTotal))
 		case scalePixel:
-			lmtr.actual /= float32(lmtr.tv.state.spec.IdealPixelsPerFrame)
+			lmtr.actual.Store(actual / float32(lmtr.tv.state.spec.IdealPixelsPerFrame))
 		}
 
 		// reset time and count ready for next measurement

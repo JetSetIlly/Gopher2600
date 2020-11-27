@@ -38,10 +38,12 @@ import (
 )
 
 type playmode struct {
-	vcs     *hardware.VCS
-	scr     gui.GUI
-	intChan chan os.Signal
-	guiChan chan gui.Event
+	vcs *hardware.VCS
+	scr gui.GUI
+
+	intChan   chan os.Signal
+	guiChan   chan gui.Event
+	rawEvents chan func()
 }
 
 // Play creates a 'playable' instance of the emulator.
@@ -177,10 +179,11 @@ func Play(tv *television.Television, scr gui.GUI, newRecording bool, cartload ca
 	}
 
 	pl := &playmode{
-		vcs:     vcs,
-		scr:     scr,
-		intChan: make(chan os.Signal, 1),
-		guiChan: make(chan gui.Event, 10),
+		vcs:       vcs,
+		scr:       scr,
+		intChan:   make(chan os.Signal, 1),
+		guiChan:   make(chan gui.Event, 10),
+		rawEvents: make(chan func(), 1024),
 	}
 
 	// connect gui

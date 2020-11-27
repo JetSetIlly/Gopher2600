@@ -31,6 +31,9 @@ type platform struct {
 	window *sdl.Window
 	time   uint64
 	mode   sdl.DisplayMode
+
+	// whether window is full screen or not
+	fullScreen bool
 }
 
 // newPlatform is the preferred method of initialisation for the platform type.
@@ -162,4 +165,16 @@ func (plt *platform) newFrame() {
 // PostRender performs a buffer swap.
 func (plt *platform) postRender() {
 	plt.window.GLSwap()
+}
+
+// toggle the full screeens state.
+func (plt *platform) toggleFullScreen() {
+	plt.fullScreen = !plt.fullScreen
+	if plt.fullScreen {
+		plt.window.SetFullscreen(sdl.WINDOW_FULLSCREEN_DESKTOP)
+		plt.img.setCapture(true)
+	} else {
+		plt.window.SetFullscreen(0)
+		plt.img.setCapture(false)
+	}
 }
