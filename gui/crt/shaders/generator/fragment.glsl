@@ -1,5 +1,8 @@
+// this file requires some constant values to be defined above this line before
+// being compiled. should be included during the "go generate" process
+
 uniform int ImageType;
-uniform int DrawMode; // 0 == running; 1 = show drawing; 2 = "goto coords"
+uniform int DrawMode; 
 uniform int Cropped; // false <= 0; true > 0
 uniform vec2 ScreenDim;
 uniform vec2 CropScreenDim;
@@ -52,13 +55,13 @@ float gold_noise(in vec2 xy){
 void main()
 {
 	// imgui texture
-	if (ImageType == 0) {
+	if (ImageType == GUI) {
 		Out_Color = vec4(Frag_Color.rgb, Frag_Color.a * texture(Texture, Frag_UV.st).r);
 		return;
 	}
 
 	// if this is the overlay texture then we're done
-	if (ImageType == 2) {
+	if (ImageType == Overlay) {
 		Out_Color = Frag_Color * texture(Texture, Frag_UV.st);
 		return;
 	}
@@ -77,7 +80,7 @@ void main()
 	float texelY;
 
 	// debug tv screen texture
-	if (ImageType == 1) {
+	if (ImageType == DebugScr) {
 		if (Cropped > 0) {
 			texelX = ScalingX / CropScreenDim.x;
 			texelY = ScalingY / CropScreenDim.y;
@@ -120,9 +123,8 @@ void main()
 			}
 		}
 
-		// when DrawMode is greater than 0 then there's some additional image
-		// processing we need to perform
-		if (DrawMode == 1) {
+		// when DrawMode is Cursor then there is some additional processing we need to perform
+		if (DrawMode == Cursor) {
 			// draw cursor if pixel is at the last x/y position
 			if (lastY >= 0 && lastX >= 0) {
 				if (isNearEqual(coords.y, lastY+texelY, cursorSize*texelY) && isNearEqual(coords.x, lastX+texelX, cursorSize*texelX/2)) {
@@ -200,7 +202,7 @@ void main()
 		// special handling for "Goto Coords" mode. the effect we want is for
 		// the selected coords to be obvious immediately. we don't want to see
 		// any screen drawing but we do want the alpha fade.
-		if (DrawMode == 2) {
+		if (DrawMode == LateCursor) {
 			if (coords.y > lastY+texelY || (isNearEqual(coords.y, lastY+texelY, texelY) && coords.x > lastX+texelX)) {
 				Out_Color = Frag_Color * texture(Texture, Frag_UV.st);
 				Out_Color.a = 0.5;
@@ -217,7 +219,7 @@ void main()
 	Out_Color = Frag_Color * texture(Texture, Frag_UV.st);
 
 	// if pixel-perfect	rendering is selected then there's nothing much more to do
-	if (CRT == 0 && ImageType != 4) {
+	if (CRT == 0 && ImageType != PrefsCRT) {
 		return;
 	}
 

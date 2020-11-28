@@ -257,19 +257,19 @@ func (rnd *glsl) render(displaySize [2]float32, framebufferSize [2]float32, draw
 	// set DrawMode according to emulation state
 	switch rnd.img.state {
 	case gui.StatePaused:
-		gl.Uniform1i(rnd.attribDrawMode, 1)
+		gl.Uniform1i(rnd.attribDrawMode, shaders.Cursor)
 	case gui.StateRunning:
 		// if FPS is low enough then show screen draw even though
 		// emulation is running
 		if rnd.img.lz.TV.ReqFPS < 3.0 {
-			gl.Uniform1i(rnd.attribDrawMode, 1)
+			gl.Uniform1i(rnd.attribDrawMode, shaders.NoCursor)
 		} else {
-			gl.Uniform1i(rnd.attribDrawMode, 0)
+			gl.Uniform1i(rnd.attribDrawMode, shaders.Cursor)
 		}
 	case gui.StateRewinding:
-		gl.Uniform1i(rnd.attribDrawMode, 0)
+		gl.Uniform1i(rnd.attribDrawMode, shaders.NoCursor)
 	case gui.StateGotoCoords:
-		gl.Uniform1i(rnd.attribDrawMode, 2)
+		gl.Uniform1i(rnd.attribDrawMode, shaders.LateCursor)
 	}
 
 	if rnd.img.wm.dbgScr.cropped {
@@ -305,15 +305,15 @@ func (rnd *glsl) render(displaySize [2]float32, framebufferSize [2]float32, draw
 				textureID := uint32(cmd.TextureID())
 				switch textureID {
 				case rnd.img.wm.dbgScr.screenTexture:
-					gl.Uniform1i(rnd.attribImageType, 1)
+					gl.Uniform1i(rnd.attribImageType, shaders.DebugScr)
 				case rnd.img.wm.dbgScr.overlayTexture:
-					gl.Uniform1i(rnd.attribImageType, 2)
+					gl.Uniform1i(rnd.attribImageType, shaders.Overlay)
 				case rnd.img.wm.playScr.screenTexture:
-					gl.Uniform1i(rnd.attribImageType, 3)
+					gl.Uniform1i(rnd.attribImageType, shaders.PlayScr)
 				case rnd.img.wm.crtPrefs.crtTexture:
-					gl.Uniform1i(rnd.attribImageType, 4)
+					gl.Uniform1i(rnd.attribImageType, shaders.PrefsCRT)
 				default:
-					gl.Uniform1i(rnd.attribImageType, 0)
+					gl.Uniform1i(rnd.attribImageType, shaders.GUI)
 				}
 
 				// clipping
