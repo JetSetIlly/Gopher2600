@@ -7,6 +7,7 @@
 * Support for (and auto-detection of) [keypad,paddle and joystick](#hand-controllers)
 * Network access through [PlusROM](#plusrom) emulation
 * [Savekey](#savekey) support
+* Rudimentary [CRT Effects](#crt-effects)
 
 The graphical [debugger](#debugger) is still in development but the current features include:
 
@@ -297,6 +298,26 @@ when in video-stepping mode you can not currently interactively alter the
 screen position to the level of an individual colour-clock. Left-clicking on the
 screen, as described above, will 'quantise' to the next CPU instruction. Future
 versions of `Gopher2600` will correct this.
+
+## CRT Effects
+
+`Gopher2600` offers basic emulation of a CRT television. This is by no means
+complete and is an area of active development.
+
+By default `playmode` enables CRT effects. You can turn them off with a
+commandline switch:
+
+	> gopher2600 -crt=false roms/Pitfall.bin
+
+Individual CRT effects can be turned on and off but currently you need to enter
+debug mode for this. Select the `CRT Preferences` entry in the `Debugger` menu.
+The following window will be shown:
+
+<img src=".screenshots/crt_prefs_window.png" height="400" alt="crt preferences window"/>
+
+For reasonably modern GFX card (the developer has a GeForce GTX 650) none of
+these effects should have any impact on performance, so the effect strength (or whether
+they are enabled at all) is down to taste.
 
 ## Configuration Directory
 

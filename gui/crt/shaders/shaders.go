@@ -28,8 +28,8 @@ const int GUI = 0;
 const int DebugScr = 1;
 const int Overlay = 2;
 
-// this file requires some constant values to be defined above this
-// line before being compiled
+// this file requires some constant values to be defined above this line before
+// being compiled. should be included during the "go generate" process
 
 uniform int ImageType;
 uniform int DrawMode; 
