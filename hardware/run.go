@@ -37,12 +37,12 @@ func (vcs *VCS) Run(continueCheck func() (bool, error)) error {
 			return err
 		}
 
-		vcs.CPU.RdyFlg, err = vcs.TIA.Step(false)
+		_, err = vcs.TIA.Step(false)
 		if err != nil {
 			return err
 		}
 
-		vcs.CPU.RdyFlg, err = vcs.TIA.Step(false)
+		_, err = vcs.TIA.Step(false)
 		if err != nil {
 			return err
 		}

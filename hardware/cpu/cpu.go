@@ -284,16 +284,25 @@ func (mc *CPU) read16Bit(address uint16) (uint16, error) {
 	return (uint16(hi) << 8) | uint16(lo), nil
 }
 
+// read 8bits from the PC location has a variety of additional side-effects
+// depending on context.
+type read8BitPCeffect int
+
+const (
+	nothing read8BitPCeffect = iota
+	newOpcode
+	loNibble
+	hiNibble
+)
+
 // read8BitPC reads 8 bits from the memory location pointed to by PC
 //
 // side-effects:
-//	* updates program counter
-//	* calls endCycle at end of function
-//	* updates LastResult.ByteCount
-//	* callback function in which LastResult should be updated as appropriate
-//		- probably updating InstructionData field
-//		- but can be used to read opcode too
-func (mc *CPU) read8BitPC(f func(val uint8) error) error {
+//     * updates program counter
+//     * calls endCycle at end of function
+//     * updates LastResult.ByteCount
+//     * additional side effect updates LastResult as appropriate
+func (mc *CPU) read8BitPC(effect read8BitPCeffect) error {
 	v, err := mc.mem.Read(mc.PC.Address())
 
 	if err != nil {
@@ -309,12 +318,23 @@ func (mc *CPU) read8BitPC(f func(val uint8) error) error {
 	// bump the number of bytes read during instruction decode
 	mc.LastResult.ByteCount++
 
-	// callback function
-	if f != nil {
-		err = f(v)
-		if err != nil {
-			return err
+	switch effect {
+	case nothing:
+
+	case newOpcode:
+		// look up definition
+		mc.LastResult.Defn = mc.instructions[v]
+
+		// !!TODO: remove this once all opcodes are defined/implemented
+		if mc.LastResult.Defn == nil {
+			return curated.Errorf(UnimplementedInstruction, v, mc.PC.Address()-1)
 		}
+
+	case loNibble:
+		mc.LastResult.InstructionData = uint16(v)
+
+	case hiNibble:
+		mc.LastResult.InstructionData = (uint16(v) << 8) | mc.LastResult.InstructionData
 	}
 
 	// +1 cycle
@@ -458,10 +478,12 @@ func (mc *CPU) branch(flag bool, address uint16) error {
 // functionality.
 func (mc *CPU) endCycle() error {
 	mc.LastResult.Cycles++
-	if mc.cycleCallback == nil {
-		return nil
-	}
 	return mc.cycleCallback()
+}
+
+// used when ExecuteInstruction() is called with a nil function.
+func (mc *CPU) nullCycleCallback() error {
+	return nil
 }
 
 // Sentinal error returned by ExecuteInstruction if an unimplemented opcode is encountered.
@@ -490,7 +512,11 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 	mc.Interrupted = false
 
 	// update cycle callback
-	mc.cycleCallback = cycleCallback
+	if cycleCallback == nil {
+		mc.cycleCallback = mc.nullCycleCallback
+	} else {
+		mc.cycleCallback = cycleCallback
+	}
 
 	// do nothing and return nothing if ready flag is false
 	if !mc.RdyFlg {
@@ -509,23 +535,10 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 	var err error
 	var opcode uint8
-	var defn *instructions.Definition
 
-	// read next instruction (end cycle part of read8BitPC)
+	// read next instruction (end cycle part of read8BitPC_opcode)
 	// +1 cycle
-	err = mc.read8BitPC(func(val uint8) error {
-		opcode = val
-		defn = mc.instructions[val]
-
-		// !!TODO: remove this once all opcodes are defined/implemented
-		if defn == nil {
-			return curated.Errorf(UnimplementedInstruction, val, mc.PC.Address()-1)
-		}
-
-		mc.LastResult.Defn = defn
-
-		return nil
-	})
+	err = mc.read8BitPC(newOpcode)
 	if err != nil {
 		// even when there is an error we need to update some LastResult field
 		// values before returning the error. the calling function might still
@@ -580,6 +593,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 	// we also take the opportunity to set the InstructionData value for the
 	// StepResult and whether a page fault has occurred. note that we don't do
 	// this in the case of JSR
+	defn := mc.LastResult.Defn
 	switch defn.AddressingMode {
 	case instructions.Implied:
 		// implied mode does not use any additional bytes. however, the next
@@ -589,7 +603,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 			// BRK is unusual in that it increases the PC by two bytes despite
 			// being an implied addressing mode.
 			// +1 cycle
-			err = mc.read8BitPC(nil)
+			err = mc.read8BitPC(nothing)
 			if err != nil {
 				return err
 			}
@@ -610,10 +624,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		// therefore, we don't set the address and we read the value through the PC
 
 		// +1 cycle
-		err = mc.read8BitPC(func(val uint8) error {
-			mc.LastResult.InstructionData = uint16(val)
-			return nil
-		})
+		err = mc.read8BitPC(loNibble)
 		if err != nil {
 			return err
 		}
@@ -627,10 +638,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		// in the branch() function
 
 		// +1 cycle
-		err = mc.read8BitPC(func(val uint8) error {
-			mc.LastResult.InstructionData = uint16(val)
-			return nil
-		})
+		err = mc.read8BitPC(loNibble)
 		if err != nil {
 			return err
 		}
@@ -653,12 +661,10 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		zeroPage = true
 
 		// +1 cycle
-		err = mc.read8BitPC(func(val uint8) error {
-			// while we must trest the value as an address (ie. as uint16) we
-			// actually only read an 8 bit value so we store the value as uint8
-			mc.LastResult.InstructionData = uint16(val)
-			return nil
-		})
+		//
+		// while we must trest the value as an address (ie. as uint16) we
+		// actually only read an 8 bit value so we store the value as uint8
+		err = mc.read8BitPC(loNibble)
 		if err != nil {
 			return err
 		}
@@ -726,10 +732,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 	case instructions.IndexedIndirect: // x indexing
 		// +1 cycle
-		err = mc.read8BitPC(func(val uint8) error {
-			mc.LastResult.InstructionData = uint16(val)
-			return nil
-		})
+		err = mc.read8BitPC(loNibble)
 		if err != nil {
 			return err
 		}
@@ -762,10 +765,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 	case instructions.IndirectIndexed: // y indexing
 		// +1 cycle
-		err = mc.read8BitPC(func(val uint8) error {
-			mc.LastResult.InstructionData = uint16(val)
-			return nil
-		})
+		err = mc.read8BitPC(loNibble)
 		if err != nil {
 			return err
 		}
@@ -861,10 +861,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		zeroPage = true
 
 		// +1 cycles
-		err = mc.read8BitPC(func(val uint8) error {
-			mc.LastResult.InstructionData = uint16(val)
-			return nil
-		})
+		err = mc.read8BitPC(loNibble)
 		if err != nil {
 			return err
 		}
@@ -891,10 +888,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		// used exclusively for LDX ZeroPage,y
 
 		// +1 cycles
-		err = mc.read8BitPC(func(val uint8) error {
-			mc.LastResult.InstructionData = uint16(val)
-			return nil
-		})
+		err = mc.read8BitPC(loNibble)
 		if err != nil {
 			return err
 		}
@@ -1336,10 +1330,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 	case "JSR":
 		// +1 cycle
-		err = mc.read8BitPC(func(val uint8) error {
-			mc.LastResult.InstructionData = uint16(val)
-			return nil
-		})
+		err = mc.read8BitPC(loNibble)
 		if err != nil {
 			return err
 		}
@@ -1380,10 +1371,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		}
 
 		// perform jump
-		err = mc.read8BitPC(func(val uint8) error {
-			mc.LastResult.InstructionData = (uint16(val) << 8) | mc.LastResult.InstructionData
-			return nil
-		})
+		err = mc.read8BitPC(hiNibble)
 		if err != nil {
 			return err
 		}
