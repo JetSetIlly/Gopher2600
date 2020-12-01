@@ -463,7 +463,6 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		tok, _ := tokens.Get()
 		switch strings.ToUpper(tok) {
 		case "LIST":
-			fmt.Println(tokens.Remainder())
 			option, ok := tokens.Get()
 			if ok {
 				switch strings.ToUpper(option) {
@@ -698,7 +697,6 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 				return err
 			}
 			dbg.commandOnTrace = append(dbg.commandOnTrace, toks)
-			fmt.Println(toks)
 		}
 
 		// store new commandOnTrace
