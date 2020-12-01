@@ -63,7 +63,7 @@ func (win *winSuperchargerRegisters) draw() {
 
 	// do not open window if there is no valid cartridge debug bus available
 	_, ok := win.img.lz.Cart.Registers.(supercharger.Registers)
-	if !win.img.lz.Cart.HasRegistersBus || !ok {
+	if !win.img.lz.Cart.HasCoProcBus || !ok {
 		return
 	}
 
@@ -71,7 +71,7 @@ func (win *winSuperchargerRegisters) draw() {
 	imgui.BeginV(winSuperchargerRegistersTitle, &win.open, imgui.WindowFlagsAlwaysAutoResize)
 
 	r, ok := win.img.lz.Cart.Registers.(supercharger.Registers)
-	if !win.img.lz.Cart.HasRegistersBus || !ok {
+	if !win.img.lz.Cart.HasCoProcBus || !ok {
 		return
 	}
 

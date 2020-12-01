@@ -76,8 +76,8 @@ type OptionalSuperchip interface {
 	AddSuperchip()
 }
 
-// CartRegistersBus defines the operations required for a debugger to access the
-// registers in a cartridge.
+// CartCoProcessorBus defines the operations required for a debugger to access
+// any coprocessor in a cartridge.
 //
 // The mapper is allowed to panic if it is not interfaced with correctly.
 //
@@ -98,7 +98,7 @@ type OptionalSuperchip interface {
 //
 // The GetRegisters() allows us to conceptualise the copying process and to
 // keep the details inside the cartridge implementation as much as possible.
-type CartRegistersBus interface {
+type CartCoProcessorBus interface {
 	// GetRegisters returns a copy of the cartridge's registers
 	GetRegisters() CartRegisters
 

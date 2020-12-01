@@ -91,7 +91,7 @@ func (cart *Cartridge) ID() string {
 
 // Peek is an implementation of memory.DebugBus. Address must be normalised.
 func (cart *Cartridge) Peek(addr uint16) (uint8, error) {
-	return cart.mapper.Read(addr&memorymap.CartridgeBits, false)
+	return cart.mapper.Read(addr&memorymap.CartridgeBits, true)
 }
 
 // Poke is an implementation of memory.DebugBus. Address must be normalised.
@@ -297,8 +297,8 @@ func (cart *Cartridge) Step() {
 
 // GetRegistersBus returns interface to the registers of the cartridge or nil
 // if cartridge has no registers.
-func (cart *Cartridge) GetRegistersBus() mapper.CartRegistersBus {
-	if bus, ok := cart.mapper.(mapper.CartRegistersBus); ok {
+func (cart *Cartridge) GetRegistersBus() mapper.CartCoProcessorBus {
+	if bus, ok := cart.mapper.(mapper.CartCoProcessorBus); ok {
 		return bus
 	}
 	return nil

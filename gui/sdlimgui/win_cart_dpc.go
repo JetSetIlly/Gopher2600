@@ -23,7 +23,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge"
 )
 
-const winDPCregistersTitle = "DPC Registers"
+const winDPCregistersTitle = "DPC Coprocessor"
 
 type winDPCregisters struct {
 	img  *SdlImgui
@@ -63,7 +63,7 @@ func (win *winDPCregisters) draw() {
 
 	// do not open window if there is no valid cartridge debug bus available
 	r, ok := win.img.lz.Cart.Registers.(cartridge.DPCregisters)
-	if !win.img.lz.Cart.HasRegistersBus || !ok {
+	if !win.img.lz.Cart.HasCoProcBus || !ok {
 		return
 	}
 

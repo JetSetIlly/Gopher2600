@@ -206,7 +206,9 @@ func (cart *dpc) Read(addr uint16, passive bool) (uint8, error) {
 	}
 
 	// clock signal is active whenever data fetcher is used
-	cart.state.registers.Fetcher[f].clk()
+	if !passive {
+		cart.state.registers.Fetcher[f].clk()
+	}
 
 	return data, nil
 }

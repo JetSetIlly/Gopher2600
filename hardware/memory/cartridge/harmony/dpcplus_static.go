@@ -24,24 +24,24 @@ import (
 
 // DPCplusStatic implements the bus.CartStatic interface.
 type DPCplusStatic struct {
-	Arm  []byte
-	Data []byte
-	Freq []byte
+	Driver []byte
+	Data   []byte
+	Freq   []byte
 }
 
 // GetStatic implements the bus.CartDebugBus interface.
 func (cart *dpcPlus) GetStatic() []mapper.CartStatic {
 	s := make([]mapper.CartStatic, 3)
 
-	s[0].Label = "ARM"
+	s[0].Label = "Driver"
 	s[1].Label = "Data"
 	s[2].Label = "Freq"
 
-	s[0].Data = make([]byte, len(cart.static.Arm))
+	s[0].Data = make([]byte, len(cart.static.Driver))
 	s[1].Data = make([]byte, len(cart.static.Data))
 	s[2].Data = make([]byte, len(cart.static.Freq))
 
-	copy(s[0].Data, cart.static.Arm)
+	copy(s[0].Data, cart.static.Driver)
 	copy(s[1].Data, cart.static.Data)
 	copy(s[2].Data, cart.static.Freq)
 
@@ -51,11 +51,11 @@ func (cart *dpcPlus) GetStatic() []mapper.CartStatic {
 // StaticWrite implements the bus.CartDebugBus interface.
 func (cart *dpcPlus) PutStatic(label string, addr uint16, data uint8) error {
 	switch label {
-	case "ARM":
-		if int(addr) >= len(cart.static.Arm) {
+	case "Driver":
+		if int(addr) >= len(cart.static.Driver) {
 			return curated.Errorf("dpc+: %v", fmt.Errorf("address too high (%#04x) for %s area", addr, label))
 		}
-		cart.static.Arm[addr] = data
+		cart.static.Driver[addr] = data
 
 	case "Data":
 		if int(addr) >= len(cart.static.Data) {

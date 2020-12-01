@@ -229,7 +229,7 @@ func (cart *PlusROM) CopyBanks() []mapper.BankContent {
 
 // GetGetRegisters implements the mapper.CartRegistersBus interface.
 func (cart *PlusROM) GetRegisters() mapper.CartRegisters {
-	if rb, ok := cart.child.(mapper.CartRegistersBus); ok {
+	if rb, ok := cart.child.(mapper.CartCoProcessorBus); ok {
 		return rb.GetRegisters()
 	}
 	return nil
@@ -237,7 +237,7 @@ func (cart *PlusROM) GetRegisters() mapper.CartRegisters {
 
 // PutRegister implements the mapper.CartRegistersBus interface.
 func (cart *PlusROM) PutRegister(register string, data string) {
-	if rb, ok := cart.child.(mapper.CartRegistersBus); ok {
+	if rb, ok := cart.child.(mapper.CartCoProcessorBus); ok {
 		rb.PutRegister(register, data)
 	}
 }

@@ -66,7 +66,7 @@ func (wm *manager) drawMenu() {
 	// for the specific cartridge ID. see newWindowManager() function above
 	cartSpecificMenu := wm.img.lz.Cart.HasRAMbus ||
 		wm.img.lz.Cart.HasStaticBus ||
-		wm.img.lz.Cart.HasRegistersBus
+		wm.img.lz.Cart.HasCoProcBus
 
 	if _, ok := wm.menu[wm.img.lz.Cart.ID]; ok {
 		cartSpecificMenu = true

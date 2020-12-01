@@ -35,8 +35,8 @@ type LazyCart struct {
 	staticBus atomic.Value // mapper.CartStaticBus
 	static    atomic.Value // mapper.CartStatic
 
-	registersBus atomic.Value // mapper.CartRegistersBus
-	registers    atomic.Value // mapper.CartRegisters
+	coprocessorBus atomic.Value // mapper.CartRegistersBus
+	registers      atomic.Value // mapper.CartRegisters
 
 	ramBus atomic.Value // mapper.CartRAMbus
 	ram    atomic.Value // []mapper.CartRAM
@@ -61,9 +61,9 @@ type LazyCart struct {
 	StaticBus    mapper.CartStaticBus
 	Static       []mapper.CartStatic
 
-	HasRegistersBus bool
-	RegistersBus    mapper.CartRegistersBus
-	Registers       mapper.CartRegisters
+	HasCoProcBus   bool
+	CoProcessorBus mapper.CartCoProcessorBus
+	Registers      mapper.CartRegisters
 
 	HasRAMbus bool
 	RAMbus    mapper.CartRAMbus
@@ -105,7 +105,7 @@ func (lz *LazyCart) push() {
 
 	rb := lz.val.Dbg.VCS.Mem.Cart.GetRegistersBus()
 	if rb != nil {
-		lz.registersBus.Store(rb)
+		lz.coprocessorBus.Store(rb)
 
 		// make sure CartRegistersBus implementation is meaningful
 		a := rb.GetRegisters()
@@ -169,16 +169,16 @@ func (lz *LazyCart) update() {
 		}
 	}
 
-	lz.RegistersBus, lz.HasRegistersBus = lz.registersBus.Load().(mapper.CartRegistersBus)
-	if lz.HasRegistersBus {
+	lz.CoProcessorBus, lz.HasCoProcBus = lz.coprocessorBus.Load().(mapper.CartCoProcessorBus)
+	if lz.HasCoProcBus {
 		lz.Registers, _ = lz.registers.Load().(mapper.CartRegisters)
 
-		// a cartridge can implement a registers bus but not actually have any
-		// registers. this additional test checks for that
+		// a cartridge can implement a coprocessor bus but not actually have a
+		// coprocessor. this additional test checks for that
 		//
 		// required for plusrom cartridges
 		if lz.Registers == nil {
-			lz.HasRegistersBus = false
+			lz.HasCoProcBus = false
 		}
 	}
 

@@ -28,6 +28,8 @@ import (
 // dpcPlus implements the cartMapper interface.
 //
 // https://atariage.com/forums/topic/163495-harmony-dpc-programming
+//
+// https://atariage.com/forums/blogs/entry/11811-dpcarm-part-6-dpc-cartridge-layout/
 type dpcPlus struct {
 	mappingID   string
 	description string
@@ -58,19 +60,19 @@ type dpcPlus struct {
 
 // NewDPCplus is the preferred method of initialisation for the harmony type.
 func NewDPCplus(data []byte) (mapper.CartMapper, error) {
-	const armSize = 3072
-	const dataSize = 4096
-	const freqSize = 1024
+	const driver = 3072   // 3k
+	const dataSize = 4096 // 4k
+	const freqSize = 1024 // 1k
 
 	cart := &dpcPlus{
 		mappingID:   "DPC+",
-		description: "harmony",
+		description: "Harmony (DPC+)",
 		bankSize:    4096,
 		state:       newDPCPlusState(),
 	}
 
 	// amount of data used for cartridges
-	bankLen := len(data) - dataSize - armSize - freqSize
+	bankLen := len(data) - dataSize - driver - freqSize
 
 	// size check
 	if bankLen <= 0 || bankLen%cart.bankSize != 0 {
@@ -78,7 +80,7 @@ func NewDPCplus(data []byte) (mapper.CartMapper, error) {
 	}
 
 	// partition
-	cart.static.Arm = data[:armSize]
+	cart.static.Driver = data[:driver]
 
 	// allocate enough banks
 	cart.banks = make([][]uint8, bankLen/cart.bankSize)
@@ -87,17 +89,17 @@ func NewDPCplus(data []byte) (mapper.CartMapper, error) {
 	for k := 0; k < cart.NumBanks(); k++ {
 		cart.banks[k] = make([]uint8, cart.bankSize)
 		offset := k * cart.bankSize
-		offset += armSize
+		offset += driver
 		cart.banks[k] = data[offset : offset+cart.bankSize]
 	}
 
 	// gfx and frequency table at end of file
-	dataOffset := armSize + (cart.bankSize * cart.NumBanks())
+	dataOffset := driver + (cart.bankSize * cart.NumBanks())
 	cart.static.Data = data[dataOffset : dataOffset+dataSize]
 	cart.static.Freq = data[dataOffset+dataSize:]
 
 	// patch offsets
-	cart.banksOffset = armSize
+	cart.banksOffset = driver
 	cart.dataOffset = dataOffset
 	cart.freqOffset = dataOffset + dataSize
 	cart.fileSize = len(data)
@@ -209,7 +211,9 @@ func (cart *dpcPlus) Read(addr uint16, passive bool) (uint8, error) {
 		dataAddr := uint16(cart.state.registers.Fetcher[f].Hi)<<8 | uint16(cart.state.registers.Fetcher[f].Low)
 		dataAddr &= 0x0fff
 		data = cart.static.Data[dataAddr]
-		cart.state.registers.Fetcher[f].inc()
+		if !passive {
+			cart.state.registers.Fetcher[f].inc()
+		}
 
 	// data fetcher (windowed)
 	case 0x10:
@@ -233,7 +237,9 @@ func (cart *dpcPlus) Read(addr uint16, passive bool) (uint8, error) {
 		if cart.state.registers.Fetcher[f].isWindow() {
 			data = cart.static.Data[dataAddr]
 		}
-		cart.state.registers.Fetcher[f].inc()
+		if !passive {
+			cart.state.registers.Fetcher[f].inc()
+		}
 
 	// fractional data fetcher
 	case 0x18:
@@ -255,7 +261,9 @@ func (cart *dpcPlus) Read(addr uint16, passive bool) (uint8, error) {
 		dataAddr := uint16(cart.state.registers.FracFetcher[f].Hi)<<8 | uint16(cart.state.registers.FracFetcher[f].Low)
 		dataAddr &= 0x0fff
 		data = cart.static.Data[dataAddr]
-		cart.state.registers.FracFetcher[f].inc()
+		if !passive {
+			cart.state.registers.FracFetcher[f].inc()
+		}
 
 	// data fetcher window flag
 	case 0x20:
@@ -616,7 +624,7 @@ func (cart *dpcPlus) Patch(offset int, data uint8) error {
 		offset %= cart.bankSize
 		cart.banks[bank][offset] = data
 	} else {
-		cart.static.Arm[offset-cart.banksOffset] = data
+		cart.static.Driver[offset-cart.banksOffset] = data
 	}
 
 	return nil
@@ -801,7 +809,7 @@ func (cart *dpcPlus) WriteHotspots() map[uint16]mapper.CartHotspotInfo {
 		0x1075: {Symbol: "MUSIC0", Action: mapper.HotspotRegister},
 		0x1076: {Symbol: "MUSIC1", Action: mapper.HotspotRegister},
 		0x1077: {Symbol: "MUSIC2", Action: mapper.HotspotRegister},
-		0x1078: {Symbol: "DF0/queue", Action: mapper.HotspotRegister},
+		0x1078: {Symbol: "DF0/queue", Action: mapper.HotspotRegister}, // DF0Write
 		0x1079: {Symbol: "DF1/queue", Action: mapper.HotspotRegister},
 		0x107a: {Symbol: "DF2/queue", Action: mapper.HotspotRegister},
 		0x107b: {Symbol: "DF3/queue", Action: mapper.HotspotRegister},

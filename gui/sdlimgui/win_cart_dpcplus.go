@@ -23,7 +23,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/harmony"
 )
 
-const winDPCplusRegistersTitle = "DPC+ Registers"
+const winDPCplusRegistersTitle = "DPC+ Coprocessor"
 
 type winDPCplusRegisters struct {
 	img  *SdlImgui
@@ -63,7 +63,7 @@ func (win *winDPCplusRegisters) draw() {
 
 	// do not open window if there is no valid cartridge debug bus available
 	r, ok := win.img.lz.Cart.Registers.(harmony.DPCplusRegisters)
-	if !win.img.lz.Cart.HasRegistersBus || !ok {
+	if !win.img.lz.Cart.HasCoProcBus || !ok {
 		return
 	}
 
