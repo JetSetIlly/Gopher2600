@@ -503,6 +503,11 @@ Modern formats supported:
 
 The `DPC+` is supported but the emulator does not currently emulate the `ARM7` present in the `Harmony` cartridge. This is planned for the future.
 
+Missing Formats:
+
+* X07. This was only ever used as far as I know, with `Stella's Stocking` which has never been released (ROM dumped).
+* CDF and CDFJ. These are both formats that use the `ARM7` of the `Harmony` cartridge, which has not yet been implemented.
+
 ## Statistics Viewer
 
 Playmode and debug mode can both be launched with a statistics viewer available
@@ -572,10 +577,21 @@ US Patent Number 4,644,495 was referenced for the implementation of the DPC cart
 (the format used in Pitfall 2)
 
 DPC+ format implemented according to notes provided by Spiceware https://atariage.com/forums/topic/163495-harmony-dpc-programming
+and https://atariage.com/forums/blogs/entry/11811-dpcarm-part-6-dpc-cartridge-layout/
+
+DPC+ARM information on Spiceware's blog https://atariage.com/forums/blogs/entry/11712-dpc-arm-development/?tab=comments#comment-27116
 
 The "Mostly Inclusive Atari 2600 Mapper / Selected Hardware Document" (dated 03/04/12) by Kevin Horton
 
 Supercharger information from the Kevin Horton document above and also the `sctech.txt` document
+
+Reference for the ARM7TDMI instruction set, as used by the Harmony cartridge formats:
+
+http://www.ecs.csun.edu/~smirzaei/docs/ece425/arm7tdmi_instruction_set_reference.pdf
+
+Further references from the ARM Architecture Reference Manual:
+
+https://www.cs.miami.edu/home/burt/learning/Csc521.141/Documents/arm_arm.pdf
 
 ## Further Help
 

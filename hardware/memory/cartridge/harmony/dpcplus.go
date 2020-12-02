@@ -21,6 +21,7 @@ import (
 
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/harmony/arm7tdmi"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
@@ -33,6 +34,9 @@ import (
 type dpcPlus struct {
 	mappingID   string
 	description string
+
+	// additional CPU - used by some ROMs
+	arm *arm7tdmi.ARM
 
 	// banks and the currently selected bank
 	bankSize int
@@ -79,7 +83,7 @@ func NewDPCplus(data []byte) (mapper.CartMapper, error) {
 		return nil, curated.Errorf("DPC+: %v", fmt.Errorf("%s: wrong number of bytes in cartridge data", cart.mappingID))
 	}
 
-	// partition
+	// ARM driver
 	cart.static.Driver = data[:driver]
 
 	// allocate enough banks
@@ -103,6 +107,29 @@ func NewDPCplus(data []byte) (mapper.CartMapper, error) {
 	cart.dataOffset = dataOffset
 	cart.freqOffset = dataOffset + dataSize
 	cart.fileSize = len(data)
+
+	// custom ARM code. we don't know how much of the bank data is used for
+	// the custom ARM program so we'll just copy all of it.
+	//
+	// !!TODO: copy only ARM code to custom byte array
+	custom := make([]uint8, 0)
+	for _, b := range cart.banks {
+		custom = append(custom, b...)
+	}
+
+	// initialise ARM memory
+	mem := arm7tdmi.Memory{
+		Driver: &cart.static.Driver,
+		Custom: &custom,
+		Data:   &cart.static.Data,
+		Freq:   &cart.static.Freq,
+	}
+
+	// initialise ARM processor
+	//
+	// if bank0 has any ARM code then it will start at offset 0x08. first eight
+	// bytes are the ARM header
+	cart.arm = arm7tdmi.NewARM(mem, 8)
 
 	return cart, nil
 }
@@ -429,9 +456,14 @@ func (cart *dpcPlus) Write(addr uint16, data uint8, passive bool, poke bool) err
 
 	// function support - parameter
 	case 0x59:
+		cart.arm.SetParameter(data)
 
 	// function support - call function
 	case 0x5a:
+		err := cart.arm.CallFunction(data)
+		if err != nil {
+			return curated.Errorf("DPC+: %v", err)
+		}
 
 	// reserved
 	case 0x5b:
