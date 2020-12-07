@@ -18,6 +18,10 @@
 //
 // http://www.ecs.csun.edu/~smirzaei/docs/ece425/arm7tdmi_instruction_set_reference.pdf
 //
+// Thumb Instruction Set Reference:
+//
+// https://edu.heibai.org/ARM%E8%B5%84%E6%96%99/ARM7-TDMI-manual-pt3.pdf
+//
 // ARM Architecture Reference Manual:
 //
 // https://www.cs.miami.edu/home/burt/learning/Csc521.141/Documents/arm_arm.pdf
