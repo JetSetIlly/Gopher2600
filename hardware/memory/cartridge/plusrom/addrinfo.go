@@ -60,10 +60,17 @@ func isHostValid(host string) bool {
 		if len(l) < 1 || len(l) > 63 {
 			return false
 		}
+
+		// check for valid characters: letters (upper/lower), digits or hyphen
 		for _, c := range l {
-			if !unicode.IsLetter(c) && !unicode.IsDigit(c) {
+			if !unicode.IsLetter(c) && !unicode.IsDigit(c) && c != '-' {
 				return false
 			}
+		}
+
+		// a hostname may not start with a hyphen
+		if l[0] == '-' {
+			return false
 		}
 	}
 
