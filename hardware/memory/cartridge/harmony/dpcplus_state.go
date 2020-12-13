@@ -26,10 +26,15 @@ type dpcPlusState struct {
 	// music fetchers are clocked at a fixed (slower) rate than the reference
 	// to the VCS's clock. see Step() function.
 	beats int
+
+	// parameters for next function call
+	parameters []uint8
 }
 
 func newDPCPlusState() *dpcPlusState {
-	return &dpcPlusState{}
+	s := &dpcPlusState{}
+	s.parameters = make([]uint8, 0, 32)
+	return s
 }
 
 func (s *dpcPlusState) Snapshot() mapper.CartSnapshot {

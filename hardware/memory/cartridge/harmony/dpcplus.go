@@ -24,6 +24,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/harmony/arm7tdmi"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
+	"github.com/jetsetilly/gopher2600/logger"
 )
 
 // dpcPlus implements the cartMapper interface.
@@ -46,6 +47,7 @@ type dpcPlus struct {
 	// static area of the cartridge. accessible outside of the cartridge
 	// through GetStatic() and PutStatic()
 	static DPCplusStatic
+	data   []byte
 
 	// rewindable state
 	state *dpcPlusState
@@ -62,12 +64,14 @@ type dpcPlus struct {
 	fileSize    int
 }
 
+const (
+	driverSize = 3072 // 3k
+	dataSize   = 4096 // 4k
+	freqSize   = 1024 // 1k
+)
+
 // NewDPCplus is the preferred method of initialisation for the harmony type.
 func NewDPCplus(data []byte) (mapper.CartMapper, error) {
-	const driver = 3072   // 3k
-	const dataSize = 4096 // 4k
-	const freqSize = 1024 // 1k
-
 	cart := &dpcPlus{
 		mappingID:   "DPC+",
 		description: "Harmony (DPC+)",
@@ -75,8 +79,12 @@ func NewDPCplus(data []byte) (mapper.CartMapper, error) {
 		state:       newDPCPlusState(),
 	}
 
+	// make a copy of the entire cartridge ROM
+	cart.data = make([]byte, len(data))
+	copy(cart.data, data)
+
 	// amount of data used for cartridges
-	bankLen := len(data) - dataSize - driver - freqSize
+	bankLen := len(data) - dataSize - driverSize - freqSize
 
 	// size check
 	if bankLen <= 0 || bankLen%cart.bankSize != 0 {
@@ -84,7 +92,7 @@ func NewDPCplus(data []byte) (mapper.CartMapper, error) {
 	}
 
 	// ARM driver
-	cart.static.Driver = data[:driver]
+	cart.static.Driver = data[:driverSize]
 
 	// allocate enough banks
 	cart.banks = make([][]uint8, bankLen/cart.bankSize)
@@ -93,34 +101,33 @@ func NewDPCplus(data []byte) (mapper.CartMapper, error) {
 	for k := 0; k < cart.NumBanks(); k++ {
 		cart.banks[k] = make([]uint8, cart.bankSize)
 		offset := k * cart.bankSize
-		offset += driver
+		offset += driverSize
 		cart.banks[k] = data[offset : offset+cart.bankSize]
 	}
 
 	// gfx and frequency table at end of file
-	dataOffset := driver + (cart.bankSize * cart.NumBanks())
+	dataOffset := driverSize + (cart.bankSize * cart.NumBanks())
 	cart.static.Data = data[dataOffset : dataOffset+dataSize]
 	cart.static.Freq = data[dataOffset+dataSize:]
 
+	// custom ARM code. we don't know how much of the bank data is used for
+	// the custom ARM program so we'll just copy all of it.
+	// !!TODO: copy only ARM code to custom byte array
+	cart.static.Custom = make([]uint8, 0)
+	for _, b := range cart.banks {
+		cart.static.Custom = append(cart.static.Custom, b...)
+	}
+
 	// patch offsets
-	cart.banksOffset = driver
+	cart.banksOffset = driverSize
 	cart.dataOffset = dataOffset
 	cart.freqOffset = dataOffset + dataSize
 	cart.fileSize = len(data)
 
-	// custom ARM code. we don't know how much of the bank data is used for
-	// the custom ARM program so we'll just copy all of it.
-	//
-	// !!TODO: copy only ARM code to custom byte array
-	custom := make([]uint8, 0)
-	for _, b := range cart.banks {
-		custom = append(custom, b...)
-	}
-
 	// initialise ARM memory
 	mem := arm7tdmi.Memory{
 		Driver: &cart.static.Driver,
-		Custom: &custom,
+		Custom: &cart.static.Custom,
 		Data:   &cart.static.Data,
 		Freq:   &cart.static.Freq,
 	}
@@ -456,13 +463,50 @@ func (cart *dpcPlus) Write(addr uint16, data uint8, passive bool, poke bool) err
 
 	// function support - parameter
 	case 0x59:
-		cart.arm.SetParameter(data)
+		cart.state.parameters = append(cart.state.parameters, data)
 
 	// function support - call function
 	case 0x5a:
-		err := cart.arm.CallFunction(data)
-		if err != nil {
-			return curated.Errorf("DPC+: %v", err)
+		switch data {
+		case 0:
+			cart.state.parameters = cart.state.parameters[:0]
+		case 1:
+			// copy rom to fetcher
+			if len(cart.state.parameters) != 4 {
+				logger.Log("DPC+", fmt.Sprintf("wrong number of parameters for function call [%02x]", data))
+				break // switch data
+			}
+
+			addr := (uint16(cart.state.parameters[1]) << 8) | uint16(cart.state.parameters[0])
+			addr += 0xc00
+			for i := uint8(0); i < cart.state.parameters[3]; i++ {
+				f := cart.state.registers.Fetcher[cart.state.parameters[2]&0x07]
+				o := uint16(f.Low) | (uint16(f.Hi) << 8) + uint16(i)
+				cart.static.Data[o] = cart.data[addr+uint16(i)]
+			}
+			cart.state.parameters = cart.state.parameters[:0]
+		case 2:
+			// copy value to fetcher
+			if len(cart.state.parameters) != 4 {
+				logger.Log("DPC+", fmt.Sprintf("wrong number of parameters for function call [%02x]", data))
+				break // switch data
+			}
+
+			for i := uint8(0); i < cart.state.parameters[3]; i++ {
+				f := cart.state.registers.Fetcher[cart.state.parameters[2]&0x07]
+				o := uint16(f.Low+i) | (uint16(f.Hi+i) << 8)
+				cart.static.Data[o] = cart.state.parameters[0]
+			}
+
+			cart.state.parameters = cart.state.parameters[:0]
+
+		case 254:
+			fallthrough
+		case 255:
+			err := cart.arm.Run()
+			if err != nil {
+				return curated.Errorf("DPC+: %v", err)
+			}
 		}
 
 	// reserved

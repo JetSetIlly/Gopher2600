@@ -10,7 +10,7 @@ all:
 clean:
 	@echo "removing binary and profiling files"
 	@rm -f cpu.profile mem.profile debug.cpu.profile debug.mem.profile
-	@rm -f gopher2600_*
+	@rm -f gopher2600_* gopher2600
 	@find ./ -type f | grep "\.orig" | xargs -r rm
 
 tidy:

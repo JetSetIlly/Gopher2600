@@ -27,6 +27,7 @@ type DPCplusStatic struct {
 	Driver []byte
 	Data   []byte
 	Freq   []byte
+	Custom []byte
 }
 
 // GetStatic implements the bus.CartDebugBus interface.

@@ -17,9 +17,8 @@ package arm7tdmi
 
 import (
 	"fmt"
+	"math/bits"
 	"strings"
-
-	"github.com/jetsetilly/gopher2600/logger"
 )
 
 type status struct {
@@ -30,6 +29,31 @@ type status struct {
 	carry    bool
 }
 
+func (sr *status) String() string {
+	s := strings.Builder{}
+	if sr.negative {
+		s.WriteRune('N')
+	} else {
+		s.WriteRune('n')
+	}
+	if sr.zero {
+		s.WriteRune('Z')
+	} else {
+		s.WriteRune('z')
+	}
+	if sr.overflow {
+		s.WriteRune('V')
+	} else {
+		s.WriteRune('v')
+	}
+	if sr.carry {
+		s.WriteRune('C')
+	} else {
+		s.WriteRune('c')
+	}
+	return s.String()
+}
+
 func (sr *status) reset() {
 	sr.negative = false
 	sr.zero = false
@@ -37,19 +61,19 @@ func (sr *status) reset() {
 	sr.carry = false
 }
 
-func (sr *status) setNegative(a uint32) {
+func (sr *status) isNegative(a uint32) {
 	sr.negative = a&0x80000000 == 0x80000000
 }
 
-func (sr *status) setZero(a uint32) {
+func (sr *status) isZero(a uint32) {
 	sr.zero = a == 0x00
 }
 
 func (sr *status) setOverflow(a, b, c uint32) {
 	d := (a & 0x7fffffff) + (b & 0x7fffffff) + c
 	d >>= 31
-	e := (c & 1) + ((a >> 31) & 1) + ((b >> 31) & 1)
-	e >>= 31
+	e := (d & 0x01) + ((a >> 31) & 0x01) + ((b >> 31) & 0x01)
+	e >>= 1
 	sr.overflow = (d^e)&0x01 == 0x01
 }
 
@@ -66,32 +90,93 @@ type Memory struct {
 	Custom *[]byte
 	Data   *[]byte
 	Freq   *[]byte
+
+	// non-volatile copies of the key memory areas. Custom is not writable
+	// from any address
+	driver []byte
+	data   []byte
+	freq   []byte
+
+	// memory for values that fall outside of the areas defined above. map
+	// access is slower than array/slice access but the potential range of
+	// scratch addresses is very large and there's no way of knowning how much
+	// space is required ahead of time. a map is good compromise.
+	scratch map[uint32]byte
 }
 
-func (mem *Memory) mapAddr(addr uint32) (*[]byte, uint32) {
-	// driver ARM code (ROM copy)
-	if addr < customOrigin {
-		return mem.Driver, addr
+const (
+	driverOrigin = 0x00000000
+	driverMemtop = 0x00000bff
+
+	customOrigin = 0x00000c00
+	customMemtop = 0x00006bff
+
+	dataOrigin = 0x00006c00
+	dataMemtop = 0x00007bff
+
+	freqOrigin = 0x00007c00
+	freqMemtop = 0x00008000
+
+	driverOriginRAM = 0x40000000
+	driverMemtopRAM = 0x40000bff
+
+	dataOriginRAM = 0x40000c00
+	dataMemtopRAM = 0x40001bff
+
+	freqOriginRAM = 0x40001c00
+	freqMemtopRAM = 0x40002000
+
+	// stack should be within the range of the RAM copy of the frequency tables
+	stackOriginRAM = 0x40001fdc
+)
+
+// return value of (nil, addr) means that the "scratch" area should be used
+func (mem *Memory) mapAddr(addr uint32, write bool) (*[]byte, uint32) {
+	// driver ARM code (ROM)
+	if addr >= driverOrigin && addr <= driverMemtop {
+		if write {
+			panic("cannot write to driver ROM")
+		}
+		return &mem.driver, addr - driverOrigin
 	}
 
-	// custom ARM code (ROM copy)
-	if addr < driverOrigin {
+	// custom ARM code (ROM)
+	if addr >= customOrigin && addr <= customMemtop {
+		if write {
+			panic("cannot write to custom ROM")
+		}
 		return mem.Custom, addr - customOrigin
 	}
 
-	// driver ARM code (RAM copy)
-	if addr < dataOrigin {
-		return mem.Driver, addr - driverOrigin
+	// data (ROM)
+	if addr >= dataOrigin && addr <= dataMemtop {
+		if write {
+			panic("cannot write to data ROM")
+		}
+		return &mem.data, addr - dataOrigin
 	}
 
-	// data
-	if addr < freqOrigin {
-		return mem.Data, addr - dataOrigin
+	// frequency table (ROM)
+	if addr >= freqOrigin && addr <= freqMemtop {
+		if write {
+			panic("cannot write to freq ROM")
+		}
+		return &mem.freq, addr - freqOrigin
 	}
 
-	// frequency table
-	if addr < mamOrigin {
-		return mem.Freq, addr - freqOrigin
+	// driver ARM code (RAM)
+	if addr >= driverOriginRAM && addr <= driverMemtopRAM {
+		return mem.Driver, addr - driverOriginRAM
+	}
+
+	// data (RAM)
+	if addr >= dataOriginRAM && addr <= dataMemtopRAM {
+		return mem.Data, addr - dataOriginRAM
+	}
+
+	// frequency table (RAM)
+	if addr >= freqOriginRAM && addr <= freqMemtopRAM {
+		return mem.Freq, addr - freqOriginRAM
 	}
 
 	return nil, addr
@@ -99,20 +184,7 @@ func (mem *Memory) mapAddr(addr uint32) (*[]byte, uint32) {
 
 // register names
 const (
-	r0 = iota
-	r1
-	r2
-	r3
-	r4
-	r5
-	r6
-	r7
-	r8
-	r9
-	r10
-	r11
-	r12
-	rSP
+	rSP = 13 + iota
 	rLR
 	rPC
 	rCount
@@ -125,20 +197,11 @@ type ARM struct {
 	// offset from memory origin for PC on reset
 	resetOffset uint32
 
-	thumb bool
-
 	status    status
 	registers [rCount]uint32
-}
 
-const (
-	customOrigin = 0x00000c00
-	driverOrigin = 0x40000000
-	dataOrigin   = 0x40000c00
-	freqOrigin   = 0x40001c00
-	stackOrigin  = 0x40001fdc
-	mamOrigin    = 0xe0000000
-)
+	noDebugNext bool
+}
 
 // NewARM is the preferred method of initialisation for the ARM type.
 func NewARM(mem Memory, resetOffset uint32) *ARM {
@@ -147,6 +210,18 @@ func NewARM(mem Memory, resetOffset uint32) *ARM {
 		resetOffset: resetOffset,
 	}
 	arm.reset()
+
+	// make copies of volatile memory areas. depending on which address is used
+	// we may need the original data.
+	arm.mem.driver = make([]byte, len(*mem.Driver))
+	arm.mem.data = make([]byte, len(*mem.Data))
+	arm.mem.freq = make([]byte, len(*mem.Freq))
+	copy(arm.mem.driver, *mem.Driver)
+	copy(arm.mem.data, *mem.Data)
+	copy(arm.mem.freq, *mem.Freq)
+
+	arm.mem.scratch = make(map[uint32]byte)
+
 	return arm
 }
 
@@ -155,7 +230,7 @@ func (arm *ARM) reset() {
 	for i := range arm.registers {
 		arm.registers[i] = 0x00000000
 	}
-	arm.registers[rSP] = stackOrigin
+	arm.registers[rSP] = stackOriginRAM
 	arm.registers[rLR] = customOrigin
 	arm.registers[rPC] = (customOrigin + arm.resetOffset + 2)
 }
@@ -170,38 +245,79 @@ func (arm *ARM) String() string {
 				s.WriteString("\t\t")
 			}
 		}
-		s.WriteString(fmt.Sprintf("R%-2d: %#08x", i, r))
+		s.WriteString(fmt.Sprintf("R%-2d: %08x", i, r))
 	}
 	return s.String()
 }
 
-func (arm *ARM) SetParameter(data uint8) {
-	logger.Log("ARM7", fmt.Sprintf("function parameter (%02x)", data))
+func (arm *ARM) stack() string {
+	o := arm.registers[rSP] - freqOriginRAM
+	return fmt.Sprintf("%v", (*arm.mem.Freq)[o:stackOriginRAM-freqOriginRAM])
 }
 
-func (arm *ARM) CallFunction(data uint8) error {
-	switch data {
-	case 0xfe:
-	case 0xff:
-		arm.reset()
-		for {
-			if !arm.executeInstruction() {
-				break
-			}
-		}
-	default:
+func (arm *ARM) Run() error {
+	arm.reset()
+	for arm.executeInstruction() {
+	}
+	return nil
+}
+
+func (arm *ARM) read8bit(addr uint32) uint8 {
+	var mem *[]uint8
+	mem, addr = arm.mem.mapAddr(addr, false)
+	if mem == nil {
+		return arm.mem.scratch[addr]
+	}
+	return (*mem)[addr]
+}
+
+func (arm *ARM) write8bit(addr uint32, val uint8) {
+	var mem *[]uint8
+	mem, addr = arm.mem.mapAddr(addr, true)
+	if mem == nil {
+		arm.mem.scratch[addr] = val
+		return
+	}
+	(*mem)[addr] = val
+}
+
+func (arm *ARM) read16bit(addr uint32) uint16 {
+	var mem *[]uint8
+	mem, addr = arm.mem.mapAddr(addr, false)
+
+	if mem == nil {
+		b1 := uint16(arm.mem.scratch[addr])
+		b2 := uint16(arm.mem.scratch[addr+1]) << 8
+		return b1 | b2
 	}
 
-	return nil
+	b1 := uint16((*mem)[addr])
+	b2 := uint16((*mem)[addr+1]) << 8
+	return b1 | b2
+}
+
+func (arm *ARM) write16bit(addr uint32, val uint16) {
+	var mem *[]uint8
+	mem, addr = arm.mem.mapAddr(addr, true)
+	if mem == nil {
+		arm.mem.scratch[addr] = uint8(val)
+		arm.mem.scratch[addr+1] = uint8(val >> 8)
+		return
+	}
+	(*mem)[addr] = uint8(val)
+	(*mem)[addr+1] = uint8(val >> 8)
 }
 
 func (arm *ARM) read32bit(addr uint32) uint32 {
 	var mem *[]uint8
-	mem, addr = arm.mem.mapAddr(addr)
+	mem, addr = arm.mem.mapAddr(addr, false)
 	if mem == nil {
-		return 0
+		b1 := uint32(arm.mem.scratch[addr])
+		b2 := uint32(arm.mem.scratch[addr+1]) << 8
+		b3 := uint32(arm.mem.scratch[addr+2]) << 16
+		b4 := uint32(arm.mem.scratch[addr+3]) << 24
+		return b1 | b2 | b3 | b4
 	}
-
 	b1 := uint32((*mem)[addr])
 	b2 := uint32((*mem)[addr+1]) << 8
 	b3 := uint32((*mem)[addr+2]) << 16
@@ -210,48 +326,30 @@ func (arm *ARM) read32bit(addr uint32) uint32 {
 	return b1 | b2 | b3 | b4
 }
 
-func (arm *ARM) write8bit(addr uint32, val uint8) {
-	var mem *[]uint8
-	mem, addr = arm.mem.mapAddr(addr)
-	if mem == nil {
-		return
-	}
-
-	(*mem)[addr] = val
-}
-
 func (arm *ARM) write32bit(addr uint32, val uint32) {
 	var mem *[]uint8
-	mem, addr = arm.mem.mapAddr(addr)
+	mem, addr = arm.mem.mapAddr(addr, true)
 	if mem == nil {
+		arm.mem.scratch[addr] = uint8(val)
+		arm.mem.scratch[addr+1] = uint8(val >> 8)
+		arm.mem.scratch[addr+2] = uint8(val >> 16)
+		arm.mem.scratch[addr+3] = uint8(val >> 24)
 		return
 	}
-
 	(*mem)[addr] = uint8(val)
 	(*mem)[addr+1] = uint8(val >> 8)
 	(*mem)[addr+2] = uint8(val >> 16)
 	(*mem)[addr+3] = uint8(val >> 24)
 }
 
-func (arm *ARM) read8bit(addr uint32) uint8 {
-	var mem *[]uint8
-	mem, addr = arm.mem.mapAddr(addr)
-	if mem == nil {
-		return 0
-	}
-
-	return uint8((*mem)[addr])
-}
-
 func (arm *ARM) read16bitPC() uint16 {
 	pc := arm.registers[rPC] - 2
 
 	var mem *[]uint8
-	mem, pc = arm.mem.mapAddr(pc)
+	mem, pc = arm.mem.mapAddr(pc, false)
 	if mem == nil {
 		return 0
 	}
-
 	b1 := uint16((*mem)[pc])
 	b2 := uint16((*mem)[pc+1]) << 8
 
@@ -261,91 +359,83 @@ func (arm *ARM) read16bitPC() uint16 {
 }
 
 func (arm *ARM) executeInstruction() bool {
+	// fmt.Println()
+	if arm.noDebugNext {
+		arm.noDebugNext = false
+	} else {
+		// fmt.Println(arm.String())
+		// fmt.Println(arm.status.String())
+	}
+
 	cont := true
 
-	pc := arm.registers[rPC] - 2
+	// pc := arm.registers[rPC] - 2
 	opcode := arm.read16bitPC()
 
-	fmt.Printf("\n%04x: %016b %04x ", pc, opcode, opcode)
-
-	var operation string
+	// fmt.Printf("\n>>> %04x :: %08x :: ", pc, opcode)
+	// // fmt.Printf(" [40000ce0=%04x]", arm.read16bit(0x40000ce0))
+	// // fmt.Printf(" [40000ce1=%04x]", arm.read16bit(0x40000ce1))
+	// fmt.Printf(" [40000ce2=%04x]", arm.read16bit(0x40000ce2))
+	// // fmt.Printf(" [40000ce3=%04x]", arm.read16bit(0x40000ce3))
+	// // fmt.Printf(" [40000ce4=%04x]", arm.read16bit(0x40000ce4))
 
 	// working backwards up the table in Figure 5-1 of the THUMB instruction set reference
 	if opcode&0xf000 == 0xf000 {
-		// format 19
-		operation = "Long branch with link"
+		// format 19 - Long branch with link
 		arm.executeLongBranchWithLink(opcode)
 	} else if opcode&0xf000 == 0xe000 {
-		// format 18
-		operation = "Unconditional branch"
-		fmt.Printf("| %-38s ", operation)
+		// format 18 - Unconditional branch
+		arm.executeUnconditionalBranch(opcode)
 	} else if opcode&0xff00 == 0xdf00 {
-		// format 17
-		operation = "Software Interrupt"
-		fmt.Printf("| %-38s ", operation)
+		// format 17 - Software interrupt"
+		arm.executeSoftwareInterrupt(opcode)
 	} else if opcode&0xf000 == 0xd000 {
-		// format 16
-		operation = "Conditional branch"
+		// format 16 - Conditional branch
 		arm.executeConditionalBranch(opcode)
 	} else if opcode&0xf000 == 0xc000 {
-		// format 15
-		operation = "Multiple load/store"
-		fmt.Printf("| %-38s ", operation)
+		// format 15 - Multiple load/store
+		arm.executeMultipleLoadStore(opcode)
 	} else if opcode&0xf600 == 0xb400 {
-		// format 14
-		operation = "Push/pop registers"
+		// format 14 - Push/pop registers
 		arm.executePushPopRegisters(opcode)
 	} else if opcode&0xff00 == 0xb000 {
-		// format 13
-		operation = "Add offset to stack pointer"
-		fmt.Printf("| %-38s ", operation)
+		// format 13 - Add offset to stack pointer
+		arm.executeAddOffsetToSP(opcode)
 	} else if opcode&0xf000 == 0xa000 {
-		// format 12
-		operation = "Load address"
-		fmt.Printf("| %-38s ", operation)
+		// format 12 - Load address
+		arm.executeLoadAddress(opcode)
 	} else if opcode&0xf000 == 0x9000 {
-		// format 11
-		operation = "SP-relative load/store"
-		fmt.Printf("| %-38s ", operation)
+		// format 11 - SP-relative load/store
+		arm.executeSPRelativeLoadStore(opcode)
 	} else if opcode&0xf000 == 0x8000 {
-		// format 10
-		operation = "Load/store halfword"
-		fmt.Printf("| %-38s ", operation)
+		// format 10 - Load/store halfword
+		arm.executeLoadStoreHalfword(opcode)
 	} else if opcode&0xe000 == 0x6000 {
-		// format 9
-		operation = "Load/store with immediate offset"
+		// format 9 - Load/store with immediate offset
 		arm.executeLoadStoreWithImmOffset(opcode)
 	} else if opcode&0xf200 == 0x5200 {
-		// format 8
-		operation = "Load/store sign-extended byte/halfword"
-		fmt.Printf("| %-38s ", operation)
+		// format 8 - Load/store sign-extended byte/halfword
+		arm.executeLoadStoreSignExtendedByteHalford(opcode)
 	} else if opcode&0xf200 == 0x5000 {
-		// format 7
-		operation = "Load/store with register offset"
+		// format 7 - Load/store with register offset
 		arm.executeLoadStoreWithRegisterOffset(opcode)
 	} else if opcode&0xf800 == 0x4800 {
-		// format 6
-		operation = "PC-relative load"
+		// format 6 - PC-relative load
 		arm.executePCrelativeLoad(opcode)
 	} else if opcode&0xfc00 == 0x4400 {
-		// format 5
-		operation = "Hi register operations/branch exchange"
+		// format 5 - Hi register operations/branch exchange
 		cont = arm.executeHiRegisterOps(opcode)
 	} else if opcode&0xfc00 == 0x4000 {
-		// format 4
-		operation = "ALU operations"
+		// format 4 - ALU operations
 		arm.executeALUoperations(opcode)
 	} else if opcode&0xe000 == 0x2000 {
-		// format 3
-		operation = "Move/compare/add/subtract immediate"
+		// format 3 - Move/compare/add/subtract immediate
 		arm.executeMovCmpAddSubImm(opcode)
 	} else if opcode&0xf800 == 0x1800 {
-		// format 2
-		operation = "Add/subtract"
+		// format 2 - Add/subtract
 		arm.executeAddSubtract(opcode)
 	} else if opcode&0xe000 == 0x0000 {
-		// format 1
-		operation = "Move shifted register"
+		// format 1 - Move shifted register
 		arm.executeMoveShiftedRegister(opcode)
 	} else {
 		panic("undecoded instruction")
@@ -355,195 +445,440 @@ func (arm *ARM) executeInstruction() bool {
 }
 
 func (arm *ARM) executeMoveShiftedRegister(opcode uint16) {
-	// format 1
+	// format 1 - Move shifted register
 	op := (opcode & 0x1800) >> 11
-	sourceReg := (opcode & 0x38) >> 3
+	shift := (opcode & 0x7c0) >> 6
+	srcReg := (opcode & 0x38) >> 3
 	destReg := opcode & 0x07
-	imm := (opcode & 0x7c0) >> 6
 
-	v := arm.registers[destReg]
+	// in this class of operation the src register may also be the dest
+	// register so we need to make a note of the value before it is
+	// overwrittten
+	src := arm.registers[srcReg]
 
 	switch op {
-	case 0x00:
-		fmt.Printf("| LSL R%d, R%d, #%d ", destReg, sourceReg, imm)
-		arm.registers[destReg] = arm.registers[sourceReg] << imm
-	case 0x01:
-		fmt.Printf("| LSR R%d, R%d, #%d ", destReg, sourceReg, imm)
-		arm.registers[destReg] = arm.registers[sourceReg] >> imm
-	case 0x10:
-		fmt.Printf("| ASR R%d, R%d, #%d ", destReg, sourceReg, imm)
-		sr := arm.registers[sourceReg]
-		if sr&0x80000000 == 0x8000000 {
-			arm.registers[destReg] = arm.registers[sourceReg] >> imm
+	case 0b00:
+		// fmt.Printf("| LSL R%d, R%d, #%02x ", destReg, srcReg, shift)
+
+		// if immed_5 == 0
+		//	C Flag = unaffected
+		//	Rd = Rm
+		// else /* immed_5 > 0 */
+		//	C Flag = Rm[32 - immed_5]
+		//	Rd = Rm Logical_Shift_Left immed_5
+
+		if shift == 0 {
+			arm.registers[destReg] = arm.registers[srcReg]
 		} else {
-			arm.registers[destReg] = arm.registers[sourceReg] >> imm
-			// sign extend
-			for i := uint16(0); i < imm; i++ {
-				arm.registers[destReg] |= 0x80000000 >> i
-			}
+			m := uint32(0x01) << (32 - shift)
+			arm.status.carry = src&m == m
+			arm.registers[destReg] = arm.registers[srcReg] << shift
 		}
+	case 0b01:
+		// fmt.Printf("| LSR R%d, R%d, #%02x ", destReg, srcReg, shift)
+
+		// if immed_5 == 0
+		//		C Flag = Rm[31]
+		//		Rd = 0
+		// else /* immed_5 > 0 */
+		//		C Flag = Rm[immed_5 - 1]
+		//		Rd = Rm Logical_Shift_Right immed_5
+
+		if shift == 0 {
+			arm.status.carry = arm.registers[srcReg]&0x80000000 == 0x80000000
+			arm.registers[destReg] = 0x00
+		} else {
+			m := uint32(0x01) << (shift - 1)
+			arm.status.carry = src&m == m
+			arm.registers[destReg] = arm.registers[srcReg] >> shift
+		}
+	case 0b10:
+		// fmt.Printf("| ASR R%d, R%d, #%02x ", destReg, srcReg, shift)
+
+		// if immed_5 == 0
+		//		C Flag = Rm[31]
+		//		if Rm[31] == 0 then
+		//				Rd = 0
+		//		else /* Rm[31] == 1 */]
+		//				Rd = 0xFFFFFFFF
+		// else /* immed_5 > 0 */
+		//		C Flag = Rm[immed_5 - 1]
+		//		Rd = Rm Arithmetic_Shift_Right immed_5
+
+		if shift == 0 {
+			arm.status.carry = arm.registers[srcReg]&0x80000000 == 0x80000000
+			if arm.status.carry {
+				arm.registers[destReg] = 0xffffffff
+			} else {
+				arm.registers[destReg] = 0x00000000
+			}
+		} else { // shift > 0
+			m := uint32(0x01) << (shift - 1)
+			arm.status.carry = src&m == m
+			arm.registers[destReg] = uint32(int32(arm.registers[srcReg]) >> shift)
+		}
+
 	case 0x11:
 		panic("illegal instruction")
 	}
 
-	arm.status.setZero(arm.registers[destReg])
-	arm.status.setCarry(arm.registers[destReg], v, 0)
-	arm.status.setOverflow(arm.registers[destReg], v, 0)
-	arm.status.setNegative(arm.registers[destReg])
+	arm.status.isZero(arm.registers[destReg])
+	arm.status.isNegative(arm.registers[destReg])
 }
 
 func (arm *ARM) executeAddSubtract(opcode uint16) {
-	// format 2
+	// format 2 - Add/subtract
 	immediate := opcode&0x0400 == 0x0400
 	subtract := opcode&0x0200 == 0x0200
-
-	sourceReg := (opcode & 0x038) >> 3
+	imm := uint32((opcode & 0x01c0) >> 6)
+	srcReg := (opcode & 0x038) >> 3
 	destReg := opcode & 0x07
 
-	offset := uint32((opcode & 0x01c0) >> 6)
-	val := offset
+	val := imm
 	if !immediate {
-		val = arm.registers[offset]
+		val = arm.registers[imm]
 	}
-
-	v := arm.registers[destReg]
 
 	if subtract {
-		arm.registers[destReg] = arm.registers[sourceReg] - val
-		arm.status.setCarry(arm.registers[destReg], v, 0)
-		arm.status.setOverflow(arm.registers[destReg], v, 0)
-
 		if immediate {
-			fmt.Printf("| SUB R%d, R%d, #%d ", destReg, sourceReg, val)
+			// fmt.Printf("| SUB R%d, R%d, #%02x ", destReg, srcReg, val)
 		} else {
-			fmt.Printf("| SUB R%d, R%d, R%d ", destReg, sourceReg, offset)
+			// fmt.Printf("| SUB R%d, R%d, R%d ", destReg, srcReg, imm)
 		}
+		arm.status.setCarry(arm.registers[srcReg], ^val, 1)
+		arm.status.setOverflow(arm.registers[srcReg], ^val, 1)
+		arm.registers[destReg] = arm.registers[srcReg] - val
 	} else {
-		arm.registers[destReg] = arm.registers[sourceReg] + val
-		arm.status.setCarry(arm.registers[destReg], v, 0)
-		arm.status.setOverflow(arm.registers[destReg], v, 0)
-
 		if immediate {
-			fmt.Printf("| ADD R%d, R%d, #%d ", destReg, sourceReg, val)
+			// fmt.Printf("| ADD R%d, R%d, #%02x ", destReg, srcReg, val)
 		} else {
-			fmt.Printf("| ADD R%d, R%d, R%d ", destReg, sourceReg, offset)
+			// fmt.Printf("| ADD R%d, R%d, R%d ", destReg, srcReg, imm)
 		}
+		arm.status.setCarry(arm.registers[srcReg], val, 0)
+		arm.status.setOverflow(arm.registers[srcReg], val, 0)
+		arm.registers[destReg] = arm.registers[srcReg] + val
 	}
 
-	arm.status.setZero(arm.registers[destReg])
-	arm.status.setNegative(arm.registers[destReg])
+	arm.status.isZero(arm.registers[destReg])
+	arm.status.isNegative(arm.registers[destReg])
 }
 
+// "The instructions in this group perform operations between a Lo register and
+// an 8-bit immediate value."
 func (arm *ARM) executeMovCmpAddSubImm(opcode uint16) {
-	// format 3
+	// format 3 - Move/compare/add/subtract immediate
 	op := (opcode & 0x1800) >> 11
 	destReg := (opcode & 0x0700) >> 8
-	imm := opcode & 0x00ff
-
-	v := arm.registers[destReg]
+	imm := uint32(opcode & 0x00ff)
 
 	switch op {
 	case 0b00:
-		// mov
-		arm.registers[destReg] = uint32(imm)
-		arm.status.setZero(arm.registers[destReg])
-		arm.status.setNegative(arm.registers[destReg])
-		fmt.Printf("| MOV R%d, #%d ", destReg, imm)
+		// fmt.Printf("| MOV R%d, #%02x ", destReg, imm)
+		arm.registers[destReg] = imm
+		arm.status.isZero(arm.registers[destReg])
+		arm.status.isNegative(arm.registers[destReg])
 	case 0b01:
-		// cmp
-		cmp := arm.registers[destReg] - uint32(imm)
-		arm.status.setNegative(cmp)
-		arm.status.setZero(cmp)
-		arm.status.setCarry(arm.registers[destReg], uint32(imm)^0xffffffff, 1)
-		arm.status.setOverflow(arm.registers[destReg], uint32(imm)^0xffffffff, 1)
-		fmt.Printf("| CMP R%d, #%d ", destReg, imm)
+		// fmt.Printf("| CMP R%d, #%02x ", destReg, imm)
+		arm.status.setCarry(arm.registers[destReg], ^imm, 1)
+		arm.status.setOverflow(arm.registers[destReg], ^imm, 1)
+		cmp := arm.registers[destReg] - imm
+		arm.status.isNegative(cmp)
+		arm.status.isZero(cmp)
 	case 0b10:
-		// add
-		arm.registers[destReg] += uint32(imm)
-		arm.status.setZero(arm.registers[destReg])
-		arm.status.setNegative(arm.registers[destReg])
-		arm.status.setCarry(arm.registers[destReg], v, 0)
-		arm.status.setOverflow(arm.registers[destReg], v, 0)
-		fmt.Printf("| ADD R%d, #%d ", destReg, imm)
+		// fmt.Printf("| ADD R%d, #%02x ", destReg, imm)
+		arm.status.setCarry(arm.registers[destReg], imm, 0)
+		arm.status.setOverflow(arm.registers[destReg], imm, 0)
+		arm.registers[destReg] += imm
+		arm.status.isZero(arm.registers[destReg])
+		arm.status.isNegative(arm.registers[destReg])
 	case 0b11:
-		// sub
-		arm.registers[destReg] -= uint32(imm)
-		arm.status.setZero(arm.registers[destReg])
-		arm.status.setNegative(arm.registers[destReg])
-		arm.status.setCarry(arm.registers[destReg], uint32(imm)^0xffffffff, 1)
-		arm.status.setOverflow(arm.registers[destReg], uint32(imm)^0xffffffff, 1)
-		fmt.Printf("| SUB R%d, #%d ", destReg, imm)
+		// fmt.Printf("| SUB R%d, #%02x ", destReg, imm)
+		arm.status.setCarry(arm.registers[destReg], ^imm, 1)
+		arm.status.setOverflow(arm.registers[destReg], ^imm, 1)
+		arm.registers[destReg] -= imm
+		arm.status.isZero(arm.registers[destReg])
+		arm.status.isNegative(arm.registers[destReg])
 	}
-
 }
 
+// "The following instructions perform ALU operations on a Lo register pair."
 func (arm *ARM) executeALUoperations(opcode uint16) {
-	// format 4
+	// format 4 - ALU operations
 	op := (opcode & 0x03c0) >> 6
-	sourceReg := (opcode & 0x38) >> 3
+	srcReg := (opcode & 0x38) >> 3
 	destReg := opcode & 0x07
 
-	v := arm.registers[destReg]
+	// fmt.Printf("%04b", op)
 
 	switch op {
 	case 0b0000:
-		fmt.Printf("| AND R%d, R%d ", destReg, sourceReg)
-		arm.registers[destReg] &= arm.registers[sourceReg]
+		// fmt.Printf("| AND R%d, R%d ", destReg, srcReg)
+		arm.registers[destReg] &= arm.registers[srcReg]
+		arm.status.isZero(arm.registers[destReg])
+		arm.status.isNegative(arm.registers[destReg])
+	case 0b0001:
+		// fmt.Printf("| EOR R%d, R%d ", destReg, srcReg)
+		arm.registers[destReg] ^= arm.registers[srcReg]
+		arm.status.isZero(arm.registers[destReg])
+		arm.status.isNegative(arm.registers[destReg])
+	case 0b0010:
+		// fmt.Printf("| LSL R%d, R%d ", destReg, srcReg)
+
+		// if Rs[7:0] == 0
+		//		C Flag = unaffected
+		//		Rd = unaffected
+		// else if Rs[7:0] < 32 then
+		//		C Flag = Rd[32 - Rs[7:0]]
+		//		Rd = Rd Logical_Shift_Left Rs[7:0]
+		// else if Rs[7:0] == 32 then
+		//		C Flag = Rd[0]
+		//		Rd = 0
+		// else /* Rs[7:0] > 32 */
+		//		C Flag = 0
+		//		Rd = 0
+		// N Flag = Rd[31]
+		// Z Flag = if Rd == 0 then 1 else 0
+		// V Flag = unaffected
+
+		shift := arm.registers[srcReg]
+
+		if shift > 0 && shift < 32 {
+			m := uint32(0x01) << (32 - shift)
+			arm.status.carry = arm.registers[destReg]&m == m
+			arm.registers[destReg] <<= shift
+		} else if shift == 32 {
+			arm.status.carry = arm.registers[destReg]&0x01 == 0x01
+			arm.registers[destReg] = 0x00
+		} else if shift > 32 {
+			arm.status.carry = false
+			arm.registers[destReg] = 0x00
+		}
+
+		arm.status.isZero(arm.registers[destReg])
+		arm.status.isNegative(arm.registers[destReg])
+	case 0b0011:
+		// fmt.Printf("| LSR R%d, R%d ", destReg, srcReg)
+
+		// if Rs[7:0] == 0 then
+		//		C Flag = unaffected
+		//		Rd = unaffected
+		// else if Rs[7:0] < 32 then
+		//		C Flag = Rd[Rs[7:0] - 1]
+		//		Rd = Rd Logical_Shift_Right Rs[7:0]
+		// else if Rs[7:0] == 32 then
+		//		C Flag = Rd[31]
+		//		Rd = 0
+		// else /* Rs[7:0] > 32 */
+		//		C Flag = 0
+		//		Rd = 0
+		// N Flag = Rd[31]
+		// Z Flag = if Rd == 0 then 1 else 0
+		// V Flag = unaffected
+
+		shift := arm.registers[srcReg]
+
+		if shift > 0 && shift < 32 {
+			m := uint32(0x01) << (shift - 1)
+			arm.status.carry = arm.registers[destReg]&m == m
+			arm.registers[destReg] >>= shift
+		} else if shift == 32 {
+			arm.status.carry = arm.registers[destReg]&0x80000000 == 0x80000000
+			arm.registers[destReg] = 0x00
+		} else if shift > 32 {
+			arm.status.carry = false
+			arm.registers[destReg] = 0x00
+		}
+
+		arm.status.isZero(arm.registers[destReg])
+		arm.status.isNegative(arm.registers[destReg])
+	case 0b0100:
+		// fmt.Printf("| ASR R%d, R%d ", destReg, srcReg)
+
+		// if Rs[7:0] == 0 then
+		//		C Flag = unaffected
+		//		Rd = unaffected
+		// else if Rs[7:0] < 32 then
+		//		C Flag = Rd[Rs[7:0] - 1]
+		//		Rd = Rd Arithmetic_Shift_Right Rs[7:0]
+		// else /* Rs[7:0] >= 32 */
+		//		C Flag = Rd[31]
+		//		if Rd[31] == 0 then
+		//			Rd = 0
+		//		else /* Rd[31] == 1 */
+		//			Rd = 0xFFFFFFFF
+		// N Flag = Rd[31]
+		// Z Flag = if Rd == 0 then 1 else 0
+		// V Flag = unaffected
+		shift := arm.registers[srcReg]
+		if shift > 0 && shift < 32 {
+			m := uint32(0x01) << (shift - 1)
+			arm.status.carry = arm.registers[destReg]&m == m
+			arm.registers[destReg] = uint32(int32(arm.registers[destReg]) >> shift)
+		} else if shift >= 32 {
+			arm.status.carry = arm.registers[destReg]&0x80000000 == 0x80000000
+			if !arm.status.carry {
+				arm.registers[destReg] = 0x00
+			} else {
+				arm.registers[destReg] = 0xffffffff
+			}
+		}
+		arm.status.isZero(arm.registers[destReg])
+		arm.status.isNegative(arm.registers[destReg])
+	case 0b0101:
+		// fmt.Printf("| ADC R%d, R%d ", destReg, srcReg)
+		if arm.status.carry {
+			arm.status.setCarry(arm.registers[destReg], arm.registers[srcReg], 1)
+			arm.status.setOverflow(arm.registers[destReg], arm.registers[srcReg], 1)
+			arm.registers[destReg] += arm.registers[srcReg]
+			arm.registers[destReg]++
+		} else {
+			arm.status.setCarry(arm.registers[destReg], arm.registers[srcReg], 0)
+			arm.status.setOverflow(arm.registers[destReg], arm.registers[srcReg], 0)
+			arm.registers[destReg] += arm.registers[srcReg]
+		}
+		arm.status.isZero(arm.registers[destReg])
+		arm.status.isNegative(arm.registers[destReg])
+	case 0b0110:
+		// fmt.Printf("| SBC R%d, R%d ", destReg, srcReg)
+		if !arm.status.carry {
+			arm.status.setCarry(arm.registers[destReg], ^arm.registers[srcReg], 0)
+			arm.status.setOverflow(arm.registers[destReg], ^arm.registers[srcReg], 0)
+			arm.registers[destReg] -= arm.registers[srcReg]
+			arm.registers[destReg]--
+		} else {
+			arm.status.setCarry(arm.registers[destReg], ^arm.registers[srcReg], 1)
+			arm.status.setOverflow(arm.registers[destReg], ^arm.registers[srcReg], 1)
+			arm.registers[destReg] -= arm.registers[srcReg]
+		}
+		arm.status.isZero(arm.registers[destReg])
+		arm.status.isNegative(arm.registers[destReg])
+	case 0b0111:
+		// fmt.Printf("| ROR R%d, R%d ", destReg, srcReg)
+
+		// if Rs[7:0] == 0 then
+		//		C Flag = unaffected
+		//		Rd = unaffected
+		// else if Rs[4:0] == 0 then
+		//		C Flag = Rd[31]
+		//		Rd = unaffected
+		// else /* Rs[4:0] > 0 */
+		//		C Flag = Rd[Rs[4:0] - 1]
+		//		Rd = Rd Rotate_Right Rs[4:0]
+		// N Flag = Rd[31]
+		// Z Flag = if Rd == 0 then 1 else 0
+		// V Flag = unaffected
+		shift := arm.registers[srcReg]
+		if shift&0xff == 0 {
+			// unaffected
+		} else if shift&0x1f == 0 {
+			arm.status.carry = arm.registers[destReg]&0x80000000 == 0x80000000
+		} else {
+			m := uint32(0x01) << (shift - 1)
+			arm.status.carry = arm.registers[destReg]&m == m
+			arm.registers[destReg] = bits.RotateLeft32(arm.registers[destReg], -int(shift))
+		}
+		arm.status.isZero(arm.registers[destReg])
+		arm.status.isNegative(arm.registers[destReg])
+	case 0b1000:
+		// fmt.Printf("| TST R%d, R%d ", destReg, srcReg)
+		w := arm.registers[destReg] & arm.registers[srcReg]
+		arm.status.isZero(w)
+		arm.status.isNegative(w)
+	case 0b1001:
+		// fmt.Printf("| NEG R%d, R%d ", destReg, srcReg)
+		arm.status.setCarry(0, ^arm.registers[srcReg], 1)
+		arm.status.setOverflow(0, ^arm.registers[srcReg], 1)
+		arm.registers[destReg] = -arm.registers[srcReg]
+		arm.status.isZero(arm.registers[destReg])
+		arm.status.isNegative(arm.registers[destReg])
+	case 0b1010:
+		// fmt.Printf("| CMP R%d, R%d ", destReg, srcReg)
+		arm.status.setCarry(arm.registers[destReg], ^arm.registers[srcReg], 1)
+		arm.status.setOverflow(arm.registers[destReg], ^arm.registers[srcReg], 1)
+		cmp := arm.registers[destReg] - arm.registers[srcReg]
+		arm.status.isZero(cmp)
+		arm.status.isNegative(cmp)
+	case 0b1011:
+		// fmt.Printf("| CMN R%d, R%d ", destReg, srcReg)
+		arm.status.setCarry(arm.registers[destReg], arm.registers[srcReg], 0)
+		arm.status.setOverflow(arm.registers[destReg], arm.registers[srcReg], 0)
+		cmp := arm.registers[destReg] + arm.registers[srcReg]
+		arm.status.isZero(cmp)
+		arm.status.isNegative(cmp)
 	case 0b1100:
-		fmt.Printf("| ORR R%d, R%d ", destReg, sourceReg)
-		arm.registers[destReg] |= arm.registers[sourceReg]
+		// fmt.Printf("| ORR R%d, R%d ", destReg, srcReg)
+		arm.registers[destReg] |= arm.registers[srcReg]
+		arm.status.isZero(arm.registers[destReg])
+		arm.status.isNegative(arm.registers[destReg])
+	case 0b1101:
+		// fmt.Printf("| MUL R%d, R%d ", destReg, srcReg)
+		arm.registers[destReg] *= arm.registers[srcReg]
+		arm.status.isZero(arm.registers[destReg])
+		arm.status.isNegative(arm.registers[destReg])
 	case 0b1110:
-		fmt.Printf("| BIC R%d, R%d ", destReg, sourceReg)
-		arm.registers[destReg] &= (arm.registers[sourceReg] ^ 0xffffffff)
+		// fmt.Printf("| BIC R%d, R%d ", destReg, srcReg)
+		arm.registers[destReg] &= ^arm.registers[srcReg]
+		arm.status.isZero(arm.registers[destReg])
+		arm.status.isNegative(arm.registers[destReg])
+	case 0b1111:
+		// fmt.Printf("| MVN R%d, R%d ", destReg, srcReg)
+		arm.registers[destReg] = ^arm.registers[srcReg]
+		arm.status.isZero(arm.registers[destReg])
+		arm.status.isNegative(arm.registers[destReg])
 	default:
-		panic("unimplemented ALU operation")
+		panic(fmt.Sprintf("unimplemented ALU operation (%04b)", op))
 	}
 
-	arm.status.setZero(arm.registers[destReg])
-	arm.status.setNegative(arm.registers[destReg])
-	arm.status.setCarry(arm.registers[destReg], v, 0)
-	arm.status.setOverflow(arm.registers[destReg], v, 0)
 }
 
 func (arm *ARM) executeHiRegisterOps(opcode uint16) bool {
-	// format 5
+	// format 5 - Hi register operations/branch exchange
 	op := (opcode & 0x300) >> 8
 	hi1 := opcode&0x80 == 0x80
 	hi2 := opcode&0x40 == 0x40
 	srcReg := (opcode & 0x38) >> 3
 	destReg := opcode & 0x07
 
-	destLabel := "R"
-	srcLabel := "R"
+	// destLabel := "R"
+	// srcLabel := "R"
 	if hi1 {
 		destReg += 8
-		destLabel = "H"
+		// destLabel = "H"
 	}
 	if hi2 {
 		srcReg += 8
-		srcLabel = "H"
+		// srcLabel = "H"
 	}
 
 	switch op {
 	case 0b00:
-		fmt.Printf("| ADD %s%d, %s%d ", destLabel, destReg, srcLabel, srcReg)
+		// fmt.Printf("| ADD %s%d, %s%d ", destLabel, destReg, srcLabel, srcReg)
 
-		v := arm.registers[destReg]
-
-		// two's complement?? doesn't say so in the spec
+		// not two's complement
 		arm.registers[destReg] += arm.registers[srcReg]
-		arm.status.setZero(arm.registers[destReg])
-		arm.status.setNegative(arm.registers[destReg])
-		arm.status.setCarry(arm.registers[destReg], v, 0)
-		arm.status.setOverflow(arm.registers[destReg], v, 0)
+
+		// status register not changed
 	case 0b01:
-		fmt.Printf("| CMP %s%d, %s%d ", destLabel, destReg, srcLabel, srcReg)
-		arm.status.zero = arm.registers[destReg] == arm.registers[srcReg]
+		// fmt.Printf("| CMP %s%d, %s%d ", destLabel, destReg, srcLabel, srcReg)
+
+		// alu_out = Rn - Rm
+		// N Flag = alu_out[31]
+		// Z Flag = if alu_out == 0 then 1 else 0
+		// C Flag = NOT BorrowFrom(Rn - Rm)
+		// V Flag = OverflowFrom(Rn - Rm)
+
+		arm.status.setCarry(arm.registers[destReg], ^arm.registers[srcReg], 0)
+		arm.status.setOverflow(arm.registers[destReg], ^arm.registers[srcReg], 0)
+		cmp := arm.registers[destReg] - arm.registers[srcReg]
+		arm.status.isZero(cmp)
+		arm.status.isNegative(cmp)
 	case 0b10:
-		// status registers not set in this case
-		fmt.Printf("| MOV %s%d, %s%d ", destLabel, destReg, srcLabel, srcReg)
+		// fmt.Printf("| MOV %s%d, %s%d ", destLabel, destReg, srcLabel, srcReg)
 		arm.registers[destReg] = arm.registers[srcReg]
+		// status register not changed
 	case 0b11:
+		// fmt.Printf("| BX %s%d ", srcLabel, srcReg)
+
 		thumbMode := arm.registers[srcReg]&0x01 == 0x01
 
 		var newPC uint32
@@ -558,14 +893,12 @@ func (arm *ARM) executeHiRegisterOps(opcode uint16) bool {
 			newPC = (arm.registers[srcReg] & 0x7ffffffe) + 2
 		}
 
-		fmt.Printf("| BX %s%d ", srcLabel, srcReg)
-		fmt.Printf("| PC=%#08x ", arm.registers[rPC])
-
 		if thumbMode {
-			fmt.Printf("[thumb]")
+			// fmt.Printf("[thumb]")
 			arm.registers[rPC] = newPC
+			// fmt.Printf("| PC=%#08x ", arm.registers[rPC])
 		} else {
-			fmt.Printf("[arm]")
+			// fmt.Printf("[arm]")
 
 			// end of custom code
 			return false
@@ -576,30 +909,23 @@ func (arm *ARM) executeHiRegisterOps(opcode uint16) bool {
 }
 
 func (arm *ARM) executePCrelativeLoad(opcode uint16) {
-	// // format 6
+	// format 6 - PC-relative load
 	destReg := (opcode & 0x0700) >> 8
 	imm := uint32(opcode&0x00ff) << 2
 
-	// notes says that "PC will be 4 bytes great than the instruction". we've
-	// already advanced by 2; the additional 2 is to account for the prefetch
-	pc := arm.registers[rPC]
+	// "Bit 1 of the PC value is forced to zero for the purpose of this
+	// calculation, so the address is always word-aligned."
+	pc := arm.registers[rPC] & 0xfffffffc
 
-	// pc must be word aligned
-	pc &= 0xfffffffc
+	// fmt.Printf("| LDR R%d, [PC, #%02x] ", destReg, imm)
+	// fmt.Printf("| %08x ", pc)
 
-	fmt.Printf("| LDR R%d, [PC, #%d] ", destReg, imm)
-
-	if imm&0x100 == 0x100 {
-		// two's complement
-		imm ^= 0x1ff
-		arm.registers[destReg] = arm.read32bit(pc - imm)
-	} else {
-		arm.registers[destReg] = arm.read32bit(pc + imm)
-	}
+	// immediate value is not two's complement (surprisingly)
+	arm.registers[destReg] = arm.read32bit(pc + imm)
 }
 
 func (arm *ARM) executeLoadStoreWithRegisterOffset(opcode uint16) {
-	// format 7
+	// format 7 - Load/store with register offset
 	load := opcode&0x0800 == 0x0800
 	byteTransfer := opcode&0x0400 == 0x0400
 	offsetReg := (opcode & 0x01c0) >> 6
@@ -610,26 +936,70 @@ func (arm *ARM) executeLoadStoreWithRegisterOffset(opcode uint16) {
 
 	if load {
 		if byteTransfer {
-			fmt.Printf("| LDRB R%d, [R%d, R%d] ", reg, baseReg, offsetReg)
-			arm.registers[reg] = uint32(arm.read8bit(uint32(addr)))
+			// fmt.Printf("| LDRB R%d, [R%d, R%d]", reg, baseReg, offsetReg)
+			arm.registers[reg] = uint32(arm.read8bit(addr))
+			return
 		}
-		fmt.Printf("| LDR R%d, [R%d, R%d] ", reg, baseReg, offsetReg)
-		arm.registers[reg] = arm.read32bit(uint32(addr))
+		// fmt.Printf("| LDR R%d, [R%d, R%d] ", reg, baseReg, offsetReg)
+		arm.registers[reg] = arm.read32bit(addr)
 		return
 	}
 
 	if byteTransfer {
-		fmt.Printf("| STRB R%d, [R%d, R%d] ", reg, baseReg, offsetReg)
+		// fmt.Printf("| STRB R%d, [R%d, R%d] ", reg, baseReg, offsetReg)
 		arm.write8bit(addr, uint8(arm.registers[reg]))
 		return
 	}
 
-	fmt.Printf("| STR R%d, [R%d, R%d] ", reg, baseReg, offsetReg)
+	// fmt.Printf("| STR R%d, [R%d, R%d] ", reg, baseReg, offsetReg)
+
 	arm.write32bit(addr, arm.registers[reg])
 }
 
+func (arm *ARM) executeLoadStoreSignExtendedByteHalford(opcode uint16) {
+	// format 8 - Load/store sign-extended byte/halfword
+	hi := opcode&0x0800 == 0x800
+	sign := opcode&0x0400 == 0x400
+	offsetReg := (opcode & 0x01c0) >> 6
+	baseReg := (opcode & 0x0038) >> 3
+	reg := opcode & 0x0007
+
+	addr := arm.registers[baseReg] + arm.registers[offsetReg]
+
+	if sign {
+		if hi {
+			// load sign-extended halfword
+			// fmt.Printf("| LDSH R%d, [R%d, R%d] ", reg, baseReg, offsetReg)
+			arm.registers[reg] = uint32(arm.read16bit(addr))
+			if arm.registers[reg]&0x8000 == 0x8000 {
+				arm.registers[reg] |= 0xffff0000
+			}
+			return
+		}
+		// load sign-extended byte
+		// fmt.Printf("| LDSB R%d, [R%d, R%d] ", reg, baseReg, offsetReg)
+		arm.registers[reg] = uint32(arm.read8bit(addr))
+		if arm.registers[reg]&0x0080 == 0x0080 {
+			arm.registers[reg] |= 0xffffff00
+		}
+		return
+	}
+
+	if hi {
+		// load halfword
+		// fmt.Printf("| LDRH R%d, [R%d, R%d] ", reg, baseReg, offsetReg)
+		arm.registers[reg] = uint32(arm.read16bit(addr))
+		return
+	}
+
+	// store halfword
+	// fmt.Printf("| STRH R%d, [R%d, R%d] ", reg, baseReg, offsetReg)
+
+	arm.write16bit(addr, uint16(arm.registers[reg]))
+}
+
 func (arm *ARM) executeLoadStoreWithImmOffset(opcode uint16) {
-	// format 9
+	// format 9 - Load/store with immediate offset
 	load := opcode&0x0800 == 0x0800
 	byteTransfer := opcode&0x1000 == 0x1000
 
@@ -637,166 +1007,335 @@ func (arm *ARM) executeLoadStoreWithImmOffset(opcode uint16) {
 	baseReg := (opcode & 0x0038) >> 3
 	reg := opcode & 0x0007
 
-	// offset is 7-bit address with shifted in zero bits (meaning the offset is
-	// word aligned)
-	offset <<= 2
+	// "For word accesses (B = 0), the value specified by #Imm is a full 7-bit address, but must
+	// be word-aligned (ie with bits 1:0 set to 0), since the assembler places #Imm >> 2 in
+	// the Offset5 field." -- ARM7TDMI Data Sheet
+	if !byteTransfer {
+		offset <<= 2
+	}
 
 	// the actual address we'll be loading from (or storing to)
 	addr := arm.registers[baseReg] + uint32(offset)
 
 	if load {
 		if byteTransfer {
-			fmt.Printf("| LDRB R%d, [R%d, #%d] ", reg, baseReg, offset)
+			// fmt.Printf("| LDRB R%d, [R%d, #%02x] ", reg, baseReg, offset)
 			arm.registers[reg] = uint32(arm.read8bit(addr))
+			// fmt.Printf("addr=%08x ", addr)
 			return
 		}
-		fmt.Printf("| LDR R%d, [R%d, #%d] ", reg, baseReg, offset)
+		// fmt.Printf("| LDR R%d, [R%d, #%02x] ", reg, baseReg, offset)
 		arm.registers[reg] = arm.read32bit(addr)
 		return
 	}
 
 	// store
 	if byteTransfer {
-		fmt.Printf("| STRB R%d, [R%d, #%d] ", reg, baseReg, offset)
+		// fmt.Printf("| STRB R%d, [R%d, #%02x] ", reg, baseReg, offset)
 		arm.write8bit(addr, uint8(arm.registers[reg]))
 		return
 	}
 
-	fmt.Printf("| STR R%d, [R%d, #%d] ", reg, baseReg, offset)
+	// fmt.Printf("| STR R%d, [R%d, #%02x] ", reg, baseReg, offset)
+
 	arm.write32bit(addr, arm.registers[reg])
 }
 
+func (arm *ARM) executeLoadStoreHalfword(opcode uint16) {
+	// format 10 - Load/store halfword
+	load := opcode&0x0800 == 0x0800
+	offset := (opcode & 0x07c0) >> 6
+	baseReg := (opcode & 0x0038) >> 3
+	reg := opcode & 0x0007
+
+	// "#Imm is a full 6-bit address but must be halfword-aligned (ie with bit 0 set to 0) since
+	// the assembler places #Imm >> 1 in the Offset5 field." -- ARM7TDMI Data Sheet
+	offset <<= 1
+
+	// the actual address we'll be loading from (or storing to)
+	addr := arm.registers[baseReg] + uint32(offset)
+
+	if load {
+		// fmt.Printf("| LDRH R%d, [R%d, #%02x] ", reg, baseReg, offset)
+		arm.registers[reg] = uint32(arm.read16bit(addr))
+		return
+	}
+
+	// fmt.Printf("| STRH R%d, [R%d, #%02x] ", reg, baseReg, offset)
+
+	arm.write16bit(addr, uint16(arm.registers[reg]))
+}
+
+func (arm *ARM) executeSPRelativeLoadStore(opcode uint16) {
+	// format 11 - SP-relative load/store
+	load := opcode&0x0800 == 0x0800
+	reg := (opcode & 0x07ff) >> 8
+	offset := uint32(opcode & 0xff)
+
+	// The offset supplied in #Imm is a full 10-bit address, but must always be word-aligned
+	// (ie bits 1:0 set to 0), since the assembler places #Imm >> 2 in the Word8 field.
+	offset <<= 2
+
+	// the actual address we'll be loading from (or storing to)
+	addr := arm.registers[rSP] + offset
+
+	if load {
+		// fmt.Printf("| LDR R%d, [SP, #%02x] ", reg, offset)
+		arm.registers[reg] = arm.read32bit(addr)
+		return
+	}
+
+	// fmt.Printf("| STR R%d, [SP, #%02x] ", reg, offset)
+
+	arm.write32bit(addr, arm.registers[reg])
+}
+
+func (arm *ARM) executeLoadAddress(opcode uint16) {
+	// format 12 - Load address
+	sp := opcode&0x0800 == 0x800
+	destReg := (opcode & 0x700) >> 8
+	offset := opcode & 0x00ff
+
+	// offset is a word aligned 10 bit address
+	offset <<= 2
+
+	if sp {
+		arm.registers[destReg] = arm.registers[rSP] + uint32(offset)
+		return
+	}
+
+	arm.registers[destReg] = arm.registers[rPC] + uint32(offset)
+}
+
+func (arm *ARM) executeAddOffsetToSP(opcode uint16) {
+	// format 13 - Add offset to stack pointer
+	sign := opcode&0x80 == 0x80
+	imm := uint32(opcode & 0x7f)
+
+	// The offset specified by #Imm can be up to -/+ 508, but must be word-aligned (ie with
+	// bits 1:0 set to 0) since the assembler converts #Imm to an 8-bit sign + magnitude
+	// number before placing it in field SWord7.
+	imm <<= 2
+
+	if sign {
+		// fmt.Printf("| ADD SP, #-%d ", imm)
+		arm.registers[rSP] -= imm
+		return
+	}
+
+	// fmt.Printf("| ADD SP, #%02x ", imm)
+
+	arm.registers[rSP] += imm
+
+	// status register not changed
+}
+
 func (arm *ARM) executePushPopRegisters(opcode uint16) {
-	// format 14
+	// format 14 - Push/pop registers
 
 	// the ARM pushes registers in descending order and pops in ascending
 	// order. in other words the LR is pushed first and PC is popped last
 
 	load := opcode&0x0800 == 0x0800
 	pclr := opcode&0x0100 == 0x0100
-	regList := opcode & 0x00ff
+	regList := uint8(opcode & 0x00ff)
 
 	if load {
+		// start_address = SP
+		// end_address = SP + 4*(R + Number_Of_Set_Bits_In(register_list))
+		// address = start_address
+		// for i = 0 to 7
+		//		if register_list[i] == 1 then
+		//			Ri = Memory[address,4]
+		//			address = address + 4
+		// if R == 1 then
+		//		value = Memory[address,4]
+		//		PC = value AND 0xFFFFFFFE
+		// if (architecture version 5 or above) then
+		//		T Bit = value[0]
+		// address = address + 4
+		// assert end_address = address
+		// SP = end_address
+
 		if pclr {
-			fmt.Printf("| POP {%#0b, PC} ", regList)
+			// fmt.Printf("| POP {%#0b, PC}", regList)
 		} else {
-			fmt.Printf("| POP {%#0b} ", regList)
+			// fmt.Printf("| POP {%#0b}", regList)
 		}
 
-		// pop in ascending order
+		// start at stack pointer at work upwards
+		addr := arm.registers[rSP]
+
+		// read each register in turn (from lower to highest)
 		for i := 0; i <= 7; i++ {
-			r := regList >> i
-			if r&0x01 == 0x01 {
-				mem, addr := arm.mem.mapAddr(arm.registers[rSP])
-				addr++
-				// not checking for nil
-				v0 := uint32((*mem)[addr]) << 24
-				v1 := uint32((*mem)[addr+1]) << 16
-				v2 := uint32((*mem)[addr+2]) << 8
-				v3 := uint32((*mem)[addr+3])
-				arm.registers[i] = v0 | v1 | v2 | v3
-				arm.registers[rSP] += 4
+
+			// shit single-big mask
+			m := uint8(0x01 << i)
+
+			// read register if indicated by regList
+			if regList&m == m {
+				arm.registers[i] = arm.read32bit(addr)
+				addr += 4
 			}
 		}
 
+		// load PC register after all other registers
 		if pclr {
-			mem, addr := arm.mem.mapAddr(arm.registers[rSP])
-			// not checking for nil
-			v0 := uint32((*mem)[addr]) << 24
-			v1 := uint32((*mem)[addr+1]) << 16
-			v2 := uint32((*mem)[addr+2]) << 8
-			v3 := uint32((*mem)[addr+3])
-			arm.registers[rPC] = v0 | v1 | v2 | v3
-			arm.registers[rSP] += 4
+			// chop the odd bit off the new PC value
+			v := arm.read32bit(addr) & 0xfffffffe
+
+			// add two to the new PC value. not sure why this is. it's not
+			// descibed in the pseudo code above but I think it's to do with
+			// how the ARM CPU does prefetching and when the adjustment is
+			// applied. anwyay, this works but it might be worth figuring out
+			// where else to apply the adjustment and whether that would be any
+			// clearer.
+			v += 2
+
+			arm.registers[rPC] = v
+			addr += 4
 		}
+
+		// leave stackpointer at final address
+		arm.registers[rSP] = addr
 
 		return
 	}
 
 	// store
+
+	// start_address = SP - 4*(R + Number_Of_Set_Bits_In(register_list))
+	// end_address = SP - 4
+	// address = start_address
+	// for i = 0 to 7
+	//		if register_list[i] == 1
+	//			Memory[address,4] = Ri
+	//			address = address + 4
+	// if R == 1
+	//		Memory[address,4] = LR
+	//		address = address + 4
+	// assert end_address == address - 4
+	// SP = SP - 4*(R + Number_Of_Set_Bits_In(register_list))
+
+	// number of pushes to perform. count number of bits in regList and adjust
+	// for PC/LR flag. each push requires 4 bytes of space
+	var c uint32
 	if pclr {
-		mem, addr := arm.mem.mapAddr(arm.registers[rSP])
-		// not checking for nil
-		val := arm.registers[rLR]
-		(*mem)[addr] = uint8(val)
-		(*mem)[addr-1] = uint8(val >> 8)
-		(*mem)[addr-2] = uint8(val >> 16)
-		(*mem)[addr-3] = uint8(val >> 24)
-		arm.registers[rSP] -= 4
-		fmt.Printf("| PUSH {%#0b, LR}", regList)
+		// fmt.Printf("| PUSH {%#0b, LR}", regList)
+		c = (uint32(bits.OnesCount8(regList)) + 1) * 4
 	} else {
-		fmt.Printf("| PUSH {%#0b}", regList)
+		// fmt.Printf("| PUSH {%#0b}", regList)
+		c = uint32(bits.OnesCount8(regList)) * 4
 	}
 
-	// push in descending order
-	for i := 7; i >= 0; i-- {
-		r := regList >> i
-		if r&0x01 == 0x01 {
-			mem, addr := arm.mem.mapAddr(arm.registers[rSP])
-			// not checking for nil
-			val := arm.registers[i]
-			(*mem)[addr] = uint8(val)
-			(*mem)[addr-1] = uint8(val >> 8)
-			(*mem)[addr-2] = uint8(val >> 16)
-			(*mem)[addr-3] = uint8(val >> 24)
-			arm.registers[rSP] -= 4
+	// push occurs from the new low stack address upwards to the current stack
+	// address (before the pushes)
+	addr := arm.registers[rSP] - c
+
+	// write each register in turn (from lower to highest)
+	for i := 0; i <= 7; i++ {
+
+		// shit single-big mask
+		m := uint8(0x01 << i)
+
+		// write register if indicated by regList
+		if regList&m == m {
+			arm.write32bit(addr, arm.registers[i])
+			addr += 4
 		}
 	}
+
+	// write LR register after all the other registers
+	if pclr {
+		lr := arm.registers[rLR]
+		arm.write32bit(addr, lr)
+	}
+
+	// update stack pointer. note that this is the address we started the push
+	// sequence from above. this is correct.
+	arm.registers[rSP] -= c
+}
+
+func (arm *ARM) executeMultipleLoadStore(opcode uint16) {
+	// format 15 - Multiple load/store
+	load := opcode&0x0800 == 0x0800
+	baseReg := uint32(opcode&0x07ff) >> 8
+	regList := opcode & 0xff
+
+	// load/store the registers in the list starting at address
+	// in the base register
+	addr := arm.registers[baseReg]
+
+	for i := 0; i <= 7; i++ {
+		r := regList >> i
+		if r&0x01 == 0x01 {
+			if load {
+				arm.registers[i] = arm.read32bit(addr)
+				addr += 4
+			} else {
+				arm.write32bit(addr, arm.registers[i])
+				addr += 4
+			}
+		}
+	}
+
+	// write back the new base address
+	arm.registers[baseReg] = addr
 }
 
 func (arm *ARM) executeConditionalBranch(opcode uint16) {
-	// format 16
+	// format 16 - Conditional branch
 	cond := (opcode & 0x0f00) >> 8
 	offset := uint32(opcode & 0x00ff)
 
-	operand := ""
+	// operand := ""
 	branch := false
 
 	switch cond {
 	case 0b0000:
-		operand = "BEQ"
+		// operand = "BEQ"
 		branch = arm.status.zero
 	case 0b0001:
-		operand = "BNE"
+		// operand = "BNE"
 		branch = !arm.status.zero
 	case 0b0010:
-		operand = "BCS"
+		// operand = "BCS"
 		branch = arm.status.carry
 	case 0b0011:
-		operand = "BCC"
+		// operand = "BCC"
 		branch = !arm.status.carry
 	case 0b0100:
-		operand = "BMI"
+		// operand = "BMI"
 		branch = arm.status.negative
 	case 0b0101:
-		operand = "BPL"
+		// operand = "BPL"
 		branch = !arm.status.negative
 	case 0b0110:
-		operand = "BVS"
+		// operand = "BVS"
 		branch = arm.status.overflow
 	case 0b0111:
-		operand = "BVC"
+		// operand = "BVC"
 		branch = !arm.status.overflow
 	case 0b1000:
-		operand = "BHI"
+		// operand = "BHI"
 		branch = arm.status.carry && !arm.status.zero
 	case 0b1001:
-		operand = "BLS"
-		branch = !arm.status.carry && arm.status.zero
+		// operand = "BLS"
+		branch = !arm.status.carry || arm.status.zero
 	case 0b1010:
-		operand = "BGE"
-		branch = arm.status.negative == arm.status.overflow
+		// operand = "BGE"
+		branch = (arm.status.negative && arm.status.overflow) || (!arm.status.negative && !arm.status.overflow)
 	case 0b1011:
-		operand = "BLT"
-		branch = arm.status.negative != arm.status.overflow
+		// operand = "BLT"
+		branch = (arm.status.negative && !arm.status.overflow) || (!arm.status.negative && arm.status.overflow)
 	case 0b1100:
-		operand = "BGT"
-		branch = !arm.status.zero && arm.status.negative == arm.status.overflow
+		// operand = "BGT"
+		branch = !arm.status.zero && ((arm.status.negative && arm.status.overflow) || (!arm.status.negative && !arm.status.overflow))
 	case 0b1101:
-		operand = "BLE"
-		branch = arm.status.zero || arm.status.negative != arm.status.overflow
+		// operand = "BLE"
+		branch = arm.status.zero || ((arm.status.negative && !arm.status.overflow) || (!arm.status.negative && arm.status.overflow))
 	case 0b1110:
-		operand = "undefined branch"
+		// operand = "undefined branch"
 		branch = true
 	case 0b1111:
 		branch = false
@@ -809,9 +1348,9 @@ func (arm *ARM) executeConditionalBranch(opcode uint16) {
 	var newPC uint32
 
 	// get new PC value
-	if offset&0x80 == 0x80 {
+	if offset&0x100 == 0x100 {
 		// two's complement before subtraction
-		offset ^= 0xff
+		offset ^= 0x1ff
 		offset++
 		newPC = arm.registers[rPC] - offset
 	} else {
@@ -819,18 +1358,41 @@ func (arm *ARM) executeConditionalBranch(opcode uint16) {
 	}
 
 	// disassembly
-	fmt.Printf("| %s %04x ", operand, newPC)
+	// fmt.Printf("| %s %04x ", operand, newPC)
 
 	// do branch
 	if branch {
 		arm.registers[rPC] = newPC + 1
 	} else {
-		fmt.Printf("| no branch ")
+		// fmt.Printf("| no branch ")
 	}
 }
 
+func (arm *ARM) executeSoftwareInterrupt(opcode uint16) {
+	// format 17 - Software interrupt"
+	panic("Software interrupt")
+}
+
+func (arm *ARM) executeUnconditionalBranch(opcode uint16) {
+	// format 18 - Unconditional branch
+	offset := uint32(opcode&0x07ff) << 1
+
+	if offset&0x800 == 0x0800 {
+		// two's complement before subtraction
+		offset ^= 0xfff
+		offset++
+		arm.registers[rPC] -= offset - 2
+	} else {
+		arm.registers[rPC] += offset + 2
+	}
+
+	// disassembly
+	// fmt.Printf("| BAL %04x ", arm.registers[rPC])
+
+}
+
 func (arm *ARM) executeLongBranchWithLink(opcode uint16) {
-	// format 19
+	// format 19 - Long branch with link
 	low := opcode&0x800 == 0x0800
 	offset := uint32(opcode & 0x07ff)
 
@@ -841,7 +1403,7 @@ func (arm *ARM) executeLongBranchWithLink(opcode uint16) {
 		pc := arm.registers[rPC]
 		arm.registers[rPC] = arm.registers[rLR]
 		arm.registers[rLR] = pc - 1
-		fmt.Printf("| BL %#08x", arm.registers[rPC])
+		// fmt.Printf("| BL %#08x", arm.registers[rPC])
 		return
 	}
 
@@ -856,4 +1418,6 @@ func (arm *ARM) executeLongBranchWithLink(opcode uint16) {
 	} else {
 		arm.registers[rLR] = arm.registers[rPC] + offset + 2
 	}
+
+	arm.noDebugNext = true
 }
