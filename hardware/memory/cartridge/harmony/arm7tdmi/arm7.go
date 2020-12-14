@@ -21,6 +21,18 @@ import (
 	"strings"
 )
 
+// SharedMemory represents the memory passed between the parent
+// cartridge-mapper implementation and the ARM.
+type SharedMemory interface {
+	// Return memory block and array offset for the requested address. Memory
+	// blocks mays be different for read and write operations.
+	MapAddress(addr uint32, write bool) (*[]byte, uint32)
+
+	// Return reset addreses for the Stack Pointer register; the Link Register;
+	// and Program Counter
+	ResetVectors() (uint32, uint32, uint32)
+}
+
 type status struct {
 	// CPSR (current program status register) bits
 	negative bool
@@ -83,105 +95,6 @@ func (sr *status) setCarry(a, b, c uint32) {
 	sr.carry = d&0x02 == 0x02
 }
 
-// Memory defines the memory that can be accessed from the ARM type. Field
-// names mirror the names used in the DPC+ static CartStatic implementation.
-type Memory struct {
-	Driver *[]byte
-	Custom *[]byte
-	Data   *[]byte
-	Freq   *[]byte
-
-	// non-volatile copies of the key memory areas. Custom is not writable
-	// from any address
-	driver []byte
-	data   []byte
-	freq   []byte
-
-	// memory for values that fall outside of the areas defined above. map
-	// access is slower than array/slice access but the potential range of
-	// scratch addresses is very large and there's no way of knowning how much
-	// space is required ahead of time. a map is good compromise.
-	scratch map[uint32]byte
-}
-
-const (
-	driverOrigin = 0x00000000
-	driverMemtop = 0x00000bff
-
-	customOrigin = 0x00000c00
-	customMemtop = 0x00006bff
-
-	dataOrigin = 0x00006c00
-	dataMemtop = 0x00007bff
-
-	freqOrigin = 0x00007c00
-	freqMemtop = 0x00008000
-
-	driverOriginRAM = 0x40000000
-	driverMemtopRAM = 0x40000bff
-
-	dataOriginRAM = 0x40000c00
-	dataMemtopRAM = 0x40001bff
-
-	freqOriginRAM = 0x40001c00
-	freqMemtopRAM = 0x40002000
-
-	// stack should be within the range of the RAM copy of the frequency tables
-	stackOriginRAM = 0x40001fdc
-)
-
-// return value of (nil, addr) means that the "scratch" area should be used
-func (mem *Memory) mapAddr(addr uint32, write bool) (*[]byte, uint32) {
-	// driver ARM code (ROM)
-	if addr >= driverOrigin && addr <= driverMemtop {
-		if write {
-			panic("cannot write to driver ROM")
-		}
-		return &mem.driver, addr - driverOrigin
-	}
-
-	// custom ARM code (ROM)
-	if addr >= customOrigin && addr <= customMemtop {
-		if write {
-			panic("cannot write to custom ROM")
-		}
-		return mem.Custom, addr - customOrigin
-	}
-
-	// data (ROM)
-	if addr >= dataOrigin && addr <= dataMemtop {
-		if write {
-			panic("cannot write to data ROM")
-		}
-		return &mem.data, addr - dataOrigin
-	}
-
-	// frequency table (ROM)
-	if addr >= freqOrigin && addr <= freqMemtop {
-		if write {
-			panic("cannot write to freq ROM")
-		}
-		return &mem.freq, addr - freqOrigin
-	}
-
-	// driver ARM code (RAM)
-	if addr >= driverOriginRAM && addr <= driverMemtopRAM {
-		return mem.Driver, addr - driverOriginRAM
-	}
-
-	// data (RAM)
-	if addr >= dataOriginRAM && addr <= dataMemtopRAM {
-		return mem.Data, addr - dataOriginRAM
-	}
-
-	// frequency table (RAM)
-	if addr >= freqOriginRAM && addr <= freqMemtopRAM {
-		return mem.Freq, addr - freqOriginRAM
-	}
-
-	return nil, addr
-}
-
 // register names
 const (
 	rSP = 13 + iota
@@ -192,10 +105,13 @@ const (
 
 // ARM implements the ARM7TDMI-S LPC2103 processor.
 type ARM struct {
-	mem Memory
+	mem SharedMemory
 
-	// offset from memory origin for PC on reset
-	resetOffset uint32
+	// memory for values that fall outside of the areas defined above. map
+	// access is slower than array/slice access but the potential range of
+	// scratch addresses is very large and there's no way of knowning how much
+	// space is required ahead of time. a map is good compromise.
+	scratch map[uint32]byte
 
 	status    status
 	registers [rCount]uint32
@@ -204,23 +120,13 @@ type ARM struct {
 }
 
 // NewARM is the preferred method of initialisation for the ARM type.
-func NewARM(mem Memory, resetOffset uint32) *ARM {
+func NewARM(mem SharedMemory) *ARM {
 	arm := &ARM{
-		mem:         mem,
-		resetOffset: resetOffset,
+		mem: mem,
 	}
 	arm.reset()
 
-	// make copies of volatile memory areas. depending on which address is used
-	// we may need the original data.
-	arm.mem.driver = make([]byte, len(*mem.Driver))
-	arm.mem.data = make([]byte, len(*mem.Data))
-	arm.mem.freq = make([]byte, len(*mem.Freq))
-	copy(arm.mem.driver, *mem.Driver)
-	copy(arm.mem.data, *mem.Data)
-	copy(arm.mem.freq, *mem.Freq)
-
-	arm.mem.scratch = make(map[uint32]byte)
+	arm.scratch = make(map[uint32]byte)
 
 	return arm
 }
@@ -230,9 +136,11 @@ func (arm *ARM) reset() {
 	for i := range arm.registers {
 		arm.registers[i] = 0x00000000
 	}
-	arm.registers[rSP] = stackOriginRAM
-	arm.registers[rLR] = customOrigin
-	arm.registers[rPC] = (customOrigin + arm.resetOffset + 2)
+	arm.registers[rSP], arm.registers[rLR], arm.registers[rPC] = arm.mem.ResetVectors()
+
+	// a perculiarity of the ARM is that the PC is 2 bytes ahead of where we'll
+	// be reading from. adjust PC so that this is correct.
+	arm.registers[rPC] += 2
 }
 
 func (arm *ARM) String() string {
@@ -250,10 +158,10 @@ func (arm *ARM) String() string {
 	return s.String()
 }
 
-func (arm *ARM) stack() string {
-	o := arm.registers[rSP] - freqOriginRAM
-	return fmt.Sprintf("%v", (*arm.mem.Freq)[o:stackOriginRAM-freqOriginRAM])
-}
+// func (arm *ARM) stack() string {
+// 	o := arm.registers[rSP] - freqOriginRAM
+// 	return fmt.Sprintf("%v", (*arm.mem.Freq)[o:stackOriginRAM-freqOriginRAM])
+// }
 
 func (arm *ARM) Run() error {
 	arm.reset()
@@ -264,18 +172,18 @@ func (arm *ARM) Run() error {
 
 func (arm *ARM) read8bit(addr uint32) uint8 {
 	var mem *[]uint8
-	mem, addr = arm.mem.mapAddr(addr, false)
+	mem, addr = arm.mem.MapAddress(addr, false)
 	if mem == nil {
-		return arm.mem.scratch[addr]
+		return arm.scratch[addr]
 	}
 	return (*mem)[addr]
 }
 
 func (arm *ARM) write8bit(addr uint32, val uint8) {
 	var mem *[]uint8
-	mem, addr = arm.mem.mapAddr(addr, true)
+	mem, addr = arm.mem.MapAddress(addr, true)
 	if mem == nil {
-		arm.mem.scratch[addr] = val
+		arm.scratch[addr] = val
 		return
 	}
 	(*mem)[addr] = val
@@ -283,11 +191,11 @@ func (arm *ARM) write8bit(addr uint32, val uint8) {
 
 func (arm *ARM) read16bit(addr uint32) uint16 {
 	var mem *[]uint8
-	mem, addr = arm.mem.mapAddr(addr, false)
+	mem, addr = arm.mem.MapAddress(addr, false)
 
 	if mem == nil {
-		b1 := uint16(arm.mem.scratch[addr])
-		b2 := uint16(arm.mem.scratch[addr+1]) << 8
+		b1 := uint16(arm.scratch[addr])
+		b2 := uint16(arm.scratch[addr+1]) << 8
 		return b1 | b2
 	}
 
@@ -298,10 +206,10 @@ func (arm *ARM) read16bit(addr uint32) uint16 {
 
 func (arm *ARM) write16bit(addr uint32, val uint16) {
 	var mem *[]uint8
-	mem, addr = arm.mem.mapAddr(addr, true)
+	mem, addr = arm.mem.MapAddress(addr, true)
 	if mem == nil {
-		arm.mem.scratch[addr] = uint8(val)
-		arm.mem.scratch[addr+1] = uint8(val >> 8)
+		arm.scratch[addr] = uint8(val)
+		arm.scratch[addr+1] = uint8(val >> 8)
 		return
 	}
 	(*mem)[addr] = uint8(val)
@@ -310,12 +218,12 @@ func (arm *ARM) write16bit(addr uint32, val uint16) {
 
 func (arm *ARM) read32bit(addr uint32) uint32 {
 	var mem *[]uint8
-	mem, addr = arm.mem.mapAddr(addr, false)
+	mem, addr = arm.mem.MapAddress(addr, false)
 	if mem == nil {
-		b1 := uint32(arm.mem.scratch[addr])
-		b2 := uint32(arm.mem.scratch[addr+1]) << 8
-		b3 := uint32(arm.mem.scratch[addr+2]) << 16
-		b4 := uint32(arm.mem.scratch[addr+3]) << 24
+		b1 := uint32(arm.scratch[addr])
+		b2 := uint32(arm.scratch[addr+1]) << 8
+		b3 := uint32(arm.scratch[addr+2]) << 16
+		b4 := uint32(arm.scratch[addr+3]) << 24
 		return b1 | b2 | b3 | b4
 	}
 	b1 := uint32((*mem)[addr])
@@ -328,12 +236,12 @@ func (arm *ARM) read32bit(addr uint32) uint32 {
 
 func (arm *ARM) write32bit(addr uint32, val uint32) {
 	var mem *[]uint8
-	mem, addr = arm.mem.mapAddr(addr, true)
+	mem, addr = arm.mem.MapAddress(addr, true)
 	if mem == nil {
-		arm.mem.scratch[addr] = uint8(val)
-		arm.mem.scratch[addr+1] = uint8(val >> 8)
-		arm.mem.scratch[addr+2] = uint8(val >> 16)
-		arm.mem.scratch[addr+3] = uint8(val >> 24)
+		arm.scratch[addr] = uint8(val)
+		arm.scratch[addr+1] = uint8(val >> 8)
+		arm.scratch[addr+2] = uint8(val >> 16)
+		arm.scratch[addr+3] = uint8(val >> 24)
 		return
 	}
 	(*mem)[addr] = uint8(val)
@@ -346,7 +254,7 @@ func (arm *ARM) read16bitPC() uint16 {
 	pc := arm.registers[rPC] - 2
 
 	var mem *[]uint8
-	mem, pc = arm.mem.mapAddr(pc, false)
+	mem, pc = arm.mem.MapAddress(pc, false)
 	if mem == nil {
 		return 0
 	}
