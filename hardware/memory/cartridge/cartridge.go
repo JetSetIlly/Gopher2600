@@ -21,7 +21,7 @@ import (
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/harmony"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/harmony/dpcplus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/plusrom"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/supercharger"
@@ -243,7 +243,7 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 	case "DPC":
 		cart.mapper, err = newDPC(cartload.Data)
 	case "DPC+":
-		cart.mapper, err = harmony.NewDPCplus(cartload.Data)
+		cart.mapper, err = dpcplus.NewDPCplus(cartload.Data)
 	}
 
 	if err != nil {
@@ -297,8 +297,8 @@ func (cart *Cartridge) Step() {
 
 // GetRegistersBus returns interface to the registers of the cartridge or nil
 // if cartridge has no registers.
-func (cart *Cartridge) GetRegistersBus() mapper.CartCoProcessorBus {
-	if bus, ok := cart.mapper.(mapper.CartCoProcessorBus); ok {
+func (cart *Cartridge) GetRegistersBus() mapper.CartRegistersBus {
+	if bus, ok := cart.mapper.(mapper.CartRegistersBus); ok {
 		return bus
 	}
 	return nil

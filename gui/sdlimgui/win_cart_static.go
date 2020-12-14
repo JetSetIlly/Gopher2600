@@ -75,8 +75,8 @@ func (win *winCartStatic) draw() {
 
 	imgui.BeginTabBar("")
 	for _, s := range win.img.lz.Cart.Static {
-		if imgui.BeginTabItemV(s.Label, nil, 0) {
-			win.drawGrid(s.Label, s.Data)
+		if imgui.BeginTabItemV(s.Segment, nil, 0) {
+			win.drawGrid(s.Segment, s.Data)
 			imgui.EndTabItem()
 		}
 	}
@@ -85,8 +85,8 @@ func (win *winCartStatic) draw() {
 	imgui.End()
 }
 
-func (win *winCartStatic) drawGrid(tag string, a []byte) {
-	imgui.BeginChild(tag)
+func (win *winCartStatic) drawGrid(segment string, a []byte) {
+	imgui.BeginChild(segment)
 
 	// no spacing between any of the drawEditByte() objects
 	imgui.PushStyleVarVec2(imgui.StyleVarItemSpacing, imgui.Vec2{})
@@ -104,17 +104,17 @@ func (win *winCartStatic) drawGrid(tag string, a []byte) {
 	// draw rows
 	imgui.PushItemWidth(imguiTextWidth(2))
 	i := uint16(0)
-	for addr := 0; addr < len(a); addr++ {
+	for idx := 0; idx < len(a); idx++ {
 		// draw row header
 		if i%16 == 0 {
 			imgui.AlignTextToFramePadding()
-			imgui.Text(fmt.Sprintf("%02x- ", addr/16))
+			imgui.Text(fmt.Sprintf("%02x- ", idx/16))
 			imgui.SameLine()
 			win.xPos = imgui.CursorPosX()
 		} else {
 			imgui.SameLine()
 		}
-		win.drawEditByte(tag, uint16(addr), a[i])
+		win.drawEditByte(segment, uint16(idx), a[i])
 		i++
 	}
 	imgui.PopItemWidth()
@@ -125,15 +125,15 @@ func (win *winCartStatic) drawGrid(tag string, a []byte) {
 	imgui.EndChild()
 }
 
-func (win *winCartStatic) drawEditByte(tag string, addr uint16, b byte) {
-	l := fmt.Sprintf("##%d", addr)
+func (win *winCartStatic) drawEditByte(segment string, idx uint16, b byte) {
+	l := fmt.Sprintf("##%d", idx)
 	content := fmt.Sprintf("%02x", b)
 
 	if imguiHexInput(l, win.img.state != gui.StatePaused, 2, &content) {
 		if v, err := strconv.ParseUint(content, 16, 8); err == nil {
 			win.img.lz.Dbg.PushRawEvent(func() {
 				b := win.img.lz.Dbg.VCS.Mem.Cart.GetStaticBus()
-				err := b.PutStatic(tag, addr, uint8(v))
+				err := b.PutStatic(segment, idx, uint8(v))
 				if err != nil {
 					logger.Log("sdlimgui", err.Error())
 				}

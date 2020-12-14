@@ -13,6 +13,34 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-// Package harmony implements the Harmony cartridge. Currently, it is just a
-// container package for the DPC+, CDF and ARM7 packages.
-package harmony
+package dpcplus
+
+import "github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
+
+type dpcPlusState struct {
+	registers DPCplusRegisters
+
+	// currently selected bank
+	bank int
+
+	// was the last instruction read the opcode for "lda <immediate>"
+	lda bool
+
+	// music fetchers are clocked at a fixed (slower) rate than the reference
+	// to the VCS's clock. see Step() function.
+	beats int
+
+	// parameters for next function call
+	parameters []uint8
+}
+
+func newDPCPlusState() *dpcPlusState {
+	s := &dpcPlusState{}
+	s.parameters = make([]uint8, 0, 32)
+	return s
+}
+
+func (s *dpcPlusState) Snapshot() mapper.CartSnapshot {
+	n := *s
+	return &n
+}

@@ -332,8 +332,8 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 					static := bus.GetStatic()
 					if static != nil {
 						for b := 0; b < len(static); b++ {
-							s.WriteString(static[b].Label + "\n")
-							s.WriteString(strings.Repeat("-", len(static[b].Label)))
+							s.WriteString(static[b].Segment + "\n")
+							s.WriteString(strings.Repeat("-", len(static[b].Segment)))
 							s.WriteString("\n")
 							s.WriteString(hex.Dump(static[b].Data))
 							s.WriteString("\n\n")

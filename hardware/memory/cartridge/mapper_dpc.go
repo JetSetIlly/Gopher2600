@@ -409,21 +409,23 @@ func (cart *dpc) PutRegister(register string, data string) {
 // GetStatic implements the mapper.CartDebugBus interface.
 func (cart *dpc) GetStatic() []mapper.CartStatic {
 	s := make([]mapper.CartStatic, 1)
-	s[0].Label = "Gfx"
+	s[0].Segment = "Gfx"
 	s[0].Data = make([]byte, len(cart.static))
 	copy(s[0].Data, cart.static)
 	return s
 }
 
 // PutStatic implements the mapper.CartDebugBus interface.
-func (cart *dpc) PutStatic(label string, addr uint16, data uint8) error {
-	if label == "Gfx" {
-		if int(addr) >= len(cart.static) {
-			return curated.Errorf("dpc: static: %v", fmt.Errorf("address too high (%#04x) for %s area", addr, label))
+func (cart *dpc) PutStatic(segment string, idx uint16, data uint8) error {
+	switch segment {
+	case "Gfx":
+		if int(idx) >= len(cart.static) {
+			return curated.Errorf("dpc: static: %v", fmt.Errorf("idx too high (%#04x) for %s area", idx, segment))
 		}
-		cart.static[addr] = data
-	} else {
-		return curated.Errorf("dpc: static: %v", fmt.Errorf("unknown static area (%s)", label))
+		cart.static[idx] = data
+
+	default:
+		return curated.Errorf("dpc: static: %v", fmt.Errorf("unknown segment (%s)", segment))
 	}
 
 	return nil

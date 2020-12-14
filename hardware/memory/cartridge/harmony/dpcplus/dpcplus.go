@@ -13,7 +13,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-package harmony
+package dpcplus
 
 import (
 	"fmt"
@@ -42,7 +42,6 @@ type dpcPlus struct {
 	// banks and the currently selected bank
 	bankSize int
 	banks    [][]byte
-	bank     int
 
 	// static area of the cartridge. accessible outside of the cartridge
 	// through GetStatic() and PutStatic()
@@ -74,7 +73,7 @@ func NewDPCplus(data []byte) (mapper.CartMapper, error) {
 
 	// size check
 	if bankLen <= 0 || bankLen%cart.bankSize != 0 {
-		return nil, curated.Errorf("DPC+: %v", fmt.Errorf("%s: wrong number of bytes in cartridge data", cart.mappingID))
+		return nil, curated.Errorf("DPC+: wrong number of bytes in cartridge data")
 	}
 
 	// allocate enough banks
@@ -101,7 +100,7 @@ func NewDPCplus(data []byte) (mapper.CartMapper, error) {
 }
 
 func (cart *dpcPlus) String() string {
-	return fmt.Sprintf("%s [%s] Bank: %d", cart.mappingID, cart.description, cart.bank)
+	return fmt.Sprintf("%s [%s] Bank: %d", cart.mappingID, cart.description, cart.state.bank)
 }
 
 // ID implements the mapper.CartMapper interface.
@@ -122,7 +121,7 @@ func (cart *dpcPlus) Plumb(s mapper.CartSnapshot) {
 // Reset implements the mapper.CartMapper interface.
 func (cart *dpcPlus) Reset(randSrc *rand.Rand) {
 	cart.state.registers.reset(randSrc)
-	cart.bank = len(cart.banks) - 1
+	cart.state.bank = len(cart.banks) - 1
 }
 
 // Read implements the mapper.CartMapper interface.
@@ -137,7 +136,7 @@ func (cart *dpcPlus) Read(addr uint16, passive bool) (uint8, error) {
 	// if address is above register space then we only need to check for bank
 	// switching before returning data at the quoted address
 	if addr > 0x007f {
-		data = cart.banks[cart.bank][addr]
+		data = cart.banks[cart.state.bank][addr]
 
 		// if FastFetch mode is on and the preceding data value was 0xa9 (the
 		// opcode for LDA <immediate>) then the data we've just read this cycle
@@ -603,7 +602,7 @@ func (cart *dpcPlus) Write(addr uint16, data uint8, passive bool, poke bool) err
 	}
 
 	if poke {
-		cart.banks[cart.bank][addr] = data
+		cart.banks[cart.state.bank][addr] = data
 		return nil
 	}
 
@@ -617,17 +616,17 @@ func (cart *dpcPlus) bankswitch(addr uint16, passive bool) bool {
 			return true
 		}
 		if addr == 0x0ff6 {
-			cart.bank = 0
+			cart.state.bank = 0
 		} else if addr == 0x0ff7 {
-			cart.bank = 1
+			cart.state.bank = 1
 		} else if addr == 0x0ff8 {
-			cart.bank = 2
+			cart.state.bank = 2
 		} else if addr == 0x0ff9 {
-			cart.bank = 3
+			cart.state.bank = 3
 		} else if addr == 0x0ffa {
-			cart.bank = 4
+			cart.state.bank = 4
 		} else if addr == 0x0ffb {
-			cart.bank = 5
+			cart.state.bank = 5
 		}
 		return true
 	}
@@ -641,7 +640,7 @@ func (cart *dpcPlus) NumBanks() int {
 
 // GetBank implements the mapper.CartMapper interface.
 func (cart *dpcPlus) GetBank(addr uint16) mapper.BankInfo {
-	return mapper.BankInfo{Number: cart.bank, IsRAM: false}
+	return mapper.BankInfo{Number: cart.state.bank, IsRAM: false}
 }
 
 // Patch implements the mapper.CartMapper interface.

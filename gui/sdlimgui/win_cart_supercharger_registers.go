@@ -23,7 +23,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/supercharger"
 )
 
-const winSuperchargerRegistersTitle = "AR Registers"
+const winSuperchargerRegistersTitle = "Supercharger"
 
 type winSuperchargerRegisters struct {
 	img  *SdlImgui
@@ -64,18 +64,13 @@ func (win *winSuperchargerRegisters) draw() {
 	}
 
 	// do not open window if there is no valid cartridge debug bus available
-	_, ok := win.img.lz.Cart.Registers.(supercharger.Registers)
-	if !win.img.lz.Cart.HasCoProcBus || !ok {
+	r, ok := win.img.lz.Cart.Registers.(supercharger.Registers)
+	if !win.img.lz.Cart.HasRegistersBus || !ok {
 		return
 	}
 
 	imgui.SetNextWindowPosV(imgui.Vec2{633, 451}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
 	imgui.BeginV(winSuperchargerRegistersTitle, &win.open, imgui.WindowFlagsAlwaysAutoResize)
-
-	r, ok := win.img.lz.Cart.Registers.(supercharger.Registers)
-	if !win.img.lz.Cart.HasCoProcBus || !ok {
-		return
-	}
 
 	val := fmt.Sprintf("%02x", r.Value)
 	imguiText("Value")

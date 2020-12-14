@@ -13,7 +13,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-package harmony
+package dpcplus
 
 import (
 	"fmt"
@@ -31,12 +31,12 @@ type DPCplusStatic struct {
 
 	// slices of cartDataRAM that will be modified during execution
 	driverRAM []byte
-	customRAM []byte
 	dataRAM   []byte
 	freqRAM   []byte
 
 	// slices of cartDataROM that should not be modified during execution
 	driverROM []byte
+	customROM []byte
 	dataROM   []byte
 	freqROM   []byte
 }
@@ -60,7 +60,7 @@ func (cart *dpcPlus) newDPCplusStatic(cartData []byte) *DPCplusStatic {
 	// custom ARM program immediately after the ARM driver and where we've
 	// figured the data segment to start. note that some of this will be the
 	// 6507 program but we can't really know for sure where that begins.
-	mem.customRAM = mem.cartDataRAM[driverSize:dataOffset]
+	mem.customROM = mem.cartDataRAM[driverSize:dataOffset]
 
 	// gfx and frequency table at end of file
 	mem.dataRAM = mem.cartDataRAM[dataOffset : dataOffset+dataSize]
@@ -73,22 +73,22 @@ func (cart *dpcPlus) newDPCplusStatic(cartData []byte) *DPCplusStatic {
 
 // ResetVectors implements the arm7tdmi.SharedMemory interface.
 func (mem *DPCplusStatic) ResetVectors() (uint32, uint32, uint32) {
-	return stackOriginRAM, customOrigin, customOrigin + 8
+	return stackOriginRAM, customOriginROM, customOriginROM + 8
 }
 
 // the memory addresses from the point of view of the ARM processor.
 const (
-	driverOrigin = 0x00000000
-	driverMemtop = 0x00000bff
+	driverOriginROM = 0x00000000
+	driverMemtopROM = 0x00000bff
 
-	customOrigin = 0x00000c00
-	customMemtop = 0x00006bff
+	customOriginROM = 0x00000c00
+	customMemtopROM = 0x00006bff
 
-	dataOrigin = 0x00006c00
-	dataMemtop = 0x00007bff
+	dataOriginROM = 0x00006c00
+	dataMemtopROM = 0x00007bff
 
-	freqOrigin = 0x00007c00
-	freqMemtop = 0x00008000
+	freqOriginROM = 0x00007c00
+	freqMemtopROM = 0x00008000
 
 	driverOriginRAM = 0x40000000
 	driverMemtopRAM = 0x40000bff
@@ -106,39 +106,39 @@ const (
 // MapAddress implements the arm7tdmi.SharedMemory interface.
 func (mem *DPCplusStatic) MapAddress(addr uint32, write bool) (*[]byte, uint32) {
 	// driver ARM code (ROM)
-	if addr >= driverOrigin && addr <= driverMemtop {
+	if addr >= driverOriginROM && addr <= driverMemtopROM {
 		if write {
 			logger.Log("DPC+", fmt.Sprintf("ARM trying to write to ROM address (%08x)", addr))
 			return nil, addr
 		}
-		return &mem.driverROM, addr - driverOrigin
+		return &mem.driverROM, addr - driverOriginROM
 	}
 
 	// custom ARM code (ROM)
-	if addr >= customOrigin && addr <= customMemtop {
+	if addr >= customOriginROM && addr <= customMemtopROM {
 		if write {
 			logger.Log("DPC+", fmt.Sprintf("ARM trying to write to ROM address (%08x)", addr))
 			return nil, addr
 		}
-		return &mem.customRAM, addr - customOrigin
+		return &mem.customROM, addr - customOriginROM
 	}
 
 	// data (ROM)
-	if addr >= dataOrigin && addr <= dataMemtop {
+	if addr >= dataOriginROM && addr <= dataMemtopROM {
 		if write {
 			logger.Log("DPC+", fmt.Sprintf("ARM trying to write to ROM address (%08x)", addr))
 			return nil, addr
 		}
-		return &mem.dataROM, addr - dataOrigin
+		return &mem.dataROM, addr - dataOriginROM
 	}
 
 	// frequency table (ROM)
-	if addr >= freqOrigin && addr <= freqMemtop {
+	if addr >= freqOriginROM && addr <= freqMemtopROM {
 		if write {
 			logger.Log("DPC+", fmt.Sprintf("ARM trying to write to ROM address (%08x)", addr))
 			return nil, addr
 		}
-		return &mem.freqROM, addr - freqOrigin
+		return &mem.freqROM, addr - freqOriginROM
 	}
 
 	// driver ARM code (RAM)
@@ -163,9 +163,9 @@ func (mem *DPCplusStatic) MapAddress(addr uint32, write bool) (*[]byte, uint32) 
 func (cart *dpcPlus) GetStatic() []mapper.CartStatic {
 	s := make([]mapper.CartStatic, 3)
 
-	s[0].Label = "Driver"
-	s[1].Label = "Data"
-	s[2].Label = "Freq"
+	s[0].Segment = "Driver"
+	s[1].Segment = "Data"
+	s[2].Segment = "Freq"
 
 	s[0].Data = make([]byte, len(cart.static.driverRAM))
 	s[1].Data = make([]byte, len(cart.static.dataRAM))
@@ -173,34 +173,34 @@ func (cart *dpcPlus) GetStatic() []mapper.CartStatic {
 
 	copy(s[0].Data, cart.static.driverRAM)
 	copy(s[1].Data, cart.static.dataRAM)
-	copy(s[2].Data, cart.static.freqRAM)
+	copy(s[1].Data, cart.static.freqRAM)
 
 	return s
 }
 
 // StaticWrite implements the bus.CartDebugBus interface.
-func (cart *dpcPlus) PutStatic(label string, addr uint16, data uint8) error {
-	switch label {
+func (cart *dpcPlus) PutStatic(segment string, idx uint16, data uint8) error {
+	switch segment {
 	case "Driver":
-		if int(addr) >= len(cart.static.driverRAM) {
-			return curated.Errorf("dpc+: %v", fmt.Errorf("address too high (%#04x) for %s area", addr, label))
+		if int(idx) >= len(cart.static.driverRAM) {
+			return curated.Errorf("CDFJ", fmt.Errorf("index too high (%#04x) for %s area", idx, segment))
 		}
-		cart.static.driverRAM[addr] = data
+		cart.static.driverRAM[idx] = data
 
 	case "Data":
-		if int(addr) >= len(cart.static.dataRAM) {
-			return curated.Errorf("dpc+: %v", fmt.Errorf("address too high (%#04x) for %s area", addr, label))
+		if int(idx) >= len(cart.static.dataRAM) {
+			return curated.Errorf("DPC+: static: %v", fmt.Errorf("index too high (%#04x) for %s area", idx, segment))
 		}
-		cart.static.dataRAM[addr] = data
+		cart.static.dataRAM[idx] = data
 
 	case "Freq":
-		if int(addr) >= len(cart.static.freqRAM) {
-			return curated.Errorf("dpc+: %v", fmt.Errorf("address too high (%#04x) for %s area", addr, label))
+		if int(idx) >= len(cart.static.freqRAM) {
+			return curated.Errorf("DPC+: static: %v", fmt.Errorf("index too high (%#04x) for %s area", idx, segment))
 		}
-		cart.static.freqRAM[addr] = data
+		cart.static.freqRAM[idx] = data
 
 	default:
-		return curated.Errorf("dpc+: %v", fmt.Errorf("unknown static area (%s)", label))
+		return curated.Errorf("DPC+: static: %v", fmt.Errorf("unknown segment (%s)", segment))
 	}
 
 	return nil

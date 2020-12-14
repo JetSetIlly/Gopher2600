@@ -75,7 +75,7 @@ func (win *winCartTape) draw() {
 		win.img.lz.Dbg.PushRawEvent(func() {
 			c, err := strconv.ParseInt(counter, 10, 64)
 			if err == nil {
-				win.img.lz.Cart.TapeBus.SetTapeCounter(int(c))
+				win.img.lz.Dbg.VCS.Mem.Cart.GetTapeBus().SetTapeCounter(int(c))
 			}
 		})
 	}
@@ -104,7 +104,9 @@ func (win *winCartTape) draw() {
 
 	// rewind button
 	if imgui.Button("Rewind") {
-		_ = win.img.lz.Cart.TapeBus.Rewind()
+		win.img.lz.Dbg.PushRawEvent(func() {
+			_ = win.img.lz.Dbg.VCS.Mem.Cart.GetTapeBus().Rewind()
+		})
 	}
 
 	imgui.End()

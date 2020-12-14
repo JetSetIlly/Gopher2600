@@ -20,7 +20,7 @@ import (
 
 	"github.com/inkyblackness/imgui-go/v2"
 	"github.com/jetsetilly/gopher2600/gui"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/harmony"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/harmony/dpcplus"
 )
 
 const winDPCplusRegistersTitle = "DPC+ Coprocessor"
@@ -62,8 +62,8 @@ func (win *winDPCplusRegisters) draw() {
 	}
 
 	// do not open window if there is no valid cartridge debug bus available
-	r, ok := win.img.lz.Cart.Registers.(harmony.DPCplusRegisters)
-	if !win.img.lz.Cart.HasCoProcBus || !ok {
+	r, ok := win.img.lz.Cart.Registers.(dpcplus.DPCplusRegisters)
+	if !win.img.lz.Cart.HasRegistersBus || !ok {
 		return
 	}
 

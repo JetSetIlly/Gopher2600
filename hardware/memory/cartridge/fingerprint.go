@@ -18,7 +18,7 @@ package cartridge
 import (
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/curated"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/harmony"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/harmony/dpcplus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/supercharger"
 	"github.com/jetsetilly/gopher2600/logger"
@@ -181,7 +181,7 @@ func (cart *Cartridge) fingerprint(cartload cartridgeloader.Loader) error {
 
 	if fingerprintHarmony(cartload.Data) {
 		// !!TODO: this might be a CFDJ cartridge. check for that.
-		cart.mapper, err = harmony.NewDPCplus(cartload.Data)
+		cart.mapper, err = dpcplus.NewDPCplus(cartload.Data)
 		return err
 	}
 

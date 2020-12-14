@@ -13,31 +13,15 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-package harmony
-
-import "github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
-
-type dpcPlusState struct {
-	registers DPCplusRegisters
-
-	// was the last instruction read the opcode for "lda <immediate>"
-	lda bool
-
-	// music fetchers are clocked at a fixed (slower) rate than the reference
-	// to the VCS's clock. see Step() function.
-	beats int
-
-	// parameters for next function call
-	parameters []uint8
-}
-
-func newDPCPlusState() *dpcPlusState {
-	s := &dpcPlusState{}
-	s.parameters = make([]uint8, 0, 32)
-	return s
-}
-
-func (s *dpcPlusState) Snapshot() mapper.CartSnapshot {
-	n := *s
-	return &n
-}
+// Package dpcplus implements the DPC+ cartridge mapper. It was developed by
+// adapting the existing DPC mapper, which is well documented. Differences to
+// this extended mapper were learned by studying the following URLs.
+//
+// https://atariage.com/forums/blogs/entry/11712-dpc-arm-development/?tab=comments#comment-27116
+//
+// https://atariage.com/forums/topic/163834-harmony-dpc-arm-programming/
+//
+// The only DPC+ ROMs that I am aware of that don't use the Harmony ARM
+// coprocessor is, Chaotic Grill and the ROM titled "DPC+demo.bin" by Darrell
+// Sprice.
+package dpcplus

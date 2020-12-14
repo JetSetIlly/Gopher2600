@@ -143,7 +143,7 @@ func (win *winCartRAM) drawBank(bank int) {
 				a := i
 				k := bank
 				win.img.lz.Dbg.PushRawEvent(func() {
-					win.img.lz.Cart.RAMbus.PutRAM(k, a, uint8(v))
+					win.img.lz.Dbg.VCS.Mem.Cart.GetRAMbus().PutRAM(k, a, uint8(v))
 				})
 			}
 		}
