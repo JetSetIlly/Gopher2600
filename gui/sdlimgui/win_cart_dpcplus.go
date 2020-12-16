@@ -62,7 +62,7 @@ func (win *winDPCplusRegisters) draw() {
 	}
 
 	// do not open window if there is no valid cartridge debug bus available
-	r, ok := win.img.lz.Cart.Registers.(dpcplus.DPCplusRegisters)
+	r, ok := win.img.lz.Cart.Registers.(dpcplus.Registers)
 	if !win.img.lz.Cart.HasRegistersBus || !ok {
 		return
 	}

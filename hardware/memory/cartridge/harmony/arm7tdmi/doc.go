@@ -18,22 +18,19 @@
 //
 // http://www.ecs.csun.edu/~smirzaei/docs/ece425/arm7tdmi_instruction_set_reference.pdf
 //
-// Thumb Instruction Set Reference:
+// For this project we only need to emulte the Thumb architecture. The strategy
+// for this was to implement the ninetween opcode formats in turn, until there
+// was nothing left. As of writing only format 17, software interrupts, remain
+// unimplemented. To this end, the following reference was preferred:
 //
-// https://edu.heibai.org/ARM%E8%B5%84%E6%96%99/ARM7-TDMI-manual-pt3.pdf
+// https://usermanual.wiki/Pdf/ARM7TDMImanualpt3.1481331792/view
 //
-// ARM Architecture Reference Manual:
+// More detailed explanations of Thumb instruction were found in chapter A7.1
+// of the ARM Architecture Reference Manual. In particular the side-effects of
+// particular instructions were found in the supplied pseudo-code. Where
+// appropriate, the pseudo-code has been included as a comment in the Go
+// source.
 //
 // https://www.cs.miami.edu/home/burt/learning/Csc521.141/Documents/arm_arm.pdf
-//
-// Harmony DPC+ ARM:
-//
-// https://atariage.com/forums/blogs/entry/11712-dpc-arm-development/?tab=comments#comment-27116
-// https://atariage.com/forums/topic/163834-harmony-dpc-arm-programming/
-//
-//
-// Demo ROMs;
-//
-// https://atariage.com/forums/topic/243378-dpc-zaxxon-hd-demo
 //
 package arm7tdmi

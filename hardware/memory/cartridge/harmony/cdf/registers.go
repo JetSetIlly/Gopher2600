@@ -13,34 +13,28 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-package dpcplus
+package cdf
 
-import "github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
+import "strings"
 
-type State struct {
-	registers Registers
-
-	// currently selected bank
-	bank int
-
-	// was the last instruction read the opcode for "lda <immediate>"
-	lda bool
-
-	// music fetchers are clocked at a fixed (slower) rate than the reference
-	// to the VCS's clock. see Step() function.
-	beats int
-
-	// parameters for next function call
-	parameters []uint8
+// Registers implements mappers.Registers
+type Registers struct {
+	MusicFetcher [3]musicDataFetcher
 }
 
-func newDPCPlusState() *State {
-	s := &State{}
-	s.parameters = make([]uint8, 0, 32)
-	return s
+func (r *Registers) initialise() {
+	for i := range r.MusicFetcher {
+		r.MusicFetcher[i].Waveform = 0x1b
+	}
 }
 
-func (s *State) Snapshot() mapper.CartSnapshot {
-	n := *s
-	return &n
+func (r Registers) String() string {
+	s := strings.Builder{}
+	return s.String()
+}
+
+type musicDataFetcher struct {
+	Waveform uint8
+	Freq     uint32
+	Count    uint32
 }

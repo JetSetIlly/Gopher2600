@@ -45,10 +45,10 @@ type dpcPlus struct {
 
 	// static area of the cartridge. accessible outside of the cartridge
 	// through GetStatic() and PutStatic()
-	static *DPCplusStatic
+	static *Static
 
 	// rewindable state
-	state *dpcPlusState
+	state *State
 }
 
 // the sizes of these areas in a DPC+ cartridge are fixed. the custom arm code
@@ -94,7 +94,7 @@ func NewDPCplus(data []byte) (mapper.CartMapper, error) {
 	//
 	// if bank0 has any ARM code then it will start at offset 0x08. first eight
 	// bytes are the ARM header
-	cart.arm = arm7tdmi.NewARM(cart.static)
+	cart.arm = arm7tdmi.NewARM(cart.static, cart)
 
 	return cart, nil
 }
@@ -115,7 +115,7 @@ func (cart *dpcPlus) Snapshot() mapper.CartSnapshot {
 
 // Plumb implements the mapper.CartMapper interface.
 func (cart *dpcPlus) Plumb(s mapper.CartSnapshot) {
-	cart.state = s.(*dpcPlusState)
+	cart.state = s.(*State)
 }
 
 // Reset implements the mapper.CartMapper interface.
@@ -679,6 +679,8 @@ func (cart *dpcPlus) Step() {
 		cart.state.registers.MusicFetcher[1].Count += cart.state.registers.MusicFetcher[1].Freq
 		cart.state.registers.MusicFetcher[2].Count += cart.state.registers.MusicFetcher[2].Freq
 	}
+
+	cart.arm.Step()
 }
 
 // IterateBank implements the mapper.CartMapper interface.
@@ -843,4 +845,9 @@ func (cart *dpcPlus) WriteHotspots() map[uint16]mapper.CartHotspotInfo {
 		0x107e: {Symbol: "DF6/queue", Action: mapper.HotspotRegister},
 		0x107f: {Symbol: "DF7/queue", Action: mapper.HotspotRegister},
 	}
+}
+
+// ARMinterrupt implements the arm7tmdi.CatridgeHook interface.
+func (cart *dpcPlus) ARMinterrupt(addr uint32, val1 uint32, val2 uint32) (arm7tdmi.ARMinterruptReturn, error) {
+	return arm7tdmi.ARMinterruptReturn{}, nil
 }

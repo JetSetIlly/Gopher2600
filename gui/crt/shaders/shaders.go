@@ -19,6 +19,7 @@ void main()
 `
 
 const Fragment = "#version 150" + `
+const int Overlay = 2;
 const int PlayScr = 3;
 const int PrefsCRT = 4;
 const int NoCursor = 0;
@@ -26,7 +27,6 @@ const int Cursor = 1;
 const int LateCursor = 2;
 const int GUI = 0;
 const int DebugScr = 1;
-const int Overlay = 2;
 
 // this file requires some constant values to be defined above this line before
 // being compiled. should be included during the "go generate" process

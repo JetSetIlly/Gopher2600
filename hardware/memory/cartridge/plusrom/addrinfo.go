@@ -54,16 +54,29 @@ func (cart *PlusROM) SetAddrInfo(host string, path string) (hostValid bool, path
 	return hostValid, pathValid
 }
 
+const (
+	// max host length(s) defined by DNS specifications
+	maxHostLength        = 253
+	maxHostElementLength = 63
+
+	// there is no upper limit for path size but 1024 bytes is more than enough
+	maxPathLength = 1024
+)
+
 func isHostValid(host string) bool {
+	if len(host) > maxHostLength {
+		return false
+	}
+
 	labels := strings.Split(host, ".")
 	for _, l := range labels {
-		if len(l) < 1 || len(l) > 63 {
+		if len(l) < 1 || len(l) > maxHostElementLength {
 			return false
 		}
 
 		// check for valid characters: letters (upper/lower), digits or hyphen
 		for _, c := range l {
-			if !unicode.IsLetter(c) && !unicode.IsDigit(c) && c != '-' {
+			if !isValidHostRune(c) {
 				return false
 			}
 		}
@@ -78,7 +91,15 @@ func isHostValid(host string) bool {
 }
 
 func isPathValid(path string) bool {
+	if len(path) > maxPathLength {
+		return false
+	}
+
 	enc := url.PathEscape(path)
 	dec, err := url.PathUnescape(enc)
 	return err == nil && dec == path
+}
+
+func isValidHostRune(c rune) bool {
+	return unicode.IsLetter(c) || unicode.IsDigit(c) || c == '-'
 }

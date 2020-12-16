@@ -21,6 +21,7 @@ import (
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/harmony/cdf"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/harmony/dpcplus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/plusrom"
@@ -244,6 +245,9 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 		cart.mapper, err = newDPC(cartload.Data)
 	case "DPC+":
 		cart.mapper, err = dpcplus.NewDPCplus(cartload.Data)
+	case "CDF":
+		// CDF mapper defaults to version CDFJ
+		cart.mapper, err = cdf.NewCDF(0x4a, cartload.Data)
 	}
 
 	if err != nil {

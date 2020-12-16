@@ -13,31 +13,42 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-package dpcplus
+package cdf
 
 import "github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 
 type State struct {
-	registers Registers
-
 	// currently selected bank
 	bank int
 
-	// was the last instruction read the opcode for "lda <immediate>"
-	lda bool
+	// keeps track of LDA and JMP triggers when fast fetch mode is active
+	fastLDA bool
+	fastJMP int
 
 	// music fetchers are clocked at a fixed (slower) rate than the reference
 	// to the VCS's clock. see Step() function.
 	beats int
 
-	// parameters for next function call
-	parameters []uint8
+	registers Registers
+
+	FastFetch  bool
+	SampleMode bool
 }
 
-func newDPCPlusState() *State {
+// initialise should be called as soon as convenient
+func newCDFstate() *State {
 	s := &State{}
-	s.parameters = make([]uint8, 0, 32)
 	return s
+}
+
+func (s *State) initialise(bank int) {
+	s.bank = bank
+	s.fastLDA = false
+	s.fastJMP = 0
+	s.beats = 0
+	s.registers.initialise()
+	s.FastFetch = false
+	s.SampleMode = false
 }
 
 func (s *State) Snapshot() mapper.CartSnapshot {

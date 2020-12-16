@@ -13,34 +13,15 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-package dpcplus
-
-import "github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
-
-type State struct {
-	registers Registers
-
-	// currently selected bank
-	bank int
-
-	// was the last instruction read the opcode for "lda <immediate>"
-	lda bool
-
-	// music fetchers are clocked at a fixed (slower) rate than the reference
-	// to the VCS's clock. see Step() function.
-	beats int
-
-	// parameters for next function call
-	parameters []uint8
-}
-
-func newDPCPlusState() *State {
-	s := &State{}
-	s.parameters = make([]uint8, 0, 32)
-	return s
-}
-
-func (s *State) Snapshot() mapper.CartSnapshot {
-	n := *s
-	return &n
-}
+// Package cdf implemnents the various CDF type cartridge mappers including
+// CDFJ. It was developed with reference to Darrell Spice's CDJF blog and the
+// source to the various example ROMs therein
+//
+// https://atariage.com/forums/forum/262-cdfj/
+//
+// Also, it seems that most complete survey of details for this cartridge type
+// is the Stella source code. Therefore, I have resorted to the study of the
+// CartCDF.cxx file as found in Stella 6.4.
+//
+// Note that all CDF formats rely on the arm7 package.
+package cdf

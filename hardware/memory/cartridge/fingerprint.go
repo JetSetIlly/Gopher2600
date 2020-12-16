@@ -18,6 +18,7 @@ package cartridge
 import (
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/curated"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/harmony/cdf"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/harmony/dpcplus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/supercharger"
@@ -106,11 +107,26 @@ func fingerprintDF(b []byte) bool {
 	return b[0xff8] == 'D' && b[0xff9] == 'F' && b[0xffa] == 'S' && b[0xffb] == 'C'
 }
 
-func fingerprintHarmony(b []byte) bool {
+func fingerprintDPCplus(b []byte) bool {
 	if len(b) < 0x23 {
 		return false
 	}
 	return b[0x20] == 0x1e && b[0x21] == 0xab && b[0x22] == 0xad && b[0x23] == 0x10
+}
+
+func fingerprintCDF(b []byte) (bool, byte) {
+	count := 0
+	version := byte(0)
+
+	for i := 0; i < len(b)-3; i++ {
+		if b[i] == 'C' && b[i+1] == 'D' && b[i+2] == 'F' {
+			count++
+			version = b[i+3]
+		}
+	}
+
+	return count >= 3, version
+
 }
 
 func fingerprintSuperchargerFastLoad(cartload cartridgeloader.Loader) bool {
@@ -179,8 +195,12 @@ func fingerprint128k(data []byte) func([]byte) (mapper.CartMapper, error) {
 func (cart *Cartridge) fingerprint(cartload cartridgeloader.Loader) error {
 	var err error
 
-	if fingerprintHarmony(cartload.Data) {
-		// !!TODO: this might be a CFDJ cartridge. check for that.
+	if ok, version := fingerprintCDF(cartload.Data); ok {
+		cart.mapper, err = cdf.NewCDF(version, cartload.Data)
+		return err
+	}
+
+	if fingerprintDPCplus(cartload.Data) {
 		cart.mapper, err = dpcplus.NewDPCplus(cartload.Data)
 		return err
 	}

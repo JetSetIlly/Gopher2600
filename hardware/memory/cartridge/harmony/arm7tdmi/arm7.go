@@ -19,6 +19,8 @@ import (
 	"fmt"
 	"math/bits"
 	"strings"
+
+	"github.com/jetsetilly/gopher2600/curated"
 )
 
 // SharedMemory represents the memory passed between the parent
@@ -33,6 +35,24 @@ type SharedMemory interface {
 	ResetVectors() (uint32, uint32, uint32)
 }
 
+// CartridgeHook allows the parent cartridge mapping to emulate ARM code in a
+// more direct way. This is primarily because we do not yet emulate full ARM
+// bytecode only Thumb bytecode, and the value of doing so is unclear.
+type CartridgeHook interface {
+	// Returns false if parent cartridge mapping does not understand the
+	// address.
+	ARMinterrupt(addr uint32, val1 uint32, val2 uint32) (ARMinterruptReturn, error)
+}
+
+type ARMinterruptReturn struct {
+	SaveResult        bool
+	SaveRegister      uint32
+	SaveValue         uint32
+	InterruptServiced bool
+}
+
+// the arm7tdmi has a 32 bit status register but we only need the CSPR bits
+// currently
 type status struct {
 	// CPSR (current program status register) bits
 	negative bool
@@ -105,7 +125,9 @@ const (
 
 // ARM implements the ARM7TDMI-S LPC2103 processor.
 type ARM struct {
-	mem SharedMemory
+	mem   SharedMemory
+	hook  CartridgeHook
+	timer timer
 
 	// memory for values that fall outside of the areas defined above. map
 	// access is slower than array/slice access but the potential range of
@@ -120,9 +142,10 @@ type ARM struct {
 }
 
 // NewARM is the preferred method of initialisation for the ARM type.
-func NewARM(mem SharedMemory) *ARM {
+func NewARM(mem SharedMemory, hook CartridgeHook) *ARM {
 	arm := &ARM{
-		mem: mem,
+		mem:  mem,
+		hook: hook,
 	}
 	arm.reset()
 
@@ -158,14 +181,24 @@ func (arm *ARM) String() string {
 	return s.String()
 }
 
-// func (arm *ARM) stack() string {
-// 	o := arm.registers[rSP] - freqOriginRAM
-// 	return fmt.Sprintf("%v", (*arm.mem.Freq)[o:stackOriginRAM-freqOriginRAM])
-// }
+// Step moves the ARM on one cycle. Currently only affects the ARM timer.
+func (arm *ARM) Step() {
+	arm.timer.step()
+}
 
+// Run will continue until the ARM program encounters a switch from THUMB mode
+// to ARM mode. Note that currently, this means the ARM program may run
+// forever.
 func (arm *ARM) Run() error {
 	arm.reset()
-	for arm.executeInstruction() {
+
+	cont := true
+	for cont {
+		var err error
+		cont, err = arm.executeInstruction()
+		if err != nil {
+			return curated.Errorf("ARM: %v", err)
+		}
 	}
 	return nil
 }
@@ -181,6 +214,7 @@ func (arm *ARM) read8bit(addr uint32) uint8 {
 
 func (arm *ARM) write8bit(addr uint32, val uint8) {
 	var mem *[]uint8
+
 	mem, addr = arm.mem.MapAddress(addr, true)
 	if mem == nil {
 		arm.scratch[addr] = val
@@ -217,6 +251,10 @@ func (arm *ARM) write16bit(addr uint32, val uint16) {
 }
 
 func (arm *ARM) read32bit(addr uint32) uint32 {
+	if val, ok := arm.timer.read(addr); ok {
+		return val
+	}
+
 	var mem *[]uint8
 	mem, addr = arm.mem.MapAddress(addr, false)
 	if mem == nil {
@@ -235,6 +273,10 @@ func (arm *ARM) read32bit(addr uint32) uint32 {
 }
 
 func (arm *ARM) write32bit(addr uint32, val uint32) {
+	if ok := arm.timer.write(addr, val); ok {
+		return
+	}
+
 	var mem *[]uint8
 	mem, addr = arm.mem.MapAddress(addr, true)
 	if mem == nil {
@@ -266,7 +308,7 @@ func (arm *ARM) read16bitPC() uint16 {
 	return b1 | b2
 }
 
-func (arm *ARM) executeInstruction() bool {
+func (arm *ARM) executeInstruction() (bool, error) {
 	// fmt.Println()
 	if arm.noDebugNext {
 		arm.noDebugNext = false
@@ -281,11 +323,6 @@ func (arm *ARM) executeInstruction() bool {
 	opcode := arm.read16bitPC()
 
 	// fmt.Printf("\n>>> %04x :: %08x :: ", pc, opcode)
-	// // fmt.Printf(" [40000ce0=%04x]", arm.read16bit(0x40000ce0))
-	// // fmt.Printf(" [40000ce1=%04x]", arm.read16bit(0x40000ce1))
-	// fmt.Printf(" [40000ce2=%04x]", arm.read16bit(0x40000ce2))
-	// // fmt.Printf(" [40000ce3=%04x]", arm.read16bit(0x40000ce3))
-	// // fmt.Printf(" [40000ce4=%04x]", arm.read16bit(0x40000ce4))
 
 	// working backwards up the table in Figure 5-1 of the THUMB instruction set reference
 	if opcode&0xf000 == 0xf000 {
@@ -332,7 +369,11 @@ func (arm *ARM) executeInstruction() bool {
 		arm.executePCrelativeLoad(opcode)
 	} else if opcode&0xfc00 == 0x4400 {
 		// format 5 - Hi register operations/branch exchange
-		cont = arm.executeHiRegisterOps(opcode)
+		var err error
+		cont, err = arm.executeHiRegisterOps(opcode)
+		if err != nil {
+			return false, curated.Errorf("format 5: %v", err)
+		}
 	} else if opcode&0xfc00 == 0x4000 {
 		// format 4 - ALU operations
 		arm.executeALUoperations(opcode)
@@ -349,7 +390,7 @@ func (arm *ARM) executeInstruction() bool {
 		panic("undecoded instruction")
 	}
 
-	return cont
+	return cont, nil
 }
 
 func (arm *ARM) executeMoveShiftedRegister(opcode uint16) {
@@ -739,7 +780,7 @@ func (arm *ARM) executeALUoperations(opcode uint16) {
 
 }
 
-func (arm *ARM) executeHiRegisterOps(opcode uint16) bool {
+func (arm *ARM) executeHiRegisterOps(opcode uint16) (bool, error) {
 	// format 5 - Hi register operations/branch exchange
 	op := (opcode & 0x300) >> 8
 	hi1 := opcode&0x80 == 0x80
@@ -808,12 +849,34 @@ func (arm *ARM) executeHiRegisterOps(opcode uint16) bool {
 		} else {
 			// fmt.Printf("[arm]")
 
-			// end of custom code
-			return false
+			// switch to ARM mode. emulate function call
+			res, err := arm.hook.ARMinterrupt(arm.registers[rPC]-4, arm.registers[2], arm.registers[3])
+			if err != nil {
+				return false, err
+			}
+
+			// if ARMinterrupt returns false this indicates that the
+			// function at the quoted program counter is not recognised and
+			// has nothing to do with the cartridge mapping. at this point
+			// we can assume that the main() function call is done and we
+			// can return to the VCS emulation.
+			if !res.InterruptServiced {
+				return false, nil
+			}
+
+			// ARM function updates the ARM registers
+			if res.SaveResult {
+				arm.registers[res.SaveRegister] = res.SaveValue
+			}
+
+			// the end of the emulated function will have an operation that
+			// switches back to thumb mode, and copies the link register to the
+			// program counter. we need to emulate that too.
+			arm.registers[rPC] = arm.registers[rLR] + 2
 		}
 	}
 
-	return true
+	return true, nil
 }
 
 func (arm *ARM) executePCrelativeLoad(opcode uint16) {

@@ -23,8 +23,8 @@ import (
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
-// DPCplusStatic implements the bus.CartStatic interface.
-type DPCplusStatic struct {
+// Static implements the bus.CartStatic interface.
+type Static struct {
 	// full copies of the entire cartridge
 	cartDataRAM []byte
 	cartDataROM []byte
@@ -41,8 +41,8 @@ type DPCplusStatic struct {
 	freqROM   []byte
 }
 
-func (cart *dpcPlus) newDPCplusStatic(cartData []byte) *DPCplusStatic {
-	mem := DPCplusStatic{
+func (cart *dpcPlus) newDPCplusStatic(cartData []byte) *Static {
+	mem := Static{
 		cartDataRAM: cartData,
 	}
 
@@ -72,7 +72,7 @@ func (cart *dpcPlus) newDPCplusStatic(cartData []byte) *DPCplusStatic {
 }
 
 // ResetVectors implements the arm7tdmi.SharedMemory interface.
-func (mem *DPCplusStatic) ResetVectors() (uint32, uint32, uint32) {
+func (mem *Static) ResetVectors() (uint32, uint32, uint32) {
 	return stackOriginRAM, customOriginROM, customOriginROM + 8
 }
 
@@ -104,7 +104,7 @@ const (
 )
 
 // MapAddress implements the arm7tdmi.SharedMemory interface.
-func (mem *DPCplusStatic) MapAddress(addr uint32, write bool) (*[]byte, uint32) {
+func (mem *Static) MapAddress(addr uint32, write bool) (*[]byte, uint32) {
 	// driver ARM code (ROM)
 	if addr >= driverOriginROM && addr <= driverMemtopROM {
 		if write {

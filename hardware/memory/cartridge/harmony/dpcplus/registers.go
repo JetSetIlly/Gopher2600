@@ -24,8 +24,8 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 )
 
-// DPCplusRegisters implements the bus.CartRegisters interface.
-type DPCplusRegisters struct {
+// Registers implements the bus.CartRegisters interface.
+type Registers struct {
 	Fetcher      [8]dataFetcher
 	FracFetcher  [8]fractionalDataFetcher
 	MusicFetcher [3]musicDataFetcher
@@ -37,7 +37,7 @@ type DPCplusRegisters struct {
 	FastFetch bool
 }
 
-func (r DPCplusRegisters) String() string {
+func (r Registers) String() string {
 	s := strings.Builder{}
 
 	s.WriteString(fmt.Sprintf("RNG: %#08x\n", r.RNG.Value))
@@ -81,7 +81,7 @@ func (r DPCplusRegisters) String() string {
 	return s.String()
 }
 
-func (r *DPCplusRegisters) reset(randSrc *rand.Rand) {
+func (r *Registers) reset(randSrc *rand.Rand) {
 	for i := range r.Fetcher {
 		if randSrc != nil {
 			r.Fetcher[i].Low = byte(randSrc.Intn(0xff))

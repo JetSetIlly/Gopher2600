@@ -81,11 +81,12 @@ func NewPlusROM(child mapper.CartMapper, onLoaded func(cart mapper.CartMapper) e
 
 	// read path string from the first bank using the indirect address retrieved above
 	path := strings.Builder{}
-	for {
+	for path.Len() < maxPathLength {
 		if int(a) >= len(bank.Data) {
 			a = 0x0000
 		}
 		c := bank.Data[a]
+
 		a++
 		if c == 0x00 {
 			break // for loop
@@ -96,11 +97,12 @@ func NewPlusROM(child mapper.CartMapper, onLoaded func(cart mapper.CartMapper) e
 	// read host string. this string continues on from the path string. the
 	// address pointer will be in the correct place.
 	host := strings.Builder{}
-	for {
+	for host.Len() <= maxHostLength {
 		if int(a) >= len(bank.Data) {
 			a = 0x0000
 		}
 		c := bank.Data[a]
+
 		a++
 		if c == 0x00 {
 			break // for loop
