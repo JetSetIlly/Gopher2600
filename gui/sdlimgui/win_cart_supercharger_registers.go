@@ -28,6 +28,8 @@ const winSuperchargerRegistersTitle = "AR Registers"
 type winSuperchargerRegisters struct {
 	img  *SdlImgui
 	open bool
+
+	width float32
 }
 
 func newWinSuperchargerRegisters(img *SdlImgui) (window, error) {
@@ -86,23 +88,23 @@ func (win *winSuperchargerRegisters) draw() {
 
 	imgui.SameLine()
 
+	if r.LastWriteAddress != 0x0000 {
+		imgui.Text(fmt.Sprintf("last write %#02x to %#04x", r.LastWriteValue, r.LastWriteAddress))
+	} else {
+		imgui.Text("no writes yet")
+	}
+
+	imgui.Spacing()
+
+	imgui.PushItemWidth(250.0)
 	delay := int32(r.Delay)
-	imguiText("Delay")
-	imgui.PushItemWidth(imgui.WindowWidth() / 2)
-	if imgui.SliderInt("##delay", &delay, 1, 6) {
+	if imgui.SliderInt("Delay##delay", &delay, 1, 6) {
 		win.img.lz.Dbg.PushRawEvent(func() {
 			b := win.img.lz.Dbg.VCS.Mem.Cart.GetRegistersBus()
 			b.PutRegister("delay", fmt.Sprintf("%d", delay))
 		})
 	}
 	imgui.PopItemWidth()
-
-	imgui.Spacing()
-	if r.LastWriteAddress != 0x0000 {
-		imgui.Text(fmt.Sprintf("last write %#02x to %#04x", r.LastWriteValue, r.LastWriteAddress))
-	} else {
-		imgui.Text("")
-	}
 
 	imgui.Spacing()
 	imgui.Separator()
@@ -127,6 +129,9 @@ func (win *winSuperchargerRegisters) draw() {
 			b.PutRegister("rompower", fmt.Sprintf("%v", rp))
 		})
 	}
+
+	imgui.SameLine()
+	win.width = imgui.CursorPosX()
 
 	imgui.Spacing()
 	imgui.Separator()
