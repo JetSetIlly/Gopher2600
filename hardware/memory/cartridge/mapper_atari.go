@@ -134,19 +134,10 @@ func (cart *atari) Reset(randSrc *rand.Rand) {
 		}
 	}
 
-	// which bank should be the start bank? this has gone back and forth but
-	// the current thinking (by me) is that it should be the last bank in the
-	// cartridge. most cartridges are setup so that it doesn't matter, but at
-	// least one cartridge will not "boot" if the start bank is anything other
-	// than the last bank (Hack em Hangly Pac Man)
-	//
-	// 29/05/20 - change to the second bank being the default when number of
-	// banks exceeds 1. bank 0 doesn't work for Stay Frosty
-	if len(cart.banks) == 1 {
-		cart.state.bank = 0
-	} else {
-		cart.state.bank = 1
-	}
+	// I've gone back and forth on which bank Atari cartrdiges should start on.
+	// current tests suggest that starting on the first bank is correct in most
+	// (all?) instances.
+	cart.state.bank = 0
 }
 
 // GetBank implements the mapper.CartMapper interface.
