@@ -52,6 +52,13 @@ func (win *winTIA) drawBall() {
 	}
 
 	imgui.SameLine()
+	imguiText("Vert Del.")
+	enbv := lz.VerticalDelay
+	if imgui.Checkbox("##vdelay", &enbv) {
+		win.img.lz.Dbg.PushRawEvent(func() { bs.VerticalDelay = enbv })
+	}
+
+	imgui.SameLine()
 	imguiText("Enabled Del.")
 	enbd := lz.EnabledDelay
 	if imgui.Checkbox("##enableddelay", &enbd) {

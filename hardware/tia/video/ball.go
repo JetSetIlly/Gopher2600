@@ -363,7 +363,7 @@ func (bs *BallSprite) _futureResetPosition() {
 }
 
 func (bs *BallSprite) pixel() (active bool, color uint8, collision bool) {
-	if !bs.Enabled || (bs.VerticalDelay && !bs.EnabledDelay) {
+	if (!bs.EnabledDelay && bs.VerticalDelay) || (!bs.Enabled && !bs.VerticalDelay) {
 		return false, bs.Color, false
 	}
 
