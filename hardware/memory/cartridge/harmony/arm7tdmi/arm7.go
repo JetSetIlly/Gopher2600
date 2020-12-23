@@ -154,6 +154,12 @@ func NewARM(mem SharedMemory, hook CartridgeHook) *ARM {
 	return arm
 }
 
+// PlumbSharedMemory should be used to update the shared memory reference.
+// Useful when used in conjunction with the rewind system.
+func (arm *ARM) PlumbSharedMemory(mem SharedMemory) {
+	arm.mem = mem
+}
+
 func (arm *ARM) reset() {
 	arm.status.reset()
 	for i := range arm.registers {

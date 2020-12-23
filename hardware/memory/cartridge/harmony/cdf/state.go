@@ -30,6 +30,10 @@ type State struct {
 	beats int
 
 	registers Registers
+
+	// static area of the cartridge. accessible outside of the cartridge
+	// through GetStatic() and PutStatic()
+	static *Static
 }
 
 // initialise should be called as soon as convenient
@@ -48,5 +52,6 @@ func (s *State) initialise(bank int) {
 
 func (s *State) Snapshot() mapper.CartSnapshot {
 	n := *s
+	n.static = s.static.Snapshot()
 	return &n
 }

@@ -25,12 +25,10 @@ import (
 
 // Static implements the bus.CartStatic interface.
 type Static struct {
+	// slices of cartData that should not be modified during execution
 	cartDataROM []byte
-	cartDataRAM []byte
-
-	// slices of cartDataROM that should not be modified during execution
-	driverROM []byte
-	customROM []byte
+	driverROM   []byte
+	customROM   []byte
 
 	// slices of cartData that will be modified during execution
 	driverRAM    []byte
@@ -39,23 +37,19 @@ type Static struct {
 }
 
 func (cart *cdf) newCDFstatic(cartData []byte) *Static {
-	stc := Static{
-		cartDataRAM: cartData,
-	}
-
-	// make a copy for non-volatile purposes
-	stc.cartDataROM = make([]byte, len(cartData))
-	copy(stc.cartDataROM, cartData)
+	stc := Static{}
 
 	// ARM driver
-	stc.driverROM = stc.cartDataROM[:driverSize]
-	stc.driverRAM = stc.cartDataRAM[:driverSize]
+	stc.driverROM = cartData[:driverSize]
 
 	// custom ARM program begins immediately after the ARM driver
-	stc.customROM = stc.cartDataROM[driverSize:]
+	stc.customROM = cartData[driverSize:]
 
-	// variables nothing in the ROM data we can use (unlike DPC+) so we must
-	// allocate fresh memory
+	// driver RAM is the same as driver ROM initially
+	stc.driverRAM = make([]byte, driverSize)
+	copy(stc.driverRAM, stc.driverROM)
+
+	// there is nothing in cartData to copy into the other RAM areas
 	stc.dataRAM = make([]byte, dataMemtopRAM-dataOriginRAM+1)
 	stc.variablesRAM = make([]byte, variablesMemtopRAM-variablesOriginRAM+1)
 
@@ -67,26 +61,16 @@ func (stc *Static) ResetVectors() (uint32, uint32, uint32) {
 	return stackOriginRAM, customOriginROM, customOriginROM + 8
 }
 
-// the memory addresses from the point of view of the ARM processor.
-const (
-	driverOriginROM = 0x00000000
-	driverMemtopROM = 0x000007ff
-
-	customOriginROM = 0x00000800
-	customMemtopROM = 0x00007fff
-
-	driverOriginRAM = 0x40000000
-	driverMemtopRAM = 0x400007ff
-
-	dataOriginRAM = 0x40000800
-	dataMemtopRAM = 0x400017ff
-
-	variablesOriginRAM = 0x40001800
-	variablesMemtopRAM = 0x40001fff
-
-	// stack should be within the range of the RAM copy of the variables
-	stackOriginRAM = 0x40001fdc
-)
+func (stc *Static) Snapshot() *Static {
+	n := *stc
+	n.driverRAM = make([]byte, len(stc.driverRAM))
+	n.dataRAM = make([]byte, len(stc.dataRAM))
+	n.variablesRAM = make([]byte, len(stc.variablesRAM))
+	copy(n.driverRAM, stc.driverRAM)
+	copy(n.dataRAM, stc.dataRAM)
+	copy(n.variablesRAM, stc.variablesRAM)
+	return &n
+}
 
 // MapAddress implements the arm7tdmi.SharedMemory interface.
 func (stc *Static) MapAddress(addr uint32, write bool) (*[]byte, uint32) {
@@ -158,13 +142,13 @@ func (cart *cdf) GetStatic() []mapper.CartStatic {
 	s[1].Segment = "Data"
 	s[2].Segment = "Variables"
 
-	s[0].Data = make([]byte, len(cart.static.driverRAM))
-	s[1].Data = make([]byte, len(cart.static.dataRAM))
-	s[2].Data = make([]byte, len(cart.static.variablesRAM))
+	s[0].Data = make([]byte, len(cart.state.static.driverRAM))
+	s[1].Data = make([]byte, len(cart.state.static.dataRAM))
+	s[2].Data = make([]byte, len(cart.state.static.variablesRAM))
 
-	copy(s[0].Data, cart.static.driverRAM)
-	copy(s[1].Data, cart.static.dataRAM)
-	copy(s[2].Data, cart.static.variablesRAM)
+	copy(s[0].Data, cart.state.static.driverRAM)
+	copy(s[1].Data, cart.state.static.dataRAM)
+	copy(s[2].Data, cart.state.static.variablesRAM)
 
 	return s
 }
@@ -173,22 +157,22 @@ func (cart *cdf) GetStatic() []mapper.CartStatic {
 func (cart *cdf) PutStatic(segment string, idx uint16, data uint8) error {
 	switch segment {
 	case "Driver":
-		if int(idx) >= len(cart.static.driverRAM) {
+		if int(idx) >= len(cart.state.static.driverRAM) {
 			return curated.Errorf("CDF", fmt.Errorf("index too high (%#04x) for %s area", idx, segment))
 		}
-		cart.static.driverRAM[idx] = data
+		cart.state.static.driverRAM[idx] = data
 
 	case "Data":
-		if int(idx) >= len(cart.static.dataRAM) {
+		if int(idx) >= len(cart.state.static.dataRAM) {
 			return curated.Errorf("CDF", fmt.Errorf("index too high (%#04x) for %s area", idx, segment))
 		}
-		cart.static.dataRAM[idx] = data
+		cart.state.static.dataRAM[idx] = data
 
 	case "Variables":
-		if int(idx) >= len(cart.static.variablesRAM) {
+		if int(idx) >= len(cart.state.static.variablesRAM) {
 			return curated.Errorf("CDF", fmt.Errorf("index too high (%#04x) for %s area", idx, segment))
 		}
-		cart.static.variablesRAM[idx] = data
+		cart.state.static.variablesRAM[idx] = data
 
 	default:
 		return curated.Errorf("CDF", fmt.Errorf("unknown segment (%s)", segment))

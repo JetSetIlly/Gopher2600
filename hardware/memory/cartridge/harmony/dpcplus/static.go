@@ -25,8 +25,7 @@ import (
 
 // Static implements the bus.CartStatic interface.
 type Static struct {
-	// full copies of the entire cartridge
-	cartDataRAM []byte
+	// copy of entire ROM (for convenience)
 	cartDataROM []byte
 
 	// slices of cartDataRAM that will be modified during execution
@@ -43,30 +42,32 @@ type Static struct {
 
 func (cart *dpcPlus) newDPCplusStatic(cartData []byte) *Static {
 	mem := Static{
-		cartDataRAM: cartData,
+		cartDataROM: cartData,
 	}
-
-	// make a copy for non-volatile purposes
-	mem.cartDataROM = make([]byte, len(cartData))
-	copy(mem.cartDataROM, cartData)
 
 	// the offset into the cart data where the data segment begins
 	dataOffset := driverSize + (cart.bankSize * cart.NumBanks())
 
 	// ARM driver
-	mem.driverRAM = mem.cartDataRAM[:driverSize]
-	mem.driverROM = mem.cartDataROM[:driverSize]
+	mem.driverROM = cartData[:driverSize]
 
 	// custom ARM program immediately after the ARM driver and where we've
 	// figured the data segment to start. note that some of this will be the
 	// 6507 program but we can't really know for sure where that begins.
-	mem.customROM = mem.cartDataRAM[driverSize:dataOffset]
+	mem.customROM = cartData[driverSize:dataOffset]
 
 	// gfx and frequency table at end of file
-	mem.dataRAM = mem.cartDataRAM[dataOffset : dataOffset+dataSize]
-	mem.freqRAM = mem.cartDataRAM[dataOffset+dataSize:]
-	mem.dataROM = mem.cartDataROM[dataOffset : dataOffset+dataSize]
-	mem.freqROM = mem.cartDataROM[dataOffset+dataSize:]
+	// unlike CDF ROMs data and frequency tables are initialised from the ROM
+	mem.dataROM = cartData[dataOffset : dataOffset+dataSize]
+	mem.freqROM = cartData[dataOffset+dataSize:]
+
+	// RAM areas
+	mem.driverRAM = make([]byte, len(mem.driverROM))
+	copy(mem.driverRAM, mem.driverROM)
+	mem.dataRAM = make([]byte, len(mem.dataROM))
+	copy(mem.dataRAM, mem.dataROM)
+	mem.freqRAM = make([]byte, len(mem.freqROM))
+	copy(mem.freqRAM, mem.freqROM)
 
 	return &mem
 }
@@ -76,32 +77,16 @@ func (mem *Static) ResetVectors() (uint32, uint32, uint32) {
 	return stackOriginRAM, customOriginROM, customOriginROM + 8
 }
 
-// the memory addresses from the point of view of the ARM processor.
-const (
-	driverOriginROM = 0x00000000
-	driverMemtopROM = 0x00000bff
-
-	customOriginROM = 0x00000c00
-	customMemtopROM = 0x00006bff
-
-	dataOriginROM = 0x00006c00
-	dataMemtopROM = 0x00007bff
-
-	freqOriginROM = 0x00007c00
-	freqMemtopROM = 0x00008000
-
-	driverOriginRAM = 0x40000000
-	driverMemtopRAM = 0x40000bff
-
-	dataOriginRAM = 0x40000c00
-	dataMemtopRAM = 0x40001bff
-
-	freqOriginRAM = 0x40001c00
-	freqMemtopRAM = 0x40002000
-
-	// stack should be within the range of the RAM copy of the frequency tables
-	stackOriginRAM = 0x40001fdc
-)
+func (mem *Static) Snapshot() *Static {
+	n := *mem
+	n.driverRAM = make([]byte, len(mem.driverROM))
+	copy(n.driverRAM, mem.driverROM)
+	n.dataRAM = make([]byte, len(mem.dataROM))
+	copy(n.dataRAM, mem.dataROM)
+	n.freqRAM = make([]byte, len(mem.freqROM))
+	copy(n.freqRAM, mem.freqROM)
+	return &n
+}
 
 // MapAddress implements the arm7tdmi.SharedMemory interface.
 func (mem *Static) MapAddress(addr uint32, write bool) (*[]byte, uint32) {
@@ -167,13 +152,13 @@ func (cart *dpcPlus) GetStatic() []mapper.CartStatic {
 	s[1].Segment = "Data"
 	s[2].Segment = "Freq"
 
-	s[0].Data = make([]byte, len(cart.static.driverRAM))
-	s[1].Data = make([]byte, len(cart.static.dataRAM))
-	s[2].Data = make([]byte, len(cart.static.freqRAM))
+	s[0].Data = make([]byte, len(cart.state.static.driverRAM))
+	s[1].Data = make([]byte, len(cart.state.static.dataRAM))
+	s[2].Data = make([]byte, len(cart.state.static.freqRAM))
 
-	copy(s[0].Data, cart.static.driverRAM)
-	copy(s[1].Data, cart.static.dataRAM)
-	copy(s[1].Data, cart.static.freqRAM)
+	copy(s[0].Data, cart.state.static.driverRAM)
+	copy(s[1].Data, cart.state.static.dataRAM)
+	copy(s[1].Data, cart.state.static.freqRAM)
 
 	return s
 }
@@ -182,22 +167,22 @@ func (cart *dpcPlus) GetStatic() []mapper.CartStatic {
 func (cart *dpcPlus) PutStatic(segment string, idx uint16, data uint8) error {
 	switch segment {
 	case "Driver":
-		if int(idx) >= len(cart.static.driverRAM) {
+		if int(idx) >= len(cart.state.static.driverRAM) {
 			return curated.Errorf("CDFJ", fmt.Errorf("index too high (%#04x) for %s area", idx, segment))
 		}
-		cart.static.driverRAM[idx] = data
+		cart.state.static.driverRAM[idx] = data
 
 	case "Data":
-		if int(idx) >= len(cart.static.dataRAM) {
+		if int(idx) >= len(cart.state.static.dataRAM) {
 			return curated.Errorf("DPC+: static: %v", fmt.Errorf("index too high (%#04x) for %s area", idx, segment))
 		}
-		cart.static.dataRAM[idx] = data
+		cart.state.static.dataRAM[idx] = data
 
 	case "Freq":
-		if int(idx) >= len(cart.static.freqRAM) {
+		if int(idx) >= len(cart.state.static.freqRAM) {
 			return curated.Errorf("DPC+: static: %v", fmt.Errorf("index too high (%#04x) for %s area", idx, segment))
 		}
-		cart.static.freqRAM[idx] = data
+		cart.state.static.freqRAM[idx] = data
 
 	default:
 		return curated.Errorf("DPC+: static: %v", fmt.Errorf("unknown segment (%s)", segment))

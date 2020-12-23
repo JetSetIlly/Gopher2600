@@ -32,6 +32,10 @@ type State struct {
 
 	// parameters for next function call
 	parameters []uint8
+
+	// static area of the cartridge. accessible outside of the cartridge
+	// through GetStatic() and PutStatic()
+	static *Static
 }
 
 func newDPCPlusState() *State {

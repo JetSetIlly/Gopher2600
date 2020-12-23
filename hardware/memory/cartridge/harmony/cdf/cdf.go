@@ -40,10 +40,6 @@ type cdf struct {
 	bankSize int
 	banks    [][]byte
 
-	// static area of the cartridge. accessible outside of the cartridge
-	// through GetStatic() and PutStatic()
-	static *Static
-
 	// rewindable state
 	state *State
 }
@@ -103,13 +99,13 @@ func NewCDF(version byte, data []byte) (mapper.CartMapper, error) {
 	}
 
 	// initialise static memory
-	cart.static = cart.newCDFstatic(data)
+	cart.state.static = cart.newCDFstatic(data)
 
 	// initialise ARM processor
 	//
 	// if bank0 has any ARM code then it will start at offset 0x08. first eight
 	// bytes are the ARM header
-	cart.arm = arm7tdmi.NewARM(cart.static, cart)
+	cart.arm = arm7tdmi.NewARM(cart.state.static, cart)
 
 	return cart, nil
 }
@@ -131,6 +127,7 @@ func (cart *cdf) Snapshot() mapper.CartSnapshot {
 // Plumb implements the mapper.CartMapper interface.
 func (cart *cdf) Plumb(s mapper.CartSnapshot) {
 	cart.state = s.(*State)
+	cart.arm.PlumbSharedMemory(cart.state.static)
 }
 
 // Reset implements the mapper.CartMapper interface.
@@ -183,7 +180,7 @@ func (cart *cdf) Read(addr uint16, passive bool) (uint8, error) {
 
 			// get current address for the data stream
 			jmp := cart.readDataFetcher(reg)
-			data = cart.static.dataRAM[jmp>>cart.version.fetcherShift]
+			data = cart.state.static.dataRAM[jmp>>cart.version.fetcherShift]
 			jmp += 1 << cart.version.fetcherShift
 			cart.updateDataFetcher(reg, jmp)
 
@@ -210,7 +207,7 @@ func (cart *cdf) Read(addr uint16, passive bool) (uint8, error) {
 				addr += cart.state.registers.MusicFetcher[0].Count >> 21
 
 				// get sample from memory
-				data = cart.static.read8bit(addr)
+				data = cart.state.static.read8bit(addr)
 
 				// prevent excessive volume
 				if cart.state.registers.MusicFetcher[0].Count&(1<<20) == 0 {
@@ -225,7 +222,7 @@ func (cart *cdf) Read(addr uint16, passive bool) (uint8, error) {
 			for i := range cart.state.registers.MusicFetcher {
 				m := cart.readMusicFetcher(i)
 				m += (cart.state.registers.MusicFetcher[i].Count >> cart.state.registers.MusicFetcher[i].Waveform)
-				data += cart.static.read8bit(m)
+				data += cart.state.static.read8bit(m)
 			}
 
 			return data, nil
@@ -270,7 +267,7 @@ func (cart *cdf) Write(addr uint16, data uint8, passive bool, poke bool) error {
 		v := cart.readDataFetcher(DSCOMM)
 
 		// write data to ARM RAM
-		cart.static.dataRAM[v>>cart.version.fetcherShift] = data
+		cart.state.static.dataRAM[v>>cart.version.fetcherShift] = data
 
 		// advance address value
 		v += 1 << cart.version.fetcherShift
@@ -366,14 +363,7 @@ func (cart *cdf) GetBank(addr uint16) mapper.BankInfo {
 
 // Patch implements the mapper.CartMapper interface.
 func (cart *cdf) Patch(offset int, data uint8) error {
-	if offset >= len(cart.static.cartDataROM) {
-		return curated.Errorf("CDF: %v", fmt.Errorf("patch offset too high (%v)", offset))
-	}
-
-	cart.static.cartDataROM[offset] = data
-	cart.static.cartDataRAM[offset] = data
-
-	return nil
+	return curated.Errorf("CDF: patching unsupported")
 }
 
 // Listen implements the mapper.CartMapper interface.
@@ -447,41 +437,41 @@ func (cart *cdf) WriteHotspots() map[uint16]mapper.CartHotspotInfo {
 
 func (cart *cdf) updateDataFetcher(fetcher int, data uint32) {
 	idx := cart.version.fetcherBase + (uint32(fetcher) * 4)
-	cart.static.driverRAM[idx] = uint8(data)
-	cart.static.driverRAM[idx+1] = uint8(data >> 8)
-	cart.static.driverRAM[idx+2] = uint8(data >> 16)
-	cart.static.driverRAM[idx+3] = uint8(data >> 24)
+	cart.state.static.driverRAM[idx] = uint8(data)
+	cart.state.static.driverRAM[idx+1] = uint8(data >> 8)
+	cart.state.static.driverRAM[idx+2] = uint8(data >> 16)
+	cart.state.static.driverRAM[idx+3] = uint8(data >> 24)
 }
 
 func (cart *cdf) readDataFetcher(reg int) uint32 {
 	idx := cart.version.fetcherBase + (uint32(reg) * 4)
-	return uint32(cart.static.driverRAM[idx]) |
-		uint32(cart.static.driverRAM[idx+1])<<8 |
-		uint32(cart.static.driverRAM[idx+2])<<16 |
-		uint32(cart.static.driverRAM[idx+3])<<24
+	return uint32(cart.state.static.driverRAM[idx]) |
+		uint32(cart.state.static.driverRAM[idx+1])<<8 |
+		uint32(cart.state.static.driverRAM[idx+2])<<16 |
+		uint32(cart.state.static.driverRAM[idx+3])<<24
 }
 
 func (cart *cdf) readIncrement(reg int) uint32 {
 	idx := cart.version.incrementBase + (uint32(reg) * 4)
-	return uint32(cart.static.driverRAM[idx]) |
-		uint32(cart.static.driverRAM[idx+1])<<8 |
-		uint32(cart.static.driverRAM[idx+2])<<16 |
-		uint32(cart.static.driverRAM[idx+3])<<24
+	return uint32(cart.state.static.driverRAM[idx]) |
+		uint32(cart.state.static.driverRAM[idx+1])<<8 |
+		uint32(cart.state.static.driverRAM[idx+2])<<16 |
+		uint32(cart.state.static.driverRAM[idx+3])<<24
 }
 
 func (cart *cdf) readMusicFetcher(reg int) uint32 {
 	addr := cart.version.musicBase + (uint32(reg) * 4)
-	return uint32(cart.static.driverRAM[addr]) |
-		uint32(cart.static.driverRAM[addr+1])<<8 |
-		uint32(cart.static.driverRAM[addr+2])<<16 |
-		uint32(cart.static.driverRAM[addr+3])<<24
+	return uint32(cart.state.static.driverRAM[addr]) |
+		uint32(cart.state.static.driverRAM[addr+1])<<8 |
+		uint32(cart.state.static.driverRAM[addr+2])<<16 |
+		uint32(cart.state.static.driverRAM[addr+3])<<24
 }
 
 func (cart *cdf) streamData(reg int) uint8 {
 	addr := cart.readDataFetcher(reg)
 	inc := cart.readIncrement(reg)
 
-	value := cart.static.dataRAM[addr>>cart.version.fetcherShift]
+	value := cart.state.static.dataRAM[addr>>cart.version.fetcherShift]
 	addr += inc << cart.version.incrementShift
 	cart.updateDataFetcher(reg, addr)
 

@@ -43,10 +43,6 @@ type dpcPlus struct {
 	bankSize int
 	banks    [][]byte
 
-	// static area of the cartridge. accessible outside of the cartridge
-	// through GetStatic() and PutStatic()
-	static *Static
-
 	// rewindable state
 	state *State
 }
@@ -88,13 +84,13 @@ func NewDPCplus(data []byte) (mapper.CartMapper, error) {
 	}
 
 	// initialise static memory
-	cart.static = cart.newDPCplusStatic(data)
+	cart.state.static = cart.newDPCplusStatic(data)
 
 	// initialise ARM processor
 	//
 	// if bank0 has any ARM code then it will start at offset 0x08. first eight
 	// bytes are the ARM header
-	cart.arm = arm7tdmi.NewARM(cart.static, cart)
+	cart.arm = arm7tdmi.NewARM(cart.state.static, cart)
 
 	return cart, nil
 }
@@ -116,6 +112,7 @@ func (cart *dpcPlus) Snapshot() mapper.CartSnapshot {
 // Plumb implements the mapper.CartMapper interface.
 func (cart *dpcPlus) Plumb(s mapper.CartSnapshot) {
 	cart.state = s.(*State)
+	cart.arm.PlumbSharedMemory(cart.state.static)
 }
 
 // Reset implements the mapper.CartMapper interface.
@@ -175,9 +172,9 @@ func (cart *dpcPlus) Read(addr uint16, passive bool) (uint8, error) {
 
 	// music fetcher
 	case 0x05:
-		data = cart.static.dataRAM[(cart.state.registers.MusicFetcher[0].Waveform<<5)+(cart.state.registers.MusicFetcher[0].Count>>27)]
-		data += cart.static.dataRAM[(cart.state.registers.MusicFetcher[1].Waveform<<5)+(cart.state.registers.MusicFetcher[1].Count>>27)]
-		data += cart.static.dataRAM[(cart.state.registers.MusicFetcher[2].Waveform<<5)+(cart.state.registers.MusicFetcher[2].Count>>27)]
+		data = cart.state.static.dataRAM[(cart.state.registers.MusicFetcher[0].Waveform<<5)+(cart.state.registers.MusicFetcher[0].Count>>27)]
+		data += cart.state.static.dataRAM[(cart.state.registers.MusicFetcher[1].Waveform<<5)+(cart.state.registers.MusicFetcher[1].Count>>27)]
+		data += cart.state.static.dataRAM[(cart.state.registers.MusicFetcher[2].Waveform<<5)+(cart.state.registers.MusicFetcher[2].Count>>27)]
 
 	// reserved
 	case 0x06:
@@ -202,7 +199,7 @@ func (cart *dpcPlus) Read(addr uint16, passive bool) (uint8, error) {
 		f := addr & 0x0007
 		dataAddr := uint16(cart.state.registers.Fetcher[f].Hi)<<8 | uint16(cart.state.registers.Fetcher[f].Low)
 		dataAddr &= 0x0fff
-		data = cart.static.dataRAM[dataAddr]
+		data = cart.state.static.dataRAM[dataAddr]
 		if !passive {
 			cart.state.registers.Fetcher[f].inc()
 		}
@@ -227,7 +224,7 @@ func (cart *dpcPlus) Read(addr uint16, passive bool) (uint8, error) {
 		dataAddr := uint16(cart.state.registers.Fetcher[f].Hi)<<8 | uint16(cart.state.registers.Fetcher[f].Low)
 		dataAddr &= 0x0fff
 		if cart.state.registers.Fetcher[f].isWindow() {
-			data = cart.static.dataRAM[dataAddr]
+			data = cart.state.static.dataRAM[dataAddr]
 		}
 		if !passive {
 			cart.state.registers.Fetcher[f].inc()
@@ -252,7 +249,7 @@ func (cart *dpcPlus) Read(addr uint16, passive bool) (uint8, error) {
 		f := addr & 0x0007
 		dataAddr := uint16(cart.state.registers.FracFetcher[f].Hi)<<8 | uint16(cart.state.registers.FracFetcher[f].Low)
 		dataAddr &= 0x0fff
-		data = cart.static.dataRAM[dataAddr]
+		data = cart.state.static.dataRAM[dataAddr]
 		if !passive {
 			cart.state.registers.FracFetcher[f].inc()
 		}
@@ -440,7 +437,7 @@ func (cart *dpcPlus) Write(addr uint16, data uint8, passive bool, poke bool) err
 			for i := uint8(0); i < cart.state.parameters[3]; i++ {
 				f := cart.state.registers.Fetcher[cart.state.parameters[2]&0x07]
 				o := uint16(f.Low) | (uint16(f.Hi) << 8) + uint16(i)
-				cart.static.dataRAM[o] = cart.static.cartDataROM[addr+uint16(i)]
+				cart.state.static.dataRAM[o] = cart.state.static.cartDataROM[addr+uint16(i)]
 			}
 			cart.state.parameters = cart.state.parameters[:0]
 		case 2:
@@ -453,7 +450,7 @@ func (cart *dpcPlus) Write(addr uint16, data uint8, passive bool, poke bool) err
 			for i := uint8(0); i < cart.state.parameters[3]; i++ {
 				f := cart.state.registers.Fetcher[cart.state.parameters[2]&0x07]
 				o := uint16(f.Low+i) | (uint16(f.Hi+i) << 8)
-				cart.static.dataRAM[o] = cart.state.parameters[0]
+				cart.state.static.dataRAM[o] = cart.state.parameters[0]
 			}
 
 			cart.state.parameters = cart.state.parameters[:0]
@@ -517,7 +514,7 @@ func (cart *dpcPlus) Write(addr uint16, data uint8, passive bool, poke bool) err
 		cart.state.registers.Fetcher[f].dec()
 		dataAddr := uint16(cart.state.registers.Fetcher[f].Hi)<<8 | uint16(cart.state.registers.Fetcher[f].Low)
 		dataAddr &= 0x0fff
-		cart.static.dataRAM[dataAddr] = data
+		cart.state.static.dataRAM[dataAddr] = data
 
 	// data fetcher, high pointer
 	case 0x68:
@@ -556,20 +553,20 @@ func (cart *dpcPlus) Write(addr uint16, data uint8, passive bool, poke bool) err
 
 	// musical notes
 	case 0x75:
-		cart.state.registers.MusicFetcher[0].Freq = uint32(cart.static.freqRAM[data<<2])
-		cart.state.registers.MusicFetcher[0].Freq += uint32(cart.static.freqRAM[(data<<2)+1]) << 8
-		cart.state.registers.MusicFetcher[0].Freq += uint32(cart.static.freqRAM[(data<<2)+2]) << 16
-		cart.state.registers.MusicFetcher[0].Freq += uint32(cart.static.freqRAM[(data<<2)+3]) << 24
+		cart.state.registers.MusicFetcher[0].Freq = uint32(cart.state.static.freqRAM[data<<2])
+		cart.state.registers.MusicFetcher[0].Freq += uint32(cart.state.static.freqRAM[(data<<2)+1]) << 8
+		cart.state.registers.MusicFetcher[0].Freq += uint32(cart.state.static.freqRAM[(data<<2)+2]) << 16
+		cart.state.registers.MusicFetcher[0].Freq += uint32(cart.state.static.freqRAM[(data<<2)+3]) << 24
 	case 0x76:
-		cart.state.registers.MusicFetcher[1].Freq = uint32(cart.static.freqRAM[data<<2])
-		cart.state.registers.MusicFetcher[1].Freq += uint32(cart.static.freqRAM[(data<<2)+1]) << 8
-		cart.state.registers.MusicFetcher[1].Freq += uint32(cart.static.freqRAM[(data<<2)+2]) << 16
-		cart.state.registers.MusicFetcher[1].Freq += uint32(cart.static.freqRAM[(data<<2)+3]) << 24
+		cart.state.registers.MusicFetcher[1].Freq = uint32(cart.state.static.freqRAM[data<<2])
+		cart.state.registers.MusicFetcher[1].Freq += uint32(cart.state.static.freqRAM[(data<<2)+1]) << 8
+		cart.state.registers.MusicFetcher[1].Freq += uint32(cart.state.static.freqRAM[(data<<2)+2]) << 16
+		cart.state.registers.MusicFetcher[1].Freq += uint32(cart.state.static.freqRAM[(data<<2)+3]) << 24
 	case 0x77:
-		cart.state.registers.MusicFetcher[2].Freq = uint32(cart.static.freqRAM[data<<2])
-		cart.state.registers.MusicFetcher[2].Freq += uint32(cart.static.freqRAM[(data<<2)+1]) << 8
-		cart.state.registers.MusicFetcher[2].Freq += uint32(cart.static.freqRAM[(data<<2)+2]) << 16
-		cart.state.registers.MusicFetcher[2].Freq += uint32(cart.static.freqRAM[(data<<2)+3]) << 24
+		cart.state.registers.MusicFetcher[2].Freq = uint32(cart.state.static.freqRAM[data<<2])
+		cart.state.registers.MusicFetcher[2].Freq += uint32(cart.state.static.freqRAM[(data<<2)+1]) << 8
+		cart.state.registers.MusicFetcher[2].Freq += uint32(cart.state.static.freqRAM[(data<<2)+2]) << 16
+		cart.state.registers.MusicFetcher[2].Freq += uint32(cart.state.static.freqRAM[(data<<2)+3]) << 24
 
 	// data fetcher, queue
 	case 0x78:
@@ -597,7 +594,7 @@ func (cart *dpcPlus) Write(addr uint16, data uint8, passive bool, poke bool) err
 		f := addr & 0x0007
 		dataAddr := uint16(cart.state.registers.Fetcher[f].Hi)<<8 | uint16(cart.state.registers.Fetcher[f].Low)
 		dataAddr &= 0x0fff
-		cart.static.dataRAM[dataAddr] = data
+		cart.state.static.dataRAM[dataAddr] = data
 		cart.state.registers.Fetcher[f].inc()
 	}
 
@@ -645,14 +642,7 @@ func (cart *dpcPlus) GetBank(addr uint16) mapper.BankInfo {
 
 // Patch implements the mapper.CartMapper interface.
 func (cart *dpcPlus) Patch(offset int, data uint8) error {
-	if offset >= len(cart.static.cartDataRAM) {
-		return curated.Errorf("DPC+: %v", fmt.Errorf("patch offset too high (%v)", offset))
-	}
-
-	cart.static.cartDataRAM[offset] = data
-	cart.static.cartDataROM[offset] = data
-
-	return nil
+	return curated.Errorf("DPC+: patching unsupported")
 }
 
 // Listen implements the mapper.CartMapper interface.
