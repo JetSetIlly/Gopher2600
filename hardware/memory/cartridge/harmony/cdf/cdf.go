@@ -28,6 +28,8 @@ import (
 
 // cdf implements the cartMapper interface.
 type cdf struct {
+	mappingID string
+
 	// cdf comes in several different versions
 	version version
 
@@ -70,8 +72,9 @@ const (
 // NewCDF is the preferred method of initialisation for the harmony type.
 func NewCDF(version byte, data []byte) (mapper.CartMapper, error) {
 	cart := &cdf{
-		bankSize: 4096,
-		state:    newCDFstate(),
+		mappingID: "CDF",
+		bankSize:  4096,
+		state:     newCDFstate(),
 	}
 
 	var err error
@@ -112,12 +115,12 @@ func NewCDF(version byte, data []byte) (mapper.CartMapper, error) {
 }
 
 func (cart *cdf) String() string {
-	return fmt.Sprintf("%s [%s] Bank: %d", cart.version.mappingID, cart.version.description, cart.state.bank)
+	return fmt.Sprintf("%s [%s] Bank: %d", cart.mappingID, cart.version.description, cart.state.bank)
 }
 
 // ID implements the mapper.CartMapper interface.
 func (cart *cdf) ID() string {
-	return cart.version.mappingID
+	return cart.mappingID
 }
 
 // Snapshot implements the mapper.CartMapper interface.
@@ -133,7 +136,7 @@ func (cart *cdf) Plumb(s mapper.CartSnapshot) {
 // Reset implements the mapper.CartMapper interface.
 func (cart *cdf) Reset(_ *rand.Rand) {
 	bank := len(cart.banks) - 1
-	if cart.version.mappingID == "CDJF+" {
+	if cart.version.submapping == "CDJF+" {
 		bank = 0
 	}
 	cart.state.initialise(bank)
@@ -153,7 +156,7 @@ func (cart *cdf) Read(addr uint16, passive bool) (uint8, error) {
 
 	data := cart.banks[cart.state.bank][addr]
 
-	if cart.state.FastFetch && cart.state.fastJMP > 0 {
+	if cart.state.registers.FastFetch && cart.state.fastJMP > 0 {
 		// maybe surprisingly, a fastJMP bay bave be triggered erroneousy.
 		//
 		// how so? well, for example, a branch operator will cause a phantom read
@@ -192,7 +195,7 @@ func (cart *cdf) Read(addr uint16, passive bool) (uint8, error) {
 	// a false positive, by definition.
 	cart.state.fastJMP = 0
 
-	if cart.state.FastFetch && cart.state.fastLDA {
+	if cart.state.registers.FastFetch && cart.state.fastLDA {
 		cart.state.fastLDA = false
 
 		// data fetchers
@@ -202,7 +205,7 @@ func (cart *cdf) Read(addr uint16, passive bool) (uint8, error) {
 
 		// music fetchers
 		if data == byte(cart.version.amplitudeRegister) {
-			if cart.state.SampleMode {
+			if cart.state.registers.SampleMode {
 				addr := cart.readMusicFetcher(0)
 				addr += cart.state.registers.MusicFetcher[0].Count >> 21
 
@@ -234,10 +237,10 @@ func (cart *cdf) Read(addr uint16, passive bool) (uint8, error) {
 	}
 
 	// set lda flag if fast fetch mode is on and data returned is LDA #immediate
-	cart.state.fastLDA = cart.state.FastFetch && data == ldaImmediate
+	cart.state.fastLDA = cart.state.registers.FastFetch && data == ldaImmediate
 
 	// set jmp flag if fast fetch mode is on and data returned is JMP absolute
-	if cart.state.FastFetch && data == jmpAbsolute &&
+	if cart.state.registers.FastFetch && data == jmpAbsolute &&
 		// only "jmp absolute" instructions with certain address operands are
 		// treated as "FastJMPs". Generally, this address must be $0000 but in
 		// the case of the CDFJ version an address of $0100 is also acceptable.
@@ -288,10 +291,10 @@ func (cart *cdf) Write(addr uint16, data uint8, passive bool, poke bool) error {
 
 	case 0x0ff2:
 		// SETMODE
-		cart.state.FastFetch = data&0x0f != 0x0f
-		cart.state.SampleMode = data&0xf0 != 0xf0
+		cart.state.registers.FastFetch = data&0x0f != 0x0f
+		cart.state.registers.SampleMode = data&0xf0 != 0xf0
 
-		if !cart.state.FastFetch {
+		if !cart.state.registers.FastFetch {
 			cart.state.fastLDA = false
 			cart.state.fastJMP = 0
 		}
@@ -328,43 +331,24 @@ func (cart *cdf) bankswitch(addr uint16, passive bool) bool {
 			return true
 		}
 
-		if cart.version.mappingID == "CDFJ+" {
-			if addr == 0x0ff4 {
-				cart.state.bank = 0
-			} else if addr == 0x0ff5 {
-				cart.state.bank = 1
-			} else if addr == 0x0ff6 {
-				cart.state.bank = 2
-			} else if addr == 0x0ff7 {
-				cart.state.bank = 3
-			} else if addr == 0x0ff8 {
-				cart.state.bank = 4
-			} else if addr == 0x0ff9 {
-				cart.state.bank = 5
-			} else if addr == 0x0ffa {
-				cart.state.bank = 6
-			} else if addr == 0x0ffb {
-				cart.state.bank = 0
-			}
-		} else {
-			if addr == 0x0ff4 {
-				cart.state.bank = 6
-			} else if addr == 0x0ff5 {
-				cart.state.bank = 0
-			} else if addr == 0x0ff6 {
-				cart.state.bank = 1
-			} else if addr == 0x0ff7 {
-				cart.state.bank = 2
-			} else if addr == 0x0ff8 {
-				cart.state.bank = 3
-			} else if addr == 0x0ff9 {
-				cart.state.bank = 4
-			} else if addr == 0x0ffa {
-				cart.state.bank = 5
-			} else if addr == 0x0ffb {
-				cart.state.bank = 6
-			}
+		if addr == 0x0ff4 {
+			cart.state.bank = 6
+		} else if addr == 0x0ff5 {
+			cart.state.bank = 0
+		} else if addr == 0x0ff6 {
+			cart.state.bank = 1
+		} else if addr == 0x0ff7 {
+			cart.state.bank = 2
+		} else if addr == 0x0ff8 {
+			cart.state.bank = 3
+		} else if addr == 0x0ff9 {
+			cart.state.bank = 4
+		} else if addr == 0x0ffa {
+			cart.state.bank = 5
+		} else if addr == 0x0ffb {
+			cart.state.bank = 6
 		}
+
 		return true
 	}
 	return false
@@ -508,7 +492,7 @@ func (cart *cdf) streamData(reg int) uint8 {
 func (cart *cdf) ARMinterrupt(addr uint32, val1 uint32, val2 uint32) (arm7tdmi.ARMinterruptReturn, error) {
 	var r arm7tdmi.ARMinterruptReturn
 
-	if cart.version.mappingID == "CDF0" {
+	if cart.version.submapping == "CDF0" {
 		switch addr {
 		case 0x000006e2:
 			// set note

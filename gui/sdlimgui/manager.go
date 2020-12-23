@@ -147,6 +147,9 @@ func newManager(img *SdlImgui) (*manager, error) {
 	if err := addWindow(newWinDPCplusRegisters, false, windowMenuCart); err != nil {
 		return nil, err
 	}
+	if err := addWindow(newWinCDFRegisters, false, windowMenuCart); err != nil {
+		return nil, err
+	}
 	if err := addWindow(newWinSuperchargerRegisters, false, windowMenuCart); err != nil {
 		return nil, err
 	}
@@ -184,6 +187,7 @@ func newManager(img *SdlImgui) (*manager, error) {
 	wm.menu["DPC"] = append(wm.menu["DPC"], winDPCregistersTitle)
 	wm.menu["DPC+"] = append(wm.menu["DPC+"], winDPCplusRegistersTitle)
 	wm.menu["AR"] = append(wm.menu["AR"], winSuperchargerRegistersTitle)
+	wm.menu["CDF"] = append(wm.menu["CDF"], winCDFRegistersTitle)
 
 	// cartridges with RAM and static areas will be added automatically
 

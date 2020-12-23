@@ -30,9 +30,6 @@ type State struct {
 	beats int
 
 	registers Registers
-
-	FastFetch  bool
-	SampleMode bool
 }
 
 // initialise should be called as soon as convenient
@@ -47,8 +44,6 @@ func (s *State) initialise(bank int) {
 	s.fastJMP = 0
 	s.beats = 0
 	s.registers.initialise()
-	s.FastFetch = false
-	s.SampleMode = false
 }
 
 func (s *State) Snapshot() mapper.CartSnapshot {

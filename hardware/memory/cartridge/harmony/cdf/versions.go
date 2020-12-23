@@ -20,7 +20,7 @@ type version struct {
 	version byte
 
 	// mappingID and description differ depending on the version
-	mappingID   string
+	submapping  string
 	description string
 
 	// the base index for the CDF registers. These values are indexes into the
@@ -55,7 +55,7 @@ func newVersion(v byte) (version, error) {
 	// different version of the CDF mapper have different addresses
 	switch r.version {
 	case 0x0: // cdf0
-		r.mappingID = "CDF0"
+		r.submapping = "CDF0"
 		r.description = "Harmony (CDF0)"
 		r.fetcherBase = 0x06e0
 		r.incrementBase = 0x0768
@@ -63,7 +63,7 @@ func newVersion(v byte) (version, error) {
 		r.fastJMPmask = 0xff
 		r.amplitudeRegister = 34
 	case 0x4a: // cdfj
-		r.mappingID = "CDFJ"
+		r.submapping = "CDFJ"
 		r.description = "Harmony (CDFJ)"
 		r.fetcherBase = 0x0098
 		r.incrementBase = 0x0124
@@ -71,7 +71,7 @@ func newVersion(v byte) (version, error) {
 		r.fastJMPmask = 0xfe
 		r.amplitudeRegister = 35
 	default: // cdf1
-		r.mappingID = "CDF1"
+		r.submapping = "CDF1"
 		r.description = "Harmony (CDF1)"
 		r.fetcherBase = 0x00a0
 		r.incrementBase = 0x0128
