@@ -24,6 +24,7 @@ import (
 	"go/token"
 	"io/ioutil"
 	"os"
+	"sort"
 	"strings"
 )
 
@@ -96,9 +97,19 @@ type constants map[string]int
 
 func (c *constants) String() string {
 	s := strings.Builder{}
-	for k, v := range *c {
-		s.WriteString(fmt.Sprintf("const int %s = %d;\n", k, v))
+
+	// sort keys
+	keys := make([]string, 0, len(*c))
+	for k := range *c {
+		keys = append(keys, k)
 	}
+	sort.Strings(keys)
+
+	// output constants in sorted order
+	for _, k := range keys {
+		s.WriteString(fmt.Sprintf("const int %s = %d;\n", k, (*c)[k]))
+	}
+
 	return s.String()
 }
 
