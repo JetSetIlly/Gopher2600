@@ -20,6 +20,7 @@ import (
 	"math/rand"
 
 	"github.com/jetsetilly/gopher2600/curated"
+	"github.com/jetsetilly/gopher2600/hardware/memory/addresses"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
@@ -134,10 +135,26 @@ func (cart *atari) Reset(randSrc *rand.Rand) {
 		}
 	}
 
-	// I've gone back and forth on which bank Atari cartrdiges should start on.
-	// current tests suggest that starting on the first bank is correct in most
-	// (all?) instances.
-	cart.state.bank = 0
+	// most cartridges do not care which bank they start from but some are
+	// sensitive to it. for that reason we take a little bit of care making
+	// sure that the reset vector looks "sensible". currently, this means the
+	// reset address must be in cartridge space and cannot point to anything
+	// past the reset vector location itself.
+	//
+	// known problematic ROMs:
+	//	Hack'Em Hangly Pacman which requires a start bank of 1 (or the last bank)
+	//	Stay Frosty which cannot start in the last bank
+	for b := 0; b < len(cart.banks); b++ {
+		a := addresses.Reset & uint16(cart.bankSize-1)
+		a = uint16(cart.banks[b][a]) | (uint16(cart.banks[b][a+1]) << 8)
+
+		if a < addresses.Reset-2 {
+			if _, area := memorymap.MapAddress(a, true); area == memorymap.Cartridge {
+				cart.state.bank = b
+				break
+			}
+		}
+	}
 }
 
 // GetBank implements the mapper.CartMapper interface.
