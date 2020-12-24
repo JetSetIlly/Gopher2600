@@ -77,9 +77,11 @@ type SdlImgui struct {
 
 	// functions that need to be performed in the main thread are queued for
 	// serving by the service() function
-	service      chan func()
-	serviceErr   chan error
-	servicePulse *time.Ticker
+	service           chan func()
+	serviceErr        chan error
+	servicePulsePlay  *time.Ticker
+	servicePulseDebug *time.Ticker
+	servicePulseIdle  *time.Ticker
 
 	// ReqFeature() and GetFeature() hands off requests to the featureReq
 	// channel for servicing. think of these as pecial instances of the
@@ -177,9 +179,11 @@ func NewSdlImgui(tv *television.Television, playmode bool) (*SdlImgui, error) {
 		return nil, curated.Errorf("sdlimgui: %v", err)
 	}
 
-	// initialise service pulse. this will be changed depending on whether the
-	// application is in debugger or play mode.
-	img.servicePulse = time.NewTicker(time.Millisecond * 10)
+	// initialise service pulses. which one we're using depends on the state of
+	// the gui (whether it's in playmode etc.)
+	img.servicePulseDebug = time.NewTicker(time.Millisecond * debugSleepPeriod)
+	img.servicePulsePlay = time.NewTicker(time.Millisecond * playSleepPeriod)
+	img.servicePulseIdle = time.NewTicker(time.Millisecond * idleSleepPeriod)
 
 	// playmode is an atomic value. make sure a value has been assigned to it
 	// before accessing it.
@@ -269,7 +273,6 @@ func (img *SdlImgui) setPlaymode(set bool) error {
 		img.wm.playScr.setOpen(true)
 		img.screen.clearTextureRenderers()
 		img.screen.addTextureRenderer(img.wm.playScr)
-		img.servicePulse.Reset(time.Millisecond * playSleepPeriod)
 
 		return nil
 	}
@@ -293,7 +296,6 @@ func (img *SdlImgui) setPlaymode(set bool) error {
 	img.wm.playScr.setOpen(false)
 	img.screen.clearTextureRenderers()
 	img.screen.addTextureRenderer(img.wm.dbgScr)
-	img.servicePulse.Reset(time.Millisecond * debugSleepPeriod)
 
 	return nil
 }

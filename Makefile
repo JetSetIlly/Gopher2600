@@ -1,8 +1,10 @@
 compileFlags = '-c 3 -B -wb=false'
-profilingRom = roms/Pitfall.bin
+#profilingRom = roms/Homebrew/CDF/galaga_dmo_v2_NTSC.bin
+profilingRom = roms/Homebrew/DPC+ARM/ZaxxonHDDemo_150927_NTSC.bin
+#profilingRom = roms/Pitfall.bin
 #profilingRom = "test_roms/plusrom/sokoboo Plus.bin"
 
-.PHONY: all clean tidy generate check_lint lint check_pandoc readme_spell test race profile profile_display mem_profil_debug build_assertions build check_upx release release_statsview cross_windows cross_windows_statsview binaries check_gotip build_with_gotip
+.PHONY: all clean tidy generate check_lint lint check_pandoc readme_spell test race profile profile_display mem_profile_debug build_assertions build check_upx release release_statsview cross_windows cross_windows_statsview binaries check_gotip build_with_gotip
 
 all:
 	@echo "use release target to build release binary"
@@ -47,12 +49,12 @@ race: generate test
 profile: generate test
 	go build -gcflags $(compileFlags)
 	./gopher2600 performance --profile --fpscap=false $(profilingRom)
-	go tool pprof -http : ./gopher2600 cpu.profile
+	go tool pprof -http : ./gopher2600 mem.profile
 
 profile_display: generate test
 	go build -gcflags $(compileFlags)
 	./gopher2600 performance --display --profile $(profilingRom)
-	go tool pprof -http : ./gopher2600 cpu.profile
+	go tool pprof -http : ./gopher2600 mem.profile
 
 mem_profile_debug: generate test
 	go build -gcflags $(compileFlags)

@@ -45,8 +45,8 @@ type limiter struct {
 	// measurement
 	actual         atomic.Value // float32
 	actualCt       int
-	actualCtTarget int
 	actualTime     time.Time
+	measuringPulse *time.Ticker
 }
 
 func (lmtr *limiter) init(tv *Television) {
@@ -56,6 +56,7 @@ func (lmtr *limiter) init(tv *Television) {
 	lmtr.limit = true
 	lmtr.actualTime = time.Now()
 	lmtr.pulse = time.NewTicker(time.Millisecond * 10)
+	lmtr.measuringPulse = time.NewTicker(time.Second)
 }
 
 // there's no science behind when we flip from scales these values are based simply on
@@ -77,7 +78,7 @@ func (lmtr *limiter) setRate(fps float32) {
 	// set scale and duration to wait according to requested FPS rate
 	if fps < thresPixelScale {
 		lmtr.scale = scalePixel
-		dur := time.Duration(279000 * fps)
+		dur := time.Duration(fps * float32(lmtr.tv.state.spec.IdealPixelsPerFrame))
 		lmtr.pulse.Reset(dur)
 	} else if fps < threshScanlineScale {
 		lmtr.scale = scaleScanline
@@ -93,55 +94,42 @@ func (lmtr *limiter) setRate(fps float32) {
 
 	// restart acutal FPS rate measurement values
 	lmtr.actualCt = 0
-	lmtr.actualCtTarget = int(lmtr.requested.Load().(float32)) / 2
 	lmtr.actualTime = time.Now()
 }
 
 func (lmtr *limiter) checkFrame() {
-	if lmtr.scale != scaleFrame || !lmtr.limit {
-		return
-	}
-
-	<-lmtr.pulse.C
+	lmtr.actualCt++
 	lmtr.measureActual()
+	if lmtr.scale == scaleFrame && lmtr.limit {
+		<-lmtr.pulse.C
+	}
 }
 
 func (lmtr *limiter) checkScanline() {
-	if lmtr.scale != scaleScanline || !lmtr.limit {
-		return
-	}
-
-	<-lmtr.pulse.C
 	lmtr.measureActual()
+	if lmtr.scale == scaleScanline && lmtr.limit {
+		<-lmtr.pulse.C
+	}
 }
 
 func (lmtr *limiter) checkPixel() {
-	if lmtr.scale != scalePixel || !lmtr.limit {
-		return
-	}
-
-	<-lmtr.pulse.C
 	lmtr.measureActual()
+	if lmtr.scale == scalePixel && lmtr.limit {
+		<-lmtr.pulse.C
+	}
 }
 
 // called every scanline (although internally limited) to calculate the actual
 // frame rate being achieved.
 func (lmtr *limiter) measureActual() {
-	lmtr.actualCt++
-	if lmtr.actualCt >= lmtr.actualCtTarget {
+	select {
+	case <-lmtr.measuringPulse.C:
 		t := time.Now()
-		lmtr.actual.Store(float32(lmtr.actualCtTarget) / float32(t.Sub(lmtr.actualTime).Seconds()))
-
-		actual := lmtr.actual.Load().(float32)
-		switch lmtr.scale {
-		case scaleScanline:
-			lmtr.actual.Store(actual / float32(lmtr.tv.state.spec.ScanlinesTotal))
-		case scalePixel:
-			lmtr.actual.Store(actual / float32(lmtr.tv.state.spec.IdealPixelsPerFrame))
-		}
+		lmtr.actual.Store(float32(lmtr.actualCt) / float32(t.Sub(lmtr.actualTime).Seconds()))
 
 		// reset time and count ready for next measurement
 		lmtr.actualTime = t
 		lmtr.actualCt = 0
+	default:
 	}
 }

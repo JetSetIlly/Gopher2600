@@ -34,6 +34,9 @@ const leadingFrames = 5
 // the number of synced frames required before the tv frame is considered to "stable".
 const stabilityThreshold = 20
 
+// State encapsulates the television values that can change from moment to
+// moment. Used by the rewind system when recording the current television
+// state.
 type State struct {
 	// television specification (NTSC or PAL)
 	spec specification.Spec
@@ -124,12 +127,14 @@ type Television struct {
 	// a single registered reflector
 	reflector ReflectionSynchronising
 
+	// instance of current state (as supported by the rewind system)
 	state *State
 
 	// list of signals sent to pixel renderers since the beginning of the
 	// current frame
 	signals []signal.SignalAttributes
 	// the index to write the next signal
+
 	signalIdx int
 }
 
@@ -555,7 +560,6 @@ func (tv *Television) SetFPSCap(limit bool) bool {
 // Request the number frames per second. This overrides the frame rate of
 // the specification. A negative  value restores the spec's frame rate.
 func (tv *Television) SetFPS(fps float32) {
-	_ = tv.setPendingPixels()
 	tv.lmtr.setRate(fps)
 }
 

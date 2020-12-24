@@ -138,6 +138,10 @@ type Debugger struct {
 	// continued operation is not inside a video cycle loop
 	inputLoopRestart   bool
 	inputLoopOnRestart func() error
+
+	// whether the state of the emulation has changed since the last time it
+	// was checked - use HasChanged() function
+	hasChanged bool
 }
 
 // NewDebugger creates and initialises everything required for a new debugging
@@ -314,6 +318,14 @@ func (dbg *Debugger) Start(initScript string, cartload cartridgeloader.Loader) e
 	}
 
 	return nil
+}
+
+// HasChanged returns true if emulation is currently moving forward. Also
+// returns true if debugger is starting up.
+func (dbg *Debugger) HasChanged() bool {
+	v := dbg.hasChanged || !dbg.running
+	dbg.hasChanged = false
+	return v
 }
 
 // reset of VCS should go through this function to makes sure debugger is reset

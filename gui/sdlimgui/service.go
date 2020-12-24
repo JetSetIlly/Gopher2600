@@ -23,20 +23,70 @@ import (
 	"github.com/veandco/go-sdl2/sdl"
 )
 
+// time periods in milliseconds that each mode sleeps for at the end of each
+// service() call. this changes depending on whether we're in debug or play
+// mode.
+const (
+	debugSleepPeriod = 50
+	playSleepPeriod  = 10
+	idleSleepPeriod  = 500
+)
+
 // Service implements GuiCreator interface.
 func (img *SdlImgui) Service() {
-	// run any outstanding feature requests
+	// run any outstanding service functions
 	select {
-	case r := <-img.featureSet:
-		img.serviceSetFeature(r)
-	case r := <-img.featureGet:
-		img.serviceGetFeature(r)
+	case f := <-img.service:
+		f()
 	default:
 	}
 
-	// do not check for events if no event channel has been set
+	// the first SDL event is captured by the select blocks below. queued
+	// events are captured by the PollEvent loop
+	var ev sdl.Event
+
+	// wait for an event or a timeout depending on the state of the emulation.
+	// are we in playmode or are we in debugging mode.
+	//
+	// note that the only difference between the select blocks is the timeout
+	// duration.
+	if img.isPlaymode() {
+		select {
+		case <-img.servicePulsePlay.C:
+		case ev = <-img.plt.event:
+		case r := <-img.featureSet:
+			img.serviceSetFeature(r)
+		case r := <-img.featureGet:
+			img.serviceGetFeature(r)
+		}
+	} else {
+		// refresh lazy values
+		img.lz.Refresh()
+
+		if img.lz.Debugger.HasChanged {
+			select {
+			case <-img.servicePulseDebug.C:
+			case ev = <-img.plt.event:
+			case r := <-img.featureSet:
+				img.serviceSetFeature(r)
+			case r := <-img.featureGet:
+				img.serviceGetFeature(r)
+			}
+		} else {
+			select {
+			case <-img.servicePulseIdle.C:
+			case ev = <-img.plt.event:
+			case r := <-img.featureSet:
+				img.serviceSetFeature(r)
+			case r := <-img.featureGet:
+				img.serviceGetFeature(r)
+			}
+		}
+	}
+
+	// do not service SDL events if no event channel has been set
 	if img.events != nil {
-		for ev := sdl.PollEvent(); ev != nil; ev = sdl.PollEvent() {
+		for ; ev != nil; ev = sdl.PollEvent() {
 			switch ev := ev.(type) {
 			// close window
 			case *sdl.QuitEvent:
@@ -211,11 +261,6 @@ func (img *SdlImgui) Service() {
 		}
 	}
 
-	// refresh lazy values
-	if !img.isPlaymode() {
-		img.lz.Refresh()
-	}
-
 	// start of a new frame
 	img.plt.newFrame()
 	imgui.NewFrame()
@@ -229,21 +274,4 @@ func (img *SdlImgui) Service() {
 	img.screen.render()
 	img.glsl.render(img.plt.displaySize(), img.plt.framebufferSize(), imgui.RenderedDrawData())
 	img.plt.postRender()
-
-	// run any outstanding service functions
-	select {
-	case f := <-img.service:
-		f()
-	default:
-	}
-
-	// sleep to help avoid 100% CPU usage
-	<-img.servicePulse.C
 }
-
-// time periods in milliseconds that each mode sleeps for at the end of each
-// service() call. used to initialise a time.Ticker in setPlaymode().
-const (
-	debugSleepPeriod = 50
-	playSleepPeriod  = 10
-)

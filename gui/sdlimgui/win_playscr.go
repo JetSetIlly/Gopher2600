@@ -110,9 +110,8 @@ func (win *winPlayScr) draw() {
 	imgui.PushStyleColor(imgui.StyleColorWindowBg, win.img.cols.PlayWindowBg)
 	imgui.PushStyleColor(imgui.StyleColorBorder, win.img.cols.PlayWindowBorder)
 
-	// we don't want to ever show scrollbars
 	imgui.BeginV(winPlayScrTitle, &win.open,
-		imgui.WindowFlagsNoScrollbar|imgui.WindowFlagsNoTitleBar|imgui.WindowFlagsNoDecoration)
+		imgui.WindowFlagsNoDecoration|imgui.WindowFlagsNoMove|imgui.WindowFlagsNoBringToFrontOnFocus)
 
 	// note size of window
 	win.contentDim = imgui.ContentRegionAvail()

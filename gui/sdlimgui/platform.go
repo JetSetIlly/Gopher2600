@@ -29,11 +29,14 @@ const windowTitle = "Gopher2600"
 type platform struct {
 	img    *SdlImgui
 	window *sdl.Window
-	time   uint64
 	mode   sdl.DisplayMode
 
 	// whether window is full screen or not
 	fullScreen bool
+
+	// event returned by WaitEvent(). used to listen to events in a select
+	// block along with other channels
+	event chan sdl.Event
 }
 
 // newPlatform is the preferred method of initialisation for the platform type.
@@ -92,6 +95,13 @@ func newPlatform(img *SdlImgui) (*platform, error) {
 		logger.Log("sdl", "cannot set GLSwapInterval() for SDL GUI")
 	}
 
+	plt.event = make(chan sdl.Event, 1)
+	go func() {
+		for {
+			plt.event <- sdl.WaitEvent()
+		}
+	}()
+
 	return plt, nil
 }
 
@@ -126,20 +136,6 @@ func (plt *platform) newFrame() {
 	// Setup display size (every frame to accommodate for window resizing)
 	displaySize := plt.displaySize()
 	plt.img.io.SetDisplaySize(imgui.Vec2{X: displaySize[0], Y: displaySize[1]})
-
-	// Setup time step (we don't use SDL_GetTicks() because it is using millisecond resolution)
-	frequency := sdl.GetPerformanceFrequency()
-	currentTime := sdl.GetPerformanceCounter()
-
-	var deltaTime float32
-	if plt.time > 0 {
-		deltaTime = float32(currentTime-plt.time) / float32(frequency)
-		plt.img.io.SetDeltaTime(deltaTime)
-	} else {
-		deltaTime = 1.0 / float32(plt.mode.RefreshRate)
-	}
-	sdl.Delay(uint32(deltaTime))
-	plt.time = currentTime
 
 	// If a mouse press event came, always pass it as "mouse held this frame",
 	// so we don't miss click-release events that are shorter than 1 frame.

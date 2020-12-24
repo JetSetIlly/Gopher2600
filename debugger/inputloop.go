@@ -40,6 +40,9 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 	inputCt := 0
 
 	for dbg.running {
+		// raise hasChanged flag every iteration
+		dbg.hasChanged = true
+
 		var err error
 		var checkTerm bool
 
@@ -180,6 +183,10 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 				}
 				return err
 			}
+
+			// hasChanged flag may have been false for a long time after the
+			// readTerminal() pause. set to true immediately.
+			dbg.hasChanged = true
 
 			// check exit video loop
 			if dbg.inputLoopRestart {
