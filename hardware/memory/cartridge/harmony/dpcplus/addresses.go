@@ -38,6 +38,6 @@ const (
 	freqOriginRAM = 0x40001c00
 	freqMemtopRAM = 0x40002000
 
-	// stack should be within the range of the RAM copy of the frequency tables
+	// stack should be within the range of the RAM copy of the frequency tables.
 	stackOriginRAM = 0x40001fdc
 )

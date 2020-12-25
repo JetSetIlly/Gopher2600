@@ -14,8 +14,7 @@ gopher2600_statsview.exe
 *.pdf
 recording_*
 terminal_*
-*cpu.profile
-*mem.profile
+*.profile
 out
 out2
 output

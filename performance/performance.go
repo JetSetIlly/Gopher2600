@@ -13,8 +13,6 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-// Package performance contains helper functions relating to
-// performance. This includes CPU and memory profile generation.
 package performance
 
 import (
@@ -31,7 +29,7 @@ import (
 )
 
 // Check is a very rough and ready calculation of the emulator's performance.
-func Check(output io.Writer, profile bool, tv *television.Television, runTime string, cartload cartridgeloader.Loader) error {
+func Check(output io.Writer, profile Profile, tv *television.Television, runTime string, cartload cartridgeloader.Loader) error {
 	var err error
 
 	// create vcs using the tv created above
@@ -104,11 +102,7 @@ func Check(output io.Writer, profile bool, tv *television.Television, runTime st
 
 	// launch runner directly or through the CPU profiler, depending on
 	// supplied arguments
-	if profile {
-		err = ProfileCPU("cpu.profile", runner)
-	} else {
-		err = runner()
-	}
+	err = RunProfiler(profile, "performance", runner)
 	if err != nil {
 		return curated.Errorf("performance; %v", err)
 	}
@@ -120,11 +114,6 @@ func Check(output io.Writer, profile bool, tv *television.Television, runTime st
 	numFrames := endFrame - startFrame
 	fps, accuracy := CalcFPS(tv, numFrames, duration.Seconds())
 	output.Write([]byte(fmt.Sprintf("%.2f fps (%d frames in %.2f seconds) %.1f%%\n", fps, numFrames, duration.Seconds(), accuracy)))
-
-	// create memory profile depending on supplied arguments
-	if profile {
-		err = ProfileMem("mem.profile")
-	}
 
 	return err
 }

@@ -55,11 +55,11 @@ func (cart *PlusROM) SetAddrInfo(host string, path string) (hostValid bool, path
 }
 
 const (
-	// max host length(s) defined by DNS specifications
+	// max host length(s) defined by DNS specifications.
 	maxHostLength        = 253
 	maxHostElementLength = 63
 
-	// there is no upper limit for path size but 1024 bytes is more than enough
+	// there is no upper limit for path size but 1024 bytes is more than enough.
 	maxPathLength = 1024
 )
 

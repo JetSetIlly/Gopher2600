@@ -52,7 +52,7 @@ type ARMinterruptReturn struct {
 }
 
 // the arm7tdmi has a 32 bit status register but we only need the CSPR bits
-// currently
+// currently.
 type status struct {
 	// CPSR (current program status register) bits
 	negative bool
@@ -115,7 +115,7 @@ func (sr *status) setCarry(a, b, c uint32) {
 	sr.carry = d&0x02 == 0x02
 }
 
-// register names
+// register names.
 const (
 	rSP = 13 + iota
 	rLR
@@ -318,7 +318,7 @@ func (arm *ARM) executeInstruction() (bool, error) {
 	// fmt.Println()
 	if arm.noDebugNext {
 		arm.noDebugNext = false
-	} else {
+		// } else {
 		// fmt.Println(arm.String())
 		// fmt.Println(arm.status.String())
 	}
@@ -495,20 +495,20 @@ func (arm *ARM) executeAddSubtract(opcode uint16) {
 	}
 
 	if subtract {
-		if immediate {
-			// fmt.Printf("| SUB R%d, R%d, #%02x ", destReg, srcReg, val)
-		} else {
-			// fmt.Printf("| SUB R%d, R%d, R%d ", destReg, srcReg, imm)
-		}
+		// if immediate {
+		// 	fmt.Printf("| SUB R%d, R%d, #%02x ", destReg, srcReg, val)
+		// } else {
+		// 	fmt.Printf("| SUB R%d, R%d, R%d ", destReg, srcReg, imm)
+		// }
 		arm.status.setCarry(arm.registers[srcReg], ^val, 1)
 		arm.status.setOverflow(arm.registers[srcReg], ^val, 1)
 		arm.registers[destReg] = arm.registers[srcReg] - val
 	} else {
-		if immediate {
-			// fmt.Printf("| ADD R%d, R%d, #%02x ", destReg, srcReg, val)
-		} else {
-			// fmt.Printf("| ADD R%d, R%d, R%d ", destReg, srcReg, imm)
-		}
+		// if immediate {
+		// 	fmt.Printf("| ADD R%d, R%d, #%02x ", destReg, srcReg, val)
+		// } else {
+		// 	fmt.Printf("| ADD R%d, R%d, R%d ", destReg, srcReg, imm)
+		// }
 		arm.status.setCarry(arm.registers[srcReg], val, 0)
 		arm.status.setOverflow(arm.registers[srcReg], val, 0)
 		arm.registers[destReg] = arm.registers[srcReg] + val
@@ -519,7 +519,7 @@ func (arm *ARM) executeAddSubtract(opcode uint16) {
 }
 
 // "The instructions in this group perform operations between a Lo register and
-// an 8-bit immediate value."
+// an 8-bit immediate value".
 func (arm *ARM) executeMovCmpAddSubImm(opcode uint16) {
 	// format 3 - Move/compare/add/subtract immediate
 	op := (opcode & 0x1800) >> 11
@@ -556,7 +556,7 @@ func (arm *ARM) executeMovCmpAddSubImm(opcode uint16) {
 	}
 }
 
-// "The following instructions perform ALU operations on a Lo register pair."
+// "The following instructions perform ALU operations on a Lo register pair".
 func (arm *ARM) executeALUoperations(opcode uint16) {
 	// format 4 - ALU operations
 	op := (opcode & 0x03c0) >> 6
@@ -783,7 +783,6 @@ func (arm *ARM) executeALUoperations(opcode uint16) {
 	default:
 		panic(fmt.Sprintf("unimplemented ALU operation (%04b)", op))
 	}
-
 }
 
 func (arm *ARM) executeHiRegisterOps(opcode uint16) (bool, error) {
@@ -1134,19 +1133,18 @@ func (arm *ARM) executePushPopRegisters(opcode uint16) {
 		// assert end_address = address
 		// SP = end_address
 
-		if pclr {
-			// fmt.Printf("| POP {%#0b, PC}", regList)
-		} else {
-			// fmt.Printf("| POP {%#0b}", regList)
-		}
+		// if pclr {
+		// 	fmt.Printf("| POP {%#0b, PC}", regList)
+		// } else {
+		// 	fmt.Printf("| POP {%#0b}", regList)
+		// }
 
 		// start at stack pointer at work upwards
 		addr := arm.registers[rSP]
 
 		// read each register in turn (from lower to highest)
 		for i := 0; i <= 7; i++ {
-
-			// shit single-big mask
+			// shift single-bit mask
 			m := uint8(0x01 << i)
 
 			// read register if indicated by regList
@@ -1162,7 +1160,7 @@ func (arm *ARM) executePushPopRegisters(opcode uint16) {
 			v := arm.read32bit(addr) & 0xfffffffe
 
 			// add two to the new PC value. not sure why this is. it's not
-			// descibed in the pseudo code above but I think it's to do with
+			// described in the pseudo code above but I think it's to do with
 			// how the ARM CPU does prefetching and when the adjustment is
 			// applied. anwyay, this works but it might be worth figuring out
 			// where else to apply the adjustment and whether that would be any
@@ -1211,8 +1209,7 @@ func (arm *ARM) executePushPopRegisters(opcode uint16) {
 
 	// write each register in turn (from lower to highest)
 	for i := 0; i <= 7; i++ {
-
-		// shit single-big mask
+		// shift single-bit mask
 		m := uint8(0x01 << i)
 
 		// write register if indicated by regList
@@ -1340,7 +1337,7 @@ func (arm *ARM) executeConditionalBranch(opcode uint16) {
 	// do branch
 	if branch {
 		arm.registers[rPC] = newPC + 1
-	} else {
+		// } else {
 		// fmt.Printf("| no branch ")
 	}
 }
@@ -1365,7 +1362,6 @@ func (arm *ARM) executeUnconditionalBranch(opcode uint16) {
 
 	// disassembly
 	// fmt.Printf("| BAL %04x ", arm.registers[rPC])
-
 }
 
 func (arm *ARM) executeLongBranchWithLink(opcode uint16) {

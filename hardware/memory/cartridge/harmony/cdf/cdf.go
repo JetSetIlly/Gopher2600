@@ -71,12 +71,7 @@ func NewCDF(version byte, data []byte) (mapper.CartMapper, error) {
 		mappingID: "CDF",
 		bankSize:  4096,
 		state:     newCDFstate(),
-	}
-
-	var err error
-	cart.version, err = newVersion(version)
-	if err != nil {
-		return nil, curated.Errorf("CDF: %v", err)
+		version:   newVersion(version),
 	}
 
 	// amount of data used for cartridges
@@ -237,15 +232,15 @@ func (cart *cdf) Read(addr uint16, passive bool) (uint8, error) {
 	cart.state.fastLDA = cart.state.registers.FastFetch && data == ldaImmediate
 
 	// set jmp flag if fast fetch mode is on and data returned is JMP absolute
-	if cart.state.registers.FastFetch && data == jmpAbsolute &&
+	if cart.state.registers.FastFetch && data == jmpAbsolute {
 		// only "jmp absolute" instructions with certain address operands are
 		// treated as "FastJMPs". Generally, this address must be $0000 but in
 		// the case of the CDFJ version an address of $0100 is also acceptable.
-		cart.banks[cart.state.bank][addr+1]&cart.version.fastJMPmask == 0x00 && cart.banks[cart.state.bank][addr+2] == 0x00 {
-
-		// JMP operator takes a 16bit operand so we'll count the number of
-		// bytes we've read
-		cart.state.fastJMP = 2
+		if cart.banks[cart.state.bank][addr+1]&cart.version.fastJMPmask == 0x00 && cart.banks[cart.state.bank][addr+2] == 0x00 {
+			// JMP operator takes a 16bit operand so we'll count the number of
+			// bytes we've read
+			cart.state.fastJMP = 2
+		}
 	}
 
 	return data, nil

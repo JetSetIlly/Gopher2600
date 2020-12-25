@@ -23,7 +23,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 )
 
-// Registers implements mappers.Registers
+// Registers implements mappers.Registers.
 type Registers struct {
 	MusicFetcher [3]musicDataFetcher
 	FastFetch    bool

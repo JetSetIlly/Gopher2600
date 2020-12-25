@@ -104,7 +104,7 @@ func newPlatform(img *SdlImgui) (*platform, error) {
 // only wake up when real work needs to be done.
 //
 // see main service loop in service.go for how this interacts with the main
-// goroutine
+// goroutine.
 func (plt *platform) miniServiceLoop() {
 	plt.miniEvent = make(chan sdl.Event, 1)
 	go func() {

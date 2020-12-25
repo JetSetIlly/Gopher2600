@@ -12,26 +12,17 @@
 //
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
-// the memory addresses from the point of view of the ARM processor.
 
-package cdf
-
-const (
-	driverOriginROM = 0x00000000
-	driverMemtopROM = 0x000007ff
-
-	customOriginROM = 0x00000800
-	customMemtopROM = 0x00007fff
-
-	driverOriginRAM = 0x40000000
-	driverMemtopRAM = 0x400007ff
-
-	dataOriginRAM = 0x40000800
-	dataMemtopRAM = 0x400017ff
-
-	variablesOriginRAM = 0x40001800
-	variablesMemtopRAM = 0x40001fff
-
-	// stack should be within the range of the RAM copy of the variables.
-	stackOriginRAM = 0x40001fdc
-)
+// Package performance contains helper functions relating to performance.
+//
+// Check() is a quick way of running the emulation for a fixed duration of
+// time. It will optionally generate profiling information.
+//
+// RunProfiler() can be used to generate the various profile types. On it's own
+// it will not limit the amount of time the program runs for so it is useful
+// for more real-world situations
+//
+// CalcFPS() calculates frames-per-second in aggregate along with an accuracy
+// value (as compared to the television specification). Probably not suitable
+// for "live" FPS monitoring.
+package performance

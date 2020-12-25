@@ -4,14 +4,14 @@ profilingRom = roms/Homebrew/DPC+ARM/ZaxxonHDDemo_150927_NTSC.bin
 #profilingRom = roms/Pitfall.bin
 #profilingRom = "test_roms/plusrom/sokoboo Plus.bin"
 
-.PHONY: all clean tidy generate check_lint lint check_pandoc readme_spell test race profile profile_display mem_profile_debug build_assertions build check_upx release release_statsview cross_windows cross_windows_statsview binaries check_gotip build_with_gotip
+.PHONY: all clean tidy generate check_lint lint check_pandoc readme_spell test race profile build_assertions build check_upx release release_statsview cross_windows cross_windows_statsview binaries check_gotip build_with_gotip
 
 all:
 	@echo "use release target to build release binary"
 
 clean:
 	@echo "removing binary and profiling files"
-	@rm -f cpu.profile mem.profile debug.cpu.profile debug.mem.profile
+	@rm -f *.profile
 	@rm -f gopher2600_* gopher2600
 	@find ./ -type f | grep "\.orig" | xargs -r rm
 
@@ -48,22 +48,16 @@ race: generate test
 
 profile: generate test
 	go build -gcflags $(compileFlags)
-	./gopher2600 performance --profile --fpscap=false $(profilingRom)
-	go tool pprof -http : ./gopher2600 mem.profile
-
-profile_display: generate test
-	go build -gcflags $(compileFlags)
-	./gopher2600 performance --display --profile $(profilingRom)
-	go tool pprof -http : ./gopher2600 mem.profile
-
-mem_profile_debug: generate test
-	go build -gcflags $(compileFlags)
-	./gopher2600 debug --profile $(profilingRom)
-	go tool pprof -http : ./gopher2600 debug.mem.profile
+	@echo
+	@echo "WHAT NEXT"
+	@echo "---------"
+	@echo "1.  run gopher2600 in RUN, DEBUG or PERFORMANCE mode"
+	@echo "1a. use --profile argument. CPU, MEM, TRACE for profiling types (comma separated)"
+	@echo "2.  view cpu and mem profile with: go tool pprof -http : ./gopher2600 <profile>"
+	@echo "2b. view trace with: go tool trace -http : performance_trace.profile"
 
 build_assertions: generate test
 	go build -gcflags $(compileFlags) -tags=assertions
-
 
 # deliberately not having test dependecies for remaining targets
 

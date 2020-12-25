@@ -126,7 +126,6 @@ func fingerprintCDF(b []byte) (bool, byte) {
 	}
 
 	return count >= 3, version
-
 }
 
 func fingerprintSuperchargerFastLoad(cartload cartridgeloader.Loader) bool {

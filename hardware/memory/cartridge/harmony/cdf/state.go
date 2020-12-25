@@ -36,7 +36,7 @@ type State struct {
 	static *Static
 }
 
-// initialise should be called as soon as convenient
+// initialise should be called as soon as convenient.
 func newCDFstate() *State {
 	s := &State{}
 	return s

@@ -15,7 +15,7 @@
 
 package cdf
 
-// versions contains the information that can differ between CDF versions
+// versions contains the information that can differ between CDF versions.
 type version struct {
 	version byte
 
@@ -47,7 +47,7 @@ type version struct {
 	fetcherMask uint32
 }
 
-func newVersion(v byte) (version, error) {
+func newVersion(v byte) version {
 	r := version{
 		version: v,
 	}
@@ -84,5 +84,5 @@ func newVersion(v byte) (version, error) {
 	r.incrementShift = 12
 	r.fetcherMask = 0xf0000000
 
-	return r, nil
+	return r
 }

@@ -269,6 +269,7 @@ func play(md *modalflag.Modes, sync *mainSync) error {
 	hiscore := md.AddBool("hiscore", false, "contact hiscore server [EXPERIMENTAL]")
 	log := md.AddBool("log", false, "echo debugging log to stdout")
 	useSavekey := md.AddBool("savekey", false, "use savekey in player 1 port")
+	profile := md.AddString("profile", "none", "run performance check with profiling: command separated CPU, MEM, TRACE or ALL")
 
 	stats := &[]bool{false}[0]
 	if statsview.Available() {
@@ -347,9 +348,34 @@ func play(md *modalflag.Modes, sync *mainSync) error {
 		// end playback recordings gracefully
 		sync.state <- stateRequest{req: reqNoIntSig}
 
-		err = playmode.Play(tv, scr, *record, cartload, *patchFile, *hiscore, *useSavekey)
+		// check for profiling options
+		p, err := performance.ParseProfileString(*profile)
 		if err != nil {
 			return err
+		}
+
+		// set up a running function
+		playLaunch := func() error {
+			err = playmode.Play(tv, scr, *record, cartload, *patchFile, *hiscore, *useSavekey)
+			if err != nil {
+				return err
+			}
+			return nil
+		}
+
+		if p == performance.ProfileNone {
+			err = playLaunch()
+			if err != nil {
+				return err
+			}
+		} else {
+			// if profile generation has been requested then pass the
+			// playLaunch() function prepared above, through the RunProfiler()
+			// function
+			err := performance.RunProfiler(p, "play", playLaunch)
+			if err != nil {
+				return err
+			}
 		}
 
 		if *record {
@@ -381,8 +407,8 @@ func debug(md *modalflag.Modes, sync *mainSync) error {
 	spec := md.AddString("tv", "AUTO", "television specification: NTSC, PAL")
 	termType := md.AddString("term", "IMGUI", "terminal type to use in debug mode: IMGUI, COLOR, PLAIN")
 	initScript := md.AddString("initscript", defInitScript, "script to run on debugger start")
-	profile := md.AddBool("profile", false, "run debugger through cpu profiler")
 	useSavekey := md.AddBool("savekey", false, "use savekey in player 1 port")
+	profile := md.AddString("profile", "none", "run performance check with profiling: command separated CPU, MEM, TRACE or ALL")
 
 	stats := &[]bool{false}[0]
 	if statsview.Available() {
@@ -461,8 +487,14 @@ func debug(md *modalflag.Modes, sync *mainSync) error {
 		return fmt.Errorf("2600 cartridge required for %s mode", md)
 
 	case 1:
-		// set up a running function
-		dbgRun := func() error {
+		// check for profiling options
+		p, err := performance.ParseProfileString(*profile)
+		if err != nil {
+			return err
+		}
+
+		// set up a launch function
+		dbgLaunch := func() error {
 			cartload := cartridgeloader.NewLoader(md.GetArg(0), *mapping)
 
 			err := dbg.Start(*initScript, cartload)
@@ -472,20 +504,16 @@ func debug(md *modalflag.Modes, sync *mainSync) error {
 			return nil
 		}
 
-		// if profile generation has been requested then pass the dbgRun()
-		// function prepared above, through the ProfileCPU() command
-		if *profile {
-			err := performance.ProfileCPU("debug.cpu.profile", dbgRun)
-			if err != nil {
-				return err
-			}
-			err = performance.ProfileMem("debug.mem.profile")
+		if p == performance.ProfileNone {
+			// no profile required so run dbgLaunch() function as normal
+			err := dbgLaunch()
 			if err != nil {
 				return err
 			}
 		} else {
-			// no profile required so run dbgRun() function as normal
-			err := dbgRun()
+			// if profile generation has been requested then pass the dbgLaunch()
+			// function prepared above, through the RunProfiler() function
+			err := performance.RunProfiler(p, "debugger", dbgLaunch)
 			if err != nil {
 				return err
 			}
@@ -561,7 +589,7 @@ func perform(md *modalflag.Modes, sync *mainSync) error {
 	display := md.AddBool("display", false, "display TV output")
 	fpsCap := md.AddBool("fpscap", true, "cap FPS to specification (only valid if -display=true)")
 	duration := md.AddString("duration", "5s", "run duration (note: there is a 2s overhead)")
-	profile := md.AddBool("profile", false, "produce cpu and memory profiling reports")
+	profile := md.AddString("profile", "NONE", "run performance check with profiling: command separated CPU, MEM, TRACE or ALL")
 
 	p, err := md.Parse()
 	if err != nil || p != modalflag.ParseContinue {
@@ -602,7 +630,14 @@ func perform(md *modalflag.Modes, sync *mainSync) error {
 			scr.SetFeature(gui.ReqVSync, *fpsCap)
 		}
 
-		err = performance.Check(md.Output, *profile, tv, *duration, cartload)
+		// check for profiling options
+		p, err := performance.ParseProfileString(*profile)
+		if err != nil {
+			return err
+		}
+
+		// run performance check
+		err = performance.Check(md.Output, p, tv, *duration, cartload)
 		if err != nil {
 			return err
 		}

@@ -26,9 +26,8 @@ import (
 // Static implements the bus.CartStatic interface.
 type Static struct {
 	// slices of cartData that should not be modified during execution
-	cartDataROM []byte
-	driverROM   []byte
-	customROM   []byte
+	driverROM []byte
+	customROM []byte
 
 	// slices of cartData that will be modified during execution
 	driverRAM    []byte
@@ -114,25 +113,25 @@ func (stc *Static) read8bit(addr uint32) uint8 {
 	return (*mem)[addr]
 }
 
-func (stc *Static) read16bit(addr uint32) uint16 {
-	mem, addr := stc.MapAddress(addr, false)
-	if mem == nil || addr >= uint32(len(*mem)) {
-		return 0
-	}
-	return uint16((*mem)[addr]) |
-		uint16((*mem)[addr+1])<<8
-}
+// func (stc *Static) read16bit(addr uint32) uint16 {
+// 	mem, addr := stc.MapAddress(addr, false)
+// 	if mem == nil || addr >= uint32(len(*mem)) {
+// 		return 0
+// 	}
+// 	return uint16((*mem)[addr]) |
+// 		uint16((*mem)[addr+1])<<8
+// }
 
-func (stc *Static) read32bit(addr uint32) uint32 {
-	mem, addr := stc.MapAddress(addr, false)
-	if mem == nil || addr >= uint32(len(*mem)) {
-		return 0
-	}
-	return uint32((*mem)[addr]) |
-		uint32((*mem)[addr+1])<<8 |
-		uint32((*mem)[addr+2])<<16 |
-		uint32((*mem)[addr+3])<<24
-}
+// func (stc *Static) read32bit(addr uint32) uint32 {
+// 	mem, addr := stc.MapAddress(addr, false)
+// 	if mem == nil || addr >= uint32(len(*mem)) {
+// 		return 0
+// 	}
+// 	return uint32((*mem)[addr]) |
+// 		uint32((*mem)[addr+1])<<8 |
+// 		uint32((*mem)[addr+2])<<16 |
+// 		uint32((*mem)[addr+3])<<24
+// }
 
 // GetStatic implements the bus.CartDebugBus interface.
 func (cart *cdf) GetStatic() []mapper.CartStatic {
