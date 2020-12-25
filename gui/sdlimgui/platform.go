@@ -34,9 +34,8 @@ type platform struct {
 	// whether window is full screen or not
 	fullScreen bool
 
-	// event returned by WaitEvent(). used to listen to events in a select
-	// block along with other channels
-	event chan sdl.Event
+	// event captured by the mini-serivce loop is sent over this channel
+	miniEvent chan sdl.Event
 }
 
 // newPlatform is the preferred method of initialisation for the platform type.
@@ -95,14 +94,24 @@ func newPlatform(img *SdlImgui) (*platform, error) {
 		logger.Log("sdl", "cannot set GLSwapInterval() for SDL GUI")
 	}
 
-	plt.event = make(chan sdl.Event, 1)
-	go func() {
-		for {
-			plt.event <- sdl.WaitEvent()
-		}
-	}()
+	// kickstart miniservice loop
+	plt.miniServiceLoop()
 
 	return plt, nil
+}
+
+// mini-service loop is used to help put the main goroutine to sleep and to
+// only wake up when real work needs to be done.
+//
+// see main service loop in service.go for how this interacts with the main
+// goroutine
+func (plt *platform) miniServiceLoop() {
+	plt.miniEvent = make(chan sdl.Event, 1)
+	go func() {
+		for {
+			plt.miniEvent <- sdl.WaitEvent()
+		}
+	}()
 }
 
 // destroy cleans up the resources.
