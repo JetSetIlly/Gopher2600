@@ -41,16 +41,17 @@ type IdentifyReflector interface {
 // Note that ordering of the structure is important. There's a saving of about
 // 2MB per frame compared to the unoptimal ordering.
 type Reflection struct {
-	CPU          execution.Result
-	Bank         mapper.BankInfo
-	VideoElement video.Element
-	TV           signal.SignalAttributes
-	Hmove        Hmove
-	WSYNC        bool
-	IsRAM        bool
-	Hblank       bool
-	Unchanged    bool
-	Collision    string
+	CPU                 execution.Result
+	Bank                mapper.BankInfo
+	VideoElement        video.Element
+	TV                  signal.SignalAttributes
+	Hmove               Hmove
+	WSYNC               bool
+	IsRAM               bool
+	Hblank              bool
+	Collision           string
+	OptReusePixel       bool
+	OptNoCollisionCheck bool
 }
 
 // Hmove groups the HMOVE reflection information. It's too complex a property
@@ -66,4 +67,4 @@ type Hmove struct {
 
 // OverlayList is the list of overlays that should be supported by a
 // reflection.Renderer.
-var OverlayList = []string{"WSYNC", "Collisions", "HMOVE", "Unchanged"}
+var OverlayList = []string{"WSYNC", "Collisions", "HMOVE", "Optimised"}

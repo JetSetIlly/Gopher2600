@@ -73,10 +73,7 @@ func (stc *Static) Snapshot() *Static {
 
 // MapAddress implements the arm7tdmi.SharedMemory interface.
 func (stc *Static) MapAddress(addr uint32, write bool) (*[]byte, uint32) {
-	// driver ARM code (ROM)
-	if addr >= driverOriginROM && addr <= driverMemtopROM {
-		return &stc.driverROM, addr - driverOriginROM
-	}
+	// tests arranged in order of most likely to be used
 
 	// custom ARM code (ROM)
 	if addr >= customOriginROM && addr <= customMemtopROM {
@@ -87,14 +84,19 @@ func (stc *Static) MapAddress(addr uint32, write bool) (*[]byte, uint32) {
 		return &stc.customROM, addr - customOriginROM
 	}
 
-	// driver ARM code (RAM)
-	if addr >= driverOriginRAM && addr <= driverMemtopRAM {
-		return &stc.driverRAM, addr - driverOriginRAM
+	// driver ARM code (ROM)
+	if addr >= driverOriginROM && addr <= driverMemtopROM {
+		return &stc.driverROM, addr - driverOriginROM
 	}
 
 	// data (RAM)
 	if addr >= dataOriginRAM && addr <= dataMemtopRAM {
 		return &stc.dataRAM, addr - dataOriginRAM
+	}
+
+	// driver ARM code (RAM)
+	if addr >= driverOriginRAM && addr <= driverMemtopRAM {
+		return &stc.driverRAM, addr - driverOriginRAM
 	}
 
 	// variables (RAM)

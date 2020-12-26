@@ -161,8 +161,6 @@ func (col *Collisions) String() string {
 // optimised tick of collision registers. memory is only written to when
 // necessary.
 func (col *Collisions) tick(p0, p1, m0, m1, bl, pf bool) {
-	col.collisions = 0
-
 	if m0 {
 		if p1 || p0 {
 			if p1 {

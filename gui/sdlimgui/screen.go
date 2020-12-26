@@ -371,9 +371,12 @@ func (scr *screen) plotOverlay(x, y int, ref reflection.Reflection) {
 				scr.crit.overlayPixels.SetRGBA(x, y, reflection.PaletteEvents["HMOVE latched"])
 			}
 		}
-	case "Unchanged":
-		if ref.Unchanged {
-			scr.crit.overlayPixels.SetRGBA(x, y, reflection.PaletteEvents["Unchanged"])
+	case "Optimised":
+		// show pixels that were generated without opimisation (ie. these
+		// pixels took the maximum amount of time required to discover what the
+		// color should be)
+		if ref.OptNoCollisionCheck && ref.OptReusePixel {
+			scr.crit.overlayPixels.SetRGBA(x, y, reflection.PaletteEvents["Optimised"])
 		}
 	}
 }
@@ -423,7 +426,7 @@ func (scr *screen) render() {
 			return
 		}
 
-		// copy render pixes to safe copy that we use to copy to the screen
+		// copy render pixels to safe copy that we use to copy to the screen
 		// textures
 		copy(scr.crit.pixels.Pix, scr.crit.bufferPixels[scr.crit.renderIdx].Pix)
 		scr.crit.section.Unlock()

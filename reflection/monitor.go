@@ -43,14 +43,15 @@ func NewMonitor(vcs *hardware.VCS, renderer Renderer) *Monitor {
 // emulation/system.
 func (mon *Monitor) Check(bank mapper.BankInfo) error {
 	res := Reflection{
-		CPU:          mon.vcs.CPU.LastResult,
-		WSYNC:        !mon.vcs.CPU.RdyFlg,
-		Bank:         bank,
-		VideoElement: mon.vcs.TIA.Video.LastElement,
-		TV:           mon.vcs.TV.GetLastSignal(),
-		Hblank:       mon.vcs.TIA.Hblank,
-		Collision:    mon.vcs.TIA.Video.Collisions.String(),
-		Unchanged:    mon.vcs.TIA.Video.Unchanged,
+		CPU:                 mon.vcs.CPU.LastResult,
+		WSYNC:               !mon.vcs.CPU.RdyFlg,
+		Bank:                bank,
+		VideoElement:        mon.vcs.TIA.Video.LastElement,
+		TV:                  mon.vcs.TV.GetLastSignal(),
+		Hblank:              mon.vcs.TIA.Hblank,
+		Collision:           mon.vcs.TIA.Video.Collisions.String(),
+		OptReusePixel:       mon.vcs.TIA.Video.OptReusePixel,
+		OptNoCollisionCheck: mon.vcs.TIA.Video.OptNoCollisionCheck,
 	}
 
 	// reflect HMOVE state

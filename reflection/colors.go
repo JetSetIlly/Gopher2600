@@ -40,5 +40,5 @@ var PaletteEvents = map[string]color.RGBA{
 	"HMOVE delay":   {R: 150, G: 50, B: 50, A: 150},
 	"HMOVE":         {R: 50, G: 150, B: 50, A: 150},
 	"HMOVE latched": {R: 50, G: 50, B: 150, A: 150},
-	"Unchanged":     {R: 255, G: 100, B: 25, A: 150},
+	"Optimised":     {R: 255, G: 100, B: 25, A: 150},
 }

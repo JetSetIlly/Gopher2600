@@ -234,14 +234,10 @@ func (arm *ARM) read16bit(addr uint32) uint16 {
 	mem, addr = arm.mem.MapAddress(addr, false)
 
 	if mem == nil {
-		b1 := uint16(arm.scratch[addr])
-		b2 := uint16(arm.scratch[addr+1]) << 8
-		return b1 | b2
+		return uint16(arm.scratch[addr]) | (uint16(arm.scratch[addr+1]) << 8)
 	}
 
-	b1 := uint16((*mem)[addr])
-	b2 := uint16((*mem)[addr+1]) << 8
-	return b1 | b2
+	return uint16((*mem)[addr]) | (uint16((*mem)[addr+1]) << 8)
 }
 
 func (arm *ARM) write16bit(addr uint32, val uint16) {
@@ -264,18 +260,10 @@ func (arm *ARM) read32bit(addr uint32) uint32 {
 	var mem *[]uint8
 	mem, addr = arm.mem.MapAddress(addr, false)
 	if mem == nil {
-		b1 := uint32(arm.scratch[addr])
-		b2 := uint32(arm.scratch[addr+1]) << 8
-		b3 := uint32(arm.scratch[addr+2]) << 16
-		b4 := uint32(arm.scratch[addr+3]) << 24
-		return b1 | b2 | b3 | b4
+		return uint32(arm.scratch[addr]) | (uint32(arm.scratch[addr+1]) << 8) | (uint32(arm.scratch[addr+2]) << 16) | (uint32(arm.scratch[addr+3]) << 24)
 	}
-	b1 := uint32((*mem)[addr])
-	b2 := uint32((*mem)[addr+1]) << 8
-	b3 := uint32((*mem)[addr+2]) << 16
-	b4 := uint32((*mem)[addr+3]) << 24
 
-	return b1 | b2 | b3 | b4
+	return uint32((*mem)[addr]) | (uint32((*mem)[addr+1]) << 8) | (uint32((*mem)[addr+2]) << 16) | uint32((*mem)[addr+3])<<24
 }
 
 func (arm *ARM) write32bit(addr uint32, val uint32) {
@@ -306,12 +294,9 @@ func (arm *ARM) read16bitPC() uint16 {
 	if mem == nil {
 		return 0
 	}
-	b1 := uint16((*mem)[pc])
-	b2 := uint16((*mem)[pc+1]) << 8
 
 	arm.registers[rPC] += 2
-
-	return b1 | b2
+	return uint16((*mem)[pc]) | (uint16((*mem)[pc+1]) << 8)
 }
 
 func (arm *ARM) executeInstruction() (bool, error) {
@@ -330,7 +315,12 @@ func (arm *ARM) executeInstruction() (bool, error) {
 
 	// fmt.Printf("\n>>> %04x :: %08x :: ", pc, opcode)
 
-	// working backwards up the table in Figure 5-1 of the THUMB instruction set reference
+	// working backwards up the table in Figure 5-1 of the ARM7TDMI Data Sheet.
+	//
+	// it would be lovely if we could arrange it so the most frequently used
+	// formats are tested first but I'm not sure we can.
+	//
+	// TODO: convince ourselves that ARM formats can be tested out of order.
 	if opcode&0xf000 == 0xf000 {
 		// format 19 - Long branch with link
 		arm.executeLongBranchWithLink(opcode)

@@ -174,9 +174,9 @@ func (pf *Playfield) String() string {
 // there is no tick() function because the playfield is closely intertwined
 // with the HSYNC ticker. therefore ticking of the playfield is implicit.
 
+// returns whether the foreground is active and the color to be used
+// (foreground or background)
 func (pf *Playfield) pixel() (bool, uint8) {
-	newPixel := false
-
 	if pf.pclk.Phi2() {
 		// RSYNC can monkey with the current hsync value unexpectedly and
 		// because of this we need an extra effort to make sure we're in the
@@ -206,26 +206,25 @@ func (pf *Playfield) pixel() (bool, uint8) {
 		// document.  we believe this has the same effect.
 		switch pf.Region {
 		case RegionOffScreen:
-			pf.Idx = pf.hsync.Count()
 			pf.colorLatch = false
+			return false, pf.BackgroundColor
 		case RegionLeft:
 			pf.Idx = pf.hsync.Count() - 17
-			newPixel = true
 		case RegionRight:
 			pf.Idx = pf.hsync.Count() - 37
-			newPixel = true
 		}
-	}
 
-	// pixel returns the color of the playfield at the current time.
-	// returns (false, 0) if no pixel is to be seen; and (true, col) if there is
-	if pf.Idx >= 0 && newPixel && pf.Region != RegionOffScreen {
-		pf.colorLatch = (*pf.Data)[pf.Idx]
+		// pixel returns the color of the playfield at the current time.
+		// returns (false, 0) if no pixel is to be seen; and (true, col) if there is
+		if pf.Idx >= 0 && pf.Region != RegionOffScreen {
+			pf.colorLatch = (*pf.Data)[pf.Idx]
+		}
 	}
 
 	if pf.colorLatch {
 		return true, pf.ForegroundColor
 	}
+
 	return false, pf.BackgroundColor
 }
 

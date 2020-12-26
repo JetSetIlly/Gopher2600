@@ -83,12 +83,15 @@ type Video struct {
 	spriteHasChanged    bool
 	lastPlayfieldActive bool
 	lastPixelColor      uint8
-	Unchanged           bool
 
 	// some register writes require a small latching delay. they never overlap
 	// so one event is sufficient
 	writing         delay.Event
 	writingRegister string
+
+	// optimisation flags
+	OptReusePixel       bool
+	OptNoCollisionCheck bool
 }
 
 // NewVideo is the preferred method of initialisation for the Video sub-system.
@@ -184,6 +187,10 @@ func (vd *Video) Tick(visible, hmove bool, hmoveCt uint8) {
 	m0 := vd.Missile0.tick(visible, hmove, hmoveCt, vd.Player0.triggerMissileReset())
 	m1 := vd.Missile1.tick(visible, hmove, hmoveCt, vd.Player1.triggerMissileReset())
 	bl := vd.Ball.tick(visible, hmove, hmoveCt)
+
+	// note that there is no Playfield.tick() function. ticking occurs in the
+	// Playfield.pixel() function
+
 	vd.spriteHasChanged = vd.spriteHasChanged || p0 || p1 || m0 || m1 || bl
 }
 
@@ -203,17 +210,15 @@ func (vd *Video) Pixel() uint8 {
 	pfa, pfc := vd.Playfield.pixel()
 
 	// optimisation: if nothing has changed since last pixel then return early
-	// with the color of the previous pixel. note that we're not optimising
-	// based on whether video is on/off (ie. VBLANK/HBLANK)
-	if !vd.spriteHasChanged && (!pfa || (pfa && !vd.lastPlayfieldActive)) {
+	// with the color of the previous pixel.
+	vd.OptReusePixel = !vd.spriteHasChanged && (pfa == vd.lastPlayfieldActive)
+	if vd.OptReusePixel {
 		vd.spriteHasChanged = false
 		vd.lastPlayfieldActive = pfa
-		vd.Unchanged = true
 		return vd.lastPixelColor
 	}
 	vd.spriteHasChanged = false
 	vd.lastPlayfieldActive = pfa
-	vd.Unchanged = false
 
 	bgc := vd.Playfield.BackgroundColor
 	p0a, p0c, p0k := vd.Player0.pixel()
@@ -222,16 +227,13 @@ func (vd *Video) Pixel() uint8 {
 	m1a, m1c, m1k := vd.Missile1.pixel()
 	bla, blc, blk := vd.Ball.pixel()
 
-	// the sprites return a third value which we'll call the collision
-	// condition. this condition only applies when detecting collisions with
-	// other sprites. it is not used when detecting collisions with the
-	// playfield. for playfield collisions we just use the active condition
-	// (the first returned value)
-	vd.Collisions.tick(p0k, p1k, m0k, m1k, blk, pfa)
-
-	// apply priorities to get pixel color
-	var col uint8
-	var element Element
+	// optimisation: only check for collisions if at least one sprite thinks it
+	// might be worth doing
+	vd.OptNoCollisionCheck = !(p0k || p1k || m0k || m1k || blk)
+	vd.Collisions.collisions = 0x0000
+	if !vd.OptNoCollisionCheck {
+		vd.Collisions.tick(p0k, p1k, m0k, m1k, blk, pfa)
+	}
 
 	// the interaction of the priority and scoremode bits are a little more
 	// complex than at first glance:
@@ -256,82 +258,78 @@ func (vd *Video) Pixel() uint8 {
 			if vd.Playfield.Scoremode && !vd.Playfield.Priority {
 				switch vd.Playfield.Region {
 				case RegionLeft:
-					col = p0c
+					vd.lastPixelColor = p0c
 				case RegionRight:
-					col = p1c
+					vd.lastPixelColor = p1c
 				}
 			} else {
-				col = pfc
+				vd.lastPixelColor = pfc
 			}
 
-			element = ElementPlayfield
+			vd.LastElement = ElementPlayfield
 		} else if bla {
-			col = blc
-			element = ElementBall
+			vd.lastPixelColor = blc
+			vd.LastElement = ElementBall
 		} else if p0a { // priority 2
-			col = p0c
-			element = ElementPlayer0
+			vd.lastPixelColor = p0c
+			vd.LastElement = ElementPlayer0
 		} else if m0a {
-			col = m0c
-			element = ElementMissile0
+			vd.lastPixelColor = m0c
+			vd.LastElement = ElementMissile0
 		} else if p1a { // priority 3
-			col = p1c
-			element = ElementPlayer1
+			vd.lastPixelColor = p1c
+			vd.LastElement = ElementPlayer1
 		} else if m1a {
-			col = m1c
-			element = ElementMissile1
+			vd.lastPixelColor = m1c
+			vd.LastElement = ElementMissile1
 		} else {
-			col = bgc
-			element = ElementBackground
+			vd.lastPixelColor = bgc
+			vd.LastElement = ElementBackground
 		}
 	} else {
 		if p0a { // priority 1
-			col = p0c
-			element = ElementPlayer0
+			vd.lastPixelColor = p0c
+			vd.LastElement = ElementPlayer0
 		} else if m0a {
-			col = m0c
-			element = ElementMissile0
+			vd.lastPixelColor = m0c
+			vd.LastElement = ElementMissile0
 		} else if p1a { // priority 2
-			col = p1c
-			element = ElementPlayer1
+			vd.lastPixelColor = p1c
+			vd.LastElement = ElementPlayer1
 		} else if m1a {
-			col = m1c
-			element = ElementMissile1
+			vd.lastPixelColor = m1c
+			vd.LastElement = ElementMissile1
 		} else if vd.Playfield.Scoremode && (bla || pfa) {
 			// priority 3 (scoremode without priority bit)
 			if pfa {
-				col = pfc
+				vd.lastPixelColor = pfc
 				switch vd.Playfield.Region {
 				case RegionLeft:
-					col = p0c
+					vd.lastPixelColor = p0c
 				case RegionRight:
-					col = p1c
+					vd.lastPixelColor = p1c
 				}
-				element = ElementPlayfield
+				vd.LastElement = ElementPlayfield
 			} else if bla { // priority 3
-				col = blc
-				element = ElementBall
+				vd.lastPixelColor = blc
+				vd.LastElement = ElementBall
 			}
 		} else {
 			// priority 3 (no scoremode or priority bit)
 			if bla { // priority 3
-				col = blc
-				element = ElementBall
+				vd.lastPixelColor = blc
+				vd.LastElement = ElementBall
 			} else if pfa {
-				col = pfc
-				element = ElementPlayfield
+				vd.lastPixelColor = pfc
+				vd.LastElement = ElementPlayfield
 			} else {
-				col = bgc
-				element = ElementBackground
+				vd.lastPixelColor = bgc
+				vd.LastElement = ElementBackground
 			}
 		}
 	}
 
-	vd.LastElement = element
-	vd.lastPixelColor = col
-
-	// priority 4
-	return col
+	return vd.lastPixelColor
 }
 
 // UpdatePlayfield checks TIA memory for new playfield data. Note that CTRLPF

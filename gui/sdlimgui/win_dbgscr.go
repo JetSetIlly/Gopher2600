@@ -397,6 +397,20 @@ func (win *winDbgScr) drawReflectionTooltip(mouseOrigin imgui.Vec2) {
 			} else {
 				imgui.Text("no HMOVE")
 			}
+		case "Optimised":
+			imgui.Spacing()
+			imgui.Separator()
+			imgui.Spacing()
+			if ref.OptReusePixel && ref.OptNoCollisionCheck {
+				imgui.Text("Shortest render path used")
+			} else {
+				if !ref.OptReusePixel {
+					imgui.Text("Pixel col/layer recalculated")
+				}
+				if !ref.OptNoCollisionCheck {
+					imgui.Text("Collision registers recalculated")
+				}
+			}
 		}
 		return
 	}

@@ -548,6 +548,8 @@ func (ps *PlayerSprite) _futureResetPosition() {
 	}
 }
 
+// always return player color because when in "scoremode" the playfield
+// wants to know the color of the player
 func (ps *PlayerSprite) pixel() (active bool, color uint8, collision bool) {
 	// pick the pixel from the gfxData register
 	if ps.ScanCounter.IsActive() {
@@ -571,17 +573,18 @@ func (ps *PlayerSprite) pixel() (active bool, color uint8, collision bool) {
 	// we can see this on the 3rd screen to the left of Keystone Kapers. the
 	// ball on the second corridor will wrongly collide with the policeman
 	// unless we take into account the first pixel of the scancounter
+	//
+	// (maybe surprisingly, collision detction in Pitfall is sensitive to this,
+	// which makes it a good test case)
 
-	var firstPixel bool
-	if ps.Reflected {
-		firstPixel = (*ps.gfxData>>7)&0x01 == 0x01
-	} else {
-		firstPixel = *ps.gfxData&0x01 == 0x01
+	if *ps.hblank && ps.ScanCounter.IsLatching() {
+		if ps.Reflected {
+			return false, ps.Color, (*ps.gfxData>>7)&0x01 == 0x01
+		}
+		return false, ps.Color, *ps.gfxData&0x01 == 0x01
 	}
 
-	// always return player color because when in "scoremode" the playfield
-	// wants to know the color of the player
-	return false, ps.Color, firstPixel && *ps.hblank && ps.ScanCounter.IsLatching()
+	return false, ps.Color, false
 }
 
 func (ps *PlayerSprite) setGfxData(data uint8) {
