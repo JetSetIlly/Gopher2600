@@ -53,6 +53,7 @@ func (img *SdlImgui) Service() {
 	if img.isPlaymode() {
 		select {
 		case <-img.servicePulsePlay.C:
+		case _ = <-img.serviceWake:
 		case ev = <-img.plt.miniEvent:
 		case r := <-img.featureSet:
 			img.serviceSetFeature(r)
@@ -65,6 +66,7 @@ func (img *SdlImgui) Service() {
 
 		if img.lz.Debugger.HasChanged {
 			select {
+			case _ = <-img.serviceWake:
 			case <-img.servicePulseDebug.C:
 			case ev = <-img.plt.miniEvent:
 			case r := <-img.featureSet:
@@ -74,6 +76,7 @@ func (img *SdlImgui) Service() {
 			}
 		} else {
 			select {
+			case _ = <-img.serviceWake:
 			case <-img.servicePulseIdle.C:
 			case ev = <-img.plt.miniEvent:
 				// slow down mouse-motion events unless we're in playmode or

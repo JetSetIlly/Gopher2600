@@ -171,7 +171,7 @@ func (win *winDbgScr) draw() {
 	// we don't want to ever show scrollbars
 	imgui.BeginV(winDbgScrTitle, &win.open, imgui.WindowFlagsNoScrollbar)
 
-	// note size of window and content area
+	// note size of remaining window and content area
 	win.winDim = imgui.WindowSize()
 	win.contentDim = imgui.ContentRegionAvail()
 
@@ -202,12 +202,6 @@ func (win *winDbgScr) draw() {
 	// pop style info for screen and overlay textures
 	imgui.PopStyleVar()
 	imgui.PopStyleColorV(3)
-
-	// capture mouse on double click and run emulation
-	if !win.img.hasModal && imgui.IsItemHovered() && imgui.IsMouseDoubleClicked(0) {
-		win.img.setCapture(true)
-		win.img.term.pushCommand("RUN")
-	}
 
 	// [A] add the remaining horiz/vert padding around screen image [see B below]
 	imgui.SetCursorPos(imgui.CursorPos().Plus(win.imagePadding))
@@ -326,6 +320,21 @@ func (win *winDbgScr) draw() {
 		imgui.EndCombo()
 	}
 	imgui.PopItemWidth()
+
+	// add capture information
+	imgui.SameLine()
+	c := imgui.CursorPos()
+	c.X += 10
+	if win.isCaptured {
+		imgui.SetCursorPos(c)
+		imgui.Text("RMB or ESC to release mouse")
+	} else {
+		imgui.SetCursorPos(c)
+		if imgui.Button("Capture mouse") {
+			win.img.setCapture(true)
+			win.img.serviceWake <- true
+		}
+	}
 
 	// note height of tool bar
 	win.toolBarHeight = imgui.CursorPosY() - toolBarTop

@@ -83,6 +83,10 @@ type SdlImgui struct {
 	servicePulseDebug *time.Ticker
 	servicePulseIdle  *time.Ticker
 
+	// some gui events will not be serviced immediately because of the service
+	// sleep. serviceWake causes the service loop to wake up immediately.
+	serviceWake chan bool
+
 	// ReqFeature() and GetFeature() hands off requests to the featureReq
 	// channel for servicing. think of these as pecial instances of the
 	// service chan
@@ -184,6 +188,9 @@ func NewSdlImgui(tv *television.Television, playmode bool) (*SdlImgui, error) {
 	img.servicePulseDebug = time.NewTicker(time.Millisecond * debugSleepPeriod)
 	img.servicePulsePlay = time.NewTicker(time.Millisecond * playSleepPeriod)
 	img.servicePulseIdle = time.NewTicker(time.Millisecond * idleSleepPeriod)
+
+	// channel to force service loop to wake from a delay
+	img.serviceWake = make(chan bool, 1)
 
 	// playmode is an atomic value. make sure a value has been assigned to it
 	// before accessing it.

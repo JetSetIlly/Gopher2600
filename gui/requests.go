@@ -49,6 +49,9 @@ const (
 	ReqSetVisibility    FeatureReq = "ReqSetVisibility"    // bool
 	ReqToggleVisibility FeatureReq = "ReqToggleVisibility" // none
 
+	// mouse input to be confined to play/debug screen
+	ReqCaptureMouse FeatureReq = "ReqCaptureMouse" // bool
+
 	// notify GUI of emulation state. the GUI should use this to alter how
 	// infomration, particularly the display of the PixelRenderer.
 	ReqState FeatureReq = "ReqState" // EmulationState

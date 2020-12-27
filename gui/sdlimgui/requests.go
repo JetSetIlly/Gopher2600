@@ -75,6 +75,9 @@ func (img *SdlImgui) serviceSetFeature(request featureRequest) {
 	case gui.ReqToggleVisibility:
 		img.wm.dbgScr.setOpen(!img.wm.dbgScr.isOpen())
 
+	case gui.ReqCaptureMouse:
+		img.setCapture(request.args[0].(bool))
+
 	case gui.ReqState:
 		img.setEmulationState(request.args[0].(gui.EmulationState))
 
