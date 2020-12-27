@@ -44,13 +44,13 @@ const (
 // Note that, like the name suggests, these are requests, they may or may not
 // be satisfied depending other conditions in the GUI.
 const (
-	// visibility can be interpreted by the gui implementation in different
-	// ways. at it's simplest it should set the visibility of the TV screen.
-	ReqSetVisibility    FeatureReq = "ReqSetVisibility"    // bool
-	ReqToggleVisibility FeatureReq = "ReqToggleVisibility" // none
+	// whether the gui is visible or not
+	ReqSetVisibility FeatureReq = "ReqSetVisibility" // bool
 
-	// mouse input to be confined to play/debug screen
-	ReqCaptureMouse FeatureReq = "ReqCaptureMouse" // bool
+	// playmode is called whenever the play/debugger looper is changed. like
+	// all other requests this may not do anything, depending on the GUI
+	// specifics.
+	ReqSetPlaymode FeatureReq = "ReqSetPlaymode" // bool
 
 	// notify GUI of emulation state. the GUI should use this to alter how
 	// infomration, particularly the display of the PixelRenderer.
@@ -60,14 +60,8 @@ const (
 	// but for presentation/play modes it's a good idea to have it set.
 	ReqVSync FeatureReq = "ReqVSync" // bool
 
-	// the following requests should set or toggle visual elements of the debugger.
-	ReqSetDbgColors    FeatureReq = "ReqSetDbgColors"    // bool
-	ReqToggleDbgColors FeatureReq = "ReqToggleDbgColors" // none
-	ReqSetCropping     FeatureReq = "ReqSetCropping"     // bool
-	ReqToggleCropping  FeatureReq = "ReqToggleCropping"  // none
-	ReqSetOverlay      FeatureReq = "ReqSetOverlay"      // bool
-	ReqToggleOverlay   FeatureReq = "ReqToggleOverlay"   // none
-	ReqCRTeffects      FeatureReq = "ReqCRTeffects"      // bool
+	// whether to add CRT effects to TV image
+	ReqCRTeffects FeatureReq = "ReqCRTeffects" // bool
 
 	// the add VCS request is used to associate the gui with an emulated VCS.
 	// a debugger does not need to send this request if it already sends a
@@ -83,11 +77,6 @@ const (
 	// own go routine but regardless, the event channel is used for this
 	// purpose.
 	ReqSetEventChan FeatureReq = "ReqSetEventChan" // chan gui.Event()
-
-	// playmode is called whenever the play/debugger looper is changed. like
-	// all other requests this may not do anything, depending on the GUI
-	// specifics.
-	ReqSetPlaymode FeatureReq = "ReqSetPlaymode" // bool
 
 	// trigger a save preferences event. usually performed before gui is
 	// destroyed or before some other destructive action.

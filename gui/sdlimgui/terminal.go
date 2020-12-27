@@ -30,7 +30,6 @@ type term struct {
 
 	// input from other gui elements (eg. the run button in the control window)
 	// only one command can be serviced at a time, which may be inconvenient
-	// !!TODO: allow sideChan commands to be queued
 	sideChan chan string
 
 	// last string sent to sideChan. we use this to suppress echoing of GUI
@@ -176,6 +175,10 @@ func (trm *term) pushCommand(input string) {
 		// in most instances a depth of one is sufficient but occasionally it
 		// is not (eg. the HALT/RUN commands sent by the rewind slider in
 		// win_control)
+		//
+		// ** try not to push commands if GUI is not in debug mode. there won't
+		// be anything to receive the input and so the channel will eventually
+		// fill up
 		logger.Log("sdlimgui", fmt.Sprintf("dropping %s from side channel. channel buffer too short.", input))
 	}
 }

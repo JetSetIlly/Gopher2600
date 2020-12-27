@@ -79,10 +79,10 @@ func (img *SdlImgui) Service() {
 			case _ = <-img.serviceWake:
 			case <-img.servicePulseIdle.C:
 			case ev = <-img.plt.miniEvent:
-				// slow down mouse-motion events unless we're in playmode or
-				// input has been "captured"
-				if !img.isCaptured() && !img.isPlaymode() {
-					if _, ok := ev.(*sdl.MouseMotionEvent); ok {
+				// slow down mouse events unless we're in playmode or input has been "captured"
+				switch ev.(type) {
+				case *sdl.MouseMotionEvent:
+					if !img.isCaptured() && !img.isPlaymode() {
 						<-img.servicePulseDebug.C
 					}
 				}
@@ -114,85 +114,92 @@ func (img *SdlImgui) Service() {
 				}
 
 			case *sdl.KeyboardEvent:
-				// for simplicity we'll handle some keys within the GUI and
-				// pass everything else to the registered events channel
-				switch sdl.GetKeyName(ev.Keysym.Sym) {
-				case "Escape":
-					if ev.Type == sdl.KEYUP && ev.Repeat == 0 {
-						if img.isCaptured() {
-							img.setCapture(false)
-						} else if img.state == gui.StatePaused {
-							img.term.pushCommand("RUN")
-						} else {
-							img.term.pushCommand("HALT")
+				// handle keys that have special meaning for GUI
+				if ev.Type == sdl.KEYUP && ev.Repeat == 0 {
+					handled := true
+
+					switch sdl.GetKeyName(ev.Keysym.Sym) {
+					case "Escape":
+						// works in debug and playmode
+						img.setCapture(!img.isCaptured())
+
+					case "`":
+						// works only in debug mode
+						if !img.isPlaymode() {
+							if img.state == gui.StatePaused {
+								img.term.pushCommand("RUN")
+							} else {
+								img.term.pushCommand("HALT")
+							}
+						}
+
+					case "F11":
+						if img.isPlaymode() {
+							img.plt.toggleFullScreen()
+						}
+
+					case "F12":
+						if img.isPlaymode() {
+							img.wm.playScr.fps.open = !img.wm.playScr.fps.open
+						}
+
+					case "Pause":
+						// TODO: flip between debug and playmodes
+
+					default:
+						handled = false
+					}
+
+					if handled {
+						break // event switch
+					}
+				}
+
+				// forward unhandled keypresses to registered events handler.
+				// but only when gui is in playmode, has captured input and
+				// there is no modal window.
+				if img.events != nil && !img.hasModal && (img.isPlaymode() || img.isCaptured()) {
+					mod := gui.KeyModNone
+
+					if sdl.GetModState()&sdl.KMOD_LALT == sdl.KMOD_LALT ||
+						sdl.GetModState()&sdl.KMOD_RALT == sdl.KMOD_RALT {
+						mod = gui.KeyModAlt
+					} else if sdl.GetModState()&sdl.KMOD_LSHIFT == sdl.KMOD_LSHIFT ||
+						sdl.GetModState()&sdl.KMOD_RSHIFT == sdl.KMOD_RSHIFT {
+						mod = gui.KeyModShift
+					} else if sdl.GetModState()&sdl.KMOD_LCTRL == sdl.KMOD_LCTRL ||
+						sdl.GetModState()&sdl.KMOD_RCTRL == sdl.KMOD_RCTRL {
+						mod = gui.KeyModCtrl
+					}
+
+					switch ev.Type {
+					case sdl.KEYDOWN:
+						fallthrough
+					case sdl.KEYUP:
+						if ev.Repeat == 0 {
+							select {
+							case img.events <- gui.EventKeyboard{
+								GUI:  img,
+								Key:  sdl.GetKeyName(ev.Keysym.Sym),
+								Mod:  mod,
+								Down: ev.Type == sdl.KEYDOWN}:
+							default:
+								logger.Log("sdlimgui", "dropped key up event")
+							}
 						}
 					}
 
-				default:
-					if !img.hasModal && (img.isPlaymode() || img.isCaptured()) {
-						mod := gui.KeyModNone
+					break // event switch
+				}
 
-						if sdl.GetModState()&sdl.KMOD_LALT == sdl.KMOD_LALT ||
-							sdl.GetModState()&sdl.KMOD_RALT == sdl.KMOD_RALT {
-							mod = gui.KeyModAlt
-						} else if sdl.GetModState()&sdl.KMOD_LSHIFT == sdl.KMOD_LSHIFT ||
-							sdl.GetModState()&sdl.KMOD_RSHIFT == sdl.KMOD_RSHIFT {
-							mod = gui.KeyModShift
-						} else if sdl.GetModState()&sdl.KMOD_LCTRL == sdl.KMOD_LCTRL ||
-							sdl.GetModState()&sdl.KMOD_RCTRL == sdl.KMOD_RCTRL {
-							mod = gui.KeyModCtrl
-						}
-
-						switch ev.Type {
-						case sdl.KEYDOWN:
-							if ev.Repeat == 0 {
-								key := sdl.GetKeyName(ev.Keysym.Sym)
-								switch key {
-								case "F11":
-									if img.isPlaymode() {
-										img.plt.toggleFullScreen()
-									}
-
-								case "F12":
-									if img.isPlaymode() {
-										img.wm.playScr.fps.open = !img.wm.playScr.fps.open
-									}
-
-								default:
-									select {
-									case img.events <- gui.EventKeyboard{
-										GUI:  img,
-										Key:  key,
-										Mod:  mod,
-										Down: true}:
-									default:
-										logger.Log("sdlimgui", "dropped key down event")
-									}
-								}
-							}
-						case sdl.KEYUP:
-							if ev.Repeat == 0 {
-								select {
-								case img.events <- gui.EventKeyboard{
-									GUI:  img,
-									Key:  sdl.GetKeyName(ev.Keysym.Sym),
-									Mod:  mod,
-									Down: false}:
-								default:
-									logger.Log("sdlimgui", "dropped key up event")
-								}
-							}
-						}
-					} else {
-						switch ev.Type {
-						case sdl.KEYDOWN:
-							img.io.KeyPress(int(ev.Keysym.Scancode))
-							img.updateKeyModifier()
-						case sdl.KEYUP:
-							img.io.KeyRelease(int(ev.Keysym.Scancode))
-							img.updateKeyModifier()
-						}
-					}
+				// remaining keypresses forwarded to imgui io system
+				switch ev.Type {
+				case sdl.KEYDOWN:
+					img.io.KeyPress(int(ev.Keysym.Scancode))
+					img.updateKeyModifier()
+				case sdl.KEYUP:
+					img.io.KeyRelease(int(ev.Keysym.Scancode))
+					img.updateKeyModifier()
 				}
 
 			case *sdl.MouseButtonEvent:
@@ -226,6 +233,16 @@ func (img *SdlImgui) Service() {
 						}
 					}
 				}
+
+				// trigger service wake in time for next Service() iteration.
+				// without this, the results of the mouse button will not be
+				// seen until the timeout (in the next iteration) has elapsed.
+				//
+				// eg. closing a window: this frame the window will be drawn
+				// and this mouse button press will be acknowledged. next frame
+				// the window will not be drawn. we therefore do not want any
+				// delay in drawing the next frame.
+				img.serviceWake <- true
 
 			case *sdl.MouseWheelEvent:
 				var deltaX, deltaY float32

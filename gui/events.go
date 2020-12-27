@@ -69,14 +69,3 @@ type EventMouseButton struct {
 	Button MouseButton
 	Down   bool
 }
-
-// EventDbgMouseButton is the data that accompanies MouseEventMove events.
-type EventDbgMouseButton struct {
-	GUI      GUI
-	Button   MouseButton
-	Down     bool
-	X        int
-	Y        int
-	HorizPos int
-	Scanline int
-}

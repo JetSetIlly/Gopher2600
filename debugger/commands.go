@@ -1066,46 +1066,6 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 
 		case "OFF":
 			err = dbg.scr.SetFeature(gui.ReqSetVisibility, false)
-
-		case "MASKING":
-			action, _ := tokens.Get()
-			action = strings.ToUpper(action)
-			switch action {
-			case "OFF":
-				err = dbg.scr.SetFeature(gui.ReqSetCropping, false)
-			case "ON":
-				err = dbg.scr.SetFeature(gui.ReqSetCropping, true)
-			default:
-				err = dbg.scr.SetFeature(gui.ReqToggleCropping)
-			}
-
-		case "DEBUG":
-			action, _ := tokens.Get()
-			action = strings.ToUpper(action)
-			switch action {
-			case "OFF":
-				err = dbg.scr.SetFeature(gui.ReqSetDbgColors, false)
-			case "ON":
-				err = dbg.scr.SetFeature(gui.ReqSetDbgColors, true)
-			default:
-				err = dbg.scr.SetFeature(gui.ReqToggleDbgColors)
-			}
-		case "OVERLAY":
-			action, _ := tokens.Get()
-			action = strings.ToUpper(action)
-			switch action {
-			case "OFF":
-				err = dbg.scr.SetFeature(gui.ReqSetOverlay, false)
-			case "ON":
-				err = dbg.scr.SetFeature(gui.ReqSetOverlay, true)
-			default:
-				err = dbg.scr.SetFeature(gui.ReqToggleOverlay)
-			}
-		default:
-			err = dbg.scr.SetFeature(gui.ReqToggleVisibility)
-			if err != nil {
-				return err
-			}
 		}
 
 		if err != nil {

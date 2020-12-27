@@ -16,12 +16,9 @@
 package debugger
 
 import (
-	"fmt"
-
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
 	"github.com/jetsetilly/gopher2600/gui"
-	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/playmode"
 )
 
@@ -34,40 +31,10 @@ func (dbg *Debugger) guiEventHandler(ev gui.Event) error {
 		return curated.Errorf(terminal.UserInterrupt)
 
 	case gui.EventKeyboard:
-		var handled bool
-
-		// check playmode key presses first
-		handled, err = playmode.KeyboardEventHandler(ev, dbg.VCS)
+		// forward all keyboard events to the playmode event handler
+		_, err = playmode.KeyboardEventHandler(ev, dbg.VCS)
 		if err != nil {
-			break // switch ev.(type)
-		}
-
-		if !handled {
-			if ev.Down && ev.Mod == gui.KeyModNone {
-				switch ev.Key {
-				// debugging helpers
-				case "F12":
-					// toggle croppint
-					err = dbg.scr.SetFeature(gui.ReqToggleCropping)
-				case "F11":
-					// toggle debugging colours
-					err = dbg.scr.SetFeature(gui.ReqToggleDbgColors)
-				case "F10":
-					// toggle overlay
-					err = dbg.scr.SetFeature(gui.ReqToggleOverlay)
-				}
-			}
-		}
-
-	case gui.EventDbgMouseButton:
-		switch ev.Button {
-		case gui.MouseButtonRight:
-			if ev.Down {
-				err = dbg.parseInput(fmt.Sprintf("%s sl %d & hp %d", cmdBreak, ev.Scanline, ev.HorizPos), false, false)
-				if err == nil {
-					logger.Log("mouse break", fmt.Sprintf("on sl->%d and hp->%d", ev.Scanline, ev.HorizPos))
-				}
-			}
+			return err
 		}
 
 	case gui.EventMouseButton:
