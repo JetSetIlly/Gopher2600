@@ -17,7 +17,6 @@ package sdlimgui
 
 import (
 	"fmt"
-	"math"
 	"strings"
 	"time"
 	"unsafe"
@@ -71,7 +70,6 @@ type glsl struct {
 	attribHblank        int32 // uniform
 	attribTopScanline   int32 // uniform
 	attribBotScanline   int32 // uniform
-	attribAnimTime      int32 // uniform
 	attribRandSeed      int32 // uniform
 
 	attribCRT                 int32 // uniform
@@ -279,11 +277,6 @@ func (rnd *glsl) render(displaySize [2]float32, framebufferSize [2]float32, draw
 		gl.Uniform1i(rnd.attribCropped, -1)
 	}
 
-	// animation time
-	anim := math.Sin(float64(time.Now().Nanosecond()) / 1000000000.0)
-	anim = math.Abs(anim)
-	gl.Uniform1f(rnd.attribAnimTime, float32(anim))
-
 	// random seed (for noise generator)
 	gl.Uniform1f(rnd.attribRandSeed, float32(time.Now().Nanosecond())/1000000000.0)
 
@@ -391,7 +384,6 @@ func (rnd *glsl) setup() {
 	rnd.attribHblank = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("Hblank"+"\x00"))
 	rnd.attribTopScanline = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("TopScanline"+"\x00"))
 	rnd.attribBotScanline = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("BotScanline"+"\x00"))
-	rnd.attribAnimTime = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("AnimTime"+"\x00"))
 	rnd.attribRandSeed = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("RandSeed"+"\x00"))
 
 	rnd.attribCRT = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("CRT"+"\x00"))

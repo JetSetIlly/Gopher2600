@@ -13,7 +13,6 @@ uniform float LastY;
 uniform float Hblank;
 uniform float TopScanline;
 uniform float BotScanline;
-uniform float AnimTime;
 uniform float RandSeed;
 
 uniform int CRT;
@@ -131,7 +130,7 @@ void main()
 					Out_Color.r = 1.0;
 					Out_Color.g = 1.0;
 					Out_Color.b = 1.0;
-					Out_Color.a = AnimTime;
+					Out_Color.a = 1.0;
 					return;
 				}
 			}
@@ -139,7 +138,7 @@ void main()
 			// draw off-screen cursor for HBLANK
 			if (lastX < 0 && isNearEqual(coords.y, lastY+texelY, cursorSize*texelY) && isNearEqual(coords.x, 0, cursorSize*texelX/2)) {
 				Out_Color.r = 1.0;
-				Out_Color.a = AnimTime;
+				Out_Color.a = 1.0;
 				return;
 			}
 
@@ -151,7 +150,7 @@ void main()
 					// top of screen
 					if (lastY < 0 && isNearEqual(coords.y, 0, cursorSize*texelY)) {
 						Out_Color.r = 1.0;
-						Out_Color.a = AnimTime;
+						Out_Color.a = 1.0;
 						return;
 					}
 				
@@ -159,7 +158,7 @@ void main()
 					// boundary check to make sure the cursor is visible)
 					if (lastY > botScanline-pixelY && isNearEqual(coords.y, botScanline, cursorSize*texelY)) {
 						Out_Color.r = 1.0;
-						Out_Color.a = AnimTime;
+						Out_Color.a = 1.0;
 						return;
 					}
 				}
@@ -169,7 +168,7 @@ void main()
 					// top/left corner of screen
 					if (lastY < 0 && isNearEqual(coords.y, 0, cursorSize*texelY)) {
 						Out_Color.r = 1.0;
-						Out_Color.a = AnimTime;
+						Out_Color.a = 1.0;
 						return;
 					}
 
@@ -178,7 +177,7 @@ void main()
 					// visible)
 					if (lastY > botScanline-pixelY && isNearEqual(coords.y, botScanline, cursorSize*texelY)) {
 						Out_Color.r = 1.0;
-						Out_Color.a = AnimTime;
+						Out_Color.a = 1.0;
 						return;
 					}
 				}
