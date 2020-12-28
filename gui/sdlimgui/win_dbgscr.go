@@ -332,7 +332,10 @@ func (win *winDbgScr) draw() {
 		imgui.SetCursorPos(c)
 		if imgui.Button("Capture mouse") {
 			win.img.setCapture(true)
-			win.img.serviceWake <- true
+			select {
+			case win.img.serviceWake <- true:
+			default:
+			}
 		}
 	}
 

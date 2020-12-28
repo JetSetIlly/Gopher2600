@@ -77,11 +77,11 @@ type SdlImgui struct {
 
 	// functions that need to be performed in the main thread are queued for
 	// serving by the service() function
-	service           chan func()
-	serviceErr        chan error
-	servicePulsePlay  *time.Ticker
-	servicePulseDebug *time.Ticker
-	servicePulseIdle  *time.Ticker
+	service          chan func()
+	serviceErr       chan error
+	servicePulsePlay *time.Ticker
+	servicePulseDbg  *time.Ticker
+	servicePulseIdle *time.Ticker
 
 	// some gui events will not be serviced immediately because of the service
 	// sleep. serviceWake causes the service loop to wake up immediately.
@@ -194,7 +194,7 @@ func NewSdlImgui(tv *television.Television, playmode bool) (*SdlImgui, error) {
 
 	// initialise service pulses. which one we're using depends on the state of
 	// the gui (whether it's in playmode etc.)
-	img.servicePulseDebug = time.NewTicker(time.Millisecond * debugSleepPeriod)
+	img.servicePulseDbg = time.NewTicker(time.Millisecond * debugSleepPeriod)
 	img.servicePulsePlay = time.NewTicker(time.Millisecond * playSleepPeriod)
 	img.servicePulseIdle = time.NewTicker(time.Millisecond * idleSleepPeriod)
 

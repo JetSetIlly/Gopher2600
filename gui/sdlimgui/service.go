@@ -16,6 +16,8 @@
 package sdlimgui
 
 import (
+	"time"
+
 	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/logger"
 
@@ -74,33 +76,38 @@ func (img *SdlImgui) Service() {
 		// HasChanged flag of limited use.
 		img.lz.Refresh()
 
-		if img.lz.Debugger.HasChanged || img.state == gui.StateRunning {
-			select {
-			case <-img.servicePulseDebug.C: // timeout
-			case <-img.serviceWake:
-			case ev = <-img.plt.miniEvent:
-			case r := <-img.featureSet:
-				img.serviceSetFeature(r)
-			case r := <-img.featureGet:
-				img.serviceGetFeature(r)
-			}
+		// we know we're in the debugger but we must still decide which timeout ticker to use.
+		var pulse <-chan time.Time
+
+		// the positive branch selects the more frequent ticker (ie. the one
+		// that leads to more CPU usage).
+		//
+		// we trigger this when the debugger thinks something has changed; when
+		// the emulation is running; or when a CRT effect is active. the CRT
+		// conditions are required because one of the CRT effects (the noise
+		// generator) requires an animated effect, which requires frequent
+		// updates.
+		if img.lz.Debugger.HasChanged || img.state == gui.StateRunning || img.wm.dbgScr.crt || img.wm.crtPrefs.open {
+			pulse = img.servicePulseDbg.C
 		} else {
-			select {
-			case <-img.servicePulseIdle.C: // timeout
-			case <-img.serviceWake:
-			case ev = <-img.plt.miniEvent:
-				if !img.isCaptured() && !img.isPlaymode() {
-					// slow down mouse events unless we're in playmode or input has been "captured"
-					switch ev.(type) {
-					case *sdl.MouseMotionEvent:
-						<-img.servicePulseDebug.C
-					}
+			pulse = img.servicePulseIdle.C
+		}
+
+		select {
+		case <-pulse:
+		case <-img.serviceWake:
+		case ev = <-img.plt.miniEvent:
+			if !img.isCaptured() {
+				// slow down mouse events unless we're in playmode or input has been "captured"
+				switch ev.(type) {
+				case *sdl.MouseMotionEvent:
+					<-img.servicePulseDbg.C
 				}
-			case r := <-img.featureSet:
-				img.serviceSetFeature(r)
-			case r := <-img.featureGet:
-				img.serviceGetFeature(r)
 			}
+		case r := <-img.featureSet:
+			img.serviceSetFeature(r)
+		case r := <-img.featureGet:
+			img.serviceGetFeature(r)
 		}
 	}
 
