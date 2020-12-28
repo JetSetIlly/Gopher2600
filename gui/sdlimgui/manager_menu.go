@@ -18,7 +18,7 @@ package sdlimgui
 import (
 	"fmt"
 
-	"github.com/inkyblackness/imgui-go/v2"
+	"github.com/inkyblackness/imgui-go/v3"
 )
 
 // the window menus grouped by type. the types are:.

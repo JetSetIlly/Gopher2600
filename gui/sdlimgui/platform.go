@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"runtime"
 
-	"github.com/inkyblackness/imgui-go/v2"
+	"github.com/inkyblackness/imgui-go/v3"
 	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/veandco/go-sdl2/sdl"
 )

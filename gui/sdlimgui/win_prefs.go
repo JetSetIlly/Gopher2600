@@ -18,7 +18,7 @@ package sdlimgui
 import (
 	"fmt"
 
-	"github.com/inkyblackness/imgui-go/v2"
+	"github.com/inkyblackness/imgui-go/v3"
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
@@ -83,7 +83,7 @@ func (win *winPrefs) draw() {
 
 func (win *winPrefs) drawRewind() {
 	m := int32(win.img.lz.Prefs.RewindMaxEntries)
-	if imgui.SliderIntV("Max Entries##maxentries", &m, 10, 100, fmt.Sprintf("%d", m)) {
+	if imgui.SliderIntV("Max Entries##maxentries", &m, 10, 100, fmt.Sprintf("%d", m), imgui.SlidersFlagsNone) {
 		win.img.term.pushCommand(fmt.Sprintf("PREFS REWIND MAX %d", m))
 	}
 
@@ -95,7 +95,7 @@ func (win *winPrefs) drawRewind() {
 	imgui.Spacing()
 
 	f := int32(win.img.lz.Prefs.RewindFreq)
-	if imgui.SliderIntV("Frequency##freq", &f, 1, 5, fmt.Sprintf("%d", f)) {
+	if imgui.SliderIntV("Frequency##freq", &f, 1, 5, fmt.Sprintf("%d", f), imgui.SlidersFlagsNone) {
 		win.img.term.pushCommand(fmt.Sprintf("PREFS REWIND FREQ %d", f))
 	}
 

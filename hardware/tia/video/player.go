@@ -549,7 +549,7 @@ func (ps *PlayerSprite) _futureResetPosition() {
 }
 
 // always return player color because when in "scoremode" the playfield
-// wants to know the color of the player
+// wants to know the color of the player.
 func (ps *PlayerSprite) pixel() (active bool, color uint8, collision bool) {
 	// pick the pixel from the gfxData register
 	if ps.ScanCounter.IsActive() {

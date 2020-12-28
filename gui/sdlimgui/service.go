@@ -19,7 +19,7 @@ import (
 	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/logger"
 
-	"github.com/inkyblackness/imgui-go/v2"
+	"github.com/inkyblackness/imgui-go/v3"
 	"github.com/veandco/go-sdl2/sdl"
 )
 
@@ -53,7 +53,7 @@ func (img *SdlImgui) Service() {
 	if img.isPlaymode() {
 		select {
 		case <-img.servicePulsePlay.C: // timeout
-		case _ = <-img.serviceWake:
+		case <-img.serviceWake:
 		case ev = <-img.plt.miniEvent:
 		case r := <-img.featureSet:
 			img.serviceSetFeature(r)
@@ -77,7 +77,7 @@ func (img *SdlImgui) Service() {
 		if img.lz.Debugger.HasChanged || img.state == gui.StateRunning {
 			select {
 			case <-img.servicePulseDebug.C: // timeout
-			case _ = <-img.serviceWake:
+			case <-img.serviceWake:
 			case ev = <-img.plt.miniEvent:
 			case r := <-img.featureSet:
 				img.serviceSetFeature(r)
@@ -87,7 +87,7 @@ func (img *SdlImgui) Service() {
 		} else {
 			select {
 			case <-img.servicePulseIdle.C: // timeout
-			case _ = <-img.serviceWake:
+			case <-img.serviceWake:
 			case ev = <-img.plt.miniEvent:
 				if !img.isCaptured() && !img.isPlaymode() {
 					// slow down mouse events unless we're in playmode or input has been "captured"

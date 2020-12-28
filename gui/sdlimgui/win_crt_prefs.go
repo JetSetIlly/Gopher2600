@@ -20,7 +20,7 @@ import (
 	"image"
 
 	"github.com/go-gl/gl/v3.2-core/gl"
-	"github.com/inkyblackness/imgui-go/v2"
+	"github.com/inkyblackness/imgui-go/v3"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 	"github.com/jetsetilly/gopher2600/logger"
 )
@@ -196,7 +196,7 @@ func (win *winCRTPrefs) drawScanlines() {
 func (win *winCRTPrefs) drawMaskScanlineScaling() {
 	f := int32(win.img.crtPrefs.MaskScanlineScaling.Get().(int))
 	imgui.Text("Mask/Scanline Scaling")
-	if imgui.SliderIntV("##scaling", &f, 1, 3, "%d") {
+	if imgui.SliderIntV("##scaling", &f, 1, 3, "%d", imgui.SlidersFlagsNone) {
 		win.img.crtPrefs.MaskScanlineScaling.Set(f)
 	}
 }

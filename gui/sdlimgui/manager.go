@@ -18,7 +18,7 @@ package sdlimgui
 import (
 	"sort"
 
-	"github.com/inkyblackness/imgui-go/v2"
+	"github.com/inkyblackness/imgui-go/v3"
 )
 
 // window represents all the window types used in the sdlimgui.

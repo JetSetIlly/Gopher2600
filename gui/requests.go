@@ -44,7 +44,7 @@ const (
 // Note that, like the name suggests, these are requests, they may or may not
 // be satisfied depending other conditions in the GUI.
 const (
-	// whether the gui is visible or not
+	// whether the gui is visible or not.
 	ReqSetVisibility FeatureReq = "ReqSetVisibility" // bool
 
 	// playmode is called whenever the play/debugger looper is changed. like
@@ -60,7 +60,7 @@ const (
 	// but for presentation/play modes it's a good idea to have it set.
 	ReqVSync FeatureReq = "ReqVSync" // bool
 
-	// whether to add CRT effects to TV image
+	// whether to add CRT effects to TV image.
 	ReqCRTeffects FeatureReq = "ReqCRTeffects" // bool
 
 	// the add VCS request is used to associate the gui with an emulated VCS.

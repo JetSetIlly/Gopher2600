@@ -175,7 +175,7 @@ func (pf *Playfield) String() string {
 // with the HSYNC ticker. therefore ticking of the playfield is implicit.
 
 // returns whether the foreground is active and the color to be used
-// (foreground or background)
+// (foreground or background).
 func (pf *Playfield) pixel() (bool, uint8) {
 	if pf.pclk.Phi2() {
 		// RSYNC can monkey with the current hsync value unexpectedly and

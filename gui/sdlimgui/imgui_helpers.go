@@ -19,7 +19,7 @@ import (
 	"math"
 	"strings"
 
-	"github.com/inkyblackness/imgui-go/v2"
+	"github.com/inkyblackness/imgui-go/v3"
 )
 
 // return the height of the window from the current cursor position to the end
@@ -122,7 +122,7 @@ func imguiToggleButton(id string, v *bool, col imgui.Vec4) (clicked bool) {
 	// 	}
 	// }
 
-	imgui.InvisibleButtonV(id, imgui.Vec2{width, height})
+	imgui.InvisibleButtonV(id, imgui.Vec2{width, height}, imgui.ButtonFlagsMouseButtonLeft)
 	if imgui.IsItemClicked() {
 		*v = !*v
 		clicked = true

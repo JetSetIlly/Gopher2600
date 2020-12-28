@@ -18,7 +18,7 @@ package sdlimgui
 import (
 	"strings"
 
-	"github.com/inkyblackness/imgui-go/v2"
+	"github.com/inkyblackness/imgui-go/v3"
 )
 
 // calls imguiInput with the string of allowed hexadecimal characters.
