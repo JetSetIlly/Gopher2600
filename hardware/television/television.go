@@ -362,7 +362,10 @@ func (tv *Television) Signal(sig signal.SignalAttributes) error {
 	tv.signals[tv.signalIdx] = sig
 	tv.signalIdx++
 
-	if tv.lmtr.scale == scalePixel {
+	// set pending pixels for pixel-scale frame limiting (but only when the
+	// limiter is active - this is important when rendering frames produced
+	// durint rewinding)
+	if tv.lmtr.limit && tv.lmtr.scale == scalePixel {
 		err := tv.setPendingPixels()
 		if err != nil {
 			return err
@@ -383,7 +386,10 @@ func (tv *Television) newScanline() error {
 		}
 	}
 
-	if tv.lmtr.scale == scaleScanline {
+	// set pending pixels for scanline-scale frame limiting (but only when the
+	// limiter is active - this is important when rendering frames produced
+	// during rewinding)
+	if tv.lmtr.limit && tv.lmtr.scale == scaleScanline {
 		err := tv.setPendingPixels()
 		if err != nil {
 			return err
@@ -423,8 +429,9 @@ func (tv *Television) newFrame(synced bool) error {
 	tv.state.scanline = 0
 	tv.state.resizer.prepare(tv)
 
-	// set pixels for all renderers
-	if tv.lmtr.scale == scaleFrame {
+	// set pending pixels for frame-scale frame limiting or if the frame
+	// limiter is inactive
+	if !tv.lmtr.limit || tv.lmtr.scale == scaleFrame {
 		err = tv.setPendingPixels()
 		if err != nil {
 			return err

@@ -85,6 +85,15 @@ type SdlImgui struct {
 
 	// some gui events will not be serviced immediately because of the service
 	// sleep. serviceWake causes the service loop to wake up immediately.
+	//
+	// when pushing to this channel from the same goroutine as the service loop
+	// (which is most likely) then the push should happen in a select/default
+	// block to prevent channel deadlock. eg:
+	//
+	//	select {
+	//	case serviceWake <- true:
+	//	default:
+	//	}
 	serviceWake chan bool
 
 	// ReqFeature() and GetFeature() hands off requests to the featureReq

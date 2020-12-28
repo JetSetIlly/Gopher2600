@@ -62,8 +62,8 @@ func (lmtr *limiter) init(tv *Television) {
 // there's no science behind when we flip from scales these values are based simply on
 // what looks effective and what seems to be useable.
 const (
-	threshScanlineScale float32 = 10.0
-	thresPixelScale     float32 = 1.0
+	ThreshScanlineScale float32 = 5.0
+	thresPixelScale     float32 = 3.0
 )
 
 func (lmtr *limiter) setRate(fps float32) {
@@ -78,9 +78,16 @@ func (lmtr *limiter) setRate(fps float32) {
 	// set scale and duration to wait according to requested FPS rate
 	if fps < thresPixelScale {
 		lmtr.scale = scalePixel
-		dur := time.Duration(fps * float32(lmtr.tv.state.spec.IdealPixelsPerFrame))
+
+		// scale IdealPixelsPerFrame. not sure why this is needed but without
+		// it the ticker duration is way off. (this value is good for pixel
+		// scale when frame rate is below 3)
+		const idealPixelsScale = 5
+
+		rate := float32(1.0) / (fps * float32(lmtr.tv.state.spec.IdealPixelsPerFrame*idealPixelsScale))
+		dur, _ := time.ParseDuration(fmt.Sprintf("%fs", rate))
 		lmtr.pulse.Reset(dur)
-	} else if fps < threshScanlineScale {
+	} else if fps < ThreshScanlineScale {
 		lmtr.scale = scaleScanline
 		rate := float32(1.0) / (fps * float32(lmtr.tv.state.spec.ScanlinesTotal))
 		dur, _ := time.ParseDuration(fmt.Sprintf("%fs", rate))

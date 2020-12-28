@@ -26,6 +26,7 @@ import (
 	"github.com/inkyblackness/imgui-go/v2"
 	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/gui/crt/shaders"
+	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 )
 
@@ -261,10 +262,10 @@ func (rnd *glsl) render(displaySize [2]float32, framebufferSize [2]float32, draw
 	case gui.StateRunning:
 		// if FPS is low enough then show screen draw even though
 		// emulation is running
-		if rnd.img.lz.TV.ReqFPS < 3.0 {
-			gl.Uniform1i(rnd.attribDrawMode, shaders.NoCursor)
-		} else {
+		if rnd.img.lz.TV.ReqFPS < television.ThreshScanlineScale {
 			gl.Uniform1i(rnd.attribDrawMode, shaders.Cursor)
+		} else {
+			gl.Uniform1i(rnd.attribDrawMode, shaders.NoCursor)
 		}
 	case gui.StateRewinding:
 		gl.Uniform1i(rnd.attribDrawMode, shaders.NoCursor)

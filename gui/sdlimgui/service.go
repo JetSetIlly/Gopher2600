@@ -52,7 +52,7 @@ func (img *SdlImgui) Service() {
 	// duration.
 	if img.isPlaymode() {
 		select {
-		case <-img.servicePulsePlay.C:
+		case <-img.servicePulsePlay.C: // timeout
 		case _ = <-img.serviceWake:
 		case ev = <-img.plt.miniEvent:
 		case r := <-img.featureSet:
@@ -61,13 +61,23 @@ func (img *SdlImgui) Service() {
 			img.serviceGetFeature(r)
 		}
 	} else {
-		// refresh lazy values
+		// refresh lazy values. we have to do this every service iteration
+		// because otherwise we might miss some changes:
+		//
+		// the debugger.HasChanged flag is itself a product of the lazy refresh
+		// process so we must have read it in order to know if any changes have
+		// taken place! I suppose we could have two layers of lazy refresh but
+		// that seems to be unduly complicated for what would be a small gain.
+		//
+		// moreover, it's possible to change the state of the emulation from
+		// the GUI without going through the debugger, which makes the
+		// HasChanged flag of limited use.
 		img.lz.Refresh()
 
-		if img.lz.Debugger.HasChanged {
+		if img.lz.Debugger.HasChanged || img.state == gui.StateRunning {
 			select {
+			case <-img.servicePulseDebug.C: // timeout
 			case _ = <-img.serviceWake:
-			case <-img.servicePulseDebug.C:
 			case ev = <-img.plt.miniEvent:
 			case r := <-img.featureSet:
 				img.serviceSetFeature(r)
@@ -76,13 +86,13 @@ func (img *SdlImgui) Service() {
 			}
 		} else {
 			select {
+			case <-img.servicePulseIdle.C: // timeout
 			case _ = <-img.serviceWake:
-			case <-img.servicePulseIdle.C:
 			case ev = <-img.plt.miniEvent:
-				// slow down mouse events unless we're in playmode or input has been "captured"
-				switch ev.(type) {
-				case *sdl.MouseMotionEvent:
-					if !img.isCaptured() && !img.isPlaymode() {
+				if !img.isCaptured() && !img.isPlaymode() {
+					// slow down mouse events unless we're in playmode or input has been "captured"
+					switch ev.(type) {
+					case *sdl.MouseMotionEvent:
 						<-img.servicePulseDebug.C
 					}
 				}
@@ -238,11 +248,19 @@ func (img *SdlImgui) Service() {
 				// without this, the results of the mouse button will not be
 				// seen until the timeout (in the next iteration) has elapsed.
 				//
-				// eg. closing a window: this frame the window will be drawn
-				// and this mouse button press will be acknowledged. next frame
-				// the window will not be drawn. we therefore do not want any
-				// delay in drawing the next frame.
-				img.serviceWake <- true
+				// eg. closing a window: the window will be drawn on *this*
+				// frame and *this* mouse button press will be acknowledged.
+				// next frame the window will not be drawn. however, the *next*
+				// frame will sleep until the time out - *this* mouse button
+				// event has been consumed. prodding serviceWake ensures there
+				// is no delay in drawing the *next* frame
+				//
+				// pushing event inside a select/default block to prevent
+				// channel deadlock
+				select {
+				case img.serviceWake <- true:
+				default:
+				}
 
 			case *sdl.MouseWheelEvent:
 				var deltaX, deltaY float32
