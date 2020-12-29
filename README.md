@@ -3,6 +3,7 @@
 `Gopher2600` is an emulator for the Atari 2600 written in the Go language. The accuracy of the emulation is very high and the 6507, TIA and RIOT chips are well represented. The key features of the emulator:
 
 * [Support for many of the known cartridge formats](#supported-cartridge-formats)
+* Emulation of the ARM7TDMI as found in the Harmony cartridge
 * [Gameplay recording and playback](#recording-gameplay)
 * Support for (and auto-detection of) [keypad,paddle and joystick](#hand-controllers)
 * Network access through [PlusROM](#plusrom) emulation
@@ -38,27 +39,8 @@ video output from the TIA. At this point it became obvious that I was indeed
 writing a complete 2600 emulator.
 
 Because of its origins, any flaws or limitations in the design should be borne
-in mind while the project is still in development. I am open to any suggestions
-on how to improve the project.
-
-### Self-reflection
-
-There are some design decisions that would perhaps be made differently if I had
-known where the program was going. For instance, because the project was a way
-of learning a new programming language I chose to implement my own "database"
-to [store regression test information](#regression-database). A more natural
-choice would be to use SQlite but actually the current solution works quite
-well.
-
-A couple of packages may well be useful in other projects. The `prefs` package
-is quite versatile. With a bit of work it could be generalised and put to use
-in other projects. I think though, this package is a natural candidate to be
-rewritten with type parameters. Not yet available in Go but scheduled for
-release in 2022.
-
-I would also replace the `commandline` package. It works quite nicely but as
-you would expect from a home-baked solution there are limitations to the
-parser. It should be rewritten with `flex` & `yacc`.
+in mind while the project is still in development. [I am open to any suggestions
+on how to improve the project](#self-reflection).
 
 ### Performance
 
@@ -108,6 +90,11 @@ directly
 
 `Gopher2600` makes use of SDL2. The SDL2 go binding used by the project requires a minimum
 SDL2 version of `2.0.10`.
+
+### Platforms
+
+`Gopher2600` is known to run on several platforms. It is known to work best
+however on Linux based systems, on which it is being developed. 
 
 ### Cross-Compilation
 
@@ -500,13 +487,14 @@ Modern formats supported:
 * 3E+
 * DF
 * DPC+
+* CDF (including CDFJ)
 
-The `DPC+` is supported but the emulator does not currently emulate the `ARM7` present in the `Harmony` cartridge. This is planned for the future.
+The last two formats often make use of the `ARM7TDMI` coprocessor as found in
+the `Harmony` cartridge and is fully supported by `Gopher2600`.
 
 Missing Formats:
 
 * X07. This was only ever used as far as I know, with `Stella's Stocking` which has never been released (ROM dumped).
-* CDF and CDFJ. These are both formats that use the `ARM7` of the `Harmony` cartridge, which has not yet been implemented.
 
 ## Statistics Viewer
 
@@ -613,6 +601,25 @@ at https://godoc.org/github.com/JetSetIlly/Gopher2600
 
 Finally, development and maintenance documentation is beginning to be stored in its
 own Github repository: https://github.com/JetSetIlly/Gopher2600-Dev-Docs
+
+## Self Reflection
+
+There are some design decisions that would perhaps be made differently if I had
+known where the program was going. For instance, because the project was a way
+of learning a new programming language I chose to implement my own "database"
+to [store regression test information](#regression-database). A more natural
+choice would be to use SQlite but actually the current solution works quite
+well.
+
+A couple of packages may well be useful in other projects. The `prefs` package
+is quite versatile. With a bit of work it could be generalised and put to use
+in other projects. I think though, this package is a natural candidate to be
+rewritten with type parameters. Not yet available in Go but scheduled for
+release in 2022.
+
+I would also replace the `commandline` package. It works quite nicely but as
+you would expect from a home-baked solution there are limitations to the
+parser. It should be rewritten with `flex` & `yacc`.
 
 ## Other Software / Libraries
 
