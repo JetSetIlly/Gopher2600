@@ -18,7 +18,6 @@ package sdlimgui
 import (
 	"io"
 	"sync/atomic"
-	"time"
 
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
@@ -77,24 +76,10 @@ type SdlImgui struct {
 
 	// functions that need to be performed in the main thread are queued for
 	// serving by the service() function
-	service          chan func()
-	serviceErr       chan error
-	servicePulsePlay *time.Ticker
-	servicePulseDbg  *time.Ticker
-	servicePulseIdle *time.Ticker
+	service    chan func()
+	serviceErr chan error
 
-	// some gui events will not be serviced immediately because of the service
-	// sleep. serviceWake causes the service loop to wake up immediately.
-	//
-	// when pushing to this channel from the same goroutine as the service loop
-	// (which is most likely) then the push should happen in a select/default
-	// block to prevent channel deadlock. eg:
-	//
-	//	select {
-	//	case serviceWake <- true:
-	//	default:
-	//	}
-	serviceWake chan bool
+	polling *polling
 
 	// ReqFeature() and GetFeature() hands off requests to the featureReq
 	// channel for servicing. think of these as pecial instances of the
@@ -192,15 +177,6 @@ func NewSdlImgui(tv *television.Television, playmode bool) (*SdlImgui, error) {
 		return nil, curated.Errorf("sdlimgui: %v", err)
 	}
 
-	// initialise service pulses. which one we're using depends on the state of
-	// the gui (whether it's in playmode etc.)
-	img.servicePulseDbg = time.NewTicker(time.Millisecond * debugSleepPeriod)
-	img.servicePulsePlay = time.NewTicker(time.Millisecond * playSleepPeriod)
-	img.servicePulseIdle = time.NewTicker(time.Millisecond * idleSleepPeriod)
-
-	// channel to force service loop to wake from a delay
-	img.serviceWake = make(chan bool, 1)
-
 	// playmode is an atomic value. make sure a value has been assigned to it
 	// before accessing it.
 	img.playmode.Store(false)
@@ -211,6 +187,9 @@ func NewSdlImgui(tv *television.Television, playmode bool) (*SdlImgui, error) {
 	if err != nil {
 		return nil, curated.Errorf("sdlimgui: %v", err)
 	}
+
+	// initialise new polling type
+	img.polling = newPolling(img)
 
 	// open container window
 	img.plt.window.Show()

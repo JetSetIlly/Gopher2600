@@ -16,22 +16,11 @@
 package sdlimgui
 
 import (
-	"time"
-
 	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/logger"
 
 	"github.com/inkyblackness/imgui-go/v3"
 	"github.com/veandco/go-sdl2/sdl"
-)
-
-// time periods in milliseconds that each mode sleeps for at the end of each
-// service() call. this changes depending on whether we're in debug or play
-// mode.
-const (
-	debugSleepPeriod = 50
-	playSleepPeriod  = 10
-	idleSleepPeriod  = 500
 )
 
 // Service implements GuiCreator interface.
@@ -43,76 +32,17 @@ func (img *SdlImgui) Service() {
 	default:
 	}
 
-	// the first SDL event is captured by the select blocks below. queued
-	// events are captured by the PollEvent loop
-	var ev sdl.Event
-
-	// wait for an event or a timeout depending on the state of the emulation.
-	// are we in playmode or are we in debugging mode.
-	//
-	// note that the only difference between the select blocks is the timeout
-	// duration.
-	if img.isPlaymode() {
-		select {
-		case <-img.servicePulsePlay.C: // timeout
-		case <-img.serviceWake:
-		case ev = <-img.plt.miniEvent:
-		case r := <-img.featureSet:
-			img.serviceSetFeature(r)
-		case r := <-img.featureGet:
-			img.serviceGetFeature(r)
-		}
-	} else {
-		// refresh lazy values. we have to do this every service iteration
-		// because otherwise we might miss some changes:
-		//
-		// the debugger.HasChanged flag is itself a product of the lazy refresh
-		// process so we must have read it in order to know if any changes have
-		// taken place! I suppose we could have two layers of lazy refresh but
-		// that seems to be unduly complicated for what would be a small gain.
-		//
-		// moreover, it's possible to change the state of the emulation from
-		// the GUI without going through the debugger, which makes the
-		// HasChanged flag of limited use.
+	// refresh lazy values when in debugger mode
+	if !img.isPlaymode() {
 		img.lz.Refresh()
-
-		// we know we're in the debugger but we must still decide which timeout ticker to use.
-		var pulse <-chan time.Time
-
-		// the positive branch selects the more frequent ticker (ie. the one
-		// that leads to more CPU usage).
-		//
-		// we trigger this when the debugger thinks something has changed; when
-		// the emulation is running; or when a CRT effect is active. the CRT
-		// conditions are required because one of the CRT effects (the noise
-		// generator) requires an animated effect, which requires frequent
-		// updates.
-		if img.lz.Debugger.HasChanged || img.state == gui.StateRunning || img.wm.dbgScr.crt || img.wm.crtPrefs.open {
-			pulse = img.servicePulseDbg.C
-		} else {
-			pulse = img.servicePulseIdle.C
-		}
-
-		select {
-		case <-pulse:
-		case <-img.serviceWake:
-		case ev = <-img.plt.miniEvent:
-			if !img.isCaptured() {
-				// slow down mouse events unless we're in playmode or input has been "captured"
-				switch ev.(type) {
-				case *sdl.MouseMotionEvent:
-					<-img.servicePulseDbg.C
-				}
-			}
-		case r := <-img.featureSet:
-			img.serviceSetFeature(r)
-		case r := <-img.featureGet:
-			img.serviceGetFeature(r)
-		}
 	}
+
+	// poll for sdl event or timeout
+	ev := img.polling.wait()
 
 	// do not service SDL events if no event channel has been set
 	if img.events != nil {
+		// the first event of the loop will have been returned by poll.wait() above
 		for ; ev != nil; ev = sdl.PollEvent() {
 			switch ev := ev.(type) {
 			// close window
@@ -259,15 +189,9 @@ func (img *SdlImgui) Service() {
 				// frame and *this* mouse button press will be acknowledged.
 				// next frame the window will not be drawn. however, the *next*
 				// frame will sleep until the time out - *this* mouse button
-				// event has been consumed. prodding serviceWake ensures there
-				// is no delay in drawing the *next* frame
-				//
-				// pushing event inside a select/default block to prevent
-				// channel deadlock
-				select {
-				case img.serviceWake <- true:
-				default:
-				}
+				// event has been consumed. calling alert() ensures there is no
+				// delay in drawing the *next* frame
+				img.polling.alert()
 
 			case *sdl.MouseWheelEvent:
 				var deltaX, deltaY float32
