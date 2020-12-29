@@ -23,98 +23,6 @@ import (
 	"github.com/jetsetilly/gopher2600/curated"
 )
 
-// SharedMemory represents the memory passed between the parent
-// cartridge-mapper implementation and the ARM.
-type SharedMemory interface {
-	// Return memory block and array offset for the requested address. Memory
-	// blocks mays be different for read and write operations.
-	MapAddress(addr uint32, write bool) (*[]byte, uint32)
-
-	// Return reset addreses for the Stack Pointer register; the Link Register;
-	// and Program Counter
-	ResetVectors() (uint32, uint32, uint32)
-}
-
-// CartridgeHook allows the parent cartridge mapping to emulate ARM code in a
-// more direct way. This is primarily because we do not yet emulate full ARM
-// bytecode only Thumb bytecode, and the value of doing so is unclear.
-type CartridgeHook interface {
-	// Returns false if parent cartridge mapping does not understand the
-	// address.
-	ARMinterrupt(addr uint32, val1 uint32, val2 uint32) (ARMinterruptReturn, error)
-}
-
-type ARMinterruptReturn struct {
-	SaveResult        bool
-	SaveRegister      uint32
-	SaveValue         uint32
-	InterruptServiced bool
-}
-
-// the arm7tdmi has a 32 bit status register but we only need the CSPR bits
-// currently.
-type status struct {
-	// CPSR (current program status register) bits
-	negative bool
-	zero     bool
-	overflow bool
-	carry    bool
-}
-
-func (sr *status) String() string {
-	s := strings.Builder{}
-	if sr.negative {
-		s.WriteRune('N')
-	} else {
-		s.WriteRune('n')
-	}
-	if sr.zero {
-		s.WriteRune('Z')
-	} else {
-		s.WriteRune('z')
-	}
-	if sr.overflow {
-		s.WriteRune('V')
-	} else {
-		s.WriteRune('v')
-	}
-	if sr.carry {
-		s.WriteRune('C')
-	} else {
-		s.WriteRune('c')
-	}
-	return s.String()
-}
-
-func (sr *status) reset() {
-	sr.negative = false
-	sr.zero = false
-	sr.overflow = false
-	sr.carry = false
-}
-
-func (sr *status) isNegative(a uint32) {
-	sr.negative = a&0x80000000 == 0x80000000
-}
-
-func (sr *status) isZero(a uint32) {
-	sr.zero = a == 0x00
-}
-
-func (sr *status) setOverflow(a, b, c uint32) {
-	d := (a & 0x7fffffff) + (b & 0x7fffffff) + c
-	d >>= 31
-	e := (d & 0x01) + ((a >> 31) & 0x01) + ((b >> 31) & 0x01)
-	e >>= 1
-	sr.overflow = (d^e)&0x01 == 0x01
-}
-
-func (sr *status) setCarry(a, b, c uint32) {
-	d := (a & 0x7fffffff) + (b & 0x7fffffff) + c
-	d = (d >> 31) + (a >> 31) + (b >> 31)
-	sr.carry = d&0x02 == 0x02
-}
-
 // register names.
 const (
 	rSP = 13 + iota
@@ -125,15 +33,17 @@ const (
 
 // ARM implements the ARM7TDMI-S LPC2103 processor.
 type ARM struct {
-	mem   SharedMemory
-	hook  CartridgeHook
+	mem  SharedMemory
+	hook CartridgeHook
+
+	// the ARM has it's own timer which is ticked every VCS video cycle
 	timer timer
 
 	// memory for values that fall outside of the areas defined above. map
 	// access is slower than array/slice access but the potential range of
 	// scratch addresses is very large and there's no way of knowning how much
 	// space is required ahead of time. a map is good compromise.
-	scratch map[uint32]byte
+	scratch scratch
 
 	status    status
 	registers [rCount]uint32
@@ -144,12 +54,11 @@ type ARM struct {
 // NewARM is the preferred method of initialisation for the ARM type.
 func NewARM(mem SharedMemory, hook CartridgeHook) *ARM {
 	arm := &ARM{
-		mem:  mem,
-		hook: hook,
+		mem:     mem,
+		hook:    hook,
+		scratch: make(scratch),
 	}
 	arm.reset()
-
-	arm.scratch = make(map[uint32]byte)
 
 	return arm
 }
@@ -213,7 +122,7 @@ func (arm *ARM) read8bit(addr uint32) uint8 {
 	var mem *[]uint8
 	mem, addr = arm.mem.MapAddress(addr, false)
 	if mem == nil {
-		return arm.scratch[addr]
+		return arm.scratch.read8bit(addr)
 	}
 	return (*mem)[addr]
 }
@@ -223,7 +132,7 @@ func (arm *ARM) write8bit(addr uint32, val uint8) {
 
 	mem, addr = arm.mem.MapAddress(addr, true)
 	if mem == nil {
-		arm.scratch[addr] = val
+		arm.scratch.write8bit(addr, val)
 		return
 	}
 	(*mem)[addr] = val
@@ -232,11 +141,9 @@ func (arm *ARM) write8bit(addr uint32, val uint8) {
 func (arm *ARM) read16bit(addr uint32) uint16 {
 	var mem *[]uint8
 	mem, addr = arm.mem.MapAddress(addr, false)
-
 	if mem == nil {
-		return uint16(arm.scratch[addr]) | (uint16(arm.scratch[addr+1]) << 8)
+		return arm.scratch.read16bit(addr)
 	}
-
 	return uint16((*mem)[addr]) | (uint16((*mem)[addr+1]) << 8)
 }
 
@@ -244,8 +151,7 @@ func (arm *ARM) write16bit(addr uint32, val uint16) {
 	var mem *[]uint8
 	mem, addr = arm.mem.MapAddress(addr, true)
 	if mem == nil {
-		arm.scratch[addr] = uint8(val)
-		arm.scratch[addr+1] = uint8(val >> 8)
+		arm.scratch.write16bit(addr, val)
 		return
 	}
 	(*mem)[addr] = uint8(val)
@@ -260,7 +166,7 @@ func (arm *ARM) read32bit(addr uint32) uint32 {
 	var mem *[]uint8
 	mem, addr = arm.mem.MapAddress(addr, false)
 	if mem == nil {
-		return uint32(arm.scratch[addr]) | (uint32(arm.scratch[addr+1]) << 8) | (uint32(arm.scratch[addr+2]) << 16) | (uint32(arm.scratch[addr+3]) << 24)
+		return arm.scratch.read32bit(addr)
 	}
 
 	return uint32((*mem)[addr]) | (uint32((*mem)[addr+1]) << 8) | (uint32((*mem)[addr+2]) << 16) | uint32((*mem)[addr+3])<<24
@@ -274,10 +180,7 @@ func (arm *ARM) write32bit(addr uint32, val uint32) {
 	var mem *[]uint8
 	mem, addr = arm.mem.MapAddress(addr, true)
 	if mem == nil {
-		arm.scratch[addr] = uint8(val)
-		arm.scratch[addr+1] = uint8(val >> 8)
-		arm.scratch[addr+2] = uint8(val >> 16)
-		arm.scratch[addr+3] = uint8(val >> 24)
+		arm.scratch.write32bit(addr, val)
 		return
 	}
 	(*mem)[addr] = uint8(val)
