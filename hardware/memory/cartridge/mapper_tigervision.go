@@ -184,7 +184,7 @@ func (cart *tigervision) Listen(addr uint16, data uint8) {
 }
 
 // Step implements the mapper.CartMapper interface.
-func (cart *tigervision) Step() {
+func (cart *tigervision) Step(_ float32) {
 }
 
 // IterateBank implements the mapper.CartMapper interface.

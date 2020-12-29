@@ -209,7 +209,7 @@ func (cart *atari) Listen(_ uint16, _ uint8) {
 }
 
 // Step implements the mapper.CartMapper interface.
-func (cart *atari) Step() {
+func (cart *atari) Step(_ float32) {
 }
 
 // GetRAM implements the mapper.CartRAMBus interface.

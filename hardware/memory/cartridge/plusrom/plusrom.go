@@ -220,8 +220,8 @@ func (cart *PlusROM) Listen(addr uint16, data uint8) {
 }
 
 // Step implements the mapper.CartMapper interface.
-func (cart *PlusROM) Step() {
-	cart.child.Step()
+func (cart *PlusROM) Step(clock float32) {
+	cart.child.Step(clock)
 }
 
 // CopyBanks implements the mapper.CartMapper interface.

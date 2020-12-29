@@ -106,6 +106,9 @@ func (s *State) GetState(request signal.StateReq) int {
 // Television is a Television implementation of the Television interface. In all
 // honesty, it's most likely the only implementation required.
 type Television struct {
+	// vcs will be nil unless AttachVCS() has been called
+	vcs VCSReturnChannel
+
 	// spec on creation ID is the string that was to ID the television
 	// type/spec on creation. because the actual spec can change, the ID field
 	// of the Spec type can not be used for things like regression
@@ -133,8 +136,8 @@ type Television struct {
 	// list of signals sent to pixel renderers since the beginning of the
 	// current frame
 	signals []signal.SignalAttributes
-	// the index to write the next signal
 
+	// the index to write the next signal
 	signalIdx int
 }
 
@@ -182,6 +185,21 @@ func (tv *Television) Plumb(s *State) {
 	// resize renderers to match current state
 	for _, r := range tv.renderers {
 		_ = r.Resize(tv.state.spec, tv.state.top, tv.state.bottom-tv.state.top)
+	}
+
+	// make sure vcs knows about current spec
+	if tv.vcs != nil {
+		_ = tv.vcs.SetClockSpeed(tv.state.spec.ID)
+	}
+}
+
+// AttachVCS attaches an implementation of the VCSReturnChannel.
+func (tv *Television) AttachVCS(vcs VCSReturnChannel) {
+	tv.vcs = vcs
+
+	// notify the newly attached console of the current TV spec
+	if tv.vcs != nil {
+		tv.vcs.SetClockSpeed(tv.state.spec.ID)
 	}
 }
 
@@ -522,6 +540,10 @@ func (tv *Television) SetSpec(spec string) error {
 		if err != nil {
 			return err
 		}
+	}
+
+	if tv.vcs != nil {
+		tv.vcs.SetClockSpeed(spec)
 	}
 
 	return nil

@@ -305,7 +305,7 @@ func (cart *mnetwork) Listen(_ uint16, _ uint8) {
 }
 
 // Step implements the mapper.CartMapper interface.
-func (cart *mnetwork) Step() {
+func (cart *mnetwork) Step(_ float32) {
 }
 
 // GetRAM implements the mapper.CartRAMBus interface.

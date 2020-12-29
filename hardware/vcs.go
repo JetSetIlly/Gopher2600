@@ -28,6 +28,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/controllers"
 	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/hardware/tia"
+	"github.com/jetsetilly/gopher2600/logger"
 )
 
 // VCS struct is the main container for the emulated components of the VCS.
@@ -41,6 +42,22 @@ type VCS struct {
 	Mem  *memory.Memory
 	RIOT *riot.RIOT
 	TIA  *tia.TIA
+
+	// The Clock defines the basic speed at which the the machine is runningt. This governs
+	// the speed of the CPU, the RIOT and attached peripherals. The TIA runs at
+	// exactly three times this speed.
+	//
+	// The different clock speeds are due to the nature of the different TV
+	// specifications. Put simply, a PAL machine must run slightly slower in
+	// order to be able to send a correct PAL signal to the television.
+	//
+	// Unlike the real hardware however, it is not the console that governs the
+	// clock speed but the television. A ROM will send a signal to the
+	// television, the timings of which will be used by the tv implementation
+	// to decide what type of TV signal (PAL or NTSC) is being sent. When the
+	// television detects a change in the TV signal it will notify the emulated
+	// console, allowing it to note the new implied clock speed.
+	Clock float32
 }
 
 // NewVCS creates a new VCS and everything associated with the hardware. It is
@@ -56,6 +73,7 @@ func NewVCS(tv *television.Television) (*VCS, error) {
 	vcs := &VCS{
 		Prefs: prefs,
 		TV:    tv,
+		Clock: ntscClock,
 	}
 
 	vcs.Mem = memory.NewMemory(vcs.Prefs)
@@ -72,6 +90,8 @@ func NewVCS(tv *television.Television) (*VCS, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	vcs.TV.AttachVCS(vcs)
 
 	return vcs, nil
 }
@@ -120,4 +140,26 @@ func (vcs *VCS) Reset() error {
 	}
 
 	return nil
+}
+
+const (
+	ntscClock = 1.193182
+	palClock  = 1.182298
+)
+
+// SetClockSpeed is an implemtation of the television.VCSReturnChannel interface.
+func (vcs *VCS) SetClockSpeed(tvSpec string) error {
+	switch tvSpec {
+	case "NTSC":
+		if vcs.Clock != ntscClock {
+			vcs.Clock = ntscClock
+			logger.Log("vcs", "switching to NTSC clock")
+		}
+	case "PAL":
+		if vcs.Clock != palClock {
+			logger.Log("vcs", "switching to PAL clock")
+			vcs.Clock = palClock
+		}
+	}
+	return curated.Errorf("vcs: cannot set clock speed for unknown tv specification (%s)", tvSpec)
 }

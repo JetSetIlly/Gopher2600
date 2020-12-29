@@ -19,16 +19,22 @@ type timer struct {
 	active bool
 
 	control uint32
-	counter uint32
+	counter float32
 }
 
-func (t *timer) step() {
+// the ARM7TDMI in the Harmony runs at 70Mhz.
+const armClock = float32(70)
+
+func (t *timer) step(clock float32) {
 	if !t.active {
 		return
 	}
 
-	// this figure isn't accurate
-	t.counter += 0x3a
+	// the ARM timer ticks forward once every ARM cycle. the best we can do to
+	// accommodate this is to tick the counter forward by the the appropriate
+	// fraction every VCS cycle. Put another way: an NTSC spec VCS, for
+	// example, will tick forward every 58-59 ARM cycles.
+	t.counter += armClock / clock
 }
 
 func (t *timer) write(addr uint32, val uint32) bool {
@@ -37,11 +43,7 @@ func (t *timer) write(addr uint32, val uint32) bool {
 		t.control = val
 		t.active = t.control&0x01 == 0x01
 	case 0xe0008008:
-		t.counter = val
-	case 0xe0008010:
-	case 0xe0008014:
-	case 0xe0008018:
-	case 0xe000801c:
+		t.counter = float32(val)
 	default:
 		return false
 	}
@@ -56,11 +58,7 @@ func (t *timer) read(addr uint32) (uint32, bool) {
 	case 0xe0008004:
 		val = t.control
 	case 0xe0008008:
-		val = t.counter
-	case 0xe0008010:
-	case 0xe0008014:
-	case 0xe0008018:
-	case 0xe000801c:
+		val = uint32(t.counter)
 	default:
 		return 0, false
 	}

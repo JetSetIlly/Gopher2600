@@ -128,3 +128,10 @@ const MaxScanlinesAbsolute = 400
 
 // the number of entries in signal history.
 const MaxSignalHistory = specification.HorizClksScanline * MaxScanlinesAbsolute
+
+// VCSReturnChannel is used to send information from the TV back to the parent
+// console. Named because I think of it as being similar to the Audio Return
+// Channel (ARC) present in modern TVs.
+type VCSReturnChannel interface {
+	SetClockSpeed(tvSpec string) error
+}

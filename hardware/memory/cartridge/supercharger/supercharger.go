@@ -288,7 +288,7 @@ func (cart *Supercharger) Listen(addr uint16, _ uint8) {
 }
 
 // Step implements the cartMapper interface.
-func (cart *Supercharger) Step() {
+func (cart *Supercharger) Step(_ float32) {
 	cart.state.tape.step()
 }
 

@@ -650,27 +650,29 @@ func (cart *dpcPlus) Listen(addr uint16, data uint8) {
 }
 
 // Step implements the mapper.CartMapper interface.
-func (cart *dpcPlus) Step() {
+func (cart *dpcPlus) Step(clock float32) {
 	// sample rate of 20KHz.
 	//
-	// Step() is called at a rate of 1.19Mhz. so:
+	// if Step() is called at a rate of 1.19Mhz. so:
 	//
 	// 1.19Mhz / 20KHz
 	// = 59
 	//
-	// ie. we clock the music data fetchers once every 59 calls to Step()
+	// ie. we clock the music data fetchers once every 59 calls to Step() when
+	// the VCS clock is running at 1.19Mhz
 	//
 	// the 20Khz is the same as the DPC format (see mapper_dpc for commentary).
+	divisor := int(clock * 50)
 
 	cart.state.beats++
-	if cart.state.beats%59 == 0 {
+	if cart.state.beats%divisor == 0 {
 		cart.state.beats = 0
 		cart.state.registers.MusicFetcher[0].Count += cart.state.registers.MusicFetcher[0].Freq
 		cart.state.registers.MusicFetcher[1].Count += cart.state.registers.MusicFetcher[1].Freq
 		cart.state.registers.MusicFetcher[2].Count += cart.state.registers.MusicFetcher[2].Freq
 	}
 
-	cart.arm.Step()
+	cart.arm.Step(clock)
 }
 
 // IterateBank implements the mapper.CartMapper interface.

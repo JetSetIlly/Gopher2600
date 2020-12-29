@@ -366,7 +366,7 @@ func (cart *cdf) Listen(addr uint16, data uint8) {
 }
 
 // Step implements the mapper.CartMapper interface.
-func (cart *cdf) Step() {
+func (cart *cdf) Step(clock float32) {
 	// sample rate of 20KHz.
 	//
 	// Step() is called at a rate of 1.19Mhz. so:
@@ -386,7 +386,7 @@ func (cart *cdf) Step() {
 		cart.state.registers.MusicFetcher[2].Count += cart.state.registers.MusicFetcher[2].Freq
 	}
 
-	cart.arm.Step()
+	cart.arm.Step(clock)
 }
 
 // IterateBank implements the mapper.CartMapper interface.

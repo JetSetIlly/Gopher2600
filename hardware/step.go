@@ -96,7 +96,7 @@ func (vcs *VCS) Step(videoCycleCallback func() error) error {
 		}
 
 		vcs.RIOT.Step()
-		vcs.Mem.Cart.Step()
+		vcs.Mem.Cart.Step(vcs.Clock)
 
 		return nil
 	}

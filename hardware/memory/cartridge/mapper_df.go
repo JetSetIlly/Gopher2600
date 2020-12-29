@@ -230,7 +230,7 @@ func (cart *df) Listen(_ uint16, _ uint8) {
 }
 
 // Step implements the mapper.CartMapper interface.
-func (cart *df) Step() {
+func (cart *df) Step(_ float32) {
 }
 
 // GetRAM implements the mapper.CartRAMBus interface.

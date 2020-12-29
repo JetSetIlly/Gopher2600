@@ -316,12 +316,12 @@ func (cart *dpc) Listen(_ uint16, _ uint8) {
 }
 
 // Step implements the mapper.CartMapper interface.
-func (cart *dpc) Step() {
+func (cart *dpc) Step(clock float32) {
 	// clock music enabled data fetchers if oscClock is active [col 7, ln 25-27]
-
+	//
 	// documented update rate is 42Khz [col 7, ln 25-27]
-
-	// cpu rate 1.19Mhz. so:
+	//
+	// so if VCS clock rate is 1.19Mhz:
 	// 1.19Mhz / 42Khz
 	// = 1190000 / 42000
 	// = 28.33
@@ -333,9 +333,15 @@ func (cart *dpc) Step() {
 	// ear, a value of 59 is more accurate. by my reckoning this means that the
 	// clock in the cartridge is 20Khz. I can find no supporting documentation
 	// for this.
+	//
+	// clock * 1Mhz / 20khz
+	// = clock * 1000000 / 20000
+	// = clock * 100 / 2
+	// = clock * 50
+	divisor := int(clock * 50)
 
 	cart.state.beats++
-	if cart.state.beats%59 == 0 {
+	if cart.state.beats%divisor == 0 {
 		cart.state.beats = 0
 		for f := 5; f <= 7; f++ {
 			if cart.state.registers.Fetcher[f].MusicMode && cart.state.registers.Fetcher[f].OSCclock {

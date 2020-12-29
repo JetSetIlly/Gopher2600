@@ -242,7 +242,7 @@ func (cart *parkerBros) Listen(_ uint16, _ uint8) {
 }
 
 // Step implements the mapper.CartMapper interface.
-func (cart *parkerBros) Step() {
+func (cart *parkerBros) Step(_ float32) {
 }
 
 // IterateBank implements the mapper.CartMapper interface.

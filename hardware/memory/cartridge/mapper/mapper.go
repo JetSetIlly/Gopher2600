@@ -53,9 +53,8 @@ type CartMapper interface {
 
 	// some cartridge mappings have independent clocks that tick and change
 	// internal cartridge state. the step() function is called every cpu cycle
-	// at a rate of 1.19MHz. cartridges with slower clocks need to handle the
-	// rate change.
-	Step()
+	// at the rate specified.
+	Step(clock float32)
 
 	// patch differs from write/poke in that it alters the data as though it
 	// was being read from disk. that is, the offset is measured from the start

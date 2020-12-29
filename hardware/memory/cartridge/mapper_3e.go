@@ -204,7 +204,7 @@ func (cart *m3e) Listen(addr uint16, data uint8) {
 }
 
 // Step implements the mapper.CartMapper interface.
-func (cart *m3e) Step() {
+func (cart *m3e) Step(_ float32) {
 }
 
 // GetRAM implements the mapper.CartRAMBus interface.

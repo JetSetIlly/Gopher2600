@@ -97,8 +97,8 @@ func (arm *ARM) String() string {
 }
 
 // Step moves the ARM on one cycle. Currently only affects the ARM timer.
-func (arm *ARM) Step() {
-	arm.timer.step()
+func (arm *ARM) Step(clock float32) {
+	arm.timer.step(clock)
 }
 
 // Run will continue until the ARM program encounters a switch from THUMB mode

@@ -295,8 +295,8 @@ func (cart *Cartridge) Listen(addr uint16, data uint8) {
 
 // Step should be called every CPU cycle. The attached cartridge may or may not
 // change its state as a result. In fact, very few cartridges care about this.
-func (cart *Cartridge) Step() {
-	cart.mapper.Step()
+func (cart *Cartridge) Step(clock float32) {
+	cart.mapper.Step(clock)
 }
 
 // GetRegistersBus returns interface to the registers of the cartridge or nil
