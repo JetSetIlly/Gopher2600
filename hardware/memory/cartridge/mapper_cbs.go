@@ -83,13 +83,14 @@ func (cart *cbs) ID() string {
 }
 
 // Snapshot implements the mapper.CartMapper interface.
-func (cart *cbs) Snapshot() mapper.CartSnapshot {
-	return cart.state.Snapshot()
+func (cart *cbs) Snapshot() mapper.CartMapper {
+	n := *cart
+	n.state = cart.state.Snapshot()
+	return &n
 }
 
 // Plumb implements the mapper.CartMapper interface.
-func (cart *cbs) Plumb(s mapper.CartSnapshot) {
-	cart.state = s.(*cbsState)
+func (cart *cbs) Plumb() {
 }
 
 // Reset implements the cartMapper interface.
@@ -247,8 +248,8 @@ func newCbsState() *cbsState {
 	}
 }
 
-// Snapshot implements the mapper.CartSnapshot interface.
-func (s *cbsState) Snapshot() mapper.CartSnapshot {
+// Snapshot implements the mapper.CartMapper interface.
+func (s *cbsState) Snapshot() *cbsState {
 	n := *s
 	n.ram = make([]uint8, len(s.ram))
 	copy(n.ram, s.ram)

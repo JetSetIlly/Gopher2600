@@ -83,7 +83,13 @@ func (mem *Memory) Snapshot() *Memory {
 	n.RIOT = mem.RIOT.Snapshot()
 	n.TIA = mem.TIA.Snapshot()
 	n.RAM = mem.RAM.Snapshot()
+	n.Cart = mem.Cart.Snapshot()
 	return &n
+}
+
+// Plumb makes sure everythin is ship-shape after a rewind event.
+func (mem *Memory) Plumb() {
+	mem.Cart.Plumb()
 }
 
 // Reset contents of memory.

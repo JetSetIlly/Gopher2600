@@ -141,13 +141,13 @@ func (cart *PlusROM) ID() string {
 }
 
 // Snapshot implements the mapper.CartMapper interface.
-func (cart *PlusROM) Snapshot() mapper.CartSnapshot {
+func (cart *PlusROM) Snapshot() mapper.CartMapper {
 	return cart.child.Snapshot()
 }
 
 // Plumb implements the mapper.CartMapper interface.
-func (cart *PlusROM) Plumb(s mapper.CartSnapshot) {
-	cart.child.Plumb(s)
+func (cart *PlusROM) Plumb() {
+	cart.child.Plumb()
 }
 
 // ID implements the mapper.CartContainer interface.

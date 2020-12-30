@@ -110,11 +110,11 @@ func (win *winRAM) draw() {
 			}
 		}
 
-		// undo any color changes
 		if imgui.IsItemHovered() {
 			win.drawSnapshotInfo(d, e)
 		}
 
+		// undo any color changes
 		if d != e {
 			imgui.PopStyleColor()
 		}

@@ -105,13 +105,14 @@ func (cart *dpcPlus) ID() string {
 }
 
 // Snapshot implements the mapper.CartMapper interface.
-func (cart *dpcPlus) Snapshot() mapper.CartSnapshot {
-	return cart.state.Snapshot()
+func (cart *dpcPlus) Snapshot() mapper.CartMapper {
+	n := *cart
+	n.state = cart.state.Snapshot()
+	return &n
 }
 
 // Plumb implements the mapper.CartMapper interface.
-func (cart *dpcPlus) Plumb(s mapper.CartSnapshot) {
-	cart.state = s.(*State)
+func (cart *dpcPlus) Plumb() {
 	cart.arm.PlumbSharedMemory(cart.state.static)
 }
 

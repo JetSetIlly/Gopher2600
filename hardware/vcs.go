@@ -118,7 +118,7 @@ func (vcs *VCS) AttachCartridge(cartload cartridgeloader.Loader) error {
 
 // Reset emulates the reset switch on the console panel.
 func (vcs *VCS) Reset() error {
-	err := vcs.TV.Reset()
+	err := vcs.TV.Reset(false)
 	if err != nil {
 		return err
 	}

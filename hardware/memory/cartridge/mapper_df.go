@@ -70,13 +70,14 @@ func (cart *df) ID() string {
 }
 
 // Snapshot implements the mapper.CartMapper interface.
-func (cart *df) Snapshot() mapper.CartSnapshot {
-	return cart.state.Snapshot()
+func (cart *df) Snapshot() mapper.CartMapper {
+	n := *cart
+	n.state = cart.state.Snapshot()
+	return &n
 }
 
 // Plumb implements the mapper.CartMapper interface.
-func (cart *df) Plumb(s mapper.CartSnapshot) {
-	cart.state = s.(*dfState)
+func (cart *df) Plumb() {
 }
 
 // Reset implements the mapper.CartMapper interface.
@@ -323,7 +324,7 @@ func newDfState() *dfState {
 	}
 }
 
-func (s *dfState) Snapshot() mapper.CartSnapshot {
+func (s *dfState) Snapshot() *dfState {
 	n := *s
 	n.ram = make([]uint8, len(s.ram))
 	copy(n.ram, s.ram)

@@ -15,8 +15,6 @@
 
 package cdf
 
-import "github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
-
 type State struct {
 	// currently selected bank
 	bank int
@@ -50,7 +48,7 @@ func (s *State) initialise(bank int) {
 	s.registers.initialise()
 }
 
-func (s *State) Snapshot() mapper.CartSnapshot {
+func (s *State) Snapshot() *State {
 	n := *s
 	n.static = s.static.Snapshot()
 	return &n

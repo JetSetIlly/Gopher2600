@@ -107,13 +107,14 @@ func (cart *Supercharger) ID() string {
 }
 
 // Snapshot implements the mapper.CartMapper interface.
-func (cart *Supercharger) Snapshot() mapper.CartSnapshot {
-	return cart.state.Snapshot()
+func (cart *Supercharger) Snapshot() mapper.CartMapper {
+	n := *cart
+	n.state = cart.state.Snapshot()
+	return &n
 }
 
 // Plumb implements the mapper.CartMapper interface.
-func (cart *Supercharger) Plumb(s mapper.CartSnapshot) {
-	cart.state = s.(*state)
+func (cart *Supercharger) Plumb() {
 }
 
 // Reset implements the mapper.CartMapper interface.

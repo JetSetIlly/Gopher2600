@@ -15,8 +15,6 @@
 
 package supercharger
 
-import "github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
-
 type state struct {
 	tape      tape
 	registers Registers
@@ -31,8 +29,8 @@ func newState() *state {
 	return s
 }
 
-// Snapshot implements the mapper.CartSnapshot interface.
-func (s *state) Snapshot() mapper.CartSnapshot {
+// Snapshot implements the mapper.CartMapper interface.
+func (s *state) Snapshot() *state {
 	n := *s
 	n.tape = s.tape.snapshot()
 	for i := range n.ram {

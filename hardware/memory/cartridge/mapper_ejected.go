@@ -40,12 +40,12 @@ func (cart *ejected) ID() string {
 }
 
 // Snapshot implements the mapper.CartMapper interface.
-func (cart *ejected) Snapshot() mapper.CartSnapshot {
+func (cart *ejected) Snapshot() mapper.CartMapper {
 	return nil
 }
 
 // Plumb implements the mapper.CartMapper interface.
-func (cart *ejected) Plumb(s mapper.CartSnapshot) {
+func (cart *ejected) Plumb() {
 }
 
 // Reset implements the cartMapper interface.

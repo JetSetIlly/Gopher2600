@@ -85,13 +85,14 @@ func (cart *parkerBros) ID() string {
 }
 
 // Snapshot implements the mapper.CartMapper interface.
-func (cart *parkerBros) Snapshot() mapper.CartSnapshot {
-	return cart.state.Snapshot()
+func (cart *parkerBros) Snapshot() mapper.CartMapper {
+	n := *cart
+	n.state = cart.state.Snapshot()
+	return &n
 }
 
 // Plumb implements the mapper.CartMapper interface.
-func (cart *parkerBros) Plumb(s mapper.CartSnapshot) {
-	cart.state = s.(*parkerBrosState)
+func (cart *parkerBros) Plumb() {
 }
 
 // Reset implements the mapper.CartMapper interface.
@@ -330,8 +331,8 @@ func newParkerBrosState() *parkerBrosState {
 	return &parkerBrosState{}
 }
 
-// Snapshot implements the mapper.CartSnapshot interface.
-func (s *parkerBrosState) Snapshot() mapper.CartSnapshot {
+// Snapshot implements the mapper.CartMapper interface.
+func (s *parkerBrosState) Snapshot() *parkerBrosState {
 	n := *s
 	return &n
 }

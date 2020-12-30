@@ -123,13 +123,14 @@ func (cart *mnetwork) ID() string {
 }
 
 // Snapshot implements the mapper.CartMapper interface.
-func (cart *mnetwork) Snapshot() mapper.CartSnapshot {
-	return cart.state.Snapshot()
+func (cart *mnetwork) Snapshot() mapper.CartMapper {
+	n := *cart
+	n.state = cart.state.Snapshot()
+	return &n
 }
 
 // Plumb implements the mapper.CartMapper interface.
-func (cart *mnetwork) Plumb(s mapper.CartSnapshot) {
-	cart.state = s.(*mnetworkState)
+func (cart *mnetwork) Plumb() {
 }
 
 // Reset implements the mapper.CartMapper interface.
@@ -422,8 +423,8 @@ func newMnetworkState() *mnetworkState {
 	return s
 }
 
-// Snapshot implements the mapper.CartSnapshot interface.
-func (s *mnetworkState) Snapshot() mapper.CartSnapshot {
+// Snapshot implements the mapper.CartMapper interface.
+func (s *mnetworkState) Snapshot() *mnetworkState {
 	n := *s
 	for i := range s.ram256byte {
 		n.ram256byte[i] = make([]uint8, len(s.ram256byte[i]))

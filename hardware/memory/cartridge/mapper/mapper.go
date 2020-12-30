@@ -34,8 +34,8 @@ type CartMapper interface {
 	String() string
 	ID() string
 
-	Snapshot() CartSnapshot
-	Plumb(CartSnapshot)
+	Snapshot() CartMapper
+	Plumb()
 
 	// reset volatile areas of the cartridge. for many cartridge mappers this
 	// will do nothing but those with registers or ram should perform an
@@ -240,13 +240,6 @@ const (
 type CartHotspotInfo struct {
 	Symbol string
 	Action CartHotspotAction
-}
-
-// CartSnapshot represents saved data from the cartridge as a result of a
-// Snapshot() operation.
-type CartSnapshot interface {
-	// make another copy of the snapshot
-	Snapshot() CartSnapshot
 }
 
 // CartRewindBoundary are implemented by cartridge mappers that require special

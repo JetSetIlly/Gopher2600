@@ -23,24 +23,22 @@ import (
 )
 
 // time periods in milliseconds that each mode sleeps for at the end of each
-// service() call. this changes depending on whether we're in debug or play
-// mode.
+// service() call. this changes depending primarily on whether we're in debug
+// or play mode.
 const (
 	debugSleepPeriod = 50
 	playSleepPeriod  = 10
 	idleSleepPeriod  = 500
 )
 
+// time periods used to slow down / speed up event handling.
+const (
+	frictionPeriod     = 50
+	wakefullnessPeriod = 200
+)
+
 type polling struct {
 	img *SdlImgui
-
-	dbgTicker *time.Ticker
-
-	// wake is used to preempt the tickers when we want to communicate between
-	// iterations of the service loop. for example, closing sdlimgui windows
-	// might feel laggy without it (see commentary in service loop for
-	// explanation).
-	wake bool
 
 	// functions that need to be performed in the main thread are queued for
 	// serving by the service() function
@@ -55,6 +53,20 @@ type polling struct {
 	featureGet     chan featureRequest
 	featureGetData chan gui.FeatureReqData
 	featureGetErr  chan error
+
+	// the following are not used in playmode
+
+	// alerted is used to preempt the tickers when we want to communicate between
+	// iterations of the service loop. for example, closing sdlimgui windows
+	// might feel laggy without it (see commentary in service loop for
+	// explanation).
+	alerted bool
+
+	// the awake flag is set to true for a short time (defined by
+	// wakefullnessPeriod) after the last event was received. this improves
+	// responsiveness for certain GUI operations.
+	awake     bool
+	lastEvent time.Time
 }
 
 func newPolling(img *SdlImgui) *polling {
@@ -69,16 +81,17 @@ func newPolling(img *SdlImgui) *polling {
 		featureGetErr:  make(chan error, 1),
 	}
 
-	pol.dbgTicker = time.NewTicker(time.Millisecond * debugSleepPeriod)
-
 	return pol
 }
 
 // alert() forces the next call to wait to resolve immediately.
 func (pol *polling) alert() {
-	pol.wake = true
+	// does nothing in playmode but it's cheaper to just set the flag
+	pol.alerted = true
 }
 
+// wait for an SDL event or for a timeout. the timeout duration depends on the
+// state of the emulation and receent user input.
 func (pol *polling) wait() sdl.Event {
 	select {
 	case f := <-pol.service:
@@ -90,23 +103,20 @@ func (pol *polling) wait() sdl.Event {
 	default:
 	}
 
+	// decide on timeout period
 	var timeout int
 
-	if pol.wake {
-		pol.wake = false
+	if pol.img.isPlaymode() {
+		timeout = playSleepPeriod
 	} else {
-		if pol.img.isPlaymode() {
-			timeout = playSleepPeriod
+		if pol.alerted {
+			pol.alerted = false
 		} else {
-			// the positive branch selects the more frequent ticker (ie. the one
-			// that leads to more CPU usage).
-			//
-			// we trigger this when the debugger thinks something has changed: when the
-			// emulation is running or when a CRT effect is active.
-			//
-			// the CRT conditions are required because one of the CRT effects is an
-			// animated effect (the noise generator), which requires frequent updates.
-			if pol.img.lz.Debugger.HasChanged || pol.img.state == gui.StateRunning || pol.img.wm.dbgScr.crt || pol.img.wm.crtPrefs.open || pol.img.state == gui.StateInitialising {
+			working := pol.awake ||
+				pol.img.lz.Debugger.HasChanged || pol.img.state != gui.StatePaused ||
+				pol.img.wm.dbgScr.crt || pol.img.wm.crtPrefs.open
+
+			if working {
 				timeout = debugSleepPeriod
 			} else {
 				timeout = idleSleepPeriod
@@ -117,13 +127,25 @@ func (pol *polling) wait() sdl.Event {
 	// wait for new SDL event or until the selected timeout period has elapsed
 	ev := sdl.WaitEventTimeout(timeout)
 
-	// slow down mouse events unless input has been "captured". if we don't do
-	// this then waggling the mouse over the screen will increase CPU usage
-	// significantly. CPU usage will still increase but by a smaller margin.
-	if !pol.img.isCaptured() {
-		switch ev.(type) {
-		case *sdl.MouseMotionEvent:
-			<-pol.dbgTicker.C
+	// nothing to do in playmode
+	if !pol.img.isPlaymode() {
+		if ev != nil {
+			// an event has been received so set awake flag and note time of event
+			pol.awake = true
+			pol.lastEvent = time.Now()
+		} else if pol.awake {
+			// keep awake flag set for wakefullnessPeriod milliseconds
+			pol.awake = time.Since(pol.lastEvent).Milliseconds() < wakefullnessPeriod
+		}
+
+		// slow down mouse events unless input has been "captured". if we don't do
+		// this then waggling the mouse over the screen will increase CPU usage
+		// significantly. CPU usage will still increase but by a smaller margin.
+		if !pol.img.isCaptured() {
+			switch ev.(type) {
+			case *sdl.MouseMotionEvent:
+				time.Sleep(frictionPeriod * time.Millisecond)
+			}
 		}
 	}
 

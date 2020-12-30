@@ -84,13 +84,14 @@ func (cart *m3e) ID() string {
 }
 
 // Snapshot implements the mapper.CartMapper interface.
-func (cart *m3e) Snapshot() mapper.CartSnapshot {
-	return cart.state.Snapshot()
+func (cart *m3e) Snapshot() mapper.CartMapper {
+	n := *cart
+	n.state = cart.state.Snapshot()
+	return &n
 }
 
 // Plumb implements the mapper.CartMapper interface.
-func (cart *m3e) Plumb(s mapper.CartSnapshot) {
-	cart.state = s.(*m3eState)
+func (cart *m3e) Plumb() {
 }
 
 // Reset implements the mapper.CartMapper interface.
@@ -299,14 +300,12 @@ func newM3eState() *m3eState {
 	return s
 }
 
-// Snapshot implements the mapper.CartSnapshot interface.
-func (s *m3eState) Snapshot() mapper.CartSnapshot {
+// Snapshot implements the mapper.CartMapper interface.
+func (s *m3eState) Snapshot() *m3eState {
 	n := *s
-
 	for k := 0; k < len(s.ram); k++ {
 		n.ram[k] = make([]uint8, len(s.ram[k]))
 		copy(n.ram[k], s.ram[k])
 	}
-
 	return &n
 }

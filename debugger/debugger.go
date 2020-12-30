@@ -374,7 +374,7 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) error {
 			if err != nil {
 				return err
 			}
-			return dbg.tv.Reset()
+			return dbg.tv.Reset(true)
 		} else if pr, ok := cart.(*plusrom.PlusROM); ok {
 			if pr.Prefs.NewInstallation {
 				fi := gui.PlusROMFirstInstallation{Finish: nil, Cart: pr}

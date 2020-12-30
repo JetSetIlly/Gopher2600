@@ -115,16 +115,6 @@ func (cart *atari) ID() string {
 	return cart.mappingID
 }
 
-// Snapshot implements the mapper.CartMapper interface.
-func (cart *atari) Snapshot() mapper.CartSnapshot {
-	return cart.state.Snapshot()
-}
-
-// Plumb implements the mapper.CartMapper interface.
-func (cart *atari) Plumb(s mapper.CartSnapshot) {
-	cart.state = s.(*atariState)
-}
-
 // Reset implements the mapper.CartMapper interface.
 func (cart *atari) Reset(randSrc *rand.Rand) {
 	for i := range cart.state.ram {
@@ -282,6 +272,17 @@ func newAtari4k(data []byte) (mapper.CartMapper, error) {
 	return cart, nil
 }
 
+// Snapshot implements the mapper.CartMapper interface.
+func (cart *atari4k) Snapshot() mapper.CartMapper {
+	n := *cart
+	n.state = cart.state.Snapshot()
+	return &n
+}
+
+// Plumb implements the mapper.CartMapper interface.
+func (cart *atari4k) Plumb() {
+}
+
 // NumBanks implements the mapper.CartMapper interface.
 func (cart *atari4k) NumBanks() int {
 	return 1
@@ -330,6 +331,17 @@ func newAtari2k(data []byte) (mapper.CartMapper, error) {
 	copy(cart.banks[0], data)
 
 	return cart, nil
+}
+
+// Snapshot implements the mapper.CartMapper interface.
+func (cart *atari2k) Snapshot() mapper.CartMapper {
+	n := *cart
+	n.state = cart.state.Snapshot()
+	return &n
+}
+
+// Plumb implements the mapper.CartMapper interface.
+func (cart *atari2k) Plumb() {
 }
 
 // NumBanks implements the mapper.CartMapper interface.
@@ -381,6 +393,17 @@ func newAtari8k(data []uint8) (mapper.CartMapper, error) {
 	}
 
 	return cart, nil
+}
+
+// Snapshot implements the mapper.CartMapper interface.
+func (cart *atari8k) Snapshot() mapper.CartMapper {
+	n := *cart
+	n.state = cart.state.Snapshot()
+	return &n
+}
+
+// Plumb implements the mapper.CartMapper interface.
+func (cart *atari8k) Plumb() {
 }
 
 // NumBanks implements the mapper.CartMapper interface.
@@ -470,6 +493,17 @@ func newAtari16k(data []byte) (mapper.CartMapper, error) {
 	}
 
 	return cart, nil
+}
+
+// Snapshot implements the mapper.CartMapper interface.
+func (cart *atari16k) Snapshot() mapper.CartMapper {
+	n := *cart
+	n.state = cart.state.Snapshot()
+	return &n
+}
+
+// Plumb implements the mapper.CartMapper interface.
+func (cart *atari16k) Plumb() {
 }
 
 // NumBanks implements the mapper.CartMapper interface.
@@ -567,6 +601,17 @@ func newAtari32k(data []byte) (mapper.CartMapper, error) {
 	return cart, nil
 }
 
+// Snapshot implements the mapper.CartMapper interface.
+func (cart *atari32k) Snapshot() mapper.CartMapper {
+	n := *cart
+	n.state = cart.state.Snapshot()
+	return &n
+}
+
+// Plumb implements the mapper.CartMapper interface.
+func (cart *atari32k) Plumb() {
+}
+
 // NumBanks implements the mapper.CartMapper interface.
 func (cart *atari32k) NumBanks() int {
 	return 8
@@ -658,8 +703,8 @@ func newAtariState() *atariState {
 	return &atariState{}
 }
 
-// Snapshot implements the mapper.CartSnapshot interface.
-func (s *atariState) Snapshot() mapper.CartSnapshot {
+// Snapshot implements the mapper.CartMapper interface.
+func (s *atariState) Snapshot() *atariState {
 	n := *s
 	if s.ram != nil {
 		n.ram = make([]uint8, len(s.ram))

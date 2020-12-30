@@ -23,7 +23,6 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/cpu"
 	"github.com/jetsetilly/gopher2600/hardware/memory"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/riot"
 	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
@@ -57,11 +56,6 @@ type State struct {
 	RIOT *riot.RIOT
 	TIA  *tia.TIA
 	TV   *television.State
-
-	// as a consequence of how cartridge mappers have been implemented, it is
-	// not possible to offer anything more than an interface to snapshotted
-	// cartridge data
-	cart mapper.CartSnapshot
 }
 
 // snapshotLevel indicates the level of snapshot.
@@ -204,7 +198,6 @@ func (r *Rewind) snapshot(level snapshotLevel) *State {
 		RIOT:  r.vcs.RIOT.Snapshot(),
 		TIA:   r.vcs.TIA.Snapshot(),
 		TV:    r.vcs.TV.Snapshot(),
-		cart:  r.vcs.Mem.Cart.Snapshot(),
 	}
 }
 
@@ -375,14 +368,14 @@ func (r *Rewind) plumbState(s *State, frame, scanline, horizpos int) error {
 	r.vcs.TIA = s.TIA.Snapshot()
 
 	r.vcs.CPU.Plumb(r.vcs.Mem)
+	r.vcs.Mem.Plumb()
 	r.vcs.RIOT.Plumb(r.vcs.Mem.RIOT, r.vcs.Mem.TIA)
 	r.vcs.TIA.Plumb(r.vcs.Mem.TIA, r.vcs.RIOT.Ports)
-	r.vcs.Mem.Cart.Plumb(s.cart.Snapshot())
 	r.vcs.TV.Plumb(s.TV.Snapshot())
 
 	// if this is a reset entry then TV must be reset
 	if s.level == levelReset {
-		err := r.vcs.TV.Reset()
+		err := r.vcs.TV.Reset(false)
 		if err != nil {
 			return curated.Errorf("rewind", err)
 		}

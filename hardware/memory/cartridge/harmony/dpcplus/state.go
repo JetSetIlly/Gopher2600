@@ -15,8 +15,6 @@
 
 package dpcplus
 
-import "github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
-
 type State struct {
 	registers Registers
 
@@ -44,7 +42,8 @@ func newDPCPlusState() *State {
 	return s
 }
 
-func (s *State) Snapshot() mapper.CartSnapshot {
+func (s *State) Snapshot() *State {
 	n := *s
+	s.static = s.static.Snapshot()
 	return &n
 }

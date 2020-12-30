@@ -229,7 +229,7 @@ func (tv *Television) AddReflector(r ReflectionSynchronising) {
 }
 
 // Reset the television to an initial state.
-func (tv *Television) Reset() error {
+func (tv *Television) Reset(keepFrameNum bool) error {
 	// we definitely do not call this on television initialisation because the
 	// rest of the system may not be yet be in a suitable state
 
@@ -238,8 +238,11 @@ func (tv *Television) Reset() error {
 		return err
 	}
 
+	if !keepFrameNum {
+		tv.state.frameNum = 0
+	}
+
 	tv.state.horizPos = 0
-	tv.state.frameNum = 0
 	tv.state.scanline = 0
 	tv.state.syncedFrameNum = 0
 	tv.state.syncedFrame = false

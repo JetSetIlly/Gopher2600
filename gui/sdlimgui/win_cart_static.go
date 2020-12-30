@@ -68,15 +68,21 @@ func (win *winCartStatic) draw() {
 		return
 	}
 
+	// get comparison data. assuming that there is such a thing and that it's
+	// safe to get StaticData from.
+	comp := win.img.lz.Rewind.Comparison.Mem.Cart.GetStaticBus().GetStatic()
+
 	imgui.SetNextWindowPosV(imgui.Vec2{469, 285}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
 	imgui.SetNextWindowSizeV(imgui.Vec2{394, 356}, imgui.ConditionFirstUseEver)
 
 	imgui.BeginV(winCartStaticTitle, &win.open, 0)
 
 	imgui.BeginTabBar("")
-	for _, s := range win.img.lz.Cart.Static {
-		if imgui.BeginTabItemV(s.Segment, nil, 0) {
-			win.drawGrid(s.Segment, s.Data)
+	for i := range win.img.lz.Cart.Static {
+		a := win.img.lz.Cart.Static[i]
+		b := comp[i]
+		if imgui.BeginTabItemV(a.Segment, nil, 0) {
+			win.drawGrid(a.Segment, a.Data, b.Data)
 			imgui.EndTabItem()
 		}
 	}
@@ -85,7 +91,7 @@ func (win *winCartStatic) draw() {
 	imgui.End()
 }
 
-func (win *winCartStatic) drawGrid(segment string, a []byte) {
+func (win *winCartStatic) drawGrid(segment string, a []byte, b []byte) {
 	imgui.BeginChild(segment)
 
 	// no spacing between any of the drawEditByte() objects
@@ -114,7 +120,7 @@ func (win *winCartStatic) drawGrid(segment string, a []byte) {
 		} else {
 			imgui.SameLine()
 		}
-		win.drawEditByte(segment, uint16(idx), a[i])
+		win.drawEditByte(segment, uint16(idx), a[i], b[i])
 		i++
 	}
 	imgui.PopItemWidth()
@@ -125,15 +131,22 @@ func (win *winCartStatic) drawGrid(segment string, a []byte) {
 	imgui.EndChild()
 }
 
-func (win *winCartStatic) drawEditByte(segment string, idx uint16, b byte) {
+func (win *winCartStatic) drawEditByte(segment string, idx uint16, a byte, b byte) {
 	l := fmt.Sprintf("##%d", idx)
-	content := fmt.Sprintf("%02x", b)
+	content := fmt.Sprintf("%02x", a)
+
+	// compare current static value with value in comparison snapshot and use
+	// highlight color if it is different
+	if a != b {
+		imgui.PushStyleColor(imgui.StyleColorFrameBg, win.img.cols.RAMDiff)
+		defer imgui.PopStyleColor()
+	}
 
 	if imguiHexInput(l, win.img.state != gui.StatePaused, 2, &content) {
 		if v, err := strconv.ParseUint(content, 16, 8); err == nil {
 			win.img.lz.Dbg.PushRawEvent(func() {
-				b := win.img.lz.Dbg.VCS.Mem.Cart.GetStaticBus()
-				err := b.PutStatic(segment, idx, uint8(v))
+				a := win.img.lz.Dbg.VCS.Mem.Cart.GetStaticBus()
+				err := a.PutStatic(segment, idx, uint8(v))
 				if err != nil {
 					logger.Log("sdlimgui", err.Error())
 				}
