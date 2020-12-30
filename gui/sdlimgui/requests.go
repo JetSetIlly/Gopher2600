@@ -29,8 +29,8 @@ type featureRequest struct {
 
 // GetFeature implements gui.GUI interface.
 func (img *SdlImgui) GetFeature(request gui.FeatureReq) (gui.FeatureReqData, error) {
-	img.featureGet <- featureRequest{request: request}
-	return <-img.featureGetData, <-img.featureGetErr
+	img.polling.featureGet <- featureRequest{request: request}
+	return <-img.polling.featureGetData, <-img.polling.featureGetErr
 }
 
 // featureRequests have been handed over to the featureGet channel. we service
@@ -38,25 +38,25 @@ func (img *SdlImgui) GetFeature(request gui.FeatureReq) (gui.FeatureReqData, err
 func (img *SdlImgui) serviceGetFeature(request featureRequest) {
 	switch request.request {
 	case gui.ReqState:
-		img.featureGetData <- img.state
-		img.featureGetErr <- nil
+		img.polling.featureGetData <- img.state
+		img.polling.featureGetErr <- nil
 	default:
-		img.featureGetData <- nil
-		img.featureGetErr <- curated.Errorf(gui.UnsupportedGuiFeature, request.request)
+		img.polling.featureGetData <- nil
+		img.polling.featureGetErr <- curated.Errorf(gui.UnsupportedGuiFeature, request.request)
 	}
 }
 
 // SetFeature implements gui.GUI interface.
 func (img *SdlImgui) SetFeature(request gui.FeatureReq, args ...gui.FeatureReqData) error {
-	img.featureSet <- featureRequest{request: request, args: args}
-	return <-img.featureSetErr
+	img.polling.featureSet <- featureRequest{request: request, args: args}
+	return <-img.polling.featureSetErr
 }
 
 // SetFeatureNoError implements gui.GUI interface.
 func (img *SdlImgui) SetFeatureNoError(request gui.FeatureReq, args ...gui.FeatureReqData) {
-	img.featureSet <- featureRequest{request: request, args: args}
+	img.polling.featureSet <- featureRequest{request: request, args: args}
 	go func() {
-		<-img.featureSetErr
+		<-img.polling.featureSetErr
 	}()
 }
 
@@ -112,8 +112,8 @@ func (img *SdlImgui) serviceSetFeature(request featureRequest) {
 	}
 
 	if err == nil {
-		img.featureSetErr <- nil
+		img.polling.featureSetErr <- nil
 	} else {
-		img.featureSetErr <- curated.Errorf("sdlimgui: %v", err)
+		img.polling.featureSetErr <- curated.Errorf("sdlimgui: %v", err)
 	}
 }

@@ -74,21 +74,10 @@ type SdlImgui struct {
 	// a suitable format
 	cols *imguiColors
 
-	// functions that need to be performed in the main thread are queued for
-	// serving by the service() function
-	service    chan func()
-	serviceErr chan error
-
+	// polling encapsulates the programmatic communication to the service loop.
+	// how the feature requests, pushed functions etc. are handled by the
+	// service loop is important to the GUI's responsiveness.
 	polling *polling
-
-	// ReqFeature() and GetFeature() hands off requests to the featureReq
-	// channel for servicing. think of these as pecial instances of the
-	// service chan
-	featureSet     chan featureRequest
-	featureSetErr  chan error
-	featureGet     chan featureRequest
-	featureGetData chan gui.FeatureReqData
-	featureGetErr  chan error
 
 	// events channel is not created but assigned with the feature request
 	// gui.ReqSetEventChan. it is a way for the gui to send information about
@@ -115,16 +104,9 @@ type SdlImgui struct {
 // MUST ONLY be called from the gui thread.
 func NewSdlImgui(tv *television.Television, playmode bool) (*SdlImgui, error) {
 	img := &SdlImgui{
-		context:        imgui.CreateContext(nil),
-		io:             imgui.CurrentIO(),
-		tv:             tv,
-		service:        make(chan func(), 1),
-		serviceErr:     make(chan error, 1),
-		featureSet:     make(chan featureRequest, 1),
-		featureSetErr:  make(chan error, 1),
-		featureGet:     make(chan featureRequest, 1),
-		featureGetData: make(chan gui.FeatureReqData, 1),
-		featureGetErr:  make(chan error, 1),
+		context: imgui.CreateContext(nil),
+		io:      imgui.CurrentIO(),
+		tv:      tv,
 	}
 
 	var err error
@@ -157,6 +139,9 @@ func NewSdlImgui(tv *television.Television, playmode bool) (*SdlImgui, error) {
 		return nil, curated.Errorf("sdlimgui: %v", err)
 	}
 
+	// initialise new polling type
+	img.polling = newPolling(img)
+
 	// connect pixel renderer/referesher to television and texture renderer to
 	// pixel renderer
 	tv.AddPixelRenderer(img.screen)
@@ -187,9 +172,6 @@ func NewSdlImgui(tv *television.Television, playmode bool) (*SdlImgui, error) {
 	if err != nil {
 		return nil, curated.Errorf("sdlimgui: %v", err)
 	}
-
-	// initialise new polling type
-	img.polling = newPolling(img)
 
 	// open container window
 	img.plt.window.Show()

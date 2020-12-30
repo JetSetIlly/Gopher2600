@@ -25,13 +25,6 @@ import (
 
 // Service implements GuiCreator interface.
 func (img *SdlImgui) Service() {
-	// run any outstanding service functions
-	select {
-	case f := <-img.service:
-		f()
-	default:
-	}
-
 	// refresh lazy values when in debugger mode
 	if !img.isPlaymode() {
 		img.lz.Refresh()

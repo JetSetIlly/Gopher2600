@@ -31,7 +31,8 @@ type EmulationState int
 
 // List of valid emulation states.
 const (
-	StatePaused EmulationState = iota
+	StateInitialising EmulationState = iota
+	StatePaused
 	StateRunning
 	StateRewinding
 	StateGotoCoords

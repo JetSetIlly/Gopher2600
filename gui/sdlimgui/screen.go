@@ -212,11 +212,11 @@ func (scr *screen) resize(spec specification.Spec, topScanline int, visibleScanl
 //
 // MUST NOT be called from the gui thread.
 func (scr *screen) Resize(spec specification.Spec, topScanline int, visibleScanlines int) error {
-	scr.img.service <- func() {
+	scr.img.polling.service <- func() {
 		scr.resize(spec, topScanline, visibleScanlines)
-		scr.img.serviceErr <- nil
+		scr.img.polling.serviceErr <- nil
 	}
-	return <-scr.img.serviceErr
+	return <-scr.img.polling.serviceErr
 }
 
 // NewFrame implements the television.PixelRenderer interface

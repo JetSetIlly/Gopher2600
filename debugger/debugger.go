@@ -149,6 +149,12 @@ type Debugger struct {
 func NewDebugger(tv *television.Television, scr gui.GUI, term terminal.Terminal, useSavekey bool) (*Debugger, error) {
 	var err error
 
+	// tell GUI that we're in the initialistion phase
+	err = scr.SetFeature(gui.ReqState, gui.StateInitialising)
+	if err != nil {
+		return nil, curated.Errorf("debugger: %v", err)
+	}
+
 	dbg := &Debugger{
 		tv:   tv,
 		scr:  scr,
