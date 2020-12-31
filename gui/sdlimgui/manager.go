@@ -227,6 +227,11 @@ func (wm *manager) draw() {
 	// playmode is very simple
 	if wm.img.isPlaymode() {
 		wm.playScr.draw()
+
+		// some windows are safe to draw without a debugger
+		// TODO: more flexible way of defining debugger-only windows
+		wm.crtPrefs.draw()
+
 		return
 	}
 

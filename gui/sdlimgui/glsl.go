@@ -78,9 +78,11 @@ type glsl struct {
 	attribMask                int32 // uniform
 	attribScanlines           int32 // uniform
 	attribNoise               int32 // uniform
+	attribBlur                int32 // uniform
 	attribMaskBrightness      int32 // uniform
 	attribScanlinesBrightness int32 // uniform
 	attribNoiseLevel          int32 // uniform
+	attribBlurLevel           int32 // uniform
 	attribVignette            int32 // uniform
 	attribMaskScanlineScaling int32 // uniform
 }
@@ -204,15 +206,23 @@ func (rnd *glsl) render(displaySize [2]float32, framebufferSize [2]float32, draw
 	horizScaling := rnd.img.wm.dbgScr.getScaling(true)
 
 	// crt preferences
-	gl.Uniform1i(rnd.attribCRT, boolToInt32(rnd.img.wm.dbgScr.crt))
+	var crt bool
+	if rnd.img.isPlaymode() {
+		crt = rnd.img.crtPrefs.Enabled.Get().(bool)
+	} else {
+		crt = rnd.img.wm.dbgScr.crt
+	}
+	gl.Uniform1i(rnd.attribCRT, boolToInt32(crt))
 	gl.Uniform1f(rnd.attribInputGamma, float32(rnd.img.crtPrefs.InputGamma.Get().(float64)))
 	gl.Uniform1f(rnd.attribOutputGamma, float32(rnd.img.crtPrefs.OutputGamma.Get().(float64)))
 	gl.Uniform1i(rnd.attribMask, boolToInt32(rnd.img.crtPrefs.Mask.Get().(bool)))
 	gl.Uniform1i(rnd.attribScanlines, boolToInt32(rnd.img.crtPrefs.Scanlines.Get().(bool)))
 	gl.Uniform1i(rnd.attribNoise, boolToInt32(rnd.img.crtPrefs.Noise.Get().(bool)))
+	gl.Uniform1i(rnd.attribBlur, boolToInt32(rnd.img.crtPrefs.Blur.Get().(bool)))
 	gl.Uniform1f(rnd.attribMaskBrightness, float32(rnd.img.crtPrefs.MaskBrightness.Get().(float64)))
 	gl.Uniform1f(rnd.attribScanlinesBrightness, float32(rnd.img.crtPrefs.ScanlinesBrightness.Get().(float64)))
 	gl.Uniform1f(rnd.attribNoiseLevel, float32(rnd.img.crtPrefs.NoiseLevel.Get().(float64)))
+	gl.Uniform1f(rnd.attribBlurLevel, float32(rnd.img.crtPrefs.BlurLevel.Get().(float64)))
 	gl.Uniform1i(rnd.attribVignette, boolToInt32(rnd.img.crtPrefs.Vignette.Get().(bool)))
 	gl.Uniform1i(rnd.attribMaskScanlineScaling, int32(rnd.img.crtPrefs.MaskScanlineScaling.Get().(int)))
 
@@ -392,9 +402,11 @@ func (rnd *glsl) setup() {
 	rnd.attribMask = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("Mask"+"\x00"))
 	rnd.attribScanlines = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("Scanlines"+"\x00"))
 	rnd.attribNoise = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("Noise"+"\x00"))
+	rnd.attribBlur = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("Blur"+"\x00"))
 	rnd.attribMaskBrightness = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("MaskBrightness"+"\x00"))
 	rnd.attribScanlinesBrightness = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("ScanlinesBrightness"+"\x00"))
 	rnd.attribNoiseLevel = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("NoiseLevel"+"\x00"))
+	rnd.attribBlurLevel = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("BlurLevel"+"\x00"))
 	rnd.attribVignette = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("Vignette"+"\x00"))
 	rnd.attribMaskScanlineScaling = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("MaskScanlineScaling"+"\x00"))
 

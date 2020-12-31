@@ -51,9 +51,11 @@ uniform float OutputGamma;
 uniform int Mask;
 uniform int Scanlines;
 uniform int Noise;
+uniform int Blur;
 uniform float MaskBrightness;
 uniform float ScanlinesBrightness;
 uniform float NoiseLevel;
+uniform float BlurLevel;
 uniform int Vignette;
 uniform int MaskScanlineScaling;
 
@@ -108,6 +110,10 @@ void main()
 	float texelX;
 	float texelY;
 
+	// pixels are texels without the scaling applied
+	float pixelX;
+	float pixelY;
+
 	// debug tv screen texture
 	if (ImageType == DebugScr) {
 		if (Cropped > 0) {
@@ -135,9 +141,8 @@ void main()
 			lastY = LastY / ScreenDim.y;
 		}
 
-		// pixels are texels without the scaling applied
-		float pixelX = texelX / ScalingX;
-		float pixelY = texelY / ScalingY;
+		pixelX = texelX / ScalingX;
+		pixelY = texelY / ScalingY;
 
 		// if the entire frame is being shown then plot the screen guides
 		if (Cropped < 0) {
@@ -267,6 +272,19 @@ void main()
 	
 	int scaling = MaskScanlineScaling + 1;	
 	
+	// blur
+	if (Blur == 1) {
+		float bx = texelX*BlurLevel;
+		float by = texelY*BlurLevel;
+		if (coords.x-bx > 0.0 && coords.x+bx < 1.0
+				&& coords.y-by > 0.0 && coords.y+by < 1.0) {
+			Out_Color.r += texture(Texture, vec2(coords.x-bx, coords.y+by)).r;
+			Out_Color.g += texture(Texture, vec2(coords.x+bx, coords.y-by)).g;
+			Out_Color.b += texture(Texture, vec2(coords.x+bx, coords.y+by)).b;
+			Out_Color.rgb /= 2;
+		}
+	}
+
 	// noise
 	if (Noise == 1) {
 		float r;

@@ -163,6 +163,7 @@ The VCS panel is controlled through the function keys of the keyboard.
 
 In playmode, the additional keys are available:
 
+* F10 Show CRT Preferences window
 * F11 Toggle Fullscreen
 * F12 Show FPS Indicator
 

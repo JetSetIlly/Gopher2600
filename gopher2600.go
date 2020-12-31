@@ -261,7 +261,6 @@ func play(md *modalflag.Modes, sync *mainSync) error {
 
 	mapping := md.AddString("mapping", "AUTO", "force use of cartridge mapping")
 	spec := md.AddString("tv", "AUTO", "television specification: NTSC, PAL")
-	crt := md.AddBool("crt", true, "apply CRT post-processing")
 	fpsCap := md.AddBool("fpscap", true, "cap fps to specification")
 	record := md.AddBool("record", false, "record user input to a file")
 	wav := md.AddString("wav", "", "record audio to wav file")
@@ -327,13 +326,6 @@ func play(md *modalflag.Modes, sync *mainSync) error {
 			err = scr.SetFeature(gui.ReqSetPlaymode, true)
 			if err != nil {
 				return err
-			}
-
-			if *crt {
-				err = scr.SetFeature(gui.ReqCRTeffects, true)
-				if err != nil {
-					return err
-				}
 			}
 
 		case err := <-sync.creationError:

@@ -61,9 +61,6 @@ const (
 	// but for presentation/play modes it's a good idea to have it set.
 	ReqVSync FeatureReq = "ReqVSync" // bool
 
-	// whether to add CRT effects to TV image.
-	ReqCRTeffects FeatureReq = "ReqCRTeffects" // bool
-
 	// the add VCS request is used to associate the gui with an emulated VCS.
 	// a debugger does not need to send this request if it already sends a
 	// ReqAddDebugger request (which it should).

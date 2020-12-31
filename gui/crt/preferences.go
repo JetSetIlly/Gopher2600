@@ -23,16 +23,20 @@ import (
 type Preferences struct {
 	dsk *prefs.Disk
 
+	Enabled prefs.Bool
+
 	InputGamma  prefs.Float
 	OutputGamma prefs.Float
 
 	Mask      prefs.Bool
 	Scanlines prefs.Bool
 	Noise     prefs.Bool
+	Blur      prefs.Bool
 
 	MaskBrightness      prefs.Float
 	ScanlinesBrightness prefs.Float
 	NoiseLevel          prefs.Float
+	BlurLevel           prefs.Float
 	MaskScanlineScaling prefs.Int
 
 	Vignette prefs.Bool
@@ -43,14 +47,17 @@ func (p *Preferences) String() string {
 }
 
 const (
+	enabled             = true
 	inputGamma          = 2.4
 	outputGamma         = 2.2
 	mask                = true
 	scanlines           = true
 	noise               = true
+	blur                = true
 	maskBrightness      = 0.70
 	scanlinesBrightness = 0.70
 	noiseLevel          = 0.10
+	blurLevel           = 0.15
 	maskScanlineScaling = 1
 
 	vignette = true
@@ -72,6 +79,10 @@ func NewPreferences() (*Preferences, error) {
 		return nil, err
 	}
 
+	err = p.dsk.Add("crt.enabled", &p.Enabled)
+	if err != nil {
+		return nil, err
+	}
 	err = p.dsk.Add("crt.inputGamma", &p.InputGamma)
 	if err != nil {
 		return nil, err
@@ -92,6 +103,10 @@ func NewPreferences() (*Preferences, error) {
 	if err != nil {
 		return nil, err
 	}
+	err = p.dsk.Add("crt.blur", &p.Blur)
+	if err != nil {
+		return nil, err
+	}
 	err = p.dsk.Add("crt.maskBrightness", &p.MaskBrightness)
 	if err != nil {
 		return nil, err
@@ -105,6 +120,10 @@ func NewPreferences() (*Preferences, error) {
 		return nil, err
 	}
 	err = p.dsk.Add("crt.noiseLevel", &p.NoiseLevel)
+	if err != nil {
+		return nil, err
+	}
+	err = p.dsk.Add("crt.blurLevel", &p.BlurLevel)
 	if err != nil {
 		return nil, err
 	}
@@ -123,15 +142,18 @@ func NewPreferences() (*Preferences, error) {
 
 // SetDefaults revers all CRT settings to default values.
 func (p *Preferences) SetDefaults() {
+	p.Enabled.Set(enabled)
 	p.InputGamma.Set(inputGamma)
 	p.OutputGamma.Set(outputGamma)
 	p.Mask.Set(mask)
 	p.Scanlines.Set(scanlines)
 	p.Noise.Set(noise)
+	p.Blur.Set(blur)
 	p.MaskBrightness.Set(maskBrightness)
 	p.ScanlinesBrightness.Set(scanlinesBrightness)
 	p.MaskScanlineScaling.Set(maskScanlineScaling)
 	p.NoiseLevel.Set(noiseLevel)
+	p.BlurLevel.Set(blurLevel)
 	p.Vignette.Set(vignette)
 }
 

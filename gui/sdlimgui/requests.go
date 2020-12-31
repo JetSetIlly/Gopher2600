@@ -80,9 +80,6 @@ func (img *SdlImgui) serviceSetFeature(request featureRequest) {
 		img.screen.crit.vsync = request.args[0].(bool)
 		img.screen.crit.section.Unlock()
 
-	case gui.ReqCRTeffects:
-		img.wm.dbgScr.crt = request.args[0].(bool)
-
 	case gui.ReqAddVCS:
 		img.vcs = request.args[0].(*hardware.VCS)
 

@@ -36,6 +36,9 @@ type winCRTPrefs struct {
 
 	// crt preview segment
 	crtTexture uint32
+
+	// height of the area containing the settings sliders
+	settingsH float32
 }
 
 func newWinCRTPrefs(img *SdlImgui) (window, error) {
@@ -108,7 +111,17 @@ func (win *winCRTPrefs) draw() {
 	imgui.SetNextWindowPosV(imgui.Vec2{10, 10}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
 	imgui.BeginV(winCRTPrefsTitle, &win.open, imgui.WindowFlagsAlwaysAutoResize)
 
+	win.drawEnabled()
+
+	imgui.Spacing()
+	imgui.Spacing()
+	imgui.Separator()
+	imgui.Spacing()
+
 	imgui.BeginGroup()
+
+	// note start position of setting group
+	settingsY := imgui.CursorPosY()
 
 	win.drawGamma()
 
@@ -130,24 +143,32 @@ func (win *winCRTPrefs) draw() {
 	imgui.Spacing()
 	imgui.Spacing()
 
-	b := win.img.crtPrefs.Vignette.Get().(bool)
-	if imgui.Checkbox("Vignette##vignette", &b) {
-		win.img.crtPrefs.Vignette.Set(b)
-	}
+	win.drawBlur()
+
+	imgui.Spacing()
+	imgui.Spacing()
+
+	win.drawVignette()
 
 	imgui.Spacing()
 	imgui.Spacing()
 
 	win.drawMaskScanlineScaling()
 
+	// note height of settings group
+	win.settingsH = imgui.CursorPosY() - settingsY
+
 	imgui.EndGroup()
 
 	imgui.SameLine()
 
-	imgui.BeginGroup()
-	imgui.Image(imgui.TextureID(win.crtTexture), imgui.Vec2{330, 330})
-	imgui.EndGroup()
+	if !win.img.isPlaymode() {
+		imgui.BeginGroup()
+		imgui.Image(imgui.TextureID(win.crtTexture), imgui.Vec2{win.settingsH, win.settingsH})
+		imgui.EndGroup()
+	}
 
+	imgui.Spacing()
 	imgui.Spacing()
 	imgui.Separator()
 	imgui.Spacing()
@@ -155,6 +176,18 @@ func (win *winCRTPrefs) draw() {
 	win.drawDiskButtons()
 
 	imgui.End()
+}
+
+func (win *winCRTPrefs) drawEnabled() {
+	b := win.img.crtPrefs.Enabled.Get().(bool)
+	if imgui.Checkbox("Enabled##enabled", &b) {
+		win.img.crtPrefs.Enabled.Set(b)
+	}
+
+	if !win.img.isPlaymode() {
+		imgui.SameLine()
+		imguiText("(when in playmode)")
+	}
 }
 
 func (win *winCRTPrefs) drawGamma() {
@@ -209,6 +242,24 @@ func (win *winCRTPrefs) drawNoise() {
 	f := float32(win.img.crtPrefs.NoiseLevel.Get().(float64))
 	if imgui.SliderFloatV("##noiselevel", &f, 0.0, 0.2, "%.2f", 1.0) {
 		win.img.crtPrefs.NoiseLevel.Set(f)
+	}
+}
+
+func (win *winCRTPrefs) drawBlur() {
+	b := win.img.crtPrefs.Blur.Get().(bool)
+	if imgui.Checkbox("Blur##blur", &b) {
+		win.img.crtPrefs.Blur.Set(b)
+	}
+	f := float32(win.img.crtPrefs.BlurLevel.Get().(float64))
+	if imgui.SliderFloatV("##Blurlevel", &f, 0.1, 0.9, "%.2f", 1.0) {
+		win.img.crtPrefs.BlurLevel.Set(f)
+	}
+}
+
+func (win *winCRTPrefs) drawVignette() {
+	b := win.img.crtPrefs.Vignette.Get().(bool)
+	if imgui.Checkbox("Vignette##vignette", &b) {
+		win.img.crtPrefs.Vignette.Set(b)
 	}
 }
 

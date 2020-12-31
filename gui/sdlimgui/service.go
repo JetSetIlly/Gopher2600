@@ -73,6 +73,12 @@ func (img *SdlImgui) Service() {
 							}
 						}
 
+					case "F10":
+						if img.isPlaymode() {
+							w := img.wm.windows[winCRTPrefsTitle]
+							w.setOpen(!w.isOpen())
+						}
+
 					case "F11":
 						if img.isPlaymode() {
 							img.plt.toggleFullScreen()
