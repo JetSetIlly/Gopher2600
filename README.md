@@ -528,10 +528,16 @@ that use `Gopher2600`.
 ## Resources used
 
 The Stella project (https://stella-emu.github.io/) was used as a reference for
-video output. I made the decision not to use or even to look at any of Stella's
-implementation details. The exception to this was a peek at the audio
-sub-system. Primarily however, `Gopher2600's` audio implementation references Ron
-Fries' original TIASound.c file.
+video output. In the absence of VCS hardware (which I don't have) Stella was
+the only option I had for checking video accuracy.
+
+No reference to the Stella source was made at all except during the development
+of the CDF cartridge formats. These recent formats don't seem to be documented
+anywhere accept in the Stella source.
+
+I also peeked at Stella's audio sub-system to convince myself that I was going
+about the problem correctly. Primarily however, `Gopher2600's` audio
+implementation references Ron Fries' original TIASound.c file.
 
 Many notes and clues from the AtariAge message boards. Most significantly the
 following threads proved very useful indeed:
