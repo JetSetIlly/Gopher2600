@@ -19,7 +19,6 @@ import (
 	"fmt"
 
 	"github.com/inkyblackness/imgui-go/v3"
-	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge"
 )
 
@@ -73,7 +72,7 @@ func (win *winDPCregisters) draw() {
 	// random number generator value
 	rng := fmt.Sprintf("%02x", r.RNG)
 	imguiText("Random Number Generator")
-	if imguiHexInput("##rng", win.img.state != gui.StatePaused, 2, &rng) {
+	if imguiHexInput("##rng", 2, &rng) {
 		win.img.lz.Dbg.PushRawEvent(func() {
 			b := win.img.lz.Dbg.VCS.Mem.Cart.GetRegistersBus()
 			b.PutRegister("rng", rng)
@@ -95,7 +94,7 @@ func (win *winDPCregisters) draw() {
 		label := fmt.Sprintf("##%dlow", i)
 		low := fmt.Sprintf("%02x", r.Fetcher[i].Low)
 		imguiText("Low")
-		if imguiHexInput(label, win.img.state != gui.StatePaused, 2, &low) {
+		if imguiHexInput(label, 2, &low) {
 			win.img.lz.Dbg.PushRawEvent(func() {
 				b := win.img.lz.Dbg.VCS.Mem.Cart.GetRegistersBus()
 				b.PutRegister(fmt.Sprintf("fetcher::%d::low", f), low)
@@ -106,7 +105,7 @@ func (win *winDPCregisters) draw() {
 		label = fmt.Sprintf("##%dhi", i)
 		hi := fmt.Sprintf("%02x", r.Fetcher[i].Hi)
 		imguiText("Hi")
-		if imguiHexInput(label, win.img.state != gui.StatePaused, 2, &hi) {
+		if imguiHexInput(label, 2, &hi) {
 			win.img.lz.Dbg.PushRawEvent(func() {
 				b := win.img.lz.Dbg.VCS.Mem.Cart.GetRegistersBus()
 				b.PutRegister(fmt.Sprintf("fetcher::%d::hi", f), hi)
@@ -117,7 +116,7 @@ func (win *winDPCregisters) draw() {
 		label = fmt.Sprintf("##%dtop", i)
 		top := fmt.Sprintf("%02x", r.Fetcher[i].Top)
 		imguiText("Top")
-		if imguiHexInput(label, win.img.state != gui.StatePaused, 2, &top) {
+		if imguiHexInput(label, 2, &top) {
 			win.img.lz.Dbg.PushRawEvent(func() {
 				b := win.img.lz.Dbg.VCS.Mem.Cart.GetRegistersBus()
 				b.PutRegister(fmt.Sprintf("fetcher::%d::top", f), top)
@@ -128,7 +127,7 @@ func (win *winDPCregisters) draw() {
 		label = fmt.Sprintf("##%dbottom", i)
 		bottom := fmt.Sprintf("%02x", r.Fetcher[i].Bottom)
 		imguiText("Bottom")
-		if imguiHexInput(label, win.img.state != gui.StatePaused, 2, &bottom) {
+		if imguiHexInput(label, 2, &bottom) {
 			win.img.lz.Dbg.PushRawEvent(func() {
 				b := win.img.lz.Dbg.VCS.Mem.Cart.GetRegistersBus()
 				b.PutRegister(fmt.Sprintf("fetcher::%d::bottom", f), bottom)

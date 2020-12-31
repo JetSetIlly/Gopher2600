@@ -20,7 +20,6 @@ import (
 	"strconv"
 
 	"github.com/inkyblackness/imgui-go/v3"
-	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
@@ -142,7 +141,7 @@ func (win *winCartStatic) drawEditByte(segment string, idx uint16, a byte, b byt
 		defer imgui.PopStyleColor()
 	}
 
-	if imguiHexInput(l, win.img.state != gui.StatePaused, 2, &content) {
+	if imguiHexInput(l, 2, &content) {
 		if v, err := strconv.ParseUint(content, 16, 8); err == nil {
 			win.img.lz.Dbg.PushRawEvent(func() {
 				a := win.img.lz.Dbg.VCS.Mem.Cart.GetStaticBus()

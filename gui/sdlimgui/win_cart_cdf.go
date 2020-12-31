@@ -19,7 +19,6 @@ import (
 	"fmt"
 
 	"github.com/inkyblackness/imgui-go/v3"
-	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/harmony/cdf"
 )
 
@@ -105,7 +104,7 @@ func (win *winCDFRegisters) draw() {
 		label := fmt.Sprintf("##m%dwaveform", i)
 		waveform := fmt.Sprintf("%08x", r.MusicFetcher[i].Waveform)
 		imguiText("Waveform")
-		if imguiHexInput(label, win.img.state != gui.StatePaused, 8, &waveform) {
+		if imguiHexInput(label, 8, &waveform) {
 			win.img.lz.Dbg.PushRawEvent(func() {
 				b := win.img.lz.Dbg.VCS.Mem.Cart.GetRegistersBus()
 				b.PutRegister(fmt.Sprintf("music::%d::waveform", f), waveform)
@@ -116,7 +115,7 @@ func (win *winCDFRegisters) draw() {
 		label = fmt.Sprintf("##m%dfeq", i)
 		freq := fmt.Sprintf("%08x", r.MusicFetcher[i].Freq)
 		imguiText("Freq")
-		if imguiHexInput(label, win.img.state != gui.StatePaused, 8, &freq) {
+		if imguiHexInput(label, 8, &freq) {
 			win.img.lz.Dbg.PushRawEvent(func() {
 				b := win.img.lz.Dbg.VCS.Mem.Cart.GetRegistersBus()
 				b.PutRegister(fmt.Sprintf("music::%d::freq", f), freq)
@@ -127,7 +126,7 @@ func (win *winCDFRegisters) draw() {
 		label = fmt.Sprintf("##m%dcount", i)
 		count := fmt.Sprintf("%08x", r.MusicFetcher[i].Count)
 		imguiText("Count")
-		if imguiHexInput(label, win.img.state != gui.StatePaused, 8, &count) {
+		if imguiHexInput(label, 8, &count) {
 			win.img.lz.Dbg.PushRawEvent(func() {
 				b := win.img.lz.Dbg.VCS.Mem.Cart.GetRegistersBus()
 				b.PutRegister(fmt.Sprintf("music::%d::count", f), count)

@@ -19,7 +19,6 @@ import (
 	"fmt"
 
 	"github.com/inkyblackness/imgui-go/v3"
-	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/supercharger"
 )
 
@@ -74,7 +73,7 @@ func (win *winSuperchargerRegisters) draw() {
 
 	val := fmt.Sprintf("%02x", r.Value)
 	imguiText("Value")
-	if imguiHexInput("##value", win.img.state != gui.StatePaused, 2, &val) {
+	if imguiHexInput("##value", 2, &val) {
 		win.img.lz.Dbg.PushRawEvent(func() {
 			b := win.img.lz.Dbg.VCS.Mem.Cart.GetRegistersBus()
 			b.PutRegister("value", val)

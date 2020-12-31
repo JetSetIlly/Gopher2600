@@ -46,7 +46,7 @@ func (img *SdlImgui) drawPlusROMFirstInstallation() {
 		imgui.Text("Nick")
 		imgui.SameLine()
 
-		if imguiTextInput("##nick", false, plusrom.MaxNickLength, &nick, true) {
+		if imguiTextInput("##nick", plusrom.MaxNickLength, &nick, true) {
 			err := img.plusROMFirstInstallation.Cart.Prefs.Nick.Set(nick)
 			if err != nil {
 				logger.Log("sdlimgui", fmt.Sprintf("could not set preference value: %v", err))

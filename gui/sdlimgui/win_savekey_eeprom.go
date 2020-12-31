@@ -20,7 +20,6 @@ import (
 	"strconv"
 
 	"github.com/inkyblackness/imgui-go/v3"
-	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/savekey"
 )
 
@@ -146,7 +145,7 @@ func (win *winSaveKeyEEPROM) drawEditByte(address uint16, data byte) {
 	l := fmt.Sprintf("##%d", address)
 	content := fmt.Sprintf("%02x", data)
 
-	if imguiHexInput(l, win.img.state != gui.StatePaused, 2, &content) {
+	if imguiHexInput(l, 2, &content) {
 		if v, err := strconv.ParseUint(content, 16, 8); err == nil {
 			win.img.lz.Dbg.PushRawEvent(func() {
 				if sk, ok := win.img.lz.Dbg.VCS.RIOT.Ports.Player1.(*savekey.SaveKey); ok {

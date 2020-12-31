@@ -20,7 +20,6 @@ import (
 	"strconv"
 
 	"github.com/inkyblackness/imgui-go/v3"
-	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/savekey"
 )
 
@@ -193,7 +192,7 @@ func (win *winSaveKeyI2C) drawBits() {
 
 	s := fmt.Sprintf("%02x", bits)
 	imguiText(label)
-	if imguiHexInput(fmt.Sprintf("##%s", label), win.img.state != gui.StatePaused, 2, &s) {
+	if imguiHexInput(fmt.Sprintf("##%s", label), 2, &s) {
 		v, err := strconv.ParseUint(s, 16, 8)
 		if err != nil {
 			panic(err)
@@ -235,7 +234,7 @@ func (win *winSaveKeyI2C) drawAddress() {
 	label := "Address"
 	s := fmt.Sprintf("%04x", addr)
 	imguiText(label)
-	if imguiHexInput(fmt.Sprintf("##%s", label), win.img.state != gui.StatePaused, 4, &s) {
+	if imguiHexInput(fmt.Sprintf("##%s", label), 4, &s) {
 		v, err := strconv.ParseUint(s, 16, 16)
 		if err != nil {
 			panic(err)

@@ -22,24 +22,24 @@ import (
 )
 
 // calls imguiInput with the string of allowed hexadecimal characters.
-func imguiHexInput(label string, updateOnEnterOnly bool, length int, content *string) bool {
-	return imguiInput(label, updateOnEnterOnly, length, content, "abcdefABCDEF0123456789", true)
+func imguiHexInput(label string, length int, content *string) bool {
+	return imguiInput(label, length, content, "abcdefABCDEF0123456789", true)
 }
 
 // calls imguiInput with the string of numeric characters.
-func imguiDecimalInput(label string, updateOnEnterOnly bool, length int, content *string) bool {
-	return imguiInput(label, updateOnEnterOnly, length, content, "0123456789", true)
+func imguiDecimalInput(label string, length int, content *string) bool {
+	return imguiInput(label, length, content, "0123456789", true)
 }
 
-func imguiTextInput(label string, updateOnEnterOnly bool, length int, content *string, selectAll bool) bool {
-	return imguiInput(label, updateOnEnterOnly, length, content, "", selectAll)
+func imguiTextInput(label string, length int, content *string, selectAll bool) bool {
+	return imguiInput(label, length, content, "", selectAll)
 }
 
 // input text that accepts a maximum number of characters. physical width of
 // InpuText should be controlled with PushItemWidth()/PopItemWidth() as normal.
 //
 // if allowedChars is the empty string than all characters will be allowed.
-func imguiInput(label string, updateOnEnterOnly bool, length int, content *string, allowedChars string, selectAll bool) bool {
+func imguiInput(label string, length int, content *string, allowedChars string, selectAll bool) bool {
 	cb := func(d imgui.InputTextCallbackData) int32 {
 		switch d.EventFlag() {
 		case imgui.InputTextFlagsCallbackCharFilter:
@@ -60,15 +60,11 @@ func imguiInput(label string, updateOnEnterOnly bool, length int, content *strin
 	// and preferring to filter manually for greated flexibility
 	flags := imgui.InputTextFlagsCallbackCharFilter | imgui.InputTextFlagsCallbackAlways
 
+	// flags |= imgui.InputTextFlagsEnterReturnsTrue
+
 	// if there are restrictions on allowedChars then add the select-all flag.
 	if selectAll {
 		flags |= imgui.InputTextFlagsAutoSelectAll
-	}
-
-	// with updateOnEnterOnly the values entered will be given to the onEnter()
-	// function immediately and not just when the enter key is pressed.
-	if updateOnEnterOnly {
-		flags |= imgui.InputTextFlagsEnterReturnsTrue
 	}
 
 	imgui.PushItemWidth(imguiTextWidth(length))

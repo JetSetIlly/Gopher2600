@@ -20,7 +20,6 @@ import (
 	"strconv"
 
 	"github.com/inkyblackness/imgui-go/v3"
-	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
@@ -101,7 +100,7 @@ func (win *winRAM) draw() {
 		}
 
 		b := fmt.Sprintf("%02x", d)
-		if imguiHexInput(fmt.Sprintf("##%d", addr), win.img.state != gui.StatePaused, 2, &b) {
+		if imguiHexInput(fmt.Sprintf("##%d", addr), 2, &b) {
 			if v, err := strconv.ParseUint(b, 16, 8); err == nil {
 				a := addr // we have to make a copy of the address
 				win.img.lz.Dbg.PushRawEvent(func() {

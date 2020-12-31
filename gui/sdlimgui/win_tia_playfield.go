@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/hardware/tia/video"
 
 	"github.com/inkyblackness/imgui-go/v3"
@@ -93,7 +92,7 @@ func (win *winTIA) drawPlayfield() {
 	imguiText("CTRLPF")
 	imgui.SameLine()
 	ctrlpf := fmt.Sprintf("%02x", lz.Ctrlpf)
-	if imguiHexInput("##ctrlpf", win.img.state != gui.StatePaused, 2, &ctrlpf) {
+	if imguiHexInput("##ctrlpf", 2, &ctrlpf) {
 		if v, err := strconv.ParseUint(ctrlpf, 16, 8); err == nil {
 			win.img.lz.Dbg.PushRawEvent(func() {
 				pf.SetCTRLPF(uint8(v))

@@ -20,7 +20,6 @@ import (
 	"strings"
 
 	"github.com/jetsetilly/gopher2600/disassembly"
-	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/registers"
 
 	"github.com/inkyblackness/imgui-go/v3"
@@ -157,7 +156,7 @@ func (win *winCPU) drawRegister(reg registers.Generic) {
 	content := reg.String()
 	bitwidth := reg.BitWidth()
 
-	if imguiHexInput(fmt.Sprintf("##%s", label), win.img.state != gui.StatePaused, bitwidth/4, &content) {
+	if imguiHexInput(fmt.Sprintf("##%s", label), bitwidth/4, &content) {
 		win.img.term.pushCommand(fmt.Sprintf("CPU SET %s %s", reg.Label(), content))
 	}
 }
