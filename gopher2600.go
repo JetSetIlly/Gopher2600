@@ -261,6 +261,7 @@ func play(md *modalflag.Modes, sync *mainSync) error {
 
 	mapping := md.AddString("mapping", "AUTO", "force use of cartridge mapping")
 	spec := md.AddString("tv", "AUTO", "television specification: NTSC, PAL")
+	fullScreen := md.AddBool("fullscreen", false, "start in fullscreen mode")
 	fpsCap := md.AddBool("fpscap", true, "cap fps to specification")
 	record := md.AddBool("record", false, "record user input to a file")
 	wav := md.AddString("wav", "", "record audio to wav file")
@@ -335,6 +336,9 @@ func play(md *modalflag.Modes, sync *mainSync) error {
 		// set fps cap
 		tv.SetFPSCap(*fpsCap)
 		scr.SetFeature(gui.ReqVSync, *fpsCap)
+
+		// set full screen
+		scr.SetFeature(gui.ReqFullScreen, *fullScreen)
 
 		// turn off fallback ctrl-c handling. this so that the playmode can
 		// end playback recordings gracefully

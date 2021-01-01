@@ -80,6 +80,9 @@ func (img *SdlImgui) serviceSetFeature(request featureRequest) {
 		img.screen.crit.vsync = request.args[0].(bool)
 		img.screen.crit.section.Unlock()
 
+	case gui.ReqFullScreen:
+		img.plt.setFullScreen(request.args[0].(bool))
+
 	case gui.ReqAddVCS:
 		img.vcs = request.args[0].(*hardware.VCS)
 

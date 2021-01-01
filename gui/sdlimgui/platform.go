@@ -153,8 +153,8 @@ func (plt *platform) postRender() {
 }
 
 // toggle the full screeens state.
-func (plt *platform) toggleFullScreen() {
-	plt.fullScreen = !plt.fullScreen
+func (plt *platform) setFullScreen(fullScreen bool) {
+	plt.fullScreen = fullScreen
 	if plt.fullScreen {
 		plt.window.SetFullscreen(sdl.WINDOW_FULLSCREEN_DESKTOP)
 		plt.img.setCapture(true)

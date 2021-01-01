@@ -81,7 +81,7 @@ func (img *SdlImgui) Service() {
 
 					case "F11":
 						if img.isPlaymode() {
-							img.plt.toggleFullScreen()
+							img.plt.setFullScreen(!img.plt.fullScreen)
 						}
 
 					case "F12":
