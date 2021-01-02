@@ -66,7 +66,7 @@ type BallSprite struct {
 	lastTickFromHmove bool
 
 	// ^^^ the above are common to all sprite types ^^^
-	//		(see player sprite for commentary)
+	// (see player sprite for commentary)
 
 	//  the ball color should match the color of the playfield foreground.
 	//  however, for debugging purposes it is sometimes useful to use different
@@ -112,13 +112,14 @@ func (bs *BallSprite) Snapshot() *BallSprite {
 	return &n
 }
 
+// Plumb a new ChipBus into the Ball sprite.
 func (bs *BallSprite) Plumb(hblank *bool, hmoveLatch *bool) {
 	bs.hblank = hblank
 	bs.hmoveLatch = hmoveLatch
 	bs.Enclockifier.size = &bs.Size
 }
 
-// Label returns the label for the sprite.
+// Label returns an appropriate name for the sprite.
 func (bs *BallSprite) Label() string {
 	return bs.label
 }

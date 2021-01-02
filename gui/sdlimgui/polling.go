@@ -31,10 +31,10 @@ const (
 	idleSleepPeriod  = 500
 )
 
-// time periods used to slow down / speed up event handling.
+// time periods used to slow down / speed up event handling (in milliseconds)
 const (
 	frictionPeriod     = 50
-	wakefullnessPeriod = 200
+	wakefullnessPeriod = 3000 // 3 seconds
 )
 
 type polling struct {

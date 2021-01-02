@@ -132,6 +132,7 @@ func (vd *Video) Snapshot() *Video {
 	return &n
 }
 
+// Plumb ChipBus into TIA/Video components. Update pointers that refer to parent TIA.
 func (vd *Video) Plumb(mem bus.ChipBus, pclk *phaseclock.PhaseClock, hsync *polycounter.Polycounter, hblank *bool, hmoveLatch *bool) {
 	vd.Collisions.Plumb(mem)
 	vd.Playfield.Plumb(pclk, hsync)

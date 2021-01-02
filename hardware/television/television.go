@@ -175,8 +175,8 @@ func (tv *Television) Snapshot() *State {
 	return tv.state.Snapshot()
 }
 
-// Plumb in an existing television state.
-func (tv *Television) Plumb(s *State) {
+// PlumbState in an existing television state.
+func (tv *Television) PlumbState(s *State) {
 	if s == nil {
 		return
 	}

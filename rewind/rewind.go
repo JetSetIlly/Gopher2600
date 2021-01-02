@@ -371,7 +371,11 @@ func (r *Rewind) plumbState(s *State, frame, scanline, horizpos int) error {
 	r.vcs.Mem.Plumb()
 	r.vcs.RIOT.Plumb(r.vcs.Mem.RIOT, r.vcs.Mem.TIA)
 	r.vcs.TIA.Plumb(r.vcs.Mem.TIA, r.vcs.RIOT.Ports)
-	r.vcs.TV.Plumb(s.TV.Snapshot())
+
+	// tv plumbing works a bit different to other areas because we're only
+	// recording the state of the TV not the entire TV itself. We'll use a
+	// different name for the function for this reason.
+	r.vcs.TV.PlumbState(s.TV.Snapshot())
 
 	// if this is a reset entry then TV must be reset
 	if s.level == levelReset {
@@ -399,7 +403,10 @@ func (r *Rewind) plumbState(s *State, frame, scanline, horizpos int) error {
 			adhocSnapshotted = true
 		}
 
+		// check to see if TV state exceeds the requested state
 		tooFar := nf > frame || (nf == frame && ny > scanline) || (nf == frame && ny == scanline && nx >= horizpos)
+
+		// do not continue if we have gone too far
 		return !tooFar
 	}
 
@@ -490,11 +497,14 @@ func (r *Rewind) findFrameIndex(frame int) (idx int, fr int, last bool) {
 
 	// check whether request is out of bounds of the rewind history. if it is
 	// then plumb in the nearest entry
+
+	// is requested frame too old (ie. before the start of the array)
 	fn := r.entries[s].TV.GetState(signal.ReqFramenum)
 	if sf < fn {
 		return s, fn + 1, false
 	}
 
+	// is requested frame too new (ie. past the end of the array)
 	fn = r.entries[e].TV.GetState(signal.ReqFramenum)
 	if sf >= fn {
 		e--
@@ -520,6 +530,9 @@ func (r *Rewind) findFrameIndex(frame int) (idx int, fr int, last bool) {
 		}
 	}
 
+	// the range which we must consider to be a match
+	freqAdj := r.Prefs.Freq.Get().(int) - 1
+
 	// normal binary search
 	for s <= e {
 		idx := (s + e) / 2
@@ -528,7 +541,7 @@ func (r *Rewind) findFrameIndex(frame int) (idx int, fr int, last bool) {
 
 		// check for match, taking into consideration the gaps introduced by
 		// the frequency value
-		if sf >= fn && sf <= fn+r.Prefs.Freq.Get().(int)-1 {
+		if sf >= fn && sf <= fn+freqAdj {
 			return idx, frame, false
 		}
 

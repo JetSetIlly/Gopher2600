@@ -80,6 +80,7 @@ func (col *Collisions) Snapshot() *Collisions {
 	return &n
 }
 
+// Plumb a new ChipBus into the collision system.
 func (col *Collisions) Plumb(mem bus.ChipBus) {
 	col.mem = mem
 }

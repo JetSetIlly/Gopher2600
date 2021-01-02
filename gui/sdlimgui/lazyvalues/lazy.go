@@ -116,8 +116,7 @@ func (val *LazyValues) Refresh() {
 		val.Log.push()
 		val.SaveKey.push()
 		val.Rewind.push()
-
-		// no push() function for breakpoints type
+		val.Breakpoints.push()
 	})
 
 	val.Debugger.update()
@@ -139,6 +138,5 @@ func (val *LazyValues) Refresh() {
 	val.Log.update()
 	val.SaveKey.update()
 	val.Rewind.update()
-
-	// no update() function for breakpoints type
+	val.Breakpoints.update()
 }

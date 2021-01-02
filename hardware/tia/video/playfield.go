@@ -132,11 +132,13 @@ func (pf *Playfield) Snapshot() *Playfield {
 	return &n
 }
 
+// Plumb a new ChipBus into the Playfield.
 func (pf *Playfield) Plumb(pclk *phaseclock.PhaseClock, hsync *polycounter.Polycounter) {
 	pf.pclk = pclk
 	pf.hsync = hsync
 }
 
+// Label returns an appropriate name for playfield.
 func (pf *Playfield) Label() string {
 	return "Playfield"
 }

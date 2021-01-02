@@ -408,8 +408,8 @@ const (
 )
 
 // !!TODO: detect other break types?
-func (bp *breakpoints) hasBreak(e *disassembly.Entry) (BreakGroup, int) {
-	ai := bp.dbg.dbgmem.mapAddress(e.Result.Address, true)
+func (bp *breakpoints) hasBreak(addr uint16, bank int) (BreakGroup, int) {
+	ai := bp.dbg.dbgmem.mapAddress(addr, true)
 
 	check := breaker{
 		target: bp.checkPcBreak,
@@ -426,7 +426,7 @@ func (bp *breakpoints) hasBreak(e *disassembly.Entry) (BreakGroup, int) {
 
 		// critical that we cast to int because we'll be comparing against the
 		// result of cartridge.GetBank()
-		value: e.Bank.Number,
+		value: bank,
 	}
 
 	// check for a breaker for the PC value AND bank value. if
@@ -452,7 +452,7 @@ func (bp *breakpoints) hasBreak(e *disassembly.Entry) (BreakGroup, int) {
 }
 
 func (bp *breakpoints) togglePCBreak(e *disassembly.Entry) {
-	g, i := bp.hasBreak(e)
+	g, i := bp.hasBreak(e.Result.Address, e.Bank.Number)
 
 	if i != noBreakEqualivalent && g == BrkPCAddress {
 		_ = bp.drop(i) // ignoring errors

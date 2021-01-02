@@ -171,19 +171,19 @@ func (win *winControl) drawRewind() {
 	imgui.SameLine()
 	if imgui.Button("<") && win.rewindTarget > 0 {
 		win.rewindTarget--
-		win.rewindPending = win.img.lz.Dbg.PushRewind(int(win.rewindTarget), win.rewindTarget == e)
+		win.rewindPending = !win.img.lz.Dbg.PushRewind(int(win.rewindTarget), win.rewindTarget == e)
 		win.rewindWaiting = true
 	}
 	imgui.SameLine()
 	if imgui.Button(">") && win.rewindTarget < e {
 		win.rewindTarget++
-		win.rewindPending = win.img.lz.Dbg.PushRewind(int(win.rewindTarget), win.rewindTarget == e)
+		win.rewindPending = !win.img.lz.Dbg.PushRewind(int(win.rewindTarget), win.rewindTarget == e)
 		win.rewindWaiting = true
 	}
 
 	// rewind slider
 	if imgui.SliderInt("##rewind", &f, s, e) || win.rewindPending {
-		win.rewindPending = win.img.lz.Dbg.PushRewind(int(f), f == e)
+		win.rewindPending = !win.img.lz.Dbg.PushRewind(int(f), f == e)
 		win.rewindWaiting = true
 		win.rewindTarget = f
 	}

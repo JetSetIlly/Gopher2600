@@ -20,7 +20,6 @@ import (
 	"image/color"
 	"sync"
 
-	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 	"github.com/jetsetilly/gopher2600/reflection"
@@ -394,13 +393,6 @@ func (scr *screen) clearTextureRenderers() {
 
 // called by service loop.
 func (scr *screen) render() {
-	// not rendering if gui.state is Rewinding or GotoCoords. render will be
-	// called automatically when state changes from either of these two states
-	// to something else
-	if scr.img.state == gui.StateRewinding || scr.img.state == gui.StateGotoCoords {
-		return
-	}
-
 	// we have to be very particular about how we unlock this
 	scr.crit.section.Lock()
 

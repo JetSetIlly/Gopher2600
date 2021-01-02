@@ -71,7 +71,7 @@ type MissileSprite struct {
 	lastTickFromHmove bool
 
 	// ^^^ the above are common to all sprite types ^^^
-	//		(see player sprite for commentary)
+	//(see player sprite for commentary)
 
 	Color         uint8 // equal to missile color
 	Enabled       bool
@@ -112,13 +112,14 @@ func (ms *MissileSprite) Snapshot() *MissileSprite {
 	return &n
 }
 
+// Plumb a new ChipBus into the Missile sprite.
 func (ms *MissileSprite) Plumb(hblank *bool, hmoveLatch *bool) {
 	ms.hblank = hblank
 	ms.hmoveLatch = hmoveLatch
 	ms.Enclockifier.size = &ms.Size
 }
 
-// Label returns the label for the sprite.
+// Label returns an appropriate name for the sprite.
 func (ms *MissileSprite) Label() string {
 	return ms.label
 }

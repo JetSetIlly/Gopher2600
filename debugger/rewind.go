@@ -20,7 +20,6 @@ package debugger
 
 import (
 	"github.com/jetsetilly/gopher2600/disassembly"
-	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
@@ -60,18 +59,23 @@ func (dbg *Debugger) CatchUpLoop(continueCheck func() bool) error {
 }
 
 // PushRewind is a special case of PushRawEvent(). It prevents too many pushed
-// Rewind.Goto*() function calls. To be used from the GUI thread.
+// Rewind.Goto*() function calls. Returns false if the rewind hasn't been
+// pushed. The caller should try again.
+//
+// To be used from the GUI thread.
 func (dbg *Debugger) PushRewind(fn int, last bool) bool {
+	// try pushing to the rewinding channel.
+	//
+	// if we cannot then that means a rewind is currenly taking place and we
+	// return false to indicate that the request rewind has not taken place yet.
 	select {
 	case dbg.rewinding <- true:
 	default:
-		return true
+		return false
 	}
 
+	// the function to push to the debugger/emulation routine
 	doRewind := func() error {
-		state, _ := dbg.scr.GetFeature(gui.ReqState)
-		dbg.scr.SetFeatureNoError(gui.ReqState, gui.StateRewinding)
-
 		if last {
 			err := dbg.Rewind.GotoLast()
 			if err != nil {
@@ -84,53 +88,78 @@ func (dbg *Debugger) PushRewind(fn int, last bool) bool {
 			}
 		}
 
-		dbg.scr.SetFeatureNoError(gui.ReqState, state)
+		// dbg.scr.SetFeatureNoError(gui.ReqState, state)
 		dbg.runUntilHalt = false
 
 		return nil
 	}
 
+	// how we push the doRewind() function depends on what kind of inputloop we
+	// are currently in
 	if dbg.isVideoCycleInputLoop {
 		dbg.PushRawEventReturn(func() {
-			<-dbg.rewinding
-
 			dbg.restartInputLoop(doRewind)
+
+			// read rewinding channel, this unblocks the channel and allows
+			// calls to PushRewind() run to completion
+			select {
+			case <-dbg.rewinding:
+			default:
+			}
 		})
 	} else {
 		dbg.PushRawEventReturn(func() {
-			<-dbg.rewinding
-
 			err := doRewind()
 			if err != nil {
 				logger.Log("rewind", err.Error())
 			}
+
+			// read rewinding channel, this unblocks the channel and allows
+			// calls to PushRewind() run to completion
+			select {
+			case <-dbg.rewinding:
+			default:
+			}
 		})
 	}
 
-	return false
+	return true
 }
 
 // PushGotoCoords is a special case of PushRawEvent(). It wraps a pushed call
 // to rewind.GotoFrameCoords() in gui.ReqRewinding true/false.
+//
+// To be used from the GUI thread.
 func (dbg *Debugger) PushGotoCoords(scanline int, horizpos int) {
+	// try pushing to rewinding channel. do not continue if we cannot.
+	//
+	// unlike PushRewind() no indicator of sucess is returned. the request is
+	// just dropped.
+	select {
+	case dbg.rewinding <- true:
+	default:
+		return
+	}
+
 	dbg.runUntilHalt = false
 
 	dbg.PushRawEventReturn(func() {
-		state, _ := dbg.scr.GetFeature(gui.ReqState)
-		dbg.scr.SetFeatureNoError(gui.ReqState, gui.StateGotoCoords)
-
 		f := func() error {
 			err := dbg.Rewind.GotoFrameCoords(scanline, horizpos)
 			if err != nil {
 				return err
 			}
 
-			dbg.scr.SetFeatureNoError(gui.ReqState, state)
 			dbg.runUntilHalt = false
 
 			return nil
 		}
 
 		dbg.restartInputLoop(f)
+
+		select {
+		case <-dbg.rewinding:
+		default:
+		}
 	})
 }

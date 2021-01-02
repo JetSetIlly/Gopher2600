@@ -241,15 +241,8 @@ func (rnd *glsl) render(displaySize [2]float32, framebufferSize [2]float32, draw
 	gl.Uniform1f(rnd.attribBotScanline, float32(rnd.img.screen.crit.topScanline+rnd.img.screen.crit.scanlines)*vertScaling)
 
 	// the coordinates of the last plot. specual handling for StateGotoCoords
-	var cursorX int
-	var cursorY int
-	if rnd.img.state == gui.StateGotoCoords {
-		cursorX = rnd.img.screen.gotoCoordsX
-		cursorY = rnd.img.screen.gotoCoordsY
-	} else {
-		cursorX = rnd.img.screen.crit.lastX
-		cursorY = rnd.img.screen.crit.lastY
-	}
+	cursorX := rnd.img.screen.crit.lastX
+	cursorY := rnd.img.screen.crit.lastY
 
 	// scale cordinates. horizontal scaling depends on whether the
 	// screen is cropped
@@ -275,10 +268,6 @@ func (rnd *glsl) render(displaySize [2]float32, framebufferSize [2]float32, draw
 		} else {
 			gl.Uniform1i(rnd.attribDrawMode, shaders.NoCursor)
 		}
-	case gui.StateRewinding:
-		gl.Uniform1i(rnd.attribDrawMode, shaders.NoCursor)
-	case gui.StateGotoCoords:
-		gl.Uniform1i(rnd.attribDrawMode, shaders.LateCursor)
 	}
 
 	if rnd.img.wm.dbgScr.cropped {

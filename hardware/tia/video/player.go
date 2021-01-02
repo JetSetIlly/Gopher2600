@@ -162,6 +162,7 @@ func (ps *PlayerSprite) Snapshot() *PlayerSprite {
 	return &n
 }
 
+// Plumb a new ChipBus into the Player sprite.
 func (ps *PlayerSprite) Plumb(hblank *bool, hmoveLatch *bool) {
 	ps.hblank = hblank
 	ps.hmoveLatch = hmoveLatch
@@ -175,7 +176,7 @@ func (ps *PlayerSprite) Plumb(hblank *bool, hmoveLatch *bool) {
 	}
 }
 
-// Label returns the label for the sprite.
+// Label returns an appropriate name for the sprite.
 func (ps *PlayerSprite) Label() string {
 	return ps.label
 }

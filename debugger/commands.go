@@ -283,7 +283,6 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 			dbg.restartInputLoop(func() error {
 				// adjust gui state for rewinding event. put back into a suitable
 				// state afterwards.
-				dbg.scr.SetFeature(gui.ReqState, gui.StateRewinding)
 				if dbg.runUntilHalt {
 					defer dbg.scr.SetFeature(gui.ReqState, gui.StateRunning)
 				} else {

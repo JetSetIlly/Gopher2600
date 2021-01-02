@@ -34,8 +34,6 @@ const (
 	StateInitialising EmulationState = iota
 	StatePaused
 	StateRunning
-	StateRewinding
-	StateGotoCoords
 )
 
 // List of valid feature requests. argument must be of the type specified or

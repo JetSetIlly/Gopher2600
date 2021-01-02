@@ -57,9 +57,12 @@ type winDisasm struct {
 	alignOnOtherAddress bool
 	alignAddress        uint16
 
-	// the address of the entry a the top of the list, we use to help
-	// list alignment (see alignAddress above)
+	// the address of the top-most visible entry. we use to help list alignment
+	// (see alignAddress above)
 	addressTopList uint16
+
+	// address of the bottom-most visible entry.
+	addressBotList uint16
 
 	// the program counter value in the previous (imgui) frame
 	pcaddrPrevFrame uint16
@@ -204,6 +207,7 @@ func (win *winDisasm) draw() {
 	// unset hasAlignedOnPC if alignOnPC has been set (either by
 	// pcaddrPrevFramee moving on of the "Goto PC" button being pressed)
 	win.hasAlignedOnPC = !win.alignOnPC
+
 }
 
 // draw a bank for each tabitem in the tab bar. if there is only one bank then
@@ -238,10 +242,11 @@ func (win *winDisasm) drawBank(pcaddr uint16, b int, selected bool, cpuStep bool
 			break // clipper.Step() loop
 		}
 
+		// note address of top-most visible entry
 		win.addressTopList = e.Result.Address
 
 		for i := clipper.DisplayStart; i < clipper.DisplayEnd; i++ {
-			// try to draw address labely. if successful then advance clipper
+			// try to draw address label. if successful then advance clipper
 			// counter and check for end of display
 			if win.drawLabel(e) {
 				i++
@@ -258,6 +263,9 @@ func (win *winDisasm) drawBank(pcaddr uint16, b int, selected bool, cpuStep bool
 			if e == nil {
 				break // clipper.DisplayStart loop
 			}
+
+			// note address of bottom-most visible entry
+			win.addressBotList = e.Result.Address
 		}
 	}
 
@@ -316,6 +324,9 @@ func (win *winDisasm) drawBank(pcaddr uint16, b int, selected bool, cpuStep bool
 	}
 
 	imgui.EndChild()
+
+	// set lazy update list
+	win.img.lz.Breakpoints.SetUpdateList(b, win.addressTopList, win.addressBotList)
 }
 
 func (win *winDisasm) drawLabel(e *disassembly.Entry) bool {
@@ -418,7 +429,7 @@ func (win *winDisasm) drawEntry(e *disassembly.Entry, pcaddr uint16, selected bo
 }
 
 func (win *winDisasm) drawBreak(e *disassembly.Entry) {
-	switch win.img.lz.Breakpoints.HasBreak(e) {
+	switch win.img.lz.Breakpoints.HasBreak(e.Result.Address) {
 	case debugger.BrkPCAddress:
 		win.drawGutter(gutterSolid, win.colBreakAddress)
 	case debugger.BrkOther:

@@ -44,8 +44,8 @@ func (dbg *Debugger) GetLastResult() disassembly.Entry {
 
 // HasBreak returns true if there is a breakpoint at the address. the second
 // return value indicates if there is a breakpoint at the address AND bank.
-func (dbg *Debugger) HasBreak(e *disassembly.Entry) BreakGroup {
-	g, _ := dbg.breakpoints.hasBreak(e)
+func (dbg *Debugger) HasBreak(addr uint16, bank int) BreakGroup {
+	g, _ := dbg.breakpoints.hasBreak(addr, bank)
 	return g
 }
 

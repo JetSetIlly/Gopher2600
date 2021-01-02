@@ -19,12 +19,15 @@ import (
 	"sync/atomic"
 
 	"github.com/jetsetilly/gopher2600/debugger"
-	"github.com/jetsetilly/gopher2600/disassembly"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
 type LazyBreakpoints struct {
 	val *LazyValues
+
+	updateForBank atomic.Value // int
+	updateStart   atomic.Value // uint16
+	updateEnd     atomic.Value // uint16
 
 	// breakpoints are treated differently to other lazy values. the
 	// information is updated on every call to HasBreak() rather than via
@@ -33,22 +36,43 @@ type LazyBreakpoints struct {
 }
 
 func newLazyBreakpoints(val *LazyValues) *LazyBreakpoints {
-	return &LazyBreakpoints{
+	lz := &LazyBreakpoints{
 		val: val,
 
 		// allocating enough space for every byte in the cartridge space. not worrying
 		// about bank sizes or multiple banks
 		breakpoints: make([]atomic.Value, memorymap.MemtopCart-memorymap.OriginCart+1),
 	}
+
+	lz.updateForBank.Store(0)
+	lz.updateStart.Store(uint16(0))
+	lz.updateEnd.Store(uint16(0))
+
+	return lz
+}
+
+func (lz *LazyBreakpoints) push() {
+	b := lz.updateForBank.Load().(int)
+	s := lz.updateStart.Load().(uint16)
+	e := lz.updateEnd.Load().(uint16)
+	for i := s; i <= e; i++ {
+		e := lz.val.Dbg.HasBreak(i, b)
+		lz.breakpoints[i&memorymap.CartridgeBits].Store(e)
+	}
+}
+
+func (lz *LazyBreakpoints) update() {
+}
+
+func (lz *LazyBreakpoints) SetUpdateList(bank int, start uint16, end uint16) {
+	lz.updateForBank.Store(bank)
+	lz.updateStart.Store(start)
+	lz.updateEnd.Store(end)
 }
 
 // HasBreak checks to see if disassembly entry has a breakpoint.
-func (lz *LazyBreakpoints) HasBreak(e *disassembly.Entry) debugger.BreakGroup {
-	i := e.Result.Address & memorymap.CartridgeBits
-
-	lz.val.Dbg.PushRawEvent(func() {
-		lz.breakpoints[i].Store(lz.val.Dbg.HasBreak(e))
-	})
+func (lz *LazyBreakpoints) HasBreak(addr uint16) debugger.BreakGroup {
+	i := addr & memorymap.CartridgeBits
 
 	if b, ok := lz.breakpoints[i].Load().(debugger.BreakGroup); ok {
 		return b
