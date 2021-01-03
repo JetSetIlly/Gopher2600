@@ -359,6 +359,11 @@ func (r *Rewind) plumb(idx, frame, scanline, horizpos int) error {
 // framesSinceSnapshot value. use plumb() with an index into the history for
 // that.
 func (r *Rewind) plumbState(s *State, frame, scanline, horizpos int) error {
+	// is requested frame before or after the current frame. if so then that
+	// means the emulation is running "backwards" and we'll use this decide
+	// whether to pause TV rendering.
+	backwards := frame <= r.vcs.TV.GetState(signal.ReqFramenum)
+
 	// take another snapshot of the state before plumbing. we don't want the
 	// machine to change what we have stored in our state array (we learned
 	// that lesson the hard way :-)
@@ -393,6 +398,12 @@ func (r *Rewind) plumbState(s *State, frame, scanline, horizpos int) error {
 	// frequency is one
 	adhocSnapshotted := r.Prefs.Freq.Get().(int) == 1
 
+	// pause rendering if emulation is running "backwards"
+	if backwards {
+		r.vcs.TV.PauseRendering(true)
+		defer r.vcs.TV.PauseRendering(false)
+	}
+
 	continueCheck := func() bool {
 		nf := r.vcs.TV.GetState(signal.ReqFramenum)
 		ny := r.vcs.TV.GetState(signal.ReqScanline)
@@ -412,10 +423,6 @@ func (r *Rewind) plumbState(s *State, frame, scanline, horizpos int) error {
 
 	// run emulation until continueCheck returns false
 	err := r.runner.CatchUpLoop(continueCheck)
-	if err != nil {
-		return curated.Errorf("rewind", err)
-	}
-	err = r.vcs.TV.ForceDraw()
 	if err != nil {
 		return curated.Errorf("rewind", err)
 	}

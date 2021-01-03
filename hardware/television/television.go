@@ -138,7 +138,12 @@ type Television struct {
 	signals []signal.SignalAttributes
 
 	// the index to write the next signal
-	signalIdx int
+	currentIdx int
+
+	// the max index from the last frame
+	lastMaxIdx int
+
+	pauseRendering bool
 }
 
 // NewReference creates a new instance of the reference television type,
@@ -374,20 +379,20 @@ func (tv *Television) Signal(sig signal.SignalAttributes) error {
 	tv.state.lastSignal = sig
 
 	// record signal history
-	if tv.signalIdx >= MaxSignalHistory {
-		err := tv.setPendingPixels()
+	if tv.currentIdx >= MaxSignalHistory {
+		err := tv.setPendingPixels(true)
 		if err != nil {
 			return err
 		}
 	}
-	tv.signals[tv.signalIdx] = sig
-	tv.signalIdx++
+	tv.signals[tv.currentIdx] = sig
+	tv.currentIdx++
 
 	// set pending pixels for pixel-scale frame limiting (but only when the
 	// limiter is active - this is important when rendering frames produced
 	// durint rewinding)
 	if tv.lmtr.limit && tv.lmtr.scale == scalePixel {
-		err := tv.setPendingPixels()
+		err := tv.setPendingPixels(true)
 		if err != nil {
 			return err
 		}
@@ -411,7 +416,7 @@ func (tv *Television) newScanline() error {
 	// limiter is active - this is important when rendering frames produced
 	// during rewinding)
 	if tv.lmtr.limit && tv.lmtr.scale == scaleScanline {
-		err := tv.setPendingPixels()
+		err := tv.setPendingPixels(true)
 		if err != nil {
 			return err
 		}
@@ -450,10 +455,13 @@ func (tv *Television) newFrame(synced bool) error {
 	tv.state.scanline = 0
 	tv.state.resizer.prepare(tv)
 
+	// note the current index before setPendingPixels() resets the value
+	tv.lastMaxIdx = tv.currentIdx
+
 	// set pending pixels for frame-scale frame limiting or if the frame
 	// limiter is inactive
 	if !tv.lmtr.limit || tv.lmtr.scale == scaleFrame {
-		err = tv.setPendingPixels()
+		err = tv.setPendingPixels(true)
 		if err != nil {
 			return err
 		}
@@ -477,26 +485,34 @@ func (tv *Television) newFrame(synced bool) error {
 	return nil
 }
 
-// setPendindPixels forwards all pixels in the signalHistory buffer (between
-// the *from and *to values) to all pixel renderers.
-func (tv *Television) setPendingPixels() error {
-	for _, r := range tv.renderers {
-		r.UpdatingPixels(true)
-		for i := 0; i < tv.signalIdx; i++ {
-			sig := tv.signals[i]
-			err := r.SetPixel(sig, true)
-			if err != nil {
-				return curated.Errorf("television", err)
-			}
-			if tv.reflector != nil {
-				tv.reflector.SyncReflectionPixel(i)
-			}
+// setPendindPixels forwards pixels in the signalHistory buffer to all pixel renderers.
+//
+// the "current" argument defines how many pixels to push. if all is true then
+func (tv *Television) setPendingPixels(current bool) error {
+	if !tv.pauseRendering {
+		lmt := tv.currentIdx
+		if !current {
+			lmt = tv.lastMaxIdx
 		}
-		r.UpdatingPixels(false)
+
+		for _, r := range tv.renderers {
+			r.UpdatingPixels(true)
+			for i := 0; i < lmt; i++ {
+				sig := tv.signals[i]
+				err := r.SetPixel(sig, i < tv.currentIdx)
+				if err != nil {
+					return curated.Errorf("television", err)
+				}
+				if tv.reflector != nil {
+					tv.reflector.SyncReflectionPixel(i)
+				}
+			}
+			r.UpdatingPixels(false)
+		}
 	}
 
 	// reset signal history
-	tv.signalIdx = 0
+	tv.currentIdx = 0
 
 	return nil
 }
@@ -563,22 +579,24 @@ func (tv *Television) GetSpec() specification.Spec {
 	return tv.state.spec
 }
 
-// Pause indicates that emulation has been paused. All renderers will pause
-// rendering and pending pixels pushed.
+// Pause indicates that emulation has been paused. All unpushed pixels will be
+// pushed to immeditately. Not the same as PauseRendering(). Pause() should be
+// used when emulation is stopped. In this case, paused rendering is implied.
 func (tv *Television) Pause(pause bool) error {
 	if pause {
-		return tv.setPendingPixels()
+		return tv.setPendingPixels(true)
 	}
 	return nil
 }
 
-// ForceDraw pushes all pending pixels to the pixel renderers.
-func (tv *Television) ForceDraw() error {
-	err := tv.setPendingPixels()
-	if err != nil {
-		return err
+// PauseRendering halts all forwarding to attached pixel renderers. Not the
+// same as Pause(). PauseRendering() should be used when emulation is running
+// but no rendering is to take place.
+func (tv *Television) PauseRendering(pause bool) {
+	tv.pauseRendering = pause
+	if !tv.pauseRendering {
+		tv.setPendingPixels(false)
 	}
-	return nil
 }
 
 // SetFPSCap whether the emulation should wait for FPS limiter. Returns the

@@ -88,16 +88,9 @@ func (dbg *Debugger) checkEvents() error {
 			}
 
 		case ev := <-dbg.events.RawEvents:
-			for ev != nil {
-				ev()
-				select {
-				case ev = <-dbg.events.RawEvents:
-				default:
-					ev = nil
-				}
-			}
+			ev()
 
-		case ev := <-dbg.events.RawEventsReturn:
+		case ev := <-dbg.events.RawEventsImm:
 			ev()
 			return nil
 

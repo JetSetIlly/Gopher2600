@@ -31,5 +31,4 @@ const (
 const (
 	NoCursor int32 = iota
 	Cursor
-	LateCursor
 )

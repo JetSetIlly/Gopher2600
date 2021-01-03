@@ -202,18 +202,6 @@ void main()
 				}
 			}
 		}
-
-		// special handling for "Goto Coords" mode. the effect we want is for
-		// the selected coords to be obvious immediately. we don't want to see
-		// any screen drawing but we do want the alpha fade.
-		if (DrawMode == LateCursor) {
-			if (coords.y > lastY+texelY || (isNearEqual(coords.y, lastY+texelY, texelY) && coords.x > lastX+texelX)) {
-				Out_Color = Frag_Color * texture(Texture, Frag_UV.st);
-				Out_Color.a = 0.5;
-				return;
-			}
-		}
-
 	} else {
 		texelX = ScalingX / CropScreenDim.x;
 		texelY = ScalingY / CropScreenDim.y;

@@ -66,14 +66,16 @@ func (dbg *Debugger) PushRawEvent(f func()) {
 	}
 }
 
-// PushRawEventReturn onto the event queue. Similar to PushRawEvent() but
-// handlers will relinquish control of the handler thread immediately upon
-// completion of pushed funcion. Useful when pushed function has side-effects
-// that must be serviced by the input loop immediately.
-func (dbg *Debugger) PushRawEventReturn(f func()) {
+// PushRawEventImm onto the event queue. Similar to PushRawEvent() but handlers
+// will relinquish control of the handler thread immediately upon completion of
+// pushed funcion.
+//
+// Useful when pushed function has visual side-effects that must be serviced
+// immediately.
+func (dbg *Debugger) PushRawEventImm(f func()) {
 	select {
-	case dbg.events.RawEventsReturn <- f:
+	case dbg.events.RawEventsImm <- f:
 	default:
-		logger.Log("debugger", "dropped raw event (with return) push")
+		logger.Log("debugger", "dropped raw event (gui) push")
 	}
 }

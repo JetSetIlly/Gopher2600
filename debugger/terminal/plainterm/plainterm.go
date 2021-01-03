@@ -92,6 +92,9 @@ func (pt PlainTerminal) TermRead(input []byte, prompt terminal.Prompt, events *t
 	// while we were waiting for the call to Read() to return we may have
 	// received an interrupt event. if we have then return a UserInterrupt
 	// error to the debugging loop
+	//
+	// other events do not need to be checked - they will be serviced by the
+	// debugger inputer loop via the CheckEvents() function.
 	select {
 	case <-events.IntEvents:
 		return 0, curated.Errorf(terminal.UserInterrupt)

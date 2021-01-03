@@ -88,7 +88,6 @@ func (dbg *Debugger) PushRewind(fn int, last bool) bool {
 			}
 		}
 
-		// dbg.scr.SetFeatureNoError(gui.ReqState, state)
 		dbg.runUntilHalt = false
 
 		return nil
@@ -97,7 +96,7 @@ func (dbg *Debugger) PushRewind(fn int, last bool) bool {
 	// how we push the doRewind() function depends on what kind of inputloop we
 	// are currently in
 	if dbg.isVideoCycleInputLoop {
-		dbg.PushRawEventReturn(func() {
+		dbg.PushRawEventImm(func() {
 			dbg.restartInputLoop(doRewind)
 
 			// read rewinding channel, this unblocks the channel and allows
@@ -108,7 +107,7 @@ func (dbg *Debugger) PushRewind(fn int, last bool) bool {
 			}
 		})
 	} else {
-		dbg.PushRawEventReturn(func() {
+		dbg.PushRawEventImm(func() {
 			err := doRewind()
 			if err != nil {
 				logger.Log("rewind", err.Error())
@@ -143,7 +142,7 @@ func (dbg *Debugger) PushGotoCoords(scanline int, horizpos int) {
 
 	dbg.runUntilHalt = false
 
-	dbg.PushRawEventReturn(func() {
+	dbg.PushRawEventImm(func() {
 		f := func() error {
 			err := dbg.Rewind.GotoFrameCoords(scanline, horizpos)
 			if err != nil {
