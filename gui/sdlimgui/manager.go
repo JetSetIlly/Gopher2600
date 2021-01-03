@@ -21,7 +21,7 @@ import (
 	"github.com/inkyblackness/imgui-go/v3"
 )
 
-// window represents all the window types used in the sdlimgui.
+// the window type represents all the windows used in the sdlimgui.
 type window interface {
 	init()
 	id() string
@@ -64,7 +64,65 @@ type manager struct {
 	//
 	dbgScr   *winDbgScr
 	crtPrefs *winCRTPrefs
-	playScr  *winPlayScr
+
+	// the playscreen does not appear in the window list and can only be
+	// referred to via the playScr field.
+	playScr *winPlayScr
+}
+
+// windowDef specifies a window creator, the menu it appears in whether it
+// should open on start
+type windowDef struct {
+	create func(*SdlImgui) (window, error)
+	menu   string
+	open   bool
+}
+
+// list of windows to add to the window manager
+var windowDefs = [...]windowDef{
+	// windows called from "debugger" menu
+	{create: newFileSelector, menu: menuDebugger},
+	{create: newWinPrefs, menu: menuDebugger},
+	{create: newWinCRTPrefs, menu: menuDebugger},
+	{create: newWinTerm, menu: menuDebugger},
+	{create: newWinLog, menu: menuDebugger},
+
+	// windows that appear in the "vcs" menu
+	{create: newWinControl, menu: menuVCS, open: true},
+	{create: newWinCPU, menu: menuVCS, open: true},
+	{create: newWinRAM, menu: menuVCS, open: true},
+	{create: newWinTIA, menu: menuVCS, open: true},
+	{create: newWinTimer, menu: menuVCS, open: true},
+	{create: newWinDisasm, menu: menuVCS, open: true},
+	{create: newWinAudio, menu: menuVCS, open: true},
+	{create: newWinDbgScr, menu: menuVCS, open: true},
+	{create: newWinControllers, menu: menuVCS},
+	{create: newWinCollisions, menu: menuVCS},
+	{create: newWinChipRegisters, menu: menuVCS},
+
+	// windows that appear in cartridge specific menus
+	{create: newWinDPCregisters, menu: "DPC"},
+	{create: newWinDPCplusRegisters, menu: "DPC+"},
+	{create: newWinCDFRegisters, menu: "CDF"},
+	{create: newWinSuperchargerRegisters, menu: "AR"},
+	{create: newWinCartTape, menu: "AR"},
+	{create: newWinCartRAM, menu: menuCart},
+	{create: newWinCartStatic, menu: menuCart},
+
+	// cartridges with RAM and static areas will be added automatically
+
+	// plusrom windows
+	{create: newWinPlusROMNetwork, menu: menuPlusROM},
+	{create: newWinPlusROMPrefs, menu: menuPlusROM},
+
+	// savekey windows
+	{create: newWinSaveKeyI2C, menu: menuSaveKey},
+	{create: newWinSaveKeyEEPROM, menu: menuSaveKey},
+}
+
+// list of windows that can be opened in playmode in addition to the debugger
+var playmodeWindows = [...]string{
+	winCRTPrefsTitle,
 }
 
 func newManager(img *SdlImgui) (*manager, error) {
@@ -74,134 +132,36 @@ func newManager(img *SdlImgui) (*manager, error) {
 		menu:    make(map[string][]string),
 	}
 
-	// creation function for all managed windows
-	addWindow := func(create func(img *SdlImgui) (window, error), open bool, group string) error {
-		w, err := create(img)
+	// create all window instances and add to specified menu
+	addWindow := func(def windowDef) error {
+		w, err := def.create(img)
 		if err != nil {
 			return err
 		}
 
 		wm.windows[w.id()] = w
-		wm.menu[group] = append(wm.menu[group], w.id())
-		w.setOpen(open)
+		wm.menu[def.menu] = append(wm.menu[def.menu], w.id())
+		w.setOpen(def.open)
 
 		return nil
 	}
 
-	// windows called from project menu
-	if err := addWindow(newFileSelector, false, windowMenuDebugger); err != nil {
-		return nil, err
-	}
-	if err := addWindow(newWinPrefs, false, windowMenuDebugger); err != nil {
-		return nil, err
-	}
-	if err := addWindow(newWinCRTPrefs, false, windowMenuDebugger); err != nil {
-		return nil, err
-	}
-	if err := addWindow(newWinTerm, false, windowMenuDebugger); err != nil {
-		return nil, err
-	}
-	if err := addWindow(newWinLog, false, windowMenuDebugger); err != nil {
-		return nil, err
+	for _, w := range windowDefs {
+		if err := addWindow(w); err != nil {
+			return nil, err
+		}
 	}
 
-	// windows that appear in the "windows" menu
-	if err := addWindow(newWinControl, true, windowMenuVCS); err != nil {
-		return nil, err
-	}
-	if err := addWindow(newWinCPU, true, windowMenuVCS); err != nil {
-		return nil, err
-	}
-	if err := addWindow(newWinRAM, true, windowMenuVCS); err != nil {
-		return nil, err
-	}
-	if err := addWindow(newWinTIA, true, windowMenuVCS); err != nil {
-		return nil, err
-	}
-	if err := addWindow(newWinTimer, true, windowMenuVCS); err != nil {
-		return nil, err
-	}
-	if err := addWindow(newWinDisasm, true, windowMenuVCS); err != nil {
-		return nil, err
-	}
-	if err := addWindow(newWinAudio, true, windowMenuVCS); err != nil {
-		return nil, err
-	}
-	if err := addWindow(newWinDbgScr, true, windowMenuVCS); err != nil {
-		return nil, err
-	}
-	if err := addWindow(newWinControllers, false, windowMenuVCS); err != nil {
-		return nil, err
-	}
-	if err := addWindow(newWinCollisions, false, windowMenuVCS); err != nil {
-		return nil, err
-	}
-	if err := addWindow(newWinChipRegisters, false, windowMenuVCS); err != nil {
-		return nil, err
-	}
+	// sort vcs menu entries. leave other menus alone
+	sort.Strings(wm.menu[menuVCS])
 
-	// windows that appear in cartridge specific menus
-	if err := addWindow(newWinDPCregisters, false, windowMenuCart); err != nil {
-		return nil, err
-	}
-	if err := addWindow(newWinDPCplusRegisters, false, windowMenuCart); err != nil {
-		return nil, err
-	}
-	if err := addWindow(newWinCDFRegisters, false, windowMenuCart); err != nil {
-		return nil, err
-	}
-	if err := addWindow(newWinSuperchargerRegisters, false, windowMenuCart); err != nil {
-		return nil, err
-	}
-	if err := addWindow(newWinCartRAM, false, windowMenuCart); err != nil {
-		return nil, err
-	}
-	if err := addWindow(newWinCartStatic, false, windowMenuCart); err != nil {
-		return nil, err
-	}
-	if err := addWindow(newWinCartTape, false, windowMenuCart); err != nil {
-		return nil, err
-	}
-
-	// plusrom windows
-	if err := addWindow(newWinPlusROMNetwork, false, windowMenuOther); err != nil {
-		return nil, err
-	}
-	if err := addWindow(newWinPlusROMPrefs, false, windowMenuOther); err != nil {
-		return nil, err
-	}
-
-	// savekey windows
-	if err := addWindow(newWinSaveKeyI2C, false, windowMenuOther); err != nil {
-		return nil, err
-	}
-	if err := addWindow(newWinSaveKeyEEPROM, false, windowMenuOther); err != nil {
-		return nil, err
-	}
-
-	// associate cartridge types with cartridge specific menus. using cartridge
-	// ID as the key in the windowMenu map
-	//
-	// note that the name of the window menu's we use here must match the ID
-	// used by the cartridge mapper.
-	wm.menu["DPC"] = append(wm.menu["DPC"], winDPCregistersTitle)
-	wm.menu["DPC+"] = append(wm.menu["DPC+"], winDPCplusRegistersTitle)
-	wm.menu["AR"] = append(wm.menu["AR"], winSuperchargerRegistersTitle)
-	wm.menu["CDF"] = append(wm.menu["CDF"], winCDFRegistersTitle)
-
-	// cartridges with RAM and static areas will be added automatically
-
-	// get references to specific window types that need to be referenced
-	// elsewhere in the system
+	// get references to specific windows that need to be referenced elsewhere in the system
 	wm.dbgScr = wm.windows[winDbgScrTitle].(*winDbgScr)
 	wm.crtPrefs = wm.windows[winCRTPrefsTitle].(*winCRTPrefs)
 
-	// create play window. this is a very special window that never appears
-	// directly in an any menu
+	// create play window. this is a special window that does not appear in the
+	// window list
 	wm.playScr = newWinPlayScr(img).(*winPlayScr)
-
-	// sort vcs menu entries. leave other menus alone
-	sort.Strings(wm.menu[windowMenuVCS])
 
 	return wm, nil
 }
@@ -219,18 +179,17 @@ func (wm *manager) draw() {
 		for w := range wm.windows {
 			wm.windows[w].init()
 		}
-
-		// we wont' be initialising again
 		wm.hasInitialised = true
 	}
 
-	// playmode is very simple
+	// playmode draws the screen and other windows that have been listed
+	// as being safe to draw in playmode
 	if wm.img.isPlaymode() {
 		wm.playScr.draw()
 
-		// some windows are safe to draw without a debugger
-		// TODO: more flexible way of defining debugger-only windows
-		wm.crtPrefs.draw()
+		for _, s := range playmodeWindows {
+			wm.windows[s].draw()
+		}
 
 		return
 	}

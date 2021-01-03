@@ -34,6 +34,7 @@ const (
 	StateInitialising EmulationState = iota
 	StatePaused
 	StateRunning
+	StateEnding
 )
 
 // List of valid feature requests. argument must be of the type specified or
@@ -77,10 +78,6 @@ const (
 	// own go routine but regardless, the event channel is used for this
 	// purpose.
 	ReqSetEventChan FeatureReq = "ReqSetEventChan" // chan gui.Event()
-
-	// trigger a save preferences event. usually performed before gui is
-	// destroyed or before some other destructive action.
-	ReqSavePrefs FeatureReq = "ReqSavePrefs" // none
 
 	// triggered when cartridge is being change.
 	ReqChangingCartridge FeatureReq = "ReqChangingCartridge" // bool

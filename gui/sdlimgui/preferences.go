@@ -21,21 +21,35 @@ import (
 	"github.com/jetsetilly/gopher2600/prefs"
 )
 
-type Preferences struct {
+// unified preferences for both modes (debugger and playmode). existing
+// instances of the preferences type should be dumped whenever the mode changes
+// and a new instance created with either newDebugPreferences() or
+// newPlaymodePreferences().
+type preferences struct {
 	img *SdlImgui
-	dsk *prefs.Disk
 
+	// two disk objects so we can load and save the  preferences assigned to
+	// them seperately. both use the same prefs file
+	dsk    *prefs.Disk
+	dskWin *prefs.Disk
+
+	// debugger preferences
 	openOnError prefs.Bool
+
+	// there are no playmode preferences yet
 }
 
-func newDebugPreferences(img *SdlImgui) (*Preferences, error) {
-	p := &Preferences{img: img}
+// load debugger preferences. may cause SDL container window to change
+// position/size.
+func newDebugPreferences(img *SdlImgui) (*preferences, error) {
+	p := &preferences{img: img}
 
 	// setup preferences
 	pth, err := paths.ResourcePath("", prefs.DefaultPrefsFile)
 	if err != nil {
 		return nil, err
 	}
+
 	p.dsk, err = prefs.NewDisk(pth)
 	if err != nil {
 		return nil, err
@@ -46,13 +60,13 @@ func newDebugPreferences(img *SdlImgui) (*Preferences, error) {
 		return nil, err
 	}
 
-	err = p.addWindowPreferences("sdlimgui.debugger")
+	err = p.dsk.Load(true)
 	if err != nil {
 		return nil, err
 	}
 
-	// load preferences from disk
-	err = p.dsk.Load(true)
+	// windows preferences
+	err = p.addWindowPreferences(pth, "sdlimgui.debugger")
 	if err != nil {
 		return nil, err
 	}
@@ -60,26 +74,29 @@ func newDebugPreferences(img *SdlImgui) (*Preferences, error) {
 	return p, nil
 }
 
-func newPlaymodePreferences(img *SdlImgui) (*Preferences, error) {
-	p := &Preferences{img: img}
+// load playmode preferences. may cause SDL container window to change
+// position/size.
+func newPlaymodePreferences(img *SdlImgui) (*preferences, error) {
+	p := &preferences{img: img}
 
 	// setup preferences
 	pth, err := paths.ResourcePath("", prefs.DefaultPrefsFile)
 	if err != nil {
 		return nil, err
 	}
+
 	p.dsk, err = prefs.NewDisk(pth)
 	if err != nil {
 		return nil, err
 	}
 
-	err = p.addWindowPreferences("sdlimgui.playmode")
+	err = p.dsk.Load(true)
 	if err != nil {
 		return nil, err
 	}
 
-	// load preferences from disk
-	err = p.dsk.Load(true)
+	// windows preferences
+	err = p.addWindowPreferences(pth, "sdlimgui.playmode")
 	if err != nil {
 		return nil, err
 	}
@@ -87,8 +104,15 @@ func newPlaymodePreferences(img *SdlImgui) (*Preferences, error) {
 	return p, nil
 }
 
-func (p *Preferences) addWindowPreferences(group string) error {
-	err := p.dsk.Add(fmt.Sprintf("%s.windowSize", group), prefs.NewGeneric(
+func (p *preferences) addWindowPreferences(pth string, group string) error {
+	var err error
+
+	p.dskWin, err = prefs.NewDisk(pth)
+	if err != nil {
+		return err
+	}
+
+	err = p.dskWin.Add(fmt.Sprintf("%s.windowSize", group), prefs.NewGeneric(
 		func(s string) error {
 			var w, h int32
 			_, err := fmt.Sscanf(s, "%d,%d", &w, &h)
@@ -107,7 +131,7 @@ func (p *Preferences) addWindowPreferences(group string) error {
 		return err
 	}
 
-	err = p.dsk.Add(fmt.Sprintf("%s.windowPos", group), prefs.NewGeneric(
+	err = p.dskWin.Add(fmt.Sprintf("%s.windowPos", group), prefs.NewGeneric(
 		func(s string) error {
 			var x, y int32
 			_, err := fmt.Sscanf(s, "%d,%d", &x, &y)
@@ -131,15 +155,30 @@ func (p *Preferences) addWindowPreferences(group string) error {
 		return err
 	}
 
+	err = p.dskWin.Load(true)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
-// Load disassembly preferences and apply to the current disassembly.
-func (p *Preferences) load() error {
+// load preferences from disk.
+func (p *preferences) load() error {
 	return p.dsk.Load(false)
 }
 
-// Save current disassembly preferences to disk.
-func (p *Preferences) save() error {
+// save preferences to disk.
+func (p *preferences) save() error {
 	return p.dsk.Save()
+}
+
+// loadWin preferences from disk.
+func (p *preferences) loadWin() error {
+	return p.dskWin.Load(false)
+}
+
+// saveWin preferences to disk.
+func (p *preferences) saveWin() error {
+	return p.dskWin.Save()
 }

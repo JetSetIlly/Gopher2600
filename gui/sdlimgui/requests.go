@@ -93,12 +93,6 @@ func (img *SdlImgui) serviceSetFeature(request featureRequest) {
 	case gui.ReqSetEventChan:
 		img.events = request.args[0].(chan gui.Event)
 
-	case gui.ReqSavePrefs:
-		err = img.prefs.save()
-		if err == nil {
-			err = img.crtPrefs.Save()
-		}
-
 	case gui.ReqChangingCartridge:
 		// a new cartridge requires us to reset the lazy system (see the
 		// lazyvalues.Reset() function commentary for why)

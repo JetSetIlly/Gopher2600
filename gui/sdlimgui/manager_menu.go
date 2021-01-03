@@ -23,12 +23,11 @@ import (
 
 // the window menus grouped by type. the types are:.
 const (
-	windowMenuDebugger = "Debugger"
-	windowMenuVCS      = "VCS"
-	windowMenuCart     = "Cartridge"
-	windowMenuOther    = "..."
-
-	// additional window menus are grouped by cartridge type.
+	menuDebugger = "Debugger"
+	menuVCS      = "VCS"
+	menuCart     = "Cart"
+	menuPlusROM  = "PlusROM"
+	menuSaveKey  = "SaveKey"
 )
 
 func (wm *manager) drawMenu() {
@@ -39,9 +38,9 @@ func (wm *manager) drawMenu() {
 	// see commentary for screenPos in windowManager declaration
 	wm.screenPos = imgui.WindowPos()
 
-	if imgui.BeginMenu(windowMenuDebugger) {
-		for _, id := range wm.menu[windowMenuDebugger] {
-			drawMenuWindowEntry(wm.windows[id], id)
+	if imgui.BeginMenu(menuDebugger) {
+		for _, id := range wm.menu[menuDebugger] {
+			drawMenuEntry(wm.windows[id], id)
 		}
 		imgui.Spacing()
 		imgui.Separator()
@@ -53,41 +52,27 @@ func (wm *manager) drawMenu() {
 	}
 
 	// window menu
-	if imgui.BeginMenu(windowMenuVCS) {
-		for _, id := range wm.menu[windowMenuVCS] {
-			drawMenuWindowEntry(wm.windows[id], id)
+	if imgui.BeginMenu(menuVCS) {
+		for _, id := range wm.menu[menuVCS] {
+			drawMenuEntry(wm.windows[id], id)
 		}
 
 		imgui.EndMenu()
 	}
 
-	// add cartridge specific menu if cartridge has a RAM bus or a debug bus.
-	// note that debug bus windows need to have been added to the window menu
-	// for the specific cartridge ID. see newWindowManager() function above
-	cartSpecificMenu := wm.img.lz.Cart.HasRAMbus ||
-		wm.img.lz.Cart.HasStaticBus ||
-		wm.img.lz.Cart.HasRegistersBus
-
-	if _, ok := wm.menu[wm.img.lz.Cart.ID]; ok {
-		cartSpecificMenu = true
-	}
-
-	if cartSpecificMenu {
+	// add cartridge menu
+	if _, ok := wm.menu[wm.img.lz.Cart.ID]; ok || wm.img.lz.Cart.HasRAMbus || wm.img.lz.Cart.HasStaticBus {
 		if imgui.BeginMenu(fmt.Sprintf("Cart [%s]", wm.img.lz.Cart.ID)) {
 			for _, id := range wm.menu[wm.img.lz.Cart.ID] {
-				drawMenuWindowEntry(wm.windows[id], id)
-			}
-
-			if wm.img.lz.Cart.HasTapeBus {
-				drawMenuWindowEntry(wm.windows[winCartTapeTitle], winCartTapeTitle)
+				drawMenuEntry(wm.windows[id], id)
 			}
 
 			if wm.img.lz.Cart.HasRAMbus {
-				drawMenuWindowEntry(wm.windows[winCartRAMTitle], winCartRAMTitle)
+				drawMenuEntry(wm.windows[winCartRAMTitle], winCartRAMTitle)
 			}
 
 			if wm.img.lz.Cart.HasStaticBus {
-				drawMenuWindowEntry(wm.windows[winCartStaticTitle], winCartStaticTitle)
+				drawMenuEntry(wm.windows[winCartStaticTitle], winCartStaticTitle)
 			}
 
 			imgui.EndMenu()
@@ -96,18 +81,20 @@ func (wm *manager) drawMenu() {
 
 	// plusrom specific menus
 	if wm.img.lz.Cart.IsPlusROM {
-		if imgui.BeginMenu("PlusROM") {
-			drawMenuWindowEntry(wm.windows[winPlusROMNetworkTitle], menuPlusROMNetworkTitle)
-			drawMenuWindowEntry(wm.windows[winPlusROMPrefsTitle], menuPlusROMPrefsTitle)
+		if imgui.BeginMenu(menuPlusROM) {
+			for _, id := range wm.menu[menuPlusROM] {
+				drawMenuEntry(wm.windows[id], id)
+			}
 			imgui.EndMenu()
 		}
 	}
 
 	// add savekey specific menu
 	if wm.img.lz.SaveKey.SaveKeyActive {
-		if imgui.BeginMenu("SaveKey") {
-			drawMenuWindowEntry(wm.windows[winSaveKeyI2CTitle], menuSaveKeyI2CTitle)
-			drawMenuWindowEntry(wm.windows[winSaveKeyEEPROMTitle], menuSaveKeyEEPROMTitle)
+		if imgui.BeginMenu(menuSaveKey) {
+			for _, id := range wm.menu[menuSaveKey] {
+				drawMenuEntry(wm.windows[id], id)
+			}
 			imgui.EndMenu()
 		}
 	}
@@ -119,7 +106,7 @@ func (wm *manager) drawMenu() {
 	imgui.EndMainMenuBar()
 }
 
-func drawMenuWindowEntry(w window, id string) {
+func drawMenuEntry(w window, id string) {
 	// decorate the menu entry with an "window open" indicator
 	if w.isOpen() {
 		// checkmark is unicode middle dot - code 00b7

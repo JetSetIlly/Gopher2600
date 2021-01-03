@@ -89,7 +89,7 @@ type SdlImgui struct {
 
 	// gui specific preferences. crt preferences are handled separately. all
 	// other preferences are handled by the emulation
-	prefs    *Preferences
+	prefs    *preferences
 	crtPrefs *crt.Preferences
 
 	// hasModal should be true for the duration of when a modal popup is on the screen
@@ -217,7 +217,14 @@ func (img *SdlImgui) draw() {
 // set emulation state and handle any changes.
 func (img *SdlImgui) setEmulationState(state gui.EmulationState) {
 	img.state = state
-	img.screen.render()
+	switch img.state {
+	case gui.StatePaused:
+		img.screen.render()
+	case gui.StateRunning:
+		img.screen.render()
+	case gui.StateEnding:
+		img.prefs.saveWin()
+	}
 }
 
 // is the gui in playmode or not. thread safe. called from emulation thread

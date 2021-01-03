@@ -378,8 +378,8 @@ func play(md *modalflag.Modes, sync *mainSync) error {
 			fmt.Println("! recording completed")
 		}
 
-		// save preferences before finishing successfully
-		err = scr.SetFeature(gui.ReqSavePrefs)
+		// set ending state
+		err = scr.SetFeature(gui.ReqState, gui.StateEnding)
 		if err != nil {
 			return err
 		}
@@ -519,8 +519,8 @@ func debug(md *modalflag.Modes, sync *mainSync) error {
 		return fmt.Errorf("too many arguments for %s mode", md)
 	}
 
-	// save preferences before finishing successfully
-	err = scr.SetFeature(gui.ReqSavePrefs)
+	// set ending state
+	err = scr.SetFeature(gui.ReqState, gui.StateEnding)
 	if err != nil {
 		return err
 	}
