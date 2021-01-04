@@ -16,9 +16,6 @@
 package sdlimgui
 
 import (
-	"fmt"
-	"strconv"
-
 	"github.com/inkyblackness/imgui-go/v3"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
@@ -64,69 +61,20 @@ func (win *winRAM) draw() {
 	imgui.PushStyleVarVec2(imgui.StyleVarItemSpacing, imgui.Vec2{})
 	imgui.PushItemWidth(imguiTextWidth(2))
 
-	// draw headers for each column
-	headerDim := imgui.Vec2{X: imguiTextWidth(4), Y: imgui.CursorPosY()}
-	for i := 0; i < 16; i++ {
-		imgui.SetCursorPos(headerDim)
-		headerDim.X += imguiTextWidth(2)
-		imgui.AlignTextToFramePadding()
-		imgui.Text(fmt.Sprintf("-%x", i))
+	var cmp []uint8
+	if win.img.lz.Rewind.Comparison != nil {
+		cmp = win.img.lz.Rewind.Comparison.Mem.RAM.RAM
 	}
 
-	// draw rows
-	for i := 0; i < len(win.img.lz.RAM.RAM); i++ {
-		addr := memorymap.OriginRAM + uint16(i)
-
-		// draw row header
-		if i%16 == 0 {
-			imgui.AlignTextToFramePadding()
-			imgui.Text(fmt.Sprintf("%02x- ", addr/16))
-			imgui.SameLine()
-		} else {
-			imgui.SameLine()
-		}
-
-		// editable byte
-		d := win.img.lz.RAM.RAM[i]
-
-		// compare current RAM value with value in comparison snapshot and use
-		// highlight color if it is different
-		e := d
-		if win.img.lz.Rewind.Comparison != nil {
-			e = win.img.lz.Rewind.Comparison.Mem.RAM.RAM[i]
-		}
-		if d != e {
-			imgui.PushStyleColor(imgui.StyleColorFrameBg, win.img.cols.RAMDiff)
-		}
-
-		b := fmt.Sprintf("%02x", d)
-		if imguiHexInput(fmt.Sprintf("##%d", addr), 2, &b) {
-			if v, err := strconv.ParseUint(b, 16, 8); err == nil {
-				a := addr // we have to make a copy of the address
-				win.img.lz.Dbg.PushRawEvent(func() {
-					win.img.lz.Dbg.VCS.Mem.Write(a, uint8(v))
-				})
-			}
-		}
-
-		if imgui.IsItemHovered() {
-			win.drawSnapshotInfo(d, e)
-		}
-
-		// undo any color changes
-		if d != e {
-			imgui.PopStyleColor()
-		}
-	}
+	drawByteGrid(win.img.lz.RAM.RAM, cmp, win.img.cols.ValueDiff, memorymap.OriginRAM,
+		func(addr uint16, data uint8) {
+			win.img.lz.Dbg.PushRawEvent(func() {
+				win.img.lz.Dbg.VCS.Mem.Write(addr, data)
+			})
+		})
 
 	imgui.PopItemWidth()
 	imgui.PopStyleVar()
 
 	imgui.End()
-}
-
-func (win *winRAM) drawSnapshotInfo(current, snapshot uint8) {
-	imgui.BeginTooltip()
-	imgui.Text(fmt.Sprintf("%02x -> %02x", snapshot, current))
-	imgui.EndTooltip()
 }

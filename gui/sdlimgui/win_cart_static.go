@@ -16,11 +16,7 @@
 package sdlimgui
 
 import (
-	"fmt"
-	"strconv"
-
 	"github.com/inkyblackness/imgui-go/v3"
-	"github.com/jetsetilly/gopher2600/logger"
 )
 
 const winCartStaticTitle = "Static Areas"
@@ -77,79 +73,21 @@ func (win *winCartStatic) draw() {
 	imgui.BeginV(winCartStaticTitle, &win.open, 0)
 
 	imgui.BeginTabBar("")
-	for i := range win.img.lz.Cart.Static {
-		a := win.img.lz.Cart.Static[i]
-		b := comp[i]
+	for segment := range win.img.lz.Cart.Static {
+		a := win.img.lz.Cart.Static[segment]
+		b := comp[segment]
 		if imgui.BeginTabItemV(a.Segment, nil, 0) {
-			win.drawGrid(a.Segment, a.Data, b.Data)
+			drawByteGrid(a.Data, b.Data, win.img.cols.ValueDiff, 0,
+				func(addr uint16, data uint8) {
+					win.img.lz.Dbg.PushRawEvent(func() {
+						idx := int(addr)
+						win.img.lz.Dbg.VCS.Mem.Cart.GetRAMbus().PutRAM(segment, idx, data)
+					})
+				})
 			imgui.EndTabItem()
 		}
 	}
 	imgui.EndTabBar()
 
 	imgui.End()
-}
-
-func (win *winCartStatic) drawGrid(segment string, a []byte, b []byte) {
-	imgui.BeginChild(segment)
-
-	// no spacing between any of the drawEditByte() objects
-	imgui.PushStyleVarVec2(imgui.StyleVarItemSpacing, imgui.Vec2{})
-
-	// draw headers for each column. this relies on win.xPos, which requires
-	// one frame before it is accurate.
-	headerDim := imgui.Vec2{X: win.xPos, Y: imgui.CursorPosY()}
-	for i := 0; i < 16; i++ {
-		imgui.SetCursorPos(headerDim)
-		headerDim.X += imguiTextWidth(2)
-		imgui.AlignTextToFramePadding()
-		imgui.Text(fmt.Sprintf("-%x", i))
-	}
-
-	// draw rows
-	imgui.PushItemWidth(imguiTextWidth(2))
-	i := uint16(0)
-	for idx := 0; idx < len(a); idx++ {
-		// draw row header
-		if i%16 == 0 {
-			imgui.AlignTextToFramePadding()
-			imgui.Text(fmt.Sprintf("%02x- ", idx/16))
-			imgui.SameLine()
-			win.xPos = imgui.CursorPosX()
-		} else {
-			imgui.SameLine()
-		}
-		win.drawEditByte(segment, uint16(idx), a[i], b[i])
-		i++
-	}
-	imgui.PopItemWidth()
-
-	// finished with spacing setting
-	imgui.PopStyleVar()
-
-	imgui.EndChild()
-}
-
-func (win *winCartStatic) drawEditByte(segment string, idx uint16, a byte, b byte) {
-	l := fmt.Sprintf("##%d", idx)
-	content := fmt.Sprintf("%02x", a)
-
-	// compare current static value with value in comparison snapshot and use
-	// highlight color if it is different
-	if a != b {
-		imgui.PushStyleColor(imgui.StyleColorFrameBg, win.img.cols.RAMDiff)
-		defer imgui.PopStyleColor()
-	}
-
-	if imguiHexInput(l, 2, &content) {
-		if v, err := strconv.ParseUint(content, 16, 8); err == nil {
-			win.img.lz.Dbg.PushRawEvent(func() {
-				a := win.img.lz.Dbg.VCS.Mem.Cart.GetStaticBus()
-				err := a.PutStatic(segment, idx, uint8(v))
-				if err != nil {
-					logger.Log("sdlimgui", err.Error())
-				}
-			})
-		}
-	}
 }

@@ -81,9 +81,7 @@ func (win *winCPU) draw() {
 
 	imgui.EndGroup()
 
-	imgui.Spacing()
-	imgui.Separator()
-	imgui.Spacing()
+	imguiSeparator()
 
 	win.drawStatusRegister()
 
@@ -150,7 +148,7 @@ func (win *winCPU) drawRegister(reg registers.Generic) {
 
 	label := reg.Label()
 
-	imguiText(fmt.Sprintf("% 2s", label))
+	imguiLabel(fmt.Sprintf("% 2s", label))
 	imgui.SameLine()
 
 	content := reg.String()

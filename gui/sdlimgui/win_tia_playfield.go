@@ -35,7 +35,7 @@ func (win *winTIA) drawPlayfield() {
 	// selection in palette, missile color is changed too
 	imgui.BeginGroup()
 
-	imguiText("Foreground")
+	imguiLabel("Foreground")
 	fgCol := lz.ForegroundColor
 	if win.img.imguiSwatch(fgCol, 0.75) {
 		win.popupPalette.request(&fgCol, func() {
@@ -47,7 +47,7 @@ func (win *winTIA) drawPlayfield() {
 	}
 
 	// background color indicator. when clicked popup palette is requested
-	imguiText("Background")
+	imguiLabel("Background")
 	bgCol := lz.BackgroundColor
 	if win.img.imguiSwatch(bgCol, 0.75) {
 		win.popupPalette.request(&bgCol, func() {
@@ -61,7 +61,7 @@ func (win *winTIA) drawPlayfield() {
 
 	// playfield control bits
 	imgui.BeginGroup()
-	imguiText("Reflected")
+	imguiLabel("Reflected")
 	ref := lz.Reflected
 	if imgui.Checkbox("##reflected", &ref) {
 		win.img.lz.Dbg.PushRawEvent(func() {
@@ -70,7 +70,7 @@ func (win *winTIA) drawPlayfield() {
 		})
 	}
 	imgui.SameLine()
-	imguiText("Scoremode")
+	imguiLabel("Scoremode")
 	sm := lz.Scoremode
 	if imgui.Checkbox("##scoremode", &sm) {
 		win.img.lz.Dbg.PushRawEvent(func() {
@@ -79,7 +79,7 @@ func (win *winTIA) drawPlayfield() {
 		})
 	}
 	imgui.SameLine()
-	imguiText("Priority")
+	imguiLabel("Priority")
 	pri := lz.Priority
 	if imgui.Checkbox("##priority", &pri) {
 		win.img.lz.Dbg.PushRawEvent(func() {
@@ -89,7 +89,7 @@ func (win *winTIA) drawPlayfield() {
 	}
 
 	imgui.SameLine()
-	imguiText("CTRLPF")
+	imguiLabel("CTRLPF")
 	imgui.SameLine()
 	ctrlpf := fmt.Sprintf("%02x", lz.Ctrlpf)
 	if imguiHexInput("##ctrlpf", 2, &ctrlpf) {
@@ -109,7 +109,7 @@ func (win *winTIA) drawPlayfield() {
 
 	// playfield data
 	imgui.BeginGroup()
-	imguiText("PF0")
+	imguiLabel("PF0")
 	imgui.SameLine()
 	seq := newDrawlistSequence(win.img, imgui.Vec2{X: imgui.FrameHeight(), Y: imgui.FrameHeight()}, false)
 	pf0d := lz.PF0
@@ -130,7 +130,7 @@ func (win *winTIA) drawPlayfield() {
 	seq.end()
 
 	imgui.SameLine()
-	imguiText("PF1")
+	imguiLabel("PF1")
 	imgui.SameLine()
 	seq.start()
 	pf1d := lz.PF1
@@ -151,7 +151,7 @@ func (win *winTIA) drawPlayfield() {
 	seq.end()
 
 	imgui.SameLine()
-	imguiText("PF2")
+	imguiLabel("PF2")
 	imgui.SameLine()
 	seq.start()
 	pf2d := lz.PF2
@@ -177,7 +177,7 @@ func (win *winTIA) drawPlayfield() {
 
 	// playfield data as a sequence
 	imgui.BeginGroup()
-	imguiText("Sequence")
+	imguiLabel("Sequence")
 	seq = newDrawlistSequence(win.img, imgui.Vec2{X: imgui.FrameHeight() * 0.5, Y: imgui.FrameHeight()}, false)
 
 	// first half of the playfield

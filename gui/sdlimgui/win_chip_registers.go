@@ -80,9 +80,7 @@ func (win *winChipRegisters) draw() {
 	imgui.SameLine()
 	win.drawChipRegisterBits(win.img.lz.ChipRegisters.SWCHB, "SWCHB")
 
-	imgui.Spacing()
-	imgui.Separator()
-	imgui.Spacing()
+	imguiSeparator()
 
 	win.drawChipRegister("INPT0", win.img.lz.ChipRegisters.INPT0)
 	imgui.SameLine()
@@ -105,7 +103,7 @@ func (win *winChipRegisters) draw() {
 
 func (win *winChipRegisters) drawChipRegister(label string, val uint8) {
 	s := fmt.Sprintf("%02x", val)
-	imguiText(label)
+	imguiLabel(label)
 	if imguiHexInput(fmt.Sprintf("##%s", label), 2, &s) {
 		v, err := strconv.ParseUint(s, 16, 8)
 		if err != nil {

@@ -72,7 +72,7 @@ func (win *winSuperchargerRegisters) draw() {
 	imgui.BeginV(winSuperchargerRegistersTitle, &win.open, imgui.WindowFlagsAlwaysAutoResize)
 
 	val := fmt.Sprintf("%02x", r.Value)
-	imguiText("Value")
+	imguiLabel("Value")
 	if imguiHexInput("##value", 2, &val) {
 		win.img.lz.Dbg.PushRawEvent(func() {
 			b := win.img.lz.Dbg.VCS.Mem.Cart.GetRegistersBus()
@@ -100,12 +100,10 @@ func (win *winSuperchargerRegisters) draw() {
 	}
 	imgui.PopItemWidth()
 
-	imgui.Spacing()
-	imgui.Separator()
-	imgui.Spacing()
+	imguiSeparator()
 
 	rw := r.RAMwrite
-	imguiText("RAM Write")
+	imguiLabel("RAM Write")
 	if imgui.Checkbox("##ramwrite", &rw) {
 		win.img.lz.Dbg.PushRawEvent(func() {
 			b := win.img.lz.Dbg.VCS.Mem.Cart.GetRegistersBus()
@@ -116,7 +114,7 @@ func (win *winSuperchargerRegisters) draw() {
 	imgui.SameLine()
 
 	rp := r.ROMpower
-	imguiText("ROM Power")
+	imguiLabel("ROM Power")
 	if imgui.Checkbox("##rompower", &rp) {
 		win.img.lz.Dbg.PushRawEvent(func() {
 			b := win.img.lz.Dbg.VCS.Mem.Cart.GetRegistersBus()
@@ -127,9 +125,7 @@ func (win *winSuperchargerRegisters) draw() {
 	imgui.SameLine()
 	win.width = imgui.CursorPosX()
 
-	imgui.Spacing()
-	imgui.Separator()
-	imgui.Spacing()
+	imguiSeparator()
 
 	banking := r.BankingMode
 

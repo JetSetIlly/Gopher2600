@@ -22,9 +22,6 @@ import (
 	"github.com/inkyblackness/imgui-go/v3"
 )
 
-// the colors in the colors package need to be converted for use with imgui.
-type packedPalette []imgui.PackedColor
-
 // imguiColors defines all the colors used by the GUI.
 type imguiColors struct {
 	// default colors
@@ -55,8 +52,9 @@ type imguiColors struct {
 	CPUStatusOn  imgui.Vec4
 	CPUStatusOff imgui.Vec4
 
-	// RAM window
-	RAMDiff imgui.Vec4
+	// color showing that a value is different to the correpsonding value at
+	// the comparison point
+	ValueDiff imgui.Vec4
 
 	// control window buttons
 	ControlRun         imgui.Vec4
@@ -147,8 +145,8 @@ func newColors() *imguiColors {
 		CPUStatusOn:  imgui.Vec4{0.8, 0.6, 0.2, 1.0},
 		CPUStatusOff: imgui.Vec4{0.7, 0.5, 0.1, 1.0},
 
-		// RAM window
-		RAMDiff: imgui.Vec4{0.3, 0.2, 0.5, 1.0},
+		// comparison
+		ValueDiff: imgui.Vec4{0.3, 0.2, 0.5, 1.0},
 
 		// control window buttons
 		ControlRun:         imgui.Vec4{0.3, 0.6, 0.3, 1.0},

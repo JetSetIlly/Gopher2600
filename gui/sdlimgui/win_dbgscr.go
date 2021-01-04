@@ -63,7 +63,7 @@ type winDbgScr struct {
 	mouseScanline int
 
 	// height of tool bar at bottom of window. valid after first frame.
-	toolBarHeight float32
+	toolbarHeight float32
 
 	// additional padding for the image so that it is centred in its content space
 	imagePadding imgui.Vec2
@@ -217,7 +217,7 @@ func (win *winDbgScr) draw() {
 	if imgui.BeginPopup("breakmenu") {
 		win.isPopup = true
 		imgui.Text("Break")
-		imgui.Separator()
+		imguiSeparator()
 		if imgui.Selectable(fmt.Sprintf("Scanline=%d", win.mouseScanline)) {
 			win.img.term.pushCommand(fmt.Sprintf("BREAK SL %d", win.mouseScanline))
 		}
@@ -252,91 +252,88 @@ func (win *winDbgScr) draw() {
 	}
 
 	// start of tool bar
-	toolBarTop := imgui.CursorPosY()
+	win.toolbarHeight = measureHeight(func() {
+		// [B] we put spacing here otherwise the [A] leaves the cursor in the wrong position
+		imgui.Spacing()
 
-	// [B] we put spacing here otherwise the [A] leaves the cursor in the wrong position
-	imgui.Spacing()
-
-	// tv status line
-	imgui.PushItemWidth(win.specComboDim.X)
-	if imgui.BeginComboV("##spec", win.img.lz.TV.Spec.ID, imgui.ComboFlagNoArrowButton) {
-		for _, s := range specification.SpecList {
-			if imgui.Selectable(s) {
-				win.img.term.pushCommand(fmt.Sprintf("TV SPEC %s", s))
+		// tv status line
+		imgui.PushItemWidth(win.specComboDim.X)
+		if imgui.BeginComboV("##spec", win.img.lz.TV.Spec.ID, imgui.ComboFlagNoArrowButton) {
+			for _, s := range specification.SpecList {
+				if imgui.Selectable(s) {
+					win.img.term.pushCommand(fmt.Sprintf("TV SPEC %s", s))
+				}
 			}
+			imgui.EndCombo()
 		}
-		imgui.EndCombo()
-	}
-	imgui.PopItemWidth()
+		imgui.PopItemWidth()
 
-	imgui.SameLineV(0, 15)
-	imguiText("Frame:")
-	imguiText(fmt.Sprintf("%-4d", win.img.lz.TV.Frame))
-	imgui.SameLineV(0, 15)
-	imguiText("Scanline:")
-	imguiText(fmt.Sprintf("%-4d", win.img.lz.TV.Scanline))
-	imgui.SameLineV(0, 15)
-	imguiText("Horiz Pos:")
-	imguiText(fmt.Sprintf("%-4d", win.img.lz.TV.HP))
+		imgui.SameLineV(0, 15)
+		imguiLabel("Frame:")
+		imguiLabel(fmt.Sprintf("%-4d", win.img.lz.TV.Frame))
+		imgui.SameLineV(0, 15)
+		imguiLabel("Scanline:")
+		imguiLabel(fmt.Sprintf("%-4d", win.img.lz.TV.Scanline))
+		imgui.SameLineV(0, 15)
+		imguiLabel("Horiz Pos:")
+		imguiLabel(fmt.Sprintf("%-4d", win.img.lz.TV.HP))
 
-	// fps indicator
-	imgui.SameLineV(0, 20)
-	imgui.AlignTextToFramePadding()
-	if win.img.state != gui.StateRunning {
-		imguiText("no fps")
-	} else {
-		if win.img.lz.TV.ReqFPS < 1.0 {
-			imguiText("< 1 fps")
+		// fps indicator
+		imgui.SameLineV(0, 20)
+		imgui.AlignTextToFramePadding()
+		if win.img.state != gui.StateRunning {
+			imguiLabel("no fps")
 		} else {
-			imguiText(fmt.Sprintf("%03.1f fps", win.img.lz.TV.AcutalFPS))
-		}
-	}
-
-	// include tv signal information
-	imgui.SameLineV(0, 20)
-	imgui.Text(win.img.lz.TV.LastSignal.String())
-
-	// display toggles
-	imgui.Spacing()
-	imgui.Checkbox("Debug Colours", &win.debugColors)
-	imgui.SameLine()
-	if imgui.Checkbox("Cropping", &win.cropped) {
-		win.setCropping(win.cropped)
-	}
-	imgui.SameLine()
-	imgui.Checkbox("CRT Effects", &win.crt)
-	imgui.SameLine()
-	imgui.Checkbox("Overlay", &win.overlay)
-	imgui.SameLine()
-	imgui.PushItemWidth(win.overlayComboDim.X)
-	if imgui.BeginComboV("##overlay", win.img.screen.crit.overlay, imgui.ComboFlagNoArrowButton) {
-		for _, s := range reflection.OverlayList {
-			if imgui.Selectable(s) {
-				win.img.screen.crit.overlay = s
-				win.img.screen.replotOverlay()
+			if win.img.lz.TV.ReqFPS < 1.0 {
+				imguiLabel("< 1 fps")
+			} else {
+				imguiLabel(fmt.Sprintf("%03.1f fps", win.img.lz.TV.AcutalFPS))
 			}
 		}
 
-		imgui.EndCombo()
-	}
-	imgui.PopItemWidth()
+		// include tv signal information
+		imgui.SameLineV(0, 20)
+		imgui.Text(win.img.lz.TV.LastSignal.String())
 
-	// add capture information
-	imgui.SameLine()
-	c := imgui.CursorPos()
-	c.X += 10
-	if win.isCaptured {
-		imgui.SetCursorPos(c)
-		imgui.Text("RMB or ESC to release mouse")
-	} else {
-		imgui.SetCursorPos(c)
-		if imgui.Button("Capture mouse") {
-			win.img.setCapture(true)
+		// display toggles
+		imgui.Spacing()
+		imgui.Checkbox("Debug Colours", &win.debugColors)
+		imgui.SameLine()
+		if imgui.Checkbox("Cropping", &win.cropped) {
+			win.setCropping(win.cropped)
 		}
-	}
+		imgui.SameLine()
+		imgui.Checkbox("CRT Effects", &win.crt)
+		imgui.SameLine()
+		imgui.Checkbox("Overlay", &win.overlay)
+		imgui.SameLine()
+		imgui.PushItemWidth(win.overlayComboDim.X)
+		if imgui.BeginComboV("##overlay", win.img.screen.crit.overlay, imgui.ComboFlagNoArrowButton) {
+			for _, s := range reflection.OverlayList {
+				if imgui.Selectable(s) {
+					win.img.screen.crit.overlay = s
+					win.img.screen.replotOverlay()
+				}
+			}
 
-	// note height of tool bar
-	win.toolBarHeight = imgui.CursorPosY() - toolBarTop
+			imgui.EndCombo()
+		}
+		imgui.PopItemWidth()
+
+		// add capture information
+		imgui.SameLine()
+		c := imgui.CursorPos()
+		c.X += 10
+		if win.isCaptured {
+			imgui.SetCursorPos(c)
+			imgui.Text("RMB or ESC to release mouse")
+		} else {
+			imgui.SetCursorPos(c)
+			if imgui.Button("Capture mouse") {
+				win.img.setCapture(true)
+			}
+		}
+	})
 
 	imgui.End()
 }
@@ -382,18 +379,14 @@ func (win *winDbgScr) drawReflectionTooltip(mouseOrigin imgui.Vec2) {
 		switch win.scr.crit.overlay {
 		case "WSYNC":
 		case "Collisions":
-			imgui.Spacing()
-			imgui.Separator()
-			imgui.Spacing()
+			imguiSeparator()
 			if ref.Collision != "" {
 				imgui.Text(ref.Collision)
 			} else {
 				imgui.Text("no collision")
 			}
 		case "HMOVE":
-			imgui.Spacing()
-			imgui.Separator()
-			imgui.Spacing()
+			imguiSeparator()
 			if ref.Hmove.Delay {
 				imgui.Text(fmt.Sprintf("HMOVE delay: %d", ref.Hmove.DelayCt))
 			} else if ref.Hmove.Latch {
@@ -406,9 +399,7 @@ func (win *winDbgScr) drawReflectionTooltip(mouseOrigin imgui.Vec2) {
 				imgui.Text("no HMOVE")
 			}
 		case "Optimised":
-			imgui.Spacing()
-			imgui.Separator()
-			imgui.Spacing()
+			imguiSeparator()
 			if ref.OptReusePixel && ref.OptNoCollisionCheck {
 				imgui.Text("Shortest render path used")
 			} else {
@@ -428,9 +419,7 @@ func (win *winDbgScr) drawReflectionTooltip(mouseOrigin imgui.Vec2) {
 		return
 	}
 
-	imgui.Spacing()
-	imgui.Separator()
-	imgui.Spacing()
+	imguiSeparator()
 
 	// pixel swatch. using black swatch if pixel is HBLANKed or VBLANKed
 	if ref.Hblank || ref.TV.VBlank {
@@ -440,15 +429,15 @@ func (win *winDbgScr) drawReflectionTooltip(mouseOrigin imgui.Vec2) {
 	}
 
 	// element information regardless of HBLANK/VBLANK state
-	imguiText(ref.VideoElement.String())
+	imguiLabel(ref.VideoElement.String())
 
 	// add HBLANK/VBLANK information
 	if ref.Hblank {
 		imgui.SameLine()
-		imguiText("[HBLANK]")
+		imguiLabel("[HBLANK]")
 	} else if ref.TV.VBlank {
 		imgui.SameLine()
-		imguiText("[VBLANK]")
+		imguiLabel("[VBLANK]")
 	}
 
 	imgui.Spacing()
@@ -562,7 +551,7 @@ func (win *winDbgScr) getScaledHeight(cropped bool) float32 {
 func (win *winDbgScr) setScaleAndPadding(sz imgui.Vec2) {
 	// must be called from with a critical section
 
-	sz.Y -= win.toolBarHeight
+	sz.Y -= win.toolbarHeight
 	winAspectRatio := sz.X / sz.Y
 
 	var imageW float32

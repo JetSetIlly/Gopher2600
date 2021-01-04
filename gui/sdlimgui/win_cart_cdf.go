@@ -69,7 +69,7 @@ func (win *winCDFRegisters) draw() {
 	imgui.SetNextWindowPosV(imgui.Vec2{610, 303}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
 	imgui.BeginV(winCDFRegistersTitle, &win.open, imgui.WindowFlagsAlwaysAutoResize)
 
-	imguiText("Fast Fetch")
+	imguiLabel("Fast Fetch")
 	ff := r.FastFetch
 	if imgui.Checkbox("##fastfetch", &ff) {
 		win.img.lz.Dbg.PushRawEvent(func() {
@@ -80,7 +80,7 @@ func (win *winCDFRegisters) draw() {
 
 	imgui.SameLineV(0, 20)
 
-	imguiText("Sample Mode")
+	imguiLabel("Sample Mode")
 	sm := r.SampleMode
 	if imgui.Checkbox("##samplemode", &sm) {
 		win.img.lz.Dbg.PushRawEvent(func() {
@@ -89,9 +89,7 @@ func (win *winCDFRegisters) draw() {
 		})
 	}
 
-	imgui.Spacing()
-	imgui.Separator()
-	imgui.Spacing()
+	imguiSeparator()
 
 	// loop over music fetchers
 	imgui.Text("Music Fetchers")
@@ -99,11 +97,11 @@ func (win *winCDFRegisters) draw() {
 	for i := 0; i < len(r.MusicFetcher); i++ {
 		f := i
 
-		imguiText(fmt.Sprintf("#%d", f))
+		imguiLabel(fmt.Sprintf("#%d", f))
 
 		label := fmt.Sprintf("##m%dwaveform", i)
 		waveform := fmt.Sprintf("%08x", r.MusicFetcher[i].Waveform)
-		imguiText("Waveform")
+		imguiLabel("Waveform")
 		if imguiHexInput(label, 8, &waveform) {
 			win.img.lz.Dbg.PushRawEvent(func() {
 				b := win.img.lz.Dbg.VCS.Mem.Cart.GetRegistersBus()
@@ -114,7 +112,7 @@ func (win *winCDFRegisters) draw() {
 		imgui.SameLine()
 		label = fmt.Sprintf("##m%dfeq", i)
 		freq := fmt.Sprintf("%08x", r.MusicFetcher[i].Freq)
-		imguiText("Freq")
+		imguiLabel("Freq")
 		if imguiHexInput(label, 8, &freq) {
 			win.img.lz.Dbg.PushRawEvent(func() {
 				b := win.img.lz.Dbg.VCS.Mem.Cart.GetRegistersBus()
@@ -125,7 +123,7 @@ func (win *winCDFRegisters) draw() {
 		imgui.SameLine()
 		label = fmt.Sprintf("##m%dcount", i)
 		count := fmt.Sprintf("%08x", r.MusicFetcher[i].Count)
-		imguiText("Count")
+		imguiLabel("Count")
 		if imguiHexInput(label, 8, &count) {
 			win.img.lz.Dbg.PushRawEvent(func() {
 				b := win.img.lz.Dbg.VCS.Mem.Cart.GetRegistersBus()

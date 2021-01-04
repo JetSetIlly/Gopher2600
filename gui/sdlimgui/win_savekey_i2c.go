@@ -81,9 +81,7 @@ func (win *winSaveKeyI2C) draw() {
 
 	win.drawStatus()
 
-	imgui.Spacing()
-	imgui.Separator()
-	imgui.Spacing()
+	imguiSeparator()
 
 	win.drawAddress()
 	imgui.SameLine()
@@ -91,10 +89,7 @@ func (win *winSaveKeyI2C) draw() {
 	imgui.SameLine()
 	win.drawACK()
 
-	imgui.Spacing()
-	imgui.Spacing()
-	imgui.Separator()
-	imgui.Spacing()
+	imguiSeparator()
 
 	win.drawOscilloscope()
 
@@ -191,7 +186,7 @@ func (win *winSaveKeyI2C) drawBits() {
 	}
 
 	s := fmt.Sprintf("%02x", bits)
-	imguiText(label)
+	imguiLabel(label)
 	if imguiHexInput(fmt.Sprintf("##%s", label), 2, &s) {
 		v, err := strconv.ParseUint(s, 16, 8)
 		if err != nil {
@@ -233,7 +228,7 @@ func (win *winSaveKeyI2C) drawAddress() {
 
 	label := "Address"
 	s := fmt.Sprintf("%04x", addr)
-	imguiText(label)
+	imguiLabel(label)
 	if imguiHexInput(fmt.Sprintf("##%s", label), 4, &s) {
 		v, err := strconv.ParseUint(s, 16, 16)
 		if err != nil {

@@ -38,7 +38,7 @@ func (win *winTIA) drawMissile(missile int) {
 	imgui.Spacing()
 
 	imgui.BeginGroup()
-	imguiText("Colour")
+	imguiLabel("Colour")
 	col := lz.Color
 	if win.img.imguiSwatch(col, 0.75) {
 		win.popupPalette.request(&col, func() {
@@ -49,14 +49,14 @@ func (win *winTIA) drawMissile(missile int) {
 		})
 	}
 
-	imguiText("Reset-to-Player")
+	imguiLabel("Reset-to-Player")
 	r2p := lz.ResetToPlayer
 	if imgui.Checkbox("##resettoplayer", &r2p) {
 		win.img.lz.Dbg.PushRawEvent(func() { ms.ResetToPlayer = r2p })
 	}
 
 	imgui.SameLine()
-	imguiText("Enabled")
+	imguiLabel("Enabled")
 	enb := lz.Enabled
 	if imgui.Checkbox("##enabled", &enb) {
 		win.img.lz.Dbg.PushRawEvent(func() { ms.Enabled = enb })
@@ -68,7 +68,7 @@ func (win *winTIA) drawMissile(missile int) {
 
 	// hmove value and slider
 	imgui.BeginGroup()
-	imguiText("HMOVE")
+	imguiLabel("HMOVE")
 	imgui.SameLine()
 	hmove := fmt.Sprintf("%01x", lz.Hmove)
 	if imguiHexInput("##hmove", 1, &hmove) {
@@ -125,7 +125,7 @@ func (win *winTIA) drawMissile(missile int) {
 	imgui.PopItemWidth()
 
 	imgui.SameLine()
-	imguiText("NUSIZ")
+	imguiLabel("NUSIZ")
 	nusiz := fmt.Sprintf("%02x", lz.Nusiz)
 	if imguiHexInput("##nusiz", 2, &nusiz) {
 		if v, err := strconv.ParseUint(nusiz, 16, 8); err == nil {

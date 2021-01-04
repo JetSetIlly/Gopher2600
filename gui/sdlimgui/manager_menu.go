@@ -42,9 +42,9 @@ func (wm *manager) drawMenu() {
 		for _, id := range wm.menu[menuDebugger] {
 			drawMenuEntry(wm.windows[id], id)
 		}
-		imgui.Spacing()
-		imgui.Separator()
-		imgui.Spacing()
+
+		imguiSeparator()
+
 		if imgui.Selectable("  Quit") {
 			wm.img.term.pushCommand("QUIT")
 		}

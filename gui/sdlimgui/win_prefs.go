@@ -64,17 +64,14 @@ func (win *winPrefs) draw() {
 	imgui.BeginV(winPrefsTile, &win.open, imgui.WindowFlagsAlwaysAutoResize)
 
 	win.drawGeneral()
-	imgui.Spacing()
-	imgui.Separator()
-	imgui.Spacing()
+
+	imguiSeparator()
 
 	imgui.Text("Rewind")
 	imgui.Spacing()
 	win.drawRewind()
 
-	imgui.Spacing()
-	imgui.Separator()
-	imgui.Spacing()
+	imguiSeparator()
 
 	win.drawDiskButtons()
 

@@ -68,7 +68,7 @@ func (win *winCartTape) draw() {
 	imgui.BeginV(winCartTapeTitle, &win.open, imgui.WindowFlagsAlwaysAutoResize)
 
 	// counter information
-	imguiText("Counter")
+	imguiLabel("Counter")
 	counter := fmt.Sprintf("%8d", win.img.lz.Cart.TapeState.Counter)
 	if imguiDecimalInput("##counter", 8, &counter) {
 		win.img.lz.Dbg.PushRawEvent(func() {

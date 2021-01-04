@@ -85,9 +85,7 @@ func (win *winPlusROMPrefs) draw() {
 	imgui.SameLine()
 	imgui.Text(id)
 
-	imgui.Spacing()
-	imgui.Separator()
-	imgui.Spacing()
+	imguiSeparator()
 
 	imgui.Text("Nick and ID are set for ALL PlusROM cartridges")
 

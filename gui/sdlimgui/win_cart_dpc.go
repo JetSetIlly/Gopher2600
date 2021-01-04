@@ -71,7 +71,7 @@ func (win *winDPCregisters) draw() {
 
 	// random number generator value
 	rng := fmt.Sprintf("%02x", r.RNG)
-	imguiText("Random Number Generator")
+	imguiLabel("Random Number Generator")
 	if imguiHexInput("##rng", 2, &rng) {
 		win.img.lz.Dbg.PushRawEvent(func() {
 			b := win.img.lz.Dbg.VCS.Mem.Cart.GetRegistersBus()
@@ -79,9 +79,7 @@ func (win *winDPCregisters) draw() {
 		})
 	}
 
-	imgui.Spacing()
-	imgui.Separator()
-	imgui.Spacing()
+	imguiSeparator()
 
 	// loop over data fetchers
 	imgui.Text("Data Fetchers")
@@ -89,11 +87,11 @@ func (win *winDPCregisters) draw() {
 	for i := 0; i < len(r.Fetcher); i++ {
 		f := i
 
-		imguiText(fmt.Sprintf("#%d", f))
+		imguiLabel(fmt.Sprintf("#%d", f))
 
 		label := fmt.Sprintf("##%dlow", i)
 		low := fmt.Sprintf("%02x", r.Fetcher[i].Low)
-		imguiText("Low")
+		imguiLabel("Low")
 		if imguiHexInput(label, 2, &low) {
 			win.img.lz.Dbg.PushRawEvent(func() {
 				b := win.img.lz.Dbg.VCS.Mem.Cart.GetRegistersBus()
@@ -104,7 +102,7 @@ func (win *winDPCregisters) draw() {
 		imgui.SameLine()
 		label = fmt.Sprintf("##%dhi", i)
 		hi := fmt.Sprintf("%02x", r.Fetcher[i].Hi)
-		imguiText("Hi")
+		imguiLabel("Hi")
 		if imguiHexInput(label, 2, &hi) {
 			win.img.lz.Dbg.PushRawEvent(func() {
 				b := win.img.lz.Dbg.VCS.Mem.Cart.GetRegistersBus()
@@ -115,7 +113,7 @@ func (win *winDPCregisters) draw() {
 		imgui.SameLine()
 		label = fmt.Sprintf("##%dtop", i)
 		top := fmt.Sprintf("%02x", r.Fetcher[i].Top)
-		imguiText("Top")
+		imguiLabel("Top")
 		if imguiHexInput(label, 2, &top) {
 			win.img.lz.Dbg.PushRawEvent(func() {
 				b := win.img.lz.Dbg.VCS.Mem.Cart.GetRegistersBus()
@@ -126,7 +124,7 @@ func (win *winDPCregisters) draw() {
 		imgui.SameLine()
 		label = fmt.Sprintf("##%dbottom", i)
 		bottom := fmt.Sprintf("%02x", r.Fetcher[i].Bottom)
-		imguiText("Bottom")
+		imguiLabel("Bottom")
 		if imguiHexInput(label, 2, &bottom) {
 			win.img.lz.Dbg.PushRawEvent(func() {
 				b := win.img.lz.Dbg.VCS.Mem.Cart.GetRegistersBus()

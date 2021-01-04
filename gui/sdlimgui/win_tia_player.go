@@ -43,7 +43,7 @@ func (win *winTIA) drawPlayer(num int) {
 
 	// player color indicator. when clicked popup palette is requested. on
 	// selection in palette, missile color is changed too
-	imguiText("Colour")
+	imguiLabel("Colour")
 	col := lz.Color
 	if win.img.imguiSwatch(col, 0.75) {
 		win.popupPalette.request(&col, func() {
@@ -54,14 +54,14 @@ func (win *winTIA) drawPlayer(num int) {
 		})
 	}
 
-	imguiText("Reflected")
+	imguiLabel("Reflected")
 	ref := lz.Reflected
 	if imgui.Checkbox("##reflected", &ref) {
 		win.img.lz.Dbg.PushRawEvent(func() { ps.Reflected = ref })
 	}
 
 	imgui.SameLine()
-	imguiText("Vert. Delay")
+	imguiLabel("Vert. Delay")
 	vd := lz.VerticalDelay
 	if imgui.Checkbox("##vertdelay", &vd) {
 		// vertical delay affects which gfx register to use. set vertical delay
@@ -73,7 +73,7 @@ func (win *winTIA) drawPlayer(num int) {
 	imgui.Spacing()
 
 	// hmove value
-	imguiText("HMOVE")
+	imguiLabel("HMOVE")
 	imgui.SameLine()
 	hmove := fmt.Sprintf("%01x", lz.Hmove)
 	if imguiHexInput("##hmove", 1, &hmove) {
@@ -95,7 +95,7 @@ func (win *winTIA) drawPlayer(num int) {
 	imgui.Spacing()
 
 	// graphics data - new
-	imguiText("New Gfx")
+	imguiLabel("New Gfx")
 	ngfxSeq := newDrawlistSequence(win.img, imgui.Vec2{X: imgui.FrameHeight(), Y: imgui.FrameHeight()}, false)
 	od := lz.GfxDataNew
 	for i := 0; i < 8; i++ {
@@ -119,7 +119,7 @@ func (win *winTIA) drawPlayer(num int) {
 
 	// graphics data - old
 	imgui.SameLine()
-	imguiText("Old Gfx")
+	imguiLabel("Old Gfx")
 	ogfxSeq := newDrawlistSequence(win.img, imgui.Vec2{X: imgui.FrameHeight(), Y: imgui.FrameHeight()}, false)
 	nd := lz.GfxDataOld
 	for i := 0; i < 8; i++ {
@@ -184,7 +184,7 @@ func (win *winTIA) drawPlayer(num int) {
 	imgui.PopItemWidth()
 
 	imgui.SameLine()
-	imguiText("NUSIZ")
+	imguiLabel("NUSIZ")
 	imgui.SameLine()
 	nusiz := fmt.Sprintf("%02x", lz.Nusiz)
 	if imguiHexInput("##nusiz", 2, &nusiz) {

@@ -215,43 +215,41 @@ func (win *winSelectROM) draw() {
 	imgui.EndChild()
 
 	// control buttons. start controlHeight measurement
-	controlHeight := imgui.CursorPosY()
+	win.controlHeight = measureHeight(func() {
 
-	imgui.Checkbox("Show all files", &win.showAllFiles)
-	imgui.SameLine()
-	imgui.Checkbox("Show hidden entries", &win.showHidden)
-
-	imgui.Spacing()
-
-	if imgui.Button("Cancel") {
-		win.setOpen(false)
-	}
-
-	if win.selectedFile != "" {
+		imgui.Checkbox("Show all files", &win.showAllFiles)
 		imgui.SameLine()
+		imgui.Checkbox("Show hidden entries", &win.showHidden)
 
-		var s string
+		imgui.Spacing()
 
-		// load or reload button
-		if win.selectedFile == win.img.lz.Cart.Filename {
-			s = fmt.Sprintf("Reload %s", filepath.Base(win.selectedFile))
-		} else {
-			s = fmt.Sprintf("Load %s", filepath.Base(win.selectedFile))
-		}
-
-		if imgui.Button(s) {
-			// build terminal command and run
-			cmd := strings.Builder{}
-			cmd.WriteString("INSERT \"")
-			cmd.WriteString(win.selectedFile)
-			cmd.WriteString("\"")
-			win.img.term.pushCommand(cmd.String())
+		if imgui.Button("Cancel") {
 			win.setOpen(false)
 		}
-	}
 
-	// commit controlHeight measurement
-	win.controlHeight = imgui.CursorPosY() - controlHeight
+		if win.selectedFile != "" {
+			imgui.SameLine()
+
+			var s string
+
+			// load or reload button
+			if win.selectedFile == win.img.lz.Cart.Filename {
+				s = fmt.Sprintf("Reload %s", filepath.Base(win.selectedFile))
+			} else {
+				s = fmt.Sprintf("Load %s", filepath.Base(win.selectedFile))
+			}
+
+			if imgui.Button(s) {
+				// build terminal command and run
+				cmd := strings.Builder{}
+				cmd.WriteString("INSERT \"")
+				cmd.WriteString(win.selectedFile)
+				cmd.WriteString("\"")
+				win.img.term.pushCommand(cmd.String())
+				win.setOpen(false)
+			}
+		}
+	})
 
 	imgui.End()
 }

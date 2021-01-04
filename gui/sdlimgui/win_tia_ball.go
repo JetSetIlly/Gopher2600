@@ -33,7 +33,7 @@ func (win *winTIA) drawBall() {
 	imgui.Spacing()
 
 	imgui.BeginGroup()
-	imguiText("Colour")
+	imguiLabel("Colour")
 	col := lz.Color
 	if win.img.imguiSwatch(col, 0.75) {
 		win.popupPalette.request(&col, func() {
@@ -44,21 +44,21 @@ func (win *winTIA) drawBall() {
 		})
 	}
 
-	imguiText("Enabled")
+	imguiLabel("Enabled")
 	enb := lz.Enabled
 	if imgui.Checkbox("##enabled", &enb) {
 		win.img.lz.Dbg.PushRawEvent(func() { bs.Enabled = enb })
 	}
 
 	imgui.SameLine()
-	imguiText("Vert Del.")
+	imguiLabel("Vert Del.")
 	enbv := lz.VerticalDelay
 	if imgui.Checkbox("##vdelay", &enbv) {
 		win.img.lz.Dbg.PushRawEvent(func() { bs.VerticalDelay = enbv })
 	}
 
 	imgui.SameLine()
-	imguiText("Enabled Del.")
+	imguiLabel("Enabled Del.")
 	enbd := lz.EnabledDelay
 	if imgui.Checkbox("##enableddelay", &enbd) {
 		win.img.lz.Dbg.PushRawEvent(func() { bs.EnabledDelay = enbd })
@@ -70,7 +70,7 @@ func (win *winTIA) drawBall() {
 
 	// hmove value and slider
 	imgui.BeginGroup()
-	imguiText("HMOVE")
+	imguiLabel("HMOVE")
 	imgui.SameLine()
 	hmove := fmt.Sprintf("%01x", lz.Hmove)
 	if imguiHexInput("##hmove", 1, &hmove) {
@@ -110,7 +110,7 @@ func (win *winTIA) drawBall() {
 	imgui.PopItemWidth()
 
 	imgui.SameLine()
-	imguiText("CTRLPF")
+	imguiLabel("CTRLPF")
 	imgui.SameLine()
 	ctrlpf := fmt.Sprintf("%02x", lz.Ctrlpf)
 	if imguiHexInput("##ctrlpf", 2, &ctrlpf) {

@@ -112,67 +112,38 @@ func (win *winCRTPrefs) draw() {
 	imgui.BeginV(winCRTPrefsTitle, &win.open, imgui.WindowFlagsAlwaysAutoResize)
 
 	win.drawEnabled()
-
-	imgui.Spacing()
-	imgui.Spacing()
-	imgui.Separator()
-	imgui.Spacing()
-
-	imgui.BeginGroup()
+	imguiSeparator()
 
 	// note start position of setting group
-	settingsY := imgui.CursorPosY()
-
-	win.drawGamma()
-
-	imgui.Spacing()
-	imgui.Spacing()
-
-	win.drawMask()
-
-	imgui.Spacing()
-	imgui.Spacing()
-
-	win.drawScanlines()
-
-	imgui.Spacing()
-	imgui.Spacing()
-
-	win.drawNoise()
-
-	imgui.Spacing()
-	imgui.Spacing()
-
-	win.drawBlur()
-
-	imgui.Spacing()
-	imgui.Spacing()
-
-	win.drawVignette()
-
-	imgui.Spacing()
-	imgui.Spacing()
-
-	win.drawMaskScanlineScaling()
-
-	// note height of settings group
-	win.settingsH = imgui.CursorPosY() - settingsY
-
-	imgui.EndGroup()
-
-	imgui.SameLine()
-
-	if !win.img.isPlaymode() {
+	win.settingsH = measureHeight(func() {
 		imgui.BeginGroup()
-		imgui.Image(imgui.TextureID(win.crtTexture), imgui.Vec2{win.settingsH, win.settingsH})
+
+		win.drawGamma()
+		imgui.Spacing()
+
+		win.drawMask()
+		imgui.Spacing()
+
+		win.drawScanlines()
+		imgui.Spacing()
+
+		win.drawNoise()
+		imgui.Spacing()
+
+		win.drawBlur()
+		imgui.Spacing()
+
+		win.drawVignette()
+		imgui.Spacing()
+
+		win.drawMaskScanlineScaling()
+
 		imgui.EndGroup()
-	}
+	})
 
-	imgui.Spacing()
-	imgui.Spacing()
-	imgui.Separator()
-	imgui.Spacing()
+	win.drawPreview()
 
+	imguiSeparator()
 	win.drawDiskButtons()
 
 	imgui.End()
@@ -186,7 +157,7 @@ func (win *winCRTPrefs) drawEnabled() {
 
 	if !win.img.isPlaymode() {
 		imgui.SameLine()
-		imguiText("(when in playmode)")
+		imgui.Text("(when in playmode)")
 	}
 }
 
@@ -282,5 +253,15 @@ func (win *winCRTPrefs) drawDiskButtons() {
 	imgui.SameLine()
 	if imgui.Button("SetDefaults") {
 		win.img.crtPrefs.SetDefaults()
+	}
+}
+
+func (win *winCRTPrefs) drawPreview() {
+	imgui.SameLine()
+
+	if !win.img.isPlaymode() {
+		imgui.BeginGroup()
+		imgui.Image(imgui.TextureID(win.crtTexture), imgui.Vec2{win.settingsH, win.settingsH})
+		imgui.EndGroup()
 	}
 }

@@ -86,9 +86,7 @@ func (win *winPlusROMNetwork) draw() {
 		win.img.term.pushCommand(fmt.Sprintf("PLUSROM PATH %s", path))
 	}
 
-	imgui.Spacing()
-	imgui.Separator()
-	imgui.Spacing()
+	imguiSeparator()
 
 	const maxBufferToShow = 5
 
@@ -118,9 +116,7 @@ func (win *winPlusROMNetwork) draw() {
 		}
 	}
 
-	imgui.Spacing()
-	imgui.Separator()
-	imgui.Spacing()
+	imguiSeparator()
 
 	imgui.AlignTextToFramePadding()
 	imgui.Text("Recv: ")

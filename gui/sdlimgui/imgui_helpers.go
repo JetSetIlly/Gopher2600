@@ -16,7 +16,8 @@
 package sdlimgui
 
 import (
-	"math"
+	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/inkyblackness/imgui-go/v3"
@@ -24,14 +25,16 @@ import (
 
 // return the height of the window from the current cursor position to the end
 // of the window frame. useful for calculating scroll areas for windows with a
-// static header. the height of a static footer must be subtracted from the
-// returned value.
+// static header.
+//
+// the height of a static footer must be subtracted from the returned value.
+// the measuredHeight() function is useful for measuring footers.
 func imguiRemainingWinHeight() float32 {
 	return imgui.WindowHeight() - imgui.CursorPosY() - imgui.CurrentStyle().FramePadding().Y*2 - imgui.CurrentStyle().ItemInnerSpacing().Y
 }
 
-// requires the minimum Vec2{} required to fit any of the string values
-// listed in the arguments.
+// returns the minimum Vec2{} required to fit any of the string values listed
+// in the arguments.
 func imguiGetFrameDim(s string, t ...string) imgui.Vec2 {
 	w := imgui.CalcTextSize(s, false, 0)
 	for i := range t {
@@ -49,33 +52,13 @@ func imguiGetFrameDim(s string, t ...string) imgui.Vec2 {
 }
 
 // returns the pixel width of a text string length characters wide. assumes all
-// characters are of the same width.
+// characters are of the same width. Uses the 'X' character for measurement.
 func imguiTextWidth(length int) float32 {
 	return imguiGetFrameDim(strings.Repeat("X", length)).X
 }
 
-// return coordinates for right alignment of previous imgui widget. alignment
-// assumes widget being aligned will have frame padding.
-func imguiRightAlignInt32(n int32) imgui.Vec2 {
-	// take a note of whether number is negative
-	neg := n < 0
-
-	// absolute value of number
-	n = int32(math.Abs(float64(n)))
-
-	// number of decimal digits in number. adding one to avoid (for example) 10 == 1 digit
-	w := math.Ceil(math.Log10(float64(n + 1)))
-
-	// correct -Inf to 1
-	if w <= 0 {
-		w = 1
-	}
-
-	// additional space for negative symbol
-	if neg {
-		w++
-	}
-
+// return coordinates for right alignment of a string to previous imgui widget.
+func imguiRightAlign(s string) imgui.Vec2 {
 	// this dearimgui dance gets the X position of the end of the last widget.
 	// leaving us with c, a Vec2 with the correct Y position
 	c := imgui.CursorPos()
@@ -86,14 +69,31 @@ func imguiRightAlignInt32(n int32) imgui.Vec2 {
 
 	// the X coordinate can be set by subtracting the width of the text from
 	// the stored x value
-	c.X = x - imguiTextWidth(int(w)) + imgui.CurrentStyle().FramePadding().X
+	c.X = x - imguiTextWidth(len(s)) + imgui.CurrentStyle().FramePadding().X
 
 	return c
 }
 
-// draw toggle button at current cursor position. returns true if toggle has
-// been clicked. *bool argument provided for convenience.
-func imguiToggleButton(id string, v *bool, col imgui.Vec4) (clicked bool) {
+// adds min/max indicators to imgui.SliderInt. returns true if slider has changed.
+func imguiSliderInt(label string, f *int32, s int32, e int32) bool {
+	v := imgui.SliderInt(label, f, s, e)
+
+	// alignment information for frame number indicators below
+	min := fmt.Sprintf("%d", s)
+	max := fmt.Sprintf("%d", e)
+	align := imguiRightAlign(max)
+
+	// rewind frame information
+	imgui.Text(min)
+	imgui.SameLine()
+	imgui.SetCursorPos(align)
+	imgui.Text(max)
+
+	return v
+}
+
+// draw toggle button at current cursor position. returns true if toggle has been clicked.
+func imguiToggleButton(id string, v bool, col imgui.Vec4) bool {
 	bg := imgui.PackedColorFromVec4(col)
 	p := imgui.CursorScreenPos()
 	dl := imgui.WindowDrawList()
@@ -102,37 +102,22 @@ func imguiToggleButton(id string, v *bool, col imgui.Vec4) (clicked bool) {
 	width := height * 1.55
 	radius := height * 0.50
 	t := float32(0.0)
-	if *v {
+	if v {
 		t = 1.0
 	}
 
-	// const animSpeed = 0.08
-	// ctx, _ := imgui.CurrentContext()
-	// if ctx.LastActiveId == ctx.CurrentWindow.GetID(id) {
-	// 	tanim := ctx.LastActiveIdTimer / animSpeed
-	// 	if tanim < 0.0 {
-	// 		tanim = 0.0
-	// 	} else if tanim > 1.0 {
-	// 		tanim = 1.0
-	// 	}
-	// 	if *v {
-	// 		t = tanim
-	// 	} else {
-	// 		t = 1.0 - tanim
-	// 	}
-	// }
+	r := false
 
 	imgui.InvisibleButtonV(id, imgui.Vec2{width, height}, imgui.ButtonFlagsMouseButtonLeft)
 	if imgui.IsItemClicked() {
-		*v = !*v
-		clicked = true
+		r = true
 	}
 
 	dl.AddRectFilledV(p, imgui.Vec2{p.X + width, p.Y + height}, bg, radius, imgui.DrawCornerFlagsAll)
 	dl.AddCircleFilled(imgui.Vec2{p.X + radius + t*(width-radius*2.0), p.Y + radius},
 		radius-1.5, imgui.PackedColorFromVec4(imgui.Vec4{1.0, 1.0, 1.0, 1.0}))
 
-	return clicked
+	return r
 }
 
 // button with coloring indicating whether state is true or false. alternative
@@ -157,19 +142,102 @@ func imguiBooleanButtonV(cols *imguiColors, state bool, text string, dim imgui.V
 	return b
 }
 
-// calls Text but precedes it with AlignTextToFramePadding() and follows it
-// with SameLine(). a common enought pattern to warrant a function call.
-func imguiText(text string) {
+// imguiLabel aligns text with widget borders and positions cursor so next
+// widget will follow the label. where a label parameter is required by a
+// widget and you do not want it to appear, preferring the label given by
+// imguiLabel(), you can use the empty string or use the double hash construct.
+// For example
+//
+//		imugi.SliderInt("##foo", &v, s, e)
+func imguiLabel(text string) {
 	imgui.AlignTextToFramePadding()
 	imgui.Text(text)
 	imgui.SameLine()
 }
 
+// position cursor for indented imgui.Text()
 func imguiIndentText(text string) {
 	p := imgui.CursorPos()
 	p.X += 10
 	imgui.SetCursorPos(p)
 	imgui.Text(text)
+}
+
+// measure cursor position before and after function call, which should run
+// imgui widget functions.
+func measureHeight(region func()) float32 {
+	y := imgui.CursorPosY()
+	region()
+	return imgui.CursorPosY() - y
+}
+
+// pads imgui.Separator with additional spacing.
+func imguiSeparator() {
+	imgui.Spacing()
+	imgui.Separator()
+	imgui.Spacing()
+}
+
+// draw grid of bytes. useful for memory representation (RAM, etc.)
+func drawByteGrid(data []uint8, cmp []uint8, diffCol imgui.Vec4, base uint16, commit func(uint16, uint8)) {
+	imgui.PushStyleVarVec2(imgui.StyleVarItemSpacing, imgui.Vec2{})
+	imgui.PushItemWidth(imguiTextWidth(2))
+
+	defer imgui.PopStyleVar()
+	defer imgui.PopItemWidth()
+
+	// draw headers for each column
+	headerDim := imgui.Vec2{X: imguiTextWidth(4), Y: imgui.CursorPosY()}
+	for i := 0; i < 16; i++ {
+		imgui.SetCursorPos(headerDim)
+		headerDim.X += imguiTextWidth(2)
+		imgui.AlignTextToFramePadding()
+		imgui.Text(fmt.Sprintf("-%x", i))
+	}
+
+	for i := 0; i < len(data); i++ {
+		addr := base + uint16(i)
+
+		// draw row header
+		if i%16 == 0 {
+			imgui.AlignTextToFramePadding()
+			imgui.Text(fmt.Sprintf("%02x- ", addr/16))
+			imgui.SameLine()
+		} else {
+			imgui.SameLine()
+		}
+
+		// editable byte
+		b := data[i]
+
+		// compare current RAM value with value in comparison snapshot and use
+		// highlight color if it is different
+		c := b
+		if cmp != nil {
+			c = cmp[i]
+		}
+		if b != c {
+			imgui.PushStyleColor(imgui.StyleColorFrameBg, diffCol)
+		}
+
+		s := fmt.Sprintf("%02x", b)
+		if imguiHexInput(fmt.Sprintf("##%d", addr), 2, &s) {
+			if v, err := strconv.ParseUint(s, 16, 8); err == nil {
+				commit(addr, uint8(v))
+			}
+		}
+
+		if imgui.IsItemHovered() && b != c {
+			imgui.BeginTooltip()
+			imgui.Text(fmt.Sprintf("was %02x -> is now %02x", c, b))
+			imgui.EndTooltip()
+		}
+
+		// undo any color changes
+		if b != c {
+			imgui.PopStyleColor()
+		}
+	}
 }
 
 // returns a Vec2 suitable for use as a position vector when opening a imgui
@@ -193,6 +261,9 @@ func (img *SdlImgui) imguiWindowQuadrant(p imgui.Vec2) imgui.Vec2 {
 
 	return q
 }
+
+// packedPalette is an array of imgui.PackedColor
+type packedPalette []imgui.PackedColor
 
 // use appropriate palette for television spec.
 func (img *SdlImgui) imguiTVPalette() (string, packedPalette) {

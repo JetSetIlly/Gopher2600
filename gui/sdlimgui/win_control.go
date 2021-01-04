@@ -16,8 +16,6 @@
 package sdlimgui
 
 import (
-	"fmt"
-
 	"github.com/jetsetilly/gopher2600/debugger"
 	"github.com/jetsetilly/gopher2600/gui"
 
@@ -98,12 +96,11 @@ func (win *winControl) draw() {
 		}
 	}
 
-	win.drawQuantumToggle()
+	imgui.SameLine()
+	win.drawStep()
 	imgui.Spacing()
 
-	imgui.AlignTextToFramePadding()
-	imgui.Text("Step:")
-	imgui.SameLine()
+	imguiLabel("Step:")
 	if imgui.Button("Frame") {
 		win.img.term.pushCommand("STEP FRAME")
 	}
@@ -134,9 +131,7 @@ func (win *winControl) draw() {
 		win.img.lz.Dbg.PushRawEvent(func() { win.img.lz.Dbg.VCS.TV.SetFPS(-1) })
 	}
 
-	imgui.Spacing()
-	imgui.Separator()
-	imgui.Spacing()
+	imguiSeparator()
 
 	// rewind sub-system
 	win.drawRewind()
@@ -145,7 +140,7 @@ func (win *winControl) draw() {
 }
 
 func (win *winControl) drawRewind() {
-	imguiText("Rewind:")
+	imguiLabel("Rewind:")
 
 	s := int32(win.img.lz.Rewind.Summary.Start)
 	e := int32(win.img.lz.Rewind.Summary.End)
@@ -182,44 +177,29 @@ func (win *winControl) drawRewind() {
 	}
 
 	// rewind slider
-	if imgui.SliderInt("##rewind", &f, s, e) || win.rewindPending {
+	if imguiSliderInt("##rewind", &f, s, e) || win.rewindPending {
 		win.rewindPending = !win.img.lz.Dbg.PushRewind(int(f), f == e)
 		win.rewindWaiting = true
 		win.rewindTarget = f
 	}
-
-	// alignment information for frame number indicators below
-	align := imguiRightAlignInt32(e)
-
-	// rewind frame information
-	imgui.Text(fmt.Sprintf("%d", s))
-	imgui.SameLine()
-	imgui.SetCursorPos(align)
-	imgui.Text(fmt.Sprintf("%d", e))
 }
 
-func (win *winControl) drawQuantumToggle() {
-	var videoStep bool
-
-	// make sure we know the current state of the debugger
-	if win.img.lz.Debugger.Quantum == debugger.QuantumVideo {
-		videoStep = true
-	}
-
-	toggle := videoStep
-
-	stepLabel := cpuInstructionLabel
-	imgui.SameLine()
-	imguiToggleButton("quantumToggle", &toggle, win.img.cols.TitleBgActive)
-	if toggle {
-		stepLabel = videoCycleLabel
-		if videoStep != toggle {
+func (win *winControl) drawStep() {
+	if imguiToggleButton("##quantumToggle", win.img.lz.Debugger.Quantum == debugger.QuantumVideo, win.img.cols.TitleBgActive) {
+		if win.img.lz.Debugger.Quantum == debugger.QuantumVideo {
+			win.img.term.pushCommand("QUANTUM CPU")
+		} else {
 			win.img.term.pushCommand("QUANTUM VIDEO")
 		}
-	} else if videoStep != toggle {
-		win.img.term.pushCommand("QUANTUM CPU")
 	}
 
+	// label for step button
+	stepLabel := cpuInstructionLabel
+	if win.img.lz.Debugger.Quantum == debugger.QuantumVideo {
+		stepLabel = videoCycleLabel
+	}
+
+	// add step button
 	imgui.SameLine()
 	if imgui.ButtonV(stepLabel, win.stepButtonDim) {
 		win.img.term.pushCommand("STEP")

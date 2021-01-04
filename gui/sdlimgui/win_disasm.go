@@ -173,34 +173,31 @@ func (win *winDisasm) draw() {
 	win.pcaddrPrevFrame = pcaddr
 
 	// draw options and status line. start height measurement
-	optionsHeight := imgui.CursorPosY()
+	win.optionsHeight = measureHeight(func() {
+		// status line
+		s := strings.Builder{}
+		if currBank.NonCart {
+			s.WriteString("execution in VCS RAM")
+		} else if currBank.IsRAM {
+			s.WriteString("execution in cartridge RAM")
+		}
+		imgui.Text(s.String())
 
-	// status line
-	s := strings.Builder{}
-	if currBank.NonCart {
-		s.WriteString("execution in VCS RAM")
-	} else if currBank.IsRAM {
-		s.WriteString("execution in cartridge RAM")
-	}
-	imgui.Text(s.String())
+		// options line
+		if imgui.Checkbox("Show all", &win.showAllEntries) {
+			win.alignOnOtherAddress = true
+			win.alignAddress = win.addressTopList
+			win.alignOnPC = true
+		}
 
-	// options line
-	if imgui.Checkbox("Show all", &win.showAllEntries) {
-		win.alignOnOtherAddress = true
-		win.alignAddress = win.addressTopList
-		win.alignOnPC = true
-	}
+		imgui.SameLine()
+		imgui.Checkbox("Show Bytecode", &win.showByteCode)
 
-	imgui.SameLine()
-	imgui.Checkbox("Show Bytecode", &win.showByteCode)
-
-	imgui.SameLine()
-	if imgui.Button("Goto PC") {
-		win.alignOnPC = true
-	}
-
-	// commit height measurement
-	win.optionsHeight = imgui.CursorPosY() - optionsHeight
+		imgui.SameLine()
+		if imgui.Button("Goto PC") {
+			win.alignOnPC = true
+		}
+	})
 
 	imgui.End()
 

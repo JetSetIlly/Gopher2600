@@ -169,9 +169,9 @@ func (win *winTerm) draw() {
 	// the prompt channel at all
 	if win.img.state == gui.StatePaused {
 		// !!TODO: fancier prompt for GUI terminal
-		imguiText(strings.TrimSpace(win.prompt.String()))
+		imguiLabel(strings.TrimSpace(win.prompt.String()))
 	} else {
-		imguiText("[ running ] >>")
+		imguiLabel("[ running ] >>")
 	}
 	imgui.SameLine()
 
