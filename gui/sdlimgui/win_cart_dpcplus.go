@@ -22,7 +22,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/harmony/dpcplus"
 )
 
-const winDPCplusRegistersTitle = "DPC+ Coprocessor"
+const winDPCplusRegistersTitle = "DPC+ Registers"
 
 type winDPCplusRegisters struct {
 	img  *SdlImgui
@@ -108,7 +108,7 @@ func (win *winDPCplusRegisters) draw() {
 		if imguiHexInput(label, 2, &low) {
 			win.img.lz.Dbg.PushRawEvent(func() {
 				b := win.img.lz.Dbg.VCS.Mem.Cart.GetRegistersBus()
-				b.PutRegister(fmt.Sprintf("fetcher::%d::low", f), low)
+				b.PutRegister(fmt.Sprintf("datafetcher::%d::low", f), low)
 			})
 		}
 
@@ -119,7 +119,7 @@ func (win *winDPCplusRegisters) draw() {
 		if imguiHexInput(label, 2, &hi) {
 			win.img.lz.Dbg.PushRawEvent(func() {
 				b := win.img.lz.Dbg.VCS.Mem.Cart.GetRegistersBus()
-				b.PutRegister(fmt.Sprintf("fetcher::%d::hi", f), hi)
+				b.PutRegister(fmt.Sprintf("datafetcher::%d::hi", f), hi)
 			})
 		}
 
@@ -130,7 +130,7 @@ func (win *winDPCplusRegisters) draw() {
 		if imguiHexInput(label, 2, &top) {
 			win.img.lz.Dbg.PushRawEvent(func() {
 				b := win.img.lz.Dbg.VCS.Mem.Cart.GetRegistersBus()
-				b.PutRegister(fmt.Sprintf("fetcher::%d::top", f), top)
+				b.PutRegister(fmt.Sprintf("datafetcher::%d::top", f), top)
 			})
 		}
 
@@ -141,7 +141,7 @@ func (win *winDPCplusRegisters) draw() {
 		if imguiHexInput(label, 2, &bottom) {
 			win.img.lz.Dbg.PushRawEvent(func() {
 				b := win.img.lz.Dbg.VCS.Mem.Cart.GetRegistersBus()
-				b.PutRegister(fmt.Sprintf("fetcher::%d::bottom", f), bottom)
+				b.PutRegister(fmt.Sprintf("datafetcher::%d::bottom", f), bottom)
 			})
 		}
 	}
@@ -165,7 +165,7 @@ func (win *winDPCplusRegisters) draw() {
 		if imguiHexInput(label, 2, &low) {
 			win.img.lz.Dbg.PushRawEvent(func() {
 				b := win.img.lz.Dbg.VCS.Mem.Cart.GetRegistersBus()
-				b.PutRegister(fmt.Sprintf("frac::%d::low", f), low)
+				b.PutRegister(fmt.Sprintf("fractional::%d::low", f), low)
 			})
 		}
 
@@ -176,7 +176,7 @@ func (win *winDPCplusRegisters) draw() {
 		if imguiHexInput(label, 2, &hi) {
 			win.img.lz.Dbg.PushRawEvent(func() {
 				b := win.img.lz.Dbg.VCS.Mem.Cart.GetRegistersBus()
-				b.PutRegister(fmt.Sprintf("frac::%d::hi", f), hi)
+				b.PutRegister(fmt.Sprintf("fractional::%d::hi", f), hi)
 			})
 		}
 
@@ -187,7 +187,7 @@ func (win *winDPCplusRegisters) draw() {
 		if imguiHexInput(label, 2, &increment) {
 			win.img.lz.Dbg.PushRawEvent(func() {
 				b := win.img.lz.Dbg.VCS.Mem.Cart.GetRegistersBus()
-				b.PutRegister(fmt.Sprintf("frac::%d::increment", f), increment)
+				b.PutRegister(fmt.Sprintf("fractional::%d::increment", f), increment)
 			})
 		}
 
@@ -198,7 +198,7 @@ func (win *winDPCplusRegisters) draw() {
 		if imguiHexInput(label, 2, &count) {
 			win.img.lz.Dbg.PushRawEvent(func() {
 				b := win.img.lz.Dbg.VCS.Mem.Cart.GetRegistersBus()
-				b.PutRegister(fmt.Sprintf("frac::%d::count", f), count)
+				b.PutRegister(fmt.Sprintf("fractional::%d::count", f), count)
 			})
 		}
 	}

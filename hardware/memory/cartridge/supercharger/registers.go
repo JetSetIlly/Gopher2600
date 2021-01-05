@@ -134,9 +134,8 @@ func (cart Supercharger) GetRegisters() mapper.CartRegisters {
 
 // PutRegister implements the mapper.CartDebugBus interface
 //
-// Register specification is divided with the "::" string. The following table
-// describes what the valid register strings and, after the = sign, the type to
-// which the data argument will be converted.
+// the register argument must be one of the following and after the = sign, the
+// type to which the data argument will be converted.
 //
 //	value = int
 //	delay = int (0 ... 6)
@@ -145,17 +144,17 @@ func (cart Supercharger) GetRegisters() mapper.CartRegisters {
 //
 // note that PutRegister() will panic() if the register or data string is invalid.
 func (cart *Supercharger) PutRegister(register string, data string) {
+	d8, _ := strconv.ParseUint(data, 16, 8)
+
 	switch register {
 	case "value":
-		v, _ := strconv.ParseUint(data, 16, 8)
-		cart.state.registers.Value = uint8(v)
+		cart.state.registers.Value = uint8(d8)
 
 	case "delay":
-		v, _ := strconv.ParseUint(data, 16, 8)
-		if v > 6 {
+		if d8 > 6 {
 			panic("delay value out of range")
 		}
-		cart.state.registers.Delay = int(v)
+		cart.state.registers.Delay = int(d8)
 
 	case "ramwrite":
 		switch data {
@@ -177,11 +176,10 @@ func (cart *Supercharger) PutRegister(register string, data string) {
 		}
 
 	case "bankingmode":
-		v, _ := strconv.ParseUint(data, 16, 8)
-		if v > 7 {
+		if d8 > 7 {
 			panic("bankingmode value out of range")
 		}
-		cart.state.registers.BankingMode = int(v)
+		cart.state.registers.BankingMode = int(d8)
 
 	default:
 		panic(fmt.Sprintf("unrecognised variable [%s]", register))

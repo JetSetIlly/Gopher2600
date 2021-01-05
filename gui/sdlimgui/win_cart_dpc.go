@@ -22,7 +22,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge"
 )
 
-const winDPCregistersTitle = "DPC Coprocessor"
+const winDPCregistersTitle = "DPC Registers"
 
 type winDPCregisters struct {
 	img  *SdlImgui
@@ -95,7 +95,7 @@ func (win *winDPCregisters) draw() {
 		if imguiHexInput(label, 2, &low) {
 			win.img.lz.Dbg.PushRawEvent(func() {
 				b := win.img.lz.Dbg.VCS.Mem.Cart.GetRegistersBus()
-				b.PutRegister(fmt.Sprintf("fetcher::%d::low", f), low)
+				b.PutRegister(fmt.Sprintf("datafetcher::%d::low", f), low)
 			})
 		}
 
@@ -106,7 +106,7 @@ func (win *winDPCregisters) draw() {
 		if imguiHexInput(label, 2, &hi) {
 			win.img.lz.Dbg.PushRawEvent(func() {
 				b := win.img.lz.Dbg.VCS.Mem.Cart.GetRegistersBus()
-				b.PutRegister(fmt.Sprintf("fetcher::%d::hi", f), hi)
+				b.PutRegister(fmt.Sprintf("datafetcher::%d::hi", f), hi)
 			})
 		}
 
@@ -117,7 +117,7 @@ func (win *winDPCregisters) draw() {
 		if imguiHexInput(label, 2, &top) {
 			win.img.lz.Dbg.PushRawEvent(func() {
 				b := win.img.lz.Dbg.VCS.Mem.Cart.GetRegistersBus()
-				b.PutRegister(fmt.Sprintf("fetcher::%d::top", f), top)
+				b.PutRegister(fmt.Sprintf("datafetcher::%d::top", f), top)
 			})
 		}
 
@@ -128,7 +128,7 @@ func (win *winDPCregisters) draw() {
 		if imguiHexInput(label, 2, &bottom) {
 			win.img.lz.Dbg.PushRawEvent(func() {
 				b := win.img.lz.Dbg.VCS.Mem.Cart.GetRegistersBus()
-				b.PutRegister(fmt.Sprintf("fetcher::%d::bottom", f), bottom)
+				b.PutRegister(fmt.Sprintf("datafetcher::%d::bottom", f), bottom)
 			})
 		}
 
@@ -139,7 +139,7 @@ func (win *winDPCregisters) draw() {
 			if imgui.Checkbox(fmt.Sprintf("##%dmusicmode", i), &mm) {
 				win.img.lz.Dbg.PushRawEvent(func() {
 					b := win.img.lz.Dbg.VCS.Mem.Cart.GetRegistersBus()
-					b.PutRegister(fmt.Sprintf("fetcher::%d::musicmode", f), fmt.Sprintf("%v", mm))
+					b.PutRegister(fmt.Sprintf("datafetcher::%d::musicmode", f), fmt.Sprintf("%v", mm))
 				})
 			}
 		}

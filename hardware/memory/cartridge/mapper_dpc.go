@@ -364,36 +364,34 @@ func (cart *dpc) GetRegisters() mapper.CartRegisters {
 // describes what the valid register strings and, after the = sign, the type to
 // which the data argument will be converted.
 //
-//	fetcher::%int::hi = uint8
-//	fetcher::%int::low = uint8
-//	fetcher::%int::top = uint8
-//	fetcher::%int::bottom = uint8
-//	fetcher::%int::musicmode = bool
+//	datafetcher::%int::hi = uint8
+//	datafetcher::%int::low = uint8
+//	datafetcher::%int::top = uint8
+//	datafetcher::%int::bottom = uint8
+//	datafetcher::%int::musicmode = bool
 //	rng = uint8
 //
 // note that PutRegister() will panic() if the register or data string is invalid.
 func (cart *dpc) PutRegister(register string, data string) {
-	// most data is expected to an integer (a uint8 specifically) so we try
-	// to convert it here. if it doesn't convert then it doesn't matter
-	d, _ := strconv.ParseUint(data, 16, 8)
+	d8, _ := strconv.ParseUint(data, 16, 8)
 
 	r := strings.Split(register, "::")
 	switch r[0] {
-	case "fetcher":
+	case "datafetcher":
 		f, err := strconv.Atoi(r[1])
 		if err != nil || f > len(cart.state.registers.Fetcher) {
-			panic(fmt.Sprintf("unrecognised fetcher [%s]", register))
+			panic(fmt.Sprintf("unrecognised register [%s]", register))
 		}
 
 		switch r[2] {
 		case "hi":
-			cart.state.registers.Fetcher[f].Hi = uint8(d)
+			cart.state.registers.Fetcher[f].Hi = uint8(d8)
 		case "low":
-			cart.state.registers.Fetcher[f].Low = uint8(d)
+			cart.state.registers.Fetcher[f].Low = uint8(d8)
 		case "top":
-			cart.state.registers.Fetcher[f].Top = uint8(d)
+			cart.state.registers.Fetcher[f].Top = uint8(d8)
 		case "bottom":
-			cart.state.registers.Fetcher[f].Bottom = uint8(d)
+			cart.state.registers.Fetcher[f].Bottom = uint8(d8)
 		case "musicmode":
 			switch data {
 			case "true":
@@ -407,7 +405,7 @@ func (cart *dpc) PutRegister(register string, data string) {
 			panic(fmt.Sprintf("unrecognised variable [%s]", register))
 		}
 	case "rng":
-		cart.state.registers.RNG = uint8(d)
+		cart.state.registers.RNG = uint8(d8)
 	default:
 		panic(fmt.Sprintf("unrecognised variable [%s]", register))
 	}

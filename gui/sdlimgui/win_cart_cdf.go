@@ -69,6 +69,53 @@ func (win *winCDFRegisters) draw() {
 	imgui.SetNextWindowPosV(imgui.Vec2{610, 303}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
 	imgui.BeginV(winCDFRegistersTitle, &win.open, imgui.WindowFlagsAlwaysAutoResize)
 
+	imgui.Text("Datastream")
+	imgui.Spacing()
+
+	imgui.BeginGroup()
+	imgui.Text("Pointers")
+	imgui.Spacing()
+	for i := 0; i < len(r.Datastream); i++ {
+		if i%2 != 0 {
+			imgui.SameLine()
+		}
+		f := i
+		imguiLabel(fmt.Sprintf("#%d", f))
+		label := fmt.Sprintf("##%dpointer", i)
+		data := fmt.Sprintf("%08x", r.Datastream[i].Pointer)
+		if imguiHexInput(label, 8, &data) {
+			win.img.lz.Dbg.PushRawEvent(func() {
+				b := win.img.lz.Dbg.VCS.Mem.Cart.GetRegistersBus()
+				b.PutRegister(fmt.Sprintf("datastream::%d::pointer", f), data)
+			})
+		}
+	}
+	imgui.EndGroup()
+
+	imgui.SameLineV(0, 20)
+
+	imgui.BeginGroup()
+	imgui.Text("Increments")
+	imgui.Spacing()
+	for i := 0; i < len(r.Datastream); i++ {
+		if i%2 != 0 {
+			imgui.SameLine()
+		}
+		f := i
+		imguiLabel(fmt.Sprintf("#%d", f))
+		label := fmt.Sprintf("##m%dincrement", i)
+		inc := fmt.Sprintf("%08x", r.Datastream[i].Increment)
+		if imguiHexInput(label, 8, &inc) {
+			win.img.lz.Dbg.PushRawEvent(func() {
+				b := win.img.lz.Dbg.VCS.Mem.Cart.GetRegistersBus()
+				b.PutRegister(fmt.Sprintf("datastream::%d::increment", f), inc)
+			})
+		}
+	}
+	imgui.EndGroup()
+
+	imguiSeparator()
+
 	imguiLabel("Fast Fetch")
 	ff := r.FastFetch
 	if imgui.Checkbox("##fastfetch", &ff) {

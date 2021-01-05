@@ -52,8 +52,9 @@ const (
 	customSize = 2048 // 2k (may expand into subsequent banks)
 )
 
-// registers should be accessed via readDataFetcher() and updateDataFetcher().
-// Actually reading the data in the data stream should be done by streamData().
+// registers should be accessed via readDatastreamPointer() and
+// updateDatastreamPointer(). Actually reading the data in the data stream
+// should be done by streamData().
 //
 // The following values can be used for convenience. The numbered datastreams
 // can be accessed numerically as expected.
@@ -175,10 +176,10 @@ func (cart *cdf) Read(addr uint16, passive bool) (uint8, error) {
 			reg := int(cart.banks[cart.state.bank][addr-1+uint16(cart.state.fastJMP)] + DSJMP)
 
 			// get current address for the data stream
-			jmp := cart.readDataFetcher(reg)
+			jmp := cart.readDatastreamPointer(reg)
 			data = cart.state.static.dataRAM[jmp>>cart.version.fetcherShift]
 			jmp += 1 << cart.version.fetcherShift
-			cart.updateDataFetcher(reg, jmp)
+			cart.updateDatastreamPointer(reg, jmp)
 
 			return data, nil
 		}
@@ -260,7 +261,7 @@ func (cart *cdf) Write(addr uint16, data uint8, passive bool, poke bool) error {
 		// DSWRITE
 
 		// top 12 bits are significant
-		v := cart.readDataFetcher(DSCOMM)
+		v := cart.readDatastreamPointer(DSCOMM)
 
 		// write data to ARM RAM
 		cart.state.static.dataRAM[v>>cart.version.fetcherShift] = data
@@ -269,18 +270,18 @@ func (cart *cdf) Write(addr uint16, data uint8, passive bool, poke bool) error {
 		v += 1 << cart.version.fetcherShift
 
 		// write adjusted address (making sure to put the bits in the top 12 bits)
-		cart.updateDataFetcher(DSCOMM, v)
+		cart.updateDatastreamPointer(DSCOMM, v)
 
 	case 0x0ff1:
 		// DSPTR
-		v := cart.readDataFetcher(DSCOMM) << 8
+		v := cart.readDatastreamPointer(DSCOMM) << 8
 		v &= cart.version.fetcherMask
 
 		// add new data to lower byte of dsptr value
 		v |= (uint32(data) << cart.version.fetcherShift)
 
 		// write dsptr to dscomm register
-		cart.updateDataFetcher(DSCOMM, v)
+		cart.updateDatastreamPointer(DSCOMM, v)
 
 	case 0x0ff2:
 		// SETMODE
@@ -431,32 +432,42 @@ func (cart *cdf) WriteHotspots() map[uint16]mapper.CartHotspotInfo {
 	}
 }
 
-func (cart *cdf) updateDataFetcher(fetcher int, data uint32) {
-	idx := cart.version.fetcherBase + (uint32(fetcher) * 4)
+func (cart *cdf) updateDatastreamPointer(pointer int, data uint32) {
+	idx := cart.version.fetcherBase + (uint32(pointer) * 4)
 	cart.state.static.driverRAM[idx] = uint8(data)
 	cart.state.static.driverRAM[idx+1] = uint8(data >> 8)
 	cart.state.static.driverRAM[idx+2] = uint8(data >> 16)
 	cart.state.static.driverRAM[idx+3] = uint8(data >> 24)
 }
 
-func (cart *cdf) readDataFetcher(reg int) uint32 {
-	idx := cart.version.fetcherBase + (uint32(reg) * 4)
+func (cart *cdf) readDatastreamPointer(pointer int) uint32 {
+	idx := cart.version.fetcherBase + (uint32(pointer) * 4)
 	return uint32(cart.state.static.driverRAM[idx]) |
 		uint32(cart.state.static.driverRAM[idx+1])<<8 |
 		uint32(cart.state.static.driverRAM[idx+2])<<16 |
 		uint32(cart.state.static.driverRAM[idx+3])<<24
 }
 
-func (cart *cdf) readIncrement(reg int) uint32 {
-	idx := cart.version.incrementBase + (uint32(reg) * 4)
+// updateDatastreamIncrement is not used by the CDF mapper itself except as a
+// call from PutRegister(), which is a debugging facility.
+func (cart *cdf) updateDatastreamIncrement(inc int, data uint32) {
+	idx := cart.version.incrementBase + (uint32(inc) * 4)
+	cart.state.static.driverRAM[idx] = uint8(data)
+	cart.state.static.driverRAM[idx+1] = uint8(data >> 8)
+	cart.state.static.driverRAM[idx+2] = uint8(data >> 16)
+	cart.state.static.driverRAM[idx+3] = uint8(data >> 24)
+}
+
+func (cart *cdf) readDatastreamIncrement(inc int) uint32 {
+	idx := cart.version.incrementBase + (uint32(inc) * 4)
 	return uint32(cart.state.static.driverRAM[idx]) |
 		uint32(cart.state.static.driverRAM[idx+1])<<8 |
 		uint32(cart.state.static.driverRAM[idx+2])<<16 |
 		uint32(cart.state.static.driverRAM[idx+3])<<24
 }
 
-func (cart *cdf) readMusicFetcher(reg int) uint32 {
-	addr := cart.version.musicBase + (uint32(reg) * 4)
+func (cart *cdf) readMusicFetcher(mus int) uint32 {
+	addr := cart.version.musicBase + (uint32(mus) * 4)
 	return uint32(cart.state.static.driverRAM[addr]) |
 		uint32(cart.state.static.driverRAM[addr+1])<<8 |
 		uint32(cart.state.static.driverRAM[addr+2])<<16 |
@@ -464,12 +475,12 @@ func (cart *cdf) readMusicFetcher(reg int) uint32 {
 }
 
 func (cart *cdf) streamData(reg int) uint8 {
-	addr := cart.readDataFetcher(reg)
-	inc := cart.readIncrement(reg)
+	addr := cart.readDatastreamPointer(reg)
+	inc := cart.readDatastreamIncrement(reg)
 
 	value := cart.state.static.dataRAM[addr>>cart.version.fetcherShift]
 	addr += inc << cart.version.incrementShift
-	cart.updateDataFetcher(reg, addr)
+	cart.updateDatastreamPointer(reg, addr)
 
 	return value
 }
