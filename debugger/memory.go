@@ -141,8 +141,8 @@ func (dbgmem memoryDebug) mapAddress(address interface{}, read bool) *addressInf
 
 // poke/peek error formatting, for consistency.
 const (
-	pokeError = "cannot poke address (%v)"
-	peekError = "cannot peek address (%v)"
+	pokeError = "cannot poke address (%v) in area %s"
+	peekError = "cannot peek address (%v) in area %s"
 )
 
 // Peek returns the contents of the memory address, without triggering any side
@@ -159,7 +159,7 @@ func (dbgmem memoryDebug) peek(address interface{}) (*addressInfo, error) {
 	ai.data, err = area.Peek(ai.mappedAddress)
 	if err != nil {
 		if curated.Is(err, bus.AddressError) {
-			return nil, curated.Errorf(peekError, address)
+			return nil, curated.Errorf(peekError, address, ai.area.String())
 		}
 		return nil, err
 	}
@@ -182,7 +182,7 @@ func (dbgmem memoryDebug) poke(address interface{}, data uint8) (*addressInfo, e
 	err := area.Poke(ai.mappedAddress, data)
 	if err != nil {
 		if curated.Is(err, bus.AddressError) {
-			return nil, curated.Errorf(pokeError, address)
+			return nil, curated.Errorf(pokeError, address, ai.area.String())
 		}
 		return nil, err
 	}

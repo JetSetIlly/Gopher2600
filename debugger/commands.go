@@ -927,7 +927,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		// mapAddress, even if it does seem redundant.
 		ai := dbg.dbgmem.mapAddress(a, false)
 		if ai == nil {
-			dbg.printLine(terminal.StyleError, fmt.Sprintf(pokeError, a))
+			dbg.printLine(terminal.StyleError, fmt.Sprintf(pokeError, a, ai.String()))
 			return nil
 		}
 		addr := ai.mappedAddress
