@@ -78,15 +78,11 @@ type Spec struct {
 	// aspect bias
 
 	// AaspectBias transforms the scaling factor for the X axis.
-	// values taken from Stella emualtor. useful for A/B testing
+	// values taken from Stella emulator. useful for A/B testing
 	AspectBias float32
 
 	// the number of frames per second required by the specification
 	FramesPerSecond float32
-
-	// if the generated image is exactly ScanlinesTotal in height then how many
-	// pixels would that be. used for frame rate measurement.
-	IdealPixelsPerFrame int
 }
 
 // GetColor translates a signals to the color type.
@@ -116,6 +112,11 @@ const (
 	HorizClksScanline = 228
 )
 
+// the absolute number of scanlines allowed by the TV regardless of
+// specification - value of 32 is the same as the total number of scanlines
+// used by the PAL specification
+const AbsoluteMaxScanlines = 312
+
 // SpecNTSC is the specification for NTSC television types.
 var SpecNTSC Spec
 
@@ -137,7 +138,6 @@ func init() {
 
 	SpecNTSC.AtariSafeTop = SpecNTSC.scanlinesVBlank + SpecNTSC.ScanlinesVSync
 	SpecNTSC.AtariSafeBottom = SpecNTSC.ScanlinesTotal - SpecNTSC.ScanlinesOverscan
-	SpecNTSC.IdealPixelsPerFrame = SpecNTSC.ScanlinesTotal * HorizClksScanline
 
 	SpecPAL = Spec{
 		ID:                "PAL",
@@ -153,7 +153,6 @@ func init() {
 
 	SpecPAL.AtariSafeTop = SpecPAL.scanlinesVBlank + SpecPAL.ScanlinesVSync
 	SpecPAL.AtariSafeBottom = SpecPAL.ScanlinesTotal - SpecPAL.ScanlinesOverscan
-	SpecPAL.IdealPixelsPerFrame = SpecPAL.ScanlinesTotal * HorizClksScanline
 
 	// NewSafe values:
 	// - Spike's Peak likes a bottom scanline of 249 (NTSC). this is the largest requirement I've seen.

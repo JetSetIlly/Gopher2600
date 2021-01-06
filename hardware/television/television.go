@@ -316,17 +316,15 @@ func (tv *Television) Signal(sig signal.SignalAttributes) error {
 		// reached end of screen without VSYNC sequence
 		if tv.state.scanline > tv.state.spec.ScanlinesTotal {
 			// fly-back naturally if VBlank is off. a good example of a ROM
-			// that requires this is Andrew Davies' Chess (3e+ test rom)
-			if !tv.state.lastSignal.VBlank {
+			// that requires correct handling of this is Andrew Davies' Chess
+			// (3e+ test rom)
+			//
+			// (06/01/21) another example is the Artkaris NTSC version of Lili
+			if tv.state.scanline > specification.AbsoluteMaxScanlines {
 				err := tv.newFrame(false)
 				if err != nil {
 					return err
 				}
-			} else {
-				// wait until VSYNC sequence is encountered. note that newFrame
-				// is not called because it is assumed that the ROM will
-				// eventually send one and is just late.
-				tv.state.scanline = tv.state.spec.ScanlinesTotal
 			}
 		} else {
 			// if we're not at end of screen then indicate new scanline
@@ -391,14 +389,14 @@ func (tv *Television) Signal(sig signal.SignalAttributes) error {
 	// set pending pixels for pixel-scale frame limiting (but only when the
 	// limiter is active - this is important when rendering frames produced
 	// durint rewinding)
-	if tv.lmtr.limit && tv.lmtr.scale == scalePixel {
+	if tv.lmtr.limit && tv.lmtr.visualUpdates {
 		err := tv.setPendingPixels(true)
 		if err != nil {
 			return err
 		}
 	}
 
-	tv.lmtr.checkPixel()
+	tv.lmtr.measureActual()
 
 	return nil
 }
@@ -412,27 +410,16 @@ func (tv *Television) newScanline() error {
 		}
 	}
 
-	// set pending pixels for scanline-scale frame limiting (but only when the
-	// limiter is active - this is important when rendering frames produced
-	// during rewinding)
-	if tv.lmtr.limit && tv.lmtr.scale == scaleScanline {
-		err := tv.setPendingPixels(true)
-		if err != nil {
-			return err
-		}
-	}
-
 	tv.lmtr.checkScanline()
 
 	return nil
 }
 
 func (tv *Television) newFrame(synced bool) error {
-	// specification change
-	if tv.state.syncedFrameNum > leadingFrames && tv.state.syncedFrameNum < stabilityThreshold {
-		if tv.state.auto && !tv.state.syncedFrame && tv.state.scanline > excessScanlinesNTSC {
-			// flip from NTSC to PAL
-			if tv.state.spec.ID == specification.SpecNTSC.ID {
+	// specification change from NTSC to PAL
+	if tv.state.spec.ID == specification.SpecNTSC.ID {
+		if tv.state.syncedFrameNum > leadingFrames && tv.state.syncedFrameNum < stabilityThreshold {
+			if tv.state.auto && tv.state.scanline > specification.SpecNTSC.ScanlinesTotal+excessScanlinesNTSC {
 				_ = tv.SetSpec("PAL")
 			}
 		}
@@ -480,7 +467,10 @@ func (tv *Television) newFrame(synced bool) error {
 		tv.reflector.SyncFrame()
 	}
 
-	tv.lmtr.checkFrame()
+	// check frame rate
+	if synced {
+		tv.lmtr.checkFrame()
+	}
 
 	return nil
 }

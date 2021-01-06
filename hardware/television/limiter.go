@@ -26,7 +26,6 @@ type limitScale int
 const (
 	scaleFrame limitScale = iota
 	scaleScanline
-	scalePixel
 )
 
 type limiter struct {
@@ -38,14 +37,20 @@ type limiter struct {
 	// the requested number of frames per second
 	requested atomic.Value // float32
 
+	// the actual number of frames per second
+	actual atomic.Value // float32
+
+	// whether to update the screen visually - when frame rate is low enough we
+	// want to be able to see the updates
+	visualUpdates bool
+
 	// event pulse
 	pulse *time.Ticker
 	scale limitScale
 
 	// measurement
-	actual         atomic.Value // float32
-	actualCt       int
-	actualTime     time.Time
+	measureCt      int
+	measureTime    time.Time
 	measuringPulse *time.Ticker
 }
 
@@ -54,7 +59,7 @@ func (lmtr *limiter) init(tv *Television) {
 	lmtr.requested.Store(float32(0))
 	lmtr.tv = tv
 	lmtr.limit = true
-	lmtr.actualTime = time.Now()
+	lmtr.measureTime = time.Now()
 	lmtr.pulse = time.NewTicker(time.Millisecond * 10)
 	lmtr.measuringPulse = time.NewTicker(time.Second)
 }
@@ -62,81 +67,82 @@ func (lmtr *limiter) init(tv *Television) {
 // there's no science behind when we flip from scales these values are based simply on
 // what looks effective and what seems to be useable.
 const (
-	ThreshScanlineScale float32 = 5.0
-	thresPixelScale     float32 = 3.0
+	theshScanlineScale float32 = 5.0
+	ThreshVisual       float32 = 3.0
 )
 
 func (lmtr *limiter) setRate(fps float32) {
 	// if number is negative then default to ideal FPS rate
-	if fps < 0 {
+	if fps <= 0.0 {
 		fps = lmtr.tv.state.spec.FramesPerSecond
+	}
+
+	// if fps is still zero (spec probably hasn't been set) then don't do anything
+	if fps == 0.0 {
+		return
 	}
 
 	// not selected rate
 	lmtr.requested.Store(fps)
 
 	// set scale and duration to wait according to requested FPS rate
-	if fps < thresPixelScale {
-		lmtr.scale = scalePixel
-
-		// scale IdealPixelsPerFrame. not sure why this is needed but without
-		// it the ticker duration is way off. (this value is good for pixel
-		// scale when frame rate is below 3)
-		const idealPixelsScale = 5
-
-		rate := float32(1.0) / (fps * float32(lmtr.tv.state.spec.IdealPixelsPerFrame*idealPixelsScale))
-		dur, _ := time.ParseDuration(fmt.Sprintf("%fs", rate))
-		lmtr.pulse.Reset(dur)
-	} else if fps < ThreshScanlineScale {
+	if fps <= theshScanlineScale {
 		lmtr.scale = scaleScanline
-		rate := float32(1.0) / (fps * float32(lmtr.tv.state.spec.ScanlinesTotal))
-		dur, _ := time.ParseDuration(fmt.Sprintf("%fs", rate))
+
+		// to prevent the emulator from stalling every frame while it waits for
+		// the ticker to catch up, frame rates below theshScanlineScale are
+		// rate checked every scanline
+		//
+		// the requires us to multiply the frame rate by the number scanlines
+		// in a frame. by default this is the ScanlinesTotal value in the spec
+		// but if the screen is "bigger" than that then we use the larger
+		// value.
+		scanlines := lmtr.tv.state.spec.ScanlinesTotal
+		if lmtr.tv.state.resizer.bottom > lmtr.tv.state.spec.ScanlinesTotal {
+			scanlines = lmtr.tv.state.resizer.bottom
+		}
+
+		rate := float32(1000000.0) / (fps * float32(scanlines))
+		dur, _ := time.ParseDuration(fmt.Sprintf("%fus", rate))
 		lmtr.pulse.Reset(dur)
 	} else {
 		lmtr.scale = scaleFrame
-		rate := float32(1.0) / fps
-		dur, _ := time.ParseDuration(fmt.Sprintf("%fs", rate))
+		rate := float32(1000000.0) / fps
+		dur, _ := time.ParseDuration(fmt.Sprintf("%fus", rate))
 		lmtr.pulse.Reset(dur)
 	}
 
+	// visual updates or not
+	lmtr.visualUpdates = fps <= ThreshVisual
+
 	// restart acutal FPS rate measurement values
-	lmtr.actualCt = 0
-	lmtr.actualTime = time.Now()
+	lmtr.measureCt = 0
+	lmtr.measureTime = time.Now()
 }
 
 func (lmtr *limiter) checkFrame() {
-	lmtr.actualCt++
-	lmtr.measureActual()
+	lmtr.measureCt++
 	if lmtr.scale == scaleFrame && lmtr.limit {
 		<-lmtr.pulse.C
 	}
 }
 
 func (lmtr *limiter) checkScanline() {
-	lmtr.measureActual()
 	if lmtr.scale == scaleScanline && lmtr.limit {
 		<-lmtr.pulse.C
 	}
 }
 
-func (lmtr *limiter) checkPixel() {
-	lmtr.measureActual()
-	if lmtr.scale == scalePixel && lmtr.limit {
-		<-lmtr.pulse.C
-	}
-}
-
-// called every scanline (although internally limited) to calculate the actual
-// frame rate being achieved.
+// measures frame rate on every tick of the measuringPulse ticker
 func (lmtr *limiter) measureActual() {
 	select {
 	case <-lmtr.measuringPulse.C:
 		t := time.Now()
-		lmtr.actual.Store(float32(lmtr.actualCt) / float32(t.Sub(lmtr.actualTime).Seconds()))
+		lmtr.actual.Store(float32(lmtr.measureCt) / float32(t.Sub(lmtr.measureTime).Seconds()))
 
 		// reset time and count ready for next measurement
-		lmtr.actualTime = t
-		lmtr.actualCt = 0
+		lmtr.measureTime = t
+		lmtr.measureCt = 0
 	default:
 	}
 }

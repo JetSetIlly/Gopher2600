@@ -263,7 +263,7 @@ func (rnd *glsl) render(displaySize [2]float32, framebufferSize [2]float32, draw
 	case gui.StateRunning:
 		// if FPS is low enough then show screen draw even though
 		// emulation is running
-		if rnd.img.lz.TV.ReqFPS < television.ThreshScanlineScale {
+		if rnd.img.lz.TV.ReqFPS < television.ThreshVisual {
 			gl.Uniform1i(rnd.attribDrawMode, shaders.Cursor)
 		} else {
 			gl.Uniform1i(rnd.attribDrawMode, shaders.NoCursor)

@@ -1,6 +1,6 @@
 compileFlags = '-c 3 -B -wb=false'
 #profilingRom = roms/Homebrew/CDF/galaga_dmo_v2_NTSC.bin
-# profilingRom = roms/Homebrew/DPC+ARM/ZaxxonHDDemo_150927_NTSC.bin
+#profilingRom = roms/Homebrew/DPC+ARM/ZaxxonHDDemo_150927_NTSC.bin
 profilingRom = roms/Rsboxing.bin
 #profilingRom = "test_roms/plusrom/sokoboo Plus.bin"
 
@@ -54,7 +54,7 @@ profile: generate test
 	@echo "1.  run gopher2600 in RUN, DEBUG or PERFORMANCE mode"
 	@echo "1a. use --profile argument. CPU, MEM, TRACE for profiling types (comma separated)"
 	@echo "2.  view cpu and mem profile with: go tool pprof -http : ./gopher2600 <profile>"
-	@echo "2b. view trace with: go tool trace -http : performance_trace.profile"
+	@echo "2b. view trace with: go tool trace -http : <trace_profile>"
 
 build_assertions: generate test
 	go build -gcflags $(compileFlags) -tags=assertions
