@@ -31,8 +31,8 @@ import (
 
 const patchPath = "patches"
 
-const commentLeader = '-'
-const pokeLineSeparator = ":"
+const neoComment = '-'
+const neoSeparator = ":"
 
 // CartridgeMemory applies the contents of a patch file to cartridge memory.
 // Currently, patch file must be in the patches sub-directory of the
@@ -60,29 +60,102 @@ func CartridgeMemory(mem *cartridge.Cartridge, patchFile string) (bool, error) {
 		return false, curated.Errorf("patch: %v", err)
 	}
 
+	// read file
 	buffer, err := ioutil.ReadAll(f)
 	if err != nil {
 		return false, curated.Errorf("patch: %v", err)
 	}
 
-	// once a patch has been made then we'll flip patched to true and return it
-	// to the calling function
-	patched := false
+	if len(buffer) <= 1 {
+		return false, nil
+	}
 
+	// if first character is a hyphen then we'll assume this is a "neo" style
+	// patch file
+	if buffer[0] == neoComment {
+		err = neoStyle(mem, buffer)
+		if err != nil {
+			return false, curated.Errorf("patch: %v", err)
+		}
+		return true, nil
+	}
+
+	// otherwise assume it is a "cmp" style patch file
+	err = cmpStyle(mem, buffer)
+	if err != nil {
+		return false, curated.Errorf("patch: %v", err)
+	}
+	return true, nil
+}
+
+// cmp -l <old_file> <new_file>
+func cmpStyle(mem *cartridge.Cartridge, buffer []byte) error {
 	// walk through lines
 	lines := strings.Split(string(buffer), "\n")
-	for i := 0; i < len(lines); i++ {
+	for i, s := range lines {
+		// ignore empty lines. cmp shouldn't output empty lines but the just in
+		// case. pluse the last line will probably be empty
+		if len(s) == 0 {
+			continue
+		}
+
+		// split line into fields
+		p := strings.Fields(s)
+
+		// if there are not three fields then the file is malformed
+		if len(p) != 3 {
+			return curated.Errorf("cmp: line [%d]: malformed", i)
+		}
+
+		// ofset is stored as decimal
+		offset, err := strconv.ParseUint(p[0], 10, 16)
+		if err != nil {
+			return curated.Errorf("cmp: line [%d]: %v", i, err)
+		}
+
+		// cmp counts from 1 but we count everything from zero
+		offset--
+
+		// old and patch bytes are stored as octal(!)
+		old, err := strconv.ParseUint(p[1], 8, 8)
+		if err != nil {
+			return curated.Errorf("cmp: line [%d]: %v", i, err)
+		}
+		patch, err := strconv.ParseUint(p[2], 8, 8)
+		if err != nil {
+			return curated.Errorf("cmp: line [%d]: %v", i, err)
+		}
+
+		// check that the patch is correct
+		o, _ := mem.Peek(uint16(offset))
+		if o != uint8(old) {
+			return curated.Errorf("cmp: line %d: byte at offset %04x does not match expected byte (%02x instead of %02x)", i, offset, o, old)
+		}
+
+		// patch memory
+		err = mem.Patch(int(offset), uint8(patch))
+		if err != nil {
+			return curated.Errorf("cmp: %v", err)
+		}
+	}
+	return nil
+}
+
+func neoStyle(mem *cartridge.Cartridge, buffer []byte) error {
+	// walk through lines
+	lines := strings.Split(string(buffer), "\n")
+	for i, s := range lines {
 		// ignore empty lines
-		if len(lines[i]) == 0 {
+		if len(s) == 0 {
 			continue // for loop
 		}
 
 		// ignoring comment lines and lines starting with whitespace
-		if lines[i][0] == commentLeader || unicode.IsSpace(rune(lines[i][0])) {
+		if s[0] == neoComment || unicode.IsSpace(rune(s[0])) {
 			continue // for loop
 		}
 
-		pokeLine := strings.Split(lines[i], pokeLineSeparator)
+		pokeLine := strings.Split(s, neoSeparator)
 
 		// ignore any lines that don't match the required [offset: values...] format
 		if len(pokeLine) != 2 {
@@ -119,14 +192,13 @@ func CartridgeMemory(mem *cartridge.Cartridge, patchFile string) (bool, error) {
 			// patch memory
 			err = mem.Patch(int(offset), uint8(v))
 			if err != nil {
-				return patched, curated.Errorf("patch: %v", err)
+				return curated.Errorf("neo: line %d: %v", i, err)
 			}
-			patched = true
 
 			// advance offset
 			offset++
 		}
 	}
 
-	return patched, nil
+	return nil
 }

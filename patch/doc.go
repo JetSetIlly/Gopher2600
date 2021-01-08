@@ -19,9 +19,27 @@
 // (see cartridge package) deal with that individually.
 //
 // This package simply loads the patch instructions, interprets them and calls
-// the cartridge.Patch() function. Currently only one patch format is
-// supported. This is an ad-hoc format taken from the "In case you can't wait"
-// section of the following web page:
+// the cartridge.Patch() function.
+//
+// The first format is simplt the output of "cmp -l <old_file> <new_file>", an
+// example of which is shown below:
+//
+//		 862  22 200
+//		 863 360 376
+//		3713 377 242
+//		3715 377 232
+//		3716 377 114
+//		3717 377  22
+//		3718 377 360
+//
+// The first column is the offset, expressed as a decimal number and measure
+// from one. The second column is the current value of the offset being
+// changed, and the third column is the value it is being changed to. The
+// values in column 2 and three are expressed in octal!
+//
+// The second format is what I have called the "neo" format. This seems to be
+// an ad-hoc format taken from the "In case you can't wait" section of the
+// following web page (the domain of which was used to help name the format):
 //
 //	"Fixing E.T. The Extra-Terrestrial for the Atari 2600"
 //
