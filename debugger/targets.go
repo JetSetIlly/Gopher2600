@@ -106,9 +106,9 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (*target, error) {
 
 		case "SP":
 			trg = &target{
-				label: "X",
+				label: "SP",
 				currentValue: func() targetValue {
-					return int(dbg.VCS.CPU.Y.Value())
+					return int(dbg.VCS.CPU.SP.Value())
 				},
 				format: "%#02x",
 			}

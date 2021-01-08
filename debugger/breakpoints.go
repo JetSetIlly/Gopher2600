@@ -298,7 +298,7 @@ func (bp *breakpoints) parseCommand(tokens *commandline.Tokens) error {
 			case "false":
 				val = false
 			default:
-				err = curated.Errorf("invalid value (%s) for target (%s)", tok, tgt.Label)
+				err = curated.Errorf("invalid value (%s) for target (%s)", tok, tgt.Label())
 			}
 		default:
 			return curated.Errorf("unsupported value type (%T) for target (%s)", tgt.TargetValue(), tgt.Label())
@@ -353,7 +353,7 @@ func (bp *breakpoints) parseCommand(tokens *commandline.Tokens) error {
 	}
 
 	if !resolvedTarget {
-		return curated.Errorf("need a value (%T) to break on (%s)", tgt.TargetValue(), tgt.Label)
+		return curated.Errorf("need a value (%T) to break on (%s)", tgt.TargetValue(), tgt.Label())
 	}
 
 	for _, nb := range newBreaks {
