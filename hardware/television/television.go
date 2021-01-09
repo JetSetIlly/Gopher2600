@@ -286,16 +286,6 @@ func (tv *Television) End() error {
 
 // Signal updates the current state of the television.
 func (tv *Television) Signal(sig signal.SignalAttributes) error {
-	// mix audio before we do anything else
-	if sig.AudioUpdate {
-		for _, m := range tv.mixers {
-			err := m.SetAudio(sig.AudioData)
-			if err != nil {
-				return err
-			}
-		}
-	}
-
 	// examine signal for resizing possibility
 	tv.state.resizer.examine(tv, sig)
 
@@ -378,7 +368,7 @@ func (tv *Television) Signal(sig signal.SignalAttributes) error {
 
 	// record signal history
 	if tv.currentIdx >= MaxSignalHistory {
-		err := tv.setPendingPixels(true)
+		err := tv.processSignals(true)
 		if err != nil {
 			return err
 		}
@@ -390,7 +380,7 @@ func (tv *Television) Signal(sig signal.SignalAttributes) error {
 	// limiter is active - this is important when rendering frames produced
 	// durint rewinding)
 	if tv.lmtr.limit && tv.lmtr.visualUpdates {
-		err := tv.setPendingPixels(true)
+		err := tv.processSignals(true)
 		if err != nil {
 			return err
 		}
@@ -442,13 +432,13 @@ func (tv *Television) newFrame(synced bool) error {
 	tv.state.scanline = 0
 	tv.state.resizer.prepare(tv)
 
-	// note the current index before setPendingPixels() resets the value
+	// note the current index before processSignals() resets the value
 	tv.lastMaxIdx = tv.currentIdx
 
 	// set pending pixels for frame-scale frame limiting or if the frame
 	// limiter is inactive
 	if !tv.lmtr.limit || tv.lmtr.scale == scaleFrame {
-		err = tv.setPendingPixels(true)
+		err = tv.processSignals(true)
 		if err != nil {
 			return err
 		}
@@ -475,10 +465,10 @@ func (tv *Television) newFrame(synced bool) error {
 	return nil
 }
 
-// setPendindPixels forwards pixels in the signalHistory buffer to all pixel renderers.
+// processSignals forwards pixels in the signalHistory buffer to all pixel renderers.
 //
 // the "current" argument defines how many pixels to push. if all is true then
-func (tv *Television) setPendingPixels(current bool) error {
+func (tv *Television) processSignals(current bool) error {
 	if !tv.pauseRendering {
 		lmt := tv.currentIdx
 		if !current {
@@ -496,8 +486,22 @@ func (tv *Television) setPendingPixels(current bool) error {
 				if tv.reflector != nil {
 					tv.reflector.SyncReflectionPixel(i)
 				}
+
 			}
 			r.UpdatingPixels(false)
+		}
+
+		// mix audio
+		for _, m := range tv.mixers {
+			for i := 0; i < lmt; i++ {
+				sig := tv.signals[i]
+				if sig.AudioUpdate {
+					err := m.SetAudio(sig.AudioData)
+					if err != nil {
+						return err
+					}
+				}
+			}
 		}
 	}
 
@@ -574,7 +578,7 @@ func (tv *Television) GetSpec() specification.Spec {
 // used when emulation is stopped. In this case, paused rendering is implied.
 func (tv *Television) Pause(pause bool) error {
 	if pause {
-		return tv.setPendingPixels(true)
+		return tv.processSignals(true)
 	}
 	return nil
 }
@@ -585,7 +589,7 @@ func (tv *Television) Pause(pause bool) error {
 func (tv *Television) PauseRendering(pause bool) {
 	tv.pauseRendering = pause
 	if !tv.pauseRendering {
-		tv.setPendingPixels(false)
+		tv.processSignals(false)
 	}
 }
 
