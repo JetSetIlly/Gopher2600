@@ -20,6 +20,9 @@ var defunct = []string{
 	"debugger.randpins",
 	"debugger.randstate",
 	"sdlimgui.playmode.terminalOnError",
+	"crt.inputGamma",
+	"crt.outputGamma",
+	"crt.maskScanlineScaling",
 }
 
 // returns true if string is in list of defunct values.

@@ -73,18 +73,18 @@ type glsl struct {
 	attribRandSeed      int32 // uniform
 
 	attribCRT                 int32 // uniform
-	attribInputGamma          int32 // uniform
-	attribOutputGamma         int32 // uniform
+	attribPhosphorTexture     int32 // uniform
+	attribPhosphor            int32 // uniform
 	attribMask                int32 // uniform
 	attribScanlines           int32 // uniform
 	attribNoise               int32 // uniform
 	attribBlur                int32 // uniform
+	attribPhosphorSpeed       int32 // uniform
 	attribMaskBrightness      int32 // uniform
 	attribScanlinesBrightness int32 // uniform
 	attribNoiseLevel          int32 // uniform
 	attribBlurLevel           int32 // uniform
 	attribVignette            int32 // uniform
-	attribMaskScanlineScaling int32 // uniform
 }
 
 func newGlsl(io imgui.IO, img *SdlImgui) (*glsl, error) {
@@ -174,7 +174,12 @@ func (rnd *glsl) render(displaySize [2]float32, framebufferSize [2]float32, draw
 		{0.0, 0.0, -1.0, 0.0},
 		{-1.0, 1.0, 0.0, 1.0},
 	}
+
+	// shader options for shader program
 	gl.UseProgram(rnd.shaderHandle)
+	rnd.setShaderOptions()
+
+	gl.ActiveTexture(gl.TEXTURE0)
 	gl.Uniform1i(rnd.attribTexture, 0)
 	gl.UniformMatrix4fv(rnd.attribProjMtx, 1, false, &orthoProjection[0][0])
 	gl.BindSampler(0, 0) // Rely on combined texture/sampler state.
@@ -199,8 +204,50 @@ func (rnd *glsl) render(displaySize [2]float32, framebufferSize [2]float32, draw
 		drawType = gl.UNSIGNED_INT
 	}
 
-	gl.ActiveTexture(gl.TEXTURE0)
+	for _, list := range drawData.CommandLists() {
+		var indexBufferOffset uintptr
 
+		vertexBuffer, vertexBufferSize := list.VertexBuffer()
+		gl.BindBuffer(gl.ARRAY_BUFFER, rnd.vboHandle)
+		gl.BufferData(gl.ARRAY_BUFFER, vertexBufferSize, vertexBuffer, gl.STREAM_DRAW)
+
+		indexBuffer, indexBufferSize := list.IndexBuffer()
+		gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, rnd.elementsHandle)
+		gl.BufferData(gl.ELEMENT_ARRAY_BUFFER, indexBufferSize, indexBuffer, gl.STREAM_DRAW)
+
+		for _, cmd := range list.Commands() {
+			if cmd.HasUserCallback() {
+				cmd.CallUserCallback(list)
+			} else {
+				// notify the shader which texture to work with
+				textureID := uint32(cmd.TextureID())
+				switch textureID {
+				case rnd.img.wm.dbgScr.screenTexture:
+					gl.Uniform1i(rnd.attribImageType, shaders.DebugScr)
+				case rnd.img.wm.dbgScr.overlayTexture:
+					gl.Uniform1i(rnd.attribImageType, shaders.Overlay)
+				case rnd.img.wm.playScr.screenTexture:
+					gl.Uniform1i(rnd.attribImageType, shaders.PlayScr)
+				case rnd.img.wm.crtPrefs.crtTexture:
+					gl.Uniform1i(rnd.attribImageType, shaders.PrefsCRT)
+				default:
+					gl.Uniform1i(rnd.attribImageType, shaders.GUI)
+				}
+
+				// clipping
+				clipRect := cmd.ClipRect()
+				gl.Scissor(int32(clipRect.X), int32(fbHeight)-int32(clipRect.W), int32(clipRect.Z-clipRect.X), int32(clipRect.W-clipRect.Y))
+
+				gl.BindTexture(gl.TEXTURE_2D, textureID)
+				gl.DrawElements(gl.TRIANGLES, int32(cmd.ElementCount()), uint32(drawType), unsafe.Pointer(indexBufferOffset))
+			}
+			indexBufferOffset += uintptr(cmd.ElementCount() * indexSize)
+		}
+	}
+	gl.DeleteVertexArrays(1, &vaoHandle)
+}
+
+func (rnd *glsl) setShaderOptions() {
 	// !!TODO: different scaling values for different screen windows
 	vertScaling := rnd.img.wm.dbgScr.getScaling(false)
 	horizScaling := rnd.img.wm.dbgScr.getScaling(true)
@@ -213,18 +260,18 @@ func (rnd *glsl) render(displaySize [2]float32, framebufferSize [2]float32, draw
 		crt = rnd.img.wm.dbgScr.crt
 	}
 	gl.Uniform1i(rnd.attribCRT, boolToInt32(crt))
-	gl.Uniform1f(rnd.attribInputGamma, float32(rnd.img.crtPrefs.InputGamma.Get().(float64)))
-	gl.Uniform1f(rnd.attribOutputGamma, float32(rnd.img.crtPrefs.OutputGamma.Get().(float64)))
+	gl.Uniform1i(rnd.attribPhosphorTexture, 1)
+	gl.Uniform1i(rnd.attribPhosphor, boolToInt32(rnd.img.crtPrefs.Phosphor.Get().(bool)))
 	gl.Uniform1i(rnd.attribMask, boolToInt32(rnd.img.crtPrefs.Mask.Get().(bool)))
 	gl.Uniform1i(rnd.attribScanlines, boolToInt32(rnd.img.crtPrefs.Scanlines.Get().(bool)))
 	gl.Uniform1i(rnd.attribNoise, boolToInt32(rnd.img.crtPrefs.Noise.Get().(bool)))
 	gl.Uniform1i(rnd.attribBlur, boolToInt32(rnd.img.crtPrefs.Blur.Get().(bool)))
+	gl.Uniform1f(rnd.attribPhosphorSpeed, float32(rnd.img.crtPrefs.PhosphorSpeed.Get().(float64)))
 	gl.Uniform1f(rnd.attribMaskBrightness, float32(rnd.img.crtPrefs.MaskBrightness.Get().(float64)))
 	gl.Uniform1f(rnd.attribScanlinesBrightness, float32(rnd.img.crtPrefs.ScanlinesBrightness.Get().(float64)))
 	gl.Uniform1f(rnd.attribNoiseLevel, float32(rnd.img.crtPrefs.NoiseLevel.Get().(float64)))
 	gl.Uniform1f(rnd.attribBlurLevel, float32(rnd.img.crtPrefs.BlurLevel.Get().(float64)))
 	gl.Uniform1i(rnd.attribVignette, boolToInt32(rnd.img.crtPrefs.Vignette.Get().(bool)))
-	gl.Uniform1i(rnd.attribMaskScanlineScaling, int32(rnd.img.crtPrefs.MaskScanlineScaling.Get().(int)))
 
 	// critical section
 	rnd.img.screen.crit.section.Lock()
@@ -278,48 +325,6 @@ func (rnd *glsl) render(displaySize [2]float32, framebufferSize [2]float32, draw
 
 	// random seed (for noise generator)
 	gl.Uniform1f(rnd.attribRandSeed, float32(time.Now().Nanosecond())/1000000000.0)
-
-	for _, list := range drawData.CommandLists() {
-		var indexBufferOffset uintptr
-
-		vertexBuffer, vertexBufferSize := list.VertexBuffer()
-		gl.BindBuffer(gl.ARRAY_BUFFER, rnd.vboHandle)
-		gl.BufferData(gl.ARRAY_BUFFER, vertexBufferSize, vertexBuffer, gl.STREAM_DRAW)
-
-		indexBuffer, indexBufferSize := list.IndexBuffer()
-		gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, rnd.elementsHandle)
-		gl.BufferData(gl.ELEMENT_ARRAY_BUFFER, indexBufferSize, indexBuffer, gl.STREAM_DRAW)
-
-		for _, cmd := range list.Commands() {
-			if cmd.HasUserCallback() {
-				cmd.CallUserCallback(list)
-			} else {
-				// notify the shader which texture to work with
-				textureID := uint32(cmd.TextureID())
-				switch textureID {
-				case rnd.img.wm.dbgScr.screenTexture:
-					gl.Uniform1i(rnd.attribImageType, shaders.DebugScr)
-				case rnd.img.wm.dbgScr.overlayTexture:
-					gl.Uniform1i(rnd.attribImageType, shaders.Overlay)
-				case rnd.img.wm.playScr.screenTexture:
-					gl.Uniform1i(rnd.attribImageType, shaders.PlayScr)
-				case rnd.img.wm.crtPrefs.crtTexture:
-					gl.Uniform1i(rnd.attribImageType, shaders.PrefsCRT)
-				default:
-					gl.Uniform1i(rnd.attribImageType, shaders.GUI)
-				}
-
-				// clipping
-				clipRect := cmd.ClipRect()
-				gl.Scissor(int32(clipRect.X), int32(fbHeight)-int32(clipRect.W), int32(clipRect.Z-clipRect.X), int32(clipRect.W-clipRect.Y))
-
-				gl.BindTexture(gl.TEXTURE_2D, textureID)
-				gl.DrawElements(gl.TRIANGLES, int32(cmd.ElementCount()), uint32(drawType), unsafe.Pointer(indexBufferOffset))
-			}
-			indexBufferOffset += uintptr(cmd.ElementCount() * indexSize)
-		}
-	}
-	gl.DeleteVertexArrays(1, &vaoHandle)
 }
 
 func (rnd *glsl) setup() {
@@ -386,18 +391,18 @@ func (rnd *glsl) setup() {
 	rnd.attribRandSeed = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("RandSeed"+"\x00"))
 
 	rnd.attribCRT = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("CRT"+"\x00"))
-	rnd.attribInputGamma = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("InputGamma"+"\x00"))
-	rnd.attribOutputGamma = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("OutputGamma"+"\x00"))
+	rnd.attribPhosphorTexture = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("PhosphorTexture"+"\x00"))
+	rnd.attribPhosphor = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("Phosphor"+"\x00"))
 	rnd.attribMask = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("Mask"+"\x00"))
 	rnd.attribScanlines = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("Scanlines"+"\x00"))
 	rnd.attribNoise = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("Noise"+"\x00"))
 	rnd.attribBlur = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("Blur"+"\x00"))
+	rnd.attribPhosphorSpeed = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("PhosphorSpeed"+"\x00"))
 	rnd.attribMaskBrightness = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("MaskBrightness"+"\x00"))
 	rnd.attribScanlinesBrightness = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("ScanlinesBrightness"+"\x00"))
 	rnd.attribNoiseLevel = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("NoiseLevel"+"\x00"))
 	rnd.attribBlurLevel = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("BlurLevel"+"\x00"))
 	rnd.attribVignette = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("Vignette"+"\x00"))
-	rnd.attribMaskScanlineScaling = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("MaskScanlineScaling"+"\x00"))
 
 	rnd.attribTexture = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("Texture"+"\x00"))
 	rnd.attribProjMtx = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("ProjMtx"+"\x00"))

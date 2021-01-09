@@ -75,9 +75,11 @@ type screenCrit struct {
 	topScanline int
 	scanlines   int
 
-	// the pixels array is used in the presentation texture of the play and
-	// debug screen.
+	// the pixels array is used in the presentation texture of the play and debug screen.
 	pixels *image.RGBA
+
+	// phosphor pixels
+	phosphor *image.RGBA
 
 	// bufferPixels are what we plot pixels to while we wait for a frame to complete.
 	bufferPixels [5]*image.RGBA
@@ -104,6 +106,7 @@ type screenCrit struct {
 	// created through the SubImage() command and should not be written to
 	// directly
 	cropPixels        *image.RGBA
+	cropPhosphor      *image.RGBA
 	cropElementPixels *image.RGBA
 	cropOverlayPixels *image.RGBA
 
@@ -159,6 +162,7 @@ func (scr *screen) resize(spec specification.Spec, topScanline int, visibleScanl
 	scr.crit.pixels = image.NewRGBA(image.Rect(0, 0, specification.HorizClksScanline, spec.ScanlinesTotal))
 	scr.crit.elementPixels = image.NewRGBA(image.Rect(0, 0, specification.HorizClksScanline, spec.ScanlinesTotal))
 	scr.crit.overlayPixels = image.NewRGBA(image.Rect(0, 0, specification.HorizClksScanline, spec.ScanlinesTotal))
+	scr.crit.phosphor = image.NewRGBA(image.Rect(0, 0, specification.HorizClksScanline, spec.ScanlinesTotal))
 
 	for i := range scr.crit.bufferPixels {
 		scr.crit.bufferPixels[i] = image.NewRGBA(image.Rect(0, 0, specification.HorizClksScanline, spec.ScanlinesTotal))
@@ -176,6 +180,7 @@ func (scr *screen) resize(spec specification.Spec, topScanline int, visibleScanl
 		specification.HorizClksHBlank+specification.HorizClksVisible, scr.crit.topScanline+scr.crit.scanlines,
 	)
 	scr.crit.cropPixels = scr.crit.pixels.SubImage(crop).(*image.RGBA)
+	scr.crit.cropPhosphor = scr.crit.phosphor.SubImage(crop).(*image.RGBA)
 	scr.crit.cropElementPixels = scr.crit.elementPixels.SubImage(crop).(*image.RGBA)
 	scr.crit.cropOverlayPixels = scr.crit.overlayPixels.SubImage(crop).(*image.RGBA)
 
@@ -185,6 +190,7 @@ func (scr *screen) resize(spec specification.Spec, topScanline int, visibleScanl
 			scr.crit.pixels.SetRGBA(x, y, color.RGBA{0, 0, 0, 255})
 			scr.crit.elementPixels.SetRGBA(x, y, color.RGBA{0, 0, 0, 255})
 			scr.crit.overlayPixels.SetRGBA(x, y, color.RGBA{0, 0, 0, 255})
+			scr.crit.phosphor.SetRGBA(x, y, color.RGBA{0, 0, 0, 0})
 		}
 	}
 	for i := range scr.crit.bufferPixels {
@@ -418,9 +424,28 @@ func (scr *screen) render() {
 			return
 		}
 
-		// copy render pixels to safe copy that we use to copy to the screen
-		// textures
-		copy(scr.crit.pixels.Pix, scr.crit.bufferPixels[scr.crit.renderIdx].Pix)
+		// copy pixels from render buffer to the live copy.
+		for i := 0; i < len(scr.crit.bufferPixels[scr.crit.renderIdx].Pix); i += 4 {
+			scr.crit.pixels.Pix[i] = scr.crit.bufferPixels[scr.crit.renderIdx].Pix[i]
+			scr.crit.pixels.Pix[i+1] = scr.crit.bufferPixels[scr.crit.renderIdx].Pix[i+1]
+			scr.crit.pixels.Pix[i+2] = scr.crit.bufferPixels[scr.crit.renderIdx].Pix[i+2]
+			scr.crit.pixels.Pix[i+3] = scr.crit.bufferPixels[scr.crit.renderIdx].Pix[i+3]
+
+			if scr.crit.pixels.Pix[i] == 0 && scr.crit.pixels.Pix[i+1] == 0 && scr.crit.pixels.Pix[i+2] == 0 {
+				// alpha channel records the number of frames the phosphor has
+				// been active. starting at 255 and counting down to 0
+				if scr.crit.phosphor.Pix[i+3] > 0 {
+					scr.crit.phosphor.Pix[i+3]--
+				}
+			} else {
+				// copy current render pixels into phosphor
+				scr.crit.phosphor.Pix[i] = scr.crit.bufferPixels[scr.crit.renderIdx].Pix[i]
+				scr.crit.phosphor.Pix[i+1] = scr.crit.bufferPixels[scr.crit.renderIdx].Pix[i+1]
+				scr.crit.phosphor.Pix[i+2] = scr.crit.bufferPixels[scr.crit.renderIdx].Pix[i+2]
+				scr.crit.phosphor.Pix[i+3] = 0xff
+			}
+		}
+
 		scr.crit.section.Unlock()
 
 		// let the emulator thread know it's okay to continue

@@ -38,6 +38,7 @@ type winPlayScr struct {
 
 	// textures
 	screenTexture uint32
+	phosphor      uint32
 
 	// (re)create textures on next render()
 	createTextures bool
@@ -72,6 +73,12 @@ func newWinPlayScr(img *SdlImgui) window {
 	gl.ActiveTexture(gl.TEXTURE0)
 	gl.GenTextures(1, &win.screenTexture)
 	gl.BindTexture(gl.TEXTURE_2D, win.screenTexture)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
+
+	gl.ActiveTexture(gl.TEXTURE1)
+	gl.GenTextures(1, &win.phosphor)
+	gl.BindTexture(gl.TEXTURE_2D, win.phosphor)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
 
@@ -122,8 +129,9 @@ func (win *winPlayScr) draw() {
 	// actual display
 	imgui.Image(imgui.TextureID(win.screenTexture), imgui.Vec2{win.getScaledWidth(), win.getScaledHeight()})
 
-	// capture mouse on double click
-	if !win.img.hasModal && imgui.IsMouseDoubleClicked(0) {
+	// capture mouse on double click but only if image is being hovered over
+	// and there is no modal window.
+	if !win.img.hasModal && imgui.IsItemHovered() && imgui.IsMouseDoubleClicked(0) {
 		win.img.setCapture(true)
 	}
 
@@ -152,27 +160,42 @@ func (win *winPlayScr) render() {
 
 	// get pixels
 	pixels := win.scr.crit.cropPixels
+	phosphor := win.scr.crit.cropPhosphor
 
 	gl.PixelStorei(gl.UNPACK_ROW_LENGTH, int32(pixels.Stride)/4)
 	defer gl.PixelStorei(gl.UNPACK_ROW_LENGTH, 0)
-
-	gl.ActiveTexture(gl.TEXTURE0)
 
 	if win.createTextures {
 		win.createTextures = false
 
 		// (re)create textures
+		gl.ActiveTexture(gl.TEXTURE0)
 		gl.BindTexture(gl.TEXTURE_2D, win.screenTexture)
 		gl.TexImage2D(gl.TEXTURE_2D, 0,
 			gl.RGBA, int32(pixels.Bounds().Size().X), int32(pixels.Bounds().Size().Y), 0,
 			gl.RGBA, gl.UNSIGNED_BYTE,
 			gl.Ptr(pixels.Pix))
+
+		gl.ActiveTexture(gl.TEXTURE1)
+		gl.BindTexture(gl.TEXTURE_2D, win.phosphor)
+		gl.TexImage2D(gl.TEXTURE_2D, 0,
+			gl.RGBA, int32(phosphor.Bounds().Size().X), int32(phosphor.Bounds().Size().Y), 0,
+			gl.RGBA, gl.UNSIGNED_BYTE,
+			gl.Ptr(phosphor.Pix))
 	} else if win.scr.crit.isStable {
+		gl.ActiveTexture(gl.TEXTURE0)
 		gl.BindTexture(gl.TEXTURE_2D, win.screenTexture)
 		gl.TexSubImage2D(gl.TEXTURE_2D, 0,
 			0, 0, int32(pixels.Bounds().Size().X), int32(pixels.Bounds().Size().Y),
 			gl.RGBA, gl.UNSIGNED_BYTE,
 			gl.Ptr(pixels.Pix))
+
+		gl.ActiveTexture(gl.TEXTURE1)
+		gl.BindTexture(gl.TEXTURE_2D, win.phosphor)
+		gl.TexSubImage2D(gl.TEXTURE_2D, 0,
+			0, 0, int32(phosphor.Bounds().Size().X), int32(phosphor.Bounds().Size().Y),
+			gl.RGBA, gl.UNSIGNED_BYTE,
+			gl.Ptr(phosphor.Pix))
 	}
 }
 

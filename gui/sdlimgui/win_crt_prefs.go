@@ -118,7 +118,7 @@ func (win *winCRTPrefs) draw() {
 	win.settingsH = measureHeight(func() {
 		imgui.BeginGroup()
 
-		win.drawGamma()
+		win.drawPhosphor()
 		imgui.Spacing()
 
 		win.drawMask()
@@ -135,8 +135,6 @@ func (win *winCRTPrefs) draw() {
 
 		win.drawVignette()
 		imgui.Spacing()
-
-		win.drawMaskScanlineScaling()
 
 		imgui.EndGroup()
 	})
@@ -161,17 +159,14 @@ func (win *winCRTPrefs) drawEnabled() {
 	}
 }
 
-func (win *winCRTPrefs) drawGamma() {
-	imgui.Text("Input Gamma")
-	f := float32(win.img.crtPrefs.InputGamma.Get().(float64))
-	if imgui.SliderFloatV("##input Gamma", &f, 1.0, 3.0, "%.2f", 1.0) {
-		win.img.crtPrefs.InputGamma.Set(f)
+func (win *winCRTPrefs) drawPhosphor() {
+	b := win.img.crtPrefs.Phosphor.Get().(bool)
+	if imgui.Checkbox("Phosphor##phosphor", &b) {
+		win.img.crtPrefs.Phosphor.Set(b)
 	}
-
-	imgui.Text("Output Gamma")
-	f = float32(win.img.crtPrefs.OutputGamma.Get().(float64))
-	if imgui.SliderFloatV("##output Gamma", &f, 1.0, 3.0, "%.2f", 1.0) {
-		win.img.crtPrefs.OutputGamma.Set(f)
+	f := float32(win.img.crtPrefs.PhosphorSpeed.Get().(float64))
+	if imgui.SliderFloatV("##phosphorspeed", &f, 0.5, 1.2, "%.2f", 1.0) {
+		win.img.crtPrefs.PhosphorSpeed.Set(f)
 	}
 }
 
@@ -194,14 +189,6 @@ func (win *winCRTPrefs) drawScanlines() {
 	f := float32(win.img.crtPrefs.ScanlinesBrightness.Get().(float64))
 	if imgui.SliderFloatV("##scanlinesbrightness", &f, 0.0, 1.0, "%.2f", 1.0) {
 		win.img.crtPrefs.ScanlinesBrightness.Set(f)
-	}
-}
-
-func (win *winCRTPrefs) drawMaskScanlineScaling() {
-	f := int32(win.img.crtPrefs.MaskScanlineScaling.Get().(int))
-	imgui.Text("Mask/Scanline Scaling")
-	if imgui.SliderIntV("##scaling", &f, 1, 3, "%d", imgui.SlidersFlagsNone) {
-		win.img.crtPrefs.MaskScanlineScaling.Set(f)
 	}
 }
 
