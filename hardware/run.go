@@ -20,6 +20,10 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 )
 
+// checking continue condition every Run iteration is too frequent. A modest
+// brake on how often it is called improves and smooths out performance.
+const continueCheckFreq = 100
+
 // Run sets the emulation running as quickly as possible. continuteCheck()
 // should return false when an external event (eg. a GUI event) indicates that
 // the emulation should stop.
@@ -59,6 +63,7 @@ func (vcs *VCS) Run(continueCheck func() (bool, error)) error {
 	}
 
 	cont := true
+	contCt := 0
 	for cont {
 		err = vcs.CPU.ExecuteInstruction(videoCycle)
 		if err != nil {
@@ -74,7 +79,13 @@ func (vcs *VCS) Run(continueCheck func() (bool, error)) error {
 				return err
 			}
 		}
-		cont, err = continueCheck()
+
+		// only call continue check every N iterations
+		contCt++
+		if contCt%continueCheckFreq == 0 {
+			cont, err = continueCheck()
+			contCt = 0
+		}
 	}
 
 	return err
