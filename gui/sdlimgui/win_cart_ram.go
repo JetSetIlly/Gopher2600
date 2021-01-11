@@ -84,6 +84,8 @@ func (win *winCartRAM) draw() {
 		a := win.img.lz.Cart.RAM[bank]
 		b := comp[bank]
 		if imgui.BeginTabItem(a.Label) {
+			imgui.BeginChildV("scrollable", imgui.Vec2{X: 0, Y: imguiRemainingWinHeight() - win.statusHeight}, false, 0)
+
 			// show cartridge origin for mapped RAM banks
 			origin := a.Origin
 			if win.img.lz.Prefs.FxxxMirror {
@@ -99,9 +101,10 @@ func (win *winCartRAM) draw() {
 					})
 				})
 
+			imgui.EndChild()
+
 			// status line
 			win.statusHeight = measureHeight(func() {
-				imgui.Text("")
 				if a.Mapped {
 					imguiBooleanButtonV(win.img.cols, true, " mapped ", win.mappedIndicatorDim)
 				} else {

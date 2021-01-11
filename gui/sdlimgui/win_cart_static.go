@@ -77,6 +77,8 @@ func (win *winCartStatic) draw() {
 		a := win.img.lz.Cart.Static[segment]
 		b := comp[segment]
 		if imgui.BeginTabItemV(a.Segment, nil, 0) {
+			imgui.BeginChildV("scrollable", imgui.Vec2{X: 0, Y: imguiRemainingWinHeight()}, false, 0)
+
 			seg := segment
 			drawByteGrid(a.Data, b.Data, win.img.cols.ValueDiff, 0,
 				func(addr uint16, data uint8) {
@@ -85,6 +87,9 @@ func (win *winCartStatic) draw() {
 						win.img.lz.Dbg.VCS.Mem.Cart.GetRAMbus().PutRAM(seg, idx, data)
 					})
 				})
+
+			imgui.EndChild()
+
 			imgui.EndTabItem()
 		}
 	}

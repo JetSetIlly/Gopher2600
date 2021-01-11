@@ -180,6 +180,10 @@ func imguiSeparator() {
 
 // draw grid of bytes. useful for memory representation (RAM, etc.)
 func drawByteGrid(data []uint8, cmp []uint8, diffCol imgui.Vec4, base uint16, commit func(uint16, uint8)) {
+	// format string for column headers. the number of digits required depends
+	// on the length of the data slice
+	columnFormat := fmt.Sprintf("%%0%dx- ", len(fmt.Sprintf("%x", len(data)-1))-1)
+
 	imgui.PushStyleVarVec2(imgui.StyleVarItemSpacing, imgui.Vec2{})
 	imgui.PushItemWidth(imguiTextWidth(2))
 
@@ -209,7 +213,7 @@ func drawByteGrid(data []uint8, cmp []uint8, diffCol imgui.Vec4, base uint16, co
 				// draw column header
 				if j == 0 {
 					imgui.AlignTextToFramePadding()
-					imgui.Text(fmt.Sprintf("%03x- ", addr/16))
+					imgui.Text(fmt.Sprintf(columnFormat, addr/16))
 					imgui.SameLine()
 				} else {
 					imgui.SameLine()
