@@ -16,9 +16,6 @@
 package sdlimgui
 
 import (
-	"fmt"
-	"strconv"
-
 	"github.com/inkyblackness/imgui-go/v3"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/savekey"
 )
@@ -74,88 +71,31 @@ func (win *winSaveKeyEEPROM) draw() {
 	imgui.SetNextWindowSizeV(imgui.Vec2{394, 356}, imgui.ConditionFirstUseEver)
 	imgui.BeginV(winSaveKeyEEPROMTitle, &win.open, 0)
 
-	win.drawGrid(win.img.lz.SaveKey.EEPROMdata)
-	win.drawStatusLine()
+	imgui.BeginChildV("eepromData", imgui.Vec2{X: 0, Y: imguiRemainingWinHeight() - win.statusHeight}, false, 0)
 
-	imgui.End()
-}
-
-func (win *winSaveKeyEEPROM) drawStatusLine() {
-	statusHeight := imgui.CursorPosY()
-
-	imgui.Spacing()
-	imgui.Spacing()
-	imgui.Spacing()
-
-	if imgui.Button("Save to disk") {
-		win.img.lz.Dbg.PushRawEvent(func() {
-			if sk, ok := win.img.lz.Dbg.VCS.RIOT.Ports.Player1.(*savekey.SaveKey); ok {
-				sk.EEPROM.Write()
-			}
+	drawByteGrid(win.img.lz.SaveKey.EEPROMdata, win.img.lz.SaveKey.EEPROMdiskData, win.img.cols.ValueDiff, 0x00,
+		func(addr uint16, data uint8) {
+			win.img.lz.Dbg.PushRawEvent(func() {
+				if sk, ok := win.img.lz.Dbg.VCS.RIOT.Ports.Player1.(*savekey.SaveKey); ok {
+					sk.EEPROM.Poke(addr, data)
+				}
+			})
 		})
-	}
-	imgui.SameLine()
-
-	imgui.AlignTextToFramePadding()
-	if win.img.lz.SaveKey.Dirty {
-		imgui.Text("Data is NOT saved")
-	} else {
-		imgui.Text("Data is saved")
-	}
-
-	win.statusHeight = imgui.CursorPosY() - statusHeight
-}
-
-func (win *winSaveKeyEEPROM) drawGrid(a []byte) {
-	imgui.PushStyleVarVec2(imgui.StyleVarItemSpacing, imgui.Vec2{})
-	imgui.PushItemWidth(imguiTextWidth(2))
-
-	// draw headers for each column
-	headerDim := imgui.Vec2{X: imguiTextWidth(5), Y: imgui.CursorPosY()}
-	for i := 0; i < 16; i++ {
-		imgui.SetCursorPos(headerDim)
-		headerDim.X += imguiTextWidth(2)
-		imgui.AlignTextToFramePadding()
-		imgui.Text(fmt.Sprintf("-%x", i))
-	}
-
-	height := imguiRemainingWinHeight() - win.statusHeight
-	imgui.BeginChildV("eeprom", imgui.Vec2{X: 0, Y: height}, false, 0)
-
-	// draw rows
-	var clipper imgui.ListClipper
-	clipper.Begin(len(a) / 16)
-	for clipper.Step() {
-		for i := clipper.DisplayStart; i < clipper.DisplayEnd; i++ {
-			offset := (i * 16)
-			imgui.AlignTextToFramePadding()
-			imgui.Text(fmt.Sprintf("%03x- ", i))
-			imgui.SameLine()
-
-			for j := 0; j < 16; j++ {
-				imgui.SameLine()
-				win.drawEditByte(uint16(offset+j), a[offset+j])
-			}
-		}
-	}
 
 	imgui.EndChild()
 
-	imgui.PopItemWidth()
-	imgui.PopStyleVar()
-}
+	win.statusHeight = measureHeight(func() {
+		imgui.Spacing()
+		imgui.Spacing()
 
-func (win *winSaveKeyEEPROM) drawEditByte(address uint16, data byte) {
-	l := fmt.Sprintf("##%d", address)
-	content := fmt.Sprintf("%02x", data)
-
-	if imguiHexInput(l, 2, &content) {
-		if v, err := strconv.ParseUint(content, 16, 8); err == nil {
+		if imgui.Button("Save to disk") {
 			win.img.lz.Dbg.PushRawEvent(func() {
 				if sk, ok := win.img.lz.Dbg.VCS.RIOT.Ports.Player1.(*savekey.SaveKey); ok {
-					sk.EEPROM.Poke(address, uint8(v))
+					sk.EEPROM.Write()
 				}
 			})
 		}
-	}
+	})
+
+	imgui.End()
 }

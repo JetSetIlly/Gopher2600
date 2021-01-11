@@ -186,56 +186,66 @@ func drawByteGrid(data []uint8, cmp []uint8, diffCol imgui.Vec4, base uint16, co
 	defer imgui.PopStyleVar()
 	defer imgui.PopItemWidth()
 
+	const gridWidth = 16
+
 	// draw headers for each column
 	headerDim := imgui.Vec2{X: imguiTextWidth(4), Y: imgui.CursorPosY()}
-	for i := 0; i < 16; i++ {
+	for i := 0; i < gridWidth; i++ {
 		imgui.SetCursorPos(headerDim)
 		headerDim.X += imguiTextWidth(2)
 		imgui.AlignTextToFramePadding()
 		imgui.Text(fmt.Sprintf("-%x", i))
 	}
 
-	for i := 0; i < len(data); i++ {
-		addr := base + uint16(i)
+	var clipper imgui.ListClipper
+	clipper.Begin(len(data) / gridWidth)
 
-		// draw row header
-		if i%16 == 0 {
-			imgui.AlignTextToFramePadding()
-			imgui.Text(fmt.Sprintf("%02x- ", addr/16))
-			imgui.SameLine()
-		} else {
-			imgui.SameLine()
-		}
+	for clipper.Step() {
+		for i := clipper.DisplayStart; i < clipper.DisplayEnd; i++ {
+			for j := 0; j < gridWidth; j++ {
+				offset := uint16(i*gridWidth) + uint16(j)
+				addr := base + offset
 
-		// editable byte
-		b := data[i]
+				// draw column header
+				if j == 0 {
+					imgui.AlignTextToFramePadding()
+					imgui.Text(fmt.Sprintf("%03x- ", addr/16))
+					imgui.SameLine()
+				} else {
+					imgui.SameLine()
+				}
 
-		// compare current RAM value with value in comparison snapshot and use
-		// highlight color if it is different
-		c := b
-		if cmp != nil {
-			c = cmp[i]
-		}
-		if b != c {
-			imgui.PushStyleColor(imgui.StyleColorFrameBg, diffCol)
-		}
+				// editable byte
+				b := data[offset]
 
-		s := fmt.Sprintf("%02x", b)
-		if imguiHexInput(fmt.Sprintf("##%d", addr), 2, &s) {
-			if v, err := strconv.ParseUint(s, 16, 8); err == nil {
-				commit(addr, uint8(v))
+				// compare current RAM value with value in comparison snapshot and use
+				// highlight color if it is different
+				c := b
+				if cmp != nil {
+					c = cmp[offset]
+				}
+				if b != c {
+					imgui.PushStyleColor(imgui.StyleColorFrameBg, diffCol)
+				}
+
+				s := fmt.Sprintf("%02x", b)
+				if imguiHexInput(fmt.Sprintf("##%d", addr), 2, &s) {
+					if v, err := strconv.ParseUint(s, 16, 8); err == nil {
+						commit(addr, uint8(v))
+					}
+				}
+
+				if imgui.IsItemHovered() && b != c {
+					imgui.BeginTooltip()
+					imgui.Text(fmt.Sprintf("was %02x -> is now %02x", c, b))
+					imgui.EndTooltip()
+				}
+
+				// undo any color changes
+				if b != c {
+					imgui.PopStyleColor()
+				}
 			}
-		}
-
-		if imgui.IsItemHovered() && b != c {
-			imgui.BeginTooltip()
-			imgui.Text(fmt.Sprintf("was %02x -> is now %02x", c, b))
-			imgui.EndTooltip()
-		}
-
-		// undo any color changes
-		if b != c {
-			imgui.PopStyleColor()
 		}
 	}
 }

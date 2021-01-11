@@ -28,27 +28,27 @@ type LazySaveKey struct {
 	saveKeyActive atomic.Value // bool
 	SaveKeyActive bool
 
-	sda        atomic.Value // []float32
-	scl        atomic.Value // []float32
-	state      atomic.Value // savekey.MessageState
-	dir        atomic.Value // savekey.DataDirection
-	ack        atomic.Value // bool
-	bits       atomic.Value // uint8
-	bitsCt     atomic.Value // int
-	address    atomic.Value // uint16
-	eepromData atomic.Value // []uint8
-	dirty      atomic.Value // bool
+	sda            atomic.Value // []float32
+	scl            atomic.Value // []float32
+	state          atomic.Value // savekey.MessageState
+	dir            atomic.Value // savekey.DataDirection
+	ack            atomic.Value // bool
+	bits           atomic.Value // uint8
+	bitsCt         atomic.Value // int
+	address        atomic.Value // uint16
+	eepromData     atomic.Value // []uint8
+	eepromDiskData atomic.Value // []uint8
 
-	SDA        []float32
-	SCL        []float32
-	State      savekey.MessageState
-	Dir        savekey.DataDirection
-	Ack        bool
-	Bits       uint8
-	BitsCt     int
-	Address    uint16
-	EEPROMdata []uint8
-	Dirty      bool
+	SDA            []float32
+	SCL            []float32
+	State          savekey.MessageState
+	Dir            savekey.DataDirection
+	Ack            bool
+	Bits           uint8
+	BitsCt         int
+	Address        uint16
+	EEPROMdata     []uint8
+	EEPROMdiskData []uint8
 }
 
 func newLazySaveKey(val *LazyValues) *LazySaveKey {
@@ -66,8 +66,9 @@ func (lz *LazySaveKey) push() {
 		lz.bits.Store(sk.Bits)
 		lz.bitsCt.Store(sk.BitsCt)
 		lz.address.Store(sk.EEPROM.Address)
-		lz.eepromData.Store(sk.EEPROM.Copy())
-		lz.dirty.Store(sk.EEPROM.Dirty)
+		d, dd := sk.EEPROM.Copy()
+		lz.eepromData.Store(d)
+		lz.eepromDiskData.Store(dd)
 	} else {
 		lz.saveKeyActive.Store(false)
 	}
@@ -96,9 +97,10 @@ func (lz *LazySaveKey) update() {
 	lz.BitsCt = lz.bitsCt.Load().(int)
 	lz.Address = lz.address.Load().(uint16)
 
-	if l, ok := lz.eepromData.Load().([]uint8); ok {
-		lz.EEPROMdata = l
+	if d, ok := lz.eepromData.Load().([]uint8); ok {
+		lz.EEPROMdata = d
 	}
-
-	lz.Dirty = lz.dirty.Load().(bool)
+	if dd, ok := lz.eepromDiskData.Load().([]uint8); ok {
+		lz.EEPROMdiskData = dd
+	}
 }

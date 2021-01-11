@@ -32,25 +32,26 @@ type EEPROM struct {
 	// the next address an i2c read/write operation will access
 	Address uint16
 
-	// whether data is in memory is synced with copy on disk
-	Dirty bool
-
 	// amend data only through put() and Poke()
 	data []uint8
+
+	// the data as it is on disk. data is mutable and we need a way of
+	// comparing what's on disk with what's in memory.
+	diskData []uint8
 }
 
 // NewEeprom is the preferred metho of initialisation for the EEPROM type. This
 // function will initialise the memory and Read() any existing data from disk.
 func newEeprom() *EEPROM {
 	ee := &EEPROM{
-		data: make([]uint8, eepromSize),
+		data:     make([]uint8, eepromSize),
+		diskData: make([]uint8, eepromSize),
 	}
 
 	// initialise data with 0xff
 	for i := range ee.data {
 		ee.data[i] = 0xff
 	}
-	ee.Dirty = true
 
 	// load of disk
 	ee.Read()
@@ -90,10 +91,10 @@ func (ee *EEPROM) Read() {
 		return
 	}
 
-	logger.Log("savekey", fmt.Sprintf("savekey file loaded from %s", fn))
+	// copy of data read from disk
+	copy(ee.diskData, ee.data)
 
-	// data is synced with disk
-	ee.Dirty = false
+	logger.Log("savekey", fmt.Sprintf("savekey file loaded from %s", fn))
 }
 
 // Write EEPROM data to disk.
@@ -129,20 +130,18 @@ func (ee *EEPROM) Write() {
 
 	logger.Log("savekey", fmt.Sprintf("savekey file saved to %s", fn))
 
-	// data is synced with disk
-	ee.Dirty = false
+	// copy of data that's just bee written to disk
+	copy(ee.diskData, ee.data)
 }
 
 // Poke a value into EEPROM.
 func (ee *EEPROM) Poke(address uint16, data uint8) {
 	ee.data[address] = data
-	ee.Dirty = true
 }
 
 func (ee *EEPROM) put(v uint8) {
 	ee.data[ee.Address] = v
 	ee.nextAddress()
-	ee.Dirty = true
 }
 
 func (ee *EEPROM) get() uint8 {
@@ -161,8 +160,10 @@ func (ee *EEPROM) nextAddress() {
 }
 
 // Copy EEPROM data to a new array.
-func (ee *EEPROM) Copy() []uint8 {
+func (ee *EEPROM) Copy() ([]uint8, []uint8) {
 	d := make([]uint8, len(ee.data))
+	dd := make([]uint8, len(ee.diskData))
 	copy(d, ee.data)
-	return d
+	copy(dd, ee.diskData)
+	return d, dd
 }
