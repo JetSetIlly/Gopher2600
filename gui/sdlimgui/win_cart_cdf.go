@@ -47,6 +47,10 @@ func (win *winCDFRegisters) id() string {
 	return winCDFRegistersTitle
 }
 
+func (win *winCDFRegisters) menuLabel() string {
+	return winCDFRegistersTitle
+}
+
 func (win *winCDFRegisters) isOpen() bool {
 	return win.open
 }

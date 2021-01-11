@@ -50,6 +50,10 @@ func (win *winCartRAM) id() string {
 	return winCartRAMTitle
 }
 
+func (win *winCartRAM) menuLabel() string {
+	return winCartRAMTitle
+}
+
 func (win *winCartRAM) isOpen() bool {
 	return win.open
 }
@@ -86,11 +90,12 @@ func (win *winCartRAM) draw() {
 				origin = (origin & memorymap.CartridgeBits) | memorymap.OriginCartFxxxMirror
 			}
 
+			bnk := bank
 			drawByteGrid(a.Data, b.Data, win.img.cols.ValueDiff, origin,
 				func(addr uint16, data uint8) {
 					win.img.lz.Dbg.PushRawEvent(func() {
 						idx := int(addr - origin)
-						win.img.lz.Dbg.VCS.Mem.Cart.GetRAMbus().PutRAM(bank, idx, data)
+						win.img.lz.Dbg.VCS.Mem.Cart.GetRAMbus().PutRAM(bnk, idx, data)
 					})
 				})
 

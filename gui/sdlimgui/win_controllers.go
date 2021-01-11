@@ -52,6 +52,10 @@ func (win *winControllers) id() string {
 	return winControllersTitle
 }
 
+func (win *winControllers) menuLabel() string {
+	return winControllersTitle
+}
+
 func (win *winControllers) isOpen() bool {
 	return win.open
 }

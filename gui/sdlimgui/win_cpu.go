@@ -50,6 +50,10 @@ func (win *winCPU) id() string {
 	return winCPUTitle
 }
 
+func (win *winCPU) menuLabel() string {
+	return winCPUTitle
+}
+
 func (win *winCPU) isOpen() bool {
 	return win.open
 }

@@ -24,7 +24,7 @@ import (
 )
 
 const winSaveKeyEEPROMTitle = "SaveKey EEPROM"
-const menuSaveKeyEEPROMTitle = "EEPROM"
+const winSaveKeyEEPROMMenu = "EEPROM"
 
 type winSaveKeyEEPROM struct {
 	img  *SdlImgui
@@ -47,6 +47,10 @@ func (win *winSaveKeyEEPROM) destroy() {
 
 func (win *winSaveKeyEEPROM) id() string {
 	return winSaveKeyEEPROMTitle
+}
+
+func (win *winSaveKeyEEPROM) menuLabel() string {
+	return winSaveKeyEEPROMMenu
 }
 
 func (win *winSaveKeyEEPROM) isOpen() bool {

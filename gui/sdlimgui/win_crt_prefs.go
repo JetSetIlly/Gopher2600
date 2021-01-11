@@ -66,6 +66,10 @@ func (win *winCRTPrefs) id() string {
 	return winCRTPrefsTitle
 }
 
+func (win *winCRTPrefs) menuLabel() string {
+	return winCRTPrefsTitle
+}
+
 func (win *winCRTPrefs) isOpen() bool {
 	return win.open
 }

@@ -51,6 +51,10 @@ func (win *winAudio) id() string {
 	return winAudioTitle
 }
 
+func (win *winAudio) menuLabel() string {
+	return winAudioTitle
+}
+
 func (win *winAudio) isOpen() bool {
 	return win.open
 }

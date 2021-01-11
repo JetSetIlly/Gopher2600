@@ -42,6 +42,10 @@ func (win *winRAM) id() string {
 	return winRAMTitle
 }
 
+func (win *winRAM) menuLabel() string {
+	return winRAMTitle
+}
+
 func (win *winRAM) isOpen() bool {
 	return win.open
 }

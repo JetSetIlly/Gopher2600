@@ -44,6 +44,10 @@ func (win *winLog) id() string {
 	return winLogTitle
 }
 
+func (win *winLog) menuLabel() string {
+	return winLogTitle
+}
+
 func (win *winLog) isOpen() bool {
 	return win.open
 }

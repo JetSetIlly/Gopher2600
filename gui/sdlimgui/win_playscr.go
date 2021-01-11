@@ -95,6 +95,10 @@ func (win *winPlayScr) id() string {
 	return winPlayScrTitle
 }
 
+func (win *winPlayScr) menuLabel() string {
+	return winPlayScrTitle
+}
+
 func (win *winPlayScr) isOpen() bool {
 	return win.open
 }

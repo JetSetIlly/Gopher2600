@@ -31,7 +31,7 @@ const (
 	idleSleepPeriod  = 500
 )
 
-// time periods used to slow down / speed up event handling (in milliseconds)
+// time periods used to slow down / speed up event handling (in milliseconds).
 const (
 	frictionPeriod     = 50
 	wakefullnessPeriod = 3000 // 3 seconds

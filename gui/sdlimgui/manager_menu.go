@@ -38,9 +38,10 @@ func (wm *manager) drawMenu() {
 	// see commentary for screenPos in windowManager declaration
 	wm.screenPos = imgui.WindowPos()
 
+	// debugger menu
 	if imgui.BeginMenu(menuDebugger) {
 		for _, id := range wm.menu[menuDebugger] {
-			drawMenuEntry(wm.windows[id], id)
+			drawMenuEntry(wm.windows[id])
 		}
 
 		imguiSeparator()
@@ -51,28 +52,28 @@ func (wm *manager) drawMenu() {
 		imgui.EndMenu()
 	}
 
-	// window menu
+	// vcs menu
 	if imgui.BeginMenu(menuVCS) {
 		for _, id := range wm.menu[menuVCS] {
-			drawMenuEntry(wm.windows[id], id)
+			drawMenuEntry(wm.windows[id])
 		}
 
 		imgui.EndMenu()
 	}
 
-	// add cartridge menu
+	// cartridge menu requires some additional work
 	if _, ok := wm.menu[wm.img.lz.Cart.ID]; ok || wm.img.lz.Cart.HasRAMbus || wm.img.lz.Cart.HasStaticBus {
 		if imgui.BeginMenu(fmt.Sprintf("Cart [%s]", wm.img.lz.Cart.ID)) {
 			for _, id := range wm.menu[wm.img.lz.Cart.ID] {
-				drawMenuEntry(wm.windows[id], id)
+				drawMenuEntry(wm.windows[id])
 			}
 
 			if wm.img.lz.Cart.HasRAMbus {
-				drawMenuEntry(wm.windows[winCartRAMTitle], winCartRAMTitle)
+				drawMenuEntry(wm.windows[winCartRAMTitle])
 			}
 
 			if wm.img.lz.Cart.HasStaticBus {
-				drawMenuEntry(wm.windows[winCartStaticTitle], winCartStaticTitle)
+				drawMenuEntry(wm.windows[winCartStaticTitle])
 			}
 
 			imgui.EndMenu()
@@ -83,7 +84,7 @@ func (wm *manager) drawMenu() {
 	if wm.img.lz.Cart.IsPlusROM {
 		if imgui.BeginMenu(menuPlusROM) {
 			for _, id := range wm.menu[menuPlusROM] {
-				drawMenuEntry(wm.windows[id], id)
+				drawMenuEntry(wm.windows[id])
 			}
 			imgui.EndMenu()
 		}
@@ -93,7 +94,7 @@ func (wm *manager) drawMenu() {
 	if wm.img.lz.SaveKey.SaveKeyActive {
 		if imgui.BeginMenu(menuSaveKey) {
 			for _, id := range wm.menu[menuSaveKey] {
-				drawMenuEntry(wm.windows[id], id)
+				drawMenuEntry(wm.windows[id])
 			}
 			imgui.EndMenu()
 		}
@@ -106,17 +107,19 @@ func (wm *manager) drawMenu() {
 	imgui.EndMainMenuBar()
 }
 
-func drawMenuEntry(w window, id string) {
+func drawMenuEntry(w window) {
+	label := w.menuLabel()
+
 	// decorate the menu entry with an "window open" indicator
 	if w.isOpen() {
 		// checkmark is unicode middle dot - code 00b7
-		id = fmt.Sprintf("· %s", id)
+		label = fmt.Sprintf("· %s", label)
 	} else {
-		id = fmt.Sprintf("  %s", id)
+		label = fmt.Sprintf("  %s", label)
 	}
 
 	// window menu entries are toggleable
-	if imgui.Selectable(id) {
+	if imgui.Selectable(label) {
 		if w.isOpen() {
 			w.setOpen(false)
 		} else {

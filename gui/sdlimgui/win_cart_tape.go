@@ -47,6 +47,10 @@ func (win *winCartTape) id() string {
 	return winCartTapeTitle
 }
 
+func (win *winCartTape) menuLabel() string {
+	return winCartTapeTitle
+}
+
 func (win *winCartTape) isOpen() bool {
 	return win.open
 }

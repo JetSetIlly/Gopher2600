@@ -133,7 +133,7 @@ func (lmtr *limiter) checkScanline() {
 	}
 }
 
-// measures frame rate on every tick of the measuringPulse ticker
+// measures frame rate on every tick of the measuringPulse ticker.
 func (lmtr *limiter) measureActual() {
 	select {
 	case <-lmtr.measuringPulse.C:

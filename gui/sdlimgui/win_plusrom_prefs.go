@@ -23,7 +23,7 @@ import (
 )
 
 const winPlusROMPrefsTitle = "PlusROM Preferences"
-const menuPlusROMPrefsTitle = "Preferences"
+const winPlusROMPrefsMenu = "Preferences"
 
 type winPlusROMPrefs struct {
 	img  *SdlImgui
@@ -46,6 +46,10 @@ func (win *winPlusROMPrefs) destroy() {
 
 func (win *winPlusROMPrefs) id() string {
 	return winPlusROMPrefsTitle
+}
+
+func (win *winPlusROMPrefs) menuLabel() string {
+	return winPlusROMPrefsMenu
 }
 
 func (win *winPlusROMPrefs) isOpen() bool {

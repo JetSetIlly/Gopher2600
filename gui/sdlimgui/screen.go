@@ -421,6 +421,13 @@ func (scr *screen) render() {
 		if scr.crit.renderIdx == scr.crit.plotIdx {
 			scr.crit.renderIdx = v
 			scr.crit.section.Unlock()
+
+			// old versions of this code returns from the render() function at
+			// this point, skipped the scr.renderers loop below. this was okay
+			// but it caused problems with the phosphor texture, particularly
+			// when the CRT prefs window was open. precise reason for this is
+			// unknown but completing the render function normally fixes the
+			// problem.
 		} else {
 			scr.copyPixels()
 			scr.crit.section.Unlock()
@@ -445,7 +452,7 @@ func (scr *screen) render() {
 	}
 }
 
-// copy pixels from buffer to the pixels and update phosphor pixels
+// copy pixels from buffer to the pixels and update phosphor pixels.
 func (scr *screen) copyPixels() {
 	// copy pixels from render buffer to the live copy.
 	for i := 0; i < len(scr.crit.bufferPixels[scr.crit.renderIdx].Pix); i += 4 {

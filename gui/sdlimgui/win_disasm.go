@@ -97,6 +97,10 @@ func (win *winDisasm) id() string {
 	return winDisasmTitle
 }
 
+func (win *winDisasm) menuLabel() string {
+	return winDisasmTitle
+}
+
 func (win *winDisasm) isOpen() bool {
 	return win.open
 }
@@ -204,7 +208,6 @@ func (win *winDisasm) draw() {
 	// unset hasAlignedOnPC if alignOnPC has been set (either by
 	// pcaddrPrevFramee moving on of the "Goto PC" button being pressed)
 	win.hasAlignedOnPC = !win.alignOnPC
-
 }
 
 // draw a bank for each tabitem in the tab bar. if there is only one bank then

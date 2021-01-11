@@ -52,6 +52,10 @@ func (win *winChipRegisters) id() string {
 	return winChipRegistersTitle
 }
 
+func (win *winChipRegisters) menuLabel() string {
+	return winChipRegistersTitle
+}
+
 func (win *winChipRegisters) isOpen() bool {
 	return win.open
 }

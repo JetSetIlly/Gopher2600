@@ -52,7 +52,7 @@ type imguiColors struct {
 	CPUStatusOn  imgui.Vec4
 	CPUStatusOff imgui.Vec4
 
-	// color showing that a value is different to the correpsonding value at
+	// color showing that a value is different to the corresponding value at
 	// the comparison point
 	ValueDiff imgui.Vec4
 

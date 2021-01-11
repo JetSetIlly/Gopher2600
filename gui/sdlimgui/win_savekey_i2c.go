@@ -24,7 +24,7 @@ import (
 )
 
 const winSaveKeyI2CTitle = "SaveKey I2C"
-const menuSaveKeyI2CTitle = "I2C"
+const winSaveKeyI2CMenu = "I2C"
 
 type winSaveKeyI2C struct {
 	img  *SdlImgui
@@ -57,6 +57,10 @@ func (win *winSaveKeyI2C) destroy() {
 
 func (win *winSaveKeyI2C) id() string {
 	return winSaveKeyI2CTitle
+}
+
+func (win *winSaveKeyI2C) menuLabel() string {
+	return winSaveKeyI2CMenu
 }
 
 func (win *winSaveKeyI2C) isOpen() bool {

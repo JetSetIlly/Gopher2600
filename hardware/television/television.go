@@ -467,7 +467,7 @@ func (tv *Television) newFrame(synced bool) error {
 
 // processSignals forwards pixels in the signalHistory buffer to all pixel renderers.
 //
-// the "current" argument defines how many pixels to push. if all is true then
+// the "current" argument defines how many pixels to push. if all is true then.
 func (tv *Television) processSignals(current bool) error {
 	if !tv.pauseRendering {
 		lmt := tv.currentIdx
@@ -486,7 +486,6 @@ func (tv *Television) processSignals(current bool) error {
 				if tv.reflector != nil {
 					tv.reflector.SyncReflectionPixel(i)
 				}
-
 			}
 			r.UpdatingPixels(false)
 		}

@@ -88,7 +88,7 @@ func CartridgeMemory(mem *cartridge.Cartridge, patchFile string) (bool, error) {
 	return true, nil
 }
 
-// cmp -l <old_file> <new_file>
+// cmp -l <old_file> <new_file>.
 func cmpStyle(mem *cartridge.Cartridge, buffer []byte) error {
 	// walk through lines
 	lines := strings.Split(string(buffer), "\n")

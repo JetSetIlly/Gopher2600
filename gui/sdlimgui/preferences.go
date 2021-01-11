@@ -29,7 +29,7 @@ type preferences struct {
 	img *SdlImgui
 
 	// two disk objects so we can load and save the  preferences assigned to
-	// them seperately. both use the same prefs file
+	// them separately. both use the same prefs file.
 	dsk    *prefs.Disk
 	dskWin *prefs.Disk
 
@@ -174,9 +174,9 @@ func (p *preferences) save() error {
 }
 
 // loadWin preferences from disk.
-func (p *preferences) loadWin() error {
-	return p.dskWin.Load(false)
-}
+// func (p *preferences) loadWin() error {
+// 	return p.dskWin.Load(false)
+// }
 
 // saveWin preferences to disk.
 func (p *preferences) saveWin() error {

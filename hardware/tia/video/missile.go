@@ -71,7 +71,7 @@ type MissileSprite struct {
 	lastTickFromHmove bool
 
 	// ^^^ the above are common to all sprite types ^^^
-	//(see player sprite for commentary)
+	// (see player sprite for commentary)
 
 	Color         uint8 // equal to missile color
 	Enabled       bool

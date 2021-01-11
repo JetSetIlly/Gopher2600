@@ -70,6 +70,10 @@ func (win *winTerm) id() string {
 	return winTermTitle
 }
 
+func (win *winTerm) menuLabel() string {
+	return winTermTitle
+}
+
 func (win *winTerm) isOpen() bool {
 	return win.open
 }

@@ -25,6 +25,7 @@ import (
 type window interface {
 	init()
 	id() string
+	menuLabel() string
 	destroy()
 	draw()
 	isOpen() bool
@@ -71,14 +72,14 @@ type manager struct {
 }
 
 // windowDef specifies a window creator, the menu it appears in whether it
-// should open on start
+// should open on start.
 type windowDef struct {
 	create func(*SdlImgui) (window, error)
 	menu   string
 	open   bool
 }
 
-// list of windows to add to the window manager
+// list of windows to add to the window manager.
 var windowDefs = [...]windowDef{
 	// windows called from "debugger" menu
 	{create: newFileSelector, menu: menuDebugger},
@@ -120,7 +121,7 @@ var windowDefs = [...]windowDef{
 	{create: newWinSaveKeyEEPROM, menu: menuSaveKey},
 }
 
-// list of windows that can be opened in playmode in addition to the debugger
+// list of windows that can be opened in playmode in addition to the debugger.
 var playmodeWindows = [...]string{
 	winCRTPrefsTitle,
 }

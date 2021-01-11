@@ -155,7 +155,7 @@ func imguiLabel(text string) {
 	imgui.SameLine()
 }
 
-// position cursor for indented imgui.Text()
+// position cursor for indented imgui.Text().
 func imguiIndentText(text string) {
 	p := imgui.CursorPos()
 	p.X += 10
@@ -262,7 +262,7 @@ func (img *SdlImgui) imguiWindowQuadrant(p imgui.Vec2) imgui.Vec2 {
 	return q
 }
 
-// packedPalette is an array of imgui.PackedColor
+// packedPalette is an array of imgui.PackedColor.
 type packedPalette []imgui.PackedColor
 
 // use appropriate palette for television spec.

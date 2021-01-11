@@ -49,6 +49,10 @@ func (win *winCollisions) id() string {
 	return winCollisionsTitle
 }
 
+func (win *winCollisions) menuLabel() string {
+	return winCollisionsTitle
+}
+
 func (win *winCollisions) isOpen() bool {
 	return win.open
 }

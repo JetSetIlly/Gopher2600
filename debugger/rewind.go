@@ -66,7 +66,7 @@ func (dbg *Debugger) CatchUpLoop(continueCheck func() bool) error {
 func (dbg *Debugger) PushRewind(fn int, last bool) bool {
 	// try pushing to the rewinding channel.
 	//
-	// if we cannot then that means a rewind is currenly taking place and we
+	// if we cannot then that means a rewind is currently taking place and we
 	// return false to indicate that the request rewind has not taken place yet.
 	select {
 	case dbg.rewinding <- true:
@@ -132,7 +132,7 @@ func (dbg *Debugger) PushRewind(fn int, last bool) bool {
 func (dbg *Debugger) PushGotoCoords(scanline int, horizpos int) {
 	// try pushing to rewinding channel. do not continue if we cannot.
 	//
-	// unlike PushRewind() no indicator of sucess is returned. the request is
+	// unlike PushRewind() no indicator of success is returned. the request is
 	// just dropped.
 	select {
 	case dbg.rewinding <- true:

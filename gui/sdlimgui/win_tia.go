@@ -68,6 +68,10 @@ func (win *winTIA) id() string {
 	return winTIATitle
 }
 
+func (win *winTIA) menuLabel() string {
+	return winTIATitle
+}
+
 func (win *winTIA) isOpen() bool {
 	return win.open
 }

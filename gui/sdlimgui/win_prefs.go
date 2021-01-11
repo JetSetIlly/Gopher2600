@@ -47,6 +47,10 @@ func (win *winPrefs) id() string {
 	return winPrefsTile
 }
 
+func (win *winPrefs) menuLabel() string {
+	return winPrefsTile
+}
+
 func (win *winPrefs) isOpen() bool {
 	return win.open
 }

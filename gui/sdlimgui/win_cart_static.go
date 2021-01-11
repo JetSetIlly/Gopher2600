@@ -24,10 +24,6 @@ const winCartStaticTitle = "Static Areas"
 type winCartStatic struct {
 	img  *SdlImgui
 	open bool
-
-	// the X position of the grid header. based on the width of the column
-	// headers (we know this value after the first pass)
-	xPos float32
 }
 
 func newWinCartStatic(img *SdlImgui) (window, error) {
@@ -43,6 +39,10 @@ func (win *winCartStatic) destroy() {
 }
 
 func (win *winCartStatic) id() string {
+	return winCartStaticTitle
+}
+
+func (win *winCartStatic) menuLabel() string {
 	return winCartStaticTitle
 }
 
@@ -77,11 +77,12 @@ func (win *winCartStatic) draw() {
 		a := win.img.lz.Cart.Static[segment]
 		b := comp[segment]
 		if imgui.BeginTabItemV(a.Segment, nil, 0) {
+			seg := segment
 			drawByteGrid(a.Data, b.Data, win.img.cols.ValueDiff, 0,
 				func(addr uint16, data uint8) {
 					win.img.lz.Dbg.PushRawEvent(func() {
 						idx := int(addr)
-						win.img.lz.Dbg.VCS.Mem.Cart.GetRAMbus().PutRAM(segment, idx, data)
+						win.img.lz.Dbg.VCS.Mem.Cart.GetRAMbus().PutRAM(seg, idx, data)
 					})
 				})
 			imgui.EndTabItem()

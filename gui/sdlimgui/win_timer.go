@@ -53,6 +53,10 @@ func (win *winTimer) id() string {
 	return winTimerTitle
 }
 
+func (win *winTimer) menuLabel() string {
+	return winTimerTitle
+}
+
 func (win *winTimer) isOpen() bool {
 	return win.open
 }

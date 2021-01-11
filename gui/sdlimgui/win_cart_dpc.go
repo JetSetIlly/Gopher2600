@@ -47,6 +47,10 @@ func (win *winDPCregisters) id() string {
 	return winDPCregistersTitle
 }
 
+func (win *winDPCregisters) menuLabel() string {
+	return winDPCregistersTitle
+}
+
 func (win *winDPCregisters) isOpen() bool {
 	return win.open
 }

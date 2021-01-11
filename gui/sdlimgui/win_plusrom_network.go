@@ -24,7 +24,7 @@ import (
 )
 
 const winPlusROMNetworkTitle = "PlusROM Network"
-const menuPlusROMNetworkTitle = "Network"
+const winPlusROMNetworkMenu = "Network"
 
 type winPlusROMNetwork struct {
 	img  *SdlImgui
@@ -47,6 +47,10 @@ func (win *winPlusROMNetwork) destroy() {
 
 func (win *winPlusROMNetwork) id() string {
 	return winPlusROMNetworkTitle
+}
+
+func (win *winPlusROMNetwork) menuLabel() string {
+	return winPlusROMNetworkMenu
 }
 
 func (win *winPlusROMNetwork) isOpen() bool {

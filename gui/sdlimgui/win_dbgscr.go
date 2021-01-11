@@ -132,6 +132,10 @@ func (win *winDbgScr) id() string {
 	return winDbgScrTitle
 }
 
+func (win *winDbgScr) menuLabel() string {
+	return winDbgScrTitle
+}
+
 func (win *winDbgScr) isOpen() bool {
 	return win.open
 }

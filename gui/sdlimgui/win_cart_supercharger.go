@@ -49,6 +49,10 @@ func (win *winSuperchargerRegisters) id() string {
 	return winSuperchargerRegistersTitle
 }
 
+func (win *winSuperchargerRegisters) menuLabel() string {
+	return winSuperchargerRegistersTitle
+}
+
 func (win *winSuperchargerRegisters) isOpen() bool {
 	return win.open
 }

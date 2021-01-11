@@ -75,6 +75,10 @@ func (win winSelectROM) id() string {
 	return winSelectROMTitle
 }
 
+func (win winSelectROM) menuLabel() string {
+	return winSelectROMTitle
+}
+
 func (win *winSelectROM) isOpen() bool {
 	return win.open
 }
@@ -216,7 +220,6 @@ func (win *winSelectROM) draw() {
 
 	// control buttons. start controlHeight measurement
 	win.controlHeight = measureHeight(func() {
-
 		imgui.Checkbox("Show all files", &win.showAllFiles)
 		imgui.SameLine()
 		imgui.Checkbox("Show hidden entries", &win.showHidden)

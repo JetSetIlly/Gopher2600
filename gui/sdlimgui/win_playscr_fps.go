@@ -55,6 +55,10 @@ func (win *winPlayScrFPS) id() string {
 	return winPlayScrFPSTitle
 }
 
+func (win *winPlayScrFPS) menuLabel() string {
+	return winPlayScrFPSTitle
+}
+
 func (win *winPlayScrFPS) isOpen() bool {
 	return win.open
 }

@@ -61,7 +61,7 @@ const (
 	ReqVSync FeatureReq = "ReqVSync" // bool
 
 	// put gui output into full-screen mode (ie. no window border and content
-	// the size of the monitor)
+	// the size of the monitor).
 	ReqFullScreen FeatureReq = "ReqFullScreen" // bool
 
 	// the add VCS request is used to associate the gui with an emulated VCS.

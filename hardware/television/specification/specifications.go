@@ -114,7 +114,7 @@ const (
 
 // the absolute number of scanlines allowed by the TV regardless of
 // specification - value of 32 is the same as the total number of scanlines
-// used by the PAL specification
+// used by the PAL specification.
 const AbsoluteMaxScanlines = 312
 
 // SpecNTSC is the specification for NTSC television types.

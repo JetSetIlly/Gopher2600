@@ -70,6 +70,10 @@ func (win *winControl) id() string {
 	return winControlTitle
 }
 
+func (win *winControl) menuLabel() string {
+	return winControlTitle
+}
+
 func (win *winControl) isOpen() bool {
 	return win.open
 }
