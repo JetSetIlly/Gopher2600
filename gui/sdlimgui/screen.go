@@ -421,47 +421,51 @@ func (scr *screen) render() {
 		if scr.crit.renderIdx == scr.crit.plotIdx {
 			scr.crit.renderIdx = v
 			scr.crit.section.Unlock()
-			return
-		}
+		} else {
+			scr.copyPixels()
+			scr.crit.section.Unlock()
 
-		// copy pixels from render buffer to the live copy.
-		for i := 0; i < len(scr.crit.bufferPixels[scr.crit.renderIdx].Pix); i += 4 {
-			scr.crit.pixels.Pix[i] = scr.crit.bufferPixels[scr.crit.renderIdx].Pix[i]
-			scr.crit.pixels.Pix[i+1] = scr.crit.bufferPixels[scr.crit.renderIdx].Pix[i+1]
-			scr.crit.pixels.Pix[i+2] = scr.crit.bufferPixels[scr.crit.renderIdx].Pix[i+2]
-			scr.crit.pixels.Pix[i+3] = scr.crit.bufferPixels[scr.crit.renderIdx].Pix[i+3]
-
-			if scr.crit.pixels.Pix[i] == 0 && scr.crit.pixels.Pix[i+1] == 0 && scr.crit.pixels.Pix[i+2] == 0 {
-				// alpha channel records the number of frames the phosphor has
-				// been active. starting at 255 and counting down to 0
-				if scr.crit.phosphor.Pix[i+3] > 0 {
-					scr.crit.phosphor.Pix[i+3]--
-				}
-			} else {
-				// copy current render pixels into phosphor
-				scr.crit.phosphor.Pix[i] = scr.crit.bufferPixels[scr.crit.renderIdx].Pix[i]
-				scr.crit.phosphor.Pix[i+1] = scr.crit.bufferPixels[scr.crit.renderIdx].Pix[i+1]
-				scr.crit.phosphor.Pix[i+2] = scr.crit.bufferPixels[scr.crit.renderIdx].Pix[i+2]
-				scr.crit.phosphor.Pix[i+3] = 0xff
+			// let the emulator thread know it's okay to continue
+			select {
+			case <-scr.emuWait:
+				scr.emuWaitAck <- true
+			default:
 			}
 		}
-
-		scr.crit.section.Unlock()
-
-		// let the emulator thread know it's okay to continue
-		select {
-		case <-scr.emuWait:
-			scr.emuWaitAck <- true
-		default:
-		}
 	} else {
-		// for non-playmode we use the plotIdx directly, without any buffering
-		copy(scr.crit.pixels.Pix, scr.crit.bufferPixels[scr.crit.plotIdx].Pix)
+		// for non-playmode copy pixels directly (no alteration of the
+		// renderIdx value) without the vsync buffer
+		scr.copyPixels()
 		scr.crit.section.Unlock()
 	}
 
 	// update attached renderers
 	for _, r := range scr.renderers {
 		r.render()
+	}
+}
+
+// copy pixels from buffer to the pixels and update phosphor pixels
+func (scr *screen) copyPixels() {
+	// copy pixels from render buffer to the live copy.
+	for i := 0; i < len(scr.crit.bufferPixels[scr.crit.renderIdx].Pix); i += 4 {
+		scr.crit.pixels.Pix[i] = scr.crit.bufferPixels[scr.crit.renderIdx].Pix[i]
+		scr.crit.pixels.Pix[i+1] = scr.crit.bufferPixels[scr.crit.renderIdx].Pix[i+1]
+		scr.crit.pixels.Pix[i+2] = scr.crit.bufferPixels[scr.crit.renderIdx].Pix[i+2]
+		scr.crit.pixels.Pix[i+3] = scr.crit.bufferPixels[scr.crit.renderIdx].Pix[i+3]
+
+		if scr.crit.pixels.Pix[i] == 0 && scr.crit.pixels.Pix[i+1] == 0 && scr.crit.pixels.Pix[i+2] == 0 {
+			// alpha channel records the number of frames the phosphor has
+			// been active. starting at 255 and counting down to 0
+			if scr.crit.phosphor.Pix[i+3] > 0 {
+				scr.crit.phosphor.Pix[i+3]--
+			}
+		} else {
+			// copy current render pixels into phosphor
+			scr.crit.phosphor.Pix[i] = scr.crit.bufferPixels[scr.crit.renderIdx].Pix[i]
+			scr.crit.phosphor.Pix[i+1] = scr.crit.bufferPixels[scr.crit.renderIdx].Pix[i+1]
+			scr.crit.phosphor.Pix[i+2] = scr.crit.bufferPixels[scr.crit.renderIdx].Pix[i+2]
+			scr.crit.phosphor.Pix[i+3] = 0xff
+		}
 	}
 }

@@ -43,8 +43,9 @@ type winDbgScr struct {
 	overlay     bool
 
 	// textures
-	screenTexture  uint32
-	overlayTexture uint32
+	screenTexture   uint32
+	overlayTexture  uint32
+	phosphorTexture uint32
 
 	// (re)create textures on next render()
 	createTextures bool
@@ -107,6 +108,12 @@ func newWinDbgScr(img *SdlImgui) (window, error) {
 	gl.ActiveTexture(gl.TEXTURE0)
 	gl.GenTextures(1, &win.overlayTexture)
 	gl.BindTexture(gl.TEXTURE_2D, win.overlayTexture)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
+
+	gl.ActiveTexture(gl.TEXTURE1)
+	gl.GenTextures(1, &win.phosphorTexture)
+	gl.BindTexture(gl.TEXTURE_2D, win.phosphorTexture)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
 
@@ -479,7 +486,8 @@ func (win *winDbgScr) resize() {
 // screen critical section.
 func (win *winDbgScr) render() {
 	var pixels *image.RGBA
-	var overlayPixels *image.RGBA
+	var overlay *image.RGBA
+	var phosphor *image.RGBA
 
 	if win.cropped {
 		if win.debugColors {
@@ -487,14 +495,16 @@ func (win *winDbgScr) render() {
 		} else {
 			pixels = win.scr.crit.cropPixels
 		}
-		overlayPixels = win.scr.crit.cropOverlayPixels
+		overlay = win.scr.crit.cropOverlayPixels
+		phosphor = win.scr.crit.cropPhosphor
 	} else {
 		if win.debugColors {
 			pixels = win.scr.crit.elementPixels
 		} else {
 			pixels = win.scr.crit.pixels
 		}
-		overlayPixels = win.scr.crit.overlayPixels
+		overlay = win.scr.crit.overlayPixels
+		phosphor = win.scr.crit.phosphor
 	}
 
 	gl.PixelStorei(gl.UNPACK_ROW_LENGTH, int32(pixels.Stride)/4)
@@ -513,7 +523,14 @@ func (win *winDbgScr) render() {
 		gl.TexImage2D(gl.TEXTURE_2D, 0,
 			gl.RGBA, int32(pixels.Bounds().Size().X), int32(pixels.Bounds().Size().Y), 0,
 			gl.RGBA, gl.UNSIGNED_BYTE,
-			gl.Ptr(overlayPixels.Pix))
+			gl.Ptr(overlay.Pix))
+
+		gl.ActiveTexture(gl.TEXTURE1)
+		gl.BindTexture(gl.TEXTURE_2D, win.phosphorTexture)
+		gl.TexImage2D(gl.TEXTURE_2D, 0,
+			gl.RGBA, int32(phosphor.Bounds().Size().X), int32(phosphor.Bounds().Size().Y), 0,
+			gl.RGBA, gl.UNSIGNED_BYTE,
+			gl.Ptr(phosphor.Pix))
 
 		win.createTextures = false
 	} else {
@@ -527,7 +544,14 @@ func (win *winDbgScr) render() {
 		gl.TexSubImage2D(gl.TEXTURE_2D, 0,
 			0, 0, int32(pixels.Bounds().Size().X), int32(pixels.Bounds().Size().Y),
 			gl.RGBA, gl.UNSIGNED_BYTE,
-			gl.Ptr(overlayPixels.Pix))
+			gl.Ptr(overlay.Pix))
+
+		gl.ActiveTexture(gl.TEXTURE1)
+		gl.BindTexture(gl.TEXTURE_2D, win.phosphorTexture)
+		gl.TexSubImage2D(gl.TEXTURE_2D, 0,
+			0, 0, int32(phosphor.Bounds().Size().X), int32(phosphor.Bounds().Size().Y),
+			gl.RGBA, gl.UNSIGNED_BYTE,
+			gl.Ptr(phosphor.Pix))
 	}
 
 	// set screen image scaling (and image padding) based on the current window size

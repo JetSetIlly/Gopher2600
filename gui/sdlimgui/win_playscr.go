@@ -37,8 +37,8 @@ type winPlayScr struct {
 	scr *screen
 
 	// textures
-	screenTexture uint32
-	phosphor      uint32
+	screenTexture   uint32
+	phosphorTexture uint32
 
 	// (re)create textures on next render()
 	createTextures bool
@@ -77,8 +77,8 @@ func newWinPlayScr(img *SdlImgui) window {
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
 
 	gl.ActiveTexture(gl.TEXTURE1)
-	gl.GenTextures(1, &win.phosphor)
-	gl.BindTexture(gl.TEXTURE_2D, win.phosphor)
+	gl.GenTextures(1, &win.phosphorTexture)
+	gl.BindTexture(gl.TEXTURE_2D, win.phosphorTexture)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
 
@@ -177,7 +177,7 @@ func (win *winPlayScr) render() {
 			gl.Ptr(pixels.Pix))
 
 		gl.ActiveTexture(gl.TEXTURE1)
-		gl.BindTexture(gl.TEXTURE_2D, win.phosphor)
+		gl.BindTexture(gl.TEXTURE_2D, win.phosphorTexture)
 		gl.TexImage2D(gl.TEXTURE_2D, 0,
 			gl.RGBA, int32(phosphor.Bounds().Size().X), int32(phosphor.Bounds().Size().Y), 0,
 			gl.RGBA, gl.UNSIGNED_BYTE,
@@ -191,7 +191,7 @@ func (win *winPlayScr) render() {
 			gl.Ptr(pixels.Pix))
 
 		gl.ActiveTexture(gl.TEXTURE1)
-		gl.BindTexture(gl.TEXTURE_2D, win.phosphor)
+		gl.BindTexture(gl.TEXTURE_2D, win.phosphorTexture)
 		gl.TexSubImage2D(gl.TEXTURE_2D, 0,
 			0, 0, int32(phosphor.Bounds().Size().X), int32(phosphor.Bounds().Size().Y),
 			gl.RGBA, gl.UNSIGNED_BYTE,

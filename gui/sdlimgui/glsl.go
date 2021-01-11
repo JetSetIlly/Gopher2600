@@ -224,10 +224,12 @@ func (rnd *glsl) render(displaySize [2]float32, framebufferSize [2]float32, draw
 				switch textureID {
 				case rnd.img.wm.dbgScr.screenTexture:
 					gl.Uniform1i(rnd.attribImageType, shaders.DebugScr)
+					gl.Uniform1i(rnd.attribPhosphorTexture, 1)
 				case rnd.img.wm.dbgScr.overlayTexture:
 					gl.Uniform1i(rnd.attribImageType, shaders.Overlay)
 				case rnd.img.wm.playScr.screenTexture:
 					gl.Uniform1i(rnd.attribImageType, shaders.PlayScr)
+					gl.Uniform1i(rnd.attribPhosphorTexture, 1)
 				case rnd.img.wm.crtPrefs.crtTexture:
 					gl.Uniform1i(rnd.attribImageType, shaders.PrefsCRT)
 				default:
@@ -248,19 +250,29 @@ func (rnd *glsl) render(displaySize [2]float32, framebufferSize [2]float32, draw
 }
 
 func (rnd *glsl) setShaderOptions() {
-	// !!TODO: different scaling values for different screen windows
-	vertScaling := rnd.img.wm.dbgScr.getScaling(false)
-	horizScaling := rnd.img.wm.dbgScr.getScaling(true)
+	// attribImageType and attribPhosphorTexture set in render() function in the gl commands list
 
-	// crt preferences
+	// scaling of screen
+	var vertScaling float32
+	var horizScaling float32
+	if rnd.img.isPlaymode() {
+		vertScaling = rnd.img.wm.playScr.getScaling(false)
+		horizScaling = rnd.img.wm.playScr.getScaling(true)
+	} else {
+		vertScaling = rnd.img.wm.dbgScr.getScaling(false)
+		horizScaling = rnd.img.wm.dbgScr.getScaling(true)
+	}
+
+	// crt preferences. for playmode the stored preferences are used and for
+	// the debug screen the local CRT boolean is used
 	var crt bool
 	if rnd.img.isPlaymode() {
 		crt = rnd.img.crtPrefs.Enabled.Get().(bool)
 	} else {
 		crt = rnd.img.wm.dbgScr.crt
 	}
+
 	gl.Uniform1i(rnd.attribCRT, boolToInt32(crt))
-	gl.Uniform1i(rnd.attribPhosphorTexture, 1)
 	gl.Uniform1i(rnd.attribPhosphor, boolToInt32(rnd.img.crtPrefs.Phosphor.Get().(bool)))
 	gl.Uniform1i(rnd.attribMask, boolToInt32(rnd.img.crtPrefs.Mask.Get().(bool)))
 	gl.Uniform1i(rnd.attribScanlines, boolToInt32(rnd.img.crtPrefs.Scanlines.Get().(bool)))
