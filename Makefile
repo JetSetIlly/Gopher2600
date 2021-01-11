@@ -4,7 +4,7 @@ compileFlags = '-c 3 -B -wb=false'
 profilingRom = roms/Rsboxing.bin
 #profilingRom = "test_roms/plusrom/sokoboo Plus.bin"
 
-.PHONY: all clean tidy generate check_lint lint check_pandoc readme_spell test race profile build_assertions build check_upx release release_statsview cross_windows cross_windows_statsview binaries check_gotip build_with_gotip
+.PHONY: all clean tidy generate check_lint lint check_glsl glsl_validate check_pandoc readme_spell test race profile build_assertions build check_upx release release_statsview cross_windows cross_windows_statsview binaries check_gotip build_with_gotip
 
 all:
 	@echo "use release target to build release binary"
@@ -23,20 +23,29 @@ generate:
 
 check_lint:
 ifeq (, $(shell which golangci-lint))
-	$(error not golanci-lint not installed)
+	$(error "golanci-lint not installed")
 endif
 
 lint: check_lint
 # uses .golangci.yml configuration file
 	golangci-lint run --sort-results
 
+check_glsl:
+ifeq (, $(shell which glslangValidator))
+	$(error "glslangValidator not installed")
+endif
+
+glsl_validate: check_glsl
+	@glslangValidator gui/crt/shaders/generator/fragment.frag
+	@glslangValidator gui/crt/shaders/generator/vertex.vert
+
 check_pandoc:
 ifeq (, $(shell which pandoc))
-	$(error not pandoc not installed)
+	$(error "pandoc not installed")
 endif
 
 readme_spell: check_pandoc
-	pandoc README.md -t plain | aspell -a | cut -d ' ' -f 2 | awk 'length($0)>1' | sort | uniq
+	@pandoc README.md -t plain | aspell -a | cut -d ' ' -f 2 | awk 'length($0)>1' | sort | uniq
 
 test:
 	go test ./...
@@ -98,7 +107,7 @@ binaries: release release_statsview cross_windows cross_windows_statsview
 
 check_gotip:
 ifeq (, $(shell which gotip))
-	$(error gotip not installed)
+	$(error "gotip not installed")
 endif
 
 build_with_gotip: check_gotip generate

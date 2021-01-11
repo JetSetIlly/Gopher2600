@@ -358,12 +358,12 @@ func (rnd *glsl) setup() {
 
 	gl.CompileShader(vertHandle)
 	if log := getShaderCompileError(vertHandle); log != "" {
-		fmt.Println(log)
+		panic(log)
 	}
 
 	gl.CompileShader(fragHandle)
 	if log := getShaderCompileError(fragHandle); log != "" {
-		fmt.Println(log)
+		panic(log)
 	}
 
 	gl.AttachShader(rnd.shaderHandle, vertHandle)

@@ -2,7 +2,8 @@
 
 package shaders
 
-const Vertex = "#version 150" + `
+const Vertex = `#version 150
+
 uniform mat4 ProjMtx;
 in vec2 Position;
 in vec2 UV;
@@ -18,7 +19,8 @@ void main()
 }
 `
 
-const Fragment = "#version 150" + `
+const Fragment = `#version 150
+
 const int Cursor = 1;
 const int DebugScr = 1;
 const int GUI = 0;
@@ -27,8 +29,7 @@ const int Overlay = 2;
 const int PlayScr = 3;
 const int PrefsCRT = 4;
 
-// this file requires some constant values to be defined above this line before
-// being compiled. should be included during the "go generate" process
+precision mediump float;
 
 uniform int ImageType;
 uniform int DrawMode; 
@@ -107,7 +108,7 @@ void crt() {
 
 	// phosphor
 	if (Phosphor == 1) {
-		if (Crt_Color.rgb == 0) {
+		if (Crt_Color.r == 0 && Crt_Color.g == 0 && Crt_Color.b == 0) {
 			vec4 ph = texture(PhosphorTexture, vec2(coords.x, coords.y)).rgba;
 			Crt_Color.rgb = ph.rgb;
 			Crt_Color.r *= pow(ph.a, 85*PhosphorSpeed);
