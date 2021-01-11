@@ -111,7 +111,7 @@ func newWinDbgScr(img *SdlImgui) (window, error) {
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
 
-	gl.ActiveTexture(gl.TEXTURE1)
+	gl.ActiveTexture(gl.TEXTURE0 + phosphorTextureUnitDbgScr)
 	gl.GenTextures(1, &win.phosphorTexture)
 	gl.BindTexture(gl.TEXTURE_2D, win.phosphorTexture)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
@@ -529,7 +529,7 @@ func (win *winDbgScr) render() {
 			gl.RGBA, gl.UNSIGNED_BYTE,
 			gl.Ptr(overlay.Pix))
 
-		gl.ActiveTexture(gl.TEXTURE1)
+		gl.ActiveTexture(gl.TEXTURE0 + phosphorTextureUnitDbgScr)
 		gl.BindTexture(gl.TEXTURE_2D, win.phosphorTexture)
 		gl.TexImage2D(gl.TEXTURE_2D, 0,
 			gl.RGBA, int32(phosphor.Bounds().Size().X), int32(phosphor.Bounds().Size().Y), 0,
@@ -550,7 +550,7 @@ func (win *winDbgScr) render() {
 			gl.RGBA, gl.UNSIGNED_BYTE,
 			gl.Ptr(overlay.Pix))
 
-		gl.ActiveTexture(gl.TEXTURE1)
+		gl.ActiveTexture(gl.TEXTURE0 + phosphorTextureUnitDbgScr)
 		gl.BindTexture(gl.TEXTURE_2D, win.phosphorTexture)
 		gl.TexSubImage2D(gl.TEXTURE_2D, 0,
 			0, 0, int32(phosphor.Bounds().Size().X), int32(phosphor.Bounds().Size().Y),
@@ -562,23 +562,8 @@ func (win *winDbgScr) render() {
 	win.setScaleAndPadding(win.contentDim)
 }
 
-func (win *winDbgScr) getScaledWidth(cropped bool) float32 {
-	if cropped {
-		return float32(win.scr.crit.cropPixels.Bounds().Size().X) * win.getScaling(true)
-	}
-	return float32(win.scr.crit.pixels.Bounds().Size().X) * win.getScaling(true)
-}
-
-func (win *winDbgScr) getScaledHeight(cropped bool) float32 {
-	if cropped {
-		return float32(win.scr.crit.cropPixels.Bounds().Size().Y) * win.getScaling(false)
-	}
-	return float32(win.scr.crit.pixels.Bounds().Size().Y) * win.getScaling(false)
-}
-
+// must be called from with a critical section.
 func (win *winDbgScr) setScaleAndPadding(sz imgui.Vec2) {
-	// must be called from with a critical section
-
 	sz.Y -= win.toolbarHeight
 	winAspectRatio := sz.X / sz.Y
 
@@ -602,6 +587,22 @@ func (win *winDbgScr) setScaleAndPadding(sz imgui.Vec2) {
 		win.scaling = sz.X / imageW
 		win.imagePadding = imgui.Vec2{Y: float32(int((sz.Y - (imageH * win.scaling)) / 2))}
 	}
+}
+
+// must be called from with a critical section.
+func (win *winDbgScr) getScaledWidth(cropped bool) float32 {
+	if cropped {
+		return float32(win.scr.crit.cropPixels.Bounds().Size().X) * win.getScaling(true)
+	}
+	return float32(win.scr.crit.pixels.Bounds().Size().X) * win.getScaling(true)
+}
+
+// must be called from with a critical section.
+func (win *winDbgScr) getScaledHeight(cropped bool) float32 {
+	if cropped {
+		return float32(win.scr.crit.cropPixels.Bounds().Size().Y) * win.getScaling(false)
+	}
+	return float32(win.scr.crit.pixels.Bounds().Size().Y) * win.getScaling(false)
 }
 
 func (win *winDbgScr) getScaling(horiz bool) float32 {

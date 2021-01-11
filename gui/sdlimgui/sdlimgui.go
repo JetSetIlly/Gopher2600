@@ -280,6 +280,7 @@ func (img *SdlImgui) setPlaymode(set bool) error {
 	img.wm.playScr.setOpen(false)
 	img.screen.clearTextureRenderers()
 	img.screen.addTextureRenderer(img.wm.dbgScr)
+	img.screen.addTextureRenderer(img.wm.crtPrefs)
 
 	return nil
 }

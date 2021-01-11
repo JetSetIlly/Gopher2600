@@ -29,6 +29,28 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 )
 
+// texture units to use for the various phosphor textures. unlike the other
+// textures we have to use different units because (I think - my OpenGL-fu
+// isn't very advanced) the other textures are put into the imgui drawlist
+// which handles loading of the textures into unit 0.
+//
+// when used with gl.ActiveTexture() they should be added to gl.TEXTURE0, like
+// so:
+//
+//		gl.ActiveTexture(gl.TEXTURE0 + phosphorTextureUnitPlayScr)
+//		gl.BindTexture(gl.TEXTURE_2D, win.phosphorTexture)
+//
+// and when used to load the texture into the shader the unit specified rather
+// than an offset from whatever gl.TEXTURE0 is:
+//
+//		gl.Uniform1i(rnd.attribPhosphorTexture, phosphorTextureUnitPlayScr)
+//
+const (
+	phosphorTextureUnitDbgScr   = 1
+	phosphorTextureUnitPlayScr  = 2
+	phosphorTextureUnitPrefsCRT = 3
+)
+
 type glsl struct {
 	imguiIO imgui.IO
 	img     *SdlImgui
@@ -48,43 +70,44 @@ type glsl struct {
 	// program and the host language. "uniform" variables remain constant for
 	// the duration of each shader program executrion. non-uniform variables
 	// meanwhile change from one iteration to the next.
-	attribTexture  int32 // uniform
 	attribProjMtx  int32 // uniform
 	attribPosition int32
 	attribUV       int32
 	attribColor    int32
+
+	attribTexture         int32 // uniform
+	attribPhosphorTexture int32 // uniform
 
 	// imagetype differentaites the screen texture from the rest of the imgui
 	// interface
 	attribImageType int32 // uniform
 
 	// the following attrib variables are strictly for the screen texture
+	attribShowCursor    int32 // uniform
+	attribIsCropped     int32 // uniform
 	attribScreenDim     int32 // uniform
 	attribCropScreenDim int32 // uniform
-	attribDrawMode      int32 // uniform
 	attribScalingX      int32 // uniform
 	attribScalingY      int32 // uniform
-	attribCropped       int32 // uniform
 	attribLastX         int32 // uniform
 	attribLastY         int32 // uniform
 	attribHblank        int32 // uniform
 	attribTopScanline   int32 // uniform
 	attribBotScanline   int32 // uniform
-	attribRandSeed      int32 // uniform
 
-	attribCRT                 int32 // uniform
-	attribPhosphorTexture     int32 // uniform
-	attribPhosphor            int32 // uniform
-	attribMask                int32 // uniform
-	attribScanlines           int32 // uniform
-	attribNoise               int32 // uniform
-	attribBlur                int32 // uniform
+	attribEnableCRT           int32 // uniform
+	attribEnablePhosphor      int32 // uniform
+	attribEnableShadowMask    int32 // uniform
+	attribEnableScanlines     int32 // uniform
+	attribEnableNoise         int32 // uniform
+	attribEnableBlur          int32 // uniform
+	attribEnableVignette      int32 // uniform
 	attribPhosphorSpeed       int32 // uniform
 	attribMaskBrightness      int32 // uniform
 	attribScanlinesBrightness int32 // uniform
 	attribNoiseLevel          int32 // uniform
 	attribBlurLevel           int32 // uniform
-	attribVignette            int32 // uniform
+	attribRandSeed            int32 // uniform
 }
 
 func newGlsl(io imgui.IO, img *SdlImgui) (*glsl, error) {
@@ -134,9 +157,9 @@ func (rnd *glsl) preRender() {
 
 func boolToInt32(v bool) int32 {
 	if v {
-		return 1
+		return shaders.True
 	}
-	return 0
+	return shaders.False
 }
 
 // render translates the ImGui draw data to OpenGL3 commands.
@@ -177,10 +200,10 @@ func (rnd *glsl) render(displaySize [2]float32, framebufferSize [2]float32, draw
 
 	// shader options for shader program
 	gl.UseProgram(rnd.shaderHandle)
-	rnd.setShaderOptions()
+
+	gl.Uniform1i(rnd.attribTexture, 0)
 
 	gl.ActiveTexture(gl.TEXTURE0)
-	gl.Uniform1i(rnd.attribTexture, 0)
 	gl.UniformMatrix4fv(rnd.attribProjMtx, 1, false, &orthoProjection[0][0])
 	gl.BindSampler(0, 0) // Rely on combined texture/sampler state.
 
@@ -223,18 +246,18 @@ func (rnd *glsl) render(displaySize [2]float32, framebufferSize [2]float32, draw
 				textureID := uint32(cmd.TextureID())
 				switch textureID {
 				case rnd.img.wm.dbgScr.screenTexture:
-					gl.Uniform1i(rnd.attribImageType, shaders.DebugScr)
-					gl.Uniform1i(rnd.attribPhosphorTexture, 1)
+					rnd.debugScr()
 				case rnd.img.wm.dbgScr.overlayTexture:
-					gl.Uniform1i(rnd.attribImageType, shaders.Overlay)
+					rnd.overlay()
 				case rnd.img.wm.playScr.screenTexture:
-					gl.Uniform1i(rnd.attribImageType, shaders.PlayScr)
-					gl.Uniform1i(rnd.attribPhosphorTexture, 1)
+					rnd.playScr()
 				case rnd.img.wm.crtPrefs.crtTexture:
-					gl.Uniform1i(rnd.attribImageType, shaders.PrefsCRT)
+					rnd.prefsCRT()
 				default:
-					gl.Uniform1i(rnd.attribImageType, shaders.GUI)
+					rnd.gui()
 				}
+
+				rnd.setOptions(textureID)
 
 				// clipping
 				clipRect := cmd.ClipRect()
@@ -249,9 +272,30 @@ func (rnd *glsl) render(displaySize [2]float32, framebufferSize [2]float32, draw
 	gl.DeleteVertexArrays(1, &vaoHandle)
 }
 
-func (rnd *glsl) setShaderOptions() {
-	// attribImageType and attribPhosphorTexture set in render() function in the gl commands list
+func (rnd *glsl) gui() {
+	gl.Uniform1i(rnd.attribImageType, shaders.GUI)
+}
 
+func (rnd *glsl) debugScr() {
+	gl.Uniform1i(rnd.attribImageType, shaders.DebugScr)
+	gl.Uniform1i(rnd.attribPhosphorTexture, phosphorTextureUnitDbgScr)
+}
+
+func (rnd *glsl) overlay() {
+	gl.Uniform1i(rnd.attribImageType, shaders.Overlay)
+}
+
+func (rnd *glsl) playScr() {
+	gl.Uniform1i(rnd.attribImageType, shaders.PlayScr)
+	gl.Uniform1i(rnd.attribPhosphorTexture, phosphorTextureUnitPlayScr)
+}
+
+func (rnd *glsl) prefsCRT() {
+	gl.Uniform1i(rnd.attribImageType, shaders.PrefsCRT)
+	gl.Uniform1i(rnd.attribPhosphorTexture, phosphorTextureUnitPrefsCRT)
+}
+
+func (rnd *glsl) setOptions(textureID uint32) {
 	// scaling of screen
 	var vertScaling float32
 	var horizScaling float32
@@ -272,79 +316,88 @@ func (rnd *glsl) setShaderOptions() {
 		crt = rnd.img.wm.dbgScr.crt
 	}
 
-	gl.Uniform1i(rnd.attribCRT, boolToInt32(crt))
-	gl.Uniform1i(rnd.attribPhosphor, boolToInt32(rnd.img.crtPrefs.Phosphor.Get().(bool)))
-	gl.Uniform1i(rnd.attribMask, boolToInt32(rnd.img.crtPrefs.Mask.Get().(bool)))
-	gl.Uniform1i(rnd.attribScanlines, boolToInt32(rnd.img.crtPrefs.Scanlines.Get().(bool)))
-	gl.Uniform1i(rnd.attribNoise, boolToInt32(rnd.img.crtPrefs.Noise.Get().(bool)))
-	gl.Uniform1i(rnd.attribBlur, boolToInt32(rnd.img.crtPrefs.Blur.Get().(bool)))
+	// preferences
+	gl.Uniform1i(rnd.attribEnableCRT, boolToInt32(crt))
+
+	gl.Uniform1i(rnd.attribEnablePhosphor, boolToInt32(rnd.img.crtPrefs.Phosphor.Get().(bool)))
+	gl.Uniform1i(rnd.attribEnableShadowMask, boolToInt32(rnd.img.crtPrefs.Mask.Get().(bool)))
+	gl.Uniform1i(rnd.attribEnableScanlines, boolToInt32(rnd.img.crtPrefs.Scanlines.Get().(bool)))
+	gl.Uniform1i(rnd.attribEnableNoise, boolToInt32(rnd.img.crtPrefs.Noise.Get().(bool)))
+	gl.Uniform1i(rnd.attribEnableBlur, boolToInt32(rnd.img.crtPrefs.Blur.Get().(bool)))
+	gl.Uniform1i(rnd.attribEnableVignette, boolToInt32(rnd.img.crtPrefs.Vignette.Get().(bool)))
+
 	gl.Uniform1f(rnd.attribPhosphorSpeed, float32(rnd.img.crtPrefs.PhosphorSpeed.Get().(float64)))
 	gl.Uniform1f(rnd.attribMaskBrightness, float32(rnd.img.crtPrefs.MaskBrightness.Get().(float64)))
 	gl.Uniform1f(rnd.attribScanlinesBrightness, float32(rnd.img.crtPrefs.ScanlinesBrightness.Get().(float64)))
 	gl.Uniform1f(rnd.attribNoiseLevel, float32(rnd.img.crtPrefs.NoiseLevel.Get().(float64)))
 	gl.Uniform1f(rnd.attribBlurLevel, float32(rnd.img.crtPrefs.BlurLevel.Get().(float64)))
-	gl.Uniform1i(rnd.attribVignette, boolToInt32(rnd.img.crtPrefs.Vignette.Get().(bool)))
+	gl.Uniform1f(rnd.attribRandSeed, float32(time.Now().Nanosecond())/1000000000.0)
 
 	// critical section
 	rnd.img.screen.crit.section.Lock()
 
-	// the resolution information is used to scale the Last
-	gl.Uniform2f(rnd.attribScreenDim, rnd.img.wm.dbgScr.getScaledWidth(false), rnd.img.wm.dbgScr.getScaledHeight(false))
-	gl.Uniform2f(rnd.attribCropScreenDim, rnd.img.wm.dbgScr.getScaledWidth(true), rnd.img.wm.dbgScr.getScaledHeight(true))
-	gl.Uniform1f(rnd.attribScalingX, rnd.img.wm.dbgScr.getScaling(true))
-	gl.Uniform1f(rnd.attribScalingY, rnd.img.wm.dbgScr.getScaling(false))
+	// the resolution information is used to scale the debugging guides
+	switch textureID {
+	case rnd.img.wm.dbgScr.screenTexture:
+		fallthrough
+	case rnd.img.wm.dbgScr.overlayTexture:
+		gl.Uniform2f(rnd.attribScreenDim, rnd.img.wm.dbgScr.getScaledWidth(false), rnd.img.wm.dbgScr.getScaledHeight(false))
+		gl.Uniform1f(rnd.attribScalingX, rnd.img.wm.dbgScr.getScaling(true))
+		gl.Uniform1f(rnd.attribScalingY, rnd.img.wm.dbgScr.getScaling(false))
+		gl.Uniform2f(rnd.attribCropScreenDim, rnd.img.wm.dbgScr.getScaledWidth(true), rnd.img.wm.dbgScr.getScaledHeight(true))
+		gl.Uniform1i(rnd.attribIsCropped, boolToInt32(rnd.img.wm.dbgScr.cropped))
+
+		cursorX := rnd.img.screen.crit.lastX
+		cursorY := rnd.img.screen.crit.lastY
+
+		if rnd.img.wm.dbgScr.cropped {
+			gl.Uniform1f(rnd.attribLastX, float32(cursorX-specification.HorizClksHBlank)*horizScaling)
+		} else {
+			gl.Uniform1f(rnd.attribLastX, float32(cursorX)*horizScaling)
+		}
+		gl.Uniform1f(rnd.attribLastY, float32(cursorY)*vertScaling)
+
+	case rnd.img.wm.playScr.screenTexture:
+		gl.Uniform2f(rnd.attribScreenDim, rnd.img.wm.playScr.getScaledWidth(), rnd.img.wm.playScr.getScaledHeight())
+		gl.Uniform1f(rnd.attribScalingX, rnd.img.wm.playScr.getScaling(true))
+		gl.Uniform1f(rnd.attribScalingY, rnd.img.wm.playScr.getScaling(false))
+		gl.Uniform1i(rnd.attribIsCropped, shaders.True)
+
+	case rnd.img.wm.crtPrefs.crtTexture:
+		gl.Uniform2f(rnd.attribScreenDim, rnd.img.wm.crtPrefs.getScaledWidth(), rnd.img.wm.crtPrefs.getScaledHeight())
+		gl.Uniform1f(rnd.attribScalingX, rnd.img.wm.crtPrefs.getScaling(true))
+		gl.Uniform1f(rnd.attribScalingY, rnd.img.wm.crtPrefs.getScaling(false))
+		gl.Uniform1i(rnd.attribIsCropped, shaders.True)
+	}
 
 	// screen geometry
 	gl.Uniform1f(rnd.attribHblank, specification.HorizClksHBlank*horizScaling)
 	gl.Uniform1f(rnd.attribTopScanline, float32(rnd.img.screen.crit.topScanline)*vertScaling)
 	gl.Uniform1f(rnd.attribBotScanline, float32(rnd.img.screen.crit.topScanline+rnd.img.screen.crit.scanlines)*vertScaling)
 
-	// the coordinates of the last plot. specual handling for StateGotoCoords
-	cursorX := rnd.img.screen.crit.lastX
-	cursorY := rnd.img.screen.crit.lastY
-
-	// scale cordinates. horizontal scaling depends on whether the
-	// screen is cropped
-	if rnd.img.wm.dbgScr.cropped {
-		gl.Uniform1f(rnd.attribLastX, float32(cursorX-specification.HorizClksHBlank)*horizScaling)
-	} else {
-		gl.Uniform1f(rnd.attribLastX, float32(cursorX)*horizScaling)
-	}
-	gl.Uniform1f(rnd.attribLastY, float32(cursorY)*vertScaling)
-
 	rnd.img.screen.crit.section.Unlock()
 	// end of critical section
 
-	// set DrawMode according to emulation state
 	switch rnd.img.state {
 	case gui.StatePaused:
-		gl.Uniform1i(rnd.attribDrawMode, shaders.Cursor)
+		gl.Uniform1i(rnd.attribShowCursor, shaders.True)
 	case gui.StateRunning:
 		// if FPS is low enough then show screen draw even though
 		// emulation is running
 		if rnd.img.lz.TV.ReqFPS < television.ThreshVisual {
-			gl.Uniform1i(rnd.attribDrawMode, shaders.Cursor)
+			gl.Uniform1i(rnd.attribShowCursor, shaders.True)
 		} else {
-			gl.Uniform1i(rnd.attribDrawMode, shaders.NoCursor)
+			gl.Uniform1i(rnd.attribShowCursor, shaders.False)
 		}
 	}
 
-	if rnd.img.wm.dbgScr.cropped {
-		gl.Uniform1i(rnd.attribCropped, 1)
-	} else {
-		gl.Uniform1i(rnd.attribCropped, -1)
-	}
-
-	// random seed (for noise generator)
-	gl.Uniform1f(rnd.attribRandSeed, float32(time.Now().Nanosecond())/1000000000.0)
 }
 
 func (rnd *glsl) setup() {
-	// we'll be modifying the GL state during this function so we need to save
-	// and restore the existing state.
 	var lastTexture int32
 	var lastArrayBuffer int32
 	var lastVertexArray int32
+
 	gl.GetIntegerv(gl.TEXTURE_BINDING_2D, &lastTexture)
 	gl.GetIntegerv(gl.ARRAY_BUFFER_BINDING, &lastArrayBuffer)
 	gl.GetIntegerv(gl.VERTEX_ARRAY_BINDING, &lastVertexArray)
@@ -388,39 +441,43 @@ func (rnd *glsl) setup() {
 	gl.DeleteShader(vertHandle)
 
 	// get references to shader attributes and uniforms variables
+
+	rnd.attribProjMtx = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("ProjMtx"+"\x00"))
+	rnd.attribPosition = gl.GetAttribLocation(rnd.shaderHandle, gl.Str("Position"+"\x00"))
+	rnd.attribUV = gl.GetAttribLocation(rnd.shaderHandle, gl.Str("UV"+"\x00"))
+	rnd.attribColor = gl.GetAttribLocation(rnd.shaderHandle, gl.Str("Color"+"\x00"))
+
+	rnd.attribTexture = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("Texture"+"\x00"))
+	rnd.attribPhosphorTexture = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("PhosphorTexture"+"\x00"))
+
 	rnd.attribImageType = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("ImageType"+"\x00"))
+
+	rnd.attribShowCursor = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("ShowCursor"+"\x00"))
+	rnd.attribIsCropped = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("IsCropped"+"\x00"))
 	rnd.attribScreenDim = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("ScreenDim"+"\x00"))
 	rnd.attribCropScreenDim = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("CropScreenDim"+"\x00"))
-	rnd.attribDrawMode = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("DrawMode"+"\x00"))
 	rnd.attribScalingX = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("ScalingX"+"\x00"))
 	rnd.attribScalingY = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("ScalingY"+"\x00"))
-	rnd.attribCropped = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("Cropped"+"\x00"))
 	rnd.attribLastX = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("LastX"+"\x00"))
 	rnd.attribLastY = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("LastY"+"\x00"))
 	rnd.attribHblank = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("Hblank"+"\x00"))
 	rnd.attribTopScanline = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("TopScanline"+"\x00"))
 	rnd.attribBotScanline = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("BotScanline"+"\x00"))
-	rnd.attribRandSeed = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("RandSeed"+"\x00"))
 
-	rnd.attribCRT = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("CRT"+"\x00"))
-	rnd.attribPhosphorTexture = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("PhosphorTexture"+"\x00"))
-	rnd.attribPhosphor = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("Phosphor"+"\x00"))
-	rnd.attribMask = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("Mask"+"\x00"))
-	rnd.attribScanlines = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("Scanlines"+"\x00"))
-	rnd.attribNoise = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("Noise"+"\x00"))
-	rnd.attribBlur = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("Blur"+"\x00"))
+	rnd.attribEnableCRT = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("EnableCRT"+"\x00"))
+	rnd.attribEnablePhosphor = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("EnablePhosphor"+"\x00"))
+	rnd.attribEnableShadowMask = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("EnableShadowMask"+"\x00"))
+	rnd.attribEnableScanlines = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("EnableScanlines"+"\x00"))
+	rnd.attribEnableNoise = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("EnableNoise"+"\x00"))
+	rnd.attribEnableBlur = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("EnableBlur"+"\x00"))
+	rnd.attribEnableVignette = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("EnableVignette"+"\x00"))
+
 	rnd.attribPhosphorSpeed = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("PhosphorSpeed"+"\x00"))
 	rnd.attribMaskBrightness = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("MaskBrightness"+"\x00"))
 	rnd.attribScanlinesBrightness = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("ScanlinesBrightness"+"\x00"))
 	rnd.attribNoiseLevel = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("NoiseLevel"+"\x00"))
 	rnd.attribBlurLevel = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("BlurLevel"+"\x00"))
-	rnd.attribVignette = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("Vignette"+"\x00"))
-
-	rnd.attribTexture = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("Texture"+"\x00"))
-	rnd.attribProjMtx = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("ProjMtx"+"\x00"))
-	rnd.attribPosition = gl.GetAttribLocation(rnd.shaderHandle, gl.Str("Position"+"\x00"))
-	rnd.attribUV = gl.GetAttribLocation(rnd.shaderHandle, gl.Str("UV"+"\x00"))
-	rnd.attribColor = gl.GetAttribLocation(rnd.shaderHandle, gl.Str("Color"+"\x00"))
+	rnd.attribRandSeed = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("RandSeed"+"\x00"))
 
 	gl.GenBuffers(1, &rnd.vboHandle)
 	gl.GenBuffers(1, &rnd.elementsHandle)

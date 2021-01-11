@@ -76,7 +76,7 @@ func newWinPlayScr(img *SdlImgui) window {
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
 
-	gl.ActiveTexture(gl.TEXTURE1)
+	gl.ActiveTexture(gl.TEXTURE0 + phosphorTextureUnitPlayScr)
 	gl.GenTextures(1, &win.phosphorTexture)
 	gl.BindTexture(gl.TEXTURE_2D, win.phosphorTexture)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
@@ -180,7 +180,7 @@ func (win *winPlayScr) render() {
 			gl.RGBA, gl.UNSIGNED_BYTE,
 			gl.Ptr(pixels.Pix))
 
-		gl.ActiveTexture(gl.TEXTURE1)
+		gl.ActiveTexture(gl.TEXTURE0 + phosphorTextureUnitPlayScr)
 		gl.BindTexture(gl.TEXTURE_2D, win.phosphorTexture)
 		gl.TexImage2D(gl.TEXTURE_2D, 0,
 			gl.RGBA, int32(phosphor.Bounds().Size().X), int32(phosphor.Bounds().Size().Y), 0,
@@ -194,23 +194,13 @@ func (win *winPlayScr) render() {
 			gl.RGBA, gl.UNSIGNED_BYTE,
 			gl.Ptr(pixels.Pix))
 
-		gl.ActiveTexture(gl.TEXTURE1)
+		gl.ActiveTexture(gl.TEXTURE0 + phosphorTextureUnitPlayScr)
 		gl.BindTexture(gl.TEXTURE_2D, win.phosphorTexture)
 		gl.TexSubImage2D(gl.TEXTURE_2D, 0,
 			0, 0, int32(phosphor.Bounds().Size().X), int32(phosphor.Bounds().Size().Y),
 			gl.RGBA, gl.UNSIGNED_BYTE,
 			gl.Ptr(phosphor.Pix))
 	}
-}
-
-// must be called from with a critical section.
-func (win *winPlayScr) getScaledWidth() float32 {
-	return float32(win.scr.crit.cropPixels.Bounds().Size().X) * win.getScaling(true)
-}
-
-// must be called from with a critical section.
-func (win *winPlayScr) getScaledHeight() float32 {
-	return float32(win.scr.crit.cropPixels.Bounds().Size().Y) * win.getScaling(false)
 }
 
 // must be called from with a critical section.
@@ -229,6 +219,17 @@ func (win *winPlayScr) setScaleAndPadding(sz imgui.Vec2) {
 		win.scaling = sz.X / imageW
 		win.imagePadding = imgui.Vec2{Y: float32(int((sz.Y - (imageH * win.scaling)) / 2))}
 	}
+}
+
+// must be called from with a critical section.
+func (win *winPlayScr) getScaledWidth() float32 {
+	// we always use cropped pixels on the playscreen
+	return float32(win.scr.crit.cropPixels.Bounds().Size().X) * win.getScaling(true)
+}
+
+// must be called from with a critical section.
+func (win *winPlayScr) getScaledHeight() float32 {
+	return float32(win.scr.crit.cropPixels.Bounds().Size().Y) * win.getScaling(false)
 }
 
 func (win *winPlayScr) getScaling(horiz bool) float32 {

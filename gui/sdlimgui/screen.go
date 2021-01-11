@@ -29,7 +29,8 @@ import (
 // "pixels" of two pixels across.
 const pixelWidth = 2
 
-// textureRenderers can share the underlying pixels of the screen type instance.
+// textureRenderers can share the underlying pixels of the screen type instance. both of these functions
+// should be called inside the screen critical section.
 type textureRenderer interface {
 	render()
 	resize()
@@ -201,9 +202,6 @@ func (scr *screen) resize(spec specification.Spec, topScanline int, visibleScanl
 		}
 	}
 
-	// end critical section
-	scr.crit.section.Unlock()
-
 	// update aspect-bias value
 	scr.aspectBias = spec.AspectBias
 
@@ -211,6 +209,9 @@ func (scr *screen) resize(spec specification.Spec, topScanline int, visibleScanl
 	for _, r := range scr.renderers {
 		r.resize()
 	}
+
+	// end critical section
+	scr.crit.section.Unlock()
 }
 
 // Resize implements the television.PixelRenderer interface

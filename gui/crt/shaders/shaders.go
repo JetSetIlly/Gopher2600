@@ -21,19 +21,22 @@ void main()
 
 const Fragment = `#version 150
 
-const int Cursor = 1;
-const int DebugScr = 1;
 const int GUI = 0;
-const int NoCursor = 0;
+const int DebugScr = 1;
 const int Overlay = 2;
 const int PlayScr = 3;
 const int PrefsCRT = 4;
 
+const int True = 1;
+const int False = 0;
+
 precision mediump float;
 
+// the type of rendering to be performad
 uniform int ImageType;
-uniform int DrawMode; 
-uniform int Cropped; // false <= 0; true > 0
+
+uniform int ShowCursor;  
+uniform int IsCropped; 
 uniform vec2 ScreenDim;
 uniform vec2 CropScreenDim;
 uniform float ScalingX;
@@ -43,23 +46,20 @@ uniform float LastY;
 uniform float Hblank;
 uniform float TopScanline;
 uniform float BotScanline;
-uniform float RandSeed;
 
-uniform int CRT;
-uniform float InputGamma; 
-uniform float OutputGamma; 
-uniform int Phosphor;
-uniform int Mask;
-uniform int Scanlines;
-uniform int Noise;
-uniform int Blur;
+uniform int EnableCRT;
+uniform int EnablePhosphor;
+uniform int EnableShadowMask;
+uniform int EnableScanlines;
+uniform int EnableNoise;
+uniform int EnableBlur;
+uniform int EnableVignette;
 uniform float PhosphorSpeed;
 uniform float MaskBrightness;
 uniform float ScanlinesBrightness;
 uniform float NoiseLevel;
 uniform float BlurLevel;
-uniform int Vignette;
-uniform int MaskScanlineScaling;
+uniform float RandSeed;
 
 uniform sampler2D Texture;
 uniform sampler2D PhosphorTexture;
@@ -107,7 +107,7 @@ void crt() {
 	vec4 Crt_Color = Frag_Color * texture(Texture, Frag_UV.st);
 
 	// phosphor
-	if (Phosphor == 1) {
+	if (EnablePhosphor == True) {
 		if (Crt_Color.r == 0 && Crt_Color.g == 0 && Crt_Color.b == 0) {
 			vec4 ph = texture(PhosphorTexture, vec2(coords.x, coords.y)).rgba;
 			Crt_Color.rgb = ph.rgb;
@@ -118,7 +118,7 @@ void crt() {
 	}
 
 	// noise
-	if (Noise == 1) {
+	if (EnableNoise == True) {
 		float r;
 		r = gold_noise(gl_FragCoord.xy);
 		if (r < 0.33) {
@@ -132,22 +132,22 @@ void crt() {
 
 	vec2 grid = vec2(floor(gl_FragCoord.x), floor(gl_FragCoord.y));
 
-	// masking
-	if (Mask == 1) {
+	// shadow masking
+	if (EnableShadowMask == True) {
 		if (mod(grid.y, 2) == 0.0) {
 			Crt_Color.a *= MaskBrightness;
 		}
 	}
 
 	// scanline effect
-	if (Scanlines == 1) {
+	if (EnableScanlines == True) {
 		if (mod(grid.x, 2) == 0.0) {
 			Crt_Color.a *= ScanlinesBrightness;
 		}
 	}
 
 	// blur
-	if (Blur == 1) {
+	if (EnableBlur == True) {
 		float bx = texelX*BlurLevel;
 		float by = texelY*BlurLevel;
 		if (coords.x-bx > 0.0 && coords.x+bx < 1.0 && coords.y-by > 0.0 && coords.y+by < 1.0) {
@@ -159,10 +159,17 @@ void crt() {
 	}
 
 	// vignette effect
-	if (Vignette == 1) {
+	//
+	// in the case of the CRT Prefs preview screen the vignette is applied to
+	// the visible area. it is not applied to the entirity of the screen as you
+	// might expect. this is a happy accident. I think it's nice to see a
+	// representation of the effect in it's entirety.
+	if (EnableVignette == True) {
 		float vignette;
-		if (Cropped > 0) {
+
+		if (IsCropped == True) {
 			vignette = (10.0*coords.x*coords.y*(1.0-coords.x)*(1.0-coords.y));
+
 		} else {
 			// f is used to factor the vignette value. In the "cropped" branch we
 			// use a factor value of 10. to visually mimic the vignette effect a
@@ -173,6 +180,7 @@ void crt() {
 			float f =ScreenDim.x/(ScreenDim.x-CropScreenDim.x);
 			vignette = (f*(coords.x-hblank)*(coords.y-topScanline)*(1.0-coords.x)*(1.0-coords.y));
 		}
+
 		Crt_Color.rgb *= pow(vignette, 0.10) * 1.2;
 	}
 
@@ -187,7 +195,7 @@ void debugscr() {
 	float pixelX;
 	float pixelY;
 
-	if (Cropped > 0) {
+	if (IsCropped == True) {
 		texelX = ScalingX / CropScreenDim.x;
 		texelY = ScalingY / CropScreenDim.y;
 		hblank = Hblank / CropScreenDim.x;
@@ -216,7 +224,7 @@ void debugscr() {
 	pixelY = texelY / ScalingY;
 
 	// if the entire frame is being shown then plot the screen guides
-	if (Cropped < 0) {
+	if (IsCropped == False) {
 		if (isNearEqual(coords.x, hblank, pixelX) ||
 		   isNearEqual(coords.y, topScanline, pixelY) ||
 		   isNearEqual(coords.y, botScanline, pixelY)) {
@@ -228,8 +236,8 @@ void debugscr() {
 		}
 	}
 
-	// when DrawMode is Cursor then there is some additional processing we need to perform
-	if (DrawMode == Cursor) {
+	// when ShowCursor is true then there is some additional processing we need to perform
+	if (ShowCursor == 1) {
 		// draw cursor if pixel is at the last x/y position
 		if (lastY >= 0 && lastX >= 0) {
 			if (isNearEqual(coords.y, lastY+texelY, cursorSize*texelY) && isNearEqual(coords.x, lastX+texelX, cursorSize*texelX/2)) {
@@ -250,7 +258,7 @@ void debugscr() {
 
 		// for cropped screens there are a few more conditions that we need to
 		// consider for drawing an off-screen cursor
-		if (Cropped > 0) {
+		if (IsCropped == True) {
 			// when VBLANK is active but HBLANK is off
 			if (isNearEqual(coords.x, lastX, cursorSize * texelX/2)) {
 				// top of screen
@@ -306,7 +314,7 @@ void debugscr() {
 
 	// only apply CRT effects on the "cropped" area of the screen. we can think
 	// of the cropped area as the "play" area
-	if (CRT == 1 && !(Cropped < 0 && (coords.x < hblank || coords.y < topScanline || coords.y > botScanline))) {
+	if (EnableCRT == True && !(IsCropped == False && (coords.x < hblank || coords.y < topScanline || coords.y > botScanline))) {
 		crt();
 		return;
 	}
@@ -317,7 +325,7 @@ void debugscr() {
 void playscr() {
 	texelX = ScalingX / CropScreenDim.x;
 	texelY = ScalingY / CropScreenDim.y;
-	if (CRT == 1) {
+	if (EnableCRT == True) {
 		crt();
 		return;
 	}

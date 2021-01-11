@@ -35,10 +35,22 @@ type winCRTPrefs struct {
 	scr *screen
 
 	// crt preview segment
-	crtTexture uint32
+	crtTexture      uint32
+	phosphorTexture uint32
+
+	// (re)create textures on next render()
+	createTextures bool
 
 	// height of the area containing the settings sliders
-	settingsH float32
+	previewDim float32
+
+	// mouse position when it is hovered over the preview
+	previewMousePos imgui.Vec2
+
+	// the window into the screen pixels
+	previewRect image.Rectangle
+	previewMin  image.Point
+	previewMax  image.Point
 }
 
 func newWinCRTPrefs(img *SdlImgui) (window, error) {
@@ -50,6 +62,12 @@ func newWinCRTPrefs(img *SdlImgui) (window, error) {
 	gl.ActiveTexture(gl.TEXTURE0)
 	gl.GenTextures(1, &win.crtTexture)
 	gl.BindTexture(gl.TEXTURE_2D, win.crtTexture)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
+
+	gl.ActiveTexture(gl.TEXTURE0 + phosphorTextureUnitPrefsCRT)
+	gl.GenTextures(1, &win.phosphorTexture)
+	gl.BindTexture(gl.TEXTURE_2D, win.phosphorTexture)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
 
@@ -78,12 +96,6 @@ func (win *winCRTPrefs) setOpen(open bool) {
 	win.open = open
 }
 
-// height/width for detailPixels.
-const (
-	detailPixelsWidth  = 50
-	detailPixelsHeight = 100
-)
-
 // the amount to adjust the pixel view to account for the HMOVE margin.
 const HmoveMargin = 16
 
@@ -92,26 +104,6 @@ func (win *winCRTPrefs) draw() {
 		return
 	}
 
-	win.scr.crit.section.Lock()
-
-	// we're not too bothered about performance when the CRT prefs window is
-	// open. figure out pixels and copy to texture every draw() frame.
-	r := image.Rect(
-		specification.HorizClksHBlank+HmoveMargin, win.scr.crit.topScanline,
-		specification.HorizClksHBlank+HmoveMargin+detailPixelsWidth, win.scr.crit.topScanline+detailPixelsHeight,
-	)
-	pixels := win.scr.crit.pixels.SubImage(r).(*image.RGBA)
-
-	gl.PixelStorei(gl.UNPACK_ROW_LENGTH, int32(pixels.Stride)/4)
-	gl.BindTexture(gl.TEXTURE_2D, win.crtTexture)
-	gl.TexImage2D(gl.TEXTURE_2D, 0,
-		gl.RGBA, detailPixelsWidth, detailPixelsHeight, 0,
-		gl.RGBA, gl.UNSIGNED_BYTE,
-		gl.Ptr(pixels.Pix))
-
-	gl.PixelStorei(gl.UNPACK_ROW_LENGTH, 0)
-	win.scr.crit.section.Unlock()
-
 	imgui.SetNextWindowPosV(imgui.Vec2{10, 10}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
 	imgui.BeginV(winCRTPrefsTitle, &win.open, imgui.WindowFlagsAlwaysAutoResize)
 
@@ -119,7 +111,7 @@ func (win *winCRTPrefs) draw() {
 	imguiSeparator()
 
 	// note start position of setting group
-	win.settingsH = measureHeight(func() {
+	win.previewDim = measureHeight(func() {
 		imgui.BeginGroup()
 
 		win.drawPhosphor()
@@ -149,6 +141,82 @@ func (win *winCRTPrefs) draw() {
 	win.drawDiskButtons()
 
 	imgui.End()
+}
+
+// height/width for preview image.
+const (
+	previewWidth  = 50
+	previewHeight = 100
+)
+
+// resize() implements the textureRenderer interface.
+func (win *winCRTPrefs) resize() {
+	win.previewMin = image.Point{
+		X: specification.HorizClksHBlank,
+		Y: win.scr.crit.topScanline,
+	}
+
+	win.previewMax = image.Point{
+		X: specification.HorizClksScanline - previewWidth,
+		Y: win.scr.crit.topScanline + win.scr.crit.scanlines - previewHeight,
+	}
+
+	// preview rect starts in the top left hand corner of the screen image
+	win.previewRect = image.Rect(
+		win.previewMin.X, win.previewMin.Y,
+		win.previewMin.X+previewWidth, win.previewMin.Y+previewHeight,
+	)
+
+	win.createTextures = true
+}
+
+// render() implements the textureRenderer interface.
+//
+// render is called by service loop (via screen.render()). must be inside
+// screen critical section.
+func (win *winCRTPrefs) render() {
+	if !win.open {
+		return
+	}
+
+	pixels := win.scr.crit.pixels.SubImage(win.previewRect).(*image.RGBA)
+	phosphor := win.scr.crit.phosphor.SubImage(win.previewRect).(*image.RGBA)
+
+	gl.PixelStorei(gl.UNPACK_ROW_LENGTH, int32(pixels.Stride)/4)
+	defer gl.PixelStorei(gl.UNPACK_ROW_LENGTH, 0)
+
+	if win.createTextures {
+		win.createTextures = false
+
+		// (re)create textures
+		gl.ActiveTexture(gl.TEXTURE0)
+		gl.BindTexture(gl.TEXTURE_2D, win.crtTexture)
+		gl.TexImage2D(gl.TEXTURE_2D, 0,
+			gl.RGBA, previewWidth, previewHeight, 0,
+			gl.RGBA, gl.UNSIGNED_BYTE,
+			gl.Ptr(pixels.Pix))
+
+		gl.ActiveTexture(gl.TEXTURE0 + phosphorTextureUnitPrefsCRT)
+		gl.BindTexture(gl.TEXTURE_2D, win.phosphorTexture)
+		gl.TexImage2D(gl.TEXTURE_2D, 0,
+			gl.RGBA, previewWidth, previewHeight, 0,
+			gl.RGBA, gl.UNSIGNED_BYTE,
+			gl.Ptr(phosphor.Pix))
+	} else {
+		gl.ActiveTexture(gl.TEXTURE0)
+		gl.BindTexture(gl.TEXTURE_2D, win.crtTexture)
+		gl.TexSubImage2D(gl.TEXTURE_2D, 0,
+			0, 0, int32(pixels.Bounds().Size().X), int32(pixels.Bounds().Size().Y),
+			gl.RGBA, gl.UNSIGNED_BYTE,
+			gl.Ptr(pixels.Pix))
+
+		gl.ActiveTexture(gl.TEXTURE0 + phosphorTextureUnitPrefsCRT)
+		gl.BindTexture(gl.TEXTURE_2D, win.phosphorTexture)
+		gl.TexSubImage2D(gl.TEXTURE_2D, 0,
+			0, 0, int32(phosphor.Bounds().Size().X), int32(phosphor.Bounds().Size().Y),
+			gl.RGBA, gl.UNSIGNED_BYTE,
+			gl.Ptr(phosphor.Pix))
+	}
 }
 
 func (win *winCRTPrefs) drawEnabled() {
@@ -322,7 +390,73 @@ func (win *winCRTPrefs) drawPreview() {
 
 	if !win.img.isPlaymode() {
 		imgui.BeginGroup()
-		imgui.Image(imgui.TextureID(win.crtTexture), imgui.Vec2{win.settingsH, win.settingsH})
+
+		// push style info for screen and overlay ImageButton(). we're using
+		// ImageButton because an Image will not capture mouse events and pass them
+		// to the parent window. this means that a click-drag on the screen/overlay
+		// will move the window, which we don't want.
+		imgui.PushStyleColor(imgui.StyleColorButton, win.img.cols.Transparent)
+		imgui.PushStyleColor(imgui.StyleColorButtonActive, win.img.cols.Transparent)
+		imgui.PushStyleColor(imgui.StyleColorButtonHovered, win.img.cols.Transparent)
+		imgui.PushStyleVarVec2(imgui.StyleVarFramePadding, imgui.Vec2{0.0, 0.0})
+
+		imgui.ImageButton(imgui.TextureID(win.crtTexture), imgui.Vec2{win.previewDim, win.previewDim})
+		if imgui.IsItemHovered() {
+			p := imgui.MousePos()
+
+			if imgui.IsMouseDragging(0, 0.0) {
+				const sensitivity = 4.0
+
+				// measure mouse distance moved
+				diff := image.Point{X: int((win.previewMousePos.X - p.X) / sensitivity),
+					Y: int((win.previewMousePos.Y - p.Y) / sensitivity)}
+
+				// makre sure changes out of bounds
+				if win.previewRect.Min.X+diff.X > win.previewMax.X {
+					diff.X = 0
+				} else if win.previewRect.Min.X+diff.X < win.previewMin.X {
+					diff.X = 0
+				}
+				if win.previewRect.Min.Y+diff.Y > win.previewMax.Y {
+					diff.Y = 0
+				} else if win.previewRect.Min.Y+diff.Y < win.previewMin.Y {
+					diff.Y = 0
+				}
+
+				// commit changes
+				win.previewRect = win.previewRect.Add(diff)
+			}
+
+			// store mouse position for next measurement
+			win.previewMousePos = p
+		}
+
+		// pop style info for screen and overlay textures
+		imgui.PopStyleVar()
+		imgui.PopStyleColorV(3)
+
 		imgui.EndGroup()
 	}
+}
+
+// unlike equivalient functions for winDbgScr and winPlayScr this does not need
+// to be called from with a critical section.
+func (win *winCRTPrefs) getScaledWidth() float32 {
+	return float32(win.previewRect.Size().X) * win.getScaling(true)
+}
+
+// unlike equivalient functions for winDbgScr and winPlayScr this does not need
+// to be called from with a critical section.
+func (win *winCRTPrefs) getScaledHeight() float32 {
+	return float32(win.previewRect.Size().Y) * win.getScaling(false)
+}
+
+func (win *winCRTPrefs) getScaling(horiz bool) float32 {
+	const scaling = 2.0
+
+	if horiz {
+		return pixelWidth * win.scr.aspectBias * scaling
+	}
+
+	return scaling
 }

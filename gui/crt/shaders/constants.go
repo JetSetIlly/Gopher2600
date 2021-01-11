@@ -2,10 +2,10 @@
 
 package shaders
 
-const Cursor int32 = 1
-const DebugScr int32 = 1
 const GUI int32 = 0
-const NoCursor int32 = 0
+const DebugScr int32 = 1
 const Overlay int32 = 2
 const PlayScr int32 = 3
 const PrefsCRT int32 = 4
+const True int32 = 1
+const False int32 = 0
