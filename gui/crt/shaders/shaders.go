@@ -317,7 +317,11 @@ void debugscr() {
 void playscr() {
 	texelX = ScalingX / CropScreenDim.x;
 	texelY = ScalingY / CropScreenDim.y;
-	crt();
+	if (CRT == 1) {
+		crt();
+		return;
+	}
+	Out_Color = Frag_Color * texture(Texture, Frag_UV.st);
 }
 
 void prefscrt() {

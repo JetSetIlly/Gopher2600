@@ -54,10 +54,9 @@ const (
 	phosphorSpeed       = 1.0
 	maskBrightness      = 0.70
 	scanlinesBrightness = 0.70
-	noiseLevel          = 0.10
+	noiseLevel          = 0.19
 	blurLevel           = 0.15
-
-	vignette = true
+	vignette            = true
 )
 
 // NewPreferences is the preferred method of initialisation for the Preferences type.

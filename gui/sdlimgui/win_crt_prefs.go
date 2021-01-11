@@ -164,8 +164,22 @@ func (win *winCRTPrefs) drawPhosphor() {
 	if imgui.Checkbox("Phosphor##phosphor", &b) {
 		win.img.crtPrefs.Phosphor.Set(b)
 	}
+
 	f := float32(win.img.crtPrefs.PhosphorSpeed.Get().(float64))
-	if imgui.SliderFloatV("##phosphorspeed", &f, 0.5, 1.2, "%.2f", 1.0) {
+
+	var label string
+
+	if f > 1.25 {
+		label = "very fast"
+	} else if f > 1.0 {
+		label = "fast"
+	} else if f >= 0.75 {
+		label = "slow"
+	} else {
+		label = "very slow"
+	}
+
+	if imgui.SliderFloatV("##phosphorspeed", &f, 0.5, 1.5, label, 1.0) {
 		win.img.crtPrefs.PhosphorSpeed.Set(f)
 	}
 }
@@ -175,8 +189,22 @@ func (win *winCRTPrefs) drawMask() {
 	if imgui.Checkbox("Shadow Mask##mask", &b) {
 		win.img.crtPrefs.Mask.Set(b)
 	}
+
 	f := float32(win.img.crtPrefs.MaskBrightness.Get().(float64))
-	if imgui.SliderFloatV("##maskbrightness", &f, 0.0, 1.0, "%.2f", 1.0) {
+
+	var label string
+
+	if f > 0.75 {
+		label = "very bright"
+	} else if f > 0.50 {
+		label = "bright"
+	} else if f >= 0.25 {
+		label = "dark"
+	} else {
+		label = "very dark"
+	}
+
+	if imgui.SliderFloatV("##maskbrightness", &f, 0.0, 1.0, label, 1.0) {
 		win.img.crtPrefs.MaskBrightness.Set(f)
 	}
 }
@@ -186,8 +214,22 @@ func (win *winCRTPrefs) drawScanlines() {
 	if imgui.Checkbox("Scanlines##scanlines", &b) {
 		win.img.crtPrefs.Scanlines.Set(b)
 	}
+
 	f := float32(win.img.crtPrefs.ScanlinesBrightness.Get().(float64))
-	if imgui.SliderFloatV("##scanlinesbrightness", &f, 0.0, 1.0, "%.2f", 1.0) {
+
+	var label string
+
+	if f > 0.75 {
+		label = "very bright"
+	} else if f > 0.50 {
+		label = "bright"
+	} else if f >= 0.25 {
+		label = "dark"
+	} else {
+		label = "very dark"
+	}
+
+	if imgui.SliderFloatV("##scanlinesbrightness", &f, 0.0, 1.0, label, 1.0) {
 		win.img.crtPrefs.ScanlinesBrightness.Set(f)
 	}
 }
@@ -197,8 +239,22 @@ func (win *winCRTPrefs) drawNoise() {
 	if imgui.Checkbox("Noise##noise", &b) {
 		win.img.crtPrefs.Noise.Set(b)
 	}
+
 	f := float32(win.img.crtPrefs.NoiseLevel.Get().(float64))
-	if imgui.SliderFloatV("##noiselevel", &f, 0.0, 0.2, "%.2f", 1.0) {
+
+	var label string
+
+	if f > 0.75 {
+		label = "very high"
+	} else if f > 0.50 {
+		label = "high"
+	} else if f >= 0.25 {
+		label = "low"
+	} else {
+		label = "very low"
+	}
+
+	if imgui.SliderFloatV("##noiselevel", &f, 0.0, 1.0, label, 1.0) {
 		win.img.crtPrefs.NoiseLevel.Set(f)
 	}
 }
@@ -208,8 +264,22 @@ func (win *winCRTPrefs) drawBlur() {
 	if imgui.Checkbox("Blur##blur", &b) {
 		win.img.crtPrefs.Blur.Set(b)
 	}
+
 	f := float32(win.img.crtPrefs.BlurLevel.Get().(float64))
-	if imgui.SliderFloatV("##Blurlevel", &f, 0.1, 0.9, "%.2f", 1.0) {
+
+	var label string
+
+	if f > 0.45 {
+		label = "very high"
+	} else if f > 0.30 {
+		label = "high"
+	} else if f >= 0.15 {
+		label = "low"
+	} else {
+		label = "very low"
+	}
+
+	if imgui.SliderFloatV("##Blurlevel", &f, 0.0, 0.6, label, 1.0) {
 		win.img.crtPrefs.BlurLevel.Set(f)
 	}
 }
