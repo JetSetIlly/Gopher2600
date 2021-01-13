@@ -64,6 +64,7 @@ func NewRecorder(transcript string, vcs *hardware.VCS) (*Recorder, error) {
 		return nil, curated.Errorf("recorder: %v", err)
 	}
 
+	// vcs must be reset too
 	err = rec.vcs.Reset()
 	if err != nil {
 		return nil, curated.Errorf("recorder: %v", err)

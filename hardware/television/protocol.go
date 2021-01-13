@@ -116,6 +116,10 @@ type AudioMixer interface {
 	// for simplicity, the AudioMixer should be considered unusable after
 	// EndMixing() has been called
 	EndMixing() error
+
+	// Reset buffered audio and anything else that might need doing on, for
+	// example, a cartridge change.
+	Reset()
 }
 
 type ReflectionSynchronising interface {

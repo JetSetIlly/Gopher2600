@@ -108,7 +108,7 @@ func (sr *resizer) commit(tv *Television) error {
 	// something has changed so call Resize() for all attached pixel renderers
 	if tv.state.top < tv.state.bottom {
 		for f := range tv.renderers {
-			err := tv.renderers[f].Resize(tv.state.spec, tv.state.top, tv.state.bottom-tv.state.top+1)
+			err := tv.renderers[f].Resize(tv.state.spec, tv.state.top, tv.state.bottom-tv.state.top)
 			if err != nil {
 				return err
 			}

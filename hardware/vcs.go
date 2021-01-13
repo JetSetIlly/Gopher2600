@@ -108,6 +108,11 @@ func (vcs *VCS) AttachCartridge(cartload cartridgeloader.Loader) error {
 		}
 	}
 
+	// resetting after cartridge attachment because the cartridge needs a reset
+	// too. we could "correct" this my mandating every cartridge mapper goes
+	// through the reset procedure on initialisation, but this feels safer
+	// somehow.
+
 	err := vcs.Reset()
 	if err != nil {
 		return err
@@ -122,6 +127,13 @@ func (vcs *VCS) Reset() error {
 	if err != nil {
 		return err
 	}
+
+	// easiest way of resetting the TIA is to just create new one
+	vcs.TIA = tia.NewTIA(vcs.TV, vcs.Mem.TIA, vcs.RIOT.Ports)
+
+	// other areas of the VCS are simply reset because the emulation may have
+	// altered the part of the state that we do *not* want to reset. notably,
+	// memory may have a cartridge attached - we wouldn't want to lose that.
 
 	vcs.Mem.Reset()
 	vcs.CPU.Reset()

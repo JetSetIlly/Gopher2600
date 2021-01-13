@@ -85,6 +85,11 @@ func (dig *Audio) SetAudio(audioData uint8) error {
 	return nil
 }
 
+// Reset implements the television.AudioMixer interface.
+func (dig *Audio) Reset() {
+	_ = dig.flushAudio()
+}
+
 func (dig *Audio) flushAudio() error {
 	dig.digest = sha1.Sum(dig.buffer)
 	n := copy(dig.buffer, dig.digest[:])

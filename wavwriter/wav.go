@@ -92,3 +92,7 @@ func (aw *WavWriter) EndMixing() (rerr error) {
 
 	return nil
 }
+
+// Reset implements the television.AudioMixer interface.
+func (aw *WavWriter) Reset() {
+}

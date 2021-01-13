@@ -179,6 +179,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		// resetting in the middle of a CPU instruction requires the input loop
 		// to be unwound before continuing
 		dbg.restartInputLoop(dbg.reset)
+		dbg.printLine(terminal.StyleFeedback, "machine reset")
 
 	case cmdRun:
 		dbg.runUntilHalt = true

@@ -135,7 +135,7 @@ type Rewind struct {
 	// snapshots)
 	framesSinceSnapshot int
 
-	// a rewind boundary has been detected. call restart() on next frame.
+	// a rewind boundary has been detected. call reset() on next frame.
 	boundaryNextFrame bool
 }
 
@@ -161,7 +161,57 @@ func NewRewind(vcs *hardware.VCS, runner Runner) (*Rewind, error) {
 
 func (r *Rewind) allocate() {
 	r.entries = make([]*State, r.Prefs.MaxEntries.Get().(int)+overhead)
-	r.restart(levelReset)
+	r.reset(levelReset)
+}
+
+// Reset rewind system removes all entries and takes a snapshot of the
+// execution state. This should be called whenever a new cartridge is attached
+// to the emulation.
+func (r *Rewind) Reset() {
+	r.reset(levelReset)
+}
+
+func (r *Rewind) reset(level snapshotLevel) {
+	// nillify all entries
+	for i := range r.entries {
+		r.entries[i] = nil
+	}
+
+	r.adhoc = nil
+	r.comparison = nil
+
+	r.newFrame = false
+	r.justAddedFrame = true
+	r.framesSinceSnapshot = 0
+	r.boundaryNextFrame = false
+
+	// this arrangement of the three history indexes means that there is no
+	// special conditions in the append() function.
+	//
+	// start and end are equal to begin with. the first call to append() below
+	// will add the new State at the current end point and then advance the end
+	// index ready for the next append(). this means that the entry appended
+	// will be a index start
+	r.start = 1
+	r.end = 1
+
+	// the splice point is checked to see if it is an execution
+	// entry and is chopped off if it is. the insertion of a sparse boundary
+	// entry means we don't have to check for nil
+	//
+	// the append function will move the splice index to start
+	r.splice = 0
+	r.entries[r.splice] = &State{level: levelBoundary}
+
+	// add current state as first entry
+	r.append(r.snapshot(level))
+
+	// first comparison is to the snapshot of the reset machine
+	r.comparison = r.entries[r.start]
+
+	// this isn't really neede but if feels good to remove the boundary entry
+	// added at the initial splice index.
+	r.entries[0] = nil
 }
 
 func (r *Rewind) String() string {
@@ -201,52 +251,6 @@ func (r *Rewind) snapshot(level snapshotLevel) *State {
 	}
 }
 
-// Reset rewind system removes all entries and takes a snapshot of the
-// execution state. This should be called whenever a new cartridge is attached
-// to the emulation.
-func (r *Rewind) Reset() {
-	r.restart(levelReset)
-}
-
-func (r *Rewind) restart(level snapshotLevel) {
-	// nillify all entries
-	for i := range r.entries {
-		r.entries[i] = nil
-	}
-
-	r.newFrame = false
-	r.justAddedFrame = true
-	r.framesSinceSnapshot = 0
-
-	// this arrangement of the three history indexes means that there is no
-	// special conditions in the append() function.
-	//
-	// start and end are equal to begin with. the first call to append() below
-	// will add the new State at the current end point and then advance the end
-	// index ready for the next append(). this means that the entry appended
-	// will be a index start
-	r.start = 1
-	r.end = 1
-
-	// the splice point is checked to see if it is an execution
-	// entry and is chopped off if it is. the insertion of a sparse boundary
-	// entry means we don't have to check for nil
-	//
-	// the append function will move the splice index to start
-	r.splice = 0
-	r.entries[r.splice] = &State{level: levelBoundary}
-
-	// add current state as first entry
-	r.append(r.snapshot(level))
-
-	// first comparison is to the snapshot of the reset machine
-	r.comparison = r.entries[r.start]
-
-	// this isn't really neede but if feels good to remove the boundary entry
-	// added at the initial splice index.
-	r.entries[0] = nil
-}
-
 // Check should be called after every CPU instruction to check whether a new
 // frame has been triggered since the last call. Delaying a call to this
 // function may result in sub-optimal results.
@@ -261,7 +265,7 @@ func (r *Rewind) Check() {
 
 	if r.boundaryNextFrame {
 		r.boundaryNextFrame = false
-		r.restart(levelBoundary)
+		r.reset(levelBoundary)
 		logger.Log("rewind", fmt.Sprintf("boundary added at frame %d", r.vcs.TV.GetState(signal.ReqFramenum)))
 		return
 	}

@@ -344,7 +344,6 @@ func (dbg *Debugger) reset() error {
 	}
 	dbg.Rewind.Reset()
 	dbg.lastResult = &disassembly.Entry{Result: execution.Result{Final: true}}
-	dbg.printLine(terminal.StyleFeedback, "machine reset")
 	return nil
 }
 
@@ -407,9 +406,7 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) error {
 		return err
 	}
 
-	// attaching a new cartridge always causes the rewind system to reset
-	dbg.Rewind.Reset()
-
+	// disassemble newly attached cartridge
 	symbols, err := symbols.ReadSymbolsFile(dbg.VCS.Mem.Cart)
 	if err != nil {
 		logger.Log("symbols", err.Error())
@@ -422,6 +419,9 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) error {
 
 	// repoint debug memory's symbol table
 	dbg.dbgmem.symbols = dbg.Disasm.Symbols
+
+	// make sure everything is reset after disassembly
+	dbg.reset()
 
 	return nil
 }

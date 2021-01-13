@@ -124,23 +124,74 @@ func newScreen(img *SdlImgui) *screen {
 		emuWaitAck: make(chan bool),
 	}
 
+	scr.crit.overlay = reflection.OverlayList[0]
+	scr.Reset()
+
+	return scr
+}
+
+// Reset implements the television.PixelRenderer interface.
+//
+// called on startup and also whenever the VCS is reset, including when a new
+// cartridge is inserted
+func (scr *screen) Reset() {
 	// start off by showing entirity of NTSC screen
 	scr.resize(specification.SpecNTSC, specification.SpecNTSC.AtariSafeTop, specification.SpecNTSC.ScanlinesVisible)
 
+	scr.crit.section.Lock()
+	defer scr.crit.section.Unlock()
+
+	scr.clearPixels()
+	scr.crit.plotIdx = 0
+	scr.crit.renderIdx = 0
+
 	scr.crit.lastX = 0
 	scr.crit.lastY = 0
-	scr.crit.overlay = reflection.OverlayList[0]
 
 	// start off with a buffer update to make sure the textureRenderer
 	// implementations have good information about the pixel data as soon as
 	// possible. without this, the visible screen window will jump from its
 	// initial scaling value to the correct one.
 	scr.crit.bufferUpdate = true
+}
 
-	return scr
+// clear all pixel information including reflection data.
+//
+// called when screen is reset and also when it is resize.
+//
+// must be called from inside a critical section.
+func (scr *screen) clearPixels() {
+	// clear pixels
+	for y := 0; y < scr.crit.pixels.Bounds().Size().Y; y++ {
+		for x := 0; x < scr.crit.pixels.Bounds().Size().X; x++ {
+			scr.crit.pixels.SetRGBA(x, y, color.RGBA{0, 0, 0, 255})
+			scr.crit.elementPixels.SetRGBA(x, y, color.RGBA{0, 0, 0, 255})
+			scr.crit.overlayPixels.SetRGBA(x, y, color.RGBA{0, 0, 0, 255})
+			scr.crit.phosphor.SetRGBA(x, y, color.RGBA{0, 0, 0, 0})
+		}
+	}
+	for i := range scr.crit.bufferPixels {
+		for y := 0; y < scr.crit.pixels.Bounds().Size().Y; y++ {
+			for x := 0; x < scr.crit.pixels.Bounds().Size().X; x++ {
+				scr.crit.bufferPixels[i].SetRGBA(x, y, color.RGBA{0, 0, 0, 255})
+			}
+		}
+	}
+
+	// reset reflection information
+	for i := range scr.crit.reflection {
+		for j := range scr.crit.reflection[i] {
+			scr.crit.reflection[i][j] = reflection.VideoStep{}
+		}
+	}
+	scr.replotOverlay()
 }
 
 // resize() is called by Resize() or resizeThread() depending on thread context.
+//
+// it can be called when there is no need to resize the image so steps are
+// taken at the beginning of the function to return early before any
+// side-effects occur.
 func (scr *screen) resize(spec specification.Spec, topScanline int, visibleScanlines int) {
 	// never resize below the visible scanlines according to the specification
 	if visibleScanlines < spec.ScanlinesVisible {
@@ -185,22 +236,8 @@ func (scr *screen) resize(spec specification.Spec, topScanline int, visibleScanl
 	scr.crit.cropElementPixels = scr.crit.elementPixels.SubImage(crop).(*image.RGBA)
 	scr.crit.cropOverlayPixels = scr.crit.overlayPixels.SubImage(crop).(*image.RGBA)
 
-	// clear pixels
-	for y := 0; y < scr.crit.pixels.Bounds().Size().Y; y++ {
-		for x := 0; x < scr.crit.pixels.Bounds().Size().X; x++ {
-			scr.crit.pixels.SetRGBA(x, y, color.RGBA{0, 0, 0, 255})
-			scr.crit.elementPixels.SetRGBA(x, y, color.RGBA{0, 0, 0, 255})
-			scr.crit.overlayPixels.SetRGBA(x, y, color.RGBA{0, 0, 0, 255})
-			scr.crit.phosphor.SetRGBA(x, y, color.RGBA{0, 0, 0, 0})
-		}
-	}
-	for i := range scr.crit.bufferPixels {
-		for y := 0; y < scr.crit.pixels.Bounds().Size().Y; y++ {
-			for x := 0; x < scr.crit.pixels.Bounds().Size().X; x++ {
-				scr.crit.bufferPixels[i].SetRGBA(x, y, color.RGBA{0, 0, 0, 255})
-			}
-		}
-	}
+	// make sure all pixels are clear
+	scr.clearPixels()
 
 	// update aspect-bias value
 	scr.aspectBias = spec.AspectBias
@@ -215,6 +252,11 @@ func (scr *screen) resize(spec specification.Spec, topScanline int, visibleScanl
 }
 
 // Resize implements the television.PixelRenderer interface
+//
+// called when the television detects a new TV specification.
+//
+// it is also called by the television when the rewind system is used, in order
+// to make sure that the screen specification is accurate.
 //
 // MUST NOT be called from the gui thread.
 func (scr *screen) Resize(spec specification.Spec, topScanline int, visibleScanlines int) error {
@@ -300,22 +342,6 @@ func (scr *screen) SetPixel(sig signal.SignalAttributes, current bool) error {
 	scr.crit.bufferPixels[scr.crit.plotIdx].SetRGBA(sig.HorizPos, sig.Scanline, col)
 
 	return nil
-}
-
-// Reset implements the television.PixelRenderer interface.
-func (scr *screen) Reset() {
-	scr.crit.section.Lock()
-
-	// simplest method of resetting all pixels to black
-	for i := range scr.crit.bufferPixels {
-		for y := 0; y < scr.crit.pixels.Bounds().Size().Y; y++ {
-			for x := 0; x < scr.crit.pixels.Bounds().Size().X; x++ {
-				scr.crit.bufferPixels[i].SetRGBA(x, y, color.RGBA{0, 0, 0, 255})
-			}
-		}
-	}
-
-	scr.crit.section.Unlock()
 }
 
 // EndRendering implements the television.PixelRenderer interface.

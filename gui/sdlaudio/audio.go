@@ -53,10 +53,7 @@ type Audio struct {
 
 // NewAudio is the preferred method of initialisatoin for the Audio Type.
 func NewAudio() (*Audio, error) {
-	aud := &Audio{
-		buffer: make([]uint8, bufferLength),
-	}
-
+	aud := &Audio{}
 	spec := &sdl.AudioSpec{
 		Freq:     audio.SampleFreq,
 		Format:   sdl.AUDIO_U8,
@@ -79,12 +76,9 @@ func NewAudio() (*Audio, error) {
 	logger.Log("sdl: audio:", fmt.Sprintf("channels: %d", aud.spec.Channels))
 	logger.Log("sdl: audio:", fmt.Sprintf("buffer size: %d samples", aud.spec.Samples))
 
-	// fill buffers with silence
-	for i := range aud.buffer {
-		aud.buffer[i] = aud.spec.Silence
-	}
-
 	sdl.PauseAudioDevice(aud.id, false)
+
+	aud.Reset()
 
 	return aud, nil
 }
@@ -147,4 +141,17 @@ func (aud *Audio) SetAudio(audioData uint8) error {
 func (aud *Audio) EndMixing() error {
 	sdl.CloseAudioDevice(aud.id)
 	return nil
+}
+
+// Reset implements the television.AudioMixer interface.
+func (aud *Audio) Reset() {
+	aud.buffer = make([]uint8, bufferLength)
+	aud.bufferCt = 0
+
+	// fill buffers with silence
+	for i := range aud.buffer {
+		aud.buffer[i] = aud.spec.Silence
+	}
+
+	sdl.ClearQueuedAudio(aud.id)
 }

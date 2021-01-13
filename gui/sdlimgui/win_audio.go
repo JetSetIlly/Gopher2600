@@ -31,10 +31,10 @@ type winAudio struct {
 
 func newWinAudio(img *SdlImgui) (window, error) {
 	win := &winAudio{
-		img:           img,
-		displayBuffer: make([]float32, 2048),
-		newData:       make(chan float32, 2048),
+		img:     img,
+		newData: make(chan float32, 2048),
 	}
+	win.Reset()
 
 	img.tv.AddAudioMixer(win)
 
@@ -104,4 +104,9 @@ func (win *winAudio) SetAudio(audioData uint8) error {
 // EndMixing implements television.AudioMixer.
 func (win *winAudio) EndMixing() error {
 	return nil
+}
+
+// Reset implements television.AudioMixer.
+func (win *winAudio) Reset() {
+	win.displayBuffer = make([]float32, 2048)
 }

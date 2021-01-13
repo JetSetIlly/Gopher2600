@@ -175,6 +175,44 @@ func (tv *Television) String() string {
 	return fmt.Sprintf("FR=%04d SL=%03d HP=%03d", tv.state.frameNum, tv.state.scanline, tv.state.horizPos-specification.HorizClksHBlank)
 }
 
+// Reset the television to an initial state.
+func (tv *Television) Reset(keepFrameNum bool) error {
+	// we definitely do not call this on television initialisation because the
+	// rest of the system may not be yet be in a suitable state
+
+	err := tv.SetSpec(tv.reqSpecID)
+	if err != nil {
+		return err
+	}
+
+	if !keepFrameNum {
+		tv.state.frameNum = 0
+	}
+
+	tv.state.horizPos = 0
+	tv.state.scanline = 0
+	tv.state.syncedFrameNum = 0
+	tv.state.syncedFrame = false
+	tv.state.vsyncCount = 0
+	tv.state.lastSignal = signal.SignalAttributes{}
+
+	for i := range tv.signals {
+		tv.signals[i] = signal.SignalAttributes{}
+	}
+	tv.currentIdx = 0
+	tv.lastMaxIdx = 0
+
+	for _, r := range tv.renderers {
+		r.Reset()
+	}
+
+	for _, m := range tv.mixers {
+		m.Reset()
+	}
+
+	return nil
+}
+
 // Snapshot makes a copy of the television state.
 func (tv *Television) Snapshot() *State {
 	return tv.state.Snapshot()
@@ -231,35 +269,6 @@ func (tv *Television) AddAudioMixer(m AudioMixer) {
 // one can be added. Subsequence calls replaces existing implementations.
 func (tv *Television) AddReflector(r ReflectionSynchronising) {
 	tv.reflector = r
-}
-
-// Reset the television to an initial state.
-func (tv *Television) Reset(keepFrameNum bool) error {
-	// we definitely do not call this on television initialisation because the
-	// rest of the system may not be yet be in a suitable state
-
-	err := tv.SetSpec(tv.reqSpecID)
-	if err != nil {
-		return err
-	}
-
-	if !keepFrameNum {
-		tv.state.frameNum = 0
-	}
-
-	tv.state.horizPos = 0
-	tv.state.scanline = 0
-	tv.state.syncedFrameNum = 0
-	tv.state.syncedFrame = false
-	tv.state.vsyncCount = 0
-	tv.state.lastSignal = signal.SignalAttributes{}
-
-	for _, r := range tv.renderers {
-		_ = r.Resize(tv.state.spec, tv.state.top, tv.state.bottom-tv.state.top)
-		r.Reset()
-	}
-
-	return nil
 }
 
 // some televisions may need to conclude and/or dispose of resources
@@ -470,14 +479,9 @@ func (tv *Television) newFrame(synced bool) error {
 // the "current" argument defines how many pixels to push. if all is true then.
 func (tv *Television) processSignals(current bool) error {
 	if !tv.pauseRendering {
-		lmt := tv.currentIdx
-		if !current {
-			lmt = tv.lastMaxIdx
-		}
-
 		for _, r := range tv.renderers {
 			r.UpdatingPixels(true)
-			for i := 0; i < lmt; i++ {
+			for i := 0; i < tv.currentIdx; i++ {
 				sig := tv.signals[i]
 				err := r.SetPixel(sig, i < tv.currentIdx)
 				if err != nil {
@@ -487,17 +491,40 @@ func (tv *Television) processSignals(current bool) error {
 					tv.reflector.SyncReflectionPixel(i)
 				}
 			}
+			if !current {
+				for i := tv.currentIdx + 1; i < tv.lastMaxIdx; i++ {
+					sig := tv.signals[i]
+					err := r.SetPixel(sig, i < tv.currentIdx)
+					if err != nil {
+						return curated.Errorf("television", err)
+					}
+					if tv.reflector != nil {
+						tv.reflector.SyncReflectionPixel(i)
+					}
+				}
+			}
 			r.UpdatingPixels(false)
 		}
 
 		// mix audio
 		for _, m := range tv.mixers {
-			for i := 0; i < lmt; i++ {
+			for i := 0; i < tv.currentIdx; i++ {
 				sig := tv.signals[i]
 				if sig.AudioUpdate {
 					err := m.SetAudio(sig.AudioData)
 					if err != nil {
 						return err
+					}
+				}
+			}
+			if !current {
+				for i := tv.currentIdx + 1; i < tv.lastMaxIdx; i++ {
+					sig := tv.signals[i]
+					if sig.AudioUpdate {
+						err := m.SetAudio(sig.AudioData)
+						if err != nil {
+							return err
+						}
 					}
 				}
 			}
