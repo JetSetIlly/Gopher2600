@@ -25,9 +25,12 @@ import (
 // (reflection) Renderer's Reflect() function is consequently also called every
 // video cycle with a populated instance of LastResult.
 type Monitor struct {
-	vcs        *hardware.VCS
-	renderer   Renderer
-	history    [television.MaxSignalHistory]Reflection
+	vcs      *hardware.VCS
+	renderer Renderer
+
+	// history of reflections. this is reset every frame by the television via
+	// SyncFrame().
+	history    [television.MaxSignalHistory]VideoStep
 	historyIdx int
 }
 
@@ -42,16 +45,19 @@ func NewMonitor(vcs *hardware.VCS, renderer Renderer) *Monitor {
 // Check should be called every video cycle to record the current state of the
 // emulation/system.
 func (mon *Monitor) Check(bank mapper.BankInfo) error {
-	res := Reflection{
-		CPU:                 mon.vcs.CPU.LastResult,
-		WSYNC:               !mon.vcs.CPU.RdyFlg,
-		Bank:                bank,
-		VideoElement:        mon.vcs.TIA.Video.LastElement,
-		TV:                  mon.vcs.TV.GetLastSignal(),
-		Hblank:              mon.vcs.TIA.Hblank,
-		Collision:           mon.vcs.TIA.Video.Collisions.String(),
-		OptReusePixel:       mon.vcs.TIA.Video.OptReusePixel,
-		OptNoCollisionCheck: mon.vcs.TIA.Video.OptNoCollisionCheck,
+	res := VideoStep{
+		CPU:          mon.vcs.CPU.LastResult,
+		WSYNC:        !mon.vcs.CPU.RdyFlg,
+		Bank:         bank,
+		VideoElement: mon.vcs.TIA.Video.LastElement,
+		TV:           mon.vcs.TV.GetLastSignal(),
+		Collision:    *mon.vcs.TIA.Video.Collisions,
+		IsHblank:     mon.vcs.TIA.Hblank,
+	}
+
+	res.Optimisations = Optimisations{
+		ReusePixel:       mon.vcs.TIA.Video.OptReusePixel,
+		NoCollisionCheck: mon.vcs.TIA.Video.OptNoCollisionCheck,
 	}
 
 	// reflect HMOVE state
@@ -64,6 +70,7 @@ func (mon *Monitor) Check(bank mapper.BankInfo) error {
 		res.Hmove.RippleCt = mon.vcs.TIA.HmoveCt
 	}
 
+	// record reflection in history
 	if mon.historyIdx < television.MaxSignalHistory {
 		mon.history[mon.historyIdx] = res
 		mon.historyIdx++

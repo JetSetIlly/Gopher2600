@@ -29,12 +29,6 @@ const winSaveKeyI2CMenu = "I2C"
 type winSaveKeyI2C struct {
 	img  *SdlImgui
 	open bool
-
-	// color of bit indicator
-	bit        imgui.PackedColor
-	bitPointer imgui.PackedColor
-	scl        imgui.PackedColor
-	sda        imgui.PackedColor
 }
 
 func newWinSaveKeyI2C(img *SdlImgui) (window, error) {
@@ -46,10 +40,6 @@ func newWinSaveKeyI2C(img *SdlImgui) (window, error) {
 }
 
 func (win *winSaveKeyI2C) init() {
-	win.bit = imgui.PackedColorFromVec4(win.img.cols.SaveKeyBit)
-	win.bitPointer = imgui.PackedColorFromVec4(win.img.cols.SaveKeyBitPointer)
-	win.scl = imgui.PackedColorFromVec4(win.img.cols.SaveKeyOscSCL)
-	win.sda = imgui.PackedColorFromVec4(win.img.cols.SaveKeyOscSDA)
 }
 
 func (win *winSaveKeyI2C) destroy() {
@@ -126,18 +116,9 @@ func (win *winSaveKeyI2C) drawOscilloscope() {
 
 	// key to oscilloscope
 	imgui.Spacing()
-	seq := newDrawlistSequence(win.img, imgui.Vec2{X: imgui.FrameHeight() * 0.75, Y: imgui.FrameHeight() * 0.75}, false)
-	seq.rectFill(win.scl)
-	seq.end()
+	win.img.imguiColorLabel(win.img.cols.saveKeyOscSCL, "SCL")
 	imgui.SameLine()
-	imgui.Text("SCL")
-
-	imgui.SameLine()
-	seq = newDrawlistSequence(win.img, imgui.Vec2{X: imgui.FrameHeight() * 0.75, Y: imgui.FrameHeight() * 0.75}, false)
-	seq.rectFill(win.sda)
-	seq.end()
-	imgui.SameLine()
-	imgui.Text("SDA")
+	win.img.imguiColorLabel(win.img.cols.saveKeyOscSDA, "SDA")
 }
 
 func (win *winSaveKeyI2C) drawStatus() {
@@ -210,7 +191,7 @@ func (win *winSaveKeyI2C) drawBits() {
 		if (bits<<i)&0x80 != 0x80 {
 			seq.nextItemDepressed = true
 		}
-		if seq.rectFill(win.bit) {
+		if seq.rectFill(win.img.cols.saveKeyBit) {
 			v := bits ^ (0x80 >> i)
 			win.img.lz.Dbg.PushRawEvent(func() {
 				if sk, ok := win.img.lz.Dbg.VCS.RIOT.Ports.Player1.(*savekey.SaveKey); ok {
@@ -224,7 +205,7 @@ func (win *winSaveKeyI2C) drawBits() {
 
 	dl := imgui.WindowDrawList()
 	dl.AddCircleFilled(imgui.Vec2{X: seq.offsetX(bitCt), Y: imgui.CursorScreenPos().Y},
-		imgui.FontSize()*0.20, win.bitPointer)
+		imgui.FontSize()*0.20, win.img.cols.saveKeyBitPointer)
 }
 
 func (win *winSaveKeyI2C) drawAddress() {

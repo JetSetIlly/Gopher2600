@@ -390,7 +390,6 @@ func (rnd *glsl) setOptions(textureID uint32) {
 			gl.Uniform1i(rnd.attribShowCursor, shaders.False)
 		}
 	}
-
 }
 
 func (rnd *glsl) setup() {

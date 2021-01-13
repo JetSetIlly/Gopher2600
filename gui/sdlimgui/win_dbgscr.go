@@ -24,6 +24,7 @@ import (
 	"github.com/jetsetilly/gopher2600/disassembly"
 	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
+	"github.com/jetsetilly/gopher2600/hardware/tia/video"
 	"github.com/jetsetilly/gopher2600/reflection"
 )
 
@@ -369,7 +370,7 @@ func (win *winDbgScr) drawReflectionTooltip(mouseOrigin imgui.Vec2) {
 	win.mouseScanline = int(mp.Y)
 
 	// get reflection information
-	var ref reflection.Reflection
+	var ref reflection.VideoStep
 
 	if win.mouseHorizPos < len(win.scr.crit.reflection) && win.mouseScanline < len(win.scr.crit.reflection[win.mouseHorizPos]) {
 		ref = win.scr.crit.reflection[win.mouseHorizPos][win.mouseScanline]
@@ -391,10 +392,31 @@ func (win *winDbgScr) drawReflectionTooltip(mouseOrigin imgui.Vec2) {
 		case "WSYNC":
 		case "Collisions":
 			imguiSeparator()
-			if ref.Collision != "" {
-				imgui.Text(ref.Collision)
+
+			imguiLabel("CXM0P ")
+			drawCollision(win.img, ref.Collision.CXM0P, video.CollisionMask, func(_ uint8) {})
+			imguiLabel("CXM1P ")
+			drawCollision(win.img, ref.Collision.CXM1P, video.CollisionMask, func(_ uint8) {})
+			imguiLabel("CXP0FB")
+			drawCollision(win.img, ref.Collision.CXP0FB, video.CollisionMask, func(_ uint8) {})
+			imguiLabel("CXP1FB")
+			drawCollision(win.img, ref.Collision.CXP1FB, video.CollisionMask, func(_ uint8) {})
+			imguiLabel("CXM0FB")
+			drawCollision(win.img, ref.Collision.CXM0FB, video.CollisionMask, func(_ uint8) {})
+			imguiLabel("CXM1FB")
+			drawCollision(win.img, ref.Collision.CXM1FB, video.CollisionMask, func(_ uint8) {})
+			imguiLabel("CXBLPF")
+			drawCollision(win.img, ref.Collision.CXBLPF, video.CollisionCXBLPFMask, func(_ uint8) {})
+			imguiLabel("CXPPMM")
+			drawCollision(win.img, ref.Collision.CXPPMM, video.CollisionMask, func(_ uint8) {})
+
+			imguiSeparator()
+
+			s := ref.Collision.LastVideoCycle.String()
+			if s != "" {
+				imgui.Text(s)
 			} else {
-				imgui.Text("no collision")
+				imgui.Text("no new collision")
 			}
 		case "HMOVE":
 			imguiSeparator()
@@ -411,13 +433,13 @@ func (win *winDbgScr) drawReflectionTooltip(mouseOrigin imgui.Vec2) {
 			}
 		case "Optimised":
 			imguiSeparator()
-			if ref.OptReusePixel && ref.OptNoCollisionCheck {
+			if ref.Optimisations.ReusePixel && ref.Optimisations.NoCollisionCheck {
 				imgui.Text("Shortest render path used")
 			} else {
-				if !ref.OptReusePixel {
+				if !ref.Optimisations.ReusePixel {
 					imgui.Text("Pixel col/layer recalculated")
 				}
-				if !ref.OptNoCollisionCheck {
+				if !ref.Optimisations.NoCollisionCheck {
 					imgui.Text("Collision registers recalculated")
 				}
 			}
@@ -433,23 +455,14 @@ func (win *winDbgScr) drawReflectionTooltip(mouseOrigin imgui.Vec2) {
 	imguiSeparator()
 
 	// pixel swatch. using black swatch if pixel is HBLANKed or VBLANKed
-	if ref.Hblank || ref.TV.VBlank {
+	if ref.IsHblank || ref.TV.VBlank {
 		win.img.imguiSwatch(0, 0.5)
 	} else {
 		win.img.imguiSwatch(uint8(ref.TV.Pixel), 0.5)
 	}
 
 	// element information regardless of HBLANK/VBLANK state
-	imguiLabel(ref.VideoElement.String())
-
-	// add HBLANK/VBLANK information
-	if ref.Hblank {
-		imgui.SameLine()
-		imguiLabel("[HBLANK]")
-	} else if ref.TV.VBlank {
-		imgui.SameLine()
-		imguiLabel("[VBLANK]")
-	}
+	imguiLabelEnd(ref.VideoElement.String())
 
 	imgui.Spacing()
 
@@ -471,6 +484,18 @@ func (win *winDbgScr) drawReflectionTooltip(mouseOrigin imgui.Vec2) {
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmOperand)
 		imgui.Text(e.Operand.String())
 		imgui.PopStyleColor()
+	}
+
+	// add HBLANK/VBLANK information
+	if ref.IsHblank && ref.TV.VBlank {
+		imguiSeparator()
+		imguiLabel("[HBLANK/VBLANK]")
+	} else if ref.IsHblank {
+		imguiSeparator()
+		imguiLabel("[HBLANK]")
+	} else if ref.TV.VBlank {
+		imguiSeparator()
+		imguiLabel("[VBLANK]")
 	}
 }
 

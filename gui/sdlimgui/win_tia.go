@@ -36,10 +36,6 @@ type winTIA struct {
 	playerSizeAndCopiesComboDim imgui.Vec2
 	missileSizeComboDim         imgui.Vec2
 	missileCopiesComboDim       imgui.Vec2
-
-	// idxPointer is used to indicate which playfield/player gfx bit is being
-	// displayed
-	idxPointer imgui.PackedColor
 }
 
 func newWinTIA(img *SdlImgui) (window, error) {
@@ -58,7 +54,6 @@ func (win *winTIA) init() {
 	win.playerSizeAndCopiesComboDim = imguiGetFrameDim("", video.PlayerSizes...)
 	win.missileSizeComboDim = imguiGetFrameDim("", video.MissileSizes...)
 	win.missileCopiesComboDim = imguiGetFrameDim("", video.MissileCopies...)
-	win.idxPointer = imgui.PackedColorFromVec4(win.img.cols.IdxPointer)
 }
 
 func (win *winTIA) destroy() {

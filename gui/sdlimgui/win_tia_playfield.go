@@ -218,7 +218,7 @@ func (win *winTIA) drawPlayfield() {
 		}
 
 		dl := imgui.WindowDrawList()
-		dl.AddCircleFilled(p1, imgui.FontSize()*0.20, win.idxPointer)
+		dl.AddCircleFilled(p1, imgui.FontSize()*0.20, win.img.cols.tiaPointer)
 	}
 	imgui.EndGroup()
 }

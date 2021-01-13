@@ -66,12 +66,6 @@ type winDisasm struct {
 
 	// the program counter value in the previous (imgui) frame
 	pcaddrPrevFrame uint16
-
-	// packed colors for drawlist
-	colCPUstep      imgui.PackedColor
-	colVideoStep    imgui.PackedColor
-	colBreakAddress imgui.PackedColor
-	colBreakOther   imgui.PackedColor
 }
 
 func newWinDisasm(img *SdlImgui) (window, error) {
@@ -84,10 +78,6 @@ func newWinDisasm(img *SdlImgui) (window, error) {
 }
 
 func (win *winDisasm) init() {
-	win.colCPUstep = imgui.PackedColorFromVec4(win.img.cols.DisasmCPUstep)
-	win.colVideoStep = imgui.PackedColorFromVec4(win.img.cols.DisasmVideoStep)
-	win.colBreakAddress = imgui.PackedColorFromVec4(win.img.cols.DisasmBreakAddress)
-	win.colBreakOther = imgui.PackedColorFromVec4(win.img.cols.DisasmBreakOther)
 }
 
 func (win *winDisasm) destroy() {
@@ -358,9 +348,9 @@ func (win *winDisasm) drawEntry(e *disassembly.Entry, pcaddr uint16, selected bo
 		dl := imgui.WindowDrawList()
 
 		if cpuStep {
-			dl.AddRectFilled(p1, p2, win.colCPUstep)
+			dl.AddRectFilled(p1, p2, win.img.cols.disasmCPUstep)
 		} else {
-			dl.AddRectFilled(p1, p2, win.colVideoStep)
+			dl.AddRectFilled(p1, p2, win.img.cols.disasmVideoStep)
 		}
 
 		// make entry a bit brighter
@@ -431,9 +421,9 @@ func (win *winDisasm) drawEntry(e *disassembly.Entry, pcaddr uint16, selected bo
 func (win *winDisasm) drawBreak(e *disassembly.Entry) {
 	switch win.img.lz.Breakpoints.HasBreak(e.Result.Address) {
 	case debugger.BrkPCAddress:
-		win.drawGutter(gutterSolid, win.colBreakAddress)
+		win.drawGutter(gutterSolid, win.img.cols.disasmBreakAddress)
 	case debugger.BrkOther:
-		win.drawGutter(gutterOutline, win.colBreakOther)
+		win.drawGutter(gutterOutline, win.img.cols.disasmBreakOther)
 	}
 }
 

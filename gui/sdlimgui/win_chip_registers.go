@@ -28,9 +28,6 @@ const winChipRegistersTitle = "Chip Registers"
 type winChipRegisters struct {
 	img  *SdlImgui
 	open bool
-
-	// color of bit indicator
-	regBit imgui.PackedColor
 }
 
 func newWinChipRegisters(img *SdlImgui) (window, error) {
@@ -42,7 +39,6 @@ func newWinChipRegisters(img *SdlImgui) (window, error) {
 }
 
 func (win *winChipRegisters) init() {
-	win.regBit = imgui.PackedColorFromVec4(win.img.cols.RegisterBit)
 }
 
 func (win *winChipRegisters) destroy() {
@@ -128,7 +124,7 @@ func (win *winChipRegisters) drawChipRegisterBits(read uint8, reg string) {
 		if (read<<i)&0x80 != 0x80 {
 			seq.nextItemDepressed = true
 		}
-		if seq.rectFill(win.regBit) {
+		if seq.rectFill(win.img.cols.registerBit) {
 			b := read ^ (0x80 >> i)
 			win.img.lz.Dbg.PushRawEvent(func() {
 				err := win.img.lz.Dbg.VCS.Mem.Poke(addresses.ReadAddress[reg], b)

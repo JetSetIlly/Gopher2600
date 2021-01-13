@@ -25,7 +25,7 @@ import (
 // Renderer implementations accepts ReflectPixel values and associates it in
 // some way with the most recent television signal.
 type Renderer interface {
-	Reflect(Reflection) error
+	Reflect(VideoStep) error
 }
 
 // IdentifyReflector implementations can identify a reflection.Renderer.
@@ -33,25 +33,43 @@ type IdentifyReflector interface {
 	GetReflectionRenderer() Renderer
 }
 
-// Reflection packages together the details of the the last video step. It
-// includes the CPU execution result, the bank from which the instruction
+// VideoStep packages together the details of the the last video step that
+// would otherwise be difficult for a debugger to access.
+//
+// It includes the CPU execution result, the bank from which the instruction
 // originates, the video element that produced the last video pixel on screen;
 // among other information.
 //
 // Note that ordering of the structure is important. There's a saving of about
 // 2MB per frame compared to the unoptimal ordering.
-type Reflection struct {
-	CPU                 execution.Result
-	Bank                mapper.BankInfo
-	VideoElement        video.Element
-	TV                  signal.SignalAttributes
-	Hmove               Hmove
-	WSYNC               bool
-	IsRAM               bool
-	Hblank              bool
-	Collision           string
-	OptReusePixel       bool
-	OptNoCollisionCheck bool
+type VideoStep struct {
+	CPU          execution.Result
+	Bank         mapper.BankInfo
+	VideoElement video.Element
+	TV           signal.SignalAttributes
+	Hmove        Hmove
+	WSYNC        bool
+	IsRAM        bool
+
+	// detail of the optimisations used during the production of this videostep
+	Optimisations Optimisations
+
+	// whether Hblank is on. there's no other way of knowing this except
+	// directly from the TIA. the TIA does send VideoBlank to the television
+	// when Hblank is active but this seems a roundabout way of detecting
+	// whether Hblank is active.
+	IsHblank bool
+
+	// string representation of collision state for this videostep
+	Collision video.Collisions
+}
+
+// Optimisations records if a code "short-cut" has taken place during the
+// generation of the reflected video step (or color clock, or "pixel", if you
+// prefer to think of it like that).
+type Optimisations struct {
+	ReusePixel       bool
+	NoCollisionCheck bool
 }
 
 // Hmove groups the HMOVE reflection information. It's too complex a property

@@ -25,9 +25,6 @@ const winCollisionsTitle = "Collisions"
 type winCollisions struct {
 	img  *SdlImgui
 	open bool
-
-	// color of collision bit
-	collisionBit imgui.PackedColor
 }
 
 func newWinCollisions(img *SdlImgui) (window, error) {
@@ -39,7 +36,6 @@ func newWinCollisions(img *SdlImgui) (window, error) {
 }
 
 func (win *winCollisions) init() {
-	win.collisionBit = imgui.PackedColorFromVec4(win.img.cols.CollisionBit)
 }
 
 func (win *winCollisions) destroy() {
@@ -69,36 +65,21 @@ func (win *winCollisions) draw() {
 	imgui.SetNextWindowPosV(imgui.Vec2{623, 527}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
 	imgui.BeginV(winCollisionsTitle, &win.open, imgui.WindowFlagsAlwaysAutoResize)
 
-	imgui.Text("CXM0P ")
-	imgui.SameLine()
+	imguiLabel("CXM0P ")
 	win.drawCollision(win.img.lz.Collisions.CXM0P, &win.img.lz.Dbg.VCS.TIA.Video.Collisions.CXM0P, video.CollisionMask)
-
-	imgui.Text("CXM1P ")
-	imgui.SameLine()
+	imguiLabel("CXM1P ")
 	win.drawCollision(win.img.lz.Collisions.CXM1P, &win.img.lz.Dbg.VCS.TIA.Video.Collisions.CXM1P, video.CollisionMask)
-
-	imgui.Text("CXP0FB")
-	imgui.SameLine()
+	imguiLabel("CXP0FB")
 	win.drawCollision(win.img.lz.Collisions.CXP0FB, &win.img.lz.Dbg.VCS.TIA.Video.Collisions.CXP0FB, video.CollisionMask)
-
-	imgui.Text("CXP1FB")
-	imgui.SameLine()
+	imguiLabel("CXP1FB")
 	win.drawCollision(win.img.lz.Collisions.CXP1FB, &win.img.lz.Dbg.VCS.TIA.Video.Collisions.CXP1FB, video.CollisionMask)
-
-	imgui.Text("CXM0FB")
-	imgui.SameLine()
+	imguiLabel("CXM0FB")
 	win.drawCollision(win.img.lz.Collisions.CXM0FB, &win.img.lz.Dbg.VCS.TIA.Video.Collisions.CXM0FB, video.CollisionMask)
-
-	imgui.Text("CXM1FB")
-	imgui.SameLine()
+	imguiLabel("CXM1FB")
 	win.drawCollision(win.img.lz.Collisions.CXM1FB, &win.img.lz.Dbg.VCS.TIA.Video.Collisions.CXM1FB, video.CollisionMask)
-
-	imgui.Text("CXBLPF")
-	imgui.SameLine()
+	imguiLabel("CXBLPF")
 	win.drawCollision(win.img.lz.Collisions.CXBLPF, &win.img.lz.Dbg.VCS.TIA.Video.Collisions.CXBLPF, video.CollisionCXBLPFMask)
-
-	imgui.Text("CXPPMM")
-	imgui.SameLine()
+	imguiLabel("CXPPMM")
 	win.drawCollision(win.img.lz.Collisions.CXPPMM, &win.img.lz.Dbg.VCS.TIA.Video.Collisions.CXPPMM, video.CollisionMask)
 
 	imgui.Spacing()
@@ -113,21 +94,30 @@ func (win *winCollisions) draw() {
 }
 
 func (win *winCollisions) drawCollision(read uint8, write *uint8, mask uint8) {
-	seq := newDrawlistSequence(win.img, imgui.Vec2{X: imgui.FrameHeight() * 0.75, Y: imgui.FrameHeight() * 0.75}, false)
+	drawCollision(win.img, read, mask,
+		func(b uint8) {
+			win.img.lz.Dbg.PushRawEvent(func() {
+				*write = b
+			})
+		})
+}
+
+// drawCollision() is used by the dbgscr tooltip for the collision layer
+func drawCollision(img *SdlImgui, value uint8, mask uint8, onWrite func(uint8)) {
+	seq := newDrawlistSequence(img, imgui.Vec2{X: imgui.FrameHeight() * 0.75, Y: imgui.FrameHeight() * 0.75}, false)
 	for i := 0; i < 8; i++ {
 		if mask<<i&0x80 == 0x80 {
-			if (read<<i)&0x80 != 0x80 {
+			if (value<<i)&0x80 != 0x80 {
 				seq.nextItemDepressed = true
 			}
-			if seq.rectFill(win.collisionBit) {
-				b := read ^ (0x80 >> i)
-				win.img.lz.Dbg.PushRawEvent(func() {
-					*write = b
-				})
+			if seq.rectFill(img.cols.collisionBit) {
+				b := value ^ (0x80 >> i)
+				onWrite(b)
+
 			}
 		} else {
 			seq.nextItemDepressed = true
-			seq.rectEmpty(win.collisionBit)
+			seq.rectEmpty(img.cols.collisionBit)
 		}
 		seq.sameLine()
 	}

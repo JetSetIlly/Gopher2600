@@ -231,9 +231,10 @@ func (vd *Video) Pixel() uint8 {
 	// optimisation: only check for collisions if at least one sprite thinks it
 	// might be worth doing
 	vd.OptNoCollisionCheck = !(p0k || p1k || m0k || m1k || blk)
-	vd.Collisions.collisions = 0x0000
 	if !vd.OptNoCollisionCheck {
 		vd.Collisions.tick(p0k, p1k, m0k, m1k, blk, pfa)
+	} else {
+		vd.Collisions.LastVideoCycle.reset()
 	}
 
 	// the interaction of the priority and scoremode bits are a little more

@@ -159,7 +159,7 @@ func (win *winTIA) drawPlayer(num int) {
 			Y: imgui.CursorScreenPos().Y,
 		}
 
-		dl.AddCircleFilled(pt, imgui.FontSize()*0.20, win.idxPointer)
+		dl.AddCircleFilled(pt, imgui.FontSize()*0.20, win.img.cols.tiaPointer)
 	}
 
 	imgui.Spacing()

@@ -36,7 +36,8 @@ var PaletteElements = []color.RGBA{
 // when WSYNC is active the PaletteEvent["WSYNC"] entry should be used.
 var PaletteEvents = map[string]color.RGBA{
 	"WSYNC":         {R: 50, G: 50, B: 255, A: 100},
-	"Collisions":    {R: 255, G: 25, B: 25, A: 200},
+	"Collision":     {R: 255, G: 25, B: 25, A: 200},
+	"CXCLR":         {R: 255, G: 25, B: 255, A: 200},
 	"HMOVE delay":   {R: 150, G: 50, B: 50, A: 150},
 	"HMOVE":         {R: 50, G: 150, B: 50, A: 150},
 	"HMOVE latched": {R: 50, G: 50, B: 150, A: 150},

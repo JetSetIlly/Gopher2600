@@ -148,11 +148,19 @@ func imguiBooleanButtonV(cols *imguiColors, state bool, text string, dim imgui.V
 // imguiLabel(), you can use the empty string or use the double hash construct.
 // For example
 //
-//		imugi.SliderInt("##foo", &v, s, e)
+//		imgui.SliderInt("##foo", &v, s, e)
+//		imguiLabel("My Slider")
 func imguiLabel(text string) {
 	imgui.AlignTextToFramePadding()
 	imgui.Text(text)
 	imgui.SameLine()
+}
+
+// imguiLabelEnd is the same imguiLabel but without the instruction to put the
+// next widget on the same line.
+func imguiLabelEnd(text string) {
+	imgui.AlignTextToFramePadding()
+	imgui.Text(text)
 }
 
 // position cursor for indented imgui.Text().
@@ -325,4 +333,16 @@ func (img *SdlImgui) imguiSwatch(col uint8, size float32) (clicked bool) {
 	imgui.SetCursorScreenPos(p)
 
 	return clicked
+}
+
+// imguiColorLabel is used to add a single colored square with a label. useful
+// for color keys.
+//
+// imguiColorLabel is makes use of the drawListSequence.
+func (img *SdlImgui) imguiColorLabel(col imgui.PackedColor, label string) {
+	seq := newDrawlistSequence(img, imgui.Vec2{X: imgui.FrameHeight() * 0.75, Y: imgui.FrameHeight() * 0.75}, false)
+	seq.rectFill(col)
+	seq.end()
+	imgui.SameLine()
+	imgui.Text(label)
 }

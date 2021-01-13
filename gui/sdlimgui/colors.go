@@ -22,7 +22,9 @@ import (
 	"github.com/inkyblackness/imgui-go/v3"
 )
 
-// imguiColors defines all the colors used by the GUI.
+// imguiColors defines all the colors used by the GUI. Fields with leading
+// uppercase are all of type imgui.Vec4. equivalent color but of tpye
+// imgui.PackedColor have names with leading lowercase.
 type imguiColors struct {
 	// default colors
 	MenuBarBg     imgui.Vec4
@@ -84,7 +86,7 @@ type imguiColors struct {
 	AudioOscLine imgui.Vec4
 
 	// tia window
-	IdxPointer imgui.Vec4
+	TIApointer imgui.Vec4
 
 	// collision window
 	CollisionBit imgui.Vec4
@@ -113,6 +115,21 @@ type imguiColors struct {
 	// log
 	LogBackground imgui.Vec4
 
+	// PackedColor equivalants of above color (where appropriate)
+	disasmCPUstep      imgui.PackedColor
+	disasmVideoStep    imgui.PackedColor
+	disasmBreakAddress imgui.PackedColor
+	disasmBreakOther   imgui.PackedColor
+	tiaPointer         imgui.PackedColor
+	collisionBit       imgui.PackedColor
+	registerBit        imgui.PackedColor
+	saveKeyBit         imgui.PackedColor
+	saveKeyOscBG       imgui.PackedColor
+	saveKeyOscSCL      imgui.PackedColor
+	saveKeyOscSDA      imgui.PackedColor
+	saveKeyBitPointer  imgui.PackedColor
+
+	// TV palettes
 	packedPaletteNTSC packedPalette
 	packedPalettePAL  packedPalette
 	packedPaletteAlt  packedPalette
@@ -175,7 +192,7 @@ func newColors() *imguiColors {
 		AudioOscLine: imgui.Vec4{0.10, 0.97, 0.29, 1.0},
 
 		// tia
-		IdxPointer: imgui.Vec4{0.8, 0.8, 0.8, 1.0},
+		TIApointer: imgui.Vec4{0.8, 0.8, 0.8, 1.0},
 
 		// deffering collision window CollisionBit
 
@@ -219,6 +236,19 @@ func newColors() *imguiColors {
 	cols.CollisionBit = imgui.CurrentStyle().Color(imgui.StyleColorButton)
 	cols.RegisterBit = imgui.CurrentStyle().Color(imgui.StyleColorButton)
 	cols.SaveKeyBit = imgui.CurrentStyle().Color(imgui.StyleColorButton)
+
+	// colors that are used in context where an imgui.PackedColor is required
+	cols.disasmCPUstep = imgui.PackedColorFromVec4(cols.DisasmCPUstep)
+	cols.disasmVideoStep = imgui.PackedColorFromVec4(cols.DisasmVideoStep)
+	cols.disasmBreakAddress = imgui.PackedColorFromVec4(cols.DisasmBreakAddress)
+	cols.disasmBreakOther = imgui.PackedColorFromVec4(cols.DisasmBreakOther)
+	cols.tiaPointer = imgui.PackedColorFromVec4(cols.TIApointer)
+	cols.collisionBit = imgui.PackedColorFromVec4(cols.CollisionBit)
+	cols.registerBit = imgui.PackedColorFromVec4(cols.RegisterBit)
+	cols.saveKeyBit = imgui.PackedColorFromVec4(cols.SaveKeyBit)
+	cols.saveKeyBitPointer = imgui.PackedColorFromVec4(cols.SaveKeyBitPointer)
+	cols.saveKeyOscSCL = imgui.PackedColorFromVec4(cols.SaveKeyOscSCL)
+	cols.saveKeyOscSDA = imgui.PackedColorFromVec4(cols.SaveKeyOscSDA)
 
 	// convert 2600 colours to format usable by imgui
 
