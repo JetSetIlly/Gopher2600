@@ -26,6 +26,10 @@ type CartCoProcDisasmEntry struct {
 	Operator       string
 	Operand        string
 	ExecutionNotes string
+
+	// update indicates whether the notes field should be updated when
+	// instruction is executed again after the first decoding.
+	UpdateNotes bool
 }
 
 // CartCoProcDisassembler defines the functions that must be defined for a

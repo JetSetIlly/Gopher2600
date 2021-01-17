@@ -32,6 +32,14 @@ const (
 	rCount
 )
 
+type disasmLevel int
+
+const (
+	disasmFull disasmLevel = iota
+	disasmNotes
+	disasmNone
+)
+
 // ARM implements the ARM7TDMI-S LPC2103 processor.
 type ARM struct {
 	mem  SharedMemory
@@ -39,6 +47,12 @@ type ARM struct {
 
 	// interface to an optional disassembler
 	disasm mapper.CartCoProcDisassembler
+
+	// cache of disassembled entries
+	disasmCache map[uint32]mapper.CartCoProcDisasmEntry
+
+	// the level of disassemble to perform next instruction
+	disasmLevel disasmLevel
 
 	// the next entry to send to attached disassembler
 	entry mapper.CartCoProcDisasmEntry
@@ -54,8 +68,6 @@ type ARM struct {
 
 	status    status
 	registers [rCount]uint32
-
-	noDebugNext bool
 }
 
 // NewARM is the preferred method of initialisation for the ARM type.
@@ -78,6 +90,11 @@ func (arm *ARM) CoProcID() string {
 // SetDisassembler implements the mapper.CartCoProcBus interface
 func (arm *ARM) SetDisassembler(disasm mapper.CartCoProcDisassembler) {
 	arm.disasm = disasm
+	if arm.disasm == nil {
+		arm.disasmCache = nil
+	} else {
+		arm.disasmCache = make(map[uint32]mapper.CartCoProcDisasmEntry)
+	}
 }
 
 // PlumbSharedMemory should be used to update the shared memory reference.
@@ -136,16 +153,6 @@ func (arm *ARM) Run() error {
 			return curated.Errorf("ARM: %v", err)
 		}
 
-		// register new disasm entry if operator is valid. some decode
-		// instructions should not be disassembled (ie. first 16bits of a BL
-		// instruction)
-		if arm.disasm != nil && arm.entry.Operator != "" {
-			// format fields so the length is uniform
-			arm.entry.Operator = fmt.Sprintf("%-4s", arm.entry.Operator)
-			arm.entry.Operand = fmt.Sprintf("%-16s", arm.entry.Operand)
-
-			arm.disasm.Instruction(arm.entry)
-		}
 	}
 	return nil
 }
@@ -235,19 +242,66 @@ func (arm *ARM) read16bitPC() uint16 {
 }
 
 func (arm *ARM) executeInstruction() (bool, error) {
-	// reset disasm information and prepare for new instruction
-	if arm.disasm != nil {
-		arm.entry.Location = ""
-		arm.entry.Operator = ""
-		arm.entry.Operand = ""
-		arm.entry.ExecutionNotes = ""
+	// set disasmLevel for the next instruction
+	if arm.disasm == nil {
+		arm.disasmLevel = disasmNone
+	} else {
+		// full disassembly unless we can find a usable entry in the disasm cache
+		arm.disasmLevel = disasmFull
 
 		// -2 adjustment to PC register to account fo pipeline
-		arm.entry.Address = fmt.Sprintf("%04x", arm.registers[rPC]-2)
-	}
+		pc := arm.registers[rPC] - 2
 
-	if arm.noDebugNext {
-		arm.noDebugNext = false
+		// check cache for existing disasm entry
+		if e, ok := arm.disasmCache[pc]; ok {
+			// use cached entry
+			arm.entry = e
+
+			// disable cache if entry does not need its notes updating
+			if arm.entry.UpdateNotes {
+				arm.entry.ExecutionNotes = ""
+				arm.disasmLevel = disasmNotes
+			} else {
+				arm.disasmLevel = disasmNone
+			}
+		}
+
+		// if the entry has not been retreived from the cache make sure it is
+		// in an initial state
+		if arm.disasmLevel == disasmFull {
+			arm.entry.Address = fmt.Sprintf("%04x", pc)
+			arm.entry.Location = ""
+			arm.entry.Operator = ""
+			arm.entry.Operand = ""
+			arm.entry.ExecutionNotes = ""
+			arm.entry.UpdateNotes = false
+		}
+
+		// at the end of the execution put entry into the disasm cache and
+		// send new instruction to the registered CartCoProcDisassembler
+		defer func() {
+			// only send if operator field is not empty. the first instruction
+			// in a BL sequence will deliberatly leave the Operator field
+			// blank.
+			if arm.entry.Operator != "" {
+				switch arm.disasmLevel {
+				case disasmFull:
+					// if this is not a cached entry then format operator and
+					// operand fields and insert into cache
+					arm.entry.Operator = fmt.Sprintf("%-4s", arm.entry.Operator)
+					arm.entry.Operand = fmt.Sprintf("%-16s", arm.entry.Operand)
+					arm.disasmCache[pc] = arm.entry
+				case disasmNotes:
+					// entry is cached but notes may have changed so we recache
+					// the entry
+					arm.disasmCache[pc] = arm.entry
+				case disasmNone:
+				}
+
+				// we always send the instruction to the disasm interface
+				arm.disasm.Instruction(arm.entry)
+			}
+		}()
 	}
 
 	cont := true
@@ -342,7 +396,7 @@ func (arm *ARM) executeMoveShiftedRegister(opcode uint16) {
 
 	switch op {
 	case 0b00:
-		if arm.disasm != nil {
+		if arm.disasmLevel == disasmFull {
 			arm.entry.Operator = "LSL"
 			arm.entry.Operand = fmt.Sprintf("R%d, R%d, #%02x ", destReg, srcReg, shift)
 		}
@@ -362,7 +416,7 @@ func (arm *ARM) executeMoveShiftedRegister(opcode uint16) {
 			arm.registers[destReg] = arm.registers[srcReg] << shift
 		}
 	case 0b01:
-		if arm.disasm != nil {
+		if arm.disasmLevel == disasmFull {
 			arm.entry.Operator = "LSR"
 			arm.entry.Operand = fmt.Sprintf("R%d, R%d, #%02x ", destReg, srcReg, shift)
 		}
@@ -383,7 +437,7 @@ func (arm *ARM) executeMoveShiftedRegister(opcode uint16) {
 			arm.registers[destReg] = arm.registers[srcReg] >> shift
 		}
 	case 0b10:
-		if arm.disasm != nil {
+		if arm.disasmLevel == disasmFull {
 			arm.entry.Operator = "ASR"
 			arm.entry.Operand = fmt.Sprintf("R%d, R%d, #%02x ", destReg, srcReg, shift)
 		}
@@ -466,7 +520,7 @@ func (arm *ARM) executeMovCmpAddSubImm(opcode uint16) {
 
 	switch op {
 	case 0b00:
-		if arm.disasm != nil {
+		if arm.disasmLevel == disasmFull {
 			arm.entry.Operator = "MOV"
 			arm.entry.Operand = fmt.Sprintf("R%d, #%02x ", destReg, imm)
 		}
@@ -474,7 +528,7 @@ func (arm *ARM) executeMovCmpAddSubImm(opcode uint16) {
 		arm.status.isZero(arm.registers[destReg])
 		arm.status.isNegative(arm.registers[destReg])
 	case 0b01:
-		if arm.disasm != nil {
+		if arm.disasmLevel == disasmFull {
 			arm.entry.Operator = "CMP"
 			arm.entry.Operand = fmt.Sprintf("R%d, #%02x ", destReg, imm)
 		}
@@ -484,7 +538,7 @@ func (arm *ARM) executeMovCmpAddSubImm(opcode uint16) {
 		arm.status.isNegative(cmp)
 		arm.status.isZero(cmp)
 	case 0b10:
-		if arm.disasm != nil {
+		if arm.disasmLevel == disasmFull {
 			arm.entry.Operator = "ADD"
 			arm.entry.Operand = fmt.Sprintf("R%d, #%02x ", destReg, imm)
 		}
@@ -494,7 +548,7 @@ func (arm *ARM) executeMovCmpAddSubImm(opcode uint16) {
 		arm.status.isZero(arm.registers[destReg])
 		arm.status.isNegative(arm.registers[destReg])
 	case 0b11:
-		if arm.disasm != nil {
+		if arm.disasmLevel == disasmFull {
 			arm.entry.Operator = "SUB"
 			arm.entry.Operand = fmt.Sprintf("R%d, #%02x ", destReg, imm)
 		}
@@ -515,7 +569,7 @@ func (arm *ARM) executeALUoperations(opcode uint16) {
 
 	switch op {
 	case 0b0000:
-		if arm.disasm != nil {
+		if arm.disasmLevel == disasmFull {
 			arm.entry.Operator = "AND"
 			arm.entry.Operand = fmt.Sprintf("R%d, R%d ", destReg, srcReg)
 		}
@@ -523,7 +577,7 @@ func (arm *ARM) executeALUoperations(opcode uint16) {
 		arm.status.isZero(arm.registers[destReg])
 		arm.status.isNegative(arm.registers[destReg])
 	case 0b0001:
-		if arm.disasm != nil {
+		if arm.disasmLevel == disasmFull {
 			arm.entry.Operator = "EOR"
 			arm.entry.Operand = fmt.Sprintf("R%d, R%d ", destReg, srcReg)
 		}
@@ -531,7 +585,7 @@ func (arm *ARM) executeALUoperations(opcode uint16) {
 		arm.status.isZero(arm.registers[destReg])
 		arm.status.isNegative(arm.registers[destReg])
 	case 0b0010:
-		if arm.disasm != nil {
+		if arm.disasmLevel == disasmFull {
 			arm.entry.Operator = "LSL"
 			arm.entry.Operand = fmt.Sprintf("R%d, R%d ", destReg, srcReg)
 		}
@@ -569,7 +623,7 @@ func (arm *ARM) executeALUoperations(opcode uint16) {
 		arm.status.isZero(arm.registers[destReg])
 		arm.status.isNegative(arm.registers[destReg])
 	case 0b0011:
-		if arm.disasm != nil {
+		if arm.disasmLevel == disasmFull {
 			arm.entry.Operator = "LSR"
 			arm.entry.Operand = fmt.Sprintf("R%d, R%d ", destReg, srcReg)
 		}
@@ -607,7 +661,7 @@ func (arm *ARM) executeALUoperations(opcode uint16) {
 		arm.status.isZero(arm.registers[destReg])
 		arm.status.isNegative(arm.registers[destReg])
 	case 0b0100:
-		if arm.disasm != nil {
+		if arm.disasmLevel == disasmFull {
 			arm.entry.Operator = "ASR"
 			arm.entry.Operand = fmt.Sprintf("R%d, R%d ", destReg, srcReg)
 		}
@@ -643,7 +697,7 @@ func (arm *ARM) executeALUoperations(opcode uint16) {
 		arm.status.isZero(arm.registers[destReg])
 		arm.status.isNegative(arm.registers[destReg])
 	case 0b0101:
-		if arm.disasm != nil {
+		if arm.disasmLevel == disasmFull {
 			arm.entry.Operator = "ADC"
 			arm.entry.Operand = fmt.Sprintf("R%d, R%d ", destReg, srcReg)
 		}
@@ -660,7 +714,7 @@ func (arm *ARM) executeALUoperations(opcode uint16) {
 		arm.status.isZero(arm.registers[destReg])
 		arm.status.isNegative(arm.registers[destReg])
 	case 0b0110:
-		if arm.disasm != nil {
+		if arm.disasmLevel == disasmFull {
 			arm.entry.Operator = "SBC"
 			arm.entry.Operand = fmt.Sprintf("R%d, R%d ", destReg, srcReg)
 		}
@@ -677,7 +731,7 @@ func (arm *ARM) executeALUoperations(opcode uint16) {
 		arm.status.isZero(arm.registers[destReg])
 		arm.status.isNegative(arm.registers[destReg])
 	case 0b0111:
-		if arm.disasm != nil {
+		if arm.disasmLevel == disasmFull {
 			arm.entry.Operator = "ROR"
 			arm.entry.Operand = fmt.Sprintf("R%d, R%d ", destReg, srcReg)
 		}
@@ -707,7 +761,7 @@ func (arm *ARM) executeALUoperations(opcode uint16) {
 		arm.status.isZero(arm.registers[destReg])
 		arm.status.isNegative(arm.registers[destReg])
 	case 0b1000:
-		if arm.disasm != nil {
+		if arm.disasmLevel == disasmFull {
 			arm.entry.Operator = "TST"
 			arm.entry.Operand = fmt.Sprintf("R%d, R%d ", destReg, srcReg)
 		}
@@ -715,7 +769,7 @@ func (arm *ARM) executeALUoperations(opcode uint16) {
 		arm.status.isZero(w)
 		arm.status.isNegative(w)
 	case 0b1001:
-		if arm.disasm != nil {
+		if arm.disasmLevel == disasmFull {
 			arm.entry.Operator = "NEG"
 			arm.entry.Operand = fmt.Sprintf("R%d, R%d ", destReg, srcReg)
 		}
@@ -725,7 +779,7 @@ func (arm *ARM) executeALUoperations(opcode uint16) {
 		arm.status.isZero(arm.registers[destReg])
 		arm.status.isNegative(arm.registers[destReg])
 	case 0b1010:
-		if arm.disasm != nil {
+		if arm.disasmLevel == disasmFull {
 			arm.entry.Operator = "CMP"
 			arm.entry.Operand = fmt.Sprintf("R%d, R%d ", destReg, srcReg)
 		}
@@ -735,7 +789,7 @@ func (arm *ARM) executeALUoperations(opcode uint16) {
 		arm.status.isZero(cmp)
 		arm.status.isNegative(cmp)
 	case 0b1011:
-		if arm.disasm != nil {
+		if arm.disasmLevel == disasmFull {
 			arm.entry.Operator = "CMN"
 			arm.entry.Operand = fmt.Sprintf("R%d, R%d ", destReg, srcReg)
 		}
@@ -745,7 +799,7 @@ func (arm *ARM) executeALUoperations(opcode uint16) {
 		arm.status.isZero(cmp)
 		arm.status.isNegative(cmp)
 	case 0b1100:
-		if arm.disasm != nil {
+		if arm.disasmLevel == disasmFull {
 			arm.entry.Operator = "ORR"
 			arm.entry.Operand = fmt.Sprintf("R%d, R%d ", destReg, srcReg)
 		}
@@ -753,7 +807,7 @@ func (arm *ARM) executeALUoperations(opcode uint16) {
 		arm.status.isZero(arm.registers[destReg])
 		arm.status.isNegative(arm.registers[destReg])
 	case 0b1101:
-		if arm.disasm != nil {
+		if arm.disasmLevel == disasmFull {
 			arm.entry.Operator = "MUL"
 			arm.entry.Operand = fmt.Sprintf("R%d, R%d ", destReg, srcReg)
 		}
@@ -761,7 +815,7 @@ func (arm *ARM) executeALUoperations(opcode uint16) {
 		arm.status.isZero(arm.registers[destReg])
 		arm.status.isNegative(arm.registers[destReg])
 	case 0b1110:
-		if arm.disasm != nil {
+		if arm.disasmLevel == disasmFull {
 			arm.entry.Operator = "BIC"
 			arm.entry.Operand = fmt.Sprintf("R%d, R%d ", destReg, srcReg)
 		}
@@ -769,7 +823,7 @@ func (arm *ARM) executeALUoperations(opcode uint16) {
 		arm.status.isZero(arm.registers[destReg])
 		arm.status.isNegative(arm.registers[destReg])
 	case 0b1111:
-		if arm.disasm != nil {
+		if arm.disasmLevel == disasmFull {
 			arm.entry.Operator = "MVN"
 			arm.entry.Operand = fmt.Sprintf("R%d, R%d ", destReg, srcReg)
 		}
@@ -802,7 +856,7 @@ func (arm *ARM) executeHiRegisterOps(opcode uint16) (bool, error) {
 
 	switch op {
 	case 0b00:
-		if arm.disasm != nil {
+		if arm.disasmLevel == disasmFull {
 			arm.entry.Operator = "ADD"
 			arm.entry.Operand = fmt.Sprintf("%s%d, %s%d ", destLabel, destReg, srcLabel, srcReg)
 		}
@@ -812,7 +866,7 @@ func (arm *ARM) executeHiRegisterOps(opcode uint16) (bool, error) {
 
 		// status register not changed
 	case 0b01:
-		if arm.disasm != nil {
+		if arm.disasmLevel == disasmFull {
 			arm.entry.Operator = "CMP"
 			arm.entry.Operand = fmt.Sprintf("%s%d, %s%d ", destLabel, destReg, srcLabel, srcReg)
 		}
@@ -829,14 +883,14 @@ func (arm *ARM) executeHiRegisterOps(opcode uint16) (bool, error) {
 		arm.status.isZero(cmp)
 		arm.status.isNegative(cmp)
 	case 0b10:
-		if arm.disasm != nil {
+		if arm.disasmLevel == disasmFull {
 			arm.entry.Operator = "MOV"
 			arm.entry.Operand = fmt.Sprintf("%s%d, %s%d ", destLabel, destReg, srcLabel, srcReg)
 		}
 		arm.registers[destReg] = arm.registers[srcReg]
 		// status register not changed
 	case 0b11:
-		if arm.disasm != nil {
+		if arm.disasmLevel == disasmFull {
 			arm.entry.Operator = "BX"
 			arm.entry.Operand = fmt.Sprintf("%s%d ", srcLabel, srcReg)
 		}
@@ -864,8 +918,10 @@ func (arm *ARM) executeHiRegisterOps(opcode uint16) (bool, error) {
 				return false, err
 			}
 
-			if arm.disasm != nil {
+			// update execution notes unless disasm level is disasmNone
+			if arm.disasmLevel != disasmNone {
 				arm.entry.ExecutionNotes = res.InterruptEvent
+				arm.entry.UpdateNotes = true
 			}
 
 			// if ARMinterrupt returns false this indicates that the
@@ -901,7 +957,7 @@ func (arm *ARM) executePCrelativeLoad(opcode uint16) {
 	// calculation, so the address is always word-aligned."
 	pc := arm.registers[rPC] & 0xfffffffc
 
-	if arm.disasm != nil {
+	if arm.disasmLevel == disasmFull {
 		arm.entry.Operator = "LDR"
 		arm.entry.Operand = fmt.Sprintf("R%d, [PC, #%02x] ", destReg, imm)
 	}
@@ -922,14 +978,14 @@ func (arm *ARM) executeLoadStoreWithRegisterOffset(opcode uint16) {
 
 	if load {
 		if byteTransfer {
-			if arm.disasm != nil {
+			if arm.disasmLevel == disasmFull {
 				arm.entry.Operator = "LDRB"
 				arm.entry.Operand = fmt.Sprintf("R%d, [R%d, R%d]", reg, baseReg, offsetReg)
 			}
 			arm.registers[reg] = uint32(arm.read8bit(addr))
 			return
 		}
-		if arm.disasm != nil {
+		if arm.disasmLevel == disasmFull {
 			arm.entry.Operator = "LDR"
 			arm.entry.Operand = fmt.Sprintf("R%d, [R%d, R%d] ", reg, baseReg, offsetReg)
 		}
@@ -938,7 +994,7 @@ func (arm *ARM) executeLoadStoreWithRegisterOffset(opcode uint16) {
 	}
 
 	if byteTransfer {
-		if arm.disasm != nil {
+		if arm.disasmLevel == disasmFull {
 			arm.entry.Operator = "STRB"
 			arm.entry.Operand = fmt.Sprintf("R%d, [R%d, R%d] ", reg, baseReg, offsetReg)
 		}
@@ -946,7 +1002,7 @@ func (arm *ARM) executeLoadStoreWithRegisterOffset(opcode uint16) {
 		return
 	}
 
-	if arm.disasm != nil {
+	if arm.disasmLevel == disasmFull {
 		arm.entry.Operator = "STR"
 		arm.entry.Operand = fmt.Sprintf("R%d, [R%d, R%d] ", reg, baseReg, offsetReg)
 	}
@@ -967,7 +1023,7 @@ func (arm *ARM) executeLoadStoreSignExtendedByteHalford(opcode uint16) {
 	if sign {
 		if hi {
 			// load sign-extended halfword
-			if arm.disasm != nil {
+			if arm.disasmLevel == disasmFull {
 				arm.entry.Operator = "LDSH"
 				arm.entry.Operand = fmt.Sprintf("R%d, [R%d, R%d] ", reg, baseReg, offsetReg)
 			}
@@ -978,7 +1034,7 @@ func (arm *ARM) executeLoadStoreSignExtendedByteHalford(opcode uint16) {
 			return
 		}
 		// load sign-extended byte
-		if arm.disasm != nil {
+		if arm.disasmLevel == disasmFull {
 			arm.entry.Operator = "LDSB"
 			arm.entry.Operand = fmt.Sprintf("R%d, [R%d, R%d] ", reg, baseReg, offsetReg)
 		}
@@ -991,7 +1047,7 @@ func (arm *ARM) executeLoadStoreSignExtendedByteHalford(opcode uint16) {
 
 	if hi {
 		// load halfword
-		if arm.disasm != nil {
+		if arm.disasmLevel == disasmFull {
 			arm.entry.Operator = "LDRH"
 			arm.entry.Operand = fmt.Sprintf("R%d, [R%d, R%d] ", reg, baseReg, offsetReg)
 		}
@@ -1000,7 +1056,7 @@ func (arm *ARM) executeLoadStoreSignExtendedByteHalford(opcode uint16) {
 	}
 
 	// store halfword
-	if arm.disasm != nil {
+	if arm.disasmLevel == disasmFull {
 		arm.entry.Operator = "STRH"
 		arm.entry.Operand = fmt.Sprintf("R%d, [R%d, R%d] ", reg, baseReg, offsetReg)
 	}
@@ -1031,13 +1087,13 @@ func (arm *ARM) executeLoadStoreWithImmOffset(opcode uint16) {
 		if byteTransfer {
 			arm.registers[reg] = uint32(arm.read8bit(addr))
 
-			if arm.disasm != nil {
+			if arm.disasmLevel == disasmFull {
 				arm.entry.Operator = "LDRB"
 				arm.entry.Operand = fmt.Sprintf("R%d, [R%d, #%02x] ", reg, baseReg, offset)
 			}
 			return
 		}
-		if arm.disasm != nil {
+		if arm.disasmLevel == disasmFull {
 			arm.entry.Operator = "LDR"
 			arm.entry.Operand = fmt.Sprintf("R%d, [R%d, #%02x] ", reg, baseReg, offset)
 		}
@@ -1047,7 +1103,7 @@ func (arm *ARM) executeLoadStoreWithImmOffset(opcode uint16) {
 
 	// store
 	if byteTransfer {
-		if arm.disasm != nil {
+		if arm.disasmLevel == disasmFull {
 			arm.entry.Operator = "STRB"
 			arm.entry.Operand = fmt.Sprintf("R%d, [R%d, #%02x] ", reg, baseReg, offset)
 		}
@@ -1055,7 +1111,7 @@ func (arm *ARM) executeLoadStoreWithImmOffset(opcode uint16) {
 		return
 	}
 
-	if arm.disasm != nil {
+	if arm.disasmLevel == disasmFull {
 		arm.entry.Operator = "STR"
 		arm.entry.Operand = fmt.Sprintf("R%d, [R%d, #%02x] ", reg, baseReg, offset)
 	}
@@ -1078,7 +1134,7 @@ func (arm *ARM) executeLoadStoreHalfword(opcode uint16) {
 	addr := arm.registers[baseReg] + uint32(offset)
 
 	if load {
-		if arm.disasm != nil {
+		if arm.disasmLevel == disasmFull {
 			arm.entry.Operator = "LDRH"
 			arm.entry.Operand = fmt.Sprintf("R%d, [R%d, #%02x] ", reg, baseReg, offset)
 		}
@@ -1086,7 +1142,7 @@ func (arm *ARM) executeLoadStoreHalfword(opcode uint16) {
 		return
 	}
 
-	if arm.disasm != nil {
+	if arm.disasmLevel == disasmFull {
 		arm.entry.Operator = "STRH"
 		arm.entry.Operand = fmt.Sprintf("R%d, [R%d, #%02x] ", reg, baseReg, offset)
 	}
@@ -1108,7 +1164,7 @@ func (arm *ARM) executeSPRelativeLoadStore(opcode uint16) {
 	addr := arm.registers[rSP] + offset
 
 	if load {
-		if arm.disasm != nil {
+		if arm.disasmLevel == disasmFull {
 			arm.entry.Operator = "LDR"
 			arm.entry.Operand = fmt.Sprintf("R%d, [SP, #%02x] ", reg, offset)
 		}
@@ -1116,7 +1172,7 @@ func (arm *ARM) executeSPRelativeLoadStore(opcode uint16) {
 		return
 	}
 
-	if arm.disasm != nil {
+	if arm.disasmLevel == disasmFull {
 		arm.entry.Operator = "STR"
 		arm.entry.Operand = fmt.Sprintf("R%d, [SP, #%02x] ", reg, offset)
 	}
@@ -1152,7 +1208,7 @@ func (arm *ARM) executeAddOffsetToSP(opcode uint16) {
 	imm <<= 2
 
 	if sign {
-		if arm.disasm != nil {
+		if arm.disasmLevel == disasmFull {
 			arm.entry.Operator = "ADD"
 			arm.entry.Operand = fmt.Sprintf("SP, #-%d ", imm)
 		}
@@ -1160,7 +1216,7 @@ func (arm *ARM) executeAddOffsetToSP(opcode uint16) {
 		return
 	}
 
-	if arm.disasm != nil {
+	if arm.disasmLevel == disasmFull {
 		arm.entry.Operator = "ADD"
 		arm.entry.Operand = fmt.Sprintf("SP, #%02x ", imm)
 	}
@@ -1260,13 +1316,13 @@ func (arm *ARM) executePushPopRegisters(opcode uint16) {
 	// for PC/LR flag. each push requires 4 bytes of space
 	var c uint32
 	if pclr {
-		if arm.disasm != nil {
+		if arm.disasmLevel == disasmFull {
 			arm.entry.Operator = "PUSH"
 			arm.entry.Operand = fmt.Sprintf("{%#0b, LR}", regList)
 		}
 		c = (uint32(bits.OnesCount8(regList)) + 1) * 4
 	} else {
-		if arm.disasm != nil {
+		if arm.disasmLevel == disasmFull {
 			arm.entry.Operator = "PUSH"
 			arm.entry.Operand = fmt.Sprintf("{%#0b}", regList)
 		}
@@ -1404,15 +1460,19 @@ func (arm *ARM) executeConditionalBranch(opcode uint16) {
 	// do branch
 	if branch {
 		arm.registers[rPC] = newPC + 1
-		if arm.disasm != nil {
-			arm.entry.Operator = operator
-			arm.entry.Operand = fmt.Sprintf("%04x", newPC)
-			arm.entry.ExecutionNotes = "branched"
-		}
+	}
 
-	} else if arm.disasm != nil {
+	switch arm.disasmLevel {
+	case disasmFull:
 		arm.entry.Operator = operator
 		arm.entry.Operand = fmt.Sprintf("%04x", newPC)
+		arm.entry.UpdateNotes = true
+		fallthrough
+	case disasmNotes:
+		if branch {
+			arm.entry.ExecutionNotes = "branched"
+		}
+	case disasmNone:
 	}
 }
 
@@ -1434,9 +1494,8 @@ func (arm *ARM) executeUnconditionalBranch(opcode uint16) {
 		arm.registers[rPC] += offset + 2
 	}
 
-	// disassembly
-	if arm.disasm != nil {
-		if arm.disasm != nil {
+	if arm.disasmLevel == disasmFull {
+		if arm.disasmLevel == disasmFull {
 			arm.entry.Operator = "BAL"
 			arm.entry.Operand = fmt.Sprintf("%04x ", arm.registers[rPC])
 		}
@@ -1455,7 +1514,7 @@ func (arm *ARM) executeLongBranchWithLink(opcode uint16) {
 		pc := arm.registers[rPC]
 		arm.registers[rPC] = arm.registers[rLR]
 		arm.registers[rLR] = pc - 1
-		if arm.disasm != nil {
+		if arm.disasmLevel == disasmFull {
 			arm.entry.Operator = "BL"
 			arm.entry.Operand = fmt.Sprintf("%#08x", arm.registers[rPC])
 		}
@@ -1473,6 +1532,4 @@ func (arm *ARM) executeLongBranchWithLink(opcode uint16) {
 	} else {
 		arm.registers[rLR] = arm.registers[rPC] + offset + 2
 	}
-
-	arm.noDebugNext = true
 }
