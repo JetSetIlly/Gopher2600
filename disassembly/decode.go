@@ -163,9 +163,6 @@ func (dsm *Disassembly) blessSequence(b int, a uint16, commit bool) bool {
 	// program counter style (ie. address plus instruction byte count)
 	//
 	// sequence will stop if:
-	//  . instruction is not defined/implemented
-	//		(condition can be removed once all opcodes have been defined)
-	//
 	//  . there is already blessed instruction between this and the next entry
 	//
 	//  . a flow control instruction is encountered (this is normal and expected)
@@ -178,18 +175,9 @@ func (dsm *Disassembly) blessSequence(b int, a uint16, commit bool) bool {
 			return true
 		}
 
-		// if operator is unknown than end the sequence.
-		// !!TODO: remove this check once every opcode is defined/implemented
-		operator := dsm.entries[b][a].Result.Defn.Operator
-		if operator == "??" {
-			return false
-		}
-
 		next := a + uint16(dsm.entries[b][a].Result.ByteCount)
 
-		// break if address has looped around. while this is possible
-		// I'm not allowing it unless I can find an example of it being
-		// used in actuality.
+		// break if address has looped around
 		if next > next&memorymap.CartridgeBits {
 			return false
 		}
@@ -219,6 +207,7 @@ func (dsm *Disassembly) blessSequence(b int, a uint16, commit bool) bool {
 		a = next
 	}
 
+	// reached end of the bank without encountering any other halt condition
 	return false
 }
 
