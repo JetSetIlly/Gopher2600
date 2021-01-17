@@ -23,7 +23,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/addresses"
 )
 
-const winChipRegistersTitle = "Chip Registers"
+const winChipRegistersID = "Chip Registers"
 
 type winChipRegisters struct {
 	img  *SdlImgui
@@ -41,15 +41,8 @@ func newWinChipRegisters(img *SdlImgui) (window, error) {
 func (win *winChipRegisters) init() {
 }
 
-func (win *winChipRegisters) destroy() {
-}
-
 func (win *winChipRegisters) id() string {
-	return winChipRegistersTitle
-}
-
-func (win *winChipRegisters) menuLabel() string {
-	return winChipRegistersTitle
+	return winChipRegistersID
 }
 
 func (win *winChipRegisters) isOpen() bool {
@@ -66,7 +59,7 @@ func (win *winChipRegisters) draw() {
 	}
 
 	imgui.SetNextWindowPosV(imgui.Vec2{653, 400}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
-	imgui.BeginV(winChipRegistersTitle, &win.open, imgui.WindowFlagsAlwaysAutoResize)
+	imgui.BeginV(win.id(), &win.open, imgui.WindowFlagsAlwaysAutoResize)
 
 	win.drawChipRegister("SWACNT", win.img.lz.ChipRegisters.SWACNT)
 	imgui.SameLine()

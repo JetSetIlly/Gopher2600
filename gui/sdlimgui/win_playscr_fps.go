@@ -22,7 +22,7 @@ import (
 	"github.com/inkyblackness/imgui-go/v3"
 )
 
-const winPlayScrFPSTitle = "FPS"
+const winPlayScrFPSID = "FPS"
 
 type winPlayScrFPS struct {
 	img  *SdlImgui
@@ -48,15 +48,8 @@ func newWinPlayScrFPS(img *SdlImgui) window {
 func (win *winPlayScrFPS) init() {
 }
 
-func (win *winPlayScrFPS) destroy() {
-}
-
 func (win *winPlayScrFPS) id() string {
-	return winPlayScrFPSTitle
-}
-
-func (win *winPlayScrFPS) menuLabel() string {
-	return winPlayScrFPSTitle
+	return winPlayScrFPSID
 }
 
 func (win *winPlayScrFPS) isOpen() bool {
@@ -79,7 +72,7 @@ func (win *winPlayScrFPS) draw() {
 	imgui.PushStyleColor(imgui.StyleColorWindowBg, win.img.cols.Transparent)
 	imgui.PushStyleColor(imgui.StyleColorBorder, win.img.cols.Transparent)
 
-	imgui.BeginV(winLogTitle, &win.open, imgui.WindowFlagsAlwaysAutoResize|
+	imgui.BeginV(win.id(), &win.open, imgui.WindowFlagsAlwaysAutoResize|
 		imgui.WindowFlagsNoScrollbar|imgui.WindowFlagsNoTitleBar|imgui.WindowFlagsNoDecoration)
 
 	imgui.Text(win.fps)

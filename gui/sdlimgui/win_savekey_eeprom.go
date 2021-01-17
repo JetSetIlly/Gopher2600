@@ -20,7 +20,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/savekey"
 )
 
-const winSaveKeyEEPROMTitle = "SaveKey EEPROM"
+const winSaveKeyEEPROMID = "SaveKey EEPROM"
 const winSaveKeyEEPROMMenu = "EEPROM"
 
 type winSaveKeyEEPROM struct {
@@ -39,15 +39,8 @@ func newWinSaveKeyEEPROM(img *SdlImgui) (window, error) {
 func (win *winSaveKeyEEPROM) init() {
 }
 
-func (win *winSaveKeyEEPROM) destroy() {
-}
-
 func (win *winSaveKeyEEPROM) id() string {
-	return winSaveKeyEEPROMTitle
-}
-
-func (win *winSaveKeyEEPROM) menuLabel() string {
-	return winSaveKeyEEPROMMenu
+	return winSaveKeyEEPROMID
 }
 
 func (win *winSaveKeyEEPROM) isOpen() bool {
@@ -69,7 +62,7 @@ func (win *winSaveKeyEEPROM) draw() {
 
 	imgui.SetNextWindowPosV(imgui.Vec2{469, 285}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
 	imgui.SetNextWindowSizeV(imgui.Vec2{394, 356}, imgui.ConditionFirstUseEver)
-	imgui.BeginV(winSaveKeyEEPROMTitle, &win.open, 0)
+	imgui.BeginV(win.id(), &win.open, 0)
 
 	imgui.BeginChildV("eepromData", imgui.Vec2{X: 0, Y: imguiRemainingWinHeight() - win.statusHeight}, false, 0)
 

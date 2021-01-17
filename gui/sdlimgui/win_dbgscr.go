@@ -28,7 +28,7 @@ import (
 	"github.com/jetsetilly/gopher2600/reflection"
 )
 
-const winDbgScrTitle = "TV Screen"
+const winDbgScrID = "TV Screen"
 
 type winDbgScr struct {
 	img  *SdlImgui
@@ -126,15 +126,8 @@ func (win *winDbgScr) init() {
 	win.specComboDim = imguiGetFrameDim("", specification.SpecList...)
 }
 
-func (win *winDbgScr) destroy() {
-}
-
 func (win *winDbgScr) id() string {
-	return winDbgScrTitle
-}
-
-func (win *winDbgScr) menuLabel() string {
-	return winDbgScrTitle
+	return winDbgScrID
 }
 
 func (win *winDbgScr) isOpen() bool {
@@ -181,7 +174,7 @@ func (win *winDbgScr) draw() {
 	}
 
 	// we don't want to ever show scrollbars
-	imgui.BeginV(winDbgScrTitle, &win.open, imgui.WindowFlagsNoScrollbar)
+	imgui.BeginV(win.id(), &win.open, imgui.WindowFlagsNoScrollbar)
 
 	// note size of remaining window and content area
 	win.winDim = imgui.WindowSize()

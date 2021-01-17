@@ -20,7 +20,7 @@ import (
 	"github.com/inkyblackness/imgui-go/v3"
 )
 
-const winPlayScrTitle = "Atari VCS"
+const winPlayScrID = "Atari VCS"
 
 // note that values from the lazy package will not be updated in the service
 // loop when the emulator is in playmode. nothing in winPlayScr() therefore
@@ -88,15 +88,8 @@ func newWinPlayScr(img *SdlImgui) window {
 func (win *winPlayScr) init() {
 }
 
-func (win *winPlayScr) destroy() {
-}
-
 func (win *winPlayScr) id() string {
-	return winPlayScrTitle
-}
-
-func (win *winPlayScr) menuLabel() string {
-	return winPlayScrTitle
+	return winPlayScrID
 }
 
 func (win *winPlayScr) isOpen() bool {
@@ -121,7 +114,7 @@ func (win *winPlayScr) draw() {
 	imgui.PushStyleColor(imgui.StyleColorWindowBg, win.img.cols.PlayWindowBg)
 	imgui.PushStyleColor(imgui.StyleColorBorder, win.img.cols.PlayWindowBorder)
 
-	imgui.BeginV(winPlayScrTitle, &win.open,
+	imgui.BeginV(win.id(), &win.open,
 		imgui.WindowFlagsNoDecoration|imgui.WindowFlagsNoMove|imgui.WindowFlagsNoBringToFrontOnFocus)
 
 	// note size of window

@@ -21,7 +21,7 @@ import (
 	"github.com/inkyblackness/imgui-go/v3"
 )
 
-const winTIATitle = "TIA"
+const winTIAID = "TIA"
 
 type winTIA struct {
 	img  *SdlImgui
@@ -56,15 +56,8 @@ func (win *winTIA) init() {
 	win.missileCopiesComboDim = imguiGetFrameDim("", video.MissileCopies...)
 }
 
-func (win *winTIA) destroy() {
-}
-
 func (win *winTIA) id() string {
-	return winTIATitle
-}
-
-func (win *winTIA) menuLabel() string {
-	return winTIATitle
+	return winTIAID
 }
 
 func (win *winTIA) isOpen() bool {
@@ -83,7 +76,7 @@ func (win *winTIA) draw() {
 
 	imgui.SetNextWindowPosV(imgui.Vec2{X: 31, Y: 512}, imgui.ConditionFirstUseEver, imgui.Vec2{X: 0, Y: 0})
 	imgui.SetNextWindowSizeV(imgui.Vec2{X: 558, Y: 201}, imgui.ConditionFirstUseEver)
-	imgui.BeginV(winTIATitle, &win.open, 0)
+	imgui.BeginV(win.id(), &win.open, 0)
 
 	imgui.BeginTabBar("")
 	if imgui.BeginTabItem("Playfield") {

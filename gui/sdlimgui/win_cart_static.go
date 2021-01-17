@@ -16,10 +16,12 @@
 package sdlimgui
 
 import (
+	"fmt"
+
 	"github.com/inkyblackness/imgui-go/v3"
 )
 
-const winCartStaticTitle = "Static Areas"
+const winCartStaticID = "Static Areas"
 
 type winCartStatic struct {
 	img  *SdlImgui
@@ -35,15 +37,8 @@ func newWinCartStatic(img *SdlImgui) (window, error) {
 func (win *winCartStatic) init() {
 }
 
-func (win *winCartStatic) destroy() {
-}
-
 func (win *winCartStatic) id() string {
-	return winCartStaticTitle
-}
-
-func (win *winCartStatic) menuLabel() string {
-	return winCartStaticTitle
+	return winCartStaticID
 }
 
 func (win *winCartStatic) isOpen() bool {
@@ -70,7 +65,8 @@ func (win *winCartStatic) draw() {
 	imgui.SetNextWindowPosV(imgui.Vec2{469, 285}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
 	imgui.SetNextWindowSizeV(imgui.Vec2{394, 356}, imgui.ConditionFirstUseEver)
 
-	imgui.BeginV(winCartStaticTitle, &win.open, 0)
+	title := fmt.Sprintf("%s %s", win.img.lz.Cart.ID, winCartStaticID)
+	imgui.BeginV(title, &win.open, 0)
 
 	imgui.BeginTabBar("")
 	for segment := range win.img.lz.Cart.Static {

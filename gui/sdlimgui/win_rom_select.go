@@ -27,7 +27,7 @@ import (
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
-const winSelectROMTitle = "Select ROM"
+const winSelectROMID = "Select ROM"
 
 type winSelectROM struct {
 	img  *SdlImgui
@@ -72,11 +72,7 @@ func (win *winSelectROM) init() {
 }
 
 func (win winSelectROM) id() string {
-	return winSelectROMTitle
-}
-
-func (win winSelectROM) menuLabel() string {
-	return winSelectROMTitle
+	return winSelectROMID
 }
 
 func (win *winSelectROM) isOpen() bool {
@@ -106,9 +102,6 @@ func (win *winSelectROM) setOpen(open bool) {
 	win.open = false
 }
 
-func (win *winSelectROM) destroy() {
-}
-
 func (win *winSelectROM) draw() {
 	if !win.open {
 		// set centreOnFile to true, ready for next time window is open
@@ -121,8 +114,7 @@ func (win *winSelectROM) draw() {
 
 	imgui.SetNextWindowPosV(imgui.Vec2{70, 58}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
 	imgui.SetNextWindowSizeV(imgui.Vec2{375, 397}, imgui.ConditionFirstUseEver)
-
-	imgui.BeginV(winSelectROMTitle, &win.open, 0)
+	imgui.BeginV(win.id(), &win.open, 0)
 
 	if imgui.Button("Parent") {
 		d := filepath.Dir(win.currPath)

@@ -183,7 +183,6 @@ func NewSdlImgui(tv *television.Television, playmode bool) (*SdlImgui, error) {
 //
 // MUST ONLY be called from the gui thread.
 func (img *SdlImgui) Destroy(output io.Writer) {
-	img.wm.destroy()
 	err := img.audio.EndMixing()
 	if err != nil {
 		output.Write([]byte(err.Error()))

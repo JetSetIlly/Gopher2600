@@ -22,7 +22,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/plusrom"
 )
 
-const winPlusROMPrefsTitle = "PlusROM Preferences"
+const winPlusROMPrefsID = "PlusROM Preferences"
 const winPlusROMPrefsMenu = "Preferences"
 
 type winPlusROMPrefs struct {
@@ -41,15 +41,8 @@ func newWinPlusROMPrefs(img *SdlImgui) (window, error) {
 func (win *winPlusROMPrefs) init() {
 }
 
-func (win *winPlusROMPrefs) destroy() {
-}
-
 func (win *winPlusROMPrefs) id() string {
-	return winPlusROMPrefsTitle
-}
-
-func (win *winPlusROMPrefs) menuLabel() string {
-	return winPlusROMPrefsMenu
+	return winPlusROMPrefsID
 }
 
 func (win *winPlusROMPrefs) isOpen() bool {
@@ -70,7 +63,7 @@ func (win *winPlusROMPrefs) draw() {
 	}
 
 	imgui.SetNextWindowPosV(imgui.Vec2{609, 55}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
-	imgui.BeginV(winPlusROMPrefsTitle, &win.open, imgui.WindowFlagsAlwaysAutoResize)
+	imgui.BeginV(win.id(), &win.open, imgui.WindowFlagsAlwaysAutoResize)
 
 	nick := win.img.lz.Cart.PlusROMNick
 	id := win.img.lz.Cart.PlusROMID

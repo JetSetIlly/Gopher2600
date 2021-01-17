@@ -19,7 +19,7 @@ import (
 	"github.com/inkyblackness/imgui-go/v3"
 )
 
-const winAudioTitle = "Audio"
+const winAudioID = "Audio"
 
 type winAudio struct {
 	img  *SdlImgui
@@ -44,15 +44,8 @@ func newWinAudio(img *SdlImgui) (window, error) {
 func (win *winAudio) init() {
 }
 
-func (win *winAudio) destroy() {
-}
-
 func (win *winAudio) id() string {
-	return winAudioTitle
-}
-
-func (win *winAudio) menuLabel() string {
-	return winAudioTitle
+	return winAudioID
 }
 
 func (win *winAudio) isOpen() bool {
@@ -69,7 +62,7 @@ func (win *winAudio) draw() {
 	}
 
 	imgui.SetNextWindowPosV(imgui.Vec2{648, 440}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
-	imgui.BeginV(winAudioTitle, &win.open, imgui.WindowFlagsAlwaysAutoResize)
+	imgui.BeginV(win.id(), &win.open, imgui.WindowFlagsAlwaysAutoResize)
 
 	imgui.PushStyleColor(imgui.StyleColorFrameBg, win.img.cols.AudioOscBg)
 	imgui.PushStyleColor(imgui.StyleColorPlotLines, win.img.cols.AudioOscLine)

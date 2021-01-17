@@ -24,7 +24,7 @@ import (
 	"github.com/inkyblackness/imgui-go/v3"
 )
 
-const winTimerTitle = "Timer"
+const winTimerID = "Timer"
 
 type winTimer struct {
 	img  *SdlImgui
@@ -46,15 +46,8 @@ func (win *winTimer) init() {
 	win.intervalComboDim = imguiGetFrameDim("", timer.IntervalList...)
 }
 
-func (win *winTimer) destroy() {
-}
-
 func (win *winTimer) id() string {
-	return winTimerTitle
-}
-
-func (win *winTimer) menuLabel() string {
-	return winTimerTitle
+	return winTimerID
 }
 
 func (win *winTimer) isOpen() bool {
@@ -71,7 +64,7 @@ func (win *winTimer) draw() {
 	}
 
 	imgui.SetNextWindowPosV(imgui.Vec2{632, 514}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
-	imgui.BeginV(winTimerTitle, &win.open, imgui.WindowFlagsAlwaysAutoResize)
+	imgui.BeginV(win.id(), &win.open, imgui.WindowFlagsAlwaysAutoResize)
 
 	imgui.PushItemWidth(win.intervalComboDim.X)
 	if imgui.BeginComboV("##timerinterval", win.img.lz.Timer.Divider, imgui.ComboFlagNoArrowButton) {

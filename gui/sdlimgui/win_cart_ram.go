@@ -16,11 +16,13 @@
 package sdlimgui
 
 import (
+	"fmt"
+
 	"github.com/inkyblackness/imgui-go/v3"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
-const winCartRAMTitle = "Cartridge RAM"
+const winCartRAMID = "Cartridge RAM"
 
 type winCartRAM struct {
 	img  *SdlImgui
@@ -43,15 +45,8 @@ func (win *winCartRAM) init() {
 	win.mappedIndicatorDim = imguiGetFrameDim(" mapped ", " unmapped ")
 }
 
-func (win *winCartRAM) destroy() {
-}
-
 func (win *winCartRAM) id() string {
-	return winCartRAMTitle
-}
-
-func (win *winCartRAM) menuLabel() string {
-	return winCartRAMTitle
+	return winCartRAMID
 }
 
 func (win *winCartRAM) isOpen() bool {
@@ -76,8 +71,10 @@ func (win *winCartRAM) draw() {
 	comp := win.img.lz.Rewind.Comparison.Mem.Cart.GetRAMbus().GetRAM()
 
 	imgui.SetNextWindowPosV(imgui.Vec2{616, 524}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
-	imgui.SetNextWindowSizeV(imgui.Vec2{X: 402, Y: 232}, imgui.ConditionFirstUseEver)
-	imgui.BeginV(winCartRAMTitle, &win.open, 0)
+	imgui.SetNextWindowSizeV(imgui.Vec2{469, 262}, imgui.ConditionFirstUseEver)
+
+	title := fmt.Sprintf("%s %s", win.img.lz.Cart.ID, winCartRAMID)
+	imgui.BeginV(title, &win.open, 0)
 
 	imgui.BeginTabBarV("", imgui.TabBarFlagsFittingPolicyScroll)
 	for bank := range win.img.lz.Cart.RAM {

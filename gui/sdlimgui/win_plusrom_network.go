@@ -23,7 +23,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/plusrom"
 )
 
-const winPlusROMNetworkTitle = "PlusROM Network"
+const winPlusROMNetworkID = "PlusROM Network"
 const winPlusROMNetworkMenu = "Network"
 
 type winPlusROMNetwork struct {
@@ -42,15 +42,8 @@ func newWinPlusROMNetwork(img *SdlImgui) (window, error) {
 func (win *winPlusROMNetwork) init() {
 }
 
-func (win *winPlusROMNetwork) destroy() {
-}
-
 func (win *winPlusROMNetwork) id() string {
-	return winPlusROMNetworkTitle
-}
-
-func (win *winPlusROMNetwork) menuLabel() string {
-	return winPlusROMNetworkMenu
+	return winPlusROMNetworkID
 }
 
 func (win *winPlusROMNetwork) isOpen() bool {
@@ -71,7 +64,7 @@ func (win *winPlusROMNetwork) draw() {
 	}
 
 	imgui.SetNextWindowPosV(imgui.Vec2{659, 35}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
-	imgui.BeginV(winPlusROMNetworkTitle, &win.open, imgui.WindowFlagsAlwaysAutoResize)
+	imgui.BeginV(win.id(), &win.open, imgui.WindowFlagsAlwaysAutoResize)
 
 	host := win.img.lz.Cart.PlusROMAddrInfo.Host
 	path := win.img.lz.Cart.PlusROMAddrInfo.Path

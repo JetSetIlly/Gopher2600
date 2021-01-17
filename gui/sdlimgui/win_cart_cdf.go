@@ -22,7 +22,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/harmony/cdf"
 )
 
-const winCDFRegistersTitle = "CDF Registers"
+const winCDFRegistersID = "CDF Registers"
 
 type winCDFRegisters struct {
 	img  *SdlImgui
@@ -40,15 +40,8 @@ func newWinCDFRegisters(img *SdlImgui) (window, error) {
 func (win *winCDFRegisters) init() {
 }
 
-func (win *winCDFRegisters) destroy() {
-}
-
 func (win *winCDFRegisters) id() string {
-	return winCDFRegistersTitle
-}
-
-func (win *winCDFRegisters) menuLabel() string {
-	return winCDFRegistersTitle
+	return winCDFRegistersID
 }
 
 func (win *winCDFRegisters) isOpen() bool {
@@ -71,7 +64,7 @@ func (win *winCDFRegisters) draw() {
 	}
 
 	imgui.SetNextWindowPosV(imgui.Vec2{610, 303}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
-	imgui.BeginV(winCDFRegistersTitle, &win.open, imgui.WindowFlagsAlwaysAutoResize)
+	imgui.BeginV(win.id(), &win.open, imgui.WindowFlagsAlwaysAutoResize)
 
 	imgui.Text("Datastream")
 	imgui.Spacing()

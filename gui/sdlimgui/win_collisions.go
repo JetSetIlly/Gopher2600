@@ -20,7 +20,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/tia/video"
 )
 
-const winCollisionsTitle = "Collisions"
+const winCollisionsID = "Collisions"
 
 type winCollisions struct {
 	img  *SdlImgui
@@ -38,15 +38,8 @@ func newWinCollisions(img *SdlImgui) (window, error) {
 func (win *winCollisions) init() {
 }
 
-func (win *winCollisions) destroy() {
-}
-
 func (win *winCollisions) id() string {
-	return winCollisionsTitle
-}
-
-func (win *winCollisions) menuLabel() string {
-	return winCollisionsTitle
+	return winCollisionsID
 }
 
 func (win *winCollisions) isOpen() bool {
@@ -63,7 +56,7 @@ func (win *winCollisions) draw() {
 	}
 
 	imgui.SetNextWindowPosV(imgui.Vec2{623, 527}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
-	imgui.BeginV(winCollisionsTitle, &win.open, imgui.WindowFlagsAlwaysAutoResize)
+	imgui.BeginV(win.id(), &win.open, imgui.WindowFlagsAlwaysAutoResize)
 
 	imguiLabel("CXM0P ")
 	win.drawCollision(win.img.lz.Collisions.CXM0P, &win.img.lz.Dbg.VCS.TIA.Video.Collisions.CXM0P, video.CollisionMask)

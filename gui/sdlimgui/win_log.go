@@ -19,7 +19,7 @@ import (
 	"github.com/inkyblackness/imgui-go/v3"
 )
 
-const winLogTitle = "Log"
+const winLogID = "Log"
 
 type winLog struct {
 	img  *SdlImgui
@@ -37,15 +37,8 @@ func newWinLog(img *SdlImgui) (window, error) {
 func (win *winLog) init() {
 }
 
-func (win *winLog) destroy() {
-}
-
 func (win *winLog) id() string {
-	return winLogTitle
-}
-
-func (win *winLog) menuLabel() string {
-	return winLogTitle
+	return winLogID
 }
 
 func (win *winLog) isOpen() bool {
@@ -65,7 +58,7 @@ func (win *winLog) draw() {
 	imgui.SetNextWindowSizeV(imgui.Vec2{400, 400}, imgui.ConditionFirstUseEver)
 
 	imgui.PushStyleColor(imgui.StyleColorWindowBg, win.img.cols.LogBackground)
-	imgui.BeginV(winLogTitle, &win.open, 0)
+	imgui.BeginV(win.id(), &win.open, 0)
 	imgui.PopStyleColor()
 
 	var clipper imgui.ListClipper

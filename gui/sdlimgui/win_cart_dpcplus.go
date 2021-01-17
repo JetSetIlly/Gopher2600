@@ -22,7 +22,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/harmony/dpcplus"
 )
 
-const winDPCplusRegistersTitle = "DPC+ Registers"
+const winDPCplusRegistersID = "DPC+ Registers"
 
 type winDPCplusRegisters struct {
 	img  *SdlImgui
@@ -40,15 +40,8 @@ func newWinDPCplusRegisters(img *SdlImgui) (window, error) {
 func (win *winDPCplusRegisters) init() {
 }
 
-func (win *winDPCplusRegisters) destroy() {
-}
-
 func (win *winDPCplusRegisters) id() string {
-	return winDPCplusRegistersTitle
-}
-
-func (win *winDPCplusRegisters) menuLabel() string {
-	return winDPCplusRegistersTitle
+	return winDPCplusRegistersID
 }
 
 func (win *winDPCplusRegisters) isOpen() bool {
@@ -71,7 +64,7 @@ func (win *winDPCplusRegisters) draw() {
 	}
 
 	imgui.SetNextWindowPosV(imgui.Vec2{610, 303}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
-	imgui.BeginV(winDPCplusRegistersTitle, &win.open, imgui.WindowFlagsAlwaysAutoResize)
+	imgui.BeginV(win.id(), &win.open, imgui.WindowFlagsAlwaysAutoResize)
 
 	// random number generator value
 	rng := fmt.Sprintf("%08x", r.RNG.Value)

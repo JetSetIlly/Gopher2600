@@ -28,7 +28,7 @@ import (
 	"github.com/inkyblackness/imgui-go/v3"
 )
 
-const winTermTitle = "Terminal"
+const winTermID = "Terminal"
 
 const outputMaxSize = 512
 
@@ -63,15 +63,8 @@ func newWinTerm(img *SdlImgui) (window, error) {
 func (win *winTerm) init() {
 }
 
-func (win *winTerm) destroy() {
-}
-
 func (win *winTerm) id() string {
-	return winTermTitle
-}
-
-func (win *winTerm) menuLabel() string {
-	return winTermTitle
+	return winTermID
 }
 
 func (win *winTerm) isOpen() bool {
@@ -118,7 +111,7 @@ func (win *winTerm) draw() {
 
 	imgui.PushStyleColor(imgui.StyleColorWindowBg, win.img.cols.TermBackground)
 	imgui.PushStyleVarVec2(imgui.StyleVarFramePadding, imgui.Vec2{2, 2})
-	imgui.BeginV(winTermTitle, &win.open, 0)
+	imgui.BeginV(win.id(), &win.open, 0)
 	imgui.PopStyleVar()
 	imgui.PopStyleColor()
 

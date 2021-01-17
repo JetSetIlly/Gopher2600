@@ -23,7 +23,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/savekey"
 )
 
-const winSaveKeyI2CTitle = "SaveKey I2C"
+const winSaveKeyI2CID = "SaveKey I2C"
 const winSaveKeyI2CMenu = "I2C"
 
 type winSaveKeyI2C struct {
@@ -42,15 +42,8 @@ func newWinSaveKeyI2C(img *SdlImgui) (window, error) {
 func (win *winSaveKeyI2C) init() {
 }
 
-func (win *winSaveKeyI2C) destroy() {
-}
-
 func (win *winSaveKeyI2C) id() string {
-	return winSaveKeyI2CTitle
-}
-
-func (win *winSaveKeyI2C) menuLabel() string {
-	return winSaveKeyI2CMenu
+	return winSaveKeyI2CID
 }
 
 func (win *winSaveKeyI2C) isOpen() bool {
@@ -71,7 +64,7 @@ func (win *winSaveKeyI2C) draw() {
 	}
 
 	imgui.SetNextWindowPosV(imgui.Vec2{633, 358}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
-	imgui.BeginV(winSaveKeyI2CTitle, &win.open, imgui.WindowFlagsAlwaysAutoResize)
+	imgui.BeginV(win.id(), &win.open, imgui.WindowFlagsAlwaysAutoResize)
 
 	win.drawStatus()
 

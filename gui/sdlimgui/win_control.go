@@ -22,7 +22,7 @@ import (
 	"github.com/inkyblackness/imgui-go/v3"
 )
 
-const winControlTitle = "Control"
+const winControlID = "Control"
 
 const (
 	videoCycleLabel     = "Step Video"
@@ -63,15 +63,8 @@ func (win *winControl) init() {
 	win.fpsLabelDim = imguiGetFrameDim(fpsLabel)
 }
 
-func (win *winControl) destroy() {
-}
-
 func (win *winControl) id() string {
-	return winControlTitle
-}
-
-func (win *winControl) menuLabel() string {
-	return winControlTitle
+	return winControlID
 }
 
 func (win *winControl) isOpen() bool {
@@ -88,7 +81,7 @@ func (win *winControl) draw() {
 	}
 
 	imgui.SetNextWindowPosV(imgui.Vec2{651, 228}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
-	imgui.BeginV(winControlTitle, &win.open, imgui.WindowFlagsAlwaysAutoResize)
+	imgui.BeginV(win.id(), &win.open, imgui.WindowFlagsAlwaysAutoResize)
 
 	if win.img.state == gui.StateRunning {
 		if imguiBooleanButtonV(win.img.cols, false, "Halt", win.runButtonDim) {

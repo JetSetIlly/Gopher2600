@@ -16,17 +16,19 @@
 package sdlimgui
 
 import (
-	"sort"
-
 	"github.com/inkyblackness/imgui-go/v3"
 )
 
 // the window type represents all the windows used in the sdlimgui.
 type window interface {
+	// initialisation function. by the first call to manager.draw()
 	init()
+
+	// id should return a unique identifier for the window. note that the
+	// window title and any menu entry do not have to have the same value as
+	// the id() but it can.
 	id() string
-	menuLabel() string
-	destroy()
+
 	draw()
 	isOpen() bool
 	setOpen(bool)
@@ -42,9 +44,8 @@ type manager struct {
 	// the collection of managed windows in the system, indexed by window title
 	windows map[string]window
 
-	// windows can be open and closed through the menu bar. they are grouped
-	// according to type using the menu constants defined below.
-	menu map[string][]string
+	// windows can be open and closed through the menu bar
+	menu map[menuGroup][]menuEntry
 
 	// the position of the screen on the current display. the SDL function
 	// Window.GetPosition() is unsuitable for use in conjunction with imgui
@@ -74,103 +75,107 @@ type manager struct {
 // windowDef specifies a window creator, the menu it appears in whether it
 // should open on start.
 type windowDef struct {
+	// the window creation function
 	create func(*SdlImgui) (window, error)
-	menu   string
-	open   bool
+
+	// whether the window should be opened in an open or closed state
+	open bool
+
+	// menu entry the window will be associated with. the label and windowID
+	// fields can be left blank. if it is the window.id() value will be used.
+	//
+	// the restrictBus and restrictMapper fields are optional.
+	menu menuEntry
 }
 
 // list of windows to add to the window manager.
 var windowDefs = [...]windowDef{
 	// windows called from "debugger" menu
-	{create: newFileSelector, menu: menuDebugger},
-	{create: newWinPrefs, menu: menuDebugger},
-	{create: newWinCRTPrefs, menu: menuDebugger},
-	{create: newWinTerm, menu: menuDebugger},
-	{create: newWinLog, menu: menuDebugger},
+	{create: newFileSelector, menu: menuEntry{group: menuDebugger}},
+	{create: newWinPrefs, menu: menuEntry{group: menuDebugger}},
+	{create: newWinCRTPrefs, menu: menuEntry{group: menuDebugger}},
+	{create: newWinTerm, menu: menuEntry{group: menuDebugger}},
+	{create: newWinLog, menu: menuEntry{group: menuDebugger}},
 
 	// windows that appear in the "vcs" menu
-	{create: newWinControl, menu: menuVCS, open: true},
-	{create: newWinCPU, menu: menuVCS, open: true},
-	{create: newWinRAM, menu: menuVCS, open: true},
-	{create: newWinTIA, menu: menuVCS, open: true},
-	{create: newWinTimer, menu: menuVCS, open: true},
-	{create: newWinDisasm, menu: menuVCS, open: true},
-	{create: newWinAudio, menu: menuVCS, open: true},
-	{create: newWinDbgScr, menu: menuVCS, open: true},
-	{create: newWinControllers, menu: menuVCS},
-	{create: newWinCollisions, menu: menuVCS},
-	{create: newWinChipRegisters, menu: menuVCS},
+	{create: newWinAudio, menu: menuEntry{group: menuVCS}, open: true},
+	{create: newWinChipRegisters, menu: menuEntry{group: menuVCS}},
+	{create: newWinCollisions, menu: menuEntry{group: menuVCS}},
+	{create: newWinControl, menu: menuEntry{group: menuVCS}, open: true},
+	{create: newWinControllers, menu: menuEntry{group: menuVCS}},
+	{create: newWinCPU, menu: menuEntry{group: menuVCS}, open: true},
+	{create: newWinDisasm, menu: menuEntry{group: menuVCS}, open: true},
+	{create: newWinDbgScr, menu: menuEntry{group: menuVCS}, open: true},
+	{create: newWinRAM, menu: menuEntry{group: menuVCS}, open: true},
+	{create: newWinTIA, menu: menuEntry{group: menuVCS}, open: true},
+	{create: newWinTimer, menu: menuEntry{group: menuVCS}, open: true},
 
-	// windows that appear in cartridge specific menus
-	{create: newWinDPCregisters, menu: "DPC"},
-	{create: newWinDPCplusRegisters, menu: "DPC+"},
-	{create: newWinCDFRegisters, menu: "CDF"},
-	{create: newWinSuperchargerRegisters, menu: "AR"},
-	{create: newWinCartTape, menu: "AR"},
-	{create: newWinCartRAM, menu: menuCart},
-	{create: newWinCartStatic, menu: menuCart},
+	// windows that appear in cartridge specific menu
+	{create: newWinDPCregisters, menu: menuEntry{group: menuCart, restrictBus: menuRestrictRegister, restrictMapper: []string{"DPC"}}},
+	{create: newWinDPCplusRegisters, menu: menuEntry{group: menuCart, restrictBus: menuRestrictRegister, restrictMapper: []string{"DPC+"}}},
+	{create: newWinCDFRegisters, menu: menuEntry{group: menuCart, restrictBus: menuRestrictRegister, restrictMapper: []string{"CDF"}}},
+	{create: newWinSuperchargerRegisters, menu: menuEntry{group: menuCart, restrictBus: menuRestrictRegister, restrictMapper: []string{"AR"}}},
+	{create: newWinCartTape, menu: menuEntry{group: menuCart, restrictBus: menuRestrictTape}},
+	{create: newWinCartRAM, menu: menuEntry{group: menuCart, restrictBus: menuRestrictRAM}},
+	{create: newWinCartStatic, menu: menuEntry{group: menuCart, restrictBus: menuRestrictStatic}},
 
-	// cartridges with RAM and static areas will be added automatically
+	// coprocessor windows
+	{create: newWinCoProcLastExecution, menu: menuEntry{group: menuCoProc, restrictBus: menuRestrictCoProc}},
 
 	// plusrom windows
-	{create: newWinPlusROMNetwork, menu: menuPlusROM},
-	{create: newWinPlusROMPrefs, menu: menuPlusROM},
+	{create: newWinPlusROMNetwork, menu: menuEntry{group: menuPlusROM, label: winPlusROMNetworkMenu}},
+	{create: newWinPlusROMPrefs, menu: menuEntry{group: menuPlusROM, label: winPlusROMPrefsMenu}},
 
 	// savekey windows
-	{create: newWinSaveKeyI2C, menu: menuSaveKey},
-	{create: newWinSaveKeyEEPROM, menu: menuSaveKey},
+	{create: newWinSaveKeyI2C, menu: menuEntry{group: menuSaveKey, label: winSaveKeyI2CMenu}},
+	{create: newWinSaveKeyEEPROM, menu: menuEntry{group: menuSaveKey, label: winSaveKeyEEPROMMenu}},
 }
 
 // list of windows that can be opened in playmode in addition to the debugger.
 var playmodeWindows = [...]string{
-	winCRTPrefsTitle,
+	winCRTPrefsID,
 }
 
 func newManager(img *SdlImgui) (*manager, error) {
 	wm := &manager{
 		img:     img,
 		windows: make(map[string]window),
-		menu:    make(map[string][]string),
+		menu:    make(map[menuGroup][]menuEntry),
 	}
 
 	// create all window instances and add to specified menu
-	addWindow := func(def windowDef) error {
+	for _, def := range windowDefs {
 		w, err := def.create(img)
 		if err != nil {
-			return err
-		}
-
-		wm.windows[w.id()] = w
-		wm.menu[def.menu] = append(wm.menu[def.menu], w.id())
-		w.setOpen(def.open)
-
-		return nil
-	}
-
-	for _, w := range windowDefs {
-		if err := addWindow(w); err != nil {
 			return nil, err
 		}
+		wm.windows[w.id()] = w
+
+		// open window if requested
+		w.setOpen(def.open)
+
+		// if menu label has not been specified use the window definition
+		if def.menu.label == "" {
+			def.menu.label = w.id()
+		}
+
+		// window name
+		if def.menu.windowID == "" {
+			def.menu.windowID = w.id()
+		}
+
+		// add menu entry
+		wm.menu[def.menu.group] = append(wm.menu[def.menu.group], def.menu)
 	}
 
-	// sort vcs menu entries. leave other menus alone
-	sort.Strings(wm.menu[menuVCS])
-
 	// get references to specific windows that need to be referenced elsewhere in the system
-	wm.dbgScr = wm.windows[winDbgScrTitle].(*winDbgScr)
-	wm.crtPrefs = wm.windows[winCRTPrefsTitle].(*winCRTPrefs)
+	wm.dbgScr = wm.windows[winDbgScrID].(*winDbgScr)
+	wm.crtPrefs = wm.windows[winCRTPrefsID].(*winCRTPrefs)
 
-	// create play window. this is a special window that does not appear in the
-	// window list
+	// create play window. this is a special window that does not appear in the window list
 	wm.playScr = newWinPlayScr(img).(*winPlayScr)
 
 	return wm, nil
-}
-
-func (wm *manager) destroy() {
-	for w := range wm.windows {
-		wm.windows[w].destroy()
-	}
 }
 
 func (wm *manager) draw() {

@@ -22,7 +22,7 @@ import (
 	"github.com/inkyblackness/imgui-go/v3"
 )
 
-const winCartTapeTitle = "Cassette Tape"
+const winCartTapeID = "Cassette Tape"
 
 type winCartTape struct {
 	img  *SdlImgui
@@ -40,15 +40,8 @@ func newWinCartTape(img *SdlImgui) (window, error) {
 func (win *winCartTape) init() {
 }
 
-func (win *winCartTape) destroy() {
-}
-
 func (win *winCartTape) id() string {
-	return winCartTapeTitle
-}
-
-func (win *winCartTape) menuLabel() string {
-	return winCartTapeTitle
+	return winCartTapeID
 }
 
 func (win *winCartTape) isOpen() bool {
@@ -69,7 +62,9 @@ func (win *winCartTape) draw() {
 	}
 
 	imgui.SetNextWindowPosV(imgui.Vec2{633, 358}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
-	imgui.BeginV(winCartTapeTitle, &win.open, imgui.WindowFlagsAlwaysAutoResize)
+
+	title := fmt.Sprintf("%s %s", win.img.lz.Cart.ID, winCartTapeID)
+	imgui.BeginV(title, &win.open, imgui.WindowFlagsAlwaysAutoResize)
 
 	// counter information
 	imguiLabel("Counter")

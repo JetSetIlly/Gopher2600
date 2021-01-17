@@ -25,7 +25,7 @@ import (
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
-const winCRTPrefsTitle = "CRT Preferences"
+const winCRTPrefsID = "CRT Preferences"
 
 type winCRTPrefs struct {
 	img  *SdlImgui
@@ -77,15 +77,8 @@ func newWinCRTPrefs(img *SdlImgui) (window, error) {
 func (win *winCRTPrefs) init() {
 }
 
-func (win *winCRTPrefs) destroy() {
-}
-
 func (win *winCRTPrefs) id() string {
-	return winCRTPrefsTitle
-}
-
-func (win *winCRTPrefs) menuLabel() string {
-	return winCRTPrefsTitle
+	return winCRTPrefsID
 }
 
 func (win *winCRTPrefs) isOpen() bool {
@@ -105,7 +98,7 @@ func (win *winCRTPrefs) draw() {
 	}
 
 	imgui.SetNextWindowPosV(imgui.Vec2{10, 10}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
-	imgui.BeginV(winCRTPrefsTitle, &win.open, imgui.WindowFlagsAlwaysAutoResize)
+	imgui.BeginV(win.id(), &win.open, imgui.WindowFlagsAlwaysAutoResize)
 
 	win.drawEnabled()
 	imguiSeparator()

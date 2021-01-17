@@ -21,14 +21,47 @@ import (
 	"github.com/inkyblackness/imgui-go/v3"
 )
 
-// the window menus grouped by type. the types are:.
+// the window menus grouped by type. the types are:
+type menuGroup int
+
+// list of valid menu groups.
 const (
-	menuDebugger = "Debugger"
-	menuVCS      = "VCS"
-	menuCart     = "Cart"
-	menuPlusROM  = "PlusROM"
-	menuSaveKey  = "SaveKey"
+	menuDebugger menuGroup = iota
+	menuVCS
+	menuCart
+	menuCoProc
+	menuPlusROM
+	menuSaveKey
 )
+
+// restrict menu entry for those cartridges with specific buses.
+type menuBusRestrict int
+
+// list of valid menu bus restrictions.
+const (
+	menuRestrictNone menuBusRestrict = iota
+	menuRestrictCoProc
+	menuRestrictRAM
+	menuRestrictRegister
+	menuRestrictStatic
+	menuRestrictTape
+)
+
+// defintion for a menu entry
+type menuEntry struct {
+	// the menu this menu entry appears under
+	group menuGroup
+
+	// restrictions on when menu entry can appear
+	restrictBus    menuBusRestrict
+	restrictMapper []string
+
+	// the window thats referenced by the menu entry
+	windowID string
+
+	// the label that appears in the menu for this entry
+	label string
+}
 
 func (wm *manager) drawMenu() {
 	if !imgui.BeginMainMenuBar() {
@@ -39,9 +72,9 @@ func (wm *manager) drawMenu() {
 	wm.screenPos = imgui.WindowPos()
 
 	// debugger menu
-	if imgui.BeginMenu(menuDebugger) {
-		for _, id := range wm.menu[menuDebugger] {
-			drawMenuEntry(wm.windows[id])
+	if imgui.BeginMenu("Debugger") {
+		for _, m := range wm.menu[menuDebugger] {
+			wm.drawMenuEntry(m)
 		}
 
 		imguiSeparator()
@@ -53,38 +86,39 @@ func (wm *manager) drawMenu() {
 	}
 
 	// vcs menu
-	if imgui.BeginMenu(menuVCS) {
-		for _, id := range wm.menu[menuVCS] {
-			drawMenuEntry(wm.windows[id])
+	if imgui.BeginMenu("VCS") {
+		for _, m := range wm.menu[menuVCS] {
+			wm.drawMenuEntry(m)
 		}
 
 		imgui.EndMenu()
 	}
 
-	// cartridge menu requires some additional work
-	if _, ok := wm.menu[wm.img.lz.Cart.ID]; ok || wm.img.lz.Cart.HasRAMbus || wm.img.lz.Cart.HasStaticBus {
+	// cartridge menu. include test to see if menu should appear at all.
+	if wm.img.lz.Cart.HasRAMbus || wm.img.lz.Cart.HasRegistersBus || wm.img.lz.Cart.HasStaticBus || wm.img.lz.Cart.HasTapeBus {
 		if imgui.BeginMenu(fmt.Sprintf("Cart [%s]", wm.img.lz.Cart.ID)) {
-			for _, id := range wm.menu[wm.img.lz.Cart.ID] {
-				drawMenuEntry(wm.windows[id])
+			for _, m := range wm.menu[menuCart] {
+				wm.drawMenuEntry(m)
 			}
+			imgui.EndMenu()
+		}
+	}
 
-			if wm.img.lz.Cart.HasRAMbus {
-				drawMenuEntry(wm.windows[winCartRAMTitle])
+	// coprocessor menu. include test to see if menu should appear at all.
+	if wm.img.lz.CoProc.HasCoProcBus {
+		if imgui.BeginMenu(wm.img.lz.CoProc.ID) {
+			for _, m := range wm.menu[menuCoProc] {
+				wm.drawMenuEntry(m)
 			}
-
-			if wm.img.lz.Cart.HasStaticBus {
-				drawMenuEntry(wm.windows[winCartStaticTitle])
-			}
-
 			imgui.EndMenu()
 		}
 	}
 
 	// plusrom specific menus
 	if wm.img.lz.Cart.IsPlusROM {
-		if imgui.BeginMenu(menuPlusROM) {
-			for _, id := range wm.menu[menuPlusROM] {
-				drawMenuEntry(wm.windows[id])
+		if imgui.BeginMenu("PlusROM") {
+			for _, m := range wm.menu[menuPlusROM] {
+				wm.drawMenuEntry(m)
 			}
 			imgui.EndMenu()
 		}
@@ -92,9 +126,9 @@ func (wm *manager) drawMenu() {
 
 	// add savekey specific menu
 	if wm.img.lz.SaveKey.SaveKeyActive {
-		if imgui.BeginMenu(menuSaveKey) {
-			for _, id := range wm.menu[menuSaveKey] {
-				drawMenuEntry(wm.windows[id])
+		if imgui.BeginMenu("SaveKey") {
+			for _, m := range wm.menu[menuSaveKey] {
+				wm.drawMenuEntry(m)
 			}
 			imgui.EndMenu()
 		}
@@ -107,10 +141,48 @@ func (wm *manager) drawMenu() {
 	imgui.EndMainMenuBar()
 }
 
-func drawMenuEntry(w window) {
-	label := w.menuLabel()
+func (wm *manager) drawMenuEntry(m menuEntry) {
+	// restriction bus
+	switch m.restrictBus {
+	case menuRestrictRAM:
+		if !wm.img.lz.Cart.HasRAMbus {
+			return
+		}
+	case menuRestrictRegister:
+		if !wm.img.lz.Cart.HasRegistersBus {
+			return
+		}
+	case menuRestrictStatic:
+		if !wm.img.lz.Cart.HasStaticBus {
+			return
+		}
+	case menuRestrictTape:
+		if !wm.img.lz.Cart.HasTapeBus {
+			return
+		}
+	default:
+		// no restrictions
+	}
 
-	// decorate the menu entry with an "window open" indicator
+	// restrict bus
+	restrict := len(m.restrictMapper) > 0
+	if restrict {
+		for _, r := range m.restrictMapper {
+			if r == wm.img.lz.Cart.ID {
+				restrict = false
+				break // for loop
+			}
+		}
+		if restrict {
+			return
+		}
+	}
+
+	// the window that the menu entry refers to
+	w := wm.windows[m.windowID]
+
+	// menu entry label. we'll decorate this with an "window open" indicator
+	label := m.label
 	if w.isOpen() {
 		// checkmark is unicode middle dot - code 00b7
 		label = fmt.Sprintf("· %s", label)

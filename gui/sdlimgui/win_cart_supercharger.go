@@ -22,7 +22,8 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/supercharger"
 )
 
-const winSuperchargerRegistersTitle = "Supercharger"
+const winSuperchargerRegistersID = "AR Registers"
+const winSuperchargerRegistersMenu = "AR Registers"
 
 type winSuperchargerRegisters struct {
 	img  *SdlImgui
@@ -46,11 +47,7 @@ func (win *winSuperchargerRegisters) destroy() {
 }
 
 func (win *winSuperchargerRegisters) id() string {
-	return winSuperchargerRegistersTitle
-}
-
-func (win *winSuperchargerRegisters) menuLabel() string {
-	return winSuperchargerRegistersTitle
+	return winSuperchargerRegistersID
 }
 
 func (win *winSuperchargerRegisters) isOpen() bool {
@@ -73,7 +70,7 @@ func (win *winSuperchargerRegisters) draw() {
 	}
 
 	imgui.SetNextWindowPosV(imgui.Vec2{633, 451}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
-	imgui.BeginV(winSuperchargerRegistersTitle, &win.open, imgui.WindowFlagsAlwaysAutoResize)
+	imgui.BeginV(win.id(), &win.open, imgui.WindowFlagsAlwaysAutoResize)
 
 	val := fmt.Sprintf("%02x", r.Value)
 	imguiLabel("Value")

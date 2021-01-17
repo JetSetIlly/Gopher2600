@@ -23,7 +23,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/controllers"
 )
 
-const winControllersTitle = "Controllers"
+const winControllersID = "Controllers"
 
 type winControllers struct {
 	img  *SdlImgui
@@ -45,15 +45,8 @@ func (win *winControllers) init() {
 	win.controllerComboDim = imguiGetFrameDim("", controllers.ControllerList...)
 }
 
-func (win *winControllers) destroy() {
-}
-
 func (win *winControllers) id() string {
-	return winControllersTitle
-}
-
-func (win *winControllers) menuLabel() string {
-	return winControllersTitle
+	return winControllersID
 }
 
 func (win *winControllers) isOpen() bool {
@@ -76,7 +69,7 @@ func (win *winControllers) draw() {
 	}
 
 	imgui.SetNextWindowPosV(imgui.Vec2{677, 538}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
-	imgui.BeginV(winControllersTitle, &win.open, imgui.WindowFlagsAlwaysAutoResize)
+	imgui.BeginV(win.id(), &win.open, imgui.WindowFlagsAlwaysAutoResize)
 
 	imgui.BeginGroup()
 	imgui.Spacing()

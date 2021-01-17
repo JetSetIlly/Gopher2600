@@ -22,7 +22,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge"
 )
 
-const winDPCregistersTitle = "DPC Registers"
+const winDPCregistersID = "DPC Registers"
 
 type winDPCregisters struct {
 	img  *SdlImgui
@@ -40,15 +40,8 @@ func newWinDPCregisters(img *SdlImgui) (window, error) {
 func (win *winDPCregisters) init() {
 }
 
-func (win *winDPCregisters) destroy() {
-}
-
 func (win *winDPCregisters) id() string {
-	return winDPCregistersTitle
-}
-
-func (win *winDPCregisters) menuLabel() string {
-	return winDPCregistersTitle
+	return winDPCregistersID
 }
 
 func (win *winDPCregisters) isOpen() bool {
@@ -71,7 +64,7 @@ func (win *winDPCregisters) draw() {
 	}
 
 	imgui.SetNextWindowPosV(imgui.Vec2{633, 451}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
-	imgui.BeginV(winDPCregistersTitle, &win.open, imgui.WindowFlagsAlwaysAutoResize)
+	imgui.BeginV(win.id(), &win.open, imgui.WindowFlagsAlwaysAutoResize)
 
 	// random number generator value
 	rng := fmt.Sprintf("%02x", r.RNG)

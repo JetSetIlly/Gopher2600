@@ -25,7 +25,7 @@ import (
 	"github.com/inkyblackness/imgui-go/v3"
 )
 
-const winCPUTitle = "CPU"
+const winCPUID = "CPU"
 
 type winCPU struct {
 	img  *SdlImgui
@@ -43,15 +43,8 @@ func newWinCPU(img *SdlImgui) (window, error) {
 func (win *winCPU) init() {
 }
 
-func (win *winCPU) destroy() {
-}
-
 func (win *winCPU) id() string {
-	return winCPUTitle
-}
-
-func (win *winCPU) menuLabel() string {
-	return winCPUTitle
+	return winCPUID
 }
 
 func (win *winCPU) isOpen() bool {
@@ -68,7 +61,7 @@ func (win *winCPU) draw() {
 	}
 
 	imgui.SetNextWindowPosV(imgui.Vec2{659, 35}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
-	imgui.BeginV(winCPUTitle, &win.open, imgui.WindowFlagsAlwaysAutoResize)
+	imgui.BeginV(win.id(), &win.open, imgui.WindowFlagsAlwaysAutoResize)
 
 	imgui.BeginGroup()
 	win.drawRegister(win.img.lz.CPU.PC)

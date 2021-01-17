@@ -26,7 +26,7 @@ import (
 	"github.com/inkyblackness/imgui-go/v3"
 )
 
-const winDisasmTitle = "Disassembly"
+const winDisasmID = "Disassembly"
 
 type winDisasm struct {
 	img  *SdlImgui
@@ -80,15 +80,8 @@ func newWinDisasm(img *SdlImgui) (window, error) {
 func (win *winDisasm) init() {
 }
 
-func (win *winDisasm) destroy() {
-}
-
 func (win *winDisasm) id() string {
-	return winDisasmTitle
-}
-
-func (win *winDisasm) menuLabel() string {
-	return winDisasmTitle
+	return winDisasmID
 }
 
 func (win *winDisasm) isOpen() bool {
@@ -106,7 +99,7 @@ func (win *winDisasm) draw() {
 
 	imgui.SetNextWindowPosV(imgui.Vec2{905, 242}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
 	imgui.SetNextWindowSizeV(imgui.Vec2{353, 466}, imgui.ConditionFirstUseEver)
-	imgui.BeginV(winDisasmTitle, &win.open, 0)
+	imgui.BeginV(win.id(), &win.open, 0)
 
 	imgui.Text(win.img.lz.Cart.Summary)
 	imgui.Spacing()

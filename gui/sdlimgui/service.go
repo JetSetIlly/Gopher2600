@@ -75,7 +75,7 @@ func (img *SdlImgui) Service() {
 
 					case "F10":
 						if img.isPlaymode() {
-							w := img.wm.windows[winCRTPrefsTitle]
+							w := img.wm.windows[winCRTPrefsID]
 							w.setOpen(!w.isOpen())
 						}
 

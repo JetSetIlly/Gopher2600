@@ -22,7 +22,7 @@ import (
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
-const winPrefsTile = "Preferences"
+const winPrefsID = "Preferences"
 
 type winPrefs struct {
 	img  *SdlImgui
@@ -40,15 +40,8 @@ func newWinPrefs(img *SdlImgui) (window, error) {
 func (win *winPrefs) init() {
 }
 
-func (win *winPrefs) destroy() {
-}
-
 func (win *winPrefs) id() string {
-	return winPrefsTile
-}
-
-func (win *winPrefs) menuLabel() string {
-	return winPrefsTile
+	return winPrefsID
 }
 
 func (win *winPrefs) isOpen() bool {
@@ -65,7 +58,7 @@ func (win *winPrefs) draw() {
 	}
 
 	imgui.SetNextWindowPosV(imgui.Vec2{10, 10}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
-	imgui.BeginV(winPrefsTile, &win.open, imgui.WindowFlagsAlwaysAutoResize)
+	imgui.BeginV(win.id(), &win.open, imgui.WindowFlagsAlwaysAutoResize)
 
 	win.drawGeneral()
 
@@ -124,7 +117,7 @@ func (win *winPrefs) drawGeneral() {
 		// if disassembly has address labels then turning symbols off may alter
 		// the vertical scrolling of the disassembly window. set alignOnPC to
 		// true to force preference change to take effect
-		win.img.wm.windows[winDisasmTitle].(*winDisasm).alignOnPC = true
+		win.img.wm.windows[winDisasmID].(*winDisasm).alignOnPC = true
 	}
 
 	termOnError := win.img.prefs.openOnError.Get().(bool)

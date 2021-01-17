@@ -20,7 +20,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
-const winRAMTitle = "RAM"
+const winRAMID = "RAM"
 
 type winRAM struct {
 	img  *SdlImgui
@@ -35,15 +35,8 @@ func newWinRAM(img *SdlImgui) (window, error) {
 func (win *winRAM) init() {
 }
 
-func (win *winRAM) destroy() {
-}
-
 func (win *winRAM) id() string {
-	return winRAMTitle
-}
-
-func (win *winRAM) menuLabel() string {
-	return winRAMTitle
+	return winRAMID
 }
 
 func (win *winRAM) isOpen() bool {
@@ -60,7 +53,7 @@ func (win *winRAM) draw() {
 	}
 
 	imgui.SetNextWindowPosV(imgui.Vec2{890, 29}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
-	imgui.BeginV(winRAMTitle, &win.open, imgui.WindowFlagsAlwaysAutoResize)
+	imgui.BeginV(win.id(), &win.open, imgui.WindowFlagsAlwaysAutoResize)
 
 	imgui.PushStyleVarVec2(imgui.StyleVarItemSpacing, imgui.Vec2{})
 	imgui.PushItemWidth(imguiTextWidth(2))
