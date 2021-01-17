@@ -94,7 +94,7 @@ var commandTemplate = []string{
 	cmdPatch + " %<patch file>S",
 	cmdDisassembly + " (BYTECODE) (%<bank num>N)",
 	cmdLint,
-	cmdGrep + " (MNEMONIC|OPERAND) %<search>S",
+	cmdGrep + " (OPERATOR|OPERAND) %<search>S",
 	cmdSymbol + " [LIST (LABELS|READ|WRITE)|%<symbol>S (ALL|MIRRORS)]",
 	cmdOnHalt + " (OFF|ON|%<command>S {%<commands>S})",
 	cmdOnStep + " (OFF|ON|%<command>S {%<commands>S})",

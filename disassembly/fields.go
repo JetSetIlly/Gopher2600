@@ -27,7 +27,7 @@ const (
 	FldLabel Field = iota
 	FldBytecode
 	FldAddress
-	FldMnemonic
+	FldOperator
 	FldOperand
 	FldDefnCycles
 	FldActualCycles
@@ -38,7 +38,7 @@ const (
 const (
 	widthBytecode     = 9
 	widthAddress      = 6
-	widthMnemonic     = 3
+	widthOperator     = 3
 	widthDefnCycles   = 3
 	widthActualCycles = 1
 
@@ -78,9 +78,9 @@ func (e *Entry) GetField(field Field) string {
 		w = widthAddress
 		s = e.Address
 
-	case FldMnemonic:
-		w = widthMnemonic
-		s = e.Mnemonic
+	case FldOperator:
+		w = widthOperator
+		s = e.Operator
 
 	case FldOperand:
 		o, ok := e.Operand.checkString()

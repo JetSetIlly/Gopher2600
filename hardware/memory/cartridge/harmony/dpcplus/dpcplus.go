@@ -99,6 +99,16 @@ func (cart *dpcPlus) String() string {
 	return fmt.Sprintf("%s [%s] Bank: %d", cart.mappingID, cart.description, cart.state.bank)
 }
 
+// CoProcID implements the mapper.CartCoProcBus interface
+func (cart *dpcPlus) CoProcID() string {
+	return cart.arm.CoProcID()
+}
+
+// SetDisassembler implements the mapper.CartCoProcBus interface
+func (cart *dpcPlus) SetDisassembler(disasm mapper.CartCoProcDisassembler) {
+	cart.arm.SetDisassembler(disasm)
+}
+
 // ID implements the mapper.CartMapper interface.
 func (cart *dpcPlus) ID() string {
 	return cart.mappingID

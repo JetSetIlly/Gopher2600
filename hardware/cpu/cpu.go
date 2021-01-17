@@ -496,7 +496,7 @@ const (
 //
 //	1. read opcode and look up instruction definition
 //	2. read operands (if any) according to the addressing mode of the instruction
-//	3. using the mnemonic as a guide, perform the instruction on the data
+//	3. using the operator as a guide, perform the instruction on the data
 //
 // All instructions take at least 2 cycle. After each cycle, the
 // cycleCallback() function is run, thereby allowing the rest of the VCS
@@ -563,7 +563,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		if mc.LastResult.Defn == nil {
 			mc.LastResult.Defn = &instructions.Definition{
 				OpCode:   opcode,
-				Mnemonic: "??",
+				Operator: "??",
 				Bytes:    1,
 				Cycles:   0,
 				// remaining fields are undefined
@@ -599,7 +599,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		// implied mode does not use any additional bytes. however, the next
 		// instruction is read but the PC is not incremented
 
-		if defn.Mnemonic == "BRK" {
+		if defn.Operator == "BRK" {
 			// BRK is unusual in that it increases the PC by two bytes despite
 			// being an implied addressing mode.
 			// +1 cycle
@@ -655,7 +655,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		}
 
 		// else... for JSR, addresses are read slightly differently so we defer
-		// this part of the operation to the mnemonic switch below
+		// this part of the operation to the operator switch below
 
 	case instructions.ZeroPage:
 		zeroPage = true
@@ -910,7 +910,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		}
 
 	default:
-		return curated.Errorf("cpu: unknown addressing mode for %s", defn.Mnemonic)
+		return curated.Errorf("cpu: unknown addressing mode for %s", defn.Operator)
 	}
 
 	// read value from memory using address found in AddressingMode switch above only when:
@@ -958,8 +958,8 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		}
 	}
 
-	// actually perform instruction based on mnemonic group
-	switch defn.Mnemonic {
+	// actually perform instruction based on operator group
+	switch defn.Operator {
 	case "NOP":
 		// does nothing
 
@@ -1619,7 +1619,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		mc.Status.Carry = value&0x80 == 0x80
 
 	default:
-		return curated.Errorf("cpu: unknown mnemonic (%s)", defn.Mnemonic)
+		return curated.Errorf("cpu: unknown operator (%s)", defn.Operator)
 	}
 
 	// for RMW instructions: write altered value back to memory

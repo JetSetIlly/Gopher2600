@@ -377,8 +377,8 @@ func (win *winDisasm) drawEntry(e *disassembly.Entry, pcaddr uint16, selected bo
 	}
 
 	imgui.SameLine()
-	imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmMnemonic.Plus(adj))
-	s = e.GetField(disassembly.FldMnemonic)
+	imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmOperator.Plus(adj))
+	s = e.GetField(disassembly.FldOperator)
 	imgui.Text(s)
 
 	imgui.SameLine()

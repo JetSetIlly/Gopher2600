@@ -110,6 +110,16 @@ func (cart *cdf) String() string {
 	return fmt.Sprintf("%s [%s] Bank: %d", cart.mappingID, cart.version.description, cart.state.bank)
 }
 
+// CoProcID implements the mapper.CartCoProcBus interface
+func (cart *cdf) CoProcID() string {
+	return cart.arm.CoProcID()
+}
+
+// SetDisassembler implements the mapper.CartCoProcBus interface
+func (cart *cdf) SetDisassembler(disasm mapper.CartCoProcDisassembler) {
+	cart.arm.SetDisassembler(disasm)
+}
+
 // ID implements the mapper.CartMapper interface.
 func (cart *cdf) ID() string {
 	return cart.mappingID
@@ -247,8 +257,6 @@ func (cart *cdf) Read(addr uint16, passive bool) (uint8, error) {
 
 	return data, nil
 }
-
-//
 
 // Write implements the mapper.CartMapper interface.
 func (cart *cdf) Write(addr uint16, data uint8, passive bool, poke bool) error {
@@ -492,19 +500,20 @@ func (cart *cdf) ARMinterrupt(addr uint32, val1 uint32, val2 uint32) (arm7tdmi.A
 	if cart.version.submapping == "CDF0" {
 		switch addr {
 		case 0x000006e2:
-			// set note
+			r.InterruptEvent = "Set music note"
 			if val1 >= uint32(len(cart.state.registers.MusicFetcher)) {
 				return r, curated.Errorf("music fetcher index (%d) too high ", val1)
 			}
 			cart.state.registers.MusicFetcher[val1].Freq = val2
 		case 0x000006e6:
 			// reset wave
+			r.InterruptEvent = "Reset wave"
 			if val1 >= uint32(len(cart.state.registers.MusicFetcher)) {
 				return r, curated.Errorf("music fetcher index (%d) too high ", val1)
 			}
 			cart.state.registers.MusicFetcher[val1].Count = 0
 		case 0x000006ea:
-			// get wave ptr
+			r.InterruptEvent = "Get wave pointer"
 			if val1 >= uint32(len(cart.state.registers.MusicFetcher)) {
 				return r, curated.Errorf("music fetcher index (%d) too high ", val1)
 			}
@@ -512,7 +521,7 @@ func (cart *cdf) ARMinterrupt(addr uint32, val1 uint32, val2 uint32) (arm7tdmi.A
 			r.SaveRegister = 2
 			r.SaveResult = true
 		case 0x000006ee:
-			// set wave size
+			r.InterruptEvent = "Set wave size"
 			if val1 >= uint32(len(cart.state.registers.MusicFetcher)) {
 				return r, curated.Errorf("music fetcher index (%d) too high ", val1)
 			}
@@ -527,19 +536,19 @@ func (cart *cdf) ARMinterrupt(addr uint32, val1 uint32, val2 uint32) (arm7tdmi.A
 
 	switch addr {
 	case 0x00000752:
-		// set note
+		r.InterruptEvent = "Set music note"
 		if val1 >= uint32(len(cart.state.registers.MusicFetcher)) {
 			return r, curated.Errorf("music fetcher index (%d) too high ", val1)
 		}
 		cart.state.registers.MusicFetcher[val1].Freq = val2
 	case 0x00000756:
-		// reset wave
+		r.InterruptEvent = "Reset wave"
 		if val1 >= uint32(len(cart.state.registers.MusicFetcher)) {
 			return r, curated.Errorf("music fetcher index (%d) too high ", val1)
 		}
 		cart.state.registers.MusicFetcher[val1].Count = 0
 	case 0x0000075a:
-		// get wave ptr
+		r.InterruptEvent = "Get wave pointer"
 		if val1 >= uint32(len(cart.state.registers.MusicFetcher)) {
 			return r, curated.Errorf("music fetcher index (%d) too high ", val1)
 		}
@@ -547,7 +556,7 @@ func (cart *cdf) ARMinterrupt(addr uint32, val1 uint32, val2 uint32) (arm7tdmi.A
 		r.SaveRegister = 2
 		r.SaveResult = true
 	case 0x0000075e:
-		// set wave size
+		r.InterruptEvent = "Set wave size"
 		if val1 >= uint32(len(cart.state.registers.MusicFetcher)) {
 			return r, curated.Errorf("music fetcher index (%d) too high ", val1)
 		}

@@ -20,6 +20,7 @@ import (
 
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/curated"
+	"github.com/jetsetilly/gopher2600/disassembly/coprocessor"
 	"github.com/jetsetilly/gopher2600/hardware/cpu"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/execution"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge"
@@ -40,6 +41,9 @@ type Disassembly struct {
 
 	// indexed by bank and address. address should be masked with memorymap.CartridgeBits before access
 	entries [][]*Entry
+
+	// any cartridge coprocessor that we find
+	Coprocessor *coprocessor.Coprocessor
 
 	// critical sectioning. the iteration functions in particular may be called
 	// from a different goroutine. entries in the (disasm array) will likely be
@@ -88,6 +92,7 @@ func FromCartridge(cartload cartridgeloader.Loader) (*Disassembly, error) {
 	// standard symbols table even in the event of an error
 	symbols, _ := symbols.ReadSymbolsFile(cart)
 
+	// do disassembly
 	err = dsm.FromMemory(cart, symbols)
 	if err != nil {
 		return nil, curated.Errorf("disassembly: %v", err)
@@ -135,6 +140,9 @@ func (dsm *Disassembly) FromMemory(cart *cartridge.Cartridge, symbols *symbols.S
 	if err != nil {
 		return curated.Errorf("disassembly: %v", err)
 	}
+
+	// try added coprocessor disasm support
+	dsm.Coprocessor = coprocessor.Add(cart)
 
 	return nil
 }

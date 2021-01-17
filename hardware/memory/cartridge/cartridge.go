@@ -353,6 +353,14 @@ func (cart *Cartridge) GetCartHotspots() mapper.CartHotspotsBus {
 	return nil
 }
 
+// GetCoProcBus returns interface to coprocessor bus
+func (cart *Cartridge) GetCoProcBus() mapper.CartCoProcBus {
+	if cpd, ok := cart.mapper.(mapper.CartCoProcBus); ok {
+		return cpd
+	}
+	return nil
+}
+
 // CopyBanks returns the sequence of banks in a cartridge. To return the
 // next bank in the sequence, call the function with the instance of
 // mapper.BankContent returned from the previous call. The end of the sequence is

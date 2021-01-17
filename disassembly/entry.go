@@ -77,7 +77,7 @@ type Entry struct {
 	Label    Label
 	Bytecode string
 	Address  string
-	Mnemonic string
+	Operator string
 	Operand  Operand
 
 	// formatted cycles information from instructions.Defintion
@@ -94,7 +94,7 @@ type Entry struct {
 // convenience. Probably not of any use except for the simplest of tools.
 func (e *Entry) String() string {
 	operand, _ := e.Operand.checkString()
-	return fmt.Sprintf("%s %s %s", e.Address, e.Mnemonic, operand)
+	return fmt.Sprintf("%s %s %s", e.Address, e.Operator, operand)
 }
 
 // FormatResult It is the preferred method of initialising for the Entry type.
@@ -119,8 +119,8 @@ func (dsm *Disassembly) FormatResult(bank mapper.BankInfo, result execution.Resu
 	// address of instruction
 	e.Address = fmt.Sprintf("$%04x", result.Address)
 
-	// mnemonic is just a string anyway
-	e.Mnemonic = result.Defn.Mnemonic
+	// operator is just a string anyway
+	e.Operator = result.Defn.Operator
 
 	// bytecode and operand string is assembled depending on the number of
 	// expected bytes (result.Defn.Bytes) and the number of bytes read so far

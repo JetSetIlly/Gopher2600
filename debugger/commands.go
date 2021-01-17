@@ -439,8 +439,8 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 
 		s, _ := tokens.Get()
 		switch strings.ToUpper(s) {
-		case "MNEMONIC":
-			scope = disassembly.GrepMnemonic
+		case "OPERATOR":
+			scope = disassembly.GrepOperator
 		case "OPERAND":
 			scope = disassembly.GrepOperand
 		default:
@@ -748,7 +748,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 			s.WriteString(dbg.lastResult.GetField(disassembly.FldBytecode))
 			s.WriteString(" ")
 		}
-		s.WriteString(dbg.lastResult.GetField(disassembly.FldMnemonic))
+		s.WriteString(dbg.lastResult.GetField(disassembly.FldOperator))
 		s.WriteString(" ")
 		s.WriteString(dbg.lastResult.GetField(disassembly.FldOperand))
 		s.WriteString(" ")

@@ -16,7 +16,7 @@
 
 # instruction table entries are defined by the following fields: 
 #
-#	opcode, mnemonic, cycles, addressing mode, page sensitivity, [effect category]
+#	opcode, operator (mnemonic), cycles, addressing mode, page sensitivity, [effect category]
 #
 # effect category can be one of three types (READ is the default if no effect category is given)
 #

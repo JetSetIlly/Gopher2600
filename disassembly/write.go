@@ -77,7 +77,7 @@ func (dsm *Disassembly) WriteEntry(output io.Writer, attr WriteAttr, e *Entry) {
 
 	output.Write([]byte(e.GetField(FldAddress)))
 	output.Write([]byte(" "))
-	output.Write([]byte(e.GetField(FldMnemonic)))
+	output.Write([]byte(e.GetField(FldOperator)))
 	output.Write([]byte(" "))
 	output.Write([]byte(e.GetField(FldOperand)))
 	output.Write([]byte(" "))

@@ -70,7 +70,7 @@ type imguiColors struct {
 	DisasmLocation imgui.Vec4
 	DisasmAddress  imgui.Vec4
 	DisasmByteCode imgui.Vec4
-	DisasmMnemonic imgui.Vec4
+	DisasmOperator imgui.Vec4
 	DisasmOperand  imgui.Vec4
 	DisasmCycles   imgui.Vec4
 	DisasmNotes    imgui.Vec4
@@ -177,7 +177,7 @@ func newColors() *imguiColors {
 		DisasmLocation: imgui.Vec4{0.8, 0.8, 0.8, 1.0},
 		DisasmAddress:  imgui.Vec4{0.8, 0.4, 0.4, 1.0},
 		DisasmByteCode: imgui.Vec4{0.6, 0.3, 0.4, 1.0},
-		DisasmMnemonic: imgui.Vec4{0.4, 0.4, 0.8, 1.0},
+		DisasmOperator: imgui.Vec4{0.4, 0.4, 0.8, 1.0},
 		DisasmOperand:  imgui.Vec4{0.8, 0.8, 0.3, 1.0},
 		DisasmCycles:   imgui.Vec4{0.8, 0.8, 0.8, 1.0},
 		DisasmNotes:    imgui.Vec4{0.8, 0.8, 0.8, 1.0},
@@ -232,7 +232,7 @@ func newColors() *imguiColors {
 	cols.CapturedScreenTitle = cols.TitleBgActive
 	cols.CapturedScreenBorder = cols.TitleBgActive
 	cols.DisasmBreakAddress = cols.DisasmAddress
-	cols.DisasmBreakOther = cols.DisasmMnemonic
+	cols.DisasmBreakOther = cols.DisasmOperator
 	cols.CollisionBit = imgui.CurrentStyle().Color(imgui.StyleColorButton)
 	cols.RegisterBit = imgui.CurrentStyle().Color(imgui.StyleColorButton)
 	cols.SaveKeyBit = imgui.CurrentStyle().Color(imgui.StyleColorButton)

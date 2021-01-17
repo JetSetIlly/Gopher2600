@@ -30,7 +30,7 @@ type GrepScope int
 // List of available scopes.
 const (
 	GrepAll GrepScope = iota
-	GrepMnemonic
+	GrepOperator
 	GrepOperand
 )
 
@@ -61,8 +61,8 @@ func (dsm *Disassembly) Grep(output io.Writer, scope GrepScope, search string, c
 
 			// limit scope of grep to the correct Instruction field
 			switch scope {
-			case GrepMnemonic:
-				s = e.Mnemonic
+			case GrepOperator:
+				s = e.Operator
 			case GrepOperand:
 				s = e.String()
 			case GrepAll:

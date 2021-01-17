@@ -475,8 +475,8 @@ func (win *winDbgScr) drawReflectionTooltip(mouseOrigin imgui.Vec2) {
 	}
 	imgui.PopStyleColor()
 
-	imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmMnemonic)
-	imgui.Text(e.Mnemonic)
+	imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmOperator)
+	imgui.Text(e.Operator)
 	imgui.PopStyleColor()
 
 	if e.Operand.String() != "" {

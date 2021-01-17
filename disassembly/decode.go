@@ -85,7 +85,7 @@ func (dsm *Disassembly) bless(mc *cpu.CPU, copiedBanks []mapper.BankContent) err
 			//
 			//	$fa03 JMP $f7e8
 			//
-			if e.Result.Defn.Mnemonic == "JMP" || e.Result.Defn.Mnemonic == "JSR" {
+			if e.Result.Defn.Operator == "JMP" || e.Result.Defn.Operator == "JSR" {
 				jmpAddress := e.Result.InstructionData
 				l := jmpTargets(copiedBanks, jmpAddress)
 				for _, i := range l {
@@ -178,10 +178,10 @@ func (dsm *Disassembly) blessSequence(b int, a uint16, commit bool) bool {
 			return true
 		}
 
-		// if mnemonic is unknown than end the sequence.
+		// if operator is unknown than end the sequence.
 		// !!TODO: remove this check once every opcode is defined/implemented
-		mnemonic := dsm.entries[b][a].Result.Defn.Mnemonic
-		if mnemonic == "??" {
+		operator := dsm.entries[b][a].Result.Defn.Operator
+		if operator == "??" {
 			return false
 		}
 

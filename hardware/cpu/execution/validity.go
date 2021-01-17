@@ -42,7 +42,7 @@ func (r Result) IsValid() error {
 			if r.Cycles != r.Defn.Cycles && r.Cycles != r.Defn.Cycles+1 && r.Cycles != r.Defn.Cycles+2 {
 				return curated.Errorf("cpu: number of cycles wrong for opcode %#02x [%s] (%d instead of %d, %d or %d)",
 					r.Defn.OpCode,
-					r.Defn.Mnemonic,
+					r.Defn.Operator,
 					r.Cycles,
 					r.Defn.Cycles,
 					r.Defn.Cycles+1,
@@ -53,7 +53,7 @@ func (r Result) IsValid() error {
 				if r.PageFault && r.Cycles != r.Defn.Cycles && r.Cycles != r.Defn.Cycles+1 {
 					return curated.Errorf("cpu: number of cycles wrong for opcode %#02x [%s] (%d instead of %d, %d)",
 						r.Defn.OpCode,
-						r.Defn.Mnemonic,
+						r.Defn.Operator,
 						r.Cycles,
 						r.Defn.Cycles,
 						r.Defn.Cycles+1)
@@ -62,7 +62,7 @@ func (r Result) IsValid() error {
 				if r.Cycles != r.Defn.Cycles {
 					return curated.Errorf("cpu: number of cycles wrong for opcode %#02x [%s] (%d instead of %d)",
 						r.Defn.OpCode,
-						r.Defn.Mnemonic,
+						r.Defn.Operator,
 						r.Cycles,
 						r.Defn.Cycles)
 				}

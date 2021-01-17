@@ -149,14 +149,14 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (*target, error) {
 			if present {
 				subkey = strings.ToUpper(subkey)
 				switch subkey {
-				case "MNEMONIC", "MNE":
+				case "OPERATOR", "OP":
 					trg = &target{
-						label: "Mnemonic",
+						label: "Operator",
 						currentValue: func() targetValue {
 							if !dbg.VCS.CPU.LastResult.Final || dbg.VCS.CPU.LastResult.Defn == nil {
 								return ""
 							}
-							return dbg.VCS.CPU.LastResult.Defn.Mnemonic
+							return dbg.VCS.CPU.LastResult.Defn.Operator
 						},
 					}
 

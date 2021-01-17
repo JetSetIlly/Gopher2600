@@ -63,7 +63,7 @@ const (
 // Definition defines each instruction in the instruction set; one per instruction.
 type Definition struct {
 	OpCode         uint8
-	Mnemonic       string
+	Operator       string
 	Bytes          int
 	Cycles         int
 	AddressingMode AddressingMode
@@ -73,10 +73,10 @@ type Definition struct {
 
 // String returns a single instruction definition as a string.
 func (defn Definition) String() string {
-	if defn.Mnemonic == "" {
+	if defn.Operator == "" {
 		return "undecoded instruction"
 	}
-	return fmt.Sprintf("%02x %s +%dbytes (%d cycles) [mode=%d pagesens=%t effect=%d]", defn.OpCode, defn.Mnemonic, defn.Bytes, defn.Cycles, defn.AddressingMode, defn.PageSensitive, defn.Effect)
+	return fmt.Sprintf("%02x %s +%dbytes (%d cycles) [mode=%d pagesens=%t effect=%d]", defn.OpCode, defn.Operator, defn.Bytes, defn.Cycles, defn.AddressingMode, defn.PageSensitive, defn.Effect)
 }
 
 // IsBranch returns true if instruction is a branch instruction.

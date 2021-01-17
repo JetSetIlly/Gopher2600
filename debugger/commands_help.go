@@ -93,7 +93,7 @@ the disassembly.`,
 	cmdGrep: `Simple string search (case insensitive) of the disassembly. Prints all matching lines
 in the disassembly to the termain.
 
-The scope of the GREP can be restricted to the MNEMONIC and OPERAND columns. By
+The scope of the GREP can be restricted to the OPERATOR and OPERAND columns. By
 default GREP will consider the entire line.`,
 
 	cmdSymbol: `The SYMBOL command has two modes of operation. The first mode returns the address of
@@ -398,7 +398,7 @@ about its state. Current targets are:
 	the CPU registers (PC, A, X, Y and SP)
 	the TV state (FRAMENUM, SCANLINE, HORIZPOS)
 	cartidge BANK
-	CPU result (RESULT MNEMONIC, RESULT EFFECT, RESULT PAGEFAULT, RESULT BUG)
+	CPU result (RESULT OPERATOR, RESULT EFFECT, RESULT PAGEFAULT, RESULT BUG)
 
 Specifying an address without a target will be assumed to be break on the PC
 and the current cartridge bank. So:

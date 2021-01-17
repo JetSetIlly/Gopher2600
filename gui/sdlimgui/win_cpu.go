@@ -178,7 +178,7 @@ func (win *winCPU) drawLastResult() {
 
 	if e.Result.Final {
 		imgui.Text(e.Bytecode)
-		imgui.Text(fmt.Sprintf("%s %s", e.Mnemonic, e.Operand))
+		imgui.Text(fmt.Sprintf("%s %s", e.Operator, e.Operand))
 		imgui.Text(fmt.Sprintf("%s cyc", e.Cycles))
 		if win.img.lz.Cart.NumBanks == 1 {
 			imgui.Text(fmt.Sprintf("(%s)", e.Address))
@@ -192,7 +192,7 @@ func (win *winCPU) drawLastResult() {
 	// we need to format the result for the partially completed instruction
 
 	imgui.Text(e.Bytecode)
-	imgui.Text(fmt.Sprintf("%s %s", e.Mnemonic, e.Operand))
+	imgui.Text(fmt.Sprintf("%s %s", e.Operator, e.Operand))
 	if e.Result.Defn != nil {
 		imgui.Text(fmt.Sprintf("%s of %s cyc", e.Cycles, e.DefnCycles))
 		if win.img.lz.Cart.NumBanks == 1 {

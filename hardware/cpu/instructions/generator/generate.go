@@ -103,8 +103,8 @@ func parseCSV() (string, error) {
 		}
 		newDef.OpCode = uint8(n)
 
-		// field: opcode mnemonic
-		newDef.Mnemonic = rec[1]
+		// field: operator
+		newDef.Operator = rec[1]
 
 		// field: cycle count
 		newDef.Cycles, err = strconv.Atoi(rec[2])
