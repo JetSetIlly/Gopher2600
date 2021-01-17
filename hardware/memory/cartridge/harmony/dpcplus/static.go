@@ -25,77 +25,72 @@ import (
 
 // Static implements the bus.CartStatic interface.
 type Static struct {
-	// copy of entire ROM (for convenience)
-	cartDataROM []byte
-
-	// slices of cartDataRAM that will be modified during execution
-	driverRAM []byte
-	dataRAM   []byte
-	freqRAM   []byte
-
 	// slices of cartDataROM that should not be modified during execution
 	driverROM []byte
 	customROM []byte
 	dataROM   []byte
 	freqROM   []byte
+
+	// slices of cartDataRAM that will be modified during execution
+	driverRAM []byte
+	dataRAM   []byte
+	freqRAM   []byte
 }
 
 func (cart *dpcPlus) newDPCplusStatic(cartData []byte) *Static {
-	mem := Static{
-		cartDataROM: cartData,
-	}
+	stc := Static{}
 
 	// the offset into the cart data where the data segment begins
 	dataOffset := driverSize + (cart.bankSize * cart.NumBanks())
 
 	// ARM driver
-	mem.driverROM = cartData[:driverSize]
+	stc.driverROM = cartData[:driverSize]
 
 	// custom ARM program immediately after the ARM driver and where we've
 	// figured the data segment to start. note that some of this will be the
 	// 6507 program but we can't really know for sure where that begins.
-	mem.customROM = cartData[driverSize:dataOffset]
+	stc.customROM = cartData[driverSize:dataOffset]
 
 	// gfx and frequency table at end of file
 	// unlike CDF ROMs data and frequency tables are initialised from the ROM
-	mem.dataROM = cartData[dataOffset : dataOffset+dataSize]
-	mem.freqROM = cartData[dataOffset+dataSize:]
+	stc.dataROM = cartData[dataOffset : dataOffset+dataSize]
+	stc.freqROM = cartData[dataOffset+dataSize:]
 
 	// RAM areas
-	mem.driverRAM = make([]byte, len(mem.driverROM))
-	copy(mem.driverRAM, mem.driverROM)
-	mem.dataRAM = make([]byte, len(mem.dataROM))
-	copy(mem.dataRAM, mem.dataROM)
-	mem.freqRAM = make([]byte, len(mem.freqROM))
-	copy(mem.freqRAM, mem.freqROM)
+	stc.driverRAM = make([]byte, len(stc.driverROM))
+	stc.dataRAM = make([]byte, len(stc.dataROM))
+	stc.freqRAM = make([]byte, len(stc.freqROM))
+	copy(stc.driverRAM, stc.driverROM)
+	copy(stc.dataRAM, stc.dataROM)
+	copy(stc.freqRAM, stc.freqROM)
 
-	return &mem
+	return &stc
 }
 
 // ResetVectors implements the arm7tdmi.SharedMemory interface.
-func (mem *Static) ResetVectors() (uint32, uint32, uint32) {
+func (stc *Static) ResetVectors() (uint32, uint32, uint32) {
 	return stackOriginRAM, customOriginROM, customOriginROM + 8
 }
 
-func (mem *Static) Snapshot() *Static {
-	n := *mem
-	n.driverRAM = make([]byte, len(mem.driverROM))
-	copy(n.driverRAM, mem.driverROM)
-	n.dataRAM = make([]byte, len(mem.dataROM))
-	copy(n.dataRAM, mem.dataROM)
-	n.freqRAM = make([]byte, len(mem.freqROM))
-	copy(n.freqRAM, mem.freqROM)
+func (stc *Static) Snapshot() *Static {
+	n := *stc
+	n.driverRAM = make([]byte, len(stc.driverRAM))
+	n.dataRAM = make([]byte, len(stc.dataRAM))
+	n.freqRAM = make([]byte, len(stc.freqRAM))
+	copy(n.driverRAM, stc.driverRAM)
+	copy(n.dataRAM, stc.dataRAM)
+	copy(n.freqRAM, stc.freqRAM)
 	return &n
 }
 
 // MapAddress implements the arm7tdmi.SharedMemory interface.
-func (mem *Static) MapAddress(addr uint32, write bool) (*[]byte, uint32) {
+func (stc *Static) MapAddress(addr uint32, write bool) (*[]byte, uint32) {
 	// tests arranged in order of most likely to be used. determined by running
 	// ZaxxonHDDemo through the go profiler
 
 	// data (RAM)
 	if addr >= dataOriginRAM && addr <= dataMemtopRAM {
-		return &mem.dataRAM, addr - dataOriginRAM
+		return &stc.dataRAM, addr - dataOriginRAM
 	}
 
 	// custom ARM code (ROM)
@@ -104,17 +99,17 @@ func (mem *Static) MapAddress(addr uint32, write bool) (*[]byte, uint32) {
 			logger.Log("DPC+", fmt.Sprintf("ARM trying to write to ROM address (%08x)", addr))
 			return nil, addr
 		}
-		return &mem.customROM, addr - customOriginROM
+		return &stc.customROM, addr - customOriginROM
 	}
 
 	// driver ARM code (RAM)
 	if addr >= driverOriginRAM && addr <= driverMemtopRAM {
-		return &mem.driverRAM, addr - driverOriginRAM
+		return &stc.driverRAM, addr - driverOriginRAM
 	}
 
 	// frequency table (RAM)
 	if addr >= freqOriginRAM && addr <= freqMemtopRAM {
-		return &mem.freqRAM, addr - freqOriginRAM
+		return &stc.freqRAM, addr - freqOriginRAM
 	}
 
 	// driver ARM code (ROM)
@@ -123,7 +118,7 @@ func (mem *Static) MapAddress(addr uint32, write bool) (*[]byte, uint32) {
 			logger.Log("DPC+", fmt.Sprintf("ARM trying to write to ROM address (%08x)", addr))
 			return nil, addr
 		}
-		return &mem.driverROM, addr - driverOriginROM
+		return &stc.driverROM, addr - driverOriginROM
 	}
 
 	// data (ROM)
@@ -132,7 +127,7 @@ func (mem *Static) MapAddress(addr uint32, write bool) (*[]byte, uint32) {
 			logger.Log("DPC+", fmt.Sprintf("ARM trying to write to ROM address (%08x)", addr))
 			return nil, addr
 		}
-		return &mem.dataROM, addr - dataOriginROM
+		return &stc.dataROM, addr - dataOriginROM
 	}
 
 	// frequency table (ROM)
@@ -141,7 +136,7 @@ func (mem *Static) MapAddress(addr uint32, write bool) (*[]byte, uint32) {
 			logger.Log("DPC+", fmt.Sprintf("ARM trying to write to ROM address (%08x)", addr))
 			return nil, addr
 		}
-		return &mem.freqROM, addr - freqOriginROM
+		return &stc.freqROM, addr - freqOriginROM
 	}
 
 	return nil, addr

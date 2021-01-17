@@ -128,8 +128,7 @@ func (cart *dpcPlus) Plumb() {
 
 // Reset implements the mapper.CartMapper interface.
 func (cart *dpcPlus) Reset(randSrc *rand.Rand) {
-	cart.state.registers.reset(randSrc)
-	cart.state.bank = len(cart.banks) - 1
+	cart.state.initialise(randSrc, len(cart.banks)-1)
 }
 
 // Read implements the mapper.CartMapper interface.
@@ -444,11 +443,13 @@ func (cart *dpcPlus) Write(addr uint16, data uint8, passive bool, poke bool) err
 			}
 
 			addr := (uint16(cart.state.parameters[1]) << 8) | uint16(cart.state.parameters[0])
-			addr += driverSize
 			for i := uint8(0); i < cart.state.parameters[3]; i++ {
 				f := cart.state.registers.Fetcher[cart.state.parameters[2]&0x07]
 				o := uint16(f.Low) | (uint16(f.Hi) << 8) + uint16(i)
-				cart.state.static.dataRAM[o] = cart.state.static.cartDataROM[addr+uint16(i)]
+
+				// copying from data ROM to data RAM
+				idx := uint16(i) + addr - uint16(len(cart.state.static.customROM))
+				cart.state.static.dataRAM[o] = cart.state.static.dataROM[idx]
 			}
 			cart.state.parameters = cart.state.parameters[:0]
 		case 2:

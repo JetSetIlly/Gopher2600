@@ -15,6 +15,8 @@
 
 package dpcplus
 
+import "math/rand"
+
 type State struct {
 	registers Registers
 
@@ -42,8 +44,17 @@ func newDPCPlusState() *State {
 	return s
 }
 
+func (s *State) initialise(randSrc *rand.Rand, bank int) {
+	s.registers.reset(randSrc)
+	s.bank = bank
+	s.lda = false
+	s.beats = 0
+	s.parameters = []uint8{}
+}
+
 func (s *State) Snapshot() *State {
 	n := *s
-	s.static = s.static.Snapshot()
+	n.static = s.static.Snapshot()
+	n.parameters = make([]uint8, len(s.parameters))
 	return &n
 }
