@@ -22,9 +22,14 @@ The graphical [debugger](#debugger) is still in development but the current feat
 
 ## Screenshots
 
+The following screenshots were taken in playmode with CRT effects enabled
+
 <img src=".screenshots/games/pitfall.png" height="200" alt="pitfall"/> <img src=".screenshots/games/heman.png" height="200" alt="he-man"/>
 <img src=".screenshots/games/krull.png" height="200" alt="krull"/> <img src=".screenshots/games/ladybug.png" height="200" alt="ladybug"/>
-<img src=".screenshots/games/thrust.png" height="200" alt="thrust"/> <img src=".screenshots/games/pandachase.png" height="200" alt="panda chase"/> <img src=".screenshots/games/mangoesdown.png" height="200" alt="man goes down"/> <img src=".screenshots/games/beast.png" height="200" alt="legacy of the beast"/> <img src=".screenshots/games/chiphead.png" height="200" alt="chiphead"/> <img src=".screenshots/games/genesis.png" height="200" alt="egypt genesis"/>
+<img src=".screenshots/games/thrust.png" height="200" alt="thrust"/> <img src=".screenshots/games/pandachase.png" height="200" alt="panda chase"/>
+<img src=".screenshots/games/mangoesdown.png" height="200" alt="man goes down"/> <img src=".screenshots/games/beast.png" height="200" alt="legacy of the beast"/>
+<img src=".screenshots/games/chiphead.png" height="200" alt="chiphead"/> <img src=".screenshots/games/genesis.png" height="200" alt="egypt genesis"/>
+<img src=".screenshots/games/draconian.png" height="200" alt="draconian"/> <img src=".screenshots/games/zevious.png" height="200" alt="zevious"/>
 
 ## Scope of the project
 
@@ -297,15 +302,19 @@ commandline switch:
 
 	> gopher2600 -crt=false roms/Pitfall.bin
 
-Individual CRT effects can be turned on and off but currently you need to enter
-debug mode for this. Select the `CRT Preferences` entry in the `Debugger` menu.
-The following window will be shown:
+Individual CRT effects can be turned on and off. From the debugger select the
+`CRT Preferences` entry in the `Debugger` menu. The following window will be
+shown:
 
 <img src=".screenshots/crt_prefs_window.png" height="400" alt="crt preferences window"/>
 
-For reasonably modern GFX card (the developer has a GeForce GTX 650) none of
-these effects should have any impact on performance, so the effect strength (or whether
-they are enabled at all) is down to taste.
+The preview window give an impression of the effect the CRT preferences on the
+current ROM. You can move the preview image by dragging it with the mouse.
+
+From playmode, the preferences window can by opened by pressing `F10`. An
+example of the screen shot is given below.
+
+<img src=".screenshots/crt_playmode_prefs_window.png" height="400" alt="crt playmode preferences window"/>
 
 ## Configuration Directory
 
