@@ -26,9 +26,17 @@ import (
 
 // paddle values.
 const (
-	paddleFire        = 0x00
-	paddleNoFire      = 0xf0
-	paddleSensitivity = 0.0075
+	paddleFire   = 0x00
+	paddleNoFire = 0xf0
+
+	// paddleChargeRate governs the rate at which the controller capacitor fills.
+	// the tick value is increased by the sensitivity value every cycle; once
+	// it reaches or exceeds the resistance value, the charge value is
+	// increased. the charge value is the value written to the INPTx register.
+	//
+	// the following value is found by 1/N where N is the number of ticks
+	// required for the charge value to increase by 1. eg 1/150==0.0067
+	paddleChargeRate = 0.0067
 )
 
 // Paddle represents the VCS paddle controller type.
@@ -45,13 +53,7 @@ type Paddle struct {
 	// values indicating paddle state
 	charge     uint8
 	resistance float32
-
-	// sensitivity governs the rate at which the controller capacitor fills.
-	// the tick value is increased by the sensitivity value every cycle; once
-	// it reaches or exceeds the resistance value, the charge value is
-	// increased.
-	sensitivity float32
-	ticks       float32
+	ticks      float32
 
 	// the state of the fire button
 	fire uint8
@@ -62,9 +64,8 @@ type Paddle struct {
 // to ports.AttachPlayer0() and ports.AttachPlayer1().
 func NewPaddle(id ports.PortID, bus ports.PeripheralBus) ports.Peripheral {
 	pdl := &Paddle{
-		id:          id,
-		bus:         bus,
-		sensitivity: paddleSensitivity,
+		id:  id,
+		bus: bus,
 	}
 
 	// !!TODO: support for paddle player 3 and paddle player 4
@@ -112,7 +113,10 @@ func (pdl *Paddle) HandleEvent(event ports.Event, data ports.EventData) error {
 		pdl.bus.WriteSWCHx(pdl.id, pdl.fire)
 
 	case ports.PaddleSet:
-		pdl.resistance = 1.0 - data.(float32)
+		r := data.(float32)
+
+		// reverse value so that we left and right are the correct way around (for a mouse)
+		pdl.resistance = 1.0 - r
 	}
 
 	return nil
@@ -123,8 +127,9 @@ func (pdl *Paddle) Update(data bus.ChipData) bool {
 	switch data.Name {
 	case "VBLANK":
 		if data.Value&0x80 == 0x80 {
-			// ground puck
+			// ground paddle's puck
 			pdl.charge = 0x00
+			pdl.ticks = 0.0
 			pdl.bus.WriteINPTx(pdl.inptx, 0x00)
 		}
 
@@ -138,7 +143,7 @@ func (pdl *Paddle) Update(data bus.ChipData) bool {
 // Step implements the ports.Peripheral interface.
 func (pdl *Paddle) Step() {
 	if pdl.charge < 255 {
-		pdl.ticks += pdl.sensitivity
+		pdl.ticks += paddleChargeRate
 		if pdl.ticks >= pdl.resistance {
 			pdl.ticks = 0.0
 			pdl.charge++
