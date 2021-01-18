@@ -151,7 +151,7 @@ func (win *winCRTPrefs) resize() {
 
 	win.previewMax = image.Point{
 		X: specification.HorizClksScanline - previewWidth,
-		Y: win.scr.crit.topScanline + win.scr.crit.scanlines - previewHeight,
+		Y: win.scr.crit.topScanline + win.scr.crit.visibleScanlines - previewHeight,
 	}
 
 	// preview rect starts in the top left hand corner of the screen image

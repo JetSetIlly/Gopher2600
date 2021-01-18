@@ -37,7 +37,7 @@ import (
 //		- Andrew Davies' Chess
 //
 //	* unsynced frames every other frame
-//		- Mega Bitmap Demo
+//		- Mega Bitmap Demo (atext.bin)
 //
 //  * does not set VBLANK for pixels that are clearly not meant to be seen
 //  these ROMs rely on the NewSafeTop and NewSafeBottom values
@@ -48,9 +48,29 @@ import (
 //   * does not set VBLANK but we can crop more aggressively by assuming that a scanline
 //   consisting only of black pixels should not be seen
 //		- Legacy of the Beast
+//
+//	 * test resizing counter
+//		- Supercharger BIOS (resizes excessively due to moving starfield)
 type resizer struct {
 	top    int
 	bottom int
+
+	// number of frames until a resize can take place
+	counter int
+}
+
+// some ROMs will want to resize every frame if allowed. this is ugly so we
+// slow it down by counting from framesUntilResize down to zero. the resize
+// will only be committed (ie. the actual top/bottom values changed to match
+// the resize top/bottom value) when it doe reach zero.
+//
+// the counter will be reset if the screen size changes in the interim.
+const framesUntilResize = 5
+
+// set resizer's top/bottom values to equal tv top/bottom values
+func (sr *resizer) initialise(tv *Television) {
+	sr.top = tv.state.top
+	sr.bottom = tv.state.bottom
 }
 
 func (sr *resizer) examine(tv *Television, sig signal.SignalAttributes) {
@@ -66,7 +86,7 @@ func (sr *resizer) examine(tv *Television, sig signal.SignalAttributes) {
 
 	// if vblank is off at any point after than HBLANK period then tentatively
 	// extend the top/bottom of the screen. we'll commit the resize procedure
-	// in the newFrame() function
+	// in the newFrame() function when sr.counter reaches 0.
 	if tv.state.horizPos > specification.HorizClksHBlank && !sig.VBlank && sig.Pixel > 0 {
 		// comparing against current top/bottom scanline, rather than ideal
 		// top/bottom scanline of the specification. this means that a screen will
@@ -77,13 +97,20 @@ func (sr *resizer) examine(tv *Television, sig signal.SignalAttributes) {
 		// safe area is too conservative so we've defined our own.
 		if tv.state.scanline < sr.top && tv.state.scanline >= tv.state.spec.NewSafeTop {
 			sr.top = tv.state.scanline
+			sr.counter = framesUntilResize
 		} else if tv.state.scanline > sr.bottom && tv.state.scanline <= tv.state.spec.NewSafeBottom {
 			sr.bottom = tv.state.scanline
+			sr.counter = framesUntilResize
 		}
 	}
 }
 
 func (sr *resizer) commit(tv *Television) error {
+	sr.counter--
+	if sr.counter > 0 {
+		return nil
+	}
+
 	// do not allow resizing to take place for the first few frames of a ROM.
 	// these frames tend to be set up frames and can be wildly unstable.
 	if tv.state.syncedFrameNum <= leadingFrames {
@@ -95,18 +122,19 @@ func (sr *resizer) commit(tv *Television) error {
 		return nil
 	}
 
-	// update bottom value
-	if sr.bottom != tv.state.bottom {
-		tv.state.bottom = sr.bottom
-	}
-
-	// update top value
-	if sr.top != tv.state.top {
-		tv.state.top = sr.top
-	}
-
 	// something has changed so call Resize() for all attached pixel renderers
 	if tv.state.top < tv.state.bottom {
+		// update real top value
+		tv.state.top = sr.top
+
+		// add one to the bottom value before committing. we shouldn't need to
+		// do this but some screens will end up being one scanline too short
+		// wihtout it. for example, Ladybug and Hack'Em Pacman
+		sr.bottom++
+
+		// update real bottom value
+		tv.state.bottom = sr.bottom
+
 		for f := range tv.renderers {
 			err := tv.renderers[f].Resize(tv.state.spec, tv.state.top, tv.state.bottom-tv.state.top)
 			if err != nil {
@@ -116,9 +144,4 @@ func (sr *resizer) commit(tv *Television) error {
 	}
 
 	return nil
-}
-
-func (sr *resizer) prepare(tv *Television) {
-	sr.bottom = tv.state.bottom
-	sr.top = tv.state.top
 }

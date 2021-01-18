@@ -73,8 +73,8 @@ type screenCrit struct {
 	isStable bool
 
 	// current values for *playable* area of the screen
-	topScanline int
-	scanlines   int
+	topScanline      int
+	visibleScanlines int
 
 	// the pixels array is used in the presentation texture of the play and debug screen.
 	pixels *image.RGBA
@@ -202,14 +202,14 @@ func (scr *screen) resize(spec specification.Spec, topScanline int, visibleScanl
 	// we need to be careful with this lock (so no defer)
 
 	// do nothing if resize values are the same as previously
-	if scr.crit.spec.ID == spec.ID && scr.crit.topScanline == topScanline && scr.crit.scanlines == visibleScanlines {
+	if scr.crit.spec.ID == spec.ID && scr.crit.topScanline == topScanline && scr.crit.visibleScanlines == visibleScanlines {
 		scr.crit.section.Unlock()
 		return
 	}
 
 	scr.crit.spec = spec
 	scr.crit.topScanline = topScanline
-	scr.crit.scanlines = visibleScanlines
+	scr.crit.visibleScanlines = visibleScanlines
 
 	scr.crit.pixels = image.NewRGBA(image.Rect(0, 0, specification.HorizClksScanline, spec.ScanlinesTotal))
 	scr.crit.elementPixels = image.NewRGBA(image.Rect(0, 0, specification.HorizClksScanline, spec.ScanlinesTotal))
@@ -229,7 +229,7 @@ func (scr *screen) resize(spec specification.Spec, topScanline int, visibleScanl
 	// create a cropped image from the main
 	crop := image.Rect(
 		specification.HorizClksHBlank, scr.crit.topScanline,
-		specification.HorizClksHBlank+specification.HorizClksVisible, scr.crit.topScanline+scr.crit.scanlines,
+		specification.HorizClksHBlank+specification.HorizClksVisible, scr.crit.topScanline+scr.crit.visibleScanlines,
 	)
 	scr.crit.cropPixels = scr.crit.pixels.SubImage(crop).(*image.RGBA)
 	scr.crit.cropPhosphor = scr.crit.phosphor.SubImage(crop).(*image.RGBA)

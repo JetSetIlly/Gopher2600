@@ -439,7 +439,6 @@ func (tv *Television) newFrame(synced bool) error {
 	// prepare for next frame
 	tv.state.frameNum++
 	tv.state.scanline = 0
-	tv.state.resizer.prepare(tv)
 
 	// note the current index before processSignals() resets the value
 	tv.lastMaxIdx = tv.currentIdx
@@ -571,7 +570,7 @@ func (tv *Television) SetSpec(spec string) error {
 
 	tv.state.top = tv.state.spec.AtariSafeTop
 	tv.state.bottom = tv.state.spec.AtariSafeBottom
-	tv.state.resizer.prepare(tv)
+	tv.state.resizer.initialise(tv)
 	tv.lmtr.setRate(tv.state.spec.FramesPerSecond)
 
 	for _, r := range tv.renderers {

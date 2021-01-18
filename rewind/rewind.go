@@ -119,7 +119,8 @@ type Rewind struct {
 	comparison *State
 
 	// adhoc is a special snapshot of a state that cannot be found in the
-	// entries array. it is used to speed up consecutive calls to GotoCoords()
+	// entries array. it is used to speed up consecutive calls to
+	// GotoFrameCoords()
 	adhoc *State
 
 	// a new frame has been triggered. resolve as soon as possible.
