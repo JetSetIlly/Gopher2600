@@ -83,17 +83,17 @@ type glsl struct {
 	attribImageType int32 // uniform
 
 	// the following attrib variables are strictly for the screen texture
-	attribShowCursor    int32 // uniform
-	attribIsCropped     int32 // uniform
-	attribScreenDim     int32 // uniform
-	attribCropScreenDim int32 // uniform
-	attribScalingX      int32 // uniform
-	attribScalingY      int32 // uniform
-	attribLastX         int32 // uniform
-	attribLastY         int32 // uniform
-	attribHblank        int32 // uniform
-	attribTopScanline   int32 // uniform
-	attribBotScanline   int32 // uniform
+	attribShowCursor         int32 // uniform
+	attribIsCropped          int32 // uniform
+	attribScreenDim          int32 // uniform
+	attribUncroppedScreenDim int32 // uniform
+	attribScalingX           int32 // uniform
+	attribScalingY           int32 // uniform
+	attribLastX              int32 // uniform
+	attribLastY              int32 // uniform
+	attribHblank             int32 // uniform
+	attribTopScanline        int32 // uniform
+	attribBotScanline        int32 // uniform
 
 	attribEnableCRT           int32 // uniform
 	attribEnablePhosphor      int32 // uniform
@@ -331,7 +331,7 @@ func (rnd *glsl) setOptions(textureID uint32) {
 	gl.Uniform1f(rnd.attribScanlinesBrightness, float32(rnd.img.crtPrefs.ScanlinesBrightness.Get().(float64)))
 	gl.Uniform1f(rnd.attribNoiseLevel, float32(rnd.img.crtPrefs.NoiseLevel.Get().(float64)))
 	gl.Uniform1f(rnd.attribBlurLevel, float32(rnd.img.crtPrefs.BlurLevel.Get().(float64)))
-	gl.Uniform1f(rnd.attribRandSeed, float32(time.Now().Nanosecond())/1000000000.0)
+	gl.Uniform1f(rnd.attribRandSeed, float32(time.Now().Nanosecond())/100000000.0)
 
 	// critical section
 	rnd.img.screen.crit.section.Lock()
@@ -341,10 +341,10 @@ func (rnd *glsl) setOptions(textureID uint32) {
 	case rnd.img.wm.dbgScr.screenTexture:
 		fallthrough
 	case rnd.img.wm.dbgScr.overlayTexture:
-		gl.Uniform2f(rnd.attribScreenDim, rnd.img.wm.dbgScr.getScaledWidth(false), rnd.img.wm.dbgScr.getScaledHeight(false))
 		gl.Uniform1f(rnd.attribScalingX, rnd.img.wm.dbgScr.getScaling(true))
 		gl.Uniform1f(rnd.attribScalingY, rnd.img.wm.dbgScr.getScaling(false))
-		gl.Uniform2f(rnd.attribCropScreenDim, rnd.img.wm.dbgScr.getScaledWidth(true), rnd.img.wm.dbgScr.getScaledHeight(true))
+		gl.Uniform2f(rnd.attribUncroppedScreenDim, rnd.img.wm.dbgScr.getScaledWidth(false), rnd.img.wm.dbgScr.getScaledHeight(false))
+		gl.Uniform2f(rnd.attribScreenDim, rnd.img.wm.dbgScr.getScaledWidth(true), rnd.img.wm.dbgScr.getScaledHeight(true))
 		gl.Uniform1i(rnd.attribIsCropped, boolToInt32(rnd.img.wm.dbgScr.cropped))
 
 		cursorX := rnd.img.screen.crit.lastX
@@ -454,7 +454,7 @@ func (rnd *glsl) setup() {
 	rnd.attribShowCursor = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("ShowCursor"+"\x00"))
 	rnd.attribIsCropped = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("IsCropped"+"\x00"))
 	rnd.attribScreenDim = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("ScreenDim"+"\x00"))
-	rnd.attribCropScreenDim = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("CropScreenDim"+"\x00"))
+	rnd.attribUncroppedScreenDim = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("UncroppedScreenDim"+"\x00"))
 	rnd.attribScalingX = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("ScalingX"+"\x00"))
 	rnd.attribScalingY = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("ScalingY"+"\x00"))
 	rnd.attribLastX = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("LastX"+"\x00"))

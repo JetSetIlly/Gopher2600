@@ -17,7 +17,7 @@ uniform int ImageType;
 uniform int ShowCursor;  
 uniform int IsCropped; 
 uniform vec2 ScreenDim;
-uniform vec2 CropScreenDim;
+uniform vec2 UncroppedScreenDim;
 uniform float ScalingX;
 uniform float ScalingY;
 uniform float LastX; 
@@ -67,6 +67,10 @@ float gold_noise(in vec2 xy){
 	return fract(tan(distance(xy*PHI, xy)*RandSeed)*xy.x);
 }
 
+float relativeLuminance(vec3 rgb) {
+	return (float(rgb.r) / 255 * 0.2126) + (float(rgb.g) / 255 * 0.7152) + (float(rgb.b) / 255 * 0.0722);
+}
+
 vec2 coords = Frag_UV.xy;
 
 float hblank;
@@ -90,22 +94,22 @@ void crt() {
 		if (Crt_Color.r == 0 && Crt_Color.g == 0 && Crt_Color.b == 0) {
 			vec4 ph = texture(PhosphorTexture, vec2(coords.x, coords.y)).rgba;
 			Crt_Color.rgb = ph.rgb;
-			Crt_Color.r *= pow(ph.a, 85*PhosphorSpeed);
-			Crt_Color.g *= pow(ph.a, 100*PhosphorSpeed);
-			Crt_Color.b *= pow(ph.a, 70*PhosphorSpeed);
+			Crt_Color.r *= pow(ph.a, 145*PhosphorSpeed);
+			Crt_Color.g *= pow(ph.a, 160*PhosphorSpeed);
+			Crt_Color.b *= pow(ph.a, 130*PhosphorSpeed);
 		}
 	}
 
 	// noise
 	if (EnableNoise == True) {
-		float r;
-		r = gold_noise(gl_FragCoord.xy);
-		if (r < 0.33) {
-			Crt_Color.r *= max(1.0-NoiseLevel, gold_noise(gl_FragCoord.xy));
-		} else if (r < 0.66) {
-			Crt_Color.g *= max(1.0-NoiseLevel, gold_noise(gl_FragCoord.xy));
+		float n;
+		n = gold_noise(gl_FragCoord.xy);
+		if (n < 0.33) {
+			Crt_Color.r *= max(1.0-NoiseLevel, n);
+		} else if (n < 0.66) {
+			Crt_Color.g *= max(1.0-NoiseLevel, n);
 		} else {
-			Crt_Color.b *= max(1.0-NoiseLevel, gold_noise(gl_FragCoord.xy));
+			Crt_Color.b *= max(1.0-NoiseLevel, n);
 		}
 	}
 
@@ -156,7 +160,7 @@ void crt() {
 			// understand this well enough to say for sure what the relationship
 			// between 25 and 10 is, but the following ratio between
 			// cropped/uncropped widths gives us a value of 23.5
-			float f =ScreenDim.x/(ScreenDim.x-CropScreenDim.x);
+			float f =UncroppedScreenDim.x/(UncroppedScreenDim.x-ScreenDim.x);
 			vignette = (f*(coords.x-hblank)*(coords.y-topScanline)*(1.0-coords.x)*(1.0-coords.y));
 		}
 
@@ -175,12 +179,12 @@ void debugscr() {
 	float pixelY;
 
 	if (IsCropped == True) {
-		texelX = ScalingX / CropScreenDim.x;
-		texelY = ScalingY / CropScreenDim.y;
-		hblank = Hblank / CropScreenDim.x;
-		lastX = LastX / CropScreenDim.x;
+		texelX = ScalingX / ScreenDim.x;
+		texelY = ScalingY / ScreenDim.y;
+		hblank = Hblank / ScreenDim.x;
+		lastX = LastX / ScreenDim.x;
 		topScanline = 0;
-		botScanline = (BotScanline - TopScanline) / CropScreenDim.y;
+		botScanline = (BotScanline - TopScanline) / ScreenDim.y;
 
 		// the LastY coordinate refers to the full-frame scanline. the cropped
 		// texture however counts from zero at the visible edge so we need to
@@ -188,15 +192,15 @@ void debugscr() {
 		//
 		// note that there's no need to do this for LastX because the
 		// horizontal position is counted from -68 in all instances.
-		lastY = (LastY - TopScanline) / CropScreenDim.y;
+		lastY = (LastY - TopScanline) / ScreenDim.y;
 	} else {
-		texelX = ScalingX / ScreenDim.x;
-		texelY = ScalingY / ScreenDim.y;
-		hblank = Hblank / ScreenDim.x;
-		topScanline = TopScanline / ScreenDim.y;
-		botScanline = BotScanline / ScreenDim.y;
-		lastX = LastX / ScreenDim.x;
-		lastY = LastY / ScreenDim.y;
+		texelX = ScalingX / UncroppedScreenDim.x;
+		texelY = ScalingY / UncroppedScreenDim.y;
+		hblank = Hblank / UncroppedScreenDim.x;
+		topScanline = TopScanline / UncroppedScreenDim.y;
+		botScanline = BotScanline / UncroppedScreenDim.y;
+		lastX = LastX / UncroppedScreenDim.x;
+		lastY = LastY / UncroppedScreenDim.y;
 	}
 
 	pixelX = texelX / ScalingX;
@@ -302,8 +306,8 @@ void debugscr() {
 }
 
 void playscr() {
-	texelX = ScalingX / CropScreenDim.x;
-	texelY = ScalingY / CropScreenDim.y;
+	texelX = ScalingX / ScreenDim.x;
+	texelY = ScalingY / ScreenDim.y;
 	if (EnableCRT == True) {
 		crt();
 		return;
@@ -312,8 +316,8 @@ void playscr() {
 }
 
 void prefscrt() {
-	texelX = ScalingX / CropScreenDim.x;
-	texelY = ScalingY / CropScreenDim.y;
+	texelX = ScalingX / ScreenDim.x;
+	texelY = ScalingY / ScreenDim.y;
 	crt();
 }
 
