@@ -109,7 +109,12 @@ func FromCartridge(cartload cartridgeloader.Loader) (*Disassembly, error) {
 func (dsm *Disassembly) FromMemory(cart *cartridge.Cartridge, symbols *symbols.Symbols) error {
 	if cart != nil {
 		dsm.cart = cart
+	} else {
+		// in case code below decides to reference cart directly, we need to
+		// make sure it points to something.
+		cart = dsm.cart
 	}
+
 	if symbols != nil {
 		dsm.Symbols = symbols
 	}
@@ -142,7 +147,7 @@ func (dsm *Disassembly) FromMemory(cart *cartridge.Cartridge, symbols *symbols.S
 	}
 
 	// try added coprocessor disasm support
-	dsm.Coprocessor = coprocessor.Add(cart)
+	dsm.Coprocessor = coprocessor.Add(dsm.cart)
 
 	return nil
 }
