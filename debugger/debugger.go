@@ -403,7 +403,13 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) error {
 	// reset of vcs is implied with attach cartridge
 	err = setup.AttachCartridge(dbg.VCS, cartload)
 	if err != nil && !curated.Has(err, cartridge.Ejected) {
-		return err
+		dbg.printLine(terminal.StyleError, "%v", err)
+
+		// an error has occured so attach the ejected cartridge
+		err = setup.AttachCartridge(dbg.VCS, cartridgeloader.Loader{})
+		if err != nil {
+			return err
+		}
 	}
 
 	// disassemble newly attached cartridge

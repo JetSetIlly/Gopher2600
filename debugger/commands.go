@@ -313,7 +313,11 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		if err != nil {
 			return err
 		}
-		dbg.printLine(terminal.StyleFeedback, "machine reset with new cartridge (%s)", cart)
+
+		// use cartridge's idea of the filename. the attach process may have
+		// caused a different cartridge to load than the one requested (most
+		// typically this will mean that the cartridge has been ejected)
+		dbg.printLine(terminal.StyleFeedback, "machine reset with new cartridge (%s)", dbg.VCS.Mem.Cart.Filename)
 
 	case cmdCartridge:
 		arg, ok := tokens.Get()
