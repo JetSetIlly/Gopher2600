@@ -129,7 +129,7 @@ func (dbg *Debugger) PushRewind(fn int, last bool) bool {
 // to rewind.GotoFrameCoords() in gui.ReqRewinding true/false.
 //
 // To be used from the GUI thread.
-func (dbg *Debugger) PushGotoCoords(scanline int, clock int) {
+func (dbg *Debugger) PushGotoCoords(frame int, scanline int, clock int) {
 	// try pushing to rewinding channel. do not continue if we cannot.
 	//
 	// unlike PushRewind() no indicator of success is returned. the request is
@@ -144,7 +144,7 @@ func (dbg *Debugger) PushGotoCoords(scanline int, clock int) {
 
 	dbg.PushRawEventImm(func() {
 		f := func() error {
-			err := dbg.Rewind.GotoFrameCoords(scanline, clock)
+			err := dbg.Rewind.GotoFrameCoords(frame, scanline, clock)
 			if err != nil {
 				return err
 			}

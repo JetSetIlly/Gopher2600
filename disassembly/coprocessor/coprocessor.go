@@ -60,9 +60,19 @@ func Add(vcs *hardware.VCS, cart *cartridge.Cartridge) *Coprocessor {
 func (cop *Coprocessor) Reset() {
 	cop.crit.Lock()
 	defer cop.crit.Unlock()
-	cop.lastExecutionDetails.Frame = cop.vcs.TV.GetState(signal.ReqFramenum)
-	cop.lastExecutionDetails.Scanline = cop.vcs.TV.GetState(signal.ReqScanline)
-	cop.lastExecutionDetails.Clock = cop.vcs.TV.GetState(signal.ReqClock)
+	fn := cop.vcs.TV.GetState(signal.ReqFramenum)
+	sl := cop.vcs.TV.GetState(signal.ReqScanline)
+	cl := cop.vcs.TV.GetState(signal.ReqClock)
+
+	// add one clock to frame/scanline/clock values. the Reset() function will
+	// have been called on the last CPU cycle of the instruction that triggers
+	// the coprocessor reset. the TV will not have moved onto the beginning of
+	// the next instruction yet so we must figure it out here
+	fn, sl, cl = cop.vcs.TV.AddOneClock(fn, sl, cl)
+	cop.lastExecutionDetails.Frame = fn
+	cop.lastExecutionDetails.Scanline = sl
+	cop.lastExecutionDetails.Clock = cl
+
 	cop.lastExecution = cop.lastExecution[:0]
 }
 

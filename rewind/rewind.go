@@ -570,10 +570,7 @@ func (r *Rewind) findFrameIndex(frame int) (idx int, fr int, last bool) {
 }
 
 // GotoFrameCoords of current frame.
-func (r *Rewind) GotoFrameCoords(scanline int, clock int) error {
-	// frame to which to run the catch-up loop
-	frame := r.vcs.TV.GetState(signal.ReqFramenum)
-
+func (r *Rewind) GotoFrameCoords(frame int, scanline int, clock int) error {
 	// get nearest index of entry from which we can (re)generate the current frame
 	idx, _, _ := r.findFrameIndex(frame)
 

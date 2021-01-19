@@ -143,6 +143,7 @@ type Television struct {
 	// the max index from the last frame
 	lastMaxIdx int
 
+	// pause forwarding of signals to pixel renderers
 	pauseRendering bool
 }
 
@@ -646,4 +647,24 @@ func (tv *Television) GetReqFPS() float32 {
 // IS goroutine safe.
 func (tv *Television) GetActualFPS() float32 {
 	return tv.lmtr.actual.Load().(float32)
+}
+
+// AddOneClock to the specified frame/scanline/clock. Adjusts scanline and
+// frame as required. Note that we need to know the current TV top/bottom state
+// to be able to this correctly.
+//
+// There may be extreme corner cases involving screen resizing at the instant
+// the AddOneClock() is performed but it's so unlikely to be of any
+// significance that I'm ignoring that complication (famous last words :-).
+func (tv *Television) AddOneClock(frame int, scanline int, clock int) (int, int, int) {
+	clock += 3
+	if clock > specification.ClksScanline {
+		clock -= specification.ClksScanline
+		scanline++
+	}
+	if scanline > tv.state.bottom {
+		scanline -= tv.state.bottom
+		frame++
+	}
+	return frame, scanline, clock
 }

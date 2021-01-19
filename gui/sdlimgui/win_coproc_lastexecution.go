@@ -66,17 +66,25 @@ func (win *winCoProcLastExecution) draw() {
 	if itr.Count == 0 {
 		imgui.Text("Coprocessor has not yet executed.")
 	} else {
-		imgui.Text("Frame:")
-		imgui.SameLine()
-		imgui.Text(fmt.Sprintf("%-4d", itr.Details.Frame))
+		imguiLabel("Frame:")
+		imguiLabel(fmt.Sprintf("%-4d", itr.Details.Frame))
 		imgui.SameLineV(0, 15)
-		imgui.Text("Scanline:")
-		imgui.SameLine()
-		imgui.Text(fmt.Sprintf("%-3d", itr.Details.Scanline))
+		imguiLabel("Scanline:")
+		imguiLabel(fmt.Sprintf("%-3d", itr.Details.Scanline))
 		imgui.SameLineV(0, 15)
-		imgui.Text("Clock:")
-		imgui.SameLine()
-		imgui.Text(fmt.Sprintf("%-3d", itr.Details.Clock))
+		imguiLabel("Clock:")
+		imguiLabel(fmt.Sprintf("%-3d", itr.Details.Clock))
+
+		imgui.SameLineV(0, 15)
+		if !(itr.Details.Frame == win.img.lz.TV.Frame &&
+			itr.Details.Scanline == win.img.lz.TV.Scanline &&
+			itr.Details.Clock == win.img.lz.TV.Clock) {
+			if imgui.Button("Goto") {
+				win.img.lz.Dbg.PushGotoCoords(itr.Details.Frame, itr.Details.Scanline, itr.Details.Clock)
+			}
+		} else {
+			imgui.InvisibleButtonV("Goto", imgui.Vec2{1, 1}, imgui.ButtonFlagsNone)
+		}
 
 		imguiSeparator()
 	}
