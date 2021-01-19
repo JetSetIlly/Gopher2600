@@ -115,7 +115,7 @@ type imguiColors struct {
 	// log
 	LogBackground imgui.Vec4
 
-	// PackedColor equivalants of above color (where appropriate)
+	// PackedColor equivalents of above color (where appropriate)
 	disasmCPUstep      imgui.PackedColor
 	disasmVideoStep    imgui.PackedColor
 	disasmBreakAddress imgui.PackedColor
@@ -124,7 +124,6 @@ type imguiColors struct {
 	collisionBit       imgui.PackedColor
 	registerBit        imgui.PackedColor
 	saveKeyBit         imgui.PackedColor
-	saveKeyOscBG       imgui.PackedColor
 	saveKeyOscSCL      imgui.PackedColor
 	saveKeyOscSDA      imgui.PackedColor
 	saveKeyBitPointer  imgui.PackedColor
@@ -200,7 +199,7 @@ func newColors() *imguiColors {
 
 		// deferring savekey i2c/eeprom window RegisterBit
 
-		SaveKeyOscBG:      imgui.Vec4{0.21, 0.29, 0.23, 1.0},
+		SaveKeyOscBG:      imgui.Vec4{0.10, 0.10, 0.10, 1.0},
 		SaveKeyOscSCL:     imgui.Vec4{0.10, 0.97, 0.29, 1.0},
 		SaveKeyOscSDA:     imgui.Vec4{0.97, 0.10, 0.29, 1.0},
 		SaveKeyBitPointer: imgui.Vec4{0.8, 0.8, 0.8, 1.0},

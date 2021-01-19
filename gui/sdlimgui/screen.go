@@ -133,7 +133,7 @@ func newScreen(img *SdlImgui) *screen {
 // Reset implements the television.PixelRenderer interface.
 //
 // called on startup and also whenever the VCS is reset, including when a new
-// cartridge is inserted
+// cartridge is inserted.
 func (scr *screen) Reset() {
 	// start off by showing entirity of NTSC screen
 	scr.resize(specification.SpecNTSC, specification.SpecNTSC.AtariSafeTop, specification.SpecNTSC.ScanlinesVisible)

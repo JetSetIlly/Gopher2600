@@ -67,7 +67,7 @@ type resizer struct {
 // the counter will be reset if the screen size changes in the interim.
 const framesUntilResize = 5
 
-// set resizer's top/bottom values to equal tv top/bottom values
+// set resizer's top/bottom values to equal tv top/bottom values.
 func (sr *resizer) initialise(tv *Television) {
 	sr.top = tv.state.top
 	sr.bottom = tv.state.bottom
@@ -129,7 +129,7 @@ func (sr *resizer) commit(tv *Television) error {
 
 		// add one to the bottom value before committing. we shouldn't need to
 		// do this but some screens will end up being one scanline too short
-		// wihtout it. for example, Ladybug and Hack'Em Pacman
+		// without it. for example, Ladybug and Hack'Em Pacman
 		sr.bottom++
 
 		// update real bottom value

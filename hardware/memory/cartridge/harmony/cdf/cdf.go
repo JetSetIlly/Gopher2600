@@ -110,12 +110,12 @@ func (cart *cdf) String() string {
 	return fmt.Sprintf("%s [%s] Bank: %d", cart.mappingID, cart.version.description, cart.state.bank)
 }
 
-// CoProcID implements the mapper.CartCoProcBus interface
+// CoProcID implements the mapper.CartCoProcBus interface.
 func (cart *cdf) CoProcID() string {
 	return cart.arm.CoProcID()
 }
 
-// SetDisassembler implements the mapper.CartCoProcBus interface
+// SetDisassembler implements the mapper.CartCoProcBus interface.
 func (cart *cdf) SetDisassembler(disasm mapper.CartCoProcDisassembler) {
 	cart.arm.SetDisassembler(disasm)
 }

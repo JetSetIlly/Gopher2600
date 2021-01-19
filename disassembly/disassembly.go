@@ -107,13 +107,14 @@ func FromCartridge(cartload cartridgeloader.Loader) (*Disassembly, error) {
 //
 // cartridge will finish in its initialised state.
 func (dsm *Disassembly) FromMemory(cart *cartridge.Cartridge, symbols *symbols.Symbols) error {
+	// record cartridge if it is not nil
 	if cart != nil {
 		dsm.cart = cart
-	} else {
-		// in case code below decides to reference cart directly, we need to
-		// make sure it points to something.
-		cart = dsm.cart
 	}
+
+	// an nil value for the cart argument indicates the disassembly is do be
+	// redone. it is important therefore that no reference is made to
+	// cart. use dsm.cart instead.
 
 	if symbols != nil {
 		dsm.Symbols = symbols

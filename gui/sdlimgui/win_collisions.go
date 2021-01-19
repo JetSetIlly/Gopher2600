@@ -95,7 +95,7 @@ func (win *winCollisions) drawCollision(read uint8, write *uint8, mask uint8) {
 		})
 }
 
-// drawCollision() is used by the dbgscr tooltip for the collision layer
+// drawCollision() is used by the dbgscr tooltip for the collision layer.
 func drawCollision(img *SdlImgui, value uint8, mask uint8, onWrite func(uint8)) {
 	seq := newDrawlistSequence(img, imgui.Vec2{X: imgui.FrameHeight() * 0.75, Y: imgui.FrameHeight() * 0.75}, false)
 	for i := 0; i < 8; i++ {
@@ -106,7 +106,6 @@ func drawCollision(img *SdlImgui, value uint8, mask uint8, onWrite func(uint8)) 
 			if seq.rectFill(img.cols.collisionBit) {
 				b := value ^ (0x80 >> i)
 				onWrite(b)
-
 			}
 		} else {
 			seq.nextItemDepressed = true

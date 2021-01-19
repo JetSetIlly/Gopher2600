@@ -353,7 +353,7 @@ func (cart *Cartridge) GetCartHotspots() mapper.CartHotspotsBus {
 	return nil
 }
 
-// GetCoProcBus returns interface to coprocessor bus
+// GetCoProcBus returns interface to coprocessor bus.
 func (cart *Cartridge) GetCoProcBus() mapper.CartCoProcBus {
 	if cpd, ok := cart.mapper.(mapper.CartCoProcBus); ok {
 		return cpd

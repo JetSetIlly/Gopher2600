@@ -30,6 +30,10 @@ lint: check_lint
 # uses .golangci.yml configuration file
 	golangci-lint run --sort-results
 
+lint_fix: check_lint
+# uses .golangci.yml configuration file
+	golangci-lint run --fix --sort-results
+
 check_glsl:
 ifeq (, $(shell which glslangValidator))
 	$(error "glslangValidator not installed")

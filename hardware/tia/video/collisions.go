@@ -51,7 +51,7 @@ type Collisions struct {
 }
 
 // CollisionEvent is an emulator specific value that records the collision
-// events that occured in the immediately preceding videocycle.
+// events that occurred in the immediately preceding videocycle.
 //
 // The VCS doesn't care about this and the collision registers instead record
 // all collisions since the last CXCLR, which can be many hundreds of
@@ -108,7 +108,7 @@ func (col CollisionEvent) IsCXCLR() bool {
 	return col&cxclr == cxclr
 }
 
-// String returns a string representation of a CollisionEvent
+// String returns a string representation of a CollisionEvent.
 func (col CollisionEvent) String() string {
 	if col&cxclr == cxclr {
 		return "collisions cleared"

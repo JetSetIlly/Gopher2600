@@ -335,7 +335,7 @@ func (img *SdlImgui) imguiSwatch(col uint8, size float32) (clicked bool) {
 	return clicked
 }
 
-// imguiColorLabel is used to add a single colored square with a label. useful
+// imguiColorLabel is used to add a single coloured square with a label. useful
 // for color keys.
 //
 // imguiColorLabel is makes use of the drawListSequence.

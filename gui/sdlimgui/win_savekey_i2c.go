@@ -99,8 +99,9 @@ func (win *winSaveKeyI2C) drawOscilloscope() {
 	imgui.SetCursorPos(pos)
 
 	// transparent background color for second plotlines widget.
-	imgui.PushStyleColor(imgui.StyleColorFrameBg, imgui.Vec4{0.0, 0.0, 0.0, 0.0})
+	imgui.PushStyleColor(imgui.StyleColorFrameBg, win.img.cols.SaveKeyOscBG)
 
+	// plot lines
 	imgui.PushStyleColor(imgui.StyleColorPlotLines, win.img.cols.SaveKeyOscSDA)
 	imgui.PlotLinesV("", win.img.lz.SaveKey.SDA, 0, "", savekey.TraceLo, savekey.TraceHi,
 		imgui.Vec2{X: w, Y: imgui.FrameHeight() * 2})

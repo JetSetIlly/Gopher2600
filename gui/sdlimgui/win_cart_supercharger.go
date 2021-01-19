@@ -23,7 +23,6 @@ import (
 )
 
 const winSuperchargerRegistersID = "AR Registers"
-const winSuperchargerRegistersMenu = "AR Registers"
 
 type winSuperchargerRegisters struct {
 	img  *SdlImgui
@@ -41,9 +40,6 @@ func newWinSuperchargerRegisters(img *SdlImgui) (window, error) {
 }
 
 func (win *winSuperchargerRegisters) init() {
-}
-
-func (win *winSuperchargerRegisters) destroy() {
 }
 
 func (win *winSuperchargerRegisters) id() string {

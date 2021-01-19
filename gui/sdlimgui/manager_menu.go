@@ -21,7 +21,7 @@ import (
 	"github.com/inkyblackness/imgui-go/v3"
 )
 
-// the window menus grouped by type. the types are:
+// the window menus grouped by type. the types are:.
 type menuGroup int
 
 // list of valid menu groups.
@@ -39,15 +39,13 @@ type menuBusRestrict int
 
 // list of valid menu bus restrictions.
 const (
-	menuRestrictNone menuBusRestrict = iota
-	menuRestrictCoProc
+	menuRestrictCoProc menuBusRestrict = iota
 	menuRestrictRAM
 	menuRestrictRegister
 	menuRestrictStatic
 	menuRestrictTape
 )
 
-// defintion for a menu entry
 type menuEntry struct {
 	// the menu this menu entry appears under
 	group menuGroup

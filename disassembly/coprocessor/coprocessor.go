@@ -44,12 +44,12 @@ func Add(cart *cartridge.Cartridge) *Coprocessor {
 	return cop
 }
 
-// Reset implements the CartCoProcDisassembler interface
+// Reset implements the CartCoProcDisassembler interface.
 func (cop *Coprocessor) Reset() {
 	cop.lastExecution = cop.lastExecution[:0]
 }
 
-// Instruction implements the CartCoProcDisassembler interface
+// Instruction implements the CartCoProcDisassembler interface.
 func (cop *Coprocessor) Instruction(entry mapper.CartCoProcDisasmEntry) {
 	cop.crit.Lock()
 	defer cop.crit.Unlock()

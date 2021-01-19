@@ -35,7 +35,7 @@ const (
 	// increased. the charge value is the value written to the INPTx register.
 	//
 	// the following value is found by 1/N where N is the number of ticks
-	// required for the charge value to increase by 1. eg 1/150==0.0067
+	// required for the charge value to increase by 1. eg 1/150==0.0067.
 	paddleChargeRate = 0.0067
 )
 

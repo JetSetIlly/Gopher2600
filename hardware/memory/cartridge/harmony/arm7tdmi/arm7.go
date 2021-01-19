@@ -82,12 +82,12 @@ func NewARM(mem SharedMemory, hook CartridgeHook) *ARM {
 	return arm
 }
 
-// CoProcID implements the mapper.CartCoProcBus interface
+// CoProcID implements the mapper.CartCoProcBus interface.
 func (arm *ARM) CoProcID() string {
 	return "ARM7TDMI"
 }
 
-// SetDisassembler implements the mapper.CartCoProcBus interface
+// SetDisassembler implements the mapper.CartCoProcBus interface.
 func (arm *ARM) SetDisassembler(disasm mapper.CartCoProcDisassembler) {
 	arm.disasm = disasm
 	if arm.disasm == nil {
@@ -152,7 +152,6 @@ func (arm *ARM) Run() error {
 		if err != nil {
 			return curated.Errorf("ARM: %v", err)
 		}
-
 	}
 	return nil
 }
@@ -281,7 +280,7 @@ func (arm *ARM) executeInstruction() (bool, error) {
 		// send new instruction to the registered CartCoProcDisassembler
 		defer func() {
 			// only send if operator field is not empty. the first instruction
-			// in a BL sequence will deliberatly leave the Operator field
+			// in a BL sequence will deliberately leave the Operator field
 			// blank.
 			if arm.entry.Operator != "" {
 				switch arm.disasmLevel {
