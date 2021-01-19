@@ -163,6 +163,8 @@ func (dsm *Disassembly) blessSequence(b int, a uint16, commit bool) bool {
 	// program counter style (ie. address plus instruction byte count)
 	//
 	// sequence will stop if:
+	//  . an unknown opcode has been encountered
+	//
 	//  . there is already blessed instruction between this and the next entry
 	//
 	//  . a flow control instruction is encountered (this is normal and expected)
@@ -172,6 +174,12 @@ func (dsm *Disassembly) blessSequence(b int, a uint16, commit bool) bool {
 	for a < uint16(len(dsm.entries[b])) {
 		// end run if entry has already been blessed
 		if dsm.entries[b][a].Level == EntryLevelBlessed {
+			return true
+		}
+
+		// if operator is unknown than end the sequence.
+		operator := dsm.entries[b][a].Result.Defn.Operator
+		if operator == "??" {
 			return true
 		}
 
