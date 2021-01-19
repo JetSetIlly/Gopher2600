@@ -57,7 +57,7 @@ func NewVideo(tv *television.Television) (*Video, error) {
 
 	// allocate enough pixels for entire frame
 	dig.spec = dig.GetSpec()
-	l += ((specification.HorizClksScanline + 1) * (dig.spec.ScanlinesTotal + 1) * pixelDepth)
+	l += ((specification.ClksScanline + 1) * (dig.spec.ScanlinesTotal + 1) * pixelDepth)
 	dig.pixels = make([]byte, l)
 
 	return dig, nil
@@ -89,7 +89,7 @@ func (dig *Video) Resize(spec specification.Spec, _, _ int) error {
 	// allocate enough pixels for entire frame
 	dig.spec = spec
 	l := len(dig.digest)
-	l += ((specification.HorizClksScanline + 1) * (spec.ScanlinesTotal + 1) * pixelDepth)
+	l += ((specification.ClksScanline + 1) * (spec.ScanlinesTotal + 1) * pixelDepth)
 	dig.pixels = make([]byte, l)
 
 	return nil
@@ -121,8 +121,8 @@ func (dig *Video) UpdatingPixels(_ bool) {
 func (dig *Video) SetPixel(sig signal.SignalAttributes, _ bool) error {
 	// preserve the first few bytes for a chained fingerprint
 	i := len(dig.digest)
-	i += specification.HorizClksScanline * sig.Scanline * pixelDepth
-	i += sig.HorizPos * pixelDepth
+	i += specification.ClksScanline * sig.Scanline * pixelDepth
+	i += sig.Clock * pixelDepth
 
 	if i <= len(dig.pixels)-pixelDepth {
 		col := dig.spec.GetColor(sig.Pixel)

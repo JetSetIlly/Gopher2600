@@ -40,8 +40,8 @@ type SignalAttributes struct {
 
 	// the position on the screen this signal was applied to. added by the
 	// television implementation
-	HorizPos int
 	Scanline int
+	Clock    int
 }
 
 func (a SignalAttributes) String() string {
@@ -69,7 +69,7 @@ type StateReq int
 const (
 	ReqFramenum StateReq = iota
 	ReqScanline
-	ReqHorizPos
+	ReqClock
 )
 
 // TelevisionTIA exposes only the functions required by the TIA.

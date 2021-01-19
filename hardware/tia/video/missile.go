@@ -217,10 +217,10 @@ func (ms *MissileSprite) rsync(adjustment int) {
 	ms.ResetPixel -= adjustment
 	ms.HmovedPixel -= adjustment
 	if ms.ResetPixel < 0 {
-		ms.ResetPixel += specification.HorizClksVisible
+		ms.ResetPixel += specification.ClksVisible
 	}
 	if ms.HmovedPixel < 0 {
-		ms.HmovedPixel += specification.HorizClksVisible
+		ms.HmovedPixel += specification.ClksVisible
 	}
 }
 
@@ -248,7 +248,7 @@ func (ms *MissileSprite) tick(visible, isHmove bool, hmoveCt uint8, resetToPlaye
 		ms.pclk.Reset()
 
 		// missile-to-player also resets position information
-		ms.ResetPixel = ms.tv.GetState(signal.ReqHorizPos)
+		ms.ResetPixel = ms.tv.GetState(signal.ReqClock)
 		ms.HmovedPixel = ms.ResetPixel
 	}
 
@@ -262,7 +262,7 @@ func (ms *MissileSprite) tick(visible, isHmove bool, hmoveCt uint8, resetToPlaye
 
 		// adjust for screen boundary
 		if ms.HmovedPixel < 0 {
-			ms.HmovedPixel += specification.HorizClksVisible
+			ms.HmovedPixel += specification.ClksVisible
 		}
 	}
 
@@ -332,8 +332,8 @@ func (ms *MissileSprite) prepareForHMOVE() {
 		ms.HmovedPixel += 8
 
 		// adjust for screen boundary
-		if ms.HmovedPixel > specification.HorizClksVisible {
-			ms.HmovedPixel -= specification.HorizClksVisible
+		if ms.HmovedPixel > specification.ClksVisible {
+			ms.HmovedPixel -= specification.ClksVisible
 		}
 	}
 }
@@ -381,7 +381,7 @@ func (ms *MissileSprite) resetPosition() {
 func (ms *MissileSprite) _futureResetPosition() {
 	// the pixel at which the sprite has been reset, in relation to the
 	// left edge of the screen
-	ms.ResetPixel = ms.tv.GetState(signal.ReqHorizPos)
+	ms.ResetPixel = ms.tv.GetState(signal.ReqClock)
 
 	if ms.ResetPixel >= 0 {
 		// resetPixel adjusted by 1 because the tv is not yet in the correct
@@ -389,8 +389,8 @@ func (ms *MissileSprite) _futureResetPosition() {
 		ms.ResetPixel++
 
 		// adjust resetPixel for screen boundaries
-		if ms.ResetPixel > specification.HorizClksVisible {
-			ms.ResetPixel -= specification.HorizClksVisible
+		if ms.ResetPixel > specification.ClksVisible {
+			ms.ResetPixel -= specification.ClksVisible
 		}
 
 		// by definition the current pixel is the same as the reset pixel at

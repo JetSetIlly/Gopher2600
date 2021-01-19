@@ -191,10 +191,10 @@ func (bs *BallSprite) rsync(adjustment int) {
 	bs.ResetPixel -= adjustment
 	bs.HmovedPixel -= adjustment
 	if bs.ResetPixel < 0 {
-		bs.ResetPixel += specification.HorizClksVisible
+		bs.ResetPixel += specification.ClksVisible
 	}
 	if bs.HmovedPixel < 0 {
-		bs.HmovedPixel += specification.HorizClksVisible
+		bs.HmovedPixel += specification.ClksVisible
 	}
 }
 
@@ -221,7 +221,7 @@ func (bs *BallSprite) tick(visible, isHmove bool, hmoveCt uint8) bool {
 
 		// adjust for screen boundary
 		if bs.HmovedPixel < 0 {
-			bs.HmovedPixel += specification.HorizClksVisible
+			bs.HmovedPixel += specification.ClksVisible
 		}
 	}
 
@@ -265,8 +265,8 @@ func (bs *BallSprite) prepareForHMOVE() {
 		bs.HmovedPixel += 8
 
 		// adjust for screen boundary
-		if bs.HmovedPixel > specification.HorizClksVisible {
-			bs.HmovedPixel -= specification.HorizClksVisible
+		if bs.HmovedPixel > specification.ClksVisible {
+			bs.HmovedPixel -= specification.ClksVisible
 		}
 	}
 }
@@ -314,7 +314,7 @@ func (bs *BallSprite) _futureResetPosition() {
 
 	// the pixel at which the sprite has been reset, in relation to the
 	// left edge of the screen
-	bs.ResetPixel = bs.tv.GetState(signal.ReqHorizPos)
+	bs.ResetPixel = bs.tv.GetState(signal.ReqClock)
 
 	if bs.ResetPixel >= 0 {
 		// resetPixel adjusted by 1 because the tv is not yet in the correct
@@ -322,8 +322,8 @@ func (bs *BallSprite) _futureResetPosition() {
 		bs.ResetPixel++
 
 		// adjust resetPixel for screen boundaries
-		if bs.ResetPixel > specification.HorizClksVisible {
-			bs.ResetPixel -= specification.HorizClksVisible
+		if bs.ResetPixel > specification.ClksVisible {
+			bs.ResetPixel -= specification.ClksVisible
 		}
 
 		// by definition the current pixel is the same as the reset pixel at

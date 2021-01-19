@@ -36,7 +36,7 @@ type playbackEntry struct {
 	value    ports.EventData
 	frame    int
 	scanline int
-	horizpos int
+	clock    int
 	hash     string
 
 	// the line in the recording file the playback event appears
@@ -172,9 +172,9 @@ func NewPlayback(transcript string) (*Playback, error) {
 			return nil, curated.Errorf("playback: %s line %d, col %d", err, i+1, len(strings.Join(toks[:fieldScanline+1], fieldSep)))
 		}
 
-		entry.horizpos, err = strconv.Atoi(toks[fieldHorizPos])
+		entry.clock, err = strconv.Atoi(toks[fieldClock])
 		if err != nil {
-			return nil, curated.Errorf("playback: %s line %d, col %d", err, i+1, len(strings.Join(toks[:fieldHorizPos+1], fieldSep)))
+			return nil, curated.Errorf("playback: %s line %d, col %d", err, i+1, len(strings.Join(toks[:fieldClock+1], fieldSep)))
 		}
 
 		entry.hash = toks[fieldHash]
@@ -257,7 +257,7 @@ const (
 )
 
 // GetPlayback returns an event and source portID for an event occurring at the
-// current TV frame/scanline/horizpos.
+// current TV frame/scanline/clock.
 func (plb *Playback) GetPlayback() (ports.PortID, ports.Event, ports.EventData, error) {
 	// we've reached the end of the list of events for this id
 	if plb.seqCt >= len(plb.sequence) {
@@ -267,11 +267,11 @@ func (plb *Playback) GetPlayback() (ports.PortID, ports.Event, ports.EventData, 
 	// get current state of the television
 	frame := plb.vcs.TV.GetState(signal.ReqFramenum)
 	scanline := plb.vcs.TV.GetState(signal.ReqScanline)
-	horizpos := plb.vcs.TV.GetState(signal.ReqHorizPos)
+	clock := plb.vcs.TV.GetState(signal.ReqClock)
 
 	// compare current state with the recording
 	entry := plb.sequence[plb.seqCt]
-	if frame == entry.frame && scanline == entry.scanline && horizpos == entry.horizpos {
+	if frame == entry.frame && scanline == entry.scanline && clock == entry.clock {
 		plb.seqCt++
 		if entry.hash != plb.digest.Hash() {
 			return ports.NoPortID, ports.NoEvent, nil, curated.Errorf(PlaybackHashError, entry.line)

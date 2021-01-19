@@ -60,8 +60,8 @@ type winDbgScr struct {
 	// is the popup break menu active
 	isPopup bool
 
-	// horizPos and scanline equivalent position of the mouse. only updated when isHovered is true
-	mouseHorizPos int
+	// clocks and scanline equivalent position of the mouse. only updated when isHovered is true
+	mouseClock    int
 	mouseScanline int
 
 	// height of tool bar at bottom of window. valid after first frame.
@@ -226,11 +226,11 @@ func (win *winDbgScr) draw() {
 		if imgui.Selectable(fmt.Sprintf("Scanline=%d", win.mouseScanline)) {
 			win.img.term.pushCommand(fmt.Sprintf("BREAK SL %d", win.mouseScanline))
 		}
-		if imgui.Selectable(fmt.Sprintf("Horizpos=%d", win.mouseHorizPos)) {
-			win.img.term.pushCommand(fmt.Sprintf("BREAK HP %d", win.mouseHorizPos))
+		if imgui.Selectable(fmt.Sprintf("Clock=%d", win.mouseClock)) {
+			win.img.term.pushCommand(fmt.Sprintf("BREAK CL %d", win.mouseClock))
 		}
-		if imgui.Selectable(fmt.Sprintf("Scanline=%d & Horizpos=%d", win.mouseScanline, win.mouseHorizPos)) {
-			win.img.term.pushCommand(fmt.Sprintf("BREAK SL %d & HP %d", win.mouseScanline, win.mouseHorizPos))
+		if imgui.Selectable(fmt.Sprintf("Scanline=%d & Clock=%d", win.mouseScanline, win.mouseClock)) {
+			win.img.term.pushCommand(fmt.Sprintf("BREAK SL %d & CL %d", win.mouseScanline, win.mouseClock))
 		}
 		imgui.EndPopup()
 	} else {
@@ -249,9 +249,9 @@ func (win *winDbgScr) draw() {
 		// emulation is paused
 		if win.img.state == gui.StatePaused {
 			if imgui.IsMouseReleased(0) {
-				win.img.screen.gotoCoordsX = win.mouseHorizPos
+				win.img.screen.gotoCoordsX = win.mouseClock
 				win.img.screen.gotoCoordsY = win.img.wm.dbgScr.mouseScanline
-				win.img.lz.Dbg.PushGotoCoords(win.mouseScanline, win.mouseHorizPos-specification.HorizClksHBlank)
+				win.img.lz.Dbg.PushGotoCoords(win.mouseScanline, win.mouseClock-specification.ClksHBlank)
 			}
 		}
 	}
@@ -278,10 +278,13 @@ func (win *winDbgScr) draw() {
 		imguiLabel(fmt.Sprintf("%-4d", win.img.lz.TV.Frame))
 		imgui.SameLineV(0, 15)
 		imguiLabel("Scanline:")
-		imguiLabel(fmt.Sprintf("%-4d", win.img.lz.TV.Scanline))
+		if win.img.lz.TV.Scanline > 999 {
+		} else {
+			imguiLabel(fmt.Sprintf("%-3d", win.img.lz.TV.Scanline))
+		}
 		imgui.SameLineV(0, 15)
-		imguiLabel("Horiz Pos:")
-		imguiLabel(fmt.Sprintf("%-4d", win.img.lz.TV.HP))
+		imguiLabel("Clock:")
+		imguiLabel(fmt.Sprintf("%-3d", win.img.lz.TV.Clock))
 
 		// fps indicator
 		imgui.SameLineV(0, 20)
@@ -351,7 +354,7 @@ func (win *winDbgScr) drawReflectionTooltip(mouseOrigin imgui.Vec2) {
 		sz := win.scr.crit.cropPixels.Bounds().Size()
 		mp.X = mp.X / win.getScaledWidth(true) * float32(sz.X)
 		mp.Y = mp.Y / win.getScaledHeight(true) * float32(sz.Y)
-		mp.X += float32(specification.HorizClksHBlank)
+		mp.X += float32(specification.ClksHBlank)
 		mp.Y += float32(win.scr.crit.topScanline)
 	} else {
 		sz := win.scr.crit.pixels.Bounds().Size()
@@ -359,14 +362,14 @@ func (win *winDbgScr) drawReflectionTooltip(mouseOrigin imgui.Vec2) {
 		mp.Y = mp.Y / win.getScaledHeight(false) * float32(sz.Y)
 	}
 
-	win.mouseHorizPos = int(mp.X)
+	win.mouseClock = int(mp.X)
 	win.mouseScanline = int(mp.Y)
 
 	// get reflection information
 	var ref reflection.VideoStep
 
-	if win.mouseHorizPos < len(win.scr.crit.reflection) && win.mouseScanline < len(win.scr.crit.reflection[win.mouseHorizPos]) {
-		ref = win.scr.crit.reflection[win.mouseHorizPos][win.mouseScanline]
+	if win.mouseClock < len(win.scr.crit.reflection) && win.mouseScanline < len(win.scr.crit.reflection[win.mouseClock]) {
+		ref = win.scr.crit.reflection[win.mouseClock][win.mouseScanline]
 	}
 
 	// present tooltip showing pixel coords and CPU state
@@ -378,7 +381,7 @@ func (win *winDbgScr) drawReflectionTooltip(mouseOrigin imgui.Vec2) {
 	defer imgui.EndTooltip()
 
 	imgui.Text(fmt.Sprintf("Scanline: %d", win.mouseScanline))
-	imgui.Text(fmt.Sprintf("Horiz Pos: %d", win.mouseHorizPos-specification.HorizClksHBlank))
+	imgui.Text(fmt.Sprintf("Clock: %d", win.mouseClock-specification.ClksHBlank))
 
 	if win.overlay {
 		switch win.scr.crit.overlay {

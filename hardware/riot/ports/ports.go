@@ -254,7 +254,7 @@ func (p *Ports) GetPlayback() error {
 	//
 	// this happens in particular with recordings that were made of  ROMs with
 	// panel setup configurations (see setup package) - where the switches are
-	// set when the TV state is at fr=0 sl=0 hp=0
+	// set when the TV state is at fr=0 sl=0 cl=0
 	morePlayback := true
 	for morePlayback {
 		id, ev, v, err := p.playback.GetPlayback()

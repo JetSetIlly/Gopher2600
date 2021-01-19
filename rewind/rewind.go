@@ -336,7 +336,7 @@ func (r *Rewind) append(s *State) {
 
 // plumb in state found at index. splice point will be updated. remaining
 // arguments as in plumbState().
-func (r *Rewind) plumb(idx, frame, scanline, horizpos int) error {
+func (r *Rewind) plumb(idx, frame, scanline, clock int) error {
 	// current index is the index we're plumbing in. this has nothing to do
 	// with the frame number (especially important to remember if frequency is
 	// greater than 1)
@@ -346,7 +346,7 @@ func (r *Rewind) plumb(idx, frame, scanline, horizpos int) error {
 	startingFrame := s.TV.GetState(signal.ReqFramenum)
 
 	// plumb in selected entry
-	err := r.plumbState(s, frame, scanline, horizpos)
+	err := r.plumbState(s, frame, scanline, clock)
 	if err != nil {
 		return err
 	}
@@ -358,12 +358,12 @@ func (r *Rewind) plumb(idx, frame, scanline, horizpos int) error {
 }
 
 // plumb in state supplied as the argument. catch-up loop will halt as soon as
-// possible after frame/scanline/horizpos is reached or surpassed
+// possible after frame/scanline/clock is reached or surpassed
 //
 // note that this will not update the splice point up update the
 // framesSinceSnapshot value. use plumb() with an index into the history for
 // that.
-func (r *Rewind) plumbState(s *State, frame, scanline, horizpos int) error {
+func (r *Rewind) plumbState(s *State, frame, scanline, clock int) error {
 	// is requested frame before or after the current frame. if so then that
 	// means the emulation is running "backwards" and we'll use this decide
 	// whether to pause TV rendering.
@@ -412,7 +412,7 @@ func (r *Rewind) plumbState(s *State, frame, scanline, horizpos int) error {
 	continueCheck := func() bool {
 		nf := r.vcs.TV.GetState(signal.ReqFramenum)
 		ny := r.vcs.TV.GetState(signal.ReqScanline)
-		nx := r.vcs.TV.GetState(signal.ReqHorizPos)
+		nx := r.vcs.TV.GetState(signal.ReqClock)
 
 		if !adhocSnapshotted && nf == frame-1 {
 			r.adhoc = r.snapshot(levelAdhoc)
@@ -420,7 +420,7 @@ func (r *Rewind) plumbState(s *State, frame, scanline, horizpos int) error {
 		}
 
 		// check to see if TV state exceeds the requested state
-		tooFar := nf > frame || (nf == frame && ny > scanline) || (nf == frame && ny == scanline && nx >= horizpos)
+		tooFar := nf > frame || (nf == frame && ny > scanline) || (nf == frame && ny == scanline && nx >= clock)
 
 		// do not continue if we have gone too far
 		return !tooFar
@@ -443,13 +443,13 @@ func (r *Rewind) GotoLast() error {
 	}
 
 	frame := r.entries[idx].TV.GetState(signal.ReqFramenum)
-	horizpos := -specification.HorizClksHBlank
+	clock := -specification.ClksHBlank
 	scanline := 0
 
-	// use more specific scanline/horizpos values if entry is an "execution" entry
+	// use more specific scanline/clock values if entry is an "execution" entry
 	if r.entries[idx].level == levelExecution {
 		scanline = r.entries[idx].TV.GetState(signal.ReqScanline)
-		horizpos = r.entries[idx].TV.GetState(signal.ReqHorizPos)
+		clock = r.entries[idx].TV.GetState(signal.ReqClock)
 	}
 
 	// make adjustments to the index so we plumbing from a suitable place
@@ -464,7 +464,7 @@ func (r *Rewind) GotoLast() error {
 		idx = r.start
 	}
 
-	return r.plumb(idx, frame, scanline, horizpos)
+	return r.plumb(idx, frame, scanline, clock)
 }
 
 // GotoFrame searches the timeline for the frame number. If the precise frame
@@ -481,7 +481,7 @@ func (r *Rewind) GotoFrame(frame int) error {
 
 	// plumb in index. the frame argument to the plumb() function is
 	// the frame that has been requested, not the search frame
-	return r.plumb(idx, frame, 0, -specification.HorizClksHBlank)
+	return r.plumb(idx, frame, 0, -specification.ClksHBlank)
 }
 
 // find index nearest to the requested frame. returns the index and the frame
@@ -570,7 +570,7 @@ func (r *Rewind) findFrameIndex(frame int) (idx int, fr int, last bool) {
 }
 
 // GotoFrameCoords of current frame.
-func (r *Rewind) GotoFrameCoords(scanline int, horizpos int) error {
+func (r *Rewind) GotoFrameCoords(scanline int, clock int) error {
 	// frame to which to run the catch-up loop
 	frame := r.vcs.TV.GetState(signal.ReqFramenum)
 
@@ -581,14 +581,14 @@ func (r *Rewind) GotoFrameCoords(scanline int, horizpos int) error {
 	// the adhoc state if available
 	if frame != r.entries[idx].TV.GetState(signal.ReqFramenum)+1 {
 		if r.adhoc != nil && r.adhoc.TV.GetState(signal.ReqFramenum) == frame-1 {
-			return r.plumbState(r.adhoc, frame, scanline, horizpos)
+			return r.plumbState(r.adhoc, frame, scanline, clock)
 		}
 	}
 
 	// we've not used adhoc this time so nillify it
 	r.adhoc = nil
 
-	return r.plumb(idx, frame, scanline, horizpos)
+	return r.plumb(idx, frame, scanline, clock)
 }
 
 // SetComparison points comparison to the most recent rewound entry.

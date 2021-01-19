@@ -286,10 +286,10 @@ func (ps *PlayerSprite) rsync(adjustment int) {
 	ps.ResetPixel -= adjustment
 	ps.HmovedPixel -= adjustment
 	if ps.ResetPixel < 0 {
-		ps.ResetPixel += specification.HorizClksVisible
+		ps.ResetPixel += specification.ClksVisible
 	}
 	if ps.HmovedPixel < 0 {
-		ps.HmovedPixel += specification.HorizClksVisible
+		ps.HmovedPixel += specification.ClksVisible
 	}
 }
 
@@ -313,7 +313,7 @@ func (ps *PlayerSprite) tick(visible, isHmove bool, hmoveCt uint8) bool {
 
 		// adjust for screen boundary
 		if ps.HmovedPixel < 0 {
-			ps.HmovedPixel += specification.HorizClksVisible
+			ps.HmovedPixel += specification.ClksVisible
 		}
 	}
 
@@ -433,8 +433,8 @@ func (ps *PlayerSprite) prepareForHMOVE() {
 		ps.HmovedPixel += 8
 
 		// adjust for screen boundary
-		if ps.HmovedPixel > specification.HorizClksVisible {
-			ps.HmovedPixel -= specification.HorizClksVisible
+		if ps.HmovedPixel > specification.ClksVisible {
+			ps.HmovedPixel -= specification.ClksVisible
 		}
 	}
 }
@@ -494,7 +494,7 @@ func (ps *PlayerSprite) resetPosition() {
 func (ps *PlayerSprite) _futureResetPosition() {
 	// the pixel at which the sprite has been reset, in relation to the
 	// left edge of the screen
-	ps.ResetPixel = ps.tv.GetState(signal.ReqHorizPos)
+	ps.ResetPixel = ps.tv.GetState(signal.ReqClock)
 
 	if ps.ResetPixel >= 0 {
 		// resetPixel adjusted by +1 because the tv is not yet in the correct.
@@ -511,8 +511,8 @@ func (ps *PlayerSprite) _futureResetPosition() {
 		}
 
 		// adjust resetPixel for screen boundaries
-		if ps.ResetPixel > specification.HorizClksVisible {
-			ps.ResetPixel -= specification.HorizClksVisible
+		if ps.ResetPixel > specification.ClksVisible {
+			ps.ResetPixel -= specification.ClksVisible
 		}
 
 		// by definition the current pixel is the same as the reset pixel at
@@ -725,11 +725,11 @@ func (ps *PlayerSprite) SetNUSIZ(value uint8) {
 	}
 
 	// adjust reset pixel for screen boundaries
-	if ps.ResetPixel > specification.HorizClksVisible {
-		ps.ResetPixel -= specification.HorizClksVisible
+	if ps.ResetPixel > specification.ClksVisible {
+		ps.ResetPixel -= specification.ClksVisible
 	}
-	if ps.HmovedPixel > specification.HorizClksVisible {
-		ps.HmovedPixel -= specification.HorizClksVisible
+	if ps.HmovedPixel > specification.ClksVisible {
+		ps.HmovedPixel -= specification.ClksVisible
 	}
 }
 

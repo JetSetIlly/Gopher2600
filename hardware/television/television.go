@@ -49,10 +49,10 @@ type State struct {
 	auto bool
 
 	// state of the television
-	//	- the current horizontal position. the position where the next pixel will be
-	//  drawn. also used to check we're receiving the correct signals at the
-	//  correct time.
-	horizPos int
+	//	- the current color clock. the horizontal position where the next pixel
+	//	will be drawn. also used to check we're receiving the correct signals
+	//	at the correct time.
+	clock int
 	//	- the current frame
 	frameNum int
 	//	- the current scanline number
@@ -71,7 +71,7 @@ type State struct {
 	// record of signal attributes from the last call to Signal()
 	lastSignal signal.SignalAttributes
 
-	// vsyncCount records the number of consecutive colorClocks the vsync signal
+	// vsyncCount records the number of consecutive clocks the vsync signal
 	// has been sustained. we use this to help correctly implement vsync.
 	vsyncCount int
 
@@ -89,16 +89,16 @@ func (s *State) Snapshot() *State {
 	return &n
 }
 
-// Returns state information. Not that ReqHorizPos counts from
-// "-specifcation.HorizClksHblank" and not zero as you might expect.
+// Returns state information. Not that ReqClock counts from
+// "-specifcation.ClksHblank" and not zero as you might expect.
 func (s *State) GetState(request signal.StateReq) int {
 	switch request {
 	case signal.ReqFramenum:
 		return s.frameNum
 	case signal.ReqScanline:
 		return s.scanline
-	case signal.ReqHorizPos:
-		return s.horizPos - specification.HorizClksHBlank
+	case signal.ReqClock:
+		return s.clock - specification.ClksHBlank
 	}
 	panic(fmt.Sprintf("television: unhandled tv state request (%v)", request))
 }
@@ -172,7 +172,7 @@ func NewTelevision(spec string) (*Television, error) {
 }
 
 func (tv *Television) String() string {
-	return fmt.Sprintf("FR=%04d SL=%03d HP=%03d", tv.state.frameNum, tv.state.scanline, tv.state.horizPos-specification.HorizClksHBlank)
+	return fmt.Sprintf("FR=%04d SL=%03d CL=%03d", tv.state.frameNum, tv.state.scanline, tv.state.clock-specification.ClksHBlank)
 }
 
 // Reset the television to an initial state.
@@ -189,7 +189,7 @@ func (tv *Television) Reset(keepFrameNum bool) error {
 		tv.state.frameNum = 0
 	}
 
-	tv.state.horizPos = 0
+	tv.state.clock = 0
 	tv.state.scanline = 0
 	tv.state.syncedFrameNum = 0
 	tv.state.syncedFrame = false
@@ -299,15 +299,15 @@ func (tv *Television) Signal(sig signal.SignalAttributes) error {
 	tv.state.resizer.examine(tv, sig)
 
 	// a Signal() is by definition a new color clock. increase the horizontal count
-	tv.state.horizPos++
+	tv.state.clock++
 
-	// once we reach the scanline's back-porch we'll reset the horizPos counter
+	// once we reach the scanline's back-porch we'll reset the clock counter
 	// and wait for the HSYNC signal. we do this so that the front-porch and
 	// back-porch are 'together' at the beginning of the scanline. this isn't
 	// strictly technically correct but it's convenient to think about
 	// scanlines in this way (rather than having a split front and back porch)
-	if tv.state.horizPos >= specification.HorizClksScanline {
-		tv.state.horizPos = 0
+	if tv.state.clock >= specification.ClksScanline {
+		tv.state.clock = 0
 
 		// bump scanline counter
 		tv.state.scanline++
@@ -348,13 +348,13 @@ func (tv *Television) Signal(sig signal.SignalAttributes) error {
 		}
 	}
 
-	// we've "faked" the flyback signal above when horizPos reached
+	// we've "faked" the flyback signal above when clock reached
 	// horizClksScanline. we need to handle the real flyback signal however, by
-	// making sure we're at the correct horizPos value.  if horizPos doesn't
+	// making sure we're at the correct clock value.  if clock doesn't
 	// equal 16 at the front of the HSYNC or 36 at then back of the HSYNC, then
 	// it indicates that the RSYNC register was used last scanline.
 	if sig.HSync && !tv.state.lastSignal.HSync {
-		tv.state.horizPos = 16
+		tv.state.clock = 16
 
 		// count vsync lines at start of hsync
 		if sig.VSync || tv.state.lastSignal.VSync {
@@ -362,13 +362,13 @@ func (tv *Television) Signal(sig signal.SignalAttributes) error {
 		}
 	}
 	if !sig.HSync && tv.state.lastSignal.HSync {
-		tv.state.horizPos = 36
+		tv.state.clock = 36
 	}
 
 	// doing nothing with CBURST signal
 
 	// augment television signal before sending to pixel renderer
-	sig.HorizPos = tv.state.horizPos
+	sig.Clock = tv.state.clock
 	sig.Scanline = tv.state.scanline
 
 	// record the current signal settings so they can be used for reference

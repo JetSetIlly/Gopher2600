@@ -30,7 +30,7 @@ const (
 	fieldEventData
 	fieldFrame
 	fieldScanline
-	fieldHorizPos
+	fieldClock
 	fieldHash
 	numFields
 )

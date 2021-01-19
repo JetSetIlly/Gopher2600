@@ -26,8 +26,7 @@ import (
 )
 
 func (win *winTIA) drawPlayer(num int) {
-	// get drawlist for window. we use this to draw index pointer
-	// and horizpos indicator
+	// get drawlist for window. we use this to draw index pointer and position indicator
 	dl := imgui.WindowDrawList()
 
 	lz := win.img.lz.Player0
@@ -228,7 +227,7 @@ func (win *winTIA) drawPlayer(num int) {
 	imgui.Spacing()
 
 	// horizontal positioning
-	imgui.Text(fmt.Sprintf("Last reset at pixel %03d. First copy draws at pixel %03d", lz.ResetPixel, lz.HmovedPixel))
+	imgui.Text(fmt.Sprintf("Last reset at clock %03d. First copy draws at clock %03d", lz.ResetPixel, lz.HmovedPixel))
 
 	if lz.MoreHmove {
 		imgui.SameLine()

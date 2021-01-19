@@ -211,25 +211,25 @@ func (scr *screen) resize(spec specification.Spec, topScanline int, visibleScanl
 	scr.crit.topScanline = topScanline
 	scr.crit.visibleScanlines = visibleScanlines
 
-	scr.crit.pixels = image.NewRGBA(image.Rect(0, 0, specification.HorizClksScanline, spec.ScanlinesTotal))
-	scr.crit.elementPixels = image.NewRGBA(image.Rect(0, 0, specification.HorizClksScanline, spec.ScanlinesTotal))
-	scr.crit.overlayPixels = image.NewRGBA(image.Rect(0, 0, specification.HorizClksScanline, spec.ScanlinesTotal))
-	scr.crit.phosphor = image.NewRGBA(image.Rect(0, 0, specification.HorizClksScanline, spec.ScanlinesTotal))
+	scr.crit.pixels = image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, spec.ScanlinesTotal))
+	scr.crit.elementPixels = image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, spec.ScanlinesTotal))
+	scr.crit.overlayPixels = image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, spec.ScanlinesTotal))
+	scr.crit.phosphor = image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, spec.ScanlinesTotal))
 
 	for i := range scr.crit.bufferPixels {
-		scr.crit.bufferPixels[i] = image.NewRGBA(image.Rect(0, 0, specification.HorizClksScanline, spec.ScanlinesTotal))
+		scr.crit.bufferPixels[i] = image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, spec.ScanlinesTotal))
 	}
 
 	// allocate reflection info
-	scr.crit.reflection = make([][]reflection.VideoStep, specification.HorizClksScanline)
-	for x := 0; x < specification.HorizClksScanline; x++ {
+	scr.crit.reflection = make([][]reflection.VideoStep, specification.ClksScanline)
+	for x := 0; x < specification.ClksScanline; x++ {
 		scr.crit.reflection[x] = make([]reflection.VideoStep, spec.ScanlinesTotal)
 	}
 
 	// create a cropped image from the main
 	crop := image.Rect(
-		specification.HorizClksHBlank, scr.crit.topScanline,
-		specification.HorizClksHBlank+specification.HorizClksVisible, scr.crit.topScanline+scr.crit.visibleScanlines,
+		specification.ClksHBlank, scr.crit.topScanline,
+		specification.ClksHBlank+specification.ClksVisible, scr.crit.topScanline+scr.crit.visibleScanlines,
 	)
 	scr.crit.cropPixels = scr.crit.pixels.SubImage(crop).(*image.RGBA)
 	scr.crit.cropPhosphor = scr.crit.phosphor.SubImage(crop).(*image.RGBA)
@@ -335,11 +335,11 @@ func (scr *screen) SetPixel(sig signal.SignalAttributes, current bool) error {
 	}
 
 	if current {
-		scr.crit.lastX = sig.HorizPos
+		scr.crit.lastX = sig.Clock
 		scr.crit.lastY = sig.Scanline
 	}
 
-	scr.crit.bufferPixels[scr.crit.plotIdx].SetRGBA(sig.HorizPos, sig.Scanline, col)
+	scr.crit.bufferPixels[scr.crit.plotIdx].SetRGBA(sig.Clock, sig.Scanline, col)
 
 	return nil
 }
@@ -355,7 +355,7 @@ func (scr *screen) EndRendering() error {
 func (scr *screen) Reflect(ref reflection.VideoStep) error {
 	// array indexes into the reflection 2d array are taken from the reflected
 	// TV signal.
-	x := ref.TV.HorizPos
+	x := ref.TV.Clock
 	y := ref.TV.Scanline
 
 	// store Reflection instance

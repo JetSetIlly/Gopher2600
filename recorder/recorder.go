@@ -148,7 +148,7 @@ func (rec *Recorder) RecordEvent(id ports.PortID, event ports.Event, value ports
 	// create line and write to file
 	frame := rec.vcs.TV.GetState(signal.ReqFramenum)
 	scanline := rec.vcs.TV.GetState(signal.ReqScanline)
-	horizpos := rec.vcs.TV.GetState(signal.ReqHorizPos)
+	clock := rec.vcs.TV.GetState(signal.ReqClock)
 
 	// convert value of nil type to the empty string
 	if value == nil {
@@ -161,7 +161,7 @@ func (rec *Recorder) RecordEvent(id ports.PortID, event ports.Event, value ports
 		value, fieldSep,
 		frame, fieldSep,
 		scanline, fieldSep,
-		horizpos, fieldSep,
+		clock, fieldSep,
 		rec.digest.Hash(),
 	)
 

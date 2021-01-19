@@ -181,8 +181,8 @@ func (reg *PlaybackRegression) regress(newRegression bool, output io.Writer, msg
 			// indicate failure
 			fr := tv.GetState(signal.ReqFramenum)
 			sl := tv.GetState(signal.ReqScanline)
-			hp := tv.GetState(signal.ReqHorizPos)
-			failm := fmt.Sprintf("%v: at fr=%d, sl=%d, hp=%d", err, fr, sl, hp)
+			cl := tv.GetState(signal.ReqClock)
+			failm := fmt.Sprintf("%v: at fr=%d, sl=%d, cl=%d", err, fr, sl, cl)
 			return false, failm, nil
 		} else {
 			return false, "", curated.Errorf("playback: %v", err)

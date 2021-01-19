@@ -87,7 +87,7 @@ func (sr *resizer) examine(tv *Television, sig signal.SignalAttributes) {
 	// if vblank is off at any point after than HBLANK period then tentatively
 	// extend the top/bottom of the screen. we'll commit the resize procedure
 	// in the newFrame() function when sr.counter reaches 0.
-	if tv.state.horizPos > specification.HorizClksHBlank && !sig.VBlank && sig.Pixel > 0 {
+	if tv.state.clock > specification.ClksHBlank && !sig.VBlank && sig.Pixel > 0 {
 		// comparing against current top/bottom scanline, rather than ideal
 		// top/bottom scanline of the specification. this means that a screen will
 		// never "shrink" until the specification is changed either manually or

@@ -130,11 +130,11 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (*target, error) {
 				},
 			}
 
-		case "HORIZPOS", "HP":
+		case "CLOCK", "CL":
 			trg = &target{
-				label: "Horiz Pos",
+				label: "Clock",
 				currentValue: func() targetValue {
-					return dbg.VCS.TV.GetState(signal.ReqHorizPos)
+					return dbg.VCS.TV.GetState(signal.ReqClock)
 				},
 			}
 

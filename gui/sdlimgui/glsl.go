@@ -351,7 +351,7 @@ func (rnd *glsl) setOptions(textureID uint32) {
 		cursorY := rnd.img.screen.crit.lastY
 
 		if rnd.img.wm.dbgScr.cropped {
-			gl.Uniform1f(rnd.attribLastX, float32(cursorX-specification.HorizClksHBlank)*horizScaling)
+			gl.Uniform1f(rnd.attribLastX, float32(cursorX-specification.ClksHBlank)*horizScaling)
 		} else {
 			gl.Uniform1f(rnd.attribLastX, float32(cursorX)*horizScaling)
 		}
@@ -371,7 +371,7 @@ func (rnd *glsl) setOptions(textureID uint32) {
 	}
 
 	// screen geometry
-	gl.Uniform1f(rnd.attribHblank, specification.HorizClksHBlank*horizScaling)
+	gl.Uniform1f(rnd.attribHblank, specification.ClksHBlank*horizScaling)
 	gl.Uniform1f(rnd.attribTopScanline, float32(rnd.img.screen.crit.topScanline)*vertScaling)
 	gl.Uniform1f(rnd.attribBotScanline, float32(rnd.img.screen.crit.topScanline+rnd.img.screen.crit.visibleScanlines)*vertScaling)
 

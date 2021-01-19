@@ -145,12 +145,12 @@ const (
 // resize() implements the textureRenderer interface.
 func (win *winCRTPrefs) resize() {
 	win.previewMin = image.Point{
-		X: specification.HorizClksHBlank,
+		X: specification.ClksHBlank,
 		Y: win.scr.crit.topScanline,
 	}
 
 	win.previewMax = image.Point{
-		X: specification.HorizClksScanline - previewWidth,
+		X: specification.ClksScanline - previewWidth,
 		Y: win.scr.crit.topScanline + win.scr.crit.visibleScanlines - previewHeight,
 	}
 

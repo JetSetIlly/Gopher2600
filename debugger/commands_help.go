@@ -396,7 +396,7 @@ target. A target is a part of the emulation hardware that can be interegated
 about its state. Current targets are:
 
 	the CPU registers (PC, A, X, Y and SP)
-	the TV state (FRAMENUM, SCANLINE, HORIZPOS)
+	the TV state (FRAMENUM, SCANLINE, CLOCK)
 	cartidge BANK
 	CPU result (RESULT OPERATOR, RESULT EFFECT, RESULT PAGEFAULT, RESULT BUG)
 
@@ -420,7 +420,7 @@ target has been specified with an abbreviation. Acceptable abbreviations are:
 
 	FRAMENUM -> FRAME, FR
 	SCANLINE -> SL
-	HORIZPOS -> HP
+	CLOCK -> CL
 
 Resuming execution after a halt will suppress all currently matching breaks
 until the conditions change and then match again. In the above example,

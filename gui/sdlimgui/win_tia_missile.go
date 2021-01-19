@@ -163,7 +163,7 @@ func (win *winTIA) drawMissile(missile int) {
 
 	// horizontal positioning
 	imgui.BeginGroup()
-	imgui.Text(fmt.Sprintf("Last reset at pixel %03d. First copy draws at pixel %03d", lz.ResetPixel, lz.HmovedPixel))
+	imgui.Text(fmt.Sprintf("Last reset at clock %03d. First copy draws at clock %03d", lz.ResetPixel, lz.HmovedPixel))
 	if lz.MoreHmove {
 		imgui.SameLine()
 		imgui.Text("[currently moving]")

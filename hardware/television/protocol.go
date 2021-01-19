@@ -70,7 +70,7 @@ type PixelRenderer interface {
 	// things to consider:
 	//
 	// o the x argument is measured from zero so renderers should decide how to
-	//	handle pixels of during the HBLANK (x < ClocksPerHBLANK)
+	//	handle pixels of during the HBLANK (x < ClksHBlank)
 	//
 	// o the y argument is also measured from zero but because VBLANK can be
 	//	turned on at any time there's no easy test. the VBLANK flag is sent to
@@ -134,7 +134,7 @@ type ReflectionSynchronising interface {
 const MaxScanlinesAbsolute = 400
 
 // the number of entries in signal history.
-const MaxSignalHistory = specification.HorizClksScanline * MaxScanlinesAbsolute
+const MaxSignalHistory = specification.ClksScanline * MaxScanlinesAbsolute
 
 // VCSReturnChannel is used to send information from the TV back to the parent
 // console. Named because I think of it as being similar to the Audio Return

@@ -34,7 +34,7 @@
 // television should be behaving.
 //
 // Note that the television implementation no longer attempts to report the
-// same frame/scanline/horizpos information as Stella. Early versions of the
+// same frame/scanline/clock information as Stella. Early versions of the
 // implementation did because it facilitated A/B testing but since we're
 // now confident that the TIA emulation is correct the need to keep in "sync"
 // with Stella is no longer required.

@@ -66,7 +66,18 @@ func (win *winCoProcLastExecution) draw() {
 	if itr.Count == 0 {
 		imgui.Text("Coprocessor has not yet executed.")
 	} else {
-		imgui.Text(itr.Details)
+		imgui.Text("Frame:")
+		imgui.SameLine()
+		imgui.Text(fmt.Sprintf("%-4d", itr.Details.Frame))
+		imgui.SameLineV(0, 15)
+		imgui.Text("Scanline:")
+		imgui.SameLine()
+		imgui.Text(fmt.Sprintf("%-3d", itr.Details.Scanline))
+		imgui.SameLineV(0, 15)
+		imgui.Text("Clock:")
+		imgui.SameLine()
+		imgui.Text(fmt.Sprintf("%-3d", itr.Details.Clock))
+
 		imguiSeparator()
 	}
 

@@ -241,7 +241,7 @@ func (bp breakpoints) list() {
 // Also, the & symbol can be placed before the target/value combinations.
 // A sort of Polish prefix notation.
 //
-//	& SL 100 HP 0 X 10
+//	& SL 100 CL 0 X 10
 //
 // !!TODO: simplify breakpoints parser to match help description.
 func (bp *breakpoints) parseCommand(tokens *commandline.Tokens) error {

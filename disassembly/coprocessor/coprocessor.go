@@ -21,6 +21,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
+	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 )
 
 // Coprocessor is used to handle the disassembly of instructions from an
@@ -29,8 +30,14 @@ type Coprocessor struct {
 	crit sync.Mutex
 	vcs  *hardware.VCS
 
-	lastExecutionTV string
-	lastExecution   []mapper.CartCoProcDisasmEntry
+	lastExecution        []mapper.CartCoProcDisasmEntry
+	lastExecutionDetails LastExecutionDetails
+}
+
+type LastExecutionDetails struct {
+	Frame    int
+	Scanline int
+	Clock    int
 }
 
 // Add returns a new Coprocessor instance if cartridge implements the
@@ -53,7 +60,9 @@ func Add(vcs *hardware.VCS, cart *cartridge.Cartridge) *Coprocessor {
 func (cop *Coprocessor) Reset() {
 	cop.crit.Lock()
 	defer cop.crit.Unlock()
-	cop.lastExecutionTV = cop.vcs.TV.String()
+	cop.lastExecutionDetails.Frame = cop.vcs.TV.GetState(signal.ReqFramenum)
+	cop.lastExecutionDetails.Scanline = cop.vcs.TV.GetState(signal.ReqScanline)
+	cop.lastExecutionDetails.Clock = cop.vcs.TV.GetState(signal.ReqClock)
 	cop.lastExecution = cop.lastExecution[:0]
 }
 
