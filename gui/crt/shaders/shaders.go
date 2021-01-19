@@ -229,13 +229,13 @@ void debugscr() {
 
 	// if the entire frame is being shown then plot the screen guides
 	if (IsCropped == False) {
-		if (isNearEqual(coords.x, hblank, pixelX) ||
-		   isNearEqual(coords.y, topScanline, pixelY) ||
-		   isNearEqual(coords.y, botScanline, pixelY)) {
-			Out_Color.r = 1.0;
-			Out_Color.g = 1.0;
+		if (isNearEqual(coords.x, hblank-pixelX, pixelX) ||
+		   isNearEqual(coords.y, topScanline-pixelY, pixelY) ||
+		   isNearEqual(coords.y, botScanline+pixelY, pixelY)) {
+			Out_Color.r = 0.5;
+			Out_Color.g = 0.5;
 			Out_Color.b = 1.0;
-			Out_Color.a = 0.2;
+			Out_Color.a = 0.1;
 			return;
 		}
 	}
