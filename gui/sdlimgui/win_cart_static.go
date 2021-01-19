@@ -62,7 +62,7 @@ func (win *winCartStatic) draw() {
 	// safe to get StaticData from.
 	comp := win.img.lz.Rewind.Comparison.Mem.Cart.GetStaticBus().GetStatic()
 
-	imgui.SetNextWindowPosV(imgui.Vec2{469, 285}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
+	imgui.SetNextWindowPosV(imgui.Vec2{117, 248}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
 	imgui.SetNextWindowSizeV(imgui.Vec2{394, 356}, imgui.ConditionFirstUseEver)
 
 	title := fmt.Sprintf("%s %s", win.img.lz.Cart.ID, winCartStaticID)

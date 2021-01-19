@@ -61,7 +61,7 @@ func (win *winCartTape) draw() {
 		return
 	}
 
-	imgui.SetNextWindowPosV(imgui.Vec2{633, 358}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
+	imgui.SetNextWindowPosV(imgui.Vec2{539, 168}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
 
 	title := fmt.Sprintf("%s %s", win.img.lz.Cart.ID, winCartTapeID)
 	imgui.BeginV(title, &win.open, imgui.WindowFlagsAlwaysAutoResize)

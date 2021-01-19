@@ -3,7 +3,7 @@
 `Gopher2600` is an emulator for the Atari 2600 written in the Go language. The accuracy of the emulation is very high and the 6507, TIA and RIOT chips are well represented. The key features of the emulator:
 
 * [Support for many of the known cartridge formats](#supported-cartridge-formats)
-* Emulation of the ARM7TDMI as found in the Harmony cartridge
+* Emulation of the [ARM7TDMI](#arm7tdmi-emulation) as found in the `Harmony` cartridge
 * [Gameplay recording and playback](#recording-gameplay)
 * Support for (and auto-detection of) [keypad,paddle and joystick](#hand-controllers)
 * Network access through [PlusROM](#plusrom) emulation
@@ -160,17 +160,22 @@ Keypads for both player 0 and player 1 are supported.
 
 The VCS panel is controlled through the function keys of the keyboard.
 
-* F1 Panel Select
-* F2 Panel Reset
-* F3 Colour Toggle
-* F4 Player 0 Pro Toggle
-* F5 Player 0 Pro Toggle
+* `F1` Panel Select
+* `F2` Panel Reset
+* `F3` Colour Toggle
+* `F4` Player 0 Pro Toggle
+* `F5` Player 0 Pro Toggle
 
 In playmode, the additional keys are available:
 
-* F10 Show CRT Preferences window
-* F11 Toggle Fullscreen
-* F12 Show FPS Indicator
+* `F10` Show CRT Preferences window
+* `F11` Toggle Fullscreen
+* `F12` Show FPS Indicator
+
+In the deugger, the additional keys are available:
+
+* `ESC` toggle mouse capture for debugging TV screen
+* ` (backtick) start/stop emulation
 
 ## Debugger
 
@@ -213,7 +218,7 @@ Below the menu-bar are the debugging windows. In this screenshot we can see:
 * The `TIA` window details the six graphical parts of the VCS's graphics chip.
 	* The state of the `TIA` can be changed manually but note that the changes will not be retained when the emulation next updates that part of the TIA. This will likely change in future versions of the program.
 
-Note that much of the information presented in the windows is editable in-place. For example, the contents of the CPU's PC register can be edited via the window. As in all areas of this project, the user is encouraged to experiement.
+Note that much of the information presented in the windows is editable in-place. For example, the contents of the CPU's PC register can be edited via the window. As in all areas of this project, the user is encouraged to experiment.
 
 #### Debugger Terminal
 
@@ -386,6 +391,36 @@ preferences window or through the [terminal](#debugger-terminal) with the `PLUSR
 backwards past a network event 'boundary'. This to prevent resending of already
 sent network data.
 
+## ARM7TDMI Emulation
+
+`Goperh2600` emulates the ARM7TDMI CPU that is found in the `Harmony`
+cartridge. The presence of the CPU allows for highly flexible coprocessing.
+
+Currently, processing of ARM7 data is considered to be instantaneous upon
+request. That is, from the perspective of the VCS is requires zero time.
+Clearly, this is impossible and not correct with respect to the physical
+hardware but it doesn't seem to cause any issues with the currently availabl
+ROMs. A comment from Darrel Spice Jr on this topic encouraged me to
+adopt and accept the validity of this approach.
+
+<img src=".screenshots/twitter_spicejr.png" width="300" alt="twitter comment from Darrell Spice Jr"/> 
+
+Only the Thumb instruction set is emulated. While the Harmony itself sometimes
+executes in full ARM mode it is not significant enough for it to be emulated.
+It is far easier (for the time being) for the emulator to reimplement the ARM
+mode program in the host language (ie. Go).
+
+Debugging support for the ARM7TDMI is rudimentary. Currently, a single "last
+execution" window is available. This shows the disassembly of the most recent
+execution of the ARM program. The window is available via the `ARM7TDMI` menu
+which will appear in the menubar if the coprocessor is present.
+
+<img src=".screenshots/arm_disasm.png" width="300" alt="ARM7 last execution
+window"/> 
+
+Note the `Goto` button. This is a [rewind](#rewind) shortcut that takes the emulation to
+the point where the ARM program last executed.
+
 ## Recording Gameplay
 
 `Gopher2600` can record all user input and playback for future viewing. This is a very efficient way
@@ -500,7 +535,7 @@ Modern formats supported:
 * CDF (including CDFJ)
 
 The last two formats often make use of the `ARM7TDMI` coprocessor as found in
-the `Harmony` cartridge and is fully supported by `Gopher2600`.
+the `Harmony` cartridge and are fully supported by `Gopher2600`.
 
 Missing Formats:
 
