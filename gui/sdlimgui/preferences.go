@@ -44,6 +44,9 @@ type preferences struct {
 func newDebugPreferences(img *SdlImgui) (*preferences, error) {
 	p := &preferences{img: img}
 
+	// defaults
+	p.openOnError.Set(true)
+
 	// setup preferences
 	pth, err := paths.ResourcePath("", prefs.DefaultPrefsFile)
 	if err != nil {

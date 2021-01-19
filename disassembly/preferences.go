@@ -42,10 +42,12 @@ func (p *Preferences) String() string {
 
 // newPreferences is the preferred method of initialisation for the Preferences type.
 func newPreferences(dsm *Disassembly) (*Preferences, error) {
-	p := &Preferences{
-		dsm:          dsm,
-		mirrorOrigin: memorymap.OriginCart,
-	}
+	p := &Preferences{dsm: dsm}
+
+	// set defaults
+	p.FxxxMirror.Set(true)
+	p.Symbols.Set(true)
+	p.mirrorOrigin = memorymap.OriginCartFxxxMirror
 
 	// save server using the prefs package
 	pth, err := paths.ResourcePath("", prefs.DefaultPrefsFile)

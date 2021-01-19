@@ -55,6 +55,10 @@ func (win *winCoProcLastExecution) draw() {
 		return
 	}
 
+	if !win.img.lz.CoProc.HasCoProcBus || win.img.lz.Dbg.Disasm.Coprocessor == nil {
+		return
+	}
+
 	imgui.SetNextWindowPosV(imgui.Vec2{465, 285}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
 	imgui.SetNextWindowSizeV(imgui.Vec2{353, 466}, imgui.ConditionFirstUseEver)
 

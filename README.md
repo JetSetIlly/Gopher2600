@@ -220,6 +220,8 @@ Below the menu-bar are the debugging windows. In this screenshot we can see:
 
 Note that much of the information presented in the windows is editable in-place. For example, the contents of the CPU's PC register can be edited via the window. As in all areas of this project, the user is encouraged to experiment.
 
+A video of the debugger in action can be found [here](https://www.youtube.com/watch?v=3vLyRw8iVCA).
+
 #### Debugger Terminal
 
 As an alternative to GUI interaction the debugger can also be controlled through a terminal. This is available through the `terminal` window. The rest of this section describes the operation of the terminal in detail.
