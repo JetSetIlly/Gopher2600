@@ -63,6 +63,15 @@ func (win *winCoProcLastExecution) draw() {
 
 	itr := win.img.lz.Dbg.Disasm.Coprocessor.NewIteration()
 
+	if itr.Count == 0 {
+		imgui.Text("Coprocessor has not yet executed.")
+	} else {
+		imgui.Text(itr.Details)
+		imguiSeparator()
+	}
+
+	imgui.BeginChildV("scrollable", imgui.Vec2{X: 0, Y: imguiRemainingWinHeight()}, false, 0)
+
 	// only draw elements that will be visible
 	var clipper imgui.ListClipper
 	clipper.Begin(itr.Count)
@@ -97,6 +106,8 @@ func (win *winCoProcLastExecution) draw() {
 			}
 		}
 	}
+
+	imgui.EndChild()
 
 	imgui.End()
 }

@@ -179,7 +179,7 @@ func NewDebugger(tv *television.Television, scr gui.GUI, term terminal.Terminal,
 	}
 
 	// create a new disassembly instance
-	dbg.Disasm, err = disassembly.NewDisassembly()
+	dbg.Disasm, err = disassembly.NewDisassembly(dbg.VCS)
 	if err != nil {
 		return nil, curated.Errorf("debugger: %v", err)
 	}

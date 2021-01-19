@@ -21,6 +21,7 @@ import (
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/disassembly/coprocessor"
+	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/cpu"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/execution"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge"
@@ -32,6 +33,9 @@ import (
 // Disassembly represents the annotated disassembly of a 6507 binary.
 type Disassembly struct {
 	Prefs *Preferences
+
+	// reference to running hardware
+	vcs *hardware.VCS
 
 	// the cartridge to which the disassembly refers
 	cart *cartridge.Cartridge
@@ -59,8 +63,8 @@ type Disassembly struct {
 	crit sync.Mutex
 }
 
-func NewDisassembly() (*Disassembly, error) {
-	dsm := &Disassembly{}
+func NewDisassembly(vcs *hardware.VCS) (*Disassembly, error) {
+	dsm := &Disassembly{vcs: vcs}
 
 	var err error
 
@@ -76,7 +80,7 @@ func NewDisassembly() (*Disassembly, error) {
 // from the supplied cartridge filename. Useful for one-shot disassemblies,
 // like the gopher2600 "disasm" mode.
 func FromCartridge(cartload cartridgeloader.Loader) (*Disassembly, error) {
-	dsm, err := NewDisassembly()
+	dsm, err := NewDisassembly(nil)
 	if err != nil {
 		return nil, err
 	}
@@ -148,7 +152,7 @@ func (dsm *Disassembly) FromMemory(cart *cartridge.Cartridge, symbols *symbols.S
 	}
 
 	// try added coprocessor disasm support
-	dsm.Coprocessor = coprocessor.Add(dsm.cart)
+	dsm.Coprocessor = coprocessor.Add(dsm.vcs, dsm.cart)
 
 	return nil
 }

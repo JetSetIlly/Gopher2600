@@ -24,6 +24,8 @@ type Iterate struct {
 	// goroutine us at any time
 	lastExecution []mapper.CartCoProcDisasmEntry
 
+	Details string
+
 	// number of entries in the iterations
 	Count int
 
@@ -43,6 +45,7 @@ func (cop *Coprocessor) NewIteration() *Iterate {
 	return &Iterate{
 		lastExecution: lastExecution,
 		Count:         len(lastExecution),
+		Details:       cop.lastExecutionTV,
 	}
 }
 
