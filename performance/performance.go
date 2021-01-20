@@ -28,6 +28,9 @@ import (
 	"github.com/jetsetilly/gopher2600/setup"
 )
 
+// sentinal error returned by Run() loop.
+const timedOut = "timed out"
+
 // Check is a very rough and ready calculation of the emulator's performance.
 func Check(output io.Writer, profile Profile, tv *television.Television, runTime string, cartload cartridgeloader.Loader) error {
 	var err error
@@ -75,7 +78,7 @@ func Check(output io.Writer, profile Profile, tv *television.Television, runTime
 		}()
 
 		// run until specified time elapses
-		err = vcs.Run(func() (bool, error) {
+		err = vcs.Run(func() error {
 			for {
 				select {
 				case v := <-timerChan:
@@ -83,28 +86,25 @@ func Check(output io.Writer, profile Profile, tv *television.Television, runTime
 					// period has finished, return false to cause vcs.Run() to
 					// return
 					if v {
-						return false, nil
+						return curated.Errorf(timedOut)
 					}
 
 					// timerChan has returned false so start measurement of
 					// performance by noting the current television frame
 					startFrame = tv.GetState(signal.ReqFramenum)
 				default:
-					return true, nil
+					return nil
 				}
 			}
 		})
-		if err != nil {
-			return curated.Errorf("performance; %v", err)
-		}
-		return nil
+		return err
 	}
 
 	// launch runner directly or through the CPU profiler, depending on
 	// supplied arguments
 	err = RunProfiler(profile, "performance", runner)
-	if err != nil {
-		return curated.Errorf("performance; %v", err)
+	if err != nil && !curated.Is(err, timedOut) {
+		return curated.Errorf("performance: %v", err)
 	}
 
 	// get ending frame number
@@ -115,5 +115,5 @@ func Check(output io.Writer, profile Profile, tv *television.Television, runTime
 	fps, accuracy := CalcFPS(tv, numFrames, duration.Seconds())
 	output.Write([]byte(fmt.Sprintf("%.2f fps (%d frames in %.2f seconds) %.1f%%\n", fps, numFrames, duration.Seconds(), accuracy)))
 
-	return err
+	return nil
 }

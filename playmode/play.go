@@ -251,6 +251,11 @@ func Play(tv *television.Television, scr gui.GUI, newRecording bool, cartload ca
 			// message and return as normal
 			return nil
 		}
+		if curated.Has(err, quitEvent) {
+			// quitEvent is okay and is to be expected. swallow the error
+			// message and return as normal
+			return nil
+		}
 		return curated.Errorf("playmode: %v", err)
 	}
 

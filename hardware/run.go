@@ -27,11 +27,11 @@ const continueCheckFreq = 100
 // Run sets the emulation running as quickly as possible. continuteCheck()
 // should return false when an external event (eg. a GUI event) indicates that
 // the emulation should stop.
-func (vcs *VCS) Run(continueCheck func() (bool, error)) error {
+func (vcs *VCS) Run(continueCheck func() error) error {
 	var err error
 
 	if continueCheck == nil {
-		continueCheck = func() (bool, error) { return true, nil }
+		continueCheck = func() error { return nil }
 	}
 
 	// see the equivalient videoCycle() in the VCS.Step() function for an
@@ -71,7 +71,8 @@ func (vcs *VCS) Run(continueCheck func() (bool, error)) error {
 		// only call continue check every N iterations
 		contCt++
 		if contCt%continueCheckFreq == 0 {
-			cont, err = continueCheck()
+			err = continueCheck()
+			cont = err == nil
 			contCt = 0
 		}
 	}

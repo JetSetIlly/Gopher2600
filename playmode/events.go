@@ -16,6 +16,9 @@
 package playmode
 
 import (
+	"fmt"
+
+	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
@@ -203,28 +206,31 @@ func KeyboardEventHandler(ev gui.EventKeyboard, vcs *hardware.VCS) (bool, error)
 	return handled, err
 }
 
-func (pl *playmode) guiEventHandler(ev gui.Event) (bool, error) {
+// sentinal error returned when GUI detects a quit event.
+const quitEvent = "GUI Quit Event"
+
+func (pl *playmode) guiEventHandler(ev gui.Event) error {
 	switch ev := ev.(type) {
 	case gui.EventQuit:
-		return false, nil
+		return curated.Errorf(quitEvent)
 	case gui.EventKeyboard:
 		_, err := KeyboardEventHandler(ev, pl.vcs)
-		return err == nil, err
+		return err
 	case gui.EventMouseButton:
 		_, err := MouseButtonEventHandler(ev, pl.vcs, pl.scr)
-		return err == nil, err
+		return err
 	case gui.EventMouseMotion:
 		_, err := MouseMotionEventHandler(ev, pl.vcs)
-		return err == nil, err
+		return err
 	}
 
-	return true, nil
+	return nil
 }
 
-func (pl *playmode) eventHandler() (bool, error) {
+func (pl *playmode) eventHandler() error {
 	select {
 	case <-pl.intChan:
-		return false, nil
+		return fmt.Errorf("interrupt")
 
 	case ev := <-pl.guiChan:
 		return pl.guiEventHandler(ev)
@@ -235,5 +241,5 @@ func (pl *playmode) eventHandler() (bool, error) {
 	default:
 	}
 
-	return true, nil
+	return nil
 }
