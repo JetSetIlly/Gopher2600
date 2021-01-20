@@ -45,6 +45,35 @@ type ARM struct {
 	mem  SharedMemory
 	hook CartridgeHook
 
+	// execution flags. set to false and/or error when Run() function should end
+	continueExecution bool
+	executionError    error
+
+	// ARM registers
+	status    status
+	registers [rCount]uint32
+
+	// the ARM has it's own timer which is ticked every VCS video cycle
+	timer timer
+
+	// the area the PC covers. once assigned we'll assume that the program
+	// never reads outside this area. the value is assigned on reset()
+	programMemory *[]uint8
+
+	// the amount to adjust the memory address by so that it can be used to
+	// index the programMemory array
+	programMemoryOffset uint32
+
+	// formatMap records the instruction group (or format) of the opcode at
+	// each address in the program memory
+	formatMap []func(_ uint16)
+
+	// memory for values that fall outside of the areas defined above. map
+	// access is slower than array/slice access but the potential range of
+	// scratch addresses is very large and there's no way of knowning how much
+	// space is required ahead of time. a map is good compromise.
+	scratch scratch
+
 	// interface to an optional disassembler
 	disasm mapper.CartCoProcDisassembler
 
@@ -56,18 +85,6 @@ type ARM struct {
 
 	// the next entry to send to attached disassembler
 	entry mapper.CartCoProcDisasmEntry
-
-	// the ARM has it's own timer which is ticked every VCS video cycle
-	timer timer
-
-	// memory for values that fall outside of the areas defined above. map
-	// access is slower than array/slice access but the potential range of
-	// scratch addresses is very large and there's no way of knowning how much
-	// space is required ahead of time. a map is good compromise.
-	scratch scratch
-
-	status    status
-	registers [rCount]uint32
 }
 
 // NewARM is the preferred method of initialisation for the ARM type.
@@ -77,9 +94,24 @@ func NewARM(mem SharedMemory, hook CartridgeHook) *ARM {
 		hook:    hook,
 		scratch: make(scratch),
 	}
-	arm.reset()
+	arm.Plumb()
 
 	return arm
+}
+
+func (arm *ARM) Plumb() error {
+	arm.reset()
+
+	// find program memory
+	arm.programMemory, arm.programMemoryOffset = arm.mem.MapAddress(arm.registers[rPC], false)
+	if arm.programMemory == nil {
+		return curated.Errorf("ARM: cannot find program memory")
+	}
+	arm.programMemoryOffset = arm.registers[rPC] - arm.programMemoryOffset
+
+	arm.formatMap = make([]func(_ uint16), len(*arm.programMemory))
+
+	return nil
 }
 
 // CoProcID implements the mapper.CartCoProcBus interface.
@@ -117,6 +149,10 @@ func (arm *ARM) reset() {
 	// a perculiarity of the ARM is that the PC is 2 bytes ahead of where we'll
 	// be reading from. adjust PC so that this is correct.
 	arm.registers[rPC] += 2
+
+	// reset execution flags
+	arm.continueExecution = true
+	arm.executionError = nil
 }
 
 func (arm *ARM) String() string {
@@ -137,23 +173,6 @@ func (arm *ARM) String() string {
 // Step moves the ARM on one cycle. Currently only affects the ARM timer.
 func (arm *ARM) Step(clock float32) {
 	arm.timer.step(clock)
-}
-
-// Run will continue until the ARM program encounters a switch from THUMB mode
-// to ARM mode. Note that currently, this means the ARM program may run
-// forever.
-func (arm *ARM) Run() error {
-	arm.reset()
-
-	cont := true
-	for cont {
-		var err error
-		cont, err = arm.executeInstruction()
-		if err != nil {
-			return curated.Errorf("ARM: %v", err)
-		}
-	}
-	return nil
 }
 
 func (arm *ARM) read8bit(addr uint32) uint8 {
@@ -227,158 +246,197 @@ func (arm *ARM) write32bit(addr uint32, val uint32) {
 	(*mem)[addr+3] = uint8(val >> 24)
 }
 
-func (arm *ARM) read16bitPC() uint16 {
-	pc := arm.registers[rPC] - 2
+// Run will continue until the ARM program encounters a switch from THUMB mode
+// to ARM mode. Note that currently, this means the ARM program may run
+// forever.
+func (arm *ARM) Run() error {
+	arm.reset()
 
-	var mem *[]uint8
-	mem, pc = arm.mem.MapAddress(pc, false)
-	if mem == nil {
-		return 0
-	}
+	for arm.continueExecution {
+		// set disasmLevel for the next instruction
+		if arm.disasm == nil {
+			arm.disasmLevel = disasmNone
+		} else {
+			// full disassembly unless we can find a usable entry in the disasm cache
+			arm.disasmLevel = disasmFull
 
-	arm.registers[rPC] += 2
-	return uint16((*mem)[pc]) | (uint16((*mem)[pc+1]) << 8)
-}
+			// -2 adjustment to PC register to account fo pipeline
+			pc := arm.registers[rPC] - 2
 
-func (arm *ARM) executeInstruction() (bool, error) {
-	// set disasmLevel for the next instruction
-	if arm.disasm == nil {
-		arm.disasmLevel = disasmNone
-	} else {
-		// full disassembly unless we can find a usable entry in the disasm cache
-		arm.disasmLevel = disasmFull
+			// check cache for existing disasm entry
+			if e, ok := arm.disasmCache[pc]; ok {
+				// use cached entry
+				arm.entry = e
 
-		// -2 adjustment to PC register to account fo pipeline
-		pc := arm.registers[rPC] - 2
-
-		// check cache for existing disasm entry
-		if e, ok := arm.disasmCache[pc]; ok {
-			// use cached entry
-			arm.entry = e
-
-			// disable cache if entry does not need its notes updating
-			if arm.entry.UpdateNotes {
-				arm.entry.ExecutionNotes = ""
-				arm.disasmLevel = disasmNotes
-			} else {
-				arm.disasmLevel = disasmNone
-			}
-		}
-
-		// if the entry has not been retreived from the cache make sure it is
-		// in an initial state
-		if arm.disasmLevel == disasmFull {
-			arm.entry.Address = fmt.Sprintf("%04x", pc)
-			arm.entry.Location = ""
-			arm.entry.Operator = ""
-			arm.entry.Operand = ""
-			arm.entry.ExecutionNotes = ""
-			arm.entry.UpdateNotes = false
-		}
-
-		// at the end of the execution put entry into the disasm cache and
-		// send new instruction to the registered CartCoProcDisassembler
-		defer func() {
-			// only send if operator field is not empty. the first instruction
-			// in a BL sequence will deliberately leave the Operator field
-			// blank.
-			if arm.entry.Operator != "" {
-				switch arm.disasmLevel {
-				case disasmFull:
-					// if this is not a cached entry then format operator and
-					// operand fields and insert into cache
-					arm.entry.Operator = fmt.Sprintf("%-4s", arm.entry.Operator)
-					arm.entry.Operand = fmt.Sprintf("%-16s", arm.entry.Operand)
-					arm.disasmCache[pc] = arm.entry
-				case disasmNotes:
-					// entry is cached but notes may have changed so we recache
-					// the entry
-					arm.disasmCache[pc] = arm.entry
-				case disasmNone:
+				// disable cache if entry does not need its notes updating
+				if arm.entry.UpdateNotes {
+					arm.entry.ExecutionNotes = ""
+					arm.disasmLevel = disasmNotes
+				} else {
+					arm.disasmLevel = disasmNone
 				}
-
-				// we always send the instruction to the disasm interface
-				arm.disasm.Instruction(arm.entry)
 			}
-		}()
-	}
 
-	cont := true
+			// if the entry has not been retreived from the cache make sure it is
+			// in an initial state
+			if arm.disasmLevel == disasmFull {
+				arm.entry.Address = fmt.Sprintf("%04x", pc)
+				arm.entry.Location = ""
+				arm.entry.Operator = ""
+				arm.entry.Operand = ""
+				arm.entry.ExecutionNotes = ""
+				arm.entry.UpdateNotes = false
+			}
 
-	opcode := arm.read16bitPC()
+			// at the end of the execution put entry into the disasm cache and
+			// send new instruction to the registered CartCoProcDisassembler
+			defer func() {
+				// only send if operator field is not empty. the first instruction
+				// in a BL sequence will deliberately leave the Operator field
+				// blank.
+				if arm.entry.Operator != "" {
+					switch arm.disasmLevel {
+					case disasmFull:
+						// if this is not a cached entry then format operator and
+						// operand fields and insert into cache
+						arm.entry.Operator = fmt.Sprintf("%-4s", arm.entry.Operator)
+						arm.entry.Operand = fmt.Sprintf("%-16s", arm.entry.Operand)
+						arm.disasmCache[pc] = arm.entry
+					case disasmNotes:
+						// entry is cached but notes may have changed so we recache
+						// the entry
+						arm.disasmCache[pc] = arm.entry
+					case disasmNone:
+					}
 
-	// working backwards up the table in Figure 5-1 of the ARM7TDMI Data Sheet.
-	//
-	// it would be lovely if we could arrange it so the most frequently used
-	// formats are tested first but I'm not sure we can.
-	//
-	// TODO: convince ourselves that ARM formats can be tested out of order.
-	if opcode&0xf000 == 0xf000 {
-		// format 19 - Long branch with link
-		arm.executeLongBranchWithLink(opcode)
-	} else if opcode&0xf000 == 0xe000 {
-		// format 18 - Unconditional branch
-		arm.executeUnconditionalBranch(opcode)
-	} else if opcode&0xff00 == 0xdf00 {
-		// format 17 - Software interrupt"
-		arm.executeSoftwareInterrupt(opcode)
-	} else if opcode&0xf000 == 0xd000 {
-		// format 16 - Conditional branch
-		arm.executeConditionalBranch(opcode)
-	} else if opcode&0xf000 == 0xc000 {
-		// format 15 - Multiple load/store
-		arm.executeMultipleLoadStore(opcode)
-	} else if opcode&0xf600 == 0xb400 {
-		// format 14 - Push/pop registers
-		arm.executePushPopRegisters(opcode)
-	} else if opcode&0xff00 == 0xb000 {
-		// format 13 - Add offset to stack pointer
-		arm.executeAddOffsetToSP(opcode)
-	} else if opcode&0xf000 == 0xa000 {
-		// format 12 - Load address
-		arm.executeLoadAddress(opcode)
-	} else if opcode&0xf000 == 0x9000 {
-		// format 11 - SP-relative load/store
-		arm.executeSPRelativeLoadStore(opcode)
-	} else if opcode&0xf000 == 0x8000 {
-		// format 10 - Load/store halfword
-		arm.executeLoadStoreHalfword(opcode)
-	} else if opcode&0xe000 == 0x6000 {
-		// format 9 - Load/store with immediate offset
-		arm.executeLoadStoreWithImmOffset(opcode)
-	} else if opcode&0xf200 == 0x5200 {
-		// format 8 - Load/store sign-extended byte/halfword
-		arm.executeLoadStoreSignExtendedByteHalford(opcode)
-	} else if opcode&0xf200 == 0x5000 {
-		// format 7 - Load/store with register offset
-		arm.executeLoadStoreWithRegisterOffset(opcode)
-	} else if opcode&0xf800 == 0x4800 {
-		// format 6 - PC-relative load
-		arm.executePCrelativeLoad(opcode)
-	} else if opcode&0xfc00 == 0x4400 {
-		// format 5 - Hi register operations/branch exchange
-		var err error
-		cont, err = arm.executeHiRegisterOps(opcode)
-		if err != nil {
-			return false, curated.Errorf("format 5: %v", err)
+					// we always send the instruction to the disasm interface
+					arm.disasm.Instruction(arm.entry)
+				}
+			}()
 		}
-	} else if opcode&0xfc00 == 0x4000 {
-		// format 4 - ALU operations
-		arm.executeALUoperations(opcode)
-	} else if opcode&0xe000 == 0x2000 {
-		// format 3 - Move/compare/add/subtract immediate
-		arm.executeMovCmpAddSubImm(opcode)
-	} else if opcode&0xf800 == 0x1800 {
-		// format 2 - Add/subtract
-		arm.executeAddSubtract(opcode)
-	} else if opcode&0xe000 == 0x0000 {
-		// format 1 - Move shifted register
-		arm.executeMoveShiftedRegister(opcode)
-	} else {
-		panic("undecoded instruction")
+
+		// read next instruction
+		idx := arm.registers[rPC] - 2 - arm.programMemoryOffset
+		opcode := uint16((*arm.programMemory)[idx]) | (uint16((*arm.programMemory)[idx+1]) << 8)
+		arm.registers[rPC] += 2
+
+		// run from formatMap
+		formatFunc := arm.formatMap[idx]
+		if formatFunc != nil {
+			formatFunc(opcode)
+		} else {
+			// working backwards up the table in Figure 5-1 of the ARM7TDMI Data Sheet.
+			//
+			// it would be lovely if we could arrange it so the most frequently used
+			// formats are tested first but I'm not sure we can.
+			//
+			// TODO: convince ourselves that ARM formats can be tested out of order.
+			if opcode&0xf000 == 0xf000 {
+				// format 19 - Long branch with link
+				f := arm.executeLongBranchWithLink
+				arm.formatMap[idx] = f
+				f(opcode)
+			} else if opcode&0xf000 == 0xe000 {
+				// format 18 - Unconditional branch
+				f := arm.executeUnconditionalBranch
+				arm.formatMap[idx] = f
+				f(opcode)
+			} else if opcode&0xff00 == 0xdf00 {
+				// format 17 - Software interrupt"
+				f := arm.executeSoftwareInterrupt
+				arm.formatMap[idx] = f
+				f(opcode)
+			} else if opcode&0xf000 == 0xd000 {
+				// format 16 - Conditional branch
+				f := arm.executeConditionalBranch
+				arm.formatMap[idx] = f
+				f(opcode)
+			} else if opcode&0xf000 == 0xc000 {
+				// format 15 - Multiple load/store
+				f := arm.executeMultipleLoadStore
+				arm.formatMap[idx] = f
+				f(opcode)
+			} else if opcode&0xf600 == 0xb400 {
+				// format 14 - Push/pop registers
+				f := arm.executePushPopRegisters
+				arm.formatMap[idx] = f
+				f(opcode)
+			} else if opcode&0xff00 == 0xb000 {
+				// format 13 - Add offset to stack pointer
+				f := arm.executeAddOffsetToSP
+				arm.formatMap[idx] = f
+				f(opcode)
+			} else if opcode&0xf000 == 0xa000 {
+				// format 12 - Load address
+				f := arm.executeLoadAddress
+				arm.formatMap[idx] = f
+				f(opcode)
+			} else if opcode&0xf000 == 0x9000 {
+				// format 11 - SP-relative load/store
+				f := arm.executeSPRelativeLoadStore
+				arm.formatMap[idx] = f
+				f(opcode)
+			} else if opcode&0xf000 == 0x8000 {
+				// format 10 - Load/store halfword
+				f := arm.executeLoadStoreHalfword
+				arm.formatMap[idx] = f
+				f(opcode)
+			} else if opcode&0xe000 == 0x6000 {
+				// format 9 - Load/store with immediate offset
+				f := arm.executeLoadStoreWithImmOffset
+				arm.formatMap[idx] = f
+				f(opcode)
+			} else if opcode&0xf200 == 0x5200 {
+				// format 8 - Load/store sign-extended byte/halfword
+				f := arm.executeLoadStoreSignExtendedByteHalford
+				arm.formatMap[idx] = f
+				f(opcode)
+			} else if opcode&0xf200 == 0x5000 {
+				// format 7 - Load/store with register offset
+				f := arm.executeLoadStoreWithRegisterOffset
+				arm.formatMap[idx] = f
+				f(opcode)
+			} else if opcode&0xf800 == 0x4800 {
+				// format 6 - PC-relative load
+				f := arm.executePCrelativeLoad
+				arm.formatMap[idx] = f
+				f(opcode)
+			} else if opcode&0xfc00 == 0x4400 {
+				// format 5 - Hi register operations/branch exchange
+				f := arm.executeHiRegisterOps
+				arm.formatMap[idx] = f
+				f(opcode)
+			} else if opcode&0xfc00 == 0x4000 {
+				// format 4 - ALU operations
+				f := arm.executeALUoperations
+				arm.formatMap[idx] = f
+				f(opcode)
+			} else if opcode&0xe000 == 0x2000 {
+				// format 3 - Move/compare/add/subtract immediate
+				f := arm.executeMovCmpAddSubImm
+				arm.formatMap[idx] = f
+				f(opcode)
+			} else if opcode&0xf800 == 0x1800 {
+				// format 2 - Add/subtract
+				f := arm.executeAddSubtract
+				arm.formatMap[idx] = f
+				f(opcode)
+			} else if opcode&0xe000 == 0x0000 {
+				// format 1 - Move shifted register
+				f := arm.executeMoveShiftedRegister
+				arm.formatMap[idx] = f
+				f(opcode)
+			} else {
+				panic("undecoded instruction")
+			}
+		}
 	}
 
-	return cont, nil
+	if arm.executionError != nil {
+		return curated.Errorf("ARM: %v", arm.executionError)
+	}
+
+	return nil
 }
 
 func (arm *ARM) executeMoveShiftedRegister(opcode uint16) {
@@ -834,7 +892,7 @@ func (arm *ARM) executeALUoperations(opcode uint16) {
 	}
 }
 
-func (arm *ARM) executeHiRegisterOps(opcode uint16) (bool, error) {
+func (arm *ARM) executeHiRegisterOps(opcode uint16) {
 	// format 5 - Hi register operations/branch exchange
 	op := (opcode & 0x300) >> 8
 	hi1 := opcode&0x80 == 0x80
@@ -914,7 +972,9 @@ func (arm *ARM) executeHiRegisterOps(opcode uint16) (bool, error) {
 			// switch to ARM mode. emulate function call.
 			res, err := arm.hook.ARMinterrupt(arm.registers[rPC]-4, arm.registers[2], arm.registers[3])
 			if err != nil {
-				return false, err
+				arm.continueExecution = false
+				arm.executionError = err
+				return
 			}
 
 			// update execution notes unless disasm level is disasmNone
@@ -929,7 +989,8 @@ func (arm *ARM) executeHiRegisterOps(opcode uint16) (bool, error) {
 			// we can assume that the main() function call is done and we
 			// can return to the VCS emulation.
 			if !res.InterruptServiced {
-				return false, nil
+				arm.continueExecution = false
+				return
 			}
 
 			// ARM function updates the ARM registers
@@ -943,8 +1004,6 @@ func (arm *ARM) executeHiRegisterOps(opcode uint16) (bool, error) {
 			arm.registers[rPC] = arm.registers[rLR] + 2
 		}
 	}
-
-	return true, nil
 }
 
 func (arm *ARM) executePCrelativeLoad(opcode uint16) {
