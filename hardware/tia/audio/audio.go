@@ -44,6 +44,10 @@ type Audio struct {
 	// completely independent and can be operated simultaneously [...]"
 	channel0 channel
 	channel1 channel
+
+	// state of Mix()
+	MixUpdated bool
+	MixVolume  uint8
 }
 
 // NewAudio is the preferred method of initialisation for the Audio sub-system.
@@ -68,7 +72,7 @@ func (au *Audio) String() string {
 
 // Mix the two VCS audio channels, returning a boolean indicating whether the
 // sound has been updated and a single value representing the mixed volume.
-func (au *Audio) Mix() (bool, uint8) {
+func (au *Audio) Mix() {
 	// the reference frequency for all sound produced by the TIA is 30Khz. this
 	// is the 3.58Mhz clock, which the TIA operates at, divided by 114 (see
 	// declaration). Mix() is called every video cycle and we return
@@ -76,7 +80,8 @@ func (au *Audio) Mix() (bool, uint8) {
 	// audio registers and mix the two signals
 	au.clock114++
 	if au.clock114 < 115 {
-		return false, 0
+		au.MixUpdated = false
+		return
 	}
 
 	// reset clock114
@@ -100,5 +105,6 @@ func (au *Audio) Mix() (bool, uint8) {
 	// https://atariage.com/forums/topic/249865-tia-sounding-off-in-the-digital-domain/
 	//
 	// !!TODO: simulate analogue sound generation
-	return true, (au.channel0.actualVol + au.channel1.actualVol) << 2
+	au.MixUpdated = true
+	au.MixVolume = (au.channel0.actualVol + au.channel1.actualVol) << 2
 }

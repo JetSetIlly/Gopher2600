@@ -63,33 +63,17 @@ func (vcs *VCS) Step(videoCycleCallback func() error) error {
 			return err
 		}
 
-		// one
-		_, err = vcs.TIA.Step(false)
-		if err != nil {
-			return err
-		}
-
+		vcs.TIA.Step(false)
 		err = videoCycleCallback()
 		if err != nil {
 			return err
 		}
-
-		// two
-		_, err = vcs.TIA.Step(false)
-		if err != nil {
-			return err
-		}
-
+		vcs.TIA.Step(false)
 		err = videoCycleCallback()
 		if err != nil {
 			return err
 		}
-
-		// three
-		vcs.CPU.RdyFlg, err = vcs.TIA.Step(true)
-		if err != nil {
-			return err
-		}
+		vcs.TIA.Step(true)
 		err = videoCycleCallback()
 		if err != nil {
 			return err

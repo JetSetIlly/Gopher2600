@@ -90,6 +90,10 @@ type MissileSprite struct {
 	// outputting of pixels is handled by the ball/missile enclockifier.
 	// equivalent to the ScanCounter used by the player sprites
 	Enclockifier enclockifier
+
+	// state of missile "pixel"
+	pixelOn        bool
+	pixelCollision bool
 }
 
 func newMissileSprite(label string, tv signal.TelevisionSprite, hblank *bool, hmoveLatch *bool) *MissileSprite {
@@ -419,9 +423,11 @@ func (ms *MissileSprite) setResetToPlayer(on bool) {
 	ms.ResetToPlayer = on
 }
 
-func (ms *MissileSprite) pixel() (active bool, color uint8, collision bool) {
+func (ms *MissileSprite) pixel() {
 	if !ms.Enabled {
-		return false, ms.Color, *ms.hblank && ms.Enabled
+		ms.pixelOn = false
+		ms.pixelCollision = *ms.hblank && ms.Enabled
+		return
 	}
 
 	// the missile sprite has a special state where a stuffed HMOVE clock
@@ -441,9 +447,9 @@ func (ms *MissileSprite) pixel() (active bool, color uint8, collision bool) {
 	// Cosmic Ark ROM
 
 	// whether a pixel is output also depends on whether resetToPlayer is off
-	px := !ms.ResetToPlayer && !earlyEnd && (ms.Enclockifier.Active || earlyStart)
+	ms.pixelOn = !ms.ResetToPlayer && !earlyEnd && (ms.Enclockifier.Active || earlyStart)
 
-	return px, ms.Color, px || (*ms.hblank && ms.Enabled && ms.futureStart.AboutToEnd())
+	ms.pixelCollision = ms.pixelOn || (*ms.hblank && ms.Enabled && ms.futureStart.AboutToEnd())
 }
 
 func (ms *MissileSprite) setEnable(enable bool) {

@@ -380,7 +380,7 @@ func (r *Rewind) plumbState(s *State, frame, scanline, clock int) error {
 	r.vcs.CPU.Plumb(r.vcs.Mem)
 	r.vcs.Mem.Plumb()
 	r.vcs.RIOT.Plumb(r.vcs.Mem.RIOT, r.vcs.Mem.TIA)
-	r.vcs.TIA.Plumb(r.vcs.Mem.TIA, r.vcs.RIOT.Ports)
+	r.vcs.TIA.Plumb(r.vcs.Mem.TIA, r.vcs.RIOT.Ports, r.vcs.CPU)
 
 	// tv plumbing works a bit different to other areas because we're only
 	// recording the state of the TV not the entire TV itself. We'll use a

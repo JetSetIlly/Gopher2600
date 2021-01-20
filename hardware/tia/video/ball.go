@@ -90,6 +90,10 @@ type BallSprite struct {
 
 	// outputting of pixels is handled by the ball/missile enclockifier
 	Enclockifier enclockifier
+
+	// state of player "pixel"
+	pixelOn        bool
+	pixelCollision bool
 }
 
 func newBallSprite(label string, tv signal.TelevisionSprite, hblank *bool, hmoveLatch *bool) *BallSprite {
@@ -363,9 +367,11 @@ func (bs *BallSprite) _futureResetPosition() {
 	bs.Enclockifier.start()
 }
 
-func (bs *BallSprite) pixel() (active bool, color uint8, collision bool) {
+func (bs *BallSprite) pixel() {
 	if (!bs.EnabledDelay && bs.VerticalDelay) || (!bs.Enabled && !bs.VerticalDelay) {
-		return false, bs.Color, false
+		bs.pixelOn = false
+		bs.pixelCollision = false
+		return
 	}
 
 	// earlyStart condition the same as for missile sprites. see missile
@@ -389,13 +395,13 @@ func (bs *BallSprite) pixel() (active bool, color uint8, collision bool) {
 	// px := bs.enclockifier.Active ||
 	//	(bs.lastTickFromHmove && bs.startDrawingEvent != nil && bs.startDrawingEvent.AboutToEnd())
 
-	px := !earlyEnd && (bs.Enclockifier.Active || earlyStart)
+	bs.pixelOn = !earlyEnd && (bs.Enclockifier.Active || earlyStart)
 
 	if bs.VerticalDelay {
-		return px, bs.Color, px || (*bs.hblank && bs.EnabledDelay && bs.futureStart.AboutToEnd())
+		bs.pixelCollision = bs.pixelOn || (*bs.hblank && bs.EnabledDelay && bs.futureStart.AboutToEnd())
 	}
 
-	return px, bs.Color, px || (*bs.hblank && bs.Enabled && bs.futureStart.AboutToEnd())
+	bs.pixelCollision = bs.pixelOn || (*bs.hblank && bs.Enabled && bs.futureStart.AboutToEnd())
 }
 
 // the delayed enable bit is set when the gfx register for player 1 is updated.

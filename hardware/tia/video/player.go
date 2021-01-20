@@ -136,6 +136,10 @@ type PlayerSprite struct {
 	//
 	// equivalent to the Enclockifier used by the ball and missile sprites
 	ScanCounter scanCounter
+
+	// state of player "pixel"
+	pixelOn        bool
+	pixelCollision bool
 }
 
 func newPlayerSprite(label string, tv signal.TelevisionSprite, hblank *bool, hmoveLatch *bool) *PlayerSprite {
@@ -551,7 +555,7 @@ func (ps *PlayerSprite) _futureResetPosition() {
 
 // always return player color because when in "scoremode" the playfield
 // wants to know the color of the player.
-func (ps *PlayerSprite) pixel() (active bool, color uint8, collision bool) {
+func (ps *PlayerSprite) pixel() {
 	// pick the pixel from the gfxData register
 	if ps.ScanCounter.IsActive() {
 		var offset int
@@ -563,7 +567,9 @@ func (ps *PlayerSprite) pixel() (active bool, color uint8, collision bool) {
 		}
 
 		if *ps.gfxData>>offset&0x01 == 0x01 {
-			return true, ps.Color, true
+			ps.pixelOn = true
+			ps.pixelCollision = true
+			return
 		}
 	}
 
@@ -580,12 +586,17 @@ func (ps *PlayerSprite) pixel() (active bool, color uint8, collision bool) {
 
 	if *ps.hblank && ps.ScanCounter.IsLatching() {
 		if ps.Reflected {
-			return false, ps.Color, (*ps.gfxData>>7)&0x01 == 0x01
+			ps.pixelOn = false
+			ps.pixelCollision = (*ps.gfxData>>7)&0x01 == 0x01
+			return
 		}
-		return false, ps.Color, *ps.gfxData&0x01 == 0x01
+		ps.pixelOn = false
+		ps.pixelCollision = *ps.gfxData&0x01 == 0x01
+		return
 	}
 
-	return false, ps.Color, false
+	ps.pixelOn = false
+	ps.pixelCollision = false
 }
 
 func (ps *PlayerSprite) setGfxData(data uint8) {

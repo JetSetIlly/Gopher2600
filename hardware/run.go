@@ -41,21 +41,9 @@ func (vcs *VCS) Run(continueCheck func() (bool, error)) error {
 			return err
 		}
 
-		_, err = vcs.TIA.Step(false)
-		if err != nil {
-			return err
-		}
-
-		_, err = vcs.TIA.Step(false)
-		if err != nil {
-			return err
-		}
-
-		vcs.CPU.RdyFlg, err = vcs.TIA.Step(true)
-		if err != nil {
-			return err
-		}
-
+		vcs.TIA.Step(false)
+		vcs.TIA.Step(false)
+		vcs.TIA.Step(true)
 		vcs.RIOT.Step()
 		vcs.Mem.Cart.Step(vcs.Clock)
 

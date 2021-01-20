@@ -82,7 +82,9 @@ type Video struct {
 	// to Pixel(). we use this for some small optimisations
 	spriteHasChanged    bool
 	lastPlayfieldActive bool
-	lastPixelColor      uint8
+
+	// color of Video output
+	PixelColor uint8
 
 	// some register writes require a small latching delay. they never overlap
 	// so one event is sufficient
@@ -207,32 +209,30 @@ func (vd *Video) PrepareSpritesForHMOVE() {
 // Pixel returns the color of the pixel at the current clock and also sets the
 // collision registers. It will default to returning the background color if no
 // sprite or playfield pixel is present.
-func (vd *Video) Pixel() uint8 {
-	pfa, pfc := vd.Playfield.pixel()
+func (vd *Video) Pixel() {
+	vd.Playfield.pixel()
 
 	// optimisation: if nothing has changed since last pixel then return early
 	// with the color of the previous pixel.
-	vd.OptReusePixel = !vd.spriteHasChanged && (pfa == vd.lastPlayfieldActive)
+	vd.OptReusePixel = !vd.spriteHasChanged && (vd.Playfield.colorLatch == vd.lastPlayfieldActive)
 	if vd.OptReusePixel {
 		vd.spriteHasChanged = false
-		vd.lastPlayfieldActive = pfa
-		return vd.lastPixelColor
+		return
 	}
 	vd.spriteHasChanged = false
-	vd.lastPlayfieldActive = pfa
+	vd.lastPlayfieldActive = vd.Playfield.colorLatch
 
-	bgc := vd.Playfield.BackgroundColor
-	p0a, p0c, p0k := vd.Player0.pixel()
-	p1a, p1c, p1k := vd.Player1.pixel()
-	m0a, m0c, m0k := vd.Missile0.pixel()
-	m1a, m1c, m1k := vd.Missile1.pixel()
-	bla, blc, blk := vd.Ball.pixel()
+	vd.Player0.pixel()
+	vd.Player1.pixel()
+	vd.Missile0.pixel()
+	vd.Missile1.pixel()
+	vd.Ball.pixel()
 
 	// optimisation: only check for collisions if at least one sprite thinks it
 	// might be worth doing
-	vd.OptNoCollisionCheck = !(p0k || p1k || m0k || m1k || blk)
+	vd.OptNoCollisionCheck = !(vd.Player0.pixelCollision || vd.Player1.pixelCollision || vd.Missile0.pixelCollision || vd.Missile1.pixelCollision || vd.Ball.pixelCollision)
 	if !vd.OptNoCollisionCheck {
-		vd.Collisions.tick(p0k, p1k, m0k, m1k, blk, pfa)
+		vd.Collisions.tick(vd.Player0.pixelCollision, vd.Player1.pixelCollision, vd.Missile0.pixelCollision, vd.Missile1.pixelCollision, vd.Ball.pixelCollision, vd.Playfield.colorLatch)
 	} else {
 		vd.Collisions.LastVideoCycle.reset()
 	}
@@ -256,82 +256,80 @@ func (vd *Video) Pixel() uint8 {
 	//
 	//	!!TODO: I'm still not 100% sure this is correct. check playfield priorties
 	if vd.Playfield.Priority || (vd.Playfield.Scoremode && vd.Playfield.Region == RegionLeft) {
-		if pfa { // priority 1
+		if vd.Playfield.colorLatch { // priority 1
 			if vd.Playfield.Scoremode && !vd.Playfield.Priority {
 				switch vd.Playfield.Region {
 				case RegionLeft:
-					vd.lastPixelColor = p0c
+					vd.PixelColor = vd.Player0.Color
 				case RegionRight:
-					vd.lastPixelColor = p1c
+					vd.PixelColor = vd.Player1.Color
 				}
 			} else {
-				vd.lastPixelColor = pfc
+				vd.PixelColor = vd.Playfield.color
 			}
 
 			vd.LastElement = ElementPlayfield
-		} else if bla {
-			vd.lastPixelColor = blc
+		} else if vd.Ball.pixelOn {
+			vd.PixelColor = vd.Ball.Color
 			vd.LastElement = ElementBall
-		} else if p0a { // priority 2
-			vd.lastPixelColor = p0c
+		} else if vd.Player0.pixelOn { // priority 2
+			vd.PixelColor = vd.Player0.Color
 			vd.LastElement = ElementPlayer0
-		} else if m0a {
-			vd.lastPixelColor = m0c
+		} else if vd.Missile0.pixelOn {
+			vd.PixelColor = vd.Missile0.Color
 			vd.LastElement = ElementMissile0
-		} else if p1a { // priority 3
-			vd.lastPixelColor = p1c
+		} else if vd.Player1.pixelOn { // priority 3
+			vd.PixelColor = vd.Player1.Color
 			vd.LastElement = ElementPlayer1
-		} else if m1a {
-			vd.lastPixelColor = m1c
+		} else if vd.Missile1.pixelOn {
+			vd.PixelColor = vd.Missile1.Color
 			vd.LastElement = ElementMissile1
 		} else {
-			vd.lastPixelColor = bgc
+			vd.PixelColor = vd.Playfield.BackgroundColor
 			vd.LastElement = ElementBackground
 		}
 	} else {
-		if p0a { // priority 1
-			vd.lastPixelColor = p0c
+		if vd.Player0.pixelOn { // priority 1
+			vd.PixelColor = vd.Player0.Color
 			vd.LastElement = ElementPlayer0
-		} else if m0a {
-			vd.lastPixelColor = m0c
+		} else if vd.Missile0.pixelOn {
+			vd.PixelColor = vd.Missile0.Color
 			vd.LastElement = ElementMissile0
-		} else if p1a { // priority 2
-			vd.lastPixelColor = p1c
+		} else if vd.Player1.pixelOn { // priority 2
+			vd.PixelColor = vd.Player1.Color
 			vd.LastElement = ElementPlayer1
-		} else if m1a {
-			vd.lastPixelColor = m1c
+		} else if vd.Missile1.pixelOn {
+			vd.PixelColor = vd.Missile1.Color
 			vd.LastElement = ElementMissile1
-		} else if vd.Playfield.Scoremode && (bla || pfa) {
+		} else if vd.Playfield.Scoremode && (vd.Ball.pixelOn || vd.Playfield.colorLatch) {
 			// priority 3 (scoremode without priority bit)
-			if pfa {
-				vd.lastPixelColor = pfc
+			if vd.Playfield.colorLatch {
+				vd.PixelColor = vd.Playfield.color
 				switch vd.Playfield.Region {
 				case RegionLeft:
-					vd.lastPixelColor = p0c
+					vd.PixelColor = vd.Player0.Color
 				case RegionRight:
-					vd.lastPixelColor = p1c
+					vd.PixelColor = vd.Player1.Color
 				}
 				vd.LastElement = ElementPlayfield
-			} else if bla { // priority 3
-				vd.lastPixelColor = blc
+			} else if vd.Ball.pixelOn { // priority 3
+				vd.PixelColor = vd.Ball.Color
 				vd.LastElement = ElementBall
 			}
 		} else {
 			// priority 3 (no scoremode or priority bit)
-			if bla { // priority 3
-				vd.lastPixelColor = blc
+			if vd.Ball.pixelOn { // priority 3
+				vd.PixelColor = vd.Ball.Color
 				vd.LastElement = ElementBall
-			} else if pfa {
-				vd.lastPixelColor = pfc
+			} else if vd.Playfield.colorLatch {
+				vd.PixelColor = vd.Playfield.color
 				vd.LastElement = ElementPlayfield
 			} else {
-				vd.lastPixelColor = bgc
+				vd.PixelColor = vd.Playfield.BackgroundColor
 				vd.LastElement = ElementBackground
 			}
 		}
 	}
-
-	return vd.lastPixelColor
 }
 
 // UpdatePlayfield checks TIA memory for new playfield data. Note that CTRLPF

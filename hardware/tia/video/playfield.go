@@ -61,11 +61,6 @@ type Playfield struct {
 	ReflectedData []bool
 	Data          *[]bool
 
-	// playfield output color is held for one color-clock, even if the
-	// playfield register is changed. we use the colorLatch field to decide
-	// what color to use (foreground or background)
-	colorLatch bool
-
 	// knowing what the left and right regions look like at any given time is
 	// useful for debugging. for the emulation, the Data field is sufficient.
 	LeftData  *[]bool
@@ -91,6 +86,16 @@ type Playfield struct {
 	// Idx is the index into the data field - interpreted depending on
 	// screenRegion and reflection settings
 	Idx int
+
+	// state of playfield "pixel"
+
+	// playfield output color is held for one color-clock, even if the
+	// playfield register is changed. we use the colorLatch field to decide
+	// what color to use (foreground or background)
+	colorLatch bool
+
+	// which color we're using bassed on colorLatch (saves checking every time)
+	color uint8
 }
 
 func newPlayfield(pclk *phaseclock.PhaseClock, hsync *polycounter.Polycounter) *Playfield {
@@ -178,7 +183,7 @@ func (pf *Playfield) String() string {
 
 // returns whether the foreground is active and the color to be used
 // (foreground or background).
-func (pf *Playfield) pixel() (bool, uint8) {
+func (pf *Playfield) pixel() {
 	if pf.pclk.Phi2() {
 		// RSYNC can monkey with the current hsync value unexpectedly and
 		// because of this we need an extra effort to make sure we're in the
@@ -209,7 +214,8 @@ func (pf *Playfield) pixel() (bool, uint8) {
 		switch pf.Region {
 		case RegionOffScreen:
 			pf.colorLatch = false
-			return false, pf.BackgroundColor
+			pf.color = pf.BackgroundColor
+			return
 		case RegionLeft:
 			pf.Idx = pf.hsync.Count() - 17
 		case RegionRight:
@@ -223,11 +229,12 @@ func (pf *Playfield) pixel() (bool, uint8) {
 		}
 	}
 
+	// set color according to colorLatch
 	if pf.colorLatch {
-		return true, pf.ForegroundColor
+		pf.color = pf.ForegroundColor
+	} else {
+		pf.color = pf.BackgroundColor
 	}
-
-	return false, pf.BackgroundColor
 }
 
 // called whenever playfield bits change or the screen region changes.

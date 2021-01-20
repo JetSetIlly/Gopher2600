@@ -79,7 +79,7 @@ func NewVCS(tv *television.Television) (*VCS, error) {
 	vcs.Mem = memory.NewMemory(vcs.Prefs)
 	vcs.CPU = cpu.NewCPU(vcs.Prefs, vcs.Mem)
 	vcs.RIOT = riot.NewRIOT(vcs.Prefs, vcs.Mem.RIOT, vcs.Mem.TIA)
-	vcs.TIA = tia.NewTIA(vcs.TV, vcs.Mem.TIA, vcs.RIOT.Ports)
+	vcs.TIA = tia.NewTIA(vcs.TV, vcs.Mem.TIA, vcs.RIOT.Ports, vcs.CPU)
 
 	err = vcs.RIOT.Ports.AttachPlayer(ports.Player0ID, controllers.NewAuto)
 	if err != nil {
@@ -129,7 +129,7 @@ func (vcs *VCS) Reset() error {
 	}
 
 	// easiest way of resetting the TIA is to just create new one
-	vcs.TIA = tia.NewTIA(vcs.TV, vcs.Mem.TIA, vcs.RIOT.Ports)
+	vcs.TIA = tia.NewTIA(vcs.TV, vcs.Mem.TIA, vcs.RIOT.Ports, vcs.CPU)
 
 	// other areas of the VCS are simply reset because the emulation may have
 	// altered the part of the state that we do *not* want to reset. notably,

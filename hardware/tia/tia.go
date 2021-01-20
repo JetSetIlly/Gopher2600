@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/jetsetilly/gopher2600/hardware/cpu"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/hardware/tia/audio"
@@ -57,7 +58,7 @@ type TIA struct {
 	Hblank bool
 
 	// wsync records whether the cpu is to halt until hsync resets to 000000
-	wsync bool
+	rdyFlag *bool
 
 	// HMOVE information. each sprite object also contains HOMVE information
 	// - HmoveLatch indicates whether HMOVE has been triggered this scanline.
@@ -115,13 +116,14 @@ func (tia *TIA) String() string {
 }
 
 // NewTIA creates a TIA, to be used in a VCS emulation.
-func NewTIA(tv signal.TelevisionTIA, mem bus.ChipBus, input bus.UpdateBus) *TIA {
+func NewTIA(tv signal.TelevisionTIA, mem bus.ChipBus, input bus.UpdateBus, cpu *cpu.CPU) *TIA {
 	tia := &TIA{
 		tv:      tv,
 		mem:     mem,
 		input:   input,
 		Hblank:  true,
 		HmoveCt: 0xff,
+		rdyFlag: &cpu.RdyFlg,
 	}
 
 	tia.Audio = audio.NewAudio()
@@ -143,9 +145,10 @@ func (tia *TIA) Snapshot() *TIA {
 }
 
 // Plumb the a new ChipBus into the TIA.
-func (tia *TIA) Plumb(mem bus.ChipBus, input bus.UpdateBus) {
+func (tia *TIA) Plumb(mem bus.ChipBus, input bus.UpdateBus, cpu *cpu.CPU) {
 	tia.mem = mem
 	tia.input = input
+	tia.rdyFlag = &cpu.RdyFlg
 	tia.Video.Plumb(tia.mem, &tia.pclk, &tia.hsync, &tia.Hblank, &tia.HmoveLatch)
 }
 
@@ -172,7 +175,7 @@ func (tia *TIA) UpdateTIA(data bus.ChipData) bool {
 		// CPU has indicated that it wants to wait for the beginning of the
 		// next scanline. value is reset to false when TIA reaches end of
 		// scanline
-		tia.wsync = true
+		*tia.rdyFlag = false
 		return false
 
 	case "RSYNC":
@@ -263,7 +266,7 @@ func (tia *TIA) newScanline() {
 	// "...WSYNC latch is automatically reset to zero by the
 	// leading edge of the next horizontal blank timing signal,
 	// releasing the RDY line"
-	tia.wsync = false
+	*tia.rdyFlag = true
 
 	// start HBLANK. start of new scanline for the TIA. turn hblank
 	// on
@@ -327,7 +330,7 @@ func (tia *TIA) resolveDelayedEvents() {
 
 // Step moves the state of the tia forward one video cycle returns the state of
 // the CPU's RDY flag.
-func (tia *TIA) Step(readMemory bool) (bool, error) {
+func (tia *TIA) Step(readMemory bool) {
 	// update debugging information
 	tia.videoCycles++
 
@@ -487,7 +490,7 @@ func (tia *TIA) Step(readMemory bool) (bool, error) {
 	}
 
 	// resolve video pixels
-	pixelColor := tia.Video.Pixel()
+	tia.Video.Pixel()
 	if tia.Hblank {
 		// if hblank is on then we don't sent the resolved color but the video
 		// black signal instead
@@ -498,7 +501,7 @@ func (tia *TIA) Step(readMemory bool) (bool, error) {
 		// VBLANK.
 		tia.sig.Pixel = signal.VideoBlack
 	} else {
-		tia.sig.Pixel = signal.ColorSignal(pixelColor)
+		tia.sig.Pixel = signal.ColorSignal(tia.Video.PixelColor)
 	}
 
 	if readMemory {
@@ -514,13 +517,14 @@ func (tia *TIA) Step(readMemory bool) (bool, error) {
 		_ = tia.Audio.UpdateRegisters(memoryData)
 	}
 
-	// copy audio to television signal
-	tia.sig.AudioUpdate, tia.sig.AudioData = tia.Audio.Mix()
+	// mix audio and copy values to television signal
+	tia.Audio.Mix()
+	tia.sig.AudioUpdate = tia.Audio.MixUpdated
+	tia.sig.AudioData = tia.Audio.MixVolume
 
 	// send signal to television
 	if err := tia.tv.Signal(tia.sig); err != nil {
-		return !tia.wsync, err
+		// TODO: handle error
+		return
 	}
-
-	return !tia.wsync, nil
 }
