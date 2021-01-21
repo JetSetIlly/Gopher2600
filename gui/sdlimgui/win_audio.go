@@ -27,14 +27,16 @@ type winAudio struct {
 
 	displayBuffer []float32
 	newData       chan float32
+	clearData     chan bool
 }
 
 func newWinAudio(img *SdlImgui) (window, error) {
 	win := &winAudio{
-		img:     img,
-		newData: make(chan float32, 2048),
+		img:       img,
+		newData:   make(chan float32, 2048),
+		clearData: make(chan bool, 1),
 	}
-	win.Reset()
+	win.reset()
 
 	img.tv.AddAudioMixer(win)
 
@@ -78,6 +80,8 @@ func (win *winAudio) draw() {
 		case d := <-win.newData:
 			ct++
 			win.displayBuffer = append(win.displayBuffer, d)
+		case <-win.clearData:
+			win.reset()
 		default:
 			done = true
 			win.displayBuffer = win.displayBuffer[ct:]
@@ -100,6 +104,17 @@ func (win *winAudio) EndMixing() error {
 }
 
 // Reset implements television.AudioMixer.
+//
+// Should not be called by the GUI gorountine. Use winAudio.reset() instead.
 func (win *winAudio) Reset() {
+	select {
+	case win.clearData <- true:
+	default:
+		// if we don't succeed in not sending the clear signal it's not the end
+		// of the world. the signal that has been queued will do the job for us
+	}
+}
+
+func (win *winAudio) reset() {
 	win.displayBuffer = make([]float32, 2048)
 }
