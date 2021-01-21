@@ -56,8 +56,10 @@ func (lz *LazyBreakpoints) push() {
 	s := lz.updateStart.Load().(uint16)
 	e := lz.updateEnd.Load().(uint16)
 	for i := s; i <= e; i++ {
-		e := lz.val.Dbg.HasBreak(i, b)
-		lz.breakpoints[i&memorymap.CartridgeBits].Store(e)
+		// index is counting just the cartridge bits but HasBreak() expects a
+		// real cartridge address. add the OriginCart bits to the index
+		e := lz.val.Dbg.HasBreak(i|memorymap.OriginCart, b)
+		lz.breakpoints[i].Store(e)
 	}
 }
 
@@ -66,8 +68,13 @@ func (lz *LazyBreakpoints) update() {
 
 func (lz *LazyBreakpoints) SetUpdateList(bank int, start uint16, end uint16) {
 	lz.updateForBank.Store(bank)
-	lz.updateStart.Store(start)
-	lz.updateEnd.Store(end)
+
+	// storing just the cartridge bits and not the bits that indicate the
+	// cartridge mirror. this is because it's possible for start value to
+	// numerically come after the end value, which means the for() loop above
+	// will fail early.
+	lz.updateStart.Store(start & memorymap.CartridgeBits)
+	lz.updateEnd.Store(end & memorymap.CartridgeBits)
 }
 
 // HasBreak checks to see if disassembly entry has a breakpoint.
