@@ -157,7 +157,7 @@ func (vd *Video) RSYNC(adjustment int) {
 
 // Tick moves all video elements forward one video cycle. This is the
 // conceptual equivalent of the hardware MOTCK line.
-func (vd *Video) Tick(visible, hmove bool, hmoveCt uint8) {
+func (vd *Video) Tick(isHmove bool, hmoveCt uint8) {
 	if v, ok := vd.writing.Tick(); ok {
 		switch vd.writingRegister {
 		case "PF0":
@@ -185,11 +185,11 @@ func (vd *Video) Tick(visible, hmove bool, hmoveCt uint8) {
 		}
 	}
 
-	p0 := vd.Player0.tick(visible, hmove, hmoveCt)
-	p1 := vd.Player1.tick(visible, hmove, hmoveCt)
-	m0 := vd.Missile0.tick(visible, hmove, hmoveCt, vd.Player0.triggerMissileReset())
-	m1 := vd.Missile1.tick(visible, hmove, hmoveCt, vd.Player1.triggerMissileReset())
-	bl := vd.Ball.tick(visible, hmove, hmoveCt)
+	p0 := vd.Player0.tick(isHmove, hmoveCt)
+	p1 := vd.Player1.tick(isHmove, hmoveCt)
+	m0 := vd.Missile0.tick(isHmove, hmoveCt, vd.Player0.triggerMissileReset())
+	m1 := vd.Missile1.tick(isHmove, hmoveCt, vd.Player1.triggerMissileReset())
+	bl := vd.Ball.tick(isHmove, hmoveCt)
 
 	// note that there is no Playfield.tick() function. ticking occurs in the
 	// Playfield.pixel() function

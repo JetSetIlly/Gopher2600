@@ -202,7 +202,7 @@ func (bs *BallSprite) rsync(adjustment int) {
 	}
 }
 
-func (bs *BallSprite) tick(visible, isHmove bool, hmoveCt uint8) bool {
+func (bs *BallSprite) tick(isHmove bool, hmoveCt uint8) bool {
 	// check to see if there is more movement required for this sprite
 	if isHmove {
 		bs.MoreHMOVE = bs.MoreHMOVE && compareHMOVE(hmoveCt, bs.Hmove)
@@ -211,7 +211,7 @@ func (bs *BallSprite) tick(visible, isHmove bool, hmoveCt uint8) bool {
 	bs.lastHmoveCt = hmoveCt
 
 	// early return if nothing to do
-	if !(isHmove && bs.MoreHMOVE) && !visible {
+	if !(isHmove && bs.MoreHMOVE) && *bs.hblank {
 		return false
 	}
 
@@ -220,7 +220,7 @@ func (bs *BallSprite) tick(visible, isHmove bool, hmoveCt uint8) bool {
 	bs.lastTickFromHmove = isHmove && bs.MoreHMOVE
 
 	// update hmoved pixel value
-	if !visible {
+	if *bs.hblank {
 		bs.HmovedPixel--
 
 		// adjust for screen boundary

@@ -228,7 +228,7 @@ func (ms *MissileSprite) rsync(adjustment int) {
 	}
 }
 
-func (ms *MissileSprite) tick(visible, isHmove bool, hmoveCt uint8, resetToPlayer bool) bool {
+func (ms *MissileSprite) tick(isHmove bool, hmoveCt uint8, resetToPlayer bool) bool {
 	// check to see if there is more movement required for this sprite
 	if isHmove {
 		ms.MoreHMOVE = ms.MoreHMOVE && compareHMOVE(hmoveCt, ms.Hmove)
@@ -237,7 +237,7 @@ func (ms *MissileSprite) tick(visible, isHmove bool, hmoveCt uint8, resetToPlaye
 	ms.lastHmoveCt = hmoveCt
 
 	// early return if nothing to do
-	if !(isHmove && ms.MoreHMOVE) && !visible {
+	if !(isHmove && ms.MoreHMOVE) && *ms.hblank {
 		return false
 	}
 
@@ -261,7 +261,7 @@ func (ms *MissileSprite) tick(visible, isHmove bool, hmoveCt uint8, resetToPlaye
 	ms.lastTickFromHmove = isHmove && ms.MoreHMOVE
 
 	// update hmoved pixel value
-	if !visible {
+	if *ms.hblank {
 		ms.HmovedPixel--
 
 		// adjust for screen boundary

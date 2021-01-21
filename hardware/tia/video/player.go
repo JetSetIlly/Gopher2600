@@ -298,7 +298,7 @@ func (ps *PlayerSprite) rsync(adjustment int) {
 }
 
 // tick moves the sprite counters along (both position and graphics scan).
-func (ps *PlayerSprite) tick(visible, isHmove bool, hmoveCt uint8) bool {
+func (ps *PlayerSprite) tick(isHmove bool, hmoveCt uint8) bool {
 	// check to see if there is more movement required for this sprite
 	if isHmove {
 		ps.MoreHMOVE = ps.MoreHMOVE && compareHMOVE(hmoveCt, ps.Hmove)
@@ -307,12 +307,12 @@ func (ps *PlayerSprite) tick(visible, isHmove bool, hmoveCt uint8) bool {
 	ps.lastHmoveCt = hmoveCt
 
 	// early return if nothing to do
-	if !(isHmove && ps.MoreHMOVE) && !visible {
+	if !(isHmove && ps.MoreHMOVE) && *ps.hblank {
 		return false
 	}
 
 	// update hmoved pixel value
-	if !visible {
+	if *ps.hblank {
 		ps.HmovedPixel--
 
 		// adjust for screen boundary

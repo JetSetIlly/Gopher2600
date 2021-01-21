@@ -94,6 +94,10 @@ type TIA struct {
 	// futureHsyncEvent field is used to differentiate.
 	futureHsync      delay.Event
 	futureHsyncEvent string
+
+	// whether there are any delay.Events outstanding. if pendingEvents is zero
+	// then we don't need to call resolveDelayedEvents()
+	pendingEvents int
 }
 
 // Label returns an identifying label for the TIA.
@@ -165,6 +169,7 @@ func (tia *TIA) UpdateTIA(data bus.ChipData) bool {
 		// homebrew Donkey Kong shows the need for a delay of at least one
 		// cycle for VBLANK. see area just before score box on play screen
 		tia.futureVblank.Schedule(1, data.Value)
+		tia.pendingEvents++
 
 		// the VBLANK register also affects the input sub-system
 		tia.input.Update(data)
@@ -204,6 +209,7 @@ func (tia *TIA) UpdateTIA(data bus.ChipData) bool {
 
 		tia.futureRsyncAlign.Schedule(3, 0)
 		tia.futureRsyncReset.Schedule(7, 0)
+		tia.pendingEvents += 2
 
 		// I've not test what happens if we reach hsync naturally while the
 		// above RSYNC delay is active.
@@ -237,6 +243,7 @@ func (tia *TIA) UpdateTIA(data bus.ChipData) bool {
 
 		tia.futureHmoveLatch.Schedule(delayDuration, 0)
 		tia.FutureHmove.Schedule(delayDuration+3, 0)
+		tia.pendingEvents += 2
 
 		// from TIA_HW_Notes:
 		//
@@ -280,12 +287,14 @@ func (tia *TIA) newScanline() {
 }
 
 func (tia *TIA) resolveDelayedEvents() {
+	// actual vblank signal
 	if v, ok := tia.futureVblank.Tick(); ok {
-		// actual vblank signal
+		tia.pendingEvents--
 		tia.sig.VBlank = v&0x02 == 0x02
 	}
 
 	if _, ok := tia.futureRsyncAlign.Tick(); ok {
+		tia.pendingEvents--
 		tia.newScanline()
 
 		// adjust video elements by the number of visible pixels that have
@@ -298,20 +307,24 @@ func (tia *TIA) resolveDelayedEvents() {
 	}
 
 	if _, ok := tia.futureRsyncReset.Tick(); ok {
+		tia.pendingEvents--
 		tia.hsync.Reset()
 		tia.pclk.Reset()
 	}
 
 	if _, ok := tia.futureHmoveLatch.Tick(); ok {
+		tia.pendingEvents--
 		tia.HmoveLatch = true
 	}
 
 	if _, ok := tia.FutureHmove.Tick(); ok {
+		tia.pendingEvents--
 		tia.Video.PrepareSpritesForHMOVE()
 		tia.HmoveCt = 15
 	}
 
 	if _, ok := tia.futureHsync.Tick(); ok {
+		tia.pendingEvents--
 		switch tia.futureHsyncEvent {
 		case "SHB":
 			tia.newScanline()
@@ -353,7 +366,9 @@ func (tia *TIA) Step(readMemory bool) {
 	tia.pclk.Tick()
 
 	// tick delayed events and run payload if appropriate
-	tia.resolveDelayedEvents()
+	if tia.pendingEvents > 0 {
+		tia.resolveDelayedEvents()
+	}
 
 	// tick hsync counter when the Phi2 clock is raised. from TIA_HW_Notes.txt:
 	//
@@ -402,6 +417,7 @@ func (tia *TIA) Step(readMemory bool) {
 			if !tia.futureRsyncAlign.IsActive() {
 				tia.futureHsyncEvent = "SHB"
 				tia.futureHsync.Schedule(hsyncDelay, 0)
+				tia.pendingEvents++
 			}
 
 		case 4: // [SHS]
@@ -416,11 +432,13 @@ func (tia *TIA) Step(readMemory bool) {
 			// reset HSYNC
 			tia.futureHsyncEvent = "RHS"
 			tia.futureHsync.Schedule(hsyncDelay, 0)
+			tia.pendingEvents++
 
 		case 12: // [RCB]
 			// reset color burst
 			tia.futureHsyncEvent = "RCB"
 			tia.futureHsync.Schedule(hsyncDelay, 0)
+			tia.pendingEvents++
 
 		// the two cases below handle the turning off of the hblank flag. from
 		// TIA_HW_Notes.txt:
@@ -444,6 +462,7 @@ func (tia *TIA) Step(readMemory bool) {
 			if !tia.HmoveLatch {
 				tia.futureHsyncEvent = "RHB"
 				tia.futureHsync.Schedule(hsyncDelay, 0)
+				tia.pendingEvents++
 			}
 
 		// ... and "two counts of the HSync Counter" later ...
@@ -453,6 +472,7 @@ func (tia *TIA) Step(readMemory bool) {
 			if tia.HmoveLatch {
 				tia.futureHsyncEvent = "LRHB"
 				tia.futureHsync.Schedule(hsyncDelay, 0)
+				tia.pendingEvents++
 			}
 		}
 	}
@@ -480,7 +500,7 @@ func (tia *TIA) Step(readMemory bool) {
 	// we always call TickSprites but whether or not (and how) the tick
 	// actually occurs is left for the sprite object to decide based on the
 	// arguments passed here.
-	tia.Video.Tick(!tia.Hblank, isHmove, tia.HmoveCt)
+	tia.Video.Tick(isHmove, tia.HmoveCt)
 
 	// update hmove counter value
 	if isHmove {
