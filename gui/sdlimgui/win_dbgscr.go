@@ -75,8 +75,7 @@ type winDbgScr struct {
 	// the window, we use contentDim (the area inside the window) to figure out
 	// the scaling value. when resizing numerically (with the getScale()
 	// function) on the other hand, we scale the entire window accordingly
-	winDim          imgui.Vec2
-	contentDim      imgui.Vec2
+	screenDim       imgui.Vec2
 	specComboDim    imgui.Vec2
 	overlayComboDim imgui.Vec2
 
@@ -156,15 +155,6 @@ func (win *winDbgScr) draw() {
 		h = win.getScaledHeight(false)
 	}
 
-	imgui.SetNextWindowPosV(imgui.Vec2{8, 28}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
-
-	if win.rescaled {
-		imgui.SetNextWindowSize(win.winDim)
-		win.rescaled = false
-	} else {
-		imgui.SetNextWindowSizeV(imgui.Vec2{611, 470}, imgui.ConditionFirstUseEver)
-	}
-
 	// if isCaptured flag is set then change the title and border colors of the
 	// TV Screen window.
 	if win.isCaptured {
@@ -173,18 +163,25 @@ func (win *winDbgScr) draw() {
 		defer imgui.PopStyleColorV(2)
 	}
 
+	imgui.SetNextWindowPosV(imgui.Vec2{8, 28}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
+	imgui.SetNextWindowSizeV(imgui.Vec2{611, 470}, imgui.ConditionFirstUseEver)
+
 	// we don't want to ever show scrollbars
 	imgui.BeginV(win.id(), &win.open, imgui.WindowFlagsNoScrollbar)
 
 	// note size of remaining window and content area
-	win.winDim = imgui.WindowSize()
-	win.contentDim = imgui.ContentRegionAvail()
+	win.screenDim = imgui.ContentRegionAvail()
+	win.screenDim.Y -= win.toolbarHeight
+
+	// screen image, overlays, menus and tooltips
+	imgui.BeginChildV("##image", imgui.Vec2{win.screenDim.X, win.screenDim.Y}, false, imgui.WindowFlagsNoScrollbar)
 
 	// add horiz/vert padding around screen image
 	imgui.SetCursorPos(imgui.CursorPos().Plus(win.imagePadding))
 
-	// note the current cursor position. we'll use this to
-	mouseOrigin := imgui.CursorScreenPos()
+	// note the current cursor position. we'll use this to everything to the
+	// corner of the screen.
+	screenOrigin := imgui.CursorScreenPos()
 
 	// push style info for screen and overlay ImageButton(). we're using
 	// ImageButton because an Image will not capture mouse events and pass them
@@ -196,20 +193,18 @@ func (win *winDbgScr) draw() {
 	imgui.PushStyleVarVec2(imgui.StyleVarFramePadding, imgui.Vec2{0.0, 0.0})
 
 	// screen texture
+	imgui.SetCursorScreenPos(screenOrigin)
 	imgui.ImageButton(imgui.TextureID(win.screenTexture), imgui.Vec2{w, h})
 
 	// overlay texture on top of screen texture
 	if win.overlay {
-		imgui.SetCursorScreenPos(mouseOrigin)
+		imgui.SetCursorScreenPos(screenOrigin)
 		imgui.ImageButton(imgui.TextureID(win.overlayTexture), imgui.Vec2{w, h})
 	}
 
 	// pop style info for screen and overlay textures
 	imgui.PopStyleVar()
 	imgui.PopStyleColorV(3)
-
-	// [A] add the remaining horiz/vert padding around screen image [see B below]
-	imgui.SetCursorPos(imgui.CursorPos().Plus(win.imagePadding))
 
 	// popup menu on right mouse button
 	//
@@ -243,7 +238,7 @@ func (win *winDbgScr) draw() {
 
 	// draw tool tip
 	if win.isHovered {
-		win.drawReflectionTooltip(mouseOrigin)
+		win.drawReflectionTooltip(screenOrigin)
 
 		// mouse click will cause the rewind goto coords to run only when the
 		// emulation is paused
@@ -256,9 +251,12 @@ func (win *winDbgScr) draw() {
 		}
 	}
 
+	// end of screen image
+	imgui.EndChild()
+
 	// start of tool bar
 	win.toolbarHeight = measureHeight(func() {
-		// [B] we put spacing here otherwise the [A] leaves the cursor in the wrong position
+		imgui.Spacing()
 		imgui.Spacing()
 
 		// tv status line
@@ -347,9 +345,9 @@ func (win *winDbgScr) draw() {
 }
 
 // called from within a win.scr.crit.section Lock().
-func (win *winDbgScr) drawReflectionTooltip(mouseOrigin imgui.Vec2) {
+func (win *winDbgScr) drawReflectionTooltip(screenOrigin imgui.Vec2) {
 	// get mouse position and transform
-	mp := imgui.MousePos().Minus(mouseOrigin)
+	mp := imgui.MousePos().Minus(screenOrigin)
 	if win.cropped {
 		sz := win.scr.crit.cropPixels.Bounds().Size()
 		mp.X = mp.X / win.getScaledWidth(true) * float32(sz.X)
@@ -580,12 +578,11 @@ func (win *winDbgScr) render() {
 	}
 
 	// set screen image scaling (and image padding) based on the current window size
-	win.setScaleAndPadding(win.contentDim)
+	win.setScaleAndPadding(win.screenDim)
 }
 
 // must be called from with a critical section.
 func (win *winDbgScr) setScaleAndPadding(sz imgui.Vec2) {
-	sz.Y -= win.toolbarHeight
 	winAspectRatio := sz.X / sz.Y
 
 	var imageW float32
