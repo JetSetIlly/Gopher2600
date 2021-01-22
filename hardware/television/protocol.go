@@ -50,10 +50,7 @@ type PixelRenderer interface {
 	// specification being used are still adequate.
 	//
 	// Renderers must be prepared to resize to either a smaller of larger size.
-	//
-	// Be careful when calculating visibleScanlines. For example, bottom-top is
-	// an off by one error. It should be bottom-top+1.
-	Resize(spec specification.Spec, topScanline, visibleScanlines int) error
+	Resize(spec specification.Spec, topScanline, bottomScanline int) error
 
 	// NewFrame and NewScanline are called at the start of the frame/scanline
 	NewFrame(isStable bool) error

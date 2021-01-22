@@ -228,7 +228,7 @@ func (tv *Television) PlumbState(s *State) {
 
 	// resize renderers to match current state
 	for _, r := range tv.renderers {
-		_ = r.Resize(tv.state.spec, tv.state.top, tv.state.bottom-tv.state.top)
+		_ = r.Resize(tv.state.spec, tv.state.top, tv.state.bottom)
 	}
 
 	// make sure vcs knows about current spec
@@ -575,7 +575,7 @@ func (tv *Television) SetSpec(spec string) error {
 	tv.lmtr.setRate(tv.state.spec.FramesPerSecond)
 
 	for _, r := range tv.renderers {
-		err := r.Resize(tv.state.spec, tv.state.top, tv.state.bottom-tv.state.top)
+		err := r.Resize(tv.state.spec, tv.state.top, tv.state.bottom)
 		if err != nil {
 			return err
 		}

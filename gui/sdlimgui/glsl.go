@@ -373,7 +373,7 @@ func (rnd *glsl) setOptions(textureID uint32) {
 	// screen geometry
 	gl.Uniform1f(rnd.attribHblank, specification.ClksHBlank*horizScaling)
 	gl.Uniform1f(rnd.attribTopScanline, float32(rnd.img.screen.crit.topScanline)*vertScaling)
-	gl.Uniform1f(rnd.attribBotScanline, float32(rnd.img.screen.crit.topScanline+rnd.img.screen.crit.visibleScanlines)*vertScaling)
+	gl.Uniform1f(rnd.attribBotScanline, float32(rnd.img.screen.crit.bottomScanline)*vertScaling)
 
 	rnd.img.screen.crit.section.Unlock()
 	// end of critical section

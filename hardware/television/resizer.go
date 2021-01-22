@@ -52,25 +52,46 @@ import (
 //	 * test resizing counter
 //		- Supercharger BIOS (resizes excessively due to moving starfield)
 type resizer struct {
+	// the stable top/bottom values. what the resized frame actually is. these
+	// are the values that the PixelRenderers should consider to be the visible
+	// range.
 	top    int
 	bottom int
 
-	// number of frames until a resize can take place
-	counter int
-}
+	// top/bottom values for current frame.
+	//
+	// updated during the examine phase if the tv image goes beyond the current
+	// stable top/bottom vaulues.
+	//
+	// these values are used to decide whether to start the pending resize
+	// counter.
+	currTop    int
+	currBottom int
 
-// some ROMs will want to resize every frame if allowed. this is ugly so we
-// slow it down by counting from framesUntilResize down to zero. the resize
-// will only be committed (ie. the actual top/bottom values changed to match
-// the resize top/bottom value) when it doe reach zero.
-//
-// the counter will be reset if the screen size changes in the interim.
-const framesUntilResize = 5
+	// the top/bottom values that will become the new stable top/bottom values
+	// once pendingCt has reached zero.
+	//
+	// update during the commit() function if current top/bottom values differ
+	// to the pending values.
+	//
+	// in a stable image, pending top/bottom will be equal to stable top/bottom
+	// meaning that by induction will also equal current top/bottom.
+	pendingTop    int
+	pendingBottom int
+
+	// number of frames until a resize is commited to the PixelRenderers this
+	// gives time for the screen to settle down.
+	pendingCt int
+}
 
 // set resizer's top/bottom values to equal tv top/bottom values.
 func (sr *resizer) initialise(tv *Television) {
 	sr.top = tv.state.top
 	sr.bottom = tv.state.bottom
+	sr.currTop = tv.state.top
+	sr.currBottom = tv.state.bottom
+	sr.pendingTop = tv.state.top
+	sr.pendingBottom = tv.state.bottom
 }
 
 func (sr *resizer) examine(tv *Television, sig signal.SignalAttributes) {
@@ -84,10 +105,11 @@ func (sr *resizer) examine(tv *Television, sig signal.SignalAttributes) {
 		return
 	}
 
-	// if vblank is off at any point after than HBLANK period then tentatively
-	// extend the top/bottom of the screen. we'll commit the resize procedure
-	// in the newFrame() function when sr.counter reaches 0.
+	// if vblank is off at any point after than HBLANK period then note the
+	// change in current top/bottom if appropriate
 	if tv.state.clock > specification.ClksHBlank && !sig.VBlank && sig.Pixel > 0 {
+		// update current top/bottom values
+		//
 		// comparing against current top/bottom scanline, rather than ideal
 		// top/bottom scanline of the specification. this means that a screen will
 		// never "shrink" until the specification is changed either manually or
@@ -95,48 +117,99 @@ func (sr *resizer) examine(tv *Television, sig signal.SignalAttributes) {
 		//
 		// we also limit to the top/bottom scanlines to a safe area. the atari
 		// safe area is too conservative so we've defined our own.
-		if tv.state.scanline < sr.top && tv.state.scanline >= tv.state.spec.NewSafeTop {
-			sr.top = tv.state.scanline
-			sr.counter = framesUntilResize
-		} else if tv.state.scanline > sr.bottom && tv.state.scanline <= tv.state.spec.NewSafeBottom {
-			sr.bottom = tv.state.scanline
-			sr.counter = framesUntilResize
+		if tv.state.scanline < sr.currTop && tv.state.scanline >= tv.state.spec.NewSafeTop {
+			sr.currTop = tv.state.scanline
+		} else if tv.state.scanline > sr.currBottom && tv.state.scanline <= tv.state.spec.NewSafeBottom {
+			sr.currBottom = tv.state.scanline
 		}
 	}
 }
 
+// some ROMs will want to resize every frame if allowed. this is ugly so we
+// slow it down by counting from framesUntilResize down to zero. the resize
+// will only be committed (ie. the actual top/bottom values changed to match
+// the resize top/bottom value) when it doe reach zero.
+//
+// the counter will be reset if the screen size changes in the interim.
+const framesUntilResize = 2
+
 func (sr *resizer) commit(tv *Television) error {
-	sr.counter--
-	if sr.counter > 0 {
+	// only commit on even frames. the only reason we do this is to catch
+	// flicker kernels where pixels are different every frame. this is a bit of
+	// a pathological situation but it does happen so we should handle it
+	//
+	// an example of this is the CDFJ QBert demo ROM
+	//
+	// note that this means the framesUntilResize value is effectively double
+	// that value stated
+	if tv.state.frameNum%2 == 0 {
 		return nil
 	}
 
-	// do not allow resizing to take place for the first few frames of a ROM.
-	// these frames tend to be set up frames and can be wildly unstable.
-	if tv.state.syncedFrameNum <= leadingFrames {
+	// make sure current top and current bottom are always equal to stable
+	// top/bottom at beginning of a frame
+	defer func() {
+		sr.currTop = sr.top
+		sr.currBottom = sr.bottom
+	}()
+
+	// if top/bottom values this frame are not the same as pending top/bottom
+	// values then update pending values and reset pending counter.
+	//
+	// note that unlike the expansion of current top and bottom value we allow
+	// shrinkage of pending top and bottom values
+	if sr.currTop != sr.pendingTop {
+		sr.pendingTop = sr.currTop
+		sr.pendingCt = framesUntilResize
+	}
+	if sr.currBottom != sr.pendingBottom {
+		sr.pendingBottom = sr.currBottom
+		sr.pendingCt = framesUntilResize
+	}
+
+	// do nothing if counter is zero
+	if sr.pendingCt == 0 {
 		return nil
 	}
+
+	// if pending top/bottom find themselves back at the stable top/bottom
+	// values then there is no need to do anything.
+	if sr.pendingTop == sr.top && sr.pendingBottom == sr.bottom {
+		sr.pendingCt = 0
+		return nil
+	}
+
+	// reduce pending counter every frame that is active
+	sr.pendingCt--
+
+	// do nothing if counter is not yet zero
+	if sr.pendingCt > 0 {
+		return nil
+	}
+
+	// commit pending values
+	sr.top = sr.pendingTop
+	sr.bottom = sr.pendingBottom
 
 	// return if there's nothing to do
 	if sr.bottom == tv.state.bottom && sr.top == tv.state.top {
 		return nil
 	}
 
-	// something has changed so call Resize() for all attached pixel renderers
+	// sanity check before we do anything drastic
 	if tv.state.top < tv.state.bottom {
-		// update real top value
-		tv.state.top = sr.top
-
-		// add one to the bottom value before committing. we shouldn't need to
-		// do this but some screens will end up being one scanline too short
-		// without it. for example, Ladybug and Hack'Em Pacman
+		// add one to the bottom value before committing. Ladybug and Hack'Em
+		// Pacman are good examples of ROMs that are "wrong" if we don't do
+		// this
 		sr.bottom++
 
-		// update real bottom value
+		// update statble top/bottom values
+		tv.state.top = sr.top
 		tv.state.bottom = sr.bottom
 
+		// call Resize() for all attached pixel renderers
 		for f := range tv.renderers {
-			err := tv.renderers[f].Resize(tv.state.spec, tv.state.top, tv.state.bottom-tv.state.top)
+			err := tv.renderers[f].Resize(tv.state.spec, tv.state.top, tv.state.bottom)
 			if err != nil {
 				return err
 			}

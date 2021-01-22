@@ -73,8 +73,8 @@ type screenCrit struct {
 	isStable bool
 
 	// current values for *playable* area of the screen
-	topScanline      int
-	visibleScanlines int
+	topScanline    int
+	bottomScanline int
 
 	// the pixels array is used in the presentation texture of the play and debug screen.
 	pixels *image.RGBA
@@ -136,7 +136,7 @@ func newScreen(img *SdlImgui) *screen {
 // cartridge is inserted.
 func (scr *screen) Reset() {
 	// start off by showing entirity of NTSC screen
-	scr.resize(specification.SpecNTSC, specification.SpecNTSC.AtariSafeTop, specification.SpecNTSC.ScanlinesVisible)
+	scr.resize(specification.SpecNTSC, specification.SpecNTSC.AtariSafeTop, specification.SpecNTSC.AtariSafeBottom)
 
 	scr.crit.section.Lock()
 	defer scr.crit.section.Unlock()
@@ -192,44 +192,44 @@ func (scr *screen) clearPixels() {
 // it can be called when there is no need to resize the image so steps are
 // taken at the beginning of the function to return early before any
 // side-effects occur.
-func (scr *screen) resize(spec specification.Spec, topScanline int, visibleScanlines int) {
-	// never resize below the visible scanlines according to the specification
-	if visibleScanlines < spec.ScanlinesVisible {
-		return
-	}
-
+func (scr *screen) resize(spec specification.Spec, topScanline int, bottomScanline int) {
 	scr.crit.section.Lock()
-	// we need to be careful with this lock (so no defer)
+	defer scr.crit.section.Unlock()
 
 	// do nothing if resize values are the same as previously
-	if scr.crit.spec.ID == spec.ID && scr.crit.topScanline == topScanline && scr.crit.visibleScanlines == visibleScanlines {
-		scr.crit.section.Unlock()
+	if scr.crit.spec.ID == spec.ID && scr.crit.topScanline == topScanline && scr.crit.bottomScanline == bottomScanline {
 		return
 	}
 
 	scr.crit.spec = spec
 	scr.crit.topScanline = topScanline
-	scr.crit.visibleScanlines = visibleScanlines
+	scr.crit.bottomScanline = bottomScanline
 
-	scr.crit.pixels = image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, spec.ScanlinesTotal))
-	scr.crit.elementPixels = image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, spec.ScanlinesTotal))
-	scr.crit.overlayPixels = image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, spec.ScanlinesTotal))
-	scr.crit.phosphor = image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, spec.ScanlinesTotal))
+	// the total number scanlines we going to have is the number total number
+	// of scanlines in the screen spec +1. the additional one is so that
+	// scalines with the VSYNC on show up on the uncropped screen. this is
+	// particularly important if we want the cursor to be visible.
+	totalScanlines := spec.ScanlinesTotal + 1
+
+	scr.crit.pixels = image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, totalScanlines))
+	scr.crit.elementPixels = image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, totalScanlines))
+	scr.crit.overlayPixels = image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, totalScanlines))
+	scr.crit.phosphor = image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, totalScanlines))
 
 	for i := range scr.crit.bufferPixels {
-		scr.crit.bufferPixels[i] = image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, spec.ScanlinesTotal))
+		scr.crit.bufferPixels[i] = image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, totalScanlines))
 	}
 
 	// allocate reflection info
 	scr.crit.reflection = make([][]reflection.VideoStep, specification.ClksScanline)
 	for x := 0; x < specification.ClksScanline; x++ {
-		scr.crit.reflection[x] = make([]reflection.VideoStep, spec.ScanlinesTotal)
+		scr.crit.reflection[x] = make([]reflection.VideoStep, totalScanlines)
 	}
 
 	// create a cropped image from the main
 	crop := image.Rect(
 		specification.ClksHBlank, scr.crit.topScanline,
-		specification.ClksHBlank+specification.ClksVisible, scr.crit.topScanline+scr.crit.visibleScanlines,
+		specification.ClksHBlank+specification.ClksVisible, scr.crit.bottomScanline,
 	)
 	scr.crit.cropPixels = scr.crit.pixels.SubImage(crop).(*image.RGBA)
 	scr.crit.cropPhosphor = scr.crit.phosphor.SubImage(crop).(*image.RGBA)
@@ -246,9 +246,6 @@ func (scr *screen) resize(spec specification.Spec, topScanline int, visibleScanl
 	for _, r := range scr.renderers {
 		r.resize()
 	}
-
-	// end critical section
-	scr.crit.section.Unlock()
 }
 
 // Resize implements the television.PixelRenderer interface
@@ -259,9 +256,9 @@ func (scr *screen) resize(spec specification.Spec, topScanline int, visibleScanl
 // to make sure that the screen specification is accurate.
 //
 // MUST NOT be called from the gui thread.
-func (scr *screen) Resize(spec specification.Spec, topScanline int, visibleScanlines int) error {
+func (scr *screen) Resize(spec specification.Spec, topScanline int, bottomScanline int) error {
 	scr.img.polling.service <- func() {
-		scr.resize(spec, topScanline, visibleScanlines)
+		scr.resize(spec, topScanline, bottomScanline)
 		scr.img.polling.serviceErr <- nil
 	}
 	return <-scr.img.polling.serviceErr
@@ -338,6 +335,8 @@ func (scr *screen) SetPixel(sig signal.SignalAttributes, current bool) error {
 		scr.crit.lastX = sig.Clock
 		scr.crit.lastY = sig.Scanline
 	}
+
+	// if sig is outside the bounds of the image then the SetRGBA() will silently fail
 
 	scr.crit.bufferPixels[scr.crit.plotIdx].SetRGBA(sig.Clock, sig.Scanline, col)
 
