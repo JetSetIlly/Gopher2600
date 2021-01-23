@@ -23,6 +23,7 @@ import (
 
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/curated"
+	"github.com/jetsetilly/gopher2600/debugger/terminal"
 	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
@@ -252,6 +253,11 @@ func Play(tv *television.Television, scr gui.GUI, newRecording bool, cartload ca
 			return nil
 		}
 		if curated.Has(err, quitEvent) {
+			// quitEvent is okay and is to be expected. swallow the error
+			// message and return as normal
+			return nil
+		}
+		if curated.Has(err, terminal.UserInterrupt) {
 			// quitEvent is okay and is to be expected. swallow the error
 			// message and return as normal
 			return nil

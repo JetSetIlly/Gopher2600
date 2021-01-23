@@ -16,9 +16,8 @@
 package playmode
 
 import (
-	"fmt"
-
 	"github.com/jetsetilly/gopher2600/curated"
+	"github.com/jetsetilly/gopher2600/debugger/terminal"
 	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
@@ -230,7 +229,7 @@ func (pl *playmode) guiEventHandler(ev gui.Event) error {
 func (pl *playmode) eventHandler() error {
 	select {
 	case <-pl.intChan:
-		return fmt.Errorf("interrupt")
+		return curated.Errorf(terminal.UserInterrupt)
 
 	case ev := <-pl.guiChan:
 		return pl.guiEventHandler(ev)
