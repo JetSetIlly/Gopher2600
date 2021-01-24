@@ -406,6 +406,8 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) error {
 		logger.Log("attach", err.Error())
 
 		// an error has occurred so attach the ejected cartridge
+		//
+		// !TODO: a special error cartridge to make it more obvious what has happened
 		err = setup.AttachCartridge(dbg.VCS, cartridgeloader.Loader{})
 		if err != nil {
 			return err

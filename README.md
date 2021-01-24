@@ -578,13 +578,17 @@ The Stella project (https://stella-emu.github.io/) was used as a reference for
 video output. In the absence of VCS hardware (which I don't have) Stella was
 the only option I had for checking video accuracy.
 
-No reference to the Stella source was made at all except during the development
-of the CDF cartridge formats. These recent formats don't seem to be documented
-anywhere accept in the Stella source.
+No reference to the Stella source was made at all except for the following:
 
-I also peeked at Stella's audio sub-system to convince myself that I was going
-about the problem correctly. Primarily however, `Gopher2600's` audio
-implementation references Ron Fries' original TIASound.c file.
+* During the development of the CDF cartridge formats. These recent formats don't
+seem to be documented anywhere accept in the Stella source.
+
+* The audio sub-system to convince myself that I was going about the problem
+correctly. Primarily however, `Gopher2600's` audio implementation references
+Ron Fries' original TIASound.c file.
+
+* ParkerBros fingerprint taken from Stella. I can't remember why I did this but
+a comment in the fingerprint.go file says I did.
 
 Many notes and clues from the AtariAge message boards. Most significantly the
 following threads proved very useful indeed:

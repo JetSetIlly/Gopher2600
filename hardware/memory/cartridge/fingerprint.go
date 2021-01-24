@@ -67,12 +67,29 @@ func fingerprintMnetwork(b []byte) bool {
 	//	$fe0e LDA      BANK5
 	//	$fe16 LDA      BANK4
 	//
-	// This also catches modern games not created by mnetwork, eg Pitkat
+	// This also catches modern games not created by mnetwork but which use the
+	// format, eg Pitkat
+	//
+	// (24/01/21)
+	//
+	// Splendidnut's Congobongo demo is even fussier than Bump 'n' Jump. While
+	// I expect the ROM to get more complex we should support the demo ROM if
+	// only because it exists.
+	//
+	// notably, it uses a non-primary-mirror cartridge address and there are
+	// only two bankswitch instructions in the data (although I didn't search
+	// it exhaustively - just LDA instructions).
+	//
+	// threshold has been reduced to two.
 
-	threshold := 4
+	threshold := 2
 	for i := 0; i < len(b)-3; i++ {
-		if b[i] == 0xad && b[i+2] == 0xff && (b[i+1] == 0xe4 || b[i+1] == 0xe5 || b[i+1] == 0xe6) {
-			threshold--
+		if b[i] == 0xad && (b[i+1] >= 0xe0 && b[i+1] <= 0xe7) {
+			// bank switching can address any cartidge mirror so mask off
+			// insgnificant bytes
+			if b[i+2]&0x0f == 0x0f {
+				threshold--
+			}
 		}
 		if threshold == 0 {
 			return true
@@ -151,6 +168,10 @@ func fingerprintTigervision(b []byte) bool {
 }
 
 func fingerprint8k(data []byte) func([]byte) (mapper.CartMapper, error) {
+	if fingerprintMnetwork(data) {
+		return newMnetwork
+	}
+
 	if fingerprintTigervision(data) {
 		return newTigervision
 	}

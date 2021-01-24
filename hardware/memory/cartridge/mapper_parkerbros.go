@@ -63,7 +63,7 @@ func newParkerBros(data []byte) (mapper.CartMapper, error) {
 	cart.banks = make([][]uint8, cart.NumBanks())
 
 	if len(data) != cart.bankSize*cart.NumBanks() {
-		return nil, curated.Errorf("E0: %v", "wrong number bytes in the cartridge data")
+		return nil, curated.Errorf("E0: %v", "wrong number of bytes in the cartridge data")
 	}
 
 	for k := 0; k < cart.NumBanks(); k++ {

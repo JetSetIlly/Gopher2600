@@ -57,7 +57,7 @@ func new3ePlus(data []byte) (mapper.CartMapper, error) {
 	}
 
 	if len(data)%cart.bankSize != 0 {
-		return nil, curated.Errorf("3E+: %v", "wrong number bytes in the cartridge file")
+		return nil, curated.Errorf("3E+: %v", "wrong number of bytes in the cartridge file")
 	}
 
 	numBanks := len(data) / cart.bankSize

@@ -60,7 +60,7 @@ func newDPC(data []byte) (mapper.CartMapper, error) {
 	cart.banks = make([][]uint8, cart.NumBanks())
 
 	if len(data) < cart.bankSize*cart.NumBanks()+staticSize {
-		return nil, curated.Errorf("DPC: %v", "wrong number bytes in the cartridge data")
+		return nil, curated.Errorf("DPC: %v", "wrong number of bytes in the cartridge data")
 	}
 
 	for k := 0; k < cart.NumBanks(); k++ {

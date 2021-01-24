@@ -46,7 +46,7 @@ func newDF(data []byte) (mapper.CartMapper, error) {
 	}
 
 	if len(data) != cart.bankSize*cart.NumBanks() {
-		return nil, curated.Errorf("DF: %v", "wrong number bytes in the cartridge data")
+		return nil, curated.Errorf("DF: %v", "wrong number of bytes in the cartridge data")
 	}
 
 	cart.banks = make([][]uint8, cart.NumBanks())

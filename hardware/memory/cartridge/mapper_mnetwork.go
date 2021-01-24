@@ -65,10 +65,12 @@ import (
 // Note that the 256-byte banks and the large 1K bank are separate entities.
 // The M-Network carts are about as complex as it gets.
 //
-//
 // cartridges:
 //	- He Man
 //	- Pitkat
+//
+// 8k cartridges:
+// - Bump 'n' Jump (note that some versions are 16k)
 
 const num256ByteRAMbanks = 4
 
@@ -91,10 +93,12 @@ func newMnetwork(data []byte) (mapper.CartMapper, error) {
 		state:       newMnetworkState(),
 	}
 
-	cart.banks = make([][]uint8, cart.NumBanks())
+	// mnetwork supports a number of sizes NumBanks() won't be valid until
+	// we've allocated cart.banks so we need to do the sums here.
+	cart.banks = make([][]uint8, len(data)/cart.bankSize)
 
 	if len(data) != cart.bankSize*cart.NumBanks() {
-		return nil, curated.Errorf("E7: %v", "wrong number bytes in the cartridge data")
+		return nil, curated.Errorf("E7: %v", "wrong number of bytes in the cartridge data")
 	}
 
 	for k := 0; k < cart.NumBanks(); k++ {
@@ -265,12 +269,19 @@ func (cart *mnetwork) bankswitch(addr uint16, passive bool) bool {
 		return true
 	}
 
+	// the bank switching addresses assume that the cartridge size is 16k.
+	// however, there are 8k versions of some cartridges. we can support those
+	// by making sure the bankswitch never goes beyond the last bank
+	//
+	// tested with 8k version of Bump 'n' Jump
+	cart.state.bank %= cart.NumBanks()
+
 	return false
 }
 
 // NumBanks implements the mapper.CartMapper interface.
 func (cart *mnetwork) NumBanks() int {
-	return 8 // eight banks of 2k
+	return len(cart.banks)
 }
 
 // GetBank implements the mapper.CartMapper interface.

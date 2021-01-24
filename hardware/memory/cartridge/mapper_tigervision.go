@@ -66,7 +66,7 @@ func newTigervision(data []byte) (mapper.CartMapper, error) {
 	}
 
 	if len(data)%cart.bankSize != 0 {
-		return nil, curated.Errorf("3F: %v", "wrong number bytes in the cartridge data")
+		return nil, curated.Errorf("3F: %v", "wrong number of bytes in the cartridge data")
 	}
 
 	numBanks := len(data) / cart.bankSize

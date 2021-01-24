@@ -251,7 +251,7 @@ func newAtari4k(data []byte) (mapper.CartMapper, error) {
 	cart.state = newAtariState()
 
 	if len(data) != cart.bankSize*cart.NumBanks() {
-		return nil, curated.Errorf("4k: %v", "wrong number bytes in the cartridge data")
+		return nil, curated.Errorf("4k: %v", "wrong number of bytes in the cartridge data")
 	}
 
 	cart.banks[0] = make([]uint8, cart.bankSize)
@@ -312,7 +312,7 @@ func newAtari2k(data []byte) (mapper.CartMapper, error) {
 	cart.state = newAtariState()
 
 	if len(data) != cart.bankSize*cart.NumBanks() {
-		return nil, curated.Errorf("2k: %v", "wrong number bytes in the cartridge data")
+		return nil, curated.Errorf("2k: %v", "wrong number of bytes in the cartridge data")
 	}
 
 	cart.banks[0] = make([]uint8, cart.bankSize)
@@ -371,7 +371,7 @@ func newAtari8k(data []uint8) (mapper.CartMapper, error) {
 	cart.state = newAtariState()
 
 	if len(data) != cart.bankSize*cart.NumBanks() {
-		return nil, curated.Errorf("F8: %v", "wrong number bytes in the cartridge data")
+		return nil, curated.Errorf("F8: %v", "wrong number of bytes in the cartridge data")
 	}
 
 	for k := 0; k < cart.NumBanks(); k++ {
@@ -471,7 +471,7 @@ func newAtari16k(data []byte) (mapper.CartMapper, error) {
 	cart.state = newAtariState()
 
 	if len(data) != cart.bankSize*cart.NumBanks() {
-		return nil, curated.Errorf("F6: %v", "wrong number bytes in the cartridge data")
+		return nil, curated.Errorf("F6: %v", "wrong number of bytes in the cartridge data")
 	}
 
 	for k := 0; k < cart.NumBanks(); k++ {
@@ -577,7 +577,7 @@ func newAtari32k(data []byte) (mapper.CartMapper, error) {
 	cart.state = newAtariState()
 
 	if len(data) != cart.bankSize*cart.NumBanks() {
-		return nil, curated.Errorf("F4: %v", "wrong number bytes in the cartridge data")
+		return nil, curated.Errorf("F4: %v", "wrong number of bytes in the cartridge data")
 	}
 
 	for k := 0; k < cart.NumBanks(); k++ {
