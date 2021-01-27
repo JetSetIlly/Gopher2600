@@ -27,10 +27,11 @@ func (dbg *Debugger) buildPrompt() terminal.Prompt {
 	content := strings.Builder{}
 
 	var e *disassembly.Entry
+	var coprocessor bool
 
 	// decide which address value to use
 	if dbg.VCS.CPU.LastResult.Final || dbg.VCS.CPU.HasReset() {
-		e = dbg.Disasm.GetEntryByAddress(dbg.VCS.CPU.PC.Address())
+		e, coprocessor = dbg.Disasm.GetEntryByAddress(dbg.VCS.CPU.PC.Address())
 	} else {
 		// if we're in the middle of an instruction then use the addresss in
 		// lastResult. in these instances we want the prompt to report the
@@ -41,7 +42,10 @@ func (dbg *Debugger) buildPrompt() terminal.Prompt {
 
 	// build prompt based on how confident we are of the contents of the
 	// disassembly entry. starting with the condition of no disassembly at all
-	if e == nil {
+	// decoration indication that entry is unreliable
+	if coprocessor {
+		content.WriteString(fmt.Sprintf("%s (coprocessor)", e.Address))
+	} else if e == nil {
 		content.WriteString(fmt.Sprintf("$%04x", dbg.VCS.CPU.PC.Address()))
 	} else if e.Level == disassembly.EntryLevelUnmappable {
 		content.WriteString(e.Address)

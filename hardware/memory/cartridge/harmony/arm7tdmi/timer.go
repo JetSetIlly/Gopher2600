@@ -25,7 +25,7 @@ type timer struct {
 // the ARM7TDMI in the Harmony runs at 70Mhz.
 const armClock = float32(70)
 
-func (t *timer) step(clock float32) {
+func (t *timer) stepFromVCS(clock float32) {
 	if !t.active {
 		return
 	}
@@ -35,6 +35,13 @@ func (t *timer) step(clock float32) {
 	// fraction every VCS cycle. Put another way: an NTSC spec VCS, for
 	// example, will tick forward every 58-59 ARM cycles.
 	t.counter += armClock / clock
+}
+
+func (t *timer) step(cycles float32) {
+	if !t.active {
+		return
+	}
+	t.counter += cycles
 }
 
 func (t *timer) write(addr uint32, val uint32) bool {

@@ -60,6 +60,18 @@ type BankInfo struct {
 	// this happens deliberately for example, during the Supercharger load
 	// procedure, where execution happens (briefly) inside the main VCS RAM
 	NonCart bool
+
+	// the cartridge is currently feeding NOP bytes onto the data bus and
+	// therefore the data from this bank should not be considered predictable.
+	//
+	// this flag has been added to support the ARM coprocessor found in
+	// conjunction with CDF* and DPC+ mappers. future coprocessors may work
+	// differently.
+	ExecutingCoprocessor bool
+
+	// if ExecutingCoprocessor is valid then we also record the address the
+	// processor will resume from.
+	CoprocessorResumeAddr uint16
 }
 
 func (b BankInfo) String() string {

@@ -15,6 +15,8 @@
 
 package mapper
 
+import "fmt"
+
 // CartCoProcDisasmEntry summarises a single decoded instruction by the
 // coprocessor. Implementations of this type should nomalise the width of each
 // field. For example, the maximum length of an Operator mnemonic might be 4
@@ -26,6 +28,9 @@ type CartCoProcDisasmEntry struct {
 	Operator       string
 	Operand        string
 	ExecutionNotes string
+
+	// total cycles for this instruction
+	Cycles float32
 
 	// update indicates whether the notes field should be updated when
 	// instruction is executed again after the first decoding.
@@ -44,4 +49,18 @@ type CartCoProcDisassembler interface {
 type CartCoProcBus interface {
 	CoProcID() string
 	SetDisassembler(CartCoProcDisassembler)
+}
+
+// CartCoProcDisassembler_stdout is a minimial implementation of the CartCoProcDisassembler
+// interface. It output entries to stdout immediately upon request.
+type CartCoProcDisassembler_stdout struct {
+}
+
+// Reset implements the CartCoProcDisassembler interface.
+func (c *CartCoProcDisassembler_stdout) Reset() {
+}
+
+// Instruction implements the CartCoProcDisassembler interface.
+func (c *CartCoProcDisassembler_stdout) Instruction(e CartCoProcDisasmEntry) {
+	fmt.Println(e)
 }

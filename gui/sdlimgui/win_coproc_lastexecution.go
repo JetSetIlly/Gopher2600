@@ -118,6 +118,15 @@ func (win *winCoProcLastExecution) draw() {
 			imgui.Text(e.Operand)
 
 			imgui.SameLine()
+			if e.Cycles > 0 {
+				imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmCycles)
+				imgui.Text(fmt.Sprintf("%.0f ", e.Cycles))
+				imgui.PopStyleColorV(1)
+			} else {
+				imgui.Text(" ")
+			}
+
+			imgui.SameLine()
 			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmNotes)
 			imgui.Text(e.ExecutionNotes)
 

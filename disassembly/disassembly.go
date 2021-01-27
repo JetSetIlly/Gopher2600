@@ -157,39 +157,26 @@ func (dsm *Disassembly) FromMemory(cart *cartridge.Cartridge, symbols *symbols.S
 	return nil
 }
 
-// Bless disassembly sequence from the specified bank/address. Will do nothing
-// if bank is not a cartridge ROM bank.
-func (dsm *Disassembly) Bless(bank mapper.BankInfo, startAddress uint16) {
-	// we don't actually use this because we would rather the static
-	// disassembly process catches all the errors. if we can't do that then we
-	// should call Bless() from the debugging loop
-
-	if bank.NonCart {
-		return
-	}
-
-	if dsm.blessSequence(bank.Number, startAddress, false) {
-		dsm.blessSequence(bank.Number, startAddress, true)
-	}
-}
-
 // GetEntryByAddress returns the disassembly entry at the specified
 // bank/address. a returned value of nil indicates the entry is not in the
 // cartridge; this will usually mean the address is in main VCS RAM.
-func (dsm *Disassembly) GetEntryByAddress(address uint16) *Entry {
+//
+// also returns whether cartridge is currently working from another source
+// meaning that the disassembly entry might not be reliable.
+func (dsm *Disassembly) GetEntryByAddress(address uint16) (*Entry, bool) {
 	bank := dsm.cart.GetBank(address)
 
 	if bank.NonCart {
 		// !!TODO: attempt to decode instructions not in cartridge
-		return nil
+		return nil, bank.ExecutingCoprocessor
 	}
 
-	return dsm.entries[bank.Number][address&memorymap.CartridgeBits]
+	return dsm.entries[bank.Number][address&memorymap.CartridgeBits], bank.ExecutingCoprocessor
 }
 
 // ExecutedEntry creates an Entry from a cpu result that has actually been
-// executed. The newly created Entry replaces the previous equivalent entry in
-// the disassembly.
+// executed. When appropriate, the newly created Entry replaces the previous
+// equivalent entry in the disassembly.
 //
 // If the execution.Result was from an instruction in RAM (cartridge RAM or VCS
 // RAM) then the newly created entry is returned but not stored anywhere in the
@@ -217,13 +204,30 @@ func (dsm *Disassembly) ExecutedEntry(bank mapper.BankInfo, result execution.Res
 	dsm.crit.Lock()
 	defer dsm.crit.Unlock()
 
-	if e == nil || e.Result.Defn.OpCode != result.Defn.OpCode {
+	// check for opcode reliability. this can happen when it is expected
+	// (bank.ExecutingCoProcess is true) or when it is unexpected.
+	if bank.ExecutingCoprocessor || e.Result.Defn.OpCode != result.Defn.OpCode {
+		// in either instance we want to return the formatted result of the
+		// actual execution
+		ne, err := dsm.FormatResult(bank, result, EntryLevelExecuted)
+		if err != nil {
+			return nil, curated.Errorf("disassembly: %v", err)
+		}
+
+		return ne, nil
+	}
+
+	// opcode is reliable update disasm entry in the normal way
+	if e == nil {
+		// we're not decoded this bank/address before. note this shouldn't even happen
 		var err error
 		dsm.entries[bank.Number][idx], err = dsm.FormatResult(bank, result, EntryLevelExecuted)
 		if err != nil {
 			return nil, curated.Errorf("disassembly: %v", err)
 		}
 	} else if e.Level < EntryLevelExecuted {
+		// we have seen this entry before but it's not been executed. update
+		// entry to reflect results
 		e.updateExecutionEntry(result)
 	}
 

@@ -15,6 +15,8 @@
 
 package cdf
 
+import "github.com/jetsetilly/gopher2600/hardware/memory/cartridge/harmony/callfn"
+
 type State struct {
 	// currently selected bank
 	bank int
@@ -27,11 +29,17 @@ type State struct {
 	// to the VCS's clock. see Step() function.
 	beats int
 
+	// registers refer to the are of static memory that are treated as
+	// "registers" ie. values with specific meaning in the context of the
+	// cartridge mapper.
 	registers Registers
 
 	// static area of the cartridge. accessible outside of the cartridge
 	// through GetStatic() and PutStatic()
 	static *Static
+
+	// the callfn process is stateful
+	callfn callfn.CallFn
 }
 
 // initialise should be called as soon as convenient.

@@ -17,6 +17,7 @@ package disassembly
 
 import (
 	"github.com/jetsetilly/gopher2600/curated"
+	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
 // IterateCart faciliates traversal over all the banks in a cartridge.
@@ -72,17 +73,25 @@ func (citr *IterateCart) next() (int, bool) {
 // goroutine different to that which is handling (eg. updating) the disassembly
 // itslef.
 type IterateBank struct {
-	dsm       *Disassembly
-	minLevel  EntryLevel
-	bank      int
-	idx       int
-	lastEntry *Entry
+	dsm *Disassembly
+
+	// the bank we're iterating over
+	bank int
+
+	// include entry in iteration if it meets at least this EntryLevel
+	minLevel EntryLevel
+
+	// addresses to include regardless of EntryLevel
+	include []uint16
 
 	// total number of entries in iteration with the specified minimum level
 	EntryCount int
 
 	// the number of those entries with a label
 	LabelCount int
+
+	idx       int
+	lastEntry *Entry
 }
 
 // NewBankIteration initialises a new iteration of a dissasembly bank. The minLevel
@@ -95,7 +104,10 @@ type IterateBank struct {
 // EntryLevelDecode. A minLevel of EntryLevelNaive on the other hand, will
 // iterate through entries of EntryLevelNaive *and* EntryLevelDecode. A
 // minLevel of EntryLevelDead will iterate through *all* Entries.
-func (dsm *Disassembly) NewBankIteration(minLevel EntryLevel, bank int) (*IterateBank, error) {
+//
+// The optional include argument specifies a list of addresses to include in
+// the iteration regardless of EntryLevel. Addresses will be normalised.
+func (dsm *Disassembly) NewBankIteration(minLevel EntryLevel, bank int, include ...uint16) (*IterateBank, error) {
 	dsm.crit.Lock()
 	defer dsm.crit.Unlock()
 
@@ -109,8 +121,14 @@ func (dsm *Disassembly) NewBankIteration(minLevel EntryLevel, bank int) (*Iterat
 
 	bitr := &IterateBank{
 		dsm:      dsm,
-		minLevel: minLevel,
 		bank:     bank,
+		minLevel: minLevel,
+		include:  include,
+	}
+
+	// normalise addresses
+	for i := range bitr.include {
+		bitr.include[i] &= memorymap.CartridgeBits | memorymap.OriginCart
 	}
 
 	// count entries
@@ -126,6 +144,13 @@ func (dsm *Disassembly) NewBankIteration(minLevel EntryLevel, bank int) (*Iterat
 			// count entries (of the minimum level) with a label
 			if a.Label.String() != "" {
 				bitr.LabelCount++
+			}
+		} else {
+			// will include address even though it doesn meet minimum level
+			for _, i := range bitr.include {
+				if i == a.Result.Address&memorymap.CartridgeBits|memorymap.OriginCart {
+					bitr.EntryCount++
+				}
 			}
 		}
 	}
@@ -172,12 +197,29 @@ func (bitr *IterateBank) next() (int, *Entry) {
 		return -1, nil
 	}
 
-	bitr.idx++
+	// find next entry to return
+	for bitr.idx++; bitr.idx < len(bitr.dsm.entries[bitr.bank]); bitr.idx++ {
+		a := bitr.dsm.entries[bitr.bank][bitr.idx]
+		if a.Level >= bitr.minLevel {
+			break // for idx loop
+		}
 
-	for bitr.idx < len(bitr.dsm.entries[bitr.bank]) && bitr.dsm.entries[bitr.bank][bitr.idx].Level < bitr.minLevel {
-		bitr.idx++
+		// entry doesn't match minimum level so check include address list for
+		// a match
+		match := false
+		for _, i := range bitr.include {
+			if i == a.Result.Address&memorymap.CartridgeBits|memorymap.OriginCart {
+				match = true
+				break // for include loop
+			}
+		}
+
+		if match {
+			break // for idx loop
+		}
 	}
 
+	// for loop went past the end of the iterable content so return nothing
 	if bitr.idx >= len(bitr.dsm.entries[bitr.bank]) {
 		return -1, nil
 	}

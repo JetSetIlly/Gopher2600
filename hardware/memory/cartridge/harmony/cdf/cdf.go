@@ -153,6 +153,10 @@ const (
 
 // Read implements the mapper.CartMapper interface.
 func (cart *cdf) Read(addr uint16, passive bool) (uint8, error) {
+	if b, ok := cart.state.callfn.Check(addr); ok {
+		return b, nil
+	}
+
 	if cart.bankswitch(addr, passive) {
 		// always return zero on hotspot - unlike the Atari multi-bank carts for example
 		return 0, nil
@@ -311,10 +315,11 @@ func (cart *cdf) Write(addr uint16, data uint8, passive bool, poke bool) error {
 			// generate interrupt to update AUDV0 while running ARM code
 			fallthrough
 		case 0xff:
-			err := cart.arm.Run()
+			cycles, err := cart.arm.Run()
 			if err != nil {
 				return curated.Errorf("CDF: %v", err)
 			}
+			cart.state.callfn.Start(cycles)
 		}
 	}
 
@@ -363,7 +368,12 @@ func (cart *cdf) NumBanks() int {
 
 // GetBank implements the mapper.CartMapper interface.
 func (cart *cdf) GetBank(addr uint16) mapper.BankInfo {
-	return mapper.BankInfo{Number: cart.state.bank, IsRAM: false}
+	return mapper.BankInfo{
+		Number:                cart.state.bank,
+		IsRAM:                 false,
+		ExecutingCoprocessor:  cart.state.callfn.IsActive(),
+		CoprocessorResumeAddr: cart.state.callfn.ResumeAddr,
+	}
 }
 
 // Patch implements the mapper.CartMapper interface.
@@ -396,7 +406,9 @@ func (cart *cdf) Step(clock float32) {
 		cart.state.registers.MusicFetcher[2].Count += cart.state.registers.MusicFetcher[2].Freq
 	}
 
-	cart.arm.Step(clock)
+	if !cart.state.callfn.Step(clock) {
+		cart.arm.Step(clock)
+	}
 }
 
 // IterateBank implements the mapper.CartMapper interface.

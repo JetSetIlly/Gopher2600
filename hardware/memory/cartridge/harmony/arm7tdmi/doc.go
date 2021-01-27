@@ -25,6 +25,11 @@
 //
 // https://usermanual.wiki/Pdf/ARM7TDMImanualpt3.1481331792/view
 //
+// The full version of that manual was found here. Cycle timings for the
+// instructions were found in section
+//
+// https://www.dwedit.org/files/ARM7TDMI.pdf
+//
 // More detailed explanations of Thumb instruction were found in chapter A7.1
 // of the ARM Architecture Reference Manual. In particular the side-effects of
 // particular instructions were found in the supplied pseudo-code. Where

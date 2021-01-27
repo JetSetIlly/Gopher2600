@@ -133,6 +133,10 @@ func (cart *dpcPlus) Reset(randSrc *rand.Rand) {
 
 // Read implements the mapper.CartMapper interface.
 func (cart *dpcPlus) Read(addr uint16, passive bool) (uint8, error) {
+	if b, ok := cart.state.callfn.Check(addr); ok {
+		return b, nil
+	}
+
 	if cart.bankswitch(addr, passive) {
 		// always return zero on hotspot - unlike the Atari multi-bank carts for example
 		return 0, nil
@@ -470,10 +474,11 @@ func (cart *dpcPlus) Write(addr uint16, data uint8, passive bool, poke bool) err
 		case 254:
 			fallthrough
 		case 255:
-			err := cart.arm.Run()
+			cycles, err := cart.arm.Run()
 			if err != nil {
-				return curated.Errorf("DPC+: %v", err)
+				return curated.Errorf("CDF: %v", err)
 			}
+			cart.state.callfn.Start(cycles)
 		}
 
 	// reserved
@@ -649,7 +654,12 @@ func (cart *dpcPlus) NumBanks() int {
 
 // GetBank implements the mapper.CartMapper interface.
 func (cart *dpcPlus) GetBank(addr uint16) mapper.BankInfo {
-	return mapper.BankInfo{Number: cart.state.bank, IsRAM: false}
+	return mapper.BankInfo{
+		Number:                cart.state.bank,
+		IsRAM:                 false,
+		ExecutingCoprocessor:  cart.state.callfn.IsActive(),
+		CoprocessorResumeAddr: cart.state.callfn.ResumeAddr,
+	}
 }
 
 // Patch implements the mapper.CartMapper interface.
@@ -684,7 +694,9 @@ func (cart *dpcPlus) Step(clock float32) {
 		cart.state.registers.MusicFetcher[2].Count += cart.state.registers.MusicFetcher[2].Freq
 	}
 
-	cart.arm.Step(clock)
+	if !cart.state.callfn.Step(clock) {
+		cart.arm.Step(clock)
+	}
 }
 
 // IterateBank implements the mapper.CartMapper interface.
@@ -810,7 +822,7 @@ func (cart *dpcPlus) WriteHotspots() map[uint16]mapper.CartHotspotInfo {
 		0x1057: {Symbol: "DF7/low", Action: mapper.HotspotRegister},
 		0x1058: {Symbol: "FASTFETCH", Action: mapper.HotspotRegister},
 		0x1059: {Symbol: "PARAM", Action: mapper.HotspotRegister},
-		0x105a: {Symbol: "FUNC", Action: mapper.HotspotFunction},
+		0x105a: {Symbol: "CALLFN", Action: mapper.HotspotFunction},
 		0x105b: {Symbol: "RESERVED", Action: mapper.HotspotReserved},
 		0x105c: {Symbol: "RESERVED", Action: mapper.HotspotReserved},
 		0x105d: {Symbol: "MF0", Action: mapper.HotspotRegister},

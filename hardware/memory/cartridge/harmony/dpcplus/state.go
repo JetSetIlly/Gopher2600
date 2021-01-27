@@ -15,7 +15,11 @@
 
 package dpcplus
 
-import "math/rand"
+import (
+	"math/rand"
+
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/harmony/callfn"
+)
 
 type State struct {
 	registers Registers
@@ -36,6 +40,9 @@ type State struct {
 	// static area of the cartridge. accessible outside of the cartridge
 	// through GetStatic() and PutStatic()
 	static *Static
+
+	// the callfn process is stateful
+	callfn callfn.CallFn
 }
 
 func newDPCPlusState() *State {
