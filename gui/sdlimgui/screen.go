@@ -408,6 +408,10 @@ func (scr *screen) plotOverlay(x, y int, ref reflection.VideoStep) {
 				scr.crit.overlayPixels.SetRGBA(x, y, reflection.PaletteEvents["HMOVE latched"])
 			}
 		}
+	case "Coprocessor":
+		if ref.CoprocessorActive {
+			scr.crit.overlayPixels.SetRGBA(x, y, reflection.PaletteEvents["Coprocessor active"])
+		}
 	case "Optimised":
 		// show pixels that were generated without opimisation (ie. these
 		// pixels took the maximum amount of time required to discover what the

@@ -46,13 +46,14 @@ func NewMonitor(vcs *hardware.VCS, renderer Renderer) *Monitor {
 // emulation/system.
 func (mon *Monitor) Check(bank mapper.BankInfo) error {
 	res := VideoStep{
-		CPU:          mon.vcs.CPU.LastResult,
-		WSYNC:        !mon.vcs.CPU.RdyFlg,
-		Bank:         bank,
-		VideoElement: mon.vcs.TIA.Video.LastElement,
-		TV:           mon.vcs.TV.GetLastSignal(),
-		Collision:    *mon.vcs.TIA.Video.Collisions,
-		IsHblank:     mon.vcs.TIA.Hblank,
+		CPU:               mon.vcs.CPU.LastResult,
+		WSYNC:             !mon.vcs.CPU.RdyFlg,
+		Bank:              bank,
+		VideoElement:      mon.vcs.TIA.Video.LastElement,
+		TV:                mon.vcs.TV.GetLastSignal(),
+		Collision:         *mon.vcs.TIA.Video.Collisions,
+		IsHblank:          mon.vcs.TIA.Hblank,
+		CoprocessorActive: bank.ExecutingCoprocessor,
 	}
 
 	res.Optimisations = Optimisations{

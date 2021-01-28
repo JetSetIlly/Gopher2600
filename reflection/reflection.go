@@ -51,6 +51,9 @@ type VideoStep struct {
 	WSYNC        bool
 	IsRAM        bool
 
+	// whether Coprocessor is active
+	CoprocessorActive bool
+
 	// detail of the optimisations used during the production of this videostep
 	Optimisations Optimisations
 
@@ -85,4 +88,4 @@ type Hmove struct {
 
 // OverlayList is the list of overlays that should be supported by a
 // reflection.Renderer.
-var OverlayList = []string{"WSYNC", "Collisions", "HMOVE", "Optimised"}
+var OverlayList = []string{"WSYNC", "Collisions", "HMOVE", "Coprocessor", "Optimised"}
