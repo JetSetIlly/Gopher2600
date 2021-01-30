@@ -22,6 +22,7 @@ import (
 
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
+	"github.com/jetsetilly/gopher2600/logger"
 )
 
 // register names.
@@ -45,18 +46,14 @@ type ARM struct {
 	registers [rCount]uint32
 	status    status
 
-	// the ARM has it's own timer which is ticked every VCS video cycle
+	// "peripherals" connected to the variety of ARM7TDMI-S used in the Harmony
+	// cartridge.
 	timer timer
+	mam   mam
 
 	// cycles per instruction and cycles per program execution
 	cyclesInstruction cycles
 	cyclesTotal       float32
-
-	// memory for values that fall outside of the areas defined above. map
-	// access is slower than array/slice access but the potential range of
-	// scratch addresses is very large and there's no way of knowning how much
-	// space is required ahead of time. a map is good compromise.
-	scratch scratch
 
 	// the area the PC covers. once assigned we'll assume that the program
 	// never reads outside this area. the value is assigned on reset()
@@ -66,9 +63,9 @@ type ARM struct {
 	// index the programMemory array
 	programMemoryOffset uint32
 
-	// formatMap records the instruction group (or format) of the opcode at
-	// each address in the program memory
-	formatMap []func(_ uint16)
+	// executionMap records the function that implements the instruction group
+	// for each opcode in program memory
+	executionMap []func(_ uint16)
 
 	// interface to an optional disassembler
 	disasm mapper.CartCoProcDisassembler
@@ -83,12 +80,19 @@ type ARM struct {
 	disasmEntry mapper.CartCoProcDisasmEntry
 }
 
+type disasmLevel int
+
+const (
+	disasmFull disasmLevel = iota
+	disasmNotes
+	disasmNone
+)
+
 // NewARM is the preferred method of initialisation for the ARM type.
 func NewARM(mem SharedMemory, hook CartridgeHook) *ARM {
 	arm := &ARM{
-		mem:     mem,
-		hook:    hook,
-		scratch: make(scratch),
+		mem:  mem,
+		hook: hook,
 	}
 	arm.Plumb()
 
@@ -100,7 +104,7 @@ func (arm *ARM) Plumb() error {
 	if err != nil {
 		return err
 	}
-	arm.formatMap = make([]func(_ uint16), len(*arm.programMemory))
+	arm.executionMap = make([]func(_ uint16), len(*arm.programMemory))
 	return nil
 }
 
@@ -136,7 +140,7 @@ func (arm *ARM) reset() error {
 	}
 	arm.registers[rSP], arm.registers[rLR], arm.registers[rPC] = arm.mem.ResetVectors()
 
-	// a perculiarity of the ARM is that the PC is 2 bytes ahead of where we'll
+	// a peculiarity of the ARM is that the PC is 2 bytes ahead of where we'll
 	// be reading from. adjust PC so that this is correct.
 	arm.registers[rPC] += 2
 
@@ -187,7 +191,8 @@ func (arm *ARM) read8bit(addr uint32) uint8 {
 	var mem *[]uint8
 	mem, addr = arm.mem.MapAddress(addr, false)
 	if mem == nil {
-		return arm.scratch.read8bit(addr)
+		logger.Log("ARM7", fmt.Sprintf("read8bit: unrecognised address %08x", addr))
+		return 0
 	}
 	return (*mem)[addr]
 }
@@ -197,7 +202,7 @@ func (arm *ARM) write8bit(addr uint32, val uint8) {
 
 	mem, addr = arm.mem.MapAddress(addr, true)
 	if mem == nil {
-		arm.scratch.write8bit(addr, val)
+		logger.Log("ARM7", fmt.Sprintf("write8bit: unrecognised address %08x", addr))
 		return
 	}
 	(*mem)[addr] = val
@@ -207,7 +212,8 @@ func (arm *ARM) read16bit(addr uint32) uint16 {
 	var mem *[]uint8
 	mem, addr = arm.mem.MapAddress(addr, false)
 	if mem == nil {
-		return arm.scratch.read16bit(addr)
+		logger.Log("ARM7", fmt.Sprintf("read16bit: unrecognised address %08x", addr))
+		return 0
 	}
 	return uint16((*mem)[addr]) | (uint16((*mem)[addr+1]) << 8)
 }
@@ -216,7 +222,7 @@ func (arm *ARM) write16bit(addr uint32, val uint16) {
 	var mem *[]uint8
 	mem, addr = arm.mem.MapAddress(addr, true)
 	if mem == nil {
-		arm.scratch.write16bit(addr, val)
+		logger.Log("ARM7", fmt.Sprintf("write16bit: unrecognised address %08x", addr))
 		return
 	}
 	(*mem)[addr] = uint8(val)
@@ -231,7 +237,14 @@ func (arm *ARM) read32bit(addr uint32) uint32 {
 	var mem *[]uint8
 	mem, addr = arm.mem.MapAddress(addr, false)
 	if mem == nil {
-		return arm.scratch.read32bit(addr)
+		if v, ok := arm.timer.read(addr); ok {
+			return v
+		}
+		if v, ok := arm.mam.read(addr); ok {
+			return v
+		}
+		logger.Log("ARM7", fmt.Sprintf("read32bit: unrecognised address %08x", addr))
+		return 0
 	}
 
 	return uint32((*mem)[addr]) | (uint32((*mem)[addr+1]) << 8) | (uint32((*mem)[addr+2]) << 16) | uint32((*mem)[addr+3])<<24
@@ -245,7 +258,13 @@ func (arm *ARM) write32bit(addr uint32, val uint32) {
 	var mem *[]uint8
 	mem, addr = arm.mem.MapAddress(addr, true)
 	if mem == nil {
-		arm.scratch.write32bit(addr, val)
+		if ok := arm.timer.write(addr, val); ok {
+			return
+		}
+		if ok := arm.mam.write(addr, val); ok {
+			return
+		}
+		logger.Log("ARM7", fmt.Sprintf("write32bit: unrecognised address %08x", addr))
 		return
 	}
 	(*mem)[addr] = uint8(val)
@@ -268,7 +287,7 @@ func (arm *ARM) Run() (float32, error) {
 	for arm.continueExecution {
 		arm.cyclesInstruction.reset()
 
-		// -2 adjustment to PC register to account fo pipeline
+		// -2 adjustment to PC register to account for pipeline
 		pc := arm.registers[rPC] - 2
 
 		// set disasmLevel for the next instruction
@@ -325,8 +344,8 @@ func (arm *ARM) Run() (float32, error) {
 		opcode := uint16((*arm.programMemory)[idx]) | (uint16((*arm.programMemory)[idx+1]) << 8)
 		arm.registers[rPC] += 2
 
-		// run from formatMap
-		formatFunc := arm.formatMap[idx]
+		// run from executionMap if possible
+		formatFunc := arm.executionMap[idx]
 		if formatFunc != nil {
 			formatFunc(opcode)
 		} else {
@@ -334,97 +353,97 @@ func (arm *ARM) Run() (float32, error) {
 			if opcode&0xf000 == 0xf000 {
 				// format 19 - Long branch with link
 				f := arm.executeLongBranchWithLink
-				arm.formatMap[idx] = f
+				arm.executionMap[idx] = f
 				f(opcode)
 			} else if opcode&0xf000 == 0xe000 {
 				// format 18 - Unconditional branch
 				f := arm.executeUnconditionalBranch
-				arm.formatMap[idx] = f
+				arm.executionMap[idx] = f
 				f(opcode)
 			} else if opcode&0xff00 == 0xdf00 {
 				// format 17 - Software interrupt"
 				f := arm.executeSoftwareInterrupt
-				arm.formatMap[idx] = f
+				arm.executionMap[idx] = f
 				f(opcode)
 			} else if opcode&0xf000 == 0xd000 {
 				// format 16 - Conditional branch
 				f := arm.executeConditionalBranch
-				arm.formatMap[idx] = f
+				arm.executionMap[idx] = f
 				f(opcode)
 			} else if opcode&0xf000 == 0xc000 {
 				// format 15 - Multiple load/store
 				f := arm.executeMultipleLoadStore
-				arm.formatMap[idx] = f
+				arm.executionMap[idx] = f
 				f(opcode)
 			} else if opcode&0xf600 == 0xb400 {
 				// format 14 - Push/pop registers
 				f := arm.executePushPopRegisters
-				arm.formatMap[idx] = f
+				arm.executionMap[idx] = f
 				f(opcode)
 			} else if opcode&0xff00 == 0xb000 {
 				// format 13 - Add offset to stack pointer
 				f := arm.executeAddOffsetToSP
-				arm.formatMap[idx] = f
+				arm.executionMap[idx] = f
 				f(opcode)
 			} else if opcode&0xf000 == 0xa000 {
 				// format 12 - Load address
 				f := arm.executeLoadAddress
-				arm.formatMap[idx] = f
+				arm.executionMap[idx] = f
 				f(opcode)
 			} else if opcode&0xf000 == 0x9000 {
 				// format 11 - SP-relative load/store
 				f := arm.executeSPRelativeLoadStore
-				arm.formatMap[idx] = f
+				arm.executionMap[idx] = f
 				f(opcode)
 			} else if opcode&0xf000 == 0x8000 {
 				// format 10 - Load/store halfword
 				f := arm.executeLoadStoreHalfword
-				arm.formatMap[idx] = f
+				arm.executionMap[idx] = f
 				f(opcode)
 			} else if opcode&0xe000 == 0x6000 {
 				// format 9 - Load/store with immediate offset
 				f := arm.executeLoadStoreWithImmOffset
-				arm.formatMap[idx] = f
+				arm.executionMap[idx] = f
 				f(opcode)
 			} else if opcode&0xf200 == 0x5200 {
 				// format 8 - Load/store sign-extended byte/halfword
 				f := arm.executeLoadStoreSignExtendedByteHalford
-				arm.formatMap[idx] = f
+				arm.executionMap[idx] = f
 				f(opcode)
 			} else if opcode&0xf200 == 0x5000 {
 				// format 7 - Load/store with register offset
 				f := arm.executeLoadStoreWithRegisterOffset
-				arm.formatMap[idx] = f
+				arm.executionMap[idx] = f
 				f(opcode)
 			} else if opcode&0xf800 == 0x4800 {
 				// format 6 - PC-relative load
 				f := arm.executePCrelativeLoad
-				arm.formatMap[idx] = f
+				arm.executionMap[idx] = f
 				f(opcode)
 			} else if opcode&0xfc00 == 0x4400 {
 				// format 5 - Hi register operations/branch exchange
 				f := arm.executeHiRegisterOps
-				arm.formatMap[idx] = f
+				arm.executionMap[idx] = f
 				f(opcode)
 			} else if opcode&0xfc00 == 0x4000 {
 				// format 4 - ALU operations
 				f := arm.executeALUoperations
-				arm.formatMap[idx] = f
+				arm.executionMap[idx] = f
 				f(opcode)
 			} else if opcode&0xe000 == 0x2000 {
 				// format 3 - Move/compare/add/subtract immediate
 				f := arm.executeMovCmpAddSubImm
-				arm.formatMap[idx] = f
+				arm.executionMap[idx] = f
 				f(opcode)
 			} else if opcode&0xf800 == 0x1800 {
 				// format 2 - Add/subtract
 				f := arm.executeAddSubtract
-				arm.formatMap[idx] = f
+				arm.executionMap[idx] = f
 				f(opcode)
 			} else if opcode&0xe000 == 0x0000 {
 				// format 1 - Move shifted register
 				f := arm.executeMoveShiftedRegister
-				arm.formatMap[idx] = f
+				arm.executionMap[idx] = f
 				f(opcode)
 			} else {
 				panic("undecoded instruction")

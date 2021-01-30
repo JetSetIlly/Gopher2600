@@ -22,6 +22,11 @@ type timer struct {
 	counter float32
 }
 
+const (
+	TIMERcontrol = PeripheralsOrigin | 0x00008004
+	TIMERvalue   = PeripheralsOrigin | 0x00008008
+)
+
 // the ARM7TDMI in the Harmony runs at 70Mhz.
 const armClock = float32(70)
 
@@ -46,10 +51,10 @@ func (t *timer) step(cycles float32) {
 
 func (t *timer) write(addr uint32, val uint32) bool {
 	switch addr {
-	case 0xe0008004:
+	case TIMERcontrol:
 		t.control = val
 		t.active = t.control&0x01 == 0x01
-	case 0xe0008008:
+	case TIMERvalue:
 		t.counter = float32(val)
 	default:
 		return false
@@ -62,9 +67,9 @@ func (t *timer) read(addr uint32) (uint32, bool) {
 	var val uint32
 
 	switch addr {
-	case 0xe0008004:
+	case TIMERcontrol:
 		val = t.control
-	case 0xe0008008:
+	case TIMERvalue:
 		val = uint32(t.counter)
 	default:
 		return 0, false

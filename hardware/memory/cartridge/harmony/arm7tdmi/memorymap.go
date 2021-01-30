@@ -15,34 +15,11 @@
 
 package arm7tdmi
 
-import (
-	"fmt"
-	"strings"
+const (
+	FlashOrigin       = uint32(0x00000000)
+	Flash32kMemtop    = uint32(0x00007fff)
+	SRAMOrigin        = uint32(0x40000000)
+	SRAM8kMemtop      = uint32(0x40001fff)
+	PeripheralsOrigin = uint32(0xe0000000)
+	PeripheralsMemtop = uint32(0xffffffff)
 )
-
-type cycles struct {
-	I float32
-	C float32
-	N float32
-	S float32
-}
-
-func (c *cycles) String() string {
-	s := strings.Builder{}
-	s.WriteString(fmt.Sprintf("I: %.0f\n", c.I))
-	s.WriteString(fmt.Sprintf("C: %.0f\n", c.C))
-	s.WriteString(fmt.Sprintf("N: %.0f\n", c.N))
-	s.WriteString(fmt.Sprintf("S: %.0f\n", c.S))
-	return s.String()
-}
-
-func (c *cycles) sum() float32 {
-	return c.I + c.C + (2 * c.N) + c.S
-}
-
-func (c *cycles) reset() {
-	c.I = 0
-	c.C = 0
-	c.N = 0
-	c.S = 0
-}

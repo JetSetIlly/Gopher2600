@@ -19,14 +19,14 @@
 // http://www.ecs.csun.edu/~smirzaei/docs/ece425/arm7tdmi_instruction_set_reference.pdf
 //
 // For this project we only need to emulte the Thumb architecture. The strategy
-// for this was to implement the ninetween opcode formats in turn, until there
+// for this was to implement the nineteen opcode formats in turn, until there
 // was nothing left. As of writing only format 17, software interrupts, remain
 // unimplemented. To this end, the following reference was preferred:
 //
 // https://usermanual.wiki/Pdf/ARM7TDMImanualpt3.1481331792/view
 //
 // The full version of that manual was found here. Cycle timings for the
-// instructions were found in section
+// instructions were found in chapter 7.
 //
 // https://www.dwedit.org/files/ARM7TDMI.pdf
 //

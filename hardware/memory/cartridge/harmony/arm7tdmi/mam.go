@@ -15,34 +15,35 @@
 
 package arm7tdmi
 
-import (
-	"fmt"
-	"strings"
+// memory addressing module. not fully implemented.
+type mam struct {
+	mamcr uint32
+}
+
+const (
+	MAMCR = PeripheralsOrigin | 0x001fc000
 )
 
-type cycles struct {
-	I float32
-	C float32
-	N float32
-	S float32
+func (m *mam) write(addr uint32, val uint32) bool {
+	switch addr {
+	case MAMCR:
+		m.mamcr = uint32(val)
+	default:
+		return false
+	}
+
+	return true
 }
 
-func (c *cycles) String() string {
-	s := strings.Builder{}
-	s.WriteString(fmt.Sprintf("I: %.0f\n", c.I))
-	s.WriteString(fmt.Sprintf("C: %.0f\n", c.C))
-	s.WriteString(fmt.Sprintf("N: %.0f\n", c.N))
-	s.WriteString(fmt.Sprintf("S: %.0f\n", c.S))
-	return s.String()
-}
+func (m *mam) read(addr uint32) (uint32, bool) {
+	var val uint32
 
-func (c *cycles) sum() float32 {
-	return c.I + c.C + (2 * c.N) + c.S
-}
+	switch addr {
+	case MAMCR:
+		val = m.mamcr
+	default:
+		return 0, false
+	}
 
-func (c *cycles) reset() {
-	c.I = 0
-	c.C = 0
-	c.N = 0
-	c.S = 0
+	return val, true
 }

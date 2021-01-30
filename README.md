@@ -395,33 +395,45 @@ sent network data.
 
 ## ARM7TDMI Emulation
 
-`Goperh2600` emulates the ARM7TDMI CPU that is found in the `Harmony`
-cartridge. The presence of the CPU allows for highly flexible coprocessing.
+`Gopher2600` emulates the ARM7TDMI CPU that is found in the `Harmony`
+cartridge. The presence of this CPU allows for highly flexible coprocessing.
 
-Currently, processing of ARM7 data is considered to be instantaneous upon
-request. That is, from the perspective of the VCS is requires zero time.
-Clearly, this is impossible and not correct with respect to the physical
-hardware but it doesn't seem to cause any issues with the currently availabl
-ROMs. A comment from Darrel Spice Jr on this topic encouraged me to
-adopt and accept the validity of this approach.
+Although the Harmony itself executes in both ARM and Thumb modes, `Gopher2600`
+currently only emulates Thumb mode. It has been decided that ARM mode emulation
+is not required - better to reimplement the ARM driver in the emulator's host
+language (Go) - but it may be added in the future.
 
-<img src=".screenshots/twitter_spicejr.png" width="300" alt="twitter comment from Darrell Spice Jr"/> 
-
-Only the Thumb instruction set is emulated. While the Harmony itself sometimes
-executes in full ARM mode it is not significant enough for it to be emulated.
-It is far easier (for the time being) for the emulator to reimplement the ARM
-mode program in the host language (ie. Go).
-
-Debugging support for the ARM7TDMI is rudimentary. Currently, a single "last
-execution" window is available. This shows the disassembly of the most recent
-execution of the ARM program. The window is available via the `ARM7TDMI` menu
-which will appear in the menubar if the coprocessor is present.
+Debugging support for the ARM7TDMI is rudimentary. A `last execution` window is
+available. This shows the disassembly of the most recent execution of the ARM
+program. The window is available via the `ARM7TDMI` menu which will appear in
+the menubar if the coprocessor is present.
 
 <img src=".screenshots/arm_disasm.png" width="300" alt="ARM7 last execution
 window"/> 
 
 Note the `Goto` button. This is a [rewind](#rewind) shortcut that takes the emulation to
 the point where the ARM program last executed.
+
+### Estimation of ARM Execution Time
+
+In the real Harmony hardware the ARM program runs whenever the `CALLFN`
+register is written to. While it is running the 6507 program is stalled until
+the ARM program finishes. It is useful therefore to know for how long an ARM
+program is running.
+
+This isn't easy to estimate but `Gopher2600` makes a reasonable effort to give
+the developer an idea. Although be warned that currently this can be misleading
+and there is currently no substitute for testing a ARM enabled ROM on real
+hardware.
+
+<img src=".screenshots/arm_timing.png" width="300" alt="ARM7 execution duration overlay"/> 
+
+The image above shows the coprocessor timing overlay. In this case the cropping
+has been turned off so that we can see the video output in its entirety. The
+purple pixels show the period when the ARM program is running.
+
+As stated this is only an estimate, with accuracy to be improved in the
+future, but we can see how it might prove useful during development.
 
 ## Recording Gameplay
 

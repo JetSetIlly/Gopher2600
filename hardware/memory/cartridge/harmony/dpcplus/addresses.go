@@ -15,29 +15,31 @@
 
 package dpcplus
 
+import "github.com/jetsetilly/gopher2600/hardware/memory/cartridge/harmony/arm7tdmi"
+
 // the memory addresses from the point of view of the ARM processor.
 const (
-	driverOriginROM = 0x00000000
-	driverMemtopROM = 0x00000bff
+	driverOriginROM = arm7tdmi.FlashOrigin
+	driverMemtopROM = arm7tdmi.FlashOrigin | 0x00000bff
 
-	customOriginROM = 0x00000c00
-	customMemtopROM = 0x00006bff
+	customOriginROM = arm7tdmi.FlashOrigin | 0x00000c00
+	customMemtopROM = arm7tdmi.FlashOrigin | 0x00006bff
 
-	dataOriginROM = 0x00006c00
-	dataMemtopROM = 0x00007bff
+	dataOriginROM = arm7tdmi.FlashOrigin | 0x00006c00
+	dataMemtopROM = arm7tdmi.FlashOrigin | 0x00007bff
 
-	freqOriginROM = 0x00007c00
-	freqMemtopROM = 0x00008000
+	freqOriginROM = arm7tdmi.FlashOrigin | 0x00007c00
+	freqMemtopROM = arm7tdmi.FlashOrigin | 0x00008000
 
-	driverOriginRAM = 0x40000000
-	driverMemtopRAM = 0x40000bff
+	driverOriginRAM = arm7tdmi.SRAMOrigin | 0x00000000
+	driverMemtopRAM = arm7tdmi.SRAMOrigin | 0x00000bff
 
-	dataOriginRAM = 0x40000c00
-	dataMemtopRAM = 0x40001bff
+	dataOriginRAM = arm7tdmi.SRAMOrigin | 0x00000c00
+	dataMemtopRAM = arm7tdmi.SRAMOrigin | 0x00001bff
 
-	freqOriginRAM = 0x40001c00
-	freqMemtopRAM = 0x40002000
+	freqOriginRAM = arm7tdmi.SRAMOrigin | 0x00001c00
+	freqMemtopRAM = arm7tdmi.SRAMOrigin | 0x00002000
 
 	// stack should be within the range of the RAM copy of the frequency tables.
-	stackOriginRAM = 0x40001fdc
+	stackOriginRAM = arm7tdmi.SRAMOrigin | 0x00001fdc
 )
