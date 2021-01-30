@@ -27,9 +27,6 @@ const (
 	TIMERvalue   = PeripheralsOrigin | 0x00008008
 )
 
-// the ARM7TDMI in the Harmony runs at 70Mhz.
-const armClock = float32(70)
-
 func (t *timer) stepFromVCS(clock float32) {
 	if !t.active {
 		return
@@ -39,7 +36,7 @@ func (t *timer) stepFromVCS(clock float32) {
 	// accommodate this is to tick the counter forward by the the appropriate
 	// fraction every VCS cycle. Put another way: an NTSC spec VCS, for
 	// example, will tick forward every 58-59 ARM cycles.
-	t.counter += armClock / clock
+	t.counter += float32(InternalClk) / clock
 }
 
 func (t *timer) step(cycles float32) {

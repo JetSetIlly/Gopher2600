@@ -63,8 +63,12 @@ type ARM struct {
 	// index the programMemory array
 	programMemoryOffset uint32
 
-	// executionMap records the function that implements the instruction group
-	// for each opcode in program memory
+	// executionMap records the function that implements the instruction group for each
+	// opcode in program memory. must be reset every time programMemory is reassigned
+	//
+	// note that when executing from RAM (which isn't normal) it's possible for
+	// code to be modified (ie. self-modifying code). in that case executionMap
+	// may be unreliable.
 	executionMap []func(_ uint16)
 
 	// interface to an optional disassembler
@@ -100,11 +104,13 @@ func NewARM(mem SharedMemory, hook CartridgeHook) *ARM {
 }
 
 func (arm *ARM) Plumb() error {
+	// reseting on Plumb() seems odd but we reset() on every call to Run()
+	// anyway. that is to say the ARM isn't stateful between executions - apart
+	// from shared memory but that's handled outside of the arm7tdmi pacakge.
 	err := arm.reset()
 	if err != nil {
 		return err
 	}
-	arm.executionMap = make([]func(_ uint16), len(*arm.programMemory))
 	return nil
 }
 
@@ -161,7 +167,7 @@ func (arm *ARM) findProgramMemory() error {
 		return curated.Errorf("ARM: cannot find program memory")
 	}
 	arm.programMemoryOffset = arm.registers[rPC] - arm.programMemoryOffset
-
+	arm.executionMap = make([]func(_ uint16), len(*arm.programMemory))
 	return nil
 }
 

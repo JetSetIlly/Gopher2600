@@ -19,7 +19,10 @@
 // ARM when required.
 package callfn
 
-import "github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
+import (
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/harmony/arm7tdmi"
+	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
+)
 
 // CallFn keeps track of the CallFn process common to both DPC+ and CDF*
 // cartridge mappers.
@@ -114,7 +117,7 @@ func (cf *CallFn) Start(cycles float32) {
 // If false, then the ARM should be stepped but not otherwise.
 func (cf *CallFn) Step(clock float32) bool {
 	if cf.IsActive() {
-		cf.remainingCycles -= 70 / clock
+		cf.remainingCycles -= arm7tdmi.InternalClk / clock
 		return true
 	}
 	return false
