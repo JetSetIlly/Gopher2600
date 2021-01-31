@@ -418,22 +418,22 @@ the point where the ARM program last executed.
 
 In the real Harmony hardware the ARM program runs whenever the `CALLFN`
 register is written to. While it is running the 6507 program is stalled until
-the ARM program finishes. It is useful therefore to know for how long an ARM
-program is running.
+the ARM program finishes. This means that ARM programs that run for too long can
+interfere with the normal operation of the console.
 
-This isn't easy to estimate but `Gopher2600` makes a reasonable effort to give
-the developer an idea. Although be warned that currently this can be misleading
-and there is currently no substitute for testing a ARM enabled ROM on real
-hardware.
+`Gopher2600` tries to emulate the real behaviour of the hardware, the benefits of this being
+seen in the debugger. The image below shows the `ARM7TDMI` overlay. The period when the ARM is active is
+highlighted with purple pixels.
 
 <img src=".screenshots/arm_timing.png" width="300" alt="ARM7 execution duration overlay"/> 
 
-The image above shows the coprocessor timing overlay. In this case the cropping
-has been turned off so that we can see the video output in its entirety. The
-purple pixels show the period when the ARM program is running.
+While the operation of all ARM using cartridges is accuration (ie. DPC+ and CDF/CDFJ cartridges) the length
+of time for which the ARM program runs is difficult to estimate. The time indicated in the debugging overlay
+therefore is only an estimate and there is no substitute for testing ROMs on real hardware. None-the-less the
+overlay provides an indication of programs that might be problematic.
 
-As stated this is only an estimate, with accuracy to be improved in the
-future, but we can see how it might prove useful during development.
+This area of the project is an ongoing area of improvement and future versions aim to make this measurement
+100% accurate.
 
 ## Recording Gameplay
 
