@@ -98,11 +98,6 @@ func Play(tv *television.Television, scr gui.GUI, newRecording bool, cartload ca
 		return curated.Errorf("playmode: %v", err)
 	}
 
-	err = scr.SetFeature(gui.ReqAddVCS, vcs)
-	if err != nil {
-		return curated.Errorf("playmode: %v", err)
-	}
-
 	// replace player 1 port with savekey
 	if useSavekey {
 		err = vcs.RIOT.Ports.AttachPlayer(ports.Player1ID, savekey.NewSaveKey)
@@ -111,8 +106,9 @@ func Play(tv *television.Television, scr gui.GUI, newRecording bool, cartload ca
 		}
 	}
 
-	// note that we attach the cartridge in three different branches below,
-	// depending on
+	// attach the cartridge depending on whether it's a new recording an
+	// existing recording (ie. a playback) or when no recording is involved at
+	// all.
 
 	if newRecording {
 		// new recording requested
@@ -188,13 +184,7 @@ func Play(tv *television.Television, scr gui.GUI, newRecording bool, cartload ca
 	}
 
 	// connect gui
-	err = scr.SetFeature(gui.ReqSetEventChan, pl.guiChan)
-	if err != nil {
-		return curated.Errorf("playmode: %v", err)
-	}
-
-	// request television visibility
-	err = scr.SetFeature(gui.ReqSetVisibility, true)
+	err = scr.SetFeature(gui.ReqSetPlaymode, pl.guiChan)
 	if err != nil {
 		return curated.Errorf("playmode: %v", err)
 	}

@@ -19,7 +19,6 @@ import (
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/debugger"
 	"github.com/jetsetilly/gopher2600/gui"
-	"github.com/jetsetilly/gopher2600/hardware"
 )
 
 type featureRequest struct {
@@ -60,46 +59,87 @@ func (img *SdlImgui) SetFeatureNoError(request gui.FeatureReq, args ...gui.Featu
 	}()
 }
 
+// check length of arguments sent with feature request.
+func argLen(args []gui.FeatureReqData, expectedLen int) error {
+	if len(args) != expectedLen {
+		return curated.Errorf("wrong number of arguments (%d instead of %d)", len(args), expectedLen)
+	}
+	return nil
+}
+
 // featureRequests have been handed over to the featureReq channel. we service
 // any requests on that channel here.
 func (img *SdlImgui) serviceSetFeature(request featureRequest) {
 	var err error
 
 	switch request.request {
-	case gui.ReqSetVisibility:
-		img.wm.dbgScr.setOpen(request.args[0].(bool))
-
 	case gui.ReqSetPlaymode:
-		err = img.setPlaymode(request.args[0].(bool))
+		err = argLen(request.args, 1)
+		if err == nil {
+			img.setPlaymode(true)
+			img.lz.Dbg = nil
+			if request.args[0] == nil {
+				img.events = nil
+			} else {
+				img.events = request.args[0].(chan gui.Event)
+			}
+		}
+
+	case gui.ReqSetDebugmode:
+		err = argLen(request.args, 2)
+		if err == nil {
+			img.setPlaymode(false)
+			img.lz.Dbg = request.args[0].(*debugger.Debugger)
+			if request.args[0] == nil {
+				img.events = nil
+			} else {
+				img.events = request.args[1].(chan gui.Event)
+			}
+		}
 
 	case gui.ReqState:
-		img.setEmulationState(request.args[0].(gui.EmulationState))
+		err = argLen(request.args, 1)
+		if err == nil {
+			img.setEmulationState(request.args[0].(gui.EmulationState))
+		}
 
 	case gui.ReqVSync:
-		img.screen.crit.section.Lock()
-		img.screen.crit.vsync = request.args[0].(bool)
-		img.screen.crit.section.Unlock()
+		err = argLen(request.args, 1)
+		if err == nil {
+			img.screen.crit.section.Lock()
+			img.screen.crit.vsync = request.args[0].(bool)
+			img.screen.crit.section.Unlock()
+		}
 
 	case gui.ReqFullScreen:
-		img.plt.setFullScreen(request.args[0].(bool))
+		err = argLen(request.args, 1)
+		if err == nil {
+			img.plt.setFullScreen(request.args[0].(bool))
+		}
 
-	case gui.ReqAddVCS:
-		img.vcs = request.args[0].(*hardware.VCS)
-
-	case gui.ReqAddDebugger:
-		img.lz.Dbg = request.args[0].(*debugger.Debugger)
-		img.vcs = img.lz.Dbg.VCS
-
-	case gui.ReqSetEventChan:
-		img.events = request.args[0].(chan gui.Event)
+	case gui.ReqSetVisibility:
+		err = argLen(request.args, 1)
+		if err == nil {
+			if img.isPlaymode() {
+				err = curated.Errorf("visibility not supported in playmode")
+			} else {
+				img.wm.dbgScr.setOpen(request.args[0].(bool))
+			}
+		}
 
 	case gui.ReqChangingCartridge:
 		// a new cartridge requires us to reset the lazy system (see the
 		// lazyvalues.Reset() function commentary for why)
-		img.lz.Reset(request.args[0].(bool))
+		err = argLen(request.args, 1)
+		if err == nil {
+			img.lz.Reset(request.args[0].(bool))
+		}
 
 	case gui.ReqPlusROMFirstInstallation:
-		img.plusROMFirstInstallation = request.args[0].(*gui.PlusROMFirstInstallation)
+		err = argLen(request.args, 1)
+		if err == nil {
+			img.plusROMFirstInstallation = request.args[0].(*gui.PlusROMFirstInstallation)
+		}
 
 	default:
 		err = curated.Errorf(gui.UnsupportedGuiFeature, request.request)
@@ -108,6 +148,6 @@ func (img *SdlImgui) serviceSetFeature(request featureRequest) {
 	if err == nil {
 		img.polling.featureSetErr <- nil
 	} else {
-		img.polling.featureSetErr <- curated.Errorf("sdlimgui: %v", err)
+		img.polling.featureSetErr <- curated.Errorf("sdlimgui: %s: %v", request.request, err)
 	}
 }

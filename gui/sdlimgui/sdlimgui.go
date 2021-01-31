@@ -17,7 +17,6 @@ package sdlimgui
 
 import (
 	"io"
-	"sync/atomic"
 
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
@@ -25,7 +24,6 @@ import (
 	"github.com/jetsetilly/gopher2600/gui/crt"
 	"github.com/jetsetilly/gopher2600/gui/sdlaudio"
 	"github.com/jetsetilly/gopher2600/gui/sdlimgui/lazyvalues"
-	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/paths"
@@ -49,12 +47,8 @@ type SdlImgui struct {
 	glsl    *glsl
 
 	// references to the emulation
-	lz  *lazyvalues.LazyValues
-	tv  *television.Television
-	vcs *hardware.VCS
-
-	// is gui in playmode. use setPlaymode() and isPlaymode() to access this
-	playmode atomic.Value
+	lz *lazyvalues.LazyValues
+	tv *television.Television
 
 	// the gui renders differently depending on EmulationState. use setState()
 	// to set the value
@@ -102,7 +96,7 @@ type SdlImgui struct {
 // NewSdlImgui is the preferred method of initialisation for type SdlImgui
 //
 // MUST ONLY be called from the gui thread.
-func NewSdlImgui(tv *television.Television, playmode bool) (*SdlImgui, error) {
+func NewSdlImgui(tv *television.Television) (*SdlImgui, error) {
 	img := &SdlImgui{
 		context: imgui.CreateContext(nil),
 		io:      imgui.CurrentIO(),
@@ -158,17 +152,6 @@ func NewSdlImgui(tv *television.Television, playmode bool) (*SdlImgui, error) {
 
 	// initialise crt preferences
 	img.crtPrefs, err = crt.NewPreferences()
-	if err != nil {
-		return nil, curated.Errorf("sdlimgui: %v", err)
-	}
-
-	// playmode is an atomic value. make sure a value has been assigned to it
-	// before accessing it.
-	img.playmode.Store(false)
-
-	// set playmode according to the playmode argument. this will set and load
-	// the correct preferences
-	err = img.setPlaymode(playmode)
 	if err != nil {
 		return nil, curated.Errorf("sdlimgui: %v", err)
 	}
@@ -229,14 +212,12 @@ func (img *SdlImgui) setEmulationState(state gui.EmulationState) {
 // is the gui in playmode or not. thread safe. called from emulation thread
 // and gui thread.
 func (img *SdlImgui) isPlaymode() bool {
-	return img.playmode.Load().(bool)
+	return img.lz.Dbg == nil
 }
 
 // set playmode and handle the changeover gracefully. this includes the saving
 // and loading of preference groups. should only be called from gui thread.
 func (img *SdlImgui) setPlaymode(set bool) error {
-	img.playmode.Store(set)
-
 	if set {
 		// save current preferences
 		if img.prefs != nil {

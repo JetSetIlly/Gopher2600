@@ -37,6 +37,13 @@ const (
 	StateEnding
 )
 
+// PlusROMFirstInstallation is used to pass information to the GUI as part of
+// the request.
+type PlusROMFirstInstallation struct {
+	Finish chan error
+	Cart   *plusrom.PlusROM
+}
+
 // List of valid feature requests. argument must be of the type specified or
 // else the interface{} type conversion will fail and the application will
 // probably crash.
@@ -44,13 +51,17 @@ const (
 // Note that, like the name suggests, these are requests, they may or may not
 // be satisfied depending other conditions in the GUI.
 const (
-	// whether the gui is visible or not.
-	ReqSetVisibility FeatureReq = "ReqSetVisibility" // bool
+	// ReqSetPlaymode is called whenever the playmode loop is entered.
+	//
+	// first argument is a pointer to the VCS, second argument is an instance
+	// of received for gui events.
+	ReqSetPlaymode FeatureReq = "ReqSetPlaymode" // *hardware.VCS, chan gui.Event
 
-	// playmode is called whenever the play/debugger looper is changed. like
-	// all other requests this may not do anything, depending on the GUI
-	// specifics.
-	ReqSetPlaymode FeatureReq = "ReqSetPlaymode" // bool
+	// ReqSetDebugmode is called whenever the playmode loop is entered.
+	//
+	// first argument is a pointer to the debugger, second argument is an
+	// instance of received for gui events.
+	ReqSetDebugmode FeatureReq = "ReqSetDebugmode" // *debugger.Debugger, chan gui.Event
 
 	// notify GUI of emulation state. the GUI should use this to alter how
 	// infomration, particularly the display of the PixelRenderer.
@@ -60,24 +71,13 @@ const (
 	// but for presentation/play modes it's a good idea to have it set.
 	ReqVSync FeatureReq = "ReqVSync" // bool
 
+	// whether the gui is visible or not. results in an error if requested in
+	// playmode.
+	ReqSetVisibility FeatureReq = "ReqSetVisibility" // bool
+
 	// put gui output into full-screen mode (ie. no window border and content
 	// the size of the monitor).
 	ReqFullScreen FeatureReq = "ReqFullScreen" // bool
-
-	// the add VCS request is used to associate the gui with an emulated VCS.
-	// a debugger does not need to send this request if it already sends a
-	// ReqAddDebugger request (which it should).
-	ReqAddVCS FeatureReq = "ReqAddVCS" // *hardware.VCS
-
-	// the add debugger request must be made by the debugger if debug access to
-	// the the machine is required by the GUI.
-	ReqAddDebugger FeatureReq = "ReqAddDebugger" // *debugger.Debugger
-
-	// the event channel is used to by the GUI implementation to send
-	// information back to the main program. the GUI may or may not be in its
-	// own go routine but regardless, the event channel is used for this
-	// purpose.
-	ReqSetEventChan FeatureReq = "ReqSetEventChan" // chan gui.Event()
 
 	// triggered when cartridge is being change.
 	ReqChangingCartridge FeatureReq = "ReqChangingCartridge" // bool
@@ -85,10 +85,3 @@ const (
 	// special request for PlusROM cartridges.
 	ReqPlusROMFirstInstallation FeatureReq = "ReqPlusROMFirstInstallation" // PlusROMFirstInstallation
 )
-
-// PlusROMFirstInstallation is used to pass information to the GUI as part of
-// the request.
-type PlusROMFirstInstallation struct {
-	Finish chan error
-	Cart   *plusrom.PlusROM
-}

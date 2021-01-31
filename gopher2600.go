@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
+	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/debugger"
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
 	"github.com/jetsetilly/gopher2600/debugger/terminal/colorterm"
@@ -315,7 +316,7 @@ func play(md *modalflag.Modes, sync *mainSync) error {
 
 		// create gui
 		sync.creator <- func() (GuiCreator, error) {
-			return sdlimgui.NewSdlImgui(tv, true)
+			return sdlimgui.NewSdlImgui(tv)
 		}
 
 		// wait for creator result
@@ -323,11 +324,6 @@ func play(md *modalflag.Modes, sync *mainSync) error {
 		select {
 		case g := <-sync.creation:
 			scr = g.(gui.GUI)
-
-			err = scr.SetFeature(gui.ReqSetPlaymode, true)
-			if err != nil {
-				return err
-			}
 
 		case err := <-sync.creationError:
 			return err
@@ -432,7 +428,7 @@ func debug(md *modalflag.Modes, sync *mainSync) error {
 	// create gui
 	if *termType == "IMGUI" {
 		sync.creator <- func() (GuiCreator, error) {
-			return sdlimgui.NewSdlImgui(tv, false)
+			return sdlimgui.NewSdlImgui(tv)
 		}
 
 		// wait for creator result
@@ -610,7 +606,7 @@ func perform(md *modalflag.Modes, sync *mainSync) error {
 		if *display {
 			// create gui
 			sync.creator <- func() (GuiCreator, error) {
-				return sdlimgui.NewSdlImgui(tv, true)
+				return sdlimgui.NewSdlImgui(tv)
 			}
 
 			// wait for creator result
@@ -620,6 +616,12 @@ func perform(md *modalflag.Modes, sync *mainSync) error {
 				scr = g.(gui.GUI)
 			case err := <-sync.creationError:
 				return err
+			}
+
+			// connect gui
+			err = scr.SetFeature(gui.ReqSetPlaymode, nil)
+			if err != nil {
+				return curated.Errorf("playmode: %v", err)
 			}
 
 			// fpscap for gui (see above for tv option)

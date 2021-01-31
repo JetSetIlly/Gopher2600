@@ -237,7 +237,7 @@ func NewDebugger(tv *television.Television, scr gui.GUI, term terminal.Terminal,
 	signal.Notify(dbg.events.IntEvents, os.Interrupt)
 
 	// connect gui
-	err = scr.SetFeature(gui.ReqSetEventChan, dbg.events.GuiEvents)
+	err = dbg.scr.SetFeature(gui.ReqSetDebugmode, dbg, dbg.events.GuiEvents)
 	if err != nil {
 		if !curated.Is(err, gui.UnsupportedGuiFeature) {
 			return nil, curated.Errorf("debugger: %v", err)
@@ -251,12 +251,6 @@ func NewDebugger(tv *television.Television, scr gui.GUI, term terminal.Terminal,
 	dbg.term.RegisterTabCompletion(commandline.NewTabCompletion(debuggerCommands))
 
 	// try to add debugger (self) to gui context
-	err = dbg.scr.SetFeature(gui.ReqAddDebugger, dbg)
-	if err != nil {
-		if !curated.Is(err, gui.UnsupportedGuiFeature) {
-			return nil, curated.Errorf("debugger: %v", err)
-		}
-	}
 
 	return dbg, nil
 }

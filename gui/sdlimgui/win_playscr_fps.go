@@ -61,7 +61,7 @@ func (win *winPlayScrFPS) setOpen(open bool) {
 }
 
 func (win *winPlayScrFPS) draw() {
-	if !win.open || !win.img.playmode.Load().(bool) {
+	if !win.open || !win.img.isPlaymode() {
 		return
 	}
 
