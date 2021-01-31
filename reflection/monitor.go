@@ -56,11 +56,6 @@ func (mon *Monitor) Check(bank mapper.BankInfo) error {
 		CoprocessorActive: bank.ExecutingCoprocessor,
 	}
 
-	res.Optimisations = Optimisations{
-		ReusePixel:       mon.vcs.TIA.Video.OptReusePixel,
-		NoCollisionCheck: mon.vcs.TIA.Video.OptNoCollisionCheck,
-	}
-
 	// reflect HMOVE state
 	if mon.vcs.TIA.FutureHmove.IsActive() {
 		res.Hmove.Delay = true

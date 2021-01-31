@@ -106,7 +106,7 @@ func NewARM(mem SharedMemory, hook CartridgeHook) *ARM {
 func (arm *ARM) Plumb() error {
 	// reseting on Plumb() seems odd but we reset() on every call to Run()
 	// anyway. that is to say the ARM isn't stateful between executions - apart
-	// from shared memory but that's handled outside of the arm7tdmi pacakge.
+	// from shared memory but that's handled outside of the arm7tdmi package.
 	err := arm.reset()
 	if err != nil {
 		return err
@@ -308,7 +308,6 @@ func (arm *ARM) Run() (float32, error) {
 				// use cached entry
 				arm.disasmEntry = e
 
-				// disable cache if entry does not need its notes updating
 				if arm.disasmEntry.UpdateNotes {
 					arm.disasmEntry.ExecutionNotes = ""
 					arm.disasmLevel = disasmNotes

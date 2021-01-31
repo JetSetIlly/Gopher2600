@@ -20,7 +20,7 @@ import (
 	"strings"
 )
 
-// Clock speeds inside the arm7 sub-system
+// Clock speeds inside the arm7 sub-system.
 const (
 	InternalClk = 70 // Mhz
 )

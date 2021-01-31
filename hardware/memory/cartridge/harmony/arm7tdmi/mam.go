@@ -27,7 +27,7 @@ const (
 func (m *mam) write(addr uint32, val uint32) bool {
 	switch addr {
 	case MAMCR:
-		m.mamcr = uint32(val)
+		m.mamcr = val
 	default:
 		return false
 	}

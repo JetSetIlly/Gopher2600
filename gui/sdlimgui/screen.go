@@ -124,7 +124,7 @@ func newScreen(img *SdlImgui) *screen {
 		emuWaitAck: make(chan bool),
 	}
 
-	scr.crit.overlay = reflection.OverlayList[0]
+	scr.crit.overlay = reflection.WSYNC
 	scr.Reset()
 
 	return scr
@@ -387,17 +387,17 @@ func (scr *screen) replotOverlay() {
 func (scr *screen) plotOverlay(x, y int, ref reflection.VideoStep) {
 	scr.crit.overlayPixels.SetRGBA(x, y, color.RGBA{0, 0, 0, 0})
 	switch scr.crit.overlay {
-	case "WSYNC":
+	case reflection.WSYNC:
 		if ref.WSYNC {
 			scr.crit.overlayPixels.SetRGBA(x, y, reflection.PaletteEvents["WSYNC"])
 		}
-	case "Collisions":
+	case reflection.COLLISIONS:
 		if ref.Collision.LastVideoCycle.IsCXCLR() {
 			scr.crit.overlayPixels.SetRGBA(x, y, reflection.PaletteEvents["CXCLR"])
 		} else if !ref.Collision.LastVideoCycle.IsNothing() {
 			scr.crit.overlayPixels.SetRGBA(x, y, reflection.PaletteEvents["Collision"])
 		}
-	case "HMOVE":
+	case reflection.HMOVE:
 		// HmoveCt counts to -1 (or 255 for a uint8)
 		if ref.Hmove.Delay {
 			scr.crit.overlayPixels.SetRGBA(x, y, reflection.PaletteEvents["HMOVE delay"])
@@ -408,16 +408,9 @@ func (scr *screen) plotOverlay(x, y int, ref reflection.VideoStep) {
 				scr.crit.overlayPixels.SetRGBA(x, y, reflection.PaletteEvents["HMOVE latched"])
 			}
 		}
-	case "Coprocessor":
+	case reflection.COPROCESSOR:
 		if ref.CoprocessorActive {
 			scr.crit.overlayPixels.SetRGBA(x, y, reflection.PaletteEvents["Coprocessor active"])
-		}
-	case "Optimised":
-		// show pixels that were generated without opimisation (ie. these
-		// pixels took the maximum amount of time required to discover what the
-		// color should be)
-		if ref.Optimisations.NoCollisionCheck && ref.Optimisations.ReusePixel {
-			scr.crit.overlayPixels.SetRGBA(x, y, reflection.PaletteEvents["Optimised"])
 		}
 	}
 }

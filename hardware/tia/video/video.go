@@ -90,10 +90,6 @@ type Video struct {
 	// so one event is sufficient
 	writing         delay.Event
 	writingRegister string
-
-	// optimisation flags
-	OptReusePixel       bool
-	OptNoCollisionCheck bool
 }
 
 // NewVideo is the preferred method of initialisation for the Video sub-system.
@@ -214,8 +210,8 @@ func (vd *Video) Pixel() {
 
 	// optimisation: if nothing has changed since last pixel then return early
 	// with the color of the previous pixel.
-	vd.OptReusePixel = !vd.spriteHasChanged && (vd.Playfield.colorLatch == vd.lastPlayfieldActive)
-	if vd.OptReusePixel {
+	optReusePixel := !vd.spriteHasChanged && (vd.Playfield.colorLatch == vd.lastPlayfieldActive)
+	if optReusePixel {
 		vd.spriteHasChanged = false
 		return
 	}
@@ -230,8 +226,10 @@ func (vd *Video) Pixel() {
 
 	// optimisation: only check for collisions if at least one sprite thinks it
 	// might be worth doing
-	vd.OptNoCollisionCheck = !(vd.Player0.pixelCollision || vd.Player1.pixelCollision || vd.Missile0.pixelCollision || vd.Missile1.pixelCollision || vd.Ball.pixelCollision)
-	if !vd.OptNoCollisionCheck {
+	collisionCheck := vd.Player0.pixelCollision || vd.Player1.pixelCollision ||
+		vd.Missile0.pixelCollision || vd.Missile1.pixelCollision ||
+		vd.Ball.pixelCollision
+	if collisionCheck {
 		vd.Collisions.tick(vd.Player0.pixelCollision, vd.Player1.pixelCollision, vd.Missile0.pixelCollision, vd.Missile1.pixelCollision, vd.Ball.pixelCollision, vd.Playfield.colorLatch)
 	} else {
 		vd.Collisions.LastVideoCycle.reset()

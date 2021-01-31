@@ -79,7 +79,7 @@ type resizer struct {
 	pendingTop    int
 	pendingBottom int
 
-	// number of frames until a resize is commited to the PixelRenderers this
+	// number of frames until a resize is committed to the PixelRenderers this
 	// gives time for the screen to settle down.
 	pendingCt int
 }

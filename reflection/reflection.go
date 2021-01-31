@@ -54,25 +54,11 @@ type VideoStep struct {
 	// whether Coprocessor is active
 	CoprocessorActive bool
 
-	// detail of the optimisations used during the production of this videostep
-	Optimisations Optimisations
-
-	// whether Hblank is on. there's no other way of knowing this except
-	// directly from the TIA. the TIA does send VideoBlank to the television
-	// when Hblank is active but this seems a roundabout way of detecting
-	// whether Hblank is active.
+	// whether Hblank is on
 	IsHblank bool
 
 	// string representation of collision state for this videostep
 	Collision video.Collisions
-}
-
-// Optimisations records if a code "short-cut" has taken place during the
-// generation of the reflected video step (or color clock, or "pixel", if you
-// prefer to think of it like that).
-type Optimisations struct {
-	ReusePixel       bool
-	NoCollisionCheck bool
 }
 
 // Hmove groups the HMOVE reflection information. It's too complex a property
@@ -86,6 +72,13 @@ type Hmove struct {
 	RippleCt uint8
 }
 
-// OverlayList is the list of overlays that should be supported by a
-// reflection.Renderer.
-var OverlayList = []string{"WSYNC", "Collisions", "HMOVE", "Coprocessor", "Optimised"}
+// List of valid overlay reflection overlay types.
+const (
+	WSYNC       = "WSYNC"
+	COLLISIONS  = "Collisions"
+	HMOVE       = "HMOVE"
+	COPROCESSOR = "Coprocessor"
+)
+
+// OverlayList is the list of overlays that should be supported by a reflection.Renderer.
+var OverlayList = []string{WSYNC, COLLISIONS, HMOVE, COPROCESSOR}

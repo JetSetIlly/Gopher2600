@@ -51,16 +51,16 @@ type CartCoProcBus interface {
 	SetDisassembler(CartCoProcDisassembler)
 }
 
-// CartCoProcDisassembler_stdout is a minimial implementation of the CartCoProcDisassembler
-// interface. It output entries to stdout immediately upon request.
-type CartCoProcDisassembler_stdout struct {
+// CartCoProcDisassemblerStdout is a minimial implementation of the CartCoProcDisassembler
+// interface. It outputs entries to stdout immediately upon request.
+type CartCoProcDisassemblerStdout struct {
 }
 
 // Reset implements the CartCoProcDisassembler interface.
-func (c *CartCoProcDisassembler_stdout) Reset() {
+func (c *CartCoProcDisassemblerStdout) Reset() {
 }
 
 // Instruction implements the CartCoProcDisassembler interface.
-func (c *CartCoProcDisassembler_stdout) Instruction(e CartCoProcDisasmEntry) {
+func (c *CartCoProcDisassemblerStdout) Instruction(e CartCoProcDisasmEntry) {
 	fmt.Println(e)
 }

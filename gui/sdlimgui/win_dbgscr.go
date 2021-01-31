@@ -79,11 +79,6 @@ type winDbgScr struct {
 	specComboDim    imgui.Vec2
 	overlayComboDim imgui.Vec2
 
-	// when set the scale value numerically (with the getScale() function) we
-	// need to alter how we set the window size for the first frame afterwards.
-	// the rescaled bool helps us do this.
-	rescaled bool
-
 	// the basic amount by which the image should be scaled. horizontal scaling
 	// is slightly different (see horizScaling() function)
 	scaling float32
@@ -313,18 +308,7 @@ func (win *winDbgScr) draw() {
 		imgui.SameLine()
 		imgui.Checkbox("Overlay", &win.overlay)
 		imgui.SameLine()
-		imgui.PushItemWidth(win.overlayComboDim.X)
-		if imgui.BeginComboV("##overlay", win.img.screen.crit.overlay, imgui.ComboFlagNoArrowButton) {
-			for _, s := range reflection.OverlayList {
-				if imgui.Selectable(s) {
-					win.img.screen.crit.overlay = s
-					win.img.screen.replotOverlay()
-				}
-			}
-
-			imgui.EndCombo()
-		}
-		imgui.PopItemWidth()
+		win.drawOverlayCombo()
 
 		// add capture information
 		imgui.SameLine()
@@ -342,6 +326,55 @@ func (win *winDbgScr) draw() {
 	})
 
 	imgui.End()
+}
+
+// drawOverlayCombo takes care to display the correct label in the combo box
+// but to use the correct internal representation. for example, reflection.COPROCESSOR
+// is representated visally by whatever the Coprocess ID value is.
+//
+// if the overlay system gets more complex than we may need a more subtle
+// solution to this problem. (the problem being that we want some overlay
+// labels to be reactive to the state of the emulation).
+//
+// called from within a win.scr.crit.section Lock().
+func (win *winDbgScr) drawOverlayCombo() {
+	imgui.PushItemWidth(win.overlayComboDim.X)
+	defer imgui.PopItemWidth()
+
+	selected := win.img.screen.crit.overlay
+
+	// change selected label if necessary
+	if selected == reflection.COPROCESSOR {
+		selected = win.img.lz.CoProc.ID
+	}
+
+	if imgui.BeginComboV("##overlay", selected, imgui.ComboFlagNoArrowButton) {
+		for _, s := range reflection.OverlayList {
+			// skip overlays that aren't relevant given the current state of the emualation
+			if s == reflection.COPROCESSOR {
+				if !win.img.lz.CoProc.HasCoProcBus {
+					continue // for loop
+				}
+
+				// change combo option if necessary
+				s = win.img.lz.CoProc.ID
+			}
+
+			if imgui.Selectable(s) {
+				// change visual label to a value more suitable for internal
+				// representation, if necessary.
+				if s == win.img.lz.CoProc.ID {
+					win.img.screen.crit.overlay = reflection.COPROCESSOR
+				} else {
+					win.img.screen.crit.overlay = s
+				}
+
+				win.img.screen.replotOverlay()
+			}
+		}
+
+		imgui.EndCombo()
+	}
 }
 
 // called from within a win.scr.crit.section Lock().
@@ -383,8 +416,14 @@ func (win *winDbgScr) drawReflectionTooltip(screenOrigin imgui.Vec2) {
 
 	if win.overlay {
 		switch win.scr.crit.overlay {
-		case "WSYNC":
-		case "Collisions":
+		case reflection.WSYNC:
+			imguiSeparator()
+			if ref.WSYNC {
+				imgui.Text("6507 is not ready")
+			} else {
+				imgui.Text("6507 program is running")
+			}
+		case reflection.COLLISIONS:
 			imguiSeparator()
 
 			imguiLabel("CXM0P ")
@@ -412,7 +451,7 @@ func (win *winDbgScr) drawReflectionTooltip(screenOrigin imgui.Vec2) {
 			} else {
 				imgui.Text("no new collision")
 			}
-		case "HMOVE":
+		case reflection.HMOVE:
 			imguiSeparator()
 			if ref.Hmove.Delay {
 				imgui.Text(fmt.Sprintf("HMOVE delay: %d", ref.Hmove.DelayCt))
@@ -425,17 +464,12 @@ func (win *winDbgScr) drawReflectionTooltip(screenOrigin imgui.Vec2) {
 			} else {
 				imgui.Text("no HMOVE")
 			}
-		case "Optimised":
+		case reflection.COPROCESSOR:
 			imguiSeparator()
-			if ref.Optimisations.ReusePixel && ref.Optimisations.NoCollisionCheck {
-				imgui.Text("Shortest render path used")
+			if ref.CoprocessorActive {
+				imgui.Text(fmt.Sprintf("%s is working", win.img.lz.CoProc.ID))
 			} else {
-				if !ref.Optimisations.ReusePixel {
-					imgui.Text("Pixel col/layer recalculated")
-				}
-				if !ref.Optimisations.NoCollisionCheck {
-					imgui.Text("Collision registers recalculated")
-				}
+				imgui.Text("6507 program is running")
 			}
 		}
 		return
