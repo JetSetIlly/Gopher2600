@@ -17,7 +17,6 @@ package sdlimgui
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
@@ -50,16 +49,17 @@ type term struct {
 
 func newTerm() *term {
 	return &term{
-		// inputChan queue must not block
+		// inputChan must not block
 		inputChan: make(chan string, 1),
 
 		// side-channel terminal input from other areas of the GUI. for
 		// example, we can have a menu item that writes "QUIT" to the side
-		// channel, with predictable results.
+		// channel rather than calling a Quit() function directly.
 		//
 		// assigning a generous buffer. see pushCommand() for commentary.
 		sideChan: make(chan string, 10),
 
+		// promptChan must not block
 		promptChan: make(chan terminal.Prompt, 1),
 
 		// generous buffer for output channel
@@ -91,6 +91,9 @@ func (trm *term) TermPrintLine(style terminal.Style, s string) {
 	// do not print anything if last terminal event was from sidechannel
 	if trm.sideChanLast {
 		trm.sideChanLast = false
+		if style == terminal.StyleError || style == terminal.StyleLog {
+			logger.Log("term", s)
+		}
 		return
 	}
 
@@ -110,15 +113,12 @@ func (trm *term) TermRead(buffer []byte, prompt terminal.Prompt, events *termina
 	for {
 		select {
 		case inp := <-trm.inputChan:
-			n := len(inp)
 			copy(buffer, inp+"\n")
-			return n + 1, nil
+			return len(inp) + 1, nil
 
-		case s := <-trm.sideChan:
-			s = strings.TrimSpace(s)
-			n := len(s)
-			copy(buffer, s+"\n")
-			return n + 1, nil
+		case inp := <-trm.sideChan:
+			copy(buffer, inp+"\n")
+			return len(inp) + 1, nil
 
 		case <-events.IntEvents:
 			return 0, curated.Errorf(terminal.UserAbort)
@@ -173,6 +173,6 @@ func (trm *term) pushCommand(input string) {
 		// ** try not to push commands if GUI is not in debug mode. there won't
 		// be anything to receive the input and so the channel will eventually
 		// fill up
-		logger.Log("sdlimgui", fmt.Sprintf("dropping %s from side channel. channel buffer too short.", input))
+		logger.Log("term", fmt.Sprintf("dropping from side channel (%s)", input))
 	}
 }

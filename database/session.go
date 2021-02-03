@@ -57,10 +57,12 @@ type Session struct {
 	entryTypes map[string]Deserialiser
 }
 
-// StartSession starts/initialises a new DB session. argument is the function
-// to call when database has been successfully opened. this function should be
-// used to add information about the different entries that are to be used in
-// the database (see AddEntryType() function).
+// StartSession starts/initialises a new DB session. The init argument is the
+// function to call when database has been successfully opened. This function
+// should be used to add information about the different entries that are to be
+// used in the database (see AddEntryType() function).
+//
+// Calls to StartSession must be paired with a call to EndSesion().
 func StartSession(path string, activity Activity, init func(*Session) error) (*Session, error) {
 	var err error
 

@@ -88,7 +88,7 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 		trace := dbg.traces.check()
 		if trace != "" {
 			if dbg.commandOnTrace != nil {
-				err := dbg.processTokenGroup(dbg.commandOnTrace)
+				err := dbg.processTokensList(dbg.commandOnTrace)
 				if err != nil {
 					dbg.printLine(terminal.StyleError, "%s", err)
 				}
@@ -140,7 +140,7 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 
 			// input has halted. print on halt command if it is defined
 			if dbg.commandOnHalt != nil {
-				err := dbg.processTokenGroup(dbg.commandOnHalt)
+				err := dbg.processTokensList(dbg.commandOnHalt)
 				if err != nil {
 					dbg.printLine(terminal.StyleError, "%s", err)
 				}
@@ -249,7 +249,7 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 
 			// command on step is process every time emulation has continued one step
 			if dbg.commandOnStep != nil {
-				err := dbg.processTokenGroup(dbg.commandOnStep)
+				err := dbg.processTokensList(dbg.commandOnStep)
 				if err != nil {
 					dbg.printLine(terminal.StyleError, "%s", err)
 				}
@@ -346,7 +346,7 @@ func (dbg *Debugger) contEmulation(inputter terminal.Input) error {
 		// for video quantums we need to run any OnStep commands before
 		// starting a new inputLoop
 		if dbg.commandOnStep != nil {
-			err := dbg.processTokenGroup(dbg.commandOnStep)
+			err := dbg.processTokensList(dbg.commandOnStep)
 			if err != nil {
 				dbg.printLine(terminal.StyleError, "%s", err)
 			}
@@ -468,37 +468,40 @@ func (dbg *Debugger) contEmulation(inputter terminal.Input) error {
 // - for non-interactive input set running flag to false immediately
 // - otherwise, prompt use for confirmation that the debugger should quit.
 func (dbg *Debugger) handleInterrupt(inputter terminal.Input) {
-	// if script input is being capture by a scriptScribe then
-	// we the user interrupt event as a SCRIPT END
-	// command.
 	if dbg.scriptScribe.IsActive() {
+		// script recording is in progress so we insert SCRIPT END into the
+		// input stream
 		dbg.input = []byte("SCRIPT END")
-	} else if !inputter.IsInteractive() {
+		return
+	}
+
+	if !inputter.IsInteractive() {
+		// terminal is not interactive so we set running to false which will
+		// quit the debugger as soon as possible
 		dbg.running = false
-	} else {
-		// a scriptScribe is not active nor is this a script
-		// input loop. ask the user if they really want to quit
-		confirm := make([]byte, 1)
-		_, err := inputter.TermRead(confirm,
-			terminal.Prompt{
-				Content: "really quit (y/n) ",
-				Type:    terminal.PromptTypeConfirm},
-			dbg.events)
+	}
 
-		if err != nil {
-			// another UserInterrupt has occurred. we treat
-			// UserInterrupt as thought 'y' was pressed
-			if curated.Is(err, terminal.UserInterrupt) {
-				confirm[0] = 'y'
-			} else {
-				dbg.printLine(terminal.StyleError, err.Error())
-			}
-		}
+	// terminal is interactive so we ask for quit confirmation
 
-		// check if confirmation has been confirmed and run
-		// QUIT command
-		if confirm[0] == 'y' || confirm[0] == 'Y' {
-			dbg.running = false
+	confirm := make([]byte, 1)
+	_, err := inputter.TermRead(confirm,
+		terminal.Prompt{
+			Content: "really quit (y/n) ",
+			Type:    terminal.PromptTypeConfirm},
+		dbg.events)
+
+	if err != nil {
+		// another UserInterrupt has occurred. we treat a second UserInterrupt
+		// as thought 'y' was pressed
+		if curated.Is(err, terminal.UserInterrupt) {
+			confirm[0] = 'y'
+		} else {
+			dbg.printLine(terminal.StyleError, err.Error())
 		}
+	}
+
+	// check if confirmation has been confirmed
+	if confirm[0] == 'y' || confirm[0] == 'Y' {
+		dbg.running = false
 	}
 }

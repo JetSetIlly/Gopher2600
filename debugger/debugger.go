@@ -108,6 +108,10 @@ type Debugger struct {
 	Rewind    *rewind.Rewind
 	rewinding chan bool
 
+	// whether the state of the emulation has changed since the last time it
+	// was checked - use HasChanged() function
+	hasChanged bool
+
 	// \/\/\/ inputLoop \/\/\/
 
 	// is current inputloop inside a video cycle
@@ -126,8 +130,8 @@ type Debugger struct {
 	// continue emulation until a halt condition is encountered
 	runUntilHalt bool
 
-	// continue the emulation. this is seemingly only used in the inputLoop but
-	// because we nest calls to inputLoop on occasion it is better to keep
+	// continue the emulation. this is seemingly only used in the inputLoop()
+	// but because we nest calls to inputLoop on occasion it is better to keep
 	// here in the debugger type
 	continueEmulation bool
 
@@ -138,10 +142,6 @@ type Debugger struct {
 	// continued operation is not inside a video cycle loop
 	inputLoopRestart   bool
 	inputLoopOnRestart func() error
-
-	// whether the state of the emulation has changed since the last time it
-	// was checked - use HasChanged() function
-	hasChanged bool
 }
 
 // NewDebugger creates and initialises everything required for a new debugging

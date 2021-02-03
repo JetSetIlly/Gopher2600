@@ -79,6 +79,7 @@ func (dbg *Debugger) parseCommand(cmd string, scribe bool, echo bool) error {
 	return dbg.processTokens(tokens)
 }
 
+// return tokenised command
 func (dbg *Debugger) tokeniseCommand(cmd string, scribe bool, echo bool) (*commandline.Tokens, error) {
 	// tokenise input
 	tokens := commandline.TokeniseInput(cmd)
@@ -121,8 +122,12 @@ func (dbg *Debugger) tokeniseCommand(cmd string, scribe bool, echo bool) (*comma
 	return tokens, nil
 }
 
-// processTokenGroup call processTokens for each entry in the array of tokens.
-func (dbg *Debugger) processTokenGroup(tokenGrp []*commandline.Tokens) error {
+// processTokensList call processTokens for each entry in the array of tokens.
+// this is useful when we have already parsed and tokenised command input and
+// simply want to rerun those commands.
+//
+// used by the ONSTEP, ONHALT and ONTRACE features.
+func (dbg *Debugger) processTokensList(tokenGrp []*commandline.Tokens) error {
 	var err error
 
 	for _, t := range tokenGrp {
@@ -134,6 +139,7 @@ func (dbg *Debugger) processTokenGroup(tokenGrp []*commandline.Tokens) error {
 	return nil
 }
 
+// process a single command (with arguments).
 func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 	// check first token. if this token makes sense then we will consume the
 	// rest of the tokens appropriately

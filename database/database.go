@@ -91,6 +91,7 @@ func (db *Session) Delete(key int) error {
 	return nil
 }
 
+// ForEach entry in the database run the function against that entry.
 func (db Session) ForEach(f func(key int, e Entry) error) error {
 	keyList := db.SortedKeyList()
 

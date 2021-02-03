@@ -23,35 +23,42 @@ import (
 
 // Input defines the operations required by an interface that allows input.
 type Input interface {
-	// the TermRead loop should listenfor events on eventChannel and call
-	// eventHandler with the received event as the argument.
+	// TermRead will return the number of characters inserted into the buffer,
+	// or an error, when completed.
 	//
-	// for example, where someChannel is private to the Input implementation
-	//
-	//	select {
-	//	case <- someChannel
-	//	case ev := <-eventChannel:
-	//		return 0, eventHandler(ev)
-	//	}
+	// If possible the TermRead() implementation should regularly check the
+	// ReadEvents channels for activity. Not all implementations will be able
+	// to do so because of the context in which they operate.
 	TermRead(buffer []byte, prompt Prompt, events *ReadEvents) (int, error)
 
-	// TermReadCheck() returns true if there is input to be read. not all
-	// terminals will be able to implement this meaningfully. returning false
-	// is fine.
+	// TermReadCheck() returns true if there is input to be read. Not all
+	// implementations will be able return anything meaningful in which case a
+	// return value of false is fine.
 	TermReadCheck() bool
 
 	// IsInteractive() should return true for implementations that require user
-	// interaction. implementations that don't require a user to interact with
-	// the debugger should return false.
+	// interaction. Instances that don't expect user intervention should return
+	// false.
 	IsInteractive() bool
 }
 
-// ReadEvents encapsulates the event channels that need to be monitored during
-// a TermRead.
+// Sentinal errors. Returned by TermRead() if caught whilst waiting for input.
+// Not all terminal implementations will return these errors because of the
+// context in which they operate and in those instances signals should be
+// cuaght by the IntEvents channel found in the ReadEvents type.
+const (
+	UserInterrupt = "user interrupt"
+	UserAbort     = "user abort"
+)
+
+// ReadEvents *must* be monitored during a TermRead().
 type ReadEvents struct {
+	// gui events. must be handled immediately by accompanying GuiEventHandler
 	GuiEvents       chan gui.Event
 	GuiEventHandler func(gui.Event) error
-	IntEvents       chan os.Signal
+
+	// interrupt signals from the operating system
+	IntEvents chan os.Signal
 
 	// RawEvents allows functions to be pushed into the debugger goroutine
 	RawEvents chan func()
@@ -75,24 +82,25 @@ type Output interface {
 
 // Terminal defines the operations required by the debugger's command line interface.
 type Terminal interface {
-	// Userinterfaces, by definition, embed the Input and Output interfaces
+	// Terminal implementation also implement the Input and Output interfaces.
 	Input
 	Output
 
-	// initialise the terminal. not all terminal implementations will need to
+	// Initialise the terminal. not all terminal implementations will need to
 	// do anything.
 	Initialise() error
 
-	// restore the terminal to it's original state, if possible. for example,
+	// Restore the terminal to it's original state, if possible. for example,
 	// we could use this to make sure the terminal is returned to canonical
 	// mode. not all terminal implementations will need to do anything.
 	CleanUp()
 
-	// register the tab completion engine to use with the UserInput
-	// implementation
+	// Register a tab completion implementation to use with the terminal. Not
+	// all implementations need to respond meaningfully to this.
 	RegisterTabCompletion(TabCompletion)
 
-	// Silence all input and output (except error messages)
+	// Silence all input and output except error messages. In other words,
+	// TermPrintLine() should display error messages even if silenced is true.
 	Silence(silenced bool)
 }
 
@@ -107,9 +115,3 @@ type TabCompletion interface {
 type Broker interface {
 	GetTerminal() Terminal
 }
-
-// Sentinal errors.
-const (
-	UserInterrupt = "user interrupt"
-	UserAbort     = "user abort"
-)
