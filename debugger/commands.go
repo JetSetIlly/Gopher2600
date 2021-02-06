@@ -16,7 +16,6 @@
 package debugger
 
 import (
-	"bytes"
 	"encoding/hex"
 	"fmt"
 	"runtime"
@@ -405,9 +404,9 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 			dbg.printLine(terminal.StyleFeedback, "cartridge patched")
 		}
 
-	case cmdDisassembly:
+	case cmdDisasm:
 		bytecode := false
-		bank := -1
+		v := -1
 
 		arg, ok := tokens.Get()
 		if ok {
@@ -415,19 +414,33 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 			case "BYTECODE":
 				bytecode = true
 			default:
-				bank, _ = strconv.Atoi(arg)
+				n, err := strconv.ParseInt(arg, 0, 32)
+				if err != nil {
+					dbg.printLine(terminal.StyleError, fmt.Sprintf("can't disassemble %v", arg))
+					return nil
+				}
+				v = int(n)
 			}
 		}
 
 		var err error
 
-		attr := disassembly.WriteAttr{ByteCode: bytecode}
-		s := &bytes.Buffer{}
+		attr := disassembly.ColumnAttr{
+			ByteCode: bytecode,
+			Label:    true,
+			Cycles:   true,
+		}
 
-		if bank == -1 {
+		s := &strings.Builder{}
+
+		if v == -1 {
 			err = dbg.Disasm.Write(s, attr)
+		} else if v >= int(memorymap.OriginCart) {
+			err = dbg.Disasm.WriteAddr(s, disassembly.ColumnAttr{Cycles: true}, uint16(v))
+		} else if v < dbg.VCS.Mem.Cart.NumBanks() {
+			err = dbg.Disasm.WriteBank(s, attr, v)
 		} else {
-			err = dbg.Disasm.WriteBank(s, attr, bank)
+			dbg.printLine(terminal.StyleError, fmt.Sprintf("no bank %d in cartridge", v))
 		}
 
 		if err != nil {
@@ -438,7 +451,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 
 	case cmdLint:
 		output := &strings.Builder{}
-		err := linter.Lint(dbg.Disasm, output)
+		err := linter.Write(dbg.Disasm, output)
 		if err != nil {
 			return err
 		}

@@ -17,58 +17,69 @@ package linter
 
 import (
 	"fmt"
-	"io"
+	"strings"
 
-	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/disassembly"
-	"github.com/jetsetilly/gopher2600/hardware/cpu/instructions"
-	"github.com/jetsetilly/gopher2600/hardware/memory/addresses"
-	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
-// Lint the disassembly of the load ROM. Currently, the function looks for read
-// instructions that target non-addressible TIA and RIOT addresses.
-func Lint(dsm *disassembly.Disassembly, output io.Writer) error {
-	// look at every bank in the disassembly
-	citr := dsm.NewCartIteration()
-	citr.Start()
-	for b, ok := citr.Start(); ok; b, ok = citr.Next() {
-		// create a new iteration for the bank
-		bitr, err := dsm.NewBankIteration(disassembly.EntryLevelBlessed, b)
-		if err != nil {
-			return curated.Errorf("linter: %v", err)
-		}
+// Lint disassembly and return results
+func Lint(dsm *disassembly.Disassembly) (*Results, error) {
+	res := newResults()
 
-		// iterate through disassembled bank
-		for _, e := bitr.Start(); e != nil; _, e = bitr.Next() {
-			// if instruction has a read opcode, and the addressing mode seems
-			// to be reading from non-read addresses in TIA or RIOT space then
-			// create a lint warning
+	err := dsm.IterateBlessed(nil, func(e *disassembly.Entry) string {
+		res.lint(e)
+		return ""
+	})
 
-			if e.Result.Defn.Effect == instructions.Read {
-				if e.Result.Defn.AddressingMode == instructions.Absolute ||
-					e.Result.Defn.AddressingMode == instructions.ZeroPage {
-					ma, area := memorymap.MapAddress(e.Result.InstructionData, true)
+	return res, err
+}
 
-					switch area {
-					case memorymap.TIA:
-						_, isRead := addresses.TIAReadSymbols[ma]
-						if !isRead {
-							s := fmt.Sprintf("%#04x\tread TIA address [%#04x (%#04x)]\n", e.Result.Address, e.Result.InstructionData, ma)
-							output.Write([]byte(s))
-						}
+// LintEntry for every lint error detected in disassembly entry.
+type LintEntry struct {
+	DisasmEntry *disassembly.Entry
+	Error       string
+	Details     interface{}
+}
 
-					case memorymap.RIOT:
-						_, isRead := addresses.RIOTReadSymbols[ma]
-						if !isRead {
-							s := fmt.Sprintf("%#04x\tread RIOT address [%#04x (%#04x)]\n", e.Result.Address, e.Result.InstructionData, ma)
-							output.Write([]byte(s))
-						}
-					}
-				}
-			}
+func (le *LintEntry) String() string {
+	s := strings.Builder{}
+	s.WriteString(le.DisasmEntry.StringColumnated(disassembly.ColumnAttr{}))
+	s.WriteString(fmt.Sprintf("\t%s", le.Error))
+	switch le.Details.(type) {
+	case string:
+		s.WriteString(fmt.Sprintf(" [%s]", le.Details))
+	case uint8:
+		s.WriteString(fmt.Sprintf(" [$%02x]", le.Details))
+	case uint16:
+		s.WriteString(fmt.Sprintf(" [$%04x]", le.Details))
+	}
+	return s.String()
+}
+
+// Results is a list of LintEntries grouped by Error.
+type Results map[string][]*LintEntry
+
+func newResults() *Results {
+	res := make(Results)
+	return &res
+}
+
+func (res *Results) String() string {
+	s := strings.Builder{}
+	for _, r := range *res {
+		for _, e := range r {
+			s.WriteString(e.String())
+			s.WriteString("\n")
 		}
 	}
+	return s.String()
+}
 
-	return nil
+func (res *Results) lint(e *disassembly.Entry) {
+	for _, le := range rules(e) {
+		if _, ok := (*res)[le.Error]; !ok {
+			(*res)[le.Error] = make([]*LintEntry, 0)
+		}
+		(*res)[le.Error] = append((*res)[le.Error], le)
+	}
 }

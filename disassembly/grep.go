@@ -16,12 +16,8 @@
 package disassembly
 
 import (
-	"bytes"
-	"fmt"
 	"io"
 	"strings"
-
-	"github.com/jetsetilly/gopher2600/curated"
 )
 
 // GrepScope limits the scope of the search.
@@ -36,63 +32,33 @@ const (
 
 // Grep searches the disassembly for the specified search string.
 func (dsm *Disassembly) Grep(output io.Writer, scope GrepScope, search string, caseSensitive bool) error {
-	var s, m string
-
 	if !caseSensitive {
 		search = strings.ToUpper(search)
 	}
 
-	hasOutput := false
+	return dsm.IterateBlessed(output, func(e *Entry) string {
+		var s, m string
 
-	citr := dsm.NewCartIteration()
-	citr.Start()
-	for b, ok := citr.Start(); ok; b, ok = citr.Next() {
-		bankHeader := false
-
-		bitr, err := dsm.NewBankIteration(EntryLevelBlessed, b)
-		if err != nil {
-			return curated.Errorf("grep: %v", err)
+		// limit scope of grep to the correct Instruction field
+		switch scope {
+		case GrepOperator:
+			s = e.Operator
+		case GrepOperand:
+			s = e.Operand.String()
+		case GrepAll:
+			s = e.String()
 		}
 
-		for _, e := bitr.Start(); e != nil; _, e = bitr.Next() {
-			// string representation of disasm entry
-			l := &bytes.Buffer{}
-			dsm.WriteEntry(l, WriteAttr{}, e)
-
-			// limit scope of grep to the correct Instruction field
-			switch scope {
-			case GrepOperator:
-				s = e.Operator
-			case GrepOperand:
-				s = e.String()
-			case GrepAll:
-				s = l.String()
-			}
-
-			if !caseSensitive {
-				m = strings.ToUpper(s)
-			} else {
-				m = s
-			}
-
-			if strings.Contains(m, search) {
-				// if we've not yet printed head for the current bank then
-				// print it now
-				if !bankHeader {
-					if hasOutput {
-						output.Write([]byte("\n"))
-					}
-
-					output.Write([]byte(fmt.Sprintf("--- bank %d ---\n", b)))
-					bankHeader = true
-					hasOutput = true
-				}
-
-				// we've matched so print entire l
-				output.Write(l.Bytes())
-			}
+		if !caseSensitive {
+			m = strings.ToUpper(s)
+		} else {
+			m = s
 		}
-	}
 
-	return nil
+		if strings.Contains(m, search) {
+			return e.StringColumnated(ColumnAttr{})
+		}
+
+		return ""
+	})
 }

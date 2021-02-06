@@ -16,6 +16,8 @@
 package disassembly
 
 import (
+	"fmt"
+	"strings"
 	"sync"
 
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
@@ -240,6 +242,111 @@ func (dsm *Disassembly) ExecutedEntry(bank mapper.BankInfo, result execution.Res
 	ne := dsm.entries[bank.Number][nextAddr&memorymap.CartridgeBits]
 	if ne.Level < EntryLevelBlessed {
 		ne.Level = EntryLevelBlessed
+	}
+
+	return e, nil
+}
+
+// FormatResult It is the preferred method of initialising for the Entry type.
+// It creates a disassembly.Entry based on the bank and result information.
+func (dsm *Disassembly) FormatResult(bank mapper.BankInfo, result execution.Result, level EntryLevel) (*Entry, error) {
+	// protect against empty definitions. we shouldn't hit this condition from
+	// the disassembly package itself, but it is possible to get it from ad-hoc
+	// formatting from GUI interfaces (see CPU window in sdlimgui)
+	if result.Defn == nil {
+		return &Entry{}, nil
+	}
+
+	e := &Entry{
+		dsm:     dsm,
+		Result:  result,
+		Level:   level,
+		Bank:    bank,
+		Label:   Label{dsm: dsm, result: result},
+		Operand: Operand{dsm: dsm, result: result},
+	}
+
+	// address of instruction
+	e.Address = fmt.Sprintf("$%04x", result.Address)
+
+	// operator is just a string anyway
+	e.Operator = result.Defn.Operator
+
+	// bytecode and operand string is assembled depending on the number of
+	// expected bytes (result.Defn.Bytes) and the number of bytes read so far
+	// (result.ByteCount).
+	//
+	// the panics cover situations that should never exists. if result
+	// validation is active then the panic situations will have been caught
+	// then. if validation is not running then the code could theoretically
+	// panic but that's okay, they should have been caught in testing.
+	switch result.Defn.Bytes {
+	case 3:
+		switch result.ByteCount {
+		case 3:
+			operand := result.InstructionData
+			e.Operand.nonSymbolic = fmt.Sprintf("$%04x", operand)
+			e.Bytecode = fmt.Sprintf("%02x %02x %02x", result.Defn.OpCode, operand&0x00ff, operand&0xff00>>8)
+		case 2:
+			operand := result.InstructionData
+			e.Operand.nonSymbolic = fmt.Sprintf("$??%02x", result.InstructionData)
+			e.Bytecode = fmt.Sprintf("%02x %02x ?? ", result.Defn.OpCode, operand&0x00ff)
+		case 1:
+			e.Operand.nonSymbolic = "$????"
+			e.Bytecode = fmt.Sprintf("%02x ?? ??", result.Defn.OpCode)
+		case 0:
+			panic("this makes no sense. we must have read at least one byte to know how many bytes to expect")
+		default:
+			panic("we should not be able to read more bytes than the expected number")
+		}
+	case 2:
+		switch result.ByteCount {
+		case 2:
+			operand := result.InstructionData
+			e.Operand.nonSymbolic = fmt.Sprintf("$%02x", operand)
+			e.Bytecode = fmt.Sprintf("%02x %02x", result.Defn.OpCode, operand&0x00ff)
+		case 1:
+			e.Operand.nonSymbolic = "$??"
+			e.Bytecode = fmt.Sprintf("%02x ??", result.Defn.OpCode)
+		case 0:
+			panic("this makes no sense. we must have read at least one byte to know how many bytes to expect")
+		default:
+			panic("we should not be able to read more bytes than the expected number")
+		}
+	case 1:
+		switch result.ByteCount {
+		case 1:
+			e.Bytecode = fmt.Sprintf("%02x", result.Defn.OpCode)
+		case 0:
+			panic("this makes no sense. we must have read at least one byte to know how many bytes to expect")
+		default:
+			panic("we shoud not be able to read more bytes than the expected number")
+		}
+	case 0:
+		panic("instructions of zero bytes is not possible")
+	default:
+		panic("instructions of more than 3 bytes is not possible")
+	}
+	e.Bytecode = strings.TrimSpace(e.Bytecode)
+
+	// decorate operand with addressing mode indicators. this decorates the
+	// non-symbolic operand. we also call the decorate function from the
+	// Operand() function when a symbol has been found
+	if e.Result.Defn.IsBranch() {
+		e.Operand.nonSymbolic = fmt.Sprintf("$%04x", absoluteBranchDestination(e.Result.Address, e.Result.InstructionData))
+	} else {
+		e.Operand.nonSymbolic = addrModeDecoration(e.Operand.nonSymbolic, e.Result.Defn.AddressingMode)
+	}
+
+	// definintion cycles
+	if result.Defn.IsBranch() {
+		e.DefnCycles = fmt.Sprintf("%d/%d", result.Defn.Cycles, result.Defn.Cycles+1)
+	} else {
+		e.DefnCycles = fmt.Sprintf("%d", result.Defn.Cycles)
+	}
+
+	if level == EntryLevelExecuted {
+		e.updateExecutionEntry(result)
 	}
 
 	return e, nil

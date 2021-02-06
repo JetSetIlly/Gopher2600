@@ -30,12 +30,13 @@
 // you.
 //
 // The Write() group of functions "print" disassambly entries of type
-// EntryTypeDecode only. Useful for printing static disassemblies of
-// a cartridge but probably not much else.
+// EntryTypeBlessed only. Useful for printing static disassemblies of a
+// cartridge but probably not much else.
 //
-// The iteration types provides a convenient way of iterating of the
-// disassembly entries. It takes care of empty entries and entries not of the
-// correct entry type.
+// The iteration types provides a convenient way of iterating of the disassembly
+// entries. It takes care of empty entries and entries not of the correct entry
+// type. IterateAll() in particular is useful and flexible enough for many
+// applications.
 //
 // The Grep() function provides a quick way of searching the disassembly with a
 // scope directive. More complex search schemes can be written with the

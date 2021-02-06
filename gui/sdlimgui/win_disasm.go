@@ -142,9 +142,9 @@ func (win *winDisasm) draw() {
 		// adding a page for each one
 		imgui.BeginTabBarV("", imgui.TabBarFlagsFittingPolicyScroll)
 
-		citr := win.img.lz.Dbg.Disasm.NewCartIteration()
-		citr.Start()
-		for b, ok := citr.Start(); ok; b, ok = citr.Next() {
+		bitr := win.img.lz.Dbg.Disasm.NewBanksIteration()
+		bitr.Start()
+		for b, ok := bitr.Start(); ok; b, ok = bitr.Next() {
 			// set tab flags. select the tab that represents the
 			// bank currently being referenced by the VCS
 			flgs := imgui.TabItemFlagsNone
@@ -213,7 +213,7 @@ func (win *winDisasm) drawBank(focusAddr uint16, b int, selected bool, cpuStep b
 	if win.showAllEntries {
 		lvl = disassembly.EntryLevelDecoded
 	}
-	bitr, err := win.img.lz.Dbg.Disasm.NewBankIteration(lvl, b, focusAddr)
+	eitr, err := win.img.lz.Dbg.Disasm.NewEntriesIteration(lvl, b, focusAddr)
 
 	// check that NewBankIteration has succeeded. if it hasn't it probably
 	// means the cart has changed in the middle of the draw routine. but that's
@@ -227,10 +227,10 @@ func (win *winDisasm) drawBank(focusAddr uint16, b int, selected bool, cpuStep b
 
 	// only draw elements that will be visible
 	var clipper imgui.ListClipper
-	clipper.Begin(bitr.EntryCount + bitr.LabelCount)
+	clipper.Begin(eitr.EntryCount + eitr.LabelCount)
 	for clipper.Step() {
-		_, _ = bitr.Start()
-		_, e := bitr.SkipNext(clipper.DisplayStart, true)
+		_, _ = eitr.Start()
+		_, e := eitr.SkipNext(clipper.DisplayStart, true)
 
 		// note address of top entry in the list. we use this to help
 		// list alignment
@@ -255,7 +255,7 @@ func (win *winDisasm) drawBank(focusAddr uint16, b int, selected bool, cpuStep b
 			// match then highlight the entry
 			win.drawEntry(e, focusAddr, selected, cpuStep)
 
-			_, e = bitr.Next()
+			_, e = eitr.Next()
 			if e == nil {
 				break // clipper.DisplayStart loop
 			}
@@ -295,7 +295,7 @@ func (win *winDisasm) drawBank(focusAddr uint16, b int, selected bool, cpuStep b
 		// walk through disassembly and note the count for the current entry
 		hlEntry := float32(0.0)
 		i := float32(0.0)
-		for _, e := bitr.Start(); e != nil; _, e = bitr.Next() {
+		for _, e := eitr.Start(); e != nil; _, e = eitr.Next() {
 			if e.Result.Address&memorymap.CartridgeBits == addr&memorymap.CartridgeBits {
 				hlEntry = i
 				break // for loop

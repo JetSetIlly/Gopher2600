@@ -540,8 +540,9 @@ func disasm(md *modalflag.Modes) error {
 	case 0:
 		return fmt.Errorf("2600 cartridge required for %s mode", md)
 	case 1:
-		attr := disassembly.WriteAttr{
+		attr := disassembly.ColumnAttr{
 			ByteCode: *bytecode,
+			Label:    true,
 		}
 
 		cartload := cartridgeloader.NewLoader(md.GetArg(0), *mapping)

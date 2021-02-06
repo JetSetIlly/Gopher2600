@@ -25,6 +25,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"unicode"
 
 	"github.com/jetsetilly/gopher2600/hardware/cpu/instructions"
 )
@@ -192,6 +193,9 @@ func parseCSV() (string, error) {
 				newDef.Effect = instructions.Interrupt
 			}
 		}
+
+		// field: undocumented
+		newDef.Undocumented = unicode.IsLower(rune(newDef.Operator[0]))
 
 		// add new definition to deftable, using opcode as the hash key
 		deftable[newDef.OpCode] = newDef

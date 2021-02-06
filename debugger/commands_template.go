@@ -27,31 +27,31 @@ const (
 	cmdScript  = "SCRIPT"
 	cmdRewind  = "REWIND"
 
-	cmdInsert      = "INSERT"
-	cmdCartridge   = "CARTRIDGE"
-	cmdPatch       = "PATCH"
-	cmdDisassembly = "DISASSEMBLY"
-	cmdLint        = "LINT"
-	cmdGrep        = "GREP"
-	cmdSymbol      = "SYMBOL"
-	cmdOnHalt      = "ONHALT"
-	cmdOnStep      = "ONSTEP"
-	cmdOnTrace     = "ONTRACE"
-	cmdLast        = "LAST"
-	cmdMemMap      = "MEMMAP"
-	cmdCPU         = "CPU"
-	cmdPeek        = "PEEK"
-	cmdPoke        = "POKE"
-	cmdRAM         = "RAM"
-	cmdTIA         = "TIA"
-	cmdRIOT        = "RIOT"
-	cmdAudio       = "AUDIO"
-	cmdTV          = "TV"
-	cmdPlayer      = "PLAYER"
-	cmdMissile     = "MISSILE"
-	cmdBall        = "BALL"
-	cmdPlayfield   = "PLAYFIELD"
-	cmdDisplay     = "DISPLAY"
+	cmdInsert    = "INSERT"
+	cmdCartridge = "CARTRIDGE"
+	cmdPatch     = "PATCH"
+	cmdDisasm    = "DISASM"
+	cmdLint      = "LINT"
+	cmdGrep      = "GREP"
+	cmdSymbol    = "SYMBOL"
+	cmdOnHalt    = "ONHALT"
+	cmdOnStep    = "ONSTEP"
+	cmdOnTrace   = "ONTRACE"
+	cmdLast      = "LAST"
+	cmdMemMap    = "MEMMAP"
+	cmdCPU       = "CPU"
+	cmdPeek      = "PEEK"
+	cmdPoke      = "POKE"
+	cmdRAM       = "RAM"
+	cmdTIA       = "TIA"
+	cmdRIOT      = "RIOT"
+	cmdAudio     = "AUDIO"
+	cmdTV        = "TV"
+	cmdPlayer    = "PLAYER"
+	cmdMissile   = "MISSILE"
+	cmdBall      = "BALL"
+	cmdPlayfield = "PLAYFIELD"
+	cmdDisplay   = "DISPLAY"
 
 	cmdPlusROM = "PLUSROM"
 
@@ -92,7 +92,7 @@ var commandTemplate = []string{
 	cmdInsert + " %<cartridge>F",
 	cmdCartridge + " (BANK|STATIC|REGISTERS|RAM)",
 	cmdPatch + " %<patch file>S",
-	cmdDisassembly + " (BYTECODE) (%<bank num>N)",
+	cmdDisasm + " (BYTECODE) (%<bank>N|%<address>N)",
 	cmdLint,
 	cmdGrep + " (OPERATOR|OPERAND) %<search>S",
 	cmdSymbol + " [LIST (LABELS|READ|WRITE)|%<symbol>S (ALL|MIRRORS)]",

@@ -13,9 +13,23 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-// Package linter analyses disassembled code (from the disassembly package)
-// producing a lint report. As it is, it is a proof-of-concept and incomplete.
-//
-// Current Linters:
-//	. Reading of TIA and RIOT write-only addresses
 package linter
+
+import (
+	"io"
+	"strings"
+
+	"github.com/jetsetilly/gopher2600/disassembly"
+)
+
+// Write performs a lint and writes the results output to io.Writer.
+func Write(dsm *disassembly.Disassembly, output io.Writer) error {
+	return dsm.IterateBlessed(output, func(e *disassembly.Entry) string {
+		s := strings.Builder{}
+		for _, r := range rules(e) {
+			s.WriteString(r.String())
+			s.WriteString("\n")
+		}
+		return s.String()
+	})
+}

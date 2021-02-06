@@ -86,9 +86,13 @@ argument meanwhile can be used to switch banks (if possible).`,
 
 	cmdPatch: "Apply a patch file to the loaded cartridge",
 
-	cmdDisassembly: `Display cartridge disassembly. By default, all banks will be displayed. Single
+	cmdDisasm: `Display cartridge disassembly. By default, all banks will be displayed. Single
 banks can be displayed by specifying the bank number. Use BYTECODE to display raw bytes alongside
-the disassembly.`,
+the disassembly.
+
+The optional numeric argument will show the disassembly of either the cartridge bank (if present) or
+of the specific cartridge address.
+`,
 
 	cmdGrep: `Simple string search (case insensitive) of the disassembly. Prints all matching lines
 in the disassembly to the termain.

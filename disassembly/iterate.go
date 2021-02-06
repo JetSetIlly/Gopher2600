@@ -16,12 +16,16 @@
 package disassembly
 
 import (
+	"fmt"
+	"io"
+	"strings"
+
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
-// IterateCart faciliates traversal over all the banks in a cartridge.
-type IterateCart struct {
+// IterateBanks faciliates traversal over all the banks in a cartridge.
+type IterateBanks struct {
 	dsm  *Disassembly
 	bank int
 
@@ -29,13 +33,12 @@ type IterateCart struct {
 	BankCount int
 }
 
-// NewCartIteration is the preferred method of initialisation for the
-// IterateCart type.
-func (dsm *Disassembly) NewCartIteration() *IterateCart {
+// NewBanksIteration is the preferred method of initialisation for the IterateCart type.
+func (dsm *Disassembly) NewBanksIteration() *IterateBanks {
 	dsm.crit.Lock()
 	defer dsm.crit.Unlock()
 
-	citr := &IterateCart{
+	citr := &IterateBanks{
 		BankCount: len(dsm.entries),
 		dsm:       dsm,
 	}
@@ -44,7 +47,7 @@ func (dsm *Disassembly) NewCartIteration() *IterateCart {
 }
 
 // Start new iteration from the first bank.
-func (citr *IterateCart) Start() (int, bool) {
+func (citr *IterateBanks) Start() (int, bool) {
 	citr.dsm.crit.Lock()
 	defer citr.dsm.crit.Unlock()
 	citr.bank = -1
@@ -52,13 +55,13 @@ func (citr *IterateCart) Start() (int, bool) {
 }
 
 // The next bank in the cartidge. Returns (-1, false) if there are no more banks.
-func (citr *IterateCart) Next() (int, bool) {
+func (citr *IterateBanks) Next() (int, bool) {
 	citr.dsm.crit.Lock()
 	defer citr.dsm.crit.Unlock()
 	return citr.next()
 }
 
-func (citr *IterateCart) next() (int, bool) {
+func (citr *IterateBanks) next() (int, bool) {
 	if citr.bank+1 >= citr.BankCount {
 		return -1, false
 	}
@@ -66,13 +69,13 @@ func (citr *IterateCart) next() (int, bool) {
 	return citr.bank, true
 }
 
-// IterateBank faciliates traversal a specific bank.
+// IterateEntries iterates over all entries in a cartridge bank.
 //
 // Instances of Entry returned by Start(), Next() and SkipNext() are copies of
 // the disassembly entry, so the Iterate mechanism is suitable for use in a
 // goroutine different to that which is handling (eg. updating) the disassembly
 // itslef.
-type IterateBank struct {
+type IterateEntries struct {
 	dsm *Disassembly
 
 	// the bank we're iterating over
@@ -94,7 +97,7 @@ type IterateBank struct {
 	lastEntry *Entry
 }
 
-// NewBankIteration initialises a new iteration of a dissasembly bank. The minLevel
+// NewEntriesIteration initialises a new iteration of a dissasembly bank. The minLevel
 // argument specifies the minimum entry level which should be returned in the
 // iteration. So, using the following as a guide:
 //
@@ -107,7 +110,7 @@ type IterateBank struct {
 //
 // The optional include argument specifies a list of addresses to include in
 // the iteration regardless of EntryLevel. Addresses will be normalised.
-func (dsm *Disassembly) NewBankIteration(minLevel EntryLevel, bank int, include ...uint16) (*IterateBank, error) {
+func (dsm *Disassembly) NewEntriesIteration(minLevel EntryLevel, bank int, include ...uint16) (*IterateEntries, error) {
 	dsm.crit.Lock()
 	defer dsm.crit.Unlock()
 
@@ -119,7 +122,7 @@ func (dsm *Disassembly) NewBankIteration(minLevel EntryLevel, bank int, include 
 		return nil, curated.Errorf("no bank %d in disasm", bank)
 	}
 
-	bitr := &IterateBank{
+	bitr := &IterateEntries{
 		dsm:      dsm,
 		bank:     bank,
 		minLevel: minLevel,
@@ -158,14 +161,15 @@ func (dsm *Disassembly) NewBankIteration(minLevel EntryLevel, bank int, include 
 	return bitr, nil
 }
 
-// Start new iteration from the first instance of the EntryLevel specified in NewBankIteration.
-func (bitr *IterateBank) Start() (int, *Entry) {
+// Start new iteration from the first instance of the EntryLevel specified in
+// NewEntriesIteration.
+func (bitr *IterateEntries) Start() (int, *Entry) {
 	bitr.idx = -1
 	return bitr.next()
 }
 
 // Next entry in the disassembly of the previously specified type. Returns nil if end of disassembly has been reached.
-func (bitr *IterateBank) Next() (int, *Entry) {
+func (bitr *IterateEntries) Next() (int, *Entry) {
 	return bitr.next()
 }
 
@@ -175,7 +179,7 @@ func (bitr *IterateBank) Next() (int, *Entry) {
 // The skipLabels argument indicates that an entry with a label should count as
 // two entries. This is useful for the sdlimgui disassembly window's list
 // clipper (and maybe nothing else).
-func (bitr *IterateBank) SkipNext(n int, skipLabels bool) (int, *Entry) {
+func (bitr *IterateEntries) SkipNext(n int, skipLabels bool) (int, *Entry) {
 	e := bitr.lastEntry
 	for n > 0 {
 		n--
@@ -189,7 +193,7 @@ func (bitr *IterateBank) SkipNext(n int, skipLabels bool) (int, *Entry) {
 	return bitr.idx, e
 }
 
-func (bitr *IterateBank) next() (int, *Entry) {
+func (bitr *IterateEntries) next() (int, *Entry) {
 	bitr.dsm.crit.Lock()
 	defer bitr.dsm.crit.Unlock()
 
@@ -234,4 +238,73 @@ func (bitr *IterateBank) next() (int, *Entry) {
 // we're dealing with the iteration.
 func makeCopyofEntry(e Entry) *Entry {
 	return &e
+}
+
+// IterateBlessed visits every entry in the disassembly optionally writing to
+// output. This will very often be more convenient that looping over
+// IterateBanks and IterateEntries.
+//
+// Entries can be filtered with function f(). Strings returned from the filter
+// function will be trimmed of trailing newline characters. Strings of length
+// greater than zero thereafter, will be written to output.
+//
+// The string returned by the filter function can be multiline if required.
+//
+// If no output is required and all the necessary work is done in the filter
+// function then an io.Writer value of nil is acceptable.
+//
+// If the io.Writer value is not nil then a sequential list of entries returned
+// by the filter function. The sequnce of entries will be in bank and address
+// order.
+//
+// Banks will be labelled (with a header) if output has been written for that
+// bank. For example:
+//
+// --- Bank 2 ---
+//  entry
+//  entry
+//
+// --- Bank 5 ---
+//  entry
+//
+// In this example there are no filtered entries for banks 0, 1, 3 or 4. There
+// are entries for banks 2 and 5 so those entries have a header indicating the
+// bank.
+func (dsm *Disassembly) IterateBlessed(output io.Writer, f func(*Entry) string) error {
+	hasOutput := false
+
+	// look at every bank in the disassembly
+	citr := dsm.NewBanksIteration()
+	citr.Start()
+	for b, ok := citr.Start(); ok; b, ok = citr.Next() {
+		// create a new iteration for the bank
+		bitr, err := dsm.NewEntriesIteration(EntryLevelBlessed, b)
+		if err != nil {
+			return err
+		}
+
+		bankHeader := false
+
+		// iterate through disassembled bank
+		for _, e := bitr.Start(); e != nil; _, e = bitr.Next() {
+			s := f(e)
+			s = strings.TrimSuffix(s, "\n")
+
+			if output != nil && len(s) > 0 {
+				// if we've not yet printed head for the current bank then print it now
+				if !bankHeader {
+					if hasOutput {
+						output.Write([]byte("\n"))
+					}
+					output.Write([]byte(fmt.Sprintf("--- bank %d ---\n", b)))
+					bankHeader = true
+					hasOutput = true
+				}
+				output.Write([]byte(s))
+				output.Write([]byte("\n"))
+			}
+		}
+	}
+
+	return nil
 }

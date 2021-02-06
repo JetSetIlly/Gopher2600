@@ -69,6 +69,9 @@ type Definition struct {
 	AddressingMode AddressingMode
 	PageSensitive  bool
 	Effect         EffectCategory
+
+	// Whether instruction is "undocumented".
+	Undocumented bool
 }
 
 // String returns a single instruction definition as a string.
