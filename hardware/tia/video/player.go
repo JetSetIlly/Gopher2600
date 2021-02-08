@@ -22,6 +22,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 	"github.com/jetsetilly/gopher2600/hardware/tia/delay"
+	"github.com/jetsetilly/gopher2600/hardware/tia/hmove"
 	"github.com/jetsetilly/gopher2600/hardware/tia/phaseclock"
 	"github.com/jetsetilly/gopher2600/hardware/tia/polycounter"
 )
@@ -61,8 +62,8 @@ type PlayerSprite struct {
 
 	// references to some fundamental TIA properties. various combinations of
 	// these affect the latching delay when resetting the sprite
-	hblank     *bool
-	hmoveLatch *bool
+	hblank *bool
+	hmove  *hmove.Hmove
 
 	// ^^^ references to other parts of the VCS ^^^
 
@@ -142,12 +143,12 @@ type PlayerSprite struct {
 	pixelCollision bool
 }
 
-func newPlayerSprite(label string, tv signal.TelevisionSprite, hblank *bool, hmoveLatch *bool) *PlayerSprite {
+func newPlayerSprite(label string, tv signal.TelevisionSprite, hblank *bool, hmove *hmove.Hmove) *PlayerSprite {
 	ps := &PlayerSprite{
-		label:      label,
-		tv:         tv,
-		hblank:     hblank,
-		hmoveLatch: hmoveLatch,
+		label:  label,
+		tv:     tv,
+		hblank: hblank,
+		hmove:  hmove,
 	}
 	ps.ScanCounter.Pixel = -1
 
@@ -167,9 +168,9 @@ func (ps *PlayerSprite) Snapshot() *PlayerSprite {
 }
 
 // Plumb a new ChipBus into the Player sprite.
-func (ps *PlayerSprite) Plumb(hblank *bool, hmoveLatch *bool) {
+func (ps *PlayerSprite) Plumb(hblank *bool, hmove *hmove.Hmove) {
 	ps.hblank = hblank
-	ps.hmoveLatch = hmoveLatch
+	ps.hmove = hmove
 	ps.ScanCounter.sizeAndCopies = &ps.SizeAndCopies
 	ps.ScanCounter.pclk = &ps.pclk
 
@@ -298,16 +299,14 @@ func (ps *PlayerSprite) rsync(adjustment int) {
 }
 
 // tick moves the sprite counters along (both position and graphics scan).
-func (ps *PlayerSprite) tick(isHmove bool, hmoveCt uint8) bool {
+func (ps *PlayerSprite) tick() bool {
 	// check to see if there is more movement required for this sprite
-	if isHmove {
-		ps.MoreHMOVE = ps.MoreHMOVE && compareHMOVE(hmoveCt, ps.Hmove)
+	if ps.hmove.Clk {
+		ps.MoreHMOVE = ps.MoreHMOVE && compareHMOVE(ps.hmove.Ripple, ps.Hmove)
 	}
 
-	ps.lastHmoveCt = hmoveCt
-
 	// early return if nothing to do
-	if !(isHmove && ps.MoreHMOVE) && *ps.hblank {
+	if !(ps.hmove.Clk && ps.MoreHMOVE) && *ps.hblank {
 		return false
 	}
 
@@ -457,30 +456,50 @@ func (ps *PlayerSprite) resetPosition() {
 	// if we're scheduling the reset during a HBLANK however there are extra
 	// conditions which adjust the delay value. these figures have been gleaned
 	// through observation. with some supporting notes from the following
-	// thread.
+	// threads.
 	//
 	// https://atariage.com/forums/topic/207444-questionproblem-about-sprite-positioning-during-hblank/
+	// https://atariage.com/forums/topic/311795-576-and-1008-characters/?tab=comments#comment-4646705
+	// https://github.com/stella-emu/stella/issues/699#issuecomment-698004074
 	//
 	// that said, I'm not entirely sure what's going on and why these
 	// adjustments are required.
 	if *ps.hblank {
 		// this tricky branch happens when reset is triggered inside the
-		// HBLANK period and HMOVE is active. in this instance we're defining
-		// active to be whether the last HmoveCt value was between 15 and 0
-		if !*ps.hmoveLatch || ps.lastHmoveCt >= 1 && ps.lastHmoveCt <= 15 {
-			delay = 2
+		// HBLANK period and HMOVE is active
+		if !ps.hmove.Latch || ps.hmove.Ripple >= 1 && ps.hmove.Ripple <= 15 {
+			switch ps.hmove.Ripple {
+			case 15:
+				// "As with the previous tests, variations in positioning only
+				// happen if a strobe to RESxx coincide with an extra motion CLK
+				// pulse after an HMOVE. In all the other cases, all the consoles
+				// behave the same."
+				//
+				// https://github.com/stella-emu/stella/issues/699#issuecomment-698004074
+				delay = 3
+			default:
+				delay = 2
+			}
 		} else {
 			delay = 3
 		}
 	}
 
-	// pause pending start drawing events unless it is about to start this
-	// cycle
-	//
-	// rules discovered through observation (games that do bad things
-	// to HMOVE)
+	// pause pending start drawing events unless it is about to start this cycle
+	// rules discovered through observation (games that do bad things to HMOVE)
 	if !ps.futureStart.AboutToEnd() {
-		ps.futureStart.Pause()
+		// these futher conditions have been implemented as a result of
+		// observations made in the following atari age comment.
+		//
+		// https://atariage.com/forums/topic/311795-576-and-1008-characters/?tab=comments#comment-4646705
+		//
+		// This satisfies the PAL Vader screenshots. Other 2600 models may
+		// behave differently. I've decided to keep these as is for now because
+		// this new condition doesn't break any other test case in the
+		// regression DB.
+		if !ps.hmove.RippleJustEnded || ps.pclk.Phi2() || ps.pclk.LatePhi2() {
+			ps.futureStart.Pause()
+		}
 	}
 
 	// stop any existing reset events. generally, this codepath will not apply
@@ -535,21 +554,12 @@ func (ps *PlayerSprite) _futureResetPosition() {
 	ps.pclk.Reset()
 
 	// a player reset doesn't normally start drawing straight away unless
-	// one was a about to start (within 2 cycles from when the reset was first
-	// triggered)
+	// one was a about to start
 	//
-	// if a pending drawing event was more than two cycles away it is
-	// dropped
-	//
-	// rules discovered through observation (games that do bad things
-	// to HMOVE)
+	// rules discovered through observation (games that do bad things to HMOVE)
 	if ps.futureStart.IsActive() {
-		if !ps.futureStart.JustStarted() {
-			v := ps.futureStart.Force()
-			ps._futureStartDrawingEvent(v)
-		} else {
-			ps.futureStart.Drop()
-		}
+		v := ps.futureStart.Force()
+		ps._futureStartDrawingEvent(v)
 	}
 }
 

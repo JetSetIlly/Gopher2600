@@ -174,7 +174,9 @@ additional RAM in the cartridge.`,
                                      |
                cpu cycles -----------+
 
-Video and CPU cycles are counted from the beginning of the current scanline.`,
+Video and CPU cycles are counted from the beginning of the current scanline.
+
+The optional HMOVE argument will display the TIA HMOVE information instead.`,
 
 	cmdRIOT: `Display current state of the RIOT. Without an argument the command will display
 information about the RIOT ports (SWCHA, etc.)`,

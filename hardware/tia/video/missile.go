@@ -22,6 +22,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 	"github.com/jetsetilly/gopher2600/hardware/tia/delay"
+	"github.com/jetsetilly/gopher2600/hardware/tia/hmove"
 	"github.com/jetsetilly/gopher2600/hardware/tia/phaseclock"
 	"github.com/jetsetilly/gopher2600/hardware/tia/polycounter"
 )
@@ -49,9 +50,10 @@ var MissileSizes = []string{
 // MissileSprite represents a moveable missile sprite in the VCS graphical display.
 // The VCS has two missile sprites.
 type MissileSprite struct {
-	tv         signal.TelevisionSprite
-	hblank     *bool
-	hmoveLatch *bool
+	tv signal.TelevisionSprite
+
+	hblank *bool
+	hmove  *hmove.Hmove
 
 	// ^^^ references to other parts of the VCS ^^^
 
@@ -96,12 +98,12 @@ type MissileSprite struct {
 	pixelCollision bool
 }
 
-func newMissileSprite(label string, tv signal.TelevisionSprite, hblank *bool, hmoveLatch *bool) *MissileSprite {
+func newMissileSprite(label string, tv signal.TelevisionSprite, hblank *bool, hmove *hmove.Hmove) *MissileSprite {
 	ms := &MissileSprite{
-		tv:         tv,
-		hblank:     hblank,
-		hmoveLatch: hmoveLatch,
-		label:      label,
+		tv:     tv,
+		hblank: hblank,
+		hmove:  hmove,
+		label:  label,
 	}
 
 	ms.Enclockifier.size = &ms.Size
@@ -117,9 +119,9 @@ func (ms *MissileSprite) Snapshot() *MissileSprite {
 }
 
 // Plumb a new ChipBus into the Missile sprite.
-func (ms *MissileSprite) Plumb(hblank *bool, hmoveLatch *bool) {
+func (ms *MissileSprite) Plumb(hblank *bool, hmove *hmove.Hmove) {
 	ms.hblank = hblank
-	ms.hmoveLatch = hmoveLatch
+	ms.hmove = hmove
 	ms.Enclockifier.size = &ms.Size
 }
 
@@ -228,16 +230,16 @@ func (ms *MissileSprite) rsync(adjustment int) {
 	}
 }
 
-func (ms *MissileSprite) tick(isHmove bool, hmoveCt uint8, resetToPlayer bool) bool {
+func (ms *MissileSprite) tick(resetToPlayer bool) bool {
 	// check to see if there is more movement required for this sprite
-	if isHmove {
-		ms.MoreHMOVE = ms.MoreHMOVE && compareHMOVE(hmoveCt, ms.Hmove)
+	if ms.hmove.Clk {
+		ms.MoreHMOVE = ms.MoreHMOVE && compareHMOVE(ms.hmove.Ripple, ms.Hmove)
 	}
 
-	ms.lastHmoveCt = hmoveCt
+	ms.lastHmoveCt = ms.hmove.Ripple
 
 	// early return if nothing to do
-	if !(isHmove && ms.MoreHMOVE) && *ms.hblank {
+	if !(ms.hmove.Clk && ms.MoreHMOVE) && *ms.hblank {
 		return false
 	}
 
@@ -258,7 +260,7 @@ func (ms *MissileSprite) tick(isHmove bool, hmoveCt uint8, resetToPlayer bool) b
 
 	// note whether this is an additional hmove tick. see pixel() function
 	// below for explanation
-	ms.lastTickFromHmove = isHmove && ms.MoreHMOVE
+	ms.lastTickFromHmove = ms.hmove.Clk && ms.MoreHMOVE
 
 	// update hmoved pixel value
 	if *ms.hblank {
@@ -346,7 +348,7 @@ func (ms *MissileSprite) resetPosition() {
 	// see player sprite resetPosition() for commentary on delay values
 	delay := 4
 	if *ms.hblank {
-		if !*ms.hmoveLatch || ms.lastHmoveCt >= 1 && ms.lastHmoveCt <= 15 {
+		if !ms.hmove.Latch || ms.lastHmoveCt >= 1 && ms.lastHmoveCt <= 15 {
 			delay = 2
 		} else {
 			delay = 3

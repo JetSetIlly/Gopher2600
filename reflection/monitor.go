@@ -57,13 +57,13 @@ func (mon *Monitor) Check(bank mapper.BankInfo) error {
 	}
 
 	// reflect HMOVE state
-	if mon.vcs.TIA.FutureHmove.IsActive() {
+	if mon.vcs.TIA.Hmove.Future.IsActive() {
 		res.Hmove.Delay = true
-		res.Hmove.DelayCt = mon.vcs.TIA.FutureHmove.Remaining()
+		res.Hmove.DelayCt = mon.vcs.TIA.Hmove.Future.Remaining()
 	}
-	if mon.vcs.TIA.HmoveLatch {
+	if mon.vcs.TIA.Hmove.Latch {
 		res.Hmove.Latch = true
-		res.Hmove.RippleCt = mon.vcs.TIA.HmoveCt
+		res.Hmove.RippleCt = mon.vcs.TIA.Hmove.Ripple
 	}
 
 	// record reflection in history

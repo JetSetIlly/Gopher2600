@@ -24,6 +24,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/hardware/tia/audio"
 	"github.com/jetsetilly/gopher2600/hardware/tia/delay"
+	"github.com/jetsetilly/gopher2600/hardware/tia/hmove"
 	"github.com/jetsetilly/gopher2600/hardware/tia/phaseclock"
 	"github.com/jetsetilly/gopher2600/hardware/tia/polycounter"
 	"github.com/jetsetilly/gopher2600/hardware/tia/video"
@@ -60,18 +61,8 @@ type TIA struct {
 	// wsync records whether the cpu is to halt until hsync resets to 000000
 	rdyFlag *bool
 
-	// HMOVE information. each sprite object also contains HOMVE information
-	// - HmoveLatch indicates whether HMOVE has been triggered this scanline.
-	// it is reset when a new scanline begins
-	HmoveLatch bool
-
-	// - HmoveCt counts backwards from 15 to -1 (represented by 255). note that
-	// unlike how it is described in TIA_HW_Notes.txt, we always send the extra
-	// tick to the sprites on Phi1.  however, we also send the HmoveCt value,
-	// whether or not the extra should be honoured is up to the sprite.
-	// (TIA_HW_Notes.txt says that HmoveCt is checked *before* sending the
-	// extra tick)
-	HmoveCt uint8
+	// Hmove information
+	Hmove hmove.Hmove
 
 	// TIA_HW_Notes.txt describes the hsync counter:
 	//
@@ -82,12 +73,11 @@ type TIA struct {
 	hsync polycounter.Polycounter
 	pclk  phaseclock.PhaseClock
 
-	// some events are delayed
+	// some events are delayed. note that there are delay.Event instances in
+	// the Hmove type.
 	futureVblank     delay.Event
 	futureRsyncAlign delay.Event
 	futureRsyncReset delay.Event
-	futureHmoveLatch delay.Event
-	FutureHmove      delay.Event
 
 	// hsync is a bit different because the semantics can change. hysnc events
 	// never overlap so one delay.Event instance is sufficient. the
@@ -111,11 +101,6 @@ func (tia *TIA) String() string {
 		tia.hsync, tia.pclk,
 		tia.videoCycles, float64(tia.videoCycles)/3.0,
 	))
-
-	if tia.HmoveCt != 0xff {
-		s.WriteString(fmt.Sprintf(" hm=%04b", tia.HmoveCt))
-	}
-
 	return s.String()
 }
 
@@ -126,12 +111,12 @@ func NewTIA(tv signal.TelevisionTIA, mem bus.ChipBus, input bus.UpdateBus, cpu *
 		mem:     mem,
 		input:   input,
 		Hblank:  true,
-		HmoveCt: 0xff,
 		rdyFlag: &cpu.RdyFlg,
 	}
 
 	tia.Audio = audio.NewAudio()
-	tia.Video = video.NewVideo(mem, tv, &tia.pclk, &tia.hsync, &tia.Hblank, &tia.HmoveLatch)
+	tia.Video = video.NewVideo(mem, tv, &tia.pclk, &tia.hsync, &tia.Hblank, &tia.Hmove)
+	tia.Hmove.Reset()
 	tia.pclk.Reset()
 
 	return tia
@@ -153,7 +138,7 @@ func (tia *TIA) Plumb(mem bus.ChipBus, input bus.UpdateBus, cpu *cpu.CPU) {
 	tia.mem = mem
 	tia.input = input
 	tia.rdyFlag = &cpu.RdyFlg
-	tia.Video.Plumb(tia.mem, &tia.pclk, &tia.hsync, &tia.Hblank, &tia.HmoveLatch)
+	tia.Video.Plumb(tia.mem, &tia.pclk, &tia.hsync, &tia.Hblank, &tia.Hmove)
 }
 
 // UpdateTIA checks for side effects in the TIA sub-system.
@@ -241,8 +226,8 @@ func (tia *TIA) UpdateTIA(data bus.ChipData) bool {
 			delayDuration = 2
 		}
 
-		tia.futureHmoveLatch.Schedule(delayDuration, 0)
-		tia.FutureHmove.Schedule(delayDuration+3, 0)
+		tia.Hmove.FutureLatch.Schedule(delayDuration, 0)
+		tia.Hmove.Future.Schedule(delayDuration+3, 0)
 		tia.pendingEvents += 2
 
 		// from TIA_HW_Notes:
@@ -312,15 +297,15 @@ func (tia *TIA) resolveDelayedEvents() {
 		tia.pclk.Reset()
 	}
 
-	if _, ok := tia.futureHmoveLatch.Tick(); ok {
+	if _, ok := tia.Hmove.FutureLatch.Tick(); ok {
 		tia.pendingEvents--
-		tia.HmoveLatch = true
+		tia.Hmove.Latch = true
 	}
 
-	if _, ok := tia.FutureHmove.Tick(); ok {
+	if _, ok := tia.Hmove.Future.Tick(); ok {
 		tia.pendingEvents--
 		tia.Video.PrepareSpritesForHMOVE()
-		tia.HmoveCt = 15
+		tia.Hmove.ResetRipple()
 	}
 
 	if _, ok := tia.futureHsync.Tick(); ok {
@@ -364,6 +349,10 @@ func (tia *TIA) Step(readMemory bool) {
 
 	// tick phase clock
 	tia.pclk.Tick()
+
+	// "one extra CLK pulse is sent every 4 CLK" and "on every H@1 signal [...]
+	// as an extra 'stuffed' clock signal."
+	tia.Hmove.Clk = tia.pclk.Phi2()
 
 	// tick delayed events and run payload if appropriate
 	if tia.pendingEvents > 0 {
@@ -409,7 +398,7 @@ func (tia *TIA) Step(readMemory bool) {
 			// CPU cycle of the scanline; the CLK stuffing will still take
 			// place during the HBlank and the HSYNC latch will be set just
 			// before the counter wraps around."
-			tia.HmoveLatch = false
+			tia.Hmove.Latch = false
 
 		case 56: // [SHB]
 			// allow a new scanline event to occur naturally only when an RSYNC
@@ -459,7 +448,7 @@ func (tia *TIA) Step(readMemory bool) {
 
 		case 16: // [RHB]
 			// early HBLANK off if hmoveLatch is false
-			if !tia.HmoveLatch {
+			if !tia.Hmove.Latch {
 				tia.futureHsyncEvent = "RHB"
 				tia.futureHsync.Schedule(hsyncDelay, 0)
 				tia.pendingEvents++
@@ -469,7 +458,7 @@ func (tia *TIA) Step(readMemory bool) {
 
 		case 18: // [LRHB]
 			// late HBLANK off if hmoveLatch is true
-			if tia.HmoveLatch {
+			if tia.Hmove.Latch {
 				tia.futureHsyncEvent = "LRHB"
 				tia.futureHsync.Schedule(hsyncDelay, 0)
 				tia.pendingEvents++
@@ -493,21 +482,13 @@ func (tia *TIA) Step(readMemory bool) {
 		readMemory = tia.Video.UpdateColor(memoryData)
 	}
 
-	// "one extra CLK pulse is sent every 4 CLK" and "on every H@1 signal [...]
-	// as an extra 'stuffed' clock signal."
-	isHmove := tia.pclk.Phi2()
-
 	// we always call TickSprites but whether or not (and how) the tick
 	// actually occurs is left for the sprite object to decide based on the
-	// arguments passed here.
-	tia.Video.Tick(isHmove, tia.HmoveCt)
+	// state of the phase clock (isHmove) and the HMOVE ripple count (HmoveCt)
+	tia.Video.Tick(tia.Hmove.Clk, tia.Hmove.Ripple)
 
 	// update hmove counter value
-	if isHmove {
-		if tia.HmoveCt != 0xff {
-			tia.HmoveCt--
-		}
-	}
+	tia.Hmove.Tick()
 
 	// resolve video pixels
 	tia.Video.Pixel()

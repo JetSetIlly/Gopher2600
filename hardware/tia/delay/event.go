@@ -29,7 +29,7 @@ type Event struct {
 // be stored in an Event.
 func (e *Event) Schedule(delay int, value uint8) {
 	e.initial = delay + 1
-	e.remaining = delay + 1
+	e.remaining = e.initial
 	e.paused = false
 	e.pushed = false
 	e.value = value
@@ -60,6 +60,10 @@ func (e *Event) Remaining() int {
 // Forced() (missile and player sprites) or Dropped() (ball and player sprites).
 func (e *Event) Pause() {
 	e.paused = true
+}
+
+func (e *Event) Resume() {
+	e.paused = false
 }
 
 // Push event so that it starts again. Same as dropping and rescheduling

@@ -19,6 +19,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/hardware/tia/delay"
+	"github.com/jetsetilly/gopher2600/hardware/tia/hmove"
 	"github.com/jetsetilly/gopher2600/hardware/tia/phaseclock"
 	"github.com/jetsetilly/gopher2600/hardware/tia/polycounter"
 )
@@ -105,15 +106,15 @@ type Video struct {
 // The references to the TIA's HBLANK state and whether HMOVE is latched, are
 // required to tune the delays experienced by the various sprite events (eg.
 // reset position).
-func NewVideo(mem bus.ChipBus, tv signal.TelevisionSprite, pclk *phaseclock.PhaseClock, hsync *polycounter.Polycounter, hblank *bool, hmoveLatch *bool) *Video {
+func NewVideo(mem bus.ChipBus, tv signal.TelevisionSprite, pclk *phaseclock.PhaseClock, hsync *polycounter.Polycounter, hblank *bool, hmove *hmove.Hmove) *Video {
 	return &Video{
 		Collisions: newCollisions(mem),
 		Playfield:  newPlayfield(pclk, hsync),
-		Player0:    newPlayerSprite("Player 0", tv, hblank, hmoveLatch),
-		Player1:    newPlayerSprite("Player 1", tv, hblank, hmoveLatch),
-		Missile0:   newMissileSprite("Missile 0", tv, hblank, hmoveLatch),
-		Missile1:   newMissileSprite("Missile 1", tv, hblank, hmoveLatch),
-		Ball:       newBallSprite("Ball", tv, hblank, hmoveLatch),
+		Player0:    newPlayerSprite("Player 0", tv, hblank, hmove),
+		Player1:    newPlayerSprite("Player 1", tv, hblank, hmove),
+		Missile0:   newMissileSprite("Missile 0", tv, hblank, hmove),
+		Missile1:   newMissileSprite("Missile 1", tv, hblank, hmove),
+		Ball:       newBallSprite("Ball", tv, hblank, hmove),
 	}
 }
 
@@ -131,14 +132,14 @@ func (vd *Video) Snapshot() *Video {
 }
 
 // Plumb ChipBus into TIA/Video components. Update pointers that refer to parent TIA.
-func (vd *Video) Plumb(mem bus.ChipBus, pclk *phaseclock.PhaseClock, hsync *polycounter.Polycounter, hblank *bool, hmoveLatch *bool) {
+func (vd *Video) Plumb(mem bus.ChipBus, pclk *phaseclock.PhaseClock, hsync *polycounter.Polycounter, hblank *bool, hmove *hmove.Hmove) {
 	vd.Collisions.Plumb(mem)
 	vd.Playfield.Plumb(pclk, hsync)
-	vd.Player0.Plumb(hblank, hmoveLatch)
-	vd.Player1.Plumb(hblank, hmoveLatch)
-	vd.Missile0.Plumb(hblank, hmoveLatch)
-	vd.Missile1.Plumb(hblank, hmoveLatch)
-	vd.Ball.Plumb(hblank, hmoveLatch)
+	vd.Player0.Plumb(hblank, hmove)
+	vd.Player1.Plumb(hblank, hmove)
+	vd.Missile0.Plumb(hblank, hmove)
+	vd.Missile1.Plumb(hblank, hmove)
+	vd.Ball.Plumb(hblank, hmove)
 }
 
 // RSYNC adjusts the debugging information of the sprites when an RSYNC is
@@ -181,11 +182,11 @@ func (vd *Video) Tick(isHmove bool, hmoveCt uint8) {
 		}
 	}
 
-	p0 := vd.Player0.tick(isHmove, hmoveCt)
-	p1 := vd.Player1.tick(isHmove, hmoveCt)
-	m0 := vd.Missile0.tick(isHmove, hmoveCt, vd.Player0.triggerMissileReset())
-	m1 := vd.Missile1.tick(isHmove, hmoveCt, vd.Player1.triggerMissileReset())
-	bl := vd.Ball.tick(isHmove, hmoveCt)
+	p0 := vd.Player0.tick()
+	p1 := vd.Player1.tick()
+	m0 := vd.Missile0.tick(vd.Player0.triggerMissileReset())
+	m1 := vd.Missile1.tick(vd.Player1.triggerMissileReset())
+	bl := vd.Ball.tick()
 
 	// note that there is no Playfield.tick() function. ticking occurs in the
 	// Playfield.pixel() function

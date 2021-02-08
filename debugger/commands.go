@@ -983,7 +983,13 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		dbg.printLine(terminal.StyleInstrument, dbg.VCS.Mem.RAM.String())
 
 	case cmdTIA:
-		dbg.printLine(terminal.StyleInstrument, dbg.VCS.TIA.String())
+		arg, _ := tokens.Get()
+		switch arg {
+		case "HMOVE":
+			dbg.printLine(terminal.StyleInstrument, dbg.VCS.TIA.Hmove.String())
+		default:
+			dbg.printLine(terminal.StyleInstrument, dbg.VCS.TIA.String())
+		}
 
 	case cmdRIOT:
 		arg, _ := tokens.Get()
