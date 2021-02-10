@@ -17,6 +17,7 @@ package sdlimgui
 
 import (
 	"fmt"
+	"sync/atomic"
 
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
@@ -32,7 +33,7 @@ type term struct {
 	sideChan chan string
 
 	// was last TermRead() from side channel
-	sideChanLast bool
+	sideChanLast atomic.Value // bool
 
 	// output to the terminal window to present as a prompt
 	promptChan chan terminal.Prompt
@@ -48,7 +49,7 @@ type term struct {
 }
 
 func newTerm() *term {
-	return &term{
+	trm := &term{
 		// inputChan must not block
 		inputChan: make(chan string, 1),
 
@@ -65,6 +66,8 @@ func newTerm() *term {
 		// generous buffer for output channel
 		outputChan: make(chan terminalOutput, 4096),
 	}
+	trm.sideChanLast.Store(false)
+	return trm
 }
 
 // Initialise implements the terminal.Terminal interface.
@@ -89,8 +92,8 @@ func (trm *term) Silence(silenced bool) {
 // TermPrintLine implements the terminal.Output interface.
 func (trm *term) TermPrintLine(style terminal.Style, s string) {
 	// do not print anything if last terminal event was from sidechannel
-	if trm.sideChanLast {
-		trm.sideChanLast = false
+	if trm.sideChanLast.Load().(bool) {
+		trm.sideChanLast.Store(false)
 		if style == terminal.StyleError || style == terminal.StyleLog {
 			logger.Log("term", s)
 		}
@@ -161,7 +164,7 @@ func (trm *term) IsInteractive() bool {
 func (trm *term) pushCommand(input string) {
 	select {
 	case trm.sideChan <- input:
-		trm.sideChanLast = true
+		trm.sideChanLast.Store(true)
 	default:
 		// hopefully the side channel buffer is deep enough so that we don't
 		// ever have to drop input before the buffer can emptied in TermRead().
