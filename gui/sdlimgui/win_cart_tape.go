@@ -100,10 +100,19 @@ func (win *winCartTape) draw() {
 	imgui.PopStyleColorV(2)
 	imgui.Spacing()
 
+	// tape slider
+	c := int32(win.img.lz.Cart.TapeState.Counter)
+	if imgui.SliderIntV("##counterslider", &c, 0, int32(win.img.lz.Cart.TapeState.MaxCounter), "", imgui.SlidersFlagsNone) {
+		win.img.lz.Dbg.PushRawEvent(func() {
+			win.img.lz.Dbg.VCS.Mem.Cart.GetTapeBus().SetTapeCounter(int(c))
+		})
+	}
+
 	// rewind button
+	imgui.SameLine()
 	if imgui.Button("Rewind") {
 		win.img.lz.Dbg.PushRawEvent(func() {
-			_ = win.img.lz.Dbg.VCS.Mem.Cart.GetTapeBus().Rewind()
+			win.img.lz.Dbg.VCS.Mem.Cart.GetTapeBus().Rewind()
 		})
 	}
 

@@ -1,8 +1,9 @@
 compileFlags = '-c 3 -B -wb=false'
-profilingRom = roms/Homebrew/CDF/galaga_dmo_v2_NTSC.bin
+#profilingRom = roms/Homebrew/CDF/galaga_dmo_v2_NTSC.bin
 #profilingRom = roms/Homebrew/DPC+ARM/ZaxxonHDDemo_150927_NTSC.bin
-#profilingRom = roms/Rsboxing.bin
+profilingRom = roms/Rsboxing.bin
 #profilingRom = "test_roms/plusrom/sokoboo Plus.bin"
+#profilingRom = "roms/starpath/02 - Communist Mutants From Space (Ntsc).mp3"
 
 .PHONY: all clean tidy generate check_lint lint check_glsl glsl_validate check_pandoc readme_spell test race profile build_assertions build check_upx release release_statsview cross_windows cross_windows_statsview binaries check_gotip build_with_gotip
 

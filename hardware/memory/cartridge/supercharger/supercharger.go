@@ -402,11 +402,10 @@ func (cart *Supercharger) PutRAM(bank int, idx int, data uint8) {
 //
 // Whether this does anything meaningful depends on the interal implementation
 // of the 'tape' interface.
-func (cart *Supercharger) Rewind() bool {
+func (cart *Supercharger) Rewind() {
 	if tape, ok := cart.state.tape.(mapper.CartTapeBus); ok {
-		return tape.Rewind()
+		tape.Rewind()
 	}
-	return false
 }
 
 // SetTapeCounter implements the mapper.CartTapeBus interface

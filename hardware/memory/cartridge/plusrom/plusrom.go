@@ -276,11 +276,10 @@ func (cart *PlusROM) PutStatic(segment string, idx uint16, data uint8) error {
 }
 
 // Rewind implements the mapper.CartTapeBus interface.
-func (cart *PlusROM) Rewind() bool {
+func (cart *PlusROM) Rewind() {
 	if sb, ok := cart.child.(mapper.CartTapeBus); ok {
-		return sb.Rewind()
+		sb.Rewind()
 	}
-	return false
 }
 
 // GetTapeState implements the mapper.CartTapeBus interface.

@@ -180,9 +180,8 @@ type CartStatic struct {
 
 // CartTapeBus defines additional debugging functions for cartridge types that use tapes.
 type CartTapeBus interface {
-	// Move tape loading to the specified mark. returns true if rewind was
-	// effective
-	Rewind() bool
+	// Move tape loading to the beginning of the tape
+	Rewind()
 
 	// Set tape counter to specified value
 	SetTapeCounter(c int)

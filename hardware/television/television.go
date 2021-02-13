@@ -466,10 +466,8 @@ func (tv *Television) newFrame(synced bool) error {
 		tv.reflector.SyncFrame()
 	}
 
-	// check frame rate
-	if synced {
-		tv.lmtr.checkFrame()
-	}
+	// check frame rate. checking even if synced == false.
+	tv.lmtr.checkFrame()
 
 	return nil
 }

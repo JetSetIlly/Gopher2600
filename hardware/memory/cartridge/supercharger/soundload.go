@@ -37,7 +37,7 @@ type SoundLoad struct {
 	// sample levels
 	samples []float32
 
-	// spped of samples in Hz
+	// speed of samples in Hz
 	sampleRate float64
 
 	// current index of samples array
@@ -55,6 +55,11 @@ type SoundLoad struct {
 	// which happens at a rate of 3.57MHz.
 	regulator   int
 	regulatorCt int
+
+	// stepLimiter is used to limit the number of times step() can be called
+	// without load() being called and for the tape to continue "playing". once
+	// stepLimiter reaches the stepLimit value, the tape stops
+	stepLimiter int
 }
 
 // newSoundLoad is the preferred method of initialisation for the SoundLoad type.
@@ -113,6 +118,7 @@ func (tap *SoundLoad) snapshot() tape {
 
 // load implements the Tape interface.
 func (tap *SoundLoad) load() (uint8, error) {
+	tap.stepLimiter = 0
 	if !tap.playing {
 		if tap.playDelay < 30000 {
 			tap.playDelay++
@@ -120,6 +126,7 @@ func (tap *SoundLoad) load() (uint8, error) {
 		}
 		tap.playing = true
 		tap.playDelay = 0
+		logger.Log(soundloadLogTag, "tape: playing")
 	}
 
 	if tap.samples[tap.idx] > 0.0 {
@@ -130,6 +137,16 @@ func (tap *SoundLoad) load() (uint8, error) {
 
 // step implements the Tape interface.
 func (tap *SoundLoad) step() {
+	// auto-stop tape if load() has not been called "recently"
+	const stepLimit = 100000
+	if tap.stepLimiter < stepLimit {
+		tap.stepLimiter++
+		if tap.stepLimiter == stepLimit {
+			logger.Log(soundloadLogTag, "tape: stopped")
+			tap.playing = false
+		}
+	}
+
 	if !tap.playing {
 		return
 	}
@@ -142,18 +159,18 @@ func (tap *SoundLoad) step() {
 
 	// make sure we don't try to read past end of tape
 	if tap.idx >= len(tap.samples)-1 {
-		tap.playing = false
+		tap.Rewind()
 		return
 	}
 	tap.idx++
 }
 
 // Rewind implements the mapper.CartTapeBus interface.
-func (tap *SoundLoad) Rewind() bool {
+func (tap *SoundLoad) Rewind() {
 	// rewinding happens instantaneously
 	tap.idx = 0
-	logger.Log(soundloadLogTag, "tape rewound")
-	return true
+	logger.Log(soundloadLogTag, "tape: rewound")
+	tap.stepLimiter = 0
 }
 
 // SetTapeCounter implements the mapper.CartTapeBus interface.

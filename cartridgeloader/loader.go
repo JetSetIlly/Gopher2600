@@ -47,7 +47,7 @@ type Loader struct {
 	// original binary file not he decoded PCM data
 	Hash string
 
-	// copy of the loaded data. subsequence calls to Load() will return a copy
+	// copy of the loaded data. subsequenct calls to Load() will return a copy
 	// of this data
 	Data []byte
 

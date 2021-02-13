@@ -18,6 +18,7 @@ package supercharger
 import (
 	"fmt"
 	"io"
+	"math"
 
 	"github.com/go-audio/audio"
 	"github.com/go-audio/wav"
@@ -48,6 +49,20 @@ func getPCM(cl cartridgeloader.Loader) (*audio.Float32Buffer, error) {
 			return nil, fmt.Errorf("soundload: wav file: %v", err)
 		}
 
+		// adjust zero value for unsigned data. with wav data we can assume
+		// that a bit-depth of 8 or less is unsigned. bottom of page 60:
+		//
+		// http://www-mmsp.ece.mcgill.ca/Documents/AudioFormats/WAVE/Docs/riffmci.pdf
+		//
+		// data for higher bit-depths is signed and we do not need to do make
+		// any adjustments
+		if wavDec.BitDepth <= 8 {
+			adj := int(math.Pow(2.0, float64(b.SourceBitDepth)) / 2)
+			for i := range b.Data {
+				b.Data[i] -= adj
+			}
+		}
+
 		logger.Log(soundloadLogTag, "loading from wav file")
 		return b.AsFloat32Buffer(), nil
 	}
@@ -67,7 +82,7 @@ func getPCM(cl cartridgeloader.Loader) (*audio.Float32Buffer, error) {
 		SourceBitDepth: mp3SourceBitDepth,
 	}
 
-	d := make([]byte, 4068)
+	d := make([]byte, 4096)
 	for {
 		n, err := mp3Dec.Read(d)
 		if err == io.EOF {
