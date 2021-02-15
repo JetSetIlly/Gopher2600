@@ -22,9 +22,9 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 	"github.com/jetsetilly/gopher2600/hardware/tia/delay"
-	"github.com/jetsetilly/gopher2600/hardware/tia/hmove"
 	"github.com/jetsetilly/gopher2600/hardware/tia/phaseclock"
 	"github.com/jetsetilly/gopher2600/hardware/tia/polycounter"
+	"github.com/jetsetilly/gopher2600/hardware/tia/revision"
 )
 
 // PlayerSizes maps player size and copies values to descriptions of those
@@ -62,8 +62,7 @@ type PlayerSprite struct {
 
 	// references to some fundamental TIA properties. various combinations of
 	// these affect the latching delay when resetting the sprite
-	hblank *bool
-	hmove  *hmove.Hmove
+	tia *tia
 
 	// ^^^ references to other parts of the VCS ^^^
 
@@ -78,10 +77,6 @@ type PlayerSprite struct {
 	// horizontal movement
 	MoreHMOVE bool
 	Hmove     uint8
-
-	// the last hmovect value seen by the Tick() function. used to accurately
-	// decide the delay period when resetting the sprite position
-	lastHmoveCt uint8
 
 	// the following attributes are used for information purposes only:
 
@@ -143,12 +138,11 @@ type PlayerSprite struct {
 	pixelCollision bool
 }
 
-func newPlayerSprite(label string, tv signal.TelevisionSprite, hblank *bool, hmove *hmove.Hmove) *PlayerSprite {
+func newPlayerSprite(label string, tv signal.TelevisionSprite, tia *tia) *PlayerSprite {
 	ps := &PlayerSprite{
-		label:  label,
-		tv:     tv,
-		hblank: hblank,
-		hmove:  hmove,
+		label: label,
+		tv:    tv,
+		tia:   tia,
 	}
 	ps.ScanCounter.Pixel = -1
 
@@ -167,10 +161,8 @@ func (ps *PlayerSprite) Snapshot() *PlayerSprite {
 	return &n
 }
 
-// Plumb a new ChipBus into the Player sprite.
-func (ps *PlayerSprite) Plumb(hblank *bool, hmove *hmove.Hmove) {
-	ps.hblank = hblank
-	ps.hmove = hmove
+// Plumb player sprite.
+func (ps *PlayerSprite) Plumb() {
 	ps.ScanCounter.sizeAndCopies = &ps.SizeAndCopies
 	ps.ScanCounter.pclk = &ps.pclk
 
@@ -301,17 +293,24 @@ func (ps *PlayerSprite) rsync(adjustment int) {
 // tick moves the sprite counters along (both position and graphics scan).
 func (ps *PlayerSprite) tick() bool {
 	// check to see if there is more movement required for this sprite
-	if ps.hmove.Clk {
-		ps.MoreHMOVE = ps.MoreHMOVE && compareHMOVE(ps.hmove.Ripple, ps.Hmove)
+	if ps.tia.hmove.Clk {
+		ps.MoreHMOVE = ps.MoreHMOVE && compareHMOVE(ps.tia.hmove.Ripple, ps.Hmove)
 	}
 
 	// early return if nothing to do
-	if !(ps.hmove.Clk && ps.MoreHMOVE) && *ps.hblank {
+	if !(ps.tia.hmove.Clk && ps.MoreHMOVE) && *ps.tia.hblank {
 		return false
 	}
 
+	// cancel motion clock if necessary
+	if ps.tia.rev.Prefs.LostMOTCK {
+		if !*ps.tia.hblank && ps.tia.hmove.Clk && ps.MoreHMOVE {
+			return false
+		}
+	}
+
 	// update hmoved pixel value
-	if *ps.hblank {
+	if *ps.tia.hblank {
 		ps.HmovedPixel--
 
 		// adjust for screen boundary
@@ -429,7 +428,7 @@ func (ps *PlayerSprite) prepareForHMOVE() {
 
 	ps.MoreHMOVE = true
 
-	if *ps.hblank {
+	if *ps.tia.hblank {
 		// adjust hmovedPixel value. this value is subject to further change so
 		// long as moreHMOVE is true. the String() function this value is
 		// annotated with a "*" to indicate that HMOVE is still in progress
@@ -453,6 +452,17 @@ func (ps *PlayerSprite) resetPosition() {
 	// reset pixel (approx. 9 pixels after the start of STA RESP0)."
 	delay := 4
 
+	hblank := *ps.tia.hblank
+
+	// RESPx responding late to the end of HBLANK is dependent on heat. The
+	// HeatThreshold() function handles the increasing operating temperature
+	// for us.
+	if (ps.tia.hsync.Count() == 16 || ps.tia.hsync.Count() == 18) && ps.tia.pclk.Phi2() {
+		if ps.tia.rev.Prefs.RESPxHBLANK {
+			hblank = !revision.HeatThreshold(ps.tv.GetState(signal.ReqScanline))
+		}
+	}
+
 	// if we're scheduling the reset during a HBLANK however there are extra
 	// conditions which adjust the delay value. these figures have been gleaned
 	// through observation. with some supporting notes from the following
@@ -464,21 +474,15 @@ func (ps *PlayerSprite) resetPosition() {
 	//
 	// that said, I'm not entirely sure what's going on and why these
 	// adjustments are required.
-	if *ps.hblank {
+	if hblank {
 		// this tricky branch happens when reset is triggered inside the
 		// HBLANK period and HMOVE is active
-		if !ps.hmove.Latch || ps.hmove.Ripple >= 1 && ps.hmove.Ripple <= 15 {
-			switch ps.hmove.Ripple {
-			case 15:
-				// "As with the previous tests, variations in positioning only
-				// happen if a strobe to RESxx coincide with an extra motion CLK
-				// pulse after an HMOVE. In all the other cases, all the consoles
-				// behave the same."
-				//
-				// https://github.com/stella-emu/stella/issues/699#issuecomment-698004074
-				delay = 3
-			default:
-				delay = 2
+		if !ps.tia.hmove.Latch || ps.tia.hmove.Ripple >= 1 && ps.tia.hmove.Ripple <= 15 {
+			delay = 2
+			if ps.tia.hmove.Ripple == 15 {
+				if ps.tia.rev.Prefs.LateRippleStart {
+					delay = 3
+				}
 			}
 		} else {
 			delay = 3
@@ -488,16 +492,13 @@ func (ps *PlayerSprite) resetPosition() {
 	// pause pending start drawing events unless it is about to start this cycle
 	// rules discovered through observation (games that do bad things to HMOVE)
 	if !ps.futureStart.AboutToEnd() {
-		// these futher conditions have been implemented as a result of
-		// observations made in the following atari age comment.
-		//
-		// https://atariage.com/forums/topic/311795-576-and-1008-characters/?tab=comments#comment-4646705
-		//
-		// This satisfies the PAL Vader screenshots. Other 2600 models may
-		// behave differently. I've decided to keep these as is for now because
-		// this new condition doesn't break any other test case in the
-		// regression DB.
-		if !ps.hmove.RippleJustEnded || ps.pclk.Phi2() || ps.pclk.LatePhi2() {
+		// not entirely sure this condition is correct but works for the
+		// known cases. See revision package for more discussion.
+		if ps.tia.rev.Prefs.LateRippleEnd {
+			if !(ps.tia.hmove.RippleJustEnded && (ps.pclk.Phi1() || ps.pclk.LatePhi1())) {
+				ps.futureStart.Pause()
+			}
+		} else {
 			ps.futureStart.Pause()
 		}
 	}
@@ -594,7 +595,7 @@ func (ps *PlayerSprite) pixel() {
 	// (maybe surprisingly, collision detction in Pitfall is sensitive to this,
 	// which makes it a good test case)
 
-	if *ps.hblank && ps.ScanCounter.IsLatching() {
+	if *ps.tia.hblank && ps.ScanCounter.IsLatching() {
 		if ps.Reflected {
 			ps.pixelOn = false
 			ps.pixelCollision = (*ps.gfxData>>7)&0x01 == 0x01

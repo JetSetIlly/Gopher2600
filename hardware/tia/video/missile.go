@@ -22,7 +22,6 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 	"github.com/jetsetilly/gopher2600/hardware/tia/delay"
-	"github.com/jetsetilly/gopher2600/hardware/tia/hmove"
 	"github.com/jetsetilly/gopher2600/hardware/tia/phaseclock"
 	"github.com/jetsetilly/gopher2600/hardware/tia/polycounter"
 )
@@ -50,18 +49,15 @@ var MissileSizes = []string{
 // MissileSprite represents a moveable missile sprite in the VCS graphical display.
 // The VCS has two missile sprites.
 type MissileSprite struct {
-	tv signal.TelevisionSprite
-
-	hblank *bool
-	hmove  *hmove.Hmove
+	tv  signal.TelevisionSprite
+	tia *tia
 
 	// ^^^ references to other parts of the VCS ^^^
 
-	position    polycounter.Polycounter
-	pclk        phaseclock.PhaseClock
-	MoreHMOVE   bool
-	Hmove       uint8
-	lastHmoveCt uint8
+	position  polycounter.Polycounter
+	pclk      phaseclock.PhaseClock
+	MoreHMOVE bool
+	Hmove     uint8
 
 	// the following attributes are used for information purposes only:
 
@@ -98,12 +94,11 @@ type MissileSprite struct {
 	pixelCollision bool
 }
 
-func newMissileSprite(label string, tv signal.TelevisionSprite, hblank *bool, hmove *hmove.Hmove) *MissileSprite {
+func newMissileSprite(label string, tv signal.TelevisionSprite, tia *tia) *MissileSprite {
 	ms := &MissileSprite{
-		tv:     tv,
-		hblank: hblank,
-		hmove:  hmove,
-		label:  label,
+		tv:    tv,
+		tia:   tia,
+		label: label,
 	}
 
 	ms.Enclockifier.size = &ms.Size
@@ -119,9 +114,7 @@ func (ms *MissileSprite) Snapshot() *MissileSprite {
 }
 
 // Plumb a new ChipBus into the Missile sprite.
-func (ms *MissileSprite) Plumb(hblank *bool, hmove *hmove.Hmove) {
-	ms.hblank = hblank
-	ms.hmove = hmove
+func (ms *MissileSprite) Plumb() {
 	ms.Enclockifier.size = &ms.Size
 }
 
@@ -232,15 +225,20 @@ func (ms *MissileSprite) rsync(adjustment int) {
 
 func (ms *MissileSprite) tick(resetToPlayer bool) bool {
 	// check to see if there is more movement required for this sprite
-	if ms.hmove.Clk {
-		ms.MoreHMOVE = ms.MoreHMOVE && compareHMOVE(ms.hmove.Ripple, ms.Hmove)
+	if ms.tia.hmove.Clk {
+		ms.MoreHMOVE = ms.MoreHMOVE && compareHMOVE(ms.tia.hmove.Ripple, ms.Hmove)
 	}
 
-	ms.lastHmoveCt = ms.hmove.Ripple
-
 	// early return if nothing to do
-	if !(ms.hmove.Clk && ms.MoreHMOVE) && *ms.hblank {
+	if !(ms.tia.hmove.Clk && ms.MoreHMOVE) && *ms.tia.hblank {
 		return false
+	}
+
+	// cancel motion clock if necessary
+	if ms.tia.rev.Prefs.LostMOTCK {
+		if !*ms.tia.hblank && ms.tia.hmove.Clk && ms.MoreHMOVE {
+			return false
+		}
 	}
 
 	// reset-to-player placement note: we don't do the missile-to-player reset
@@ -260,10 +258,10 @@ func (ms *MissileSprite) tick(resetToPlayer bool) bool {
 
 	// note whether this is an additional hmove tick. see pixel() function
 	// below for explanation
-	ms.lastTickFromHmove = ms.hmove.Clk && ms.MoreHMOVE
+	ms.lastTickFromHmove = ms.tia.hmove.Clk && ms.MoreHMOVE
 
 	// update hmoved pixel value
-	if *ms.hblank {
+	if *ms.tia.hblank {
 		ms.HmovedPixel--
 
 		// adjust for screen boundary
@@ -331,7 +329,7 @@ func (ms *MissileSprite) _futureStartDrawingEvent(v uint8) {
 func (ms *MissileSprite) prepareForHMOVE() {
 	ms.MoreHMOVE = true
 
-	if *ms.hblank {
+	if *ms.tia.hblank {
 		// adjust hmovedPixel value. this value is subject to further change so
 		// long as moreHMOVE is true. the String() function this value is
 		// annotated with a "*" to indicate that HMOVE is still in progress
@@ -347,8 +345,8 @@ func (ms *MissileSprite) prepareForHMOVE() {
 func (ms *MissileSprite) resetPosition() {
 	// see player sprite resetPosition() for commentary on delay values
 	delay := 4
-	if *ms.hblank {
-		if !ms.hmove.Latch || ms.lastHmoveCt >= 1 && ms.lastHmoveCt <= 15 {
+	if *ms.tia.hblank {
+		if !ms.tia.hmove.Latch || ms.tia.hmove.Ripple >= 1 && ms.tia.hmove.Ripple <= 15 {
 			delay = 2
 		} else {
 			delay = 3
@@ -428,7 +426,7 @@ func (ms *MissileSprite) setResetToPlayer(on bool) {
 func (ms *MissileSprite) pixel() {
 	if !ms.Enabled {
 		ms.pixelOn = false
-		ms.pixelCollision = *ms.hblank && ms.Enabled
+		ms.pixelCollision = *ms.tia.hblank && ms.Enabled
 		return
 	}
 
@@ -451,7 +449,7 @@ func (ms *MissileSprite) pixel() {
 	// whether a pixel is output also depends on whether resetToPlayer is off
 	ms.pixelOn = !ms.ResetToPlayer && !earlyEnd && (ms.Enclockifier.Active || earlyStart)
 
-	ms.pixelCollision = ms.pixelOn || (*ms.hblank && ms.Enabled && ms.futureStart.AboutToEnd())
+	ms.pixelCollision = ms.pixelOn || (*ms.tia.hblank && ms.Enabled && ms.futureStart.AboutToEnd())
 }
 
 func (ms *MissileSprite) setEnable(enable bool) {

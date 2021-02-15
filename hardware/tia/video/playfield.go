@@ -18,9 +18,6 @@ package video
 import (
 	"fmt"
 	"strings"
-
-	"github.com/jetsetilly/gopher2600/hardware/tia/phaseclock"
-	"github.com/jetsetilly/gopher2600/hardware/tia/polycounter"
 )
 
 // ScreenRegion notes which part of the screen is currently being drawn.
@@ -39,8 +36,7 @@ const RegionWidth = 20
 // Playfield represnets the static playfield and background, the non-sprite
 // areas of the graphical display.
 type Playfield struct {
-	pclk  *phaseclock.PhaseClock
-	hsync *polycounter.Polycounter
+	tia *tia
 
 	// the color for the when playfield is on/off
 	ForegroundColor uint8
@@ -98,10 +94,9 @@ type Playfield struct {
 	color uint8
 }
 
-func newPlayfield(pclk *phaseclock.PhaseClock, hsync *polycounter.Polycounter) *Playfield {
+func newPlayfield(tia *tia) *Playfield {
 	pf := &Playfield{
-		pclk:          pclk,
-		hsync:         hsync,
+		tia:           tia,
 		RegularData:   make([]bool, RegionWidth),
 		ReflectedData: make([]bool, RegionWidth),
 	}
@@ -138,9 +133,7 @@ func (pf *Playfield) Snapshot() *Playfield {
 }
 
 // Plumb a new ChipBus into the Playfield.
-func (pf *Playfield) Plumb(pclk *phaseclock.PhaseClock, hsync *polycounter.Polycounter) {
-	pf.pclk = pclk
-	pf.hsync = hsync
+func (pf *Playfield) Plumb() {
 }
 
 // Label returns an appropriate name for playfield.
@@ -184,11 +177,11 @@ func (pf *Playfield) String() string {
 // returns whether the foreground is active and the color to be used
 // (foreground or background).
 func (pf *Playfield) pixel() {
-	if pf.pclk.Phi2() {
+	if pf.tia.pclk.Phi2() {
 		// RSYNC can monkey with the current hsync value unexpectedly and
 		// because of this we need an extra effort to make sure we're in the
 		// correct screen region.
-		switch pf.hsync.Count() {
+		switch pf.tia.hsync.Count() {
 		case 0:
 			// start of scanline
 			pf.Region = RegionOffScreen
@@ -217,9 +210,9 @@ func (pf *Playfield) pixel() {
 			pf.color = pf.BackgroundColor
 			return
 		case RegionLeft:
-			pf.Idx = pf.hsync.Count() - 17
+			pf.Idx = pf.tia.hsync.Count() - 17
 		case RegionRight:
-			pf.Idx = pf.hsync.Count() - 37
+			pf.Idx = pf.tia.hsync.Count() - 37
 		}
 
 		// pixel returns the color of the playfield at the current time.

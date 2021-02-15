@@ -83,7 +83,7 @@ func NewDisk(path string) (*Disk, error) {
 // these constraints are not met.
 func (dsk *Disk) Add(key string, p pref) error {
 	for _, r := range key {
-		if !(r == '.' || unicode.IsLetter(r)) {
+		if !(r == '.' || unicode.IsLetter(r) || unicode.IsDigit(r)) {
 			return curated.Errorf("prefs: %v", fmt.Errorf("illegal character [%c] in key string [%s]", r, key))
 		}
 	}

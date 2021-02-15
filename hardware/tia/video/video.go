@@ -22,6 +22,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/tia/hmove"
 	"github.com/jetsetilly/gopher2600/hardware/tia/phaseclock"
 	"github.com/jetsetilly/gopher2600/hardware/tia/polycounter"
+	"github.com/jetsetilly/gopher2600/hardware/tia/revision"
 )
 
 // Element is used to record from which video sub-system the pixel
@@ -61,6 +62,9 @@ func (e *Element) String() string {
 
 // Video contains all the components of the video sub-system of the VCS TIA chip.
 type Video struct {
+	// reference to important TIA state
+	tia *tia
+
 	// collision matrix
 	Collisions *Collisions
 
@@ -93,6 +97,15 @@ type Video struct {
 	writingRegister string
 }
 
+// tia is a convenient packaging of TIA state that is required by the playfield/sprites.
+type tia struct {
+	rev    *revision.TIARevision
+	pclk   *phaseclock.PhaseClock
+	hsync  *polycounter.Polycounter
+	hblank *bool
+	hmove  *hmove.Hmove
+}
+
 // NewVideo is the preferred method of initialisation for the Video sub-system.
 //
 // The playfield type requires access access to the TIA's phaseclock and
@@ -106,15 +119,26 @@ type Video struct {
 // The references to the TIA's HBLANK state and whether HMOVE is latched, are
 // required to tune the delays experienced by the various sprite events (eg.
 // reset position).
-func NewVideo(mem bus.ChipBus, tv signal.TelevisionSprite, pclk *phaseclock.PhaseClock, hsync *polycounter.Polycounter, hblank *bool, hmove *hmove.Hmove) *Video {
+func NewVideo(mem bus.ChipBus, tv signal.TelevisionSprite, rev *revision.TIARevision,
+	pclk *phaseclock.PhaseClock, hsync *polycounter.Polycounter,
+	hblank *bool, hmove *hmove.Hmove) *Video {
+	tia := &tia{
+		rev:    rev,
+		pclk:   pclk,
+		hsync:  hsync,
+		hblank: hblank,
+		hmove:  hmove,
+	}
+
 	return &Video{
+		tia:        tia,
 		Collisions: newCollisions(mem),
-		Playfield:  newPlayfield(pclk, hsync),
-		Player0:    newPlayerSprite("Player 0", tv, hblank, hmove),
-		Player1:    newPlayerSprite("Player 1", tv, hblank, hmove),
-		Missile0:   newMissileSprite("Missile 0", tv, hblank, hmove),
-		Missile1:   newMissileSprite("Missile 1", tv, hblank, hmove),
-		Ball:       newBallSprite("Ball", tv, hblank, hmove),
+		Playfield:  newPlayfield(tia),
+		Player0:    newPlayerSprite("Player 0", tv, tia),
+		Player1:    newPlayerSprite("Player 1", tv, tia),
+		Missile0:   newMissileSprite("Missile 0", tv, tia),
+		Missile1:   newMissileSprite("Missile 1", tv, tia),
+		Ball:       newBallSprite("Ball", tv, tia),
 	}
 }
 
@@ -132,14 +156,22 @@ func (vd *Video) Snapshot() *Video {
 }
 
 // Plumb ChipBus into TIA/Video components. Update pointers that refer to parent TIA.
-func (vd *Video) Plumb(mem bus.ChipBus, pclk *phaseclock.PhaseClock, hsync *polycounter.Polycounter, hblank *bool, hmove *hmove.Hmove) {
+func (vd *Video) Plumb(mem bus.ChipBus, rev *revision.TIARevision,
+	pclk *phaseclock.PhaseClock, hsync *polycounter.Polycounter,
+	hblank *bool, hmove *hmove.Hmove) {
 	vd.Collisions.Plumb(mem)
-	vd.Playfield.Plumb(pclk, hsync)
-	vd.Player0.Plumb(hblank, hmove)
-	vd.Player1.Plumb(hblank, hmove)
-	vd.Missile0.Plumb(hblank, hmove)
-	vd.Missile1.Plumb(hblank, hmove)
-	vd.Ball.Plumb(hblank, hmove)
+
+	vd.tia.rev = rev
+	vd.tia.pclk = pclk
+	vd.tia.hsync = hsync
+	vd.tia.hblank = hblank
+	vd.tia.hmove = hmove
+
+	vd.Player0.Plumb()
+	vd.Player1.Plumb()
+	vd.Missile0.Plumb()
+	vd.Missile1.Plumb()
+	vd.Ball.Plumb()
 }
 
 // RSYNC adjusts the debugging information of the sprites when an RSYNC is
@@ -154,7 +186,7 @@ func (vd *Video) RSYNC(adjustment int) {
 
 // Tick moves all video elements forward one video cycle. This is the
 // conceptual equivalent of the hardware MOTCK line.
-func (vd *Video) Tick(isHmove bool, hmoveCt uint8) {
+func (vd *Video) Tick() {
 	if v, ok := vd.writing.Tick(); ok {
 		switch vd.writingRegister {
 		case "PF0":
@@ -179,6 +211,15 @@ func (vd *Video) Tick(isHmove bool, hmoveCt uint8) {
 			vd.Missile0.clearHmoveValue()
 			vd.Missile1.clearHmoveValue()
 			vd.Ball.clearHmoveValue()
+
+		// these registers will only ever be pushed onto the writing queue if
+		// the TIA revisison is set accordingly. normally, GRP0 and GRP1 are
+		// set without delay.
+		case "GRP0":
+			vd.Player1.setOldGfxData()
+		case "GRP1":
+			vd.Player0.setOldGfxData()
+			vd.Ball.setEnableDelay()
 		}
 	}
 
@@ -348,13 +389,21 @@ func (vd *Video) UpdatePlayfield(data bus.ChipData) bool {
 	case "PF2":
 		vd.writingRegister = "PF2"
 		vd.writing.Schedule(2, data.Value)
-	case "VDELBL":
-		vd.spriteHasChanged = true
-		vd.Ball.setVerticalDelay(data.Value&0x01 == 0x01)
 	default:
 		return true
 	}
 
+	return false
+}
+
+func (vd *Video) TestUpdatePlayfield(data bus.ChipData) bool {
+	switch data.Name {
+	case "PF0":
+	case "PF1":
+	case "PF2":
+	default:
+		return true
+	}
 	return false
 }
 
@@ -438,6 +487,9 @@ func (vd *Video) UpdateSpritePositioning(data bus.ChipData) bool {
 		vd.Missile1.resetPosition()
 	case "RESBL":
 		vd.Ball.resetPosition()
+	case "VDELBL":
+		vd.spriteHasChanged = true
+		vd.Ball.setVerticalDelay(data.Value&0x01 == 0x01)
 	default:
 		return true
 	}
@@ -447,6 +499,8 @@ func (vd *Video) UpdateSpritePositioning(data bus.ChipData) bool {
 }
 
 // UpdateColor checks TIA memory for changes to color registers.
+//
+// See UpdatePlayfieldColor() also.
 //
 // Returns true if memory.ChipData has not been serviced.
 func (vd *Video) UpdateColor(data bus.ChipData) bool {
@@ -459,6 +513,23 @@ func (vd *Video) UpdateColor(data bus.ChipData) bool {
 		vd.Missile1.setColor(data.Value & 0xfe)
 	case "COLUBK":
 		vd.Playfield.setBackground(data.Value & 0xfe)
+	default:
+		return true
+	}
+
+	return false
+}
+
+// UpdatePlayfieldColor checks TIA memory for changes to playfield color
+// registers.
+//
+// Separate from the UpdateColor() function because some TIA revisions (or
+// sometimes for some other reason eg.RGB mod) are slower when updating the
+// playfield color register than the other registers.
+//
+// Returns true if memory.ChipData has not been serviced.
+func (vd *Video) UpdatePlayfieldColor(data bus.ChipData) bool {
+	switch data.Name {
 	case "COLUPF":
 		vd.Playfield.setColor(data.Value & 0xfe)
 		vd.Ball.setColor(data.Value & 0xfe)
@@ -480,12 +551,22 @@ func (vd *Video) UpdateSpritePixels(data bus.ChipData) bool {
 	switch data.Name {
 	case "GRP0":
 		vd.Player0.setGfxData(data.Value)
-		vd.Player1.setOldGfxData()
+		if vd.tia.rev.Prefs.LateVDELGRP0 {
+			vd.writing.Schedule(1, 0)
+			vd.writingRegister = "GRP0"
+		} else {
+			vd.Player1.setOldGfxData()
+		}
 
 	case "GRP1":
 		vd.Player1.setGfxData(data.Value)
-		vd.Player0.setOldGfxData()
-		vd.Ball.setEnableDelay()
+		if vd.tia.rev.Prefs.LateVDELGRP1 {
+			vd.writing.Schedule(1, 0)
+			vd.writingRegister = "GRP1"
+		} else {
+			vd.Player0.setOldGfxData()
+			vd.Ball.setEnableDelay()
+		}
 
 	case "ENAM0":
 		vd.Missile0.setEnable(data.Value&0x02 == 0x02)

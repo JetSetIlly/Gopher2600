@@ -27,11 +27,14 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/tia/hmove"
 	"github.com/jetsetilly/gopher2600/hardware/tia/phaseclock"
 	"github.com/jetsetilly/gopher2600/hardware/tia/polycounter"
+	"github.com/jetsetilly/gopher2600/hardware/tia/revision"
 	"github.com/jetsetilly/gopher2600/hardware/tia/video"
 )
 
 // TIA contains all the sub-components of the VCS TIA sub-system.
 type TIA struct {
+	Rev *revision.TIARevision
+
 	tv  signal.TelevisionTIA
 	mem bus.ChipBus
 
@@ -105,7 +108,7 @@ func (tia *TIA) String() string {
 }
 
 // NewTIA creates a TIA, to be used in a VCS emulation.
-func NewTIA(tv signal.TelevisionTIA, mem bus.ChipBus, input bus.UpdateBus, cpu *cpu.CPU) *TIA {
+func NewTIA(tv signal.TelevisionTIA, mem bus.ChipBus, input bus.UpdateBus, cpu *cpu.CPU) (*TIA, error) {
 	tia := &TIA{
 		tv:      tv,
 		mem:     mem,
@@ -114,12 +117,18 @@ func NewTIA(tv signal.TelevisionTIA, mem bus.ChipBus, input bus.UpdateBus, cpu *
 		rdyFlag: &cpu.RdyFlg,
 	}
 
+	var err error
+	tia.Rev, err = revision.NewTIARevision(tv)
+	if err != nil {
+		return nil, err
+	}
+
 	tia.Audio = audio.NewAudio()
-	tia.Video = video.NewVideo(mem, tv, &tia.pclk, &tia.hsync, &tia.Hblank, &tia.Hmove)
+	tia.Video = video.NewVideo(mem, tv, tia.Rev, &tia.pclk, &tia.hsync, &tia.Hblank, &tia.Hmove)
 	tia.Hmove.Reset()
 	tia.pclk.Reset()
 
-	return tia
+	return tia, nil
 }
 
 // there is not reset function for the TIA because (a) it would be just too
@@ -138,7 +147,7 @@ func (tia *TIA) Plumb(mem bus.ChipBus, input bus.UpdateBus, cpu *cpu.CPU) {
 	tia.mem = mem
 	tia.input = input
 	tia.rdyFlag = &cpu.RdyFlg
-	tia.Video.Plumb(tia.mem, &tia.pclk, &tia.hsync, &tia.Hblank, &tia.Hmove)
+	tia.Video.Plumb(tia.mem, tia.Rev, &tia.pclk, &tia.hsync, &tia.Hblank, &tia.Hmove)
 }
 
 // UpdateTIA checks for side effects in the TIA sub-system.
@@ -343,9 +352,6 @@ func (tia *TIA) Step(readMemory bool) {
 	if readMemory {
 		readMemory = tia.UpdateTIA(memoryData)
 	}
-	if readMemory {
-		readMemory = tia.Video.UpdatePlayfield(memoryData)
-	}
 
 	// tick phase clock
 	tia.pclk.Tick()
@@ -466,6 +472,13 @@ func (tia *TIA) Step(readMemory bool) {
 		}
 	}
 
+	// update playfield bits (depending on TIA revisions)
+	if readMemory {
+		if !tia.Rev.Prefs.LatePFx {
+			readMemory = tia.Video.UpdatePlayfield(memoryData)
+		}
+	}
+
 	// alter state of video subsystem. occurring after ticking of TIA clock
 	// because some the side effects of some registers require that. in
 	// particular, the RESxx registers need to have correct information about
@@ -478,17 +491,35 @@ func (tia *TIA) Step(readMemory bool) {
 	if readMemory {
 		readMemory = tia.Video.UpdateSpritePositioning(memoryData)
 	}
+
+	// update color registers
 	if readMemory {
 		readMemory = tia.Video.UpdateColor(memoryData)
+	}
+
+	// update playfield color register (depending on TIA revision)
+	if readMemory {
+		if !tia.Rev.Prefs.LateCOLUPF {
+			readMemory = tia.Video.UpdatePlayfieldColor(memoryData)
+		}
 	}
 
 	// we always call TickSprites but whether or not (and how) the tick
 	// actually occurs is left for the sprite object to decide based on the
 	// state of the phase clock (isHmove) and the HMOVE ripple count (HmoveCt)
-	tia.Video.Tick(tia.Hmove.Clk, tia.Hmove.Ripple)
+	tia.Video.Tick()
+
+	// update playfield bits (depending on TIA revisions)
+	if readMemory {
+		if tia.Rev.Prefs.LatePFx {
+			readMemory = tia.Video.UpdatePlayfield(memoryData)
+		}
+	}
 
 	// update hmove counter value
-	tia.Hmove.Tick()
+	if tia.Hmove.Clk {
+		tia.Hmove.Tick()
+	}
 
 	// resolve video pixels
 	tia.Video.Pixel()
@@ -503,6 +534,13 @@ func (tia *TIA) Step(readMemory bool) {
 		tia.sig.Pixel = signal.VideoBlack
 	} else {
 		tia.sig.Pixel = signal.ColorSignal(tia.Video.PixelColor)
+	}
+
+	// update playfield color register (depending on TIA revision)
+	if readMemory {
+		if tia.Rev.Prefs.LateCOLUPF {
+			readMemory = tia.Video.UpdatePlayfieldColor(memoryData)
+		}
 	}
 
 	if readMemory {

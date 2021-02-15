@@ -55,19 +55,17 @@ func (hm *Hmove) ResetRipple() {
 	hm.Ripple = 15
 }
 
-// Tick every video cycle. Only has affect when Clk is true. ie. when the TIA
-// phaseclock is in rising Phi2.
+// Tick every video cycle when Clk is true. ie. when the TIA phaseclock is in
+// rising Phi2.
 func (hm *Hmove) Tick() {
-	if hm.Clk {
-		hm.RippleJustEnded = false
-		if hm.Ripple != 0xff {
-			hm.Ripple--
-			hm.RippleJustEnded = hm.Ripple == 0xff
-		}
+	hm.RippleJustEnded = false
+	if hm.Ripple != 0xff {
+		hm.Ripple--
+		hm.RippleJustEnded = hm.Ripple == 0xff
 	}
 }
 
-// Reset Hmove values
+// Reset Hmove values.
 func (hm *Hmove) Reset() {
 	hm.Latch = false
 	hm.Ripple = 0xff

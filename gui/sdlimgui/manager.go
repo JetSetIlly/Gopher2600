@@ -94,6 +94,7 @@ var windowDefs = [...]windowDef{
 	{create: newFileSelector, menu: menuEntry{group: menuDebugger}},
 	{create: newWinPrefs, menu: menuEntry{group: menuDebugger}},
 	{create: newWinCRTPrefs, menu: menuEntry{group: menuDebugger}},
+	{create: newWinRevisions, menu: menuEntry{group: menuDebugger}},
 	{create: newWinTerm, menu: menuEntry{group: menuDebugger}},
 	{create: newWinLog, menu: menuEntry{group: menuDebugger}},
 
