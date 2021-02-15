@@ -97,8 +97,13 @@ func (win *winCRTPrefs) draw() {
 		return
 	}
 
-	imgui.SetNextWindowPosV(imgui.Vec2{25, 25}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
-	imgui.BeginV(win.id(), &win.open, imgui.WindowFlagsAlwaysAutoResize)
+	if win.img.isPlaymode() {
+		imgui.SetNextWindowPosV(imgui.Vec2{25, 25}, imgui.ConditionAppearing, imgui.Vec2{0, 0})
+		imgui.BeginV(win.id(), &win.open, imgui.WindowFlagsNoSavedSettings|imgui.WindowFlagsAlwaysAutoResize)
+	} else {
+		imgui.SetNextWindowPosV(imgui.Vec2{25, 25}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
+		imgui.BeginV(win.id(), &win.open, imgui.WindowFlagsAlwaysAutoResize)
+	}
 
 	win.drawEnabled()
 	imguiSeparator()

@@ -19,6 +19,7 @@ import (
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/debugger"
 	"github.com/jetsetilly/gopher2600/gui"
+	"github.com/jetsetilly/gopher2600/hardware"
 )
 
 type featureRequest struct {
@@ -74,14 +75,15 @@ func (img *SdlImgui) serviceSetFeature(request featureRequest) {
 
 	switch request.request {
 	case gui.ReqSetPlaymode:
-		err = argLen(request.args, 1)
+		err = argLen(request.args, 2)
 		if err == nil {
 			img.setPlaymode(true)
 			img.lz.Dbg = nil
-			if request.args[0] == nil {
+			img.vcs = request.args[0].(*hardware.VCS)
+			if request.args[1] == nil {
 				img.events = nil
 			} else {
-				img.events = request.args[0].(chan gui.Event)
+				img.events = request.args[1].(chan gui.Event)
 			}
 		}
 
@@ -90,7 +92,8 @@ func (img *SdlImgui) serviceSetFeature(request featureRequest) {
 		if err == nil {
 			img.setPlaymode(false)
 			img.lz.Dbg = request.args[0].(*debugger.Debugger)
-			if request.args[0] == nil {
+			img.vcs = img.lz.Dbg.VCS
+			if request.args[1] == nil {
 				img.events = nil
 			} else {
 				img.events = request.args[1].(chan gui.Event)

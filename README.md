@@ -9,6 +9,7 @@
 * Network access through [PlusROM](#plusrom) emulation
 * [Savekey](#savekey) support
 * Rudimentary [CRT Effects](#crt-effects)
+* Support for common [TIA revisions](#tia-revisions)
 
 The graphical [debugger](#debugger) is still in development but the current features include:
 
@@ -168,11 +169,12 @@ The VCS panel is controlled through the function keys of the keyboard.
 
 In playmode, the additional keys are available:
 
+* `F9` Show TIA Revisions window
 * `F10` Show CRT Preferences window
 * `F11` Toggle Fullscreen
 * `F12` Show FPS Indicator
 
-In the deugger, the additional keys are available:
+In the debugger, the additional keys are available:
 
 * `ESC` toggle mouse capture for debugging TV screen
 * ` (backtick) start/stop emulation
@@ -298,6 +300,15 @@ when in video-stepping mode you can not currently interactively alter the
 screen position to the level of an individual colour-clock. Left-clicking on the
 screen, as described above, will 'quantise' to the next CPU instruction. Future
 versions of `Gopher2600` will correct this.
+
+## TIA Revisions
+
+`Gopher2600` supports common revisions in the TIA chip. The configuration
+window is accessible through the debugger and through the playmode. In the
+latter case by pressing `F9`.
+
+A summary of the known TIA revisions / bugs can be found at on [Atari Compendium](http://www.ataricompendium.com/faq/vcs_tia/vcs_tia.html). Not all revisions / bugs are supported by `Gopher2600`
+but the common ones are.
 
 ## CRT Effects
 
@@ -715,6 +726,4 @@ Some ideas for the fragment shader taken from:
 
 * https://github.com/libretro/glsl-shaders/blob/master/crt/shaders/crt-pi.glsl
 * https://www.shadertoy.com/view/ltB3zD
-
-
 

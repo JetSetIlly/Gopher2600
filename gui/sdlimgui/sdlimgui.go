@@ -24,6 +24,7 @@ import (
 	"github.com/jetsetilly/gopher2600/gui/crt"
 	"github.com/jetsetilly/gopher2600/gui/sdlaudio"
 	"github.com/jetsetilly/gopher2600/gui/sdlimgui/lazyvalues"
+	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/paths"
@@ -49,6 +50,12 @@ type SdlImgui struct {
 	// references to the emulation
 	lz *lazyvalues.LazyValues
 	tv *television.Television
+
+	// vcs is set by ReqSetPlaymode or ReqSetDebugmode. in debug mode the VCS
+	// is accessible via lz.Dbg.VCS but for maximum compatibility between
+	// playmode and debugmode the VCS should be addressed through this pointer
+	// where possible
+	vcs *hardware.VCS
 
 	// the gui renders differently depending on EmulationState. use setState()
 	// to set the value

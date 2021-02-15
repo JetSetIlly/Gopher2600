@@ -73,6 +73,12 @@ func (img *SdlImgui) Service() {
 							}
 						}
 
+					case "F9":
+						if img.isPlaymode() {
+							w := img.wm.windows[winTIARevisionsID]
+							w.setOpen(!w.isOpen())
+						}
+
 					case "F10":
 						if img.isPlaymode() {
 							w := img.wm.windows[winCRTPrefsID]

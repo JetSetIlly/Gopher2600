@@ -22,6 +22,7 @@ import (
 
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/curated"
+	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
@@ -32,13 +33,21 @@ import (
 const timedOut = "timed out"
 
 // Check is a very rough and ready calculation of the emulator's performance.
-func Check(output io.Writer, profile Profile, tv *television.Television, runTime string, cartload cartridgeloader.Loader) error {
+func Check(output io.Writer, profile Profile, tv *television.Television, scr gui.GUI, runTime string, cartload cartridgeloader.Loader) error {
 	var err error
 
 	// create vcs using the tv created above
 	vcs, err := hardware.NewVCS(tv)
 	if err != nil {
 		return curated.Errorf("performance; %v", err)
+	}
+
+	// connect vcs to gui
+	if scr != nil {
+		err = scr.SetFeature(gui.ReqSetPlaymode, vcs, nil)
+		if err != nil {
+			return curated.Errorf("playmode: %v", err)
+		}
 	}
 
 	// attach cartridge to te vcs

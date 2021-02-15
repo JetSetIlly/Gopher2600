@@ -25,7 +25,6 @@ import (
 	"time"
 
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
-	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/debugger"
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
 	"github.com/jetsetilly/gopher2600/debugger/terminal/colorterm"
@@ -604,6 +603,9 @@ func perform(md *modalflag.Modes, sync *mainSync) error {
 		// fpscap for tv (see below for gui vsync option)
 		tv.SetFPSCap(*fpsCap)
 
+		// GUI instance if required
+		var scr gui.GUI
+
 		if *display {
 			// create gui
 			sync.creator <- func() (GuiCreator, error) {
@@ -611,18 +613,11 @@ func perform(md *modalflag.Modes, sync *mainSync) error {
 			}
 
 			// wait for creator result
-			var scr gui.GUI
 			select {
 			case g := <-sync.creation:
 				scr = g.(gui.GUI)
 			case err := <-sync.creationError:
 				return err
-			}
-
-			// connect gui
-			err = scr.SetFeature(gui.ReqSetPlaymode, nil)
-			if err != nil {
-				return curated.Errorf("playmode: %v", err)
 			}
 
 			// fpscap for gui (see above for tv option)
@@ -636,7 +631,7 @@ func perform(md *modalflag.Modes, sync *mainSync) error {
 		}
 
 		// run performance check
-		err = performance.Check(md.Output, p, tv, *duration, cartload)
+		err = performance.Check(md.Output, p, tv, scr, *duration, cartload)
 		if err != nil {
 			return err
 		}

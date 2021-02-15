@@ -184,7 +184,7 @@ func Play(tv *television.Television, scr gui.GUI, newRecording bool, cartload ca
 	}
 
 	// connect gui
-	err = scr.SetFeature(gui.ReqSetPlaymode, pl.guiChan)
+	err = scr.SetFeature(gui.ReqSetPlaymode, vcs, pl.guiChan)
 	if err != nil {
 		return curated.Errorf("playmode: %v", err)
 	}
