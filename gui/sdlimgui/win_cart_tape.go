@@ -102,7 +102,7 @@ func (win *winCartTape) draw() {
 
 	// tape slider
 	c := int32(win.img.lz.Cart.TapeState.Counter)
-	if imgui.SliderIntV("##counterslider", &c, 0, int32(win.img.lz.Cart.TapeState.MaxCounter), "", imgui.SlidersFlagsNone) {
+	if imgui.SliderIntV("##counterslider", &c, 0, int32(win.img.lz.Cart.TapeState.MaxCounter), "", imgui.SliderFlagsNone) {
 		win.img.lz.Dbg.PushRawEvent(func() {
 			win.img.lz.Dbg.VCS.Mem.Cart.GetTapeBus().SetTapeCounter(int(c))
 		})

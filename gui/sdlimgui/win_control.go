@@ -118,7 +118,7 @@ func (win *winControl) draw() {
 
 	// fps slider
 	fps := win.img.lz.TV.ReqFPS
-	if imgui.SliderFloatV(fpsLabel, &fps, 1, 100, "%.0f", imgui.SlidersFlagsNone) {
+	if imgui.SliderFloatV(fpsLabel, &fps, 1, 100, "%.0f", imgui.SliderFlagsNone) {
 		win.img.lz.Dbg.PushRawEvent(func() { win.img.lz.Dbg.VCS.TV.SetFPS(fps) })
 	}
 	imgui.PopItemWidth()
