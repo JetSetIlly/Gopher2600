@@ -22,7 +22,7 @@ import (
 
 	"github.com/jetsetilly/gopher2600/hardware/tia/video"
 
-	"github.com/inkyblackness/imgui-go/v3"
+	"github.com/inkyblackness/imgui-go/v4"
 )
 
 func (win *winTIA) drawBall() {
@@ -94,7 +94,7 @@ func (win *winTIA) drawBall() {
 	// ctrlpf, size selector and drawing info
 	imgui.BeginGroup()
 	imgui.PushItemWidth(win.ballSizeComboDim.X)
-	if imgui.BeginComboV("##ballsize", video.BallSizes[lz.Size], imgui.ComboFlagNoArrowButton) {
+	if imgui.BeginComboV("##ballsize", video.BallSizes[lz.Size], imgui.ComboFlagsNoArrowButton) {
 		for k := range video.BallSizes {
 			if imgui.Selectable(video.BallSizes[k]) {
 				v := uint8(k) // being careful about scope

@@ -18,7 +18,7 @@ package sdlimgui
 import (
 	"fmt"
 
-	"github.com/inkyblackness/imgui-go/v3"
+	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/controllers"
 )
@@ -100,7 +100,7 @@ func (win *winControllers) drawController(player int) {
 	}
 
 	imgui.PushItemWidth(win.controllerComboDim.X)
-	if imgui.BeginComboV(fmt.Sprintf("##%d", player), p.Name(), imgui.ComboFlagNoArrowButton) {
+	if imgui.BeginComboV(fmt.Sprintf("##%d", player), p.Name(), imgui.ComboFlagsNoArrowButton) {
 		for _, s := range controllers.ControllerList {
 			if imgui.Selectable(s) {
 				termCmd := fmt.Sprintf("CONTROLLER %d %s", player, s)

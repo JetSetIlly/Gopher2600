@@ -21,7 +21,7 @@ import (
 
 	"github.com/jetsetilly/gopher2600/hardware/tia/video"
 
-	"github.com/inkyblackness/imgui-go/v3"
+	"github.com/inkyblackness/imgui-go/v4"
 )
 
 func (win *winTIA) drawPlayfield() {

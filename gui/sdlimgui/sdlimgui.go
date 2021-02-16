@@ -32,7 +32,7 @@ import (
 	"github.com/jetsetilly/gopher2600/reflection"
 	"github.com/veandco/go-sdl2/sdl"
 
-	"github.com/inkyblackness/imgui-go/v3"
+	"github.com/inkyblackness/imgui-go/v4"
 )
 
 // imguiIniFile is where imgui will store the coordinates of the imgui windows

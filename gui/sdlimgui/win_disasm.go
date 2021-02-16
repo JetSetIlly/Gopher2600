@@ -24,7 +24,7 @@ import (
 	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 
-	"github.com/inkyblackness/imgui-go/v3"
+	"github.com/inkyblackness/imgui-go/v4"
 )
 
 const winDisasmID = "Disassembly"
@@ -133,7 +133,7 @@ func (win *winDisasm) draw() {
 
 	// bank selector / information
 	comboPreview := fmt.Sprintf("Viewing bank %d", win.selectedBank)
-	if imgui.BeginComboV("##bankselect", comboPreview, imgui.ComboFlagNoArrowButton) {
+	if imgui.BeginComboV("##bankselect", comboPreview, imgui.ComboFlagsNoArrowButton) {
 		for n := 0; n < win.img.lz.Cart.NumBanks; n++ {
 			if imgui.Selectable(fmt.Sprintf("View bank %d", n)) {
 				win.selectedBank = n

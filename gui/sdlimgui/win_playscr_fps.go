@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/inkyblackness/imgui-go/v3"
+	"github.com/inkyblackness/imgui-go/v4"
 )
 
 const winPlayScrFPSID = "FPS"

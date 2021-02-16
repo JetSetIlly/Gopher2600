@@ -20,7 +20,7 @@ import (
 	"image"
 
 	"github.com/go-gl/gl/v3.2-core/gl"
-	"github.com/inkyblackness/imgui-go/v3"
+	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/disassembly"
 	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
@@ -256,7 +256,7 @@ func (win *winDbgScr) draw() {
 
 		// tv status line
 		imgui.PushItemWidth(win.specComboDim.X)
-		if imgui.BeginComboV("##spec", win.img.lz.TV.Spec.ID, imgui.ComboFlagNoArrowButton) {
+		if imgui.BeginComboV("##spec", win.img.lz.TV.Spec.ID, imgui.ComboFlagsNoArrowButton) {
 			for _, s := range specification.SpecList {
 				if imgui.Selectable(s) {
 					win.img.term.pushCommand(fmt.Sprintf("TV SPEC %s", s))
@@ -348,7 +348,7 @@ func (win *winDbgScr) drawOverlayCombo() {
 		selected = win.img.lz.CoProc.ID
 	}
 
-	if imgui.BeginComboV("##overlay", selected, imgui.ComboFlagNoArrowButton) {
+	if imgui.BeginComboV("##overlay", selected, imgui.ComboFlagsNoArrowButton) {
 		for _, s := range reflection.OverlayList {
 			// skip overlays that aren't relevant given the current state of the emualation
 			if s == reflection.COPROCESSOR {

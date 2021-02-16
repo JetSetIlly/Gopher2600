@@ -22,7 +22,7 @@ import (
 
 	"github.com/jetsetilly/gopher2600/hardware/tia/video"
 
-	"github.com/inkyblackness/imgui-go/v3"
+	"github.com/inkyblackness/imgui-go/v4"
 )
 
 func (win *winTIA) drawMissile(missile int) {
@@ -92,7 +92,7 @@ func (win *winTIA) drawMissile(missile int) {
 	// nusiz
 	imgui.BeginGroup()
 	imgui.PushItemWidth(win.missileCopiesComboDim.X)
-	if imgui.BeginComboV("##missilecopies", video.MissileCopies[lz.Copies], imgui.ComboFlagNoArrowButton) {
+	if imgui.BeginComboV("##missilecopies", video.MissileCopies[lz.Copies], imgui.ComboFlagsNoArrowButton) {
 		for k := range video.MissileCopies {
 			if imgui.Selectable(video.MissileCopies[k]) {
 				v := uint8(k) // being careful about scope
@@ -109,7 +109,7 @@ func (win *winTIA) drawMissile(missile int) {
 
 	imgui.SameLine()
 	imgui.PushItemWidth(win.missileSizeComboDim.X)
-	if imgui.BeginComboV("##missilesize", video.MissileSizes[lz.Size], imgui.ComboFlagNoArrowButton) {
+	if imgui.BeginComboV("##missilesize", video.MissileSizes[lz.Size], imgui.ComboFlagsNoArrowButton) {
 		for k := range video.MissileSizes {
 			if imgui.Selectable(video.MissileSizes[k]) {
 				v := uint8(k) // being careful about scope

@@ -17,7 +17,7 @@ package sdlimgui
 
 import (
 	"github.com/go-gl/gl/v3.2-core/gl"
-	"github.com/inkyblackness/imgui-go/v3"
+	"github.com/inkyblackness/imgui-go/v4"
 )
 
 const winPlayScrID = "Atari VCS"

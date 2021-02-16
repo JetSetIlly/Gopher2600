@@ -20,7 +20,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/inkyblackness/imgui-go/v3"
+	"github.com/inkyblackness/imgui-go/v4"
 )
 
 // return the height of the window from the current cursor position to the end

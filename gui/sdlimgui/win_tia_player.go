@@ -22,7 +22,7 @@ import (
 
 	"github.com/jetsetilly/gopher2600/hardware/tia/video"
 
-	"github.com/inkyblackness/imgui-go/v3"
+	"github.com/inkyblackness/imgui-go/v4"
 )
 
 func (win *winTIA) drawPlayer(num int) {
@@ -167,7 +167,7 @@ func (win *winTIA) drawPlayer(num int) {
 	// nusiz
 	imgui.BeginGroup()
 	imgui.PushItemWidth(win.playerSizeAndCopiesComboDim.X)
-	if imgui.BeginComboV("##playersizecopies", video.PlayerSizes[lz.SizeAndCopies], imgui.ComboFlagNoArrowButton) {
+	if imgui.BeginComboV("##playersizecopies", video.PlayerSizes[lz.SizeAndCopies], imgui.ComboFlagsNoArrowButton) {
 		for k := range video.PlayerSizes {
 			if imgui.Selectable(video.PlayerSizes[k]) {
 				v := uint8(k) // being careful about scope
