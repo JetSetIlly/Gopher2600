@@ -80,11 +80,11 @@ type screenCrit struct {
 	pixels *image.RGBA
 
 	// phosphor pixels
-	phosphor *image.RGBA
+	phosphor       *image.RGBA
+	updatePhosphor bool
 
 	// bufferPixels are what we plot pixels to while we wait for a frame to complete.
 	bufferPixels [5]*image.RGBA
-	bufferUpdate bool
 
 	// which buffer we'll be plotting to and which bufffer we'll be rendering
 	// from. in playmode we make sure these two indexes never meet. in
@@ -147,12 +147,6 @@ func (scr *screen) Reset() {
 
 	scr.crit.lastX = 0
 	scr.crit.lastY = 0
-
-	// start off with a buffer update to make sure the textureRenderer
-	// implementations have good information about the pixel data as soon as
-	// possible. without this, the visible screen window will jump from its
-	// initial scaling value to the correct one.
-	scr.crit.bufferUpdate = true
 }
 
 // clear all pixel information including reflection data.
@@ -273,13 +267,13 @@ func (scr *screen) NewFrame(isStable bool) error {
 
 	scr.crit.isStable = isStable
 
+	scr.crit.updatePhosphor = true
+
 	if scr.img.isPlaymode() {
 		scr.crit.plotIdx++
 		if scr.crit.plotIdx >= len(scr.crit.bufferPixels) {
 			scr.crit.plotIdx = 0
 		}
-
-		scr.crit.bufferUpdate = true
 
 		// if plot index has crashed into the render index then
 		if scr.crit.plotIdx == scr.crit.renderIdx && scr.crit.vsync {
@@ -287,8 +281,6 @@ func (scr *screen) NewFrame(isStable bool) error {
 			// be able to process the channel
 			scr.crit.section.Unlock()
 
-			scr.emuWait <- true
-			<-scr.emuWaitAck
 			scr.emuWait <- true
 			<-scr.emuWaitAck
 
@@ -311,10 +303,6 @@ func (scr *screen) UpdatingPixels(updating bool) {
 	if updating {
 		scr.crit.section.Lock()
 		return
-	}
-
-	if !scr.img.isPlaymode() {
-		scr.crit.bufferUpdate = true
 	}
 
 	scr.crit.section.Unlock()
@@ -428,15 +416,58 @@ func (scr *screen) clearTextureRenderers() {
 
 // called by service loop.
 func (scr *screen) render() {
-	// we have to be very particular about how we unlock this
-	scr.crit.section.Lock()
-
-	if !scr.crit.bufferUpdate {
-		scr.crit.section.Unlock()
-		return
+	if scr.img.isPlaymode() {
+		scr.copyPixelsPlaymode()
+	} else {
+		scr.copyPixelsDebugmode()
 	}
 
-	if scr.img.isPlaymode() && scr.crit.vsync {
+	for _, r := range scr.renderers {
+		r.render()
+	}
+}
+
+// copy pixels from buffer to the pixels and update phosphor pixels.
+func (scr *screen) copyPixelsDebugmode() {
+	scr.crit.section.Lock()
+	defer scr.crit.section.Unlock()
+
+	// copy pixels from render buffer to the live copy.
+	copy(scr.crit.pixels.Pix, scr.crit.bufferPixels[scr.crit.renderIdx].Pix)
+
+	// update phosphor carefully
+	for i := 0; i < len(scr.crit.bufferPixels[scr.crit.renderIdx].Pix); i += 4 {
+		if scr.crit.pixels.Pix[i] == 0 && scr.crit.pixels.Pix[i+1] == 0 && scr.crit.pixels.Pix[i+2] == 0 {
+			if scr.crit.updatePhosphor {
+				// alpha channel records the number of frames the phosphor has
+				// been active. starting at 255 and counting down to 0
+				if scr.crit.phosphor.Pix[i+3] > 0 {
+					scr.crit.phosphor.Pix[i+3]--
+				}
+			}
+		} else {
+			// copy current render pixels into phosphor
+			copy(scr.crit.phosphor.Pix[i:i+2], scr.crit.bufferPixels[scr.crit.renderIdx].Pix[i:i+2])
+			scr.crit.phosphor.Pix[i+3] = 0xff
+		}
+	}
+
+	scr.crit.updatePhosphor = false
+}
+
+// copy pixels from buffer to the pixels and update phosphor pixels.
+func (scr *screen) copyPixelsPlaymode() {
+	// let the emulator thread know it's okay to continue as soon as possible
+	select {
+	case <-scr.emuWait:
+		scr.emuWaitAck <- true
+	default:
+	}
+
+	scr.crit.section.Lock()
+	defer scr.crit.section.Unlock()
+
+	if scr.crit.vsync {
 		// advance render index. keep note of existing index in case we
 		// bump into the plotting index.
 		v := scr.crit.renderIdx
@@ -445,51 +476,18 @@ func (scr *screen) render() {
 			scr.crit.renderIdx = 0
 		}
 
-		// if render index has bumped into the plotting index then revert
-		// render index
+		// render index has bumped into the plotting index. revert render index
 		if scr.crit.renderIdx == scr.crit.plotIdx {
 			scr.crit.renderIdx = v
-			scr.crit.section.Unlock()
-
-			// old versions of this code returns from the render() function at
-			// this point, skipped the scr.renderers loop below. this was okay
-			// but it caused problems with the phosphor texture, particularly
-			// when the CRT prefs window was open. precise reason for this is
-			// unknown but completing the render function normally fixes the
-			// problem.
-		} else {
-			scr.copyPixels()
-			scr.crit.section.Unlock()
-
-			// let the emulator thread know it's okay to continue
-			select {
-			case <-scr.emuWait:
-				scr.emuWaitAck <- true
-			default:
-			}
+			return
 		}
-	} else {
-		// for non-playmode copy pixels directly (no alteration of the
-		// renderIdx value) without the vsync buffer
-		scr.copyPixels()
-		scr.crit.section.Unlock()
 	}
 
-	// update attached renderers
-	for _, r := range scr.renderers {
-		r.render()
-	}
-}
-
-// copy pixels from buffer to the pixels and update phosphor pixels.
-func (scr *screen) copyPixels() {
 	// copy pixels from render buffer to the live copy.
-	for i := 0; i < len(scr.crit.bufferPixels[scr.crit.renderIdx].Pix); i += 4 {
-		scr.crit.pixels.Pix[i] = scr.crit.bufferPixels[scr.crit.renderIdx].Pix[i]
-		scr.crit.pixels.Pix[i+1] = scr.crit.bufferPixels[scr.crit.renderIdx].Pix[i+1]
-		scr.crit.pixels.Pix[i+2] = scr.crit.bufferPixels[scr.crit.renderIdx].Pix[i+2]
-		scr.crit.pixels.Pix[i+3] = scr.crit.bufferPixels[scr.crit.renderIdx].Pix[i+3]
+	copy(scr.crit.pixels.Pix, scr.crit.bufferPixels[scr.crit.renderIdx].Pix)
 
+	// update phosphor carefully
+	for i := 0; i < len(scr.crit.bufferPixels[scr.crit.renderIdx].Pix); i += 4 {
 		if scr.crit.pixels.Pix[i] == 0 && scr.crit.pixels.Pix[i+1] == 0 && scr.crit.pixels.Pix[i+2] == 0 {
 			// alpha channel records the number of frames the phosphor has
 			// been active. starting at 255 and counting down to 0
@@ -498,9 +496,7 @@ func (scr *screen) copyPixels() {
 			}
 		} else {
 			// copy current render pixels into phosphor
-			scr.crit.phosphor.Pix[i] = scr.crit.bufferPixels[scr.crit.renderIdx].Pix[i]
-			scr.crit.phosphor.Pix[i+1] = scr.crit.bufferPixels[scr.crit.renderIdx].Pix[i+1]
-			scr.crit.phosphor.Pix[i+2] = scr.crit.bufferPixels[scr.crit.renderIdx].Pix[i+2]
+			copy(scr.crit.phosphor.Pix[i:i+2], scr.crit.bufferPixels[scr.crit.renderIdx].Pix[i:i+2])
 			scr.crit.phosphor.Pix[i+3] = 0xff
 		}
 	}
