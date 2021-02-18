@@ -73,8 +73,9 @@ func newCBS(data []byte) (mapper.CartMapper, error) {
 	return cart, nil
 }
 
-func (cart *cbs) String() string {
-	return fmt.Sprintf("%s [%s] Bank: %d", cart.mappingID, cart.description, cart.state.bank)
+// Mapping implements the mapper.CartMapper interface.
+func (cart *cbs) Mapping() string {
+	return fmt.Sprintf("Bank: %d", cart.state.bank)
 }
 
 // ID implements the mapper.CartMapper interface.

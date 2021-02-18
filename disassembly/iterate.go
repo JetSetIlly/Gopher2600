@@ -84,8 +84,12 @@ type IterateEntries struct {
 	// include entry in iteration if it meets at least this EntryLevel
 	minLevel EntryLevel
 
-	// addresses to include regardless of EntryLevel
-	include []uint16
+	// address the iteration is focused on. this entry will be included event
+	// if the EntryLevel does not meet the minimum level
+	FocusAddr []uint16
+
+	// the iteration count at which the first entry in FocusAddr will be found
+	FocusAddrCt int
 
 	// total number of entries in iteration with the specified minimum level
 	EntryCount int
@@ -108,9 +112,9 @@ type IterateEntries struct {
 // iterate through entries of EntryLevelNaive *and* EntryLevelDecode. A
 // minLevel of EntryLevelDead will iterate through *all* Entries.
 //
-// The optional include argument specifies a list of addresses to include in
-// the iteration regardless of EntryLevel. Addresses will be normalised.
-func (dsm *Disassembly) NewEntriesIteration(minLevel EntryLevel, bank int, include ...uint16) (*IterateEntries, error) {
+// The final argument, focusAddr, specifies the addresses that must be included
+// in the iteration regardless of EntryLevel. Can be left empty.
+func (dsm *Disassembly) NewEntriesIteration(minLevel EntryLevel, bank int, focusAddr ...uint16) (*IterateEntries, error) {
 	dsm.crit.Lock()
 	defer dsm.crit.Unlock()
 
@@ -123,35 +127,41 @@ func (dsm *Disassembly) NewEntriesIteration(minLevel EntryLevel, bank int, inclu
 	}
 
 	bitr := &IterateEntries{
-		dsm:      dsm,
-		bank:     bank,
-		minLevel: minLevel,
-		include:  include,
+		dsm:         dsm,
+		bank:        bank,
+		minLevel:    minLevel,
+		FocusAddr:   make([]uint16, len(focusAddr)),
+		FocusAddrCt: -1,
 	}
 
 	// normalise addresses
-	for i := range bitr.include {
-		bitr.include[i] &= memorymap.CartridgeBits | memorymap.OriginCart
+	for i := range focusAddr {
+		bitr.FocusAddr[i] = (focusAddr[i] & memorymap.CartridgeBits) | memorymap.OriginCart
 	}
 
 	// count entries
-	for _, a := range dsm.entries[bank] {
-		if a == nil {
+	for _, e := range dsm.entries[bank] {
+		if e == nil {
 			return nil, curated.Errorf("disassembly not complete")
 		}
 
+		// where in the iteration we'll encounter the FocusAddr entry
+		if len(bitr.FocusAddr) > 0 && bitr.FocusAddr[0] == e.Result.Address&memorymap.CartridgeBits|memorymap.OriginCart {
+			bitr.FocusAddrCt = bitr.EntryCount
+		}
+
 		// count the number of entries of the minimum level
-		if a.Level >= minLevel {
+		if e.Level >= minLevel {
 			bitr.EntryCount++
 
 			// count entries (of the minimum level) with a label
-			if a.Label.String() != "" {
+			if e.Label.String() != "" {
 				bitr.LabelCount++
 			}
 		} else {
-			// will include address even though it doesn meet minimum level
-			for _, i := range bitr.include {
-				if i == a.Result.Address&memorymap.CartridgeBits|memorymap.OriginCart {
+			for _, f := range bitr.FocusAddr {
+				if f == e.Result.Address&memorymap.CartridgeBits|memorymap.OriginCart {
+					// include address in the count even though it doesn meet minimum level
 					bitr.EntryCount++
 				}
 			}
@@ -202,25 +212,24 @@ func (bitr *IterateEntries) next() (int, *Entry) {
 	}
 
 	// find next entry to return
-	for bitr.idx++; bitr.idx < len(bitr.dsm.entries[bitr.bank]); bitr.idx++ {
+	bitr.idx++
+	done := false
+	for !done {
 		a := bitr.dsm.entries[bitr.bank][bitr.idx]
 		if a.Level >= bitr.minLevel {
 			break // for idx loop
 		}
 
-		// entry doesn't match minimum level so check include address list for
-		// a match
-		match := false
-		for _, i := range bitr.include {
-			if i == a.Result.Address&memorymap.CartridgeBits|memorymap.OriginCart {
-				match = true
-				break // for include loop
+		// entry doesn't match minimum level but focusAddr might
+		for _, f := range bitr.FocusAddr {
+			if f == a.Result.Address&memorymap.CartridgeBits|memorymap.OriginCart {
+				done = true
+				break // for idx loop
 			}
 		}
 
-		if match {
-			break // for idx loop
-		}
+		bitr.idx++
+		done = done || bitr.idx >= len(bitr.dsm.entries[bitr.bank])
 	}
 
 	// for loop went past the end of the iterable content so return nothing

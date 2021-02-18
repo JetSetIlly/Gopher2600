@@ -82,9 +82,9 @@ func (cart *Cartridge) String() string {
 	return cart.Filename
 }
 
-// MappingSummary returns a current string summary of the mapper.
-func (cart *Cartridge) MappingSummary() string {
-	return cart.mapper.String()
+// Mapping returns a string summary of the mapping. ie. what banks are mapped in.
+func (cart *Cartridge) Mapping() string {
+	return cart.mapper.Mapping()
 }
 
 // ID returns the cartridge mapping ID.

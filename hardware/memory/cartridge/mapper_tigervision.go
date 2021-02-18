@@ -81,8 +81,9 @@ func newTigervision(data []byte) (mapper.CartMapper, error) {
 	return cart, nil
 }
 
-func (cart *tigervision) String() string {
-	return fmt.Sprintf("%s [%s] Banks: %d, %d", cart.mappingID, cart.description, cart.state.segment[0], cart.state.segment[1])
+// Mapping implements the mapper.CartMapper interface.
+func (cart *tigervision) Mapping() string {
+	return fmt.Sprintf("Banks: %d %d", cart.state.segment[0], cart.state.segment[1])
 }
 
 // ID implements the mapper.CartMapper interface.
@@ -140,9 +141,9 @@ func (cart *tigervision) NumBanks() int {
 // GetBank implements the mapper.CartMapper interface.
 func (cart *tigervision) GetBank(addr uint16) mapper.BankInfo {
 	if addr >= 0x0000 && addr <= 0x07ff {
-		return mapper.BankInfo{Number: cart.state.segment[0], IsRAM: false, Segment: 0}
+		return mapper.BankInfo{Number: cart.state.segment[0], IsRAM: false, IsSegmented: true, Segment: 0}
 	}
-	return mapper.BankInfo{Number: cart.state.segment[1], IsRAM: false, Segment: 1}
+	return mapper.BankInfo{Number: cart.state.segment[1], IsRAM: false, IsSegmented: true, Segment: 1}
 }
 
 // Patch implements the mapper.CartMapper interface.

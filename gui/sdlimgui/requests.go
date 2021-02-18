@@ -77,9 +77,7 @@ func (img *SdlImgui) serviceSetFeature(request featureRequest) {
 	case gui.ReqSetPlaymode:
 		err = argLen(request.args, 2)
 		if err == nil {
-			img.setPlaymode(true)
-			img.lz.Dbg = nil
-			img.vcs = request.args[0].(*hardware.VCS)
+			img.setDbgAndVCS(nil, request.args[0].(*hardware.VCS))
 			if request.args[1] == nil {
 				img.events = nil
 			} else {
@@ -90,9 +88,7 @@ func (img *SdlImgui) serviceSetFeature(request featureRequest) {
 	case gui.ReqSetDebugmode:
 		err = argLen(request.args, 2)
 		if err == nil {
-			img.setPlaymode(false)
-			img.lz.Dbg = request.args[0].(*debugger.Debugger)
-			img.vcs = img.lz.Dbg.VCS
+			img.setDbgAndVCS(request.args[0].(*debugger.Debugger), nil)
 			if request.args[1] == nil {
 				img.events = nil
 			} else {

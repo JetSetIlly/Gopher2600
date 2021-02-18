@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"math/rand"
 	"path"
-	"strings"
 
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/curated"
@@ -94,11 +93,9 @@ func NewSupercharger(cartload cartridgeloader.Loader) (mapper.CartMapper, error)
 	return cart, nil
 }
 
-func (cart *Supercharger) String() string {
-	s := strings.Builder{}
-	s.WriteString(fmt.Sprintf("%s [%s] ", cart.mappingID, cart.description))
-	s.WriteString(cart.state.registers.BankString())
-	return s.String()
+// Mapping implements the mapper.CartMapper interface.
+func (cart *Supercharger) Mapping() string {
+	return cart.state.registers.Mapping()
 }
 
 // ID implements the cartMapper interface.
@@ -229,51 +226,51 @@ func (cart *Supercharger) GetBank(addr uint16) mapper.BankInfo {
 	switch cart.state.registers.BankingMode {
 	case 0:
 		if addr >= 0x0800 {
-			return mapper.BankInfo{Number: 0, IsRAM: false, Segment: 0}
+			return mapper.BankInfo{Number: 0, Name: "BIOS", IsRAM: false, IsSegmented: true, Segment: 1}
 		}
-		return mapper.BankInfo{Number: 3, IsRAM: cart.state.registers.RAMwrite, Segment: 1}
+		return mapper.BankInfo{Number: 3, IsRAM: cart.state.registers.RAMwrite, IsSegmented: true, Segment: 0}
 
 	case 1:
 		if addr >= 0x0800 {
-			return mapper.BankInfo{Number: 0, IsRAM: false, Segment: 0}
+			return mapper.BankInfo{Number: 0, Name: "BIOS", IsRAM: false, IsSegmented: true, Segment: 1}
 		}
-		return mapper.BankInfo{Number: 1, IsRAM: cart.state.registers.RAMwrite, Segment: 1}
+		return mapper.BankInfo{Number: 1, IsRAM: cart.state.registers.RAMwrite, IsSegmented: true, Segment: 1}
 
 	case 2:
 		if addr >= 0x0800 {
-			return mapper.BankInfo{Number: 1, IsRAM: cart.state.registers.RAMwrite, Segment: 0}
+			return mapper.BankInfo{Number: 1, IsRAM: cart.state.registers.RAMwrite, IsSegmented: true, Segment: 1}
 		}
-		return mapper.BankInfo{Number: 3, IsRAM: cart.state.registers.RAMwrite, Segment: 1}
+		return mapper.BankInfo{Number: 3, IsRAM: cart.state.registers.RAMwrite, IsSegmented: true, Segment: 0}
 
 	case 3:
 		if addr >= 0x0800 {
-			return mapper.BankInfo{Number: 3, IsRAM: cart.state.registers.RAMwrite, Segment: 0}
+			return mapper.BankInfo{Number: 3, IsRAM: cart.state.registers.RAMwrite, IsSegmented: true, Segment: 1}
 		}
-		return mapper.BankInfo{Number: 1, IsRAM: cart.state.registers.RAMwrite, Segment: 1}
+		return mapper.BankInfo{Number: 1, IsRAM: cart.state.registers.RAMwrite, IsSegmented: true, Segment: 0}
 
 	case 4:
 		if addr >= 0x0800 {
-			return mapper.BankInfo{Number: 0, IsRAM: false, Segment: 0}
+			return mapper.BankInfo{Number: 0, Name: "BIOS", IsRAM: false, IsSegmented: true, Segment: 1}
 		}
-		return mapper.BankInfo{Number: 3, IsRAM: cart.state.registers.RAMwrite, Segment: 1}
+		return mapper.BankInfo{Number: 3, IsRAM: cart.state.registers.RAMwrite, IsSegmented: true, Segment: 0}
 
 	case 5:
 		if addr >= 0x0800 {
-			return mapper.BankInfo{Number: 0, IsRAM: false, Segment: 0}
+			return mapper.BankInfo{Number: 0, Name: "BIOS", IsRAM: false, IsSegmented: true, Segment: 1}
 		}
-		return mapper.BankInfo{Number: 2, IsRAM: cart.state.registers.RAMwrite, Segment: 1}
+		return mapper.BankInfo{Number: 2, IsRAM: cart.state.registers.RAMwrite, IsSegmented: true, Segment: 0}
 
 	case 6:
 		if addr >= 0x0800 {
-			return mapper.BankInfo{Number: 2, IsRAM: cart.state.registers.RAMwrite, Segment: 0}
+			return mapper.BankInfo{Number: 2, IsRAM: cart.state.registers.RAMwrite, IsSegmented: true, Segment: 1}
 		}
-		return mapper.BankInfo{Number: 3, IsRAM: cart.state.registers.RAMwrite, Segment: 1}
+		return mapper.BankInfo{Number: 3, IsRAM: cart.state.registers.RAMwrite, IsSegmented: true, Segment: 0}
 
 	case 7:
 		if addr >= 0x0800 {
-			return mapper.BankInfo{Number: 3, IsRAM: cart.state.registers.RAMwrite, Segment: 0}
+			return mapper.BankInfo{Number: 3, IsRAM: cart.state.registers.RAMwrite, IsSegmented: true, Segment: 1}
 		}
-		return mapper.BankInfo{Number: 2, IsRAM: cart.state.registers.RAMwrite, Segment: 1}
+		return mapper.BankInfo{Number: 2, IsRAM: cart.state.registers.RAMwrite, IsSegmented: true, Segment: 0}
 	}
 	panic("unknown banking method")
 }

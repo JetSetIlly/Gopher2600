@@ -64,9 +64,10 @@ func new3e(data []byte) (mapper.CartMapper, error) {
 	return cart, nil
 }
 
-func (cart *m3e) String() string {
+// Mapping implements the mapper.CartMapper interface.
+func (cart *m3e) Mapping() string {
 	s := strings.Builder{}
-	s.WriteString(fmt.Sprintf("%s segments: ", cart.mappingID))
+	s.WriteString("segments: ")
 	for i := range cart.state.segment {
 		s.WriteString(fmt.Sprintf("%d", cart.state.segment[i]))
 		if cart.state.segmentIsRAM[i] {
@@ -75,7 +76,7 @@ func (cart *m3e) String() string {
 			s.WriteString(" ")
 		}
 	}
-	return s.String()
+	return strings.TrimSpace(s.String())
 }
 
 // ID implements the mapper.CartMapper interface.
@@ -168,9 +169,9 @@ func (cart *m3e) NumBanks() int {
 // GetBank implements the mapper.CartMapper interface.
 func (cart *m3e) GetBank(addr uint16) mapper.BankInfo {
 	if addr >= 0x0000 && addr <= 0x07ff {
-		return mapper.BankInfo{Number: cart.state.segment[0], IsRAM: false, Segment: 0}
+		return mapper.BankInfo{Number: cart.state.segment[0], IsRAM: false, IsSegmented: true, Segment: 0}
 	}
-	return mapper.BankInfo{Number: cart.state.segment[1], IsRAM: false, Segment: 1}
+	return mapper.BankInfo{Number: cart.state.segment[1], IsRAM: false, IsSegmented: true, Segment: 1}
 }
 
 // Patch implements the mapper.CartMapper interface.

@@ -106,8 +106,9 @@ func NewCDF(version byte, data []byte) (mapper.CartMapper, error) {
 	return cart, nil
 }
 
-func (cart *cdf) String() string {
-	return fmt.Sprintf("%s [%s] Bank: %d", cart.mappingID, cart.version.description, cart.state.bank)
+// Mapping implements the mapper.CartMapper interface.
+func (cart *cdf) Mapping() string {
+	return fmt.Sprintf("Bank: %d", cart.state.bank)
 }
 
 // CoProcID implements the mapper.CartCoProcBus interface.

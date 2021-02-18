@@ -60,8 +60,9 @@ func newDF(data []byte) (mapper.CartMapper, error) {
 	return cart, nil
 }
 
-func (cart *df) String() string {
-	return fmt.Sprintf("%s [%s] Bank: %d", cart.mappingID, cart.description, cart.state.bank)
+// Mapping implements the mapper.CartMapper interface.
+func (cart *df) Mapping() string {
+	return fmt.Sprintf("Bank: %d", cart.state.bank)
 }
 
 // ID implements the mapper.CartMapper interface.

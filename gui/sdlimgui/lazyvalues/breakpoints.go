@@ -52,6 +52,7 @@ func newLazyBreakpoints(val *LazyValues) *LazyBreakpoints {
 }
 
 func (lz *LazyBreakpoints) push() {
+	// ask debugger about breakpoints on the bank/addresses specified by SetUpdateList()
 	b := lz.updateForBank.Load().(int)
 	s := lz.updateStart.Load().(uint16)
 	e := lz.updateEnd.Load().(uint16)
@@ -66,6 +67,10 @@ func (lz *LazyBreakpoints) push() {
 func (lz *LazyBreakpoints) update() {
 }
 
+// SetUpdateList defines the range of addresses that will be checked by the
+// HasBreak() function. The actual checking is performed during the normal
+// lazyvalues.Refresh() process and defining a narrow a list as possible speeds
+// up the process considerably.
 func (lz *LazyBreakpoints) SetUpdateList(bank int, start uint16, end uint16) {
 	lz.updateForBank.Store(bank)
 

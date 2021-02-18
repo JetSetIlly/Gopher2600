@@ -329,9 +329,12 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		if ok {
 			switch arg {
 			case "BANK":
+				fallthrough
+
+			case "MAPPING":
 				dbg.printLine(
 					terminal.StyleInstrument,
-					dbg.VCS.Mem.Cart.MappingSummary(),
+					dbg.VCS.Mem.Cart.Mapping(),
 				)
 
 			case "STATIC":

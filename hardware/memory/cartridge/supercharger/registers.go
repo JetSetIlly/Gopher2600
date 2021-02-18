@@ -67,45 +67,42 @@ func (r Registers) String() string {
 	s.WriteString(fmt.Sprintf("RAM write: %v", r.RAMwrite))
 	s.WriteString(fmt.Sprintf("  ROM power: %v\n", r.ROMpower))
 
-	s.WriteString(r.BankString())
+	s.WriteString(r.Mapping())
 
 	return s.String()
 }
 
-// BankString is like string but just the bank information. we use this when
+// Mapping is like string but just the bank information. we use this when
 // building the mapper summary, the String() function is too verbose for that.
-func (r *Registers) BankString() string {
+func (r *Registers) Mapping() string {
 	s := strings.Builder{}
 
-	s.WriteString("banks: [")
+	s.WriteString("Banks: ")
 	switch r.BankingMode {
 	case 0:
-		s.WriteString("3, bios")
+		s.WriteString("3 B")
 
 	case 1:
-		s.WriteString("1, bios")
+		s.WriteString("1 B")
 
 	case 2:
-		s.WriteString("3, 1")
+		s.WriteString("3 1")
 
 	case 3:
-		s.WriteString("1, 3")
+		s.WriteString("1 3")
 
 	case 4:
-		s.WriteString("3, bios")
+		s.WriteString("3 B")
 
 	case 5:
-		s.WriteString("2, bios")
+		s.WriteString("2 B")
 
 	case 6:
-		s.WriteString("3, 2")
+		s.WriteString("3 2")
 
 	case 7:
-		s.WriteString("2, 3")
+		s.WriteString("2 3")
 	}
-	s.WriteString("]")
-
-	s.WriteString(fmt.Sprintf("   config-byte: %02x", r.ConfigByte))
 
 	return s.String()
 }

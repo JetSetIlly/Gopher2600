@@ -110,13 +110,13 @@ func newMnetwork(data []byte) (mapper.CartMapper, error) {
 	return cart, nil
 }
 
-func (cart *mnetwork) String() string {
+// Mapping implements the mapper.CartMapper interface.
+func (cart *mnetwork) Mapping() string {
 	s := strings.Builder{}
-	s.WriteString(fmt.Sprintf("%s [%s]", cart.mappingID, cart.description))
-	s.WriteString(fmt.Sprintf(" Bank: %d [%d] ", cart.state.bank, len(cart.banks)-1))
+	s.WriteString(fmt.Sprintf("Bank: %d ", cart.state.bank))
 	s.WriteString(fmt.Sprintf(" RAM: %d", cart.state.ram256byteIdx))
 	if cart.state.use1kRAM {
-		s.WriteString(" [+1k RAM]")
+		s.WriteString(" +1k RAM")
 	}
 	return s.String()
 }
@@ -288,16 +288,16 @@ func (cart *mnetwork) NumBanks() int {
 func (cart *mnetwork) GetBank(addr uint16) mapper.BankInfo {
 	if addr >= 0x0000 && addr <= 0x07ff {
 		if cart.state.use1kRAM {
-			return mapper.BankInfo{Number: cart.state.bank, IsRAM: true, Segment: 0}
+			return mapper.BankInfo{Number: cart.state.bank, IsRAM: true, IsSegmented: true, Segment: 0}
 		}
-		return mapper.BankInfo{Number: cart.state.bank, IsRAM: false, Segment: 0}
+		return mapper.BankInfo{Number: cart.state.bank, IsRAM: false, IsSegmented: true, Segment: 0}
 	}
 
 	if addr >= 0x0800 && addr <= 0x08ff {
-		return mapper.BankInfo{Number: cart.state.ram256byteIdx, IsRAM: true, Segment: 1}
+		return mapper.BankInfo{Number: cart.state.ram256byteIdx, IsRAM: true, IsSegmented: true, Segment: 1}
 	}
 
-	return mapper.BankInfo{Number: 7, IsRAM: false, Segment: 1}
+	return mapper.BankInfo{Number: 7, IsRAM: false, IsSegmented: true, Segment: 1}
 }
 
 // Patch implements the mapper.CartMapper interface.

@@ -27,7 +27,7 @@ type LazyCart struct {
 	val *LazyValues
 
 	id       atomic.Value // string
-	summary  atomic.Value // string
+	mapping  atomic.Value // string
 	filename atomic.Value // string
 	numBanks atomic.Value // int
 	currBank atomic.Value // int
@@ -52,7 +52,7 @@ type LazyCart struct {
 	plusROMSendBuff atomic.Value // []uint8
 
 	ID       string
-	Summary  string
+	Mapping  string
 	Filename string
 	NumBanks int
 	CurrBank mapper.BankInfo
@@ -84,7 +84,7 @@ func newLazyCart(val *LazyValues) *LazyCart {
 func (lz *LazyCart) push() {
 	lz.id.Store(lz.val.Dbg.VCS.Mem.Cart.ID())
 	lz.filename.Store(lz.val.Dbg.VCS.Mem.Cart.Filename)
-	lz.summary.Store(lz.val.Dbg.VCS.Mem.Cart.MappingSummary())
+	lz.mapping.Store(lz.val.Dbg.VCS.Mem.Cart.Mapping())
 	lz.numBanks.Store(lz.val.Dbg.VCS.Mem.Cart.NumBanks())
 	lz.currBank.Store(lz.val.Dbg.VCS.Mem.Cart.GetBank(lz.val.Dbg.VCS.CPU.PC.Address()))
 
@@ -147,7 +147,7 @@ func (lz *LazyCart) push() {
 
 func (lz *LazyCart) update() {
 	lz.ID, _ = lz.id.Load().(string)
-	lz.Summary, _ = lz.summary.Load().(string)
+	lz.Mapping, _ = lz.mapping.Load().(string)
 	lz.Filename, _ = lz.filename.Load().(string)
 	lz.NumBanks, _ = lz.numBanks.Load().(int)
 	lz.CurrBank, _ = lz.currBank.Load().(mapper.BankInfo)

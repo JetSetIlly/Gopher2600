@@ -130,8 +130,9 @@ func NewPlusROM(child mapper.CartMapper, onLoaded func(cart mapper.CartMapper) e
 	return cart, nil
 }
 
-func (cart *PlusROM) String() string {
-	return fmt.Sprintf("[%s] %s", cart.ContainerID(), cart.child.String())
+// Mapping implements the mapper.CartMapper interface.
+func (cart *PlusROM) Mapping() string {
+	return cart.child.Mapping()
 }
 
 // ID implements the mapper.CartMapper interface.

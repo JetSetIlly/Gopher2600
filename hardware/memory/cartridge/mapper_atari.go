@@ -102,11 +102,9 @@ func hasEmptyArea(d []uint8) bool {
 	return true
 }
 
-func (cart *atari) String() string {
-	if len(cart.banks) == 1 {
-		return fmt.Sprintf("%s [%s]", cart.mappingID, cart.description)
-	}
-	return fmt.Sprintf("%s [%s] Bank: %d", cart.mappingID, cart.description, cart.state.bank)
+// Mapping implements the mapper.CartMapper interface.
+func (cart *atari) Mapping() string {
+	return fmt.Sprintf("Bank: %d", cart.state.bank)
 }
 
 // ID implements the mapper.CartMapper interface.

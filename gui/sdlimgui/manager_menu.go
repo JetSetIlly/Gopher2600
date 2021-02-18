@@ -94,7 +94,7 @@ func (wm *manager) drawMenu() {
 
 	// cartridge menu. include test to see if menu should appear at all.
 	if wm.img.lz.Cart.HasRAMbus || wm.img.lz.Cart.HasRegistersBus || wm.img.lz.Cart.HasStaticBus || wm.img.lz.Cart.HasTapeBus {
-		if imgui.BeginMenu(fmt.Sprintf("Cart [%s]", wm.img.lz.Cart.ID)) {
+		if imgui.BeginMenu("Cartridge") {
 			for _, m := range wm.menu[menuCart] {
 				wm.drawMenuEntry(m)
 			}
@@ -132,9 +132,23 @@ func (wm *manager) drawMenu() {
 		}
 	}
 
-	// filename in titlebar
-	imgui.SameLineV(imgui.WindowWidth()-imguiGetFrameDim(wm.img.lz.Cart.Filename).X-20.0, 0.0)
-	imgui.Text(wm.img.lz.Cart.Filename)
+	// cartridge info in menubar
+	imgui.SameLineV(imgui.WindowWidth()-wm.menuInfoWidth, 0.0)
+	wm.menuInfoWidth = measureWidth(func() {
+		if len(wm.img.lz.Cart.Mapping) > 0 {
+			imgui.Separator()
+			imgui.Text(wm.img.lz.Cart.Mapping)
+		}
+		if len(wm.img.lz.Cart.ID) > 0 {
+			imgui.Separator()
+			imgui.Text(wm.img.lz.Cart.ID)
+		}
+		if len(wm.img.lz.Cart.Filename) > 0 {
+			imgui.Separator()
+			imgui.Text(wm.img.lz.Cart.Filename)
+			imgui.Text(" ")
+		}
+	})
 
 	imgui.EndMainMenuBar()
 }

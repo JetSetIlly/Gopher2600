@@ -180,6 +180,14 @@ func measureHeight(region func()) float32 {
 	return imgui.CursorPosY() - y
 }
 
+// measure cursor position before and after function call, which should run
+// imgui widget functions.
+func measureWidth(region func()) float32 {
+	x := imgui.CursorPosX()
+	region()
+	return imgui.CursorPosX() - x
+}
+
 // pads imgui.Separator with additional spacing.
 func imguiSeparator() {
 	imgui.Spacing()

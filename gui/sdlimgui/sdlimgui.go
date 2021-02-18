@@ -19,6 +19,7 @@ import (
 	"io"
 
 	"github.com/jetsetilly/gopher2600/curated"
+	"github.com/jetsetilly/gopher2600/debugger"
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
 	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/gui/crt"
@@ -49,13 +50,15 @@ type SdlImgui struct {
 
 	// references to the emulation
 	lz *lazyvalues.LazyValues
-	tv *television.Television
 
 	// vcs is set by ReqSetPlaymode or ReqSetDebugmode. in debug mode the VCS
 	// is accessible via lz.Dbg.VCS but for maximum compatibility between
 	// playmode and debugmode the VCS should be addressed through this pointer
 	// where possible
 	vcs *hardware.VCS
+
+	// television
+	tv *television.Television
 
 	// the gui renders differently depending on EmulationState. use setState()
 	// to set the value
@@ -230,10 +233,15 @@ func (img *SdlImgui) isPlaymode() bool {
 	return img.lz.Dbg == nil
 }
 
-// set playmode and handle the changeover gracefully. this includes the saving
+// set debugger/VCS and handle the changeover gracefully. this includes the saving
 // and loading of preference groups. should only be called from gui thread.
-func (img *SdlImgui) setPlaymode(set bool) error {
-	if set {
+func (img *SdlImgui) setDbgAndVCS(dbg *debugger.Debugger, vcs *hardware.VCS) error {
+	img.lz.Dbg = dbg
+
+	// playmode requesed
+	if dbg == nil {
+		img.vcs = vcs
+
 		// save current preferences
 		if img.prefs != nil {
 			err := img.prefs.save()
@@ -257,6 +265,7 @@ func (img *SdlImgui) setPlaymode(set bool) error {
 	}
 
 	// debugging mode requested
+	img.vcs = dbg.VCS
 
 	// save current preferences
 	if img.prefs != nil {

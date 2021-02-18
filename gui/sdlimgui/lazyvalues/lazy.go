@@ -16,6 +16,8 @@
 package lazyvalues
 
 import (
+	"time"
+
 	"github.com/jetsetilly/gopher2600/debugger"
 )
 
@@ -54,11 +56,17 @@ type LazyValues struct {
 
 	// note that LazyBreakpoints works slightly different to the the other Lazy* types.
 	Breakpoints *LazyBreakpoints
+
+	// current time is put on the channel on every Refresh()
+	RefreshPulse chan time.Time
 }
 
 // NewLazyValues is the preferred method of initialisation for the Values type.
 func NewLazyValues() *LazyValues {
-	val := &LazyValues{active: true}
+	val := &LazyValues{
+		active:       true,
+		RefreshPulse: make(chan time.Time),
+	}
 
 	val.Debugger = newLazyDebugger(val)
 	val.CPU = newLazyCPU(val)
@@ -144,4 +152,10 @@ func (val *LazyValues) Refresh() {
 	val.SaveKey.update()
 	val.Rewind.update()
 	val.Breakpoints.update()
+
+	// put time of refresh on the RefreshPulse channel
+	select {
+	case val.RefreshPulse <- time.Now():
+	default:
+	}
 }

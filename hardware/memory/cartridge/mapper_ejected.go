@@ -30,7 +30,8 @@ func newEjected() *ejected {
 	return &ejected{}
 }
 
-func (cart *ejected) String() string {
+// Mapping implements the mapper.CartMapper interface.
+func (cart *ejected) Mapping() string {
 	return "ejected"
 }
 

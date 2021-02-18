@@ -22,6 +22,7 @@ import (
 // BankContent contains data and ID of a cartridge bank. Used by CopyBanks()
 // and helps the disassembly process.
 type BankContent struct {
+	// bank number
 	Number int
 
 	// copy of the bank data
@@ -50,8 +51,17 @@ type BankContent struct {
 // be identified by it's bank number only. In other contexts more detail is
 // required and so BankInfo is used isntead.
 type BankInfo struct {
-	Number  int
-	Segment int
+	// bank number
+	Number int
+
+	// name of bank. used for special purpose banks (eg. supercharger BIOS).
+	// should be empty if bank has no name.
+	Name string
+
+	// is cartridge memory segmented and if so which segment is this bank
+	// mapped to
+	IsSegmented bool
+	Segment     int
 
 	// is cartridge bank writable
 	IsRAM bool
@@ -74,6 +84,7 @@ type BankInfo struct {
 	CoprocessorResumeAddr uint16
 }
 
+// very basic String representation of BankInfo.
 func (b BankInfo) String() string {
 	if b.NonCart {
 		return "-"

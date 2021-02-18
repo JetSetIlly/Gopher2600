@@ -45,7 +45,8 @@ type manager struct {
 	windows map[string]window
 
 	// windows can be open and closed through the menu bar
-	menu map[menuGroup][]menuEntry
+	menu          map[menuGroup][]menuEntry
+	menuInfoWidth float32
 
 	// the position of the screen on the current display. the SDL function
 	// Window.GetPosition() is unsuitable for use in conjunction with imgui

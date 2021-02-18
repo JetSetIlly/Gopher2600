@@ -25,10 +25,8 @@ import (
 
 // Service implements GuiCreator interface.
 func (img *SdlImgui) Service() {
-	// refresh lazy values when in debugger mode
-	if !img.isPlaymode() {
-		img.lz.Refresh()
-	}
+	// refresh lazy values
+	img.lz.Refresh()
 
 	// poll for sdl event or timeout
 	ev := img.polling.wait()

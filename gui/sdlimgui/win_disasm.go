@@ -17,10 +17,11 @@ package sdlimgui
 
 import (
 	"fmt"
-	"strings"
+	"time"
 
 	"github.com/jetsetilly/gopher2600/debugger"
 	"github.com/jetsetilly/gopher2600/disassembly"
+	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 
 	"github.com/inkyblackness/imgui-go/v3"
@@ -32,48 +33,51 @@ type winDisasm struct {
 	img  *SdlImgui
 	open bool
 
-	// show all entries in the cartridge, even those we're not confident about
-	// being instructions.
-	showAllEntries bool
-	showByteCode   bool
-
 	// height of options line at bottom of window. valid after first frame
 	optionsHeight float32
 
-	// scroll the disassembly listing so that the PC address is visible.
-	// generally we want this to be true when the emulation is paused but we
-	// set it when we want to force the listview to realign on the PC
-	alignOnPC bool
+	// options
+	followCPU    bool
+	showByteCode bool
 
-	// depending on how big the disassembly is and where in the list the PC is
-	// currently, it may take a couple of frames before the PC is aligned. the
-	// hasAlignedOnPC variable keeps track of this. alignOnPC will not be
-	// unset, once it has been set, so long as hasAlignedOnPC is true
-	hasAlignedOnPC bool
+	// selected bank to display
+	selectedBank int
 
-	// it's sometimes useful to align on an arbitrary address. when
-	// alignOnOtherAddress is set to true, alignAddress should also be set. we
-	// use this when toggling showAllEntries flag
-	alignOnOtherAddress bool
-	alignAddress        uint16
-
-	// the address of the top-most visible entry. we use to help list alignment
-	// (see alignAddress above)
+	// the address of the top and bottom-most visible entry. used to limit the
+	// range of addresses we enquire about breakpoints for.
 	addressTopList uint16
-
-	// address of the bottom-most visible entry.
 	addressBotList uint16
 
-	// the program counter value in the previous (imgui) frame
+	// whether to focus on the PC address
+	focusOnAddr bool
+
+	// if the PC address is already visible then flash the indicator. this
+	// gives the button something to do rather than giving no feedback at all.
+	focusOnAddrFlash int
+
+	// like focusOnAddrFlash but for the status string
+	statusFlash int
+
+	// because of the inherent delay of the lazy value system we need to keep
+	// the focusOnAddr value at true for a short while after the gui state
+	// flips to StatePaused after the gui state flips to StatePaused.
+	updateOnPause int
+
+	// whether the entry that the CPU/PC is currently "on" is visible in the
+	// scroller. we use this to decide whether to show the "Goto Current"
+	// button or not.
+	focusAddrIsVisible bool
+
+	// the program counter value in the previous (imgui) frame. we use this to
+	// decide whether to set the focusOnAddr flag.
 	focusAddrPrevFrame uint16
 }
 
 func newWinDisasm(img *SdlImgui) (window, error) {
 	win := &winDisasm{
 		img:       img,
-		alignOnPC: false,
+		followCPU: true,
 	}
-
 	return win, nil
 }
 
@@ -100,118 +104,143 @@ func (win *winDisasm) draw() {
 	imgui.SetNextWindowPosV(imgui.Vec2{905, 242}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
 	imgui.SetNextWindowSizeV(imgui.Vec2{353, 466}, imgui.ConditionFirstUseEver)
 	imgui.BeginV(win.id(), &win.open, 0)
-
-	imgui.Text(win.img.lz.Cart.Summary)
-	imgui.Spacing()
-	imgui.Spacing()
+	defer imgui.End()
 
 	// the bank that is currently selected
-	currBank := win.img.lz.Cart.CurrBank
+	bank := win.img.lz.Cart.CurrBank
 
-	// whether we're at CPU step boundary
-	cpuStep := win.img.lz.Debugger.LastResult.Result.Final
-
-	// the value of focusAddr depends on the state of the CPU. if the
-	// Final state of the CPU's last execution result is true then we
-	// can be sure the PC value is valid and points to a real
-	// instruction. we need this because we can never be sure when we
-	// are going to draw this window
+	// the value of focusAddr depends on the state of the CPU. if the Final
+	// state of the CPU's last execution result is true then we can be sure the
+	// PC value is valid and points to a real instruction. we need this because
+	// we can never be sure when we are going to draw this window
 	var focusAddr uint16
 
-	if currBank.ExecutingCoprocessor {
+	if bank.ExecutingCoprocessor {
 		// if coprocessor is running then jam the focusAddr value at address the
 		// CPU will resume from once the coprocessor has finished.
-		focusAddr = currBank.CoprocessorResumeAddr
+		focusAddr = bank.CoprocessorResumeAddr
 	} else {
-		if cpuStep {
+		if win.img.lz.Debugger.LastResult.Result.Final {
 			focusAddr = win.img.lz.CPU.PC.Address()
 		} else {
 			focusAddr = win.img.lz.Debugger.LastResult.Result.Address
-			currBank = win.img.lz.Debugger.LastResult.Bank
+			bank = win.img.lz.Debugger.LastResult.Bank
 		}
 	}
 
-	if win.img.lz.Cart.NumBanks <= 1 {
-		// for cartridges with just one bank we don't bother with a TabBar
-		win.drawBank(focusAddr, 0, !currBank.NonCart, cpuStep)
+	// only keep cartridge bits
+	focusAddr &= memorymap.CartridgeBits
+
+	// bank selector / information
+	comboPreview := fmt.Sprintf("Viewing bank %d", win.selectedBank)
+	if imgui.BeginComboV("##bankselect", comboPreview, imgui.ComboFlagNoArrowButton) {
+		for n := 0; n < win.img.lz.Cart.NumBanks; n++ {
+			if imgui.Selectable(fmt.Sprintf("View bank %d", n)) {
+				win.selectedBank = n
+			}
+		}
+		imgui.EndCombo()
+	}
+
+	// show goto current button. do not not show if focusAddr is visible or if
+	// debugger is currently running. the latter case isn't important except
+	// when the followCPU option is false. if it is then the "Goto Current"
+	// button might flash on/off, which is annoying.
+	imgui.SameLine()
+	if imgui.Button("Goto Current") {
+		if !bank.NonCart {
+			win.focusOnAddr = true
+			win.selectedBank = bank.Number
+			if win.focusAddrIsVisible {
+				win.focusOnAddrFlash = 6
+			}
+		} else {
+			win.statusFlash = 6
+		}
+	}
+
+	// show status information. indicating that the CPU is executing
+	// instructions that are not being disassembled for one reason or another.
+	//
+	// "Goto Current" button will cause status string to flash in the same
+	// style as the focusAddr will flash.
+	var status string
+	if bank.ExecutingCoprocessor {
+		status = "executing coprocessor instructions"
+	} else if bank.NonCart {
+		status = "executing non-cartridge addresses"
 	} else {
-		// create a new TabBar and iterate through the cartridge banks,
-		// adding a page for each one
-		imgui.BeginTabBarV("", imgui.TabBarFlagsFittingPolicyScroll)
-
-		bitr := win.img.lz.Dbg.Disasm.NewBanksIteration()
-		bitr.Start()
-		for b, ok := bitr.Start(); ok; b, ok = bitr.Next() {
-			// set tab flags. select the tab that represents the
-			// bank currently being referenced by the VCS
-			flgs := imgui.TabItemFlagsNone
-			if !currBank.NonCart && win.alignOnPC && b == currBank.Number {
-				flgs = imgui.TabItemFlagsSetSelected
-			}
-
-			// BeginTabItem() will return true when the item is selected.
-			if imgui.BeginTabItemV(fmt.Sprintf("%d", b), nil, flgs) {
-				win.drawBank(focusAddr, b, b == currBank.Number && !currBank.NonCart, cpuStep)
-				imgui.EndTabItem()
+		if bank.IsSegmented {
+			if bank.Name != "" {
+				status = fmt.Sprintf("executing %s in segment %d", bank.Name, bank.Segment)
+			} else {
+				status = fmt.Sprintf("executing %d in segment %d", bank.Number, bank.Segment)
 			}
 		}
-
-		imgui.EndTabBar()
+	}
+	if win.statusFlash > 0 {
+		win.statusFlash--
+	}
+	if win.statusFlash == 0 || win.statusFlash%2 == 0 {
+		imguiIndentText(status)
+	} else {
+		imguiIndentText("")
 	}
 
-	// set alignOnPC flag when PC address has not changed since last (imgui) frame
-	win.alignOnPC = focusAddr != win.focusAddrPrevFrame || !win.hasAlignedOnPC
+	// turn off currentPCisVisible by default, we'll turn it on if required
+	win.focusAddrIsVisible = false
 
-	// note pc address to help set win.alignOnPC value next (imgui) frame
-	win.focusAddrPrevFrame = focusAddr
+	// draw all entries for bank. being careful with the onBank argument,
+	// making sure to test bank.NonCart
+	win.drawBank(win.selectedBank, focusAddr, win.selectedBank == bank.Number && !bank.NonCart)
 
 	// draw options and status line. start height measurement
 	win.optionsHeight = measureHeight(func() {
-		// status line
-		s := strings.Builder{}
-		if currBank.NonCart {
-			s.WriteString("executing non-cartridge addresses")
-		} else if currBank.IsRAM {
-			s.WriteString("executing cartridge RAM")
-		} else if currBank.ExecutingCoprocessor {
-			s.WriteString("executing coprocessor instructions")
-		}
 		imgui.Spacing()
-		imgui.Text(s.String())
-		imgui.Spacing()
-
-		// options line
-		if imgui.Checkbox("Show all", &win.showAllEntries) {
-			win.alignOnOtherAddress = true
-			win.alignAddress = win.addressTopList
-			win.alignOnPC = true
-		}
-
-		imgui.SameLine()
 		imgui.Checkbox("Show Bytecode", &win.showByteCode)
-
 		imgui.SameLine()
-		if imgui.Button("Goto PC") {
-			win.alignOnPC = true
-		}
+		imgui.Checkbox("Follow CPU", &win.followCPU)
 	})
 
-	imgui.End()
+	// handle different gui states.
+	switch win.img.state {
+	case gui.StateInitialising:
+		win.updateOnPause = 5
+	case gui.StateRunning:
+		win.focusOnAddr = win.followCPU
+		if win.focusOnAddr {
+			win.selectedBank = bank.Number
+			win.updateOnPause = 1
+		}
+	case gui.StatePaused:
+		win.focusOnAddr = win.updateOnPause > 0 || focusAddr != win.focusAddrPrevFrame
+		if win.updateOnPause > 0 {
+			wait := time.Now()
+			go func() {
+				t := <-win.img.lz.RefreshPulse
+				for wait.After(t) {
+					t = <-win.img.lz.RefreshPulse
+				}
+				win.selectedBank = win.img.lz.Cart.CurrBank.Number
+			}()
+			win.updateOnPause--
+		}
+	}
 
-	// unset hasAlignedOnPC if alignOnPC has been set (either by
-	// focusAddrPrevFramee moving on of the "Goto PC" button being pressed)
-	win.hasAlignedOnPC = !win.alignOnPC
+	// record the focusAddr in time for the next frame
+	win.focusAddrPrevFrame = focusAddr
 }
 
-// draw a bank for each tabitem in the tab bar. if there is only one bank then
-// drawBank() is called once.
-func (win *winDisasm) drawBank(focusAddr uint16, b int, selected bool, cpuStep bool) {
+// drawBank specified by bank argument.
+func (win *winDisasm) drawBank(bank int, focusAddr uint16, onBank bool) {
+	var err error
+	var eitr *disassembly.IterateEntries
 
-	lvl := disassembly.EntryLevelBlessed
-	if win.showAllEntries {
-		lvl = disassembly.EntryLevelDecoded
+	if onBank {
+		eitr, err = win.img.lz.Dbg.Disasm.NewEntriesIteration(disassembly.EntryLevelBlessed, bank, focusAddr)
+	} else {
+		eitr, err = win.img.lz.Dbg.Disasm.NewEntriesIteration(disassembly.EntryLevelBlessed, bank)
 	}
-	eitr, err := win.img.lz.Dbg.Disasm.NewEntriesIteration(lvl, b, focusAddr)
 
 	// check that NewBankIteration has succeeded. if it hasn't it probably
 	// means the cart has changed in the middle of the draw routine. but that's
@@ -221,7 +250,7 @@ func (win *winDisasm) drawBank(focusAddr uint16, b int, selected bool, cpuStep b
 	}
 
 	height := imguiRemainingWinHeight() - win.optionsHeight
-	imgui.BeginChildV(fmt.Sprintf("bank %d", b), imgui.Vec2{X: 0, Y: height}, false, 0)
+	imgui.BeginChildV(fmt.Sprintf("bank %d", bank), imgui.Vec2{X: 0, Y: height}, false, 0)
 	defer imgui.EndChild()
 
 	numColumns := 7
@@ -233,19 +262,17 @@ func (win *winDisasm) drawBank(focusAddr uint16, b int, selected bool, cpuStep b
 	}
 	defer imgui.EndTable()
 
+	// set neutral colors for table rows by default. we'll change it to
+	// something more meaningful as appropriate (eg. entry at PC address)
 	imgui.PushStyleColor(imgui.StyleColorTableRowBg, win.img.cols.WindowBg)
 	imgui.PushStyleColor(imgui.StyleColorTableRowBgAlt, win.img.cols.WindowBg)
 	defer imgui.PopStyleColorV(2)
 
-	// only draw elements that will be visible
 	var clipper imgui.ListClipper
 	clipper.Begin(eitr.EntryCount + eitr.LabelCount)
 	for clipper.Step() {
 		_, _ = eitr.Start()
 		_, e := eitr.SkipNext(clipper.DisplayStart, true)
-
-		// note address of top entry in the list. we use this to help
-		// list alignment
 		if e == nil {
 			break // clipper.Step() loop
 		}
@@ -270,7 +297,12 @@ func (win *winDisasm) drawBank(focusAddr uint16, b int, selected bool, cpuStep b
 				}
 			}
 
-			win.drawEntry(cpuStep, selected, focusAddr, e)
+			win.drawEntry(e, focusAddr, onBank)
+
+			// if the current CPU entry is visible then raise the currentPCisVisble flag
+			if onBank && (e.Result.Address&memorymap.CartridgeBits == focusAddr) {
+				win.focusAddrIsVisible = win.focusAddrIsVisible || imgui.IsItemVisible()
+			}
 
 			// advance clipper
 			_, e = eitr.Next()
@@ -283,72 +315,37 @@ func (win *winDisasm) drawBank(focusAddr uint16, b int, selected bool, cpuStep b
 		}
 	}
 
-	// align on a specific entry if a alignOnPC or alignOnOtherAddress is
-	// set. for clarity we're doing this outside of the clipper loop above
-	//
-	// note that alignOnPC has an additional condition and will only be
-	// honoured if the selected flag is set. this is to prevent alignment
-	// attempts when the PC is executing in VCS RAM
-	if (win.alignOnPC && selected) || win.alignOnOtherAddress {
-		var addr uint16
-		var scrollMargin float32
-
-		// figure out what kind of alignment to perform. aligning on non-PC
-		// address takes priority
-		if win.alignOnOtherAddress {
-			addr = win.alignAddress
-			scrollMargin = 0
-
-			// reset alignOnOtherAddress flag immediately after use
-			win.alignOnOtherAddress = false
-		} else {
-			addr = focusAddr
-			scrollMargin = 4
-
-			// we have centred on the PC. the alignOnPC will be unset next
-			// frame (so long as the the CPU hasn't moved on)
-			win.hasAlignedOnPC = true
-		}
-
-		// walk through disassembly and note the count for the current entry
-		hlEntry := float32(0.0)
-		i := float32(0.0)
-		for _, e := eitr.Start(); e != nil; _, e = eitr.Next() {
-			if e.Result.Address&memorymap.CartridgeBits == addr&memorymap.CartridgeBits {
-				hlEntry = i
-				break // for loop
-			}
-
-			// make sure to count labels
-			if e.Label.String() != "" {
-				i++
-			}
-
-			i++
-		}
-
+	// scroll to correct entry
+	if onBank && win.focusOnAddr {
 		// calculate the pixel value of the current entry. the adjustment of 4
 		// is to ensure that some preceding entries are displayed before the
 		// current entry
-		h := imgui.FontSize() + imgui.CurrentStyle().ItemInnerSpacing().Y
-		h = (hlEntry - scrollMargin) * h
+		y := imgui.FontSize() + imgui.CurrentStyle().ItemInnerSpacing().Y
+		y = float32(eitr.FocusAddrCt-4) * y
 
 		// scroll to pixel value
-		imgui.SetScrollY(h)
+		imgui.SetScrollY(y)
 	}
 
 	// set lazy update list
-	win.img.lz.Breakpoints.SetUpdateList(b, win.addressTopList, win.addressBotList)
+	win.img.lz.Breakpoints.SetUpdateList(bank, win.addressTopList, win.addressBotList)
 }
 
-func (win *winDisasm) drawEntry(cpuStep bool, selected bool, focusAddr uint16, e *disassembly.Entry) {
+func (win *winDisasm) drawEntry(e *disassembly.Entry, focusAddr uint16, onBank bool) {
 	imgui.TableNextRow()
-	if selected && focusAddr&memorymap.CartridgeBits == e.Result.Address&memorymap.CartridgeBits {
-		hi := win.img.cols.DisasmCPUstep
-		if !cpuStep {
-			hi = win.img.cols.DisasmVideoStep
+
+	// draw attention to current disasm of current PC address. flash if necessary
+	if onBank && (e.Result.Address&memorymap.CartridgeBits == focusAddr) {
+		if win.focusOnAddrFlash > 0 {
+			win.focusOnAddrFlash--
 		}
-		imgui.TableSetBgColor(imgui.TableBgTargetRowBg0, hi)
+		if win.focusOnAddrFlash == 0 || win.focusOnAddrFlash%2 == 0 {
+			hi := win.img.cols.DisasmCPUstep
+			if !win.img.lz.Debugger.LastResult.Result.Final {
+				hi = win.img.cols.DisasmVideoStep
+			}
+			imgui.TableSetBgColor(imgui.TableBgTargetRowBg0, hi)
+		}
 	}
 
 	// breakpoint indicator column

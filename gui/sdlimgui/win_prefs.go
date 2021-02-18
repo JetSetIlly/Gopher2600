@@ -115,9 +115,10 @@ func (win *winPrefs) drawGeneral() {
 		win.img.term.pushCommand("PREFS TOGGLE SYMBOLS")
 
 		// if disassembly has address labels then turning symbols off may alter
-		// the vertical scrolling of the disassembly window. set alignOnPC to
-		// true to force preference change to take effect
-		win.img.wm.windows[winDisasmID].(*winDisasm).alignOnPC = true
+		// the vertical scrolling of the disassembly window.
+		//
+		// set focusOnAddr to true to force preference change to take effect
+		win.img.wm.windows[winDisasmID].(*winDisasm).focusOnAddr = true
 	}
 
 	termOnError := win.img.prefs.openOnError.Get().(bool)

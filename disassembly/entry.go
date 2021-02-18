@@ -111,7 +111,7 @@ func (e *Entry) updateExecutionEntry(result execution.Result) {
 	s := strings.Builder{}
 
 	if e.Result.PageFault {
-		s.WriteString("[+1] ")
+		s.WriteString("page-fault [+1] ")
 	}
 
 	if e.Result.Defn.IsBranch() {
