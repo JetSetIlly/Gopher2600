@@ -542,6 +542,7 @@ func disasm(md *modalflag.Modes) error {
 		attr := disassembly.ColumnAttr{
 			ByteCode: *bytecode,
 			Label:    true,
+			Cycles:   true,
 		}
 
 		cartload := cartridgeloader.NewLoader(md.GetArg(0), *mapping)

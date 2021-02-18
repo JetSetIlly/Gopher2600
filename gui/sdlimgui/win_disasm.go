@@ -126,9 +126,6 @@ func (win *winDisasm) draw() {
 		if cpuStep {
 			focusAddr = win.img.lz.CPU.PC.Address()
 		} else {
-			// note that we're using LastResult straight from the CPU not the
-			// copy in debugger.LastDisasmEntry. the latter gets updated too
-			// late for our needs
 			focusAddr = win.img.lz.Debugger.LastResult.Result.Address
 			currBank = win.img.lz.Debugger.LastResult.Bank
 		}
@@ -209,6 +206,7 @@ func (win *winDisasm) draw() {
 // draw a bank for each tabitem in the tab bar. if there is only one bank then
 // drawBank() is called once.
 func (win *winDisasm) drawBank(focusAddr uint16, b int, selected bool, cpuStep bool) {
+
 	lvl := disassembly.EntryLevelBlessed
 	if win.showAllEntries {
 		lvl = disassembly.EntryLevelDecoded
@@ -224,6 +222,20 @@ func (win *winDisasm) drawBank(focusAddr uint16, b int, selected bool, cpuStep b
 
 	height := imguiRemainingWinHeight() - win.optionsHeight
 	imgui.BeginChildV(fmt.Sprintf("bank %d", b), imgui.Vec2{X: 0, Y: height}, false, 0)
+	defer imgui.EndChild()
+
+	numColumns := 7
+	flgs := imgui.TableFlagsNone
+	flgs |= imgui.TableFlagsSizingFixedFit
+	flgs |= imgui.TableFlagsRowBg
+	if !imgui.BeginTableV("bank", numColumns, flgs, imgui.Vec2{}, 0) {
+		return
+	}
+	defer imgui.EndTable()
+
+	imgui.PushStyleColor(imgui.StyleColorTableRowBg, win.img.cols.WindowBg)
+	imgui.PushStyleColor(imgui.StyleColorTableRowBgAlt, win.img.cols.WindowBg)
+	defer imgui.PopStyleColorV(2)
 
 	// only draw elements that will be visible
 	var clipper imgui.ListClipper
@@ -242,19 +254,25 @@ func (win *winDisasm) drawBank(focusAddr uint16, b int, selected bool, cpuStep b
 		win.addressTopList = e.Result.Address
 
 		for i := clipper.DisplayStart; i < clipper.DisplayEnd; i++ {
-			// try to draw address label. if successful then advance clipper
-			// counter and check for end of display
-			if win.drawLabel(e) {
+			// try to draw address label
+			s := e.Label.String()
+			if len(s) > 0 {
+				imgui.TableNextRow()
+				imgui.TableNextRow()
+				imgui.TableNextColumn()
+				imgui.TableNextColumn()
+				imgui.Text(s)
+
+				// advance clipper counter and check for end of display
 				i++
 				if i >= clipper.DisplayEnd {
 					break // clipper.DisplayStart loop
 				}
 			}
 
-			// if address value of current disasm entry and current PC value
-			// match then highlight the entry
-			win.drawEntry(e, focusAddr, selected, cpuStep)
+			win.drawEntry(cpuStep, selected, focusAddr, e)
 
+			// advance clipper
 			_, e = eitr.Next()
 			if e == nil {
 				break // clipper.DisplayStart loop
@@ -319,137 +337,76 @@ func (win *winDisasm) drawBank(focusAddr uint16, b int, selected bool, cpuStep b
 		imgui.SetScrollY(h)
 	}
 
-	imgui.EndChild()
-
 	// set lazy update list
 	win.img.lz.Breakpoints.SetUpdateList(b, win.addressTopList, win.addressBotList)
 }
 
-func (win *winDisasm) drawLabel(e *disassembly.Entry) bool {
-	s := e.GetField(disassembly.FldLabel)
-	if s == "" {
-		return false
-	}
-	imgui.Text(s)
-	return true
-}
-
-// drawEntry() is called many times from drawBank(), once for each entry in the list.
-func (win *winDisasm) drawEntry(e *disassembly.Entry, focusAddr uint16, selected bool, cpuStep bool) {
-	imgui.BeginGroup()
-	adj := imgui.Vec4{0.0, 0.0, 0.0, 0.0}
-
-	// highlight current disassembly entry
-	if win.showAllEntries && e.Level < disassembly.EntryLevelBlessed {
-		adj = imgui.Vec4{0.0, 0.0, 0.0, -0.4}
-	}
-
-	// if the entry is being drawn by a selected bank then highlight the entry
-	// for the current pc address
+func (win *winDisasm) drawEntry(cpuStep bool, selected bool, focusAddr uint16, e *disassembly.Entry) {
+	imgui.TableNextRow()
 	if selected && focusAddr&memorymap.CartridgeBits == e.Result.Address&memorymap.CartridgeBits {
-		p1 := imgui.CursorScreenPos()
-		p2 := p1
-		p2.X += imgui.WindowWidth()
-		p2.Y += imgui.FontSize() * 1.1
-		dl := imgui.WindowDrawList()
-
-		if cpuStep {
-			dl.AddRectFilled(p1, p2, win.img.cols.disasmCPUstep)
-		} else {
-			dl.AddRectFilled(p1, p2, win.img.cols.disasmVideoStep)
+		hi := win.img.cols.DisasmCPUstep
+		if !cpuStep {
+			hi = win.img.cols.DisasmVideoStep
 		}
-
-		// make entry a bit brighter
-		adj = imgui.Vec4{0.1, 0.1, 0.1, 0.0}
+		imgui.TableSetBgColor(imgui.TableBgTargetRowBg0, hi)
 	}
 
-	// add some space for the gutter. has to be something tangible so that the
-	// IsItemVisible() check below has something to grab onto
-	imgui.Text(" ")
-
-	win.drawBreak(e)
-
-	imgui.SameLine()
-	imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmAddress.Plus(adj))
-	s := e.GetField(disassembly.FldAddress)
-	imgui.Text(s)
-
-	if win.showByteCode {
-		imgui.SameLine()
-		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmByteCode.Plus(adj))
-		s := e.GetField(disassembly.FldBytecode)
-		imgui.Text(s)
-		imgui.PopStyleColorV(1)
-	}
-
-	imgui.SameLine()
-	imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmOperator.Plus(adj))
-	s = e.GetField(disassembly.FldOperator)
-	imgui.Text(s)
-
-	imgui.SameLine()
-	imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmOperand.Plus(adj))
-	s = e.GetField(disassembly.FldOperand)
-	imgui.Text(s)
-
-	imgui.SameLine()
-	imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmCycles.Plus(adj))
-	s = e.GetField(disassembly.FldDefnCycles)
-	imgui.Text(s)
-
-	imgui.SameLine()
-	imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmNotes.Plus(adj))
-	s = e.GetField(disassembly.FldActualNotes)
-	imgui.Text(s)
-
-	imgui.PopStyleColorV(5)
-
-	imgui.EndGroup()
-
-	// the following Is*() conditions apply to the whole group
-
-	// on right mouse button, set interactive to false. if emulation is not
-	// running, it will be true for only one (imgui) frame but that is enough
-	// to cause the scroller to centre on the current entry.
-	if imgui.IsItemHoveredV(imgui.HoveredFlagsAllowWhenDisabled) && imgui.IsMouseDown(1) {
-		win.alignOnPC = true
-	}
-
-	// single click toggles a PC breakpoint on the entries address
-	if imgui.IsItemClicked() {
-		win.img.lz.Dbg.PushRawEvent(func() { win.img.lz.Dbg.TogglePCBreak(e) })
-	}
-}
-
-func (win *winDisasm) drawBreak(e *disassembly.Entry) {
+	// breakpoint indicator column
+	imgui.TableNextColumn()
 	switch win.img.lz.Breakpoints.HasBreak(e.Result.Address) {
 	case debugger.BrkPCAddress:
-		win.drawGutter(gutterSolid, win.img.cols.disasmBreakAddress)
+		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmBreakAddress)
+		imgui.Text("*")
+		imgui.PopStyleColor()
 	case debugger.BrkOther:
-		win.drawGutter(gutterOutline, win.img.cols.disasmBreakOther)
+		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmBreakOther)
+		imgui.Text("#")
+		imgui.PopStyleColor()
+	default:
+		imgui.Text(" ")
 	}
-}
 
-type gutterType int
+	// address column
+	imgui.TableNextColumn()
+	imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmAddress)
+	imgui.Text(e.Address)
+	imgui.PopStyleColor()
 
-const (
-	gutterOutline gutterType = iota
-	gutterDotted
-	gutterSolid
-)
-
-func (win *winDisasm) drawGutter(fill gutterType, col imgui.PackedColor) {
-	r := imgui.FrameHeight() / 4
-	p := imgui.CursorScreenPos()
-	p.Y -= r * 2
-	dl := imgui.WindowDrawList()
-	switch fill {
-	case gutterOutline:
-		dl.AddCircle(p, r, col)
-	case gutterDotted:
-		dl.AddCircle(p, r, col)
-		dl.AddCircle(p, r/2, col)
-	case gutterSolid:
-		dl.AddCircleFilled(p, r, col)
+	// single click on the address entry toggles a PC breakpoint
+	if imgui.IsItemClicked() {
+		f := e // copy of pushed disasm entry
+		win.img.lz.Dbg.PushRawEvent(func() { win.img.lz.Dbg.TogglePCBreak(f) })
 	}
+
+	// optional bytecode column
+	if win.showByteCode {
+		imgui.TableNextColumn()
+		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmByteCode)
+		imgui.Text(e.Bytecode)
+		imgui.PopStyleColor()
+	}
+
+	// operator column
+	imgui.TableNextColumn()
+	imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmOperator)
+	imgui.Text(e.Operator)
+	imgui.PopStyleColor()
+
+	// operand column
+	imgui.TableNextColumn()
+	imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmOperand)
+	imgui.Text(e.Operand.String())
+	imgui.PopStyleColor()
+
+	// cycles column
+	imgui.TableNextColumn()
+	imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmCycles)
+	imgui.Text(e.Cycles())
+	imgui.PopStyleColor()
+
+	// execution notes column
+	imgui.TableNextColumn()
+	imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmNotes)
+	imgui.Text(e.ExecutionNotes)
+	imgui.PopStyleColor()
 }

@@ -29,46 +29,59 @@ const (
 	FldAddress
 	FldOperator
 	FldOperand
-	FldDefnCycles
-	FldActualCycles
-	FldActualNotes
+	FldCycles
+	FldNotes
 )
 
 // required widths (in characters) of the various disassembly fields.
 const (
-	widthBytecode     = 9
-	widthAddress      = 6
-	widthOperator     = 3
-	widthDefnCycles   = 3
-	widthActualCycles = 1
+	// the width of the label field is equal to the value returned by
+	// Symbols.LabelWidth()
 
-	widthNoLabel = 0
+	// the widths of bytecode, address, and operator can be decided in advance
+	widthBytecode = 9
+	widthAddress  = 6
+	widthOperator = 3
 
-	// the operand field can be numeric or symbolic. in the case of
-	// non-symbolic the following value is used.
-	widthNonSymbolicOperand = 3
+	// the oeprand field width should be the value of Symbols.SymbolWidth()
+	// plus widthOperandDecoration, which accounts for the maximum number of
+	// additional symbols requried to correctly display the addressing mode.
+	// for example:
+	//
+	//	($6e), Y
+	//
+	// or
+	//
+	//  (OFFSET), Y
+	widthOperandDecoration = 4
 
-	// the operand field is decorated according to the addressing mode of the
-	// entry. the following value is added to the width value of both symbolic
-	// and non-symbolic operand values, to give the minimum required width.
-	widthAddressingModeDecoration = 4
+	// the width for the cycles column assumes that there will be at least one
+	// branch instruction that has been executed. For example:
+	//
+	//		2/3 [3]
+	//
+	// see Entry.Cycles() function
+	widthCycles = 7
 
-	// the width of the notes field is not recorded.
+	// the width of the notes field is not needed
 )
 
 // GetField returns the formatted field from the speficied Entry.
 func (e *Entry) GetField(field Field) string {
 	var s string
 	var w int
+	var rightJust bool
 
 	switch field {
 	case FldLabel:
-		o, ok := e.Label.checkString()
-		w = widthNoLabel
-		if ok {
+		var ok bool
+		s, ok = e.Label.genString()
+		if !ok {
+			w = 0
+		} else {
 			w = e.dsm.Symbols.LabelWidth()
+			rightJust = true
 		}
-		return fmt.Sprintf(fmt.Sprintf("%%-%ds", w), o)
 
 	case FldBytecode:
 		w = widthBytecode
@@ -83,25 +96,21 @@ func (e *Entry) GetField(field Field) string {
 		s = e.Operator
 
 	case FldOperand:
-		o, ok := e.Operand.checkString()
-		w = widthNonSymbolicOperand
-		if ok && e.dsm.Symbols.SymbolWidth() > w {
-			w = e.dsm.Symbols.SymbolWidth()
-		}
-		w += widthAddressingModeDecoration
-		s = o
+		s, _ = e.Operand.genString()
+		w = e.dsm.Symbols.SymbolWidth() + widthOperandDecoration
 
-	case FldDefnCycles:
-		w = widthDefnCycles
-		s = e.DefnCycles
+	case FldCycles:
+		w = widthCycles
+		s = e.Cycles()
 
-	case FldActualCycles:
-		w = widthActualCycles
-		s = e.Cycles
-
-	case FldActualNotes:
+	case FldNotes:
 		return e.ExecutionNotes
 	}
 
-	return fmt.Sprintf(fmt.Sprintf("%%%ds", w), s)
+	if rightJust {
+		s = fmt.Sprintf(fmt.Sprintf("%%-%ds", w), s)
+	} else {
+		s = fmt.Sprintf(fmt.Sprintf("%%%ds", w), s)
+	}
+	return s
 }

@@ -82,7 +82,10 @@ type Entry struct {
 
 	// formatted cycles information from instructions.Defintion
 	DefnCycles string
-	Cycles     string
+
+	// actual number of cycles. consider using Cycles() for presentation
+	// purposes
+	ActualCycles string
 
 	// information about the most recent execution of the entry
 	//
@@ -102,7 +105,7 @@ func (e *Entry) updateExecutionEntry(result execution.Result) {
 	e.Level = EntryLevelExecuted
 
 	// actual cycles
-	e.Cycles = fmt.Sprintf("%d", e.Result.Cycles)
+	e.ActualCycles = fmt.Sprintf("%d", e.Result.Cycles)
 
 	// actual notes
 	s := strings.Builder{}
@@ -125,6 +128,19 @@ func (e *Entry) updateExecutionEntry(result execution.Result) {
 	}
 
 	e.ExecutionNotes = strings.TrimSpace(s.String())
+}
+
+// Cycles returns the number of cycles annotated if actual cycles differs from
+// the number of cycles in the defintion. for executed branch instructions this
+// will always be the case.
+func (e *Entry) Cycles() string {
+	if e.Level < EntryLevelExecuted || e.DefnCycles == e.ActualCycles {
+		return e.DefnCycles
+	}
+
+	// if entry hasn't been executed yet or if actual cycles is different to
+	// the cycles defined for the entry then return an annotated string
+	return fmt.Sprintf("%s [%s]", e.DefnCycles, e.ActualCycles)
 }
 
 // add decoration to operand according to the addressing mode of the entry.
@@ -188,13 +204,13 @@ type Label struct {
 }
 
 func (l Label) String() string {
-	s, _ := l.checkString()
+	s, _ := l.genString()
 	return s
 }
 
-// checkString returns the address label as a symbol (if a symbol is available)
+// genString returns the address label as a symbol (if a symbol is available)
 // if a symbol is not available then the the bool return value will be false.
-func (l Label) checkString() (string, bool) {
+func (l Label) genString() (string, bool) {
 	if l.dsm.Prefs.Symbols.Get().(bool) {
 		ma, _ := memorymap.MapAddress(l.result.Address, true)
 		if v, ok := l.dsm.Symbols.Label.Entries[ma]; ok {
@@ -215,13 +231,13 @@ type Operand struct {
 }
 
 func (l Operand) String() string {
-	s, _ := l.checkString()
+	s, _ := l.genString()
 	return s
 }
 
-// checkString returns the operand as a symbol (if a symbol is available) if
+// genString returns the operand as a symbol (if a symbol is available) if
 // a symbol is not available then the the bool return value will be false.
-func (l Operand) checkString() (string, bool) {
+func (l Operand) genString() (string, bool) {
 	if !l.dsm.Prefs.Symbols.Get().(bool) {
 		return l.nonSymbolic, false
 	}

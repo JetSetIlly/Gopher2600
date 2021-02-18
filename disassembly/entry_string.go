@@ -25,7 +25,7 @@ import (
 //
 // See StringColumnated() for a fancier option.
 func (e *Entry) String() string {
-	operand, _ := e.Operand.checkString()
+	operand, _ := e.Operand.genString()
 	return fmt.Sprintf("%s %s %s", e.Address, e.Operator, operand)
 }
 
@@ -71,7 +71,7 @@ func (e *Entry) StringColumnated(attr ColumnAttr) string {
 
 	if attr.Cycles {
 		b.Write([]byte(" "))
-		b.Write([]byte(e.GetField(FldDefnCycles)))
+		b.Write([]byte(e.GetField(FldCycles)))
 	}
 
 	return b.String()

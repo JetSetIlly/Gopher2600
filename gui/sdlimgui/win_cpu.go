@@ -172,7 +172,7 @@ func (win *winCPU) drawLastResult() {
 	if e.Result.Final {
 		imgui.Text(e.Bytecode)
 		imgui.Text(fmt.Sprintf("%s %s", e.Operator, e.Operand))
-		imgui.Text(fmt.Sprintf("%s cyc", e.Cycles))
+		imgui.Text(fmt.Sprintf("%s cyc", e.ActualCycles))
 		if win.img.lz.Cart.NumBanks == 1 {
 			imgui.Text(fmt.Sprintf("(%s)", e.Address))
 		} else {
@@ -187,7 +187,7 @@ func (win *winCPU) drawLastResult() {
 	imgui.Text(e.Bytecode)
 	imgui.Text(fmt.Sprintf("%s %s", e.Operator, e.Operand))
 	if e.Result.Defn != nil {
-		imgui.Text(fmt.Sprintf("%s of %s cyc", e.Cycles, e.DefnCycles))
+		imgui.Text(fmt.Sprintf("%s of %s cyc", e.ActualCycles, e.DefnCycles))
 		if win.img.lz.Cart.NumBanks == 1 {
 			imgui.Text(fmt.Sprintf("(%s)", e.Address))
 		} else {

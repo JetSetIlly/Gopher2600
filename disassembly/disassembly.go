@@ -227,7 +227,7 @@ func (dsm *Disassembly) ExecutedEntry(bank mapper.BankInfo, result execution.Res
 		if err != nil {
 			return nil, curated.Errorf("disassembly: %v", err)
 		}
-	} else if e.Level < EntryLevelExecuted {
+	} else {
 		// we have seen this entry before but it's not been executed. update
 		// entry to reflect results
 		e.updateExecutionEntry(result)

@@ -775,12 +775,12 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		s.WriteString(" ")
 		s.WriteString(dbg.lastResult.GetField(disassembly.FldOperand))
 		s.WriteString(" ")
-		s.WriteString(dbg.lastResult.GetField(disassembly.FldActualCycles))
+		s.WriteString(dbg.lastResult.GetField(disassembly.FldCycles))
 		s.WriteString(" ")
 		if !dbg.lastResult.Result.Final {
 			s.WriteString(fmt.Sprintf("(of %d) ", dbg.lastResult.Result.Defn.Cycles))
 		}
-		s.WriteString(dbg.lastResult.GetField(disassembly.FldActualNotes))
+		s.WriteString(dbg.lastResult.GetField(disassembly.FldNotes))
 
 		// change terminal output style depending on condition of last CPU result
 		if dbg.lastResult.Result.Final {
