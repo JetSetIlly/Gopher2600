@@ -382,16 +382,17 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) error {
 		return nil
 	}
 
-	err := dbg.scr.SetFeature(gui.ReqChangingCartridge, true)
+	// tell GUI that we're in the initialistion phase
+	err := dbg.scr.SetFeature(gui.ReqState, gui.StateInitialising)
 	if err != nil {
-		if !curated.Is(err, gui.UnsupportedGuiFeature) {
-			return curated.Errorf("debugger: %v", err)
-		}
+		return curated.Errorf("debugger: %v", err)
 	}
 	defer func() {
-		// we know the gui supports ReqChangingCartridge feature because we've
-		// just used it
-		_ = dbg.scr.SetFeature(gui.ReqChangingCartridge, false)
+		if dbg.runUntilHalt {
+			_ = dbg.scr.SetFeature(gui.ReqState, gui.StateRunning)
+		} else {
+			_ = dbg.scr.SetFeature(gui.ReqState, gui.StatePaused)
+		}
 	}()
 
 	// reset of vcs is implied with attach cartridge

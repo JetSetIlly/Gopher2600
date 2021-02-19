@@ -79,9 +79,6 @@ const (
 	// the size of the monitor).
 	ReqFullScreen FeatureReq = "ReqFullScreen" // bool
 
-	// triggered when cartridge is being change.
-	ReqChangingCartridge FeatureReq = "ReqChangingCartridge" // bool
-
 	// special request for PlusROM cartridges.
 	ReqPlusROMFirstInstallation FeatureReq = "ReqPlusROMFirstInstallation" // PlusROMFirstInstallation
 )

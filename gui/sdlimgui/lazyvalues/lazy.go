@@ -86,10 +86,11 @@ func NewLazyValues() *LazyValues {
 }
 
 // Reset lazy values instance.
-func (val *LazyValues) Reset(changingCart bool) {
-	val.active = !changingCart
-	val.Cart = newLazyCart(val)
-	val.active = true
+func (val *LazyValues) SetActive(active bool) {
+	val.active = active
+	if !active {
+		val.Cart = newLazyCart(val)
+	}
 }
 
 // Refresh lazy values.

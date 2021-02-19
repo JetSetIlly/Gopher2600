@@ -206,6 +206,14 @@ func (img *SdlImgui) draw() {
 // set emulation state and handle any changes.
 func (img *SdlImgui) setEmulationState(state gui.EmulationState) {
 	img.state = state
+
+	switch img.state {
+	case gui.StateInitialising:
+		img.lz.SetActive(false)
+	default:
+		img.lz.SetActive(true)
+	}
+
 	switch img.state {
 	case gui.StatePaused:
 		img.screen.render()

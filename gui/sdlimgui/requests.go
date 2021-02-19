@@ -130,14 +130,6 @@ func (img *SdlImgui) serviceSetFeature(request featureRequest) {
 			}
 		}
 
-	case gui.ReqChangingCartridge:
-		// a new cartridge requires us to reset the lazy system (see the
-		// lazyvalues.Reset() function commentary for why)
-		err = argLen(request.args, 1)
-		if err == nil {
-			img.lz.Reset(request.args[0].(bool))
-		}
-
 	case gui.ReqPlusROMFirstInstallation:
 		err = argLen(request.args, 1)
 		if err == nil {
