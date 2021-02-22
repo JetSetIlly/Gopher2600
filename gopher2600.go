@@ -583,10 +583,18 @@ func perform(md *modalflag.Modes, sync *mainSync) error {
 	fpsCap := md.AddBool("fpscap", true, "cap FPS to specification (only valid if -display=true)")
 	duration := md.AddString("duration", "5s", "run duration (note: there is a 2s overhead)")
 	profile := md.AddString("profile", "NONE", "run performance check with profiling: command separated CPU, MEM, TRACE or ALL")
+	log := md.AddBool("log", false, "echo debugging log to stdout")
 
 	p, err := md.Parse()
 	if err != nil || p != modalflag.ParseContinue {
 		return err
+	}
+
+	// set debugging log echo
+	if *log {
+		logger.SetEcho(os.Stdout)
+	} else {
+		logger.SetEcho(nil)
 	}
 
 	switch len(md.RemainingArgs()) {
