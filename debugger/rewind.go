@@ -37,12 +37,8 @@ func (dbg *Debugger) CatchUpLoop(continueCheck func() bool) error {
 	}
 
 	for continueCheck() {
-		// raw events will go unserviced while this loop is running. it some
-		// ways it would be nice to see updates but in other ways it feels
-		// janky
-
 		err = dbg.VCS.Step(func() error {
-			return dbg.reflect.Check(dbg.lastBank)
+			return dbg.ref.Step(dbg.lastBank)
 		})
 		if err != nil {
 			return err

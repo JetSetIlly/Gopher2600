@@ -32,7 +32,6 @@ import (
 //		...
 //	}
 type PixelRenderer interface {
-
 	// Resize is called when the television implementation detects that extra
 	// scanlines are required in the display.
 	//
@@ -61,8 +60,10 @@ type PixelRenderer interface {
 	// and UpdatingPixels(false)
 	UpdatingPixels(updating bool)
 
-	// SetPixel() is called every cycle regardless of the state of VBLANK and
-	// HBLANK.
+	// SetPixel sends an instance of SignalAttributes to the Renderer. The
+	// current flag states that this pixel should be considered to be the most
+	// recent outputted by the television for this frame. In most instances,
+	// this will always be true.
 	//
 	// things to consider:
 	//
@@ -85,10 +86,6 @@ type PixelRenderer interface {
 	//	* Custer's Revenge
 	//	* Ladybug
 	//	* ET (turns VBLANK off late on scanline 40)
-	//
-	// current flag states that this pixel should be considered to be the most
-	// recent outputted by the television for this frame. In most instances,
-	// this will always be true.
 	SetPixel(sig signal.SignalAttributes, current bool) error
 
 	// Reset all pixels. Called when TV is reset.
@@ -98,6 +95,11 @@ type PixelRenderer interface {
 	// for simplicity, the PixelRenderer should be considered unusable after
 	// EndRendering() has been called.
 	EndRendering() error
+}
+
+// FrameTrigger implementations listen for Pause events.
+type PauseTrigger interface {
+	Pause(pause bool) error
 }
 
 // FrameTrigger implementations listen for NewFrame events. FrameTrigger is a
@@ -120,11 +122,6 @@ type AudioMixer interface {
 	// Reset buffered audio and anything else that might need doing on, for
 	// example, a cartridge change.
 	Reset()
-}
-
-type ReflectionSynchronising interface {
-	SyncReflectionPixel(idx int) error
-	SyncFrame()
 }
 
 // the maximum number of scanlines allowed by the television implementation.

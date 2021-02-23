@@ -124,11 +124,11 @@ type Television struct {
 	// list of frametrigger implementations to consult
 	frameTriggers []FrameTrigger
 
+	// list of frametrigger implementations to consult
+	pauseTriggers []PauseTrigger
+
 	// list of audio mixers to consult
 	mixers []AudioMixer
-
-	// a single registered reflector
-	reflector ReflectionSynchronising
 
 	// instance of current state (as supported by the rewind system)
 	state *State
@@ -260,16 +260,15 @@ func (tv *Television) AddFrameTrigger(f FrameTrigger) {
 	tv.frameTriggers = append(tv.frameTriggers, f)
 }
 
+// AddPauseTrigger registers an implementation of PauseTrigger.
+func (tv *Television) AddPauseTrigger(p PauseTrigger) {
+	tv.pauseTriggers = append(tv.pauseTriggers, p)
+}
+
 // AddAudioMixer registers an implementation of AudioMixer. Multiple
 // implemntations can be added.
 func (tv *Television) AddAudioMixer(m AudioMixer) {
 	tv.mixers = append(tv.mixers, m)
-}
-
-// AddReflector registers an implementation of ReflectionSynchronising. Only
-// one can be added. Subsequence calls replaces existing implementations.
-func (tv *Television) AddReflector(r ReflectionSynchronising) {
-	tv.reflector = r
 }
 
 // some televisions may need to conclude and/or dispose of resources
@@ -461,11 +460,6 @@ func (tv *Television) newFrame(synced bool) error {
 		}
 	}
 
-	// reset reflector for new frame
-	if tv.reflector != nil {
-		tv.reflector.SyncFrame()
-	}
-
 	// check frame rate. checking even if synced == false.
 	tv.lmtr.checkFrame()
 
@@ -485,9 +479,6 @@ func (tv *Television) processSignals(current bool) error {
 				if err != nil {
 					return curated.Errorf("television", err)
 				}
-				if tv.reflector != nil {
-					tv.reflector.SyncReflectionPixel(i)
-				}
 			}
 			if !current {
 				for i := tv.currentIdx + 1; i < tv.lastMaxIdx; i++ {
@@ -495,9 +486,6 @@ func (tv *Television) processSignals(current bool) error {
 					err := r.SetPixel(sig, i < tv.currentIdx)
 					if err != nil {
 						return curated.Errorf("television", err)
-					}
-					if tv.reflector != nil {
-						tv.reflector.SyncReflectionPixel(i)
 					}
 				}
 			}
@@ -601,6 +589,11 @@ func (tv *Television) GetSpec() specification.Spec {
 // pushed to immeditately. Not the same as PauseRendering(). Pause() should be
 // used when emulation is stopped. In this case, paused rendering is implied.
 func (tv *Television) Pause(pause bool) error {
+	for _, p := range tv.pauseTriggers {
+		if err := p.Pause(pause); err != nil {
+			return err
+		}
+	}
 	if pause {
 		return tv.processSignals(true)
 	}

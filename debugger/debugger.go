@@ -69,7 +69,7 @@ type Debugger struct {
 	// reflection is used to provideo additional information about the
 	// emulation. it is inherently slow so should be deactivated if not
 	// required
-	reflect *reflection.Monitor
+	ref *reflection.Reflector
 
 	// halt conditions
 	breakpoints *breakpoints
@@ -192,10 +192,12 @@ func NewDebugger(tv *television.Television, scr gui.GUI, term terminal.Terminal,
 	dbg.dbgmem = &memoryDebug{vcs: dbg.VCS, symbols: dbg.Disasm.Symbols}
 
 	// setup reflection monitor
-	if b, ok := scr.(reflection.IdentifyReflector); ok {
-		dbg.reflect = reflection.NewMonitor(dbg.VCS, b.GetReflectionRenderer())
-		dbg.tv.AddReflector(dbg.reflect)
+	dbg.ref = reflection.NewReflector(dbg.VCS)
+	if r, ok := dbg.scr.(reflection.Broker); ok {
+		dbg.ref.AddRenderer(r.GetReflectionRenderer())
 	}
+	dbg.tv.AddFrameTrigger(dbg.ref)
+	dbg.tv.AddPauseTrigger(dbg.ref)
 
 	// plug in rewind system
 	dbg.Rewind, err = rewind.NewRewind(dbg.VCS, dbg)

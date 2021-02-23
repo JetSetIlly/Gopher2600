@@ -22,14 +22,35 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/tia/video"
 )
 
-// Renderer implementations accepts ReflectPixel values and associates it in
-// some way with the most recent television signal.
+// Info identifies the reflection information that can be ascertained from the
+// contents of a VideoStep. Other information can probably be gleaned but these
+// are the ones that have been identified. For convenience only.
+type Info int
+
+// List of valid Info value
+const (
+	WSYNC Info = iota
+	Collision
+	CXCLR
+	HMOVEdelay
+	HMOVE
+	HMOVElatched
+	CoprocessorActive
+)
+
+// Renderer implementations display or otherwise process VideoStep values.
 type Renderer interface {
+	// Mark the start and end of an update event from the television.
+	// Reflect() should only be called between calls of UpdatingPixels(true)
+	// and UpdatingPixels(false)
+	UpdatingPixels(updating bool)
+
+	// Reflect sends a VideoStep instance to the Renderer.
 	Reflect(VideoStep) error
 }
 
-// IdentifyReflector implementations can identify a reflection.Renderer.
-type IdentifyReflector interface {
+// Broker implementations can identify a reflection.Renderer.
+type Broker interface {
 	GetReflectionRenderer() Renderer
 }
 
@@ -43,22 +64,16 @@ type IdentifyReflector interface {
 // Note that ordering of the structure is important. There's a saving of about
 // 2MB per frame compared to the unoptimal ordering.
 type VideoStep struct {
-	CPU          execution.Result
-	Bank         mapper.BankInfo
-	VideoElement video.Element
-	TV           signal.SignalAttributes
-	Hmove        Hmove
-	WSYNC        bool
-	IsRAM        bool
-
-	// whether Coprocessor is active
+	CPU               execution.Result
+	Collision         video.Collisions
+	Bank              mapper.BankInfo
+	TV                signal.SignalAttributes
+	Hmove             Hmove
+	VideoElement      video.Element
+	WSYNC             bool
+	IsRAM             bool
 	CoprocessorActive bool
-
-	// whether Hblank is on
-	IsHblank bool
-
-	// string representation of collision state for this videostep
-	Collision video.Collisions
+	IsHblank          bool
 }
 
 // Hmove groups the HMOVE reflection information. It's too complex a property
@@ -71,14 +86,3 @@ type Hmove struct {
 	Latch    bool
 	RippleCt uint8
 }
-
-// List of valid overlay reflection overlay types.
-const (
-	WSYNC       = "WSYNC"
-	COLLISIONS  = "Collisions"
-	HMOVE       = "HMOVE"
-	COPROCESSOR = "Coprocessor"
-)
-
-// OverlayList is the list of overlays that should be supported by a reflection.Renderer.
-var OverlayList = []string{WSYNC, COLLISIONS, HMOVE, COPROCESSOR}

@@ -16,7 +16,10 @@
 package sdlimgui
 
 import (
+	"image/color"
+
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
+	"github.com/jetsetilly/gopher2600/hardware/tia/video"
 	"github.com/jetsetilly/gopher2600/reflection"
 
 	"github.com/inkyblackness/imgui-go/v4"
@@ -131,7 +134,6 @@ type imguiColors struct {
 	// TV palettes
 	packedPaletteNTSC packedPalette
 	packedPalettePAL  packedPalette
-	packedPaletteAlt  packedPalette
 }
 
 func newColors() *imguiColors {
@@ -274,17 +276,6 @@ func newColors() *imguiColors {
 		vec4PalettePAL = append(vec4PalettePAL, v)
 	}
 
-	vec4PaletteAlt := make([]imgui.Vec4, 0, len(reflection.PaletteElements))
-	for _, c := range reflection.PaletteElements {
-		v := imgui.Vec4{
-			float32(c.R) / 255,
-			float32(c.G) / 255,
-			float32(c.B) / 255,
-			1.0,
-		}
-		vec4PaletteAlt = append(vec4PaletteAlt, v)
-	}
-
 	// ...then to the packedPalette
 	cols.packedPaletteNTSC = make(packedPalette, 0, len(vec4PaletteNTSC))
 	for _, c := range vec4PaletteNTSC {
@@ -296,10 +287,29 @@ func newColors() *imguiColors {
 		cols.packedPalettePAL = append(cols.packedPalettePAL, imgui.PackedColorFromVec4(c))
 	}
 
-	cols.packedPaletteAlt = make(packedPalette, 0, len(vec4PaletteAlt))
-	for _, c := range vec4PaletteAlt {
-		cols.packedPaletteAlt = append(cols.packedPaletteAlt, imgui.PackedColorFromVec4(c))
-	}
-
 	return &cols
+}
+
+// reflectionColors lists the colors to be used for the reflection overlay.
+var reflectionColors = map[reflection.Info]color.RGBA{
+	reflection.WSYNC:             {R: 50, G: 50, B: 255, A: 100},
+	reflection.Collision:         {R: 255, G: 25, B: 25, A: 200},
+	reflection.CXCLR:             {R: 255, G: 25, B: 255, A: 200},
+	reflection.HMOVEdelay:        {R: 150, G: 50, B: 50, A: 150},
+	reflection.HMOVE:             {R: 50, G: 150, B: 50, A: 150},
+	reflection.HMOVElatched:      {R: 50, G: 50, B: 150, A: 150},
+	reflection.CoprocessorActive: {R: 200, G: 50, B: 200, A: 150},
+}
+
+// altColors lists the colors to be used when displaying TIA video in a
+// debugger's "debug colors" mode. these colors are the same as the the debug
+// colors found in the Stella emulator.
+var altColors = map[video.Element]color.RGBA{
+	video.ElementBackground: {R: 17, G: 17, B: 17, A: 255},
+	video.ElementBall:       {R: 132, G: 200, B: 252, A: 255},
+	video.ElementPlayfield:  {R: 146, G: 70, B: 192, A: 255},
+	video.ElementPlayer0:    {R: 144, G: 28, B: 0, A: 255},
+	video.ElementPlayer1:    {R: 232, G: 232, B: 74, A: 255},
+	video.ElementMissile0:   {R: 213, G: 130, B: 74, A: 255},
+	video.ElementMissile1:   {R: 50, G: 132, B: 50, A: 255},
 }

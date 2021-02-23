@@ -317,10 +317,7 @@ func (dbg *Debugger) readTerminal(inputter terminal.Input) error {
 
 func (dbg *Debugger) contEmulation(inputter terminal.Input) error {
 	quantumCPU := func() error {
-		if dbg.reflect == nil {
-			return nil
-		}
-		return dbg.reflect.Check(dbg.lastBank)
+		return dbg.ref.Step(dbg.lastBank)
 	}
 
 	quantumVideo := func() error {
