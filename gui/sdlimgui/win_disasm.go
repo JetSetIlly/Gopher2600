@@ -43,6 +43,11 @@ type winDisasm struct {
 	// selected bank to display
 	selectedBank int
 
+	// selectedBank can be changed by the lazy system in a different goroutine
+	// so we send such changes over a channel and collect at the beginning of
+	// the draw() function.
+	selectedBankRefresh chan int
+
 	// the address of the top and bottom-most visible entry. used to limit the
 	// range of addresses we enquire about breakpoints for.
 	addressTopList uint16
@@ -75,8 +80,9 @@ type winDisasm struct {
 
 func newWinDisasm(img *SdlImgui) (window, error) {
 	win := &winDisasm{
-		img:       img,
-		followCPU: true,
+		img:                 img,
+		followCPU:           true,
+		selectedBankRefresh: make(chan int),
 	}
 	return win, nil
 }
@@ -97,6 +103,12 @@ func (win *winDisasm) setOpen(open bool) {
 }
 
 func (win *winDisasm) draw() {
+	// check for refreshed selected bank
+	select {
+	case win.selectedBank = <-win.selectedBankRefresh:
+	default:
+	}
+
 	if !win.open {
 		return
 	}
@@ -221,7 +233,7 @@ func (win *winDisasm) draw() {
 				for wait.After(t) {
 					t = <-win.img.lz.RefreshPulse
 				}
-				win.selectedBank = win.img.lz.Cart.CurrBank.Number
+				win.selectedBankRefresh <- win.img.lz.Cart.CurrBank.Number
 			}()
 			win.updateOnPause--
 		}

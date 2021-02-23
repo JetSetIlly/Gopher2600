@@ -95,8 +95,8 @@ func (dbg *Debugger) PushRewind(fn int, last bool) bool {
 
 	// how we push the doRewind() function depends on what kind of inputloop we
 	// are currently in
-	if dbg.isVideoCycleInputLoop {
-		dbg.PushRawEventImm(func() {
+	dbg.PushRawEventImm(func() {
+		if dbg.isVideoCycleInputLoop {
 			dbg.restartInputLoop(doRewind)
 
 			// read rewinding channel, this unblocks the channel and allows
@@ -105,9 +105,7 @@ func (dbg *Debugger) PushRewind(fn int, last bool) bool {
 			case <-dbg.rewinding:
 			default:
 			}
-		})
-	} else {
-		dbg.PushRawEventImm(func() {
+		} else {
 			err := doRewind()
 			if err != nil {
 				logger.Log("rewind", err.Error())
@@ -119,8 +117,8 @@ func (dbg *Debugger) PushRewind(fn int, last bool) bool {
 			case <-dbg.rewinding:
 			default:
 			}
-		})
-	}
+		}
+	})
 
 	return true
 }
