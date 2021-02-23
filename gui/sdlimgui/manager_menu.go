@@ -35,11 +35,11 @@ const (
 )
 
 // restrict menu entry for those cartridges with specific buses.
-type menuBusRestrict int
+type menuRestrict int
 
 // list of valid menu bus restrictions.
 const (
-	menuRestrictCoProc menuBusRestrict = iota
+	menuRestrictCoProc menuRestrict = iota
 	menuRestrictRAM
 	menuRestrictRegister
 	menuRestrictStatic
@@ -51,7 +51,7 @@ type menuEntry struct {
 	group menuGroup
 
 	// restrictions on when menu entry can appear
-	restrictBus    menuBusRestrict
+	restrictBus    menuRestrict
 	restrictMapper []string
 
 	// the window thats referenced by the menu entry
@@ -65,9 +65,7 @@ func (wm *manager) drawMenu() {
 	if !imgui.BeginMainMenuBar() {
 		return
 	}
-
-	// see commentary for screenPos in windowManager declaration
-	wm.screenPos = imgui.WindowPos()
+	defer imgui.EndMainMenuBar()
 
 	// debugger menu
 	if imgui.BeginMenu("Debugger") {
@@ -149,8 +147,6 @@ func (wm *manager) drawMenu() {
 			imgui.Text(" ")
 		}
 	})
-
-	imgui.EndMainMenuBar()
 }
 
 func (wm *manager) drawMenuEntry(m menuEntry) {

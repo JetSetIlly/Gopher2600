@@ -103,49 +103,46 @@ func (pol *polling) wait() sdl.Event {
 	default:
 	}
 
+	if pol.img.isPlaymode() {
+		// wait for new SDL event or until the selected timeout period has elapsed
+		return sdl.WaitEventTimeout(playSleepPeriod)
+	}
+
 	// decide on timeout period
 	var timeout int
 
-	if pol.img.isPlaymode() {
-		timeout = playSleepPeriod
+	if pol.alerted {
+		pol.alerted = false
 	} else {
-		if pol.alerted {
-			pol.alerted = false
-		} else {
-			working := pol.awake ||
-				pol.img.lz.Debugger.HasChanged || pol.img.state != gui.StatePaused ||
-				pol.img.wm.dbgScr.crt || pol.img.wm.crtPrefs.open
+		working := pol.awake ||
+			pol.img.lz.Debugger.HasChanged || pol.img.state != gui.StatePaused ||
+			pol.img.wm.dbgScr.crt || pol.img.wm.crtPrefs.open
 
-			if working {
-				timeout = debugSleepPeriod
-			} else {
-				timeout = idleSleepPeriod
-			}
+		if working {
+			timeout = debugSleepPeriod
+		} else {
+			timeout = idleSleepPeriod
 		}
 	}
 
-	// wait for new SDL event or until the selected timeout period has elapsed
 	ev := sdl.WaitEventTimeout(timeout)
 
-	// nothing to do in playmode
-	if !pol.img.isPlaymode() {
-		if ev != nil {
-			// an event has been received so set awake flag and note time of event
-			pol.awake = true
-			pol.lastEvent = time.Now()
-		} else if pol.awake {
-			// keep awake flag set for wakefullnessPeriod milliseconds
-			pol.awake = time.Since(pol.lastEvent).Milliseconds() < wakefullnessPeriod
-		}
+	if ev != nil {
+		// an event has been received so set awake flag and note time of event
+		pol.awake = true
+		pol.lastEvent = time.Now()
+	} else if pol.awake {
+		// keep awake flag set for wakefullnessPeriod milliseconds
+		pol.awake = time.Since(pol.lastEvent).Milliseconds() < wakefullnessPeriod
+	}
 
-		// slow down mouse events unless input has been "captured". if we don't do
-		// this then waggling the mouse over the screen will increase CPU usage
-		// significantly. CPU usage will still increase but by a smaller margin.
-		if !pol.img.isCaptured() {
-			switch ev.(type) {
-			case *sdl.MouseMotionEvent:
-				time.Sleep(frictionPeriod * time.Millisecond)
-			}
+	// slow down mouse events unless input has been "captured". if we don't do
+	// this then waggling the mouse over the screen will increase CPU usage
+	// significantly. CPU usage will still increase but by a smaller margin.
+	if !pol.img.isCaptured() {
+		switch ev.(type) {
+		case *sdl.MouseMotionEvent:
+			time.Sleep(frictionPeriod * time.Millisecond)
 		}
 	}
 

@@ -125,6 +125,7 @@ func newScreen(img *SdlImgui) *screen {
 	}
 
 	scr.crit.overlay = reflection.WSYNC
+	scr.crit.vsync = true
 	scr.Reset()
 
 	return scr
@@ -457,17 +458,18 @@ func (scr *screen) copyPixelsDebugmode() {
 
 // copy pixels from buffer to the pixels and update phosphor pixels.
 func (scr *screen) copyPixelsPlaymode() {
-	// let the emulator thread know it's okay to continue as soon as possible
-	select {
-	case <-scr.emuWait:
-		scr.emuWaitAck <- true
-	default:
-	}
-
 	scr.crit.section.Lock()
 	defer scr.crit.section.Unlock()
 
+	// attempt to sync frame generation with vertical sync
 	if scr.crit.vsync {
+		// let the emulator thread know it's okay to continue as soon as possible
+		select {
+		case <-scr.emuWait:
+			scr.emuWaitAck <- true
+		default:
+		}
+
 		// advance render index. keep note of existing index in case we
 		// bump into the plotting index.
 		v := scr.crit.renderIdx
@@ -489,14 +491,20 @@ func (scr *screen) copyPixelsPlaymode() {
 	// update phosphor carefully
 	for i := 0; i < len(scr.crit.bufferPixels[scr.crit.renderIdx].Pix); i += 4 {
 		if scr.crit.pixels.Pix[i] == 0 && scr.crit.pixels.Pix[i+1] == 0 && scr.crit.pixels.Pix[i+2] == 0 {
-			// alpha channel records the number of frames the phosphor has
-			// been active. starting at 255 and counting down to 0
+			// current color of the pixel is video-black so previous phosphor
+			// persists and fades over time.
+			//
+			// alpha channel records the number of frames the phosphor has been
+			// active. starting at 255 and counting down to 0
+			//
+			// fragment shader handles the rate at which the fade actually
+			// occurs. we're just recording the number of frames of video-black
 			if scr.crit.phosphor.Pix[i+3] > 0 {
 				scr.crit.phosphor.Pix[i+3]--
 			}
 		} else {
 			// copy current render pixels into phosphor
-			copy(scr.crit.phosphor.Pix[i:i+2], scr.crit.bufferPixels[scr.crit.renderIdx].Pix[i:i+2])
+			copy(scr.crit.phosphor.Pix[i:i+2], scr.crit.pixels.Pix[i:i+2])
 			scr.crit.phosphor.Pix[i+3] = 0xff
 		}
 	}

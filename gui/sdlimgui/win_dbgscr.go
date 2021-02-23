@@ -37,12 +37,6 @@ type winDbgScr struct {
 	// reference to screen data
 	scr *screen
 
-	// how to present the screen in the window
-	debugColors bool
-	cropped     bool
-	crt         bool
-	overlay     bool
-
 	// textures
 	screenTexture   uint32
 	overlayTexture  uint32
@@ -50,6 +44,12 @@ type winDbgScr struct {
 
 	// (re)create textures on next render()
 	createTextures bool
+
+	// how to present the screen in the window
+	debugColors bool
+	cropped     bool
+	crt         bool
+	overlay     bool
 
 	// is screen currently pointed at
 	isHovered bool
@@ -75,13 +75,16 @@ type winDbgScr struct {
 	// the window, we use contentDim (the area inside the window) to figure out
 	// the scaling value. when resizing numerically (with the getScale()
 	// function) on the other hand, we scale the entire window accordingly
-	screenDim       imgui.Vec2
+	screenDim imgui.Vec2
+
+	// the basic amount by which the image should be scaled. this value is
+	// applie to the vertical axis directly. horizontal scaling is scaled by
+	// pixelWidth and aspectBias also. use horizScaling() for that.
+	scaling float32
+
+	// the dimensions required for the combo widgets
 	specComboDim    imgui.Vec2
 	overlayComboDim imgui.Vec2
-
-	// the basic amount by which the image should be scaled. horizontal scaling
-	// is slightly different (see horizScaling() function)
-	scaling float32
 }
 
 func newWinDbgScr(img *SdlImgui) (window, error) {
@@ -143,11 +146,11 @@ func (win *winDbgScr) draw() {
 	// actual display
 	var w, h float32
 	if win.cropped {
-		w = win.getScaledWidth(true)
-		h = win.getScaledHeight(true)
+		w = win.scaledWidth(true)
+		h = win.scaledHeight(true)
 	} else {
-		w = win.getScaledWidth(false)
-		h = win.getScaledHeight(false)
+		w = win.scaledWidth(false)
+		h = win.scaledHeight(false)
 	}
 
 	// if isCaptured flag is set then change the title and border colors of the
@@ -383,14 +386,14 @@ func (win *winDbgScr) drawReflectionTooltip(screenOrigin imgui.Vec2) {
 	mp := imgui.MousePos().Minus(screenOrigin)
 	if win.cropped {
 		sz := win.scr.crit.cropPixels.Bounds().Size()
-		mp.X = mp.X / win.getScaledWidth(true) * float32(sz.X)
-		mp.Y = mp.Y / win.getScaledHeight(true) * float32(sz.Y)
+		mp.X = mp.X / win.scaledWidth(true) * float32(sz.X)
+		mp.Y = mp.Y / win.scaledHeight(true) * float32(sz.Y)
 		mp.X += float32(specification.ClksHBlank)
 		mp.Y += float32(win.scr.crit.topScanline)
 	} else {
 		sz := win.scr.crit.pixels.Bounds().Size()
-		mp.X = mp.X / win.getScaledWidth(false) * float32(sz.X)
-		mp.Y = mp.Y / win.getScaledHeight(false) * float32(sz.Y)
+		mp.X = mp.X / win.scaledWidth(false) * float32(sz.X)
+		mp.Y = mp.Y / win.scaledHeight(false) * float32(sz.Y)
 	}
 
 	win.mouseClock = int(mp.X)
@@ -535,6 +538,10 @@ func (win *winDbgScr) setCropping(set bool) {
 // resize() implements the textureRenderer interface.
 func (win *winDbgScr) resize() {
 	win.createTextures = true
+
+	// scaling is set every render() rather than on resize(), like it is done
+	// in the playscr. this is because scaling needs to consider the size of
+	// the dbgscr window which can change more often than resize() is called.
 }
 
 // render() implements the textureRenderer interface.
@@ -611,13 +618,14 @@ func (win *winDbgScr) render() {
 			gl.Ptr(phosphor.Pix))
 	}
 
-	// set screen image scaling (and image padding) based on the current window size
-	win.setScaleAndPadding(win.screenDim)
+	// set screen image scaling (and image padding) based on the current window
+	// size. unlike the playscr we check and set scaling every render frame.
+	win.setScaling()
 }
 
 // must be called from with a critical section.
-func (win *winDbgScr) setScaleAndPadding(sz imgui.Vec2) {
-	winAspectRatio := sz.X / sz.Y
+func (win *winDbgScr) setScaling() {
+	winAspectRatio := win.screenDim.X / win.screenDim.Y
 
 	var imageW float32
 	var imageH float32
@@ -633,33 +641,31 @@ func (win *winDbgScr) setScaleAndPadding(sz imgui.Vec2) {
 	aspectRatio := imageW / imageH
 
 	if aspectRatio < winAspectRatio {
-		win.scaling = sz.Y / imageH
-		win.imagePadding = imgui.Vec2{X: float32(int((sz.X - (imageW * win.scaling)) / 2))}
+		win.scaling = win.screenDim.Y / imageH
+		win.imagePadding = imgui.Vec2{X: float32(int((win.screenDim.X - (imageW * win.scaling)) / 2))}
 	} else {
-		win.scaling = sz.X / imageW
-		win.imagePadding = imgui.Vec2{Y: float32(int((sz.Y - (imageH * win.scaling)) / 2))}
+		win.scaling = win.screenDim.X / imageW
+		win.imagePadding = imgui.Vec2{Y: float32(int((win.screenDim.Y - (imageH * win.scaling)) / 2))}
 	}
 }
 
 // must be called from with a critical section.
-func (win *winDbgScr) getScaledWidth(cropped bool) float32 {
+func (win *winDbgScr) scaledWidth(cropped bool) float32 {
 	if cropped {
-		return float32(win.scr.crit.cropPixels.Bounds().Size().X) * win.getScaling(true)
+		return float32(win.scr.crit.cropPixels.Bounds().Size().X) * win.horizScaling()
 	}
-	return float32(win.scr.crit.pixels.Bounds().Size().X) * win.getScaling(true)
+	return float32(win.scr.crit.pixels.Bounds().Size().X) * win.horizScaling()
 }
 
 // must be called from with a critical section.
-func (win *winDbgScr) getScaledHeight(cropped bool) float32 {
+func (win *winDbgScr) scaledHeight(cropped bool) float32 {
 	if cropped {
-		return float32(win.scr.crit.cropPixels.Bounds().Size().Y) * win.getScaling(false)
+		return float32(win.scr.crit.cropPixels.Bounds().Size().Y) * win.scaling
 	}
-	return float32(win.scr.crit.pixels.Bounds().Size().Y) * win.getScaling(false)
+	return float32(win.scr.crit.pixels.Bounds().Size().Y) * win.scaling
 }
 
-func (win *winDbgScr) getScaling(horiz bool) float32 {
-	if horiz {
-		return pixelWidth * win.scr.aspectBias * win.scaling
-	}
-	return win.scaling
+// for vertical scaling simply refer to the scaling field
+func (win *winDbgScr) horizScaling() float32 {
+	return pixelWidth * win.scr.aspectBias * win.scaling
 }

@@ -16,22 +16,19 @@
 package sdlimgui
 
 import (
+	"fmt"
+	"time"
+
 	"github.com/go-gl/gl/v3.2-core/gl"
 	"github.com/inkyblackness/imgui-go/v4"
 )
-
-const winPlayScrID = "Atari VCS"
 
 // note that values from the lazy package will not be updated in the service
 // loop when the emulator is in playmode. nothing in winPlayScr() therefore
 // should rely on any lazy value
 
-type winPlayScr struct {
-	img  *SdlImgui
-	open bool
-
-	// fps sub-window
-	fps *winPlayScrFPS
+type playScr struct {
+	img *SdlImgui
 
 	// reference to screen data
 	scr *screen
@@ -46,28 +43,27 @@ type winPlayScr struct {
 	// the tv screen has captured mouse input
 	isCaptured bool
 
-	// additional padding for the image so that it is centred in its content space
-	imagePadding imgui.Vec2
+	imagePosMin imgui.Vec2
+	imagePosMax imgui.Vec2
 
-	// size of window and content area in which to centre the image
-	winDim     imgui.Vec2
-	contentDim imgui.Vec2
-
-	// the basic amount by which the image should be scaled. image width
-	// is also scaled by pixelWidth and aspectBias value.
-	//
-	// use getScaling() and setScaling to access this value
+	// the basic amount by which the image should be scaled. this value is
+	// applie to the vertical axis directly. horizontal scaling is scaled by
+	// pixelWidth and aspectBias also. use horizScaling() for that.
 	scaling float32
+
+	// fps
+	fpsOpen  bool
+	fpsPulse *time.Ticker
+	fps      string
 }
 
-func newWinPlayScr(img *SdlImgui) window {
-	win := &winPlayScr{
-		img:     img,
-		scr:     img.screen,
-		scaling: 2.0,
+func newPlayScr(img *SdlImgui) *playScr {
+	win := &playScr{
+		img:      img,
+		scr:      img.screen,
+		scaling:  2.0,
+		fpsPulse: time.NewTicker(time.Second),
 	}
-
-	win.fps = newWinPlayScrFPS(win.img).(*winPlayScrFPS)
 
 	// set texture, creation of textures will be done after every call to resize()
 	gl.ActiveTexture(gl.TEXTURE0)
@@ -82,80 +78,53 @@ func newWinPlayScr(img *SdlImgui) window {
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
 
+	// set scale and padding on startup. scale and padding will be recalculated
+	// on window resize and textureRenderer.resize()
+	win.scr.crit.section.Lock()
+	win.setScaling()
+	win.scr.crit.section.Unlock()
+
 	return win
 }
 
-func (win *winPlayScr) init() {
-}
+func (win *playScr) draw() {
+	dl := imgui.BackgroundDrawList()
+	dl.AddImage(imgui.TextureID(win.screenTexture), win.imagePosMin, win.imagePosMax)
 
-func (win *winPlayScr) id() string {
-	return winPlayScrID
-}
+	if win.fpsOpen {
+		// update fps
+		select {
+		case <-win.fpsPulse.C:
+			win.fps = fmt.Sprintf("%03.1f fps", win.img.tv.GetActualFPS())
+		default:
+		}
 
-func (win *winPlayScr) isOpen() bool {
-	return win.open
-}
+		imgui.SetNextWindowPos(imgui.Vec2{0, 0})
 
-func (win *winPlayScr) setOpen(open bool) {
-	win.open = open
-}
+		imgui.PushStyleColor(imgui.StyleColorWindowBg, win.img.cols.Transparent)
+		imgui.PushStyleColor(imgui.StyleColorBorder, win.img.cols.Transparent)
 
-func (win *winPlayScr) draw() {
-	if !win.open {
-		return
+		imgui.BeginV("##playscrfps", &win.fpsOpen, imgui.WindowFlagsAlwaysAutoResize|
+			imgui.WindowFlagsNoScrollbar|imgui.WindowFlagsNoTitleBar|imgui.WindowFlagsNoDecoration)
+
+		imgui.Text(win.fps)
+
+		imgui.PopStyleColorV(2)
+		imgui.End()
 	}
-
-	dimen := win.img.plt.displaySize()
-	win.winDim = imgui.Vec2{dimen[0], dimen[1]}
-	imgui.SetNextWindowSizeV(win.winDim, 0)
-
-	imgui.SetNextWindowPosV(imgui.Vec2{0, 0}, 0, imgui.Vec2{0, 0})
-
-	imgui.PushStyleColor(imgui.StyleColorWindowBg, win.img.cols.PlayWindowBg)
-	imgui.PushStyleColor(imgui.StyleColorBorder, win.img.cols.PlayWindowBorder)
-
-	imgui.BeginV(win.id(), &win.open,
-		imgui.WindowFlagsNoDecoration|imgui.WindowFlagsNoMove|imgui.WindowFlagsNoBringToFrontOnFocus)
-
-	// note size of window
-	win.contentDim = imgui.ContentRegionAvail()
-
-	// add horiz/vert padding around screen image
-	imgui.SetCursorPos(imgui.CursorPos().Plus(win.imagePadding))
-
-	// actual display
-	imgui.Image(imgui.TextureID(win.screenTexture), imgui.Vec2{win.getScaledWidth(), win.getScaledHeight()})
-
-	// capture mouse on double click but only if image is being hovered over
-	// and there is no modal window.
-	if !win.img.hasModal && imgui.IsItemHovered() && imgui.IsMouseDoubleClicked(0) {
-		win.img.setCapture(true)
-	}
-
-	imgui.PopStyleColorV(2)
-	imgui.End()
-
-	win.fps.draw()
 }
 
 // resize() implements the textureRenderer interface.
-func (win *winPlayScr) resize() {
+func (win *playScr) resize() {
 	win.createTextures = true
+	win.setScaling()
 }
 
 // render() implements the textureRenderer interface.
 //
 // render is called by service loop (via screen.render()). must be inside
 // screen critical section.
-func (win *winPlayScr) render() {
-	if !win.open {
-		return
-	}
-
-	// set screen image scaling (and image padding) based on the current window size
-	win.setScaleAndPadding(win.contentDim)
-
-	// get pixels
+func (win *playScr) render() {
 	pixels := win.scr.crit.cropPixels
 	phosphor := win.scr.crit.cropPhosphor
 
@@ -194,40 +163,45 @@ func (win *winPlayScr) render() {
 			gl.RGBA, gl.UNSIGNED_BYTE,
 			gl.Ptr(phosphor.Pix))
 	}
+
+	// unlike dbgscr, there is no need to call setScaling() every render()
 }
 
 // must be called from with a critical section.
-func (win *winPlayScr) setScaleAndPadding(sz imgui.Vec2) {
-	winAspectRatio := sz.X / sz.Y
+func (win *playScr) setScaling() {
+	sz := win.img.plt.displaySize()
+	dim := imgui.Vec2{sz[0], sz[1]}
 
-	imageW := float32(win.scr.crit.cropPixels.Bounds().Size().X)
-	imageH := float32(win.scr.crit.cropPixels.Bounds().Size().Y)
-	imageW *= pixelWidth * win.scr.aspectBias
-	aspectRatio := imageW / imageH
+	winAspectRatio := dim.X / dim.Y
+
+	w := float32(win.scr.crit.cropPixels.Bounds().Size().X)
+	h := float32(win.scr.crit.cropPixels.Bounds().Size().Y)
+	w *= pixelWidth * win.scr.aspectBias
+	aspectRatio := w / h
 
 	if aspectRatio < winAspectRatio {
-		win.scaling = sz.Y / imageH
-		win.imagePadding = imgui.Vec2{X: float32(int((sz.X - (imageW * win.scaling)) / 2))}
+		win.scaling = dim.Y / h
+		win.imagePosMin = imgui.Vec2{X: float32(int((dim.X - (w * win.scaling)) / 2))}
 	} else {
-		win.scaling = sz.X / imageW
-		win.imagePadding = imgui.Vec2{Y: float32(int((sz.Y - (imageH * win.scaling)) / 2))}
+		win.scaling = dim.X / w
+		win.imagePosMin = imgui.Vec2{Y: float32(int((dim.Y - (h * win.scaling)) / 2))}
 	}
+
+	win.imagePosMax = dim.Minus(win.imagePosMin)
 }
 
 // must be called from with a critical section.
-func (win *winPlayScr) getScaledWidth() float32 {
+func (win *playScr) scaledWidth() float32 {
 	// we always use cropped pixels on the playscreen
-	return float32(win.scr.crit.cropPixels.Bounds().Size().X) * win.getScaling(true)
+	return float32(win.scr.crit.cropPixels.Bounds().Size().X) * win.horizScaling()
 }
 
 // must be called from with a critical section.
-func (win *winPlayScr) getScaledHeight() float32 {
-	return float32(win.scr.crit.cropPixels.Bounds().Size().Y) * win.getScaling(false)
+func (win *playScr) scaledHeight() float32 {
+	return float32(win.scr.crit.cropPixels.Bounds().Size().Y) * win.scaling
 }
 
-func (win *winPlayScr) getScaling(horiz bool) float32 {
-	if horiz {
-		return pixelWidth * win.scr.aspectBias * win.scaling
-	}
-	return win.scaling
+// for vertical scaling simply refer to the scaling field
+func (win *playScr) horizScaling() float32 {
+	return pixelWidth * win.scr.aspectBias * win.scaling
 }

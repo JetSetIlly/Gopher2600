@@ -48,6 +48,16 @@ type manager struct {
 	menu          map[menuGroup][]menuEntry
 	menuInfoWidth float32
 
+	// some windows need to be referenced beyond the capabilities of the window
+	// interface.
+	//
+	// if required, other windows can accessed by:
+	//		window[title].(*windowType)
+	//
+	// the following fields are provided for convenience.
+	dbgScr   *winDbgScr
+	crtPrefs *winCRTPrefs
+
 	// the position of the screen on the current display. the SDL function
 	// Window.GetPosition() is unsuitable for use in conjunction with imgui
 	// because it considers screen space across all display devices, imgui does
@@ -58,19 +68,6 @@ type manager struct {
 	// menu is always in the very top-left corner of the window it is a good
 	// proxy value
 	screenPos imgui.Vec2
-
-	// some windows need to be referenced beyond the capabilities of the window
-	// interface.
-	//
-	// if required, other windows can accessed by:
-	//		window[title].(*windowType)
-	//
-	dbgScr   *winDbgScr
-	crtPrefs *winCRTPrefs
-
-	// the playscreen does not appear in the window list and can only be
-	// referred to via the playScr field.
-	playScr *winPlayScr
 }
 
 // windowDef specifies a window creator, the menu it appears in whether it
@@ -175,9 +172,6 @@ func newManager(img *SdlImgui) (*manager, error) {
 	wm.dbgScr = wm.windows[winDbgScrID].(*winDbgScr)
 	wm.crtPrefs = wm.windows[winCRTPrefsID].(*winCRTPrefs)
 
-	// create play window. this is a special window that does not appear in the window list
-	wm.playScr = newWinPlayScr(img).(*winPlayScr)
-
 	return wm, nil
 }
 
@@ -194,14 +188,14 @@ func (wm *manager) draw() {
 	// playmode draws the screen and other windows that have been listed
 	// as being safe to draw in playmode
 	if wm.img.isPlaymode() {
-		wm.playScr.draw()
-
 		for _, s := range playmodeWindows {
 			wm.windows[s].draw()
 		}
-
 		return
 	}
+
+	// see commentary for screenPos in windowManager declaration
+	wm.screenPos = imgui.WindowPos()
 
 	// no debugger is ready yet so return immediately
 	if wm.img.lz.Dbg == nil {

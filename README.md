@@ -140,11 +140,11 @@ Joystick, paddle and keypad inputs are supported. Currently, only joysticks and 
 
 The joystick is operated via the cursor keys on the keyboard and the spacebar in place of the fire button. Gamepad support will be added in the future.
 
-The paddle is available by operating the mouse. To activate the paddle, double-click
-the play window and waggle the mouse a few times. Note that once the window
-has been double-clicked, the mouse will be captured and the pointer will
-disappear. To "release" the mouse, click the right-mouse button or the escape
-key.
+The paddle is available by operating the mouse. To activate the paddle,
+right-mouse-click  the play window and waggle the mouse a few times.
+Note that once the window has been right-clicked, the mouse will be captured
+and the pointer will disappear. To "release" the mouse, click the right-mouse
+button or the escape key.
 
 ### Keypad
 

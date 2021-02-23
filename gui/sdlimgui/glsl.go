@@ -163,7 +163,11 @@ func boolToInt32(v bool) int32 {
 }
 
 // render translates the ImGui draw data to OpenGL3 commands.
-func (rnd *glsl) render(displaySize [2]float32, framebufferSize [2]float32, drawData imgui.DrawData) {
+func (rnd *glsl) render() {
+	displaySize := rnd.img.plt.displaySize()
+	framebufferSize := rnd.img.plt.framebufferSize()
+	drawData := imgui.RenderedDrawData()
+
 	st := storeGLState()
 	defer st.restore()
 
@@ -249,7 +253,7 @@ func (rnd *glsl) render(displaySize [2]float32, framebufferSize [2]float32, draw
 					rnd.debugScr()
 				case rnd.img.wm.dbgScr.overlayTexture:
 					rnd.overlay()
-				case rnd.img.wm.playScr.screenTexture:
+				case rnd.img.playScr.screenTexture:
 					rnd.playScr()
 				case rnd.img.wm.crtPrefs.crtTexture:
 					rnd.prefsCRT()
@@ -300,11 +304,11 @@ func (rnd *glsl) setOptions(textureID uint32) {
 	var vertScaling float32
 	var horizScaling float32
 	if rnd.img.isPlaymode() {
-		vertScaling = rnd.img.wm.playScr.getScaling(false)
-		horizScaling = rnd.img.wm.playScr.getScaling(true)
+		vertScaling = rnd.img.playScr.scaling
+		horizScaling = rnd.img.playScr.horizScaling()
 	} else {
-		vertScaling = rnd.img.wm.dbgScr.getScaling(false)
-		horizScaling = rnd.img.wm.dbgScr.getScaling(true)
+		vertScaling = rnd.img.wm.dbgScr.scaling
+		horizScaling = rnd.img.wm.dbgScr.horizScaling()
 	}
 
 	// crt preferences. for playmode the stored preferences are used and for
@@ -318,20 +322,21 @@ func (rnd *glsl) setOptions(textureID uint32) {
 
 	// preferences
 	gl.Uniform1i(rnd.attribEnableCRT, boolToInt32(crt))
+	if crt {
+		gl.Uniform1i(rnd.attribEnablePhosphor, boolToInt32(rnd.img.crtPrefs.Phosphor.Get().(bool)))
+		gl.Uniform1i(rnd.attribEnableShadowMask, boolToInt32(rnd.img.crtPrefs.Mask.Get().(bool)))
+		gl.Uniform1i(rnd.attribEnableScanlines, boolToInt32(rnd.img.crtPrefs.Scanlines.Get().(bool)))
+		gl.Uniform1i(rnd.attribEnableNoise, boolToInt32(rnd.img.crtPrefs.Noise.Get().(bool)))
+		gl.Uniform1i(rnd.attribEnableBlur, boolToInt32(rnd.img.crtPrefs.Blur.Get().(bool)))
+		gl.Uniform1i(rnd.attribEnableVignette, boolToInt32(rnd.img.crtPrefs.Vignette.Get().(bool)))
 
-	gl.Uniform1i(rnd.attribEnablePhosphor, boolToInt32(rnd.img.crtPrefs.Phosphor.Get().(bool)))
-	gl.Uniform1i(rnd.attribEnableShadowMask, boolToInt32(rnd.img.crtPrefs.Mask.Get().(bool)))
-	gl.Uniform1i(rnd.attribEnableScanlines, boolToInt32(rnd.img.crtPrefs.Scanlines.Get().(bool)))
-	gl.Uniform1i(rnd.attribEnableNoise, boolToInt32(rnd.img.crtPrefs.Noise.Get().(bool)))
-	gl.Uniform1i(rnd.attribEnableBlur, boolToInt32(rnd.img.crtPrefs.Blur.Get().(bool)))
-	gl.Uniform1i(rnd.attribEnableVignette, boolToInt32(rnd.img.crtPrefs.Vignette.Get().(bool)))
-
-	gl.Uniform1f(rnd.attribPhosphorSpeed, float32(rnd.img.crtPrefs.PhosphorSpeed.Get().(float64)))
-	gl.Uniform1f(rnd.attribMaskBrightness, float32(rnd.img.crtPrefs.MaskBrightness.Get().(float64)))
-	gl.Uniform1f(rnd.attribScanlinesBrightness, float32(rnd.img.crtPrefs.ScanlinesBrightness.Get().(float64)))
-	gl.Uniform1f(rnd.attribNoiseLevel, float32(rnd.img.crtPrefs.NoiseLevel.Get().(float64)))
-	gl.Uniform1f(rnd.attribBlurLevel, float32(rnd.img.crtPrefs.BlurLevel.Get().(float64)))
-	gl.Uniform1f(rnd.attribRandSeed, float32(time.Now().Nanosecond())/100000000.0)
+		gl.Uniform1f(rnd.attribPhosphorSpeed, float32(rnd.img.crtPrefs.PhosphorSpeed.Get().(float64)))
+		gl.Uniform1f(rnd.attribMaskBrightness, float32(rnd.img.crtPrefs.MaskBrightness.Get().(float64)))
+		gl.Uniform1f(rnd.attribScanlinesBrightness, float32(rnd.img.crtPrefs.ScanlinesBrightness.Get().(float64)))
+		gl.Uniform1f(rnd.attribNoiseLevel, float32(rnd.img.crtPrefs.NoiseLevel.Get().(float64)))
+		gl.Uniform1f(rnd.attribBlurLevel, float32(rnd.img.crtPrefs.BlurLevel.Get().(float64)))
+		gl.Uniform1f(rnd.attribRandSeed, float32(time.Now().Nanosecond())/100000000.0)
+	}
 
 	// critical section
 	rnd.img.screen.crit.section.Lock()
@@ -341,10 +346,10 @@ func (rnd *glsl) setOptions(textureID uint32) {
 	case rnd.img.wm.dbgScr.screenTexture:
 		fallthrough
 	case rnd.img.wm.dbgScr.overlayTexture:
-		gl.Uniform1f(rnd.attribScalingX, rnd.img.wm.dbgScr.getScaling(true))
-		gl.Uniform1f(rnd.attribScalingY, rnd.img.wm.dbgScr.getScaling(false))
-		gl.Uniform2f(rnd.attribUncroppedScreenDim, rnd.img.wm.dbgScr.getScaledWidth(false), rnd.img.wm.dbgScr.getScaledHeight(false))
-		gl.Uniform2f(rnd.attribScreenDim, rnd.img.wm.dbgScr.getScaledWidth(true), rnd.img.wm.dbgScr.getScaledHeight(true))
+		gl.Uniform1f(rnd.attribScalingX, rnd.img.wm.dbgScr.horizScaling())
+		gl.Uniform1f(rnd.attribScalingY, rnd.img.wm.dbgScr.scaling)
+		gl.Uniform2f(rnd.attribUncroppedScreenDim, rnd.img.wm.dbgScr.scaledWidth(false), rnd.img.wm.dbgScr.scaledHeight(false))
+		gl.Uniform2f(rnd.attribScreenDim, rnd.img.wm.dbgScr.scaledWidth(true), rnd.img.wm.dbgScr.scaledHeight(true))
 		gl.Uniform1i(rnd.attribIsCropped, boolToInt32(rnd.img.wm.dbgScr.cropped))
 
 		cursorX := rnd.img.screen.crit.lastX
@@ -357,10 +362,10 @@ func (rnd *glsl) setOptions(textureID uint32) {
 		}
 		gl.Uniform1f(rnd.attribLastY, float32(cursorY)*vertScaling)
 
-	case rnd.img.wm.playScr.screenTexture:
-		gl.Uniform2f(rnd.attribScreenDim, rnd.img.wm.playScr.getScaledWidth(), rnd.img.wm.playScr.getScaledHeight())
-		gl.Uniform1f(rnd.attribScalingX, rnd.img.wm.playScr.getScaling(true))
-		gl.Uniform1f(rnd.attribScalingY, rnd.img.wm.playScr.getScaling(false))
+	case rnd.img.playScr.screenTexture:
+		gl.Uniform2f(rnd.attribScreenDim, rnd.img.playScr.scaledWidth(), rnd.img.playScr.scaledHeight())
+		gl.Uniform1f(rnd.attribScalingX, rnd.img.playScr.horizScaling())
+		gl.Uniform1f(rnd.attribScalingY, rnd.img.playScr.scaling)
 		gl.Uniform1i(rnd.attribIsCropped, shaders.True)
 
 	case rnd.img.wm.crtPrefs.crtTexture:

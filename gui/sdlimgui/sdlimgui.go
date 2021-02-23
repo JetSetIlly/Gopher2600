@@ -48,8 +48,13 @@ type SdlImgui struct {
 	plt     *platform
 	glsl    *glsl
 
-	// references to the emulation
+	// lazy value system allows safe access to the debugger/emulation from the
+	// GUI thread
 	lz *lazyvalues.LazyValues
+
+	// the gui renders differently depending on EmulationState. use setState()
+	// to set the value
+	state gui.EmulationState
 
 	// vcs is set by ReqSetPlaymode or ReqSetDebugmode. in debug mode the VCS
 	// is accessible via lz.Dbg.VCS but for maximum compatibility between
@@ -57,19 +62,20 @@ type SdlImgui struct {
 	// where possible
 	vcs *hardware.VCS
 
-	// television
+	// television sends the GUI information throught the PixelRenderer and
+	// AudioMixer.
 	tv *television.Television
 
-	// the gui renders differently depending on EmulationState. use setState()
-	// to set the value
-	state gui.EmulationState
-
-	// terminal interface to the debugger
+	// terminal interface to the debugger. this is distinct from the
+	// winTerminal type.
 	term *term
 
 	// implementations of television protocols, PixelRenderer and AudioMixer
 	screen *screen
 	audio  *sdlaudio.Audio
+
+	// the playscreen is drawn to the background of the platform window
+	playScr *playScr
 
 	// imgui window management
 	wm *manager
@@ -138,6 +144,8 @@ func NewSdlImgui(tv *television.Television) (*SdlImgui, error) {
 	img.screen = newScreen(img)
 	img.term = newTerm()
 
+	img.playScr = newPlayScr(img)
+
 	img.wm, err = newManager(img)
 	if err != nil {
 		return nil, curated.Errorf("sdlimgui: %v", err)
@@ -202,6 +210,7 @@ func (img *SdlImgui) GetReflectionRenderer() reflection.Renderer {
 
 // draw gui. called from service loop.
 func (img *SdlImgui) draw() {
+	img.playScr.draw()
 	img.wm.draw()
 	img.drawPlusROMFirstInstallation()
 }
@@ -257,9 +266,8 @@ func (img *SdlImgui) setDbgAndVCS(dbg *debugger.Debugger, vcs *hardware.VCS) err
 			return curated.Errorf("sdlimgui: %v", err)
 		}
 
-		img.wm.playScr.setOpen(true)
 		img.screen.clearTextureRenderers()
-		img.screen.addTextureRenderer(img.wm.playScr)
+		img.screen.addTextureRenderer(img.playScr)
 
 		return nil
 	}
@@ -281,7 +289,6 @@ func (img *SdlImgui) setDbgAndVCS(dbg *debugger.Debugger, vcs *hardware.VCS) err
 		return curated.Errorf("sdlimgui: %v", err)
 	}
 
-	img.wm.playScr.setOpen(false)
 	img.screen.clearTextureRenderers()
 	img.screen.addTextureRenderer(img.wm.dbgScr)
 	img.screen.addTextureRenderer(img.wm.crtPrefs)
@@ -292,7 +299,7 @@ func (img *SdlImgui) setDbgAndVCS(dbg *debugger.Debugger, vcs *hardware.VCS) err
 // has mouse been grabbed. only called from gui thread.
 func (img *SdlImgui) isCaptured() bool {
 	if img.isPlaymode() {
-		return img.wm.playScr.isCaptured
+		return img.playScr.isCaptured
 	}
 	return img.wm.dbgScr.isCaptured
 }
@@ -300,7 +307,7 @@ func (img *SdlImgui) isCaptured() bool {
 // grab mouse. only called from gui thread.
 func (img *SdlImgui) setCapture(set bool) {
 	if img.isPlaymode() {
-		img.wm.playScr.isCaptured = set
+		img.playScr.isCaptured = set
 	} else {
 		img.wm.dbgScr.isCaptured = set
 	}

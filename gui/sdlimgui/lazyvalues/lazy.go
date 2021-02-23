@@ -103,7 +103,7 @@ func (val *LazyValues) SetActive(active bool) {
 
 // Refresh lazy values.
 func (val *LazyValues) Refresh() {
-	if !val.active || val.Dbg == nil {
+	if !val.active {
 		return
 	}
 
