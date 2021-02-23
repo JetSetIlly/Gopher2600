@@ -181,13 +181,11 @@ func (win *winDisasm) draw() {
 		status = "executing coprocessor instructions"
 	} else if bank.NonCart {
 		status = "executing non-cartridge addresses"
-	} else {
-		if bank.IsSegmented {
-			if bank.Name != "" {
-				status = fmt.Sprintf("executing %s in segment %d", bank.Name, bank.Segment)
-			} else {
-				status = fmt.Sprintf("executing %d in segment %d", bank.Number, bank.Segment)
-			}
+	} else if bank.IsSegmented {
+		if bank.Name != "" {
+			status = fmt.Sprintf("executing %s in segment %d", bank.Name, bank.Segment)
+		} else {
+			status = fmt.Sprintf("executing %d in segment %d", bank.Number, bank.Segment)
 		}
 	}
 	if win.statusFlash > 0 {

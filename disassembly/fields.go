@@ -36,16 +36,16 @@ const (
 // required widths (in characters) of the various disassembly fields.
 const (
 	// the width of the label field is equal to the value returned by
-	// Symbols.LabelWidth()
+	// Symbols.LabelWidth().
 
-	// the widths of bytecode, address, and operator can be decided in advance
+	// the widths of bytecode, address, and operator can be decided in advance.
 	widthBytecode = 9
 	widthAddress  = 6
 	widthOperator = 3
 
 	// the oeprand field width should be the value of Symbols.SymbolWidth()
 	// plus widthOperandDecoration, which accounts for the maximum number of
-	// additional symbols requried to correctly display the addressing mode.
+	// additional symbols required to correctly display the addressing mode.
 	// for example:
 	//
 	//	($6e), Y
@@ -60,10 +60,10 @@ const (
 	//
 	//		2/3 [3]
 	//
-	// see Entry.Cycles() function
+	// see Entry.Cycles() function.
 	widthCycles = 7
 
-	// the width of the notes field is not needed
+	// the width of the notes field is not needed.
 )
 
 // GetField returns the formatted field from the speficied Entry.
@@ -96,7 +96,7 @@ func (e *Entry) GetField(field Field) string {
 		s = e.Operator
 
 	case FldOperand:
-		s, _ = e.Operand.genString()
+		s = e.Operand.genString()
 		w = e.dsm.Symbols.SymbolWidth() + widthOperandDecoration
 
 	case FldCycles:

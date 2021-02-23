@@ -22,7 +22,7 @@ import (
 	"github.com/jetsetilly/gopher2600/disassembly"
 )
 
-// Lint disassembly and return results
+// Lint disassembly and return results.
 func Lint(dsm *disassembly.Disassembly) (*Results, error) {
 	res := newResults()
 

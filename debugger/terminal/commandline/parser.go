@@ -26,7 +26,7 @@ package commandline
 //
 // meaning one or more repetition of the arg pattern.
 //
-// !!TODO: fix flaws in commandline package
+// !!TODO: fix flaws in commandline package.
 
 import (
 	"fmt"

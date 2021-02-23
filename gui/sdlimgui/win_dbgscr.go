@@ -675,7 +675,7 @@ func (win *winDbgScr) scaledHeight(cropped bool) float32 {
 	return float32(win.scr.crit.pixels.Bounds().Size().Y) * win.scaling
 }
 
-// for vertical scaling simply refer to the scaling field
+// for vertical scaling simply refer to the scaling field.
 func (win *winDbgScr) horizScaling() float32 {
 	return pixelWidth * win.scr.aspectBias * win.scaling
 }

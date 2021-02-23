@@ -122,7 +122,7 @@ func (stc *Static) read8bit(addr uint32) uint8 {
 // 	}
 // 	return uint16((*mem)[addr]) |
 // 		uint16((*mem)[addr+1])<<8
-// }
+// }.
 
 // func (stc *Static) read32bit(addr uint32) uint32 {
 // 	mem, addr := stc.MapAddress(addr, false)
@@ -133,7 +133,7 @@ func (stc *Static) read8bit(addr uint32) uint8 {
 // 		uint32((*mem)[addr+1])<<8 |
 // 		uint32((*mem)[addr+2])<<16 |
 // 		uint32((*mem)[addr+3])<<24
-// }
+// }.
 
 // GetStatic implements the bus.CartDebugBus interface.
 func (cart *cdf) GetStatic() []mapper.CartStatic {

@@ -28,7 +28,7 @@ func init() {
 	fmt.Println("running with active assertions")
 }
 
-// AssertMainThread causes a panic if calling function is not the main thread
+// AssertMainThread causes a panic if calling function is not the main thread.
 func AssertMainThread() {
 	threadInfoBuffer := make([]byte, 64)
 	threadInfoBuffer = threadInfoBuffer[:runtime.Stack(threadInfoBuffer, false)]
@@ -41,7 +41,7 @@ func AssertMainThread() {
 	}
 }
 
-// AssertNonMainThread causes a panic if calling function is the main thread
+// AssertNonMainThread causes a panic if calling function is the main thread.
 func AssertNonMainThread() {
 	threadInfoBuffer := make([]byte, 64)
 	threadInfoBuffer = threadInfoBuffer[:runtime.Stack(threadInfoBuffer, false)]

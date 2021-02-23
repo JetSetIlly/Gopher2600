@@ -27,7 +27,7 @@ import (
 // are the ones that have been identified. For convenience only.
 type Info int
 
-// List of valid Info value
+// List of valid Info value.
 const (
 	WSYNC Info = iota
 	Collision

@@ -78,7 +78,7 @@ func (dbg *Debugger) parseCommand(cmd string, scribe bool, echo bool) error {
 	return dbg.processTokens(tokens)
 }
 
-// return tokenised command
+// return tokenised command.
 func (dbg *Debugger) tokeniseCommand(cmd string, scribe bool, echo bool) (*commandline.Tokens, error) {
 	// tokenise input
 	tokens := commandline.TokeniseInput(cmd)

@@ -27,5 +27,5 @@
 //
 // Some modifications were made to Fries' alogorithm in accordance to similar
 // modifications made to the TIASnd.cxx file of the Stella emulator v5.1.3.
-// Stella is published under the GNU GPL v2.0
+// Stella is published under the GNU GPL v2.0.
 package audio

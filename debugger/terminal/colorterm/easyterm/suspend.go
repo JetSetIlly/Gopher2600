@@ -15,7 +15,7 @@
 
 // Package easyterm is a wrapper for "github.com/pkg/term/termios". it provides
 // some features not present in the third-party package, such as terminal
-// geometry, and wraps termios methods in functions with friendlier names
+// geometry, and wraps termios methods in functions with friendlier names.
 package easyterm
 
 import (

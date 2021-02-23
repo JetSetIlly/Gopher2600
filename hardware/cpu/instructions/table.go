@@ -2,7 +2,7 @@
 
 package instructions
 
-// GetDefinitions returns the table of instruction definitions for the 6507
+// GetDefinitions returns the table of instruction definitions for the 6507.
 func GetDefinitions() []*Definition {
 	return []*Definition{
 		&Definition{OpCode: 0x0, Operator: "BRK", Bytes: 1, Cycles: 7, AddressingMode: 0, PageSensitive: false, Effect: 5, Undocumented: false},

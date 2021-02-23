@@ -70,7 +70,7 @@ import (
 //	- Pitkat
 //
 // 8k cartridges:
-// - Bump 'n' Jump (note that some versions are 16k)
+// - Bump 'n' Jump (note that some versions are 16k).
 
 const num256ByteRAMbanks = 4
 

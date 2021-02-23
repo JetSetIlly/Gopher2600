@@ -43,5 +43,5 @@
 //
 //	<DB Key>, television, <SHA-1 Hash>, <tv spec>, notes
 //
-// TV spec should be one of PAL or NTSC (or AUTO)
+// TV spec should be one of PAL or NTSC (or AUTO).
 package setup

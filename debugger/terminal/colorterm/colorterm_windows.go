@@ -15,7 +15,7 @@
 
 // +build windows
 
-// Package colorterm is not available under windows
+// Package colorterm is not available under windows.
 package colorterm
 
 import (
@@ -24,43 +24,43 @@ import (
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
 )
 
-// ColorTerminal implements debugger UI interface with a basic ANSI terminal
+// ColorTerminal implements debugger UI interface with a basic ANSI terminal.
 type ColorTerminal struct {
 }
 
-// Initialise perfoms any setting up required for the terminal
+// Initialise perfoms any setting up required for the terminal.
 func (ct *ColorTerminal) Initialise() error {
 	return fmt.Errorf("color terminal not available on windows")
 }
 
-// CleanUp perfoms any cleaning up required for the terminal
+// CleanUp perfoms any cleaning up required for the terminal.
 func (ct *ColorTerminal) CleanUp() {
 }
 
 // RegisterTabCompletion adds an implementation of TabCompletion to the
-// ColorTerminal
+// ColorTerminal.
 func (ct *ColorTerminal) RegisterTabCompletion(tc terminal.TabCompletion) {
 }
 
-// IsInteractive satisfies the terminal.Input interface
+// IsInteractive satisfies the terminal.Input interface.
 func (ct *ColorTerminal) IsInteractive() bool {
 	return false
 }
 
-// Silence implements terminal.Terminal interface
+// Silence implements terminal.Terminal interface.
 func (ct *ColorTerminal) Silence(silenced bool) {
 }
 
-// TermRead implements the terminal.Input interface
+// TermRead implements the terminal.Input interface.
 func (ct *ColorTerminal) TermRead(input []byte, prompt terminal.Prompt, events *terminal.ReadEvents) (int, error) {
 	return 0, nil
 }
 
-// TermReadCheck implements the terminal.Input interface
+// TermReadCheck implements the terminal.Input interface.
 func (ct *ColorTerminal) TermReadCheck() bool {
 	return false
 }
 
-// TermPrintLine implements the terminal.Output interface
+// TermPrintLine implements the terminal.Output interface.
 func (ct *ColorTerminal) TermPrintLine(style terminal.Style, s string) {
 }

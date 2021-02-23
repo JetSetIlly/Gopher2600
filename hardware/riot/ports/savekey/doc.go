@@ -24,5 +24,5 @@
 //
 // i2c information taken from https://learn.sparkfun.com/tutorials/i2c/all (13/09/2020)
 //
-// allocation list at https://atariage.com/atarivox/atarivox_mem_list.html (13/09/2020)
+// allocation list at https://atariage.com/atarivox/atarivox_mem_list.html (13/09/2020).
 package savekey

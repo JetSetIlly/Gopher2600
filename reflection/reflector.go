@@ -95,7 +95,7 @@ func (ref *Reflector) Step(bank mapper.BankInfo) error {
 	return nil
 }
 
-// Pause implements the television.PauseTrigger interface
+// Pause implements the television.PauseTrigger interface.
 func (ref *Reflector) Pause(pause bool) error {
 	ref.paused = pause
 
@@ -114,7 +114,7 @@ func (ref *Reflector) Pause(pause bool) error {
 	return nil
 }
 
-// NewFrame implements the television.FrameTrigger interface
+// NewFrame implements the television.FrameTrigger interface.
 func (ref *Reflector) NewFrame(_ bool) error {
 	// if reflector is not paused then we must process all outstanding
 	// VideoStep in the history

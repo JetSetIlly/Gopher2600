@@ -179,7 +179,6 @@ func (img *SdlImgui) Service() {
 						img.setCapture(true)
 					}
 				}
-
 			}
 
 			if img.isCaptured() {

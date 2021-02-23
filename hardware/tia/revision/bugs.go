@@ -26,7 +26,7 @@ const (
 	// is being written. In other words, when GRP0 has been written to the
 	// effect of the LateGRP0 option is seen in player 1 delayed gfx data.
 	//
-	// Example ROM: HeMan
+	// Example ROM: HeMan.
 	LateVDELGRP0 Bug = iota
 	LateVDELGRP1
 
@@ -39,20 +39,20 @@ const (
 	//
 	// https://github.com/stella-emu/stella/issues/699#issuecomment-698004074
 	//
-	// Example ROM: 36 char demos (36_Char_Interlaced_RESP0_cycle0)
+	// Example ROM: 36 char demos (36_Char_Interlaced_RESP0_cycle0).
 	LateRippleStart
 
 	// Late HMOVE End
 	//
 	// https://atariage.com/forums/topic/311795-576-and-1008-characters/?tab=comments#comment-4646705
 	//
-	// Example ROM: 36 char demos (36_Char_Interlaced_RESP0_cycle3)
+	// Example ROM: 36 char demos (36_Char_Interlaced_RESP0_cycle3).
 	LateRippleEnd
 
 	// Late PFx: The setting of the playfield bits happens a video cycle later
 	// that it should.
 	//
-	// Example ROM: Pesco
+	// Example ROM: Pesco.
 	LatePFx
 
 	// Late COLUPF: Updating of playfield color register happens a video cycle

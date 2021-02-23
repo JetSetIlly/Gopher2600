@@ -69,7 +69,7 @@ import (
 
 type atari struct {
 	mappingID   string
-	description string
+	description string //nolint: structcheck
 
 	// atari formats apart from 2k and 4k are divided into banks. 2k and 4k
 	// ROMs conceptually have one bank

@@ -132,7 +132,7 @@ func NewTIA(tv signal.TelevisionTIA, mem bus.ChipBus, input bus.UpdateBus, cpu *
 }
 
 // there is not reset function for the TIA because (a) it would be just too
-// large an effort and (b) creating a new TIA instance is just as effective
+// large an effort and (b) creating a new TIA instance is just as effective.
 
 // Snapshot creates a copy of the TIA in its current state.
 func (tia *TIA) Snapshot() *TIA {

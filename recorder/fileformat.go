@@ -44,7 +44,7 @@ const fieldSep = ", "
 // <version string>
 // <cartridge name>
 // <cartridge hash>
-// <tv type on startup>
+// <tv type on startup>.
 
 const (
 	lineMagicString int = iota

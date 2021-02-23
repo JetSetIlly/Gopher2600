@@ -25,7 +25,7 @@ import (
 
 // note that values from the lazy package will not be updated in the service
 // loop when the emulator is in playmode. nothing in winPlayScr() therefore
-// should rely on any lazy value
+// should rely on any lazy value.
 
 type playScr struct {
 	img *SdlImgui
@@ -201,7 +201,7 @@ func (win *playScr) scaledHeight() float32 {
 	return float32(win.scr.crit.cropPixels.Bounds().Size().Y) * win.scaling
 }
 
-// for vertical scaling simply refer to the scaling field
+// for vertical scaling simply refer to the scaling field.
 func (win *playScr) horizScaling() float32 {
 	return pixelWidth * win.scr.aspectBias * win.scaling
 }

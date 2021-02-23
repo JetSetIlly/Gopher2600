@@ -398,4 +398,4 @@ func (col *Collisions) tick(p0, p1, m0, m1, bl, pf bool) {
 // 	col.mem.ChipWrite(addresses.CXM1FB, col.CXM1FB)
 // 	col.mem.ChipWrite(addresses.CXBLPF, col.CXBLPF)
 // 	col.mem.ChipWrite(addresses.CXPPMM, col.CXPPMM)
-// }
+// }.

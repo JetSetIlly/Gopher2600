@@ -131,7 +131,7 @@ func (e *Entry) updateExecutionEntry(result execution.Result) {
 }
 
 // Cycles returns the number of cycles annotated if actual cycles differs from
-// the number of cycles in the defintion. for executed branch instructions this
+// the number of cycles in the definition. for executed branch instructions this
 // will always be the case.
 func (e *Entry) Cycles() string {
 	if e.Level < EntryLevelExecuted || e.DefnCycles == e.ActualCycles {
@@ -231,15 +231,14 @@ type Operand struct {
 }
 
 func (l Operand) String() string {
-	s, _ := l.genString()
-	return s
+	return l.genString()
 }
 
 // genString returns the operand as a symbol (if a symbol is available) if
 // a symbol is not available then the the bool return value will be false.
-func (l Operand) genString() (string, bool) {
+func (l Operand) genString() string {
 	if !l.dsm.Prefs.Symbols.Get().(bool) {
-		return l.nonSymbolic, false
+		return l.nonSymbolic
 	}
 
 	s := l.nonSymbolic
@@ -283,5 +282,5 @@ func (l Operand) genString() (string, bool) {
 		}
 	}
 
-	return s, true
+	return s
 }

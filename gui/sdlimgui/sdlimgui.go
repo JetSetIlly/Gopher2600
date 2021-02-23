@@ -62,7 +62,7 @@ type SdlImgui struct {
 	// where possible
 	vcs *hardware.VCS
 
-	// television sends the GUI information throught the PixelRenderer and
+	// television sends the GUI information through the PixelRenderer and
 	// AudioMixer.
 	tv *television.Television
 

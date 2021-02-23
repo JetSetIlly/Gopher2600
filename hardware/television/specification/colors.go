@@ -29,7 +29,7 @@ var videoBlack = color.RGBA{0, 0, 0, 255}
 
 // the raw color values are the component RGB values expressed as a single 32
 // bit number. we'll use these raw values in the init() function below to
-// create the real palette
+// create the real palette.
 
 var ntsc32bit = []uint32{
 	0x000000, 0x404040, 0x6c6c6c, 0x909090, 0xb0b0b0, 0xc8c8c8, 0xdcdcdc, 0xececec,
