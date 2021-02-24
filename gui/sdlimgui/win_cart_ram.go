@@ -101,13 +101,13 @@ func (win *winCartRAM) draw() {
 			imgui.EndChild()
 
 			// status line
-			win.statusHeight = measureHeight(func() {
+			win.statusHeight = imguiMeasure(func() {
 				if a.Mapped {
 					imguiBooleanButtonV(win.img.cols, true, " mapped ", win.mappedIndicatorDim)
 				} else {
 					imguiBooleanButtonV(win.img.cols, false, " unmapped ", win.mappedIndicatorDim)
 				}
-			})
+			}).Y
 
 			imgui.EndTabItem()
 		}

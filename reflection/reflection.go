@@ -22,18 +22,18 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/tia/video"
 )
 
-// Info identifies the reflection information that can be ascertained from the
+// ID identifies the reflection information that can be ascertained from the
 // contents of a VideoStep. Other information can probably be gleaned but these
 // are the ones that have been identified. For convenience only.
-type Info int
+type ID int
 
 // List of valid Info value.
 const (
-	WSYNC Info = iota
+	WSYNC ID = iota
 	Collision
 	CXCLR
 	HMOVEdelay
-	HMOVE
+	HMOVEripple
 	HMOVElatched
 	CoprocessorActive
 )

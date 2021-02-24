@@ -211,7 +211,7 @@ func (win *winSelectROM) draw() {
 	imgui.EndChild()
 
 	// control buttons. start controlHeight measurement
-	win.controlHeight = measureHeight(func() {
+	win.controlHeight = imguiMeasure(func() {
 		imgui.Checkbox("Show all files", &win.showAllFiles)
 		imgui.SameLine()
 		imgui.Checkbox("Show hidden entries", &win.showHidden)
@@ -244,7 +244,7 @@ func (win *winSelectROM) draw() {
 				win.setOpen(false)
 			}
 		}
-	})
+	}).Y
 
 	imgui.End()
 }

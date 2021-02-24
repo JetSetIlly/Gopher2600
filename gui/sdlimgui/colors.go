@@ -118,7 +118,7 @@ type imguiColors struct {
 	// log
 	LogBackground imgui.Vec4
 
-	// PackedColor equivalents of above color (where appropriate)
+	// packed equivalents of the above colors (where appropriate)
 	disasmCPUstep      imgui.PackedColor
 	disasmVideoStep    imgui.PackedColor
 	disasmBreakAddress imgui.PackedColor
@@ -131,7 +131,10 @@ type imguiColors struct {
 	saveKeyOscSDA      imgui.PackedColor
 	saveKeyBitPointer  imgui.PackedColor
 
-	// TV palettes
+	// packed reflection colors
+	reflectionColors map[reflection.ID]imgui.PackedColor
+
+	// packed TV palettes
 	packedPaletteNTSC packedPalette
 	packedPalettePAL  packedPalette
 }
@@ -251,6 +254,13 @@ func newColors() *imguiColors {
 	cols.saveKeyOscSCL = imgui.PackedColorFromVec4(cols.SaveKeyOscSCL)
 	cols.saveKeyOscSDA = imgui.PackedColorFromVec4(cols.SaveKeyOscSDA)
 
+	// pack reflection colors
+	cols.reflectionColors = make(map[reflection.ID]imgui.PackedColor)
+	for k, v := range reflectionColors {
+		c := imgui.Vec4{float32(v.R) / 255.0, float32(v.G) / 255.0, float32(v.B) / 255.0, float32(v.A) / 255.0}
+		cols.reflectionColors[k] = imgui.PackedColorFromVec4(c)
+	}
+
 	// convert 2600 colours to format usable by imgui
 
 	// convert to imgiu.Vec4 first...
@@ -291,14 +301,14 @@ func newColors() *imguiColors {
 }
 
 // reflectionColors lists the colors to be used for the reflection overlay.
-var reflectionColors = map[reflection.Info]color.RGBA{
-	reflection.WSYNC:             {R: 50, G: 50, B: 255, A: 100},
-	reflection.Collision:         {R: 255, G: 25, B: 25, A: 200},
-	reflection.CXCLR:             {R: 255, G: 25, B: 255, A: 200},
-	reflection.HMOVEdelay:        {R: 150, G: 50, B: 50, A: 150},
-	reflection.HMOVE:             {R: 50, G: 150, B: 50, A: 150},
-	reflection.HMOVElatched:      {R: 50, G: 50, B: 150, A: 150},
-	reflection.CoprocessorActive: {R: 200, G: 50, B: 200, A: 150},
+var reflectionColors = map[reflection.ID]color.RGBA{
+	reflection.WSYNC:             {R: 50, G: 50, B: 255, A: 255},
+	reflection.Collision:         {R: 255, G: 25, B: 25, A: 255},
+	reflection.CXCLR:             {R: 255, G: 25, B: 255, A: 255},
+	reflection.HMOVEdelay:        {R: 150, G: 50, B: 50, A: 255},
+	reflection.HMOVEripple:       {R: 50, G: 150, B: 50, A: 255},
+	reflection.HMOVElatched:      {R: 50, G: 50, B: 150, A: 255},
+	reflection.CoprocessorActive: {R: 200, G: 50, B: 200, A: 255},
 }
 
 // altColors lists the colors to be used when displaying TIA video in a

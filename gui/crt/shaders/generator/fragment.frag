@@ -2,9 +2,10 @@
 
 const int GUI = 0;
 const int DebugScr = 1;
-const int Overlay = 2;
-const int PlayScr = 3;
-const int PrefsCRT = 4;
+const int Elements = 2;
+const int Overlay = 3;
+const int PlayScr = 4;
+const int PrefsCRT = 5;
 
 const int True = 1;
 const int False = 0;
@@ -25,6 +26,7 @@ uniform float LastY;
 uniform float Hblank;
 uniform float TopScanline;
 uniform float BotScanline;
+uniform float OverlayAlpha;
 
 uniform int EnableCRT;
 uniform int EnablePhosphor;
@@ -321,8 +323,13 @@ void prefscrt() {
 	crt();
 }
 
+void elements() {
+	Out_Color = Frag_Color * texture(Texture, Frag_UV.st);
+}
+
 void overlay() {
 	Out_Color = Frag_Color * texture(Texture, Frag_UV.st);
+	Out_Color.a *= OverlayAlpha;
 }
 
 void imgui() {
@@ -335,11 +342,14 @@ void main()
 	case GUI:
 		imgui();
 		break;
-	case Overlay:
-		overlay();
-		break;
 	case DebugScr:
 		debugscr();
+		break;
+	case Elements:
+		elements();
+		break;
+	case Overlay:
+		overlay();
 		break;
 	case PlayScr:
 		playscr();

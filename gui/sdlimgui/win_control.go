@@ -133,6 +133,16 @@ func (win *winControl) draw() {
 	// rewind sub-system
 	win.drawRewind()
 
+	imguiSeparator()
+
+	// mouse capture button
+	if win.img.wm.dbgScr.isCaptured {
+		imgui.AlignTextToFramePadding()
+		imgui.Text("RMB or ESC to release mouse")
+	} else if imgui.Button("Capture mouse") {
+		win.img.setCapture(true)
+	}
+
 	imgui.End()
 }
 

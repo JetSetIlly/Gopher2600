@@ -172,20 +172,12 @@ func imguiIndentText(text string) {
 	imgui.Text(text)
 }
 
-// measure cursor position before and after function call, which should run
-// imgui widget functions.
-func measureHeight(region func()) float32 {
-	y := imgui.CursorPosY()
+// meausure returns the dimensions used after the running of the region
+// function.
+func imguiMeasure(region func()) imgui.Vec2 {
+	m := imgui.CursorPos()
 	region()
-	return imgui.CursorPosY() - y
-}
-
-// measure cursor position before and after function call, which should run
-// imgui widget functions.
-func measureWidth(region func()) float32 {
-	x := imgui.CursorPosX()
-	region()
-	return imgui.CursorPosX() - x
+	return imgui.CursorPos().Minus(m)
 }
 
 // pads imgui.Separator with additional spacing.
@@ -354,4 +346,14 @@ func (img *SdlImgui) imguiColorLabel(col imgui.PackedColor, label string) {
 	seq.end()
 	imgui.SameLine()
 	imgui.Text(label)
+}
+
+// set alpha channel of imgui.PakedColor value. if alpha > 1.0 or < 0.0 then
+// col is returned unchanged.
+func packedColSetAlpha(col imgui.PackedColor, alpha float32) imgui.PackedColor {
+	if alpha < 0.0 || alpha > 1.0 {
+		return col
+	}
+	a := 255 * alpha
+	return (col & 0x00ffffff) | imgui.PackedColor(uint32(a)<<24)
 }

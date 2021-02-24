@@ -19,6 +19,7 @@ import (
 	"fmt"
 
 	"github.com/inkyblackness/imgui-go/v4"
+	"github.com/jetsetilly/gopher2600/gui"
 )
 
 // the window menus grouped by type. the types are:.
@@ -132,7 +133,19 @@ func (wm *manager) drawMenu() {
 
 	// cartridge info in menubar
 	imgui.SameLineV(imgui.WindowWidth()-wm.menuInfoWidth, 0.0)
-	wm.menuInfoWidth = measureWidth(func() {
+	wm.menuInfoWidth = imguiMeasure(func() {
+		// fps indicator
+		if wm.img.state == gui.StateRunning {
+			if wm.img.lz.TV.ReqFPS < 1.0 {
+				imgui.Text(" < 1 fps ")
+			} else {
+				imgui.Text(fmt.Sprintf("% 5.1f fps", wm.img.lz.TV.AcutalFPS))
+			}
+		} else {
+			// empty text to ensure measureWidth() always returns the same value
+			imgui.Text("         ")
+		}
+
 		if len(wm.img.lz.Cart.Mapping) > 0 {
 			imgui.Separator()
 			imgui.Text(wm.img.lz.Cart.Mapping)
@@ -146,7 +159,7 @@ func (wm *manager) drawMenu() {
 			imgui.Text(wm.img.lz.Cart.Filename)
 			imgui.Text(" ")
 		}
-	})
+	}).X
 }
 
 func (wm *manager) drawMenuEntry(m menuEntry) {

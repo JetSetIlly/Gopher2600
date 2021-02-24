@@ -94,6 +94,7 @@ type glsl struct {
 	attribHblank             int32 // uniform
 	attribTopScanline        int32 // uniform
 	attribBotScanline        int32 // uniform
+	attribOverlayAlpha       int32 // uniform
 
 	attribEnableCRT           int32 // uniform
 	attribEnablePhosphor      int32 // uniform
@@ -251,6 +252,8 @@ func (rnd *glsl) render() {
 				switch textureID {
 				case rnd.img.wm.dbgScr.screenTexture:
 					rnd.debugScr()
+				case rnd.img.wm.dbgScr.elementsTexture:
+					rnd.elements()
 				case rnd.img.wm.dbgScr.overlayTexture:
 					rnd.overlay()
 				case rnd.img.playScr.screenTexture:
@@ -285,8 +288,13 @@ func (rnd *glsl) debugScr() {
 	gl.Uniform1i(rnd.attribPhosphorTexture, phosphorTextureUnitDbgScr)
 }
 
+func (rnd *glsl) elements() {
+	gl.Uniform1i(rnd.attribImageType, shaders.Elements)
+}
+
 func (rnd *glsl) overlay() {
 	gl.Uniform1i(rnd.attribImageType, shaders.Overlay)
+	gl.Uniform1f(rnd.attribOverlayAlpha, rnd.img.wm.dbgScr.overlayAlpha)
 }
 
 func (rnd *glsl) playScr() {
@@ -348,6 +356,8 @@ func (rnd *glsl) setOptions(textureID uint32) {
 	// the resolution information is used to scale the debugging guides
 	switch textureID {
 	case rnd.img.wm.dbgScr.screenTexture:
+		fallthrough
+	case rnd.img.wm.dbgScr.elementsTexture:
 		fallthrough
 	case rnd.img.wm.dbgScr.overlayTexture:
 		gl.Uniform1f(rnd.attribScalingX, rnd.img.wm.dbgScr.horizScaling())
@@ -471,6 +481,7 @@ func (rnd *glsl) setup() {
 	rnd.attribHblank = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("Hblank"+"\x00"))
 	rnd.attribTopScanline = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("TopScanline"+"\x00"))
 	rnd.attribBotScanline = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("BotScanline"+"\x00"))
+	rnd.attribOverlayAlpha = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("OverlayAlpha"+"\x00"))
 
 	rnd.attribEnableCRT = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("EnableCRT"+"\x00"))
 	rnd.attribEnablePhosphor = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("EnablePhosphor"+"\x00"))

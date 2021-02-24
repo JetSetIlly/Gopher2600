@@ -39,8 +39,12 @@ type winDbgScr struct {
 
 	// textures
 	screenTexture   uint32
+	elementsTexture uint32
 	overlayTexture  uint32
 	phosphorTexture uint32
+
+	// the amount of alpha to apply to the overlay
+	overlayAlpha float32
 
 	// (re)create textures on next render()
 	createTextures bool
@@ -49,16 +53,12 @@ type winDbgScr struct {
 	debugColors bool
 	cropped     bool
 	crt         bool
-	overlay     bool
 
 	// is screen currently pointed at
 	isHovered bool
 
 	// the tv screen has captured mouse input
 	isCaptured bool
-
-	// is the popup break menu active
-	isPopup bool
 
 	// clocks and scanline equivalent position of the mouse. only updated when isHovered is true
 	mouseClock    int
@@ -83,23 +83,29 @@ type winDbgScr struct {
 	scaling float32
 
 	// the dimensions required for the combo widgets
-	specComboDim    imgui.Vec2
-	overlayComboDim imgui.Vec2
+	specComboDim imgui.Vec2
 }
 
 func newWinDbgScr(img *SdlImgui) (window, error) {
 	win := &winDbgScr{
-		img:     img,
-		scr:     img.screen,
-		scaling: 2.0,
-		crt:     false,
-		cropped: true,
+		img:          img,
+		scr:          img.screen,
+		scaling:      2.0,
+		crt:          false,
+		cropped:      true,
+		overlayAlpha: 0.4,
 	}
 
 	// set texture, creation of textures will be done after every call to resize()
 	gl.ActiveTexture(gl.TEXTURE0)
 	gl.GenTextures(1, &win.screenTexture)
 	gl.BindTexture(gl.TEXTURE_2D, win.screenTexture)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
+
+	gl.ActiveTexture(gl.TEXTURE0)
+	gl.GenTextures(1, &win.elementsTexture)
+	gl.BindTexture(gl.TEXTURE_2D, win.elementsTexture)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
 
@@ -119,17 +125,31 @@ func newWinDbgScr(img *SdlImgui) (window, error) {
 }
 
 // List of valid overlay reflection overlay types.
+type overlay int
+
 const (
-	overlayWSYNC       = "WSYNC"
-	overlayCollsions   = "Collisions"
-	overlayHMOVE       = "HMOVE"
-	overlayCoprocessor = "Coprocessor"
+	overlayNoOverlay overlay = iota
+	overlayWSYNC
+	overlayCollisions
+	overlayHMOVE
+	overlayCoprocessor
 )
 
-var overlayList = []string{overlayWSYNC, overlayCollsions, overlayHMOVE, overlayCoprocessor}
+func (o overlay) String() string {
+	switch o {
+	case overlayWSYNC:
+		return "WSYNC overlay"
+	case overlayCollisions:
+		return "Collisions overlay"
+	case overlayHMOVE:
+		return "HMOVE overlay"
+	case overlayCoprocessor:
+		return "CoProcessor overlay"
+	}
+	return "No overlay"
+}
 
 func (win *winDbgScr) init() {
-	win.overlayComboDim = imguiGetFrameDim("", overlayList...)
 	win.specComboDim = imguiGetFrameDim("", specification.SpecList...)
 }
 
@@ -204,11 +224,15 @@ func (win *winDbgScr) draw() {
 	imgui.SetCursorScreenPos(screenOrigin)
 	imgui.ImageButton(imgui.TextureID(win.screenTexture), imgui.Vec2{w, h})
 
-	// overlay texture on top of screen texture
-	if win.overlay {
+	// debug colors / element layer
+	if win.debugColors {
 		imgui.SetCursorScreenPos(screenOrigin)
-		imgui.ImageButton(imgui.TextureID(win.overlayTexture), imgui.Vec2{w, h})
+		imgui.ImageButton(imgui.TextureID(win.elementsTexture), imgui.Vec2{w, h})
 	}
+
+	// overlay texture on top of screen texture
+	imgui.SetCursorScreenPos(screenOrigin)
+	imgui.ImageButton(imgui.TextureID(win.overlayTexture), imgui.Vec2{w, h})
 
 	// pop style info for screen and overlay textures
 	imgui.PopStyleVar()
@@ -218,12 +242,11 @@ func (win *winDbgScr) draw() {
 	//
 	// we only call OpenPopup() if it's not already open. also, care taken to
 	// avoid menu opening when releasing a captured mouse.
-	if !win.isPopup && !win.isCaptured && imgui.IsItemHovered() && imgui.IsMouseDown(1) {
-		imgui.OpenPopup("breakmenu")
+	if !win.isCaptured && imgui.IsItemHovered() && imgui.IsMouseDown(1) {
+		imgui.OpenPopup("breakMenu")
 	}
 
-	if imgui.BeginPopup("breakmenu") {
-		win.isPopup = true
+	if imgui.BeginPopup("breakMenu") {
 		imgui.Text("Break")
 		imguiSeparator()
 		if imgui.Selectable(fmt.Sprintf("Scanline=%d", win.mouseScanline)) {
@@ -236,8 +259,6 @@ func (win *winDbgScr) draw() {
 			win.img.term.pushCommand(fmt.Sprintf("BREAK SL %d & CL %d", win.mouseScanline, win.mouseClock))
 		}
 		imgui.EndPopup()
-	} else {
-		win.isPopup = false
 	}
 
 	// if mouse is hovering over the image. note that if popup menu is active
@@ -263,8 +284,9 @@ func (win *winDbgScr) draw() {
 	imgui.EndChild()
 
 	// start of tool bar
-	win.toolbarHeight = measureHeight(func() {
+	win.toolbarHeight = imguiMeasure(func() {
 		imgui.Spacing()
+		win.drawCoordsLine()
 		imgui.Spacing()
 
 		// tv status line
@@ -278,116 +300,140 @@ func (win *winDbgScr) draw() {
 			imgui.EndCombo()
 		}
 		imgui.PopItemWidth()
-
 		imgui.SameLineV(0, 15)
-		imguiLabel("Frame:")
-		imguiLabel(fmt.Sprintf("%-4d", win.img.lz.TV.Frame))
-		imgui.SameLineV(0, 15)
-		imguiLabel("Scanline:")
-		if win.img.lz.TV.Scanline > 999 {
-		} else {
-			imguiLabel(fmt.Sprintf("%-3d", win.img.lz.TV.Scanline))
-		}
-		imgui.SameLineV(0, 15)
-		imguiLabel("Clock:")
-		imguiLabel(fmt.Sprintf("%-3d", win.img.lz.TV.Clock))
-
-		// fps indicator
-		imgui.SameLineV(0, 20)
-		imgui.AlignTextToFramePadding()
-		if win.img.state != gui.StateRunning {
-			imguiLabel("no fps")
-		} else {
-			if win.img.lz.TV.ReqFPS < 1.0 {
-				imguiLabel("< 1 fps")
-			} else {
-				imguiLabel(fmt.Sprintf("%03.1f fps", win.img.lz.TV.AcutalFPS))
-			}
-		}
-
-		// include tv signal information
-		imgui.SameLineV(0, 20)
-		imgui.Text(win.img.lz.TV.LastSignal.String())
 
 		// display toggles
-		imgui.Spacing()
 		imgui.Checkbox("Debug Colours", &win.debugColors)
-		imgui.SameLine()
+		imgui.SameLineV(0, 15)
 		if imgui.Checkbox("Cropping", &win.cropped) {
 			win.setCropping(win.cropped)
 		}
-		imgui.SameLine()
+		imgui.SameLineV(0, 15)
 		imgui.Checkbox("CRT Effects", &win.crt)
 		imgui.SameLine()
-		imgui.Checkbox("Overlay", &win.overlay)
-		imgui.SameLine()
-		win.drawOverlayCombo()
 
-		// add capture information
-		imgui.SameLine()
-		c := imgui.CursorPos()
-		c.X += 10
-		if win.isCaptured {
-			imgui.SetCursorPos(c)
-			imgui.Text("RMB or ESC to release mouse")
-		} else {
-			imgui.SetCursorPos(c)
-			if imgui.Button("Capture mouse") {
-				win.img.setCapture(true)
-			}
-		}
-	})
+		imgui.SameLineV(0, 15)
+		win.drawOverlayPopup()
+	}).Y
 
 	imgui.End()
 }
 
-// drawOverlayCombo takes care to display the correct label in the combo box
-// but to use the correct internal representation. for example, reflection.COPROCESSOR
-// is representated visally by whatever the Coprocess ID value is.
-//
-// if the overlay system gets more complex than we may need a more subtle
-// solution to this problem. (the problem being that we want some overlay
-// labels to be reactive to the state of the emulation).
-//
-// called from within a win.scr.crit.section Lock().
-func (win *winDbgScr) drawOverlayCombo() {
-	imgui.PushItemWidth(win.overlayComboDim.X)
+func (win *winDbgScr) drawOverlayPopup() {
+	o := win.img.screen.crit.overlay.Load().(overlay)
+
+	imgui.PushItemWidth(200)
 	defer imgui.PopItemWidth()
 
-	selected := win.img.screen.crit.overlay
-
-	// change selected label if necessary
-	if selected == overlayCoprocessor {
-		selected = win.img.lz.CoProc.ID
+	if imgui.Button(o.String()) {
+		imgui.OpenPopup("overlaySelector")
 	}
 
-	if imgui.BeginComboV("##overlay", selected, imgui.ComboFlagsNoArrowButton) {
-		for _, s := range overlayList {
-			// skip overlays that aren't relevant given the current state of the emualation
-			if s == overlayCoprocessor {
-				if !win.img.lz.CoProc.HasCoProcBus {
-					continue // for loop
-				}
+	if imgui.BeginPopup("overlaySelector") {
+		if imgui.BeginTable("overlayTable", 2) {
+			imgui.TableSetupColumnV("overlay", imgui.TableColumnFlagsWidthFixed, 200, 1)
+			imgui.TableSetupColumnV("key", imgui.TableColumnFlagsWidthFixed, 200, 2)
+			imgui.TableNextRow()
 
-				// change combo option if necessary
-				s = win.img.lz.CoProc.ID
+			// column 1
+			imgui.TableNextColumn()
+			v := int(o)
+
+			// draw radio buttons and prepare for a test of whether any of them
+			// have been pressed. note that the OR with ok happens after the
+			// drawing of the button. if we order the condition the other way, the
+			// test might short-circuit and the button will not be drawn until next
+			// frame.
+			ok := false
+			ok = imgui.RadioButtonInt(overlayNoOverlay.String(), &v, int(overlayNoOverlay)) || ok
+			ok = imgui.RadioButtonInt(overlayWSYNC.String(), &v, int(overlayWSYNC)) || ok
+			ok = imgui.RadioButtonInt(overlayCollisions.String(), &v, int(overlayCollisions)) || ok
+			ok = imgui.RadioButtonInt(overlayHMOVE.String(), &v, int(overlayHMOVE)) || ok
+
+			// special handling for coprocessor layer
+			if win.img.lz.CoProc.HasCoProcBus {
+				ok = imgui.RadioButtonInt(win.img.lz.CoProc.ID, &v, int(overlayCoprocessor)) || ok
+			} else if o == overlayCoprocessor {
+				// there is no coprocessor so make sure the coprocessor option is
+				// not selected - it won't be shown
+				v = int(overlayNoOverlay)
 			}
 
-			if imgui.Selectable(s) {
-				// change visual label to a value more suitable for internal
-				// representation, if necessary.
-				if s == win.img.lz.CoProc.ID {
-					win.img.screen.crit.overlay = overlayCoprocessor
-				} else {
-					win.img.screen.crit.overlay = s
-				}
+			// a radiobutton has been pressed
+			if ok {
+				// change overlay
+				win.img.screen.crit.overlay.Store(overlay(v))
 
+				// replot the overlay
 				win.img.screen.replotOverlay()
 			}
+
+			// column 2
+			imgui.TableNextColumn()
+
+			switch o {
+			case overlayWSYNC:
+				col := packedColSetAlpha(win.img.cols.reflectionColors[reflection.WSYNC], win.overlayAlpha)
+				win.img.imguiColorLabel(col, "WSYNC active")
+			case overlayCollisions:
+				col := packedColSetAlpha(win.img.cols.reflectionColors[reflection.Collision], win.overlayAlpha)
+				win.img.imguiColorLabel(col, "Collision")
+				col = packedColSetAlpha(win.img.cols.reflectionColors[reflection.CXCLR], win.overlayAlpha)
+				win.img.imguiColorLabel(col, "CXCLR")
+			case overlayHMOVE:
+				col := packedColSetAlpha(win.img.cols.reflectionColors[reflection.HMOVEdelay], win.overlayAlpha)
+				win.img.imguiColorLabel(col, "Delay")
+				col = packedColSetAlpha(win.img.cols.reflectionColors[reflection.HMOVEripple], win.overlayAlpha)
+				win.img.imguiColorLabel(col, "Ripple")
+				col = packedColSetAlpha(win.img.cols.reflectionColors[reflection.HMOVElatched], win.overlayAlpha)
+				win.img.imguiColorLabel(col, "Latch")
+			case overlayCoprocessor:
+				col := packedColSetAlpha(win.img.cols.reflectionColors[reflection.CoprocessorActive], win.overlayAlpha)
+				win.img.imguiColorLabel(col, fmt.Sprintf("%s Active", win.img.lz.CoProc.ID))
+			}
+
+			imgui.EndTable()
 		}
 
-		imgui.EndCombo()
+		// label for alpha slider
+		var label string
+		if win.overlayAlpha > 0.9 {
+			label = "very opaque"
+		} else if win.overlayAlpha > 0.6 {
+			label = "opaque"
+		} else if win.overlayAlpha > 0.3 {
+			label = "faint"
+		} else {
+			label = "very faint"
+		}
+
+		// alpha slider
+		imgui.Spacing()
+		imguiLabel("Transparency")
+		imgui.PushItemWidth(200.0)
+		imgui.SliderFloatV("##alpha", &win.overlayAlpha, 0.1, 1.0, label, imgui.SliderFlagsNone)
+		imgui.PopItemWidth()
+
+		imgui.EndPopup()
 	}
+}
+
+func (win *winDbgScr) drawCoordsLine() {
+	imguiLabel("Frame:")
+	imguiLabel(fmt.Sprintf("%-4d", win.img.lz.TV.Frame))
+	imgui.SameLineV(0, 15)
+	imguiLabel("Scanline:")
+	if win.img.lz.TV.Scanline > 999 {
+	} else {
+		imguiLabel(fmt.Sprintf("%-3d", win.img.lz.TV.Scanline))
+	}
+	imgui.SameLineV(0, 15)
+	imguiLabel("Clock:")
+	imguiLabel(fmt.Sprintf("%-3d", win.img.lz.TV.Clock))
+
+	// include tv signal information
+	imgui.SameLineV(0, 20)
+	imgui.Text(win.img.lz.TV.LastSignal.String())
 }
 
 // called from within a win.scr.crit.section Lock().
@@ -427,116 +473,115 @@ func (win *winDbgScr) drawReflectionTooltip(screenOrigin imgui.Vec2) {
 	imgui.Text(fmt.Sprintf("Scanline: %d", win.mouseScanline))
 	imgui.Text(fmt.Sprintf("Clock: %d", win.mouseClock-specification.ClksHBlank))
 
-	if win.overlay {
-		switch win.scr.crit.overlay {
-		case overlayWSYNC:
-			imguiSeparator()
-			if ref.WSYNC {
-				imgui.Text("6507 is not ready")
-			} else {
-				imgui.Text("6507 program is running")
-			}
-		case overlayCollsions:
-			imguiSeparator()
-
-			imguiLabel("CXM0P ")
-			drawCollision(win.img, ref.Collision.CXM0P, video.CollisionMask, func(_ uint8) {})
-			imguiLabel("CXM1P ")
-			drawCollision(win.img, ref.Collision.CXM1P, video.CollisionMask, func(_ uint8) {})
-			imguiLabel("CXP0FB")
-			drawCollision(win.img, ref.Collision.CXP0FB, video.CollisionMask, func(_ uint8) {})
-			imguiLabel("CXP1FB")
-			drawCollision(win.img, ref.Collision.CXP1FB, video.CollisionMask, func(_ uint8) {})
-			imguiLabel("CXM0FB")
-			drawCollision(win.img, ref.Collision.CXM0FB, video.CollisionMask, func(_ uint8) {})
-			imguiLabel("CXM1FB")
-			drawCollision(win.img, ref.Collision.CXM1FB, video.CollisionMask, func(_ uint8) {})
-			imguiLabel("CXBLPF")
-			drawCollision(win.img, ref.Collision.CXBLPF, video.CollisionCXBLPFMask, func(_ uint8) {})
-			imguiLabel("CXPPMM")
-			drawCollision(win.img, ref.Collision.CXPPMM, video.CollisionMask, func(_ uint8) {})
-
-			imguiSeparator()
-
-			s := ref.Collision.LastVideoCycle.String()
-			if s != "" {
-				imgui.Text(s)
-			} else {
-				imgui.Text("no new collision")
-			}
-		case overlayHMOVE:
-			imguiSeparator()
-			if ref.Hmove.Delay {
-				imgui.Text(fmt.Sprintf("HMOVE delay: %d", ref.Hmove.DelayCt))
-			} else if ref.Hmove.Latch {
-				if ref.Hmove.RippleCt != 255 {
-					imgui.Text(fmt.Sprintf("HMOVE ripple: %d", ref.Hmove.RippleCt))
-				} else {
-					imgui.Text("HMOVE latched")
-				}
-			} else {
-				imgui.Text("no HMOVE")
-			}
-		case overlayCoprocessor:
-			imguiSeparator()
-			if ref.CoprocessorActive {
-				imgui.Text(fmt.Sprintf("%s is working", win.img.lz.CoProc.ID))
-			} else {
-				imgui.Text("6507 program is running")
-			}
+	switch win.scr.crit.overlay.Load().(overlay) {
+	case overlayWSYNC:
+		imguiSeparator()
+		if ref.WSYNC {
+			imgui.Text("6507 is not ready")
+		} else {
+			imgui.Text("6507 program is running")
 		}
-		return
-	}
+	case overlayCollisions:
+		imguiSeparator()
 
-	e, _ := win.img.lz.Dbg.Disasm.FormatResult(ref.Bank, ref.CPU, disassembly.EntryLevelBlessed)
-	if e.Address == "" {
-		return
-	}
+		imguiLabel("CXM0P ")
+		drawCollision(win.img, ref.Collision.CXM0P, video.CollisionMask, func(_ uint8) {})
+		imguiLabel("CXM1P ")
+		drawCollision(win.img, ref.Collision.CXM1P, video.CollisionMask, func(_ uint8) {})
+		imguiLabel("CXP0FB")
+		drawCollision(win.img, ref.Collision.CXP0FB, video.CollisionMask, func(_ uint8) {})
+		imguiLabel("CXP1FB")
+		drawCollision(win.img, ref.Collision.CXP1FB, video.CollisionMask, func(_ uint8) {})
+		imguiLabel("CXM0FB")
+		drawCollision(win.img, ref.Collision.CXM0FB, video.CollisionMask, func(_ uint8) {})
+		imguiLabel("CXM1FB")
+		drawCollision(win.img, ref.Collision.CXM1FB, video.CollisionMask, func(_ uint8) {})
+		imguiLabel("CXBLPF")
+		drawCollision(win.img, ref.Collision.CXBLPF, video.CollisionCXBLPFMask, func(_ uint8) {})
+		imguiLabel("CXPPMM")
+		drawCollision(win.img, ref.Collision.CXPPMM, video.CollisionMask, func(_ uint8) {})
 
-	imguiSeparator()
+		imguiSeparator()
 
-	// pixel swatch. using black swatch if pixel is HBLANKed or VBLANKed
-	if ref.IsHblank || ref.TV.VBlank {
-		win.img.imguiSwatch(0, 0.5)
-	} else {
-		win.img.imguiSwatch(uint8(ref.TV.Pixel), 0.5)
-	}
+		s := ref.Collision.LastVideoCycle.String()
+		if s != "" {
+			imgui.Text(s)
+		} else {
+			imgui.Text("no new collision")
+		}
+	case overlayHMOVE:
+		imguiSeparator()
+		if ref.Hmove.Delay {
+			imgui.Text(fmt.Sprintf("HMOVE delay: %d", ref.Hmove.DelayCt))
+		} else if ref.Hmove.Latch {
+			if ref.Hmove.RippleCt != 255 {
+				imgui.Text(fmt.Sprintf("HMOVE ripple: %d", ref.Hmove.RippleCt))
+			} else {
+				imgui.Text("HMOVE latched")
+			}
+		} else {
+			imgui.Text("no HMOVE")
+		}
+	case overlayCoprocessor:
+		imguiSeparator()
+		if ref.CoprocessorActive {
+			imgui.Text(fmt.Sprintf("%s is working", win.img.lz.CoProc.ID))
+		} else {
+			imgui.Text("6507 program is running")
+		}
+	case overlayNoOverlay:
+		// no overlay
 
-	// element information regardless of HBLANK/VBLANK state
-	imguiLabelEnd(ref.VideoElement.String())
+		e, _ := win.img.lz.Dbg.Disasm.FormatResult(ref.Bank, ref.CPU, disassembly.EntryLevelBlessed)
+		if e.Address == "" {
+			return
+		}
 
-	imgui.Spacing()
+		imguiSeparator()
 
-	// instruction information
-	imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmBreakAddress)
-	if win.img.lz.Cart.NumBanks > 1 {
-		imgui.Text(fmt.Sprintf("%s [bank %s]", e.Address, ref.Bank))
-	} else {
-		imgui.Text(e.Address)
-	}
-	imgui.PopStyleColor()
+		// pixel swatch. using black swatch if pixel is HBLANKed or VBLANKed
+		if ref.IsHblank || ref.TV.VBlank {
+			win.img.imguiSwatch(0, 0.5)
+		} else {
+			win.img.imguiSwatch(uint8(ref.TV.Pixel), 0.5)
+		}
 
-	imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmOperator)
-	imgui.Text(e.Operator)
-	imgui.PopStyleColor()
+		// element information regardless of HBLANK/VBLANK state
+		imguiLabelEnd(ref.VideoElement.String())
 
-	if e.Operand.String() != "" {
-		imgui.SameLine()
-		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmOperand)
-		imgui.Text(e.Operand.String())
+		imgui.Spacing()
+
+		// instruction information
+		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmBreakAddress)
+		if win.img.lz.Cart.NumBanks > 1 {
+			imgui.Text(fmt.Sprintf("%s [bank %s]", e.Address, ref.Bank))
+		} else {
+			imgui.Text(e.Address)
+		}
 		imgui.PopStyleColor()
-	}
 
-	// add HBLANK/VBLANK information
-	if ref.IsHblank && ref.TV.VBlank {
-		imguiSeparator()
-		imguiLabel("[HBLANK/VBLANK]")
-	} else if ref.IsHblank {
-		imguiSeparator()
-		imguiLabel("[HBLANK]")
-	} else if ref.TV.VBlank {
-		imguiSeparator()
-		imguiLabel("[VBLANK]")
+		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmOperator)
+		imgui.Text(e.Operator)
+		imgui.PopStyleColor()
+
+		if e.Operand.String() != "" {
+			imgui.SameLine()
+			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmOperand)
+			imgui.Text(e.Operand.String())
+			imgui.PopStyleColor()
+		}
+
+		// add HBLANK/VBLANK information
+		if ref.IsHblank && ref.TV.VBlank {
+			imguiSeparator()
+			imguiLabel("[HBLANK/VBLANK]")
+		} else if ref.IsHblank {
+			imguiSeparator()
+			imguiLabel("[HBLANK]")
+		} else if ref.TV.VBlank {
+			imguiSeparator()
+			imguiLabel("[VBLANK]")
+		}
 	}
 }
 
@@ -560,23 +605,18 @@ func (win *winDbgScr) resize() {
 // screen critical section.
 func (win *winDbgScr) render() {
 	var pixels *image.RGBA
+	var elements *image.RGBA
 	var overlay *image.RGBA
 	var phosphor *image.RGBA
 
 	if win.cropped {
-		if win.debugColors {
-			pixels = win.scr.crit.cropElementPixels
-		} else {
-			pixels = win.scr.crit.cropPixels
-		}
+		pixels = win.scr.crit.cropPixels
+		elements = win.scr.crit.cropElementPixels
 		overlay = win.scr.crit.cropOverlayPixels
 		phosphor = win.scr.crit.cropPhosphor
 	} else {
-		if win.debugColors {
-			pixels = win.scr.crit.elementPixels
-		} else {
-			pixels = win.scr.crit.pixels
-		}
+		pixels = win.scr.crit.pixels
+		elements = win.scr.crit.elementPixels
 		overlay = win.scr.crit.overlayPixels
 		phosphor = win.scr.crit.phosphor
 	}
@@ -592,6 +632,12 @@ func (win *winDbgScr) render() {
 			gl.RGBA, int32(pixels.Bounds().Size().X), int32(pixels.Bounds().Size().Y), 0,
 			gl.RGBA, gl.UNSIGNED_BYTE,
 			gl.Ptr(pixels.Pix))
+
+		gl.BindTexture(gl.TEXTURE_2D, win.elementsTexture)
+		gl.TexImage2D(gl.TEXTURE_2D, 0,
+			gl.RGBA, int32(pixels.Bounds().Size().X), int32(pixels.Bounds().Size().Y), 0,
+			gl.RGBA, gl.UNSIGNED_BYTE,
+			gl.Ptr(elements.Pix))
 
 		gl.BindTexture(gl.TEXTURE_2D, win.overlayTexture)
 		gl.TexImage2D(gl.TEXTURE_2D, 0,
@@ -613,6 +659,12 @@ func (win *winDbgScr) render() {
 			0, 0, int32(pixels.Bounds().Size().X), int32(pixels.Bounds().Size().Y),
 			gl.RGBA, gl.UNSIGNED_BYTE,
 			gl.Ptr(pixels.Pix))
+
+		gl.BindTexture(gl.TEXTURE_2D, win.elementsTexture)
+		gl.TexSubImage2D(gl.TEXTURE_2D, 0,
+			0, 0, int32(pixels.Bounds().Size().X), int32(pixels.Bounds().Size().Y),
+			gl.RGBA, gl.UNSIGNED_BYTE,
+			gl.Ptr(elements.Pix))
 
 		gl.BindTexture(gl.TEXTURE_2D, win.overlayTexture)
 		gl.TexSubImage2D(gl.TEXTURE_2D, 0,

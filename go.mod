@@ -4,7 +4,7 @@ go 1.15
 
 // replace github.com/inkyblackness/imgui-go/v4 v4.0.0 => /home/steve/Go/steve_forks/imgui-go
 
-// replace github.com/inkyblackness/imgui-go/v4 v4.0.0 => github.com/JetSetIlly/imgui-go/v4 v4.0.0
+replace github.com/inkyblackness/imgui-go/v4 v4.0.0 => github.com/JetSetIlly/imgui-go/v4 v4.0.1-0.20210224202224-57a7cd25dcd1
 
 require (
 	github.com/bradleyjkemp/memviz v0.2.3

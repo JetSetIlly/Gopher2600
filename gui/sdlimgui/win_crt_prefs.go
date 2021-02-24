@@ -42,7 +42,7 @@ type winCRTPrefs struct {
 	createTextures bool
 
 	// height of the area containing the settings sliders
-	previewDim float32
+	previewHeight float32
 
 	// mouse position when it is hovered over the preview
 	previewMousePos imgui.Vec2
@@ -109,7 +109,7 @@ func (win *winCRTPrefs) draw() {
 	imguiSeparator()
 
 	// note start position of setting group
-	win.previewDim = measureHeight(func() {
+	win.previewHeight = imguiMeasure(func() {
 		imgui.BeginGroup()
 
 		win.drawPhosphor()
@@ -131,7 +131,7 @@ func (win *winCRTPrefs) draw() {
 		imgui.Spacing()
 
 		imgui.EndGroup()
-	})
+	}).Y
 
 	win.drawPreview()
 
@@ -398,7 +398,7 @@ func (win *winCRTPrefs) drawPreview() {
 		imgui.PushStyleColor(imgui.StyleColorButtonHovered, win.img.cols.Transparent)
 		imgui.PushStyleVarVec2(imgui.StyleVarFramePadding, imgui.Vec2{0.0, 0.0})
 
-		imgui.ImageButton(imgui.TextureID(win.crtTexture), imgui.Vec2{win.previewDim, win.previewDim})
+		imgui.ImageButton(imgui.TextureID(win.crtTexture), imgui.Vec2{win.previewHeight, win.previewHeight})
 		if imgui.IsItemHovered() {
 			p := imgui.MousePos()
 
