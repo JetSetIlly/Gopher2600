@@ -335,8 +335,12 @@ func (rnd *glsl) setOptions(textureID uint32) {
 		gl.Uniform1f(rnd.attribScanlinesBrightness, float32(rnd.img.crtPrefs.ScanlinesBrightness.Get().(float64)))
 		gl.Uniform1f(rnd.attribNoiseLevel, float32(rnd.img.crtPrefs.NoiseLevel.Get().(float64)))
 		gl.Uniform1f(rnd.attribBlurLevel, float32(rnd.img.crtPrefs.BlurLevel.Get().(float64)))
-		gl.Uniform1f(rnd.attribRandSeed, float32(time.Now().Nanosecond())/100000000.0)
 	}
+
+	// random seed always set. it's used for CRT noise but it's used sometimes
+	// (eg. CRT prefs) when crt is false, so it's easier to just set it every
+	// frame.
+	gl.Uniform1f(rnd.attribRandSeed, float32(time.Now().Nanosecond())/100000000.0)
 
 	// critical section
 	rnd.img.screen.crit.section.Lock()
