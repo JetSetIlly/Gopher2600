@@ -28,7 +28,7 @@ The following screenshots were taken in playmode with CRT effects enabled
 <img src=".screenshots/games/pitfall.png" height="200" alt="pitfall"/> <img src=".screenshots/games/heman.png" height="200" alt="he-man"/>
 <img src=".screenshots/games/krull.png" height="200" alt="krull"/> <img src=".screenshots/games/ladybug.png" height="200" alt="ladybug"/>
 <img src=".screenshots/games/thrust.png" height="200" alt="thrust"/> <img src=".screenshots/games/pandachase.png" height="200" alt="panda chase"/>
-<img src=".screenshots/games/mangoesdown.png" height="200" alt="man goes down"/> <img src=".screenshots/games/beast.png" height="200" alt="legacy of the beast"/>
+<img src=".screenshots/games/mangoesdown.png" height="200" alt="man goes down"/>
 <img src=".screenshots/games/chiphead.png" height="200" alt="chiphead"/> <img src=".screenshots/games/genesis.png" height="200" alt="egypt genesis"/>
 <img src=".screenshots/games/draconian.png" height="200" alt="draconian"/> <img src=".screenshots/games/zevious.png" height="200" alt="zevious"/>
 
