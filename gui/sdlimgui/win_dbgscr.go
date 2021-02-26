@@ -370,6 +370,7 @@ func (win *winDbgScr) drawOverlayPopup() {
 
 			// column 2
 			imgui.TableNextColumn()
+			imgui.Spacing()
 
 			switch o {
 			case overlayWSYNC:

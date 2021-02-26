@@ -341,10 +341,11 @@ func (img *SdlImgui) imguiSwatch(col uint8, size float32) (clicked bool) {
 //
 // imguiColorLabel is makes use of the drawListSequence.
 func (img *SdlImgui) imguiColorLabel(col imgui.PackedColor, label string) {
-	seq := newDrawlistSequence(img, imgui.Vec2{X: imgui.FrameHeight() * 0.75, Y: imgui.FrameHeight() * 0.75}, false)
-	seq.rectFill(col)
-	seq.end()
-	imgui.SameLine()
+	dl := imgui.WindowDrawList()
+	p := imgui.CursorScreenPos()
+	z := imgui.FrameHeight() * 0.75
+	dl.AddRectFilled(p, p.Plus(imgui.Vec2{X: z, Y: z}), col)
+	imgui.SetCursorScreenPos(p.Plus(imgui.Vec2{X: z * 1.5, Y: 0}))
 	imgui.Text(label)
 }
 
