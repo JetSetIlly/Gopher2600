@@ -34,7 +34,7 @@ func (img *SdlImgui) drawPlusROMFirstInstallation() {
 	img.hasModal = true
 
 	imgui.OpenPopup("PlusROM First Installation")
-	if imgui.BeginPopupModalV("PlusROM First Installation", nil, imgui.PopupFlagsNone) {
+	if imgui.BeginPopupModalV("PlusROM First Installation", nil, imgui.WindowFlagsNone) {
 		imgui.Text("This looks like your first time using a PlayROM cartridge. Before")
 		imgui.Text("proceeding it is a good idea for you to set your 'nick'. This will be")
 		imgui.Text("used to identify you when contacting the PlayROM server.")
