@@ -84,11 +84,11 @@ func (win *winControl) draw() {
 	imgui.BeginV(win.id(), &win.open, imgui.WindowFlagsAlwaysAutoResize)
 
 	if win.img.state == gui.StateRunning {
-		if imguiBooleanButtonV(win.img.cols, false, "Halt", win.runButtonDim) {
+		if imguiBooleanButton(win.img.cols, false, "Halt", win.runButtonDim) {
 			win.img.term.pushCommand("HALT")
 		}
 	} else {
-		if imguiBooleanButtonV(win.img.cols, true, "Run", win.runButtonDim) {
+		if imguiBooleanButton(win.img.cols, true, "Run", win.runButtonDim) {
 			win.img.term.pushCommand("RUN")
 		}
 	}

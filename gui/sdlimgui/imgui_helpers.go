@@ -121,14 +121,39 @@ func imguiToggleButton(id string, v bool, col imgui.Vec4) bool {
 	return r
 }
 
-// button with coloring indicating whether state is true or false. alternative
-// to checkbox.
-func imguiBooleanButton(cols *imguiColors, state bool, text string) bool {
-	return imguiBooleanButtonV(cols, state, text, imgui.Vec2{})
+// draw vertical toggle button at current cursor position. returns true if toggle has been clicked.
+//
+// NOTE: this function has been hacked to work with the status register toggles
+// in win_cpu. any changes to this function will have to bear that in mind.
+func imguiToggleButtonVertical(id string, v bool, col imgui.Vec4) bool {
+	bg := imgui.PackedColorFromVec4(col)
+	p := imgui.CursorScreenPos()
+	dl := imgui.WindowDrawList()
+
+	width := imgui.CalcTextSize(" X", false, 0.0).X
+	height := width * 1.55
+	radius := width * 0.50
+	t := float32(0.0)
+	if v {
+		t = 1.0
+	}
+
+	r := false
+
+	imgui.InvisibleButtonV(id, imgui.Vec2{width, height}, imgui.ButtonFlagsMouseButtonLeft)
+	if imgui.IsItemClicked() {
+		r = true
+	}
+
+	dl.AddRectFilledV(p, imgui.Vec2{p.X + width, p.Y + height}, bg, radius, imgui.DrawCornerFlagsAll)
+	dl.AddCircleFilled(imgui.Vec2{p.X + radius, p.Y + radius + t*(width*0.5)},
+		radius-1.5, imgui.PackedColorFromVec4(imgui.Vec4{1.0, 1.0, 1.0, 1.0}))
+
+	return r
 }
 
 // imguiBooleanButton with dimension argument.
-func imguiBooleanButtonV(cols *imguiColors, state bool, text string, dim imgui.Vec2) bool {
+func imguiBooleanButton(cols *imguiColors, state bool, text string, dim imgui.Vec2) bool {
 	if state {
 		imgui.PushStyleColor(imgui.StyleColorButton, cols.True)
 		imgui.PushStyleColor(imgui.StyleColorButtonHovered, cols.True)

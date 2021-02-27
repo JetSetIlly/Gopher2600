@@ -53,10 +53,6 @@ type imguiColors struct {
 	CapturedScreenTitle  imgui.Vec4
 	CapturedScreenBorder imgui.Vec4
 
-	// CPU status register buttons
-	CPUStatusOn  imgui.Vec4
-	CPUStatusOff imgui.Vec4
-
 	// color showing that a value is different to the corresponding value at
 	// the comparison point
 	ValueDiff imgui.Vec4
@@ -130,6 +126,8 @@ type imguiColors struct {
 	saveKeyOscSCL      imgui.PackedColor
 	saveKeyOscSDA      imgui.PackedColor
 	saveKeyBitPointer  imgui.PackedColor
+	trueCol            imgui.PackedColor
+	falseCol           imgui.PackedColor
 
 	// packed reflection colors
 	reflectionColors map[reflection.ID]imgui.PackedColor
@@ -161,10 +159,6 @@ func newColors() *imguiColors {
 		ROMSelectFile: imgui.Vec4{1.0, 1.0, 1.0, 1.0},
 
 		// deferring CapturedScreenTitle & CapturedScreenBorder
-
-		// CPU status register buttons
-		CPUStatusOn:  imgui.Vec4{0.8, 0.6, 0.2, 1.0},
-		CPUStatusOff: imgui.Vec4{0.7, 0.5, 0.1, 1.0},
 
 		// comparison
 		ValueDiff: imgui.Vec4{0.3, 0.2, 0.5, 1.0},
@@ -253,6 +247,8 @@ func newColors() *imguiColors {
 	cols.saveKeyBitPointer = imgui.PackedColorFromVec4(cols.SaveKeyBitPointer)
 	cols.saveKeyOscSCL = imgui.PackedColorFromVec4(cols.SaveKeyOscSCL)
 	cols.saveKeyOscSDA = imgui.PackedColorFromVec4(cols.SaveKeyOscSDA)
+	cols.trueCol = imgui.PackedColorFromVec4(cols.True)
+	cols.falseCol = imgui.PackedColorFromVec4(cols.False)
 
 	// pack reflection colors
 	cols.reflectionColors = make(map[reflection.ID]imgui.PackedColor)

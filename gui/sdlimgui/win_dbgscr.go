@@ -333,6 +333,7 @@ func (win *winDbgScr) drawOverlayPopup() {
 		if imgui.BeginTable("overlayTable", 2) {
 			imgui.TableSetupColumnV("overlay", imgui.TableColumnFlagsWidthFixed, 200, 1)
 			imgui.TableSetupColumnV("key", imgui.TableColumnFlagsWidthFixed, 200, 2)
+
 			imgui.TableNextRow()
 
 			// column 1

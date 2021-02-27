@@ -103,9 +103,9 @@ func (win *winCartRAM) draw() {
 			// status line
 			win.statusHeight = imguiMeasure(func() {
 				if a.Mapped {
-					imguiBooleanButtonV(win.img.cols, true, " mapped ", win.mappedIndicatorDim)
+					imguiBooleanButton(win.img.cols, true, " mapped ", win.mappedIndicatorDim)
 				} else {
-					imguiBooleanButtonV(win.img.cols, false, " unmapped ", win.mappedIndicatorDim)
+					imguiBooleanButton(win.img.cols, false, " unmapped ", win.mappedIndicatorDim)
 				}
 			}).Y
 

@@ -17,9 +17,7 @@ package sdlimgui
 
 import (
 	"fmt"
-	"strings"
 
-	"github.com/jetsetilly/gopher2600/disassembly"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/registers"
 
 	"github.com/inkyblackness/imgui-go/v4"
@@ -30,6 +28,10 @@ const winCPUID = "CPU"
 type winCPU struct {
 	img  *SdlImgui
 	open bool
+
+	// labels in the status register header are adjusted slightly so that they
+	// are centered in the column
+	statusLabelAdj imgui.Vec2
 }
 
 func newWinCPU(img *SdlImgui) (window, error) {
@@ -41,6 +43,7 @@ func newWinCPU(img *SdlImgui) (window, error) {
 }
 
 func (win *winCPU) init() {
+	win.statusLabelAdj = imgui.Vec2{X: imgui.CalcTextSize("x", false, 0.0).X / 2, Y: 0.0}
 }
 
 func (win *winCPU) id() string {
@@ -63,79 +66,112 @@ func (win *winCPU) draw() {
 	imgui.SetNextWindowPosV(imgui.Vec2{659, 35}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
 	imgui.BeginV(win.id(), &win.open, imgui.WindowFlagsAlwaysAutoResize)
 
-	imgui.BeginGroup()
-	win.drawRegister(win.img.lz.CPU.PC)
-	win.drawRegister(win.img.lz.CPU.A)
-	win.drawRegister(win.img.lz.CPU.X)
-	win.drawRegister(win.img.lz.CPU.Y)
-	win.drawRegister(win.img.lz.CPU.SP)
-	imgui.EndGroup()
+	if imgui.BeginTable("cpuLayout", 2) {
+		imgui.TableSetupColumnV("registers", imgui.TableColumnFlagsWidthFixed, 75, 1)
 
-	imgui.SameLine()
-	imgui.BeginGroup()
+		imgui.TableNextRow()
+		imgui.TableNextColumn()
+		win.drawRegister(win.img.lz.CPU.PC)
+		imgui.TableNextColumn()
+		win.drawRegister(win.img.lz.CPU.A)
 
-	win.drawLastResult()
+		imgui.TableNextRow()
+		imgui.TableNextColumn()
+		win.drawRegister(win.img.lz.CPU.SP)
+		imgui.TableNextColumn()
+		win.drawRegister(win.img.lz.CPU.X)
 
-	imgui.EndGroup()
+		imgui.TableNextRow()
+		imgui.TableNextColumn()
+		_ = imguiBooleanButton(win.img.cols, win.img.lz.CPU.RdyFlg, "RDY Flag", imgui.Vec2{X: -1, Y: imgui.FrameHeight()})
+		imgui.TableNextColumn()
+		win.drawRegister(win.img.lz.CPU.Y)
 
-	imguiSeparator()
+		imgui.EndTable()
+	}
 
-	win.drawStatusRegister()
+	imgui.Spacing()
+	if imgui.BeginTableV("statusRegister", 7, imgui.TableFlagsBordersOuter, imgui.Vec2{}, 0.0) {
+		imgui.TableNextRow()
+		imgui.TableNextColumn()
+		imgui.SetCursorScreenPos(imgui.CursorScreenPos().Plus(win.statusLabelAdj))
+		imgui.Text("s")
+		imgui.TableNextColumn()
+		imgui.SetCursorScreenPos(imgui.CursorScreenPos().Plus(win.statusLabelAdj))
+		imgui.Text("o")
+		imgui.TableNextColumn()
+		imgui.SetCursorScreenPos(imgui.CursorScreenPos().Plus(win.statusLabelAdj))
+		imgui.Text("b")
+		imgui.TableNextColumn()
+		imgui.SetCursorScreenPos(imgui.CursorScreenPos().Plus(win.statusLabelAdj))
+		imgui.Text("d")
+		imgui.TableNextColumn()
+		imgui.SetCursorScreenPos(imgui.CursorScreenPos().Plus(win.statusLabelAdj))
+		imgui.Text("i")
+		imgui.TableNextColumn()
+		imgui.SetCursorScreenPos(imgui.CursorScreenPos().Plus(win.statusLabelAdj))
+		imgui.Text("z")
+		imgui.TableNextColumn()
+		imgui.SetCursorScreenPos(imgui.CursorScreenPos().Plus(win.statusLabelAdj))
+		imgui.Text("c")
+
+		sr := win.img.lz.CPU.StatusReg
+		col := win.img.cols.TitleBgActive
+
+		imgui.TableNextRow()
+		imgui.TableNextColumn()
+		if imguiToggleButtonVertical("s", sr.Sign, col) {
+			win.img.term.pushCommand("CPU STATUS TOGGLE S")
+		}
+		imgui.TableNextColumn()
+		if imguiToggleButtonVertical("o", sr.Overflow, col) {
+			win.img.term.pushCommand("CPU STATUS TOGGLE O")
+		}
+		imgui.TableNextColumn()
+		if imguiToggleButtonVertical("b", sr.Break, col) {
+			win.img.term.pushCommand("CPU STATUS TOGGLE B")
+		}
+		imgui.TableNextColumn()
+		if imguiToggleButtonVertical("d", sr.DecimalMode, col) {
+			win.img.term.pushCommand("CPU STATUS TOGGLE D")
+		}
+		imgui.TableNextColumn()
+		if imguiToggleButtonVertical("i", sr.InterruptDisable, col) {
+			win.img.term.pushCommand("CPU STATUS TOGGLE I")
+		}
+		imgui.TableNextColumn()
+		if imguiToggleButtonVertical("z", sr.Zero, col) {
+			win.img.term.pushCommand("CPU STATUS TOGGLE Z")
+		}
+		imgui.TableNextColumn()
+		if imguiToggleButtonVertical("c", sr.Carry, col) {
+			win.img.term.pushCommand("CPU STATUS TOGGLE C")
+		}
+
+		imgui.TableNextRow()
+		imgui.EndTable()
+	}
+
+	imgui.Spacing()
+	res := win.img.lz.Debugger.LastResult
+	if res.Address != "" {
+		imgui.Text(fmt.Sprintf("[%d] %s %s %s", res.Bank.Number, res.Address, res.Operator, res.Operand))
+		if !res.Result.Final {
+			imgui.Text(fmt.Sprintf("%s of %s cycles", res.ActualCycles, res.DefnCycles))
+		} else {
+			imgui.Indent()
+			imgui.Text(fmt.Sprintf("%s cycles", res.ActualCycles))
+			if res.Result.PageFault {
+				imgui.SameLine()
+				imgui.Text("(page-fault)")
+			}
+		}
+	} else {
+		imgui.Text("no execution yet")
+		imgui.Text("")
+	}
 
 	imgui.End()
-}
-
-func (win *winCPU) drawStatusRegister() {
-	sr := win.img.lz.CPU.StatusReg
-
-	if win.drawStatusRegisterBit(sr.Sign, "S") {
-		win.img.term.pushCommand("CPU STATUS TOGGLE S")
-	}
-	imgui.SameLine()
-	if win.drawStatusRegisterBit(sr.Overflow, "O") {
-		win.img.term.pushCommand("CPU STATUS TOGGLE O")
-	}
-	imgui.SameLine()
-	if win.drawStatusRegisterBit(sr.Break, "B") {
-		win.img.term.pushCommand("CPU STATUS TOGGLE B")
-	}
-	imgui.SameLine()
-	if win.drawStatusRegisterBit(sr.DecimalMode, "D") {
-		win.img.term.pushCommand("CPU STATUS TOGGLE D")
-	}
-	imgui.SameLine()
-	if win.drawStatusRegisterBit(sr.InterruptDisable, "I") {
-		win.img.term.pushCommand("CPU STATUS TOGGLE I")
-	}
-	imgui.SameLine()
-	if win.drawStatusRegisterBit(sr.Zero, "Z") {
-		win.img.term.pushCommand("CPU STATUS TOGGLE Z")
-	}
-	imgui.SameLine()
-	if win.drawStatusRegisterBit(sr.Carry, "C") {
-		win.img.term.pushCommand("CPU STATUS TOGGLE C")
-	}
-
-	imgui.SameLine()
-	_ = imguiBooleanButton(win.img.cols, win.img.lz.CPU.RdyFlg, "RDY")
-}
-
-func (win *winCPU) drawStatusRegisterBit(bit bool, label string) bool {
-	if bit {
-		imgui.PushStyleColor(imgui.StyleColorButton, win.img.cols.CPUStatusOn)
-		imgui.PushStyleColor(imgui.StyleColorButtonHovered, win.img.cols.CPUStatusOn)
-		imgui.PushStyleColor(imgui.StyleColorButtonActive, win.img.cols.CPUStatusOn)
-		label = strings.ToUpper(label)
-	} else {
-		imgui.PushStyleColor(imgui.StyleColorButton, win.img.cols.CPUStatusOff)
-		imgui.PushStyleColor(imgui.StyleColorButtonHovered, win.img.cols.CPUStatusOff)
-		imgui.PushStyleColor(imgui.StyleColorButtonActive, win.img.cols.CPUStatusOff)
-		label = strings.ToLower(label)
-	}
-
-	defer imgui.PopStyleColorV(3)
-
-	return imgui.Button(label)
 }
 
 func (win *winCPU) drawRegister(reg registers.Generic) {
@@ -153,48 +189,5 @@ func (win *winCPU) drawRegister(reg registers.Generic) {
 
 	if imguiHexInput(fmt.Sprintf("##%s", label), bitwidth/4, &content) {
 		win.img.term.pushCommand(fmt.Sprintf("CPU SET %s %s", reg.Label(), content))
-	}
-}
-
-// draw most recent instruction in the CPU or as much as can be interpreted
-// currently.
-func (win *winCPU) drawLastResult() {
-	e := win.img.lz.Debugger.LastResult
-
-	if e.Level == disassembly.EntryLevelUnmappable {
-		imgui.Text("")
-		imgui.Text("")
-		imgui.Text("")
-		imgui.Text("")
-		return
-	}
-
-	if e.Result.Final {
-		imgui.Text(e.Bytecode)
-		imgui.Text(fmt.Sprintf("%s %s", e.Operator, e.Operand))
-		imgui.Text(fmt.Sprintf("%s cyc", e.ActualCycles))
-		if win.img.lz.Cart.NumBanks == 1 {
-			imgui.Text(fmt.Sprintf("(%s)", e.Address))
-		} else {
-			imgui.Text(fmt.Sprintf("(%s) [%s]", e.Address, e.Bank))
-		}
-		return
-	}
-
-	// this is not a completed CPU instruction, we're in the middle of one, so
-	// we need to format the result for the partially completed instruction
-
-	imgui.Text(e.Bytecode)
-	imgui.Text(fmt.Sprintf("%s %s", e.Operator, e.Operand))
-	if e.Result.Defn != nil {
-		imgui.Text(fmt.Sprintf("%s of %s cyc", e.ActualCycles, e.DefnCycles))
-		if win.img.lz.Cart.NumBanks == 1 {
-			imgui.Text(fmt.Sprintf("(%s)", e.Address))
-		} else {
-			imgui.Text(fmt.Sprintf("(%s) [%s]", e.Address, e.Bank))
-		}
-	} else {
-		imgui.Text("")
-		imgui.Text("")
 	}
 }
