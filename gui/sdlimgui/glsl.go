@@ -328,26 +328,20 @@ func (rnd *glsl) setOptions(textureID uint32) {
 		crt = rnd.img.wm.dbgScr.crt
 	}
 
-	// preferences
+	// crt preferences. we always set these because they're the same whatever
+	// the texture that uses them.
 	gl.Uniform1i(rnd.attribEnableCRT, boolToInt32(crt))
-	if crt {
-		gl.Uniform1i(rnd.attribEnablePhosphor, boolToInt32(rnd.img.crtPrefs.Phosphor.Get().(bool)))
-		gl.Uniform1i(rnd.attribEnableShadowMask, boolToInt32(rnd.img.crtPrefs.Mask.Get().(bool)))
-		gl.Uniform1i(rnd.attribEnableScanlines, boolToInt32(rnd.img.crtPrefs.Scanlines.Get().(bool)))
-		gl.Uniform1i(rnd.attribEnableNoise, boolToInt32(rnd.img.crtPrefs.Noise.Get().(bool)))
-		gl.Uniform1i(rnd.attribEnableBlur, boolToInt32(rnd.img.crtPrefs.Blur.Get().(bool)))
-		gl.Uniform1i(rnd.attribEnableVignette, boolToInt32(rnd.img.crtPrefs.Vignette.Get().(bool)))
-
-		gl.Uniform1f(rnd.attribPhosphorSpeed, float32(rnd.img.crtPrefs.PhosphorSpeed.Get().(float64)))
-		gl.Uniform1f(rnd.attribMaskBrightness, float32(rnd.img.crtPrefs.MaskBrightness.Get().(float64)))
-		gl.Uniform1f(rnd.attribScanlinesBrightness, float32(rnd.img.crtPrefs.ScanlinesBrightness.Get().(float64)))
-		gl.Uniform1f(rnd.attribNoiseLevel, float32(rnd.img.crtPrefs.NoiseLevel.Get().(float64)))
-		gl.Uniform1f(rnd.attribBlurLevel, float32(rnd.img.crtPrefs.BlurLevel.Get().(float64)))
-	}
-
-	// random seed always set. it's used for CRT noise but it's used sometimes
-	// (eg. CRT prefs) when crt is false, so it's easier to just set it every
-	// frame.
+	gl.Uniform1i(rnd.attribEnablePhosphor, boolToInt32(rnd.img.crtPrefs.Phosphor.Get().(bool)))
+	gl.Uniform1i(rnd.attribEnableShadowMask, boolToInt32(rnd.img.crtPrefs.Mask.Get().(bool)))
+	gl.Uniform1i(rnd.attribEnableScanlines, boolToInt32(rnd.img.crtPrefs.Scanlines.Get().(bool)))
+	gl.Uniform1i(rnd.attribEnableNoise, boolToInt32(rnd.img.crtPrefs.Noise.Get().(bool)))
+	gl.Uniform1i(rnd.attribEnableBlur, boolToInt32(rnd.img.crtPrefs.Blur.Get().(bool)))
+	gl.Uniform1i(rnd.attribEnableVignette, boolToInt32(rnd.img.crtPrefs.Vignette.Get().(bool)))
+	gl.Uniform1f(rnd.attribPhosphorSpeed, float32(rnd.img.crtPrefs.PhosphorSpeed.Get().(float64)))
+	gl.Uniform1f(rnd.attribMaskBrightness, float32(rnd.img.crtPrefs.MaskBrightness.Get().(float64)))
+	gl.Uniform1f(rnd.attribScanlinesBrightness, float32(rnd.img.crtPrefs.ScanlinesBrightness.Get().(float64)))
+	gl.Uniform1f(rnd.attribNoiseLevel, float32(rnd.img.crtPrefs.NoiseLevel.Get().(float64)))
+	gl.Uniform1f(rnd.attribBlurLevel, float32(rnd.img.crtPrefs.BlurLevel.Get().(float64)))
 	gl.Uniform1f(rnd.attribRandSeed, float32(time.Now().Nanosecond())/100000000.0)
 
 	// critical section
