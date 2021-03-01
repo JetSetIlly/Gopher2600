@@ -109,7 +109,7 @@ func (win *winCRTPrefs) draw() {
 	imguiSeparator()
 
 	// note start position of setting group
-	win.previewHeight = imguiMeasure(func() {
+	win.previewHeight = imguiMeasureHeight(func() {
 		imgui.BeginGroup()
 
 		win.drawPhosphor()
@@ -131,7 +131,7 @@ func (win *winCRTPrefs) draw() {
 		imgui.Spacing()
 
 		imgui.EndGroup()
-	}).Y
+	})
 
 	win.drawPreview()
 

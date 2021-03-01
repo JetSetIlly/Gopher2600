@@ -197,12 +197,28 @@ func imguiIndentText(text string) {
 	imgui.Text(text)
 }
 
-// meausure returns the dimensions used after the running of the region
-// function.
-func imguiMeasure(region func()) imgui.Vec2 {
-	m := imgui.CursorPos()
+// imguiMeasureHeight returns the height of the region drawn in the region() function.
+func imguiMeasureHeight(region func()) float32 {
+	p := imgui.CursorPos()
 	region()
-	return imgui.CursorPos().Minus(m)
+	return imgui.CursorPos().Minus(p).Y
+}
+
+// imguiMeasureWidth returns the width of the region drawn in the region()
+// function.
+//
+// it's a bit tricky getting the width with dear imgui. it involves noting the
+// current position, calling SameLine(), performing the width measurement and
+// returning to the stored position.
+//
+// this seems to work but it caused odd results when used to measure the width
+// of a table.
+func imguiMeasureWidth(region func()) float32 {
+	p := imgui.CursorPos()
+	region()
+	defer imgui.SetCursorPos(imgui.CursorPos())
+	imgui.SameLine()
+	return imgui.CursorPos().Minus(p).X
 }
 
 // pads imgui.Separator with additional spacing.

@@ -133,7 +133,7 @@ func (wm *manager) drawMenu() {
 
 	// cartridge info in menubar
 	imgui.SameLineV(imgui.WindowWidth()-wm.menuInfoWidth, 0.0)
-	wm.menuInfoWidth = imguiMeasure(func() {
+	wm.menuInfoWidth = imguiMeasureWidth(func() {
 		// fps indicator
 		if wm.img.state == gui.StateRunning {
 			if wm.img.lz.TV.ReqFPS < 1.0 {
@@ -159,7 +159,7 @@ func (wm *manager) drawMenu() {
 			imgui.Text(wm.img.lz.Cart.Filename)
 			imgui.Text(" ")
 		}
-	}).X
+	})
 }
 
 func (wm *manager) drawMenuEntry(m menuEntry) {

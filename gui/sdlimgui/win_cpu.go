@@ -29,8 +29,11 @@ type winCPU struct {
 	img  *SdlImgui
 	open bool
 
+	// width of status register. we use this to set the width of the window.
+	statusWidth float32
+
 	// labels in the status register header are adjusted slightly so that they
-	// are centered in the column
+	// are centred in the column
 	statusLabelAdj imgui.Vec2
 }
 
@@ -42,8 +45,17 @@ func newWinCPU(img *SdlImgui) (window, error) {
 	return win, nil
 }
 
+const statusRegisterNumColumns = 7
+
 func (win *winCPU) init() {
-	win.statusLabelAdj = imgui.Vec2{X: imgui.CalcTextSize("x", false, 0.0).X / 2, Y: 0.0}
+	x := imgui.CalcTextSize("x", false, 0.0).X
+	win.statusLabelAdj = imgui.Vec2{X: x / 2, Y: 0.0}
+
+	// using imguiMeasureWidth() has side effects when used to measure tables.
+	// fortunately, we can manually figure out the width of the status register
+	// table quite easily.
+	sty := imgui.CurrentStyle()
+	win.statusWidth = statusRegisterNumColumns*(x+sty.ItemInnerSpacing().X+sty.ItemSpacing().X) + 2*sty.ItemSpacing().X
 }
 
 func (win *winCPU) id() string {
@@ -64,7 +76,8 @@ func (win *winCPU) draw() {
 	}
 
 	imgui.SetNextWindowPosV(imgui.Vec2{659, 35}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
-	imgui.BeginV(win.id(), &win.open, imgui.WindowFlagsAlwaysAutoResize)
+	imgui.SetNextWindowSizeV(imgui.Vec2{win.statusWidth, -1}, imgui.ConditionNone)
+	imgui.BeginV(win.id(), &win.open, imgui.WindowFlagsNone)
 
 	if imgui.BeginTable("cpuLayout", 2) {
 		imgui.TableSetupColumnV("registers", imgui.TableColumnFlagsWidthFixed, 75, 1)
@@ -91,7 +104,7 @@ func (win *winCPU) draw() {
 	}
 
 	imgui.Spacing()
-	if imgui.BeginTableV("statusRegister", 7, imgui.TableFlagsBordersOuter, imgui.Vec2{}, 0.0) {
+	if imgui.BeginTable("statusRegister", statusRegisterNumColumns) {
 		imgui.TableNextRow()
 		imgui.TableNextColumn()
 		imgui.SetCursorScreenPos(imgui.CursorScreenPos().Plus(win.statusLabelAdj))
@@ -148,27 +161,47 @@ func (win *winCPU) draw() {
 			win.img.term.pushCommand("CPU STATUS TOGGLE C")
 		}
 
-		imgui.TableNextRow()
 		imgui.EndTable()
 	}
 
 	imgui.Spacing()
+
 	res := win.img.lz.Debugger.LastResult
 	if res.Address != "" {
-		imgui.Text(fmt.Sprintf("[%d] %s %s %s", res.Bank.Number, res.Address, res.Operator, res.Operand))
+		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmAddress)
+		imgui.Text(res.Address)
+
+		imgui.SameLine()
+		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmBank)
+		imgui.Text(fmt.Sprintf("[bank %d]", res.Bank.Number))
+
+		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmOperator)
+		imgui.Text(res.Operator)
+
+		imgui.SameLine()
+		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmOperand)
+		imgui.Text(res.Operand.String())
+
+		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmCycles)
 		if !res.Result.Final {
 			imgui.Text(fmt.Sprintf("%s of %s cycles", res.ActualCycles, res.DefnCycles))
 		} else {
-			imgui.Indent()
 			imgui.Text(fmt.Sprintf("%s cycles", res.ActualCycles))
 			if res.Result.PageFault {
 				imgui.SameLine()
+				imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmNotes)
 				imgui.Text("(page-fault)")
+				imgui.PopStyleColor()
 			}
 		}
+
+		imgui.PopStyleColorV(5)
 	} else {
+		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmNotes)
+		imgui.Text("")
 		imgui.Text("no execution yet")
 		imgui.Text("")
+		imgui.PopStyleColor()
 	}
 
 	imgui.End()

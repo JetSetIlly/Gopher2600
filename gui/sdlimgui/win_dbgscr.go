@@ -284,7 +284,7 @@ func (win *winDbgScr) draw() {
 	imgui.EndChild()
 
 	// start of tool bar
-	win.toolbarHeight = imguiMeasure(func() {
+	win.toolbarHeight = imguiMeasureHeight(func() {
 		imgui.Spacing()
 		win.drawCoordsLine()
 		imgui.Spacing()
@@ -314,7 +314,7 @@ func (win *winDbgScr) draw() {
 
 		imgui.SameLineV(0, 15)
 		win.drawOverlayPopup()
-	}).Y
+	})
 
 	imgui.End()
 }

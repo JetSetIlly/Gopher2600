@@ -67,6 +67,7 @@ type imguiColors struct {
 
 	// disassembly entry columns
 	DisasmLocation imgui.Vec4
+	DisasmBank     imgui.Vec4
 	DisasmAddress  imgui.Vec4
 	DisasmByteCode imgui.Vec4
 	DisasmOperator imgui.Vec4
@@ -173,6 +174,7 @@ func newColors() *imguiColors {
 
 		// disassembly entry columns
 		DisasmLocation: imgui.Vec4{0.8, 0.8, 0.8, 1.0},
+		DisasmBank:     imgui.Vec4{0.8, 0.8, 0.8, 1.0},
 		DisasmAddress:  imgui.Vec4{0.8, 0.4, 0.4, 1.0},
 		DisasmByteCode: imgui.Vec4{0.6, 0.3, 0.4, 1.0},
 		DisasmOperator: imgui.Vec4{0.4, 0.4, 0.8, 1.0},

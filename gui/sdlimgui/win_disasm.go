@@ -205,12 +205,12 @@ func (win *winDisasm) draw() {
 	win.drawBank(win.selectedBank, focusAddr, win.selectedBank == bank.Number && !bank.NonCart)
 
 	// draw options and status line. start height measurement
-	win.optionsHeight = imguiMeasure(func() {
+	win.optionsHeight = imguiMeasureHeight(func() {
 		imgui.Spacing()
 		imgui.Checkbox("Show Bytecode", &win.showByteCode)
 		imgui.SameLine()
 		imgui.Checkbox("Follow CPU", &win.followCPU)
-	}).Y
+	})
 
 	// handle different gui states.
 	switch win.img.state {

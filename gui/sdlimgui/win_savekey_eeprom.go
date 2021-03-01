@@ -77,7 +77,7 @@ func (win *winSaveKeyEEPROM) draw() {
 
 	imgui.EndChild()
 
-	win.statusHeight = imguiMeasure(func() {
+	win.statusHeight = imguiMeasureHeight(func() {
 		imgui.Spacing()
 		imgui.Spacing()
 
@@ -88,7 +88,7 @@ func (win *winSaveKeyEEPROM) draw() {
 				}
 			})
 		}
-	}).Y
+	})
 
 	imgui.End()
 }
