@@ -48,6 +48,9 @@ type winTerm struct {
 
 	// height of input line at bottom of window
 	inputLineHeight float32
+
+	// preferences
+	wrap bool
 }
 
 func newWinTerm(img *SdlImgui) (window, error) {
@@ -55,6 +58,7 @@ func newWinTerm(img *SdlImgui) (window, error) {
 		img:        img,
 		term:       img.term,
 		historyIdx: -1,
+		wrap:       true,
 	}
 
 	return win, nil
@@ -115,41 +119,47 @@ func (win *winTerm) draw() {
 	imgui.PopStyleVar()
 	imgui.PopStyleColor()
 
-	// scrollback
-	height := imguiRemainingWinHeight() - win.inputLineHeight
-	imgui.BeginChildV("scrollback", imgui.Vec2{X: 0, Y: height}, false, 0)
-
 	// make a note if scrollback has been clicked or is active. we'll use this
 	// to help focus the keyboard for the command line.
 	//
 	// the OR condition is so that the focus isn't lost after a drag event
 	// (damned weird if you ask me)
-	scrollbackActive := imgui.IsItemActive() || (imgui.IsWindowHovered() && imgui.IsMouseReleased(0))
+	var scrollbackActive bool
 
-	// only draw elements that will be visible
-	var clipper imgui.ListClipper
-	clipper.Begin(len(win.output))
-	for clipper.Step() {
-		for i := clipper.DisplayStart; i < clipper.DisplayEnd; i++ {
-			win.output[i].draw()
+	height := imguiRemainingWinHeight() - win.inputLineHeight
+	if imgui.BeginChildV("scrollback", imgui.Vec2{X: 0, Y: height}, false, 0) {
+		scrollbackActive = imgui.IsItemActive() || (imgui.IsWindowHovered() && imgui.IsMouseReleased(0))
+
+		// only draw elements that will be visible
+		var clipper imgui.ListClipper
+		clipper.Begin(len(win.output))
+		for clipper.Step() {
+			for i := clipper.DisplayStart; i < clipper.DisplayEnd; i++ {
+				win.output[i].draw(win.wrap)
+			}
 		}
-	}
 
-	// if output has been added to, scroll to bottom of window
-	if win.moreOutput {
-		win.moreOutput = false
-		imgui.SetScrollHereY(1.0)
-	}
+		// if output has been added to, scroll to bottom of window
+		if win.moreOutput {
+			win.moreOutput = false
+			imgui.SetScrollHereY(1.0)
+		}
 
-	imgui.EndChild()
+		imgui.EndChild()
+	}
 
 	// context menu for scrollback area
 	if imgui.BeginPopupContextItem() {
-		if imgui.Selectable("Save output to file") {
-			win.saveOutput()
-		}
+		imgui.Checkbox("Word wrap", &win.wrap)
+		imgui.Spacing()
+		imgui.Separator()
+		imgui.Spacing()
 		if imgui.Selectable("Clear terminal") {
 			win.output = win.output[:0]
+		}
+		imgui.Spacing()
+		if imgui.Selectable("Save output to file") {
+			win.saveOutput()
 		}
 		imgui.EndPopup()
 	}
@@ -298,7 +308,7 @@ type terminalOutput struct {
 	text  string
 }
 
-func (l terminalOutput) draw() {
+func (l terminalOutput) draw(wrap bool) {
 	switch l.style {
 	case terminal.StyleEcho:
 		imgui.PushStyleColor(imgui.StyleColorText, l.cols.TermStyleEcho)
@@ -325,6 +335,13 @@ func (l terminalOutput) draw() {
 		imgui.PushStyleColor(imgui.StyleColorText, l.cols.TermStyleLog)
 	}
 
+	// text wrap for window
+	if wrap {
+		imgui.PushTextWrapPosV(imgui.WindowWidth())
+		defer imgui.PopTextWrapPos()
+	}
+
 	imgui.Text(l.text)
+
 	imgui.PopStyleColor()
 }

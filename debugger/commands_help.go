@@ -94,6 +94,8 @@ The optional numeric argument will show the disassembly of either the cartridge 
 of the specific cartridge address.
 `,
 
+	cmdLint: `Lint is an experimental feature that performs a static analysis of the loaded ROM.`,
+
 	cmdGrep: `Simple string search (case insensitive) of the disassembly. Prints all matching lines
 in the disassembly to the termain.
 
