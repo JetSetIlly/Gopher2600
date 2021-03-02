@@ -65,7 +65,8 @@ func (dbg *Debugger) buildPrompt() terminal.Prompt {
 		CPURdy:    dbg.VCS.CPU.RdyFlg,
 	}
 
-	if dbg.VCS.CPU.LastResult.Final {
+	// LastResult final is false on CPU reset so we must check for that also
+	if dbg.VCS.CPU.LastResult.Final || dbg.VCS.CPU.HasReset() {
 		p.Type = terminal.PromptTypeCPUStep
 	} else {
 		p.Type = terminal.PromptTypeVideoStep
