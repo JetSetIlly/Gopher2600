@@ -76,6 +76,9 @@ func (ref *Reflector) Step(bank mapper.BankInfo) error {
 		v.Hmove.RippleCt = ref.vcs.TIA.Hmove.Ripple
 	}
 
+	// RSYNC
+	v.RSYNCalign, v.RSYNCreset = ref.vcs.TIA.RSYNCstate()
+
 	// if reflector is paused then we need to reflect the pixel now
 	if ref.renderer != nil && ref.paused {
 		ref.renderer.UpdatingPixels(true)

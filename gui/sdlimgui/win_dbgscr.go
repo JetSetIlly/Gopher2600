@@ -132,6 +132,7 @@ const (
 	overlayWSYNC
 	overlayCollisions
 	overlayHMOVE
+	overlayRSYNC
 	overlayCoprocessor
 )
 
@@ -143,6 +144,8 @@ func (o overlay) String() string {
 		return "Collisions overlay"
 	case overlayHMOVE:
 		return "HMOVE overlay"
+	case overlayRSYNC:
+		return "RSYNC overlay"
 	case overlayCoprocessor:
 		return "CoProcessor overlay"
 	}
@@ -350,6 +353,7 @@ func (win *winDbgScr) drawOverlayPopup() {
 			ok = imgui.RadioButtonInt(overlayWSYNC.String(), &v, int(overlayWSYNC)) || ok
 			ok = imgui.RadioButtonInt(overlayCollisions.String(), &v, int(overlayCollisions)) || ok
 			ok = imgui.RadioButtonInt(overlayHMOVE.String(), &v, int(overlayHMOVE)) || ok
+			ok = imgui.RadioButtonInt(overlayRSYNC.String(), &v, int(overlayRSYNC)) || ok
 
 			// special handling for coprocessor layer
 			if win.img.lz.CoProc.HasCoProcBus {
@@ -389,6 +393,11 @@ func (win *winDbgScr) drawOverlayPopup() {
 				win.img.imguiColorLabel(col, "Ripple")
 				col = packedColSetAlpha(win.img.cols.reflectionColors[reflection.HMOVElatched], win.overlayAlpha)
 				win.img.imguiColorLabel(col, "Latch")
+			case overlayRSYNC:
+				col := packedColSetAlpha(win.img.cols.reflectionColors[reflection.RSYNCalign], win.overlayAlpha)
+				win.img.imguiColorLabel(col, "Align")
+				col = packedColSetAlpha(win.img.cols.reflectionColors[reflection.RSYNCreset], win.overlayAlpha)
+				win.img.imguiColorLabel(col, "Reset")
 			case overlayCoprocessor:
 				col := packedColSetAlpha(win.img.cols.reflectionColors[reflection.CoprocessorActive], win.overlayAlpha)
 				win.img.imguiColorLabel(col, fmt.Sprintf("%s Active", win.img.lz.CoProc.ID))
@@ -524,6 +533,8 @@ func (win *winDbgScr) drawReflectionTooltip(screenOrigin imgui.Vec2) {
 		} else {
 			imgui.Text("no HMOVE")
 		}
+	case overlayRSYNC:
+		// no RSYNC specific hover information
 	case overlayCoprocessor:
 		imguiSeparator()
 		if ref.CoprocessorActive {

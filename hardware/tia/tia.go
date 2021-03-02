@@ -205,7 +205,7 @@ func (tia *TIA) UpdateTIA(data bus.ChipData) bool {
 		tia.futureRsyncReset.Schedule(7, 0)
 		tia.pendingEvents += 2
 
-		// I've not test what happens if we reach hsync naturally while the
+		// I've not tested what happens if we reach hsync naturally while the
 		// above RSYNC delay is active.
 
 		return false
@@ -258,6 +258,13 @@ func (tia *TIA) UpdateTIA(data bus.ChipData) bool {
 	}
 
 	return true
+}
+
+// RSYNCstate returns whether the RSYNC alignment and reset latches are active.
+// Both are scheduled at the same time and align takes less time to complete
+// than the reset.
+func (tia *TIA) RSYNCstate() (bool, bool) {
+	return tia.futureRsyncAlign.IsActive(), tia.futureRsyncReset.IsActive()
 }
 
 func (tia *TIA) newScanline() {

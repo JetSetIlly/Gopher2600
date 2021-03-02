@@ -306,6 +306,8 @@ var reflectionColors = map[reflection.ID]color.RGBA{
 	reflection.HMOVEdelay:        {R: 150, G: 50, B: 50, A: 255},
 	reflection.HMOVEripple:       {R: 50, G: 150, B: 50, A: 255},
 	reflection.HMOVElatched:      {R: 50, G: 50, B: 150, A: 255},
+	reflection.RSYNCalign:        {R: 50, G: 50, B: 200, A: 255},
+	reflection.RSYNCreset:        {R: 50, G: 200, B: 200, A: 255},
 	reflection.CoprocessorActive: {R: 200, G: 50, B: 200, A: 255},
 }
 

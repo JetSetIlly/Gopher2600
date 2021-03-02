@@ -290,6 +290,13 @@ func (scr *screen) NewFrame(isStable bool) error {
 		}
 	}
 
+	// sometimes a new frame will start early leaving stale reflection information
+	for x := scr.crit.lastX; x < len(scr.crit.reflection); x++ {
+		for y := scr.crit.lastY; y < len(scr.crit.reflection[x]); y++ {
+			scr.crit.reflection[x][y] = reflection.VideoStep{}
+		}
+	}
+
 	scr.crit.section.Unlock()
 
 	return nil
@@ -397,6 +404,12 @@ func (scr *screen) plotOverlay(x, y int, ref reflection.VideoStep) {
 			} else {
 				scr.crit.overlayPixels.SetRGBA(x, y, reflectionColors[reflection.HMOVElatched])
 			}
+		}
+	case overlayRSYNC:
+		if ref.RSYNCalign {
+			scr.crit.overlayPixels.SetRGBA(x, y, reflectionColors[reflection.RSYNCalign])
+		} else if ref.RSYNCreset {
+			scr.crit.overlayPixels.SetRGBA(x, y, reflectionColors[reflection.RSYNCreset])
 		}
 	case overlayCoprocessor:
 		if ref.CoprocessorActive {

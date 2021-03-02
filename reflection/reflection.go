@@ -35,6 +35,8 @@ const (
 	HMOVEdelay
 	HMOVEripple
 	HMOVElatched
+	RSYNCalign
+	RSYNCreset
 	CoprocessorActive
 )
 
@@ -74,6 +76,8 @@ type VideoStep struct {
 	IsRAM             bool
 	CoprocessorActive bool
 	IsHblank          bool
+	RSYNCalign        bool
+	RSYNCreset        bool
 }
 
 // Hmove groups the HMOVE reflection information. It's too complex a property
