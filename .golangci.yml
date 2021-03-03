@@ -30,6 +30,7 @@ linters-settings:
     disable:
       - composites
       - shadow
+      - fieldalignment
 
   gocritic:
     disabled-checks:
