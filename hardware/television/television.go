@@ -335,12 +335,12 @@ func (tv *Television) Signal(sig signal.SignalAttributes) error {
 	}
 
 	// check vsync signal at the time of the flyback
-	//
-	// !!TODO: replace VSYNC signal with extended HSYNC signal
 	if sig.VSync && !tv.state.lastSignal.VSync {
 		tv.state.vsyncCount = 0
+	} else if sig.VSync && tv.state.lastSignal.VSync {
+		tv.state.vsyncCount++
 	} else if !sig.VSync && tv.state.lastSignal.VSync {
-		if tv.state.vsyncCount > 0 {
+		if tv.state.vsyncCount > 10 {
 			err := tv.newFrame(true)
 			if err != nil {
 				return err
@@ -350,19 +350,17 @@ func (tv *Television) Signal(sig signal.SignalAttributes) error {
 
 	// we've "faked" the flyback signal above when clock reached
 	// horizClksScanline. we need to handle the real flyback signal however, by
-	// making sure we're at the correct clock value.  if clock doesn't
-	// equal 16 at the front of the HSYNC or 36 at then back of the HSYNC, then
-	// it indicates that the RSYNC register was used last scanline.
+	// making sure we're at the correct clock value.
+	//
+	// this should be seen as a special condition and one that could be
+	// removed if the TV signal was emulated properly. for now the range check
+	// is to enable the RSYNC smooth scrolling trick to be displayed correctly.
+	//
+	// https://atariage.com/forums/topic/224946-smooth-scrolling-playfield-i-think-ive-done-it
 	if sig.HSync && !tv.state.lastSignal.HSync {
-		tv.state.clock = 16
-
-		// count vsync lines at start of hsync
-		if sig.VSync || tv.state.lastSignal.VSync {
-			tv.state.vsyncCount++
+		if tv.state.clock < 13 || tv.state.clock > 22 {
+			tv.state.clock = 16
 		}
-	}
-	if !sig.HSync && tv.state.lastSignal.HSync {
-		tv.state.clock = 36
 	}
 
 	// doing nothing with CBURST signal
