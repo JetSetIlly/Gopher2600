@@ -74,6 +74,9 @@ type CPU struct {
 	// otherwise be considered an error. Resets to false on every call to
 	// ExecuteInstruction()
 	Interrupted bool
+
+	// list of BoundaryTriggers implementations to consult
+	boundaryTriggers []BoundaryTrigger
 }
 
 // NewCPU is the preferred method of initialisation for the CPU structure. Note
@@ -92,6 +95,12 @@ func NewCPU(prefs *preferences.Preferences, mem bus.CPUBus) *CPU {
 		acc16:        registers.NewProgramCounter(0),
 		instructions: instructions.GetDefinitions(),
 	}
+}
+
+// AddPixelRenderer registers an implementation of BoundaryTrigger. Multiple
+// implemntations can be added.
+func (mc *CPU) AddBoundaryTrigger(b BoundaryTrigger) {
+	mc.boundaryTriggers = append(mc.boundaryTriggers, b)
 }
 
 // Snapshot creates a copy of the CPU in its current state.
@@ -522,6 +531,11 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 	if !mc.RdyFlg {
 		err := cycleCallback()
 		return err
+	}
+
+	// process all boundaryTriggers
+	for _, b := range mc.boundaryTriggers {
+		b.InstructionBoundary()
 	}
 
 	// prepare new round of results

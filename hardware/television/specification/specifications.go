@@ -112,7 +112,7 @@ const (
 	ClksScanline = 228
 )
 
-// the absolute number of scanlines allowed by the TV regardless of
+// The absolute number of scanlines allowed by the TV regardless of
 // specification - value of 32 is the same as the total number of scanlines
 // used by the PAL specification.
 const AbsoluteMaxScanlines = 312

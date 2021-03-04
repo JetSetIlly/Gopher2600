@@ -28,11 +28,11 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/supercharger"
 )
 
-// inputLoop has two modes, defined by the videoCycle argument. when videoCycle
+// inputLoop has two modes, defined by the clockCycle argument. when clockCycle
 // is true then user will be prompted every video cycle; when false the user
-// is prompted every cpu cycle.
-func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
-	dbg.isVideoCycleInputLoop = videoCycle
+// is prompted every cpu instruction.
+func (dbg *Debugger) inputLoop(inputter terminal.Input, clockCycle bool) error {
+	dbg.isClockCycleInputLoop = clockCycle
 
 	// to speed things a bit we only check for input events every
 	// "inputCtDelay" iterations.
@@ -70,17 +70,17 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 			break // for loop
 		}
 
-		// return immediately if this inputLoop() is a videoCycle, the current
-		// quantum mode has been changed to quantumCPU and the emulation has
+		// return immediately if this inputLoop() is a clockCycle, the current
+		// quantum mode has been changed to INSTRUCTION and the emulation has
 		// been asked to continue with (eg. with STEP)
 		//
 		// this is important in a very specific situation:
-		// a) the emulation has been in video quantum mode
-		// b) it is mid-way between CPU quantums
-		// c) the debugger has been changed to cpu quantum mode
+		// a) the emulation has been in CLOCK quantum mode
+		// b) it is mid-way through a single CPU instruction
+		// c) the debugger has been changed to INSTRUCTION quantum mode
 		//
 		// if we don't do this then debugging output will be wrong and confusing.
-		if videoCycle && dbg.continueEmulation && dbg.quantum == QuantumCPU {
+		if clockCycle && dbg.continueEmulation && dbg.quantum == QuantumInstruction {
 			return nil
 		}
 
@@ -103,7 +103,7 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 
 		// check for breakpoints and traps. for video cycle input loops we only
 		// do this if the instruction has affected flow.
-		if !videoCycle || (dbg.VCS.CPU.LastResult.Defn != nil &&
+		if !clockCycle || (dbg.VCS.CPU.LastResult.Defn != nil &&
 			(dbg.VCS.CPU.LastResult.Defn.Effect == instructions.Flow ||
 				dbg.VCS.CPU.LastResult.Defn.Effect == instructions.Subroutine ||
 				dbg.VCS.CPU.LastResult.Defn.Effect == instructions.Interrupt)) {
@@ -158,7 +158,7 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 
 			// take note of current machine state if the emulation was in a running
 			// state and is halting just now
-			if dbg.continueEmulation && inputter.IsInteractive() && !videoCycle {
+			if dbg.continueEmulation && inputter.IsInteractive() && !clockCycle {
 				dbg.Rewind.ExecutionState()
 			}
 
@@ -209,7 +209,7 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 				}
 
 				// update comparison point before execution continues
-				if !videoCycle {
+				if !clockCycle {
 					dbg.Rewind.SetComparison()
 				}
 			}
@@ -228,9 +228,9 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 		}
 
 		if dbg.continueEmulation {
-			// input loops with the videoCycle flag must not execute another
+			// input loops with the clockCycle flag must not execute another
 			// call to vcs.Step()
-			if videoCycle {
+			if clockCycle {
 				return nil
 			}
 
@@ -240,7 +240,7 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, videoCycle bool) error {
 			}
 
 			// make sure videocyle info is current
-			dbg.isVideoCycleInputLoop = videoCycle
+			dbg.isClockCycleInputLoop = clockCycle
 
 			// check exit video loop
 			if dbg.inputLoopRestart {
@@ -316,7 +316,7 @@ func (dbg *Debugger) readTerminal(inputter terminal.Input) error {
 }
 
 func (dbg *Debugger) contEmulation(inputter terminal.Input) error {
-	quantumCPU := func() error {
+	quantumInstruction := func() error {
 		return dbg.ref.Step(dbg.lastBank)
 	}
 
@@ -335,7 +335,7 @@ func (dbg *Debugger) contEmulation(inputter terminal.Input) error {
 		}
 
 		// update debugger the same way for video quantum as for cpu quantum
-		err = quantumCPU()
+		err = quantumInstruction()
 		if err != nil {
 			return err
 		}
@@ -349,7 +349,7 @@ func (dbg *Debugger) contEmulation(inputter terminal.Input) error {
 			}
 		}
 
-		// start another inputLoop() with the videoCycle boolean set to true
+		// start another inputLoop() with the clockCycle boolean set to true
 		return dbg.inputLoop(inputter, true)
 	}
 
@@ -363,8 +363,8 @@ func (dbg *Debugger) contEmulation(inputter terminal.Input) error {
 	var stepErr error
 
 	switch dbg.quantum {
-	case QuantumCPU:
-		stepErr = dbg.VCS.Step(quantumCPU)
+	case QuantumInstruction:
+		stepErr = dbg.VCS.Step(quantumInstruction)
 	case QuantumVideo:
 		stepErr = dbg.VCS.Step(quantumVideo)
 	default:

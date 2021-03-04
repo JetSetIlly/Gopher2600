@@ -114,8 +114,8 @@ type Debugger struct {
 
 	// \/\/\/ inputLoop \/\/\/
 
-	// is current inputloop inside a video cycle
-	isVideoCycleInputLoop bool
+	// is current inputloop inside a clock cycle
+	isClockCycleInputLoop bool
 
 	// buffer for user input
 	input []byte
@@ -205,6 +205,9 @@ func NewDebugger(tv *television.Television, scr gui.GUI, term terminal.Terminal,
 		return nil, curated.Errorf("debugger: %v", err)
 	}
 	dbg.rewinding = make(chan bool, 1)
+
+	// plug TV BoundaryTrigger into CPU
+	dbg.VCS.CPU.AddBoundaryTrigger(dbg.VCS.TV)
 
 	// set up breakpoints/traps
 	dbg.breakpoints, err = newBreakpoints(dbg)

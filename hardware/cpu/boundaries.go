@@ -13,24 +13,10 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-package debugger
+package cpu
 
-// QuantumMode specifies the step granularity of the emulator.
-type QuantumMode int
-
-// List of valid QuantumModes.
-const (
-	QuantumInstruction QuantumMode = iota
-	QuantumVideo
-)
-
-func (mode QuantumMode) String() string {
-	switch mode {
-	case QuantumInstruction:
-		return "Instruction"
-	case QuantumVideo:
-		return "Video"
-	default:
-		return "unrecognised quantum mode"
-	}
+// BoundaryTrigger functions are called at key points in the CPU execution.
+type BoundaryTrigger interface {
+	// InstructionBoundary is called at the start of each new CPU instruction.
+	InstructionBoundary()
 }

@@ -83,9 +83,9 @@ var commandTemplate = []string{
 	cmdQuit,
 
 	cmdRun,
-	cmdStep + " (CPU|VIDEO|%<target>S)",
+	cmdStep + " (BACK) (INSTRUCTION|VIDEO|SCANLINE|FRAME)",
 	cmdHalt,
-	cmdQuantum + " (CPU|VIDEO)",
+	cmdQuantum + " (INSTRUCTION|VIDEO)",
 	cmdScript + " [RECORD %<new file>F|END|%<file>F]",
 	cmdRewind + " [%<frame>N|LAST|SUMMARY]",
 

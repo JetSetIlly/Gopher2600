@@ -92,7 +92,7 @@ func (dbg *Debugger) PushRewind(fn int, last bool) bool {
 	// how we push the doRewind() function depends on what kind of inputloop we
 	// are currently in
 	dbg.PushRawEventImm(func() {
-		if dbg.isVideoCycleInputLoop {
+		if dbg.isClockCycleInputLoop {
 			dbg.restartInputLoop(doRewind)
 
 			// read rewinding channel, this unblocks the channel and allows

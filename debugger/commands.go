@@ -195,36 +195,93 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		dbg.haltImmediately = true
 
 	case cmdStep:
+		adj := 1
+		back := false
+
+		if tk, ok := tokens.Get(); ok {
+			back = tk == "BACK"
+			if !back {
+				tokens.Unget()
+			} else {
+				adj *= -1
+			}
+		}
+
+		// get mode
 		mode, _ := tokens.Get()
 		mode = strings.ToUpper(mode)
+
+		if back {
+			var req signal.StateAdj
+			var f, s, c int
+
+			switch mode {
+			case "":
+				fallthrough
+			case "INSTRUCTION":
+				dbg.quantum = QuantumInstruction
+				req = signal.AdjInstruction
+			case "VIDEO":
+				return curated.Errorf("cannot STEP BACK by color clock")
+			case "SCANLINE":
+				req = signal.AdjScanline
+			case "FRAME":
+				req = signal.AdjFramenum
+			default:
+				return curated.Errorf("unknown STEP BACK mode (%s)", mode)
+			}
+
+			var err error
+
+			f, s, c, err = dbg.VCS.TV.ReqAdjust(req, adj, true)
+
+			if err != nil {
+				return err
+			}
+
+			dbg.restartInputLoop(func() error {
+				// adjust gui state for rewinding event. put back into a suitable
+				// state afterwards.
+				if dbg.runUntilHalt {
+					defer dbg.scr.SetFeature(gui.ReqState, gui.StateRunning)
+				} else {
+					defer dbg.scr.SetFeature(gui.ReqState, gui.StatePaused)
+				}
+				return dbg.Rewind.GotoFrameCoords(f, s, c)
+			})
+
+			return nil
+		}
+
+		// step forward
 		switch mode {
 		case "":
-			// calling step with no argument is the normal case
-		case "CPU":
-			// changes quantum
-			dbg.quantum = QuantumCPU
+			// continue with whatever quantum is current
+		case "INSTRUCTION":
+			dbg.quantum = QuantumInstruction
 		case "VIDEO":
-			// changes quantum
 			dbg.quantum = QuantumVideo
 		default:
-			// does not change quantum
+			// do not change quantum
 			tokens.Unget()
 			err := dbg.stepTraps.parseCommand(tokens)
 			if err != nil {
-				return curated.Errorf("unknown step mode (%s)", mode)
+				return curated.Errorf("unknown STEP mode (%s)", mode)
 			}
+
+			// trap may take many cycles to trigger
 			dbg.runUntilHalt = true
 		}
 
+		// always continue
 		dbg.continueEmulation = true
-		return nil
 
 	case cmdQuantum:
 		mode, _ := tokens.Get()
 		mode = strings.ToUpper(mode)
 		switch mode {
-		case "CPU":
-			dbg.quantum = QuantumCPU
+		case "INSTRUCTION":
+			dbg.quantum = QuantumInstruction
 		case "VIDEO":
 			dbg.quantum = QuantumVideo
 		default:

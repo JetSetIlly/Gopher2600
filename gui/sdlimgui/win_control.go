@@ -25,11 +25,11 @@ import (
 const winControlID = "Control"
 
 const (
-	videoCycleLabel     = "Step Video"
-	cpuInstructionLabel = "Step CPU"
-	runButtonLabel      = "Run"
-	haltButtonLabel     = "Halt"
-	fpsLabel            = "FPS"
+	clockLabel       = "Step Clock"
+	instructionLabel = "Step Instruction"
+	runButtonLabel   = "Run"
+	haltButtonLabel  = "Halt"
+	fpsLabel         = "FPS"
 )
 
 type winControl struct {
@@ -58,7 +58,7 @@ func newWinControl(img *SdlImgui) (window, error) {
 }
 
 func (win *winControl) init() {
-	win.stepButtonDim = imguiGetFrameDim(videoCycleLabel, cpuInstructionLabel)
+	win.stepButtonDim = imguiGetFrameDim(clockLabel, instructionLabel)
 	win.runButtonDim = imguiGetFrameDim(runButtonLabel, haltButtonLabel)
 	win.fpsLabelDim = imguiGetFrameDim(fpsLabel)
 }
@@ -194,16 +194,16 @@ func (win *winControl) drawRewind() {
 func (win *winControl) drawStep() {
 	if imguiToggleButton("##quantumToggle", win.img.lz.Debugger.Quantum == debugger.QuantumVideo, win.img.cols.TitleBgActive) {
 		if win.img.lz.Debugger.Quantum == debugger.QuantumVideo {
-			win.img.term.pushCommand("QUANTUM CPU")
+			win.img.term.pushCommand("QUANTUM INSTRUCTION")
 		} else {
 			win.img.term.pushCommand("QUANTUM VIDEO")
 		}
 	}
 
 	// label for step button
-	stepLabel := cpuInstructionLabel
+	stepLabel := instructionLabel
 	if win.img.lz.Debugger.Quantum == debugger.QuantumVideo {
-		stepLabel = videoCycleLabel
+		stepLabel = clockLabel
 	}
 
 	// add step button

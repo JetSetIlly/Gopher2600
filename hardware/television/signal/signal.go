@@ -72,6 +72,18 @@ const (
 	ReqClock
 )
 
+// StateAdj is used to specify adjustment scale for the ReqAdjust() function.
+type StateAdj int
+
+// List of valid adjustment scales.
+const (
+	AdjFramenum StateAdj = iota
+	AdjScanline
+	AdjInstruction
+	AdjCPUCycle
+	AdjClock
+)
+
 // TelevisionTIA exposes only the functions required by the TIA.
 type TelevisionTIA interface {
 	Signal(SignalAttributes) error

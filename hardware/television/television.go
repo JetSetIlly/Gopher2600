@@ -81,6 +81,11 @@ type State struct {
 
 	// frame resizer
 	resizer resizer
+
+	// the frame/scanline/clock of the last CPU instruction
+	boundaryClock    int
+	boundaryFrameNum int
+	boundaryScanline int
 }
 
 // Snapshot makes a copy of the television state.
@@ -118,13 +123,13 @@ type Television struct {
 	// framerate limiter
 	lmtr limiter
 
-	// list of renderer implementations to consult
+	// list of PixelRenderer implementations to consult
 	renderers []PixelRenderer
 
-	// list of frametrigger implementations to consult
+	// list of FrameTrigger implementations to consult
 	frameTriggers []FrameTrigger
 
-	// list of frametrigger implementations to consult
+	// list of PauseTrigger implementations to consult
 	pauseTriggers []PauseTrigger
 
 	// list of audio mixers to consult
@@ -475,7 +480,7 @@ func (tv *Television) processSignals(current bool) error {
 				sig := tv.signals[i]
 				err := r.SetPixel(sig, i < tv.currentIdx)
 				if err != nil {
-					return curated.Errorf("television", err)
+					return curated.Errorf("television: %v", err)
 				}
 			}
 			if !current {
@@ -483,7 +488,7 @@ func (tv *Television) processSignals(current bool) error {
 					sig := tv.signals[i]
 					err := r.SetPixel(sig, i < tv.currentIdx)
 					if err != nil {
-						return curated.Errorf("television", err)
+						return curated.Errorf("television: %v", err)
 					}
 				}
 			}
@@ -638,22 +643,92 @@ func (tv *Television) GetActualFPS() float32 {
 	return tv.lmtr.actual.Load().(float32)
 }
 
-// AddOneClock to the specified frame/scanline/clock. Adjusts scanline and
-// frame as required. Note that we need to know the current TV top/bottom state
-// to be able to this correctly.
+// ReqAdjust requests the frame, scanline and clock values where the requested
+// StateReq has been adjusted by the specified value. All values will be
+// adjusted as required.
 //
-// There may be extreme corner cases involving screen resizing at the instant
-// the AddOneClock() is performed but it's so unlikely to be of any
-// significance that I'm ignoring that complication (famous last words :-).
-func (tv *Television) AddOneClock(frame int, scanline int, clock int) (int, int, int) {
-	clock += 3
-	if clock > specification.ClksScanline {
-		clock -= specification.ClksScanline
-		scanline++
+// The reset argument instructs the function to return values that have been
+// reset to zero as appropriate. So when request is ReqFramenum, the scanline
+// and clock values will be zero; when request is ReqScanline, the clock value
+// will be zero. It has no affect when request is ReqClock.
+//
+// In the case of a StateAdj of AdjCPUCycle the only allowed adjustment value
+// is -1. Any other value will return an error.
+func (tv *Television) ReqAdjust(request signal.StateAdj, adjustment int, reset bool) (int, int, int, error) {
+	clock := tv.state.clock
+	scanline := tv.state.scanline
+	frame := tv.state.frameNum
+
+	var err error
+
+	switch request {
+	case signal.AdjCPUCycle:
+		// adjusting by CPU cycle is the same as adjusting by video cycle
+		// accept to say that a CPU cycle is the equivalent of 3 video cycles
+		adjustment *= 3
+		fallthrough
+	case signal.AdjClock:
+		clock += adjustment
+		if clock >= specification.ClksScanline {
+			clock -= specification.ClksScanline
+			scanline++
+		} else if clock < 0 {
+			clock += specification.ClksScanline
+			scanline--
+		}
+		if scanline > tv.state.bottom {
+			scanline -= tv.state.bottom
+			frame++
+		} else if scanline < 0 {
+			scanline += tv.state.bottom
+			frame--
+		}
+		if frame < 0 {
+			frame = 0
+			scanline = 0
+			clock = 0
+		}
+	case signal.AdjInstruction:
+		if adjustment != -1 {
+			err = curated.Errorf("television: can only adjust CPU boundary by -1")
+		} else {
+			clock = tv.state.boundaryClock
+			scanline = tv.state.boundaryScanline
+			frame = tv.state.boundaryFrameNum
+		}
+	case signal.AdjScanline:
+		if reset {
+			clock = 0
+		}
+		scanline += adjustment
+		if scanline > tv.state.bottom {
+			scanline -= tv.state.bottom
+			frame++
+		} else if scanline < 0 {
+			scanline += tv.state.bottom
+			frame--
+		}
+		if frame < 0 {
+			frame = 0
+			scanline = 0
+		}
+	case signal.AdjFramenum:
+		if reset {
+			clock = 0
+			scanline = 0
+		}
+		frame += adjustment
+		if frame < 0 {
+			frame = 0
+		}
 	}
-	if scanline > tv.state.bottom {
-		scanline -= tv.state.bottom
-		frame++
-	}
-	return frame, scanline, clock
+
+	return frame, scanline, clock - specification.ClksHBlank, err
+}
+
+// InstructionBoudary implements the cpu.BoundaryTrigger interface.
+func (tv *Television) InstructionBoundary() {
+	tv.state.boundaryClock = tv.state.clock
+	tv.state.boundaryFrameNum = tv.state.frameNum
+	tv.state.boundaryScanline = tv.state.scanline
 }

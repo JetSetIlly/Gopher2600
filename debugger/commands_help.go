@@ -29,31 +29,19 @@ a BREAK, TRAP or WATCH condition.`,
 
 	cmdHalt: `Halt emulation. Does nothing if emulation is already halted.`,
 
-	cmdStep: `Step forward one emulation quantum. An optional argument to the STEP command
-changes the current quantum and steps forward by one. Permitted quantum values
-are CPU and VIDEO. See the help for the QUANTUM command for an explanation.
-
-By way of convenience, the STEP command also accepts a target argument. Let's
-call them target- steps.Targets are explained in the help for the BREAK
-command.
-
-	STEP FRAME
-
-In the above example, the emulation will run until the next frame is reached.
-Think of target stepping as a single use trap. Note that breakpoints, watches
-and traps still trigger a halt during a target step.`,
+	cmdStep: `Step forward one frame, scanline, CPU instruction or color clock. With the BACK keyword
+the emulation can be stepped backwards too, although stepping back by color clock is currently not possible.`,
 
 	cmdQuantum: `Change or view stepping quantum. The stepping quantum defines the frequency
 at which the emulation is checked and reported upon by the debugger.
 
-There are two quantum modes. The CPU quantum mode causes the debugger to step
-one CPU instruction at a time, regardless of how many cycles the instruction
-takes. 
+There are two quantum modes. The INSTRUCTION quantum mode causes the debugger
+to step one CPU instruction at a time, regardless of how many cycles the
+instruction takes. 
 
-The VIDEO quantum mode meanwhile, causes the debugger to step one video cycle
-at a time. Compared to the CPU quantum mode, the VIDEO quantum is more uniform
-but is inherently slower because of the increased number of BREAK, TRAP
-and WATCH checks performed by the debugger.`,
+The VIDEO quantum mode meanwhile, causes the debugger to step one color clock
+(or one video cycle) at a time. Compared to the INSTRUCTION quantum mode, the
+VIDEO quantum will cause the emulation to run slower.`,
 
 	cmdScript: `Run commands from specified file or record commands to a file. The RECORD
 argument indicates that a new script is to be recorded. Recording will not
@@ -91,8 +79,7 @@ banks can be displayed by specifying the bank number. Use BYTECODE to display ra
 the disassembly.
 
 The optional numeric argument will show the disassembly of either the cartridge bank (if present) or
-of the specific cartridge address.
-`,
+of the specific cartridge address.`,
 
 	cmdLint: `Lint is an experimental feature that performs a static analysis of the loaded ROM.`,
 
