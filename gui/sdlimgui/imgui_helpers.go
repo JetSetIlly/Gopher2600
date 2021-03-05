@@ -33,6 +33,23 @@ func imguiRemainingWinHeight() float32 {
 	return imgui.WindowHeight() - imgui.CursorPosY() - imgui.CurrentStyle().FramePadding().Y*2 - imgui.CurrentStyle().ItemInnerSpacing().Y
 }
 
+// return the width of the window from the current cursor position to the edge
+// of the window frame. subtracts padding and spacing from the edge to make it
+// suitable for sizing buttons etc.
+func imguiRemainingWinWidth() float32 {
+	w := imgui.WindowWidth() - imgui.CursorPosX()
+	w -= imgui.CurrentStyle().FramePadding().X + imgui.CurrentStyle().ItemInnerSpacing().X
+	return w
+}
+
+// divide remaining win width by n taking into account spacing between
+// widgets. useful for cheap tabulation of buttons.
+func imguiDivideWinWidth(n int) float32 {
+	w := imguiRemainingWinWidth() / float32(n)
+	w -= imgui.CurrentStyle().FramePadding().X
+	return w
+}
+
 // returns the minimum Vec2{} required to fit any of the string values listed
 // in the arguments.
 func imguiGetFrameDim(s string, t ...string) imgui.Vec2 {
@@ -59,53 +76,53 @@ func imguiTextWidth(length int) float32 {
 }
 
 // return coordinates for right alignment of a string to previous imgui widget.
-func imguiRightAlign(s string) imgui.Vec2 {
-	// this dearimgui dance gets the X position of the end of the last widget.
-	// leaving us with c, a Vec2 with the correct Y position
-	c := imgui.CursorPos()
-	imgui.SameLine()
-	x := imgui.CursorPosX()
-	imgui.SetCursorPos(c)
-	c = imgui.CursorPos()
+// func imguiRightAlign(s string) imgui.Vec2 {
+// 	// this dearimgui dance gets the X position of the end of the last widget.
+// 	// leaving us with c, a Vec2 with the correct Y position
+// 	c := imgui.CursorPos()
+// 	imgui.SameLine()
+// 	x := imgui.CursorPosX()
+// 	imgui.SetCursorPos(c)
+// 	c = imgui.CursorPos()
 
-	// the X coordinate can be set by subtracting the width of the text from
-	// the stored x value
-	c.X = x - imguiTextWidth(len(s)) + imgui.CurrentStyle().FramePadding().X
+// 	// the X coordinate can be set by subtracting the width of the text from
+// 	// the stored x value
+// 	c.X = x - imguiTextWidth(len(s)) + imgui.CurrentStyle().FramePadding().X
 
-	return c
-}
+// 	return c
+// }
 
 // adds min/max indicators to imgui.SliderInt. returns true if slider has changed.
-func imguiSliderInt(label string, f *int32, s int32, e int32) bool {
-	v := imgui.SliderInt(label, f, s, e)
+// func imguiSliderInt(label string, f *int32, s int32, e int32) bool {
+// 	v := imgui.SliderInt(label, f, s, e)
 
-	// alignment information for frame number indicators below
-	min := fmt.Sprintf("%d", s)
-	max := fmt.Sprintf("%d", e)
-	align := imguiRightAlign(max)
+// 	// alignment information for frame number indicators below
+// 	min := fmt.Sprintf("%d", s)
+// 	max := fmt.Sprintf("%d", e)
+// 	align := imguiRightAlign(max)
 
-	// rewind frame information
-	imgui.Text(min)
-	imgui.SameLine()
-	imgui.SetCursorPos(align)
-	imgui.Text(max)
+// 	// rewind frame information
+// 	imgui.Text(min)
+// 	imgui.SameLine()
+// 	imgui.SetCursorPos(align)
+// 	imgui.Text(max)
 
-	return v
-}
+// 	return v
+// }
 
 // draw toggle button at current cursor position. returns true if toggle has been clicked.
 func imguiToggleButton(id string, v bool, col imgui.Vec4) bool {
-	bg := imgui.PackedColorFromVec4(col)
-	p := imgui.CursorScreenPos()
-	dl := imgui.WindowDrawList()
-
-	height := imgui.FrameHeight()
+	height := imgui.FrameHeight() * 0.75
 	width := height * 1.55
 	radius := height * 0.50
 	t := float32(0.0)
 	if v {
 		t = 1.0
 	}
+
+	bg := imgui.PackedColorFromVec4(col)
+	p := imgui.CursorScreenPos().Plus(imgui.Vec2{X: 0, Y: (imgui.FrameHeight() / 2) - (height / 2)})
+	dl := imgui.WindowDrawList()
 
 	r := false
 
@@ -127,7 +144,7 @@ func imguiToggleButton(id string, v bool, col imgui.Vec4) bool {
 // in win_cpu. any changes to this function will have to bear that in mind.
 func imguiToggleButtonVertical(id string, v bool, col imgui.Vec4) bool {
 	bg := imgui.PackedColorFromVec4(col)
-	p := imgui.CursorScreenPos()
+	p := imgui.CursorScreenPos().Minus(imgui.Vec2{X: 0, Y: 1})
 	dl := imgui.WindowDrawList()
 
 	width := imgui.CalcTextSize(" X", false, 0.0).X

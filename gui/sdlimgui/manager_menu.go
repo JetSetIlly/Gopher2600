@@ -139,7 +139,7 @@ func (wm *manager) drawMenu() {
 			if wm.img.lz.TV.ReqFPS < 1.0 {
 				imgui.Text(" < 1 fps ")
 			} else {
-				imgui.Text(fmt.Sprintf("% 5.1f fps", wm.img.lz.TV.AcutalFPS))
+				imgui.Text(fmt.Sprintf("% 5.1f fps", wm.img.lz.TV.ActualFPS))
 			}
 		} else {
 			// empty text to ensure measureWidth() always returns the same value

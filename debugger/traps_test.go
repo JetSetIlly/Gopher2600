@@ -26,7 +26,7 @@ func (trm *mockTerm) testTraps() {
 
 	// add same trap again. using uppercase this time.
 	trm.sndInput("TRAP A")
-	trm.cmpOutput("trap already exists (A)")
+	trm.cmpOutput("trap exists (A)")
 
 	// list traps. compare last line.
 	trm.sndInput("LIST TRAPS")

@@ -217,12 +217,17 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 
 			switch mode {
 			case "":
-				fallthrough
+				// continue with current quantum state
+
+				// adjust by instruction even if quantum is QuantumVideo
+				// because stepping back by Color Clock is not supported yet
+				req = signal.AdjInstruction
 			case "INSTRUCTION":
 				dbg.quantum = QuantumInstruction
 				req = signal.AdjInstruction
 			case "VIDEO":
-				return curated.Errorf("cannot STEP BACK by color clock")
+				dbg.quantum = QuantumVideo
+				req = signal.AdjClock
 			case "SCANLINE":
 				req = signal.AdjScanline
 			case "FRAME":
@@ -256,7 +261,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		// step forward
 		switch mode {
 		case "":
-			// continue with whatever quantum is current
+			// continue with current quantum state
 		case "INSTRUCTION":
 			dbg.quantum = QuantumInstruction
 		case "VIDEO":
@@ -264,10 +269,9 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		default:
 			// do not change quantum
 			tokens.Unget()
-			err := dbg.stepTraps.parseCommand(tokens)
-			if err != nil {
-				return curated.Errorf("unknown STEP mode (%s)", mode)
-			}
+
+			// ignoring error
+			_ = dbg.stepTraps.parseCommand(tokens)
 
 			// trap may take many cycles to trigger
 			dbg.runUntilHalt = true

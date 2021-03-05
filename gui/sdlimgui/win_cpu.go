@@ -79,6 +79,8 @@ func (win *winCPU) draw() {
 	imgui.SetNextWindowSizeV(imgui.Vec2{win.statusWidth, -1}, imgui.ConditionNone)
 	imgui.BeginV(win.id(), &win.open, imgui.WindowFlagsNone)
 
+	fillWidth := imgui.Vec2{X: -1, Y: imgui.FrameHeight()}
+
 	if imgui.BeginTable("cpuLayout", 2) {
 		imgui.TableSetupColumnV("registers", imgui.TableColumnFlagsWidthFixed, 75, 1)
 
@@ -96,7 +98,7 @@ func (win *winCPU) draw() {
 
 		imgui.TableNextRow()
 		imgui.TableNextColumn()
-		_ = imguiBooleanButton(win.img.cols, win.img.lz.CPU.RdyFlg, "RDY Flag", imgui.Vec2{X: -1, Y: imgui.FrameHeight()})
+		_ = imguiBooleanButton(win.img.cols, win.img.lz.CPU.RdyFlg, "RDY Flag", fillWidth)
 		imgui.TableNextColumn()
 		win.drawRegister(win.img.lz.CPU.Y)
 

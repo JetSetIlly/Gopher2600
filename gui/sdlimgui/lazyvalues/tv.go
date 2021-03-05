@@ -43,7 +43,7 @@ type LazyTV struct {
 	Scanline   int
 	Clock      int
 	IsStable   bool
-	AcutalFPS  float32
+	ActualFPS  float32
 	ReqFPS     float32
 }
 
@@ -79,6 +79,6 @@ func (lz *LazyTV) update() {
 	lz.Scanline, _ = lz.scanline.Load().(int)
 	lz.Clock, _ = lz.clock.Load().(int)
 	lz.IsStable, _ = lz.isStable.Load().(bool)
-	lz.AcutalFPS, _ = lz.actualFPS.Load().(float32)
+	lz.ActualFPS, _ = lz.actualFPS.Load().(float32)
 	lz.ReqFPS, _ = lz.reqFPS.Load().(float32)
 }

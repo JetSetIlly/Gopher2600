@@ -106,7 +106,8 @@ func (tr traps) list() {
 	}
 }
 
-// parse tokens and add new trap.
+// parse tokens and add new trap. the silent argument will prevent error
+// messages being printed.
 func (tr *traps) parseCommand(tokens *commandline.Tokens) error {
 	_, present := tokens.Peek()
 	for present {
@@ -115,18 +116,13 @@ func (tr *traps) parseCommand(tokens *commandline.Tokens) error {
 			return err
 		}
 
-		addNewTrap := true
 		for _, t := range tr.traps {
 			if t.target.Label() == tgt.Label() {
-				addNewTrap = false
-				tr.dbg.printLine(terminal.StyleError, fmt.Sprintf("trap already exists (%s)", t))
-				break // for loop
+				return curated.Errorf("trap exists (%s)", t)
 			}
 		}
 
-		if addNewTrap {
-			tr.traps = append(tr.traps, trapper{target: tgt, origValue: tgt.TargetValue()})
-		}
+		tr.traps = append(tr.traps, trapper{target: tgt, origValue: tgt.TargetValue()})
 
 		_, present = tokens.Peek()
 	}

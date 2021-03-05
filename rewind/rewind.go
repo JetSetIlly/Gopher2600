@@ -118,10 +118,11 @@ type Rewind struct {
 	// pointer to the comparison point
 	comparison *State
 
-	// adhoc is a special snapshot of a state that cannot be found in the
-	// entries array. it is used to speed up consecutive calls to
-	// GotoFrameCoords()
-	adhoc *State
+	// adhocFrame is a special snapshot of a state that cannot be found in the
+	// entries array. it is used to speed up consecutive calls to GotoFrameCoords()
+	//
+	// only comes into play if snapshot frequency is larger than 1
+	adhocFrame *State
 
 	// a new frame has been triggered. resolve as soon as possible.
 	newFrame bool
@@ -178,7 +179,7 @@ func (r *Rewind) reset(level snapshotLevel) {
 		r.entries[i] = nil
 	}
 
-	r.adhoc = nil
+	r.adhocFrame = nil
 	r.comparison = nil
 
 	r.newFrame = false
@@ -401,7 +402,7 @@ func (r *Rewind) plumbState(s *State, frame, scanline, clock int) error {
 
 	// snapshot adhoc frame as soon as convenient. not required when snapshot
 	// frequency is one
-	adhocSnapshotted := r.Prefs.Freq.Get().(int) == 1
+	adhocFrameDone := r.Prefs.Freq.Get().(int) == 1
 
 	// pause rendering if emulation is running "backwards"
 	if backwards {
@@ -411,19 +412,19 @@ func (r *Rewind) plumbState(s *State, frame, scanline, clock int) error {
 
 	continueCheck := func() bool {
 		nf := r.vcs.TV.GetState(signal.ReqFramenum)
-		ny := r.vcs.TV.GetState(signal.ReqScanline)
-		nx := r.vcs.TV.GetState(signal.ReqClock)
+		ns := r.vcs.TV.GetState(signal.ReqScanline)
+		nc := r.vcs.TV.GetState(signal.ReqClock)
 
-		if !adhocSnapshotted && nf == frame-1 {
-			r.adhoc = r.snapshot(levelAdhoc)
-			adhocSnapshotted = true
+		if !adhocFrameDone && nf == frame-1 {
+			r.adhocFrame = r.snapshot(levelAdhoc)
+			adhocFrameDone = true
 		}
 
 		// check to see if TV state exceeds the requested state
-		tooFar := nf > frame || (nf == frame && ny > scanline) || (nf == frame && ny == scanline && nx >= clock)
+		done := nf > frame || (nf == frame && ns > scanline) || (nf == frame && ns == scanline && nc >= clock)
 
 		// do not continue if we have gone too far
-		return !tooFar
+		return !done
 	}
 
 	// run emulation until continueCheck returns false
@@ -575,17 +576,23 @@ func (r *Rewind) GotoFrameCoords(frame int, scanline int, clock int) error {
 	idx, _, _ := r.findFrameIndex(frame)
 
 	// if found index does not point to an immediately suitable state then try
-	// the adhoc state if available
+	// the adhocFrame state if available
 	if frame != r.entries[idx].TV.GetState(signal.ReqFramenum)+1 {
-		if r.adhoc != nil && r.adhoc.TV.GetState(signal.ReqFramenum) == frame-1 {
-			return r.plumbState(r.adhoc, frame, scanline, clock)
+		if r.adhocFrame != nil && r.adhocFrame.TV.GetState(signal.ReqFramenum) == frame-1 {
+			return r.plumbState(r.adhocFrame, frame, scanline, clock)
 		}
 	}
 
 	// we've not used adhoc this time so nillify it
-	r.adhoc = nil
+	r.adhocFrame = nil
 
-	return r.plumb(idx, frame, scanline, clock)
+	// plumb in index and run until we reach the desired frame coordinates
+	err := r.plumb(idx, frame, scanline, clock)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // SetComparison points comparison to the most recent rewound entry.
