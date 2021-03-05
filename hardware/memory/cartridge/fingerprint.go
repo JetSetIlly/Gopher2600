@@ -146,8 +146,7 @@ func fingerprintCDF(b []byte) (bool, byte) {
 }
 
 func fingerprintSuperchargerFastLoad(cartload cartridgeloader.Loader) bool {
-	l := len(cartload.Data)
-	return l == 8448 || l == 25344 || l == 33792
+	return len(cartload.Data)%8448 == 0
 }
 
 func fingerprintTigervision(b []byte) bool {

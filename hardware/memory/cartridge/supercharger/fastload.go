@@ -70,8 +70,7 @@ func newFastLoad(cart *Supercharger, loader cartridgeloader.Loader) (tape, error
 		data: loader.Data,
 	}
 
-	l := len(tap.data)
-	if l != 8448 && l != 25344 && l != 33792 {
+	if len(tap.data)%8448 != 0 {
 		return nil, fmt.Errorf("fastload: %v", "wrong number of bytes in cartridge data")
 	}
 
