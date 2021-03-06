@@ -55,6 +55,7 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, clockCycle bool) error {
 
 			err = dbg.checkEvents()
 			if err != nil {
+				dbg.running = false
 				dbg.printLine(terminal.StyleError, "%s", err)
 			}
 

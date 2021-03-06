@@ -16,6 +16,7 @@
 package recorder
 
 import (
+	"bufio"
 	"fmt"
 	"io"
 	"os"
@@ -56,14 +57,19 @@ const (
 )
 
 const magicString = "gopher2600playback"
-const versionString = "1.0"
+const versionMajor = "1"
+const versionMinor = "1"
+
+func version() string {
+	return fmt.Sprintf("%s.%s", versionMajor, versionMinor)
+}
 
 func (rec *Recorder) writeHeader() error {
 	lines := make([]string, numHeaderLines)
 
 	// add header information
 	lines[lineMagicString] = magicString
-	lines[lineVersion] = versionString
+	lines[lineVersion] = version()
 	lines[lineCartName] = rec.vcs.Mem.Cart.Filename
 	lines[lineCartHash] = rec.vcs.Mem.Cart.Hash
 	lines[lineTVSpec] = fmt.Sprintf("%v\n", rec.vcs.TV.GetReqSpecID())
@@ -98,38 +104,59 @@ func (plb *Playback) readHeader(lines []string) error {
 	return nil
 }
 
-// IsPlaybackFile returns true if the specified file appears to be a playback
-// file. It does not care about the nature of any errors that may be generated
-// or if the file appears to be a playback file but is of an unsupported
-// version.
-func IsPlaybackFile(filename string) bool {
-	// !!TODO: more nuanced results from IsPlaybackFile()
+// Sentinal errors from IsPlaybackFile().
+const (
+	NotAPlaybackFile   = "playback file: %v"
+	UnsupportedVersion = "playback file: unsupported version (%v)"
+)
 
+// IsPlaybackFile return nil if file is a playback file and is a supported
+// version. If file is not a playback file then the sentinal error
+// NotAPlaybackFile is returned.
+//
+// Recognised playback files but where the version is unspported will result in
+// an UnsupportedVersion error.
+func IsPlaybackFile(filename string) error {
 	f, err := os.Open(filename)
 	if err != nil {
-		return false
+		return curated.Errorf(NotAPlaybackFile, err)
 	}
 	defer func() { f.Close() }()
 
-	// magic string verification
-	b := make([]byte, len(magicString)+1)
-	n, err := f.Read(b)
-	if n != len(magicString)+1 || err != nil {
-		return false
+	reader := bufio.NewReader(f)
+
+	// magic string comparison
+	m, err := reader.ReadString('\n')
+	if err != nil {
+		return curated.Errorf(NotAPlaybackFile, err)
 	}
-	if string(b) != magicString+"\n" {
-		return false
+	m = strings.TrimSuffix(m, "\n")
+	if m != magicString {
+		return curated.Errorf(NotAPlaybackFile, "unrecognised format")
 	}
 
-	// version number verification
-	b = make([]byte, len(versionString)+1)
-	n, err = f.Read(b)
-	if n != len(versionString)+1 || err != nil {
-		return false
+	// version string comparison
+	v, err := reader.ReadString('\n')
+	if err != nil {
+		return curated.Errorf(NotAPlaybackFile, err)
 	}
-	if string(b) != versionString+"\n" {
-		return false
+	v = strings.TrimSuffix(v, "\n")
+
+	// split into major/minor numbers
+	versionParts := strings.Split(v, ".")
+	if len(versionParts) != 2 {
+		return curated.Errorf(NotAPlaybackFile, "unrecognised format")
 	}
 
-	return true
+	// major versions must match
+	if versionMajor != versionParts[0] {
+		return curated.Errorf(UnsupportedVersion, v)
+	}
+
+	// earlier minor versions are supported
+	if versionMinor < versionParts[1] {
+		return curated.Errorf(UnsupportedVersion, v)
+	}
+
+	return nil
 }

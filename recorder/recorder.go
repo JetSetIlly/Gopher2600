@@ -119,7 +119,7 @@ func (rec *Recorder) End() error {
 }
 
 // RecordEvent implements the ports.EventRecorder interface.
-func (rec *Recorder) RecordEvent(id ports.PortID, event ports.Event, value ports.EventData) error {
+func (rec *Recorder) RecordEvent(id ports.PortID, event ports.Event, data ports.EventData) error {
 	var err error
 
 	// write header if it's not been written already
@@ -150,15 +150,15 @@ func (rec *Recorder) RecordEvent(id ports.PortID, event ports.Event, value ports
 	scanline := rec.vcs.TV.GetState(signal.ReqScanline)
 	clock := rec.vcs.TV.GetState(signal.ReqClock)
 
-	// convert value of nil type to the empty string
-	if value == nil {
-		value = ""
+	// convert data of nil type to the empty string
+	if data == nil {
+		data = ""
 	}
 
 	line := fmt.Sprintf("%v%s%v%s%v%s%v%s%v%s%v%s%v\n",
 		id, fieldSep,
 		event, fieldSep,
-		value, fieldSep,
+		data, fieldSep,
 		frame, fieldSep,
 		scanline, fieldSep,
 		clock, fieldSep,

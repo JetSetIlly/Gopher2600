@@ -16,6 +16,7 @@
 package ports
 
 import (
+	"strconv"
 	"strings"
 
 	"github.com/jetsetilly/gopher2600/curated"
@@ -142,21 +143,35 @@ const (
 
 // HandleEvent implements Peripheral interface.
 func (pan *Panel) HandleEvent(event Event, value EventData) error {
+	var v bool
+	switch d := value.(type) {
+	case bool:
+		v = d
+	case EventDataPlayback:
+		if len(string(d)) > 0 {
+			var err error
+			v, err = strconv.ParseBool(string(d))
+			if err != nil {
+				return curated.Errorf("panel: %v: unexpected event data", event)
+			}
+		}
+	}
+
 	switch event {
 	case PanelSelect:
-		pan.selectPressed = value.(bool)
+		pan.selectPressed = v
 
 	case PanelReset:
-		pan.resetPressed = value.(bool)
+		pan.resetPressed = v
 
 	case PanelSetColor:
-		pan.color = value.(bool)
+		pan.color = v
 
 	case PanelSetPlayer0Pro:
-		pan.p0pro = value.(bool)
+		pan.p0pro = v
 
 	case PanelSetPlayer1Pro:
-		pan.p1pro = value.(bool)
+		pan.p1pro = v
 
 	case PanelToggleColor:
 		pan.color = !pan.color

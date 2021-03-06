@@ -31,6 +31,8 @@ type platform struct {
 	window *sdl.Window
 	mode   sdl.DisplayMode
 
+	gamepad *sdl.GameController
+
 	// whether window is full screen or not
 	fullScreen bool
 }
@@ -91,11 +93,27 @@ func newPlatform(img *SdlImgui) (*platform, error) {
 		logger.Log("sdl", "cannot set GLSwapInterval() for SDL GUI")
 	}
 
+	// open first gamepad we encounter
+	for i := 0; i < 10; i++ {
+		plt.gamepad = sdl.GameControllerOpen(i)
+		if plt.gamepad.Attached() {
+			logger.Logf("sdl", "gamepad: %s", plt.gamepad.Name())
+			break // for loop
+		}
+	}
+	if !plt.gamepad.Attached() {
+		logger.Log("sdl", "no gamepad found")
+	} else {
+		plt.gamepad.Rumble(0x0, 0xffff, 300)
+	}
+
 	return plt, nil
 }
 
 // destroy cleans up the resources.
 func (plt *platform) destroy() error {
+	plt.gamepad.Close()
+
 	if plt.window != nil {
 		err := plt.window.Destroy()
 		if err != nil {

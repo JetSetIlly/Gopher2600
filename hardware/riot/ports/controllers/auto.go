@@ -27,8 +27,7 @@ type Auto struct {
 	bus        ports.PeripheralBus
 	controller ports.Peripheral
 
-	paddleTouchLeft  int
-	paddleTouchRight int
+	paddleTouchCt int
 }
 
 // NewAuto is the preferred method of initialisation for the Auto type.
@@ -72,29 +71,9 @@ func (aut *Auto) HandleEvent(event ports.Event, data ports.EventData) error {
 	case ports.Down:
 		aut.toStick()
 	case ports.Fire:
-		aut.toStick()
-
-	case ports.PaddleFire:
-
+		// no auto switch for fire events
 	case ports.PaddleSet:
-		// count the number of times the paddle controller has touched the
-		// extremes (or near the extremes). this is really to prevent the
-		// paddle from accidentally be triggered. there maybe should be some
-		// time limit
-		if _, ok := aut.controller.(*Paddle); !ok {
-			v := data.(float32)
-			if v < 0.1 {
-				aut.paddleTouchLeft++
-			} else if v > 0.9 {
-				aut.paddleTouchRight++
-			}
-			if aut.paddleTouchLeft >= 3 && aut.paddleTouchRight >= 3 {
-				aut.toPaddle()
-				aut.paddleTouchLeft = 0
-				aut.paddleTouchRight = 0
-			}
-		}
-
+		aut.toPaddle()
 	case ports.KeyboardDown:
 		aut.toKeyboard()
 	case ports.KeyboardUp:
@@ -136,6 +115,7 @@ func (aut *Auto) Reset() {
 }
 
 func (aut *Auto) toStick() {
+	aut.paddleTouchCt = 0
 	if _, ok := aut.controller.(*Stick); !ok {
 		aut.controller = NewStick(aut.id, aut.bus)
 	}
@@ -143,11 +123,21 @@ func (aut *Auto) toStick() {
 
 func (aut *Auto) toPaddle() {
 	if _, ok := aut.controller.(*Paddle); !ok {
+		const autoPaddleSensitivity = 20
+
+		if aut.paddleTouchCt < autoPaddleSensitivity {
+			aut.paddleTouchCt++
+			if aut.paddleTouchCt < autoPaddleSensitivity {
+				return
+			}
+		}
+
 		aut.controller = NewPaddle(aut.id, aut.bus)
 	}
 }
 
 func (aut *Auto) toKeyboard() {
+	aut.paddleTouchCt = 0
 	if _, ok := aut.controller.(*Keyboard); !ok {
 		aut.controller = NewKeyboard(aut.id, aut.bus)
 	}

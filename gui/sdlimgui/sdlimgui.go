@@ -30,6 +30,7 @@ import (
 	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/paths"
 	"github.com/jetsetilly/gopher2600/reflection"
+	"github.com/jetsetilly/gopher2600/userinput"
 	"github.com/veandco/go-sdl2/sdl"
 
 	"github.com/inkyblackness/imgui-go/v4"
@@ -89,10 +90,9 @@ type SdlImgui struct {
 	// service loop is important to the GUI's responsiveness.
 	polling *polling
 
-	// events channel is not created but assigned with the feature request
-	// gui.ReqSetEventChan. it is a way for the gui to send information about
-	// events back to the emulation.
-	events chan gui.Event
+	// userinput channel is not created but assigned with ReqSetPlaymode and
+	// ReqSetDebugmode requests
+	userinput chan userinput.Event
 
 	// mouse coords at last frame. used by service loop to keep track of mouse motion
 	mouseX, mouseY int32

@@ -18,38 +18,20 @@ package debugger
 import (
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
-	"github.com/jetsetilly/gopher2600/gui"
-	"github.com/jetsetilly/gopher2600/playmode"
+	"github.com/jetsetilly/gopher2600/userinput"
 )
 
-func (dbg *Debugger) guiEventHandler(ev gui.Event) error {
-	var err error
-
-	switch ev := ev.(type) {
-	case gui.EventQuit:
-		dbg.running = false
-		return curated.Errorf(terminal.UserInterrupt)
-
-	case gui.EventKeyboard:
-		// forward all keyboard events to the playmode event handler
-		_, err = playmode.KeyboardEventHandler(ev, dbg.VCS)
-		if err != nil {
-			return err
-		}
-
-	case gui.EventMouseButton:
-		_, err := playmode.MouseButtonEventHandler(ev, dbg.VCS, dbg.scr)
-		return err
-
-	case gui.EventMouseMotion:
-		_, err := playmode.MouseMotionEventHandler(ev, dbg.VCS)
-		return err
+func (dbg *Debugger) userInputHandler(ev userinput.Event) error {
+	quit, err := userinput.HandleUserInput(ev, dbg.VCS.RIOT.Ports)
+	if err != nil {
+		return curated.Errorf("debugger: %v", err)
 	}
 
-	if err != nil {
-		if !curated.Is(err, gui.UnsupportedGuiFeature) {
-			return curated.Errorf("debugger: %v", err)
-		}
+	// on quit set running to false and return a UserInterrupt to make sure we
+	// loop and check the dbg.running flag as soon as possible.
+	if quit {
+		dbg.running = false
+		return curated.Errorf(terminal.UserInterrupt)
 	}
 
 	return nil
@@ -81,8 +63,8 @@ func (dbg *Debugger) checkEvents() error {
 			// end debugger
 			dbg.running = false
 
-		case ev := <-dbg.events.GuiEvents:
-			err := dbg.guiEventHandler(ev)
+		case ev := <-dbg.events.UserInput:
+			err := dbg.userInputHandler(ev)
 			if err != nil {
 				return err
 			}

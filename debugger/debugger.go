@@ -41,6 +41,7 @@ import (
 	"github.com/jetsetilly/gopher2600/rewind"
 	"github.com/jetsetilly/gopher2600/setup"
 	"github.com/jetsetilly/gopher2600/symbols"
+	"github.com/jetsetilly/gopher2600/userinput"
 )
 
 // Debugger is the basic debugging frontend for the emulation. In order to be
@@ -219,30 +220,22 @@ func NewDebugger(tv *television.Television, scr gui.GUI, term terminal.Terminal,
 	dbg.traces = newTraces(dbg)
 	dbg.stepTraps = newTraps(dbg)
 
-	// make synchronisation channels
-	//
-	// plain debugging terminal causes some missed GUI events. not an issue
-	// except the some spurious log messages. it would be nice to get rid
-	// of them. extending the length of the channel queue works but that
-	// doesn't feel like the correct solution
-	//
-	// TODO: fix missed GUI events when using plain terminal
-	//
-	// RawEvents are pushed thick and fast and the channel queue should be
-	// pretty lengthy to prevent dropped events (see PushRawEvent() function).
+	// make synchronisation channels. RawEvents are pushed thick and fast and
+	// the channel queue should be pretty lengthy to prevent dropped events
+	// (see PushRawEvent() function).
 	dbg.events = &terminal.ReadEvents{
-		GuiEvents:       make(chan gui.Event, 10),
-		GuiEventHandler: dbg.guiEventHandler,
-		IntEvents:       make(chan os.Signal, 1),
-		RawEvents:       make(chan func(), 32),
-		RawEventsImm:    make(chan func(), 32),
+		UserInput:        make(chan userinput.Event, 10),
+		UserInputHandler: dbg.userInputHandler,
+		IntEvents:        make(chan os.Signal, 1),
+		RawEvents:        make(chan func(), 32),
+		RawEventsImm:     make(chan func(), 32),
 	}
 
 	// connect Interrupt signal to dbg.events.intChan
 	signal.Notify(dbg.events.IntEvents, os.Interrupt)
 
 	// connect gui
-	err = dbg.scr.SetFeature(gui.ReqSetDebugmode, dbg, dbg.events.GuiEvents)
+	err = dbg.scr.SetFeature(gui.ReqSetDebugmode, dbg, dbg.events.UserInput)
 	if err != nil {
 		if !curated.Is(err, gui.UnsupportedGuiFeature) {
 			return nil, curated.Errorf("debugger: %v", err)

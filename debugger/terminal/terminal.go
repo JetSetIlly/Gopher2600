@@ -18,7 +18,7 @@ package terminal
 import (
 	"os"
 
-	"github.com/jetsetilly/gopher2600/gui"
+	"github.com/jetsetilly/gopher2600/userinput"
 )
 
 // Input defines the operations required by an interface that allows input.
@@ -54,8 +54,8 @@ const (
 // ReadEvents *must* be monitored during a TermRead().
 type ReadEvents struct {
 	// gui events. must be handled immediately by accompanying GuiEventHandler
-	GuiEvents       chan gui.Event
-	GuiEventHandler func(gui.Event) error
+	UserInput        chan userinput.Event
+	UserInputHandler func(userinput.Event) error
 
 	// interrupt signals from the operating system
 	IntEvents chan os.Signal

@@ -108,12 +108,12 @@ func (ct *ColorTerminal) TermRead(input []byte, prompt terminal.Prompt, events *
 			// normally.
 			return 0, curated.Errorf(terminal.UserInterrupt)
 
-		case ev := <-events.GuiEvents:
+		case ev := <-events.UserInput:
 			// handle functions that are passsed on over interruptChannel. these can
 			// be things like events from the television GUI. eg. mouse clicks,
 			// key presses, etc.
 			ct.EasyTerm.TermPrint(ansi.CursorStore)
-			err := events.GuiEventHandler(ev)
+			err := events.UserInputHandler(ev)
 			ct.EasyTerm.TermPrint(ansi.CursorRestore)
 			if err != nil {
 				return inputLen + 1, err

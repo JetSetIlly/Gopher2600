@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
+	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/debugger"
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
 	"github.com/jetsetilly/gopher2600/debugger/terminal/colorterm"
@@ -806,8 +807,10 @@ with the LOG mode. Note that asking for log output will suppress regression prog
 		var reg regression.Regressor
 
 		if *mode == "" {
-			if recorder.IsPlaybackFile(md.GetArg(0)) {
+			if err := recorder.IsPlaybackFile(md.GetArg(0)); err == nil {
 				*mode = "PLAYBACK"
+			} else if !curated.Is(err, recorder.NotAPlaybackFile) {
+				return err
 			} else {
 				*mode = "VIDEO"
 			}

@@ -20,6 +20,7 @@ import (
 	"github.com/jetsetilly/gopher2600/debugger"
 	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/hardware"
+	"github.com/jetsetilly/gopher2600/userinput"
 )
 
 type featureRequest struct {
@@ -79,9 +80,9 @@ func (img *SdlImgui) serviceSetFeature(request featureRequest) {
 		if err == nil {
 			img.setDbgAndVCS(nil, request.args[0].(*hardware.VCS))
 			if request.args[1] == nil {
-				img.events = nil
+				img.userinput = nil
 			} else {
-				img.events = request.args[1].(chan gui.Event)
+				img.userinput = request.args[1].(chan userinput.Event)
 			}
 		}
 
@@ -90,9 +91,9 @@ func (img *SdlImgui) serviceSetFeature(request featureRequest) {
 		if err == nil {
 			img.setDbgAndVCS(request.args[0].(*debugger.Debugger), nil)
 			if request.args[1] == nil {
-				img.events = nil
+				img.userinput = nil
 			} else {
-				img.events = request.args[1].(chan gui.Event)
+				img.userinput = request.args[1].(chan userinput.Event)
 			}
 		}
 

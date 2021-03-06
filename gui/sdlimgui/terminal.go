@@ -132,8 +132,8 @@ func (trm *term) TermRead(buffer []byte, prompt terminal.Prompt, events *termina
 			ev()
 			return 0, nil
 
-		case ev := <-events.GuiEvents:
-			err := events.GuiEventHandler(ev)
+		case ev := <-events.UserInput:
+			err := events.UserInputHandler(ev)
 			if err != nil {
 				return 0, nil
 			}

@@ -36,6 +36,7 @@ import (
 	"github.com/jetsetilly/gopher2600/paths"
 	"github.com/jetsetilly/gopher2600/recorder"
 	"github.com/jetsetilly/gopher2600/setup"
+	"github.com/jetsetilly/gopher2600/userinput"
 )
 
 type playmode struct {
@@ -43,7 +44,7 @@ type playmode struct {
 	scr gui.GUI
 
 	intChan   chan os.Signal
-	guiChan   chan gui.Event
+	userinput chan userinput.Event
 	rawEvents chan func()
 }
 
@@ -58,10 +59,10 @@ func Play(tv *television.Television, scr gui.GUI, newRecording bool, cartload ca
 
 	// if supplied cartridge name is actually a playback file then set
 	// recording variable and dump cartridgeLoader information
-	if recorder.IsPlaybackFile(cartload.Filename) {
+	if err := recorder.IsPlaybackFile(cartload.Filename); err == nil {
 		// do not allow this if a new recording has been requested
 		if newRecording {
-			return curated.Errorf("playmode: %v", "cannot make a new recording using a playback file")
+			return curated.Errorf("playmode: cannot make a new recording using a playback file")
 		}
 
 		recording = cartload.Filename
@@ -69,6 +70,8 @@ func Play(tv *television.Television, scr gui.GUI, newRecording bool, cartload ca
 		// nullify cartload instance. we'll use the Loader instance in the
 		// Playback instance
 		cartload = cartridgeloader.Loader{}
+	} else if !curated.Is(err, recorder.NotAPlaybackFile) {
+		return curated.Errorf("playmode: %v", err)
 	}
 
 	// when allocation this channel will be used to halt emulation start until
@@ -176,12 +179,12 @@ func Play(tv *television.Television, scr gui.GUI, newRecording bool, cartload ca
 		vcs:       vcs,
 		scr:       scr,
 		intChan:   make(chan os.Signal, 1),
-		guiChan:   make(chan gui.Event, 10),
+		userinput: make(chan userinput.Event, 10),
 		rawEvents: make(chan func(), 1024),
 	}
 
 	// connect gui
-	err = scr.SetFeature(gui.ReqSetPlaymode, vcs, pl.guiChan)
+	err = scr.SetFeature(gui.ReqSetPlaymode, vcs, pl.userinput)
 	if err != nil {
 		return curated.Errorf("playmode: %v", err)
 	}

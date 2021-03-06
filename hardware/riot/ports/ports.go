@@ -274,6 +274,8 @@ func (p *Ports) GetPlayback() error {
 	return nil
 }
 
+// HandleEvent forwards the Event and EventData to the device connected to the
+// specified PortID.
 func (p *Ports) HandleEvent(id PortID, ev Event, d EventData) error {
 	var err error
 

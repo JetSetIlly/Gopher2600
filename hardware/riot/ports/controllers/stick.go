@@ -17,6 +17,7 @@ package controllers
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/memory/addresses"
@@ -86,51 +87,98 @@ func (stk *Stick) Name() string {
 // HandleEvent implements the ports.Peripheral interface.
 func (stk *Stick) HandleEvent(event ports.Event, data ports.EventData) error {
 	switch event {
-	default:
-		return curated.Errorf(UnhandledEvent, stk.Name(), event)
-
 	case ports.NoEvent:
-
-	case ports.Left:
-		if data.(bool) {
-			stk.axis ^= axisLeft
-		} else {
-			stk.axis |= axisLeft
-		}
-		stk.bus.WriteSWCHx(stk.id, stk.axis)
-
-	case ports.Right:
-		if data.(bool) {
-			stk.axis ^= axisRight
-		} else {
-			stk.axis |= axisRight
-		}
-		stk.bus.WriteSWCHx(stk.id, stk.axis)
-
-	case ports.Up:
-		if data.(bool) {
-			stk.axis ^= axisUp
-		} else {
-			stk.axis |= axisUp
-		}
-		stk.bus.WriteSWCHx(stk.id, stk.axis)
-
-	case ports.Down:
-		if data.(bool) {
-			stk.axis ^= axisDown
-		} else {
-			stk.axis |= axisDown
-		}
-		stk.bus.WriteSWCHx(stk.id, stk.axis)
+		return nil
 
 	case ports.Fire:
-		if data.(bool) {
-			stk.button = stickFire
-		} else {
-			stk.button = stickNoFire
+		switch d := data.(type) {
+		case bool:
+			if d {
+				stk.button = stickFire
+			} else {
+				stk.button = stickNoFire
+			}
+		case ports.EventDataPlayback:
+			b, err := strconv.ParseBool(string(d))
+			if err != nil {
+				return curated.Errorf("stick: %v: unexpected event data", event)
+			}
+			if b {
+				stk.button = stickFire
+			} else {
+				stk.button = stickNoFire
+			}
+		default:
+			return curated.Errorf("stick: %v: unexpected event data", event)
 		}
 		stk.bus.WriteINPTx(stk.inptx, stk.button)
+		return nil
+
+	case ports.Centre:
+		switch d := data.(type) {
+		case nil:
+			// ideal path
+		case ports.EventDataPlayback:
+			if len(d) > 0 {
+				return curated.Errorf("stick: %v: unexpected event data", event)
+			}
+		default:
+			return curated.Errorf("stick: %v: unexpected event data", event)
+		}
+		stk.axis = axisCenter
+		stk.bus.WriteSWCHx(stk.id, stk.axis)
+		return nil
 	}
+
+	var axis uint8
+
+	switch event {
+	default:
+		return curated.Errorf(UnhandledEvent, stk.Name(), event)
+	case ports.Left:
+		axis = axisLeft
+	case ports.Right:
+		axis = axisRight
+	case ports.Up:
+		axis = axisUp
+	case ports.Down:
+		axis = axisDown
+	case ports.LeftUp:
+		axis = axisLeft | axisUp
+	case ports.LeftDown:
+		axis = axisLeft | axisDown
+	case ports.RightUp:
+		axis = axisRight | axisUp
+	case ports.RightDown:
+		axis = axisRight | axisDown
+	}
+
+	var e ports.EventDataStick
+
+	// other stick events can be treated the same (although note the default case)
+	switch d := data.(type) {
+	case ports.EventDataStick:
+		e = d
+	case ports.EventDataPlayback:
+		e = ports.EventDataStick(d)
+	default:
+		return curated.Errorf("stick: %v: unexpected event data", event)
+	}
+
+	// set/unset bits according to the event data
+	if e == ports.DataStickTrue {
+		stk.axis ^= axis
+	} else if e == ports.DataStickFalse {
+		stk.axis |= axis
+	} else if e == ports.DataStickSet {
+		stk.axis = axisCenter
+		stk.axis ^= axis
+	} else {
+		return curated.Errorf("stick: %v: unexpected event data (%v)", event, e)
+	}
+
+	// update register
+	stk.bus.WriteSWCHx(stk.id, stk.axis)
 
 	return nil
 }

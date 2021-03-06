@@ -55,13 +55,13 @@ const (
 	//
 	// first argument is a pointer to the VCS, second argument is an instance
 	// of received for gui events.
-	ReqSetPlaymode FeatureReq = "ReqSetPlaymode" // *hardware.VCS, chan gui.Event
+	ReqSetPlaymode FeatureReq = "ReqSetPlaymode" // *hardware.VCS, chan userinput.Event
 
 	// ReqSetDebugmode is called whenever the playmode loop is entered.
 	//
 	// first argument is a pointer to the debugger, second argument is an
 	// instance of received for gui events.
-	ReqSetDebugmode FeatureReq = "ReqSetDebugmode" // *debugger.Debugger, chan gui.Event
+	ReqSetDebugmode FeatureReq = "ReqSetDebugmode" // *debugger.Debugger, chan userinput.Event
 
 	// notify GUI of emulation state. the GUI should use this to alter how
 	// infomration, particularly the display of the PixelRenderer.

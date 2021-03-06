@@ -17,7 +17,9 @@ package sdlimgui
 
 import (
 	"github.com/jetsetilly/gopher2600/gui"
+	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
 	"github.com/jetsetilly/gopher2600/logger"
+	"github.com/jetsetilly/gopher2600/userinput"
 
 	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/veandco/go-sdl2/sdl"
@@ -44,7 +46,7 @@ func (img *SdlImgui) Service() {
 		case *sdl.QuitEvent:
 			if !img.hasModal {
 				select {
-				case img.events <- gui.EventQuit{}:
+				case img.userinput <- userinput.EventQuit{}:
 				default:
 					logger.Log("sdlimgui", "dropped quit event")
 				}
@@ -118,17 +120,17 @@ func (img *SdlImgui) Service() {
 			// but only when gui is in playmode, has captured input and
 			// there is no modal window.
 			if !img.hasModal && (img.isPlaymode() || img.isCaptured()) {
-				mod := gui.KeyModNone
+				mod := userinput.KeyModNone
 
 				if sdl.GetModState()&sdl.KMOD_LALT == sdl.KMOD_LALT ||
 					sdl.GetModState()&sdl.KMOD_RALT == sdl.KMOD_RALT {
-					mod = gui.KeyModAlt
+					mod = userinput.KeyModAlt
 				} else if sdl.GetModState()&sdl.KMOD_LSHIFT == sdl.KMOD_LSHIFT ||
 					sdl.GetModState()&sdl.KMOD_RSHIFT == sdl.KMOD_RSHIFT {
-					mod = gui.KeyModShift
+					mod = userinput.KeyModShift
 				} else if sdl.GetModState()&sdl.KMOD_LCTRL == sdl.KMOD_LCTRL ||
 					sdl.GetModState()&sdl.KMOD_RCTRL == sdl.KMOD_RCTRL {
-					mod = gui.KeyModCtrl
+					mod = userinput.KeyModCtrl
 				}
 
 				switch ev.Type {
@@ -137,8 +139,7 @@ func (img *SdlImgui) Service() {
 				case sdl.KEYUP:
 					if ev.Repeat == 0 {
 						select {
-						case img.events <- gui.EventKeyboard{
-							GUI:  img,
+						case img.userinput <- userinput.EventKeyboard{
 							Key:  sdl.GetKeyName(ev.Keysym.Sym),
 							Mod:  mod,
 							Down: ev.Type == sdl.KEYDOWN}:
@@ -163,14 +164,14 @@ func (img *SdlImgui) Service() {
 
 		case *sdl.MouseButtonEvent:
 			// the button event to send
-			var button gui.MouseButton
+			var button userinput.MouseButton
 
 			switch ev.Button {
 			case sdl.BUTTON_LEFT:
-				button = gui.MouseButtonLeft
+				button = userinput.MouseButtonLeft
 
 			case sdl.BUTTON_RIGHT:
-				button = gui.MouseButtonRight
+				button = userinput.MouseButtonRight
 
 				if ev.Type == sdl.MOUSEBUTTONUP {
 					if img.isCaptured() {
@@ -183,8 +184,7 @@ func (img *SdlImgui) Service() {
 
 			if img.isCaptured() {
 				select {
-				case img.events <- gui.EventMouseButton{
-					GUI:    img,
+				case img.userinput <- userinput.EventMouseButton{
 					Button: button,
 					Down:   ev.Type == sdl.MOUSEBUTTONDOWN}:
 				default:
@@ -221,6 +221,75 @@ func (img *SdlImgui) Service() {
 				deltaY--
 			}
 			img.io.AddMouseWheelDelta(deltaX*2, deltaY*2)
+
+		case *sdl.JoyButtonEvent:
+			select {
+			case img.userinput <- userinput.EventGamepadButton{
+				ID:     ports.Player0ID,
+				Button: int(ev.Button),
+				Down:   ev.State == 1,
+			}:
+			default:
+				logger.Log("sdlimgui", "dropped gamepad button event")
+			}
+
+		case *sdl.JoyHatEvent:
+			var ok bool
+			var dir userinput.DPadDirection
+			switch ev.Value {
+			case sdl.HAT_CENTERED:
+				dir = userinput.DPadCentre
+				ok = true
+			case sdl.HAT_UP:
+				dir = userinput.DPadUp
+				ok = true
+			case sdl.HAT_DOWN:
+				dir = userinput.DPadDown
+				ok = true
+			case sdl.HAT_LEFT:
+				dir = userinput.DPadLeft
+				ok = true
+			case sdl.HAT_RIGHT:
+				dir = userinput.DPadRight
+				ok = true
+			case sdl.HAT_LEFTUP:
+				dir = userinput.DPadLeftUp
+				ok = true
+			case sdl.HAT_LEFTDOWN:
+				dir = userinput.DPadLeftDown
+				ok = true
+			case sdl.HAT_RIGHTUP:
+				dir = userinput.DPadRightUp
+				ok = true
+			case sdl.HAT_RIGHTDOWN:
+				dir = userinput.DPadRightDown
+				ok = true
+			}
+
+			if ok {
+				select {
+				case img.userinput <- userinput.EventGamepadDPad{
+					ID:        ports.Player0ID,
+					Direction: dir,
+				}:
+				default:
+					logger.Log("sdlimgui", "dropped gamepad dpad event")
+				}
+			}
+
+		case *sdl.JoyAxisEvent:
+			const deadzone = 10000
+
+			if ev.Value > deadzone || ev.Value < -deadzone {
+				select {
+				case img.userinput <- userinput.EventGamepadStick{
+					ID:     ports.Player0ID,
+					Amount: float32(ev.Value) / 32768.0,
+				}:
+				default:
+					logger.Log("sdlimgui", "dropped gamepad axis event")
+				}
+			}
 		}
 	}
 
@@ -239,9 +308,9 @@ func (img *SdlImgui) Service() {
 			y := float32(my) / float32(h)
 
 			select {
-			case img.events <- gui.EventMouseMotion{
-				GUI: img,
-				X:   x, Y: y,
+			case img.userinput <- userinput.EventMouseMotion{
+				X: x,
+				Y: y,
 			}:
 			default:
 				logger.Log("sdlimgui", "dropped mouse motion event")

@@ -17,6 +17,7 @@ package controllers
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/memory/addresses"
@@ -77,9 +78,25 @@ func (key *Keyboard) HandleEvent(event ports.Event, data ports.EventData) error 
 		return curated.Errorf(UnhandledEvent, key.Name(), event)
 
 	case ports.NoEvent:
+		return nil
 
 	case ports.KeyboardDown:
-		k, _ := data.(rune)
+		var k rune
+
+		switch d := data.(type) {
+		case rune:
+			k = d
+		case ports.EventDataPlayback:
+			n, err := strconv.ParseInt(string(d), 10, 64)
+			if err != nil {
+				return curated.Errorf("keyboard: %v: unexpected event data", event)
+			}
+			k = rune(n)
+
+		default:
+			return curated.Errorf("keyboard: %v: unexpected event data", event)
+		}
+
 		if k != '1' && k != '2' && k != '3' &&
 			k != '4' && k != '5' && k != '6' &&
 			k != '7' && k != '8' && k != '9' &&
@@ -91,6 +108,14 @@ func (key *Keyboard) HandleEvent(event ports.Event, data ports.EventData) error 
 		key.key = k
 
 	case ports.KeyboardUp:
+		switch d := data.(type) {
+		case nil:
+			// expected data
+		case ports.EventDataPlayback:
+			if len(string(d)) > 0 {
+				return curated.Errorf("keyboard: %v: unexpected event data", event)
+			}
+		}
 		key.key = noKey
 	}
 

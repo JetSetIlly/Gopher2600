@@ -17,6 +17,7 @@ package controllers
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/memory/addresses"
@@ -103,17 +104,47 @@ func (pdl *Paddle) HandleEvent(event ports.Event, data ports.EventData) error {
 		return curated.Errorf(UnhandledEvent, pdl.Name(), event)
 
 	case ports.NoEvent:
+		return nil
 
-	case ports.PaddleFire:
-		if data.(bool) {
-			pdl.fire = paddleFire
-		} else {
-			pdl.fire = paddleNoFire
+	case ports.Fire:
+		switch d := data.(type) {
+		case bool:
+			if d {
+				pdl.fire = paddleFire
+			} else {
+				pdl.fire = paddleNoFire
+			}
+		case ports.EventDataPlayback:
+			b, err := strconv.ParseBool(string(d))
+			if err != nil {
+				return curated.Errorf("paddle: %v: unexpected event data", event)
+			}
+			if b {
+				pdl.fire = paddleFire
+			} else {
+				pdl.fire = paddleNoFire
+			}
+		default:
+			return curated.Errorf("paddle: %v: unexpected event data", event)
 		}
+
 		pdl.bus.WriteSWCHx(pdl.id, pdl.fire)
 
 	case ports.PaddleSet:
-		r := data.(float32)
+		var r float32
+
+		switch d := data.(type) {
+		case float32:
+			r = d
+		case ports.EventDataPlayback:
+			f, err := strconv.ParseFloat(string(d), 32)
+			if err != nil {
+				return curated.Errorf("paddle: %v: unexpected event data", event)
+			}
+			r = float32(f)
+		default:
+			return curated.Errorf("paddle: %v: unexpected event data", event)
+		}
 
 		// reverse value so that we left and right are the correct way around (for a mouse)
 		pdl.resistance = 1.0 - r

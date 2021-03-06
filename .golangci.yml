@@ -43,6 +43,7 @@ linters-settings:
       - color
       - colors
       - coloring
+      - centered
 
   godox: 
     keywords:

@@ -33,7 +33,7 @@ import (
 type playbackEntry struct {
 	portID   ports.PortID
 	event    ports.Event
-	value    ports.EventData
+	data     ports.EventData
 	frame    int
 	scanline int
 	clock    int
@@ -134,29 +134,9 @@ func NewPlayback(transcript string) (*Playback, error) {
 		// no need to convert event field
 		entry.event = ports.Event(toks[fieldEvent])
 
-		// parse entry value into the correct type
-		entry.value = parseEventData(toks[fieldEventData])
-
-		// special condition for KeyboardDown and KeyboardUp events.
-		//
-		// we don't like special conditions but it's difficult to get around
-		// this elegantly. is we store strings for KeyboardDown events then,
-		// because the keyboard is mostly numbers, converting them back from the
-		// file will require a prefix of some sort to force it to look like a
-		// string, rather than a float. that's probably a more ugly solution.
-		//
-		// any other solution requires altering the handcontroller
-		// implementation which I don't want to do - the problem is caused here
-		// and so should be mitigated here.
-		//
-		// likewise for KeyboardUp events. the handcontroller Handle() function
-		// expects a nil argument for these events but we store the empty
-		// string, instead of nil.
-		if entry.event == ports.KeyboardDown {
-			entry.value = rune(entry.value.(float32))
-		} else if entry.event == ports.KeyboardUp {
-			entry.value = nil
-		}
+		// entry data is of ports.EventDataPlayback type. The ports
+		// implementation will handle parsing of this type.
+		entry.data = ports.EventDataPlayback(toks[fieldEventData])
 
 		entry.frame, err = strconv.Atoi(toks[fieldFrame])
 		if err != nil {
@@ -184,33 +164,6 @@ func NewPlayback(transcript string) (*Playback, error) {
 	}
 
 	return plb, nil
-}
-
-// parse value entry as best we can. the theory here is that there is no
-// intersection between the sets of allowed values. a bool doesn't look like a
-// float which doesn't look like an int. if the value looks like none of those
-// things then we can return the original string unchanged.
-func parseEventData(value string) ports.EventData {
-	var err error
-
-	// the order of these conversions is important. ParseBool will interpret
-	// "0" or "1" as false and true. we want to treat these value as ints or
-	// floats (a float of 0.0 will be written as 0) so we MUST try converting
-	// to those types first
-
-	var f float64
-	f, err = strconv.ParseFloat(value, 32)
-	if err == nil {
-		return float32(f)
-	}
-
-	var b bool
-	b, err = strconv.ParseBool(value)
-	if err == nil {
-		return b
-	}
-
-	return value
 }
 
 // AttachToVCS attaches the playback instance (an implementation of the
@@ -253,7 +206,7 @@ func (plb *Playback) AttachToVCS(vcs *hardware.VCS) error {
 
 // Sentinal error returned by GetPlayback if a hash error is encountered.
 const (
-	PlaybackHashError = "playback: hash error [line %d]"
+	PlaybackHashError = "playback: unexpected input at line %d (frame %d)"
 )
 
 // GetPlayback returns an event and source portID for an event occurring at the
@@ -274,9 +227,9 @@ func (plb *Playback) GetPlayback() (ports.PortID, ports.Event, ports.EventData, 
 	if frame == entry.frame && scanline == entry.scanline && clock == entry.clock {
 		plb.seqCt++
 		if entry.hash != plb.digest.Hash() {
-			return ports.NoPortID, ports.NoEvent, nil, curated.Errorf(PlaybackHashError, entry.line)
+			return ports.NoPortID, ports.NoEvent, nil, curated.Errorf(PlaybackHashError, entry.line, frame)
 		}
-		return entry.portID, entry.event, entry.value, nil
+		return entry.portID, entry.event, entry.data, nil
 	}
 
 	// next event does not match
