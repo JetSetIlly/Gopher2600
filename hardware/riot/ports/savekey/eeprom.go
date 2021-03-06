@@ -16,7 +16,6 @@
 package savekey
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/jetsetilly/gopher2600/logger"
@@ -63,13 +62,13 @@ func newEeprom() *EEPROM {
 func (ee *EEPROM) Read() {
 	fn, err := paths.ResourcePath("", saveKeyPath)
 	if err != nil {
-		logger.Log("savekey", fmt.Sprintf("could not load savekey file (%s)", err))
+		logger.Logf("savekey", "could not load savekey file (%s)", err)
 		return
 	}
 
 	f, err := os.Open(fn)
 	if err != nil {
-		logger.Log("savekey", fmt.Sprintf("could not load savekey file (%s)", err))
+		logger.Logf("savekey", "could not load savekey file (%s)", err)
 		return
 	}
 	defer f.Close()
@@ -78,57 +77,57 @@ func (ee *EEPROM) Read() {
 	// windows version (when running under wine) does not handle that
 	fs, err := os.Stat(fn)
 	if err != nil {
-		logger.Log("savekey", fmt.Sprintf("could not load savekey file (%s)", err))
+		logger.Logf("savekey", "could not load savekey file (%s)", err)
 		return
 	}
 	if fs.Size() != int64(len(ee.data)) {
-		logger.Log("savekey", fmt.Sprintf("savekey file is of incorrect length. %d should be 65536 ", fs.Size()))
+		logger.Logf("savekey", "savekey file is of incorrect length. %d should be 65536 ", fs.Size())
 	}
 
 	_, err = f.Read(ee.data)
 	if err != nil {
-		logger.Log("savekey", fmt.Sprintf("could not load savekey file (%s)", err))
+		logger.Logf("savekey", "could not load savekey file (%s)", err)
 		return
 	}
 
 	// copy of data read from disk
 	copy(ee.diskData, ee.data)
 
-	logger.Log("savekey", fmt.Sprintf("savekey file loaded from %s", fn))
+	logger.Logf("savekey", "savekey file loaded from %s", fn)
 }
 
 // Write EEPROM data to disk.
 func (ee *EEPROM) Write() {
 	fn, err := paths.ResourcePath("", saveKeyPath)
 	if err != nil {
-		logger.Log("savekey", fmt.Sprintf("could not write savekey file (%s)", err))
+		logger.Logf("savekey", "could not write savekey file (%s)", err)
 		return
 	}
 
 	f, err := os.Create(fn)
 	if err != nil {
-		logger.Log("savekey", fmt.Sprintf("could not write savekey file (%s)", err))
+		logger.Logf("savekey", "could not write savekey file (%s)", err)
 		return
 	}
 	defer func() {
 		err := f.Close()
 		if err != nil {
-			logger.Log("savekey", fmt.Sprintf("could not close savekey file (%s)", err))
+			logger.Logf("savekey", "could not close savekey file (%s)", err)
 		}
 	}()
 
 	n, err := f.Write(ee.data)
 	if err != nil {
-		logger.Log("savekey", fmt.Sprintf("could not write savekey file (%s)", err))
+		logger.Logf("savekey", "could not write savekey file (%s)", err)
 		return
 	}
 
 	if n != len(ee.data) {
-		logger.Log("savekey", fmt.Sprintf("savekey file has not been truncated during write. %d should be 65536", n))
+		logger.Logf("savekey", "savekey file has not been truncated during write. %d should be 65536", n)
 		return
 	}
 
-	logger.Log("savekey", fmt.Sprintf("savekey file saved to %s", fn))
+	logger.Logf("savekey", "savekey file saved to %s", fn)
 
 	// copy of data that's just bee written to disk
 	copy(ee.diskData, ee.data)

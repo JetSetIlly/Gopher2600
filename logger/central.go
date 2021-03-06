@@ -35,6 +35,11 @@ func Log(tag, detail string) {
 	central.log(tag, detail)
 }
 
+// Logf adds a formatted entry to the central logger.
+func Logf(tag, detail string, args ...interface{}) {
+	central.logf(tag, detail, args...)
+}
+
 // Clear all entries from central logger.
 func Clear() {
 	central.clear()

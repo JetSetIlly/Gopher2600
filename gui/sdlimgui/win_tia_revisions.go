@@ -16,8 +16,6 @@
 package sdlimgui
 
 import (
-	"fmt"
-
 	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/hardware/tia/revision"
 	"github.com/jetsetilly/gopher2600/logger"
@@ -179,7 +177,7 @@ func (win *winTIARevisions) drawDiskButtons() {
 	if imgui.Button("Save") {
 		err := win.img.vcs.TIA.Rev.Prefs.Save()
 		if err != nil {
-			logger.Log("sdlimgui", fmt.Sprintf("could not save tia revision settings: %v", err))
+			logger.Logf("sdlimgui", "could not save tia revision settings: %v", err)
 		}
 	}
 
@@ -187,7 +185,7 @@ func (win *winTIARevisions) drawDiskButtons() {
 	if imgui.Button("Restore") {
 		err := win.img.vcs.TIA.Rev.Prefs.Load()
 		if err != nil {
-			logger.Log("sdlimgui", fmt.Sprintf("could not restore tia revision settings: %v", err))
+			logger.Logf("sdlimgui", "could not restore tia revision settings: %v", err)
 		}
 	}
 }

@@ -78,7 +78,7 @@ func (stc *Static) MapAddress(addr uint32, write bool) (*[]byte, uint32) {
 	// custom ARM code (ROM)
 	if addr >= customOriginROM && addr <= customMemtopROM {
 		if write {
-			logger.Log("CDF", fmt.Sprintf("ARM trying to write to ROM address (%08x)", addr))
+			logger.Logf("CDF", "ARM trying to write to ROM address (%08x)", addr)
 			return nil, addr
 		}
 		return &stc.customROM, addr - customOriginROM

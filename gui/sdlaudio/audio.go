@@ -16,8 +16,6 @@
 package sdlaudio
 
 import (
-	"fmt"
-
 	"github.com/jetsetilly/gopher2600/hardware/tia/audio"
 	"github.com/jetsetilly/gopher2600/logger"
 
@@ -71,10 +69,10 @@ func NewAudio() (*Audio, error) {
 
 	aud.spec = actualSpec
 
-	logger.Log("sdl: audio:", fmt.Sprintf("frequency: %d samples/sec", aud.spec.Freq))
-	logger.Log("sdl: audio:", fmt.Sprintf("format: %d", aud.spec.Format))
-	logger.Log("sdl: audio:", fmt.Sprintf("channels: %d", aud.spec.Channels))
-	logger.Log("sdl: audio:", fmt.Sprintf("buffer size: %d samples", aud.spec.Samples))
+	logger.Logf("sdl: audio", "frequency: %d samples/sec", aud.spec.Freq)
+	logger.Logf("sdl: audio", "format: %d", aud.spec.Format)
+	logger.Logf("sdl: audio", "channels: %d", aud.spec.Channels)
+	logger.Logf("sdl: audio", "buffer size: %d samples", aud.spec.Samples)
 
 	sdl.PauseAudioDevice(aud.id, false)
 

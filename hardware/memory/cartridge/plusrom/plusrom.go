@@ -16,7 +16,6 @@
 package plusrom
 
 import (
-	"fmt"
 	"math/rand"
 	"strings"
 
@@ -117,7 +116,7 @@ func NewPlusROM(child mapper.CartMapper, onLoaded func(cart mapper.CartMapper) e
 	}
 
 	// log success
-	logger.Log("plusrom", fmt.Sprintf("will connect to %s", cart.net.ai.String()))
+	logger.Logf("plusrom", "will connect to %s", cart.net.ai.String())
 
 	// call onloaded function if one is available
 	if onLoaded != nil {

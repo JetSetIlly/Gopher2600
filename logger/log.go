@@ -137,6 +137,10 @@ func (l *logger) log(tag, detail string) {
 	}
 }
 
+func (l *logger) logf(tag, detail string, args ...interface{}) {
+	l.log(tag, fmt.Sprintf(detail, args...))
+}
+
 func (l *logger) clear() {
 	l.del <- allEntries
 }

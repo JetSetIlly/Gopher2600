@@ -96,7 +96,7 @@ func (stc *Static) MapAddress(addr uint32, write bool) (*[]byte, uint32) {
 	// custom ARM code (ROM)
 	if addr >= customOriginROM && addr <= customMemtopROM {
 		if write {
-			logger.Log("DPC+", fmt.Sprintf("ARM trying to write to ROM address (%08x)", addr))
+			logger.Logf("DPC+", "ARM trying to write to ROM address (%08x)", addr)
 			return nil, addr
 		}
 		return &stc.customROM, addr - customOriginROM
@@ -115,7 +115,7 @@ func (stc *Static) MapAddress(addr uint32, write bool) (*[]byte, uint32) {
 	// driver ARM code (ROM)
 	if addr >= driverOriginROM && addr <= driverMemtopROM {
 		if write {
-			logger.Log("DPC+", fmt.Sprintf("ARM trying to write to ROM address (%08x)", addr))
+			logger.Logf("DPC+", "ARM trying to write to ROM address (%08x)", addr)
 			return nil, addr
 		}
 		return &stc.driverROM, addr - driverOriginROM
@@ -124,7 +124,7 @@ func (stc *Static) MapAddress(addr uint32, write bool) (*[]byte, uint32) {
 	// data (ROM)
 	if addr >= dataOriginROM && addr <= dataMemtopROM {
 		if write {
-			logger.Log("DPC+", fmt.Sprintf("ARM trying to write to ROM address (%08x)", addr))
+			logger.Logf("DPC+", "ARM trying to write to ROM address (%08x)", addr)
 			return nil, addr
 		}
 		return &stc.dataROM, addr - dataOriginROM
@@ -133,7 +133,7 @@ func (stc *Static) MapAddress(addr uint32, write bool) (*[]byte, uint32) {
 	// frequency table (ROM)
 	if addr >= freqOriginROM && addr <= freqMemtopROM {
 		if write {
-			logger.Log("DPC+", fmt.Sprintf("ARM trying to write to ROM address (%08x)", addr))
+			logger.Logf("DPC+", "ARM trying to write to ROM address (%08x)", addr)
 			return nil, addr
 		}
 		return &stc.freqROM, addr - freqOriginROM

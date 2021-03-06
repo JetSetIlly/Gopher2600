@@ -16,7 +16,6 @@
 package symbols
 
 import (
-	"fmt"
 	"sort"
 
 	"github.com/jetsetilly/gopher2600/hardware/memory/addresses"
@@ -86,7 +85,7 @@ func (sym *Symbols) canonise(cart *cartridge.Cartridge) {
 	for k, v := range hb.ReadHotspots() {
 		ma, area := memorymap.MapAddress(k, true)
 		if area != memorymap.Cartridge {
-			logger.Log("symbols", fmt.Sprintf("%s reporting hotspot (%s) outside of cartridge address space", cart.ID(), v.Symbol))
+			logger.Logf("symbols", "%s reporting hotspot (%s) outside of cartridge address space", cart.ID(), v.Symbol)
 		}
 		sym.Read.add(ma, v.Symbol, true)
 	}
@@ -94,7 +93,7 @@ func (sym *Symbols) canonise(cart *cartridge.Cartridge) {
 	for k, v := range hb.WriteHotspots() {
 		ma, area := memorymap.MapAddress(k, false)
 		if area != memorymap.Cartridge {
-			logger.Log("symbols", fmt.Sprintf("%s reporting hotspot (%s) outside of cartridge address space", cart.ID(), v.Symbol))
+			logger.Logf("symbols", "%s reporting hotspot (%s) outside of cartridge address space", cart.ID(), v.Symbol)
 		}
 		sym.Write.add(ma, v.Symbol, true)
 	}

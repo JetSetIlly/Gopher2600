@@ -84,13 +84,13 @@ func newSoundLoad(cart *Supercharger, loader cartridgeloader.Loader) (tape, erro
 	}
 
 	// PCM info
-	logger.Log(soundloadLogTag, fmt.Sprintf("num channels: %d (using one)", numChannels))
-	logger.Log(soundloadLogTag, fmt.Sprintf("sample rate: %0.2fHz", tap.sampleRate))
-	logger.Log(soundloadLogTag, fmt.Sprintf("total time: %.02fs", float64(len(tap.samples))/tap.sampleRate))
+	logger.Logf(soundloadLogTag, "num channels: %d (using one)", numChannels)
+	logger.Logf(soundloadLogTag, "sample rate: %0.2fHz", tap.sampleRate)
+	logger.Logf(soundloadLogTag, "total time: %.02fs", float64(len(tap.samples))/tap.sampleRate)
 
 	// the length of time of each sample in microseconds
 	timePerSample := 1000000.0 / tap.sampleRate
-	logger.Log(soundloadLogTag, fmt.Sprintf("time per sample: %.02fus", timePerSample))
+	logger.Logf(soundloadLogTag, "time per sample: %.02fus", timePerSample)
 
 	// number of samples in a cycle for it to be interpreted as a zero or a one
 	// values taken from "Atari 2600 Mappers" document by Kevin Horton
@@ -101,7 +101,7 @@ func newSoundLoad(cart *Supercharger, loader cartridgeloader.Loader) (tape, erro
 
 	// calculate tape regulator speed. 1190000 is the frequency at which step() is called (1.19MHz)
 	tap.regulator = int(math.Round(1190000.0 / tap.sampleRate))
-	logger.Log(soundloadLogTag, fmt.Sprintf("tape regulator: %d", tap.regulator))
+	logger.Logf(soundloadLogTag, "tape regulator: %d", tap.regulator)
 
 	// rewind tape to start of header
 	tap.Rewind()

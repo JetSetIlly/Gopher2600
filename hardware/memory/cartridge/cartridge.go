@@ -16,8 +16,6 @@
 package cartridge
 
 import (
-	"fmt"
-
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
@@ -189,7 +187,7 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 			cart.mapper = pr
 
 			// log that this is PlusROM cartridge
-			logger.Log("cartridge", fmt.Sprintf("%s cartridge contained in PlusROM", cart.ID()))
+			logger.Logf("cartridge", "%s cartridge contained in PlusROM", cart.ID())
 		}
 
 		return nil

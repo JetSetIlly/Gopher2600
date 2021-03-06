@@ -61,7 +61,7 @@ func newPlatform(img *SdlImgui) (*platform, error) {
 		sdl.Quit()
 		return nil, fmt.Errorf("sdl: %v", err)
 	}
-	logger.Log("sdl", fmt.Sprintf("refresh rate: %dHz", plt.mode.RefreshRate))
+	logger.Logf("sdl", "refresh rate: %dHz", plt.mode.RefreshRate)
 
 	// map sdl key codes to imgui codes
 	plt.setKeyMapping()

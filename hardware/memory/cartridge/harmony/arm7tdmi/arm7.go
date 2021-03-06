@@ -197,7 +197,7 @@ func (arm *ARM) read8bit(addr uint32) uint8 {
 	var mem *[]uint8
 	mem, addr = arm.mem.MapAddress(addr, false)
 	if mem == nil {
-		logger.Log("ARM7", fmt.Sprintf("read8bit: unrecognised address %08x", addr))
+		logger.Logf("ARM7", "read8bit: unrecognised address %08x", addr)
 		return 0
 	}
 	return (*mem)[addr]
@@ -208,7 +208,7 @@ func (arm *ARM) write8bit(addr uint32, val uint8) {
 
 	mem, addr = arm.mem.MapAddress(addr, true)
 	if mem == nil {
-		logger.Log("ARM7", fmt.Sprintf("write8bit: unrecognised address %08x", addr))
+		logger.Logf("ARM7", "write8bit: unrecognised address %08x", addr)
 		return
 	}
 	(*mem)[addr] = val
@@ -218,7 +218,7 @@ func (arm *ARM) read16bit(addr uint32) uint16 {
 	var mem *[]uint8
 	mem, addr = arm.mem.MapAddress(addr, false)
 	if mem == nil {
-		logger.Log("ARM7", fmt.Sprintf("read16bit: unrecognised address %08x", addr))
+		logger.Logf("ARM7", "read16bit: unrecognised address %08x", addr)
 		return 0
 	}
 	return uint16((*mem)[addr]) | (uint16((*mem)[addr+1]) << 8)
@@ -228,7 +228,7 @@ func (arm *ARM) write16bit(addr uint32, val uint16) {
 	var mem *[]uint8
 	mem, addr = arm.mem.MapAddress(addr, true)
 	if mem == nil {
-		logger.Log("ARM7", fmt.Sprintf("write16bit: unrecognised address %08x", addr))
+		logger.Logf("ARM7", "write16bit: unrecognised address %08x", addr)
 		return
 	}
 	(*mem)[addr] = uint8(val)
@@ -249,7 +249,7 @@ func (arm *ARM) read32bit(addr uint32) uint32 {
 		if v, ok := arm.mam.read(addr); ok {
 			return v
 		}
-		logger.Log("ARM7", fmt.Sprintf("read32bit: unrecognised address %08x", addr))
+		logger.Logf("ARM7", "read32bit: unrecognised address %08x", addr)
 		return 0
 	}
 
@@ -270,7 +270,7 @@ func (arm *ARM) write32bit(addr uint32, val uint32) {
 		if ok := arm.mam.write(addr, val); ok {
 			return
 		}
-		logger.Log("ARM7", fmt.Sprintf("write32bit: unrecognised address %08x", addr))
+		logger.Logf("ARM7", "write32bit: unrecognised address %08x", addr)
 		return
 	}
 	(*mem)[addr] = uint8(val)

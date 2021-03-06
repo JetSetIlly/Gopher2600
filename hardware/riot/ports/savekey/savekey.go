@@ -16,7 +16,6 @@
 package savekey
 
 import (
-	"fmt"
 	"strings"
 	"unicode"
 
@@ -92,7 +91,7 @@ func NewSaveKey(id ports.PortID, bus ports.PeripheralBus) ports.Peripheral {
 	}
 
 	sk.bus.WriteSWCHx(sk.id, 0xf0)
-	logger.Log("savekey", fmt.Sprintf("savekey attached [%s]", sk.id.String()))
+	logger.Logf("savekey", "savekey attached [%s]", sk.id.String())
 
 	return sk
 }
@@ -287,9 +286,9 @@ func (sk *SaveKey) Step() {
 
 			switch sk.Dir {
 			case Reading:
-				logger.Log("savekey", fmt.Sprintf("reading from address %#04x", sk.EEPROM.Address))
+				logger.Logf("savekey", "reading from address %#04x", sk.EEPROM.Address)
 			case Writing:
-				logger.Log("savekey", fmt.Sprintf("writing to address %#04x", sk.EEPROM.Address))
+				logger.Logf("savekey", "writing to address %#04x", sk.EEPROM.Address)
 			}
 		}
 
@@ -306,9 +305,9 @@ func (sk *SaveKey) Step() {
 
 			if end {
 				if unicode.IsPrint(rune(sk.Bits)) {
-					logger.Log("savekey", fmt.Sprintf("read byte %#02x [%c]", sk.Bits, sk.Bits))
+					logger.Logf("savekey", "read byte %#02x [%c]", sk.Bits, sk.Bits)
 				} else {
-					logger.Log("savekey", fmt.Sprintf("read byte %#02x", sk.Bits))
+					logger.Logf("savekey", "read byte %#02x", sk.Bits)
 				}
 				sk.Ack = true
 			}
@@ -316,9 +315,9 @@ func (sk *SaveKey) Step() {
 		case Writing:
 			if sk.recvBit(sk.SDA.falling()) {
 				if unicode.IsPrint(rune(sk.Bits)) {
-					logger.Log("savekey", fmt.Sprintf("written byte %#02x [%c]", sk.Bits, sk.Bits))
+					logger.Logf("savekey", "written byte %#02x [%c]", sk.Bits, sk.Bits)
 				} else {
-					logger.Log("savekey", fmt.Sprintf("written byte %#02x", sk.Bits))
+					logger.Logf("savekey", "written byte %#02x", sk.Bits)
 				}
 				sk.EEPROM.put(sk.Bits)
 				sk.Ack = true

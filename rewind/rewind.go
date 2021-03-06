@@ -268,7 +268,7 @@ func (r *Rewind) Check() {
 	if r.boundaryNextFrame {
 		r.boundaryNextFrame = false
 		r.reset(levelBoundary)
-		logger.Log("rewind", fmt.Sprintf("boundary added at frame %d", r.vcs.TV.GetState(signal.ReqFramenum)))
+		logger.Logf("rewind", "boundary added at frame %d", r.vcs.TV.GetState(signal.ReqFramenum))
 		return
 	}
 

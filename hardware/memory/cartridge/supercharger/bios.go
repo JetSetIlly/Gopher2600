@@ -46,7 +46,7 @@ func loadBIOS(path string) ([]uint8, error) {
 			continue
 		}
 
-		logger.Log(biosLogTag, fmt.Sprintf("using %s (from current working directory)", b))
+		logger.Logf(biosLogTag, "using %s (from current working directory)", b)
 		return d, nil
 	}
 
@@ -58,7 +58,7 @@ func loadBIOS(path string) ([]uint8, error) {
 			continue
 		}
 
-		logger.Log(biosLogTag, fmt.Sprintf("using %s", p))
+		logger.Logf(biosLogTag, "using %s", p)
 		return d, nil
 	}
 
@@ -74,7 +74,7 @@ func loadBIOS(path string) ([]uint8, error) {
 			continue
 		}
 
-		logger.Log(biosLogTag, fmt.Sprintf("using %s", p))
+		logger.Logf(biosLogTag, "using %s", p)
 		return d, nil
 	}
 

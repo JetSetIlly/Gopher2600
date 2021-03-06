@@ -92,7 +92,7 @@ func (win *winSelectROM) setOpen(open bool) {
 		d := filepath.Dir(f)
 		err = win.setPath(d)
 		if err != nil {
-			logger.Log("sdlimgui", fmt.Sprintf("error setting path (%s)", d))
+			logger.Logf("sdlimgui", "error setting path (%s)", d)
 		}
 		win.selectedFile = win.img.lz.Cart.Filename
 
@@ -120,7 +120,7 @@ func (win *winSelectROM) draw() {
 		d := filepath.Dir(win.currPath)
 		err := win.setPath(d)
 		if err != nil {
-			logger.Log("sdlimgui", fmt.Sprintf("error setting path (%s)", d))
+			logger.Logf("sdlimgui", "error setting path (%s)", d)
 		}
 		win.scrollToTop = true
 	}
@@ -158,7 +158,7 @@ func (win *winSelectROM) draw() {
 				d := filepath.Join(win.currPath, f.Name())
 				err = win.setPath(d)
 				if err != nil {
-					logger.Log("sdlimgui", fmt.Sprintf("error setting path (%s)", d))
+					logger.Logf("sdlimgui", "error setting path (%s)", d)
 				}
 				win.scrollToTop = true
 			}

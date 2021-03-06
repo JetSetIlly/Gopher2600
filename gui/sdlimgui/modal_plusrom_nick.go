@@ -16,8 +16,6 @@
 package sdlimgui
 
 import (
-	"fmt"
-
 	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/plusrom"
 	"github.com/jetsetilly/gopher2600/logger"
@@ -49,11 +47,11 @@ func (img *SdlImgui) drawPlusROMFirstInstallation() {
 		if imguiTextInput("##nick", plusrom.MaxNickLength, &nick, true) {
 			err := img.plusROMFirstInstallation.Cart.Prefs.Nick.Set(nick)
 			if err != nil {
-				logger.Log("sdlimgui", fmt.Sprintf("could not set preference value: %v", err))
+				logger.Logf("sdlimgui", "could not set preference value: %v", err)
 			}
 			err = img.plusROMFirstInstallation.Cart.Prefs.Save()
 			if err != nil {
-				logger.Log("sdlimgui", fmt.Sprintf("could not save preferences: %v", err))
+				logger.Logf("sdlimgui", "could not save preferences: %v", err)
 			}
 		}
 
@@ -70,11 +68,11 @@ func (img *SdlImgui) drawPlusROMFirstInstallation() {
 			if imgui.Button("I'm happy with my nick") {
 				err := img.plusROMFirstInstallation.Cart.Prefs.Nick.Set(nick)
 				if err != nil {
-					logger.Log("sdlimgui", fmt.Sprintf("could not set preference value: %v", err))
+					logger.Logf("sdlimgui", "could not set preference value: %v", err)
 				}
 				err = img.plusROMFirstInstallation.Cart.Prefs.Save()
 				if err != nil {
-					logger.Log("sdlimgui", fmt.Sprintf("could not save preferences: %v", err))
+					logger.Logf("sdlimgui", "could not save preferences: %v", err)
 				}
 
 				select {

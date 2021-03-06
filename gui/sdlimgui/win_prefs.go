@@ -125,7 +125,7 @@ func (win *winPrefs) drawGeneral() {
 	if imgui.Checkbox("Open Terminal on Error", &termOnError) {
 		err := win.img.prefs.openOnError.Set(termOnError)
 		if err != nil {
-			logger.Log("sdlimgui", fmt.Sprintf("could not set preference value: %v", err))
+			logger.Logf("sdlimgui", "could not set preference value: %v", err)
 		}
 	}
 }
@@ -134,7 +134,7 @@ func (win *winPrefs) drawDiskButtons() {
 	if imgui.Button("Save") {
 		err := win.img.prefs.save()
 		if err != nil {
-			logger.Log("sdlimgui", fmt.Sprintf("could not save preferences: %v", err))
+			logger.Logf("sdlimgui", "could not save preferences: %v", err)
 		}
 		win.img.term.pushCommand("PREFS SAVE")
 	}
@@ -143,7 +143,7 @@ func (win *winPrefs) drawDiskButtons() {
 	if imgui.Button("Restore") {
 		err := win.img.prefs.load()
 		if err != nil {
-			logger.Log("sdlimgui", fmt.Sprintf("could not restore preferences: %v", err))
+			logger.Logf("sdlimgui", "could not restore preferences: %v", err)
 		}
 		win.img.term.pushCommand("PREFS LOAD")
 	}

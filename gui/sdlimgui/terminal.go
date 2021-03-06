@@ -16,7 +16,6 @@
 package sdlimgui
 
 import (
-	"fmt"
 	"sync/atomic"
 
 	"github.com/jetsetilly/gopher2600/curated"
@@ -176,6 +175,6 @@ func (trm *term) pushCommand(input string) {
 		// ** try not to push commands if GUI is not in debug mode. there won't
 		// be anything to receive the input and so the channel will eventually
 		// fill up
-		logger.Log("term", fmt.Sprintf("dropping from side channel (%s)", input))
+		logger.Logf("term", "dropping from side channel (%s)", input)
 	}
 }

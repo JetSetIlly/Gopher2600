@@ -16,7 +16,6 @@
 package sdlimgui
 
 import (
-	"fmt"
 	"image"
 
 	"github.com/go-gl/gl/v3.2-core/gl"
@@ -365,7 +364,7 @@ func (win *winCRTPrefs) drawDiskButtons() {
 	if imgui.Button("Save") {
 		err := win.img.crtPrefs.Save()
 		if err != nil {
-			logger.Log("sdlimgui", fmt.Sprintf("could not save crt settings: %v", err))
+			logger.Logf("sdlimgui", "could not save crt settings: %v", err)
 		}
 	}
 
@@ -373,7 +372,7 @@ func (win *winCRTPrefs) drawDiskButtons() {
 	if imgui.Button("Restore") {
 		err := win.img.crtPrefs.Load()
 		if err != nil {
-			logger.Log("sdlimgui", fmt.Sprintf("could not restore crt settings: %v", err))
+			logger.Logf("sdlimgui", "could not restore crt settings: %v", err)
 		}
 	}
 

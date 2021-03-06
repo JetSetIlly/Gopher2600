@@ -105,16 +105,16 @@ func (tap *FastLoad) load() (uint8, error) {
 	multiload := gameHeader[5]
 	progressSpeed := (uint16(gameHeader[7]) << 8) | uint16(gameHeader[6])
 
-	logger.Log("supercharger: fastload", fmt.Sprintf("start address: %#04x", startAddress))
-	logger.Log("supercharger: fastload", fmt.Sprintf("config byte: %#08b", configByte))
-	logger.Log("supercharger: fastload", fmt.Sprintf("num pages: %d", numPages))
-	logger.Log("supercharger: fastload", fmt.Sprintf("checksum: %#02x", checksum))
-	logger.Log("supercharger: fastload", fmt.Sprintf("multiload: %#02x", multiload))
-	logger.Log("supercharger: fastload", fmt.Sprintf("progress speed: %#02x", progressSpeed))
+	logger.Logf("supercharger: fastload", "start address: %#04x", startAddress)
+	logger.Logf("supercharger: fastload", "config byte: %#08b", configByte)
+	logger.Logf("supercharger: fastload", "num pages: %d", numPages)
+	logger.Logf("supercharger: fastload", "checksum: %#02x", checksum)
+	logger.Logf("supercharger: fastload", "multiload: %#02x", multiload)
+	logger.Logf("supercharger: fastload", "progress speed: %#02x", progressSpeed)
 
 	// data is loaded according to page table
 	pageTable := tap.data[0x2010:0x2028]
-	logger.Log("supercharger: fastload", fmt.Sprintf("page-table: %v", pageTable))
+	logger.Logf("supercharger: fastload", "page-table: %v", pageTable)
 
 	// copy data to RAM banks
 	for i := 0; i < numPages; i++ {
@@ -126,7 +126,7 @@ func (tap *FastLoad) load() (uint8, error) {
 		data := gameData[binOffset : binOffset+0x100]
 		copy(tap.cart.state.ram[bank][bankOffset:bankOffset+0x100], data)
 
-		logger.Log("supercharger: fastload", fmt.Sprintf("copying %#04x:%#04x to bank %d page %d, offset %#04x", binOffset, binOffset+0x100, bank, page, bankOffset))
+		logger.Logf("supercharger: fastload", "copying %#04x:%#04x to bank %d page %d, offset %#04x", binOffset, binOffset+0x100, bank, page, bankOffset)
 	}
 
 	// setup cartridge according to tape instructions. we do this by returning

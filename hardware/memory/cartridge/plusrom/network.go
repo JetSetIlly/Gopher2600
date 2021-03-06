@@ -79,7 +79,7 @@ func (n *network) send(data uint8, send bool) {
 			n.sendLock.Lock()
 			defer n.sendLock.Unlock()
 
-			logger.Log("plusrom [net]", fmt.Sprintf("sending to %s", addr.String()))
+			logger.Logf("plusrom [net]", "sending to %s", addr.String())
 
 			req, err := http.NewRequest("POST", addr.String(), &send)
 			if err != nil {
@@ -105,12 +105,12 @@ func (n *network) send(data uint8, send bool) {
 			id := fmt.Sprintf("%s WE%s", n.prefs.Nick.String(), n.prefs.ID.String())
 			req.Header.Set("PlusStore-ID", id)
 
-			logger.Log("plusrom [net]", fmt.Sprintf("PlusStore-ID: %s", id))
+			logger.Logf("plusrom [net]", "PlusStore-ID: %s", id)
 
 			// log of complete request
 			if httpLogging {
 				s, _ := httputil.DumpRequest(req, true)
-				logger.Log("plusrom [net]", fmt.Sprintf("request: %q", s))
+				logger.Logf("plusrom [net]", "request: %q", s)
 			}
 
 			// send response over network
@@ -124,14 +124,14 @@ func (n *network) send(data uint8, send bool) {
 			// log of complete response
 			if httpLogging {
 				s, _ := httputil.DumpResponse(resp, true)
-				logger.Log("plusrom [net]", fmt.Sprintf("response: %q", s))
+				logger.Logf("plusrom [net]", "response: %q", s)
 			}
 
 			// pass response to main goroutine
 			var r bytes.Buffer
 			_, err = r.ReadFrom(resp.Body)
 			if err != nil {
-				logger.Log("plusrom [net]", fmt.Sprintf("response: %v", err))
+				logger.Logf("plusrom [net]", "response: %v", err)
 			}
 			n.respChan <- r
 		}(n.sendBuffer, n.ai)
@@ -147,7 +147,7 @@ func (n *network) send(data uint8, send bool) {
 func (n *network) getResponse() {
 	select {
 	case r := <-n.respChan:
-		logger.Log("plusrom [net]", fmt.Sprintf("received %d bytes", r.Len()))
+		logger.Logf("plusrom [net]", "received %d bytes", r.Len())
 
 		l, err := r.ReadByte()
 		if err != nil {
