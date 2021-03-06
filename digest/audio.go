@@ -50,7 +50,7 @@ type Audio struct {
 func NewAudio(tv *television.Television) (*Audio, error) {
 	dig := &Audio{Television: tv}
 
-	// register ourselves as a television.AudioMixer
+	// register ourselves as a protocol.AudioMixer
 	dig.AddAudioMixer(dig)
 
 	// create buffer
@@ -72,7 +72,7 @@ func (dig *Audio) ResetDigest() {
 	}
 }
 
-// SetAudio implements the television.AudioMixer interface.
+// SetAudio implements the protocol.AudioMixer interface.
 func (dig *Audio) SetAudio(audioData uint8) error {
 	dig.buffer[dig.bufferCt] = audioData
 
@@ -85,7 +85,7 @@ func (dig *Audio) SetAudio(audioData uint8) error {
 	return nil
 }
 
-// Reset implements the television.AudioMixer interface.
+// Reset implements the protocol.AudioMixer interface.
 func (dig *Audio) Reset() {
 	_ = dig.flushAudio()
 }
@@ -100,7 +100,7 @@ func (dig *Audio) flushAudio() error {
 	return nil
 }
 
-// EndMixing implements the television.AudioMixer interface.
+// EndMixing implements the protocol.AudioMixer interface.
 func (dig *Audio) EndMixing() error {
 	return nil
 }

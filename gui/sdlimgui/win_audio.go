@@ -28,6 +28,9 @@ type winAudio struct {
 	displayBuffer []float32
 	newData       chan float32
 	clearData     chan bool
+
+	enabled     bool
+	endabledDim imgui.Vec2
 }
 
 func newWinAudio(img *SdlImgui) (window, error) {
@@ -35,6 +38,7 @@ func newWinAudio(img *SdlImgui) (window, error) {
 		img:       img,
 		newData:   make(chan float32, 2048),
 		clearData: make(chan bool, 1),
+		enabled:   true,
 	}
 	win.reset()
 
@@ -44,6 +48,7 @@ func newWinAudio(img *SdlImgui) (window, error) {
 }
 
 func (win *winAudio) init() {
+	win.endabledDim = imguiGetFrameDim("Enabled", "Disabled")
 }
 
 func (win *winAudio) id() string {
@@ -71,6 +76,17 @@ func (win *winAudio) draw() {
 	imgui.PlotLines("", win.displayBuffer)
 	imgui.PopStyleColor()
 	imgui.PopStyleColor()
+	imgui.SameLine()
+
+	label := "Disabled"
+	if win.enabled {
+		label = "Enabled"
+	}
+	if imguiBooleanButton(win.img.cols, win.enabled, label, win.endabledDim) {
+		win.img.audio.Mute(win.enabled)
+		win.enabled = !win.enabled
+	}
+
 	imgui.End()
 
 	done := false
@@ -89,7 +105,7 @@ func (win *winAudio) draw() {
 	}
 }
 
-// SetAudio implements television.AudioMixer.
+// SetAudio implements protocol.AudioMixer.
 func (win *winAudio) SetAudio(audioData uint8) error {
 	select {
 	case win.newData <- float32(audioData) / 256:
@@ -98,12 +114,12 @@ func (win *winAudio) SetAudio(audioData uint8) error {
 	return nil
 }
 
-// EndMixing implements television.AudioMixer.
+// EndMixing implements protocol.AudioMixer.
 func (win *winAudio) EndMixing() error {
 	return nil
 }
 
-// Reset implements television.AudioMixer.
+// Reset implements protocol.AudioMixer.
 //
 // Should not be called by the GUI gorountine. Use winAudio.reset() instead.
 func (win *winAudio) Reset() {

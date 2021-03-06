@@ -49,7 +49,7 @@ type Audio struct {
 	bufferCt int
 }
 
-// NewAudio is the preferred method of initialisatoin for the Audio Type.
+// NewAudio is the preferred method of initialisation for the Audio Type.
 func NewAudio() (*Audio, error) {
 	aud := &Audio{}
 	spec := &sdl.AudioSpec{
@@ -81,7 +81,7 @@ func NewAudio() (*Audio, error) {
 	return aud, nil
 }
 
-// SetAudio implements the television.AudioMixer interface.
+// SetAudio implements the protocol.AudioMixer interface.
 func (aud *Audio) SetAudio(audioData uint8) error {
 	aud.buffer[aud.bufferCt] = audioData + aud.spec.Silence
 	aud.bufferCt++
@@ -135,13 +135,13 @@ func (aud *Audio) SetAudio(audioData uint8) error {
 	return nil
 }
 
-// EndMixing implements the television.AudioMixer interface.
+// EndMixing implements the protocol.AudioMixer interface.
 func (aud *Audio) EndMixing() error {
 	sdl.CloseAudioDevice(aud.id)
 	return nil
 }
 
-// Reset implements the television.AudioMixer interface.
+// Reset implements the protocol.AudioMixer interface.
 func (aud *Audio) Reset() {
 	aud.buffer = make([]uint8, bufferLength)
 	aud.bufferCt = 0
@@ -152,4 +152,9 @@ func (aud *Audio) Reset() {
 	}
 
 	sdl.ClearQueuedAudio(aud.id)
+}
+
+// Mute silences the audio device.
+func (aud *Audio) Mute(muted bool) {
+	sdl.PauseAudioDevice(aud.id, muted)
 }
