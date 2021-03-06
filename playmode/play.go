@@ -16,7 +16,6 @@
 package playmode
 
 import (
-	"fmt"
 	"os"
 	"os/signal"
 	"time"
@@ -34,6 +33,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/hiscore"
 	"github.com/jetsetilly/gopher2600/patch"
+	"github.com/jetsetilly/gopher2600/paths"
 	"github.com/jetsetilly/gopher2600/recorder"
 	"github.com/jetsetilly/gopher2600/setup"
 )
@@ -114,10 +114,7 @@ func Play(tv *television.Television, scr gui.GUI, newRecording bool, cartload ca
 		// new recording requested
 
 		// create a unique filename
-		n := time.Now()
-		recording = fmt.Sprintf("recording_%s_%s",
-			cartload.ShortName(), fmt.Sprintf("%04d%02d%02d_%02d%02d%02d",
-				n.Year(), n.Month(), n.Day(), n.Hour(), n.Minute(), n.Second()))
+		recording = paths.UniqueFilename("recording", cartload)
 
 		// prepare new recording
 		rec, err := recorder.NewRecorder(recording, vcs)

@@ -19,11 +19,12 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"time"
 
+	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
 	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/logger"
+	"github.com/jetsetilly/gopher2600/paths"
 
 	"github.com/inkyblackness/imgui-go/v4"
 )
@@ -230,10 +231,7 @@ func (win *winTerm) draw() {
 }
 
 func (win *winTerm) saveOutput() {
-	n := time.Now()
-	fn := fmt.Sprintf("terminal_%s", fmt.Sprintf("%04d%02d%02d_%02d%02d%02d",
-		n.Year(), n.Month(), n.Day(), n.Hour(), n.Minute(), n.Second()))
-
+	fn := paths.UniqueFilename("terminal", cartridgeloader.Loader{})
 	f, err := os.Create(fn)
 	if err != nil {
 		win.output = append(win.output, terminalOutput{

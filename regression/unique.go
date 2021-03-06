@@ -16,21 +16,17 @@
 package regression
 
 import (
-	"fmt"
-	"time"
-
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/paths"
 )
 
 // create a unique filename from a CatridgeLoader instance. used when saving
-// scripts into regressionScripts directory.
+// scripts into regressionScripts directory. calls paths.UniqueFilename() to
+// maintain common formatting used in the project.
 func uniqueFilename(prepend string, cartload cartridgeloader.Loader) (string, error) {
-	n := time.Now()
-	timestamp := fmt.Sprintf("%04d%02d%02d_%02d%02d%02d", n.Year(), n.Month(), n.Day(), n.Hour(), n.Minute(), n.Second())
-	newScript := fmt.Sprintf("%s_%s_%s", prepend, cartload.ShortName(), timestamp)
+	f := paths.UniqueFilename(prepend, cartload)
 
-	scrPth, err := paths.ResourcePath(regressionScripts, newScript)
+	scrPth, err := paths.ResourcePath(regressionScripts, f)
 	if err != nil {
 		return "", err
 	}

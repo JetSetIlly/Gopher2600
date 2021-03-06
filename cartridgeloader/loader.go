@@ -154,9 +154,14 @@ var FileExtensions = [...]string{".BIN", ".ROM", ".A26", ".2k", ".4k", ".F8", ".
 
 // ShortName returns a shortened version of the CartridgeLoader filename.
 func (cl Loader) ShortName() string {
-	shortCartName := path.Base(cl.Filename)
-	shortCartName = strings.TrimSuffix(shortCartName, path.Ext(cl.Filename))
-	return shortCartName
+	// return the empty string if filename is undefined
+	if len(strings.TrimSpace(cl.Filename)) == 0 {
+		return ""
+	}
+
+	sn := path.Base(cl.Filename)
+	sn = strings.TrimSuffix(sn, path.Ext(cl.Filename))
+	return sn
 }
 
 // HasLoaded returns true if Load() has been successfully called.
