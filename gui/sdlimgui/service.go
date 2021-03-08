@@ -223,14 +223,25 @@ func (img *SdlImgui) Service() {
 			img.io.AddMouseWheelDelta(deltaX*2, deltaY*2)
 
 		case *sdl.JoyButtonEvent:
-			select {
-			case img.userinput <- userinput.EventGamepadButton{
-				ID:     ports.Player0ID,
-				Button: int(ev.Button),
-				Down:   ev.State == 1,
-			}:
-			default:
-				logger.Log("sdlimgui", "dropped gamepad button event")
+			var button userinput.GamepadButton
+
+			switch ev.Button {
+			case 0:
+				button = userinput.GamepadButtonA
+			case 7:
+				button = userinput.GamepadButtonStart
+			}
+
+			if button != userinput.GamepadButtonNone {
+				select {
+				case img.userinput <- userinput.EventGamepadButton{
+					ID:     ports.Player0ID,
+					Button: button,
+					Down:   ev.State == 1,
+				}:
+				default:
+					logger.Log("sdlimgui", "dropped gamepad button event")
+				}
 			}
 
 		case *sdl.JoyHatEvent:

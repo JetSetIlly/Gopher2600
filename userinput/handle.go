@@ -190,7 +190,13 @@ func gamepadDPad(ev EventGamepadDPad, handle HandleInput) error {
 }
 
 func gamepadButton(ev EventGamepadButton, handle HandleInput) error {
-	return handle.HandleEvent(ev.ID, ports.Fire, ev.Down)
+	switch ev.Button {
+	case GamepadButtonStart:
+		return handle.HandleEvent(ports.PanelID, ports.PanelReset, ev.Down)
+	case GamepadButtonA:
+		return handle.HandleEvent(ev.ID, ports.Fire, ev.Down)
+	}
+	return nil
 }
 
 func gamepadStick(ev EventGamepadStick, handle HandleInput) error {
