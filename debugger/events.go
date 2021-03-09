@@ -22,7 +22,7 @@ import (
 )
 
 func (dbg *Debugger) userInputHandler(ev userinput.Event) error {
-	quit, err := userinput.HandleUserInput(ev, dbg.VCS.RIOT.Ports)
+	quit, err := dbg.controllers.HandleUserInput(ev, dbg.VCS.RIOT.Ports)
 	if err != nil {
 		return curated.Errorf("debugger: %v", err)
 	}

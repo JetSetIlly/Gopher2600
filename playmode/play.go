@@ -40,8 +40,9 @@ import (
 )
 
 type playmode struct {
-	vcs *hardware.VCS
-	scr gui.GUI
+	vcs         *hardware.VCS
+	scr         gui.GUI
+	controllers userinput.Controllers
 
 	intChan   chan os.Signal
 	userinput chan userinput.Event

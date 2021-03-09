@@ -223,8 +223,7 @@ func (img *SdlImgui) Service() {
 			img.io.AddMouseWheelDelta(deltaX*2, deltaY*2)
 
 		case *sdl.JoyButtonEvent:
-			var button userinput.GamepadButton
-
+			button := userinput.GamepadButtonNone
 			switch ev.Button {
 			case 0:
 				button = userinput.GamepadButtonA
@@ -245,39 +244,29 @@ func (img *SdlImgui) Service() {
 			}
 
 		case *sdl.JoyHatEvent:
-			var ok bool
-			var dir userinput.DPadDirection
+			dir := userinput.DPadNone
 			switch ev.Value {
 			case sdl.HAT_CENTERED:
 				dir = userinput.DPadCentre
-				ok = true
 			case sdl.HAT_UP:
 				dir = userinput.DPadUp
-				ok = true
 			case sdl.HAT_DOWN:
 				dir = userinput.DPadDown
-				ok = true
 			case sdl.HAT_LEFT:
 				dir = userinput.DPadLeft
-				ok = true
 			case sdl.HAT_RIGHT:
 				dir = userinput.DPadRight
-				ok = true
 			case sdl.HAT_LEFTUP:
 				dir = userinput.DPadLeftUp
-				ok = true
 			case sdl.HAT_LEFTDOWN:
 				dir = userinput.DPadLeftDown
-				ok = true
 			case sdl.HAT_RIGHTUP:
 				dir = userinput.DPadRightUp
-				ok = true
 			case sdl.HAT_RIGHTDOWN:
 				dir = userinput.DPadRightDown
-				ok = true
 			}
 
-			if ok {
+			if dir != userinput.DPadNone {
 				select {
 				case img.userinput <- userinput.EventGamepadDPad{
 					ID:        ports.Player0ID,
@@ -289,13 +278,28 @@ func (img *SdlImgui) Service() {
 			}
 
 		case *sdl.JoyAxisEvent:
-			const deadzone = 10000
+			axis := userinput.GamepadAxisNone
+			switch ev.Axis {
+			case 0:
+				axis = userinput.GamepadAxisLeftHoriz
+			case 1:
+				axis = userinput.GamepadAxisLeftVert
+			case 2:
+				axis = userinput.GamepadAxisLeftTrigger
+			case 3:
+				axis = userinput.GamepadAxisRightHoriz
+			case 4:
+				axis = userinput.GamepadAxisRightVert
+			case 5:
+				axis = userinput.GamepadAxisRightTrigger
+			}
 
-			if ev.Value > deadzone || ev.Value < -deadzone {
+			if axis != userinput.GamepadAxisNone {
 				select {
-				case img.userinput <- userinput.EventGamepadStick{
+				case img.userinput <- userinput.EventGamepadAnalogue{
 					ID:     ports.Player0ID,
-					Amount: float32(ev.Value) / 32768.0,
+					Axis:   axis,
+					Amount: ev.Value,
 				}:
 				default:
 					logger.Log("sdlimgui", "dropped gamepad axis event")

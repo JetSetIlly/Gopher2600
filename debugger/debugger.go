@@ -58,9 +58,10 @@ type Debugger struct {
 	lastResult *disassembly.Entry
 
 	// gui, tv and terminal
-	tv   *television.Television
-	scr  gui.GUI
-	term terminal.Terminal
+	tv          *television.Television
+	scr         gui.GUI
+	term        terminal.Terminal
+	controllers userinput.Controllers
 
 	// interface to the vcs memory with additional debugging functions
 	// - access to vcs memory from the debugger (eg. peeking and poking) is

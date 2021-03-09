@@ -19,15 +19,22 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
 )
 
+// Controllers keeps track of hardware userinput options.
+type Controllers struct {
+	// keep track of which axis is being used. stops axes interfering with one
+	// another
+	axis GamepadAxis
+}
+
 // mouseMotion handles mouse events sent from a GUI. Returns true if key
 // has been handled, false otherwise.
-func mouseMotion(ev EventMouseMotion, handle HandleInput) error {
+func (c *Controllers) mouseMotion(ev EventMouseMotion, handle HandleInput) error {
 	return handle.HandleEvent(ports.Player0ID, ports.PaddleSet, ev.X)
 }
 
 // mouseButton handles mouse events sent from a GUI. Returns true if key
 // has been handled, false otherwise.
-func mouseButton(ev EventMouseButton, handle HandleInput) error {
+func (c *Controllers) mouseButton(ev EventMouseButton, handle HandleInput) error {
 	var err error
 
 	switch ev.Button {
@@ -46,7 +53,7 @@ func mouseButton(ev EventMouseButton, handle HandleInput) error {
 // key has been handled, false otherwise.
 //
 // For reasons of consistency, this handler is used by the debugger too.
-func keyboard(ev EventKeyboard, handle HandleInput) error {
+func (c *Controllers) keyboard(ev EventKeyboard, handle HandleInput) error {
 	var err error
 
 	if ev.Down && ev.Mod == KeyModNone {
@@ -156,7 +163,7 @@ func keyboard(ev EventKeyboard, handle HandleInput) error {
 	return err
 }
 
-func gamepadDPad(ev EventGamepadDPad, handle HandleInput) error {
+func (c *Controllers) gamepadDPad(ev EventGamepadDPad, handle HandleInput) error {
 	switch ev.Direction {
 	case DPadCentre:
 		return handle.HandleEvent(ev.ID, ports.Centre, nil)
@@ -189,7 +196,7 @@ func gamepadDPad(ev EventGamepadDPad, handle HandleInput) error {
 	return nil
 }
 
-func gamepadButton(ev EventGamepadButton, handle HandleInput) error {
+func (c *Controllers) gamepadButton(ev EventGamepadButton, handle HandleInput) error {
 	switch ev.Button {
 	case GamepadButtonStart:
 		return handle.HandleEvent(ports.PanelID, ports.PanelReset, ev.Down)
@@ -199,29 +206,72 @@ func gamepadButton(ev EventGamepadButton, handle HandleInput) error {
 	return nil
 }
 
-func gamepadStick(ev EventGamepadStick, handle HandleInput) error {
-	return handle.HandleEvent(ev.ID, ports.PaddleSet, ev.Amount)
+func (c *Controllers) gamepadAnalogue(ev EventGamepadAnalogue, handle HandleInput) error {
+	// do nothing if something has been happening recently and this event is
+	// not for that axis
+	if c.axis != GamepadAxisNone && ev.Axis != c.axis {
+		return nil
+	}
+
+	const deadzone = 10000
+	const center = 0.4
+	const centerRatio = center / 0.5
+
+	n := float32(ev.Amount)
+
+	switch ev.Axis {
+	case GamepadAxisLeftHoriz:
+	case GamepadAxisLeftTrigger:
+		// left trigger uses full range for leftward  movement of the paddle
+		n += 32768
+		n *= -1
+	case GamepadAxisRightTrigger:
+		// right trigger uses full range for rightward movement of the paddle
+		n += 32768
+	default:
+		return nil
+	}
+
+	// check deadzone
+	if n >= -deadzone && n <= deadzone {
+		c.axis = GamepadAxisNone
+		return handle.HandleEvent(ev.ID, ports.PaddleSet, float32(center))
+	}
+
+	// note which axis this event is on
+	c.axis = ev.Axis
+
+	if n < -deadzone {
+		n += deadzone
+	} else if n > deadzone {
+		n -= deadzone
+	}
+
+	n = (n + 32768.0) / 65535.0
+	n *= centerRatio
+
+	return handle.HandleEvent(ev.ID, ports.PaddleSet, n)
 }
 
 // HandleUserInput deciphers the Event and forwards the input to the Atari 2600
 // player ports. Returns True if event is a Quit event and False otherwise.
-func HandleUserInput(ev Event, handle HandleInput) (bool, error) {
+func (c *Controllers) HandleUserInput(ev Event, handle HandleInput) (bool, error) {
 	var err error
 	switch ev := ev.(type) {
 	case EventQuit:
 		return true, nil
 	case EventKeyboard:
-		err = keyboard(ev, handle)
+		err = c.keyboard(ev, handle)
 	case EventMouseButton:
-		err = mouseButton(ev, handle)
+		err = c.mouseButton(ev, handle)
 	case EventMouseMotion:
-		err = mouseMotion(ev, handle)
+		err = c.mouseMotion(ev, handle)
 	case EventGamepadDPad:
-		err = gamepadDPad(ev, handle)
+		err = c.gamepadDPad(ev, handle)
 	case EventGamepadButton:
-		err = gamepadButton(ev, handle)
-	case EventGamepadStick:
-		err = gamepadStick(ev, handle)
+		err = c.gamepadButton(ev, handle)
+	case EventGamepadAnalogue:
+		err = c.gamepadAnalogue(ev, handle)
 	default:
 	}
 

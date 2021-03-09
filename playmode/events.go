@@ -25,7 +25,7 @@ import (
 const quitEvent = "user input quit event"
 
 func (pl *playmode) userInputHandler(ev userinput.Event) error {
-	quit, err := userinput.HandleUserInput(ev, pl.vcs.RIOT.Ports)
+	quit, err := pl.controllers.HandleUserInput(ev, pl.vcs.RIOT.Ports)
 	if err != nil {
 		return curated.Errorf("playmode: %v", err)
 	}
