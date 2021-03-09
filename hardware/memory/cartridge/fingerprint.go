@@ -86,8 +86,14 @@ func fingerprintMnetwork(b []byte) bool {
 	for i := 0; i < len(b)-3; i++ {
 		if b[i] == 0xad && (b[i+1] >= 0xe0 && b[i+1] <= 0xe7) {
 			// bank switching can address any cartidge mirror so mask off
-			// insgnificant bytes
-			if b[i+2]&0x0f == 0x0f {
+			// insignificant bytes
+			//
+			// (09/03/21) mask wasn't correct (0x0f selects non-cartridge
+			// mirrors too) correct mask is 0x1f.
+			//
+			// the incorrect mask caused a false positive for Solaris when the
+			// threshold is 2.
+			if b[i+2]&0x1f == 0x1f {
 				threshold--
 			}
 		}
