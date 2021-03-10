@@ -48,6 +48,9 @@ type winDisasm struct {
 	// the draw() function.
 	selectedBankRefresh chan int
 
+	// flag wheterh bank combo is open
+	selectedBankComboOpen bool
+
 	// the address of the top and bottom-most visible entry. used to limit the
 	// range of addresses we enquire about breakpoints for.
 	addressTopList uint16
@@ -150,8 +153,18 @@ func (win *winDisasm) draw() {
 			if imgui.Selectable(fmt.Sprintf("View bank %d", n)) {
 				win.selectedBank = n
 			}
+
+			// set scroll on first frame combo is open
+			if !win.selectedBankComboOpen && n == win.selectedBank {
+				imgui.SetScrollHereY(0.0)
+			}
 		}
 		imgui.EndCombo()
+
+		// note that combo is open *after* it has been drawn
+		win.selectedBankComboOpen = true
+	} else {
+		win.selectedBankComboOpen = false
 	}
 
 	// show goto current button. do not not show if focusAddr is visible or if
@@ -215,15 +228,18 @@ func (win *winDisasm) draw() {
 	// handle different gui states.
 	switch win.img.state {
 	case gui.StateInitialising:
+		win.focusOnAddr = win.followCPU
 		win.updateOnPause = 5
 	case gui.StateRunning:
+		fallthrough
+	case gui.StateStepping:
 		win.focusOnAddr = win.followCPU
 		if win.focusOnAddr {
 			win.selectedBank = bank.Number
 			win.updateOnPause = 1
 		}
 	case gui.StatePaused:
-		win.focusOnAddr = win.updateOnPause > 0 || focusAddr != win.focusAddrPrevFrame
+		win.focusOnAddr = win.updateOnPause > 0
 		if win.updateOnPause > 0 {
 			wait := time.Now()
 			go func() {

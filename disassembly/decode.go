@@ -54,14 +54,14 @@ func (dsm *Disassembly) bless(mc *cpu.CPU, copiedBanks []mapper.BankContent) err
 	if err != nil {
 		return err
 	}
-	startAddress := mc.PC.Value()
+	resetAddress := mc.PC.Value()
 
+	// bless from reset address for every bank. note that we do not test to see
+	// if the blessSequence is "correct" before committal because execution
+	// from the reset address is more than possible.
 	for b := range dsm.entries {
-		mc.PC.Load(startAddress)
-		if dsm.blessSequence(b, mc.PC.Value(), false) {
-			mc.PC.Load(startAddress)
-			dsm.blessSequence(b, mc.PC.Value(), true)
-		}
+		mc.PC.Load(resetAddress)
+		_ = dsm.blessSequence(b, mc.PC.Value(), true)
 	}
 
 	// list of start points for every bank
@@ -164,26 +164,26 @@ func (dsm *Disassembly) blessSequence(b int, a uint16, commit bool) bool {
 	//
 	// sequence will stop if:
 	//  . an unknown opcode has been encountered
-	//
 	//  . there is already blessed instruction between this and the next entry
-	//
 	//  . a flow control instruction is encountered (this is normal and expected)
-	//
+	//  . an RTS instruction is encountered
 	//  . if the end of cartridge data has been reached
 	//
 	for a < uint16(len(dsm.entries[b])) {
+		instruction := dsm.entries[b][a]
+
 		// end run if entry has already been blessed
-		if dsm.entries[b][a].Level == EntryLevelBlessed {
+		if instruction.Level == EntryLevelBlessed {
 			return true
 		}
 
 		// if operator is unknown than end the sequence.
-		operator := dsm.entries[b][a].Result.Defn.Operator
+		operator := instruction.Result.Defn.Operator
 		if operator == "??" {
 			return true
 		}
 
-		next := a + uint16(dsm.entries[b][a].Result.ByteCount)
+		next := a + uint16(instruction.Result.ByteCount)
 
 		// break if address has looped around
 		if next > next&memorymap.CartridgeBits {
@@ -193,23 +193,33 @@ func (dsm *Disassembly) blessSequence(b int, a uint16, commit bool) bool {
 		// if an entry between this entry and the next has already been
 		// blessed then this track is probably not correct.
 		for i := a + 1; i < next; i++ {
-			if dsm.entries[b][i].Level == EntryLevelBlessed {
+			if instruction.Level == EntryLevelBlessed {
 				return false
 			}
 		}
 
 		// promote the entry
 		if commit {
-			dsm.entries[b][a].Level = EntryLevelBlessed
+			instruction.Level = EntryLevelBlessed
 		}
 
-		// return on interrupt or flow control instruction that is not a branch
-		// instruction (ie. does not have relative addressing mode)
-		effect := dsm.entries[b][a].Result.Defn.Effect
-		if effect == instructions.Flow || effect == instructions.Interrupt {
-			if dsm.entries[b][a].Result.Defn.AddressingMode != instructions.Relative {
-				return true
-			}
+		// finish blessing sequence if instruction is a flow instruction (but
+		// not a branch instruction - relative addressing).
+		effect := instruction.Result.Defn.Effect
+		if effect == instructions.Flow && instruction.Result.Defn.AddressingMode != instructions.Relative {
+			return true
+		}
+
+		// finish blessing sequence if instruction is an Interrupt
+		if effect == instructions.Interrupt {
+			return true
+		}
+
+		// finish blessing sequence if instruction is a return from subroutine.
+		// note that we don't mind if this sequence was started with a
+		// JSR or not because RTS can function without one.
+		if instruction.Operator == "RTS" {
+			return true
 		}
 
 		a = next

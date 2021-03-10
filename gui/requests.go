@@ -34,6 +34,7 @@ const (
 	StateInitialising EmulationState = iota
 	StatePaused
 	StateRunning
+	StateStepping
 	StateEnding
 )
 

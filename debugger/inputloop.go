@@ -203,15 +203,22 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, clockCycle bool) error {
 					if err != nil {
 						return err
 					}
-					err = dbg.scr.SetFeature(gui.ReqState, gui.StateRunning)
-					if err != nil {
-						return err
+					if inputter.IsInteractive() {
+						err = dbg.scr.SetFeature(gui.ReqState, gui.StateRunning)
+						if err != nil {
+							return err
+						}
 					}
 				}
 
 				// update comparison point before execution continues
 				if !clockCycle {
 					dbg.Rewind.SetComparison()
+				}
+			} else if inputter.IsInteractive() {
+				err = dbg.scr.SetFeature(gui.ReqState, gui.StateStepping)
+				if err != nil {
+					return err
 				}
 			}
 		}
