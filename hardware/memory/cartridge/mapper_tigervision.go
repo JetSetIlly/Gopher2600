@@ -165,7 +165,7 @@ func (cart *tigervision) Listen(addr uint16, data uint8) {
 	// listen() function.
 	//
 	// update: tigervision is not unique. the 3e+ mapper also uses this
-	// mechanism
+	// mechanism. and superbank
 
 	// although address 3F is used primarily, in actual fact writing anywhere
 	// in TIA space is okay. from  the description from Kevin Horton's document

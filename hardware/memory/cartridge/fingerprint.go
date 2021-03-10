@@ -22,7 +22,6 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/harmony/dpcplus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/supercharger"
-	"github.com/jetsetilly/gopher2600/logger"
 )
 
 func fingerprint3e(b []byte) bool {
@@ -213,8 +212,11 @@ func fingerprint128k(data []byte) func([]byte) (mapper.CartMapper, error) {
 		return newDF
 	}
 
-	logger.Log("fingerprint", "not confident that this is DF file")
-	return newDF
+	return newSuperbank
+}
+
+func fingerprint256k(data []byte) func([]byte) (mapper.CartMapper, error) {
+	return newSuperbank
 }
 
 func (cart *Cartridge) fingerprint(cartload cartridgeloader.Loader) error {
@@ -296,6 +298,12 @@ func (cart *Cartridge) fingerprint(cartload cartridgeloader.Loader) error {
 
 	case 131072:
 		cart.mapper, err = fingerprint128k(cartload.Data)(cartload.Data)
+		if err != nil {
+			return err
+		}
+
+	case 262144:
+		cart.mapper, err = fingerprint256k(cartload.Data)(cartload.Data)
 		if err != nil {
 			return err
 		}

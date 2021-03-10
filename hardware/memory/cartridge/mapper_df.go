@@ -37,6 +37,7 @@ type df struct {
 	state *dfState
 }
 
+// example ROM: penult RPG.
 func newDF(data []byte) (mapper.CartMapper, error) {
 	cart := &df{
 		mappingID:   "DF",
