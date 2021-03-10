@@ -28,9 +28,11 @@ The following screenshots were taken in playmode with CRT effects enabled
 <img src=".screenshots/games/pitfall.png" height="200" alt="pitfall"/> <img src=".screenshots/games/heman.png" height="200" alt="he-man"/>
 <img src=".screenshots/games/krull.png" height="200" alt="krull"/> <img src=".screenshots/games/ladybug.png" height="200" alt="ladybug"/>
 <img src=".screenshots/games/thrust.png" height="200" alt="thrust"/> <img src=".screenshots/games/pandachase.png" height="200" alt="panda chase"/>
-<img src=".screenshots/games/mangoesdown.png" height="200" alt="man goes down"/>
+<img src=".screenshots/games/mangoesdown.png" height="200" alt="man goes down"/> <img src=".screenshots/games/beast.png" height="200" alt="legacy of the beast"/>
 <img src=".screenshots/games/chiphead.png" height="200" alt="chiphead"/> <img src=".screenshots/games/genesis.png" height="200" alt="egypt genesis"/>
 <img src=".screenshots/games/draconian.png" height="200" alt="draconian"/> <img src=".screenshots/games/zevious.png" height="200" alt="zevious"/>
+
+Games shown: Pitfall; He-Man; Krull; Ladybug; Thrust; Panda Chase; Man Goes Down; [Legacy of the Beast](https://aeriform.itch.io/beast); Chiphead; Egypt 2600BC by Genesis Project; Draconian; Zevious.
 
 ## Scope of the project
 
@@ -136,15 +138,33 @@ Although if want to pass flags to the run mode you'll need to specify it.
 
 ## Hand Controllers
 
-Joystick, paddle and keypad inputs are supported. Currently, only joysticks and paddles for the left player are available. 
+Joystick, paddle and keypad inputs are supported. Currently, only joysticks and
+paddles for the left player are available but keypad input is available for
+both players.
 
-The joystick is operated via the cursor keys on the keyboard and the spacebar in place of the fire button. Gamepad support will be added in the future.
+#### Gamepad
 
-The paddle is available by operating the mouse. To activate the paddle,
-right-mouse-click  the play window and waggle the mouse a few times.
-Note that once the window has been right-clicked, the mouse will be captured
-and the pointer will disappear. To "release" the mouse, click the right-mouse
-button or the escape key.
+For conveniece the joystick and paddle can be controlled through a gamepad. Use
+the DPad and any of the face buttons for joystick control.
+
+To control the paddle use either the left analogue stick or the analogue
+triggers. Note that you will need to 'waggle' the stick/triggers a couple of
+time for the emulator to detect that you want to switch to the paddle.
+
+The console's reset switch can be triggered with the gamepad's start button.
+
+#### Without A Gamepad
+
+As an alternative to the gamepad, the joystick can controlled with the cursor
+keys of the keyboard. The spacebar will act as the joystick's fire button.
+
+The paddle can be accessed with the computer's mouse. First, capture the mouse
+by right-clicking the emulator's window and then waggle the mouse a few times
+to tell the emulator that you want to switch to the paddle. The left mouse
+button is the paddle's fire button.
+
+Once captured, press the right mouse button to release the mouse and return
+mouse control to your desktop,
 
 ### Keypad
 
@@ -185,7 +205,7 @@ To run the debugger use the `DEBUG` submode
 
 	> gopher2600 debug roms/Pitfall.bin
 
-<img src=".screenshots/debugger_frogger.png" height="400" alt="gopher2600 debugging GUI"/>
+<img src=".screenshots/debugger_halo2600.png" height="400" alt="gopher2600 debugging GUI"/>
 
 Becaus the debugger is still in development, full documentation not yet available. But briefly the features we can see in this screeshot are:
 
@@ -204,25 +224,25 @@ Below the menu-bar are the debugging windows. In this screenshot we can see:
 * The `TV Screen`. This shows the television output from the VCS.
 	* The screen is 'interactive' and will show information about the pixel underneath the cursor
 	* Clicking the screen will move the VCS emulation to the point where the VCS is outputting that pixel. This is part of the [rewind](#rewinding) system.
-	* Also available are a variety of `overlays`. Click the overlay toggle and select which overlay you want to show by selecting with the button to its right (labelled `WSYNC` in the screenshot).
+	* Also available are a variety of `overlays`. Click the overlay button (labelled `no overlay` in the screenshot and select which overlay you want.
 * The `Audio` window shows the waveform of the recent sound output.
 * The `Control` window allow you to `Run/Halt`, `Step` and also `rewind` through the emulation.
-	* The toggle to right of the `Run` button will put the emulation into `video-cycle` mode. This will allow you to step by a single color-clock at a time, rather than a single CPU instruction.
+	* The toggle to right of the `Step` button will put the emulation into `video-cycle` mode. This will allow you to step by a single color-clock at a time, rather than a single CPU instruction.
+	* The `<` buttons will step back by eith a CPU instruction, a scanline or an entire frame. Stepping back by video-cycle is not currently supported.
 * The `Timer` window shows the current state of the RIOT Timer.
 * The `CPU` window shows the current state of the 6507.
 * The `Disassembly` window shows the disassembled ROM.
 	* If a 'DASM' generated symbol file is available then that will be used.
 	* If a symbols file isn't available then the standard symbols will be used. This includes symbols for special cartridge areas that might exists. For example, a hotspot address for switching banks will be indicated with `BANK1`, `BANK2`, etc. instead of the address.
-	* If the cartridge does contain more than one bank then the banks will be viewable by selecting the relevant tab. In the screenshot above, the cartridge contains four banks.
-	* Add or remove a `PC Breakpoint` by clicking on the disasm entry.
+	* Add or remove a `PC Breakpoint` by clicking on the address.
 * The `RAM` window shows the contents of the VCS RAM. Cartidge RAM if available will be show in the `Cartridge RAM` window. Not shown but available through the cartridge menu when appropriate.
 	* The highlighted bytes indicate those bytes that have changed since the emulation last halted.	
 * The `TIA` window details the six graphical parts of the VCS's graphics chip.
-	* The state of the `TIA` can be changed manually but note that the changes will not be retained when the emulation next updates that part of the TIA. This will likely change in future versions of the program.
+	* The state of the `TIA` can be changed manually but note that the changes will not be retained when the emulation next updates that part of the TIA. 
 
-Note that much of the information presented in the windows is editable in-place. For example, the contents of the CPU's PC register can be edited via the window. As in all areas of this project, the user is encouraged to experiment.
+Note that much of the information presented in the windows is editable. For example, the contents of the CPU's PC register can be edited via the window. As in all areas of this project, the user is encouraged to experiment.
 
-A video of the debugger in action can be found [here](https://www.youtube.com/watch?v=3vLyRw8iVCA).
+A (old) video of the debugger in action can be found [here](https://www.youtube.com/watch?v=3vLyRw8iVCA).
 
 #### Debugger Terminal
 
