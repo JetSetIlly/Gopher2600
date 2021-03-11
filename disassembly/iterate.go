@@ -126,7 +126,7 @@ func (dsm *Disassembly) NewEntriesIteration(minLevel EntryLevel, bank int, focus
 		return nil, curated.Errorf("no bank %d in disasm", bank)
 	}
 
-	bitr := &IterateEntries{
+	eitr := &IterateEntries{
 		dsm:         dsm,
 		bank:        bank,
 		minLevel:    minLevel,
@@ -136,7 +136,7 @@ func (dsm *Disassembly) NewEntriesIteration(minLevel EntryLevel, bank int, focus
 
 	// normalise addresses
 	for i := range focusAddr {
-		bitr.FocusAddr[i] = (focusAddr[i] & memorymap.CartridgeBits) | memorymap.OriginCart
+		eitr.FocusAddr[i] = (focusAddr[i] & memorymap.CartridgeBits) | memorymap.OriginCart
 	}
 
 	// count entries
@@ -146,43 +146,43 @@ func (dsm *Disassembly) NewEntriesIteration(minLevel EntryLevel, bank int, focus
 		}
 
 		// where in the iteration we'll encounter the FocusAddr entry
-		if len(bitr.FocusAddr) > 0 && bitr.FocusAddr[0] == e.Result.Address&memorymap.CartridgeBits|memorymap.OriginCart {
-			bitr.FocusAddrCt = bitr.EntryCount
+		if len(eitr.FocusAddr) > 0 && eitr.FocusAddr[0] == e.Result.Address&memorymap.CartridgeBits|memorymap.OriginCart {
+			eitr.FocusAddrCt = eitr.EntryCount + eitr.LabelCount
 		}
 
 		// count the number of entries of the minimum level
 		if e.Level >= minLevel {
-			bitr.EntryCount++
+			eitr.EntryCount++
 
 			// count entries (of the minimum level) with a label
 			if e.Label.String() != "" {
-				bitr.LabelCount++
+				eitr.LabelCount++
 			}
 		} else {
-			for _, f := range bitr.FocusAddr {
+			for _, f := range eitr.FocusAddr {
 				if f == e.Result.Address&memorymap.CartridgeBits|memorymap.OriginCart {
 					// include address in the count even though it doesn meet minimum level
-					bitr.EntryCount++
+					eitr.EntryCount++
 				}
 			}
 		}
 	}
 
-	return bitr, nil
+	return eitr, nil
 }
 
 // Start new iteration from the first instance of the EntryLevel specified in
 // NewEntriesIteration.
-func (bitr *IterateEntries) Start() (int, *Entry) {
-	bitr.idx = -1
-	return bitr.next()
+func (eitr *IterateEntries) Start() (int, *Entry) {
+	eitr.idx = -1
+	return eitr.next()
 }
 
 // Next entry in the disassembly of the previously specified type.
 //
 // Returns (-1, nil) if end of disassembly has been reached.
-func (bitr *IterateEntries) Next() (int, *Entry) {
-	return bitr.next()
+func (eitr *IterateEntries) Next() (int, *Entry) {
+	return eitr.next()
 }
 
 // SkipNext n entries and return that Entry. An n value of < 0 returns the most
@@ -193,8 +193,8 @@ func (bitr *IterateEntries) Next() (int, *Entry) {
 // clipper (and maybe nothing else).
 //
 // Returns (-1, nil) if end of disassembly has been reached.
-func (bitr *IterateEntries) SkipNext(n int, skipLabels bool) (int, *Entry) {
-	e := bitr.lastEntry
+func (eitr *IterateEntries) SkipNext(n int, skipLabels bool) (int, *Entry) {
+	e := eitr.lastEntry
 
 	for n > 0 {
 		if e == nil {
@@ -207,48 +207,48 @@ func (bitr *IterateEntries) SkipNext(n int, skipLabels bool) (int, *Entry) {
 			n--
 		}
 
-		_, e = bitr.next()
+		_, e = eitr.next()
 	}
-	return bitr.idx, e
+	return eitr.idx, e
 }
 
-func (bitr *IterateEntries) next() (int, *Entry) {
-	bitr.dsm.crit.Lock()
-	defer bitr.dsm.crit.Unlock()
+func (eitr *IterateEntries) next() (int, *Entry) {
+	eitr.dsm.crit.Lock()
+	defer eitr.dsm.crit.Unlock()
 
-	if bitr.idx+1 >= len(bitr.dsm.entries[bitr.bank]) {
+	if eitr.idx+1 >= len(eitr.dsm.entries[eitr.bank]) {
 		return -1, nil
 	}
 
 	// find next entry to return
-	bitr.idx++
+	eitr.idx++
 	done := false
 	for !done {
-		a := bitr.dsm.entries[bitr.bank][bitr.idx]
-		if a.Level >= bitr.minLevel {
+		a := eitr.dsm.entries[eitr.bank][eitr.idx]
+		if a.Level >= eitr.minLevel {
 			break // for idx loop
 		}
 
 		// entry doesn't match minimum level but focusAddr might
-		for _, f := range bitr.FocusAddr {
+		for _, f := range eitr.FocusAddr {
 			if f == a.Result.Address&memorymap.CartridgeBits|memorymap.OriginCart {
 				done = true
 				break // for idx loop
 			}
 		}
 
-		bitr.idx++
-		done = done || bitr.idx >= len(bitr.dsm.entries[bitr.bank])
+		eitr.idx++
+		done = done || eitr.idx >= len(eitr.dsm.entries[eitr.bank])
 	}
 
 	// for loop went past the end of the iterable content so return nothing
-	if bitr.idx >= len(bitr.dsm.entries[bitr.bank]) {
+	if eitr.idx >= len(eitr.dsm.entries[eitr.bank]) {
 		return -1, nil
 	}
 
-	bitr.lastEntry = bitr.dsm.entries[bitr.bank][bitr.idx]
+	eitr.lastEntry = eitr.dsm.entries[eitr.bank][eitr.idx]
 
-	return bitr.idx, makeCopyofEntry(*bitr.lastEntry)
+	return eitr.idx, makeCopyofEntry(*eitr.lastEntry)
 }
 
 // we don't want to return the actual entry in the disassembly because it will
@@ -296,7 +296,7 @@ func (dsm *Disassembly) IterateBlessed(output io.Writer, f func(*Entry) string) 
 	citr.Start()
 	for b, ok := citr.Start(); ok; b, ok = citr.Next() {
 		// create a new iteration for the bank
-		bitr, err := dsm.NewEntriesIteration(EntryLevelBlessed, b)
+		eitr, err := dsm.NewEntriesIteration(EntryLevelBlessed, b)
 		if err != nil {
 			return err
 		}
@@ -304,7 +304,7 @@ func (dsm *Disassembly) IterateBlessed(output io.Writer, f func(*Entry) string) 
 		bankHeader := false
 
 		// iterate through disassembled bank
-		for _, e := bitr.Start(); e != nil; _, e = bitr.Next() {
+		for _, e := eitr.Start(); e != nil; _, e = eitr.Next() {
 			s := f(e)
 			s = strings.TrimSuffix(s, "\n")
 

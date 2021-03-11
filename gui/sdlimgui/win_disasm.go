@@ -325,7 +325,7 @@ func (win *winDisasm) drawBank(bank int, focusAddr uint16, onBank bool) {
 
 			win.drawEntry(e, focusAddr, onBank)
 
-			// if the current CPU entry is visible then raise the currentPCisVisble flag
+			// if the current CPU entry is visible then raise the focusAddrIsVisible flag
 			if onBank && (e.Result.Address&memorymap.CartridgeBits == focusAddr) {
 				win.focusAddrIsVisible = win.focusAddrIsVisible || imgui.IsItemVisible()
 			}

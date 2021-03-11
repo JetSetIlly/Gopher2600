@@ -252,6 +252,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 				} else {
 					defer dbg.scr.SetFeature(gui.ReqState, gui.StatePaused)
 				}
+				dbg.scr.SetFeature(gui.ReqState, gui.StateStepping)
 				return dbg.Rewind.GotoFrameCoords(f, s, c)
 			})
 
