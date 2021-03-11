@@ -19,6 +19,7 @@ import (
 	"fmt"
 
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
+	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/cpu"
 	"github.com/jetsetilly/gopher2600/hardware/memory/vcs"
 	"github.com/jetsetilly/gopher2600/hardware/riot/timer"
@@ -39,6 +40,16 @@ import (
 type FastLoad struct {
 	cart *Supercharger
 	data []byte
+
+	// number of loads in the data
+	numLoads int
+
+	// which load is to be tried next
+	loadCt int
+
+	// value of loadCt on last successful load. we use this to prevent endless
+	// rewinding and searching
+	lastLoadCt int
 }
 
 // FastLoaded error is returned on success of FastLoad.load(). It must be
@@ -73,6 +84,7 @@ func newFastLoad(cart *Supercharger, loader cartridgeloader.Loader) (tape, error
 	if len(tap.data)%8448 != 0 {
 		return nil, fmt.Errorf("fastload: %v", "wrong number of bytes in cartridge data")
 	}
+	tap.numLoads = len(tap.data) / 8448
 
 	return tap, nil
 }
@@ -86,10 +98,17 @@ func (tap *FastLoad) snapshot() tape {
 
 // load implements the tape interface.
 func (tap *FastLoad) load() (uint8, error) {
-	gameData := tap.data[0:0x1eff]
+	// get data for the next multiload
+	offset := tap.loadCt * 8448
+	data := tap.data[offset : offset+8448]
+	tap.loadCt++
+	if tap.loadCt*8448 >= len(tap.data) {
+		tap.loadCt = 0
+		logger.Log("supercharger: fastload", "rewind")
+	}
 
-	// only 8448 .bin format is supported currently
-	gameHeader := tap.data[0x2000:0x2008]
+	// game header appears after main data
+	gameHeader := data[0x2000:0x2008]
 
 	// PC address to jump to once loading has finished
 	startAddress := (uint16(gameHeader[1]) << 8) | uint16(gameHeader[0])
@@ -100,39 +119,68 @@ func (tap *FastLoad) load() (uint8, error) {
 	// number of pages to load
 	numPages := int(gameHeader[3])
 
-	// not using the following in any meaningful way
+	// not using checksum in any meaningful way
 	checksum := gameHeader[4]
+
+	// we'll use this to check if the correct multiload is being read
 	multiload := gameHeader[5]
+
+	// not using progress speed in any meaningul way
 	progressSpeed := (uint16(gameHeader[7]) << 8) | uint16(gameHeader[6])
 
-	logger.Logf("supercharger: fastload", "start address: %#04x", startAddress)
-	logger.Logf("supercharger: fastload", "config byte: %#08b", configByte)
-	logger.Logf("supercharger: fastload", "num pages: %d", numPages)
-	logger.Logf("supercharger: fastload", "checksum: %#02x", checksum)
-	logger.Logf("supercharger: fastload", "multiload: %#02x", multiload)
-	logger.Logf("supercharger: fastload", "progress speed: %#02x", progressSpeed)
+	logger.Logf("supercharger: fastload", "header: start address: %#04x", startAddress)
+	logger.Logf("supercharger: fastload", "header: config byte: %#08b", configByte)
+	logger.Logf("supercharger: fastload", "header: num pages: %d", numPages)
+	logger.Logf("supercharger: fastload", "header: checksum: %#02x", checksum)
+	logger.Logf("supercharger: fastload", "header: multiload: %#02x", multiload)
+	logger.Logf("supercharger: fastload", "header: progress speed: %#02x", progressSpeed)
 
 	// data is loaded according to page table
-	pageTable := tap.data[0x2010:0x2028]
+	pageTable := data[0x2010:0x2028]
 	logger.Logf("supercharger: fastload", "page-table: %v", pageTable)
 
-	// copy data to RAM banks
-	for i := 0; i < numPages; i++ {
-		bank := pageTable[i] & 0x3
-		page := pageTable[i] >> 2
-		bankOffset := int(page) * 0x100
-		binOffset := i * 0x100
-
-		data := gameData[binOffset : binOffset+0x100]
-		copy(tap.cart.state.ram[bank][bankOffset:bankOffset+0x100], data)
-
-		logger.Logf("supercharger: fastload", "copying %#04x:%#04x to bank %d page %d, offset %#04x", binOffset, binOffset+0x100, bank, page, bankOffset)
-	}
-
 	// setup cartridge according to tape instructions. we do this by returning
-	// a function disguised as an error type. The VCS knows how to interpret
+	// a function disguised as an error type. The emulation knows how to interpret
 	// this error and will call the function
 	return 0, FastLoaded(func(mc *cpu.CPU, ram *vcs.RAM, tmr *timer.Timer) error {
+		// requested multiload is saved at RAM address 0xfa.
+		m, err := ram.Peek(0xfa)
+		if err != nil {
+			return curated.Errorf("supercharger: fastload %v", err)
+		}
+
+		// this is not the mutliload we're looking for
+		if m != multiload {
+			logger.Logf("supercharger: fastload", "fastload header (%d) not matching multiload request (%d)", m, multiload)
+
+			// test for whether the tape has looped. if it has just load the
+			// first multiload
+			if tap.loadCt == tap.lastLoadCt {
+				logger.Logf("supercharger: fastload", "cannot find requested multiload (%d) loading mutliload 00", m)
+				tap.loadCt = 0
+				offset := tap.loadCt * 8448
+				data = tap.data[offset : offset+8448]
+				tap.loadCt++
+			} else {
+				return nil
+			}
+		}
+
+		logger.Logf("supercharger: fastload", "loading multiload (%d)", multiload)
+
+		// copy data to RAM banks
+		for i := 0; i < numPages; i++ {
+			bank := pageTable[i] & 0x3
+			page := pageTable[i] >> 2
+			bankOffset := int(page) * 0x100
+			binOffset := i * 0x100
+
+			data := data[binOffset : binOffset+0x100]
+			copy(tap.cart.state.ram[bank][bankOffset:bankOffset+0x100], data)
+
+			// logger.Logf("supercharger: fastload", "copying %#04x:%#04x to bank %d page %d, offset %#04x", binOffset, binOffset+0x100, bank, page, bankOffset)
+		}
+
 		// initialise VCS RAM with zeros
 		for a := uint16(0x80); a <= 0xff; a++ {
 			_ = ram.Poke(a, 0x00)
@@ -164,14 +212,17 @@ func (tap *FastLoad) load() (uint8, error) {
 
 		// jump to VCS RAM location 0x00fa. a short bootstrap program has been
 		// poked there already
-		err := mc.LoadPC(0x00fa)
+		err = mc.LoadPC(0x00fa)
 		if err != nil {
-			return fmt.Errorf("fastload: %v", err)
+			return curated.Errorf("supercharger: fastload: %v", err)
 		}
 
 		// set the value to be used in the first instruction of the bootstrap program
 		tap.cart.state.registers.Value = configByte
 		tap.cart.state.registers.Delay = 0
+
+		// note the multiload request
+		tap.lastLoadCt = tap.loadCt
 
 		return nil
 	})

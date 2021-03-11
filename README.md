@@ -378,14 +378,29 @@ as required.
 
 `Gopher2600` can load supercharger tapes from MP3 and WAV file, in addition to supercharger BIN files.
 
-A copy of the BIOS file must be present. The file should be named:
+Multiload "tapes" are supported although care should be taken in how multiload files are created. 
+
+In the case of BIN files a straight concatenation of individual files should
+work, resulting in a file that is a multiple of 8448 bytes.
+
+For MP3 and WAV files however, the *waveform* should be concatenated, not the
+individual MP3/WAV files themselves. A command line tool like
+[SoX](https://en.wikipedia.org/wiki/SoX) can be used for this, or a graphical
+program like [Audacity](https://www.audacityteam.org/download/) if you prefer.
+
+Of course, in all cases, the individual parts must be part of a multiload set
+for this to work.
+
+### Supercharger BIOS
+
+Supercharger eulation relies on the presence of the real Supercharger BIOSt. The file must be named one of the following:
 
 * Supercharger BIOS.bin
 * Supercharger.BIOS.bin
 * Supercharger_BIOS.bin
 
 The file can be placed in the current working directory or in the same
-directory as the supercharger ROM being loaded. Alternatively, it can be placed
+directory as the Supercharger file being loaded. Alternatively, it can be placed
 in the emulator's [configuration directory](#configuration-directory).
 
 ## SaveKey
