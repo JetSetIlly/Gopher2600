@@ -25,10 +25,15 @@ import (
 type LazyLog struct {
 	val *LazyValues
 
-	log   atomic.Value // []logger.Entry
+	log atomic.Value // []logger.Entry
+	Log []logger.Entry
+
+	// have log contents changed
 	dirty atomic.Value // bool
-	Log   []logger.Entry
 	Dirty bool
+
+	// used to detect dirty logs
+	timeoflast int
 }
 
 func newLazyLog(val *LazyValues) *LazyLog {
@@ -36,9 +41,13 @@ func newLazyLog(val *LazyValues) *LazyLog {
 }
 
 func (lz *LazyLog) push() {
-	if l := logger.Copy(); l != nil {
-		lz.log.Store(l)
+	t := logger.TimeOfLast()
+	if t != lz.timeoflast {
+		lz.timeoflast = t
 		lz.dirty.Store(true)
+		if l := logger.Copy(); l != nil {
+			lz.log.Store(l)
+		}
 	} else {
 		lz.dirty.Store(false)
 	}
@@ -47,8 +56,6 @@ func (lz *LazyLog) push() {
 func (lz *LazyLog) update() {
 	if l, ok := lz.log.Load().([]logger.Entry); ok {
 		lz.Log = l
-		if lz.dirty.Load().(bool) {
-			lz.Dirty = true
-		}
+		lz.Dirty, _ = lz.dirty.Load().(bool)
 	}
 }

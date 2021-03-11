@@ -19,6 +19,8 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"sync/atomic"
+	"time"
 )
 
 // Entry represents a single line/entry in the log.
@@ -60,6 +62,9 @@ type logger struct {
 
 	// the index of the last entry sent over the recent channel
 	lastRecent int
+
+	// timestamp in nanoseconds of last log event
+	lastLogTime atomic.Value // int
 }
 
 func newLogger(maxEntries int) *logger {
@@ -70,6 +75,7 @@ func newLogger(maxEntries int) *logger {
 		recent:  make(chan bool),
 		entries: make(chan []Entry),
 	}
+	l.lastLogTime.Store(0)
 
 	// the loggger service gorountine is simple enough to inline and still
 	// retain clarity
@@ -135,6 +141,8 @@ func (l *logger) log(tag, detail string) {
 	if l.echo != nil {
 		l.echo.Write([]byte(e.String()))
 	}
+
+	l.lastLogTime.Store(time.Now().Nanosecond())
 }
 
 func (l *logger) logf(tag, detail string, args ...interface{}) {
@@ -175,6 +183,10 @@ func (l *logger) tail(output io.Writer, number int) {
 func (l *logger) copy() []Entry {
 	l.get <- allEntries
 	return <-l.entries
+}
+
+func (l *logger) timeoflast() int {
+	return l.lastLogTime.Load().(int)
 }
 
 func (l *logger) setEcho(output io.Writer) {

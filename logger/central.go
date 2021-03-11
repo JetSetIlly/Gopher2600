@@ -65,6 +65,11 @@ func Copy() []Entry {
 	return central.copy()
 }
 
+// TimeOfLast returns the timestamp in nanoseconds of the most recent log event.
+func TimeOfLast() int {
+	return central.timeoflast()
+}
+
 // SetEcho to print new entries to os.Stdout.
 func SetEcho(output io.Writer) {
 	central.setEcho(output)
