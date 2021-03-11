@@ -40,6 +40,10 @@ type superbank struct {
 
 	// rewindable state
 	state *superbankState
+
+	// hotspotting for superbank is quite complex due to all the possible
+	// mirrors so ReadHotspots() returns this pre-prepared map
+	hotspotInfo map[uint16]mapper.CartHotspotInfo
 }
 
 func newSuperbank(data []byte) (mapper.CartMapper, error) {
@@ -61,6 +65,19 @@ func newSuperbank(data []byte) (mapper.CartMapper, error) {
 		cart.banks[k] = make([]uint8, cart.bankSize)
 		offset := k * cart.bankSize
 		copy(cart.banks[k], data[offset:offset+cart.bankSize])
+	}
+
+	// prepare hotspotInfo
+	cart.hotspotInfo = make(map[uint16]mapper.CartHotspotInfo)
+	for addr := uint16(0x0800); addr <= 0x0fff; addr++ {
+		if !(addr&0x0800 != 0x0800 || addr&(cart.bankSwitchMask^0xff) != 0x0000) {
+			bank := int(addr & cart.bankSwitchMask)
+			cart.hotspotInfo[addr] = mapper.CartHotspotInfo{
+				Symbol: fmt.Sprintf("BANK%d", bank),
+				Action: mapper.HotspotBankSwitch,
+				Strict: true,
+			}
+		}
 	}
 
 	return cart, nil
@@ -166,7 +183,7 @@ func (cart *superbank) CopyBanks() []mapper.BankContent {
 
 // ReadHotspots implements the mapper.CartHotspotsBus interface.
 func (cart *superbank) ReadHotspots() map[uint16]mapper.CartHotspotInfo {
-	return map[uint16]mapper.CartHotspotInfo{}
+	return cart.hotspotInfo
 }
 
 // WriteHotspots implements the mapper.CartHotspotsBus interface.

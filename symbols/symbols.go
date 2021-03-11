@@ -105,19 +105,27 @@ func (sym *Symbols) canonise(cart *cartridge.Cartridge) {
 	}
 
 	for k, v := range hb.ReadHotspots() {
-		ma, area := memorymap.MapAddress(k, true)
-		if area != memorymap.Cartridge {
-			logger.Logf("symbols", "%s reporting hotspot (%s) outside of cartridge address space", cart.ID(), v.Symbol)
+		a := k
+		if !v.Strict {
+			ma, area := memorymap.MapAddress(k, true)
+			if area != memorymap.Cartridge {
+				logger.Logf("symbols", "%s reporting hotspot (%s) outside of cartridge address space", cart.ID(), v.Symbol)
+			}
+			a = ma
 		}
-		sym.read.add(ma, v.Symbol, true)
+		sym.read.add(a, v.Symbol, true)
 	}
 
 	for k, v := range hb.WriteHotspots() {
-		ma, area := memorymap.MapAddress(k, false)
-		if area != memorymap.Cartridge {
-			logger.Logf("symbols", "%s reporting hotspot (%s) outside of cartridge address space", cart.ID(), v.Symbol)
+		a := k
+		if !v.Strict {
+			ma, area := memorymap.MapAddress(k, false)
+			if area != memorymap.Cartridge {
+				logger.Logf("symbols", "%s reporting hotspot (%s) outside of cartridge address space", cart.ID(), v.Symbol)
+			}
+			a = ma
 		}
-		sym.write.add(ma, v.Symbol, true)
+		sym.write.add(a, v.Symbol, true)
 	}
 }
 
@@ -167,6 +175,13 @@ func (sym *Symbols) GetReadSymbol(addr uint16) (string, bool) {
 	if v, ok := sym.read.Entries[addr]; ok {
 		return v, ok
 	}
+
+	// no entry found so try the mapped address
+	addr, _ = memorymap.MapAddress(addr, true)
+	if v, ok := sym.read.Entries[addr]; ok {
+		return v, ok
+	}
+
 	return "", false
 }
 
@@ -178,5 +193,12 @@ func (sym *Symbols) GetWriteSymbol(addr uint16) (string, bool) {
 	if v, ok := sym.write.Entries[addr]; ok {
 		return v, ok
 	}
+
+	// no entry found so try the mapped address
+	addr, _ = memorymap.MapAddress(addr, false)
+	if v, ok := sym.read.Entries[addr]; ok {
+		return v, ok
+	}
+
 	return "", false
 }
