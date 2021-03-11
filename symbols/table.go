@@ -77,13 +77,13 @@ func (t *Table) add(addr uint16, symbol string, prefer bool) {
 	sort.Sort(t)
 }
 
-func (t Table) search(symbol string) (uint16, bool) {
+func (t Table) search(symbol string) (string, uint16, bool) {
 	for k, v := range t.Entries {
 		if strings.ToUpper(v) == symbol {
-			return k, true
+			return v, k, true
 		}
 	}
-	return 0, false
+	return "", 0, false
 }
 
 // Len implements the sort.Interface.

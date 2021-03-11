@@ -46,27 +46,36 @@ const (
 	WriteSymTable
 )
 
-// SearchSymbol return the address of the supplied symbol. Search is
-// case-insensitive and is conducted on the subtables in order: locations >
-// read > write.
+// Search return the address of the supplied symbol.
+//
+// Matching is case-insensitive and when TableType is UnspecifiedSymTable the
+// search in order: locations > read > write.
+//
+// Returns success, the table in which it was found, the normalised symbol, and
+// the normalised address.
 func (sym *Symbols) Search(symbol string, target TableType) (bool, TableType, string, uint16) {
+	sym.crit.Lock()
+	defer sym.crit.Unlock()
+
 	symbolUpper := strings.ToUpper(symbol)
 
 	if target == UnspecifiedSymTable || target == LabelTable {
-		if addr, ok := sym.Label.search(symbolUpper); ok {
-			return true, LabelTable, symbol, addr
+		for _, l := range sym.label {
+			if symbolNorm, addr, ok := l.search(symbolUpper); ok {
+				return true, LabelTable, symbolNorm, addr
+			}
 		}
 	}
 
 	if target == UnspecifiedSymTable || target == ReadSymTable {
-		if addr, ok := sym.Read.search(symbolUpper); ok {
-			return true, ReadSymTable, symbol, addr
+		if symbolNorm, addr, ok := sym.read.search(symbolUpper); ok {
+			return true, ReadSymTable, symbolNorm, addr
 		}
 	}
 
 	if target == UnspecifiedSymTable || target == WriteSymTable {
-		if addr, ok := sym.Write.search(symbolUpper); ok {
-			return true, WriteSymTable, symbol, addr
+		if symbolNorm, addr, ok := sym.write.search(symbolUpper); ok {
+			return true, WriteSymTable, symbolNorm, addr
 		}
 	}
 

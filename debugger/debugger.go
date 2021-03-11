@@ -411,7 +411,7 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) error {
 	// disassemble newly attached cartridge
 	symbols, err := symbols.ReadSymbolsFile(dbg.VCS.Mem.Cart)
 	if err != nil {
-		logger.Log("symbols", err.Error())
+		return err
 	}
 
 	err = dbg.Disasm.FromMemory(dbg.VCS.Mem.Cart, symbols)

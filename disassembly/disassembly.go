@@ -96,7 +96,10 @@ func FromCartridge(cartload cartridgeloader.Loader) (*Disassembly, error) {
 
 	// ignore errors caused by loading of symbols table - we always get a
 	// standard symbols table even in the event of an error
-	symbols, _ := symbols.ReadSymbolsFile(cart)
+	symbols, err := symbols.ReadSymbolsFile(cart)
+	if err != nil {
+		return nil, curated.Errorf("disassembly: %v", err)
+	}
 
 	// do disassembly
 	err = dsm.FromMemory(cart, symbols)
@@ -258,12 +261,20 @@ func (dsm *Disassembly) FormatResult(bank mapper.BankInfo, result execution.Resu
 	}
 
 	e := &Entry{
-		dsm:     dsm,
-		Result:  result,
-		Level:   level,
-		Bank:    bank,
-		Label:   Label{dsm: dsm, result: result},
-		Operand: Operand{dsm: dsm, result: result},
+		dsm:    dsm,
+		Result: result,
+		Level:  level,
+		Bank:   bank,
+		Label: Label{
+			dsm:    dsm,
+			result: result,
+			bank:   bank.Number,
+		},
+		Operand: Operand{
+			dsm:    dsm,
+			result: result,
+			bank:   bank.Number,
+		},
 	}
 
 	// address of instruction

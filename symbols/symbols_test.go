@@ -24,7 +24,11 @@ import (
 )
 
 func TestDefaultSymbols(t *testing.T) {
-	syms := symbols.NewSymbols()
+	cart := cartridge.NewCartridge(nil)
+	syms, err := symbols.ReadSymbolsFile(cart)
+	if err != nil {
+		t.Errorf("unexpected error (%s)", err)
+	}
 	tw := &test.Writer{}
 
 	syms.ListSymbols(tw)
@@ -55,10 +59,10 @@ func TestFlappySymbols(t *testing.T) {
 }
 
 const expectedDefaultSymbols = `Labels
----------
+------
 
 Read Symbols
------------
+------------
 0x0000 -> CXM0P
 0x0001 -> CXM1P
 0x0002 -> CXP0FB
@@ -81,7 +85,7 @@ Read Symbols
 0x0285 -> TIMINT
 
 Write Symbols
-------------
+-------------
 0x0000 -> VSYNC
 0x0001 -> VBLANK
 0x0002 -> WSYNC
@@ -136,7 +140,7 @@ Write Symbols
 `
 
 const expectedFlappySymbols = `Labels
----------
+------
 0x0000 -> .FREE_BYTES
 0x0002 -> .CYCLES
 0x0003 -> .CLOCK_COUNTS_PER_CYCLE
@@ -303,7 +307,7 @@ const expectedFlappySymbols = `Labels
 0x1af5 -> .overscan_loop
 
 Read Symbols
------------
+------------
 0x0000 -> CXM0P
 0x0001 -> CXM1P
 0x0002 -> CXP0FB
@@ -445,7 +449,7 @@ Read Symbols
 0x1afd -> initialisation
 
 Write Symbols
-------------
+-------------
 0x0000 -> VSYNC
 0x0001 -> VBLANK
 0x0002 -> WSYNC

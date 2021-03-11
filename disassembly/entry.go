@@ -98,8 +98,8 @@ func (e *Entry) updateExecutionEntry(result execution.Result) {
 	e.Result = result
 
 	// update result instance in Label and Operand fields
-	e.Label.result = result
-	e.Operand.result = result
+	e.Label.result = e.Result
+	e.Operand.result = e.Result
 
 	// indicate that entry has been executed
 	e.Level = EntryLevelExecuted
@@ -201,6 +201,7 @@ func absoluteBranchDestination(addr uint16, operand uint16) uint16 {
 type Label struct {
 	dsm    *Disassembly
 	result execution.Result
+	bank   int
 }
 
 func (l Label) String() string {
@@ -213,7 +214,7 @@ func (l Label) String() string {
 func (l Label) genString() (string, bool) {
 	if l.dsm.Prefs.Symbols.Get().(bool) {
 		ma, _ := memorymap.MapAddress(l.result.Address, true)
-		if v, ok := l.dsm.Symbols.Label.Entries[ma]; ok {
+		if v, ok := l.dsm.Symbols.GetLabel(l.bank, ma); ok {
 			return v, true
 		}
 	}
@@ -228,6 +229,7 @@ type Operand struct {
 	nonSymbolic string
 	dsm         *Disassembly
 	result      execution.Result
+	bank        int
 }
 
 func (l Operand) String() string {
@@ -259,15 +261,15 @@ func (l Operand) genString() string {
 				operand = absoluteBranchDestination(l.result.Address, operand)
 
 				// look up mock program counter value in symbol table
-				if v, ok := l.dsm.Symbols.Label.Entries[operand]; ok {
+				if v, ok := l.dsm.Symbols.GetLabel(l.bank, operand); ok {
 					s = v
 				}
-			} else if v, ok := l.dsm.Symbols.Label.Entries[operand]; ok {
+			} else if v, ok := l.dsm.Symbols.GetLabel(l.bank, operand); ok {
 				s = addrModeDecoration(v, l.result.Defn.AddressingMode)
 			}
 		case instructions.Read:
 			mappedOperand, _ := memorymap.MapAddress(operand, true)
-			if v, ok := l.dsm.Symbols.Read.Entries[mappedOperand]; ok {
+			if v, ok := l.dsm.Symbols.GetReadSymbol(mappedOperand); ok {
 				s = addrModeDecoration(v, l.result.Defn.AddressingMode)
 			}
 
@@ -276,7 +278,7 @@ func (l Operand) genString() string {
 
 		case instructions.RMW:
 			mappedOperand, _ := memorymap.MapAddress(operand, false)
-			if v, ok := l.dsm.Symbols.Write.Entries[mappedOperand]; ok {
+			if v, ok := l.dsm.Symbols.GetWriteSymbol(mappedOperand); ok {
 				s = addrModeDecoration(v, l.result.Defn.AddressingMode)
 			}
 		}

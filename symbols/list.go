@@ -28,18 +28,29 @@ func (sym *Symbols) ListSymbols(output io.Writer) {
 
 // ListLabels outputs every label used in the current ROM.
 func (sym *Symbols) ListLabels(output io.Writer) {
-	output.Write([]byte("Labels\n---------\n"))
-	output.Write([]byte(sym.Label.String()))
+	sym.crit.Lock()
+	defer sym.crit.Unlock()
+
+	output.Write([]byte("Labels\n------\n"))
+	for _, l := range sym.label {
+		output.Write([]byte(l.String()))
+	}
 }
 
 // ListReadSymbols outputs every read symbol used in the current ROM.
 func (sym *Symbols) ListReadSymbols(output io.Writer) {
-	output.Write([]byte("\nRead Symbols\n-----------\n"))
-	output.Write([]byte(sym.Read.String()))
+	sym.crit.Lock()
+	defer sym.crit.Unlock()
+
+	output.Write([]byte("\nRead Symbols\n------------\n"))
+	output.Write([]byte(sym.read.String()))
 }
 
 // ListWriteSymbols outputs every write symbol used in the current ROM.
 func (sym *Symbols) ListWriteSymbols(output io.Writer) {
-	output.Write([]byte("\nWrite Symbols\n------------\n"))
-	output.Write([]byte(sym.Write.String()))
+	sym.crit.Lock()
+	defer sym.crit.Unlock()
+
+	output.Write([]byte("\nWrite Symbols\n-------------\n"))
+	output.Write([]byte(sym.write.String()))
 }

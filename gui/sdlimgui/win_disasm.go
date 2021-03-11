@@ -311,9 +311,12 @@ func (win *winDisasm) drawBank(bank int, focusAddr uint16, onBank bool) {
 			s := e.Label.String()
 			if len(s) > 0 {
 				imgui.TableNextRow()
-				imgui.TableNextRow()
+
+				// put in address column (second column)
 				imgui.TableNextColumn()
 				imgui.TableNextColumn()
+
+				// !!TODO: disasm address lable to span multiple columns
 				imgui.Text(s)
 
 				// advance clipper counter and check for end of display

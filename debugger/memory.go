@@ -79,12 +79,12 @@ func (ai addressInfo) String() string {
 func (dbgmem memoryDebug) mapAddress(address interface{}, read bool) *addressInfo {
 	ai := &addressInfo{read: read}
 
-	var symbolTable map[uint16]string
+	var symbolTable symbols.TableType
 
 	if read {
-		symbolTable = (dbgmem.symbols).Read.Entries
+		symbolTable = symbols.ReadSymTable
 	} else {
-		symbolTable = (dbgmem.symbols).Write.Entries
+		symbolTable = symbols.WriteSymTable
 	}
 
 	switch address := address.(type) {
@@ -92,35 +92,16 @@ func (dbgmem memoryDebug) mapAddress(address interface{}, read bool) *addressInf
 		ai.address = address
 		ai.mappedAddress, ai.area = memorymap.MapAddress(address, read)
 	case string:
-		var found bool
 		var err error
-		var addr uint64
 
-		// case sensitive
-		for a, sym := range symbolTable {
-			if sym == address {
-				ai.address = a
-				ai.mappedAddress, ai.area = memorymap.MapAddress(ai.address, read)
-				found = true
-				break // for loop
-			}
-		}
+		found, _, sym, a := dbgmem.symbols.Search(address, symbolTable)
 		if found {
-			break // case switch
-		}
+			ai.address = a
+			ai.addressLabel = sym
+			ai.mappedAddress, ai.area = memorymap.MapAddress(ai.address, read)
+		} else {
+			var addr uint64
 
-		// case insensitive
-		address = strings.ToUpper(address)
-		for a, sym := range symbolTable {
-			if strings.ToUpper(sym) == address {
-				ai.address = a
-				ai.mappedAddress, ai.area = memorymap.MapAddress(ai.address, read)
-				found = true
-				break // for loop
-			}
-		}
-
-		if !found {
 			// finally, this may be a string representation of a numerical address
 			addr, err = strconv.ParseUint(address, 0, 16)
 			if err != nil {
@@ -134,15 +115,13 @@ func (dbgmem memoryDebug) mapAddress(address interface{}, read bool) *addressInf
 		panic(fmt.Sprintf("unsupported address type (%T)", address))
 	}
 
-	ai.addressLabel = symbolTable[ai.mappedAddress]
-
 	return ai
 }
 
 // poke/peek error formatting, for consistency.
 const (
-	pokeError = "cannot poke address (%v) in area %s"
-	peekError = "cannot peek address (%v) in area %s"
+	pokeError = "cannot poke address (%v)"
+	peekError = "cannot peek address (%v)"
 )
 
 // Peek returns the contents of the memory address, without triggering any side
@@ -159,7 +138,7 @@ func (dbgmem memoryDebug) peek(address interface{}) (*addressInfo, error) {
 	ai.data, err = area.Peek(ai.mappedAddress)
 	if err != nil {
 		if curated.Is(err, bus.AddressError) {
-			return nil, curated.Errorf(peekError, address, ai.area.String())
+			return nil, curated.Errorf(peekError, address)
 		}
 		return nil, err
 	}
@@ -182,7 +161,7 @@ func (dbgmem memoryDebug) poke(address interface{}, data uint8) (*addressInfo, e
 	err := area.Poke(ai.mappedAddress, data)
 	if err != nil {
 		if curated.Is(err, bus.AddressError) {
-			return nil, curated.Errorf(pokeError, address, ai.area.String())
+			return nil, curated.Errorf(pokeError, address)
 		}
 		return nil, err
 	}

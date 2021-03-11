@@ -16,6 +16,8 @@
 package disassembly
 
 import (
+	"fmt"
+
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/cpu"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/instructions"
@@ -48,6 +50,10 @@ func (dsm *Disassembly) disassemble(mc *cpu.CPU, mem *disasmMemory) error {
 	return nil
 }
 
+type blessing struct {
+	addr uint16
+}
+
 func (dsm *Disassembly) bless(mc *cpu.CPU, copiedBanks []mapper.BankContent) error {
 	// we can be sure the machine reset address is a starting point for a blessing
 	err := mc.LoadPCIndirect(addresses.Reset)
@@ -65,9 +71,9 @@ func (dsm *Disassembly) bless(mc *cpu.CPU, copiedBanks []mapper.BankContent) err
 	}
 
 	// list of start points for every bank
-	blessings := make([][]uint16, len(dsm.entries))
+	blessings := make([][]blessing, len(dsm.entries))
 	for b := range dsm.entries {
-		blessings[b] = make([]uint16, 0)
+		blessings[b] = make([]blessing, 0)
 	}
 
 	// loop through every bank in the cartridge and collate a list of blessings
@@ -89,7 +95,10 @@ func (dsm *Disassembly) bless(mc *cpu.CPU, copiedBanks []mapper.BankContent) err
 				jmpAddress := e.Result.InstructionData
 				l := jmpTargets(copiedBanks, jmpAddress)
 				for _, i := range l {
-					blessings[i] = append(blessings[i], jmpAddress)
+					bls := blessing{
+						addr: jmpAddress,
+					}
+					blessings[i] = append(blessings[i], bls)
 				}
 			}
 
@@ -108,7 +117,10 @@ func (dsm *Disassembly) bless(mc *cpu.CPU, copiedBanks []mapper.BankContent) err
 				}
 				mc.PC.Add(operand)
 
-				blessings[b] = append(blessings[b], mc.PC.Value())
+				bls := blessing{
+					addr: mc.PC.Value(),
+				}
+				blessings[b] = append(blessings[b], bls)
 			}
 		}
 	}
@@ -117,8 +129,8 @@ func (dsm *Disassembly) bless(mc *cpu.CPU, copiedBanks []mapper.BankContent) err
 	// sequence, starting at each blessing point accumulated above.
 	for b := range blessings {
 		for _, a := range blessings[b] {
-			if dsm.blessSequence(b, a, false) {
-				dsm.blessSequence(b, a, true)
+			if dsm.blessSequence(b, a.addr, false) {
+				dsm.blessSequence(b, a.addr, true)
 			}
 		}
 	}
@@ -150,9 +162,9 @@ func jmpTargets(copiedBanks []mapper.BankContent, jmpAddress uint16) []int {
 	return l
 }
 
-func (dsm *Disassembly) blessSequence(b int, a uint16, commit bool) bool {
+func (dsm *Disassembly) blessSequence(bank int, addr uint16, commit bool) bool {
 	// mask address into indexable range
-	a &= memorymap.CartridgeBits
+	a := addr & memorymap.CartridgeBits
 
 	// blessing can happen at the same time as iteration which is probably
 	// being run from a different goroutine. acknowledge the critical section
@@ -169,11 +181,13 @@ func (dsm *Disassembly) blessSequence(b int, a uint16, commit bool) bool {
 	//  . an RTS instruction is encountered
 	//  . if the end of cartridge data has been reached
 	//
-	for a < uint16(len(dsm.entries[b])) {
-		instruction := dsm.entries[b][a]
+	for a < uint16(len(dsm.entries[bank])) {
+		instruction := dsm.entries[bank][a]
 
 		// end run if entry has already been blessed
 		if instruction.Level == EntryLevelBlessed {
+			// label blessed entry
+			dsm.addLabel(bank, addr)
 			return true
 		}
 
@@ -194,6 +208,8 @@ func (dsm *Disassembly) blessSequence(b int, a uint16, commit bool) bool {
 		// blessed then this track is probably not correct.
 		for i := a + 1; i < next; i++ {
 			if instruction.Level == EntryLevelBlessed {
+				// label already blessed entry
+				dsm.addLabel(bank, addr)
 				return false
 			}
 		}
@@ -201,6 +217,9 @@ func (dsm *Disassembly) blessSequence(b int, a uint16, commit bool) bool {
 		// promote the entry
 		if commit {
 			instruction.Level = EntryLevelBlessed
+
+			// label the newly blessed entry
+			dsm.addLabel(bank, addr)
 		}
 
 		// finish blessing sequence if instruction is a flow instruction (but
@@ -227,6 +246,11 @@ func (dsm *Disassembly) blessSequence(b int, a uint16, commit bool) bool {
 
 	// reached end of the bank without encountering any other halt condition
 	return false
+}
+
+// add label to the symbols table.
+func (dsm *Disassembly) addLabel(bank int, addr uint16) {
+	dsm.Symbols.AddLabel(bank, addr, fmt.Sprintf("L%04X", addr), false)
 }
 
 func (dsm *Disassembly) decode(mc *cpu.CPU, mem *disasmMemory, copiedBanks []mapper.BankContent) error {

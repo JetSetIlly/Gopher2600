@@ -65,7 +65,7 @@ func (cart *ejected) Write(_ uint16, _ uint8, _, _ bool) error {
 
 // NumBanks implements the cartMapper interface.
 func (cart *ejected) NumBanks() int {
-	return 0
+	return 1
 }
 
 // GetBank implements the cartMapper interface.
