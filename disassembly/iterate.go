@@ -178,7 +178,9 @@ func (bitr *IterateEntries) Start() (int, *Entry) {
 	return bitr.next()
 }
 
-// Next entry in the disassembly of the previously specified type. Returns nil if end of disassembly has been reached.
+// Next entry in the disassembly of the previously specified type.
+//
+// Returns (-1, nil) if end of disassembly has been reached.
 func (bitr *IterateEntries) Next() (int, *Entry) {
 	return bitr.next()
 }
@@ -189,9 +191,16 @@ func (bitr *IterateEntries) Next() (int, *Entry) {
 // The skipLabels argument indicates that an entry with a label should count as
 // two entries. This is useful for the sdlimgui disassembly window's list
 // clipper (and maybe nothing else).
+//
+// Returns (-1, nil) if end of disassembly has been reached.
 func (bitr *IterateEntries) SkipNext(n int, skipLabels bool) (int, *Entry) {
 	e := bitr.lastEntry
+
 	for n > 0 {
+		if e == nil {
+			return -1, nil
+		}
+
 		n--
 
 		if e.Label.String() != "" {
