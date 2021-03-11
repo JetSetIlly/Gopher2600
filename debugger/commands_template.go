@@ -128,7 +128,7 @@ var commandTemplate = []string{
 	cmdBreak + " [%<pc value>S|%<target>S %<value>N] {& %<value>S|%<target>S %<value>S}",
 
 	cmdTrap + " [%<target>S] {%<targets>S}",
-	cmdWatch + " (READ|WRITE) (MIRRORS|ANY) [%<address>S] (%<value>S)",
+	cmdWatch + " (READ|WRITE) (STRICT) [%<address>S] (%<value>S)",
 	cmdTrace + " (%<address>S)",
 	cmdList + " [BREAKS|TRAPS|WATCHES|TRACES|ALL]",
 	cmdDrop + " [BREAK|TRAP|WATCH|TRACE] %<number in list>N",

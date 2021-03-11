@@ -33,9 +33,9 @@ type watcher struct {
 	matchValue bool
 	value      uint8
 
-	// wether to compare the address as used or whether to consider mirrored
-	// addresses too
-	mirrors bool
+	// whether the address should be interpreted strictly or whether mirrors
+	// should be considered too
+	strict bool
 }
 
 func (w watcher) String() string {
@@ -99,12 +99,12 @@ func (wtc *watches) check(previousResult string) string {
 
 	for i := range wtc.watches {
 		// continue loop if we're not matching last address accessed
-		if wtc.watches[i].mirrors {
-			if wtc.watches[i].ai.mappedAddress != wtc.dbg.VCS.Mem.LastAccessAddressMapped {
+		if wtc.watches[i].strict {
+			if wtc.watches[i].ai.address != wtc.dbg.VCS.Mem.LastAccessAddress {
 				continue
 			}
 		} else {
-			if wtc.watches[i].ai.address != wtc.dbg.VCS.Mem.LastAccessAddress {
+			if wtc.watches[i].ai.mappedAddress != wtc.dbg.VCS.Mem.LastAccessAddressMapped {
 				continue
 			}
 		}
@@ -159,7 +159,7 @@ func (wtc *watches) list() {
 // at a time can be specified on the command line.
 func (wtc *watches) parseCommand(tokens *commandline.Tokens) error {
 	var event int
-	var mirrors bool
+	var strict bool
 
 	const (
 		either int = iota
@@ -184,12 +184,10 @@ func (wtc *watches) parseCommand(tokens *commandline.Tokens) error {
 	arg, _ = tokens.Get()
 	arg = strings.ToUpper(arg)
 	switch arg {
-	case "MIRRORS":
-		fallthrough
-	case "ANY":
-		mirrors = true
+	case "STRICT":
+		strict = true
 	default:
-		mirrors = false
+		strict = false
 		tokens.Unget()
 	}
 
@@ -228,7 +226,7 @@ func (wtc *watches) parseCommand(tokens *commandline.Tokens) error {
 		ai:         *ai,
 		matchValue: useVal,
 		value:      uint8(val),
-		mirrors:    mirrors,
+		strict:     strict,
 	}
 
 	// check to see if watch already exists

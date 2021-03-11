@@ -469,16 +469,19 @@ address.
 The above example will watch for the value 10 (decimal) to be written to memory
 address 0x80.
 
-The optional ANY (or MIRRORS) argument will instruct the WATCH to match on any address which is
-the equivalent (or mirror) or the one specified. For example:
+By default WATCH will monitor all mirror addresses.
 
-	WATCH ANY 0xf000
+	WATCH 0xf000
 
-Will watch for a read access of the cartridge address 0xf000 or any of it's mirrors. In this instance,
-if the CPU attempts to read 0x1000, the watch will match.
+In the above example, WATCH will halt execution on read access of the cartridge address 0xf000
+OR any of it's mirrors. For example, in this instance, if the CPU attempts to read 0x1000 then
+the WATCH will consider this to be a match. The optional STRICT argument changes this behaviour
+and will cause, in this example, the WATCH command to halt execution only when the specific address
+is read.
 
-Existing watches can be reviewed with the LIST command and deleted with the
-DROP or CLEAR commands`,
+	WATCH STRICT 0xf000
+
+Existing watches can be reviewed with the LIST command and deleted with the DROP or CLEAR commands`,
 
 	cmdTrace: `"Trace activity on the specied memory address. This means any activity, read or write.
 There is no way to isolate one activity from the other. Use WATCH for that.
