@@ -105,31 +105,19 @@ func (sym *Symbols) canonise(cart *cartridge.Cartridge) {
 	}
 
 	for k, v := range hb.ReadHotspots() {
-		a := k
-		if !v.Strict {
-			ma, area := memorymap.MapAddress(k, true)
-			if area != memorymap.Cartridge {
-				logger.Logf("symbols", "%s reporting hotspot (%s) outside of cartridge address space", cart.ID(), v.Symbol)
-			}
-			a = ma
-		} else {
-			sym.read.strict[a] = true
+		ma, area := memorymap.MapAddress(k, true)
+		if area != memorymap.Cartridge {
+			logger.Logf("symbols", "%s reporting hotspot (%s) outside of cartridge address space", cart.ID(), v.Symbol)
 		}
-		sym.read.add(a, v.Symbol, true)
+		sym.read.add(ma, v.Symbol, true)
 	}
 
 	for k, v := range hb.WriteHotspots() {
-		a := k
-		if !v.Strict {
-			ma, area := memorymap.MapAddress(k, false)
-			if area != memorymap.Cartridge {
-				logger.Logf("symbols", "%s reporting hotspot (%s) outside of cartridge address space", cart.ID(), v.Symbol)
-			}
-			a = ma
-		} else {
-			sym.write.strict[a] = true
+		ma, area := memorymap.MapAddress(k, false)
+		if area != memorymap.Cartridge {
+			logger.Logf("symbols", "%s reporting hotspot (%s) outside of cartridge address space", cart.ID(), v.Symbol)
 		}
-		sym.write.add(a, v.Symbol, true)
+		sym.write.add(ma, v.Symbol, true)
 	}
 }
 

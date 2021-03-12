@@ -50,10 +50,6 @@ type SearchResults struct {
 	Table   SearchTable
 	Symbol  string
 	Address uint16
-
-	// Strict indicates that the address for this symbol is "strict" and should
-	// not be further mapped by memorymap.MapAddress()
-	Strict bool
 }
 
 // Search return the address of the supplied seartch string.
@@ -69,12 +65,10 @@ func (sym *Symbols) Search(symbol string, target SearchTable) *SearchResults {
 	if target == SearchAll || target == SearchLabel {
 		for _, l := range sym.label {
 			if norm, addr, ok := l.search(symbolUpper); ok {
-				_, strict := l.strict[addr]
 				return &SearchResults{
 					Table:   SearchLabel,
 					Symbol:  norm,
 					Address: addr,
-					Strict:  strict,
 				}
 			}
 		}
@@ -82,24 +76,20 @@ func (sym *Symbols) Search(symbol string, target SearchTable) *SearchResults {
 
 	if target == SearchAll || target == SearchRead {
 		if norm, addr, ok := sym.read.search(symbolUpper); ok {
-			_, strict := sym.read.strict[addr]
 			return &SearchResults{
 				Table:   SearchRead,
 				Symbol:  norm,
 				Address: addr,
-				Strict:  strict,
 			}
 		}
 	}
 
 	if target == SearchAll || target == SearchWrite {
 		if norm, addr, ok := sym.write.search(symbolUpper); ok {
-			_, strict := sym.write.strict[addr]
 			return &SearchResults{
 				Table:   SearchWrite,
 				Symbol:  norm,
 				Address: addr,
-				Strict:  strict,
 			}
 		}
 	}
@@ -114,35 +104,29 @@ func (sym *Symbols) ReverseSearch(addr uint16, target SearchTable) *SearchResult
 	if target == SearchAll || target == SearchLabel {
 		for _, l := range sym.label {
 			if s, ok := l.entries[addr]; ok {
-				_, strict := l.strict[addr]
 				return &SearchResults{
 					Table:   SearchLabel,
 					Symbol:  s,
 					Address: addr,
-					Strict:  strict,
 				}
 			}
 		}
 	}
 	if target == SearchAll || target == SearchRead {
 		if s, ok := sym.read.entries[addr]; ok {
-			_, strict := sym.read.strict[addr]
 			return &SearchResults{
 				Table:   SearchRead,
 				Symbol:  s,
 				Address: addr,
-				Strict:  strict,
 			}
 		}
 	}
 	if target == SearchAll || target == SearchWrite {
 		if s, ok := sym.write.entries[addr]; ok {
-			_, strict := sym.write.strict[addr]
 			return &SearchResults{
 				Table:   SearchWrite,
 				Symbol:  s,
 				Address: addr,
-				Strict:  strict,
 			}
 		}
 	}

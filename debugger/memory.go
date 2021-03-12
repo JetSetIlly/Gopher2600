@@ -41,12 +41,8 @@ type memoryDebug struct {
 type addressInfo struct {
 	address       uint16
 	mappedAddress uint16
+	addressLabel  string
 	area          memorymap.Area
-
-	// label of address. strictLabel indicates that the address field should be
-	// preferred over the mappedAddress for presentation purposes
-	addressLabel string
-	strictLabel  bool
 
 	// addresses and symbols are mapped differently depending on whether
 	// address is to be used for reading or writing
@@ -66,7 +62,7 @@ func (ai addressInfo) String() string {
 		s.WriteString(fmt.Sprintf(" (%s)", ai.addressLabel))
 	}
 
-	if ai.address != ai.mappedAddress && !ai.strictLabel {
+	if ai.address != ai.mappedAddress {
 		s.WriteString(fmt.Sprintf(" [mirror of %#04x]", ai.mappedAddress))
 	}
 
@@ -104,7 +100,6 @@ func (dbgmem memoryDebug) mapAddress(address interface{}, read bool) *addressInf
 		} else {
 			ai.mappedAddress, ai.area = memorymap.MapAddress(ai.address, read)
 			ai.addressLabel = res.Symbol
-			ai.strictLabel = res.Strict
 		}
 	case string:
 		var err error
@@ -114,7 +109,6 @@ func (dbgmem memoryDebug) mapAddress(address interface{}, read bool) *addressInf
 			ai.address = res.Address
 			ai.addressLabel = res.Symbol
 			ai.mappedAddress, ai.area = memorymap.MapAddress(ai.address, read)
-			ai.strictLabel = res.Strict
 		} else {
 			// this may be a string representation of a numerical address
 			var addr uint64
@@ -135,7 +129,6 @@ func (dbgmem memoryDebug) mapAddress(address interface{}, read bool) *addressInf
 			} else {
 				ai.mappedAddress, ai.area = memorymap.MapAddress(ai.address, read)
 				ai.addressLabel = res.Symbol
-				ai.strictLabel = res.Strict
 			}
 		}
 	default:

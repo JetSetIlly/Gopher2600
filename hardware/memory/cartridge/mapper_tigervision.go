@@ -53,6 +53,8 @@ type tigervision struct {
 
 	// rewindable state
 	state *tigervisionState
+
+	// !!TODO: hotspot info for tigervision
 }
 
 // should work with any size cartridge that is a multiple of 2048:

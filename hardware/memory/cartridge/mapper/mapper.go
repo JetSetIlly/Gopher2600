@@ -239,11 +239,6 @@ const (
 type CartHotspotInfo struct {
 	Symbol string
 	Action CartHotspotAction
-
-	// some cartridge formats are very specific about which addresses are
-	// considered to be hotspots. The Strict flag says that the address should
-	// no be mapped before use.
-	Strict bool
 }
 
 // CartRewindBoundary are implemented by cartridge mappers that require special

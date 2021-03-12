@@ -27,9 +27,6 @@ type Table struct {
 	// indexed by address. addresses should be mapped before indexing takes place
 	entries map[uint16]string
 
-	// map of addresses that are strict ie. should not be mapped by memorymap.MapAddress()
-	strict map[uint16]bool
-
 	// index of keys in Entries. sortable through the sort.Interface
 	idx []uint16
 
@@ -41,7 +38,6 @@ type Table struct {
 func newTable() *Table {
 	t := &Table{
 		entries: make(map[uint16]string),
-		strict:  make(map[uint16]bool),
 		idx:     make([]uint16, 0),
 	}
 	return t

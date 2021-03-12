@@ -35,6 +35,8 @@ type m3e struct {
 
 	// rewindable state
 	state *m3eState
+
+	// !!TODO: hotspot info for 3e
 }
 
 // cartridges:

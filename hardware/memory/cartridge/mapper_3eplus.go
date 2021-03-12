@@ -36,6 +36,8 @@ type m3ePlus struct {
 
 	// rewindable state
 	state *m3ePlusState
+
+	// !!TODO: hotspot info for 3e+
 }
 
 // should work with any size cartridge that is a multiple of 1024:
