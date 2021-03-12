@@ -103,8 +103,8 @@ func newPlatform(img *SdlImgui) (*platform, error) {
 	}
 	if !plt.gamepad.Attached() {
 		logger.Log("sdl", "no gamepad found")
-	} else {
-		plt.gamepad.Rumble(0x0, 0xffff, 300)
+		// } else {
+		// 	plt.gamepad.Rumble(0x0, 0xffff, 300)
 	}
 
 	return plt, nil
