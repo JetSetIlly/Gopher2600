@@ -95,7 +95,7 @@ var commandTemplate = []string{
 	cmdDisasm + " (BYTECODE) (%<bank>N|%<address>N)",
 	cmdLint,
 	cmdGrep + " (OPERATOR|OPERAND) %<search>S",
-	cmdSymbol + " [LIST (LABELS|READ|WRITE)|%<symbol>S (ALL|MIRRORS)]",
+	cmdSymbol + " [LIST (LABELS|READ|WRITE)|%<symbol>S]",
 	cmdOnHalt + " (OFF|ON|%<command>S {%<commands>S})",
 	cmdOnStep + " (OFF|ON|%<command>S {%<commands>S})",
 	cmdOnTrace + " (OFF|ON|%<command>S {%<commands>S})",

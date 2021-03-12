@@ -89,29 +89,26 @@ in the disassembly to the termain.
 The scope of the GREP can be restricted to the OPERATOR and OPERAND columns. By
 default GREP will consider the entire line.`,
 
-	cmdSymbol: `The SYMBOL command has two modes of operation. The first mode returns the address of
-the specified symbol. For example:
+	cmdSymbol: `The SYMBOL command displays symbolic information about a memory address. Addresses can be
+specified by symbol.
 
 	SYMBOL CXM1P
 
-Will return:
+If the symbol is know, as it is in this case, the numeric address will be displayed, along with the
+memory area and which table the symbol is found in (read or write):
 
-	CXM1P (read) -> 0x0001
+	0x0001 (CXM1P) (TIA) [READ]
 
-This tells us that the cxm0p symbol is recognised, is a symbol for a read
-address and referes to address 0x0001. Many symbols point to addresses that are
-mirrored. You can quickly see this with the MIRRORS or ALL argument.
+Alternatively, the symbol argument can be a numeric address:
 
-	SYMBOL CXM1P MIRRORS
+	SYMBOL 0x0001
 
-The above example will return every address that mirrors the primary address.
+Which will show, in this case, the two symbols for this address and the context in which the symbol applies:
 
-The second mode of operation allows you to view all the symbols in each symbol
-table. There are three symbol tables: READ, WRITE and LABEL.
+	0x0001 (CXM1P) (TIA) [READ]
+	0x0001 (VBLANK) (TIA) [WRITE]
 
-Note that a cartridge without an accompanying symbols file will only have the
-canonical Atari VCS symbols defined and possibly symbols associated with a
-particular cartridge type.`,
+The SYMBOL command also LIST all symbols in the LABELS, READ or WRITE tables.`,
 
 	cmdOnHalt: `Define commands to run whenever emulation is halted. A halt is
 caused by a BREAK, a TRAP, a WATCH or a manual interrupt. Specify multiple

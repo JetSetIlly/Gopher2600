@@ -25,7 +25,10 @@ import (
 // in the Table.
 type Table struct {
 	// indexed by address. addresses should be mapped before indexing takes place
-	Entries map[uint16]string
+	entries map[uint16]string
+
+	// map of addresses that are strict ie. should not be mapped by memorymap.MapAddress()
+	strict map[uint16]bool
 
 	// index of keys in Entries. sortable through the sort.Interface
 	idx []uint16
@@ -37,7 +40,8 @@ type Table struct {
 // newTable is the preferred method of initialisation for the table type.
 func newTable() *Table {
 	t := &Table{
-		Entries: make(map[uint16]string),
+		entries: make(map[uint16]string),
+		strict:  make(map[uint16]bool),
 		idx:     make([]uint16, 0),
 	}
 	return t
@@ -46,7 +50,7 @@ func newTable() *Table {
 func (t Table) String() string {
 	s := strings.Builder{}
 	for i := range t.idx {
-		s.WriteString(fmt.Sprintf("%#04x -> %s\n", t.idx[i], t.Entries[t.idx[i]]))
+		s.WriteString(fmt.Sprintf("%#04x -> %s\n", t.idx[i], t.entries[t.idx[i]]))
 	}
 	return s.String()
 }
@@ -54,7 +58,7 @@ func (t Table) String() string {
 func (t *Table) add(addr uint16, symbol string, prefer bool) {
 	// end add procedure with check for max symbol width
 	defer func() {
-		for _, s := range t.Entries {
+		for _, s := range t.entries {
 			if len(s) > t.maxWidth {
 				t.maxWidth = len(s)
 			}
@@ -66,19 +70,19 @@ func (t *Table) add(addr uint16, symbol string, prefer bool) {
 		if t.idx[i] == addr {
 			// overwrite existing symbol with preferred symbol
 			if prefer {
-				t.Entries[addr] = symbol
+				t.entries[addr] = symbol
 			}
 			return
 		}
 	}
 
-	t.Entries[addr] = symbol
+	t.entries[addr] = symbol
 	t.idx = append(t.idx, addr)
 	sort.Sort(t)
 }
 
 func (t Table) search(symbol string) (string, uint16, bool) {
-	for k, v := range t.Entries {
+	for k, v := range t.entries {
 		if strings.ToUpper(v) == symbol {
 			return v, k, true
 		}

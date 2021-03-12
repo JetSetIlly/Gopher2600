@@ -112,6 +112,8 @@ func (sym *Symbols) canonise(cart *cartridge.Cartridge) {
 				logger.Logf("symbols", "%s reporting hotspot (%s) outside of cartridge address space", cart.ID(), v.Symbol)
 			}
 			a = ma
+		} else {
+			sym.read.strict[a] = true
 		}
 		sym.read.add(a, v.Symbol, true)
 	}
@@ -124,6 +126,8 @@ func (sym *Symbols) canonise(cart *cartridge.Cartridge) {
 				logger.Logf("symbols", "%s reporting hotspot (%s) outside of cartridge address space", cart.ID(), v.Symbol)
 			}
 			a = ma
+		} else {
+			sym.write.strict[a] = true
 		}
 		sym.write.add(a, v.Symbol, true)
 	}
@@ -153,7 +157,7 @@ func (sym *Symbols) GetLabel(bank int, addr uint16) (string, bool) {
 	sym.crit.Lock()
 	defer sym.crit.Unlock()
 
-	if v, ok := sym.label[bank].Entries[addr]; ok {
+	if v, ok := sym.label[bank].entries[addr]; ok {
 		return v, ok
 	}
 	return "", false
@@ -164,7 +168,7 @@ func (sym *Symbols) UpdateLabel(bank int, addr uint16, label string) {
 	sym.crit.Lock()
 	defer sym.crit.Unlock()
 
-	sym.label[bank].Entries[addr] = label
+	sym.label[bank].entries[addr] = label
 }
 
 // Get symbol from read table.
@@ -172,13 +176,13 @@ func (sym *Symbols) GetReadSymbol(addr uint16) (string, bool) {
 	sym.crit.Lock()
 	defer sym.crit.Unlock()
 
-	if v, ok := sym.read.Entries[addr]; ok {
+	if v, ok := sym.read.entries[addr]; ok {
 		return v, ok
 	}
 
 	// no entry found so try the mapped address
 	addr, _ = memorymap.MapAddress(addr, true)
-	if v, ok := sym.read.Entries[addr]; ok {
+	if v, ok := sym.read.entries[addr]; ok {
 		return v, ok
 	}
 
@@ -190,13 +194,13 @@ func (sym *Symbols) GetWriteSymbol(addr uint16) (string, bool) {
 	sym.crit.Lock()
 	defer sym.crit.Unlock()
 
-	if v, ok := sym.write.Entries[addr]; ok {
+	if v, ok := sym.write.entries[addr]; ok {
 		return v, ok
 	}
 
 	// no entry found so try the mapped address
 	addr, _ = memorymap.MapAddress(addr, false)
-	if v, ok := sym.read.Entries[addr]; ok {
+	if v, ok := sym.read.entries[addr]; ok {
 		return v, ok
 	}
 

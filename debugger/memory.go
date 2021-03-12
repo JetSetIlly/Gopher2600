@@ -41,8 +41,12 @@ type memoryDebug struct {
 type addressInfo struct {
 	address       uint16
 	mappedAddress uint16
-	addressLabel  string
 	area          memorymap.Area
+
+	// label of address. strictLabel indicates that the address field should be
+	// preferred over the mappedAddress for presentation purposes
+	addressLabel string
+	strictLabel  bool
 
 	// addresses and symbols are mapped differently depending on whether
 	// address is to be used for reading or writing
@@ -62,7 +66,7 @@ func (ai addressInfo) String() string {
 		s.WriteString(fmt.Sprintf(" (%s)", ai.addressLabel))
 	}
 
-	if ai.address != ai.mappedAddress {
+	if ai.address != ai.mappedAddress && !ai.strictLabel {
 		s.WriteString(fmt.Sprintf(" [mirror of %#04x]", ai.mappedAddress))
 	}
 
@@ -79,37 +83,60 @@ func (ai addressInfo) String() string {
 func (dbgmem memoryDebug) mapAddress(address interface{}, read bool) *addressInfo {
 	ai := &addressInfo{read: read}
 
-	var symbolTable symbols.TableType
+	var searchTable symbols.SearchTable
 
 	if read {
-		symbolTable = symbols.ReadSymTable
+		searchTable = symbols.SearchRead
 	} else {
-		symbolTable = symbols.WriteSymTable
+		searchTable = symbols.SearchWrite
 	}
 
 	switch address := address.(type) {
 	case uint16:
 		ai.address = address
-		ai.mappedAddress, ai.area = memorymap.MapAddress(address, read)
+		res := dbgmem.symbols.ReverseSearch(ai.address, searchTable)
+		if res == nil {
+			ai.mappedAddress, ai.area = memorymap.MapAddress(ai.address, read)
+			res := dbgmem.symbols.ReverseSearch(ai.mappedAddress, searchTable)
+			if res != nil {
+				ai.addressLabel = res.Symbol
+			}
+		} else {
+			ai.mappedAddress, ai.area = memorymap.MapAddress(ai.address, read)
+			ai.addressLabel = res.Symbol
+			ai.strictLabel = res.Strict
+		}
 	case string:
 		var err error
 
-		found, _, sym, a := dbgmem.symbols.Search(address, symbolTable)
-		if found {
-			ai.address = a
-			ai.addressLabel = sym
+		res := dbgmem.symbols.Search(address, searchTable)
+		if res != nil {
+			ai.address = res.Address
+			ai.addressLabel = res.Symbol
 			ai.mappedAddress, ai.area = memorymap.MapAddress(ai.address, read)
+			ai.strictLabel = res.Strict
 		} else {
+			// this may be a string representation of a numerical address
 			var addr uint64
 
-			// finally, this may be a string representation of a numerical address
 			addr, err = strconv.ParseUint(address, 0, 16)
 			if err != nil {
 				return nil
 			}
 
 			ai.address = uint16(addr)
-			ai.mappedAddress, ai.area = memorymap.MapAddress(ai.address, read)
+			res := dbgmem.symbols.ReverseSearch(ai.address, searchTable)
+			if res == nil {
+				ai.mappedAddress, ai.area = memorymap.MapAddress(ai.address, read)
+				res := dbgmem.symbols.ReverseSearch(ai.mappedAddress, searchTable)
+				if res != nil {
+					ai.addressLabel = res.Symbol
+				}
+			} else {
+				ai.mappedAddress, ai.area = memorymap.MapAddress(ai.address, read)
+				ai.addressLabel = res.Symbol
+				ai.strictLabel = res.Strict
+			}
 		}
 	default:
 		panic(fmt.Sprintf("unsupported address type (%T)", address))

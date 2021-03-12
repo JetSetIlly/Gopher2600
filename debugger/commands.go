@@ -39,7 +39,6 @@ import (
 	"github.com/jetsetilly/gopher2600/linter"
 	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/patch"
-	"github.com/jetsetilly/gopher2600/symbols"
 )
 
 var debuggerCommands *commandline.Commands
@@ -572,28 +571,18 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 
 		default:
 			symbol := tok
-			found, table, symbol, address := dbg.Disasm.Symbols.Search(symbol, symbols.UnspecifiedSymTable)
-			if !found {
-				dbg.printLine(terminal.StyleFeedback, "%s -> not found", symbol)
-				return nil
+			aiRead := dbg.dbgmem.mapAddress(symbol, true)
+			if aiRead != nil {
+				dbg.printLine(terminal.StyleFeedback, "%s [READ]", aiRead.String())
 			}
 
-			option, ok := tokens.Get()
-			if ok {
-				switch strings.ToUpper(option) {
-				default:
-					// already caught by command line ValidateTokens()
+			aiWrite := dbg.dbgmem.mapAddress(symbol, false)
+			if aiWrite != nil {
+				dbg.printLine(terminal.StyleFeedback, "%s [WRITE]", aiWrite.String())
+			}
 
-				case "ALL", "MIRRORS":
-					for m := memorymap.OriginAbsolute; m < memorymap.MemtopAbsolute; m++ {
-						ai := dbg.dbgmem.mapAddress(m, table == symbols.ReadSymTable)
-						if ai.mappedAddress == address {
-							dbg.printLine(terminal.StyleFeedback, "%s -> %#04x", symbol, m)
-						}
-					}
-				}
-			} else {
-				dbg.printLine(terminal.StyleFeedback, "%s (%s) -> %#04x", symbol, table, address)
+			if aiRead == nil && aiWrite == nil {
+				dbg.printLine(terminal.StyleFeedback, "%s not found in read or write symbol tables", symbol)
 			}
 		}
 

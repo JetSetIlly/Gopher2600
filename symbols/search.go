@@ -19,19 +19,18 @@ import (
 	"strings"
 )
 
-// TableType is used to select and identify a symbol table
-// when searching.
-type TableType int
+// SearchTable is used to select and identify a symbol table when searching.
+type SearchTable int
 
-func (t TableType) String() string {
+func (t SearchTable) String() string {
 	switch t {
-	case UnspecifiedSymTable:
+	case SearchAll:
 		return "unspecified"
-	case LabelTable:
+	case SearchLabel:
 		return "label"
-	case ReadSymTable:
+	case SearchRead:
 		return "read"
-	case WriteSymTable:
+	case SearchWrite:
 		return "write"
 	}
 
@@ -40,44 +39,113 @@ func (t TableType) String() string {
 
 // List of valid symbol table identifiers.
 const (
-	UnspecifiedSymTable TableType = iota
-	LabelTable
-	ReadSymTable
-	WriteSymTable
+	SearchAll SearchTable = iota
+	SearchLabel
+	SearchRead
+	SearchWrite
 )
 
-// Search return the address of the supplied symbol.
+// SearchResults contains the normalised symbol info found in the SearchTable.
+type SearchResults struct {
+	Table   SearchTable
+	Symbol  string
+	Address uint16
+
+	// Strict indicates that the address for this symbol is "strict" and should
+	// not be further mapped by memorymap.MapAddress()
+	Strict bool
+}
+
+// Search return the address of the supplied seartch string.
 //
-// Matching is case-insensitive and when TableType is UnspecifiedSymTable the
+// Matching is case-insensitive and when TableType is SearchAll the
 // search in order: locations > read > write.
-//
-// Returns success, the table in which it was found, the normalised symbol, and
-// the normalised address.
-func (sym *Symbols) Search(symbol string, target TableType) (bool, TableType, string, uint16) {
+func (sym *Symbols) Search(symbol string, target SearchTable) *SearchResults {
 	sym.crit.Lock()
 	defer sym.crit.Unlock()
 
 	symbolUpper := strings.ToUpper(symbol)
 
-	if target == UnspecifiedSymTable || target == LabelTable {
+	if target == SearchAll || target == SearchLabel {
 		for _, l := range sym.label {
-			if symbolNorm, addr, ok := l.search(symbolUpper); ok {
-				return true, LabelTable, symbolNorm, addr
+			if norm, addr, ok := l.search(symbolUpper); ok {
+				_, strict := l.strict[addr]
+				return &SearchResults{
+					Table:   SearchLabel,
+					Symbol:  norm,
+					Address: addr,
+					Strict:  strict,
+				}
 			}
 		}
 	}
 
-	if target == UnspecifiedSymTable || target == ReadSymTable {
-		if symbolNorm, addr, ok := sym.read.search(symbolUpper); ok {
-			return true, ReadSymTable, symbolNorm, addr
+	if target == SearchAll || target == SearchRead {
+		if norm, addr, ok := sym.read.search(symbolUpper); ok {
+			_, strict := sym.read.strict[addr]
+			return &SearchResults{
+				Table:   SearchRead,
+				Symbol:  norm,
+				Address: addr,
+				Strict:  strict,
+			}
 		}
 	}
 
-	if target == UnspecifiedSymTable || target == WriteSymTable {
-		if symbolNorm, addr, ok := sym.write.search(symbolUpper); ok {
-			return true, WriteSymTable, symbolNorm, addr
+	if target == SearchAll || target == SearchWrite {
+		if norm, addr, ok := sym.write.search(symbolUpper); ok {
+			_, strict := sym.write.strict[addr]
+			return &SearchResults{
+				Table:   SearchWrite,
+				Symbol:  norm,
+				Address: addr,
+				Strict:  strict,
+			}
 		}
 	}
 
-	return false, UnspecifiedSymTable, symbol, 0
+	return nil
+}
+
+// ReverseSearch returns the symbol for specified address.
+//
+// When TableType is SearchAll the search in order: locations > read > write.
+func (sym *Symbols) ReverseSearch(addr uint16, target SearchTable) *SearchResults {
+	if target == SearchAll || target == SearchLabel {
+		for _, l := range sym.label {
+			if s, ok := l.entries[addr]; ok {
+				_, strict := l.strict[addr]
+				return &SearchResults{
+					Table:   SearchLabel,
+					Symbol:  s,
+					Address: addr,
+					Strict:  strict,
+				}
+			}
+		}
+	}
+	if target == SearchAll || target == SearchRead {
+		if s, ok := sym.read.entries[addr]; ok {
+			_, strict := sym.read.strict[addr]
+			return &SearchResults{
+				Table:   SearchRead,
+				Symbol:  s,
+				Address: addr,
+				Strict:  strict,
+			}
+		}
+	}
+	if target == SearchAll || target == SearchWrite {
+		if s, ok := sym.write.entries[addr]; ok {
+			_, strict := sym.write.strict[addr]
+			return &SearchResults{
+				Table:   SearchWrite,
+				Symbol:  s,
+				Address: addr,
+				Strict:  strict,
+			}
+		}
+	}
+
+	return nil
 }
