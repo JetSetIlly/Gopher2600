@@ -17,7 +17,6 @@ package sdlimgui
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/jetsetilly/gopher2600/debugger"
 	"github.com/jetsetilly/gopher2600/disassembly"
@@ -135,7 +134,9 @@ func (win *winDisasm) draw() {
 		// CPU will resume from once the coprocessor has finished.
 		focusAddr = bank.CoprocessorResumeAddr
 	} else {
-		if win.img.lz.Debugger.LastResult.Result.Final {
+		// focus address (and bank) depends on if we're in the middle of an
+		// CPU instruction or not. special condition for freshly reset CPUs
+		if win.img.lz.Debugger.LastResult.Result.Final || win.img.lz.CPU.HasReset {
 			focusAddr = win.img.lz.CPU.PC.Address()
 		} else {
 			focusAddr = win.img.lz.Debugger.LastResult.Result.Address
@@ -176,6 +177,7 @@ func (win *winDisasm) draw() {
 		if !bank.NonCart {
 			win.focusOnAddr = true
 			win.selectedBank = bank.Number
+			fmt.Println(win.selectedBank)
 			if win.focusAddrIsVisible {
 				win.focusOnAddrFlash = 6
 			}
@@ -241,12 +243,8 @@ func (win *winDisasm) draw() {
 	case gui.StatePaused:
 		win.focusOnAddr = win.updateOnPause > 0
 		if win.updateOnPause > 0 {
-			wait := time.Now()
 			go func() {
-				t := <-win.img.lz.RefreshPulse
-				for wait.After(t) {
-					t = <-win.img.lz.RefreshPulse
-				}
+				<-win.img.lz.RefreshPulse
 				win.selectedBankRefresh <- win.img.lz.Cart.CurrBank.Number
 			}()
 			win.updateOnPause--
