@@ -207,7 +207,7 @@ To run the debugger use the `DEBUG` submode
 
 <img src=".screenshots/debugger_halo2600.png" height="400" alt="gopher2600 debugging GUI"/>
 
-Becaus the debugger is still in development, full documentation not yet available. But briefly the features we can see in this screeshot are:
+Because the debugger is still in development, full documentation is not yet available. But briefly, the features we can see in this screeshot are:
 
 The menu-bar across the top of the screen shows the `Debugger`, `VCS` and in this instance a `Cartridge` menu
 
@@ -583,6 +583,7 @@ This area of the emulation will be expanded upon in the future.
 * Parker Bros (E0)
 * M-Network (E7)
 * DPC
+* Superbank
 
 In also supports the [Supercharger](#supercharger-roms) format in both the `.bin` format and is also able to load from an `MP3` recording of the supercharger tape.
 
