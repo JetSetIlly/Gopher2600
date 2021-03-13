@@ -18,40 +18,20 @@ package ports
 import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/addresses"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
+	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
 )
 
-// PortID differentiates the different ports peripherals can be attached to.
-type PortID int
-
-// List of defined IDs.
-const (
-	NoPortID  PortID = -1
-	Player0ID PortID = iota
-	Player1ID
-	PanelID
-)
-
-func (id *PortID) String() string {
-	switch *id {
-	case Player0ID:
-		return "player 0"
-	case Player1ID:
-		return "player 1"
-	case PanelID:
-		return "panel"
-	}
-
-	return "not attached"
-}
-
-// Peripheral represents a (input or output) device that can attached to the
-// VCS ports.
+// Peripheral represents a (input or output) device that can plugged into the
+// ports of the VCS.
 type Peripheral interface {
 	// String should return information about the state of the peripheral
 	String() string
 
 	// Plumb a new PeripheralBus into the Peripheral
 	Plumb(PeripheralBus)
+
+	// The port the peripheral is plugged into
+	PortID() plugging.PortID
 
 	// Name should return the canonical name for the peripheral (eg. "Paddle"
 	// for the paddle peripheral). It shouldn't include information about which
@@ -74,7 +54,7 @@ type Peripheral interface {
 
 // NewPeripheral defines the function signature for a creating a new
 // peripheral, suitable for use with AttachPloyer0() and AttachPlayer1().
-type NewPeripheral func(PortID, PeripheralBus) Peripheral
+type NewPeripheral func(plugging.PortID, PeripheralBus) Peripheral
 
 // PeripheralBus defines the memory operations required by peripherals. We keep
 // this bus definition here rather than the Bus package because it is very
@@ -94,5 +74,5 @@ type PeripheralBus interface {
 	//
 	// Peripherals attached to the panel port can use the entire byte of the
 	// SWCHB register
-	WriteSWCHx(id PortID, data uint8)
+	WriteSWCHx(id plugging.PortID, data uint8)
 }

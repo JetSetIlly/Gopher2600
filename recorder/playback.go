@@ -27,11 +27,12 @@ import (
 	"github.com/jetsetilly/gopher2600/digest"
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
+	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 )
 
 type playbackEntry struct {
-	portID   ports.PortID
+	portID   plugging.PortID
 	event    ports.Event
 	data     ports.EventData
 	frame    int
@@ -118,17 +119,27 @@ func NewPlayback(transcript string) (*Playback, error) {
 			return nil, curated.Errorf("playback: expected %d fields at line %d", numFields, i+1)
 		}
 
-		// add a new playbackSequence for the id if it doesn't exist
-		n, err := strconv.Atoi(toks[fieldID])
-		if err != nil {
-			return nil, curated.Errorf("playback: %s line %d, col %d", err, i+1, len(strings.Join(toks[:fieldID+1], fieldSep)))
-		}
+		// create a new playbackEntry and convert tokens accordingly any errors in the transcript causes failure
+		entry := playbackEntry{line: i + 1}
 
-		// create a new entry and convert tokens accordingly
-		// any errors in the transcript causes failure
-		entry := playbackEntry{
-			portID: ports.PortID(n),
-			line:   i + 1,
+		// get PortID
+		n, err := strconv.Atoi(toks[fieldPortID])
+		if err != nil {
+			entry.portID = plugging.PortID(toks[fieldPortID])
+		} else {
+			// support for playback file versions before v1.2
+			switch n {
+			case -1:
+				entry.portID = plugging.Unplugged
+			case 1:
+				entry.portID = plugging.LeftPlayer
+			case 2:
+				entry.portID = plugging.RightPlayer
+			case 3:
+				entry.portID = plugging.Panel
+			default:
+				return nil, curated.Errorf("playback: %s line %d, col %d", err, i+1, len(strings.Join(toks[:fieldPortID+1], fieldSep)))
+			}
 		}
 
 		// no need to convert event field
@@ -209,12 +220,12 @@ const (
 	PlaybackHashError = "playback: unexpected input at line %d (frame %d)"
 )
 
-// GetPlayback returns an event and source portID for an event occurring at the
+// GetPlayback returns an event and source PortID for an event occurring at the
 // current TV frame/scanline/clock.
-func (plb *Playback) GetPlayback() (ports.PortID, ports.Event, ports.EventData, error) {
+func (plb *Playback) GetPlayback() (plugging.PortID, ports.Event, ports.EventData, error) {
 	// we've reached the end of the list of events for this id
 	if plb.seqCt >= len(plb.sequence) {
-		return ports.NoPortID, ports.NoEvent, nil, nil
+		return plugging.Unplugged, ports.NoEvent, nil, nil
 	}
 
 	// get current state of the television
@@ -227,11 +238,11 @@ func (plb *Playback) GetPlayback() (ports.PortID, ports.Event, ports.EventData, 
 	if frame == entry.frame && scanline == entry.scanline && clock == entry.clock {
 		plb.seqCt++
 		if entry.hash != plb.digest.Hash() {
-			return ports.NoPortID, ports.NoEvent, nil, curated.Errorf(PlaybackHashError, entry.line, frame)
+			return plugging.Unplugged, ports.NoEvent, nil, curated.Errorf(PlaybackHashError, entry.line, frame)
 		}
 		return entry.portID, entry.event, entry.data, nil
 	}
 
 	// next event does not match
-	return ports.NoPortID, ports.NoEvent, nil, nil
+	return plugging.Unplugged, ports.NoEvent, nil, nil
 }

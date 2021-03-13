@@ -15,6 +15,8 @@
 
 package ports
 
+import "github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
+
 // Event represents the actions that can be performed at one of the VCS ports,
 // either the panel or one of the two player ports.
 type Event string
@@ -63,6 +65,11 @@ const (
 	PanelPowerOff Event = "PanelPowerOff" // nil
 )
 
+// Sentinal error returned when PanelPowerOff event is received.
+const (
+	PowerOff = "emulated machine has been powered off"
+)
+
 // EventData is the value associated with the event. The underlying type should
 // be restricted to bool, float32, or int. string is also acceptable but for
 // simplicity of playback parsers, the strings "true" or "false" should not be
@@ -102,7 +109,7 @@ const (
 type EventPlayback interface {
 	// note the type restrictions on EventData in the type definition's
 	// commentary
-	GetPlayback() (PortID, Event, EventData, error)
+	GetPlayback() (plugging.PortID, Event, EventData, error)
 }
 
 // EventRecorder implementations mirror an incoming event.
@@ -111,5 +118,5 @@ type EventPlayback interface {
 // peripheral at once. The ID parameter of the EventRecord() function will help
 // to differentiate between multiple devices.
 type EventRecorder interface {
-	RecordEvent(PortID, Event, EventData) error
+	RecordEvent(plugging.PortID, Event, EventData) error
 }

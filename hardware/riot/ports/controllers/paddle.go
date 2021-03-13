@@ -23,6 +23,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/addresses"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
+	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
 )
 
 // paddle values.
@@ -42,8 +43,8 @@ const (
 
 // Paddle represents the VCS paddle controller type.
 type Paddle struct {
-	id  ports.PortID
-	bus ports.PeripheralBus
+	port plugging.PortID
+	bus  ports.PeripheralBus
 
 	// register to write puck charge to
 	inptx addresses.ChipRegister
@@ -63,18 +64,18 @@ type Paddle struct {
 // NewPaddle is the preferred method of initialisation for the Paddle type
 // Satisifies the ports.NewPeripheral interface and can be used as an argument
 // to ports.AttachPlayer0() and ports.AttachPlayer1().
-func NewPaddle(id ports.PortID, bus ports.PeripheralBus) ports.Peripheral {
+func NewPaddle(port plugging.PortID, bus ports.PeripheralBus) ports.Peripheral {
 	pdl := &Paddle{
-		id:  id,
-		bus: bus,
+		port: port,
+		bus:  bus,
 	}
 
 	// !!TODO: support for paddle player 3 and paddle player 4
-	switch id {
-	case ports.Player0ID:
+	switch port {
+	case plugging.LeftPlayer:
 		pdl.inptx = addresses.INPT0
 		pdl.buttonMask = 0x80
-	case ports.Player1ID:
+	case plugging.RightPlayer:
 		pdl.inptx = addresses.INPT1
 		pdl.buttonMask = 0x40
 	}
@@ -92,6 +93,11 @@ func (pdl *Paddle) String() string {
 	return fmt.Sprintf("paddle: button=%02x charge=%v resistance=%.02f", pdl.fire, pdl.charge, pdl.resistance)
 }
 
+// PortID implements the ports.Peripheral interface.
+func (pdl *Paddle) PortID() plugging.PortID {
+	return pdl.port
+}
+
 // Name implements the ports.Peripheral interface.
 func (pdl *Paddle) Name() string {
 	return "Paddle"
@@ -100,9 +106,6 @@ func (pdl *Paddle) Name() string {
 // HandleEvent implements the ports.Peripheral interface.
 func (pdl *Paddle) HandleEvent(event ports.Event, data ports.EventData) error {
 	switch event {
-	default:
-		return curated.Errorf(UnhandledEvent, pdl.Name(), event)
-
 	case ports.NoEvent:
 		return nil
 
@@ -128,7 +131,7 @@ func (pdl *Paddle) HandleEvent(event ports.Event, data ports.EventData) error {
 			return curated.Errorf("paddle: %v: unexpected event data", event)
 		}
 
-		pdl.bus.WriteSWCHx(pdl.id, pdl.fire)
+		pdl.bus.WriteSWCHx(pdl.port, pdl.fire)
 
 	case ports.PaddleSet:
 		var r float32
@@ -148,6 +151,10 @@ func (pdl *Paddle) HandleEvent(event ports.Event, data ports.EventData) error {
 
 		// reverse value so that we left and right are the correct way around (for a mouse)
 		pdl.resistance = 1.0 - r
+
+	default:
+		// silently ignore unhandled event
+		return nil
 	}
 
 	return nil
@@ -185,7 +192,7 @@ func (pdl *Paddle) Step() {
 	// like with the stick we should make sure the fire button retains it's
 	// depressed state. see Stick.Step() function for commentary
 	if pdl.fire != paddleNoFire {
-		pdl.bus.WriteSWCHx(pdl.id, pdl.fire)
+		pdl.bus.WriteSWCHx(pdl.port, pdl.fire)
 	}
 }
 

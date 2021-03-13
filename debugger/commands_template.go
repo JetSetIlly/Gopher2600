@@ -119,10 +119,10 @@ var commandTemplate = []string{
 	cmdPlusROM + " (NICK [%<name>S]|ID [%<id>S]|HOST [%<host>S]|PATH [%<path>S])",
 
 	// user input
-	cmdController + " [0|1] (AUTO|STICK|PADDLE|KEYBOARD)",
+	cmdController + " [LEFT|RIGHT] (AUTO|STICK|PADDLE|KEYBOARD)",
 	cmdPanel + " (SET [P0PRO|P1PRO|P0AM|P1AM|COL|BW]|TOGGLE [P0|P1|COL]|[HOLD|RELEASE] [SELECT|RESET])",
-	cmdStick + " [0|1] [LEFT|RIGHT|UP|DOWN|FIRE|NOLEFT|NORIGHT|NOUP|NODOWN|NOFIRE]",
-	cmdKeyboard + " [0|1] [none|0|1|2|3|4|5|6|7|8|9|*|#]",
+	cmdStick + " [LEFT|RIGHT] [LEFT|RIGHT|UP|DOWN|FIRE|NOLEFT|NORIGHT|NOUP|NODOWN|NOFIRE]",
+	cmdKeyboard + " [LEFT|RIGHT] [NONE|0|1|2|3|4|5|6|7|8|9|*|#]",
 
 	// halt conditions
 	cmdBreak + " [%<pc value>S|%<target>S %<value>N] {& %<value>S|%<target>S %<value>S}",

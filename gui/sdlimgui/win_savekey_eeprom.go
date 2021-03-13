@@ -69,7 +69,7 @@ func (win *winSaveKeyEEPROM) draw() {
 	drawByteGrid(win.img.lz.SaveKey.EEPROMdata, win.img.lz.SaveKey.EEPROMdiskData, win.img.cols.ValueDiff, 0x00,
 		func(addr uint16, data uint8) {
 			win.img.lz.Dbg.PushRawEvent(func() {
-				if sk, ok := win.img.lz.Dbg.VCS.RIOT.Ports.Player1.(*savekey.SaveKey); ok {
+				if sk, ok := win.img.lz.Dbg.VCS.RIOT.Ports.RightPlayer.(*savekey.SaveKey); ok {
 					sk.EEPROM.Poke(addr, data)
 				}
 			})
@@ -83,7 +83,7 @@ func (win *winSaveKeyEEPROM) draw() {
 
 		if imgui.Button("Save to disk") {
 			win.img.lz.Dbg.PushRawEvent(func() {
-				if sk, ok := win.img.lz.Dbg.VCS.RIOT.Ports.Player1.(*savekey.SaveKey); ok {
+				if sk, ok := win.img.lz.Dbg.VCS.RIOT.Ports.RightPlayer.(*savekey.SaveKey); ok {
 					sk.EEPROM.Write()
 				}
 			})

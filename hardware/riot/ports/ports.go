@@ -22,6 +22,7 @@ import (
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/memory/addresses"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
+	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
 )
 
 // Input implements the input/output part of the RIOT (the IO in RIOT).
@@ -29,12 +30,14 @@ type Ports struct {
 	riot bus.ChipBus
 	tia  bus.ChipBus
 
-	Panel   Peripheral
-	Player0 Peripheral
-	Player1 Peripheral
+	Panel       Peripheral
+	LeftPlayer  Peripheral
+	RightPlayer Peripheral
 
 	playback EventPlayback
 	recorder EventRecorder
+
+	monitor plugging.PlugMonitor
 
 	// local copies of key chip memory registers
 
@@ -73,8 +76,7 @@ type Ports struct {
 	//
 	// the value has *not* been masked by the swacnt value
 	//
-	// we use it to mux the Player0 and Player 1 nibbles into the single
-	// register
+	// we use it to mux the Player0 and Player 1 nibbles into the single register
 	swchaMux uint8
 }
 
@@ -87,7 +89,6 @@ func NewPorts(riotMem bus.ChipBus, tiaMem bus.ChipBus) *Ports {
 		swacnt:       0x00,
 		latch:        false,
 	}
-	p.Panel = NewPanel(p)
 	return p
 }
 
@@ -104,30 +105,39 @@ func (p *Ports) Plumb(riotMem bus.ChipBus, tiaMem bus.ChipBus) {
 	if p.Panel != nil {
 		p.Panel.Plumb(p)
 	}
-	if p.Player0 != nil {
-		p.Player0.Plumb(p)
+	if p.LeftPlayer != nil {
+		p.LeftPlayer.Plumb(p)
 	}
-	if p.Player1 != nil {
-		p.Player1.Plumb(p)
+	if p.RightPlayer != nil {
+		p.RightPlayer.Plumb(p)
 	}
 }
 
-// AttachPlayer attaches a peripheral (represented by a PeripheralConstructor) to a port.
-func (p *Ports) AttachPlayer(id PortID, c NewPeripheral) error {
-	switch id {
-	case Player0ID:
-		p.Player0 = c(Player0ID, p)
-		if p.Player0 == nil {
-			return fmt.Errorf("can't attach peripheral to player 0 port")
-		}
-	case Player1ID:
-		p.Player1 = c(Player1ID, p)
-		if p.Player1 == nil {
-			return fmt.Errorf("can't attach peripheral to player 1 port")
-		}
-	default:
-		return fmt.Errorf("can't attach peripheral to port (%v)", id)
+// Plug connects a peripheral to a player port.
+func (p *Ports) Plug(port plugging.PortID, c NewPeripheral) error {
+	periph := c(port, p)
+
+	// notify monitor of pluggin
+	if p.monitor != nil {
+		p.monitor.Plugged(port, periph.Name())
 	}
+
+	// attach any existing monitors to the new player peripheral
+	if a, ok := periph.(plugging.Monitorable); ok {
+		a.AttachPlugMonitor(p.monitor)
+	}
+
+	switch port {
+	case plugging.Panel:
+		p.Panel = periph
+	case plugging.LeftPlayer:
+		p.LeftPlayer = periph
+	case plugging.RightPlayer:
+		p.RightPlayer = periph
+	default:
+		return fmt.Errorf("can't attach peripheral to port (%v)", port)
+	}
+
 	return nil
 }
 
@@ -142,11 +152,11 @@ func (p *Ports) String() string {
 
 // Reset peripherals to an initial state.
 func (p *Ports) Reset() {
-	if p.Player0 != nil {
-		p.Player0.Reset()
+	if p.LeftPlayer != nil {
+		p.LeftPlayer.Reset()
 	}
-	if p.Player1 != nil {
-		p.Player1.Reset()
+	if p.RightPlayer != nil {
+		p.RightPlayer.Reset()
 	}
 	if p.Panel != nil {
 		p.Panel.Reset()
@@ -162,8 +172,8 @@ func (p *Ports) Update(data bus.ChipData) bool {
 		p.latch = data.Value&0x40 == 0x40
 
 		// peripheral update
-		_ = p.Player0.Update(data)
-		_ = p.Player1.Update(data)
+		_ = p.LeftPlayer.Update(data)
+		_ = p.RightPlayer.Update(data)
 
 	case "SWCHA":
 		p.swchaFromCPU = data.Value
@@ -181,8 +191,8 @@ func (p *Ports) Update(data bus.ChipData) bool {
 		data.Value &= p.swacnt
 
 		// peripheral update for SWCHA
-		_ = p.Player0.Update(data)
-		_ = p.Player1.Update(data)
+		_ = p.LeftPlayer.Update(data)
+		_ = p.RightPlayer.Update(data)
 
 	case "SWACNT":
 		p.swacnt = data.Value
@@ -193,8 +203,8 @@ func (p *Ports) Update(data bus.ChipData) bool {
 		p.riot.ChipWrite(addresses.SWCHA, p.swcha)
 
 		// peripheral update for SWACNT
-		_ = p.Player0.Update(data)
-		_ = p.Player1.Update(data)
+		_ = p.LeftPlayer.Update(data)
+		_ = p.RightPlayer.Update(data)
 
 		// adjusting SWACNT also affects the SWCHA lines to the peripheral.
 		// adjust SWCHA lines and update peripheral with new SWCHA data
@@ -202,8 +212,8 @@ func (p *Ports) Update(data bus.ChipData) bool {
 			Name:  "SWCHA",
 			Value: p.swcha,
 		}
-		_ = p.Player0.Update(data)
-		_ = p.Player1.Update(data)
+		_ = p.LeftPlayer.Update(data)
+		_ = p.RightPlayer.Update(data)
 
 	case "SWCHB":
 		fallthrough
@@ -220,11 +230,11 @@ func (p *Ports) Step() {
 	// not much to do here because most input operations happen on demand.
 	// recharging of the paddle capacitors however happens (a little bit) every
 	// step.
-	if p.Player0 != nil {
-		p.Player0.Step()
+	if p.LeftPlayer != nil {
+		p.LeftPlayer.Step()
 	}
-	if p.Player1 != nil {
-		p.Player1.Step()
+	if p.RightPlayer != nil {
+		p.RightPlayer.Step()
 	}
 	p.Panel.Step()
 }
@@ -239,6 +249,28 @@ func (p *Ports) AttachPlayback(b EventPlayback) {
 // that implement RecordablePort.
 func (p *Ports) AttachEventRecorder(r EventRecorder) {
 	p.recorder = r
+}
+
+// AttchPlugMonitor implements the plugging.Monitorable interface.
+func (p *Ports) AttachPlugMonitor(m plugging.PlugMonitor) {
+	p.monitor = m
+
+	// make sure any already attached peripherals know about the new monitor
+	if a, ok := p.LeftPlayer.(plugging.Monitorable); ok {
+		a.AttachPlugMonitor(m)
+	}
+	if a, ok := p.RightPlayer.(plugging.Monitorable); ok {
+		a.AttachPlugMonitor(m)
+	}
+	if a, ok := p.Panel.(plugging.Monitorable); ok {
+		a.AttachPlugMonitor(m)
+	}
+
+	// notify monitor of currently plugged peripherals
+	if p.monitor != nil {
+		p.monitor.Plugged(plugging.LeftPlayer, p.LeftPlayer.Name())
+		p.monitor.Plugged(plugging.RightPlayer, p.RightPlayer.Name())
+	}
 }
 
 // GetPlayback requests playback events from all attached and eligible peripherals.
@@ -262,7 +294,7 @@ func (p *Ports) GetPlayback() error {
 			return err
 		}
 
-		morePlayback = id != NoPortID && ev != NoEvent
+		morePlayback = id != plugging.Unplugged && ev != NoEvent
 		if morePlayback {
 			err := p.HandleEvent(id, ev, v)
 			if err != nil {
@@ -276,18 +308,19 @@ func (p *Ports) GetPlayback() error {
 
 // HandleEvent forwards the Event and EventData to the device connected to the
 // specified PortID.
-func (p *Ports) HandleEvent(id PortID, ev Event, d EventData) error {
+func (p *Ports) HandleEvent(id plugging.PortID, ev Event, d EventData) error {
 	var err error
 
 	switch id {
-	case PanelID:
+	case plugging.Panel:
 		err = p.Panel.HandleEvent(ev, d)
-	case Player0ID:
-		err = p.Player0.HandleEvent(ev, d)
-	case Player1ID:
-		err = p.Player1.HandleEvent(ev, d)
+	case plugging.LeftPlayer:
+		err = p.LeftPlayer.HandleEvent(ev, d)
+	case plugging.RightPlayer:
+		err = p.RightPlayer.HandleEvent(ev, d)
 	}
 
+	// if error was because of an unhandled event then return without error
 	if err != nil {
 		return curated.Errorf("ports: %v", err)
 	}
@@ -301,21 +334,21 @@ func (p *Ports) HandleEvent(id PortID, ev Event, d EventData) error {
 }
 
 // WriteSWCHx implements the MemoryAccess interface.
-func (p *Ports) WriteSWCHx(id PortID, data uint8) {
+func (p *Ports) WriteSWCHx(id plugging.PortID, data uint8) {
 	switch id {
-	case Player0ID:
+	case plugging.LeftPlayer:
 		data &= 0xf0              // keep only the bits for player 0
 		data |= p.swchaMux & 0x0f // combine with the existing player 1 bits
 		p.swchaMux = data
 		p.swcha = data & (p.swacnt ^ 0xff)
 		p.riot.ChipWrite(addresses.SWCHA, p.swcha)
-	case Player1ID:
+	case plugging.RightPlayer:
 		data = (data & 0xf0) >> 4 // move bits into the player 1 nibble
 		data |= p.swchaMux & 0xf0 // combine with the existing player 0 bits
 		p.swchaMux = data
 		p.swcha = data & (p.swacnt ^ 0xff)
 		p.riot.ChipWrite(addresses.SWCHA, p.swcha)
-	case PanelID:
+	case plugging.Panel:
 		p.swchb = data
 		p.riot.ChipWrite(addresses.SWCHB, p.swchb)
 	default:

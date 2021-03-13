@@ -64,7 +64,7 @@ func (win *winControllers) draw() {
 
 	// don't show the window if either of the controllers are unplugged
 	// !!TODO: show something meaningful for unplugged controllers
-	if win.img.lz.Controllers.Player0 == nil || win.img.lz.Controllers.Player1 == nil {
+	if win.img.lz.Controllers.LeftPlayer == nil || win.img.lz.Controllers.RightPlayer == nil {
 		return
 	}
 
@@ -73,37 +73,28 @@ func (win *winControllers) draw() {
 
 	imgui.BeginGroup()
 	imgui.Spacing()
-	imgui.Text("Player 0")
+	imgui.Text("Left")
 	imgui.Spacing()
-	win.drawController(0)
+	win.drawController(win.img.lz.Controllers.LeftPlayer)
 	imgui.EndGroup()
 
 	imgui.SameLine()
 
 	imgui.BeginGroup()
-	imgui.Text("Player 1")
+	imgui.Text("Right")
 	imgui.Spacing()
-	win.drawController(1)
+	win.drawController(win.img.lz.Controllers.RightPlayer)
 	imgui.EndGroup()
 
 	imgui.End()
 }
 
-func (win *winControllers) drawController(player int) {
-	var p ports.Peripheral
-
-	switch player {
-	case 0:
-		p = win.img.lz.Controllers.Player0
-	case 1:
-		p = win.img.lz.Controllers.Player1
-	}
-
+func (win *winControllers) drawController(p ports.Peripheral) {
 	imgui.PushItemWidth(win.controllerComboDim.X)
-	if imgui.BeginComboV(fmt.Sprintf("##%d", player), p.Name(), imgui.ComboFlagsNoArrowButton) {
+	if imgui.BeginComboV(fmt.Sprintf("##%v", p.PortID()), p.Name(), imgui.ComboFlagsNoArrowButton) {
 		for _, s := range controllers.ControllerList {
 			if imgui.Selectable(s) {
-				termCmd := fmt.Sprintf("CONTROLLER %d %s", player, s)
+				termCmd := fmt.Sprintf("CONTROLLER %s %s", p.PortID(), s)
 				win.img.term.pushCommand(termCmd)
 			}
 		}
@@ -113,12 +104,12 @@ func (win *winControllers) drawController(player int) {
 	imgui.PopItemWidth()
 
 	_, auto := p.(*controllers.Auto)
-	if imgui.Checkbox(fmt.Sprintf("Auto##%d", player), &auto) {
+	if imgui.Checkbox(fmt.Sprintf("Auto##%v", p.PortID()), &auto) {
 		var termCmd string
 		if auto {
-			termCmd = fmt.Sprintf("CONTROLLER %d AUTO", player)
+			termCmd = fmt.Sprintf("CONTROLLER %s AUTO", p.PortID())
 		} else {
-			termCmd = fmt.Sprintf("CONTROLLER %d %s", player, p.Name())
+			termCmd = fmt.Sprintf("CONTROLLER %s %s", p.PortID(), p.Name())
 		}
 		win.img.term.pushCommand(termCmd)
 	}

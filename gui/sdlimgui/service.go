@@ -17,7 +17,7 @@ package sdlimgui
 
 import (
 	"github.com/jetsetilly/gopher2600/gui"
-	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
+	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
 	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/userinput"
 
@@ -234,7 +234,7 @@ func (img *SdlImgui) Service() {
 			if button != userinput.GamepadButtonNone {
 				select {
 				case img.userinput <- userinput.EventGamepadButton{
-					ID:     ports.Player0ID,
+					ID:     plugging.LeftPlayer,
 					Button: button,
 					Down:   ev.State == 1,
 				}:
@@ -269,7 +269,7 @@ func (img *SdlImgui) Service() {
 			if dir != userinput.DPadNone {
 				select {
 				case img.userinput <- userinput.EventGamepadDPad{
-					ID:        ports.Player0ID,
+					ID:        plugging.LeftPlayer,
 					Direction: dir,
 				}:
 				default:
@@ -297,7 +297,7 @@ func (img *SdlImgui) Service() {
 			if axis != userinput.GamepadAxisNone {
 				select {
 				case img.userinput <- userinput.EventGamepadAnalogue{
-					ID:     ports.Player0ID,
+					ID:     plugging.LeftPlayer,
 					Axis:   axis,
 					Amount: ev.Value,
 				}:

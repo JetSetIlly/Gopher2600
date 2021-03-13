@@ -13,9 +13,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-package controllers
-
-// ControllerList is the list of controllers. These are the values that can be
-// returned by the ID() function of the ports.Peripheral implementations in
-// this package.
-var ControllerList = []string{"Stick", "Paddle", "Keyboard"}
+// Package plugging conceptualises the act of plugging devices into the VCS
+// ports. This includes the panel in addition to the various peripherals that
+// plug into the player ports (ie. controllers, savekey, etc.)
+package plugging

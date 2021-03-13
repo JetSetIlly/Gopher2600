@@ -23,11 +23,12 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/addresses"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
+	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
 )
 
 // Keyboard represents the VCS keyboard (or keypad) type.
 type Keyboard struct {
-	id     ports.PortID
+	port   plugging.PortID
 	bus    ports.PeripheralBus
 	column [3]addresses.ChipRegister
 	key    rune
@@ -39,16 +40,16 @@ const noKey = ' '
 // NewKeyboard is the preferred method of initialisation for the Keyboard type
 // Satisifies the ports.NewPeripheral interface and can be used as an argument
 // to ports.AttachPlayer0() and ports.AttachPlayer1().
-func NewKeyboard(id ports.PortID, bus ports.PeripheralBus) ports.Peripheral {
+func NewKeyboard(port plugging.PortID, bus ports.PeripheralBus) ports.Peripheral {
 	key := &Keyboard{
-		id:  id,
-		bus: bus,
+		port: port,
+		bus:  bus,
 	}
 
-	switch id {
-	case ports.Player0ID:
+	switch port {
+	case plugging.LeftPlayer:
 		key.column = [3]addresses.ChipRegister{addresses.INPT0, addresses.INPT1, addresses.INPT4}
-	case ports.Player1ID:
+	case plugging.RightPlayer:
 		key.column = [3]addresses.ChipRegister{addresses.INPT2, addresses.INPT3, addresses.INPT5}
 	}
 
@@ -66,6 +67,11 @@ func (key *Keyboard) String() string {
 	return fmt.Sprintf("keyboard: key=%v", key.key)
 }
 
+// PortID implements the ports.Peripheral interface.
+func (key *Keyboard) PortID() plugging.PortID {
+	return key.port
+}
+
 // Name implements the ports.Peripheral interface.
 func (key *Keyboard) Name() string {
 	return "Keyboard"
@@ -74,9 +80,6 @@ func (key *Keyboard) Name() string {
 // HandleEvent implements the ports.Peripheral interface.
 func (key *Keyboard) HandleEvent(event ports.Event, data ports.EventData) error {
 	switch event {
-	default:
-		return curated.Errorf(UnhandledEvent, key.Name(), event)
-
 	case ports.NoEvent:
 		return nil
 
@@ -117,6 +120,10 @@ func (key *Keyboard) HandleEvent(event ports.Event, data ports.EventData) error 
 			}
 		}
 		key.key = noKey
+
+	default:
+		// silently ignore unhandled event
+		return nil
 	}
 
 	return nil
@@ -129,10 +136,10 @@ func (key *Keyboard) Update(data bus.ChipData) bool {
 		var column int
 		var v uint8
 
-		switch key.id {
-		case ports.Player0ID:
+		switch key.port {
+		case plugging.LeftPlayer:
 			v = data.Value & 0xf0
-		case ports.Player1ID:
+		case plugging.RightPlayer:
 			v = (data.Value & 0x0f) << 4
 		}
 

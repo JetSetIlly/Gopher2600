@@ -16,6 +16,7 @@
 package playmode
 
 import (
+	"fmt"
 	"os"
 	"os/signal"
 	"time"
@@ -29,6 +30,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/plusrom"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/supercharger"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
+	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/savekey"
 	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/hiscore"
@@ -47,6 +49,11 @@ type playmode struct {
 	intChan   chan os.Signal
 	userinput chan userinput.Event
 	rawEvents chan func()
+}
+
+// Plugged is a simple/test implementation of plugging.PlugMonitor.
+func (pl *playmode) Plugged(port plugging.PortID, description string) {
+	fmt.Println(port, description)
 }
 
 // Play creates a 'playable' instance of the emulator.
@@ -104,7 +111,7 @@ func Play(tv *television.Television, scr gui.GUI, newRecording bool, cartload ca
 
 	// replace player 1 port with savekey
 	if useSavekey {
-		err = vcs.RIOT.Ports.AttachPlayer(ports.Player1ID, savekey.NewSaveKey)
+		err = vcs.RIOT.Ports.Plug(plugging.RightPlayer, savekey.NewSaveKey)
 		if err != nil {
 			return curated.Errorf("playmode: %v", err)
 		}
@@ -183,6 +190,8 @@ func Play(tv *television.Television, scr gui.GUI, newRecording bool, cartload ca
 		userinput: make(chan userinput.Event, 10),
 		rawEvents: make(chan func(), 1024),
 	}
+
+	vcs.RIOT.Ports.AttachPlugMonitor(pl)
 
 	// connect gui
 	err = scr.SetFeature(gui.ReqSetPlaymode, vcs, pl.userinput)

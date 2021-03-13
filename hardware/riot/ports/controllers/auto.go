@@ -16,16 +16,17 @@
 package controllers
 
 import (
-	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
+	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
 )
 
 // Auto handles the automatic switching between controller types.
 type Auto struct {
-	id         ports.PortID
+	port       plugging.PortID
 	bus        ports.PeripheralBus
 	controller ports.Peripheral
+	monitor    plugging.PlugMonitor
 
 	paddleTouchCt int
 }
@@ -33,10 +34,10 @@ type Auto struct {
 // NewAuto is the preferred method of initialisation for the Auto type.
 // Satisifies the ports.NewPeripheral interface and can be used as an argument
 // to ports.AttachPlayer0() and ports.AttachPlayer1().
-func NewAuto(id ports.PortID, bus ports.PeripheralBus) ports.Peripheral {
+func NewAuto(port plugging.PortID, bus ports.PeripheralBus) ports.Peripheral {
 	aut := &Auto{
-		id:  id,
-		bus: bus,
+		port: port,
+		bus:  bus,
 	}
 
 	aut.Reset()
@@ -52,6 +53,11 @@ func (aut *Auto) Plumb(bus ports.PeripheralBus) {
 // String implements the ports.Peripheral interface.
 func (aut *Auto) String() string {
 	return aut.controller.String()
+}
+
+// PortID implements the ports.Peripheral interface.
+func (aut *Auto) PortID() plugging.PortID {
+	return aut.port
 }
 
 // Name implements the ports.Peripheral interface.
@@ -82,11 +88,6 @@ func (aut *Auto) HandleEvent(event ports.Event, data ports.EventData) error {
 
 	err := aut.controller.HandleEvent(event, data)
 
-	// if error was because of an unhandled event then return without error
-	if err != nil && curated.Is(err, UnhandledEvent) {
-		return nil
-	}
-
 	return err
 }
 
@@ -111,13 +112,14 @@ func (aut *Auto) Step() {
 
 // Reset implements the ports.Peripheral interface.
 func (aut *Auto) Reset() {
-	aut.controller = NewStick(aut.id, aut.bus)
+	aut.controller = NewStick(aut.port, aut.bus)
 }
 
 func (aut *Auto) toStick() {
 	aut.paddleTouchCt = 0
 	if _, ok := aut.controller.(*Stick); !ok {
-		aut.controller = NewStick(aut.id, aut.bus)
+		aut.controller = NewStick(aut.port, aut.bus)
+		aut.plug()
 	}
 }
 
@@ -132,13 +134,38 @@ func (aut *Auto) toPaddle() {
 			}
 		}
 
-		aut.controller = NewPaddle(aut.id, aut.bus)
+		aut.controller = NewPaddle(aut.port, aut.bus)
+		aut.plug()
 	}
 }
 
 func (aut *Auto) toKeyboard() {
 	aut.paddleTouchCt = 0
 	if _, ok := aut.controller.(*Keyboard); !ok {
-		aut.controller = NewKeyboard(aut.id, aut.bus)
+		aut.controller = NewKeyboard(aut.port, aut.bus)
+		aut.plug()
+	}
+}
+
+// plug is called by toStick(), toPaddle() and toKeyboard() and handles the
+// plug monitor.
+func (aut *Auto) plug() {
+	// notify any peripheral monitors
+	if aut.monitor != nil {
+		aut.monitor.Plugged(aut.port, aut.controller.Name())
+	}
+
+	// attach any monitors to newly plugged controllers
+	if a, ok := aut.controller.(plugging.Monitorable); ok {
+		a.AttachPlugMonitor(aut.monitor)
+	}
+}
+
+// AttachPlugMonitor implements the plugging.Monitorable interface.
+func (aut *Auto) AttachPlugMonitor(m plugging.PlugMonitor) {
+	aut.monitor = m
+
+	if a, ok := aut.controller.(plugging.Monitorable); ok {
+		a.AttachPlugMonitor(m)
 	}
 }

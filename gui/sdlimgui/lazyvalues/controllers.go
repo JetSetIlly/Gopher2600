@@ -16,8 +16,15 @@
 package lazyvalues
 
 import (
+	"sync/atomic"
+
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
 )
+
+// PeriphShim allows a possibly mutating interface to be stored in an atomic.Value.
+type periphShim struct {
+	periph ports.Peripheral
+}
 
 // LazyControllers lazily accesses controller information from the emulator.
 type LazyControllers struct {
@@ -26,33 +33,28 @@ type LazyControllers struct {
 	// unlike the other lazy types we can't use atomic values here because the
 	// underlying type of the ports.Periperhal interface might change and
 	// atomic.Value can only store consistently typed values
-	player0 chan ports.Peripheral
-	player1 chan ports.Peripheral
+	left  atomic.Value // periphShim
+	right atomic.Value // periphShim
 
-	Player0 ports.Peripheral
-	Player1 ports.Peripheral
+	LeftPlayer  ports.Peripheral
+	RightPlayer ports.Peripheral
 }
 
 func newLazyControllers(val *LazyValues) *LazyControllers {
-	return &LazyControllers{
-		val:     val,
-		player0: make(chan ports.Peripheral, 1),
-		player1: make(chan ports.Peripheral, 1),
+	lz := &LazyControllers{
+		val: val,
 	}
+	lz.left.Store(periphShim{})
+	lz.right.Store(periphShim{})
+	return lz
 }
 
 func (lz *LazyControllers) push() {
-	select {
-	case lz.player0 <- lz.val.Dbg.VCS.RIOT.Ports.Player0:
-	case lz.player1 <- lz.val.Dbg.VCS.RIOT.Ports.Player1:
-	default:
-	}
+	lz.left.Store(periphShim{periph: lz.val.Dbg.VCS.RIOT.Ports.LeftPlayer})
+	lz.right.Store(periphShim{periph: lz.val.Dbg.VCS.RIOT.Ports.RightPlayer})
 }
 
 func (lz *LazyControllers) update() {
-	select {
-	case lz.Player0 = <-lz.player0:
-	case lz.Player1 = <-lz.player1:
-	default:
-	}
+	lz.LeftPlayer = lz.left.Load().(periphShim).periph
+	lz.RightPlayer = lz.right.Load().(periphShim).periph
 }

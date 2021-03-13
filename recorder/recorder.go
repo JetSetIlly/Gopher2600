@@ -24,6 +24,7 @@ import (
 	"github.com/jetsetilly/gopher2600/digest"
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
+	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 )
 
@@ -105,7 +106,7 @@ func NewRecorder(transcript string, vcs *hardware.VCS) (*Recorder, error) {
 // End flushes all remaining events to the output file and closes it.
 func (rec *Recorder) End() error {
 	// write the power off event to the transcript
-	err := rec.RecordEvent(ports.PanelID, ports.PanelPowerOff, nil)
+	err := rec.RecordEvent(plugging.Panel, ports.PanelPowerOff, nil)
 	if err != nil {
 		return curated.Errorf("recorder: %v", err)
 	}
@@ -119,7 +120,7 @@ func (rec *Recorder) End() error {
 }
 
 // RecordEvent implements the ports.EventRecorder interface.
-func (rec *Recorder) RecordEvent(id ports.PortID, event ports.Event, data ports.EventData) error {
+func (rec *Recorder) RecordEvent(id plugging.PortID, event ports.Event, data ports.EventData) error {
 	var err error
 
 	// write header if it's not been written already

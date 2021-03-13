@@ -17,6 +17,7 @@ package userinput
 
 import (
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
+	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
 )
 
 // Controllers keeps track of hardware userinput options.
@@ -29,7 +30,7 @@ type Controllers struct {
 // mouseMotion handles mouse events sent from a GUI. Returns true if key
 // has been handled, false otherwise.
 func (c *Controllers) mouseMotion(ev EventMouseMotion, handle HandleInput) error {
-	return handle.HandleEvent(ports.Player0ID, ports.PaddleSet, ev.X)
+	return handle.HandleEvent(plugging.LeftPlayer, ports.PaddleSet, ev.X)
 }
 
 // mouseButton handles mouse events sent from a GUI. Returns true if key
@@ -40,9 +41,9 @@ func (c *Controllers) mouseButton(ev EventMouseButton, handle HandleInput) error
 	switch ev.Button {
 	case MouseButtonLeft:
 		if ev.Down {
-			err = handle.HandleEvent(ports.Player0ID, ports.Fire, true)
+			err = handle.HandleEvent(plugging.LeftPlayer, ports.Fire, true)
 		} else {
-			err = handle.HandleEvent(ports.Player0ID, ports.Fire, false)
+			err = handle.HandleEvent(plugging.LeftPlayer, ports.Fire, false)
 		}
 	}
 
@@ -60,103 +61,103 @@ func (c *Controllers) keyboard(ev EventKeyboard, handle HandleInput) error {
 		switch ev.Key {
 		// panel
 		case "F1":
-			err = handle.HandleEvent(ports.PanelID, ports.PanelSelect, true)
+			err = handle.HandleEvent(plugging.Panel, ports.PanelSelect, true)
 		case "F2":
-			err = handle.HandleEvent(ports.PanelID, ports.PanelReset, true)
+			err = handle.HandleEvent(plugging.Panel, ports.PanelReset, true)
 		case "F3":
-			err = handle.HandleEvent(ports.PanelID, ports.PanelToggleColor, nil)
+			err = handle.HandleEvent(plugging.Panel, ports.PanelToggleColor, nil)
 		case "F4":
-			err = handle.HandleEvent(ports.PanelID, ports.PanelTogglePlayer0Pro, nil)
+			err = handle.HandleEvent(plugging.Panel, ports.PanelTogglePlayer0Pro, nil)
 		case "F5":
-			err = handle.HandleEvent(ports.PanelID, ports.PanelTogglePlayer1Pro, nil)
+			err = handle.HandleEvent(plugging.Panel, ports.PanelTogglePlayer1Pro, nil)
 
 		// joystick
 		case "Left":
-			err = handle.HandleEvent(ports.Player0ID, ports.Left, ports.DataStickTrue)
+			err = handle.HandleEvent(plugging.LeftPlayer, ports.Left, ports.DataStickTrue)
 		case "Right":
-			err = handle.HandleEvent(ports.Player0ID, ports.Right, ports.DataStickTrue)
+			err = handle.HandleEvent(plugging.LeftPlayer, ports.Right, ports.DataStickTrue)
 		case "Up":
-			err = handle.HandleEvent(ports.Player0ID, ports.Up, ports.DataStickTrue)
+			err = handle.HandleEvent(plugging.LeftPlayer, ports.Up, ports.DataStickTrue)
 		case "Down":
-			err = handle.HandleEvent(ports.Player0ID, ports.Down, ports.DataStickTrue)
+			err = handle.HandleEvent(plugging.LeftPlayer, ports.Down, ports.DataStickTrue)
 		case "Space":
-			err = handle.HandleEvent(ports.Player0ID, ports.Fire, true)
+			err = handle.HandleEvent(plugging.LeftPlayer, ports.Fire, true)
 
 		// keypad (left player)
 		case "1", "2", "3":
-			err = handle.HandleEvent(ports.Player0ID, ports.KeyboardDown, rune(ev.Key[0]))
+			err = handle.HandleEvent(plugging.LeftPlayer, ports.KeyboardDown, rune(ev.Key[0]))
 		case "Q":
-			err = handle.HandleEvent(ports.Player0ID, ports.KeyboardDown, '4')
+			err = handle.HandleEvent(plugging.LeftPlayer, ports.KeyboardDown, '4')
 		case "W":
-			err = handle.HandleEvent(ports.Player0ID, ports.KeyboardDown, '5')
+			err = handle.HandleEvent(plugging.LeftPlayer, ports.KeyboardDown, '5')
 		case "E":
-			err = handle.HandleEvent(ports.Player0ID, ports.KeyboardDown, '6')
+			err = handle.HandleEvent(plugging.LeftPlayer, ports.KeyboardDown, '6')
 		case "A":
-			err = handle.HandleEvent(ports.Player0ID, ports.KeyboardDown, '7')
+			err = handle.HandleEvent(plugging.LeftPlayer, ports.KeyboardDown, '7')
 		case "S":
-			err = handle.HandleEvent(ports.Player0ID, ports.KeyboardDown, '8')
+			err = handle.HandleEvent(plugging.LeftPlayer, ports.KeyboardDown, '8')
 		case "D":
-			err = handle.HandleEvent(ports.Player0ID, ports.KeyboardDown, '9')
+			err = handle.HandleEvent(plugging.LeftPlayer, ports.KeyboardDown, '9')
 		case "Z":
-			err = handle.HandleEvent(ports.Player0ID, ports.KeyboardDown, '*')
+			err = handle.HandleEvent(plugging.LeftPlayer, ports.KeyboardDown, '*')
 		case "X":
-			err = handle.HandleEvent(ports.Player0ID, ports.KeyboardDown, '0')
+			err = handle.HandleEvent(plugging.LeftPlayer, ports.KeyboardDown, '0')
 		case "C":
-			err = handle.HandleEvent(ports.Player0ID, ports.KeyboardDown, '#')
+			err = handle.HandleEvent(plugging.LeftPlayer, ports.KeyboardDown, '#')
 
 		// keypad (right player)
 		case "4":
-			err = handle.HandleEvent(ports.Player1ID, ports.KeyboardDown, '1')
+			err = handle.HandleEvent(plugging.RightPlayer, ports.KeyboardDown, '1')
 		case "5":
-			err = handle.HandleEvent(ports.Player1ID, ports.KeyboardDown, '2')
+			err = handle.HandleEvent(plugging.RightPlayer, ports.KeyboardDown, '2')
 		case "6":
-			err = handle.HandleEvent(ports.Player1ID, ports.KeyboardDown, '3')
+			err = handle.HandleEvent(plugging.RightPlayer, ports.KeyboardDown, '3')
 		case "R":
-			err = handle.HandleEvent(ports.Player1ID, ports.KeyboardDown, '4')
+			err = handle.HandleEvent(plugging.RightPlayer, ports.KeyboardDown, '4')
 		case "T":
-			err = handle.HandleEvent(ports.Player1ID, ports.KeyboardDown, '5')
+			err = handle.HandleEvent(plugging.RightPlayer, ports.KeyboardDown, '5')
 		case "Y":
-			err = handle.HandleEvent(ports.Player1ID, ports.KeyboardDown, '6')
+			err = handle.HandleEvent(plugging.RightPlayer, ports.KeyboardDown, '6')
 		case "F":
-			err = handle.HandleEvent(ports.Player1ID, ports.KeyboardDown, '7')
+			err = handle.HandleEvent(plugging.RightPlayer, ports.KeyboardDown, '7')
 		case "G":
-			err = handle.HandleEvent(ports.Player1ID, ports.KeyboardDown, '8')
+			err = handle.HandleEvent(plugging.RightPlayer, ports.KeyboardDown, '8')
 		case "H":
-			err = handle.HandleEvent(ports.Player1ID, ports.KeyboardDown, '9')
+			err = handle.HandleEvent(plugging.RightPlayer, ports.KeyboardDown, '9')
 		case "V":
-			err = handle.HandleEvent(ports.Player1ID, ports.KeyboardDown, '*')
+			err = handle.HandleEvent(plugging.RightPlayer, ports.KeyboardDown, '*')
 		case "B":
-			err = handle.HandleEvent(ports.Player1ID, ports.KeyboardDown, '0')
+			err = handle.HandleEvent(plugging.RightPlayer, ports.KeyboardDown, '0')
 		case "N":
-			err = handle.HandleEvent(ports.Player1ID, ports.KeyboardDown, '#')
+			err = handle.HandleEvent(plugging.RightPlayer, ports.KeyboardDown, '#')
 		}
 	} else {
 		switch ev.Key {
 		// panel
 		case "F1":
-			err = handle.HandleEvent(ports.PanelID, ports.PanelSelect, false)
+			err = handle.HandleEvent(plugging.Panel, ports.PanelSelect, false)
 		case "F2":
-			err = handle.HandleEvent(ports.PanelID, ports.PanelReset, false)
+			err = handle.HandleEvent(plugging.Panel, ports.PanelReset, false)
 
 		// josytick
 		case "Left":
-			err = handle.HandleEvent(ports.Player0ID, ports.Left, ports.DataStickFalse)
+			err = handle.HandleEvent(plugging.LeftPlayer, ports.Left, ports.DataStickFalse)
 		case "Right":
-			err = handle.HandleEvent(ports.Player0ID, ports.Right, ports.DataStickFalse)
+			err = handle.HandleEvent(plugging.LeftPlayer, ports.Right, ports.DataStickFalse)
 		case "Up":
-			err = handle.HandleEvent(ports.Player0ID, ports.Up, ports.DataStickFalse)
+			err = handle.HandleEvent(plugging.LeftPlayer, ports.Up, ports.DataStickFalse)
 		case "Down":
-			err = handle.HandleEvent(ports.Player0ID, ports.Down, ports.DataStickFalse)
+			err = handle.HandleEvent(plugging.LeftPlayer, ports.Down, ports.DataStickFalse)
 		case "Space":
-			err = handle.HandleEvent(ports.Player0ID, ports.Fire, false)
+			err = handle.HandleEvent(plugging.LeftPlayer, ports.Fire, false)
 
 		// keyboard (left player)
 		case "1", "2", "3", "Q", "W", "E", "A", "S", "D", "Z", "X", "C":
-			err = handle.HandleEvent(ports.Player0ID, ports.KeyboardUp, nil)
+			err = handle.HandleEvent(plugging.LeftPlayer, ports.KeyboardUp, nil)
 
 		// keyboard (right player)
 		case "4", "5", "6", "R", "T", "Y", "F", "G", "H", "V", "B", "N":
-			err = handle.HandleEvent(ports.Player1ID, ports.KeyboardUp, nil)
+			err = handle.HandleEvent(plugging.RightPlayer, ports.KeyboardUp, nil)
 		}
 	}
 
@@ -199,7 +200,7 @@ func (c *Controllers) gamepadDPad(ev EventGamepadDPad, handle HandleInput) error
 func (c *Controllers) gamepadButton(ev EventGamepadButton, handle HandleInput) error {
 	switch ev.Button {
 	case GamepadButtonStart:
-		return handle.HandleEvent(ports.PanelID, ports.PanelReset, ev.Down)
+		return handle.HandleEvent(plugging.Panel, ports.PanelReset, ev.Down)
 	case GamepadButtonA:
 		return handle.HandleEvent(ev.ID, ports.Fire, ev.Down)
 	}

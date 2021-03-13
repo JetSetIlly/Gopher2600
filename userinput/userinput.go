@@ -15,9 +15,12 @@
 
 package userinput
 
-import "github.com/jetsetilly/gopher2600/hardware/riot/ports"
+import (
+	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
+	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
+)
 
 // HandleInput conceptualises data being sent to the console ports.
 type HandleInput interface {
-	HandleEvent(id ports.PortID, ev ports.Event, d ports.EventData) error
+	HandleEvent(id plugging.PortID, ev ports.Event, d ports.EventData) error
 }

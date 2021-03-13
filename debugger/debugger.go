@@ -33,7 +33,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/plusrom"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/supercharger"
-	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
+	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/savekey"
 	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/logger"
@@ -174,7 +174,7 @@ func NewDebugger(tv *television.Television, scr gui.GUI, term terminal.Terminal,
 
 	// replace player 1 port with savekey
 	if useSavekey {
-		err = dbg.VCS.RIOT.Ports.AttachPlayer(ports.Player1ID, savekey.NewSaveKey)
+		err = dbg.VCS.RIOT.Ports.Plug(plugging.RightPlayer, savekey.NewSaveKey)
 		if err != nil {
 			return nil, curated.Errorf("debugger: %v", err)
 		}

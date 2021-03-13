@@ -23,6 +23,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/addresses"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
+	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
 )
 
 // stick values.
@@ -38,8 +39,8 @@ const (
 
 // Stick represents the VCS digital joystick controller.
 type Stick struct {
-	id  ports.PortID
-	bus ports.PeripheralBus
+	port plugging.PortID
+	bus  ports.PeripheralBus
 
 	axis   uint8
 	button uint8
@@ -50,18 +51,18 @@ type Stick struct {
 // NewStick is the preferred method of initialisation for the Stick type
 // Satisifies the ports.NewPeripheral interface and can be used as an argument
 // to ports.AttachPlayer0() and ports.AttachPlayer1().
-func NewStick(id ports.PortID, bus ports.PeripheralBus) ports.Peripheral {
+func NewStick(port plugging.PortID, bus ports.PeripheralBus) ports.Peripheral {
 	stk := &Stick{
-		id:     id,
+		port:   port,
 		bus:    bus,
 		axis:   axisCenter,
 		button: stickNoFire,
 	}
 
-	switch id {
-	case ports.Player0ID:
+	switch port {
+	case plugging.LeftPlayer:
 		stk.inptx = addresses.INPT4
-	case ports.Player1ID:
+	case plugging.RightPlayer:
 		stk.inptx = addresses.INPT5
 	}
 
@@ -79,6 +80,11 @@ func (stk *Stick) String() string {
 	return fmt.Sprintf("stick: axis=%02x fire=%02x", stk.axis, stk.button)
 }
 
+// PortID implements the ports.Peripheral interface.
+func (stk *Stick) PortID() plugging.PortID {
+	return stk.port
+}
+
 // Name implements the ports.Peripheral interface.
 func (stk *Stick) Name() string {
 	return "Stick"
@@ -93,6 +99,7 @@ func (stk *Stick) HandleEvent(event ports.Event, data ports.EventData) error {
 	case ports.Fire:
 		switch d := data.(type) {
 		case bool:
+			// support for playback file versions before v1.1
 			if d {
 				stk.button = stickFire
 			} else {
@@ -126,15 +133,13 @@ func (stk *Stick) HandleEvent(event ports.Event, data ports.EventData) error {
 			return curated.Errorf("stick: %v: unexpected event data", event)
 		}
 		stk.axis = axisCenter
-		stk.bus.WriteSWCHx(stk.id, stk.axis)
+		stk.bus.WriteSWCHx(stk.port, stk.axis)
 		return nil
 	}
 
 	var axis uint8
 
 	switch event {
-	default:
-		return curated.Errorf(UnhandledEvent, stk.Name(), event)
 	case ports.Left:
 		axis = axisLeft
 	case ports.Right:
@@ -151,6 +156,9 @@ func (stk *Stick) HandleEvent(event ports.Event, data ports.EventData) error {
 		axis = axisRight | axisUp
 	case ports.RightDown:
 		axis = axisRight | axisDown
+	default:
+		// silently ignore unhandled event
+		return nil
 	}
 
 	var e ports.EventDataStick
@@ -178,7 +186,7 @@ func (stk *Stick) HandleEvent(event ports.Event, data ports.EventData) error {
 	}
 
 	// update register
-	stk.bus.WriteSWCHx(stk.id, stk.axis)
+	stk.bus.WriteSWCHx(stk.port, stk.axis)
 
 	return nil
 }
@@ -207,12 +215,12 @@ func (stk *Stick) Step() {
 	// in which SWACNT is changed, axis state can be "forgotten". for example,
 	// we can see this in the HeMan ROM.
 	if stk.axis != 0xf0 {
-		stk.bus.WriteSWCHx(stk.id, stk.axis)
+		stk.bus.WriteSWCHx(stk.port, stk.axis)
 	}
 }
 
 // Reset implements the ports.Peripheral interface.
 func (stk *Stick) Reset() {
-	stk.bus.WriteSWCHx(stk.id, stk.axis)
+	stk.bus.WriteSWCHx(stk.port, stk.axis)
 	stk.bus.WriteINPTx(stk.inptx, stk.button)
 }

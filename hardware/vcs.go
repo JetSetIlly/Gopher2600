@@ -24,8 +24,9 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge"
 	"github.com/jetsetilly/gopher2600/hardware/preferences"
 	"github.com/jetsetilly/gopher2600/hardware/riot"
-	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/controllers"
+	"github.com/jetsetilly/gopher2600/hardware/riot/ports/panel"
+	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
 	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/hardware/tia"
 	"github.com/jetsetilly/gopher2600/logger"
@@ -85,12 +86,17 @@ func NewVCS(tv *television.Television) (*VCS, error) {
 		return nil, err
 	}
 
-	err = vcs.RIOT.Ports.AttachPlayer(ports.Player0ID, controllers.NewAuto)
+	err = vcs.RIOT.Ports.Plug(plugging.LeftPlayer, controllers.NewAuto)
 	if err != nil {
 		return nil, err
 	}
 
-	err = vcs.RIOT.Ports.AttachPlayer(ports.Player1ID, controllers.NewAuto)
+	err = vcs.RIOT.Ports.Plug(plugging.RightPlayer, controllers.NewAuto)
+	if err != nil {
+		return nil, err
+	}
+
+	err = vcs.RIOT.Ports.Plug(plugging.Panel, panel.NewPanel)
 	if err != nil {
 		return nil, err
 	}

@@ -13,7 +13,8 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-package ports
+// Package panel implements the front control panel of the VCS.
+package panel
 
 import (
 	"strconv"
@@ -21,11 +22,14 @@ import (
 
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
+	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
+	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
 )
 
 // Panel represents the console's front control panel.
 type Panel struct {
-	bus PeripheralBus
+	id  plugging.PortID
+	bus ports.PeripheralBus
 
 	p0pro         bool
 	p1pro         bool
@@ -35,8 +39,9 @@ type Panel struct {
 }
 
 // NewPanel is the preferred method of initialisation for the Panel type.
-func NewPanel(bus PeripheralBus) Peripheral {
+func NewPanel(id plugging.PortID, bus ports.PeripheralBus) ports.Peripheral {
 	pan := &Panel{
+		id:    id,
 		bus:   bus,
 		color: true,
 	}
@@ -46,7 +51,7 @@ func NewPanel(bus PeripheralBus) Peripheral {
 }
 
 // Plumb implements the Peripheral interface.
-func (pan *Panel) Plumb(bus PeripheralBus) {
+func (pan *Panel) Plumb(bus ports.PeripheralBus) {
 	pan.bus = bus
 }
 
@@ -93,6 +98,11 @@ func (pan *Panel) String() string {
 	return s.String()
 }
 
+// PortID implements the ports.Peripheral interface.
+func (pan *Panel) PortID() plugging.PortID {
+	return pan.id
+}
+
 // Name implements the Peripheral interface.
 func (pan *Panel) Name() string {
 	return "Panel"
@@ -133,21 +143,16 @@ func (pan *Panel) write() {
 		v |= 0x01
 	}
 
-	pan.bus.WriteSWCHx(PanelID, v)
+	pan.bus.WriteSWCHx(plugging.Panel, v)
 }
 
-// Sentinal error returned by Panel.HandleEvent() if power button is pressed.
-const (
-	PowerOff = "emulated machine has been powered off"
-)
-
 // HandleEvent implements Peripheral interface.
-func (pan *Panel) HandleEvent(event Event, value EventData) error {
+func (pan *Panel) HandleEvent(event ports.Event, value ports.EventData) error {
 	var v bool
 	switch d := value.(type) {
 	case bool:
 		v = d
-	case EventDataPlayback:
+	case ports.EventDataPlayback:
 		if len(string(d)) > 0 {
 			var err error
 			v, err = strconv.ParseBool(string(d))
@@ -158,32 +163,36 @@ func (pan *Panel) HandleEvent(event Event, value EventData) error {
 	}
 
 	switch event {
-	case PanelSelect:
+	case ports.PanelSelect:
 		pan.selectPressed = v
 
-	case PanelReset:
+	case ports.PanelReset:
 		pan.resetPressed = v
 
-	case PanelSetColor:
+	case ports.PanelSetColor:
 		pan.color = v
 
-	case PanelSetPlayer0Pro:
+	case ports.PanelSetPlayer0Pro:
 		pan.p0pro = v
 
-	case PanelSetPlayer1Pro:
+	case ports.PanelSetPlayer1Pro:
 		pan.p1pro = v
 
-	case PanelToggleColor:
+	case ports.PanelToggleColor:
 		pan.color = !pan.color
 
-	case PanelTogglePlayer0Pro:
+	case ports.PanelTogglePlayer0Pro:
 		pan.p0pro = !pan.p0pro
 
-	case PanelTogglePlayer1Pro:
+	case ports.PanelTogglePlayer1Pro:
 		pan.p1pro = !pan.p1pro
 
-	case PanelPowerOff:
-		return curated.Errorf(PowerOff)
+	case ports.PanelPowerOff:
+		return curated.Errorf(ports.PowerOff)
+
+	default:
+		// silently ignore unhandled event
+		return nil
 	}
 
 	pan.write()

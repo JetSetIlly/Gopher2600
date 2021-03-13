@@ -26,7 +26,7 @@ import (
 )
 
 const (
-	fieldID int = iota
+	fieldPortID int = iota
 	fieldEvent
 	fieldEventData
 	fieldFrame
@@ -58,7 +58,14 @@ const (
 
 const magicString = "gopher2600playback"
 const versionMajor = "1"
-const versionMinor = "1"
+const versionMinor = "2"
+
+// version history
+// v1.0 original version
+// v1.1 EventData for stick events extended
+//		- compatibility code in controllers.Stick.HandleEvent()
+// v1.2 fieldPortID (renamed from fieldID) stores new PortID values
+//		- compatibility code in recorder.NewPlayback()
 
 func version() string {
 	return fmt.Sprintf("%s.%s", versionMajor, versionMinor)

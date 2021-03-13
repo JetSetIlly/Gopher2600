@@ -13,9 +13,18 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-package controllers
+package plugging
 
-// ControllerList is the list of controllers. These are the values that can be
-// returned by the ID() function of the ports.Peripheral implementations in
-// this package.
-var ControllerList = []string{"Stick", "Paddle", "Keyboard"}
+// PortID differentiates the different ports in the VCS into which peripherals
+// can be plugged.
+type PortID string
+
+// List of defined PortIDs.
+//
+// We could potentially extend this to support a future Quadtari implementation.
+const (
+	Unplugged   PortID = "Unplugged"
+	LeftPlayer  PortID = "Left"
+	RightPlayer PortID = "Right"
+	Panel       PortID = "Panel"
+)

@@ -16,6 +16,9 @@
 // Package ports represents the input/output parts of the VCS (the IO in
 // RIOT).
 //
-// Implementations of the Peripheral interface can be attached with the
-// AttachPlayer() functions.
+// Emulated peripherals are plugged into the VCS with the Plug() function.
+// Input from "real" devices is handled by HandleEvent() which passes the event
+// to peripherals in the specified PortID.
+//
+// Peripherals write back to the VCS through the PeripheralBus.
 package ports

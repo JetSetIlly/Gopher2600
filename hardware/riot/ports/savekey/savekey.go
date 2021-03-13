@@ -21,6 +21,7 @@ import (
 
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
+	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
@@ -48,8 +49,8 @@ const (
 // SaveKey represents the SaveKey peripheral. It implements the Peripheral
 // interface.
 type SaveKey struct {
-	id  ports.PortID
-	bus ports.PeripheralBus
+	port plugging.PortID
+	bus  ports.PeripheralBus
 
 	// the i2c protocol used by the SaveKey is transferred via the SWCHA
 	// register from the CPU. we keep a copy of the SWCHA value set in the
@@ -80,9 +81,9 @@ type SaveKey struct {
 }
 
 // NewSaveKey is the preferred method of initialisation for the SaveKey type.
-func NewSaveKey(id ports.PortID, bus ports.PeripheralBus) ports.Peripheral {
+func NewSaveKey(port plugging.PortID, bus ports.PeripheralBus) ports.Peripheral {
 	sk := &SaveKey{
-		id:     id,
+		port:   port,
 		bus:    bus,
 		SDA:    newTrace(),
 		SCL:    newTrace(),
@@ -90,8 +91,8 @@ func NewSaveKey(id ports.PortID, bus ports.PeripheralBus) ports.Peripheral {
 		EEPROM: newEeprom(),
 	}
 
-	sk.bus.WriteSWCHx(sk.id, 0xf0)
-	logger.Logf("savekey", "savekey attached [%s]", sk.id.String())
+	sk.bus.WriteSWCHx(sk.port, 0xf0)
+	logger.Logf("savekey", "savekey attached [%v]", sk.port)
 
 	return sk
 }
@@ -131,6 +132,11 @@ func (sk *SaveKey) String() string {
 	return s.String()
 }
 
+// PortID implements the ports.Peripheral interface.
+func (sk *SaveKey) PortID() plugging.PortID {
+	return sk.port
+}
+
 // Name implements the ports.Peripheral interface.
 func (sk *SaveKey) Name() string {
 	return "SaveKey"
@@ -157,10 +163,10 @@ func (sk *SaveKey) Update(data bus.ChipData) bool {
 	switch data.Name {
 	case "SWCHA":
 		// mask and shift SWCHA value to the normlised value
-		switch sk.id {
-		case ports.Player0ID:
+		switch sk.port {
+		case plugging.LeftPlayer:
 			sk.swcha = data.Value & 0xf0
-		case ports.Player1ID:
+		case plugging.RightPlayer:
 			sk.swcha = (data.Value & 0x0f) << 4
 		}
 	}
@@ -233,11 +239,11 @@ func (sk *SaveKey) Step() {
 	// if the VCS is waiting for an ACK then handle that now
 	if sk.Ack {
 		if sk.Dir == Reading && sk.SDA.falling() {
-			sk.bus.WriteSWCHx(sk.id, maskSDA)
+			sk.bus.WriteSWCHx(sk.port, maskSDA)
 			sk.Ack = false
 			return
 		}
-		sk.bus.WriteSWCHx(sk.id, 0x00)
+		sk.bus.WriteSWCHx(sk.port, 0x00)
 		sk.Ack = false
 		return
 	}
@@ -298,9 +304,9 @@ func (sk *SaveKey) Step() {
 			bit, end := sk.sendBit()
 
 			if bit {
-				sk.bus.WriteSWCHx(sk.id, maskSDA)
+				sk.bus.WriteSWCHx(sk.port, maskSDA)
 			} else {
-				sk.bus.WriteSWCHx(sk.id, 0x00)
+				sk.bus.WriteSWCHx(sk.port, 0x00)
 			}
 
 			if end {
