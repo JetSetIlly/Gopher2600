@@ -22,9 +22,8 @@ import (
 
 // Controllers keeps track of hardware userinput options.
 type Controllers struct {
-	// keep track of which axis is being used. stops axes interfering with one
-	// another
-	axis GamepadAxis
+	trigger GamepadTrigger
+	paddle  float32
 }
 
 // mouseMotion handles mouse events sent from a GUI. Returns true if key
@@ -207,51 +206,88 @@ func (c *Controllers) gamepadButton(ev EventGamepadButton, handle HandleInput) e
 	return nil
 }
 
-func (c *Controllers) gamepadAnalogue(ev EventGamepadAnalogue, handle HandleInput) error {
-	// do nothing if something has been happening recently and this event is
-	// not for that axis
-	if c.axis != GamepadAxisNone && ev.Axis != c.axis {
+func (c *Controllers) gamepadThumbstick(ev EventGamepadThumbstick, handle HandleInput) error {
+	if ev.Thumbstick != GamepadThumbstickLeft {
 		return nil
 	}
 
+	// quite a large deadzone for the thumbstick
 	const deadzone = 10000
-	const center = 0.4
-	const centerRatio = center / 0.5
+
+	if ev.Horiz > deadzone {
+		if ev.Vert > deadzone {
+			return handle.HandleEvent(ev.ID, ports.RightDown, ports.DataStickSet)
+		} else if ev.Vert < -deadzone {
+			return handle.HandleEvent(ev.ID, ports.RightUp, ports.DataStickSet)
+		}
+		return handle.HandleEvent(ev.ID, ports.Right, ports.DataStickSet)
+	} else if ev.Horiz < -deadzone {
+		if ev.Vert > deadzone {
+			return handle.HandleEvent(ev.ID, ports.LeftDown, ports.DataStickSet)
+		} else if ev.Vert < -deadzone {
+			return handle.HandleEvent(ev.ID, ports.LeftUp, ports.DataStickSet)
+		}
+		return handle.HandleEvent(ev.ID, ports.Left, ports.DataStickSet)
+	} else if ev.Vert > deadzone {
+		return handle.HandleEvent(ev.ID, ports.Down, ports.DataStickSet)
+	} else if ev.Vert < -deadzone {
+		return handle.HandleEvent(ev.ID, ports.Up, ports.DataStickSet)
+	}
+
+	return handle.HandleEvent(ev.ID, ports.Centre, nil)
+}
+
+func (c *Controllers) gamepadTriggers(ev EventGamepadTrigger, handle HandleInput) error {
+	if c.trigger != GamepadTriggerNone && c.trigger != ev.Trigger {
+		return nil
+	}
+
+	// small deadzone for the triggers
+	const deadzone = 10
+
+	const min = 0.0
+	const max = 65535.0
+	const mid = 32768.0
 
 	n := float32(ev.Amount)
+	n += mid
 
-	switch ev.Axis {
-	case GamepadAxisLeftHoriz:
-	case GamepadAxisLeftTrigger:
-		// left trigger uses full range for leftward  movement of the paddle
-		n += 32768
-		n *= -1
-	case GamepadAxisRightTrigger:
-		// right trigger uses full range for rightward movement of the paddle
-		n += 32768
+	switch ev.Trigger {
+	case GamepadTriggerLeft:
+
+		// check deadzone
+		if n >= -deadzone && n <= deadzone {
+			c.trigger = GamepadTriggerNone
+			n = min
+		} else {
+			c.trigger = GamepadTriggerLeft
+			n = max - n
+			n /= max
+		}
+
+		// left trigger can only move the paddle left
+		if n > c.paddle {
+			return nil
+		}
+	case GamepadTriggerRight:
+		// check deadzone
+		if n >= -deadzone && n <= deadzone {
+			c.trigger = GamepadTriggerNone
+			n = min
+		} else {
+			c.trigger = GamepadTriggerRight
+			n /= max
+		}
+
+		// right trigger can only move the paddle right
+		if n < c.paddle {
+			return nil
+		}
 	default:
-		return nil
 	}
 
-	// check deadzone
-	if n >= -deadzone && n <= deadzone {
-		c.axis = GamepadAxisNone
-		return handle.HandleEvent(ev.ID, ports.PaddleSet, float32(center))
-	}
-
-	// note which axis this event is on
-	c.axis = ev.Axis
-
-	if n < -deadzone {
-		n += deadzone
-	} else if n > deadzone {
-		n -= deadzone
-	}
-
-	n = (n + 32768.0) / 65535.0
-	n *= centerRatio
-
-	return handle.HandleEvent(ev.ID, ports.PaddleSet, n)
+	c.paddle = n
+	return handle.HandleEvent(ev.ID, ports.PaddleSet, c.paddle)
 }
 
 // HandleUserInput deciphers the Event and forwards the input to the Atari 2600
@@ -271,8 +307,10 @@ func (c *Controllers) HandleUserInput(ev Event, handle HandleInput) (bool, error
 		err = c.gamepadDPad(ev, handle)
 	case EventGamepadButton:
 		err = c.gamepadButton(ev, handle)
-	case EventGamepadAnalogue:
-		err = c.gamepadAnalogue(ev, handle)
+	case EventGamepadThumbstick:
+		err = c.gamepadThumbstick(ev, handle)
+	case EventGamepadTrigger:
+		err = c.gamepadTriggers(ev, handle)
 	default:
 	}
 

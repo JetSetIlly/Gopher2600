@@ -227,6 +227,8 @@ func (img *SdlImgui) Service() {
 			switch ev.Button {
 			case 0:
 				button = userinput.GamepadButtonA
+			case 6:
+				button = userinput.GamepadButtonBack
 			case 7:
 				button = userinput.GamepadButtonStart
 			}
@@ -278,28 +280,50 @@ func (img *SdlImgui) Service() {
 			}
 
 		case *sdl.JoyAxisEvent:
-			axis := userinput.GamepadAxisNone
 			switch ev.Axis {
 			case 0:
-				axis = userinput.GamepadAxisLeftHoriz
+				fallthrough
 			case 1:
-				axis = userinput.GamepadAxisLeftVert
-			case 2:
-				axis = userinput.GamepadAxisLeftTrigger
+				select {
+				case img.userinput <- userinput.EventGamepadThumbstick{
+					ID:         plugging.LeftPlayer,
+					Thumbstick: userinput.GamepadThumbstickLeft,
+					Horiz:      img.plt.gamepad.Axis(0),
+					Vert:       img.plt.gamepad.Axis(1),
+				}:
+				default:
+					logger.Log("sdlimgui", "dropped gamepad axis event")
+				}
 			case 3:
-				axis = userinput.GamepadAxisRightHoriz
+				fallthrough
 			case 4:
-				axis = userinput.GamepadAxisRightVert
-			case 5:
-				axis = userinput.GamepadAxisRightTrigger
+				select {
+				case img.userinput <- userinput.EventGamepadThumbstick{
+					ID:         plugging.LeftPlayer,
+					Thumbstick: userinput.GamepadThumbstickRight,
+					Horiz:      img.plt.gamepad.Axis(3),
+					Vert:       img.plt.gamepad.Axis(4),
+				}:
+				default:
+					logger.Log("sdlimgui", "dropped gamepad axis event")
+				}
+			default:
 			}
 
-			if axis != userinput.GamepadAxisNone {
+			trigger := userinput.GamepadTriggerNone
+			switch ev.Axis {
+			case 2:
+				trigger = userinput.GamepadTriggerLeft
+			case 5:
+				trigger = userinput.GamepadTriggerRight
+			}
+
+			if trigger != userinput.GamepadTriggerNone {
 				select {
-				case img.userinput <- userinput.EventGamepadAnalogue{
-					ID:     plugging.LeftPlayer,
-					Axis:   axis,
-					Amount: ev.Value,
+				case img.userinput <- userinput.EventGamepadTrigger{
+					ID:      plugging.LeftPlayer,
+					Trigger: trigger,
+					Amount:  ev.Value,
 				}:
 				default:
 					logger.Log("sdlimgui", "dropped gamepad axis event")

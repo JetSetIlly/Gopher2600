@@ -144,18 +144,19 @@ both players.
 
 #### Gamepad
 
-For conveniece the joystick and paddle can be controlled through a gamepad. Use
-the DPad and any of the face buttons for joystick control.
+For conveniece the joystick and paddle can be controlled through a gamepad. For
+the joystick, use the left thumbstick or the DPad. Any of the face buttons will
+act as the joystick's fire button.
 
-To control the paddle use either the left analogue stick or the analogue
-triggers. Note that you will need to 'waggle' the stick/triggers a couple of
-time for the emulator to detect that you want to switch to the paddle.
+To control the paddle use the left and right analogue triggers. Note that you
+will need to 'waggle' the triggers a couple of times for the emulator to detect
+that you want to switch to the paddle.
 
 The console's reset switch can be triggered with the gamepad's start button.
 
 #### Without A Gamepad
 
-As an alternative to the gamepad, the joystick can controlled with the cursor
+As an alternative to the gamepad, the joystick can be controlled with the cursor
 keys of the keyboard. The spacebar will act as the joystick's fire button.
 
 The paddle can be accessed with the computer's mouse. First, capture the mouse
