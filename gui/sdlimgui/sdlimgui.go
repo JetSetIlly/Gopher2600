@@ -16,6 +16,7 @@
 package sdlimgui
 
 import (
+	"fmt"
 	"io"
 
 	"github.com/jetsetilly/gopher2600/curated"
@@ -26,6 +27,7 @@ import (
 	"github.com/jetsetilly/gopher2600/gui/sdlaudio"
 	"github.com/jetsetilly/gopher2600/gui/sdlimgui/lazyvalues"
 	"github.com/jetsetilly/gopher2600/hardware"
+	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
 	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/paths"
@@ -330,4 +332,13 @@ func (img *SdlImgui) setCapture(set bool) {
 			logger.Log("sdlimgui", err.Error())
 		}
 	}
+}
+
+// Plugged implements the pluggin.PlugMonitor interface.
+//
+// MUST NOT be call from the gui thread.
+func (img *SdlImgui) Plugged(port plugging.PortID, description string) {
+	fmt.Println(1)
+	img.SetFeature(gui.ReqControllerChange, port, description)
+	fmt.Println(2)
 }

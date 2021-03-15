@@ -55,6 +55,30 @@ type playScr struct {
 	fpsOpen  bool
 	fpsPulse *time.Ticker
 	fps      string
+
+	// controller alert
+	controllerAlertLeft  controllerAlert
+	controllerAlertRight controllerAlert
+}
+
+// controllerAlert will appear on the screen to indicate a new controller in
+// the player port.
+type controllerAlert struct {
+	frames int
+	desc   string
+}
+
+func (ca *controllerAlert) open(desc string) {
+	ca.desc = desc
+	ca.frames = 60
+}
+
+func (ca *controllerAlert) isOpen() bool {
+	if ca.frames == 0 {
+		return false
+	}
+	ca.frames--
+	return true
 }
 
 func newPlayScr(img *SdlImgui) *playScr {
@@ -108,6 +132,43 @@ func (win *playScr) draw() {
 			imgui.WindowFlagsNoScrollbar|imgui.WindowFlagsNoTitleBar|imgui.WindowFlagsNoDecoration)
 
 		imgui.Text(win.fps)
+
+		imgui.PopStyleColorV(2)
+		imgui.End()
+	}
+
+	dimen := win.img.plt.displaySize()
+	if win.controllerAlertLeft.isOpen() {
+		imgui.SetNextWindowPos(imgui.Vec2{
+			0,
+			dimen[1] - imgui.FrameHeightWithSpacing(),
+		})
+
+		imgui.PushStyleColor(imgui.StyleColorWindowBg, win.img.cols.Transparent)
+		imgui.PushStyleColor(imgui.StyleColorBorder, win.img.cols.Transparent)
+
+		imgui.BeginV("##controlleralertleft", &win.fpsOpen, imgui.WindowFlagsAlwaysAutoResize|
+			imgui.WindowFlagsNoScrollbar|imgui.WindowFlagsNoTitleBar|imgui.WindowFlagsNoDecoration)
+
+		imgui.Text(win.controllerAlertLeft.desc)
+
+		imgui.PopStyleColorV(2)
+		imgui.End()
+	}
+
+	if win.controllerAlertRight.isOpen() {
+		imgui.SetNextWindowPos(imgui.Vec2{
+			dimen[0] - imguiTextWidth(len(win.controllerAlertRight.desc)),
+			dimen[1] - imgui.FrameHeightWithSpacing(),
+		})
+
+		imgui.PushStyleColor(imgui.StyleColorWindowBg, win.img.cols.Transparent)
+		imgui.PushStyleColor(imgui.StyleColorBorder, win.img.cols.Transparent)
+
+		imgui.BeginV("##controlleralertright", &win.fpsOpen, imgui.WindowFlagsAlwaysAutoResize|
+			imgui.WindowFlagsNoScrollbar|imgui.WindowFlagsNoTitleBar|imgui.WindowFlagsNoDecoration)
+
+		imgui.Text(win.controllerAlertRight.desc)
 
 		imgui.PopStyleColorV(2)
 		imgui.End()

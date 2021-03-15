@@ -25,8 +25,12 @@ type FeatureReq string
 // commentary for the defined FeatureReq values for the underlying type.
 type FeatureReqData interface{}
 
-// EmulationState indicates to the GUI that the debugger is in a particular
+// EmulationState indicates to the GUI that the emulatoin is in a particular
 // state.
+//
+// Note that these should be set for all application types. The GUI state will
+// start in StateInitialising and a playmode for example, should set
+// StateRunning as soon as the emulation begins (with vcs.Run).
 type EmulationState int
 
 // List of valid emulation states.
@@ -82,4 +86,8 @@ const (
 
 	// special request for PlusROM cartridges.
 	ReqPlusROMFirstInstallation FeatureReq = "ReqPlusROMFirstInstallation" // PlusROMFirstInstallation
+
+	// controller has changed for one of the ports. the string is a description
+	// of the controller.
+	ReqControllerChange FeatureReq = "ReqControllerChange" // plugging.PortID, string
 )

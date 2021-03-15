@@ -16,7 +16,6 @@
 package playmode
 
 import (
-	"fmt"
 	"os"
 	"os/signal"
 	"time"
@@ -49,11 +48,6 @@ type playmode struct {
 	intChan   chan os.Signal
 	userinput chan userinput.Event
 	rawEvents chan func()
-}
-
-// Plugged is a simple/test implementation of plugging.PlugMonitor.
-func (pl *playmode) Plugged(port plugging.PortID, description string) {
-	fmt.Println(port, description)
 }
 
 // Play creates a 'playable' instance of the emulator.
@@ -191,13 +185,13 @@ func Play(tv *television.Television, scr gui.GUI, newRecording bool, cartload ca
 		rawEvents: make(chan func(), 1024),
 	}
 
-	vcs.RIOT.Ports.AttachPlugMonitor(pl)
-
 	// connect gui
 	err = scr.SetFeature(gui.ReqSetPlaymode, vcs, pl.userinput)
 	if err != nil {
 		return curated.Errorf("playmode: %v", err)
 	}
+
+	vcs.RIOT.Ports.AttachPlugMonitor(pl)
 
 	// if a waitForEmulationStart channel has been created then halt the
 	// goroutine until we receive a non-error signal
@@ -228,6 +222,12 @@ func Play(tv *television.Television, scr gui.GUI, newRecording bool, cartload ca
 		if err != nil {
 			return curated.Errorf("playmode: %v", err)
 		}
+	}
+
+	// notify gui that we're running
+	err = scr.SetFeature(gui.ReqState, gui.StateRunning)
+	if err != nil {
+		return curated.Errorf("playmode: %v", err)
 	}
 
 	// note startime
@@ -266,4 +266,9 @@ func Play(tv *television.Television, scr gui.GUI, newRecording bool, cartload ca
 	}
 
 	return nil
+}
+
+// Plugged implements the pluggin.PlugMonitor interface.
+func (pl *playmode) Plugged(port plugging.PortID, description string) {
+	pl.scr.SetFeature(gui.ReqControllerChange, port, description)
 }

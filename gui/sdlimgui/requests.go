@@ -20,6 +20,7 @@ import (
 	"github.com/jetsetilly/gopher2600/debugger"
 	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/hardware"
+	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
 	"github.com/jetsetilly/gopher2600/userinput"
 )
 
@@ -131,6 +132,21 @@ func (img *SdlImgui) serviceSetFeature(request featureRequest) {
 		err = argLen(request.args, 1)
 		if err == nil {
 			img.plusROMFirstInstallation = request.args[0].(*gui.PlusROMFirstInstallation)
+		}
+
+	case gui.ReqControllerChange:
+		if img.state == gui.StateInitialising {
+			break
+		}
+
+		if img.isPlaymode() {
+			port := request.args[0].(plugging.PortID)
+			switch port {
+			case plugging.LeftPlayer:
+				img.playScr.controllerAlertLeft.open(request.args[1].(string))
+			case plugging.RightPlayer:
+				img.playScr.controllerAlertRight.open(request.args[1].(string))
+			}
 		}
 
 	default:
