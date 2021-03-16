@@ -132,34 +132,31 @@ func (wm *manager) drawMenu() {
 	}
 
 	// cartridge info in menubar
-	imgui.SameLineV(imgui.WindowWidth()-wm.menuInfoWidth, 0.0)
-	wm.menuInfoWidth = imguiMeasureWidth(func() {
-		// fps indicator
-		if wm.img.state == gui.StateRunning {
-			if wm.img.lz.TV.ReqFPS < 1.0 {
-				imgui.Text(" < 1 fps ")
-			} else {
-				imgui.Text(fmt.Sprintf("% 5.1f fps", wm.img.lz.TV.ActualFPS))
-			}
-		} else {
-			// empty text to ensure measureWidth() always returns the same value
-			imgui.Text("         ")
-		}
+	wdth := imgui.WindowWidth()
+	wdth -= rightJustText(wdth, "", false)
+	wdth -= rightJustText(wdth, wm.img.lz.Cart.Filename, true)
+	wdth -= rightJustText(wdth, wm.img.lz.Cart.ID, true)
+	wdth -= rightJustText(wdth, wm.img.lz.Cart.Mapping, true)
 
-		if len(wm.img.lz.Cart.Mapping) > 0 {
-			imgui.Separator()
-			imgui.Text(wm.img.lz.Cart.Mapping)
+	if wm.img.state == gui.StateRunning {
+		if wm.img.lz.TV.ReqFPS < 1.0 {
+			rightJustText(wdth, "< 1 fps", true)
+		} else {
+			rightJustText(wdth, fmt.Sprintf("%.1f fps", wm.img.lz.TV.ActualFPS), true)
 		}
-		if len(wm.img.lz.Cart.ID) > 0 {
-			imgui.Separator()
-			imgui.Text(wm.img.lz.Cart.ID)
-		}
-		if len(wm.img.lz.Cart.Filename) > 0 {
-			imgui.Separator()
-			imgui.Text(wm.img.lz.Cart.Filename)
-			imgui.Text(" ")
-		}
-	})
+	}
+}
+
+func rightJustText(width float32, text string, sep bool) float32 {
+	w := imgui.CalcTextSize(text, false, 0.0).X +
+		(imgui.CurrentStyle().FramePadding().X * 2) +
+		(imgui.CurrentStyle().ItemInnerSpacing().X * 2)
+	imgui.SameLineV(width-w, 0.0)
+	if sep {
+		imgui.Separator()
+	}
+	imgui.Text(text)
+	return w
 }
 
 func (wm *manager) drawMenuEntry(m menuEntry) {

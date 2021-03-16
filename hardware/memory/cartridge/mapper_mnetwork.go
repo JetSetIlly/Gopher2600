@@ -116,7 +116,9 @@ func (cart *mnetwork) Mapping() string {
 	s.WriteString(fmt.Sprintf("Bank: %d ", cart.state.bank))
 	s.WriteString(fmt.Sprintf(" RAM: %d", cart.state.ram256byteIdx))
 	if cart.state.use1kRAM {
-		s.WriteString(" +1k RAM")
+		s.WriteString("+")
+	} else {
+		s.WriteString(" ")
 	}
 	return s.String()
 }

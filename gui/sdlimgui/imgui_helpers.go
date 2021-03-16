@@ -230,13 +230,13 @@ func imguiMeasureHeight(region func()) float32 {
 //
 // this seems to work but it caused odd results when used to measure the width
 // of a table.
-func imguiMeasureWidth(region func()) float32 {
-	p := imgui.CursorPos()
-	region()
-	defer imgui.SetCursorPos(imgui.CursorPos())
-	imgui.SameLine()
-	return imgui.CursorPos().Minus(p).X
-}
+// func imguiMeasureWidth(region func()) float32 {
+// 	p := imgui.CursorPos()
+// 	region()
+// 	defer imgui.SetCursorPos(imgui.CursorPos())
+// 	imgui.SameLine()
+// 	return imgui.CursorPos().Minus(p).X
+// }
 
 // pads imgui.Separator with additional spacing.
 func imguiSeparator() {
