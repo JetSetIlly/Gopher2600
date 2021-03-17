@@ -23,8 +23,10 @@ import (
 
 	"github.com/go-gl/gl/v3.2-core/gl"
 	"github.com/inkyblackness/imgui-go/v4"
+	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/gui/crt/shaders"
+	"github.com/jetsetilly/gopher2600/gui/sdlimgui/fonts"
 	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 )
@@ -52,8 +54,10 @@ const (
 )
 
 type glsl struct {
-	imguiIO imgui.IO
-	img     *SdlImgui
+	img *SdlImgui
+
+	gopher2600Icons     imgui.Font
+	gopher2600IconsSize float32
 
 	// font texture given to imgui. we take charge of its destruction
 	fontTexture uint32
@@ -111,18 +115,19 @@ type glsl struct {
 	attribRandSeed            int32 // uniform
 }
 
-func newGlsl(io imgui.IO, img *SdlImgui) (*glsl, error) {
+func newGlsl(img *SdlImgui) (*glsl, error) {
 	err := gl.Init()
 	if err != nil {
-		return nil, fmt.Errorf("failed to initialise OpenGL: %v", err)
+		return nil, fmt.Errorf("glsl: %v", err)
 	}
 
-	rnd := &glsl{
-		imguiIO: io,
-		img:     img,
-	}
+	rnd := &glsl{img: img}
 
 	rnd.setup()
+	err = rnd.setupFonts()
+	if err != nil {
+		return nil, fmt.Errorf("glsl: %v", err)
+	}
 
 	return rnd, nil
 }
@@ -170,7 +175,7 @@ func (rnd *glsl) render() {
 	drawData := imgui.RenderedDrawData()
 
 	st := storeGLState()
-	defer st.restore()
+	defer st.restoreGLState()
 
 	// Avoid rendering when minimised, scale coordinates for retina displays (screen coordinates != framebuffer coordinates)
 	displayWidth, displayHeight := displaySize[0], displaySize[1]
@@ -406,17 +411,6 @@ func (rnd *glsl) setOptions(textureID uint32) {
 }
 
 func (rnd *glsl) setup() {
-	var lastTexture int32
-	var lastArrayBuffer int32
-	var lastVertexArray int32
-
-	gl.GetIntegerv(gl.TEXTURE_BINDING_2D, &lastTexture)
-	gl.GetIntegerv(gl.ARRAY_BUFFER_BINDING, &lastArrayBuffer)
-	gl.GetIntegerv(gl.VERTEX_ARRAY_BINDING, &lastVertexArray)
-	defer gl.BindTexture(gl.TEXTURE_2D, uint32(lastTexture))
-	defer gl.BindBuffer(gl.ARRAY_BUFFER, uint32(lastArrayBuffer))
-	defer gl.BindVertexArray(uint32(lastVertexArray))
-
 	// compile and link shader programs
 	rnd.shaderHandle = gl.CreateProgram()
 	vertHandle := gl.CreateShader(gl.VERTEX_SHADER)
@@ -494,24 +488,57 @@ func (rnd *glsl) setup() {
 
 	gl.GenBuffers(1, &rnd.vboHandle)
 	gl.GenBuffers(1, &rnd.elementsHandle)
+}
 
-	// \/\/\/ font preparation \/\/\/
+func (rnd *glsl) setupFonts() error {
+	// add default font
+	atlas := imgui.CurrentIO().Fonts()
+	atlas.AddFontDefault()
 
-	// Build texture atlas
-	image := rnd.imguiIO.Fonts().TextureDataAlpha8()
+	// config for font loading. merging with default font and adjusting offset
+	// so that the icons align better.
+	mergeConfig := imgui.NewFontConfig()
+	defer mergeConfig.Delete()
+	mergeConfig.SetMergeMode(true)
+	mergeConfig.SetPixelSnapH(true)
+	mergeConfig.SetGlyphOffsetY(1.0)
 
-	// Upload font texture to graphics system
-	gl.GetIntegerv(gl.TEXTURE_BINDING_2D, &lastTexture)
+	// limit what glyphs we load
+	var glyphBuilder imgui.GlyphRangesBuilder
+	glyphBuilder.Add(fonts.FontAwesomeMin, fonts.FontAwesomeMax)
+
+	// load font
+	font := atlas.AddFontFromMemoryTTFV(fonts.FontAwesome, 13.0, mergeConfig, glyphBuilder.Build().GlyphRanges)
+	if font == 0 {
+		return curated.Errorf("font: error loading font from memory")
+	}
+
+	// load large icons
+	gopher2600IconConfig := imgui.NewFontConfig()
+	defer gopher2600IconConfig.Delete()
+	gopher2600IconConfig.SetPixelSnapH(true)
+	gopher2600IconConfig.SetGlyphOffsetY(1.0)
+
+	var largeIconBuilder imgui.GlyphRangesBuilder
+	largeIconBuilder.Add(fonts.Gopher2600IconMin, fonts.Gopher2600IconMax)
+
+	rnd.gopher2600IconsSize = 52.0
+	rnd.gopher2600Icons = atlas.AddFontFromMemoryTTFV(fonts.Gopher2600Icons, rnd.gopher2600IconsSize, gopher2600IconConfig, largeIconBuilder.Build().GlyphRanges)
+	if font == 0 {
+		return curated.Errorf("font: error loading font from memory")
+	}
+
+	// create font texture
+	image := atlas.TextureDataAlpha8()
 	gl.GenTextures(1, &rnd.fontTexture)
 	gl.BindTexture(gl.TEXTURE_2D, rnd.fontTexture)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
 	gl.PixelStorei(gl.UNPACK_ROW_LENGTH, 0)
-	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RED, int32(image.Width), int32(image.Height),
-		0, gl.RED, gl.UNSIGNED_BYTE, image.Pixels)
+	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RED, int32(image.Width), int32(image.Height), 0, gl.RED, gl.UNSIGNED_BYTE, image.Pixels)
+	atlas.SetTextureID(imgui.TextureID(rnd.fontTexture))
 
-	// Store our identifier
-	rnd.imguiIO.Fonts().SetTextureID(imgui.TextureID(rnd.fontTexture))
+	return nil
 }
 
 // getShaderCompileError returns the most recent error generated
@@ -582,8 +609,8 @@ func storeGLState() *glState {
 	return st
 }
 
-// restore previously store glState.
-func (st *glState) restore() {
+// restoreGLState previously store glState.
+func (st *glState) restoreGLState() {
 	gl.UseProgram(uint32(st.lastProgram))
 	gl.BindTexture(gl.TEXTURE_2D, uint32(st.lastTexture))
 	gl.BindSampler(0, uint32(st.lastSampler))

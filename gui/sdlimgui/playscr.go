@@ -21,6 +21,7 @@ import (
 
 	"github.com/go-gl/gl/v3.2-core/gl"
 	"github.com/inkyblackness/imgui-go/v4"
+	"github.com/jetsetilly/gopher2600/gui/sdlimgui/fonts"
 )
 
 // note that values from the lazy package will not be updated in the service
@@ -139,40 +140,58 @@ func (win *playScr) draw() {
 
 	dimen := win.img.plt.displaySize()
 	if win.controllerAlertLeft.isOpen() {
-		imgui.SetNextWindowPos(imgui.Vec2{
-			0,
-			dimen[1] - imgui.FrameHeightWithSpacing(),
-		})
-
-		imgui.PushStyleColor(imgui.StyleColorWindowBg, win.img.cols.Transparent)
-		imgui.PushStyleColor(imgui.StyleColorBorder, win.img.cols.Transparent)
-
-		imgui.BeginV("##controlleralertleft", &win.fpsOpen, imgui.WindowFlagsAlwaysAutoResize|
-			imgui.WindowFlagsNoScrollbar|imgui.WindowFlagsNoTitleBar|imgui.WindowFlagsNoDecoration)
-
-		imgui.Text(win.controllerAlertLeft.desc)
-
-		imgui.PopStyleColorV(2)
-		imgui.End()
+		win.drawControllerAlert("##controlleralertleft", win.controllerAlertLeft.desc, imgui.Vec2{0, dimen[1]}, false)
 	}
 
 	if win.controllerAlertRight.isOpen() {
-		imgui.SetNextWindowPos(imgui.Vec2{
-			dimen[0] - imguiTextWidth(len(win.controllerAlertRight.desc)),
-			dimen[1] - imgui.FrameHeightWithSpacing(),
-		})
-
-		imgui.PushStyleColor(imgui.StyleColorWindowBg, win.img.cols.Transparent)
-		imgui.PushStyleColor(imgui.StyleColorBorder, win.img.cols.Transparent)
-
-		imgui.BeginV("##controlleralertright", &win.fpsOpen, imgui.WindowFlagsAlwaysAutoResize|
-			imgui.WindowFlagsNoScrollbar|imgui.WindowFlagsNoTitleBar|imgui.WindowFlagsNoDecoration)
-
-		imgui.Text(win.controllerAlertRight.desc)
-
-		imgui.PopStyleColorV(2)
-		imgui.End()
+		win.drawControllerAlert("##controlleralertright", win.controllerAlertRight.desc, imgui.Vec2{dimen[0], dimen[1]}, true)
 	}
+}
+
+// pos should be the coordinate of the *extreme* bottom left or bottom right of
+// the playscr window. the values will be adjusted according to whether we're
+// display an icon or text.
+func (win *playScr) drawControllerAlert(id string, description string, pos imgui.Vec2, rightJustify bool) {
+	useIcon := false
+
+	switch description {
+	case "Stick":
+		useIcon = true
+		description = fmt.Sprintf("%c %s", fonts.Stick, description)
+	case "Paddle":
+		useIcon = true
+		description = fmt.Sprintf("%c %s", fonts.Paddle, description)
+	case "Keyboard":
+		useIcon = true
+		description = fmt.Sprintf("%c %s", fonts.Keyboard, description)
+	default:
+		// we don't recognise the controller so we'll just print the text
+		pos.Y -= imgui.FrameHeightWithSpacing() * 1.2
+		if rightJustify {
+			pos.X -= imguiTextWidth(len(description))
+		}
+	}
+
+	if useIcon {
+		imgui.PushFont(win.img.glsl.gopher2600Icons)
+		defer imgui.PopFont()
+		pos.Y -= win.img.glsl.gopher2600IconsSize * 1.5
+		if rightJustify {
+			pos.X -= win.img.glsl.gopher2600IconsSize * 1.5
+		}
+	}
+
+	imgui.SetNextWindowPos(pos)
+	imgui.PushStyleColor(imgui.StyleColorWindowBg, win.img.cols.Transparent)
+	imgui.PushStyleColor(imgui.StyleColorBorder, win.img.cols.Transparent)
+
+	imgui.BeginV(id, &win.fpsOpen, imgui.WindowFlagsAlwaysAutoResize|
+		imgui.WindowFlagsNoScrollbar|imgui.WindowFlagsNoTitleBar|imgui.WindowFlagsNoDecoration)
+
+	imgui.Text(description)
+
+	imgui.PopStyleColorV(2)
+	imgui.End()
 }
 
 // resize() implements the textureRenderer interface.

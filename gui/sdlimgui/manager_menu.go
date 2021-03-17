@@ -20,6 +20,7 @@ import (
 
 	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/gui"
+	"github.com/jetsetilly/gopher2600/gui/sdlimgui/fonts"
 )
 
 // the window menus grouped by type. the types are:.
@@ -133,7 +134,7 @@ func (wm *manager) drawMenu() {
 
 	// cartridge info in menubar
 	wdth := imgui.WindowWidth()
-	wdth -= rightJustText(wdth, "", false)
+	wdth -= rightJustText(wdth, string(fonts.Disk), false)
 	wdth -= rightJustText(wdth, wm.img.lz.Cart.Filename, true)
 	wdth -= rightJustText(wdth, wm.img.lz.Cart.ID, true)
 	wdth -= rightJustText(wdth, wm.img.lz.Cart.Mapping, true)

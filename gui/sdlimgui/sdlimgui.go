@@ -131,7 +131,7 @@ func NewSdlImgui(tv *television.Television) (*SdlImgui, error) {
 		return nil, curated.Errorf("sdlimgui: %v", err)
 	}
 
-	img.glsl, err = newGlsl(img.io, img)
+	img.glsl, err = newGlsl(img)
 	if err != nil {
 		return nil, curated.Errorf("sdlimgui: %v", err)
 	}

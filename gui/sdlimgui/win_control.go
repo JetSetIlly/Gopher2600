@@ -20,6 +20,7 @@ import (
 
 	"github.com/jetsetilly/gopher2600/debugger"
 	"github.com/jetsetilly/gopher2600/gui"
+	"github.com/jetsetilly/gopher2600/gui/sdlimgui/fonts"
 
 	"github.com/inkyblackness/imgui-go/v4"
 )
@@ -97,11 +98,11 @@ func (win *winControl) draw() {
 func (win *winControl) drawRunButton() {
 	runDim := imgui.Vec2{X: imguiRemainingWinWidth(), Y: imgui.FrameHeight()}
 	if win.img.state == gui.StateRunning {
-		if imguiBooleanButton(win.img.cols, false, "Halt", runDim) {
+		if imguiBooleanButton(win.img.cols, false, fmt.Sprintf("%c Halt", fonts.Halt), runDim) {
 			win.img.term.pushCommand("HALT")
 		}
 	} else {
-		if imguiBooleanButton(win.img.cols, true, "Run", runDim) {
+		if imguiBooleanButton(win.img.cols, true, fmt.Sprintf("%c Run", fonts.Run), runDim) {
 			win.img.term.pushCommand("RUN")
 		}
 	}
@@ -117,7 +118,7 @@ func (win *winControl) drawStep() {
 		// step button
 		imgui.TableNextColumn()
 
-		if imgui.Button("<##Step") {
+		if imgui.Button(fmt.Sprintf("%c ##Step", fonts.Back)) {
 			win.img.term.pushCommand("STEP BACK")
 		}
 		imgui.SameLineV(0.0, 0.0)
@@ -151,7 +152,7 @@ func (win *winControl) drawStep() {
 		imgui.TableNextRow()
 		imgui.TableNextColumn()
 
-		if imgui.Button("<##Frame") {
+		if imgui.Button(fmt.Sprintf("%c ##Frame", fonts.Back)) {
 			win.img.term.pushCommand("STEP BACK FRAME")
 		}
 		imgui.SameLineV(0.0, 0.0)
@@ -161,7 +162,7 @@ func (win *winControl) drawStep() {
 
 		imgui.TableNextColumn()
 
-		if imgui.Button("<##Scanline") {
+		if imgui.Button(fmt.Sprintf("%c ##Scanline", fonts.Back)) {
 			win.img.term.pushCommand("STEP BACK SCANLINE")
 		}
 		imgui.SameLineV(0.0, 0.0)
@@ -245,6 +246,9 @@ func (win *winControl) drawFPS() {
 }
 
 func (win *winControl) drawMouseCapture() {
+	imgui.AlignTextToFramePadding()
+	imgui.Text(string(fonts.Mouse))
+	imgui.SameLine()
 	if win.img.wm.dbgScr.isCaptured {
 		imgui.AlignTextToFramePadding()
 		imgui.Text("RMB or ESC to release mouse")
