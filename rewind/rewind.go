@@ -131,7 +131,7 @@ type Rewind struct {
 	// prevent another snapshot being taken by ExecutionState(). rarely comes
 	// into play but it prevents what would essentially be a duplicate entry
 	// being added.
-	justAddedFrame bool
+	justAddedLevelFrame bool
 
 	// the number frames since snapshot (not counting levelExecution
 	// snapshots)
@@ -183,7 +183,7 @@ func (r *Rewind) reset(level snapshotLevel) {
 	r.comparison = nil
 
 	r.newFrame = false
-	r.justAddedFrame = true
+	r.justAddedLevelFrame = true
 	r.framesSinceSnapshot = 0
 	r.boundaryNextFrame = false
 
@@ -242,15 +242,19 @@ func (r *Rewind) String() string {
 	return s.String()
 }
 
-func (r *Rewind) snapshot(level snapshotLevel) *State {
+func snapshot(vcs *hardware.VCS, level snapshotLevel) *State {
 	return &State{
 		level: level,
-		CPU:   r.vcs.CPU.Snapshot(),
-		Mem:   r.vcs.Mem.Snapshot(),
-		RIOT:  r.vcs.RIOT.Snapshot(),
-		TIA:   r.vcs.TIA.Snapshot(),
-		TV:    r.vcs.TV.Snapshot(),
+		CPU:   vcs.CPU.Snapshot(),
+		Mem:   vcs.Mem.Snapshot(),
+		RIOT:  vcs.RIOT.Snapshot(),
+		TIA:   vcs.TIA.Snapshot(),
+		TV:    vcs.TV.Snapshot(),
 	}
+}
+
+func (r *Rewind) snapshot(level snapshotLevel) *State {
+	return snapshot(r.vcs, level)
 }
 
 // Check should be called after every CPU instruction to check whether a new
@@ -260,7 +264,7 @@ func (r *Rewind) Check() {
 	r.boundaryNextFrame = r.boundaryNextFrame || r.vcs.Mem.Cart.RewindBoundary()
 
 	if !r.newFrame {
-		r.justAddedFrame = false
+		r.justAddedLevelFrame = false
 		return
 	}
 	r.newFrame = false
@@ -278,21 +282,25 @@ func (r *Rewind) Check() {
 		return
 	}
 
-	r.justAddedFrame = true
+	r.justAddedLevelFrame = true
 	r.framesSinceSnapshot = 0
 
 	r.append(r.snapshot(levelFrame))
 }
 
-// ExecutionState takes a snapshot of the emulation's ExecutionState state. It will do
-// nothing if the last call to ResolveNewFrame() resulted in a snapshot being
-// taken.
-func (r *Rewind) ExecutionState() {
-	if r.justAddedFrame {
-		return
+// RecordState takes a snapshot of the emulation's ExecutionState state. It
+// will do nothing if the last call to ResolveNewFrame() resulted in a snapshot
+// being taken.
+func (r *Rewind) RecordState() {
+	if !r.justAddedLevelFrame {
+		r.append(r.snapshot(levelExecution))
 	}
+}
 
-	r.append(r.snapshot(levelExecution))
+// GetCurrentState creates a returns an adhoc snapshot of the current state. It does
+// not add the state to the rewind history.
+func (r *Rewind) GetCurrentState() *State {
+	return r.snapshot(levelAdhoc)
 }
 
 func (r *Rewind) append(s *State) {
@@ -358,6 +366,25 @@ func (r *Rewind) plumb(idx, frame, scanline, clock int) error {
 	return nil
 }
 
+func plumb(vcs *hardware.VCS, state *State) {
+	// take another snapshot of the state before plumbing. we don't want the
+	// machine to change what we have stored in our state array (we learned
+	// that lesson the hard way :-)
+	vcs.CPU = state.CPU.Snapshot()
+	vcs.Mem = state.Mem.Snapshot()
+	vcs.RIOT = state.RIOT.Snapshot()
+	vcs.TIA = state.TIA.Snapshot()
+	vcs.CPU.Plumb(vcs.Mem)
+	vcs.Mem.Plumb()
+	vcs.RIOT.Plumb(vcs.Mem.RIOT, vcs.Mem.TIA)
+	vcs.TIA.Plumb(vcs.TV, vcs.Mem.TIA, vcs.RIOT.Ports, vcs.CPU)
+
+	// tv plumbing works a bit different to other areas because we're only
+	// recording the state of the TV not the entire TV itself. We'll use a
+	// different name for the function for this reason.
+	vcs.TV.PlumbState(state.TV.Snapshot())
+}
+
 // plumb in state supplied as the argument. catch-up loop will halt as soon as
 // possible after frame/scanline/clock is reached or surpassed
 //
@@ -370,23 +397,7 @@ func (r *Rewind) plumbState(s *State, frame, scanline, clock int) error {
 	// whether to pause TV rendering.
 	backwards := frame <= r.vcs.TV.GetState(signal.ReqFramenum)
 
-	// take another snapshot of the state before plumbing. we don't want the
-	// machine to change what we have stored in our state array (we learned
-	// that lesson the hard way :-)
-	r.vcs.CPU = s.CPU.Snapshot()
-	r.vcs.Mem = s.Mem.Snapshot()
-	r.vcs.RIOT = s.RIOT.Snapshot()
-	r.vcs.TIA = s.TIA.Snapshot()
-
-	r.vcs.CPU.Plumb(r.vcs.Mem)
-	r.vcs.Mem.Plumb()
-	r.vcs.RIOT.Plumb(r.vcs.Mem.RIOT, r.vcs.Mem.TIA)
-	r.vcs.TIA.Plumb(r.vcs.Mem.TIA, r.vcs.RIOT.Ports, r.vcs.CPU)
-
-	// tv plumbing works a bit different to other areas because we're only
-	// recording the state of the TV not the entire TV itself. We'll use a
-	// different name for the function for this reason.
-	r.vcs.TV.PlumbState(s.TV.Snapshot())
+	plumb(r.vcs, s)
 
 	// if this is a reset entry then TV must be reset
 	if s.level == levelReset {
@@ -566,8 +577,16 @@ func (r *Rewind) findFrameIndex(frame int) (idx int, fr int, last bool) {
 		}
 	}
 
-	logger.Log("rewind", "seemingly impossible failure of binary search")
+	logger.Logf("rewind", "cannot find frame %d in the rewind history", frame)
 	return e, frame, false
+}
+
+// Run VCS to the quoted state.
+func (r *Rewind) GotoState(state *State) error {
+	frame := state.TV.GetState(signal.ReqFramenum)
+	scanline := state.TV.GetState(signal.ReqScanline)
+	clock := state.TV.GetState(signal.ReqClock)
+	return r.GotoFrameCoords(frame, scanline, clock)
 }
 
 // GotoFrameCoords of current frame.

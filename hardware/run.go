@@ -27,6 +27,9 @@ const continueCheckFreq = 100
 // Run sets the emulation running as quickly as possible. continuteCheck()
 // should return false when an external event (eg. a GUI event) indicates that
 // the emulation should stop.
+//
+// Not suitable if continueCheck must run very frequently. If you need to check
+// every CPU or every video cycle then the Step() function should be preferred.
 func (vcs *VCS) Run(continueCheck func() error) error {
 	var err error
 

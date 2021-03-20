@@ -160,7 +160,7 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, clockCycle bool) error {
 			// take note of current machine state if the emulation was in a running
 			// state and is halting just now
 			if dbg.continueEmulation && inputter.IsInteractive() && !clockCycle {
-				dbg.Rewind.ExecutionState()
+				dbg.Rewind.RecordState()
 			}
 
 			// reset run until halt flag - it will be set again if the parsed
@@ -332,7 +332,7 @@ func (dbg *Debugger) contEmulation(inputter terminal.Input) error {
 		var err error
 
 		if dbg.inputLoopRestart {
-			return nil
+			return err
 		}
 
 		// format last CPU execution result for vcs step. this is in addition

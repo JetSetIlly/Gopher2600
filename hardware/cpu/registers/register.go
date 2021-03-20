@@ -23,6 +23,8 @@ import (
 type Register struct {
 	label string
 	value uint8
+
+	onLoad func(val uint8)
 }
 
 // NewRegister creates a new register of a givel size and name, and initialises
@@ -32,6 +34,11 @@ func NewRegister(val uint8, label string) Register {
 		value: val,
 		label: label,
 	}
+}
+
+// SetOnLoad sets the callback function for a load register event.
+func (r *Register) SetOnLoad(onLoad func(uint8)) {
+	r.onLoad = onLoad
 }
 
 // NewAnonRegister initialises a new register without a name.
@@ -86,6 +93,9 @@ func (r Register) IsBitV() bool {
 // Load value into register.
 func (r *Register) Load(val uint8) {
 	r.value = val
+	if r.onLoad != nil {
+		r.onLoad(val)
+	}
 }
 
 // Add value to register. Returns carry and overflow states.

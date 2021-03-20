@@ -56,10 +56,6 @@ var playerSizesBrief = []string{
 // PlayerSprite represents a moveable player sprite in the VCS graphical display.
 // The VCS has two player sprites.
 type PlayerSprite struct {
-	// we need a reference to the attached television so that we can note the
-	// reset position of the sprite
-	tv signal.TelevisionSprite
-
 	// references to some fundamental TIA properties. various combinations of
 	// these affect the latching delay when resetting the sprite
 	tia *tia
@@ -138,10 +134,9 @@ type PlayerSprite struct {
 	pixelCollision bool
 }
 
-func newPlayerSprite(label string, tv signal.TelevisionSprite, tia *tia) *PlayerSprite {
+func newPlayerSprite(label string, tia *tia) *PlayerSprite {
 	ps := &PlayerSprite{
 		label: label,
-		tv:    tv,
 		tia:   tia,
 	}
 	ps.ScanCounter.Pixel = -1
@@ -459,7 +454,7 @@ func (ps *PlayerSprite) resetPosition() {
 	// for us.
 	if (ps.tia.hsync.Count() == 16 || ps.tia.hsync.Count() == 18) && ps.tia.pclk.Phi2() {
 		if ps.tia.rev.Prefs.RESPxHBLANK {
-			hblank = !revision.HeatThreshold(ps.tv.GetState(signal.ReqScanline))
+			hblank = !revision.HeatThreshold(ps.tia.tv.GetState(signal.ReqScanline))
 		}
 	}
 
@@ -518,7 +513,7 @@ func (ps *PlayerSprite) resetPosition() {
 func (ps *PlayerSprite) _futureResetPosition() {
 	// the pixel at which the sprite has been reset, in relation to the
 	// left edge of the screen
-	ps.ResetPixel = ps.tv.GetState(signal.ReqClock)
+	ps.ResetPixel = ps.tia.tv.GetState(signal.ReqClock)
 
 	if ps.ResetPixel >= 0 {
 		// resetPixel adjusted by +1 because the tv is not yet in the correct.

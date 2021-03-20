@@ -20,6 +20,37 @@ import "fmt"
 // AddressingMode describes the method data for the instruction should be received.
 type AddressingMode int
 
+func (m AddressingMode) String() string {
+	switch m {
+	case Implied:
+		return "Implied"
+	case Immediate:
+		return "Immediate"
+	case Relative:
+		return "Relative"
+	case Absolute:
+		return "Absolute"
+	case ZeroPage:
+		return "ZeroPage"
+	case Indirect:
+		return "Indirec"
+	case IndexedIndirect:
+		return "IndexedIndirect"
+	case IndirectIndexed:
+		return "IndirectIndexed"
+	case AbsoluteIndexedX:
+		return "AbsoluteIndexedX"
+	case AbsoluteIndexedY:
+		return "AbsoluteIndexedY"
+	case ZeroPageIndexedX:
+		return "ZeroPageIndexedX"
+	case ZeroPageIndexedY:
+		return "ZeroPageIndexedY"
+	}
+
+	return "unknown addressing mode"
+}
+
 // List of supported addressing modes.
 const (
 	Implied AddressingMode = iota

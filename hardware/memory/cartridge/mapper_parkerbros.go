@@ -126,13 +126,13 @@ func (cart *parkerBros) Read(addr uint16, passive bool) (uint8, error) {
 func (cart *parkerBros) Write(addr uint16, data uint8, passive bool, poke bool) error {
 	if poke {
 		if addr >= 0x0000 && addr <= 0x03ff {
-			cart.banks[cart.state.segment[0]][addr&0x3dd] = data
+			cart.banks[cart.state.segment[0]][addr&0x3ff] = data
 		} else if addr >= 0x0400 && addr <= 0x07ff {
-			cart.banks[cart.state.segment[1]][addr&0x3dd] = data
+			cart.banks[cart.state.segment[1]][addr&0x3ff] = data
 		} else if addr >= 0x0800 && addr <= 0x0bff {
-			cart.banks[cart.state.segment[2]][addr&0x3dd] = data
+			cart.banks[cart.state.segment[2]][addr&0x3ff] = data
 		} else if addr >= 0x0c00 && addr <= 0x0fff {
-			cart.banks[cart.state.segment[3]][addr&0x3dd] = data
+			cart.banks[cart.state.segment[3]][addr&0x3ff] = data
 		}
 	}
 

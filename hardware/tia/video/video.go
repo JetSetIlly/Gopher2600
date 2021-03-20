@@ -99,6 +99,7 @@ type Video struct {
 
 // tia is a convenient packaging of TIA state that is required by the playfield/sprites.
 type tia struct {
+	tv     signal.TelevisionSprite
 	rev    *revision.TIARevision
 	pclk   *phaseclock.PhaseClock
 	hsync  *polycounter.Polycounter
@@ -123,6 +124,7 @@ func NewVideo(mem bus.ChipBus, tv signal.TelevisionSprite, rev *revision.TIARevi
 	pclk *phaseclock.PhaseClock, hsync *polycounter.Polycounter,
 	hblank *bool, hmove *hmove.Hmove) *Video {
 	tia := &tia{
+		tv:     tv,
 		rev:    rev,
 		pclk:   pclk,
 		hsync:  hsync,
@@ -134,11 +136,11 @@ func NewVideo(mem bus.ChipBus, tv signal.TelevisionSprite, rev *revision.TIARevi
 		tia:        tia,
 		Collisions: newCollisions(mem),
 		Playfield:  newPlayfield(tia),
-		Player0:    newPlayerSprite("Player 0", tv, tia),
-		Player1:    newPlayerSprite("Player 1", tv, tia),
-		Missile0:   newMissileSprite("Missile 0", tv, tia),
-		Missile1:   newMissileSprite("Missile 1", tv, tia),
-		Ball:       newBallSprite("Ball", tv, tia),
+		Player0:    newPlayerSprite("Player 0", tia),
+		Player1:    newPlayerSprite("Player 1", tia),
+		Missile0:   newMissileSprite("Missile 0", tia),
+		Missile1:   newMissileSprite("Missile 1", tia),
+		Ball:       newBallSprite("Ball", tia),
 	}
 }
 
@@ -156,11 +158,12 @@ func (vd *Video) Snapshot() *Video {
 }
 
 // Plumb ChipBus into TIA/Video components. Update pointers that refer to parent TIA.
-func (vd *Video) Plumb(mem bus.ChipBus, rev *revision.TIARevision,
+func (vd *Video) Plumb(tv signal.TelevisionSprite, mem bus.ChipBus, rev *revision.TIARevision,
 	pclk *phaseclock.PhaseClock, hsync *polycounter.Polycounter,
 	hblank *bool, hmove *hmove.Hmove) {
 	vd.Collisions.Plumb(mem)
 
+	vd.tia.tv = tv
 	vd.tia.rev = rev
 	vd.tia.pclk = pclk
 	vd.tia.hsync = hsync
@@ -632,13 +635,13 @@ func (vd *Video) UpdateCTRLPF() {
 	ctrlpf := vd.Ball.Size << 4
 
 	if vd.Playfield.Reflected {
-		ctrlpf |= 0x01
+		ctrlpf |= ReflectedMask
 	}
 	if vd.Playfield.Scoremode {
-		ctrlpf |= 0x02
+		ctrlpf |= ScoremodeMask
 	}
 	if vd.Playfield.Priority {
-		ctrlpf |= 0x04
+		ctrlpf |= PriorityMask
 	}
 
 	vd.Playfield.Ctrlpf = ctrlpf

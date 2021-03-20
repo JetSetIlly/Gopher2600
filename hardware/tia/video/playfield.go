@@ -316,11 +316,18 @@ func (pf *Playfield) setPF2(v uint8) {
 	pf.SetPF2(v)
 }
 
+// List of bitmasks for CTRLPF register.
+const (
+	PriorityMask  = 0x04
+	ScoremodeMask = 0x02
+	ReflectedMask = 0x01
+)
+
 func (pf *Playfield) SetCTRLPF(value uint8) {
 	pf.Ctrlpf = value
-	pf.Scoremode = value&0x02 == 0x02
-	pf.Priority = value&0x04 == 0x04
-	pf.Reflected = value&0x01 == 0x01
+	pf.Scoremode = value&ScoremodeMask == ScoremodeMask
+	pf.Priority = value&PriorityMask == PriorityMask
+	pf.Reflected = value&ReflectedMask == ReflectedMask
 }
 
 func (pf *Playfield) setColor(col uint8) {

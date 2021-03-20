@@ -88,6 +88,15 @@ type State struct {
 	boundaryScanline int
 }
 
+func (s *State) String() string {
+	// I would like to include the lastSignal string in this too but I'm
+	// leaving it out for now because of existing video regression entries with
+	// TV state will fail with it added.
+	//
+	// !!TODO: consider adding lastSignal information to TV state string.
+	return fmt.Sprintf("FR=%04d SL=%03d CL=%03d", s.frameNum, s.scanline, s.clock-specification.ClksHBlank)
+}
+
 // Snapshot makes a copy of the television state.
 func (s *State) Snapshot() *State {
 	n := *s
@@ -178,7 +187,7 @@ func NewTelevision(spec string) (*Television, error) {
 }
 
 func (tv *Television) String() string {
-	return fmt.Sprintf("FR=%04d SL=%03d CL=%03d", tv.state.frameNum, tv.state.scanline, tv.state.clock-specification.ClksHBlank)
+	return tv.state.String()
 }
 
 // Reset the television to an initial state.

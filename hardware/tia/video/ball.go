@@ -44,7 +44,6 @@ var ballSizesBrief = []string{
 
 // BallSprite represents the moveable ball sprite in the VCS graphical display.
 type BallSprite struct {
-	tv  signal.TelevisionSprite
 	tia *tia
 
 	// ^^^ references to other parts of the VCS ^^^
@@ -95,9 +94,8 @@ type BallSprite struct {
 	pixelCollision bool
 }
 
-func newBallSprite(label string, tv signal.TelevisionSprite, tia *tia) *BallSprite {
+func newBallSprite(label string, tia *tia) *BallSprite {
 	bs := &BallSprite{
-		tv:    tv,
 		tia:   tia,
 		label: label,
 	}
@@ -321,7 +319,7 @@ func (bs *BallSprite) _futureResetPosition() {
 
 	// the pixel at which the sprite has been reset, in relation to the
 	// left edge of the screen
-	bs.ResetPixel = bs.tv.GetState(signal.ReqClock)
+	bs.ResetPixel = bs.tia.tv.GetState(signal.ReqClock)
 
 	if bs.ResetPixel >= 0 {
 		// resetPixel adjusted by 1 because the tv is not yet in the correct

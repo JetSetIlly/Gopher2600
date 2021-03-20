@@ -16,6 +16,8 @@
 package execution
 
 import (
+	"fmt"
+
 	"github.com/jetsetilly/gopher2600/hardware/cpu/instructions"
 )
 
@@ -85,4 +87,11 @@ func (r *Result) Reset() {
 	r.CPUBug = ""
 	r.Error = ""
 	r.Final = false
+}
+
+// very rough disassembly. it should not be used in preference to the
+// disassembly package if at all possible. none-the-less it is useful for
+// development purposes.
+func (r *Result) String() string {
+	return fmt.Sprintf("%04x %s %s %04x", r.Address, r.Defn.Operator, r.Defn.AddressingMode, r.InstructionData)
 }

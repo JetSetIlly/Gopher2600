@@ -143,11 +143,12 @@ func (tia *TIA) Snapshot() *TIA {
 }
 
 // Plumb the a new ChipBus into the TIA.
-func (tia *TIA) Plumb(mem bus.ChipBus, input bus.UpdateBus, cpu *cpu.CPU) {
+func (tia *TIA) Plumb(tv signal.TelevisionTIA, mem bus.ChipBus, input bus.UpdateBus, cpu *cpu.CPU) {
+	tia.tv = tv
 	tia.mem = mem
 	tia.input = input
 	tia.rdyFlag = &cpu.RdyFlg
-	tia.Video.Plumb(tia.mem, tia.Rev, &tia.pclk, &tia.hsync, &tia.Hblank, &tia.Hmove)
+	tia.Video.Plumb(tia.tv, tia.mem, tia.Rev, &tia.pclk, &tia.hsync, &tia.Hblank, &tia.Hmove)
 }
 
 // UpdateTIA checks for side effects in the TIA sub-system.

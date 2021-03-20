@@ -49,7 +49,6 @@ var MissileSizes = []string{
 // MissileSprite represents a moveable missile sprite in the VCS graphical display.
 // The VCS has two missile sprites.
 type MissileSprite struct {
-	tv  signal.TelevisionSprite
 	tia *tia
 
 	// ^^^ references to other parts of the VCS ^^^
@@ -94,9 +93,8 @@ type MissileSprite struct {
 	pixelCollision bool
 }
 
-func newMissileSprite(label string, tv signal.TelevisionSprite, tia *tia) *MissileSprite {
+func newMissileSprite(label string, tia *tia) *MissileSprite {
 	ms := &MissileSprite{
-		tv:    tv,
 		tia:   tia,
 		label: label,
 	}
@@ -252,7 +250,7 @@ func (ms *MissileSprite) tick(resetToPlayer bool) bool {
 		ms.pclk.Reset()
 
 		// missile-to-player also resets position information
-		ms.ResetPixel = ms.tv.GetState(signal.ReqClock)
+		ms.ResetPixel = ms.tia.tv.GetState(signal.ReqClock)
 		ms.HmovedPixel = ms.ResetPixel
 	}
 
@@ -385,7 +383,7 @@ func (ms *MissileSprite) resetPosition() {
 func (ms *MissileSprite) _futureResetPosition() {
 	// the pixel at which the sprite has been reset, in relation to the
 	// left edge of the screen
-	ms.ResetPixel = ms.tv.GetState(signal.ReqClock)
+	ms.ResetPixel = ms.tia.tv.GetState(signal.ReqClock)
 
 	if ms.ResetPixel >= 0 {
 		// resetPixel adjusted by 1 because the tv is not yet in the correct
