@@ -16,10 +16,10 @@
 package supercharger
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 
+	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/paths"
 )
@@ -29,6 +29,7 @@ var biosFile = [...]string{
 	"Supercharger BIOS.bin",
 	"Supercharger.BIOS.bin",
 	"Supercharger_BIOS.bin",
+	"supercharger_bios.bin",
 }
 
 // tag string used in called to Log().
@@ -46,6 +47,11 @@ func loadBIOS(path string) ([]uint8, error) {
 			continue
 		}
 
+		// only accept 2k files
+		if len(d) != 2048 {
+			return nil, curated.Errorf("bios: file (%s) is not 2k", b)
+		}
+
 		logger.Logf(biosLogTag, "using %s (from current working directory)", b)
 		return d, nil
 	}
@@ -58,7 +64,12 @@ func loadBIOS(path string) ([]uint8, error) {
 			continue
 		}
 
-		logger.Logf(biosLogTag, "using %s", p)
+		// only accept 2k files
+		if len(d) != 2048 {
+			return nil, curated.Errorf("bios: file (%s) is not 2k", p)
+		}
+
+		logger.Logf(biosLogTag, "using %s (from the same path as the game ROM)", p)
 		return d, nil
 	}
 
@@ -74,11 +85,16 @@ func loadBIOS(path string) ([]uint8, error) {
 			continue
 		}
 
-		logger.Logf(biosLogTag, "using %s", p)
+		// only accept 2k files
+		if len(d) != 2048 {
+			return nil, curated.Errorf("bios: file (%s) is not 2k", p)
+		}
+
+		logger.Logf(biosLogTag, "using %s (from the resource path)", p)
 		return d, nil
 	}
 
-	return nil, fmt.Errorf("can't load BIOS")
+	return nil, curated.Errorf("bios: can't find any suitable file")
 }
 
 func _loadBIOS(biosFilePath string) ([]uint8, error) {
@@ -96,7 +112,7 @@ func _loadBIOS(biosFilePath string) ([]uint8, error) {
 	}
 	size := cfi.Size()
 
-	data := make([]byte, size)
+	data := make([]uint8, size)
 	_, err = f.Read(data)
 	if err != nil {
 		return nil, err
