@@ -76,13 +76,13 @@ func (win *winTIA) drawPlayfield() {
 		win.img.lz.Dbg.PushRawEvent(func() {
 			var o uint8
 			if pf.Reflected {
-				o = video.ReflectedMask
+				o = video.CTRLPFReflectedMask
 			}
 			var n uint8
 			if ref {
-				n = video.ReflectedMask
+				n = video.CTRLPFReflectedMask
 			}
-			err := win.img.lz.Dbg.DeepPoke(addresses.WriteAddress["CTRLPF"], o, n, video.ReflectedMask)
+			err := win.img.lz.Dbg.DeepPoke(addresses.WriteAddress["CTRLPF"], o, n, video.CTRLPFReflectedMask)
 			if err != nil {
 				logger.Logf("CTRLPF (reflected)", err.Error())
 			}
@@ -95,13 +95,13 @@ func (win *winTIA) drawPlayfield() {
 		win.img.lz.Dbg.PushRawEvent(func() {
 			var o uint8
 			if pf.Scoremode {
-				o = video.ScoremodeMask
+				o = video.CTRLPFScoremodeMask
 			}
 			var n uint8
 			if sm {
-				n = video.ScoremodeMask
+				n = video.CTRLPFScoremodeMask
 			}
-			err := win.img.lz.Dbg.DeepPoke(addresses.WriteAddress["CTRLPF"], o, n, video.ScoremodeMask)
+			err := win.img.lz.Dbg.DeepPoke(addresses.WriteAddress["CTRLPF"], o, n, video.CTRLPFScoremodeMask)
 			if err != nil {
 				logger.Logf("CTRLPF (scoremode)", err.Error())
 			}
@@ -114,13 +114,13 @@ func (win *winTIA) drawPlayfield() {
 		win.img.lz.Dbg.PushRawEvent(func() {
 			var o uint8
 			if pf.Priority {
-				o = video.PriorityMask
+				o = video.CTRLPFPriorityMask
 			}
 			var n uint8
 			if pri {
-				n = video.PriorityMask
+				n = video.CTRLPFPriorityMask
 			}
-			err := win.img.lz.Dbg.DeepPoke(addresses.WriteAddress["CTRLPF"], o, n, video.PriorityMask)
+			err := win.img.lz.Dbg.DeepPoke(addresses.WriteAddress["CTRLPF"], o, n, video.CTRLPFPriorityMask)
 			if err != nil {
 				logger.Logf("CTRLPF (priority)", err.Error())
 			}

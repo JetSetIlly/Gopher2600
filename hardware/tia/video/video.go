@@ -635,13 +635,13 @@ func (vd *Video) UpdateCTRLPF() {
 	ctrlpf := vd.Ball.Size << 4
 
 	if vd.Playfield.Reflected {
-		ctrlpf |= ReflectedMask
+		ctrlpf |= CTRLPFReflectedMask
 	}
 	if vd.Playfield.Scoremode {
-		ctrlpf |= ScoremodeMask
+		ctrlpf |= CTRLPFScoremodeMask
 	}
 	if vd.Playfield.Priority {
-		ctrlpf |= PriorityMask
+		ctrlpf |= CTRLPFPriorityMask
 	}
 
 	vd.Playfield.Ctrlpf = ctrlpf
