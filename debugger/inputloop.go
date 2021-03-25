@@ -160,7 +160,7 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, clockCycle bool) error {
 			// take note of current machine state if the emulation was in a running
 			// state and is halting just now
 			if dbg.continueEmulation && inputter.IsInteractive() && !clockCycle {
-				dbg.Rewind.RecordState()
+				dbg.Rewind.RecordExecutionState()
 			}
 
 			// reset run until halt flag - it will be set again if the parsed
@@ -385,7 +385,7 @@ func (dbg *Debugger) contEmulation(inputter terminal.Input) error {
 
 	// update rewind state if the last CPU instruction took place during a new
 	// frame event
-	dbg.Rewind.Check()
+	dbg.Rewind.RecordFrameState()
 
 	// check step error. note that we format and store last CPU
 	// execution result whether there was an error or not. in the case

@@ -424,7 +424,7 @@ binary file named simply, `savekey`.
 
 The Atari2600 [Pluscart](http://pluscart.firmaplus.de/pico/) is a third-party
 peripheral that gives the Atari2600 internet connectivity. `Gopher2600` will
-automatically determine when a PlusROM enable ROM is loaded.
+automatically determine when a PlusROM enabled ROM is loaded.
 
 The very first time you load a PlusROM cartridge you will be asked for a
 username. This username along with the automatically generated ID, will be used
@@ -437,8 +437,8 @@ You can change your username through the debugger, either through the PlusROM
 preferences window or through the [terminal](#debugger-terminal) with the `PLUSROM` command.
 
 `PlusROM` cartridges are [rewindable](#rewinding) but cannot be rewound
-backwards past a network event 'boundary'. This to prevent resending of already
-sent network data.
+backwards past a network event 'boundary'. This to prevent the resending of
+already sent network data.
 
 ## ARM7TDMI Emulation
 

@@ -34,9 +34,12 @@ func (dbg *Debugger) DeepPoke(addr uint16, value uint8, newValue uint8, valueMas
 	// get current state and finish off the deeppoke process by resuming the
 	// "real" emulation at that state
 	currState := dbg.Rewind.GetCurrentState()
-	defer dbg.Rewind.GotoState(currState) // ignoring error
-
 	res := currState
+
+	defer func() {
+		dbg.Rewind.RunFromState(res, currState) // ignoring error
+	}()
+
 	depth := 0
 	for depth < 4 {
 		depth++
@@ -94,8 +97,6 @@ func (dbg *Debugger) DeepPoke(addr uint16, value uint8, newValue uint8, valueMas
 				}
 			}
 			return nil
-		case instructions.ZeroPage:
-			addr = res.CPU.LastResult.InstructionData
 		case instructions.Immediate:
 			ma, area := memorymap.MapAddress(res.CPU.LastResult.Address, false)
 			if area == memorymap.Cartridge {
@@ -105,6 +106,8 @@ func (dbg *Debugger) DeepPoke(addr uint16, value uint8, newValue uint8, valueMas
 				}
 			}
 			return nil
+		case instructions.ZeroPage:
+			addr = res.CPU.LastResult.InstructionData
 		default:
 			return curated.Errorf("deep-poke: unsupported addressing mode (%s)", res.CPU.LastResult.String())
 		}

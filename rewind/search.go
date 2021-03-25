@@ -114,10 +114,10 @@ func (r *Rewind) SearchRegisterWrite(tgt *State, reg string, value uint8, valueM
 	idx, _, _ := r.findFrameIndex(ef - 1)
 	plumb(rewindVCS, r.entries[idx])
 
+	// onLoad() is called whenever a CPU register is loaded with a new value
+	match := false
 	onLoad := func(val uint8) {
-		if val&valueMask == value&valueMask {
-			matchingState = snapshot(rewindVCS, levelAdhoc)
-		}
+		match = val&valueMask == value&valueMask
 	}
 
 	switch reg {
@@ -134,6 +134,12 @@ func (r *Rewind) SearchRegisterWrite(tgt *State, reg string, value uint8, valueM
 		err = rewindVCS.Step(nil)
 		if err != nil {
 			return nil, curated.Errorf("rewind: search: %v", err)
+		}
+
+		// make snapshot of current state at CPU instruction boundary
+		if match {
+			match = false
+			matchingState = snapshot(rewindVCS, levelAdhoc)
 		}
 
 		f := rewindVCS.TV.GetState(signal.ReqFramenum)
