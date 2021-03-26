@@ -7,7 +7,7 @@ linters:
     - misspell
     - whitespace
     - unparam
-    - scopelint
+    - exportloopref
     - gocritic
     - golint
     - stylecheck
