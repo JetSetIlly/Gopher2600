@@ -354,7 +354,7 @@ func (r *Rewind) append(s *State) {
 
 // setContinuePoint sets the splice point to the supplied index. the emulation
 // will be run to the supplied frame, scanline, clock point.
-func (r *Rewind) setContinuePoint(idx, frame, scanline, clock int) error {
+func (r *Rewind) setContinuePoint(idx int, frame int, scanline int, clock int) error {
 	// current index is the index we're plumbing in. this has nothing to do
 	// with the frame number (especially important to remember if frequency is
 	// greater than 1)
@@ -593,14 +593,30 @@ func (r *Rewind) GotoState(state *State) error {
 	return r.GotoFrameCoords(frame, scanline, clock)
 }
 
+type PokeHook func(res *State) error
+
 // RunFromState will the run the VCS from one state to another state.
-func (r *Rewind) RunFromState(from *State, to *State) error {
+func (r *Rewind) RunFromState(from *State, to *State, poke PokeHook) error {
 	ff := from.TV.GetState(signal.ReqFramenum)
 	idx, _, _ := r.findFrameIndex(ff)
+
+	if poke != nil {
+		err := poke(r.entries[idx])
+		if err != nil {
+			return err
+		}
+	}
+
 	tf := to.TV.GetState(signal.ReqFramenum)
 	ts := to.TV.GetState(signal.ReqScanline)
 	tc := to.TV.GetState(signal.ReqClock)
-	return r.setContinuePoint(idx, tf, ts, tc)
+
+	err := r.setContinuePoint(idx, tf, ts, tc)
+	if err != nil {
+		return curated.Errorf("rewind: %v", err)
+	}
+
+	return nil
 }
 
 // GotoFrameCoords of current frame.

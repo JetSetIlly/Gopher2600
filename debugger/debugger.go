@@ -107,8 +107,9 @@ type Debugger struct {
 	scriptScribe script.Scribe
 
 	// the Rewind system stores and restores machine state.
-	Rewind    *rewind.Rewind
-	rewinding chan bool
+	Rewind     *rewind.Rewind
+	rewinding  chan bool
+	deepPoking chan bool
 
 	// whether the state of the emulation has changed since the last time it
 	// was checked - use HasChanged() function
@@ -207,6 +208,7 @@ func NewDebugger(tv *television.Television, scr gui.GUI, term terminal.Terminal,
 		return nil, curated.Errorf("debugger: %v", err)
 	}
 	dbg.rewinding = make(chan bool, 1)
+	dbg.deepPoking = make(chan bool, 1)
 
 	// plug TV BoundaryTrigger into CPU
 	dbg.VCS.CPU.AddBoundaryTrigger(dbg.VCS.TV)

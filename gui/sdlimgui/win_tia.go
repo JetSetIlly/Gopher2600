@@ -16,6 +16,9 @@
 package sdlimgui
 
 import (
+	"fmt"
+
+	"github.com/jetsetilly/gopher2600/gui/sdlimgui/fonts"
 	"github.com/jetsetilly/gopher2600/hardware/tia/video"
 
 	"github.com/inkyblackness/imgui-go/v4"
@@ -30,12 +33,18 @@ type winTIA struct {
 	popupPalette *popupPalette
 	strobe       int32
 
+	// the scope at which the editing of TIA value will take place
+	persistentChanges bool
+
 	// widget dimensions
 	hmoveSliderWidth            float32
 	ballSizeComboDim            imgui.Vec2
 	playerSizeAndCopiesComboDim imgui.Vec2
 	missileSizeComboDim         imgui.Vec2
 	missileCopiesComboDim       imgui.Vec2
+
+	// scope selection height
+	scopeHeight float32
 }
 
 func newWinTIA(img *SdlImgui) (window, error) {
@@ -78,6 +87,7 @@ func (win *winTIA) draw() {
 	imgui.SetNextWindowSizeV(imgui.Vec2{X: 558, Y: 201}, imgui.ConditionFirstUseEver)
 	imgui.BeginV(win.id(), &win.open, 0)
 
+	// tab-bar to switch between different "areas" of the TIA
 	imgui.BeginTabBar("")
 	if imgui.BeginTabItem("Playfield") {
 		win.drawPlayfield()
@@ -104,6 +114,22 @@ func (win *winTIA) draw() {
 		imgui.EndTabItem()
 	}
 	imgui.EndTabBar()
+
+	// persistence control
+	win.scopeHeight = imguiMeasureHeight(func() {
+		imgui.Spacing()
+		imgui.Separator()
+		imgui.Spacing()
+
+		if win.persistentChanges {
+			imgui.Text(fmt.Sprintf("%c Changes will be backtraced if possible and persist as appropriate", fonts.Persist))
+		} else {
+			imgui.Text(fmt.Sprintf("%c Changes will take effect going forward. Changes will not persist", fonts.GoingForward))
+		}
+		if imgui.IsItemClicked() {
+			win.persistentChanges = !win.persistentChanges
+		}
+	})
 
 	imgui.End()
 

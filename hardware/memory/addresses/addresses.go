@@ -133,6 +133,22 @@ var Read []string
 // writable.
 var Write []string
 
+// Not all bits in TIA graphic registers are used. The following masks can be
+// be used to keep only the relevant bits from the value that has been written
+// to the register.
+const (
+	CTRLPFPriorityMask  = 0x04
+	CTRLPFScoremodeMask = 0x02
+	CTRLPFReflectedMask = 0x01
+	REFPxMask           = 0x08
+	VDELPxMask          = 0x01
+	RESMPxMask          = 0x02
+	ENAxxMask           = 0x02
+	HMxxMask            = 0xf0
+	NUSIZxCopiesMask    = 0x07
+	NUSIZxSizeMask      = 0x03
+)
+
 // this init() function create the Read/Write arrays using the read/write maps
 // as a source.
 func init() {

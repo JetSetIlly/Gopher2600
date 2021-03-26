@@ -35,17 +35,26 @@ import (
 //
 // Returns the State at which the memory write was found.
 func (r *Rewind) SearchMemoryWrite(tgt *State, addr uint16, value uint8, valueMask uint8) (*State, error) {
+	// we'll match every instruction that writes value to the addr (applying
+	// valueMask). we'll also not the TV state whenever addr matches,
+	// regardless of value. this way we can detect whether the matching state
+	// is actually the most recent match.
+	//
+	// we only want to return a matchingState if it's the most recent addr/value match.
 	var matchingState *State
+	var mostRecentTVstate string
 
-	addr, _ = memorymap.MapAddress(addr, true)
+	// trace normalised address
+	addr, _ = memorymap.MapAddress(addr, false)
 
-	rewindTV, err := television.NewTelevision("NTSC")
+	// create a new TV and VCS to search with
+	searchTV, err := television.NewTelevision("NTSC")
 	if err != nil {
 		return nil, curated.Errorf("rewind: search: %v", err)
 	}
-	_ = rewindTV.SetFPSCap(false)
+	_ = searchTV.SetFPSCap(false)
 
-	rewindVCS, err := hardware.NewVCS(rewindTV)
+	searchVCS, err := hardware.NewVCS(searchTV)
 	if err != nil {
 		return nil, curated.Errorf("rewind: search: %v", err)
 	}
@@ -56,27 +65,35 @@ func (r *Rewind) SearchMemoryWrite(tgt *State, addr uint16, value uint8, valueMa
 	es := tgt.TV.GetState(signal.ReqScanline)
 	ec := tgt.TV.GetState(signal.ReqClock)
 
-	// find a recent state and plumb it into rewindVCS
-	idx, _, _ := r.findFrameIndex(ef - 1)
-	plumb(rewindVCS, r.entries[idx])
+	// find a recent state from the rewind history and plumb it our searchVCS
+	idx, _, _ := r.findFrameIndex(ef)
+	plumb(searchVCS, r.entries[idx])
 
+	// loop until we reach (or just surpass) the target State
 	done := false
-	for !done && rewindVCS.CPU.LastResult.Final {
-		err = rewindVCS.Step(nil)
+	for !done && searchVCS.CPU.LastResult.Final {
+		err = searchVCS.Step(nil)
 		if err != nil {
 			return nil, curated.Errorf("rewind: search: %v", err)
 		}
 
-		f := rewindVCS.TV.GetState(signal.ReqFramenum)
-		s := rewindVCS.TV.GetState(signal.ReqScanline)
-		c := rewindVCS.TV.GetState(signal.ReqClock)
-
-		if rewindVCS.Mem.LastAccessWrite && rewindVCS.Mem.LastAccessAddressMapped == addr && rewindVCS.Mem.LastAccessValue&valueMask == value&valueMask {
-			matchingState = snapshot(rewindVCS, levelAdhoc)
+		if searchVCS.Mem.LastAccessWrite && searchVCS.Mem.LastAccessAddressMapped == addr {
+			if searchVCS.Mem.LastAccessValue&valueMask == value&valueMask {
+				matchingState = snapshot(searchVCS, levelAdhoc)
+			}
+			mostRecentTVstate = searchTV.String()
 		}
 
 		// check to see if TV state exceeds the requested state
-		done = f > ef || (f == ef && s > es) || (f == ef && s == es && c >= ec)
+		sf := searchVCS.TV.GetState(signal.ReqFramenum)
+		ss := searchVCS.TV.GetState(signal.ReqScanline)
+		sc := searchVCS.TV.GetState(signal.ReqClock)
+		done = sf > ef || (sf == ef && ss > es) || (sf == ef && ss == es && sc >= ec)
+	}
+
+	// make sure the matching state is the last address match we found.
+	if matchingState != nil && mostRecentTVstate != matchingState.TV.String() {
+		return nil, curated.Errorf("rewind: false match at %04x", addr)
 	}
 
 	return matchingState, nil
@@ -91,15 +108,19 @@ func (r *Rewind) SearchMemoryWrite(tgt *State, addr uint16, value uint8, valueMa
 //
 // Returns the State at which the memory write was found.
 func (r *Rewind) SearchRegisterWrite(tgt *State, reg string, value uint8, valueMask uint8) (*State, error) {
+	// see commentary in SearchMemoryWrite(). although note that when
+	// mostRecentTVSstate is noted is different in the case of
+	// SearchRegisterWrite()
 	var matchingState *State
+	var mostRecentTVstate string
 
-	rewindTV, err := television.NewTelevision("NTSC")
+	searchTV, err := television.NewTelevision("NTSC")
 	if err != nil {
 		return nil, curated.Errorf("rewind: search: %v", err)
 	}
-	_ = rewindTV.SetFPSCap(false)
+	_ = searchTV.SetFPSCap(false)
 
-	rewindVCS, err := hardware.NewVCS(rewindTV)
+	searchVCS, err := hardware.NewVCS(searchTV)
 	if err != nil {
 		return nil, curated.Errorf("rewind: search: %v", err)
 	}
@@ -110,28 +131,31 @@ func (r *Rewind) SearchRegisterWrite(tgt *State, reg string, value uint8, valueM
 	es := tgt.TV.GetState(signal.ReqScanline)
 	ec := tgt.TV.GetState(signal.ReqClock)
 
-	// find a recent state and plumb it into rewindVCS
-	idx, _, _ := r.findFrameIndex(ef - 1)
-	plumb(rewindVCS, r.entries[idx])
+	// find a recent state and plumb it into searchVCS
+	idx, _, _ := r.findFrameIndex(ef)
+	plumb(searchVCS, r.entries[idx])
 
 	// onLoad() is called whenever a CPU register is loaded with a new value
 	match := false
 	onLoad := func(val uint8) {
 		match = val&valueMask == value&valueMask
+
+		// note TV state whenever register is loaded
+		mostRecentTVstate = searchTV.String()
 	}
 
 	switch reg {
 	case "A":
-		rewindVCS.CPU.A.SetOnLoad(onLoad)
+		searchVCS.CPU.A.SetOnLoad(onLoad)
 	case "X":
-		rewindVCS.CPU.X.SetOnLoad(onLoad)
+		searchVCS.CPU.X.SetOnLoad(onLoad)
 	case "Y":
-		rewindVCS.CPU.Y.SetOnLoad(onLoad)
+		searchVCS.CPU.Y.SetOnLoad(onLoad)
 	}
 
 	done := false
-	for !done && rewindVCS.CPU.LastResult.Final {
-		err = rewindVCS.Step(nil)
+	for !done && searchVCS.CPU.LastResult.Final {
+		err = searchVCS.Step(nil)
 		if err != nil {
 			return nil, curated.Errorf("rewind: search: %v", err)
 		}
@@ -139,15 +163,19 @@ func (r *Rewind) SearchRegisterWrite(tgt *State, reg string, value uint8, valueM
 		// make snapshot of current state at CPU instruction boundary
 		if match {
 			match = false
-			matchingState = snapshot(rewindVCS, levelAdhoc)
+			matchingState = snapshot(searchVCS, levelAdhoc)
 		}
 
-		f := rewindVCS.TV.GetState(signal.ReqFramenum)
-		s := rewindVCS.TV.GetState(signal.ReqScanline)
-		c := rewindVCS.TV.GetState(signal.ReqClock)
-
 		// check to see if TV state exceeds the requested state
-		done = f > ef || (f == ef && s > es) || (f == ef && s == es && c >= ec)
+		sf := searchVCS.TV.GetState(signal.ReqFramenum)
+		ss := searchVCS.TV.GetState(signal.ReqScanline)
+		sc := searchVCS.TV.GetState(signal.ReqClock)
+		done = sf > ef || (sf == ef && ss > es) || (sf == ef && ss == es && sc >= ec)
+	}
+
+	// make sure the matching state is the last address match we found.
+	if matchingState != nil && mostRecentTVstate != matchingState.TV.String() {
+		return nil, curated.Errorf("rewind: false match in %s", reg)
 	}
 
 	return matchingState, nil

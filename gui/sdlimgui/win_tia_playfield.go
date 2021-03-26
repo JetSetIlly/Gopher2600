@@ -21,12 +21,14 @@ import (
 
 	"github.com/jetsetilly/gopher2600/hardware/memory/addresses"
 	"github.com/jetsetilly/gopher2600/hardware/tia/video"
-	"github.com/jetsetilly/gopher2600/logger"
 
 	"github.com/inkyblackness/imgui-go/v4"
 )
 
 func (win *winTIA) drawPlayfield() {
+	imgui.BeginChildV("##playfield", imgui.Vec2{X: 0, Y: imguiRemainingWinHeight() - win.scopeHeight}, false, 0)
+	defer imgui.EndChild()
+
 	lz := win.img.lz.Playfield
 	pf := win.img.lz.Playfield.Pf
 	bs := win.img.lz.Ball.Bs
@@ -41,12 +43,14 @@ func (win *winTIA) drawPlayfield() {
 	fgCol := lz.ForegroundColor
 	if win.img.imguiSwatch(fgCol, 0.75) {
 		win.popupPalette.request(&fgCol, func() {
-			win.img.lz.Dbg.PushRawEvent(func() {
-				err := win.img.lz.Dbg.DeepPoke(addresses.WriteAddress["COLUPF"], pf.ForegroundColor, fgCol, 0xfe)
-				if err != nil {
-					logger.Logf("COLUPF", err.Error())
-				}
-			})
+			win.update(
+				func() {
+					win.img.lz.Dbg.PushDeepPoke(addresses.WriteAddress["COLUPF"], pf.ForegroundColor, fgCol, 0xfe)
+				},
+				func() {
+					pf.ForegroundColor = fgCol
+					bs.Color = fgCol
+				})
 		})
 	}
 
@@ -55,12 +59,13 @@ func (win *winTIA) drawPlayfield() {
 	bgCol := lz.BackgroundColor
 	if win.img.imguiSwatch(bgCol, 0.75) {
 		win.popupPalette.request(&bgCol, func() {
-			win.img.lz.Dbg.PushRawEvent(func() {
-				err := win.img.lz.Dbg.DeepPoke(addresses.WriteAddress["COLUBK"], pf.BackgroundColor, bgCol, 0xfe)
-				if err != nil {
-					logger.Logf("COLUBK", err.Error())
-				}
-			})
+			win.update(
+				func() {
+					win.img.lz.Dbg.PushDeepPoke(addresses.WriteAddress["COLUBK"], pf.BackgroundColor, bgCol, 0xfe)
+				},
+				func() {
+					pf.BackgroundColor = bgCol
+				})
 		})
 	}
 	imgui.EndGroup()
@@ -73,58 +78,61 @@ func (win *winTIA) drawPlayfield() {
 	imguiLabel("Reflected")
 	ref := lz.Reflected
 	if imgui.Checkbox("##reflected", &ref) {
-		win.img.lz.Dbg.PushRawEvent(func() {
-			var o uint8
-			if pf.Reflected {
-				o = video.CTRLPFReflectedMask
-			}
-			var n uint8
-			if ref {
-				n = video.CTRLPFReflectedMask
-			}
-			err := win.img.lz.Dbg.DeepPoke(addresses.WriteAddress["CTRLPF"], o, n, video.CTRLPFReflectedMask)
-			if err != nil {
-				logger.Logf("CTRLPF (reflected)", err.Error())
-			}
-		})
+		win.update(
+			func() {
+				var o uint8
+				if pf.Reflected {
+					o = addresses.CTRLPFReflectedMask
+				}
+				var n uint8
+				if ref {
+					n = addresses.CTRLPFReflectedMask
+				}
+				win.img.lz.Dbg.PushDeepPoke(addresses.WriteAddress["CTRLPF"], o, n, addresses.CTRLPFReflectedMask)
+			},
+			func() {
+				pf.Reflected = ref
+			})
 	}
 	imgui.SameLine()
 	imguiLabel("Scoremode")
 	sm := lz.Scoremode
 	if imgui.Checkbox("##scoremode", &sm) {
-		win.img.lz.Dbg.PushRawEvent(func() {
-			var o uint8
-			if pf.Scoremode {
-				o = video.CTRLPFScoremodeMask
-			}
-			var n uint8
-			if sm {
-				n = video.CTRLPFScoremodeMask
-			}
-			err := win.img.lz.Dbg.DeepPoke(addresses.WriteAddress["CTRLPF"], o, n, video.CTRLPFScoremodeMask)
-			if err != nil {
-				logger.Logf("CTRLPF (scoremode)", err.Error())
-			}
-		})
+		win.update(
+			func() {
+				var o uint8
+				if pf.Scoremode {
+					o = addresses.CTRLPFScoremodeMask
+				}
+				var n uint8
+				if sm {
+					n = addresses.CTRLPFScoremodeMask
+				}
+				win.img.lz.Dbg.PushDeepPoke(addresses.WriteAddress["CTRLPF"], o, n, addresses.CTRLPFScoremodeMask)
+			},
+			func() {
+				pf.Scoremode = sm
+			})
 	}
 	imgui.SameLine()
 	imguiLabel("Priority")
 	pri := lz.Priority
 	if imgui.Checkbox("##priority", &pri) {
-		win.img.lz.Dbg.PushRawEvent(func() {
-			var o uint8
-			if pf.Priority {
-				o = video.CTRLPFPriorityMask
-			}
-			var n uint8
-			if pri {
-				n = video.CTRLPFPriorityMask
-			}
-			err := win.img.lz.Dbg.DeepPoke(addresses.WriteAddress["CTRLPF"], o, n, video.CTRLPFPriorityMask)
-			if err != nil {
-				logger.Logf("CTRLPF (priority)", err.Error())
-			}
-		})
+		win.update(
+			func() {
+				var o uint8
+				if pf.Priority {
+					o = addresses.CTRLPFPriorityMask
+				}
+				var n uint8
+				if pri {
+					n = addresses.CTRLPFPriorityMask
+				}
+				win.img.lz.Dbg.PushDeepPoke(addresses.WriteAddress["CTRLPF"], o, n, addresses.CTRLPFPriorityMask)
+			},
+			func() {
+				pf.Priority = pri
+			})
 	}
 
 	imgui.SameLine()
@@ -133,12 +141,15 @@ func (win *winTIA) drawPlayfield() {
 	ctrlpf := fmt.Sprintf("%02x", lz.Ctrlpf)
 	if imguiHexInput("##ctrlpf", 2, &ctrlpf) {
 		if v, err := strconv.ParseUint(ctrlpf, 16, 8); err == nil {
-			win.img.lz.Dbg.PushRawEvent(func() {
-				pf.SetCTRLPF(uint8(v))
-
-				// update ball copy of CTRLPF too
-				bs.SetCTRLPF(uint8(v))
-			})
+			win.update(
+				func() {
+					win.img.lz.Dbg.PushDeepPoke(addresses.WriteAddress["CTRLPF"], pf.Ctrlpf, uint8(v), 0xff)
+				},
+				func() {
+					// update ball copy of CTRLPF too in addition to the playfield copy
+					pf.SetCTRLPF(uint8(v))
+					bs.SetCTRLPF(uint8(v))
+				})
 		}
 	}
 	imgui.EndGroup()
@@ -162,12 +173,13 @@ func (win *winTIA) drawPlayfield() {
 		}
 		if seq.rectFillTvCol(col) {
 			pf0d ^= 0x80 >> i
-			win.img.lz.Dbg.PushRawEvent(func() {
-				err := win.img.lz.Dbg.DeepPoke(addresses.WriteAddress["PF0"], pf.PF0, pf0d, 0xff)
-				if err != nil {
-					logger.Logf("PF0", err.Error())
-				}
-			})
+			win.update(
+				func() {
+					win.img.lz.Dbg.PushDeepPoke(addresses.WriteAddress["PF0"], pf.PF0, pf0d, 0xff)
+				},
+				func() {
+					pf.SetPF0(pf0d)
+				})
 		}
 		seq.sameLine()
 	}
@@ -188,12 +200,13 @@ func (win *winTIA) drawPlayfield() {
 		}
 		if seq.rectFillTvCol(col) {
 			pf1d ^= 0x80 >> i
-			win.img.lz.Dbg.PushRawEvent(func() {
-				err := win.img.lz.Dbg.DeepPoke(addresses.WriteAddress["PF1"], pf.PF1, pf1d, 0xff)
-				if err != nil {
-					logger.Logf("PF1", err.Error())
-				}
-			})
+			win.update(
+				func() {
+					win.img.lz.Dbg.PushDeepPoke(addresses.WriteAddress["PF1"], pf.PF1, pf1d, 0xff)
+				},
+				func() {
+					pf.SetPF1(pf1d)
+				})
 		}
 		seq.sameLine()
 	}
@@ -214,12 +227,13 @@ func (win *winTIA) drawPlayfield() {
 		}
 		if seq.rectFillTvCol(col) {
 			pf2d ^= 0x80 >> i
-			win.img.lz.Dbg.PushRawEvent(func() {
-				err := win.img.lz.Dbg.DeepPoke(addresses.WriteAddress["PF2"], pf.PF2, pf2d, 0xff)
-				if err != nil {
-					logger.Logf("PF2", err.Error())
-				}
-			})
+			win.update(
+				func() {
+					win.img.lz.Dbg.PushDeepPoke(addresses.WriteAddress["PF2"], pf.PF2, pf2d, 0xff)
+				},
+				func() {
+					pf.SetPF2(pf2d)
+				})
 		}
 		seq.sameLine()
 	}

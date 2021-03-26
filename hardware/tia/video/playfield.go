@@ -18,6 +18,8 @@ package video
 import (
 	"fmt"
 	"strings"
+
+	"github.com/jetsetilly/gopher2600/hardware/memory/addresses"
 )
 
 // ScreenRegion notes which part of the screen is currently being drawn.
@@ -316,18 +318,11 @@ func (pf *Playfield) setPF2(v uint8) {
 	pf.SetPF2(v)
 }
 
-// List of bitmasks for CTRLPF register.
-const (
-	CTRLPFPriorityMask  = 0x04
-	CTRLPFScoremodeMask = 0x02
-	CTRLPFReflectedMask = 0x01
-)
-
 func (pf *Playfield) SetCTRLPF(value uint8) {
 	pf.Ctrlpf = value
-	pf.Scoremode = value&CTRLPFScoremodeMask == CTRLPFScoremodeMask
-	pf.Priority = value&CTRLPFPriorityMask == CTRLPFPriorityMask
-	pf.Reflected = value&CTRLPFReflectedMask == CTRLPFReflectedMask
+	pf.Scoremode = value&addresses.CTRLPFScoremodeMask == addresses.CTRLPFScoremodeMask
+	pf.Priority = value&addresses.CTRLPFPriorityMask == addresses.CTRLPFPriorityMask
+	pf.Reflected = value&addresses.CTRLPFReflectedMask == addresses.CTRLPFReflectedMask
 }
 
 func (pf *Playfield) setColor(col uint8) {

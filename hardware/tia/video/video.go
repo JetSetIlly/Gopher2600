@@ -16,6 +16,7 @@
 package video
 
 import (
+	"github.com/jetsetilly/gopher2600/hardware/memory/addresses"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/hardware/tia/delay"
@@ -448,19 +449,19 @@ func (vd *Video) UpdateSpriteHMOVE(data bus.ChipData) bool {
 	// to a delay of two cycles
 	case "HMP0":
 		vd.writingRegister = "HMP0"
-		vd.writing.Schedule(1, data.Value&0xf0)
+		vd.writing.Schedule(1, data.Value&addresses.HMxxMask)
 	case "HMP1":
 		vd.writingRegister = "HMP1"
-		vd.writing.Schedule(1, data.Value&0xf0)
+		vd.writing.Schedule(1, data.Value&addresses.HMxxMask)
 	case "HMM0":
 		vd.writingRegister = "HMM0"
-		vd.writing.Schedule(1, data.Value&0xf0)
+		vd.writing.Schedule(1, data.Value&addresses.HMxxMask)
 	case "HMM1":
 		vd.writingRegister = "HMM1"
-		vd.writing.Schedule(1, data.Value&0xf0)
+		vd.writing.Schedule(1, data.Value&addresses.HMxxMask)
 	case "HMBL":
 		vd.writingRegister = "HMBL"
-		vd.writing.Schedule(1, data.Value&0xf0)
+		vd.writing.Schedule(1, data.Value&addresses.HMxxMask)
 	case "HMCLR":
 		vd.writingRegister = "HMCLR"
 		vd.writing.Schedule(1, 0)
@@ -572,11 +573,11 @@ func (vd *Video) UpdateSpritePixels(data bus.ChipData) bool {
 		}
 
 	case "ENAM0":
-		vd.Missile0.setEnable(data.Value&0x02 == 0x02)
+		vd.Missile0.setEnable(data.Value&addresses.ENAxxMask == addresses.ENAxxMask)
 	case "ENAM1":
-		vd.Missile1.setEnable(data.Value&0x02 == 0x02)
+		vd.Missile1.setEnable(data.Value&addresses.ENAxxMask == addresses.ENAxxMask)
 	case "ENABL":
-		vd.Ball.setEnable(data.Value&0x02 == 0x02)
+		vd.Ball.setEnable(data.Value&addresses.ENAxxMask == addresses.ENAxxMask)
 	default:
 		return true
 	}
@@ -596,17 +597,17 @@ func (vd *Video) UpdateSpriteVariations(data bus.ChipData) bool {
 		vd.Ball.SetCTRLPF(data.Value)
 		vd.Playfield.SetCTRLPF(data.Value)
 	case "VDELP0":
-		vd.Player0.SetVerticalDelay(data.Value&0x01 == 0x01)
+		vd.Player0.SetVerticalDelay(data.Value&addresses.VDELPxMask == addresses.VDELPxMask)
 	case "VDELP1":
-		vd.Player1.SetVerticalDelay(data.Value&0x01 == 0x01)
+		vd.Player1.SetVerticalDelay(data.Value&addresses.VDELPxMask == addresses.VDELPxMask)
 	case "REFP0":
-		vd.Player0.setReflection(data.Value&0x08 == 0x08)
+		vd.Player0.setReflection(data.Value&addresses.REFPxMask == addresses.REFPxMask)
 	case "REFP1":
-		vd.Player1.setReflection(data.Value&0x08 == 0x08)
+		vd.Player1.setReflection(data.Value&addresses.REFPxMask == addresses.REFPxMask)
 	case "RESMP0":
-		vd.Missile0.setResetToPlayer(data.Value&0x02 == 0x02)
+		vd.Missile0.setResetToPlayer(data.Value&addresses.RESMPxMask == addresses.RESMPxMask)
 	case "RESMP1":
-		vd.Missile1.setResetToPlayer(data.Value&0x02 == 0x02)
+		vd.Missile1.setResetToPlayer(data.Value&addresses.RESMPxMask == addresses.RESMPxMask)
 	case "NUSIZ0":
 		vd.Player0.setNUSIZ(data.Value)
 		vd.Missile0.SetNUSIZ(data.Value)
@@ -635,13 +636,13 @@ func (vd *Video) UpdateCTRLPF() {
 	ctrlpf := vd.Ball.Size << 4
 
 	if vd.Playfield.Reflected {
-		ctrlpf |= CTRLPFReflectedMask
+		ctrlpf |= addresses.CTRLPFReflectedMask
 	}
 	if vd.Playfield.Scoremode {
-		ctrlpf |= CTRLPFScoremodeMask
+		ctrlpf |= addresses.CTRLPFScoremodeMask
 	}
 	if vd.Playfield.Priority {
-		ctrlpf |= CTRLPFPriorityMask
+		ctrlpf |= addresses.CTRLPFPriorityMask
 	}
 
 	vd.Playfield.Ctrlpf = ctrlpf
@@ -660,12 +661,12 @@ func (vd *Video) UpdateNUSIZ(num int, fromMissile bool) {
 
 	if num == 0 {
 		if fromMissile {
-			vd.Missile0.Copies &= 0x07
-			vd.Missile0.Size &= 0x03
+			vd.Missile0.Copies &= addresses.NUSIZxCopiesMask
+			vd.Missile0.Size &= addresses.NUSIZxSizeMask
 			vd.Player0.SizeAndCopies = vd.Missile0.Copies
 			nusiz = vd.Missile0.Copies | vd.Missile0.Size<<4
 		} else {
-			vd.Player0.SizeAndCopies &= 0x07
+			vd.Player0.SizeAndCopies &= addresses.NUSIZxCopiesMask
 			vd.Missile0.Copies = vd.Player0.SizeAndCopies
 			nusiz = vd.Player0.SizeAndCopies | vd.Missile0.Size<<4
 		}
@@ -673,12 +674,12 @@ func (vd *Video) UpdateNUSIZ(num int, fromMissile bool) {
 		vd.Missile0.Nusiz = nusiz
 	} else {
 		if fromMissile {
-			vd.Missile1.Copies &= 0x07
-			vd.Missile1.Size &= 0x03
+			vd.Missile1.Copies &= addresses.NUSIZxCopiesMask
+			vd.Missile1.Size &= addresses.NUSIZxSizeMask
 			vd.Player1.SizeAndCopies = vd.Missile1.Copies
 			nusiz = vd.Missile1.Copies | vd.Missile1.Size<<4
 		} else {
-			vd.Player1.SizeAndCopies &= 0x07
+			vd.Player1.SizeAndCopies &= addresses.NUSIZxCopiesMask
 			vd.Missile1.Copies = vd.Player1.SizeAndCopies
 			nusiz = vd.Player1.SizeAndCopies | vd.Missile1.Size<<4
 		}
