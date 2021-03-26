@@ -54,13 +54,10 @@ type winDbgScr struct {
 	cropped     bool
 	crt         bool
 
-	// is screen currently pointed at
-	isHovered bool
-
 	// the tv screen has captured mouse input
 	isCaptured bool
 
-	// clocks and scanline equivalent position of the mouse. only updated when isHovered is true
+	// clocks and scanline equivalent position of the mouse
 	mouseClock    int
 	mouseScanline int
 
@@ -264,14 +261,13 @@ func (win *winDbgScr) draw() {
 		imgui.EndPopup()
 	}
 
-	// if mouse is hovering over the image. note that if popup menu is active
-	// then imgui.IsItemHovered() is false by definition
-	win.isHovered = imgui.IsItemHovered()
-
 	// draw tool tip
-	if win.isHovered {
+	if imgui.IsWindowHovered() {
 		win.drawReflectionTooltip(screenOrigin)
+	}
 
+	// accept mouse clicks if window is focused
+	if imgui.IsWindowFocused() {
 		// mouse click will cause the rewind goto coords to run only when the
 		// emulation is paused
 		if win.img.state == gui.StatePaused {
