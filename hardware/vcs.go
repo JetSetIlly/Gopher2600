@@ -164,6 +164,12 @@ func (vcs *VCS) Reset() error {
 		}
 	}
 
+	// reset cart after loaded PC value. this seems unnecessary but some
+	// cartridge types may switch banks on LoadPCIndirect() - those that switch
+	// on Listen() - this is an artefact of the emulation method so we need to make
+	// sure it's initialised correctly.
+	vcs.Mem.Cart.Reset()
+
 	return nil
 }
 

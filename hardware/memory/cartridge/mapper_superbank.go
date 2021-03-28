@@ -134,10 +134,9 @@ func (cart *superbank) Patch(offset int, data uint8) error {
 }
 
 // Listen implements the mapper.CartMapper interface.
-func (cart *superbank) Listen(addr uint16, _ uint8) {
-	// return with no side effect if address is not a TIA mirror and address
-	// within that mirror is too large for the size of the cartridge.
-	if addr&0x0800 != 0x0800 || addr&(cart.bankSwitchMask^0xff) != 0x0000 {
+func (cart *superbank) Listen(addr uint16, data uint8) {
+	// return with no side effect if address is not a TIA mirror
+	if addr&0x1800 != 0x0800 {
 		return
 	}
 
