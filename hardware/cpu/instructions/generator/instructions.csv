@@ -284,7 +284,8 @@
 0x6b, arr, 2, IMMEDIATE, False
 
 0x03, slo, 8, INDEXED_INDIRECT, False, RMW		# aso
-0x07, slo, 5, ZEROPAGE, False, RMW					# aso
+0x07, slo, 5, ZEROPAGE, False, RMW				# aso
+0x1b, slo, 7, ABSOLUTE_INDEXED_Y, False , RMW   # aso
 
 0x37, rla, 6, ZEROPAGE_INDEXED_X, False, RMW
 

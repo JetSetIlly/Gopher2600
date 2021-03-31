@@ -22,6 +22,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/harmony/cdf"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/harmony/dpcplus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/moviecart"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/plusrom"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/supercharger"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
@@ -250,6 +251,8 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 	case "CDF":
 		// CDF mapper defaults to version CDFJ
 		cart.mapper, err = cdf.NewCDF(0x4a, cartload.Data)
+	case "MC":
+		cart.mapper, err = moviecart.NewMoviecart(cartload.Data)
 	}
 
 	if err != nil {

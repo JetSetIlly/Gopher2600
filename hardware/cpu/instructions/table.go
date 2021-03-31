@@ -32,7 +32,7 @@ func GetDefinitions() []*Definition {
 		&Definition{OpCode: 0x18, Operator: "CLC", Bytes: 1, Cycles: 2, AddressingMode: 0, PageSensitive: false, Effect: 0, Undocumented: false},
 		&Definition{OpCode: 0x19, Operator: "ORA", Bytes: 3, Cycles: 4, AddressingMode: 9, PageSensitive: true, Effect: 0, Undocumented: false},
 		nil,
-		nil,
+		&Definition{OpCode: 0x1b, Operator: "slo", Bytes: 3, Cycles: 7, AddressingMode: 9, PageSensitive: false, Effect: 2, Undocumented: true},
 		&Definition{OpCode: 0x1c, Operator: "skw", Bytes: 3, Cycles: 4, AddressingMode: 8, PageSensitive: true, Effect: 0, Undocumented: true},
 		&Definition{OpCode: 0x1d, Operator: "ORA", Bytes: 3, Cycles: 4, AddressingMode: 8, PageSensitive: true, Effect: 0, Undocumented: false},
 		&Definition{OpCode: 0x1e, Operator: "ASL", Bytes: 3, Cycles: 7, AddressingMode: 8, PageSensitive: false, Effect: 2, Undocumented: false},
