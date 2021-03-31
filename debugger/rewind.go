@@ -20,6 +20,7 @@ package debugger
 
 import (
 	"github.com/jetsetilly/gopher2600/disassembly"
+	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
@@ -55,7 +56,7 @@ func (dbg *Debugger) CatchUpLoop(continueCheck func() bool) error {
 }
 
 // PushRewind is a special case of PushRawEvent(). It prevents too many pushed
-// Rewind.Goto*() function calls. Returns false if the rewind hasn't been
+// rewind.Goto*() function calls. Returns false if the rewind hasn't been
 // pushed. The caller should try again.
 //
 // To be used from the GUI thread.
@@ -92,6 +93,8 @@ func (dbg *Debugger) PushRewind(fn int, last bool) bool {
 	// how we push the doRewind() function depends on what kind of inputloop we
 	// are currently in
 	dbg.PushRawEventImm(func() {
+		dbg.scr.SetFeature(gui.ReqState, gui.StateRewinding)
+
 		if dbg.isClockCycleInputLoop {
 			dbg.restartInputLoop(doRewind)
 
@@ -119,8 +122,8 @@ func (dbg *Debugger) PushRewind(fn int, last bool) bool {
 	return true
 }
 
-// PushGotoCoords is a special case of PushRawEvent(). It wraps a pushed call
-// to rewind.GotoFrameCoords() in gui.ReqRewinding true/false.
+// PushGotoCoords is a special case of PushRawEvent(). It prevents too may
+// pushed rewind.GotoFrameCoords() function calls.
 //
 // To be used from the GUI thread.
 func (dbg *Debugger) PushGotoCoords(frame int, scanline int, clock int) {
@@ -137,6 +140,8 @@ func (dbg *Debugger) PushGotoCoords(frame int, scanline int, clock int) {
 	dbg.runUntilHalt = false
 
 	dbg.PushRawEventImm(func() {
+		dbg.scr.SetFeature(gui.ReqState, gui.StateRewinding)
+
 		f := func() error {
 			err := dbg.Rewind.GotoFrameCoords(frame, scanline, clock)
 			if err != nil {

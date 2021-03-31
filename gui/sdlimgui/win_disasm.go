@@ -177,7 +177,6 @@ func (win *winDisasm) draw() {
 		if !bank.NonCart {
 			win.focusOnAddr = true
 			win.selectedBank = bank.Number
-			fmt.Println(win.selectedBank)
 			if win.focusAddrIsVisible {
 				win.focusOnAddrFlash = 6
 			}
@@ -234,11 +233,13 @@ func (win *winDisasm) draw() {
 		win.updateOnPause = 5
 	case gui.StateRunning:
 		fallthrough
+	case gui.StateRewinding:
+		fallthrough
 	case gui.StateStepping:
 		win.focusOnAddr = win.followCPU
 		if win.focusOnAddr {
 			win.selectedBank = bank.Number
-			win.updateOnPause = 1
+			win.updateOnPause = 5
 		}
 	case gui.StatePaused:
 		win.focusOnAddr = win.updateOnPause > 0

@@ -39,6 +39,7 @@ const (
 	StatePaused
 	StateRunning
 	StateStepping
+	StateRewinding
 	StateEnding
 )
 

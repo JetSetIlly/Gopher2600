@@ -244,11 +244,11 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 				return err
 			}
 
+			dbg.scr.SetFeature(gui.ReqState, gui.StateRewinding)
+
 			dbg.restartInputLoop(func() error {
 				return dbg.Rewind.GotoFrameCoords(f, s, c)
 			})
-
-			dbg.scr.SetFeature(gui.ReqState, gui.StateStepping)
 
 			return nil
 		}

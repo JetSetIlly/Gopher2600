@@ -396,6 +396,7 @@ func (rnd *glsl) setOptions(textureID uint32) {
 	rnd.img.screen.crit.section.Unlock()
 	// end of critical section
 
+	// whether we show the cursor depends on the current GUI state
 	switch rnd.img.state {
 	case gui.StatePaused:
 		gl.Uniform1i(rnd.attribShowCursor, shaders.True)
@@ -407,6 +408,10 @@ func (rnd *glsl) setOptions(textureID uint32) {
 		} else {
 			gl.Uniform1i(rnd.attribShowCursor, shaders.False)
 		}
+	case gui.StateStepping:
+		gl.Uniform1i(rnd.attribShowCursor, shaders.True)
+	case gui.StateRewinding:
+		gl.Uniform1i(rnd.attribShowCursor, shaders.False)
 	}
 }
 
