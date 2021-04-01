@@ -15,6 +15,27 @@
 
 package moviecart
 
+// key addresses in the core program. data at these address or just after in
+// the case of JMP instructions, will be altered during playback.
+const (
+	addrTitleLoop          = 0xb50
+	addrRightLine          = 0x94c
+	addrLeftLine           = 0x980
+	addrPickContinue       = 0x9c2
+	addrEndLines           = 0xa80
+	addrEndLinesAudio      = 0xaa1
+	addrSetOverscanSize    = 0xaad
+	addrSetVBlankSize      = 0xac3
+	addrPickTransport      = 0xacc
+	addrTransportDirection = 0x897
+	addrTransportButtons   = 0x880
+	addrAudioBank          = 0xb80
+	addrLastAudio          = 0xacf
+)
+
+// coreData taken straight from the core_data.h file in the moviecart github
+// repository.
+
 var coreData = []byte{
 	133, 2, 185, 50, 248, 133, 27, 185, 62, 248, 133, 28, 185, 74, 248, 133,
 	27, 185, 86, 248, 133, 135, 185, 98, 248, 190, 110, 248, 132, 136, 164, 135,

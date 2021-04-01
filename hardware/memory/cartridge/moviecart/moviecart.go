@@ -23,86 +23,182 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
+// default preference values.
 const (
-	titleCycles    = 1000000
-	timeCodeHeight = 12
-	blankLineSize  = 68
+	titleCycles = 1000000
+	osdColor    = 0x9a // blue
+	osdDuration = 180
 )
 
+// size of each video field in bytes.
+const fieldSize = 2560
+
+// offsets into each part of the field (audio, color, etc.)
 const (
-	addrTitleLoop          = 0xb50
-	addrRightLine          = 0x94c
-	addrLeftLine           = 0x980
-	addrPickContinue       = 0x9c2
-	addrEndLines           = 0xa80
-	addrEndLinesAudio      = 0xaa1
-	addrSetOverscanSize    = 0xaad
-	addrSetVBlankSize      = 0xac3
-	addrPickTransport      = 0xacc
-	addrTransportDirection = 0x897
-	addrTransportButtons   = 0x880
-	addrAudioBank          = 0xb80
-	addrLastAudio          = 0xacf
+	offsetVersion      = 0
+	offsetFieldNumber  = 4
+	offsetAudioData    = 7
+	offsetGraphData    = 269
+	offsetTimecodeData = 1229
+	offsetColorData    = 1289
+	offsetEndData      = 2249
 )
 
+// levels for both volume and brightness.
 const (
-	fieldSize    = 2560
-	sramMask     = 1023
-	defaultLevel = 6
-	maxLevel     = 11
+	levelDefault = 6
 )
 
+// colours from the color stream are ajdusted accordin the brightness level.
+var brightLevels = [...]uint8{0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 15, 15, 15, 15}
+
+// volume can take 11 levels. data from the audio stream can be one of 16
+// levels, the actual value written to the VCS is looked up from the correct
+// volume array.
+var volumeLevels = [11][16]uint8{
+	/* 0.0000 */
+	{8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8},
+	/* 0.1667 */
+	{6, 6, 7, 7, 7, 7, 7, 7, 8, 8, 8, 8, 8, 8, 9, 9},
+	/* 0.3333 */
+	{5, 5, 6, 6, 6, 7, 7, 7, 8, 8, 8, 9, 9, 9, 10, 10},
+	/* 0.5000 */
+	{4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11},
+	/* 0.6667 */
+	{3, 3, 4, 5, 5, 6, 7, 7, 8, 9, 9, 10, 11, 11, 12, 13},
+	/* 0.8333 */
+	{1, 2, 3, 4, 5, 5, 6, 7, 8, 9, 10, 10, 11, 12, 13, 14},
+	/* 1.0000 */
+	{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15},
+	/* 1.3611 */
+	{0, 0, 0, 1, 3, 4, 5, 7, 8, 10, 11, 12, 14, 15, 15, 15},
+	/* 1.7778 */
+	{0, 0, 0, 0, 1, 3, 5, 7, 8, 10, 12, 14, 15, 15, 15, 15},
+	/* 2.2500 */
+	{0, 0, 0, 0, 0, 2, 4, 6, 9, 11, 13, 15, 15, 15, 15, 15},
+	/* 2.7778 */
+	{0, 0, 0, 0, 0, 1, 3, 6, 9, 12, 14, 15, 15, 15, 15, 15},
+}
+
+// the state machine moves from condition to condition processing the movie
+// stream.
+type stateMachineCondition int
+
+// list of valid state machine conditionss.
 const (
-	offsetFrameData    = 1
-	offsetAudioData    = 4
-	offsetGraphData    = 266
-	offsetTimecodeData = 1226
-	offsetColorData    = 1286
-	offsetEndData      = 2246
+	stateMachineRight stateMachineCondition = iota
+	stateMachineLeft
+	stateMachineNewField
 )
+
+const noForceColor uint8 = 0x00
+
+// the current control mode for the OSD.
+type controlMode int
+
+// list of control modes.
+const (
+	modeVolume     controlMode = 0
+	modeBrightness controlMode = 1
+	modeTime       controlMode = 2
+	modeMax        controlMode = 2
+)
+
+// a frame consists of two interlaced fields
+const numFields = 2
 
 type state struct {
+	// the state of the address pins
 	a7       bool
 	a10      bool
 	a11      bool
 	a12      bool
-	a10Count int
+	a10Count uint8
 
-	sram      []byte
+	// memory in the moviecart hardware. the core is copied to this and
+	// modified as required during movie playback.
+	sram []byte
+
+	// which page of SRAM we will be writing to
 	writePage int // 0 to 7
 
-	streamBuffer   []byte
-	streamData     int
+	// data for current field and the indexes into it
+	streamBuffer   [numFields][]byte
+	streamField    int
 	streamAudio    int
 	streamGraph    int
 	streamTimecode int
 	streamColor    int
 
+	// which chunk of the buffer to read next
+	streamChunk int
+
+	// total number of address cycles the movie has been playing for
 	totalCycles int
-	lines       int
-	frameNumber int
-	play        bool
-	state       int
-	odd         bool
-	bufferIndex bool
 
-	// volume
-	mainVolume    int
-	levelBarsOdd  int
-	levelBarsEven int
+	// how many lines remaining for the current TIA frame
+	lines int
 
-	drawTimecode  int
-	drawLevelbars int
+	// field number. a frame is made up of two fields. when playback is paused
+	// the fieldNumber will flip between two consecutive values producing one
+	// frame of two fields.
+	fieldNumber int
+	oddField    bool
 
-	forceColor int
-	forceBW    bool
+	// state machine
+	state stateMachineCondition
+
+	// is playback paused
+	paused bool
+
+	// volume of audio
+	volume int
+
+	// brightness of image
+	brightness int
+
+	// force of color or B&W
+	forceBW bool
+
+	// transport
+	directionLast transportDirection
+	buttonsLast   transportButtons
+
+	// the amount to move the stream. usually one.
+	fieldAdv int
+
+	// the mode being edited with the stick
+	controlMode controlMode
+
+	// the length of time the joystick has been help left or right
+	controlRepeat int
+
+	// the OSD is to be displayed for the remaining duration
+	osdDuration int
+
+	// what part of the osdDisplay is being shown at the current line of the field
+	osdDisplay osdDisplay
+
+	// index into the static osd data
+	osdIdx int
 }
+
+// what part of the OSD is currently being display
+type osdDisplay int
+
+const (
+	osdNone osdDisplay = iota
+	osdLabel
+	osdLevels
+	osdTime
+)
 
 func newState() *state {
 	s := &state{
-		sram: make([]byte, sramMask+1),
+		sram: make([]byte, 0x400),
 	}
-	s.streamBuffer = make([]byte, fieldSize)
+	s.streamBuffer[0] = make([]byte, fieldSize)
+	s.streamBuffer[1] = make([]byte, fieldSize)
 	return s
 }
 
@@ -114,17 +210,13 @@ func (s *state) Snapshot() *state {
 
 func (s *state) initialise() {
 	s.totalCycles = 0
-
 	copy(s.sram, coreData)
-
-	s.state = 3
-	s.play = true
-	s.odd = false
-
-	s.mainVolume = defaultLevel
-	s.levelBarsOdd = 0
-	s.levelBarsEven = 0
-
+	s.state = stateMachineNewField
+	s.paused = false
+	s.streamChunk = 0
+	s.volume = levelDefault
+	s.brightness = levelDefault
+	s.fieldAdv = 1
 	s.a10Count = 0
 }
 
@@ -133,7 +225,7 @@ type Moviecart struct {
 	description string
 
 	movieData []byte
-	banks     [][]byte
+	banks     []byte
 
 	state *state
 }
@@ -146,29 +238,28 @@ func NewMoviecart(data []byte) (mapper.CartMapper, error) {
 	}
 
 	cart.state = newState()
-	cart.banks = make([][]byte, 1)
-	cart.banks[0] = make([]byte, 4096)
+	cart.banks = make([]byte, 4096)
 
 	// put core data into bank ROM. this is so that we have something to
 	// disassemble.
 	//
 	// TODO: get rid of the banks[] array and just use the state.sram array
-	copy(cart.banks[0], coreData)
-	copy(cart.banks[0][len(coreData):], coreData)
-	copy(cart.banks[0][len(coreData)*2:], coreData)
-	copy(cart.banks[0][len(coreData)*3:], coreData)
+	copy(cart.banks, coreData)
+	copy(cart.banks[len(coreData):], coreData)
+	copy(cart.banks[len(coreData)*2:], coreData)
+	copy(cart.banks[len(coreData)*3:], coreData)
 
 	return cart, nil
 }
 
 // Mapping implements the mapper.CartMapper interface.
 func (cart *Moviecart) Mapping() string {
-	return fmt.Sprintf("Frame: %d", cart.state.frameNumber)
+	return fmt.Sprintf("Field: %d", cart.state.fieldNumber)
 }
 
 // ID implements the mapper.CartMapper interface.
 func (cart *Moviecart) ID() string {
-	return "MC"
+	return "MVC"
 }
 
 // Snapshot implements the mapper.CartMapper interface.
@@ -188,7 +279,7 @@ func (cart *Moviecart) Reset(randSrc *rand.Rand) {
 
 // Read implements the mapper.CartMapper interface.
 func (cart *Moviecart) Read(addr uint16, active bool) (data uint8, err error) {
-	return cart.state.sram[addr&sramMask], nil
+	return cart.state.sram[addr&0x3ff], nil
 }
 
 // Write implements the mapper.CartMapper interface.
@@ -223,11 +314,9 @@ func (cart *Moviecart) Patch(offset int, data uint8) error {
 // CopyBanks implements the mapper.CartMapper interface.
 func (cart *Moviecart) CopyBanks() []mapper.BankContent {
 	c := make([]mapper.BankContent, len(cart.banks))
-	for b := 0; b < len(cart.banks); b++ {
-		c[b] = mapper.BankContent{Number: b,
-			Data:    cart.banks[b],
-			Origins: []uint16{memorymap.OriginCart},
-		}
+	c[0] = mapper.BankContent{Number: 0,
+		Data:    cart.banks,
+		Origins: []uint16{memorymap.OriginCart},
 	}
 	return c
 }
@@ -254,25 +343,176 @@ func (cart *Moviecart) processAddress(addr uint16) {
 	if cart.state.totalCycles == titleCycles {
 		// stop title screen
 		cart.setWritePage(addrTitleLoop)
-		cart.writeSRAM(addrTitleLoop, 0x18)
+		cart.write8bit(addrTitleLoop, 0x18)
 	} else if cart.state.totalCycles > titleCycles {
 		cart.runStateMachine()
 	}
 }
 
+func (cart *Moviecart) updateDirection() {
+	var direction transportDirection
+	t := transportDirection(cart.state.a10Count)
+	t = ^(t & 0x1e)
+	t &= 0x1e
+	direction = t
+
+	if direction.isUp() && !cart.state.directionLast.isUp() {
+		if cart.state.controlMode == 0 {
+			cart.state.controlMode = modeMax
+		} else {
+			cart.state.controlMode--
+		}
+	} else if direction.isDown() && !cart.state.directionLast.isDown() {
+		if cart.state.controlMode == modeMax {
+			cart.state.controlMode = 0
+		} else {
+			cart.state.controlMode++
+		}
+	}
+
+	if direction.isLeft() || direction.isRight() {
+		cart.state.controlRepeat++
+		if cart.state.controlRepeat > 16 {
+			cart.state.controlRepeat = 0
+
+			switch cart.state.controlMode {
+			case modeTime:
+				cart.state.osdDuration = osdDuration
+				if direction.isLeft() {
+					cart.state.fieldAdv -= 4
+				} else if direction.isRight() {
+					cart.state.fieldAdv += 4
+				}
+			case modeVolume:
+				cart.state.osdDuration = osdDuration
+				if direction.isLeft() {
+					if cart.state.volume > 0 {
+						cart.state.volume--
+					}
+				} else if direction.isRight() {
+					if cart.state.volume < len(volumeLevels) {
+						cart.state.volume++
+					}
+				}
+			case modeBrightness:
+				cart.state.osdDuration = osdDuration
+				if direction.isLeft() {
+					if cart.state.brightness > 0 {
+						cart.state.brightness--
+					}
+				} else if direction.isRight() {
+					if cart.state.brightness < len(brightLevels) {
+						cart.state.brightness++
+					}
+				}
+			}
+		}
+
+		// if playback paused then single step frame when joystick is moveed left/right
+		if cart.state.paused {
+			if direction.isLeft() {
+				cart.state.streamChunk--
+				if cart.state.streamChunk < 0 {
+					cart.state.streamChunk = 0
+				}
+			}
+			if direction.isRight() {
+				cart.state.streamChunk++
+			}
+		}
+	} else {
+		cart.state.controlRepeat = 0
+		cart.state.fieldAdv = 1
+	}
+
+	cart.state.directionLast = direction
+}
+
+func (cart *Moviecart) updateButtons() {
+	var buttons transportButtons
+
+	t := transportButtons(cart.state.a10Count)
+	t = ^(t & 0x17)
+	t &= 0x17
+	buttons = t
+
+	// B&W switch
+	cart.state.forceBW = buttons.isBW()
+
+	// reset switch
+	if buttons.isReset() {
+		cart.state.streamChunk = 0
+		cart.state.paused = false
+		return
+	}
+
+	// pause on button release
+	if buttons.isButton() && !cart.state.buttonsLast.isButton() {
+		cart.state.paused = !cart.state.paused
+	}
+
+	cart.state.buttonsLast = buttons
+}
+
+func (cart *Moviecart) updateTransport() {
+	// alternate between direction and button servicing
+	if cart.state.streamField == 1 {
+		cart.updateDirection()
+	} else {
+		cart.updateButtons()
+	}
+
+	// we're done with a10 count now so reset it
+	cart.state.a10Count = 0
+
+	// move movie stream
+	if !cart.state.paused {
+		cart.state.streamChunk += cart.state.fieldAdv
+		if cart.state.streamChunk < 0 {
+			cart.state.streamChunk = 0
+		}
+	}
+}
+
 func (cart *Moviecart) runStateMachine() {
 	switch cart.state.state {
-	case 1:
+	case stateMachineRight:
 		if !cart.state.a7 {
 			break // switch
 		}
 
-		// TODO: draw timecode and levelbars
+		if cart.state.osdDuration > 0 {
+			switch cart.state.controlMode {
+			case modeTime:
+				if cart.state.lines == 11 {
+					cart.state.osdDuration--
+					cart.state.osdDisplay = osdTime
+					cart.state.osdIdx = offsetTimecodeData
+				}
+
+			default:
+				if cart.state.lines == 21 {
+					cart.state.osdDuration--
+					cart.state.osdDisplay = osdLabel
+					cart.state.osdIdx = 0
+				}
+
+				if cart.state.lines == 7 {
+					cart.state.osdDisplay = osdLevels
+					switch cart.state.controlMode {
+					case modeBrightness:
+						cart.state.osdIdx = cart.state.brightness * 40
+					case modeVolume:
+						cart.state.osdIdx = cart.state.volume * 40
+					}
+				}
+			}
+		}
 
 		cart.fillAddrRightLine()
 		cart.state.lines--
-		cart.state.state = 2
-	case 2:
+		cart.state.state = stateMachineLeft
+	case stateMachineLeft:
 		if cart.state.a7 {
 			break // switch
 		}
@@ -280,29 +520,30 @@ func (cart *Moviecart) runStateMachine() {
 		if cart.state.lines >= 1 {
 			cart.fillAddrLeftLine(true)
 			cart.state.lines--
-			cart.state.state = 1
+			cart.state.state = stateMachineRight
 		} else {
 			cart.fillAddrLeftLine(false)
 			cart.fillAddrEndLines()
-
-			// TODO: update transport
-
-			// frameNumber advancement should be in update transport where the
-			// playback speed can be controlled
-			cart.state.frameNumber++
-
 			cart.fillAddrBlankLines()
-			cart.state.state = 3
+
+			// swap stream indexes
+			cart.state.streamField++
+			if cart.state.streamField >= numFields {
+				cart.state.streamField = 0
+			}
+
+			cart.updateTransport()
+			cart.state.state = stateMachineNewField
 		}
-	case 3:
+	case stateMachineNewField:
 		if !cart.state.a7 {
 			break // switch
 		}
 
 		cart.readField()
-		cart.state.forceColor = 0
 		cart.state.lines = 191
-		cart.state.state = 1
+		cart.state.state = stateMachineRight
+		cart.state.osdDisplay = osdNone
 	}
 }
 
@@ -337,11 +578,9 @@ func (cart *Moviecart) fillAddrLeftLine(again bool) {
 	cart.writeAudio(addrLeftLine + 57)
 
 	if again {
-		cart.writeSRAM((addrPickContinue + 1), addrRightLine&0xff)
-		cart.writeSRAM((addrPickContinue + 2), (addrRightLine>>8)|0x10)
+		cart.write16bit(addrPickContinue+1, addrRightLine)
 	} else {
-		cart.writeSRAM((addrPickContinue + 1), addrEndLines&0xff)
-		cart.writeSRAM((addrPickContinue + 2), (addrEndLines>>8)|0x10)
+		cart.write16bit(addrPickContinue+1, addrEndLines)
 	}
 }
 
@@ -350,32 +589,29 @@ func (cart *Moviecart) fillAddrEndLines() {
 
 	cart.writeAudio(addrEndLinesAudio + 1)
 
-	if cart.state.odd {
-		cart.writeSRAM((addrSetOverscanSize + 1), 28)
-		cart.writeSRAM((addrSetVBlankSize + 1), 36)
-		cart.writeSRAM((addrPickTransport + 1), addrTransportDirection&0xff)
-		cart.writeSRAM((addrPickTransport + 2), (addrTransportDirection>>8)|0x10)
+	// different details for the end kernel every other frame
+	if cart.state.oddField {
+		cart.write8bit(addrSetOverscanSize+1, 28)
+		cart.write8bit(addrSetVBlankSize+1, 36)
 	} else {
-		cart.writeSRAM((addrSetOverscanSize + 1), 29)
-		cart.writeSRAM((addrSetVBlankSize + 1), 37)
-		cart.writeSRAM((addrPickTransport + 1), addrTransportButtons&0xff)
-		cart.writeSRAM((addrPickTransport + 2), (addrTransportButtons>>8)|0x10)
+		cart.write8bit(addrSetOverscanSize+1, 29)
+		cart.write8bit(addrSetVBlankSize+1, 37)
+	}
+
+	if cart.state.streamField == 0 {
+		cart.write16bit(addrPickTransport+1, addrTransportDirection)
+	} else {
+		cart.write16bit(addrPickTransport+1, addrTransportButtons)
 	}
 }
 
 func (cart *Moviecart) fillAddrBlankLines() {
-	// version number
-	cart.state.streamData++
-
-	// frame number
-	cart.state.streamData++
-	cart.state.streamData++
-	cart.state.odd = cart.state.streamBuffer[cart.state.streamData]&0x01 == 0x01
-	cart.state.streamData++
-
 	cart.setWritePage(addrAudioBank)
 
-	if cart.state.odd {
+	const blankLineSize = 68
+
+	// slightly different number of trailing blank line every other frame
+	if cart.state.oddField {
 		for i := uint16(0); i < blankLineSize; i++ {
 			cart.writeAudio(addrAudioBank + i)
 		}
@@ -390,48 +626,165 @@ func (cart *Moviecart) fillAddrBlankLines() {
 }
 
 func (cart *Moviecart) writeAudio(addr uint16) {
-	b := cart.state.streamBuffer[cart.state.streamAudio]
-	// TODO: adjust volume
+	b := cart.state.streamBuffer[cart.state.streamField][cart.state.streamAudio]
 	cart.state.streamAudio++
-	cart.writeSRAM(addr, b)
+	b = volumeLevels[cart.state.volume][b]
+
+	if cart.state.paused {
+		cart.write8bit(addr, 0)
+	} else {
+		cart.write8bit(addr, b)
+	}
 }
 
 func (cart *Moviecart) writeGraph(addr uint16) {
-	b := cart.state.streamBuffer[cart.state.streamGraph]
-	cart.state.streamGraph++
-	cart.writeSRAM(addr, b)
+	var b byte
+
+	// check if we need to draw OSD using stats graphics data
+	switch cart.state.osdDisplay {
+	case osdTime:
+		if cart.state.osdIdx < offsetColorData {
+			b = cart.state.streamBuffer[cart.state.streamField][cart.state.osdIdx]
+			cart.state.osdIdx++
+		}
+	case osdLevels:
+		if cart.state.osdIdx < levelBarsLen {
+			if cart.state.oddField {
+				b = levelBarsOddData[cart.state.osdIdx]
+			} else {
+				b = levelBarsEvenData[cart.state.osdIdx]
+			}
+			cart.state.osdIdx++
+		}
+	case osdLabel:
+		switch cart.state.controlMode {
+		case modeBrightness:
+			if cart.state.osdIdx < brightLabelLen {
+				if cart.state.oddField {
+					b = brightLabelOdd[cart.state.osdIdx]
+				} else {
+					b = brightLabelEven[cart.state.osdIdx]
+				}
+				cart.state.osdIdx++
+			}
+
+		case modeVolume:
+			if cart.state.osdIdx < volumeLabelLen {
+				if cart.state.oddField {
+					b = volumeLabelOdd[cart.state.osdIdx]
+				} else {
+					b = volumeLabelEven[cart.state.osdIdx]
+				}
+				cart.state.osdIdx++
+			}
+		}
+	case osdNone:
+		// use graphics from current field
+		b = cart.state.streamBuffer[cart.state.streamField][cart.state.streamGraph]
+		cart.state.streamGraph++
+	}
+
+	cart.write8bit(addr, b)
 }
 
 func (cart *Moviecart) writeColor(addr uint16) {
-	b := cart.state.streamBuffer[cart.state.streamColor]
+	b := cart.state.streamBuffer[cart.state.streamField][cart.state.streamColor]
 	cart.state.streamColor++
-	// TODO: brightness and force color and force B&W
-	cart.writeSRAM(addr, b)
-}
 
-func (cart *Moviecart) readField() {
-	dataOffset := cart.state.frameNumber * (8 * 512)
+	// adjust brightness
+	brightIdx := int(b & 0x0f)
+	brightIdx += cart.state.brightness
+	if brightIdx >= len(brightLevels) {
+		brightIdx = len(brightLevels) - 1
+	}
+	b = b&0xf0 | brightLevels[brightIdx]
 
-	// loop frames (not in the original code)
-	if dataOffset > len(cart.movieData) || dataOffset+fieldSize > len(cart.movieData) {
-		dataOffset = 0
+	// forcing a particular color means we've been drawing pixels from a timecode
+	// or OSD label or level meter.
+	if cart.state.osdDisplay != osdNone {
+		b = osdColor
 	}
 
-	copy(cart.state.streamBuffer, cart.movieData[dataOffset:dataOffset+len(cart.state.streamBuffer)])
+	// best effort conversion of color to B&W
+	if cart.state.forceBW {
+		b &= 0x0f
+	}
 
-	cart.state.streamData = 0
-	cart.state.streamAudio = offsetAudioData
-	cart.state.streamGraph = offsetGraphData
-	cart.state.streamTimecode = offsetTimecodeData
-	cart.state.streamColor = offsetColorData
+	cart.write8bit(addr, b)
 }
 
+const chunkSize = 8 * 512
+
+func (cart *Moviecart) readField() {
+	// reset stream indexes
+	defer func() {
+		cart.state.streamAudio = offsetAudioData
+		cart.state.streamGraph = offsetGraphData
+		cart.state.streamTimecode = offsetTimecodeData
+		cart.state.streamColor = offsetColorData
+	}()
+
+	// do not read more data if playback is paused or this is the first stream
+	// chunk - the second part of the condition handles the condition when the
+	// user has searched back to the beginning of the movie and is holding the
+	// stick left and trying to go back more. in that instance the movie is
+	// essentially paused.
+	if !cart.state.paused && cart.state.streamChunk > 0 {
+		dataOffset := cart.state.streamChunk * chunkSize
+
+		// special handling for end of stream. in these instances we want to
+		// output a black screen and we still want to alternate the oddField
+		// value
+		if dataOffset > len(cart.movieData) || dataOffset+fieldSize > len(cart.movieData) {
+			cart.state.streamChunk = len(cart.movieData) / chunkSize
+			blank := make([]byte, fieldSize)
+			copy(cart.state.streamBuffer[cart.state.streamField], blank)
+			cart.state.oddField = !cart.state.oddField
+
+			// return immediately. stream indexes are reset in the deferred function
+			return
+		} else {
+			copy(cart.state.streamBuffer[cart.state.streamField], cart.movieData[dataOffset:dataOffset+fieldSize])
+		}
+	}
+
+	// frame number and odd parity check. we recalculate these every field
+	// regardless of whether we've read new data in.
+	cart.state.fieldNumber = int(cart.state.streamBuffer[cart.state.streamField][offsetFieldNumber]) << 16
+	cart.state.fieldNumber |= int(cart.state.streamBuffer[cart.state.streamField][offsetFieldNumber+1]) << 8
+	cart.state.fieldNumber |= int(cart.state.streamBuffer[cart.state.streamField][offsetFieldNumber+2])
+	cart.state.oddField = cart.state.fieldNumber&0x01 == 0x01
+}
+
+// the address used when writing to SRAM is made up of the writePage and the lo
+// bits specified when calling write8bit() or write16bit()
+//
+// for a 16 bit value, the X bits are unused, P bits is the writePage and L
+// bits the lo value.
+//
+//   XXXXXX PPP LLLLLLL
+//          \_________/
+//              |
+//          0 - 1023 (maximum address in SRAM)
+//
+// for convenience the write page is taken from a complete reference address.
 func (cart *Moviecart) setWritePage(addr uint16) {
 	cart.state.writePage = int(addr>>7) & 0x07
 }
 
-// lo is lower 7 bits of SRAM address
-func (cart *Moviecart) writeSRAM(lo uint16, data uint8) {
+// write 8bits of data to SRAM. the address in sram is made up of the current
+// writePage value and the lo argument, which will for the lower 7bits of the
+// address.
+func (cart *Moviecart) write8bit(lo uint16, data uint8) {
 	addr := uint16(cart.state.writePage<<7) | (lo & 0x7f)
-	cart.state.sram[addr&sramMask] = data
+	cart.state.sram[addr&0x3ff] = data
+}
+
+// write 16bits of data to SRAM. the address in sram is made up of the current
+// writePage value and the lo argument, which will for the lower 7bits of the
+// address.
+func (cart *Moviecart) write16bit(lo uint16, data uint16) {
+	addr := uint16(cart.state.writePage<<7) | (lo & 0x7f)
+	cart.state.sram[addr&0x3ff] = uint8(data & 0xff)
+	cart.state.sram[(addr+1)&0x3ff] = uint8(data>>8) | 0x10
 }
