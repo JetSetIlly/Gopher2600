@@ -208,6 +208,9 @@ func (cl *Loader) Load() error {
 		fallthrough
 
 	case "":
+		fallthrough
+
+	default:
 		f, err := os.Open(cl.Filename)
 		if err != nil {
 			return curated.Errorf("cartridgeloader: %v", err)
@@ -227,9 +230,6 @@ func (cl *Loader) Load() error {
 		if err != nil {
 			return curated.Errorf("cartridgeloader: %v", err)
 		}
-
-	default:
-		return curated.Errorf("cartridgeloader: %v", fmt.Sprintf("unsupported URL scheme (%s)", scheme))
 	}
 
 	// generate hash
