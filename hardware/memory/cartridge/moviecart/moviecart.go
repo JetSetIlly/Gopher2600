@@ -324,6 +324,8 @@ func (cart *Moviecart) Patch(offset int, data uint8) error {
 
 // CopyBanks implements the mapper.CartMapper interface.
 func (cart *Moviecart) CopyBanks() []mapper.BankContent {
+	// note that as it is, this will be a copy of the core program without any
+	// of the updates that happen as a result of playing a movie
 	c := make([]mapper.BankContent, len(cart.banks))
 	c[0] = mapper.BankContent{Number: 0,
 		Data:    cart.banks,

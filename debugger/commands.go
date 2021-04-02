@@ -244,7 +244,8 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 				return err
 			}
 
-			dbg.scr.SetFeature(gui.ReqState, gui.StateRewinding)
+			// set gui mode here because we won't have a chance to set it in the input loop
+			dbg.scr.SetFeature(gui.ReqState, gui.StateStepping)
 
 			dbg.restartInputLoop(func() error {
 				return dbg.Rewind.GotoFrameCoords(f, s, c)

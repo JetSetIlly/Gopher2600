@@ -244,9 +244,10 @@ func (win *winDisasm) draw() {
 	case gui.StatePaused:
 		win.focusOnAddr = win.updateOnPause > 0
 		if win.updateOnPause > 0 {
+			bank := win.img.lz.Cart.CurrBank.Number
 			go func() {
 				<-win.img.lz.RefreshPulse
-				win.selectedBankRefresh <- win.img.lz.Cart.CurrBank.Number
+				win.selectedBankRefresh <- bank
 			}()
 			win.updateOnPause--
 		}

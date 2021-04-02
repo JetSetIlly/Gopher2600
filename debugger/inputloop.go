@@ -196,8 +196,13 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, clockCycle bool) error {
 
 			// unpause emulation if we're continuing emulation
 			if dbg.runUntilHalt {
-				// unpause TV/GUI if there are no step traps. unpausing a TV/GUI when
-				// stepping by scanline, for example, looks ugly
+				// runUntilHalt is set to true when stepping by more than a
+				// clock (ie. by scanline of frame) but in those cases we want
+				// to set gui state to StateStepping and not StateRunning.
+				//
+				// Setting to StateRunning may have different graphical
+				// side-effects which would look ugly when we're only in fact
+				// stepping.
 				if dbg.stepTraps.isEmpty() {
 					err = dbg.tv.Pause(false)
 					if err != nil {
@@ -208,6 +213,11 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, clockCycle bool) error {
 						if err != nil {
 							return err
 						}
+					}
+				} else {
+					err = dbg.scr.SetFeature(gui.ReqState, gui.StateStepping)
+					if err != nil {
+						return err
 					}
 				}
 
