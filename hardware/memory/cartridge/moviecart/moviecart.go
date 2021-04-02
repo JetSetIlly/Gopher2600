@@ -781,6 +781,14 @@ func (cart *Moviecart) readField() {
 			if err != nil {
 				logger.Logf("MVC", "error reading field: %v", err)
 			}
+
+			// version string check
+			if cart.state.streamBuffer[fld][0] != 'M' ||
+				cart.state.streamBuffer[fld][1] != 'V' ||
+				cart.state.streamBuffer[fld][2] != 'C' ||
+				cart.state.streamBuffer[fld][3] != 0x00 {
+				logger.Logf("MVC", "unrecognised version string in chunk %d", cart.state.streamChunk)
+			}
 		}
 
 		cart.state.pauseStep = 0
