@@ -155,6 +155,8 @@ type state struct {
 	// state machine
 	state stateMachineCondition
 
+	justReset bool
+
 	// is playback paused. pauseStep is used to allow frame-by-frame stepping.
 	paused    bool
 	pauseStep int
@@ -226,6 +228,8 @@ func (s *state) initialise() {
 	s.brightness = levelDefault
 	s.fieldAdv = 1
 	s.a10Count = 0
+	s.controlMode = modeMax
+	s.justReset = true
 }
 
 type Moviecart struct {
@@ -371,13 +375,21 @@ func (cart *Moviecart) updateDirection() {
 	t &= 0x1e
 	direction = t
 
+	if cart.state.justReset {
+		cart.state.directionLast = direction
+		cart.state.justReset = false
+		return
+	}
+
 	if direction.isUp() && !cart.state.directionLast.isUp() {
+		cart.state.osdDuration = osdDuration
 		if cart.state.controlMode == 0 {
 			cart.state.controlMode = modeMax
 		} else {
 			cart.state.controlMode--
 		}
 	} else if direction.isDown() && !cart.state.directionLast.isDown() {
+		cart.state.osdDuration = osdDuration
 		if cart.state.controlMode == modeMax {
 			cart.state.controlMode = 0
 		} else {
@@ -386,48 +398,63 @@ func (cart *Moviecart) updateDirection() {
 	}
 
 	if direction.isLeft() || direction.isRight() {
-		if cart.state.paused {
-			// allow frame by frame stepping if playback is paused.
-			if direction.isLeft() && !cart.state.directionLast.isLeft() {
-				cart.state.pauseStep = -1
-			} else if direction.isRight() && !cart.state.directionLast.isRight() {
-				cart.state.pauseStep = 1
-			}
-		} else {
-			cart.state.controlRepeat++
-			if cart.state.controlRepeat > 16 {
-				cart.state.controlRepeat = 0
+		cart.state.controlRepeat++
+		if cart.state.controlRepeat > 16 {
+			cart.state.controlRepeat = 0
 
-				switch cart.state.controlMode {
-				case modeTime:
-					cart.state.osdDuration = osdDuration
+			switch cart.state.controlMode {
+			case modeTime:
+				cart.state.osdDuration = osdDuration
+				if cart.state.paused {
+					if direction.isLeft() {
+						cart.state.pauseStep = -1
+					} else if direction.isRight() {
+						cart.state.pauseStep = 1
+					}
+				} else {
 					if direction.isLeft() {
 						cart.state.fieldAdv -= 4
 					} else if direction.isRight() {
 						cart.state.fieldAdv += 4
 					}
-				case modeVolume:
-					cart.state.osdDuration = osdDuration
-					if direction.isLeft() {
-						if cart.state.volume > 0 {
-							cart.state.volume--
-						}
-					} else if direction.isRight() {
-						if cart.state.volume < len(volumeLevels) {
-							cart.state.volume++
-						}
+				}
+			case modeVolume:
+				cart.state.osdDuration = osdDuration
+				if direction.isLeft() {
+					if cart.state.volume > 0 {
+						cart.state.volume--
 					}
-				case modeBrightness:
-					cart.state.osdDuration = osdDuration
-					if direction.isLeft() {
-						if cart.state.brightness > 0 {
-							cart.state.brightness--
-						}
-					} else if direction.isRight() {
-						if cart.state.brightness < len(brightLevels) {
-							cart.state.brightness++
-						}
+				} else if direction.isRight() {
+					if cart.state.volume < len(volumeLevels) {
+						cart.state.volume++
 					}
+				}
+			case modeBrightness:
+				cart.state.osdDuration = osdDuration
+				if direction.isLeft() {
+					if cart.state.brightness > 0 {
+						cart.state.brightness--
+					}
+				} else if direction.isRight() {
+					if cart.state.brightness < len(brightLevels) {
+						cart.state.brightness++
+					}
+				}
+			}
+		} else if cart.state.paused {
+			if direction.isLeft() {
+				if !cart.state.directionLast.isLeft() {
+					cart.state.osdDuration = osdDuration
+					cart.state.pauseStep = -1
+				} else {
+					cart.state.pauseStep = 0
+				}
+			} else if direction.isRight() {
+				if !cart.state.directionLast.isRight() {
+					cart.state.osdDuration = osdDuration
+					cart.state.pauseStep = 1
+				} else {
+					cart.state.pauseStep = 0
 				}
 			}
 		}
@@ -435,6 +462,7 @@ func (cart *Moviecart) updateDirection() {
 	} else {
 		cart.state.controlRepeat = 0
 		cart.state.fieldAdv = 1
+		cart.state.pauseStep = 0
 	}
 
 	cart.state.directionLast = direction
@@ -790,8 +818,6 @@ func (cart *Moviecart) readField() {
 				logger.Logf("MVC", "unrecognised version string in chunk %d", cart.state.streamChunk)
 			}
 		}
-
-		cart.state.pauseStep = 0
 	}
 
 	// frame number and odd parity check. we recalculate these every field
