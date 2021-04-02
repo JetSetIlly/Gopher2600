@@ -19,8 +19,11 @@ import (
 	"fmt"
 	"math/rand"
 
+	"github.com/jetsetilly/gopher2600/cartridgeloader"
+	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
+	"github.com/jetsetilly/gopher2600/logger"
 )
 
 // default preference values.
@@ -224,17 +227,25 @@ type Moviecart struct {
 	mappingID   string
 	description string
 
-	movieData []byte
-	banks     []byte
+	loader    cartridgeloader.Streamer
+	numChunks int
+
+	banks []byte
 
 	state *state
 }
 
-func NewMoviecart(data []byte) (mapper.CartMapper, error) {
+func NewMoviecart(loader cartridgeloader.Streamer) (mapper.CartMapper, error) {
 	cart := &Moviecart{
+		loader:      loader,
 		mappingID:   "MC",
 		description: "Moviecart",
-		movieData:   data,
+	}
+
+	var err error
+	cart.numChunks, err = loader.NumChunks(fieldSize)
+	if err != nil {
+		return nil, curated.Errorf("MVC: %v", err)
 	}
 
 	cart.state = newState()
@@ -468,8 +479,13 @@ func (cart *Moviecart) updateTransport() {
 	// move movie stream
 	if !cart.state.paused {
 		cart.state.streamChunk += cart.state.fieldAdv
+
+		// bounds check for stream chunk
 		if cart.state.streamChunk < 0 {
 			cart.state.streamChunk = 0
+		}
+		if cart.state.streamChunk > cart.numChunks {
+			cart.state.streamChunk = cart.numChunks
 		}
 	}
 }
@@ -731,20 +747,9 @@ func (cart *Moviecart) readField() {
 	// essentially paused.
 	if !cart.state.paused && cart.state.streamChunk > 0 {
 		dataOffset := cart.state.streamChunk * chunkSize
-
-		// special handling for end of stream. in these instances we want to
-		// output a black screen and we still want to alternate the oddField
-		// value
-		if dataOffset > len(cart.movieData) || dataOffset+fieldSize > len(cart.movieData) {
-			cart.state.streamChunk = len(cart.movieData) / chunkSize
-			blank := make([]byte, fieldSize)
-			copy(cart.state.streamBuffer[cart.state.streamField], blank)
-			cart.state.oddField = !cart.state.oddField
-
-			// return immediately. stream indexes are reset in the deferred function
-			return
-		} else {
-			copy(cart.state.streamBuffer[cart.state.streamField], cart.movieData[dataOffset:dataOffset+fieldSize])
+		err := cart.loader.Stream(int64(dataOffset), cart.state.streamBuffer[cart.state.streamField])
+		if err != nil {
+			logger.Logf("MVC", "error reading field: %v", err)
 		}
 	}
 

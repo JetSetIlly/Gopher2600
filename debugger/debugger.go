@@ -53,6 +53,10 @@ type Debugger struct {
 	VCS    *hardware.VCS
 	Disasm *disassembly.Disassembly
 
+	// the last loader to be used. we keep a reference to it so we can make
+	// sure Close() is called on end
+	loader *cartridgeloader.Loader
+
 	// the bank and formatted result of the last step (cpu or video)
 	lastBank   mapper.BankInfo
 	lastResult *disassembly.Entry
@@ -318,6 +322,14 @@ func (dbg *Debugger) Start(initScript string, cartload cartridgeloader.Loader) e
 		}
 	}
 
+	// make sure any cartridge loader has been finished with
+	if dbg.loader != nil {
+		err = dbg.loader.Close()
+		if err != nil {
+			return curated.Errorf("debugger: %v", err)
+		}
+	}
+
 	return nil
 }
 
@@ -358,6 +370,15 @@ func (dbg *Debugger) restartInputLoop(onRestart func() error) {
 // this is the glue that hold the cartridge and disassembly packages together.
 // especially important is the repointing of the symbols table in the instance of dbgmem.
 func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) error {
+	// close any existing loader before continuing
+	if dbg.loader != nil {
+		err := dbg.loader.Close()
+		if err != nil {
+			return err
+		}
+	}
+	dbg.loader = &cartload
+
 	// set OnLoaded function for specific cartridge formats
 	cartload.OnLoaded = func(cart mapper.CartMapper) error {
 		if _, ok := cart.(*supercharger.Supercharger); ok {

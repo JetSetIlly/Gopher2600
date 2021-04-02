@@ -252,7 +252,7 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 		// CDF mapper defaults to version CDFJ
 		cart.mapper, err = cdf.NewCDF(0x4a, cartload.Data)
 	case "MVC":
-		cart.mapper, err = moviecart.NewMoviecart(cartload.Data)
+		cart.mapper, err = moviecart.NewMoviecart(cartload)
 	}
 
 	if err != nil {

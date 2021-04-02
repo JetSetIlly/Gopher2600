@@ -298,6 +298,7 @@ func play(md *modalflag.Modes, sync *mainSync) error {
 		return fmt.Errorf("2600 cartridge required for %s mode", md)
 	case 1:
 		cartload := cartridgeloader.NewLoader(md.GetArg(0), *mapping)
+		defer cartload.Close()
 
 		tv, err := television.NewTelevision(*spec)
 		if err != nil {
@@ -487,9 +488,8 @@ func debug(md *modalflag.Modes, sync *mainSync) error {
 
 		// set up a launch function
 		dbgLaunch := func() error {
-			cartload := cartridgeloader.NewLoader(md.GetArg(0), *mapping)
 
-			err := dbg.Start(*initScript, cartload)
+			err := dbg.Start(*initScript, cartridgeloader.NewLoader(md.GetArg(0), *mapping))
 			if err != nil {
 				return err
 			}
@@ -547,6 +547,7 @@ func disasm(md *modalflag.Modes) error {
 		}
 
 		cartload := cartridgeloader.NewLoader(md.GetArg(0), *mapping)
+		defer cartload.Close()
 
 		dsm, err := disassembly.FromCartridge(cartload)
 		if err != nil {
@@ -603,6 +604,7 @@ func perform(md *modalflag.Modes, sync *mainSync) error {
 		return fmt.Errorf("2600 cartridge required for %s mode", md)
 	case 1:
 		cartload := cartridgeloader.NewLoader(md.GetArg(0), *mapping)
+		defer cartload.Close()
 
 		tv, err := television.NewTelevision(*spec)
 		if err != nil {
@@ -819,6 +821,7 @@ with the LOG mode. Note that asking for log output will suppress regression prog
 		switch strings.ToUpper(*mode) {
 		case "VIDEO":
 			cartload := cartridgeloader.NewLoader(md.GetArg(0), *mapping)
+			defer cartload.Close()
 
 			statetype, err := regression.NewStateType(*state)
 			if err != nil {
@@ -846,6 +849,7 @@ with the LOG mode. Note that asking for log output will suppress regression prog
 			}
 		case "LOG":
 			cartload := cartridgeloader.NewLoader(md.GetArg(0), *mapping)
+			defer cartload.Close()
 
 			reg = &regression.LogRegression{
 				CartLoad:  cartload,

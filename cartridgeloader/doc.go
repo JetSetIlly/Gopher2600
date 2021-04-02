@@ -32,4 +32,23 @@
 // It is preferred however that the NewLoader() function is used. The
 // NewLoader() function will set the mapping field automatically according to
 // the filename extension.
+//
+// Instances of Loader should be closed with Close() when it is no longer
+// required.
+//
+// Streaming
+//
+// For some cartridge types it is necessary to stream bytes from the file
+// rather than load them all at once. For these types of cartridges the Load()
+// function will leave the file open. Data can be read into a buffer with the
+// Stream() function. The Stream() function allows the data to be read from a
+// particular offset. It is the responsibility of the user of the interface to
+// manage the current offset.
+//
+// The NumChunks() function can be used to predict the number of Stream() calls
+// required to read all the data.
+//
+// Currently, only streaming from a file-system is supported. This interface
+// may change in the future to allow for more transparency and more
+// consistency.
 package cartridgeloader

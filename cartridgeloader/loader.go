@@ -18,6 +18,7 @@ package cartridgeloader
 import (
 	"crypto/sha1"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -27,6 +28,7 @@ import (
 
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
+	"github.com/jetsetilly/gopher2600/logger"
 )
 
 // Loader is used to specify the cartridge to use when Attach()ing to
@@ -59,6 +61,15 @@ type Loader struct {
 	//
 	// !!TODO: all cartridge formats to support OnLoaded() callback (for completeness)
 	OnLoaded func(cart mapper.CartMapper) error
+
+	// for some file types streaming is necessary.
+	//
+	// note that we have a pointer to a pointer of an os.File. this is so we
+	// can record a change of streamHandle even if the Loader{} struct is
+	// passed by value.
+	//
+	// tricky to handle but it works well for our use case.
+	streamHandle **os.File
 }
 
 // NewLoader is the preferred method of initialisation for the Loader type.
@@ -77,8 +88,9 @@ type Loader struct {
 // mixture of both.
 func NewLoader(filename string, mapping string) Loader {
 	cl := Loader{
-		Filename: filename,
-		Mapping:  "AUTO",
+		Filename:     filename,
+		Mapping:      "AUTO",
+		streamHandle: new(*os.File),
 	}
 
 	mapping = strings.TrimSpace(strings.ToUpper(mapping))
@@ -177,6 +189,18 @@ func (cl Loader) HasLoaded() bool {
 // valid schema will use that method to load the data. Currently supported
 // schemes are HTTP and local files.
 func (cl *Loader) Load() error {
+	if cl.Mapping == "MVC" {
+		if (*cl.streamHandle) == nil {
+			var err error
+			*cl.streamHandle, err = os.Open(cl.Filename)
+			if err != nil {
+				return curated.Errorf("cartridgeloader: %v", err)
+			}
+			logger.Logf("cartridgeloader", "stream open (%s)", (*cl.streamHandle).Name())
+		}
+		return nil
+	}
+
 	if len(cl.Data) > 0 {
 		// !!TODO: already-loaded error?
 		return nil
@@ -242,6 +266,67 @@ func (cl *Loader) Load() error {
 
 	// not generated hash
 	cl.Hash = hash
+
+	return nil
+}
+
+func (cl *Loader) isStreaming() bool {
+	return cl.streamHandle != nil && *cl.streamHandle != nil
+}
+
+// Close ends a cartridge loader session.
+func (cl *Loader) Close() error {
+	if cl.isStreaming() {
+		fn := (*cl.streamHandle).Name()
+		err := (*cl.streamHandle).Close()
+		if err != nil {
+			return curated.Errorf("cartridgeloader: %v", err)
+		}
+		*cl.streamHandle = nil
+		logger.Logf("cartridgeloader", "stream closed (%s)", fn)
+	}
+	return nil
+}
+
+// Streamer exposes only the Stream() function for use.
+type Streamer interface {
+	Stream(offset int64, buffer []byte) error
+	NumChunks(chunkSize int) (int, error)
+}
+
+func (cl Loader) NumChunks(chunkSize int) (int, error) {
+	if !cl.isStreaming() {
+		return 0, curated.Errorf("cartridgeloader: stream: no stream open")
+	}
+
+	fi, err := (*cl.streamHandle).Stat()
+	if err != nil {
+		return 0, curated.Errorf("cartridgeloader: stream: could not determine the number of chunks in stream (%v)", err)
+	}
+
+	return int(fi.Size() / int64(chunkSize)), nil
+}
+
+// Stream enough data to fill buffer from position offset
+func (cl Loader) Stream(offset int64, buffer []byte) error {
+	if !cl.isStreaming() {
+		return curated.Errorf("cartridgeloader: stream: no stream open")
+	}
+
+	if _, err := (*cl.streamHandle).Seek(offset, os.SEEK_SET); err != nil {
+		return curated.Errorf("cartridgeloader: stream: %v", err)
+	}
+
+	n, err := (*cl.streamHandle).Read(buffer)
+	if err != nil {
+		if err != io.EOF {
+			return curated.Errorf("cartridgeloader: stream: %v", err)
+		}
+	}
+
+	if n > 0 && n != len(buffer) {
+		return curated.Errorf("cartridgeloader: stream: buffer underrun")
+	}
 
 	return nil
 }
