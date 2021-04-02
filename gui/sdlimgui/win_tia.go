@@ -20,6 +20,7 @@ import (
 
 	"github.com/jetsetilly/gopher2600/gui/sdlimgui/fonts"
 	"github.com/jetsetilly/gopher2600/hardware/tia/video"
+	"github.com/jetsetilly/gopher2600/logger"
 
 	"github.com/inkyblackness/imgui-go/v4"
 )
@@ -127,7 +128,8 @@ func (win *winTIA) draw() {
 			imgui.Text(fmt.Sprintf("%c Changes will take effect going forward. Changes will not persist", fonts.GoingForward))
 		}
 		if imgui.IsItemClicked() {
-			win.persistentChanges = !win.persistentChanges
+			// win.persistentChanges = !win.persistentChanges
+			logger.Logf("sdlimgui", "deep poking is disabled temporarily")
 		}
 	})
 
