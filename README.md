@@ -10,6 +10,7 @@
 * [Savekey](#savekey) support
 * Rudimentary [CRT Effects](#crt-effects)
 * Support for common [TIA revisions](#tia-revisions)
+* Implementation of [Movie Cart](#movie-cart)
 
 The graphical [debugger](#debugger) is still in development but the current features include:
 
@@ -481,6 +482,16 @@ overlay provides an indication of programs that might be problematic.
 
 This area of the project is an ongoing area of improvement and future versions aim to make this measurement
 100% accurate.
+
+## Movie Cart
+
+`Movie Cart` is a new cartridge type specifically aimed at playing full length
+movies on the Atari VCS. The reference code and circuit board information can
+be found on Github: https://github.com/lodefmode/moviecart.
+
+`Gopher2600` allows Movie Cart files to be played just like any other ROM.
+Files must have the '.mvc' file extension and can only be streamed from the a
+local filing system. Streaming over HTTP will be supported in the future.
 
 ## Recording Gameplay
 
