@@ -132,6 +132,10 @@ type state struct {
 	streamGraph    int
 	streamTimecode int
 	streamColor    int
+	endOfStream    bool
+
+	// the audio value to carry to the next frame
+	audioCarry uint8
 
 	// which chunk of the buffer to read next
 	streamChunk int
@@ -151,8 +155,9 @@ type state struct {
 	// state machine
 	state stateMachineCondition
 
-	// is playback paused
-	paused bool
+	// is playback paused. pauseStep is used to allow frame-by-frame stepping.
+	paused    bool
+	pauseStep int
 
 	// volume of audio
 	volume int
@@ -227,10 +232,8 @@ type Moviecart struct {
 	mappingID   string
 	description string
 
-	loader    cartridgeloader.Streamer
-	numChunks int
-
-	banks []byte
+	loader cartridgeloader.Streamer
+	banks  []byte
 
 	state *state
 }
@@ -243,7 +246,6 @@ func NewMoviecart(loader cartridgeloader.Streamer) (mapper.CartMapper, error) {
 	}
 
 	var err error
-	cart.numChunks, err = loader.NumChunks(fieldSize)
 	if err != nil {
 		return nil, curated.Errorf("MVC: %v", err)
 	}
@@ -384,55 +386,52 @@ func (cart *Moviecart) updateDirection() {
 	}
 
 	if direction.isLeft() || direction.isRight() {
-		cart.state.controlRepeat++
-		if cart.state.controlRepeat > 16 {
-			cart.state.controlRepeat = 0
-
-			switch cart.state.controlMode {
-			case modeTime:
-				cart.state.osdDuration = osdDuration
-				if direction.isLeft() {
-					cart.state.fieldAdv -= 4
-				} else if direction.isRight() {
-					cart.state.fieldAdv += 4
-				}
-			case modeVolume:
-				cart.state.osdDuration = osdDuration
-				if direction.isLeft() {
-					if cart.state.volume > 0 {
-						cart.state.volume--
-					}
-				} else if direction.isRight() {
-					if cart.state.volume < len(volumeLevels) {
-						cart.state.volume++
-					}
-				}
-			case modeBrightness:
-				cart.state.osdDuration = osdDuration
-				if direction.isLeft() {
-					if cart.state.brightness > 0 {
-						cart.state.brightness--
-					}
-				} else if direction.isRight() {
-					if cart.state.brightness < len(brightLevels) {
-						cart.state.brightness++
-					}
-				}
-			}
-		}
-
-		// if playback paused then single step frame when joystick is moveed left/right
 		if cart.state.paused {
-			if direction.isLeft() {
-				cart.state.streamChunk--
-				if cart.state.streamChunk < 0 {
-					cart.state.streamChunk = 0
+			// allow frame by frame stepping if playback is paused.
+			if direction.isLeft() && !cart.state.directionLast.isLeft() {
+				cart.state.pauseStep = -1
+			} else if direction.isRight() && !cart.state.directionLast.isRight() {
+				cart.state.pauseStep = 1
+			}
+		} else {
+			cart.state.controlRepeat++
+			if cart.state.controlRepeat > 16 {
+				cart.state.controlRepeat = 0
+
+				switch cart.state.controlMode {
+				case modeTime:
+					cart.state.osdDuration = osdDuration
+					if direction.isLeft() {
+						cart.state.fieldAdv -= 4
+					} else if direction.isRight() {
+						cart.state.fieldAdv += 4
+					}
+				case modeVolume:
+					cart.state.osdDuration = osdDuration
+					if direction.isLeft() {
+						if cart.state.volume > 0 {
+							cart.state.volume--
+						}
+					} else if direction.isRight() {
+						if cart.state.volume < len(volumeLevels) {
+							cart.state.volume++
+						}
+					}
+				case modeBrightness:
+					cart.state.osdDuration = osdDuration
+					if direction.isLeft() {
+						if cart.state.brightness > 0 {
+							cart.state.brightness--
+						}
+					} else if direction.isRight() {
+						if cart.state.brightness < len(brightLevels) {
+							cart.state.brightness++
+						}
+					}
 				}
 			}
-			if direction.isRight() {
-				cart.state.streamChunk++
-			}
 		}
+
 	} else {
 		cart.state.controlRepeat = 0
 		cart.state.fieldAdv = 1
@@ -478,16 +477,23 @@ func (cart *Moviecart) updateTransport() {
 	// we're done with a10 count now so reset it
 	cart.state.a10Count = 0
 
-	// move movie stream
+	// move movie stream if playback is not paused.
+	//
+	// frame-by-frame stepping when playback is paused is handled in the
+	// readField() function
 	if !cart.state.paused {
-		cart.state.streamChunk += cart.state.fieldAdv
+		if cart.state.endOfStream {
+			if cart.state.fieldAdv < 0 {
+				cart.state.streamChunk += cart.state.fieldAdv
+				cart.state.endOfStream = false
+			}
+		} else {
+			cart.state.streamChunk += cart.state.fieldAdv
+		}
 
 		// bounds check for stream chunk
 		if cart.state.streamChunk < 0 {
 			cart.state.streamChunk = 0
-		}
-		if cart.state.streamChunk > cart.numChunks {
-			cart.state.streamChunk = cart.numChunks
 		}
 	}
 }
@@ -607,6 +613,9 @@ func (cart *Moviecart) fillAddrEndLines() {
 
 	cart.writeAudio(addrEndLinesAudio + 1)
 
+	// note next audio bit to carry to next frame
+	cart.state.audioCarry = cart.state.streamBuffer[cart.state.streamField][cart.state.streamAudio]
+
 	// different details for the end kernel every other frame
 	if cart.state.oddField {
 		cart.write8bit(addrSetOverscanSize+1, 28)
@@ -629,8 +638,9 @@ func (cart *Moviecart) fillAddrBlankLines() {
 	const blankLineSize = 68
 
 	// slightly different number of trailing blank line every other frame
-	if cart.state.oddField {
-		for i := uint16(0); i < blankLineSize; i++ {
+	if !cart.state.oddField {
+		cart.writeAudioData(addrAudioBank, cart.state.audioCarry)
+		for i := uint16(1); i < blankLineSize+1; i++ {
 			cart.writeAudio(addrAudioBank + i)
 		}
 	} else {
@@ -646,9 +656,14 @@ func (cart *Moviecart) fillAddrBlankLines() {
 func (cart *Moviecart) writeAudio(addr uint16) {
 	b := cart.state.streamBuffer[cart.state.streamField][cart.state.streamAudio]
 	cart.state.streamAudio++
-	b = volumeLevels[cart.state.volume][b]
+	cart.writeAudioData(addr, b)
+}
 
-	if cart.state.paused {
+func (cart *Moviecart) writeAudioData(addr uint16, data uint8) {
+	b := volumeLevels[cart.state.volume][data]
+
+	// output silence if playback is paused or we have reached the end of the stream
+	if cart.state.paused || cart.state.endOfStream || cart.state.streamChunk == 0 {
 		cart.write8bit(addr, 0)
 	} else {
 		cart.write8bit(addr, b)
@@ -742,17 +757,33 @@ func (cart *Moviecart) readField() {
 		cart.state.streamColor = offsetColorData
 	}()
 
-	// do not read more data if playback is paused or this is the first stream
-	// chunk - the second part of the condition handles the condition when the
-	// user has searched back to the beginning of the movie and is holding the
-	// stick left and trying to go back more. in that instance the movie is
-	// essentially paused.
+	// the usual playback condition
 	if !cart.state.paused && cart.state.streamChunk > 0 {
 		dataOffset := cart.state.streamChunk * chunkSize
-		err := cart.loader.Stream(int64(dataOffset), cart.state.streamBuffer[cart.state.streamField])
+		n, err := cart.loader.Stream(int64(dataOffset), cart.state.streamBuffer[cart.state.streamField])
 		if err != nil {
 			logger.Logf("MVC", "error reading field: %v", err)
 		}
+		cart.state.endOfStream = n < fieldSize
+	}
+
+	// if playback is paused and pauseStep is not zero then handle
+	// frame-by-frame stepping especially
+	if cart.state.paused && cart.state.pauseStep != 0 {
+		for fld := 0; fld < numFields; fld++ {
+			cart.state.streamChunk += cart.state.pauseStep
+			if cart.state.streamChunk < 0 {
+				cart.state.streamChunk = 0
+			}
+
+			dataOffset := cart.state.streamChunk * chunkSize
+			_, err := cart.loader.Stream(int64(dataOffset), cart.state.streamBuffer[fld])
+			if err != nil {
+				logger.Logf("MVC", "error reading field: %v", err)
+			}
+		}
+
+		cart.state.pauseStep = 0
 	}
 
 	// frame number and odd parity check. we recalculate these every field

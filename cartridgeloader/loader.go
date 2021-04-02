@@ -290,43 +290,29 @@ func (cl *Loader) Close() error {
 
 // Streamer exposes only the Stream() function for use.
 type Streamer interface {
-	Stream(offset int64, buffer []byte) error
-	NumChunks(chunkSize int) (int, error)
+	Stream(offset int64, buffer []byte) (int, error)
 }
 
-func (cl Loader) NumChunks(chunkSize int) (int, error) {
+// Stream enough data to fill buffer from position offset
+func (cl Loader) Stream(offset int64, buffer []byte) (int, error) {
 	if !cl.isStreaming() {
 		return 0, curated.Errorf("cartridgeloader: stream: no stream open")
 	}
 
-	fi, err := (*cl.streamHandle).Stat()
-	if err != nil {
-		return 0, curated.Errorf("cartridgeloader: stream: could not determine the number of chunks in stream (%v)", err)
-	}
-
-	return int(fi.Size() / int64(chunkSize)), nil
-}
-
-// Stream enough data to fill buffer from position offset
-func (cl Loader) Stream(offset int64, buffer []byte) error {
-	if !cl.isStreaming() {
-		return curated.Errorf("cartridgeloader: stream: no stream open")
-	}
-
 	if _, err := (*cl.streamHandle).Seek(offset, os.SEEK_SET); err != nil {
-		return curated.Errorf("cartridgeloader: stream: %v", err)
+		return 0, curated.Errorf("cartridgeloader: stream: %v", err)
 	}
 
 	n, err := (*cl.streamHandle).Read(buffer)
 	if err != nil {
 		if err != io.EOF {
-			return curated.Errorf("cartridgeloader: stream: %v", err)
+			return 0, curated.Errorf("cartridgeloader: stream: %v", err)
 		}
 	}
 
 	if n > 0 && n != len(buffer) {
-		return curated.Errorf("cartridgeloader: stream: buffer underrun")
+		return 0, curated.Errorf("cartridgeloader: stream: buffer underrun")
 	}
 
-	return nil
+	return n, nil
 }
