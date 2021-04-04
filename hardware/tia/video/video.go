@@ -281,97 +281,138 @@ func (vd *Video) Pixel() {
 		vd.Collisions.LastVideoCycle.reset()
 	}
 
+	// prioritisation of pixels:
+	//
+	// the code is straight forward and there is a prose description
+	//
+	// there was a mistake when outputting pixels in the left hand side of the
+	// screen while in scoremode. the ball was taking the priority even when
+	// score mode was on. this manifested in the drawing of the giraffe in
+	// Circus Convoy.
+	//
+	// https://atariage.com/forums/topic/300815-gopher2600-movie-cart/?do=findComment&comment=4794765
+	//
+	// Solved with the help of ZeroPageHomebrew (James) and Thomas Jentzsch
+	//
+	// (original comments kept below and edited to reflect new information)
+	//
 	// the interaction of the priority and scoremode bits are a little more
 	// complex than at first glance:
 	//
 	//  o if the priority bit is set then priority ordering applies
-	//  o if it is not set but scoremode is set and we're in the left half of
-	//		the screen, then priority ordering also applies
+	//
+	//  o if the priority bit is not set but scoremode is set and we're in the
+	//		left half of the screen, then priority ordering also applies
+	//		- edit: this summary was wrong because it neglects to mention that
+	//		the ball sprite has the lowest priority in this instance
+	//
 	//	o if priority bit is not set but scoremode is set and we're in the
 	//		right hand side of the screen then regular ordering applies, except
 	//		that playfield has priority over the ball
-	//	o phew
+	//		- edit: playfield having priority over the ball is important in
+	//		score mode of course because it will take the color of player one
 	//
 	//	that scoremode reorders priority regardless of the priority bit is not
 	//	at all obvious but observation proves it to be true. see test.bin ROM
 	//
 	//	the comment by "supercat" in the discussion "Playfield Score Mode -
 	//	effect on ball" on AtariAge proved useful here.
-	//
-	//	!!TODO: I'm still not 100% sure this is correct. check playfield priorties
-	if vd.Playfield.Priority || (vd.Playfield.Scoremode && vd.Playfield.Region == RegionLeft) {
+	if vd.Playfield.Priority { // priority take precendence of scoremode
 		if vd.Playfield.colorLatch { // priority 1
-			if vd.Playfield.Scoremode && !vd.Playfield.Priority {
-				switch vd.Playfield.Region {
-				case RegionLeft:
-					vd.PixelColor = vd.Player0.Color
-				case RegionRight:
-					vd.PixelColor = vd.Player1.Color
-				}
-			} else {
-				vd.PixelColor = vd.Playfield.color
-			}
-
+			vd.PixelColor = vd.Playfield.color
 			vd.LastElement = ElementPlayfield
-		} else if vd.Ball.pixelOn {
+		} else if vd.Ball.pixelOn { // priority 1 (ball is same color as playfield)
 			vd.PixelColor = vd.Ball.Color
 			vd.LastElement = ElementBall
 		} else if vd.Player0.pixelOn { // priority 2
 			vd.PixelColor = vd.Player0.Color
 			vd.LastElement = ElementPlayer0
-		} else if vd.Missile0.pixelOn {
+		} else if vd.Missile0.pixelOn { // priority 2 (missile 0 is same color as player 0)
 			vd.PixelColor = vd.Missile0.Color
 			vd.LastElement = ElementMissile0
 		} else if vd.Player1.pixelOn { // priority 3
 			vd.PixelColor = vd.Player1.Color
 			vd.LastElement = ElementPlayer1
-		} else if vd.Missile1.pixelOn {
+		} else if vd.Missile1.pixelOn { // priority 3 (missile 1 is same color as player 1)
 			vd.PixelColor = vd.Missile1.Color
 			vd.LastElement = ElementMissile1
 		} else {
 			vd.PixelColor = vd.Playfield.BackgroundColor
 			vd.LastElement = ElementBackground
 		}
-	} else {
+	} else if vd.Playfield.Scoremode { // scoremode applies when priority bit os not set
+		switch vd.Playfield.Region {
+		case RegionOffScreen:
+			fallthrough
+		case RegionLeft:
+			if vd.Playfield.colorLatch { // priority 1 (playfield takes color of player 0)
+				vd.PixelColor = vd.Player0.Color
+				vd.LastElement = ElementPlayfield
+			} else if vd.Player0.pixelOn { // priority 1 (same color as playfield)
+				vd.PixelColor = vd.Player0.Color
+				vd.LastElement = ElementPlayer0
+			} else if vd.Missile0.pixelOn { // priority 1 same color as playfield)
+				vd.PixelColor = vd.Missile0.Color
+				vd.LastElement = ElementMissile0
+			} else if vd.Player1.pixelOn { // priority 2
+				vd.PixelColor = vd.Player1.Color
+				vd.LastElement = ElementPlayer1
+			} else if vd.Missile1.pixelOn { // priority 2 (missile 1 is same color as player 1)
+				vd.PixelColor = vd.Missile1.Color
+				vd.LastElement = ElementMissile1
+			} else if vd.Ball.pixelOn { // priority 3
+				vd.PixelColor = vd.Ball.Color
+				vd.LastElement = ElementBall
+			} else {
+				vd.PixelColor = vd.Playfield.BackgroundColor
+				vd.LastElement = ElementBackground
+			}
+		case RegionRight:
+			if vd.Player0.pixelOn { // priority 1
+				vd.PixelColor = vd.Player0.Color
+				vd.LastElement = ElementPlayer0
+			} else if vd.Missile0.pixelOn { // priority 1 (missile 0 is same colour as player 0)
+				vd.PixelColor = vd.Missile0.Color
+				vd.LastElement = ElementMissile0
+			} else if vd.Player1.pixelOn { // priority 2
+				vd.PixelColor = vd.Player1.Color
+				vd.LastElement = ElementPlayer1
+			} else if vd.Missile1.pixelOn { // priority 2 (missile 1 is same colour as player 1)
+				vd.PixelColor = vd.Missile1.Color
+				vd.LastElement = ElementMissile1
+			} else if vd.Playfield.colorLatch { // priority 2 (playfield takes color of player 1)
+				vd.PixelColor = vd.Player1.Color
+				vd.LastElement = ElementPlayfield
+			} else if vd.Ball.pixelOn { // priority 3
+				vd.PixelColor = vd.Ball.Color
+				vd.LastElement = ElementBall
+			} else {
+				vd.PixelColor = vd.Playfield.BackgroundColor
+				vd.LastElement = ElementBackground
+			}
+		}
+	} else { // normal priority
 		if vd.Player0.pixelOn { // priority 1
 			vd.PixelColor = vd.Player0.Color
 			vd.LastElement = ElementPlayer0
-		} else if vd.Missile0.pixelOn {
+		} else if vd.Missile0.pixelOn { // priority 1 (missile 0 is same color as player 0)
 			vd.PixelColor = vd.Missile0.Color
 			vd.LastElement = ElementMissile0
 		} else if vd.Player1.pixelOn { // priority 2
 			vd.PixelColor = vd.Player1.Color
 			vd.LastElement = ElementPlayer1
-		} else if vd.Missile1.pixelOn {
+		} else if vd.Missile1.pixelOn { // priority 2 (missile 1 is same color as player 1)
 			vd.PixelColor = vd.Missile1.Color
 			vd.LastElement = ElementMissile1
-		} else if vd.Playfield.Scoremode && (vd.Ball.pixelOn || vd.Playfield.colorLatch) {
-			// priority 3 (scoremode without priority bit)
-			if vd.Playfield.colorLatch {
-				vd.PixelColor = vd.Playfield.color
-				switch vd.Playfield.Region {
-				case RegionLeft:
-					vd.PixelColor = vd.Player0.Color
-				case RegionRight:
-					vd.PixelColor = vd.Player1.Color
-				}
-				vd.LastElement = ElementPlayfield
-			} else if vd.Ball.pixelOn { // priority 3
-				vd.PixelColor = vd.Ball.Color
-				vd.LastElement = ElementBall
-			}
+		} else if vd.Ball.pixelOn { // priority 3
+			vd.PixelColor = vd.Ball.Color
+			vd.LastElement = ElementBall
+		} else if vd.Playfield.colorLatch { // priority 3 (playfield is same color as ball)
+			vd.PixelColor = vd.Playfield.color
+			vd.LastElement = ElementPlayfield
 		} else {
-			// priority 3 (no scoremode or priority bit)
-			if vd.Ball.pixelOn { // priority 3
-				vd.PixelColor = vd.Ball.Color
-				vd.LastElement = ElementBall
-			} else if vd.Playfield.colorLatch {
-				vd.PixelColor = vd.Playfield.color
-				vd.LastElement = ElementPlayfield
-			} else {
-				vd.PixelColor = vd.Playfield.BackgroundColor
-				vd.LastElement = ElementBackground
-			}
+			vd.PixelColor = vd.Playfield.BackgroundColor
+			vd.LastElement = ElementBackground
 		}
 	}
 }
