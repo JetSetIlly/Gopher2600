@@ -283,40 +283,25 @@ func (vd *Video) Pixel() {
 
 	// prioritisation of pixels:
 	//
-	// the code is straight forward and there is a prose description
+	// there have been bugs in earlier versions of this code regarding the
+	// priority of the ball sprite in scoremode. the following code is correct
+	// and satisifies all known test cases.
 	//
-	// there was a mistake when outputting pixels in the left hand side of the
-	// screen while in scoremode. the ball was taking the priority even when
-	// score mode was on. this manifested in the drawing of the giraffe in
-	// Circus Convoy.
+	// note the technical description from Supercat on AtariAge.
 	//
-	// https://atariage.com/forums/topic/300815-gopher2600-movie-cart/?do=findComment&comment=4794765
+	// "To be hyper-precise, Score Mode causes the player 0/1 color circuits to
+	// be activated anyplace the playfield is active. When sprites have
+	// priority over playfield, this "covers up" the playfield color there. If
+	// playfield priority is enabled, the activated 0/1 colors get overruled by
+	// the playfield color, rendering score mode ineffective. Note that in
+	// score mode, the left half of the playfield has priority over the
+	// player/missile 1 sprites."
 	//
-	// Solved with the help of ZeroPageHomebrew (James) and Thomas Jentzsch
+	// https://atariage.com/forums/topic/166193-playfield-score-mode-effect-on-ball/?tab=comments#comment-2083030
 	//
-	// (original comments kept below and edited to reflect new information)
+	// My misunderstanding was caused by changing the priority of the ball
+	// sprite when the priority bit was on alongside the scoremode bit.
 	//
-	// the interaction of the priority and scoremode bits are a little more
-	// complex than at first glance:
-	//
-	//  o if the priority bit is set then priority ordering applies
-	//
-	//  o if the priority bit is not set but scoremode is set and we're in the
-	//		left half of the screen, then priority ordering also applies
-	//		- edit: this summary was wrong because it neglects to mention that
-	//		the ball sprite has the lowest priority in this instance
-	//
-	//	o if priority bit is not set but scoremode is set and we're in the
-	//		right hand side of the screen then regular ordering applies, except
-	//		that playfield has priority over the ball
-	//		- edit: playfield having priority over the ball is important in
-	//		score mode of course because it will take the color of player one
-	//
-	//	that scoremode reorders priority regardless of the priority bit is not
-	//	at all obvious but observation proves it to be true. see test.bin ROM
-	//
-	//	the comment by "supercat" in the discussion "Playfield Score Mode -
-	//	effect on ball" on AtariAge proved useful here.
 	if vd.Playfield.Priority { // priority take precendence of scoremode
 		if vd.Playfield.colorLatch { // priority 1
 			vd.PixelColor = vd.Playfield.color
