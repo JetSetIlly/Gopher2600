@@ -156,8 +156,9 @@ func (ps *PlayerSprite) Snapshot() *PlayerSprite {
 	return &n
 }
 
-// Plumb player sprite.
-func (ps *PlayerSprite) Plumb() {
+// Plumb changes into player sprite.
+func (ps *PlayerSprite) Plumb(tia *tia) {
+	ps.tia = tia
 	ps.ScanCounter.sizeAndCopies = &ps.SizeAndCopies
 	ps.ScanCounter.pclk = &ps.pclk
 

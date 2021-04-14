@@ -233,21 +233,27 @@ func (tv *Television) Snapshot() *State {
 	return tv.state.Snapshot()
 }
 
-// PlumbState in an existing television state.
-func (tv *Television) PlumbState(s *State) {
+// PlumbState attaches an existing television state.
+func (tv *Television) PlumbState(vcs VCSReturnChannel, s *State) {
 	if s == nil {
-		return
+		panic("television: cannot plumb in a nil state")
 	}
+
 	tv.state = s
+
+	// make sure vcs knows about current spec
+	tv.vcs = vcs
+	if tv.vcs != nil {
+		_ = tv.vcs.SetClockSpeed(tv.state.spec.ID)
+	}
+
+	// reset signal history
+	tv.currentIdx = 0
+	tv.lastMaxIdx = 0
 
 	// resize renderers to match current state
 	for _, r := range tv.renderers {
 		_ = r.Resize(tv.state.spec, tv.state.top, tv.state.bottom)
-	}
-
-	// make sure vcs knows about current spec
-	if tv.vcs != nil {
-		_ = tv.vcs.SetClockSpeed(tv.state.spec.ID)
 	}
 }
 

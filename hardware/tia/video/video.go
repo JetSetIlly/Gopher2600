@@ -159,23 +159,26 @@ func (vd *Video) Snapshot() *Video {
 }
 
 // Plumb ChipBus into TIA/Video components. Update pointers that refer to parent TIA.
-func (vd *Video) Plumb(tv signal.TelevisionSprite, mem bus.ChipBus, rev *revision.TIARevision,
+func (vd *Video) Plumb(mem bus.ChipBus, tv signal.TelevisionSprite, rev *revision.TIARevision,
 	pclk *phaseclock.PhaseClock, hsync *polycounter.Polycounter,
 	hblank *bool, hmove *hmove.Hmove) {
 	vd.Collisions.Plumb(mem)
 
-	vd.tia.tv = tv
-	vd.tia.rev = rev
-	vd.tia.pclk = pclk
-	vd.tia.hsync = hsync
-	vd.tia.hblank = hblank
-	vd.tia.hmove = hmove
+	vd.tia = &tia{
+		tv:     tv,
+		rev:    rev,
+		pclk:   pclk,
+		hsync:  hsync,
+		hblank: hblank,
+		hmove:  hmove,
+	}
 
-	vd.Player0.Plumb()
-	vd.Player1.Plumb()
-	vd.Missile0.Plumb()
-	vd.Missile1.Plumb()
-	vd.Ball.Plumb()
+	vd.Playfield.Plumb(vd.tia)
+	vd.Player0.Plumb(vd.tia)
+	vd.Player1.Plumb(vd.tia)
+	vd.Missile0.Plumb(vd.tia)
+	vd.Missile1.Plumb(vd.tia)
+	vd.Ball.Plumb(vd.tia)
 }
 
 // RSYNC adjusts the debugging information of the sprites when an RSYNC is

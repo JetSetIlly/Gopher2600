@@ -376,6 +376,10 @@ func (r *Rewind) setContinuePoint(idx int, frame int, scanline int, clock int) e
 }
 
 func plumb(vcs *hardware.VCS, state *State) {
+	// tv plumbing works a bit different to other areas because we're only
+	// recording the state of the TV not the entire TV itself.
+	vcs.TV.PlumbState(vcs, state.TV.Snapshot())
+
 	// take another snapshot of the state before plumbing. we don't want the
 	// machine to change what we have stored in our state array (we learned
 	// that lesson the hard way :-)
@@ -383,15 +387,11 @@ func plumb(vcs *hardware.VCS, state *State) {
 	vcs.Mem = state.Mem.Snapshot()
 	vcs.RIOT = state.RIOT.Snapshot()
 	vcs.TIA = state.TIA.Snapshot()
+
 	vcs.CPU.Plumb(vcs.Mem)
 	vcs.Mem.Plumb()
 	vcs.RIOT.Plumb(vcs.Mem.RIOT, vcs.Mem.TIA)
 	vcs.TIA.Plumb(vcs.TV, vcs.Mem.TIA, vcs.RIOT.Ports, vcs.CPU)
-
-	// tv plumbing works a bit different to other areas because we're only
-	// recording the state of the TV not the entire TV itself. We'll use a
-	// different name for the function for this reason.
-	vcs.TV.PlumbState(state.TV.Snapshot())
 }
 
 // plumb in state supplied as the argument. catch-up loop will halt as soon as

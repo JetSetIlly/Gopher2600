@@ -111,8 +111,9 @@ func (ms *MissileSprite) Snapshot() *MissileSprite {
 	return &n
 }
 
-// Plumb a new ChipBus into the Missile sprite.
-func (ms *MissileSprite) Plumb() {
+// Plumb changes into missile sprite.
+func (ms *MissileSprite) Plumb(tia *tia) {
+	ms.tia = tia
 	ms.Enclockifier.size = &ms.Size
 }
 

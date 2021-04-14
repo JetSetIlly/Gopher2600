@@ -134,8 +134,9 @@ func (pf *Playfield) Snapshot() *Playfield {
 	return &n
 }
 
-// Plumb a new ChipBus into the Playfield.
-func (pf *Playfield) Plumb() {
+// Plumb changes into playfield.
+func (pf *Playfield) Plumb(tia *tia) {
+	pf.tia = tia
 }
 
 // Label returns an appropriate name for playfield.

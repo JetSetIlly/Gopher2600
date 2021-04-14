@@ -112,8 +112,9 @@ func (bs *BallSprite) Snapshot() *BallSprite {
 	return &n
 }
 
-// Plumb a new ChipBus into the Ball sprite.
-func (bs *BallSprite) Plumb() {
+// Plumb changes into ball sprite.
+func (bs *BallSprite) Plumb(tia *tia) {
+	bs.tia = tia
 	bs.Enclockifier.size = &bs.Size
 }
 

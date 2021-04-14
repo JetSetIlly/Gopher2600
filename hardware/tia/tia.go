@@ -148,7 +148,7 @@ func (tia *TIA) Plumb(tv signal.TelevisionTIA, mem bus.ChipBus, input bus.Update
 	tia.mem = mem
 	tia.input = input
 	tia.rdyFlag = &cpu.RdyFlg
-	tia.Video.Plumb(tia.tv, tia.mem, tia.Rev, &tia.pclk, &tia.hsync, &tia.Hblank, &tia.Hmove)
+	tia.Video.Plumb(tia.mem, tia.tv, tia.Rev, &tia.pclk, &tia.hsync, &tia.Hblank, &tia.Hmove)
 }
 
 // UpdateTIA checks for side effects in the TIA sub-system.
