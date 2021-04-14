@@ -16,6 +16,8 @@
 package rewind
 
 import (
+	"fmt"
+
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
@@ -23,24 +25,20 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 )
 
-// SearchMemoryWrite runs an emulation from the supplied state until the point
-// when the address has been written to with the supplied value.
+// SearchMemoryWrite runs an emulation between two states looking for the
+// instance when the address is written to with the value (valueMask is applied
+// to mask specific bits)
 //
-// The supplied address should be normalised for this function to work
-// correctly.
+// The supplied target state is the upper limit of the search. The lower limit
+// of the search is one frame before the target State.
 //
-// If a write to the address has been found then valueMask is applied to the
-// value being written to see if it matches the supplied value. The supplied
-// value will also be masked before comparison.
+// The supplied address will be normalised.
 //
-// Returns the State at which the memory write was found.
+// Returns the most recent State at which the memory write was found. If a more
+// recent address write is found but not the correct value, then no state is
+// returned.
 func (r *Rewind) SearchMemoryWrite(tgt *State, addr uint16, value uint8, valueMask uint8) (*State, error) {
-	// we'll match every instruction that writes value to the addr (applying
-	// valueMask). we'll also not the TV state whenever addr matches,
-	// regardless of value. this way we can detect whether the matching state
-	// is actually the most recent match.
-	//
-	// we only want to return a matchingState if it's the most recent addr/value match.
+	// matchingState is a snapshot of the the most recent search match
 	var matchingState *State
 	var mostRecentTVstate string
 
@@ -93,21 +91,23 @@ func (r *Rewind) SearchMemoryWrite(tgt *State, addr uint16, value uint8, valueMa
 
 	// make sure the matching state is the last address match we found.
 	if matchingState != nil && mostRecentTVstate != matchingState.TV.String() {
-		return nil, curated.Errorf("rewind: false match at %04x", addr)
+		matchingState = nil
 	}
 
 	return matchingState, nil
 }
 
-// SearchRegisterWrite runs an emulation from the supplied state until the point
-// when the register has been written to with the supplied value.
+// SearchMemoryWrite runs an emulation between two states looking for the
+// instance when the register is written to with the value (valueMask is
+// applied to mask specific bits)
 //
-// If a write to the register has been found then valueMask is applied to the
-// value being written to see if it matches the supplied value. The supplied
-// value will also be masked before comparison.
+// The supplied target state is the upper limit of the search. The lower limit
+// of the search is one frame before the target State.
 //
-// Returns the State at which the memory write was found.
-func (r *Rewind) SearchRegisterWrite(tgt *State, reg string, value uint8, valueMask uint8) (*State, error) {
+// Returns the most recent State at which the register write was found. If a
+// more recent register write is found but not the correct value, then no state
+// is returned.
+func (r *Rewind) SearchRegisterWrite(tgt *State, reg rune, value uint8, valueMask uint8) (*State, error) {
 	// see commentary in SearchMemoryWrite(). although note that when
 	// mostRecentTVSstate is noted is different in the case of
 	// SearchRegisterWrite()
@@ -137,20 +137,22 @@ func (r *Rewind) SearchRegisterWrite(tgt *State, reg string, value uint8, valueM
 
 	// onLoad() is called whenever a CPU register is loaded with a new value
 	match := false
-	onLoad := func(val uint8) {
-		match = val&valueMask == value&valueMask
+	onLoad := func(v uint8) {
+		match = v&valueMask == value&valueMask
 
 		// note TV state whenever register is loaded
 		mostRecentTVstate = searchTV.String()
 	}
 
 	switch reg {
-	case "A":
+	case 'A':
 		searchVCS.CPU.A.SetOnLoad(onLoad)
-	case "X":
+	case 'X':
 		searchVCS.CPU.X.SetOnLoad(onLoad)
-	case "Y":
+	case 'Y':
 		searchVCS.CPU.Y.SetOnLoad(onLoad)
+	default:
+		panic(fmt.Sprintf("rewind: search: unrecognised CPU register (%c)", reg))
 	}
 
 	done := false
@@ -175,7 +177,7 @@ func (r *Rewind) SearchRegisterWrite(tgt *State, reg string, value uint8, valueM
 
 	// make sure the matching state is the last address match we found.
 	if matchingState != nil && mostRecentTVstate != matchingState.TV.String() {
-		return nil, curated.Errorf("rewind: false match in %s", reg)
+		matchingState = nil
 	}
 
 	return matchingState, nil

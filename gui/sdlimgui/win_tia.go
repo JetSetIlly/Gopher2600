@@ -16,11 +16,7 @@
 package sdlimgui
 
 import (
-	"fmt"
-
-	"github.com/jetsetilly/gopher2600/gui/sdlimgui/fonts"
 	"github.com/jetsetilly/gopher2600/hardware/tia/video"
-	"github.com/jetsetilly/gopher2600/logger"
 
 	"github.com/inkyblackness/imgui-go/v4"
 )
@@ -35,7 +31,7 @@ type winTIA struct {
 	strobe       int32
 
 	// the scope at which the editing of TIA value will take place
-	persistentChanges bool
+	deepPoking bool
 
 	// widget dimensions
 	hmoveSliderWidth            float32
@@ -116,22 +112,7 @@ func (win *winTIA) draw() {
 	}
 	imgui.EndTabBar()
 
-	// persistence control
-	win.scopeHeight = imguiMeasureHeight(func() {
-		imgui.Spacing()
-		imgui.Separator()
-		imgui.Spacing()
-
-		if win.persistentChanges {
-			imgui.Text(fmt.Sprintf("%c Changes will be backtraced if possible and persist as appropriate", fonts.Persist))
-		} else {
-			imgui.Text(fmt.Sprintf("%c Changes will take effect going forward. Changes will not persist", fonts.GoingForward))
-		}
-		if imgui.IsItemClicked() {
-			// win.persistentChanges = !win.persistentChanges
-			logger.Logf("sdlimgui", "deep poking is disabled temporarily")
-		}
-	})
+	win.drawPersistenceControl()
 
 	imgui.End()
 

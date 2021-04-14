@@ -26,21 +26,18 @@ import (
 type LazyDebugger struct {
 	val *LazyValues
 
-	quantum      atomic.Value // debugger.QuantumMode
-	lastResult   atomic.Value // disassembly.Entry
-	hasChanged   atomic.Value // bool
-	isDeepPoking atomic.Value // bool
+	quantum    atomic.Value // debugger.QuantumMode
+	lastResult atomic.Value // disassembly.Entry
+	hasChanged atomic.Value // bool
 
-	Quantum      debugger.QuantumMode
-	LastResult   disassembly.Entry
-	HasChanged   bool
-	IsDeepPoking bool
+	Quantum    debugger.QuantumMode
+	LastResult disassembly.Entry
+	HasChanged bool
 }
 
 func newLazyDebugger(val *LazyValues) *LazyDebugger {
 	lz := &LazyDebugger{val: val}
 	lz.hasChanged.Store(false)
-	lz.isDeepPoking.Store(false)
 	return lz
 }
 
@@ -48,7 +45,6 @@ func (lz *LazyDebugger) push() {
 	lz.quantum.Store(lz.val.Dbg.GetQuantum())
 	lz.lastResult.Store(lz.val.Dbg.GetLastResult())
 	lz.hasChanged.Store(lz.val.Dbg.HasChanged())
-	lz.isDeepPoking.Store(lz.val.Dbg.IsDeepPoking())
 }
 
 func (lz *LazyDebugger) update() {
@@ -57,5 +53,4 @@ func (lz *LazyDebugger) update() {
 		lz.LastResult = lz.lastResult.Load().(disassembly.Entry)
 	}
 	lz.HasChanged = lz.hasChanged.Load().(bool)
-	lz.IsDeepPoking = lz.isDeepPoking.Load().(bool)
 }
