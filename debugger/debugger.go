@@ -385,7 +385,7 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) error {
 			// !!TODO: it would be nice to see partial disassemblies of supercharger tapes
 			// during loading. not completely necessary I don't think, but it would be
 			// nice to have.
-			err := dbg.Disasm.FromMemory(nil, nil)
+			err := dbg.Disasm.FromMemory(nil)
 			if err != nil {
 				return err
 			}
@@ -437,7 +437,7 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) error {
 		return err
 	}
 
-	err = dbg.Disasm.FromMemory(dbg.VCS.Mem.Cart, symbols)
+	err = dbg.Disasm.FromMemory(symbols)
 	if err != nil {
 		return err
 	}

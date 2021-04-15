@@ -26,9 +26,9 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/cpu"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/execution"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
+	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/symbols"
 )
 
@@ -36,11 +36,10 @@ import (
 type Disassembly struct {
 	Prefs *Preferences
 
-	// reference to running hardware
+	// reference to running hardware. all access to VCS sub-systems to be done
+	// via this pointer. this facilitates the rewind system which would
+	// otherwise cause stale pointers to misleading information.
 	vcs *hardware.VCS
-
-	// the cartridge to which the disassembly refers
-	cart *cartridge.Cartridge
 
 	// symbols used to format disassembly output
 	Symbols *symbols.Symbols
@@ -82,27 +81,37 @@ func NewDisassembly(vcs *hardware.VCS) (*Disassembly, error) {
 // from the supplied cartridge filename. Useful for one-shot disassemblies,
 // like the gopher2600 "disasm" mode.
 func FromCartridge(cartload cartridgeloader.Loader) (*Disassembly, error) {
-	dsm, err := NewDisassembly(nil)
+	var err error
+
+	tv, err := television.NewTelevision("NTSC")
 	if err != nil {
-		return nil, err
+		return nil, curated.Errorf("disassembly: %v", err)
 	}
 
-	cart := cartridge.NewCartridge(nil)
+	vcs, err := hardware.NewVCS(tv)
+	if err != nil {
+		return nil, curated.Errorf("disassembly: %v", err)
+	}
 
-	err = cart.Attach(cartload)
+	err = vcs.AttachCartridge(cartload)
+	if err != nil {
+		return nil, curated.Errorf("disassembly: %v", err)
+	}
+
+	dsm, err := NewDisassembly(vcs)
 	if err != nil {
 		return nil, curated.Errorf("disassembly: %v", err)
 	}
 
 	// ignore errors caused by loading of symbols table - we always get a
 	// standard symbols table even in the event of an error
-	symbols, err := symbols.ReadSymbolsFile(cart)
+	symbols, err := symbols.ReadSymbolsFile(vcs.Mem.Cart)
 	if err != nil {
 		return nil, curated.Errorf("disassembly: %v", err)
 	}
 
 	// do disassembly
-	err = dsm.FromMemory(cart, symbols)
+	err = dsm.FromMemory(symbols)
 	if err != nil {
 		return nil, curated.Errorf("disassembly: %v", err)
 	}
@@ -115,16 +124,7 @@ func FromCartridge(cartload cartridgeloader.Loader) (*Disassembly, error) {
 // requires an existing instance of Disassembly
 //
 // cartridge will finish in its initialised state.
-func (dsm *Disassembly) FromMemory(cart *cartridge.Cartridge, symbols *symbols.Symbols) error {
-	// record cartridge if it is not nil
-	if cart != nil {
-		dsm.cart = cart
-	}
-
-	// an nil value for the cart argument indicates the disassembly is do be
-	// redone. it is important therefore that no reference is made to
-	// cart. use dsm.cart instead.
-
+func (dsm *Disassembly) FromMemory(symbols *symbols.Symbols) error {
 	if symbols != nil {
 		dsm.Symbols = symbols
 	}
@@ -132,14 +132,14 @@ func (dsm *Disassembly) FromMemory(cart *cartridge.Cartridge, symbols *symbols.S
 	// allocate memory for disassembly. the GUI may find itself trying to
 	// iterate through disassembly at the same time as we're doing this.
 	dsm.crit.Lock()
-	dsm.entries = make([][]*Entry, dsm.cart.NumBanks())
+	dsm.entries = make([][]*Entry, dsm.vcs.Mem.Cart.NumBanks())
 	for b := 0; b < len(dsm.entries); b++ {
 		dsm.entries[b] = make([]*Entry, memorymap.CartridgeBits+1)
 	}
 	dsm.crit.Unlock()
 
 	// exit early if cartridge memory self reports as being ejected
-	if dsm.cart.IsEjected() {
+	if dsm.vcs.Mem.Cart.IsEjected() {
 		return nil
 	}
 
@@ -157,7 +157,7 @@ func (dsm *Disassembly) FromMemory(cart *cartridge.Cartridge, symbols *symbols.S
 	}
 
 	// try added coprocessor disasm support
-	dsm.Coprocessor = coprocessor.Add(dsm.vcs, dsm.cart)
+	dsm.Coprocessor = coprocessor.Add(dsm.vcs, dsm.vcs.Mem.Cart)
 
 	return nil
 }
@@ -169,7 +169,7 @@ func (dsm *Disassembly) FromMemory(cart *cartridge.Cartridge, symbols *symbols.S
 // also returns whether cartridge is currently working from another source
 // meaning that the disassembly entry might not be reliable.
 func (dsm *Disassembly) GetEntryByAddress(address uint16) (*Entry, bool) {
-	bank := dsm.cart.GetBank(address)
+	bank := dsm.vcs.Mem.Cart.GetBank(address)
 
 	if bank.NonCart {
 		// !!TODO: attempt to decode instructions not in cartridge
@@ -241,7 +241,7 @@ func (dsm *Disassembly) ExecutedEntry(bank mapper.BankInfo, result execution.Res
 	// current bank, so we have to call the GetBank() function.
 	//
 	// !!TODO: maybe make sure next entry has been disassembled in it's current form
-	bank = dsm.cart.GetBank(nextAddr)
+	bank = dsm.vcs.Mem.Cart.GetBank(nextAddr)
 	ne := dsm.entries[bank.Number][nextAddr&memorymap.CartridgeBits]
 	if ne.Level < EntryLevelBlessed {
 		ne.Level = EntryLevelBlessed

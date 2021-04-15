@@ -27,7 +27,7 @@ import (
 )
 
 func (dsm *Disassembly) disassemble(mc *cpu.CPU, mem *disasmMemory) error {
-	copiedBanks, err := dsm.cart.CopyBanks()
+	copiedBanks, err := dsm.vcs.Mem.Cart.CopyBanks()
 	if err != nil {
 		return curated.Errorf("decode: %v", err)
 	}
