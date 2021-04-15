@@ -469,11 +469,11 @@ func (win *winDbgScr) drawReflectionTooltip(screenOrigin imgui.Vec2) {
 		ref = win.scr.crit.reflection[win.mouseClock][win.mouseScanline]
 	}
 
-	// present tooltip showing pixel coords and CPU state
 	if win.isCaptured {
 		return
 	}
 
+	// present tooltip showing pixel coords at a minimum
 	imgui.BeginTooltip()
 	defer imgui.EndTooltip()
 

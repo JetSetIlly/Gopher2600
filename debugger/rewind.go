@@ -19,6 +19,8 @@ package debugger
 // the debugger than would otherwise be available.
 
 import (
+	"fmt"
+
 	"github.com/jetsetilly/gopher2600/disassembly"
 	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/logger"
@@ -34,13 +36,33 @@ func (dbg *Debugger) CatchUpLoop(continueCheck func() bool) error {
 	dbg.lastBank = dbg.VCS.Mem.Cart.GetBank(dbg.VCS.CPU.PC.Address())
 	dbg.lastResult, err = dbg.Disasm.FormatResult(dbg.lastBank, dbg.VCS.CPU.LastResult, disassembly.EntryLevelExecuted)
 	if err != nil {
-		return nil
+		return err
+	}
+
+	// the function to call every video step (via vcs.Step())
+	var onStep func() error
+
+	switch dbg.quantum {
+	case QuantumInstruction:
+		onStep = func() error {
+			return dbg.ref.Step(dbg.lastBank)
+		}
+	case QuantumVideo:
+		onStep = func() error {
+			if dbg.quantum == QuantumVideo {
+				dbg.lastResult, err = dbg.Disasm.FormatResult(dbg.lastBank, dbg.VCS.CPU.LastResult, disassembly.EntryLevelExecuted)
+				if err != nil {
+					return nil
+				}
+			}
+			return dbg.ref.Step(dbg.lastBank)
+		}
+	default:
+		return (fmt.Errorf("rewind: unknown quantum mode"))
 	}
 
 	for continueCheck() {
-		err = dbg.VCS.Step(func() error {
-			return dbg.ref.Step(dbg.lastBank)
-		})
+		err = dbg.VCS.Step(onStep)
 		if err != nil {
 			return err
 		}
