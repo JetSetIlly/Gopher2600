@@ -34,8 +34,7 @@ type winCRTPrefs struct {
 	scr *screen
 
 	// crt preview segment
-	crtTexture      uint32
-	phosphorTexture uint32
+	crtTexture uint32
 
 	// (re)create textures on next render()
 	createTextures bool
@@ -61,12 +60,6 @@ func newWinCRTPrefs(img *SdlImgui) (window, error) {
 	gl.ActiveTexture(gl.TEXTURE0)
 	gl.GenTextures(1, &win.crtTexture)
 	gl.BindTexture(gl.TEXTURE_2D, win.crtTexture)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
-
-	gl.ActiveTexture(gl.TEXTURE0 + phosphorTextureUnitPrefsCRT)
-	gl.GenTextures(1, &win.phosphorTexture)
-	gl.BindTexture(gl.TEXTURE_2D, win.phosphorTexture)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
 
@@ -177,7 +170,6 @@ func (win *winCRTPrefs) render() {
 	}
 
 	pixels := win.scr.crit.pixels.SubImage(win.previewRect).(*image.RGBA)
-	phosphor := win.scr.crit.phosphor.SubImage(win.previewRect).(*image.RGBA)
 
 	gl.PixelStorei(gl.UNPACK_ROW_LENGTH, int32(pixels.Stride)/4)
 	defer gl.PixelStorei(gl.UNPACK_ROW_LENGTH, 0)
@@ -192,13 +184,6 @@ func (win *winCRTPrefs) render() {
 			gl.RGBA, previewWidth, previewHeight, 0,
 			gl.RGBA, gl.UNSIGNED_BYTE,
 			gl.Ptr(pixels.Pix))
-
-		gl.ActiveTexture(gl.TEXTURE0 + phosphorTextureUnitPrefsCRT)
-		gl.BindTexture(gl.TEXTURE_2D, win.phosphorTexture)
-		gl.TexImage2D(gl.TEXTURE_2D, 0,
-			gl.RGBA, previewWidth, previewHeight, 0,
-			gl.RGBA, gl.UNSIGNED_BYTE,
-			gl.Ptr(phosphor.Pix))
 	} else {
 		gl.ActiveTexture(gl.TEXTURE0)
 		gl.BindTexture(gl.TEXTURE_2D, win.crtTexture)
@@ -206,13 +191,6 @@ func (win *winCRTPrefs) render() {
 			0, 0, int32(pixels.Bounds().Size().X), int32(pixels.Bounds().Size().Y),
 			gl.RGBA, gl.UNSIGNED_BYTE,
 			gl.Ptr(pixels.Pix))
-
-		gl.ActiveTexture(gl.TEXTURE0 + phosphorTextureUnitPrefsCRT)
-		gl.BindTexture(gl.TEXTURE_2D, win.phosphorTexture)
-		gl.TexSubImage2D(gl.TEXTURE_2D, 0,
-			0, 0, int32(phosphor.Bounds().Size().X), int32(phosphor.Bounds().Size().Y),
-			gl.RGBA, gl.UNSIGNED_BYTE,
-			gl.Ptr(phosphor.Pix))
 	}
 }
 

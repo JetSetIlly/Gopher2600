@@ -81,10 +81,6 @@ type screenCrit struct {
 	// the pixels array is used in the presentation texture of the play and debug screen.
 	pixels *image.RGBA
 
-	// phosphor pixels
-	phosphor       *image.RGBA
-	updatePhosphor bool
-
 	// bufferPixels are what we plot pixels to while we wait for a frame to complete.
 	bufferPixels [5]*image.RGBA
 
@@ -109,7 +105,6 @@ type screenCrit struct {
 	// created through the SubImage() command and should not be written to
 	// directly
 	cropPixels        *image.RGBA
-	cropPhosphor      *image.RGBA
 	cropElementPixels *image.RGBA
 	cropOverlayPixels *image.RGBA
 
@@ -164,7 +159,6 @@ func (scr *screen) clearPixels() {
 			scr.crit.pixels.SetRGBA(x, y, color.RGBA{0, 0, 0, 255})
 			scr.crit.elementPixels.SetRGBA(x, y, color.RGBA{0, 0, 0, 255})
 			scr.crit.overlayPixels.SetRGBA(x, y, color.RGBA{0, 0, 0, 255})
-			scr.crit.phosphor.SetRGBA(x, y, color.RGBA{0, 0, 0, 0})
 		}
 	}
 	for i := range scr.crit.bufferPixels {
@@ -211,7 +205,6 @@ func (scr *screen) resize(spec specification.Spec, topScanline int, bottomScanli
 	scr.crit.pixels = image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, totalScanlines))
 	scr.crit.elementPixels = image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, totalScanlines))
 	scr.crit.overlayPixels = image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, totalScanlines))
-	scr.crit.phosphor = image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, totalScanlines))
 
 	for i := range scr.crit.bufferPixels {
 		scr.crit.bufferPixels[i] = image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, totalScanlines))
@@ -229,7 +222,6 @@ func (scr *screen) resize(spec specification.Spec, topScanline int, bottomScanli
 		specification.ClksHBlank+specification.ClksVisible, scr.crit.bottomScanline,
 	)
 	scr.crit.cropPixels = scr.crit.pixels.SubImage(crop).(*image.RGBA)
-	scr.crit.cropPhosphor = scr.crit.phosphor.SubImage(crop).(*image.RGBA)
 	scr.crit.cropElementPixels = scr.crit.elementPixels.SubImage(crop).(*image.RGBA)
 	scr.crit.cropOverlayPixels = scr.crit.overlayPixels.SubImage(crop).(*image.RGBA)
 
@@ -269,8 +261,6 @@ func (scr *screen) NewFrame(isStable bool) error {
 	scr.crit.section.Lock()
 
 	scr.crit.isStable = isStable
-
-	scr.crit.updatePhosphor = true
 
 	if scr.img.isPlaymode() {
 		scr.crit.plotIdx++
@@ -460,35 +450,16 @@ func (scr *screen) render() {
 	}
 }
 
-// copy pixels from buffer to the pixels and update phosphor pixels.
+// copy pixels from buffer to the pixels.
 func (scr *screen) copyPixelsDebugmode() {
 	scr.crit.section.Lock()
 	defer scr.crit.section.Unlock()
 
 	// copy pixels from render buffer to the live copy.
 	copy(scr.crit.pixels.Pix, scr.crit.bufferPixels[scr.crit.renderIdx].Pix)
-
-	// update phosphor carefully
-	for i := 0; i < len(scr.crit.bufferPixels[scr.crit.renderIdx].Pix); i += 4 {
-		if scr.crit.pixels.Pix[i] == 0 && scr.crit.pixels.Pix[i+1] == 0 && scr.crit.pixels.Pix[i+2] == 0 {
-			if scr.crit.updatePhosphor {
-				// alpha channel records the number of frames the phosphor has
-				// been active. starting at 255 and counting down to 0
-				if scr.crit.phosphor.Pix[i+3] > 0 {
-					scr.crit.phosphor.Pix[i+3]--
-				}
-			}
-		} else {
-			// copy current render pixels into phosphor
-			copy(scr.crit.phosphor.Pix[i:i+2], scr.crit.bufferPixels[scr.crit.renderIdx].Pix[i:i+2])
-			scr.crit.phosphor.Pix[i+3] = 0xff
-		}
-	}
-
-	scr.crit.updatePhosphor = false
 }
 
-// copy pixels from buffer to the pixels and update phosphor pixels.
+// copy pixels from buffer to the pixels.
 func (scr *screen) copyPixelsPlaymode() {
 	scr.crit.section.Lock()
 	defer scr.crit.section.Unlock()
@@ -519,25 +490,4 @@ func (scr *screen) copyPixelsPlaymode() {
 
 	// copy pixels from render buffer to the live copy.
 	copy(scr.crit.pixels.Pix, scr.crit.bufferPixels[scr.crit.renderIdx].Pix)
-
-	// update phosphor carefully
-	for i := 0; i < len(scr.crit.bufferPixels[scr.crit.renderIdx].Pix); i += 4 {
-		if scr.crit.pixels.Pix[i] == 0 && scr.crit.pixels.Pix[i+1] == 0 && scr.crit.pixels.Pix[i+2] == 0 {
-			// current color of the pixel is video-black so previous phosphor
-			// persists and fades over time.
-			//
-			// alpha channel records the number of frames the phosphor has been
-			// active. starting at 255 and counting down to 0
-			//
-			// fragment shader handles the rate at which the fade actually
-			// occurs. we're just recording the number of frames of video-black
-			if scr.crit.phosphor.Pix[i+3] > 0 {
-				scr.crit.phosphor.Pix[i+3]--
-			}
-		} else {
-			// copy current render pixels into phosphor
-			copy(scr.crit.phosphor.Pix[i:i+2], scr.crit.pixels.Pix[i:i+2])
-			scr.crit.phosphor.Pix[i+3] = 0xff
-		}
-	}
 }

@@ -41,7 +41,6 @@ type winDbgScr struct {
 	screenTexture   uint32
 	elementsTexture uint32
 	overlayTexture  uint32
-	phosphorTexture uint32
 
 	// the amount of alpha to apply to the overlay
 	overlayAlpha float32
@@ -109,12 +108,6 @@ func newWinDbgScr(img *SdlImgui) (window, error) {
 	gl.ActiveTexture(gl.TEXTURE0)
 	gl.GenTextures(1, &win.overlayTexture)
 	gl.BindTexture(gl.TEXTURE_2D, win.overlayTexture)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
-
-	gl.ActiveTexture(gl.TEXTURE0 + phosphorTextureUnitDbgScr)
-	gl.GenTextures(1, &win.phosphorTexture)
-	gl.BindTexture(gl.TEXTURE_2D, win.phosphorTexture)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
 
@@ -616,18 +609,15 @@ func (win *winDbgScr) render() {
 	var pixels *image.RGBA
 	var elements *image.RGBA
 	var overlay *image.RGBA
-	var phosphor *image.RGBA
 
 	if win.cropped {
 		pixels = win.scr.crit.cropPixels
 		elements = win.scr.crit.cropElementPixels
 		overlay = win.scr.crit.cropOverlayPixels
-		phosphor = win.scr.crit.cropPhosphor
 	} else {
 		pixels = win.scr.crit.pixels
 		elements = win.scr.crit.elementPixels
 		overlay = win.scr.crit.overlayPixels
-		phosphor = win.scr.crit.phosphor
 	}
 
 	gl.PixelStorei(gl.UNPACK_ROW_LENGTH, int32(pixels.Stride)/4)
@@ -654,13 +644,6 @@ func (win *winDbgScr) render() {
 			gl.RGBA, gl.UNSIGNED_BYTE,
 			gl.Ptr(overlay.Pix))
 
-		gl.ActiveTexture(gl.TEXTURE0 + phosphorTextureUnitDbgScr)
-		gl.BindTexture(gl.TEXTURE_2D, win.phosphorTexture)
-		gl.TexImage2D(gl.TEXTURE_2D, 0,
-			gl.RGBA, int32(phosphor.Bounds().Size().X), int32(phosphor.Bounds().Size().Y), 0,
-			gl.RGBA, gl.UNSIGNED_BYTE,
-			gl.Ptr(phosphor.Pix))
-
 		win.createTextures = false
 	} else {
 		gl.BindTexture(gl.TEXTURE_2D, win.screenTexture)
@@ -680,13 +663,6 @@ func (win *winDbgScr) render() {
 			0, 0, int32(pixels.Bounds().Size().X), int32(pixels.Bounds().Size().Y),
 			gl.RGBA, gl.UNSIGNED_BYTE,
 			gl.Ptr(overlay.Pix))
-
-		gl.ActiveTexture(gl.TEXTURE0 + phosphorTextureUnitDbgScr)
-		gl.BindTexture(gl.TEXTURE_2D, win.phosphorTexture)
-		gl.TexSubImage2D(gl.TEXTURE_2D, 0,
-			0, 0, int32(phosphor.Bounds().Size().X), int32(phosphor.Bounds().Size().Y),
-			gl.RGBA, gl.UNSIGNED_BYTE,
-			gl.Ptr(phosphor.Pix))
 	}
 
 	// set screen image scaling (and image padding) based on the current window

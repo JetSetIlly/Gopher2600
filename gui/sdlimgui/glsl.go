@@ -18,40 +18,34 @@ package sdlimgui
 import (
 	"fmt"
 	"strings"
-	"time"
 	"unsafe"
 
 	"github.com/go-gl/gl/v3.2-core/gl"
 	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/curated"
-	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/gui/crt/shaders"
 	"github.com/jetsetilly/gopher2600/gui/sdlimgui/fonts"
-	"github.com/jetsetilly/gopher2600/hardware/television"
-	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 )
 
-// texture units to use for the various phosphor textures. unlike the other
-// textures we have to use different units because (I think - my OpenGL-fu
-// isn't very advanced) the other textures are put into the imgui drawlist
-// which handles loading of the textures into unit 0.
-//
-// when used with gl.ActiveTexture() they should be added to gl.TEXTURE0, like
-// so:
-//
-//		gl.ActiveTexture(gl.TEXTURE0 + phosphorTextureUnitPlayScr)
-//		gl.BindTexture(gl.TEXTURE_2D, win.phosphorTexture)
-//
-// and when used to load the texture into the shader the unit specified rather
-// than an offset from whatever gl.TEXTURE0 is:
-//
-//		gl.Uniform1i(rnd.attribPhosphorTexture, phosphorTextureUnitPlayScr)
-//
 const (
-	phosphorTextureUnitDbgScr   = 1
-	phosphorTextureUnitPlayScr  = 2
-	phosphorTextureUnitPrefsCRT = 3
+	guiShader int = iota
+	colorShader
+	numShaders
 )
+
+type shaderProgram struct {
+	handle uint32
+
+	// "attrib" variables are the "communication" points between the shader
+	// program and the host language. "uniform" variables remain constant for
+	// the duration of each shader program executrion. non-uniform variables
+	// meanwhile change from one iteration to the next.
+	attribProjMtx  int32 // uniform
+	attribPosition int32
+	attribUV       int32
+	attribColor    int32
+	attribTexture  int32 // uniform
+}
 
 type glsl struct {
 	img *SdlImgui
@@ -65,54 +59,11 @@ type glsl struct {
 	// handle for the compiled and linked shader program. we don't need to keep
 	// references to the component parts of the program, they're created and
 	// destroyed all within the setup() function
-	shaderHandle uint32
+	shaderHandle  [numShaders]shaderProgram
+	currentShader shaderProgram
 
 	vboHandle      uint32
 	elementsHandle uint32
-
-	// "attrib" variables are the "communication" points between the shader
-	// program and the host language. "uniform" variables remain constant for
-	// the duration of each shader program executrion. non-uniform variables
-	// meanwhile change from one iteration to the next.
-	attribProjMtx  int32 // uniform
-	attribPosition int32
-	attribUV       int32
-	attribColor    int32
-
-	attribTexture         int32 // uniform
-	attribPhosphorTexture int32 // uniform
-
-	// imagetype differentaites the screen texture from the rest of the imgui
-	// interface
-	attribImageType int32 // uniform
-
-	// the following attrib variables are strictly for the screen texture
-	attribShowCursor         int32 // uniform
-	attribIsCropped          int32 // uniform
-	attribScreenDim          int32 // uniform
-	attribUncroppedScreenDim int32 // uniform
-	attribScalingX           int32 // uniform
-	attribScalingY           int32 // uniform
-	attribLastX              int32 // uniform
-	attribLastY              int32 // uniform
-	attribHblank             int32 // uniform
-	attribTopScanline        int32 // uniform
-	attribBotScanline        int32 // uniform
-	attribOverlayAlpha       int32 // uniform
-
-	attribEnableCRT           int32 // uniform
-	attribEnablePhosphor      int32 // uniform
-	attribEnableShadowMask    int32 // uniform
-	attribEnableScanlines     int32 // uniform
-	attribEnableNoise         int32 // uniform
-	attribEnableBlur          int32 // uniform
-	attribEnableVignette      int32 // uniform
-	attribPhosphorSpeed       int32 // uniform
-	attribMaskBrightness      int32 // uniform
-	attribScanlinesBrightness int32 // uniform
-	attribNoiseLevel          int32 // uniform
-	attribBlurLevel           int32 // uniform
-	attribRandSeed            int32 // uniform
 }
 
 func newGlsl(img *SdlImgui) (*glsl, error) {
@@ -143,10 +94,12 @@ func (rnd *glsl) destroy() {
 	}
 	rnd.elementsHandle = 0
 
-	if rnd.shaderHandle != 0 {
-		gl.DeleteProgram(rnd.shaderHandle)
+	for i := range rnd.shaderHandle {
+		if rnd.shaderHandle[i].handle != 0 {
+			gl.DeleteProgram(rnd.shaderHandle[i].handle)
+			rnd.shaderHandle[i].handle = 0
+		}
 	}
-	rnd.shaderHandle = 0
 
 	if rnd.fontTexture != 0 {
 		gl.DeleteTextures(1, &rnd.fontTexture)
@@ -159,13 +112,6 @@ func (rnd *glsl) destroy() {
 func (rnd *glsl) preRender() {
 	gl.ClearColor(0.0, 0.0, 0.0, 1.0)
 	gl.Clear(gl.COLOR_BUFFER_BIT)
-}
-
-func boolToInt32(v bool) int32 {
-	if v {
-		return shaders.True
-	}
-	return shaders.False
 }
 
 // render translates the ImGui draw data to OpenGL3 commands.
@@ -208,15 +154,6 @@ func (rnd *glsl) render() {
 		{-1.0, 1.0, 0.0, 1.0},
 	}
 
-	// shader options for shader program
-	gl.UseProgram(rnd.shaderHandle)
-
-	gl.Uniform1i(rnd.attribTexture, 0)
-
-	gl.ActiveTexture(gl.TEXTURE0)
-	gl.UniformMatrix4fv(rnd.attribProjMtx, 1, false, &orthoProjection[0][0])
-	gl.BindSampler(0, 0) // Rely on combined texture/sampler state.
-
 	// Recreate the VAO every time
 	// (This is to easily allow multiple GL contexts. VAO are not shared among GL contexts, and
 	// we don't track creation/deletion of windows so we don't have an obvious key to use to cache them.)
@@ -224,13 +161,7 @@ func (rnd *glsl) render() {
 	gl.GenVertexArrays(1, &vaoHandle)
 	gl.BindVertexArray(vaoHandle)
 	gl.BindBuffer(gl.ARRAY_BUFFER, rnd.vboHandle)
-	gl.EnableVertexAttribArray(uint32(rnd.attribPosition))
-	gl.EnableVertexAttribArray(uint32(rnd.attribUV))
-	gl.EnableVertexAttribArray(uint32(rnd.attribColor))
-	vertexSize, vertexOffsetPos, vertexOffsetUv, vertexOffsetCol := imgui.VertexBufferLayout()
-	gl.VertexAttribPointer(uint32(rnd.attribUV), 2, gl.FLOAT, false, int32(vertexSize), unsafe.Pointer(uintptr(vertexOffsetUv)))
-	gl.VertexAttribPointer(uint32(rnd.attribPosition), 2, gl.FLOAT, false, int32(vertexSize), unsafe.Pointer(uintptr(vertexOffsetPos)))
-	gl.VertexAttribPointer(uint32(rnd.attribColor), 4, gl.UNSIGNED_BYTE, true, int32(vertexSize), unsafe.Pointer(uintptr(vertexOffsetCol)))
+
 	indexSize := imgui.IndexBufferLayout()
 	drawType := gl.UNSIGNED_SHORT
 	if indexSize == 4 {
@@ -256,20 +187,34 @@ func (rnd *glsl) render() {
 				textureID := uint32(cmd.TextureID())
 				switch textureID {
 				case rnd.img.wm.dbgScr.screenTexture:
-					rnd.debugScr()
+					rnd.currentShader = rnd.shaderHandle[colorShader]
 				case rnd.img.wm.dbgScr.elementsTexture:
-					rnd.elements()
+					rnd.currentShader = rnd.shaderHandle[colorShader]
 				case rnd.img.wm.dbgScr.overlayTexture:
-					rnd.overlay()
+					rnd.currentShader = rnd.shaderHandle[colorShader]
 				case rnd.img.playScr.screenTexture:
-					rnd.playScr()
+					rnd.currentShader = rnd.shaderHandle[colorShader]
 				case rnd.img.wm.crtPrefs.crtTexture:
-					rnd.prefsCRT()
+					rnd.currentShader = rnd.shaderHandle[colorShader]
 				default:
-					rnd.gui()
+					rnd.currentShader = rnd.shaderHandle[guiShader]
 				}
 
-				rnd.setOptions(textureID)
+				gl.UseProgram(rnd.currentShader.handle)
+
+				gl.Uniform1i(rnd.currentShader.attribTexture, 0)
+
+				gl.ActiveTexture(gl.TEXTURE0)
+				gl.UniformMatrix4fv(rnd.currentShader.attribProjMtx, 1, false, &orthoProjection[0][0])
+				gl.BindSampler(0, 0) // Rely on combined texture/sampler state.
+
+				gl.EnableVertexAttribArray(uint32(rnd.currentShader.attribPosition))
+				gl.EnableVertexAttribArray(uint32(rnd.currentShader.attribUV))
+				gl.EnableVertexAttribArray(uint32(rnd.currentShader.attribColor))
+				vertexSize, vertexOffsetPos, vertexOffsetUv, vertexOffsetCol := imgui.VertexBufferLayout()
+				gl.VertexAttribPointer(uint32(rnd.currentShader.attribUV), 2, gl.FLOAT, false, int32(vertexSize), unsafe.Pointer(uintptr(vertexOffsetUv)))
+				gl.VertexAttribPointer(uint32(rnd.currentShader.attribPosition), 2, gl.FLOAT, false, int32(vertexSize), unsafe.Pointer(uintptr(vertexOffsetPos)))
+				gl.VertexAttribPointer(uint32(rnd.currentShader.attribColor), 4, gl.UNSIGNED_BYTE, true, int32(vertexSize), unsafe.Pointer(uintptr(vertexOffsetCol)))
 
 				// clipping
 				clipRect := cmd.ClipRect()
@@ -284,140 +229,21 @@ func (rnd *glsl) render() {
 	gl.DeleteVertexArrays(1, &vaoHandle)
 }
 
-func (rnd *glsl) gui() {
-	gl.Uniform1i(rnd.attribImageType, shaders.GUI)
-}
-
-func (rnd *glsl) debugScr() {
-	gl.Uniform1i(rnd.attribImageType, shaders.DebugScr)
-	gl.Uniform1i(rnd.attribPhosphorTexture, phosphorTextureUnitDbgScr)
-}
-
-func (rnd *glsl) elements() {
-	gl.Uniform1i(rnd.attribImageType, shaders.Elements)
-}
-
-func (rnd *glsl) overlay() {
-	gl.Uniform1i(rnd.attribImageType, shaders.Overlay)
-	gl.Uniform1f(rnd.attribOverlayAlpha, rnd.img.wm.dbgScr.overlayAlpha)
-}
-
-func (rnd *glsl) playScr() {
-	gl.Uniform1i(rnd.attribImageType, shaders.PlayScr)
-	gl.Uniform1i(rnd.attribPhosphorTexture, phosphorTextureUnitPlayScr)
-}
-
-func (rnd *glsl) prefsCRT() {
-	gl.Uniform1i(rnd.attribImageType, shaders.PrefsCRT)
-	gl.Uniform1i(rnd.attribPhosphorTexture, phosphorTextureUnitPrefsCRT)
-}
-
-func (rnd *glsl) setOptions(textureID uint32) {
-	// scaling of screen
-	var vertScaling float32
-	var horizScaling float32
-	if rnd.img.isPlaymode() {
-		vertScaling = rnd.img.playScr.scaling
-		horizScaling = rnd.img.playScr.horizScaling()
-	} else {
-		vertScaling = rnd.img.wm.dbgScr.scaling
-		horizScaling = rnd.img.wm.dbgScr.horizScaling()
-	}
-
-	// crt preferences. for playmode the stored preferences are used and for
-	// the debug screen the local CRT boolean is used
-	var crt bool
-	if rnd.img.isPlaymode() {
-		crt = rnd.img.crtPrefs.Enabled.Get().(bool)
-	} else {
-		crt = rnd.img.wm.dbgScr.crt
-	}
-
-	// crt preferences. we always set these because they're the same whatever
-	// the texture that uses them.
-	gl.Uniform1i(rnd.attribEnableCRT, boolToInt32(crt))
-	gl.Uniform1i(rnd.attribEnablePhosphor, boolToInt32(rnd.img.crtPrefs.Phosphor.Get().(bool)))
-	gl.Uniform1i(rnd.attribEnableShadowMask, boolToInt32(rnd.img.crtPrefs.Mask.Get().(bool)))
-	gl.Uniform1i(rnd.attribEnableScanlines, boolToInt32(rnd.img.crtPrefs.Scanlines.Get().(bool)))
-	gl.Uniform1i(rnd.attribEnableNoise, boolToInt32(rnd.img.crtPrefs.Noise.Get().(bool)))
-	gl.Uniform1i(rnd.attribEnableBlur, boolToInt32(rnd.img.crtPrefs.Blur.Get().(bool)))
-	gl.Uniform1i(rnd.attribEnableVignette, boolToInt32(rnd.img.crtPrefs.Vignette.Get().(bool)))
-	gl.Uniform1f(rnd.attribPhosphorSpeed, float32(rnd.img.crtPrefs.PhosphorSpeed.Get().(float64)))
-	gl.Uniform1f(rnd.attribMaskBrightness, float32(rnd.img.crtPrefs.MaskBrightness.Get().(float64)))
-	gl.Uniform1f(rnd.attribScanlinesBrightness, float32(rnd.img.crtPrefs.ScanlinesBrightness.Get().(float64)))
-	gl.Uniform1f(rnd.attribNoiseLevel, float32(rnd.img.crtPrefs.NoiseLevel.Get().(float64)))
-	gl.Uniform1f(rnd.attribBlurLevel, float32(rnd.img.crtPrefs.BlurLevel.Get().(float64)))
-	gl.Uniform1f(rnd.attribRandSeed, float32(time.Now().Nanosecond())/100000000.0)
-
-	// critical section
-	rnd.img.screen.crit.section.Lock()
-
-	// the resolution information is used to scale the debugging guides
-	switch textureID {
-	case rnd.img.wm.dbgScr.screenTexture:
-		fallthrough
-	case rnd.img.wm.dbgScr.elementsTexture:
-		fallthrough
-	case rnd.img.wm.dbgScr.overlayTexture:
-		gl.Uniform1f(rnd.attribScalingX, rnd.img.wm.dbgScr.horizScaling())
-		gl.Uniform1f(rnd.attribScalingY, rnd.img.wm.dbgScr.scaling)
-		gl.Uniform2f(rnd.attribUncroppedScreenDim, rnd.img.wm.dbgScr.scaledWidth(false), rnd.img.wm.dbgScr.scaledHeight(false))
-		gl.Uniform2f(rnd.attribScreenDim, rnd.img.wm.dbgScr.scaledWidth(true), rnd.img.wm.dbgScr.scaledHeight(true))
-		gl.Uniform1i(rnd.attribIsCropped, boolToInt32(rnd.img.wm.dbgScr.cropped))
-
-		cursorX := rnd.img.screen.crit.lastX
-		cursorY := rnd.img.screen.crit.lastY
-
-		if rnd.img.wm.dbgScr.cropped {
-			gl.Uniform1f(rnd.attribLastX, float32(cursorX-specification.ClksHBlank)*horizScaling)
-		} else {
-			gl.Uniform1f(rnd.attribLastX, float32(cursorX)*horizScaling)
-		}
-		gl.Uniform1f(rnd.attribLastY, float32(cursorY)*vertScaling)
-
-	case rnd.img.playScr.screenTexture:
-		gl.Uniform2f(rnd.attribScreenDim, rnd.img.playScr.scaledWidth(), rnd.img.playScr.scaledHeight())
-		gl.Uniform1f(rnd.attribScalingX, rnd.img.playScr.horizScaling())
-		gl.Uniform1f(rnd.attribScalingY, rnd.img.playScr.scaling)
-		gl.Uniform1i(rnd.attribIsCropped, shaders.True)
-
-	case rnd.img.wm.crtPrefs.crtTexture:
-		gl.Uniform2f(rnd.attribScreenDim, rnd.img.wm.crtPrefs.getScaledWidth(), rnd.img.wm.crtPrefs.getScaledHeight())
-		gl.Uniform1f(rnd.attribScalingX, rnd.img.wm.crtPrefs.getScaling(true))
-		gl.Uniform1f(rnd.attribScalingY, rnd.img.wm.crtPrefs.getScaling(false))
-		gl.Uniform1i(rnd.attribIsCropped, shaders.True)
-	}
-
-	// screen geometry
-	gl.Uniform1f(rnd.attribHblank, specification.ClksHBlank*horizScaling)
-	gl.Uniform1f(rnd.attribTopScanline, float32(rnd.img.screen.crit.topScanline)*vertScaling)
-	gl.Uniform1f(rnd.attribBotScanline, float32(rnd.img.screen.crit.bottomScanline)*vertScaling)
-
-	rnd.img.screen.crit.section.Unlock()
-	// end of critical section
-
-	// whether we show the cursor depends on the current GUI state
-	switch rnd.img.state {
-	case gui.StatePaused:
-		gl.Uniform1i(rnd.attribShowCursor, shaders.True)
-	case gui.StateRunning:
-		// if FPS is low enough then show screen draw even though
-		// emulation is running
-		if rnd.img.lz.TV.ReqFPS < television.ThreshVisual {
-			gl.Uniform1i(rnd.attribShowCursor, shaders.True)
-		} else {
-			gl.Uniform1i(rnd.attribShowCursor, shaders.False)
-		}
-	case gui.StateStepping:
-		gl.Uniform1i(rnd.attribShowCursor, shaders.True)
-	case gui.StateRewinding:
-		gl.Uniform1i(rnd.attribShowCursor, shaders.False)
-	}
-}
-
 func (rnd *glsl) setup() {
-	// compile and link shader programs
-	rnd.shaderHandle = gl.CreateProgram()
+	// vertex and fragment glsl source defined in shaders.go (a generated file)
+	rnd.shaderHandle[guiShader] = compileShader(string(shaders.VertexShader), string(shaders.GUIShader))
+	rnd.shaderHandle[colorShader] = compileShader(string(shaders.VertexShader), string(shaders.ColorShader))
+
+	gl.GenBuffers(1, &rnd.vboHandle)
+	gl.GenBuffers(1, &rnd.elementsHandle)
+}
+
+// compile and link shader programs
+func compileShader(vertProgram string, fragProgram string) shaderProgram {
+	var prog shaderProgram
+
+	prog.handle = gl.CreateProgram()
+
 	vertHandle := gl.CreateShader(gl.VERTEX_SHADER)
 	fragHandle := gl.CreateShader(gl.FRAGMENT_SHADER)
 
@@ -429,8 +255,8 @@ func (rnd *glsl) setup() {
 	}
 
 	// vertex and fragment glsl source defined in shaders.go (a generated file)
-	glShaderSource(vertHandle, shaders.Vertex)
-	glShaderSource(fragHandle, shaders.Fragment)
+	glShaderSource(vertHandle, vertProgram)
+	glShaderSource(fragHandle, fragProgram)
 
 	gl.CompileShader(vertHandle)
 	if log := getShaderCompileError(vertHandle); log != "" {
@@ -442,9 +268,9 @@ func (rnd *glsl) setup() {
 		panic(log)
 	}
 
-	gl.AttachShader(rnd.shaderHandle, vertHandle)
-	gl.AttachShader(rnd.shaderHandle, fragHandle)
-	gl.LinkProgram(rnd.shaderHandle)
+	gl.AttachShader(prog.handle, vertHandle)
+	gl.AttachShader(prog.handle, fragHandle)
+	gl.LinkProgram(prog.handle)
 
 	// now that the shader promer has linked we no longer need the individual
 	// shader programs
@@ -452,47 +278,13 @@ func (rnd *glsl) setup() {
 	gl.DeleteShader(vertHandle)
 
 	// get references to shader attributes and uniforms variables
+	prog.attribProjMtx = gl.GetUniformLocation(prog.handle, gl.Str("ProjMtx"+"\x00"))
+	prog.attribPosition = gl.GetAttribLocation(prog.handle, gl.Str("Position"+"\x00"))
+	prog.attribUV = gl.GetAttribLocation(prog.handle, gl.Str("UV"+"\x00"))
+	prog.attribColor = gl.GetAttribLocation(prog.handle, gl.Str("Color"+"\x00"))
+	prog.attribTexture = gl.GetUniformLocation(prog.handle, gl.Str("Texture"+"\x00"))
 
-	rnd.attribProjMtx = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("ProjMtx"+"\x00"))
-	rnd.attribPosition = gl.GetAttribLocation(rnd.shaderHandle, gl.Str("Position"+"\x00"))
-	rnd.attribUV = gl.GetAttribLocation(rnd.shaderHandle, gl.Str("UV"+"\x00"))
-	rnd.attribColor = gl.GetAttribLocation(rnd.shaderHandle, gl.Str("Color"+"\x00"))
-
-	rnd.attribTexture = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("Texture"+"\x00"))
-	rnd.attribPhosphorTexture = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("PhosphorTexture"+"\x00"))
-
-	rnd.attribImageType = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("ImageType"+"\x00"))
-
-	rnd.attribShowCursor = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("ShowCursor"+"\x00"))
-	rnd.attribIsCropped = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("IsCropped"+"\x00"))
-	rnd.attribScreenDim = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("ScreenDim"+"\x00"))
-	rnd.attribUncroppedScreenDim = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("UncroppedScreenDim"+"\x00"))
-	rnd.attribScalingX = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("ScalingX"+"\x00"))
-	rnd.attribScalingY = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("ScalingY"+"\x00"))
-	rnd.attribLastX = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("LastX"+"\x00"))
-	rnd.attribLastY = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("LastY"+"\x00"))
-	rnd.attribHblank = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("Hblank"+"\x00"))
-	rnd.attribTopScanline = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("TopScanline"+"\x00"))
-	rnd.attribBotScanline = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("BotScanline"+"\x00"))
-	rnd.attribOverlayAlpha = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("OverlayAlpha"+"\x00"))
-
-	rnd.attribEnableCRT = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("EnableCRT"+"\x00"))
-	rnd.attribEnablePhosphor = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("EnablePhosphor"+"\x00"))
-	rnd.attribEnableShadowMask = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("EnableShadowMask"+"\x00"))
-	rnd.attribEnableScanlines = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("EnableScanlines"+"\x00"))
-	rnd.attribEnableNoise = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("EnableNoise"+"\x00"))
-	rnd.attribEnableBlur = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("EnableBlur"+"\x00"))
-	rnd.attribEnableVignette = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("EnableVignette"+"\x00"))
-
-	rnd.attribPhosphorSpeed = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("PhosphorSpeed"+"\x00"))
-	rnd.attribMaskBrightness = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("MaskBrightness"+"\x00"))
-	rnd.attribScanlinesBrightness = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("ScanlinesBrightness"+"\x00"))
-	rnd.attribNoiseLevel = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("NoiseLevel"+"\x00"))
-	rnd.attribBlurLevel = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("BlurLevel"+"\x00"))
-	rnd.attribRandSeed = gl.GetUniformLocation(rnd.shaderHandle, gl.Str("RandSeed"+"\x00"))
-
-	gl.GenBuffers(1, &rnd.vboHandle)
-	gl.GenBuffers(1, &rnd.elementsHandle)
+	return prog
 }
 
 func (rnd *glsl) setupFonts() error {

@@ -35,8 +35,7 @@ type playScr struct {
 	scr *screen
 
 	// textures
-	screenTexture   uint32
-	phosphorTexture uint32
+	screenTexture uint32
 
 	// (re)create textures on next render()
 	createTextures bool
@@ -94,12 +93,6 @@ func newPlayScr(img *SdlImgui) *playScr {
 	gl.ActiveTexture(gl.TEXTURE0)
 	gl.GenTextures(1, &win.screenTexture)
 	gl.BindTexture(gl.TEXTURE_2D, win.screenTexture)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
-
-	gl.ActiveTexture(gl.TEXTURE0 + phosphorTextureUnitPlayScr)
-	gl.GenTextures(1, &win.phosphorTexture)
-	gl.BindTexture(gl.TEXTURE_2D, win.phosphorTexture)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
 
@@ -206,7 +199,6 @@ func (win *playScr) resize() {
 // screen critical section.
 func (win *playScr) render() {
 	pixels := win.scr.crit.cropPixels
-	phosphor := win.scr.crit.cropPhosphor
 
 	gl.PixelStorei(gl.UNPACK_ROW_LENGTH, int32(pixels.Stride)/4)
 	defer gl.PixelStorei(gl.UNPACK_ROW_LENGTH, 0)
@@ -221,13 +213,6 @@ func (win *playScr) render() {
 			gl.RGBA, int32(pixels.Bounds().Size().X), int32(pixels.Bounds().Size().Y), 0,
 			gl.RGBA, gl.UNSIGNED_BYTE,
 			gl.Ptr(pixels.Pix))
-
-		gl.ActiveTexture(gl.TEXTURE0 + phosphorTextureUnitPlayScr)
-		gl.BindTexture(gl.TEXTURE_2D, win.phosphorTexture)
-		gl.TexImage2D(gl.TEXTURE_2D, 0,
-			gl.RGBA, int32(phosphor.Bounds().Size().X), int32(phosphor.Bounds().Size().Y), 0,
-			gl.RGBA, gl.UNSIGNED_BYTE,
-			gl.Ptr(phosphor.Pix))
 	} else if win.scr.crit.isStable {
 		gl.ActiveTexture(gl.TEXTURE0)
 		gl.BindTexture(gl.TEXTURE_2D, win.screenTexture)
@@ -235,13 +220,6 @@ func (win *playScr) render() {
 			0, 0, int32(pixels.Bounds().Size().X), int32(pixels.Bounds().Size().Y),
 			gl.RGBA, gl.UNSIGNED_BYTE,
 			gl.Ptr(pixels.Pix))
-
-		gl.ActiveTexture(gl.TEXTURE0 + phosphorTextureUnitPlayScr)
-		gl.BindTexture(gl.TEXTURE_2D, win.phosphorTexture)
-		gl.TexSubImage2D(gl.TEXTURE_2D, 0,
-			0, 0, int32(phosphor.Bounds().Size().X), int32(phosphor.Bounds().Size().Y),
-			gl.RGBA, gl.UNSIGNED_BYTE,
-			gl.Ptr(phosphor.Pix))
 	}
 
 	// unlike dbgscr, there is no need to call setScaling() every render()
