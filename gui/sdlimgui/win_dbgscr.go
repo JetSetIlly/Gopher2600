@@ -49,9 +49,9 @@ type winDbgScr struct {
 	createTextures bool
 
 	// how to present the screen in the window
-	debugColors bool
-	cropped     bool
-	crt         bool
+	elements bool
+	cropped  bool
+	crt      bool
 
 	// the tv screen has captured mouse input
 	isCaptured bool
@@ -213,14 +213,11 @@ func (win *winDbgScr) draw() {
 	imgui.PushStyleColor(imgui.StyleColorButtonHovered, win.img.cols.Transparent)
 	imgui.PushStyleVarVec2(imgui.StyleVarFramePadding, imgui.Vec2{0.0, 0.0})
 
-	// screen texture
-	imgui.SetCursorScreenPos(screenOrigin)
-	imgui.ImageButton(imgui.TextureID(win.screenTexture), imgui.Vec2{w, h})
-
-	// debug colors / element layer
-	if win.debugColors {
-		imgui.SetCursorScreenPos(screenOrigin)
+	// choose which texture to use depending on whether elements is selected
+	if win.elements {
 		imgui.ImageButton(imgui.TextureID(win.elementsTexture), imgui.Vec2{w, h})
+	} else {
+		imgui.ImageButton(imgui.TextureID(win.screenTexture), imgui.Vec2{w, h})
 	}
 
 	// overlay texture on top of screen texture
@@ -295,7 +292,7 @@ func (win *winDbgScr) draw() {
 		imgui.SameLineV(0, 15)
 
 		// display toggles
-		imgui.Checkbox("Debug Colours", &win.debugColors)
+		imgui.Checkbox("Debug Colours", &win.elements)
 		imgui.SameLineV(0, 15)
 		if imgui.Checkbox("Cropping", &win.cropped) {
 			win.setCropping(win.cropped)

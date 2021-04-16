@@ -13,7 +13,6 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-// Package shaders (sub-package of the CRT package) contains the GLSL shader
-// code used by Gopher2600 to create a CRT like image. Also contains the
-// generator package used to process the GLSL code so that it is usable in Go.
+// Package shaders contains the shader source for displaying GUI elements on
+// the screen. CRT shaders are found in the gui/crtshaders package
 package shaders
