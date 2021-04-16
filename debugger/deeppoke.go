@@ -64,7 +64,7 @@ func (dbg *Debugger) PushDeepPoke(addr uint16, value uint8, newValue uint8, valu
 	return true
 }
 
-// returned by searchDeepPoke()
+// returned by searchDeepPoke() for convenience.
 type deepPoking struct {
 	state *rewind.State
 	addr  uint16
@@ -144,21 +144,6 @@ func (dbg *Debugger) searchDeepPoke(searchState *rewind.State, searchAddr uint16
 		}
 
 		fmt.Println("(mem)", searchState.CPU.LastResult.String())
-
-		//if depth == 0 {
-		//	// after the first SearchMemoryWrite() we revert to a neutral value
-		//	// mask.
-		//	//
-		//	// note that the actual deep-poking, if one is to occur, uses the
-		//	// original value mask.
-		//	valueMask = 0xff
-
-		//	// update value to search if necessary
-		//	if value != searchState.Mem.LastAccessValue {
-		//		value = searchState.Mem.LastAccessValue
-		//		fmt.Printf("continuing search with value %02x\n", value)
-		//	}
-		//}
 
 		// writes to memory always use a register as the source of the write
 		var reg rune

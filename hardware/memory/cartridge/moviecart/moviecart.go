@@ -20,7 +20,6 @@ import (
 	"math/rand"
 
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
-	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 	"github.com/jetsetilly/gopher2600/logger"
@@ -38,13 +37,13 @@ const fieldSize = 2560
 
 // offsets into each part of the field (audio, color, etc.)
 const (
-	offsetVersion      = 0
+	offsetVersion      = 0 // nolint
 	offsetFieldNumber  = 4
 	offsetAudioData    = 7
 	offsetGraphData    = 269
 	offsetTimecodeData = 1229
 	offsetColorData    = 1289
-	offsetEndData      = 2249
+	offsetEndData      = 2249 // nolint
 )
 
 // levels for both volume and brightness.
@@ -94,8 +93,6 @@ const (
 	stateMachineNewField
 )
 
-const noForceColor uint8 = 0x00
-
 // the current control mode for the OSD.
 type controlMode int
 
@@ -107,7 +104,7 @@ const (
 	modeMax        controlMode = 2
 )
 
-// a frame consists of two interlaced fields
+// a frame consists of two interlaced fields.
 const numFields = 2
 
 type state struct {
@@ -193,7 +190,7 @@ type state struct {
 	osdIdx int
 }
 
-// what part of the OSD is currently being display
+// what part of the OSD is currently being display.
 type osdDisplay int
 
 const (
@@ -247,11 +244,6 @@ func NewMoviecart(loader cartridgeloader.Streamer) (mapper.CartMapper, error) {
 		loader:      loader,
 		mappingID:   "MC",
 		description: "Moviecart",
-	}
-
-	var err error
-	if err != nil {
-		return nil, curated.Errorf("MVC: %v", err)
 	}
 
 	cart.state = newState()
@@ -458,7 +450,6 @@ func (cart *Moviecart) updateDirection() {
 				}
 			}
 		}
-
 	} else {
 		cart.state.controlRepeat = 0
 		cart.state.fieldAdv = 1

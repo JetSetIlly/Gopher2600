@@ -293,13 +293,13 @@ type Streamer interface {
 	Stream(offset int64, buffer []byte) (int, error)
 }
 
-// Stream enough data to fill buffer from position offset
+// Stream enough data to fill buffer from position offset.
 func (cl Loader) Stream(offset int64, buffer []byte) (int, error) {
 	if !cl.isStreaming() {
 		return 0, curated.Errorf("cartridgeloader: stream: no stream open")
 	}
 
-	if _, err := (*cl.streamHandle).Seek(offset, os.SEEK_SET); err != nil {
+	if _, err := (*cl.streamHandle).Seek(offset, io.SeekStart); err != nil {
 		return 0, curated.Errorf("cartridgeloader: stream: %v", err)
 	}
 

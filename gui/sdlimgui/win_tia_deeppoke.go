@@ -22,7 +22,7 @@ import (
 	"github.com/jetsetilly/gopher2600/gui/sdlimgui/fonts"
 )
 
-// master control for enabling deeppoke capability
+// master control for enabling deeppoke capability.
 const allowDeepPoke = false
 
 // update will run deepPoke() or current() function depending on state of

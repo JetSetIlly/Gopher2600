@@ -488,7 +488,6 @@ func debug(md *modalflag.Modes, sync *mainSync) error {
 
 		// set up a launch function
 		dbgLaunch := func() error {
-
 			err := dbg.Start(*initScript, cartridgeloader.NewLoader(md.GetArg(0), *mapping))
 			if err != nil {
 				return err

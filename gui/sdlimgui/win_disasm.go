@@ -231,7 +231,7 @@ func (win *winDisasm) draw() {
 	case gui.StateInitialising:
 		win.focusOnAddr = win.followCPU
 
-		// updateOnPause needs a comparitively long value for StateInitialising
+		// updateOnPause needs a comparatively long value for StateInitialising
 		win.updateOnPause = 20
 	case gui.StateRunning:
 		fallthrough

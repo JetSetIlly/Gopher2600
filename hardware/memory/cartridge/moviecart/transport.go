@@ -59,7 +59,7 @@ const (
 	transportDown   transportDirection = 0x04
 	transportUp     transportDirection = 0x02
 	transportBW     transportButtons   = 0x10
-	transportSelect transportButtons   = 0x04
+	transportSelect transportButtons   = 0x04 // nolint
 	transportReset  transportButtons   = 0x02
 	transportButton transportButtons   = 0x01
 )

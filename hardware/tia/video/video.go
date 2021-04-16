@@ -305,7 +305,7 @@ func (vd *Video) Pixel() {
 	// My misunderstanding was caused by changing the priority of the ball
 	// sprite when the priority bit was on alongside the scoremode bit.
 	//
-	if vd.Playfield.Priority { // priority take precendence of scoremode
+	if vd.Playfield.Priority { // priority take precedence of scoremode
 		if vd.Playfield.colorLatch { // priority 1
 			vd.PixelColor = vd.Playfield.color
 			vd.LastElement = ElementPlayfield
