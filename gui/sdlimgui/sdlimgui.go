@@ -59,6 +59,12 @@ type SdlImgui struct {
 	// to set the value
 	state gui.EmulationState
 
+	// isRewindSlider records whether the rewind slider control in the
+	// winControl type is being clicked/moved.
+	//
+	// we can think of this as a special case of gui.State.Rewinding.
+	isRewindSlider bool
+
 	// vcs is set by ReqSetPlaymode or ReqSetDebugmode. in debug mode the VCS
 	// is accessible via lz.Dbg.VCS but for maximum compatibility between
 	// playmode and debugmode the VCS should be addressed through this pointer

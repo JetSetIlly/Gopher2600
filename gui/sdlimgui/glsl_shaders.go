@@ -247,22 +247,26 @@ func (sh *dbgScreenShader) setAttributes(env shaderEnvironment) {
 	env.img.screen.crit.section.Unlock()
 	// end of critical section
 
-	// screen cursor
-	switch env.img.state {
-	case gui.StatePaused:
-		gl.Uniform1i(sh.showCursor, 1)
-	case gui.StateRunning:
-		// if FPS is low enough then show screen draw even though
-		// emulation is running
-		if env.img.lz.TV.ReqFPS < television.ThreshVisual {
-			gl.Uniform1i(sh.showCursor, 1)
-		} else {
-			gl.Uniform1i(sh.showCursor, 0)
-		}
-	case gui.StateStepping:
-		gl.Uniform1i(sh.showCursor, 1)
-	case gui.StateRewinding:
+	// show cursor
+	if env.img.isRewindSlider {
 		gl.Uniform1i(sh.showCursor, 0)
+	} else {
+		switch env.img.state {
+		case gui.StatePaused:
+			gl.Uniform1i(sh.showCursor, 1)
+		case gui.StateRunning:
+			// if FPS is low enough then show screen draw even though
+			// emulation is running
+			if env.img.lz.TV.ReqFPS < television.ThreshVisual {
+				gl.Uniform1i(sh.showCursor, 1)
+			} else {
+				gl.Uniform1i(sh.showCursor, 0)
+			}
+		case gui.StateStepping:
+			gl.Uniform1i(sh.showCursor, 1)
+		case gui.StateRewinding:
+			gl.Uniform1i(sh.showCursor, 1)
+		}
 	}
 }
 

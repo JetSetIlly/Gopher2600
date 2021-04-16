@@ -208,6 +208,8 @@ func (win *winControl) drawFramHistory() {
 		win.rewindWaiting = true
 		win.rewindTarget = f
 	}
+
+	win.img.isRewindSlider = imgui.IsItemFocused() && imgui.IsMouseDown(0)
 }
 
 func (win *winControl) drawFPS() {
