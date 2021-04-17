@@ -31,3 +31,9 @@ var DbgScrShader []byte
 
 //go:embed "overlay.frag"
 var OverlayShader []byte
+
+//go:embed "crt.vert"
+var CRTVertexShader []byte
+
+//go:embed "crt.frag"
+var CRTFragShader []byte

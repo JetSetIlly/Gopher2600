@@ -17,6 +17,7 @@ package sdlimgui
 
 import (
 	"strings"
+	"time"
 	"unsafe"
 
 	"github.com/go-gl/gl/v3.2-core/gl"
@@ -34,8 +35,10 @@ type shaderProgram interface {
 }
 
 type shaderEnvironment struct {
-	img             *SdlImgui
-	orthoProjection [4][4]float32
+	img       *SdlImgui
+	proj      [4][4]float32
+	draw      func()
+	textureID uint32
 }
 
 type shader struct {
@@ -59,12 +62,12 @@ func (sh *shader) destroy() {
 }
 
 func (sh *shader) setAttributes(env shaderEnvironment) {
+	gl.BindTexture(gl.TEXTURE_2D, env.textureID)
 	gl.UseProgram(sh.handle)
 
 	gl.Uniform1i(sh.texture, 0)
-
 	gl.ActiveTexture(gl.TEXTURE0)
-	gl.UniformMatrix4fv(sh.projMtx, 1, false, &env.orthoProjection[0][0])
+	gl.UniformMatrix4fv(sh.projMtx, 1, false, &env.proj[0][0])
 	gl.BindSampler(0, 0) // Rely on combined texture/sampler state.
 
 	gl.EnableVertexAttribArray(uint32(sh.uv))
@@ -143,6 +146,13 @@ func getShaderCompileError(shader uint32) string {
 		}
 	}
 	return ""
+}
+
+func boolToInt32(v bool) int32 {
+	if v {
+		return 1
+	}
+	return 0
 }
 
 type guiShader struct {
@@ -285,4 +295,146 @@ func newOverlayShader() shaderProgram {
 func (sh *overlayShader) setAttributes(env shaderEnvironment) {
 	sh.shader.setAttributes(env)
 	gl.Uniform1f(sh.alpha, env.img.wm.dbgScr.overlayAlpha)
+}
+
+type crtShader struct {
+	shader
+
+	finalShader shaderProgram
+
+	crt uint32
+
+	fbo    uint32
+	rbo    uint32
+	width  int32
+	height int32
+
+	screenDim int32
+	scalingX  int32
+	scalingY  int32
+
+	shadowMask          int32
+	scanlines           int32
+	noise               int32
+	blur                int32
+	vignette            int32
+	maskBrightness      int32
+	scanlinesBrightness int32
+	noiseLevel          int32
+	blurLevel           int32
+	randSeed            int32
+}
+
+func newCRTShader() shaderProgram {
+	sh := &crtShader{}
+	sh.createProgram(string(shaders.CRTVertexShader), string(shaders.CRTFragShader))
+
+	sh.screenDim = gl.GetUniformLocation(sh.handle, gl.Str("ScreenDim"+"\x00"))
+	sh.scalingX = gl.GetUniformLocation(sh.handle, gl.Str("ScalingX"+"\x00"))
+	sh.scalingY = gl.GetUniformLocation(sh.handle, gl.Str("ScalingY"+"\x00"))
+	sh.shadowMask = gl.GetUniformLocation(sh.handle, gl.Str("ShadowMask"+"\x00"))
+	sh.scanlines = gl.GetUniformLocation(sh.handle, gl.Str("Scanlines"+"\x00"))
+	sh.noise = gl.GetUniformLocation(sh.handle, gl.Str("Noise"+"\x00"))
+	sh.blur = gl.GetUniformLocation(sh.handle, gl.Str("Blur"+"\x00"))
+	sh.vignette = gl.GetUniformLocation(sh.handle, gl.Str("Vignette"+"\x00"))
+	sh.maskBrightness = gl.GetUniformLocation(sh.handle, gl.Str("MaskBrightness"+"\x00"))
+	sh.scanlinesBrightness = gl.GetUniformLocation(sh.handle, gl.Str("ScanlinesBrightness"+"\x00"))
+	sh.noiseLevel = gl.GetUniformLocation(sh.handle, gl.Str("NoiseLevel"+"\x00"))
+	sh.blurLevel = gl.GetUniformLocation(sh.handle, gl.Str("BlurLevel"+"\x00"))
+	sh.randSeed = gl.GetUniformLocation(sh.handle, gl.Str("RandSeed"+"\x00"))
+
+	gl.GenFramebuffers(1, &sh.fbo)
+
+	sh.finalShader = newColorShader()
+
+	return sh
+}
+
+func (sh *crtShader) setupFrameBuffer(env shaderEnvironment) {
+	gl.BindFramebuffer(gl.FRAMEBUFFER, sh.fbo)
+
+	env.img.screen.crit.section.Lock()
+	width := int32(env.img.playScr.scaledWidth())
+	height := int32(env.img.playScr.scaledHeight())
+	env.img.screen.crit.section.Unlock()
+
+	if sh.width == width && sh.height == height {
+		gl.ClearColor(0, 0, 0, 1)
+		gl.Clear(gl.COLOR_BUFFER_BIT)
+		return
+	}
+
+	sh.width = width
+	sh.height = height
+
+	gl.GenTextures(1, &sh.crt)
+	gl.BindTexture(gl.TEXTURE_2D, sh.crt)
+	gl.TexImage2D(gl.TEXTURE_2D, 0,
+		gl.RGBA, sh.width, sh.height, 0,
+		gl.RGBA, gl.UNSIGNED_BYTE,
+		gl.Ptr(nil))
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+
+	gl.BindTexture(gl.TEXTURE_2D, env.textureID)
+	gl.FramebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, sh.crt, 0)
+
+	gl.GenRenderbuffers(1, &sh.rbo)
+	gl.BindRenderbuffer(gl.RENDERBUFFER, sh.rbo)
+	gl.RenderbufferStorage(gl.RENDERBUFFER, gl.DEPTH24_STENCIL8, sh.width, sh.height)
+	gl.BindRenderbuffer(gl.RENDERBUFFER, 0)
+	gl.FramebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_STENCIL_ATTACHMENT, gl.RENDERBUFFER, sh.rbo)
+}
+
+func (sh *crtShader) destroy() {
+	sh.shader.destroy()
+	gl.DeleteFramebuffers(1, &sh.fbo)
+}
+
+func (sh *crtShader) setAttributes(env shaderEnvironment) {
+	// prevserve existing scissor and viewport settings. reverting
+	// on defer
+	scissor := gl.IsEnabled(gl.SCISSOR_TEST)
+	if scissor {
+		defer gl.Enable(gl.SCISSOR_TEST)
+	}
+
+	var viewport [4]int32
+	gl.GetIntegerv(gl.VIEWPORT, &viewport[0])
+	defer gl.Viewport(viewport[0], viewport[1], viewport[2], viewport[3])
+
+	// set scissor and viewport
+	gl.Disable(gl.SCISSOR_TEST)
+	gl.Viewport(int32(-env.img.playScr.imagePosMin.X),
+		int32(-env.img.playScr.imagePosMin.Y),
+		sh.width+(int32(env.img.playScr.imagePosMin.X*2)),
+		sh.height+(int32(env.img.playScr.imagePosMin.Y*2)),
+	)
+
+	// make sure our framebuffer is correct
+	sh.setupFrameBuffer(env)
+
+	sh.shader.setAttributes(env)
+
+	gl.Uniform2f(sh.screenDim, float32(sh.width), float32(sh.height))
+	gl.Uniform1f(sh.scalingX, env.img.playScr.horizScaling())
+	gl.Uniform1f(sh.scalingY, env.img.playScr.scaling)
+
+	gl.Uniform1i(sh.shadowMask, boolToInt32(env.img.crtPrefs.Mask.Get().(bool)))
+	gl.Uniform1i(sh.scanlines, boolToInt32(env.img.crtPrefs.Scanlines.Get().(bool)))
+	gl.Uniform1i(sh.noise, boolToInt32(env.img.crtPrefs.Noise.Get().(bool)))
+	gl.Uniform1i(sh.blur, boolToInt32(env.img.crtPrefs.Blur.Get().(bool)))
+	gl.Uniform1i(sh.vignette, boolToInt32(env.img.crtPrefs.Vignette.Get().(bool)))
+	gl.Uniform1f(sh.maskBrightness, float32(env.img.crtPrefs.MaskBrightness.Get().(float64)))
+	gl.Uniform1f(sh.scanlinesBrightness, float32(env.img.crtPrefs.ScanlinesBrightness.Get().(float64)))
+	gl.Uniform1f(sh.noiseLevel, float32(env.img.crtPrefs.NoiseLevel.Get().(float64)))
+	gl.Uniform1f(sh.blurLevel, float32(env.img.crtPrefs.BlurLevel.Get().(float64)))
+	gl.Uniform1f(sh.randSeed, float32(time.Now().Nanosecond())/100000000.0)
+
+	env.draw()
+
+	// the default call to env.draw() will use the updated crt texture and the
+	// finalising color shader
+	sh.finalShader.setAttributes(env)
+	gl.BindTexture(gl.TEXTURE_2D, sh.crt)
 }

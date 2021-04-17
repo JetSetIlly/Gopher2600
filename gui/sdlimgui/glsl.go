@@ -30,6 +30,7 @@ const (
 	colorShaderID
 	dbgscrShaderID
 	overlayShaderID
+	crtShaderID
 	numShaders
 )
 
@@ -75,6 +76,7 @@ func (rnd *glsl) setupShaders() error {
 	rnd.shaders[colorShaderID] = newColorShader()
 	rnd.shaders[dbgscrShaderID] = newDbgScrShader()
 	rnd.shaders[overlayShaderID] = newOverlayShader()
+	rnd.shaders[crtShaderID] = newCRTShader()
 
 	return nil
 }
@@ -198,7 +200,7 @@ func (rnd *glsl) render() {
 	// Our visible imgui space lies from draw_data->DisplayPos (top left) to draw_data->DisplayPos+data_data->DisplaySize (bottom right).
 	// DisplayMin is typically (0,0) for single viewport apps.
 	gl.Viewport(0, 0, int32(fbWidth), int32(fbHeight))
-	env.orthoProjection = [4][4]float32{
+	env.proj = [4][4]float32{
 		{2.0 / displayWidth, 0.0, 0.0, 0.0},
 		{0.0, 2.0 / -displayHeight, 0.0, 0.0},
 		{0.0, 0.0, -1.0, 0.0},
@@ -234,12 +236,13 @@ func (rnd *glsl) render() {
 			if cmd.HasUserCallback() {
 				cmd.CallUserCallback(list)
 			} else {
-				var shader shaderProgram
+				// texture id
+				env.textureID = uint32(cmd.TextureID())
 
 				// select shader program to use
-				textureID := uint32(cmd.TextureID())
+				var shader shaderProgram
 
-				switch textureID {
+				switch env.textureID {
 				case rnd.img.wm.dbgScr.screenTexture:
 					shader = rnd.shaders[dbgscrShaderID]
 				case rnd.img.wm.dbgScr.elementsTexture:
@@ -249,11 +252,15 @@ func (rnd *glsl) render() {
 				case rnd.img.wm.dbgScr.overlayTexture:
 					shader = rnd.shaders[overlayShaderID]
 				case rnd.img.playScr.screenTexture:
-					shader = rnd.shaders[colorShaderID]
+					shader = rnd.shaders[crtShaderID]
 				case rnd.img.wm.crtPrefs.crtTexture:
-					shader = rnd.shaders[colorShaderID]
+					shader = rnd.shaders[crtShaderID]
 				default:
 					shader = rnd.shaders[guiShaderID]
+				}
+
+				env.draw = func() {
+					gl.DrawElements(gl.TRIANGLES, int32(cmd.ElementCount()), uint32(drawType), unsafe.Pointer(indexBufferOffset))
 				}
 
 				// set attributes for the selected shader
@@ -263,8 +270,9 @@ func (rnd *glsl) render() {
 				clipRect := cmd.ClipRect()
 				gl.Scissor(int32(clipRect.X), int32(fbHeight)-int32(clipRect.W), int32(clipRect.Z-clipRect.X), int32(clipRect.W-clipRect.Y))
 
-				gl.BindTexture(gl.TEXTURE_2D, textureID)
-				gl.DrawElements(gl.TRIANGLES, int32(cmd.ElementCount()), uint32(drawType), unsafe.Pointer(indexBufferOffset))
+				// draw using the currently selected shader to the real framebuffer
+				gl.BindFramebuffer(gl.FRAMEBUFFER, 0)
+				env.draw()
 			}
 			indexBufferOffset += uintptr(cmd.ElementCount() * indexSize)
 		}
