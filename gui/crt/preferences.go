@@ -30,12 +30,14 @@ type Preferences struct {
 	Scanlines prefs.Bool
 	Noise     prefs.Bool
 	Blur      prefs.Bool
+	Flicker   prefs.Bool
 
 	PhosphorSpeed       prefs.Float
 	MaskBrightness      prefs.Float
 	ScanlinesBrightness prefs.Float
 	NoiseLevel          prefs.Float
 	BlurLevel           prefs.Float
+	FlickerLevel        prefs.Float
 
 	Vignette prefs.Bool
 }
@@ -51,11 +53,13 @@ const (
 	scanlines           = true
 	noise               = true
 	blur                = true
+	flicker             = true
 	phosphorSpeed       = 1.0
 	maskBrightness      = 0.70
 	scanlinesBrightness = 0.70
 	noiseLevel          = 0.19
 	blurLevel           = 0.15
+	flickerLevel        = 0.004
 	vignette            = true
 )
 
@@ -99,6 +103,10 @@ func NewPreferences() (*Preferences, error) {
 	if err != nil {
 		return nil, err
 	}
+	err = p.dsk.Add("crt.flicker", &p.Flicker)
+	if err != nil {
+		return nil, err
+	}
 	err = p.dsk.Add("crt.phosphorSpeed", &p.PhosphorSpeed)
 	if err != nil {
 		return nil, err
@@ -116,6 +124,10 @@ func NewPreferences() (*Preferences, error) {
 		return nil, err
 	}
 	err = p.dsk.Add("crt.blurLevel", &p.BlurLevel)
+	if err != nil {
+		return nil, err
+	}
+	err = p.dsk.Add("crt.flickerlevel", &p.FlickerLevel)
 	if err != nil {
 		return nil, err
 	}
@@ -140,11 +152,13 @@ func (p *Preferences) SetDefaults() {
 	p.Scanlines.Set(scanlines)
 	p.Noise.Set(noise)
 	p.Blur.Set(blur)
+	p.Flicker.Set(flicker)
 	p.PhosphorSpeed.Set(phosphorSpeed)
 	p.MaskBrightness.Set(maskBrightness)
 	p.ScanlinesBrightness.Set(scanlinesBrightness)
 	p.NoiseLevel.Set(noiseLevel)
 	p.BlurLevel.Set(blurLevel)
+	p.FlickerLevel.Set(flickerLevel)
 	p.Vignette.Set(vignette)
 }
 

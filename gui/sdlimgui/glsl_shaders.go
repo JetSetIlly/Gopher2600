@@ -318,10 +318,12 @@ type crtShader struct {
 	noise               int32
 	blur                int32
 	vignette            int32
+	flicker             int32
 	maskBrightness      int32
 	scanlinesBrightness int32
 	noiseLevel          int32
 	blurLevel           int32
+	flickerLevel        int32
 	randSeed            int32
 }
 
@@ -337,10 +339,12 @@ func newCRTShader() shaderProgram {
 	sh.noise = gl.GetUniformLocation(sh.handle, gl.Str("Noise"+"\x00"))
 	sh.blur = gl.GetUniformLocation(sh.handle, gl.Str("Blur"+"\x00"))
 	sh.vignette = gl.GetUniformLocation(sh.handle, gl.Str("Vignette"+"\x00"))
+	sh.flicker = gl.GetUniformLocation(sh.handle, gl.Str("Flicker"+"\x00"))
 	sh.maskBrightness = gl.GetUniformLocation(sh.handle, gl.Str("MaskBrightness"+"\x00"))
 	sh.scanlinesBrightness = gl.GetUniformLocation(sh.handle, gl.Str("ScanlinesBrightness"+"\x00"))
 	sh.noiseLevel = gl.GetUniformLocation(sh.handle, gl.Str("NoiseLevel"+"\x00"))
 	sh.blurLevel = gl.GetUniformLocation(sh.handle, gl.Str("BlurLevel"+"\x00"))
+	sh.flickerLevel = gl.GetUniformLocation(sh.handle, gl.Str("FlickerLevel"+"\x00"))
 	sh.randSeed = gl.GetUniformLocation(sh.handle, gl.Str("RandSeed"+"\x00"))
 
 	gl.GenFramebuffers(1, &sh.fbo)
@@ -425,10 +429,12 @@ func (sh *crtShader) setAttributes(env shaderEnvironment) {
 	gl.Uniform1i(sh.noise, boolToInt32(env.img.crtPrefs.Noise.Get().(bool)))
 	gl.Uniform1i(sh.blur, boolToInt32(env.img.crtPrefs.Blur.Get().(bool)))
 	gl.Uniform1i(sh.vignette, boolToInt32(env.img.crtPrefs.Vignette.Get().(bool)))
+	gl.Uniform1i(sh.flicker, boolToInt32(env.img.crtPrefs.Flicker.Get().(bool)))
 	gl.Uniform1f(sh.maskBrightness, float32(env.img.crtPrefs.MaskBrightness.Get().(float64)))
 	gl.Uniform1f(sh.scanlinesBrightness, float32(env.img.crtPrefs.ScanlinesBrightness.Get().(float64)))
 	gl.Uniform1f(sh.noiseLevel, float32(env.img.crtPrefs.NoiseLevel.Get().(float64)))
 	gl.Uniform1f(sh.blurLevel, float32(env.img.crtPrefs.BlurLevel.Get().(float64)))
+	gl.Uniform1f(sh.flickerLevel, float32(env.img.crtPrefs.FlickerLevel.Get().(float64)))
 	gl.Uniform1f(sh.randSeed, float32(time.Now().Nanosecond())/100000000.0)
 
 	env.draw()

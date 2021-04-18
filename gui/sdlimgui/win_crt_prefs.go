@@ -119,6 +119,9 @@ func (win *winCRTPrefs) draw() {
 		win.drawBlur()
 		imgui.Spacing()
 
+		win.drawFlicker()
+		imgui.Spacing()
+
 		win.drawVignette()
 		imgui.Spacing()
 
@@ -328,6 +331,31 @@ func (win *winCRTPrefs) drawBlur() {
 
 	if imgui.SliderFloatV("##Blurlevel", &f, 0.0, 0.6, label, 1.0) {
 		win.img.crtPrefs.BlurLevel.Set(f)
+	}
+}
+
+func (win *winCRTPrefs) drawFlicker() {
+	b := win.img.crtPrefs.Flicker.Get().(bool)
+	if imgui.Checkbox("Flicker##flicker", &b) {
+		win.img.crtPrefs.Flicker.Set(b)
+	}
+
+	f := float32(win.img.crtPrefs.FlickerLevel.Get().(float64))
+
+	var label string
+
+	if f > 0.015 {
+		label = "very high"
+	} else if f > 0.010 {
+		label = "high"
+	} else if f >= 0.005 {
+		label = "low"
+	} else {
+		label = "very low"
+	}
+
+	if imgui.SliderFloatV("##FlickerLevel", &f, 0.000, 0.020, label, 1.0) {
+		win.img.crtPrefs.FlickerLevel.Set(f)
 	}
 }
 

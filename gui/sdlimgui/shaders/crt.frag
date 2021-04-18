@@ -14,10 +14,12 @@ uniform int Scanlines;
 uniform int Noise;
 uniform int Blur;
 uniform int Vignette;
+uniform int Flicker;
 uniform float MaskBrightness;
 uniform float ScanlinesBrightness;
 uniform float NoiseLevel;
 uniform float BlurLevel;
+uniform float FlickerLevel;
 uniform float RandSeed;
 
 // Gold Noise taken from: https://www.shadertoy.com/view/ltB3zD
@@ -59,18 +61,14 @@ void main() {
 		}
 	}
 
-	vec2 grid = vec2(floor(gl_FragCoord.x), floor(gl_FragCoord.y));
-
-
 	// shadow masking and scanlines
 	float shadowWeight = 1.0;
-
+	vec2 grid = vec2(floor(gl_FragCoord.x), floor(gl_FragCoord.y));
 	if (ShadowMask == 1) {
 		if (mod(grid.x, 2) == 0.0) {
 			Crt_Color.rgb *= MaskBrightness*shadowWeight;
 		}
 	}
-
 	if (Scanlines == 1) {
 		if (mod(grid.y, 2) == 0.0) {
 			Crt_Color.rgb *= ScanlinesBrightness*shadowWeight;
@@ -89,6 +87,11 @@ void main() {
 			Crt_Color.b += texture(Texture, vec2(coords.x+bx, coords.y+by)).b;
 			Crt_Color.rgb *= 0.50;
 		}
+	}
+
+	// flicker
+	if (Flicker == 1) {
+		Crt_Color *= (1.0-FlickerLevel*(sin(50.0*RandSeed+Frag_UV.y*2.0)*0.5+0.5));
 	}
 
 	// vignette effect
