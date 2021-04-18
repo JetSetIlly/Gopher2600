@@ -292,7 +292,7 @@ func (p *Float) String() string {
 	p.crit.Lock()
 	defer p.crit.Unlock()
 
-	return fmt.Sprintf("%.2f", p.value)
+	return fmt.Sprintf("%.3f", p.value)
 }
 
 // Set new value to Int type. New value can be an int or string.
