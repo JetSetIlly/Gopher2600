@@ -30,7 +30,7 @@ const (
 	colorShaderID
 	dbgscrShaderID
 	overlayShaderID
-	crtShaderID
+	playscrShaderID
 	numShaders
 )
 
@@ -76,8 +76,7 @@ func (rnd *glsl) setupShaders() error {
 	rnd.shaders[colorShaderID] = newColorShader()
 	rnd.shaders[dbgscrShaderID] = newDbgScrShader()
 	rnd.shaders[overlayShaderID] = newOverlayShader()
-	rnd.shaders[crtShaderID] = newCRTShader()
-
+	rnd.shaders[playscrShaderID] = newPlayscrShader()
 	return nil
 }
 
@@ -237,12 +236,12 @@ func (rnd *glsl) render() {
 				cmd.CallUserCallback(list)
 			} else {
 				// texture id
-				env.textureID = uint32(cmd.TextureID())
+				env.srcTextureID = uint32(cmd.TextureID())
 
 				// select shader program to use
 				var shader shaderProgram
 
-				switch env.textureID {
+				switch env.srcTextureID {
 				case rnd.img.wm.dbgScr.screenTexture:
 					shader = rnd.shaders[dbgscrShaderID]
 				case rnd.img.wm.dbgScr.elementsTexture:
@@ -252,9 +251,9 @@ func (rnd *glsl) render() {
 				case rnd.img.wm.dbgScr.overlayTexture:
 					shader = rnd.shaders[overlayShaderID]
 				case rnd.img.playScr.screenTexture:
-					shader = rnd.shaders[crtShaderID]
+					shader = rnd.shaders[playscrShaderID]
 				case rnd.img.wm.crtPrefs.crtTexture:
-					shader = rnd.shaders[crtShaderID]
+					shader = rnd.shaders[colorShaderID]
 				default:
 					shader = rnd.shaders[guiShaderID]
 				}

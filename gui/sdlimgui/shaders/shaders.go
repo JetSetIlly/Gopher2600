@@ -17,8 +17,11 @@ package shaders
 
 import _ "embed"
 
-//go:embed "vertex.vert"
-var VertexShader []byte
+//go:embed "straight.vert"
+var StraightVertexShader []byte
+
+//go:embed "yflip.vert"
+var YFlipVertexShader []byte
 
 //go:embed "gui.frag"
 var GUIShader []byte
@@ -32,8 +35,14 @@ var DbgScrShader []byte
 //go:embed "overlay.frag"
 var OverlayShader []byte
 
-//go:embed "crt.vert"
-var CRTVertexShader []byte
-
 //go:embed "crt.frag"
 var CRTFragShader []byte
+
+//go:embed "crt_blur.frag"
+var CRTBlurFragShader []byte
+
+//go:embed "crt_accumulation.frag"
+var CRTAccumulationFragShader []byte
+
+//go:embed "crt_blend.frag"
+var CRTBlendFragShader []byte
