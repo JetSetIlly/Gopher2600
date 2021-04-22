@@ -203,6 +203,17 @@ func (sr *resizer) commit(tv *Television) error {
 		// this
 		sr.bottom++
 
+		// add another one. Man Down is an example of ROM which is "wrong"
+		// without an additional (two) scanlines after the VBLANK
+		sr.bottom++
+
+		// clamp bottom scanline to safe bottom
+		if sr.bottom > tv.state.spec.NewSafeBottom {
+			sr.bottom = tv.state.spec.NewSafeBottom
+		}
+
+		// TODO: more elegant way of handling the additional scanline problem
+
 		// update statble top/bottom values
 		tv.state.top = sr.top
 		tv.state.bottom = sr.bottom
