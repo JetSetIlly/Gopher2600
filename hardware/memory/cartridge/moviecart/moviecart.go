@@ -119,9 +119,6 @@ type state struct {
 	// modified as required during movie playback.
 	sram []byte
 
-	// which page of SRAM we will be writing to
-	writePage int // 0 to 7
-
 	// data for current field and the indexes into it
 	streamBuffer   [numFields][]byte
 	streamField    int
@@ -188,6 +185,9 @@ type state struct {
 
 	// index into the static osd data
 	osdIdx int
+
+	// colors to use when writing to GData
+	color [10]uint8
 }
 
 // what part of the OSD is currently being display.
@@ -353,7 +353,6 @@ func (cart *Moviecart) processAddress(addr uint16) {
 	cart.state.totalCycles++
 	if cart.state.totalCycles == titleCycles {
 		// stop title screen
-		cart.setWritePage(addrTitleLoop)
 		cart.write8bit(addrTitleLoop, 0x18)
 	} else if cart.state.totalCycles > titleCycles {
 		cart.runStateMachine()
@@ -591,70 +590,70 @@ func (cart *Moviecart) runStateMachine() {
 }
 
 func (cart *Moviecart) fillAddrRightLine() {
-	cart.setWritePage(addrRightLine)
-	cart.writeGraph(addrRightLine + 9)
-	cart.writeGraph(addrRightLine + 13)
-	cart.writeGraph(addrRightLine + 17)
-	cart.writeGraph(addrRightLine + 21)
-	cart.writeGraph(addrRightLine + 23)
-	cart.writeColor(addrRightLine + 25)
-	cart.writeColor(addrRightLine + 29)
-	cart.writeColor(addrRightLine + 35)
-	cart.writeColor(addrRightLine + 43)
-	cart.writeColor(addrRightLine + 47)
+	cart.writeAudio(addrSetAudRight + 1)
+
+	cart.writeGraph(addrSetGData5 + 1)
+	cart.writeGraph(addrSetGData6 + 1)
+	cart.writeGraph(addrSetGData7 + 1)
+	cart.writeGraph(addrSetGData8 + 1)
+	cart.writeGraph(addrSetGData9 + 1)
+
+	cart.writeColor(addrSetGCol5+1, cart.state.color[8]) // col 1/9
+	cart.writeColor(addrSetGCol6+1, cart.state.color[9]) // col 3/9
+	cart.writeColor(addrSetGCol7+1, cart.state.color[1]) // col 5/9
+	cart.writeColor(addrSetGCol8+1, cart.state.color[2]) // col 7/9
+	cart.writeColor(addrSetGCol9+1, cart.state.color[0]) // col 9/9
 }
 
 func (cart *Moviecart) fillAddrLeftLine(again bool) {
-	cart.setWritePage(addrLeftLine)
+	cart.writeAudio(addrSetAudLeft + 1)
 
-	cart.writeAudio(addrLeftLine + 5)
-	cart.writeGraph(addrLeftLine + 15)
-	cart.writeGraph(addrLeftLine + 19)
-	cart.writeGraph(addrLeftLine + 23)
-	cart.writeGraph(addrLeftLine + 27)
-	cart.writeGraph(addrLeftLine + 29)
-	cart.writeColor(addrLeftLine + 31)
-	cart.writeColor(addrLeftLine + 35)
-	cart.writeColor(addrLeftLine + 41)
-	cart.writeColor(addrLeftLine + 49)
-	cart.writeColor(addrLeftLine + 53)
-	cart.writeAudio(addrLeftLine + 57)
+	cart.writeGraph(addrSetGData0 + 1)
+	cart.writeGraph(addrSetGData1 + 1)
+	cart.writeGraph(addrSetGData2 + 1)
+	cart.writeGraph(addrSetGData3 + 1)
+	cart.writeGraph(addrSetGData4 + 1)
+
+	for i := 0; i < 10; i++ {
+		cart.state.color[i] = cart.state.streamBuffer[cart.state.streamField][cart.state.streamColor]
+		cart.state.streamColor++
+	}
+
+	cart.writeColor(addrSetGCol0+1, cart.state.color[3]) // col 0/9
+	cart.writeColor(addrSetGCol1+1, cart.state.color[4]) // col 2/9
+	cart.writeColor(addrSetGCol2+1, cart.state.color[6]) // col 4/9
+	cart.writeColor(addrSetGCol3+1, cart.state.color[7]) // col 6/9
+	cart.writeColor(addrSetGCol4+1, cart.state.color[5]) // col 8/9
 
 	if again {
-		cart.write16bit(addrPickContinue+1, addrRightLine)
+		cart.writeJMPaddr(addrPickContinue+1, addrRightLine)
 	} else {
-		cart.write16bit(addrPickContinue+1, addrEndLines)
+		cart.writeJMPaddr(addrPickContinue+1, addrEndLines)
 	}
 }
 
 func (cart *Moviecart) fillAddrEndLines() {
-	cart.setWritePage(addrEndLines)
-
-	cart.writeAudio(addrEndLinesAudio + 1)
-
-	// note next audio bit to carry to next frame
-	cart.state.audioCarry = cart.state.streamBuffer[cart.state.streamField][cart.state.streamAudio]
+	cart.writeAudio(addrSetAudEndlines + 1)
 
 	// different details for the end kernel every other frame
 	if cart.state.oddField {
-		cart.write8bit(addrSetOverscanSize+1, 28)
+		cart.write8bit(addrSetOverscanSize+1, 29)
 		cart.write8bit(addrSetVBlankSize+1, 36)
 	} else {
-		cart.write8bit(addrSetOverscanSize+1, 29)
+		cart.state.audioCarry = cart.state.streamBuffer[cart.state.streamField][cart.state.streamAudio]
+		cart.write8bit(addrSetOverscanSize+1, 30)
 		cart.write8bit(addrSetVBlankSize+1, 37)
 	}
 
 	if cart.state.streamField == 0 {
-		cart.write16bit(addrPickTransport+1, addrTransportDirection)
+		cart.writeJMPaddr(addrPickTransport+1, addrTransportDirection)
 	} else {
-		cart.write16bit(addrPickTransport+1, addrTransportButtons)
+		cart.writeJMPaddr(addrPickTransport+1, addrTransportButtons)
 	}
 }
 
 func (cart *Moviecart) fillAddrBlankLines() {
-	cart.setWritePage(addrAudioBank)
-
-	const blankLineSize = 68
+	const blankLineSize = 69
 
 	// slightly different number of trailing blank line every other frame
 	if !cart.state.oddField {
@@ -667,9 +666,6 @@ func (cart *Moviecart) fillAddrBlankLines() {
 			cart.writeAudio(addrAudioBank + i)
 		}
 	}
-
-	cart.setWritePage(addrEndLines)
-	cart.writeAudio(addrLastAudio + 1)
 }
 
 func (cart *Moviecart) writeAudio(addr uint16) {
@@ -739,10 +735,7 @@ func (cart *Moviecart) writeGraph(addr uint16) {
 	cart.write8bit(addr, b)
 }
 
-func (cart *Moviecart) writeColor(addr uint16) {
-	b := cart.state.streamBuffer[cart.state.streamField][cart.state.streamColor]
-	cart.state.streamColor++
-
+func (cart *Moviecart) writeColor(addr uint16, b uint8) {
 	// adjust brightness
 	brightIdx := int(b & 0x0f)
 	brightIdx += cart.state.brightness
@@ -819,35 +812,17 @@ func (cart *Moviecart) readField() {
 	cart.state.oddField = cart.state.fieldNumber&0x01 == 0x01
 }
 
-// the address used when writing to SRAM is made up of the writePage and the lo
-// bits specified when calling write8bit() or write16bit()
-//
-// for a 16 bit value, the X bits are unused, P bits is the writePage and L
-// bits the lo value.
-//
-//   XXXXXX PPP LLLLLLL
-//          \_________/
-//              |
-//          0 - 1023 (maximum address in SRAM)
-//
-// for convenience the write page is taken from a complete reference address.
-func (cart *Moviecart) setWritePage(addr uint16) {
-	cart.state.writePage = int(addr>>7) & 0x07
-}
-
 // write 8bits of data to SRAM. the address in sram is made up of the current
 // writePage value and the lo argument, which will for the lower 7bits of the
 // address.
-func (cart *Moviecart) write8bit(lo uint16, data uint8) {
-	addr := uint16(cart.state.writePage<<7) | (lo & 0x7f)
+func (cart *Moviecart) write8bit(addr uint16, data uint8) {
 	cart.state.sram[addr&0x3ff] = data
 }
 
 // write 16bits of data to SRAM. the address in sram is made up of the current
 // writePage value and the lo argument, which will for the lower 7bits of the
 // address.
-func (cart *Moviecart) write16bit(lo uint16, data uint16) {
-	addr := uint16(cart.state.writePage<<7) | (lo & 0x7f)
-	cart.state.sram[addr&0x3ff] = uint8(data & 0xff)
-	cart.state.sram[(addr+1)&0x3ff] = uint8(data>>8) | 0x10
+func (cart *Moviecart) writeJMPaddr(addr uint16, jmpAddr uint16) {
+	cart.state.sram[addr&0x3ff] = uint8(jmpAddr & 0xff)
+	cart.state.sram[(addr+1)&0x3ff] = uint8(jmpAddr>>8) | 0x10
 }
