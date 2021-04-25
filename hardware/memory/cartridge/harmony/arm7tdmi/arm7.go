@@ -335,13 +335,9 @@ func (arm *ARM) Run() (float32, error) {
 			// (using the PC value)
 			err = arm.findProgramMemory()
 			if err != nil {
-				return 0, err
-			}
-
-			// if it's still out-of-range then give up with an error
-			idx = pc - arm.programMemoryOffset
-			if idx+1 >= uint32(len(*arm.programMemory)) {
-				return 0, curated.Errorf("ARM: PC out of range %08x", pc)
+				// can't find memory so we say the ARM program has finished inadvertently
+				logger.Logf("ARM7", "PC out of range (%#08x). finishing arm program early", arm.registers[rPC])
+				return arm.cyclesTotal, nil
 			}
 		}
 
