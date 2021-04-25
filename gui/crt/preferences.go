@@ -29,15 +29,16 @@ type Preferences struct {
 	Mask      prefs.Bool
 	Scanlines prefs.Bool
 	Noise     prefs.Bool
-	Blur      prefs.Bool
+	Fringing  prefs.Bool
 	Flicker   prefs.Bool
 
-	PhosphorSpeed       prefs.Float
-	MaskBrightness      prefs.Float
-	ScanlinesBrightness prefs.Float
-	NoiseLevel          prefs.Float
-	BlurLevel           prefs.Float
-	FlickerLevel        prefs.Float
+	PhosphorLatency prefs.Float
+	BloomAmount     prefs.Float
+	MaskBright      prefs.Float
+	ScanlinesBright prefs.Float
+	NoiseLevel      prefs.Float
+	FringingLevel   prefs.Float
+	FlickerLevel    prefs.Float
 
 	Vignette prefs.Bool
 }
@@ -47,20 +48,21 @@ func (p *Preferences) String() string {
 }
 
 const (
-	enabled             = true
-	phosphor            = true
-	mask                = true
-	scanlines           = true
-	noise               = true
-	blur                = true
-	flicker             = true
-	phosphorSpeed       = 1.0
-	maskBrightness      = 0.70
-	scanlinesBrightness = 0.70
-	noiseLevel          = 0.19
-	blurLevel           = 0.15
-	flickerLevel        = 0.004
-	vignette            = true
+	enabled         = true
+	phosphor        = true
+	mask            = true
+	scanlines       = true
+	noise           = true
+	fringing        = true
+	flicker         = true
+	phosphorLatency = 0.5
+	bloomAmount     = 1.0
+	maskBright      = 0.70
+	scanlinesBright = 0.70
+	noiseLevel      = 0.19
+	fringingLevel   = 0.15
+	flickerLevel    = 0.004
+	vignette        = true
 )
 
 // NewPreferences is the preferred method of initialisation for the Preferences type.
@@ -99,7 +101,7 @@ func NewPreferences() (*Preferences, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = p.dsk.Add("crt.blur", &p.Blur)
+	err = p.dsk.Add("crt.fringing", &p.Fringing)
 	if err != nil {
 		return nil, err
 	}
@@ -107,15 +109,19 @@ func NewPreferences() (*Preferences, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = p.dsk.Add("crt.phosphorSpeed", &p.PhosphorSpeed)
+	err = p.dsk.Add("crt.phosphorLatency", &p.PhosphorLatency)
 	if err != nil {
 		return nil, err
 	}
-	err = p.dsk.Add("crt.maskBrightness", &p.MaskBrightness)
+	err = p.dsk.Add("crt.bloomAmount", &p.BloomAmount)
 	if err != nil {
 		return nil, err
 	}
-	err = p.dsk.Add("crt.scanlinesBrightness", &p.ScanlinesBrightness)
+	err = p.dsk.Add("crt.maskBright", &p.MaskBright)
+	if err != nil {
+		return nil, err
+	}
+	err = p.dsk.Add("crt.scanlinesBright", &p.ScanlinesBright)
 	if err != nil {
 		return nil, err
 	}
@@ -123,7 +129,7 @@ func NewPreferences() (*Preferences, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = p.dsk.Add("crt.blurLevel", &p.BlurLevel)
+	err = p.dsk.Add("crt.fringingLevel", &p.FringingLevel)
 	if err != nil {
 		return nil, err
 	}
@@ -151,13 +157,14 @@ func (p *Preferences) SetDefaults() {
 	p.Mask.Set(mask)
 	p.Scanlines.Set(scanlines)
 	p.Noise.Set(noise)
-	p.Blur.Set(blur)
+	p.Fringing.Set(fringing)
 	p.Flicker.Set(flicker)
-	p.PhosphorSpeed.Set(phosphorSpeed)
-	p.MaskBrightness.Set(maskBrightness)
-	p.ScanlinesBrightness.Set(scanlinesBrightness)
+	p.PhosphorLatency.Set(phosphorLatency)
+	p.BloomAmount.Set(bloomAmount)
+	p.MaskBright.Set(maskBright)
+	p.ScanlinesBright.Set(scanlinesBright)
 	p.NoiseLevel.Set(noiseLevel)
-	p.BlurLevel.Set(blurLevel)
+	p.FringingLevel.Set(fringingLevel)
 	p.FlickerLevel.Set(flickerLevel)
 	p.Vignette.Set(vignette)
 }

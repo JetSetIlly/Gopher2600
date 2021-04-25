@@ -22,13 +22,13 @@ uniform float ScalingY;
 uniform int ShadowMask;
 uniform int Scanlines;
 uniform int Noise;
-uniform int Blur;
+uniform int Fringing;
 uniform int Vignette;
 uniform int Flicker;
-uniform float MaskBrightness;
-uniform float ScanlinesBrightness;
+uniform float MaskBright;
+uniform float ScanlinesBright;
 uniform float NoiseLevel;
-uniform float BlurLevel;
+uniform float FringingLevel;
 uniform float FlickerLevel;
 uniform float Time;
 
@@ -69,7 +69,7 @@ void main() {
 	Crt_Color = Frag_Color * texture(Texture, uv.st);
 
 	// correct video-black
-	Crt_Color.rgb = clamp(Crt_Color.rgb, vec3(0.115,0.115,0.115), vec3(1.0,1.0,1.0));
+	Crt_Color.rgb = clamp(Crt_Color.rgb, vec3(0.16,0.16,0.16), vec3(1.0,1.0,1.0));
 
 	// noise
 	if (Noise == 1) {
@@ -89,32 +89,31 @@ void main() {
 		Crt_Color *= (1.0-FlickerLevel*(sin(50.0*Time+uv.y*2.0)*0.5+0.5));
 	}
 
-	// shadow masking and scanlines
-	vec2 grid = vec2(floor(gl_FragCoord.x), floor(gl_FragCoord.y));
+	// shadow mask
 	if (ShadowMask == 1) {
-		if (mod(grid.x, 2) == 0.0) {
-			Crt_Color.rgb *= MaskBrightness;
-		}
-	}
-	if (Scanlines == 1) {
-		if (mod(grid.y, 4) == 0.0) {
-			Crt_Color.rgb *= ScanlinesBrightness;
+		if (mod(floor(gl_FragCoord.x), 2) == 0.0) {
+			Crt_Color.rgb *= MaskBright;
 		}
 	}
 
-	// chromatic aberation
-	float blurLevel = BlurLevel;
-	if (Blur == 0) {
-		blurLevel = 0.00;
+	// scanlines
+	if (Scanlines == 1) { 
+		float scans = clamp(0.35+0.18*sin(uv.y*ScreenDim.y*2.0), 0.0, 1.0);
+		float s = pow(scans,1.0-ScanlinesBright);
+		Crt_Color.rgb *= vec3(s);
 	}
-	float texelX = ScalingX / ScreenDim.x;
-	float texelY = ScalingY / ScreenDim.y;
-	float bx = texelX*blurLevel;
-	float by = texelY*blurLevel;
-	if (uv.x-bx > 0.0 && uv.x+bx < 1.0 && uv.y-by > 0.0 && uv.y+by < 1.0) {
-		Crt_Color.r += texture(Texture, vec2(uv.x-bx, uv.y+by)).r;
-		Crt_Color.g += texture(Texture, vec2(uv.x+bx, uv.y-by)).g;
-		Crt_Color.b += texture(Texture, vec2(uv.x+bx, uv.y+by)).b;
+
+	// fringing (chromatic aberation)
+	float fringingLevel = FringingLevel;
+	if (Fringing == 1) {
+		vec2 ab = vec2(0.0);
+		ab.x = abs(uv.x-0.5);
+		ab.y = abs(uv.y-0.5);
+		ab *= 0.02 * fringingLevel;
+
+		Crt_Color.r += texture(Texture, vec2(uv.x-ab.x, uv.y+ab.y)).r;
+		Crt_Color.g += texture(Texture, vec2(uv.x+ab.x, uv.y-ab.y)).g;
+		Crt_Color.b += texture(Texture, vec2(uv.x+ab.x, uv.y+ab.y)).b;
 		Crt_Color.rgb *= 0.50;
 	}
 

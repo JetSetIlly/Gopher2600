@@ -116,7 +116,7 @@ func (win *winCRTPrefs) draw() {
 		win.drawNoise()
 		imgui.Spacing()
 
-		win.drawBlur()
+		win.drawFringing()
 		imgui.Spacing()
 
 		win.drawFlicker()
@@ -215,22 +215,22 @@ func (win *winCRTPrefs) drawPhosphor() {
 		win.img.crtPrefs.Phosphor.Set(b)
 	}
 
-	f := float32(win.img.crtPrefs.PhosphorSpeed.Get().(float64))
+	f := float32(win.img.crtPrefs.PhosphorLatency.Get().(float64))
 
 	var label string
 
-	if f > 1.25 {
-		label = "very fast"
-	} else if f > 1.0 {
-		label = "fast"
-	} else if f >= 0.75 {
-		label = "slow"
-	} else {
+	if f > 0.7 {
 		label = "very slow"
+	} else if f > 0.5 {
+		label = "slow"
+	} else if f >= 0.3 {
+		label = "fast"
+	} else {
+		label = "very fast"
 	}
 
-	if imgui.SliderFloatV("##phosphorspeed", &f, 0.5, 1.5, label, 1.0) {
-		win.img.crtPrefs.PhosphorSpeed.Set(f)
+	if imgui.SliderFloatV("##phosphorlatency", &f, 0.1, 0.9, label, 1.0) {
+		win.img.crtPrefs.PhosphorLatency.Set(f)
 	}
 }
 
@@ -240,7 +240,7 @@ func (win *winCRTPrefs) drawMask() {
 		win.img.crtPrefs.Mask.Set(b)
 	}
 
-	f := float32(win.img.crtPrefs.MaskBrightness.Get().(float64))
+	f := float32(win.img.crtPrefs.MaskBright.Get().(float64))
 
 	var label string
 
@@ -254,8 +254,8 @@ func (win *winCRTPrefs) drawMask() {
 		label = "very dark"
 	}
 
-	if imgui.SliderFloatV("##maskbrightness", &f, 0.0, 1.0, label, 1.0) {
-		win.img.crtPrefs.MaskBrightness.Set(f)
+	if imgui.SliderFloatV("##maskbright", &f, 0.0, 1.0, label, 1.0) {
+		win.img.crtPrefs.MaskBright.Set(f)
 	}
 }
 
@@ -265,7 +265,7 @@ func (win *winCRTPrefs) drawScanlines() {
 		win.img.crtPrefs.Scanlines.Set(b)
 	}
 
-	f := float32(win.img.crtPrefs.ScanlinesBrightness.Get().(float64))
+	f := float32(win.img.crtPrefs.ScanlinesBright.Get().(float64))
 
 	var label string
 
@@ -279,8 +279,8 @@ func (win *winCRTPrefs) drawScanlines() {
 		label = "very dark"
 	}
 
-	if imgui.SliderFloatV("##scanlinesbrightness", &f, 0.0, 1.0, label, 1.0) {
-		win.img.crtPrefs.ScanlinesBrightness.Set(f)
+	if imgui.SliderFloatV("##scanlinesbright", &f, 0.0, 1.0, label, 1.0) {
+		win.img.crtPrefs.ScanlinesBright.Set(f)
 	}
 }
 
@@ -309,13 +309,13 @@ func (win *winCRTPrefs) drawNoise() {
 	}
 }
 
-func (win *winCRTPrefs) drawBlur() {
-	b := win.img.crtPrefs.Blur.Get().(bool)
-	if imgui.Checkbox("Blur##blur", &b) {
-		win.img.crtPrefs.Blur.Set(b)
+func (win *winCRTPrefs) drawFringing() {
+	b := win.img.crtPrefs.Fringing.Get().(bool)
+	if imgui.Checkbox("Colour Fringing##fringing", &b) {
+		win.img.crtPrefs.Fringing.Set(b)
 	}
 
-	f := float32(win.img.crtPrefs.BlurLevel.Get().(float64))
+	f := float32(win.img.crtPrefs.FringingLevel.Get().(float64))
 
 	var label string
 
@@ -329,8 +329,8 @@ func (win *winCRTPrefs) drawBlur() {
 		label = "very low"
 	}
 
-	if imgui.SliderFloatV("##Blurlevel", &f, 0.0, 0.6, label, 1.0) {
-		win.img.crtPrefs.BlurLevel.Set(f)
+	if imgui.SliderFloatV("##fringinlevel", &f, 0.0, 0.6, label, 1.0) {
+		win.img.crtPrefs.FringingLevel.Set(f)
 	}
 }
 

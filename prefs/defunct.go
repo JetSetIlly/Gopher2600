@@ -23,6 +23,9 @@ var defunct = []string{
 	"crt.inputGamma",
 	"crt.outputGamma",
 	"crt.maskScanlineScaling",
+	"crt.phosphorSpeed",
+	"crt.blur",
+	"crt.blurLevel",
 }
 
 // returns true if string is in list of defunct values.

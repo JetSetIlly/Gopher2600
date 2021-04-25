@@ -315,18 +315,18 @@ type crtShader struct {
 	scalingX  int32
 	scalingY  int32
 
-	shadowMask          int32
-	scanlines           int32
-	noise               int32
-	blur                int32
-	vignette            int32
-	flicker             int32
-	maskBrightness      int32
-	scanlinesBrightness int32
-	noiseLevel          int32
-	blurLevel           int32
-	flickerLevel        int32
-	time                int32
+	shadowMask      int32
+	scanlines       int32
+	noise           int32
+	fringing        int32
+	vignette        int32
+	flicker         int32
+	maskBright      int32
+	scanlinesBright int32
+	noiseLevel      int32
+	fringingLevel   int32
+	flickerLevel    int32
+	time            int32
 }
 
 func newCRTShader() shaderProgram {
@@ -339,13 +339,13 @@ func newCRTShader() shaderProgram {
 	sh.shadowMask = gl.GetUniformLocation(sh.handle, gl.Str("ShadowMask"+"\x00"))
 	sh.scanlines = gl.GetUniformLocation(sh.handle, gl.Str("Scanlines"+"\x00"))
 	sh.noise = gl.GetUniformLocation(sh.handle, gl.Str("Noise"+"\x00"))
-	sh.blur = gl.GetUniformLocation(sh.handle, gl.Str("Blur"+"\x00"))
+	sh.fringing = gl.GetUniformLocation(sh.handle, gl.Str("Fringing"+"\x00"))
 	sh.vignette = gl.GetUniformLocation(sh.handle, gl.Str("Vignette"+"\x00"))
 	sh.flicker = gl.GetUniformLocation(sh.handle, gl.Str("Flicker"+"\x00"))
-	sh.maskBrightness = gl.GetUniformLocation(sh.handle, gl.Str("MaskBrightness"+"\x00"))
-	sh.scanlinesBrightness = gl.GetUniformLocation(sh.handle, gl.Str("ScanlinesBrightness"+"\x00"))
+	sh.maskBright = gl.GetUniformLocation(sh.handle, gl.Str("MaskBright"+"\x00"))
+	sh.scanlinesBright = gl.GetUniformLocation(sh.handle, gl.Str("ScanlinesBright"+"\x00"))
 	sh.noiseLevel = gl.GetUniformLocation(sh.handle, gl.Str("NoiseLevel"+"\x00"))
-	sh.blurLevel = gl.GetUniformLocation(sh.handle, gl.Str("BlurLevel"+"\x00"))
+	sh.fringingLevel = gl.GetUniformLocation(sh.handle, gl.Str("FringingLevel"+"\x00"))
 	sh.flickerLevel = gl.GetUniformLocation(sh.handle, gl.Str("FlickerLevel"+"\x00"))
 	sh.time = gl.GetUniformLocation(sh.handle, gl.Str("Time"+"\x00"))
 
@@ -362,32 +362,32 @@ func (sh *crtShader) setAttributes(env shaderEnvironment) {
 	gl.Uniform1i(sh.shadowMask, boolToInt32(env.img.crtPrefs.Mask.Get().(bool)))
 	gl.Uniform1i(sh.scanlines, boolToInt32(env.img.crtPrefs.Scanlines.Get().(bool)))
 	gl.Uniform1i(sh.noise, boolToInt32(env.img.crtPrefs.Noise.Get().(bool)))
-	gl.Uniform1i(sh.blur, boolToInt32(env.img.crtPrefs.Blur.Get().(bool)))
+	gl.Uniform1i(sh.fringing, boolToInt32(env.img.crtPrefs.Fringing.Get().(bool)))
 	gl.Uniform1i(sh.vignette, boolToInt32(env.img.crtPrefs.Vignette.Get().(bool)))
 	gl.Uniform1i(sh.flicker, boolToInt32(env.img.crtPrefs.Flicker.Get().(bool)))
-	gl.Uniform1f(sh.maskBrightness, float32(env.img.crtPrefs.MaskBrightness.Get().(float64)))
-	gl.Uniform1f(sh.scanlinesBrightness, float32(env.img.crtPrefs.ScanlinesBrightness.Get().(float64)))
+	gl.Uniform1f(sh.maskBright, float32(env.img.crtPrefs.MaskBright.Get().(float64)))
+	gl.Uniform1f(sh.scanlinesBright, float32(env.img.crtPrefs.ScanlinesBright.Get().(float64)))
 	gl.Uniform1f(sh.noiseLevel, float32(env.img.crtPrefs.NoiseLevel.Get().(float64)))
-	gl.Uniform1f(sh.blurLevel, float32(env.img.crtPrefs.BlurLevel.Get().(float64)))
+	gl.Uniform1f(sh.fringingLevel, float32(env.img.crtPrefs.FringingLevel.Get().(float64)))
 	gl.Uniform1f(sh.flickerLevel, float32(env.img.crtPrefs.FlickerLevel.Get().(float64)))
 	gl.Uniform1f(sh.time, float32(time.Now().Nanosecond())/100000000.0)
 }
 
-type accumulationShader struct {
+type phosphorShader struct {
 	shader
-	modulate int32
+	latency int32
 }
 
-func newAccumulationShader() shaderProgram {
-	sh := &accumulationShader{}
-	sh.createProgram(string(shaders.YFlipVertexShader), string(shaders.CRTAccumulationFragShader))
-	sh.modulate = gl.GetUniformLocation(sh.handle, gl.Str("Modulate"+"\x00"))
+func newPhosphorShader() shaderProgram {
+	sh := &phosphorShader{}
+	sh.createProgram(string(shaders.YFlipVertexShader), string(shaders.CRTPhosphorFragShader))
+	sh.latency = gl.GetUniformLocation(sh.handle, gl.Str("Latency"+"\x00"))
 	return sh
 }
 
-func (sh *accumulationShader) setAttributesAccumation(env shaderEnvironment, modulate float32, textureB uint32) {
+func (sh *phosphorShader) setAttributesPhosphor(env shaderEnvironment, latency float32, textureB uint32) {
 	sh.shader.setAttributes(env)
-	gl.Uniform1f(sh.modulate, modulate)
+	gl.Uniform1f(sh.latency, latency)
 
 	gl.ActiveTexture(gl.TEXTURE1)
 	gl.BindTexture(gl.TEXTURE_2D, uint32(textureB))
@@ -435,14 +435,14 @@ func (sh *blendShader) setAttributesBlend(env shaderEnvironment, modulate float3
 type playscrShader struct {
 	shader
 
-	accumulationShader shaderProgram
-	blurShader         shaderProgram
-	blendShader        shaderProgram
-	crtShader          shaderProgram
-	colorShader        shaderProgram
+	phosphorShader shaderProgram
+	blurShader     shaderProgram
+	blendShader    shaderProgram
+	crtShader      shaderProgram
+	colorShader    shaderProgram
 
-	accumulation uint32
-	blur         uint32
+	phosphor uint32
+	buffer   uint32
 
 	fbo    uint32
 	rbo    uint32
@@ -452,7 +452,7 @@ type playscrShader struct {
 
 func newPlayscrShader() shaderProgram {
 	sh := &playscrShader{}
-	sh.accumulationShader = newAccumulationShader()
+	sh.phosphorShader = newPhosphorShader()
 	sh.blurShader = newBlurShader()
 	sh.blendShader = newBlendShader()
 	sh.crtShader = newCRTShader()
@@ -478,8 +478,8 @@ func (sh *playscrShader) setupFrameBuffer(env *shaderEnvironment) {
 	sh.width = env.width
 	sh.height = env.height
 
-	gl.GenTextures(1, &sh.blur)
-	gl.BindTexture(gl.TEXTURE_2D, sh.blur)
+	gl.GenTextures(1, &sh.buffer)
+	gl.BindTexture(gl.TEXTURE_2D, sh.buffer)
 	gl.TexImage2D(gl.TEXTURE_2D, 0,
 		gl.RGBA, sh.width, sh.height, 0,
 		gl.RGBA, gl.UNSIGNED_BYTE,
@@ -487,8 +487,8 @@ func (sh *playscrShader) setupFrameBuffer(env *shaderEnvironment) {
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
 
-	gl.GenTextures(1, &sh.accumulation)
-	gl.BindTexture(gl.TEXTURE_2D, sh.accumulation)
+	gl.GenTextures(1, &sh.phosphor)
+	gl.BindTexture(gl.TEXTURE_2D, sh.phosphor)
 	gl.TexImage2D(gl.TEXTURE_2D, 0,
 		gl.RGBA, sh.width, sh.height, 0,
 		gl.RGBA, gl.UNSIGNED_BYTE,
@@ -545,30 +545,34 @@ func (sh *playscrShader) setAttributes(env shaderEnvironment) {
 
 	src := env.srcTextureID
 
-	// add new frame to accumulation buffer
-	sh.setFrameBuffer(sh.accumulation)
-	sh.accumulationShader.(*accumulationShader).setAttributesAccumation(env, 0.5, sh.accumulation)
+	phosphorLatency := env.img.crtPrefs.PhosphorLatency.Get().(float64)
+	bloomAmount := env.img.crtPrefs.BloomAmount.Get().(float64)
+
+	// use blur shader to add bloom to previous phosphor
+	sh.setFrameBuffer(sh.phosphor)
+	env.srcTextureID = sh.phosphor
+	sh.blurShader.(*blurShader).setAttributesBlur(env, float32(bloomAmount))
 	env.draw()
 
-	// blur a small amount for current frame
-	sh.setFrameBuffer(sh.blur)
-	env.srcTextureID = sh.accumulation
+	// add new frame to phosphor buffer
+	sh.setFrameBuffer(sh.phosphor)
+	env.srcTextureID = src
+	sh.phosphorShader.(*phosphorShader).setAttributesPhosphor(env, float32(phosphorLatency), sh.phosphor)
+	env.draw()
+
+	// blur the phosphor amount for current frame
+	sh.setFrameBuffer(sh.buffer)
+	env.srcTextureID = sh.phosphor
 	sh.blurShader.(*blurShader).setAttributesBlur(env, 0.17)
 	env.draw()
 
 	// blend blur with original source texture
-	sh.setFrameBuffer(sh.blur)
+	sh.setFrameBuffer(sh.buffer)
 	env.srcTextureID = src
-	sh.blendShader.(*blendShader).setAttributesBlend(env, 1.0, sh.blur)
-	env.draw()
-
-	// blur a lot for next frame
-	sh.setFrameBuffer(sh.accumulation)
-	env.srcTextureID = sh.accumulation
-	sh.blurShader.(*blurShader).setAttributesBlur(env, 1.0)
+	sh.blendShader.(*blendShader).setAttributesBlend(env, 1.0, sh.buffer)
 	env.draw()
 
 	// crt final shader. copies to real frame buffer
-	env.srcTextureID = sh.blur
+	env.srcTextureID = sh.buffer
 	sh.crtShader.setAttributes(env)
 }
