@@ -185,9 +185,6 @@ type state struct {
 
 	// index into the static osd data
 	osdIdx int
-
-	// colors to use when writing to GData
-	color [10]uint8
 }
 
 // what part of the OSD is currently being display.
@@ -598,11 +595,11 @@ func (cart *Moviecart) fillAddrRightLine() {
 	cart.writeGraph(addrSetGData8 + 1)
 	cart.writeGraph(addrSetGData9 + 1)
 
-	cart.writeColor(addrSetGCol5+1, cart.state.color[8]) // col 1/9
-	cart.writeColor(addrSetGCol6+1, cart.state.color[9]) // col 3/9
-	cart.writeColor(addrSetGCol7+1, cart.state.color[1]) // col 5/9
-	cart.writeColor(addrSetGCol8+1, cart.state.color[2]) // col 7/9
-	cart.writeColor(addrSetGCol9+1, cart.state.color[0]) // col 9/9
+	cart.writeColor(addrSetGCol5 + 1) // col 1/9
+	cart.writeColor(addrSetGCol6 + 1) // col 3/9
+	cart.writeColor(addrSetGCol7 + 1) // col 5/9
+	cart.writeColor(addrSetGCol8 + 1) // col 7/9
+	cart.writeColor(addrSetGCol9 + 1) // col 9/9
 }
 
 func (cart *Moviecart) fillAddrLeftLine(again bool) {
@@ -614,16 +611,11 @@ func (cart *Moviecart) fillAddrLeftLine(again bool) {
 	cart.writeGraph(addrSetGData3 + 1)
 	cart.writeGraph(addrSetGData4 + 1)
 
-	for i := 0; i < 10; i++ {
-		cart.state.color[i] = cart.state.streamBuffer[cart.state.streamField][cart.state.streamColor]
-		cart.state.streamColor++
-	}
-
-	cart.writeColor(addrSetGCol0+1, cart.state.color[3]) // col 0/9
-	cart.writeColor(addrSetGCol1+1, cart.state.color[4]) // col 2/9
-	cart.writeColor(addrSetGCol2+1, cart.state.color[6]) // col 4/9
-	cart.writeColor(addrSetGCol3+1, cart.state.color[7]) // col 6/9
-	cart.writeColor(addrSetGCol4+1, cart.state.color[5]) // col 8/9
+	cart.writeColor(addrSetGCol0 + 1) // col 0/9
+	cart.writeColor(addrSetGCol1 + 1) // col 2/9
+	cart.writeColor(addrSetGCol2 + 1) // col 4/9
+	cart.writeColor(addrSetGCol3 + 1) // col 6/9
+	cart.writeColor(addrSetGCol4 + 1) // col 8/9
 
 	if again {
 		cart.writeJMPaddr(addrPickContinue+1, addrRightLine)
@@ -735,7 +727,10 @@ func (cart *Moviecart) writeGraph(addr uint16) {
 	cart.write8bit(addr, b)
 }
 
-func (cart *Moviecart) writeColor(addr uint16, b uint8) {
+func (cart *Moviecart) writeColor(addr uint16) {
+	b := cart.state.streamBuffer[cart.state.streamField][cart.state.streamColor]
+	cart.state.streamColor++
+
 	// adjust brightness
 	brightIdx := int(b & 0x0f)
 	brightIdx += cart.state.brightness
