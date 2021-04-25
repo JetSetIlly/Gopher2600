@@ -252,10 +252,10 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 	case "DPC":
 		cart.mapper, err = newDPC(cartload.Data)
 	case "DPC+":
-		cart.mapper, err = dpcplus.NewDPCplus(cartload.Data)
+		cart.mapper, err = dpcplus.NewDPCplus(cart.prefs, cartload.Data)
 	case "CDF":
 		// CDF mapper defaults to version CDFJ
-		cart.mapper, err = cdf.NewCDF(0x4a, cartload.Data)
+		cart.mapper, err = cdf.NewCDF(cart.prefs, 0x4a, cartload.Data)
 	case "MVC":
 		cart.mapper, err = moviecart.NewMoviecart(cartload)
 	}

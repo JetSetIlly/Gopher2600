@@ -24,6 +24,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/harmony/arm7tdmi"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
+	"github.com/jetsetilly/gopher2600/hardware/preferences"
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
@@ -33,6 +34,8 @@ import (
 //
 // https://atariage.com/forums/blogs/entry/11811-dpcarm-part-6-dpc-cartridge-layout/
 type dpcPlus struct {
+	prefs *preferences.Preferences
+
 	mappingID   string
 	description string
 
@@ -56,8 +59,9 @@ const (
 )
 
 // NewDPCplus is the preferred method of initialisation for the harmony type.
-func NewDPCplus(data []byte) (mapper.CartMapper, error) {
+func NewDPCplus(prefs *preferences.Preferences, data []byte) (mapper.CartMapper, error) {
 	cart := &dpcPlus{
+		prefs:       prefs,
 		mappingID:   "DPC+",
 		description: "Harmony (DPC+)",
 		bankSize:    4096,
@@ -695,7 +699,7 @@ func (cart *dpcPlus) Step(clock float32) {
 		cart.state.registers.MusicFetcher[2].Count += cart.state.registers.MusicFetcher[2].Freq
 	}
 
-	if !cart.state.callfn.Step(clock) {
+	if !cart.state.callfn.Step(cart.prefs.InstantARM.Get().(bool), clock) {
 		cart.arm.Step(clock)
 	}
 }

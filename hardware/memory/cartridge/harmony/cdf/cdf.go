@@ -24,10 +24,13 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/harmony/arm7tdmi"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
+	"github.com/jetsetilly/gopher2600/hardware/preferences"
 )
 
 // cdf implements the cartMapper interface.
 type cdf struct {
+	prefs *preferences.Preferences
+
 	mappingID string
 
 	// cdf comes in several different versions
@@ -67,8 +70,9 @@ const (
 )
 
 // NewCDF is the preferred method of initialisation for the harmony type.
-func NewCDF(version byte, data []byte) (mapper.CartMapper, error) {
+func NewCDF(prefs *preferences.Preferences, version byte, data []byte) (mapper.CartMapper, error) {
 	cart := &cdf{
+		prefs:     prefs,
 		mappingID: "CDF",
 		bankSize:  4096,
 		state:     newCDFstate(),
@@ -407,7 +411,7 @@ func (cart *cdf) Step(clock float32) {
 		cart.state.registers.MusicFetcher[2].Count += cart.state.registers.MusicFetcher[2].Freq
 	}
 
-	if !cart.state.callfn.Step(clock) {
+	if !cart.state.callfn.Step(cart.prefs.InstantARM.Get().(bool), clock) {
 		cart.arm.Step(clock)
 	}
 }

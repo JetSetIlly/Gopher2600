@@ -1585,6 +1585,16 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 				v := dbg.VCS.Prefs.RandomPins.Get().(bool)
 				err = dbg.VCS.Prefs.RandomPins.Set(!v)
 			}
+		case "INSTANTARM":
+			switch action {
+			case "SET":
+				err = dbg.VCS.Prefs.InstantARM.Set(true)
+			case "UNSET":
+				err = dbg.VCS.Prefs.InstantARM.Set(false)
+			case "TOGGLE":
+				v := dbg.VCS.Prefs.InstantARM.Get().(bool)
+				err = dbg.VCS.Prefs.InstantARM.Set(!v)
+			}
 		case "FXXXMIRROR":
 			switch action {
 			case "SET":

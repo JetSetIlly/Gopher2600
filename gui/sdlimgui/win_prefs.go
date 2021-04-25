@@ -107,6 +107,10 @@ func (win *winPrefs) drawGeneral() {
 		win.img.term.pushCommand("PREFS TOGGLE RANDPINS")
 	}
 
+	if imgui.Checkbox("Instant ARM Execution", &win.img.lz.Prefs.InstantARM) {
+		win.img.term.pushCommand("PREFS TOGGLE INSTANTARM")
+	}
+
 	if imgui.Checkbox("Use Fxxx Mirror", &win.img.lz.Prefs.FxxxMirror) {
 		win.img.term.pushCommand("PREFS TOGGLE FXXXMIRROR")
 	}

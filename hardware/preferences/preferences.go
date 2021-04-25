@@ -42,6 +42,10 @@ type Preferences struct {
 
 	// the number used to seed RandSrc
 	RandSeed int64
+
+	// whether the ARM coprocessor (as found in Harmony cartridges) execute
+	// instantly or if the cycle accurate steppint is attempted
+	InstantARM prefs.Bool
 }
 
 func (p *Preferences) String() string {
@@ -69,6 +73,10 @@ func NewPreferences() (*Preferences, error) {
 		return nil, err
 	}
 	err = p.dsk.Add("hardware.randPins", &p.RandomPins)
+	if err != nil {
+		return nil, err
+	}
+	err = p.dsk.Add("hardware.instantARM", &p.InstantARM)
 	if err != nil {
 		return nil, err
 	}

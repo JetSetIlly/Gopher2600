@@ -29,6 +29,7 @@ type LazyPrefs struct {
 	symbols          atomic.Value // bool (from prefs.Bool.Get())
 	rewindMaxEntries atomic.Value // int (from prefs.Int.Get())
 	rewindFreq       atomic.Value // int (from prefs.Int.Get())
+	instantARM       atomic.Value // int (from prefs.Bool.Get())
 
 	RandomState      bool
 	RandomPins       bool
@@ -36,6 +37,7 @@ type LazyPrefs struct {
 	Symbols          bool
 	RewindMaxEntries int
 	RewindFreq       int
+	InstantARM       bool
 }
 
 func newLazyPrefs(val *LazyValues) *LazyPrefs {
@@ -50,6 +52,7 @@ func (lz *LazyPrefs) push() {
 	lz.symbols.Store(lz.val.Dbg.Disasm.Prefs.Symbols.Get())
 	lz.rewindMaxEntries.Store(lz.val.Dbg.Rewind.Prefs.MaxEntries.Get())
 	lz.rewindFreq.Store(lz.val.Dbg.Rewind.Prefs.Freq.Get())
+	lz.instantARM.Store(lz.val.Dbg.VCS.Prefs.InstantARM.Get())
 }
 func (lz *LazyPrefs) update() {
 	lz.RandomState, _ = lz.randomState.Load().(bool)
@@ -58,4 +61,5 @@ func (lz *LazyPrefs) update() {
 	lz.Symbols, _ = lz.symbols.Load().(bool)
 	lz.RewindMaxEntries, _ = lz.rewindMaxEntries.Load().(int)
 	lz.RewindFreq, _ = lz.rewindFreq.Load().(int)
+	lz.InstantARM, _ = lz.instantARM.Load().(bool)
 }

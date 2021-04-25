@@ -115,9 +115,14 @@ func (cf *CallFn) Start(cycles float32) {
 
 // Step forward one clock. Returns true if CallFn is active and false if not.
 // If false, then the ARM should be stepped but not otherwise.
-func (cf *CallFn) Step(clock float32) bool {
+func (cf *CallFn) Step(instantExecution bool, clock float32) bool {
 	if cf.IsActive() {
-		cf.remainingCycles -= arm7tdmi.InternalClk / clock
+		if instantExecution {
+			cf.remainingCycles = 0
+		} else {
+			cf.remainingCycles -= arm7tdmi.InternalClk / clock
+		}
+
 		return true
 	}
 	return false

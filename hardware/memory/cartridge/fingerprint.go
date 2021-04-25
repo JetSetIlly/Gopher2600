@@ -223,12 +223,12 @@ func (cart *Cartridge) fingerprint(cartload cartridgeloader.Loader) error {
 	var err error
 
 	if ok, version := fingerprintCDF(cartload.Data); ok {
-		cart.mapper, err = cdf.NewCDF(version, cartload.Data)
+		cart.mapper, err = cdf.NewCDF(cart.prefs, version, cartload.Data)
 		return err
 	}
 
 	if fingerprintDPCplus(cartload.Data) {
-		cart.mapper, err = dpcplus.NewDPCplus(cartload.Data)
+		cart.mapper, err = dpcplus.NewDPCplus(cart.prefs, cartload.Data)
 		return err
 	}
 
