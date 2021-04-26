@@ -29,7 +29,6 @@ import (
 )
 
 type shaderProgram interface {
-	createProgram(vertProgram string, fragProgram string)
 	destroy()
 	setAttributes(shaderEnvironment)
 }
@@ -37,11 +36,11 @@ type shaderProgram interface {
 type shaderEnvironment struct {
 	img *SdlImgui
 
-	// vertex projection
-	proj [4][4]float32
-
 	// the function used to trigger the shader program
 	draw func()
+
+	// vertex projection
+	proj [4][4]float32
 
 	// the texture the shader will work with
 	srcTextureID uint32
@@ -49,6 +48,75 @@ type shaderEnvironment struct {
 	// width and height of texture. optional depending on the shader
 	width  int32
 	height int32
+}
+
+type framebuffer struct {
+	textures []uint32
+	fbo      uint32
+	rbo      uint32
+	width    int32
+	height   int32
+
+	// the texture of the most recent texture plugged into the framebuffer.
+	currentID uint32
+}
+
+func newFramebuffer(numTextures int) *framebuffer {
+	fb := &framebuffer{}
+	fb.textures = make([]uint32, numTextures)
+	gl.GenFramebuffers(1, &fb.fbo)
+	return fb
+}
+
+func (fb *framebuffer) destroy() {
+	gl.DeleteFramebuffers(1, &fb.fbo)
+}
+
+func (fb *framebuffer) setup(width int32, height int32) {
+	gl.BindFramebuffer(gl.FRAMEBUFFER, fb.fbo)
+
+	if fb.width == width && fb.height == height {
+		return
+	}
+
+	fb.width = width
+	fb.height = height
+
+	for i := range fb.textures {
+		gl.GenTextures(1, &fb.textures[i])
+		gl.BindTexture(gl.TEXTURE_2D, fb.textures[i])
+		gl.TexImage2D(gl.TEXTURE_2D, 0,
+			gl.RGBA, fb.width, fb.height, 0,
+			gl.RGBA, gl.UNSIGNED_BYTE,
+			gl.Ptr(nil))
+		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_BORDER)
+		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_BORDER)
+	}
+
+	gl.GenRenderbuffers(1, &fb.rbo)
+	gl.BindRenderbuffer(gl.RENDERBUFFER, fb.rbo)
+	gl.RenderbufferStorage(gl.RENDERBUFFER, gl.DEPTH24_STENCIL8, fb.width, fb.height)
+	gl.BindRenderbuffer(gl.RENDERBUFFER, 0)
+	gl.FramebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_STENCIL_ATTACHMENT, gl.RENDERBUFFER, fb.rbo)
+}
+
+// returns the texture ID that has been assigned to the framebuffer.
+func (fb *framebuffer) draw(bufferIdx int, draw func()) uint32 {
+	fb.currentID = fb.textures[bufferIdx]
+	gl.BindTexture(gl.TEXTURE_2D, fb.currentID)
+	gl.FramebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, fb.currentID, 0)
+	draw()
+	return fb.currentID
+}
+
+// helper function to convert bool to int32
+func boolToInt32(v bool) int32 {
+	if v {
+		return 1
+	}
+	return 0
 }
 
 type shader struct {
@@ -86,12 +154,9 @@ func (sh *shader) setAttributes(env shaderEnvironment) {
 	gl.EnableVertexAttribArray(uint32(sh.color))
 
 	vertexSize, vertexOffsetPos, vertexOffsetUv, vertexOffsetCol := imgui.VertexBufferLayout()
-	gl.VertexAttribPointer(uint32(sh.uv), 2, gl.FLOAT, false, int32(vertexSize),
-		unsafe.Pointer(uintptr(vertexOffsetUv)))
-	gl.VertexAttribPointer(uint32(sh.position), 2, gl.FLOAT, false, int32(vertexSize),
-		unsafe.Pointer(uintptr(vertexOffsetPos)))
-	gl.VertexAttribPointer(uint32(sh.color), 4, gl.UNSIGNED_BYTE, true, int32(vertexSize),
-		unsafe.Pointer(uintptr(vertexOffsetCol)))
+	gl.VertexAttribPointer(uint32(sh.uv), 2, gl.FLOAT, false, int32(vertexSize), unsafe.Pointer(uintptr(vertexOffsetUv)))
+	gl.VertexAttribPointer(uint32(sh.position), 2, gl.FLOAT, false, int32(vertexSize), unsafe.Pointer(uintptr(vertexOffsetPos)))
+	gl.VertexAttribPointer(uint32(sh.color), 4, gl.UNSIGNED_BYTE, true, int32(vertexSize), unsafe.Pointer(uintptr(vertexOffsetCol)))
 }
 
 // compile and link shader programs
@@ -115,12 +180,12 @@ func (sh *shader) createProgram(vertProgram string, fragProgram string) {
 	glShaderSource(fragHandle, fragProgram)
 
 	gl.CompileShader(vertHandle)
-	if log := getShaderCompileError(vertHandle); log != "" {
+	if log := sh.getShaderCompileError(vertHandle); log != "" {
 		panic(log)
 	}
 
 	gl.CompileShader(fragHandle)
-	if log := getShaderCompileError(fragHandle); log != "" {
+	if log := sh.getShaderCompileError(fragHandle); log != "" {
 		panic(log)
 	}
 
@@ -143,7 +208,7 @@ func (sh *shader) createProgram(vertProgram string, fragProgram string) {
 
 // getShaderCompileError returns the most recent error generated
 // by the shader compiler.
-func getShaderCompileError(shader uint32) string {
+func (sh *shader) getShaderCompileError(shader uint32) string {
 	var isCompiled int32
 	gl.GetShaderiv(shader, gl.COMPILE_STATUS, &isCompiled)
 	if isCompiled == 0 {
@@ -157,13 +222,6 @@ func getShaderCompileError(shader uint32) string {
 		}
 	}
 	return ""
-}
-
-func boolToInt32(v bool) int32 {
-	if v {
-		return 1
-	}
-	return 0
 }
 
 type guiShader struct {
@@ -308,7 +366,7 @@ func (sh *overlayShader) setAttributes(env shaderEnvironment) {
 	gl.Uniform1f(sh.alpha, env.img.wm.dbgScr.overlayAlpha)
 }
 
-type crtShader struct {
+type effectsShader struct {
 	shader
 
 	screenDim       int32
@@ -325,8 +383,8 @@ type crtShader struct {
 	time            int32
 }
 
-func newCRTShader() shaderProgram {
-	sh := &crtShader{}
+func newEffectsShader() shaderProgram {
+	sh := &effectsShader{}
 	sh.createProgram(string(shaders.StraightVertexShader), string(shaders.CRTFragShader))
 
 	sh.screenDim = gl.GetUniformLocation(sh.handle, gl.Str("ScreenDim"+"\x00"))
@@ -345,7 +403,7 @@ func newCRTShader() shaderProgram {
 	return sh
 }
 
-func (sh *crtShader) setAttributes(env shaderEnvironment) {
+func (sh *effectsShader) setAttributes(env shaderEnvironment) {
 	sh.shader.setAttributes(env)
 
 	gl.Uniform2f(sh.screenDim, float32(env.width), float32(env.height))
@@ -374,7 +432,7 @@ func newPhosphorShader() shaderProgram {
 	return sh
 }
 
-func (sh *phosphorShader) setAttributesPhosphor(env shaderEnvironment, latency float32, textureB uint32) {
+func (sh *phosphorShader) setAttributesArgs(env shaderEnvironment, latency float32, textureB uint32) {
 	sh.shader.setAttributes(env)
 	gl.Uniform1f(sh.latency, latency)
 
@@ -395,7 +453,7 @@ func newBlurShader() shaderProgram {
 	return sh
 }
 
-func (sh *blurShader) setAttributesBlur(env shaderEnvironment, blur float32) {
+func (sh *blurShader) setAttributesArgs(env shaderEnvironment, blur float32) {
 	sh.shader.setAttributes(env)
 	gl.Uniform2f(sh.blur, blur/float32(env.width), blur/float32(env.height))
 }
@@ -412,7 +470,7 @@ func newBlendShader() shaderProgram {
 	return sh
 }
 
-func (sh *blendShader) setAttributesBlend(env shaderEnvironment, modulate float32, textureB uint32) {
+func (sh *blendShader) setAttributesArgs(env shaderEnvironment, modulate float32, textureB uint32) {
 	sh.shader.setAttributes(env)
 	gl.Uniform1f(sh.modulate, modulate)
 
@@ -421,164 +479,134 @@ func (sh *blendShader) setAttributesBlend(env shaderEnvironment, modulate float3
 	gl.Uniform1i(sh.texture, 1)
 }
 
-type playscrShader struct {
+type crtShader struct {
 	shader
+
+	fb *framebuffer
 
 	phosphorShader shaderProgram
 	blurShader     shaderProgram
 	blendShader    shaderProgram
-	crtShader      shaderProgram
+	effectsShader  shaderProgram
 	colorShader    shaderProgram
-
-	phosphor uint32
-	buffer   uint32
-
-	fbo    uint32
-	rbo    uint32
-	width  int32
-	height int32
 }
 
-func newPlayscrShader() shaderProgram {
-	sh := &playscrShader{}
-	sh.phosphorShader = newPhosphorShader()
-	sh.blurShader = newBlurShader()
-	sh.blendShader = newBlendShader()
-	sh.crtShader = newCRTShader()
-	sh.colorShader = newColorShader()
-
-	gl.GenFramebuffers(1, &sh.fbo)
-
+func newCRTShader(fb *framebuffer) shaderProgram {
+	sh := &crtShader{
+		fb:             fb,
+		phosphorShader: newPhosphorShader(),
+		blurShader:     newBlurShader(),
+		blendShader:    newBlendShader(),
+		effectsShader:  newEffectsShader(),
+		colorShader:    newColorShader(),
+	}
 	return sh
 }
 
-func (sh *playscrShader) setupFrameBuffer(env *shaderEnvironment) {
-	gl.BindFramebuffer(gl.FRAMEBUFFER, sh.fbo)
+func (sh *crtShader) destroy() {
+	sh.phosphorShader.destroy()
+	sh.blurShader.destroy()
+	sh.blendShader.destroy()
+	sh.effectsShader.destroy()
+	sh.colorShader.destroy()
+	sh.shader.destroy()
+	sh.fb.destroy()
+}
+
+func (sh *crtShader) setAttributesCRT(env shaderEnvironment, enabled bool) {
+	// make sure our framebuffer is correct
+	sh.fb.setup(env.width, env.height)
+
+	src := env.srcTextureID
+
+	const (
+		currentID  = 0
+		phosphorID = 1
+	)
+
+	if enabled {
+		if env.img.crtPrefs.Phosphor.Get().(bool) {
+			// use blur shader to add bloom to previous phosphor
+			env.srcTextureID = sh.fb.draw(phosphorID, func() {
+				phosphorBloom := env.img.crtPrefs.PhosphorBloom.Get().(float64)
+				sh.blurShader.(*blurShader).setAttributesArgs(env, float32(phosphorBloom))
+				env.draw()
+			})
+
+			// add new frame to phosphor buffer
+			env.srcTextureID = sh.fb.draw(phosphorID, func() {
+				env.srcTextureID = src
+				phosphorLatency := env.img.crtPrefs.PhosphorLatency.Get().(float64)
+				sh.phosphorShader.(*phosphorShader).setAttributesArgs(env, float32(phosphorLatency), sh.fb.textures[phosphorID])
+				env.draw()
+			})
+		}
+	} else {
+		// using phosphor buffer for pixel perfect fade
+		env.srcTextureID = sh.fb.draw(phosphorID, func() {
+			fade := env.img.crtPrefs.PixelPerfectFade.Get().(float64)
+			sh.phosphorShader.(*phosphorShader).setAttributesArgs(env, float32(fade), sh.fb.textures[phosphorID])
+			env.draw()
+		})
+	}
+
+	if enabled {
+		// blur for current frame
+		env.srcTextureID = sh.fb.draw(currentID, func() {
+			sh.blurShader.(*blurShader).setAttributesArgs(env, 0.17)
+			env.draw()
+		})
+
+		// blend blur with original source texture
+		env.srcTextureID = sh.fb.draw(currentID, func() {
+			env.srcTextureID = src
+			sh.blendShader.(*blendShader).setAttributesArgs(env, 1.0, sh.fb.textures[currentID])
+			env.draw()
+		})
+
+		sh.effectsShader.setAttributes(env)
+	} else {
+		sh.colorShader.setAttributes(env)
+	}
+}
+
+type playscrShader struct {
+	crt shaderProgram
+}
+
+func newPlayscrShader() shaderProgram {
+	sh := &playscrShader{
+		crt: newCRTShader(newFramebuffer(2)),
+	}
+	return sh
+}
+
+func (sh *playscrShader) destroy() {
+	sh.crt.destroy()
+}
+
+func (sh *playscrShader) setAttributes(env shaderEnvironment) {
+	if !env.img.isPlaymode() {
+		return
+	}
 
 	env.img.screen.crit.section.Lock()
 	env.width = int32(env.img.playScr.scaledWidth())
 	env.height = int32(env.img.playScr.scaledHeight())
 	env.img.screen.crit.section.Unlock()
 
-	if sh.width == env.width && sh.height == env.height {
-		return
-	}
-
-	sh.width = env.width
-	sh.height = env.height
-
-	gl.GenTextures(1, &sh.buffer)
-	gl.BindTexture(gl.TEXTURE_2D, sh.buffer)
-	gl.TexImage2D(gl.TEXTURE_2D, 0,
-		gl.RGBA, sh.width, sh.height, 0,
-		gl.RGBA, gl.UNSIGNED_BYTE,
-		gl.Ptr(nil))
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_BORDER)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_BORDER)
-
-	gl.GenTextures(1, &sh.phosphor)
-	gl.BindTexture(gl.TEXTURE_2D, sh.phosphor)
-	gl.TexImage2D(gl.TEXTURE_2D, 0,
-		gl.RGBA, sh.width, sh.height, 0,
-		gl.RGBA, gl.UNSIGNED_BYTE,
-		gl.Ptr(nil))
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_BORDER)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_BORDER)
-
-	gl.GenRenderbuffers(1, &sh.rbo)
-	gl.BindRenderbuffer(gl.RENDERBUFFER, sh.rbo)
-	gl.RenderbufferStorage(gl.RENDERBUFFER, gl.DEPTH24_STENCIL8, sh.width, sh.height)
-	gl.BindRenderbuffer(gl.RENDERBUFFER, 0)
-	gl.FramebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_STENCIL_ATTACHMENT, gl.RENDERBUFFER, sh.rbo)
-}
-
-func (sh *playscrShader) setFrameBuffer(texture uint32) {
-	gl.BindTexture(gl.TEXTURE_2D, uint32(texture))
-	gl.FramebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture, 0)
-}
-
-func (sh *playscrShader) destroy() {
-	sh.crtShader.destroy()
-	sh.shader.destroy()
-	gl.DeleteFramebuffers(1, &sh.fbo)
-}
-
-func (sh *playscrShader) setAttributes(env shaderEnvironment) {
-	// prevserve existing scissor and viewport settings. reverting
-	// on defer
-	scissor := gl.IsEnabled(gl.SCISSOR_TEST)
-	if scissor {
-		defer gl.Enable(gl.SCISSOR_TEST)
-	}
-
-	var viewport [4]int32
-	gl.GetIntegerv(gl.VIEWPORT, &viewport[0])
-	defer gl.Viewport(viewport[0], viewport[1], viewport[2], viewport[3])
-
 	// set scissor and viewport
-	gl.Disable(gl.SCISSOR_TEST)
 	gl.Viewport(int32(-env.img.playScr.imagePosMin.X),
 		int32(-env.img.playScr.imagePosMin.Y),
-		sh.width+(int32(env.img.playScr.imagePosMin.X*2)),
-		sh.height+(int32(env.img.playScr.imagePosMin.Y*2)),
+		env.width+(int32(env.img.playScr.imagePosMin.X*2)),
+		env.height+(int32(env.img.playScr.imagePosMin.Y*2)),
+	)
+	gl.Scissor(int32(-env.img.playScr.imagePosMin.X),
+		int32(-env.img.playScr.imagePosMin.Y),
+		env.width+(int32(env.img.playScr.imagePosMin.X*2)),
+		env.height+(int32(env.img.playScr.imagePosMin.Y*2)),
 	)
 
-	// make sure our framebuffer is correct
-	sh.setupFrameBuffer(&env)
-
-	src := env.srcTextureID
-
-	if env.img.crtPrefs.Enabled.Get().(bool) {
-		if env.img.crtPrefs.Phosphor.Get().(bool) {
-			// use blur shader to add bloom to previous phosphor
-			sh.setFrameBuffer(sh.phosphor)
-			env.srcTextureID = sh.phosphor
-			phosphorBloom := env.img.crtPrefs.PhosphorBloom.Get().(float64)
-			sh.blurShader.(*blurShader).setAttributesBlur(env, float32(phosphorBloom))
-			env.draw()
-
-			// add new frame to phosphor buffer
-			sh.setFrameBuffer(sh.phosphor)
-			env.srcTextureID = src
-			phosphorLatency := env.img.crtPrefs.PhosphorLatency.Get().(float64)
-			sh.phosphorShader.(*phosphorShader).setAttributesPhosphor(env, float32(phosphorLatency), sh.phosphor)
-			env.draw()
-
-			// use phosphor texture for next shader
-			env.srcTextureID = sh.phosphor
-		}
-	} else {
-		// using phosphor buffer for pixel perfect fade
-		sh.setFrameBuffer(sh.phosphor)
-		env.srcTextureID = src
-		fade := env.img.crtPrefs.PixelPerfectFade.Get().(float64)
-		sh.phosphorShader.(*phosphorShader).setAttributesPhosphor(env, float32(fade), sh.phosphor)
-		env.draw()
-
-		// use phosphor texture for next shader
-		env.srcTextureID = sh.phosphor
-	}
-
-	if env.img.crtPrefs.Enabled.Get().(bool) {
-		// blur for current frame
-		sh.setFrameBuffer(sh.buffer)
-		sh.blurShader.(*blurShader).setAttributesBlur(env, 0.17)
-		env.draw()
-
-		// blend blur with original source texture
-		sh.setFrameBuffer(sh.buffer)
-		env.srcTextureID = src
-		sh.blendShader.(*blendShader).setAttributesBlend(env, 1.0, sh.buffer)
-		env.draw()
-
-		// crt final shader. copies to real frame buffer
-		env.srcTextureID = sh.buffer
-		sh.crtShader.setAttributes(env)
-	} else {
-		sh.colorShader.setAttributes(env)
-	}
+	enabled := env.img.crtPrefs.Enabled.Get().(bool)
+	sh.crt.(*crtShader).setAttributesCRT(env, enabled)
 }

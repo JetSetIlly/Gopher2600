@@ -57,7 +57,6 @@ func newWinCRTPrefs(img *SdlImgui) (window, error) {
 		scr: img.screen,
 	}
 
-	gl.ActiveTexture(gl.TEXTURE0)
 	gl.GenTextures(1, &win.crtTexture)
 	gl.BindTexture(gl.TEXTURE_2D, win.crtTexture)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
@@ -180,14 +179,12 @@ func (win *winCRTPrefs) render() {
 		win.createTextures = false
 
 		// (re)create textures
-		gl.ActiveTexture(gl.TEXTURE0)
 		gl.BindTexture(gl.TEXTURE_2D, win.crtTexture)
 		gl.TexImage2D(gl.TEXTURE_2D, 0,
 			gl.RGBA, previewWidth, previewHeight, 0,
 			gl.RGBA, gl.UNSIGNED_BYTE,
 			gl.Ptr(pixels.Pix))
 	} else {
-		gl.ActiveTexture(gl.TEXTURE0)
 		gl.BindTexture(gl.TEXTURE_2D, win.crtTexture)
 		gl.TexSubImage2D(gl.TEXTURE_2D, 0,
 			0, 0, int32(pixels.Bounds().Size().X), int32(pixels.Bounds().Size().Y),

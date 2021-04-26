@@ -93,19 +93,16 @@ func newWinDbgScr(img *SdlImgui) (window, error) {
 	}
 
 	// set texture, creation of textures will be done after every call to resize()
-	gl.ActiveTexture(gl.TEXTURE0)
 	gl.GenTextures(1, &win.screenTexture)
 	gl.BindTexture(gl.TEXTURE_2D, win.screenTexture)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
 
-	gl.ActiveTexture(gl.TEXTURE0)
 	gl.GenTextures(1, &win.elementsTexture)
 	gl.BindTexture(gl.TEXTURE_2D, win.elementsTexture)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
 
-	gl.ActiveTexture(gl.TEXTURE0)
 	gl.GenTextures(1, &win.overlayTexture)
 	gl.BindTexture(gl.TEXTURE_2D, win.overlayTexture)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
@@ -619,8 +616,6 @@ func (win *winDbgScr) render() {
 
 	gl.PixelStorei(gl.UNPACK_ROW_LENGTH, int32(pixels.Stride)/4)
 	defer gl.PixelStorei(gl.UNPACK_ROW_LENGTH, 0)
-
-	gl.ActiveTexture(gl.TEXTURE0)
 
 	if win.createTextures {
 		gl.BindTexture(gl.TEXTURE_2D, win.screenTexture)

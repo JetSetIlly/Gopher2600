@@ -195,10 +195,8 @@ func (rnd *glsl) render() {
 		img: rnd.img,
 	}
 
-	// Setup viewport, orthographic projection matrix
 	// Our visible imgui space lies from draw_data->DisplayPos (top left) to draw_data->DisplayPos+data_data->DisplaySize (bottom right).
 	// DisplayMin is typically (0,0) for single viewport apps.
-	gl.Viewport(0, 0, int32(fbWidth), int32(fbHeight))
 	env.proj = [4][4]float32{
 		{2.0 / displayWidth, 0.0, 0.0, 0.0},
 		{0.0, 2.0 / -displayHeight, 0.0, 0.0},
@@ -265,12 +263,16 @@ func (rnd *glsl) render() {
 				// set attributes for the selected shader
 				shader.setAttributes(env)
 
-				// clipping
+				// draw using the currently selected shader to the real framebuffer
+				gl.BindFramebuffer(gl.FRAMEBUFFER, 0)
+
+				// viewport and scissors. these might have changed during
+				// execution of the shader
+				gl.Viewport(0, 0, int32(fbWidth), int32(fbHeight))
 				clipRect := cmd.ClipRect()
 				gl.Scissor(int32(clipRect.X), int32(fbHeight)-int32(clipRect.W), int32(clipRect.Z-clipRect.X), int32(clipRect.W-clipRect.Y))
 
-				// draw using the currently selected shader to the real framebuffer
-				gl.BindFramebuffer(gl.FRAMEBUFFER, 0)
+				// process
 				env.draw()
 			}
 			indexBufferOffset += uintptr(cmd.ElementCount() * indexSize)
