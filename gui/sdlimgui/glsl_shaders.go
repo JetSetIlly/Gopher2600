@@ -517,12 +517,6 @@ func (sh *playscrShader) destroy() {
 }
 
 func (sh *playscrShader) setAttributes(env shaderEnvironment) {
-	// return immediately if CRT effects are off
-	if !env.img.crtPrefs.Enabled.Get().(bool) {
-		sh.colorShader.setAttributes(env)
-		return
-	}
-
 	// prevserve existing scissor and viewport settings. reverting
 	// on defer
 	scissor := gl.IsEnabled(gl.SCISSOR_TEST)
@@ -547,34 +541,43 @@ func (sh *playscrShader) setAttributes(env shaderEnvironment) {
 
 	src := env.srcTextureID
 
-	phosphorLatency := env.img.crtPrefs.PhosphorLatency.Get().(float64)
-	bloomAmount := env.img.crtPrefs.BloomAmount.Get().(float64)
+	if env.img.crtPrefs.Phosphor.Get().(bool) {
+		phosphorLatency := env.img.crtPrefs.PhosphorLatency.Get().(float64)
 
-	// use blur shader to add bloom to previous phosphor
-	sh.setFrameBuffer(sh.phosphor)
-	env.srcTextureID = sh.phosphor
-	sh.blurShader.(*blurShader).setAttributesBlur(env, float32(bloomAmount))
-	env.draw()
+		if env.img.crtPrefs.Enabled.Get().(bool) {
+			// use blur shader to add bloom to previous phosphor
+			sh.setFrameBuffer(sh.phosphor)
+			env.srcTextureID = sh.phosphor
+			sh.blurShader.(*blurShader).setAttributesBlur(env, 1.0)
+			env.draw()
+		}
 
-	// add new frame to phosphor buffer
-	sh.setFrameBuffer(sh.phosphor)
-	env.srcTextureID = src
-	sh.phosphorShader.(*phosphorShader).setAttributesPhosphor(env, float32(phosphorLatency), sh.phosphor)
-	env.draw()
+		// add new frame to phosphor buffer
+		sh.setFrameBuffer(sh.phosphor)
+		env.srcTextureID = src
+		sh.phosphorShader.(*phosphorShader).setAttributesPhosphor(env, float32(phosphorLatency), sh.phosphor)
+		env.draw()
 
-	// blur the phosphor amount for current frame
-	sh.setFrameBuffer(sh.buffer)
-	env.srcTextureID = sh.phosphor
-	sh.blurShader.(*blurShader).setAttributesBlur(env, 0.17)
-	env.draw()
+		// use phosphor texture for next shader
+		env.srcTextureID = sh.phosphor
+	}
 
-	// blend blur with original source texture
-	sh.setFrameBuffer(sh.buffer)
-	env.srcTextureID = src
-	sh.blendShader.(*blendShader).setAttributesBlend(env, 1.0, sh.buffer)
-	env.draw()
+	if env.img.crtPrefs.Enabled.Get().(bool) {
+		// blur for current frame
+		sh.setFrameBuffer(sh.buffer)
+		sh.blurShader.(*blurShader).setAttributesBlur(env, 0.17)
+		env.draw()
 
-	// crt final shader. copies to real frame buffer
-	env.srcTextureID = sh.buffer
-	sh.crtShader.setAttributes(env)
+		// blend blur with original source texture
+		sh.setFrameBuffer(sh.buffer)
+		env.srcTextureID = src
+		sh.blendShader.(*blendShader).setAttributesBlend(env, 1.0, sh.buffer)
+		env.draw()
+
+		// crt final shader. copies to real frame buffer
+		env.srcTextureID = sh.buffer
+		sh.crtShader.setAttributes(env)
+	} else {
+		sh.colorShader.setAttributes(env)
+	}
 }

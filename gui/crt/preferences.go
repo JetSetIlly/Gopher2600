@@ -34,7 +34,6 @@ type Preferences struct {
 	Flicker   prefs.Bool
 
 	PhosphorLatency prefs.Float
-	BloomAmount     prefs.Float
 	CurveAmount     prefs.Float
 	MaskBright      prefs.Float
 	ScanlinesBright prefs.Float
@@ -59,7 +58,6 @@ const (
 	fringing        = true
 	flicker         = true
 	phosphorLatency = 0.5
-	bloomAmount     = 1.0
 	curveAmount     = 0.5
 	maskBright      = 0.70
 	scanlinesBright = 0.70
@@ -121,10 +119,6 @@ func NewPreferences() (*Preferences, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = p.dsk.Add("crt.bloomAmount", &p.BloomAmount)
-	if err != nil {
-		return nil, err
-	}
 	err = p.dsk.Add("crt.curveAmount", &p.CurveAmount)
 	if err != nil {
 		return nil, err
@@ -173,7 +167,6 @@ func (p *Preferences) SetDefaults() {
 	p.Fringing.Set(fringing)
 	p.Flicker.Set(flicker)
 	p.PhosphorLatency.Set(phosphorLatency)
-	p.BloomAmount.Set(bloomAmount)
 	p.CurveAmount.Set(curveAmount)
 	p.MaskBright.Set(maskBright)
 	p.ScanlinesBright.Set(scanlinesBright)
