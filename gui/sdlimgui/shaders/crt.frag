@@ -21,13 +21,11 @@ uniform int ShadowMask;
 uniform int Scanlines;
 uniform int Noise;
 uniform int Fringing;
-uniform int Flicker;
 uniform float CurveAmount;
 uniform float MaskBright;
 uniform float ScanlinesBright;
 uniform float NoiseLevel;
 uniform float FringingAmount;
-uniform float FlickerLevel;
 uniform float Time;
 
 
@@ -72,11 +70,11 @@ void main() {
 
 	// video-black correction
 	if (Curve == 1) {
-		float vb = 0.16;
+		float vb = 0.14;
 		Crt_Color.rgb = clamp(Crt_Color.rgb, vec3(vb), vec3(1.0));
 	}
 
-	// noise
+	// noise (includes flicker)
 	if (Noise == 1) {
 		float n;
 		n = gold_noise(gl_FragCoord.xy);
@@ -87,11 +85,10 @@ void main() {
 		} else {
 			Crt_Color.b *= max(1.0-NoiseLevel, n);
 		}
-	}
 
-	// flicker
-	if (Flicker == 1) {
-		Crt_Color *= (1.0-FlickerLevel*(sin(50.0*Time+uv.y*2.0)*0.5+0.5));
+		// flicker
+		float level = 0.004;
+		Crt_Color *= (1.0-level*(sin(50.0*Time+uv.y*2.0)*0.5+0.5));
 	}
 
 	// shadow mask
@@ -136,7 +133,7 @@ void main() {
 
 	// vignette effect
 	if (Curve == 1) {
-		float vignette = 10.0*uv.x*uv.y*(1.0-uv.x)*(1.0-uv.y);
+		float vignette = 10*uv.x*uv.y*(1.0-uv.x)*(1.0-uv.y);
 		Crt_Color.rgb *= pow(vignette, 0.10) * 1.3;
 	}
 

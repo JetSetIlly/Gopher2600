@@ -26,6 +26,7 @@ var defunct = []string{
 	"crt.phosphorSpeed",
 	"crt.blur",
 	"crt.blurLevel",
+	"crt.vignette",
 }
 
 // returns true if string is in list of defunct values.

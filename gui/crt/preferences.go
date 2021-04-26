@@ -25,23 +25,22 @@ type Preferences struct {
 
 	Enabled prefs.Bool
 
-	Phosphor  prefs.Bool
 	Curve     prefs.Bool
 	Mask      prefs.Bool
 	Scanlines prefs.Bool
 	Noise     prefs.Bool
 	Fringing  prefs.Bool
-	Flicker   prefs.Bool
+	Phosphor  prefs.Bool
 
-	PhosphorLatency prefs.Float
 	CurveAmount     prefs.Float
 	MaskBright      prefs.Float
 	ScanlinesBright prefs.Float
 	NoiseLevel      prefs.Float
 	FringingAmount  prefs.Float
-	FlickerLevel    prefs.Float
+	PhosphorLatency prefs.Float
+	PhosphorBloom   prefs.Float
 
-	Vignette prefs.Bool
+	PixelPerfectFade prefs.Float
 }
 
 func (p *Preferences) String() string {
@@ -49,22 +48,21 @@ func (p *Preferences) String() string {
 }
 
 const (
-	enabled         = true
-	phosphor        = true
-	curve           = true
-	mask            = true
-	scanlines       = true
-	noise           = true
-	fringing        = true
-	flicker         = true
-	phosphorLatency = 0.5
-	curveAmount     = 0.5
-	maskBright      = 0.70
-	scanlinesBright = 0.70
-	noiseLevel      = 0.19
-	fringingAmount  = 0.15
-	flickerLevel    = 0.004
-	vignette        = true
+	enabled          = true
+	curve            = true
+	mask             = true
+	scanlines        = true
+	noise            = true
+	fringing         = true
+	phosphor         = true
+	curveAmount      = 0.5
+	maskBright       = 0.70
+	scanlinesBright  = 0.70
+	noiseLevel       = 0.19
+	fringingAmount   = 0.15
+	phosphorLatency  = 0.5
+	phosphorBloom    = 1.0
+	pixelPerfectFade = 0.4
 )
 
 // NewPreferences is the preferred method of initialisation for the Preferences type.
@@ -84,10 +82,6 @@ func NewPreferences() (*Preferences, error) {
 	}
 
 	err = p.dsk.Add("crt.enabled", &p.Enabled)
-	if err != nil {
-		return nil, err
-	}
-	err = p.dsk.Add("crt.phosphor", &p.Phosphor)
 	if err != nil {
 		return nil, err
 	}
@@ -111,11 +105,7 @@ func NewPreferences() (*Preferences, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = p.dsk.Add("crt.flicker", &p.Flicker)
-	if err != nil {
-		return nil, err
-	}
-	err = p.dsk.Add("crt.phosphorLatency", &p.PhosphorLatency)
+	err = p.dsk.Add("crt.phosphor", &p.Phosphor)
 	if err != nil {
 		return nil, err
 	}
@@ -139,11 +129,15 @@ func NewPreferences() (*Preferences, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = p.dsk.Add("crt.flickerlevel", &p.FlickerLevel)
+	err = p.dsk.Add("crt.phosphorLatency", &p.PhosphorLatency)
 	if err != nil {
 		return nil, err
 	}
-	err = p.dsk.Add("crt.vignette", &p.Vignette)
+	err = p.dsk.Add("crt.phosphorBloom", &p.PhosphorBloom)
+	if err != nil {
+		return nil, err
+	}
+	err = p.dsk.Add("crt.pixelPerfectFade", &p.PixelPerfectFade)
 	if err != nil {
 		return nil, err
 	}
@@ -159,21 +153,20 @@ func NewPreferences() (*Preferences, error) {
 // SetDefaults revers all CRT settings to default values.
 func (p *Preferences) SetDefaults() {
 	p.Enabled.Set(enabled)
-	p.Phosphor.Set(phosphor)
 	p.Curve.Set(curve)
 	p.Mask.Set(mask)
 	p.Scanlines.Set(scanlines)
 	p.Noise.Set(noise)
 	p.Fringing.Set(fringing)
-	p.Flicker.Set(flicker)
-	p.PhosphorLatency.Set(phosphorLatency)
+	p.Phosphor.Set(phosphor)
 	p.CurveAmount.Set(curveAmount)
 	p.MaskBright.Set(maskBright)
 	p.ScanlinesBright.Set(scanlinesBright)
 	p.NoiseLevel.Set(noiseLevel)
 	p.FringingAmount.Set(fringingAmount)
-	p.FlickerLevel.Set(flickerLevel)
-	p.Vignette.Set(vignette)
+	p.PhosphorLatency.Set(phosphorLatency)
+	p.PhosphorBloom.Set(phosphorBloom)
+	p.PixelPerfectFade.Set(pixelPerfectFade)
 }
 
 // Load disassembly preferences and apply to the current disassembly.

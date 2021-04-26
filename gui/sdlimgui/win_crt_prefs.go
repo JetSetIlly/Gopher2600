@@ -97,15 +97,9 @@ func (win *winCRTPrefs) draw() {
 		imgui.BeginV(win.id(), &win.open, imgui.WindowFlagsAlwaysAutoResize)
 	}
 
-	win.drawEnabled()
-	imguiSeparator()
-
 	// note start position of setting group
 	win.previewHeight = imguiMeasureHeight(func() {
 		imgui.BeginGroup()
-
-		win.drawPhosphor()
-		imgui.Spacing()
 
 		win.drawCurve()
 		imgui.Spacing()
@@ -122,8 +116,13 @@ func (win *winCRTPrefs) draw() {
 		win.drawFringing()
 		imgui.Spacing()
 
-		win.drawFlicker()
+		win.drawPhosphor()
+
 		imgui.Spacing()
+		imgui.Separator()
+		imgui.Spacing()
+
+		win.drawPixelPerfect()
 
 		imgui.EndGroup()
 	})
@@ -197,43 +196,6 @@ func (win *winCRTPrefs) render() {
 	}
 }
 
-func (win *winCRTPrefs) drawEnabled() {
-	b := win.img.crtPrefs.Enabled.Get().(bool)
-	if imgui.Checkbox("Enabled##enabled", &b) {
-		win.img.crtPrefs.Enabled.Set(b)
-	}
-
-	if !win.img.isPlaymode() {
-		imgui.SameLine()
-		imgui.Text("(when in playmode)")
-	}
-}
-
-func (win *winCRTPrefs) drawPhosphor() {
-	b := win.img.crtPrefs.Phosphor.Get().(bool)
-	if imgui.Checkbox("Phosphor##phosphor", &b) {
-		win.img.crtPrefs.Phosphor.Set(b)
-	}
-
-	f := float32(win.img.crtPrefs.PhosphorLatency.Get().(float64))
-
-	var label string
-
-	if f > 0.7 {
-		label = "very slow"
-	} else if f > 0.5 {
-		label = "slow"
-	} else if f >= 0.3 {
-		label = "fast"
-	} else {
-		label = "very fast"
-	}
-
-	if imgui.SliderFloatV("##phosphorlatency", &f, 0.1, 0.9, label, 1.0) {
-		win.img.crtPrefs.PhosphorLatency.Set(f)
-	}
-}
-
 func (win *winCRTPrefs) drawCurve() {
 	b := win.img.crtPrefs.Curve.Get().(bool)
 	if imgui.Checkbox("Curve##curve", &b) {
@@ -244,10 +206,8 @@ func (win *winCRTPrefs) drawCurve() {
 
 	var label string
 
-	if f > 0.75 {
-		label = "very flat"
-	} else if f > 0.50 {
-		label = "quite flat"
+	if f >= 0.75 {
+		label = "flat"
 	} else if f >= 0.25 {
 		label = "a little curved"
 	} else {
@@ -269,9 +229,9 @@ func (win *winCRTPrefs) drawMask() {
 
 	var label string
 
-	if f > 0.75 {
+	if f >= 0.75 {
 		label = "very bright"
-	} else if f > 0.50 {
+	} else if f >= 0.50 {
 		label = "bright"
 	} else if f >= 0.25 {
 		label = "dark"
@@ -319,9 +279,9 @@ func (win *winCRTPrefs) drawNoise() {
 
 	var label string
 
-	if f > 0.75 {
+	if f >= 0.75 {
 		label = "very high"
-	} else if f > 0.50 {
+	} else if f >= 0.50 {
 		label = "high"
 	} else if f >= 0.25 {
 		label = "low"
@@ -344,9 +304,9 @@ func (win *winCRTPrefs) drawFringing() {
 
 	var label string
 
-	if f > 0.45 {
+	if f >= 0.45 {
 		label = "very high"
-	} else if f > 0.30 {
+	} else if f >= 0.30 {
 		label = "high"
 	} else if f >= 0.15 {
 		label = "low"
@@ -356,38 +316,6 @@ func (win *winCRTPrefs) drawFringing() {
 
 	if imgui.SliderFloatV("##fringingamount", &f, 0.0, 0.6, label, 1.0) {
 		win.img.crtPrefs.FringingAmount.Set(f)
-	}
-}
-
-func (win *winCRTPrefs) drawFlicker() {
-	b := win.img.crtPrefs.Flicker.Get().(bool)
-	if imgui.Checkbox("Flicker##flicker", &b) {
-		win.img.crtPrefs.Flicker.Set(b)
-	}
-
-	f := float32(win.img.crtPrefs.FlickerLevel.Get().(float64))
-
-	var label string
-
-	if f > 0.015 {
-		label = "very high"
-	} else if f > 0.010 {
-		label = "high"
-	} else if f >= 0.005 {
-		label = "low"
-	} else {
-		label = "very low"
-	}
-
-	if imgui.SliderFloatV("##FlickerLevel", &f, 0.000, 0.020, label, 1.0) {
-		win.img.crtPrefs.FlickerLevel.Set(f)
-	}
-}
-
-func (win *winCRTPrefs) drawVignette() {
-	b := win.img.crtPrefs.Vignette.Get().(bool)
-	if imgui.Checkbox("Vignette##vignette", &b) {
-		win.img.crtPrefs.Vignette.Set(b)
 	}
 }
 
@@ -410,6 +338,74 @@ func (win *winCRTPrefs) drawDiskButtons() {
 	imgui.SameLine()
 	if imgui.Button("SetDefaults") {
 		win.img.crtPrefs.SetDefaults()
+	}
+}
+
+func (win *winCRTPrefs) drawPhosphor() {
+	b := win.img.crtPrefs.Phosphor.Get().(bool)
+	if imgui.Checkbox("Phosphor##phosphor", &b) {
+		win.img.crtPrefs.Phosphor.Set(b)
+	}
+
+	var label string
+
+	// latency
+	f := float32(win.img.crtPrefs.PhosphorLatency.Get().(float64))
+
+	if f > 0.7 {
+		label = "very slow"
+	} else if f >= 0.5 {
+		label = "slow"
+	} else if f >= 0.3 {
+		label = "fast"
+	} else {
+		label = "very fast"
+	}
+
+	if imgui.SliderFloatV("##phosphorlatency", &f, 0.9, 0.1, label, 1.0) {
+		win.img.crtPrefs.PhosphorLatency.Set(f)
+	}
+
+	// bloom
+	g := float32(win.img.crtPrefs.PhosphorBloom.Get().(float64))
+
+	if g > 1.70 {
+		label = "very high bloom"
+	} else if g >= 1.2 {
+		label = "high bloom"
+	} else if g >= 0.70 {
+		label = "low bloom"
+	} else {
+		label = "very low bloom"
+	}
+
+	if imgui.SliderFloatV("##phosphorbloom", &g, 0.20, 2.20, label, 1.0) {
+		win.img.crtPrefs.PhosphorBloom.Set(g)
+	}
+}
+
+func (win *winCRTPrefs) drawPixelPerfect() {
+	b := !win.img.crtPrefs.Enabled.Get().(bool)
+	if imgui.Checkbox("Pixel Perfect##pixelpefect", &b) {
+		win.img.crtPrefs.Enabled.Set(!b)
+	}
+
+	var label string
+
+	f := float32(win.img.crtPrefs.PixelPerfectFade.Get().(float64))
+
+	if f > 0.7 {
+		label = "extreme fade"
+	} else if f >= 0.4 {
+		label = "high fade"
+	} else if f > 0.0 {
+		label = "tiny fade"
+	} else if f == 0.0 {
+		label = "no fade"
+	}
+
+	if imgui.SliderFloatV("##pixelperfectfade", &f, 0.0, 0.9, label, 1.0) {
+		win.img.crtPrefs.PixelPerfectFade.Set(f)
 	}
 }
 

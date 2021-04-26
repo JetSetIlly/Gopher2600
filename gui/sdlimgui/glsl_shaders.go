@@ -317,14 +317,11 @@ type crtShader struct {
 	scanlines       int32
 	noise           int32
 	fringing        int32
-	vignette        int32
-	flicker         int32
 	curveAmount     int32
 	maskBright      int32
 	scanlinesBright int32
 	noiseLevel      int32
 	fringingAmount  int32
-	flickerLevel    int32
 	time            int32
 }
 
@@ -338,14 +335,11 @@ func newCRTShader() shaderProgram {
 	sh.scanlines = gl.GetUniformLocation(sh.handle, gl.Str("Scanlines"+"\x00"))
 	sh.noise = gl.GetUniformLocation(sh.handle, gl.Str("Noise"+"\x00"))
 	sh.fringing = gl.GetUniformLocation(sh.handle, gl.Str("Fringing"+"\x00"))
-	sh.vignette = gl.GetUniformLocation(sh.handle, gl.Str("Vignette"+"\x00"))
-	sh.flicker = gl.GetUniformLocation(sh.handle, gl.Str("Flicker"+"\x00"))
 	sh.curveAmount = gl.GetUniformLocation(sh.handle, gl.Str("CurveAmount"+"\x00"))
 	sh.maskBright = gl.GetUniformLocation(sh.handle, gl.Str("MaskBright"+"\x00"))
 	sh.scanlinesBright = gl.GetUniformLocation(sh.handle, gl.Str("ScanlinesBright"+"\x00"))
 	sh.noiseLevel = gl.GetUniformLocation(sh.handle, gl.Str("NoiseLevel"+"\x00"))
 	sh.fringingAmount = gl.GetUniformLocation(sh.handle, gl.Str("FringingAmount"+"\x00"))
-	sh.flickerLevel = gl.GetUniformLocation(sh.handle, gl.Str("FlickerLevel"+"\x00"))
 	sh.time = gl.GetUniformLocation(sh.handle, gl.Str("Time"+"\x00"))
 
 	return sh
@@ -360,14 +354,11 @@ func (sh *crtShader) setAttributes(env shaderEnvironment) {
 	gl.Uniform1i(sh.scanlines, boolToInt32(env.img.crtPrefs.Scanlines.Get().(bool)))
 	gl.Uniform1i(sh.noise, boolToInt32(env.img.crtPrefs.Noise.Get().(bool)))
 	gl.Uniform1i(sh.fringing, boolToInt32(env.img.crtPrefs.Fringing.Get().(bool)))
-	gl.Uniform1i(sh.vignette, boolToInt32(env.img.crtPrefs.Vignette.Get().(bool)))
-	gl.Uniform1i(sh.flicker, boolToInt32(env.img.crtPrefs.Flicker.Get().(bool)))
 	gl.Uniform1f(sh.curveAmount, float32(env.img.crtPrefs.CurveAmount.Get().(float64)))
 	gl.Uniform1f(sh.maskBright, float32(env.img.crtPrefs.MaskBright.Get().(float64)))
 	gl.Uniform1f(sh.scanlinesBright, float32(env.img.crtPrefs.ScanlinesBright.Get().(float64)))
 	gl.Uniform1f(sh.noiseLevel, float32(env.img.crtPrefs.NoiseLevel.Get().(float64)))
 	gl.Uniform1f(sh.fringingAmount, float32(env.img.crtPrefs.FringingAmount.Get().(float64)))
-	gl.Uniform1f(sh.flickerLevel, float32(env.img.crtPrefs.FlickerLevel.Get().(float64)))
 	gl.Uniform1f(sh.time, float32(time.Now().Nanosecond())/100000000.0)
 }
 
@@ -541,21 +532,31 @@ func (sh *playscrShader) setAttributes(env shaderEnvironment) {
 
 	src := env.srcTextureID
 
-	if env.img.crtPrefs.Phosphor.Get().(bool) {
-		phosphorLatency := env.img.crtPrefs.PhosphorLatency.Get().(float64)
-
-		if env.img.crtPrefs.Enabled.Get().(bool) {
+	if env.img.crtPrefs.Enabled.Get().(bool) {
+		if env.img.crtPrefs.Phosphor.Get().(bool) {
 			// use blur shader to add bloom to previous phosphor
 			sh.setFrameBuffer(sh.phosphor)
 			env.srcTextureID = sh.phosphor
-			sh.blurShader.(*blurShader).setAttributesBlur(env, 1.0)
+			phosphorBloom := env.img.crtPrefs.PhosphorBloom.Get().(float64)
+			sh.blurShader.(*blurShader).setAttributesBlur(env, float32(phosphorBloom))
 			env.draw()
-		}
 
-		// add new frame to phosphor buffer
+			// add new frame to phosphor buffer
+			sh.setFrameBuffer(sh.phosphor)
+			env.srcTextureID = src
+			phosphorLatency := env.img.crtPrefs.PhosphorLatency.Get().(float64)
+			sh.phosphorShader.(*phosphorShader).setAttributesPhosphor(env, float32(phosphorLatency), sh.phosphor)
+			env.draw()
+
+			// use phosphor texture for next shader
+			env.srcTextureID = sh.phosphor
+		}
+	} else {
+		// using phosphor buffer for pixel perfect fade
 		sh.setFrameBuffer(sh.phosphor)
 		env.srcTextureID = src
-		sh.phosphorShader.(*phosphorShader).setAttributesPhosphor(env, float32(phosphorLatency), sh.phosphor)
+		fade := env.img.crtPrefs.PixelPerfectFade.Get().(float64)
+		sh.phosphorShader.(*phosphorShader).setAttributesPhosphor(env, float32(fade), sh.phosphor)
 		env.draw()
 
 		// use phosphor texture for next shader
