@@ -107,6 +107,9 @@ func (win *winCRTPrefs) draw() {
 		win.drawPhosphor()
 		imgui.Spacing()
 
+		win.drawCurve()
+		imgui.Spacing()
+
 		win.drawMask()
 		imgui.Spacing()
 
@@ -120,9 +123,6 @@ func (win *winCRTPrefs) draw() {
 		imgui.Spacing()
 
 		win.drawFlicker()
-		imgui.Spacing()
-
-		win.drawVignette()
 		imgui.Spacing()
 
 		imgui.EndGroup()
@@ -234,6 +234,31 @@ func (win *winCRTPrefs) drawPhosphor() {
 	}
 }
 
+func (win *winCRTPrefs) drawCurve() {
+	b := win.img.crtPrefs.Curve.Get().(bool)
+	if imgui.Checkbox("Curve##curve", &b) {
+		win.img.crtPrefs.Curve.Set(b)
+	}
+
+	f := float32(win.img.crtPrefs.CurveAmount.Get().(float64))
+
+	var label string
+
+	if f > 0.75 {
+		label = "very flat"
+	} else if f > 0.50 {
+		label = "quite flat"
+	} else if f >= 0.25 {
+		label = "a little curved"
+	} else {
+		label = "very curved"
+	}
+
+	if imgui.SliderFloatV("##curveamount", &f, 1.0, 0.0, label, 1.0) {
+		win.img.crtPrefs.CurveAmount.Set(f)
+	}
+}
+
 func (win *winCRTPrefs) drawMask() {
 	b := win.img.crtPrefs.Mask.Get().(bool)
 	if imgui.Checkbox("Shadow Mask##mask", &b) {
@@ -315,7 +340,7 @@ func (win *winCRTPrefs) drawFringing() {
 		win.img.crtPrefs.Fringing.Set(b)
 	}
 
-	f := float32(win.img.crtPrefs.FringingLevel.Get().(float64))
+	f := float32(win.img.crtPrefs.FringingAmount.Get().(float64))
 
 	var label string
 
@@ -329,8 +354,8 @@ func (win *winCRTPrefs) drawFringing() {
 		label = "very low"
 	}
 
-	if imgui.SliderFloatV("##fringinlevel", &f, 0.0, 0.6, label, 1.0) {
-		win.img.crtPrefs.FringingLevel.Set(f)
+	if imgui.SliderFloatV("##fringingamount", &f, 0.0, 0.6, label, 1.0) {
+		win.img.crtPrefs.FringingAmount.Set(f)
 	}
 }
 

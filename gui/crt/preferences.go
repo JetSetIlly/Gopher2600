@@ -26,6 +26,7 @@ type Preferences struct {
 	Enabled prefs.Bool
 
 	Phosphor  prefs.Bool
+	Curve     prefs.Bool
 	Mask      prefs.Bool
 	Scanlines prefs.Bool
 	Noise     prefs.Bool
@@ -34,10 +35,11 @@ type Preferences struct {
 
 	PhosphorLatency prefs.Float
 	BloomAmount     prefs.Float
+	CurveAmount     prefs.Float
 	MaskBright      prefs.Float
 	ScanlinesBright prefs.Float
 	NoiseLevel      prefs.Float
-	FringingLevel   prefs.Float
+	FringingAmount  prefs.Float
 	FlickerLevel    prefs.Float
 
 	Vignette prefs.Bool
@@ -50,6 +52,7 @@ func (p *Preferences) String() string {
 const (
 	enabled         = true
 	phosphor        = true
+	curve           = true
 	mask            = true
 	scanlines       = true
 	noise           = true
@@ -57,10 +60,11 @@ const (
 	flicker         = true
 	phosphorLatency = 0.5
 	bloomAmount     = 1.0
+	curveAmount     = 0.5
 	maskBright      = 0.70
 	scanlinesBright = 0.70
 	noiseLevel      = 0.19
-	fringingLevel   = 0.15
+	fringingAmount  = 0.15
 	flickerLevel    = 0.004
 	vignette        = true
 )
@@ -86,6 +90,10 @@ func NewPreferences() (*Preferences, error) {
 		return nil, err
 	}
 	err = p.dsk.Add("crt.phosphor", &p.Phosphor)
+	if err != nil {
+		return nil, err
+	}
+	err = p.dsk.Add("crt.curve", &p.Curve)
 	if err != nil {
 		return nil, err
 	}
@@ -117,6 +125,10 @@ func NewPreferences() (*Preferences, error) {
 	if err != nil {
 		return nil, err
 	}
+	err = p.dsk.Add("crt.curveAmount", &p.CurveAmount)
+	if err != nil {
+		return nil, err
+	}
 	err = p.dsk.Add("crt.maskBright", &p.MaskBright)
 	if err != nil {
 		return nil, err
@@ -129,7 +141,7 @@ func NewPreferences() (*Preferences, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = p.dsk.Add("crt.fringingLevel", &p.FringingLevel)
+	err = p.dsk.Add("crt.fringingAmount", &p.FringingAmount)
 	if err != nil {
 		return nil, err
 	}
@@ -154,6 +166,7 @@ func NewPreferences() (*Preferences, error) {
 func (p *Preferences) SetDefaults() {
 	p.Enabled.Set(enabled)
 	p.Phosphor.Set(phosphor)
+	p.Curve.Set(curve)
 	p.Mask.Set(mask)
 	p.Scanlines.Set(scanlines)
 	p.Noise.Set(noise)
@@ -161,10 +174,11 @@ func (p *Preferences) SetDefaults() {
 	p.Flicker.Set(flicker)
 	p.PhosphorLatency.Set(phosphorLatency)
 	p.BloomAmount.Set(bloomAmount)
+	p.CurveAmount.Set(curveAmount)
 	p.MaskBright.Set(maskBright)
 	p.ScanlinesBright.Set(scanlinesBright)
 	p.NoiseLevel.Set(noiseLevel)
-	p.FringingLevel.Set(fringingLevel)
+	p.FringingAmount.Set(fringingAmount)
 	p.FlickerLevel.Set(flickerLevel)
 	p.Vignette.Set(vignette)
 }

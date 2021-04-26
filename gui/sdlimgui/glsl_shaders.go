@@ -311,20 +311,19 @@ func (sh *overlayShader) setAttributes(env shaderEnvironment) {
 type crtShader struct {
 	shader
 
-	screenDim int32
-	scalingX  int32
-	scalingY  int32
-
+	screenDim       int32
+	curve           int32
 	shadowMask      int32
 	scanlines       int32
 	noise           int32
 	fringing        int32
 	vignette        int32
 	flicker         int32
+	curveAmount     int32
 	maskBright      int32
 	scanlinesBright int32
 	noiseLevel      int32
-	fringingLevel   int32
+	fringingAmount  int32
 	flickerLevel    int32
 	time            int32
 }
@@ -334,18 +333,18 @@ func newCRTShader() shaderProgram {
 	sh.createProgram(string(shaders.StraightVertexShader), string(shaders.CRTFragShader))
 
 	sh.screenDim = gl.GetUniformLocation(sh.handle, gl.Str("ScreenDim"+"\x00"))
-	sh.scalingX = gl.GetUniformLocation(sh.handle, gl.Str("ScalingX"+"\x00"))
-	sh.scalingY = gl.GetUniformLocation(sh.handle, gl.Str("ScalingY"+"\x00"))
+	sh.curve = gl.GetUniformLocation(sh.handle, gl.Str("Curve"+"\x00"))
 	sh.shadowMask = gl.GetUniformLocation(sh.handle, gl.Str("ShadowMask"+"\x00"))
 	sh.scanlines = gl.GetUniformLocation(sh.handle, gl.Str("Scanlines"+"\x00"))
 	sh.noise = gl.GetUniformLocation(sh.handle, gl.Str("Noise"+"\x00"))
 	sh.fringing = gl.GetUniformLocation(sh.handle, gl.Str("Fringing"+"\x00"))
 	sh.vignette = gl.GetUniformLocation(sh.handle, gl.Str("Vignette"+"\x00"))
 	sh.flicker = gl.GetUniformLocation(sh.handle, gl.Str("Flicker"+"\x00"))
+	sh.curveAmount = gl.GetUniformLocation(sh.handle, gl.Str("CurveAmount"+"\x00"))
 	sh.maskBright = gl.GetUniformLocation(sh.handle, gl.Str("MaskBright"+"\x00"))
 	sh.scanlinesBright = gl.GetUniformLocation(sh.handle, gl.Str("ScanlinesBright"+"\x00"))
 	sh.noiseLevel = gl.GetUniformLocation(sh.handle, gl.Str("NoiseLevel"+"\x00"))
-	sh.fringingLevel = gl.GetUniformLocation(sh.handle, gl.Str("FringingLevel"+"\x00"))
+	sh.fringingAmount = gl.GetUniformLocation(sh.handle, gl.Str("FringingAmount"+"\x00"))
 	sh.flickerLevel = gl.GetUniformLocation(sh.handle, gl.Str("FlickerLevel"+"\x00"))
 	sh.time = gl.GetUniformLocation(sh.handle, gl.Str("Time"+"\x00"))
 
@@ -356,19 +355,18 @@ func (sh *crtShader) setAttributes(env shaderEnvironment) {
 	sh.shader.setAttributes(env)
 
 	gl.Uniform2f(sh.screenDim, float32(env.width), float32(env.height))
-	gl.Uniform1f(sh.scalingX, env.img.playScr.horizScaling())
-	gl.Uniform1f(sh.scalingY, env.img.playScr.scaling)
-
+	gl.Uniform1i(sh.curve, boolToInt32(env.img.crtPrefs.Curve.Get().(bool)))
 	gl.Uniform1i(sh.shadowMask, boolToInt32(env.img.crtPrefs.Mask.Get().(bool)))
 	gl.Uniform1i(sh.scanlines, boolToInt32(env.img.crtPrefs.Scanlines.Get().(bool)))
 	gl.Uniform1i(sh.noise, boolToInt32(env.img.crtPrefs.Noise.Get().(bool)))
 	gl.Uniform1i(sh.fringing, boolToInt32(env.img.crtPrefs.Fringing.Get().(bool)))
 	gl.Uniform1i(sh.vignette, boolToInt32(env.img.crtPrefs.Vignette.Get().(bool)))
 	gl.Uniform1i(sh.flicker, boolToInt32(env.img.crtPrefs.Flicker.Get().(bool)))
+	gl.Uniform1f(sh.curveAmount, float32(env.img.crtPrefs.CurveAmount.Get().(float64)))
 	gl.Uniform1f(sh.maskBright, float32(env.img.crtPrefs.MaskBright.Get().(float64)))
 	gl.Uniform1f(sh.scanlinesBright, float32(env.img.crtPrefs.ScanlinesBright.Get().(float64)))
 	gl.Uniform1f(sh.noiseLevel, float32(env.img.crtPrefs.NoiseLevel.Get().(float64)))
-	gl.Uniform1f(sh.fringingLevel, float32(env.img.crtPrefs.FringingLevel.Get().(float64)))
+	gl.Uniform1f(sh.fringingAmount, float32(env.img.crtPrefs.FringingAmount.Get().(float64)))
 	gl.Uniform1f(sh.flickerLevel, float32(env.img.crtPrefs.FlickerLevel.Get().(float64)))
 	gl.Uniform1f(sh.time, float32(time.Now().Nanosecond())/100000000.0)
 }
@@ -486,6 +484,8 @@ func (sh *playscrShader) setupFrameBuffer(env *shaderEnvironment) {
 		gl.Ptr(nil))
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_BORDER)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_BORDER)
 
 	gl.GenTextures(1, &sh.phosphor)
 	gl.BindTexture(gl.TEXTURE_2D, sh.phosphor)
@@ -495,6 +495,8 @@ func (sh *playscrShader) setupFrameBuffer(env *shaderEnvironment) {
 		gl.Ptr(nil))
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_BORDER)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_BORDER)
 
 	gl.GenRenderbuffers(1, &sh.rbo)
 	gl.BindRenderbuffer(gl.RENDERBUFFER, sh.rbo)

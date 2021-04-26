@@ -16,21 +16,20 @@ in vec4 Frag_Color;
 out vec4 Out_Color;
 
 uniform vec2 ScreenDim;
-uniform float ScalingX;
-uniform float ScalingY;
-
+uniform int Curve;
 uniform int ShadowMask;
 uniform int Scanlines;
 uniform int Noise;
 uniform int Fringing;
-uniform int Vignette;
 uniform int Flicker;
+uniform float CurveAmount;
 uniform float MaskBright;
 uniform float ScanlinesBright;
 uniform float NoiseLevel;
-uniform float FringingLevel;
+uniform float FringingAmount;
 uniform float FlickerLevel;
 uniform float Time;
+
 
 // Gold Noise taken from: https://www.shadertoy.com/view/ltB3zD
 // Coprighted to dcerisano@standard3d.com not sure of the licence
@@ -45,14 +44,14 @@ float gold_noise(in vec2 xy){
 }
 
 // taken directly from https://github.com/mattiasgustavsson/crtview/
-vec2 curve(vec2 uv)
+vec2 curve(in vec2 uv)
 {
-	uv = (uv - 0.5) * 2.0;
+	uv = (uv - 0.5) * 2.1;
 	uv *= 1.1;	
 	uv.x *= 1.0 + pow((abs(uv.y) / 5.0), 2.0);
 	uv.y *= 1.0 + pow((abs(uv.x) / 4.0), 2.0);
 	uv  = (uv / 2.0) + 0.5;
-	uv =  uv *0.92 + 0.04;
+	uv =  uv * 0.92 + 0.04;
 	return uv;
 }
 
@@ -60,16 +59,22 @@ void main() {
 	vec4 Crt_Color;
 	vec2 uv = Frag_UV;
 
-	// curve. taken from https://github.com/mattiasgustavsson/crtview/
-	uv = mix(curve(uv), uv, 0.8);
+	if (Curve == 1) {
+		// curve UV coordinates. 
+		float m = (CurveAmount * 0.4) + 0.6; // bring into sensible range
+		uv = mix(curve(uv), uv, m);
+	}
 
 	// after this point every UV reference is to the curved UV
 
 	// basic color
 	Crt_Color = Frag_Color * texture(Texture, uv.st);
 
-	// correct video-black
-	Crt_Color.rgb = clamp(Crt_Color.rgb, vec3(0.16,0.16,0.16), vec3(1.0,1.0,1.0));
+	// video-black correction
+	if (Curve == 1) {
+		float vb = 0.16;
+		Crt_Color.rgb = clamp(Crt_Color.rgb, vec3(vb), vec3(1.0));
+	}
 
 	// noise
 	if (Noise == 1) {
@@ -103,40 +108,38 @@ void main() {
 		Crt_Color.rgb *= vec3(s);
 	}
 
-	// fringing (chromatic aberation)
-	float fringingLevel = FringingLevel;
+	// fringing (chromatic aberration)
+	vec2 ab = vec2(0.0);
 	if (Fringing == 1) {
-		vec2 ab = vec2(0.0);
-		ab.x = abs(uv.x-0.5);
-		ab.y = abs(uv.y-0.5);
-		ab *= 0.02 * fringingLevel;
+		if (Curve == 1) {
+			ab.x = abs(uv.x-0.5);
+			ab.y = abs(uv.y-0.5);
 
-		Crt_Color.r += texture(Texture, vec2(uv.x-ab.x, uv.y+ab.y)).r;
-		Crt_Color.g += texture(Texture, vec2(uv.x+ab.x, uv.y-ab.y)).g;
-		Crt_Color.b += texture(Texture, vec2(uv.x+ab.x, uv.y+ab.y)).b;
-		Crt_Color.rgb *= 0.50;
+			// modulate fringing amount by curvature
+			float m = 0.020 - (0.010 * CurveAmount);
+			float l = FringingAmount * m;
+
+			// aberration amount limited to reasonabl values
+			ab = clamp(ab*l, 0.0009, 0.004);
+		} else {
+			float f = FringingAmount * 0.005;
+			ab = vec2(f);
+		}
 	}
 
-	// vignette effect
-	if (Vignette == 1) {
-		// scaling and adjusting the uv use to apply the vinette to make sure
-		// we cover up the extreme edges of the curvature.
-		vec2 scuv = uv;
-		scuv.y *= 1.001;
-		scuv.x *= 1.005;
-		scuv.x -= 0.004;
+	// always perform the aberration if the ab amount is 0.0. without this and
+	// if Fringing is off, the screen is too harsh.
+	Crt_Color.r += texture(Texture, vec2(uv.x-ab.x, uv.y+ab.y)).r;
+	Crt_Color.g += texture(Texture, vec2(uv.x+ab.x, uv.y-ab.y)).g;
+	Crt_Color.b += texture(Texture, vec2(uv.x+ab.x, uv.y+ab.y)).b;
+	Crt_Color.rgb *= 0.50;
 
-		float vignette = 10.0*scuv.x*scuv.y*(1.0-scuv.x)*(1.0-scuv.y);
+	// vignette effect
+	if (Curve == 1) {
+		float vignette = 10.0*uv.x*uv.y*(1.0-uv.x)*(1.0-uv.y);
 		Crt_Color.rgb *= pow(vignette, 0.10) * 1.3;
 	}
 
-	// clamp
-	if (uv.x < 0.00 || uv.x > 1.0) {
-		Crt_Color *= 0.0;
-	}
-	if (uv.y < 0.0 || uv.y > 1.0) {
-		Crt_Color *= 0.0;
-	}
-
+	// finalise color
 	Out_Color = Crt_Color;
 }
