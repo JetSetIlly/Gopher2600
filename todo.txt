@@ -11,6 +11,7 @@
 [TODO] introduce a special purpose "address" tag type? (debugger/terminal/commandline/validation.go:127)
 [TODO] attempt to decode instructions not in cartridge (disassembly/disassembly.go:175)
 [TODO] maybe make sure next entry has been disassembled in it's current form (disassembly/disassembly.go:243)
+[TODO] eliminate frame brightening on size change (gui/sdlimgui/glsl_shaders.go:594)
 [TODO] SetPosition doesn't seem to set window position as you (gui/sdlimgui/preferences.go:144)
 [TODO] duplicate imgui.SetIniFilename so that is uses prefs package. we (gui/sdlimgui/sdlimgui.go:42)
 [TODO] warning/help text for chip registers window (gui/sdlimgui/win_chip_registers.go:92)

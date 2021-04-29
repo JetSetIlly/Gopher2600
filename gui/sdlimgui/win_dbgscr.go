@@ -71,7 +71,8 @@ type winDbgScr struct {
 	// the window, we use contentDim (the area inside the window) to figure out
 	// the scaling value. when resizing numerically (with the getScale()
 	// function) on the other hand, we scale the entire window accordingly
-	screenDim imgui.Vec2
+	screenDim    imgui.Vec2
+	screenOrigin imgui.Vec2
 
 	// the basic amount by which the image should be scaled. this value is
 	// applie to the vertical axis directly. horizontal scaling is scaled by
@@ -199,7 +200,7 @@ func (win *winDbgScr) draw() {
 
 	// note the current cursor position. we'll use this to everything to the
 	// corner of the screen.
-	screenOrigin := imgui.CursorScreenPos()
+	win.screenOrigin = imgui.CursorScreenPos()
 
 	// push style info for screen and overlay ImageButton(). we're using
 	// ImageButton because an Image will not capture mouse events and pass them
@@ -218,7 +219,7 @@ func (win *winDbgScr) draw() {
 	}
 
 	// overlay texture on top of screen texture
-	imgui.SetCursorScreenPos(screenOrigin)
+	imgui.SetCursorScreenPos(win.screenOrigin)
 	imgui.ImageButton(imgui.TextureID(win.overlayTexture), imgui.Vec2{w, h})
 
 	// pop style info for screen and overlay textures
@@ -250,7 +251,7 @@ func (win *winDbgScr) draw() {
 
 	// draw tool tip
 	if imgui.IsWindowHovered() {
-		win.drawReflectionTooltip(screenOrigin)
+		win.drawReflectionTooltip(win.screenOrigin)
 	}
 
 	// accept mouse clicks if window is focused

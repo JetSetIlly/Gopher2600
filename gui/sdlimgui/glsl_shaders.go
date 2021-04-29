@@ -40,7 +40,12 @@ type shaderEnvironment struct {
 	draw func()
 
 	// vertex projection
-	proj [4][4]float32
+	presentationProj [4][4]float32
+
+	// projection to use for texture-to-texture processing
+	internalProj [4][4]float32
+
+	isInternalShader bool
 
 	// the texture the shader will work with
 	srcTextureID uint32
@@ -72,11 +77,11 @@ func (fb *framebuffer) destroy() {
 	gl.DeleteFramebuffers(1, &fb.fbo)
 }
 
-func (fb *framebuffer) setup(width int32, height int32) {
+func (fb *framebuffer) setup(width int32, height int32) bool {
 	gl.BindFramebuffer(gl.FRAMEBUFFER, fb.fbo)
 
 	if fb.width == width && fb.height == height {
-		return
+		return false
 	}
 
 	fb.width = width
@@ -95,11 +100,14 @@ func (fb *framebuffer) setup(width int32, height int32) {
 		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_BORDER)
 	}
 
-	gl.GenRenderbuffers(1, &fb.rbo)
 	gl.BindRenderbuffer(gl.RENDERBUFFER, fb.rbo)
-	gl.RenderbufferStorage(gl.RENDERBUFFER, gl.DEPTH24_STENCIL8, fb.width, fb.height)
-	gl.BindRenderbuffer(gl.RENDERBUFFER, 0)
-	gl.FramebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_STENCIL_ATTACHMENT, gl.RENDERBUFFER, fb.rbo)
+
+	return true
+}
+
+// clear texture
+func (fb *framebuffer) clear(bufferIdx int) {
+	gl.ClearTexImage(fb.textures[bufferIdx], 0, gl.RGBA, gl.UNSIGNED_BYTE, gl.Ptr(nil))
 }
 
 // returns the texture ID that has been assigned to the framebuffer.
@@ -146,7 +154,11 @@ func (sh *shader) setAttributes(env shaderEnvironment) {
 	gl.BindTexture(gl.TEXTURE_2D, env.srcTextureID)
 	gl.Uniform1i(sh.texture, 0)
 
-	gl.UniformMatrix4fv(sh.projMtx, 1, false, &env.proj[0][0])
+	if env.isInternalShader {
+		gl.UniformMatrix4fv(sh.projMtx, 1, false, &env.internalProj[0][0])
+	} else {
+		gl.UniformMatrix4fv(sh.projMtx, 1, false, &env.presentationProj[0][0])
+	}
 	gl.BindSampler(0, 0) // Rely on combined texture/sampler state.
 
 	gl.EnableVertexAttribArray(uint32(sh.uv))
@@ -238,14 +250,21 @@ type colorShader struct {
 	shader
 }
 
-func newColorShader() shaderProgram {
+func newColorShader(yflipped bool) shaderProgram {
 	sh := &guiShader{}
-	sh.createProgram(string(shaders.StraightVertexShader), string(shaders.ColorShader))
+	if yflipped {
+		sh.createProgram(string(shaders.YFlipVertexShader), string(shaders.ColorShader))
+	} else {
+		sh.createProgram(string(shaders.StraightVertexShader), string(shaders.ColorShader))
+	}
 	return sh
 }
 
 type dbgScreenShader struct {
 	shader
+
+	fb  *framebuffer
+	crt shaderProgram
 
 	showCursor         int32 // uniform
 	isCropped          int32 // uniform
@@ -263,6 +282,10 @@ type dbgScreenShader struct {
 
 func newDbgScrShader() shaderProgram {
 	sh := &dbgScreenShader{}
+
+	sh.fb = newFramebuffer(3)
+	sh.crt = newCRTShader(sh.fb)
+
 	sh.createProgram(string(shaders.StraightVertexShader), string(shaders.DbgScrShader))
 
 	sh.showCursor = gl.GetUniformLocation(sh.handle, gl.Str("ShowCursor"+"\x00"))
@@ -281,7 +304,34 @@ func newDbgScrShader() shaderProgram {
 	return sh
 }
 
+func (sh *dbgScreenShader) destroy() {
+	sh.fb.destroy()
+	sh.crt.destroy()
+}
+
 func (sh *dbgScreenShader) setAttributes(env shaderEnvironment) {
+	env.img.screen.crit.section.Lock()
+	width := env.img.wm.dbgScr.scaledWidth(env.img.wm.dbgScr.cropped)
+	height := env.img.wm.dbgScr.scaledHeight(env.img.wm.dbgScr.cropped)
+	env.img.screen.crit.section.Unlock()
+
+	env.width = int32(width)
+	env.height = int32(height)
+
+	ox := int32(env.img.wm.dbgScr.screenOrigin.X)
+	oy := int32(env.img.wm.dbgScr.screenOrigin.Y)
+	gl.Viewport(-ox, -oy, env.width+ox, env.height+oy)
+	gl.Scissor(-ox, -oy, env.width+ox, env.height+oy)
+
+	env.internalProj = [4][4]float32{
+		{2.0 / (width + float32(ox)), 0.0, 0.0, 0.0},
+		{0.0, 2.0 / -(height + float32(oy)), 0.0, 0.0},
+		{0.0, 0.0, -1.0, 0.0},
+		{-1.0, 1.0, 0.0, 1.0},
+	}
+
+	env.srcTextureID = sh.crt.(*crtShader).setAttributesCRT(env, env.img.wm.dbgScr.crt, true)
+
 	sh.shader.setAttributes(env)
 
 	// scaling of screen
@@ -383,9 +433,13 @@ type effectsShader struct {
 	time            int32
 }
 
-func newEffectsShader() shaderProgram {
+func newEffectsShader(yflip bool) shaderProgram {
 	sh := &effectsShader{}
-	sh.createProgram(string(shaders.StraightVertexShader), string(shaders.CRTFragShader))
+	if yflip {
+		sh.createProgram(string(shaders.YFlipVertexShader), string(shaders.CRTEffectsFragShader))
+	} else {
+		sh.createProgram(string(shaders.StraightVertexShader), string(shaders.CRTEffectsFragShader))
+	}
 
 	sh.screenDim = gl.GetUniformLocation(sh.handle, gl.Str("ScreenDim"+"\x00"))
 	sh.curve = gl.GetUniformLocation(sh.handle, gl.Str("Curve"+"\x00"))
@@ -484,21 +538,25 @@ type crtShader struct {
 
 	fb *framebuffer
 
-	phosphorShader shaderProgram
-	blurShader     shaderProgram
-	blendShader    shaderProgram
-	effectsShader  shaderProgram
-	colorShader    shaderProgram
+	phosphorShader       shaderProgram
+	blurShader           shaderProgram
+	blendShader          shaderProgram
+	effectsShader        shaderProgram
+	colorShader          shaderProgram
+	effectsShaderFlipped shaderProgram
+	colorShaderFlipped   shaderProgram
 }
 
 func newCRTShader(fb *framebuffer) shaderProgram {
 	sh := &crtShader{
-		fb:             fb,
-		phosphorShader: newPhosphorShader(),
-		blurShader:     newBlurShader(),
-		blendShader:    newBlendShader(),
-		effectsShader:  newEffectsShader(),
-		colorShader:    newColorShader(),
+		fb:                   fb,
+		phosphorShader:       newPhosphorShader(),
+		blurShader:           newBlurShader(),
+		blendShader:          newBlendShader(),
+		effectsShader:        newEffectsShader(false),
+		colorShader:          newColorShader(false),
+		effectsShaderFlipped: newEffectsShader(true),
+		colorShaderFlipped:   newColorShader(true),
 	}
 	return sh
 }
@@ -513,25 +571,40 @@ func (sh *crtShader) destroy() {
 	sh.fb.destroy()
 }
 
-func (sh *crtShader) setAttributesCRT(env shaderEnvironment, enabled bool) {
+// moreProcessing should be true if more shaders are to be applied to the framebuffer before presentation
+func (sh *crtShader) setAttributesCRT(env shaderEnvironment, enabled bool, moreProcessing bool) uint32 {
 	// make sure our framebuffer is correct
-	sh.fb.setup(env.width, env.height)
+	//
+	// any changes to the framebuffer will effect how the next frame is drawn.
+	// we get rid of any phosphor effects and there is no blending stage
+	//
+	// there is an artifact whereby the screen seems to brighten when the frame
+	// is being changed. I'm not sure what's causing this but it is something
+	// that should be fixed
+	//
+	// !!TODO: eliminate frame brightening on size change
+	changed := sh.fb.setup(env.width, env.height)
 
+	env.isInternalShader = true
 	src := env.srcTextureID
 
 	const (
 		currentID  = 0
 		phosphorID = 1
+		finalID    = 2
 	)
 
 	if enabled {
-		if env.img.crtPrefs.Phosphor.Get().(bool) {
-			// use blur shader to add bloom to previous phosphor
-			env.srcTextureID = sh.fb.draw(phosphorID, func() {
-				phosphorBloom := env.img.crtPrefs.PhosphorBloom.Get().(float64)
-				sh.blurShader.(*blurShader).setAttributesArgs(env, float32(phosphorBloom))
-				env.draw()
-			})
+		if !changed {
+			if env.img.crtPrefs.Phosphor.Get().(bool) {
+				// use blur shader to add bloom to previous phosphor
+				env.srcTextureID = sh.fb.textures[phosphorID]
+				env.srcTextureID = sh.fb.draw(phosphorID, func() {
+					phosphorBloom := env.img.crtPrefs.PhosphorBloom.Get().(float64)
+					sh.blurShader.(*blurShader).setAttributesArgs(env, float32(phosphorBloom))
+					env.draw()
+				})
+			}
 
 			// add new frame to phosphor buffer
 			env.srcTextureID = sh.fb.draw(phosphorID, func() {
@@ -542,12 +615,14 @@ func (sh *crtShader) setAttributesCRT(env shaderEnvironment, enabled bool) {
 			})
 		}
 	} else {
-		// using phosphor buffer for pixel perfect fade
-		env.srcTextureID = sh.fb.draw(phosphorID, func() {
-			fade := env.img.crtPrefs.PixelPerfectFade.Get().(float64)
-			sh.phosphorShader.(*phosphorShader).setAttributesArgs(env, float32(fade), sh.fb.textures[phosphorID])
-			env.draw()
-		})
+		if !changed {
+			// add new frame to phosphor buffer (using phosphor buffer for pixel perfect fade)
+			env.srcTextureID = sh.fb.draw(phosphorID, func() {
+				fade := env.img.crtPrefs.PixelPerfectFade.Get().(float64)
+				sh.phosphorShader.(*phosphorShader).setAttributesArgs(env, float32(fade), sh.fb.textures[phosphorID])
+				env.draw()
+			})
+		}
 	}
 
 	if enabled {
@@ -557,17 +632,38 @@ func (sh *crtShader) setAttributesCRT(env shaderEnvironment, enabled bool) {
 			env.draw()
 		})
 
-		// blend blur with original source texture
-		env.srcTextureID = sh.fb.draw(currentID, func() {
-			env.srcTextureID = src
-			sh.blendShader.(*blendShader).setAttributesArgs(env, 1.0, sh.fb.textures[currentID])
-			env.draw()
-		})
+		if !changed {
+			// blend blur with original source texture
+			env.srcTextureID = sh.fb.draw(currentID, func() {
+				env.srcTextureID = src
+				sh.blendShader.(*blendShader).setAttributesArgs(env, 1.0, sh.fb.textures[currentID])
+				env.draw()
+			})
+		}
 
-		sh.effectsShader.setAttributes(env)
+		if moreProcessing {
+			sh.fb.clear(finalID)
+			env.srcTextureID = sh.fb.draw(finalID, func() {
+				sh.effectsShaderFlipped.setAttributes(env)
+				env.draw()
+			})
+		} else {
+			env.isInternalShader = false
+			sh.effectsShader.setAttributes(env)
+		}
 	} else {
-		sh.colorShader.setAttributes(env)
+		if moreProcessing {
+			env.srcTextureID = sh.fb.draw(finalID, func() {
+				sh.colorShaderFlipped.setAttributes(env)
+				env.draw()
+			})
+		} else {
+			env.isInternalShader = false
+			sh.colorShader.setAttributes(env)
+		}
 	}
+
+	return env.srcTextureID
 }
 
 type playscrShader struct {
@@ -595,6 +691,8 @@ func (sh *playscrShader) setAttributes(env shaderEnvironment) {
 	env.height = int32(env.img.playScr.scaledHeight())
 	env.img.screen.crit.section.Unlock()
 
+	env.internalProj = env.presentationProj
+
 	// set scissor and viewport
 	gl.Viewport(int32(-env.img.playScr.imagePosMin.X),
 		int32(-env.img.playScr.imagePosMin.Y),
@@ -608,5 +706,5 @@ func (sh *playscrShader) setAttributes(env shaderEnvironment) {
 	)
 
 	enabled := env.img.crtPrefs.Enabled.Get().(bool)
-	sh.crt.(*crtShader).setAttributesCRT(env, enabled)
+	sh.crt.(*crtShader).setAttributesCRT(env, enabled, false)
 }

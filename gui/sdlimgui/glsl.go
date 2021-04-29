@@ -73,7 +73,7 @@ func newGlsl(img *SdlImgui) (*glsl, error) {
 
 func (rnd *glsl) setupShaders() error {
 	rnd.shaders[guiShaderID] = newGUIShader()
-	rnd.shaders[colorShaderID] = newColorShader()
+	rnd.shaders[colorShaderID] = newColorShader(false)
 	rnd.shaders[dbgscrShaderID] = newDbgScrShader()
 	rnd.shaders[overlayShaderID] = newOverlayShader()
 	rnd.shaders[playscrShaderID] = newPlayscrShader()
@@ -197,7 +197,7 @@ func (rnd *glsl) render() {
 
 	// Our visible imgui space lies from draw_data->DisplayPos (top left) to draw_data->DisplayPos+data_data->DisplaySize (bottom right).
 	// DisplayMin is typically (0,0) for single viewport apps.
-	env.proj = [4][4]float32{
+	env.presentationProj = [4][4]float32{
 		{2.0 / displayWidth, 0.0, 0.0, 0.0},
 		{0.0, 2.0 / -displayHeight, 0.0, 0.0},
 		{0.0, 0.0, -1.0, 0.0},

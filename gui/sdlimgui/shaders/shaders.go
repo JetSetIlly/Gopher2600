@@ -35,8 +35,8 @@ var DbgScrShader []byte
 //go:embed "overlay.frag"
 var OverlayShader []byte
 
-//go:embed "crt.frag"
-var CRTFragShader []byte
+//go:embed "crt_effects.frag"
+var CRTEffectsFragShader []byte
 
 //go:embed "crt_blur.frag"
 var CRTBlurFragShader []byte

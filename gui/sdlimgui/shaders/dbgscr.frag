@@ -46,6 +46,7 @@ void main()
 	float pixelX;
 	float pixelY;
 
+	Out_Color = Frag_Color * texture(Texture, Frag_UV.st);
 
 	if (IsCropped == 1) {
 		texelX = ScalingX / ScreenDim.x;
@@ -74,6 +75,7 @@ void main()
 		pixelX = texelX / ScalingX;
 		pixelY = texelY / ScalingY;
 
+		// screen guides
 		if (isNearEqual(coords.x, hblank-pixelX, pixelX) ||
 		   isNearEqual(coords.y, topScanline-pixelY, pixelY) ||
 		   isNearEqual(coords.y, botScanline+pixelY, pixelY)) {
@@ -101,6 +103,8 @@ void main()
 		// draw off-screen cursor for HBLANK
 		if (lastX < 0 && isNearEqual(coords.y, lastY+texelY, cursorSize*texelY) && isNearEqual(coords.x, 0, cursorSize*texelX/2)) {
 			Out_Color.r = 1.0;
+			Out_Color.g = 0.0;
+			Out_Color.b = 0.0;
 			Out_Color.a = 1.0;
 			return;
 		}
@@ -113,6 +117,8 @@ void main()
 				// top of screen
 				if (lastY < 0 && isNearEqual(coords.y, 0, cursorSize*texelY)) {
 					Out_Color.r = 1.0;
+					Out_Color.g = 0.0;
+					Out_Color.b = 0.0;
 					Out_Color.a = 1.0;
 					return;
 				}
@@ -121,6 +127,8 @@ void main()
 				// boundary check to make sure the cursor is visible)
 				if (lastY > botScanline-pixelY && isNearEqual(coords.y, botScanline, cursorSize*texelY)) {
 					Out_Color.r = 1.0;
+					Out_Color.g = 0.0;
+					Out_Color.b = 0.0;
 					Out_Color.a = 1.0;
 					return;
 				}
@@ -131,6 +139,8 @@ void main()
 				// top/left corner of screen
 				if (lastY < 0 && isNearEqual(coords.y, 0, cursorSize*texelY)) {
 					Out_Color.r = 1.0;
+					Out_Color.g = 0.0;
+					Out_Color.b = 0.0;
 					Out_Color.a = 1.0;
 					return;
 				}
@@ -140,6 +150,8 @@ void main()
 				// visible)
 				if (lastY > botScanline-pixelY && isNearEqual(coords.y, botScanline, cursorSize*texelY)) {
 					Out_Color.r = 1.0;
+					Out_Color.g = 0.0;
+					Out_Color.b = 0.0;
 					Out_Color.a = 1.0;
 					return;
 				}
@@ -154,13 +166,19 @@ void main()
 		// unadjusted LastY value for this
 		if (LastY > 0) {
 			if (coords.y > lastY+texelY || (isNearEqual(coords.y, lastY+texelY, texelY) && coords.x > lastX+texelX)) {
-				Out_Color = Frag_Color * texture(Texture, Frag_UV.st);
-				Out_Color.a = 0.5;
+				// only affect pixels with an active alpha channel
+				if (Out_Color.a != 0.0) {
+					// wash out color and mix with original pixel. this will
+					// preseve the anti-aliased curved CRT effect if it's
+					// present. the more naive "Out_Color.a = 0.5;" will cause
+					// and ugly edge to the screen.
+					vec4 c = Out_Color;
+					c.a = 0.0;
+					Out_Color = mix(Out_Color, c, 0.5);
+				}
 				return;
 			}
 		}
 	}
-
-	Out_Color = Frag_Color * texture(Texture, Frag_UV.st);
 }
 
