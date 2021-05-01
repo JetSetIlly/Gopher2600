@@ -82,7 +82,7 @@ type screenCrit struct {
 	pixels *image.RGBA
 
 	// bufferPixels are what we plot pixels to while we wait for a frame to complete.
-	bufferPixels [5]*image.RGBA
+	bufferPixels [10]*image.RGBA
 
 	// which buffer we'll be plotting to and which bufffer we'll be rendering
 	// from. in playmode we make sure these two indexes never meet. in
@@ -470,12 +470,12 @@ func (scr *screen) copyPixelsPlaymode() {
 		select {
 		case <-scr.emuWait:
 			scr.emuWaitAck <- true
+			return
 		default:
 		}
 
 		// advance render index. keep note of existing index in case we
 		// bump into the plotting index.
-		v := scr.crit.renderIdx
 		scr.crit.renderIdx++
 		if scr.crit.renderIdx >= len(scr.crit.bufferPixels) {
 			scr.crit.renderIdx = 0
@@ -483,8 +483,18 @@ func (scr *screen) copyPixelsPlaymode() {
 
 		// render index has bumped into the plotting index. revert render index
 		if scr.crit.renderIdx == scr.crit.plotIdx {
-			scr.crit.renderIdx = v
-			return
+			if scr.img.isPlaymode() {
+				// for playmode use the frame from two frames ago. this helps
+				// smooth out two-frame flicker-kernels.
+				scr.crit.renderIdx -= 2
+			} else {
+				scr.crit.renderIdx--
+			}
+
+			if scr.crit.renderIdx < 0 {
+				scr.crit.renderIdx += len(scr.crit.bufferPixels)
+			}
+		} else {
 		}
 	}
 
