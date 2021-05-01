@@ -299,7 +299,6 @@ func (img *SdlImgui) setDbgAndVCS(dbg *debugger.Debugger, vcs *hardware.VCS) err
 
 	img.screen.clearTextureRenderers()
 	img.screen.addTextureRenderer(img.wm.dbgScr)
-	img.screen.addTextureRenderer(img.wm.crtPrefs)
 
 	return nil
 }

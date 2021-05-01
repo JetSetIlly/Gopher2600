@@ -250,8 +250,6 @@ func (rnd *glsl) render() {
 					shader = rnd.shaders[overlayShaderID]
 				case rnd.img.playScr.screenTexture:
 					shader = rnd.shaders[playscrShaderID]
-				case rnd.img.wm.crtPrefs.crtTexture:
-					shader = rnd.shaders[colorShaderID]
 				default:
 					shader = rnd.shaders[guiShaderID]
 				}

@@ -116,7 +116,7 @@ func (pol *polling) wait() sdl.Event {
 	} else {
 		working := pol.awake ||
 			pol.img.lz.Debugger.HasChanged || pol.img.state != gui.StatePaused ||
-			pol.img.wm.dbgScr.crt || pol.img.wm.crtPrefs.open
+			pol.img.wm.dbgScr.crt
 
 		if working {
 			timeout = debugSleepPeriod
