@@ -27,7 +27,7 @@ import (
 // or play mode.
 const (
 	debugSleepPeriod = 50
-	playSleepPeriod  = 10
+	playSleepPeriod  = 5
 	idleSleepPeriod  = 500
 )
 
