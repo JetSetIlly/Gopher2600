@@ -136,6 +136,17 @@ func (dig *Video) SetPixel(sig signal.SignalAttributes, _ bool) error {
 	return nil
 }
 
+// SetPixels implements television.PixelRenderer interface.
+func (dig *Video) SetPixels(sig []signal.SignalAttributes, current bool) error {
+	for i := range sig {
+		err := dig.SetPixel(sig[i], current)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // Reset implements television.PixelRenderer interface.
 func (dig *Video) Reset() {
 }

@@ -491,22 +491,36 @@ func (tv *Television) processSignals(current bool) error {
 	if !tv.pauseRendering {
 		for _, r := range tv.renderers {
 			r.UpdatingPixels(true)
-			for i := 0; i < tv.currentIdx; i++ {
-				sig := tv.signals[i]
-				err := r.SetPixel(sig, i < tv.currentIdx)
+
+			err := r.SetPixels(tv.signals[:tv.currentIdx], true)
+			if err != nil {
+				return curated.Errorf("television: %v", err)
+			}
+
+			if !current {
+				err = r.SetPixels(tv.signals[tv.currentIdx:tv.lastMaxIdx], false)
 				if err != nil {
 					return curated.Errorf("television: %v", err)
 				}
 			}
-			if !current {
-				for i := tv.currentIdx + 1; i < tv.lastMaxIdx; i++ {
-					sig := tv.signals[i]
-					err := r.SetPixel(sig, i < tv.currentIdx)
-					if err != nil {
-						return curated.Errorf("television: %v", err)
-					}
-				}
-			}
+
+			// for i := 0; i < tv.currentIdx; i++ {
+			// 	sig := tv.signals[i]
+			// 	err := r.SetPixel(sig, i < tv.currentIdx)
+			// 	if err != nil {
+			// 		return curated.Errorf("television: %v", err)
+			// 	}
+			// }
+			// if !current {
+			// 	for i := tv.currentIdx + 1; i < tv.lastMaxIdx; i++ {
+			// 		sig := tv.signals[i]
+			// 		err := r.SetPixel(sig, i < tv.currentIdx)
+			// 		if err != nil {
+			// 			return curated.Errorf("television: %v", err)
+			// 		}
+			// 	}
+			// }
+
 			r.UpdatingPixels(false)
 		}
 

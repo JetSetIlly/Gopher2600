@@ -348,6 +348,48 @@ func (scr *screen) SetPixel(sig signal.SignalAttributes, current bool) error {
 	return nil
 }
 
+// SetPixels implements the television.PixelRenderer interface.
+//
+// Must only be called between calls to UpdatingPixels(true) and UpdatingPixels(false).
+func (scr *screen) SetPixels(sig []signal.SignalAttributes, current bool) error {
+	if len(sig) == 0 {
+		return nil
+	}
+
+	var col color.RGBA
+
+	offset := sig[0].Clock * 4
+	offset += sig[0].Scanline * scr.crit.bufferPixels[scr.crit.plotIdx].Rect.Size().X * 4
+
+	for i := range sig[0:] {
+		if offset >= len(scr.crit.bufferPixels[scr.crit.plotIdx].Pix) {
+			return nil
+		}
+
+		// handle VBLANK by setting pixels to black
+		if sig[i].VBlank {
+			col = color.RGBA{R: 0, G: 0, B: 0, A: 255}
+		} else {
+			col = scr.crit.spec.GetColor(sig[i].Pixel)
+		}
+
+		scr.crit.bufferPixels[scr.crit.plotIdx].Pix[offset] = col.R
+		scr.crit.bufferPixels[scr.crit.plotIdx].Pix[offset+1] = col.G
+		scr.crit.bufferPixels[scr.crit.plotIdx].Pix[offset+2] = col.B
+
+		// alpha channel never changes
+
+		offset += 4
+	}
+
+	if current {
+		scr.crit.lastX = sig[len(sig)-1].Clock
+		scr.crit.lastY = sig[len(sig)-1].Scanline
+	}
+
+	return nil
+}
+
 // EndRendering implements the television.PixelRenderer interface.
 func (scr *screen) EndRendering() error {
 	return nil

@@ -87,6 +87,7 @@ type PixelRenderer interface {
 	//	* Ladybug
 	//	* ET (turns VBLANK off late on scanline 40)
 	SetPixel(sig signal.SignalAttributes, current bool) error
+	SetPixels(sig []signal.SignalAttributes, current bool) error
 
 	// Reset all pixels. Called when TV is reset.
 	Reset()
