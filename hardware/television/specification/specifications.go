@@ -19,12 +19,45 @@ package specification
 
 import (
 	"image/color"
+	"strings"
 
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 )
 
 // SpecList is the list of specifications that the television may adopt.
-var SpecList = []string{"NTSC", "PAL"}
+var SpecList = []string{"NTSC", "PAL", "PAL60"}
+
+// SearchSpec looks for a valid sub-string in s, that indicates a required TV
+// specification. The returned value is a canonical specication label as listed
+// in SpecList.
+//
+// If no valid sub-string can be found the empty string is returned.
+func SearchSpec(s string) string {
+	// list is the SpecList but suitable for searching. it's important
+	// that when searching in a filename, for example, that we search in this
+	// order. for example, we don't want to match on "PAL" if the sub-string is
+	// actuall "PAL60".
+	var list = []string{"pal-60", "pal60", "ntsc", "pal"}
+
+	// look for any settings embedded in the filename
+	s = strings.ToLower(s)
+	for _, spec := range list {
+		if strings.Contains(s, spec) {
+			switch spec {
+			case "pal-60":
+				return "PAL60"
+			case "pal60":
+				return "PAL60"
+			case "ntsc":
+				return "NTSC"
+			case "pal":
+				return "PAL"
+			}
+		}
+	}
+
+	return ""
+}
 
 // Spec is used to define the two television specifications.
 type Spec struct {
@@ -123,6 +156,9 @@ var SpecNTSC Spec
 // SpecPAL is the specification for PAL television types.
 var SpecPAL Spec
 
+// SpecPAL60 is the specification for PAL60 television types.
+var SpecPAL60 Spec
+
 func init() {
 	SpecNTSC = Spec{
 		ID:                "NTSC",
@@ -154,6 +190,21 @@ func init() {
 	SpecPAL.AtariSafeTop = SpecPAL.scanlinesVBlank + SpecPAL.ScanlinesVSync
 	SpecPAL.AtariSafeBottom = SpecPAL.ScanlinesTotal - SpecPAL.ScanlinesOverscan
 
+	SpecPAL60 = Spec{
+		ID:                "PAL60",
+		Colors:            PalettePAL,
+		ScanlinesVSync:    3,
+		scanlinesVBlank:   37,
+		ScanlinesVisible:  192,
+		ScanlinesOverscan: 30,
+		ScanlinesTotal:    262,
+		FramesPerSecond:   60.0,
+		AspectBias:        0.91,
+	}
+
+	SpecPAL60.AtariSafeTop = SpecPAL60.scanlinesVBlank + SpecPAL60.ScanlinesVSync
+	SpecPAL60.AtariSafeBottom = SpecPAL60.ScanlinesTotal - SpecPAL60.ScanlinesOverscan
+
 	// NewSafe values:
 	// - Spike's Peak likes a bottom scanline of 249 (NTSC). this is the largest requirement I've seen.
 	// - Using the same difference of 13 for PAL NewSafeBottom
@@ -161,4 +212,6 @@ func init() {
 	SpecNTSC.NewSafeBottom = 249
 	SpecPAL.NewSafeTop = 20
 	SpecPAL.NewSafeBottom = 299
+	SpecPAL60.NewSafeTop = 20
+	SpecPAL60.NewSafeBottom = 249
 }

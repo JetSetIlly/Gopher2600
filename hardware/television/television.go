@@ -195,10 +195,9 @@ func (tv *Television) Reset(keepFrameNum bool) error {
 	// we definitely do not call this on television initialisation because the
 	// rest of the system may not be yet be in a suitable state
 
-	err := tv.SetSpec(tv.reqSpecID)
-	if err != nil {
-		return err
-	}
+	// we're no longer resetting the TV spec on Reset(). doing so interferes
+	// with the flexibility required to set the spec based on filename settings
+	// etc.
 
 	if !keepFrameNum {
 		tv.state.frameNum = 0
@@ -218,6 +217,7 @@ func (tv *Television) Reset(keepFrameNum bool) error {
 	tv.lastMaxIdx = 0
 
 	for _, r := range tv.renderers {
+		r.Resize(tv.state.spec, tv.state.spec.AtariSafeTop, tv.state.spec.AtariSafeBottom)
 		r.Reset()
 	}
 
@@ -561,17 +561,34 @@ func (tv *Television) IsStable() bool {
 	return tv.state.syncedFrameNum >= stabilityThreshold
 }
 
-// Returns a copy of SignalAttributes for reference.
+// GetLastSignal Returns a copy of the most SignalAttributes sent to the TV
+// (via the Signal() function)
 func (tv *Television) GetLastSignal() signal.SignalAttributes {
 	return tv.state.lastSignal
 }
 
-// Returns state information.
+// GetState returns state information for the TV.
 func (tv *Television) GetState(request signal.StateReq) int {
 	return tv.state.GetState(request)
 }
 
-// Set the television's specification.
+// SetSpecConditional sets the television's specification if the original
+// specification (not the current spec, the original) is "AUTO".
+//
+// This is used when attaching a cartridge to the VCS and also when processing
+// setup entries (see setup package, particularly the TV type).
+func (tv *Television) SetSpecConditional(spec string) error {
+	if tv.GetReqSpecID() == "AUTO" {
+		return tv.SetSpec(spec)
+	}
+	return nil
+}
+
+// SetSpec sets the television's specification. Will return an error if
+// specification is not recognised.
+//
+// Currently supported NTSC, PAL, PAL60 and AUTO. The empty string behaves like
+// "AUTO"
 func (tv *Television) SetSpec(spec string) error {
 	switch strings.ToUpper(spec) {
 	case "NTSC":
@@ -580,6 +597,12 @@ func (tv *Television) SetSpec(spec string) error {
 	case "PAL":
 		tv.state.spec = specification.SpecPAL
 		tv.state.auto = false
+	case "PAL60":
+		tv.state.spec = specification.SpecPAL60
+		tv.state.auto = false
+	case "":
+		// the empty string is treated like AUTO
+		fallthrough
 	case "AUTO":
 		tv.state.spec = specification.SpecNTSC
 		tv.state.auto = true
@@ -611,7 +634,7 @@ func (tv *Television) GetReqSpecID() string {
 	return tv.reqSpecID
 }
 
-// Returns the television's current specification. Renderers should use
+// GetSpec returns the television's current specification. Renderers should use
 // GetSpec() rather than keeping a private pointer to the specification.
 func (tv *Television) GetSpec() specification.Spec {
 	return tv.state.spec
@@ -650,22 +673,22 @@ func (tv *Television) SetFPSCap(limit bool) bool {
 	return cap
 }
 
-// Request the number frames per second. This overrides the frame rate of
+// SetFPS requests the number frames per second. This overrides the frame rate of
 // the specification. A negative  value restores the spec's frame rate.
 func (tv *Television) SetFPS(fps float32) {
 	tv.lmtr.setRate(fps)
 }
 
-// The requested number of frames per second. Compare with GetActualFPS()
-// to check for accuracy.
+// GetReqFPS returns the requested number of frames per second. Compare with
+// GetActualFPS() to check for accuracy.
 //
 // IS goroutine safe.
 func (tv *Television) GetReqFPS() float32 {
 	return tv.lmtr.requested.Load().(float32)
 }
 
-// The current number of frames per second. Note that FPS measurement still
-// works even when frame capping is disabled.
+// GetActualFPS returns the current number of frames per second. Note that FPS
+// measurement still works even when frame capping is disabled.
 //
 // IS goroutine safe.
 func (tv *Television) GetActualFPS() float32 {
@@ -755,7 +778,7 @@ func (tv *Television) ReqAdjust(request signal.StateAdj, adjustment int, reset b
 	return frame, scanline, clock - specification.ClksHBlank, err
 }
 
-// InstructionBoudary implements the cpu.BoundaryTrigger interface.
+// InstructionBoundary implements the cpu.BoundaryTrigger interface.
 func (tv *Television) InstructionBoundary() {
 	tv.state.boundaryClock = tv.state.clock
 	tv.state.boundaryFrameNum = tv.state.frameNum

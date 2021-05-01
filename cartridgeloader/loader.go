@@ -28,6 +28,7 @@ import (
 
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
+	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
@@ -70,6 +71,11 @@ type Loader struct {
 	//
 	// tricky to handle but it works well for our use case.
 	streamHandle **os.File
+
+	// any detected TV spec in the filename. will be the empty string if
+	// nothing is found. note that the empty string is treated like "AUTO" by
+	// television.SetSpec().
+	Spec string
 }
 
 // NewLoader is the preferred method of initialisation for the Loader type.
@@ -160,6 +166,8 @@ func NewLoader(filename string, mapping string) Loader {
 			cl.Mapping = "MVC"
 		}
 	}
+
+	cl.Spec = specification.SearchSpec(filename)
 
 	return cl
 }

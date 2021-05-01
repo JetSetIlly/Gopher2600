@@ -123,18 +123,21 @@ func newScreen(img *SdlImgui) *screen {
 
 	scr.crit.overlay.Store(overlayNoOverlay)
 	scr.crit.vsync = true
+
+	// default to NTSC. this will change on the first instance of
+	scr.resize(specification.SpecNTSC, specification.SpecNTSC.AtariSafeTop, specification.SpecNTSC.AtariSafeBottom)
 	scr.Reset()
 
 	return scr
 }
 
-// Reset implements the television.PixelRenderer interface.
+// Reset implements the television.PixelRenderer interface. Note that Reset
+// *does not* imply a Resize().
 //
 // called on startup and also whenever the VCS is reset, including when a new
 // cartridge is inserted.
 func (scr *screen) Reset() {
-	// start off by showing entirity of NTSC screen
-	scr.resize(specification.SpecNTSC, specification.SpecNTSC.AtariSafeTop, specification.SpecNTSC.AtariSafeBottom)
+	// we don't call resize on screen Reset
 
 	scr.crit.section.Lock()
 	defer scr.crit.section.Unlock()

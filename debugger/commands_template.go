@@ -90,7 +90,7 @@ var commandTemplate = []string{
 	cmdRewind + " [%<frame>N|LAST|SUMMARY]",
 
 	cmdInsert + " %<cartridge>F",
-	cmdCartridge + " (BANK|MAPPING|STATIC|REGISTERS|RAM)",
+	cmdCartridge + " (BANK|MAPPING|HASH|STATIC|REGISTERS|RAM)",
 	cmdPatch + " %<patch file>S",
 	cmdDisasm + " (BYTECODE) (%<bank>N|%<address>N)",
 	cmdLint,
@@ -108,7 +108,7 @@ var commandTemplate = []string{
 	cmdTIA + " (HMOVE)",
 	cmdRIOT + " (PORTS|TIMER)",
 	cmdAudio,
-	cmdTV + " (SPEC (PAL|NTSC|AUTO))",
+	cmdTV + " (SPEC (NTSC|PAL|PAL60|AUTO))",
 	cmdPlayer + " (0|1)",
 	cmdMissile + " (0|1)",
 	cmdBall,

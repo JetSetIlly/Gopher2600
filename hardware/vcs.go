@@ -109,6 +109,11 @@ func NewVCS(tv *television.Television) (*VCS, error) {
 // AttachCartridge to this VCS. While this function can be called directly it
 // is advised that the setup package be used in most circumstances.
 func (vcs *VCS) AttachCartridge(cartload cartridgeloader.Loader) error {
+	err := vcs.TV.SetSpecConditional(cartload.Spec)
+	if err != nil {
+		return err
+	}
+
 	if cartload.Filename == "" {
 		vcs.Mem.Cart.Eject()
 	} else {
@@ -123,7 +128,7 @@ func (vcs *VCS) AttachCartridge(cartload cartridgeloader.Loader) error {
 	// through the reset procedure on initialisation, but this feels safer
 	// somehow.
 
-	err := vcs.Reset()
+	err = vcs.Reset()
 	if err != nil {
 		return err
 	}

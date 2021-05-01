@@ -394,6 +394,12 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 					dbg.VCS.Mem.Cart.Mapping(),
 				)
 
+			case "HASH":
+				dbg.printLine(
+					terminal.StyleFeedback,
+					dbg.VCS.Mem.Cart.Hash,
+				)
+
 			case "STATIC":
 				// !!TODO: poke/peek static cartridge static data areas
 				if bus := dbg.VCS.Mem.Cart.GetStaticBus(); bus != nil {

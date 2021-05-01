@@ -261,7 +261,7 @@ func play(md *modalflag.Modes, sync *mainSync) error {
 	md.NewMode()
 
 	mapping := md.AddString("mapping", "AUTO", "force use of cartridge mapping")
-	spec := md.AddString("tv", "AUTO", "television specification: NTSC, PAL")
+	spec := md.AddString("tv", "AUTO", "television specification: NTSC, PAL, PAL60")
 	fullScreen := md.AddBool("fullscreen", false, "start in fullscreen mode")
 	fpsCap := md.AddBool("fpscap", true, "cap fps to specification")
 	record := md.AddBool("record", false, "record user input to a file")
@@ -397,7 +397,7 @@ func debug(md *modalflag.Modes, sync *mainSync) error {
 	}
 
 	mapping := md.AddString("mapping", "AUTO", "force use of cartridge mapping")
-	spec := md.AddString("tv", "AUTO", "television specification: NTSC, PAL")
+	spec := md.AddString("tv", "AUTO", "television specification: NTSC, PAL, PAL60")
 	termType := md.AddString("term", "IMGUI", "terminal type to use in debug mode: IMGUI, COLOR, PLAIN")
 	initScript := md.AddString("initscript", defInitScript, "script to run on debugger start")
 	useSavekey := md.AddBool("savekey", false, "use savekey in player 1 port")
@@ -416,6 +416,10 @@ func debug(md *modalflag.Modes, sync *mainSync) error {
 	if *stats {
 		statsview.Launch(os.Stdout)
 	}
+
+	// cartridge loader. note that there is no deferred cartload.Close(). the
+	// debugger type itself will handle this.
+	cartload := cartridgeloader.NewLoader(md.GetArg(0), *mapping)
 
 	tv, err := television.NewTelevision(*spec)
 	if err != nil {
@@ -488,7 +492,7 @@ func debug(md *modalflag.Modes, sync *mainSync) error {
 
 		// set up a launch function
 		dbgLaunch := func() error {
-			err := dbg.Start(*initScript, cartridgeloader.NewLoader(md.GetArg(0), *mapping))
+			err := dbg.Start(*initScript, cartload)
 			if err != nil {
 				return err
 			}
@@ -579,7 +583,7 @@ func perform(md *modalflag.Modes, sync *mainSync) error {
 	md.NewMode()
 
 	mapping := md.AddString("mapping", "AUTO", "force use of cartridge mapping")
-	spec := md.AddString("tv", "AUTO", "television specification: NTSC, PAL")
+	spec := md.AddString("tv", "AUTO", "television specification: NTSC, PAL, PAL60")
 	display := md.AddBool("display", false, "display TV output")
 	fpsCap := md.AddBool("fpscap", true, "cap FPS to specification (only valid if -display=true)")
 	duration := md.AddString("duration", "5s", "run duration (note: there is a 2s overhead)")
@@ -769,7 +773,7 @@ func regressAdd(md *modalflag.Modes) error {
 	mode := md.AddString("mode", "", "type of regression entry")
 	notes := md.AddString("notes", "", "additional annotation for the database")
 	mapping := md.AddString("mapping", "AUTO", "force use of cartridge mapping [non-playback]")
-	spec := md.AddString("tv", "AUTO", "television specification: NTSC, PAL [non-playback]")
+	spec := md.AddString("tv", "AUTO", "television specification: NTSC, PAL, PAL60 [non-playback]")
 	numframes := md.AddInt("frames", 10, "number of frames to run [non-playback]")
 	state := md.AddString("state", "", "record emulator state at every CPU step [non-playback]")
 	log := md.AddBool("log", false, "echo debugging log to stdout")

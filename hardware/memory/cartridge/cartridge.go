@@ -37,6 +37,8 @@ type Cartridge struct {
 
 	prefs *preferences.Preferences
 
+	// filename/hash taken from cartridgeloader. choosing not to keep a
+	// reference to the cartridge loader itself.
 	Filename string
 	Hash     string
 

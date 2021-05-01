@@ -23,7 +23,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware"
 )
 
-const televisionID = "television"
+const televisionID = "tv"
 
 const (
 	televisionFieldCartHash int = iota
@@ -71,11 +71,10 @@ func (set television) String() string {
 // Serialise implements the database.Entry interface.
 func (set *television) Serialise() (database.SerialisedEntry, error) {
 	return database.SerialisedEntry{
-			set.cartHash,
-			set.spec,
-			set.notes,
-		},
-		nil
+		set.cartHash,
+		set.spec,
+		set.notes,
+	}, nil
 }
 
 // CleanUp implements the database.Entry interface.
@@ -91,5 +90,13 @@ func (set television) matchCartHash(hash string) bool {
 
 // apply implements setupEntry interface.
 func (set television) apply(vcs *hardware.VCS) error {
-	return vcs.TV.SetSpec(set.spec)
+	// because the apply function is run after attaching the cartridge to the
+	// VCS, any setup entries will take precedence over any spec in the
+	// cartrdige filename.
+	//
+	// the SetSpecConditional() function however, will only change spec if the
+	// original spec request is AUTO. In other words, a setup entry will not
+	// take precedence over an explicit startup option.
+
+	return vcs.TV.SetSpecConditional(set.spec)
 }

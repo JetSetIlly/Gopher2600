@@ -90,6 +90,9 @@ type PixelRenderer interface {
 	SetPixels(sig []signal.SignalAttributes, current bool) error
 
 	// Reset all pixels. Called when TV is reset.
+	//
+	// Note that a Reset event does not imply a Resize() event. Implementations
+	// should not call the Resize() function as a byproduct of a Reset().
 	Reset()
 
 	// Some renderers may need to conclude and/or dispose of resources gently.

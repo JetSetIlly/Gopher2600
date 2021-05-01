@@ -351,11 +351,13 @@ func (img *SdlImgui) imguiTVPalette() (string, packedPalette) {
 	switch img.lz.TV.Spec.ID {
 	case "PAL":
 		return "PAL", img.cols.packedPalettePAL
+	case "PAL60":
+		return "PAL60", img.cols.packedPalettePAL
 	case "NTSC":
 		return "NTSC", img.cols.packedPaletteNTSC
 	}
 
-	return "NTSC?", img.cols.packedPaletteNTSC
+	return "unknown", img.cols.packedPaletteNTSC
 }
 
 // draw swatch. returns true if clicked. a good response to a click event is to
