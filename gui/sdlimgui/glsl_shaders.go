@@ -514,23 +514,28 @@ func (sh *blurShader) setAttributesArgs(env shaderEnvironment, blur float32) {
 
 type blendShader struct {
 	shader
-	modulate int32
+	prevBlend int32
+	modulate  int32
+	fade      int32
 }
 
 func newBlendShader() shaderProgram {
 	sh := &blendShader{}
 	sh.createProgram(string(shaders.YFlipVertexShader), string(shaders.CRTBlendFragShader))
+	sh.prevBlend = gl.GetUniformLocation(sh.handle, gl.Str("PrevBlend"+"\x00"))
 	sh.modulate = gl.GetUniformLocation(sh.handle, gl.Str("Modulate"+"\x00"))
+	sh.fade = gl.GetUniformLocation(sh.handle, gl.Str("Fade"+"\x00"))
 	return sh
 }
 
-func (sh *blendShader) setAttributesArgs(env shaderEnvironment, modulate float32, textureB uint32) {
+func (sh *blendShader) setAttributesArgs(env shaderEnvironment, modulate float32, fade float32, textureB uint32) {
 	sh.shader.setAttributes(env)
 	gl.Uniform1f(sh.modulate, modulate)
+	gl.Uniform1f(sh.fade, fade)
 
 	gl.ActiveTexture(gl.TEXTURE1)
 	gl.BindTexture(gl.TEXTURE_2D, uint32(textureB))
-	gl.Uniform1i(sh.texture, 1)
+	gl.Uniform1i(sh.prevBlend, 1)
 }
 
 type crtShader struct {
@@ -635,8 +640,8 @@ func (sh *crtShader) setAttributesCRT(env shaderEnvironment, enabled bool, moreP
 		if !changed {
 			// blend blur with original source texture
 			env.srcTextureID = sh.fb.draw(currentID, func() {
-				env.srcTextureID = src
-				sh.blendShader.(*blendShader).setAttributesArgs(env, 1.0, sh.fb.textures[currentID])
+				env.srcTextureID = sh.fb.textures[currentID]
+				sh.blendShader.(*blendShader).setAttributesArgs(env, 1.0, 0.32, src)
 				env.draw()
 			})
 		}
