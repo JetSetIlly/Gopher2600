@@ -23,6 +23,7 @@ import (
 	"github.com/go-gl/gl/v3.2-core/gl"
 	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/gui"
+	"github.com/jetsetilly/gopher2600/gui/sdlimgui/framebuffer"
 	"github.com/jetsetilly/gopher2600/gui/sdlimgui/shaders"
 	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
@@ -45,7 +46,8 @@ type shaderEnvironment struct {
 	// projection to use for texture-to-texture processing
 	internalProj [4][4]float32
 
-	isInternalShader bool
+	// whether to use the internalProj matrix
+	useInternalProj bool
 
 	// the texture the shader will work with
 	srcTextureID uint32
@@ -53,70 +55,6 @@ type shaderEnvironment struct {
 	// width and height of texture. optional depending on the shader
 	width  int32
 	height int32
-}
-
-type framebuffer struct {
-	textures []uint32
-	fbo      uint32
-	rbo      uint32
-	width    int32
-	height   int32
-
-	// the texture of the most recent texture plugged into the framebuffer.
-	currentID uint32
-}
-
-func newFramebuffer(numTextures int) *framebuffer {
-	fb := &framebuffer{}
-	fb.textures = make([]uint32, numTextures)
-	gl.GenFramebuffers(1, &fb.fbo)
-	return fb
-}
-
-func (fb *framebuffer) destroy() {
-	gl.DeleteFramebuffers(1, &fb.fbo)
-}
-
-func (fb *framebuffer) setup(width int32, height int32) bool {
-	gl.BindFramebuffer(gl.FRAMEBUFFER, fb.fbo)
-
-	if fb.width == width && fb.height == height {
-		return false
-	}
-
-	fb.width = width
-	fb.height = height
-
-	for i := range fb.textures {
-		gl.GenTextures(1, &fb.textures[i])
-		gl.BindTexture(gl.TEXTURE_2D, fb.textures[i])
-		gl.TexImage2D(gl.TEXTURE_2D, 0,
-			gl.RGBA, fb.width, fb.height, 0,
-			gl.RGBA, gl.UNSIGNED_BYTE,
-			gl.Ptr(nil))
-		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
-		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
-		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_BORDER)
-		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_BORDER)
-	}
-
-	gl.BindRenderbuffer(gl.RENDERBUFFER, fb.rbo)
-
-	return true
-}
-
-// clear texture
-func (fb *framebuffer) clear(bufferIdx int) {
-	gl.ClearTexImage(fb.textures[bufferIdx], 0, gl.RGBA, gl.UNSIGNED_BYTE, gl.Ptr(nil))
-}
-
-// returns the texture ID that has been assigned to the framebuffer.
-func (fb *framebuffer) draw(bufferIdx int, draw func()) uint32 {
-	fb.currentID = fb.textures[bufferIdx]
-	gl.BindTexture(gl.TEXTURE_2D, fb.currentID)
-	gl.FramebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, fb.currentID, 0)
-	draw()
-	return fb.currentID
 }
 
 // helper function to convert bool to int32
@@ -154,7 +92,7 @@ func (sh *shader) setAttributes(env shaderEnvironment) {
 	gl.BindTexture(gl.TEXTURE_2D, env.srcTextureID)
 	gl.Uniform1i(sh.texture, 0)
 
-	if env.isInternalShader {
+	if env.useInternalProj {
 		gl.UniformMatrix4fv(sh.projMtx, 1, false, &env.internalProj[0][0])
 	} else {
 		gl.UniformMatrix4fv(sh.projMtx, 1, false, &env.presentationProj[0][0])
@@ -263,7 +201,6 @@ func newColorShader(yflipped bool) shaderProgram {
 type dbgScreenShader struct {
 	shader
 
-	fb  *framebuffer
 	crt shaderProgram
 
 	showCursor         int32 // uniform
@@ -283,8 +220,7 @@ type dbgScreenShader struct {
 func newDbgScrShader() shaderProgram {
 	sh := &dbgScreenShader{}
 
-	sh.fb = newFramebuffer(3)
-	sh.crt = newCRTShader(sh.fb)
+	sh.crt = newCRTShader()
 
 	sh.createProgram(string(shaders.StraightVertexShader), string(shaders.DbgScrShader))
 
@@ -305,7 +241,6 @@ func newDbgScrShader() shaderProgram {
 }
 
 func (sh *dbgScreenShader) destroy() {
-	sh.fb.destroy()
 	sh.crt.destroy()
 }
 
@@ -330,7 +265,7 @@ func (sh *dbgScreenShader) setAttributes(env shaderEnvironment) {
 		{-1.0, 1.0, 0.0, 1.0},
 	}
 
-	env.srcTextureID = sh.crt.(*crtShader).setAttributesCRT(env, env.img.wm.dbgScr.crt, true)
+	env.srcTextureID = sh.crt.(*crtShader).setAttributesArgs(env, env.img.wm.dbgScr.crt, true)
 
 	sh.shader.setAttributes(env)
 
@@ -541,7 +476,7 @@ func (sh *blendShader) setAttributesArgs(env shaderEnvironment, modulate float32
 type crtShader struct {
 	shader
 
-	fb *framebuffer
+	fb *framebuffer.Sequence
 
 	phosphorShader       shaderProgram
 	blurShader           shaderProgram
@@ -552,9 +487,9 @@ type crtShader struct {
 	colorShaderFlipped   shaderProgram
 }
 
-func newCRTShader(fb *framebuffer) shaderProgram {
+func newCRTShader() shaderProgram {
 	sh := &crtShader{
-		fb:                   fb,
+		fb:                   framebuffer.NewSequence(3),
 		phosphorShader:       newPhosphorShader(),
 		blurShader:           newBlurShader(),
 		blendShader:          newBlendShader(),
@@ -573,11 +508,11 @@ func (sh *crtShader) destroy() {
 	sh.effectsShader.destroy()
 	sh.colorShader.destroy()
 	sh.shader.destroy()
-	sh.fb.destroy()
+	sh.fb.Destroy()
 }
 
 // moreProcessing should be true if more shaders are to be applied to the framebuffer before presentation
-func (sh *crtShader) setAttributesCRT(env shaderEnvironment, enabled bool, moreProcessing bool) uint32 {
+func (sh *crtShader) setAttributesArgs(env shaderEnvironment, enabled bool, moreProcessing bool) uint32 {
 	// make sure our framebuffer is correct
 	//
 	// any changes to the framebuffer will effect how the next frame is drawn.
@@ -588,23 +523,23 @@ func (sh *crtShader) setAttributesCRT(env shaderEnvironment, enabled bool, moreP
 	// that should be fixed
 	//
 	// !!TODO: eliminate frame brightening on size change
-	changed := sh.fb.setup(env.width, env.height)
+	changed := sh.fb.Setup(env.width, env.height)
 
-	env.isInternalShader = true
+	env.useInternalProj = true
 	src := env.srcTextureID
 
 	const (
-		currentID  = 0
-		phosphorID = 1
-		finalID    = 2
+		idxCurrent  = 0
+		idxPhosphor = 1
+		idxFinal    = 2
 	)
 
 	if enabled {
 		if !changed {
 			if env.img.crtPrefs.Phosphor.Get().(bool) {
 				// use blur shader to add bloom to previous phosphor
-				env.srcTextureID = sh.fb.textures[phosphorID]
-				env.srcTextureID = sh.fb.draw(phosphorID, func() {
+				env.srcTextureID = sh.fb.Texture(idxPhosphor)
+				env.srcTextureID = sh.fb.Process(idxPhosphor, func() {
 					phosphorBloom := env.img.crtPrefs.PhosphorBloom.Get().(float64)
 					sh.blurShader.(*blurShader).setAttributesArgs(env, float32(phosphorBloom))
 					env.draw()
@@ -612,19 +547,19 @@ func (sh *crtShader) setAttributesCRT(env shaderEnvironment, enabled bool, moreP
 			}
 
 			// add new frame to phosphor buffer
-			env.srcTextureID = sh.fb.draw(phosphorID, func() {
+			env.srcTextureID = sh.fb.Process(idxPhosphor, func() {
 				env.srcTextureID = src
 				phosphorLatency := env.img.crtPrefs.PhosphorLatency.Get().(float64)
-				sh.phosphorShader.(*phosphorShader).setAttributesArgs(env, float32(phosphorLatency), sh.fb.textures[phosphorID])
+				sh.phosphorShader.(*phosphorShader).setAttributesArgs(env, float32(phosphorLatency), sh.fb.Texture(idxPhosphor))
 				env.draw()
 			})
 		}
 	} else {
 		if !changed {
 			// add new frame to phosphor buffer (using phosphor buffer for pixel perfect fade)
-			env.srcTextureID = sh.fb.draw(phosphorID, func() {
+			env.srcTextureID = sh.fb.Process(idxPhosphor, func() {
 				fade := env.img.crtPrefs.PixelPerfectFade.Get().(float64)
-				sh.phosphorShader.(*phosphorShader).setAttributesArgs(env, float32(fade), sh.fb.textures[phosphorID])
+				sh.phosphorShader.(*phosphorShader).setAttributesArgs(env, float32(fade), sh.fb.Texture(idxPhosphor))
 				env.draw()
 			})
 		}
@@ -632,38 +567,38 @@ func (sh *crtShader) setAttributesCRT(env shaderEnvironment, enabled bool, moreP
 
 	if enabled {
 		// blur for current frame
-		env.srcTextureID = sh.fb.draw(currentID, func() {
+		env.srcTextureID = sh.fb.Process(idxCurrent, func() {
 			sh.blurShader.(*blurShader).setAttributesArgs(env, 0.17)
 			env.draw()
 		})
 
 		if !changed {
 			// blend blur with original source texture
-			env.srcTextureID = sh.fb.draw(currentID, func() {
-				env.srcTextureID = sh.fb.textures[currentID]
+			env.srcTextureID = sh.fb.Process(idxCurrent, func() {
+				env.srcTextureID = sh.fb.Texture(idxCurrent)
 				sh.blendShader.(*blendShader).setAttributesArgs(env, 1.0, 0.32, src)
 				env.draw()
 			})
 		}
 
 		if moreProcessing {
-			sh.fb.clear(finalID)
-			env.srcTextureID = sh.fb.draw(finalID, func() {
+			sh.fb.Clear(idxFinal)
+			env.srcTextureID = sh.fb.Process(idxFinal, func() {
 				sh.effectsShaderFlipped.setAttributes(env)
 				env.draw()
 			})
 		} else {
-			env.isInternalShader = false
+			env.useInternalProj = false
 			sh.effectsShader.setAttributes(env)
 		}
 	} else {
 		if moreProcessing {
-			env.srcTextureID = sh.fb.draw(finalID, func() {
+			env.srcTextureID = sh.fb.Process(idxFinal, func() {
 				sh.colorShaderFlipped.setAttributes(env)
 				env.draw()
 			})
 		} else {
-			env.isInternalShader = false
+			env.useInternalProj = false
 			sh.colorShader.setAttributes(env)
 		}
 	}
@@ -677,7 +612,7 @@ type playscrShader struct {
 
 func newPlayscrShader() shaderProgram {
 	sh := &playscrShader{
-		crt: newCRTShader(newFramebuffer(2)),
+		crt: newCRTShader(),
 	}
 	return sh
 }
@@ -711,5 +646,5 @@ func (sh *playscrShader) setAttributes(env shaderEnvironment) {
 	)
 
 	enabled := env.img.crtPrefs.Enabled.Get().(bool)
-	sh.crt.(*crtShader).setAttributesCRT(env, enabled, false)
+	sh.crt.(*crtShader).setAttributesArgs(env, enabled, false)
 }
