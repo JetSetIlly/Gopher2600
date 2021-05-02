@@ -352,6 +352,9 @@ func RegressRun(output io.Writer, verbose bool, filterKeys []string) error {
 				if verbose {
 					output.Write([]byte(fmt.Sprintf("  ^^ %s\n", err)))
 				}
+
+				// an error implies a fail
+				numFail++
 			}
 		} else if !ok {
 			numFail++
