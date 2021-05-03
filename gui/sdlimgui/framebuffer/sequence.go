@@ -111,11 +111,12 @@ func (seq *Sequence) Process(idxTexture int, draw func()) uint32 {
 //
 // Changes the state of the frame buffer.
 func (seq *Sequence) SaveJPEG(idxTexture int, path string) error {
-	img := image.NewRGBA(image.Rect(0, 0, int(seq.width), int(seq.height)))
 	seq.bind(idxTexture)
+
+	img := image.NewRGBA(image.Rect(0, 0, int(seq.width), int(seq.height)))
 	gl.ReadPixels(0, 0, seq.width, seq.height, gl.RGBA, gl.UNSIGNED_BYTE, gl.Ptr(img.Pix))
 
-	f, err := os.Create("path")
+	f, err := os.Create(path)
 	if err != nil {
 		return curated.Errorf("glsl: save: %v", err)
 	}

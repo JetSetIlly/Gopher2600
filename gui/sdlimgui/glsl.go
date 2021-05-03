@@ -74,9 +74,9 @@ func newGlsl(img *SdlImgui) (*glsl, error) {
 func (rnd *glsl) setupShaders() error {
 	rnd.shaders[guiShaderID] = newGUIShader()
 	rnd.shaders[colorShaderID] = newColorShader(false)
-	rnd.shaders[dbgscrShaderID] = newDbgScrShader()
-	rnd.shaders[overlayShaderID] = newOverlayShader()
-	rnd.shaders[playscrShaderID] = newPlayscrShader()
+	rnd.shaders[dbgscrShaderID] = newDbgScrShader(rnd.img)
+	rnd.shaders[overlayShaderID] = newOverlayShader(rnd.img)
+	rnd.shaders[playscrShaderID] = newPlayscrShader(rnd.img)
 	return nil
 }
 
@@ -191,9 +191,7 @@ func (rnd *glsl) render() {
 	gl.PolygonMode(gl.FRONT_AND_BACK, gl.FILL)
 
 	// the environment used by the shader
-	env := shaderEnvironment{
-		img: rnd.img,
-	}
+	env := shaderEnvironment{}
 
 	// Our visible imgui space lies from draw_data->DisplayPos (top left) to draw_data->DisplayPos+data_data->DisplaySize (bottom right).
 	// DisplayMin is typically (0,0) for single viewport apps.

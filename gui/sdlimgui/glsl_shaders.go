@@ -27,6 +27,7 @@ import (
 	"github.com/jetsetilly/gopher2600/gui/sdlimgui/shaders"
 	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
+	"github.com/jetsetilly/gopher2600/logger"
 )
 
 type shaderProgram interface {
@@ -35,8 +36,6 @@ type shaderProgram interface {
 }
 
 type shaderEnvironment struct {
-	img *SdlImgui
-
 	// the function used to trigger the shader program
 	draw func()
 
@@ -201,6 +200,8 @@ func newColorShader(yflipped bool) shaderProgram {
 type dbgScreenShader struct {
 	shader
 
+	img *SdlImgui
+
 	crt shaderProgram
 
 	showCursor         int32 // uniform
@@ -217,10 +218,12 @@ type dbgScreenShader struct {
 	overlayAlpha       int32 // uniform
 }
 
-func newDbgScrShader() shaderProgram {
-	sh := &dbgScreenShader{}
+func newDbgScrShader(img *SdlImgui) shaderProgram {
+	sh := &dbgScreenShader{
+		img: img,
+	}
 
-	sh.crt = newCRTShader()
+	sh.crt = newCRTShader(img)
 
 	sh.createProgram(string(shaders.StraightVertexShader), string(shaders.DbgScrShader))
 
@@ -245,16 +248,16 @@ func (sh *dbgScreenShader) destroy() {
 }
 
 func (sh *dbgScreenShader) setAttributes(env shaderEnvironment) {
-	env.img.screen.crit.section.Lock()
-	width := env.img.wm.dbgScr.scaledWidth(env.img.wm.dbgScr.cropped)
-	height := env.img.wm.dbgScr.scaledHeight(env.img.wm.dbgScr.cropped)
-	env.img.screen.crit.section.Unlock()
+	sh.img.screen.crit.section.Lock()
+	width := sh.img.wm.dbgScr.scaledWidth(sh.img.wm.dbgScr.cropped)
+	height := sh.img.wm.dbgScr.scaledHeight(sh.img.wm.dbgScr.cropped)
+	sh.img.screen.crit.section.Unlock()
 
 	env.width = int32(width)
 	env.height = int32(height)
 
-	ox := int32(env.img.wm.dbgScr.screenOrigin.X)
-	oy := int32(env.img.wm.dbgScr.screenOrigin.Y)
+	ox := int32(sh.img.wm.dbgScr.screenOrigin.X)
+	oy := int32(sh.img.wm.dbgScr.screenOrigin.Y)
 	gl.Viewport(-ox, -oy, env.width+ox, env.height+oy)
 	gl.Scissor(-ox, -oy, env.width+ox, env.height+oy)
 
@@ -265,38 +268,38 @@ func (sh *dbgScreenShader) setAttributes(env shaderEnvironment) {
 		{-1.0, 1.0, 0.0, 1.0},
 	}
 
-	env.srcTextureID = sh.crt.(*crtShader).setAttributesArgs(env, env.img.wm.dbgScr.crt, true)
+	env.srcTextureID = sh.crt.(*crtShader).setAttributesArgs(env, sh.img.wm.dbgScr.crt, true)
 
 	sh.shader.setAttributes(env)
 
 	// scaling of screen
 	var vertScaling float32
 	var horizScaling float32
-	if env.img.isPlaymode() {
-		vertScaling = env.img.playScr.scaling
-		horizScaling = env.img.playScr.horizScaling()
+	if sh.img.isPlaymode() {
+		vertScaling = sh.img.playScr.scaling
+		horizScaling = sh.img.playScr.horizScaling()
 	} else {
-		vertScaling = env.img.wm.dbgScr.scaling
-		horizScaling = env.img.wm.dbgScr.horizScaling()
+		vertScaling = sh.img.wm.dbgScr.scaling
+		horizScaling = sh.img.wm.dbgScr.horizScaling()
 	}
 
 	// critical section
-	env.img.screen.crit.section.Lock()
+	sh.img.screen.crit.section.Lock()
 
-	gl.Uniform1f(sh.scalingX, env.img.wm.dbgScr.horizScaling())
-	gl.Uniform1f(sh.scalingY, env.img.wm.dbgScr.scaling)
-	gl.Uniform2f(sh.uncroppedScreenDim, env.img.wm.dbgScr.scaledWidth(false), env.img.wm.dbgScr.scaledHeight(false))
-	gl.Uniform2f(sh.screenDim, env.img.wm.dbgScr.scaledWidth(true), env.img.wm.dbgScr.scaledHeight(true))
-	if env.img.wm.dbgScr.cropped {
+	gl.Uniform1f(sh.scalingX, sh.img.wm.dbgScr.horizScaling())
+	gl.Uniform1f(sh.scalingY, sh.img.wm.dbgScr.scaling)
+	gl.Uniform2f(sh.uncroppedScreenDim, sh.img.wm.dbgScr.scaledWidth(false), sh.img.wm.dbgScr.scaledHeight(false))
+	gl.Uniform2f(sh.screenDim, sh.img.wm.dbgScr.scaledWidth(true), sh.img.wm.dbgScr.scaledHeight(true))
+	if sh.img.wm.dbgScr.cropped {
 		gl.Uniform1i(sh.isCropped, 1)
 	} else {
 		gl.Uniform1i(sh.isCropped, 0)
 	}
 
-	cursorX := env.img.screen.crit.lastX
-	cursorY := env.img.screen.crit.lastY
+	cursorX := sh.img.screen.crit.lastX
+	cursorY := sh.img.screen.crit.lastY
 
-	if env.img.wm.dbgScr.cropped {
+	if sh.img.wm.dbgScr.cropped {
 		gl.Uniform1f(sh.lastX, float32(cursorX-specification.ClksHBlank)*horizScaling)
 	} else {
 		gl.Uniform1f(sh.lastX, float32(cursorX)*horizScaling)
@@ -305,23 +308,23 @@ func (sh *dbgScreenShader) setAttributes(env shaderEnvironment) {
 
 	// screen geometry
 	gl.Uniform1f(sh.hblank, specification.ClksHBlank*horizScaling)
-	gl.Uniform1f(sh.topScanline, float32(env.img.screen.crit.topScanline)*vertScaling)
-	gl.Uniform1f(sh.botScanline, float32(env.img.screen.crit.bottomScanline)*vertScaling)
+	gl.Uniform1f(sh.topScanline, float32(sh.img.screen.crit.topScanline)*vertScaling)
+	gl.Uniform1f(sh.botScanline, float32(sh.img.screen.crit.bottomScanline)*vertScaling)
 
-	env.img.screen.crit.section.Unlock()
+	sh.img.screen.crit.section.Unlock()
 	// end of critical section
 
 	// show cursor
-	if env.img.isRewindSlider {
+	if sh.img.isRewindSlider {
 		gl.Uniform1i(sh.showCursor, 0)
 	} else {
-		switch env.img.state {
+		switch sh.img.state {
 		case gui.StatePaused:
 			gl.Uniform1i(sh.showCursor, 1)
 		case gui.StateRunning:
 			// if FPS is low enough then show screen draw even though
 			// emulation is running
-			if env.img.lz.TV.ReqFPS < television.ThreshVisual {
+			if sh.img.lz.TV.ReqFPS < television.ThreshVisual {
 				gl.Uniform1i(sh.showCursor, 1)
 			} else {
 				gl.Uniform1i(sh.showCursor, 0)
@@ -336,11 +339,14 @@ func (sh *dbgScreenShader) setAttributes(env shaderEnvironment) {
 
 type overlayShader struct {
 	shader
+	img   *SdlImgui
 	alpha int32 // uniform
 }
 
-func newOverlayShader() shaderProgram {
-	sh := &overlayShader{}
+func newOverlayShader(img *SdlImgui) shaderProgram {
+	sh := &overlayShader{
+		img: img,
+	}
 	sh.createProgram(string(shaders.StraightVertexShader), string(shaders.OverlayShader))
 	sh.alpha = gl.GetUniformLocation(sh.handle, gl.Str("Alpha"+"\x00"))
 	return sh
@@ -348,11 +354,13 @@ func newOverlayShader() shaderProgram {
 
 func (sh *overlayShader) setAttributes(env shaderEnvironment) {
 	sh.shader.setAttributes(env)
-	gl.Uniform1f(sh.alpha, env.img.wm.dbgScr.overlayAlpha)
+	gl.Uniform1f(sh.alpha, sh.img.wm.dbgScr.overlayAlpha)
 }
 
 type effectsShader struct {
 	shader
+
+	img *SdlImgui
 
 	screenDim       int32
 	curve           int32
@@ -368,8 +376,10 @@ type effectsShader struct {
 	time            int32
 }
 
-func newEffectsShader(yflip bool) shaderProgram {
-	sh := &effectsShader{}
+func newEffectsShader(img *SdlImgui, yflip bool) shaderProgram {
+	sh := &effectsShader{
+		img: img,
+	}
 	if yflip {
 		sh.createProgram(string(shaders.YFlipVertexShader), string(shaders.CRTEffectsFragShader))
 	} else {
@@ -396,38 +406,40 @@ func (sh *effectsShader) setAttributes(env shaderEnvironment) {
 	sh.shader.setAttributes(env)
 
 	gl.Uniform2f(sh.screenDim, float32(env.width), float32(env.height))
-	gl.Uniform1i(sh.curve, boolToInt32(env.img.crtPrefs.Curve.Get().(bool)))
-	gl.Uniform1i(sh.shadowMask, boolToInt32(env.img.crtPrefs.Mask.Get().(bool)))
-	gl.Uniform1i(sh.scanlines, boolToInt32(env.img.crtPrefs.Scanlines.Get().(bool)))
-	gl.Uniform1i(sh.noise, boolToInt32(env.img.crtPrefs.Noise.Get().(bool)))
-	gl.Uniform1i(sh.fringing, boolToInt32(env.img.crtPrefs.Fringing.Get().(bool)))
-	gl.Uniform1f(sh.curveAmount, float32(env.img.crtPrefs.CurveAmount.Get().(float64)))
-	gl.Uniform1f(sh.maskBright, float32(env.img.crtPrefs.MaskBright.Get().(float64)))
-	gl.Uniform1f(sh.scanlinesBright, float32(env.img.crtPrefs.ScanlinesBright.Get().(float64)))
-	gl.Uniform1f(sh.noiseLevel, float32(env.img.crtPrefs.NoiseLevel.Get().(float64)))
-	gl.Uniform1f(sh.fringingAmount, float32(env.img.crtPrefs.FringingAmount.Get().(float64)))
+	gl.Uniform1i(sh.curve, boolToInt32(sh.img.crtPrefs.Curve.Get().(bool)))
+	gl.Uniform1i(sh.shadowMask, boolToInt32(sh.img.crtPrefs.Mask.Get().(bool)))
+	gl.Uniform1i(sh.scanlines, boolToInt32(sh.img.crtPrefs.Scanlines.Get().(bool)))
+	gl.Uniform1i(sh.noise, boolToInt32(sh.img.crtPrefs.Noise.Get().(bool)))
+	gl.Uniform1i(sh.fringing, boolToInt32(sh.img.crtPrefs.Fringing.Get().(bool)))
+	gl.Uniform1f(sh.curveAmount, float32(sh.img.crtPrefs.CurveAmount.Get().(float64)))
+	gl.Uniform1f(sh.maskBright, float32(sh.img.crtPrefs.MaskBright.Get().(float64)))
+	gl.Uniform1f(sh.scanlinesBright, float32(sh.img.crtPrefs.ScanlinesBright.Get().(float64)))
+	gl.Uniform1f(sh.noiseLevel, float32(sh.img.crtPrefs.NoiseLevel.Get().(float64)))
+	gl.Uniform1f(sh.fringingAmount, float32(sh.img.crtPrefs.FringingAmount.Get().(float64)))
 	gl.Uniform1f(sh.time, float32(time.Now().Nanosecond())/100000000.0)
 }
 
 type phosphorShader struct {
 	shader
-	latency int32
+	newFrame int32
+	latency  int32
 }
 
 func newPhosphorShader() shaderProgram {
 	sh := &phosphorShader{}
 	sh.createProgram(string(shaders.YFlipVertexShader), string(shaders.CRTPhosphorFragShader))
+	sh.newFrame = gl.GetUniformLocation(sh.handle, gl.Str("NewFrame"+"\x00"))
 	sh.latency = gl.GetUniformLocation(sh.handle, gl.Str("Latency"+"\x00"))
 	return sh
 }
 
-func (sh *phosphorShader) setAttributesArgs(env shaderEnvironment, latency float32, textureB uint32) {
+func (sh *phosphorShader) setAttributesArgs(env shaderEnvironment, latency float32, newFrame uint32) {
 	sh.shader.setAttributes(env)
 	gl.Uniform1f(sh.latency, latency)
 
 	gl.ActiveTexture(gl.TEXTURE1)
-	gl.BindTexture(gl.TEXTURE_2D, uint32(textureB))
-	gl.Uniform1i(sh.texture, 1)
+	gl.BindTexture(gl.TEXTURE_2D, uint32(newFrame))
+	gl.Uniform1i(sh.newFrame, 1)
 }
 
 type blurShader struct {
@@ -449,34 +461,35 @@ func (sh *blurShader) setAttributesArgs(env shaderEnvironment, blur float32) {
 
 type blendShader struct {
 	shader
-	prevBlend int32
-	modulate  int32
-	fade      int32
+	newFrame int32
+	modulate int32
+	fade     int32
 }
 
 func newBlendShader() shaderProgram {
 	sh := &blendShader{}
 	sh.createProgram(string(shaders.YFlipVertexShader), string(shaders.CRTBlendFragShader))
-	sh.prevBlend = gl.GetUniformLocation(sh.handle, gl.Str("PrevBlend"+"\x00"))
+	sh.newFrame = gl.GetUniformLocation(sh.handle, gl.Str("NewFrame"+"\x00"))
 	sh.modulate = gl.GetUniformLocation(sh.handle, gl.Str("Modulate"+"\x00"))
 	sh.fade = gl.GetUniformLocation(sh.handle, gl.Str("Fade"+"\x00"))
 	return sh
 }
 
-func (sh *blendShader) setAttributesArgs(env shaderEnvironment, modulate float32, fade float32, textureB uint32) {
+func (sh *blendShader) setAttributesArgs(env shaderEnvironment, modulate float32, fade float32, newFrame uint32) {
 	sh.shader.setAttributes(env)
 	gl.Uniform1f(sh.modulate, modulate)
 	gl.Uniform1f(sh.fade, fade)
 
 	gl.ActiveTexture(gl.TEXTURE1)
-	gl.BindTexture(gl.TEXTURE_2D, uint32(textureB))
-	gl.Uniform1i(sh.prevBlend, 1)
+	gl.BindTexture(gl.TEXTURE_2D, uint32(newFrame))
+	gl.Uniform1i(sh.newFrame, 1)
 }
 
 type crtShader struct {
 	shader
 
-	fb *framebuffer.Sequence
+	img *SdlImgui
+	fb  *framebuffer.Sequence
 
 	phosphorShader       shaderProgram
 	blurShader           shaderProgram
@@ -487,15 +500,16 @@ type crtShader struct {
 	colorShaderFlipped   shaderProgram
 }
 
-func newCRTShader() shaderProgram {
+func newCRTShader(img *SdlImgui) shaderProgram {
 	sh := &crtShader{
+		img:                  img,
 		fb:                   framebuffer.NewSequence(3),
 		phosphorShader:       newPhosphorShader(),
 		blurShader:           newBlurShader(),
 		blendShader:          newBlendShader(),
-		effectsShader:        newEffectsShader(false),
+		effectsShader:        newEffectsShader(img, false),
 		colorShader:          newColorShader(false),
-		effectsShaderFlipped: newEffectsShader(true),
+		effectsShaderFlipped: newEffectsShader(img, true),
 		colorShaderFlipped:   newColorShader(true),
 	}
 	return sh
@@ -529,61 +543,70 @@ func (sh *crtShader) setAttributesArgs(env shaderEnvironment, enabled bool, more
 	src := env.srcTextureID
 
 	const (
-		idxCurrent  = 0
-		idxPhosphor = 1
-		idxFinal    = 2
+		// an accumulation of consecutive frames producing a phosphor effect
+		crtPhosphorIdx = iota
+
+		// the finalised texture after all processing. the only thing left to
+		// do is to (a) present it, or (b) copy it into idxModeProcessing so it
+		// can be processed further
+		crtLastIdx
+
+		// the texture used for continued processing once the function has
+		// returned (ie. moreProcessing flag is true). this texture is not used
+		// in the crtShader for any other purpose and so can be clobbered with
+		// no consequence.
+		crtMoreProcessingIdx
 	)
 
 	if enabled {
 		if !changed {
-			if env.img.crtPrefs.Phosphor.Get().(bool) {
+			if sh.img.crtPrefs.Phosphor.Get().(bool) {
 				// use blur shader to add bloom to previous phosphor
-				env.srcTextureID = sh.fb.Texture(idxPhosphor)
-				env.srcTextureID = sh.fb.Process(idxPhosphor, func() {
-					phosphorBloom := env.img.crtPrefs.PhosphorBloom.Get().(float64)
+				env.srcTextureID = sh.fb.Process(crtPhosphorIdx, func() {
+					env.srcTextureID = sh.fb.Texture(crtPhosphorIdx)
+					phosphorBloom := sh.img.crtPrefs.PhosphorBloom.Get().(float64)
 					sh.blurShader.(*blurShader).setAttributesArgs(env, float32(phosphorBloom))
 					env.draw()
 				})
 			}
 
 			// add new frame to phosphor buffer
-			env.srcTextureID = sh.fb.Process(idxPhosphor, func() {
-				env.srcTextureID = src
-				phosphorLatency := env.img.crtPrefs.PhosphorLatency.Get().(float64)
-				sh.phosphorShader.(*phosphorShader).setAttributesArgs(env, float32(phosphorLatency), sh.fb.Texture(idxPhosphor))
+			env.srcTextureID = sh.fb.Process(crtPhosphorIdx, func() {
+				phosphorLatency := sh.img.crtPrefs.PhosphorLatency.Get().(float64)
+				sh.phosphorShader.(*phosphorShader).setAttributesArgs(env, float32(phosphorLatency), src)
 				env.draw()
 			})
 		}
 	} else {
 		if !changed {
 			// add new frame to phosphor buffer (using phosphor buffer for pixel perfect fade)
-			env.srcTextureID = sh.fb.Process(idxPhosphor, func() {
-				fade := env.img.crtPrefs.PixelPerfectFade.Get().(float64)
-				sh.phosphorShader.(*phosphorShader).setAttributesArgs(env, float32(fade), sh.fb.Texture(idxPhosphor))
+			env.srcTextureID = sh.fb.Process(crtPhosphorIdx, func() {
+				env.srcTextureID = sh.fb.Texture(crtPhosphorIdx)
+				fade := sh.img.crtPrefs.PixelPerfectFade.Get().(float64)
+				sh.phosphorShader.(*phosphorShader).setAttributesArgs(env, float32(fade), src)
 				env.draw()
 			})
 		}
 	}
 
 	if enabled {
-		// blur for current frame
-		env.srcTextureID = sh.fb.Process(idxCurrent, func() {
+		// blur result of phosphor a little more
+		env.srcTextureID = sh.fb.Process(crtLastIdx, func() {
 			sh.blurShader.(*blurShader).setAttributesArgs(env, 0.17)
 			env.draw()
 		})
 
 		if !changed {
-			// blend blur with original source texture
-			env.srcTextureID = sh.fb.Process(idxCurrent, func() {
-				env.srcTextureID = sh.fb.Texture(idxCurrent)
+			// blend blur with src texture
+			env.srcTextureID = sh.fb.Process(crtLastIdx, func() {
 				sh.blendShader.(*blendShader).setAttributesArgs(env, 1.0, 0.32, src)
 				env.draw()
 			})
 		}
 
 		if moreProcessing {
-			sh.fb.Clear(idxFinal)
-			env.srcTextureID = sh.fb.Process(idxFinal, func() {
+			sh.fb.Clear(crtMoreProcessingIdx)
+			env.srcTextureID = sh.fb.Process(crtMoreProcessingIdx, func() {
 				sh.effectsShaderFlipped.setAttributes(env)
 				env.draw()
 			})
@@ -593,7 +616,8 @@ func (sh *crtShader) setAttributesArgs(env shaderEnvironment, enabled bool, more
 		}
 	} else {
 		if moreProcessing {
-			env.srcTextureID = sh.fb.Process(idxFinal, func() {
+			sh.fb.Clear(crtMoreProcessingIdx)
+			env.srcTextureID = sh.fb.Process(crtMoreProcessingIdx, func() {
 				sh.colorShaderFlipped.setAttributes(env)
 				env.draw()
 			})
@@ -606,13 +630,128 @@ func (sh *crtShader) setAttributesArgs(env shaderEnvironment, enabled bool, more
 	return env.srcTextureID
 }
 
-type playscrShader struct {
-	crt shaderProgram
+type photoShader struct {
+	shader
+
+	img *SdlImgui
+	fb  *framebuffer.Sequence
+
+	phosphorShader       shaderProgram
+	blurShader           shaderProgram
+	blendShader          shaderProgram
+	effectsShader        shaderProgram
+	colorShader          shaderProgram
+	effectsShaderFlipped shaderProgram
+	colorShaderFlipped   shaderProgram
 }
 
-func newPlayscrShader() shaderProgram {
+func newPhotoShader(img *SdlImgui) shaderProgram {
+	sh := &photoShader{
+		img:                  img,
+		fb:                   framebuffer.NewSequence(4),
+		phosphorShader:       newPhosphorShader(),
+		blurShader:           newBlurShader(),
+		blendShader:          newBlendShader(),
+		effectsShader:        newEffectsShader(img, false),
+		colorShader:          newColorShader(false),
+		effectsShaderFlipped: newEffectsShader(img, true),
+		colorShaderFlipped:   newColorShader(true),
+	}
+	return sh
+}
+
+func (sh *photoShader) destroy() {
+	sh.phosphorShader.destroy()
+	sh.blurShader.destroy()
+	sh.blendShader.destroy()
+	sh.effectsShader.destroy()
+	sh.colorShader.destroy()
+	sh.shader.destroy()
+	sh.fb.Destroy()
+}
+
+// moreProcessing should be true if more shaders are to be applied to the framebuffer before presentation
+func (sh *photoShader) setAttributesArgs(env shaderEnvironment) uint32 {
+	_ = sh.fb.Setup(env.width, env.height)
+
+	env.useInternalProj = true
+	src := env.srcTextureID
+
+	const (
+		// an accumulation of consecutive frames producing a phosphor effect
+		photoPhosphorIdx = iota
+
+		// the finalised texture after all processing. the only thing left to
+		// do is to (a) present it, or (b) copy it into idxModeProcessing so it
+		// can be processed further
+		photoLastIdx
+
+		// the final photo
+		photoFinal
+
+		// a blurred bloomed copy of the previous frame
+		photoPrevIdx
+	)
+
+	if sh.img.crtPrefs.Phosphor.Get().(bool) {
+		// use blur shader to add bloom to previous phosphor
+		env.srcTextureID = sh.fb.Process(photoPhosphorIdx, func() {
+			env.srcTextureID = sh.fb.Texture(photoPhosphorIdx)
+			phosphorBloom := sh.img.crtPrefs.PhosphorBloom.Get().(float64)
+			sh.blurShader.(*blurShader).setAttributesArgs(env, float32(phosphorBloom))
+			env.draw()
+		})
+	}
+
+	// add new frame to phosphor buffer
+	env.srcTextureID = sh.fb.Process(photoPhosphorIdx, func() {
+		phosphorLatency := sh.img.crtPrefs.PhosphorLatency.Get().(float64)
+		sh.phosphorShader.(*phosphorShader).setAttributesArgs(env, float32(phosphorLatency), src)
+		env.draw()
+	})
+
+	// blur result of phosphor a little more
+	env.srcTextureID = sh.fb.Process(photoLastIdx, func() {
+		sh.blurShader.(*blurShader).setAttributesArgs(env, 0.17)
+		env.draw()
+	})
+
+	// blend with prev frame
+	env.srcTextureID = sh.fb.Process(photoLastIdx, func() {
+		sh.blendShader.(*blendShader).setAttributesArgs(env, 1.0, 1.0, sh.fb.Texture(photoPrevIdx))
+		env.draw()
+	})
+
+	// create final photo
+	sh.fb.Clear(photoFinal)
+	env.srcTextureID = sh.fb.Process(photoFinal, func() {
+		sh.effectsShaderFlipped.setAttributes(env)
+		env.draw()
+	})
+
+	// prepare prev frame for merging
+	env.srcTextureID = sh.fb.Process(photoPrevIdx, func() {
+		env.srcTextureID = src
+		sh.blurShader.(*blurShader).setAttributesArgs(env, 0.5)
+		env.draw()
+	})
+
+	return env.srcTextureID
+}
+
+type playscrShader struct {
+	img *SdlImgui
+	crt shaderProgram
+
+	photo shaderProgram
+	save  bool
+}
+
+func newPlayscrShader(img *SdlImgui) shaderProgram {
 	sh := &playscrShader{
-		crt: newCRTShader(),
+		img:   img,
+		crt:   newCRTShader(img),
+		photo: newPhotoShader(img),
 	}
 	return sh
 }
@@ -621,30 +760,49 @@ func (sh *playscrShader) destroy() {
 	sh.crt.destroy()
 }
 
+func (sh *playscrShader) scheduleSave() {
+	sh.save = true
+}
+
 func (sh *playscrShader) setAttributes(env shaderEnvironment) {
-	if !env.img.isPlaymode() {
+	if !sh.img.isPlaymode() {
 		return
 	}
 
-	env.img.screen.crit.section.Lock()
-	env.width = int32(env.img.playScr.scaledWidth())
-	env.height = int32(env.img.playScr.scaledHeight())
-	env.img.screen.crit.section.Unlock()
+	sh.img.screen.crit.section.Lock()
+	env.width = int32(sh.img.playScr.scaledWidth())
+	env.height = int32(sh.img.playScr.scaledHeight())
+	sh.img.screen.crit.section.Unlock()
 
 	env.internalProj = env.presentationProj
 
 	// set scissor and viewport
-	gl.Viewport(int32(-env.img.playScr.imagePosMin.X),
-		int32(-env.img.playScr.imagePosMin.Y),
-		env.width+(int32(env.img.playScr.imagePosMin.X*2)),
-		env.height+(int32(env.img.playScr.imagePosMin.Y*2)),
+	gl.Viewport(int32(-sh.img.playScr.imagePosMin.X),
+		int32(-sh.img.playScr.imagePosMin.Y),
+		env.width+(int32(sh.img.playScr.imagePosMin.X*2)),
+		env.height+(int32(sh.img.playScr.imagePosMin.Y*2)),
 	)
-	gl.Scissor(int32(-env.img.playScr.imagePosMin.X),
-		int32(-env.img.playScr.imagePosMin.Y),
-		env.width+(int32(env.img.playScr.imagePosMin.X*2)),
-		env.height+(int32(env.img.playScr.imagePosMin.Y*2)),
+	gl.Scissor(int32(-sh.img.playScr.imagePosMin.X),
+		int32(-sh.img.playScr.imagePosMin.Y),
+		env.width+(int32(sh.img.playScr.imagePosMin.X*2)),
+		env.height+(int32(sh.img.playScr.imagePosMin.Y*2)),
 	)
 
-	enabled := env.img.crtPrefs.Enabled.Get().(bool)
+	enabled := sh.img.crtPrefs.Enabled.Get().(bool)
+
+	sh.photo.(*photoShader).setAttributesArgs(env)
+	if sh.save {
+		sh.save = false
+
+		filename := "foo.jpg"
+
+		err := sh.photo.(*photoShader).fb.SaveJPEG(2, filename)
+		if err != nil {
+			logger.Log("screenshot", err.Error())
+		} else {
+			logger.Logf("screenshot", "saved to %s", filename)
+		}
+	}
+
 	sh.crt.(*crtShader).setAttributesArgs(env, enabled, false)
 }

@@ -82,6 +82,11 @@ func (img *SdlImgui) Service() {
 						}
 					}
 
+				case "F8":
+					if img.isPlaymode() {
+						img.glsl.shaders[playscrShaderID].(*playscrShader).scheduleSave()
+					}
+
 				case "F9":
 					if img.isPlaymode() {
 						w := img.wm.windows[winTIARevisionsID]
