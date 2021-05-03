@@ -24,7 +24,7 @@ import (
 // scripts into regressionScripts directory. calls paths.UniqueFilename() to
 // maintain common formatting used in the project.
 func uniqueFilename(prepend string, cartload cartridgeloader.Loader) (string, error) {
-	f := paths.UniqueFilename(prepend, cartload)
+	f := paths.UniqueFilename(prepend, cartload.ShortName())
 
 	scrPth, err := paths.ResourcePath(regressionScripts, f)
 	if err != nil {

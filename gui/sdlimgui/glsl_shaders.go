@@ -16,6 +16,7 @@
 package sdlimgui
 
 import (
+	"fmt"
 	"strings"
 	"time"
 	"unsafe"
@@ -28,6 +29,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 	"github.com/jetsetilly/gopher2600/logger"
+	"github.com/jetsetilly/gopher2600/paths"
 )
 
 type shaderProgram interface {
@@ -794,7 +796,7 @@ func (sh *playscrShader) setAttributes(env shaderEnvironment) {
 	if sh.save {
 		sh.save = false
 
-		filename := "foo.jpg"
+		filename := fmt.Sprintf("%s.jpg", paths.UniqueFilename("photo", sh.img.vcs.Mem.Cart.ShortName))
 
 		err := sh.photo.(*photoShader).fb.SaveJPEG(2, filename)
 		if err != nil {

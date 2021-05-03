@@ -19,8 +19,6 @@ import (
 	"fmt"
 	"strings"
 	"time"
-
-	"github.com/jetsetilly/gopher2600/cartridgeloader"
 )
 
 // UniqueFilename creates a filename that (assuming a functioning clock) should
@@ -40,13 +38,13 @@ import (
 // no cartridge name the returned string will be of the format:
 //
 //     prepend_YYYYMMDD_HHMMSS
-func UniqueFilename(prepend string, cartload cartridgeloader.Loader) string {
+func UniqueFilename(prepend string, shortCartName string) string {
 	n := time.Now()
 	timestamp := fmt.Sprintf("%04d%02d%02d_%02d%02d%02d", n.Year(), n.Month(), n.Day(), n.Hour(), n.Minute(), n.Second())
 
 	var fn string
 
-	c := strings.TrimSpace(cartload.ShortName())
+	c := strings.TrimSpace(shortCartName)
 	if len(c) > 0 {
 		fn = fmt.Sprintf("%s_%s_%s", prepend, c, timestamp)
 	} else {

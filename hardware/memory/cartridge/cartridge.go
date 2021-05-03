@@ -39,8 +39,9 @@ type Cartridge struct {
 
 	// filename/hash taken from cartridgeloader. choosing not to keep a
 	// reference to the cartridge loader itself.
-	Filename string
-	Hash     string
+	Filename  string
+	ShortName string
+	Hash      string
 
 	// the specific cartridge data, mapped appropriately to the memory
 	// interfaces
@@ -131,6 +132,7 @@ func (cart *Cartridge) Write(addr uint16, data uint8) error {
 // attaches a bank of empty memory - for convenience of the debugger.
 func (cart *Cartridge) Eject() {
 	cart.Filename = "ejected"
+	cart.ShortName = "ejected"
 	cart.Hash = ""
 	cart.mapper = newEjected()
 }
@@ -155,6 +157,7 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 	}
 
 	cart.Filename = cartload.Filename
+	cart.ShortName = cartload.ShortName()
 	cart.Hash = cartload.Hash
 	cart.mapper = newEjected()
 

@@ -119,7 +119,7 @@ func Play(tv *television.Television, scr gui.GUI, newRecording bool, cartload ca
 		// new recording requested
 
 		// create a unique filename
-		recording = paths.UniqueFilename("recording", cartload)
+		recording = paths.UniqueFilename("recording", cartload.ShortName())
 
 		// prepare new recording
 		rec, err := recorder.NewRecorder(recording, vcs)

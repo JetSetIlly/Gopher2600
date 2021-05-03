@@ -20,7 +20,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
 	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/logger"
@@ -231,7 +230,7 @@ func (win *winTerm) draw() {
 }
 
 func (win *winTerm) saveOutput() {
-	fn := paths.UniqueFilename("terminal", cartridgeloader.Loader{})
+	fn := paths.UniqueFilename("terminal", "")
 	f, err := os.Create(fn)
 	if err != nil {
 		win.output = append(win.output, terminalOutput{
