@@ -74,6 +74,20 @@ void main() {
 		Crt_Color.rgb = clamp(Crt_Color.rgb, vec3(vb), vec3(1.0));
 	}
 
+	// shadow mask
+	if (ShadowMask == 1) {
+		if (mod(floor(gl_FragCoord.x), 2) == 0.0) {
+			Crt_Color.rgb *= MaskBright;
+		}
+	}
+
+	// scanlines
+	if (Scanlines == 1) { 
+		float scans = clamp(0.35+0.18*sin(uv.y*ScreenDim.y*2.0), 0.0, 1.0);
+		float s = pow(scans,1.0-ScanlinesBright);
+		Crt_Color.rgb *= vec3(s);
+	}
+
 	// noise (includes flicker)
 	if (Noise == 1) {
 		float n;
@@ -89,20 +103,6 @@ void main() {
 		// flicker
 		float level = 0.004;
 		Crt_Color *= (1.0-level*(sin(50.0*Time+uv.y*2.0)*0.5+0.5));
-	}
-
-	// shadow mask
-	if (ShadowMask == 1) {
-		if (mod(floor(gl_FragCoord.x), 2) == 0.0) {
-			Crt_Color.rgb *= MaskBright;
-		}
-	}
-
-	// scanlines
-	if (Scanlines == 1) { 
-		float scans = clamp(0.35+0.18*sin(uv.y*ScreenDim.y*2.0), 0.0, 1.0);
-		float s = pow(scans,1.0-ScanlinesBright);
-		Crt_Color.rgb *= vec3(s);
 	}
 
 	// fringing (chromatic aberration)
