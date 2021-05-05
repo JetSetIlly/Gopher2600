@@ -21,7 +21,7 @@ import (
 	"os"
 
 	"github.com/go-gl/gl/v3.2-core/gl"
-	"github.com/jetsetilly/gopher2600/curated"
+	"github.com/jetsetilly/gopher2600/logger"
 )
 
 // Sequence represents the sequence of textures that can be assigned to a framebuffer.
@@ -78,6 +78,11 @@ func (seq *Sequence) Setup(width int32, height int32) bool {
 	return true
 }
 
+// Len returns the number of textures employed in the framebuffer sequence
+func (seq *Sequence) Len() int {
+	return len(seq.textures)
+}
+
 // Texture returns the texture ID related to the idxTexture.
 func (seq *Sequence) Texture(idxTexture int) uint32 {
 	return seq.textures[idxTexture]
@@ -111,22 +116,26 @@ func (seq *Sequence) Process(idxTexture int, draw func()) uint32 {
 //
 // Changes the state of the frame buffer.
 func (seq *Sequence) SaveJPEG(idxTexture int, path string) error {
-	seq.bind(idxTexture)
-
 	img := image.NewRGBA(image.Rect(0, 0, int(seq.width), int(seq.height)))
+
+	seq.bind(idxTexture)
 	gl.ReadPixels(0, 0, seq.width, seq.height, gl.RGBA, gl.UNSIGNED_BYTE, gl.Ptr(img.Pix))
 
-	f, err := os.Create(path)
-	if err != nil {
-		return curated.Errorf("glsl: save: %v", err)
-	}
+	// this seems to trigger a race condition but I can't see why. without it
+	// performance suffers.
+	go func() {
+		f, err := os.Create(path)
+		if err != nil {
+			logger.Log("screenshot save failed: %v", err.Error())
+		}
 
-	jpeg.Encode(f, img, &jpeg.Options{Quality: 100})
+		jpeg.Encode(f, img, &jpeg.Options{Quality: 100})
 
-	err = f.Close()
-	if err != nil {
-		return curated.Errorf("glsl: save: %v", err)
-	}
+		err = f.Close()
+		if err != nil {
+			logger.Log("screenshot save failed: %v", err.Error())
+		}
+	}()
 
 	return nil
 }

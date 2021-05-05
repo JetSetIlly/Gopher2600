@@ -84,7 +84,7 @@ func (img *SdlImgui) Service() {
 
 				case "F8":
 					if img.isPlaymode() {
-						img.glsl.shaders[playscrShaderID].(*playscrShader).scheduleSave()
+						img.glsl.shaders[playscrShaderID].(*playscrShader).scheduleScreenshot()
 					}
 
 				case "F9":
