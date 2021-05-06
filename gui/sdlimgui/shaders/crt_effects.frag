@@ -68,12 +68,6 @@ void main() {
 	// basic color
 	Crt_Color = Frag_Color * texture(Texture, uv.st);
 
-	// video-black correction
-	if (Curve == 1) {
-		float vb = 0.14;
-		Crt_Color.rgb = clamp(Crt_Color.rgb, vec3(vb), vec3(1.0));
-	}
-
 	// shadow mask
 	if (ShadowMask == 1) {
 		if (mod(floor(gl_FragCoord.x), 2) == 0.0) {

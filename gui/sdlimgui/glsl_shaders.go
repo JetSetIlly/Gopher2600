@@ -423,21 +423,37 @@ func (sh *effectsShader) setAttributes(env shaderEnvironment) {
 
 type phosphorShader struct {
 	shader
-	newFrame int32
-	latency  int32
+
+	img *SdlImgui
+
+	newFrame          int32
+	latency           int32
+	correctVideoBlack int32
 }
 
-func newPhosphorShader() shaderProgram {
-	sh := &phosphorShader{}
+func newPhosphorShader(img *SdlImgui) shaderProgram {
+	sh := &phosphorShader{
+		img: img,
+	}
 	sh.createProgram(string(shaders.YFlipVertexShader), string(shaders.CRTPhosphorFragShader))
 	sh.newFrame = gl.GetUniformLocation(sh.handle, gl.Str("NewFrame"+"\x00"))
 	sh.latency = gl.GetUniformLocation(sh.handle, gl.Str("Latency"+"\x00"))
+	sh.correctVideoBlack = gl.GetUniformLocation(sh.handle, gl.Str("CorrectVideoBlack"+"\x00"))
 	return sh
 }
 
 func (sh *phosphorShader) setAttributesArgs(env shaderEnvironment, latency float32, newFrame uint32) {
 	sh.shader.setAttributes(env)
 	gl.Uniform1f(sh.latency, latency)
+
+	// video black correction happens when screen is curved
+	var correction bool
+	if sh.img.isPlaymode() {
+		correction = sh.img.crtPrefs.Curve.Get().(bool) && sh.img.crtPrefs.Enabled.Get().(bool)
+	} else {
+		correction = sh.img.crtPrefs.Curve.Get().(bool) && sh.img.wm.dbgScr.crt
+	}
+	gl.Uniform1i(sh.correctVideoBlack, boolToInt32(correction))
 
 	gl.ActiveTexture(gl.TEXTURE1)
 	gl.BindTexture(gl.TEXTURE_2D, uint32(newFrame))
@@ -506,7 +522,7 @@ func newCRTShader(img *SdlImgui) shaderProgram {
 	sh := &crtShader{
 		img:                  img,
 		fb:                   framebuffer.NewSequence(3),
-		phosphorShader:       newPhosphorShader(),
+		phosphorShader:       newPhosphorShader(img),
 		blurShader:           newBlurShader(),
 		blendShader:          newBlendShader(),
 		effectsShader:        newEffectsShader(img, false),
@@ -651,7 +667,7 @@ func newPhotoShader(img *SdlImgui) shaderProgram {
 	sh := &photoShader{
 		img:                  img,
 		fb:                   framebuffer.NewSequence(4),
-		phosphorShader:       newPhosphorShader(),
+		phosphorShader:       newPhosphorShader(img),
 		blurShader:           newBlurShader(),
 		blendShader:          newBlendShader(),
 		effectsShader:        newEffectsShader(img, false),
