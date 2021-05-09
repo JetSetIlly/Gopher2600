@@ -212,81 +212,75 @@ func (col *Collisions) tick(p0, p1, m0, m1, bl, pf bool) {
 	col.LastVideoCycle.reset()
 
 	if m0 {
-		if p1 || p0 {
-			if p1 {
-				col.CXM0P |= 0x80
-				col.LastVideoCycle |= m0p1
-			}
-			if p0 {
-				col.CXM0P |= 0x40
-				col.LastVideoCycle |= m0p0
-			}
+		if p1 {
+			col.CXM0P |= 0x80
+			col.LastVideoCycle |= m0p1
+			col.mem.ChipWrite(addresses.CXM0P, col.CXM0P)
+		}
+		if p0 {
+			col.CXM0P |= 0x40
+			col.LastVideoCycle |= m0p0
 			col.mem.ChipWrite(addresses.CXM0P, col.CXM0P)
 		}
 
-		if pf || bl {
-			if pf {
-				col.CXM0FB |= 0x80
-				col.LastVideoCycle |= m0pf
-			}
-			if bl {
-				col.CXM0FB |= 0x40
-				col.LastVideoCycle |= m0bl
-			}
+		if pf {
+			col.CXM0FB |= 0x80
+			col.LastVideoCycle |= m0pf
+			col.mem.ChipWrite(addresses.CXM0FB, col.CXM0FB)
+		}
+		if bl {
+			col.CXM0FB |= 0x40
+			col.LastVideoCycle |= m0bl
 			col.mem.ChipWrite(addresses.CXM0FB, col.CXM0FB)
 		}
 	}
 
 	if m1 {
-		if p1 || p0 {
-			if p0 {
-				col.CXM1P |= 0x80
-				col.LastVideoCycle |= m1p0
-			}
-			if p1 {
-				col.CXM1P |= 0x40
-				col.LastVideoCycle |= m1p1
-			}
+		if p0 {
+			col.CXM1P |= 0x80
+			col.LastVideoCycle |= m1p0
+			col.mem.ChipWrite(addresses.CXM1P, col.CXM1P)
+		}
+		if p1 {
+			col.CXM1P |= 0x40
+			col.LastVideoCycle |= m1p1
 			col.mem.ChipWrite(addresses.CXM1P, col.CXM1P)
 		}
 
-		if pf || bl {
-			if pf {
-				col.CXM1FB |= 0x80
-				col.LastVideoCycle |= m1pf
-			}
-			if bl {
-				col.CXM1FB |= 0x40
-				col.LastVideoCycle |= m1bl
-			}
+		if pf {
+			col.CXM1FB |= 0x80
+			col.LastVideoCycle |= m1pf
+			col.mem.ChipWrite(addresses.CXM1FB, col.CXM1FB)
+		}
+		if bl {
+			col.CXM1FB |= 0x40
+			col.LastVideoCycle |= m1bl
 			col.mem.ChipWrite(addresses.CXM1FB, col.CXM1FB)
 		}
 	}
 
 	if p0 {
-		if pf || bl {
-			if pf {
-				col.CXP0FB |= 0x80
-				col.LastVideoCycle |= p0pf
-			}
-			if bl {
-				col.CXP0FB |= 0x40
-				col.LastVideoCycle |= p0bl
-			}
+		if pf {
+			col.CXP0FB |= 0x80
+			col.LastVideoCycle |= p0pf
+			col.mem.ChipWrite(addresses.CXP0FB, col.CXP0FB)
+		}
+		if bl {
+			col.CXP0FB |= 0x40
+			col.LastVideoCycle |= p0bl
 			col.mem.ChipWrite(addresses.CXP0FB, col.CXP0FB)
 		}
 	}
 
 	if p1 {
-		if pf || bl {
-			if pf {
-				col.CXP1FB |= 0x80
-				col.LastVideoCycle |= p1pf
-			}
-			if bl {
-				col.CXP1FB |= 0x40
-				col.LastVideoCycle |= p1bl
-			}
+		if pf {
+			col.CXP1FB |= 0x80
+			col.LastVideoCycle |= p1pf
+			col.mem.ChipWrite(addresses.CXP1FB, col.CXP1FB)
+		}
+		if bl {
+			col.CXP1FB |= 0x40
+			col.LastVideoCycle |= p1bl
 			col.mem.ChipWrite(addresses.CXP1FB, col.CXP1FB)
 		}
 	}
@@ -298,104 +292,15 @@ func (col *Collisions) tick(p0, p1, m0, m1, bl, pf bool) {
 	}
 	// no bit 6 for CXBLPF
 
-	if (p0 && p1) || (m0 && m1) {
-		if p0 && p1 {
-			col.CXPPMM |= 0x80
-			col.LastVideoCycle |= p0p1
-		}
-		if m0 && m1 {
-			col.CXPPMM |= 0x40
-			col.LastVideoCycle |= m0m1
-		}
+	if p0 && p1 {
+		col.CXPPMM |= 0x80
+		col.LastVideoCycle |= p0p1
+		col.mem.ChipWrite(addresses.CXPPMM, col.CXPPMM)
+	}
+
+	if m0 && m1 {
+		col.CXPPMM |= 0x40
+		col.LastVideoCycle |= m0m1
 		col.mem.ChipWrite(addresses.CXPPMM, col.CXPPMM)
 	}
 }
-
-// this is a naive implementation of the collision registers checking. the
-// version above is "optimised" but the reference implementation below is maybe
-// easier to understand.
-// func (col *Collisions) tickReference(p0, p1, m0, m1, bl, pf bool) { // nolint: unused
-// 	col.Value = 0
-//
-// 	if m0 && p1 {
-// 		col.CXM0P |= 0x80
-// 		col.Value |= m0p1
-// 	}
-// 	if m0 && p0 {
-// 		col.CXM0P |= 0x40
-// 		col.Value |= m0p0
-// 	}
-//
-// 	if m1 && p0 {
-// 		col.CXM1P |= 0x80
-// 		col.Value |= m1p0
-// 	}
-// 	if m1 && p1 {
-// 		col.CXM1P |= 0x40
-// 		col.Value |= m1p1
-// 	}
-//
-// 	// use active bit when comparing with playfield
-// 	if p0 && pf {
-// 		col.CXP0FB |= 0x80
-// 		col.Value |= p0pf
-// 	}
-// 	if p0 && bl {
-// 		col.CXP0FB |= 0x40
-// 		col.Value |= p0bl
-// 	}
-//
-// 	// use active bit when comparing with playfield
-// 	if p1 && pf {
-// 		col.CXP1FB |= 0x80
-// 		col.Value |= p1pf
-// 	}
-// 	if p1 && bl {
-// 		col.CXP1FB |= 0x40
-// 		col.Value |= p1bl
-// 	}
-//
-// 	// use active bit when comparing with playfield
-// 	if m0 && pf {
-// 		col.CXM0FB |= 0x80
-// 		col.Value |= m0pf
-// 	}
-// 	if m0 && bl {
-// 		col.CXM0FB |= 0x40
-// 		col.Value |= m0bl
-// 	}
-//
-// 	// use active bit when comparing with playfield
-// 	if m1 && pf {
-// 		col.CXM1FB |= 0x80
-// 		col.Value |= m1pf
-// 	}
-// 	if m1 && bl {
-// 		col.CXM1FB |= 0x40
-// 		col.Value |= m1bl
-// 	}
-//
-// 	if bl && pf {
-// 		col.CXBLPF |= 0x80
-// 		col.Value |= blpf
-// 	}
-// 	// no bit 6 for CXBLPF
-//
-// 	if p0 && p1 {
-// 		col.CXPPMM |= 0x80
-// 		col.Value |= p0p1
-// 	}
-// 	if m0 && m1 {
-// 		col.CXPPMM |= 0x40
-// 		col.Value |= m0m1
-// 	}
-//
-// 	col.mem.ChipWrite(addresses.CXM0P, col.CXM0P)
-// 	col.mem.ChipWrite(addresses.CXM1P, col.CXM1P)
-// 	col.mem.ChipWrite(addresses.CXP0FB, col.CXP0FB)
-// 	col.mem.ChipWrite(addresses.CXP1FB, col.CXP1FB)
-// 	col.mem.ChipWrite(addresses.CXM0FB, col.CXM0FB)
-// 	col.mem.ChipWrite(addresses.CXM1FB, col.CXM1FB)
-// 	col.mem.ChipWrite(addresses.CXBLPF, col.CXBLPF)
-// 	col.mem.ChipWrite(addresses.CXPPMM, col.CXPPMM)
-// }.
