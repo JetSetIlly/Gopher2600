@@ -121,8 +121,6 @@ func (seq *Sequence) SaveJPEG(idxTexture int, path string) error {
 	seq.bind(idxTexture)
 	gl.ReadPixels(0, 0, seq.width, seq.height, gl.RGBA, gl.UNSIGNED_BYTE, gl.Ptr(img.Pix))
 
-	// this seems to trigger a race condition but I can't see why. without it
-	// performance suffers.
 	go func() {
 		f, err := os.Create(path)
 		if err != nil {

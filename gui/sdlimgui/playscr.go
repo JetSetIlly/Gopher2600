@@ -194,9 +194,12 @@ func (win *playScr) resize() {
 
 // render() implements the textureRenderer interface.
 //
-// render is called by service loop (via screen.render()). must be inside
-// screen critical section.
+// render is called by service loop (via screen.render()). acquires it's own
+// crit.section lock.
 func (win *playScr) render() {
+	win.scr.crit.section.Lock()
+	defer win.scr.crit.section.Unlock()
+
 	pixels := win.scr.crit.cropPixels
 
 	gl.PixelStorei(gl.UNPACK_ROW_LENGTH, int32(pixels.Stride)/4)
