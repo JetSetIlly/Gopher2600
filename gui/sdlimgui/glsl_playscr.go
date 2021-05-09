@@ -186,8 +186,8 @@ func (sh *playscrShader) destroy() {
 	sh.crt.destroy()
 }
 
-func (sh *playscrShader) scheduleScreenshot() {
-	sh.camera.startExposure()
+func (sh *playscrShader) scheduleScreenshot(extended bool) {
+	sh.camera.startExposure(extended)
 }
 
 func (sh *playscrShader) setAttributes(env shaderEnvironment) {

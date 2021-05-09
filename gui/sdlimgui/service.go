@@ -84,7 +84,8 @@ func (img *SdlImgui) Service() {
 
 				case "F8":
 					if img.isPlaymode() {
-						img.glsl.shaders[playscrShaderID].(*playscrShader).scheduleScreenshot()
+						extended := ev.Keysym.Mod&sdl.KMOD_LSHIFT == sdl.KMOD_LSHIFT
+						img.glsl.shaders[playscrShaderID].(*playscrShader).scheduleScreenshot(extended)
 					}
 
 				case "F9":

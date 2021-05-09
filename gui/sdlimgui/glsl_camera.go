@@ -33,7 +33,8 @@ type cameraSequencer struct {
 	effectsShaderFlipped shaderProgram
 	colorShaderFlipped   shaderProgram
 
-	frames int
+	extended bool
+	frames   int
 }
 
 func newCameraSequencer(img *SdlImgui) *cameraSequencer {
@@ -58,8 +59,14 @@ func (sh *cameraSequencer) destroy() {
 	sh.colorShaderFlipped.destroy()
 }
 
-func (sh *cameraSequencer) startExposure() {
-	sh.frames = 5
+func (sh *cameraSequencer) startExposure(extended bool) {
+	sh.extended = extended
+	if extended {
+		sh.frames = 5
+	} else {
+		sh.frames = 1
+	}
+
 	for i := 1; i < sh.seq.Len(); i++ {
 		sh.seq.Clear(i)
 	}
@@ -103,6 +110,39 @@ func (sh *cameraSequencer) process(env shaderEnvironment) {
 
 	// nothing to do
 	if sh.frames == 0 {
+		return
+	}
+
+	// if this is a non-extended screenshot then perform a basic process
+	if !sh.extended {
+		env.srcTextureID = sh.seq.Process(camera, func() {
+			sh.blendShader.(*blendShader).setAttributesArgs(env, 1.0, 1.0, src)
+			env.draw()
+		})
+		// blur result of blended frames a little more
+		env.srcTextureID = sh.seq.Process(camera, func() {
+			sh.blurShader.(*blurShader).setAttributesArgs(env, 0.17)
+			env.draw()
+		})
+
+		// create final camera
+		sh.seq.Clear(final)
+		env.srcTextureID = sh.seq.Process(final, func() {
+			sh.effectsShaderFlipped.setAttributes(env)
+			env.draw()
+		})
+
+		// save this frame's results
+		filename := fmt.Sprintf("%s.jpg", paths.UniqueFilename("camera", sh.img.vcs.Mem.Cart.ShortName))
+		err := sh.seq.SaveJPEG(final, filename)
+		if err != nil {
+			logger.Log("camera", err.Error())
+		} else {
+			logger.Logf("camera", "saved to %s", filename)
+		}
+
+		// end non-extended screenshot early
+		sh.frames--
 		return
 	}
 
