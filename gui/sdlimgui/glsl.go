@@ -17,7 +17,6 @@ package sdlimgui
 
 import (
 	"fmt"
-	"unsafe"
 
 	"github.com/go-gl/gl/v3.2-core/gl"
 	"github.com/inkyblackness/imgui-go/v4"
@@ -253,7 +252,7 @@ func (rnd *glsl) render() {
 				}
 
 				env.draw = func() {
-					gl.DrawElements(gl.TRIANGLES, int32(cmd.ElementCount()), uint32(drawType), unsafe.Pointer(indexBufferOffset))
+					gl.DrawElementsWithOffset(gl.TRIANGLES, int32(cmd.ElementCount()), uint32(drawType), indexBufferOffset)
 				}
 
 				// set attributes for the selected shader
