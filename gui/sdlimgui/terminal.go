@@ -23,7 +23,13 @@ import (
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
+type lazyPause interface {
+	PauseUpdates()
+}
+
 type term struct {
+	lazyPause lazyPause
+
 	// input from the terminal window
 	inputChan chan string
 
@@ -47,8 +53,10 @@ type term struct {
 	tabCompletion terminal.TabCompletion
 }
 
-func newTerm() *term {
+func newTerm(lazyPause lazyPause) *term {
 	trm := &term{
+		lazyPause: lazyPause,
+
 		// inputChan must not block
 		inputChan: make(chan string, 1),
 
@@ -164,6 +172,7 @@ func (trm *term) pushCommand(input string) {
 	select {
 	case trm.sideChan <- input:
 		trm.sideChanLast.Store(true)
+		trm.lazyPause.PauseUpdates()
 	default:
 		// hopefully the side channel buffer is deep enough so that we don't
 		// ever have to drop input before the buffer can emptied in TermRead().
