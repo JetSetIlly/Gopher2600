@@ -76,7 +76,7 @@ func (win *winTIA) drawMissile(missile int) {
 	hmove := fmt.Sprintf("%01x", lz.Hmove)
 	if imguiHexInput("##hmove", 1, &hmove) {
 		if v, err := strconv.ParseUint(hmove, 16, 8); err == nil {
-			win.img.lz.Dbg.PushRawEvent(func() { ps.Hmove = uint8(v) })
+			win.img.lz.Dbg.PushRawEvent(func() { ms.Hmove = uint8(v) })
 		}
 	}
 
@@ -84,7 +84,7 @@ func (win *winTIA) drawMissile(missile int) {
 	imgui.PushItemWidth(win.hmoveSliderWidth)
 	hmoveSlider := int32(lz.Hmove) - 8
 	if imgui.SliderIntV("##hmoveslider", &hmoveSlider, -8, 7, "%d", imgui.SliderFlagsNone) {
-		win.img.lz.Dbg.PushRawEvent(func() { ps.Hmove = uint8(hmoveSlider + 8) })
+		win.img.lz.Dbg.PushRawEvent(func() { ms.Hmove = uint8(hmoveSlider + 8) })
 	}
 	imgui.PopItemWidth()
 	imgui.EndGroup()
