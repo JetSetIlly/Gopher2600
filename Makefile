@@ -1,4 +1,5 @@
 compileFlags = '-c 3 -B -wb=false'
+
 #profilingRom = roms/Homebrew/CDF/galaga_dmo_v2_NTSC.bin
 #profilingRom = roms/Homebrew/DPC+ARM/ZaxxonHDDemo_150927_NTSC.bin
 #profilingRom = roms/Rsboxing.bin
@@ -42,8 +43,8 @@ ifeq (, $(shell which glslangValidator))
 endif
 
 glsl_validate: check_glsl
-	@glslangValidator gui/crt/shaders/generator/fragment.frag
-	@glslangValidator gui/crt/shaders/generator/vertex.vert
+	@glslangValidator gui/sdlimgui/shaders/*.vert
+	@glslangValidator gui/sdlimgui/shaders/*.frag
 
 check_pandoc:
 ifeq (, $(shell which pandoc))
@@ -57,20 +58,25 @@ test:
 	go test ./...
 
 race: generate test
-# disable checkptr because the opengl implementation will trigger it and cause
-# a lot of output noise
-	# go run -race -gcflags=all=-d=checkptr=0 gopher2600.go $(profilingRom)
 	go run -race gopher2600.go $(profilingRom)
 
-profile: generate test
-	go build -gcflags $(compileFlags)
-	@echo
-	@echo "WHAT NEXT"
-	@echo "---------"
-	@echo "1.  run gopher2600 in RUN, DEBUG or PERFORMANCE mode"
-	@echo "1a. use --profile argument. CPU, MEM, TRACE for profiling types (comma separated)"
-	@echo "2.  view cpu and mem profile with: go tool pprof -http : ./gopher2600 <profile>"
-	@echo "2b. view trace with: go tool trace -http : <trace_profile>"
+profile_cpu: generate test
+	@go build -gcflags $(compileFlags)
+	@echo "use window close button to end (CTRL-C will quite the Makefile script)"
+	@./gopher2600 --profile cpu $(profilingRom)
+	@go tool pprof -http : ./gopher2600 play_cpu.profile
+
+profile_mem: generate test
+	@go build -gcflags $(compileFlags)
+	@echo "use window close button to end (CTRL-C will quite the Makefile script)"
+	@./gopher2600 --profile mem $(profilingRom)
+	@go tool pprof -http : ./gopher2600 play_mem.profile
+
+profile_trace: generate test
+	@go build -gcflags $(compileFlags)
+	@echo "use window close button to end (CTRL-C will quite the Makefile script)"
+	@./gopher2600 --profile trace $(profilingRom)
+	@go tool trace -http : play_trace.profile
 
 build_assertions: generate test
 	go build -gcflags $(compileFlags) -tags=assertions
@@ -111,11 +117,3 @@ cross_windows_statsview: generate
 
 binaries: release release_statsview cross_windows cross_windows_statsview
 	@echo "build release binaries"
-
-check_gotip:
-ifeq (, $(shell which gotip))
-	$(error "gotip not installed")
-endif
-
-build_with_gotip: check_gotip generate
-	gotip build -gcflags $(compileFlags)
