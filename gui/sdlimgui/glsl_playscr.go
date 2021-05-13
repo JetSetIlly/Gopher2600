@@ -88,19 +88,11 @@ func (sh *crtSequencer) process(env shaderEnvironment, enabled bool, moreProcess
 
 	// phosphor draw
 	phosphorPasses := 1
-	phosphorLatency := sh.img.crtPrefs.PhosphorLatency.Get().(float64)
-	phosphorBloom := sh.img.crtPrefs.PhosphorBloom.Get().(float64)
-	fade := sh.img.crtPrefs.PixelPerfectFade.Get().(float64)
 
-	// make sure our framebuffer is correct
-	changed := sh.seq.Setup(env.width, env.height)
-
-	// if framebuffer has changed then alter the phosphor/fade options
-	if changed {
-		phosphorPasses = 2
-		phosphorLatency = 0.0
-		phosphorBloom = 0.0
-		fade = 0.0
+	// make sure our framebuffer is correct. if framebuffer has changed then
+	// alter the phosphor/fade options
+	if sh.seq.Setup(env.width, env.height) {
+		phosphorPasses = 3
 	}
 
 	for i := 0; i < phosphorPasses; i++ {
@@ -109,6 +101,7 @@ func (sh *crtSequencer) process(env shaderEnvironment, enabled bool, moreProcess
 				// use blur shader to add bloom to previous phosphor
 				env.srcTextureID = sh.seq.Process(crtPhosphorIdx, func() {
 					env.srcTextureID = sh.seq.Texture(crtPhosphorIdx)
+					phosphorBloom := sh.img.crtPrefs.PhosphorBloom.Get().(float64)
 					sh.blurShader.(*blurShader).setAttributesArgs(env, float32(phosphorBloom))
 					env.draw()
 				})
@@ -116,6 +109,7 @@ func (sh *crtSequencer) process(env shaderEnvironment, enabled bool, moreProcess
 
 			// add new frame to phosphor buffer
 			env.srcTextureID = sh.seq.Process(crtPhosphorIdx, func() {
+				phosphorLatency := sh.img.crtPrefs.PhosphorLatency.Get().(float64)
 				sh.phosphorShader.(*phosphorShader).setAttributesArgs(env, float32(phosphorLatency), src)
 				env.draw()
 			})
@@ -123,6 +117,7 @@ func (sh *crtSequencer) process(env shaderEnvironment, enabled bool, moreProcess
 			// add new frame to phosphor buffer (using phosphor buffer for pixel perfect fade)
 			env.srcTextureID = sh.seq.Process(crtPhosphorIdx, func() {
 				env.srcTextureID = sh.seq.Texture(crtPhosphorIdx)
+				fade := sh.img.crtPrefs.PixelPerfectFade.Get().(float64)
 				sh.phosphorShader.(*phosphorShader).setAttributesArgs(env, float32(fade), src)
 				env.draw()
 			})
@@ -136,13 +131,11 @@ func (sh *crtSequencer) process(env shaderEnvironment, enabled bool, moreProcess
 			env.draw()
 		})
 
-		if !changed {
-			// blend blur with src texture
-			env.srcTextureID = sh.seq.Process(crtLastIdx, func() {
-				sh.blendShader.(*blendShader).setAttributesArgs(env, 1.0, 0.32, src)
-				env.draw()
-			})
-		}
+		// blend blur with src texture
+		env.srcTextureID = sh.seq.Process(crtLastIdx, func() {
+			sh.blendShader.(*blendShader).setAttributesArgs(env, 1.0, 0.32, src)
+			env.draw()
+		})
 
 		if moreProcessing {
 			sh.seq.Clear(crtMoreProcessingIdx)

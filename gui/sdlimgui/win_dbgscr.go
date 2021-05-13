@@ -164,6 +164,12 @@ func (win *winDbgScr) draw() {
 	win.scr.crit.section.Lock()
 	defer win.scr.crit.section.Unlock()
 
+	// set screen image scaling (and image padding) based on the current window
+	// size. unlike the playscr we check and set scaling every frame. we also
+	// do this at draw() time rather than render() time, otherwise the sizing
+	// would be a frame behind.
+	win.setScaling()
+
 	// actual display
 	var w, h float32
 	if win.cropped {
@@ -657,10 +663,6 @@ func (win *winDbgScr) render() {
 			gl.RGBA, gl.UNSIGNED_BYTE,
 			gl.Ptr(overlay.Pix))
 	}
-
-	// set screen image scaling (and image padding) based on the current window
-	// size. unlike the playscr we check and set scaling every render frame.
-	win.setScaling()
 }
 
 // must be called from with a critical section.
@@ -680,12 +682,20 @@ func (win *winDbgScr) setScaling() {
 
 	aspectRatio := imageW / imageH
 
+	var scaling float32
 	if aspectRatio < winAspectRatio {
-		win.scaling = win.screenDim.Y / imageH
-		win.imagePadding = imgui.Vec2{X: float32(int((win.screenDim.X - (imageW * win.scaling)) / 2))}
+		scaling = win.screenDim.Y / imageH
+		win.imagePadding = imgui.Vec2{X: float32(int((win.screenDim.X - (imageW * scaling)) / 2))}
 	} else {
-		win.scaling = win.screenDim.X / imageW
-		win.imagePadding = imgui.Vec2{Y: float32(int((win.screenDim.Y - (imageH * win.scaling)) / 2))}
+		scaling = win.screenDim.X / imageW
+		win.imagePadding = imgui.Vec2{Y: float32(int((win.screenDim.Y - (imageH * scaling)) / 2))}
+	}
+
+	if scaling != win.scaling {
+		win.scaling = scaling
+
+		// alert polling system - do not wait to resolve frame
+		win.img.polling.alert()
 	}
 }
 

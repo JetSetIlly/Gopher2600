@@ -55,6 +55,7 @@ func (img *SdlImgui) Service() {
 		case *sdl.WindowEvent:
 			img.screen.crit.section.Lock()
 			img.playScr.setScaling()
+			img.polling.alert()
 			img.screen.crit.section.Unlock()
 
 		case *sdl.TextInputEvent:
