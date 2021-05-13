@@ -95,8 +95,8 @@ void main() {
 		}
 
 		// flicker
-		float level = 0.004;
-		Crt_Color *= (1.0-level*(sin(50.0*Time+uv.y*2.0)*0.5+0.5));
+		/* float level = 0.004; */
+		/* Crt_Color *= (1.0-level*(sin(50.0*Time+uv.y*2.0)*0.5+0.5)); */
 	}
 
 	// fringing (chromatic aberration)
@@ -110,19 +110,30 @@ void main() {
 			float m = 0.020 - (0.010 * CurveAmount);
 			float l = FringingAmount * m;
 
-			// aberration amount limited to reasonabl values
-			ab = clamp(ab*l, 0.0009, 0.004);
+			// aberration amount limited to reasonable values
+			ab *= l;
+
+			// minimum amount of aberration
+			ab = clamp(vec2(0.04), ab, ab);
 		} else {
-			float f = FringingAmount * 0.005;
-			ab = vec2(f);
+			ab.x = abs(uv.x-0.5);
+			ab.y = abs(uv.y-0.5);
+			ab *= FringingAmount * 0.015;
 		}
 	}
 
-	// always perform the aberration if the ab amount is 0.0. without this and
-	// if Fringing is off, the screen is too harsh.
-	Crt_Color.r += texture(Texture, vec2(uv.x-ab.x, uv.y+ab.y)).r;
-	Crt_Color.g += texture(Texture, vec2(uv.x+ab.x, uv.y-ab.y)).g;
-	Crt_Color.b += texture(Texture, vec2(uv.x+ab.x, uv.y+ab.y)).b;
+	// adjust sign depending on which quadrant the pixel is in
+	if (uv.x <= 0.5) {
+		ab.x *= -1;
+	}
+	if (uv.y <= 0.5) {
+		ab.y *= -1;
+	}
+
+	// perform the aberration
+	Crt_Color.r += texture(Texture, vec2(uv.x+(1.0*ab.x), uv.y+(1.0*ab.y))).r;
+	Crt_Color.g += texture(Texture, vec2(uv.x+(1.4*ab.x), uv.y+(1.4*ab.y))).g;
+	Crt_Color.b += texture(Texture, vec2(uv.x+(1.8*ab.x), uv.y+(1.8*ab.y))).b;
 	Crt_Color.rgb *= 0.50;
 
 	// vignette effect
