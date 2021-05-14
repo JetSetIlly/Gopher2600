@@ -214,7 +214,7 @@ func (tv *Television) Reset(keepFrameNum bool) error {
 		tv.signals[i] = signal.SignalAttributes{}
 	}
 	tv.currentIdx = 0
-	tv.lastMaxIdx = 0
+	tv.lastMaxIdx = len(tv.signals) - 1
 
 	for _, r := range tv.renderers {
 		r.Resize(tv.state.spec, tv.state.spec.AtariSafeTop, tv.state.spec.AtariSafeBottom)
