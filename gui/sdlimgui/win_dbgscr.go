@@ -37,6 +37,9 @@ type winDbgScr struct {
 	// reference to screen data
 	scr *screen
 
+	// (re)create textures on next render()
+	createTextures bool
+
 	// textures
 	screenTexture   uint32
 	elementsTexture uint32
@@ -45,13 +48,9 @@ type winDbgScr struct {
 	// the amount of alpha to apply to the overlay
 	overlayAlpha float32
 
-	// (re)create textures on next render()
-	createTextures bool
-
 	// how to present the screen in the window
 	elements bool
 	cropped  bool
-	crt      bool
 
 	// the tv screen has captured mouse input
 	isCaptured bool
@@ -66,28 +65,28 @@ type winDbgScr struct {
 	// additional padding for the image so that it is centred in its content space
 	imagePadding imgui.Vec2
 
-	// size of window and content area in which to centre the image. we need
-	// both depending on how we set the scaling from the screen. when resizing
-	// the window, we use contentDim (the area inside the window) to figure out
-	// the scaling value. when resizing numerically (with the getScale()
-	// function) on the other hand, we scale the entire window accordingly
-	screenDim    imgui.Vec2
+	// size of area available to the screen image and origin (position) of
+	// image on the screen
+	screenRegion imgui.Vec2
 	screenOrigin imgui.Vec2
 
-	// the basic amount by which the image should be scaled. this value is
-	// applie to the vertical axis directly. horizontal scaling is scaled by
-	// pixelWidth and aspectBias also. use horizScaling() for that.
-	scaling float32
+	// scaling of texture and calculated dimensions
+	xscaling     float32
+	yscaling     float32
+	scaledWidth  float32
+	scaledHeight float32
 
 	// the dimensions required for the combo widgets
 	specComboDim imgui.Vec2
+
+	// crt preview is special
+	crt bool
 }
 
 func newWinDbgScr(img *SdlImgui) (window, error) {
 	win := &winDbgScr{
 		img:          img,
 		scr:          img.screen,
-		scaling:      2.0,
 		crt:          false,
 		cropped:      true,
 		overlayAlpha: 0.4,
@@ -170,16 +169,6 @@ func (win *winDbgScr) draw() {
 	// would be a frame behind.
 	win.setScaling()
 
-	// actual display
-	var w, h float32
-	if win.cropped {
-		w = win.scaledWidth(true)
-		h = win.scaledHeight(true)
-	} else {
-		w = win.scaledWidth(false)
-		h = win.scaledHeight(false)
-	}
-
 	// if isCaptured flag is set then change the title and border colors of the
 	// TV Screen window.
 	if win.isCaptured {
@@ -195,11 +184,11 @@ func (win *winDbgScr) draw() {
 	imgui.BeginV(win.id(), &win.open, imgui.WindowFlagsNoScrollbar)
 
 	// note size of remaining window and content area
-	win.screenDim = imgui.ContentRegionAvail()
-	win.screenDim.Y -= win.toolbarHeight
+	win.screenRegion = imgui.ContentRegionAvail()
+	win.screenRegion.Y -= win.toolbarHeight
 
 	// screen image, overlays, menus and tooltips
-	imgui.BeginChildV("##image", imgui.Vec2{win.screenDim.X, win.screenDim.Y}, false, imgui.WindowFlagsNoScrollbar)
+	imgui.BeginChildV("##image", imgui.Vec2{win.screenRegion.X, win.screenRegion.Y}, false, imgui.WindowFlagsNoScrollbar)
 
 	// add horiz/vert padding around screen image
 	imgui.SetCursorPos(imgui.CursorPos().Plus(win.imagePadding))
@@ -217,72 +206,77 @@ func (win *winDbgScr) draw() {
 	imgui.PushStyleColor(imgui.StyleColorButtonHovered, win.img.cols.Transparent)
 	imgui.PushStyleVarVec2(imgui.StyleVarFramePadding, imgui.Vec2{0.0, 0.0})
 
-	// choose which texture to use depending on whether elements is selected
-	if win.elements {
-		imgui.ImageButton(imgui.TextureID(win.elementsTexture), imgui.Vec2{w, h})
+	if win.crt {
+		imgui.ImageButton(imgui.TextureID(win.screenTexture), imgui.Vec2{win.scaledWidth, win.scaledHeight})
 	} else {
-		imgui.ImageButton(imgui.TextureID(win.screenTexture), imgui.Vec2{w, h})
-	}
+		// choose which texture to use depending on whether elements is selected
+		if win.elements {
+			imgui.ImageButton(imgui.TextureID(win.elementsTexture), imgui.Vec2{win.scaledWidth, win.scaledHeight})
+		} else {
+			imgui.ImageButton(imgui.TextureID(win.screenTexture), imgui.Vec2{win.scaledWidth, win.scaledHeight})
+		}
 
-	// overlay texture on top of screen texture
-	imgui.SetCursorScreenPos(win.screenOrigin)
-	imgui.ImageButton(imgui.TextureID(win.overlayTexture), imgui.Vec2{w, h})
+		// overlay texture on top of screen texture
+		imgui.SetCursorScreenPos(win.screenOrigin)
+		imgui.ImageButton(imgui.TextureID(win.overlayTexture), imgui.Vec2{win.scaledWidth, win.scaledHeight})
+
+		// popup menu on right mouse button
+		//
+		// we only call OpenPopup() if it's not already open. also, care taken to
+		// avoid menu opening when releasing a captured mouse.
+		if !win.isCaptured && imgui.IsItemHovered() && imgui.IsMouseDown(1) {
+			imgui.OpenPopup("breakMenu")
+		}
+
+		if imgui.BeginPopup("breakMenu") {
+			imgui.Text("Break")
+			imguiSeparator()
+			if imgui.Selectable(fmt.Sprintf("Scanline=%d", win.mouseScanline)) {
+				win.img.term.pushCommand(fmt.Sprintf("BREAK SL %d", win.mouseScanline))
+			}
+			if imgui.Selectable(fmt.Sprintf("Clock=%d", win.mouseClock)) {
+				win.img.term.pushCommand(fmt.Sprintf("BREAK CL %d", win.mouseClock))
+			}
+			if imgui.Selectable(fmt.Sprintf("Scanline=%d & Clock=%d", win.mouseScanline, win.mouseClock)) {
+				win.img.term.pushCommand(fmt.Sprintf("BREAK SL %d & CL %d", win.mouseScanline, win.mouseClock))
+			}
+			imgui.EndPopup()
+		}
+
+		// draw tool tip
+		if imgui.IsItemHovered() {
+			win.drawReflectionTooltip()
+		}
+
+		// accept mouse clicks if window is focused
+		if imgui.IsWindowFocused() {
+			// mouse click will cause the rewind goto coords to run only when the
+			// emulation is paused
+			if win.img.state == gui.StatePaused {
+				if imgui.IsMouseReleased(0) {
+					win.img.screen.gotoCoordsX = win.mouseClock
+					win.img.screen.gotoCoordsY = win.img.wm.dbgScr.mouseScanline
+					win.img.lz.Dbg.PushGotoCoords(win.img.lz.TV.Frame, win.mouseScanline, win.mouseClock-specification.ClksHBlank)
+				}
+			}
+		}
+	}
 
 	// pop style info for screen and overlay textures
 	imgui.PopStyleVar()
 	imgui.PopStyleColorV(3)
-
-	// popup menu on right mouse button
-	//
-	// we only call OpenPopup() if it's not already open. also, care taken to
-	// avoid menu opening when releasing a captured mouse.
-	if !win.isCaptured && imgui.IsItemHovered() && imgui.IsMouseDown(1) {
-		imgui.OpenPopup("breakMenu")
-	}
-
-	if imgui.BeginPopup("breakMenu") {
-		imgui.Text("Break")
-		imguiSeparator()
-		if imgui.Selectable(fmt.Sprintf("Scanline=%d", win.mouseScanline)) {
-			win.img.term.pushCommand(fmt.Sprintf("BREAK SL %d", win.mouseScanline))
-		}
-		if imgui.Selectable(fmt.Sprintf("Clock=%d", win.mouseClock)) {
-			win.img.term.pushCommand(fmt.Sprintf("BREAK CL %d", win.mouseClock))
-		}
-		if imgui.Selectable(fmt.Sprintf("Scanline=%d & Clock=%d", win.mouseScanline, win.mouseClock)) {
-			win.img.term.pushCommand(fmt.Sprintf("BREAK SL %d & CL %d", win.mouseScanline, win.mouseClock))
-		}
-		imgui.EndPopup()
-	}
-
-	// draw tool tip
-	if imgui.IsWindowHovered() {
-		win.drawReflectionTooltip(win.screenOrigin)
-	}
-
-	// accept mouse clicks if window is focused
-	if imgui.IsWindowFocused() {
-		// mouse click will cause the rewind goto coords to run only when the
-		// emulation is paused
-		if win.img.state == gui.StatePaused {
-			if imgui.IsMouseReleased(0) {
-				win.img.screen.gotoCoordsX = win.mouseClock
-				win.img.screen.gotoCoordsY = win.img.wm.dbgScr.mouseScanline
-				win.img.lz.Dbg.PushGotoCoords(win.img.lz.TV.Frame, win.mouseScanline, win.mouseClock-specification.ClksHBlank)
-			}
-		}
-	}
 
 	// end of screen image
 	imgui.EndChild()
 
 	// start of tool bar
 	win.toolbarHeight = imguiMeasureHeight(func() {
+		// tv status line
 		imgui.Spacing()
 		win.drawCoordsLine()
 		imgui.Spacing()
 
-		// tv status line
+		// tv spec
 		imgui.PushItemWidth(win.specComboDim.X)
 		if imgui.BeginComboV("##spec", win.img.lz.TV.Spec.ID, imgui.ComboFlagsNoArrowButton) {
 			for _, s := range specification.SpecList {
@@ -295,18 +289,23 @@ func (win *winDbgScr) draw() {
 		imgui.PopItemWidth()
 		imgui.SameLineV(0, 15)
 
-		// display toggles
-		imgui.Checkbox("Debug Colours", &win.elements)
-		imgui.SameLineV(0, 15)
-		if imgui.Checkbox("Cropping", &win.cropped) {
-			win.setCropping(win.cropped)
+		if imgui.Checkbox("CRT Preview", &win.crt) {
+			win.createTextures = true
 		}
-		imgui.SameLineV(0, 15)
-		imgui.Checkbox("CRT Effects", &win.crt)
-		imgui.SameLine()
 
-		imgui.SameLineV(0, 15)
-		win.drawOverlayPopup()
+		// debugging toggles
+		if !win.crt {
+			imgui.SameLineV(0, 15)
+			imgui.Checkbox("Debug Colours", &win.elements)
+
+			imgui.SameLineV(0, 15)
+			if imgui.Checkbox("Cropping", &win.cropped) {
+				win.createTextures = true
+			}
+
+			imgui.SameLineV(0, 15)
+			win.drawOverlayPopup()
+		}
 	})
 
 	imgui.End()
@@ -438,34 +437,36 @@ func (win *winDbgScr) drawCoordsLine() {
 }
 
 // called from within a win.scr.crit.section Lock().
-func (win *winDbgScr) drawReflectionTooltip(screenOrigin imgui.Vec2) {
-	// get mouse position and transform
-	mp := imgui.MousePos().Minus(screenOrigin)
-	if win.cropped {
-		sz := win.scr.crit.cropPixels.Bounds().Size()
-		mp.X = mp.X / win.scaledWidth(true) * float32(sz.X)
-		mp.Y = mp.Y / win.scaledHeight(true) * float32(sz.Y)
-		mp.X += float32(specification.ClksHBlank)
-		mp.Y += float32(win.scr.crit.topScanline)
-	} else {
-		sz := win.scr.crit.pixels.Bounds().Size()
-		mp.X = mp.X / win.scaledWidth(false) * float32(sz.X)
-		mp.Y = mp.Y / win.scaledHeight(false) * float32(sz.Y)
-	}
-
-	win.mouseClock = int(mp.X)
-	win.mouseScanline = int(mp.Y)
-
-	// get reflection information
-	var ref reflection.VideoStep
-
-	if win.mouseClock < len(win.scr.crit.reflection) && win.mouseScanline < len(win.scr.crit.reflection[win.mouseClock]) {
-		ref = win.scr.crit.reflection[win.mouseClock][win.mouseScanline]
-	}
-
+func (win *winDbgScr) drawReflectionTooltip() {
 	if win.isCaptured {
 		return
 	}
+
+	// get mouse position and transform
+	mp := imgui.MousePos().Minus(win.screenOrigin)
+
+	// lower boundary check
+	if mp.X < 0.0 || mp.Y < 0.0 {
+		return
+	}
+
+	// scale mouse position
+	win.mouseClock = int(mp.X / win.xscaling)
+	win.mouseScanline = int(mp.Y / win.yscaling)
+
+	// adjust if image is not cropped (or CRT)
+	if win.cropped || win.crt {
+		win.mouseClock += specification.ClksHBlank
+		win.mouseScanline += win.scr.crit.topScanline
+	}
+
+	// upper boundary check
+	if win.mouseClock >= len(win.scr.crit.reflection) || win.mouseScanline >= len(win.scr.crit.reflection[win.mouseClock]) {
+		return
+	}
+
+	// get reflection information
+	ref := win.scr.crit.reflection[win.mouseClock][win.mouseScanline]
 
 	// present tooltip showing pixel coords at a minimum
 	imgui.BeginTooltip()
@@ -588,11 +589,6 @@ func (win *winDbgScr) drawReflectionTooltip(screenOrigin imgui.Vec2) {
 	}
 }
 
-func (win *winDbgScr) setCropping(set bool) {
-	win.cropped = set
-	win.createTextures = true
-}
-
 // resize() implements the textureRenderer interface.
 func (win *winDbgScr) resize() {
 	win.createTextures = true
@@ -611,7 +607,7 @@ func (win *winDbgScr) render() {
 	var elements *image.RGBA
 	var overlay *image.RGBA
 
-	if win.cropped {
+	if win.cropped || win.crt {
 		pixels = win.scr.crit.cropPixels
 		elements = win.scr.crit.cropElementPixels
 		overlay = win.scr.crit.cropOverlayPixels
@@ -667,55 +663,32 @@ func (win *winDbgScr) render() {
 
 // must be called from with a critical section.
 func (win *winDbgScr) setScaling() {
-	winAspectRatio := win.screenDim.X / win.screenDim.Y
+	winRatio := win.screenRegion.X / win.screenRegion.Y
 
-	var imageW float32
-	var imageH float32
-	if win.cropped {
-		imageW = float32(win.scr.crit.cropPixels.Bounds().Size().X)
-		imageH = float32(win.scr.crit.cropPixels.Bounds().Size().Y)
+	var w float32
+	var h float32
+	if win.cropped || win.crt {
+		w = float32(win.scr.crit.cropPixels.Bounds().Size().X)
+		h = float32(win.scr.crit.cropPixels.Bounds().Size().Y)
 	} else {
-		imageW = float32(win.scr.crit.pixels.Bounds().Size().X)
-		imageH = float32(win.scr.crit.pixels.Bounds().Size().Y)
+		w = float32(win.scr.crit.pixels.Bounds().Size().X)
+		h = float32(win.scr.crit.pixels.Bounds().Size().Y)
 	}
-	imageW *= pixelWidth * win.scr.aspectBias
 
-	aspectRatio := imageW / imageH
+	adjW := w * pixelWidth * win.scr.aspectBias
+	aspectRatio := adjW / h
 
 	var scaling float32
-	if aspectRatio < winAspectRatio {
-		scaling = win.screenDim.Y / imageH
-		win.imagePadding = imgui.Vec2{X: float32(int((win.screenDim.X - (imageW * scaling)) / 2))}
+	if aspectRatio < winRatio {
+		scaling = win.screenRegion.Y / h
+		win.imagePadding = imgui.Vec2{X: float32(int((win.screenRegion.X - (adjW * scaling)) / 2))}
 	} else {
-		scaling = win.screenDim.X / imageW
-		win.imagePadding = imgui.Vec2{Y: float32(int((win.screenDim.Y - (imageH * scaling)) / 2))}
+		scaling = win.screenRegion.X / adjW
+		win.imagePadding = imgui.Vec2{Y: float32(int((win.screenRegion.Y - (h * scaling)) / 2))}
 	}
 
-	if scaling != win.scaling {
-		win.scaling = scaling
-
-		// alert polling system - do not wait to resolve frame
-		win.img.polling.alert()
-	}
-}
-
-// must be called from with a critical section.
-func (win *winDbgScr) scaledWidth(cropped bool) float32 {
-	if cropped {
-		return float32(win.scr.crit.cropPixels.Bounds().Size().X) * win.horizScaling()
-	}
-	return float32(win.scr.crit.pixels.Bounds().Size().X) * win.horizScaling()
-}
-
-// must be called from with a critical section.
-func (win *winDbgScr) scaledHeight(cropped bool) float32 {
-	if cropped {
-		return float32(win.scr.crit.cropPixels.Bounds().Size().Y) * win.scaling
-	}
-	return float32(win.scr.crit.pixels.Bounds().Size().Y) * win.scaling
-}
-
-// for vertical scaling simply refer to the scaling field.
-func (win *winDbgScr) horizScaling() float32 {
-	return pixelWidth * win.scr.aspectBias * win.scaling
+	win.yscaling = scaling
+	win.xscaling = scaling * pixelWidth * win.scr.aspectBias
+	win.scaledWidth = w * win.xscaling
+	win.scaledHeight = h * win.yscaling
 }

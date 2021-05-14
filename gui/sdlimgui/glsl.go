@@ -240,8 +240,6 @@ func (rnd *glsl) render() {
 				case rnd.img.wm.dbgScr.screenTexture:
 					shader = rnd.shaders[dbgscrShaderID]
 				case rnd.img.wm.dbgScr.elementsTexture:
-					// elements texture uses the same shader as the regular
-					// debug screen, just with a different texture
 					shader = rnd.shaders[dbgscrShaderID]
 				case rnd.img.wm.dbgScr.overlayTexture:
 					shader = rnd.shaders[overlayShaderID]

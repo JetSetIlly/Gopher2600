@@ -3,7 +3,6 @@
 uniform int ShowCursor;  
 uniform int IsCropped; 
 uniform vec2 ScreenDim;
-uniform vec2 UncroppedScreenDim;
 uniform float ScalingX;
 uniform float ScalingY;
 uniform float LastX; 
@@ -64,13 +63,13 @@ void main()
 		// horizontal position is counted from -68 in all instances.
 		lastY = (LastY - TopScanline) / ScreenDim.y;
 	} else {
-		texelX = ScalingX / UncroppedScreenDim.x;
-		texelY = ScalingY / UncroppedScreenDim.y;
-		hblank = Hblank / UncroppedScreenDim.x;
-		topScanline = TopScanline / UncroppedScreenDim.y;
-		botScanline = BotScanline / UncroppedScreenDim.y;
-		lastX = LastX / UncroppedScreenDim.x;
-		lastY = LastY / UncroppedScreenDim.y;
+		texelX = ScalingX / ScreenDim.x;
+		texelY = ScalingY / ScreenDim.y;
+		hblank = Hblank / ScreenDim.x;
+		topScanline = TopScanline / ScreenDim.y;
+		botScanline = BotScanline / ScreenDim.y;
+		lastX = LastX / ScreenDim.x;
+		lastY = LastY / ScreenDim.y;
 
 		pixelX = texelX / ScalingX;
 		pixelY = texelY / ScalingY;
