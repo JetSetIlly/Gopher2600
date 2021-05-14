@@ -1,7 +1,7 @@
 #version 150
 
 // majority of ideas taken from Mattias Gustavsson's crt-view. much of the
-// implementation details are also from here:
+// implementation details are also from here.
 //
 //		https://github.com/mattiasgustavsson/crtview/
 //
@@ -16,6 +16,8 @@ in vec4 Frag_Color;
 out vec4 Out_Color;
 
 uniform vec2 ScreenDim;
+uniform int NumScanlines;
+uniform int NumClocks;
 uniform int Curve;
 uniform int ShadowMask;
 uniform int Scanlines;
@@ -68,18 +70,18 @@ void main() {
 	// basic color
 	Crt_Color = Frag_Color * texture(Texture, uv.st);
 
-	// shadow mask
-	if (ShadowMask == 1) {
+	// scanlines -  only draw if texture is big enough
+	if (Scanlines == 1 &&float(ScreenDim.y)/float(NumScanlines) > 2.0) {
+		float scans = clamp(ScanlinesBright+0.18*sin(uv.y*ScreenDim.y*1.5), 0.0, 1.0);
+		float s = pow(scans,0.9);
+		Crt_Color.rgb *= vec3(s);
+	}
+
+	// shadow mask - only draw if texture is big enough
+	if (ShadowMask == 1 && float(ScreenDim.x)/float(NumClocks) > 3.0) {
 		if (mod(floor(gl_FragCoord.x), 2) == 0.0) {
 			Crt_Color.rgb *= MaskBright;
 		}
-	}
-
-	// scanlines
-	if (Scanlines == 1) { 
-		float scans = clamp(0.35+0.18*sin(uv.y*ScreenDim.y*2.0), 0.0, 1.0);
-		float s = pow(scans,1.0-ScanlinesBright);
-		Crt_Color.rgb *= vec3(s);
 	}
 
 	// noise (includes flicker)

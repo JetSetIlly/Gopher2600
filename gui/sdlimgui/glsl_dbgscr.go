@@ -76,6 +76,7 @@ func (sh *dbgScreenShader) setAttributes(env shaderEnvironment) {
 	sh.img.screen.crit.section.Lock()
 	width := sh.img.wm.dbgScr.scaledWidth(sh.img.wm.dbgScr.cropped)
 	height := sh.img.wm.dbgScr.scaledHeight(sh.img.wm.dbgScr.cropped)
+	numScanlines := sh.img.screen.crit.bottomScanline - sh.img.screen.crit.topScanline
 	sh.img.screen.crit.section.Unlock()
 
 	env.width = int32(width)
@@ -93,7 +94,12 @@ func (sh *dbgScreenShader) setAttributes(env shaderEnvironment) {
 		{-1.0, 1.0, 0.0, 1.0},
 	}
 
-	env.srcTextureID = sh.crt.process(env, sh.img.wm.dbgScr.crt, true)
+	numClocks := specification.ClksScanline
+	if sh.img.wm.dbgScr.cropped {
+		numClocks = specification.ClksVisible
+	}
+
+	env.srcTextureID = sh.crt.process(env, sh.img.wm.dbgScr.crt, true, numScanlines, numClocks)
 
 	sh.shader.setAttributes(env)
 

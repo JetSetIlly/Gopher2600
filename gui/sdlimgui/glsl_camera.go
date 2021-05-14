@@ -19,6 +19,7 @@ import (
 	"fmt"
 
 	"github.com/jetsetilly/gopher2600/gui/sdlimgui/framebuffer"
+	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/paths"
 )
@@ -113,6 +114,14 @@ func (sh *cameraSequencer) process(env shaderEnvironment) {
 		return
 	}
 
+	// number of scanlines must be retrieved in screen's critical section
+	sh.img.screen.crit.section.Lock()
+	numScanlines := sh.img.screen.crit.bottomScanline - sh.img.screen.crit.topScanline
+	sh.img.screen.crit.section.Unlock()
+
+	// number of clocks for the camera is ClksVisible
+	numClocks := specification.ClksVisible
+
 	// if this is a non-extended screenshot then perform a basic process
 	if !sh.extended {
 		env.srcTextureID = sh.seq.Process(camera, func() {
@@ -127,8 +136,8 @@ func (sh *cameraSequencer) process(env shaderEnvironment) {
 
 		// create final camera
 		sh.seq.Clear(final)
-		env.srcTextureID = sh.seq.Process(final, func() {
-			sh.effectsShaderFlipped.setAttributes(env)
+		sh.seq.Process(final, func() {
+			sh.effectsShaderFlipped.(*effectsShader).setAttributesArgs(env, numScanlines, numClocks, false)
 			env.draw()
 		})
 
@@ -142,7 +151,7 @@ func (sh *cameraSequencer) process(env shaderEnvironment) {
 		}
 
 		// end non-extended screenshot early
-		sh.frames--
+		sh.frames = 0
 		return
 	}
 
@@ -176,7 +185,7 @@ func (sh *cameraSequencer) process(env shaderEnvironment) {
 	// create final camera
 	sh.seq.Clear(final)
 	env.srcTextureID = sh.seq.Process(final, func() {
-		sh.effectsShaderFlipped.setAttributes(env)
+		sh.effectsShaderFlipped.(*effectsShader).setAttributesArgs(env, numScanlines, numClocks, false)
 		env.draw()
 	})
 
@@ -237,7 +246,7 @@ func (sh *cameraSequencer) process(env shaderEnvironment) {
 	})
 	sh.seq.Clear(final)
 	env.srcTextureID = sh.seq.Process(final, func() {
-		sh.effectsShaderFlipped.setAttributes(env)
+		sh.effectsShaderFlipped.(*effectsShader).setAttributesArgs(env, numScanlines, numClocks, false)
 		env.draw()
 	})
 
@@ -266,7 +275,7 @@ func (sh *cameraSequencer) process(env shaderEnvironment) {
 	})
 	sh.seq.Clear(final)
 	env.srcTextureID = sh.seq.Process(final, func() {
-		sh.effectsShaderFlipped.setAttributes(env)
+		sh.effectsShaderFlipped.(*effectsShader).setAttributesArgs(env, numScanlines, numClocks, false)
 		env.draw()
 	})
 

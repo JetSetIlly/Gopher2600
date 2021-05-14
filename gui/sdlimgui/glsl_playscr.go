@@ -18,6 +18,7 @@ package sdlimgui
 import (
 	"github.com/go-gl/gl/v3.2-core/gl"
 	"github.com/jetsetilly/gopher2600/gui/sdlimgui/framebuffer"
+	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 )
 
 type crtSequencer struct {
@@ -63,7 +64,7 @@ func (sh *crtSequencer) destroy() {
 //
 // returns the last textureID drawn to as part of the process(). the texture
 // returned depends on the value of moreProcessing.
-func (sh *crtSequencer) process(env shaderEnvironment, enabled bool, moreProcessing bool) uint32 {
+func (sh *crtSequencer) process(env shaderEnvironment, enabled bool, moreProcessing bool, numScanlines int, numClocks int) uint32 {
 	const (
 		// an accumulation of consecutive frames producing a phosphor effect
 		crtPhosphorIdx = iota
@@ -140,12 +141,14 @@ func (sh *crtSequencer) process(env shaderEnvironment, enabled bool, moreProcess
 		if moreProcessing {
 			sh.seq.Clear(crtMoreProcessingIdx)
 			env.srcTextureID = sh.seq.Process(crtMoreProcessingIdx, func() {
-				sh.effectsShaderFlipped.setAttributes(env)
+				noise := sh.img.crtPrefs.Noise.Get().(bool)
+				sh.effectsShaderFlipped.(*effectsShader).setAttributesArgs(env, numScanlines, numClocks, noise)
 				env.draw()
 			})
 		} else {
 			env.useInternalProj = false
-			sh.effectsShader.setAttributes(env)
+			noise := sh.img.crtPrefs.Noise.Get().(bool)
+			sh.effectsShader.(*effectsShader).setAttributesArgs(env, numScanlines, numClocks, noise)
 		}
 	} else {
 		if moreProcessing {
@@ -194,7 +197,11 @@ func (sh *playscrShader) setAttributes(env shaderEnvironment) {
 	sh.img.screen.crit.section.Lock()
 	env.width = int32(sh.img.playScr.scaledWidth())
 	env.height = int32(sh.img.playScr.scaledHeight())
+	numScanlines := sh.img.screen.crit.bottomScanline - sh.img.screen.crit.topScanline
 	sh.img.screen.crit.section.Unlock()
+
+	// number of clocks for the playscreen is ClksVisible
+	numClocks := specification.ClksVisible
 
 	env.internalProj = env.presentationProj
 
@@ -213,5 +220,5 @@ func (sh *playscrShader) setAttributes(env shaderEnvironment) {
 	sh.camera.process(env)
 
 	enabled := sh.img.crtPrefs.Enabled.Get().(bool)
-	sh.crt.process(env, enabled, false)
+	sh.crt.process(env, enabled, false, numScanlines, numClocks)
 }

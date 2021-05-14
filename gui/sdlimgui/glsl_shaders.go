@@ -187,6 +187,8 @@ type effectsShader struct {
 	img *SdlImgui
 
 	screenDim       int32
+	numScanlines    int32
+	numClocks       int32
 	curve           int32
 	shadowMask      int32
 	scanlines       int32
@@ -211,6 +213,8 @@ func newEffectsShader(img *SdlImgui, yflip bool) shaderProgram {
 	}
 
 	sh.screenDim = gl.GetUniformLocation(sh.handle, gl.Str("ScreenDim"+"\x00"))
+	sh.numScanlines = gl.GetUniformLocation(sh.handle, gl.Str("NumScanlines"+"\x00"))
+	sh.numClocks = gl.GetUniformLocation(sh.handle, gl.Str("NumClocks"+"\x00"))
 	sh.curve = gl.GetUniformLocation(sh.handle, gl.Str("Curve"+"\x00"))
 	sh.shadowMask = gl.GetUniformLocation(sh.handle, gl.Str("ShadowMask"+"\x00"))
 	sh.scanlines = gl.GetUniformLocation(sh.handle, gl.Str("Scanlines"+"\x00"))
@@ -226,14 +230,18 @@ func newEffectsShader(img *SdlImgui, yflip bool) shaderProgram {
 	return sh
 }
 
-func (sh *effectsShader) setAttributes(env shaderEnvironment) {
+// most shader attributes can be discerened automatically but number of
+// scanlines, clocks and whether to add noise to the image is context sensitive
+func (sh *effectsShader) setAttributesArgs(env shaderEnvironment, numScanlines int, numClocks int, noise bool) {
 	sh.shader.setAttributes(env)
 
 	gl.Uniform2f(sh.screenDim, float32(env.width), float32(env.height))
+	gl.Uniform1i(sh.numScanlines, int32(numScanlines))
+	gl.Uniform1i(sh.numClocks, int32(numClocks))
 	gl.Uniform1i(sh.curve, boolToInt32(sh.img.crtPrefs.Curve.Get().(bool)))
 	gl.Uniform1i(sh.shadowMask, boolToInt32(sh.img.crtPrefs.Mask.Get().(bool)))
 	gl.Uniform1i(sh.scanlines, boolToInt32(sh.img.crtPrefs.Scanlines.Get().(bool)))
-	gl.Uniform1i(sh.noise, boolToInt32(sh.img.crtPrefs.Noise.Get().(bool)))
+	gl.Uniform1i(sh.noise, boolToInt32(noise))
 	gl.Uniform1i(sh.fringing, boolToInt32(sh.img.crtPrefs.Fringing.Get().(bool)))
 	gl.Uniform1f(sh.curveAmount, float32(sh.img.crtPrefs.CurveAmount.Get().(float64)))
 	gl.Uniform1f(sh.maskBright, float32(sh.img.crtPrefs.MaskBright.Get().(float64)))
