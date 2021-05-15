@@ -34,11 +34,11 @@ type playScr struct {
 	// reference to screen data
 	scr *screen
 
-	// textures
-	screenTexture uint32
-
 	// (re)create textures on next render()
 	createTextures bool
+
+	// textures
+	screenTexture uint32
 
 	// the tv screen has captured mouse input
 	isCaptured bool
@@ -46,10 +46,11 @@ type playScr struct {
 	imagePosMin imgui.Vec2
 	imagePosMax imgui.Vec2
 
-	// the basic amount by which the image should be scaled. this value is
-	// applie to the vertical axis directly. horizontal scaling is scaled by
-	// pixelWidth and aspectBias also. use horizScaling() for that.
-	scaling float32
+	// scaling of texture and calculated dimensions
+	xscaling     float32
+	yscaling     float32
+	scaledWidth  float32
+	scaledHeight float32
 
 	// fps
 	fpsOpen  bool
@@ -85,7 +86,6 @@ func newPlayScr(img *SdlImgui) *playScr {
 	win := &playScr{
 		img:      img,
 		scr:      img.screen,
-		scaling:  2.0,
 		fpsPulse: time.NewTicker(time.Second),
 	}
 
@@ -228,38 +228,27 @@ func (win *playScr) render() {
 // must be called from with a critical section.
 func (win *playScr) setScaling() {
 	sz := win.img.plt.displaySize()
-	dim := imgui.Vec2{sz[0], sz[1]}
+	screenRegion := imgui.Vec2{sz[0], sz[1]}
 
-	winAspectRatio := dim.X / dim.Y
+	winRatio := screenRegion.X / screenRegion.Y
 
 	w := float32(win.scr.crit.cropPixels.Bounds().Size().X)
 	h := float32(win.scr.crit.cropPixels.Bounds().Size().Y)
-	w *= pixelWidth * win.scr.aspectBias
-	aspectRatio := w / h
+	adjW := w * pixelWidth * win.scr.aspectBias
+	aspectRatio := adjW / h
 
-	if aspectRatio < winAspectRatio {
-		win.scaling = dim.Y / h
-		win.imagePosMin = imgui.Vec2{X: float32(int((dim.X - (w * win.scaling)) / 2))}
+	var scaling float32
+	if aspectRatio < winRatio {
+		scaling = screenRegion.Y / h
+		win.imagePosMin = imgui.Vec2{X: float32(int((screenRegion.X - (adjW * scaling)) / 2))}
 	} else {
-		win.scaling = dim.X / w
-		win.imagePosMin = imgui.Vec2{Y: float32(int((dim.Y - (h * win.scaling)) / 2))}
+		scaling = screenRegion.X / adjW
+		win.imagePosMin = imgui.Vec2{Y: float32(int((screenRegion.Y - (h * scaling)) / 2))}
 	}
+	win.imagePosMax = screenRegion.Minus(win.imagePosMin)
 
-	win.imagePosMax = dim.Minus(win.imagePosMin)
-}
-
-// must be called from with a critical section.
-func (win *playScr) scaledWidth() float32 {
-	// we always use cropped pixels on the playscreen
-	return float32(win.scr.crit.cropPixels.Bounds().Size().X) * win.horizScaling()
-}
-
-// must be called from with a critical section.
-func (win *playScr) scaledHeight() float32 {
-	return float32(win.scr.crit.cropPixels.Bounds().Size().Y) * win.scaling
-}
-
-// for vertical scaling simply refer to the scaling field.
-func (win *playScr) horizScaling() float32 {
-	return pixelWidth * win.scr.aspectBias * win.scaling
+	win.yscaling = scaling
+	win.xscaling = scaling * pixelWidth * win.scr.aspectBias
+	win.scaledWidth = w * win.xscaling
+	win.scaledHeight = h * win.yscaling
 }

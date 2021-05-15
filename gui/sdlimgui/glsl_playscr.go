@@ -194,9 +194,10 @@ func (sh *playscrShader) setAttributes(env shaderEnvironment) {
 		return
 	}
 
+	env.width = int32(sh.img.playScr.scaledWidth)
+	env.height = int32(sh.img.playScr.scaledHeight)
+
 	sh.img.screen.crit.section.Lock()
-	env.width = int32(sh.img.playScr.scaledWidth())
-	env.height = int32(sh.img.playScr.scaledHeight())
 	numScanlines := sh.img.screen.crit.bottomScanline - sh.img.screen.crit.topScanline
 	sh.img.screen.crit.section.Unlock()
 

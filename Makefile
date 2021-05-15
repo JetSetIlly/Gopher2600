@@ -7,7 +7,7 @@ compileFlags = '-c 3 -B -wb=false'
 #profilingRom = "roms/starpath/02 - Communist Mutants From Space (Ntsc).mp3"
 profilingRom = roms/Pitfall.bin
 
-.PHONY: all clean tidy generate check_lint lint check_glsl glsl_validate check_pandoc readme_spell test race profile build_assertions build check_upx release release_statsview cross_windows cross_windows_statsview binaries check_gotip build_with_gotip
+.PHONY: all clean tidy generate check_lint lint check_glsl glsl_validate check_pandoc readme_spell test race race_debug profile build_assertions build check_upx release release_statsview cross_windows cross_windows_statsview binaries check_gotip build_with_gotip
 
 all:
 	@echo "use release target to build release binary"
@@ -59,6 +59,9 @@ test:
 
 race: generate test
 	go run -race gopher2600.go $(profilingRom)
+
+race_debug: generate test
+	go run -race gopher2600.go debug $(profilingRom)
 
 profile_cpu: generate test
 	@go build -gcflags $(compileFlags)
