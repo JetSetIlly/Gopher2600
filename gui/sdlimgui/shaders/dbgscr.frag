@@ -25,8 +25,6 @@ bool isNearEqual(float x, float y, float epsilon)
 
 const float cursorSize = 1.0;
 
-vec2 coords = Frag_UV.xy;
-
 void main()
 {
 	Out_Color = Frag_Color * texture(Texture, Frag_UV.st);
@@ -57,14 +55,27 @@ void main()
 		botBoundary = pixelY * BotScanline;
 
 		// screen guides
-		if (isNearEqual(coords.x, hblank-pixelX, pixelX) ||
-		   isNearEqual(coords.y, topBoundary-pixelY, pixelY) ||
-		   isNearEqual(coords.y, botBoundary+pixelY, pixelY)) {
-			Out_Color.r = 0.5;
-			Out_Color.g = 0.5;
-			Out_Color.b = 1.0;
-			Out_Color.a = 0.1;
-			return;
+		
+		// top/bottom guides
+		if (isNearEqual(Frag_UV.y, topBoundary-pixelY, pixelY) || isNearEqual(Frag_UV.y, botBoundary+pixelY, pixelY)) {
+			if (mod(floor(gl_FragCoord.x), 4) < 2.0) {
+				Out_Color.r = 1.0;
+				Out_Color.g = 1.0;
+				Out_Color.b = 1.0;
+				Out_Color.a = 0.1;
+				return;
+			}
+		}
+
+		// hblank guide
+		if (isNearEqual(Frag_UV.x, hblank-pixelX, pixelX)) {
+			if (mod(floor(gl_FragCoord.y), 4) < 2.0) {
+				Out_Color.r = 1.0;
+				Out_Color.g = 1.0;
+				Out_Color.b = 1.0;
+				Out_Color.a = 0.1;
+				return;
+			}
 		}
 	}
 
@@ -72,7 +83,7 @@ void main()
 	if (ShowCursor == 1) {
 		// draw cursor if pixel is at the last x/y position
 		if (lastY >= 0 && lastX >= 0) {
-			if (isNearEqual(coords.y, lastY+texelY, cursorSize*texelY) && isNearEqual(coords.x, lastX+texelX, cursorSize*texelX/2)) {
+			if (isNearEqual(Frag_UV.y, lastY+texelY, cursorSize*texelY) && isNearEqual(Frag_UV.x, lastX+texelX, cursorSize*texelX/2)) {
 				Out_Color.r = 1.0;
 				Out_Color.g = 1.0;
 				Out_Color.b = 1.0;
@@ -82,7 +93,7 @@ void main()
 		}
 
 		// draw off-screen cursor for HBLANK
-		if (lastX < 0 && isNearEqual(coords.y, lastY+texelY, cursorSize*texelY) && isNearEqual(coords.x, 0, cursorSize*texelX/2)) {
+		if (lastX < 0 && isNearEqual(Frag_UV.y, lastY+texelY, cursorSize*texelY) && isNearEqual(Frag_UV.x, 0, cursorSize*texelX/2)) {
 			Out_Color.r = 1.0;
 			Out_Color.g = 0.0;
 			Out_Color.b = 0.0;
@@ -94,9 +105,9 @@ void main()
 		// consider for drawing an off-screen cursor
 		if (IsCropped == 1) {
 			// when VBLANK is active but HBLANK is off
-			if (isNearEqual(coords.x, lastX, cursorSize * texelX/2)) {
+			if (isNearEqual(Frag_UV.x, lastX, cursorSize * texelX/2)) {
 				// top of screen
-				if (lastY < 0 && isNearEqual(coords.y, 0, cursorSize*texelY)) {
+				if (lastY < 0 && isNearEqual(Frag_UV.y, 0, cursorSize*texelY)) {
 					Out_Color.r = 1.0;
 					Out_Color.g = 0.0;
 					Out_Color.b = 0.0;
@@ -106,7 +117,7 @@ void main()
 			
 				// bottom of screen (knocking a pixel off the scanline
 				// boundary check to make sure the cursor is visible)
-				if (lastY > botBoundary-pixelY && isNearEqual(coords.y, botBoundary, cursorSize*texelY)) {
+				if (lastY > botBoundary-pixelY && isNearEqual(Frag_UV.y, botBoundary, cursorSize*texelY)) {
 					Out_Color.r = 1.0;
 					Out_Color.g = 0.0;
 					Out_Color.b = 0.0;
@@ -116,9 +127,9 @@ void main()
 			}
 
 			// when HBLANK and VBLANK are both active
-			if (lastX < 0 && isNearEqual(coords.x, 0, cursorSize*texelX/2)) {
+			if (lastX < 0 && isNearEqual(Frag_UV.x, 0, cursorSize*texelX/2)) {
 				// top/left corner of screen
-				if (lastY < 0 && isNearEqual(coords.y, 0, cursorSize*texelY)) {
+				if (lastY < 0 && isNearEqual(Frag_UV.y, 0, cursorSize*texelY)) {
 					Out_Color.r = 1.0;
 					Out_Color.g = 0.0;
 					Out_Color.b = 0.0;
@@ -129,7 +140,7 @@ void main()
 				// bottom/left corner of screen (knocking a pixel off the
 				// scanline boundary check to make sure the cursor is
 				// visible)
-				if (lastY > botBoundary-pixelY && isNearEqual(coords.y, botBoundary, cursorSize*texelY)) {
+				if (lastY > botBoundary-pixelY && isNearEqual(Frag_UV.y, botBoundary, cursorSize*texelY)) {
 					Out_Color.r = 1.0;
 					Out_Color.g = 0.0;
 					Out_Color.b = 0.0;
@@ -140,13 +151,13 @@ void main()
 		}
 
 		// painting effect draws pixels with faded alpha if lastX and lastY
-		// are less than rendering coords.
+		// are less than rendering Frag_UV.
 		//
 		// as a special case, we ignore the first scanline and do not fade the
 		// previous image on a brand new frame. note that we're using the
 		// unadjusted LastY value for this
 		if (LastY > 0) {
-			if (coords.y > lastY+texelY || (isNearEqual(coords.y, lastY+texelY, texelY) && coords.x > lastX+texelX)) {
+			if (Frag_UV.y > lastY+texelY || (isNearEqual(Frag_UV.y, lastY+texelY, texelY) && Frag_UV.x > lastX+texelX)) {
 				// only affect pixels with an active alpha channel
 				if (Out_Color.a != 0.0) {
 					// wash out color and mix with original pixel. this will
