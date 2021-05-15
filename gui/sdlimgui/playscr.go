@@ -52,6 +52,9 @@ type playScr struct {
 	scaledWidth  float32
 	scaledHeight float32
 
+	// number of scanlines in current image. taken from screen but is crit section safe
+	numScanlines int
+
 	// fps
 	fpsOpen  bool
 	fpsPulse *time.Ticker
@@ -251,4 +254,7 @@ func (win *playScr) setScaling() {
 	win.xscaling = scaling * pixelWidth * win.scr.aspectBias
 	win.scaledWidth = w * win.xscaling
 	win.scaledHeight = h * win.yscaling
+
+	// get numscanlines while we're in critical section
+	win.numScanlines = win.scr.crit.bottomScanline - win.scr.crit.topScanline
 }

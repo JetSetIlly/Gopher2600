@@ -281,7 +281,7 @@ func (sh *phosphorShader) setAttributesArgs(env shaderEnvironment, latency float
 	if sh.img.isPlaymode() {
 		correction = sh.img.crtPrefs.Curve.Get().(bool) && sh.img.crtPrefs.Enabled.Get().(bool)
 	} else {
-		correction = sh.img.crtPrefs.Curve.Get().(bool) && sh.img.wm.dbgScr.crt
+		correction = sh.img.crtPrefs.Curve.Get().(bool) && sh.img.wm.dbgScr.crtPreview
 	}
 	gl.Uniform1i(sh.correctVideoBlack, boolToInt32(correction))
 

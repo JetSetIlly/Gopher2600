@@ -79,15 +79,19 @@ type winDbgScr struct {
 	// the dimensions required for the combo widgets
 	specComboDim imgui.Vec2
 
-	// crt preview is special
-	crt bool
+	// number of scanlines in current image. taken from screen but is crit section safe
+	numScanlines int
+
+	// crtPreview option is special. it overrides the other options in the dbgScr to
+	// show an uncropped CRT preview in the dbgscr window.
+	crtPreview bool
 }
 
 func newWinDbgScr(img *SdlImgui) (window, error) {
 	win := &winDbgScr{
 		img:          img,
 		scr:          img.screen,
-		crt:          false,
+		crtPreview:   false,
 		cropped:      true,
 		overlayAlpha: 0.4,
 	}
@@ -206,7 +210,7 @@ func (win *winDbgScr) draw() {
 	imgui.PushStyleColor(imgui.StyleColorButtonHovered, win.img.cols.Transparent)
 	imgui.PushStyleVarVec2(imgui.StyleVarFramePadding, imgui.Vec2{0.0, 0.0})
 
-	if win.crt {
+	if win.crtPreview {
 		imgui.ImageButton(imgui.TextureID(win.screenTexture), imgui.Vec2{win.scaledWidth, win.scaledHeight})
 	} else {
 		// choose which texture to use depending on whether elements is selected
@@ -289,12 +293,15 @@ func (win *winDbgScr) draw() {
 		imgui.PopItemWidth()
 		imgui.SameLineV(0, 15)
 
-		if imgui.Checkbox("CRT Preview", &win.crt) {
+		if imgui.Checkbox("CRT Preview", &win.crtPreview) {
 			win.createTextures = true
 		}
 
 		// debugging toggles
-		if !win.crt {
+		if win.crtPreview {
+			imgui.SameLineV(0, 25)
+			imgui.Text("(Debugging options disabled)")
+		} else {
 			imgui.SameLineV(0, 15)
 			imgui.Checkbox("Debug Colours", &win.elements)
 
@@ -455,7 +462,7 @@ func (win *winDbgScr) drawReflectionTooltip() {
 	win.mouseScanline = int(mp.Y / win.yscaling)
 
 	// adjust if image is not cropped (or CRT)
-	if win.cropped || win.crt {
+	if win.cropped || win.crtPreview {
 		win.mouseClock += specification.ClksHBlank
 		win.mouseScanline += win.scr.crit.topScanline
 	}
@@ -607,7 +614,7 @@ func (win *winDbgScr) render() {
 	var elements *image.RGBA
 	var overlay *image.RGBA
 
-	if win.cropped || win.crt {
+	if win.cropped || win.crtPreview {
 		pixels = win.scr.crit.cropPixels
 		elements = win.scr.crit.cropElementPixels
 		overlay = win.scr.crit.cropOverlayPixels
@@ -667,7 +674,7 @@ func (win *winDbgScr) setScaling() {
 
 	var w float32
 	var h float32
-	if win.cropped || win.crt {
+	if win.cropped || win.crtPreview {
 		w = float32(win.scr.crit.cropPixels.Bounds().Size().X)
 		h = float32(win.scr.crit.cropPixels.Bounds().Size().Y)
 	} else {
@@ -691,4 +698,7 @@ func (win *winDbgScr) setScaling() {
 	win.xscaling = scaling * pixelWidth * win.scr.aspectBias
 	win.scaledWidth = w * win.xscaling
 	win.scaledHeight = h * win.yscaling
+
+	// get numscanlines while we're in critical section
+	win.numScanlines = win.scr.crit.bottomScanline - win.scr.crit.topScanline
 }

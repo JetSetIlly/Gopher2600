@@ -89,13 +89,8 @@ func (sh *dbgScreenShader) setAttributes(env shaderEnvironment) {
 		{-1.0, 1.0, 0.0, 1.0},
 	}
 
-	if sh.img.wm.dbgScr.crt {
-		sh.img.screen.crit.section.Lock()
-		numScanlines := sh.img.screen.crit.bottomScanline - sh.img.screen.crit.topScanline
-		sh.img.screen.crit.section.Unlock()
-		numClocks := specification.ClksVisible
-
-		env.srcTextureID = sh.crt.process(env, true, false, numScanlines, numClocks)
+	if sh.img.wm.dbgScr.crtPreview {
+		env.srcTextureID = sh.crt.process(env, true, false, sh.img.wm.dbgScr.numScanlines, specification.ClksVisible)
 		return
 	}
 

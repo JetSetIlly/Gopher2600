@@ -114,12 +114,8 @@ func (sh *cameraSequencer) process(env shaderEnvironment) {
 		return
 	}
 
-	// number of scanlines must be retrieved in screen's critical section
-	sh.img.screen.crit.section.Lock()
-	numScanlines := sh.img.screen.crit.bottomScanline - sh.img.screen.crit.topScanline
-	sh.img.screen.crit.section.Unlock()
-
-	// number of clocks for the camera is ClksVisible
+	// number of clocks/scanlines - used for the CRT image
+	numScanlines := sh.img.wm.dbgScr.numScanlines
 	numClocks := specification.ClksVisible
 
 	// if this is a non-extended screenshot then perform a basic process

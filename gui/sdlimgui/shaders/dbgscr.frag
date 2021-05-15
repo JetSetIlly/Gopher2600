@@ -29,55 +29,37 @@ vec2 coords = Frag_UV.xy;
 
 void main()
 {
-	// adjusted last x/y coordinates
-	float lastX;
-	float lastY;
-
-	float hblank;
-	float topScanline;
-	float botScanline;
-
-	// the size of one texel (used for painting and cursor positioning)
-	float texelX;
-	float texelY;
-
-	// if the entire frame is being shown then plot the screen guides
-	float pixelX;
-	float pixelY;
-
 	Out_Color = Frag_Color * texture(Texture, Frag_UV.st);
 
+	// value of one pixel
+	float pixelX = 1.0 / ScreenDim.x;
+	float pixelY = 1.0 / ScreenDim.y;
+
+	// the size of one texel (used for painting and cursor positioning)
+	float texelX = pixelX * ScalingX;
+	float texelY = pixelY * ScalingY;
+
+	// adjusted last x/y coordinates. lastY depends on IsCropped
+	float lastX = pixelX * LastX;
+	float lastY = pixelY * LastY;
+
+	// screen boundaries. depends on IsCropped
+	float topBoundary;
+	float botBoundary;
+
 	if (IsCropped == 1) {
-		texelX = ScalingX / ScreenDim.x;
-		texelY = ScalingY / ScreenDim.y;
-		hblank = Hblank / ScreenDim.x;
-		lastX = LastX / ScreenDim.x;
-		topScanline = 0;
-		botScanline = (BotScanline - TopScanline) / ScreenDim.y;
-
-		// the LastY coordinate refers to the full-frame scanline. the cropped
-		// texture however counts from zero at the visible edge so we need to
-		// adjust the lastY value by the TopScanline value.
-		//
-		// note that there's no need to do this for LastX because the
-		// horizontal position is counted from -68 in all instances.
-		lastY = (LastY - TopScanline) / ScreenDim.y;
+		topBoundary = 0;
+		botBoundary = (BotScanline - TopScanline) / ScreenDim.y;
+		lastY -=  pixelY * TopScanline;
 	} else {
-		texelX = ScalingX / ScreenDim.x;
-		texelY = ScalingY / ScreenDim.y;
-		hblank = Hblank / ScreenDim.x;
-		topScanline = TopScanline / ScreenDim.y;
-		botScanline = BotScanline / ScreenDim.y;
-		lastX = LastX / ScreenDim.x;
-		lastY = LastY / ScreenDim.y;
-
-		pixelX = texelX / ScalingX;
-		pixelY = texelY / ScalingY;
+		float hblank = pixelX * Hblank;
+		topBoundary = pixelY * TopScanline;
+		botBoundary = pixelY * BotScanline;
 
 		// screen guides
 		if (isNearEqual(coords.x, hblank-pixelX, pixelX) ||
-		   isNearEqual(coords.y, topScanline-pixelY, pixelY) ||
-		   isNearEqual(coords.y, botScanline+pixelY, pixelY)) {
+		   isNearEqual(coords.y, topBoundary-pixelY, pixelY) ||
+		   isNearEqual(coords.y, botBoundary+pixelY, pixelY)) {
 			Out_Color.r = 0.5;
 			Out_Color.g = 0.5;
 			Out_Color.b = 1.0;
@@ -124,7 +106,7 @@ void main()
 			
 				// bottom of screen (knocking a pixel off the scanline
 				// boundary check to make sure the cursor is visible)
-				if (lastY > botScanline-pixelY && isNearEqual(coords.y, botScanline, cursorSize*texelY)) {
+				if (lastY > botBoundary-pixelY && isNearEqual(coords.y, botBoundary, cursorSize*texelY)) {
 					Out_Color.r = 1.0;
 					Out_Color.g = 0.0;
 					Out_Color.b = 0.0;
@@ -147,7 +129,7 @@ void main()
 				// bottom/left corner of screen (knocking a pixel off the
 				// scanline boundary check to make sure the cursor is
 				// visible)
-				if (lastY > botScanline-pixelY && isNearEqual(coords.y, botScanline, cursorSize*texelY)) {
+				if (lastY > botBoundary-pixelY && isNearEqual(coords.y, botBoundary, cursorSize*texelY)) {
 					Out_Color.r = 1.0;
 					Out_Color.g = 0.0;
 					Out_Color.b = 0.0;

@@ -196,14 +196,6 @@ func (sh *playscrShader) setAttributes(env shaderEnvironment) {
 
 	env.width = int32(sh.img.playScr.scaledWidth)
 	env.height = int32(sh.img.playScr.scaledHeight)
-
-	sh.img.screen.crit.section.Lock()
-	numScanlines := sh.img.screen.crit.bottomScanline - sh.img.screen.crit.topScanline
-	sh.img.screen.crit.section.Unlock()
-
-	// number of clocks for the playscreen is ClksVisible
-	numClocks := specification.ClksVisible
-
 	env.internalProj = env.presentationProj
 
 	// set scissor and viewport
@@ -221,5 +213,5 @@ func (sh *playscrShader) setAttributes(env shaderEnvironment) {
 	sh.camera.process(env)
 
 	enabled := sh.img.crtPrefs.Enabled.Get().(bool)
-	sh.crt.process(env, enabled, false, numScanlines, numClocks)
+	sh.crt.process(env, enabled, false, sh.img.playScr.numScanlines, specification.ClksVisible)
 }
