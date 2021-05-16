@@ -164,23 +164,15 @@ func (win *winTerm) draw() {
 		imgui.EndPopup()
 	}
 
-	// command line prompt on same line as command
-	//
-	// there's a problem with using prompts like this in a gui context. for
-	// example, if we change the PC through the CPU window the state of the
-	// machine will change but the terminal prompt will not. it's solvable but
-	// any solution seems heavy handed for such an outlier case.
-	//
-	// one possibility is to build the prompt dynamically from the information
-	// we have from the lazy system, and not using the prompt received through
-	// the prompt channel at all
-	if win.img.state == gui.StatePaused {
-		// !!TODO: fancier prompt for GUI terminal
-		imguiLabel(strings.TrimSpace(win.prompt.String()))
+	// terminal prompt is not updated when emulation is running so show a "running" label instead
+	if win.img.state == gui.StateRunning {
+		imguiLabel("running")
 	} else {
-		imguiLabel("[ running ] >>")
+		imguiLabel(fmt.Sprintf("%s", strings.TrimSpace(win.prompt.Content)))
 	}
-	imgui.SameLine()
+
+	// command line prompt on same line as command
+	imgui.SameLineV(0, 10)
 
 	// start command line height measurement
 	inputLineHeight := imgui.CursorPosY()
