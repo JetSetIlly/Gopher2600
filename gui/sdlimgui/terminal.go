@@ -168,6 +168,10 @@ func (trm *term) IsInteractive() bool {
 // to achieve this functionality, the terminal has a side-channel to which a
 // complete string is pushed (without a newline character please). the
 // pushCommand() is a conveniently placed function to do this.
+//
+// ** do not to push commands if GUI is not in debug mode. there won't
+// be anything to receive the input and so the channel will eventually
+// fill up
 func (trm *term) pushCommand(input string) {
 	select {
 	case trm.sideChan <- input:
@@ -180,10 +184,6 @@ func (trm *term) pushCommand(input string) {
 		// in most instances a depth of one is sufficient but occasionally it
 		// is not (eg. the HALT/RUN commands sent by the rewind slider in
 		// win_control)
-		//
-		// ** try not to push commands if GUI is not in debug mode. there won't
-		// be anything to receive the input and so the channel will eventually
-		// fill up
 		logger.Logf("term", "dropping from side channel (%s)", input)
 	}
 }

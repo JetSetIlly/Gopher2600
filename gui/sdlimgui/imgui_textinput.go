@@ -60,7 +60,14 @@ func imguiInput(label string, length int, content *string, allowedChars string, 
 	// and preferring to filter manually for greated flexibility
 	flags := imgui.InputTextFlagsCallbackCharFilter | imgui.InputTextFlagsCallbackAlways
 
-	// flags |= imgui.InputTextFlagsEnterReturnsTrue
+	// this flag stops the imgui.InputTextV() from returning until the Return
+	// key is pressed.
+	//
+	// we ask for this primarily so that the terminal side channel (and
+	// consequently, the raw event push channel). not all uses of imguiInput
+	// will result in this but I think it's best to cut the problem off at the
+	// source.
+	flags |= imgui.InputTextFlagsEnterReturnsTrue
 
 	// if there are restrictions on allowedChars then add the select-all flag.
 	if selectAll {
