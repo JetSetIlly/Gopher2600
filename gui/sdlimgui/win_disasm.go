@@ -21,6 +21,7 @@ import (
 	"github.com/jetsetilly/gopher2600/debugger"
 	"github.com/jetsetilly/gopher2600/disassembly"
 	"github.com/jetsetilly/gopher2600/gui"
+	"github.com/jetsetilly/gopher2600/gui/sdlimgui/fonts"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 
 	"github.com/inkyblackness/imgui-go/v4"
@@ -384,7 +385,7 @@ func (win *winDisasm) drawEntry(e *disassembly.Entry, focusAddr uint16, onBank b
 	switch win.img.lz.Breakpoints.HasBreak(e.Result.Address) {
 	case debugger.BrkPCAddress:
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmBreakAddress)
-		imgui.Text("*")
+		imgui.Text(fmt.Sprintf("%c", fonts.Breakpoint))
 		imgui.PopStyleColor()
 	case debugger.BrkOther:
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmBreakOther)

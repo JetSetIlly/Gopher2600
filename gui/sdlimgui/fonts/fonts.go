@@ -48,13 +48,16 @@ var FontAwesome []byte
 
 // Unicode points in FontAwesome for icons used in the application.
 const (
-	Run          = '\uf04b'
-	Halt         = '\uf04c'
-	Back         = '\uf053'
-	Disk         = '\uf0c7'
-	Mouse        = '\uf8cc'
-	GoingForward = '\uf01e'
-	Persist      = '\uf021'
+	Run           = '\uf04b'
+	Halt          = '\uf04c'
+	Back          = '\uf053'
+	Disk          = '\uf0c7'
+	Mouse         = '\uf8cc'
+	GoingForward  = '\uf01e'
+	Persist       = '\uf021'
+	Breakpoint    = '\uf12a'
+	AudioDisabled = '\uf00d'
+	AudioEnabled  = '\uf028'
 )
 
 // The first and last unicode points used in the application. We use this to
