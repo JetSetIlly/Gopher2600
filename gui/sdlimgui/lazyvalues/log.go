@@ -21,7 +21,7 @@ import (
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
-// LazyLog lazily accesses chip registere information from the emulator.
+// LazyLog lazily accesses logging entries.
 type LazyLog struct {
 	val *LazyValues
 
@@ -48,14 +48,15 @@ func (lz *LazyLog) push() {
 		if l := logger.Copy(); l != nil {
 			lz.log.Store(l)
 		}
-	} else {
-		lz.dirty.Store(false)
 	}
 }
 
 func (lz *LazyLog) update() {
-	if l, ok := lz.log.Load().([]logger.Entry); ok {
-		lz.Log = l
-		lz.Dirty, _ = lz.dirty.Load().(bool)
+	lz.Dirty, _ = lz.dirty.Load().(bool)
+	if lz.Dirty {
+		lz.dirty.Store(false)
+		if l, ok := lz.log.Load().([]logger.Entry); ok {
+			lz.Log = l
+		}
 	}
 }

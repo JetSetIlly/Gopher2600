@@ -148,7 +148,7 @@ func NewSdlImgui(tv *television.Television) (*SdlImgui, error) {
 
 	img.lz = lazyvalues.NewLazyValues()
 	img.screen = newScreen(img)
-	img.term = newTerm(img.lz)
+	img.term = newTerm()
 
 	img.playScr = newPlayScr(img)
 

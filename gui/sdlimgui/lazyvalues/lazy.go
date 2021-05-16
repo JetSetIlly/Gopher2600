@@ -27,9 +27,6 @@ import (
 type LazyValues struct {
 	active bool
 
-	// skip updates for N frames
-	updateSkip int
-
 	// the debugger is racy. it should not be accessed directly except through
 	// the lazy system or directly with Debugger.PushRawEvent()
 	Dbg *debugger.Debugger
@@ -104,26 +101,6 @@ func (val *LazyValues) SetActive(active bool) {
 	}
 }
 
-// PauseUpdates stops value updating for the a short period.
-//
-// Should be used if a value read through the lazy system is updated via the
-// GUI goroutine. For example:
-//
-// 1) Preference values are retreived by the lazy system (Refresh() function)
-// 2) Values are presented by the GUI
-// 3) Value is changed by the GUI by pushing the update process onto the
-//    emulation goroutine
-// 4) Refresh() triggers update again before push (from step 3) has resolved
-//
-// PauseUpdate() helps delay step 4 until step 3 has resolved.
-//
-// Some sort of synchronisation channel would guarantee step 4 happens after 3
-// but that seems a bit heavy handed. A short pause of fixed length is
-// sufficient.
-func (val *LazyValues) PauseUpdates() {
-	val.updateSkip = 5
-}
-
 // Refresh lazy values.
 func (val *LazyValues) Refresh() {
 	if !val.active {
@@ -153,11 +130,6 @@ func (val *LazyValues) Refresh() {
 		val.Rewind.push()
 		val.Breakpoints.push()
 	})
-
-	if val.updateSkip > 0 {
-		val.updateSkip--
-		return
-	}
 
 	val.Debugger.update()
 	val.CPU.update()
