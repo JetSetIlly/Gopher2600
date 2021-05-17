@@ -137,7 +137,9 @@ func (sym *Symbols) AddLabel(bank int, addr uint16, symbol string, prefer bool) 
 	sym.crit.Lock()
 	defer sym.crit.Unlock()
 
-	sym.label[bank].add(addr, symbol, prefer)
+	if bank < len(sym.label) {
+		sym.label[bank].add(addr, symbol, prefer)
+	}
 }
 
 // Get symbol from label table.
@@ -145,8 +147,10 @@ func (sym *Symbols) GetLabel(bank int, addr uint16) (string, bool) {
 	sym.crit.Lock()
 	defer sym.crit.Unlock()
 
-	if v, ok := sym.label[bank].entries[addr]; ok {
-		return v, ok
+	if bank < len(sym.label) {
+		if v, ok := sym.label[bank].entries[addr]; ok {
+			return v, ok
+		}
 	}
 	return "", false
 }
@@ -156,7 +160,9 @@ func (sym *Symbols) UpdateLabel(bank int, addr uint16, label string) {
 	sym.crit.Lock()
 	defer sym.crit.Unlock()
 
-	sym.label[bank].entries[addr] = label
+	if bank < len(sym.label) {
+		sym.label[bank].entries[addr] = label
+	}
 }
 
 // Get symbol from read table.

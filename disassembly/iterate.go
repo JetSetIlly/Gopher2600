@@ -216,6 +216,10 @@ func (eitr *IterateEntries) next() (int, *Entry) {
 	eitr.dsm.crit.Lock()
 	defer eitr.dsm.crit.Unlock()
 
+	if eitr.bank >= len(eitr.dsm.entries) {
+		return -1, nil
+	}
+
 	if eitr.idx+1 >= len(eitr.dsm.entries[eitr.bank]) {
 		return -1, nil
 	}
