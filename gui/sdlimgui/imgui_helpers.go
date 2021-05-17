@@ -21,6 +21,7 @@ import (
 	"strings"
 
 	"github.com/inkyblackness/imgui-go/v4"
+	"github.com/jetsetilly/gopher2600/gui/sdlimgui/fonts"
 )
 
 // return the height of the window from the current cursor position to the end
@@ -321,6 +322,16 @@ func drawByteGrid(data []uint8, cmp []uint8, diffCol imgui.Vec4, base uint16, co
 	}
 }
 
+// imguiColorLabel displays a coloured icon (fonts.ColorSwatch) with a label.
+// useful for generating color keys.
+func imguiColorLabel(label string, col imgui.Vec4) {
+	imgui.PushStyleColor(imgui.StyleColorText, col)
+	imgui.Text(string(fonts.ColorSwatch))
+	imgui.PopStyleColor()
+	imgui.SameLine()
+	imgui.Text(label)
+}
+
 // returns a Vec2 suitable for use as a position vector when opening a imgui
 // window. The X and Y are set such that 0.0 <= value <= 1.0
 //
@@ -394,27 +405,4 @@ func (img *SdlImgui) imguiSwatch(col uint8, size float32) (clicked bool) {
 	imgui.SetCursorScreenPos(p)
 
 	return clicked
-}
-
-// imguiColorLabel is used to add a single coloured square with a label. useful
-// for color keys.
-//
-// imguiColorLabel is makes use of the drawListSequence.
-func (img *SdlImgui) imguiColorLabel(col imgui.PackedColor, label string) {
-	dl := imgui.WindowDrawList()
-	p := imgui.CursorScreenPos()
-	z := imgui.FrameHeight() * 0.75
-	dl.AddRectFilled(p, p.Plus(imgui.Vec2{X: z, Y: z}), col)
-	imgui.SetCursorScreenPos(p.Plus(imgui.Vec2{X: z * 1.5, Y: 0}))
-	imgui.Text(label)
-}
-
-// set alpha channel of imgui.PakedColor value. if alpha > 1.0 or < 0.0 then
-// col is returned unchanged.
-func packedColSetAlpha(col imgui.PackedColor, alpha float32) imgui.PackedColor {
-	if alpha < 0.0 || alpha > 1.0 {
-		return col
-	}
-	a := 255 * alpha
-	return (col & 0x00ffffff) | imgui.PackedColor(uint32(a)<<24)
 }

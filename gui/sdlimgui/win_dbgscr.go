@@ -45,9 +45,6 @@ type winDbgScr struct {
 	elementsTexture uint32
 	overlayTexture  uint32
 
-	// the amount of alpha to apply to the overlay
-	overlayAlpha float32
-
 	// how to present the screen in the window
 	elements bool
 	cropped  bool
@@ -77,7 +74,8 @@ type winDbgScr struct {
 	scaledHeight float32
 
 	// the dimensions required for the combo widgets
-	specComboDim imgui.Vec2
+	specComboDim    imgui.Vec2
+	overlayComboDim imgui.Vec2
 
 	// number of scanlines in current image. taken from screen but is crit section safe
 	numScanlines int
@@ -89,11 +87,10 @@ type winDbgScr struct {
 
 func newWinDbgScr(img *SdlImgui) (window, error) {
 	win := &winDbgScr{
-		img:          img,
-		scr:          img.screen,
-		crtPreview:   false,
-		cropped:      true,
-		overlayAlpha: 0.4,
+		img:        img,
+		scr:        img.screen,
+		crtPreview: false,
+		cropped:    true,
 	}
 
 	// set texture, creation of textures will be done after every call to resize()
@@ -115,11 +112,12 @@ func newWinDbgScr(img *SdlImgui) (window, error) {
 	return win, nil
 }
 
-// List of valid overlay reflection overlay types.
-type overlay int
+// list of overlay labels
+var overlayLabels = []string{"No overlay", "WSYNC", "Collisions", "HMOVE", "RSYNC", "Coprocessor"}
 
+// named indexes for overlay labels list
 const (
-	overlayNoOverlay overlay = iota
+	overlayNone = iota
 	overlayWSYNC
 	overlayCollisions
 	overlayHMOVE
@@ -127,24 +125,9 @@ const (
 	overlayCoprocessor
 )
 
-func (o overlay) String() string {
-	switch o {
-	case overlayWSYNC:
-		return "WSYNC overlay"
-	case overlayCollisions:
-		return "Collisions overlay"
-	case overlayHMOVE:
-		return "HMOVE overlay"
-	case overlayRSYNC:
-		return "RSYNC overlay"
-	case overlayCoprocessor:
-		return "CoProcessor overlay"
-	}
-	return "No overlay"
-}
-
 func (win *winDbgScr) init() {
 	win.specComboDim = imguiGetFrameDim("", specification.SpecList...)
+	win.overlayComboDim = imguiGetFrameDim("", overlayLabels...)
 }
 
 func (win *winDbgScr) id() string {
@@ -275,24 +258,18 @@ func (win *winDbgScr) draw() {
 
 	// start of tool bar
 	win.toolbarHeight = imguiMeasureHeight(func() {
-		// tv status line
+		// status line
 		imgui.Spacing()
 		win.drawCoordsLine()
+
+		// options line
+		imgui.Spacing()
 		imgui.Spacing()
 
 		// tv spec
-		imgui.PushItemWidth(win.specComboDim.X)
-		if imgui.BeginComboV("##spec", win.img.lz.TV.Spec.ID, imgui.ComboFlagsNoArrowButton) {
-			for _, s := range specification.SpecList {
-				if imgui.Selectable(s) {
-					win.img.term.pushCommand(fmt.Sprintf("TV SPEC %s", s))
-				}
-			}
-			imgui.EndCombo()
-		}
-		imgui.PopItemWidth()
-		imgui.SameLineV(0, 15)
+		win.drawSpecCombo()
 
+		// crt preview affects which debugging toggles are visible
 		if imgui.Checkbox("CRT Preview", &win.crtPreview) {
 			win.createTextures = true
 		}
@@ -311,136 +288,122 @@ func (win *winDbgScr) draw() {
 			}
 
 			imgui.SameLineV(0, 15)
-			win.drawOverlayPopup()
+			win.drawOverlayCombo()
+			win.drawOverlayColorKey()
 		}
 	})
 
 	imgui.End()
 }
 
-func (win *winDbgScr) drawOverlayPopup() {
-	o := win.img.screen.crit.overlay.Load().(overlay)
-
-	imgui.PushItemWidth(200)
-	defer imgui.PopItemWidth()
-
-	if imgui.Button(o.String()) {
-		imgui.OpenPopup("overlaySelector")
-	}
-
-	if imgui.BeginPopup("overlaySelector") {
-		if imgui.BeginTable("overlayTable", 2) {
-			imgui.TableSetupColumnV("overlay", imgui.TableColumnFlagsWidthFixed, 200, 1)
-			imgui.TableSetupColumnV("key", imgui.TableColumnFlagsWidthFixed, 200, 2)
-
-			imgui.TableNextRow()
-
-			// column 1
-			imgui.TableNextColumn()
-			v := int(o)
-
-			// draw radio buttons and prepare for a test of whether any of them
-			// have been pressed. note that the OR with ok happens after the
-			// drawing of the button. if we order the condition the other way, the
-			// test might short-circuit and the button will not be drawn until next
-			// frame.
-			ok := false
-			ok = imgui.RadioButtonInt(overlayNoOverlay.String(), &v, int(overlayNoOverlay)) || ok
-			ok = imgui.RadioButtonInt(overlayWSYNC.String(), &v, int(overlayWSYNC)) || ok
-			ok = imgui.RadioButtonInt(overlayCollisions.String(), &v, int(overlayCollisions)) || ok
-			ok = imgui.RadioButtonInt(overlayHMOVE.String(), &v, int(overlayHMOVE)) || ok
-			ok = imgui.RadioButtonInt(overlayRSYNC.String(), &v, int(overlayRSYNC)) || ok
-
-			// special handling for coprocessor layer
-			if win.img.lz.CoProc.HasCoProcBus {
-				ok = imgui.RadioButtonInt(win.img.lz.CoProc.ID, &v, int(overlayCoprocessor)) || ok
-			} else if o == overlayCoprocessor {
-				// there is no coprocessor so make sure the coprocessor option is
-				// not selected - it won't be shown
-				v = int(overlayNoOverlay)
+func (win *winDbgScr) drawSpecCombo() {
+	imgui.PushItemWidth(win.specComboDim.X + imgui.FrameHeight())
+	if imgui.BeginComboV("##spec", win.img.lz.TV.Spec.ID, imgui.ComboFlagsNone) {
+		for _, s := range specification.SpecList {
+			if imgui.Selectable(s) {
+				win.img.term.pushCommand(fmt.Sprintf("TV SPEC %s", s))
 			}
-
-			// a radiobutton has been pressed
-			if ok {
-				// change overlay
-				win.img.screen.crit.overlay.Store(overlay(v))
-
-				// replot the overlay
-				win.img.screen.replotOverlay()
-			}
-
-			// column 2
-			imgui.TableNextColumn()
-			imgui.Spacing()
-
-			switch o {
-			case overlayWSYNC:
-				col := packedColSetAlpha(win.img.cols.reflectionColors[reflection.WSYNC], win.overlayAlpha)
-				win.img.imguiColorLabel(col, "WSYNC active")
-			case overlayCollisions:
-				col := packedColSetAlpha(win.img.cols.reflectionColors[reflection.Collision], win.overlayAlpha)
-				win.img.imguiColorLabel(col, "Collision")
-				col = packedColSetAlpha(win.img.cols.reflectionColors[reflection.CXCLR], win.overlayAlpha)
-				win.img.imguiColorLabel(col, "CXCLR")
-			case overlayHMOVE:
-				col := packedColSetAlpha(win.img.cols.reflectionColors[reflection.HMOVEdelay], win.overlayAlpha)
-				win.img.imguiColorLabel(col, "Delay")
-				col = packedColSetAlpha(win.img.cols.reflectionColors[reflection.HMOVEripple], win.overlayAlpha)
-				win.img.imguiColorLabel(col, "Ripple")
-				col = packedColSetAlpha(win.img.cols.reflectionColors[reflection.HMOVElatched], win.overlayAlpha)
-				win.img.imguiColorLabel(col, "Latch")
-			case overlayRSYNC:
-				col := packedColSetAlpha(win.img.cols.reflectionColors[reflection.RSYNCalign], win.overlayAlpha)
-				win.img.imguiColorLabel(col, "Align")
-				col = packedColSetAlpha(win.img.cols.reflectionColors[reflection.RSYNCreset], win.overlayAlpha)
-				win.img.imguiColorLabel(col, "Reset")
-			case overlayCoprocessor:
-				col := packedColSetAlpha(win.img.cols.reflectionColors[reflection.CoprocessorActive], win.overlayAlpha)
-				win.img.imguiColorLabel(col, fmt.Sprintf("%s Active", win.img.lz.CoProc.ID))
-			}
-
-			imgui.EndTable()
 		}
-
-		// label for alpha slider
-		var label string
-		if win.overlayAlpha > 0.9 {
-			label = "very opaque"
-		} else if win.overlayAlpha > 0.6 {
-			label = "opaque"
-		} else if win.overlayAlpha > 0.3 {
-			label = "faint"
-		} else {
-			label = "very faint"
-		}
-
-		// alpha slider
-		imgui.Spacing()
-		imguiLabel("Transparency")
-		imgui.PushItemWidth(200.0)
-		imgui.SliderFloatV("##alpha", &win.overlayAlpha, 0.1, 1.0, label, imgui.SliderFlagsNone)
-		imgui.PopItemWidth()
-
-		imgui.EndPopup()
+		imgui.EndCombo()
 	}
+	imgui.PopItemWidth()
+	imgui.SameLineV(0, 15)
 }
 
 func (win *winDbgScr) drawCoordsLine() {
-	imguiLabel("Frame:")
-	imguiLabel(fmt.Sprintf("%-4d", win.img.lz.TV.Frame))
+	imgui.Text("")
 	imgui.SameLineV(0, 15)
-	imguiLabel("Scanline:")
+
+	imgui.Text("Frame:")
+	imgui.SameLine()
+	imgui.Text(fmt.Sprintf("%-4d", win.img.lz.TV.Frame))
+
+	imgui.SameLineV(0, 15)
+	imgui.Text("Scanline:")
+	imgui.SameLine()
 	if win.img.lz.TV.Scanline > 999 {
 	} else {
-		imguiLabel(fmt.Sprintf("%-3d", win.img.lz.TV.Scanline))
+		imgui.Text(fmt.Sprintf("%-3d", win.img.lz.TV.Scanline))
 	}
 	imgui.SameLineV(0, 15)
-	imguiLabel("Clock:")
-	imguiLabel(fmt.Sprintf("%-3d", win.img.lz.TV.Clock))
+	imgui.Text("Clock:")
+	imgui.SameLine()
+	imgui.Text(fmt.Sprintf("%-3d", win.img.lz.TV.Clock))
 
 	// include tv signal information
 	imgui.SameLineV(0, 20)
 	imgui.Text(win.img.lz.TV.LastSignal.String())
+}
+
+func (win *winDbgScr) drawOverlayCombo() {
+	imgui.PushItemWidth(win.overlayComboDim.X + imgui.FrameHeight())
+
+	// change coprocessor text to CoProc.ID if a coprocessor is present
+	v := win.img.screen.crit.overlay
+	if v == overlayLabels[overlayCoprocessor] {
+		if win.img.lz.CoProc.HasCoProcBus {
+			v = win.img.lz.CoProc.ID
+		} else {
+			// it's possible for the coprocessor overlay to be selected and
+			// then a different ROM loaded that has no coprocessor. in this
+			// case change the overlay to none.
+			win.img.screen.crit.overlay = overlayLabels[overlayNone]
+		}
+	}
+
+	if imgui.BeginComboV("##overlay", v, imgui.ComboFlagsNone) {
+		for i, s := range overlayLabels {
+			if i != overlayCoprocessor {
+				if imgui.Selectable(s) {
+					win.img.screen.crit.overlay = s
+					win.img.screen.replotOverlay()
+				}
+			} else if win.img.lz.CoProc.HasCoProcBus {
+				// if ROM has a coprocessor change the optino label to the
+				// appropriate ID
+				if imgui.Selectable(win.img.lz.CoProc.ID) {
+					// we still store the "Coprocessor" string and not the ID
+					// string. this way we don't need any fancy conditions
+					// elsewhere
+					win.img.screen.crit.overlay = s
+					win.img.screen.replotOverlay()
+				}
+			}
+		}
+		imgui.EndCombo()
+	}
+	imgui.PopItemWidth()
+}
+
+func (win *winDbgScr) drawOverlayColorKey() {
+	switch win.img.screen.crit.overlay {
+	case overlayLabels[overlayWSYNC]:
+		imgui.SameLineV(0, 20)
+		imguiColorLabel("WSYNC", win.img.cols.reflectionColors[reflection.WSYNC])
+	case overlayLabels[overlayCollisions]:
+		imgui.SameLineV(0, 20)
+		imguiColorLabel("Collision", win.img.cols.reflectionColors[reflection.Collision])
+		imgui.SameLineV(0, 15)
+		imguiColorLabel("CXCLR", win.img.cols.reflectionColors[reflection.CXCLR])
+	case overlayLabels[overlayHMOVE]:
+		imgui.SameLineV(0, 20)
+		imguiColorLabel("Delay", win.img.cols.reflectionColors[reflection.HMOVEdelay])
+		imgui.SameLineV(0, 15)
+		imguiColorLabel("Ripple", win.img.cols.reflectionColors[reflection.HMOVEripple])
+		imgui.SameLineV(0, 15)
+		imguiColorLabel("Latch", win.img.cols.reflectionColors[reflection.HMOVElatched])
+	case overlayLabels[overlayRSYNC]:
+		imgui.SameLineV(0, 20)
+		imguiColorLabel("Align", win.img.cols.reflectionColors[reflection.RSYNCalign])
+		imgui.SameLineV(0, 15)
+		imguiColorLabel("Reset", win.img.cols.reflectionColors[reflection.RSYNCreset])
+	case overlayLabels[overlayCoprocessor]:
+		imgui.SameLineV(0, 20)
+
+		// display text includes coprocessor ID
+		key := fmt.Sprintf("%s Active", win.img.lz.CoProc.ID)
+		imguiColorLabel(key, win.img.cols.reflectionColors[reflection.CoprocessorActive])
+	}
 }
 
 // called from within a win.scr.crit.section Lock().
@@ -482,15 +445,15 @@ func (win *winDbgScr) drawReflectionTooltip() {
 	imgui.Text(fmt.Sprintf("Scanline: %d", win.mouseScanline))
 	imgui.Text(fmt.Sprintf("Clock: %d", win.mouseClock-specification.ClksHBlank))
 
-	switch win.scr.crit.overlay.Load().(overlay) {
-	case overlayWSYNC:
+	switch win.scr.crit.overlay {
+	case overlayLabels[overlayWSYNC]:
 		imguiSeparator()
 		if ref.WSYNC {
 			imgui.Text("6507 is not ready")
 		} else {
 			imgui.Text("6507 program is running")
 		}
-	case overlayCollisions:
+	case overlayLabels[overlayCollisions]:
 		imguiSeparator()
 
 		imguiLabel("CXM0P ")
@@ -518,7 +481,7 @@ func (win *winDbgScr) drawReflectionTooltip() {
 		} else {
 			imgui.Text("no new collision")
 		}
-	case overlayHMOVE:
+	case overlayLabels[overlayHMOVE]:
 		imguiSeparator()
 		if ref.Hmove.Delay {
 			imgui.Text(fmt.Sprintf("HMOVE delay: %d", ref.Hmove.DelayCt))
@@ -531,16 +494,16 @@ func (win *winDbgScr) drawReflectionTooltip() {
 		} else {
 			imgui.Text("no HMOVE")
 		}
-	case overlayRSYNC:
+	case overlayLabels[overlayRSYNC]:
 		// no RSYNC specific hover information
-	case overlayCoprocessor:
+	case overlayLabels[overlayCoprocessor]:
 		imguiSeparator()
 		if ref.CoprocessorActive {
 			imgui.Text(fmt.Sprintf("%s is working", win.img.lz.CoProc.ID))
 		} else {
 			imgui.Text("6507 program is running")
 		}
-	case overlayNoOverlay:
+	case overlayLabels[overlayNone]:
 		// no overlay
 
 		e, _ := win.img.lz.Dbg.Disasm.FormatResult(ref.Bank, ref.CPU, disassembly.EntryLevelBlessed)

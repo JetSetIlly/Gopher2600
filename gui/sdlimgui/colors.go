@@ -119,22 +119,14 @@ type imguiColors struct {
 	LogBackground imgui.Vec4
 
 	// packed equivalents of the above colors (where appropriate)
-	disasmCPUstep      imgui.PackedColor
-	disasmVideoStep    imgui.PackedColor
-	disasmBreakAddress imgui.PackedColor
-	disasmBreakOther   imgui.PackedColor
-	tiaPointer         imgui.PackedColor
-	collisionBit       imgui.PackedColor
-	registerBit        imgui.PackedColor
-	saveKeyBit         imgui.PackedColor
-	saveKeyOscSCL      imgui.PackedColor
-	saveKeyOscSDA      imgui.PackedColor
-	saveKeyBitPointer  imgui.PackedColor
-	trueCol            imgui.PackedColor
-	falseCol           imgui.PackedColor
+	tiaPointer        imgui.PackedColor
+	collisionBit      imgui.PackedColor
+	registerBit       imgui.PackedColor
+	saveKeyBit        imgui.PackedColor
+	saveKeyBitPointer imgui.PackedColor
 
-	// packed reflection colors
-	reflectionColors map[reflection.ID]imgui.PackedColor
+	// reflection colors
+	reflectionColors map[reflection.ID]imgui.Vec4
 
 	// packed TV palettes
 	packedPaletteNTSC packedPalette
@@ -244,30 +236,22 @@ func newColors() *imguiColors {
 	cols.SaveKeyBit = imgui.CurrentStyle().Color(imgui.StyleColorButton)
 
 	// colors that are used in context where an imgui.PackedColor is required
-	cols.disasmCPUstep = imgui.PackedColorFromVec4(cols.DisasmCPUstep)
-	cols.disasmVideoStep = imgui.PackedColorFromVec4(cols.DisasmVideoStep)
-	cols.disasmBreakAddress = imgui.PackedColorFromVec4(cols.DisasmBreakAddress)
-	cols.disasmBreakOther = imgui.PackedColorFromVec4(cols.DisasmBreakOther)
 	cols.tiaPointer = imgui.PackedColorFromVec4(cols.TIApointer)
 	cols.collisionBit = imgui.PackedColorFromVec4(cols.CollisionBit)
 	cols.registerBit = imgui.PackedColorFromVec4(cols.RegisterBit)
 	cols.saveKeyBit = imgui.PackedColorFromVec4(cols.SaveKeyBit)
 	cols.saveKeyBitPointer = imgui.PackedColorFromVec4(cols.SaveKeyBitPointer)
-	cols.saveKeyOscSCL = imgui.PackedColorFromVec4(cols.SaveKeyOscSCL)
-	cols.saveKeyOscSDA = imgui.PackedColorFromVec4(cols.SaveKeyOscSDA)
-	cols.trueCol = imgui.PackedColorFromVec4(cols.True)
-	cols.falseCol = imgui.PackedColorFromVec4(cols.False)
 
-	// pack reflection colors
-	cols.reflectionColors = make(map[reflection.ID]imgui.PackedColor)
+	// reflection colors in imgui.Vec4 and imgui.PackedColor formats
+	cols.reflectionColors = make(map[reflection.ID]imgui.Vec4)
 	for k, v := range reflectionColors {
 		c := imgui.Vec4{float32(v.R) / 255.0, float32(v.G) / 255.0, float32(v.B) / 255.0, float32(v.A) / 255.0}
-		cols.reflectionColors[k] = imgui.PackedColorFromVec4(c)
+		cols.reflectionColors[k] = c
 	}
 
 	// convert 2600 colours to format usable by imgui
 
-	// convert to imgiu.Vec4 first...
+	// convert to imgui.Vec4 first...
 	vec4PaletteNTSC := make([]imgui.Vec4, 0, len(specification.PaletteNTSC))
 	for _, c := range specification.PaletteNTSC {
 		v := imgui.Vec4{

@@ -195,7 +195,7 @@ func newOverlayShader(img *SdlImgui) shaderProgram {
 
 func (sh *overlayShader) setAttributes(env shaderEnvironment) {
 	sh.shader.setAttributes(env)
-	gl.Uniform1f(sh.alpha, sh.img.wm.dbgScr.overlayAlpha)
+	gl.Uniform1f(sh.alpha, 0.75)
 }
 
 type guiShader struct {

@@ -19,7 +19,6 @@ import (
 	"image"
 	"image/color"
 	"sync"
-	"sync/atomic"
 
 	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
@@ -95,9 +94,6 @@ type screenCrit struct {
 	elementPixels *image.RGBA
 	overlayPixels *image.RGBA
 
-	// the selected overlay (does not need to be critical section)
-	overlay atomic.Value
-
 	// 2d array of disasm entries. resized at the same time as overlayPixels resize
 	reflection [][]reflection.VideoStep
 
@@ -112,6 +108,9 @@ type screenCrit struct {
 	// channel when emulation is paused
 	lastX int
 	lastY int
+
+	// the selected overlay
+	overlay string
 }
 
 func newScreen(img *SdlImgui) *screen {
@@ -121,7 +120,7 @@ func newScreen(img *SdlImgui) *screen {
 		emuWaitAck: make(chan bool),
 	}
 
-	scr.crit.overlay.Store(overlayNoOverlay)
+	scr.crit.overlay = overlayLabels[overlayNone]
 	scr.crit.vsync = true
 
 	// default to NTSC. this will change on the first instance of
@@ -436,18 +435,18 @@ func (scr *screen) replotOverlay() {
 // plotOverlay should be called from within a scr.crit.section Lock().
 func (scr *screen) plotOverlay(x, y int, ref reflection.VideoStep) {
 	scr.crit.overlayPixels.SetRGBA(x, y, color.RGBA{0, 0, 0, 0})
-	switch scr.crit.overlay.Load().(overlay) {
-	case overlayWSYNC:
+	switch scr.crit.overlay {
+	case overlayLabels[overlayWSYNC]:
 		if ref.WSYNC {
 			scr.crit.overlayPixels.SetRGBA(x, y, reflectionColors[reflection.WSYNC])
 		}
-	case overlayCollisions:
+	case overlayLabels[overlayCollisions]:
 		if ref.Collision.LastVideoCycle.IsCXCLR() {
 			scr.crit.overlayPixels.SetRGBA(x, y, reflectionColors[reflection.CXCLR])
 		} else if !ref.Collision.LastVideoCycle.IsNothing() {
 			scr.crit.overlayPixels.SetRGBA(x, y, reflectionColors[reflection.Collision])
 		}
-	case overlayHMOVE:
+	case overlayLabels[overlayHMOVE]:
 		// HmoveCt counts to -1 (or 255 for a uint8)
 		if ref.Hmove.Delay {
 			scr.crit.overlayPixels.SetRGBA(x, y, reflectionColors[reflection.HMOVEdelay])
@@ -458,13 +457,13 @@ func (scr *screen) plotOverlay(x, y int, ref reflection.VideoStep) {
 				scr.crit.overlayPixels.SetRGBA(x, y, reflectionColors[reflection.HMOVElatched])
 			}
 		}
-	case overlayRSYNC:
+	case overlayLabels[overlayRSYNC]:
 		if ref.RSYNCalign {
 			scr.crit.overlayPixels.SetRGBA(x, y, reflectionColors[reflection.RSYNCalign])
 		} else if ref.RSYNCreset {
 			scr.crit.overlayPixels.SetRGBA(x, y, reflectionColors[reflection.RSYNCreset])
 		}
-	case overlayCoprocessor:
+	case overlayLabels[overlayCoprocessor]:
 		if ref.CoprocessorActive {
 			scr.crit.overlayPixels.SetRGBA(x, y, reflectionColors[reflection.CoprocessorActive])
 		}

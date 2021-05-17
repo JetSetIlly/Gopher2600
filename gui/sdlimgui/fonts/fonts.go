@@ -58,6 +58,7 @@ const (
 	Breakpoint    = '\uf12a'
 	AudioDisabled = '\uf00d'
 	AudioEnabled  = '\uf028'
+	ColorSwatch   = '\uf111'
 )
 
 // The first and last unicode points used in the application. We use this to
