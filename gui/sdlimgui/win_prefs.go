@@ -125,6 +125,11 @@ func (win *winPrefs) drawGeneral() {
 		win.img.wm.windows[winDisasmID].(*winDisasm).focusOnAddr = true
 	}
 
+	audioEnabled := win.img.prefs.audioEnabled.Get().(bool)
+	if imgui.Checkbox("Audio Enabled", &audioEnabled) {
+		win.img.prefs.audioEnabled.Set(audioEnabled)
+	}
+
 	termOnError := win.img.prefs.openOnError.Get().(bool)
 	if imgui.Checkbox("Open Terminal on Error", &termOnError) {
 		err := win.img.prefs.openOnError.Set(termOnError)

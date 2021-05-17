@@ -34,7 +34,8 @@ type preferences struct {
 	dskWin *prefs.Disk
 
 	// debugger preferences
-	openOnError prefs.Bool
+	openOnError  prefs.Bool
+	audioEnabled prefs.Bool
 
 	// there are no playmode preferences yet
 }
@@ -46,6 +47,7 @@ func newDebugPreferences(img *SdlImgui) (*preferences, error) {
 
 	// defaults
 	p.openOnError.Set(true)
+	p.audioEnabled.Set(true)
 
 	// setup preferences
 	pth, err := paths.ResourcePath("", prefs.DefaultPrefsFile)
@@ -62,6 +64,16 @@ func newDebugPreferences(img *SdlImgui) (*preferences, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	err = p.dsk.Add("sdlimgui.debugger.audioEnabled", &p.audioEnabled)
+	if err != nil {
+		return nil, err
+	}
+
+	p.audioEnabled.RegisterCallback(func(enabled prefs.Value) error {
+		p.img.audio.Mute(!enabled.(bool))
+		return nil
+	})
 
 	err = p.dsk.Load(true)
 	if err != nil {

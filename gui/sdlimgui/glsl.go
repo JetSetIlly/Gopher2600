@@ -36,6 +36,9 @@ const (
 type glsl struct {
 	img *SdlImgui
 
+	largeFontAwesome     imgui.Font
+	largeFontAwesomeSize float32
+
 	gopher2600Icons     imgui.Font
 	gopher2600IconsSize float32
 
@@ -102,17 +105,31 @@ func (rnd *glsl) setupFonts() error {
 		return curated.Errorf("font: error loading font from memory")
 	}
 
-	// load large icons
+	// load gopher icons
 	gopher2600IconConfig := imgui.NewFontConfig()
 	defer gopher2600IconConfig.Delete()
 	gopher2600IconConfig.SetPixelSnapH(true)
 	gopher2600IconConfig.SetGlyphOffsetY(1.0)
 
-	var largeIconBuilder imgui.GlyphRangesBuilder
-	largeIconBuilder.Add(fonts.Gopher2600IconMin, fonts.Gopher2600IconMax)
+	var gopherIconBuilder imgui.GlyphRangesBuilder
+	gopherIconBuilder.Add(fonts.Gopher2600IconMin, fonts.Gopher2600IconMax)
 
 	rnd.gopher2600IconsSize = 52.0
-	rnd.gopher2600Icons = atlas.AddFontFromMemoryTTFV(fonts.Gopher2600Icons, rnd.gopher2600IconsSize, gopher2600IconConfig, largeIconBuilder.Build().GlyphRanges)
+	rnd.gopher2600Icons = atlas.AddFontFromMemoryTTFV(fonts.Gopher2600Icons, rnd.gopher2600IconsSize, gopher2600IconConfig, gopherIconBuilder.Build().GlyphRanges)
+	if font == 0 {
+		return curated.Errorf("font: error loading font from memory")
+	}
+
+	// load large icons
+	largeFontAwesomeConfig := imgui.NewFontConfig()
+	defer largeFontAwesomeConfig.Delete()
+	largeFontAwesomeConfig.SetPixelSnapH(true)
+
+	var largFontAwesomeBuilder imgui.GlyphRangesBuilder
+	largFontAwesomeBuilder.Add(fonts.FontAwesomeMin, fonts.FontAwesomeMax)
+
+	rnd.largeFontAwesomeSize = 22.0
+	rnd.largeFontAwesome = atlas.AddFontFromMemoryTTFV(fonts.FontAwesome, rnd.largeFontAwesomeSize, largeFontAwesomeConfig, largFontAwesomeBuilder.Build().GlyphRanges)
 	if font == 0 {
 		return curated.Errorf("font: error loading font from memory")
 	}

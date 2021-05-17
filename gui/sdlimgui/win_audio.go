@@ -16,7 +16,10 @@
 package sdlimgui
 
 import (
+	"math"
+
 	"github.com/inkyblackness/imgui-go/v4"
+	"github.com/jetsetilly/gopher2600/gui/sdlimgui/fonts"
 )
 
 const winAudioID = "Audio"
@@ -29,7 +32,6 @@ type winAudio struct {
 	newData       chan float32
 	clearData     chan bool
 
-	enabled     bool
 	endabledDim imgui.Vec2
 }
 
@@ -38,7 +40,6 @@ func newWinAudio(img *SdlImgui) (window, error) {
 		img:       img,
 		newData:   make(chan float32, 2048),
 		clearData: make(chan bool, 1),
-		enabled:   true,
 	}
 	win.reset()
 
@@ -48,7 +49,9 @@ func newWinAudio(img *SdlImgui) (window, error) {
 }
 
 func (win *winAudio) init() {
-	win.endabledDim = imguiGetFrameDim("Enabled", "Disabled")
+	imgui.PushFont(win.img.glsl.largeFontAwesome)
+	defer imgui.PopFont()
+	win.endabledDim = imguiGetFrameDim(string(fonts.AudioDisabled), string(fonts.AudioEnabled))
 }
 
 func (win *winAudio) id() string {
@@ -73,19 +76,29 @@ func (win *winAudio) draw() {
 
 	imgui.PushStyleColor(imgui.StyleColorFrameBg, win.img.cols.AudioOscBg)
 	imgui.PushStyleColor(imgui.StyleColorPlotLines, win.img.cols.AudioOscLine)
-	imgui.PlotLines("", win.displayBuffer)
+	imgui.PlotLinesV("", win.displayBuffer, 0, "", math.MaxFloat32, math.MaxFloat32, imgui.Vec2{Y: win.img.glsl.largeFontAwesomeSize * 1.2})
 	imgui.PopStyleColor()
 	imgui.PopStyleColor()
 	imgui.SameLine()
 
-	label := "Disabled"
-	if win.enabled {
-		label = "Enabled"
+	enabled := win.img.prefs.audioEnabled.Get().(bool)
+
+	label := string(fonts.AudioDisabled)
+	if enabled {
+		label = string(fonts.AudioEnabled)
 	}
-	if imguiBooleanButton(win.img.cols, win.enabled, label, win.endabledDim) {
-		win.img.audio.Mute(win.enabled)
-		win.enabled = !win.enabled
+
+	imgui.PushFont(win.img.glsl.largeFontAwesome)
+	imgui.PushStyleColor(imgui.StyleColorButton, win.img.cols.Transparent)
+	imgui.PushStyleColor(imgui.StyleColorButtonActive, win.img.cols.Transparent)
+	imgui.PushStyleColor(imgui.StyleColorButtonHovered, win.img.cols.Transparent)
+
+	if imgui.ButtonV(label, imgui.Vec2{X: win.endabledDim.X}) {
+		win.img.prefs.audioEnabled.Set(!enabled)
 	}
+
+	imgui.PopStyleColorV(3)
+	imgui.PopFont()
 
 	imgui.End()
 
