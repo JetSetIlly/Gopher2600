@@ -41,7 +41,7 @@ type winDbgScr struct {
 	createTextures bool
 
 	// textures
-	screenTexture   uint32
+	normalTexture   uint32
 	elementsTexture uint32
 	overlayTexture  uint32
 
@@ -97,8 +97,8 @@ func newWinDbgScr(img *SdlImgui) (window, error) {
 	}
 
 	// set texture, creation of textures will be done after every call to resize()
-	gl.GenTextures(1, &win.screenTexture)
-	gl.BindTexture(gl.TEXTURE_2D, win.screenTexture)
+	gl.GenTextures(1, &win.normalTexture)
+	gl.BindTexture(gl.TEXTURE_2D, win.normalTexture)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
 
@@ -211,13 +211,13 @@ func (win *winDbgScr) draw() {
 	imgui.PushStyleVarVec2(imgui.StyleVarFramePadding, imgui.Vec2{0.0, 0.0})
 
 	if win.crtPreview {
-		imgui.ImageButton(imgui.TextureID(win.screenTexture), imgui.Vec2{win.scaledWidth, win.scaledHeight})
+		imgui.ImageButton(imgui.TextureID(win.normalTexture), imgui.Vec2{win.scaledWidth, win.scaledHeight})
 	} else {
 		// choose which texture to use depending on whether elements is selected
 		if win.elements {
 			imgui.ImageButton(imgui.TextureID(win.elementsTexture), imgui.Vec2{win.scaledWidth, win.scaledHeight})
 		} else {
-			imgui.ImageButton(imgui.TextureID(win.screenTexture), imgui.Vec2{win.scaledWidth, win.scaledHeight})
+			imgui.ImageButton(imgui.TextureID(win.normalTexture), imgui.Vec2{win.scaledWidth, win.scaledHeight})
 		}
 
 		// overlay texture on top of screen texture
@@ -628,7 +628,7 @@ func (win *winDbgScr) render() {
 	defer gl.PixelStorei(gl.UNPACK_ROW_LENGTH, 0)
 
 	if win.createTextures {
-		gl.BindTexture(gl.TEXTURE_2D, win.screenTexture)
+		gl.BindTexture(gl.TEXTURE_2D, win.normalTexture)
 		gl.TexImage2D(gl.TEXTURE_2D, 0,
 			gl.RGBA, int32(pixels.Bounds().Size().X), int32(pixels.Bounds().Size().Y), 0,
 			gl.RGBA, gl.UNSIGNED_BYTE,
@@ -648,7 +648,7 @@ func (win *winDbgScr) render() {
 
 		win.createTextures = false
 	} else {
-		gl.BindTexture(gl.TEXTURE_2D, win.screenTexture)
+		gl.BindTexture(gl.TEXTURE_2D, win.normalTexture)
 		gl.TexSubImage2D(gl.TEXTURE_2D, 0,
 			0, 0, int32(pixels.Bounds().Size().X), int32(pixels.Bounds().Size().Y),
 			gl.RGBA, gl.UNSIGNED_BYTE,

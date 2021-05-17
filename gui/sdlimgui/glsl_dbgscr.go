@@ -90,6 +90,35 @@ func (sh *dbgScreenShader) setAttributes(env shaderEnvironment) {
 	}
 
 	if sh.img.wm.dbgScr.crtPreview {
+		// this is a bit weird but in the case of crtPreview we need to force
+		// the use of the dbgscr's normalTexture. this is because for a period
+		// of one frame the value of crtPreview and the texture being used in
+		// the dbgscr's image button may not agree.
+		//
+		// consider the sequence and interaction of dbgscr with glsl:
+		//
+		// 1) crtPreview is checked to decide whether to show the normalTexture
+		// 2) if it is false and elements is true then the elementsTexture is
+		//          selected
+		// 3) the crt checkbox is shown and clicked. the crtPreview value is
+		//          changed on this frame
+		// 4) for one frame therefore, it is possible to reach this point
+		//          (crtPreview is true) but for the elementsTexture to have
+		//          been chosen
+		//
+		// forcing the use of the normalTexture at this point seems the least
+		// obtrusive solution. another solutions could be to defer otion
+		// changes to the following frame but that would invovle a manager of
+		// some sort.
+		//
+		// altenatively, we could try a more structured method of attaching a
+		// texture to an imgui.Image and packaging texture specific options
+		// within that structure.
+		//
+		// both alternative solutions seem baroque for a single use case. maybe
+		// something for the future.
+		env.srcTextureID = sh.img.wm.dbgScr.normalTexture
+
 		env.srcTextureID = sh.crt.process(env, true, false, sh.img.wm.dbgScr.numScanlines, specification.ClksVisible)
 		return
 	}
