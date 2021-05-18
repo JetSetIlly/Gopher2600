@@ -1,6 +1,10 @@
 # Gopher2600
 
-`Gopher2600` is an emulator for the Atari 2600 written in the Go language. The accuracy of the emulation is very high and the 6507, TIA and RIOT chips are well represented. The key features of the emulator:
+`Gopher2600` is an emulator for the Atari 2600 written in the Go language. The accuracy of the emulation is very high and the 6507, TIA and RIOT chips appear to operate without bugs. Certainly, there are no known outstanding issues with any of the emulated chips.
+
+It compare favourably with `Stella` except for [speed](#performance) and final project polish. 
+
+The key features of the emulator:
 
 * [Support for many of the known cartridge formats](#supported-cartridge-formats)
 * Emulation of the [ARM7TDMI](#arm7tdmi-emulation) as found in the `Harmony` cartridge
@@ -8,7 +12,7 @@
 * Support for (and auto-detection of) [stick, paddle and keyboard](#hand-controllers)
 * Network access through [PlusROM](#plusrom) emulation
 * [Savekey](#savekey) support
-* Rudimentary [CRT Effects](#crt-effects)
+* [CRT Effects](#crt-effects)
 * Support for common [TIA revisions](#tia-revisions)
 * Implementation of [Movie Cart](#movie-cart)
 
@@ -31,9 +35,9 @@ The following screenshots were taken in playmode with CRT effects enabled
 <img src=".screenshots/games/thrust.png" height="200" alt="thrust"/> <img src=".screenshots/games/pandachase.png" height="200" alt="panda chase"/>
 <img src=".screenshots/games/mangoesdown.png" height="200" alt="man goes down"/> <img src=".screenshots/games/beast.png" height="200" alt="legacy of the beast"/>
 <img src=".screenshots/games/chiphead.png" height="200" alt="chiphead"/> <img src=".screenshots/games/genesis.png" height="200" alt="egypt genesis"/>
-<img src=".screenshots/games/draconian.png" height="200" alt="draconian"/> <img src=".screenshots/games/zevious.png" height="200" alt="zevious"/>
+<img src=".screenshots/games/draconian.png" height="200" alt="draconian"/> <img src=".screenshots/games/galagon.png" height="200" alt="galagon"/>
 
-Games shown: Pitfall; He-Man; Krull; Ladybug; Thrust; Panda Chase; Man Goes Down; [Legacy of the Beast](https://aeriform.itch.io/beast); Chiphead; Egypt 2600BC by Genesis Project; Draconian; Zevious.
+Games shown: Pitfall; He-Man; Krull; Ladybug; Thrust; Panda Chase; Man Goes Down; [Legacy of the Beast](https://aeriform.itch.io/beast); Chiphead; Egypt 2600BC by Genesis Project; Draconian; [Galagon](https://champ.games/downloads).
 
 ## Scope of the project
 
@@ -365,27 +369,17 @@ but the common ones are.
 
 ## CRT Effects
 
-`Gopher2600` offers basic emulation of a CRT television. This is by no means
-complete and is an area of active development.
+`Gopher2600` tries to emulate the visual effect of a CRT television. This is by
+no means complete and is an area of active development.
 
-By default `playmode` enables CRT effects. You can turn them off with a
-commandline switch:
-
-	> gopher2600 -crt=false roms/Pitfall.bin
-
-Individual CRT effects can be turned on and off. From the debugger select the
-`CRT Preferences` entry in the `Debugger` menu. The following window will be
-shown:
-
-<img src=".screenshots/crt_prefs_window.png" height="400" alt="crt preferences window"/>
-
-The preview window give an impression of the effect the CRT preferences on the
-current ROM. You can move the preview image by dragging it with the mouse.
-
-From playmode, the preferences window can by opened by pressing `F10`. An
-example of the screen shot is given below.
+Individual CRT effects can be turned on and off. In playmode the preferences
+window can by opened by pressing `F10`.
 
 <img src=".screenshots/crt_playmode_prefs_window.png" height="400" alt="crt playmode preferences window"/>
+
+In the debugger the preferences window can be opened from the `Debugger` menu
+and a preview can be seen in the `TV Screen` by pressing the `CRT Preview`
+checkbox.
 
 ## Configuration Directory
 
@@ -805,4 +799,5 @@ Some ideas for the fragment shader taken from:
 
 * https://github.com/libretro/glsl-shaders/blob/master/crt/shaders/crt-pi.glsl
 * https://www.shadertoy.com/view/ltB3zD
+* https://github.com/mattiasgustavsson/crtview
 
