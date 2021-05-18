@@ -172,7 +172,7 @@ type colorShader struct {
 }
 
 func newColorShader(yflipped bool) shaderProgram {
-	sh := &guiShader{}
+	sh := &colorShader{}
 	if yflipped {
 		sh.createProgram(string(shaders.YFlipVertexShader), string(shaders.ColorShader))
 	} else {
@@ -286,7 +286,7 @@ func (sh *phosphorShader) setAttributesArgs(env shaderEnvironment, latency float
 	gl.Uniform1i(sh.correctVideoBlack, boolToInt32(correction))
 
 	gl.ActiveTexture(gl.TEXTURE1)
-	gl.BindTexture(gl.TEXTURE_2D, uint32(newFrame))
+	gl.BindTexture(gl.TEXTURE_2D, newFrame)
 	gl.Uniform1i(sh.newFrame, 1)
 }
 
@@ -329,6 +329,6 @@ func (sh *blendShader) setAttributesArgs(env shaderEnvironment, modulate float32
 	gl.Uniform1f(sh.fade, fade)
 
 	gl.ActiveTexture(gl.TEXTURE1)
-	gl.BindTexture(gl.TEXTURE_2D, uint32(newFrame))
+	gl.BindTexture(gl.TEXTURE_2D, newFrame)
 	gl.Uniform1i(sh.newFrame, 1)
 }

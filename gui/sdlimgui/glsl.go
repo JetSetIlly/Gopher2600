@@ -58,9 +58,6 @@ func newGlsl(img *SdlImgui) (*glsl, error) {
 	rnd := &glsl{img: img}
 
 	rnd.setupShaders()
-	if err != nil {
-		return nil, fmt.Errorf("glsl: %v", err)
-	}
 
 	err = rnd.setupFonts()
 	if err != nil {
@@ -73,13 +70,12 @@ func newGlsl(img *SdlImgui) (*glsl, error) {
 	return rnd, nil
 }
 
-func (rnd *glsl) setupShaders() error {
+func (rnd *glsl) setupShaders() {
 	rnd.shaders[guiShaderID] = newGUIShader()
 	rnd.shaders[colorShaderID] = newColorShader(false)
 	rnd.shaders[dbgscrShaderID] = newDbgScrShader(rnd.img)
 	rnd.shaders[overlayShaderID] = newOverlayShader(rnd.img)
 	rnd.shaders[playscrShaderID] = newPlayscrShader(rnd.img)
-	return nil
 }
 
 func (rnd *glsl) setupFonts() error {

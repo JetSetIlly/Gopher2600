@@ -538,7 +538,6 @@ func (scr *screen) copyPixelsPlaymode() {
 			if scr.crit.renderIdx < 0 {
 				scr.crit.renderIdx += len(scr.crit.bufferPixels)
 			}
-		} else {
 		}
 	}
 

@@ -100,12 +100,6 @@ func (win *winCRTPrefs) draw() {
 	imgui.End()
 }
 
-// height/width for preview image.
-const (
-	previewWidth  = 50
-	previewHeight = 100
-)
-
 func (win *winCRTPrefs) drawCurve() {
 	b := win.img.crtPrefs.Curve.Get().(bool)
 	if imgui.Checkbox("Curve##curve", &b) {

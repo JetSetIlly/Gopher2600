@@ -168,7 +168,7 @@ func (win *winTerm) draw() {
 	if win.img.state == gui.StateRunning {
 		imguiLabel("running")
 	} else {
-		imguiLabel(fmt.Sprintf("%s", strings.TrimSpace(win.prompt.Content)))
+		imguiLabel(strings.TrimSpace(win.prompt.Content))
 	}
 
 	// command line prompt on same line as command

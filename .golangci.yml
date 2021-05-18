@@ -81,3 +81,4 @@ run:
   skip-dirs:
     # the new embed directive doesn't play well with the current set of linters
     - gui/sdlimgui/fonts
+    - gui/sdlimgui/shaders

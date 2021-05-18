@@ -283,6 +283,4 @@ func (sh *cameraSequencer) process(env shaderEnvironment) {
 	} else {
 		logger.Logf("camera", "saved to %s", filename)
 	}
-
-	return
 }

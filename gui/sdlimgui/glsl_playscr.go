@@ -183,6 +183,7 @@ func newPlayscrShader(img *SdlImgui) shaderProgram {
 
 func (sh *playscrShader) destroy() {
 	sh.crt.destroy()
+	sh.camera.destroy()
 }
 
 func (sh *playscrShader) scheduleScreenshot(extended bool) {
