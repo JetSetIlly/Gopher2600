@@ -165,7 +165,7 @@ func (win *winDbgScr) draw() {
 	}
 
 	imgui.SetNextWindowPosV(imgui.Vec2{8, 28}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
-	imgui.SetNextWindowSizeV(imgui.Vec2{611, 470}, imgui.ConditionFirstUseEver)
+	imgui.SetNextWindowSizeV(imgui.Vec2{632, 450}, imgui.ConditionFirstUseEver)
 
 	// we don't want to ever show scrollbars
 	imgui.BeginV(win.id(), &win.open, imgui.WindowFlagsNoScrollbar)

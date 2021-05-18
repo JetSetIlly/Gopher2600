@@ -58,7 +58,7 @@ func (win *winChipRegisters) draw() {
 		return
 	}
 
-	imgui.SetNextWindowPosV(imgui.Vec2{653, 400}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
+	imgui.SetNextWindowPosV(imgui.Vec2{462, 121}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
 	imgui.BeginV(win.id(), &win.open, imgui.WindowFlagsAlwaysAutoResize)
 
 	win.drawChipRegister("SWACNT", win.img.lz.ChipRegisters.SWACNT)

@@ -71,7 +71,7 @@ func (win *winAudio) draw() {
 		return
 	}
 
-	imgui.SetNextWindowPosV(imgui.Vec2{648, 440}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
+	imgui.SetNextWindowPosV(imgui.Vec2{625, 567}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
 	imgui.BeginV(win.id(), &win.open, imgui.WindowFlagsAlwaysAutoResize)
 
 	imgui.PushStyleColor(imgui.StyleColorFrameBg, win.img.cols.AudioOscBg)

@@ -75,7 +75,7 @@ func (win *winCPU) draw() {
 		return
 	}
 
-	imgui.SetNextWindowPosV(imgui.Vec2{659, 35}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
+	imgui.SetNextWindowPosV(imgui.Vec2{714, 36}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
 	imgui.SetNextWindowSizeV(imgui.Vec2{win.statusWidth, -1}, imgui.ConditionNone)
 	imgui.BeginV(win.id(), &win.open, imgui.WindowFlagsNone)
 

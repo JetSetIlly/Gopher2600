@@ -116,7 +116,7 @@ func (win *winDisasm) draw() {
 		return
 	}
 
-	imgui.SetNextWindowPosV(imgui.Vec2{905, 242}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
+	imgui.SetNextWindowPosV(imgui.Vec2{981, 261}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
 	imgui.SetNextWindowSizeV(imgui.Vec2{353, 466}, imgui.ConditionFirstUseEver)
 	imgui.BeginV(win.id(), &win.open, 0)
 	defer imgui.End()

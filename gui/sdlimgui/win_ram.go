@@ -52,7 +52,7 @@ func (win *winRAM) draw() {
 		return
 	}
 
-	imgui.SetNextWindowPosV(imgui.Vec2{890, 29}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
+	imgui.SetNextWindowPosV(imgui.Vec2{923, 28}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
 	imgui.BeginV(win.id(), &win.open, imgui.WindowFlagsAlwaysAutoResize)
 
 	imgui.PushStyleVarVec2(imgui.StyleVarItemSpacing, imgui.Vec2{})

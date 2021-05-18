@@ -111,7 +111,7 @@ func (win *winTerm) draw() {
 	}
 
 	imgui.SetNextWindowPosV(imgui.Vec2{431, 381}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
-	imgui.SetNextWindowSizeV(imgui.Vec2{534, 313}, imgui.ConditionFirstUseEver)
+	imgui.SetNextWindowSizeV(imgui.Vec2{623, 322}, imgui.ConditionFirstUseEver)
 
 	imgui.PushStyleColor(imgui.StyleColorWindowBg, win.img.cols.TermBackground)
 	imgui.PushStyleVarVec2(imgui.StyleVarFramePadding, imgui.Vec2{2, 2})

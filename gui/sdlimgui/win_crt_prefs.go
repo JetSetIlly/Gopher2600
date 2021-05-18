@@ -62,7 +62,7 @@ func (win *winCRTPrefs) draw() {
 		imgui.SetNextWindowPosV(imgui.Vec2{25, 25}, imgui.ConditionAppearing, imgui.Vec2{0, 0})
 		imgui.BeginV(win.id(), &win.open, imgui.WindowFlagsNoSavedSettings|imgui.WindowFlagsAlwaysAutoResize)
 	} else {
-		imgui.SetNextWindowPosV(imgui.Vec2{25, 25}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
+		imgui.SetNextWindowPosV(imgui.Vec2{21, 39}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
 		imgui.BeginV(win.id(), &win.open, imgui.WindowFlagsAlwaysAutoResize)
 	}
 

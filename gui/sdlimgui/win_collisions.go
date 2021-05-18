@@ -55,7 +55,7 @@ func (win *winCollisions) draw() {
 		return
 	}
 
-	imgui.SetNextWindowPosV(imgui.Vec2{623, 527}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
+	imgui.SetNextWindowPosV(imgui.Vec2{530, 455}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
 	imgui.BeginV(win.id(), &win.open, imgui.WindowFlagsAlwaysAutoResize)
 
 	imguiLabel("CXM0P ")

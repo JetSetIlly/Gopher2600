@@ -54,8 +54,8 @@ func (win *winLog) draw() {
 		return
 	}
 
-	imgui.SetNextWindowPosV(imgui.Vec2{500, 480}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
-	imgui.SetNextWindowSizeV(imgui.Vec2{400, 400}, imgui.ConditionFirstUseEver)
+	imgui.SetNextWindowPosV(imgui.Vec2{489, 352}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
+	imgui.SetNextWindowSizeV(imgui.Vec2{570, 335}, imgui.ConditionFirstUseEver)
 
 	imgui.PushStyleColor(imgui.StyleColorWindowBg, win.img.cols.LogBackground)
 	imgui.BeginV(win.id(), &win.open, 0)
