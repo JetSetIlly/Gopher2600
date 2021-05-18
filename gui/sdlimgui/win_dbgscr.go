@@ -112,10 +112,10 @@ func newWinDbgScr(img *SdlImgui) (window, error) {
 	return win, nil
 }
 
-// list of overlay labels
+// list of overlay labels.
 var overlayLabels = []string{"No overlay", "WSYNC", "Collisions", "HMOVE", "RSYNC", "Coprocessor"}
 
-// named indexes for overlay labels list
+// named indexes for overlay labels list.
 const (
 	overlayNone = iota
 	overlayWSYNC

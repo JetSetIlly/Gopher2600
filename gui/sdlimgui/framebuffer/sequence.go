@@ -41,7 +41,7 @@ func NewSequence(numTextures int) *Sequence {
 	return seq
 }
 
-// Destroy framebuffer
+// Destroy framebuffer.
 func (seq *Sequence) Destroy() {
 	gl.DeleteFramebuffers(1, &seq.fbo)
 }
@@ -78,7 +78,7 @@ func (seq *Sequence) Setup(width int32, height int32) bool {
 	return true
 }
 
-// Len returns the number of textures employed in the framebuffer sequence
+// Len returns the number of textures employed in the framebuffer sequence.
 func (seq *Sequence) Len() int {
 	return len(seq.textures)
 }
@@ -88,7 +88,7 @@ func (seq *Sequence) Texture(idxTexture int) uint32 {
 	return seq.textures[idxTexture]
 }
 
-// Clear texture
+// Clear texture.
 func (seq *Sequence) Clear(idxTexture int) {
 	gl.ClearTexImage(seq.textures[idxTexture], 0, gl.RGBA, gl.UNSIGNED_BYTE, gl.Ptr(nil))
 }

@@ -92,7 +92,7 @@ func (set television) matchCartHash(hash string) bool {
 func (set television) apply(vcs *hardware.VCS) error {
 	// because the apply function is run after attaching the cartridge to the
 	// VCS, any setup entries will take precedence over any spec in the
-	// cartrdige filename.
+	// cartridge filename.
 	//
 	// the SetSpecConditional() function however, will only change spec if the
 	// original spec request is AUTO. In other words, a setup entry will not

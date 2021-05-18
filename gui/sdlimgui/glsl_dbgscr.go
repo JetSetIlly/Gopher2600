@@ -108,7 +108,7 @@ func (sh *dbgScreenShader) setAttributes(env shaderEnvironment) {
 		//
 		// forcing the use of the normalTexture at this point seems the least
 		// obtrusive solution. another solutions could be to defer otion
-		// changes to the following frame but that would invovle a manager of
+		// changes to the following frame but that would involve a manager of
 		// some sort.
 		//
 		// altenatively, we could try a more structured method of attaching a

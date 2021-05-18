@@ -163,7 +163,7 @@ func (trm *term) IsInteractive() bool {
 //
 // ** do not to push commands if GUI is not in debug mode. there won't
 // be anything to receive the input and so the channel will eventually
-// fill up
+// fill up.
 func (trm *term) pushCommand(input string) {
 	select {
 	case trm.sideChan <- input:

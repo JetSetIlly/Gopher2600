@@ -35,21 +35,21 @@ const (
 	// combined with the lazyupdate system, which happens in two half (refresh
 	// and update) the delay is visually a lot longer in some situations (for
 	// example, when editing the PC value and seeing the change in the disasm
-	// window)
+	// window).
 	debugSleepPeriod = 10
 
-	// idleSleepPeriod should not be too long because the sleep is not preempted
+	// idleSleepPeriod should not be too long because the sleep is not preempted.
 	idleSleepPeriod = 500
 )
 
 // time periods used to slow down / speed up event handling (in milliseconds).
 const (
 	// frictionPeriod is applied to mouse events. mouse events can come in
-	// thick and fast and we don't want/need to service everyone
+	// thick and fast and we don't want/need to service everyone.
 	frictionPeriod = 50
 
 	// the period of inactivity required before the main sleep period drops to
-	// the idlsSleepPeriod value
+	// the idlsSleepPeriod value.
 	wakefullnessPeriod = 3000 // 3 seconds
 )
 

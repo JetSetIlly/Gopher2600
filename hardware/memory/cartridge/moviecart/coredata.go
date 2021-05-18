@@ -18,10 +18,10 @@ package moviecart
 // key addresses in the core program. data at these address or just after in
 // the case of JMP instructions, will be altered during playback.
 const (
-	// processAddress()
+	// processAddress().
 	addrTitleLoop = 0xb50
 
-	// fillAddrRightLine()
+	// fillAddrRightLine().
 	addrSetAudRight = 0x94a
 	addrSetGData5   = 0x95a
 	addrSetGData6   = 0x952
@@ -34,7 +34,7 @@ const (
 	addrSetGCol8    = 0x96e
 	addrSetGCol9    = 0x950
 
-	// fillAddrLeftLine()
+	// fillAddrLeftLine().
 	addrSetAudLeft   = 0x986
 	addrSetGData0    = 0x992
 	addrSetGData1    = 0x982
@@ -50,7 +50,7 @@ const (
 	addrRightLine    = 0x946
 	addrEndLines     = 0xa80
 
-	// fillAddrEndLines()
+	// fillAddrEndLines().
 	addrSetAudEndlines     = 0xa8c
 	addrSetOverscanSize    = 0xa90
 	addrSetVBlankSize      = 0xaa6
@@ -58,7 +58,7 @@ const (
 	addrTransportDirection = 0xab2
 	addrTransportButtons   = 0xabb
 
-	// fillAddrBlankLines()
+	// fillAddrBlankLines().
 	addrAudioBank = 0xb80
 )
 

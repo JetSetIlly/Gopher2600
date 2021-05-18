@@ -562,7 +562,7 @@ func (tv *Television) IsStable() bool {
 }
 
 // GetLastSignal Returns a copy of the most SignalAttributes sent to the TV
-// (via the Signal() function)
+// (via the Signal() function).
 func (tv *Television) GetLastSignal() signal.SignalAttributes {
 	return tv.state.lastSignal
 }
@@ -588,7 +588,7 @@ func (tv *Television) SetSpecConditional(spec string) error {
 // specification is not recognised.
 //
 // Currently supported NTSC, PAL, PAL60 and AUTO. The empty string behaves like
-// "AUTO"
+// "AUTO".
 func (tv *Television) SetSpec(spec string) error {
 	switch strings.ToUpper(spec) {
 	case "NTSC":

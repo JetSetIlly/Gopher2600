@@ -50,7 +50,7 @@ type shaderEnvironment struct {
 	height int32
 }
 
-// helper function to convert bool to int32
+// helper function to convert bool to int32.
 func boolToInt32(v bool) int32 {
 	if v {
 		return 1
@@ -102,7 +102,7 @@ func (sh *shader) setAttributes(env shaderEnvironment) {
 	gl.VertexAttribPointerWithOffset(uint32(sh.color), 4, gl.UNSIGNED_BYTE, true, int32(vertexSize), uintptr(vertexOffsetCol))
 }
 
-// compile and link shader programs
+// compile and link shader programs.
 func (sh *shader) createProgram(vertProgram string, fragProgram string) {
 	sh.destroy()
 
@@ -231,7 +231,7 @@ func newEffectsShader(img *SdlImgui, yflip bool) shaderProgram {
 }
 
 // most shader attributes can be discerened automatically but number of
-// scanlines, clocks and whether to add noise to the image is context sensitive
+// scanlines, clocks and whether to add noise to the image is context sensitive.
 func (sh *effectsShader) setAttributesArgs(env shaderEnvironment, numScanlines int, numClocks int, noise bool) {
 	sh.shader.setAttributes(env)
 

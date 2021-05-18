@@ -48,14 +48,14 @@ type Auto struct {
 // note that changing these values may well break existing playback scripts. do
 // not change unless absolutely necessary.
 //
-// !!TODO: consider versioning the auto-controller type to help the recorder package
+// !!TODO: consider versioning the auto-controller type to help the recorder package.
 const (
 	autoStickSensitivity  = 6
 	autoPaddleSensitivity = 6
 
 	// the amount of time an input device will be "awake" and counting inputs before falling asleep again.
 	//
-	// in other words, activity must be completed in this time frame for the auto-switch to occur
+	// in other words, activity must be completed in this time frame for the auto-switch to occur.
 	wakeTime = 2e09 // two seconds in nanoseconds
 )
 
@@ -215,7 +215,7 @@ func (aut *Auto) checkPaddle(data ports.EventData) {
 				aut.paddleTouchCt++
 
 				// if mouse has touched extremeties a set number of times then
-				// switch to paddle control. for example if the sensitivty value is
+				// switch to paddle control. for example if the sensitivity value is
 				// three:
 				//
 				//	centre -> right -> left -> switch
@@ -234,14 +234,14 @@ func (aut *Auto) checkPaddle(data ports.EventData) {
 	}
 }
 
-// resetPaddleDetection called when non-paddle input is detected
+// resetPaddleDetection called when non-paddle input is detected.
 func (aut *Auto) resetPaddleDetection() {
 	aut.lastPaddleValue = 0.5
 	aut.lastPaddleTime = time.Time{}
 	aut.paddleTouchCt = 0
 }
 
-// resetPaddleDetection called when non-stick input is detected
+// resetPaddleDetection called when non-stick input is detected.
 func (aut *Auto) resetStickDetection() {
 	aut.lastStickVal = ports.Centre
 	aut.lastStickTime = time.Time{}
