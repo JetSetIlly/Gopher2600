@@ -44,7 +44,7 @@ const (
 	RightDown Event = "RightDown" // EventDataStick
 
 	// paddles.
-	PaddleSet Event = "PaddleSet" // float64
+	PaddleSet Event = "PaddleSet" // float32
 
 	// keyboard.
 	KeyboardDown Event = "KeyboardDown" // rune

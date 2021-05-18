@@ -56,6 +56,11 @@ const (
 	numHeaderLines
 )
 
+// NOTE: playback scripts might fail if auto-controller method has changed (for
+// example, the sensitivity values have changed)
+//
+// !!TODO: consider versioning the auto-controller and noting the version number in playback script
+
 const magicString = "gopher2600playback"
 const versionMajor = "1"
 const versionMinor = "2"

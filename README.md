@@ -5,7 +5,7 @@
 * [Support for many of the known cartridge formats](#supported-cartridge-formats)
 * Emulation of the [ARM7TDMI](#arm7tdmi-emulation) as found in the `Harmony` cartridge
 * [Gameplay recording and playback](#recording-gameplay)
-* Support for (and auto-detection of) [keypad,paddle and joystick](#hand-controllers)
+* Support for (and auto-detection of) [stick, paddle and keyboard](#hand-controllers)
 * Network access through [PlusROM](#plusrom) emulation
 * [Savekey](#savekey) support
 * Rudimentary [CRT Effects](#crt-effects)
@@ -139,38 +139,33 @@ Although if want to pass flags to the run mode you'll need to specify it.
 
 ## Hand Controllers
 
-Joystick, paddle and keypad inputs are supported. Currently, only joysticks and
-paddles for the left player are available but keypad input is available for
+Stick, paddle and keyboard inputs are supported. Currently, only sitck and
+paddles for the left player are available but keyboard input is available for
 both players.
 
-#### Gamepad
+### Stick
 
-For conveniece the joystick and paddle can be controlled through a gamepad. For
-the joystick, use the left thumbstick or the DPad. Any of the face buttons will
-act as the joystick's fire button.
+The stick is the most common control method for `Atari 2600` games. The stick
+can be operated with the DPad or left thumbstick of a [gamepad](#gamepad) or by
+the cursor keys on your computer's keyboard. Fire button is the keyboards space
+bar or any of the gamepad's face buttons.
 
-To control the paddle use the left and right analogue triggers. Note that you
-will need to 'waggle' the triggers a couple of times for the emulator to detect
-that you want to switch to the paddle.
+### Paddle
 
-The console's reset switch can be triggered with the gamepad's start button.
+The paddle can be controlled with the mouse or [gamepad](#gamepad).
 
-#### Without A Gamepad
+In the case of the mouse, the mouse must be [captured](#mouse-capture).
 
-As an alternative to the gamepad, the joystick can be controlled with the cursor
-keys of the keyboard. The spacebar will act as the joystick's fire button.
+Neither of these input methods is a perfect replacement for a real paddle
+however and which device is used depends on the game. For some games, the
+triggers will suffice but other games will perform better when using the mouse.
 
-The paddle can be accessed with the computer's mouse. First, capture the mouse
-by right-clicking the emulator's window and then waggle the mouse a few times
-to tell the emulator that you want to switch to the paddle. The left mouse
-button is the paddle's fire button.
+`Nightdriver` is an example of a game that plays well with the triggers,
+whereas `Circus Tricks` is better played with the mouse.
 
-Once captured, press the right mouse button to release the mouse and return
-mouse control to your desktop,
+### Keyboard
 
-### Keypad
-
-Keypads for both player 0 and player 1 are supported. 
+Keyboard for both player 0 and player 1 are supported. 
 
 |   |p0|   |   |p1|   |
 |:-:|:-:|:-:|:-:|:-:|:-:|
@@ -179,7 +174,43 @@ Keypads for both player 0 and player 1 are supported.
 | a | s | d | f | g | h |		
 | z | x | c | v | b | n |
 
-#### Panel
+### Auto-Detection
+
+`Gopher2600` supports auto-detection of input devices. In general, this is done
+by 'waggling' the control a few times in order to wake up the device.
+
+On startup, the stick is assumed to be the controller of choice.
+
+In the case of keyboard controllers, it's possible for the emulation to detect
+for certainty that a keyboard controller is required. It is therefore not
+possible to switch to or from keyboard control manually because there is no
+need.
+
+### Gamepad
+
+For convenience the joystick and paddle can be controlled through a gamepad.
+For the joystick, use the left thumbstick or the DPad. Any of the face buttons
+will act as the joystick's fire button.
+
+To control the paddle use the left and right analogue triggers. Note that you
+will need to 'waggle' the triggers a couple of times for the emulator to detect
+that you want to switch to the paddle.
+
+The console's reset switch can be triggered with the gamepad's start button.
+
+### Mouse Capture
+
+When using the mouse for paddle control, the mouse must first be 'captured'.
+You will know when the mouse is captured because the mouse pointer will not be
+visible.
+
+To capture the mouse press the right mouse button. To release the mouse from
+capture press the right mouse button.
+
+Note that when put in fullscreen mode the mouse will be captured automatically
+for convenience.
+
+## Panel
 
 The VCS panel is controlled through the function keys of the keyboard.
 
