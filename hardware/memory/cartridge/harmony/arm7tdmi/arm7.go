@@ -339,6 +339,14 @@ func (arm *ARM) Run() (float32, error) {
 				logger.Logf("ARM7", "PC out of range (%#08x). finishing arm program early", arm.registers[rPC])
 				return arm.cyclesTotal, nil
 			}
+
+			// if it's still out-of-range then give up with an error
+			idx = pc - arm.programMemoryOffset
+			if idx+1 >= uint32(len(*arm.programMemory)) {
+				// can't find memory so we say the ARM program has finished inadvertently
+				logger.Logf("ARM7", "PC out of range (%#08x). finishing arm program early", arm.registers[rPC])
+				return arm.cyclesTotal, nil
+			}
 		}
 
 		// read next instruction
