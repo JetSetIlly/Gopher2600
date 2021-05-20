@@ -32,6 +32,9 @@ type CartCoProcDisasmEntry struct {
 	// total cycles for this instruction
 	Cycles float32
 
+	// Some coprocessors will have more detailed cycle information
+	CycleDetails string
+
 	// update indicates whether the notes field should be updated when
 	// instruction is executed again after the first decoding.
 	UpdateNotes bool

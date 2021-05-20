@@ -480,10 +480,12 @@ func (arm *ARM) Run() (float32, error) {
 					// operand fields and insert into cache
 					arm.disasmEntry.Operator = fmt.Sprintf("%-4s", arm.disasmEntry.Operator)
 					arm.disasmEntry.Operand = fmt.Sprintf("%-16s", arm.disasmEntry.Operand)
+					arm.disasmEntry.CycleDetails = arm.cyclesInstruction.String()
 					arm.disasmCache[pc] = arm.disasmEntry
 				case disasmNotes:
 					// entry is cached but notes may have changed so we recache
 					// the entry
+					arm.disasmEntry.CycleDetails = arm.cyclesInstruction.String()
 					arm.disasmCache[pc] = arm.disasmEntry
 				case disasmNone:
 				}
@@ -628,20 +630,10 @@ func (arm *ARM) executeAddSubtract(opcode uint16) {
 	}
 
 	if subtract {
-		// if immediate {
-		// 	fmt.Printf("SUB R%d, R%d, #%02x ", destReg, srcReg, val)
-		// } else {
-		// 	fmt.Printf("SUB R%d, R%d, R%d ", destReg, srcReg, imm)
-		// }
 		arm.status.setCarry(arm.registers[srcReg], ^val, 1)
 		arm.status.setOverflow(arm.registers[srcReg], ^val, 1)
 		arm.registers[destReg] = arm.registers[srcReg] - val
 	} else {
-		// if immediate {
-		// 	fmt.Printf("ADD R%d, R%d, #%02x ", destReg, srcReg, val)
-		// } else {
-		// 	fmt.Printf("ADD R%d, R%d, R%d ", destReg, srcReg, imm)
-		// }
 		arm.status.setCarry(arm.registers[srcReg], val, 0)
 		arm.status.setOverflow(arm.registers[srcReg], val, 0)
 		arm.registers[destReg] = arm.registers[srcReg] + val

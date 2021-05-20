@@ -64,6 +64,7 @@ func (win *winCoProcLastExecution) draw() {
 
 	title := fmt.Sprintf("%s %s", win.img.lz.CoProc.ID, winCoProcLastExecutionID)
 	imgui.BeginV(title, &win.open, 0)
+	defer imgui.End()
 
 	itr := win.img.lz.Dbg.Disasm.Coprocessor.NewIteration()
 
@@ -93,40 +94,68 @@ func (win *winCoProcLastExecution) draw() {
 		imguiSeparator()
 	}
 
-	imgui.BeginChildV("scrollable", imgui.Vec2{X: 0, Y: imguiRemainingWinHeight()}, false, 0)
+	height := imguiRemainingWinHeight() //- win.optionsHeight
+	imgui.BeginChildV("lastexecution", imgui.Vec2{X: 0, Y: height}, false, 0)
+	defer imgui.EndChild()
+
+	numColumns := 5
+	flgs := imgui.TableFlagsNone
+	flgs |= imgui.TableFlagsSizingFixedFit
+	flgs |= imgui.TableFlagsRowBg
+	if !imgui.BeginTableV("lastexecution", numColumns, flgs, imgui.Vec2{}, 0) {
+		return
+	}
+	defer imgui.EndTable()
+
+	// set neutral colors for table rows by default. we'll change it to
+	// something more meaningful as appropriate (eg. entry at PC address)
+	imgui.PushStyleColor(imgui.StyleColorTableRowBg, win.img.cols.WindowBg)
+	imgui.PushStyleColor(imgui.StyleColorTableRowBgAlt, win.img.cols.WindowBg)
+	defer imgui.PopStyleColorV(2)
 
 	// only draw elements that will be visible
 	var clipper imgui.ListClipper
 	clipper.Begin(itr.Count)
 	for clipper.Step() {
 		_, _ = itr.Start()
-
 		e, ok := itr.SkipNext(clipper.DisplayStart)
 		if !ok {
 			break // clipper.Step() loop
 		}
+
 		for i := clipper.DisplayStart; i < clipper.DisplayEnd; i++ {
+			imgui.TableNextRow()
+
+			imgui.TableNextColumn()
 			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmAddress)
 			imgui.Text(e.Address)
 
-			imgui.SameLine()
+			imgui.TableNextColumn()
 			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmOperator)
 			imgui.Text(e.Operator)
 
-			imgui.SameLine()
+			imgui.TableNextColumn()
 			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmOperand)
 			imgui.Text(e.Operand)
 
-			imgui.SameLine()
+			imgui.TableNextColumn()
 			if e.Cycles > 0 {
 				imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmCycles)
 				imgui.Text(fmt.Sprintf("%.0f ", e.Cycles))
+
+				// show cycle details as a tooltip
+				if e.CycleDetails != "" && imgui.IsItemHovered() {
+					imgui.BeginTooltip()
+					imgui.Text(e.CycleDetails)
+					imgui.EndTooltip()
+				}
+
 				imgui.PopStyleColorV(1)
 			} else {
 				imgui.Text(" ")
 			}
 
-			imgui.SameLine()
+			imgui.TableNextColumn()
 			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmNotes)
 			imgui.Text(e.ExecutionNotes)
 
@@ -138,8 +167,4 @@ func (win *winCoProcLastExecution) draw() {
 			}
 		}
 	}
-
-	imgui.EndChild()
-
-	imgui.End()
 }
