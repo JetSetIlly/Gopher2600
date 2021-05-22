@@ -26,9 +26,9 @@ The graphical [debugger](#debugger) is still in development but the current feat
 * Line [terminal](#debugger-terminal) interface for harder to reach parts of the emulation
 * [Regression Database](#regression-database)
 
-## Screenshots
+## Example Screenshots
 
-The following screenshots were taken in playmode with CRT effects enabled
+The following [screenshots](#screenshots) were taken in playmode with CRT effects enabled.
 
 <img src=".screenshots/games/pitfall.png" height="200" alt="pitfall"/> <img src=".screenshots/games/heman.png" height="200" alt="he-man"/>
 <img src=".screenshots/games/krull.png" height="200" alt="krull"/> <img src=".screenshots/games/ladybug.png" height="200" alt="ladybug"/>
@@ -226,15 +226,55 @@ The VCS panel is controlled through the function keys of the keyboard.
 
 In playmode, the additional keys are available:
 
+* `F8` Show FPS Indicator
 * `F9` Show TIA Revisions window
 * `F10` Show CRT Preferences window
 * `F11` Toggle Fullscreen
-* `F12` Show FPS Indicator
+* `F12` Save [Screenshot](#screenshots)
 
 In the debugger, the additional keys are available:
 
 * `ESC` toggle mouse capture for debugging TV screen
 * ` (backtick) start/stop emulation
+
+### Screenshots
+
+`Gopher2600` offers three methods for creating a screenshot. Ideally, the
+emulation will select the best method to use but this is currently not
+possible (although this is an ongoing area of research).
+
+The most basic method is the 'single frame' method. Press `F12` without any
+modifiers and a single image is saved to the working directory (or working
+folder for Windows users). 
+
+The 'double frame' method is useful for kernels that use a two-frame flicker
+kernel. In this method two consecutive frames are blended together to create a
+single image. This method is selected by pressing either `shift` key at the
+same time as the `F12` key.
+
+The 'triple frame' method meanwhile, the image is created by belnding three
+consecutive frames together. This is useful for the far rarer three-frame
+flicker kernel. This method is selected by pressing either `ctrl` key at the
+same time as the `F12` key.
+
+In the case of both the double and triple frame methods, multiple 'exposures'
+are made and saved (currently five). This is because it is not possible to
+guarantee the generation of a good image from a single exposure in all
+circumstances. From the exposures that are made the user can select the best
+image; and if absolutely necessary, make a composite image.
+
+Screenshot filenames will include whether the CRT effects were enabled, the
+name of the ROM file (without extension), the date/time (to make the filename
+unique) and the screenshot method (along with frame exposure).
+
+Some examples:
+
+* crt_Keystone_20210522_190921.jpg
+* crt_CDFJChess_20210522_191008_triple_3.jpg
+* pix_zookeeper_20200308_demo2_NTSC_20210522_190245_double_1.jpg
+
+The dimensions of the image will be the same as the displayed screen (without
+any window padding).
 
 ## Debugger
 

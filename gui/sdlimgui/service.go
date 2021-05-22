@@ -85,9 +85,7 @@ func (img *SdlImgui) Service() {
 
 				case "F8":
 					if img.isPlaymode() {
-						extended := ev.Keysym.Mod&sdl.KMOD_LSHIFT == sdl.KMOD_LSHIFT
-						extended = extended || ev.Keysym.Mod&sdl.KMOD_RSHIFT == sdl.KMOD_RSHIFT
-						img.glsl.shaders[playscrShaderID].(*playscrShader).scheduleScreenshot(extended)
+						img.playScr.fpsOpen = !img.playScr.fpsOpen
 					}
 
 				case "F9":
@@ -109,7 +107,16 @@ func (img *SdlImgui) Service() {
 
 				case "F12":
 					if img.isPlaymode() {
-						img.playScr.fpsOpen = !img.playScr.fpsOpen
+						shift := ev.Keysym.Mod&sdl.KMOD_LSHIFT == sdl.KMOD_LSHIFT || ev.Keysym.Mod&sdl.KMOD_RSHIFT == sdl.KMOD_RSHIFT
+						ctrl := ev.Keysym.Mod&sdl.KMOD_LCTRL == sdl.KMOD_LCTRL || ev.Keysym.Mod&sdl.KMOD_RCTRL == sdl.KMOD_RCTRL
+
+						if ctrl && !shift {
+							img.glsl.shaders[playscrShaderID].(*playscrShader).scheduleScreenshot(modeTriple)
+						} else if shift && !ctrl {
+							img.glsl.shaders[playscrShaderID].(*playscrShader).scheduleScreenshot(modeDouble)
+						} else {
+							img.glsl.shaders[playscrShaderID].(*playscrShader).scheduleScreenshot(modeSingle)
+						}
 					}
 
 				case "Pause":

@@ -167,27 +167,27 @@ func (sh *crtSequencer) process(env shaderEnvironment, enabled bool, moreProcess
 }
 
 type playscrShader struct {
-	img    *SdlImgui
-	crt    *crtSequencer
-	camera *cameraSequencer
+	img        *SdlImgui
+	crt        *crtSequencer
+	screenshot *screenshotSequencer
 }
 
 func newPlayscrShader(img *SdlImgui) shaderProgram {
 	sh := &playscrShader{
-		img:    img,
-		crt:    newCRTSequencer(img),
-		camera: newCameraSequencer(img),
+		img:        img,
+		crt:        newCRTSequencer(img),
+		screenshot: newscreenshotSequencer(img),
 	}
 	return sh
 }
 
 func (sh *playscrShader) destroy() {
 	sh.crt.destroy()
-	sh.camera.destroy()
+	sh.screenshot.destroy()
 }
 
-func (sh *playscrShader) scheduleScreenshot(extended bool) {
-	sh.camera.startExposure(extended)
+func (sh *playscrShader) scheduleScreenshot(mode screenshotMode) {
+	sh.screenshot.startProcess(mode)
 }
 
 func (sh *playscrShader) setAttributes(env shaderEnvironment) {
@@ -211,7 +211,7 @@ func (sh *playscrShader) setAttributes(env shaderEnvironment) {
 		env.height+(int32(sh.img.playScr.imagePosMin.Y*2)),
 	)
 
-	sh.camera.process(env)
+	sh.screenshot.process(env)
 
 	enabled := sh.img.crtPrefs.Enabled.Get().(bool)
 	sh.crt.process(env, enabled, false, sh.img.playScr.numScanlines, specification.ClksVisible)
