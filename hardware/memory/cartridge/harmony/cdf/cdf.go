@@ -585,3 +585,21 @@ func (cart *cdf) ARMinterrupt(addr uint32, val1 uint32, val2 uint32) (arm7tdmi.A
 	r.InterruptServiced = true
 	return r, nil
 }
+
+// HotLoad implements the mapper.CartHotLoader interface
+func (cart *cdf) HotLoad(data []byte) error {
+	if len(data) == 0 {
+		return curated.Errorf("CDF: empty data")
+	}
+
+	for k := 0; k < cart.NumBanks(); k++ {
+		cart.banks[k] = make([]uint8, cart.bankSize)
+		offset := k * cart.bankSize
+		offset += driverSize + customSize
+		cart.banks[k] = data[offset : offset+cart.bankSize]
+	}
+
+	cart.state.static.HotLoad(data)
+
+	return nil
+}

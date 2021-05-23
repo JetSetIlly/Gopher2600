@@ -90,7 +90,7 @@ var commandTemplate = []string{
 	cmdRewind + " [%<frame>N|LAST|SUMMARY]",
 
 	cmdInsert + " %<cartridge>F",
-	cmdCartridge + " (BANK|MAPPING|HASH|STATIC|REGISTERS|RAM)",
+	cmdCartridge + " (BANK|MAPPING|HASH|STATIC|REGISTERS|RAM|HOTLOAD)",
 	cmdPatch + " %<patch file>S",
 	cmdDisasm + " (BYTECODE) (%<bank>N|%<address>N)",
 	cmdLint,

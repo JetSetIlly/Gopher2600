@@ -241,9 +241,15 @@ type CartHotspotInfo struct {
 	Action CartHotspotAction
 }
 
-// CartRewindBoundary are implemented by cartridge mappers that require special
+// CartRewindBoundary is implemented by cartridge mappers that require special
 // handling from the rewind system. For some cartridge types it is not
 // appropriate to allow rewind history to survive past a certain point.
 type CartRewindBoundary interface {
 	RewindBoundary() bool
+}
+
+// CartHotLoader is implemented by cartridge mappers that can be hot-loaded.
+// ie. ROM data updated but keeping RAM memory intact.
+type CartHotLoader interface {
+	HotLoad([]byte) error
 }

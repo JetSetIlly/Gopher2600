@@ -55,6 +55,11 @@ func (cart *cdf) newCDFstatic(cartData []byte) *Static {
 	return &stc
 }
 
+func (stc *Static) HotLoad(cartData []byte) {
+	stc.driverROM = cartData[:driverSize]
+	stc.customROM = cartData[driverSize:]
+}
+
 // ResetVectors implements the arm7tdmi.SharedMemory interface.
 func (stc *Static) ResetVectors() (uint32, uint32, uint32) {
 	return stackOriginRAM, customOriginROM, customOriginROM + 8

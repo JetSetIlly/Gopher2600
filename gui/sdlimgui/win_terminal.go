@@ -166,7 +166,7 @@ func (win *winTerm) draw() {
 
 	// terminal prompt is not updated when emulation is running so show a "running" label instead
 	if win.img.state == gui.StateRunning {
-		imguiLabel("running")
+		imguiLabel("(running)")
 	} else {
 		imguiLabel(strings.TrimSpace(win.prompt.Content))
 	}

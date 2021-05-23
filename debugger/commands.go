@@ -451,6 +451,14 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 				} else {
 					dbg.printLine(terminal.StyleFeedback, "cartridge has no RAM")
 				}
+
+			case "HOTLOAD":
+				err := dbg.VCS.Mem.Cart.HotLoad()
+				if err != nil {
+					dbg.printLine(terminal.StyleFeedback, err.Error())
+				} else {
+					dbg.printLine(terminal.StyleFeedback, "hotload successful")
+				}
 			}
 		} else {
 			dbg.printLine(terminal.StyleInstrument, dbg.VCS.Mem.Cart.String())

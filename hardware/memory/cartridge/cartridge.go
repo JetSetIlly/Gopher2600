@@ -309,6 +309,30 @@ func (cart *Cartridge) Step(clock float32) {
 	cart.mapper.Step(clock)
 }
 
+// Hotload cartridge ROM into emulation. Not changing any other state of the
+// emulation.
+func (cart *Cartridge) HotLoad() error {
+	if hl, ok := cart.mapper.(mapper.CartHotLoader); ok {
+		cl := cartridgeloader.NewLoader(cart.Filename, "AUTO")
+
+		err := cl.Load()
+		if err != nil {
+			return err
+		}
+
+		cart.Hash = cl.Hash
+
+		err = hl.HotLoad(cl.Data)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	}
+
+	return curated.Errorf("cartridge does not support hotloading")
+}
+
 // GetRegistersBus returns interface to the registers of the cartridge or nil
 // if cartridge has no registers.
 func (cart *Cartridge) GetRegistersBus() mapper.CartRegistersBus {
