@@ -119,8 +119,14 @@ func (sh *dbgScreenShader) setAttributes(env shaderEnvironment) {
 		// something for the future.
 		env.srcTextureID = sh.img.wm.dbgScr.normalTexture
 
-		env.srcTextureID = sh.crt.process(env, true, false, sh.img.wm.dbgScr.numScanlines, specification.ClksVisible)
-		return
+		env.srcTextureID = sh.crt.process(env, true, sh.img.wm.dbgScr.numScanlines, specification.ClksVisible)
+	} else {
+		// if crtPreview is disabled we still go through the crt process. we do
+		// this so that the phosphor is kept up to date, which is important
+		// for the moment the crtPreview is enabled.
+		//
+		// we don't do anything with the result of the process in this instance
+		_ = sh.crt.process(env, false, sh.img.wm.dbgScr.numScanlines, specification.ClksVisible)
 	}
 
 	sh.shader.setAttributes(env)
@@ -135,15 +141,17 @@ func (sh *dbgScreenShader) setAttributes(env shaderEnvironment) {
 	gl.Uniform1f(sh.scalingX, sh.img.wm.dbgScr.xscaling)
 	gl.Uniform1f(sh.scalingY, sh.img.wm.dbgScr.yscaling)
 	gl.Uniform2f(sh.screenDim, width, height)
-	gl.Uniform1i(sh.isCropped, boolToInt32(sh.img.wm.dbgScr.cropped))
 
 	cursorX := sh.img.screen.crit.lastX
 	cursorY := sh.img.screen.crit.lastY
 
-	if sh.img.wm.dbgScr.cropped {
+	// if crt preview is enabled then force cropping
+	if sh.img.wm.dbgScr.cropped || sh.img.wm.dbgScr.crtPreview {
 		gl.Uniform1f(sh.lastX, float32(cursorX-specification.ClksHBlank)*xscaling)
+		gl.Uniform1i(sh.isCropped, boolToInt32(true))
 	} else {
 		gl.Uniform1f(sh.lastX, float32(cursorX)*xscaling)
+		gl.Uniform1i(sh.isCropped, boolToInt32(false))
 	}
 	gl.Uniform1f(sh.lastY, float32(cursorY)*yscaling)
 

@@ -251,14 +251,23 @@ func (sh *effectsShader) setAttributesArgs(env shaderEnvironment, numScanlines i
 	gl.Uniform1f(sh.time, float32(time.Now().Nanosecond())/100000000.0)
 }
 
+type blackCorrectionShader struct {
+	shader
+}
+
+func newBlackCorrectionShader() shaderProgram {
+	sh := &blackCorrectionShader{}
+	sh.createProgram(string(shaders.YFlipVertexShader), string(shaders.CRTBlackCorrection))
+	return sh
+}
+
 type phosphorShader struct {
 	shader
 
 	img *SdlImgui
 
-	newFrame          int32
-	latency           int32
-	correctVideoBlack int32
+	newFrame int32
+	latency  int32
 }
 
 func newPhosphorShader(img *SdlImgui) shaderProgram {
@@ -268,23 +277,12 @@ func newPhosphorShader(img *SdlImgui) shaderProgram {
 	sh.createProgram(string(shaders.YFlipVertexShader), string(shaders.CRTPhosphorFragShader))
 	sh.newFrame = gl.GetUniformLocation(sh.handle, gl.Str("NewFrame"+"\x00"))
 	sh.latency = gl.GetUniformLocation(sh.handle, gl.Str("Latency"+"\x00"))
-	sh.correctVideoBlack = gl.GetUniformLocation(sh.handle, gl.Str("CorrectVideoBlack"+"\x00"))
 	return sh
 }
 
 func (sh *phosphorShader) setAttributesArgs(env shaderEnvironment, latency float32, newFrame uint32) {
 	sh.shader.setAttributes(env)
 	gl.Uniform1f(sh.latency, latency)
-
-	// video black correction happens when screen is curved
-	var correction bool
-	if sh.img.isPlaymode() {
-		correction = sh.img.crtPrefs.Curve.Get().(bool) && sh.img.crtPrefs.Enabled.Get().(bool)
-	} else {
-		correction = sh.img.crtPrefs.Curve.Get().(bool) && sh.img.wm.dbgScr.crtPreview
-	}
-	gl.Uniform1i(sh.correctVideoBlack, boolToInt32(correction))
-
 	gl.ActiveTexture(gl.TEXTURE1)
 	gl.BindTexture(gl.TEXTURE_2D, newFrame)
 	gl.Uniform1i(sh.newFrame, 1)
@@ -323,6 +321,7 @@ func newBlendShader() shaderProgram {
 	return sh
 }
 
+// nolint: unparam
 func (sh *blendShader) setAttributesArgs(env shaderEnvironment, modulate float32, fade float32, newFrame uint32) {
 	sh.shader.setAttributes(env)
 	gl.Uniform1f(sh.modulate, modulate)

@@ -61,12 +61,15 @@ func (seq *Sequence) Setup(width int32, height int32) bool {
 	seq.height = height
 
 	for i := range seq.textures {
+		// allocate some empty pixels for our new texture
+		t := make([]uint8, width*height*4)
+
 		gl.GenTextures(1, &seq.textures[i])
 		gl.BindTexture(gl.TEXTURE_2D, seq.textures[i])
 		gl.TexImage2D(gl.TEXTURE_2D, 0,
 			gl.RGBA, seq.width, seq.height, 0,
 			gl.RGBA, gl.UNSIGNED_BYTE,
-			gl.Ptr(nil))
+			gl.Ptr(t))
 		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
 		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
 		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_BORDER)

@@ -52,6 +52,9 @@ type winDbgScr struct {
 	// the tv screen has captured mouse input
 	isCaptured bool
 
+	// imgui coords of mouse
+	mousePos imgui.Vec2
+
 	// clocks and scanline equivalent position of the mouse
 	mouseClock    int
 	mouseScanline int
@@ -184,6 +187,19 @@ func (win *winDbgScr) draw() {
 	// corner of the screen.
 	win.screenOrigin = imgui.CursorScreenPos()
 
+	// get mouse position and transform
+	win.mousePos = imgui.MousePos().Minus(win.screenOrigin)
+
+	// scale mouse position
+	win.mouseClock = int(win.mousePos.X / win.xscaling)
+	win.mouseScanline = int(win.mousePos.Y / win.yscaling)
+
+	// adjust if image cropped or crt preview is active
+	if win.cropped || win.crtPreview {
+		win.mouseClock += specification.ClksHBlank
+		win.mouseScanline += win.scr.crit.topScanline
+	}
+
 	// push style info for screen and overlay ImageButton(). we're using
 	// ImageButton because an Image will not capture mouse events and pass them
 	// to the parent window. this means that a click-drag on the screen/overlay
@@ -234,17 +250,17 @@ func (win *winDbgScr) draw() {
 		if imgui.IsItemHovered() {
 			win.drawReflectionTooltip()
 		}
+	}
 
-		// accept mouse clicks if window is focused
-		if imgui.IsWindowFocused() {
-			// mouse click will cause the rewind goto coords to run only when the
-			// emulation is paused
-			if win.img.state == gui.StatePaused {
-				if imgui.IsMouseReleased(0) {
-					win.img.screen.gotoCoordsX = win.mouseClock
-					win.img.screen.gotoCoordsY = win.img.wm.dbgScr.mouseScanline
-					win.img.lz.Dbg.PushGotoCoords(win.img.lz.TV.Frame, win.mouseScanline, win.mouseClock-specification.ClksHBlank)
-				}
+	// accept mouse clicks if window is focused
+	if imgui.IsWindowFocused() {
+		// mouse click will cause the rewind goto coords to run only when the
+		// emulation is paused
+		if win.img.state == gui.StatePaused {
+			if imgui.IsMouseReleased(0) {
+				win.img.screen.gotoCoordsX = win.mouseClock
+				win.img.screen.gotoCoordsY = win.img.wm.dbgScr.mouseScanline
+				win.img.lz.Dbg.PushGotoCoords(win.img.lz.TV.Frame, win.mouseScanline, win.mouseClock-specification.ClksHBlank)
 			}
 		}
 	}
@@ -276,8 +292,8 @@ func (win *winDbgScr) draw() {
 
 		// debugging toggles
 		if win.crtPreview {
-			imgui.SameLineV(0, 25)
-			imgui.Text("(Debugging options disabled)")
+			imgui.SameLineV(0, 15)
+			imgui.Text("(using current CRT preferences)")
 		} else {
 			imgui.SameLineV(0, 15)
 			imgui.Checkbox("Debug Colours", &win.elements)
@@ -412,22 +428,9 @@ func (win *winDbgScr) drawReflectionTooltip() {
 		return
 	}
 
-	// get mouse position and transform
-	mp := imgui.MousePos().Minus(win.screenOrigin)
-
 	// lower boundary check
-	if mp.X < 0.0 || mp.Y < 0.0 {
+	if win.mousePos.X < 0.0 || win.mousePos.Y < 0.0 {
 		return
-	}
-
-	// scale mouse position
-	win.mouseClock = int(mp.X / win.xscaling)
-	win.mouseScanline = int(mp.Y / win.yscaling)
-
-	// adjust if image is not cropped (or CRT)
-	if win.cropped || win.crtPreview {
-		win.mouseClock += specification.ClksHBlank
-		win.mouseScanline += win.scr.crit.topScanline
 	}
 
 	// upper boundary check

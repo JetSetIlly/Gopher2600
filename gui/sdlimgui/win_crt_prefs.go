@@ -293,10 +293,6 @@ func (win *winCRTPrefs) drawPixelPerfect() {
 	if imgui.Checkbox("Pixel Perfect##pixelpefect", &b) {
 		win.img.crtPrefs.Enabled.Set(!b)
 	}
-	if !win.img.isPlaymode() {
-		imgui.SameLine()
-		imgui.Text("(play mode)")
-	}
 
 	var label string
 

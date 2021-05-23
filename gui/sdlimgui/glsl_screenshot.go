@@ -36,11 +36,12 @@ type screenshotSequencer struct {
 	seq *framebuffer.Sequence
 	img *SdlImgui
 
-	phosphorShader       shaderProgram
-	blurShader           shaderProgram
-	blendShader          shaderProgram
-	effectsShaderFlipped shaderProgram
-	colorShaderFlipped   shaderProgram
+	phosphorShader        shaderProgram
+	blackCorrectionShader shaderProgram
+	blurShader            shaderProgram
+	blendShader           shaderProgram
+	effectsShaderFlipped  shaderProgram
+	colorShaderFlipped    shaderProgram
 
 	mode screenshotMode
 
@@ -52,13 +53,14 @@ type screenshotSequencer struct {
 
 func newscreenshotSequencer(img *SdlImgui) *screenshotSequencer {
 	sh := &screenshotSequencer{
-		img:                  img,
-		seq:                  framebuffer.NewSequence(5),
-		phosphorShader:       newPhosphorShader(img),
-		blurShader:           newBlurShader(),
-		blendShader:          newBlendShader(),
-		effectsShaderFlipped: newEffectsShader(img, true),
-		colorShaderFlipped:   newColorShader(true),
+		img:                   img,
+		seq:                   framebuffer.NewSequence(5),
+		phosphorShader:        newPhosphorShader(img),
+		blackCorrectionShader: newBlackCorrectionShader(),
+		blurShader:            newBlurShader(),
+		blendShader:           newBlendShader(),
+		effectsShaderFlipped:  newEffectsShader(img, true),
+		colorShaderFlipped:    newColorShader(true),
 	}
 	return sh
 }
@@ -66,6 +68,7 @@ func newscreenshotSequencer(img *SdlImgui) *screenshotSequencer {
 func (sh *screenshotSequencer) destroy() {
 	sh.seq.Destroy()
 	sh.phosphorShader.destroy()
+	sh.blackCorrectionShader.destroy()
 	sh.blurShader.destroy()
 	sh.blendShader.destroy()
 	sh.effectsShaderFlipped.destroy()
@@ -142,6 +145,14 @@ func (sh *screenshotSequencer) process(env shaderEnvironment) {
 			sh.phosphorShader.(*phosphorShader).setAttributesArgs(env, float32(phosphorLatency), src)
 			env.draw()
 		})
+
+		// video black correction
+		if sh.img.crtPrefs.Curve.Get().(bool) {
+			env.srcTextureID = sh.seq.Process(working, func() {
+				sh.blackCorrectionShader.(*blackCorrectionShader).setAttributes(env)
+				env.draw()
+			})
+		}
 	} else {
 		// add new frame to phosphor buffer (using phosphor buffer for pixel perfect fade)
 		env.srcTextureID = sh.seq.Process(phosphor, func() {

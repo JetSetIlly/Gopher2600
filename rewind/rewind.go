@@ -619,6 +619,28 @@ func (r *Rewind) RunFromState(from *State, to *State, poke PokeHook) error {
 	return nil
 }
 
+// // RerunLastNFrames runs the emulation from the a point N frames in the past to
+// // the current state.
+// func (r *Rewind) RerunLastNFrames(frames int) error {
+// 	to := r.GetCurrentState()
+// 	ff := to.TV.GetState(signal.ReqFramenum) - frames
+// 	if ff < 0 {
+// 		ff = 0
+// 	}
+// 	idx, _, _ := r.findFrameIndex(ff)
+
+// 	tf := to.TV.GetState(signal.ReqFramenum)
+// 	ts := to.TV.GetState(signal.ReqScanline)
+// 	tc := to.TV.GetState(signal.ReqClock)
+
+// 	err := r.setContinuePoint(idx, tf, ts, tc)
+// 	if err != nil {
+// 		return curated.Errorf("rewind: %v", err)
+// 	}
+
+// 	return nil
+// }
+
 // GotoFrameCoords of current frame.
 func (r *Rewind) GotoFrameCoords(frame int, scanline int, clock int) error {
 	// get nearest index of entry from which we can (re)generate the current frame
