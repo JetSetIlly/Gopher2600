@@ -311,18 +311,16 @@ func (cart *Cartridge) Step(clock float32) {
 
 // Hotload cartridge ROM into emulation. Not changing any other state of the
 // emulation.
-func (cart *Cartridge) HotLoad() error {
+func (cart *Cartridge) HotLoad(cartload cartridgeloader.Loader) error {
 	if hl, ok := cart.mapper.(mapper.CartHotLoader); ok {
-		cl := cartridgeloader.NewLoader(cart.Filename, "AUTO")
-
-		err := cl.Load()
+		err := cartload.Load()
 		if err != nil {
 			return err
 		}
 
-		cart.Hash = cl.Hash
+		cart.Hash = cartload.Hash
 
-		err = hl.HotLoad(cl.Data)
+		err = hl.HotLoad(cartload.Data)
 		if err != nil {
 			return err
 		}

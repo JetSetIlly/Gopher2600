@@ -21,17 +21,17 @@ import (
 	"strings"
 
 	"github.com/jetsetilly/gopher2600/curated"
+	"github.com/jetsetilly/gopher2600/disassembly/symbols"
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
-	"github.com/jetsetilly/gopher2600/symbols"
 )
 
 // memoryDebug is a front-end to the real VCS memory. it allows addressing by
 // symbol name and uses the addressInfo type for easier presentation.
 type memoryDebug struct {
-	vcs     *hardware.VCS
-	symbols *symbols.Symbols
+	vcs *hardware.VCS
+	sym *symbols.Symbols
 }
 
 // memoryDebug functions all return an instance of addressInfo. this struct
@@ -90,10 +90,10 @@ func (dbgmem memoryDebug) mapAddress(address interface{}, read bool) *addressInf
 	switch address := address.(type) {
 	case uint16:
 		ai.address = address
-		res := dbgmem.symbols.ReverseSearch(ai.address, searchTable)
+		res := dbgmem.sym.ReverseSearch(ai.address, searchTable)
 		if res == nil {
 			ai.mappedAddress, ai.area = memorymap.MapAddress(ai.address, read)
-			res := dbgmem.symbols.ReverseSearch(ai.mappedAddress, searchTable)
+			res := dbgmem.sym.ReverseSearch(ai.mappedAddress, searchTable)
 			if res != nil {
 				ai.addressLabel = res.Symbol
 			}
@@ -104,7 +104,7 @@ func (dbgmem memoryDebug) mapAddress(address interface{}, read bool) *addressInf
 	case string:
 		var err error
 
-		res := dbgmem.symbols.Search(address, searchTable)
+		res := dbgmem.sym.Search(address, searchTable)
 		if res != nil {
 			ai.address = res.Address
 			ai.addressLabel = res.Symbol
@@ -119,10 +119,10 @@ func (dbgmem memoryDebug) mapAddress(address interface{}, read bool) *addressInf
 			}
 
 			ai.address = uint16(addr)
-			res := dbgmem.symbols.ReverseSearch(ai.address, searchTable)
+			res := dbgmem.sym.ReverseSearch(ai.address, searchTable)
 			if res == nil {
 				ai.mappedAddress, ai.area = memorymap.MapAddress(ai.address, read)
-				res := dbgmem.symbols.ReverseSearch(ai.mappedAddress, searchTable)
+				res := dbgmem.sym.ReverseSearch(ai.mappedAddress, searchTable)
 				if res != nil {
 					ai.addressLabel = res.Symbol
 				}

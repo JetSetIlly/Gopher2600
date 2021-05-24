@@ -453,7 +453,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 				}
 
 			case "HOTLOAD":
-				err := dbg.VCS.Mem.Cart.HotLoad()
+				err := dbg.hotload()
 				if err != nil {
 					dbg.printLine(terminal.StyleFeedback, err.Error())
 				} else {
@@ -567,16 +567,16 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 					// already caught by command line ValidateTokens()
 
 				case "LABELS":
-					dbg.Disasm.Symbols.ListLabels(dbg.printStyle(terminal.StyleFeedback))
+					dbg.dbgmem.sym.ListLabels(dbg.printStyle(terminal.StyleFeedback))
 
 				case "READ":
-					dbg.Disasm.Symbols.ListReadSymbols(dbg.printStyle(terminal.StyleFeedback))
+					dbg.dbgmem.sym.ListReadSymbols(dbg.printStyle(terminal.StyleFeedback))
 
 				case "WRITE":
-					dbg.Disasm.Symbols.ListWriteSymbols(dbg.printStyle(terminal.StyleFeedback))
+					dbg.dbgmem.sym.ListWriteSymbols(dbg.printStyle(terminal.StyleFeedback))
 				}
 			} else {
-				dbg.Disasm.Symbols.ListSymbols(dbg.printStyle(terminal.StyleFeedback))
+				dbg.dbgmem.sym.ListSymbols(dbg.printStyle(terminal.StyleFeedback))
 			}
 
 		default:

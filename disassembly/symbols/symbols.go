@@ -25,33 +25,32 @@ import (
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
-// Table is the master symbols table for the loaded programme.
+// Symbols contains the all currently defined symbols.
 type Symbols struct {
 	// the master table is made up of three sub-tables
-	label []*Table
-	read  *Table
-	write *Table
+	label []*table
+	read  *table
+	write *table
 
 	crit sync.Mutex
 }
 
 // newSymbols is the preferred method of initialisation for the Symbols type. In
 // many instances however, ReadSymbolsFile() might be more appropriate.
-func newSymbols(numBanks int) *Symbols {
-	sym := &Symbols{
-		read:  newTable(),
-		write: newTable(),
-	}
-
-	sym.label = make([]*Table, numBanks)
+func (sym *Symbols) initialise(numBanks int) {
+	sym.label = make([]*table, numBanks)
 	for i := range sym.label {
 		sym.label[i] = newTable()
 	}
 
+	sym.read = newTable()
+	sym.write = newTable()
+
 	sym.canonise(nil)
-	return sym
 }
 
+// LabelWidth returns the maximum number of characters required by a label in
+// the label table.
 func (sym *Symbols) LabelWidth() int {
 	sym.crit.Lock()
 	defer sym.crit.Unlock()
@@ -65,6 +64,8 @@ func (sym *Symbols) LabelWidth() int {
 	return max
 }
 
+// SymbolWidth returns the maximum number of characters required by a symbol in
+// the read/write table.
 func (sym *Symbols) SymbolWidth() int {
 	sym.crit.Lock()
 	defer sym.crit.Unlock()

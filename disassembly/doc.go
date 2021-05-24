@@ -41,4 +41,10 @@
 // The Grep() function provides a quick way of searching the disassembly with a
 // scope directive. More complex search schemes can be written with the
 // iteration types.
+//
+// A Disassembly instance also keeps a reference to the symbols tables (see
+// symbols package). The GetSymbols() function can be used to get a reference
+// to the Symbol tables. This reference will be valid throughout the lifetime
+// of the Disassembly instance and will "survive" calls to the FromMemory() and
+// FromCartridge() functions.
 package disassembly

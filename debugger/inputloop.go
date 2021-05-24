@@ -435,7 +435,7 @@ func (dbg *Debugger) contEmulation(inputter terminal.Input) error {
 			}
 
 			// (re)disassemble memory on TapeLoaded error signal
-			err = dbg.Disasm.FromMemory(nil)
+			err = dbg.Disasm.FromMemory()
 			if err != nil {
 				return err
 			}

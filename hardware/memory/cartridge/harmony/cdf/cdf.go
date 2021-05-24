@@ -586,7 +586,7 @@ func (cart *cdf) ARMinterrupt(addr uint32, val1 uint32, val2 uint32) (arm7tdmi.A
 	return r, nil
 }
 
-// HotLoad implements the mapper.CartHotLoader interface
+// HotLoad implements the mapper.CartHotLoader interface.
 func (cart *cdf) HotLoad(data []byte) error {
 	if len(data) == 0 {
 		return curated.Errorf("CDF: empty data")

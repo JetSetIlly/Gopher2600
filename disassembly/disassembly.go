@@ -23,13 +23,13 @@ import (
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/disassembly/coprocessor"
+	"github.com/jetsetilly/gopher2600/disassembly/symbols"
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/cpu"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/execution"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 	"github.com/jetsetilly/gopher2600/hardware/television"
-	"github.com/jetsetilly/gopher2600/symbols"
 )
 
 // Disassembly represents the annotated disassembly of a 6507 binary.
@@ -42,7 +42,7 @@ type Disassembly struct {
 	vcs *hardware.VCS
 
 	// symbols used to format disassembly output
-	Symbols *symbols.Symbols
+	sym symbols.Symbols
 
 	// indexed by bank and address. address should be masked with memorymap.CartridgeBits before access
 	entries [][]*Entry
@@ -64,17 +64,24 @@ type Disassembly struct {
 	crit sync.Mutex
 }
 
-func NewDisassembly(vcs *hardware.VCS) (*Disassembly, error) {
+// NewDisassembly is the preferred method of initialisation for the Disassembly
+// type.
+//
+// Also returns a reference to the disassembly's symbol table. This reference
+// will never change over the course of the lifetime of the Disassembly type
+// itself. ie. the returned reference is safe to use after calls to
+// FromMemory() or FromCartrige().
+func NewDisassembly(vcs *hardware.VCS) (*Disassembly, *symbols.Symbols, error) {
 	dsm := &Disassembly{vcs: vcs}
 
 	var err error
 
 	dsm.Prefs, err = newPreferences(dsm)
 	if err != nil {
-		return nil, curated.Errorf("disassembly: %v", err)
+		return nil, nil, curated.Errorf("disassembly: %v", err)
 	}
 
-	return dsm, nil
+	return dsm, &dsm.sym, nil
 }
 
 // FromCartridge initialises a new partial emulation and returns a disassembly
@@ -98,20 +105,20 @@ func FromCartridge(cartload cartridgeloader.Loader) (*Disassembly, error) {
 		return nil, curated.Errorf("disassembly: %v", err)
 	}
 
-	dsm, err := NewDisassembly(vcs)
+	dsm, _, err := NewDisassembly(vcs)
 	if err != nil {
 		return nil, curated.Errorf("disassembly: %v", err)
 	}
 
 	// ignore errors caused by loading of symbols table - we always get a
 	// standard symbols table even in the event of an error
-	symbols, err := symbols.ReadSymbolsFile(vcs.Mem.Cart)
+	err = dsm.sym.ReadSymbolsFile(vcs.Mem.Cart)
 	if err != nil {
 		return nil, curated.Errorf("disassembly: %v", err)
 	}
 
 	// do disassembly
-	err = dsm.FromMemory(symbols)
+	err = dsm.FromMemory()
 	if err != nil {
 		return nil, curated.Errorf("disassembly: %v", err)
 	}
@@ -124,19 +131,21 @@ func FromCartridge(cartload cartridgeloader.Loader) (*Disassembly, error) {
 // requires an existing instance of Disassembly
 //
 // cartridge will finish in its initialised state.
-func (dsm *Disassembly) FromMemory(symbols *symbols.Symbols) error {
-	if symbols != nil {
-		dsm.Symbols = symbols
+func (dsm *Disassembly) FromMemory() error {
+	dsm.crit.Lock()
+
+	// read symbols file
+	err := dsm.sym.ReadSymbolsFile(dsm.vcs.Mem.Cart)
+	if err != nil {
+		return err
 	}
 
 	// allocate memory for disassembly. the GUI may find itself trying to
 	// iterate through disassembly at the same time as we're doing this.
-	dsm.crit.Lock()
 	dsm.entries = make([][]*Entry, dsm.vcs.Mem.Cart.NumBanks())
 	for b := 0; b < len(dsm.entries); b++ {
 		dsm.entries[b] = make([]*Entry, memorymap.CartridgeBits+1)
 	}
-	dsm.crit.Unlock()
 
 	// exit early if cartridge memory self reports as being ejected
 	if dsm.vcs.Mem.Cart.IsEjected() {
@@ -150,8 +159,10 @@ func (dsm *Disassembly) FromMemory(symbols *symbols.Symbols) error {
 	mc := cpu.NewCPU(nil, mem)
 	mc.NoFlowControl = true
 
+	dsm.crit.Unlock()
+
 	// disassemble cartridge binary
-	err := dsm.disassemble(mc, mem)
+	err = dsm.disassemble(mc, mem)
 	if err != nil {
 		return curated.Errorf("disassembly: %v", err)
 	}

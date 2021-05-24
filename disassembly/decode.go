@@ -250,7 +250,7 @@ func (dsm *Disassembly) blessSequence(bank int, addr uint16, commit bool) bool {
 
 // add label to the symbols table.
 func (dsm *Disassembly) addLabel(bank int, addr uint16) {
-	dsm.Symbols.AddLabel(bank, addr, fmt.Sprintf("L%04X", addr), false)
+	dsm.sym.AddLabel(bank, addr, fmt.Sprintf("L%04X", addr), false)
 }
 
 func (dsm *Disassembly) decode(mc *cpu.CPU, mem *disasmMemory, copiedBanks []mapper.BankContent) error {

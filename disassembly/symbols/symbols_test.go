@@ -18,20 +18,22 @@ package symbols_test
 import (
 	"testing"
 
+	"github.com/jetsetilly/gopher2600/disassembly/symbols"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge"
-	"github.com/jetsetilly/gopher2600/symbols"
 	"github.com/jetsetilly/gopher2600/test"
 )
 
 func TestDefaultSymbols(t *testing.T) {
+	var sym symbols.Symbols
+
 	cart := cartridge.NewCartridge(nil)
-	syms, err := symbols.ReadSymbolsFile(cart)
+	err := sym.ReadSymbolsFile(cart)
 	if err != nil {
 		t.Errorf("unexpected error (%s)", err)
 	}
 	tw := &test.Writer{}
 
-	syms.ListSymbols(tw)
+	sym.ListSymbols(tw)
 
 	if !tw.Compare(expectedDefaultSymbols) {
 		t.Errorf("default symbols list is wrong")
@@ -39,19 +41,21 @@ func TestDefaultSymbols(t *testing.T) {
 }
 
 func TestFlappySymbols(t *testing.T) {
+	var sym symbols.Symbols
+
 	// make a dummy cartridge with the minimum amount of information required
 	// for ReadSymbolsFile() to work
 	cart := cartridge.NewCartridge(nil)
 	cart.Filename = "testdata/flappy.bin"
 
-	syms, err := symbols.ReadSymbolsFile(cart)
+	err := sym.ReadSymbolsFile(cart)
 	if err != nil {
 		t.Errorf("unexpected error (%s)", err)
 	}
 
 	tw := &test.Writer{}
 
-	syms.ListSymbols(tw)
+	sym.ListSymbols(tw)
 
 	if !tw.Compare(expectedFlappySymbols) {
 		t.Errorf("flappy symbols list is wrong")

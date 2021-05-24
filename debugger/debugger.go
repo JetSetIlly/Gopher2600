@@ -40,7 +40,6 @@ import (
 	"github.com/jetsetilly/gopher2600/reflection"
 	"github.com/jetsetilly/gopher2600/rewind"
 	"github.com/jetsetilly/gopher2600/setup"
-	"github.com/jetsetilly/gopher2600/symbols"
 	"github.com/jetsetilly/gopher2600/userinput"
 )
 
@@ -185,18 +184,17 @@ func NewDebugger(tv *television.Television, scr gui.GUI, term terminal.Terminal,
 		}
 	}
 
-	// create a new disassembly instance
-	dbg.Disasm, err = disassembly.NewDisassembly(dbg.VCS)
+	// set up debugging interface to memory
+	dbg.dbgmem = &memoryDebug{
+		vcs: dbg.VCS,
+	}
+
+	// create a new disassembly instance. also capturing the reference to the
+	// disassembly's symbols table
+	dbg.Disasm, dbg.dbgmem.sym, err = disassembly.NewDisassembly(dbg.VCS)
 	if err != nil {
 		return nil, curated.Errorf("debugger: %v", err)
 	}
-
-	// set up debugging interface to memory. note that we're reaching deep into
-	// another pointer to get the symtable for the memoryDebug instance. this
-	// is dangerous if we don't care to reset the symtable when disasm changes.
-	// As it is, we only change the disasm poointer in the attachCartridge()
-	// function.
-	dbg.dbgmem = &memoryDebug{vcs: dbg.VCS, symbols: dbg.Disasm.Symbols}
 
 	// setup reflection monitor
 	dbg.ref = reflection.NewReflector(dbg.VCS)
@@ -369,10 +367,23 @@ func (dbg *Debugger) restartInputLoop(onRestart func() error) {
 //
 // this is the glue that hold the cartridge and disassembly packages together.
 // especially important is the repointing of the symbols table in the instance of dbgmem.
-func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) error {
+func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) {
+	// tell GUI that we're in the initialistion phase
+	err := dbg.scr.SetFeature(gui.ReqState, gui.StateInitialising)
+	if err != nil {
+		return curated.Errorf("debugger: %v", err)
+	}
+	defer func() {
+		if dbg.runUntilHalt && e == nil {
+			_ = dbg.scr.SetFeature(gui.ReqState, gui.StateRunning)
+		} else {
+			_ = dbg.scr.SetFeature(gui.ReqState, gui.StatePaused)
+		}
+	}()
+
 	// close any existing loader before continuing
 	if dbg.loader != nil {
-		err := dbg.loader.Close()
+		err = dbg.loader.Close()
 		if err != nil {
 			return err
 		}
@@ -385,7 +396,7 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) error {
 			// !!TODO: it would be nice to see partial disassemblies of supercharger tapes
 			// during loading. not completely necessary I don't think, but it would be
 			// nice to have.
-			err := dbg.Disasm.FromMemory(nil)
+			err := dbg.Disasm.FromMemory()
 			if err != nil {
 				return err
 			}
@@ -404,19 +415,6 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) error {
 		return nil
 	}
 
-	// tell GUI that we're in the initialistion phase
-	err := dbg.scr.SetFeature(gui.ReqState, gui.StateInitialising)
-	if err != nil {
-		return curated.Errorf("debugger: %v", err)
-	}
-	defer func() {
-		if dbg.runUntilHalt {
-			_ = dbg.scr.SetFeature(gui.ReqState, gui.StateRunning)
-		} else {
-			_ = dbg.scr.SetFeature(gui.ReqState, gui.StatePaused)
-		}
-	}()
-
 	// reset of vcs is implied with attach cartridge
 	err = setup.AttachCartridge(dbg.VCS, cartload)
 	if err != nil && !curated.Has(err, cartridge.Ejected) {
@@ -432,21 +430,52 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) error {
 	}
 
 	// disassemble newly attached cartridge
-	symbols, err := symbols.ReadSymbolsFile(dbg.VCS.Mem.Cart)
+	err = dbg.Disasm.FromMemory()
 	if err != nil {
 		return err
 	}
-
-	err = dbg.Disasm.FromMemory(symbols)
-	if err != nil {
-		return err
-	}
-
-	// repoint debug memory's symbol table
-	dbg.dbgmem.symbols = dbg.Disasm.Symbols
 
 	// make sure everything is reset after disassembly
 	dbg.reset()
+
+	return nil
+}
+
+func (dbg *Debugger) hotload() (e error) {
+	// tell GUI that we're in the initialistion phase
+	err := dbg.scr.SetFeature(gui.ReqState, gui.StateInitialising)
+	if err != nil {
+		return curated.Errorf("debugger: %v", err)
+	}
+	defer func() {
+		if dbg.runUntilHalt && e == nil {
+			_ = dbg.scr.SetFeature(gui.ReqState, gui.StateRunning)
+		} else {
+			_ = dbg.scr.SetFeature(gui.ReqState, gui.StatePaused)
+		}
+	}()
+
+	// close any existing loader before continuing
+	if dbg.loader != nil {
+		err := dbg.loader.Close()
+		if err != nil {
+			return err
+		}
+	}
+
+	cartload := cartridgeloader.NewLoader(dbg.VCS.Mem.Cart.Filename, dbg.VCS.Mem.Cart.ID())
+	dbg.loader = &cartload
+
+	err = dbg.VCS.Mem.Cart.HotLoad(cartload)
+	if err != nil {
+		return err
+	}
+
+	// disassemble newly attached cartridge
+	err = dbg.Disasm.FromMemory()
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
