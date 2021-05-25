@@ -17,6 +17,7 @@ package moviecart
 
 import (
 	"fmt"
+	"io"
 	"math/rand"
 
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
@@ -230,15 +231,15 @@ type Moviecart struct {
 	mappingID   string
 	description string
 
-	loader cartridgeloader.Streamer
+	loader io.ReadSeekCloser
 	banks  []byte
 
 	state *state
 }
 
-func NewMoviecart(loader cartridgeloader.Streamer) (mapper.CartMapper, error) {
+func NewMoviecart(loader cartridgeloader.Loader) (mapper.CartMapper, error) {
 	cart := &Moviecart{
-		loader:      loader,
+		loader:      loader.StreamedData,
 		mappingID:   "MC",
 		description: "Moviecart",
 	}
@@ -767,7 +768,11 @@ func (cart *Moviecart) readField() {
 	// the usual playback condition
 	if !cart.state.paused && cart.state.streamChunk > 0 {
 		dataOffset := cart.state.streamChunk * chunkSize
-		n, err := cart.loader.Stream(int64(dataOffset), cart.state.streamBuffer[cart.state.streamField])
+		_, err := cart.loader.Seek(int64(dataOffset), io.SeekStart)
+		if err != nil {
+			logger.Logf("MVC", "error reading field: %v", err)
+		}
+		n, err := cart.loader.Read(cart.state.streamBuffer[cart.state.streamField])
 		if err != nil {
 			logger.Logf("MVC", "error reading field: %v", err)
 		}
@@ -784,7 +789,11 @@ func (cart *Moviecart) readField() {
 			}
 
 			dataOffset := cart.state.streamChunk * chunkSize
-			_, err := cart.loader.Stream(int64(dataOffset), cart.state.streamBuffer[fld])
+			_, err := cart.loader.Seek(int64(dataOffset), io.SeekStart)
+			if err != nil {
+				logger.Logf("MVC", "error reading field: %v", err)
+			}
+			_, err = cart.loader.Read(cart.state.streamBuffer[fld])
 			if err != nil {
 				logger.Logf("MVC", "error reading field: %v", err)
 			}

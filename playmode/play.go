@@ -81,7 +81,7 @@ func Play(tv *television.Television, scr gui.GUI, newRecording bool, cartload ca
 	var waitForEmulationStart chan error
 
 	// OnLoaded function for specific cartridge formats
-	cartload.OnLoaded = func(cart mapper.CartMapper) error {
+	cartload.OnInserted = func(cart mapper.CartMapper) error {
 		if _, ok := cart.(*supercharger.Supercharger); ok {
 			return tv.Reset(false)
 		} else if pr, ok := cart.(*plusrom.PlusROM); ok {

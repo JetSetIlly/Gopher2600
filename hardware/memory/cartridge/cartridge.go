@@ -173,7 +173,7 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 		// format)
 		if cart.fingerprintPlusROM(cartload) {
 			// try creating a NewPlusROM instance
-			pr, err := plusrom.NewPlusROM(cart.mapper, cartload.OnLoaded)
+			pr, err := plusrom.NewPlusROM(cart.mapper, cartload.OnInserted)
 
 			if err != nil {
 				// if the error is a NotAPlusROM error then log the false

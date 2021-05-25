@@ -49,7 +49,7 @@ type Supercharger struct {
 	bankSize int
 	bios     []uint8
 
-	onLoaded func(cart mapper.CartMapper) error
+	onInserted func(cart mapper.CartMapper) error
 
 	// rewindable state
 	state *state
@@ -83,11 +83,11 @@ func NewSupercharger(cartload cartridgeloader.Loader) (mapper.CartMapper, error)
 		return nil, curated.Errorf("supercharger: %v", err)
 	}
 
-	// prepare onLoaded function
-	if cartload.OnLoaded == nil {
-		cart.onLoaded = func(cart mapper.CartMapper) error { return nil }
+	// prepare onInserted function
+	if cartload.OnInserted == nil {
+		cart.onInserted = func(cart mapper.CartMapper) error { return nil }
 	} else {
-		cart.onLoaded = cartload.OnLoaded
+		cart.onInserted = cartload.OnInserted
 	}
 
 	return cart, nil
@@ -183,12 +183,12 @@ func (cart *Supercharger) Read(fullAddr uint16, passive bool) (uint8, error) {
 
 	if bios {
 		if cart.state.registers.ROMpower {
-			// trigger onLoaded() function whenever BIOS address $fa1a
+			// trigger onInserted() function whenever BIOS address $fa1a
 			// (specifically) is touched. note that this method means that the
-			// onLoaded() function will be called whatever the context the
+			// onInserted() function will be called whatever the context the
 			// address is read and not just when the PC is at the address.
 			if fullAddr == 0xfa1a {
-				err := cart.onLoaded(cart)
+				err := cart.onInserted(cart)
 				if err != nil {
 					return 0, curated.Errorf("supercharger: %v", err)
 				}

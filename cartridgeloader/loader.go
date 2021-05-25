@@ -19,7 +19,6 @@ import (
 	"crypto/sha1"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
@@ -42,6 +41,11 @@ type Loader struct {
 	// empty string or "AUTO" indicates automatic fingerprinting
 	Mapping string
 
+	// any detected TV spec in the filename. will be the empty string if
+	// nothing is found. note that the empty string is treated like "AUTO" by
+	// television.SetSpec().
+	Spec string
+
 	// expected hash of the loaded cartridge. empty string indicates that the
 	// hash is unknown and need not be validated. after a load operation the
 	// value will be the hash of the loaded data
@@ -50,32 +54,24 @@ type Loader struct {
 	// original binary file not he decoded PCM data
 	Hash string
 
-	// copy of the loaded data. subsequenct calls to Load() will return a copy
-	// of this data
-	Data []byte
-
 	// does the Data field consist of sound (PCM) data
 	IsSoundData bool
 
-	// callback function when cartridge has been successfully inserted/loaded.
-	// not all cartridge formats support this
-	//
-	// !!TODO: all cartridge formats to support OnLoaded() callback (for completeness)
-	OnLoaded func(cart mapper.CartMapper) error
+	// callback function when cartridge has been successfully inserted. not all
+	// cartridge formats support/require this
+	OnInserted func(cart mapper.CartMapper) error
 
-	// for some file types streaming is necessary.
-	//
-	// note that we have a pointer to a pointer of an os.File. this is so we
-	// can record a change of streamHandle even if the Loader{} struct is
-	// passed by value.
-	//
-	// tricky to handle but it works well for our use case.
-	streamHandle **os.File
+	// cartridge data. empty until Load() is called
+	Data []byte
 
-	// any detected TV spec in the filename. will be the empty string if
-	// nothing is found. note that the empty string is treated like "AUTO" by
-	// television.SetSpec().
-	Spec string
+	// for some file types streaming is necessary. nil until Load() is called
+	// and the cartridge format requires streaming.
+	StreamedData io.ReadSeekCloser
+
+	// pointer to pointer of StreamedData. this is a tricky construct but it
+	// allows us to pass an instance of Loader by value but still be able to
+	// close an opened stream at an "earlier" point in the code.
+	stream **io.ReadSeekCloser
 }
 
 // NewLoader is the preferred method of initialisation for the Loader type.
@@ -94,9 +90,9 @@ type Loader struct {
 // mixture of both.
 func NewLoader(filename string, mapping string) Loader {
 	cl := Loader{
-		Filename:     filename,
-		Mapping:      "AUTO",
-		streamHandle: new(*os.File),
+		Filename: filename,
+		Mapping:  "AUTO",
+		stream:   new(*io.ReadSeekCloser),
 	}
 
 	mapping = strings.TrimSpace(strings.ToUpper(mapping))
@@ -172,9 +168,21 @@ func NewLoader(filename string, mapping string) Loader {
 	return cl
 }
 
-// FileExtensions is the list of file extensions that are recognised by the
-// cartridgeloader package.
-var FileExtensions = [...]string{".BIN", ".ROM", ".A26", ".2k", ".4k", ".F8", ".F6", ".F4", ".2k+", ".4k+", ".F8+", ".F6+", ".F4+", ".FA", ".FE", ".E0", ".E7", ".3F", ".AR", ".DF", "3E", "3E+", "SB", ".DPC", ".DP+", "CDF", ".WAV", ".MP3", ".MVC"}
+// Close should be called before disposing of a Loader instance.
+func (cl Loader) Close() error {
+	if cl.stream == nil || *cl.stream == nil {
+		return nil
+	}
+
+	err := (**cl.stream).Close()
+	*cl.stream = nil
+	if err != nil {
+		return curated.Errorf("cartridgeloader: %v", err)
+	}
+	logger.Logf("cartridgeloader", "stream closed (%s)", cl.Filename)
+
+	return nil
+}
 
 // ShortName returns a shortened version of the CartridgeLoader filename.
 func (cl Loader) ShortName() string {
@@ -188,9 +196,9 @@ func (cl Loader) ShortName() string {
 	return sn
 }
 
-// HasLoaded returns true if Load() has been successfully called.
-func (cl Loader) HasLoaded() bool {
-	return len(cl.Data) > 0
+// IsStreaming returns true if Loader is expecting to read a stream of data.
+func (cl Loader) IsStreaming() bool {
+	return cl.stream != nil && *cl.stream != nil
 }
 
 // Load the cartridge data and return as a byte array. Loader filenames with a
@@ -198,19 +206,23 @@ func (cl Loader) HasLoaded() bool {
 // schemes are HTTP and local files.
 func (cl *Loader) Load() error {
 	if cl.Mapping == "MVC" {
-		if (*cl.streamHandle) == nil {
-			var err error
-			*cl.streamHandle, err = os.Open(cl.Filename)
-			if err != nil {
-				return curated.Errorf("cartridgeloader: %v", err)
-			}
-			logger.Logf("cartridgeloader", "stream open (%s)", (*cl.streamHandle).Name())
+		err := cl.Close()
+		if err != nil {
+			return curated.Errorf("cartridgeloader: %v", err)
 		}
+
+		cl.StreamedData, err = os.Open(cl.Filename)
+		if err != nil {
+			return curated.Errorf("cartridgeloader: %v", err)
+		}
+		logger.Logf("cartridgeloader", "stream open (%s)", cl.Filename)
+
+		*cl.stream = &cl.StreamedData
+
 		return nil
 	}
 
 	if len(cl.Data) > 0 {
-		// !!TODO: already-loaded error?
 		return nil
 	}
 
@@ -231,7 +243,7 @@ func (cl *Loader) Load() error {
 		}
 		defer resp.Body.Close()
 
-		cl.Data, err = ioutil.ReadAll(resp.Body)
+		cl.Data, err = io.ReadAll(resp.Body)
 		if err != nil {
 			return curated.Errorf("cartridgeloader: %v", err)
 		}
@@ -249,16 +261,7 @@ func (cl *Loader) Load() error {
 		}
 		defer f.Close()
 
-		// get file info. not using Stat() on the file handle because the
-		// windows version (when running under wine) does not handle that
-		cfi, err := os.Stat(cl.Filename)
-		if err != nil {
-			return curated.Errorf("cartridgeloader: %v", err)
-		}
-		size := cfi.Size()
-
-		cl.Data = make([]byte, size)
-		_, err = f.Read(cl.Data)
+		cl.Data, err = io.ReadAll(f)
 		if err != nil {
 			return curated.Errorf("cartridgeloader: %v", err)
 		}
@@ -276,51 +279,4 @@ func (cl *Loader) Load() error {
 	cl.Hash = hash
 
 	return nil
-}
-
-func (cl *Loader) isStreaming() bool {
-	return cl.streamHandle != nil && *cl.streamHandle != nil
-}
-
-// Close ends a cartridge loader session.
-func (cl *Loader) Close() error {
-	if cl.isStreaming() {
-		fn := (*cl.streamHandle).Name()
-		err := (*cl.streamHandle).Close()
-		if err != nil {
-			return curated.Errorf("cartridgeloader: %v", err)
-		}
-		*cl.streamHandle = nil
-		logger.Logf("cartridgeloader", "stream closed (%s)", fn)
-	}
-	return nil
-}
-
-// Streamer exposes only the Stream() function for use.
-type Streamer interface {
-	Stream(offset int64, buffer []byte) (int, error)
-}
-
-// Stream enough data to fill buffer from position offset.
-func (cl Loader) Stream(offset int64, buffer []byte) (int, error) {
-	if !cl.isStreaming() {
-		return 0, curated.Errorf("cartridgeloader: stream: no stream open")
-	}
-
-	if _, err := (*cl.streamHandle).Seek(offset, io.SeekStart); err != nil {
-		return 0, curated.Errorf("cartridgeloader: stream: %v", err)
-	}
-
-	n, err := (*cl.streamHandle).Read(buffer)
-	if err != nil {
-		if err != io.EOF {
-			return 0, curated.Errorf("cartridgeloader: stream: %v", err)
-		}
-	}
-
-	if n > 0 && n != len(buffer) {
-		return 0, curated.Errorf("cartridgeloader: stream: buffer underrun")
-	}
-
-	return n, nil
 }

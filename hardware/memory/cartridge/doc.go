@@ -24,22 +24,7 @@
 // for cartridges in the VCS. This is called bank-switching. All of these
 // differences are handled transparently by the package.
 //
-// Currently supported cartridge types are listed below. The strings in
-// quotation marks are the identifiers that should be used to specify a
-// particular mapping in the Mapping field of cartridgeloader.Loader. An empty
-// string or "AUTO" tells the cartridge system to make a best guess.
+// Currently supported cartridge types are listed in the cartridgeloader
+// package.
 //
-//	Atari 2k		"2k"
-//	Atari 4k		"4k"
-//	Atari 8k		"F8"
-//	Atari 16k		"F6"
-//	Atari 32k		"F4"
-//	CBS case		"FA"
-//	M-Network		"E7"
-//	Parker Bros		"E0"
-//	Tigervision		"3F"
-//	DPC (Pitfall2)  "DPC"
-//	DPC+			"DPC+"
-//	3E+				"3E+"
-//	Supercharger	"AR"
 package cartridge

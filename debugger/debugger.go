@@ -391,7 +391,7 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) 
 	dbg.loader = &cartload
 
 	// set OnLoaded function for specific cartridge formats
-	cartload.OnLoaded = func(cart mapper.CartMapper) error {
+	cartload.OnInserted = func(cart mapper.CartMapper) error {
 		if _, ok := cart.(*supercharger.Supercharger); ok {
 			// !!TODO: it would be nice to see partial disassemblies of supercharger tapes
 			// during loading. not completely necessary I don't think, but it would be
