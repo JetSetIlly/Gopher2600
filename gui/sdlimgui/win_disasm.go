@@ -319,14 +319,8 @@ func (win *winDisasm) drawBank(bank int, focusAddr uint16, onBank bool) {
 				imgui.TableNextColumn()
 				imgui.TableNextColumn()
 
-				// !!TODO: disasm address lable to span multiple columns
+				// !!TODO: disasm address label to span multiple columns
 				imgui.Text(s)
-
-				// advance clipper counter and check for end of display
-				i++
-				if i >= clipper.DisplayEnd {
-					break // clipper.DisplayStart loop
-				}
 			}
 
 			win.drawEntry(e, focusAddr, onBank)
