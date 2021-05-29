@@ -69,18 +69,17 @@ func (win *winCartStatic) draw() {
 	imgui.BeginV(title, &win.open, 0)
 
 	imgui.BeginTabBar("")
-	for segment := range win.img.lz.Cart.Static {
-		a := win.img.lz.Cart.Static[segment]
-		b := comp[segment]
+	for s := range win.img.lz.Cart.Static {
+		a := win.img.lz.Cart.Static[s]
+		b := comp[s]
 		if imgui.BeginTabItemV(a.Segment, nil, 0) {
 			imgui.BeginChildV("scrollable", imgui.Vec2{X: 0, Y: imguiRemainingWinHeight()}, false, 0)
 
-			seg := segment
 			drawByteGrid(a.Data, b.Data, win.img.cols.ValueDiff, 0,
 				func(addr uint16, data uint8) {
 					win.img.lz.Dbg.PushRawEvent(func() {
 						idx := int(addr)
-						win.img.lz.Dbg.VCS.Mem.Cart.GetRAMbus().PutRAM(seg, idx, data)
+						win.img.lz.Dbg.VCS.Mem.Cart.GetStaticBus().PutStatic(a.Segment, uint16(idx), data)
 					})
 				})
 
