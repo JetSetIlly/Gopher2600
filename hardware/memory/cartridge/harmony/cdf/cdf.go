@@ -70,36 +70,36 @@ const (
 )
 
 // NewCDF is the preferred method of initialisation for the harmony type.
-func NewCDF(prefs *preferences.Preferences, version byte, data []byte) (mapper.CartMapper, error) {
+func NewCDF(prefs *preferences.Preferences, version string, data []byte) (mapper.CartMapper, error) {
 	cart := &cdf{
 		prefs:     prefs,
 		mappingID: "CDF",
 		bankSize:  4096,
 		state:     newCDFstate(),
-		version:   newVersion(version),
 	}
 
-	// amount of data used for cartridges
-	bankLen := len(data) - driverSize - customSize
-
-	// size check
-	if bankLen <= 0 || bankLen%cart.bankSize != 0 {
-		return nil, curated.Errorf("CDF: wrong number of bytes in cartridge data")
+	var err error
+	cart.version, err = newVersion(version, data)
+	if err != nil {
+		return nil, curated.Errorf("CDF: %v", err)
 	}
 
 	// allocate enough banks
-	cart.banks = make([][]uint8, bankLen/cart.bankSize)
+	cart.banks = make([][]uint8, cart.NumBanks())
 
 	// partition data into banks
 	for k := 0; k < cart.NumBanks(); k++ {
 		cart.banks[k] = make([]uint8, cart.bankSize)
 		offset := k * cart.bankSize
-		offset += driverSize + customSize
+		offset += driverSize
+		if cart.version.submapping != "CDFJ+" {
+			offset += customSize
+		}
 		cart.banks[k] = data[offset : offset+cart.bankSize]
 	}
 
 	// initialise static memory
-	cart.state.static = cart.newCDFstatic(data)
+	cart.state.static = cart.newCDFstatic(data, cart.version)
 
 	// initialise ARM processor
 	//
@@ -127,7 +127,7 @@ func (cart *cdf) SetDisassembler(disasm mapper.CartCoProcDisassembler) {
 
 // ID implements the mapper.CartMapper interface.
 func (cart *cdf) ID() string {
-	return cart.mappingID
+	return cart.version.submapping
 }
 
 // Snapshot implements the mapper.CartMapper interface.
@@ -145,7 +145,7 @@ func (cart *cdf) Plumb() {
 // Reset implements the mapper.CartMapper interface.
 func (cart *cdf) Reset(_ *rand.Rand) {
 	bank := len(cart.banks) - 1
-	if cart.version.submapping == "CDJF+" {
+	if cart.version.submapping == "CDFJ+" {
 		bank = 0
 	}
 	cart.state.initialise(bank)
@@ -220,13 +220,13 @@ func (cart *cdf) Read(addr uint16, passive bool) (uint8, error) {
 		if data == byte(cart.version.amplitudeRegister) {
 			if cart.state.registers.SampleMode {
 				addr := cart.readMusicFetcher(0)
-				addr += cart.state.registers.MusicFetcher[0].Count >> 21
+				addr += cart.state.registers.MusicFetcher[0].Count >> (cart.version.musicFetcherShift + 1)
 
 				// get sample from memory
 				data = cart.state.static.read8bit(addr)
 
 				// prevent excessive volume
-				if cart.state.registers.MusicFetcher[0].Count&(1<<20) == 0 {
+				if cart.state.registers.MusicFetcher[0].Count&(1<<cart.version.musicFetcherShift) == 0 {
 					data >>= 4
 				}
 
@@ -361,6 +361,11 @@ func (cart *cdf) bankswitch(addr uint16, passive bool) bool {
 			cart.state.bank = 6
 		}
 
+		if cart.version.submapping == "CDFJ+" {
+			cart.state.bank++
+			cart.state.bank %= 7
+		}
+
 		return true
 	}
 	return false
@@ -368,7 +373,7 @@ func (cart *cdf) bankswitch(addr uint16, passive bool) bool {
 
 // NumBanks implements the mapper.CartMapper interface.
 func (cart *cdf) NumBanks() int {
-	return len(cart.banks)
+	return 7
 }
 
 // GetBank implements the mapper.CartMapper interface.
@@ -492,6 +497,8 @@ func (cart *cdf) readDatastreamIncrement(inc int) uint32 {
 }
 
 func (cart *cdf) readMusicFetcher(mus int) uint32 {
+	// CDFJ+ differences ??
+
 	addr := cart.version.musicBase + (uint32(mus) * 4)
 	return uint32(cart.state.static.driverRAM[addr]) |
 		uint32(cart.state.static.driverRAM[addr+1])<<8 |

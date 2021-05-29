@@ -18,8 +18,8 @@ package arm7tdmi
 const (
 	FlashOrigin       = uint32(0x00000000)
 	Flash32kMemtop    = uint32(0x00007fff)
+	Flash64kMemtop    = uint32(0x000fffff)
 	SRAMOrigin        = uint32(0x40000000)
-	SRAM8kMemtop      = uint32(0x40001fff)
 	PeripheralsOrigin = uint32(0xe0000000)
 	PeripheralsMemtop = uint32(0xffffffff)
 )

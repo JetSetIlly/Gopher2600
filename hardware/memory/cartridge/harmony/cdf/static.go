@@ -25,6 +25,8 @@ import (
 
 // Static implements the bus.CartStatic interface.
 type Static struct {
+	version version
+
 	// slices of cartData that should not be modified during execution
 	driverROM []byte
 	customROM []byte
@@ -35,22 +37,22 @@ type Static struct {
 	variablesRAM []byte
 }
 
-func (cart *cdf) newCDFstatic(cartData []byte) *Static {
-	stc := Static{}
+func (cart *cdf) newCDFstatic(cartData []byte, r version) *Static {
+	stc := Static{version: r}
 
 	// ARM driver
 	stc.driverROM = cartData[:driverSize]
 
 	// custom ARM program begins immediately after the ARM driver
-	stc.customROM = cartData[driverSize:]
+	stc.customROM = cartData[r.customOriginROM:]
 
 	// driver RAM is the same as driver ROM initially
 	stc.driverRAM = make([]byte, driverSize)
 	copy(stc.driverRAM, stc.driverROM)
 
 	// there is nothing in cartData to copy into the other RAM areas
-	stc.dataRAM = make([]byte, dataMemtopRAM-dataOriginRAM+1)
-	stc.variablesRAM = make([]byte, variablesMemtopRAM-variablesOriginRAM+1)
+	stc.dataRAM = make([]byte, r.dataMemtopRAM-r.dataOriginRAM+1)
+	stc.variablesRAM = make([]byte, r.variablesMemtopRAM-r.variablesOriginRAM+1)
 
 	return &stc
 }
@@ -62,7 +64,7 @@ func (stc *Static) HotLoad(cartData []byte) {
 
 // ResetVectors implements the arm7tdmi.SharedMemory interface.
 func (stc *Static) ResetVectors() (uint32, uint32, uint32) {
-	return stackOriginRAM, customOriginROM, customOriginROM + 8
+	return stc.version.entrySR, stc.version.entryLR, stc.version.entryPC
 }
 
 func (stc *Static) Snapshot() *Static {
@@ -81,32 +83,32 @@ func (stc *Static) MapAddress(addr uint32, write bool) (*[]byte, uint32) {
 	// tests arranged in order of most likely to be used
 
 	// custom ARM code (ROM)
-	if addr >= customOriginROM && addr <= customMemtopROM {
+	if addr >= stc.version.customOriginROM && addr <= stc.version.customMemtopROM {
 		if write {
 			logger.Logf("CDF", "ARM trying to write to ROM address (%08x)", addr)
 			return nil, addr
 		}
-		return &stc.customROM, addr - customOriginROM
+		return &stc.customROM, addr - stc.version.customOriginROM
 	}
 
 	// driver ARM code (ROM)
-	if addr >= driverOriginROM && addr <= driverMemtopROM {
-		return &stc.driverROM, addr - driverOriginROM
+	if addr >= stc.version.driverOriginROM && addr <= stc.version.driverMemtopROM {
+		return &stc.driverROM, addr - stc.version.driverOriginROM
 	}
 
 	// data (RAM)
-	if addr >= dataOriginRAM && addr <= dataMemtopRAM {
-		return &stc.dataRAM, addr - dataOriginRAM
+	if addr >= stc.version.dataOriginRAM && addr <= stc.version.dataMemtopRAM {
+		return &stc.dataRAM, addr - stc.version.dataOriginRAM
 	}
 
 	// driver ARM code (RAM)
-	if addr >= driverOriginRAM && addr <= driverMemtopRAM {
-		return &stc.driverRAM, addr - driverOriginRAM
+	if addr >= stc.version.driverOriginRAM && addr <= stc.version.driverMemtopRAM {
+		return &stc.driverRAM, addr - stc.version.driverOriginRAM
 	}
 
 	// variables (RAM)
-	if addr >= variablesOriginRAM && addr <= variablesMemtopRAM {
-		return &stc.variablesRAM, addr - variablesOriginRAM
+	if addr >= stc.version.variablesOriginRAM && addr <= stc.version.variablesMemtopRAM {
+		return &stc.variablesRAM, addr - stc.version.variablesOriginRAM
 	}
 
 	return nil, addr
@@ -142,19 +144,27 @@ func (stc *Static) read8bit(addr uint32) uint8 {
 
 // GetStatic implements the bus.CartDebugBus interface.
 func (cart *cdf) GetStatic() []mapper.CartStatic {
-	s := make([]mapper.CartStatic, 3)
+	numSegments := 3
+	if cart.version.submapping == "CDFJ+" {
+		numSegments = 2
+	}
+
+	s := make([]mapper.CartStatic, numSegments)
 
 	s[0].Segment = "Driver"
 	s[1].Segment = "Data"
-	s[2].Segment = "Variables"
 
 	s[0].Data = make([]byte, len(cart.state.static.driverRAM))
 	s[1].Data = make([]byte, len(cart.state.static.dataRAM))
-	s[2].Data = make([]byte, len(cart.state.static.variablesRAM))
 
 	copy(s[0].Data, cart.state.static.driverRAM)
 	copy(s[1].Data, cart.state.static.dataRAM)
-	copy(s[2].Data, cart.state.static.variablesRAM)
+
+	if cart.version.submapping != "CDFJ+" {
+		s[2].Segment = "Variables"
+		s[2].Data = make([]byte, len(cart.state.static.variablesRAM))
+		copy(s[2].Data, cart.state.static.variablesRAM)
+	}
 
 	return s
 }

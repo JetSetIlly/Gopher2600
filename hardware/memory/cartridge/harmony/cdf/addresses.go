@@ -16,24 +16,4 @@
 
 package cdf
 
-import "github.com/jetsetilly/gopher2600/hardware/memory/cartridge/harmony/arm7tdmi"
-
-const (
-	driverOriginROM = arm7tdmi.FlashOrigin
-	driverMemtopROM = arm7tdmi.FlashOrigin | 0x000007ff
-
-	customOriginROM = arm7tdmi.FlashOrigin | 0x00000800
-	customMemtopROM = arm7tdmi.Flash32kMemtop
-
-	driverOriginRAM = arm7tdmi.SRAMOrigin
-	driverMemtopRAM = arm7tdmi.SRAMOrigin | 0x000007ff
-
-	dataOriginRAM = arm7tdmi.SRAMOrigin | 0x00000800
-	dataMemtopRAM = arm7tdmi.SRAMOrigin | 0x000017ff
-
-	variablesOriginRAM = arm7tdmi.SRAMOrigin | 0x00001800
-	variablesMemtopRAM = arm7tdmi.SRAMOrigin | 0x00001fff
-
-	// stack should be within the range of the RAM copy of the variables.
-	stackOriginRAM = arm7tdmi.SRAMOrigin | 0x00001fdc
-)
+const ()

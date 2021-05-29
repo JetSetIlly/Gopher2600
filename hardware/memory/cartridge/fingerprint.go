@@ -16,6 +16,8 @@
 package cartridge
 
 import (
+	"fmt"
+
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/harmony/cdf"
@@ -136,14 +138,43 @@ func fingerprintDPCplus(b []byte) bool {
 	return b[0x20] == 0x1e && b[0x21] == 0xab && b[0x22] == 0xad && b[0x23] == 0x10
 }
 
-func fingerprintCDF(b []byte) (bool, byte) {
+func fingerprintCDF(b []byte) (bool, string) {
+	// CDFJ+ fingerprintin taken from Stella's CartridgeCDF:setupVersion()
+	//
+	// CDFJ+ ROMs are at least 64k bytes
+	if len(b) >= 65535 {
+		if b[0x174] == 0x50 && b[0x175] == 0x4c && b[0x176] == 0x55 && b[0x177] == 0x53 {
+			if b[0x178] == 0x43 && b[0x179] == 0x44 && b[0x17a] == 0x46 && b[0x17b] == 0x4a {
+				return true, "CDFJ+"
+			}
+		}
+	}
+
+	// all other CDF formats must be 32k bytes
+	if len(b) != 32768 {
+		return false, ""
+	}
+
 	count := 0
-	version := byte(0)
+	version := ""
 
 	for i := 0; i < len(b)-3; i++ {
 		if b[i] == 'C' && b[i+1] == 'D' && b[i+2] == 'F' {
+			var newVersion string
 			count++
-			version = b[i+3]
+
+			// create version string. slightly different for CDFJ
+			if b[i+3] == 'J' {
+				newVersion = "CDFJ"
+			} else {
+				newVersion = fmt.Sprintf("CDF%1d", b[i+3])
+			}
+
+			// make sure the version number hasn't changed
+			if version != "" && version != newVersion {
+				return false, ""
+			}
+			version = newVersion
 		}
 	}
 
