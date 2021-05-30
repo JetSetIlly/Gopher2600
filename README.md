@@ -32,12 +32,12 @@ The following [screenshots](#screenshots) were taken in playmode with CRT effect
 
 <img src=".screenshots/games/pitfall.png" height="200" alt="pitfall"/> <img src=".screenshots/games/heman.png" height="200" alt="he-man"/>
 <img src=".screenshots/games/krull.png" height="200" alt="krull"/> <img src=".screenshots/games/ladybug.png" height="200" alt="ladybug"/>
-<img src=".screenshots/games/thrust.png" height="200" alt="thrust"/> <img src=".screenshots/games/pandachase.png" height="200" alt="panda chase"/>
-<img src=".screenshots/games/mangoesdown.png" height="200" alt="man goes down"/> <img src=".screenshots/games/beast.png" height="200" alt="legacy of the beast"/>
-<img src=".screenshots/games/chiphead.png" height="200" alt="chiphead"/> <img src=".screenshots/games/genesis.png" height="200" alt="egypt genesis"/>
-<img src=".screenshots/games/draconian.png" height="200" alt="draconian"/> <img src=".screenshots/games/galagon.png" height="200" alt="galagon"/>
+<img src=".screenshots/games/thrust.png" height="200" alt="thrust"/> <img src=".screenshots/games/mangoesdown.png" height="200" alt="man goes down"/>
+<img src=".screenshots/games/beast.png" height="200" alt="legacy of the beast"/> <img src=".screenshots/games/chiphead.png" height="200" alt="chiphead"/>
+<img src=".screenshots/games/genesis.png" height="200" alt="egypt genesis"/> <img src=".screenshots/games/draconian.png" height="200" alt="draconian"/>
+<img src=".screenshots/games/galagon.png" height="200" alt="galagon"/> <img src=".screenshots/games/turbo.png" height="200" alt="turbo"/>
 
-Games shown: Pitfall; He-Man; Krull; Ladybug; Thrust; Panda Chase; Man Goes Down; [Legacy of the Beast](https://aeriform.itch.io/beast); Chiphead; Egypt 2600BC by Genesis Project; Draconian; [Galagon](https://champ.games/downloads).
+Games shown: Pitfall; He-Man; Krull; Ladybug; Thrust; Man Goes Down; [Legacy of the Beast](https://aeriform.itch.io/beast); Chiphead; Egypt 2600BC by Genesis Project; Draconian; [Galagon](https://champ.games/downloads); [Turbo](https://champ.games/downloads).
 
 ## Scope of the project
 
@@ -670,7 +670,7 @@ Modern formats supported:
 * 3E+
 * DF
 * DPC+
-* CDF (including CDFJ)
+* CDF (including CDFJ and CDFJ+)
 
 The last two formats often make use of the `ARM7TDMI` coprocessor as found in
 the `Harmony` cartridge and are fully supported by `Gopher2600`.

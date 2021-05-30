@@ -15,5 +15,3 @@
 // the memory addresses from the point of view of the ARM processor.
 
 package cdf
-
-const ()

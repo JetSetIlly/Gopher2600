@@ -27,7 +27,7 @@
 //             Filename: "roms/Pitfall.bin",
 //     }
 //
-// It is preferred howver, that the NewLoader() function is used to initialise
+// It is preferred however, that the NewLoader() function is used to initialise
 // the Loader.
 //
 // The NewLoader() function accepts two arguments. The filename of the
@@ -39,7 +39,7 @@
 //
 // The file extension of a file will specify the cartridge mapping and will
 // cause the emulation to use that mapping. Most 2600 ROM files have the
-// extension "bin" but sometimes it is necessary to specify explicitely what
+// extension "bin" but sometimes it is necessary to specify explicitly what
 // the mapper is.
 //
 // The following quoted file extensions are recognised (case insenstive):
@@ -89,7 +89,7 @@
 // The Hash field of the Loader type contains the SHA1 value of the loaded
 // data. It is valid after the Load() function has completed successfully. If
 // the field is not empty before Load() is called, that value will be compared
-// with the caluclated value. An error is returned if the values differ.
+// with the calculated value. An error is returned if the values differ.
 //
 // In most cases you wouldn't want to change the Hash field before calling the
 // Load() function but it is sometimes useful to make sure the correct file is
