@@ -20,8 +20,10 @@ type mam struct {
 	mamcr uint32
 }
 
+// MAM addresses from UM10161 (page 20)
 const (
-	MAMCR = PeripheralsOrigin | 0x001fc000
+	MAMCR  = PeripheralsOrigin | 0x001fc000
+	MAMTIM = PeripheralsOrigin | 0x001fc004
 )
 
 func (m *mam) write(addr uint32, val uint32) bool {

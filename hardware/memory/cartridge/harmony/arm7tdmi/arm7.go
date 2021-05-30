@@ -251,10 +251,6 @@ func (arm *ARM) read32bit(addr uint32) uint32 {
 		logger.Logf("ARM7", "misaligned 32 bit read (%08x)", addr)
 	}
 
-	if val, ok := arm.timer.read(addr); ok {
-		return val
-	}
-
 	var mem *[]uint8
 	mem, addr = arm.mem.MapAddress(addr, false)
 	if mem == nil {
@@ -275,10 +271,6 @@ func (arm *ARM) write32bit(addr uint32, val uint32) {
 	// check 32 bit alignment
 	if addr&0x03 != 0x00 {
 		logger.Logf("ARM7", "misaligned 32 bit write (%08x)", addr)
-	}
-
-	if ok := arm.timer.write(addr, val); ok {
-		return
 	}
 
 	var mem *[]uint8
@@ -1742,10 +1734,29 @@ func (arm *ARM) executeMultipleLoadStore(opcode uint16) {
 	// for cycle counting purposes, instructions in this format are equivalent
 	// to ARM instructions in the "Block Data Transfer" set, section 4.11.8 of
 	// the ARM7TDMI data sheet.
-	//
-	// both load and store require 2 N cycles and as many S cycles as there are
-	// registers that are loaded/stored
-	arm.cyclesInstruction.N += 2
+	if load {
+		arm.cyclesInstruction.N++
+		arm.cyclesInstruction.I++
+
+		// an additional S and N cycle when loading to the program counter
+		//
+		// we add more S cycles in the for loop below
+		if regList&0x8000 == 0x8000 {
+			arm.cyclesInstruction.N++
+			arm.cyclesInstruction.S++
+		}
+	} else {
+		arm.cyclesInstruction.N += 2
+
+		// STM takes one less S cycle that the number of registers we're
+		// storing. we add more S cycles in the for loop below but take one off
+		// before we start
+		//
+		// checking that we will be storing at least one register
+		if regList != 0x00 {
+			arm.cyclesInstruction.S--
+		}
+	}
 
 	if arm.disasmLevel == disasmFull {
 		if load {
@@ -1756,12 +1767,11 @@ func (arm *ARM) executeMultipleLoadStore(opcode uint16) {
 		arm.disasmEntry.Operand = fmt.Sprintf("R%d!, {%#0b}", baseReg, regList)
 	}
 
-	for i := 0; i <= 7; i++ {
-		// additional S cycle for each load/store
-		arm.cyclesInstruction.S++
-
+	for i := 0; i <= 15; i++ {
 		r := regList >> i
 		if r&0x01 == 0x01 {
+			arm.cyclesInstruction.S++
+
 			if load {
 				arm.registers[i] = arm.read32bit(addr)
 				addr += 4

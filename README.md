@@ -540,13 +540,17 @@ highlighted with purple pixels.
 
 <img src=".screenshots/arm_timing.png" width="300" alt="ARM7 execution duration overlay"/> 
 
-While the operation of all ARM using cartridges is accuration (ie. DPC+ and CDF/CDFJ cartridges) the length
-of time for which the ARM program runs is difficult to estimate. The time indicated in the debugging overlay
-therefore is only an estimate and there is no substitute for testing ROMs on real hardware. None-the-less the
-overlay provides an indication of programs that might be problematic.
+While the operation of the ARM program is accurate the length of time ARM
+program runs is difficult to estimate. The time indicated in the debugging
+overlay therefore is only an estimate and there is no substitute for testing
+ROMs on real hardware. None-the-less the overlay provides an indication of
+programs that might be problematic.
 
 This area of the project is an ongoing area of improvement and future versions aim to make this measurement
 100% accurate.
+
+If absolutely necessary `Instant ARM Execution` can be turned on via the
+preferences window (currently only available through the debugger).
 
 ## Movie Cart
 
@@ -766,7 +770,7 @@ The "Mostly Inclusive Atari 2600 Mapper / Selected Hardware Document" (dated 03/
 
 Supercharger information from the Kevin Horton document above and also the `sctech.txt` document
 
-Reference for the ARM7TDMI thumb instruction set, as used by the Harmony cartridge formats:
+Reference for the ARM7TDMI thumb instruction set, as used in the Harmony cartridge formats:
 
 https://edu.heibai.org/ARM%E8%B5%84%E6%96%99/ARM7-TDMI-manual-pt3.pdf
 
@@ -775,6 +779,10 @@ Further information from the ARM Architecture Reference Manual:
 http://www.ecs.csun.edu/~smirzaei/docs/ece425/arm7tdmi_instruction_set_reference.pdf
 
 https://www.cs.miami.edu/home/burt/learning/Csc521.141/Documents/arm_arm.pdf
+
+Specific information about UXP ARM7TDMI-S 
+
+https://www.nxp.com/docs/en/user-guide/UM10161.pdf
 
 ## Further Help
 
