@@ -215,6 +215,11 @@ func (arm *ARM) write8bit(addr uint32, val uint8) {
 }
 
 func (arm *ARM) read16bit(addr uint32) uint16 {
+	// check 16 bit alignment
+	if addr&0x01 != 0x00 {
+		logger.Logf("ARM7", "misaligned 16 bit read (%08x)", addr)
+	}
+
 	var mem *[]uint8
 	mem, addr = arm.mem.MapAddress(addr, false)
 	if mem == nil {
@@ -225,6 +230,11 @@ func (arm *ARM) read16bit(addr uint32) uint16 {
 }
 
 func (arm *ARM) write16bit(addr uint32, val uint16) {
+	// check 16 bit alignment
+	if addr&0x01 != 0x00 {
+		logger.Logf("ARM7", "misaligned 16 bit write (%08x)", addr)
+	}
+
 	var mem *[]uint8
 	mem, addr = arm.mem.MapAddress(addr, true)
 	if mem == nil {
@@ -236,6 +246,11 @@ func (arm *ARM) write16bit(addr uint32, val uint16) {
 }
 
 func (arm *ARM) read32bit(addr uint32) uint32 {
+	// check 32 bit alignment
+	if addr&0x03 != 0x00 {
+		logger.Logf("ARM7", "misaligned 32 bit read (%08x)", addr)
+	}
+
 	if val, ok := arm.timer.read(addr); ok {
 		return val
 	}
@@ -257,6 +272,11 @@ func (arm *ARM) read32bit(addr uint32) uint32 {
 }
 
 func (arm *ARM) write32bit(addr uint32, val uint32) {
+	// check 32 bit alignment
+	if addr&0x03 != 0x00 {
+		logger.Logf("ARM7", "misaligned 32 bit write (%08x)", addr)
+	}
+
 	if ok := arm.timer.write(addr, val); ok {
 		return
 	}

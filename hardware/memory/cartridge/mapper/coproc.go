@@ -40,6 +40,10 @@ type CartCoProcDisasmEntry struct {
 	UpdateNotes bool
 }
 
+func (e CartCoProcDisasmEntry) String() string {
+	return fmt.Sprintf("%s %s %s", e.Address, e.Operator, e.Operand)
+}
+
 // CartCoProcDisassembler defines the functions that must be defined for a
 // disassembler to be attached to a coprocessor.
 type CartCoProcDisassembler interface {
