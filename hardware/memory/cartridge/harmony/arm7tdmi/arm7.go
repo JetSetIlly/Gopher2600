@@ -1961,14 +1961,18 @@ func (arm *ARM) executeLongBranchWithLink(opcode uint16) {
 	low := opcode&0x800 == 0x0800
 	offset := uint32(opcode & 0x07ff)
 
-	// for cycle counting purposes, instructions in this format are equivalent
-	// to ARM instructions in the "Branch and Branch with link" set, section
-	// 4.4.2 of the ARM7TDMI data sheet.
-	arm.cyclesInstruction.S += 2
-	arm.cyclesInstruction.N++
+	// there is no direct ARM equivalent for this instruction. cycle timings
+	// from chapter 10.3 of the ARM7TDMI data sheet.
 
 	if low {
 		// second instruction
+
+		arm.cyclesInstruction.S += 2
+		arm.cyclesInstruction.N++
+
+		// add additional S cycle for first instruction.
+		arm.cyclesInstruction.S++
+
 		offset <<= 1
 		arm.registers[rLR] += offset
 		pc := arm.registers[rPC]
@@ -1981,7 +1985,9 @@ func (arm *ARM) executeLongBranchWithLink(opcode uint16) {
 		return
 	}
 
-	// first instruction
+	// first instruction. we'll defer cycle accumulation until the second
+	// instruction branch above.
+
 	offset <<= 12
 
 	if offset&0x400000 == 0x400000 {
