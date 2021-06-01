@@ -22,7 +22,15 @@ import (
 
 // Clock speeds inside the arm7 sub-system.
 const (
-	InternalClk = 70 // Mhz
+	InternalClk     = 70.0 // Mhz
+	FlashAccessTime = 50.0 // ns, 50ns == 20Mhz
+	SRAMAccessTime  = 10.0 // ns
+
+	// access ratios calculated by:
+	//
+	//    InternalClk / (1000 / access time)
+	FlashAccessRatio = 3.5
+	SRAMAccessRatio  = 0.7
 )
 
 type cycles struct {
@@ -42,7 +50,7 @@ func (c *cycles) String() string {
 }
 
 func (c *cycles) sum() float32 {
-	return c.I + c.C + (2 * c.N) + c.S
+	return c.I + c.C + (c.N * SRAMAccessRatio) + c.S
 }
 
 func (c *cycles) reset() {

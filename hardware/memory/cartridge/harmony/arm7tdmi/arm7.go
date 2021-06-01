@@ -482,10 +482,18 @@ func (arm *ARM) Run() (float32, error) {
 
 		// send disasm information to disassembler
 		if arm.disasm != nil {
-			// only send if operator field is not empty. the first instruction
-			// in a BL sequence will deliberately leave the Operator field
-			// blank.
-			if arm.disasmEntry.Operator != "" {
+			// only send if operator field is not equal to 'blfirst'. the first
+			// instruction in a BL sequence is not shown
+			if arm.disasmEntry.Operator != blfirst {
+				// if no operator mnemonic has been defined, replace with
+				// opcode value
+				//
+				// this shouldn't happen but we're showing something so that
+				// the disasm output can be debugged
+				if arm.disasmEntry.Operator == "" {
+					arm.disasmEntry.Operator = fmt.Sprintf("%04x", opcode)
+				}
+
 				switch arm.disasmLevel {
 				case disasmFull:
 					// if this is not a cached entry then format operator and
@@ -642,10 +650,28 @@ func (arm *ARM) executeAddSubtract(opcode uint16) {
 	}
 
 	if subtract {
+		if arm.disasmLevel == disasmFull {
+			arm.disasmEntry.Operator = "SUB"
+			if immediate {
+				arm.disasmEntry.Operand = fmt.Sprintf("R%d, R%d, #%02x ", destReg, srcReg, val)
+			} else {
+				arm.disasmEntry.Operand = fmt.Sprintf("R%d, R%d, R%02x ", destReg, srcReg, imm)
+			}
+		}
+
 		arm.status.setCarry(arm.registers[srcReg], ^val, 1)
 		arm.status.setOverflow(arm.registers[srcReg], ^val, 1)
 		arm.registers[destReg] = arm.registers[srcReg] - val
 	} else {
+		if arm.disasmLevel == disasmFull {
+			arm.disasmEntry.Operator = "ADD"
+			if immediate {
+				arm.disasmEntry.Operand = fmt.Sprintf("R%d, R%d, #%02x ", destReg, srcReg, val)
+			} else {
+				arm.disasmEntry.Operand = fmt.Sprintf("R%d, R%d, R%02x ", destReg, srcReg, imm)
+			}
+		}
+
 		arm.status.setCarry(arm.registers[srcReg], val, 0)
 		arm.status.setOverflow(arm.registers[srcReg], val, 0)
 		arm.registers[destReg] = arm.registers[srcReg] + val
@@ -1587,9 +1613,11 @@ func (arm *ARM) executePushPopRegisters(opcode uint16) {
 	//
 	// both PUSH and POP require 2 N cycles and as many S cycles as there are
 	// registers that are pushed/popped
-	arm.cyclesInstruction.N += 2
 
 	if load {
+		arm.cyclesInstruction.N++
+		arm.cyclesInstruction.I++
+
 		// start_address = SP
 		// end_address = SP + 4*(R + Number_Of_Set_Bits_In(register_list))
 		// address = start_address
@@ -1606,25 +1634,19 @@ func (arm *ARM) executePushPopRegisters(opcode uint16) {
 		// assert end_address = address
 		// SP = end_address
 
-		// if pclr {
-		// 	fmt.Printf("POP {%#0b, PC}", regList)
-		// } else {
-		// 	fmt.Printf("POP {%#0b}", regList)
-		// }
-
 		// start at stack pointer at work upwards
 		addr := arm.registers[rSP]
 
 		// read each register in turn (from lower to highest)
 		for i := 0; i <= 7; i++ {
-			// additional S cycle for each register popped
-			arm.cyclesInstruction.S++
-
 			// shift single-bit mask
 			m := uint8(0x01 << i)
 
 			// read register if indicated by regList
 			if regList&m == m {
+				// additional S cycle for each register popped
+				arm.cyclesInstruction.S++
+
 				arm.registers[i] = arm.read32bit(addr)
 				addr += 4
 			}
@@ -1648,6 +1670,16 @@ func (arm *ARM) executePushPopRegisters(opcode uint16) {
 
 			arm.registers[rPC] = v
 			addr += 4
+
+			if arm.disasmLevel == disasmFull {
+				arm.disasmEntry.Operator = "POP"
+				arm.disasmEntry.Operand = fmt.Sprintf("{%#0b, LR}", regList)
+			}
+		} else {
+			if arm.disasmLevel == disasmFull {
+				arm.disasmEntry.Operator = "POP"
+				arm.disasmEntry.Operand = fmt.Sprintf("{%#0b}", regList)
+			}
 		}
 
 		// leave stackpointer at final address
@@ -1657,6 +1689,8 @@ func (arm *ARM) executePushPopRegisters(opcode uint16) {
 	}
 
 	// store
+
+	arm.cyclesInstruction.N += 2
 
 	// start_address = SP - 4*(R + Number_Of_Set_Bits_In(register_list))
 	// end_address = SP - 4
@@ -1694,14 +1728,14 @@ func (arm *ARM) executePushPopRegisters(opcode uint16) {
 
 	// write each register in turn (from lower to highest)
 	for i := 0; i <= 7; i++ {
-		// additional S cycle for each register pop
-		arm.cyclesInstruction.S++
-
 		// shift single-bit mask
 		m := uint8(0x01 << i)
 
 		// write register if indicated by regList
 		if regList&m == m {
+			// additional S cycle for each register push
+			arm.cyclesInstruction.S++
+
 			arm.write32bit(addr, arm.registers[i])
 			addr += 4
 		}
@@ -1714,6 +1748,11 @@ func (arm *ARM) executePushPopRegisters(opcode uint16) {
 
 		lr := arm.registers[rLR]
 		arm.write32bit(addr, lr)
+	}
+
+	// PUSH instructions take 1 S cycle less than the number registers being stored
+	if arm.cyclesInstruction.S > 0 {
+		arm.cyclesInstruction.S--
 	}
 
 	// update stack pointer. note that this is the address we started the push
@@ -1953,4 +1992,11 @@ func (arm *ARM) executeLongBranchWithLink(opcode uint16) {
 	} else {
 		arm.registers[rLR] = arm.registers[rPC] + offset + 2
 	}
+
+	if arm.disasmLevel == disasmFull {
+		arm.disasmEntry.Operator = blfirst
+		arm.disasmEntry.Operand = fmt.Sprintf("%#08x", arm.registers[rPC])
+	}
 }
+
+const blfirst = "BLFIRST"
