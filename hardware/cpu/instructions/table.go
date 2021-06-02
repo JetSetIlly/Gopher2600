@@ -68,7 +68,7 @@ func GetDefinitions() []*Definition {
 		&Definition{OpCode: 0x3c, Operator: "skw", Bytes: 3, Cycles: 4, AddressingMode: 8, PageSensitive: true, Effect: 0, Undocumented: true},
 		&Definition{OpCode: 0x3d, Operator: "AND", Bytes: 3, Cycles: 4, AddressingMode: 8, PageSensitive: true, Effect: 0, Undocumented: false},
 		&Definition{OpCode: 0x3e, Operator: "ROL", Bytes: 3, Cycles: 7, AddressingMode: 8, PageSensitive: false, Effect: 2, Undocumented: false},
-		nil,
+		&Definition{OpCode: 0x3f, Operator: "rla", Bytes: 3, Cycles: 7, AddressingMode: 8, PageSensitive: false, Effect: 2, Undocumented: true},
 		&Definition{OpCode: 0x40, Operator: "RTI", Bytes: 1, Cycles: 6, AddressingMode: 0, PageSensitive: false, Effect: 5, Undocumented: false},
 		&Definition{OpCode: 0x41, Operator: "EOR", Bytes: 2, Cycles: 6, AddressingMode: 6, PageSensitive: false, Effect: 0, Undocumented: false},
 		nil,
