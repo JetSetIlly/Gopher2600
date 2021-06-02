@@ -197,6 +197,12 @@ func (arm *ARM) read8bit(addr uint32) uint8 {
 	var mem *[]uint8
 	mem, addr = arm.mem.MapAddress(addr, false)
 	if mem == nil {
+		if v, ok := arm.timer.read(addr); ok {
+			return uint8(v)
+		}
+		if v, ok := arm.mam.read(addr); ok {
+			return uint8(v)
+		}
 		logger.Logf("ARM7", "read8bit: unrecognised address %08x", addr)
 		return 0
 	}
@@ -208,6 +214,12 @@ func (arm *ARM) write8bit(addr uint32, val uint8) {
 
 	mem, addr = arm.mem.MapAddress(addr, true)
 	if mem == nil {
+		if ok := arm.timer.write(addr, uint32(val)); ok {
+			return
+		}
+		if ok := arm.mam.write(addr, uint32(val)); ok {
+			return
+		}
 		logger.Logf("ARM7", "write8bit: unrecognised address %08x", addr)
 		return
 	}
@@ -223,6 +235,12 @@ func (arm *ARM) read16bit(addr uint32) uint16 {
 	var mem *[]uint8
 	mem, addr = arm.mem.MapAddress(addr, false)
 	if mem == nil {
+		if v, ok := arm.timer.read(addr); ok {
+			return uint16(v)
+		}
+		if v, ok := arm.mam.read(addr); ok {
+			return uint16(v)
+		}
 		logger.Logf("ARM7", "read16bit: unrecognised address %08x", addr)
 		return 0
 	}
@@ -238,6 +256,12 @@ func (arm *ARM) write16bit(addr uint32, val uint16) {
 	var mem *[]uint8
 	mem, addr = arm.mem.MapAddress(addr, true)
 	if mem == nil {
+		if ok := arm.timer.write(addr, uint32(val)); ok {
+			return
+		}
+		if ok := arm.mam.write(addr, uint32(val)); ok {
+			return
+		}
 		logger.Logf("ARM7", "write16bit: unrecognised address %08x", addr)
 		return
 	}
@@ -472,7 +496,7 @@ func (arm *ARM) Run() (float32, error) {
 		}
 
 		// update cycle information
-		arm.disasmEntry.Cycles = arm.cyclesInstruction.sum()
+		arm.disasmEntry.Cycles = arm.cyclesInstruction.sum(arm.registers[rPC], arm.mam.isEnabled())
 
 		// update total cycle count
 		arm.cyclesTotal += arm.disasmEntry.Cycles
@@ -533,13 +557,15 @@ func (arm *ARM) executeMoveShiftedRegister(opcode uint16) {
 	// for cycle counting purposes, instructions in this format are equivalent
 	// to ARM instructions in the "Data Processing" set, section 4.5.7 of the
 	// ARM7TDMI data sheet.
-	arm.cyclesInstruction.S++
+	//
+	// also "7.6 Data Operations" in "ARM7TDMI-S Technical Reference Manual r4p3"
+	arm.cyclesInstruction.Spc++
 	if shift > 0 {
 		arm.cyclesInstruction.I++
 	}
 	if destReg == rPC {
-		arm.cyclesInstruction.S++
-		arm.cyclesInstruction.N++
+		arm.cyclesInstruction.Spc++
+		arm.cyclesInstruction.Npc++
 	}
 
 	// in this class of operation the src register may also be the dest
@@ -637,10 +663,12 @@ func (arm *ARM) executeAddSubtract(opcode uint16) {
 	// for cycle counting purposes, instructions in this format are equivalent
 	// to ARM instructions in the "Data Processing" set, section 4.5.7 of the
 	// ARM7TDMI data sheet.
-	arm.cyclesInstruction.S++ // +S
+	//
+	// also "7.6 Data Operations" in "ARM7TDMI-S Technical Reference Manual r4p3"
+	arm.cyclesInstruction.Spc++ // +S
 	if destReg == rPC {
-		arm.cyclesInstruction.S++
-		arm.cyclesInstruction.N++
+		arm.cyclesInstruction.Spc++
+		arm.cyclesInstruction.Npc++
 	}
 
 	// value to work with is either an immediate value or is in a register
@@ -692,10 +720,12 @@ func (arm *ARM) executeMovCmpAddSubImm(opcode uint16) {
 	// for cycle counting purposes, instructions in this format are equivalent
 	// to ARM instructions in the "Data Processing" set, section 4.5.7 of the
 	// ARM7TDMI data sheet.
-	arm.cyclesInstruction.S++
+	//
+	// also "7.6 Data Operations" in "ARM7TDMI-S Technical Reference Manual r4p3"
+	arm.cyclesInstruction.Spc++
 	if destReg == rPC {
-		arm.cyclesInstruction.S++
-		arm.cyclesInstruction.N++
+		arm.cyclesInstruction.Spc++
+		arm.cyclesInstruction.Npc++
 	}
 
 	switch op {
@@ -749,18 +779,20 @@ func (arm *ARM) executeALUoperations(opcode uint16) {
 
 	// for cycle counting purposes, with the exception of the MUL instruction
 	// all instruction in this format are equivalent to ARM instructions in the
-	// "Data Processing" set, section
-	// 4.5.7 of the ARM7TDMI data sheet.
+	// "Data Processing" set, section 4.5.7 of the ARM7TDMI data sheet.
 	//
-	// the MUL instruction requires additional I cycles.
+	// also "7.6 Data Operations" in "ARM7TDMI-S Technical Reference Manual r4p3"
 	//
 	// Instructions LSL and LSR also require the shifting to be taken into
-	// consideration. This additional cuclesInstruction.I adjustment is done in
-	// the correct switch branches below.
-	arm.cyclesInstruction.S++
+	// consideration. The additional adjustment is done in the correct switch
+	// branches below.
+	//
+	// the MUL instruction requires additional I cycles. see
+	// "7.7 Data Operations" in "ARM7TDMI-S Technical Reference Manual r4p3"
+	arm.cyclesInstruction.Spc++
 	if destReg == rPC {
-		arm.cyclesInstruction.S++
-		arm.cyclesInstruction.N++
+		arm.cyclesInstruction.Spc++
+		arm.cyclesInstruction.Npc++
 	}
 
 	switch op {
@@ -789,7 +821,14 @@ func (arm *ARM) executeALUoperations(opcode uint16) {
 		shift := arm.registers[srcReg]
 
 		// additional cycle to perform shift
+		//
+		// NOTE: Table 7.6 in the tech ref suggests additional I cycles are
+		// different for PC destination but shifted register with PC
+		// destination is not possible in thumb mode.
 		if shift > 0 {
+			if destReg == rPC {
+				logger.Log("ARM7", "shift and store in PC is not possible in thumb mode")
+			}
 			arm.cyclesInstruction.I++
 		}
 
@@ -831,8 +870,11 @@ func (arm *ARM) executeALUoperations(opcode uint16) {
 
 		shift := arm.registers[srcReg]
 
-		// additional cycle to perform shift
+		// additional cycle to perform shift. see note for LSL
 		if shift > 0 {
+			if destReg == rPC {
+				logger.Log("ARM7", "shift and store in PC is not possible in thumb mode")
+			}
 			arm.cyclesInstruction.I++
 		}
 
@@ -888,6 +930,15 @@ func (arm *ARM) executeALUoperations(opcode uint16) {
 		// Z Flag = if Rd == 0 then 1 else 0
 		// V Flag = unaffected
 		shift := arm.registers[srcReg]
+
+		// additional cycle to perform shift. see note for LSL
+		if shift > 0 {
+			if destReg == rPC {
+				logger.Log("ARM7", "shift and store in PC is not possible in thumb mode")
+			}
+			arm.cyclesInstruction.I++
+		}
+
 		if shift > 0 && shift < 32 {
 			m := uint32(0x01) << (shift - 1)
 			arm.status.carry = arm.registers[destReg]&m == m
@@ -955,6 +1006,15 @@ func (arm *ARM) executeALUoperations(opcode uint16) {
 		// Z Flag = if Rd == 0 then 1 else 0
 		// V Flag = unaffected
 		shift := arm.registers[srcReg]
+
+		// additional cycle to perform shift. see note for LSL
+		if shift > 0 {
+			if destReg == rPC {
+				logger.Log("ARM7", "shift and store in PC is not possible in thumb mode")
+			}
+			arm.cyclesInstruction.I++
+		}
+
 		if shift&0xff == 0 {
 			// unaffected
 		} else if shift&0x1f == 0 {
@@ -1073,13 +1133,11 @@ func (arm *ARM) executeHiRegisterOps(opcode uint16) {
 	// all instruction in this format are equivalent to ARM instructions in the
 	// "Data Processing" set, section 4.5.7 of the ARM7TDMI data sheet.
 	//
-	// the BX instruction always takes +2S+N cycles which if we think about it
-	// is caught by the block below because the destination register for BX is
-	// always the PC register.
-	arm.cyclesInstruction.S++
+	// also "7.6 Data Operations" in "ARM7TDMI-S Technical Reference Manual r4p3"
+	arm.cyclesInstruction.Spc++
 	if destReg == rPC {
-		arm.cyclesInstruction.S++
-		arm.cyclesInstruction.N++
+		arm.cyclesInstruction.Spc++
+		arm.cyclesInstruction.Npc++
 	}
 
 	// labels used to decoraate operands indicating Hi/Lo register usage
@@ -1197,12 +1255,14 @@ func (arm *ARM) executePCrelativeLoad(opcode uint16) {
 	// for cycle counting purposes, this format is equivalent to ARM
 	// instructions in the "Single Data Transfer" set, section 4.9.7 of the
 	// ARM7TDMI data sheet.
-	arm.cyclesInstruction.S++
-	arm.cyclesInstruction.N++
+	//
+	// also "7.8 Load Register" in "ARM7TDMI-S Technical Reference Manual r4p3"
+	arm.cyclesInstruction.Spc++
+	arm.cyclesInstruction.Npc++
 	arm.cyclesInstruction.I++
 	if destReg == rPC {
-		arm.cyclesInstruction.S++
-		arm.cyclesInstruction.N++
+		arm.cyclesInstruction.Spc++
+		arm.cyclesInstruction.Npc++
 	}
 
 	// "Bit 1 of the PC value is forced to zero for the purpose of this
@@ -1230,17 +1290,20 @@ func (arm *ARM) executeLoadStoreWithRegisterOffset(opcode uint16) {
 	// to ARM instructions in the "Single Data Transfer" set, section 4.9.7 of
 	// the ARM7TDMI data sheet; and "Halfword and Signed Data Transfer" set,
 	// section 4.10.7
+	//
+	// also "7.8 Load Register" and "7.9 Store Register" in "ARM7TDMI-S
+	// Technical Reference Manual r4p3"
 
 	addr := arm.registers[baseReg] + arm.registers[offsetReg]
 
 	if load {
 		// LDR and LDRB have the same cycle profile
-		arm.cyclesInstruction.S++
-		arm.cyclesInstruction.N++
+		arm.cyclesInstruction.Spc++
+		arm.cyclesInstruction.Npc++
 		arm.cyclesInstruction.I++
 		if reg == rPC {
-			arm.cyclesInstruction.S++
-			arm.cyclesInstruction.N++
+			arm.cyclesInstruction.Spc++
+			arm.cyclesInstruction.Npc++
 		}
 
 		if byteTransfer {
@@ -1262,7 +1325,8 @@ func (arm *ARM) executeLoadStoreWithRegisterOffset(opcode uint16) {
 	}
 
 	// STR and STRB have the same cycle profile
-	arm.cyclesInstruction.N += 2
+	arm.cyclesInstruction.Npc++
+	arm.cyclesInstruction.Ndata++
 
 	if byteTransfer {
 		if arm.disasmLevel == disasmFull {
@@ -1295,15 +1359,18 @@ func (arm *ARM) executeLoadStoreSignExtendedByteHalford(opcode uint16) {
 	// for cycle counting purposes, instructions in this format are equivalent
 	// to ARM instructions in the "Halfword and Signed Data Transfer" set,
 	// section 4.10.7
+	//
+	// also "7.8 Load Register" and "7.9 Store Register" in "ARM7TDMI-S
+	// Technical Reference Manual r4p3"
 
 	if sign {
 		// LDSB and LDSH have the same cycle profile
-		arm.cyclesInstruction.S++
-		arm.cyclesInstruction.N++
+		arm.cyclesInstruction.Spc++
+		arm.cyclesInstruction.Npc++
 		arm.cyclesInstruction.I++
 		if reg == rPC {
-			arm.cyclesInstruction.S++
-			arm.cyclesInstruction.N++
+			arm.cyclesInstruction.Spc++
+			arm.cyclesInstruction.Npc++
 		}
 
 		if hi {
@@ -1332,12 +1399,12 @@ func (arm *ARM) executeLoadStoreSignExtendedByteHalford(opcode uint16) {
 
 	if hi {
 		// LDRH cycle profile
-		arm.cyclesInstruction.S++
-		arm.cyclesInstruction.N++
+		arm.cyclesInstruction.Spc++
+		arm.cyclesInstruction.Npc++
 		arm.cyclesInstruction.I++
 		if reg == rPC {
-			arm.cyclesInstruction.S++
-			arm.cyclesInstruction.N++
+			arm.cyclesInstruction.Spc++
+			arm.cyclesInstruction.Npc++
 		}
 
 		// load halfword
@@ -1350,7 +1417,8 @@ func (arm *ARM) executeLoadStoreSignExtendedByteHalford(opcode uint16) {
 	}
 
 	// STRH cycle profile
-	arm.cyclesInstruction.N += 2
+	arm.cyclesInstruction.Npc++
+	arm.cyclesInstruction.Ndata++
 
 	// store halfword
 	if arm.disasmLevel == disasmFull {
@@ -1374,6 +1442,9 @@ func (arm *ARM) executeLoadStoreWithImmOffset(opcode uint16) {
 	// to ARM instructions in the "Single Data Transfer" set, section 4.9.7 of
 	// the ARM7TDMI data sheet; and "Halfword and Signed Data Transfer" set,
 	// section 4.10.7
+	//
+	// also "7.8 Load Register" and "7.9 Store Register" in "ARM7TDMI-S
+	// Technical Reference Manual r4p3"
 
 	// "For word accesses (B = 0), the value specified by #Imm is a full 7-bit address, but must
 	// be word-aligned (ie with bits 1:0 set to 0), since the assembler places #Imm >> 2 in
@@ -1387,12 +1458,12 @@ func (arm *ARM) executeLoadStoreWithImmOffset(opcode uint16) {
 
 	if load {
 		// LDRB and LDR have the same cycle profile
-		arm.cyclesInstruction.S++
-		arm.cyclesInstruction.N++
+		arm.cyclesInstruction.Spc++
+		arm.cyclesInstruction.Npc++
 		arm.cyclesInstruction.I++
 		if reg == rPC {
-			arm.cyclesInstruction.S++
-			arm.cyclesInstruction.N++
+			arm.cyclesInstruction.Spc++
+			arm.cyclesInstruction.Npc++
 		}
 
 		if byteTransfer {
@@ -1413,7 +1484,8 @@ func (arm *ARM) executeLoadStoreWithImmOffset(opcode uint16) {
 	}
 
 	// STRB and STR have the same cycle profile
-	arm.cyclesInstruction.N += 2
+	arm.cyclesInstruction.Npc++
+	arm.cyclesInstruction.Ndata++
 
 	// store
 	if byteTransfer {
@@ -1444,6 +1516,9 @@ func (arm *ARM) executeLoadStoreHalfword(opcode uint16) {
 	// to ARM instructions in the "Single Data Transfer" set, section 4.9.7 of
 	// the ARM7TDMI data sheet; and "Halfword and Signed Data Transfer" set,
 	// section 4.10.7
+	//
+	// also "7.8 Load Register" and "7.9 Store Register" in "ARM7TDMI-S
+	// Technical Reference Manual r4p3"
 
 	// "#Imm is a full 6-bit address but must be halfword-aligned (ie with bit 0 set to 0) since
 	// the assembler places #Imm >> 1 in the Offset5 field." -- ARM7TDMI Data Sheet
@@ -1454,12 +1529,12 @@ func (arm *ARM) executeLoadStoreHalfword(opcode uint16) {
 
 	if load {
 		// LDRH cycle profile
-		arm.cyclesInstruction.S++
-		arm.cyclesInstruction.N++
+		arm.cyclesInstruction.Spc++
+		arm.cyclesInstruction.Npc++
 		arm.cyclesInstruction.I++
 		if reg == rPC {
-			arm.cyclesInstruction.S++
-			arm.cyclesInstruction.N++
+			arm.cyclesInstruction.Spc++
+			arm.cyclesInstruction.Npc++
 		}
 
 		if arm.disasmLevel == disasmFull {
@@ -1471,7 +1546,8 @@ func (arm *ARM) executeLoadStoreHalfword(opcode uint16) {
 	}
 
 	// STRH cycle profile
-	arm.cyclesInstruction.N += 2
+	arm.cyclesInstruction.Npc++
+	arm.cyclesInstruction.Ndata++
 
 	if arm.disasmLevel == disasmFull {
 		arm.disasmEntry.Operator = "STRH"
@@ -1490,6 +1566,9 @@ func (arm *ARM) executeSPRelativeLoadStore(opcode uint16) {
 	// for cycle counting purposes, this format is equivalent to ARM
 	// instructions in the "Single Data Transfer" set, section 4.9.7 of the
 	// ARM7TDMI data sheet.
+	//
+	// also "7.8 Load Register" and "7.9 Store Register" in "ARM7TDMI-S
+	// Technical Reference Manual r4p3"
 
 	// The offset supplied in #Imm is a full 10-bit address, but must always be word-aligned
 	// (ie bits 1:0 set to 0), since the assembler places #Imm >> 2 in the Word8 field.
@@ -1500,12 +1579,12 @@ func (arm *ARM) executeSPRelativeLoadStore(opcode uint16) {
 
 	if load {
 		// LDR cycle profile
-		arm.cyclesInstruction.S++
-		arm.cyclesInstruction.N++
+		arm.cyclesInstruction.Spc++
+		arm.cyclesInstruction.Npc++
 		arm.cyclesInstruction.I++
 		if reg == rPC {
-			arm.cyclesInstruction.S++
-			arm.cyclesInstruction.N++
+			arm.cyclesInstruction.Spc++
+			arm.cyclesInstruction.Npc++
 		}
 
 		if arm.disasmLevel == disasmFull {
@@ -1517,7 +1596,8 @@ func (arm *ARM) executeSPRelativeLoadStore(opcode uint16) {
 	}
 
 	// STR cycle profile
-	arm.cyclesInstruction.N += 2
+	arm.cyclesInstruction.Npc++
+	arm.cyclesInstruction.Ndata++
 
 	if arm.disasmLevel == disasmFull {
 		arm.disasmEntry.Operator = "STR"
@@ -1539,10 +1619,12 @@ func (arm *ARM) executeLoadAddress(opcode uint16) {
 	// for cycle counting purposes, instructions in this format are equivalent
 	// to ARM instructions in the "Data Processing" set, section 4.5.7 of the
 	// ARM7TDMI data sheet.
-	arm.cyclesInstruction.S++
+	//
+	// also "7.6 Data Operations" in "ARM7TDMI-S Technical Reference Manual r4p3"
+	arm.cyclesInstruction.Spc++
 	if destReg == rPC {
-		arm.cyclesInstruction.S++
-		arm.cyclesInstruction.N++
+		arm.cyclesInstruction.Spc++
+		arm.cyclesInstruction.Npc++
 	}
 
 	if sp {
@@ -1576,7 +1658,9 @@ func (arm *ARM) executeAddOffsetToSP(opcode uint16) {
 	// for cycle counting purposes, instructions in this format are equivalent
 	// to ARM instructions in the "Data Processing" set, section 4.5.7 of the
 	// ARM7TDMI data sheet.
-	arm.cyclesInstruction.S++
+	//
+	// also "7.6 Data Operations" in "ARM7TDMI-S Technical Reference Manual r4p3"
+	arm.cyclesInstruction.Spc++
 
 	if sign {
 		if arm.disasmLevel == disasmFull {
@@ -1611,11 +1695,12 @@ func (arm *ARM) executePushPopRegisters(opcode uint16) {
 	// to ARM instructions in the "Block Data Transfer" set, section 4.11.8 of
 	// the ARM7TDMI data sheet.
 	//
-	// both PUSH and POP require 2 N cycles and as many S cycles as there are
-	// registers that are pushed/popped
+	// also "7.10 Load Multiple Registers" and "7.11 Store Multiple Registers"
+	// in "ARM7TDMI-S Technical Reference Manual r4p3"
 
 	if load {
-		arm.cyclesInstruction.N++
+		arm.cyclesInstruction.Npc++
+		arm.cyclesInstruction.Spc++
 		arm.cyclesInstruction.I++
 
 		// start_address = SP
@@ -1645,17 +1730,22 @@ func (arm *ARM) executePushPopRegisters(opcode uint16) {
 			// read register if indicated by regList
 			if regList&m == m {
 				// additional S cycle for each register popped
-				arm.cyclesInstruction.S++
+				arm.cyclesInstruction.Sdata++
 
 				arm.registers[i] = arm.read32bit(addr)
 				addr += 4
 			}
 		}
 
+		// POP instructions take 1 S cycle less than the number registers being stored
+		if arm.cyclesInstruction.Sdata > 0 {
+			arm.cyclesInstruction.Sdata--
+		}
+
 		// load PC register after all other registers
 		if pclr {
-			// additional S cycle for LR pop
-			arm.cyclesInstruction.S++
+			arm.cyclesInstruction.Spc++
+			arm.cyclesInstruction.Npc++
 
 			// chop the odd bit off the new PC value
 			v := arm.read32bit(addr) & 0xfffffffe
@@ -1690,7 +1780,8 @@ func (arm *ARM) executePushPopRegisters(opcode uint16) {
 
 	// store
 
-	arm.cyclesInstruction.N += 2
+	arm.cyclesInstruction.Npc++
+	arm.cyclesInstruction.Ndata++
 
 	// start_address = SP - 4*(R + Number_Of_Set_Bits_In(register_list))
 	// end_address = SP - 4
@@ -1734,25 +1825,22 @@ func (arm *ARM) executePushPopRegisters(opcode uint16) {
 		// write register if indicated by regList
 		if regList&m == m {
 			// additional S cycle for each register push
-			arm.cyclesInstruction.S++
+			arm.cyclesInstruction.Sdata++
 
 			arm.write32bit(addr, arm.registers[i])
 			addr += 4
 		}
 	}
 
-	// write LR register after all the other registers
-	if pclr {
-		// additional S cycle for LR pop
-		arm.cyclesInstruction.S++
-
-		lr := arm.registers[rLR]
-		arm.write32bit(addr, lr)
+	// PUSH instructions take 1 S cycle less than the number registers being stored
+	if arm.cyclesInstruction.Sdata > 0 {
+		arm.cyclesInstruction.Sdata--
 	}
 
-	// PUSH instructions take 1 S cycle less than the number registers being stored
-	if arm.cyclesInstruction.S > 0 {
-		arm.cyclesInstruction.S--
+	// write LR register after all the other registers
+	if pclr {
+		lr := arm.registers[rLR]
+		arm.write32bit(addr, lr)
 	}
 
 	// update stack pointer. note that this is the address we started the push
@@ -1773,28 +1861,22 @@ func (arm *ARM) executeMultipleLoadStore(opcode uint16) {
 	// for cycle counting purposes, instructions in this format are equivalent
 	// to ARM instructions in the "Block Data Transfer" set, section 4.11.8 of
 	// the ARM7TDMI data sheet.
+	//
+	// also "7.10 Load Multiple Registers" and "7.11 Store Multiple Registers"
+	// in "ARM7TDMI-S Technical Reference Manual r4p3"
 	if load {
-		arm.cyclesInstruction.N++
+		arm.cyclesInstruction.Npc++
 		arm.cyclesInstruction.I++
 
 		// an additional S and N cycle when loading to the program counter
 		//
 		// we add more S cycles in the for loop below
 		if regList&0x8000 == 0x8000 {
-			arm.cyclesInstruction.N++
-			arm.cyclesInstruction.S++
+			arm.cyclesInstruction.Npc++
+			arm.cyclesInstruction.Spc++
 		}
 	} else {
-		arm.cyclesInstruction.N += 2
-
-		// STM takes one less S cycle that the number of registers we're
-		// storing. we add more S cycles in the for loop below but take one off
-		// before we start
-		//
-		// checking that we will be storing at least one register
-		if regList != 0x00 {
-			arm.cyclesInstruction.S--
-		}
+		arm.cyclesInstruction.Npc++
 	}
 
 	if arm.disasmLevel == disasmFull {
@@ -1809,7 +1891,7 @@ func (arm *ARM) executeMultipleLoadStore(opcode uint16) {
 	for i := 0; i <= 15; i++ {
 		r := regList >> i
 		if r&0x01 == 0x01 {
-			arm.cyclesInstruction.S++
+			arm.cyclesInstruction.Sdata++
 
 			if load {
 				arm.registers[i] = arm.read32bit(addr)
@@ -1819,6 +1901,11 @@ func (arm *ARM) executeMultipleLoadStore(opcode uint16) {
 				addr += 4
 			}
 		}
+	}
+
+	// multi-load/store instructions take 1 S cycle less than the number registers being stored
+	if arm.cyclesInstruction.Sdata > 0 {
+		arm.cyclesInstruction.Sdata--
 	}
 
 	// write back the new base address
@@ -1833,8 +1920,10 @@ func (arm *ARM) executeConditionalBranch(opcode uint16) {
 	// for cycle counting purposes, instructions in this format are equivalent
 	// to ARM instructions in the "Branch and Branch with link" set, section
 	// 4.4.2 of the ARM7TDMI data sheet.
-	arm.cyclesInstruction.S += 2
-	arm.cyclesInstruction.N++
+	//
+	// also "7.3 Branch ..." in "ARM7TDMI-S Technical Reference Manual r4p3"
+	arm.cyclesInstruction.Spc += 2
+	arm.cyclesInstruction.Npc++
 
 	operator := ""
 	branch := false
@@ -1936,8 +2025,10 @@ func (arm *ARM) executeUnconditionalBranch(opcode uint16) {
 	// for cycle counting purposes, instructions in this format are equivalent
 	// to ARM instructions in the "Branch and Branch with link" set, section
 	// 4.4.2 of the ARM7TDMI data sheet.
-	arm.cyclesInstruction.S += 2
-	arm.cyclesInstruction.N++
+	//
+	// also "7.3 Branch ..." in "ARM7TDMI-S Technical Reference Manual r4p3"
+	arm.cyclesInstruction.Spc += 2
+	arm.cyclesInstruction.Npc++
 
 	if offset&0x800 == 0x0800 {
 		// two's complement before subtraction
@@ -1963,15 +2054,18 @@ func (arm *ARM) executeLongBranchWithLink(opcode uint16) {
 
 	// there is no direct ARM equivalent for this instruction. cycle timings
 	// from chapter 10.3 of the ARM7TDMI data sheet.
+	//
+	// also "7.4 Thumb Branch With Link" in "ARM7TDMI-S Technical Reference
+	// Manual r4p3"
 
 	if low {
 		// second instruction
 
-		arm.cyclesInstruction.S += 2
-		arm.cyclesInstruction.N++
+		arm.cyclesInstruction.Spc += 2
+		arm.cyclesInstruction.Npc++
 
 		// add additional S cycle for first instruction.
-		arm.cyclesInstruction.S++
+		arm.cyclesInstruction.Spc++
 
 		offset <<= 1
 		arm.registers[rLR] += offset

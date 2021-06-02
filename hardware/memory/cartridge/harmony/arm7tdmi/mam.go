@@ -30,6 +30,7 @@ func (m *mam) write(addr uint32, val uint32) bool {
 	switch addr {
 	case MAMCR:
 		m.mamcr = val
+	case MAMTIM:
 	default:
 		return false
 	}
@@ -43,9 +44,15 @@ func (m *mam) read(addr uint32) (uint32, bool) {
 	switch addr {
 	case MAMCR:
 		val = m.mamcr
+	case MAMTIM:
+		return 0, true
 	default:
 		return 0, false
 	}
 
 	return val, true
+}
+
+func (m *mam) isEnabled() bool {
+	return m.mamcr != 0
 }

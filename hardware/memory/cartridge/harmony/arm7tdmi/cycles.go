@@ -23,39 +23,66 @@ import (
 // Clock speeds inside the arm7 sub-system.
 const (
 	InternalClk     = 70.0 // Mhz
-	FlashAccessTime = 50.0 // ns, 50ns == 20Mhz
+	FlashAccessTime = 28.6 // ns
 	SRAMAccessTime  = 10.0 // ns
 
-	// access ratios calculated by:
+	// strict access ratios calculated by:
 	//
 	//    InternalClk / (1000 / access time)
-	FlashAccessRatio = 3.5
-	SRAMAccessRatio  = 0.7
+
+	FlashAccessRatio = 2.45
+	SRAMAccessRatio  = 1.0 // floor of 1.0
+	MAMAccessRatio   = 1.0
 )
 
 type cycles struct {
-	I float32
-	C float32
-	N float32
-	S float32
+	I     float32
+	C     float32
+	Npc   float32
+	Spc   float32
+	Ndata float32
+	Sdata float32
+
+	MAMenabled bool
+	PCinSRAM   bool
 }
 
 func (c *cycles) String() string {
 	s := strings.Builder{}
 	s.WriteString(fmt.Sprintf("I: %.0f\n", c.I))
 	s.WriteString(fmt.Sprintf("C: %.0f\n", c.C))
-	s.WriteString(fmt.Sprintf("N: %.0f\n", c.N))
-	s.WriteString(fmt.Sprintf("S: %.0f\n", c.S))
+	s.WriteString(fmt.Sprintf("N: %.0f\n", c.Npc+c.Ndata))
+	s.WriteString(fmt.Sprintf("S: %.0f\n", c.Spc+c.Ndata))
 	return s.String()
 }
 
-func (c *cycles) sum() float32 {
-	return c.I + c.C + (c.N * SRAMAccessRatio) + c.S
+func (c *cycles) sum(pcaddr uint32, mam bool) float32 {
+	c.MAMenabled = mam
+	c.PCinSRAM = pcaddr > Flash64kMemtop
+
+	t := c.I + c.C
+
+	if mam {
+		t += (c.Npc * MAMAccessRatio) + (c.Spc * MAMAccessRatio)
+	} else if c.PCinSRAM {
+		t += (c.Npc * SRAMAccessRatio) + (c.Spc * SRAMAccessRatio)
+	} else {
+		t += (c.Npc * FlashAccessRatio) + (c.Spc * FlashAccessRatio)
+	}
+
+	// assumption: all data acces is to SRAM
+	t += (c.Ndata * SRAMAccessRatio) + (c.Sdata * SRAMAccessRatio)
+
+	return t
 }
 
 func (c *cycles) reset() {
 	c.I = 0
 	c.C = 0
-	c.N = 0
-	c.S = 0
+	c.Npc = 0
+	c.Spc = 0
+	c.Ndata = 0
+	c.Sdata = 0
+
+	// no need to reset flags
 }
