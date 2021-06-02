@@ -108,6 +108,19 @@ func (cf *CallFn) Check(addr uint16) (uint8, bool) {
 
 // Start the CallFn process.
 func (cf *CallFn) Start(cycles float32) {
+
+	// cap number of cycles used by the ARM program
+	//
+	// I think the real harmony does this (possibly by using Timer0). that
+	// would explain why some test ROMs work on the hardware when the don't in
+	// this emulator *unless* we cap the number of cycles consumed somehow. the
+	// only question is what the cap should be.
+	const cycleCap = 400000
+
+	if cycles > cycleCap {
+		cycles = cycleCap
+	}
+
 	cf.remainingCycles = cycles
 	cf.resumeCount = 3
 	cf.phantomOnResume = false
