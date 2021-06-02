@@ -479,7 +479,9 @@ func (cart *dpcPlus) Write(addr uint16, data uint8, passive bool, poke bool) err
 		case 254:
 			fallthrough
 		case 255:
-			cycles, err := cart.arm.Run()
+			defaultMAM := cart.prefs.DefaultMAM.Get().(bool)
+			allowMAMfromThumb := cart.prefs.AllowMAMfromThumb.Get().(bool)
+			cycles, err := cart.arm.Run(defaultMAM, allowMAMfromThumb)
 			if err != nil {
 				return curated.Errorf("CDF: %v", err)
 			}

@@ -19,6 +19,7 @@ package prefs
 var defunct = []string{
 	"debugger.randpins",
 	"debugger.randstate",
+	"hardware.instantARM",
 	"sdlimgui.playmode.terminalOnError",
 	"crt.inputGamma",
 	"crt.outputGamma",

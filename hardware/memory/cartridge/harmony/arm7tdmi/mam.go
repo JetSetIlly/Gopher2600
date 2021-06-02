@@ -17,7 +17,8 @@ package arm7tdmi
 
 // memory addressing module. not fully implemented.
 type mam struct {
-	mamcr uint32
+	mamcr          uint32
+	allowFromThumb bool
 }
 
 // MAM addresses from UM10161 (page 20)
@@ -29,7 +30,9 @@ const (
 func (m *mam) write(addr uint32, val uint32) bool {
 	switch addr {
 	case MAMCR:
-		m.mamcr = val
+		if m.allowFromThumb {
+			m.mamcr = val
+		}
 	case MAMTIM:
 	default:
 		return false
@@ -51,6 +54,14 @@ func (m *mam) read(addr uint32) (uint32, bool) {
 	}
 
 	return val, true
+}
+
+func (m *mam) enable(enabled bool) {
+	if enabled {
+		m.mamcr = 1
+	} else {
+		m.mamcr = 0
+	}
 }
 
 func (m *mam) isEnabled() bool {

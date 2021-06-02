@@ -27,6 +27,13 @@ import (
 type Preferences struct {
 	dsk *prefs.Disk
 
+	// random values generated in the hardware package should use the following
+	// number source
+	RandSrc *rand.Rand
+
+	// the number used to seed RandSrc
+	RandSeed int64
+
 	// initialise hardware to unknown state after reset
 	RandomState prefs.Bool
 
@@ -36,16 +43,18 @@ type Preferences struct {
 	// unused pins randomly on a read/peek"
 	RandomPins prefs.Bool
 
-	// random values generated in the hardware package should use the following
-	// number source
-	RandSrc *rand.Rand
-
-	// the number used to seed RandSrc
-	RandSeed int64
+	// the following are arm preferences
 
 	// whether the ARM coprocessor (as found in Harmony cartridges) execute
 	// instantly or if the cycle accurate steppint is attempted
 	InstantARM prefs.Bool
+
+	// MAM is enabled by hardware implementation by default (eg. Harmony with new CDFJ+ driver)
+	DefaultMAM prefs.Bool
+
+	// allow thumb program to enable MAM. ideally, this will be allowed but some
+	// hardware implemenations will ignore requests from the thumb progra.
+	AllowMAMfromThumb prefs.Bool
 }
 
 func (p *Preferences) String() string {
@@ -55,9 +64,7 @@ func (p *Preferences) String() string {
 // NewPreferences is the preferred method of initialisation for the Preferences type.
 func NewPreferences() (*Preferences, error) {
 	p := &Preferences{}
-
-	// initialise random number generator
-	p.Reseed(0)
+	p.SetDefaults()
 
 	// setup preferences and load from disk
 	pth, err := paths.ResourcePath("", prefs.DefaultPrefsFile)
@@ -76,7 +83,15 @@ func NewPreferences() (*Preferences, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = p.dsk.Add("hardware.instantARM", &p.InstantARM)
+	err = p.dsk.Add("hardware.arm7.instantARM", &p.InstantARM)
+	if err != nil {
+		return nil, err
+	}
+	err = p.dsk.Add("hardware.arm7.defaultMAM", &p.DefaultMAM)
+	if err != nil {
+		return nil, err
+	}
+	err = p.dsk.Add("hardware.arm7.allowMAMfromThumb", &p.AllowMAMfromThumb)
 	if err != nil {
 		return nil, err
 	}
@@ -86,6 +101,17 @@ func NewPreferences() (*Preferences, error) {
 	}
 
 	return p, nil
+}
+
+// SetDefaults reverts all settings to default values.
+func (p *Preferences) SetDefaults() {
+	// initialise random number generator
+	p.Reseed(0)
+	p.RandomState.Set(false)
+	p.RandomPins.Set(false)
+	p.InstantARM.Set(false)
+	p.DefaultMAM.Set(true)
+	p.AllowMAMfromThumb.Set(true)
 }
 
 // Reseed initialises the random number generator. Use a seed value of 0 to

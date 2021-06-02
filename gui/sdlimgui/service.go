@@ -83,9 +83,15 @@ func (img *SdlImgui) Service() {
 						}
 					}
 
-				case "F8":
+				case "F7":
 					if img.isPlaymode() {
 						img.playScr.fpsOpen = !img.playScr.fpsOpen
+					}
+
+				case "F8":
+					if img.isPlaymode() {
+						w := img.wm.windows[winPrefsID]
+						w.setOpen(!w.isOpen())
 					}
 
 				case "F9":

@@ -320,11 +320,14 @@ func (arm *ARM) write32bit(addr uint32, val uint32) {
 // forever.
 //
 // Returns the number of ARM cycles and any errors.
-func (arm *ARM) Run() (float32, error) {
+func (arm *ARM) Run(defaultMAM bool, allowMAMfromThumb bool) (float32, error) {
 	err := arm.reset()
 	if err != nil {
 		return 0, err
 	}
+
+	arm.mam.allowFromThumb = allowMAMfromThumb
+	arm.mam.enable(defaultMAM)
 
 	for arm.continueExecution {
 		arm.cyclesInstruction.reset()

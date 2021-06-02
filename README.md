@@ -226,7 +226,8 @@ The VCS panel is controlled through the function keys of the keyboard.
 
 In playmode, the additional keys are available:
 
-* `F8` Show FPS Indicator
+* `F7` Show FPS Indicator
+* `F9` Show Hardware Preferences window
 * `F9` Show TIA Revisions window
 * `F10` Show CRT Preferences window
 * `F11` Toggle Fullscreen

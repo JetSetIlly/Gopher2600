@@ -1573,36 +1573,6 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		option, _ := tokens.Get()
 		option = strings.ToUpper(option)
 		switch option {
-		case "RANDSTART":
-			switch action {
-			case "SET":
-				err = dbg.VCS.Prefs.RandomState.Set(true)
-			case "UNSET":
-				err = dbg.VCS.Prefs.RandomState.Set(false)
-			case "TOGGLE":
-				v := dbg.VCS.Prefs.RandomState.Get().(bool)
-				err = dbg.VCS.Prefs.RandomState.Set(!v)
-			}
-		case "RANDPINS":
-			switch action {
-			case "SET":
-				err = dbg.VCS.Prefs.RandomPins.Set(true)
-			case "UNSET":
-				err = dbg.VCS.Prefs.RandomPins.Set(false)
-			case "TOGGLE":
-				v := dbg.VCS.Prefs.RandomPins.Get().(bool)
-				err = dbg.VCS.Prefs.RandomPins.Set(!v)
-			}
-		case "INSTANTARM":
-			switch action {
-			case "SET":
-				err = dbg.VCS.Prefs.InstantARM.Set(true)
-			case "UNSET":
-				err = dbg.VCS.Prefs.InstantARM.Set(false)
-			case "TOGGLE":
-				v := dbg.VCS.Prefs.InstantARM.Get().(bool)
-				err = dbg.VCS.Prefs.InstantARM.Set(!v)
-			}
 		case "FXXXMIRROR":
 			switch action {
 			case "SET":

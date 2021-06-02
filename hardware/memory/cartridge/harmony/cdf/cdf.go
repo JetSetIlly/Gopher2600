@@ -320,7 +320,9 @@ func (cart *cdf) Write(addr uint16, data uint8, passive bool, poke bool) error {
 			// generate interrupt to update AUDV0 while running ARM code
 			fallthrough
 		case 0xff:
-			cycles, err := cart.arm.Run()
+			defaultMAM := cart.prefs.DefaultMAM.Get().(bool)
+			allowMAMfromThumb := cart.prefs.AllowMAMfromThumb.Get().(bool)
+			cycles, err := cart.arm.Run(defaultMAM, allowMAMfromThumb)
 			if err != nil {
 				return curated.Errorf("CDF: %v", err)
 			}
