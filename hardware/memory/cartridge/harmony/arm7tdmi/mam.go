@@ -21,7 +21,7 @@ type mam struct {
 	allowFromThumb bool
 }
 
-// MAM addresses from UM10161 (page 20)
+// MAM addresses from UM10161 (page 20).
 const (
 	MAMCR  = PeripheralsOrigin | 0x001fc000
 	MAMTIM = PeripheralsOrigin | 0x001fc004

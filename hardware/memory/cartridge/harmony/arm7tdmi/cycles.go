@@ -18,24 +18,14 @@ package arm7tdmi
 import (
 	"fmt"
 	"strings"
-)
 
-// Clock speeds inside the arm7 sub-system.
-const (
-	InternalClk     = 70.0 // Mhz
-	FlashAccessTime = 28.6 // ns
-	SRAMAccessTime  = 10.0 // ns
-
-	// strict access ratios calculated by:
-	//
-	//    InternalClk / (1000 / access time)
-
-	FlashAccessRatio = 2.45
-	SRAMAccessRatio  = 1.0 // floor of 1.0
-	MAMAccessRatio   = 1.0
+	"github.com/jetsetilly/gopher2600/hardware/preferences"
 )
 
 type cycles struct {
+	flashRatio float32
+	sramRatio  float32
+
 	I     float32
 	C     float32
 	Npc   float32
@@ -43,8 +33,16 @@ type cycles struct {
 	Ndata float32
 	Sdata float32
 
+	// MAM is enabled *this* cycle
 	MAMenabled bool
-	PCinSRAM   bool
+
+	// whether PC is in SRAM *this* cycle
+	PCinSRAM bool
+}
+
+func (c *cycles) setRatios(prefs *preferences.ARMPreferences) {
+	c.flashRatio = float32(prefs.Clock.Get().(float64) / (1000 / prefs.FlashAccessTime.Get().(float64)))
+	c.sramRatio = float32(prefs.Clock.Get().(float64) / (1000 / prefs.SRAMAccessTime.Get().(float64)))
 }
 
 func (c *cycles) String() string {
@@ -63,15 +61,15 @@ func (c *cycles) sum(pcaddr uint32, mam bool) float32 {
 	t := c.I + c.C
 
 	if mam {
-		t += (c.Npc * MAMAccessRatio) + (c.Spc * MAMAccessRatio)
+		t += (c.Npc * c.sramRatio) + (c.Spc * c.sramRatio)
 	} else if c.PCinSRAM {
-		t += (c.Npc * SRAMAccessRatio) + (c.Spc * SRAMAccessRatio)
+		t += (c.Npc * c.sramRatio) + (c.Spc * c.sramRatio)
 	} else {
-		t += (c.Npc * FlashAccessRatio) + (c.Spc * FlashAccessRatio)
+		t += (c.Npc * c.flashRatio) + (c.Spc * c.flashRatio)
 	}
 
 	// assumption: all data acces is to SRAM
-	t += (c.Ndata * SRAMAccessRatio) + (c.Sdata * SRAMAccessRatio)
+	t += (c.Ndata * c.sramRatio) + (c.Sdata * c.sramRatio)
 
 	return t
 }

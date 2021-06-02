@@ -79,27 +79,7 @@ func (win *winPrefs) draw() {
 		win.img.vcs.Prefs.RandomPins.Set(randPins)
 	}
 
-	imguiSeparator()
-	imgui.Text("ARM7TDMI")
-	imgui.Spacing()
-
-	instantARM := win.img.vcs.Prefs.InstantARM.Get().(bool)
-	if imgui.Checkbox("Instant ARM Execution", &instantARM) {
-		win.img.vcs.Prefs.InstantARM.Set(instantARM)
-	}
-	win.drawHelp("ARM program consumes no 6507 time (like Stella)\nIf this option is set the other ARM settings are irrelevant")
-
-	defaultMAM := win.img.vcs.Prefs.DefaultMAM.Get().(bool)
-	if imgui.Checkbox("Default MAM Enable for Thumb Programs", &defaultMAM) {
-		win.img.vcs.Prefs.DefaultMAM.Set(defaultMAM)
-	}
-	win.drawHelp("MAM will be enabled at beginning of every thumb program execution.\nRequired for new games like Gorf Arcade and Turbo")
-
-	allowMAMfromThumb := win.img.vcs.Prefs.AllowMAMfromThumb.Get().(bool)
-	if imgui.Checkbox("Allow MAM enable from Thumb", &allowMAMfromThumb) {
-		win.img.vcs.Prefs.AllowMAMfromThumb.Set(allowMAMfromThumb)
-	}
-	win.drawHelp("MAM can be enabled/disabled by thumb program")
+	win.drawARM()
 
 	if !win.img.isPlaymode() {
 		imguiSeparator()
@@ -121,7 +101,7 @@ func (win *winPrefs) draw() {
 		}
 
 		audioEnabled := win.img.prefs.audioEnabled.Get().(bool)
-		if imgui.Checkbox("Audio Enabled", &audioEnabled) {
+		if imgui.Checkbox("Audio Enabled (in debugger)", &audioEnabled) {
 			win.img.prefs.audioEnabled.Set(audioEnabled)
 		}
 
@@ -149,6 +129,58 @@ func (win *winPrefs) drawHelp(text string) {
 		for i := range t {
 			imgui.Text(t[i])
 		}
+	}
+}
+
+func (win *winPrefs) drawARM() {
+	imguiSeparator()
+	imgui.Text("ARM7TDMI")
+	imgui.Spacing()
+
+	immediate := win.img.vcs.Prefs.ARM.Immediate.Get().(bool)
+	if imgui.Checkbox("Immediate ARM Execution", &immediate) {
+		win.img.vcs.Prefs.ARM.Immediate.Set(immediate)
+	}
+	win.drawHelp("ARM program consumes no 6507 time (like Stella)\nIf this option is set the other ARM settings are irrelevant")
+
+	if immediate {
+		imgui.PushItemFlag(imgui.ItemFlagsDisabled, true)
+		imgui.PushStyleVarFloat(imgui.StyleVarAlpha, 0.5)
+		defer imgui.PopStyleVar()
+		defer imgui.PopItemFlag()
+	}
+
+	defaultMAM := win.img.vcs.Prefs.ARM.DefaultMAM.Get().(bool)
+	if imgui.Checkbox("Default MAM Enable for Thumb Programs", &defaultMAM) {
+		win.img.vcs.Prefs.ARM.DefaultMAM.Set(defaultMAM)
+	}
+	win.drawHelp("MAM will be enabled at beginning of every thumb program execution.\nRequired for new games like Gorf Arcade and Turbo")
+
+	allowMAMfromThumb := win.img.vcs.Prefs.ARM.AllowMAMfromThumb.Get().(bool)
+	if imgui.Checkbox("Allow MAM Enable from Thumb", &allowMAMfromThumb) {
+		win.img.vcs.Prefs.ARM.AllowMAMfromThumb.Set(allowMAMfromThumb)
+	}
+	win.drawHelp("MAM can be enabled/disabled by thumb program")
+
+	imgui.Spacing()
+	if imgui.CollapsingHeader("Timings (advanced)") {
+		armClock := float32(win.img.vcs.Prefs.ARM.Clock.Get().(float64))
+		if imgui.SliderFloatV("ARM Clock", &armClock, 10, 80, fmt.Sprintf("%.1f Mhz", armClock), imgui.SliderFlagsNone) {
+			win.img.vcs.Prefs.ARM.Clock.Set(armClock)
+		}
+		win.drawHelp("The basic speed of the ARM. Effective speeds is governed by memory access. Default speed of 70Mhz")
+
+		flashAccessTime := float32(win.img.vcs.Prefs.ARM.FlashAccessTime.Get().(float64))
+		if imgui.SliderFloatV("Flash Access Time", &flashAccessTime, 1, 60, fmt.Sprintf("%.1f ns", flashAccessTime), imgui.SliderFlagsNone) {
+			win.img.vcs.Prefs.ARM.FlashAccessTime.Set(flashAccessTime)
+		}
+		win.drawHelp("The amount of time required for the ARM to address Flash. Default time of 10ns")
+
+		sramAccessTime := float32(win.img.vcs.Prefs.ARM.SRAMAccessTime.Get().(float64))
+		if imgui.SliderFloatV("SRAM Access Time", &sramAccessTime, 1, 60, fmt.Sprintf("%.1f ns", sramAccessTime), imgui.SliderFlagsNone) {
+			win.img.vcs.Prefs.ARM.SRAMAccessTime.Set(sramAccessTime)
+		}
+		win.drawHelp("The amount of time required for the ARM to address SRAM. Default time of 10ns")
 	}
 }
 

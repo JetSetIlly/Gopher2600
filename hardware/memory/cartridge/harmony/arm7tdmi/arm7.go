@@ -22,6 +22,7 @@ import (
 
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
+	"github.com/jetsetilly/gopher2600/hardware/preferences"
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
@@ -35,8 +36,12 @@ const (
 
 // ARM implements the ARM7TDMI-S LPC2103 processor.
 type ARM struct {
-	mem  SharedMemory
-	hook CartridgeHook
+	prefs *preferences.ARMPreferences
+	mem   SharedMemory
+	hook  CartridgeHook
+
+	// the speed at which the arm is running at
+	clock float32
 
 	// execution flags. set to false and/or error when Run() function should end
 	continueExecution bool
@@ -93,10 +98,11 @@ const (
 )
 
 // NewARM is the preferred method of initialisation for the ARM type.
-func NewARM(mem SharedMemory, hook CartridgeHook) *ARM {
+func NewARM(prefs *preferences.ARMPreferences, mem SharedMemory, hook CartridgeHook) *ARM {
 	arm := &ARM{
-		mem:  mem,
-		hook: hook,
+		prefs: prefs,
+		mem:   mem,
+		hook:  hook,
 	}
 	arm.Plumb()
 
@@ -189,8 +195,8 @@ func (arm *ARM) String() string {
 // Step moves the ARM on one cycle. Currently, the timer will only step forward
 // when Step() is called and not during the Run() process. This might cause
 // problems in some instances with some ARM programs.
-func (arm *ARM) Step(clock float32) {
-	arm.timer.stepFromVCS(clock)
+func (arm *ARM) Step(vcsClock float32) {
+	arm.timer.stepFromVCS(arm.clock, vcsClock)
 }
 
 func (arm *ARM) read8bit(addr uint32) uint8 {
@@ -320,14 +326,16 @@ func (arm *ARM) write32bit(addr uint32, val uint32) {
 // forever.
 //
 // Returns the number of ARM cycles and any errors.
-func (arm *ARM) Run(defaultMAM bool, allowMAMfromThumb bool) (float32, error) {
+func (arm *ARM) Run() (float32, error) {
 	err := arm.reset()
 	if err != nil {
 		return 0, err
 	}
 
-	arm.mam.allowFromThumb = allowMAMfromThumb
-	arm.mam.enable(defaultMAM)
+	arm.clock = float32(arm.prefs.Clock.Get().(float64))
+	arm.mam.allowFromThumb = arm.prefs.AllowMAMfromThumb.Get().(bool)
+	arm.mam.enable(arm.prefs.DefaultMAM.Get().(bool))
+	arm.cyclesInstruction.setRatios(arm.prefs)
 
 	for arm.continueExecution {
 		arm.cyclesInstruction.reset()
@@ -1768,11 +1776,9 @@ func (arm *ARM) executePushPopRegisters(opcode uint16) {
 				arm.disasmEntry.Operator = "POP"
 				arm.disasmEntry.Operand = fmt.Sprintf("{%#0b, LR}", regList)
 			}
-		} else {
-			if arm.disasmLevel == disasmFull {
-				arm.disasmEntry.Operator = "POP"
-				arm.disasmEntry.Operand = fmt.Sprintf("{%#0b}", regList)
-			}
+		} else if arm.disasmLevel == disasmFull {
+			arm.disasmEntry.Operator = "POP"
+			arm.disasmEntry.Operand = fmt.Sprintf("{%#0b}", regList)
 		}
 
 		// leave stackpointer at final address

@@ -20,7 +20,8 @@
 package callfn
 
 import (
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/harmony/arm7tdmi"
+	"math"
+
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
@@ -108,7 +109,6 @@ func (cf *CallFn) Check(addr uint16) (uint8, bool) {
 
 // Start the CallFn process.
 func (cf *CallFn) Start(cycles float32) {
-
 	// cap number of cycles used by the ARM program
 	//
 	// I think the real harmony does this (possibly by using Timer0). that
@@ -128,12 +128,12 @@ func (cf *CallFn) Start(cycles float32) {
 
 // Step forward one clock. Returns true if CallFn is active and false if not.
 // If false, then the ARM should be stepped but not otherwise.
-func (cf *CallFn) Step(instantExecution bool, clock float32) bool {
+func (cf *CallFn) Step(immediate bool, armClock float32, vcsClock float32) bool {
 	if cf.IsActive() {
-		if instantExecution {
+		if immediate {
 			cf.remainingCycles = 0
 		} else {
-			cf.remainingCycles -= arm7tdmi.InternalClk / clock
+			cf.remainingCycles -= float32(math.Ceil(float64(armClock / vcsClock)))
 		}
 
 		return true

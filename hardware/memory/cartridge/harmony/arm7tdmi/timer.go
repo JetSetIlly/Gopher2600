@@ -27,7 +27,7 @@ const (
 	TIMERvalue   = PeripheralsOrigin | 0x00008008
 )
 
-func (t *timer) stepFromVCS(clock float32) {
+func (t *timer) stepFromVCS(armClock float32, vcsClock float32) {
 	if !t.active {
 		return
 	}
@@ -36,7 +36,7 @@ func (t *timer) stepFromVCS(clock float32) {
 	// accommodate this is to tick the counter forward by the the appropriate
 	// fraction every VCS cycle. Put another way: an NTSC spec VCS, for
 	// example, will tick forward every 58-59 ARM cycles.
-	t.counter += float32(InternalClk) / clock
+	t.counter += armClock / vcsClock
 }
 
 func (t *timer) step(cycles float32) {

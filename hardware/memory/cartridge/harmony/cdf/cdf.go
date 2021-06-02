@@ -105,7 +105,7 @@ func NewCDF(prefs *preferences.Preferences, version string, data []byte) (mapper
 	//
 	// if bank0 has any ARM code then it will start at offset 0x08. first eight
 	// bytes are the ARM header
-	cart.arm = arm7tdmi.NewARM(cart.state.static, cart)
+	cart.arm = arm7tdmi.NewARM(&prefs.ARM, cart.state.static, cart)
 
 	return cart, nil
 }
@@ -320,9 +320,7 @@ func (cart *cdf) Write(addr uint16, data uint8, passive bool, poke bool) error {
 			// generate interrupt to update AUDV0 while running ARM code
 			fallthrough
 		case 0xff:
-			defaultMAM := cart.prefs.DefaultMAM.Get().(bool)
-			allowMAMfromThumb := cart.prefs.AllowMAMfromThumb.Get().(bool)
-			cycles, err := cart.arm.Run(defaultMAM, allowMAMfromThumb)
+			cycles, err := cart.arm.Run()
 			if err != nil {
 				return curated.Errorf("CDF: %v", err)
 			}
@@ -418,7 +416,7 @@ func (cart *cdf) Step(clock float32) {
 		cart.state.registers.MusicFetcher[2].Count += cart.state.registers.MusicFetcher[2].Freq
 	}
 
-	if !cart.state.callfn.Step(cart.prefs.InstantARM.Get().(bool), clock) {
+	if !cart.state.callfn.Step(cart.prefs.ARM.Immediate.Get().(bool), float32(cart.prefs.ARM.Clock.Get().(float64)), clock) {
 		cart.arm.Step(clock)
 	}
 }

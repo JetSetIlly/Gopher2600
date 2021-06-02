@@ -19,6 +19,7 @@ import (
 	"math/rand"
 	"time"
 
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/harmony/arm7tdmi/armclocks"
 	"github.com/jetsetilly/gopher2600/paths"
 	"github.com/jetsetilly/gopher2600/prefs"
 )
@@ -43,11 +44,15 @@ type Preferences struct {
 	// unused pins randomly on a read/peek"
 	RandomPins prefs.Bool
 
-	// the following are arm preferences
+	// ARM preferences are contained in their own type so they can be passed
+	// easily to the ARM subsystem
+	ARM ARMPreferences
+}
 
+type ARMPreferences struct {
 	// whether the ARM coprocessor (as found in Harmony cartridges) execute
 	// instantly or if the cycle accurate steppint is attempted
-	InstantARM prefs.Bool
+	Immediate prefs.Bool
 
 	// MAM is enabled by hardware implementation by default (eg. Harmony with new CDFJ+ driver)
 	DefaultMAM prefs.Bool
@@ -55,6 +60,10 @@ type Preferences struct {
 	// allow thumb program to enable MAM. ideally, this will be allowed but some
 	// hardware implemenations will ignore requests from the thumb progra.
 	AllowMAMfromThumb prefs.Bool
+
+	Clock           prefs.Float
+	FlashAccessTime prefs.Float
+	SRAMAccessTime  prefs.Float
 }
 
 func (p *Preferences) String() string {
@@ -83,15 +92,27 @@ func NewPreferences() (*Preferences, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = p.dsk.Add("hardware.arm7.instantARM", &p.InstantARM)
+	err = p.dsk.Add("hardware.arm7.immediate", &p.ARM.Immediate)
 	if err != nil {
 		return nil, err
 	}
-	err = p.dsk.Add("hardware.arm7.defaultMAM", &p.DefaultMAM)
+	err = p.dsk.Add("hardware.arm7.defaultMAM", &p.ARM.DefaultMAM)
 	if err != nil {
 		return nil, err
 	}
-	err = p.dsk.Add("hardware.arm7.allowMAMfromThumb", &p.AllowMAMfromThumb)
+	err = p.dsk.Add("hardware.arm7.allowMAMfromThumb", &p.ARM.AllowMAMfromThumb)
+	if err != nil {
+		return nil, err
+	}
+	err = p.dsk.Add("hardware.arm7.clock", &p.ARM.Clock)
+	if err != nil {
+		return nil, err
+	}
+	err = p.dsk.Add("hardware.arm7.flashAccessTime", &p.ARM.FlashAccessTime)
+	if err != nil {
+		return nil, err
+	}
+	err = p.dsk.Add("hardware.arm7.sramAccessTime", &p.ARM.SRAMAccessTime)
 	if err != nil {
 		return nil, err
 	}
@@ -109,9 +130,12 @@ func (p *Preferences) SetDefaults() {
 	p.Reseed(0)
 	p.RandomState.Set(false)
 	p.RandomPins.Set(false)
-	p.InstantARM.Set(false)
-	p.DefaultMAM.Set(true)
-	p.AllowMAMfromThumb.Set(true)
+	p.ARM.Immediate.Set(false)
+	p.ARM.DefaultMAM.Set(true)
+	p.ARM.AllowMAMfromThumb.Set(true)
+	p.ARM.Clock.Set(armclocks.MasterClock)               // Mhz
+	p.ARM.FlashAccessTime.Set(armclocks.FlashAccessTime) // ns
+	p.ARM.SRAMAccessTime.Set(armclocks.SRAMAccessTime)   // ns
 }
 
 // Reseed initialises the random number generator. Use a seed value of 0 to
