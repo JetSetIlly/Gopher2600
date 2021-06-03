@@ -268,13 +268,13 @@ func (cart *Cartridge) fingerprint(cartload cartridgeloader.Loader) error {
 		return err
 	}
 
-	if fingerprint3e(cartload.Data) {
-		cart.mapper, err = new3e(cartload.Data)
+	if fingerprint3ePlus(cartload.Data) {
+		cart.mapper, err = new3ePlus(cartload.Data)
 		return err
 	}
 
-	if fingerprint3ePlus(cartload.Data) {
-		cart.mapper, err = new3ePlus(cartload.Data)
+	if fingerprint3e(cartload.Data) {
+		cart.mapper, err = new3e(cartload.Data)
 		return err
 	}
 
