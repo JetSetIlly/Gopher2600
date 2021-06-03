@@ -120,9 +120,14 @@ func (arm *ARM) Plumb() error {
 	return nil
 }
 
+// CoProcID is the ID returned by the ARM type. This const value can be used
+// for comparison purposes to check if a mapper.CartCoProcBus instance is of
+// the ARM type.
+const CoProcID = "ARM7TDMI"
+
 // CoProcID implements the mapper.CartCoProcBus interface.
 func (arm *ARM) CoProcID() string {
-	return "ARM7TDMI"
+	return CoProcID
 }
 
 // SetDisassembler implements the mapper.CartCoProcBus interface.

@@ -14,7 +14,7 @@
 [TODO] duplicate imgui.SetIniFilename so that is uses prefs package. we (gui/sdlimgui/sdlimgui.go:40)
 [TODO] warning/help text for chip registers window (gui/sdlimgui/win_chip_registers.go:92)
 [TODO] show something meaningful for unplugged controllers (gui/sdlimgui/win_controllers.go:66)
-[TODO] disasm address lable to span multiple columns (gui/sdlimgui/win_disasm.go:322)
+[TODO] disasm address label to span multiple columns (gui/sdlimgui/win_disasm.go:322)
 [TODO] remove this once all opcodes are defined/implemented (hardware/cpu/cpu.go:337)
 [TODO] remove this once all opcodes are defined/implemented (hardware/cpu/cpu.go:576)
 [TODO] FE cartridge mapping (hardware/memory/cartridge/cartridge.go:235)

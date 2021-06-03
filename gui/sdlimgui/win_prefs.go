@@ -20,6 +20,8 @@ import (
 	"strings"
 
 	"github.com/inkyblackness/imgui-go/v4"
+	"github.com/jetsetilly/gopher2600/gui"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/harmony/arm7tdmi"
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
@@ -132,9 +134,41 @@ func (win *winPrefs) drawHelp(text string) {
 	}
 }
 
+// in this function we address vcs directly and not through the lazy system. it
+// seems to be okay. acutal preference values are protected by mutexes in the
+// prefs package so thats not a problem. the co-processor bus however can be
+// contentious so we must be carefult during initialisation phase.
 func (win *winPrefs) drawARM() {
+	var hasARM bool
+
+	// show ARM settings if we're in debugging mode or if there is an ARM coprocessor attached
+	if win.img.isPlaymode() {
+		// if emulation is "initialising" then return immediately
+		//
+		// !TODO: lazy system should be extended to work in playmode too. mainly to
+		// help with situations like this. if we access the CoProcBus throught the
+		// lazy system, we wouldn't need to check for initialising state.
+		if win.img.state == gui.StateInitialising {
+			return
+		}
+
+		bus := win.img.vcs.Mem.Cart.GetCoProcBus()
+		hasARM = bus != nil && bus.CoProcID() == arm7tdmi.CoProcID
+
+		if !hasARM {
+			return
+		}
+	} else {
+		hasARM = win.img.lz.CoProc.HasCoProcBus && win.img.lz.CoProc.ID == arm7tdmi.CoProcID
+	}
+
 	imguiSeparator()
-	imgui.Text("ARM7TDMI")
+	imgui.Text(arm7tdmi.CoProcID)
+	if !hasARM {
+		// not that the current cartridge does not have an ARM coprocessor
+		imgui.SameLine()
+		imgui.Text("(not in current cartridge)")
+	}
 	imgui.Spacing()
 
 	immediate := win.img.vcs.Prefs.ARM.Immediate.Get().(bool)
