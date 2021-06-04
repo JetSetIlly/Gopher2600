@@ -18,20 +18,26 @@ package arm7tdmi
 import (
 	"fmt"
 	"strings"
-
-	"github.com/jetsetilly/gopher2600/hardware/preferences"
 )
 
-type cycles struct {
-	flashRatio float32
-	sramRatio  float32
-
+// Cycles records the number of cycles for (a) an individual instruction and
+// (b) a collection of instructions. It is the underlying type for both
+// mapper.CartCoProcCycleDetails and mapper.CartCoProcExecutionSummary.
+//
+// In the context of the execution summary the boolean variables take the most
+// recent value held by an individual instruction. The float32 value are a
+// summation of all instructions executed in a single call to ARM.Run().
+type Cycles struct {
 	I     float32
 	C     float32
 	Npc   float32
 	Spc   float32
 	Ndata float32
 	Sdata float32
+
+	// number of cycles when flash/sram was being addressed
+	FlashAccess float32
+	SRAMAccess  float32
 
 	// MAM is enabled *this* cycle
 	MAMenabled bool
@@ -40,12 +46,8 @@ type cycles struct {
 	PCinSRAM bool
 }
 
-func (c *cycles) setRatios(prefs *preferences.ARMPreferences) {
-	c.flashRatio = float32(prefs.Clock.Get().(float64) / (1000 / prefs.FlashAccessTime.Get().(float64)))
-	c.sramRatio = float32(prefs.Clock.Get().(float64) / (1000 / prefs.SRAMAccessTime.Get().(float64)))
-}
-
-func (c *cycles) String() string {
+// multiline string
+func (c Cycles) String() string {
 	s := strings.Builder{}
 	s.WriteString(fmt.Sprintf("I: %.0f\n", c.I))
 	s.WriteString(fmt.Sprintf("C: %.0f\n", c.C))
@@ -54,33 +56,30 @@ func (c *cycles) String() string {
 	return s.String()
 }
 
-func (c *cycles) sum(pcaddr uint32, mam bool) float32 {
-	c.MAMenabled = mam
-	c.PCinSRAM = pcaddr > Flash64kMemtop
-
-	t := c.I + c.C
-
-	if mam {
-		t += (c.Npc * c.sramRatio) + (c.Spc * c.sramRatio)
-	} else if c.PCinSRAM {
-		t += (c.Npc * c.sramRatio) + (c.Spc * c.sramRatio)
-	} else {
-		t += (c.Npc * c.flashRatio) + (c.Spc * c.flashRatio)
-	}
-
-	// assumption: all data acces is to SRAM
-	t += (c.Ndata * c.sramRatio) + (c.Sdata * c.sramRatio)
-
-	return t
+// add one Cycles instance to another. Boolean fields take the value of the
+// instance being added. Float32 fields are summed.
+func (c *Cycles) add(n Cycles) {
+	c.I += n.I
+	c.C += n.C
+	c.Npc += n.Npc
+	c.Spc += n.Spc
+	c.Ndata += n.Ndata
+	c.Sdata += n.Sdata
+	c.FlashAccess += n.FlashAccess
+	c.SRAMAccess += n.SRAMAccess
+	c.MAMenabled = n.MAMenabled
+	c.PCinSRAM = n.PCinSRAM
 }
 
-func (c *cycles) reset() {
+func (c *Cycles) reset() {
 	c.I = 0
 	c.C = 0
 	c.Npc = 0
 	c.Spc = 0
 	c.Ndata = 0
 	c.Sdata = 0
-
-	// no need to reset flags
+	c.FlashAccess = 0
+	c.SRAMAccess = 0
+	c.MAMenabled = false
+	c.PCinSRAM = false
 }

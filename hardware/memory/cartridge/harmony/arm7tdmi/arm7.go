@@ -40,6 +40,9 @@ type ARM struct {
 	mem   SharedMemory
 	hook  CartridgeHook
 
+	stretchFlash float32
+	stretchSRAM  float32
+
 	// the speed at which the arm is running at
 	clock float32
 
@@ -57,8 +60,11 @@ type ARM struct {
 	mam   mam
 
 	// cycles per instruction and cycles per program execution
-	cyclesInstruction cycles
-	cyclesTotal       float32
+	cyclesInstruction Cycles
+	cyclesProgram     Cycles
+
+	// total number of cycles accumlated since Run() was last called
+	cyclesTotal float32
 
 	// the area the PC covers. once assigned we'll assume that the program
 	// never reads outside this area. the value is assigned on reset()
@@ -147,10 +153,6 @@ func (arm *ARM) PlumbSharedMemory(mem SharedMemory) {
 }
 
 func (arm *ARM) reset() error {
-	if arm.disasm != nil {
-		arm.disasm.Reset()
-	}
-
 	arm.status.reset()
 	for i := range arm.registers {
 		arm.registers[i] = 0x00000000
@@ -167,6 +169,9 @@ func (arm *ARM) reset() error {
 
 	// reset cycles count
 	arm.cyclesTotal = 0
+
+	arm.cyclesInstruction.reset()
+	arm.cyclesProgram.reset()
 
 	return arm.findProgramMemory()
 }
@@ -337,12 +342,29 @@ func (arm *ARM) Run() (float32, error) {
 		return 0, err
 	}
 
+	// apply preferences to ARM state
 	arm.clock = float32(arm.prefs.Clock.Get().(float64))
 	arm.mam.allowFromThumb = arm.prefs.AllowMAMfromThumb.Get().(bool)
 	arm.mam.enable(arm.prefs.DefaultMAM.Get().(bool))
-	arm.cyclesInstruction.setRatios(arm.prefs)
 
+	// get current stetch values for N and S cycles
+	arm.stretchFlash = float32(arm.prefs.Clock.Get().(float64) / (1000 / arm.prefs.FlashAccessTime.Get().(float64)))
+	arm.stretchSRAM = float32(arm.prefs.Clock.Get().(float64) / (1000 / arm.prefs.SRAMAccessTime.Get().(float64)))
+	if arm.stretchFlash < 1.0 {
+		arm.stretchFlash = 1.0
+	}
+	if arm.stretchSRAM < 1.0 {
+		arm.stretchSRAM = 1.0
+	}
+
+	// start of program execution
+	if arm.disasm != nil {
+		arm.disasm.Start()
+	}
+
+	// loop through instructions until we reach an exit condition
 	for arm.continueExecution {
+		// reset cyclesInstruction before next instruction
 		arm.cyclesInstruction.reset()
 
 		// -2 adjustment to PC register to account for pipeline
@@ -511,17 +533,48 @@ func (arm *ARM) Run() (float32, error) {
 			}
 		}
 
-		// update cycle information
-		arm.disasmEntry.Cycles = arm.cyclesInstruction.sum(arm.registers[rPC], arm.mam.isEnabled())
+		// the state of MAM and PC at end of instruction execution
+		arm.cyclesInstruction.MAMenabled = arm.mam.isEnabled()
+		arm.cyclesInstruction.PCinSRAM = !(arm.registers[rPC] >= FlashOrigin && arm.registers[rPC] <= Flash64kMemtop)
 
-		// update total cycle count
-		arm.cyclesTotal += arm.disasmEntry.Cycles
+		// sum cycles (including stretching)
+		sumCycles := arm.cyclesInstruction.I + arm.cyclesInstruction.C
+
+		// PC cycle stretching
+		pcAccess := arm.cyclesInstruction.Npc + arm.cyclesInstruction.Spc
+		if arm.cyclesInstruction.MAMenabled {
+			arm.cyclesInstruction.SRAMAccess += pcAccess
+			sumCycles += pcAccess * arm.stretchSRAM
+		} else if arm.cyclesInstruction.PCinSRAM {
+			arm.cyclesInstruction.SRAMAccess += pcAccess
+			sumCycles += pcAccess * arm.stretchSRAM
+		} else {
+			arm.cyclesInstruction.FlashAccess += pcAccess
+			sumCycles += pcAccess * arm.stretchFlash
+		}
+
+		// data cycle streching
+		//
+		// assumption: all data acces is to SRAM
+		dataAccess := arm.cyclesInstruction.Ndata + arm.cyclesInstruction.Sdata
+		arm.cyclesInstruction.SRAMAccess += dataAccess
+		sumCycles += dataAccess * arm.stretchSRAM
+
+		// total number of program cycles
+		arm.cyclesTotal += sumCycles
 
 		// update timer
-		arm.timer.step(arm.disasmEntry.Cycles)
+		arm.timer.step(sumCycles)
 
 		// send disasm information to disassembler
 		if arm.disasm != nil {
+			// update cycle information
+			arm.disasmEntry.Cycles = sumCycles
+			arm.disasmEntry.CycleDetails = arm.cyclesInstruction
+
+			// update program cycles
+			arm.cyclesProgram.add(arm.cyclesInstruction)
+
 			// only send if operator field is not equal to 'blfirst'. the first
 			// instruction in a BL sequence is not shown
 			if arm.disasmEntry.Operator != blfirst {
@@ -540,20 +593,25 @@ func (arm *ARM) Run() (float32, error) {
 					// operand fields and insert into cache
 					arm.disasmEntry.Operator = fmt.Sprintf("%-4s", arm.disasmEntry.Operator)
 					arm.disasmEntry.Operand = fmt.Sprintf("%-16s", arm.disasmEntry.Operand)
-					arm.disasmEntry.CycleDetails = arm.cyclesInstruction.String()
+					arm.disasmEntry.CycleDetails = arm.cyclesInstruction
 					arm.disasmCache[pc] = arm.disasmEntry
 				case disasmNotes:
 					// entry is cached but notes may have changed so we recache
 					// the entry
-					arm.disasmEntry.CycleDetails = arm.cyclesInstruction.String()
+					arm.disasmEntry.CycleDetails = arm.cyclesInstruction
 					arm.disasmCache[pc] = arm.disasmEntry
 				case disasmNone:
 				}
 
 				// we always send the instruction to the disasm interface
-				arm.disasm.Instruction(arm.disasmEntry)
+				arm.disasm.Step(arm.disasmEntry)
 			}
 		}
+	}
+
+	// end of program execution
+	if arm.disasm != nil {
+		arm.disasm.End(arm.cyclesProgram)
 	}
 
 	if arm.executionError != nil {

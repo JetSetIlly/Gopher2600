@@ -35,9 +35,13 @@ type Coprocessor struct {
 }
 
 type LastExecutionDetails struct {
+	// values at beginning of execution
 	Frame    int
 	Scanline int
 	Clock    int
+
+	// values at end of execution
+	Summary mapper.CartCoProcExecutionSummary
 }
 
 // Add returns a new Coprocessor instance if cartridge implements the
@@ -56,10 +60,12 @@ func Add(vcs *hardware.VCS, cart *cartridge.Cartridge) *Coprocessor {
 	return cop
 }
 
-// Reset implements the CartCoProcDisassembler interface.
-func (cop *Coprocessor) Reset() {
+// Start implements the CartCoProcDisassembler interface.
+func (cop *Coprocessor) Start() {
 	cop.crit.Lock()
 	defer cop.crit.Unlock()
+
+	cop.lastExecution = cop.lastExecution[:0]
 
 	// add one clock to frame/scanline/clock values. the Reset() function will
 	// have been called on the last CPU cycle of the instruction that triggers
@@ -69,13 +75,18 @@ func (cop *Coprocessor) Reset() {
 	cop.lastExecutionDetails.Frame = fn
 	cop.lastExecutionDetails.Scanline = sl
 	cop.lastExecutionDetails.Clock = cl
-
-	cop.lastExecution = cop.lastExecution[:0]
 }
 
-// Instruction implements the CartCoProcDisassembler interface.
-func (cop *Coprocessor) Instruction(entry mapper.CartCoProcDisasmEntry) {
+// Step implements the CartCoProcDisassembler interface.
+func (cop *Coprocessor) Step(entry mapper.CartCoProcDisasmEntry) {
 	cop.crit.Lock()
 	defer cop.crit.Unlock()
 	cop.lastExecution = append(cop.lastExecution, entry)
+}
+
+// End implements the CartCoProcDisassembler interface.
+func (cop *Coprocessor) End(summary mapper.CartCoProcExecutionSummary) {
+	cop.crit.Lock()
+	defer cop.crit.Unlock()
+	cop.lastExecutionDetails.Summary = summary
 }

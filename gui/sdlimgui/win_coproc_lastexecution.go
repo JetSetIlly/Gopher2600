@@ -19,6 +19,8 @@ import (
 	"fmt"
 
 	"github.com/inkyblackness/imgui-go/v4"
+	"github.com/jetsetilly/gopher2600/disassembly/coprocessor"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/harmony/arm7tdmi"
 )
 
 const winCoProcLastExecutionID = "Last Execution"
@@ -26,6 +28,8 @@ const winCoProcLastExecutionID = "Last Execution"
 type winCoProcLastExecution struct {
 	img  *SdlImgui
 	open bool
+
+	summaryHeight float32
 }
 
 func newWinCoProcLastExecution(img *SdlImgui) (window, error) {
@@ -68,9 +72,7 @@ func (win *winCoProcLastExecution) draw() {
 
 	itr := win.img.lz.Dbg.Disasm.Coprocessor.NewIteration()
 
-	if itr.Count == 0 {
-		imgui.Text("Coprocessor has not yet executed.")
-	} else {
+	if itr.Count != 0 {
 		imguiLabel("Frame:")
 		imguiLabel(fmt.Sprintf("%-4d", itr.Details.Frame))
 		imgui.SameLineV(0, 15)
@@ -94,7 +96,61 @@ func (win *winCoProcLastExecution) draw() {
 		imguiSeparator()
 	}
 
-	height := imguiRemainingWinHeight() //- win.optionsHeight
+	win.drawDisasm(itr)
+
+	win.summaryHeight = imguiMeasureHeight(func() {
+		imguiSeparator()
+
+		if itr.Count == 0 {
+			imgui.Text("Coprocessor has not yet executed.")
+			return
+		}
+
+		if programCycles, ok := itr.Details.Summary.(arm7tdmi.Cycles); ok {
+			nTotal := programCycles.Npc + programCycles.Ndata
+			sTotal := programCycles.Spc + programCycles.Sdata
+
+			if imgui.BeginTableV("cycles", 4, imgui.TableFlagsBordersOuter, imgui.Vec2{}, 0.0) {
+				imgui.TableNextRow()
+				imgui.TableNextColumn()
+				imgui.Text(fmt.Sprintf("I: %-6.0f", programCycles.I))
+				imgui.TableNextColumn()
+				imgui.Text(fmt.Sprintf("C: %-6.0f", programCycles.C))
+				imgui.TableNextColumn()
+				imgui.Text(fmt.Sprintf("N: %-6.0f", nTotal))
+				imgui.TableNextColumn()
+				imgui.Text(fmt.Sprintf("S: %-6.0f", sTotal))
+				imgui.EndTable()
+			}
+
+			imgui.Spacing()
+
+			nsTotal := nTotal + sTotal
+			fp := 100.0 * programCycles.FlashAccess / nsTotal
+			sp := 100.0 * programCycles.SRAMAccess / nsTotal
+
+			if imgui.BeginTableV("ratios", 2, imgui.TableFlagsBordersOuter, imgui.Vec2{}, 0.0) {
+				imgui.TableNextRow()
+				imgui.TableNextColumn()
+				imgui.Text(fmt.Sprintf("Flash: %3.1f%%", fp))
+				imgui.TableNextColumn()
+				imgui.Text(fmt.Sprintf("SRAM: %3.1f%%", sp))
+				imgui.EndTable()
+			}
+
+			if imgui.IsItemHovered() {
+				imgui.BeginTooltip()
+				imgui.Text("The fraction of time spent by N and S cycles accessing flash or SRAM")
+				imgui.EndTooltip()
+			}
+		} else {
+			imgui.Text("")
+		}
+	})
+}
+
+func (win *winCoProcLastExecution) drawDisasm(itr *coprocessor.Iterate) {
+	height := imguiRemainingWinHeight() - win.summaryHeight
 	imgui.BeginChildV("lastexecution", imgui.Vec2{X: 0, Y: height}, false, 0)
 	defer imgui.EndChild()
 
@@ -144,9 +200,19 @@ func (win *winCoProcLastExecution) draw() {
 				imgui.Text(fmt.Sprintf("%.0f ", e.Cycles))
 
 				// show cycle details as a tooltip
-				if e.CycleDetails != "" && imgui.IsItemHovered() {
+				if e.CycleDetails.String() != "" && imgui.IsItemHovered() {
 					imgui.BeginTooltip()
-					imgui.Text(e.CycleDetails)
+					imgui.Text(e.CycleDetails.String())
+					if cycles, ok := e.CycleDetails.(arm7tdmi.Cycles); ok {
+						imgui.Spacing()
+						imgui.Separator()
+						imgui.Spacing()
+						if cycles.MAMenabled {
+							imguiColorLabel("MAM", win.img.cols.True)
+						} else {
+							imguiColorLabel("MAM", win.img.cols.False)
+						}
+					}
 					imgui.EndTooltip()
 				}
 

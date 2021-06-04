@@ -20,8 +20,6 @@
 package callfn
 
 import (
-	"math"
-
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
@@ -132,10 +130,13 @@ func (cf *CallFn) Step(immediate bool, armClock float32, vcsClock float32) bool 
 	if cf.IsActive() {
 		if immediate {
 			cf.remainingCycles = 0
-		} else {
-			cf.remainingCycles -= float32(math.Ceil(float64(armClock / vcsClock)))
+			return false
 		}
 
+		// number of arm cycles consumed for every VCS cycle
+		armCycles := float32(float64(armClock / vcsClock))
+
+		cf.remainingCycles -= armCycles
 		return true
 	}
 	return false

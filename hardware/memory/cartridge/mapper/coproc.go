@@ -17,8 +17,8 @@ package mapper
 
 import "fmt"
 
-// CartCoProcDisasmEntry summarises a single decoded instruction by the
-// coprocessor. Implementations of this type should nomalise the width of each
+// CartCoProcDisasmEntry represents a single decoded instruction by the
+// coprocessor. Generators of this type should nomalise the width of each
 // field. For example, the maximum length of an Operator mnemonic might be 4
 // characters, meaning that all Operator fields should be 4 characters and
 // padded with spaces as required.
@@ -33,11 +33,31 @@ type CartCoProcDisasmEntry struct {
 	Cycles float32
 
 	// Some coprocessors will have more detailed cycle information
-	CycleDetails string
+	CycleDetails CartCoProcCycleDetails
 
 	// update indicates whether the notes field should be updated when
 	// instruction is executed again after the first decoding.
 	UpdateNotes bool
+}
+
+// CartCoProcCycleDetails represents more detailed information about the cycle
+// usage for a coprocessor disassembly entry. At it's minimum it should report
+// back a text summary of the cycle usage.
+//
+// When coprocessor specific details are required by a consumer of the
+// interface, the specific coprocessor being used should be known ahead of
+// time. The interface can then be cast to the concrete type.
+type CartCoProcCycleDetails interface {
+	String() string
+}
+
+// CartCoProcExecutionSummary represents a summary of a coprocessor execution.
+//
+// When coprocessor specific details are required by a consumer of the
+// interface, the specific coprocessor being used should be known ahead of
+// time. The interface can then be cast to the concrete type.
+type CartCoProcExecutionSummary interface {
+	String() string
 }
 
 func (e CartCoProcDisasmEntry) String() string {
@@ -47,8 +67,14 @@ func (e CartCoProcDisasmEntry) String() string {
 // CartCoProcDisassembler defines the functions that must be defined for a
 // disassembler to be attached to a coprocessor.
 type CartCoProcDisassembler interface {
-	Reset()
-	Instruction(CartCoProcDisasmEntry)
+	// Start is called at the beginning of coprocessor program execution.
+	Start()
+
+	// Step called after every instruction in the coprocessor program.
+	Step(CartCoProcDisasmEntry)
+
+	// End is called when coprocessor program has finished.
+	End(CartCoProcExecutionSummary)
 }
 
 // CartCoProcBus is implemented by cartridge mappers that have a coprocessor that
@@ -63,11 +89,16 @@ type CartCoProcBus interface {
 type CartCoProcDisassemblerStdout struct {
 }
 
-// Reset implements the CartCoProcDisassembler interface.
-func (c *CartCoProcDisassemblerStdout) Reset() {
+// Start implements the CartCoProcDisassembler interface.
+func (c *CartCoProcDisassemblerStdout) Start() {
 }
 
 // Instruction implements the CartCoProcDisassembler interface.
-func (c *CartCoProcDisassemblerStdout) Instruction(e CartCoProcDisasmEntry) {
+func (c *CartCoProcDisassemblerStdout) Step(e CartCoProcDisasmEntry) {
 	fmt.Println(e)
+}
+
+// End implements the CartCoProcDisassembler interface.
+func (c *CartCoProcDisassemblerStdout) End(s CartCoProcExecutionSummary) {
+	fmt.Println(s)
 }
