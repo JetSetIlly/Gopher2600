@@ -46,7 +46,7 @@ type Cycles struct {
 	PCinSRAM bool
 }
 
-// multiline string
+// multiline string.
 func (c Cycles) String() string {
 	s := strings.Builder{}
 	s.WriteString(fmt.Sprintf("I: %.0f\n", c.I))

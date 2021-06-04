@@ -146,7 +146,7 @@ func (win *winPrefs) drawARM() {
 		// if emulation is "initialising" then return immediately
 		//
 		// !TODO: lazy system should be extended to work in playmode too. mainly to
-		// help with situations like this. if we access the CoProcBus throught the
+		// help with situations like this. if we access the CoProcBus thought the
 		// lazy system, we wouldn't need to check for initialising state.
 		if win.img.state == gui.StateInitialising {
 			return

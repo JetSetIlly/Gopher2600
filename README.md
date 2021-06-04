@@ -362,10 +362,6 @@ the debugger.
 
 <img src=".screenshots/control_window.png" height="200" alt="control window"/>
 
-The slider can be scrolled to any frame between the two limits indicated.
-Alternatively, a single frame can be stepped back and forward using the arrow
-buttons.
-
 Rewinding to a scanline/colour-clock is done by clicking the left mouse button
 on the debug screen, at the position required. This will change the state of
 the emulation accordingly. This can be done with any frame in the rewind
@@ -525,33 +521,48 @@ the menubar if the coprocessor is present.
 <img src=".screenshots/arm_disasm.png" width="300" alt="ARM7 last execution
 window"/> 
 
-Note the `Goto` button. This is a [rewind](#rewind) shortcut that takes the emulation to
-the point where the ARM program last executed.
+The summary at the foot of the window can be used to help you undestand the
+performance of the Thumb program. In particular, the Flash/SRAM percentages
+tell the relative time spent addressing Flash and SRAM during N and S cycles.
+Because SRAM is faster than Flash, ideally, the amount of time spent in Flash
+is near zero.
+
+Also note the `Goto` button. This is a [rewind](#rewind) shortcut that takes
+the emulation to the point where the ARM program last executed.
+
+### ARM Preferences
+
+The characteristics of the ARM processor can be changed via the preferences
+window This is available in the debugger via the `Debugger` menu or by pressing
+`F8` when in playmode.
+
+<img src=".screenshots/arm_prefs.png" width="300" alt="ARM preferences"/> 
+
+The `Default MAM Enable` option tells the emulation to enable the MAM whenever
+the Thumb program begins. This is required for very new CDFJ games (eg. Turbo
+from Champ Games) which don't try to enable MAM manually but require the
+performance of SRAM.
+
+The `Allow MAM Enable` options tells the emulation to honour writes to the
+MAMCR address in the ARM processor. Some revisions of the real hardware do not
+allow this, so disabling this option could be useful to check compatability.
+
+The `Timings` sliders shouldn't really be touched but they are made available
+while `Gopher2600` is still in development. I am not sure if the default
+figures are correct so if necessary, they can be adjusted.
+
+As a last resort `Immediate ARM Execution` can be enabled. This instructs the
+emulation to exeute the Thumb program instantaneously. 
 
 ### Estimation of ARM Execution Time
 
-In the real Harmony hardware the ARM program runs whenever the `CALLFN`
-register is written to. While it is running the 6507 program is stalled until
-the ARM program finishes. This means that ARM programs that run for too long can
-interfere with the normal operation of the console.
-
-`Gopher2600` tries to emulate the real behaviour of the hardware, the benefits of this being
-seen in the debugger. The image below shows the `ARM7TDMI` overlay. The period when the ARM is active is
-highlighted with purple pixels.
+For ARM development the `ARM7TDMI` overlay is provided. This overlay will be
+empty if the `Immediate ARM Execution` option is enabled but normally it will
+show the period the ARM program is running and the 6507 program is stalled.
 
 <img src=".screenshots/arm_timing.png" width="300" alt="ARM7 execution duration overlay"/> 
 
-While the operation of the ARM program is accurate the length of time ARM
-program runs is difficult to estimate. The time indicated in the debugging
-overlay therefore is only an estimate and there is no substitute for testing
-ROMs on real hardware. None-the-less the overlay provides an indication of
-programs that might be problematic.
-
-This area of the project is an ongoing area of improvement and future versions aim to make this measurement
-100% accurate.
-
-If absolutely necessary `Instant ARM Execution` can be turned on via the
-preferences window (currently only available through the debugger).
+Also note that for best results the `cropping` option (see screenshot) should be disabled.
 
 ## Movie Cart
 
