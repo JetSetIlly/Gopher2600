@@ -20,7 +20,6 @@ import (
 
 	"github.com/jetsetilly/gopher2600/gui/sdlimgui/framebuffer"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
-	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/paths"
 )
 
@@ -96,12 +95,6 @@ func (sh *screenshotSequencer) startProcess(mode screenshotMode) {
 		sh.baseFilename = paths.UniqueFilename("crt", sh.img.vcs.Mem.Cart.ShortName)
 	} else {
 		sh.baseFilename = paths.UniqueFilename("pix", sh.img.vcs.Mem.Cart.ShortName)
-	}
-
-	// clear textures, counting from 1 because 0 is the phosphor (which we
-	// don't want to clear)
-	for i := 1; i < sh.seq.Len(); i++ {
-		sh.seq.Clear(i)
 	}
 }
 
@@ -232,7 +225,7 @@ func (sh *screenshotSequencer) process(env shaderEnvironment) {
 
 	// save final texture if exposure count is one or more
 	if sh.exposureCt >= 1 {
-		sh.saveJPEG(final, filename)
+		sh.seq.SaveJPEG(final, filename, "screenshot")
 	}
 
 	// create copy of raw frame. we've bumped the frames counter already but
@@ -249,15 +242,5 @@ func (sh *screenshotSequencer) process(env shaderEnvironment) {
 			sh.colorShaderFlipped.setAttributes(env)
 			env.draw()
 		})
-	}
-}
-
-func (sh *screenshotSequencer) saveJPEG(frameBufferIdx int, filename string) {
-	// save this frame's results
-	err := sh.seq.SaveJPEG(frameBufferIdx, filename)
-	if err != nil {
-		logger.Log("screenshot", err.Error())
-	} else {
-		logger.Logf("screenshot", "saved to %s", filename)
 	}
 }

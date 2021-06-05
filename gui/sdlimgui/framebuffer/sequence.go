@@ -91,11 +91,6 @@ func (seq *Sequence) Texture(idxTexture int) uint32 {
 	return seq.textures[idxTexture]
 }
 
-// Clear texture.
-func (seq *Sequence) Clear(idxTexture int) {
-	gl.ClearTexImage(seq.textures[idxTexture], 0, gl.RGBA, gl.UNSIGNED_BYTE, gl.Ptr(nil))
-}
-
 func (seq *Sequence) bind(idxTexture int) uint32 {
 	id := seq.textures[idxTexture]
 	gl.BindTexture(gl.TEXTURE_2D, id)
@@ -115,11 +110,15 @@ func (seq *Sequence) Process(idxTexture int, draw func()) uint32 {
 	return id
 }
 
-// SavesJPEG writes the texture to the specified path.
-//
-// Changes the state of the frame buffer.
-func (seq *Sequence) SaveJPEG(idxTexture int, path string) error {
+// SavesJPEG writes the texture to the specified path. Does not return any
+// errors but will log using logTag if logTag is not empty.
+func (seq *Sequence) SaveJPEG(idxTexture int, path string, logTag string) {
 	img := image.NewRGBA(image.Rect(0, 0, int(seq.width), int(seq.height)))
+	if img == nil {
+		if logTag != "" {
+			logger.Log(logTag, "save failed: cannot allocate image data")
+		}
+	}
 
 	seq.bind(idxTexture)
 	gl.ReadPixels(0, 0, seq.width, seq.height, gl.RGBA, gl.UNSIGNED_BYTE, gl.Ptr(img.Pix))
@@ -127,16 +126,30 @@ func (seq *Sequence) SaveJPEG(idxTexture int, path string) error {
 	go func() {
 		f, err := os.Create(path)
 		if err != nil {
-			logger.Log("screenshot save failed: %v", err.Error())
+			if logTag != "" {
+				logger.Logf(logTag, "save failed: %v", err.Error())
+			}
+			return
 		}
 
-		jpeg.Encode(f, img, &jpeg.Options{Quality: 100})
+		err = jpeg.Encode(f, img, &jpeg.Options{Quality: 100})
+		if err != nil {
+			if logTag != "" {
+				logger.Logf(logTag, "save failed: %v", err.Error())
+			}
+			_ = f.Close()
+			return
+		}
 
 		err = f.Close()
 		if err != nil {
-			logger.Log("screenshot save failed: %v", err.Error())
+			if logTag != "" {
+				logger.Logf(logTag, "save failed: %v", err.Error())
+			}
+			return
 		}
-	}()
 
-	return nil
+		// indicate success
+		logger.Logf(logTag, "saved: %s", path)
+	}()
 }

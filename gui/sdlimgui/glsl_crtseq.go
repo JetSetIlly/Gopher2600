@@ -151,7 +151,6 @@ func (sh *crtSequencer) process(env shaderEnvironment, moreProcessing bool, numS
 		})
 
 		if moreProcessing {
-			sh.seq.Clear(more)
 			env.srcTextureID = sh.seq.Process(more, func() {
 				noise := sh.img.crtPrefs.Noise.Get().(bool)
 				sh.effectsShaderFlipped.(*effectsShader).setAttributesArgs(env, numScanlines, numClocks, noise)
@@ -164,7 +163,6 @@ func (sh *crtSequencer) process(env shaderEnvironment, moreProcessing bool, numS
 		}
 	} else {
 		if moreProcessing {
-			sh.seq.Clear(more)
 			env.srcTextureID = sh.seq.Process(more, func() {
 				sh.colorShaderFlipped.setAttributes(env)
 				env.draw()
