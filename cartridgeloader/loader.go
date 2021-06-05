@@ -22,7 +22,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"path"
+	"path/filepath"
 	"strings"
 
 	"github.com/jetsetilly/gopher2600/curated"
@@ -99,7 +99,7 @@ func NewLoader(filename string, mapping string) Loader {
 	if mapping != "AUTO" && mapping != "" {
 		cl.Mapping = mapping
 	} else {
-		ext := strings.ToUpper(path.Ext(filename))
+		ext := strings.ToUpper(filepath.Ext(filename))
 		switch ext {
 		case ".BIN":
 			fallthrough
@@ -191,8 +191,8 @@ func (cl Loader) ShortName() string {
 		return ""
 	}
 
-	sn := path.Base(cl.Filename)
-	sn = strings.TrimSuffix(sn, path.Ext(cl.Filename))
+	sn := filepath.Base(cl.Filename)
+	sn = strings.TrimSuffix(sn, filepath.Ext(cl.Filename))
 	return sn
 }
 

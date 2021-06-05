@@ -18,7 +18,7 @@ package supercharger
 import (
 	"fmt"
 	"math/rand"
-	"path"
+	"path/filepath"
 
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/curated"
@@ -68,7 +68,7 @@ func NewSupercharger(cartload cartridgeloader.Loader) (mapper.CartMapper, error)
 	var err error
 
 	// load bios and activate
-	cart.bios, err = loadBIOS(path.Dir(cartload.Filename))
+	cart.bios, err = loadBIOS(filepath.Dir(cartload.Filename))
 	if err != nil {
 		return nil, curated.Errorf("supercharger: %v", err)
 	}

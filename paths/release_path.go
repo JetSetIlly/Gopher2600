@@ -19,7 +19,7 @@ package paths
 
 import (
 	"os"
-	"path"
+	"path/filepath"
 
 	"github.com/jetsetilly/gopher2600/paths/fs"
 )
@@ -36,7 +36,7 @@ func getBasePath(subPth string) (string, error) {
 		return "", err
 	}
 
-	pth := path.Join(cnf, gopherConfigDir, subPth)
+	pth := filepath.Join(cnf, gopherConfigDir, subPth)
 
 	if _, err := os.Stat(pth); err == nil {
 		return pth, nil

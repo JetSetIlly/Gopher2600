@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"path"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"unicode"
@@ -63,7 +63,7 @@ func (sym *Symbols) fromDasm(cart *cartridge.Cartridge) error {
 
 	// try to open symbols file
 	symFilename := cart.Filename
-	ext := path.Ext(symFilename)
+	ext := filepath.Ext(symFilename)
 
 	// try to figure out the case of the file extension
 	if ext == ".BIN" {

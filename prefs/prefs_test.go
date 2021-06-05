@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"path"
+	"path/filepath"
 	"testing"
 
 	"github.com/jetsetilly/gopher2600/prefs"
@@ -45,7 +45,7 @@ func getTmpPrefFile(t *testing.T) string {
 	}
 
 	// return temporary file
-	fn := path.Join(td, tempFile)
+	fn := filepath.Join(td, tempFile)
 	return fn
 }
 

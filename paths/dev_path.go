@@ -19,7 +19,7 @@ package paths
 
 import (
 	"os"
-	"path"
+	"path/filepath"
 
 	"github.com/jetsetilly/gopher2600/paths/fs"
 )
@@ -30,7 +30,7 @@ const gopherConfigDir = ".gopher2600"
 // the gopherConfigDir (and child directories) in the current working
 // directory.
 func getBasePath(subPth string) (string, error) {
-	pth := path.Join(gopherConfigDir, subPth)
+	pth := filepath.Join(gopherConfigDir, subPth)
 
 	if _, err := os.Stat(pth); err == nil {
 		return pth, nil

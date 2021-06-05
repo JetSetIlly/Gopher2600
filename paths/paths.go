@@ -15,9 +15,7 @@
 
 package paths
 
-import (
-	"path"
-)
+import "path/filepath"
 
 // ResourcePath returns the resource string (representing the resource to be
 // loaded) prepended with OS/build specific paths.
@@ -38,5 +36,5 @@ func ResourcePath(subPth string, file string) (string, error) {
 	pth = append(pth, basePath)
 	pth = append(pth, file)
 
-	return path.Join(pth...), nil
+	return filepath.Join(pth...), nil
 }

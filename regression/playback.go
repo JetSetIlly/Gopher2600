@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -76,7 +76,7 @@ func (reg PlaybackRegression) ID() string {
 // String implements the database.Entry interface.
 func (reg PlaybackRegression) String() string {
 	s := strings.Builder{}
-	s.WriteString(fmt.Sprintf("[%s] %s", reg.ID(), path.Base(reg.Script)))
+	s.WriteString(fmt.Sprintf("[%s] %s", reg.ID(), filepath.Base(reg.Script)))
 	if reg.Notes != "" {
 		s.WriteString(fmt.Sprintf(" [%s]", reg.Notes))
 	}
