@@ -18,6 +18,7 @@ package sdlimgui
 import (
 	"fmt"
 	"image"
+	"math"
 
 	"github.com/go-gl/gl/v3.2-core/gl"
 	"github.com/inkyblackness/imgui-go/v4"
@@ -636,10 +637,9 @@ func (win *winDbgScr) render() {
 
 // must be called from with a critical section.
 func (win *winDbgScr) setScaling() {
-	winRatio := win.screenRegion.X / win.screenRegion.Y
-
 	var w float32
 	var h float32
+
 	if win.cropped || win.crtPreview {
 		w = float32(win.scr.crit.cropPixels.Bounds().Size().X)
 		h = float32(win.scr.crit.cropPixels.Bounds().Size().Y)
@@ -647,17 +647,29 @@ func (win *winDbgScr) setScaling() {
 		w = float32(win.scr.crit.pixels.Bounds().Size().X)
 		h = float32(win.scr.crit.pixels.Bounds().Size().Y)
 	}
-
 	adjW := w * pixelWidth * win.scr.aspectBias
-	aspectRatio := adjW / h
 
 	var scaling float32
+
+	winRatio := win.screenRegion.X / win.screenRegion.Y
+	aspectRatio := adjW / h
+
 	if aspectRatio < winRatio {
-		scaling = win.screenRegion.Y / h
-		win.imagePadding = imgui.Vec2{X: float32(int((win.screenRegion.X - (adjW * scaling)) / 2))}
+		// window wider than TV screen
+		scaling = float32(math.Floor(float64(win.screenRegion.Y / h)))
 	} else {
-		scaling = win.screenRegion.X / adjW
-		win.imagePadding = imgui.Vec2{Y: float32(int((win.screenRegion.Y - (h * scaling)) / 2))}
+		// TV screen wider than window
+		scaling = float32(math.Floor(float64(win.screenRegion.X / adjW)))
+	}
+
+	// limit scaling to 1x
+	if scaling < 1 {
+		scaling = 1
+	}
+
+	win.imagePadding = imgui.Vec2{
+		X: float32(int((win.screenRegion.X - (adjW * scaling)) / 2)),
+		Y: float32(int((win.screenRegion.Y - (h * scaling)) / 2)),
 	}
 
 	win.yscaling = scaling

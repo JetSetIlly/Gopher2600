@@ -17,6 +17,7 @@ package sdlimgui
 
 import (
 	"fmt"
+	"math"
 	"time"
 
 	"github.com/go-gl/gl/v3.2-core/gl"
@@ -97,6 +98,11 @@ func newPlayScr(img *SdlImgui) *playScr {
 	gl.BindTexture(gl.TEXTURE_2D, win.screenTexture)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
+
+	// clamp to edge is important for LINEAR filtering. not noticeable for
+	// NEAREST filtering
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
 
 	// set scale and padding on startup. scale and padding will be recalculated
 	// on window resize and textureRenderer.resize()
@@ -233,20 +239,31 @@ func (win *playScr) setScaling() {
 	sz := win.img.plt.displaySize()
 	screenRegion := imgui.Vec2{sz[0], sz[1]}
 
-	winRatio := screenRegion.X / screenRegion.Y
-
 	w := float32(win.scr.crit.cropPixels.Bounds().Size().X)
 	h := float32(win.scr.crit.cropPixels.Bounds().Size().Y)
 	adjW := w * pixelWidth * win.scr.aspectBias
-	aspectRatio := adjW / h
 
 	var scaling float32
+
+	winRatio := screenRegion.X / screenRegion.Y
+	aspectRatio := adjW / h
+
 	if aspectRatio < winRatio {
-		scaling = screenRegion.Y / h
-		win.imagePosMin = imgui.Vec2{X: float32(int((screenRegion.X - (adjW * scaling)) / 2))}
+		// window wider than TV screen
+		scaling = float32(math.Floor(float64(screenRegion.Y / h)))
 	} else {
-		scaling = screenRegion.X / adjW
-		win.imagePosMin = imgui.Vec2{Y: float32(int((screenRegion.Y - (h * scaling)) / 2))}
+		// TV screen wider than window
+		scaling = float32(math.Floor(float64(screenRegion.X / adjW)))
+	}
+
+	// limit scaling to 1x
+	if scaling < 1 {
+		scaling = 1
+	}
+
+	win.imagePosMin = imgui.Vec2{
+		X: float32(int((screenRegion.X - (adjW * scaling)) / 2)),
+		Y: float32(int((screenRegion.Y - (h * scaling)) / 2)),
 	}
 	win.imagePosMax = screenRegion.Minus(win.imagePosMin)
 
