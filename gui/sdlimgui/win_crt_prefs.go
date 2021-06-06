@@ -85,8 +85,9 @@ func (win *winCRTPrefs) draw() {
 	imgui.Spacing()
 
 	win.drawPhosphor()
-
+	win.drawSharpness()
 	imgui.Spacing()
+
 	imgui.Separator()
 	imgui.Spacing()
 
@@ -285,6 +286,26 @@ func (win *winCRTPrefs) drawPhosphor() {
 
 	if imgui.SliderFloatV("##phosphorbloom", &g, 0.20, 2.20, label, 1.0) {
 		win.img.crtPrefs.PhosphorBloom.Set(g)
+	}
+}
+
+func (win *winCRTPrefs) drawSharpness() {
+	f := float32(win.img.crtPrefs.Sharpness.Get().(float64))
+
+	var label string
+
+	if f >= 0.9 {
+		label = "very soft"
+	} else if f >= 0.65 {
+		label = "soft"
+	} else if f >= 0.4 {
+		label = "sharp"
+	} else {
+		label = "very sharp"
+	}
+
+	if imgui.SliderFloatV("##sharpness", &f, 0.1, 1.1, label, 1.0) {
+		win.img.crtPrefs.Sharpness.Set(f)
 	}
 }
 

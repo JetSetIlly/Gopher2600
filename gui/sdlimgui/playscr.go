@@ -96,6 +96,9 @@ func newPlayScr(img *SdlImgui) *playScr {
 	// set texture, creation of textures will be done after every call to resize()
 	gl.GenTextures(1, &win.screenTexture)
 	gl.BindTexture(gl.TEXTURE_2D, win.screenTexture)
+
+	// mag and min changed in setScaling() according to whether we want pixel
+	// perfect rendering
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
 
@@ -274,4 +277,7 @@ func (win *playScr) setScaling() {
 
 	// get numscanlines while we're in critical section
 	win.numScanlines = win.scr.crit.bottomScanline - win.scr.crit.topScanline
+
+	gl.BindTexture(gl.TEXTURE_2D, win.screenTexture)
+
 }

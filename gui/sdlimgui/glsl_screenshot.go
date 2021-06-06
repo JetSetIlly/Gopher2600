@@ -204,7 +204,7 @@ func (sh *screenshotSequencer) process(env shaderEnvironment) {
 	if sh.crtProcessing {
 		// blur result of blended frames a little more
 		env.srcTextureID = sh.seq.Process(working, func() {
-			sh.blurShader.(*blurShader).setAttributesArgs(env, 0.17)
+			sh.blurShader.(*blurShader).setAttributesArgs(env, float32(sh.img.crtPrefs.Sharpness.Get().(float64)))
 			env.draw()
 		})
 

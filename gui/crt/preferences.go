@@ -39,6 +39,7 @@ type Preferences struct {
 	FringingAmount  prefs.Float
 	PhosphorLatency prefs.Float
 	PhosphorBloom   prefs.Float
+	Sharpness       prefs.Float
 
 	PixelPerfectFade prefs.Float
 }
@@ -62,6 +63,7 @@ const (
 	fringingAmount   = 0.15
 	phosphorLatency  = 0.5
 	phosphorBloom    = 1.0
+	sharpness        = 0.55
 	pixelPerfectFade = 0.4
 )
 
@@ -137,6 +139,10 @@ func NewPreferences() (*Preferences, error) {
 	if err != nil {
 		return nil, err
 	}
+	err = p.dsk.Add("crt.sharpness", &p.Sharpness)
+	if err != nil {
+		return nil, err
+	}
 	err = p.dsk.Add("crt.pixelPerfectFade", &p.PixelPerfectFade)
 	if err != nil {
 		return nil, err
@@ -166,6 +172,7 @@ func (p *Preferences) SetDefaults() {
 	p.FringingAmount.Set(fringingAmount)
 	p.PhosphorLatency.Set(phosphorLatency)
 	p.PhosphorBloom.Set(phosphorBloom)
+	p.Sharpness.Set(sharpness)
 	p.PixelPerfectFade.Set(pixelPerfectFade)
 }
 

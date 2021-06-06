@@ -140,11 +140,11 @@ func (sh *crtSequencer) process(env shaderEnvironment, moreProcessing bool, numS
 
 		// blur result of phosphor a little more
 		env.srcTextureID = sh.seq.Process(working, func() {
-			sh.blurShader.(*blurShader).setAttributesArgs(env, 0.17)
+			sh.blurShader.(*blurShader).setAttributesArgs(env, float32(sh.img.crtPrefs.Sharpness.Get().(float64)))
 			env.draw()
 		})
 
-		// blend blur with src texture
+		// // blend blur with src texture
 		env.srcTextureID = sh.seq.Process(working, func() {
 			sh.blendShader.(*blendShader).setAttributesArgs(env, 1.0, 0.32, src)
 			env.draw()
