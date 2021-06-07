@@ -100,7 +100,7 @@ func newMissileSprite(label string, tia *tia) *MissileSprite {
 	}
 
 	ms.Enclockifier.size = &ms.Size
-	ms.position.Reset()
+	ms.position = polycounter.ResetValue
 
 	return ms
 }
@@ -222,21 +222,31 @@ func (ms *MissileSprite) rsync(adjustment int) {
 	}
 }
 
+// returns true if pixel has changed
 func (ms *MissileSprite) tick(resetToPlayer bool) bool {
 	// check to see if there is more movement required for this sprite
 	if ms.tia.hmove.Clk {
 		ms.MoreHMOVE = ms.MoreHMOVE && compareHMOVE(ms.tia.hmove.Ripple, ms.Hmove)
 	}
 
-	// early return if nothing to do
-	if !(ms.tia.hmove.Clk && ms.MoreHMOVE) && *ms.tia.hblank {
-		return false
-	}
-
-	// cancel motion clock if necessary
-	if ms.tia.rev.Prefs.LostMOTCK {
-		if !*ms.tia.hblank && ms.tia.hmove.Clk && ms.MoreHMOVE {
+	switch *ms.tia.hblank {
+	case true:
+		// early return if nothing to do
+		if !(ms.tia.hmove.Clk && ms.MoreHMOVE) {
 			return false
+		}
+
+		// update hmoved pixel value & adjust for screen boundary
+		ms.HmovedPixel--
+		if ms.HmovedPixel < 0 {
+			ms.HmovedPixel += specification.ClksVisible
+		}
+	case false:
+		// cancel motion clock if necessary
+		if ms.tia.hmove.Clk && ms.MoreHMOVE {
+			if ms.tia.rev.Prefs.LostMOTCK {
+				return false
+			}
 		}
 	}
 
@@ -247,8 +257,8 @@ func (ms *MissileSprite) tick(resetToPlayer bool) bool {
 	// Frogger - the top row of trucks will sometimes extend by a pixel as they
 	// drive off screen.
 	if ms.ResetToPlayer && resetToPlayer {
-		ms.position.Reset()
-		ms.pclk.Reset()
+		ms.position = polycounter.ResetValue
+		ms.pclk = phaseclock.ResetValue
 
 		// missile-to-player also resets position information
 		ms.ResetPixel = ms.tia.tv.GetState(signal.ReqClock)
@@ -259,26 +269,22 @@ func (ms *MissileSprite) tick(resetToPlayer bool) bool {
 	// below for explanation
 	ms.lastTickFromHmove = ms.tia.hmove.Clk && ms.MoreHMOVE
 
-	// update hmoved pixel value
-	if *ms.tia.hblank {
-		ms.HmovedPixel--
-
-		// adjust for screen boundary
-		if ms.HmovedPixel < 0 {
-			ms.HmovedPixel += specification.ClksVisible
-		}
+	ms.pclk++
+	if ms.pclk >= phaseclock.NumStates {
+		ms.pclk = 0
 	}
 
-	ms.pclk.Tick()
-
-	if ms.pclk.Phi2() {
-		ms.position.Tick()
+	if ms.pclk == phaseclock.RisingPhi2 {
+		ms.position++
+		if ms.position >= polycounter.LenTable6Bit {
+			ms.position = 0
+		}
 
 		// start drawing if there is no reset or it has just started AND
 		// there wasn't a reset event ongoing when the current event
 		// started
 		if !ms.futureReset.IsActive() || ms.futureReset.JustStarted() {
-			switch ms.position.Count() {
+			switch ms.position {
 			case 3:
 				if ms.Copies == 0x01 || ms.Copies == 0x03 {
 					ms.futureStart.Schedule(4, 1)
@@ -302,7 +308,7 @@ func (ms *MissileSprite) tick(resetToPlayer bool) bool {
 			case 39:
 				ms.futureStart.Schedule(4, 0)
 			case 40:
-				ms.position.Reset()
+				ms.position = polycounter.ResetValue
 			}
 		}
 	}
@@ -408,8 +414,8 @@ func (ms *MissileSprite) _futureResetPosition() {
 	}
 
 	// reset both sprite position and clock
-	ms.position.Reset()
-	ms.pclk.Reset()
+	ms.position = polycounter.ResetValue
+	ms.pclk = phaseclock.ResetValue
 
 	ms.Enclockifier.force()
 	if ms.futureStart.IsActive() {
@@ -436,7 +442,7 @@ func (ms *MissileSprite) pixel() {
 
 	// similarly, in the event of a stuffed HMOVE clock, and when the
 	// enclockifier is about to produce its last pixel
-	earlyEnd := !ms.pclk.LatePhi1() && ms.lastTickFromHmove && ms.Enclockifier.aboutToEnd()
+	earlyEnd := ms.pclk != phaseclock.FallingPhi1 && ms.lastTickFromHmove && ms.Enclockifier.aboutToEnd()
 
 	// see ball sprite for explanation for the LatePhi1() condition
 

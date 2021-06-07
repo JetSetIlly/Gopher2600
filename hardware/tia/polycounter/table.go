@@ -21,6 +21,9 @@ import (
 
 var table6bit []string
 
+// number of entries in 6 bit polycounter table
+const LenTable6Bit = 64
+
 // initialise table for a 6bit polycounter. the VCS only uses 6 bit
 // polycounters but the following method can be used to produce tables of any
 // length.

@@ -19,20 +19,27 @@
 // of counting in simple electronics - performance of ripple counters can
 // change due to carrying etc.
 //
-// In our emulation we are of course using ripple counters internally. But for
-// the purposes of debugging the TIA loop (HSYNC counter) we'd still like to
-// know what the equivalent polycounter value is. We use a 6-bit polycounter
-// for this.
+// In our emulation we are normal integers but for the purposes of debugging
+// the TIA loop (HSYNC counter) we'd still like to know what the equivalent
+// polycounter value is. We use a 6-bit polycounter for this.
 //
 //		hsync := polycounter.New(6)
 //
-// We advance the counter with the Tick() function. The binary representation
-// of the polycounter value can be retreived with the ToBinary() function.
+// As the emulated polycounter is just an integer we can "tick" it along in the
+// obvious way. We should take care to make sure it doesn't run past the end of
+// the polycounter however. The accepted pattern is:
 //
-// Polycounter's will loop around on their own when the bit sequence elapses
-// but this never happens in the VCS. Instead a Reset() signal is generated
-// when the polycounter reaches a certain count. For example, for the HSYNC
-// counter this happens on count 57.
+//		p++
+//		if p >= polycounter.LenTable6Bit {
+//			p = 0
+//		}
+//
+// Whenever the polycounter is to be reset set it it polycounter.ResetValue.
+//
+// The polycounter bit pattern can be retrieved at any time with the ToBinary()
+// function.
+//
+// Additional Note
 //
 // In the 2600, polycounter logic is also used to generate the bit sequences
 // required for TIA audio emulation. A real TIA variously uses 4-bit, 5-bit and

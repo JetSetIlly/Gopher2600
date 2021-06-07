@@ -101,7 +101,7 @@ func newBallSprite(label string, tia *tia) *BallSprite {
 	}
 
 	bs.Enclockifier.size = &bs.Size
-	bs.position.Reset()
+	bs.position = 0
 
 	return bs
 }
@@ -197,6 +197,7 @@ func (bs *BallSprite) rsync(adjustment int) {
 	}
 }
 
+// returns true if pixel has changed
 func (bs *BallSprite) tick() bool {
 	// check to see if there is more movement required for this sprite
 	if bs.tia.hmove.Clk {
@@ -205,15 +206,24 @@ func (bs *BallSprite) tick() bool {
 
 	bs.lastHmoveCt = bs.tia.hmove.Ripple
 
-	// early return if nothing to do
-	if !(bs.tia.hmove.Clk && bs.MoreHMOVE) && *bs.tia.hblank {
-		return false
-	}
-
-	// cancel motion clock if necessary
-	if bs.tia.rev.Prefs.LostMOTCK {
-		if !*bs.tia.hblank && bs.tia.hmove.Clk && bs.MoreHMOVE {
+	switch *bs.tia.hblank {
+	case true:
+		// early return if nothing to do
+		if !(bs.tia.hmove.Clk && bs.MoreHMOVE) {
 			return false
+		}
+
+		// update hmoved pixel value & adjust for screen boundary
+		bs.HmovedPixel--
+		if bs.HmovedPixel < 0 {
+			bs.HmovedPixel += specification.ClksVisible
+		}
+	case false:
+		// cancel motion clock if necessary
+		if bs.tia.hmove.Clk && bs.MoreHMOVE {
+			if bs.tia.rev.Prefs.LostMOTCK {
+				return false
+			}
 		}
 	}
 
@@ -221,26 +231,22 @@ func (bs *BallSprite) tick() bool {
 	// in missile sprite for details
 	bs.lastTickFromHmove = bs.tia.hmove.Clk && bs.MoreHMOVE
 
-	// update hmoved pixel value
-	if *bs.tia.hblank {
-		bs.HmovedPixel--
-
-		// adjust for screen boundary
-		if bs.HmovedPixel < 0 {
-			bs.HmovedPixel += specification.ClksVisible
-		}
+	bs.pclk++
+	if bs.pclk >= phaseclock.NumStates {
+		bs.pclk = 0
 	}
 
-	bs.pclk.Tick()
+	if bs.pclk == phaseclock.RisingPhi2 {
+		bs.position++
+		if bs.position >= polycounter.LenTable6Bit {
+			bs.position = 0
+		}
 
-	if bs.pclk.Phi2() {
-		bs.position.Tick()
-
-		switch bs.position.Count() {
+		switch bs.position {
 		case 39:
 			bs.futureStart.Schedule(4, 0)
 		case 40:
-			bs.position.Reset()
+			bs.position = polycounter.ResetValue
 		}
 	}
 
@@ -356,8 +362,8 @@ func (bs *BallSprite) _futureResetPosition() {
 	}
 
 	// reset both sprite position and clock
-	bs.position.Reset()
-	bs.pclk.Reset()
+	bs.position = polycounter.ResetValue
+	bs.pclk = phaseclock.ResetValue
 
 	// from TIA_HW_Notes.txt:
 	//
@@ -385,7 +391,7 @@ func (bs *BallSprite) pixel() {
 	// at the base of the mountain (which is correct) but without the
 	// LatePhi1() condition there is also a second break later on the path
 	// (which I don't believe should be there)
-	earlyEnd := !bs.pclk.LatePhi1() && bs.lastTickFromHmove && bs.Enclockifier.aboutToEnd()
+	earlyEnd := bs.pclk != phaseclock.FallingPhi1 && bs.lastTickFromHmove && bs.Enclockifier.aboutToEnd()
 
 	// Well blow me down! moving the cosmic ark star problem solution from the
 	// missile implementation and I can now see that I've already solved the

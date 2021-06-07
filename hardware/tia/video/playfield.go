@@ -20,6 +20,7 @@ import (
 	"strings"
 
 	"github.com/jetsetilly/gopher2600/hardware/memory/addresses"
+	"github.com/jetsetilly/gopher2600/hardware/tia/phaseclock"
 )
 
 // ScreenRegion notes which part of the screen is currently being drawn.
@@ -180,11 +181,11 @@ func (pf *Playfield) String() string {
 // returns whether the foreground is active and the color to be used
 // (foreground or background).
 func (pf *Playfield) pixel() {
-	if pf.tia.pclk.Phi2() {
+	if *pf.tia.pclk == phaseclock.RisingPhi2 {
 		// RSYNC can monkey with the current hsync value unexpectedly and
 		// because of this we need an extra effort to make sure we're in the
 		// correct screen region.
-		switch pf.tia.hsync.Count() {
+		switch *pf.tia.hsync {
 		case 0:
 			// start of scanline
 			pf.Region = RegionOffScreen
@@ -213,9 +214,9 @@ func (pf *Playfield) pixel() {
 			pf.color = pf.BackgroundColor
 			return
 		case RegionLeft:
-			pf.Idx = pf.tia.hsync.Count() - 17
+			pf.Idx = int(*pf.tia.hsync) - 17
 		case RegionRight:
-			pf.Idx = pf.tia.hsync.Count() - 37
+			pf.Idx = int(*pf.tia.hsync) - 37
 		}
 
 		// pixel returns the color of the playfield at the current time.

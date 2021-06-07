@@ -145,7 +145,7 @@ func newPlayerSprite(label string, tia *tia) *PlayerSprite {
 	ps.ScanCounter.pclk = &ps.pclk
 	ps.gfxData = &ps.GfxDataNew
 
-	ps.position.Reset()
+	ps.position = polycounter.ResetValue
 
 	return ps
 }
@@ -286,32 +286,31 @@ func (ps *PlayerSprite) rsync(adjustment int) {
 	}
 }
 
-// tick moves the sprite counters along (both position and graphics scan).
+// returns true if pixel has changed
 func (ps *PlayerSprite) tick() bool {
 	// check to see if there is more movement required for this sprite
 	if ps.tia.hmove.Clk {
 		ps.MoreHMOVE = ps.MoreHMOVE && compareHMOVE(ps.tia.hmove.Ripple, ps.Hmove)
 	}
 
-	// early return if nothing to do
-	if !(ps.tia.hmove.Clk && ps.MoreHMOVE) && *ps.tia.hblank {
-		return false
-	}
-
-	// cancel motion clock if necessary
-	if ps.tia.rev.Prefs.LostMOTCK {
-		if !*ps.tia.hblank && ps.tia.hmove.Clk && ps.MoreHMOVE {
+	switch *ps.tia.hblank {
+	case true:
+		// early return if nothing to do
+		if !(ps.tia.hmove.Clk && ps.MoreHMOVE) {
 			return false
 		}
-	}
 
-	// update hmoved pixel value
-	if *ps.tia.hblank {
+		// update hmoved pixel value & adjust for screen boundary
 		ps.HmovedPixel--
-
-		// adjust for screen boundary
 		if ps.HmovedPixel < 0 {
 			ps.HmovedPixel += specification.ClksVisible
+		}
+	case false:
+		// cancel motion clock if necessary
+		if ps.tia.hmove.Clk && ps.MoreHMOVE {
+			if ps.tia.rev.Prefs.LostMOTCK {
+				return false
+			}
 		}
 	}
 
@@ -333,14 +332,20 @@ func (ps *PlayerSprite) tick() bool {
 	ps.ScanCounter.tick()
 
 	// tick phase clock after scancounter tick
-	ps.pclk.Tick()
+	ps.pclk++
+	if ps.pclk >= phaseclock.NumStates {
+		ps.pclk = 0
+	}
 
 	// I cannot find a direct reference that describes when position
 	// counters are ticked forward. however, TIA_HW_Notes.txt does say the
 	// HSYNC counter ticks forward on the rising edge of Phi2. it is
 	// reasonable to assume that the sprite position counters do likewise.
-	if ps.pclk.Phi2() {
-		ps.position.Tick()
+	if ps.pclk == phaseclock.RisingPhi2 {
+		ps.position++
+		if ps.position >= polycounter.LenTable6Bit {
+			ps.position = 0
+		}
 
 		// drawing must not start if a reset position event has been
 		// recently scheduled.
@@ -362,7 +367,7 @@ func (ps *PlayerSprite) tick() bool {
 
 			// "... The START decodes are ANDed with flags from the NUSIZ register
 			// before being latched, to determine whether to draw that copy."
-			switch ps.position.Count() {
+			switch ps.position {
 			case 3:
 				if ps.SizeAndCopies == 0x01 || ps.SizeAndCopies == 0x03 {
 					ps.futureStart.Schedule(4, 1)
@@ -387,7 +392,7 @@ func (ps *PlayerSprite) tick() bool {
 				ps.futureStart.Schedule(4, 0)
 
 			case 40:
-				ps.position.Reset()
+				ps.position = polycounter.ResetValue
 			}
 		}
 	}
@@ -453,7 +458,7 @@ func (ps *PlayerSprite) resetPosition() {
 	// RESPx responding late to the end of HBLANK is dependent on heat. The
 	// HeatThreshold() function handles the increasing operating temperature
 	// for us.
-	if (ps.tia.hsync.Count() == 16 || ps.tia.hsync.Count() == 18) && ps.tia.pclk.Phi2() {
+	if (*ps.tia.hsync == 16 || *ps.tia.hsync == 18) && *ps.tia.pclk == phaseclock.RisingPhi2 {
 		if ps.tia.rev.Prefs.RESPxHBLANK {
 			hblank = !revision.HeatThreshold(ps.tia.tv.GetState(signal.ReqScanline))
 		}
@@ -491,7 +496,7 @@ func (ps *PlayerSprite) resetPosition() {
 		// not entirely sure this condition is correct but works for the
 		// known cases. See revision package for more discussion.
 		if ps.tia.rev.Prefs.LateRippleEnd {
-			if !(ps.tia.hmove.RippleJustEnded && (ps.pclk.Phi1() || ps.pclk.LatePhi1())) {
+			if !(ps.tia.hmove.RippleJustEnded && (ps.pclk == phaseclock.RisingPhi1 || ps.pclk == phaseclock.FallingPhi1)) {
 				ps.futureStart.Pause()
 			}
 		} else {
@@ -547,8 +552,8 @@ func (ps *PlayerSprite) _futureResetPosition() {
 	}
 
 	// reset both sprite position and clock
-	ps.position.Reset()
-	ps.pclk.Reset()
+	ps.position = polycounter.ResetValue
+	ps.pclk = phaseclock.ResetValue
 
 	// a player reset doesn't normally start drawing straight away unless
 	// one was a about to start

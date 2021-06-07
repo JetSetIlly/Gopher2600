@@ -278,8 +278,11 @@ func (vd *Video) Pixel() {
 	collisionCheck := vd.Player0.pixelCollision || vd.Player1.pixelCollision ||
 		vd.Missile0.pixelCollision || vd.Missile1.pixelCollision ||
 		vd.Ball.pixelCollision
+
 	if collisionCheck {
-		vd.Collisions.tick(vd.Player0.pixelCollision, vd.Player1.pixelCollision, vd.Missile0.pixelCollision, vd.Missile1.pixelCollision, vd.Ball.pixelCollision, vd.Playfield.colorLatch)
+		vd.Collisions.tick(vd.Player0.pixelCollision, vd.Player1.pixelCollision,
+			vd.Missile0.pixelCollision, vd.Missile1.pixelCollision,
+			vd.Ball.pixelCollision, vd.Playfield.colorLatch)
 	} else {
 		vd.Collisions.LastVideoCycle.reset()
 	}
@@ -405,11 +408,11 @@ func (vd *Video) Pixel() {
 	}
 }
 
-// UpdatePlayfield checks TIA memory for new playfield data. Note that CTRLPF
-// is serviced in UpdateSpriteVariations().
+// ReadMemPlayfield checks TIA memory for new playfield data. Note that CTRLPF
+// is serviced in ReadMemSpriteVariations().
 //
 // Returns true if ChipData has *not* been serviced.
-func (vd *Video) UpdatePlayfield(data bus.ChipData) bool {
+func (vd *Video) ReadMemPlayfield(data bus.ChipData) bool {
 	// homebrew Donkey Kong shows the need for a delay of at least two cycles
 	// to write new playfield data
 	switch data.Name {
@@ -429,21 +432,10 @@ func (vd *Video) UpdatePlayfield(data bus.ChipData) bool {
 	return false
 }
 
-func (vd *Video) TestUpdatePlayfield(data bus.ChipData) bool {
-	switch data.Name {
-	case "PF0":
-	case "PF1":
-	case "PF2":
-	default:
-		return true
-	}
-	return false
-}
-
-// UpdateSpriteHMOVE checks TIA memory for changes in sprite HMOVE settings.
+// ReadMemSpriteHMOVE checks TIA memory for changes in sprite HMOVE settings.
 //
 // Returns true if ChipData has *not* been serviced.
-func (vd *Video) UpdateSpriteHMOVE(data bus.ChipData) bool {
+func (vd *Video) ReadMemSpriteHMOVE(data bus.ChipData) bool {
 	switch data.Name {
 	// horizontal movement values range from -8 to +7 for convenience we
 	// convert this to the range 0 to 15. from TIA_HW_Notes.txt:
@@ -503,10 +495,10 @@ func (vd *Video) UpdateSpriteHMOVE(data bus.ChipData) bool {
 	return false
 }
 
-// UpdateSpritePositioning checks TIA memory for strobing of reset registers.
+// ReadMemSpritePositioning checks TIA memory for strobing of reset registers.
 //
 // Returns true if memory.ChipData has not been serviced.
-func (vd *Video) UpdateSpritePositioning(data bus.ChipData) bool {
+func (vd *Video) ReadMemSpritePositioning(data bus.ChipData) bool {
 	switch data.Name {
 	// the reset registers *must* be serviced after HSYNC has been ticked.
 	// resets are resolved after a short delay, governed by the sprite itself
@@ -531,12 +523,12 @@ func (vd *Video) UpdateSpritePositioning(data bus.ChipData) bool {
 	return false
 }
 
-// UpdateColor checks TIA memory for changes to color registers.
+// ReadMemColor checks TIA memory for changes to color registers.
 //
-// See UpdatePlayfieldColor() also.
+// See ReadMemPlayfieldColor() also.
 //
 // Returns true if memory.ChipData has not been serviced.
-func (vd *Video) UpdateColor(data bus.ChipData) bool {
+func (vd *Video) ReadMemColor(data bus.ChipData) bool {
 	switch data.Name {
 	case "COLUP0":
 		vd.Player0.setColor(data.Value & 0xfe)
@@ -553,15 +545,15 @@ func (vd *Video) UpdateColor(data bus.ChipData) bool {
 	return false
 }
 
-// UpdatePlayfieldColor checks TIA memory for changes to playfield color
+// ReadMemPlayfieldColor checks TIA memory for changes to playfield color
 // registers.
 //
-// Separate from the UpdateColor() function because some TIA revisions (or
+// Separate from the ReadMemColor() function because some TIA revisions (or
 // sometimes for some other reason eg.RGB mod) are slower when updating the
 // playfield color register than the other registers.
 //
 // Returns true if memory.ChipData has not been serviced.
-func (vd *Video) UpdatePlayfieldColor(data bus.ChipData) bool {
+func (vd *Video) ReadMemPlayfieldColor(data bus.ChipData) bool {
 	switch data.Name {
 	case "COLUPF":
 		vd.Playfield.setColor(data.Value & 0xfe)
@@ -573,11 +565,11 @@ func (vd *Video) UpdatePlayfieldColor(data bus.ChipData) bool {
 	return false
 }
 
-// UpdateSpritePixels checks TIA memory for attribute changes that *must* occur
+// ReadMemSpritePixels checks TIA memory for attribute changes that *must* occur
 // after a call to Pixel().
 //
 // Returns true if memory.ChipData has not been serviced.
-func (vd *Video) UpdateSpritePixels(data bus.ChipData) bool {
+func (vd *Video) ReadMemSpritePixels(data bus.ChipData) bool {
 	// the barnstormer ROM demonstrate perfectly how GRP0 is affected if we
 	// alter its state before a call to Pixel().  if we write do alter state
 	// before Pixel(), then an unwanted artefact can be seen on scanline 61.
@@ -615,12 +607,12 @@ func (vd *Video) UpdateSpritePixels(data bus.ChipData) bool {
 	return false
 }
 
-// UpdateSpriteVariations checks TIA memory for writes to registers that affect
+// ReadMemSpriteVariations checks TIA memory for writes to registers that affect
 // how sprite pixels are output. Note that CTRLPF is serviced here rather than
-// in UpdatePlayfield(), because it affects the ball sprite.
+// in ReadMemPlayfield(), because it affects the ball sprite.
 //
 // Returns true if memory.ChipData has not been serviced.
-func (vd *Video) UpdateSpriteVariations(data bus.ChipData) bool {
+func (vd *Video) ReadMemSpriteVariations(data bus.ChipData) bool {
 	switch data.Name {
 	case "CTRLPF":
 		vd.Ball.SetCTRLPF(data.Value)

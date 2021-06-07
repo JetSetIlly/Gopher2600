@@ -126,7 +126,7 @@ func NewTIA(tv signal.TelevisionTIA, mem bus.ChipBus, input bus.UpdateBus, cpu *
 	tia.Audio = audio.NewAudio()
 	tia.Video = video.NewVideo(mem, tv, tia.Rev, &tia.pclk, &tia.hsync, &tia.Hblank, &tia.Hmove)
 	tia.Hmove.Reset()
-	tia.pclk.Reset()
+	tia.pclk = phaseclock.ResetValue
 
 	return tia, nil
 }
@@ -151,10 +151,10 @@ func (tia *TIA) Plumb(tv signal.TelevisionTIA, mem bus.ChipBus, input bus.Update
 	tia.Video.Plumb(tia.mem, tia.tv, tia.Rev, &tia.pclk, &tia.hsync, &tia.Hblank, &tia.Hmove)
 }
 
-// UpdateTIA checks for side effects in the TIA sub-system.
+// ReadMemTIA checks for side effects in the TIA sub-system.
 //
 // Returns true if ChipData has *not* been serviced.
-func (tia *TIA) UpdateTIA(data bus.ChipData) bool {
+func (tia *TIA) ReadMemTIA(data bus.ChipData) bool {
 	switch data.Name {
 	case "VSYNC":
 		tia.sig.VSync = data.Value&0x02 == 0x02
@@ -183,7 +183,7 @@ func (tia *TIA) UpdateTIA(data bus.ChipData) bool {
 		//
 		// "RSYNC resets the two-phase clock for the HSync counter to the H@1
 		// rising edge when strobed."
-		tia.pclk.Align()
+		tia.pclk = phaseclock.AlignValue
 
 		// from TIA_HW_Notes.txt:
 		//
@@ -225,7 +225,7 @@ func (tia *TIA) UpdateTIA(data bus.ChipData) bool {
 
 		// not forgetting that we count from zero, the following delay
 		// values range from 3 to 6, as described in TIA_HW_Notes
-		switch tia.pclk.Count() {
+		switch tia.pclk {
 		case 0:
 			delayDuration = 5
 		case 1:
@@ -310,8 +310,8 @@ func (tia *TIA) resolveDelayedEvents() {
 
 	if _, ok := tia.futureRsyncReset.Tick(); ok {
 		tia.pendingEvents--
-		tia.hsync.Reset()
-		tia.pclk.Reset()
+		tia.hsync = polycounter.ResetValue
+		tia.pclk = phaseclock.ResetValue
 	}
 
 	if _, ok := tia.Hmove.FutureLatch.Tick(); ok {
@@ -351,22 +351,25 @@ func (tia *TIA) Step(readMemory bool) {
 
 	var memoryData bus.ChipData
 
-	// update memory if required
+	// early memory resolution
 	if readMemory {
 		readMemory, memoryData = tia.mem.ChipRead()
-	}
 
-	// make alterations to video state and playfield
-	if readMemory {
-		readMemory = tia.UpdateTIA(memoryData)
+		// make alterations to video state and playfield
+		if readMemory {
+			readMemory = tia.ReadMemTIA(memoryData)
+		}
 	}
 
 	// tick phase clock
-	tia.pclk.Tick()
+	tia.pclk++
+	if tia.pclk >= phaseclock.NumStates {
+		tia.pclk = 0
+	}
 
 	// "one extra CLK pulse is sent every 4 CLK" and "on every H@1 signal [...]
 	// as an extra 'stuffed' clock signal."
-	tia.Hmove.Clk = tia.pclk.Phi2()
+	tia.Hmove.Clk = tia.pclk == phaseclock.RisingPhi2
 
 	// tick delayed events and run payload if appropriate
 	if tia.pendingEvents > 0 {
@@ -383,8 +386,11 @@ func (tia *TIA) Step(readMemory bool) {
 	// the context of this passage is the Horizontal Sync Counter. It is
 	// explicitly saying that the HSYNC counter ticks forward on the rising
 	// edge of Phi2.
-	if tia.pclk.Phi2() {
-		tia.hsync.Tick()
+	if tia.pclk == phaseclock.RisingPhi2 {
+		tia.hsync++
+		if tia.hsync >= polycounter.LenTable6Bit {
+			tia.hsync = 0
+		}
 
 		// hsyncDelay is the number of cycles required before, for example, hblank
 		// is reset
@@ -394,7 +400,7 @@ func (tia *TIA) Step(readMemory bool) {
 		// table in TIA_HW_Notes.txt. the "key" at the end of that table
 		// suggests that (most of) the events are delayed by 4 clocks due to
 		// "latching".
-		switch tia.hsync.Count() {
+		switch tia.hsync {
 		case 57:
 			// from TIA_HW_Notes.txt:
 			//
@@ -402,7 +408,7 @@ func (tia *TIA) Step(readMemory bool) {
 			// HCount=56 performs a reset to 000000 delayed by 4 CLK, so
 			// HCount=57 becomes HCount=0. This gives a period of 57 counts
 			// or 228 CLK."
-			tia.hsync.Reset()
+			tia.hsync = polycounter.ResetValue
 
 			// from TIA_HW_Notes.txt:
 			//
@@ -480,35 +486,36 @@ func (tia *TIA) Step(readMemory bool) {
 		}
 	}
 
-	// update playfield bits (depending on TIA revisions)
+	// mid-subcycle memory resolution
 	if readMemory {
-		if !tia.Rev.Prefs.LatePFx {
-			readMemory = tia.Video.UpdatePlayfield(memoryData)
-		}
-	}
+		// alter state of video subsystem. occurring after ticking of TIA clock
+		// because some the side effects of some registers require that. in
+		// particular, the RESxx registers need to have correct information about
+		// the state of HBLANK and the HMOVE latch.
+		//
+		// to see the effect of this, try moving this function call before the
+		// HSYNC tick and see how the ball sprite is rendered incorrectly in
+		// Keystone Kapers (this is because the ball is reset on the very last
+		// pixel and before HBLANK etc. are in the state they need to be)
+		readMemory = tia.Video.ReadMemSpritePositioning(memoryData)
 
-	// alter state of video subsystem. occurring after ticking of TIA clock
-	// because some the side effects of some registers require that. in
-	// particular, the RESxx registers need to have correct information about
-	// the state of HBLANK and the HMOVE latch.
-	//
-	// to see the effect of this, try moving this function call before the
-	// HSYNC tick and see how the ball sprite is rendered incorrectly in
-	// Keystone Kapers (this is because the ball is reset on the very last
-	// pixel and before HBLANK etc. are in the state they need to be)
-	if readMemory {
-		readMemory = tia.Video.UpdateSpritePositioning(memoryData)
-	}
+		// update color registers
+		if readMemory {
+			readMemory = tia.Video.ReadMemColor(memoryData)
 
-	// update color registers
-	if readMemory {
-		readMemory = tia.Video.UpdateColor(memoryData)
-	}
+			// update playfield color register (depending on TIA revision)
+			if readMemory {
+				if !tia.Rev.Prefs.LateCOLUPF {
+					readMemory = tia.Video.ReadMemPlayfieldColor(memoryData)
+				}
 
-	// update playfield color register (depending on TIA revision)
-	if readMemory {
-		if !tia.Rev.Prefs.LateCOLUPF {
-			readMemory = tia.Video.UpdatePlayfieldColor(memoryData)
+				if readMemory {
+					// update playfield bits (depending on TIA revisions)
+					if !tia.Rev.Prefs.LatePFx {
+						readMemory = tia.Video.ReadMemPlayfield(memoryData)
+					}
+				}
+			}
 		}
 	}
 
@@ -520,7 +527,7 @@ func (tia *TIA) Step(readMemory bool) {
 	// update playfield bits (depending on TIA revisions)
 	if readMemory {
 		if tia.Rev.Prefs.LatePFx {
-			readMemory = tia.Video.UpdatePlayfield(memoryData)
+			readMemory = tia.Video.ReadMemPlayfield(memoryData)
 		}
 	}
 
@@ -544,24 +551,28 @@ func (tia *TIA) Step(readMemory bool) {
 		tia.sig.Pixel = signal.ColorSignal(tia.Video.PixelColor)
 	}
 
-	// update playfield color register (depending on TIA revision)
+	// late memory resolution
 	if readMemory {
-		if tia.Rev.Prefs.LateCOLUPF {
-			readMemory = tia.Video.UpdatePlayfieldColor(memoryData)
-		}
-	}
+		readMemory = tia.Video.ReadMemSpriteHMOVE(memoryData)
 
-	if readMemory {
-		readMemory = tia.Video.UpdateSpriteHMOVE(memoryData)
-	}
-	if readMemory {
-		readMemory = tia.Video.UpdateSpriteVariations(memoryData)
-	}
-	if readMemory {
-		readMemory = tia.Video.UpdateSpritePixels(memoryData)
-	}
-	if readMemory {
-		_ = tia.Audio.UpdateRegisters(memoryData)
+		if readMemory {
+			readMemory = tia.Video.ReadMemSpriteVariations(memoryData)
+
+			if readMemory {
+				readMemory = tia.Video.ReadMemSpritePixels(memoryData)
+
+				if readMemory {
+					readMemory = tia.Audio.ReadMemRegisters(memoryData)
+
+					if readMemory {
+						// update playfield color register (depending on TIA revision)
+						if tia.Rev.Prefs.LateCOLUPF {
+							readMemory = tia.Video.ReadMemPlayfieldColor(memoryData)
+						}
+					}
+				}
+			}
+		}
 	}
 
 	// mix audio and copy values to television signal

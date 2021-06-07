@@ -19,6 +19,9 @@ import (
 	"fmt"
 )
 
+// ResetValue is used to reset the polycounter.
+const ResetValue = 0
+
 // Polycounter counts through the entries of a 6 bit polycounter. For the
 // purposes of the emulation we represent it as an integer and index a
 // pre-calculated table as required.
@@ -26,27 +29,6 @@ type Polycounter int
 
 func (p Polycounter) String() string {
 	return fmt.Sprintf("%s (%02d)", p.ToBinary(), p)
-}
-
-// Reset is a convenience function to reset count value to 0.
-func (p *Polycounter) Reset() {
-	*p = 0
-}
-
-// Tick advances the Polycounter and resets when it reaches the limit.
-// Returns true if counter has reset.
-func (p *Polycounter) Tick() bool {
-	(*p)++
-	if int(*p) >= len(table6bit) {
-		*p = 0
-	}
-	return false
-}
-
-// Count reports the current polycounter value as an integer. For the bit
-// pattern representation, use the ToBinary() function.
-func (p *Polycounter) Count() int {
-	return int(*p)
 }
 
 // ToBinary returns the bit pattern of the current polycounter value.

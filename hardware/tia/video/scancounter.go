@@ -103,11 +103,11 @@ func (sc *scanCounter) tick() {
 		// latch the nusiz value depending on the phase of the player clock
 		switch *sc.sizeAndCopies {
 		case 0x05:
-			if sc.pclk.Phi1() || sc.pclk.Phi2() {
+			if *sc.pclk == phaseclock.RisingPhi1 || *sc.pclk == phaseclock.RisingPhi2 {
 				sc.LatchedSizeAndCopies = *sc.sizeAndCopies
 			}
 		case 0x07:
-			if sc.pclk.Phi1() {
+			if *sc.pclk == phaseclock.RisingPhi1 {
 				sc.LatchedSizeAndCopies = *sc.sizeAndCopies
 			}
 		default:
@@ -128,11 +128,11 @@ func (sc *scanCounter) tick() {
 		// timing of ticks for non-primary copies is skewed
 		switch *sc.sizeAndCopies {
 		case 0x05:
-			if !(sc.pclk.LatePhi2() || sc.pclk.LatePhi1()) {
+			if !(*sc.pclk == phaseclock.FallingPhi1 || *sc.pclk == phaseclock.FallingPhi2) {
 				tick = false
 			}
 		case 0x07:
-			if !sc.pclk.LatePhi2() {
+			if *sc.pclk != phaseclock.FallingPhi2 {
 				tick = false
 			}
 		}
