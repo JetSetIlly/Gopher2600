@@ -39,7 +39,8 @@ type textureRenderer interface {
 
 // screen implements television.PixelRenderer.
 type screen struct {
-	img  *SdlImgui
+	img *SdlImgui
+
 	crit screenCrit
 
 	// list of renderers to call from render. renderers are added with
@@ -81,6 +82,10 @@ type screenCrit struct {
 	pixels *image.RGBA
 
 	// bufferPixels are what we plot pixels to while we wait for a frame to complete.
+	// - the larger the buffer the greater the input lag
+	// - the smaller the buffer the more the emulation will have to wait the
+	//		screen to catch up (see emuWait and emuWaitAck channels)
+	// - a ten frame buffer seems good
 	bufferPixels [10]*image.RGBA
 
 	// which buffer we'll be plotting to and which bufffer we'll be rendering
@@ -272,10 +277,13 @@ func (scr *screen) NewFrame(isStable bool) error {
 
 		// if plot index has crashed into the render index then
 		if scr.crit.plotIdx == scr.crit.renderIdx && scr.crit.vsync {
+			// ** screen update not keeping up with emulation **
+
 			// we must unlock the critical section or the gui thread will not
 			// be able to process the channel
 			scr.crit.section.Unlock()
 
+			// pause emulation until screen has caught up
 			scr.emuWait <- true
 			<-scr.emuWaitAck
 
@@ -485,6 +493,7 @@ func (scr *screen) clearTextureRenderers() {
 func (scr *screen) render() {
 	if scr.img.isPlaymode() {
 		scr.copyPixelsPlaymode()
+
 	} else {
 		scr.copyPixelsDebugmode()
 	}
@@ -510,16 +519,7 @@ func (scr *screen) copyPixelsPlaymode() {
 
 	// attempt to sync frame generation with vertical sync
 	if scr.crit.vsync {
-		// let the emulator thread know it's okay to continue as soon as possible
-		select {
-		case <-scr.emuWait:
-			scr.emuWaitAck <- true
-			return
-		default:
-		}
-
-		// advance render index. keep note of existing index in case we
-		// bump into the plotting index.
+		// advance render index
 		scr.crit.renderIdx++
 		if scr.crit.renderIdx >= len(scr.crit.bufferPixels) {
 			scr.crit.renderIdx = 0
@@ -527,17 +527,21 @@ func (scr *screen) copyPixelsPlaymode() {
 
 		// render index has bumped into the plotting index. revert render index
 		if scr.crit.renderIdx == scr.crit.plotIdx {
-			if scr.img.isPlaymode() {
-				// for playmode use the frame from two frames ago. this helps
-				// smooth out two-frame flicker-kernels.
-				scr.crit.renderIdx -= 2
-			} else {
-				scr.crit.renderIdx--
-			}
+			// ** emulation not keeping up with screen update **
 
+			// reuse the frame from two frames ago. this helps smooth out
+			// two-frame flicker-kernels.
+			scr.crit.renderIdx -= 2
 			if scr.crit.renderIdx < 0 {
 				scr.crit.renderIdx += len(scr.crit.bufferPixels)
 			}
+		}
+
+		// let the emulator thread know it's okay to continue as soon as possible
+		select {
+		case <-scr.emuWait:
+			scr.emuWaitAck <- true
+		default:
 		}
 	}
 
