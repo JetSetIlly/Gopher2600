@@ -126,18 +126,18 @@ func (cf *CallFn) Start(cycles float32) {
 
 // Step forward one clock. Returns true if CallFn is active and false if not.
 // If false, then the ARM should be stepped but not otherwise.
+//
+// Calls to Step() should be wrapped in CallFn.IsActive(). It only needs to be
+// called is IsActive() returns true.
 func (cf *CallFn) Step(immediate bool, armClock float32, vcsClock float32) bool {
-	if cf.IsActive() {
-		if immediate {
-			cf.remainingCycles = 0
-			return false
-		}
-
-		// number of arm cycles consumed for every VCS cycle
-		armCycles := float32(float64(armClock / vcsClock))
-
-		cf.remainingCycles -= armCycles
-		return true
+	if immediate {
+		cf.remainingCycles = 0
+		return false
 	}
-	return false
+
+	// number of arm cycles consumed for every VCS cycle
+	armCycles := float32(float64(armClock / vcsClock))
+
+	cf.remainingCycles -= armCycles
+	return true
 }

@@ -699,8 +699,10 @@ func (cart *dpcPlus) Step(clock float32) {
 		cart.state.registers.MusicFetcher[2].Count += cart.state.registers.MusicFetcher[2].Freq
 	}
 
-	if !cart.state.callfn.Step(cart.prefs.ARM.Immediate.Get().(bool), float32(cart.prefs.ARM.Clock.Get().(float64)), clock) {
-		cart.arm.Step(clock)
+	if cart.state.callfn.IsActive() {
+		if !cart.state.callfn.Step(cart.prefs.ARM.Immediate.Get().(bool), float32(cart.prefs.ARM.Clock.Get().(float64)), clock) {
+			cart.arm.Step(clock)
+		}
 	}
 }
 
