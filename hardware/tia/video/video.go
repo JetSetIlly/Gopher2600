@@ -230,16 +230,20 @@ func (vd *Video) Tick() {
 		}
 	}
 
-	p0 := vd.Player0.tick()
-	p1 := vd.Player1.tick()
-	m0 := vd.Missile0.tick(vd.Player0.triggerMissileReset())
-	m1 := vd.Missile1.tick(vd.Player1.triggerMissileReset())
-	bl := vd.Ball.tick()
+	// we only need to check for sprite activity if HBLANK is off or HMOVE
+	// clock is active
+	if !(*vd.tia.hblank) || vd.tia.hmove.Clk {
+		p0 := vd.Player0.tick()
+		p1 := vd.Player1.tick()
+		m0 := vd.Missile0.tick(vd.Player0.triggerMissileReset())
+		m1 := vd.Missile1.tick(vd.Player1.triggerMissileReset())
+		bl := vd.Ball.tick()
 
-	// note that there is no Playfield.tick() function. ticking occurs in the
-	// Playfield.pixel() function
+		// note that there is no Playfield.tick() function. ticking of
+		// playfield happens in conjunction with the main TIA tick.
 
-	vd.spriteHasChanged = vd.spriteHasChanged || p0 || p1 || m0 || m1 || bl
+		vd.spriteHasChanged = vd.spriteHasChanged || p0 || p1 || m0 || m1 || bl
+	}
 }
 
 // PrepareSpritesForHMOVE should be called whenever HMOVE is triggered.
