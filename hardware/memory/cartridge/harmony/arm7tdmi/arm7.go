@@ -74,13 +74,20 @@ type ARM struct {
 	// index the programMemory array
 	programMemoryOffset uint32
 
-	// executionMap records the function that implements the instruction group for each
+	// collection of functionMap instances. indexed by programMemoryOffset to
+	// retrieve a functionMap
+	//
+	// allocated in NewArm() and added to in findProgramMemory() if an entry
+	// does not exist
+	executionMap map[uint32][]func(_ uint16)
+
+	// functionMap records the function that implements the instruction group for each
 	// opcode in program memory. must be reset every time programMemory is reassigned
 	//
 	// note that when executing from RAM (which isn't normal) it's possible for
-	// code to be modified (ie. self-modifying code). in that case executionMap
+	// code to be modified (ie. self-modifying code). in that case functionMap
 	// may be unreliable.
-	executionMap []func(_ uint16)
+	functionMap []func(_ uint16)
 
 	// interface to an optional disassembler
 	disasm mapper.CartCoProcDisassembler
@@ -106,10 +113,12 @@ const (
 // NewARM is the preferred method of initialisation for the ARM type.
 func NewARM(prefs *preferences.ARMPreferences, mem SharedMemory, hook CartridgeHook) *ARM {
 	arm := &ARM{
-		prefs: prefs,
-		mem:   mem,
-		hook:  hook,
+		prefs:        prefs,
+		mem:          mem,
+		hook:         hook,
+		executionMap: make(map[uint32][]func(_ uint16)),
 	}
+
 	arm.Plumb()
 
 	return arm
@@ -182,8 +191,16 @@ func (arm *ARM) findProgramMemory() error {
 	if arm.programMemory == nil {
 		return curated.Errorf("ARM: cannot find program memory")
 	}
+
 	arm.programMemoryOffset = arm.registers[rPC] - arm.programMemoryOffset
-	arm.executionMap = make([]func(_ uint16), len(*arm.programMemory))
+
+	if m, ok := arm.executionMap[arm.programMemoryOffset]; ok {
+		arm.functionMap = m
+	} else {
+		arm.executionMap[arm.programMemoryOffset] = make([]func(_ uint16), len(*arm.programMemory))
+		arm.functionMap = arm.executionMap[arm.programMemoryOffset]
+	}
+
 	return nil
 }
 
@@ -428,7 +445,7 @@ func (arm *ARM) Run() (float32, error) {
 		arm.registers[rPC] += 2
 
 		// run from executionMap if possible
-		formatFunc := arm.executionMap[idx]
+		formatFunc := arm.functionMap[idx]
 		if formatFunc != nil {
 			formatFunc(opcode)
 		} else {
@@ -436,97 +453,97 @@ func (arm *ARM) Run() (float32, error) {
 			if opcode&0xf000 == 0xf000 {
 				// format 19 - Long branch with link
 				f := arm.executeLongBranchWithLink
-				arm.executionMap[idx] = f
+				arm.functionMap[idx] = f
 				f(opcode)
 			} else if opcode&0xf000 == 0xe000 {
 				// format 18 - Unconditional branch
 				f := arm.executeUnconditionalBranch
-				arm.executionMap[idx] = f
+				arm.functionMap[idx] = f
 				f(opcode)
 			} else if opcode&0xff00 == 0xdf00 {
 				// format 17 - Software interrupt"
 				f := arm.executeSoftwareInterrupt
-				arm.executionMap[idx] = f
+				arm.functionMap[idx] = f
 				f(opcode)
 			} else if opcode&0xf000 == 0xd000 {
 				// format 16 - Conditional branch
 				f := arm.executeConditionalBranch
-				arm.executionMap[idx] = f
+				arm.functionMap[idx] = f
 				f(opcode)
 			} else if opcode&0xf000 == 0xc000 {
 				// format 15 - Multiple load/store
 				f := arm.executeMultipleLoadStore
-				arm.executionMap[idx] = f
+				arm.functionMap[idx] = f
 				f(opcode)
 			} else if opcode&0xf600 == 0xb400 {
 				// format 14 - Push/pop registers
 				f := arm.executePushPopRegisters
-				arm.executionMap[idx] = f
+				arm.functionMap[idx] = f
 				f(opcode)
 			} else if opcode&0xff00 == 0xb000 {
 				// format 13 - Add offset to stack pointer
 				f := arm.executeAddOffsetToSP
-				arm.executionMap[idx] = f
+				arm.functionMap[idx] = f
 				f(opcode)
 			} else if opcode&0xf000 == 0xa000 {
 				// format 12 - Load address
 				f := arm.executeLoadAddress
-				arm.executionMap[idx] = f
+				arm.functionMap[idx] = f
 				f(opcode)
 			} else if opcode&0xf000 == 0x9000 {
 				// format 11 - SP-relative load/store
 				f := arm.executeSPRelativeLoadStore
-				arm.executionMap[idx] = f
+				arm.functionMap[idx] = f
 				f(opcode)
 			} else if opcode&0xf000 == 0x8000 {
 				// format 10 - Load/store halfword
 				f := arm.executeLoadStoreHalfword
-				arm.executionMap[idx] = f
+				arm.functionMap[idx] = f
 				f(opcode)
 			} else if opcode&0xe000 == 0x6000 {
 				// format 9 - Load/store with immediate offset
 				f := arm.executeLoadStoreWithImmOffset
-				arm.executionMap[idx] = f
+				arm.functionMap[idx] = f
 				f(opcode)
 			} else if opcode&0xf200 == 0x5200 {
 				// format 8 - Load/store sign-extended byte/halfword
 				f := arm.executeLoadStoreSignExtendedByteHalford
-				arm.executionMap[idx] = f
+				arm.functionMap[idx] = f
 				f(opcode)
 			} else if opcode&0xf200 == 0x5000 {
 				// format 7 - Load/store with register offset
 				f := arm.executeLoadStoreWithRegisterOffset
-				arm.executionMap[idx] = f
+				arm.functionMap[idx] = f
 				f(opcode)
 			} else if opcode&0xf800 == 0x4800 {
 				// format 6 - PC-relative load
 				f := arm.executePCrelativeLoad
-				arm.executionMap[idx] = f
+				arm.functionMap[idx] = f
 				f(opcode)
 			} else if opcode&0xfc00 == 0x4400 {
 				// format 5 - Hi register operations/branch exchange
 				f := arm.executeHiRegisterOps
-				arm.executionMap[idx] = f
+				arm.functionMap[idx] = f
 				f(opcode)
 			} else if opcode&0xfc00 == 0x4000 {
 				// format 4 - ALU operations
 				f := arm.executeALUoperations
-				arm.executionMap[idx] = f
+				arm.functionMap[idx] = f
 				f(opcode)
 			} else if opcode&0xe000 == 0x2000 {
 				// format 3 - Move/compare/add/subtract immediate
 				f := arm.executeMovCmpAddSubImm
-				arm.executionMap[idx] = f
+				arm.functionMap[idx] = f
 				f(opcode)
 			} else if opcode&0xf800 == 0x1800 {
 				// format 2 - Add/subtract
 				f := arm.executeAddSubtract
-				arm.executionMap[idx] = f
+				arm.functionMap[idx] = f
 				f(opcode)
 			} else if opcode&0xe000 == 0x0000 {
 				// format 1 - Move shifted register
 				f := arm.executeMoveShiftedRegister
-				arm.executionMap[idx] = f
+				arm.functionMap[idx] = f
 				f(opcode)
 			} else {
 				panic("undecoded instruction")
