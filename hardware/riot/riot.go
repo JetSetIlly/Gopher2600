@@ -81,9 +81,17 @@ func (riot *RIOT) UpdateRIOT() {
 	_ = riot.Ports.Update(data)
 }
 
-// Step moves the state of the RIOT forward one video cycle.
+// Step moves the state of the RIOT forward one video cycle. Does not include
+// the stepping of the RIOT Ports. See StepPorts().
 func (riot *RIOT) Step() {
 	riot.UpdateRIOT()
 	riot.Timer.Step()
+
+	// there is potentially some performance saving by calling Ports.Step()
+	// less frequently. however, we must be careful because some peripherals
+	// will be sensitive to this. the savekey for example is set up to be
+	// updated every cycle and the paddle discharge would have to be altered.
+	//
+	// !!TODO: conditional calling of Ports.Step()
 	riot.Ports.Step()
 }

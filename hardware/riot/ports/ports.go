@@ -229,7 +229,7 @@ func (p *Ports) Update(data bus.ChipData) bool {
 func (p *Ports) Step() {
 	// not much to do here because most input operations happen on demand.
 	// recharging of the paddle capacitors however happens (a little bit) every
-	// step.
+	// step. also savekey needs to be processed every cycle
 	if p.LeftPlayer != nil {
 		p.LeftPlayer.Step()
 	}

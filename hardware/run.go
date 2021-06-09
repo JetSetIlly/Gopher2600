@@ -73,7 +73,7 @@ func (vcs *VCS) Run(continueCheck func() error) error {
 
 		// only call continue check every N iterations
 		contCt++
-		if contCt%continueCheckFreq == 0 {
+		if contCt >= continueCheckFreq {
 			err = continueCheck()
 			cont = err == nil
 			contCt = 0
