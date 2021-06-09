@@ -46,8 +46,7 @@ type CPU struct {
 	mem          bus.CPUBus
 	instructions []*instructions.Definition
 
-	// cycleCallback is called by endCycle() for additional emulator
-	// functionality
+	// cycleCallback is called for additional emulator functionality
 	cycleCallback func() error
 
 	// controls whether cpu executes a cycle when it receives a clock tick (pin
@@ -198,7 +197,7 @@ func (mc *CPU) LoadPC(directAddress uint16) error {
 // read8Bit returns 8bit value from the specified address
 //
 // side-effects:
-//	* calls endCycle after memory read
+//	* calls cycleCallback after memory read
 func (mc *CPU) read8Bit(address uint16) (uint8, error) {
 	val, err := mc.mem.Read(address)
 
@@ -210,7 +209,8 @@ func (mc *CPU) read8Bit(address uint16) (uint8, error) {
 	}
 
 	// +1 cycle
-	err = mc.endCycle()
+	mc.LastResult.Cycles++
+	err = mc.cycleCallback()
 	if err != nil {
 		return 0, err
 	}
@@ -221,7 +221,7 @@ func (mc *CPU) read8Bit(address uint16) (uint8, error) {
 // read8BitZero returns 8bit value from the specified zero-page address
 //
 // side-effects:
-//	* calls endCycle after memory read
+//	* calls cycleCallback after memory read
 func (mc *CPU) read8BitZeroPage(address uint8) (uint8, error) {
 	val, err := mc.mem.(bus.CPUBusZeroPage).ReadZeroPage(address)
 
@@ -233,7 +233,8 @@ func (mc *CPU) read8BitZeroPage(address uint8) (uint8, error) {
 	}
 
 	// +1 cycle
-	err = mc.endCycle()
+	mc.LastResult.Cycles++
+	err = mc.cycleCallback()
 	if err != nil {
 		return 0, err
 	}
@@ -242,7 +243,7 @@ func (mc *CPU) read8BitZeroPage(address uint8) (uint8, error) {
 }
 
 // write8Bit writes 8 bits to the specified address. there are no side effects
-// on the state of the CPU which means that *endCycle must be called by the
+// on the state of the CPU which means that *cycleCallback must be called by the
 // calling function as appropriate*.
 func (mc *CPU) write8Bit(address uint16, value uint8) error {
 	err := mc.mem.Write(address, value)
@@ -260,7 +261,7 @@ func (mc *CPU) write8Bit(address uint16, value uint8) error {
 // read16Bit returns 16bit value from the specified address
 //
 // side-effects:
-//	* calls endCycle after each 8bit read
+//	* calls cycleCallback after each 8bit read
 func (mc *CPU) read16Bit(address uint16) (uint16, error) {
 	lo, err := mc.mem.Read(address)
 	if err != nil {
@@ -271,7 +272,8 @@ func (mc *CPU) read16Bit(address uint16) (uint16, error) {
 	}
 
 	// +1 cycle
-	err = mc.endCycle()
+	mc.LastResult.Cycles++
+	err = mc.cycleCallback()
 	if err != nil {
 		return 0, err
 	}
@@ -285,7 +287,8 @@ func (mc *CPU) read16Bit(address uint16) (uint16, error) {
 	}
 
 	// +1 cycle
-	err = mc.endCycle()
+	mc.LastResult.Cycles++
+	err = mc.cycleCallback()
 	if err != nil {
 		return 0, err
 	}
@@ -308,7 +311,7 @@ const (
 //
 // side-effects:
 //     * updates program counter
-//     * calls endCycle at end of function
+//     * calls cycleCallback at end of function
 //     * updates LastResult.ByteCount
 //     * additional side effect updates LastResult as appropriate
 func (mc *CPU) read8BitPC(effect read8BitPCeffect) error {
@@ -347,7 +350,8 @@ func (mc *CPU) read8BitPC(effect read8BitPCeffect) error {
 	}
 
 	// +1 cycle
-	err = mc.endCycle()
+	mc.LastResult.Cycles++
+	err = mc.cycleCallback()
 	if err != nil {
 		return err
 	}
@@ -359,9 +363,9 @@ func (mc *CPU) read8BitPC(effect read8BitPCeffect) error {
 //
 // side-effects:
 //	* updates program counter
-//	* calls endCycle after each 8 bit read
+//	* calls cycleCallback after each 8 bit read
 //	* updates LastResult.ByteCount
-//	* updates InstructionData field, once before each call to endCycle
+//	* updates InstructionData field, once before each call to cycleCallback
 //		- no callback function because this function is only ever used
 //	 	to read operands
 func (mc *CPU) read16BitPC() error {
@@ -383,7 +387,8 @@ func (mc *CPU) read16BitPC() error {
 	mc.LastResult.InstructionData = uint16(lo)
 
 	// +1 cycle
-	err = mc.endCycle()
+	mc.LastResult.Cycles++
+	err = mc.cycleCallback()
 	if err != nil {
 		return err
 	}
@@ -406,7 +411,8 @@ func (mc *CPU) read16BitPC() error {
 	mc.LastResult.InstructionData = (uint16(hi) << 8) | uint16(lo)
 
 	// +1 cycle
-	err = mc.endCycle()
+	mc.LastResult.Cycles++
+	err = mc.cycleCallback()
 	if err != nil {
 		return err
 	}
@@ -479,19 +485,8 @@ func (mc *CPU) branch(flag bool, address uint16) error {
 	return nil
 }
 
-// endCycle is called at the end of the imaginary CPU cycle. for example,
-// reading a byte from memory takes one cycle and so the emulation will call
-// endCycle() at that point.
-//
-// CPU.cycleCallback() is called from this function for additional
-// functionality.
-func (mc *CPU) endCycle() error {
-	mc.LastResult.Cycles++
-	return mc.cycleCallback()
-}
-
 // used when ExecuteInstruction() is called with a nil function.
-func (mc *CPU) nullCycleCallback() error {
+func nilCycleCallback() error {
 	return nil
 }
 
@@ -522,15 +517,17 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 	// update cycle callback
 	if cycleCallback == nil {
-		mc.cycleCallback = mc.nullCycleCallback
+		mc.cycleCallback = nilCycleCallback
 	} else {
 		mc.cycleCallback = cycleCallback
 	}
 
 	// do nothing and return nothing if ready flag is false
 	if !mc.RdyFlg {
-		err := cycleCallback()
-		return err
+		if mc.cycleCallback != nil {
+			return mc.cycleCallback()
+		}
+		return nil
 	}
 
 	// process all boundaryTriggers
@@ -709,7 +706,8 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 			}
 
 			// +1 cycle
-			err = mc.endCycle()
+			mc.LastResult.Cycles++
+			err = mc.cycleCallback()
 			if err != nil {
 				if !curated.Has(err, bus.AddressError) {
 					return err
@@ -730,7 +728,8 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 			address |= uint16(lo)
 
 			// +1 cycle
-			err = mc.endCycle()
+			mc.LastResult.Cycles++
+			err = mc.cycleCallback()
 			if err != nil {
 				return err
 			}
@@ -891,7 +890,8 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		}
 
 		// +1 cycle
-		err = mc.endCycle()
+		mc.LastResult.Cycles++
+		err = mc.cycleCallback()
 		if err != nil {
 			return err
 		}
@@ -918,7 +918,8 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		}
 
 		// +1 cycle
-		err = mc.endCycle()
+		mc.LastResult.Cycles++
+		err = mc.cycleCallback()
 		if err != nil {
 			return err
 		}
@@ -965,7 +966,8 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 				return err
 			}
 
-			err = mc.endCycle()
+			mc.LastResult.Cycles++
+			err = mc.cycleCallback()
 			if err != nil {
 				return err
 			}
@@ -1005,7 +1007,8 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 			return err
 		}
 		mc.SP.Add(255, false)
-		err = mc.endCycle()
+		mc.LastResult.Cycles++
+		err = mc.cycleCallback()
 		if err != nil {
 			return err
 		}
@@ -1013,7 +1016,8 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 	case "PLA":
 		// +1 cycle
 		mc.SP.Add(1, false)
-		err = mc.endCycle()
+		mc.LastResult.Cycles++
+		err = mc.cycleCallback()
 		if err != nil {
 			return err
 		}
@@ -1034,7 +1038,8 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 			return err
 		}
 		mc.SP.Add(255, false)
-		err = mc.endCycle()
+		mc.LastResult.Cycles++
+		err = mc.cycleCallback()
 		if err != nil {
 			return err
 		}
@@ -1042,7 +1047,8 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 	case "PLP":
 		// +1 cycle
 		mc.SP.Add(1, false)
-		err = mc.endCycle()
+		mc.LastResult.Cycles++
+		err = mc.cycleCallback()
 		if err != nil {
 			return err
 		}
@@ -1118,7 +1124,8 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		if err != nil {
 			return err
 		}
-		err = mc.endCycle()
+		mc.LastResult.Cycles++
+		err = mc.cycleCallback()
 		if err != nil {
 			return err
 		}
@@ -1129,7 +1136,8 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		if err != nil {
 			return err
 		}
-		err = mc.endCycle()
+		mc.LastResult.Cycles++
+		err = mc.cycleCallback()
 		if err != nil {
 			return err
 		}
@@ -1140,7 +1148,8 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		if err != nil {
 			return err
 		}
-		err = mc.endCycle()
+		mc.LastResult.Cycles++
+		err = mc.cycleCallback()
 		if err != nil {
 			return err
 		}
@@ -1355,7 +1364,8 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 		// with that in mind, we're not sure what this extra cycle is for
 		// +1 cycle
-		err = mc.endCycle()
+		mc.LastResult.Cycles++
+		err = mc.cycleCallback()
 		if err != nil {
 			return err
 		}
@@ -1367,7 +1377,8 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 			return err
 		}
 		mc.SP.Add(255, false)
-		err = mc.endCycle()
+		mc.LastResult.Cycles++
+		err = mc.cycleCallback()
 		if err != nil {
 			return err
 		}
@@ -1379,7 +1390,8 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 			return err
 		}
 		mc.SP.Add(255, false)
-		err = mc.endCycle()
+		mc.LastResult.Cycles++
+		err = mc.cycleCallback()
 		if err != nil {
 			return err
 		}
@@ -1405,7 +1417,8 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		if !mc.NoFlowControl {
 			mc.SP.Add(1, false)
 		}
-		err = mc.endCycle()
+		mc.LastResult.Cycles++
+		err = mc.cycleCallback()
 		if err != nil {
 			return err
 		}
@@ -1426,7 +1439,8 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		}
 
 		// +1 cycle
-		err = mc.endCycle()
+		mc.LastResult.Cycles++
+		err = mc.cycleCallback()
 		if err != nil {
 			return err
 		}
@@ -1440,7 +1454,8 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 		// +1 cycle
 		mc.SP.Add(255, false)
-		err = mc.endCycle()
+		mc.LastResult.Cycles++
+		err = mc.cycleCallback()
 		if err != nil {
 			return err
 		}
@@ -1452,7 +1467,8 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 		// +1 cycle
 		mc.SP.Add(255, false)
-		err = mc.endCycle()
+		mc.LastResult.Cycles++
+		err = mc.cycleCallback()
 		if err != nil {
 			return err
 		}
@@ -1465,7 +1481,8 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 		// +1 cycle
 		mc.SP.Add(255, false)
-		err = mc.endCycle()
+		mc.LastResult.Cycles++
+		err = mc.cycleCallback()
 		if err != nil {
 			return err
 		}
@@ -1491,7 +1508,8 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 		// not sure when this cycle should occur
 		// +1 cycle
-		err = mc.endCycle()
+		mc.LastResult.Cycles++
+		err = mc.cycleCallback()
 		if err != nil {
 			return err
 		}
@@ -1584,7 +1602,8 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		if err != nil {
 			return err
 		}
-		err = mc.endCycle()
+		mc.LastResult.Cycles++
+		err = mc.cycleCallback()
 		if err != nil {
 			return err
 		}
@@ -1644,7 +1663,8 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		}
 
 		// +1 cycle
-		err = mc.endCycle()
+		mc.LastResult.Cycles++
+		err = mc.cycleCallback()
 		if err != nil {
 			return err
 		}
