@@ -77,6 +77,9 @@ profile_cpu: generate test
 	@./gopher2600 --profile cpu $(profilingRom)
 	@$(goBinary) tool pprof -http : ./gopher2600 play_cpu.profile
 
+profile_cpu_again:
+	@$(goBinary) tool pprof -http : ./gopher2600 play_cpu.profile
+
 profile_mem: generate test
 	@$(goBinary) build -gcflags $(compileFlags)
 	@echo "use window close button to end (CTRL-C will quite the Makefile script)"
