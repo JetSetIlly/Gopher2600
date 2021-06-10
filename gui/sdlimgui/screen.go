@@ -85,8 +85,8 @@ type screenCrit struct {
 	// - the larger the buffer the greater the input lag
 	// - the smaller the buffer the more the emulation will have to wait the
 	//		screen to catch up (see emuWait and emuWaitAck channels)
-	// - a ten frame buffer seems good
-	bufferPixels [10]*image.RGBA
+	// - a five frame buffer seems good. ten frames can feel laggy
+	bufferPixels [5]*image.RGBA
 
 	// which buffer we'll be plotting to and which bufffer we'll be rendering
 	// from. in playmode we make sure these two indexes never meet. in
