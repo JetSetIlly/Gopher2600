@@ -302,6 +302,10 @@ func newBlurShader() shaderProgram {
 
 func (sh *blurShader) setAttributesArgs(env shaderEnvironment, blur float32) {
 	sh.shader.setAttributes(env)
+
+	// normalise blur amount depending on screen size
+	blur *= float32(env.height) / 960.0
+
 	gl.Uniform2f(sh.blur, blur/float32(env.width), blur/float32(env.height))
 }
 
