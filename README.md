@@ -45,11 +45,10 @@ Games shown: Pitfall; He-Man; Krull; Ladybug; Thrust; Man Goes Down; [Legacy of 
 learning more about the `Atari 2600` and also about the
 [Go programming language](https://golang.org/).
 
-The original intent was to provide a tool for static analysis of a 6507
-program. I soon realised that I would need to emulate more and more of the
-2600 and not just the CPU. Eventually, I realised I would also need a way of see the
-video output from the TIA. At this point it became obvious that I was indeed
-writing a complete 2600 emulator.
+The original intent was to create a tool for static analysis of a 6507 program
+to help in the creation of `Atari 2600` games. I soon realised however that I
+would need to emulate more of the 2600 and not just the CPU for this to be
+useful.
 
 Because of its origins, any flaws or limitations in the design should be borne
 in mind while the project is still in development. [I am open to any suggestions
@@ -58,31 +57,33 @@ on how to improve the project](#self-reflection).
 ### Performance
 
 The development machine for `Gopher2600` was an i3-3225 with 16GB of RAM. Host
-operating system throughout the development has been a GNU/Linux system.
+operating system throughout the development has been a Linux system (4.x
+series).
 
-In playmode I can get a sustained frame rate of 60fps. However, video output is
-not properly vsynced and the audio buffer is not handled very well, sometimes
-running out of bits, resulting in pops and stutters in the sound.
+In playmode I can get a sustained frame rate of 60fps capped - good enough for
+NTSC. This includes emulation of the ARM7 chip if required.
 
-In debug mode, I can get around 35fps - good enough for development work.
+In debug mode, I can get around 35fps. 
 
 To get a performance rating for your installation you can run the following:
 
 	> gopher2600 performance -display -fpscap=false
 
-Which gives the maximum frame rate with the display.
+Which gives the maximum frame rate with the display. Omit the `-display` option
+for an absolute value.
 
-Memory usage is around 40MB of system memory in playmode and around 120MB in
+Memory usage is currently around 40MB of system memory in playmode and around 120MB in
 debug mode. This can vary on the ROM used however. It shouldn't ever be a
 problem on modern hardware.
 
-A `statsview` is also available. See the section below on the [Statistics Viewer](#statistics-viewer) for
-details.
+A `statsview` is also available. See the section below on the [Statistics
+Viewer](#statistics-viewer) for details.
 
 ## Compilation
 
-The project has most recently been tested with Go v1.15. Earlier versions may work
-but v1.15 is recommended due to recent performance improvements.
+The project has most recently been tested with Go v1.16.5. Earlier versions may
+work but the v1.16 series is recommended due to recent performance
+improvements.
 
 The project uses the Go module system and dependencies will be resolved
 automatically. Do note however, that you will also require the SDL development
