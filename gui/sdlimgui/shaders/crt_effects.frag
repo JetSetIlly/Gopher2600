@@ -25,7 +25,9 @@ uniform int Noise;
 uniform int Fringing;
 uniform float CurveAmount;
 uniform float MaskBright;
+uniform float MaskFine;
 uniform float ScanlinesBright;
+uniform float ScanlinesFine;
 uniform float NoiseLevel;
 uniform float FringingAmount;
 uniform float Time;
@@ -70,18 +72,19 @@ void main() {
 	// basic color
 	Crt_Color = Frag_Color * texture(Texture, uv.st);
 
-	// scanlines -  only draw if texture is big enough
-	if (Scanlines == 1 &&float(ScreenDim.y)/float(NumScanlines) > 2.0) {
-		float scans = clamp(ScanlinesBright+0.18*sin(uv.y*ScreenDim.y*1.5), 0.0, 1.0);
-		float s = pow(scans,0.9);
-		Crt_Color.rgb *= vec3(s);
+	// using y axis to determine scaling.
+	float scaling = float(ScreenDim.y) / float(NumScanlines);
+
+	// scanlines -  only draw if scaling is large enough
+	if (Scanlines == 1) {
+		float scans = clamp(ScanlinesBright+0.18*sin(uv.y*ScreenDim.y*ScanlinesFine), 0.0, 1.0);
+		Crt_Color.rgb *= vec3(scans);
 	}
 
-	// shadow mask - only draw if texture is big enough
-	if (ShadowMask == 1 && float(ScreenDim.x)/float(NumClocks) > 3.0) {
-		if (mod(floor(gl_FragCoord.x), 2) == 0.0) {
-			Crt_Color.rgb *= MaskBright;
-		}
+	// shadow mask - only draw if scaling is large enough
+	if (ShadowMask == 1) {
+		float mask = clamp(MaskBright+0.06*sin(uv.x*ScreenDim.x*MaskFine), 0.0, 1.0);
+		Crt_Color.rgb *= vec3(mask);
 	}
 
 	// noise (includes flicker)

@@ -34,7 +34,9 @@ type Preferences struct {
 
 	CurveAmount     prefs.Float
 	MaskBright      prefs.Float
+	MaskFine        prefs.Float
 	ScanlinesBright prefs.Float
+	ScanlinesFine   prefs.Float
 	NoiseLevel      prefs.Float
 	FringingAmount  prefs.Float
 	PhosphorLatency prefs.Float
@@ -58,7 +60,9 @@ const (
 	phosphor         = true
 	curveAmount      = 0.5
 	maskBright       = 0.70
+	maskFine         = 2.9
 	scanlinesBright  = 0.70
+	scanlinesFine    = 1.80
 	noiseLevel       = 0.19
 	fringingAmount   = 0.15
 	phosphorLatency  = 0.5
@@ -119,7 +123,15 @@ func NewPreferences() (*Preferences, error) {
 	if err != nil {
 		return nil, err
 	}
+	err = p.dsk.Add("crt.maskFine", &p.MaskFine)
+	if err != nil {
+		return nil, err
+	}
 	err = p.dsk.Add("crt.scanlinesBright", &p.ScanlinesBright)
+	if err != nil {
+		return nil, err
+	}
+	err = p.dsk.Add("crt.scanlinesFine", &p.ScanlinesFine)
 	if err != nil {
 		return nil, err
 	}
@@ -167,7 +179,9 @@ func (p *Preferences) SetDefaults() {
 	p.Phosphor.Set(phosphor)
 	p.CurveAmount.Set(curveAmount)
 	p.MaskBright.Set(maskBright)
+	p.MaskFine.Set(maskFine)
 	p.ScanlinesBright.Set(scanlinesBright)
+	p.ScanlinesFine.Set(scanlinesFine)
 	p.NoiseLevel.Set(noiseLevel)
 	p.FringingAmount.Set(fringingAmount)
 	p.PhosphorLatency.Set(phosphorLatency)

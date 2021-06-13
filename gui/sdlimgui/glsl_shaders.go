@@ -196,7 +196,9 @@ type effectsShader struct {
 	fringing        int32
 	curveAmount     int32
 	maskBright      int32
+	maskFine        int32
 	scanlinesBright int32
+	scanlinesFine   int32
 	noiseLevel      int32
 	fringingAmount  int32
 	time            int32
@@ -222,7 +224,9 @@ func newEffectsShader(img *SdlImgui, yflip bool) shaderProgram {
 	sh.fringing = gl.GetUniformLocation(sh.handle, gl.Str("Fringing"+"\x00"))
 	sh.curveAmount = gl.GetUniformLocation(sh.handle, gl.Str("CurveAmount"+"\x00"))
 	sh.maskBright = gl.GetUniformLocation(sh.handle, gl.Str("MaskBright"+"\x00"))
+	sh.maskFine = gl.GetUniformLocation(sh.handle, gl.Str("MaskFine"+"\x00"))
 	sh.scanlinesBright = gl.GetUniformLocation(sh.handle, gl.Str("ScanlinesBright"+"\x00"))
+	sh.scanlinesFine = gl.GetUniformLocation(sh.handle, gl.Str("ScanlinesFine"+"\x00"))
 	sh.noiseLevel = gl.GetUniformLocation(sh.handle, gl.Str("NoiseLevel"+"\x00"))
 	sh.fringingAmount = gl.GetUniformLocation(sh.handle, gl.Str("FringingAmount"+"\x00"))
 	sh.time = gl.GetUniformLocation(sh.handle, gl.Str("Time"+"\x00"))
@@ -245,7 +249,9 @@ func (sh *effectsShader) setAttributesArgs(env shaderEnvironment, numScanlines i
 	gl.Uniform1i(sh.fringing, boolToInt32(sh.img.crtPrefs.Fringing.Get().(bool)))
 	gl.Uniform1f(sh.curveAmount, float32(sh.img.crtPrefs.CurveAmount.Get().(float64)))
 	gl.Uniform1f(sh.maskBright, float32(sh.img.crtPrefs.MaskBright.Get().(float64)))
+	gl.Uniform1f(sh.maskFine, float32(sh.img.crtPrefs.MaskFine.Get().(float64)))
 	gl.Uniform1f(sh.scanlinesBright, float32(sh.img.crtPrefs.ScanlinesBright.Get().(float64)))
+	gl.Uniform1f(sh.scanlinesFine, float32(sh.img.crtPrefs.ScanlinesFine.Get().(float64)))
 	gl.Uniform1f(sh.noiseLevel, float32(sh.img.crtPrefs.NoiseLevel.Get().(float64)))
 	gl.Uniform1f(sh.fringingAmount, float32(sh.img.crtPrefs.FringingAmount.Get().(float64)))
 	gl.Uniform1f(sh.time, float32(time.Now().Nanosecond())/100000000.0)
