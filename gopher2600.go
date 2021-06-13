@@ -48,8 +48,19 @@ import (
 
 const defaultInitScript = "debuggerInit"
 
-type stateReq = string
+// communication between the main goroutine and the launch goroutine.
+type mainSync struct {
+	state chan stateRequest
 
+	// a created GUI will communicate throught these channels
+	gui      chan guiControl
+	guiError chan error
+}
+
+// the stateRequest sent through the state channel in mainSync
+type stateReq string
+
+// list of valid stateReq values
 const (
 	// main thread should end as soon as possible.
 	//
@@ -62,6 +73,12 @@ const (
 	//
 	// takes no arguments.
 	reqNoIntSig stateReq = "NOINTSIG"
+
+	// the gui creation function to run in the main goroutine. this is for GUIs
+	// that *need* to be run in the main OS thead (SDL, etc.)
+	//
+	// the only argument must be a guiCreate reference
+	reqCreateGUI stateReq = "CREATEGUI"
 )
 
 type stateRequest struct {
@@ -69,13 +86,12 @@ type stateRequest struct {
 	args interface{}
 }
 
-// GuiCreator facilitates the creation, servicing and destruction of GUIs
-// that need to be run in the main thread.
-//
-// Note that there is no Create() function because we need the freedom to
-// create the GUI how we want. Instead the creator is a channel which accepts
-// a function that returns an instance of GuiCreator.
-type GuiCreator interface {
+// the gui create function. paired with reqCreateGUI state request
+type guiCreate func() (guiControl, error)
+
+// guiControl defines the functions that a guiControl implementation must implement to be
+// usable from the main goroutine.
+type guiControl interface {
 	// cleanup resources used by the gui
 	Destroy(io.Writer)
 
@@ -88,24 +104,11 @@ type GuiCreator interface {
 	Service()
 }
 
-// communication between the main() function and the launch() function. this is
-// required because many gui solutions (notably SDL) require window event
-// handling (including creation) to occur on the main thread.
-type mainSync struct {
-	state   chan stateRequest
-	creator chan func() (GuiCreator, error)
-
-	// the result of creator will be returned on either of these two channels.
-	creation      chan GuiCreator
-	creationError chan error
-}
-
 func main() {
 	sync := &mainSync{
-		state:         make(chan stateRequest),
-		creator:       make(chan func() (GuiCreator, error)),
-		creation:      make(chan GuiCreator),
-		creationError: make(chan error),
+		state:    make(chan stateRequest),
+		gui:      make(chan guiControl),
+		guiError: make(chan error),
 	}
 
 	// the value to use with os.Exit(). can be changed with reqQuit
@@ -128,41 +131,12 @@ func main() {
 	//  3. anything in the Service() function of the most recently created GUI
 	//
 	done := false
-	var gui GuiCreator
+	var gui guiControl
 	for !done {
 		select {
 		case <-intChan:
 			fmt.Println("\r")
 			done = true
-
-		case creator := <-sync.creator:
-			var err error
-
-			// destroy existing gui
-			if gui != nil {
-				gui.Destroy(os.Stderr)
-			}
-
-			gui, err = creator()
-			if err != nil {
-				sync.creationError <- err
-
-				// gui is a variable of type interface. nil doesn't work as you
-				// might expect with interfaces. for instance, even though the
-				// following outputs "<nil>":
-				//
-				//	fmt.Println(gui)
-				//
-				// the following equation print false:
-				//
-				//	fmt.Println(gui == nil)
-				//
-				// as to the reason why gui does not equal nil, even though
-				// the creator() function returns nil? well, you tell me.
-				gui = nil
-			} else {
-				sync.creation <- gui
-			}
 
 		case state := <-sync.state:
 			switch state.req {
@@ -185,6 +159,36 @@ func main() {
 				if state.args != nil {
 					panic(fmt.Sprintf("%s does not accept any arguments", reqNoIntSig))
 				}
+
+			case reqCreateGUI:
+				var err error
+
+				// destroy existing gui
+				if gui != nil {
+					gui.Destroy(os.Stderr)
+				}
+
+				gui, err = state.args.(guiCreate)()
+				if err != nil {
+					sync.guiError <- err
+
+					// gui is a variable of type interface. nil doesn't work as you
+					// might expect with interfaces. for instance, even though the
+					// following outputs "<nil>":
+					//
+					//	fmt.Println(gui)
+					//
+					// the following equation print false:
+					//
+					//	fmt.Println(gui == nil)
+					//
+					// as to the reason why gui does not equal nil, even though
+					// the creator() function returns nil? well, you tell me.
+					gui = nil
+				} else {
+					sync.gui <- gui
+				}
+
 			}
 
 		default:
@@ -316,17 +320,19 @@ func play(md *modalflag.Modes, sync *mainSync) error {
 		}
 
 		// create gui
-		sync.creator <- func() (GuiCreator, error) {
-			return sdlimgui.NewSdlImgui(tv)
+		sync.state <- stateRequest{req: reqCreateGUI,
+			args: guiCreate(func() (guiControl, error) {
+				return sdlimgui.NewSdlImgui(tv)
+			}),
 		}
 
 		// wait for creator result
 		var scr gui.GUI
 		select {
-		case g := <-sync.creation:
+		case g := <-sync.gui:
 			scr = g.(gui.GUI)
 
-		case err := <-sync.creationError:
+		case err := <-sync.guiError:
 			return err
 		}
 
@@ -432,15 +438,17 @@ func debug(md *modalflag.Modes, sync *mainSync) error {
 
 	// create gui
 	if *termType == "IMGUI" {
-		sync.creator <- func() (GuiCreator, error) {
-			return sdlimgui.NewSdlImgui(tv)
+		sync.state <- stateRequest{req: reqCreateGUI,
+			args: guiCreate(func() (guiControl, error) {
+				return sdlimgui.NewSdlImgui(tv)
+			}),
 		}
 
 		// wait for creator result
 		select {
-		case g := <-sync.creation:
+		case g := <-sync.gui:
 			scr = g.(gui.GUI)
-		case err := <-sync.creationError:
+		case err := <-sync.guiError:
 			return err
 		}
 
@@ -585,7 +593,7 @@ func perform(md *modalflag.Modes, sync *mainSync) error {
 	mapping := md.AddString("mapping", "AUTO", "force use of cartridge mapping")
 	spec := md.AddString("tv", "AUTO", "television specification: NTSC, PAL, PAL60")
 	display := md.AddBool("display", false, "display TV output")
-	fpsCap := md.AddBool("fpscap", true, "cap FPS to specification (only valid if -display=true)")
+	fpsCap := md.AddBool("fpscap", true, "cap FPS to specification")
 	duration := md.AddString("duration", "5s", "run duration (note: there is a 2s overhead)")
 	profile := md.AddString("profile", "NONE", "run performance check with profiling: command separated CPU, MEM, TRACE or ALL")
 	log := md.AddBool("log", false, "echo debugging log to stdout")
@@ -623,15 +631,17 @@ func perform(md *modalflag.Modes, sync *mainSync) error {
 
 		if *display {
 			// create gui
-			sync.creator <- func() (GuiCreator, error) {
-				return sdlimgui.NewSdlImgui(tv)
+			sync.state <- stateRequest{req: reqCreateGUI,
+				args: guiCreate(func() (guiControl, error) {
+					return sdlimgui.NewSdlImgui(tv)
+				}),
 			}
 
 			// wait for creator result
 			select {
-			case g := <-sync.creation:
+			case g := <-sync.gui:
 				scr = g.(gui.GUI)
-			case err := <-sync.creationError:
+			case err := <-sync.guiError:
 				return err
 			}
 
@@ -646,7 +656,7 @@ func perform(md *modalflag.Modes, sync *mainSync) error {
 		}
 
 		// run performance check
-		err = performance.Check(md.Output, p, tv, scr, *duration, cartload)
+		err = performance.Check(md.Output, p, false, tv, scr, cartload, *duration)
 		if err != nil {
 			return err
 		}

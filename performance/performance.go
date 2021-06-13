@@ -18,6 +18,7 @@ package performance
 import (
 	"fmt"
 	"io"
+	"runtime"
 	"time"
 
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
@@ -32,34 +33,40 @@ import (
 // sentinal error returned by Run() loop.
 const timedOut = "timed out"
 
-// Check is a very rough and ready calculation of the emulator's performance.
-func Check(output io.Writer, profile Profile, tv *television.Television, scr gui.GUI, runTime string, cartload cartridgeloader.Loader) error {
+// Check the performance of the emulator using the supplied tv/gui/cartridge
+// combinataion. Emulation will run of specificed duration and will create a
+// cpu, memory profile, a trace (or a combination of those) as defined by the
+// Profile argument. The includeDetail argument will create any profile file
+// with additional detail in the filename.
+func Check(output io.Writer, profile Profile, includeDetail bool,
+	tv *television.Television, scr gui.GUI, cartload cartridgeloader.Loader,
+	duration string) error {
 	var err error
 
-	// create vcs using the tv created above
+	// create vcs
 	vcs, err := hardware.NewVCS(tv)
 	if err != nil {
-		return curated.Errorf("performance; %v", err)
+		return curated.Errorf("performance: %v", err)
 	}
 
 	// connect vcs to gui
 	if scr != nil {
 		err = scr.SetFeature(gui.ReqSetPlaymode, vcs, nil)
 		if err != nil {
-			return curated.Errorf("playmode: %v", err)
+			return curated.Errorf("performance: %v", err)
 		}
 	}
 
-	// attach cartridge to te vcs
+	// attach cartridge to the vcs
 	err = setup.AttachCartridge(vcs, cartload)
 	if err != nil {
-		return curated.Errorf("performance; %v", err)
+		return curated.Errorf("performance: %v", err)
 	}
 
 	// parse supplied duration
-	duration, err := time.ParseDuration(runTime)
+	dur, err := time.ParseDuration(duration)
 	if err != nil {
-		return curated.Errorf("performance; %v", err)
+		return curated.Errorf("performance: %v", err)
 	}
 
 	// get starting frame number (should be 0)
@@ -69,7 +76,7 @@ func Check(output io.Writer, profile Profile, tv *television.Television, scr gui
 	if scr != nil {
 		err = scr.SetFeature(gui.ReqState, gui.StateRunning)
 		if err != nil {
-			return curated.Errorf("performance; %v", err)
+			return curated.Errorf("performance: %v", err)
 		}
 	}
 
@@ -82,13 +89,16 @@ func Check(output io.Writer, profile Profile, tv *television.Television, scr gui
 
 		// force a two second leadtime to allow framerate to settle down and
 		// then restart timer for the specified duration
+		//
+		// the two second leadtime will put false on the timerChan. the
+		// conclusion of the reset of the time will put true on the timerChan.
 		go func() {
 			time.AfterFunc(2*time.Second, func() {
 				// signal parent function that 2 second leadtime has elapsed
 				timerChan <- false
 
 				// race condition when GetState() is called
-				time.AfterFunc(duration, func() {
+				time.AfterFunc(dur, func() {
 					timerChan <- true
 				})
 			})
@@ -106,8 +116,10 @@ func Check(output io.Writer, profile Profile, tv *television.Television, scr gui
 						return curated.Errorf(timedOut)
 					}
 
-					// timerChan has returned false so start measurement of
-					// performance by noting the current television frame
+					// timerChan has returned false which indicates that the
+					// leadtime has concluded. this means the performance
+					// measurement has begun and we should record the start
+					// frame.
 					startFrame = tv.GetState(signal.ReqFramenum)
 				default:
 					return nil
@@ -117,9 +129,14 @@ func Check(output io.Writer, profile Profile, tv *television.Television, scr gui
 		return err
 	}
 
+	tag := "performance"
+	if includeDetail {
+		tag = fmt.Sprintf("%s_%s_%s", tag, duration, runtime.Version())
+	}
+
 	// launch runner directly or through the CPU profiler, depending on
 	// supplied arguments
-	err = RunProfiler(profile, "performance", runner)
+	err = RunProfiler(profile, tag, runner)
 	if err != nil && !curated.Is(err, timedOut) {
 		return curated.Errorf("performance: %v", err)
 	}
@@ -129,8 +146,8 @@ func Check(output io.Writer, profile Profile, tv *television.Television, scr gui
 
 	// calculate performance
 	numFrames := endFrame - startFrame
-	fps, accuracy := CalcFPS(tv, numFrames, duration.Seconds())
-	output.Write([]byte(fmt.Sprintf("%.2f fps (%d frames in %.2f seconds) %.1f%%\n", fps, numFrames, duration.Seconds(), accuracy)))
+	fps, accuracy := CalcFPS(tv, numFrames, dur.Seconds())
+	output.Write([]byte(fmt.Sprintf("%.2f fps (%d frames in %.2f seconds) %.1f%%\n", fps, numFrames, dur.Seconds(), accuracy)))
 
 	return nil
 }
