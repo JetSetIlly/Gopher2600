@@ -57,6 +57,9 @@ type Modes struct {
 
 	// some modes will benefit from a verbose explanation. use
 	additionalHelp string
+
+	minRemainingArgs int
+	maxRemainingArgs int
 }
 
 func (md *Modes) String() string {
@@ -100,6 +103,13 @@ func (md *Modes) AdditionalHelp(help string) {
 	md.additionalHelp = help
 }
 
+// MinMax specifies the minimum and maximum number of non-flags arguments that
+// are required.
+func (md *Modes) MinMax(min int, max int) {
+	md.minRemainingArgs = min
+	md.maxRemainingArgs = max
+}
+
 // Parsed returns false if Parse() has not yet been called since either a call
 // to NewArgs() or NewMode(). Note that, a Modes struct is considered to be
 // Parsed() even if Parse() results in an error.
@@ -119,6 +129,10 @@ const (
 	// of the Modes struct should be checked.
 	ParseContinue ParseResult = iota
 
+	// The wrong number of non-flag arguments have been specified.
+	ParseTooFewArgs
+	ParseTooManyArgs
+
 	// Help was requested and has been printed.
 	ParseHelp
 
@@ -129,11 +143,12 @@ const (
 // Parse the top level layer of arguments. Returns a value of ParseResult.
 // The idiomatic usage is as follows:
 //
-//		r, err := md.Parse(".....") }
-//		case ParseHelp:
+//		p, err := md.Parse()
+//		switch p {
+//		case modalflag.ParseHelp:
 //			// help message has already been printed
 //			return
-//		case ParseError:
+//		case modalflag.ParseError:
 //			printError(err)
 //			return
 //		}
@@ -190,6 +205,15 @@ func (md *Modes) Parse() (ParseResult, error) {
 		// add mode (either one we've found or the default) and add it to
 		// the path
 		md.path = append(md.path, mode)
+	}
+
+	r := md.RemainingArgs()
+	if md.minRemainingArgs > 0 && len(r) < md.minRemainingArgs {
+		return ParseTooFewArgs, nil
+	}
+
+	if md.maxRemainingArgs > 0 && len(r) > md.maxRemainingArgs {
+		return ParseTooManyArgs, nil
 	}
 
 	return ParseContinue, nil

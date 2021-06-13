@@ -39,6 +39,12 @@ func (hw *helpWriter) Help(output io.Writer, banner string, subModes []string, a
 	// output "no help available" message if there is no flag information and no
 	// sub-modes
 	if s == "Usage:\n" && len(subModes) == 0 {
+		if additionalHelp != "" {
+			output.Write([]byte(additionalHelp))
+			output.Write([]byte("\n"))
+			return
+		}
+
 		output.Write([]byte("No help available"))
 		if banner != "" {
 			output.Write([]byte(fmt.Sprintf(" for %s", banner)))
