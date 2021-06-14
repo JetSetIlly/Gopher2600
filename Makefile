@@ -73,7 +73,9 @@ profile:
 
 profile_cpu: generate test
 	@$(goBinary) build -gcflags $(compileFlags)
-	@echo "use window close button to end (CTRL-C will quit the Makefile script)"
+	# @echo "use window close button to end (CTRL-C will quit the Makefile script)"
+	# @./gopher2600 run --profile=cpu $(profilingRom)
+	@echo "performance mode running for 20s"
 	@./gopher2600 performance --profile=cpu --fpscap=false --duration=20s $(profilingRom)
 	@$(goBinary) tool pprof -http : ./gopher2600 performance_cpu.profile
 
@@ -82,13 +84,19 @@ profile_cpu_again:
 
 profile_mem: generate test
 	@$(goBinary) build -gcflags $(compileFlags)
+	# @echo "use window close button to end (CTRL-C will quit the Makefile script)"
+	# @./gopher2600 run --profile=cpu $(profilingRom)
 	@echo "use window close button to end (CTRL-C will quit the Makefile script)"
+	@echo "performance mode running for 20s"
 	@./gopher2600 performance --profile=mem --fpscap=false --duration=20s $(profilingRom)
 	@$(goBinary) tool pprof -http : ./gopher2600 performance_mem.profile
 
 profile_trace: generate test
 	@$(goBinary) build -gcflags $(compileFlags)
+	# @echo "use window close button to end (CTRL-C will quit the Makefile script)"
+	# @./gopher2600 run --profile=cpu $(profilingRom)
 	@echo "use window close button to end (CTRL-C will quit the Makefile script)"
+	@echo "performance mode running for 20s"
 	@./gopher2600 performance --profile=trace --fpscap=false --duration=20s $(profilingRom)
 	@$(goBinary) tool trace -http : performance_trace.profile
 

@@ -123,6 +123,13 @@ func main() {
 	// the mainSync instance
 	go launch(sync)
 
+	// if there is no GUI then we should sleep so that the select channel loop
+	// doesn't go beserk
+	noGuiSleepPeriod, err := time.ParseDuration("5ms")
+	if err != nil {
+		panic(err)
+	}
+
 	// loop until done is true. every iteration of the loop we listen for:
 	//
 	//  1. interrupt signals
@@ -196,6 +203,8 @@ func main() {
 			// then call Service()
 			if gui != nil {
 				gui.Service()
+			} else {
+				time.Sleep(noGuiSleepPeriod)
 			}
 		}
 	}
