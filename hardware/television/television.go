@@ -57,16 +57,21 @@ type State struct {
 	frameNum int
 	//	- the current scanline number
 	scanline int
-	//  - the current synced frame number. a synced frame is one which was
-	//  generated from a valid VSYNC/VBLANK sequence. we use this to detect:
-	//   * whether the image is "stable"
-	//   * whether specification changes should still occur
-	syncedFrameNum int
 
 	// is current frame as a result of a VSYNC flyback or not (a "natural"
 	// flyback). we use this in the context of newFrame() so we should probably
 	// think of this as the previous frame.
 	syncedFrame bool
+
+	// the number of frames that have been formed in sequence because of a
+	// "synced frame". we use this to decide:
+	//
+	//   * whether the image is "stable"
+	//   * whether specification changes should still occur
+	//
+	// once stableFrames has reached the stabilityThreshold then it is never
+	// reset to zero (except through an explicit call to Reset()).
+	stableFrames int
 
 	// record of signal attributes from the last call to Signal()
 	lastSignal signal.SignalAttributes
@@ -205,7 +210,7 @@ func (tv *Television) Reset(keepFrameNum bool) error {
 
 	tv.state.clock = 0
 	tv.state.scanline = 0
-	tv.state.syncedFrameNum = 0
+	tv.state.stableFrames = 0
 	tv.state.syncedFrame = false
 	tv.state.vsyncCount = 0
 	tv.state.lastSignal = signal.SignalAttributes{}
@@ -433,20 +438,26 @@ func (tv *Television) newScanline() error {
 }
 
 func (tv *Television) newFrame(synced bool) error {
-	// specification change from NTSC to PAL
+	// a synced frame is one which was generated from a valid VSYNC/VBLANK sequence
+	tv.state.syncedFrame = synced
+
+	// increase or reset stable frame count as required
+	if tv.state.stableFrames <= stabilityThreshold {
+		if tv.state.syncedFrame {
+			tv.state.stableFrames++
+		} else {
+			tv.state.stableFrames = 0
+		}
+	}
+
+	// specification change from NTSC to PAL.
 	if tv.state.spec.ID == specification.SpecNTSC.ID {
-		if tv.state.syncedFrameNum > leadingFrames && tv.state.syncedFrameNum < stabilityThreshold {
+		if tv.state.stableFrames > leadingFrames && tv.state.stableFrames < stabilityThreshold {
 			if tv.state.auto && tv.state.scanline > specification.SpecNTSC.ScanlinesTotal+excessScanlinesNTSC {
 				_ = tv.SetSpec("PAL")
 			}
 		}
 	}
-
-	// a synced frame is one which was generated from a valid VSYNC/VBLANK sequence
-	if synced {
-		tv.state.syncedFrameNum++
-	}
-	tv.state.syncedFrame = synced
 
 	// commit any resizing that maybe pending
 	err := tv.state.resizer.commit(tv)
@@ -558,7 +569,7 @@ func (tv *Television) processSignals(current bool) error {
 // IsStable returns true if the television thinks the image being sent by
 // the VCS is stable.
 func (tv *Television) IsStable() bool {
-	return tv.state.syncedFrameNum >= stabilityThreshold
+	return tv.state.stableFrames >= stabilityThreshold
 }
 
 // GetLastSignal Returns a copy of the most SignalAttributes sent to the TV
