@@ -45,4 +45,20 @@
 //
 // Framesize adaptation is also handled by the reference implementation and is
 // currently functional but rudimentary.
+//
+// Screen Rolling
+//
+// Screen rolling is not handled by the television package. However, the synced
+// argument of the NewFrame() function in the PixelRenderer and FrameTrigger
+// interfaces can be used to implement it if required. Something like this:
+//
+//    1) If Synced is false, note scanline of last plot (unsynedScanline)
+//    2) For every SetPixel() add unsyncedScanline to the Scanline value in
+//       the SignalAttributes struct (adjustedScanline)
+//    3) Bring adjustedScanline into range by modulo ScanlinesTotal of the
+//       current TV specification.
+//
+// Recovery from a screen roll should also be emulated. A good way of doing
+// this is to reduce unsyncedScanline by a percentage (80% say) on synced
+// frames (or every other synced frame) after an unsynced frame.
 package television

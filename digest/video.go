@@ -96,7 +96,7 @@ func (dig *Video) Resize(spec specification.Spec, _, _ int) error {
 }
 
 // NewFrame implements television.PixelRenderer interface.
-func (dig *Video) NewFrame(_ bool) error {
+func (dig *Video) NewFrame(_ bool, _ bool) error {
 	// chain fingerprints by copying the value of the last fingerprint
 	// to the head of the video data
 	n := copy(dig.pixels, dig.digest[:])

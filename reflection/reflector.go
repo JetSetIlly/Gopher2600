@@ -118,7 +118,7 @@ func (ref *Reflector) Pause(pause bool) error {
 }
 
 // NewFrame implements the television.FrameTrigger interface.
-func (ref *Reflector) NewFrame(_ bool) error {
+func (ref *Reflector) NewFrame(_ bool, _ bool) error {
 	// if reflector is not paused then we must process all outstanding
 	// VideoStep in the history
 	if ref.renderer != nil && !ref.paused {

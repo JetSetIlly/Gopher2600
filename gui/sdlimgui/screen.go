@@ -74,9 +74,14 @@ type screenCrit struct {
 	// whether the current frame was generated from a stable television state
 	isStable bool
 
+	// whether the current frame is vsynced
+	synced bool
+
 	// current values for *playable* area of the screen
-	topScanline    int
-	bottomScanline int
+	topScanline        int
+	bottomScanline     int
+	unsyncedScanline   int
+	unsyncedRecoveryCt int
 
 	// the pixels array is used in the presentation texture of the play and debug screen.
 	pixels *image.RGBA
@@ -141,7 +146,7 @@ func newScreen(img *SdlImgui) *screen {
 // called on startup and also whenever the VCS is reset, including when a new
 // cartridge is inserted.
 func (scr *screen) Reset() {
-	// we don't call resize on screen Reset
+	// we don't callresize on screen Reset
 
 	scr.crit.section.Lock()
 	defer scr.crit.section.Unlock()
@@ -185,11 +190,7 @@ func (scr *screen) clearPixels() {
 	scr.replotOverlay()
 }
 
-// resize() is called by Resize() or resizeThread() depending on thread context.
-//
-// it can be called when there is no need to resize the image so steps are
-// taken at the beginning of the function to return early before any
-// side-effects occur.
+// resize() is called by Resize() and by NewScreen().
 func (scr *screen) resize(spec specification.Spec, topScanline int, bottomScanline int) {
 	scr.crit.section.Lock()
 	defer scr.crit.section.Unlock()
@@ -263,13 +264,37 @@ func (scr *screen) Resize(spec specification.Spec, topScanline int, bottomScanli
 // NewFrame implements the television.PixelRenderer interface
 //
 // MUST NOT be called from the gui thread.
-func (scr *screen) NewFrame(isStable bool) error {
+func (scr *screen) NewFrame(synced bool, isStable bool) error {
 	// unlocking must be done carefully
 	scr.crit.section.Lock()
 
 	scr.crit.isStable = isStable
+	scr.crit.synced = synced
 
 	if scr.img.isPlaymode() {
+		// screen rolling
+		if synced {
+			// recovery required
+			if scr.crit.unsyncedScanline > 0 {
+				// slow recovery down to every other frame. this helps to
+				// create the rolling effect when alternate frames are
+				// sync/unscynced
+				scr.crit.unsyncedRecoveryCt++
+				if scr.crit.unsyncedRecoveryCt%2 == 0 {
+					scr.crit.unsyncedScanline *= 8
+					scr.crit.unsyncedScanline /= 10
+				}
+			}
+		} else {
+			// without the isStable check, the screen can descync and recover
+			// from a roll on startup on most ROMs, which looks quite cool but
+			// we'll leave it disabled for now.
+			if isStable {
+				scr.crit.unsyncedScanline = (scr.crit.unsyncedScanline + scr.crit.lastY) % scr.crit.spec.ScanlinesTotal
+				scr.crit.unsyncedRecoveryCt = 0
+			}
+		}
+
 		scr.crit.plotIdx++
 		if scr.crit.plotIdx >= len(scr.crit.bufferPixels) {
 			scr.crit.plotIdx = 0
@@ -353,7 +378,8 @@ func (scr *screen) SetPixel(sig signal.SignalAttributes, current bool) error {
 
 	// if sig is outside the bounds of the image then the SetRGBA() will silently fail
 
-	scr.crit.bufferPixels[scr.crit.plotIdx].SetRGBA(sig.Clock, sig.Scanline, col)
+	adjustedScanline := (sig.Scanline + scr.crit.unsyncedScanline) % scr.crit.spec.ScanlinesTotal
+	scr.crit.bufferPixels[scr.crit.plotIdx].SetRGBA(sig.Clock, adjustedScanline, col)
 
 	return nil
 }
@@ -369,7 +395,8 @@ func (scr *screen) SetPixels(sig []signal.SignalAttributes, current bool) error 
 	var col color.RGBA
 
 	offset := sig[0].Clock * 4
-	offset += sig[0].Scanline * scr.crit.bufferPixels[scr.crit.plotIdx].Rect.Size().X * 4
+	adjustedScanline := (sig[0].Scanline + scr.crit.unsyncedScanline) % scr.crit.spec.ScanlinesTotal
+	offset += adjustedScanline * scr.crit.bufferPixels[scr.crit.plotIdx].Rect.Size().X * 4
 
 	for i := range sig[0:] {
 		if offset >= len(scr.crit.bufferPixels[scr.crit.plotIdx].Pix) {
@@ -390,6 +417,7 @@ func (scr *screen) SetPixels(sig []signal.SignalAttributes, current bool) error 
 		// alpha channel never changes
 
 		offset += 4
+		offset %= len(scr.crit.bufferPixels[scr.crit.plotIdx].Pix)
 	}
 
 	if current {

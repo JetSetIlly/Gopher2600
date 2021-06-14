@@ -52,7 +52,7 @@ type PixelRenderer interface {
 	Resize(spec specification.Spec, topScanline, bottomScanline int) error
 
 	// NewFrame and NewScanline are called at the start of the frame/scanline
-	NewFrame(isStable bool) error
+	NewFrame(synced bool, isStable bool) error
 	NewScanline(scanline int) error
 
 	// Mark the start and end of an update event from the television.
@@ -109,7 +109,7 @@ type PauseTrigger interface {
 // FrameTrigger implementations listen for NewFrame events. FrameTrigger is a
 // subset of PixelRenderer.
 type FrameTrigger interface {
-	NewFrame(isStable bool) error
+	NewFrame(synced bool, isStable bool) error
 }
 
 // AudioMixer implementations work with sound; most probably playing it. An

@@ -483,7 +483,7 @@ func (tv *Television) newFrame(synced bool) error {
 
 	// process all FrameTriggers
 	for _, r := range tv.frameTriggers {
-		err = r.NewFrame(tv.IsStable())
+		err = r.NewFrame(tv.state.syncedFrame, tv.IsStable())
 		if err != nil {
 			return err
 		}
