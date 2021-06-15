@@ -535,9 +535,15 @@ func (tv *Television) processSignals(current bool) error {
 			}
 
 			if !current {
-				err = r.SetPixels(tv.signals[tv.currentIdx:tv.lastMaxIdx], false)
-				if err != nil {
-					return curated.Errorf("television: %v", err)
+				// currentIdx can sometimes be larger than lastMaxIdx when
+				// stepping back over an unsynced frame boundary. I've not
+				// tracked down exactly why this is but we should protect
+				// against the possible "slice bounds out of range" panic.
+				if tv.currentIdx < tv.lastMaxIdx {
+					err = r.SetPixels(tv.signals[tv.currentIdx:tv.lastMaxIdx], false)
+					if err != nil {
+						return curated.Errorf("television: %v", err)
+					}
 				}
 			}
 
