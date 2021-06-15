@@ -77,11 +77,12 @@ type screenCrit struct {
 	// whether the current frame is vsynced
 	synced bool
 
-	// when an unsynced frame is encountered the screen will roll
+	// when an unsynced frame is encountered the screen will roll. we only
+	// allow this in playmode. there's no value in seeing the screen-roll in
+	// debug mode.
 	//
 	// unsyncedScanline keeps track of the accumulated scanline position
 	unsyncedScanline int
-	//
 	// unsyncedRecoveryCt is used to help the screen regain the correct
 	// position once a synced frame is recieved.
 	unsyncedRecoveryCt int
@@ -164,6 +165,9 @@ func (scr *screen) Reset() {
 
 	scr.crit.lastX = 0
 	scr.crit.lastY = 0
+
+	// screen is synced by definition on reset
+	scr.crit.synced = true
 }
 
 // clear all pixel information including reflection data.

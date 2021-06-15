@@ -18,7 +18,6 @@ package sdlimgui
 import (
 	"fmt"
 	"image"
-	"math"
 
 	"github.com/go-gl/gl/v3.2-core/gl"
 	"github.com/inkyblackness/imgui-go/v4"
@@ -286,7 +285,13 @@ func (win *winDbgScr) draw() {
 		// tv spec
 		win.drawSpecCombo()
 
+		// scaling indicator
+		imgui.SameLineV(0, 15)
+		imgui.AlignTextToFramePadding()
+		imgui.Text(fmt.Sprintf("%.1fx", win.yscaling))
+
 		// crt preview affects which debugging toggles are visible
+		imgui.SameLineV(0, 15)
 		if imgui.Checkbox("CRT Preview", &win.crtPreview) {
 			win.createTextures = true
 		}
@@ -294,6 +299,7 @@ func (win *winDbgScr) draw() {
 		// debugging toggles
 		if win.crtPreview {
 			imgui.SameLineV(0, 15)
+			imgui.AlignTextToFramePadding()
 			imgui.Text("(using current CRT preferences)")
 		} else {
 			imgui.SameLineV(0, 15)
@@ -350,6 +356,12 @@ func (win *winDbgScr) drawCoordsLine() {
 	// include tv signal information
 	imgui.SameLineV(0, 20)
 	imgui.Text(win.img.lz.TV.LastSignal.String())
+
+	// unsynced
+	if !win.scr.crit.synced {
+		imgui.SameLineV(0, 20)
+		imgui.Text("UNSYNCED")
+	}
 }
 
 func (win *winDbgScr) drawOverlayCombo() {
@@ -656,10 +668,10 @@ func (win *winDbgScr) setScaling() {
 
 	if aspectRatio < winRatio {
 		// window wider than TV screen
-		scaling = float32(math.Floor(float64(win.screenRegion.Y / h)))
+		scaling = float32(win.screenRegion.Y / h)
 	} else {
 		// TV screen wider than window
-		scaling = float32(math.Floor(float64(win.screenRegion.X / adjW)))
+		scaling = float32(win.screenRegion.X / adjW)
 	}
 
 	// limit scaling to 1x
