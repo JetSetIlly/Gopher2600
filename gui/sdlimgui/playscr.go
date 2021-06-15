@@ -17,7 +17,6 @@ package sdlimgui
 
 import (
 	"fmt"
-	"math"
 	"time"
 
 	"github.com/go-gl/gl/v3.2-core/gl"
@@ -139,6 +138,7 @@ func (win *playScr) draw() {
 
 		imgui.Text(win.fps)
 		imgui.Text(fmt.Sprintf("%.1fx scaling", win.yscaling))
+		imgui.Text(fmt.Sprintf("%d visible scanlines", win.scr.crit.bottomScanline-win.scr.crit.topScanline))
 
 		win.img.screen.crit.section.Lock()
 		imgui.Text(win.img.screen.crit.spec.ID)
@@ -259,7 +259,7 @@ func (win *playScr) setScaling() {
 
 	w := float32(win.scr.crit.cropPixels.Bounds().Size().X)
 	h := float32(win.scr.crit.cropPixels.Bounds().Size().Y)
-	adjW := w * pixelWidth * win.scr.aspectBias
+	adjW := w * pixelWidth * win.scr.crit.spec.AspectBias
 
 	var scaling float32
 
@@ -268,16 +268,19 @@ func (win *playScr) setScaling() {
 
 	if aspectRatio < winRatio {
 		// window wider than TV screen
-		scaling = float32(math.Floor(float64(screenRegion.Y / h)))
+		scaling = float32(screenRegion.Y / h)
 	} else {
 		// TV screen wider than window
-		scaling = float32(math.Floor(float64(screenRegion.X / adjW)))
+		scaling = float32(screenRegion.X / adjW)
 	}
 
 	// limit scaling to 1x
 	if scaling < 1 {
 		scaling = 1
 	}
+
+	// limit scaling to whole integers
+	scaling = float32(int(scaling))
 
 	win.imagePosMin = imgui.Vec2{
 		X: float32(int((screenRegion.X - (adjW * scaling)) / 2)),
@@ -286,7 +289,7 @@ func (win *playScr) setScaling() {
 	win.imagePosMax = screenRegion.Minus(win.imagePosMin)
 
 	win.yscaling = scaling
-	win.xscaling = scaling * pixelWidth * win.scr.aspectBias
+	win.xscaling = scaling * pixelWidth * win.scr.crit.spec.AspectBias
 	win.scaledWidth = w * win.xscaling
 	win.scaledHeight = h * win.yscaling
 

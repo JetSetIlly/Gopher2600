@@ -49,9 +49,6 @@ type screen struct {
 	emuWait    chan bool
 	emuWaitAck chan bool
 
-	// aspect bias is taken from the television specification
-	aspectBias float32
-
 	// the mouse coords used in the most recent call to PushGotoCoords(). only
 	// read/write by the GUI thread so doesn't need to be in critical section.
 	gotoCoordsX int
@@ -246,9 +243,6 @@ func (scr *screen) resize(spec specification.Spec, topScanline int, bottomScanli
 
 	// make sure all pixels are clear
 	scr.clearPixels()
-
-	// update aspect-bias value
-	scr.aspectBias = spec.AspectBias
 
 	// resize texture renderers
 	for _, r := range scr.renderers {
