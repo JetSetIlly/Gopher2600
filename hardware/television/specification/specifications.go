@@ -86,8 +86,9 @@ type Spec struct {
 	// scanline is the visible portion of the screen.
 	//
 	// in practice, the VCS can turn VBLANK on and off at any time; what the
-	// two values below represent what "Atari's research" has shown to be safe.
-	// by definition this means that:
+	// two values below represent what "Atari's research" (according to page 1
+	// of the "Stella Programmer's Guide") has shown to be safe. by definition
+	// this means that:
 	//
 	//	Top = VSync + Vblank
 	//

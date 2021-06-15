@@ -91,6 +91,7 @@ func newPlayScr(img *SdlImgui) *playScr {
 		img:      img,
 		scr:      img.screen,
 		fpsPulse: time.NewTicker(time.Second),
+		fps:      "waiting for fps",
 	}
 
 	// set texture, creation of textures will be done after every call to resize()
@@ -137,6 +138,20 @@ func (win *playScr) draw() {
 			imgui.WindowFlagsNoScrollbar|imgui.WindowFlagsNoTitleBar|imgui.WindowFlagsNoDecoration)
 
 		imgui.Text(win.fps)
+		imgui.Text(fmt.Sprintf("%.1fx scaling", win.yscaling))
+
+		win.img.screen.crit.section.Lock()
+		imgui.Text(win.img.screen.crit.spec.ID)
+		imgui.SameLine()
+		if win.img.screen.crit.topScanline < win.img.screen.crit.spec.AtariSafeTop {
+			imgui.Text("(extended)")
+		} else {
+			imgui.Text("(atari safe)")
+		}
+		if !win.img.screen.crit.synced {
+			imgui.Text("unsynced")
+		}
+		win.img.screen.crit.section.Unlock()
 
 		imgui.PopStyleColorV(2)
 		imgui.End()
