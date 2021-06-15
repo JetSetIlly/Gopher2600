@@ -77,11 +77,18 @@ type screenCrit struct {
 	// whether the current frame is vsynced
 	synced bool
 
-	// current values for *playable* area of the screen
-	topScanline        int
-	bottomScanline     int
-	unsyncedScanline   int
+	// when an unsynced frame is encountered the screen will roll
+	//
+	// unsyncedScanline keeps track of the accumulated scanline position
+	unsyncedScanline int
+	//
+	// unsyncedRecoveryCt is used to help the screen regain the correct
+	// position once a synced frame is recieved.
 	unsyncedRecoveryCt int
+
+	// current values for *playable* area of the screen
+	topScanline    int
+	bottomScanline int
 
 	// the pixels array is used in the presentation texture of the play and debug screen.
 	pixels *image.RGBA
@@ -521,7 +528,6 @@ func (scr *screen) clearTextureRenderers() {
 func (scr *screen) render() {
 	if scr.img.isPlaymode() {
 		scr.copyPixelsPlaymode()
-
 	} else {
 		scr.copyPixelsDebugmode()
 	}

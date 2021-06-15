@@ -100,11 +100,11 @@ type Spec struct {
 	AtariSafeBottom int
 
 	// resizing of the TV is problematic because we can't rely on the VBLANK to
-	// tell us when the pixels are meant to be in view. The NewSafeTop
-	// an NewSafeBottom are the min/max values that the resizer should
+	// tell us when the pixels are meant to be in view. The ExtendedTop
+	// an ExtendedBottom are the min/max values that the resizer should
 	// allow.
-	NewSafeTop    int
-	NewSafeBottom int
+	ExtendedTop    int
+	ExtendedBottom int
 
 	// AspectBias transforms the scaling factor for the X axis. in other words,
 	// for width of every pixel is height of every pixel multiplied by the
@@ -146,7 +146,7 @@ const (
 )
 
 // The absolute number of scanlines allowed by the TV regardless of
-// specification - value of 32 is the same as the total number of scanlines
+// specification - value of 312 is the same as the total number of scanlines
 // used by the PAL specification.
 const AbsoluteMaxScanlines = 312
 
@@ -205,13 +205,12 @@ func init() {
 	SpecPAL60.AtariSafeTop = SpecPAL60.scanlinesVBlank + SpecPAL60.ScanlinesVSync
 	SpecPAL60.AtariSafeBottom = SpecPAL60.ScanlinesTotal - SpecPAL60.ScanlinesOverscan
 
-	// NewSafe values:
-	// - Spike's Peak likes a bottom scanline of 249 (NTSC). this is the largest requirement I've seen.
-	// - Using the same difference of 13 for PAL NewSafeBottom
-	SpecNTSC.NewSafeTop = 20
-	SpecNTSC.NewSafeBottom = 249
-	SpecPAL.NewSafeTop = 20
-	SpecPAL.NewSafeBottom = 299
-	SpecPAL60.NewSafeTop = 20
-	SpecPAL60.NewSafeBottom = 249
+	// Extended values:
+	// - Spike's Peak likes a bottom scanline of 250 (NTSC). this is the largest requirement I've seen.
+	SpecNTSC.ExtendedTop = 25
+	SpecNTSC.ExtendedBottom = 250
+	SpecPAL.ExtendedTop = 45
+	SpecPAL.ExtendedBottom = 299
+	SpecPAL60.ExtendedTop = 20
+	SpecPAL60.ExtendedBottom = 249
 }

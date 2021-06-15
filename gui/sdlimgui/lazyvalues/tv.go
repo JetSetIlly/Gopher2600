@@ -32,7 +32,6 @@ type LazyTV struct {
 	frame      atomic.Value // int
 	scanline   atomic.Value // int
 	clock      atomic.Value // int
-	isStable   atomic.Value // float32
 	actualFPS  atomic.Value // float32
 	reqFPS     atomic.Value // float32
 
@@ -42,7 +41,6 @@ type LazyTV struct {
 	Frame      int
 	Scanline   int
 	Clock      int
-	IsStable   bool
 	ActualFPS  float32
 	ReqFPS     float32
 }
@@ -65,7 +63,6 @@ func (lz *LazyTV) push() {
 	clock := lz.val.Dbg.VCS.TV.GetState(signal.ReqClock)
 	lz.clock.Store(clock)
 
-	lz.isStable.Store(lz.val.Dbg.VCS.TV.IsStable())
 	lz.actualFPS.Store(lz.val.Dbg.VCS.TV.GetActualFPS())
 
 	lz.reqFPS.Store(lz.val.Dbg.VCS.TV.GetReqFPS())
@@ -78,7 +75,6 @@ func (lz *LazyTV) update() {
 	lz.Frame, _ = lz.frame.Load().(int)
 	lz.Scanline, _ = lz.scanline.Load().(int)
 	lz.Clock, _ = lz.clock.Load().(int)
-	lz.IsStable, _ = lz.isStable.Load().(bool)
 	lz.ActualFPS, _ = lz.actualFPS.Load().(float32)
 	lz.ReqFPS, _ = lz.reqFPS.Load().(float32)
 }

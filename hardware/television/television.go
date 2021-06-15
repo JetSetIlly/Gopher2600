@@ -22,17 +22,20 @@ import (
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
+	"github.com/jetsetilly/gopher2600/logger"
 )
 
-// the number of additional lines over the NTSC spec that is allowed before the
-// TV flips to the PAL specification.
-const excessScanlinesNTSC = 40
-
 // the number of synced frames where we can expect things to be in flux.
-const leadingFrames = 5
+const leadingFrames = 1
 
-// the number of synced frames required before the tv frame is considered to "stable".
-const stabilityThreshold = 20
+// the number of synced frames required before the tv is considered to be "stable".
+// once the tv is stable then PAL switching or resizing cannot happen. this is
+// particularly important for ROMs that allow its program to run without any
+// VSYNC, such as Andrew Davie's 3e+ chess ROMs.
+const stabilityThreshold = 5
+
+// the number of scanlines at which to flip to the PAL specification
+const palTrigger = 302
 
 // State encapsulates the television values that can change from moment to
 // moment. Used by the rewind system when recording the current television
@@ -84,8 +87,8 @@ type State struct {
 	top    int
 	bottom int
 
-	// frame resizer
-	resizer resizer
+	// whether the top/bottom values are the extended values for the selected specification
+	usingExtendedScreen bool
 
 	// the frame/scanline/clock of the last CPU instruction
 	boundaryClock    int
@@ -185,6 +188,8 @@ func NewTelevision(spec string) (*Television, error) {
 		return nil, err
 	}
 
+	logger.Logf("television", "using %s specification", tv.state.spec.ID)
+
 	// empty list of renderers
 	tv.renderers = make([]PixelRenderer, 0)
 
@@ -221,10 +226,13 @@ func (tv *Television) Reset(keepFrameNum bool) error {
 	tv.currentIdx = 0
 	tv.lastMaxIdx = len(tv.signals) - 1
 
-	for _, r := range tv.renderers {
-		r.Resize(tv.state.spec, tv.state.spec.AtariSafeTop, tv.state.spec.AtariSafeBottom)
-		r.Reset()
+	if tv.state.auto {
+		tv.SetSpec("AUTO")
+	} else {
+		tv.SetSpec(tv.state.spec.ID)
 	}
+
+	logger.Logf("television", "using %s specification", tv.state.spec.ID)
 
 	for _, m := range tv.mixers {
 		m.Reset()
@@ -321,7 +329,30 @@ func (tv *Television) End() error {
 // Signal updates the current state of the television.
 func (tv *Television) Signal(sig signal.SignalAttributes) error {
 	// examine signal for resizing possibility
-	tv.state.resizer.examine(tv, sig)
+	if !tv.state.usingExtendedScreen {
+		if tv.state.stableFrames > leadingFrames && tv.state.stableFrames < stabilityThreshold {
+			if !sig.VBlank && sig.Pixel != signal.VideoBlack && tv.state.clock > specification.ClksHBlank {
+				if tv.state.scanline < tv.state.top || tv.state.scanline > tv.state.bottom {
+					if tv.state.scanline > tv.state.spec.ExtendedTop && tv.state.scanline < tv.state.spec.ExtendedBottom {
+						logger.Logf("television", "using extended %s screen", tv.state.spec.ID)
+
+						tv.state.top = tv.state.spec.ExtendedTop
+						tv.state.bottom = tv.state.spec.ExtendedBottom
+
+						// commit resize to all pixel renderers
+						for f := range tv.renderers {
+							err := tv.renderers[f].Resize(tv.state.spec, tv.state.top, tv.state.bottom)
+							if err != nil {
+								return err
+							}
+						}
+
+						tv.state.usingExtendedScreen = true
+					}
+				}
+			}
+		}
+	}
 
 	// a Signal() is by definition a new color clock. increase the horizontal count
 	tv.state.clock++
@@ -450,19 +481,14 @@ func (tv *Television) newFrame(synced bool) error {
 		}
 	}
 
-	// specification change from NTSC to PAL.
+	// specification change from NTSC to PAL
 	if tv.state.spec.ID == specification.SpecNTSC.ID {
 		if tv.state.stableFrames > leadingFrames && tv.state.stableFrames < stabilityThreshold {
-			if tv.state.auto && tv.state.scanline > specification.SpecNTSC.ScanlinesTotal+excessScanlinesNTSC {
+			if tv.state.auto && tv.state.scanline > palTrigger {
+				logger.Logf("television", "auto switching to PAL")
 				_ = tv.SetSpec("PAL")
 			}
 		}
-	}
-
-	// commit any resizing that maybe pending
-	err := tv.state.resizer.commit(tv)
-	if err != nil {
-		return err
 	}
 
 	// prepare for next frame
@@ -475,7 +501,7 @@ func (tv *Television) newFrame(synced bool) error {
 	// set pending pixels for frame-scale frame limiting or if the frame
 	// limiter is inactive
 	if !tv.lmtr.limit || tv.lmtr.scale == scaleFrame {
-		err = tv.processSignals(true)
+		err := tv.processSignals(true)
 		if err != nil {
 			return err
 		}
@@ -483,7 +509,7 @@ func (tv *Television) newFrame(synced bool) error {
 
 	// process all FrameTriggers
 	for _, r := range tv.frameTriggers {
-		err = r.NewFrame(tv.state.syncedFrame, tv.IsStable())
+		err := r.NewFrame(tv.state.syncedFrame, tv.IsStable())
 		if err != nil {
 			return err
 		}
@@ -514,23 +540,6 @@ func (tv *Television) processSignals(current bool) error {
 					return curated.Errorf("television: %v", err)
 				}
 			}
-
-			// for i := 0; i < tv.currentIdx; i++ {
-			// 	sig := tv.signals[i]
-			// 	err := r.SetPixel(sig, i < tv.currentIdx)
-			// 	if err != nil {
-			// 		return curated.Errorf("television: %v", err)
-			// 	}
-			// }
-			// if !current {
-			// 	for i := tv.currentIdx + 1; i < tv.lastMaxIdx; i++ {
-			// 		sig := tv.signals[i]
-			// 		err := r.SetPixel(sig, i < tv.currentIdx)
-			// 		if err != nil {
-			// 			return curated.Errorf("television: %v", err)
-			// 		}
-			// 	}
-			// }
 
 			r.UpdatingPixels(false)
 		}
@@ -623,7 +632,7 @@ func (tv *Television) SetSpec(spec string) error {
 
 	tv.state.top = tv.state.spec.AtariSafeTop
 	tv.state.bottom = tv.state.spec.AtariSafeBottom
-	tv.state.resizer.initialise(tv)
+	tv.state.usingExtendedScreen = false
 	tv.lmtr.setRate(tv.state.spec.FramesPerSecond)
 
 	for _, r := range tv.renderers {
@@ -631,6 +640,7 @@ func (tv *Television) SetSpec(spec string) error {
 		if err != nil {
 			return err
 		}
+		r.Reset()
 	}
 
 	if tv.vcs != nil {

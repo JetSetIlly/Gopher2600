@@ -98,8 +98,8 @@ func (lmtr *limiter) setRate(fps float32) {
 		// but if the screen is "bigger" than that then we use the larger
 		// value.
 		scanlines := lmtr.tv.state.spec.ScanlinesTotal
-		if lmtr.tv.state.resizer.bottom > lmtr.tv.state.spec.ScanlinesTotal {
-			scanlines = lmtr.tv.state.resizer.bottom
+		if lmtr.tv.state.bottom > lmtr.tv.state.spec.ScanlinesTotal {
+			scanlines = lmtr.tv.state.bottom
 		}
 
 		rate := float32(1000000.0) / (fps * float32(scanlines))
