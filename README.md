@@ -36,8 +36,9 @@ The following [screenshots](#screenshots) were taken in playmode with CRT effect
 <img src=".screenshots/games/beast.jpg" height="200" alt="legacy of the beast"/> <img src=".screenshots/games/chiphead.jpg" height="200" alt="chiphead"/>
 <img src=".screenshots/games/genesis.jpg" height="200" alt="egypt genesis"/> <img src=".screenshots/games/draconian.jpg" height="200" alt="draconian"/>
 <img src=".screenshots/games/galagon.jpg" height="200" alt="galagon"/> <img src=".screenshots/games/turbo.jpg" height="200" alt="turbo"/>
+<img src=".screenshots/games/zookeeper.jpg" height="200" alt="zookeeper"/> <img src=".screenshots/games/moviecart.jpg" height="200" alt="moviecart"/>
 
-Games shown: Pitfall; He-Man; Krull; Ladybug; Thrust; Man Goes Down; [Legacy of the Beast](https://aeriform.itch.io/beast); Chiphead; Egypt 2600BC by Genesis Project; Draconian; [Galagon](https://champ.games/downloads); [Turbo](https://champ.games/downloads).
+Games shown: Pitfall; He-Man; Krull; Ladybug; Thrust; Man Goes Down; [Legacy of the Beast](https://aeriform.itch.io/beast); Chiphead; Egypt 2600BC by Genesis Project; Draconian; [Galagon](https://champ.games/downloads); [Turbo](https://champ.games/downloads); [Zookeeper](https://champ.games/downloads); [Movie Cart demo](#movie-cart).
 
 ## Scope of the project
 
