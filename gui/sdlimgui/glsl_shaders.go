@@ -315,6 +315,42 @@ func (sh *blurShader) setAttributesArgs(env shaderEnvironment, blur float32) {
 	gl.Uniform2f(sh.blur, blur/float32(env.width), blur/float32(env.height))
 }
 
+type bilinearShader struct {
+	shader
+	img       *SdlImgui
+	screenDim int32
+}
+
+func newBilinearShader(img *SdlImgui) shaderProgram {
+	sh := &bilinearShader{img: img}
+	sh.createProgram(string(shaders.YFlipVertexShader), string(shaders.CRTBilinearFragShader))
+	sh.screenDim = gl.GetUniformLocation(sh.handle, gl.Str("ScreenDim"+"\x00"))
+	return sh
+}
+
+func (sh *bilinearShader) setAttributesArgs(env shaderEnvironment) {
+	sh.shader.setAttributes(env)
+	gl.Uniform2f(sh.screenDim, float32(env.width), float32(env.height))
+}
+
+type sharpenShader struct {
+	shader
+	img       *SdlImgui
+	screenDim int32
+}
+
+func newSharpenShader(img *SdlImgui) shaderProgram {
+	sh := &sharpenShader{img: img}
+	sh.createProgram(string(shaders.YFlipVertexShader), string(shaders.CRTSharpenFragShader))
+	sh.screenDim = gl.GetUniformLocation(sh.handle, gl.Str("ScreenDim"+"\x00"))
+	return sh
+}
+
+func (sh *sharpenShader) setAttributesArgs(env shaderEnvironment) {
+	sh.shader.setAttributes(env)
+	gl.Uniform2f(sh.screenDim, float32(env.width), float32(env.height))
+}
+
 type blendShader struct {
 	shader
 	newFrame int32

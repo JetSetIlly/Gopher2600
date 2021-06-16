@@ -41,6 +41,12 @@ var CRTEffectsFragShader []byte
 //go:embed "crt_blur.frag"
 var CRTBlurFragShader []byte
 
+//go:embed "crt_bilinear.frag"
+var CRTBilinearFragShader []byte
+
+//go:embed "crt_sharpen.frag"
+var CRTSharpenFragShader []byte
+
 //go:embed "crt_phosphor.frag"
 var CRTPhosphorFragShader []byte
 

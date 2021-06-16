@@ -25,6 +25,8 @@ type crtSequencer struct {
 	phosphorShader        shaderProgram
 	blackCorrectionShader shaderProgram
 	blurShader            shaderProgram
+	bilinearShader        shaderProgram
+	sharpenShader         shaderProgram
 	blendShader           shaderProgram
 	effectsShader         shaderProgram
 	colorShader           shaderProgram
@@ -35,10 +37,12 @@ type crtSequencer struct {
 func newCRTSequencer(img *SdlImgui) *crtSequencer {
 	sh := &crtSequencer{
 		img:                   img,
-		seq:                   framebuffer.NewSequence(3),
+		seq:                   framebuffer.NewSequence(4),
 		phosphorShader:        newPhosphorShader(img),
 		blackCorrectionShader: newBlackCorrectionShader(),
 		blurShader:            newBlurShader(),
+		bilinearShader:        newBilinearShader(img),
+		sharpenShader:         newSharpenShader(img),
 		blendShader:           newBlendShader(),
 		effectsShader:         newEffectsShader(img, false),
 		colorShader:           newColorShader(false),
@@ -53,6 +57,8 @@ func (sh *crtSequencer) destroy() {
 	sh.phosphorShader.destroy()
 	sh.blackCorrectionShader.destroy()
 	sh.blurShader.destroy()
+	sh.bilinearShader.destroy()
+	sh.sharpenShader.destroy()
 	sh.blendShader.destroy()
 	sh.effectsShader.destroy()
 	sh.colorShader.destroy()
@@ -70,6 +76,8 @@ func (sh *crtSequencer) process(env shaderEnvironment, moreProcessing bool, numS
 		// an accumulation of consecutive frames producing a phosphor effect
 		phosphor = iota
 
+		processedSrc
+
 		// the finalised texture after all processing. the only thing left to
 		// do is to (a) present it, or (b) copy it into idxModeProcessing so it
 		// can be processed further
@@ -85,9 +93,6 @@ func (sh *crtSequencer) process(env shaderEnvironment, moreProcessing bool, numS
 	// we'll be chaining many shaders together so use internal projection
 	env.useInternalProj = true
 
-	// note source texture for later use
-	src := env.srcTextureID
-
 	// whether crt effects are enabled
 	enabled := sh.img.crtPrefs.Enabled.Get().(bool)
 
@@ -99,6 +104,16 @@ func (sh *crtSequencer) process(env shaderEnvironment, moreProcessing bool, numS
 	if sh.seq.Setup(env.width, env.height) {
 		phosphorPasses = 3
 	}
+
+	// apply bilinear filter to texture. this is useful for the zookeeper brick
+	// effect.
+	if enabled {
+		env.srcTextureID = sh.seq.Process(processedSrc, func() {
+			sh.bilinearShader.(*bilinearShader).setAttributesArgs(env)
+			env.draw()
+		})
+	}
+	src := env.srcTextureID
 
 	for i := 0; i < phosphorPasses; i++ {
 		if enabled {
