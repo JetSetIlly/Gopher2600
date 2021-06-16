@@ -38,6 +38,7 @@ type screenshotSequencer struct {
 	phosphorShader        shaderProgram
 	blackCorrectionShader shaderProgram
 	blurShader            shaderProgram
+	bilinearShader        shaderProgram
 	blendShader           shaderProgram
 	effectsShaderFlipped  shaderProgram
 	colorShaderFlipped    shaderProgram
@@ -53,10 +54,11 @@ type screenshotSequencer struct {
 func newscreenshotSequencer(img *SdlImgui) *screenshotSequencer {
 	sh := &screenshotSequencer{
 		img:                   img,
-		seq:                   framebuffer.NewSequence(5),
+		seq:                   framebuffer.NewSequence(6),
 		phosphorShader:        newPhosphorShader(img),
 		blackCorrectionShader: newBlackCorrectionShader(),
 		blurShader:            newBlurShader(),
+		bilinearShader:        newBilinearShader(img),
 		blendShader:           newBlendShader(),
 		effectsShaderFlipped:  newEffectsShader(img, true),
 		colorShaderFlipped:    newColorShader(true),
@@ -69,6 +71,7 @@ func (sh *screenshotSequencer) destroy() {
 	sh.phosphorShader.destroy()
 	sh.blackCorrectionShader.destroy()
 	sh.blurShader.destroy()
+	sh.bilinearShader.destroy()
 	sh.blendShader.destroy()
 	sh.effectsShaderFlipped.destroy()
 	sh.colorShaderFlipped.destroy()
@@ -103,6 +106,9 @@ func (sh *screenshotSequencer) process(env shaderEnvironment) {
 		// an accumulation of consecutive frames producing a phosphor effect
 		phosphor = iota
 
+		// storage for the initial processing step (bilinear filter)
+		processedSrc
+
 		// the working screenshot texture
 		working
 
@@ -121,6 +127,15 @@ func (sh *screenshotSequencer) process(env shaderEnvironment) {
 	_ = sh.seq.Setup(env.width, env.height)
 
 	env.useInternalProj = true
+
+	// apply bilinear filter to texture. this is useful for the zookeeper brick
+	// effect.
+	if sh.crtProcessing {
+		env.srcTextureID = sh.seq.Process(processedSrc, func() {
+			sh.bilinearShader.(*bilinearShader).setAttributesArgs(env)
+			env.draw()
+		})
+	}
 	src := env.srcTextureID
 
 	if sh.crtProcessing {

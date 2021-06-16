@@ -76,6 +76,7 @@ func (sh *crtSequencer) process(env shaderEnvironment, moreProcessing bool, numS
 		// an accumulation of consecutive frames producing a phosphor effect
 		phosphor = iota
 
+		// storage for the initial processing step (bilinear filter)
 		processedSrc
 
 		// the finalised texture after all processing. the only thing left to
