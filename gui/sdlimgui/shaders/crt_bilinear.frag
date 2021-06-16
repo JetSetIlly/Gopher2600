@@ -10,10 +10,10 @@ void main()
 {
 	float texelX = 2.0/ScreenDim.x;
 	float texelY = 1.0/ScreenDim.y;
-    vec4 tl = texture2D(Texture, Frag_UV);
-    vec4 tr = texture2D(Texture, Frag_UV + vec2(texelX, 0.0));
-    vec4 bl = texture2D(Texture, Frag_UV + vec2(0.0, texelY));
-    vec4 br = texture2D(Texture, Frag_UV + vec2(texelX, texelY));
+    vec4 tl = texture(Texture, Frag_UV);
+    vec4 tr = texture(Texture, Frag_UV + vec2(texelX, 0.0));
+    vec4 bl = texture(Texture, Frag_UV + vec2(0.0, texelY));
+    vec4 br = texture(Texture, Frag_UV + vec2(texelX, texelY));
     vec2 f = fract(Frag_UV * ScreenDim);
     vec4 tA = mix(tl, tr, f.x);
     vec4 tB = mix(bl, br, f.x);
