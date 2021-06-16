@@ -40,7 +40,25 @@ type Auto struct {
 	paddleTouchCt   int
 
 	// if a keyboard is detected via SWACNT then there is no auto-switching
-	keyboardDetected bool
+	//
+	// to prevent false positives of the SWACNT being in "non-keyboard" mode
+	// and unecessarily switching to a non-keyboard controller and then
+	// switching immediately back, we time the duration between unplug
+	// attempts. if the duration is long enough (keyboardUnplugDelay) then the
+	// unplugging is allowed.
+	//
+	// a good example of a false positive of this type is the Coke Zero demo.
+	//
+	// it would be better perhaps if we did this the other way around and
+	// introduced a delay before switching to the keyboard controller. but at
+	// least one title (Codebreaker) sets the SWACNT once and leaves it at
+	// that so there's nothing to work on. one possibility is to set up a timer
+	// and switching to the keyboard when it expires, unless it's been
+	// interrupted, but I don't fancy the idea of having to service a timer on
+	// Update()
+	keyboardUnplugAttempt bool
+	keyboardUnplugTime    time.Time
+	keyboardUnplugDelay   time.Duration
 }
 
 // the sensitivity values for switching between controller types.
@@ -67,6 +85,10 @@ func NewAuto(port plugging.PortID, bus ports.PeripheralBus) ports.Peripheral {
 		port: port,
 		bus:  bus,
 	}
+
+	// a two second delay should be sufficient time to require SWACNT to be in
+	// "non-keyboard" mode before allowing the controller type to switch
+	aut.keyboardUnplugDelay, _ = time.ParseDuration("1s")
 
 	aut.Reset()
 	return aut
@@ -96,7 +118,7 @@ func (aut *Auto) Name() string {
 // HandleEvent implements the ports.Peripheral interface.
 func (aut *Auto) HandleEvent(event ports.Event, data ports.EventData) error {
 	// no autoswitching if keyboard is detected
-	if !aut.keyboardDetected {
+	if _, ok := aut.controller.(*Keyboard); !ok {
 		switch event {
 		case ports.Left:
 			aut.checkStick(event)
@@ -127,22 +149,25 @@ func (aut *Auto) Update(data bus.ChipData) bool {
 	switch data.Name {
 	case "SWACNT":
 		if data.Value&0xf0 == 0xf0 {
-			// keyboard is detected
-			aut.keyboardDetected = true
-
 			// attach keyboard IF NOT attached already
 			if _, ok := aut.controller.(*Keyboard); !ok {
 				aut.controller = NewKeyboard(aut.port, aut.bus)
 				aut.plug()
+			} else if aut.keyboardUnplugAttempt {
+				// reset keyboardUnplugAttempt if an unplug attempt has been made
+				aut.keyboardUnplugAttempt = false
 			}
 		} else if data.Value&0xf0 == 0x00 {
-			// keyboard is not detected
-			aut.keyboardDetected = false
-
-			// if current controller type IS keyboard then switch to stick
 			if _, ok := aut.controller.(*Keyboard); ok {
-				aut.controller = NewStick(aut.port, aut.bus)
-				aut.plug()
+				if aut.keyboardUnplugAttempt {
+					if time.Since(aut.keyboardUnplugTime) > aut.keyboardUnplugDelay {
+						aut.controller = NewStick(aut.port, aut.bus)
+						aut.plug()
+					}
+				} else {
+					aut.keyboardUnplugAttempt = true
+					aut.keyboardUnplugTime = time.Now()
+				}
 			}
 		}
 	}
