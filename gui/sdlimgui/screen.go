@@ -81,7 +81,7 @@ type screenCrit struct {
 	// unsyncedScanline keeps track of the accumulated scanline position
 	unsyncedScanline int
 	// unsyncedRecoveryCt is used to help the screen regain the correct
-	// position once a synced frame is recieved.
+	// position once a synced frame is received.
 	unsyncedRecoveryCt int
 
 	// current values for *playable* area of the screen
@@ -410,7 +410,7 @@ func (scr *screen) SetPixels(sig []signal.SignalAttributes, current bool) error 
 
 		// handle VBLANK by setting pixels to black
 		if sig[i].VBlank {
-			col = color.RGBA{R: 0, G: 0, B: 0, A: 255}
+			col = color.RGBA{R: 0, G: 0, B: 0}
 		} else {
 			col = scr.crit.spec.GetColor(sig[i].Pixel)
 		}

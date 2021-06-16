@@ -197,7 +197,7 @@ func (bs *BallSprite) rsync(adjustment int) {
 	}
 }
 
-// returns true if pixel has changed
+// returns true if pixel has changed.
 func (bs *BallSprite) tick() bool {
 	// check to see if there is more movement required for this sprite
 	if bs.tia.hmove.Clk {

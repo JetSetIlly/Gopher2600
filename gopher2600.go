@@ -52,15 +52,15 @@ const defaultInitScript = "debuggerInit"
 type mainSync struct {
 	state chan stateRequest
 
-	// a created GUI will communicate throught these channels
+	// a created GUI will communicate thought these channels
 	gui      chan guiControl
 	guiError chan error
 }
 
-// the stateRequest sent through the state channel in mainSync
+// the stateRequest sent through the state channel in mainSync.
 type stateReq string
 
-// list of valid stateReq values
+// list of valid stateReq values.
 const (
 	// main thread should end as soon as possible.
 	//
@@ -77,7 +77,7 @@ const (
 	// the gui creation function to run in the main goroutine. this is for GUIs
 	// that *need* to be run in the main OS thead (SDL, etc.)
 	//
-	// the only argument must be a guiCreate reference
+	// the only argument must be a guiCreate reference.
 	reqCreateGUI stateReq = "CREATEGUI"
 )
 
@@ -86,7 +86,7 @@ type stateRequest struct {
 	args interface{}
 }
 
-// the gui create function. paired with reqCreateGUI state request
+// the gui create function. paired with reqCreateGUI state request.
 type guiCreate func() (guiControl, error)
 
 // guiControl defines the functions that a guiControl implementation must implement to be
@@ -195,7 +195,6 @@ func main() {
 				} else {
 					sync.gui <- gui
 				}
-
 			}
 
 		default:

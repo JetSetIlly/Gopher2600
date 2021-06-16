@@ -268,10 +268,10 @@ func (win *playScr) setScaling() {
 
 	if aspectRatio < winRatio {
 		// window wider than TV screen
-		scaling = float32(screenRegion.Y / h)
+		scaling = screenRegion.Y / h
 	} else {
 		// TV screen wider than window
-		scaling = float32(screenRegion.X / adjW)
+		scaling = screenRegion.X / adjW
 	}
 
 	// limit scaling to 1x
@@ -297,5 +297,4 @@ func (win *playScr) setScaling() {
 	win.numScanlines = win.scr.crit.bottomScanline - win.scr.crit.topScanline
 
 	gl.BindTexture(gl.TEXTURE_2D, win.screenTexture)
-
 }

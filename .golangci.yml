@@ -1,6 +1,7 @@
 linters:
   disable:
     - errcheck
+    - gosimple
   enable:
     - bodyclose
     - unconvert

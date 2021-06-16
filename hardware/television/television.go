@@ -34,7 +34,7 @@ const leadingFrames = 1
 // VSYNC, such as Andrew Davie's 3e+ chess ROMs.
 const stabilityThreshold = 5
 
-// the number of scanlines at which to flip to the PAL specification
+// the number of scanlines at which to flip to the PAL specification.
 const palTrigger = 302
 
 // State encapsulates the television values that can change from moment to

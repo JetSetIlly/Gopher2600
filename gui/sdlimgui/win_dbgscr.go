@@ -668,10 +668,10 @@ func (win *winDbgScr) setScaling() {
 
 	if aspectRatio < winRatio {
 		// window wider than TV screen
-		scaling = float32(win.screenRegion.Y / h)
+		scaling = win.screenRegion.Y / h
 	} else {
 		// TV screen wider than window
-		scaling = float32(win.screenRegion.X / adjW)
+		scaling = win.screenRegion.X / adjW
 	}
 
 	// limit scaling to 1x

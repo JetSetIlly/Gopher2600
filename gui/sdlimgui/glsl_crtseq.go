@@ -26,7 +26,6 @@ type crtSequencer struct {
 	blackCorrectionShader shaderProgram
 	blurShader            shaderProgram
 	bilinearShader        shaderProgram
-	sharpenShader         shaderProgram
 	blendShader           shaderProgram
 	effectsShader         shaderProgram
 	colorShader           shaderProgram
@@ -42,7 +41,6 @@ func newCRTSequencer(img *SdlImgui) *crtSequencer {
 		blackCorrectionShader: newBlackCorrectionShader(),
 		blurShader:            newBlurShader(),
 		bilinearShader:        newBilinearShader(img),
-		sharpenShader:         newSharpenShader(img),
 		blendShader:           newBlendShader(),
 		effectsShader:         newEffectsShader(img, false),
 		colorShader:           newColorShader(false),
@@ -58,7 +56,6 @@ func (sh *crtSequencer) destroy() {
 	sh.blackCorrectionShader.destroy()
 	sh.blurShader.destroy()
 	sh.bilinearShader.destroy()
-	sh.sharpenShader.destroy()
 	sh.blendShader.destroy()
 	sh.effectsShader.destroy()
 	sh.colorShader.destroy()

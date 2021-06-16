@@ -567,7 +567,7 @@ func (tia *TIA) Step(readMemory bool) {
 					if readMemory {
 						// update playfield color register (depending on TIA revision)
 						if tia.Rev.Prefs.LateCOLUPF {
-							readMemory = tia.Video.ReadMemPlayfieldColor(memoryData)
+							_ = tia.Video.ReadMemPlayfieldColor(memoryData)
 						}
 					}
 				}

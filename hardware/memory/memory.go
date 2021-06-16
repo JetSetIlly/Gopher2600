@@ -225,7 +225,7 @@ func (mem *Memory) Peek(address uint16) (uint8, error) {
 func (mem *Memory) Poke(address uint16, data uint8) error {
 	ma, ar := memorymap.MapAddress(address, true)
 	if area, ok := mem.GetArea(ar).(bus.DebugBus); ok {
-		return area.(bus.DebugBus).Poke(ma, data)
+		return area.Poke(ma, data)
 	}
 	return curated.Errorf(bus.AddressError, address)
 }

@@ -286,7 +286,7 @@ func (ps *PlayerSprite) rsync(adjustment int) {
 	}
 }
 
-// returns true if pixel has changed
+// returns true if pixel has changed.
 func (ps *PlayerSprite) tick() bool {
 	// check to see if there is more movement required for this sprite
 	if ps.tia.hmove.Clk {
