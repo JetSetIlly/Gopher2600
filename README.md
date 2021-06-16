@@ -30,12 +30,12 @@ The graphical [debugger](#debugger) is still in development but the current feat
 
 The following [screenshots](#screenshots) were taken in playmode with CRT effects enabled.
 
-<img src=".screenshots/games/pitfall.png" height="200" alt="pitfall"/> <img src=".screenshots/games/heman.png" height="200" alt="he-man"/>
-<img src=".screenshots/games/krull.png" height="200" alt="krull"/> <img src=".screenshots/games/ladybug.png" height="200" alt="ladybug"/>
-<img src=".screenshots/games/thrust.png" height="200" alt="thrust"/> <img src=".screenshots/games/mangoesdown.png" height="200" alt="man goes down"/>
-<img src=".screenshots/games/beast.png" height="200" alt="legacy of the beast"/> <img src=".screenshots/games/chiphead.png" height="200" alt="chiphead"/>
-<img src=".screenshots/games/genesis.png" height="200" alt="egypt genesis"/> <img src=".screenshots/games/draconian.png" height="200" alt="draconian"/>
-<img src=".screenshots/games/galagon.png" height="200" alt="galagon"/> <img src=".screenshots/games/turbo.png" height="200" alt="turbo"/>
+<img src=".screenshots/games/pitfall.jpg" height="200" alt="pitfall"/> <img src=".screenshots/games/heman.jpg" height="200" alt="he-man"/>
+<img src=".screenshots/games/krull.jpg" height="200" alt="krull"/> <img src=".screenshots/games/ladybug.jpg" height="200" alt="ladybug"/>
+<img src=".screenshots/games/thrust.jpg" height="200" alt="thrust"/> <img src=".screenshots/games/mangoesdown.jpg" height="200" alt="man goes down"/>
+<img src=".screenshots/games/beast.jpg" height="200" alt="legacy of the beast"/> <img src=".screenshots/games/chiphead.jpg" height="200" alt="chiphead"/>
+<img src=".screenshots/games/genesis.jpg" height="200" alt="egypt genesis"/> <img src=".screenshots/games/draconian.jpg" height="200" alt="draconian"/>
+<img src=".screenshots/games/galagon.jpg" height="200" alt="galagon"/> <img src=".screenshots/games/turbo.jpg" height="200" alt="turbo"/>
 
 Games shown: Pitfall; He-Man; Krull; Ladybug; Thrust; Man Goes Down; [Legacy of the Beast](https://aeriform.itch.io/beast); Chiphead; Egypt 2600BC by Genesis Project; Draconian; [Galagon](https://champ.games/downloads); [Turbo](https://champ.games/downloads).
 
