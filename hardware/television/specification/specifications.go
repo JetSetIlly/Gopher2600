@@ -101,11 +101,13 @@ type Spec struct {
 	AtariSafeBottom int
 
 	// resizing of the TV is problematic because we can't rely on the VBLANK to
-	// tell us when the pixels are meant to be in view. The ExtendedTop
-	// an ExtendedBottom are the min/max values that the resizer should
-	// allow.
-	ExtendedTop    int
-	ExtendedBottom int
+	// tell us when the pixels are meant to be in view. The SafeTop an
+	// SafeBottom are the min/max values that the resizer should allow.
+	//
+	// think of these as the "modern" safe values as compared to the Atari
+	// defined safe values.
+	SafeTop    int
+	SafeBottom int
 
 	// AspectBias transforms the scaling factor for the X axis. in other words,
 	// for width of every pixel is height of every pixel multiplied by the
@@ -208,10 +210,10 @@ func init() {
 
 	// Extended values:
 	// - Spike's Peak likes a bottom scanline of 250 (NTSC). this is the largest requirement I've seen.
-	SpecNTSC.ExtendedTop = 25
-	SpecNTSC.ExtendedBottom = 250
-	SpecPAL.ExtendedTop = 45
-	SpecPAL.ExtendedBottom = 299
-	SpecPAL60.ExtendedTop = 20
-	SpecPAL60.ExtendedBottom = 249
+	SpecNTSC.SafeTop = 25
+	SpecNTSC.SafeBottom = 250
+	SpecPAL.SafeTop = 30
+	SpecPAL.SafeBottom = 299
+	SpecPAL60.SafeTop = 20
+	SpecPAL60.SafeBottom = 249
 }

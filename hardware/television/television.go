@@ -87,8 +87,8 @@ type State struct {
 	top    int
 	bottom int
 
-	// whether the top/bottom values are the extended values for the selected specification
-	usingExtendedScreen bool
+	// frame resizer
+	resizer resizer
 
 	// the frame/scanline/clock of the last CPU instruction
 	boundaryClock    int
@@ -329,30 +329,7 @@ func (tv *Television) End() error {
 // Signal updates the current state of the television.
 func (tv *Television) Signal(sig signal.SignalAttributes) error {
 	// examine signal for resizing possibility
-	if !tv.state.usingExtendedScreen {
-		if tv.state.stableFrames > leadingFrames && tv.state.stableFrames < stabilityThreshold {
-			if !sig.VBlank && sig.Pixel != signal.VideoBlack && tv.state.clock > specification.ClksHBlank {
-				if tv.state.scanline < tv.state.top || tv.state.scanline > tv.state.bottom {
-					if tv.state.scanline > tv.state.spec.ExtendedTop && tv.state.scanline < tv.state.spec.ExtendedBottom {
-						logger.Logf("television", "using extended %s screen", tv.state.spec.ID)
-
-						tv.state.top = tv.state.spec.ExtendedTop
-						tv.state.bottom = tv.state.spec.ExtendedBottom
-
-						// commit resize to all pixel renderers
-						for f := range tv.renderers {
-							err := tv.renderers[f].Resize(tv.state.spec, tv.state.top, tv.state.bottom)
-							if err != nil {
-								return err
-							}
-						}
-
-						tv.state.usingExtendedScreen = true
-					}
-				}
-			}
-		}
-	}
+	tv.state.resizer.examine(tv, sig)
 
 	// a Signal() is by definition a new color clock. increase the horizontal count
 	tv.state.clock++
@@ -489,6 +466,12 @@ func (tv *Television) newFrame(synced bool) error {
 				_ = tv.SetSpec("PAL")
 			}
 		}
+	}
+
+	// commit any resizing that maybe pending
+	err := tv.state.resizer.commit(tv)
+	if err != nil {
+		return err
 	}
 
 	// prepare for next frame
@@ -638,7 +621,7 @@ func (tv *Television) SetSpec(spec string) error {
 
 	tv.state.top = tv.state.spec.AtariSafeTop
 	tv.state.bottom = tv.state.spec.AtariSafeBottom
-	tv.state.usingExtendedScreen = false
+	tv.state.resizer.initialise(tv)
 	tv.lmtr.setRate(tv.state.spec.FramesPerSecond)
 
 	for _, r := range tv.renderers {
