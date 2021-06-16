@@ -581,9 +581,29 @@ func (cart *Moviecart) runStateMachine() {
 		}
 
 		cart.readField()
+		cart.blankPartialLines()
 		cart.state.lines = 191
 		cart.state.state = stateMachineRight
 		cart.state.osdDisplay = osdNone
+	}
+}
+
+func (cart *Moviecart) blankPartialLines() {
+	if cart.state.oddField {
+		idx := cart.state.streamColor + offsetEndData - offsetColorData
+		if idx < len(cart.state.streamBuffer[cart.state.streamField]) {
+			cart.state.streamBuffer[cart.state.streamField][idx-5] = 0x00
+			cart.state.streamBuffer[cart.state.streamField][idx-4] = 0x00
+			cart.state.streamBuffer[cart.state.streamField][idx-3] = 0x00
+			cart.state.streamBuffer[cart.state.streamField][idx-2] = 0x00
+			cart.state.streamBuffer[cart.state.streamField][idx-1] = 0x00
+		}
+	} else {
+		cart.state.streamBuffer[cart.state.streamField][cart.state.streamColor] = 0x00
+		cart.state.streamBuffer[cart.state.streamField][cart.state.streamColor+1] = 0x00
+		cart.state.streamBuffer[cart.state.streamField][cart.state.streamColor+2] = 0x00
+		cart.state.streamBuffer[cart.state.streamField][cart.state.streamColor+3] = 0x00
+		cart.state.streamBuffer[cart.state.streamField][cart.state.streamColor+4] = 0x00
 	}
 }
 
