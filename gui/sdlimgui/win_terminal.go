@@ -157,7 +157,6 @@ func (win *winTerm) draw() {
 		if imgui.Selectable("Clear terminal") {
 			win.output = win.output[:0]
 		}
-		imgui.Spacing()
 		if imgui.Selectable("Save output to file") {
 			win.saveOutput()
 		}
