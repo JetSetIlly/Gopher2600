@@ -3,10 +3,10 @@ compileFlags = '-c 3 -B -wb=false'
 # profilingRom = roms/Homebrew/CDF/galaga_dmo_v2_NTSC.bin
 # profilingRom = roms/Homebrew/DPC+ARM/ZaxxonHDDemo_150927_NTSC.bin
 # profilingRom = roms/Rsboxing.bin
-# profilingRom = "test_roms/plusrom/sokoboo Plus.bin"
+profilingRom = "test_roms/plusrom/sokoboo Plus.bin"
 # profilingRom = "roms/starpath/02 - Communist Mutants From Space (Ntsc).mp3"
 # profilingRom = roms/Homebrew/CDF/gorfarc_20201231_demo1_NTSC.bin
-profilingRom = roms/Pitfall.bin
+# profilingRom = roms/Pitfall.bin
 
 .PHONY: all clean tidy generate check_lint lint check_glsl glsl_validate check_pandoc readme_spell test race race_debug profile profile_cpu profile_mem profile_trace build_assertions build check_upx release release_statsview cross_windows cross_windows_statsview binaries check_gotip build_with_gotip
 
@@ -73,8 +73,6 @@ profile:
 
 profile_cpu: generate test
 	@$(goBinary) build -gcflags $(compileFlags)
-	# @echo "use window close button to end (CTRL-C will quit the Makefile script)"
-	# @./gopher2600 run --profile=cpu $(profilingRom)
 	@echo "performance mode running for 20s"
 	@./gopher2600 performance --profile=cpu --fpscap=false --duration=20s $(profilingRom)
 	@$(goBinary) tool pprof -http : ./gopher2600 performance_cpu.profile
@@ -84,18 +82,12 @@ profile_cpu_again:
 
 profile_mem: generate test
 	@$(goBinary) build -gcflags $(compileFlags)
-	# @echo "use window close button to end (CTRL-C will quit the Makefile script)"
-	# @./gopher2600 run --profile=cpu $(profilingRom)
 	@echo "use window close button to end (CTRL-C will quit the Makefile script)"
-	@echo "performance mode running for 20s"
-	@./gopher2600 performance --profile=mem --fpscap=false --duration=20s $(profilingRom)
-	@$(goBinary) tool pprof -http : ./gopher2600 performance_mem.profile
+	@./gopher2600 debug --profile=mem $(profilingRom)
+	@$(goBinary) tool pprof -http : ./gopher2600 debugger_mem.profile
 
 profile_trace: generate test
 	@$(goBinary) build -gcflags $(compileFlags)
-	# @echo "use window close button to end (CTRL-C will quit the Makefile script)"
-	# @./gopher2600 run --profile=cpu $(profilingRom)
-	@echo "use window close button to end (CTRL-C will quit the Makefile script)"
 	@echo "performance mode running for 20s"
 	@./gopher2600 performance --profile=trace --fpscap=false --duration=20s $(profilingRom)
 	@$(goBinary) tool trace -http : performance_trace.profile
