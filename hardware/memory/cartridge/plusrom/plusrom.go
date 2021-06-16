@@ -29,16 +29,36 @@ const NotAPlusROM = "not a plus rom: %s"
 
 // PlusROM wraps another mapper.CartMapper inside a network aware format.
 type PlusROM struct {
-	child mapper.CartMapper
 	Prefs *Preferences
 	net   *network
 
-	// rewind boundary is indicated on very network activity
+	state *state
+
+	// rewind boundary is indicated on every network activity
 	rewindBoundary bool
 }
 
+// rewindable state for the 3e cartridge.
+type state struct {
+	child mapper.CartMapper
+}
+
+// Snapshot implements the mapper.CartMapper interface.
+func (s *state) Snapshot() *state {
+	n := *s
+	n.child = s.child.Snapshot()
+	return &n
+}
+
+// Plumb implements the mapper.CartMapper interface.
+func (s *state) Plumb() {
+	s.child.Plumb()
+}
+
 func NewPlusROM(child mapper.CartMapper, onLoaded func(cart mapper.CartMapper) error) (mapper.CartMapper, error) {
-	cart := &PlusROM{child: child}
+	cart := &PlusROM{}
+	cart.state = &state{}
+	cart.state.child = child
 
 	var err error
 
@@ -131,23 +151,25 @@ func NewPlusROM(child mapper.CartMapper, onLoaded func(cart mapper.CartMapper) e
 
 // Mapping implements the mapper.CartMapper interface.
 func (cart *PlusROM) Mapping() string {
-	return cart.child.Mapping()
+	return cart.state.child.Mapping()
 }
 
 // ID implements the mapper.CartMapper interface.
 func (cart *PlusROM) ID() string {
 	// not altering the underlying cartmapper's ID
-	return cart.child.ID()
+	return cart.state.child.ID()
 }
 
 // Snapshot implements the mapper.CartMapper interface.
 func (cart *PlusROM) Snapshot() mapper.CartMapper {
-	return cart.child.Snapshot()
+	n := *cart
+	n.state = cart.state.Snapshot()
+	return &n
 }
 
 // Plumb implements the mapper.CartMapper interface.
 func (cart *PlusROM) Plumb() {
-	cart.child.Plumb()
+	cart.state.Plumb()
 }
 
 // ID implements the mapper.CartContainer interface.
@@ -157,7 +179,7 @@ func (cart *PlusROM) ContainerID() string {
 
 // Reset implements the mapper.CartMapper interface.
 func (cart *PlusROM) Reset(randSrc *rand.Rand) {
-	cart.child.Reset(randSrc)
+	cart.state.child.Reset(randSrc)
 }
 
 // READ implements the mapper.CartMapper interface.
@@ -176,7 +198,7 @@ func (cart *PlusROM) Read(addr uint16, active bool) (data uint8, err error) {
 		return uint8(cart.net.recvRemaining()), nil
 	}
 
-	return cart.child.Read(addr, active)
+	return cart.state.child.Read(addr, active)
 }
 
 // Write implements the mapper.CartMapper interface.
@@ -196,42 +218,42 @@ func (cart *PlusROM) Write(addr uint16, data uint8, active bool, poke bool) erro
 		return nil
 	}
 
-	return cart.child.Write(addr, data, active, poke)
+	return cart.state.child.Write(addr, data, active, poke)
 }
 
 // NumBanks implements the mapper.CartMapper interface.
 func (cart *PlusROM) NumBanks() int {
-	return cart.child.NumBanks()
+	return cart.state.child.NumBanks()
 }
 
 // GetBank implements the mapper.CartMapper interface.
 func (cart *PlusROM) GetBank(addr uint16) mapper.BankInfo {
-	return cart.child.GetBank(addr)
+	return cart.state.child.GetBank(addr)
 }
 
 // Patch implements the mapper.CartMapper interface.
 func (cart *PlusROM) Patch(offset int, data uint8) error {
-	return cart.child.Patch(offset, data)
+	return cart.state.child.Patch(offset, data)
 }
 
 // Listen implements the mapper.CartMapper interface.
 func (cart *PlusROM) Listen(addr uint16, data uint8) {
-	cart.child.Listen(addr, data)
+	cart.state.child.Listen(addr, data)
 }
 
 // Step implements the mapper.CartMapper interface.
 func (cart *PlusROM) Step(clock float32) {
-	cart.child.Step(clock)
+	cart.state.child.Step(clock)
 }
 
 // CopyBanks implements the mapper.CartMapper interface.
 func (cart *PlusROM) CopyBanks() []mapper.BankContent {
-	return cart.child.CopyBanks()
+	return cart.state.child.CopyBanks()
 }
 
 // GetGetRegisters implements the mapper.CartRegistersBus interface.
 func (cart *PlusROM) GetRegisters() mapper.CartRegisters {
-	if rb, ok := cart.child.(mapper.CartRegistersBus); ok {
+	if rb, ok := cart.state.child.(mapper.CartRegistersBus); ok {
 		return rb.GetRegisters()
 	}
 	return nil
@@ -239,14 +261,14 @@ func (cart *PlusROM) GetRegisters() mapper.CartRegisters {
 
 // PutRegister implements the mapper.CartRegistersBus interface.
 func (cart *PlusROM) PutRegister(register string, data string) {
-	if rb, ok := cart.child.(mapper.CartRegistersBus); ok {
+	if rb, ok := cart.state.child.(mapper.CartRegistersBus); ok {
 		rb.PutRegister(register, data)
 	}
 }
 
 // GetRAM implements the mapper.CartRAMbus interface.
 func (cart *PlusROM) GetRAM() []mapper.CartRAM {
-	if rb, ok := cart.child.(mapper.CartRAMbus); ok {
+	if rb, ok := cart.state.child.(mapper.CartRAMbus); ok {
 		return rb.GetRAM()
 	}
 	return nil
@@ -254,14 +276,14 @@ func (cart *PlusROM) GetRAM() []mapper.CartRAM {
 
 // PutRAM implements the mapper.CartRAMbus interface.
 func (cart *PlusROM) PutRAM(bank int, idx int, data uint8) {
-	if rb, ok := cart.child.(mapper.CartRAMbus); ok {
+	if rb, ok := cart.state.child.(mapper.CartRAMbus); ok {
 		rb.PutRAM(bank, idx, data)
 	}
 }
 
 // GetStatic implements the mapper.CartStaticBus interface.
 func (cart *PlusROM) GetStatic() []mapper.CartStatic {
-	if sb, ok := cart.child.(mapper.CartStaticBus); ok {
+	if sb, ok := cart.state.child.(mapper.CartStaticBus); ok {
 		return sb.GetStatic()
 	}
 	return nil
@@ -269,7 +291,7 @@ func (cart *PlusROM) GetStatic() []mapper.CartStatic {
 
 // PutStatic implements the mapper.CartStaticBus interface.
 func (cart *PlusROM) PutStatic(segment string, idx uint16, data uint8) error {
-	if sb, ok := cart.child.(mapper.CartStaticBus); ok {
+	if sb, ok := cart.state.child.(mapper.CartStaticBus); ok {
 		return sb.PutStatic(segment, idx, data)
 	}
 	return nil
@@ -277,14 +299,14 @@ func (cart *PlusROM) PutStatic(segment string, idx uint16, data uint8) error {
 
 // Rewind implements the mapper.CartTapeBus interface.
 func (cart *PlusROM) Rewind() {
-	if sb, ok := cart.child.(mapper.CartTapeBus); ok {
+	if sb, ok := cart.state.child.(mapper.CartTapeBus); ok {
 		sb.Rewind()
 	}
 }
 
 // GetTapeState implements the mapper.CartTapeBus interface.
 func (cart *PlusROM) GetTapeState() (bool, mapper.CartTapeState) {
-	if sb, ok := cart.child.(mapper.CartTapeBus); ok {
+	if sb, ok := cart.state.child.(mapper.CartTapeBus); ok {
 		return sb.GetTapeState()
 	}
 	return false, mapper.CartTapeState{}
