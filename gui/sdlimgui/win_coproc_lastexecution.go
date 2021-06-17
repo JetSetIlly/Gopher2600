@@ -107,13 +107,14 @@ func (win *winCoProcLastExecution) draw() {
 		}
 
 		if programCycles, ok := itr.Details.Summary.(arm7tdmi.Cycles); ok {
+			iTotal := programCycles.I + programCycles.Imerged
 			nTotal := programCycles.Npc + programCycles.Ndata
-			sTotal := programCycles.Spc + programCycles.Sdata
+			sTotal := programCycles.Spc + programCycles.Sdata + programCycles.Smerged
 
 			if imgui.BeginTableV("cycles", 4, imgui.TableFlagsBordersOuter, imgui.Vec2{}, 0.0) {
 				imgui.TableNextRow()
 				imgui.TableNextColumn()
-				imgui.Text(fmt.Sprintf("I: %-6.0f", programCycles.I))
+				imgui.Text(fmt.Sprintf("I: %-6.0f", iTotal))
 				imgui.TableNextColumn()
 				imgui.Text(fmt.Sprintf("C: %-6.0f", programCycles.C))
 				imgui.TableNextColumn()
@@ -134,13 +135,13 @@ func (win *winCoProcLastExecution) draw() {
 				imgui.TableNextColumn()
 				imgui.Text(fmt.Sprintf("Flash: %3.1f%%", fp))
 				imgui.TableNextColumn()
-				imgui.Text(fmt.Sprintf("SRAM: %3.1f%%", sp))
+				imgui.Text(fmt.Sprintf("SRAM/MAM: %3.1f%%", sp))
 				imgui.EndTable()
 			}
 
 			if imgui.IsItemHovered() {
 				imgui.BeginTooltip()
-				imgui.Text("The fraction of time spent by N and S cycles accessing flash or SRAM")
+				imgui.Text("The fraction of time spent by N and S cycles accessing flash or SRAM/MAM")
 				imgui.EndTooltip()
 			}
 		} else {

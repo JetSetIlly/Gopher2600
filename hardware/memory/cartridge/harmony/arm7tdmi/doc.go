@@ -19,16 +19,11 @@
 // http://www.ecs.csun.edu/~smirzaei/docs/ece425/arm7tdmi_instruction_set_reference.pdf
 //
 // For this project we only need to emulte the Thumb architecture. The strategy
-// for this was to implement the nineteen opcode formats in turn, until there
-// was nothing left. As of writing only format 17, software interrupts, remain
-// unimplemented. To this end, the following reference was preferred:
+// for this was to implement the nineteen opcode formats. As of writing only
+// format 17, software interrupts, remain unimplemented. To this end, the
+// following reference was preferred:
 //
 // https://usermanual.wiki/Pdf/ARM7TDMImanualpt3.1481331792/view
-//
-// The full version of that manual was found here. Cycle timings for the
-// instructions were found in chapter 7.
-//
-// https://www.dwedit.org/files/ARM7TDMI.pdf
 //
 // More detailed explanations of Thumb instruction were found in chapter A7.1
 // of the ARM Architecture Reference Manual. In particular the side-effects of
@@ -38,4 +33,13 @@
 //
 // https://www.cs.miami.edu/home/burt/learning/Csc521.141/Documents/arm_arm.pdf
 //
+// Reference for the ARM7TDMI-S, as used in the Harmony cartridge formats. This
+// contains the cycle information for all ARM instructions.
+//
+// https://developer.arm.com/documentation/ddi0234/b
+//
+// Specific information about the UXP ARM7TDMI-S used by the Harmony cartridge.
+// This contains good information about the MAM.
+//
+// https://www.nxp.com/docs/en/user-guide/UM10161.pdf
 package arm7tdmi

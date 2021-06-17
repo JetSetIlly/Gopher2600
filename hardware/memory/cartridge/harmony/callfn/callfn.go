@@ -21,6 +21,7 @@ package callfn
 
 import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
+	"github.com/jetsetilly/gopher2600/logger"
 )
 
 // CallFn keeps track of the CallFn process common to both DPC+ and CDF*
@@ -117,6 +118,7 @@ func (cf *CallFn) Start(cycles float32) {
 
 	if cycles > cycleCap {
 		cycles = cycleCap
+		logger.Logf("ARM7/Callfn", "capping cycles (%.0f) at %d", cycles, cycleCap)
 	}
 
 	cf.remainingCycles = cycles
@@ -124,19 +126,20 @@ func (cf *CallFn) Start(cycles float32) {
 	cf.phantomOnResume = false
 }
 
-// Step forward one clock. Returns true if CallFn is active and false if not.
-// If false, then the ARM should be stepped but not otherwise.
-//
-// Calls to Step() should be wrapped in CallFn.IsActive(). It only needs to be
-// called is IsActive() returns true.
+// Step forward one clock. Returns true if the ARM program is running and false
+// otherwise.
 func (cf *CallFn) Step(immediate bool, armClock float32, vcsClock float32) bool {
+	if cf.remainingCycles <= 0 {
+		return false
+	}
+
 	if immediate {
 		cf.remainingCycles = 0
 		return false
 	}
 
 	// number of arm cycles consumed for every VCS cycle
-	armCycles := float32(float64(armClock / vcsClock))
+	armCycles := float32(armClock / vcsClock)
 
 	cf.remainingCycles -= armCycles
 	return true

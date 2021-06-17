@@ -554,7 +554,7 @@ func (arm *ARM) Run() (float32, error) {
 		arm.cyclesInstruction.MAMenabled = arm.mam.isEnabled()
 		arm.cyclesInstruction.PCinSRAM = !(arm.registers[rPC] >= FlashOrigin && arm.registers[rPC] <= Flash64kMemtop)
 
-		// sum cycles (including stretching)
+		// sum cycles. not summing merged cycles
 		sumCycles := arm.cyclesInstruction.I + arm.cyclesInstruction.C
 
 		// PC cycle stretching
@@ -586,7 +586,7 @@ func (arm *ARM) Run() (float32, error) {
 		// send disasm information to disassembler
 		if arm.disasm != nil {
 			// update cycle information
-			arm.disasmEntry.Cycles = sumCycles
+			arm.disasmEntry.Cycles = arm.cyclesInstruction.count()
 			arm.disasmEntry.CycleDetails = arm.cyclesInstruction
 
 			// update program cycles
@@ -651,13 +651,22 @@ func (arm *ARM) executeMoveShiftedRegister(opcode uint16) {
 	//
 	// also "7.6 Data Operations" in "ARM7TDMI-S Technical Reference Manual r4p3"
 	arm.cyclesInstruction.Spc++
-	if shift > 0 {
-		arm.cyclesInstruction.I++
-	}
 	if destReg == rPC {
 		arm.cyclesInstruction.Spc++
 		arm.cyclesInstruction.Npc++
 	}
+
+	// The only insructions in this group that requires an I cycle are the
+	// shift instructions. However, from Section 7.6:
+	//
+	// "When a register specifies the shift length, an additional data path
+	// cycle occurs before the data operation to copy the bottom 8 bits of that
+	// register into a holding latch in the barrel shifter. The instruction
+	// prefetch occurs during this first cycle. The operation cycle is internal
+	// (it does not request memory). Because the address remains stable through
+	// both cycles, the memory manager can merge this internal cycle with the
+	// following sequential access."
+	arm.cyclesInstruction.Imerged++
 
 	// in this class of operation the src register may also be the dest
 	// register so we need to make a note of the value before it is
@@ -756,7 +765,7 @@ func (arm *ARM) executeAddSubtract(opcode uint16) {
 	// ARM7TDMI data sheet.
 	//
 	// also "7.6 Data Operations" in "ARM7TDMI-S Technical Reference Manual r4p3"
-	arm.cyclesInstruction.Spc++ // +S
+	arm.cyclesInstruction.Spc++
 	if destReg == rPC {
 		arm.cyclesInstruction.Spc++
 		arm.cyclesInstruction.Npc++
@@ -874,14 +883,18 @@ func (arm *ARM) executeALUoperations(opcode uint16) {
 	//
 	// also "7.6 Data Operations" in "ARM7TDMI-S Technical Reference Manual r4p3"
 	//
-	// Instructions LSL and LSR also require the shifting to be taken into
-	// consideration. The additional adjustment is done in the correct switch
-	// branches below.
+	// Instructions LSL, LSR, ASR and ROR also require the shifting to be taken
+	// into consideration. The additional adjustment is done in the correct
+	// switch branches below.
 	//
 	// the MUL instruction requires additional I cycles. see
 	// "7.7 Data Operations" in "ARM7TDMI-S Technical Reference Manual r4p3"
 	arm.cyclesInstruction.Spc++
-	if destReg == rPC {
+
+	// according to "7.7 Data Operations". We can infer from section 7.7 that a
+	// MUL intruction (op == 0b1101) doesn't care if the destination register
+	// is the PC register.
+	if destReg == rPC && op != 0b1101 {
 		arm.cyclesInstruction.Spc++
 		arm.cyclesInstruction.Npc++
 	}
@@ -911,16 +924,22 @@ func (arm *ARM) executeALUoperations(opcode uint16) {
 
 		shift := arm.registers[srcReg]
 
-		// additional cycle to perform shift
+		// shift instructions require an I cycle. However, from Section 7.6:
 		//
+		// "When a register specifies the shift length, an additional data path
+		// cycle occurs before the data operation to copy the bottom 8 bits of that
+		// register into a holding latch in the barrel shifter. The instruction
+		// prefetch occurs during this first cycle. The operation cycle is internal
+		// (it does not request memory). Because the address remains stable through
+		// both cycles, the memory manager can merge this internal cycle with the
+		// following sequential access."
+		arm.cyclesInstruction.Imerged++
+
 		// NOTE: Table 7.6 in the tech ref suggests additional I cycles are
 		// different for PC destination but shifted register with PC
 		// destination is not possible in thumb mode.
-		if shift > 0 {
-			if destReg == rPC {
-				logger.Log("ARM7", "shift and store in PC is not possible in thumb mode")
-			}
-			arm.cyclesInstruction.I++
+		if destReg == rPC {
+			logger.Log("ARM7", "shift and store in PC is not possible in thumb mode")
 		}
 
 		// if Rs[7:0] == 0
@@ -961,12 +980,22 @@ func (arm *ARM) executeALUoperations(opcode uint16) {
 
 		shift := arm.registers[srcReg]
 
-		// additional cycle to perform shift. see note for LSL
-		if shift > 0 {
-			if destReg == rPC {
-				logger.Log("ARM7", "shift and store in PC is not possible in thumb mode")
-			}
-			arm.cyclesInstruction.I++
+		// shift instructions require an I cycle. However, from Section 7.6:
+		//
+		// "When a register specifies the shift length, an additional data path
+		// cycle occurs before the data operation to copy the bottom 8 bits of that
+		// register into a holding latch in the barrel shifter. The instruction
+		// prefetch occurs during this first cycle. The operation cycle is internal
+		// (it does not request memory). Because the address remains stable through
+		// both cycles, the memory manager can merge this internal cycle with the
+		// following sequential access."
+		arm.cyclesInstruction.Imerged++
+
+		// NOTE: Table 7.6 in the tech ref suggests additional I cycles are
+		// different for PC destination but shifted register with PC
+		// destination is not possible in thumb mode.
+		if destReg == rPC {
+			logger.Log("ARM7", "shift and store in PC is not possible in thumb mode")
 		}
 
 		// if Rs[7:0] == 0 then
@@ -1022,12 +1051,22 @@ func (arm *ARM) executeALUoperations(opcode uint16) {
 		// V Flag = unaffected
 		shift := arm.registers[srcReg]
 
-		// additional cycle to perform shift. see note for LSL
-		if shift > 0 {
-			if destReg == rPC {
-				logger.Log("ARM7", "shift and store in PC is not possible in thumb mode")
-			}
-			arm.cyclesInstruction.I++
+		// shift instructions require an I cycle. However, from Section 7.6:
+		//
+		// "When a register specifies the shift length, an additional data path
+		// cycle occurs before the data operation to copy the bottom 8 bits of that
+		// register into a holding latch in the barrel shifter. The instruction
+		// prefetch occurs during this first cycle. The operation cycle is internal
+		// (it does not request memory). Because the address remains stable through
+		// both cycles, the memory manager can merge this internal cycle with the
+		// following sequential access."
+		arm.cyclesInstruction.Imerged++
+
+		// NOTE: Table 7.6 in the tech ref suggests additional I cycles are
+		// different for PC destination but shifted register with PC
+		// destination is not possible in thumb mode.
+		if destReg == rPC {
+			logger.Log("ARM7", "shift and store in PC is not possible in thumb mode")
 		}
 
 		if shift > 0 && shift < 32 {
@@ -1098,12 +1137,22 @@ func (arm *ARM) executeALUoperations(opcode uint16) {
 		// V Flag = unaffected
 		shift := arm.registers[srcReg]
 
-		// additional cycle to perform shift. see note for LSL
-		if shift > 0 {
-			if destReg == rPC {
-				logger.Log("ARM7", "shift and store in PC is not possible in thumb mode")
-			}
-			arm.cyclesInstruction.I++
+		// shift instructions require an I cycle. However, from Section 7.6:
+		//
+		// "When a register specifies the shift length, an additional data path
+		// cycle occurs before the data operation to copy the bottom 8 bits of that
+		// register into a holding latch in the barrel shifter. The instruction
+		// prefetch occurs during this first cycle. The operation cycle is internal
+		// (it does not request memory). Because the address remains stable through
+		// both cycles, the memory manager can merge this internal cycle with the
+		// following sequential access."
+		arm.cyclesInstruction.Imerged++
+
+		// NOTE: Table 7.6 in the tech ref suggests additional I cycles are
+		// different for PC destination but shifted register with PC
+		// destination is not possible in thumb mode.
+		if destReg == rPC {
+			logger.Log("ARM7", "shift and store in PC is not possible in thumb mode")
 		}
 
 		if shift&0xff == 0 {
@@ -1169,8 +1218,8 @@ func (arm *ARM) executeALUoperations(opcode uint16) {
 			arm.disasmEntry.Operand = fmt.Sprintf("R%d, R%d ", destReg, srcReg)
 		}
 
-		// the MUL instruction requires additional cycles. section 4.7.3 of the
-		// ARM7TDMI data sheet.
+		// the MUL instruction requires additional I cycles. see
+		// "7.7 Data Operations" in "ARM7TDMI-S Technical Reference Manual r4p3"
 		p := bits.OnesCount32(arm.registers[int(srcReg)] & 0xffffff00)
 		if p == 0 || p == 24 {
 			arm.cyclesInstruction.I++
@@ -1348,12 +1397,21 @@ func (arm *ARM) executePCrelativeLoad(opcode uint16) {
 	// ARM7TDMI data sheet.
 	//
 	// also "7.8 Load Register" in "ARM7TDMI-S Technical Reference Manual r4p3"
-	arm.cyclesInstruction.Spc++
 	arm.cyclesInstruction.Npc++
-	arm.cyclesInstruction.I++
 	if destReg == rPC {
 		arm.cyclesInstruction.Spc++
 		arm.cyclesInstruction.Npc++
+	} else {
+		// From section 7.8:
+		// "During the third cycle, the ARM7TDMI-S processor transfers the data to the
+		// destination register. (External memory is not used.) Normally, the ARM7TDMI-S
+		// core merges this third cycle with the next prefetch to form one memory N-cycle."
+		arm.cyclesInstruction.Smerged++
+	}
+
+	// the I cycle is marked "as required"
+	if imm > 0 {
+		arm.cyclesInstruction.I++
 	}
 
 	// "Bit 1 of the PC value is forced to zero for the purpose of this
@@ -1389,12 +1447,21 @@ func (arm *ARM) executeLoadStoreWithRegisterOffset(opcode uint16) {
 
 	if load {
 		// LDR and LDRB have the same cycle profile
-		arm.cyclesInstruction.Spc++
 		arm.cyclesInstruction.Npc++
-		arm.cyclesInstruction.I++
 		if reg == rPC {
 			arm.cyclesInstruction.Spc++
 			arm.cyclesInstruction.Npc++
+		} else {
+			// From section 7.8:
+			// "During the third cycle, the ARM7TDMI-S processor transfers the data to the
+			// destination register. (External memory is not used.) Normally, the ARM7TDMI-S
+			// core merges this third cycle with the next prefetch to form one memory N-cycle."
+			arm.cyclesInstruction.Smerged++
+		}
+
+		// the I cycle is marked "as required"
+		if arm.registers[offsetReg] > 0 {
+			arm.cyclesInstruction.I++
 		}
 
 		if byteTransfer {
@@ -1456,12 +1523,21 @@ func (arm *ARM) executeLoadStoreSignExtendedByteHalford(opcode uint16) {
 
 	if sign {
 		// LDSB and LDSH have the same cycle profile
-		arm.cyclesInstruction.Spc++
 		arm.cyclesInstruction.Npc++
-		arm.cyclesInstruction.I++
 		if reg == rPC {
 			arm.cyclesInstruction.Spc++
 			arm.cyclesInstruction.Npc++
+		} else {
+			// From section 7.8:
+			// "During the third cycle, the ARM7TDMI-S processor transfers the data to the
+			// destination register. (External memory is not used.) Normally, the ARM7TDMI-S
+			// core merges this third cycle with the next prefetch to form one memory N-cycle."
+			arm.cyclesInstruction.Smerged++
+		}
+
+		// the I cycle is marked "as required"
+		if arm.registers[offsetReg] > 0 {
+			arm.cyclesInstruction.I++
 		}
 
 		if hi {
@@ -1490,12 +1566,21 @@ func (arm *ARM) executeLoadStoreSignExtendedByteHalford(opcode uint16) {
 
 	if hi {
 		// LDRH cycle profile
-		arm.cyclesInstruction.Spc++
 		arm.cyclesInstruction.Npc++
-		arm.cyclesInstruction.I++
 		if reg == rPC {
 			arm.cyclesInstruction.Spc++
 			arm.cyclesInstruction.Npc++
+		} else {
+			// From section 7.8:
+			// "During the third cycle, the ARM7TDMI-S processor transfers the data to the
+			// destination register. (External memory is not used.) Normally, the ARM7TDMI-S
+			// core merges this third cycle with the next prefetch to form one memory N-cycle."
+			arm.cyclesInstruction.Smerged++
+		}
+
+		// the I cycle is marked "as required"
+		if arm.registers[offsetReg] > 0 {
+			arm.cyclesInstruction.I++
 		}
 
 		// load halfword
@@ -1549,12 +1634,21 @@ func (arm *ARM) executeLoadStoreWithImmOffset(opcode uint16) {
 
 	if load {
 		// LDRB and LDR have the same cycle profile
-		arm.cyclesInstruction.Spc++
 		arm.cyclesInstruction.Npc++
-		arm.cyclesInstruction.I++
 		if reg == rPC {
 			arm.cyclesInstruction.Spc++
 			arm.cyclesInstruction.Npc++
+		} else {
+			// From section 7.8:
+			// "During the third cycle, the ARM7TDMI-S processor transfers the data to the
+			// destination register. (External memory is not used.) Normally, the ARM7TDMI-S
+			// core merges this third cycle with the next prefetch to form one memory N-cycle."
+			arm.cyclesInstruction.Smerged++
+		}
+
+		// the I cycle is marked "as required"
+		if offset > 0 {
+			arm.cyclesInstruction.I++
 		}
 
 		if byteTransfer {
@@ -1620,12 +1714,21 @@ func (arm *ARM) executeLoadStoreHalfword(opcode uint16) {
 
 	if load {
 		// LDRH cycle profile
-		arm.cyclesInstruction.Spc++
 		arm.cyclesInstruction.Npc++
-		arm.cyclesInstruction.I++
 		if reg == rPC {
 			arm.cyclesInstruction.Spc++
 			arm.cyclesInstruction.Npc++
+		} else {
+			// From section 7.8:
+			// "During the third cycle, the ARM7TDMI-S processor transfers the data to the
+			// destination register. (External memory is not used.) Normally, the ARM7TDMI-S
+			// core merges this third cycle with the next prefetch to form one memory N-cycle."
+			arm.cyclesInstruction.Smerged++
+		}
+
+		// the I cycle is marked "as required"
+		if offset > 0 {
+			arm.cyclesInstruction.I++
 		}
 
 		if arm.disasmLevel == disasmFull {
@@ -1670,12 +1773,21 @@ func (arm *ARM) executeSPRelativeLoadStore(opcode uint16) {
 
 	if load {
 		// LDR cycle profile
-		arm.cyclesInstruction.Spc++
 		arm.cyclesInstruction.Npc++
-		arm.cyclesInstruction.I++
 		if reg == rPC {
 			arm.cyclesInstruction.Spc++
 			arm.cyclesInstruction.Npc++
+		} else {
+			// From section 7.8:
+			// "During the third cycle, the ARM7TDMI-S processor transfers the data to the
+			// destination register. (External memory is not used.) Normally, the ARM7TDMI-S
+			// core merges this third cycle with the next prefetch to form one memory N-cycle."
+			arm.cyclesInstruction.Smerged++
+		}
+
+		// the I cycle is marked "as required"
+		if offset > 0 {
+			arm.cyclesInstruction.I++
 		}
 
 		if arm.disasmLevel == disasmFull {
@@ -1791,7 +1903,6 @@ func (arm *ARM) executePushPopRegisters(opcode uint16) {
 
 	if load {
 		arm.cyclesInstruction.Npc++
-		arm.cyclesInstruction.Spc++
 		arm.cyclesInstruction.I++
 
 		// start_address = SP
@@ -1828,15 +1939,21 @@ func (arm *ARM) executePushPopRegisters(opcode uint16) {
 			}
 		}
 
-		// POP instructions take 1 S cycle less than the number registers being stored
+		// POP instructions take 1 S cycle less than the number registers being
+		// stored. From section 7.10:
+		//
+		// "During the fourth and final (internal) cycle, the ARM7TDMI-S core moves
+		// the last word to its destination register. The last cycle can be merged
+		// with the next instruction prefetch to form a single memory N-cycle."
 		if arm.cyclesInstruction.Sdata > 0 {
 			arm.cyclesInstruction.Sdata--
+			arm.cyclesInstruction.Smerged++
 		}
 
 		// load PC register after all other registers
 		if pclr {
-			arm.cyclesInstruction.Spc++
 			arm.cyclesInstruction.Npc++
+			arm.cyclesInstruction.Spc++
 
 			// chop the odd bit off the new PC value
 			v := arm.read32bit(addr) & 0xfffffffe
@@ -1869,6 +1986,7 @@ func (arm *ARM) executePushPopRegisters(opcode uint16) {
 
 	// store
 
+	// section 7.11
 	arm.cyclesInstruction.Npc++
 	arm.cyclesInstruction.Ndata++
 
@@ -1992,9 +2110,15 @@ func (arm *ARM) executeMultipleLoadStore(opcode uint16) {
 		}
 	}
 
-	// multi-load/store instructions take 1 S cycle less than the number registers being stored
+	// multi-load/store instructions take 1 S cycle less than the number
+	// registers being stored. From section 7.10:
+	//
+	// "During the fourth and final (internal) cycle, the ARM7TDMI-S core moves
+	// the last word to its destination register. The last cycle can be merged
+	// with the next instruction prefetch to form a single memory N-cycle."
 	if arm.cyclesInstruction.Sdata > 0 {
 		arm.cyclesInstruction.Sdata--
+		arm.cyclesInstruction.Smerged++
 	}
 
 	// write back the new base address
@@ -2005,14 +2129,6 @@ func (arm *ARM) executeConditionalBranch(opcode uint16) {
 	// format 16 - Conditional branch
 	cond := (opcode & 0x0f00) >> 8
 	offset := uint32(opcode & 0x00ff)
-
-	// for cycle counting purposes, instructions in this format are equivalent
-	// to ARM instructions in the "Branch and Branch with link" set, section
-	// 4.4.2 of the ARM7TDMI data sheet.
-	//
-	// also "7.3 Branch ..." in "ARM7TDMI-S Technical Reference Manual r4p3"
-	arm.cyclesInstruction.Spc += 2
-	arm.cyclesInstruction.Npc++
 
 	operator := ""
 	branch := false
@@ -2083,9 +2199,18 @@ func (arm *ARM) executeConditionalBranch(opcode uint16) {
 		newPC = arm.registers[rPC] + offset
 	}
 
+	// for cycle counting purposes, instructions in this format are equivalent
+	// to ARM instructions in the "Branch and Branch with link" set, section
+	// 4.4.2 of the ARM7TDMI data sheet.
+	//
+	// also "7.3 Branch ..." in "ARM7TDMI-S Technical Reference Manual r4p3"
+	arm.cyclesInstruction.Spc++
+
 	// do branch
 	if branch {
 		arm.registers[rPC] = newPC + 1
+		arm.cyclesInstruction.Spc++
+		arm.cyclesInstruction.Npc++
 	}
 
 	switch arm.disasmLevel {
@@ -2097,6 +2222,8 @@ func (arm *ARM) executeConditionalBranch(opcode uint16) {
 	case disasmNotes:
 		if branch {
 			arm.disasmEntry.ExecutionNotes = "branched"
+		} else {
+			arm.disasmEntry.ExecutionNotes = "next"
 		}
 	case disasmNone:
 	}

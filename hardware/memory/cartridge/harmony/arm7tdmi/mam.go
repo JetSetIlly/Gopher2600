@@ -15,9 +15,12 @@
 
 package arm7tdmi
 
+import "github.com/jetsetilly/gopher2600/logger"
+
 // memory addressing module. not fully implemented.
 type mam struct {
 	mamcr          uint32
+	mamtim         uint32
 	allowFromThumb bool
 }
 
@@ -32,8 +35,18 @@ func (m *mam) write(addr uint32, val uint32) bool {
 	case MAMCR:
 		if m.allowFromThumb {
 			m.mamcr = val
+			if m.mamcr > 3 {
+				logger.Logf("ARM7", "setting MAMCR to a value greater than 3 (%#08x)", m.mamcr)
+			}
 		}
 	case MAMTIM:
+		if m.allowFromThumb {
+			if m.mamcr == 0 {
+				m.mamtim = val
+			} else {
+				logger.Logf("ARM7", "trying to set MAMTIM while MAMCR is active")
+			}
+		}
 	default:
 		return false
 	}
@@ -48,7 +61,7 @@ func (m *mam) read(addr uint32) (uint32, bool) {
 	case MAMCR:
 		val = m.mamcr
 	case MAMTIM:
-		return 0, true
+		val = m.mamtim
 	default:
 		return 0, false
 	}

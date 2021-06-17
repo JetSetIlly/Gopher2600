@@ -784,7 +784,11 @@ The "Mostly Inclusive Atari 2600 Mapper / Selected Hardware Document" (dated 03/
 
 Supercharger information from the Kevin Horton document above and also the `sctech.txt` document
 
-Reference for the ARM7TDMI thumb instruction set, as used in the Harmony cartridge formats:
+Reference for the ARM7TDMI-S, as used in the Harmony cartridge formats:
+
+https://developer.arm.com/documentation/ddi0234/b
+
+The Thumb instruction specifically is summarised nicely here:
 
 https://edu.heibai.org/ARM%E8%B5%84%E6%96%99/ARM7-TDMI-manual-pt3.pdf
 
