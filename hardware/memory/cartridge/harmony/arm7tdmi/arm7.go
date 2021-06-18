@@ -576,16 +576,16 @@ func (arm *ARM) Run(mamcr uint32) (uint32, float32, error) {
 			fallthrough
 		case 0:
 			stretchedCycles += (arm.cyclesInstruction.Npc + arm.cyclesInstruction.Spc) * arm.stretchFlash
-			stretchedCycles += (arm.cyclesInstruction.Spcmerged) * arm.stretchFlash
+			// stretchedCycles += (arm.cyclesInstruction.Spcmerged) * arm.stretchFlash
 			stretchedCycles += (arm.cyclesInstruction.Ndata + arm.cyclesInstruction.Sdata) * arm.stretchSRAM
 		case 1:
 			stretchedCycles += (arm.cyclesInstruction.Npc * arm.stretchFlash)
 			stretchedCycles += (arm.cyclesInstruction.Spc * arm.stretchMAM)
-			stretchedCycles += (arm.cyclesInstruction.Spcmerged) * arm.stretchMAM
+			// stretchedCycles += (arm.cyclesInstruction.Spcmerged) * arm.stretchMAM
 			stretchedCycles += (arm.cyclesInstruction.Ndata + arm.cyclesInstruction.Sdata) * arm.stretchSRAM
 		case 2:
 			stretchedCycles += (arm.cyclesInstruction.Npc + arm.cyclesInstruction.Spc) * arm.stretchMAM
-			stretchedCycles += (arm.cyclesInstruction.Spcmerged) * arm.stretchMAM
+			// stretchedCycles += (arm.cyclesInstruction.Spcmerged) * arm.stretchMAM
 			stretchedCycles += (arm.cyclesInstruction.Ndata + arm.cyclesInstruction.Sdata) * arm.stretchMAM
 		}
 

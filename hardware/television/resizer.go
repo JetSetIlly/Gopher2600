@@ -29,7 +29,6 @@ import (
 //
 //  *  changes size after setup phase
 //		- Ladybug
-//		- aTaRSI (demo)
 //
 //  * the occasional unsynced frame
 //		- Hack Em Hangly Pacman
@@ -94,6 +93,10 @@ func (sr *resizer) examine(tv *Television, sig signal.SignalAttributes) {
 	// TV. the best example of this is Andrew Davie's chess which simply does
 	// not care about frames during the computer's thinking time.
 	if !tv.state.syncedFrame {
+		// reset any pending changes on an unsynced frame
+		tv.state.resizer.pendingCt = 0
+		sr.pendingTop = sr.currTop
+		sr.pendingBottom = sr.currBottom
 		return
 	}
 
