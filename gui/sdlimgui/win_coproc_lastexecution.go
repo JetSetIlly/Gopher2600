@@ -17,10 +17,13 @@ package sdlimgui
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/disassembly/coprocessor"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/harmony/arm7tdmi"
+	"github.com/jetsetilly/gopher2600/logger"
+	"github.com/jetsetilly/gopher2600/paths"
 )
 
 const winCoProcLastExecutionID = "Last Execution"
@@ -88,6 +91,15 @@ func (win *winCoProcLastExecution) draw() {
 			itr.Details.Clock == win.img.lz.TV.Clock) {
 			if imgui.Button("Goto") {
 				win.img.lz.Dbg.PushGotoCoords(itr.Details.Frame, itr.Details.Scanline, itr.Details.Clock)
+			}
+			imgui.SameLineV(0, 15)
+			if imgui.Button("Save") {
+				win.save()
+			}
+			if imgui.IsItemHovered() {
+				imgui.BeginTooltip()
+				imgui.Text("Saves the last execution listing to a file in the working directory")
+				imgui.EndTooltip()
 			}
 		} else {
 			imgui.InvisibleButtonV("Goto", imgui.Vec2{1, 1}, imgui.ButtonFlagsNone)
@@ -233,5 +245,28 @@ func (win *winCoProcLastExecution) drawDisasm(itr *coprocessor.Iterate) {
 				break // clipper.DisplayStart loop
 			}
 		}
+	}
+}
+
+func (win *winCoProcLastExecution) save() {
+	fn := paths.UniqueFilename("coproc", "")
+	f, err := os.Create(fn)
+	if err != nil {
+		logger.Logf("sdlimgui", "error saving last coproc execution: %v", err)
+		return
+	}
+	defer func() {
+		err := f.Close()
+		if err != nil {
+			logger.Logf("sdlimgui", "error saving last coproc execution: %v", err)
+		}
+	}()
+
+	itr := win.img.lz.Dbg.Disasm.Coprocessor.NewIteration()
+	e, _ := itr.Next()
+	for e != nil {
+		f.Write([]byte(e.String()))
+		f.Write([]byte("\n"))
+		e, _ = itr.Next()
 	}
 }
