@@ -184,17 +184,52 @@ func (win *winPrefs) drawARM() {
 		defer imgui.PopItemFlag()
 	}
 
-	defaultMAM := win.img.vcs.Prefs.ARM.DefaultMAM.Get().(bool)
-	if imgui.Checkbox("Default MAM Enable for Thumb Programs", &defaultMAM) {
-		win.img.vcs.Prefs.ARM.DefaultMAM.Set(defaultMAM)
-	}
-	win.drawHelp("MAM will be enabled at beginning of every thumb program execution.\nRequired for new games like Gorf Arcade and Turbo")
+	// emulateMAMBug := win.img.vcs.Prefs.ARM.EmulateMAMbug.Get().(bool)
+	// if imgui.Checkbox("Emulate MAM Bug", &emulateMAMBug) {
+	// 	win.img.vcs.Prefs.ARM.EmulateMAMbug.Set(emulateMAMBug)
+	// }
+	// win.drawHelp(`A bug in some ARM7TDMI chips used in the Harmony cartridge
+	// can result in a crash if the MAM is in mode 2. Leave this option unticked for
+	// more situations but if you need to emulate the buggy behaviour then untick this
+	// option.`)
 
-	allowMAMfromThumb := win.img.vcs.Prefs.ARM.AllowMAMfromThumb.Get().(bool)
-	if imgui.Checkbox("Allow MAM Enable from Thumb", &allowMAMfromThumb) {
-		win.img.vcs.Prefs.ARM.AllowMAMfromThumb.Set(allowMAMfromThumb)
+	var mamState string
+	switch win.img.vcs.Prefs.ARM.MAM.Get().(int) {
+	case -1:
+		mamState = "Driver"
+	case 0:
+		mamState = "Disabled"
+	case 1:
+		mamState = "Partial"
+	case 2:
+		mamState = "Full"
 	}
-	win.drawHelp("MAM can be enabled/disabled by thumb program")
+	imgui.PushItemWidth(imguiGetFrameDim("Disabled").X + imgui.FrameHeight())
+	if imgui.BeginComboV("Default MAM State##mam", mamState, imgui.ComboFlagsNone) {
+		if imgui.Selectable("Driver") {
+			win.img.vcs.Prefs.ARM.MAM.Set(-1)
+		}
+		if imgui.Selectable("Disabled") {
+			win.img.vcs.Prefs.ARM.MAM.Set(0)
+		}
+		if imgui.Selectable("Partial") {
+			win.img.vcs.Prefs.ARM.MAM.Set(1)
+		}
+		if imgui.Selectable("Full") {
+			win.img.vcs.Prefs.ARM.MAM.Set(2)
+		}
+		imgui.EndCombo()
+	}
+	imgui.PopItemWidth()
+	win.drawHelp(`The MAM state at the start of the Thumb program.
+
+For most purposes, this should be set to 'Driver'. This means that the emulated driver
+for the cartridge mapper decides what the value should be.
+
+If the 'Default MAM State' value is not set to 'Driver' then the Thumb program will be
+prevented from changing the MAM state.
+
+The MAM should almost never be disabled completely.`)
 
 	imgui.Spacing()
 	if imgui.CollapsingHeader("Timings (advanced)") {
@@ -208,7 +243,7 @@ func (win *winPrefs) drawARM() {
 		if imgui.SliderFloatV("Flash Access Time", &flashAccessTime, 1, 60, fmt.Sprintf("%.1f ns", flashAccessTime), imgui.SliderFlagsNone) {
 			win.img.vcs.Prefs.ARM.FlashAccessTime.Set(flashAccessTime)
 		}
-		win.drawHelp("The amount of time required for the ARM to address Flash. Default time of 10ns")
+		win.drawHelp("The amount of time required for the ARM to address Flash. Default time of 50ns")
 
 		sramAccessTime := float32(win.img.vcs.Prefs.ARM.SRAMAccessTime.Get().(float64))
 		if imgui.SliderFloatV("SRAM Access Time", &sramAccessTime, 1, 60, fmt.Sprintf("%.1f ns", sramAccessTime), imgui.SliderFlagsNone) {

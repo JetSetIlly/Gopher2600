@@ -49,17 +49,18 @@ type Preferences struct {
 	ARM ARMPreferences
 }
 
+// Indicats that the ARM should put the MAM into the mode inidcated by the
+// emulated driver for the cartridge mapper.
+const MAMDriver = -1
+
 type ARMPreferences struct {
 	// whether the ARM coprocessor (as found in Harmony cartridges) execute
 	// instantly or if the cycle accurate steppint is attempted
 	Immediate prefs.Bool
 
-	// MAM is enabled by hardware implementation by default (eg. Harmony with new CDFJ+ driver)
-	DefaultMAM prefs.Bool
-
-	// allow thumb program to enable MAM. ideally, this will be allowed but some
-	// hardware implemenations will ignore requests from the thumb progra.
-	AllowMAMfromThumb prefs.Bool
+	// a value of MAMDriver says to use the driver supplied MAM value. any other value
+	// "forces" the MAM setting on Thumb program execution.
+	MAM prefs.Int
 
 	Clock           prefs.Float
 	FlashAccessTime prefs.Float
@@ -96,11 +97,7 @@ func NewPreferences() (*Preferences, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = p.dsk.Add("hardware.arm7.defaultMAM", &p.ARM.DefaultMAM)
-	if err != nil {
-		return nil, err
-	}
-	err = p.dsk.Add("hardware.arm7.allowMAMfromThumb", &p.ARM.AllowMAMfromThumb)
+	err = p.dsk.Add("hardware.arm7.mam", &p.ARM.MAM)
 	if err != nil {
 		return nil, err
 	}
@@ -108,7 +105,7 @@ func NewPreferences() (*Preferences, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = p.dsk.Add("hardware.arm7.flashAccessTime", &p.ARM.FlashAccessTime)
+	err = p.dsk.Add("hardware.arm7.flashAccessTime1", &p.ARM.FlashAccessTime)
 	if err != nil {
 		return nil, err
 	}
@@ -131,8 +128,7 @@ func (p *Preferences) SetDefaults() {
 	p.RandomState.Set(false)
 	p.RandomPins.Set(false)
 	p.ARM.Immediate.Set(false)
-	p.ARM.DefaultMAM.Set(true)
-	p.ARM.AllowMAMfromThumb.Set(true)
+	p.ARM.MAM.Set(-1)
 	p.ARM.Clock.Set(armclocks.MasterClock)               // Mhz
 	p.ARM.FlashAccessTime.Set(armclocks.FlashAccessTime) // ns
 	p.ARM.SRAMAccessTime.Set(armclocks.SRAMAccessTime)   // ns

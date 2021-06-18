@@ -68,6 +68,9 @@ type version struct {
 	entrySR uint32
 	entryLR uint32
 	entryPC uint32
+
+	// mam state on thumb program start
+	mamcr uint32
 }
 
 func newVersion(v string, data []uint8) (version, error) {
@@ -106,6 +109,7 @@ func newVersion(v string, data []uint8) (version, error) {
 		r.incrementShift = 12
 		r.musicFetcherShift = 20
 		r.fetcherMask = 0xf0000000
+		r.mamcr = 1
 
 	case "CDFJ+":
 		r.submapping = "CDFJ+"
@@ -119,6 +123,7 @@ func newVersion(v string, data []uint8) (version, error) {
 		r.incrementShift = 8
 		r.musicFetcherShift = 12
 		r.fetcherMask = 0xff000000
+		r.mamcr = 2
 
 		idx := 0x17f8
 		r.entryLR = uint32(data[idx])
@@ -156,6 +161,7 @@ func newVersion(v string, data []uint8) (version, error) {
 		r.incrementShift = 12
 		r.musicFetcherShift = 20
 		r.fetcherMask = 0xf0000000
+		r.mamcr = 1
 
 	case "CDF1":
 		r.submapping = "CDF1"
@@ -169,6 +175,7 @@ func newVersion(v string, data []uint8) (version, error) {
 		r.incrementShift = 12
 		r.musicFetcherShift = 20
 		r.fetcherMask = 0xf0000000
+		r.mamcr = 1
 
 	default:
 		return version{}, curated.Errorf("unknown version: %s", v)

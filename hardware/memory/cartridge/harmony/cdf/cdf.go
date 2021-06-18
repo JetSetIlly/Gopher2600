@@ -320,7 +320,9 @@ func (cart *cdf) Write(addr uint16, data uint8, passive bool, poke bool) error {
 			// generate interrupt to update AUDV0 while running ARM code
 			fallthrough
 		case 0xff:
-			cycles, err := cart.arm.Run()
+			// we don't care about the state of the MAM returned by Run()
+			// because the CDF* driver handles the change itself
+			_, cycles, err := cart.arm.Run(cart.version.mamcr)
 			if err != nil {
 				return curated.Errorf("CDF: %v", err)
 			}

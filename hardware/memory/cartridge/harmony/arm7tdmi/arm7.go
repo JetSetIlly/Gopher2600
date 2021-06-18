@@ -42,6 +42,7 @@ type ARM struct {
 
 	stretchFlash float32
 	stretchSRAM  float32
+	stretchMAM   float32
 
 	// the speed at which the arm is running at
 	clock float32
@@ -353,18 +354,24 @@ func (arm *ARM) write32bit(addr uint32, val uint32) {
 // forever.
 //
 // Returns the number of ARM cycles and any errors.
-func (arm *ARM) Run() (float32, error) {
+func (arm *ARM) Run(mamcr uint32) (uint32, float32, error) {
 	err := arm.reset()
 	if err != nil {
-		return 0, err
+		return arm.mam.mamcr, 0, err
 	}
 
-	// apply preferences to ARM state
-	arm.clock = float32(arm.prefs.Clock.Get().(float64))
-	arm.mam.allowFromThumb = arm.prefs.AllowMAMfromThumb.Get().(bool)
-	arm.mam.enable(arm.prefs.DefaultMAM.Get().(bool))
+	// set mamcr on startup
+	arm.mam.pref = arm.prefs.MAM.Get().(int)
+	if arm.mam.pref == preferences.MAMDriver {
+		arm.mam.setMAMCR(mamcr)
+	} else {
+		arm.mam.setMAMCR(uint32(arm.mam.pref))
+	}
 
-	// get current stetch values for N and S cycles
+	// main ARM clock
+	arm.clock = float32(arm.prefs.Clock.Get().(float64))
+
+	// get current stetch values for SRAM/Flash access
 	arm.stretchFlash = float32(arm.prefs.Clock.Get().(float64) / (1000 / arm.prefs.FlashAccessTime.Get().(float64)))
 	arm.stretchSRAM = float32(arm.prefs.Clock.Get().(float64) / (1000 / arm.prefs.SRAMAccessTime.Get().(float64)))
 	if arm.stretchFlash < 1.0 {
@@ -373,6 +380,9 @@ func (arm *ARM) Run() (float32, error) {
 	if arm.stretchSRAM < 1.0 {
 		arm.stretchSRAM = 1.0
 	}
+
+	// stretch value of MAM is always 1.0 (?)
+	arm.stretchMAM = 1.0
 
 	// start of program execution
 	if arm.disasm != nil {
@@ -428,7 +438,7 @@ func (arm *ARM) Run() (float32, error) {
 			if err != nil {
 				// can't find memory so we say the ARM program has finished inadvertently
 				logger.Logf("ARM7", "PC out of range (%#08x). finishing arm program early", arm.registers[rPC])
-				return arm.cyclesTotal, nil
+				return arm.mam.mamcr, arm.cyclesTotal, nil
 			}
 
 			// if it's still out-of-range then give up with an error
@@ -436,7 +446,7 @@ func (arm *ARM) Run() (float32, error) {
 			if idx+1 >= uint32(len(*arm.programMemory)) {
 				// can't find memory so we say the ARM program has finished inadvertently
 				logger.Logf("ARM7", "PC out of range (%#08x). finishing arm program early", arm.registers[rPC])
-				return arm.cyclesTotal, nil
+				return arm.mam.mamcr, arm.cyclesTotal, nil
 			}
 		}
 
@@ -551,37 +561,39 @@ func (arm *ARM) Run() (float32, error) {
 		}
 
 		// the state of MAM and PC at end of instruction execution
-		arm.cyclesInstruction.MAMenabled = arm.mam.isEnabled()
+		arm.cyclesInstruction.MAMCR = arm.mam.mamcr
 		arm.cyclesInstruction.PCinSRAM = !(arm.registers[rPC] >= FlashOrigin && arm.registers[rPC] <= Flash64kMemtop)
 
-		// sum cycles. not summing merged cycles
-		sumCycles := arm.cyclesInstruction.I + arm.cyclesInstruction.C
+		// sum and strech cycles. I and C cycles added here. N and S cycles
+		// added according to MAM settings
+		stretchedCycles := arm.cyclesInstruction.I + arm.cyclesInstruction.C
+		// stretchedCycles += arm.cyclesInstruction.Imerged
 
-		// PC cycle stretching
-		pcAccess := arm.cyclesInstruction.Npc + arm.cyclesInstruction.Spc
-		if arm.cyclesInstruction.MAMenabled {
-			arm.cyclesInstruction.SRAMAccess += pcAccess
-			sumCycles += pcAccess * arm.stretchSRAM
-		} else if arm.cyclesInstruction.PCinSRAM {
-			arm.cyclesInstruction.SRAMAccess += pcAccess
-			sumCycles += pcAccess * arm.stretchSRAM
-		} else {
-			arm.cyclesInstruction.FlashAccess += pcAccess
-			sumCycles += pcAccess * arm.stretchFlash
+		// MAM resolution. page 19 of UM10161.pdf
+		switch arm.mam.mamcr {
+		default:
+			// this is an invalid value for MAMCR. operate on the assumption the the MAM is off
+			fallthrough
+		case 0:
+			stretchedCycles += (arm.cyclesInstruction.Npc + arm.cyclesInstruction.Spc) * arm.stretchFlash
+			stretchedCycles += (arm.cyclesInstruction.Spcmerged) * arm.stretchFlash
+			stretchedCycles += (arm.cyclesInstruction.Ndata + arm.cyclesInstruction.Sdata) * arm.stretchSRAM
+		case 1:
+			stretchedCycles += (arm.cyclesInstruction.Npc * arm.stretchFlash)
+			stretchedCycles += (arm.cyclesInstruction.Spc * arm.stretchMAM)
+			stretchedCycles += (arm.cyclesInstruction.Spcmerged) * arm.stretchMAM
+			stretchedCycles += (arm.cyclesInstruction.Ndata + arm.cyclesInstruction.Sdata) * arm.stretchSRAM
+		case 2:
+			stretchedCycles += (arm.cyclesInstruction.Npc + arm.cyclesInstruction.Spc) * arm.stretchMAM
+			stretchedCycles += (arm.cyclesInstruction.Spcmerged) * arm.stretchMAM
+			stretchedCycles += (arm.cyclesInstruction.Ndata + arm.cyclesInstruction.Sdata) * arm.stretchMAM
 		}
 
-		// data cycle streching
-		//
-		// assumption: all data acces is to SRAM
-		dataAccess := arm.cyclesInstruction.Ndata + arm.cyclesInstruction.Sdata
-		arm.cyclesInstruction.SRAMAccess += dataAccess
-		sumCycles += dataAccess * arm.stretchSRAM
-
-		// total number of program cycles
-		arm.cyclesTotal += sumCycles
+		// increas total number of program cycles by the stretched cycles for this instruction
+		arm.cyclesTotal += stretchedCycles
 
 		// update timer
-		arm.timer.step(sumCycles)
+		arm.timer.step(stretchedCycles)
 
 		// send disasm information to disassembler
 		if arm.disasm != nil {
@@ -632,10 +644,10 @@ func (arm *ARM) Run() (float32, error) {
 	}
 
 	if arm.executionError != nil {
-		return 0, curated.Errorf("ARM: %v", arm.executionError)
+		return arm.mam.mamcr, 0, curated.Errorf("ARM: %v", arm.executionError)
 	}
 
-	return arm.cyclesTotal, nil
+	return arm.mam.mamcr, arm.cyclesTotal, nil
 }
 
 func (arm *ARM) executeMoveShiftedRegister(opcode uint16) {
@@ -1406,7 +1418,7 @@ func (arm *ARM) executePCrelativeLoad(opcode uint16) {
 		// "During the third cycle, the ARM7TDMI-S processor transfers the data to the
 		// destination register. (External memory is not used.) Normally, the ARM7TDMI-S
 		// core merges this third cycle with the next prefetch to form one memory N-cycle."
-		arm.cyclesInstruction.Smerged++
+		arm.cyclesInstruction.Spcmerged++
 	}
 
 	// the I cycle is marked "as required"
@@ -1456,7 +1468,7 @@ func (arm *ARM) executeLoadStoreWithRegisterOffset(opcode uint16) {
 			// "During the third cycle, the ARM7TDMI-S processor transfers the data to the
 			// destination register. (External memory is not used.) Normally, the ARM7TDMI-S
 			// core merges this third cycle with the next prefetch to form one memory N-cycle."
-			arm.cyclesInstruction.Smerged++
+			arm.cyclesInstruction.Spcmerged++
 		}
 
 		// the I cycle is marked "as required"
@@ -1532,7 +1544,7 @@ func (arm *ARM) executeLoadStoreSignExtendedByteHalford(opcode uint16) {
 			// "During the third cycle, the ARM7TDMI-S processor transfers the data to the
 			// destination register. (External memory is not used.) Normally, the ARM7TDMI-S
 			// core merges this third cycle with the next prefetch to form one memory N-cycle."
-			arm.cyclesInstruction.Smerged++
+			arm.cyclesInstruction.Spcmerged++
 		}
 
 		// the I cycle is marked "as required"
@@ -1575,7 +1587,7 @@ func (arm *ARM) executeLoadStoreSignExtendedByteHalford(opcode uint16) {
 			// "During the third cycle, the ARM7TDMI-S processor transfers the data to the
 			// destination register. (External memory is not used.) Normally, the ARM7TDMI-S
 			// core merges this third cycle with the next prefetch to form one memory N-cycle."
-			arm.cyclesInstruction.Smerged++
+			arm.cyclesInstruction.Spcmerged++
 		}
 
 		// the I cycle is marked "as required"
@@ -1643,7 +1655,7 @@ func (arm *ARM) executeLoadStoreWithImmOffset(opcode uint16) {
 			// "During the third cycle, the ARM7TDMI-S processor transfers the data to the
 			// destination register. (External memory is not used.) Normally, the ARM7TDMI-S
 			// core merges this third cycle with the next prefetch to form one memory N-cycle."
-			arm.cyclesInstruction.Smerged++
+			arm.cyclesInstruction.Spcmerged++
 		}
 
 		// the I cycle is marked "as required"
@@ -1723,7 +1735,7 @@ func (arm *ARM) executeLoadStoreHalfword(opcode uint16) {
 			// "During the third cycle, the ARM7TDMI-S processor transfers the data to the
 			// destination register. (External memory is not used.) Normally, the ARM7TDMI-S
 			// core merges this third cycle with the next prefetch to form one memory N-cycle."
-			arm.cyclesInstruction.Smerged++
+			arm.cyclesInstruction.Spcmerged++
 		}
 
 		// the I cycle is marked "as required"
@@ -1782,7 +1794,7 @@ func (arm *ARM) executeSPRelativeLoadStore(opcode uint16) {
 			// "During the third cycle, the ARM7TDMI-S processor transfers the data to the
 			// destination register. (External memory is not used.) Normally, the ARM7TDMI-S
 			// core merges this third cycle with the next prefetch to form one memory N-cycle."
-			arm.cyclesInstruction.Smerged++
+			arm.cyclesInstruction.Spcmerged++
 		}
 
 		// the I cycle is marked "as required"
@@ -1947,7 +1959,7 @@ func (arm *ARM) executePushPopRegisters(opcode uint16) {
 		// with the next instruction prefetch to form a single memory N-cycle."
 		if arm.cyclesInstruction.Sdata > 0 {
 			arm.cyclesInstruction.Sdata--
-			arm.cyclesInstruction.Smerged++
+			arm.cyclesInstruction.Spcmerged++
 		}
 
 		// load PC register after all other registers
@@ -2118,7 +2130,7 @@ func (arm *ARM) executeMultipleLoadStore(opcode uint16) {
 	// with the next instruction prefetch to form a single memory N-cycle."
 	if arm.cyclesInstruction.Sdata > 0 {
 		arm.cyclesInstruction.Sdata--
-		arm.cyclesInstruction.Smerged++
+		arm.cyclesInstruction.Spcmerged++
 	}
 
 	// write back the new base address

@@ -121,7 +121,7 @@ func (win *winCoProcLastExecution) draw() {
 		if programCycles, ok := itr.Details.Summary.(arm7tdmi.Cycles); ok {
 			iTotal := programCycles.I + programCycles.Imerged
 			nTotal := programCycles.Npc + programCycles.Ndata
-			sTotal := programCycles.Spc + programCycles.Sdata + programCycles.Smerged
+			sTotal := programCycles.Spc + programCycles.Sdata + programCycles.Spcmerged
 
 			if imgui.BeginTableV("cycles", 4, imgui.TableFlagsBordersOuter, imgui.Vec2{}, 0.0) {
 				imgui.TableNextRow()
@@ -134,27 +134,6 @@ func (win *winCoProcLastExecution) draw() {
 				imgui.TableNextColumn()
 				imgui.Text(fmt.Sprintf("S: %-6.0f", sTotal))
 				imgui.EndTable()
-			}
-
-			imgui.Spacing()
-
-			nsTotal := nTotal + sTotal
-			fp := 100.0 * programCycles.FlashAccess / nsTotal
-			sp := 100.0 * programCycles.SRAMAccess / nsTotal
-
-			if imgui.BeginTableV("ratios", 2, imgui.TableFlagsBordersOuter, imgui.Vec2{}, 0.0) {
-				imgui.TableNextRow()
-				imgui.TableNextColumn()
-				imgui.Text(fmt.Sprintf("Flash: %3.1f%%", fp))
-				imgui.TableNextColumn()
-				imgui.Text(fmt.Sprintf("SRAM/MAM: %3.1f%%", sp))
-				imgui.EndTable()
-			}
-
-			if imgui.IsItemHovered() {
-				imgui.BeginTooltip()
-				imgui.Text("The fraction of time spent by N and S cycles accessing flash or SRAM/MAM")
-				imgui.EndTooltip()
 			}
 		} else {
 			imgui.Text("")
@@ -220,10 +199,16 @@ func (win *winCoProcLastExecution) drawDisasm(itr *coprocessor.Iterate) {
 						imgui.Spacing()
 						imgui.Separator()
 						imgui.Spacing()
-						if cycles.MAMenabled {
-							imguiColorLabel("MAM", win.img.cols.True)
-						} else {
+						switch cycles.MAMCR {
+						default:
+							// this is an invalid value for MAMCR. operate on the assumption the the MAM is off
+							fallthrough
+						case 0:
 							imguiColorLabel("MAM", win.img.cols.False)
+						case 1:
+							imguiColorLabel("MAM", win.img.cols.TrueFalse)
+						case 2:
+							imguiColorLabel("MAM", win.img.cols.True)
 						}
 					}
 					imgui.EndTooltip()

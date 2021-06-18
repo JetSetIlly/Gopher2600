@@ -479,11 +479,20 @@ func (cart *dpcPlus) Write(addr uint16, data uint8, passive bool, poke bool) err
 		case 254:
 			fallthrough
 		case 255:
-			cycles, err := cart.arm.Run()
+			mamcr, cycles, err := cart.arm.Run(cart.state.mamcr)
 			if err != nil {
-				return curated.Errorf("CDF: %v", err)
+				return curated.Errorf("DPC+: %v", err)
 			}
 			cart.state.callfn.Start(cycles)
+
+			if cart.prefs.ARM.MAM.Get().(int) == preferences.MAMDriver {
+				cart.state.mamcr = mamcr
+				if cart.state.mamcr != dpcPlusMAMCR {
+					logger.Logf("DPC+", "thumb program has left MAM in mode %d", cart.state.mamcr)
+				}
+			} else {
+				cart.state.mamcr = dpcPlusMAMCR
+			}
 		}
 
 	// reserved

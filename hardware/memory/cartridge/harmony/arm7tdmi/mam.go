@@ -15,13 +15,22 @@
 
 package arm7tdmi
 
-import "github.com/jetsetilly/gopher2600/logger"
+import (
+	"github.com/jetsetilly/gopher2600/hardware/preferences"
+	"github.com/jetsetilly/gopher2600/logger"
+)
 
 // memory addressing module. not fully implemented.
 type mam struct {
-	mamcr          uint32
-	mamtim         uint32
-	allowFromThumb bool
+	// valid values for mamcr are 0, 1 or 2 are valid. we can think of these
+	// respectively, as "disable", "partial" and "full"
+	mamcr uint32
+
+	// NOTE: not used yet
+	mamtim uint32
+
+	// the preference value
+	pref int
 }
 
 // MAM addresses from UM10161 (page 20).
@@ -33,14 +42,11 @@ const (
 func (m *mam) write(addr uint32, val uint32) bool {
 	switch addr {
 	case MAMCR:
-		if m.allowFromThumb {
-			m.mamcr = val
-			if m.mamcr > 3 {
-				logger.Logf("ARM7", "setting MAMCR to a value greater than 3 (%#08x)", m.mamcr)
-			}
+		if m.pref == preferences.MAMDriver {
+			m.setMAMCR(val)
 		}
 	case MAMTIM:
-		if m.allowFromThumb {
+		if m.pref == preferences.MAMDriver {
 			if m.mamcr == 0 {
 				m.mamtim = val
 			} else {
@@ -69,14 +75,9 @@ func (m *mam) read(addr uint32) (uint32, bool) {
 	return val, true
 }
 
-func (m *mam) enable(enabled bool) {
-	if enabled {
-		m.mamcr = 1
-	} else {
-		m.mamcr = 0
+func (m *mam) setMAMCR(val uint32) {
+	m.mamcr = val
+	if m.mamcr > 2 {
+		logger.Logf("ARM7", "setting MAMCR to a value greater than 2 (%#08x)", m.mamcr)
 	}
-}
-
-func (m *mam) isEnabled() bool {
-	return m.mamcr != 0
 }

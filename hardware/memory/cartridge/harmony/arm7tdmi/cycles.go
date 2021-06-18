@@ -42,17 +42,14 @@ type Cycles struct {
 	// described in sections 7.6 and 7.10 of the ARM7TDMI technical reference
 	// manual.
 	//
-	// Smerged cycles can be seen in formats that use the cycle profile
+	// Spcmerged cycles can be seen in formats that use the cycle profile
 	// described in sections 7.8 ARM7TDMI technical reference manual.
-	Imerged float32
-	Smerged float32
+	Imerged   float32
+	Spcmerged float32
 
-	// number of cycles when flash/sram was being addressed
-	FlashAccess float32
-	SRAMAccess  float32
-
-	// MAM is enabled *this* cycle
-	MAMenabled bool
+	// MAMCR value for *this* cycle. only values 0, 1 or 2 are valid. treat any
+	// other value as 0
+	MAMCR uint32
 
 	// whether PC is in SRAM *this* cycle
 	PCinSRAM bool
@@ -64,7 +61,7 @@ func (c Cycles) String() string {
 	s.WriteString(fmt.Sprintf("I: %.0f\n", c.I+c.Imerged))
 	s.WriteString(fmt.Sprintf("C: %.0f\n", c.C))
 	s.WriteString(fmt.Sprintf("N: %.0f\n", c.Npc+c.Ndata))
-	s.WriteString(fmt.Sprintf("S: %.0f\n", c.Spc+c.Sdata+c.Smerged))
+	s.WriteString(fmt.Sprintf("S: %.0f\n", c.Spc+c.Sdata+c.Spcmerged))
 	return s.String()
 }
 
@@ -78,10 +75,8 @@ func (c *Cycles) add(n Cycles) {
 	c.Ndata += n.Ndata
 	c.Sdata += n.Sdata
 	c.Imerged += n.Imerged
-	c.Smerged += n.Smerged
-	c.FlashAccess += n.FlashAccess
-	c.SRAMAccess += n.SRAMAccess
-	c.MAMenabled = n.MAMenabled
+	c.Spcmerged += n.Spcmerged
+	c.MAMCR = n.MAMCR
 	c.PCinSRAM = n.PCinSRAM
 }
 
@@ -93,14 +88,12 @@ func (c *Cycles) reset() {
 	c.Ndata = 0
 	c.Sdata = 0
 	c.Imerged = 0
-	c.Smerged = 0
-	c.FlashAccess = 0
-	c.SRAMAccess = 0
-	c.MAMenabled = false
+	c.Spcmerged = 0
+	c.MAMCR = 0
 	c.PCinSRAM = false
 }
 
 // simple (unstretched) cycle count
 func (c *Cycles) count() float32 {
-	return c.I + c.Imerged + c.C + c.Npc + c.Ndata + c.Spc + c.Sdata + c.Smerged
+	return c.I + c.Imerged + c.C + c.Npc + c.Ndata + c.Spc + c.Sdata + c.Spcmerged
 }

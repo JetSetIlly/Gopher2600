@@ -19,6 +19,6 @@ package armclocks
 
 const (
 	MasterClock     = 70 // Mhz
-	FlashAccessTime = 35 // ns
+	FlashAccessTime = 50 // ns
 	SRAMAccessTime  = 10 // ns
 )

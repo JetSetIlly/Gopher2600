@@ -28,6 +28,9 @@ var defunct = []string{
 	"crt.blur",
 	"crt.blurLevel",
 	"crt.vignette",
+	"hardware.arm7.allowMAMfromThumb",
+	"hardware.arm7.flashAccessTime",
+	"hardware.arm7.defaultMAM",
 }
 
 // returns true if string is in list of defunct values.

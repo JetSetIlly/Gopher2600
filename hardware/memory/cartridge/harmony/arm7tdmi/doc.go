@@ -42,4 +42,9 @@
 // This contains good information about the MAM.
 //
 // https://www.nxp.com/docs/en/user-guide/UM10161.pdf
+//
+// And the errata, explaining a bug in the MAM that is experienced in the
+// some versions of the Harmony cartridge.
+//
+// https://www.nxp.com/docs/en/errata/ES_LPC2103.pdf
 package arm7tdmi

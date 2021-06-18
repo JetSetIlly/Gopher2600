@@ -39,6 +39,7 @@ type imguiColors struct {
 	// additional general colors
 	True        imgui.Vec4
 	False       imgui.Vec4
+	TrueFalse   imgui.Vec4
 	Transparent imgui.Vec4
 
 	// playscreen color
@@ -148,6 +149,7 @@ func newColors() *imguiColors {
 		// additional general colors
 		True:        imgui.Vec4{0.3, 0.6, 0.3, 1.0},
 		False:       imgui.Vec4{0.6, 0.3, 0.3, 1.0},
+		TrueFalse:   imgui.Vec4{0.6, 0.6, 0.3, 1.0},
 		Transparent: imgui.Vec4{0.0, 0.0, 0.0, 0.0},
 
 		// ROM selector
