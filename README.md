@@ -523,14 +523,11 @@ the menubar if the coprocessor is present.
 <img src=".screenshots/arm_disasm.png" width="300" alt="ARM7 last execution
 window"/> 
 
-The summary at the foot of the window can be used to help you undestand the
-performance of the Thumb program. In particular, the Flash/SRAM percentages
-tell the relative time spent addressing Flash and SRAM during N and S cycles.
-Because SRAM is faster than Flash, ideally, the amount of time spent in Flash
-is near zero.
+The `Goto` button wil [rewind](#rewind) the emulation to the point where the
+ARM program last executed.
 
-Also note the `Goto` button. This is a [rewind](#rewind) shortcut that takes
-the emulation to the point where the ARM program last executed.
+The `Save` button will write a copy of the disassembly to a file in the working
+directory.
 
 ### ARM Preferences
 
@@ -540,27 +537,22 @@ window This is available in the debugger via the `Debugger` menu or by pressing
 
 <img src=".screenshots/arm_prefs.png" width="300" alt="ARM preferences"/> 
 
-The `Default MAM Enable` option tells the emulation to enable the MAM whenever
-the Thumb program begins. This is required for very new CDFJ games (eg. Turbo
-from Champ Games) which don't try to enable MAM manually but require the
-performance of SRAM.
-
-The `Allow MAM Enable` options tells the emulation to honour writes to the
-MAMCR address in the ARM processor. Some revisions of the real hardware do not
-allow this, so disabling this option could be useful to check compatability.
-
 The `Timings` sliders shouldn't really be touched but they are made available
-while `Gopher2600` is still in development. I am not sure if the default
-figures are correct so if necessary, they can be adjusted.
+while `Gopher2600` is still in development.
 
 As a last resort `Immediate ARM Execution` can be enabled. This instructs the
-emulation to exeute the Thumb program instantaneously. 
+emulation to execute the Thumb program instantaneously. 
+
+The `Default MAM State` is set to `Driver` by default. This means that the
+emulated drivers for the `DPC+` and the `CDF` cartridge types set the MAM
+appropriately (not explained here). If required, the MAM state can be
+overridden to be set to `Disabled`, `Partial` or `Full`.
 
 ### Estimation of ARM Execution Time
 
 For ARM development the `ARM7TDMI` overlay is provided. This overlay will be
 empty if the `Immediate ARM Execution` option is enabled but normally it will
-show the period the ARM program is running and the 6507 program is stalled.
+indicate the period the ARM program is running and the 6507 program is stalled.
 
 <img src=".screenshots/arm_timing.png" width="300" alt="ARM7 execution duration overlay"/> 
 
