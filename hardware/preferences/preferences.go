@@ -54,6 +54,12 @@ type Preferences struct {
 const MAMDriver = -1
 
 type ARMPreferences struct {
+	// the specific model of ARM to use. this will affect things like memory
+	// addressing for cartridge formats that use the ARM.
+	//
+	// NOTE: this may be superceded in the future to allow for more flexibility
+	Model prefs.String
+
 	// whether the ARM coprocessor (as found in Harmony cartridges) execute
 	// instantly or if the cycle accurate steppint is attempted
 	Immediate prefs.Bool
@@ -93,6 +99,10 @@ func NewPreferences() (*Preferences, error) {
 	if err != nil {
 		return nil, err
 	}
+	err = p.dsk.Add("hardware.arm7.model", &p.ARM.Model)
+	if err != nil {
+		return nil, err
+	}
 	err = p.dsk.Add("hardware.arm7.immediate", &p.ARM.Immediate)
 	if err != nil {
 		return nil, err
@@ -127,6 +137,7 @@ func (p *Preferences) SetDefaults() {
 	p.Reseed(0)
 	p.RandomState.Set(false)
 	p.RandomPins.Set(false)
+	p.ARM.Model.Set("LPC2000")
 	p.ARM.Immediate.Set(false)
 	p.ARM.MAM.Set(-1)
 	p.ARM.Clock.Set(armclocks.MasterClock)               // Mhz

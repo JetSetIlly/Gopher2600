@@ -42,6 +42,10 @@ type dpcPlus struct {
 	// additional CPU - used by some ROMs
 	arm *arm7tdmi.ARM
 
+	// there is only one version of DPC+ currently but this method of
+	// specifying addresses mirrors how we do it in the CDF type
+	version version
+
 	// banks and the currently selected bank
 	bankSize int
 	banks    [][]byte
@@ -68,6 +72,9 @@ func NewDPCplus(prefs *preferences.Preferences, data []byte) (mapper.CartMapper,
 		state:       newDPCPlusState(),
 	}
 
+	// create addresses
+	cart.version = newVersion(arm7tdmi.NewMemoryMap(prefs.ARM.Model.Get().(string)))
+
 	// amount of data used for cartridges
 	bankLen := len(data) - dataSize - driverSize - freqSize
 
@@ -88,13 +95,13 @@ func NewDPCplus(prefs *preferences.Preferences, data []byte) (mapper.CartMapper,
 	}
 
 	// initialise static memory
-	cart.state.static = cart.newDPCplusStatic(data)
+	cart.state.static = cart.newDPCplusStatic(cart.version, data)
 
 	// initialise ARM processor
 	//
 	// if bank0 has any ARM code then it will start at offset 0x08. first eight
 	// bytes are the ARM header
-	cart.arm = arm7tdmi.NewARM(&prefs.ARM, cart.state.static, cart)
+	cart.arm = arm7tdmi.NewARM(cart.version.mmap, &prefs.ARM, cart.state.static, cart)
 
 	return cart, nil
 }

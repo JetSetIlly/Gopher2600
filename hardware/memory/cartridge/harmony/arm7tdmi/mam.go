@@ -22,6 +22,8 @@ import (
 
 // memory addressing module. not fully implemented.
 type mam struct {
+	mmap MemoryMap
+
 	// valid values for mamcr are 0, 1 or 2 are valid. we can think of these
 	// respectively, as "disable", "partial" and "full"
 	mamcr uint32
@@ -33,19 +35,13 @@ type mam struct {
 	pref int
 }
 
-// MAM addresses from UM10161 (page 20).
-const (
-	MAMCR  = PeripheralsOrigin | 0x001fc000
-	MAMTIM = PeripheralsOrigin | 0x001fc004
-)
-
 func (m *mam) write(addr uint32, val uint32) bool {
 	switch addr {
-	case MAMCR:
+	case m.mmap.MAMCR:
 		if m.pref == preferences.MAMDriver {
 			m.setMAMCR(val)
 		}
-	case MAMTIM:
+	case m.mmap.MAMTIM:
 		if m.pref == preferences.MAMDriver {
 			if m.mamcr == 0 {
 				m.mamtim = val
@@ -64,9 +60,9 @@ func (m *mam) read(addr uint32) (uint32, bool) {
 	var val uint32
 
 	switch addr {
-	case MAMCR:
+	case m.mmap.MAMCR:
 		val = m.mamcr
-	case MAMTIM:
+	case m.mmap.MAMTIM:
 		val = m.mamtim
 	default:
 		return 0, false

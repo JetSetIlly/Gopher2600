@@ -16,16 +16,11 @@
 package arm7tdmi
 
 type timer struct {
-	active bool
-
+	mmap    MemoryMap
+	active  bool
 	control uint32
 	counter float32
 }
-
-const (
-	TIMERcontrol = PeripheralsOrigin | 0x00008004
-	TIMERvalue   = PeripheralsOrigin | 0x00008008
-)
 
 func (t *timer) stepFromVCS(armClock float32, vcsClock float32) {
 	if !t.active {
@@ -48,10 +43,10 @@ func (t *timer) step(cycles float32) {
 
 func (t *timer) write(addr uint32, val uint32) bool {
 	switch addr {
-	case TIMERcontrol:
+	case t.mmap.TIMERcontrol:
 		t.control = val
 		t.active = t.control&0x01 == 0x01
-	case TIMERvalue:
+	case t.mmap.TIMERvalue:
 		t.counter = float32(val)
 	default:
 		return false
@@ -64,9 +59,9 @@ func (t *timer) read(addr uint32) (uint32, bool) {
 	var val uint32
 
 	switch addr {
-	case TIMERcontrol:
+	case t.mmap.TIMERcontrol:
 		val = t.control
-	case TIMERvalue:
+	case t.mmap.TIMERvalue:
 		val = uint32(t.counter)
 	default:
 		return 0, false

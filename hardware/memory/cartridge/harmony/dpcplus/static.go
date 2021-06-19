@@ -25,6 +25,8 @@ import (
 
 // Static implements the bus.CartStatic interface.
 type Static struct {
+	version version
+
 	// slices of cartDataROM that should not be modified during execution
 	driverROM []byte
 	customROM []byte
@@ -37,8 +39,10 @@ type Static struct {
 	freqRAM   []byte
 }
 
-func (cart *dpcPlus) newDPCplusStatic(cartData []byte) *Static {
-	stc := Static{}
+func (cart *dpcPlus) newDPCplusStatic(version version, cartData []byte) *Static {
+	stc := Static{
+		version: version,
+	}
 
 	// the offset into the cart data where the data segment begins
 	dataOffset := driverSize + (cart.bankSize * cart.NumBanks())
@@ -69,7 +73,7 @@ func (cart *dpcPlus) newDPCplusStatic(cartData []byte) *Static {
 
 // ResetVectors implements the arm7tdmi.SharedMemory interface.
 func (stc *Static) ResetVectors() (uint32, uint32, uint32) {
-	return stackOriginRAM, customOriginROM, customOriginROM + 8
+	return stc.version.stackOriginRAM, stc.version.customOriginROM, stc.version.customOriginROM + 8
 }
 
 func (stc *Static) Snapshot() *Static {
@@ -89,54 +93,54 @@ func (stc *Static) MapAddress(addr uint32, write bool) (*[]byte, uint32) {
 	// ZaxxonHDDemo through the go profiler
 
 	// data (RAM)
-	if addr >= dataOriginRAM && addr <= dataMemtopRAM {
-		return &stc.dataRAM, addr - dataOriginRAM
+	if addr >= stc.version.dataOriginRAM && addr <= stc.version.dataMemtopRAM {
+		return &stc.dataRAM, addr - stc.version.dataOriginRAM
 	}
 
 	// custom ARM code (ROM)
-	if addr >= customOriginROM && addr <= customMemtopROM {
+	if addr >= stc.version.customOriginROM && addr <= stc.version.customMemtopROM {
 		if write {
 			logger.Logf("DPC+", "ARM trying to write to ROM address (%08x)", addr)
 			return nil, addr
 		}
-		return &stc.customROM, addr - customOriginROM
+		return &stc.customROM, addr - stc.version.customOriginROM
 	}
 
 	// driver ARM code (RAM)
-	if addr >= driverOriginRAM && addr <= driverMemtopRAM {
-		return &stc.driverRAM, addr - driverOriginRAM
+	if addr >= stc.version.driverOriginRAM && addr <= stc.version.driverMemtopRAM {
+		return &stc.driverRAM, addr - stc.version.driverOriginRAM
 	}
 
 	// frequency table (RAM)
-	if addr >= freqOriginRAM && addr <= freqMemtopRAM {
-		return &stc.freqRAM, addr - freqOriginRAM
+	if addr >= stc.version.freqOriginRAM && addr <= stc.version.freqMemtopRAM {
+		return &stc.freqRAM, addr - stc.version.freqOriginRAM
 	}
 
 	// driver ARM code (ROM)
-	if addr >= driverOriginROM && addr <= driverMemtopROM {
+	if addr >= stc.version.driverOriginROM && addr <= stc.version.driverMemtopROM {
 		if write {
 			logger.Logf("DPC+", "ARM trying to write to ROM address (%08x)", addr)
 			return nil, addr
 		}
-		return &stc.driverROM, addr - driverOriginROM
+		return &stc.driverROM, addr - stc.version.driverOriginROM
 	}
 
 	// data (ROM)
-	if addr >= dataOriginROM && addr <= dataMemtopROM {
+	if addr >= stc.version.dataOriginROM && addr <= stc.version.dataMemtopROM {
 		if write {
 			logger.Logf("DPC+", "ARM trying to write to ROM address (%08x)", addr)
 			return nil, addr
 		}
-		return &stc.dataROM, addr - dataOriginROM
+		return &stc.dataROM, addr - stc.version.dataOriginROM
 	}
 
 	// frequency table (ROM)
-	if addr >= freqOriginROM && addr <= freqMemtopROM {
+	if addr >= stc.version.freqOriginROM && addr <= stc.version.freqMemtopROM {
 		if write {
 			logger.Logf("DPC+", "ARM trying to write to ROM address (%08x)", addr)
 			return nil, addr
 		}
-		return &stc.freqROM, addr - freqOriginROM
+		return &stc.freqROM, addr - stc.version.freqOriginROM
 	}
 
 	return nil, addr

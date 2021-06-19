@@ -37,6 +37,7 @@ const (
 // ARM implements the ARM7TDMI-S LPC2103 processor.
 type ARM struct {
 	prefs *preferences.ARMPreferences
+	mmap  MemoryMap
 	mem   SharedMemory
 	hook  CartridgeHook
 
@@ -112,7 +113,7 @@ const (
 )
 
 // NewARM is the preferred method of initialisation for the ARM type.
-func NewARM(prefs *preferences.ARMPreferences, mem SharedMemory, hook CartridgeHook) *ARM {
+func NewARM(mmap MemoryMap, prefs *preferences.ARMPreferences, mem SharedMemory, hook CartridgeHook) *ARM {
 	arm := &ARM{
 		prefs:        prefs,
 		mem:          mem,
@@ -120,6 +121,8 @@ func NewARM(prefs *preferences.ARMPreferences, mem SharedMemory, hook CartridgeH
 		executionMap: make(map[uint32][]func(_ uint16)),
 	}
 
+	arm.mam.mmap = mmap
+	arm.timer.mmap = mmap
 	arm.Plumb()
 
 	return arm
@@ -562,7 +565,7 @@ func (arm *ARM) Run(mamcr uint32) (uint32, float32, error) {
 
 		// the state of MAM and PC at end of instruction execution
 		arm.cyclesInstruction.MAMCR = arm.mam.mamcr
-		arm.cyclesInstruction.PCinSRAM = !(arm.registers[rPC] >= FlashOrigin && arm.registers[rPC] <= Flash64kMemtop)
+		arm.cyclesInstruction.PCinSRAM = !(arm.registers[rPC] >= arm.mmap.FlashOrigin && arm.registers[rPC] <= arm.mmap.Flash64kMemtop)
 
 		// sum and strech cycles. I and C cycles added here. N and S cycles
 		// added according to MAM settings

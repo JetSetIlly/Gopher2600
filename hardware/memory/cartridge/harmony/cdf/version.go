@@ -22,6 +22,8 @@ import (
 
 // versions contains the information that can differ between CDF versions.
 type version struct {
+	mmap arm7tdmi.MemoryMap
+
 	// mappingID and description differ depending on the version
 	submapping  string
 	description string
@@ -73,25 +75,27 @@ type version struct {
 	mamcr uint32
 }
 
-func newVersion(v string, data []uint8) (version, error) {
+func newVersion(mmap arm7tdmi.MemoryMap, v string, data []uint8) (version, error) {
 	r := version{
+		mmap: mmap,
+
 		// addresses (driver is always in the same location)
-		driverOriginROM: arm7tdmi.FlashOrigin,
-		driverMemtopROM: arm7tdmi.FlashOrigin | 0x000007ff, // 2k
-		driverOriginRAM: arm7tdmi.SRAMOrigin,
-		driverMemtopRAM: arm7tdmi.SRAMOrigin | 0x000007ff, // 2k
+		driverOriginROM: mmap.FlashOrigin,
+		driverMemtopROM: mmap.FlashOrigin | 0x000007ff, // 2k
+		driverOriginRAM: mmap.SRAMOrigin,
+		driverMemtopRAM: mmap.SRAMOrigin | 0x000007ff, // 2k
 
 		// addresses (different for CDFJ+)
-		customOriginROM:    arm7tdmi.FlashOrigin | 0x00000800,
-		customMemtopROM:    arm7tdmi.Flash32kMemtop,
-		dataOriginRAM:      arm7tdmi.SRAMOrigin | 0x00000800,
-		dataMemtopRAM:      arm7tdmi.SRAMOrigin | 0x000017ff,
-		variablesOriginRAM: arm7tdmi.SRAMOrigin | 0x00001800,
-		variablesMemtopRAM: arm7tdmi.SRAMOrigin | 0x00001fff,
+		customOriginROM:    mmap.FlashOrigin | 0x00000800,
+		customMemtopROM:    mmap.Flash32kMemtop,
+		dataOriginRAM:      mmap.SRAMOrigin | 0x00000800,
+		dataMemtopRAM:      mmap.SRAMOrigin | 0x000017ff,
+		variablesOriginRAM: mmap.SRAMOrigin | 0x00001800,
+		variablesMemtopRAM: mmap.SRAMOrigin | 0x00001fff,
 	}
 
 	// entry point into ARM program
-	r.entrySR = arm7tdmi.SRAMOrigin | 0x00001fdc
+	r.entrySR = mmap.SRAMOrigin | 0x00001fdc
 	r.entryLR = r.customOriginROM
 	r.entryPC = r.entryLR + 8
 
@@ -134,10 +138,10 @@ func newVersion(v string, data []uint8) (version, error) {
 		r.entryPC = r.entryLR
 
 		// custom oring unchange. memtop is changed
-		r.customMemtopROM = arm7tdmi.Flash64kMemtop
+		r.customMemtopROM = mmap.Flash64kMemtop
 
 		// data origin unchanged. memtop is changed
-		r.dataMemtopRAM = arm7tdmi.SRAMOrigin | 0x00007fff
+		r.dataMemtopRAM = mmap.SRAMOrigin | 0x00007fff
 
 		// variables concept not used in CDFJ
 		r.variablesOriginRAM = 0x0

@@ -33,11 +33,11 @@ type cdf struct {
 
 	mappingID string
 
-	// cdf comes in several different versions
-	version version
-
 	// additional CPU - used by some ROMs
 	arm *arm7tdmi.ARM
+
+	// cdf comes in several different versions
+	version version
 
 	// banks and the currently selected bank
 	bankSize int
@@ -79,7 +79,9 @@ func NewCDF(prefs *preferences.Preferences, version string, data []byte) (mapper
 	}
 
 	var err error
-	cart.version, err = newVersion(version, data)
+	cart.version, err = newVersion(
+		arm7tdmi.NewMemoryMap(prefs.ARM.Model.Get().(string)),
+		version, data)
 	if err != nil {
 		return nil, curated.Errorf("CDF: %v", err)
 	}
@@ -105,7 +107,7 @@ func NewCDF(prefs *preferences.Preferences, version string, data []byte) (mapper
 	//
 	// if bank0 has any ARM code then it will start at offset 0x08. first eight
 	// bytes are the ARM header
-	cart.arm = arm7tdmi.NewARM(&prefs.ARM, cart.state.static, cart)
+	cart.arm = arm7tdmi.NewARM(cart.version.mmap, &prefs.ARM, cart.state.static, cart)
 
 	return cart, nil
 }

@@ -15,11 +15,64 @@
 
 package arm7tdmi
 
-const (
-	FlashOrigin       = uint32(0x00000000)
-	Flash32kMemtop    = uint32(0x00007fff)
-	Flash64kMemtop    = uint32(0x000fffff)
-	SRAMOrigin        = uint32(0x40000000)
-	PeripheralsOrigin = uint32(0xe0000000)
-	PeripheralsMemtop = uint32(0xffffffff)
+import (
+	"github.com/jetsetilly/gopher2600/logger"
 )
+
+type MemoryMap struct {
+	Model string
+
+	FlashOrigin       uint32
+	Flash32kMemtop    uint32
+	Flash64kMemtop    uint32
+	SRAMOrigin        uint32
+	PeripheralsOrigin uint32
+	PeripheralsMemtop uint32
+
+	// specific registers addresses
+	TIMERcontrol uint32
+	TIMERvalue   uint32
+	MAMCR        uint32
+	MAMTIM       uint32
+}
+
+// NewMemoryMap is the preferred method of initialisation for the MemoryMap type.
+func NewMemoryMap(model string) MemoryMap {
+	mmap := MemoryMap{
+		Model: model,
+	}
+
+	switch mmap.Model {
+	default:
+		logger.Logf("ARM7", "unknown ARM7 model (%s). defaulting to LPC2000", mmap.Model)
+		fallthrough
+
+	case "LPC2000":
+		// Harmony
+		mmap.FlashOrigin = uint32(0x00000000)
+		mmap.Flash32kMemtop = uint32(0x00007fff)
+		mmap.Flash64kMemtop = uint32(0x000fffff)
+		mmap.SRAMOrigin = uint32(0x40000000)
+		mmap.PeripheralsOrigin = uint32(0xe0000000)
+		mmap.PeripheralsMemtop = uint32(0xffffffff)
+		mmap.TIMERcontrol = mmap.PeripheralsOrigin | 0x00008004
+		mmap.TIMERvalue = mmap.PeripheralsOrigin | 0x00008008
+		mmap.MAMCR = mmap.PeripheralsOrigin | 0x001fc000
+		mmap.MAMTIM = mmap.PeripheralsOrigin | 0x001fc004
+
+	case "STM32F407VGT6":
+		// PlusCart/UnoCart
+		mmap.FlashOrigin = uint32(0x20000000)
+		mmap.Flash32kMemtop = uint32(0x20007fff)
+		mmap.Flash64kMemtop = uint32(0x200fffff)
+		mmap.SRAMOrigin = uint32(0x10000000)
+		mmap.PeripheralsOrigin = uint32(0xe0000000)
+		mmap.PeripheralsMemtop = uint32(0xffffffff)
+	}
+
+	logger.Logf("ARM7", "using %s", mmap.Model)
+	logger.Logf("ARM7", "flash origin: %#08x", mmap.FlashOrigin)
+	logger.Logf("ARM7", "sram origin: %#08x", mmap.SRAMOrigin)
+
+	return mmap
+}

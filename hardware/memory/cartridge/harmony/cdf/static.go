@@ -44,7 +44,7 @@ func (cart *cdf) newCDFstatic(cartData []byte, r version) *Static {
 	stc.driverROM = cartData[:driverSize]
 
 	// custom ARM program begins immediately after the ARM driver
-	stc.customROM = cartData[r.customOriginROM:]
+	stc.customROM = cartData[r.customOriginROM-stc.version.mmap.FlashOrigin:]
 
 	// driver RAM is the same as driver ROM initially
 	stc.driverRAM = make([]byte, driverSize)
