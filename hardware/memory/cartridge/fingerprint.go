@@ -82,8 +82,17 @@ func fingerprintMnetwork(b []byte) bool {
 	// it exhaustively - just LDA instructions).
 	//
 	// threshold has been reduced to two.
+	//
+	// (19/06/21)
+	//
+	// Thomas Jentzch's Elite demo requires a threshold of one
+	//
+	// https://atariage.com/forums/topic/155657-elite-3d-graphics/?do=findComment&comment=2444328
+	//
+	// with such a low threshold, mnetwork should probably be the very last
+	// type to check for
 
-	threshold := 2
+	threshold := 1
 	for i := 0; i < len(b)-3; i++ {
 		if b[i] == 0xad && (b[i+1] >= 0xe0 && b[i+1] <= 0xe7) {
 			// bank switching can address any cartidge mirror so mask off
@@ -203,16 +212,17 @@ func fingerprintTigervision(b []byte) bool {
 }
 
 func fingerprint8k(data []byte) func([]byte) (mapper.CartMapper, error) {
-	if fingerprintMnetwork(data) {
-		return newMnetwork
-	}
-
 	if fingerprintTigervision(data) {
 		return newTigervision
 	}
 
 	if fingerprintParkerBros(data) {
 		return newParkerBros
+	}
+
+	// mnetwork has the lowest threshold so place it at the end
+	if fingerprintMnetwork(data) {
+		return newMnetwork
 	}
 
 	return newAtari8k
