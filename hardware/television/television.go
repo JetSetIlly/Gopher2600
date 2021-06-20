@@ -61,11 +61,6 @@ type State struct {
 	//	- the current scanline number
 	scanline int
 
-	// is current frame as a result of a VSYNC flyback or not (a "natural"
-	// flyback). we use this in the context of newFrame() so we should probably
-	// think of this as the previous frame.
-	syncedFrame bool
-
 	// the number of frames that have been formed in sequence because of a
 	// "synced frame". we use this to decide:
 	//
@@ -79,9 +74,14 @@ type State struct {
 	// record of signal attributes from the last call to Signal()
 	lastSignal signal.SignalAttributes
 
-	// vsyncCount records the number of consecutive clocks the vsync signal
+	// syncCount records the number of consecutive clocks the vsync signal
 	// has been sustained. we use this to help correctly implement vsync.
-	vsyncCount int
+	syncCount int
+
+	// is current frame as a result of a VSYNC flyback or not (a "natural"
+	// flyback). we use this in the context of newFrame() so we should probably
+	// think of this as the previous frame.
+	syncedFrame bool
 
 	// top and bottom of screen as detected by vblank/color signal
 	top    int
@@ -217,7 +217,7 @@ func (tv *Television) Reset(keepFrameNum bool) error {
 	tv.state.scanline = 0
 	tv.state.stableFrames = 0
 	tv.state.syncedFrame = false
-	tv.state.vsyncCount = 0
+	tv.state.syncCount = 0
 	tv.state.lastSignal = signal.SignalAttributes{}
 
 	for i := range tv.signals {
@@ -369,11 +369,11 @@ func (tv *Television) Signal(sig signal.SignalAttributes) error {
 
 	// check vsync signal at the time of the flyback
 	if sig.VSync && !tv.state.lastSignal.VSync {
-		tv.state.vsyncCount = 0
+		tv.state.syncCount = 0
 	} else if sig.VSync && tv.state.lastSignal.VSync {
-		tv.state.vsyncCount++
+		tv.state.syncCount++
 	} else if !sig.VSync && tv.state.lastSignal.VSync {
-		if tv.state.vsyncCount > 10 {
+		if tv.state.syncCount > 10 {
 			err := tv.newFrame(true)
 			if err != nil {
 				return err

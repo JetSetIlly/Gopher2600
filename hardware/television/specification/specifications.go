@@ -210,7 +210,7 @@ func init() {
 
 	// Extended values:
 	// - Spike's Peak likes a bottom scanline of 250 (NTSC). this is the largest requirement I've seen.
-	SpecNTSC.SafeTop = 25
+	SpecNTSC.SafeTop = 23
 	SpecNTSC.SafeBottom = 250
 	SpecPAL.SafeTop = 30
 	SpecPAL.SafeBottom = 299

@@ -27,8 +27,9 @@ import (
 //		- Pitfall
 //		- Hero
 //
-//  *  changes size after setup phase
+//  * needs an additional (or two) scanlines to accomodate full screen
 //		- Ladybug
+//		- Man Goes Down
 //
 //  * the occasional unsynced frame
 //		- Hack Em Hangly Pacman
@@ -42,25 +43,35 @@ import (
 //		- Tapper
 //		- Spike's Peak
 //
-//	 * test pending counter
-//		- Supercharger BIOS (resizes excessively due to moving starfield)
+//	* ROMs that do not set VBLANK *at all*. in these cases the commit()
+//	function uses the black top/bottom values rather than vblank top/bottom
+//	values.
+//		- Hack Em Hangly Pacman
+//		- Legacy of the Beast
+//
+//	* ROMs that *do* set VBLANK but might be caught by the black top/bottom
+//	rule if frameHasVBlank was incorrectly set
+//		- aTaRSI (demo)
+//		- Supercharger "rewind tape" screen
 //
 type resizer struct {
-	// the stable top/bottom values. what the resized frame actually is. these
-	// are the values that the PixelRenderers should consider to be the visible
-	// range.
-	top    int
-	bottom int
-
-	// top/bottom values for current frame.
+	// candidate top/bottom values for an actual resize.
 	//
 	// updated during the examine phase if the tv image goes beyond the current
-	// stable top/bottom vaulues.
+	// stable top/bottom vaulues
 	//
-	// these values are used to decide whether to start the pending resize
-	// counter.
-	currTop    int
-	currBottom int
+	// vblankTop/vblankBottom records the extent of the negative VBLANK signal
+	//
+	// blackTop/blackBottom records the extent of black pixels.
+	vblankTop    int
+	vblankBottom int
+	blackTop     int
+	blackBottom  int
+
+	// whether the frame has a vblank. if this value is negative the
+	// blackTop/blackBottom values are the candidate values used in the
+	// commit() function
+	frameHasVBlank bool
 
 	// the top/bottom values that will become the new stable top/bottom values
 	// once pendingCt has reached zero.
@@ -80,10 +91,8 @@ type resizer struct {
 
 // set resizer's top/bottom values to equal tv top/bottom values.
 func (sr *resizer) initialise(tv *Television) {
-	sr.top = tv.state.top
-	sr.bottom = tv.state.bottom
-	sr.currTop = tv.state.top
-	sr.currBottom = tv.state.bottom
+	sr.vblankTop = tv.state.top
+	sr.vblankBottom = tv.state.bottom
 	sr.pendingTop = tv.state.top
 	sr.pendingBottom = tv.state.bottom
 }
@@ -95,27 +104,16 @@ func (sr *resizer) examine(tv *Television, sig signal.SignalAttributes) {
 	if !tv.state.syncedFrame {
 		// reset any pending changes on an unsynced frame
 		tv.state.resizer.pendingCt = 0
-		sr.pendingTop = sr.currTop
-		sr.pendingBottom = sr.currBottom
+		sr.pendingTop = sr.vblankTop
+		sr.pendingBottom = sr.vblankBottom
+		sr.frameHasVBlank = false
 		return
 	}
 
+	sr.frameHasVBlank = sr.frameHasVBlank || sig.VBlank
+
 	// if VBLANK is off at any point after than HBLANK period then note the
 	// change in current top/bottom if appropriate
-	//
-	// a possible additional condition is to treat black pixels the same as
-	// VBLANK. this works in some instances but performs poorly for ROMs that
-	// have initial startup screens consisting mainly of a black background and
-	// a central logo. as the ROM continues, the screen will be resized
-	// needlessly. the aTaRSI demo is a good example of this.
-	//
-	// also Legacy Of The Beast, although not suffering from the resize
-	// problem, does have a large black border top and bottom of the screen.
-	// however, I believe this is is the programmer's aesthetic choice and
-	// should be respected.
-	//
-	// finally, the supercharger "press play" screen aggressively resizes as
-	// the stars scroll, forcing the screen to resize.
 	if tv.state.clock > specification.ClksHBlank && !sig.VBlank {
 		// update current top/bottom values
 		//
@@ -124,14 +122,25 @@ func (sr *resizer) examine(tv *Television, sig signal.SignalAttributes) {
 		// never "shrink" until the specification is changed either manually or
 		// automatically.
 		//
-		// we also limit the top/bottom scanlines to a safe area. the atari
-		// safe area is too conservative but equally we don't ever want the
-		// entire screen to be visible. the new safetop and safebottom values
-		// are defined in our TV specifications.
-		if tv.state.scanline < sr.currTop && tv.state.scanline >= tv.state.spec.SafeTop {
-			sr.currTop = tv.state.scanline
-		} else if tv.state.scanline > sr.currBottom && tv.state.scanline <= tv.state.spec.SafeBottom {
-			sr.currBottom = tv.state.scanline
+		// limit the top/bottom scanlines to a safe area. the atari safe area
+		// is too conservative but equally we don't ever want the entire screen
+		// to be visible. the new safetop and safebottom values are defined in
+		// our TV specifications.
+		if tv.state.scanline < sr.vblankTop && tv.state.scanline >= tv.state.spec.SafeTop {
+			sr.vblankTop = tv.state.scanline
+		} else if tv.state.scanline > sr.vblankBottom && tv.state.scanline <= tv.state.spec.SafeBottom {
+			sr.vblankBottom = tv.state.scanline
+		}
+	}
+
+	// some ROMs never set VBLANK. for these cases we also record the extent of
+	// non-black pixels. these values are using in the commit() function in the
+	// event that framsHasVblank is false.
+	if tv.state.clock > specification.ClksHBlank && !sig.VBlank && sig.Pixel > 0 {
+		if tv.state.scanline < sr.blackTop && tv.state.scanline >= tv.state.spec.SafeTop {
+			sr.blackTop = tv.state.scanline
+		} else if tv.state.scanline > sr.blackBottom && tv.state.scanline <= tv.state.spec.SafeBottom {
+			sr.blackBottom = tv.state.scanline
 		}
 	}
 }
@@ -157,25 +166,39 @@ func (sr *resizer) commit(tv *Television) error {
 		return nil
 	}
 
-	// make sure current top and current bottom are always equal to stable
-	// top/bottom at beginning of a frame
+	// make sure candidate top and bottom value are equal to stable top/bottom
+	// at beginning of a frame
 	defer func() {
-		sr.currTop = sr.top
-		sr.currBottom = sr.bottom
+		sr.vblankTop = tv.state.top
+		sr.vblankBottom = tv.state.bottom
+		sr.blackTop = tv.state.top
+		sr.blackBottom = tv.state.bottom
+		sr.frameHasVBlank = false
 	}()
 
 	// if top/bottom values this frame are not the same as pending top/bottom
 	// values then update pending values and reset pending counter.
 	//
-	// note that unlike the expansion of current top and bottom value we allow
-	// shrinkage of pending top and bottom values
-	if sr.currTop != sr.pendingTop {
-		sr.pendingTop = sr.currTop
-		sr.pendingCt = framesUntilResize
-	}
-	if sr.currBottom != sr.pendingBottom {
-		sr.pendingBottom = sr.currBottom
-		sr.pendingCt = framesUntilResize
+	// the value frameHasVBlank is used to decide which candidate values to
+	// use: vblankTop/vblankBottom of blackTop/blackBottom
+	if sr.frameHasVBlank {
+		if sr.pendingTop != sr.vblankTop {
+			sr.pendingTop = sr.vblankTop
+			sr.pendingCt = framesUntilResize
+		}
+		if sr.pendingBottom != sr.vblankBottom {
+			sr.pendingBottom = sr.vblankBottom
+			sr.pendingCt = framesUntilResize
+		}
+	} else {
+		if sr.pendingTop != sr.blackTop {
+			sr.pendingTop = sr.blackTop
+			sr.pendingCt = framesUntilResize
+		}
+		if sr.pendingBottom != sr.blackBottom {
+			sr.pendingBottom = sr.blackBottom
+			sr.pendingCt = framesUntilResize
+		}
 	}
 
 	// do nothing if counter is zero
@@ -185,7 +208,7 @@ func (sr *resizer) commit(tv *Television) error {
 
 	// if pending top/bottom find themselves back at the stable top/bottom
 	// values then there is no need to do anything.
-	if sr.pendingTop == sr.top && sr.pendingBottom == sr.bottom {
+	if sr.pendingTop == tv.state.top && sr.pendingBottom == tv.state.bottom {
 		sr.pendingCt = 0
 		return nil
 	}
@@ -198,12 +221,8 @@ func (sr *resizer) commit(tv *Television) error {
 		return nil
 	}
 
-	// commit pending values
-	sr.top = sr.pendingTop
-	sr.bottom = sr.pendingBottom
-
 	// return if there's nothing to do
-	if sr.bottom == tv.state.bottom && sr.top == tv.state.top {
+	if sr.pendingBottom == tv.state.bottom && sr.pendingBottom == tv.state.top {
 		return nil
 	}
 
@@ -212,22 +231,22 @@ func (sr *resizer) commit(tv *Television) error {
 		// add one to the bottom value before committing. Ladybug and Hack'Em
 		// Pacman are good examples of ROMs that are "wrong" if we don't do
 		// this
-		sr.bottom++
+		sr.pendingBottom++
 
 		// add another one. Man Down is an example of ROM which is "wrong"
 		// without an additional (two) scanlines after the VBLANK
-		sr.bottom++
+		sr.pendingBottom++
 
 		// !!TODO: more elegant way of handling the additional scanline problem
 
 		// clamp bottom scanline to safe bottom
-		if sr.bottom > tv.state.spec.SafeBottom {
-			sr.bottom = tv.state.spec.SafeBottom
+		if sr.pendingBottom > tv.state.spec.SafeBottom {
+			sr.pendingBottom = tv.state.spec.SafeBottom
 		}
 
 		// update statble top/bottom values
-		tv.state.top = sr.top
-		tv.state.bottom = sr.bottom
+		tv.state.top = sr.pendingTop
+		tv.state.bottom = sr.pendingBottom
 
 		// call Resize() for all attached pixel renderers
 		for f := range tv.renderers {
