@@ -91,8 +91,8 @@ func fingerprintMnetwork(b []byte) bool {
 	//
 	// with such a low threshold, mnetwork should probably be the very last
 	// type to check for
-
 	threshold := 1
+
 	for i := 0; i < len(b)-3; i++ {
 		if b[i] == 0xad && (b[i+1] >= 0xe0 && b[i+1] <= 0xe7) {
 			// bank switching can address any cartidge mirror so mask off
@@ -103,12 +103,17 @@ func fingerprintMnetwork(b []byte) bool {
 			//
 			// the incorrect mask caused a false positive for Solaris when the
 			// threshold is 2.
-			if b[i+2]&0x1f == 0x1f {
+			//
+			// (20/06/21) this caused a falso positive for "Hack Em Hangly Pacman"
+			// when the threshold is 1
+			//
+			// change to only look for mirrors 0x1f and 0xff
+			if b[i+2] == 0x1f || b[i+2] == 0xff {
 				threshold--
+				if threshold == 0 {
+					return true
+				}
 			}
-		}
-		if threshold == 0 {
-			return true
 		}
 	}
 
