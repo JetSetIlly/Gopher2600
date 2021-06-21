@@ -133,10 +133,13 @@ func FromCartridge(cartload cartridgeloader.Loader) (*Disassembly, error) {
 // cartridge will finish in its initialised state.
 func (dsm *Disassembly) FromMemory() error {
 	dsm.crit.Lock()
+	// unlocking manually before we call the disassmeble() function. this means
+	// we have to be careful to manually unlock before returning an error.
 
 	// read symbols file
 	err := dsm.sym.ReadSymbolsFile(dsm.vcs.Mem.Cart)
 	if err != nil {
+		dsm.crit.Unlock()
 		return err
 	}
 
@@ -149,6 +152,7 @@ func (dsm *Disassembly) FromMemory() error {
 
 	// exit early if cartridge memory self reports as being ejected
 	if dsm.vcs.Mem.Cart.IsEjected() {
+		dsm.crit.Unlock()
 		return nil
 	}
 
@@ -160,6 +164,7 @@ func (dsm *Disassembly) FromMemory() error {
 	mc.NoFlowControl = true
 
 	dsm.crit.Unlock()
+	// end of critical section
 
 	// disassemble cartridge binary
 	err = dsm.disassemble(mc, mem)
