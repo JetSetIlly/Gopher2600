@@ -104,11 +104,11 @@ func (img *SdlImgui) serviceSetFeature(request featureRequest) {
 			img.setEmulationState(request.args[0].(gui.EmulationState))
 		}
 
-	case gui.ReqVSync:
+	case gui.ReqMonitorSync:
 		err = argLen(request.args, 1)
 		if err == nil {
 			img.screen.crit.section.Lock()
-			img.screen.crit.vsync = request.args[0].(bool)
+			img.screen.crit.monitorSync = request.args[0].(bool)
 			img.screen.crit.section.Unlock()
 		}
 

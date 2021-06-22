@@ -73,9 +73,10 @@ const (
 	// infomration, particularly the display of the PixelRenderer.
 	ReqState FeatureReq = "ReqState" // EmulationState
 
-	// whether gui should use vsync or not. not all gui modes have to obey this
-	// but for presentation/play modes it's a good idea to have it set.
-	ReqVSync FeatureReq = "ReqVSync" // bool
+	// whether gui should try to sync with the monitro refresh rate. not all
+	// gui modes have to obey this but for presentation/play modes it's a good
+	// idea to have it set.
+	ReqMonitorSync FeatureReq = "ReqMonitorSync" // bool
 
 	// whether the gui is visible or not. results in an error if requested in
 	// playmode.

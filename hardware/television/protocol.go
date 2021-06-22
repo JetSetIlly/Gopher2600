@@ -51,8 +51,17 @@ type PixelRenderer interface {
 	// Renderers must be prepared to resize to either a smaller of larger size.
 	Resize(spec specification.Spec, topScanline, bottomScanline int) error
 
-	// NewFrame and NewScanline are called at the start of the frame/scanline
-	NewFrame(synced bool, isStable bool) error
+	// NewFrame is called at the start of a new scanline. The synced argument
+	// indicates that the new TV frame has started as result of a valid VSYNC
+	// signal.
+	//
+	// PixelRenderer implementations should consider what to do when a
+	// non-synced frame is submitted. Rolling the screen is a good response to
+	// the non-synced frame, with the possiblity of a one or two tolerance (ie.
+	// do not roll unless the non-sync frame are continuous)
+	NewFrame(synced bool, stable bool) error
+
+	// NewScanline is called at the start of a new scanline
 	NewScanline(scanline int) error
 
 	// Mark the start and end of an update event from the television.
@@ -109,6 +118,7 @@ type PauseTrigger interface {
 // FrameTrigger implementations listen for NewFrame events. FrameTrigger is a
 // subset of PixelRenderer.
 type FrameTrigger interface {
+	// See NewFrame() comment for PixelRenderer interface.
 	NewFrame(synced bool, isStable bool) error
 }
 

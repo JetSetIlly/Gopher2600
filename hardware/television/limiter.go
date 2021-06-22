@@ -34,8 +34,14 @@ type limiter struct {
 	// whether to wait for fps limited each frame
 	limit bool
 
+	// the detected frequency of the incoming TV signal
+	hz atomic.Value // float32
+
 	// the requested number of frames per second
 	requested atomic.Value // float32
+
+	// whether the requested fps is the same as the detected frequency
+	idealRequested atomic.Value // bool
 
 	// the actual number of frames per second
 	actual atomic.Value // float32
@@ -55,10 +61,12 @@ type limiter struct {
 }
 
 func (lmtr *limiter) init(tv *Television) {
-	lmtr.actual.Store(float32(0))
-	lmtr.requested.Store(float32(0))
 	lmtr.tv = tv
 	lmtr.limit = true
+	lmtr.hz.Store(tv.state.spec.FramesPerSecond)
+	lmtr.idealRequested.Store(true)
+	lmtr.requested.Store(float32(0))
+	lmtr.actual.Store(float32(0))
 	lmtr.measureTime = time.Now()
 	lmtr.pulse = time.NewTicker(time.Millisecond * 10)
 	lmtr.measuringPulse = time.NewTicker(time.Second)
@@ -71,10 +79,27 @@ const (
 	ThreshVisual       float32 = 3.0
 )
 
+// make sure limited is running at correct rate. returns true if hz value has
+// changed.
+func (lmtr *limiter) update(scanlines int) bool {
+	// divides the number of scanlines in the frame by the number of scanlines
+	// per second (which doesn't change)
+	hz := 15734.26 / float32(scanlines)
+	if hz != lmtr.hz.Load().(float32) {
+		lmtr.hz.Store(hz)
+		if lmtr.idealRequested.Load().(bool) {
+			lmtr.setRate(hz)
+		}
+		return true
+	}
+	return false
+}
+
 func (lmtr *limiter) setRate(fps float32) {
 	// if number is negative then default to ideal FPS rate
 	if fps <= 0.0 {
-		fps = lmtr.tv.state.spec.FramesPerSecond
+		lmtr.idealRequested.Store(true)
+		fps = lmtr.hz.Load().(float32)
 	}
 
 	// if fps is still zero (spec probably hasn't been set) then don't do anything

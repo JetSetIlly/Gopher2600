@@ -74,14 +74,12 @@ type State struct {
 	// record of signal attributes from the last call to Signal()
 	lastSignal signal.SignalAttributes
 
-	// syncCount records the number of consecutive clocks the vsync signal
+	// vsyncCount records the number of consecutive clocks the VSYNC signal
 	// has been sustained. we use this to help correctly implement vsync.
-	syncCount int
+	vsyncCount int
 
-	// is current frame as a result of a VSYNC flyback or not (a "natural"
-	// flyback). we use this in the context of newFrame() so we should probably
-	// think of this as the previous frame.
-	syncedFrame bool
+	// the current frame was started as a result of a valid VSYNC signal
+	vsyncedFrame bool
 
 	// top and bottom of screen as detected by vblank/color signal
 	top    int
@@ -216,8 +214,8 @@ func (tv *Television) Reset(keepFrameNum bool) error {
 	tv.state.clock = 0
 	tv.state.scanline = 0
 	tv.state.stableFrames = 0
-	tv.state.syncedFrame = false
-	tv.state.syncCount = 0
+	tv.state.vsyncCount = 0
+	tv.state.vsyncedFrame = false
 	tv.state.lastSignal = signal.SignalAttributes{}
 
 	for i := range tv.signals {
@@ -369,11 +367,11 @@ func (tv *Television) Signal(sig signal.SignalAttributes) error {
 
 	// check vsync signal at the time of the flyback
 	if sig.VSync && !tv.state.lastSignal.VSync {
-		tv.state.syncCount = 0
 	} else if sig.VSync && tv.state.lastSignal.VSync {
-		tv.state.syncCount++
+		tv.state.vsyncCount++
 	} else if !sig.VSync && tv.state.lastSignal.VSync {
-		if tv.state.syncCount > 10 {
+		if tv.state.vsyncCount > 10 {
+			tv.state.vsyncCount = 0
 			err := tv.newFrame(true)
 			if err != nil {
 				return err
@@ -445,13 +443,20 @@ func (tv *Television) newScanline() error {
 	return nil
 }
 
-func (tv *Television) newFrame(synced bool) error {
-	// a synced frame is one which was generated from a valid VSYNC/VBLANK sequence
-	tv.state.syncedFrame = synced
+// the fromVsync arguments is true if a valid VSYNC signal has been detected. a
+// value of false means the frame flyback is unsynced.
+func (tv *Television) newFrame(fromVsync bool) error {
+	// update frame rate based on recent TV signal
+	hzChanged := tv.lmtr.update(tv.state.scanline)
+
+	// a synced frame is one which was generated from a valid VSYNC/VBLANK
+	// sequence and which hasn't cause the update frequency of the television
+	// to change.
+	tv.state.vsyncedFrame = fromVsync && !hzChanged
 
 	// increase or reset stable frame count as required
 	if tv.state.stableFrames <= stabilityThreshold {
-		if tv.state.syncedFrame {
+		if tv.state.vsyncedFrame {
 			tv.state.stableFrames++
 		} else {
 			tv.state.stableFrames = 0
@@ -492,13 +497,15 @@ func (tv *Television) newFrame(synced bool) error {
 
 	// process all FrameTriggers
 	for _, r := range tv.frameTriggers {
-		err := r.NewFrame(tv.state.syncedFrame, tv.IsStable())
+		// notifiying the FrameTrigger of whether the frame is synced or not
+		// depends on the tolerance of the television
+		err := r.NewFrame(tv.state.vsyncedFrame, tv.IsStable())
 		if err != nil {
 			return err
 		}
 	}
 
-	// check frame rate. checking even if synced == false.
+	// check frame rate
 	tv.lmtr.checkFrame()
 
 	return nil
@@ -684,7 +691,8 @@ func (tv *Television) SetFPSCap(limit bool) bool {
 }
 
 // SetFPS requests the number frames per second. This overrides the frame rate of
-// the specification. A negative  value restores the spec's frame rate.
+// the specification. A negative value restores frame rate to the ideal value
+// (the frequency of the incoming signal).
 func (tv *Television) SetFPS(fps float32) {
 	tv.lmtr.setRate(fps)
 }
@@ -697,12 +705,14 @@ func (tv *Television) GetReqFPS() float32 {
 	return tv.lmtr.requested.Load().(float32)
 }
 
-// GetActualFPS returns the current number of frames per second. Note that FPS
-// measurement still works even when frame capping is disabled.
+// GetActualFPS returns the current number of frames per second and the
+// detected frequency of the TV signal.
+//
+// Note that FPS measurement still works even when frame capping is disabled.
 //
 // IS goroutine safe.
-func (tv *Television) GetActualFPS() float32 {
-	return tv.lmtr.actual.Load().(float32)
+func (tv *Television) GetActualFPS() (float32, float32) {
+	return tv.lmtr.actual.Load().(float32), tv.lmtr.hz.Load().(float32)
 }
 
 // ReqAdjust requests the frame, scanline and clock values where the requested

@@ -61,27 +61,36 @@ type screenCrit struct {
 	// critical sectioning
 	section sync.Mutex
 
-	// whether to follow vsync rules or not
-	vsync bool
+	// whether or not to sync with monitor refresh rate
+	monitorSync bool
 
 	// copy of the spec being used by the TV. the TV notifies us through the
 	// Resize() function
 	spec specification.Spec
 
 	// whether the current frame was generated from a stable television state
-	isStable bool
+	stable bool
 
 	// whether the current frame is vsynced
-	synced bool
+	vsynced bool
+
+	// the number of consecutive unsynced frames received by NewFrame().
+	// * playmode only
+	unsyncedCt int
 
 	// when an unsynced frame is encountered the screen will roll. we only
 	// allow this in playmode. there's no value in seeing the screen-roll in
 	// debug mode.
 	//
 	// unsyncedScanline keeps track of the accumulated scanline position
+	//
+	// * playmode only
 	unsyncedScanline int
+
 	// unsyncedRecoveryCt is used to help the screen regain the correct
-	// position once a synced frame is received.
+	// position once a vsynced frame is received.
+	//
+	// * playmode only
 	unsyncedRecoveryCt int
 
 	// current values for *playable* area of the screen
@@ -136,7 +145,7 @@ func newScreen(img *SdlImgui) *screen {
 	}
 
 	scr.crit.overlay = overlayLabels[overlayNone]
-	scr.crit.vsync = true
+	scr.crit.monitorSync = true
 
 	// default to NTSC. this will change on the first instance of
 	scr.resize(specification.SpecNTSC, specification.SpecNTSC.AtariSafeTop, specification.SpecNTSC.AtariSafeBottom)
@@ -163,8 +172,8 @@ func (scr *screen) Reset() {
 	scr.crit.lastX = 0
 	scr.crit.lastY = 0
 
-	// screen is synced by definition on reset
-	scr.crit.synced = true
+	// screen is vsynced by definition on reset
+	scr.crit.vsynced = true
 }
 
 // clear all pixel information including reflection data.
@@ -266,37 +275,47 @@ func (scr *screen) Resize(spec specification.Spec, topScanline int, bottomScanli
 	return <-scr.img.polling.serviceErr
 }
 
+// the number of consecutive unsynced frames before the screen starts to roll.
+// there's no reason for this figure but the value of 2 was settled on through
+// observation. notably, a tolerance of 2 prevents the Chiphead demo from
+// rolling on the occasional unsynced frame.
+const unsyncedTolerance = 2
+
 // NewFrame implements the television.PixelRenderer interface
 //
 // MUST NOT be called from the gui thread.
-func (scr *screen) NewFrame(synced bool, isStable bool) error {
+func (scr *screen) NewFrame(vsynced bool, stable bool) error {
 	// unlocking must be done carefully
 	scr.crit.section.Lock()
 
-	scr.crit.isStable = isStable
-	scr.crit.synced = synced
+	scr.crit.stable = stable
+	scr.crit.vsynced = vsynced
 
 	if scr.img.isPlaymode() {
 		// screen rolling
-		if synced {
+		if vsynced {
+			scr.crit.unsyncedCt = 0
+
 			// recovery required
 			if scr.crit.unsyncedScanline > 0 {
-				// slow recovery down to every other frame. this helps to
-				// create the rolling effect when alternate frames are
-				// sync/unscynced
 				scr.crit.unsyncedRecoveryCt++
-				if scr.crit.unsyncedRecoveryCt%2 == 0 {
-					scr.crit.unsyncedScanline *= 8
-					scr.crit.unsyncedScanline /= 10
+				scr.crit.unsyncedScanline *= 8
+				scr.crit.unsyncedScanline /= 10
+
+				if scr.crit.unsyncedScanline == 0 {
+					scr.crit.unsyncedRecoveryCt = 0
 				}
 			}
 		} else {
-			// without the isStable check, the screen can descync and recover
+			// without the stable check, the screen can desync and recover
 			// from a roll on startup on most ROMs, which looks quite cool but
 			// we'll leave it disabled for now.
-			if isStable {
-				scr.crit.unsyncedScanline = (scr.crit.unsyncedScanline + scr.crit.lastY) % scr.crit.spec.ScanlinesTotal
-				scr.crit.unsyncedRecoveryCt = 0
+			if stable {
+				scr.crit.unsyncedCt++
+				if scr.crit.unsyncedCt > unsyncedTolerance {
+					scr.crit.unsyncedScanline = (scr.crit.unsyncedScanline + scr.crit.lastY) % specification.AbsoluteMaxScanlines
+					scr.crit.unsyncedRecoveryCt = 0
+				}
 			}
 		}
 
@@ -306,7 +325,7 @@ func (scr *screen) NewFrame(synced bool, isStable bool) error {
 		}
 
 		// if plot index has crashed into the render index then
-		if scr.crit.plotIdx == scr.crit.renderIdx && scr.crit.vsync {
+		if scr.crit.plotIdx == scr.crit.renderIdx && scr.crit.monitorSync {
 			// ** screen update not keeping up with emulation **
 
 			// we must unlock the critical section or the gui thread will not
@@ -549,8 +568,8 @@ func (scr *screen) copyPixelsPlaymode() {
 	scr.crit.section.Lock()
 	defer scr.crit.section.Unlock()
 
-	// attempt to sync frame generation with vertical sync
-	if scr.crit.vsync {
+	// attempt to sync frame generation with monitor refresh rate
+	if scr.crit.monitorSync {
 		// advance render index
 		scr.crit.renderIdx++
 		if scr.crit.renderIdx >= len(scr.crit.bufferPixels) {

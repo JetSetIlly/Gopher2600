@@ -34,7 +34,7 @@ import (
 //  * the occasional unsynced frame
 //		- Hack Em Hangly Pacman
 //
-//  * lots of unsynced frames during computer "thinking" period
+//  * lots of unsynced frames (during computer "thinking" period)
 //		- Andrew Davies' Chess
 //
 //  * does not set VBLANK for pixels that are clearly not meant to be seen
@@ -98,10 +98,12 @@ func (sr *resizer) initialise(tv *Television) {
 }
 
 func (sr *resizer) examine(tv *Television, sig signal.SignalAttributes) {
-	// ignore any frame that isn't "synced" is also not allowed to resize the
-	// TV. the best example of this is Andrew Davie's chess which simply does
-	// not care about frames during the computer's thinking time.
-	if !tv.state.syncedFrame {
+	// do not try to resize during frame that isn't "vsynced".
+	//
+	// the best example of this is Andrew Davie's chess which simply does
+	// not care about frames during the computer's thinking time - we don't
+	// want to resize during these frames.
+	if !tv.state.vsyncedFrame {
 		// reset any pending changes on an unsynced frame
 		tv.state.resizer.pendingCt = 0
 		sr.pendingTop = sr.vblankTop

@@ -13,21 +13,20 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-// Package television implements the output device of the emulated VCS. The
-// television interface is used wherever a television needs to be connected.
-// The NewTelevision() function creates a new instance of a reference
-// implementation of the Television interface. In truth, it is probably the
-// only implementation required but the option is there for alternatives.
+// Package television implements the output device of the emulated VCS.
 //
-// It is common for instances of television to be embedded in other type
+// It is possible for instances of television to be embedded in other type
 // structure, thereby extending the "features" of the television and allowing
 // the extended type to be used wherever the Television interface is required.
 // The digest package is a good example of this idea.
 //
-// It is important to note that the reference television implementation does
-// not render pixels or mix sound itself. Instead, the television interface
-// exposes two functions, AddPixelRenderer() and AddAudioMixer(). These can be
-// used to add as many renderers and mixers as required.
+// It is important to note that the television package does not render pixels
+// or mix sound. Instead, the television interface exposes two functions,
+// AddPixelRenderer() and AddAudioMixer(). These can be used to add as many
+// renderers and mixers as required.
+//
+// There is also the FrameTrigger and PauseTrigger interfaces for applications
+// that have limited need for a full pixel renderer.
 //
 // The main means of communication is the Signal() function. This function
 // accepts an instance of SignalAttributes which gives details of how the
@@ -40,11 +39,10 @@
 // with Stella is no longer required.
 //
 // The reference implementation also handles framerate limiting according to
-// the current TV specification (ie. PAL or NTSC) or an aribitrary value, using
-// the SetFPSCap() function.
+// the current incoming TV signal. For debugging purposes, the framerate can
+// also be set to a specific value
 //
-// Framesize adaptation is also handled by the reference implementation and is
-// currently functional but rudimentary.
+// Framesize adaptation is also handled by the television package.
 //
 // Screen Rolling
 //
@@ -61,4 +59,7 @@
 // Recovery from a screen roll should also be emulated. A good way of doing
 // this is to reduce unsyncedScanline by a percentage (80% say) on synced
 // frames (or every other synced frame) after an unsynced frame.
+//
+// A good additionl policy would be to only roll if several, consecutive
+// unsynced frames are indicated.
 package television

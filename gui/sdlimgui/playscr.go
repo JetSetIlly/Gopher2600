@@ -59,6 +59,7 @@ type playScr struct {
 	fpsOpen  bool
 	fpsPulse *time.Ticker
 	fps      string
+	hz       string
 
 	// controller alert
 	controllerAlertLeft  controllerAlert
@@ -124,7 +125,13 @@ func (win *playScr) draw() {
 		// update fps
 		select {
 		case <-win.fpsPulse.C:
-			win.fps = fmt.Sprintf("%03.1f fps", win.img.tv.GetActualFPS())
+			fps, hz := win.img.tv.GetActualFPS()
+			if win.scr.crit.vsynced {
+				win.fps = fmt.Sprintf("%03.2f fps", fps)
+			} else {
+				win.fps = "unsynced"
+			}
+			win.hz = fmt.Sprintf("%03.2fhz", hz)
 		default:
 		}
 
@@ -137,20 +144,25 @@ func (win *playScr) draw() {
 			imgui.WindowFlagsNoScrollbar|imgui.WindowFlagsNoTitleBar|imgui.WindowFlagsNoDecoration)
 
 		imgui.Text(win.fps)
+
+		imguiSeparator()
+
 		imgui.Text(fmt.Sprintf("%.1fx scaling", win.yscaling))
 		imgui.Text(fmt.Sprintf("%d visible scanlines", win.scr.crit.bottomScanline-win.scr.crit.topScanline))
+
+		if win.img.screen.crit.topScanline < win.img.screen.crit.spec.AtariSafeTop {
+			imgui.Text("extended screen")
+		} else {
+			imgui.Text("atari safe")
+		}
+
+		imguiSeparator()
 
 		win.img.screen.crit.section.Lock()
 		imgui.Text(win.img.screen.crit.spec.ID)
 		imgui.SameLine()
-		if win.img.screen.crit.topScanline < win.img.screen.crit.spec.AtariSafeTop {
-			imgui.Text("(extended)")
-		} else {
-			imgui.Text("(atari safe)")
-		}
-		if !win.img.screen.crit.synced {
-			imgui.Text("unsynced")
-		}
+		imgui.Text(win.hz)
+
 		win.img.screen.crit.section.Unlock()
 
 		imgui.PopStyleColorV(2)
@@ -241,7 +253,7 @@ func (win *playScr) render() {
 			gl.RGBA, int32(pixels.Bounds().Size().X), int32(pixels.Bounds().Size().Y), 0,
 			gl.RGBA, gl.UNSIGNED_BYTE,
 			gl.Ptr(pixels.Pix))
-	} else if win.scr.crit.isStable {
+	} else if win.scr.crit.stable {
 		gl.BindTexture(gl.TEXTURE_2D, win.screenTexture)
 		gl.TexSubImage2D(gl.TEXTURE_2D, 0,
 			0, 0, int32(pixels.Bounds().Size().X), int32(pixels.Bounds().Size().Y),

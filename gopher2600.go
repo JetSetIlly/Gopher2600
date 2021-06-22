@@ -346,7 +346,7 @@ func play(md *modalflag.Modes, sync *mainSync) error {
 
 		// set fps cap
 		tv.SetFPSCap(*fpsCap)
-		scr.SetFeature(gui.ReqVSync, *fpsCap)
+		scr.SetFeature(gui.ReqMonitorSync, *fpsCap)
 
 		// set full screen
 		scr.SetFeature(gui.ReqFullScreen, *fullScreen)
@@ -631,7 +631,7 @@ func perform(md *modalflag.Modes, sync *mainSync) error {
 		}
 		defer tv.End()
 
-		// fpscap for tv (see below for gui vsync option)
+		// fpscap for tv (see below for monitor sync option)
 		tv.SetFPSCap(*fpsCap)
 
 		// GUI instance if required
@@ -654,7 +654,7 @@ func perform(md *modalflag.Modes, sync *mainSync) error {
 			}
 
 			// fpscap for gui (see above for tv option)
-			scr.SetFeature(gui.ReqVSync, *fpsCap)
+			scr.SetFeature(gui.ReqMonitorSync, *fpsCap)
 		}
 
 		// check for profiling options
