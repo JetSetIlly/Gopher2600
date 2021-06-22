@@ -25,6 +25,9 @@ import (
 	"github.com/inkyblackness/imgui-go/v4"
 )
 
+// packedPalette is an array of imgui.PackedColor.
+type packedPalette []imgui.PackedColor
+
 // imguiColors defines all the colors used by the GUI. Fields with leading
 // uppercase are all of type imgui.Vec4. equivalent color but of tpye
 // imgui.PackedColor have names with leading lowercase.
@@ -132,6 +135,8 @@ type imguiColors struct {
 	// packed TV palettes
 	packedPaletteNTSC packedPalette
 	packedPalettePAL  packedPalette
+	paletteNTSC       []imgui.Vec4
+	palettePAL        []imgui.Vec4
 }
 
 func newColors() *imguiColors {
@@ -254,7 +259,7 @@ func newColors() *imguiColors {
 	// convert 2600 colours to format usable by imgui
 
 	// convert to imgui.Vec4 first...
-	vec4PaletteNTSC := make([]imgui.Vec4, 0, len(specification.PaletteNTSC))
+	cols.paletteNTSC = make([]imgui.Vec4, 0, len(specification.PaletteNTSC))
 	for _, c := range specification.PaletteNTSC {
 		v := imgui.Vec4{
 			float32(c.R) / 255,
@@ -262,10 +267,10 @@ func newColors() *imguiColors {
 			float32(c.B) / 255,
 			1.0,
 		}
-		vec4PaletteNTSC = append(vec4PaletteNTSC, v)
+		cols.paletteNTSC = append(cols.paletteNTSC, v)
 	}
 
-	vec4PalettePAL := make([]imgui.Vec4, 0, len(specification.PalettePAL))
+	cols.palettePAL = make([]imgui.Vec4, 0, len(specification.PalettePAL))
 	for _, c := range specification.PalettePAL {
 		v := imgui.Vec4{
 			float32(c.R) / 255,
@@ -273,17 +278,17 @@ func newColors() *imguiColors {
 			float32(c.B) / 255,
 			1.0,
 		}
-		vec4PalettePAL = append(vec4PalettePAL, v)
+		cols.palettePAL = append(cols.palettePAL, v)
 	}
 
 	// ...then to the packedPalette
-	cols.packedPaletteNTSC = make(packedPalette, 0, len(vec4PaletteNTSC))
-	for _, c := range vec4PaletteNTSC {
+	cols.packedPaletteNTSC = make(packedPalette, 0, len(cols.paletteNTSC))
+	for _, c := range cols.paletteNTSC {
 		cols.packedPaletteNTSC = append(cols.packedPaletteNTSC, imgui.PackedColorFromVec4(c))
 	}
 
-	cols.packedPalettePAL = make(packedPalette, 0, len(vec4PalettePAL))
-	for _, c := range vec4PalettePAL {
+	cols.packedPalettePAL = make(packedPalette, 0, len(cols.packedPalettePAL))
+	for _, c := range cols.palettePAL {
 		cols.packedPalettePAL = append(cols.packedPalettePAL, imgui.PackedColorFromVec4(c))
 	}
 

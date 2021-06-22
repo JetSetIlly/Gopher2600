@@ -51,7 +51,7 @@ func newDrawlistSequence(img *SdlImgui, size imgui.Vec2, alignFramePadding bool)
 		depressionAmount:  2.0,
 		alignFramePadding: alignFramePadding,
 	}
-	_, seq.palette = img.imguiTVPalette()
+	_, seq.palette, _ = img.imguiTVPalette()
 	seq.start()
 	return seq
 }

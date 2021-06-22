@@ -354,21 +354,18 @@ func (img *SdlImgui) imguiWindowQuadrant(p imgui.Vec2) imgui.Vec2 {
 	return q
 }
 
-// packedPalette is an array of imgui.PackedColor.
-type packedPalette []imgui.PackedColor
-
 // use appropriate palette for television spec.
-func (img *SdlImgui) imguiTVPalette() (string, packedPalette) {
+func (img *SdlImgui) imguiTVPalette() (string, packedPalette, []imgui.Vec4) {
 	switch img.lz.TV.Spec.ID {
 	case "PAL":
-		return "PAL", img.cols.packedPalettePAL
+		return "PAL", img.cols.packedPalettePAL, img.cols.paletteNTSC
 	case "PAL60":
-		return "PAL60", img.cols.packedPalettePAL
+		return "PAL60", img.cols.packedPalettePAL, img.cols.palettePAL
 	case "NTSC":
-		return "NTSC", img.cols.packedPaletteNTSC
+		return "NTSC", img.cols.packedPaletteNTSC, img.cols.paletteNTSC
 	}
 
-	return "unknown", img.cols.packedPaletteNTSC
+	return "unknown", img.cols.packedPaletteNTSC, img.cols.paletteNTSC
 }
 
 // draw swatch. returns true if clicked. a good response to a click event is to
@@ -377,7 +374,7 @@ func (img *SdlImgui) imguiTVPalette() (string, packedPalette) {
 // size argument should be expressed as a fraction the fraction will be applied
 // to imgui.FontSize() to obtain the radius of the swatch.
 func (img *SdlImgui) imguiSwatch(col uint8, size float32) (clicked bool) {
-	_, pal := img.imguiTVPalette()
+	_, pal, _ := img.imguiTVPalette()
 	c := pal[col]
 
 	r := imgui.FontSize() * size

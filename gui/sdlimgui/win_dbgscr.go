@@ -461,6 +461,42 @@ func (win *winDbgScr) drawReflectionTooltip() {
 	imgui.Text(fmt.Sprintf("Scanline: %d", win.mouseScanline))
 	imgui.Text(fmt.Sprintf("Clock: %d", win.mouseClock-specification.ClksHBlank))
 
+	e, _ := win.img.lz.Dbg.Disasm.FormatResult(ref.Bank, ref.CPU, disassembly.EntryLevelBlessed)
+	if e.Address == "" {
+		return
+	}
+
+	imguiSeparator()
+
+	// pixel swatch. using black swatch if pixel is HBLANKed or VBLANKed
+	_, _, pal := win.img.imguiTVPalette()
+	if ref.IsHblank || ref.TV.VBlank {
+		win.img.imguiSwatch(0, 0.5)
+	} else {
+		imguiColorLabel(ref.VideoElement.String(), pal[ref.TV.Pixel])
+	}
+
+	imgui.Spacing()
+
+	// instruction information
+	imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmBreakAddress)
+	if win.img.lz.Cart.NumBanks > 1 {
+		imgui.Text(fmt.Sprintf("%s [bank %s]", e.Address, ref.Bank))
+	} else {
+		imgui.Text(e.Address)
+	}
+	imgui.PopStyleColor()
+
+	imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmOperator)
+	imgui.Text(e.Operator)
+	imgui.PopStyleColor()
+
+	if e.Operand.String() != "" {
+		imgui.SameLine()
+		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmOperand)
+		imgui.Text(e.Operand.String())
+		imgui.PopStyleColor()
+	}
 	switch win.scr.crit.overlay {
 	case overlayLabels[overlayWSYNC]:
 		imguiSeparator()
@@ -520,58 +556,20 @@ func (win *winDbgScr) drawReflectionTooltip() {
 			imgui.Text("6507 program is running")
 		}
 	case overlayLabels[overlayNone]:
-		// no overlay
-
-		e, _ := win.img.lz.Dbg.Disasm.FormatResult(ref.Bank, ref.CPU, disassembly.EntryLevelBlessed)
-		if e.Address == "" {
-			return
-		}
-
-		imguiSeparator()
-
-		// pixel swatch. using black swatch if pixel is HBLANKed or VBLANKed
-		if ref.IsHblank || ref.TV.VBlank {
-			win.img.imguiSwatch(0, 0.5)
-		} else {
-			win.img.imguiSwatch(uint8(ref.TV.Pixel), 0.5)
-		}
-
-		// element information regardless of HBLANK/VBLANK state
-		imguiLabelEnd(ref.VideoElement.String())
-
-		imgui.Spacing()
-
-		// instruction information
-		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmBreakAddress)
-		if win.img.lz.Cart.NumBanks > 1 {
-			imgui.Text(fmt.Sprintf("%s [bank %s]", e.Address, ref.Bank))
-		} else {
-			imgui.Text(e.Address)
-		}
-		imgui.PopStyleColor()
-
-		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmOperator)
-		imgui.Text(e.Operator)
-		imgui.PopStyleColor()
-
-		if e.Operand.String() != "" {
-			imgui.SameLine()
-			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmOperand)
-			imgui.Text(e.Operand.String())
-			imgui.PopStyleColor()
-		}
-
-		// add HBLANK/VBLANK information
-		if ref.IsHblank && ref.TV.VBlank {
+		s := ref.TV.String()
+		if ref.IsHblank && len(s) > 0 {
 			imguiSeparator()
-			imguiLabel("[HBLANK/VBLANK]")
+			imgui.Text("HBLANK")
+			imgui.SameLine()
+			imgui.Text(s)
 		} else if ref.IsHblank {
 			imguiSeparator()
-			imguiLabel("[HBLANK]")
-		} else if ref.TV.VBlank {
+			imgui.Text("HBLANK")
+		} else if len(s) > 0 {
 			imguiSeparator()
-			imguiLabel("[VBLANK]")
+			imgui.Text(s)
 		}
+
 	}
 }
 
