@@ -297,6 +297,10 @@ func (win *winDisasm) drawBank(bank int, focusAddr uint16, onBank bool) {
 	imgui.PushStyleColor(imgui.StyleColorTableRowBgAlt, win.img.cols.WindowBg)
 	defer imgui.PopStyleColorV(2)
 
+	// set address top list to maximum value. it will be reset in the
+	// clipper.Step() loop
+	win.addressTopList = 0xffff
+
 	var clipper imgui.ListClipper
 	clipper.Begin(eitr.EntryCount + eitr.LabelCount)
 	for clipper.Step() {
@@ -306,8 +310,11 @@ func (win *winDisasm) drawBank(bank int, focusAddr uint16, onBank bool) {
 			break // clipper.Step() loop
 		}
 
-		// note address of top-most visible entry
-		win.addressTopList = e.Result.Address
+		// note address of top-most visible entry if first address if clipper
+		// list is less than the current value of addressTopList
+		if e.Result.Address < win.addressTopList {
+			win.addressTopList = e.Result.Address
+		}
 
 		for i := clipper.DisplayStart; i < clipper.DisplayEnd; i++ {
 			// try to draw address label
