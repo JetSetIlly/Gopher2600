@@ -22,7 +22,6 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	"unicode"
 
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge"
@@ -100,28 +99,25 @@ func (sym *Symbols) fromDasm(cart *cartridge.Cartridge) error {
 			continue // for loop
 		}
 
-		// get symbol
+		// add symbol to label list or read/write list
+
+		// get symbol and mapped address and memory area
 		symbol := p[0]
+		ma, area := memorymap.MapAddress(uint16(address), true)
 
-		// differentiate between labels and other symbols. this is a little
-		// heavy handed, but still, it's better than nothing.
-		if unicode.IsDigit(rune(symbol[0])) {
-			// if symbol begins with a number and a period then it is a label
-			i := strings.Index(symbol, ".")
-			if i != -1 {
-				ma, _ := memorymap.MapAddress(uint16(address), true)
-
-				// !!TODO: more nuanced label from symbols file for multibank cartridges
-				// adding label for address in every bank for now
-				for b := range sym.label {
-					sym.label[b].add(ma, symbol[i:], false)
-				}
+		if area == memorymap.Cartridge {
+			// adding label for address in every bank for now
+			// !!TODO: more selecting adding of label from symbols file
+			for b := range sym.label {
+				sym.label[b].add(ma, symbol, false)
 			}
 		} else {
-			// (non-label) symbols are both a read and write symbol.
-			// compare to canonical vcs symbols which are specific to a read or
-			// write context
-			ma, _ := memorymap.MapAddress(uint16(address), true)
+			// (non-label) symbols are both a read and write symbol. compare to
+			// canonical vcs symbols which are specific to a read or write
+			// context
+
+			// we've already
+
 			sym.read.add(ma, symbol, false)
 			ma, _ = memorymap.MapAddress(uint16(address), false)
 			sym.write.add(ma, symbol, false)
