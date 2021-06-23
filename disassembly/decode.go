@@ -50,10 +50,6 @@ func (dsm *Disassembly) disassemble(mc *cpu.CPU, mem *disasmMemory) error {
 	return nil
 }
 
-type blessing struct {
-	addr uint16
-}
-
 func (dsm *Disassembly) bless(mc *cpu.CPU, copiedBanks []mapper.BankContent) error {
 	// we can be sure the machine reset address is a starting point for a blessing
 	err := mc.LoadPCIndirect(addresses.Reset)
@@ -64,76 +60,87 @@ func (dsm *Disassembly) bless(mc *cpu.CPU, copiedBanks []mapper.BankContent) err
 
 	// bless from reset address for every bank. note that we do not test to see
 	// if the blessSequence is "correct" before committal because execution
-	// from the reset address is more than possible.
+	// from the reset address is likely
 	for b := range dsm.entries {
 		mc.PC.Load(resetAddress)
 		_ = dsm.blessSequence(b, mc.PC.Value(), true)
 	}
 
-	// list of start points for every bank
-	blessings := make([][]blessing, len(dsm.entries))
-	for b := range dsm.entries {
-		blessings[b] = make([]blessing, 0)
-	}
+	moreBlessing := true
+	attempts := 0
 
-	// loop through every bank in the cartridge and collate a list of blessings
-	// for the bank
-	for b := range dsm.entries {
-		for i := 0; i < len(dsm.entries[b]); i++ {
-			e := dsm.entries[b][i]
+	for moreBlessing {
+		moreBlessing = false
 
-			// if instruction is a JMP or JSR then check the target address and
-			// which banks it can feasibly be in. add every matching bank to
-			// the blessings list
-			//
-			// an example of interbank JMP/JSR jumping is the beginning of the
-			// HeMan ROM. From bank 7 the following jumps to bank 5.
-			//
-			//	$fa03 JMP $f7e8
-			//
-			if e.Result.Defn.Operator == "JMP" || e.Result.Defn.Operator == "JSR" {
-				jmpAddress := e.Result.InstructionData
-				l := jmpTargets(copiedBanks, jmpAddress)
-				for _, i := range l {
-					bls := blessing{
-						addr: jmpAddress,
+		// make sure we're not going bezerk
+		attempts++
+		if attempts > 100 {
+			return curated.Errorf("bless: cannot discover a finite bless path throught the program")
+		}
+
+		// loop through every bank in the cartridge and collate a list of blessings
+		// for the bank
+		for b := range dsm.entries {
+			for i := 0; i < len(dsm.entries[b]); i++ {
+				e := dsm.entries[b][i]
+
+				// ignore any non-blessed entry
+				if e.Level != EntryLevelBlessed {
+					continue
+				}
+
+				// if instruction is a JMP or JSR then check the target address and
+				// which banks it can feasibly be in. add every matching bank to
+				// the blessings list
+				//
+				// an example of interbank JMP/JSR jumping is the beginning of the
+				// HeMan ROM. From bank 7 the following jumps to bank 5.
+				//
+				//	$fa03 JMP $f7e8
+				if e.Result.Defn.Operator == "JMP" || e.Result.Defn.Operator == "JSR" {
+					jmpAddress := e.Result.InstructionData
+					l := jmpTargets(copiedBanks, jmpAddress)
+					for _, jb := range l {
+						if dsm.blessSequence(jb, jmpAddress, false) {
+							if dsm.blessSequence(jb, jmpAddress, true) {
+								moreBlessing = true
+							}
+						}
+
+						// add label to the symbols table
+						dsm.sym.AddLabel(jb, jmpAddress, fmt.Sprintf("L%04X", jmpAddress), false)
 					}
-					blessings[i] = append(blessings[i], bls)
-				}
-			}
 
-			// if instruction is a branch then add the address of the successful branch
-			// to the blessing list.
-			//
-			// assumption here is that a branch will never branch to another bank
-			//
-			// TODO: find practical examples of interbank branch jumping
-			if e.Result.Defn.IsBranch() {
-				mc.PC.Load(e.Result.Address)
-				mc.PC.Add(uint16(e.Result.Defn.Bytes))
-				operand := e.Result.InstructionData
-				if operand&0x0080 == 0x0080 {
-					operand |= 0xff00
-				}
-				mc.PC.Add(operand)
+				} else {
+					// if instruction is a branch then add the address of the successful branch
+					// to the blessing list. assumption here is that a branch will never branch
+					// to another bank
+					// !!TODO: find practical examples of interbank branch jumping
+					if e.Result.Defn.IsBranch() {
+						mc.PC.Load(e.Result.Address)
+						mc.PC.Add(uint16(e.Result.Defn.Bytes))
+						operand := e.Result.InstructionData
+						if operand&0x0080 == 0x0080 {
+							operand |= 0xff00
+						}
+						mc.PC.Add(operand)
 
-				bls := blessing{
-					addr: mc.PC.Value(),
+						pcAddress := mc.PC.Value()
+						if dsm.blessSequence(b, pcAddress, false) {
+							if dsm.blessSequence(b, pcAddress, true) {
+								moreBlessing = true
+							}
+						}
+
+						// add label to the symbols table
+						dsm.sym.AddLabel(b, pcAddress, fmt.Sprintf("L%04X", pcAddress), false)
+					}
 				}
-				blessings[b] = append(blessings[b], bls)
 			}
 		}
 	}
 
-	// now that we have a list of blessings, we can bless each instruction in
-	// sequence, starting at each blessing point accumulated above.
-	for b := range blessings {
-		for _, a := range blessings[b] {
-			if dsm.blessSequence(b, a.addr, false) {
-				dsm.blessSequence(b, a.addr, true)
-			}
-		}
-	}
+	// !!TODO: sanitycheck auto-generated labels. remove any that are not needed
 
 	return nil
 }
@@ -162,6 +169,7 @@ func jmpTargets(copiedBanks []mapper.BankContent, jmpAddress uint16) []int {
 	return l
 }
 
+// returns false if sequence is false
 func (dsm *Disassembly) blessSequence(bank int, addr uint16, commit bool) bool {
 	// mask address into indexable range
 	a := addr & memorymap.CartridgeBits
@@ -186,15 +194,13 @@ func (dsm *Disassembly) blessSequence(bank int, addr uint16, commit bool) bool {
 
 		// end run if entry has already been blessed
 		if instruction.Level == EntryLevelBlessed {
-			// label blessed entry
-			dsm.addLabel(bank, addr)
-			return true
+			return false
 		}
 
 		// if operator is unknown than end the sequence.
 		operator := instruction.Result.Defn.Operator
 		if operator == "??" {
-			return true
+			return false
 		}
 
 		next := a + uint16(instruction.Result.ByteCount)
@@ -208,49 +214,34 @@ func (dsm *Disassembly) blessSequence(bank int, addr uint16, commit bool) bool {
 		// blessed then this track is probably not correct.
 		for i := a + 1; i < next; i++ {
 			if instruction.Level == EntryLevelBlessed {
-				// label already blessed entry
-				dsm.addLabel(bank, addr)
 				return false
 			}
+		}
+
+		// do not bless decoded instructions that look like fill characters
+		if instruction.Result.Defn.OpCode == 0xff && instruction.Result.InstructionData == 0xffff {
+			return false
 		}
 
 		// promote the entry
 		if commit {
 			instruction.Level = EntryLevelBlessed
-
-			// label the newly blessed entry
-			dsm.addLabel(bank, addr)
 		}
 
-		// finish blessing sequence if instruction is a flow instruction (but
-		// not a branch instruction - relative addressing).
-		effect := instruction.Result.Defn.Effect
-		if effect == instructions.Flow && instruction.Result.Defn.AddressingMode != instructions.Relative {
+		// end the blessing sequence if we encounted an instruction that breaks
+		// the flow with no possibilty of resumption. In practical terms this
+		// means JMP, RTS and Interrupt instructions.
+		if instruction.Operator == "JMP" || instruction.Operator == "RTS" ||
+			instruction.Result.Defn.Effect == instructions.Interrupt {
 			return true
 		}
 
-		// finish blessing sequence if instruction is an Interrupt
-		if effect == instructions.Interrupt {
-			return true
-		}
-
-		// finish blessing sequence if instruction is a return from subroutine.
-		// note that we don't mind if this sequence was started with a
-		// JSR or not because RTS can function without one.
-		if instruction.Operator == "RTS" {
-			return true
-		}
-
+		// next adress
 		a = next
 	}
 
 	// reached end of the bank without encountering any other halt condition
 	return false
-}
-
-// add label to the symbols table.
-func (dsm *Disassembly) addLabel(bank int, addr uint16) {
-	dsm.sym.AddLabel(bank, addr, fmt.Sprintf("L%04X", addr), false)
 }
 
 func (dsm *Disassembly) decode(mc *cpu.CPU, mem *disasmMemory, copiedBanks []mapper.BankContent) error {
