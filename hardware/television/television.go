@@ -630,6 +630,7 @@ func (tv *Television) SetSpec(spec string) error {
 	tv.state.bottom = tv.state.spec.AtariSafeBottom
 	tv.state.resizer.initialise(tv)
 	tv.lmtr.setRate(tv.state.spec.FramesPerSecond)
+	tv.lmtr.update(tv.state.spec.ScanlinesTotal)
 
 	for _, r := range tv.renderers {
 		err := r.Resize(tv.state.spec, tv.state.top, tv.state.bottom)

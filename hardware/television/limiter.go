@@ -63,7 +63,7 @@ type limiter struct {
 func (lmtr *limiter) init(tv *Television) {
 	lmtr.tv = tv
 	lmtr.limit = true
-	lmtr.hz.Store(tv.state.spec.FramesPerSecond)
+	lmtr.hz.Store(float32(0))
 	lmtr.idealRequested.Store(true)
 	lmtr.requested.Store(float32(0))
 	lmtr.actual.Store(float32(0))

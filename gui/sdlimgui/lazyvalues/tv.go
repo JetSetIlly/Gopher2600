@@ -26,25 +26,25 @@ import (
 type LazyTV struct {
 	val *LazyValues
 
-	spec        atomic.Value // television.Spec
-	tvStr       atomic.Value // string
-	lastSignal  atomic.Value // television.SignalAttributes
-	frame       atomic.Value // int
-	scanline    atomic.Value // int
-	clock       atomic.Value // int
-	detectedFPS atomic.Value // float32
-	actualFPS   atomic.Value // float32
-	reqFPS      atomic.Value // float32
+	spec       atomic.Value // television.Spec
+	tvStr      atomic.Value // string
+	lastSignal atomic.Value // television.SignalAttributes
+	frame      atomic.Value // int
+	scanline   atomic.Value // int
+	clock      atomic.Value // int
+	hz         atomic.Value // float32
+	actualFPS  atomic.Value // float32
+	reqFPS     atomic.Value // float32
 
-	Spec        specification.Spec
-	TVstr       string
-	LastSignal  signal.SignalAttributes
-	Frame       int
-	Scanline    int
-	Clock       int
-	DetectedFPS float32
-	ActualFPS   float32
-	ReqFPS      float32
+	Spec       specification.Spec
+	TVstr      string
+	LastSignal signal.SignalAttributes
+	Frame      int
+	Scanline   int
+	Clock      int
+	Hz         float32
+	ActualFPS  float32
+	ReqFPS     float32
 }
 
 func newLazyTV(val *LazyValues) *LazyTV {
@@ -65,8 +65,8 @@ func (lz *LazyTV) push() {
 	clock := lz.val.Dbg.VCS.TV.GetState(signal.ReqClock)
 	lz.clock.Store(clock)
 
-	actual, detected := lz.val.Dbg.VCS.TV.GetActualFPS()
-	lz.detectedFPS.Store(detected)
+	actual, hz := lz.val.Dbg.VCS.TV.GetActualFPS()
+	lz.hz.Store(hz)
 	lz.actualFPS.Store(actual)
 
 	lz.reqFPS.Store(lz.val.Dbg.VCS.TV.GetReqFPS())
@@ -79,7 +79,7 @@ func (lz *LazyTV) update() {
 	lz.Frame, _ = lz.frame.Load().(int)
 	lz.Scanline, _ = lz.scanline.Load().(int)
 	lz.Clock, _ = lz.clock.Load().(int)
-	lz.DetectedFPS, _ = lz.detectedFPS.Load().(float32)
+	lz.Hz, _ = lz.hz.Load().(float32)
 	lz.ActualFPS, _ = lz.actualFPS.Load().(float32)
 	lz.ReqFPS, _ = lz.reqFPS.Load().(float32)
 }
