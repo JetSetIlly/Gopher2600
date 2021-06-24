@@ -18,7 +18,6 @@ package patch
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"strconv"
 	"strings"
@@ -61,7 +60,7 @@ func CartridgeMemory(mem *cartridge.Cartridge, patchFile string) (bool, error) {
 	}
 
 	// read file
-	buffer, err := ioutil.ReadAll(f)
+	buffer, err := io.ReadAll(f)
 	if err != nil {
 		return false, curated.Errorf("patch: %v", err)
 	}

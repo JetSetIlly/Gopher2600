@@ -17,7 +17,6 @@ package database
 
 import (
 	"io"
-	"io/ioutil"
 	"os"
 	"strconv"
 	"strings"
@@ -168,7 +167,7 @@ func (db *Session) readDBFile() error {
 		return err
 	}
 
-	buffer, err := ioutil.ReadAll(db.dbfile)
+	buffer, err := io.ReadAll(db.dbfile)
 	if err != nil {
 		return curated.Errorf("database: %v", err)
 	}

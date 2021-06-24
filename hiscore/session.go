@@ -19,7 +19,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"time"
 
@@ -120,7 +120,7 @@ func (sess *Session) post(url string, data []byte) (int, []byte, error) {
 	defer resp.Body.Close()
 
 	// get response
-	response, err := ioutil.ReadAll(resp.Body)
+	response, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return resp.StatusCode, []byte{}, err
 	}

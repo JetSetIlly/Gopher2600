@@ -17,7 +17,7 @@ package symbols
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -78,7 +78,7 @@ func (sym *Symbols) fromDasm(cart *cartridge.Cartridge) error {
 	}
 	defer sf.Close()
 
-	data, err := ioutil.ReadAll(sf)
+	data, err := io.ReadAll(sf)
 	if err != nil {
 		return curated.Errorf("dasm: processing error: %v", err)
 	}

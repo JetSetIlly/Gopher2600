@@ -17,7 +17,6 @@ package sdlimgui
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -34,7 +33,7 @@ type winSelectROM struct {
 	open bool
 
 	currPath string
-	entries  []os.FileInfo
+	entries  []os.DirEntry
 	err      error
 
 	selectedFile string
@@ -253,7 +252,7 @@ func (win *winSelectROM) setPath(path string) error {
 	var err error
 
 	win.currPath = filepath.Clean(path)
-	win.entries, err = ioutil.ReadDir(win.currPath)
+	win.entries, err = os.ReadDir(win.currPath)
 	win.selectedFile = ""
 
 	return err

@@ -17,7 +17,7 @@ package prefs_test
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"path/filepath"
 	"testing"
@@ -71,7 +71,7 @@ func cmpTmpFile(t *testing.T, fn string, expected string) {
 	}
 	defer f.Close()
 
-	data, err := ioutil.ReadAll(f)
+	data, err := io.ReadAll(f)
 	if err != nil {
 		t.Errorf("error reading tmp file: %v", err)
 		return

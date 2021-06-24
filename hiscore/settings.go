@@ -19,7 +19,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strings"
@@ -126,7 +125,7 @@ func Login(input io.Reader, output io.Writer, username string) error {
 	defer resp.Body.Close()
 
 	// get response
-	response, err := ioutil.ReadAll(resp.Body)
+	response, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return curated.Errorf("hiscore: %v", err)
 	}

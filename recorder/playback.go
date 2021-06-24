@@ -17,7 +17,7 @@ package recorder
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"strconv"
 	"strings"
@@ -91,7 +91,7 @@ func NewPlayback(transcript string) (*Playback, error) {
 	if err != nil {
 		return nil, curated.Errorf("playback: %v", err)
 	}
-	buffer, err := ioutil.ReadAll(tf)
+	buffer, err := io.ReadAll(tf)
 	if err != nil {
 		return nil, curated.Errorf("playback: %v", err)
 	}

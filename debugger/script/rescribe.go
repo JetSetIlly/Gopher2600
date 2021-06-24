@@ -16,7 +16,7 @@
 package script
 
 import (
-	"io/ioutil"
+	"io"
 	"os"
 	"strings"
 
@@ -49,7 +49,7 @@ func RescribeScript(scriptfile string) (*Rescribe, error) {
 	}
 	defer f.Close()
 
-	buffer, err := ioutil.ReadAll(f)
+	buffer, err := io.ReadAll(f)
 	if err != nil {
 		return nil, curated.Errorf("script: %v", err)
 	}
