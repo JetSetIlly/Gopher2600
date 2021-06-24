@@ -460,12 +460,13 @@ func (cart *cdf) WriteHotspots() map[uint16]mapper.CartHotspotInfo {
 		0x1ff1: {Symbol: "DSPTR", Action: mapper.HotspotRegister},
 		0x1ff2: {Symbol: "SETMODE", Action: mapper.HotspotRegister},
 		0x1ff3: {Symbol: "CALLFN", Action: mapper.HotspotFunction},
-		0x1ff6: {Symbol: "BANK0", Action: mapper.HotspotBankSwitch},
-		0x1ff7: {Symbol: "BANK1", Action: mapper.HotspotBankSwitch},
-		0x1ff8: {Symbol: "BANK2", Action: mapper.HotspotBankSwitch},
-		0x1ff9: {Symbol: "BANK3", Action: mapper.HotspotBankSwitch},
-		0x1ffa: {Symbol: "BANK4", Action: mapper.HotspotBankSwitch},
-		0x1ffb: {Symbol: "BANK5", Action: mapper.HotspotBankSwitch},
+		0x1ff5: {Symbol: "BANK0", Action: mapper.HotspotBankSwitch},
+		0x1ff6: {Symbol: "BANK1", Action: mapper.HotspotBankSwitch},
+		0x1ff7: {Symbol: "BANK2", Action: mapper.HotspotBankSwitch},
+		0x1ff8: {Symbol: "BANK3", Action: mapper.HotspotBankSwitch},
+		0x1ff9: {Symbol: "BANK4", Action: mapper.HotspotBankSwitch},
+		0x1ffa: {Symbol: "BANK5", Action: mapper.HotspotBankSwitch},
+		0x1ffb: {Symbol: "BANK6", Action: mapper.HotspotBankSwitch},
 	}
 }
 
