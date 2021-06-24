@@ -79,7 +79,7 @@ func (e *Entry) GetField(field Field) string {
 		if !ok {
 			w = 0
 		} else {
-			w = e.dsm.sym.LabelWidth()
+			w = e.dsm.Sym.LabelWidth()
 			rightJust = true
 		}
 
@@ -97,7 +97,7 @@ func (e *Entry) GetField(field Field) string {
 
 	case FldOperand:
 		s = e.Operand.genString()
-		w = e.dsm.sym.SymbolWidth() + widthOperandDecoration
+		w = e.dsm.Sym.SymbolWidth() + widthOperandDecoration
 
 	case FldCycles:
 		w = widthCycles

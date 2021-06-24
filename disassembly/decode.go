@@ -114,7 +114,7 @@ func (dsm *Disassembly) bless(mc *cpu.CPU, copiedBanks []mapper.BankContent) err
 							}
 
 							// add label to the symbols table
-							dsm.sym.AddLabelAuto(jb, jmpAddress)
+							dsm.Sym.AddLabelAuto(jb, jmpAddress)
 						}
 					}
 
@@ -141,7 +141,7 @@ func (dsm *Disassembly) bless(mc *cpu.CPU, copiedBanks []mapper.BankContent) err
 							}
 
 							// add label to the symbols table
-							dsm.sym.AddLabelAuto(b, pcAddress)
+							dsm.Sym.AddLabelAuto(b, pcAddress)
 						}
 					}
 				}
@@ -158,7 +158,7 @@ func (dsm *Disassembly) bless(mc *cpu.CPU, copiedBanks []mapper.BankContent) err
 	for b := range dsm.entries {
 		for i := range dsm.entries[b] {
 			if dsm.entries[b][i].Level < EntryLevelBlessed {
-				_ = dsm.sym.RemoveLabel(b, dsm.entries[b][i].Result.Address)
+				_ = dsm.Sym.RemoveLabel(b, dsm.entries[b][i].Result.Address)
 			}
 		}
 	}

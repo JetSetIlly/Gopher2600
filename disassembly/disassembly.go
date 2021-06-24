@@ -42,7 +42,7 @@ type Disassembly struct {
 	vcs *hardware.VCS
 
 	// symbols used to format disassembly output
-	sym symbols.Symbols
+	Sym symbols.Symbols
 
 	// indexed by bank and address. address should be masked with memorymap.CartridgeBits before access
 	entries [][]*Entry
@@ -81,7 +81,7 @@ func NewDisassembly(vcs *hardware.VCS) (*Disassembly, *symbols.Symbols, error) {
 		return nil, nil, curated.Errorf("disassembly: %v", err)
 	}
 
-	return dsm, &dsm.sym, nil
+	return dsm, &dsm.Sym, nil
 }
 
 // FromCartridge initialises a new partial emulation and returns a disassembly
@@ -112,7 +112,7 @@ func FromCartridge(cartload cartridgeloader.Loader) (*Disassembly, error) {
 
 	// ignore errors caused by loading of symbols table - we always get a
 	// standard symbols table even in the event of an error
-	err = dsm.sym.ReadSymbolsFile(vcs.Mem.Cart)
+	err = dsm.Sym.ReadSymbolsFile(vcs.Mem.Cart)
 	if err != nil {
 		return nil, curated.Errorf("disassembly: %v", err)
 	}
@@ -137,7 +137,7 @@ func (dsm *Disassembly) FromMemory() error {
 	// we have to be careful to manually unlock before returning an error.
 
 	// read symbols file
-	err := dsm.sym.ReadSymbolsFile(dsm.vcs.Mem.Cart)
+	err := dsm.Sym.ReadSymbolsFile(dsm.vcs.Mem.Cart)
 	if err != nil {
 		dsm.crit.Unlock()
 		return err

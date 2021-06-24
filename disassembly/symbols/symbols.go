@@ -182,14 +182,31 @@ func (sym *Symbols) GetLabel(bank int, addr uint16) (string, bool) {
 	return "", false
 }
 
-// Update symbol in label table.
-func (sym *Symbols) UpdateLabel(bank int, addr uint16, label string) {
+// Update symbol in label table. Returns success.
+func (sym *Symbols) UpdateLabel(bank int, addr uint16, oldLabel string, newLabel string) bool {
 	sym.crit.Lock()
 	defer sym.crit.Unlock()
 
-	if bank < len(sym.label) {
-		sym.label[bank].entries[addr] = label
+	if bank >= len(sym.label) {
+		return false
 	}
+
+	if s, ok := sym.label[bank].entries[addr]; ok {
+		if s == oldLabel {
+			sym.label[bank].entries[addr] = newLabel
+			return true
+		}
+	}
+
+	addr, _ = memorymap.MapAddress(addr, true)
+	if s, ok := sym.label[bank].entries[addr]; ok {
+		if s == oldLabel {
+			sym.label[bank].entries[addr] = newLabel
+			return true
+		}
+	}
+
+	return false
 }
 
 // Get symbol from read table.
