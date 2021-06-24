@@ -16,6 +16,7 @@
 package symbols
 
 import (
+	"fmt"
 	"sort"
 	"sync"
 
@@ -133,6 +134,18 @@ func (sym *Symbols) reSort() {
 	sort.Sort(sym.write)
 }
 
+// Add symbol to label table using a symbols created from the address information.
+func (sym *Symbols) AddLabelAuto(bank int, addr uint16) {
+	sym.AddLabel(bank, addr, fmt.Sprintf("L%04X", addr), false)
+}
+
+func (sym *Symbols) RemoveLabel(bank int, addr uint16) bool {
+	sym.crit.Lock()
+	defer sym.crit.Unlock()
+
+	return sym.label[bank].remove(addr)
+}
+
 // Add symbol to label table.
 func (sym *Symbols) AddLabel(bank int, addr uint16, symbol string, prefer bool) {
 	sym.crit.Lock()
@@ -144,11 +157,24 @@ func (sym *Symbols) AddLabel(bank int, addr uint16, symbol string, prefer bool) 
 }
 
 // Get symbol from label table.
+//
+// The problem with this function is that it can't handle getting labels if a
+// JMP for example, triggers a bankswtich at the same time. We can see this in
+// E7 type cartridges. For example the second instruction of HeMan JMPs from
+// bank 7 to bank 5. Short of having a copy of the label in every bank, or more
+// entwined knowledge of how cartridge mappers work, there's not a lot we can
+// do about this.
 func (sym *Symbols) GetLabel(bank int, addr uint16) (string, bool) {
 	sym.crit.Lock()
 	defer sym.crit.Unlock()
 
 	if bank < len(sym.label) {
+		if v, ok := sym.label[bank].entries[addr]; ok {
+			return v, ok
+		}
+
+		// no entry found so try the mapped address
+		addr, _ = memorymap.MapAddress(addr, true)
 		if v, ok := sym.label[bank].entries[addr]; ok {
 			return v, ok
 		}

@@ -77,6 +77,20 @@ func (t *table) add(addr uint16, symbol string, prefer bool) {
 	sort.Sort(t)
 }
 
+func (t *table) remove(addr uint16) bool {
+	if _, ok := t.entries[addr]; ok {
+		delete(t.entries, addr)
+		for i := range t.idx {
+			if t.idx[i] == addr {
+				t.idx = append(t.idx[:i], t.idx[i+1:]...)
+				return true
+			}
+		}
+		panic("an entry was found in a symbols map but not in the index")
+	}
+	return false
+}
+
 func (t table) search(symbol string) (string, uint16, bool) {
 	for k, v := range t.entries {
 		if strings.ToUpper(v) == symbol {

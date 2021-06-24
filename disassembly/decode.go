@@ -16,14 +16,13 @@
 package disassembly
 
 import (
-	"fmt"
-
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/cpu"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/instructions"
 	"github.com/jetsetilly/gopher2600/hardware/memory/addresses"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
+	"github.com/jetsetilly/gopher2600/logger"
 )
 
 func (dsm *Disassembly) disassemble(mc *cpu.CPU, mem *disasmMemory) error {
@@ -56,7 +55,11 @@ func (dsm *Disassembly) bless(mc *cpu.CPU, copiedBanks []mapper.BankContent) err
 	if err != nil {
 		return err
 	}
-	resetAddress := mc.PC.Value()
+
+	resetAddress, resetArea := memorymap.MapAddress(mc.PC.Value(), true)
+	if resetArea != memorymap.Cartridge {
+		return curated.Errorf("bless: cartridge does not reset to an address in the cartridge area.")
+	}
 
 	// bless from reset address for every bank. note that we do not test to see
 	// if the blessSequence is "correct" before committal because execution
@@ -72,16 +75,16 @@ func (dsm *Disassembly) bless(mc *cpu.CPU, copiedBanks []mapper.BankContent) err
 	for moreBlessing {
 		moreBlessing = false
 
-		// make sure we're not going bezerk
+		// make sure we're not going bezerk. a limit of 100 is probably far too high
 		attempts++
 		if attempts > 100 {
-			return curated.Errorf("bless: cannot discover a finite bless path throught the program")
+			return curated.Errorf("bless: cannot discover a finite bless path through the program")
 		}
 
 		// loop through every bank in the cartridge and collate a list of blessings
 		// for the bank
 		for b := range dsm.entries {
-			for i := 0; i < len(dsm.entries[b]); i++ {
+			for i := range dsm.entries[b] {
 				e := dsm.entries[b][i]
 
 				// ignore any non-blessed entry
@@ -98,17 +101,21 @@ func (dsm *Disassembly) bless(mc *cpu.CPU, copiedBanks []mapper.BankContent) err
 				//
 				//	$fa03 JMP $f7e8
 				if e.Result.Defn.Operator == "JMP" || e.Result.Defn.Operator == "JSR" {
-					jmpAddress := e.Result.InstructionData
-					l := jmpTargets(copiedBanks, jmpAddress)
-					for _, jb := range l {
-						if dsm.blessSequence(jb, jmpAddress, false) {
-							if dsm.blessSequence(jb, jmpAddress, true) {
-								moreBlessing = true
-							}
-						}
+					jmpAddress, area := memorymap.MapAddress(e.Result.InstructionData, true)
 
-						// add label to the symbols table
-						dsm.sym.AddLabel(jb, jmpAddress, fmt.Sprintf("L%04X", jmpAddress), false)
+					if area == memorymap.Cartridge {
+						l := jmpTargets(copiedBanks, jmpAddress)
+
+						for _, jb := range l {
+							if dsm.blessSequence(jb, jmpAddress, false) {
+								if dsm.blessSequence(jb, jmpAddress, true) {
+									moreBlessing = true
+								}
+							}
+
+							// add label to the symbols table
+							dsm.sym.AddLabelAuto(jb, jmpAddress)
+						}
 					}
 
 				} else {
@@ -125,22 +132,36 @@ func (dsm *Disassembly) bless(mc *cpu.CPU, copiedBanks []mapper.BankContent) err
 						}
 						mc.PC.Add(operand)
 
-						pcAddress := mc.PC.Value()
-						if dsm.blessSequence(b, pcAddress, false) {
-							if dsm.blessSequence(b, pcAddress, true) {
-								moreBlessing = true
+						pcAddress, area := memorymap.MapAddress(mc.PC.Value(), true)
+						if area == memorymap.Cartridge {
+							if dsm.blessSequence(b, pcAddress, false) {
+								if dsm.blessSequence(b, pcAddress, true) {
+									moreBlessing = true
+								}
 							}
-						}
 
-						// add label to the symbols table
-						dsm.sym.AddLabel(b, pcAddress, fmt.Sprintf("L%04X", pcAddress), false)
+							// add label to the symbols table
+							dsm.sym.AddLabelAuto(b, pcAddress)
+						}
 					}
 				}
 			}
 		}
 	}
 
-	// !!TODO: sanitycheck auto-generated labels. remove any that are not needed
+	// remove any labels that have been added to entries that have not been
+	// blessed (these labels were added speculatively).
+	//
+	// this also removes labels that have been added from any symbols file that
+	// pertain to entries that are unblessed. this is inentional because the
+	// symbols.ReadSymbolsFile() function is far too permissive.
+	for b := range dsm.entries {
+		for i := range dsm.entries[b] {
+			if dsm.entries[b][i].Level < EntryLevelBlessed {
+				_ = dsm.sym.RemoveLabel(b, dsm.entries[b][i].Result.Address)
+			}
+		}
+	}
 
 	return nil
 }
@@ -169,7 +190,14 @@ func jmpTargets(copiedBanks []mapper.BankContent, jmpAddress uint16) []int {
 	return l
 }
 
-// returns false if sequence is false
+// returns false if sequence is false. generally, the function should be called
+// twice for a bank/addr. once with commit set to false and then if the return
+// value is true, called again with commit set to true.
+//
+// if commit is true without the sequence being sure, a log entry will be made
+// in the event of mistake
+//
+// it does not matter if addr is a normalised or unormalised address.
 func (dsm *Disassembly) blessSequence(bank int, addr uint16, commit bool) bool {
 	// mask address into indexable range
 	a := addr & memorymap.CartridgeBits
@@ -179,27 +207,41 @@ func (dsm *Disassembly) blessSequence(bank int, addr uint16, commit bool) bool {
 	dsm.crit.Lock()
 	defer dsm.crit.Unlock()
 
+	hasCommitted := false
+
 	// examine every entry from the starting point a. next entry determined in
 	// program counter style (ie. address plus instruction byte count)
 	//
 	// sequence will stop if:
 	//  . an unknown opcode has been encountered
+	//  . if the end of cartridge data has been reached
 	//  . there is already blessed instruction between this and the next entry
 	//  . a flow control instruction is encountered (this is normal and expected)
-	//  . an RTS instruction is encountered
-	//  . if the end of cartridge data has been reached
+	//  . an instruction looks like fill characters
 	//
+	// the following will stop the blessing but indicate that the blessing is
+	// "correct" if the following have been encountered:
+	//
+	//  . an RTS instruction
+	//  . a branch instruction
+	//  . an interrupt
 	for a < uint16(len(dsm.entries[bank])) {
 		instruction := dsm.entries[bank][a]
 
 		// end run if entry has already been blessed
 		if instruction.Level == EntryLevelBlessed {
+			if hasCommitted {
+				logger.Logf("disassembly", "blessSequence has blessed an instruction in a false sequence. discoverd at bank %d: %s", bank, instruction.String())
+			}
 			return false
 		}
 
 		// if operator is unknown than end the sequence.
 		operator := instruction.Result.Defn.Operator
 		if operator == "??" {
+			if hasCommitted {
+				logger.Logf("disassembly", "blessSequence has blessed an instruction in a false sequence. discoverd at bank %d: %s", bank, instruction.String())
+			}
 			return false
 		}
 
@@ -207,6 +249,9 @@ func (dsm *Disassembly) blessSequence(bank int, addr uint16, commit bool) bool {
 
 		// break if address has looped around
 		if next > next&memorymap.CartridgeBits {
+			if hasCommitted {
+				logger.Logf("disassembly", "blessSequence has blessed an instruction in a false sequence. discoverd at bank %d: %s", bank, instruction.String())
+			}
 			return false
 		}
 
@@ -214,17 +259,24 @@ func (dsm *Disassembly) blessSequence(bank int, addr uint16, commit bool) bool {
 		// blessed then this track is probably not correct.
 		for i := a + 1; i < next; i++ {
 			if instruction.Level == EntryLevelBlessed {
+				if hasCommitted {
+					logger.Logf("disassembly", "blessSequence has blessed an instruction in a false sequence. discoverd at bank %d: %s", bank, instruction.String())
+				}
 				return false
 			}
 		}
 
 		// do not bless decoded instructions that look like fill characters
 		if instruction.Result.Defn.OpCode == 0xff && instruction.Result.InstructionData == 0xffff {
+			if hasCommitted {
+				logger.Logf("disassembly", "blessSequence has blessed an instruction in a false sequence. discoverd at bank %d: %s", bank, instruction.String())
+			}
 			return false
 		}
 
 		// promote the entry
 		if commit {
+			hasCommitted = true
 			instruction.Level = EntryLevelBlessed
 		}
 

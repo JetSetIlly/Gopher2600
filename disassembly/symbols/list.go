@@ -16,6 +16,7 @@
 package symbols
 
 import (
+	"fmt"
 	"io"
 )
 
@@ -32,8 +33,15 @@ func (sym *Symbols) ListLabels(output io.Writer) {
 	defer sym.crit.Unlock()
 
 	output.Write([]byte("Labels\n------\n"))
-	for _, l := range sym.label {
-		output.Write([]byte(l.String()))
+	for b, l := range sym.label {
+		s := l.String()
+
+		if len(s) > 0 {
+			if len(sym.label) > 1 {
+				output.Write([]byte(fmt.Sprintf("Bank %d:\n", b)))
+			}
+			output.Write([]byte(s))
+		}
 	}
 }
 

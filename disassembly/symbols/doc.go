@@ -14,10 +14,16 @@
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
 // Package symbols helps keep track of address symbols for the currently loaded
-// cartridge. It will load symbols from a DASM symbol file if one can be found
-// and will use standard (or canonical) symbol names as appropriate.
+// cartridge. It will load symbols from a DASM symbol file if one can be found.
+// It also handles the allocation of standard (or canonical) symbol names.
 //
 // In the context of the Gopher2600 project, it works best if the Symbol type
 // is declared staticially and the ReadSymbolsFile() function called to
 // populate the symbol tables. See the disassembly package for more details.
+// Even if there is no symbols file, the tables will be populated with
+// canonical names.
+//
+// Also works best in conjuction with the parent disassembly package where the
+// disassembly process will remove any labels from "unblessed" cartridge
+// addresses.
 package symbols

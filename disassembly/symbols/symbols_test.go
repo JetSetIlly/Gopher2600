@@ -16,7 +16,6 @@
 package symbols_test
 
 import (
-	"os"
 	"testing"
 
 	"github.com/jetsetilly/gopher2600/disassembly/symbols"
@@ -56,7 +55,6 @@ func TestFlappySymbols(t *testing.T) {
 
 	tw := &test.Writer{}
 
-	sym.ListSymbols(os.Stdout)
 	sym.ListSymbols(tw)
 
 	if !tw.Compare(expectedFlappySymbols) {
