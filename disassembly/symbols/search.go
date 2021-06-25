@@ -17,52 +17,43 @@ package symbols
 
 import (
 	"strings"
+
+	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
 // SearchTable is used to select and identify a symbol table when searching.
-type SearchTable int
-
-func (t SearchTable) String() string {
-	switch t {
-	case SearchAll:
-		return "unspecified"
-	case SearchLabel:
-		return "label"
-	case SearchRead:
-		return "read"
-	case SearchWrite:
-		return "write"
-	}
-
-	return ""
-}
+type SearchTable string
 
 // List of valid symbol table identifiers.
 const (
-	SearchAll SearchTable = iota
-	SearchLabel
-	SearchRead
-	SearchWrite
+	SearchLabel SearchTable = "label"
+	SearchRead  SearchTable = "read"
+	SearchWrite SearchTable = "write"
 )
 
-// SearchResults contains the normalised symbol info found in the SearchTable.
+// SearchResults contains the normalised symbol/address info found in the
+// requested SearchTable.
 type SearchResults struct {
-	Table   SearchTable
-	Symbol  string
+	// the table the result was found in
+	Table SearchTable
+
+	// the symbol as it exists in the table
+	Symbol string
+
+	// the normalised address the symbol refers to
 	Address uint16
 }
 
-// Search return the address of the supplied seartch string.
-//
-// Matching is case-insensitive and when TableType is SearchAll the
-// search in order: locations > read > write.
-func (sym *Symbols) Search(symbol string, target SearchTable) *SearchResults {
+// SearchBySymbol return the address of the supplied search string. Matching is
+// case-insensitive.
+func (sym *Symbols) SearchBySymbol(symbol string, table SearchTable) *SearchResults {
 	sym.crit.Lock()
 	defer sym.crit.Unlock()
 
-	symbolUpper := strings.ToUpper(symbol)
+	symbolUpper := strings.TrimSpace(strings.ToUpper(symbol))
 
-	if target == SearchAll || target == SearchLabel {
+	switch table {
+	case SearchLabel:
 		for _, l := range sym.label {
 			if norm, addr, ok := l.search(symbolUpper); ok {
 				return &SearchResults{
@@ -72,9 +63,7 @@ func (sym *Symbols) Search(symbol string, target SearchTable) *SearchResults {
 				}
 			}
 		}
-	}
-
-	if target == SearchAll || target == SearchRead {
+	case SearchRead:
 		if norm, addr, ok := sym.read.search(symbolUpper); ok {
 			return &SearchResults{
 				Table:   SearchRead,
@@ -82,9 +71,7 @@ func (sym *Symbols) Search(symbol string, target SearchTable) *SearchResults {
 				Address: addr,
 			}
 		}
-	}
-
-	if target == SearchAll || target == SearchWrite {
+	case SearchWrite:
 		if norm, addr, ok := sym.write.search(symbolUpper); ok {
 			return &SearchResults{
 				Table:   SearchWrite,
@@ -97,13 +84,14 @@ func (sym *Symbols) Search(symbol string, target SearchTable) *SearchResults {
 	return nil
 }
 
-// ReverseSearch returns the symbol for specified address.
-//
-// When TableType is SearchAll the search in order: locations > read > write.
-func (sym *Symbols) ReverseSearch(addr uint16, target SearchTable) *SearchResults {
-	if target == SearchAll || target == SearchLabel {
+// SearchByAddress returns the symbol for specified address. Address will be
+// normalised before search.
+func (sym *Symbols) SearchByAddress(addr uint16, table SearchTable) *SearchResults {
+	switch table {
+	case SearchLabel:
+		addr, _ = memorymap.MapAddress(addr, true)
 		for _, l := range sym.label {
-			if s, ok := l.entries[addr]; ok {
+			if s, ok := l.byAddr[addr]; ok {
 				return &SearchResults{
 					Table:   SearchLabel,
 					Symbol:  s,
@@ -111,18 +99,18 @@ func (sym *Symbols) ReverseSearch(addr uint16, target SearchTable) *SearchResult
 				}
 			}
 		}
-	}
-	if target == SearchAll || target == SearchRead {
-		if s, ok := sym.read.entries[addr]; ok {
+	case SearchRead:
+		addr, _ = memorymap.MapAddress(addr, true)
+		if s, ok := sym.read.byAddr[addr]; ok {
 			return &SearchResults{
 				Table:   SearchRead,
 				Symbol:  s,
 				Address: addr,
 			}
 		}
-	}
-	if target == SearchAll || target == SearchWrite {
-		if s, ok := sym.write.entries[addr]; ok {
+	case SearchWrite:
+		addr, _ = memorymap.MapAddress(addr, false)
+		if s, ok := sym.write.byAddr[addr]; ok {
 			return &SearchResults{
 				Table:   SearchWrite,
 				Symbol:  s,

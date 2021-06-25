@@ -79,6 +79,12 @@ type winDisasm struct {
 	// the program counter value in the previous (imgui) frame. we use this to
 	// decide whether to set the focusOnAddr flag.
 	focusAddrPrevFrame uint16
+
+	// label editing. labelEditTag identifies the tag being edited and
+	// labelEdit is the edited version of the label which will be used to
+	// update the label symbols table.
+	labelEditTag string
+	labelEdit    string
 }
 
 func newWinDisasm(img *SdlImgui) (window, error) {
@@ -326,8 +332,31 @@ func (win *winDisasm) drawBank(bank int, focusAddr uint16, onBank bool) {
 				imgui.TableNextColumn()
 				imgui.TableNextColumn()
 
-				// !!TODO: disasm address label to span multiple columns
-				imgui.Text(s)
+				// address label (and label editing)
+				labelEditTag := fmt.Sprintf("%s%s", e.Bank.Name, e.Address)
+				if win.labelEditTag == labelEditTag {
+					imgui.PushItemWidth(imguiTextWidth(len(win.labelEdit)))
+
+					flgs := imgui.InputTextFlagsEnterReturnsTrue | imgui.InputTextFlagsCharsNoBlank
+					if imgui.InputTextV("##labeledit", &win.labelEdit, flgs, nil) {
+						win.img.lz.Dbg.Disasm.Sym.UpdateLabel(bank, e.Result.Address, s, win.labelEdit)
+						win.labelEditTag = ""
+					}
+
+					if imgui.IsAnyMouseDown() && !imgui.IsItemHovered() {
+						win.labelEditTag = ""
+					} else {
+						imgui.SetKeyboardFocusHere()
+					}
+
+					imgui.PopItemWidth()
+				} else {
+					imgui.Text(e.Label.String())
+					if imgui.IsItemClicked() && imgui.IsMouseDoubleClicked(0) {
+						win.labelEditTag = labelEditTag
+						win.labelEdit = s
+					}
+				}
 			}
 
 			win.drawEntry(e, focusAddr, onBank)

@@ -20,10 +20,7 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/jetsetilly/gopher2600/hardware/memory/addresses"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
-	"github.com/jetsetilly/gopher2600/logger"
 )
 
 // Symbols contains the all currently defined symbols.
@@ -48,6 +45,14 @@ func (sym *Symbols) initialise(numBanks int) {
 	sym.write = newTable()
 
 	sym.canonise(nil)
+}
+
+func (sym *Symbols) resort() {
+	for _, l := range sym.label {
+		sort.Sort(l)
+	}
+	sort.Sort(sym.read)
+	sort.Sort(sym.write)
 }
 
 // LabelWidth returns the maximum number of characters required by a label in
@@ -77,85 +82,6 @@ func (sym *Symbols) SymbolWidth() int {
 	return sym.write.maxWidth
 }
 
-// put canonical symbols into table. prefer flag should be true if canonical
-// names are to supercede any existing symbol.
-//
-// should be called in critical section.
-func (sym *Symbols) canonise(cart *cartridge.Cartridge) {
-	defer sym.reSort()
-
-	// loop through the array of canonical names.
-	//
-	// note that because Read and Write in the addresses package are sparse
-	// arrays we need to filter out the empty entries. (the Read and Write
-	// structures used to be maps and we didn't need to do this)
-	for k, v := range addresses.ReadSymbols {
-		sym.read.add(k, v, true)
-	}
-	for k, v := range addresses.WriteSymbols {
-		sym.write.add(k, v, true)
-	}
-
-	// add cartridge canonical symbols from cartridge hotspot information
-	if cart == nil {
-		return
-	}
-
-	hb := cart.GetCartHotspots()
-	if hb == nil {
-		return
-	}
-
-	for k, v := range hb.ReadHotspots() {
-		ma, area := memorymap.MapAddress(k, true)
-		if area != memorymap.Cartridge {
-			logger.Logf("symbols", "%s reporting hotspot (%s) outside of cartridge address space", cart.ID(), v.Symbol)
-		}
-		sym.read.add(ma, v.Symbol, true)
-	}
-
-	for k, v := range hb.WriteHotspots() {
-		ma, area := memorymap.MapAddress(k, false)
-		if area != memorymap.Cartridge {
-			logger.Logf("symbols", "%s reporting hotspot (%s) outside of cartridge address space", cart.ID(), v.Symbol)
-		}
-		sym.write.add(ma, v.Symbol, true)
-	}
-}
-
-// reSort() should be called whenever any of the sub-tables have been updated.
-//
-// should be called in critical section.
-func (sym *Symbols) reSort() {
-	for _, l := range sym.label {
-		sort.Sort(l)
-	}
-	sort.Sort(sym.read)
-	sort.Sort(sym.write)
-}
-
-// Add symbol to label table using a symbols created from the address information.
-func (sym *Symbols) AddLabelAuto(bank int, addr uint16) {
-	sym.AddLabel(bank, addr, fmt.Sprintf("L%04X", addr), false)
-}
-
-func (sym *Symbols) RemoveLabel(bank int, addr uint16) bool {
-	sym.crit.Lock()
-	defer sym.crit.Unlock()
-
-	return sym.label[bank].remove(addr)
-}
-
-// Add symbol to label table.
-func (sym *Symbols) AddLabel(bank int, addr uint16, symbol string, prefer bool) {
-	sym.crit.Lock()
-	defer sym.crit.Unlock()
-
-	if bank < len(sym.label) {
-		sym.label[bank].add(addr, symbol, prefer)
-	}
-}
-
 // Get symbol from label table.
 //
 // The problem with this function is that it can't handle getting labels if a
@@ -168,18 +94,48 @@ func (sym *Symbols) GetLabel(bank int, addr uint16) (string, bool) {
 	sym.crit.Lock()
 	defer sym.crit.Unlock()
 
-	if bank < len(sym.label) {
-		if v, ok := sym.label[bank].entries[addr]; ok {
-			return v, ok
-		}
-
-		// no entry found so try the mapped address
-		addr, _ = memorymap.MapAddress(addr, true)
-		if v, ok := sym.label[bank].entries[addr]; ok {
-			return v, ok
-		}
+	if bank >= len(sym.label) {
+		return "", false
 	}
+
+	addr, _ = memorymap.MapAddress(addr, true)
+
+	if v, ok := sym.label[bank].byAddr[addr]; ok {
+		return v, ok
+	}
+
 	return "", false
+}
+
+// Add symbol to label table. Symbol will be modified so that it is unique in
+// the label table.
+func (sym *Symbols) AddLabel(bank int, addr uint16, symbol string) bool {
+	sym.crit.Lock()
+	defer sym.crit.Unlock()
+
+	if bank >= len(sym.label) {
+		return false
+	}
+
+	addr, _ = memorymap.MapAddress(addr, true)
+
+	return sym.label[bank].add(addr, symbol)
+}
+
+// Add symbol to label table using a symbols created from the address information.
+func (sym *Symbols) AddLabelAuto(bank int, addr uint16) bool {
+	return sym.AddLabel(bank, addr, fmt.Sprintf("L%04X", addr))
+}
+
+// Remove label from label table. Symbol will be modified so that it is unique
+// in the label table.
+func (sym *Symbols) RemoveLabel(bank int, addr uint16) bool {
+	sym.crit.Lock()
+	defer sym.crit.Unlock()
+
+	addr, _ = memorymap.MapAddress(addr, true)
+
+	return sym.label[bank].remove(addr)
 }
 
 // Update symbol in label table. Returns success.
@@ -191,56 +147,73 @@ func (sym *Symbols) UpdateLabel(bank int, addr uint16, oldLabel string, newLabel
 		return false
 	}
 
-	if s, ok := sym.label[bank].entries[addr]; ok {
-		if s == oldLabel {
-			sym.label[bank].entries[addr] = newLabel
-			return true
-		}
-	}
-
 	addr, _ = memorymap.MapAddress(addr, true)
-	if s, ok := sym.label[bank].entries[addr]; ok {
-		if s == oldLabel {
-			sym.label[bank].entries[addr] = newLabel
-			return true
-		}
-	}
 
-	return false
+	return sym.label[bank].update(addr, oldLabel, newLabel)
 }
 
-// Get symbol from read table.
-func (sym *Symbols) GetReadSymbol(addr uint16) (string, bool) {
+// Getsymbol from read/write table.
+//
+// The read argument selects the table: true -> read table, false -> write table.
+func (sym *Symbols) GetSymbol(addr uint16, read bool) (string, bool) {
 	sym.crit.Lock()
 	defer sym.crit.Unlock()
 
-	if v, ok := sym.read.entries[addr]; ok {
-		return v, ok
-	}
-
-	// no entry found so try the mapped address
 	addr, _ = memorymap.MapAddress(addr, true)
-	if v, ok := sym.read.entries[addr]; ok {
-		return v, ok
+
+	if read {
+		return sym.read.get(addr)
 	}
 
-	return "", false
+	return sym.write.get(addr)
 }
 
-// Get symbol from read table.
-func (sym *Symbols) GetWriteSymbol(addr uint16) (string, bool) {
+// AddSymbol to read/write table. Symbol will be modified so that it is unique
+// in the selected table.
+//
+// The read argument selects the table: true -> read table, false -> write table.
+func (sym *Symbols) AddSymbol(addr uint16, symbol string, read bool) bool {
 	sym.crit.Lock()
 	defer sym.crit.Unlock()
 
-	if v, ok := sym.write.entries[addr]; ok {
-		return v, ok
+	addr, _ = memorymap.MapAddress(addr, true)
+
+	if read {
+		return sym.read.add(addr, symbol)
 	}
 
-	// no entry found so try the mapped address
-	addr, _ = memorymap.MapAddress(addr, false)
-	if v, ok := sym.read.entries[addr]; ok {
-		return v, ok
+	return sym.write.add(addr, symbol)
+}
+
+// RemoveSymbol from read/write table.
+//
+// The read argument selects the table: true -> read table, false -> write table.
+func (sym *Symbols) RemoveSymbol(addr uint16, read bool) bool {
+	sym.crit.Lock()
+	defer sym.crit.Unlock()
+
+	addr, _ = memorymap.MapAddress(addr, true)
+
+	if read {
+		return sym.read.remove(addr)
 	}
 
-	return "", false
+	return sym.write.remove(addr)
+}
+
+// UpdateSymbol in read/write table. Symbol will be modified so that it is
+// unique in the selected table
+//
+// The read argument selects the table: true -> read table, false -> write table.
+func (sym *Symbols) UpdateSymbol(addr uint16, oldLabel string, newLabel string, read bool) bool {
+	sym.crit.Lock()
+	defer sym.crit.Unlock()
+
+	addr, _ = memorymap.MapAddress(addr, true)
+
+	if read {
+		return sym.read.update(addr, oldLabel, newLabel)
+	}
+
+	return sym.write.update(addr, oldLabel, newLabel)
 }

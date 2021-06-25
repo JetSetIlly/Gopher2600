@@ -268,7 +268,7 @@ func (l Operand) genString() string {
 				s = addrModeDecoration(v, l.result.Defn.AddressingMode)
 			}
 		case instructions.Read:
-			if v, ok := l.dsm.Sym.GetReadSymbol(operand); ok {
+			if v, ok := l.dsm.Sym.GetSymbol(operand, true); ok {
 				s = addrModeDecoration(v, l.result.Defn.AddressingMode)
 			}
 
@@ -276,7 +276,7 @@ func (l Operand) genString() string {
 			fallthrough
 
 		case instructions.RMW:
-			if v, ok := l.dsm.Sym.GetWriteSymbol(operand); ok {
+			if v, ok := l.dsm.Sym.GetSymbol(operand, false); ok {
 				s = addrModeDecoration(v, l.result.Defn.AddressingMode)
 			}
 		}

@@ -26,4 +26,7 @@
 // Also works best in conjuction with the parent disassembly package where the
 // disassembly process will remove any labels from "unblessed" cartridge
 // addresses.
+//
+// All addresses supplied to functions in the symbols package will be mapped
+// (ie. normalised) and symbols will be trimmed of excess space.
 package symbols

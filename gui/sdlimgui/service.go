@@ -64,124 +64,7 @@ func (img *SdlImgui) Service() {
 			}
 
 		case *sdl.KeyboardEvent:
-			// handle keys that have special meaning for GUI
-			if ev.Type == sdl.KEYUP && ev.Repeat == 0 {
-				handled := true
-
-				switch sdl.GetKeyName(ev.Keysym.Sym) {
-				case "Escape":
-					// works in debug and playmode
-					img.setCapture(!img.isCaptured())
-
-				case "`":
-					// works only in debug mode
-					if !img.isPlaymode() {
-						if img.state == gui.StatePaused {
-							img.term.pushCommand("RUN")
-						} else {
-							img.term.pushCommand("HALT")
-						}
-					}
-
-				case "F7":
-					if img.isPlaymode() {
-						img.playScr.fpsOpen = !img.playScr.fpsOpen
-					}
-
-				case "F8":
-					if img.isPlaymode() {
-						w := img.wm.windows[winPrefsID]
-						w.setOpen(!w.isOpen())
-					}
-
-				case "F9":
-					if img.isPlaymode() {
-						w := img.wm.windows[winTIARevisionsID]
-						w.setOpen(!w.isOpen())
-					}
-
-				case "F10":
-					if img.isPlaymode() {
-						w := img.wm.windows[winCRTPrefsID]
-						w.setOpen(!w.isOpen())
-					}
-
-				case "F11":
-					if img.isPlaymode() {
-						img.plt.setFullScreen(!img.plt.fullScreen)
-					}
-
-				case "F12":
-					if img.isPlaymode() {
-						shift := ev.Keysym.Mod&sdl.KMOD_LSHIFT == sdl.KMOD_LSHIFT || ev.Keysym.Mod&sdl.KMOD_RSHIFT == sdl.KMOD_RSHIFT
-						ctrl := ev.Keysym.Mod&sdl.KMOD_LCTRL == sdl.KMOD_LCTRL || ev.Keysym.Mod&sdl.KMOD_RCTRL == sdl.KMOD_RCTRL
-
-						if ctrl && !shift {
-							img.glsl.shaders[playscrShaderID].(*playscrShader).scheduleScreenshot(modeTriple)
-						} else if shift && !ctrl {
-							img.glsl.shaders[playscrShaderID].(*playscrShader).scheduleScreenshot(modeDouble)
-						} else {
-							img.glsl.shaders[playscrShaderID].(*playscrShader).scheduleScreenshot(modeSingle)
-						}
-					}
-
-				case "Pause":
-					// TODO: flip between debug and playmodes
-
-				default:
-					handled = false
-				}
-
-				if handled {
-					break // event switch
-				}
-			}
-
-			// forward unhandled keypresses to registered events handler.
-			// but only when gui is in playmode, has captured input and
-			// there is no modal window.
-			if !img.hasModal && (img.isPlaymode() || img.isCaptured()) {
-				mod := userinput.KeyModNone
-
-				if sdl.GetModState()&sdl.KMOD_LALT == sdl.KMOD_LALT ||
-					sdl.GetModState()&sdl.KMOD_RALT == sdl.KMOD_RALT {
-					mod = userinput.KeyModAlt
-				} else if sdl.GetModState()&sdl.KMOD_LSHIFT == sdl.KMOD_LSHIFT ||
-					sdl.GetModState()&sdl.KMOD_RSHIFT == sdl.KMOD_RSHIFT {
-					mod = userinput.KeyModShift
-				} else if sdl.GetModState()&sdl.KMOD_LCTRL == sdl.KMOD_LCTRL ||
-					sdl.GetModState()&sdl.KMOD_RCTRL == sdl.KMOD_RCTRL {
-					mod = userinput.KeyModCtrl
-				}
-
-				switch ev.Type {
-				case sdl.KEYDOWN:
-					fallthrough
-				case sdl.KEYUP:
-					if ev.Repeat == 0 {
-						select {
-						case img.userinput <- userinput.EventKeyboard{
-							Key:  sdl.GetKeyName(ev.Keysym.Sym),
-							Mod:  mod,
-							Down: ev.Type == sdl.KEYDOWN}:
-						default:
-							logger.Log("sdlimgui", "dropped key up event")
-						}
-					}
-				}
-
-				break // event switch
-			}
-
-			// remaining keypresses forwarded to imgui io system
-			switch ev.Type {
-			case sdl.KEYDOWN:
-				img.io.KeyPress(int(ev.Keysym.Scancode))
-				img.updateKeyModifier()
-			case sdl.KEYUP:
-				img.io.KeyRelease(int(ev.Keysym.Scancode))
-				img.updateKeyModifier()
-			}
+			img.serviceKeyboard(ev)
 
 		case *sdl.MouseButtonEvent:
 			// the button event to send
@@ -393,4 +276,114 @@ func (img *SdlImgui) Service() {
 	img.screen.render()
 	img.glsl.render()
 	img.plt.postRender()
+}
+
+func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
+	if ev.Type == sdl.KEYUP && ev.Repeat == 0 {
+		handled := true
+
+		if img.isPlaymode() {
+			switch sdl.GetKeyName(ev.Keysym.Sym) {
+			case "Escape":
+				img.setCapture(!img.isCaptured())
+
+			case "F7":
+				img.playScr.fpsOpen = !img.playScr.fpsOpen
+
+			case "F8":
+				w := img.wm.windows[winPrefsID]
+				w.setOpen(!w.isOpen())
+
+			case "F9":
+				w := img.wm.windows[winTIARevisionsID]
+				w.setOpen(!w.isOpen())
+
+			case "F10":
+				w := img.wm.windows[winCRTPrefsID]
+				w.setOpen(!w.isOpen())
+
+			case "F11":
+				img.plt.setFullScreen(!img.plt.fullScreen)
+
+			case "F12":
+				shift := ev.Keysym.Mod&sdl.KMOD_LSHIFT == sdl.KMOD_LSHIFT || ev.Keysym.Mod&sdl.KMOD_RSHIFT == sdl.KMOD_RSHIFT
+				ctrl := ev.Keysym.Mod&sdl.KMOD_LCTRL == sdl.KMOD_LCTRL || ev.Keysym.Mod&sdl.KMOD_RCTRL == sdl.KMOD_RCTRL
+
+				if ctrl && !shift {
+					img.glsl.shaders[playscrShaderID].(*playscrShader).scheduleScreenshot(modeTriple)
+				} else if shift && !ctrl {
+					img.glsl.shaders[playscrShaderID].(*playscrShader).scheduleScreenshot(modeDouble)
+				} else {
+					img.glsl.shaders[playscrShaderID].(*playscrShader).scheduleScreenshot(modeSingle)
+				}
+			case "Pause":
+				// !!TODO: pause/run in playmode
+
+			default:
+				handled = false
+			}
+		} else {
+			switch sdl.GetKeyName(ev.Keysym.Sym) {
+			case "Escape":
+				img.setCapture(!img.isCaptured())
+			case "Pause":
+				if img.state == gui.StatePaused {
+					img.term.pushCommand("RUN")
+				} else {
+					img.term.pushCommand("HALT")
+				}
+			default:
+				handled = false
+			}
+		}
+
+		if handled {
+			return
+		}
+	}
+
+	// forward keypresses to userinput.Event channel if in playmore or gui is
+	// in captured state
+	if img.isPlaymode() || img.isCaptured() {
+		mod := userinput.KeyModNone
+
+		if sdl.GetModState()&sdl.KMOD_LALT == sdl.KMOD_LALT ||
+			sdl.GetModState()&sdl.KMOD_RALT == sdl.KMOD_RALT {
+			mod = userinput.KeyModAlt
+		} else if sdl.GetModState()&sdl.KMOD_LSHIFT == sdl.KMOD_LSHIFT ||
+			sdl.GetModState()&sdl.KMOD_RSHIFT == sdl.KMOD_RSHIFT {
+			mod = userinput.KeyModShift
+		} else if sdl.GetModState()&sdl.KMOD_LCTRL == sdl.KMOD_LCTRL ||
+			sdl.GetModState()&sdl.KMOD_RCTRL == sdl.KMOD_RCTRL {
+			mod = userinput.KeyModCtrl
+		}
+
+		switch ev.Type {
+		case sdl.KEYDOWN:
+			fallthrough
+		case sdl.KEYUP:
+			if ev.Repeat == 0 {
+				select {
+				case img.userinput <- userinput.EventKeyboard{
+					Key:  sdl.GetKeyName(ev.Keysym.Sym),
+					Mod:  mod,
+					Down: ev.Type == sdl.KEYDOWN}:
+				default:
+					logger.Log("sdlimgui", "dropped key up event")
+				}
+			}
+		}
+
+		return
+	}
+
+	// remaining keypresses forwarded to imgui io system
+	switch ev.Type {
+	case sdl.KEYDOWN:
+		img.io.KeyPress(int(ev.Keysym.Scancode))
+		img.updateKeyModifier()
+	case sdl.KEYUP:
+		img.io.KeyRelease(int(ev.Keysym.Scancode))
+		img.updateKeyModifier()
+	}
 }

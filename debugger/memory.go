@@ -90,10 +90,10 @@ func (dbgmem memoryDebug) mapAddress(address interface{}, read bool) *addressInf
 	switch address := address.(type) {
 	case uint16:
 		ai.address = address
-		res := dbgmem.sym.ReverseSearch(ai.address, searchTable)
+		res := dbgmem.sym.SearchByAddress(ai.address, searchTable)
 		if res == nil {
 			ai.mappedAddress, ai.area = memorymap.MapAddress(ai.address, read)
-			res := dbgmem.sym.ReverseSearch(ai.mappedAddress, searchTable)
+			res := dbgmem.sym.SearchByAddress(ai.mappedAddress, searchTable)
 			if res != nil {
 				ai.addressLabel = res.Symbol
 			}
@@ -104,7 +104,7 @@ func (dbgmem memoryDebug) mapAddress(address interface{}, read bool) *addressInf
 	case string:
 		var err error
 
-		res := dbgmem.sym.Search(address, searchTable)
+		res := dbgmem.sym.SearchBySymbol(address, searchTable)
 		if res != nil {
 			ai.address = res.Address
 			ai.addressLabel = res.Symbol
@@ -119,10 +119,10 @@ func (dbgmem memoryDebug) mapAddress(address interface{}, read bool) *addressInf
 			}
 
 			ai.address = uint16(addr)
-			res := dbgmem.sym.ReverseSearch(ai.address, searchTable)
+			res := dbgmem.sym.SearchByAddress(ai.address, searchTable)
 			if res == nil {
 				ai.mappedAddress, ai.area = memorymap.MapAddress(ai.address, read)
-				res := dbgmem.sym.ReverseSearch(ai.mappedAddress, searchTable)
+				res := dbgmem.sym.SearchByAddress(ai.mappedAddress, searchTable)
 				if res != nil {
 					ai.addressLabel = res.Symbol
 				}
