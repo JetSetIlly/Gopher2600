@@ -76,3 +76,7 @@ func NewMemoryMap(model string) MemoryMap {
 
 	return mmap
 }
+
+func (mmap MemoryMap) isFlash(addr uint32) bool {
+	return addr >= mmap.FlashOrigin && addr <= mmap.Flash64kMemtop
+}

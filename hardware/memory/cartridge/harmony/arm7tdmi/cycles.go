@@ -51,8 +51,11 @@ type Cycles struct {
 	// other value as 0
 	MAMCR uint32
 
-	// whether PC is in SRAM *this* cycle
+	// whether PC is in SRAM
 	PCinSRAM bool
+
+	// whether any data rad is from SRAM
+	DataInSRAM bool
 }
 
 // multiline string.
@@ -78,6 +81,7 @@ func (c *Cycles) add(n Cycles) {
 	c.Spcmerged += n.Spcmerged
 	c.MAMCR = n.MAMCR
 	c.PCinSRAM = n.PCinSRAM
+	c.DataInSRAM = n.DataInSRAM
 }
 
 func (c *Cycles) reset() {
@@ -91,6 +95,7 @@ func (c *Cycles) reset() {
 	c.Spcmerged = 0
 	c.MAMCR = 0
 	c.PCinSRAM = false
+	c.DataInSRAM = false
 }
 
 // simple (unstretched) cycle count

@@ -43,7 +43,9 @@ type ARM struct {
 
 	stretchFlash float32
 	stretchSRAM  float32
+	stretchSRAMn float32
 	stretchMAM   float32
+	stretchMAMn  float32
 
 	// the speed at which the arm is running at
 	clock float32
@@ -116,6 +118,7 @@ const (
 func NewARM(mmap MemoryMap, prefs *preferences.ARMPreferences, mem SharedMemory, hook CartridgeHook) *ARM {
 	arm := &ARM{
 		prefs:        prefs,
+		mmap:         mmap,
 		mem:          mem,
 		hook:         hook,
 		executionMap: make(map[uint32][]func(_ uint16)),
@@ -384,8 +387,23 @@ func (arm *ARM) Run(mamcr uint32) (uint32, float32, error) {
 		arm.stretchSRAM = 1.0
 	}
 
-	// stretch value of MAM is always 1.0 (?)
+	// MAM stretch. Assuming a base of 1.0 for S cycles. To figure out the N Cycle
+	// stretch, from page 16 of UM10161:
+	//
+	// "The MAM uses the LPROT[0] line to differentiate between instruction and data accesses.
+	// Code and data accesses use separate 128-bit buffers. 3 of every 4 sequential 32-bit code
+	// or data accesses "hit" in the buffer without requiring a Flash access (7 of 8 sequential
+	// 16-bit accesses, 15 of every 16 sequential byte accesses). The fourth (eighth, 16th)
+	// sequential data access must access Flash, aborting any prefetch in progress. When a
+	// Flash data access is concluded, any prefetch that had been in progress is re-initiated."
 	arm.stretchMAM = 1.0
+	arm.stretchMAMn = arm.stretchMAM + arm.stretchFlash - (arm.stretchFlash * 7.0 / 8.0)
+
+	// N Cycle stretch for SRAM. arbitrary value set by observation of:
+	//
+	// https://atariage.com/forums/topic/322255-speed-boost-run-code-in-ram/ to measure
+	// (1660 and 114d)
+	arm.stretchSRAMn = arm.stretchSRAM * 1.380
 
 	// start of program execution
 	if arm.disasm != nil {
@@ -423,7 +441,7 @@ func (arm *ARM) Run(mamcr uint32) (uint32, float32, error) {
 			// if the entry has not been retreived from the cache make sure it is
 			// in an initial state
 			if arm.disasmLevel == disasmFull {
-				arm.disasmEntry.Address = fmt.Sprintf("%04x", pc)
+				arm.disasmEntry.Address = fmt.Sprintf("%08x", pc)
 				arm.disasmEntry.Location = ""
 				arm.disasmEntry.Operator = ""
 				arm.disasmEntry.Operand = ""
@@ -565,34 +583,74 @@ func (arm *ARM) Run(mamcr uint32) (uint32, float32, error) {
 
 		// the state of MAM and PC at end of instruction execution
 		arm.cyclesInstruction.MAMCR = arm.mam.mamcr
-		arm.cyclesInstruction.PCinSRAM = !(arm.registers[rPC] >= arm.mmap.FlashOrigin && arm.registers[rPC] <= arm.mmap.Flash64kMemtop)
+		arm.cyclesInstruction.PCinSRAM = !arm.mmap.isFlash(arm.registers[rPC])
 
 		// sum and strech cycles. I and C cycles added here. N and S cycles
 		// added according to MAM settings
 		stretchedCycles := arm.cyclesInstruction.I + arm.cyclesInstruction.C
-		// stretchedCycles += arm.cyclesInstruction.Imerged
+		stretchedCycles += arm.cyclesInstruction.Imerged
 
 		// MAM resolution. page 19 of UM10161.pdf
-		switch arm.mam.mamcr {
+		switch arm.cyclesInstruction.MAMCR {
 		default:
 			// this is an invalid value for MAMCR. operate on the assumption the the MAM is off
 			fallthrough
 		case 0:
-			stretchedCycles += (arm.cyclesInstruction.Npc + arm.cyclesInstruction.Spc) * arm.stretchFlash
-			// stretchedCycles += (arm.cyclesInstruction.Spcmerged) * arm.stretchFlash
-			stretchedCycles += (arm.cyclesInstruction.Ndata + arm.cyclesInstruction.Sdata) * arm.stretchSRAM
+			if arm.cyclesInstruction.PCinSRAM {
+				stretchedCycles += arm.cyclesInstruction.Npc * arm.stretchSRAM * arm.stretchSRAMn
+				stretchedCycles += arm.cyclesInstruction.Spc * arm.stretchSRAM
+				// stretchedCycles += arm.cyclesInstruction.Spcmerged * arm.stretchSRAM
+			} else {
+				stretchedCycles += arm.cyclesInstruction.Npc * arm.stretchFlash
+				stretchedCycles += arm.cyclesInstruction.Spc * arm.stretchFlash
+				// stretchedCycles += arm.cyclesInstruction.Spcmerged * arm.stretchFlash
+			}
+			if arm.cyclesInstruction.DataInSRAM {
+				stretchedCycles += arm.cyclesInstruction.Ndata * arm.stretchSRAM * arm.stretchSRAMn
+				stretchedCycles += arm.cyclesInstruction.Sdata * arm.stretchSRAM
+			} else {
+				stretchedCycles += arm.cyclesInstruction.Ndata * arm.stretchFlash
+				stretchedCycles += arm.cyclesInstruction.Sdata * arm.stretchFlash
+			}
+
 		case 1:
-			stretchedCycles += (arm.cyclesInstruction.Npc * arm.stretchFlash)
-			stretchedCycles += (arm.cyclesInstruction.Spc * arm.stretchMAM)
-			// stretchedCycles += (arm.cyclesInstruction.Spcmerged) * arm.stretchMAM
-			stretchedCycles += (arm.cyclesInstruction.Ndata + arm.cyclesInstruction.Sdata) * arm.stretchSRAM
+			if arm.cyclesInstruction.PCinSRAM {
+				stretchedCycles += arm.cyclesInstruction.Npc * arm.stretchSRAM * arm.stretchSRAMn
+				stretchedCycles += arm.cyclesInstruction.Spc * arm.stretchSRAM
+				// stretchedCycles += arm.cyclesInstruction.Spcmerged * arm.stretchSRAM
+			} else {
+				stretchedCycles += arm.cyclesInstruction.Npc * arm.stretchFlash
+				stretchedCycles += arm.cyclesInstruction.Spc * arm.stretchMAM
+				// stretchedCycles += arm.cyclesInstruction.Spcmerged * arm.stretchMAM
+			}
+			if arm.cyclesInstruction.DataInSRAM {
+				stretchedCycles += arm.cyclesInstruction.Ndata * arm.stretchSRAM * arm.stretchSRAMn
+				stretchedCycles += arm.cyclesInstruction.Sdata * arm.stretchSRAM
+			} else {
+				stretchedCycles += arm.cyclesInstruction.Ndata * arm.stretchFlash
+				stretchedCycles += arm.cyclesInstruction.Sdata * arm.stretchMAM
+			}
+
 		case 2:
-			stretchedCycles += (arm.cyclesInstruction.Npc + arm.cyclesInstruction.Spc) * arm.stretchMAM
-			// stretchedCycles += (arm.cyclesInstruction.Spcmerged) * arm.stretchMAM
-			stretchedCycles += (arm.cyclesInstruction.Ndata + arm.cyclesInstruction.Sdata) * arm.stretchMAM
+			if arm.cyclesInstruction.PCinSRAM {
+				stretchedCycles += arm.cyclesInstruction.Npc * arm.stretchSRAM * arm.stretchSRAMn
+				stretchedCycles += arm.cyclesInstruction.Spc * arm.stretchSRAM
+				// stretchedCycles += arm.cyclesInstruction.Spcmerged * arm.stretchSRAM
+			} else {
+				stretchedCycles += arm.cyclesInstruction.Npc * arm.stretchMAMn
+				stretchedCycles += arm.cyclesInstruction.Spc * arm.stretchMAM
+				// stretchedCycles += arm.cyclesInstruction.Spcmerged * arm.stretchMAM
+			}
+			if arm.cyclesInstruction.DataInSRAM {
+				stretchedCycles += arm.cyclesInstruction.Ndata * arm.stretchSRAM * arm.stretchSRAMn
+				stretchedCycles += arm.cyclesInstruction.Sdata * arm.stretchSRAM
+			} else {
+				stretchedCycles += arm.cyclesInstruction.Ndata * arm.stretchMAMn
+				stretchedCycles += arm.cyclesInstruction.Sdata * arm.stretchMAM
+			}
 		}
 
-		// increas total number of program cycles by the stretched cycles for this instruction
+		// increases total number of program cycles by the stretched cycles for this instruction
 		arm.cyclesTotal += stretchedCycles
 
 		// update timer
@@ -1459,6 +1517,7 @@ func (arm *ARM) executeLoadStoreWithRegisterOffset(opcode uint16) {
 	// Technical Reference Manual r4p3"
 
 	addr := arm.registers[baseReg] + arm.registers[offsetReg]
+	arm.cyclesInstruction.DataInSRAM = !arm.mmap.isFlash(addr)
 
 	if load {
 		// LDR and LDRB have the same cycle profile
@@ -1528,6 +1587,7 @@ func (arm *ARM) executeLoadStoreSignExtendedByteHalford(opcode uint16) {
 	reg := opcode & 0x0007
 
 	addr := arm.registers[baseReg] + arm.registers[offsetReg]
+	arm.cyclesInstruction.DataInSRAM = !arm.mmap.isFlash(addr)
 
 	// for cycle counting purposes, instructions in this format are equivalent
 	// to ARM instructions in the "Halfword and Signed Data Transfer" set,
@@ -1646,6 +1706,7 @@ func (arm *ARM) executeLoadStoreWithImmOffset(opcode uint16) {
 
 	// the actual address we'll be loading from (or storing to)
 	addr := arm.registers[baseReg] + uint32(offset)
+	arm.cyclesInstruction.DataInSRAM = !arm.mmap.isFlash(addr)
 
 	if load {
 		// LDRB and LDR have the same cycle profile
@@ -1726,6 +1787,7 @@ func (arm *ARM) executeLoadStoreHalfword(opcode uint16) {
 
 	// the actual address we'll be loading from (or storing to)
 	addr := arm.registers[baseReg] + uint32(offset)
+	arm.cyclesInstruction.DataInSRAM = !arm.mmap.isFlash(addr)
 
 	if load {
 		// LDRH cycle profile
@@ -1785,6 +1847,7 @@ func (arm *ARM) executeSPRelativeLoadStore(opcode uint16) {
 
 	// the actual address we'll be loading from (or storing to)
 	addr := arm.registers[rSP] + offset
+	arm.cyclesInstruction.DataInSRAM = !arm.mmap.isFlash(addr)
 
 	if load {
 		// LDR cycle profile
@@ -1938,6 +2001,7 @@ func (arm *ARM) executePushPopRegisters(opcode uint16) {
 
 		// start at stack pointer at work upwards
 		addr := arm.registers[rSP]
+		arm.cyclesInstruction.DataInSRAM = !arm.mmap.isFlash(addr)
 
 		// read each register in turn (from lower to highest)
 		for i := 0; i <= 7; i++ {
@@ -2038,6 +2102,7 @@ func (arm *ARM) executePushPopRegisters(opcode uint16) {
 	// push occurs from the new low stack address upwards to the current stack
 	// address (before the pushes)
 	addr := arm.registers[rSP] - c
+	arm.cyclesInstruction.DataInSRAM = !arm.mmap.isFlash(addr)
 
 	// write each register in turn (from lower to highest)
 	for i := 0; i <= 7; i++ {
@@ -2079,6 +2144,7 @@ func (arm *ARM) executeMultipleLoadStore(opcode uint16) {
 	// load/store the registers in the list starting at address
 	// in the base register
 	addr := arm.registers[baseReg]
+	arm.cyclesInstruction.DataInSRAM = !arm.mmap.isFlash(addr)
 
 	// for cycle counting purposes, instructions in this format are equivalent
 	// to ARM instructions in the "Block Data Transfer" set, section 4.11.8 of
