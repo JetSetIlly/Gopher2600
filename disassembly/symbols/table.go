@@ -21,12 +21,18 @@ import (
 	"strings"
 )
 
+// Entry records a symbol and the source of its definition.
+type Entry struct {
+	Symbol string
+	Source SymbolSource
+}
+
 // table maps a symbol to an address. it also keeps track of the widest symbol
 // in the table.
 type table struct {
 	// symbols indexed by address. addresses should be mapped before indexing
 	// takes place
-	byAddr map[uint16]string
+	byAddr map[uint16]Entry
 
 	// sorted array of keys to the byAddr map
 	sortedIdx []uint16
@@ -38,7 +44,7 @@ type table struct {
 // newTable is the preferred method of initialisation for the table type.
 func newTable() *table {
 	t := &table{
-		byAddr:    make(map[uint16]string),
+		byAddr:    make(map[uint16]Entry),
 		sortedIdx: make([]uint16, 0),
 	}
 	return t
@@ -46,9 +52,9 @@ func newTable() *table {
 
 func (t *table) calcMaxWidth() {
 	t.maxWidth = 0
-	for _, s := range t.byAddr {
-		if len(s) > t.maxWidth {
-			t.maxWidth = len(s)
+	for _, e := range t.byAddr {
+		if len(e.Symbol) > t.maxWidth {
+			t.maxWidth = len(e.Symbol)
 		}
 	}
 }
@@ -56,7 +62,7 @@ func (t *table) calcMaxWidth() {
 func (t table) String() string {
 	s := strings.Builder{}
 	for i := range t.sortedIdx {
-		s.WriteString(fmt.Sprintf("%#04x -> %s\n", t.sortedIdx[i], t.byAddr[t.sortedIdx[i]]))
+		s.WriteString(fmt.Sprintf("%#04x -> %s [%s]\n", t.sortedIdx[i], t.byAddr[t.sortedIdx[i]].Symbol, t.byAddr[t.sortedIdx[i]].Source))
 	}
 	return s.String()
 }
@@ -85,14 +91,14 @@ func (t *table) uniqueSymbol(symbol string) string {
 
 // get entry. address should be mapped before calling according to the context
 // of the table.
-func (t *table) get(addr uint16) (string, bool) {
+func (t *table) get(addr uint16) (Entry, bool) {
 	v, ok := t.byAddr[addr]
 	return v, ok
 }
 
 // add entry. address should be mapped before calling according to the context
 // of the table.
-func (t *table) add(addr uint16, symbol string) bool {
+func (t *table) add(source SymbolSource, addr uint16, symbol string) bool {
 	symbol = t.normaliseSymbol(symbol)
 
 	// check for duplicates
@@ -102,7 +108,10 @@ func (t *table) add(addr uint16, symbol string) bool {
 		}
 	}
 
-	t.byAddr[addr] = t.uniqueSymbol(symbol)
+	t.byAddr[addr] = Entry{
+		Source: source,
+		Symbol: t.uniqueSymbol(symbol),
+	}
 	t.sortedIdx = append(t.sortedIdx, addr)
 	sort.Sort(t)
 	t.calcMaxWidth()
@@ -130,7 +139,7 @@ func (t *table) remove(addr uint16) bool {
 
 // update entry. address should be mapped before calling according to the
 // context of the table.
-func (t *table) update(addr uint16, oldSymbol string, newSymbol string) bool {
+func (t *table) update(source SymbolSource, addr uint16, oldSymbol string, newSymbol string) bool {
 	oldSymbol = t.normaliseSymbol(oldSymbol)
 	newSymbol = t.normaliseSymbol(newSymbol)
 
@@ -142,9 +151,12 @@ func (t *table) update(addr uint16, oldSymbol string, newSymbol string) bool {
 		return false
 	}
 
-	if s, ok := t.byAddr[addr]; ok {
-		if s == oldSymbol {
-			t.byAddr[addr] = t.uniqueSymbol(newSymbol)
+	if e, ok := t.byAddr[addr]; ok {
+		if e.Symbol == oldSymbol {
+			t.byAddr[addr] = Entry{
+				Source: source,
+				Symbol: t.uniqueSymbol(newSymbol),
+			}
 			t.calcMaxWidth()
 			return true
 		}
@@ -153,16 +165,17 @@ func (t *table) update(addr uint16, oldSymbol string, newSymbol string) bool {
 	return false
 }
 
-func (t table) search(symbol string) (string, uint16, bool) {
+// search is case-insenstiive.
+func (t table) search(symbol string) (Entry, uint16, bool) {
 	symbol = t.normaliseSymbol(symbol)
 
-	for k, v := range t.byAddr {
-		if strings.ToUpper(v) == symbol {
-			return v, k, true
+	for addr, e := range t.byAddr {
+		if strings.ToUpper(e.Symbol) == symbol {
+			return e, addr, true
 		}
 	}
 
-	return "", 0, false
+	return Entry{}, 0, false
 }
 
 // Len implements the sort.Interface.

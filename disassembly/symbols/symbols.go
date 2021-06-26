@@ -90,26 +90,54 @@ func (sym *Symbols) SymbolWidth() int {
 // bank 7 to bank 5. Short of having a copy of the label in every bank, or more
 // entwined knowledge of how cartridge mappers work, there's not a lot we can
 // do about this.
-func (sym *Symbols) GetLabel(bank int, addr uint16) (string, bool) {
+func (sym *Symbols) GetLabel(bank int, addr uint16) (Entry, bool) {
 	sym.crit.Lock()
 	defer sym.crit.Unlock()
 
 	if bank >= len(sym.label) {
-		return "", false
+		return Entry{}, false
 	}
 
 	addr, _ = memorymap.MapAddress(addr, true)
 
-	if v, ok := sym.label[bank].byAddr[addr]; ok {
-		return v, ok
+	if e, ok := sym.label[bank].byAddr[addr]; ok {
+		return e, ok
 	}
 
-	return "", false
+	return Entry{}, false
 }
+
+// Getsymbol from read/write table.
+//
+// The read argument selects the table: true -> read table, false -> write table.
+func (sym *Symbols) GetSymbol(addr uint16, read bool) (Entry, bool) {
+	sym.crit.Lock()
+	defer sym.crit.Unlock()
+
+	addr, _ = memorymap.MapAddress(addr, true)
+
+	if read {
+		return sym.read.get(addr)
+	}
+
+	return sym.write.get(addr)
+}
+
+// SymbolSource identifies the source of the symbol.
+type SymbolSource string
+
+// List of valid SymbolSource values.
+const (
+	SourceDASM      SymbolSource = "DASM"
+	SourceAuto      SymbolSource = "Auto"
+	SourceSystem    SymbolSource = "System"
+	SourceCartridge SymbolSource = "Cartridge"
+	SourceCustom    SymbolSource = "Custom"
+)
 
 // Add symbol to label table. Symbol will be modified so that it is unique in
 // the label table.
-func (sym *Symbols) AddLabel(bank int, addr uint16, symbol string) bool {
+func (sym *Symbols) AddLabel(source SymbolSource, bank int, addr uint16, symbol string) bool {
 	sym.crit.Lock()
 	defer sym.crit.Unlock()
 
@@ -119,12 +147,12 @@ func (sym *Symbols) AddLabel(bank int, addr uint16, symbol string) bool {
 
 	addr, _ = memorymap.MapAddress(addr, true)
 
-	return sym.label[bank].add(addr, symbol)
+	return sym.label[bank].add(source, addr, symbol)
 }
 
 // Add symbol to label table using a symbols created from the address information.
 func (sym *Symbols) AddLabelAuto(bank int, addr uint16) bool {
-	return sym.AddLabel(bank, addr, fmt.Sprintf("L%04X", addr))
+	return sym.AddLabel(SourceAuto, bank, addr, fmt.Sprintf("L%04X", addr))
 }
 
 // Remove label from label table. Symbol will be modified so that it is unique
@@ -139,7 +167,7 @@ func (sym *Symbols) RemoveLabel(bank int, addr uint16) bool {
 }
 
 // Update symbol in label table. Returns success.
-func (sym *Symbols) UpdateLabel(bank int, addr uint16, oldLabel string, newLabel string) bool {
+func (sym *Symbols) UpdateLabel(source SymbolSource, bank int, addr uint16, oldLabel string, newLabel string) bool {
 	sym.crit.Lock()
 	defer sym.crit.Unlock()
 
@@ -149,40 +177,24 @@ func (sym *Symbols) UpdateLabel(bank int, addr uint16, oldLabel string, newLabel
 
 	addr, _ = memorymap.MapAddress(addr, true)
 
-	return sym.label[bank].update(addr, oldLabel, newLabel)
-}
-
-// Getsymbol from read/write table.
-//
-// The read argument selects the table: true -> read table, false -> write table.
-func (sym *Symbols) GetSymbol(addr uint16, read bool) (string, bool) {
-	sym.crit.Lock()
-	defer sym.crit.Unlock()
-
-	addr, _ = memorymap.MapAddress(addr, true)
-
-	if read {
-		return sym.read.get(addr)
-	}
-
-	return sym.write.get(addr)
+	return sym.label[bank].update(source, addr, oldLabel, newLabel)
 }
 
 // AddSymbol to read/write table. Symbol will be modified so that it is unique
 // in the selected table.
 //
 // The read argument selects the table: true -> read table, false -> write table.
-func (sym *Symbols) AddSymbol(addr uint16, symbol string, read bool) bool {
+func (sym *Symbols) AddSymbol(source SymbolSource, addr uint16, symbol string, read bool) bool {
 	sym.crit.Lock()
 	defer sym.crit.Unlock()
 
 	addr, _ = memorymap.MapAddress(addr, true)
 
 	if read {
-		return sym.read.add(addr, symbol)
+		return sym.read.add(source, addr, symbol)
 	}
 
-	return sym.write.add(addr, symbol)
+	return sym.write.add(source, addr, symbol)
 }
 
 // RemoveSymbol from read/write table.
@@ -205,15 +217,15 @@ func (sym *Symbols) RemoveSymbol(addr uint16, read bool) bool {
 // unique in the selected table
 //
 // The read argument selects the table: true -> read table, false -> write table.
-func (sym *Symbols) UpdateSymbol(addr uint16, oldLabel string, newLabel string, read bool) bool {
+func (sym *Symbols) UpdateSymbol(source SymbolSource, addr uint16, oldLabel string, newLabel string, read bool) bool {
 	sym.crit.Lock()
 	defer sym.crit.Unlock()
 
 	addr, _ = memorymap.MapAddress(addr, true)
 
 	if read {
-		return sym.read.update(addr, oldLabel, newLabel)
+		return sym.read.update(source, addr, oldLabel, newLabel)
 	}
 
-	return sym.write.update(addr, oldLabel, newLabel)
+	return sym.write.update(source, addr, oldLabel, newLabel)
 }

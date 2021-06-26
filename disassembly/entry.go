@@ -214,8 +214,8 @@ func (l Label) String() string {
 func (l Label) genString() (string, bool) {
 	if l.dsm.Prefs.Symbols.Get().(bool) {
 		ma, _ := memorymap.MapAddress(l.result.Address, true)
-		if v, ok := l.dsm.Sym.GetLabel(l.bank, ma); ok {
-			return v, true
+		if e, ok := l.dsm.Sym.GetLabel(l.bank, ma); ok {
+			return e.Symbol, true
 		}
 	}
 
@@ -261,23 +261,23 @@ func (l Operand) genString() string {
 				operand = absoluteBranchDestination(l.result.Address, operand)
 
 				// look up mock program counter value in symbol table
-				if v, ok := l.dsm.Sym.GetLabel(l.bank, operand); ok {
-					s = v
+				if e, ok := l.dsm.Sym.GetLabel(l.bank, operand); ok {
+					s = e.Symbol
 				}
-			} else if v, ok := l.dsm.Sym.GetLabel(l.bank, operand); ok {
-				s = addrModeDecoration(v, l.result.Defn.AddressingMode)
+			} else if e, ok := l.dsm.Sym.GetLabel(l.bank, operand); ok {
+				s = addrModeDecoration(e.Symbol, l.result.Defn.AddressingMode)
 			}
 		case instructions.Read:
-			if v, ok := l.dsm.Sym.GetSymbol(operand, true); ok {
-				s = addrModeDecoration(v, l.result.Defn.AddressingMode)
+			if e, ok := l.dsm.Sym.GetSymbol(operand, true); ok {
+				s = addrModeDecoration(e.Symbol, l.result.Defn.AddressingMode)
 			}
 
 		case instructions.Write:
 			fallthrough
 
 		case instructions.RMW:
-			if v, ok := l.dsm.Sym.GetSymbol(operand, false); ok {
-				s = addrModeDecoration(v, l.result.Defn.AddressingMode)
+			if e, ok := l.dsm.Sym.GetSymbol(operand, false); ok {
+				s = addrModeDecoration(e.Symbol, l.result.Defn.AddressingMode)
 			}
 		}
 	}

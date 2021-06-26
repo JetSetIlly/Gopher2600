@@ -95,11 +95,11 @@ func (dbgmem memoryDebug) mapAddress(address interface{}, read bool) *addressInf
 			ai.mappedAddress, ai.area = memorymap.MapAddress(ai.address, read)
 			res := dbgmem.sym.SearchByAddress(ai.mappedAddress, searchTable)
 			if res != nil {
-				ai.addressLabel = res.Symbol
+				ai.addressLabel = res.Entry.Symbol
 			}
 		} else {
 			ai.mappedAddress, ai.area = memorymap.MapAddress(ai.address, read)
-			ai.addressLabel = res.Symbol
+			ai.addressLabel = res.Entry.Symbol
 		}
 	case string:
 		var err error
@@ -107,7 +107,7 @@ func (dbgmem memoryDebug) mapAddress(address interface{}, read bool) *addressInf
 		res := dbgmem.sym.SearchBySymbol(address, searchTable)
 		if res != nil {
 			ai.address = res.Address
-			ai.addressLabel = res.Symbol
+			ai.addressLabel = res.Entry.Symbol
 			ai.mappedAddress, ai.area = memorymap.MapAddress(ai.address, read)
 		} else {
 			// this may be a string representation of a numerical address
@@ -124,11 +124,11 @@ func (dbgmem memoryDebug) mapAddress(address interface{}, read bool) *addressInf
 				ai.mappedAddress, ai.area = memorymap.MapAddress(ai.address, read)
 				res := dbgmem.sym.SearchByAddress(ai.mappedAddress, searchTable)
 				if res != nil {
-					ai.addressLabel = res.Symbol
+					ai.addressLabel = res.Entry.Symbol
 				}
 			} else {
 				ai.mappedAddress, ai.area = memorymap.MapAddress(ai.address, read)
-				ai.addressLabel = res.Symbol
+				ai.addressLabel = res.Entry.Symbol
 			}
 		}
 	default:

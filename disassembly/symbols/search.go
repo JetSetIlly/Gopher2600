@@ -38,7 +38,7 @@ type SearchResults struct {
 	Table SearchTable
 
 	// the symbol as it exists in the table
-	Symbol string
+	Entry Entry
 
 	// the normalised address the symbol refers to
 	Address uint16
@@ -55,27 +55,27 @@ func (sym *Symbols) SearchBySymbol(symbol string, table SearchTable) *SearchResu
 	switch table {
 	case SearchLabel:
 		for _, l := range sym.label {
-			if norm, addr, ok := l.search(symbolUpper); ok {
+			if e, addr, ok := l.search(symbolUpper); ok {
 				return &SearchResults{
 					Table:   SearchLabel,
-					Symbol:  norm,
+					Entry:   e,
 					Address: addr,
 				}
 			}
 		}
 	case SearchRead:
-		if norm, addr, ok := sym.read.search(symbolUpper); ok {
+		if e, addr, ok := sym.read.search(symbolUpper); ok {
 			return &SearchResults{
 				Table:   SearchRead,
-				Symbol:  norm,
+				Entry:   e,
 				Address: addr,
 			}
 		}
 	case SearchWrite:
-		if norm, addr, ok := sym.write.search(symbolUpper); ok {
+		if e, addr, ok := sym.write.search(symbolUpper); ok {
 			return &SearchResults{
 				Table:   SearchWrite,
-				Symbol:  norm,
+				Entry:   e,
 				Address: addr,
 			}
 		}
@@ -94,7 +94,7 @@ func (sym *Symbols) SearchByAddress(addr uint16, table SearchTable) *SearchResul
 			if s, ok := l.byAddr[addr]; ok {
 				return &SearchResults{
 					Table:   SearchLabel,
-					Symbol:  s,
+					Entry:   s,
 					Address: addr,
 				}
 			}
@@ -104,7 +104,7 @@ func (sym *Symbols) SearchByAddress(addr uint16, table SearchTable) *SearchResul
 		if s, ok := sym.read.byAddr[addr]; ok {
 			return &SearchResults{
 				Table:   SearchRead,
-				Symbol:  s,
+				Entry:   s,
 				Address: addr,
 			}
 		}
@@ -113,7 +113,7 @@ func (sym *Symbols) SearchByAddress(addr uint16, table SearchTable) *SearchResul
 		if s, ok := sym.write.byAddr[addr]; ok {
 			return &SearchResults{
 				Table:   SearchWrite,
-				Symbol:  s,
+				Entry:   s,
 				Address: addr,
 			}
 		}

@@ -20,6 +20,7 @@ import (
 
 	"github.com/jetsetilly/gopher2600/debugger"
 	"github.com/jetsetilly/gopher2600/disassembly"
+	"github.com/jetsetilly/gopher2600/disassembly/symbols"
 	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/gui/sdlimgui/fonts"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
@@ -339,7 +340,7 @@ func (win *winDisasm) drawBank(bank int, focusAddr uint16, onBank bool) {
 
 					flgs := imgui.InputTextFlagsEnterReturnsTrue | imgui.InputTextFlagsCharsNoBlank
 					if imgui.InputTextV("##labeledit", &win.labelEdit, flgs, nil) {
-						win.img.lz.Dbg.Disasm.Sym.UpdateLabel(bank, e.Result.Address, s, win.labelEdit)
+						win.img.lz.Dbg.Disasm.Sym.UpdateLabel(symbols.SourceCustom, bank, e.Result.Address, s, win.labelEdit)
 						win.labelEditTag = ""
 					}
 

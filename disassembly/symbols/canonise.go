@@ -35,10 +35,10 @@ func (sym *Symbols) canonise(cart *cartridge.Cartridge) {
 	// arrays we need to filter out the empty entries. (the Read and Write
 	// structures used to be maps and we didn't need to do this)
 	for k, v := range addresses.ReadSymbols {
-		sym.read.add(k, v)
+		sym.read.add(SourceSystem, k, v)
 	}
 	for k, v := range addresses.WriteSymbols {
-		sym.write.add(k, v)
+		sym.write.add(SourceSystem, k, v)
 	}
 
 	// add cartridge canonical symbols from cartridge hotspot information
@@ -56,7 +56,7 @@ func (sym *Symbols) canonise(cart *cartridge.Cartridge) {
 		if area != memorymap.Cartridge {
 			logger.Logf("symbols", "%s reporting hotspot (%s) outside of cartridge address space", cart.ID(), v.Symbol)
 		}
-		sym.read.add(ma, v.Symbol)
+		sym.read.add(SourceCartridge, ma, v.Symbol)
 	}
 
 	for k, v := range hb.WriteHotspots() {
@@ -64,6 +64,6 @@ func (sym *Symbols) canonise(cart *cartridge.Cartridge) {
 		if area != memorymap.Cartridge {
 			logger.Logf("symbols", "%s reporting hotspot (%s) outside of cartridge address space", cart.ID(), v.Symbol)
 		}
-		sym.write.add(ma, v.Symbol)
+		sym.write.add(SourceCartridge, ma, v.Symbol)
 	}
 }

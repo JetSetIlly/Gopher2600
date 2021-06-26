@@ -109,16 +109,16 @@ func (sym *Symbols) fromDasm(cart *cartridge.Cartridge) error {
 			// adding label for address in every bank for now
 			// !!TODO: more selecting adding of label from symbols file
 			for b := range sym.label {
-				sym.label[b].add(ma, symbol)
+				sym.label[b].add(SourceDASM, ma, symbol)
 			}
 		} else {
 			// (non-label) symbols are both a read and write symbol. compare to
 			// canonical vcs symbols which are specific to a read or write
 			// context
-			sym.read.add(ma, symbol)
+			sym.read.add(SourceDASM, ma, symbol)
 
 			ma, _ = memorymap.MapAddress(uint16(address), false)
-			sym.write.add(ma, symbol)
+			sym.write.add(SourceDASM, ma, symbol)
 		}
 	}
 
