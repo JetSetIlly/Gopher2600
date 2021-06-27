@@ -44,6 +44,8 @@ type Preferences struct {
 	Sharpness       prefs.Float
 
 	PixelPerfectFade prefs.Float
+
+	UnsyncTolerance prefs.Int
 }
 
 func (p *Preferences) String() string {
@@ -69,6 +71,7 @@ const (
 	phosphorBloom    = 1.0
 	sharpness        = 0.55
 	pixelPerfectFade = 0.4
+	unsyncTolerance  = 0
 )
 
 // NewPreferences is the preferred method of initialisation for the Preferences type.
@@ -159,6 +162,10 @@ func NewPreferences() (*Preferences, error) {
 	if err != nil {
 		return nil, err
 	}
+	err = p.dsk.Add("crt.unsyncTolerance", &p.UnsyncTolerance)
+	if err != nil {
+		return nil, err
+	}
 
 	err = p.dsk.Load(true)
 	if err != nil {
@@ -188,6 +195,7 @@ func (p *Preferences) SetDefaults() {
 	p.PhosphorBloom.Set(phosphorBloom)
 	p.Sharpness.Set(sharpness)
 	p.PixelPerfectFade.Set(pixelPerfectFade)
+	p.UnsyncTolerance.Set(unsyncTolerance)
 }
 
 // Load disassembly preferences and apply to the current disassembly.

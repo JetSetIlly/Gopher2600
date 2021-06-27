@@ -275,12 +275,6 @@ func (scr *screen) Resize(spec specification.Spec, topScanline int, bottomScanli
 	return <-scr.img.polling.serviceErr
 }
 
-// the number of consecutive unsynced frames before the screen starts to roll.
-// there's no reason for this figure but the value of 2 was settled on through
-// observation. notably, a tolerance of 2 prevents the Chiphead demo from
-// rolling on the occasional unsynced frame.
-const unsyncedTolerance = 2
-
 // NewFrame implements the television.PixelRenderer interface
 //
 // MUST NOT be called from the gui thread.
@@ -292,31 +286,35 @@ func (scr *screen) NewFrame(vsynced bool, stable bool) error {
 	scr.crit.vsynced = vsynced
 
 	if scr.img.isPlaymode() {
-		// screen rolling
-		if vsynced {
-			scr.crit.unsyncedCt = 0
+		// check screen rolling if crtprefs are enabled
+		if scr.img.crtPrefs.Enabled.Get().(bool) {
+			if vsynced {
+				scr.crit.unsyncedCt = 0
 
-			// recovery required
-			if scr.crit.unsyncedScanline > 0 {
-				scr.crit.unsyncedRecoveryCt++
-				scr.crit.unsyncedScanline *= 8
-				scr.crit.unsyncedScanline /= 10
+				// recovery required
+				if scr.crit.unsyncedScanline > 0 {
+					scr.crit.unsyncedRecoveryCt++
+					scr.crit.unsyncedScanline *= 8
+					scr.crit.unsyncedScanline /= 10
 
-				if scr.crit.unsyncedScanline == 0 {
-					scr.crit.unsyncedRecoveryCt = 0
+					if scr.crit.unsyncedScanline == 0 {
+						scr.crit.unsyncedRecoveryCt = 0
+					}
+				}
+			} else {
+				// without the stable check, the screen can desync and recover
+				// from a roll on startup on most ROMs, which looks quite cool but
+				// we'll leave it disabled for now.
+				if stable {
+					scr.crit.unsyncedCt++
+					if scr.crit.unsyncedCt > scr.img.crtPrefs.UnsyncTolerance.Get().(int) {
+						scr.crit.unsyncedScanline = (scr.crit.unsyncedScanline + scr.crit.lastY) % specification.AbsoluteMaxScanlines
+						scr.crit.unsyncedRecoveryCt = 0
+					}
 				}
 			}
 		} else {
-			// without the stable check, the screen can desync and recover
-			// from a roll on startup on most ROMs, which looks quite cool but
-			// we'll leave it disabled for now.
-			if stable {
-				scr.crit.unsyncedCt++
-				if scr.crit.unsyncedCt > unsyncedTolerance {
-					scr.crit.unsyncedScanline = (scr.crit.unsyncedScanline + scr.crit.lastY) % specification.AbsoluteMaxScanlines
-					scr.crit.unsyncedRecoveryCt = 0
-				}
-			}
+			scr.crit.unsyncedScanline = 0
 		}
 
 		scr.crit.plotIdx++

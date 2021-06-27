@@ -411,14 +411,17 @@ but the common ones are.
 `Gopher2600` tries to emulate the visual effect of a CRT television. This is by
 no means complete and is an area of active development.
 
-Individual CRT effects can be turned on and off. In playmode the preferences
-window can by opened by pressing `F10`.
+In playmode the preferences window can by opened by pressing `F10`.
 
 <img src=".screenshots/crt_playmode_prefs_window.png" height="400" alt="crt playmode preferences window"/>
 
 In the debugger the preferences window can be opened from the `Debugger` menu
 and a preview can be seen in the `TV Screen` by pressing the `CRT Preview`
 checkbox.
+
+The effects can be turned off completely with the `Pixel Perfect` option. In
+this mode, there is still the option to specify pixel fade. This is roughly
+equivalent to the `phosphor` effect.
 
 ## Configuration Directory
 

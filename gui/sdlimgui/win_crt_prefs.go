@@ -16,6 +16,8 @@
 package sdlimgui
 
 import (
+	"fmt"
+
 	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/logger"
 )
@@ -66,8 +68,17 @@ func (win *winCRTPrefs) draw() {
 		imgui.BeginV(win.id(), &win.open, imgui.WindowFlagsAlwaysAutoResize)
 	}
 
-	// note start position of setting group
-	imgui.BeginGroup()
+	pp := win.drawPixelPerfect()
+	imgui.Spacing()
+
+	// disable all CRT effect options if pixel-perfect is on
+	if pp {
+		imgui.PushItemFlag(imgui.ItemFlagsDisabled, true)
+		imgui.PushStyleVarFloat(imgui.StyleVarAlpha, 0.5)
+	}
+
+	imgui.Separator()
+	imgui.Spacing()
 
 	win.drawCurve()
 	imgui.Spacing()
@@ -88,12 +99,14 @@ func (win *winCRTPrefs) draw() {
 	win.drawSharpness()
 	imgui.Spacing()
 
-	imgui.Separator()
+	win.drawUnsyncTolerance()
 	imgui.Spacing()
 
-	win.drawPixelPerfect()
-
-	imgui.EndGroup()
+	// end of disabling rule before drawing the disk buttons
+	if pp {
+		imgui.PopStyleVar()
+		imgui.PopItemFlag()
+	}
 
 	imguiSeparator()
 	win.drawDiskButtons()
@@ -341,7 +354,7 @@ func (win *winCRTPrefs) drawSharpness() {
 	}
 }
 
-func (win *winCRTPrefs) drawPixelPerfect() {
+func (win *winCRTPrefs) drawPixelPerfect() bool {
 	b := !win.img.crtPrefs.Enabled.Get().(bool)
 	if imgui.Checkbox("Pixel Perfect##pixelpefect", &b) {
 		win.img.crtPrefs.Enabled.Set(!b)
@@ -363,5 +376,23 @@ func (win *winCRTPrefs) drawPixelPerfect() {
 
 	if imgui.SliderFloatV("##pixelperfectfade", &f, 0.0, 0.9, label, 1.0) {
 		win.img.crtPrefs.PixelPerfectFade.Set(f)
+	}
+
+	return b
+}
+
+func (win *winCRTPrefs) drawUnsyncTolerance() {
+	imgui.Text("Screen Roll on lost VSYNC")
+
+	t := int32(win.img.crtPrefs.UnsyncTolerance.Get().(int))
+	var label string
+	if t == 0 {
+		label = "immediately"
+	} else {
+		label = fmt.Sprintf("after %d frames", t)
+	}
+
+	if imgui.SliderIntV("##unsyncTolerance", &t, 0, 5, label, 1.0) {
+		win.img.crtPrefs.UnsyncTolerance.Set(t)
 	}
 }
