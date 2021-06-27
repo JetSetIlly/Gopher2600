@@ -49,7 +49,7 @@ type Preferences struct {
 	ARM ARMPreferences
 }
 
-// Indicats that the ARM should put the MAM into the mode inidcated by the
+// Indicators that the ARM should put the MAM into the mode inidcated by the
 // emulated driver for the cartridge mapper.
 const MAMDriver = -1
 

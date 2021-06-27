@@ -56,7 +56,7 @@ func newDPCPlusState() *State {
 	return s
 }
 
-// the ideal MAMCR value given to the arm7tdmi.Run() command
+// the ideal MAMCR value given to the arm7tdmi.Run() command.
 const dpcPlusMAMCR = 2
 
 func (s *State) initialise(randSrc *rand.Rand, bank int) {

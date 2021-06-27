@@ -44,7 +44,7 @@ const (
 	offsetGraphData    = 269
 	offsetTimecodeData = 1229
 	offsetColorData    = 1289
-	offsetEndData      = 2249 // nolint
+	offsetEndData      = 2249 
 )
 
 // levels for both volume and brightness.

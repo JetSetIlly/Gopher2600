@@ -117,7 +117,6 @@ func (dsm *Disassembly) bless(mc *cpu.CPU, copiedBanks []mapper.BankContent) err
 							dsm.Sym.AddLabelAuto(jb, jmpAddress)
 						}
 					}
-
 				} else {
 					// if instruction is a branch then add the address of the successful branch
 					// to the blessing list. assumption here is that a branch will never branch
@@ -231,7 +230,7 @@ func (dsm *Disassembly) blessSequence(bank int, addr uint16, commit bool) bool {
 		// end run if entry has already been blessed
 		if instruction.Level == EntryLevelBlessed {
 			if hasCommitted {
-				logger.Logf("disassembly", "blessSequence has blessed an instruction in a false sequence. discoverd at bank %d: %s", bank, instruction.String())
+				logger.Logf("disassembly", "blessSequence has blessed an instruction in a false sequence. discovered at bank %d: %s", bank, instruction.String())
 			}
 			return false
 		}
@@ -240,7 +239,7 @@ func (dsm *Disassembly) blessSequence(bank int, addr uint16, commit bool) bool {
 		operator := instruction.Result.Defn.Operator
 		if operator == "??" {
 			if hasCommitted {
-				logger.Logf("disassembly", "blessSequence has blessed an instruction in a false sequence. discoverd at bank %d: %s", bank, instruction.String())
+				logger.Logf("disassembly", "blessSequence has blessed an instruction in a false sequence. discovered at bank %d: %s", bank, instruction.String())
 			}
 			return false
 		}
@@ -250,7 +249,7 @@ func (dsm *Disassembly) blessSequence(bank int, addr uint16, commit bool) bool {
 		// break if address has looped around
 		if next > next&memorymap.CartridgeBits {
 			if hasCommitted {
-				logger.Logf("disassembly", "blessSequence has blessed an instruction in a false sequence. discoverd at bank %d: %s", bank, instruction.String())
+				logger.Logf("disassembly", "blessSequence has blessed an instruction in a false sequence. discovered at bank %d: %s", bank, instruction.String())
 			}
 			return false
 		}
@@ -260,7 +259,7 @@ func (dsm *Disassembly) blessSequence(bank int, addr uint16, commit bool) bool {
 		for i := a + 1; i < next; i++ {
 			if instruction.Level == EntryLevelBlessed {
 				if hasCommitted {
-					logger.Logf("disassembly", "blessSequence has blessed an instruction in a false sequence. discoverd at bank %d: %s", bank, instruction.String())
+					logger.Logf("disassembly", "blessSequence has blessed an instruction in a false sequence. discovered at bank %d: %s", bank, instruction.String())
 				}
 				return false
 			}
@@ -269,7 +268,7 @@ func (dsm *Disassembly) blessSequence(bank int, addr uint16, commit bool) bool {
 		// do not bless decoded instructions that look like fill characters
 		if instruction.Result.Defn.OpCode == 0xff && instruction.Result.InstructionData == 0xffff {
 			if hasCommitted {
-				logger.Logf("disassembly", "blessSequence has blessed an instruction in a false sequence. discoverd at bank %d: %s", bank, instruction.String())
+				logger.Logf("disassembly", "blessSequence has blessed an instruction in a false sequence. discovered at bank %d: %s", bank, instruction.String())
 			}
 			return false
 		}
@@ -280,15 +279,15 @@ func (dsm *Disassembly) blessSequence(bank int, addr uint16, commit bool) bool {
 			instruction.Level = EntryLevelBlessed
 		}
 
-		// end the blessing sequence if we encounted an instruction that breaks
-		// the flow with no possibilty of resumption. In practical terms this
+		// end the blessing sequence if we encountered an instruction that breaks
+		// the flow with no possibility of resumption. In practical terms this
 		// means JMP, RTS and Interrupt instructions.
 		if instruction.Operator == "JMP" || instruction.Operator == "RTS" ||
 			instruction.Result.Defn.Effect == instructions.Interrupt {
 			return true
 		}
 
-		// next adress
+		// next address
 		a = next
 	}
 

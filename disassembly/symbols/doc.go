@@ -23,7 +23,7 @@
 // Even if there is no symbols file, the tables will be populated with
 // canonical names.
 //
-// Also works best in conjuction with the parent disassembly package where the
+// Also works best in conjunction with the parent disassembly package where the
 // disassembly process will remove any labels from "unblessed" cartridge
 // addresses.
 //

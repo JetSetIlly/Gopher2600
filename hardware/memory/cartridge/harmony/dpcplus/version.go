@@ -18,7 +18,7 @@ package dpcplus
 import "github.com/jetsetilly/gopher2600/hardware/memory/cartridge/harmony/arm7tdmi"
 
 // there is only one version of DPC+ currently but this method of specifying
-// addresses mirrors how we do it in the CDF type
+// addresses mirrors how we do it in the CDF type.
 type version struct {
 	mmap arm7tdmi.MemoryMap
 

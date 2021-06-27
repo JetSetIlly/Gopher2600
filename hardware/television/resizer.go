@@ -27,7 +27,7 @@ import (
 //		- Pitfall
 //		- Hero
 //
-//  * needs an additional (or two) scanlines to accomodate full screen
+//  * needs an additional (or two) scanlines to accommodate full screen
 //		- Ladybug
 //		- Man Goes Down
 //

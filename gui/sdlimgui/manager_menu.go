@@ -141,7 +141,6 @@ func (wm *manager) drawMenu() {
 	wdth -= rightJustText(wdth, fmt.Sprintf("%.2fHz", wm.img.lz.TV.Hz), true)
 
 	if wm.img.state == gui.StateRunning {
-
 		if wm.img.lz.TV.ReqFPS < 1.0 {
 			rightJustText(wdth, "< 1 fps", true)
 		} else {

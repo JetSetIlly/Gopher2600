@@ -98,7 +98,7 @@ func (c *Cycles) reset() {
 	c.DataInSRAM = false
 }
 
-// simple (unstretched) cycle count
+// simple (unstretched) cycle count.
 func (c *Cycles) count() float32 {
 	return c.I + c.Imerged + c.C + c.Npc + c.Ndata + c.Spc + c.Sdata + c.Spcmerged
 }

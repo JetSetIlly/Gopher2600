@@ -569,7 +569,6 @@ func (win *winDbgScr) drawReflectionTooltip() {
 			imguiSeparator()
 			imgui.Text(s)
 		}
-
 	}
 }
 
