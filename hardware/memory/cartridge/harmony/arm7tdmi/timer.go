@@ -48,6 +48,12 @@ func (t *timer) write(addr uint32, val uint32) bool {
 		t.active = t.control&0x01 == 0x01
 	case t.mmap.TIMERvalue:
 		t.counter = float32(val)
+	case t.mmap.TIMERprescale:
+		// not implemented yet
+	case t.mmap.TIMERprescaleMax:
+		// not implemented yet
+	case t.mmap.APBDIV:
+		// not implemented yet
 	default:
 		return false
 	}
@@ -63,6 +69,12 @@ func (t *timer) read(addr uint32) (uint32, bool) {
 		val = t.control
 	case t.mmap.TIMERvalue:
 		val = uint32(t.counter)
+	case t.mmap.TIMERprescale:
+		// not implemented yet
+	case t.mmap.TIMERprescaleMax:
+		// not implemented yet
+	case t.mmap.APBDIV:
+		// not implemented yet
 	default:
 		return 0, false
 	}

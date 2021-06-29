@@ -40,10 +40,10 @@ type CallFn struct {
 	// the only place where it matters is at the moment the ARM processor is
 	// finishing.
 	//
-	// the problem is caused by the conclusion of the ARM program is not
-	// predictable (at least not the way we're doing it) so it's possible that
-	// it finishes sometime between the placeholder NOP and the phantom read
-	// connected with that NOP (the phantom read always happens).
+	// the problem is caused by the conclusion of the ARM program not being
+	// predictable (at least not the way we're doing it). this means it's
+	// possible that it finishes sometime between the placeholder NOP and the
+	// phantom read connected with that NOP (the phantom read always happens).
 	//
 	// what we don't want to happen is to send the JMP opcode in response to
 	// the phantom read. so, to prevent that we toggle the phantomOnResume
@@ -110,7 +110,7 @@ func (cf *CallFn) Check(addr uint16) (uint8, bool) {
 func (cf *CallFn) Start(cycles float32) {
 	// cap number of cycles used by the ARM program
 	//
-	// I think the real harmony does this (possibly by using Timer0). that
+	// I think the real harmony does this (possibly by using Timer0?). that
 	// would explain why some test ROMs work on the hardware when the don't in
 	// this emulator *unless* we cap the number of cycles consumed somehow. the
 	// only question is what the cap should be.
@@ -129,10 +129,6 @@ func (cf *CallFn) Start(cycles float32) {
 // Step forward one clock. Returns true if the ARM program is running and false
 // otherwise.
 func (cf *CallFn) Step(immediate bool, armClock float32, vcsClock float32) bool {
-	if cf.remainingCycles <= 0 {
-		return false
-	}
-
 	if immediate {
 		cf.remainingCycles = 0
 		return false
@@ -140,6 +136,11 @@ func (cf *CallFn) Step(immediate bool, armClock float32, vcsClock float32) bool 
 
 	// number of arm cycles consumed for every VCS cycle
 	armCycles := float32(armClock / vcsClock)
+
+	if cf.remainingCycles <= armCycles {
+		cf.remainingCycles = 0
+		return false
+	}
 
 	cf.remainingCycles -= armCycles
 	return true

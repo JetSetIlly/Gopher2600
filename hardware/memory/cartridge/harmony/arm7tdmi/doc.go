@@ -38,7 +38,7 @@
 //
 // https://developer.arm.com/documentation/ddi0234/b
 //
-// Specific information about the UXP ARM7TDMI-S used by the Harmony cartridge.
+// Specific information about the NXP ARM7TDMI-S used by the Harmony cartridge.
 // This contains good information about the MAM.
 //
 // https://www.nxp.com/docs/en/user-guide/UM10161.pdf

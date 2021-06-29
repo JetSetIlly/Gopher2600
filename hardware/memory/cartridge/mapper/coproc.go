@@ -23,31 +23,35 @@ import "fmt"
 // characters, meaning that all Operator fields should be 4 characters and
 // padded with spaces as required.
 type CartCoProcDisasmEntry struct {
-	Location       string
-	Address        string
-	Operator       string
-	Operand        string
-	ExecutionNotes string
+	Location string
+	Address  string
+	Operator string
+	Operand  string
 
 	// total cycles for this instruction
 	Cycles float32
 
-	// Some coprocessors will have more detailed cycle information
-	CycleDetails CartCoProcCycleDetails
+	// basic notes about the last execution of the entry
+	ExecutionNotes string
 
-	// update indicates whether the notes field should be updated when
-	// instruction is executed again after the first decoding.
+	// ExecutionNotes field may be updated
 	UpdateNotes bool
+
+	// some coprocessors will have more detailed information and the last
+	// execution othe entry.
+	//
+	// the contents of this field may change every execution
+	ExecutionDetails CartCoProcExecutionDetails
 }
 
-// CartCoProcCycleDetails represents more detailed information about the cycle
-// usage for a coprocessor disassembly entry. At it's minimum it should report
-// back a text summary of the cycle usage.
+// CartCoProcExecutionDetails represents more specific information about an execution
+// of a coprocessor disassembly entry. At it's minimum it should report back a
+// text summary.
 //
 // When coprocessor specific details are required by a consumer of the
 // interface, the specific coprocessor being used should be known ahead of
 // time. The interface can then be cast to the concrete type.
-type CartCoProcCycleDetails interface {
+type CartCoProcExecutionDetails interface {
 	String() string
 }
 

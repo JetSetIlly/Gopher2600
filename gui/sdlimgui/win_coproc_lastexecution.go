@@ -118,21 +118,15 @@ func (win *winCoProcLastExecution) draw() {
 			return
 		}
 
-		if programCycles, ok := itr.Details.Summary.(arm7tdmi.Cycles); ok {
-			iTotal := programCycles.I + programCycles.Imerged
-			nTotal := programCycles.Npc + programCycles.Ndata
-			sTotal := programCycles.Spc + programCycles.Sdata + programCycles.Spcmerged
-
-			if imgui.BeginTableV("cycles", 4, imgui.TableFlagsBordersOuter, imgui.Vec2{}, 0.0) {
+		if es, ok := itr.Details.Summary.(arm7tdmi.ExecutionDetails); ok {
+			if imgui.BeginTableV("cycles", 3, imgui.TableFlagsBordersOuter, imgui.Vec2{}, 0.0) {
 				imgui.TableNextRow()
 				imgui.TableNextColumn()
-				imgui.Text(fmt.Sprintf("I: %-6.0f", iTotal))
+				imgui.Text(fmt.Sprintf("N: %d", es.N))
 				imgui.TableNextColumn()
-				imgui.Text(fmt.Sprintf("C: %-6.0f", programCycles.C))
+				imgui.Text(fmt.Sprintf("I: %d", es.I))
 				imgui.TableNextColumn()
-				imgui.Text(fmt.Sprintf("N: %-6.0f", nTotal))
-				imgui.TableNextColumn()
-				imgui.Text(fmt.Sprintf("S: %-6.0f", sTotal))
+				imgui.Text(fmt.Sprintf("S: %d", es.S))
 				imgui.EndTable()
 			}
 		} else {
@@ -146,11 +140,10 @@ func (win *winCoProcLastExecution) drawDisasm(itr *coprocessor.Iterate) {
 	imgui.BeginChildV("lastexecution", imgui.Vec2{X: 0, Y: height}, false, 0)
 	defer imgui.EndChild()
 
-	numColumns := 5
 	flgs := imgui.TableFlagsNone
 	flgs |= imgui.TableFlagsSizingFixedFit
 	flgs |= imgui.TableFlagsRowBg
-	if !imgui.BeginTableV("lastexecution", numColumns, flgs, imgui.Vec2{}, 0) {
+	if !imgui.BeginTableV("lastexecution", 6, flgs, imgui.Vec2{}, 0) {
 		return
 	}
 	defer imgui.EndTable()
@@ -177,14 +170,37 @@ func (win *winCoProcLastExecution) drawDisasm(itr *coprocessor.Iterate) {
 			imgui.TableNextColumn()
 			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmAddress)
 			imgui.Text(e.Address)
+			imgui.PopStyleColor()
 
 			imgui.TableNextColumn()
 			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmOperator)
 			imgui.Text(e.Operator)
+			imgui.PopStyleColor()
 
 			imgui.TableNextColumn()
 			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmOperand)
 			imgui.Text(e.Operand)
+			imgui.PopStyleColor()
+
+			// branch trail indicator
+			imgui.TableNextColumn()
+			if details, ok := e.ExecutionDetails.(arm7tdmi.ExecutionDetails); ok {
+				tooltip := ""
+				switch details.BranchTrail {
+				case arm7tdmi.BranchTrailUsed:
+					tooltip = "Branch trail was used"
+					imguiColorLabel("", win.img.cols.True)
+				case arm7tdmi.BranchTrailFlushed:
+					tooltip = "Branch trail was flushed causing a pipeline stall"
+					imguiColorLabel("", win.img.cols.False)
+				}
+
+				if imgui.IsItemHovered() {
+					imgui.BeginTooltip()
+					imgui.Text(tooltip)
+					imgui.EndTooltip()
+				}
+			}
 
 			imgui.TableNextColumn()
 			if e.Cycles > 0 {
@@ -192,29 +208,29 @@ func (win *winCoProcLastExecution) drawDisasm(itr *coprocessor.Iterate) {
 				imgui.Text(fmt.Sprintf("%.0f ", e.Cycles))
 
 				// show cycle details as a tooltip
-				if e.CycleDetails.String() != "" && imgui.IsItemHovered() {
+				if e.ExecutionDetails.String() != "" && imgui.IsItemHovered() {
 					imgui.BeginTooltip()
-					imgui.Text(e.CycleDetails.String())
-					if cycles, ok := e.CycleDetails.(arm7tdmi.Cycles); ok {
+					imgui.Text(e.ExecutionDetails.String())
+					if details, ok := e.ExecutionDetails.(arm7tdmi.ExecutionDetails); ok {
 						imgui.Spacing()
 						imgui.Separator()
 						imgui.Spacing()
-						switch cycles.MAMCR {
+						switch details.MAMCR {
 						default:
 							// this is an invalid value for MAMCR. operate on the assumption the the MAM is off
 							fallthrough
 						case 0:
-							imguiColorLabel("MAM", win.img.cols.False)
+							imguiColorLabel("MAM-0", win.img.cols.False)
 						case 1:
-							imguiColorLabel("MAM", win.img.cols.TrueFalse)
+							imguiColorLabel("MAM-1", win.img.cols.TrueFalse)
 						case 2:
-							imguiColorLabel("MAM", win.img.cols.True)
+							imguiColorLabel("MAM-2", win.img.cols.True)
 						}
 					}
 					imgui.EndTooltip()
 				}
 
-				imgui.PopStyleColorV(1)
+				imgui.PopStyleColor()
 			} else {
 				imgui.Text(" ")
 			}
@@ -222,8 +238,7 @@ func (win *winCoProcLastExecution) drawDisasm(itr *coprocessor.Iterate) {
 			imgui.TableNextColumn()
 			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmNotes)
 			imgui.Text(e.ExecutionNotes)
-
-			imgui.PopStyleColorV(4)
+			imgui.PopStyleColor()
 
 			e, ok = itr.Next()
 			if !ok {

@@ -30,10 +30,13 @@ type MemoryMap struct {
 	PeripheralsMemtop uint32
 
 	// specific registers addresses
-	TIMERcontrol uint32
-	TIMERvalue   uint32
-	MAMCR        uint32
-	MAMTIM       uint32
+	TIMERcontrol     uint32
+	TIMERvalue       uint32
+	TIMERprescale    uint32
+	TIMERprescaleMax uint32
+	APBDIV           uint32
+	MAMCR            uint32
+	MAMTIM           uint32
 }
 
 // NewMemoryMap is the preferred method of initialisation for the MemoryMap type.
@@ -57,6 +60,9 @@ func NewMemoryMap(model string) MemoryMap {
 		mmap.PeripheralsMemtop = uint32(0xffffffff)
 		mmap.TIMERcontrol = mmap.PeripheralsOrigin | 0x00008004
 		mmap.TIMERvalue = mmap.PeripheralsOrigin | 0x00008008
+		mmap.TIMERprescale = mmap.PeripheralsOrigin | 0x00008010
+		mmap.TIMERprescaleMax = mmap.PeripheralsOrigin | 0x0000800C
+		mmap.APBDIV = mmap.PeripheralsOrigin | 0x001FC100
 		mmap.MAMCR = mmap.PeripheralsOrigin | 0x001fc000
 		mmap.MAMTIM = mmap.PeripheralsOrigin | 0x001fc004
 

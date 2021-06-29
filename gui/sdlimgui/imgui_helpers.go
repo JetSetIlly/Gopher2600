@@ -325,11 +325,13 @@ func drawByteGrid(data []uint8, cmp []uint8, diffCol imgui.Vec4, base uint16, co
 // imguiColorLabel displays a coloured icon (fonts.ColorSwatch) with a label.
 // useful for generating color keys.
 func imguiColorLabel(label string, col imgui.Vec4) {
+	imgui.BeginGroup()
 	imgui.PushStyleColor(imgui.StyleColorText, col)
 	imgui.Text(string(fonts.ColorSwatch))
 	imgui.PopStyleColor()
 	imgui.SameLine()
 	imgui.Text(label)
+	imgui.EndGroup()
 }
 
 // returns a Vec2 suitable for use as a position vector when opening a imgui

@@ -425,6 +425,8 @@ func (cart *cdf) Step(clock float32) {
 		if !cart.state.callfn.Step(cart.prefs.ARM.Immediate.Get().(bool), float32(cart.prefs.ARM.Clock.Get().(float64)), clock) {
 			cart.arm.Step(clock)
 		}
+	} else {
+		cart.arm.Step(clock)
 	}
 }
 
