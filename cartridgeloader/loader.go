@@ -143,6 +143,10 @@ func NewLoader(filename string, mapping string) Loader {
 			fallthrough
 		case ".3E":
 			fallthrough
+		case ".E3P":
+			fallthrough // synonym for 3E+
+		case ".E3+":
+			fallthrough // synonym for 3E+
 		case ".3E+":
 			fallthrough
 		case ".SB":

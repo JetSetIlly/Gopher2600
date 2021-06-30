@@ -58,7 +58,7 @@ func (dsm *Disassembly) bless(mc *cpu.CPU, copiedBanks []mapper.BankContent) err
 
 	resetAddress, resetArea := memorymap.MapAddress(mc.PC.Value(), true)
 	if resetArea != memorymap.Cartridge {
-		return curated.Errorf("bless: cartridge does not reset to an address in the cartridge area.")
+		logger.Log("disassembly", "cartridge does not reset to an address in the cartridge area.")
 	}
 
 	// bless from reset address for every bank. note that we do not test to see

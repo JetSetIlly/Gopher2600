@@ -245,6 +245,12 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 		cart.mapper, err = newDF(cartload.Data)
 	case "3E":
 		cart.mapper, err = new3e(cartload.Data)
+	case "E3P":
+		// synonym for 3E+
+		fallthrough
+	case "E3+":
+		// synonym for 3E+
+		fallthrough
 	case "3E+":
 		cart.mapper, err = new3ePlus(cartload.Data)
 	case "SB":
