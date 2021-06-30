@@ -145,6 +145,8 @@ func (win *winDbgScr) setOpen(open bool) {
 	win.open = open
 }
 
+const breakMenuPopupID = "breakmenu"
+
 func (win *winDbgScr) draw() {
 	if !win.open {
 		return
@@ -187,17 +189,19 @@ func (win *winDbgScr) draw() {
 	// corner of the screen.
 	win.screenOrigin = imgui.CursorScreenPos()
 
-	// get mouse position and transform
-	win.mousePos = imgui.MousePos().Minus(win.screenOrigin)
+	// get mouse position if breakmenu is not open
+	if !imgui.IsPopupOpen(breakMenuPopupID) {
+		win.mousePos = imgui.MousePos().Minus(win.screenOrigin)
 
-	// scale mouse position
-	win.mouseClock = int(win.mousePos.X / win.xscaling)
-	win.mouseScanline = int(win.mousePos.Y / win.yscaling)
+		// scale
+		win.mouseClock = int(win.mousePos.X / win.xscaling)
+		win.mouseScanline = int(win.mousePos.Y / win.yscaling)
 
-	// adjust if image cropped or crt preview is active
-	if win.cropped || win.crtPreview {
-		win.mouseClock += specification.ClksHBlank
-		win.mouseScanline += win.scr.crit.topScanline
+		// adjust if image cropped or crt preview is active
+		if win.cropped || win.crtPreview {
+			win.mouseClock += specification.ClksHBlank
+			win.mouseScanline += win.scr.crit.topScanline
+		}
 	}
 
 	// push style info for screen and overlay ImageButton(). we're using
@@ -228,10 +232,10 @@ func (win *winDbgScr) draw() {
 		// we only call OpenPopup() if it's not already open. also, care taken to
 		// avoid menu opening when releasing a captured mouse.
 		if !win.isCaptured && imgui.IsItemHovered() && imgui.IsMouseDown(1) {
-			imgui.OpenPopup("breakMenu")
+			imgui.OpenPopup(breakMenuPopupID)
 		}
 
-		if imgui.BeginPopup("breakMenu") {
+		if imgui.BeginPopup(breakMenuPopupID) {
 			imgui.Text("Break")
 			imguiSeparator()
 			if imgui.Selectable(fmt.Sprintf("Scanline=%d", win.mouseScanline)) {
