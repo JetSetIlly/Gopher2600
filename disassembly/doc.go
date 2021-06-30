@@ -47,4 +47,13 @@
 // to the Symbol tables. This reference will be valid throughout the lifetime
 // of the Disassembly instance and will "survive" calls to the FromMemory() and
 // FromCartridge() functions.
+//
+// Segmented Cartridges
+//
+// The disassembly package treats small bank sized (those less than 4k) by
+// performing the disassembly with the cartridge rooted at each origin point -
+// in each possible segment allowed by the mapper.
+//
+// Origin information is held in the mappers.BankContent type returned by the
+// cartridge.CopyBanks() function.
 package disassembly

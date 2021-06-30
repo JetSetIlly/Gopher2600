@@ -23,22 +23,57 @@ import (
 // disasmMemory is a simplified memory model that allows the emulated CPU to
 // read cartridge memory without touching the actual cartridge.
 type disasmMemory struct {
-	// if bank is not nil then the bank is read directly
-	bank   mapper.BankContent
+	// the bank which the cartridge starts on
+	startingBank int
+
+	// current bank to index the banks array
+	currentBank int
+	banks       []mapper.BankContent
+
+	// the current origin for the mapped bank
 	origin uint16
+}
+
+func newDisasmMemory(startingBank int, copiedBanks []mapper.BankContent) *disasmMemory {
+	dismem := &disasmMemory{
+		startingBank: startingBank,
+		currentBank:  startingBank,
+		banks:        copiedBanks,
+	}
+	return dismem
+}
+
+func (dismem *disasmMemory) reset() {
+	dismem.currentBank = dismem.startingBank
+	dismem.origin = dismem.banks[dismem.currentBank].Origins[0]
 }
 
 func (dismem *disasmMemory) Read(address uint16) (uint8, error) {
 	// map address
 	address, area := memorymap.MapAddress(address, true)
 	if area == memorymap.Cartridge {
-		// bank field is set so we bypass the cartridge mapper's usual read
-		// logic and access the bank directly
+		// bring address into range. if it's still outside of range return a
+		// zero byte (with no error)
+		//
+		// the alternative to this strategy is to use a mask based on the
+		// actual length of the bank. in most cases this will be the same as
+		// memorymap.CartridgeBits but some cartridge mappers use banks that
+		// are smaller than that:
+		//
+		// address = address & uint16(len(dismem.banks[0].Data)-1)
+		//
+		// the problem with this is that the Read() function will return a byte
+		// which may be misleading to the disassembler. using the strategy
+		// below a value of zero is returned.
+		//
+		// no error is returned, even though it might seem we should, because
+		// it would only cause the CPU to halt mid-instruction, which would
+		// only cause other complications.
 		address = (address - dismem.origin) & memorymap.CartridgeBits
-		if address >= uint16(len(dismem.bank.Data)) {
+		if address >= uint16(len(dismem.banks[dismem.currentBank].Data)) {
 			return 0, nil
 		}
-		return dismem.bank.Data[address], nil
+		return dismem.banks[dismem.currentBank].Data[address], nil
 	}
 
 	// address outside of cartridge range return nothing

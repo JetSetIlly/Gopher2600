@@ -26,19 +26,14 @@ import (
 )
 
 func (dsm *Disassembly) disassemble(mc *cpu.CPU, mem *disasmMemory) error {
-	copiedBanks, err := dsm.vcs.Mem.Cart.CopyBanks()
-	if err != nil {
-		return curated.Errorf("decode: %v", err)
-	}
-
 	// basic decoding pass
-	err = dsm.decode(mc, mem, copiedBanks)
+	err := dsm.decode(mc, mem)
 	if err != nil {
 		return err
 	}
 
 	// bless those entries which we're reasonably sure are real instructions
-	err = dsm.bless(mc, copiedBanks)
+	err = dsm.bless(mc, mem)
 	if err != nil {
 		return err
 	}
@@ -49,24 +44,19 @@ func (dsm *Disassembly) disassemble(mc *cpu.CPU, mem *disasmMemory) error {
 	return nil
 }
 
-func (dsm *Disassembly) bless(mc *cpu.CPU, copiedBanks []mapper.BankContent) error {
-	// we can be sure the machine reset address is a starting point for a blessing
-	err := mc.LoadPCIndirect(addresses.Reset)
-	if err != nil {
-		return err
-	}
-
-	resetAddress, resetArea := memorymap.MapAddress(mc.PC.Value(), true)
-	if resetArea != memorymap.Cartridge {
-		logger.Log("disassembly", "cartridge does not reset to an address in the cartridge area.")
-	}
-
-	// bless from reset address for every bank. note that we do not test to see
-	// if the blessSequence is "correct" before committal because execution
-	// from the reset address is likely
+func (dsm *Disassembly) bless(mc *cpu.CPU, mem *disasmMemory) error {
+	// bless from reset address for every bank
 	for b := range dsm.entries {
-		mc.PC.Load(resetAddress)
-		_ = dsm.blessSequence(b, mc.PC.Value(), true)
+		// get reset address from starting bank, taking into account the
+		// possibility that bank is smalled thank 4096 bytes
+		resetVector := addresses.Reset & (uint16(len(mem.banks[b].Data) - 1))
+		resetAddr := (uint16(mem.banks[b].Data[resetVector+1]) << 8) | uint16(mem.banks[b].Data[resetVector])
+
+		// make sure reset address is valid
+		_, area := memorymap.MapAddress(resetAddr, true)
+		if area == memorymap.Cartridge {
+			_ = dsm.blessSequence(mem.startingBank, resetAddr, true)
+		}
 	}
 
 	moreBlessing := true
@@ -75,10 +65,10 @@ func (dsm *Disassembly) bless(mc *cpu.CPU, copiedBanks []mapper.BankContent) err
 	for moreBlessing {
 		moreBlessing = false
 
-		// make sure we're not going bezerk. a limit of 100 is probably far too high
+		// make sure we're not going bezerk. a limit of 10 is probably too high
 		attempts++
-		if attempts > 100 {
-			return curated.Errorf("bless: cannot discover a finite bless path through the program")
+		if attempts > 10 {
+			break
 		}
 
 		// loop through every bank in the cartridge and collate a list of blessings
@@ -104,7 +94,7 @@ func (dsm *Disassembly) bless(mc *cpu.CPU, copiedBanks []mapper.BankContent) err
 					jmpAddress, area := memorymap.MapAddress(e.Result.InstructionData, true)
 
 					if area == memorymap.Cartridge {
-						l := jmpTargets(copiedBanks, jmpAddress)
+						l := jmpTargets(mem.banks, jmpAddress)
 
 						for _, jb := range l {
 							if dsm.blessSequence(jb, jmpAddress, false) {
@@ -132,6 +122,7 @@ func (dsm *Disassembly) bless(mc *cpu.CPU, copiedBanks []mapper.BankContent) err
 						mc.PC.Add(operand)
 
 						pcAddress, area := memorymap.MapAddress(mc.PC.Value(), true)
+
 						if area == memorymap.Cartridge {
 							if dsm.blessSequence(b, pcAddress, false) {
 								if dsm.blessSequence(b, pcAddress, true) {
@@ -229,10 +220,9 @@ func (dsm *Disassembly) blessSequence(bank int, addr uint16, commit bool) bool {
 
 		// end run if entry has already been blessed
 		if instruction.Level == EntryLevelBlessed {
-			if hasCommitted {
-				logger.Logf("disassembly", "blessSequence has blessed an instruction in a false sequence. discovered at bank %d: %s", bank, instruction.String())
-			}
-			return false
+			// this is okay and expected so return true to indicate that the
+			// blessing should continue
+			return true
 		}
 
 		// if operator is unknown than end the sequence.
@@ -276,6 +266,7 @@ func (dsm *Disassembly) blessSequence(bank int, addr uint16, commit bool) bool {
 		// promote the entry
 		if commit {
 			hasCommitted = true
+
 			instruction.Level = EntryLevelBlessed
 		}
 
@@ -295,15 +286,14 @@ func (dsm *Disassembly) blessSequence(bank int, addr uint16, commit bool) bool {
 	return false
 }
 
-func (dsm *Disassembly) decode(mc *cpu.CPU, mem *disasmMemory, copiedBanks []mapper.BankContent) error {
+func (dsm *Disassembly) decode(mc *cpu.CPU, mem *disasmMemory) error {
 	// decoding can happen at the same time as iteration which is probably
 	// being run from a different goroutine. acknowledge the critical section
 	dsm.crit.Lock()
 	defer dsm.crit.Unlock()
 
-	for _, bank := range copiedBanks {
-		// point memory implementation to iterated bank
-		mem.bank = bank
+	for _, bank := range mem.banks {
+		mem.currentBank = bank.Number
 
 		// try each bank in each possible segment - banks that are smaller than
 		// the cartridge addressing range can often be mapped into different

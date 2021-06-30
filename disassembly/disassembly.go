@@ -27,6 +27,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/cpu"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/execution"
+	"github.com/jetsetilly/gopher2600/hardware/memory/addresses"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 	"github.com/jetsetilly/gopher2600/hardware/television"
@@ -128,16 +129,31 @@ func FromCartridge(cartload cartridgeloader.Loader) (*Disassembly, error) {
 
 // FromMemory disassembles an existing instance of cartridge memory using a
 // cpu with no flow control. Unlike the FromCartridge() function this function
-// requires an existing instance of Disassembly
+// requires an existing instance of Disassembly.
 //
-// cartridge will finish in its initialised state.
+// Disassembly will start/assume the cartridge is in the correct starting bank.
 func (dsm *Disassembly) FromMemory() error {
-	dsm.crit.Lock()
 	// unlocking manually before we call the disassmeble() function. this means
 	// we have to be careful to manually unlock before returning an error.
+	dsm.crit.Lock()
+
+	// create new memory
+	copiedBanks, err := dsm.vcs.Mem.Cart.CopyBanks()
+	if err != nil {
+		dsm.crit.Unlock()
+		return curated.Errorf("disassembly: %v", err)
+	}
+
+	startingBank := dsm.vcs.Mem.Cart.GetBank(addresses.Reset).Number
+
+	mem := newDisasmMemory(startingBank, copiedBanks)
+	if mem == nil {
+		dsm.crit.Unlock()
+		return curated.Errorf("disassembly: %s", "could not create memory for disassembly")
+	}
 
 	// read symbols file
-	err := dsm.Sym.ReadSymbolsFile(dsm.vcs.Mem.Cart)
+	err = dsm.Sym.ReadSymbolsFile(dsm.vcs.Mem.Cart)
 	if err != nil {
 		dsm.crit.Unlock()
 		return err
@@ -155,9 +171,6 @@ func (dsm *Disassembly) FromMemory() error {
 		dsm.crit.Unlock()
 		return nil
 	}
-
-	// create new memory
-	mem := &disasmMemory{}
 
 	// create a new NoFlowControl CPU to help disassemble memory
 	mc := cpu.NewCPU(nil, mem)
