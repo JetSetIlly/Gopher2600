@@ -97,8 +97,19 @@ type IterateEntries struct {
 	// the number of those entries with a label
 	LabelCount int
 
-	idx       int
-	lastEntry *Entry
+	// last entry should be a *copy* of the entry in the main disassembly. see
+	// makeCopyOfEntry() function
+	entryCopy *Entry
+
+	// index into the bank disassembly
+	idx int
+}
+
+// we don't want to return the actual entry in the disassembly because it will
+// result in a race condition error if the entry is updated at the same time as
+// we're dealing with the iteration.
+func makeCopyOfEntry(e Entry) *Entry {
+	return &e
 }
 
 // NewEntriesIteration initialises a new iteration of a dissasembly bank. The minLevel
@@ -194,7 +205,7 @@ func (eitr *IterateEntries) Next() (int, *Entry) {
 //
 // Returns (-1, nil) if end of disassembly has been reached.
 func (eitr *IterateEntries) SkipNext(n int, skipLabels bool) (int, *Entry) {
-	e := eitr.lastEntry
+	e := eitr.entryCopy
 
 	for n > 0 {
 		if e == nil {
@@ -250,16 +261,9 @@ func (eitr *IterateEntries) next() (int, *Entry) {
 		return -1, nil
 	}
 
-	eitr.lastEntry = eitr.dsm.entries[eitr.bank][eitr.idx]
+	eitr.entryCopy = makeCopyOfEntry(*eitr.dsm.entries[eitr.bank][eitr.idx])
 
-	return eitr.idx, makeCopyofEntry(*eitr.lastEntry)
-}
-
-// we don't want to return the actual entry in the disassembly because it will
-// result in a race condition erorr if the entry is updated at the same time as
-// we're dealing with the iteration.
-func makeCopyofEntry(e Entry) *Entry {
-	return &e
+	return eitr.idx, eitr.entryCopy
 }
 
 // IterateBlessed visits every entry in the disassembly optionally writing to
