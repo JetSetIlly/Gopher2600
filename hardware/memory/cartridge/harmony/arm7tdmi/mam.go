@@ -34,6 +34,10 @@ type mam struct {
 	// the preference value
 	pref int
 
+	// the address of the last prefetch and data read
+	prefetchAddress uint32
+	dataAddress     uint32
+
 	// the address of the last branch. implements the branch trail buffer.
 	// if an unexpected PC value is the same as lastBranchAddress then there is
 	// no need to fetch from flash

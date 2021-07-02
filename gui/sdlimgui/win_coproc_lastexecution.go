@@ -232,7 +232,7 @@ func (win *winCoProcLastExecution) drawDisasm(itr *coprocessor.Iterate) {
 
 				imgui.PopStyleColor()
 			} else {
-				imgui.Text(" ")
+				imgui.Text("??")
 			}
 
 			imgui.TableNextColumn()
