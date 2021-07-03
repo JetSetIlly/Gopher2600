@@ -69,6 +69,20 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (*target, error) {
 			trg = &target{
 				label: "PC",
 				currentValue: func() targetValue {
+					// check that there is no coprocessor runnig - the ARM
+					// class of coprocessors cause the 6507 to run NOP
+					// instructions, which causes the PC to advance. this means
+					// that a PC break can be triggered when the user probably
+					// doesn't want it to be.
+					bank := dbg.VCS.Mem.Cart.GetBank(dbg.VCS.CPU.PC.Address())
+					if bank.ExecutingCoprocessor {
+						// we return zero. it's highly unlikely a genuine BREAK PC 0
+						// has been requested but even so, this isn't great design.
+						// better to return two values perhaps, the second value saying
+						// that the target is out of action.
+						return 0
+					}
+
 					// for breakpoints it is important that the breakpoint
 					// value be normalised through mapAddress() too
 					ai := dbg.dbgmem.mapAddress(dbg.VCS.CPU.PC.Address(), true)
