@@ -71,7 +71,7 @@ const (
 	phosphorBloom    = 1.0
 	sharpness        = 0.55
 	pixelPerfectFade = 0.4
-	unsyncTolerance  = 0
+	unsyncTolerance  = 2
 )
 
 // NewPreferences is the preferred method of initialisation for the Preferences type.
