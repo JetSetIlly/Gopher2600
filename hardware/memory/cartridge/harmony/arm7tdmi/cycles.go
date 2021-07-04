@@ -50,14 +50,20 @@ const (
 )
 
 // the bus activity during a cycle
-type busType int
+type busAccess int
 
 const (
-	prefetch busType = iota
+	prefetch busAccess = iota
 	branch
-	data
-	write
+	dataRead
+	dataWrite
 )
+
+// is bus access an instruction or data read. equivalent in ARM terms, to
+// asking if Prot0 is 0 or 1.
+func (bt busAccess) isDataAccess() bool {
+	return bt == dataRead || bt == dataWrite
+}
 
 // the type of cycle being executed
 type cycleType int
@@ -68,7 +74,7 @@ const (
 	N
 )
 
-func (arm *ARM) mamBuffer(bus busType, addr uint32) bool {
+func (arm *ARM) isLatched(bus busAccess, addr uint32) bool {
 	addr &= 0xffffff80
 
 	switch bus {
@@ -84,11 +90,14 @@ func (arm *ARM) mamBuffer(bus busType, addr uint32) bool {
 			return false
 		}
 		arm.branchTrail = BranchTrailUsed
-	case data:
+	case dataRead:
 		if addr != arm.mam.dataAddress {
 			arm.mam.dataAddress = addr
 			return false
 		}
+	default:
+		// any other bus types are not in MAM latches
+		return false
 	}
 
 	return true
@@ -101,7 +110,7 @@ func (arm *ARM) Icycle() {
 	arm.prevCycles[0] = I
 }
 
-func (arm *ARM) Scycle(bus busType, addr uint32) {
+func (arm *ARM) Scycle(bus busAccess, addr uint32) {
 	// "Merged I-S cycles
 	// Where possible, the ARM7TDMI-S processor performs an optimization on the bus to
 	// allow extra time for memory decode. When this happens, the address of the next
@@ -132,19 +141,19 @@ func (arm *ARM) Scycle(bus busType, addr uint32) {
 	case 0:
 		arm.cycles += clklenFlash
 	case 1:
-		// for MAM-1, we go to flash memory only if it's a program acess. which
-		// means busType is "fetch" or "branch" (and not "write" or "data")
-		if bus == write || bus == data {
+		// for MAM-1, we go to flash memory only if it's a program acess (ie.
+		// not a data access)
+		if bus.isDataAccess() {
 			arm.cycles += clklenFlash
 		} else {
-			if arm.mamBuffer(bus, addr) {
+			if arm.isLatched(bus, addr) {
 				arm.cycles++
 			} else {
 				arm.cycles += clklenFlash
 			}
 		}
 	case 2:
-		if arm.mamBuffer(bus, addr) {
+		if arm.isLatched(bus, addr) {
 			arm.cycles++
 		} else {
 			arm.cycles += clklenFlash
@@ -152,8 +161,8 @@ func (arm *ARM) Scycle(bus busType, addr uint32) {
 	}
 }
 
-func (arm *ARM) Ncycle(bus busType, addr uint32) {
-	if arm.prevCycles[0] == N && bus != prefetch {
+func (arm *ARM) Ncycle(bus busAccess, addr uint32) {
+	if arm.prevCycles[0] == N && bus.isDataAccess() {
 		arm.cycles--
 		arm.mergedN = true
 	}
@@ -176,7 +185,7 @@ func (arm *ARM) Ncycle(bus busType, addr uint32) {
 		// for MAM-1, we always go to flash memory regardless of busType
 		arm.cycles += clklenFlash
 	case 2:
-		if arm.mamBuffer(bus, addr) && bus != write {
+		if arm.isLatched(bus, addr) {
 			arm.cycles++
 		} else {
 			arm.cycles += clklenFlash
@@ -202,7 +211,7 @@ func (arm *ARM) storeRegNCycle(addr uint32) {
 	// How this actually works however is a matter of debate. But assuming the
 	// N cycle is *always* merged seems to work out okay in all MAM/code-optimisation
 	// combinations.
-	arm.Ncycle(write, addr)
+	arm.Ncycle(dataWrite, addr)
 	arm.prefetchCycle = N
 	arm.mergedN = true
 }

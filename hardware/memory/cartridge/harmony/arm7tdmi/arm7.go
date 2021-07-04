@@ -1368,7 +1368,7 @@ func (arm *ARM) executePCrelativeLoad(opcode uint16) {
 	arm.registers[destReg] = arm.read32bit(addr)
 
 	// "7.8 Load Register" in "ARM7TDMI-S Technical Reference Manual r4p3"
-	arm.Ncycle(data, addr)
+	arm.Ncycle(dataRead, addr)
 	arm.Icycle()
 	if destReg == rPC {
 		arm.pcCycle()
@@ -1395,7 +1395,7 @@ func (arm *ARM) executeLoadStoreWithRegisterOffset(opcode uint16) {
 			arm.registers[reg] = uint32(arm.read8bit(addr))
 
 			// "7.8 Load Register" in "ARM7TDMI-S Technical Reference Manual r4p3"
-			arm.Ncycle(data, addr)
+			arm.Ncycle(dataRead, addr)
 			arm.Icycle()
 			if reg == rPC {
 				arm.pcCycle()
@@ -1412,7 +1412,7 @@ func (arm *ARM) executeLoadStoreWithRegisterOffset(opcode uint16) {
 		arm.registers[reg] = arm.read32bit(addr)
 
 		// "7.8 Load Register" in "ARM7TDMI-S Technical Reference Manual r4p3"
-		arm.Ncycle(data, addr)
+		arm.Ncycle(dataRead, addr)
 		arm.Icycle()
 		if reg == rPC {
 			arm.pcCycle()
@@ -1472,7 +1472,7 @@ func (arm *ARM) executeLoadStoreSignExtendedByteHalford(opcode uint16) {
 			}
 
 			// "7.8 Load Register" in "ARM7TDMI-S Technical Reference Manual r4p3"
-			arm.Ncycle(data, addr)
+			arm.Ncycle(dataRead, addr)
 			arm.Icycle()
 			if reg == rPC {
 				arm.pcCycle()
@@ -1492,7 +1492,7 @@ func (arm *ARM) executeLoadStoreSignExtendedByteHalford(opcode uint16) {
 		}
 
 		// "7.8 Load Register" in "ARM7TDMI-S Technical Reference Manual r4p3"
-		arm.Ncycle(data, addr)
+		arm.Ncycle(dataRead, addr)
 		arm.Icycle()
 		if reg == rPC {
 			arm.pcCycle()
@@ -1510,7 +1510,7 @@ func (arm *ARM) executeLoadStoreSignExtendedByteHalford(opcode uint16) {
 		arm.registers[reg] = uint32(arm.read16bit(addr))
 
 		// "7.8 Load Register" in "ARM7TDMI-S Technical Reference Manual r4p3"
-		arm.Ncycle(data, addr)
+		arm.Ncycle(dataRead, addr)
 		arm.Icycle()
 		if reg == rPC {
 			arm.pcCycle()
@@ -1560,7 +1560,7 @@ func (arm *ARM) executeLoadStoreWithImmOffset(opcode uint16) {
 			}
 
 			// "7.8 Load Register" in "ARM7TDMI-S Technical Reference Manual r4p3"
-			arm.Ncycle(data, addr)
+			arm.Ncycle(dataRead, addr)
 			arm.Icycle()
 			if reg == rPC {
 				arm.pcCycle()
@@ -1576,7 +1576,7 @@ func (arm *ARM) executeLoadStoreWithImmOffset(opcode uint16) {
 		arm.registers[reg] = arm.read32bit(addr)
 
 		// "7.8 Load Register" in "ARM7TDMI-S Technical Reference Manual r4p3"
-		arm.Ncycle(data, addr)
+		arm.Ncycle(dataRead, addr)
 		arm.Icycle()
 		if reg == rPC {
 			arm.pcCycle()
@@ -1633,7 +1633,7 @@ func (arm *ARM) executeLoadStoreHalfword(opcode uint16) {
 		arm.registers[reg] = uint32(arm.read16bit(addr))
 
 		// "7.8 Load Register" in "ARM7TDMI-S Technical Reference Manual r4p3"
-		arm.Ncycle(data, addr)
+		arm.Ncycle(dataRead, addr)
 		arm.Icycle()
 		if reg == rPC {
 			arm.pcCycle()
@@ -1675,7 +1675,7 @@ func (arm *ARM) executeSPRelativeLoadStore(opcode uint16) {
 		arm.registers[reg] = arm.read32bit(addr)
 
 		// "7.8 Load Register" in "ARM7TDMI-S Technical Reference Manual r4p3"
-		arm.Ncycle(data, addr)
+		arm.Ncycle(dataRead, addr)
 		arm.Icycle()
 		if reg == rPC {
 			arm.pcCycle()
@@ -1807,9 +1807,9 @@ func (arm *ARM) executePushPopRegisters(opcode uint16) {
 
 			// "7.10 Load Multiple Registers" in "ARM7TDMI-S Technical Reference Manual r4p3"
 			if i == 0 {
-				arm.Ncycle(data, addr)
+				arm.Ncycle(dataRead, addr)
 			} else {
-				arm.Scycle(data, addr)
+				arm.Scycle(dataRead, addr)
 			}
 
 			// read register if indicated by regList
@@ -1829,7 +1829,7 @@ func (arm *ARM) executePushPopRegisters(opcode uint16) {
 			v := arm.read32bit(addr) & 0xfffffffe
 
 			// "7.10 Load Multiple Registers" in "ARM7TDMI-S Technical Reference Manual r4p3"
-			arm.Ncycle(data, addr)
+			arm.Ncycle(dataRead, addr)
 
 			// add two to the new PC value. not sure why this is. it's not
 			// described in the pseudo code above but I think it's to do with
@@ -1903,9 +1903,9 @@ func (arm *ARM) executePushPopRegisters(opcode uint16) {
 
 		// "7.11 Store Multiple Registers" in "ARM7TDMI-S Technical Reference Manual r4p3"
 		if i == 0 {
-			arm.Ncycle(write, addr)
+			arm.Ncycle(dataWrite, addr)
 		} else {
-			arm.Scycle(write, addr)
+			arm.Scycle(dataWrite, addr)
 		}
 
 		// write register if indicated by regList
@@ -1923,7 +1923,7 @@ func (arm *ARM) executePushPopRegisters(opcode uint16) {
 		num++
 
 		// "7.11 Store Multiple Registers" in "ARM7TDMI-S Technical Reference Manual r4p3"
-		arm.Ncycle(write, addr)
+		arm.Ncycle(dataWrite, addr)
 	}
 
 	// update stack pointer. note that this is the address we started the push
@@ -1961,9 +1961,9 @@ func (arm *ARM) executeMultipleLoadStore(opcode uint16) {
 			// "7.10 Load Multiple Registers" in "ARM7TDMI-S Technical Reference Manual r4p3"
 			// "7.11 Store Multiple Registers" in "ARM7TDMI-S Technical Reference Manual r4p3"
 			if i == 0 {
-				arm.Ncycle(write, addr)
+				arm.Ncycle(dataWrite, addr)
 			} else {
-				arm.Scycle(write, addr)
+				arm.Scycle(dataWrite, addr)
 			}
 
 			if load {
