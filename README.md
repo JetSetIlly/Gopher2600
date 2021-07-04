@@ -783,9 +783,10 @@ Reference for the ARM7TDMI-S, as used in the Harmony cartridge formats:
 
 https://developer.arm.com/documentation/ddi0234/b
 
-The Thumb instruction specifically is summarised nicely here:
+For detail about the Thumb instruction set the following document was
+preferred. Mnemonics used in the ARM disassembly are from this document:
 
-https://edu.heibai.org/ARM%E8%B5%84%E6%96%99/ARM7-TDMI-manual-pt3.pdf
+http://bear.ces.cwru.edu/eecs_382/ARM7-TDMI-manual-pt1.pdf
 
 Further information from the ARM Architecture Reference Manual:
 

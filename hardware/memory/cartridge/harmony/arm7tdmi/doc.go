@@ -23,7 +23,7 @@
 // format 17, software interrupts, remain unimplemented. To this end, the
 // following reference was preferred:
 //
-// https://usermanual.wiki/Pdf/ARM7TDMImanualpt3.1481331792/view
+// http://bear.ces.cwru.edu/eecs_382/ARM7-TDMI-manual-pt1.pdf
 //
 // More detailed explanations of Thumb instruction were found in chapter A7.1
 // of the ARM Architecture Reference Manual. In particular the side-effects of
