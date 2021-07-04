@@ -112,7 +112,7 @@ func (arm *ARM) Scycle(bus busType, addr uint32) {
 	// the memory access. This is shown in Figure 3-5 on page 3-9."
 	//
 	// page 3-8 of the "ARM7TDMI-S Technical Reference Manual r4p3"
-	if arm.prevCycles[1] == I {
+	if arm.prevCycles[1] == I && arm.prevCycles[0] == S {
 		arm.cycles--
 		arm.mergedIS = true
 	}
@@ -153,6 +153,11 @@ func (arm *ARM) Scycle(bus busType, addr uint32) {
 }
 
 func (arm *ARM) Ncycle(bus busType, addr uint32) {
+	if arm.prevCycles[0] == N && bus != prefetch {
+		arm.cycles--
+		arm.mergedN = true
+	}
+
 	arm.N++
 	arm.prevCycles[1] = arm.prevCycles[0]
 	arm.prevCycles[0] = N
