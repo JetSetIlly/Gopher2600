@@ -85,6 +85,14 @@ type imguiColors struct {
 	DisasmBreakAddress imgui.Vec4
 	DisasmBreakOther   imgui.Vec4
 
+	// coprocessor last execution
+	CoProcMAM0               imgui.Vec4
+	CoProcMAM1               imgui.Vec4
+	CoProcMAM2               imgui.Vec4
+	CoProcBranchTrailUsed    imgui.Vec4
+	CoProcBranchTrailFlushed imgui.Vec4
+	CoProcMergedIS           imgui.Vec4
+
 	// audio oscilloscope
 	AudioOscBg   imgui.Vec4
 	AudioOscLine imgui.Vec4
@@ -188,6 +196,14 @@ func newColors() *imguiColors {
 		DisasmCPUstep:   imgui.Vec4{1.0, 1.0, 1.0, 0.1},
 		DisasmVideoStep: imgui.Vec4{0.5, 0.5, 0.5, 0.07},
 		// deferring DisasmBreakAddress & DisasmBreakOther
+
+		// coprocessor last execution
+		CoProcMAM0:               imgui.Vec4{0.6, 0.3, 0.3, 1.0},
+		CoProcMAM1:               imgui.Vec4{0.6, 0.6, 0.3, 1.0},
+		CoProcMAM2:               imgui.Vec4{0.3, 0.6, 0.3, 1.0},
+		CoProcBranchTrailFlushed: imgui.Vec4{0.6, 0.3, 0.3, 1.0},
+		CoProcBranchTrailUsed:    imgui.Vec4{0.3, 0.6, 0.3, 1.0},
+		CoProcMergedIS:           imgui.Vec4{0.3, 0.3, 0.6, 1.0},
 
 		// audio oscilloscope
 		AudioOscBg:   imgui.Vec4{0.21, 0.29, 0.23, 1.0},

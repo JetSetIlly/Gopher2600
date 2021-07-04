@@ -185,20 +185,31 @@ func (win *winCoProcLastExecution) drawDisasm(itr *coprocessor.Iterate) {
 			// branch trail indicator
 			imgui.TableNextColumn()
 			if details, ok := e.ExecutionDetails.(arm7tdmi.ExecutionDetails); ok {
+				imgui.SameLine()
+
 				tooltip := ""
 				switch details.BranchTrail {
 				case arm7tdmi.BranchTrailUsed:
 					tooltip = "Branch trail was used"
-					imguiColorLabel("", win.img.cols.True)
+					imguiColorLabel("", win.img.cols.CoProcBranchTrailUsed)
 				case arm7tdmi.BranchTrailFlushed:
 					tooltip = "Branch trail was flushed causing a pipeline stall"
-					imguiColorLabel("", win.img.cols.False)
+					imguiColorLabel("", win.img.cols.CoProcBranchTrailFlushed)
 				}
-
 				if imgui.IsItemHovered() {
 					imgui.BeginTooltip()
 					imgui.Text(tooltip)
 					imgui.EndTooltip()
+				}
+
+				if details.MergedIS {
+					imgui.SameLine()
+					imguiColorLabel("", win.img.cols.CoProcMergedIS)
+					if imgui.IsItemHovered() {
+						imgui.BeginTooltip()
+						imgui.Text("merged I-S")
+						imgui.EndTooltip()
+					}
 				}
 			}
 
@@ -220,11 +231,11 @@ func (win *winCoProcLastExecution) drawDisasm(itr *coprocessor.Iterate) {
 							// this is an invalid value for MAMCR. operate on the assumption the the MAM is off
 							fallthrough
 						case 0:
-							imguiColorLabel("MAM-0", win.img.cols.False)
+							imguiColorLabel("MAM-0", win.img.cols.CoProcMAM0)
 						case 1:
-							imguiColorLabel("MAM-1", win.img.cols.TrueFalse)
+							imguiColorLabel("MAM-1", win.img.cols.CoProcMAM1)
 						case 2:
-							imguiColorLabel("MAM-2", win.img.cols.True)
+							imguiColorLabel("MAM-2", win.img.cols.CoProcMAM2)
 						}
 					}
 					imgui.EndTooltip()

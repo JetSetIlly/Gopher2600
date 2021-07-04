@@ -27,6 +27,7 @@ type ExecutionDetails struct {
 	S           int
 	MAMCR       int
 	BranchTrail BranchTrail
+	MergedIS    bool
 }
 
 func (es ExecutionDetails) String() string {
@@ -115,6 +116,7 @@ func (arm *ARM) Scycle(bus busType, addr uint32) {
 			arm.I--
 		}
 		arm.cycles--
+		arm.mergedIS = true
 	}
 
 	arm.S++

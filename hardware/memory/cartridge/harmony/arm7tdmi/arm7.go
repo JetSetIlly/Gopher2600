@@ -78,6 +78,7 @@ type ARM struct {
 
 	// what happened with any branch that might have occured this instruction
 	branchTrail BranchTrail
+	mergedIS    bool
 
 	// a record of cycle types. used to decide whether to merge I-S cycles
 	prevCycles [2]cycleType
@@ -424,6 +425,7 @@ func (arm *ARM) Run(mamcr uint32) (uint32, float32, error) {
 		arm.S = 0
 		arm.cycles = 0
 		arm.branchTrail = BranchTrailNotUsed
+		arm.mergedIS = false
 
 		// -2 adjustment to PC register to account for pipeline
 		pc := arm.registers[rPC] - 2
@@ -614,6 +616,7 @@ func (arm *ARM) Run(mamcr uint32) (uint32, float32, error) {
 				S:           int(arm.S),
 				MAMCR:       int(arm.mam.mamcr),
 				BranchTrail: arm.branchTrail,
+				MergedIS:    arm.mergedIS,
 			}
 
 			// update cycle information
