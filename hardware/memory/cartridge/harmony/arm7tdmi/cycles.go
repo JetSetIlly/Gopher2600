@@ -28,7 +28,6 @@ type ExecutionDetails struct {
 	MAMCR       int
 	BranchTrail BranchTrail
 	MergedIS    bool
-	MergedN     bool
 }
 
 func (es ExecutionDetails) String() string {
@@ -176,17 +175,6 @@ func (arm *ARM) Scycle(bus busAccess, addr uint32) {
 }
 
 func (arm *ARM) Ncycle(bus busAccess, addr uint32) {
-	// if previous cycle was an N cycle then knock off a cycle from the
-	// instruction total (don't worry about negative numbers, it's all good).
-	//
-	// we're limiting this to data N cycles. this means that we exclude the N
-	// cycle prefetch generated at the end of a store register type instruction
-	// (see storeRegisterCycles() function)
-	if arm.prevCycles[0] == N && bus.isDataAccess() {
-		arm.cycles--
-		arm.mergedN = true
-	}
-
 	arm.N++
 	arm.prevCycles[1] = arm.prevCycles[0]
 	arm.prevCycles[0] = N
@@ -234,5 +222,4 @@ func (arm *ARM) storeRegisterCycles(addr uint32) {
 	// cycle followed by an N cycle prefetch
 	arm.Ncycle(dataWrite, addr)
 	arm.prefetchCycle = N
-	arm.mergedN = true
 }

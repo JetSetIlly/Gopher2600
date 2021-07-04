@@ -209,16 +209,6 @@ func (win *winCoProcLastExecution) drawDisasm(itr *coprocessor.Iterate) {
 						imgui.EndTooltip()
 					}
 				}
-
-				if details.MergedN {
-					imgui.SameLine()
-					imguiColorLabel("", win.img.cols.CoProcMergedN)
-					if imgui.IsItemHovered() {
-						imgui.BeginTooltip()
-						imgui.Text("Merged N cycles")
-						imgui.EndTooltip()
-					}
-				}
 			}
 
 			imgui.TableNextColumn()
