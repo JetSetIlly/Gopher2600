@@ -84,39 +84,39 @@ func (arm *ARM) isLatched(bus busAccess, addr uint32) bool {
 
 	switch bus {
 	case prefetch:
-		// assuming perfect access for MAM-1
-		if arm.mam.mamcr == 1 {
-			return true
-		}
-
-		if addr != arm.mam.prefetchAddress {
+		// From UM10161, page 16:
+		//
+		// "Timing of Flash read operations is programmable and is described
+		// later in this section. In this manner, there is no code fetch
+		// penalty for sequential instruction execution when the CPU clock
+		// period is greater than or equal to one fourth of the Flash access
+		// time."
+		if arm.mam.mamcr == 1 && arm.mam.mamtim >= 4 {
 			arm.mam.prefetchAddress = addr
-			return false
-		}
-	case branch:
-		// assuming perfect access for MAM-1
-		if arm.mam.mamcr == 1 {
 			return true
 		}
 
-		if addr != arm.mam.lastBranchAddress {
-			arm.branchTrail = BranchTrailFlushed
-			return false
+		if addr == arm.mam.prefetchAddress {
+			return true
 		}
-		arm.branchTrail = BranchTrailUsed
-	case dataRead:
-		// only MAM-2 services data-read bus access
+		arm.mam.prefetchAddress = addr
 
-		if addr != arm.mam.dataAddress {
-			arm.mam.dataAddress = addr
-			return false
+	case branch:
+		if addr == arm.mam.lastBranchAddress {
+			arm.branchTrail = BranchTrailUsed
+			return true
 		}
-	default:
-		// any other bus types are not in MAM latches
-		return false
+		arm.mam.lastBranchAddress = addr
+		arm.branchTrail = BranchTrailFlushed
+
+	case dataRead:
+		if addr == arm.mam.dataAddress {
+			return true
+		}
+		arm.mam.dataAddress = addr
 	}
 
-	return true
+	return false
 }
 
 func (arm *ARM) Icycle() {

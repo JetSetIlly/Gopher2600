@@ -1290,7 +1290,7 @@ func (arm *ARM) executeHiRegisterOps(opcode uint16) {
 		// If R15 is used as an operand, the value will be the address of the instruction + 4 with
 		// bit 0 cleared. Executing a BX PC in THUMB state from a non-word aligned address
 		// will result in unpredictable execution.
-		if srcReg == 15 {
+		if srcReg == rPC {
 			// PC is already +2 from the instruction address
 			newPC = arm.registers[rPC] + 2
 		} else {
