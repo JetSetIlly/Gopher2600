@@ -121,23 +121,34 @@ func (arm *ARM) Scycle(bus busType, addr uint32) {
 	arm.prevCycles[1] = arm.prevCycles[0]
 	arm.prevCycles[0] = S
 
-	if arm.mmap.isFlash(addr) {
-		switch arm.mam.mamcr {
-		default:
-			fallthrough // mam is disabled if mamcr value is invalid
-		case 0:
+	if !arm.mmap.isFlash(addr) {
+		arm.cycles++
+		return
+	}
+
+	switch arm.mam.mamcr {
+	default:
+		arm.cycles += clklenFlash
+	case 0:
+		arm.cycles += clklenFlash
+	case 1:
+		// for MAM-1, we go to flash memory only if it's a program acess. which
+		// means busType is "fetch" or "branch" (and not "write" or "data")
+		if bus == write || bus == data {
 			arm.cycles += clklenFlash
-		case 1:
-			fallthrough
-		case 2:
-			if arm.mamBuffer(bus, addr) && bus != write {
+		} else {
+			if arm.mamBuffer(bus, addr) {
 				arm.cycles++
 			} else {
 				arm.cycles += clklenFlash
 			}
 		}
-	} else {
-		arm.cycles++
+	case 2:
+		if arm.mamBuffer(bus, addr) {
+			arm.cycles++
+		} else {
+			arm.cycles += clklenFlash
+		}
 	}
 }
 
@@ -145,23 +156,26 @@ func (arm *ARM) Ncycle(bus busType, addr uint32) {
 	arm.N++
 	arm.prevCycles[1] = arm.prevCycles[0]
 	arm.prevCycles[0] = N
-	if arm.mam.mmap.isFlash(addr) {
-		switch arm.mam.mamcr {
-		default:
-			fallthrough // mam is disabled if mamcr value is invalid
-		case 0:
-			fallthrough
-		case 1:
-			arm.cycles += clklenFlash
-		case 2:
-			if arm.mamBuffer(bus, addr) && bus != write {
-				arm.cycles++
-			} else {
-				arm.cycles += clklenFlash
-			}
-		}
-	} else {
+
+	if !arm.mam.mmap.isFlash(addr) {
 		arm.cycles++
+		return
+	}
+
+	switch arm.mam.mamcr {
+	default:
+		arm.cycles += clklenFlash
+	case 0:
+		arm.cycles += clklenFlash
+	case 1:
+		// for MAM-1, we always go to flash memory regardless of busType
+		arm.cycles += clklenFlash
+	case 2:
+		if arm.mamBuffer(bus, addr) && bus != write {
+			arm.cycles++
+		} else {
+			arm.cycles += clklenFlash
+		}
 	}
 }
 
