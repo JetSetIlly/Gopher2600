@@ -79,6 +79,7 @@ type ARM struct {
 	// what happened with any branch that might have occured this instruction
 	branchTrail BranchTrail
 	mergedIS    bool
+	mergedN     bool
 
 	// a record of cycle types. used to decide whether to merge I-S cycles
 	prevCycles [2]cycleType
@@ -426,6 +427,7 @@ func (arm *ARM) Run(mamcr uint32) (uint32, float32, error) {
 		arm.cycles = 0
 		arm.branchTrail = BranchTrailNotUsed
 		arm.mergedIS = false
+		arm.mergedN = false
 
 		// -2 adjustment to PC register to account for pipeline
 		pc := arm.registers[rPC] - 2
@@ -483,6 +485,10 @@ func (arm *ARM) Run(mamcr uint32) (uint32, float32, error) {
 				return arm.mam.mamcr, arm.cyclesTotal, nil
 			}
 		}
+
+		// store what the prefetch cycle was. we'll use this to adjust the
+		// disassembly cycle information after the execution.
+		thisPrefetchCycle := arm.prefetchCycle
 
 		// read next instruction
 		opcode := uint16((*arm.programMemory)[idx]) | (uint16((*arm.programMemory)[idx+1]) << 8)
@@ -602,6 +608,13 @@ func (arm *ARM) Run(mamcr uint32) (uint32, float32, error) {
 			}
 		}
 
+		// adjust disassembly cycle information based on the this and the next
+		// prefetch cycle type
+		if arm.prefetchCycle == N && thisPrefetchCycle != N {
+			arm.S--
+			arm.N++
+		}
+
 		// increases total number of program cycles by the stretched cycles for this instruction
 		arm.cyclesTotal += arm.cycles
 
@@ -617,6 +630,7 @@ func (arm *ARM) Run(mamcr uint32) (uint32, float32, error) {
 				MAMCR:       int(arm.mam.mamcr),
 				BranchTrail: arm.branchTrail,
 				MergedIS:    arm.mergedIS,
+				MergedN:     arm.mergedN,
 			}
 
 			// update cycle information
@@ -1417,7 +1431,6 @@ func (arm *ARM) executeLoadStoreWithRegisterOffset(opcode uint16) {
 
 		// "7.9 Store Register" in "ARM7TDMI-S Technical Reference Manual r4p3"
 		arm.storeRegNCycle(addr)
-		arm.prefetchCycle = N
 
 		return
 	}
@@ -1431,7 +1444,6 @@ func (arm *ARM) executeLoadStoreWithRegisterOffset(opcode uint16) {
 
 	// "7.9 Store Register" in "ARM7TDMI-S Technical Reference Manual r4p3"
 	arm.storeRegNCycle(addr)
-	arm.prefetchCycle = N
 }
 
 func (arm *ARM) executeLoadStoreSignExtendedByteHalford(opcode uint16) {
@@ -1517,7 +1529,6 @@ func (arm *ARM) executeLoadStoreSignExtendedByteHalford(opcode uint16) {
 
 	// "7.9 Store Register" in "ARM7TDMI-S Technical Reference Manual r4p3"
 	arm.storeRegNCycle(addr)
-	arm.prefetchCycle = N
 }
 
 func (arm *ARM) executeLoadStoreWithImmOffset(opcode uint16) {
@@ -1584,7 +1595,6 @@ func (arm *ARM) executeLoadStoreWithImmOffset(opcode uint16) {
 
 		// "7.9 Store Register" in "ARM7TDMI-S Technical Reference Manual r4p3"
 		arm.storeRegNCycle(addr)
-		arm.prefetchCycle = N
 
 		return
 	}
@@ -1598,7 +1608,6 @@ func (arm *ARM) executeLoadStoreWithImmOffset(opcode uint16) {
 
 	// "7.9 Store Register" in "ARM7TDMI-S Technical Reference Manual r4p3"
 	arm.storeRegNCycle(addr)
-	arm.prefetchCycle = N
 }
 
 func (arm *ARM) executeLoadStoreHalfword(opcode uint16) {
@@ -1642,7 +1651,6 @@ func (arm *ARM) executeLoadStoreHalfword(opcode uint16) {
 
 	// "7.9 Store Register" in "ARM7TDMI-S Technical Reference Manual r4p3"
 	arm.storeRegNCycle(addr)
-	arm.prefetchCycle = N
 }
 
 func (arm *ARM) executeSPRelativeLoadStore(opcode uint16) {
@@ -1685,7 +1693,6 @@ func (arm *ARM) executeSPRelativeLoadStore(opcode uint16) {
 
 	// "7.9 Store Register" in "ARM7TDMI-S Technical Reference Manual r4p3"
 	arm.storeRegNCycle(addr)
-	arm.prefetchCycle = N
 }
 
 func (arm *ARM) executeLoadAddress(opcode uint16) {
@@ -1925,7 +1932,7 @@ func (arm *ARM) executePushPopRegisters(opcode uint16) {
 
 	// "7.11 Store Multiple Registers" in "ARM7TDMI-S Technical Reference Manual r4p3"
 	arm.Icycle()
-	arm.prefetchCycle = N
+	arm.storeRegNCycle(addr)
 }
 
 func (arm *ARM) executeMultipleLoadStore(opcode uint16) {
@@ -1979,7 +1986,7 @@ func (arm *ARM) executeMultipleLoadStore(opcode uint16) {
 		arm.Icycle()
 	} else {
 		// "7.11 Store Multiple Registers" in "ARM7TDMI-S Technical Reference Manual r4p3"
-		arm.prefetchCycle = N
+		arm.storeRegNCycle(addr)
 	}
 }
 

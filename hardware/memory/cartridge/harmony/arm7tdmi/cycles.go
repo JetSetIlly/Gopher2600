@@ -28,6 +28,7 @@ type ExecutionDetails struct {
 	MAMCR       int
 	BranchTrail BranchTrail
 	MergedIS    bool
+	MergedN     bool
 }
 
 func (es ExecutionDetails) String() string {
@@ -112,9 +113,6 @@ func (arm *ARM) Scycle(bus busType, addr uint32) {
 	//
 	// page 3-8 of the "ARM7TDMI-S Technical Reference Manual r4p3"
 	if arm.prevCycles[1] == I {
-		if arm.I > 0 {
-			arm.I--
-		}
 		arm.cycles--
 		arm.mergedIS = true
 	}
@@ -185,6 +183,7 @@ func (arm *ARM) storeRegNCycle(addr uint32) {
 	// How this actually works however is a matter of debate. But assuming the
 	// N cycle is *always* merged seems to work out okay in all MAM/code-optimisation
 	// combinations.
-
-	// arm.Ncycle(write, addr)
+	arm.Ncycle(write, addr)
+	arm.prefetchCycle = N
+	arm.mergedN = true
 }

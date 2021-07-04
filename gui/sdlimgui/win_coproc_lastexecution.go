@@ -185,8 +185,6 @@ func (win *winCoProcLastExecution) drawDisasm(itr *coprocessor.Iterate) {
 			// branch trail indicator
 			imgui.TableNextColumn()
 			if details, ok := e.ExecutionDetails.(arm7tdmi.ExecutionDetails); ok {
-				imgui.SameLine()
-
 				tooltip := ""
 				switch details.BranchTrail {
 				case arm7tdmi.BranchTrailUsed:
@@ -196,7 +194,7 @@ func (win *winCoProcLastExecution) drawDisasm(itr *coprocessor.Iterate) {
 					tooltip = "Branch trail was flushed causing a pipeline stall"
 					imguiColorLabel("", win.img.cols.CoProcBranchTrailFlushed)
 				}
-				if imgui.IsItemHovered() {
+				if tooltip != "" && imgui.IsItemHovered() {
 					imgui.BeginTooltip()
 					imgui.Text(tooltip)
 					imgui.EndTooltip()
@@ -207,7 +205,17 @@ func (win *winCoProcLastExecution) drawDisasm(itr *coprocessor.Iterate) {
 					imguiColorLabel("", win.img.cols.CoProcMergedIS)
 					if imgui.IsItemHovered() {
 						imgui.BeginTooltip()
-						imgui.Text("merged I-S")
+						imgui.Text("Merged I-S (decision made now by an earlier instruction)")
+						imgui.EndTooltip()
+					}
+				}
+
+				if details.MergedN {
+					imgui.SameLine()
+					imguiColorLabel("", win.img.cols.CoProcMergedN)
+					if imgui.IsItemHovered() {
+						imgui.BeginTooltip()
+						imgui.Text("Merged N cycles")
 						imgui.EndTooltip()
 					}
 				}

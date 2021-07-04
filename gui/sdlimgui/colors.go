@@ -92,6 +92,7 @@ type imguiColors struct {
 	CoProcBranchTrailUsed    imgui.Vec4
 	CoProcBranchTrailFlushed imgui.Vec4
 	CoProcMergedIS           imgui.Vec4
+	CoProcMergedN            imgui.Vec4
 
 	// audio oscilloscope
 	AudioOscBg   imgui.Vec4
@@ -204,6 +205,7 @@ func newColors() *imguiColors {
 		CoProcBranchTrailFlushed: imgui.Vec4{0.6, 0.3, 0.3, 1.0},
 		CoProcBranchTrailUsed:    imgui.Vec4{0.3, 0.6, 0.3, 1.0},
 		CoProcMergedIS:           imgui.Vec4{0.3, 0.3, 0.6, 1.0},
+		CoProcMergedN:            imgui.Vec4{0.1, 0.7, 0.1, 1.0},
 
 		// audio oscilloscope
 		AudioOscBg:   imgui.Vec4{0.21, 0.29, 0.23, 1.0},
