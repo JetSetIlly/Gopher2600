@@ -1430,7 +1430,7 @@ func (arm *ARM) executeLoadStoreWithRegisterOffset(opcode uint16) {
 		arm.write8bit(addr, uint8(arm.registers[reg]))
 
 		// "7.9 Store Register" in "ARM7TDMI-S Technical Reference Manual r4p3"
-		arm.storeRegNCycle(addr)
+		arm.storeRegisterCycles(addr)
 
 		return
 	}
@@ -1443,7 +1443,7 @@ func (arm *ARM) executeLoadStoreWithRegisterOffset(opcode uint16) {
 	arm.write32bit(addr, arm.registers[reg])
 
 	// "7.9 Store Register" in "ARM7TDMI-S Technical Reference Manual r4p3"
-	arm.storeRegNCycle(addr)
+	arm.storeRegisterCycles(addr)
 }
 
 func (arm *ARM) executeLoadStoreSignExtendedByteHalford(opcode uint16) {
@@ -1528,7 +1528,7 @@ func (arm *ARM) executeLoadStoreSignExtendedByteHalford(opcode uint16) {
 	arm.write16bit(addr, uint16(arm.registers[reg]))
 
 	// "7.9 Store Register" in "ARM7TDMI-S Technical Reference Manual r4p3"
-	arm.storeRegNCycle(addr)
+	arm.storeRegisterCycles(addr)
 }
 
 func (arm *ARM) executeLoadStoreWithImmOffset(opcode uint16) {
@@ -1594,7 +1594,7 @@ func (arm *ARM) executeLoadStoreWithImmOffset(opcode uint16) {
 		arm.write8bit(addr, uint8(arm.registers[reg]))
 
 		// "7.9 Store Register" in "ARM7TDMI-S Technical Reference Manual r4p3"
-		arm.storeRegNCycle(addr)
+		arm.storeRegisterCycles(addr)
 
 		return
 	}
@@ -1607,7 +1607,7 @@ func (arm *ARM) executeLoadStoreWithImmOffset(opcode uint16) {
 	arm.write32bit(addr, arm.registers[reg])
 
 	// "7.9 Store Register" in "ARM7TDMI-S Technical Reference Manual r4p3"
-	arm.storeRegNCycle(addr)
+	arm.storeRegisterCycles(addr)
 }
 
 func (arm *ARM) executeLoadStoreHalfword(opcode uint16) {
@@ -1650,7 +1650,7 @@ func (arm *ARM) executeLoadStoreHalfword(opcode uint16) {
 	arm.write16bit(addr, uint16(arm.registers[reg]))
 
 	// "7.9 Store Register" in "ARM7TDMI-S Technical Reference Manual r4p3"
-	arm.storeRegNCycle(addr)
+	arm.storeRegisterCycles(addr)
 }
 
 func (arm *ARM) executeSPRelativeLoadStore(opcode uint16) {
@@ -1692,7 +1692,7 @@ func (arm *ARM) executeSPRelativeLoadStore(opcode uint16) {
 	arm.write32bit(addr, arm.registers[reg])
 
 	// "7.9 Store Register" in "ARM7TDMI-S Technical Reference Manual r4p3"
-	arm.storeRegNCycle(addr)
+	arm.storeRegisterCycles(addr)
 }
 
 func (arm *ARM) executeLoadAddress(opcode uint16) {
@@ -1932,7 +1932,7 @@ func (arm *ARM) executePushPopRegisters(opcode uint16) {
 
 	// "7.11 Store Multiple Registers" in "ARM7TDMI-S Technical Reference Manual r4p3"
 	arm.Icycle()
-	arm.storeRegNCycle(addr)
+	arm.storeRegisterCycles(addr)
 }
 
 func (arm *ARM) executeMultipleLoadStore(opcode uint16) {
@@ -1986,7 +1986,7 @@ func (arm *ARM) executeMultipleLoadStore(opcode uint16) {
 		arm.Icycle()
 	} else {
 		// "7.11 Store Multiple Registers" in "ARM7TDMI-S Technical Reference Manual r4p3"
-		arm.storeRegNCycle(addr)
+		arm.storeRegisterCycles(addr)
 	}
 }
 

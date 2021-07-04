@@ -74,23 +74,40 @@ const (
 	N
 )
 
+// returns false if address isn't latched. this means theat the bus access is
+// subject to latency.
+//
+// dows not handle the decision about whether the MAM latches should be
+// checked. for example, if MAMCR is zero than don't call this function at all.
+// see Scycle() and Ncycle() for those decisions.
 func (arm *ARM) isLatched(bus busAccess, addr uint32) bool {
 	addr &= 0xffffff80
 
 	switch bus {
 	case prefetch:
+		// assuming perfect access for MAM-1
+		if arm.mam.mamcr == 1 {
+			return true
+		}
+
 		if addr != arm.mam.prefetchAddress {
 			arm.mam.prefetchAddress = addr
 			return false
 		}
 	case branch:
+		// assuming perfect access for MAM-1
+		if arm.mam.mamcr == 1 {
+			return true
+		}
+
 		if addr != arm.mam.lastBranchAddress {
 			arm.branchTrail = BranchTrailFlushed
-			arm.mam.lastBranchAddress = addr
 			return false
 		}
 		arm.branchTrail = BranchTrailUsed
 	case dataRead:
+		// only MAM-2 services data-read bus access
+
 		if addr != arm.mam.dataAddress {
 			arm.mam.dataAddress = addr
 			return false
@@ -141,16 +158,13 @@ func (arm *ARM) Scycle(bus busAccess, addr uint32) {
 	case 0:
 		arm.cycles += clklenFlash
 	case 1:
-		// for MAM-1, we go to flash memory only if it's a program acess (ie.
-		// not a data access)
+		// for MAM-1, we go to flash memory only if it's a program access (ie. not a data access)
 		if bus.isDataAccess() {
 			arm.cycles += clklenFlash
+		} else if arm.isLatched(bus, addr) {
+			arm.cycles++
 		} else {
-			if arm.isLatched(bus, addr) {
-				arm.cycles++
-			} else {
-				arm.cycles += clklenFlash
-			}
+			arm.cycles += clklenFlash
 		}
 	case 2:
 		if arm.isLatched(bus, addr) {
@@ -162,6 +176,12 @@ func (arm *ARM) Scycle(bus busAccess, addr uint32) {
 }
 
 func (arm *ARM) Ncycle(bus busAccess, addr uint32) {
+	// if previous cycle was an N cycle then knock off a cycle from the
+	// instruction total (don't worry about negative numbers, it's all good).
+	//
+	// we're limiting this to data N cycles. this means that we exclude the N
+	// cycle prefetch generated at the end of a store register type instruction
+	// (see storeRegisterCycles() function)
 	if arm.prevCycles[0] == N && bus.isDataAccess() {
 		arm.cycles--
 		arm.mergedN = true
@@ -182,7 +202,6 @@ func (arm *ARM) Ncycle(bus busAccess, addr uint32) {
 	case 0:
 		arm.cycles += clklenFlash
 	case 1:
-		// for MAM-1, we always go to flash memory regardless of busType
 		arm.cycles += clklenFlash
 	case 2:
 		if arm.isLatched(bus, addr) {
@@ -199,7 +218,9 @@ func (arm *ARM) pcCycle() {
 	arm.Scycle(prefetch, arm.registers[rPC])
 }
 
-func (arm *ARM) storeRegNCycle(addr uint32) {
+// the cycle profile for store register type instructions is funky enough to
+// need a specialist function
+func (arm *ARM) storeRegisterCycles(addr uint32) {
 	// "3.3.1 Nonsequential cycles" in "ARM7TDMI-S Technical Reference Manual r4p3"
 	//
 	// "The ARM7TDMI-S processor can perform back to back nonsequential memory cycles.
@@ -208,9 +229,9 @@ func (arm *ARM) storeRegNCycle(addr uint32) {
 	// memory system is unable to cope with this case, you must use the CLKEN signal to
 	// extend the bus cycle to allow sufficient cycles for the memory system."
 	//
-	// How this actually works however is a matter of debate. But assuming the
-	// N cycle is *always* merged seems to work out okay in all MAM/code-optimisation
-	// combinations.
+	// in practice, I've reasoned that this means that the next prefetch is an
+	// N cycle rather than the normal S cycle. meaning that there's a regular N
+	// cycle followed by an N cycle prefetch
 	arm.Ncycle(dataWrite, addr)
 	arm.prefetchCycle = N
 	arm.mergedN = true
