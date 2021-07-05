@@ -1797,23 +1797,24 @@ func (arm *ARM) executePushPopRegisters(opcode uint16) {
 		addr := arm.registers[rSP]
 
 		// read each register in turn (from lower to highest)
-		num := 0
+		numMatches := 0
 		for i := 0; i <= 7; i++ {
 			// shift single-bit mask
 			m := uint8(0x01 << i)
 
-			// "7.10 Load Multiple Registers" in "ARM7TDMI-S Technical Reference Manual r4p3"
-			if i == 0 {
-				arm.Ncycle(dataRead, addr)
-			} else {
-				arm.Scycle(dataRead, addr)
-			}
-
 			// read register if indicated by regList
 			if regList&m == m {
+				// "7.10 Load Multiple Registers" in "ARM7TDMI-S Technical Reference Manual r4p3"
+				if numMatches == 0 {
+					arm.Ncycle(dataRead, addr)
+				} else {
+					arm.Scycle(dataRead, addr)
+				}
+
 				arm.registers[i] = arm.read32bit(addr)
 				addr += 4
-				num++
+
+				numMatches++
 			}
 		}
 
@@ -1825,8 +1826,7 @@ func (arm *ARM) executePushPopRegisters(opcode uint16) {
 			// chop the odd bit off the new PC value
 			v := arm.read32bit(addr) & 0xfffffffe
 
-			// "7.10 Load Multiple Registers" in "ARM7TDMI-S Technical Reference Manual r4p3"
-			arm.Ncycle(dataRead, addr)
+			arm.pcCycle()
 
 			// add two to the new PC value. not sure why this is. it's not
 			// described in the pseudo code above but I think it's to do with
@@ -1841,13 +1841,11 @@ func (arm *ARM) executePushPopRegisters(opcode uint16) {
 
 			if arm.disasmLevel == disasmFull {
 				arm.disasmEntry.Operator = "POP"
-				arm.disasmEntry.Operand = fmt.Sprintf("{%#0b, LR}", regList)
+				arm.disasmEntry.Operand = fmt.Sprintf("{%#08b, LR}", regList)
 			}
-
-			num++
 		} else if arm.disasmLevel == disasmFull {
 			arm.disasmEntry.Operator = "POP"
-			arm.disasmEntry.Operand = fmt.Sprintf("{%#0b}", regList)
+			arm.disasmEntry.Operand = fmt.Sprintf("{%#08b}", regList)
 		}
 
 		// leave stackpointer at final address
@@ -1877,13 +1875,13 @@ func (arm *ARM) executePushPopRegisters(opcode uint16) {
 	if pclr {
 		if arm.disasmLevel == disasmFull {
 			arm.disasmEntry.Operator = "PUSH"
-			arm.disasmEntry.Operand = fmt.Sprintf("{%#0b, LR}", regList)
+			arm.disasmEntry.Operand = fmt.Sprintf("{%#08b, LR}", regList)
 		}
 		c = (uint32(bits.OnesCount8(regList)) + 1) * 4
 	} else {
 		if arm.disasmLevel == disasmFull {
 			arm.disasmEntry.Operator = "PUSH"
-			arm.disasmEntry.Operand = fmt.Sprintf("{%#0b}", regList)
+			arm.disasmEntry.Operand = fmt.Sprintf("{%#08b}", regList)
 		}
 		c = uint32(bits.OnesCount8(regList)) * 4
 	}
@@ -1893,23 +1891,24 @@ func (arm *ARM) executePushPopRegisters(opcode uint16) {
 	addr := arm.registers[rSP] - c
 
 	// write each register in turn (from lower to highest)
-	num := 0
+	numMatches := 0
 	for i := 0; i <= 7; i++ {
 		// shift single-bit mask
 		m := uint8(0x01 << i)
 
-		// "7.11 Store Multiple Registers" in "ARM7TDMI-S Technical Reference Manual r4p3"
-		if i == 0 {
-			arm.Ncycle(dataWrite, addr)
-		} else {
-			arm.Scycle(dataWrite, addr)
-		}
-
 		// write register if indicated by regList
 		if regList&m == m {
+			// "7.11 Store Multiple Registers" in "ARM7TDMI-S Technical Reference Manual r4p3"
+			if numMatches == 1 {
+				arm.Ncycle(dataWrite, addr)
+			} else if numMatches > 1 {
+				arm.Scycle(dataWrite, addr)
+			}
+
 			arm.write32bit(addr, arm.registers[i])
 			addr += 4
-			num++
+
+			numMatches++
 		}
 	}
 
@@ -1917,10 +1916,13 @@ func (arm *ARM) executePushPopRegisters(opcode uint16) {
 	if pclr {
 		lr := arm.registers[rLR]
 		arm.write32bit(addr, lr)
-		num++
 
 		// "7.11 Store Multiple Registers" in "ARM7TDMI-S Technical Reference Manual r4p3"
-		arm.Ncycle(dataWrite, addr)
+		if numMatches == 1 {
+			arm.Ncycle(dataWrite, addr)
+		} else if numMatches > 1 {
+			arm.Scycle(dataWrite, addr)
+		}
 	}
 
 	// update stack pointer. note that this is the address we started the push
@@ -1948,10 +1950,10 @@ func (arm *ARM) executeMultipleLoadStore(opcode uint16) {
 		} else {
 			arm.disasmEntry.Operator = "STMIA"
 		}
-		arm.disasmEntry.Operand = fmt.Sprintf("R%d!, {%#0b}", baseReg, regList)
+		arm.disasmEntry.Operand = fmt.Sprintf("R%d!, {%#016b}", baseReg, regList)
 	}
 
-	num := 0
+	numMatches := 0
 	for i := 0; i <= 15; i++ {
 		r := regList >> i
 		if r&0x01 == 0x01 {
@@ -1964,14 +1966,33 @@ func (arm *ARM) executeMultipleLoadStore(opcode uint16) {
 			}
 
 			if load {
+				// "7.10 Load Multiple Registers" in "ARM7TDMI-S Technical Reference Manual r4p3"
+				if i == 15 {
+					arm.pcCycle()
+				} else {
+					if numMatches == 0 {
+						arm.Ncycle(dataWrite, addr)
+					} else {
+						arm.Scycle(dataWrite, addr)
+					}
+				}
+
 				arm.registers[i] = arm.read32bit(addr)
 				addr += 4
 
 			} else {
+				// "7.11 Store Multiple Registers" in "ARM7TDMI-S Technical Reference Manual r4p3"
+				if numMatches == 1 {
+					arm.Ncycle(dataWrite, addr)
+				} else if numMatches > 1 {
+					arm.Scycle(dataWrite, addr)
+				}
+
 				arm.write32bit(addr, arm.registers[i])
 				addr += 4
 			}
-			num++
+
+			numMatches++
 		}
 	}
 
@@ -2056,24 +2077,24 @@ func (arm *ARM) executeConditionalBranch(opcode uint16) {
 		// two's complement before subtraction
 		offset ^= 0x1ff
 		offset++
-		newPC = arm.registers[rPC] - offset
+		newPC = arm.registers[rPC] - offset + 1
 	} else {
-		newPC = arm.registers[rPC] + offset
+		newPC = arm.registers[rPC] + offset + 1
 	}
 
 	// do branch
 	if b {
 		// "7.3 Branch ..." in "ARM7TDMI-S Technical Reference Manual r4p3"
 		arm.Ncycle(branch, arm.registers[rPC])
-		arm.Scycle(prefetch, newPC+1)
+		arm.Scycle(prefetch, newPC)
 
-		arm.registers[rPC] = newPC + 1
+		arm.registers[rPC] = newPC
 	}
 
 	switch arm.disasmLevel {
 	case disasmFull:
 		arm.disasmEntry.Operator = operator
-		arm.disasmEntry.Operand = fmt.Sprintf("%04x", newPC)
+		arm.disasmEntry.Operand = fmt.Sprintf("%04x", newPC-2)
 		arm.disasmEntry.UpdateNotes = true
 		fallthrough
 	case disasmUpdateOnly:
@@ -2110,7 +2131,7 @@ func (arm *ARM) executeUnconditionalBranch(opcode uint16) {
 	if arm.disasmLevel == disasmFull {
 		if arm.disasmLevel == disasmFull {
 			arm.disasmEntry.Operator = "BAL"
-			arm.disasmEntry.Operand = fmt.Sprintf("%04x ", arm.registers[rPC])
+			arm.disasmEntry.Operand = fmt.Sprintf("%04x ", arm.registers[rPC]-2)
 		}
 	}
 

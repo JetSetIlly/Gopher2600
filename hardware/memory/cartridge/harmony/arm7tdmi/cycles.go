@@ -92,6 +92,11 @@ func (arm *ARM) isLatched(bus busAccess, addr uint32) bool {
 
 	switch bus {
 	case prefetch:
+		if addr == arm.mam.prefetchAddress {
+			return true
+		}
+		arm.mam.prefetchAddress = addr
+
 		// From UM10161, page 16:
 		//
 		// "Timing of Flash read operations is programmable and is described
@@ -103,11 +108,6 @@ func (arm *ARM) isLatched(bus busAccess, addr uint32) bool {
 			arm.mam.prefetchAddress = addr
 			return true
 		}
-
-		if addr == arm.mam.prefetchAddress {
-			return true
-		}
-		arm.mam.prefetchAddress = addr
 
 	case branch:
 		if addr == arm.mam.lastBranchAddress {
