@@ -16,6 +16,7 @@
 package coprocessor
 
 import (
+	"sort"
 	"sync"
 
 	"github.com/jetsetilly/gopher2600/hardware"
@@ -32,6 +33,9 @@ type Coprocessor struct {
 
 	lastExecution        []mapper.CartCoProcDisasmEntry
 	lastExecutionDetails LastExecutionDetails
+
+	entries     map[string]mapper.CartCoProcDisasmEntry
+	entriesKeys []string
 }
 
 type LastExecutionDetails struct {
@@ -56,6 +60,8 @@ func Add(vcs *hardware.VCS, cart *cartridge.Cartridge) *Coprocessor {
 		vcs:           vcs,
 		lastExecution: make([]mapper.CartCoProcDisasmEntry, 0, 1024),
 	}
+	cop.entries = make(map[string]mapper.CartCoProcDisasmEntry)
+	cop.entriesKeys = make([]string, 0, 1024)
 	cpd.SetDisassembler(cop)
 	return cop
 }
@@ -82,6 +88,12 @@ func (cop *Coprocessor) Step(entry mapper.CartCoProcDisasmEntry) {
 	cop.crit.Lock()
 	defer cop.crit.Unlock()
 	cop.lastExecution = append(cop.lastExecution, entry)
+
+	if _, ok := cop.entries[entry.Address]; !ok {
+		cop.entriesKeys = append(cop.entriesKeys, entry.Address)
+		sort.Strings(cop.entriesKeys)
+	}
+	cop.entries[entry.Address] = entry
 }
 
 // End implements the CartCoProcDisassembler interface.

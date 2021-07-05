@@ -32,12 +32,14 @@ type winCoProcLastExecution struct {
 	img  *SdlImgui
 	open bool
 
-	summaryHeight float32
+	summaryHeight     float32
+	showLastExecution bool
 }
 
 func newWinCoProcLastExecution(img *SdlImgui) (window, error) {
 	win := &winCoProcLastExecution{
-		img: img,
+		img:               img,
+		showLastExecution: true,
 	}
 	return win, nil
 }
@@ -73,9 +75,16 @@ func (win *winCoProcLastExecution) draw() {
 	imgui.BeginV(title, &win.open, 0)
 	defer imgui.End()
 
-	itr := win.img.lz.Dbg.Disasm.Coprocessor.NewIteration()
+	var itr *coprocessor.Iterate
+	if win.showLastExecution {
+		itr = win.img.lz.Dbg.Disasm.Coprocessor.NewIteration(coprocessor.LastExecution)
+	} else {
+		itr = win.img.lz.Dbg.Disasm.Coprocessor.NewIteration(coprocessor.Disassembly)
+	}
 
 	if itr.Count != 0 {
+		imguiLabel("Last execution at:")
+		imgui.SameLineV(0, 15)
 		imguiLabel("Frame:")
 		imguiLabel(fmt.Sprintf("%-4d", itr.Details.Frame))
 		imgui.SameLineV(0, 15)
@@ -85,24 +94,19 @@ func (win *winCoProcLastExecution) draw() {
 		imguiLabel("Clock:")
 		imguiLabel(fmt.Sprintf("%-3d", itr.Details.Clock))
 
-		imgui.SameLineV(0, 15)
+		if imgui.IsItemHovered() {
+			imgui.BeginTooltip()
+			imgui.Text("Saves the last execution listing to a file in the working directory")
+			imgui.EndTooltip()
+		}
+
 		if !(itr.Details.Frame == win.img.lz.TV.Frame &&
 			itr.Details.Scanline == win.img.lz.TV.Scanline &&
 			itr.Details.Clock == win.img.lz.TV.Clock) {
+			imgui.SameLineV(0, 15)
 			if imgui.Button("Goto") {
 				win.img.lz.Dbg.PushGotoCoords(itr.Details.Frame, itr.Details.Scanline, itr.Details.Clock)
 			}
-			imgui.SameLineV(0, 15)
-			if imgui.Button("Save") {
-				win.save()
-			}
-			if imgui.IsItemHovered() {
-				imgui.BeginTooltip()
-				imgui.Text("Saves the last execution listing to a file in the working directory")
-				imgui.EndTooltip()
-			}
-		} else {
-			imgui.InvisibleButtonV("Goto", imgui.Vec2{1, 1}, imgui.ButtonFlagsNone)
 		}
 
 		imguiSeparator()
@@ -131,6 +135,19 @@ func (win *winCoProcLastExecution) draw() {
 			}
 		} else {
 			imgui.Text("")
+		}
+
+		imgui.Spacing()
+
+		if imgui.Button("Save") {
+			win.save()
+		}
+
+		imgui.SameLineV(0, 15)
+		if win.showLastExecution {
+			imgui.Checkbox("Showing last executed sequence", &win.showLastExecution)
+		} else {
+			imgui.Checkbox("Showing disassembled program", &win.showLastExecution)
 		}
 	})
 }
@@ -258,7 +275,16 @@ func (win *winCoProcLastExecution) drawDisasm(itr *coprocessor.Iterate) {
 }
 
 func (win *winCoProcLastExecution) save() {
-	fn := paths.UniqueFilename("coproc", "")
+	var itr *coprocessor.Iterate
+	var fn string
+	if win.showLastExecution {
+		itr = win.img.lz.Dbg.Disasm.Coprocessor.NewIteration(coprocessor.LastExecution)
+		fn = paths.UniqueFilename("coproc_lastexecution", "")
+	} else {
+		itr = win.img.lz.Dbg.Disasm.Coprocessor.NewIteration(coprocessor.Disassembly)
+		fn = paths.UniqueFilename("coproc_disasm", "")
+	}
+
 	f, err := os.Create(fn)
 	if err != nil {
 		logger.Logf("sdlimgui", "error saving last coproc execution: %v", err)
@@ -271,7 +297,6 @@ func (win *winCoProcLastExecution) save() {
 		}
 	}()
 
-	itr := win.img.lz.Dbg.Disasm.Coprocessor.NewIteration()
 	e, _ := itr.Next()
 	for e != nil {
 		f.Write([]byte(e.String()))

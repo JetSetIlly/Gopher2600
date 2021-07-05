@@ -81,7 +81,7 @@ type ARM struct {
 	mergedIS    bool
 
 	// a record of cycle types. used to decide whether to merge I-S cycles
-	prevCycles [2]cycleType
+	prevCycles [2]cycleEvent
 
 	// the type of cycle next prefetch (the main PC increment in the Run()
 	// loop) should be. either N or S type. never I type.

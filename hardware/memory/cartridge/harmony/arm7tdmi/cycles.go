@@ -73,6 +73,14 @@ const (
 	N
 )
 
+type cycleEvent struct {
+	cycle cycleType
+
+	// bus and addr are undefined if cycle is I
+	bus  busAccess
+	addr uint32
+}
+
 // returns false if address isn't latched. this means theat the bus access is
 // subject to latency.
 //
@@ -123,7 +131,7 @@ func (arm *ARM) Icycle() {
 	arm.I++
 	arm.cycles++
 	arm.prevCycles[1] = arm.prevCycles[0]
-	arm.prevCycles[0] = I
+	arm.prevCycles[0] = cycleEvent{cycle: I}
 }
 
 func (arm *ARM) Scycle(bus busAccess, addr uint32) {
@@ -137,14 +145,14 @@ func (arm *ARM) Scycle(bus busAccess, addr uint32) {
 	// the memory access. This is shown in Figure 3-5 on page 3-9."
 	//
 	// page 3-8 of the "ARM7TDMI-S Technical Reference Manual r4p3"
-	if arm.prevCycles[1] == I && arm.prevCycles[0] == S {
+	if arm.prevCycles[1].cycle == I && arm.prevCycles[0].cycle == S {
 		arm.cycles--
 		arm.mergedIS = true
 	}
 
 	arm.S++
 	arm.prevCycles[1] = arm.prevCycles[0]
-	arm.prevCycles[0] = S
+	arm.prevCycles[0] = cycleEvent{cycle: S, bus: bus, addr: addr}
 
 	if !arm.mmap.isFlash(addr) {
 		arm.cycles++
@@ -177,9 +185,9 @@ func (arm *ARM) Scycle(bus busAccess, addr uint32) {
 func (arm *ARM) Ncycle(bus busAccess, addr uint32) {
 	arm.N++
 	arm.prevCycles[1] = arm.prevCycles[0]
-	arm.prevCycles[0] = N
+	arm.prevCycles[0] = cycleEvent{cycle: N, bus: bus, addr: addr}
 
-	if !arm.mam.mmap.isFlash(addr) {
+	if !arm.mmap.isFlash(addr) {
 		arm.cycles++
 		return
 	}

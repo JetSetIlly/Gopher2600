@@ -22,7 +22,7 @@ import "github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 type Iterate struct {
 	// copy of the lastExecution because it can change in the emulation
 	// goroutine us at any time
-	lastExecution []mapper.CartCoProcDisasmEntry
+	disasm []mapper.CartCoProcDisasmEntry
 
 	// information about the last execution (eg. screen coordinates)
 	Details LastExecutionDetails
@@ -34,20 +34,34 @@ type Iterate struct {
 	idx int
 }
 
+type IterationType int
+
+const (
+	LastExecution IterationType = iota
+	Disassembly
+)
+
 // NewIteration is the preferred method if initialistation for the Iterate
 // type.
-func (cop *Coprocessor) NewIteration() *Iterate {
+func (cop *Coprocessor) NewIteration(iterationType IterationType) *Iterate {
 	cop.crit.Lock()
 	defer cop.crit.Unlock()
 
-	lastExecution := make([]mapper.CartCoProcDisasmEntry, len(cop.lastExecution))
-	copy(lastExecution, cop.lastExecution)
+	itr := &Iterate{}
 
-	return &Iterate{
-		lastExecution: lastExecution,
-		Count:         len(lastExecution),
-		Details:       cop.lastExecutionDetails,
+	if iterationType == LastExecution {
+		itr.disasm = make([]mapper.CartCoProcDisasmEntry, len(cop.lastExecution))
+		copy(itr.disasm, cop.lastExecution)
+	} else if iterationType == Disassembly {
+		itr.disasm = make([]mapper.CartCoProcDisasmEntry, 0, len(cop.entries))
+		for _, k := range cop.entriesKeys {
+			itr.disasm = append(itr.disasm, cop.entries[k])
+		}
 	}
+	itr.Count = len(itr.disasm)
+	itr.Details = cop.lastExecutionDetails
+
+	return itr
 }
 
 // Start new iterations.
@@ -73,5 +87,5 @@ func (itr *Iterate) next() (*mapper.CartCoProcDisasmEntry, bool) {
 	}
 
 	itr.idx++
-	return &itr.lastExecution[itr.idx], true
+	return &itr.disasm[itr.idx], true
 }
