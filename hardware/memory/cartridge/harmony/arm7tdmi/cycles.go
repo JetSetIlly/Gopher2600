@@ -104,7 +104,7 @@ func (arm *ARM) isLatched(bus busAccess, addr uint32) bool {
 		// penalty for sequential instruction execution when the CPU clock
 		// period is greater than or equal to one fourth of the Flash access
 		// time."
-		if arm.mam.mamcr == 1 && arm.mam.mamtim >= 4 {
+		if arm.mam.mamtim >= 4 {
 			arm.mam.prefetchAddress = addr
 			return true
 		}
@@ -230,4 +230,12 @@ func (arm *ARM) storeRegisterCycles(addr uint32) {
 	// cycle followed by an N cycle prefetch
 	arm.Ncycle(dataWrite, addr)
 	arm.prefetchCycle = N
+}
+
+// add cycles accumulated during an BX to ARM code instruction. this is
+// definitely only an estimate.
+func (arm *ARM) armInterruptCycles(i ARMinterruptReturn) {
+	// we'll assume all writes are to flash memory
+	arm.cycles += float32(i.NumMemAccess) * clklenFlash
+	arm.cycles += float32(i.NumAdditionalCycles)
 }

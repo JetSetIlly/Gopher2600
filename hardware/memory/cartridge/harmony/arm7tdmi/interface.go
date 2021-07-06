@@ -37,9 +37,11 @@ type CartridgeHook interface {
 }
 
 type ARMinterruptReturn struct {
-	InterruptEvent    string
-	SaveResult        bool
-	SaveRegister      uint32
-	SaveValue         uint32
-	InterruptServiced bool
+	InterruptEvent      string
+	SaveResult          bool
+	SaveRegister        uint32
+	SaveValue           uint32
+	InterruptServiced   bool
+	NumMemAccess        int
+	NumAdditionalCycles int
 }

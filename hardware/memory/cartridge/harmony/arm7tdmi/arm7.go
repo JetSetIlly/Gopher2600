@@ -1253,6 +1253,13 @@ func (arm *ARM) executeHiRegisterOps(opcode uint16) {
 		arm.registers[destReg] += arm.registers[srcReg]
 
 		// status register not changed
+
+		// "7.6 Data Operations" in "ARM7TDMI-S Technical Reference Manual r4p3"
+		if destReg == rPC {
+			arm.pcCycle()
+		}
+
+		return
 	case 0b01:
 		if arm.disasmLevel == disasmFull {
 			arm.disasmEntry.Operator = "CMP"
@@ -1270,13 +1277,23 @@ func (arm *ARM) executeHiRegisterOps(opcode uint16) {
 		cmp := arm.registers[destReg] - arm.registers[srcReg]
 		arm.status.isZero(cmp)
 		arm.status.isNegative(cmp)
+
+		return
 	case 0b10:
 		if arm.disasmLevel == disasmFull {
 			arm.disasmEntry.Operator = "MOV"
 			arm.disasmEntry.Operand = fmt.Sprintf("%s%d, %s%d ", destLabel, destReg, srcLabel, srcReg)
 		}
 		arm.registers[destReg] = arm.registers[srcReg]
+
 		// status register not changed
+
+		// "7.6 Data Operations" in "ARM7TDMI-S Technical Reference Manual r4p3"
+		if destReg == rPC {
+			arm.pcCycle()
+		}
+
+		return
 	case 0b11:
 		if arm.disasmLevel == disasmFull {
 			arm.disasmEntry.Operator = "BX"
@@ -1298,50 +1315,57 @@ func (arm *ARM) executeHiRegisterOps(opcode uint16) {
 		}
 
 		if thumbMode {
-			arm.registers[rPC] = newPC
-		} else {
-			// switch to ARM mode. emulate function call.
-			res, err := arm.hook.ARMinterrupt(arm.registers[rPC]-4, arm.registers[2], arm.registers[3])
-			if err != nil {
-				arm.continueExecution = false
-				arm.executionError = err
+			if arm.registers[rPC] != newPC {
+				arm.registers[rPC] = newPC
+
 				// "7.6 Data Operations" in "ARM7TDMI-S Technical Reference Manual r4p3"
-				//  - interrupted
-				return
+				arm.pcCycle()
 			}
-
-			// update execution notes unless disasm level is disasmNone
-			if arm.disasmLevel != disasmNone {
-				arm.disasmEntry.ExecutionNotes = res.InterruptEvent
-				arm.disasmEntry.UpdateNotes = true
-			}
-
-			// if ARMinterrupt returns false this indicates that the
-			// function at the quoted program counter is not recognised and
-			// has nothing to do with the cartridge mapping. at this point
-			// we can assume that the main() function call is done and we
-			// can return to the VCS emulation.
-			if !res.InterruptServiced {
-				arm.continueExecution = false
-				// "7.6 Data Operations" in "ARM7TDMI-S Technical Reference Manual r4p3"
-				//  - interrupted
-				return
-			}
-
-			// ARM function updates the ARM registers
-			if res.SaveResult {
-				arm.registers[res.SaveRegister] = res.SaveValue
-			}
-
-			// the end of the emulated function will have an operation that
-			// switches back to thumb mode, and copies the link register to the
-			// program counter. we need to emulate that too.
-			arm.registers[rPC] = arm.registers[rLR] + 2
+			return
 		}
-	}
 
-	// "7.6 Data Operations" in "ARM7TDMI-S Technical Reference Manual r4p3"
-	if destReg == rPC {
+		// switch to ARM mode. emulate function call.
+		res, err := arm.hook.ARMinterrupt(arm.registers[rPC]-4, arm.registers[2], arm.registers[3])
+		if err != nil {
+			arm.continueExecution = false
+			arm.executionError = err
+			// "7.6 Data Operations" in "ARM7TDMI-S Technical Reference Manual r4p3"
+			//  - interrupted
+			return
+		}
+
+		// update execution notes unless disasm level is disasmNone
+		if arm.disasmLevel != disasmNone {
+			arm.disasmEntry.ExecutionNotes = res.InterruptEvent
+			arm.disasmEntry.UpdateNotes = true
+		}
+
+		// if ARMinterrupt returns false this indicates that the
+		// function at the quoted program counter is not recognised and
+		// has nothing to do with the cartridge mapping. at this point
+		// we can assume that the main() function call is done and we
+		// can return to the VCS emulation.
+		if !res.InterruptServiced {
+			arm.continueExecution = false
+			// "7.6 Data Operations" in "ARM7TDMI-S Technical Reference Manual r4p3"
+			//  - interrupted
+			return
+		}
+
+		// ARM function updates the ARM registers
+		if res.SaveResult {
+			arm.registers[res.SaveRegister] = res.SaveValue
+		}
+
+		// the end of the emulated function will have an operation that
+		// switches back to thumb mode, and copies the link register to the
+		// program counter. we need to emulate that too.
+		arm.registers[rPC] = arm.registers[rLR] + 2
+
+		// add cycles used by the ARM program
+		arm.armInterruptCycles(res)
+
+		// "7.6 Data Operations" in "ARM7TDMI-S Technical Reference Manual r4p3"
 		arm.pcCycle()
 	}
 }
