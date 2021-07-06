@@ -427,7 +427,7 @@ func (arm *ARM) Run(mamcr uint32) (uint32, float32, error) {
 		arm.branchTrail = BranchTrailNotUsed
 		arm.mergedIS = false
 
-		// -2 adjustment to PC register to account for pipeline
+		// presentation PC: -2 adjustment to account for pipeline
 		pc := arm.registers[rPC] - 2
 
 		// set disasmLevel for the next instruction
@@ -488,17 +488,21 @@ func (arm *ARM) Run(mamcr uint32) (uint32, float32, error) {
 		// disassembly cycle information after the execution.
 		thisPrefetchCycle := arm.prefetchCycle
 
+		// prefetch cycles
+		if arm.prefetchCycle == N {
+			arm.Ncycle(prefetch, arm.registers[rPC]+4)
+			arm.prefetchCycle = S
+		} else {
+			arm.Scycle(prefetch, arm.registers[rPC]+4)
+		}
+
 		// read next instruction
 		opcode := uint16((*arm.programMemory)[idx]) | (uint16((*arm.programMemory)[idx+1]) << 8)
 		arm.registers[rPC] += 2
-		if arm.prefetchCycle == N {
-			arm.Ncycle(prefetch, arm.registers[rPC])
 
-			// prefetch cycle is always S unless told otherwise
-			arm.prefetchCycle = S
-		} else {
-			arm.Scycle(prefetch, arm.registers[rPC])
-		}
+		// the expected PC at the end of the execution. if the PC register
+		// does not match fillPipeline() is called
+		expectedPC := arm.registers[rPC]
 
 		// run from executionMap if possible
 		formatFunc := arm.functionMap[idx]
@@ -606,11 +610,9 @@ func (arm *ARM) Run(mamcr uint32) (uint32, float32, error) {
 			}
 		}
 
-		// adjust disassembly cycle information based on the this and the next
-		// prefetch cycle type
-		if arm.prefetchCycle == N && thisPrefetchCycle != N {
-			arm.S--
-			arm.N++
+		// add additional cycles required to fill pipeline before next iteration
+		if expectedPC != arm.registers[rPC] {
+			arm.fillPipeline()
 		}
 
 		// increases total number of program cycles by the stretched cycles for this instruction
@@ -618,6 +620,13 @@ func (arm *ARM) Run(mamcr uint32) (uint32, float32, error) {
 
 		// update timer. assuming an APB divider value of one.
 		arm.timer.step(arm.cycles)
+
+		// adjust disassembly cycle information based on the this and the next
+		// prefetch cycle type
+		if arm.prefetchCycle == N && thisPrefetchCycle != N {
+			arm.S--
+			arm.N++
+		}
 
 		// send disasm information to disassembler
 		if arm.disasm != nil {
@@ -831,9 +840,7 @@ func (arm *ARM) executeAddSubtract(opcode uint16) {
 	arm.status.isNegative(arm.registers[destReg])
 
 	// "7.6 Data Operations" in "ARM7TDMI-S Technical Reference Manual r4p3"
-	if destReg == rPC {
-		arm.pcCycle()
-	}
+	// - fillPipeline() will be called if necessary
 }
 
 // "The instructions in this group perform operations between a Lo register and
@@ -886,9 +893,7 @@ func (arm *ARM) executeMovCmpAddSubImm(opcode uint16) {
 	}
 
 	// "7.6 Data Operations" in "ARM7TDMI-S Technical Reference Manual r4p3"
-	if destReg == rPC {
-		arm.pcCycle()
-	}
+	// - fillPipeline() will be called if necessary
 }
 
 // "The following instructions perform ALU operations on a Lo register pair".
@@ -1213,9 +1218,7 @@ func (arm *ARM) executeALUoperations(opcode uint16) {
 		}
 	} else {
 		// "7.6 Data Operations" in "ARM7TDMI-S Technical Reference Manual r4p3"
-		if destReg == rPC {
-			arm.pcCycle()
-		}
+		// - fillPipeline() will be called if necessary
 		if shift > 0 {
 			arm.Icycle()
 		}
@@ -1255,9 +1258,7 @@ func (arm *ARM) executeHiRegisterOps(opcode uint16) {
 		// status register not changed
 
 		// "7.6 Data Operations" in "ARM7TDMI-S Technical Reference Manual r4p3"
-		if destReg == rPC {
-			arm.pcCycle()
-		}
+		// - fillPipeline() will be called if necessary
 
 		return
 	case 0b01:
@@ -1289,9 +1290,7 @@ func (arm *ARM) executeHiRegisterOps(opcode uint16) {
 		// status register not changed
 
 		// "7.6 Data Operations" in "ARM7TDMI-S Technical Reference Manual r4p3"
-		if destReg == rPC {
-			arm.pcCycle()
-		}
+		// - fillPipeline() will be called if necessary
 
 		return
 	case 0b11:
@@ -1315,12 +1314,10 @@ func (arm *ARM) executeHiRegisterOps(opcode uint16) {
 		}
 
 		if thumbMode {
-			if arm.registers[rPC] != newPC {
-				arm.registers[rPC] = newPC
+			arm.registers[rPC] = newPC
 
-				// "7.6 Data Operations" in "ARM7TDMI-S Technical Reference Manual r4p3"
-				arm.pcCycle()
-			}
+			// "7.6 Data Operations" in "ARM7TDMI-S Technical Reference Manual r4p3"
+			// - fillPipeline() will be called if necessary
 			return
 		}
 
@@ -1366,7 +1363,7 @@ func (arm *ARM) executeHiRegisterOps(opcode uint16) {
 		arm.armInterruptCycles(res)
 
 		// "7.6 Data Operations" in "ARM7TDMI-S Technical Reference Manual r4p3"
-		arm.pcCycle()
+		// - fillPipeline() will be called if necessary
 	}
 }
 
@@ -1389,11 +1386,9 @@ func (arm *ARM) executePCrelativeLoad(opcode uint16) {
 	arm.registers[destReg] = arm.read32bit(addr)
 
 	// "7.8 Load Register" in "ARM7TDMI-S Technical Reference Manual r4p3"
+	// - fillPipeline() will be called if necessary
 	arm.Ncycle(dataRead, addr)
 	arm.Icycle()
-	if destReg == rPC {
-		arm.pcCycle()
-	}
 }
 
 func (arm *ARM) executeLoadStoreWithRegisterOffset(opcode uint16) {
@@ -1416,11 +1411,9 @@ func (arm *ARM) executeLoadStoreWithRegisterOffset(opcode uint16) {
 			arm.registers[reg] = uint32(arm.read8bit(addr))
 
 			// "7.8 Load Register" in "ARM7TDMI-S Technical Reference Manual r4p3"
+			// - fillPipeline() will be called if necessary
 			arm.Ncycle(dataRead, addr)
 			arm.Icycle()
-			if reg == rPC {
-				arm.pcCycle()
-			}
 
 			return
 		}
@@ -1433,11 +1426,9 @@ func (arm *ARM) executeLoadStoreWithRegisterOffset(opcode uint16) {
 		arm.registers[reg] = arm.read32bit(addr)
 
 		// "7.8 Load Register" in "ARM7TDMI-S Technical Reference Manual r4p3"
+		// - fillPipeline() will be called if necessary
 		arm.Ncycle(dataRead, addr)
 		arm.Icycle()
-		if reg == rPC {
-			arm.pcCycle()
-		}
 
 		return
 	}
@@ -1493,11 +1484,9 @@ func (arm *ARM) executeLoadStoreSignExtendedByteHalford(opcode uint16) {
 			}
 
 			// "7.8 Load Register" in "ARM7TDMI-S Technical Reference Manual r4p3"
+			// - fillPipeline() will be called if necessary
 			arm.Ncycle(dataRead, addr)
 			arm.Icycle()
-			if reg == rPC {
-				arm.pcCycle()
-			}
 
 			return
 		}
@@ -1513,11 +1502,9 @@ func (arm *ARM) executeLoadStoreSignExtendedByteHalford(opcode uint16) {
 		}
 
 		// "7.8 Load Register" in "ARM7TDMI-S Technical Reference Manual r4p3"
+		// - fillPipeline() will be called if necessary
 		arm.Ncycle(dataRead, addr)
 		arm.Icycle()
-		if reg == rPC {
-			arm.pcCycle()
-		}
 
 		return
 	}
@@ -1531,11 +1518,9 @@ func (arm *ARM) executeLoadStoreSignExtendedByteHalford(opcode uint16) {
 		arm.registers[reg] = uint32(arm.read16bit(addr))
 
 		// "7.8 Load Register" in "ARM7TDMI-S Technical Reference Manual r4p3"
+		// - fillPipeline() will be called if necessary
 		arm.Ncycle(dataRead, addr)
 		arm.Icycle()
-		if reg == rPC {
-			arm.pcCycle()
-		}
 
 		return
 	}
@@ -1581,11 +1566,9 @@ func (arm *ARM) executeLoadStoreWithImmOffset(opcode uint16) {
 			}
 
 			// "7.8 Load Register" in "ARM7TDMI-S Technical Reference Manual r4p3"
+			// - fillPipeline() will be called if necessary
 			arm.Ncycle(dataRead, addr)
 			arm.Icycle()
-			if reg == rPC {
-				arm.pcCycle()
-			}
 
 			return
 		}
@@ -1597,11 +1580,9 @@ func (arm *ARM) executeLoadStoreWithImmOffset(opcode uint16) {
 		arm.registers[reg] = arm.read32bit(addr)
 
 		// "7.8 Load Register" in "ARM7TDMI-S Technical Reference Manual r4p3"
+		// - fillPipeline() will be called if necessary
 		arm.Ncycle(dataRead, addr)
 		arm.Icycle()
-		if reg == rPC {
-			arm.pcCycle()
-		}
 
 		return
 	}
@@ -1654,11 +1635,9 @@ func (arm *ARM) executeLoadStoreHalfword(opcode uint16) {
 		arm.registers[reg] = uint32(arm.read16bit(addr))
 
 		// "7.8 Load Register" in "ARM7TDMI-S Technical Reference Manual r4p3"
+		// - fillPipeline() will be called if necessary
 		arm.Ncycle(dataRead, addr)
 		arm.Icycle()
-		if reg == rPC {
-			arm.pcCycle()
-		}
 
 		return
 	}
@@ -1696,11 +1675,9 @@ func (arm *ARM) executeSPRelativeLoadStore(opcode uint16) {
 		arm.registers[reg] = arm.read32bit(addr)
 
 		// "7.8 Load Register" in "ARM7TDMI-S Technical Reference Manual r4p3"
+		// - fillPipeline() will be called if necessary
 		arm.Ncycle(dataRead, addr)
 		arm.Icycle()
-		if reg == rPC {
-			arm.pcCycle()
-		}
 
 		return
 	}
@@ -1734,9 +1711,7 @@ func (arm *ARM) executeLoadAddress(opcode uint16) {
 		arm.registers[destReg] = arm.registers[rSP] + uint32(offset)
 
 		// "7.6 Data Operations" in "ARM7TDMI-S Technical Reference Manual r4p3"
-		if destReg == rPC {
-			arm.pcCycle()
-		}
+		// - fillPipeline() will be called if necessary
 
 		return
 	}
@@ -1749,9 +1724,7 @@ func (arm *ARM) executeLoadAddress(opcode uint16) {
 	arm.registers[destReg] = arm.registers[rPC] + uint32(offset)
 
 	// "7.6 Data Operations" in "ARM7TDMI-S Technical Reference Manual r4p3"
-	if destReg == rPC {
-		arm.pcCycle()
-	}
+	// - fillPipeline() will be called if necessary
 }
 
 func (arm *ARM) executeAddOffsetToSP(opcode uint16) {
@@ -1828,8 +1801,12 @@ func (arm *ARM) executePushPopRegisters(opcode uint16) {
 
 			// read register if indicated by regList
 			if regList&m == m {
+				numMatches++
+
 				// "7.10 Load Multiple Registers" in "ARM7TDMI-S Technical Reference Manual r4p3"
-				if numMatches == 0 {
+				// - N cycle on first match
+				// - S cycles on subsequent matches
+				if numMatches == 1 {
 					arm.Ncycle(dataRead, addr)
 				} else {
 					arm.Scycle(dataRead, addr)
@@ -1837,20 +1814,24 @@ func (arm *ARM) executePushPopRegisters(opcode uint16) {
 
 				arm.registers[i] = arm.read32bit(addr)
 				addr += 4
-
-				numMatches++
 			}
 		}
 
-		// "7.10 Load Multiple Registers" in "ARM7TDMI-S Technical Reference Manual r4p3"
-		arm.Icycle()
-
 		// load PC register after all other registers
 		if pclr {
+			numMatches++
+
+			// "7.10 Load Multiple Registers" in "ARM7TDMI-S Technical Reference Manual r4p3"
+			// - N cycle if first match and S cycle otherwise
+			// - fillPipeline() will be called if necessary
+			if numMatches == 1 {
+				arm.Ncycle(dataRead, addr)
+			} else {
+				arm.Scycle(dataRead, addr)
+			}
+
 			// chop the odd bit off the new PC value
 			v := arm.read32bit(addr) & 0xfffffffe
-
-			arm.pcCycle()
 
 			// add two to the new PC value. not sure why this is. it's not
 			// described in the pseudo code above but I think it's to do with
@@ -1871,6 +1852,9 @@ func (arm *ARM) executePushPopRegisters(opcode uint16) {
 			arm.disasmEntry.Operator = "POP"
 			arm.disasmEntry.Operand = fmt.Sprintf("{%#08b}", regList)
 		}
+
+		// "7.10 Load Multiple Registers" in "ARM7TDMI-S Technical Reference Manual r4p3"
+		arm.Icycle()
 
 		// leave stackpointer at final address
 		arm.registers[rSP] = addr
@@ -1922,29 +1906,34 @@ func (arm *ARM) executePushPopRegisters(opcode uint16) {
 
 		// write register if indicated by regList
 		if regList&m == m {
+			numMatches++
+
 			// "7.11 Store Multiple Registers" in "ARM7TDMI-S Technical Reference Manual r4p3"
+			// - storeRegisterCycles() on first match
+			// - S cycles on subsequent match
+			// - next prefetch cycle will be N
 			if numMatches == 1 {
-				arm.Ncycle(dataWrite, addr)
-			} else if numMatches > 1 {
+				arm.storeRegisterCycles(addr)
+			} else {
 				arm.Scycle(dataWrite, addr)
 			}
 
 			arm.write32bit(addr, arm.registers[i])
 			addr += 4
-
-			numMatches++
 		}
 	}
 
 	// write LR register after all the other registers
 	if pclr {
+		numMatches++
+
 		lr := arm.registers[rLR]
 		arm.write32bit(addr, lr)
 
 		// "7.11 Store Multiple Registers" in "ARM7TDMI-S Technical Reference Manual r4p3"
 		if numMatches == 1 {
-			arm.Ncycle(dataWrite, addr)
-		} else if numMatches > 1 {
+			arm.storeRegisterCycles(addr)
+		} else {
 			arm.Scycle(dataWrite, addr)
 		}
 	}
@@ -1952,10 +1941,6 @@ func (arm *ARM) executePushPopRegisters(opcode uint16) {
 	// update stack pointer. note that this is the address we started the push
 	// sequence from above. this is correct.
 	arm.registers[rSP] -= c
-
-	// "7.11 Store Multiple Registers" in "ARM7TDMI-S Technical Reference Manual r4p3"
-	arm.Icycle()
-	arm.storeRegisterCycles(addr)
 }
 
 func (arm *ARM) executeMultipleLoadStore(opcode uint16) {
@@ -1977,59 +1962,62 @@ func (arm *ARM) executeMultipleLoadStore(opcode uint16) {
 		arm.disasmEntry.Operand = fmt.Sprintf("R%d!, {%#016b}", baseReg, regList)
 	}
 
-	numMatches := 0
-	for i := 0; i <= 15; i++ {
-		r := regList >> i
-		if r&0x01 == 0x01 {
-			// "7.10 Load Multiple Registers" in "ARM7TDMI-S Technical Reference Manual r4p3"
-			// "7.11 Store Multiple Registers" in "ARM7TDMI-S Technical Reference Manual r4p3"
-			if i == 0 {
-				arm.Ncycle(dataWrite, addr)
-			} else {
-				arm.Scycle(dataWrite, addr)
-			}
+	if load {
+		numMatches := 0
+		for i := 0; i <= 15; i++ {
+			r := regList >> i
+			if r&0x01 == 0x01 {
+				numMatches++
 
-			if load {
 				// "7.10 Load Multiple Registers" in "ARM7TDMI-S Technical Reference Manual r4p3"
-				if i == 15 {
-					arm.pcCycle()
+				// - N cycle on first match
+				// - S cycles on subsequent matches
+				// - fillPipeline() will be called if PC register is matched
+				if numMatches == 1 {
+					arm.Ncycle(dataWrite, addr)
 				} else {
-					if numMatches == 0 {
-						arm.Ncycle(dataWrite, addr)
-					} else {
-						arm.Scycle(dataWrite, addr)
-					}
+					arm.Scycle(dataWrite, addr)
 				}
 
 				arm.registers[i] = arm.read32bit(addr)
 				addr += 4
+			}
+		}
 
+		// "7.10 Load Multiple Registers" in "ARM7TDMI-S Technical Reference Manual r4p3"
+		arm.Icycle()
+
+		// write back the new base address
+		arm.registers[baseReg] = addr
+
+		return
+	}
+
+	// store
+
+	numMatches := 0
+	for i := 0; i <= 15; i++ {
+		r := regList >> i
+		if r&0x01 == 0x01 {
+			numMatches++
+
+			// "7.11 Store Multiple Registers" in "ARM7TDMI-S Technical Reference Manual r4p3"
+			// - storeRegisterCycles() on first match
+			// - S cycles on subsequent match
+			// - next prefetch cycle will be N
+			if numMatches == 1 {
+				arm.storeRegisterCycles(addr)
 			} else {
-				// "7.11 Store Multiple Registers" in "ARM7TDMI-S Technical Reference Manual r4p3"
-				if numMatches == 1 {
-					arm.Ncycle(dataWrite, addr)
-				} else if numMatches > 1 {
-					arm.Scycle(dataWrite, addr)
-				}
-
-				arm.write32bit(addr, arm.registers[i])
-				addr += 4
+				arm.Scycle(dataWrite, addr)
 			}
 
-			numMatches++
+			arm.write32bit(addr, arm.registers[i])
+			addr += 4
 		}
 	}
 
 	// write back the new base address
 	arm.registers[baseReg] = addr
-
-	if load {
-		// "7.10 Load Multiple Registers" in "ARM7TDMI-S Technical Reference Manual r4p3"
-		arm.Icycle()
-	} else {
-		// "7.11 Store Multiple Registers" in "ARM7TDMI-S Technical Reference Manual r4p3"
-		arm.storeRegisterCycles(addr)
-	}
 }
 
 func (arm *ARM) executeConditionalBranch(opcode uint16) {
@@ -2109,9 +2097,7 @@ func (arm *ARM) executeConditionalBranch(opcode uint16) {
 	// do branch
 	if b {
 		// "7.3 Branch ..." in "ARM7TDMI-S Technical Reference Manual r4p3"
-		arm.Ncycle(branch, arm.registers[rPC])
-		arm.Scycle(prefetch, newPC)
-
+		// - fillPipeline() will be called if necessary
 		arm.registers[rPC] = newPC
 	}
 
@@ -2141,8 +2127,6 @@ func (arm *ARM) executeUnconditionalBranch(opcode uint16) {
 	// format 18 - Unconditional branch
 	offset := uint32(opcode&0x07ff) << 1
 
-	oldPC := arm.registers[rPC]
-
 	if offset&0x800 == 0x0800 {
 		// two's complement before subtraction
 		offset ^= 0xfff
@@ -2160,8 +2144,7 @@ func (arm *ARM) executeUnconditionalBranch(opcode uint16) {
 	}
 
 	// "7.3 Branch ..." in "ARM7TDMI-S Technical Reference Manual r4p3"
-	arm.Ncycle(branch, oldPC)
-	arm.Scycle(prefetch, arm.registers[rPC])
+	// - fillPipeline() will be called if necessary
 }
 
 // special operator mnemonic to mark the first instruction in the BL sequence

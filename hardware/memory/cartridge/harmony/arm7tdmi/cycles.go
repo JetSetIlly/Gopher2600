@@ -145,7 +145,7 @@ func (arm *ARM) Scycle(bus busAccess, addr uint32) {
 	// the memory access. This is shown in Figure 3-5 on page 3-9."
 	//
 	// page 3-8 of the "ARM7TDMI-S Technical Reference Manual r4p3"
-	if arm.prevCycles[1].cycle == I && arm.prevCycles[0].cycle == S {
+	if arm.prevCycles[0].cycle == I {
 		arm.cycles--
 		arm.mergedIS = true
 	}
@@ -208,10 +208,10 @@ func (arm *ARM) Ncycle(bus busAccess, addr uint32) {
 	}
 }
 
-func (arm *ARM) pcCycle() {
-	// assume PC change is in the same memory area
-	arm.Ncycle(prefetch, arm.registers[rPC])
-	arm.Scycle(prefetch, arm.registers[rPC])
+// called whenever PC changes unexpectedly (by a branch instruction for example)
+func (arm *ARM) fillPipeline() {
+	arm.Ncycle(branch, arm.registers[rPC])
+	arm.Scycle(prefetch, arm.registers[rPC]+2)
 }
 
 // the cycle profile for store register type instructions is funky enough to
