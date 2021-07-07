@@ -200,10 +200,6 @@ func (arm *ARM) reset() error {
 	}
 	arm.registers[rSP], arm.registers[rLR], arm.registers[rPC] = arm.mem.ResetVectors()
 
-	// a peculiarity of the ARM is that the PC is 2 bytes ahead of where we'll
-	// be reading from. adjust PC so that this is correct.
-	arm.registers[rPC] += 2
-
 	// reset execution flags
 	arm.continueExecution = true
 	arm.executionError = nil
@@ -417,6 +413,9 @@ func (arm *ARM) Run(mamcr uint32) (uint32, float32, error) {
 	// what we send at the end of the execution. not used if not disassembler is set
 	programExecution := ExecutionDetails{}
 
+	// fill pipeline
+	arm.registers[rPC] += 4
+
 	// loop through instructions until we reach an exit condition
 	for arm.continueExecution {
 		// reset instruction specific information
@@ -427,8 +426,14 @@ func (arm *ARM) Run(mamcr uint32) (uint32, float32, error) {
 		arm.branchTrail = BranchTrailNotUsed
 		arm.mergedIS = false
 
-		// presentation PC: -2 adjustment to account for pipeline
-		pc := arm.registers[rPC] - 2
+		// program counter to execute:
+		//
+		// from "7.6 Data Operations" in "ARM7TDMI-S Technical Reference Manual r4p1", page 1-2
+		//
+		// "The program counter points to the instruction being fetched rather than to the instruction
+		// being executed. This is important because it means that the Program Counter (PC)
+		// value used in an executing instruction is always two instructions ahead of the address."
+		executingPC := arm.registers[rPC] - 4
 
 		// set disasmLevel for the next instruction
 		if arm.disasm == nil {
@@ -438,7 +443,7 @@ func (arm *ARM) Run(mamcr uint32) (uint32, float32, error) {
 			arm.disasmLevel = disasmFull
 
 			// check cache for existing disasm entry
-			if e, ok := arm.disasmCache[pc]; ok {
+			if e, ok := arm.disasmCache[executingPC]; ok {
 				// use cached entry
 				arm.disasmEntry = e
 
@@ -454,7 +459,7 @@ func (arm *ARM) Run(mamcr uint32) (uint32, float32, error) {
 			// in an initial state
 			if arm.disasmLevel == disasmFull {
 				arm.disasmEntry.Location = ""
-				arm.disasmEntry.Address = fmt.Sprintf("%08x", pc)
+				arm.disasmEntry.Address = fmt.Sprintf("%08x", executingPC)
 				arm.disasmEntry.Operator = ""
 				arm.disasmEntry.Operand = ""
 				arm.disasmEntry.Cycles = 0.0
@@ -464,7 +469,7 @@ func (arm *ARM) Run(mamcr uint32) (uint32, float32, error) {
 		}
 
 		// check program counter
-		idx := pc - arm.programMemoryOffset
+		idx := executingPC - arm.programMemoryOffset
 		if idx+1 >= uint32(len(*arm.programMemory)) {
 			// program counter is out-of-range so find program memory again
 			// (using the PC value)
@@ -476,7 +481,7 @@ func (arm *ARM) Run(mamcr uint32) (uint32, float32, error) {
 			}
 
 			// if it's still out-of-range then give up with an error
-			idx = pc - arm.programMemoryOffset
+			idx = executingPC - arm.programMemoryOffset
 			if idx+1 >= uint32(len(*arm.programMemory)) {
 				// can't find memory so we say the ARM program has finished inadvertently
 				logger.Logf("ARM7", "PC out of range (%#08x). finishing arm program early", arm.registers[rPC])
@@ -489,16 +494,16 @@ func (arm *ARM) Run(mamcr uint32) (uint32, float32, error) {
 		thisPrefetchCycle := arm.prefetchCycle
 
 		// prefetch cycles
+		arm.registers[rPC] += 2
 		if arm.prefetchCycle == N {
-			arm.Ncycle(prefetch, arm.registers[rPC]+4)
+			arm.Ncycle(prefetch, arm.registers[rPC])
 			arm.prefetchCycle = S
 		} else {
-			arm.Scycle(prefetch, arm.registers[rPC]+4)
+			arm.Scycle(prefetch, arm.registers[rPC])
 		}
 
 		// read next instruction
 		opcode := uint16((*arm.programMemory)[idx]) | (uint16((*arm.programMemory)[idx+1]) << 8)
-		arm.registers[rPC] += 2
 
 		// the expected PC at the end of the execution. if the PC register
 		// does not match fillPipeline() is called
@@ -667,12 +672,12 @@ func (arm *ARM) Run(mamcr uint32) (uint32, float32, error) {
 					arm.disasmEntry.Operator = fmt.Sprintf("%-4s", arm.disasmEntry.Operator)
 					arm.disasmEntry.Operand = fmt.Sprintf("%-16s", arm.disasmEntry.Operand)
 					arm.disasmEntry.ExecutionDetails = ed
-					arm.disasmCache[pc] = arm.disasmEntry
+					arm.disasmCache[executingPC] = arm.disasmEntry
 				case disasmUpdateOnly:
 					// entry is cached but notes may have changed so we recache
 					// the entry
 					arm.disasmEntry.ExecutionDetails = ed
-					arm.disasmCache[pc] = arm.disasmEntry
+					arm.disasmCache[executingPC] = arm.disasmEntry
 				case disasmNone:
 				}
 
@@ -1307,10 +1312,9 @@ func (arm *ARM) executeHiRegisterOps(opcode uint16) {
 		// bit 0 cleared. Executing a BX PC in THUMB state from a non-word aligned address
 		// will result in unpredictable execution.
 		if srcReg == rPC {
-			// PC is already +2 from the instruction address
-			newPC = arm.registers[rPC] + 2
+			newPC = arm.registers[rPC] + 4
 		} else {
-			newPC = (arm.registers[srcReg] & 0x7ffffffe) + 2
+			newPC = (arm.registers[srcReg] & 0x7ffffffe) + 4
 		}
 
 		if thumbMode {
@@ -1357,7 +1361,7 @@ func (arm *ARM) executeHiRegisterOps(opcode uint16) {
 		// the end of the emulated function will have an operation that
 		// switches back to thumb mode, and copies the link register to the
 		// program counter. we need to emulate that too.
-		arm.registers[rPC] = arm.registers[rLR] + 2
+		arm.registers[rPC] = arm.registers[rLR] - 2
 
 		// add cycles used by the ARM program
 		arm.armInterruptCycles(res)
@@ -1374,7 +1378,7 @@ func (arm *ARM) executePCrelativeLoad(opcode uint16) {
 
 	// "Bit 1 of the PC value is forced to zero for the purpose of this
 	// calculation, so the address is always word-aligned."
-	pc := arm.registers[rPC] & 0xfffffffc
+	pc := (arm.registers[rPC] - 2) & 0xfffffffc
 
 	if arm.disasmLevel == disasmFull {
 		arm.disasmEntry.Operator = "LDR"
@@ -1721,7 +1725,7 @@ func (arm *ARM) executeLoadAddress(opcode uint16) {
 		arm.disasmEntry.Operand = fmt.Sprintf("R%d, PC, #%02x] ", destReg, offset)
 	}
 
-	arm.registers[destReg] = arm.registers[rPC] + uint32(offset)
+	arm.registers[destReg] = arm.registers[rPC] - 2 + uint32(offset)
 
 	// "7.6 Data Operations" in "ARM7TDMI-S Technical Reference Manual r4p3"
 	// - fillPipeline() will be called if necessary
@@ -1833,15 +1837,8 @@ func (arm *ARM) executePushPopRegisters(opcode uint16) {
 			// chop the odd bit off the new PC value
 			v := arm.read32bit(addr) & 0xfffffffe
 
-			// add two to the new PC value. not sure why this is. it's not
-			// described in the pseudo code above but I think it's to do with
-			// how the ARM CPU does prefetching and when the adjustment is
-			// applied. anwyay, this works but it might be worth figuring out
-			// where else to apply the adjustment and whether that would be any
-			// clearer.
-			v += 2
-
-			arm.registers[rPC] = v
+			// adjust popped LR value before assigning to the PC
+			arm.registers[rPC] = v + 4
 			addr += 4
 
 			if arm.disasmLevel == disasmFull {
@@ -2104,7 +2101,7 @@ func (arm *ARM) executeConditionalBranch(opcode uint16) {
 	switch arm.disasmLevel {
 	case disasmFull:
 		arm.disasmEntry.Operator = operator
-		arm.disasmEntry.Operand = fmt.Sprintf("%04x", newPC-2)
+		arm.disasmEntry.Operand = fmt.Sprintf("%04x", newPC-4)
 		arm.disasmEntry.UpdateNotes = true
 		fallthrough
 	case disasmUpdateOnly:
@@ -2139,7 +2136,7 @@ func (arm *ARM) executeUnconditionalBranch(opcode uint16) {
 	if arm.disasmLevel == disasmFull {
 		if arm.disasmLevel == disasmFull {
 			arm.disasmEntry.Operator = "BAL"
-			arm.disasmEntry.Operand = fmt.Sprintf("%04x ", arm.registers[rPC]-2)
+			arm.disasmEntry.Operand = fmt.Sprintf("%04x ", arm.registers[rPC]-4)
 		}
 	}
 
@@ -2159,13 +2156,12 @@ func (arm *ARM) executeLongBranchWithLink(opcode uint16) {
 
 	if low {
 		offset <<= 1
-		arm.registers[rLR] += offset
 		pc := arm.registers[rPC]
-		arm.registers[rPC] = arm.registers[rLR]
-		arm.registers[rLR] = pc - 1
+		arm.registers[rPC] = arm.registers[rLR] + offset
+		arm.registers[rLR] = pc - 3
 		if arm.disasmLevel == disasmFull {
 			arm.disasmEntry.Operator = "BL"
-			arm.disasmEntry.Operand = fmt.Sprintf("%#08x", arm.registers[rPC])
+			arm.disasmEntry.Operand = fmt.Sprintf("%#08x", arm.registers[rPC]-4)
 		}
 
 		// "7.4 Thumb Branch With Link" in "ARM7TDMI-S Technical Reference Manual r4p3"
