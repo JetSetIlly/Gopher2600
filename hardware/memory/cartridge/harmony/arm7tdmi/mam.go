@@ -35,13 +35,17 @@ type mam struct {
 	pref int
 
 	// the address of the last prefetch and data read
-	prefetchAddress uint32
-	dataAddress     uint32
+	prefectchLatch uint32
+	dataLatch      uint32
 
 	// the address of the last branch. implements the branch trail buffer.
 	// if an unexpected PC value is the same as lastBranchAddress then there is
 	// no need to fetch from flash
-	lastBranchAddress uint32
+	branchLatch uint32
+
+	// the number of cycles since flash memory was accessed. used to decide if
+	// an access to flash is be stalled or not. see isLatched() function
+	flashTiming uint32
 }
 
 func (m *mam) write(addr uint32, val uint32) bool {

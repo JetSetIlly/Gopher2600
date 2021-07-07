@@ -88,48 +88,49 @@ type cycleEvent struct {
 // checked. for example, if MAMCR is zero than don't call this function at all.
 // see Scycle() and Ncycle() for those decisions.
 func (arm *ARM) isLatched(bus busAccess, addr uint32) bool {
-	addr &= 0xffffff80
+	latch := addr & 0xffffff80
 
 	switch bus {
 	case prefetch:
-		if addr == arm.mam.prefetchAddress {
+		if latch == arm.mam.prefectchLatch {
 			return true
 		}
-		arm.mam.prefetchAddress = addr
-
-		// From UM10161, page 16:
-		//
-		// "Timing of Flash read operations is programmable and is described
-		// later in this section. In this manner, there is no code fetch
-		// penalty for sequential instruction execution when the CPU clock
-		// period is greater than or equal to one fourth of the Flash access
-		// time."
-		if arm.mam.mamtim >= 4 {
-			arm.mam.prefetchAddress = addr
-			return true
-		}
+		arm.mam.prefectchLatch = latch
 
 	case branch:
-		if addr == arm.mam.lastBranchAddress {
+		if latch == arm.mam.branchLatch {
 			arm.branchTrail = BranchTrailUsed
 			return true
 		}
-		arm.mam.lastBranchAddress = addr
+		arm.mam.branchLatch = latch
 		arm.branchTrail = BranchTrailFlushed
 
 	case dataRead:
-		if addr == arm.mam.dataAddress {
+		if latch == arm.mam.dataLatch {
 			return true
 		}
-		arm.mam.dataAddress = addr
+		arm.mam.dataLatch = latch
+
+	case dataWrite:
+		// invalidate data latch. not sure if it also invalidates the prefectch
+		// and branch latches
+		arm.mam.dataLatch = 0x0
 	}
 
-	return false
+	// From UM10161, page 16:
+	//
+	// "Timing of Flash read operations is programmable and is described
+	// later in this section. In this manner, there is no code fetch
+	// penalty for sequential instruction execution when the CPU clock
+	// period is greater than or equal to one fourth of the Flash access
+	// time."
+	return arm.mam.flashTiming%arm.mam.mamtim == 0
 }
 
 func (arm *ARM) Icycle() {
 	arm.I++
 	arm.cycles++
+	arm.mam.flashTiming++
 	arm.prevCycles[1] = arm.prevCycles[0]
 	arm.prevCycles[0] = cycleEvent{cycle: I}
 }
@@ -156,28 +157,36 @@ func (arm *ARM) Scycle(bus busAccess, addr uint32) {
 
 	if !arm.mmap.isFlash(addr) {
 		arm.cycles++
+		arm.mam.flashTiming++
 		return
 	}
 
 	switch arm.mam.mamcr {
 	default:
 		arm.cycles += clklenFlash
+		arm.mam.flashTiming = 0
 	case 0:
 		arm.cycles += clklenFlash
+		arm.mam.flashTiming = 0
 	case 1:
 		// for MAM-1, we go to flash memory only if it's a program access (ie. not a data access)
 		if bus.isDataAccess() {
 			arm.cycles += clklenFlash
+			arm.mam.flashTiming = 0
 		} else if arm.isLatched(bus, addr) {
 			arm.cycles++
+			arm.mam.flashTiming++
 		} else {
 			arm.cycles += clklenFlash
+			arm.mam.flashTiming = 0
 		}
 	case 2:
 		if arm.isLatched(bus, addr) {
 			arm.cycles++
+			arm.mam.flashTiming++
 		} else {
 			arm.cycles += clklenFlash
+			arm.mam.flashTiming = 0
 		}
 	}
 }
@@ -189,21 +198,27 @@ func (arm *ARM) Ncycle(bus busAccess, addr uint32) {
 
 	if !arm.mmap.isFlash(addr) {
 		arm.cycles++
+		arm.mam.flashTiming++
 		return
 	}
 
 	switch arm.mam.mamcr {
 	default:
 		arm.cycles += clklenFlash
+		arm.mam.flashTiming = 0
 	case 0:
 		arm.cycles += clklenFlash
+		arm.mam.flashTiming = 0
 	case 1:
 		arm.cycles += clklenFlash
+		arm.mam.flashTiming = 0
 	case 2:
 		if arm.isLatched(bus, addr) {
 			arm.cycles++
+			arm.mam.flashTiming++
 		} else {
 			arm.cycles += clklenFlash
+			arm.mam.flashTiming = 0
 		}
 	}
 }
@@ -238,4 +253,5 @@ func (arm *ARM) armInterruptCycles(i ARMinterruptReturn) {
 	// we'll assume all writes are to flash memory
 	arm.cycles += float32(i.NumMemAccess) * clklenFlash
 	arm.cycles += float32(i.NumAdditionalCycles)
+	arm.mam.flashTiming = 0
 }
