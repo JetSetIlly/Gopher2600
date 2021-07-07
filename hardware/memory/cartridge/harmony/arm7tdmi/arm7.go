@@ -2155,6 +2155,8 @@ func (arm *ARM) executeLongBranchWithLink(opcode uint16) {
 	// there is no direct ARM equivalent for this instruction.
 
 	if low {
+		// second instruction
+
 		offset <<= 1
 		pc := arm.registers[rPC]
 		arm.registers[rPC] = arm.registers[rLR] + offset
@@ -2165,16 +2167,17 @@ func (arm *ARM) executeLongBranchWithLink(opcode uint16) {
 		}
 
 		// "7.4 Thumb Branch With Link" in "ARM7TDMI-S Technical Reference Manual r4p3"
-		arm.Scycle(prefetch, arm.registers[rPC]) // first instruction
-		arm.Ncycle(prefetch, arm.registers[rPC]) // second instruction
-		arm.Ncycle(prefetch, arm.registers[rPC])
-		arm.Ncycle(prefetch, arm.registers[rPC])
+		// -- no additional cycles for second instruction in BL
+		// -- change of PC is captured by expectedPC check in Run() function loop
+		// -- however, because the first instruction is not shown in the
+		//		disassembly, we should add the S cycle infromation manually.
+		//		ie. to a real cycle so we don't call Scycle()
+		arm.S++
 
 		return
 	}
 
-	// first instruction. we'll defer cycle accumulation until the second
-	// instruction branch above.
+	// first instruction
 
 	offset <<= 12
 
@@ -2192,5 +2195,6 @@ func (arm *ARM) executeLongBranchWithLink(opcode uint16) {
 		arm.disasmEntry.Operand = fmt.Sprintf("%#08x", arm.registers[rPC])
 	}
 
-	// cycles accumulated on second half of the instruction
+	// "7.4 Thumb Branch With Link" in "ARM7TDMI-S Technical Reference Manual r4p3"
+	// -- no additional cycles for first instruction in BL
 }
