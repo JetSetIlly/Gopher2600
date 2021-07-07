@@ -65,7 +65,7 @@ type CartCoProcExecutionSummary interface {
 }
 
 func (e CartCoProcDisasmEntry) String() string {
-	return fmt.Sprintf("%s %s %s (%.0f)", e.Address, e.Operator, e.Operand, e.Cycles)
+	return fmt.Sprintf("%s %s %s (%.0f) %s", e.Address, e.Operator, e.Operand, e.Cycles, e.ExecutionNotes)
 }
 
 // CartCoProcDisassembler defines the functions that must be defined for a
