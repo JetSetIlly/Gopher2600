@@ -16,26 +16,34 @@
 package arm7tdmi
 
 import (
-	"fmt"
 	"strings"
 )
 
-// ExecutionDetails implements CartCoProcExecutionDetails interface.
-type ExecutionDetails struct {
-	N           int
-	I           int
-	S           int
-	MAMCR       int
-	BranchTrail BranchTrail
-	MergedIS    bool
+type cycleOrder struct {
+	queue [20]cycleType
+	idx   int
 }
 
-func (es ExecutionDetails) String() string {
+func (q cycleOrder) String() string {
 	s := strings.Builder{}
-	s.WriteString(fmt.Sprintf("N: %d\n", es.N))
-	s.WriteString(fmt.Sprintf("I: %d\n", es.I))
-	s.WriteString(fmt.Sprintf("S: %d\n", es.S))
-	return s.String()
+	for i := 0; i < q.idx; i++ {
+		s.WriteRune(rune(q.queue[i]))
+		s.WriteRune('+')
+	}
+	return strings.TrimRight(s.String(), "+")
+}
+
+func (q *cycleOrder) reset() {
+	q.idx = 0
+}
+
+func (q cycleOrder) len() int {
+	return q.idx
+}
+
+func (q *cycleOrder) add(c cycleType) {
+	q.queue[q.idx] = c
+	q.idx++
 }
 
 // BranchTrail indicates how the BrainTrail buffer was used for a cycle.
@@ -65,12 +73,12 @@ func (bt busAccess) isDataAccess() bool {
 }
 
 // the type of cycle being executed
-type cycleType int
+type cycleType rune
 
 const (
-	I cycleType = iota
-	S
-	N
+	N cycleType = 'N'
+	I cycleType = 'I'
+	S cycleType = 'S'
 )
 
 type cycleEvent struct {
@@ -128,8 +136,8 @@ func (arm *ARM) isLatched(bus busAccess, addr uint32) bool {
 }
 
 func (arm *ARM) Icycle() {
-	arm.I++
-	arm.cycles++
+	arm.cycleOrder.add(I)
+	arm.stretchedCycles++
 	arm.mam.flashTiming++
 	arm.prevCycles[1] = arm.prevCycles[0]
 	arm.prevCycles[0] = cycleEvent{cycle: I}
@@ -147,77 +155,77 @@ func (arm *ARM) Scycle(bus busAccess, addr uint32) {
 	//
 	// page 3-8 of the "ARM7TDMI-S Technical Reference Manual r4p3"
 	if arm.prevCycles[0].cycle == I {
-		arm.cycles--
+		arm.stretchedCycles--
 		arm.mergedIS = true
 	}
 
-	arm.S++
+	arm.cycleOrder.add(S)
 	arm.prevCycles[1] = arm.prevCycles[0]
 	arm.prevCycles[0] = cycleEvent{cycle: S, bus: bus, addr: addr}
 
 	if !arm.mmap.isFlash(addr) {
-		arm.cycles++
+		arm.stretchedCycles++
 		arm.mam.flashTiming++
 		return
 	}
 
 	switch arm.mam.mamcr {
 	default:
-		arm.cycles += clklenFlash
+		arm.stretchedCycles += clklenFlash
 		arm.mam.flashTiming = 0
 	case 0:
-		arm.cycles += clklenFlash
+		arm.stretchedCycles += clklenFlash
 		arm.mam.flashTiming = 0
 	case 1:
 		// for MAM-1, we go to flash memory only if it's a program access (ie. not a data access)
 		if bus.isDataAccess() {
-			arm.cycles += clklenFlash
+			arm.stretchedCycles += clklenFlash
 			arm.mam.flashTiming = 0
 		} else if arm.isLatched(bus, addr) {
-			arm.cycles++
+			arm.stretchedCycles++
 			arm.mam.flashTiming++
 		} else {
-			arm.cycles += clklenFlash
+			arm.stretchedCycles += clklenFlash
 			arm.mam.flashTiming = 0
 		}
 	case 2:
 		if arm.isLatched(bus, addr) {
-			arm.cycles++
+			arm.stretchedCycles++
 			arm.mam.flashTiming++
 		} else {
-			arm.cycles += clklenFlash
+			arm.stretchedCycles += clklenFlash
 			arm.mam.flashTiming = 0
 		}
 	}
 }
 
 func (arm *ARM) Ncycle(bus busAccess, addr uint32) {
-	arm.N++
+	arm.cycleOrder.add(N)
 	arm.prevCycles[1] = arm.prevCycles[0]
 	arm.prevCycles[0] = cycleEvent{cycle: N, bus: bus, addr: addr}
 
 	if !arm.mmap.isFlash(addr) {
-		arm.cycles++
+		arm.stretchedCycles++
 		arm.mam.flashTiming++
 		return
 	}
 
 	switch arm.mam.mamcr {
 	default:
-		arm.cycles += clklenFlash
+		arm.stretchedCycles += clklenFlash
 		arm.mam.flashTiming = 0
 	case 0:
-		arm.cycles += clklenFlash
+		arm.stretchedCycles += clklenFlash
 		arm.mam.flashTiming = 0
 	case 1:
-		arm.cycles += clklenFlash
+		arm.stretchedCycles += clklenFlash
 		arm.mam.flashTiming = 0
 	case 2:
 		if arm.isLatched(bus, addr) {
-			arm.cycles++
+			arm.stretchedCycles++
 			arm.mam.flashTiming++
 		} else {
-			arm.cycles += clklenFlash
+			arm.stretchedCycles += clklenFlash
 			arm.mam.flashTiming = 0
 		}
 	}
@@ -242,7 +250,7 @@ func (arm *ARM) storeRegisterCycles(addr uint32) {
 	//
 	// in practice, I've reasoned that this means that the next prefetch is an
 	// N cycle rather than the normal S cycle. meaning that there's a regular N
-	// cycle followed by an N cycle prefetch
+	// cycle followed by an N cycle prefetch *at the end of the instruction*
 	arm.Ncycle(dataWrite, addr)
 	arm.prefetchCycle = N
 }
@@ -251,7 +259,7 @@ func (arm *ARM) storeRegisterCycles(addr uint32) {
 // definitely only an estimate.
 func (arm *ARM) armInterruptCycles(i ARMinterruptReturn) {
 	// we'll assume all writes are to flash memory
-	arm.cycles += float32(i.NumMemAccess) * clklenFlash
-	arm.cycles += float32(i.NumAdditionalCycles)
+	arm.stretchedCycles += float32(i.NumMemAccess) * clklenFlash
+	arm.stretchedCycles += float32(i.NumAdditionalCycles)
 	arm.mam.flashTiming = 0
 }

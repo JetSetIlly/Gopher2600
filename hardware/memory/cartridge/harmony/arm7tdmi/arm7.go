@@ -70,17 +70,9 @@ type ARM struct {
 	timer timer
 	mam   mam
 
-	// cycles this instruction. reset every Run() iteration
-	N      int
-	I      int
-	S      int
-	cycles float32
-
-	// what happened with any branch that might have occured this instruction
-	branchTrail BranchTrail
-	mergedIS    bool
-
-	// a record of cycle types. used to decide whether to merge I-S cycles
+	// a record of cycle types. used to decide whether to merge I-S cycles. for
+	// presentation purposes the cycleOrder field is a better source of
+	// information.
 	prevCycles [2]cycleEvent
 
 	// the type of cycle next prefetch (the main PC increment in the Run()
@@ -117,13 +109,32 @@ type ARM struct {
 	disasm mapper.CartCoProcDisassembler
 
 	// cache of disassembled entries
-	disasmCache map[uint32]mapper.CartCoProcDisasmEntry
+	disasmCache map[uint32]DisasmEntry
 
 	// the level of disassemble to perform next instruction
 	disasmLevel disasmLevel
 
 	// the next disasmEntry to send to attached disassembler
-	disasmEntry mapper.CartCoProcDisasmEntry
+	disasmEntry DisasmEntry
+
+	// \/\/\/ the following are reset at the end of each Run() iteration \/\/\/
+
+	// number of cycles with CLKLEN applied
+	stretchedCycles float32
+
+	// record the order in which cycles happen for a single instruction. not to
+	// be confused with the prevCycles array which records the last two cycles
+	// accross instruction boundaries
+	//
+	// we only really need this information if a disassembler has been attached
+	// but we update it anyway whenever a cycle is counted
+	cycleOrder cycleOrder
+
+	// whether a branch has used the branch trail latches or not
+	branchTrail BranchTrail
+
+	// whether an I cycle that is followed by an S cycle has been merged
+	mergedIS bool
 }
 
 type disasmLevel int
@@ -183,7 +194,7 @@ func (arm *ARM) SetDisassembler(disasm mapper.CartCoProcDisassembler) {
 	if arm.disasm == nil {
 		arm.disasmCache = nil
 	} else {
-		arm.disasmCache = make(map[uint32]mapper.CartCoProcDisasmEntry)
+		arm.disasmCache = make(map[uint32]DisasmEntry)
 	}
 }
 
@@ -411,21 +422,15 @@ func (arm *ARM) Run(mamcr uint32) (uint32, float32, error) {
 	}
 
 	// what we send at the end of the execution. not used if not disassembler is set
-	programExecution := ExecutionDetails{}
+	programSummary := DisasmSummary{}
 
 	// fill pipeline
 	arm.registers[rPC] += 4
+	arm.Scycle(prefetch, arm.registers[rPC])
+	arm.Scycle(prefetch, arm.registers[rPC])
 
 	// loop through instructions until we reach an exit condition
 	for arm.continueExecution {
-		// reset instruction specific information
-		arm.N = 0
-		arm.I = 0
-		arm.S = 0
-		arm.cycles = 0
-		arm.branchTrail = BranchTrailNotUsed
-		arm.mergedIS = false
-
 		// program counter to execute:
 		//
 		// from "7.6 Data Operations" in "ARM7TDMI-S Technical Reference Manual r4p1", page 1-2
@@ -447,7 +452,7 @@ func (arm *ARM) Run(mamcr uint32) (uint32, float32, error) {
 				// use cached entry
 				arm.disasmEntry = e
 
-				if arm.disasmEntry.UpdateNotes {
+				if arm.disasmEntry.updateNotes {
 					arm.disasmEntry.ExecutionNotes = ""
 					arm.disasmLevel = disasmUpdateOnly
 				} else {
@@ -464,13 +469,13 @@ func (arm *ARM) Run(mamcr uint32) (uint32, float32, error) {
 				arm.disasmEntry.Operand = ""
 				arm.disasmEntry.Cycles = 0.0
 				arm.disasmEntry.ExecutionNotes = ""
-				arm.disasmEntry.UpdateNotes = false
+				arm.disasmEntry.updateNotes = false
 			}
 		}
 
 		// check program counter
-		idx := executingPC - arm.programMemoryOffset
-		if idx+1 >= uint32(len(*arm.programMemory)) {
+		executionPC := executingPC - arm.programMemoryOffset
+		if executionPC+1 >= uint32(len(*arm.programMemory)) {
 			// program counter is out-of-range so find program memory again
 			// (using the PC value)
 			err = arm.findProgramMemory()
@@ -481,36 +486,26 @@ func (arm *ARM) Run(mamcr uint32) (uint32, float32, error) {
 			}
 
 			// if it's still out-of-range then give up with an error
-			idx = executingPC - arm.programMemoryOffset
-			if idx+1 >= uint32(len(*arm.programMemory)) {
+			executionPC = executingPC - arm.programMemoryOffset
+			if executionPC+1 >= uint32(len(*arm.programMemory)) {
 				// can't find memory so we say the ARM program has finished inadvertently
 				logger.Logf("ARM7", "PC out of range (%#08x). finishing arm program early", arm.registers[rPC])
 				return arm.mam.mamcr, arm.cyclesTotal, nil
 			}
 		}
 
-		// store what the prefetch cycle was. we'll use this to adjust the
-		// disassembly cycle information after the execution.
-		thisPrefetchCycle := arm.prefetchCycle
-
-		// prefetch cycles
+		// prefetch the next instruction
 		arm.registers[rPC] += 2
-		if arm.prefetchCycle == N {
-			arm.Ncycle(prefetch, arm.registers[rPC])
-			arm.prefetchCycle = S
-		} else {
-			arm.Scycle(prefetch, arm.registers[rPC])
-		}
 
-		// read next instruction
-		opcode := uint16((*arm.programMemory)[idx]) | (uint16((*arm.programMemory)[idx+1]) << 8)
+		// opcode for executed instruction
+		opcode := uint16((*arm.programMemory)[executionPC]) | (uint16((*arm.programMemory)[executionPC+1]) << 8)
 
 		// the expected PC at the end of the execution. if the PC register
 		// does not match fillPipeline() is called
 		expectedPC := arm.registers[rPC]
 
 		// run from executionMap if possible
-		formatFunc := arm.functionMap[idx]
+		formatFunc := arm.functionMap[executionPC]
 		if formatFunc != nil {
 			formatFunc(opcode)
 		} else {
@@ -518,97 +513,97 @@ func (arm *ARM) Run(mamcr uint32) (uint32, float32, error) {
 			if opcode&0xf000 == 0xf000 {
 				// format 19 - Long branch with link
 				f := arm.executeLongBranchWithLink
-				arm.functionMap[idx] = f
+				arm.functionMap[executionPC] = f
 				f(opcode)
 			} else if opcode&0xf000 == 0xe000 {
 				// format 18 - Unconditional branch
 				f := arm.executeUnconditionalBranch
-				arm.functionMap[idx] = f
+				arm.functionMap[executionPC] = f
 				f(opcode)
 			} else if opcode&0xff00 == 0xdf00 {
 				// format 17 - Software interrupt"
 				f := arm.executeSoftwareInterrupt
-				arm.functionMap[idx] = f
+				arm.functionMap[executionPC] = f
 				f(opcode)
 			} else if opcode&0xf000 == 0xd000 {
 				// format 16 - Conditional branch
 				f := arm.executeConditionalBranch
-				arm.functionMap[idx] = f
+				arm.functionMap[executionPC] = f
 				f(opcode)
 			} else if opcode&0xf000 == 0xc000 {
 				// format 15 - Multiple load/store
 				f := arm.executeMultipleLoadStore
-				arm.functionMap[idx] = f
+				arm.functionMap[executionPC] = f
 				f(opcode)
 			} else if opcode&0xf600 == 0xb400 {
 				// format 14 - Push/pop registers
 				f := arm.executePushPopRegisters
-				arm.functionMap[idx] = f
+				arm.functionMap[executionPC] = f
 				f(opcode)
 			} else if opcode&0xff00 == 0xb000 {
 				// format 13 - Add offset to stack pointer
 				f := arm.executeAddOffsetToSP
-				arm.functionMap[idx] = f
+				arm.functionMap[executionPC] = f
 				f(opcode)
 			} else if opcode&0xf000 == 0xa000 {
 				// format 12 - Load address
 				f := arm.executeLoadAddress
-				arm.functionMap[idx] = f
+				arm.functionMap[executionPC] = f
 				f(opcode)
 			} else if opcode&0xf000 == 0x9000 {
 				// format 11 - SP-relative load/store
 				f := arm.executeSPRelativeLoadStore
-				arm.functionMap[idx] = f
+				arm.functionMap[executionPC] = f
 				f(opcode)
 			} else if opcode&0xf000 == 0x8000 {
 				// format 10 - Load/store halfword
 				f := arm.executeLoadStoreHalfword
-				arm.functionMap[idx] = f
+				arm.functionMap[executionPC] = f
 				f(opcode)
 			} else if opcode&0xe000 == 0x6000 {
 				// format 9 - Load/store with immediate offset
 				f := arm.executeLoadStoreWithImmOffset
-				arm.functionMap[idx] = f
+				arm.functionMap[executionPC] = f
 				f(opcode)
 			} else if opcode&0xf200 == 0x5200 {
 				// format 8 - Load/store sign-extended byte/halfword
 				f := arm.executeLoadStoreSignExtendedByteHalford
-				arm.functionMap[idx] = f
+				arm.functionMap[executionPC] = f
 				f(opcode)
 			} else if opcode&0xf200 == 0x5000 {
 				// format 7 - Load/store with register offset
 				f := arm.executeLoadStoreWithRegisterOffset
-				arm.functionMap[idx] = f
+				arm.functionMap[executionPC] = f
 				f(opcode)
 			} else if opcode&0xf800 == 0x4800 {
 				// format 6 - PC-relative load
 				f := arm.executePCrelativeLoad
-				arm.functionMap[idx] = f
+				arm.functionMap[executionPC] = f
 				f(opcode)
 			} else if opcode&0xfc00 == 0x4400 {
 				// format 5 - Hi register operations/branch exchange
 				f := arm.executeHiRegisterOps
-				arm.functionMap[idx] = f
+				arm.functionMap[executionPC] = f
 				f(opcode)
 			} else if opcode&0xfc00 == 0x4000 {
 				// format 4 - ALU operations
 				f := arm.executeALUoperations
-				arm.functionMap[idx] = f
+				arm.functionMap[executionPC] = f
 				f(opcode)
 			} else if opcode&0xe000 == 0x2000 {
 				// format 3 - Move/compare/add/subtract immediate
 				f := arm.executeMovCmpAddSubImm
-				arm.functionMap[idx] = f
+				arm.functionMap[executionPC] = f
 				f(opcode)
 			} else if opcode&0xf800 == 0x1800 {
 				// format 2 - Add/subtract
 				f := arm.executeAddSubtract
-				arm.functionMap[idx] = f
+				arm.functionMap[executionPC] = f
 				f(opcode)
 			} else if opcode&0xe000 == 0x0000 {
 				// format 1 - Move shifted register
 				f := arm.executeMoveShiftedRegister
-				arm.functionMap[idx] = f
+				arm.functionMap[executionPC] = f
 				f(opcode)
 			} else {
 				panic("undecoded instruction")
@@ -620,76 +615,74 @@ func (arm *ARM) Run(mamcr uint32) (uint32, float32, error) {
 			arm.fillPipeline()
 		}
 
+		// we've already bumped the PC counter
+
+		// prefetch cycle for next instruction is associated with and counts
+		// towards the total of the current instruction. most prefetch cycles
+		// are S cycles but store instructions require an N cycle
+		if arm.prefetchCycle == N {
+			arm.Ncycle(prefetch, arm.registers[rPC])
+		} else {
+			arm.Scycle(prefetch, arm.registers[rPC])
+		}
+
 		// increases total number of program cycles by the stretched cycles for this instruction
-		arm.cyclesTotal += arm.cycles
+		arm.cyclesTotal += arm.stretchedCycles
 
 		// update timer. assuming an APB divider value of one.
-		arm.timer.step(arm.cycles)
-
-		// adjust disassembly cycle information based on the this and the next
-		// prefetch cycle type
-		if arm.prefetchCycle == N && thisPrefetchCycle != N {
-			arm.S--
-			arm.N++
-		}
+		arm.timer.step(arm.stretchedCycles)
 
 		// send disasm information to disassembler
 		if arm.disasm != nil {
-			ed := ExecutionDetails{
-				N:           int(arm.N),
-				I:           int(arm.I),
-				S:           int(arm.S),
-				MAMCR:       int(arm.mam.mamcr),
-				BranchTrail: arm.branchTrail,
-				MergedIS:    arm.mergedIS,
-			}
+			arm.disasmEntry.MAMCR = int(arm.mam.mamcr)
+			arm.disasmEntry.BranchTrail = arm.branchTrail
+			arm.disasmEntry.MergedIS = arm.mergedIS
+			arm.disasmEntry.CyclesSequence = arm.cycleOrder.String()
 
 			// update cycle information
-			arm.disasmEntry.Cycles = float32(arm.N + arm.I + arm.S)
-			arm.disasmEntry.ExecutionDetails = ed
+			arm.disasmEntry.Cycles = arm.cycleOrder.len()
 
 			// update program cycles
-			programExecution.N += ed.N
-			programExecution.I += ed.I
-			programExecution.S += ed.S
+			programSummary.add(arm.cycleOrder)
 
-			// only send if operator field is not equal to 'blfirst'. the first
-			// instruction in a BL sequence is not shown
-			if arm.disasmEntry.Operator != blfirst {
-				// if no operator mnemonic has been defined, replace with
-				// opcode value
-				//
-				// this shouldn't happen but we're showing something so that
-				// the disasm output can be debugged
-				if arm.disasmEntry.Operator == "" {
-					arm.disasmEntry.Operator = fmt.Sprintf("%04x", opcode)
-				}
-
-				switch arm.disasmLevel {
-				case disasmFull:
-					// if this is not a cached entry then format operator and
-					// operand fields and insert into cache
-					arm.disasmEntry.Operator = fmt.Sprintf("%-4s", arm.disasmEntry.Operator)
-					arm.disasmEntry.Operand = fmt.Sprintf("%-16s", arm.disasmEntry.Operand)
-					arm.disasmEntry.ExecutionDetails = ed
-					arm.disasmCache[executingPC] = arm.disasmEntry
-				case disasmUpdateOnly:
-					// entry is cached but notes may have changed so we recache
-					// the entry
-					arm.disasmEntry.ExecutionDetails = ed
-					arm.disasmCache[executingPC] = arm.disasmEntry
-				case disasmNone:
-				}
-
-				// we always send the instruction to the disasm interface
-				arm.disasm.Step(arm.disasmEntry)
+			// if no operator mnemonic has been defined, replace with
+			// opcode value
+			//
+			// this shouldn't happen but we're showing something so that
+			// the disasm output can be debugged
+			if arm.disasmEntry.Operator == "" {
+				arm.disasmEntry.Operator = fmt.Sprintf("%04x", opcode)
 			}
+
+			switch arm.disasmLevel {
+			case disasmFull:
+				// if this is not a cached entry then format operator and
+				// operand fields and insert into cache
+				arm.disasmEntry.Operator = fmt.Sprintf("%-4s", arm.disasmEntry.Operator)
+				arm.disasmEntry.Operand = fmt.Sprintf("%-16s", arm.disasmEntry.Operand)
+				arm.disasmCache[executingPC] = arm.disasmEntry
+			case disasmUpdateOnly:
+				// entry is cached but notes may have changed so we recache
+				// the entry
+				arm.disasmCache[executingPC] = arm.disasmEntry
+			case disasmNone:
+			}
+
+			// we always send the instruction to the disasm interface
+			arm.disasm.Step(arm.disasmEntry)
 		}
+
+		// reset instruction specific information
+		arm.branchTrail = BranchTrailNotUsed
+		arm.mergedIS = false
+		arm.stretchedCycles = 0
+		arm.cycleOrder.reset()
+		arm.prefetchCycle = S
 	}
 
 	// end of program execution
 	if arm.disasm != nil {
-		arm.disasm.End(programExecution)
+		arm.disasm.End(programSummary)
 	}
 
 	if arm.executionError != nil {
@@ -1338,7 +1331,7 @@ func (arm *ARM) executeHiRegisterOps(opcode uint16) {
 		// update execution notes unless disasm level is disasmNone
 		if arm.disasmLevel != disasmNone {
 			arm.disasmEntry.ExecutionNotes = res.InterruptEvent
-			arm.disasmEntry.UpdateNotes = true
+			arm.disasmEntry.updateNotes = true
 		}
 
 		// if ARMinterrupt returns false this indicates that the
@@ -2102,7 +2095,7 @@ func (arm *ARM) executeConditionalBranch(opcode uint16) {
 	case disasmFull:
 		arm.disasmEntry.Operator = operator
 		arm.disasmEntry.Operand = fmt.Sprintf("%04x", newPC-4)
-		arm.disasmEntry.UpdateNotes = true
+		arm.disasmEntry.updateNotes = true
 		fallthrough
 	case disasmUpdateOnly:
 		if b {
@@ -2144,9 +2137,6 @@ func (arm *ARM) executeUnconditionalBranch(opcode uint16) {
 	// - fillPipeline() will be called if necessary
 }
 
-// special operator mnemonic to mark the first instruction in the BL sequence
-const blfirst = "BLFIRST"
-
 func (arm *ARM) executeLongBranchWithLink(opcode uint16) {
 	// format 19 - Long branch with link
 	low := opcode&0x800 == 0x0800
@@ -2169,10 +2159,6 @@ func (arm *ARM) executeLongBranchWithLink(opcode uint16) {
 		// "7.4 Thumb Branch With Link" in "ARM7TDMI-S Technical Reference Manual r4p3"
 		// -- no additional cycles for second instruction in BL
 		// -- change of PC is captured by expectedPC check in Run() function loop
-		// -- however, because the first instruction is not shown in the
-		//		disassembly, we should add the S cycle infromation manually.
-		//		ie. to a real cycle so we don't call Scycle()
-		arm.S++
 
 		return
 	}
@@ -2191,8 +2177,9 @@ func (arm *ARM) executeLongBranchWithLink(opcode uint16) {
 	}
 
 	if arm.disasmLevel == disasmFull {
-		arm.disasmEntry.Operator = blfirst
+		arm.disasmEntry.Operator = "bl"
 		arm.disasmEntry.Operand = fmt.Sprintf("%#08x", arm.registers[rPC])
+		arm.disasmEntry.ExecutionNotes = "first BL instruction"
 	}
 
 	// "7.4 Thumb Branch With Link" in "ARM7TDMI-S Technical Reference Manual r4p3"

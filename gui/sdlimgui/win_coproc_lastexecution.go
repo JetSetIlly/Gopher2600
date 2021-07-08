@@ -95,18 +95,18 @@ func (win *winCoProcLastExecution) draw() {
 		imguiLabel(fmt.Sprintf("%-3d", itr.Details.Clock))
 
 		if imgui.IsItemHovered() {
-			imgui.BeginTooltip()
-			imgui.Text("Saves the last execution listing to a file in the working directory")
-			imgui.EndTooltip()
+			tooltipHover("Saves the last execution listing to a file in the working directory")
 		}
 
+		imgui.SameLineV(0, 15)
 		if !(itr.Details.Frame == win.img.lz.TV.Frame &&
 			itr.Details.Scanline == win.img.lz.TV.Scanline &&
 			itr.Details.Clock == win.img.lz.TV.Clock) {
-			imgui.SameLineV(0, 15)
 			if imgui.Button("Goto") {
 				win.img.lz.Dbg.PushGotoCoords(itr.Details.Frame, itr.Details.Scanline, itr.Details.Clock)
 			}
+		} else {
+			imgui.InvisibleButton("Goto", imgui.Vec2{X: 10, Y: imgui.FrameHeight()})
 		}
 
 		imguiSeparator()
@@ -122,19 +122,19 @@ func (win *winCoProcLastExecution) draw() {
 			return
 		}
 
-		if es, ok := itr.Details.Summary.(arm7tdmi.ExecutionDetails); ok {
+		if summary, ok := itr.Details.Summary.(arm7tdmi.DisasmSummary); ok {
 			if imgui.BeginTableV("cycles", 3, imgui.TableFlagsBordersOuter, imgui.Vec2{}, 0.0) {
 				imgui.TableNextRow()
 				imgui.TableNextColumn()
-				imgui.Text(fmt.Sprintf("N: %d", es.N))
+				imgui.Text(fmt.Sprintf("N: %d", summary.N))
 				imgui.TableNextColumn()
-				imgui.Text(fmt.Sprintf("I: %d", es.I))
+				imgui.Text(fmt.Sprintf("I: %d", summary.I))
 				imgui.TableNextColumn()
-				imgui.Text(fmt.Sprintf("S: %d", es.S))
+				imgui.Text(fmt.Sprintf("S: %d", summary.S))
 				imgui.EndTable()
 			}
 		} else {
-			imgui.Text("")
+			imgui.Text("cannot find a summary of execution")
 		}
 
 		imgui.Spacing()
@@ -160,7 +160,7 @@ func (win *winCoProcLastExecution) drawDisasm(itr *coprocessor.Iterate) {
 	flgs := imgui.TableFlagsNone
 	flgs |= imgui.TableFlagsSizingFixedFit
 	flgs |= imgui.TableFlagsRowBg
-	if !imgui.BeginTableV("lastexecution", 6, flgs, imgui.Vec2{}, 0) {
+	if !imgui.BeginTableV("lastexecution", 8, flgs, imgui.Vec2{}, 0) {
 		return
 	}
 	defer imgui.EndTable()
@@ -181,89 +181,80 @@ func (win *winCoProcLastExecution) drawDisasm(itr *coprocessor.Iterate) {
 			break // clipper.Step() loop
 		}
 
+		// several columns use a tooltip
+		tooltip := ""
+
 		for i := clipper.DisplayStart; i < clipper.DisplayEnd; i++ {
+			entry := (*e).(arm7tdmi.DisasmEntry)
+
 			imgui.TableNextRow()
 
 			imgui.TableNextColumn()
+			switch entry.MAMCR {
+			case 0:
+				imguiColorLabel("", win.img.cols.CoProcMAM0)
+				tooltip = "MAM-0"
+			case 1:
+				imguiColorLabel("", win.img.cols.CoProcMAM1)
+				tooltip = "MAM-1"
+			case 2:
+				imguiColorLabel("", win.img.cols.CoProcMAM2)
+				tooltip = "MAM-2"
+			}
+			tooltipHover(tooltip)
+
+			imgui.TableNextColumn()
 			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmAddress)
-			imgui.Text(e.Address)
+			imgui.Text(entry.Address)
 			imgui.PopStyleColor()
 
 			imgui.TableNextColumn()
 			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmOperator)
-			imgui.Text(e.Operator)
+			imgui.Text(entry.Operator)
 			imgui.PopStyleColor()
 
 			imgui.TableNextColumn()
 			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmOperand)
-			imgui.Text(e.Operand)
+			imgui.Text(entry.Operand)
 			imgui.PopStyleColor()
 
-			// branch trail indicator
+			// branch trail and merged IS indicator
 			imgui.TableNextColumn()
-			if details, ok := e.ExecutionDetails.(arm7tdmi.ExecutionDetails); ok {
-				tooltip := ""
-				switch details.BranchTrail {
-				case arm7tdmi.BranchTrailUsed:
-					tooltip = "Branch trail was used"
-					imguiColorLabel("", win.img.cols.CoProcBranchTrailUsed)
-				case arm7tdmi.BranchTrailFlushed:
-					tooltip = "Branch trail was flushed causing a pipeline stall"
-					imguiColorLabel("", win.img.cols.CoProcBranchTrailFlushed)
-				}
-				if tooltip != "" && imgui.IsItemHovered() {
-					imgui.BeginTooltip()
-					imgui.Text(tooltip)
-					imgui.EndTooltip()
-				}
+			tooltip = ""
+			switch entry.BranchTrail {
+			case arm7tdmi.BranchTrailUsed:
+				tooltip = "Branch trail was used"
+				imguiColorLabel("", win.img.cols.CoProcBranchTrailUsed)
+			case arm7tdmi.BranchTrailFlushed:
+				tooltip = "Branch trail was flushed causing a pipeline stall"
+				imguiColorLabel("", win.img.cols.CoProcBranchTrailFlushed)
+			}
+			tooltipHover(tooltip)
 
-				if details.MergedIS {
-					imgui.SameLine()
-					imguiColorLabel("", win.img.cols.CoProcMergedIS)
-					if imgui.IsItemHovered() {
-						imgui.BeginTooltip()
-						imgui.Text("Merged I-S (decision made now by an earlier instruction)")
-						imgui.EndTooltip()
-					}
-				}
+			if entry.MergedIS {
+				imgui.SameLine()
+				imguiColorLabel("", win.img.cols.CoProcMergedIS)
+				tooltipHover("Merged I-S cycle")
 			}
 
+			// cycle sequence
 			imgui.TableNextColumn()
-			if e.Cycles > 0 {
+			imgui.Text(entry.CyclesSequence)
+
+			// cycles total
+			imgui.TableNextColumn()
+			if entry.Cycles > 0 {
 				imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmCycles)
-				imgui.Text(fmt.Sprintf("%.0f ", e.Cycles))
-
-				// show cycle details as a tooltip
-				if e.ExecutionDetails.String() != "" && imgui.IsItemHovered() {
-					imgui.BeginTooltip()
-					imgui.Text(e.ExecutionDetails.String())
-					if details, ok := e.ExecutionDetails.(arm7tdmi.ExecutionDetails); ok {
-						imgui.Spacing()
-						imgui.Separator()
-						imgui.Spacing()
-						switch details.MAMCR {
-						default:
-							// this is an invalid value for MAMCR. operate on the assumption the the MAM is off
-							fallthrough
-						case 0:
-							imguiColorLabel("MAM-0", win.img.cols.CoProcMAM0)
-						case 1:
-							imguiColorLabel("MAM-1", win.img.cols.CoProcMAM1)
-						case 2:
-							imguiColorLabel("MAM-2", win.img.cols.CoProcMAM2)
-						}
-					}
-					imgui.EndTooltip()
-				}
-
+				imgui.Text(fmt.Sprintf("%d", entry.Cycles))
 				imgui.PopStyleColor()
 			} else {
 				imgui.Text("??")
 			}
 
+			// execution notes
 			imgui.TableNextColumn()
 			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmNotes)
-			imgui.Text(e.ExecutionNotes)
+			imgui.Text(entry.ExecutionNotes)
 			imgui.PopStyleColor()
 
 			e, ok = itr.Next()
@@ -299,7 +290,7 @@ func (win *winCoProcLastExecution) save() {
 
 	e, _ := itr.Next()
 	for e != nil {
-		f.Write([]byte(e.String()))
+		f.Write([]byte((*e).String()))
 		f.Write([]byte("\n"))
 		e, _ = itr.Next()
 	}

@@ -16,6 +16,8 @@
 package sdlimgui
 
 import (
+	"fmt"
+
 	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/hardware/tia/revision"
 	"github.com/jetsetilly/gopher2600/logger"
@@ -81,12 +83,7 @@ func (win *winTIARevisions) draw() {
 }
 
 func (win *winTIARevisions) drawTooltip(bug revision.Bug) {
-	imgui.BeginTooltip()
-	defer imgui.EndTooltip()
-	imgui.Text(bug.Description())
-	imgui.Text("Notable ROM:")
-	imgui.SameLine()
-	imgui.Text(bug.NotableROM())
+	tooltipHover(fmt.Sprintf("%s\nNotable ROM: %s", bug.Description(), bug.NotableROM()))
 }
 
 func (win *winTIARevisions) drawLateGRPx() {
@@ -96,17 +93,13 @@ func (win *winTIARevisions) drawLateGRPx() {
 	if imgui.Checkbox("GRP0", &a) {
 		win.img.vcs.TIA.Rev.Prefs.DskLateVDELGRP0.Set(a)
 	}
-	if imgui.IsItemHovered() {
-		win.drawTooltip(revision.LateVDELGRP0)
-	}
+	win.drawTooltip(revision.LateVDELGRP0)
 
 	b := win.img.vcs.TIA.Rev.Prefs.DskLateVDELGRP1.Get().(bool)
 	if imgui.Checkbox("GRP1", &b) {
 		win.img.vcs.TIA.Rev.Prefs.DskLateVDELGRP1.Set(b)
 	}
-	if imgui.IsItemHovered() {
-		win.drawTooltip(revision.LateVDELGRP1)
-	}
+	win.drawTooltip(revision.LateVDELGRP1)
 }
 
 func (win *winTIARevisions) drawLateRipple() {
@@ -116,17 +109,13 @@ func (win *winTIARevisions) drawLateRipple() {
 	if imgui.Checkbox("Late Start", &a) {
 		win.img.vcs.TIA.Rev.Prefs.DskLateRippleStart.Set(a)
 	}
-	if imgui.IsItemHovered() {
-		win.drawTooltip(revision.LateRippleStart)
-	}
+	win.drawTooltip(revision.LateRippleStart)
 
 	b := win.img.vcs.TIA.Rev.Prefs.DskLateRippleEnd.Get().(bool)
 	if imgui.Checkbox("Late End", &b) {
 		win.img.vcs.TIA.Rev.Prefs.DskLateRippleEnd.Set(b)
 	}
-	if imgui.IsItemHovered() {
-		win.drawTooltip(revision.LateRippleEnd)
-	}
+	win.drawTooltip(revision.LateRippleEnd)
 }
 
 func (win *winTIARevisions) drawLatePlayfield() {
@@ -136,17 +125,13 @@ func (win *winTIARevisions) drawLatePlayfield() {
 	if imgui.Checkbox("PFx", &a) {
 		win.img.vcs.TIA.Rev.Prefs.DskLatePFx.Set(a)
 	}
-	if imgui.IsItemHovered() {
-		win.drawTooltip(revision.LatePFx)
-	}
+	win.drawTooltip(revision.LatePFx)
 
 	b := win.img.vcs.TIA.Rev.Prefs.DskLateCOLUPF.Get().(bool)
 	if imgui.Checkbox("COLUPF", &b) {
 		win.img.vcs.TIA.Rev.Prefs.DskLateCOLUPF.Set(b)
 	}
-	if imgui.IsItemHovered() {
-		win.drawTooltip(revision.LateCOLUPF)
-	}
+	win.drawTooltip(revision.LateCOLUPF)
 }
 
 func (win *winTIARevisions) drawLostMOTCK() {
@@ -156,9 +141,7 @@ func (win *winTIARevisions) drawLostMOTCK() {
 	if imgui.Checkbox("Players/Missiles/Ball", &a) {
 		win.img.vcs.TIA.Rev.Prefs.DskLostMOTCK.Set(a)
 	}
-	if imgui.IsItemHovered() {
-		win.drawTooltip(revision.LostMOTCK)
-	}
+	win.drawTooltip(revision.LostMOTCK)
 }
 
 func (win *winTIARevisions) drawLateRESPx() {
@@ -168,9 +151,7 @@ func (win *winTIARevisions) drawLateRESPx() {
 	if imgui.Checkbox("HBLANK threshold", &a) {
 		win.img.vcs.TIA.Rev.Prefs.DskRESPxHBLANK.Set(a)
 	}
-	if imgui.IsItemHovered() {
-		win.drawTooltip(revision.RESPxHBLANK)
-	}
+	win.drawTooltip(revision.RESPxHBLANK)
 }
 
 func (win *winTIARevisions) drawDiskButtons() {

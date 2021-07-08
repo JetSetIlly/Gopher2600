@@ -17,55 +17,15 @@ package mapper
 
 import "fmt"
 
-// CartCoProcDisasmEntry represents a single decoded instruction by the
-// coprocessor. Generators of this type should nomalise the width of each
-// field. For example, the maximum length of an Operator mnemonic might be 4
-// characters, meaning that all Operator fields should be 4 characters and
-// padded with spaces as required.
-type CartCoProcDisasmEntry struct {
-	Location string
-	Address  string
-	Operator string
-	Operand  string
-
-	// total cycles for this instruction
-	Cycles float32
-
-	// basic notes about the last execution of the entry
-	ExecutionNotes string
-
-	// ExecutionNotes field may be updated
-	UpdateNotes bool
-
-	// some coprocessors will have more detailed information and the last
-	// execution othe entry.
-	//
-	// the contents of this field may change every execution
-	ExecutionDetails CartCoProcExecutionDetails
-}
-
-// CartCoProcExecutionDetails represents more specific information about an execution
-// of a coprocessor disassembly entry. At it's minimum it should report back a
-// text summary.
-//
-// When coprocessor specific details are required by a consumer of the
-// interface, the specific coprocessor being used should be known ahead of
-// time. The interface can then be cast to the concrete type.
-type CartCoProcExecutionDetails interface {
+// CartCoProcDisasmEntry represents a single decoded instruction by the coprocessor.
+type CartCoProcDisasmEntry interface {
+	Key() string
 	String() string
 }
 
-// CartCoProcExecutionSummary represents a summary of a coprocessor execution.
-//
-// When coprocessor specific details are required by a consumer of the
-// interface, the specific coprocessor being used should be known ahead of
-// time. The interface can then be cast to the concrete type.
-type CartCoProcExecutionSummary interface {
+// CartCoProcDisasmSummary represents a summary of a coprocessor execution.
+type CartCoProcDisasmSummary interface {
 	String() string
-}
-
-func (e CartCoProcDisasmEntry) String() string {
-	return fmt.Sprintf("%s %s %s (%.0f) %s", e.Address, e.Operator, e.Operand, e.Cycles, e.ExecutionNotes)
 }
 
 // CartCoProcDisassembler defines the functions that must be defined for a
@@ -78,7 +38,7 @@ type CartCoProcDisassembler interface {
 	Step(CartCoProcDisasmEntry)
 
 	// End is called when coprocessor program has finished.
-	End(CartCoProcExecutionSummary)
+	End(CartCoProcDisasmSummary)
 }
 
 // CartCoProcBus is implemented by cartridge mappers that have a coprocessor that
@@ -103,6 +63,6 @@ func (c *CartCoProcDisassemblerStdout) Step(e CartCoProcDisasmEntry) {
 }
 
 // End implements the CartCoProcDisassembler interface.
-func (c *CartCoProcDisassemblerStdout) End(s CartCoProcExecutionSummary) {
+func (c *CartCoProcDisassemblerStdout) End(s CartCoProcDisasmSummary) {
 	fmt.Println(s)
 }

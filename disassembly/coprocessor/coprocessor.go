@@ -45,7 +45,7 @@ type LastExecutionDetails struct {
 	Clock    int
 
 	// values at end of execution
-	Summary mapper.CartCoProcExecutionSummary
+	Summary mapper.CartCoProcDisasmSummary
 }
 
 // Add returns a new Coprocessor instance if cartridge implements the
@@ -89,15 +89,16 @@ func (cop *Coprocessor) Step(entry mapper.CartCoProcDisasmEntry) {
 	defer cop.crit.Unlock()
 	cop.lastExecution = append(cop.lastExecution, entry)
 
-	if _, ok := cop.entries[entry.Address]; !ok {
-		cop.entriesKeys = append(cop.entriesKeys, entry.Address)
+	key := entry.Key()
+	if _, ok := cop.entries[key]; !ok {
+		cop.entriesKeys = append(cop.entriesKeys, key)
 		sort.Strings(cop.entriesKeys)
 	}
-	cop.entries[entry.Address] = entry
+	cop.entries[key] = entry
 }
 
 // End implements the CartCoProcDisassembler interface.
-func (cop *Coprocessor) End(summary mapper.CartCoProcExecutionSummary) {
+func (cop *Coprocessor) End(summary mapper.CartCoProcDisasmSummary) {
 	cop.crit.Lock()
 	defer cop.crit.Unlock()
 	cop.lastExecutionDetails.Summary = summary

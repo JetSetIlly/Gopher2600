@@ -307,10 +307,8 @@ func drawByteGrid(data []uint8, cmp []uint8, diffCol imgui.Vec4, base uint16, co
 					}
 				}
 
-				if imgui.IsItemHovered() && b != c {
-					imgui.BeginTooltip()
-					imgui.Text(fmt.Sprintf("was %02x -> is now %02x", c, b))
-					imgui.EndTooltip()
+				if b != c {
+					tooltipHover(fmt.Sprintf("was %02x -> is now %02x", c, b))
 				}
 
 				// undo any color changes
@@ -404,4 +402,17 @@ func (img *SdlImgui) imguiSwatch(col uint8, size float32) (clicked bool) {
 	imgui.SetCursorScreenPos(p)
 
 	return clicked
+}
+
+// shows toltip on hover of the previous imgui group. useful for simple tooltips.
+func tooltipHover(tooltip string) {
+	tooltip = strings.TrimSpace(tooltip)
+	if tooltip != "" && imgui.IsItemHovered() {
+		s := strings.Split(tooltip, "\n")
+		imgui.BeginTooltip()
+		for _, t := range s {
+			imgui.Text(t)
+		}
+		imgui.EndTooltip()
+	}
 }

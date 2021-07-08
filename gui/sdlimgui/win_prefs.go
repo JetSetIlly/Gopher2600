@@ -17,7 +17,6 @@ package sdlimgui
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/gui"
@@ -123,17 +122,6 @@ func (win *winPrefs) draw() {
 	imgui.End()
 }
 
-func (win *winPrefs) drawHelp(text string) {
-	if imgui.IsItemHovered() {
-		imgui.BeginTooltip()
-		defer imgui.EndTooltip()
-		t := strings.Split(text, "\n")
-		for i := range t {
-			imgui.Text(t[i])
-		}
-	}
-}
-
 // in this function we address vcs directly and not through the lazy system. it
 // seems to be okay. acutal preference values are protected by mutexes in the
 // prefs package so thats not a problem. the co-processor bus however can be
@@ -175,7 +163,7 @@ func (win *winPrefs) drawARM() {
 	if imgui.Checkbox("Immediate ARM Execution", &immediate) {
 		win.img.vcs.Prefs.ARM.Immediate.Set(immediate)
 	}
-	win.drawHelp("ARM program consumes no 6507 time (like Stella)\nIf this option is set the other ARM settings are irrelevant")
+	tooltipHover("ARM program consumes no 6507 time (like Stella)\nIf this option is set the other ARM settings are irrelevant")
 
 	if immediate {
 		imgui.PushItemFlag(imgui.ItemFlagsDisabled, true)
@@ -183,15 +171,6 @@ func (win *winPrefs) drawARM() {
 		defer imgui.PopStyleVar()
 		defer imgui.PopItemFlag()
 	}
-
-	// emulateMAMBug := win.img.vcs.Prefs.ARM.EmulateMAMbug.Get().(bool)
-	// if imgui.Checkbox("Emulate MAM Bug", &emulateMAMBug) {
-	// 	win.img.vcs.Prefs.ARM.EmulateMAMbug.Set(emulateMAMBug)
-	// }
-	// win.drawHelp(`A bug in some ARM7TDMI chips used in the Harmony cartridge
-	// can result in a crash if the MAM is in mode 2. Leave this option unticked for
-	// more situations but if you need to emulate the buggy behaviour then untick this
-	// option.`)
 
 	var mamState string
 	switch win.img.vcs.Prefs.ARM.MAM.Get().(int) {
@@ -221,7 +200,7 @@ func (win *winPrefs) drawARM() {
 		imgui.EndCombo()
 	}
 	imgui.PopItemWidth()
-	win.drawHelp(`The MAM state at the start of the Thumb program.
+	tooltipHover(`The MAM state at the start of the Thumb program.
 
 For most purposes, this should be set to 'Driver'. This means that the emulated driver
 for the cartridge mapper decides what the value should be.
@@ -237,19 +216,19 @@ The MAM should almost never be disabled completely.`)
 		if imgui.SliderFloatV("ARM Clock", &armClock, 10, 80, fmt.Sprintf("%.1f Mhz", armClock), imgui.SliderFlagsNone) {
 			win.img.vcs.Prefs.ARM.Clock.Set(armClock)
 		}
-		win.drawHelp("The basic speed of the ARM. Effective speeds is governed by memory access. Default speed of 70Mhz")
+		tooltipHover("The basic speed of the ARM. Effective speeds is governed by memory access. Default speed of 70Mhz")
 
 		flashAccessTime := float32(win.img.vcs.Prefs.ARM.FlashAccessTime.Get().(float64))
 		if imgui.SliderFloatV("Flash Access Time", &flashAccessTime, 1, 60, fmt.Sprintf("%.1f ns", flashAccessTime), imgui.SliderFlagsNone) {
 			win.img.vcs.Prefs.ARM.FlashAccessTime.Set(flashAccessTime)
 		}
-		win.drawHelp("The amount of time required for the ARM to address Flash. Default time of 50ns")
+		tooltipHover("The amount of time required for the ARM to address Flash. Default time of 50ns")
 
 		sramAccessTime := float32(win.img.vcs.Prefs.ARM.SRAMAccessTime.Get().(float64))
 		if imgui.SliderFloatV("SRAM Access Time", &sramAccessTime, 1, 60, fmt.Sprintf("%.1f ns", sramAccessTime), imgui.SliderFlagsNone) {
 			win.img.vcs.Prefs.ARM.SRAMAccessTime.Set(sramAccessTime)
 		}
-		win.drawHelp("The amount of time required for the ARM to address SRAM. Default time of 10ns")
+		tooltipHover("The amount of time required for the ARM to address SRAM. Default time of 10ns")
 	}
 }
 
