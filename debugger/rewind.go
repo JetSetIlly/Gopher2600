@@ -159,8 +159,6 @@ func (dbg *Debugger) PushGotoCoords(frame int, scanline int, clock int) {
 		return
 	}
 
-	dbg.runUntilHalt = false
-
 	dbg.PushRawEventImm(func() {
 		dbg.scr.SetFeature(gui.ReqState, gui.StateRewinding)
 
