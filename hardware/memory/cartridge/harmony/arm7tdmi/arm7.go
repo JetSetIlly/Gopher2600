@@ -70,18 +70,6 @@ type ARM struct {
 	timer timer
 	mam   mam
 
-	// a record of cycle types. used to decide whether to merge I-S cycles. for
-	// presentation purposes the cycleOrder field is a better source of
-	// information.
-	prevCycles [2]cycleEvent
-
-	// the type of cycle next prefetch (the main PC increment in the Run()
-	// loop) should be. either N or S type. never I type.
-	prefetchCycle cycleType
-
-	// total number of cycles for the entire program
-	cyclesTotal float32
-
 	// the area the PC covers. once assigned we'll assume that the program
 	// never reads outside this area. the value is assigned on reset()
 	programMemory *[]uint8
@@ -116,6 +104,24 @@ type ARM struct {
 
 	// the next disasmEntry to send to attached disassembler
 	disasmEntry DisasmEntry
+
+	// \/\/\/ the following fields relate to cycle counting. there's a possible
+	// optimisation whereby we don't do any cycle counting at all (or minimise
+	// it at least) if the emulation is running in immediate mode
+	//
+	// !TODO: optimisation for ARM immediate mode
+
+	// a record of cycle types. used to decide whether to merge I-S cycles. for
+	// presentation purposes the cycleOrder field is a better source of
+	// information.
+	prevCycles [2]cycleEvent
+
+	// the type of cycle next prefetch (the main PC increment in the Run()
+	// loop) should be. either N or S type. never I type.
+	prefetchCycle cycleType
+
+	// total number of cycles for the entire program
+	cyclesTotal float32
 
 	// \/\/\/ the following are reset at the end of each Run() iteration \/\/\/
 
@@ -425,9 +431,9 @@ func (arm *ARM) Run(mamcr uint32) (uint32, float32, error) {
 	programSummary := DisasmSummary{}
 
 	// fill pipeline
+	arm.Scycle(prefetch, arm.registers[rPC])
+	arm.Scycle(prefetch, arm.registers[rPC]+2)
 	arm.registers[rPC] += 4
-	arm.Scycle(prefetch, arm.registers[rPC])
-	arm.Scycle(prefetch, arm.registers[rPC])
 
 	// loop through instructions until we reach an exit condition
 	for arm.continueExecution {
@@ -474,38 +480,35 @@ func (arm *ARM) Run(mamcr uint32) (uint32, float32, error) {
 		}
 
 		// check program counter
-		executionPC := executingPC - arm.programMemoryOffset
-		if executionPC+1 >= uint32(len(*arm.programMemory)) {
+		memIdx := executingPC - arm.programMemoryOffset
+		if memIdx+1 >= uint32(len(*arm.programMemory)) {
 			// program counter is out-of-range so find program memory again
 			// (using the PC value)
 			err = arm.findProgramMemory()
 			if err != nil {
 				// can't find memory so we say the ARM program has finished inadvertently
-				logger.Logf("ARM7", "PC out of range (%#08x). finishing arm program early", arm.registers[rPC])
+				logger.Logf("ARM7", "PC out of range (%#08x). finishing arm program early", executingPC)
 				return arm.mam.mamcr, arm.cyclesTotal, nil
 			}
 
 			// if it's still out-of-range then give up with an error
-			executionPC = executingPC - arm.programMemoryOffset
-			if executionPC+1 >= uint32(len(*arm.programMemory)) {
+			memIdx = executingPC - arm.programMemoryOffset
+			if memIdx+1 >= uint32(len(*arm.programMemory)) {
 				// can't find memory so we say the ARM program has finished inadvertently
-				logger.Logf("ARM7", "PC out of range (%#08x). finishing arm program early", arm.registers[rPC])
+				logger.Logf("ARM7", "PC out of range (%#08x). finishing arm program early", executingPC)
 				return arm.mam.mamcr, arm.cyclesTotal, nil
 			}
 		}
 
-		// prefetch the next instruction
-		arm.registers[rPC] += 2
-
 		// opcode for executed instruction
-		opcode := uint16((*arm.programMemory)[executionPC]) | (uint16((*arm.programMemory)[executionPC+1]) << 8)
+		opcode := uint16((*arm.programMemory)[memIdx]) | (uint16((*arm.programMemory)[memIdx+1]) << 8)
 
 		// the expected PC at the end of the execution. if the PC register
 		// does not match fillPipeline() is called
 		expectedPC := arm.registers[rPC]
 
 		// run from executionMap if possible
-		formatFunc := arm.functionMap[executionPC]
+		formatFunc := arm.functionMap[memIdx]
 		if formatFunc != nil {
 			formatFunc(opcode)
 		} else {
@@ -513,97 +516,97 @@ func (arm *ARM) Run(mamcr uint32) (uint32, float32, error) {
 			if opcode&0xf000 == 0xf000 {
 				// format 19 - Long branch with link
 				f := arm.executeLongBranchWithLink
-				arm.functionMap[executionPC] = f
+				arm.functionMap[memIdx] = f
 				f(opcode)
 			} else if opcode&0xf000 == 0xe000 {
 				// format 18 - Unconditional branch
 				f := arm.executeUnconditionalBranch
-				arm.functionMap[executionPC] = f
+				arm.functionMap[memIdx] = f
 				f(opcode)
 			} else if opcode&0xff00 == 0xdf00 {
 				// format 17 - Software interrupt"
 				f := arm.executeSoftwareInterrupt
-				arm.functionMap[executionPC] = f
+				arm.functionMap[memIdx] = f
 				f(opcode)
 			} else if opcode&0xf000 == 0xd000 {
 				// format 16 - Conditional branch
 				f := arm.executeConditionalBranch
-				arm.functionMap[executionPC] = f
+				arm.functionMap[memIdx] = f
 				f(opcode)
 			} else if opcode&0xf000 == 0xc000 {
 				// format 15 - Multiple load/store
 				f := arm.executeMultipleLoadStore
-				arm.functionMap[executionPC] = f
+				arm.functionMap[memIdx] = f
 				f(opcode)
 			} else if opcode&0xf600 == 0xb400 {
 				// format 14 - Push/pop registers
 				f := arm.executePushPopRegisters
-				arm.functionMap[executionPC] = f
+				arm.functionMap[memIdx] = f
 				f(opcode)
 			} else if opcode&0xff00 == 0xb000 {
 				// format 13 - Add offset to stack pointer
 				f := arm.executeAddOffsetToSP
-				arm.functionMap[executionPC] = f
+				arm.functionMap[memIdx] = f
 				f(opcode)
 			} else if opcode&0xf000 == 0xa000 {
 				// format 12 - Load address
 				f := arm.executeLoadAddress
-				arm.functionMap[executionPC] = f
+				arm.functionMap[memIdx] = f
 				f(opcode)
 			} else if opcode&0xf000 == 0x9000 {
 				// format 11 - SP-relative load/store
 				f := arm.executeSPRelativeLoadStore
-				arm.functionMap[executionPC] = f
+				arm.functionMap[memIdx] = f
 				f(opcode)
 			} else if opcode&0xf000 == 0x8000 {
 				// format 10 - Load/store halfword
 				f := arm.executeLoadStoreHalfword
-				arm.functionMap[executionPC] = f
+				arm.functionMap[memIdx] = f
 				f(opcode)
 			} else if opcode&0xe000 == 0x6000 {
 				// format 9 - Load/store with immediate offset
 				f := arm.executeLoadStoreWithImmOffset
-				arm.functionMap[executionPC] = f
+				arm.functionMap[memIdx] = f
 				f(opcode)
 			} else if opcode&0xf200 == 0x5200 {
 				// format 8 - Load/store sign-extended byte/halfword
 				f := arm.executeLoadStoreSignExtendedByteHalford
-				arm.functionMap[executionPC] = f
+				arm.functionMap[memIdx] = f
 				f(opcode)
 			} else if opcode&0xf200 == 0x5000 {
 				// format 7 - Load/store with register offset
 				f := arm.executeLoadStoreWithRegisterOffset
-				arm.functionMap[executionPC] = f
+				arm.functionMap[memIdx] = f
 				f(opcode)
 			} else if opcode&0xf800 == 0x4800 {
 				// format 6 - PC-relative load
 				f := arm.executePCrelativeLoad
-				arm.functionMap[executionPC] = f
+				arm.functionMap[memIdx] = f
 				f(opcode)
 			} else if opcode&0xfc00 == 0x4400 {
 				// format 5 - Hi register operations/branch exchange
 				f := arm.executeHiRegisterOps
-				arm.functionMap[executionPC] = f
+				arm.functionMap[memIdx] = f
 				f(opcode)
 			} else if opcode&0xfc00 == 0x4000 {
 				// format 4 - ALU operations
 				f := arm.executeALUoperations
-				arm.functionMap[executionPC] = f
+				arm.functionMap[memIdx] = f
 				f(opcode)
 			} else if opcode&0xe000 == 0x2000 {
 				// format 3 - Move/compare/add/subtract immediate
 				f := arm.executeMovCmpAddSubImm
-				arm.functionMap[executionPC] = f
+				arm.functionMap[memIdx] = f
 				f(opcode)
 			} else if opcode&0xf800 == 0x1800 {
 				// format 2 - Add/subtract
 				f := arm.executeAddSubtract
-				arm.functionMap[executionPC] = f
+				arm.functionMap[memIdx] = f
 				f(opcode)
 			} else if opcode&0xe000 == 0x0000 {
 				// format 1 - Move shifted register
 				f := arm.executeMoveShiftedRegister
-				arm.functionMap[executionPC] = f
+				arm.functionMap[memIdx] = f
 				f(opcode)
 			} else {
 				panic("undecoded instruction")
@@ -615,7 +618,8 @@ func (arm *ARM) Run(mamcr uint32) (uint32, float32, error) {
 			arm.fillPipeline()
 		}
 
-		// we've already bumped the PC counter
+		// bump PC counter for prefetch
+		arm.registers[rPC] += 2
 
 		// prefetch cycle for next instruction is associated with and counts
 		// towards the total of the current instruction. most prefetch cycles
@@ -625,6 +629,7 @@ func (arm *ARM) Run(mamcr uint32) (uint32, float32, error) {
 		} else {
 			arm.Scycle(prefetch, arm.registers[rPC])
 		}
+		arm.prefetchCycle = S
 
 		// increases total number of program cycles by the stretched cycles for this instruction
 		arm.cyclesTotal += arm.stretchedCycles
@@ -677,7 +682,6 @@ func (arm *ARM) Run(mamcr uint32) (uint32, float32, error) {
 		arm.mergedIS = false
 		arm.stretchedCycles = 0
 		arm.cycleOrder.reset()
-		arm.prefetchCycle = S
 	}
 
 	// end of program execution
@@ -1301,13 +1305,15 @@ func (arm *ARM) executeHiRegisterOps(opcode uint16) {
 
 		var newPC uint32
 
-		// If R15 is used as an operand, the value will be the address of the instruction + 4 with
+		// "ARM7TDMI Data Sheet" page 5-15:
+		//
+		// "If R15 is used as an operand, the value will be the address of the instruction + 4 with
 		// bit 0 cleared. Executing a BX PC in THUMB state from a non-word aligned address
-		// will result in unpredictable execution.
+		// will result in unpredictable execution."
 		if srcReg == rPC {
 			newPC = arm.registers[rPC] + 4
 		} else {
-			newPC = (arm.registers[srcReg] & 0x7ffffffe) + 4
+			newPC = (arm.registers[srcReg] & 0x7ffffffe) + 2
 		}
 
 		if thumbMode {
@@ -1354,7 +1360,7 @@ func (arm *ARM) executeHiRegisterOps(opcode uint16) {
 		// the end of the emulated function will have an operation that
 		// switches back to thumb mode, and copies the link register to the
 		// program counter. we need to emulate that too.
-		arm.registers[rPC] = arm.registers[rLR] - 2
+		arm.registers[rPC] = arm.registers[rLR]
 
 		// add cycles used by the ARM program
 		arm.armInterruptCycles(res)
@@ -1371,7 +1377,7 @@ func (arm *ARM) executePCrelativeLoad(opcode uint16) {
 
 	// "Bit 1 of the PC value is forced to zero for the purpose of this
 	// calculation, so the address is always word-aligned."
-	pc := (arm.registers[rPC] - 2) & 0xfffffffc
+	pc := arm.registers[rPC] & 0xfffffffc
 
 	if arm.disasmLevel == disasmFull {
 		arm.disasmEntry.Operator = "LDR"
@@ -1718,7 +1724,7 @@ func (arm *ARM) executeLoadAddress(opcode uint16) {
 		arm.disasmEntry.Operand = fmt.Sprintf("R%d, PC, #%02x] ", destReg, offset)
 	}
 
-	arm.registers[destReg] = arm.registers[rPC] - 2 + uint32(offset)
+	arm.registers[destReg] = arm.registers[rPC] + uint32(offset)
 
 	// "7.6 Data Operations" in "ARM7TDMI-S Technical Reference Manual r4p3"
 	// - fillPipeline() will be called if necessary
@@ -1831,7 +1837,7 @@ func (arm *ARM) executePushPopRegisters(opcode uint16) {
 			v := arm.read32bit(addr) & 0xfffffffe
 
 			// adjust popped LR value before assigning to the PC
-			arm.registers[rPC] = v + 4
+			arm.registers[rPC] = v + 2
 			addr += 4
 
 			if arm.disasmLevel == disasmFull {
@@ -2094,7 +2100,7 @@ func (arm *ARM) executeConditionalBranch(opcode uint16) {
 	switch arm.disasmLevel {
 	case disasmFull:
 		arm.disasmEntry.Operator = operator
-		arm.disasmEntry.Operand = fmt.Sprintf("%04x", newPC-4)
+		arm.disasmEntry.Operand = fmt.Sprintf("%04x", newPC-2)
 		arm.disasmEntry.updateNotes = true
 		fallthrough
 	case disasmUpdateOnly:
@@ -2129,7 +2135,7 @@ func (arm *ARM) executeUnconditionalBranch(opcode uint16) {
 	if arm.disasmLevel == disasmFull {
 		if arm.disasmLevel == disasmFull {
 			arm.disasmEntry.Operator = "BAL"
-			arm.disasmEntry.Operand = fmt.Sprintf("%04x ", arm.registers[rPC]-4)
+			arm.disasmEntry.Operand = fmt.Sprintf("%04x ", arm.registers[rPC]-2)
 		}
 	}
 
@@ -2149,11 +2155,13 @@ func (arm *ARM) executeLongBranchWithLink(opcode uint16) {
 
 		offset <<= 1
 		pc := arm.registers[rPC]
-		arm.registers[rPC] = arm.registers[rLR] + offset
-		arm.registers[rLR] = pc - 3
+
+		arm.registers[rPC] = arm.registers[rLR] + offset + 2
+		arm.registers[rLR] = pc - 1
+
 		if arm.disasmLevel == disasmFull {
 			arm.disasmEntry.Operator = "BL"
-			arm.disasmEntry.Operand = fmt.Sprintf("%#08x", arm.registers[rPC]-4)
+			arm.disasmEntry.Operand = fmt.Sprintf("%#08x", arm.registers[rPC]-2)
 		}
 
 		// "7.4 Thumb Branch With Link" in "ARM7TDMI-S Technical Reference Manual r4p3"
@@ -2171,14 +2179,14 @@ func (arm *ARM) executeLongBranchWithLink(opcode uint16) {
 		// two's complement before subtraction
 		offset ^= 0x7fffff
 		offset++
-		arm.registers[rLR] = arm.registers[rPC] - offset + 2
+		arm.registers[rLR] = arm.registers[rPC] - offset
 	} else {
-		arm.registers[rLR] = arm.registers[rPC] + offset + 2
+		arm.registers[rLR] = arm.registers[rPC] + offset
 	}
 
 	if arm.disasmLevel == disasmFull {
 		arm.disasmEntry.Operator = "bl"
-		arm.disasmEntry.Operand = fmt.Sprintf("%#08x", arm.registers[rPC])
+		arm.disasmEntry.Operand = "-"
 		arm.disasmEntry.ExecutionNotes = "first BL instruction"
 	}
 
