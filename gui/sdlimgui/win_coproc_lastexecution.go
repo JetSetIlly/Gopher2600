@@ -139,9 +139,10 @@ func (win *winCoProcLastExecution) draw() {
 
 		imgui.Spacing()
 
-		if imgui.Button("Save") {
+		if imgui.Button("Save CSV") {
 			win.save()
 		}
+		tooltipHover("CSV file separated by semi-colons")
 
 		imgui.SameLineV(0, 15)
 		if win.showLastExecution {
@@ -276,7 +277,7 @@ func (win *winCoProcLastExecution) save() {
 		fn = paths.UniqueFilename("coproc_disasm", "")
 	}
 
-	f, err := os.Create(fn)
+	f, err := os.Create(fmt.Sprintf("%s.csv", fn))
 	if err != nil {
 		logger.Logf("sdlimgui", "error saving last coproc execution: %v", err)
 		return

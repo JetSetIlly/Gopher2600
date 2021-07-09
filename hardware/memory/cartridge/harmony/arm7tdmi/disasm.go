@@ -45,9 +45,15 @@ func (e DisasmEntry) Key() string {
 	return e.Address
 }
 
-// String implements the CartCoProcDisasmEntry interface
+// String implements the CartCoProcDisasmEntry interface. Outputs CSV friendly
+// entries, albeit seprated by semicolons rather than commas.
 func (e DisasmEntry) String() string {
-	return fmt.Sprintf("%s %s %s (%d) %s", e.Address, e.Operator, e.Operand, e.Cycles, e.ExecutionNotes)
+	mergedIS := ""
+	if e.MergedIS {
+		mergedIS = "merged IS"
+	}
+
+	return fmt.Sprintf("%s;%s;%s;%d;%s;%s;%s", e.Address, e.Operator, e.Operand, e.Cycles, e.ExecutionNotes, mergedIS, e.CyclesSequence)
 }
 
 // DisasmSummary implements the CartCoProcDisasmSummary interface.
