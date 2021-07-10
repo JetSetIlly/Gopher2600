@@ -81,32 +81,39 @@ const (
 	S cycleType = 'S'
 )
 
-type cycleEvent struct {
-	cycle cycleType
-
-	// bus and addr are undefined if cycle is I
-	bus  busAccess
-	addr uint32
-}
-
 // returns false if address isn't latched. this means theat the bus access is
 // subject to latency.
 //
 // dows not handle the decision about whether the MAM latches should be
 // checked. for example, if MAMCR is zero than don't call this function at all.
 // see Scycle() and Ncycle() for those decisions.
-func (arm *ARM) isLatched(bus busAccess, addr uint32) bool {
+func (arm *ARM) isLatched(cycle cycleType, bus busAccess, addr uint32) bool {
 	latch := addr & 0xffffff80
+
+	// From UM10161, page 16:
+	//
+	// "Timing of Flash read operations is programmable and is described
+	// later in this section. In this manner, there is no code fetch
+	// penalty for sequential instruction execution when the CPU clock
+	// period is greater than or equal to one fourth of the Flash access
+	// time."
+	//
+	// I'm not entirely sure what this is saying, is it saying that there's a
+	// condition for an S cycle saying that there is no penalty if the "clock
+	// period is greater..." or is it an implied condition?
+	tim := uint32(arm.stretchedCycles)%(arm.mam.mamtim) == 0 && cycle == S
 
 	switch bus {
 	case prefetch:
-		if latch == arm.mam.prefectchLatch {
+		if latch == arm.mam.prefectchLatch || tim {
+			arm.mam.prefectchLatch = latch
 			return true
 		}
 		arm.mam.prefectchLatch = latch
 
 	case branch:
-		if latch == arm.mam.branchLatch {
+		if latch == arm.mam.branchLatch || tim {
+			arm.mam.branchLatch = latch
 			arm.branchTrail = BranchTrailUsed
 			return true
 		}
@@ -114,7 +121,8 @@ func (arm *ARM) isLatched(bus busAccess, addr uint32) bool {
 		arm.branchTrail = BranchTrailFlushed
 
 	case dataRead:
-		if latch == arm.mam.dataLatch {
+		if latch == arm.mam.dataLatch || tim {
+			arm.mam.dataLatch = latch
 			return true
 		}
 		arm.mam.dataLatch = latch
@@ -125,22 +133,13 @@ func (arm *ARM) isLatched(bus busAccess, addr uint32) bool {
 		arm.mam.dataLatch = 0x0
 	}
 
-	// From UM10161, page 16:
-	//
-	// "Timing of Flash read operations is programmable and is described
-	// later in this section. In this manner, there is no code fetch
-	// penalty for sequential instruction execution when the CPU clock
-	// period is greater than or equal to one fourth of the Flash access
-	// time."
-	return arm.mam.flashTiming%arm.mam.mamtim == 0
+	return false
 }
 
 func (arm *ARM) Icycle() {
 	arm.cycleOrder.add(I)
 	arm.stretchedCycles++
-	arm.mam.flashTiming++
-	arm.prevCycles[1] = arm.prevCycles[0]
-	arm.prevCycles[0] = cycleEvent{cycle: I}
+	arm.lastCycle = I
 }
 
 func (arm *ARM) Scycle(bus busAccess, addr uint32) {
@@ -154,79 +153,100 @@ func (arm *ARM) Scycle(bus busAccess, addr uint32) {
 	// the memory access. This is shown in Figure 3-5 on page 3-9."
 	//
 	// page 3-8 of the "ARM7TDMI-S Technical Reference Manual r4p3"
-	if arm.prevCycles[0].cycle == I {
+	if arm.lastCycle == I {
 		arm.stretchedCycles--
 		arm.mergedIS = true
 	}
 
 	arm.cycleOrder.add(S)
-	arm.prevCycles[1] = arm.prevCycles[0]
-	arm.prevCycles[0] = cycleEvent{cycle: S, bus: bus, addr: addr}
+	arm.lastCycle = S
 
 	if !arm.mmap.isFlash(addr) {
 		arm.stretchedCycles++
-		arm.mam.flashTiming++
 		return
 	}
 
 	switch arm.mam.mamcr {
 	default:
 		arm.stretchedCycles += clklenFlash
-		arm.mam.flashTiming = 0
 	case 0:
 		arm.stretchedCycles += clklenFlash
-		arm.mam.flashTiming = 0
 	case 1:
 		// for MAM-1, we go to flash memory only if it's a program access (ie. not a data access)
 		if bus.isDataAccess() {
 			arm.stretchedCycles += clklenFlash
-			arm.mam.flashTiming = 0
-		} else if arm.isLatched(bus, addr) {
+		} else if arm.isLatched(S, bus, addr) {
 			arm.stretchedCycles++
-			arm.mam.flashTiming++
 		} else {
 			arm.stretchedCycles += clklenFlash
-			arm.mam.flashTiming = 0
 		}
 	case 2:
-		if arm.isLatched(bus, addr) {
+		if arm.isLatched(S, bus, addr) {
 			arm.stretchedCycles++
-			arm.mam.flashTiming++
 		} else {
 			arm.stretchedCycles += clklenFlash
-			arm.mam.flashTiming = 0
 		}
 	}
 }
 
 func (arm *ARM) Ncycle(bus busAccess, addr uint32) {
+	// as noted above there is a possibility that N cycles take longer than S
+	// cycles. to account for latching but it's not clear if the LPC2000 memory
+	// controller requires this. tests suggest however, that a small modulation
+	// is justified
+	//
+	// "3.3.1 Nonsequential cycles" in "ARM7TDMI-S Technical Reference Manual r4p3"
+	//
+	// "It is not uncommon for a memory system to require a longer access time
+	// (extending the clock cycle) for nonsequential accesses. This is to allow
+	// time for full address decoding or to latch both a row and column address
+	// into DRAM."
+	//
+	// the use of a fractional number is at odds with the stretching required
+	// for flash access, which is a whole number. again, it isn't clear if this
+	// is possible but again, the technical reference points to the possibility
+	// of a difference. to be specific, there are two methods of stretching
+	// access times: MCLK modulation and the use of nWait to control bus cycles.
+	//
+	// on page 3-29 of r4p1 (but not in the equivalent section of r4p3,
+	// curiously), nWait is described as allowing bus cycles to be extended in
+	// "increments of complete MCLK cycles". MLCK itself meanwhile, is
+	// described as being free-running. while not conclusive, this to me
+	// suggests the modulation can be fractional.
+	mclkModulationFlash := 1.1
+	mclkModulationSRAM := 1.3
+
+	// in addition to that, there is a possibility that back-to-back N cycles
+	// need special handling but we have not considered that for this solution:
+	//
+	// "3.3.1 Nonsequential cycles" in "ARM7TDMI-S Technical Reference Manual r4p3"
+	//
+	// "The ARM7TDMI-S processor can perform back to back nonsequential memory cycles.
+	// This happens, for example, when an STR instruction is executed, as shown in Figure 3-3.
+	// If you are designing a memory controller for the ARM7TDMI-S processor, and your
+	// memory system is unable to cope with this case, you must use the CLKEN signal to
+	// extend the bus cycle to allow sufficient cycles for the memory system."
+
 	arm.cycleOrder.add(N)
-	arm.prevCycles[1] = arm.prevCycles[0]
-	arm.prevCycles[0] = cycleEvent{cycle: N, bus: bus, addr: addr}
+	arm.lastCycle = N
 
 	if !arm.mmap.isFlash(addr) {
-		arm.stretchedCycles++
-		arm.mam.flashTiming++
+		arm.stretchedCycles += float32(mclkModulationSRAM)
 		return
 	}
 
 	switch arm.mam.mamcr {
 	default:
-		arm.stretchedCycles += clklenFlash
-		arm.mam.flashTiming = 0
+		arm.stretchedCycles += clklenFlash * float32(mclkModulationFlash)
 	case 0:
-		arm.stretchedCycles += clklenFlash
-		arm.mam.flashTiming = 0
+		arm.stretchedCycles += clklenFlash * float32(mclkModulationFlash)
 	case 1:
-		arm.stretchedCycles += clklenFlash
-		arm.mam.flashTiming = 0
+		arm.stretchedCycles += clklenFlash * float32(mclkModulationFlash)
 	case 2:
-		if arm.isLatched(bus, addr) {
-			arm.stretchedCycles++
-			arm.mam.flashTiming++
+		if arm.isLatched(N, bus, addr) {
+			arm.stretchedCycles += float32(mclkModulationSRAM)
 		} else {
-			arm.stretchedCycles += clklenFlash
-			arm.mam.flashTiming = 0
+			arm.stretchedCycles += clklenFlash * float32(mclkModulationFlash)
 		}
 	}
 }
@@ -240,17 +260,6 @@ func (arm *ARM) fillPipeline() {
 // the cycle profile for store register type instructions is funky enough to
 // need a specialist function
 func (arm *ARM) storeRegisterCycles(addr uint32) {
-	// "3.3.1 Nonsequential cycles" in "ARM7TDMI-S Technical Reference Manual r4p3"
-	//
-	// "The ARM7TDMI-S processor can perform back to back nonsequential memory cycles.
-	// This happens, for example, when an STR instruction is executed, as shown in Figure 3-3.
-	// If you are designing a memory controller for the ARM7TDMI-S processor, and your
-	// memory system is unable to cope with this case, you must use the CLKEN signal to
-	// extend the bus cycle to allow sufficient cycles for the memory system."
-	//
-	// in practice, I've reasoned that this means that the next prefetch is an
-	// N cycle rather than the normal S cycle. meaning that there's a regular N
-	// cycle followed by an N cycle prefetch *at the end of the instruction*
 	arm.Ncycle(dataWrite, addr)
 	arm.prefetchCycle = N
 }
@@ -261,5 +270,4 @@ func (arm *ARM) armInterruptCycles(i ARMinterruptReturn) {
 	// we'll assume all writes are to flash memory
 	arm.stretchedCycles += float32(i.NumMemAccess) * clklenFlash
 	arm.stretchedCycles += float32(i.NumAdditionalCycles)
-	arm.mam.flashTiming = 0
 }

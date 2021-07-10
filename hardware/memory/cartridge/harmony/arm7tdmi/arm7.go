@@ -111,10 +111,8 @@ type ARM struct {
 	//
 	// !TODO: optimisation for ARM immediate mode
 
-	// a record of cycle types. used to decide whether to merge I-S cycles. for
-	// presentation purposes the cycleOrder field is a better source of
-	// information.
-	prevCycles [2]cycleEvent
+	// the last cycle to be triggered, used to decide whether to merge I-S cycles
+	lastCycle cycleType
 
 	// the type of cycle next prefetch (the main PC increment in the Run()
 	// loop) should be. either N or S type. never I type.
@@ -125,21 +123,19 @@ type ARM struct {
 
 	// \/\/\/ the following are reset at the end of each Run() iteration \/\/\/
 
-	// number of cycles with CLKLEN applied
+	// number of cycles with CLKLEN modulation applied
 	stretchedCycles float32
 
-	// record the order in which cycles happen for a single instruction. not to
-	// be confused with the prevCycles array which records the last two cycles
-	// accross instruction boundaries
-	//
-	// we only really need this information if a disassembler has been attached
-	// but we update it anyway whenever a cycle is counted
+	// record the order in which cycles happen for a single instruction
+	// - required for disasm only
 	cycleOrder cycleOrder
 
 	// whether a branch has used the branch trail latches or not
+	// - required for disasm only
 	branchTrail BranchTrail
 
 	// whether an I cycle that is followed by an S cycle has been merged
+	// - required for disasm only
 	mergedIS bool
 }
 
