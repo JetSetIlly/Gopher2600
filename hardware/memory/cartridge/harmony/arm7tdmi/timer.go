@@ -15,6 +15,8 @@
 
 package arm7tdmi
 
+import "fmt"
+
 type timer struct {
 	mmap    MemoryMap
 	active  bool
@@ -41,13 +43,21 @@ func (t *timer) step(cycles float32) {
 	t.counter += cycles
 }
 
-func (t *timer) write(addr uint32, val uint32) bool {
+func (t *timer) write(addr uint32, val uint32) (bool, string) {
+	var comment string
+
 	switch addr {
 	case t.mmap.TIMERcontrol:
 		t.control = val
 		t.active = t.control&0x01 == 0x01
+		if t.active {
+			comment = "timer on"
+		} else {
+			comment = "timer off"
+		}
 	case t.mmap.TIMERvalue:
 		t.counter = float32(val)
+		comment = fmt.Sprintf("timer = %d", val)
 	case t.mmap.TIMERprescale:
 		// not implemented yet
 	case t.mmap.TIMERprescaleMax:
@@ -55,20 +65,22 @@ func (t *timer) write(addr uint32, val uint32) bool {
 	case t.mmap.APBDIV:
 		// not implemented yet
 	default:
-		return false
+		return false, comment
 	}
 
-	return true
+	return true, comment
 }
 
-func (t *timer) read(addr uint32) (uint32, bool) {
+func (t *timer) read(addr uint32) (uint32, bool, string) {
 	var val uint32
+	var comment string
 
 	switch addr {
 	case t.mmap.TIMERcontrol:
 		val = t.control
 	case t.mmap.TIMERvalue:
 		val = uint32(t.counter)
+		comment = fmt.Sprintf("timer read = %d", val)
 	case t.mmap.TIMERprescale:
 		// not implemented yet
 	case t.mmap.TIMERprescaleMax:
@@ -76,8 +88,8 @@ func (t *timer) read(addr uint32) (uint32, bool) {
 	case t.mmap.APBDIV:
 		// not implemented yet
 	default:
-		return 0, false
+		return 0, false, comment
 	}
 
-	return val, true
+	return val, true, comment
 }

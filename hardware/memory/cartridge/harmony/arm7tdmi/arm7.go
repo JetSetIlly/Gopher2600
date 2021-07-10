@@ -274,7 +274,8 @@ func (arm *ARM) read8bit(addr uint32) uint8 {
 
 	mem, addr = arm.mem.MapAddress(addr, false)
 	if mem == nil {
-		if v, ok := arm.timer.read(addr); ok {
+		if v, ok, comment := arm.timer.read(addr); ok {
+			arm.disasmEntry.ExecutionNotes = comment
 			return uint8(v)
 		}
 		if v, ok := arm.mam.read(addr); ok {
@@ -292,7 +293,8 @@ func (arm *ARM) write8bit(addr uint32, val uint8) {
 
 	mem, addr = arm.mem.MapAddress(addr, true)
 	if mem == nil {
-		if ok := arm.timer.write(addr, uint32(val)); ok {
+		if ok, comment := arm.timer.write(addr, uint32(val)); ok {
+			arm.disasmEntry.ExecutionNotes = comment
 			return
 		}
 		if ok := arm.mam.write(addr, uint32(val)); ok {
@@ -315,7 +317,8 @@ func (arm *ARM) read16bit(addr uint32) uint16 {
 
 	mem, addr = arm.mem.MapAddress(addr, false)
 	if mem == nil {
-		if v, ok := arm.timer.read(addr); ok {
+		if v, ok, comment := arm.timer.read(addr); ok {
+			arm.disasmEntry.ExecutionNotes = comment
 			return uint16(v)
 		}
 		if v, ok := arm.mam.read(addr); ok {
@@ -338,7 +341,8 @@ func (arm *ARM) write16bit(addr uint32, val uint16) {
 
 	mem, addr = arm.mem.MapAddress(addr, true)
 	if mem == nil {
-		if ok := arm.timer.write(addr, uint32(val)); ok {
+		if ok, comment := arm.timer.write(addr, uint32(val)); ok {
+			arm.disasmEntry.ExecutionNotes = comment
 			return
 		}
 		if ok := arm.mam.write(addr, uint32(val)); ok {
@@ -362,7 +366,8 @@ func (arm *ARM) read32bit(addr uint32) uint32 {
 
 	mem, addr = arm.mem.MapAddress(addr, false)
 	if mem == nil {
-		if v, ok := arm.timer.read(addr); ok {
+		if v, ok, comment := arm.timer.read(addr); ok {
+			arm.disasmEntry.ExecutionNotes = comment
 			return v
 		}
 		if v, ok := arm.mam.read(addr); ok {
@@ -385,7 +390,8 @@ func (arm *ARM) write32bit(addr uint32, val uint32) {
 
 	mem, addr = arm.mem.MapAddress(addr, true)
 	if mem == nil {
-		if ok := arm.timer.write(addr, val); ok {
+		if ok, comment := arm.timer.write(addr, val); ok {
+			arm.disasmEntry.ExecutionNotes = comment
 			return
 		}
 		if ok := arm.mam.write(addr, val); ok {
@@ -1319,6 +1325,11 @@ func (arm *ARM) executeHiRegisterOps(opcode uint16) {
 		if thumbMode {
 			arm.registers[rPC] = newPC
 
+			if arm.disasmLevel != disasmNone {
+				arm.disasmEntry.ExecutionNotes = "branch exchange to thumb code"
+				arm.disasmEntry.updateNotes = true
+			}
+
 			// "7.6 Data Operations" in "ARM7TDMI-S Technical Reference Manual r4p3"
 			// - fillPipeline() will be called if necessary
 			return
@@ -1336,7 +1347,11 @@ func (arm *ARM) executeHiRegisterOps(opcode uint16) {
 
 		// update execution notes unless disasm level is disasmNone
 		if arm.disasmLevel != disasmNone {
-			arm.disasmEntry.ExecutionNotes = res.InterruptEvent
+			if res.InterruptEvent != "" {
+				arm.disasmEntry.ExecutionNotes = fmt.Sprintf("ARM function (%08x) %s", arm.registers[rPC]-4, res.InterruptEvent)
+			} else {
+				arm.disasmEntry.ExecutionNotes = fmt.Sprintf("ARM function (%08x)", arm.registers[rPC]-4)
+			}
 			arm.disasmEntry.updateNotes = true
 		}
 
