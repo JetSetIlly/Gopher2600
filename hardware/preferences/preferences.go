@@ -19,7 +19,6 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/harmony/arm7tdmi/armclocks"
 	"github.com/jetsetilly/gopher2600/paths"
 	"github.com/jetsetilly/gopher2600/prefs"
 )
@@ -67,10 +66,6 @@ type ARMPreferences struct {
 	// a value of MAMDriver says to use the driver supplied MAM value. any other value
 	// "forces" the MAM setting on Thumb program execution.
 	MAM prefs.Int
-
-	Clock           prefs.Float
-	FlashAccessTime prefs.Float
-	SRAMAccessTime  prefs.Float
 }
 
 func (p *Preferences) String() string {
@@ -111,18 +106,6 @@ func NewPreferences() (*Preferences, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = p.dsk.Add("hardware.arm7.clock", &p.ARM.Clock)
-	if err != nil {
-		return nil, err
-	}
-	err = p.dsk.Add("hardware.arm7.flashAccessTime1", &p.ARM.FlashAccessTime)
-	if err != nil {
-		return nil, err
-	}
-	err = p.dsk.Add("hardware.arm7.sramAccessTime", &p.ARM.SRAMAccessTime)
-	if err != nil {
-		return nil, err
-	}
 	err = p.dsk.Load(true)
 	if err != nil {
 		return nil, err
@@ -140,9 +123,6 @@ func (p *Preferences) SetDefaults() {
 	p.ARM.Model.Set("LPC2000")
 	p.ARM.Immediate.Set(false)
 	p.ARM.MAM.Set(-1)
-	p.ARM.Clock.Set(armclocks.MasterClock)               // Mhz
-	p.ARM.FlashAccessTime.Set(armclocks.FlashAccessTime) // ns
-	p.ARM.SRAMAccessTime.Set(armclocks.SRAMAccessTime)   // ns
 }
 
 // Reseed initialises the random number generator. Use a seed value of 0 to

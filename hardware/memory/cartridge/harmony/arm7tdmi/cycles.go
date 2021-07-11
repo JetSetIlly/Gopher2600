@@ -136,13 +136,21 @@ func (arm *ARM) isLatched(cycle cycleType, bus busAccess, addr uint32) bool {
 	return false
 }
 
-func (arm *ARM) Icycle() {
-	arm.cycleOrder.add(I)
+func (arm *ARM) iCycleStub() {
+}
+
+func (arm *ARM) iCycle() {
+	if arm.disasm != nil {
+		arm.cycleOrder.add(I)
+	}
 	arm.stretchedCycles++
 	arm.lastCycle = I
 }
 
-func (arm *ARM) Scycle(bus busAccess, addr uint32) {
+func (arm *ARM) sCycleStub(bus busAccess, addr uint32) {
+}
+
+func (arm *ARM) sCycle(bus busAccess, addr uint32) {
 	// "Merged I-S cycles
 	// Where possible, the ARM7TDMI-S processor performs an optimization on the bus to
 	// allow extra time for memory decode. When this happens, the address of the next
@@ -158,7 +166,9 @@ func (arm *ARM) Scycle(bus busAccess, addr uint32) {
 		arm.mergedIS = true
 	}
 
-	arm.cycleOrder.add(S)
+	if arm.disasm != nil {
+		arm.cycleOrder.add(S)
+	}
 	arm.lastCycle = S
 
 	if !arm.mmap.isFlash(addr) {
@@ -189,7 +199,10 @@ func (arm *ARM) Scycle(bus busAccess, addr uint32) {
 	}
 }
 
-func (arm *ARM) Ncycle(bus busAccess, addr uint32) {
+func (arm *ARM) nCycleStub(bus busAccess, addr uint32) {
+}
+
+func (arm *ARM) nCycle(bus busAccess, addr uint32) {
 	// as noted above there is a possibility that N cycles take longer than S
 	// cycles. to account for latching but it's not clear if the LPC2000 memory
 	// controller requires this. tests suggest however, that a small modulation
@@ -227,7 +240,9 @@ func (arm *ARM) Ncycle(bus busAccess, addr uint32) {
 	// memory system is unable to cope with this case, you must use the CLKEN signal to
 	// extend the bus cycle to allow sufficient cycles for the memory system."
 
-	arm.cycleOrder.add(N)
+	if arm.disasm != nil {
+		arm.cycleOrder.add(N)
+	}
 	arm.lastCycle = N
 
 	if !arm.mmap.isFlash(addr) {

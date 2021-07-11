@@ -47,7 +47,7 @@ const (
 //
 // Access speed of SRAM is 10ns which is fast enough not to require stretching.
 // MAM also requires no stretching.
-const clk = float32(70)
+const Clk = float32(70)
 const clklenFlash = float32(4)
 
 // ARM implements the ARM7TDMI-S LPC2103 processor.
@@ -137,6 +137,15 @@ type ARM struct {
 	// whether an I cycle that is followed by an S cycle has been merged
 	// - required for disasm only
 	mergedIS bool
+
+	// rather than call the cycle counting functions directly, we assign the
+	// functions to these fields. in this way, we can use stubs when executing
+	// in immediate mode (when cycle counting isn't necesary)
+	//
+	// other aspects of cycle counting are not expensive and can remain
+	Icycle func()
+	Scycle func(bus busAccess, addr uint32)
+	Ncycle func(bus busAccess, addr uint32)
 }
 
 type disasmLevel int
@@ -262,7 +271,7 @@ func (arm *ARM) String() string {
 // when Step() is called and not during the Run() process. This might cause
 // problems in some instances with some ARM programs.
 func (arm *ARM) Step(vcsClock float32) {
-	arm.timer.stepFromVCS(clk, vcsClock)
+	arm.timer.stepFromVCS(Clk, vcsClock)
 }
 
 func (arm *ARM) read8bit(addr uint32) uint8 {
@@ -414,6 +423,9 @@ func (arm *ARM) Run(mamcr uint32) (uint32, float32, error) {
 		return arm.mam.mamcr, 0, err
 	}
 
+	// what we send at the end of the execution. not used if not disassembler is set
+	programSummary := DisasmSummary{}
+
 	// set mamcr on startup
 	arm.mam.pref = arm.prefs.MAM.Get().(int)
 	if arm.mam.pref == preferences.MAMDriver {
@@ -424,13 +436,22 @@ func (arm *ARM) Run(mamcr uint32) (uint32, float32, error) {
 		arm.mam.mamtim = 4.0
 	}
 
+	// set cycle counting functions
+	if arm.prefs.Immediate.Get().(bool) {
+		arm.Icycle = arm.iCycleStub
+		arm.Scycle = arm.sCycleStub
+		arm.Ncycle = arm.nCycleStub
+		programSummary.ImmediateMode = true
+	} else {
+		arm.Icycle = arm.iCycle
+		arm.Scycle = arm.sCycle
+		arm.Ncycle = arm.nCycle
+	}
+
 	// start of program execution
 	if arm.disasm != nil {
 		arm.disasm.Start()
 	}
-
-	// what we send at the end of the execution. not used if not disassembler is set
-	programSummary := DisasmSummary{}
 
 	// fill pipeline
 	arm.registers[rPC] += 2

@@ -518,20 +518,6 @@ currently only emulates Thumb mode. It has been decided that ARM mode emulation
 is not required - better to reimplement the ARM driver in the emulator's host
 language (Go) - but it may be added in the future.
 
-Debugging support for the ARM7TDMI is rudimentary. A `last execution` window is
-available. This shows the disassembly of the most recent execution of the ARM
-program. The window is available via the `ARM7TDMI` menu which will appear in
-the menubar if the coprocessor is present.
-
-<img src=".screenshots/arm_disasm.png" width="300" alt="ARM7 last execution
-window"/> 
-
-The `Goto` button wil [rewind](#rewind) the emulation to the point where the
-ARM program last executed.
-
-The `Save` button will write a copy of the disassembly to a file in the working
-directory.
-
 ### ARM Preferences
 
 The characteristics of the ARM processor can be changed via the preferences
@@ -540,18 +526,37 @@ window This is available in the debugger via the `Debugger` menu or by pressing
 
 <img src=".screenshots/arm_prefs.png" width="300" alt="ARM preferences"/> 
 
-The `Timings` sliders shouldn't really be touched but they are made available
-while `Gopher2600` is still in development.
+`Immediate ARM Execution` instructs the emulation to execute the Thumb program
+instantaneously without any cycle counting. For performance reasons, you may
+want to have this selected but for development work you should leave it
+disabled.
 
-As a last resort `Immediate ARM Execution` can be enabled. This instructs the
-emulation to execute the Thumb program instantaneously. 
+If immediate mode is disabled then the `Default MAM State` can be selected.
+This is best kept set to the default, `Driver`. This means that the emulated
+drivers for the ARM using cartridge type set the MAM appropriately. If
+required, this can be changed to `Disabled`, `Partial` or `Full`.
 
-The `Default MAM State` is set to `Driver` by default. This means that the
-emulated drivers for the `DPC+` and the `CDF` cartridge types set the MAM
-appropriately (not explained here). If required, the MAM state can be
-overridden to be set to `Disabled`, `Partial` or `Full`.
+### ARM Disassembly
 
-### Estimation of ARM Execution Time
+The `Gopher2600` debugger provides a `last execution` window when an ARM using
+cartridge is loaded. This window shows the disassembly of the most recent
+execution of the ARM program. It is available via the `ARM7TDMI` menu
+which will appear in the menubar if the coprocessor is present.
+
+<img src=".screenshots/arm_disasm.png" width="300" alt="ARM7 last execution
+window"/> 
+
+The `Goto` button wil [rewind](#rewind) the emulation to the point where the
+ARM program last executed.
+
+The `Save CSV` button meanwhile will write a copy of the disassembly to a file
+in the working directory. The file will be a semi-colon separated CSV file (not
+commas in this instance).
+
+Note that when the ARM emulation is run in `immediate mode`, the cycles column
+will not contain any meaningful information.
+
+### Estimation of ARM Execution Time (Cycle Counting)
 
 For ARM development the `ARM7TDMI` overlay is provided. This overlay will be
 empty if the `Immediate ARM Execution` option is enabled but normally it will

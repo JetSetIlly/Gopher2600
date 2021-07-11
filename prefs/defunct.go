@@ -30,6 +30,9 @@ var defunct = []string{
 	"crt.vignette",
 	"hardware.arm7.allowMAMfromThumb",
 	"hardware.arm7.flashAccessTime",
+	"hardware.arm7.flashAccessTime1",
+	"hardware.arm7.sramAccessTime",
+	"hardware.arm7.clock",
 	"hardware.arm7.defaultMAM",
 }
 

@@ -94,10 +94,6 @@ func (win *winCoProcLastExecution) draw() {
 		imguiLabel("Clock:")
 		imguiLabel(fmt.Sprintf("%-3d", itr.Details.Clock))
 
-		if imgui.IsItemHovered() {
-			tooltipHover("Saves the last execution listing to a file in the working directory")
-		}
-
 		imgui.SameLineV(0, 15)
 		if !(itr.Details.Frame == win.img.lz.TV.Frame &&
 			itr.Details.Scanline == win.img.lz.TV.Scanline &&
@@ -123,7 +119,10 @@ func (win *winCoProcLastExecution) draw() {
 		}
 
 		if summary, ok := itr.Details.Summary.(arm7tdmi.DisasmSummary); ok {
-			if imgui.BeginTableV("cycles", 3, imgui.TableFlagsBordersOuter, imgui.Vec2{}, 0.0) {
+			if summary.ImmediateMode {
+				imgui.Text("Execution ran in immediate mode. Cycle counting disabled")
+				imgui.Spacing()
+			} else if imgui.BeginTableV("cycles", 3, imgui.TableFlagsBordersOuter, imgui.Vec2{}, 0.0) {
 				imgui.TableNextRow()
 				imgui.TableNextColumn()
 				imgui.Text(fmt.Sprintf("N: %d", summary.N))

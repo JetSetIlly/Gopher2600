@@ -209,27 +209,6 @@ If the 'Default MAM State' value is not set to 'Driver' then the Thumb program w
 prevented from changing the MAM state.
 
 The MAM should almost never be disabled completely.`)
-
-	imgui.Spacing()
-	if imgui.CollapsingHeader("Timings (advanced)") {
-		armClock := float32(win.img.vcs.Prefs.ARM.Clock.Get().(float64))
-		if imgui.SliderFloatV("ARM Clock", &armClock, 10, 80, fmt.Sprintf("%.1f Mhz", armClock), imgui.SliderFlagsNone) {
-			win.img.vcs.Prefs.ARM.Clock.Set(armClock)
-		}
-		tooltipHover("The basic speed of the ARM. Effective speeds is governed by memory access. Default speed of 70Mhz")
-
-		flashAccessTime := float32(win.img.vcs.Prefs.ARM.FlashAccessTime.Get().(float64))
-		if imgui.SliderFloatV("Flash Access Time", &flashAccessTime, 1, 60, fmt.Sprintf("%.1f ns", flashAccessTime), imgui.SliderFlagsNone) {
-			win.img.vcs.Prefs.ARM.FlashAccessTime.Set(flashAccessTime)
-		}
-		tooltipHover("The amount of time required for the ARM to address Flash. Default time of 50ns")
-
-		sramAccessTime := float32(win.img.vcs.Prefs.ARM.SRAMAccessTime.Get().(float64))
-		if imgui.SliderFloatV("SRAM Access Time", &sramAccessTime, 1, 60, fmt.Sprintf("%.1f ns", sramAccessTime), imgui.SliderFlagsNone) {
-			win.img.vcs.Prefs.ARM.SRAMAccessTime.Set(sramAccessTime)
-		}
-		tooltipHover("The amount of time required for the ARM to address SRAM. Default time of 10ns")
-	}
 }
 
 func (win *winPrefs) drawRewind() {

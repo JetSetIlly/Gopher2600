@@ -61,6 +61,10 @@ type DisasmSummary struct {
 	N int
 	I int
 	S int
+
+	// whether this particular execution was run in immediate mode (ie. no
+	// cycle counting)
+	ImmediateMode bool
 }
 
 func (s DisasmSummary) String() string {
