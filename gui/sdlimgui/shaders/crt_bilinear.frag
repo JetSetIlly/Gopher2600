@@ -9,7 +9,7 @@ out vec4 Out_Color;
 void main()
 {
 	float texelX = 2.0/ScreenDim.x;
-	float texelY = 1.0/ScreenDim.y;
+	float texelY = 2.0/ScreenDim.y;
     vec4 tl = texture(Texture, Frag_UV);
     vec4 tr = texture(Texture, Frag_UV + vec2(texelX, 0.0));
     vec4 bl = texture(Texture, Frag_UV + vec2(0.0, texelY));

@@ -80,11 +80,23 @@ problem on modern hardware.
 A `statsview` is also available. See the section below on the [Statistics
 Viewer](#statistics-viewer) for details.
 
+#### Improving Performance
+
+There are very few options available to improve performance of the emulator.
+
+One thing you can do is to compile the project with version 1.17 of the Go
+compiler. This compiler version is currently in beta but has been extensively
+used during testing of `Gopher2600` with no problems.
+
+Turning CRT effects off will likely have no effect.
+
+For ROMs that use the [ARM](#arm7tdmi-emulation) chip, setting the ARM to
+`immediate mode` will eliminate cycle counting and hence give a slight
+performance boost. 
+
 ## Compilation
 
-The project has most recently been tested with Go v1.16.5. Earlier versions may
-work but the v1.16 series is recommended due to recent performance
-improvements.
+The project has most recently been tested with Go v1.16.5.
 
 The project uses the Go module system and dependencies will be resolved
 automatically. Do note however, that you will also require the SDL development
