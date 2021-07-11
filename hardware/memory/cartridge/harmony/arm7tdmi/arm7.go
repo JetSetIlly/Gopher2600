@@ -433,9 +433,7 @@ func (arm *ARM) Run(mamcr uint32) (uint32, float32, error) {
 	programSummary := DisasmSummary{}
 
 	// fill pipeline
-	arm.Scycle(prefetch, arm.registers[rPC])
-	arm.Scycle(prefetch, arm.registers[rPC]+2)
-	arm.registers[rPC] += 4
+	arm.registers[rPC] += 2
 
 	// loop through instructions until we reach an exit condition
 	for arm.continueExecution {
@@ -446,7 +444,7 @@ func (arm *ARM) Run(mamcr uint32) (uint32, float32, error) {
 		// "The program counter points to the instruction being fetched rather than to the instruction
 		// being executed. This is important because it means that the Program Counter (PC)
 		// value used in an executing instruction is always two instructions ahead of the address."
-		executingPC := arm.registers[rPC] - 4
+		executingPC := arm.registers[rPC] - 2
 
 		// set disasmLevel for the next instruction
 		if arm.disasm == nil {
@@ -504,6 +502,9 @@ func (arm *ARM) Run(mamcr uint32) (uint32, float32, error) {
 
 		// opcode for executed instruction
 		opcode := uint16((*arm.programMemory)[memIdx]) | (uint16((*arm.programMemory)[memIdx+1]) << 8)
+
+		// bump PC counter for prefetch. actual prefetch is done after execution
+		arm.registers[rPC] += 2
 
 		// the expected PC at the end of the execution. if the PC register
 		// does not match fillPipeline() is called
@@ -619,9 +620,6 @@ func (arm *ARM) Run(mamcr uint32) (uint32, float32, error) {
 		if expectedPC != arm.registers[rPC] {
 			arm.fillPipeline()
 		}
-
-		// bump PC counter for prefetch
-		arm.registers[rPC] += 2
 
 		// prefetch cycle for next instruction is associated with and counts
 		// towards the total of the current instruction. most prefetch cycles
@@ -1313,7 +1311,7 @@ func (arm *ARM) executeHiRegisterOps(opcode uint16) {
 		// bit 0 cleared. Executing a BX PC in THUMB state from a non-word aligned address
 		// will result in unpredictable execution."
 		if srcReg == rPC {
-			newPC = arm.registers[rPC] + 4
+			newPC = arm.registers[rPC] + 2
 		} else {
 			newPC = (arm.registers[srcReg] & 0x7ffffffe) + 2
 		}
@@ -1371,7 +1369,7 @@ func (arm *ARM) executeHiRegisterOps(opcode uint16) {
 		// the end of the emulated function will have an operation that
 		// switches back to thumb mode, and copies the link register to the
 		// program counter. we need to emulate that too.
-		arm.registers[rPC] = arm.registers[rLR]
+		arm.registers[rPC] = arm.registers[rLR] + 2
 
 		// add cycles used by the ARM program
 		arm.armInterruptCycles(res)
@@ -2166,8 +2164,7 @@ func (arm *ARM) executeLongBranchWithLink(opcode uint16) {
 
 		offset <<= 1
 		pc := arm.registers[rPC]
-
-		arm.registers[rPC] = arm.registers[rLR] + offset + 2
+		arm.registers[rPC] = arm.registers[rLR] + offset
 		arm.registers[rLR] = pc - 1
 
 		if arm.disasmLevel == disasmFull {
@@ -2190,9 +2187,9 @@ func (arm *ARM) executeLongBranchWithLink(opcode uint16) {
 		// two's complement before subtraction
 		offset ^= 0x7fffff
 		offset++
-		arm.registers[rLR] = arm.registers[rPC] - offset
+		arm.registers[rLR] = arm.registers[rPC] - offset + 2
 	} else {
-		arm.registers[rLR] = arm.registers[rPC] + offset
+		arm.registers[rLR] = arm.registers[rPC] + offset + 2
 	}
 
 	if arm.disasmLevel == disasmFull {
