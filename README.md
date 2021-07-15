@@ -548,6 +548,18 @@ This is best kept set to the default, `Driver`. This means that the emulated
 drivers for the ARM using cartridge type set the MAM appropriately. If
 required, this can be changed to `Disabled`, `Partial` or `Full`.
 
+The `Abort on Illegal Memory Access` option controls what happens when the
+custom Thumb program tries to read or write to memory that doesn't exist. If
+the option is on then the Thumb program will exit early and the 6502 program
+(ie. normal console operation) will continue.
+
+Note that if the memory access is an instruction fetch the program will always
+exit early regardless of this option's setting - there's nothing meaningful
+that can be done if the PC value is out of range.
+
+Details of illegal memory accesses are always written to the log, regardless of
+the `Abort on Illegal Memory Access` option.
+
 ### ARM Disassembly
 
 The `Gopher2600` debugger provides a `last execution` window when an ARM using
