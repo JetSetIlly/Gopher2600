@@ -13,6 +13,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
+//go:build !windows
 // +build !windows
 
 // Package colorterm implements the Terminal interface for the gopher2600

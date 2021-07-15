@@ -63,9 +63,14 @@ type ARMPreferences struct {
 	// instantly or if the cycle accurate steppint is attempted
 	Immediate prefs.Bool
 
-	// a value of MAMDriver says to use the driver supplied MAM value. any other value
-	// "forces" the MAM setting on Thumb program execution.
+	// a value of MAMDriver says to use the driver supplied MAM value. any
+	// other value "forces" the MAM setting on Thumb program execution.
 	MAM prefs.Int
+
+	// abort Thumb program is it tries to access memory that does not exist.
+	// for example: reading from Flash memory above the 32k memtop (for 32k
+	// ROMs)
+	AbortOnIllegalMem prefs.Bool
 }
 
 func (p *Preferences) String() string {
@@ -106,6 +111,10 @@ func NewPreferences() (*Preferences, error) {
 	if err != nil {
 		return nil, err
 	}
+	err = p.dsk.Add("hardware.arm7.abortOnIllegalMem", &p.ARM.AbortOnIllegalMem)
+	if err != nil {
+		return nil, err
+	}
 	err = p.dsk.Load(true)
 	if err != nil {
 		return nil, err
@@ -123,6 +132,7 @@ func (p *Preferences) SetDefaults() {
 	p.ARM.Model.Set("LPC2000")
 	p.ARM.Immediate.Set(false)
 	p.ARM.MAM.Set(-1)
+	p.ARM.AbortOnIllegalMem.Set(false)
 }
 
 // Reseed initialises the random number generator. Use a seed value of 0 to

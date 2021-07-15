@@ -168,8 +168,6 @@ func (win *winPrefs) drawARM() {
 	if immediate {
 		imgui.PushItemFlag(imgui.ItemFlagsDisabled, true)
 		imgui.PushStyleVarFloat(imgui.StyleVarAlpha, 0.5)
-		defer imgui.PopStyleVar()
-		defer imgui.PopItemFlag()
 	}
 
 	var mamState string
@@ -209,6 +207,22 @@ If the 'Default MAM State' value is not set to 'Driver' then the Thumb program w
 prevented from changing the MAM state.
 
 The MAM should almost never be disabled completely.`)
+
+	if immediate {
+		imgui.PopStyleVar()
+		imgui.PopItemFlag()
+	}
+
+	imgui.Spacing()
+
+	abortOnIllegalMem := win.img.vcs.Prefs.ARM.AbortOnIllegalMem.Get().(bool)
+	if imgui.Checkbox("Abort on Illegal Memory Access", &abortOnIllegalMem) {
+		win.img.vcs.Prefs.ARM.AbortOnIllegalMem.Set(abortOnIllegalMem)
+	}
+	tooltipHover(`Abort thumb program on access to illegal memory. Note that the program
+will always abort if the access is a PC fetch, even if this option is not set.
+
+Illegal accesses will be logged in all instances.`)
 }
 
 func (win *winPrefs) drawRewind() {

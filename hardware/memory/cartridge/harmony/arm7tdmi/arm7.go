@@ -74,6 +74,11 @@ type ARM struct {
 	// never reads outside this area. the value is assigned on reset()
 	programMemory *[]uint8
 
+	// whether a an access to memory using a read/write function was
+	// unrecognised. when this happens, the access address is logged and the
+	// Thumb program aborted (ie returns early)
+	memoryError bool
+
 	// the amount to adjust the memory address by so that it can be used to
 	// index the programMemory array
 	programMemoryOffset uint32
@@ -230,6 +235,8 @@ func (arm *ARM) reset() error {
 	arm.cyclesTotal = 0
 	arm.prefetchCycle = S
 
+	arm.memoryError = false
+
 	return arm.findProgramMemory()
 }
 
@@ -286,6 +293,7 @@ func (arm *ARM) read8bit(addr uint32) uint8 {
 		if v, ok := arm.mam.read(addr); ok {
 			return uint8(v)
 		}
+		arm.memoryError = true
 		logger.Logf("ARM7", "read8bit: unrecognised address %08x", addr)
 		return 0
 	}
@@ -305,6 +313,7 @@ func (arm *ARM) write8bit(addr uint32, val uint8) {
 		if ok := arm.mam.write(addr, uint32(val)); ok {
 			return
 		}
+		arm.memoryError = true
 		logger.Logf("ARM7", "write8bit: unrecognised address %08x", addr)
 		return
 	}
@@ -329,6 +338,7 @@ func (arm *ARM) read16bit(addr uint32) uint16 {
 		if v, ok := arm.mam.read(addr); ok {
 			return uint16(v)
 		}
+		arm.memoryError = true
 		logger.Logf("ARM7", "read16bit: unrecognised address %08x", addr)
 		return 0
 	}
@@ -353,6 +363,7 @@ func (arm *ARM) write16bit(addr uint32, val uint16) {
 		if ok := arm.mam.write(addr, uint32(val)); ok {
 			return
 		}
+		arm.memoryError = true
 		logger.Logf("ARM7", "write16bit: unrecognised address %08x", addr)
 		return
 	}
@@ -378,6 +389,7 @@ func (arm *ARM) read32bit(addr uint32) uint32 {
 		if v, ok := arm.mam.read(addr); ok {
 			return v
 		}
+		arm.memoryError = true
 		logger.Logf("ARM7", "read32bit: unrecognised address %08x", addr)
 		return 0
 	}
@@ -402,6 +414,7 @@ func (arm *ARM) write32bit(addr uint32, val uint32) {
 		if ok := arm.mam.write(addr, val); ok {
 			return
 		}
+		arm.memoryError = true
 		logger.Logf("ARM7", "write32bit: unrecognised address %08x", addr)
 		return
 	}
@@ -452,6 +465,9 @@ func (arm *ARM) Run(mamcr uint32) (uint32, float32, error) {
 	if arm.disasm != nil {
 		arm.disasm.Start()
 	}
+
+	// how to handle illegal memory access
+	abortOnIllegalMem := arm.prefs.AbortOnIllegalMem.Get().(bool)
 
 	// fill pipeline
 	arm.registers[rPC] += 2
@@ -508,16 +524,16 @@ func (arm *ARM) Run(mamcr uint32) (uint32, float32, error) {
 			err = arm.findProgramMemory()
 			if err != nil {
 				// can't find memory so we say the ARM program has finished inadvertently
-				logger.Logf("ARM7", "PC out of range (%#08x). finishing arm program early", executingPC)
-				return arm.mam.mamcr, arm.cyclesTotal, nil
+				logger.Logf("ARM7", "PC out of range (%#08x). aborting thumb program early", executingPC)
+				break // for loop
 			}
 
 			// if it's still out-of-range then give up with an error
 			memIdx = executingPC - arm.programMemoryOffset
 			if memIdx+1 >= uint32(len(*arm.programMemory)) {
 				// can't find memory so we say the ARM program has finished inadvertently
-				logger.Logf("ARM7", "PC out of range (%#08x). finishing arm program early", executingPC)
-				return arm.mam.mamcr, arm.cyclesTotal, nil
+				logger.Logf("ARM7", "PC out of range (%#08x). aborting thumb program early", executingPC)
+				break // for loop
 			}
 		}
 
@@ -635,6 +651,13 @@ func (arm *ARM) Run(mamcr uint32) (uint32, float32, error) {
 			} else {
 				panic("undecoded instruction")
 			}
+		}
+
+		// end Run() iteration if a memory access has triggered an error.
+		// details of access have already been logged.
+		if abortOnIllegalMem && arm.memoryError {
+			logger.Logf("ARM7", "illegal memory access detected. aborting thumb program early")
+			break // for loop
 		}
 
 		// add additional cycles required to fill pipeline before next iteration
