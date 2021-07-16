@@ -77,7 +77,7 @@ func (itr *Iterate) Next() (*mapper.CartCoProcDisasmEntry, bool) {
 
 // Skip the next N entries of the entry and return that entry.
 func (itr *Iterate) SkipNext(n int) (*mapper.CartCoProcDisasmEntry, bool) {
-	itr.idx += n
+	itr.idx += n - 1
 	return itr.next()
 }
 

@@ -288,7 +288,7 @@ func (win *winCoProcLastExecution) save() {
 		}
 	}()
 
-	e, _ := itr.Next()
+	e, _ := itr.Start()
 	for e != nil {
 		f.Write([]byte((*e).String()))
 		f.Write([]byte("\n"))
