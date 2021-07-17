@@ -767,7 +767,7 @@ func (arm *ARM) executeMoveShiftedRegister(opcode uint16) {
 		//	Rd = Rm Logical_Shift_Left immed_5
 
 		if shift == 0 {
-			arm.registers[destReg] = arm.registers[srcReg]
+			arm.registers[destReg] = src
 		} else {
 			m := uint32(0x01) << (32 - shift)
 			arm.status.carry = src&m == m
@@ -787,12 +787,12 @@ func (arm *ARM) executeMoveShiftedRegister(opcode uint16) {
 		//		Rd = Rm Logical_Shift_Right immed_5
 
 		if shift == 0 {
-			arm.status.carry = arm.registers[srcReg]&0x80000000 == 0x80000000
+			arm.status.carry = src&0x80000000 == 0x80000000
 			arm.registers[destReg] = 0x00
 		} else {
 			m := uint32(0x01) << (shift - 1)
 			arm.status.carry = src&m == m
-			arm.registers[destReg] = arm.registers[srcReg] >> shift
+			arm.registers[destReg] = src >> shift
 		}
 	case 0b10:
 		if arm.disasmLevel == disasmFull {
@@ -811,7 +811,7 @@ func (arm *ARM) executeMoveShiftedRegister(opcode uint16) {
 		//		Rd = Rm Arithmetic_Shift_Right immed_5
 
 		if shift == 0 {
-			arm.status.carry = arm.registers[srcReg]&0x80000000 == 0x80000000
+			arm.status.carry = src&0x80000000 == 0x80000000
 			if arm.status.carry {
 				arm.registers[destReg] = 0xffffffff
 			} else {
@@ -820,7 +820,11 @@ func (arm *ARM) executeMoveShiftedRegister(opcode uint16) {
 		} else { // shift > 0
 			m := uint32(0x01) << (shift - 1)
 			arm.status.carry = src&m == m
-			arm.registers[destReg] = uint32(int32(arm.registers[srcReg]) >> shift)
+			a := src >> shift
+			if src&0x80000000 == 0x80000000 {
+				a |= (0xffffffff << (32 - shift))
+			}
+			arm.registers[destReg] = a
 		}
 
 	case 0x11:
@@ -1070,9 +1074,14 @@ func (arm *ARM) executeALUoperations(opcode uint16) {
 		// Z Flag = if Rd == 0 then 1 else 0
 		// V Flag = unaffected
 		if shift > 0 && shift < 32 {
+			src := arm.registers[destReg]
 			m := uint32(0x01) << (shift - 1)
-			arm.status.carry = arm.registers[destReg]&m == m
-			arm.registers[destReg] = uint32(int32(arm.registers[destReg]) >> shift)
+			arm.status.carry = src&m == m
+			a := src >> shift
+			if src&0x80000000 == 0x80000000 {
+				a |= (0xffffffff << (32 - shift))
+			}
+			arm.registers[destReg] = a
 		} else if shift >= 32 {
 			arm.status.carry = arm.registers[destReg]&0x80000000 == 0x80000000
 			if !arm.status.carry {
