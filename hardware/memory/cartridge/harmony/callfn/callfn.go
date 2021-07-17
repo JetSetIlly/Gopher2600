@@ -109,6 +109,13 @@ func (cf *CallFn) Check(addr uint16) (uint8, bool) {
 
 // Start the CallFn process.
 func (cf *CallFn) Start(cycles float32) {
+	// if the number of cycles is zero then the ARM program didn't take any
+	// time at all and there is no need to account for the phantom reads.
+	// return immediately
+	if cycles == 0 {
+		return
+	}
+
 	// cap number of cycles used by the ARM program
 	//
 	// I think the real harmony does this (possibly by using Timer0?). that
