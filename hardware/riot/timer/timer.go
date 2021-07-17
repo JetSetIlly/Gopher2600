@@ -168,6 +168,16 @@ func (tmr *Timer) Update(data bus.ChipData) bool {
 	}
 
 	tmr.INTIMvalue = data.Value
+
+	// the ticks remaining value should be zero or one for accurate timing (as
+	// tested with these test ROMs https://github.com/stella-emu/stella/issues/108).
+	//
+	// I'm not sure which value is correct so setting at zero until there's a
+	// good reason to do otherwise
+	//
+	// note however, the internal values in the emulated machine (and as reported by
+	// the debugger) will not match the debugging values in stella. to match
+	// the debugging values in stella a value of 2 is required.
 	tmr.TicksRemaining = 0
 
 	// write value to INTIM straight-away
@@ -208,7 +218,7 @@ func (tmr *Timer) Step() {
 	}
 
 	tmr.TicksRemaining--
-	if tmr.TicksRemaining < 0 {
+	if tmr.TicksRemaining <= 0 {
 		tmr.INTIMvalue--
 		if tmr.INTIMvalue == 0xff {
 			tmr.expired = true
@@ -221,7 +231,7 @@ func (tmr *Timer) Step() {
 		if tmr.expired {
 			tmr.TicksRemaining = 0
 		} else {
-			tmr.TicksRemaining = int(tmr.Divider) - 1
+			tmr.TicksRemaining = int(tmr.Divider)
 		}
 	}
 }
