@@ -1328,8 +1328,8 @@ func (arm *ARM) executeHiRegisterOps(opcode uint16) {
 		// C Flag = NOT BorrowFrom(Rn - Rm)
 		// V Flag = OverflowFrom(Rn - Rm)
 
-		arm.status.setCarry(arm.registers[destReg], ^arm.registers[srcReg], 0)
-		arm.status.setOverflow(arm.registers[destReg], ^arm.registers[srcReg], 0)
+		arm.status.setCarry(arm.registers[destReg], ^arm.registers[srcReg], 1)
+		arm.status.setOverflow(arm.registers[destReg], ^arm.registers[srcReg], 1)
 		cmp := arm.registers[destReg] - arm.registers[srcReg]
 		arm.status.isZero(cmp)
 		arm.status.isNegative(cmp)
