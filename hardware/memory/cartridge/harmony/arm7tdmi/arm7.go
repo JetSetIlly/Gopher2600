@@ -2020,11 +2020,26 @@ func (arm *ARM) executeMultipleLoadStore(opcode uint16) {
 		arm.disasmEntry.Operand = fmt.Sprintf("R%d!, {%#016b}", baseReg, regList)
 	}
 
+	// all ARM references say that the base register is updated as a result of
+	// the multi-load. what isn't clear is what happens if the base register is
+	// part of the update. observation of a bug in a confidential Andrew Davie
+	// project however, demonstrates that we should *not* update the base
+	// registere in those situations.
+	//
+	// this rule is not required for multiple store or for push/pop, where the
+	// potential conflict never arises.
+	updateBaseReg := true
+
 	if load {
 		numMatches := 0
 		for i := 0; i <= 15; i++ {
 			r := regList >> i
 			if r&0x01 == 0x01 {
+				// check if baseReg is being updated
+				if i == int(baseReg) {
+					updateBaseReg = false
+				}
+
 				numMatches++
 
 				// "7.10 Load Multiple Registers" in "ARM7TDMI-S Technical Reference Manual r4p3"
@@ -2045,8 +2060,10 @@ func (arm *ARM) executeMultipleLoadStore(opcode uint16) {
 		// "7.10 Load Multiple Registers" in "ARM7TDMI-S Technical Reference Manual r4p3"
 		arm.Icycle()
 
-		// write back the new base address
-		arm.registers[baseReg] = addr
+		// no updating of base register if base register was part of the regList
+		if updateBaseReg {
+			arm.registers[baseReg] = addr
+		}
 
 		return
 	}
