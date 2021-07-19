@@ -114,7 +114,7 @@ func (sym *Symbols) GetSymbol(addr uint16, read bool) (Entry, bool) {
 	sym.crit.Lock()
 	defer sym.crit.Unlock()
 
-	addr, _ = memorymap.MapAddress(addr, true)
+	addr, _ = memorymap.MapAddress(addr, read)
 
 	if read {
 		return sym.read.get(addr)
