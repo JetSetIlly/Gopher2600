@@ -22,6 +22,7 @@ import (
 
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
 	"github.com/jetsetilly/gopher2600/gui"
+	"github.com/jetsetilly/gopher2600/gui/sdlimgui/fonts"
 	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/paths"
 
@@ -163,23 +164,6 @@ func (win *winTerm) draw() {
 		imgui.EndPopup()
 	}
 
-	// terminal prompt is not updated when emulation is running so show a "running" label instead
-	if win.img.state == gui.StateRunning {
-		imguiLabel("(running)")
-	} else {
-		imguiLabel(strings.TrimSpace(win.prompt.Content))
-	}
-
-	// command line prompt on same line as command
-	imgui.SameLineV(0, 10)
-
-	// start command line height measurement
-	inputLineHeight := imgui.CursorPosY()
-
-	// draw command input box
-	imgui.PushItemWidth(imgui.WindowWidth() - imgui.CursorPosX())
-	imgui.PushStyleColor(imgui.StyleColorFrameBg, win.img.cols.TermBackground)
-
 	// this construct says focus the next InputText() box if
 	//  - the terminal window is focused
 	//  - AND if nothing else has been activated since last frame
@@ -187,35 +171,70 @@ func (win *winTerm) draw() {
 		imgui.SetKeyboardFocusHere()
 	}
 
-	if imgui.InputTextV("", &win.input,
-		imgui.InputTextFlagsEnterReturnsTrue|imgui.InputTextFlagsCallbackCompletion|imgui.InputTextFlagsCallbackHistory,
-		win.tabCompleteAndHistory) {
-		win.input = strings.TrimSpace(win.input)
+	// start command line height measurement
+	win.inputLineHeight = imguiMeasureHeight(func() {
+		flgs := imgui.TableFlagsSizingFixedFit
+		if imgui.BeginTableV("prompt", 2, flgs, imgui.Vec2{}, 0.0) {
+			// prompt is dependent on running state
+			var prompt string
+			if win.img.state == gui.StateRunning {
+				// if emulation is running then make use of a curious effect
+				// animation effect inherent in dear imgui. setting column flag of
+				// first column to "WidthStretch" causes the column to shrink
+				// from the width it was to just one character, which is
+				// perfect for a running prompt
+				imgui.TableSetupColumnV("", imgui.TableColumnFlagsWidthStretch, 200, 0)
 
-		// send input to inputChan even if it is the empty string because
-		// the empty string might mean something to the received (it does)
-		win.term.inputChan <- win.input
-
-		// only add input to history if it is not empty
-		if win.input != "" {
-			// only add if input is not the same as the last history entry
-			if len(win.history) == 0 || win.input != win.history[len(win.history)-1] {
-				win.history = append(win.history, win.input)
+				// the prompt has the TermPromp character at the beginning of
+				// the string so that it is visible after the shrinking
+				prompt = fmt.Sprintf("%c %s", fonts.TermPrompt, strings.TrimSpace(win.prompt.Content))
+			} else {
+				// emulation is not running so just use the provided prompt
+				// from the debugger. this will cause the prompt column to
+				// expand and shrink but that's okay, it's still usable.
+				prompt = fmt.Sprintf("%s %c", strings.TrimSpace(win.prompt.Content), fonts.TermPrompt)
 			}
-			win.historyIdx = len(win.history) - 1
+
+			imgui.TableNextRow()
+			imgui.TableNextColumn()
+
+			// terminal prompt depends on running state
+			imgui.AlignTextToFramePadding()
+			imgui.Text(prompt)
+
+			imgui.TableNextColumn()
+
+			// draw command input box
+			imgui.PushStyleColor(imgui.StyleColorTableRowBg, win.img.cols.TermInput)
+			imgui.PushItemWidth(imgui.WindowWidth() - imgui.CursorPosX())
+
+			if imgui.InputTextV("", &win.input,
+				imgui.InputTextFlagsEnterReturnsTrue|imgui.InputTextFlagsCallbackCompletion|imgui.InputTextFlagsCallbackHistory,
+				win.tabCompleteAndHistory) {
+				win.input = strings.TrimSpace(win.input)
+
+				// send input to inputChan even if it is the empty string because
+				// the empty string might mean something to the received (it does)
+				win.term.inputChan <- win.input
+
+				// only add input to history if it is not empty
+				if win.input != "" {
+					// only add if input is not the same as the last history entry
+					if len(win.history) == 0 || win.input != win.history[len(win.history)-1] {
+						win.history = append(win.history, win.input)
+					}
+					win.historyIdx = len(win.history) - 1
+				}
+
+				win.input = ""
+			}
+
+			imgui.PopItemWidth()
+			imgui.PopStyleColor()
+
+			imgui.EndTable()
 		}
-
-		win.input = ""
-	}
-	imgui.PopStyleColor()
-	imgui.PopItemWidth()
-
-	// add some spacing so that when we scroll to the bottom of the windw
-	// it doesn't look goofy
-	imgui.Spacing()
-
-	// commit command line height measurement
-	win.inputLineHeight = imgui.CursorPosY() - inputLineHeight
+	})
 
 	imgui.End()
 }

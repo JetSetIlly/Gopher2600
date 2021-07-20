@@ -115,6 +115,7 @@ type imguiColors struct {
 
 	// terminal
 	TermBackground      imgui.Vec4
+	TermInput           imgui.Vec4
 	TermStyleEcho       imgui.Vec4
 	TermStyleHelp       imgui.Vec4
 	TermStyleFeedback   imgui.Vec4
@@ -225,6 +226,7 @@ func newColors() *imguiColors {
 
 		// terminal
 		TermBackground:      imgui.Vec4{0.1, 0.1, 0.2, 0.9},
+		TermInput:           imgui.Vec4{0.1, 0.1, 0.25, 0.9},
 		TermStyleEcho:       imgui.Vec4{0.8, 0.8, 0.8, 1.0},
 		TermStyleHelp:       imgui.Vec4{1.0, 1.0, 1.0, 1.0},
 		TermStyleFeedback:   imgui.Vec4{1.0, 1.0, 1.0, 1.0},

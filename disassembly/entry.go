@@ -239,7 +239,7 @@ func (l Operand) String() string {
 // genString returns the operand as a symbol (if a symbol is available) if
 // a symbol is not available then the the bool return value will be false.
 func (l Operand) genString() string {
-	if !l.dsm.Prefs.Symbols.Get().(bool) {
+	if l.dsm == nil || !l.dsm.Prefs.Symbols.Get().(bool) {
 		return l.nonSymbolic
 	}
 

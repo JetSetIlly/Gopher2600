@@ -166,8 +166,8 @@ func NewDebugger(tv *television.Television, scr gui.GUI, term terminal.Terminal,
 		scr:  scr,
 		term: term,
 
-		// create a minimal lastResult for initialisation
-		lastResult: &disassembly.Entry{Result: execution.Result{Final: true}},
+		// by definition the state of debugger has changed during startup
+		hasChanged: true,
 	}
 
 	// create a new VCS instance
@@ -195,6 +195,9 @@ func NewDebugger(tv *television.Television, scr gui.GUI, term terminal.Terminal,
 	if err != nil {
 		return nil, curated.Errorf("debugger: %v", err)
 	}
+
+	// create a minimal lastResult for initialisation
+	dbg.lastResult = &disassembly.Entry{Result: execution.Result{Final: true}}
 
 	// setup reflection monitor
 	dbg.ref = reflection.NewReflector(dbg.VCS)
@@ -331,10 +334,10 @@ func (dbg *Debugger) Start(initScript string, cartload cartridgeloader.Loader) e
 	return nil
 }
 
-// HasChanged returns true if emulation is currently moving forward. Also
-// returns true if debugger is starting up.
+// HasChanged returns true if emulation state has changed since last call to
+// the function.
 func (dbg *Debugger) HasChanged() bool {
-	v := dbg.hasChanged || !dbg.running
+	v := dbg.hasChanged
 	dbg.hasChanged = false
 	return v
 }

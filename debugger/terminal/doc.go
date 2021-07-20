@@ -20,4 +20,11 @@
 // interface. There are two reference implementations of this interface: the
 // PlainTerminal and the ColorTerminal, found respectively in the plainterm and
 // colorterm sub-packages.
+//
+// Note that history is not handled by this package - an implementation must
+// implement this itself. Of the two reference implementations, the
+// ColorTerminal package provides an example.
+//
+// TabCompletion is handled by the commandline package if required. Again, the
+// ColorTerminal implementation is a good example of how to use this package.
 package terminal

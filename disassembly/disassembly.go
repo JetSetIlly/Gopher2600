@@ -286,7 +286,7 @@ func (dsm *Disassembly) FormatResult(bank mapper.BankInfo, result execution.Resu
 	// the disassembly package itself, but it is possible to get it from ad-hoc
 	// formatting from GUI interfaces (see CPU window in sdlimgui)
 	if result.Defn == nil {
-		return &Entry{}, nil
+		return &Entry{dsm: dsm}, nil
 	}
 
 	e := &Entry{

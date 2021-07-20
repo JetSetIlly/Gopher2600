@@ -58,6 +58,7 @@ const (
 	Breakpoint    = '\uf12a'
 	AudioDisabled = '\uf00d'
 	AudioEnabled  = '\uf028'
+	TermPrompt    = '\uf105'
 	ColorSwatch   = '\uf111'
 )
 
