@@ -184,6 +184,7 @@ func (img *SdlImgui) Service() {
 			}
 
 		case *sdl.JoyAxisEvent:
+			pad := sdl.GameControllerFromInstanceID(ev.Which)
 			switch ev.Axis {
 			case 0:
 				fallthrough
@@ -192,8 +193,8 @@ func (img *SdlImgui) Service() {
 				case img.userinput <- userinput.EventGamepadThumbstick{
 					ID:         plugging.LeftPlayer,
 					Thumbstick: userinput.GamepadThumbstickLeft,
-					Horiz:      img.plt.gamepad.Axis(0),
-					Vert:       img.plt.gamepad.Axis(1),
+					Horiz:      pad.Axis(0),
+					Vert:       pad.Axis(1),
 				}:
 				default:
 					logger.Log("sdlimgui", "dropped gamepad axis event")
@@ -205,8 +206,8 @@ func (img *SdlImgui) Service() {
 				case img.userinput <- userinput.EventGamepadThumbstick{
 					ID:         plugging.LeftPlayer,
 					Thumbstick: userinput.GamepadThumbstickRight,
-					Horiz:      img.plt.gamepad.Axis(3),
-					Vert:       img.plt.gamepad.Axis(4),
+					Horiz:      pad.Axis(3),
+					Vert:       pad.Axis(4),
 				}:
 				default:
 					logger.Log("sdlimgui", "dropped gamepad axis event")

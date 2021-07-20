@@ -26,12 +26,14 @@ import (
 
 const windowTitle = "Gopher2600"
 
+const maxGamepads = 10
+
 type platform struct {
 	img    *SdlImgui
 	window *sdl.Window
 	mode   sdl.DisplayMode
 
-	gamepad *sdl.GameController
+	gamepad []*sdl.GameController
 
 	// whether window is full screen or not
 	fullScreen bool
@@ -93,18 +95,19 @@ func newPlatform(img *SdlImgui) (*platform, error) {
 		logger.Log("sdl", "cannot set GLSwapInterval() for SDL GUI")
 	}
 
-	// open first gamepad we encounter
-	for i := 0; i < 10; i++ {
-		plt.gamepad = sdl.GameControllerOpen(i)
-		if plt.gamepad.Attached() {
-			logger.Logf("sdl", "gamepad: %s", plt.gamepad.Name())
-			break // for loop
+	// open all available gamepads
+	plt.gamepad = make([]*sdl.GameController, 0, maxGamepads)
+
+	for i := 0; i < maxGamepads; i++ {
+		pad := sdl.GameControllerOpen(i)
+		if pad.Attached() {
+			logger.Logf("sdl", "gamepad: %s", pad.Name())
+			plt.gamepad = append(plt.gamepad, pad)
 		}
 	}
-	if !plt.gamepad.Attached() {
+
+	if len(plt.gamepad) == 0 {
 		logger.Log("sdl", "no gamepad found")
-		// } else {
-		// 	plt.gamepad.Rumble(0x0, 0xffff, 300)
 	}
 
 	return plt, nil
@@ -112,7 +115,9 @@ func newPlatform(img *SdlImgui) (*platform, error) {
 
 // destroy cleans up the resources.
 func (plt *platform) destroy() error {
-	plt.gamepad.Close()
+	for _, pad := range plt.gamepad {
+		pad.Close()
+	}
 
 	if plt.window != nil {
 		err := plt.window.Destroy()
