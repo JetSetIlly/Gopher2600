@@ -25,7 +25,7 @@ type crtSequencer struct {
 	phosphorShader        shaderProgram
 	blackCorrectionShader shaderProgram
 	blurShader            shaderProgram
-	bilinearShader        shaderProgram
+	ghostingShader        shaderProgram
 	blendShader           shaderProgram
 	effectsShader         shaderProgram
 	colorShader           shaderProgram
@@ -40,7 +40,7 @@ func newCRTSequencer(img *SdlImgui) *crtSequencer {
 		phosphorShader:        newPhosphorShader(img),
 		blackCorrectionShader: newBlackCorrectionShader(),
 		blurShader:            newBlurShader(),
-		bilinearShader:        newBilinearShader(img),
+		ghostingShader:        newGhostingShader(img),
 		blendShader:           newBlendShader(),
 		effectsShader:         newEffectsShader(img, false),
 		colorShader:           newColorShader(false),
@@ -55,7 +55,7 @@ func (sh *crtSequencer) destroy() {
 	sh.phosphorShader.destroy()
 	sh.blackCorrectionShader.destroy()
 	sh.blurShader.destroy()
-	sh.bilinearShader.destroy()
+	sh.ghostingShader.destroy()
 	sh.blendShader.destroy()
 	sh.effectsShader.destroy()
 	sh.colorShader.destroy()
@@ -73,7 +73,7 @@ func (sh *crtSequencer) process(env shaderEnvironment, moreProcessing bool, numS
 		// an accumulation of consecutive frames producing a phosphor effect
 		phosphor = iota
 
-		// storage for the initial processing step (bilinear filter)
+		// storage for the initial processing step (ghosting filter)
 		processedSrc
 
 		// the finalised texture after all processing. the only thing left to
@@ -103,11 +103,10 @@ func (sh *crtSequencer) process(env shaderEnvironment, moreProcessing bool, numS
 		phosphorPasses = 3
 	}
 
-	// apply bilinear filter to texture. this is useful for the zookeeper brick
-	// effect.
-	if enabled {
+	// apply ghosting filter to texture. this is useful for the zookeeper brick effect
+	if enabled && sh.img.crtPrefs.Ghosting.Get().(bool) {
 		env.srcTextureID = sh.seq.Process(processedSrc, func() {
-			sh.bilinearShader.(*bilinearShader).setAttributesArgs(env)
+			sh.ghostingShader.(*ghostingShader).setAttributesArgs(env, float32(sh.img.crtPrefs.GhostingAmount.Get().(float64)))
 			env.draw()
 		})
 	}

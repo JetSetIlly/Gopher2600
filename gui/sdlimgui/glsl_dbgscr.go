@@ -84,7 +84,7 @@ func (sh *dbgScreenShader) setAttributes(env shaderEnvironment) {
 
 	env.internalProj = [4][4]float32{
 		{2.0 / (width + float32(ox)), 0.0, 0.0, 0.0},
-		{0.0, 2.0 / -(height + float32(oy)), 0.0, 0.0},
+		{0.0, -2.0 / (height + float32(oy)), 0.0, 0.0},
 		{0.0, 0.0, -1.0, 0.0},
 		{-1.0, 1.0, 0.0, 1.0},
 	}

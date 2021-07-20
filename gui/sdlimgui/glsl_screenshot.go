@@ -38,7 +38,7 @@ type screenshotSequencer struct {
 	phosphorShader        shaderProgram
 	blackCorrectionShader shaderProgram
 	blurShader            shaderProgram
-	bilinearShader        shaderProgram
+	ghostingShader        shaderProgram
 	blendShader           shaderProgram
 	effectsShaderFlipped  shaderProgram
 	colorShaderFlipped    shaderProgram
@@ -58,7 +58,7 @@ func newscreenshotSequencer(img *SdlImgui) *screenshotSequencer {
 		phosphorShader:        newPhosphorShader(img),
 		blackCorrectionShader: newBlackCorrectionShader(),
 		blurShader:            newBlurShader(),
-		bilinearShader:        newBilinearShader(img),
+		ghostingShader:        newGhostingShader(img),
 		blendShader:           newBlendShader(),
 		effectsShaderFlipped:  newEffectsShader(img, true),
 		colorShaderFlipped:    newColorShader(true),
@@ -71,7 +71,7 @@ func (sh *screenshotSequencer) destroy() {
 	sh.phosphorShader.destroy()
 	sh.blackCorrectionShader.destroy()
 	sh.blurShader.destroy()
-	sh.bilinearShader.destroy()
+	sh.ghostingShader.destroy()
 	sh.blendShader.destroy()
 	sh.effectsShaderFlipped.destroy()
 	sh.colorShaderFlipped.destroy()
@@ -106,7 +106,7 @@ func (sh *screenshotSequencer) process(env shaderEnvironment) {
 		// an accumulation of consecutive frames producing a phosphor effect
 		phosphor = iota
 
-		// storage for the initial processing step (bilinear filter)
+		// storage for the initial processing step (ghosting filter)
 		processedSrc
 
 		// the working screenshot texture
@@ -128,11 +128,10 @@ func (sh *screenshotSequencer) process(env shaderEnvironment) {
 
 	env.useInternalProj = true
 
-	// apply bilinear filter to texture. this is useful for the zookeeper brick
-	// effect.
-	if sh.crtProcessing {
+	// apply ghosting filter to texture. this is useful for the zookeeper brick effect
+	if sh.crtProcessing && sh.img.crtPrefs.Ghosting.Get().(bool) {
 		env.srcTextureID = sh.seq.Process(processedSrc, func() {
-			sh.bilinearShader.(*bilinearShader).setAttributesArgs(env)
+			sh.ghostingShader.(*ghostingShader).setAttributesArgs(env, float32(sh.img.crtPrefs.GhostingAmount.Get().(float64)))
 			env.draw()
 		})
 	}

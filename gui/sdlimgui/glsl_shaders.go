@@ -315,22 +315,25 @@ func (sh *blurShader) setAttributesArgs(env shaderEnvironment, blur float32) {
 	gl.Uniform2f(sh.blur, blur/float32(env.width), blur/float32(env.height))
 }
 
-type bilinearShader struct {
+type ghostingShader struct {
 	shader
 	img       *SdlImgui
 	screenDim int32
+	amount    int32
 }
 
-func newBilinearShader(img *SdlImgui) shaderProgram {
-	sh := &bilinearShader{img: img}
-	sh.createProgram(string(shaders.YFlipVertexShader), string(shaders.CRTBilinearFragShader))
+func newGhostingShader(img *SdlImgui) shaderProgram {
+	sh := &ghostingShader{img: img}
+	sh.createProgram(string(shaders.YFlipVertexShader), string(shaders.CRTGhostingFragShader))
 	sh.screenDim = gl.GetUniformLocation(sh.handle, gl.Str("ScreenDim"+"\x00"))
+	sh.amount = gl.GetUniformLocation(sh.handle, gl.Str("Amount"+"\x00"))
 	return sh
 }
 
-func (sh *bilinearShader) setAttributesArgs(env shaderEnvironment) {
+func (sh *ghostingShader) setAttributesArgs(env shaderEnvironment, amount float32) {
 	sh.shader.setAttributes(env)
 	gl.Uniform2f(sh.screenDim, float32(env.width), float32(env.height))
+	gl.Uniform1f(sh.amount, amount)
 }
 
 type blendShader struct {

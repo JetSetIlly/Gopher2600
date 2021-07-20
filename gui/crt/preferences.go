@@ -30,6 +30,7 @@ type Preferences struct {
 	Scanlines prefs.Bool
 	Noise     prefs.Bool
 	Fringing  prefs.Bool
+	Ghosting  prefs.Bool
 	Phosphor  prefs.Bool
 
 	CurveAmount     prefs.Float
@@ -39,6 +40,7 @@ type Preferences struct {
 	ScanlinesFine   prefs.Float
 	NoiseLevel      prefs.Float
 	FringingAmount  prefs.Float
+	GhostingAmount  prefs.Float
 	PhosphorLatency prefs.Float
 	PhosphorBloom   prefs.Float
 	Sharpness       prefs.Float
@@ -59,6 +61,7 @@ const (
 	scanlines        = true
 	noise            = true
 	fringing         = true
+	ghosting         = true
 	phosphor         = true
 	curveAmount      = 0.5
 	maskBright       = 0.70
@@ -67,6 +70,7 @@ const (
 	scanlinesFine    = 1.80
 	noiseLevel       = 0.19
 	fringingAmount   = 0.15
+	ghostingAmount   = 2.9
 	phosphorLatency  = 0.5
 	phosphorBloom    = 1.0
 	sharpness        = 0.55
@@ -114,6 +118,10 @@ func NewPreferences() (*Preferences, error) {
 	if err != nil {
 		return nil, err
 	}
+	err = p.dsk.Add("crt.ghosting", &p.Ghosting)
+	if err != nil {
+		return nil, err
+	}
 	err = p.dsk.Add("crt.phosphor", &p.Phosphor)
 	if err != nil {
 		return nil, err
@@ -143,6 +151,10 @@ func NewPreferences() (*Preferences, error) {
 		return nil, err
 	}
 	err = p.dsk.Add("crt.fringingAmount", &p.FringingAmount)
+	if err != nil {
+		return nil, err
+	}
+	err = p.dsk.Add("crt.ghostingAmount", &p.GhostingAmount)
 	if err != nil {
 		return nil, err
 	}
@@ -183,6 +195,7 @@ func (p *Preferences) SetDefaults() {
 	p.Scanlines.Set(scanlines)
 	p.Noise.Set(noise)
 	p.Fringing.Set(fringing)
+	p.Ghosting.Set(ghosting)
 	p.Phosphor.Set(phosphor)
 	p.CurveAmount.Set(curveAmount)
 	p.MaskBright.Set(maskBright)
@@ -191,6 +204,7 @@ func (p *Preferences) SetDefaults() {
 	p.ScanlinesFine.Set(scanlinesFine)
 	p.NoiseLevel.Set(noiseLevel)
 	p.FringingAmount.Set(fringingAmount)
+	p.GhostingAmount.Set(ghostingAmount)
 	p.PhosphorLatency.Set(phosphorLatency)
 	p.PhosphorBloom.Set(phosphorBloom)
 	p.Sharpness.Set(sharpness)

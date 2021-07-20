@@ -95,6 +95,9 @@ func (win *winCRTPrefs) draw() {
 	win.drawFringing()
 	imgui.Spacing()
 
+	win.drawGhosting()
+	imgui.Spacing()
+
 	win.drawPhosphor()
 	win.drawSharpness()
 	imgui.Spacing()
@@ -266,6 +269,31 @@ func (win *winCRTPrefs) drawFringing() {
 
 	if imgui.SliderFloatV("##fringingamount", &f, 0.0, 0.6, label, 1.0) {
 		win.img.crtPrefs.FringingAmount.Set(f)
+	}
+}
+
+func (win *winCRTPrefs) drawGhosting() {
+	b := win.img.crtPrefs.Ghosting.Get().(bool)
+	if imgui.Checkbox("Ghosting##ghosting", &b) {
+		win.img.crtPrefs.Ghosting.Set(b)
+	}
+
+	f := float32(win.img.crtPrefs.GhostingAmount.Get().(float64))
+
+	var label string
+
+	if f >= 3.5 {
+		label = "very high"
+	} else if f >= 2.5 {
+		label = "high"
+	} else if f >= 1.5 {
+		label = "low"
+	} else {
+		label = "very low"
+	}
+
+	if imgui.SliderFloatV("##ghostingamount", &f, 0.0, 4.5, label, 1.0) {
+		win.img.crtPrefs.GhostingAmount.Set(f)
 	}
 }
 
