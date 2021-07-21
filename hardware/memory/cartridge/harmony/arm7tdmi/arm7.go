@@ -673,6 +673,9 @@ func (arm *ARM) Run(mamcr uint32) (uint32, float32, error) {
 		} else {
 			arm.Scycle(prefetch, arm.registers[rPC])
 		}
+
+		// default to an S cycle for prefetch unless an instruction explicitely
+		// says otherwise
 		arm.prefetchCycle = S
 
 		// increases total number of program cycles by the stretched cycles for this instruction

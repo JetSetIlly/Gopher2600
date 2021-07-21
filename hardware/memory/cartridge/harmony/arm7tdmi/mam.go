@@ -43,9 +43,9 @@ type mam struct {
 	// no need to fetch from flash
 	branchLatch uint32
 
-	// the number of cycles since flash memory was accessed. used to decide if
-	// an access to flash is be stalled or not. see isLatched() function
-	flashTiming uint32
+	// if the previous cycle was a data read any pending MAM prefetch will be
+	// aborted causing a MAM miss
+	prefectchAborted bool
 }
 
 func (m *mam) write(addr uint32, val uint32) bool {
