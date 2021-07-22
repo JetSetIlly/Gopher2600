@@ -88,7 +88,7 @@ const (
 // checked. for example, if MAMCR is zero than don't call this function at all.
 // see Scycle() and Ncycle() for those decisions.
 func (arm *ARM) isLatched(cycle cycleType, bus busAccess, addr uint32) bool {
-	latch := addr & 0xffffffe0
+	latch := addr & 0xffffff80
 
 	switch bus {
 	case prefetch:
