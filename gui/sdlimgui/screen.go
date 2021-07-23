@@ -578,9 +578,21 @@ func (scr *screen) copyPixelsPlaymode() {
 		if scr.crit.renderIdx == scr.crit.plotIdx {
 			// ** emulation not keeping up with screen update **
 
-			// reuse the frame from two frames ago. this helps smooth out
-			// two-frame flicker-kernels.
-			scr.crit.renderIdx -= 2
+			// undo frame advancement. in earlier versions of the code we
+			// reduced the renderIdx by two, having the effect of reusing not
+			// the previous frame, but the frame before that.
+			//
+			// it was thought that this would help out the displaying of
+			// two-frame flicker kernels. which it did, but in some cases that
+			// could result in stuttering of moving sprites. it was
+			// particularly bad if the FPS of the ROM was below the refresh
+			// rate of the monitor.
+			//
+			// a good example of this is the introductory scroller in the demo
+			// Ataventure (by KK of DMA). a scroller that updates every frame
+			// at 50fps and causes very noticeable side-effects on a 60Hz
+			// monitor.
+			scr.crit.renderIdx--
 			if scr.crit.renderIdx < 0 {
 				scr.crit.renderIdx += len(scr.crit.bufferPixels)
 			}
