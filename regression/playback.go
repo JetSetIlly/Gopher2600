@@ -150,17 +150,17 @@ func (reg *PlaybackRegression) regress(newRegression bool, output io.Writer, msg
 	tck := time.NewTicker(dur)
 
 	// run emulation
-	err = vcs.Run(func() error {
+	err = vcs.Run(func() (hardware.EmulationState, error) {
 		if skipCheck() {
-			return curated.Errorf(regressionSkipped)
+			return hardware.Halt, curated.Errorf(regressionSkipped)
 		}
 
 		hasEnded, err := plb.EndFrame()
 		if err != nil {
-			return curated.Errorf("playback: %v", err)
+			return hardware.Halt, curated.Errorf("playback: %v", err)
 		}
 		if hasEnded {
-			return curated.Errorf("playback: ended unexpectedly")
+			return hardware.Halt, curated.Errorf("playback: ended unexpectedly")
 		}
 
 		// display progress meter every 1 second
@@ -169,7 +169,7 @@ func (reg *PlaybackRegression) regress(newRegression bool, output io.Writer, msg
 			output.Write([]byte(fmt.Sprintf("\r%s [%s]", msg, plb)))
 		default:
 		}
-		return nil
+		return hardware.Running, nil
 	})
 
 	if err != nil {

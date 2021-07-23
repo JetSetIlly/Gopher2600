@@ -317,8 +317,15 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 				} else {
 					img.glsl.shaders[playscrShaderID].(*playscrShader).scheduleScreenshot(modeSingle)
 				}
+
 			case "Pause":
-				// !!TODO: pause/run in playmode
+				if img.state == gui.StatePaused {
+					img.playmode.Pause(false)
+					img.state = gui.StateRunning
+				} else {
+					img.playmode.Pause(true)
+					img.state = gui.StatePaused
+				}
 
 			default:
 				handled = false

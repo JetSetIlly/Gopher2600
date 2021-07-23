@@ -232,9 +232,9 @@ func (reg *VideoRegression) regress(newRegression bool, output io.Writer, msg st
 	tck := time.NewTicker(dur)
 
 	// run emulation
-	err = vcs.RunForFrameCount(reg.NumFrames, func(frame int) (bool, error) {
+	err = vcs.RunForFrameCount(reg.NumFrames, func(frame int) (hardware.EmulationState, error) {
 		if skipCheck() {
-			return false, curated.Errorf(regressionSkipped)
+			return hardware.Halt, curated.Errorf(regressionSkipped)
 		}
 
 		// display progress meter every 1 second
@@ -258,7 +258,7 @@ func (reg *VideoRegression) regress(newRegression bool, output io.Writer, msg st
 			state = append(state, vcs.CPU.String())
 		}
 
-		return true, nil
+		return hardware.Running, nil
 	})
 
 	if err != nil {

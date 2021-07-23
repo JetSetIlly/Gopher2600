@@ -61,7 +61,7 @@ const (
 	//
 	// first argument is a pointer to the VCS, second argument is an instance
 	// of received for gui events.
-	ReqSetPlaymode FeatureReq = "ReqSetPlaymode" // *hardware.VCS, chan userinput.Event
+	ReqSetPlaymode FeatureReq = "ReqSetPlaymode" // playmode.Playmode
 
 	// ReqSetDebugmode is called whenever the playmode loop is entered.
 	//

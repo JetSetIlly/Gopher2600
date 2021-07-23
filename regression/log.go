@@ -160,9 +160,9 @@ func (reg *LogRegression) regress(newRegression bool, output io.Writer, msg stri
 	logOutput := &strings.Builder{}
 
 	// run emulation
-	err = vcs.RunForFrameCount(reg.NumFrames, func(frame int) (bool, error) {
+	err = vcs.RunForFrameCount(reg.NumFrames, func(frame int) (hardware.EmulationState, error) {
 		if skipCheck() {
-			return false, curated.Errorf(regressionSkipped)
+			return hardware.Halt, curated.Errorf(regressionSkipped)
 		}
 
 		// display progress meter every 1 second
@@ -174,7 +174,7 @@ func (reg *LogRegression) regress(newRegression bool, output io.Writer, msg stri
 
 		logger.WriteRecent(logOutput)
 
-		return true, nil
+		return hardware.Running, nil
 	})
 
 	if err != nil {

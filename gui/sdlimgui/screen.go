@@ -110,8 +110,9 @@ type screenCrit struct {
 	// which buffer we'll be plotting to and which bufffer we'll be rendering
 	// from. in playmode we make sure these two indexes never meet. in
 	// debugmode we plot and render from the same index, it doesn't matter.
-	plotIdx   int
-	renderIdx int
+	plotIdx       int
+	renderIdx     int
+	prevRenderIdx int
 
 	// element colors and overlay colors are only used in the debugger so we
 	// don't need to replicate the "backing pixels" idea.
@@ -135,6 +136,10 @@ type screenCrit struct {
 
 	// the selected overlay
 	overlay string
+
+	// when paused we show two adjacent frames over-and-over. this flag tracks
+	// which of those frames to show
+	pauseFrame bool
 }
 
 func newScreen(img *SdlImgui) *screen {
@@ -566,46 +571,72 @@ func (scr *screen) copyPixelsPlaymode() {
 	scr.crit.section.Lock()
 	defer scr.crit.section.Unlock()
 
-	// attempt to sync frame generation with monitor refresh rate
-	if scr.crit.monitorSync {
-		// advance render index
-		scr.crit.renderIdx++
-		if scr.crit.renderIdx >= len(scr.crit.bufferPixels) {
-			scr.crit.renderIdx = 0
+	if scr.img.state == gui.StatePaused {
+		// when emulation is paused we alternate which frame to show. this
+		// simple technique means that two-frame flicker kernels will show a
+		// still image that looks natural.
+		//
+		// it does mean that for three-frame flicker kernels and single frame
+		// kernels are sub-optimal but I think this is better than allowing a
+		// flicker kernel to show only half the pixels necessary to show a
+		// natural image.
+		if scr.crit.pauseFrame {
+			copy(scr.crit.pixels.Pix, scr.crit.bufferPixels[scr.crit.renderIdx].Pix)
+		} else {
+			copy(scr.crit.pixels.Pix, scr.crit.bufferPixels[scr.crit.prevRenderIdx].Pix)
 		}
+		scr.crit.pauseFrame = !scr.crit.pauseFrame
+		return
+	} else {
+		// attempt to sync frame generation with monitor refresh rate
+		if scr.crit.monitorSync {
+			// advance render index
+			scr.crit.prevRenderIdx = scr.crit.renderIdx
+			scr.crit.renderIdx++
+			if scr.crit.renderIdx >= len(scr.crit.bufferPixels) {
+				scr.crit.renderIdx = 0
+			}
 
-		// render index has bumped into the plotting index. revert render index
-		if scr.crit.renderIdx == scr.crit.plotIdx {
-			// ** emulation not keeping up with screen update **
+			// render index has bumped into the plotting index. revert render index
+			if scr.crit.renderIdx == scr.crit.plotIdx {
+				// ** emulation not keeping up with screen update **
 
-			// undo frame advancement. in earlier versions of the code we
-			// reduced the renderIdx by two, having the effect of reusing not
-			// the previous frame, but the frame before that.
-			//
-			// it was thought that this would help out the displaying of
-			// two-frame flicker kernels. which it did, but in some cases that
-			// could result in stuttering of moving sprites. it was
-			// particularly bad if the FPS of the ROM was below the refresh
-			// rate of the monitor.
-			//
-			// a good example of this is the introductory scroller in the demo
-			// Ataventure (by KK of DMA). a scroller that updates every frame
-			// at 50fps and causes very noticeable side-effects on a 60Hz
-			// monitor.
-			scr.crit.renderIdx--
-			if scr.crit.renderIdx < 0 {
-				scr.crit.renderIdx += len(scr.crit.bufferPixels)
+				// undo frame advancement. in earlier versions of the code we
+				// reduced the renderIdx by two, having the effect of reusing not
+				// the previous frame, but the frame before that.
+				//
+				// it was thought that this would help out the displaying of
+				// two-frame flicker kernels. which it did, but in some cases that
+				// could result in stuttering of moving sprites. it was
+				// particularly bad if the FPS of the ROM was below the refresh
+				// rate of the monitor.
+				//
+				// a good example of this is the introductory scroller in the demo
+				// Ataventure (by KK of DMA). a scroller that updates every frame
+				// at 50fps and causes very noticeable side-effects on a 60Hz
+				// monitor.
+
+				// by undoing the frame advancement however, we will cause the
+				// prevRenderIdx to be the same as the renderIdx, which will cause
+				// an ineffective pause screen for flicker kernels. remedy this by
+				// simply swapping the current and previous index values
+				t := scr.crit.prevRenderIdx
+				scr.crit.prevRenderIdx = scr.crit.renderIdx
+				scr.crit.renderIdx = t
 			}
 		}
 
-		// let the emulator thread know it's okay to continue as soon as possible
-		select {
-		case <-scr.emuWait:
-			scr.emuWaitAck <- true
-		default:
-		}
+		// copy pixels from render buffer to the live copy.
+		copy(scr.crit.pixels.Pix, scr.crit.bufferPixels[scr.crit.renderIdx].Pix)
 	}
 
-	// copy pixels from render buffer to the live copy.
-	copy(scr.crit.pixels.Pix, scr.crit.bufferPixels[scr.crit.renderIdx].Pix)
+	// let the emulator thread know it's okay to continue as soon as possible
+	//
+	// this is only ever the case if monitorSync is true but there's no
+	// performance harm in allowing the select block to run in all instances
+	select {
+	case <-scr.emuWait:
+		scr.emuWaitAck <- true
+	default:
+	}
 }

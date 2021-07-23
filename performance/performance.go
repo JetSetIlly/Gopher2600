@@ -105,7 +105,7 @@ func Check(output io.Writer, profile Profile, includeDetail bool,
 		}()
 
 		// run until specified time elapses
-		err = vcs.Run(func() error {
+		err = vcs.Run(func() (hardware.EmulationState, error) {
 			for {
 				select {
 				case v := <-timerChan:
@@ -113,7 +113,7 @@ func Check(output io.Writer, profile Profile, includeDetail bool,
 					// period has finished, return false to cause vcs.Run() to
 					// return
 					if v {
-						return curated.Errorf(timedOut)
+						return hardware.Halt, curated.Errorf(timedOut)
 					}
 
 					// timerChan has returned false which indicates that the
@@ -122,7 +122,7 @@ func Check(output io.Writer, profile Profile, includeDetail bool,
 					// frame.
 					startFrame = tv.GetState(signal.ReqFramenum)
 				default:
-					return nil
+					return hardware.Running, nil
 				}
 			}
 		})

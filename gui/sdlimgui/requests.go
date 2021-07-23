@@ -19,8 +19,8 @@ import (
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/debugger"
 	"github.com/jetsetilly/gopher2600/gui"
-	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
+	"github.com/jetsetilly/gopher2600/playmode"
 	"github.com/jetsetilly/gopher2600/userinput"
 )
 
@@ -77,20 +77,16 @@ func (img *SdlImgui) serviceSetFeature(request featureRequest) {
 
 	switch request.request {
 	case gui.ReqSetPlaymode:
-		err = argLen(request.args, 2)
+		err = argLen(request.args, 1)
 		if err == nil {
-			img.setDbgAndVCS(nil, request.args[0].(*hardware.VCS))
-			if request.args[1] == nil {
-				img.userinput = nil
-			} else {
-				img.userinput = request.args[1].(chan userinput.Event)
-			}
+			img.setEmulation(nil, request.args[0].(playmode.Playmode))
+			img.userinput = request.args[0].(playmode.Playmode).UserInput()
 		}
 
 	case gui.ReqSetDebugmode:
 		err = argLen(request.args, 2)
 		if err == nil {
-			img.setDbgAndVCS(request.args[0].(*debugger.Debugger), nil)
+			img.setEmulation(request.args[0].(*debugger.Debugger), nil)
 			if request.args[1] == nil {
 				img.userinput = nil
 			} else {

@@ -20,6 +20,14 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 )
 
+type EmulationState int
+
+const (
+	Running EmulationState = iota
+	Paused
+	Halt
+)
+
 // checking continue condition every Run iteration is too frequent. A modest
 // brake on how often it is called improves and smooths out performance.
 const continueCheckFreq = 100
@@ -30,11 +38,9 @@ const continueCheckFreq = 100
 //
 // Not suitable if continueCheck must run very frequently. If you need to check
 // every CPU or every video cycle then the Step() function should be preferred.
-func (vcs *VCS) Run(continueCheck func() error) error {
-	var err error
-
+func (vcs *VCS) Run(continueCheck func() (EmulationState, error)) error {
 	if continueCheck == nil {
-		continueCheck = func() error { return nil }
+		continueCheck = func() (EmulationState, error) { return Running, nil }
 	}
 
 	// see the equivalient videoCycle() in the VCS.Step() function for an
@@ -53,49 +59,55 @@ func (vcs *VCS) Run(continueCheck func() error) error {
 		return nil
 	}
 
-	cont := true
-	contCt := 0
-	for cont {
-		err = vcs.CPU.ExecuteInstruction(videoCycle)
-		if err != nil {
-			// see debugger.inputLoop() function for explanation
-			if onTapeLoaded, ok := err.(supercharger.FastLoaded); ok {
-				vcs.CPU.Interrupted = true
-				vcs.CPU.LastResult.Final = true
-				err = onTapeLoaded(vcs.CPU, vcs.Mem.RAM, vcs.RIOT.Timer)
-				if err != nil {
+	state := Running
+	checkCt := 0
+	for state != Halt {
+		if state == Running {
+			err := vcs.CPU.ExecuteInstruction(videoCycle)
+			if err != nil {
+				// see debugger.inputLoop() function for explanation
+				if onTapeLoaded, ok := err.(supercharger.FastLoaded); ok {
+					vcs.CPU.Interrupted = true
+					vcs.CPU.LastResult.Final = true
+					err = onTapeLoaded(vcs.CPU, vcs.Mem.RAM, vcs.RIOT.Timer)
+					if err != nil {
+						return err
+					}
+				} else {
 					return err
 				}
-			} else {
-				return err
 			}
+		} else {
+			// paused
 		}
 
 		// only call continue check every N iterations
-		contCt++
-		if contCt >= continueCheckFreq {
-			err = continueCheck()
-			cont = err == nil
-			contCt = 0
+		checkCt++
+		if checkCt >= continueCheckFreq {
+			var err error
+			state, err = continueCheck()
+			if err != nil {
+				return err
+			}
 		}
 	}
 
-	return err
+	return nil
 }
 
 // RunForFrameCount sets emulator running for the specified number of frames.
 // Useful for FPS and regression tests. Not used by the debugger because traps
 // and steptraps are more flexible.
-func (vcs *VCS) RunForFrameCount(numFrames int, continueCheck func(frame int) (bool, error)) error {
+func (vcs *VCS) RunForFrameCount(numFrames int, continueCheck func(frame int) (EmulationState, error)) error {
 	if continueCheck == nil {
-		continueCheck = func(frame int) (bool, error) { return true, nil }
+		continueCheck = func(frame int) (EmulationState, error) { return Running, nil }
 	}
 
 	frameNum := vcs.TV.GetState(signal.ReqFramenum)
 	targetFrame := frameNum + numFrames
 
-	cont := true
-	for frameNum != targetFrame && cont {
+	state := Running
+	for frameNum != targetFrame && state != Halt {
 		err := vcs.Step(nil)
 		if err != nil {
 			return err
@@ -103,7 +115,7 @@ func (vcs *VCS) RunForFrameCount(numFrames int, continueCheck func(frame int) (b
 
 		frameNum = vcs.TV.GetState(signal.ReqFramenum)
 
-		cont, err = continueCheck(frameNum)
+		state, err = continueCheck(frameNum)
 		if err != nil {
 			return err
 		}

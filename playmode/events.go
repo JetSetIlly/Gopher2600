@@ -18,6 +18,7 @@ package playmode
 import (
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
+	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/userinput"
 )
 
@@ -37,13 +38,13 @@ func (pl *playmode) userInputHandler(ev userinput.Event) error {
 	return nil
 }
 
-func (pl *playmode) eventHandler() error {
+func (pl *playmode) eventHandler() (hardware.EmulationState, error) {
 	select {
 	case <-pl.intChan:
-		return curated.Errorf(terminal.UserInterrupt)
+		return hardware.Halt, curated.Errorf(terminal.UserInterrupt)
 
 	case ev := <-pl.userinput:
-		return pl.userInputHandler(ev)
+		return pl.emulationState, pl.userInputHandler(ev)
 
 	case ev := <-pl.rawEvents:
 		ev()
@@ -51,5 +52,5 @@ func (pl *playmode) eventHandler() error {
 	default:
 	}
 
-	return nil
+	return pl.emulationState, nil
 }

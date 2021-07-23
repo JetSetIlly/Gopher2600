@@ -40,6 +40,17 @@ import (
 	"github.com/jetsetilly/gopher2600/userinput"
 )
 
+// Playmode defines the public functions required for a GUI implementation to
+// control the emulation in playmode.
+//
+// This is a transitional interface. It will be replaced by an Emulation
+// interface in a new emulation package.
+type Playmode interface {
+	Pause(set bool)
+	VCS() *hardware.VCS
+	UserInput() chan userinput.Event
+}
+
 type playmode struct {
 	vcs         *hardware.VCS
 	scr         gui.GUI
@@ -48,6 +59,27 @@ type playmode struct {
 	intChan   chan os.Signal
 	userinput chan userinput.Event
 	rawEvents chan func()
+
+	emulationState hardware.EmulationState
+}
+
+// Pause implementes the Playmode interface.
+func (pl *playmode) Pause(set bool) {
+	if set {
+		pl.emulationState = hardware.Paused
+	} else {
+		pl.emulationState = hardware.Running
+	}
+}
+
+// VCS implementes the Playmode interface.
+func (pl *playmode) VCS() *hardware.VCS {
+	return pl.vcs
+}
+
+// UserInput implementes the Playmode interface.
+func (pl *playmode) UserInput() chan userinput.Event {
+	return pl.userinput
 }
 
 // Play creates a 'playable' instance of the emulator.
@@ -186,7 +218,7 @@ func Play(tv *television.Television, scr gui.GUI, newRecording bool, cartload ca
 	}
 
 	// connect gui
-	err = scr.SetFeature(gui.ReqSetPlaymode, vcs, pl.userinput)
+	err = scr.SetFeature(gui.ReqSetPlaymode, pl)
 	if err != nil {
 		return curated.Errorf("playmode: %v", err)
 	}

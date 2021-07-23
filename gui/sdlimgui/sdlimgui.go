@@ -29,6 +29,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/paths"
+	"github.com/jetsetilly/gopher2600/playmode"
 	"github.com/jetsetilly/gopher2600/reflection"
 	"github.com/jetsetilly/gopher2600/userinput"
 	"github.com/veandco/go-sdl2/sdl"
@@ -62,6 +63,8 @@ type SdlImgui struct {
 	//
 	// we can think of this as a special case of gui.State.Rewinding.
 	isRewindSlider bool
+
+	playmode playmode.Playmode
 
 	// vcs is set by ReqSetPlaymode or ReqSetDebugmode. in debug mode the VCS
 	// is accessible via lz.Dbg.VCS but for maximum compatibility between
@@ -248,14 +251,15 @@ func (img *SdlImgui) isPlaymode() bool {
 	return img.lz.Dbg == nil
 }
 
-// set debugger/VCS and handle the changeover gracefully. this includes the saving
+// set emulation and handle the changeover gracefully. this includes the saving
 // and loading of preference groups. should only be called from gui thread.
-func (img *SdlImgui) setDbgAndVCS(dbg *debugger.Debugger, vcs *hardware.VCS) error {
+func (img *SdlImgui) setEmulation(dbg *debugger.Debugger, playmode playmode.Playmode) error {
+	img.playmode = playmode
 	img.lz.Dbg = dbg
 
 	// playmode requesed
 	if dbg == nil {
-		img.vcs = vcs
+		img.vcs = playmode.VCS()
 
 		// save current preferences
 		if img.prefs != nil {
