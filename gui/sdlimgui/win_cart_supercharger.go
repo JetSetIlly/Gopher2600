@@ -71,8 +71,8 @@ func (win *winSuperchargerRegisters) draw() {
 	val := fmt.Sprintf("%02x", r.Value)
 	imguiLabel("Value")
 	if imguiHexInput("##value", 2, &val) {
-		win.img.lz.Dbg.PushRawEvent(func() {
-			b := win.img.lz.Dbg.VCS.Mem.Cart.GetRegistersBus()
+		win.img.dbg.PushRawEvent(func() {
+			b := win.img.vcs.Mem.Cart.GetRegistersBus()
 			b.PutRegister("value", val)
 		})
 	}
@@ -90,8 +90,8 @@ func (win *winSuperchargerRegisters) draw() {
 	imgui.PushItemWidth(250.0)
 	delay := int32(r.Delay)
 	if imgui.SliderInt("Delay##delay", &delay, 1, 6) {
-		win.img.lz.Dbg.PushRawEvent(func() {
-			b := win.img.lz.Dbg.VCS.Mem.Cart.GetRegistersBus()
+		win.img.dbg.PushRawEvent(func() {
+			b := win.img.vcs.Mem.Cart.GetRegistersBus()
 			b.PutRegister("delay", fmt.Sprintf("%d", delay))
 		})
 	}
@@ -102,8 +102,8 @@ func (win *winSuperchargerRegisters) draw() {
 	rw := r.RAMwrite
 	imguiLabel("RAM Write")
 	if imgui.Checkbox("##ramwrite", &rw) {
-		win.img.lz.Dbg.PushRawEvent(func() {
-			b := win.img.lz.Dbg.VCS.Mem.Cart.GetRegistersBus()
+		win.img.dbg.PushRawEvent(func() {
+			b := win.img.vcs.Mem.Cart.GetRegistersBus()
 			b.PutRegister("ramwrite", fmt.Sprintf("%v", rw))
 		})
 	}
@@ -113,8 +113,8 @@ func (win *winSuperchargerRegisters) draw() {
 	rp := r.ROMpower
 	imguiLabel("ROM Power")
 	if imgui.Checkbox("##rompower", &rp) {
-		win.img.lz.Dbg.PushRawEvent(func() {
-			b := win.img.lz.Dbg.VCS.Mem.Cart.GetRegistersBus()
+		win.img.dbg.PushRawEvent(func() {
+			b := win.img.vcs.Mem.Cart.GetRegistersBus()
 			b.PutRegister("rompower", fmt.Sprintf("%v", rp))
 		})
 	}
@@ -127,8 +127,8 @@ func (win *winSuperchargerRegisters) draw() {
 	banking := r.BankingMode
 
 	setBanking := func(v int) {
-		win.img.lz.Dbg.PushRawEvent(func() {
-			b := win.img.lz.Dbg.VCS.Mem.Cart.GetRegistersBus()
+		win.img.dbg.PushRawEvent(func() {
+			b := win.img.vcs.Mem.Cart.GetRegistersBus()
 			b.PutRegister("bankingmode", fmt.Sprintf("%v", v))
 		})
 	}

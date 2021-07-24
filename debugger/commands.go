@@ -29,6 +29,7 @@ import (
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
 	"github.com/jetsetilly/gopher2600/debugger/terminal/commandline"
 	"github.com/jetsetilly/gopher2600/disassembly"
+	"github.com/jetsetilly/gopher2600/emulation"
 	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/registers"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/plusrom"
@@ -238,14 +239,14 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 
 			var err error
 
-			f, s, c, err = dbg.VCS.TV.ReqAdjust(req, adj, true)
+			f, s, c, err = dbg.vcs.TV.ReqAdjust(req, adj, true)
 
 			if err != nil {
 				return err
 			}
 
 			// set gui mode here because we won't have a chance to set it in the input loop
-			dbg.scr.SetFeature(gui.ReqState, gui.StateStepping)
+			dbg.scr.SetFeature(gui.ReqState, emulation.Stepping)
 
 			dbg.restartInputLoop(func() error {
 				return dbg.Rewind.GotoFrameCoords(f, s, c)
@@ -347,9 +348,9 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 				// adjust gui state for rewinding event. put back into a suitable
 				// state afterwards.
 				if dbg.runUntilHalt {
-					defer dbg.scr.SetFeature(gui.ReqState, gui.StateRunning)
+					defer dbg.scr.SetFeature(gui.ReqState, emulation.Running)
 				} else {
-					defer dbg.scr.SetFeature(gui.ReqState, gui.StatePaused)
+					defer dbg.scr.SetFeature(gui.ReqState, emulation.Paused)
 				}
 
 				if arg == "LAST" {
@@ -362,7 +363,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 					if err != nil {
 						return err
 					}
-					frame = dbg.VCS.TV.GetState(signal.ReqFramenum)
+					frame = dbg.vcs.TV.GetState(signal.ReqFramenum)
 					dbg.printLine(terminal.StyleFeedback, fmt.Sprintf("rewind set to frame %d", frame))
 				}
 				return nil
@@ -379,7 +380,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		// use cartridge's idea of the filename. the attach process may have
 		// caused a different cartridge to load than the one requested (most
 		// typically this will mean that the cartridge has been ejected)
-		dbg.printLine(terminal.StyleFeedback, "machine reset with new cartridge (%s)", dbg.VCS.Mem.Cart.Filename)
+		dbg.printLine(terminal.StyleFeedback, "machine reset with new cartridge (%s)", dbg.vcs.Mem.Cart.Filename)
 
 	case cmdCartridge:
 		arg, ok := tokens.Get()
@@ -391,18 +392,18 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 			case "MAPPING":
 				dbg.printLine(
 					terminal.StyleInstrument,
-					dbg.VCS.Mem.Cart.Mapping(),
+					dbg.vcs.Mem.Cart.Mapping(),
 				)
 
 			case "HASH":
 				dbg.printLine(
 					terminal.StyleFeedback,
-					dbg.VCS.Mem.Cart.Hash,
+					dbg.vcs.Mem.Cart.Hash,
 				)
 
 			case "STATIC":
 				// !!TODO: poke/peek static cartridge static data areas
-				if bus := dbg.VCS.Mem.Cart.GetStaticBus(); bus != nil {
+				if bus := dbg.vcs.Mem.Cart.GetStaticBus(); bus != nil {
 					s := &strings.Builder{}
 					static := bus.GetStatic()
 					if static != nil {
@@ -423,7 +424,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 				}
 			case "REGISTERS":
 				// !!TODO: poke/peek cartridge registers
-				if bus := dbg.VCS.Mem.Cart.GetRegistersBus(); bus != nil {
+				if bus := dbg.vcs.Mem.Cart.GetRegistersBus(); bus != nil {
 					dbg.printLine(terminal.StyleInstrument, bus.GetRegisters().String())
 				} else {
 					dbg.printLine(terminal.StyleFeedback, "cartridge has no registers")
@@ -432,7 +433,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 			case "RAM":
 				// cartridge RAM is accessible through the normal VCS buses so
 				// the normal peek/poke commands will work
-				if bus := dbg.VCS.Mem.Cart.GetRAMbus(); bus != nil {
+				if bus := dbg.vcs.Mem.Cart.GetRAMbus(); bus != nil {
 					ram := bus.GetRAM()
 					if ram != nil {
 						s := &strings.Builder{}
@@ -461,12 +462,12 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 				}
 			}
 		} else {
-			dbg.printLine(terminal.StyleInstrument, dbg.VCS.Mem.Cart.String())
+			dbg.printLine(terminal.StyleInstrument, dbg.vcs.Mem.Cart.String())
 		}
 
 	case cmdPatch:
 		f, _ := tokens.Get()
-		patched, err := patch.CartridgeMemory(dbg.VCS.Mem.Cart, f)
+		patched, err := patch.CartridgeMemory(dbg.vcs.Mem.Cart, f)
 		if err != nil {
 			dbg.printLine(terminal.StyleError, "%v", err)
 			if patched {
@@ -511,7 +512,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 			err = dbg.Disasm.Write(s, attr)
 		} else if v >= int(memorymap.OriginCart) {
 			err = dbg.Disasm.WriteAddr(s, disassembly.ColumnAttr{Cycles: true}, uint16(v))
-		} else if v < dbg.VCS.Mem.Cart.NumBanks() {
+		} else if v < dbg.vcs.Mem.Cart.NumBanks() {
 			err = dbg.Disasm.WriteBank(s, attr, v)
 		} else {
 			dbg.printLine(terminal.StyleError, fmt.Sprintf("no bank %d in cartridge", v))
@@ -812,10 +813,10 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		if ok {
 			switch strings.ToUpper(option) {
 			case "DEFN":
-				if dbg.VCS.CPU.LastResult.Defn == nil {
+				if dbg.vcs.CPU.LastResult.Defn == nil {
 					dbg.printLine(terminal.StyleFeedback, "no instruction decoded yet")
 				} else {
-					dbg.printLine(terminal.StyleFeedback, "%s", dbg.VCS.CPU.LastResult.Defn)
+					dbg.printLine(terminal.StyleFeedback, "%s", dbg.vcs.CPU.LastResult.Defn)
 				}
 				return nil
 
@@ -826,7 +827,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 
 		s := strings.Builder{}
 
-		if dbg.VCS.Mem.Cart.NumBanks() > 1 {
+		if dbg.vcs.Mem.Cart.NumBanks() > 1 {
 			s.WriteString(fmt.Sprintf("[%s] ", dbg.lastResult.Bank))
 		}
 		s.WriteString(dbg.lastResult.GetField(disassembly.FldAddress))
@@ -917,19 +918,19 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 					var targetVal *bool
 					switch target {
 					case "S":
-						targetVal = &dbg.VCS.CPU.Status.Sign
+						targetVal = &dbg.vcs.CPU.Status.Sign
 					case "O":
-						targetVal = &dbg.VCS.CPU.Status.Overflow
+						targetVal = &dbg.vcs.CPU.Status.Overflow
 					case "B":
-						targetVal = &dbg.VCS.CPU.Status.Break
+						targetVal = &dbg.vcs.CPU.Status.Break
 					case "D":
-						targetVal = &dbg.VCS.CPU.Status.DecimalMode
+						targetVal = &dbg.vcs.CPU.Status.DecimalMode
 					case "I":
-						targetVal = &dbg.VCS.CPU.Status.InterruptDisable
+						targetVal = &dbg.vcs.CPU.Status.InterruptDisable
 					case "Z":
-						targetVal = &dbg.VCS.CPU.Status.Zero
+						targetVal = &dbg.vcs.CPU.Status.Zero
 					case "C":
-						targetVal = &dbg.VCS.CPU.Status.Carry
+						targetVal = &dbg.vcs.CPU.Status.Carry
 					}
 
 					switch action {
@@ -941,7 +942,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 						*targetVal = !*targetVal
 					}
 				} else {
-					dbg.printLine(terminal.StyleInstrument, dbg.VCS.CPU.Status.String())
+					dbg.printLine(terminal.StyleInstrument, dbg.vcs.CPU.Status.String())
 				}
 
 			case "SET":
@@ -956,7 +957,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 						dbg.printLine(terminal.StyleError, "value must be a positive 16 bit number")
 					}
 
-					dbg.VCS.CPU.PC.Load(uint16(v))
+					dbg.vcs.CPU.PC.Load(uint16(v))
 				} else {
 					// 6507 registers are 8 bit
 					v, err := strconv.ParseUint(value, 16, 8)
@@ -967,13 +968,13 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 					var reg *registers.Register
 					switch strings.ToUpper(target) {
 					case "A":
-						reg = &dbg.VCS.CPU.A
+						reg = &dbg.vcs.CPU.A
 					case "X":
-						reg = &dbg.VCS.CPU.X
+						reg = &dbg.vcs.CPU.X
 					case "Y":
-						reg = &dbg.VCS.CPU.Y
+						reg = &dbg.vcs.CPU.Y
 					case "SP":
-						reg = &dbg.VCS.CPU.SP
+						reg = &dbg.vcs.CPU.SP
 					}
 
 					reg.Load(uint8(v))
@@ -983,7 +984,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 				// already caught by command line ValidateTokens()
 			}
 		} else {
-			dbg.printLine(terminal.StyleInstrument, dbg.VCS.CPU.String())
+			dbg.printLine(terminal.StyleInstrument, dbg.vcs.CPU.String())
 		}
 
 	case cmdPeek:
@@ -1044,30 +1045,30 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		}
 
 	case cmdRAM:
-		dbg.printLine(terminal.StyleInstrument, dbg.VCS.Mem.RAM.String())
+		dbg.printLine(terminal.StyleInstrument, dbg.vcs.Mem.RAM.String())
 
 	case cmdTIA:
 		arg, _ := tokens.Get()
 		switch arg {
 		case "HMOVE":
-			dbg.printLine(terminal.StyleInstrument, dbg.VCS.TIA.Hmove.String())
+			dbg.printLine(terminal.StyleInstrument, dbg.vcs.TIA.Hmove.String())
 		default:
-			dbg.printLine(terminal.StyleInstrument, dbg.VCS.TIA.String())
+			dbg.printLine(terminal.StyleInstrument, dbg.vcs.TIA.String())
 		}
 
 	case cmdRIOT:
 		arg, _ := tokens.Get()
 		switch arg {
 		case "TIMER":
-			dbg.printLine(terminal.StyleInstrument, dbg.VCS.RIOT.Timer.String())
+			dbg.printLine(terminal.StyleInstrument, dbg.vcs.RIOT.Timer.String())
 		case "PORTS":
 			fallthrough
 		default:
-			dbg.printLine(terminal.StyleInstrument, dbg.VCS.RIOT.Ports.String())
+			dbg.printLine(terminal.StyleInstrument, dbg.vcs.RIOT.Ports.String())
 		}
 
 	case cmdAudio:
-		dbg.printLine(terminal.StyleInstrument, dbg.VCS.TIA.Audio.String())
+		dbg.printLine(terminal.StyleInstrument, dbg.vcs.TIA.Audio.String())
 
 	case cmdTV:
 		option, ok := tokens.Get()
@@ -1109,14 +1110,14 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 
 		switch plyr {
 		case 0:
-			dbg.printLine(terminal.StyleInstrument, dbg.VCS.TIA.Video.Player0.String())
+			dbg.printLine(terminal.StyleInstrument, dbg.vcs.TIA.Video.Player0.String())
 
 		case 1:
-			dbg.printLine(terminal.StyleInstrument, dbg.VCS.TIA.Video.Player1.String())
+			dbg.printLine(terminal.StyleInstrument, dbg.vcs.TIA.Video.Player1.String())
 
 		default:
-			dbg.printLine(terminal.StyleInstrument, dbg.VCS.TIA.Video.Player0.String())
-			dbg.printLine(terminal.StyleInstrument, dbg.VCS.TIA.Video.Player1.String())
+			dbg.printLine(terminal.StyleInstrument, dbg.vcs.TIA.Video.Player0.String())
+			dbg.printLine(terminal.StyleInstrument, dbg.vcs.TIA.Video.Player1.String())
 		}
 
 	case cmdMissile:
@@ -1132,21 +1133,21 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 
 		switch miss {
 		case 0:
-			dbg.printLine(terminal.StyleInstrument, dbg.VCS.TIA.Video.Missile0.String())
+			dbg.printLine(terminal.StyleInstrument, dbg.vcs.TIA.Video.Missile0.String())
 
 		case 1:
-			dbg.printLine(terminal.StyleInstrument, dbg.VCS.TIA.Video.Missile1.String())
+			dbg.printLine(terminal.StyleInstrument, dbg.vcs.TIA.Video.Missile1.String())
 
 		default:
-			dbg.printLine(terminal.StyleInstrument, dbg.VCS.TIA.Video.Missile0.String())
-			dbg.printLine(terminal.StyleInstrument, dbg.VCS.TIA.Video.Missile1.String())
+			dbg.printLine(terminal.StyleInstrument, dbg.vcs.TIA.Video.Missile0.String())
+			dbg.printLine(terminal.StyleInstrument, dbg.vcs.TIA.Video.Missile1.String())
 		}
 
 	case cmdBall:
-		dbg.printLine(terminal.StyleInstrument, dbg.VCS.TIA.Video.Ball.String())
+		dbg.printLine(terminal.StyleInstrument, dbg.vcs.TIA.Video.Ball.String())
 
 	case cmdPlayfield:
-		dbg.printLine(terminal.StyleInstrument, dbg.VCS.TIA.Video.Playfield.String())
+		dbg.printLine(terminal.StyleInstrument, dbg.vcs.TIA.Video.Playfield.String())
 
 	case cmdDisplay:
 		var err error
@@ -1169,7 +1170,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		}
 
 	case cmdPlusROM:
-		plusrom, ok := dbg.VCS.Mem.Cart.GetContainer().(*plusrom.PlusROM)
+		plusrom, ok := dbg.vcs.Mem.Cart.GetContainer().(*plusrom.PlusROM)
 		if !ok {
 			dbg.printLine(terminal.StyleError, "not a plusrom cartridge")
 			return nil
@@ -1231,13 +1232,13 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		if ok {
 			switch strings.ToUpper(controller) {
 			case "AUTO":
-				err = dbg.VCS.RIOT.Ports.Plug(id, controllers.NewAuto)
+				err = dbg.vcs.RIOT.Ports.Plug(id, controllers.NewAuto)
 			case "STICK":
-				err = dbg.VCS.RIOT.Ports.Plug(id, controllers.NewStick)
+				err = dbg.vcs.RIOT.Ports.Plug(id, controllers.NewStick)
 			case "PADDLE":
-				err = dbg.VCS.RIOT.Ports.Plug(id, controllers.NewPaddle)
+				err = dbg.vcs.RIOT.Ports.Plug(id, controllers.NewPaddle)
 			case "KEYBOARD":
-				err = dbg.VCS.RIOT.Ports.Plug(id, controllers.NewKeyboard)
+				err = dbg.vcs.RIOT.Ports.Plug(id, controllers.NewKeyboard)
 			}
 		}
 
@@ -1248,9 +1249,9 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		var p ports.Peripheral
 		switch strings.ToUpper(player) {
 		case "LEFT":
-			p = dbg.VCS.RIOT.Ports.LeftPlayer
+			p = dbg.vcs.RIOT.Ports.LeftPlayer
 		case "RIGHT":
-			p = dbg.VCS.RIOT.Ports.RightPlayer
+			p = dbg.vcs.RIOT.Ports.RightPlayer
 		}
 
 		s := strings.Builder{}
@@ -1263,7 +1264,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 	case cmdPanel:
 		mode, ok := tokens.Get()
 		if !ok {
-			dbg.printLine(terminal.StyleInstrument, dbg.VCS.RIOT.Ports.Panel.String())
+			dbg.printLine(terminal.StyleInstrument, dbg.vcs.RIOT.Ports.Panel.String())
 			return nil
 		}
 
@@ -1274,43 +1275,43 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 			arg, _ := tokens.Get()
 			switch strings.ToUpper(arg) {
 			case "P0":
-				err = dbg.VCS.RIOT.Ports.HandleEvent(plugging.Panel, ports.PanelTogglePlayer0Pro, nil)
+				err = dbg.vcs.RIOT.Ports.HandleEvent(plugging.Panel, ports.PanelTogglePlayer0Pro, nil)
 			case "P1":
-				err = dbg.VCS.RIOT.Ports.HandleEvent(plugging.Panel, ports.PanelTogglePlayer1Pro, nil)
+				err = dbg.vcs.RIOT.Ports.HandleEvent(plugging.Panel, ports.PanelTogglePlayer1Pro, nil)
 			case "COL":
-				err = dbg.VCS.RIOT.Ports.HandleEvent(plugging.Panel, ports.PanelToggleColor, nil)
+				err = dbg.vcs.RIOT.Ports.HandleEvent(plugging.Panel, ports.PanelToggleColor, nil)
 			}
 		case "SET":
 			arg, _ := tokens.Get()
 			switch strings.ToUpper(arg) {
 			case "P0PRO":
-				err = dbg.VCS.RIOT.Ports.HandleEvent(plugging.Panel, ports.PanelSetPlayer0Pro, true)
+				err = dbg.vcs.RIOT.Ports.HandleEvent(plugging.Panel, ports.PanelSetPlayer0Pro, true)
 			case "P1PRO":
-				err = dbg.VCS.RIOT.Ports.HandleEvent(plugging.Panel, ports.PanelSetPlayer1Pro, true)
+				err = dbg.vcs.RIOT.Ports.HandleEvent(plugging.Panel, ports.PanelSetPlayer1Pro, true)
 			case "P0AM":
-				err = dbg.VCS.RIOT.Ports.HandleEvent(plugging.Panel, ports.PanelSetPlayer0Pro, false)
+				err = dbg.vcs.RIOT.Ports.HandleEvent(plugging.Panel, ports.PanelSetPlayer0Pro, false)
 			case "P1AM":
-				err = dbg.VCS.RIOT.Ports.HandleEvent(plugging.Panel, ports.PanelSetPlayer1Pro, false)
+				err = dbg.vcs.RIOT.Ports.HandleEvent(plugging.Panel, ports.PanelSetPlayer1Pro, false)
 			case "COL":
-				err = dbg.VCS.RIOT.Ports.HandleEvent(plugging.Panel, ports.PanelSetColor, true)
+				err = dbg.vcs.RIOT.Ports.HandleEvent(plugging.Panel, ports.PanelSetColor, true)
 			case "BW":
-				err = dbg.VCS.RIOT.Ports.HandleEvent(plugging.Panel, ports.PanelSetColor, false)
+				err = dbg.vcs.RIOT.Ports.HandleEvent(plugging.Panel, ports.PanelSetColor, false)
 			}
 		case "HOLD":
 			arg, _ := tokens.Get()
 			switch strings.ToUpper(arg) {
 			case "SELECT":
-				err = dbg.VCS.RIOT.Ports.HandleEvent(plugging.Panel, ports.PanelSelect, true)
+				err = dbg.vcs.RIOT.Ports.HandleEvent(plugging.Panel, ports.PanelSelect, true)
 			case "RESET":
-				err = dbg.VCS.RIOT.Ports.HandleEvent(plugging.Panel, ports.PanelReset, true)
+				err = dbg.vcs.RIOT.Ports.HandleEvent(plugging.Panel, ports.PanelReset, true)
 			}
 		case "RELEASE":
 			arg, _ := tokens.Get()
 			switch strings.ToUpper(arg) {
 			case "SELECT":
-				err = dbg.VCS.RIOT.Ports.HandleEvent(plugging.Panel, ports.PanelSelect, false)
+				err = dbg.vcs.RIOT.Ports.HandleEvent(plugging.Panel, ports.PanelSelect, false)
 			case "RESET":
-				err = dbg.VCS.RIOT.Ports.HandleEvent(plugging.Panel, ports.PanelReset, false)
+				err = dbg.vcs.RIOT.Ports.HandleEvent(plugging.Panel, ports.PanelReset, false)
 			}
 		}
 
@@ -1318,7 +1319,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 			return curated.Errorf("%v", err)
 		}
 
-		dbg.printLine(terminal.StyleInstrument, dbg.VCS.RIOT.Ports.Panel.String())
+		dbg.printLine(terminal.StyleInstrument, dbg.vcs.RIOT.Ports.Panel.String())
 
 	case cmdStick:
 		var err error
@@ -1366,9 +1367,9 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		n, _ := strconv.Atoi(stick)
 		switch n {
 		case 0:
-			err = dbg.VCS.RIOT.Ports.HandleEvent(plugging.LeftPlayer, event, value)
+			err = dbg.vcs.RIOT.Ports.HandleEvent(plugging.LeftPlayer, event, value)
 		case 1:
-			err = dbg.VCS.RIOT.Ports.HandleEvent(plugging.RightPlayer, event, value)
+			err = dbg.vcs.RIOT.Ports.HandleEvent(plugging.RightPlayer, event, value)
 		}
 
 		if err != nil {
@@ -1385,15 +1386,15 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		switch n {
 		case 0:
 			if strings.ToUpper(key) == "NONE" {
-				err = dbg.VCS.RIOT.Ports.HandleEvent(plugging.LeftPlayer, ports.KeyboardUp, nil)
+				err = dbg.vcs.RIOT.Ports.HandleEvent(plugging.LeftPlayer, ports.KeyboardUp, nil)
 			} else {
-				err = dbg.VCS.RIOT.Ports.HandleEvent(plugging.LeftPlayer, ports.KeyboardDown, rune(key[0]))
+				err = dbg.vcs.RIOT.Ports.HandleEvent(plugging.LeftPlayer, ports.KeyboardDown, rune(key[0]))
 			}
 		case 1:
 			if strings.ToUpper(key) == "NONE" {
-				err = dbg.VCS.RIOT.Ports.HandleEvent(plugging.RightPlayer, ports.KeyboardUp, nil)
+				err = dbg.vcs.RIOT.Ports.HandleEvent(plugging.RightPlayer, ports.KeyboardUp, nil)
 			} else {
-				err = dbg.VCS.RIOT.Ports.HandleEvent(plugging.RightPlayer, ports.KeyboardDown, rune(key[0]))
+				err = dbg.vcs.RIOT.Ports.HandleEvent(plugging.RightPlayer, ports.KeyboardDown, rune(key[0]))
 			}
 		}
 
@@ -1515,7 +1516,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		action, ok := tokens.Get()
 
 		if !ok {
-			dbg.printLine(terminal.StyleFeedback, dbg.VCS.Prefs.String())
+			dbg.printLine(terminal.StyleFeedback, dbg.vcs.Prefs.String())
 			dbg.printLine(terminal.StyleFeedback, dbg.Disasm.Prefs.String())
 			dbg.printLine(terminal.StyleFeedback, dbg.Rewind.Prefs.String())
 			return nil
@@ -1523,7 +1524,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 
 		switch action {
 		case "LOAD":
-			err := dbg.VCS.Prefs.Load()
+			err := dbg.vcs.Prefs.Load()
 			if err != nil {
 				return curated.Errorf("%v", err)
 			}
@@ -1538,7 +1539,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 			return nil
 
 		case "SAVE":
-			err := dbg.VCS.Prefs.Save()
+			err := dbg.vcs.Prefs.Save()
 			if err != nil {
 				return curated.Errorf("%v", err)
 			}

@@ -81,8 +81,8 @@ func (win *winCDFRegisters) draw() {
 		label := fmt.Sprintf("##%dpointer", i)
 		data := fmt.Sprintf("%08x", r.Datastream[i].Pointer)
 		if imguiHexInput(label, 8, &data) {
-			win.img.lz.Dbg.PushRawEvent(func() {
-				b := win.img.lz.Dbg.VCS.Mem.Cart.GetRegistersBus()
+			win.img.dbg.PushRawEvent(func() {
+				b := win.img.vcs.Mem.Cart.GetRegistersBus()
 				b.PutRegister(fmt.Sprintf("datastream::%d::pointer", f), data)
 			})
 		}
@@ -103,8 +103,8 @@ func (win *winCDFRegisters) draw() {
 		label := fmt.Sprintf("##m%dincrement", i)
 		inc := fmt.Sprintf("%08x", r.Datastream[i].Increment)
 		if imguiHexInput(label, 8, &inc) {
-			win.img.lz.Dbg.PushRawEvent(func() {
-				b := win.img.lz.Dbg.VCS.Mem.Cart.GetRegistersBus()
+			win.img.dbg.PushRawEvent(func() {
+				b := win.img.vcs.Mem.Cart.GetRegistersBus()
 				b.PutRegister(fmt.Sprintf("datastream::%d::increment", f), inc)
 			})
 		}
@@ -116,8 +116,8 @@ func (win *winCDFRegisters) draw() {
 	imguiLabel("Fast Fetch")
 	ff := r.FastFetch
 	if imgui.Checkbox("##fastfetch", &ff) {
-		win.img.lz.Dbg.PushRawEvent(func() {
-			b := win.img.lz.Dbg.VCS.Mem.Cart.GetRegistersBus()
+		win.img.dbg.PushRawEvent(func() {
+			b := win.img.vcs.Mem.Cart.GetRegistersBus()
 			b.PutRegister("fastfetch", fmt.Sprintf("%v", ff))
 		})
 	}
@@ -127,8 +127,8 @@ func (win *winCDFRegisters) draw() {
 	imguiLabel("Sample Mode")
 	sm := r.SampleMode
 	if imgui.Checkbox("##samplemode", &sm) {
-		win.img.lz.Dbg.PushRawEvent(func() {
-			b := win.img.lz.Dbg.VCS.Mem.Cart.GetRegistersBus()
+		win.img.dbg.PushRawEvent(func() {
+			b := win.img.vcs.Mem.Cart.GetRegistersBus()
 			b.PutRegister("samplemode", fmt.Sprintf("%v", sm))
 		})
 	}
@@ -147,8 +147,8 @@ func (win *winCDFRegisters) draw() {
 		waveform := fmt.Sprintf("%08x", r.MusicFetcher[i].Waveform)
 		imguiLabel("Waveform")
 		if imguiHexInput(label, 8, &waveform) {
-			win.img.lz.Dbg.PushRawEvent(func() {
-				b := win.img.lz.Dbg.VCS.Mem.Cart.GetRegistersBus()
+			win.img.dbg.PushRawEvent(func() {
+				b := win.img.vcs.Mem.Cart.GetRegistersBus()
 				b.PutRegister(fmt.Sprintf("music::%d::waveform", f), waveform)
 			})
 		}
@@ -158,8 +158,8 @@ func (win *winCDFRegisters) draw() {
 		freq := fmt.Sprintf("%08x", r.MusicFetcher[i].Freq)
 		imguiLabel("Freq")
 		if imguiHexInput(label, 8, &freq) {
-			win.img.lz.Dbg.PushRawEvent(func() {
-				b := win.img.lz.Dbg.VCS.Mem.Cart.GetRegistersBus()
+			win.img.dbg.PushRawEvent(func() {
+				b := win.img.vcs.Mem.Cart.GetRegistersBus()
 				b.PutRegister(fmt.Sprintf("music::%d::freq", f), freq)
 			})
 		}
@@ -169,8 +169,8 @@ func (win *winCDFRegisters) draw() {
 		count := fmt.Sprintf("%08x", r.MusicFetcher[i].Count)
 		imguiLabel("Count")
 		if imguiHexInput(label, 8, &count) {
-			win.img.lz.Dbg.PushRawEvent(func() {
-				b := win.img.lz.Dbg.VCS.Mem.Cart.GetRegistersBus()
+			win.img.dbg.PushRawEvent(func() {
+				b := win.img.vcs.Mem.Cart.GetRegistersBus()
 				b.PutRegister(fmt.Sprintf("music::%d::count", f), count)
 			})
 		}

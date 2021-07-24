@@ -82,13 +82,13 @@ func newLazyCart(val *LazyValues) *LazyCart {
 }
 
 func (lz *LazyCart) push() {
-	lz.id.Store(lz.val.Dbg.VCS.Mem.Cart.ID())
-	lz.filename.Store(lz.val.Dbg.VCS.Mem.Cart.Filename)
-	lz.mapping.Store(lz.val.Dbg.VCS.Mem.Cart.Mapping())
-	lz.numBanks.Store(lz.val.Dbg.VCS.Mem.Cart.NumBanks())
-	lz.currBank.Store(lz.val.Dbg.VCS.Mem.Cart.GetBank(lz.val.Dbg.VCS.CPU.PC.Address()))
+	lz.id.Store(lz.val.vcs.Mem.Cart.ID())
+	lz.filename.Store(lz.val.vcs.Mem.Cart.Filename)
+	lz.mapping.Store(lz.val.vcs.Mem.Cart.Mapping())
+	lz.numBanks.Store(lz.val.vcs.Mem.Cart.NumBanks())
+	lz.currBank.Store(lz.val.vcs.Mem.Cart.GetBank(lz.val.vcs.CPU.PC.Address()))
 
-	sb := lz.val.Dbg.VCS.Mem.Cart.GetStaticBus()
+	sb := lz.val.vcs.Mem.Cart.GetStaticBus()
 	if sb != nil {
 		lz.staticBus.Store(sb)
 
@@ -99,7 +99,7 @@ func (lz *LazyCart) push() {
 		}
 	}
 
-	rb := lz.val.Dbg.VCS.Mem.Cart.GetRegistersBus()
+	rb := lz.val.vcs.Mem.Cart.GetRegistersBus()
 	if rb != nil {
 		lz.registersBus.Store(rb)
 
@@ -110,7 +110,7 @@ func (lz *LazyCart) push() {
 		}
 	}
 
-	r := lz.val.Dbg.VCS.Mem.Cart.GetRAMbus()
+	r := lz.val.vcs.Mem.Cart.GetRAMbus()
 	if r != nil {
 		lz.ramBus.Store(r)
 
@@ -121,7 +121,7 @@ func (lz *LazyCart) push() {
 		}
 	}
 
-	t := lz.val.Dbg.VCS.Mem.Cart.GetTapeBus()
+	t := lz.val.vcs.Mem.Cart.GetTapeBus()
 	if t != nil {
 		// make sure CartTapeBus implementation is meaningful
 		if ok, s := t.GetTapeState(); ok {
@@ -130,7 +130,7 @@ func (lz *LazyCart) push() {
 		}
 	}
 
-	c := lz.val.Dbg.VCS.Mem.Cart.GetContainer()
+	c := lz.val.vcs.Mem.Cart.GetContainer()
 	if c != nil {
 		if pr, ok := c.(*plusrom.PlusROM); ok {
 			lz.plusROM.Store(pr)

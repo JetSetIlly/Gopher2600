@@ -30,8 +30,8 @@ func (dbg *Debugger) buildPrompt() terminal.Prompt {
 	var coprocessor bool
 
 	// decide which address value to use
-	if dbg.VCS.CPU.LastResult.Final || dbg.VCS.CPU.HasReset() {
-		e, coprocessor = dbg.Disasm.GetEntryByAddress(dbg.VCS.CPU.PC.Address())
+	if dbg.vcs.CPU.LastResult.Final || dbg.vcs.CPU.HasReset() {
+		e, coprocessor = dbg.Disasm.GetEntryByAddress(dbg.vcs.CPU.PC.Address())
 	} else {
 		// if we're in the middle of an instruction then use the addresss in
 		// lastResult. in these instances we want the prompt to report the
@@ -46,7 +46,7 @@ func (dbg *Debugger) buildPrompt() terminal.Prompt {
 	if coprocessor {
 		content.WriteString(fmt.Sprintf("%s (coprocessor)", e.Address))
 	} else if e == nil {
-		content.WriteString(fmt.Sprintf("$%04x", dbg.VCS.CPU.PC.Address()))
+		content.WriteString(fmt.Sprintf("$%04x", dbg.vcs.CPU.PC.Address()))
 	} else if e.Level == disassembly.EntryLevelUnmappable {
 		content.WriteString(e.Address)
 	} else {
@@ -62,11 +62,11 @@ func (dbg *Debugger) buildPrompt() terminal.Prompt {
 	p := terminal.Prompt{
 		Content:   content.String(),
 		Recording: dbg.scriptScribe.IsActive(),
-		CPURdy:    dbg.VCS.CPU.RdyFlg,
+		CPURdy:    dbg.vcs.CPU.RdyFlg,
 	}
 
 	// LastResult final is false on CPU reset so we must check for that also
-	if dbg.VCS.CPU.LastResult.Final || dbg.VCS.CPU.HasReset() {
+	if dbg.vcs.CPU.LastResult.Final || dbg.vcs.CPU.HasReset() {
 		p.Type = terminal.PromptTypeCPUStep
 	} else {
 		p.Type = terminal.PromptTypeVideoStep

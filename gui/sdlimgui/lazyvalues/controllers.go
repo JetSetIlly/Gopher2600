@@ -50,8 +50,8 @@ func newLazyControllers(val *LazyValues) *LazyControllers {
 }
 
 func (lz *LazyControllers) push() {
-	lz.left.Store(periphShim{periph: lz.val.Dbg.VCS.RIOT.Ports.LeftPlayer})
-	lz.right.Store(periphShim{periph: lz.val.Dbg.VCS.RIOT.Ports.RightPlayer})
+	lz.left.Store(periphShim{periph: lz.val.vcs.RIOT.Ports.LeftPlayer})
+	lz.right.Store(periphShim{periph: lz.val.vcs.RIOT.Ports.RightPlayer})
 }
 
 func (lz *LazyControllers) update() {

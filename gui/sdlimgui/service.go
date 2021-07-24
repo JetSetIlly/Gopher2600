@@ -16,7 +16,7 @@
 package sdlimgui
 
 import (
-	"github.com/jetsetilly/gopher2600/gui"
+	"github.com/jetsetilly/gopher2600/emulation"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
 	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/userinput"
@@ -319,12 +319,12 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 				}
 
 			case "Pause":
-				if img.state == gui.StatePaused {
-					img.playmode.Pause(false)
-					img.state = gui.StateRunning
+				if img.state == emulation.Paused {
+					img.emulation.Pause(false)
+					img.state = emulation.Running
 				} else {
-					img.playmode.Pause(true)
-					img.state = gui.StatePaused
+					img.emulation.Pause(true)
+					img.state = emulation.Paused
 				}
 
 			default:
@@ -335,7 +335,7 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 			case "Escape":
 				img.setCapture(!img.isCaptured())
 			case "Pause":
-				if img.state == gui.StatePaused {
+				if img.state == emulation.Paused {
 					img.term.pushCommand("RUN")
 				} else {
 					img.term.pushCommand("HALT")

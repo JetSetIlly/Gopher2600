@@ -25,24 +25,6 @@ type FeatureReq string
 // commentary for the defined FeatureReq values for the underlying type.
 type FeatureReqData interface{}
 
-// EmulationState indicates to the GUI that the emulatoin is in a particular
-// state.
-//
-// Note that these should be set for all application types. The GUI state will
-// start in StateInitialising and a playmode for example, should set
-// StateRunning as soon as the emulation begins (with vcs.Run).
-type EmulationState int
-
-// List of valid emulation states.
-const (
-	StateInitialising EmulationState = iota
-	StatePaused
-	StateRunning
-	StateStepping
-	StateRewinding
-	StateEnding
-)
-
 // PlusROMFirstInstallation is used to pass information to the GUI as part of
 // the request.
 type PlusROMFirstInstallation struct {
@@ -57,17 +39,8 @@ type PlusROMFirstInstallation struct {
 // Note that, like the name suggests, these are requests, they may or may not
 // be satisfied depending other conditions in the GUI.
 const (
-	// ReqSetPlaymode is called whenever the playmode loop is entered.
-	//
-	// first argument is a pointer to the VCS, second argument is an instance
-	// of received for gui events.
-	ReqSetPlaymode FeatureReq = "ReqSetPlaymode" // playmode.Playmode
-
-	// ReqSetDebugmode is called whenever the playmode loop is entered.
-	//
-	// first argument is a pointer to the debugger, second argument is an
-	// instance of received for gui events.
-	ReqSetDebugmode FeatureReq = "ReqSetDebugmode" // *debugger.Debugger, chan userinput.Event
+	// set the underlying emulation for the gui
+	ReqSetEmulation FeatureReq = "ReqSetEmulation" // emulation.Emulation
 
 	// notify GUI of emulation state. the GUI should use this to alter how
 	// infomration, particularly the display of the PixelRenderer.

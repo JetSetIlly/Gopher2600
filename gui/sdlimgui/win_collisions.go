@@ -59,27 +59,27 @@ func (win *winCollisions) draw() {
 	imgui.BeginV(win.id(), &win.open, imgui.WindowFlagsAlwaysAutoResize)
 
 	imguiLabel("CXM0P ")
-	win.drawCollision(win.img.lz.Collisions.CXM0P, &win.img.lz.Dbg.VCS.TIA.Video.Collisions.CXM0P, video.CollisionMask)
+	win.drawCollision(win.img.lz.Collisions.CXM0P, &win.img.vcs.TIA.Video.Collisions.CXM0P, video.CollisionMask)
 	imguiLabel("CXM1P ")
-	win.drawCollision(win.img.lz.Collisions.CXM1P, &win.img.lz.Dbg.VCS.TIA.Video.Collisions.CXM1P, video.CollisionMask)
+	win.drawCollision(win.img.lz.Collisions.CXM1P, &win.img.vcs.TIA.Video.Collisions.CXM1P, video.CollisionMask)
 	imguiLabel("CXP0FB")
-	win.drawCollision(win.img.lz.Collisions.CXP0FB, &win.img.lz.Dbg.VCS.TIA.Video.Collisions.CXP0FB, video.CollisionMask)
+	win.drawCollision(win.img.lz.Collisions.CXP0FB, &win.img.vcs.TIA.Video.Collisions.CXP0FB, video.CollisionMask)
 	imguiLabel("CXP1FB")
-	win.drawCollision(win.img.lz.Collisions.CXP1FB, &win.img.lz.Dbg.VCS.TIA.Video.Collisions.CXP1FB, video.CollisionMask)
+	win.drawCollision(win.img.lz.Collisions.CXP1FB, &win.img.vcs.TIA.Video.Collisions.CXP1FB, video.CollisionMask)
 	imguiLabel("CXM0FB")
-	win.drawCollision(win.img.lz.Collisions.CXM0FB, &win.img.lz.Dbg.VCS.TIA.Video.Collisions.CXM0FB, video.CollisionMask)
+	win.drawCollision(win.img.lz.Collisions.CXM0FB, &win.img.vcs.TIA.Video.Collisions.CXM0FB, video.CollisionMask)
 	imguiLabel("CXM1FB")
-	win.drawCollision(win.img.lz.Collisions.CXM1FB, &win.img.lz.Dbg.VCS.TIA.Video.Collisions.CXM1FB, video.CollisionMask)
+	win.drawCollision(win.img.lz.Collisions.CXM1FB, &win.img.vcs.TIA.Video.Collisions.CXM1FB, video.CollisionMask)
 	imguiLabel("CXBLPF")
-	win.drawCollision(win.img.lz.Collisions.CXBLPF, &win.img.lz.Dbg.VCS.TIA.Video.Collisions.CXBLPF, video.CollisionCXBLPFMask)
+	win.drawCollision(win.img.lz.Collisions.CXBLPF, &win.img.vcs.TIA.Video.Collisions.CXBLPF, video.CollisionCXBLPFMask)
 	imguiLabel("CXPPMM")
-	win.drawCollision(win.img.lz.Collisions.CXPPMM, &win.img.lz.Dbg.VCS.TIA.Video.Collisions.CXPPMM, video.CollisionMask)
+	win.drawCollision(win.img.lz.Collisions.CXPPMM, &win.img.vcs.TIA.Video.Collisions.CXPPMM, video.CollisionMask)
 
 	imgui.Spacing()
 
 	if imgui.Button("Clear Collisions") {
-		win.img.lz.Dbg.PushRawEvent(func() {
-			win.img.lz.Dbg.VCS.TIA.Video.Collisions.Clear()
+		win.img.dbg.PushRawEvent(func() {
+			win.img.vcs.TIA.Video.Collisions.Clear()
 		})
 	}
 
@@ -89,7 +89,7 @@ func (win *winCollisions) draw() {
 func (win *winCollisions) drawCollision(read uint8, write *uint8, mask uint8) {
 	drawCollision(win.img, read, mask,
 		func(b uint8) {
-			win.img.lz.Dbg.PushRawEvent(func() {
+			win.img.dbg.PushRawEvent(func() {
 				*write = b
 			})
 		})

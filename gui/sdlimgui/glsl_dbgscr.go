@@ -17,7 +17,7 @@ package sdlimgui
 
 import (
 	"github.com/go-gl/gl/v3.2-core/gl"
-	"github.com/jetsetilly/gopher2600/gui"
+	"github.com/jetsetilly/gopher2600/emulation"
 	"github.com/jetsetilly/gopher2600/gui/sdlimgui/shaders"
 	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
@@ -168,9 +168,9 @@ func (sh *dbgScreenShader) setAttributes(env shaderEnvironment) {
 		gl.Uniform1i(sh.showCursor, 0)
 	} else {
 		switch sh.img.state {
-		case gui.StatePaused:
+		case emulation.Paused:
 			gl.Uniform1i(sh.showCursor, 1)
-		case gui.StateRunning:
+		case emulation.Running:
 			// if FPS is low enough then show screen draw even though
 			// emulation is running
 			if sh.img.lz.TV.ReqFPS < television.ThreshVisual {
@@ -178,9 +178,9 @@ func (sh *dbgScreenShader) setAttributes(env shaderEnvironment) {
 			} else {
 				gl.Uniform1i(sh.showCursor, 0)
 			}
-		case gui.StateStepping:
+		case emulation.Stepping:
 			gl.Uniform1i(sh.showCursor, 1)
-		case gui.StateRewinding:
+		case emulation.Rewinding:
 			gl.Uniform1i(sh.showCursor, 1)
 		}
 	}

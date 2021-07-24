@@ -145,8 +145,8 @@ func (win *winSaveKeyI2C) drawACK() {
 	imgui.Text("ACK")
 	imgui.SameLine()
 	if imgui.Checkbox("##ACK", &v) {
-		win.img.lz.Dbg.PushRawEvent(func() {
-			if sk, ok := win.img.lz.Dbg.VCS.RIOT.Ports.RightPlayer.(*savekey.SaveKey); ok {
+		win.img.dbg.PushRawEvent(func() {
+			if sk, ok := win.img.vcs.RIOT.Ports.RightPlayer.(*savekey.SaveKey); ok {
 				sk.Ack = v
 			}
 		})
@@ -172,8 +172,8 @@ func (win *winSaveKeyI2C) drawBits() {
 		if err != nil {
 			panic(err)
 		}
-		win.img.lz.Dbg.PushRawEvent(func() {
-			if sk, ok := win.img.lz.Dbg.VCS.RIOT.Ports.RightPlayer.(*savekey.SaveKey); ok {
+		win.img.dbg.PushRawEvent(func() {
+			if sk, ok := win.img.vcs.RIOT.Ports.RightPlayer.(*savekey.SaveKey); ok {
 				sk.Bits = uint8(v)
 			}
 		})
@@ -188,8 +188,8 @@ func (win *winSaveKeyI2C) drawBits() {
 		}
 		if seq.rectFill(win.img.cols.saveKeyBit) {
 			v := bits ^ (0x80 >> i)
-			win.img.lz.Dbg.PushRawEvent(func() {
-				if sk, ok := win.img.lz.Dbg.VCS.RIOT.Ports.RightPlayer.(*savekey.SaveKey); ok {
+			win.img.dbg.PushRawEvent(func() {
+				if sk, ok := win.img.vcs.RIOT.Ports.RightPlayer.(*savekey.SaveKey); ok {
 					sk.Bits = v
 				}
 			})
@@ -214,8 +214,8 @@ func (win *winSaveKeyI2C) drawAddress() {
 		if err != nil {
 			panic(err)
 		}
-		win.img.lz.Dbg.PushRawEvent(func() {
-			if sk, ok := win.img.lz.Dbg.VCS.RIOT.Ports.RightPlayer.(*savekey.SaveKey); ok {
+		win.img.dbg.PushRawEvent(func() {
+			if sk, ok := win.img.vcs.RIOT.Ports.RightPlayer.(*savekey.SaveKey); ok {
 				sk.EEPROM.Address = uint16(v)
 			}
 		})

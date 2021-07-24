@@ -38,7 +38,7 @@ func newLazyCoProc(val *LazyValues) *LazyCoProc {
 }
 
 func (lz *LazyCoProc) push() {
-	cp := lz.val.Dbg.VCS.Mem.Cart.GetCoProcBus()
+	cp := lz.val.vcs.Mem.Cart.GetCoProcBus()
 	if cp != nil {
 		lz.hasCoProcBus.Store(true)
 		lz.id.Store(cp.CoProcID())

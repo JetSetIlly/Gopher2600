@@ -35,9 +35,9 @@ func newLazyTimer(val *LazyValues) *LazyTimer {
 }
 
 func (lz *LazyTimer) push() {
-	lz.divider.Store(lz.val.Dbg.VCS.RIOT.Timer.Divider.String())
-	lz.intim.Store(lz.val.Dbg.VCS.RIOT.Timer.INTIMvalue)
-	lz.ticksRemaining.Store(lz.val.Dbg.VCS.RIOT.Timer.TicksRemaining)
+	lz.divider.Store(lz.val.vcs.RIOT.Timer.Divider.String())
+	lz.intim.Store(lz.val.vcs.RIOT.Timer.INTIMvalue)
+	lz.ticksRemaining.Store(lz.val.vcs.RIOT.Timer.TicksRemaining)
 }
 
 func (lz *LazyTimer) update() {

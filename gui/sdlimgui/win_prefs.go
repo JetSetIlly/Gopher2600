@@ -19,7 +19,7 @@ import (
 	"fmt"
 
 	"github.com/inkyblackness/imgui-go/v4"
-	"github.com/jetsetilly/gopher2600/gui"
+	"github.com/jetsetilly/gopher2600/emulation"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/harmony/arm7tdmi"
 	"github.com/jetsetilly/gopher2600/logger"
 )
@@ -136,7 +136,7 @@ func (win *winPrefs) drawARM() {
 		// !TODO: lazy system should be extended to work in playmode too. mainly to
 		// help with situations like this. if we access the CoProcBus thought the
 		// lazy system, we wouldn't need to check for initialising state.
-		if win.img.state == gui.StateInitialising {
+		if win.img.state == emulation.Initialising {
 			return
 		}
 

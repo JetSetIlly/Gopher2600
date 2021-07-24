@@ -18,6 +18,7 @@ package sdlimgui
 import (
 	"time"
 
+	"github.com/jetsetilly/gopher2600/emulation"
 	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/veandco/go-sdl2/sdl"
 )
@@ -131,7 +132,7 @@ func (pol *polling) wait() sdl.Event {
 		pol.alerted = false
 	} else {
 		working := pol.awake ||
-			pol.img.lz.Debugger.HasChanged || pol.img.state != gui.StatePaused ||
+			pol.img.lz.Debugger.HasChanged || pol.img.state != emulation.Paused ||
 			pol.img.wm.dbgScr.crtPreview
 
 		if working {

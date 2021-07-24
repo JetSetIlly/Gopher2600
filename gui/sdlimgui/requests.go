@@ -17,11 +17,9 @@ package sdlimgui
 
 import (
 	"github.com/jetsetilly/gopher2600/curated"
-	"github.com/jetsetilly/gopher2600/debugger"
+	"github.com/jetsetilly/gopher2600/emulation"
 	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
-	"github.com/jetsetilly/gopher2600/playmode"
-	"github.com/jetsetilly/gopher2600/userinput"
 )
 
 type featureRequest struct {
@@ -76,28 +74,16 @@ func (img *SdlImgui) serviceSetFeature(request featureRequest) {
 	var err error
 
 	switch request.request {
-	case gui.ReqSetPlaymode:
+	case gui.ReqSetEmulation:
 		err = argLen(request.args, 1)
 		if err == nil {
-			img.setEmulation(nil, request.args[0].(playmode.Playmode))
-			img.userinput = request.args[0].(playmode.Playmode).UserInput()
-		}
-
-	case gui.ReqSetDebugmode:
-		err = argLen(request.args, 2)
-		if err == nil {
-			img.setEmulation(request.args[0].(*debugger.Debugger), nil)
-			if request.args[1] == nil {
-				img.userinput = nil
-			} else {
-				img.userinput = request.args[1].(chan userinput.Event)
-			}
+			img.setEmulation(request.args[0].(emulation.Emulation))
 		}
 
 	case gui.ReqState:
 		err = argLen(request.args, 1)
 		if err == nil {
-			img.setEmulationState(request.args[0].(gui.EmulationState))
+			img.setEmulationState(request.args[0].(emulation.State))
 		}
 
 	case gui.ReqMonitorSync:
@@ -131,7 +117,7 @@ func (img *SdlImgui) serviceSetFeature(request featureRequest) {
 		}
 
 	case gui.ReqControllerChange:
-		if img.state == gui.StateInitialising {
+		if img.state == emulation.Initialising {
 			break
 		}
 

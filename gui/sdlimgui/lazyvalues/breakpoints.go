@@ -59,7 +59,7 @@ func (lz *LazyBreakpoints) push() {
 	for i := s; i <= e; i++ {
 		// index is counting just the cartridge bits but HasBreak() expects a
 		// real cartridge address. add the OriginCart bits to the index
-		e := lz.val.Dbg.HasBreak(i|memorymap.OriginCart, b)
+		e := lz.val.dbg.HasBreak(i|memorymap.OriginCart, b)
 		lz.breakpoints[i].Store(e)
 	}
 }

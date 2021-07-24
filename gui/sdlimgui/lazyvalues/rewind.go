@@ -39,8 +39,8 @@ func newLazyRewind(val *LazyValues) *LazyRewind {
 }
 
 func (lz *LazyRewind) push() {
-	lz.summary.Store(lz.val.Dbg.Rewind.GetSummary())
-	lz.comparison.Store(lz.val.Dbg.Rewind.GetComparison())
+	lz.summary.Store(lz.val.dbg.Rewind.GetSummary())
+	lz.comparison.Store(lz.val.dbg.Rewind.GetComparison())
 }
 
 func (lz *LazyRewind) update() {

@@ -42,14 +42,14 @@ func newLazyDebugger(val *LazyValues) *LazyDebugger {
 }
 
 func (lz *LazyDebugger) push() {
-	lz.quantum.Store(lz.val.Dbg.GetQuantum())
-	lz.lastResult.Store(lz.val.Dbg.GetLastResult())
+	lz.quantum.Store(lz.val.dbg.GetQuantum())
+	lz.lastResult.Store(lz.val.dbg.GetLastResult())
 
 	// because the push() and update() pair don't interlock exactly, the
 	// hasChanged field must be latched. unlatching is performed in the
 	// update() function
 	if !lz.hasChanged.Load().(bool) {
-		lz.hasChanged.Store(lz.val.Dbg.HasChanged())
+		lz.hasChanged.Store(lz.val.dbg.HasChanged())
 	}
 }
 

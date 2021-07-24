@@ -64,7 +64,7 @@ func (win *winCoProcLastExecution) draw() {
 		return
 	}
 
-	if !win.img.lz.CoProc.HasCoProcBus || win.img.lz.Dbg.Disasm.Coprocessor == nil {
+	if !win.img.lz.CoProc.HasCoProcBus || win.img.dbg.Disasm.Coprocessor == nil {
 		return
 	}
 
@@ -77,9 +77,9 @@ func (win *winCoProcLastExecution) draw() {
 
 	var itr *coprocessor.Iterate
 	if win.showLastExecution {
-		itr = win.img.lz.Dbg.Disasm.Coprocessor.NewIteration(coprocessor.LastExecution)
+		itr = win.img.dbg.Disasm.Coprocessor.NewIteration(coprocessor.LastExecution)
 	} else {
-		itr = win.img.lz.Dbg.Disasm.Coprocessor.NewIteration(coprocessor.Disassembly)
+		itr = win.img.dbg.Disasm.Coprocessor.NewIteration(coprocessor.Disassembly)
 	}
 
 	if itr.Count != 0 {
@@ -99,7 +99,7 @@ func (win *winCoProcLastExecution) draw() {
 			itr.Details.Scanline == win.img.lz.TV.Scanline &&
 			itr.Details.Clock == win.img.lz.TV.Clock) {
 			if imgui.Button("Goto") {
-				win.img.lz.Dbg.PushGotoCoords(itr.Details.Frame, itr.Details.Scanline, itr.Details.Clock)
+				win.img.dbg.PushGotoCoords(itr.Details.Frame, itr.Details.Scanline, itr.Details.Clock)
 			}
 		} else {
 			imgui.InvisibleButton("Goto", imgui.Vec2{X: 10, Y: imgui.FrameHeight()})
@@ -269,10 +269,10 @@ func (win *winCoProcLastExecution) save() {
 	var itr *coprocessor.Iterate
 	var fn string
 	if win.showLastExecution {
-		itr = win.img.lz.Dbg.Disasm.Coprocessor.NewIteration(coprocessor.LastExecution)
+		itr = win.img.dbg.Disasm.Coprocessor.NewIteration(coprocessor.LastExecution)
 		fn = paths.UniqueFilename("coproc_lastexecution", "")
 	} else {
-		itr = win.img.lz.Dbg.Disasm.Coprocessor.NewIteration(coprocessor.Disassembly)
+		itr = win.img.dbg.Disasm.Coprocessor.NewIteration(coprocessor.Disassembly)
 		fn = paths.UniqueFilename("coproc_disasm", "")
 	}
 

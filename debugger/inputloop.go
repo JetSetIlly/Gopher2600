@@ -23,6 +23,7 @@ import (
 	"github.com/jetsetilly/gopher2600/debugger/script"
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
 	"github.com/jetsetilly/gopher2600/disassembly"
+	"github.com/jetsetilly/gopher2600/emulation"
 	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/instructions"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/supercharger"
@@ -104,10 +105,10 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, clockCycle bool) error {
 
 		// check for breakpoints and traps. for video cycle input loops we only
 		// do this if the instruction has affected flow.
-		if !clockCycle || (dbg.VCS.CPU.LastResult.Defn != nil &&
-			(dbg.VCS.CPU.LastResult.Defn.Effect == instructions.Flow ||
-				dbg.VCS.CPU.LastResult.Defn.Effect == instructions.Subroutine ||
-				dbg.VCS.CPU.LastResult.Defn.Effect == instructions.Interrupt)) {
+		if !clockCycle || (dbg.vcs.CPU.LastResult.Defn != nil &&
+			(dbg.vcs.CPU.LastResult.Defn.Effect == instructions.Flow ||
+				dbg.vcs.CPU.LastResult.Defn.Effect == instructions.Subroutine ||
+				dbg.vcs.CPU.LastResult.Defn.Effect == instructions.Interrupt)) {
 			breakMessage = dbg.breakpoints.check(breakMessage)
 			trapMessage = dbg.traps.check(trapMessage)
 			watchMessage = dbg.watches.check(watchMessage)
@@ -152,7 +153,7 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, clockCycle bool) error {
 			if err != nil {
 				return err
 			}
-			err = dbg.scr.SetFeature(gui.ReqState, gui.StatePaused)
+			err = dbg.scr.SetFeature(gui.ReqState, emulation.Paused)
 			if err != nil {
 				return err
 			}
@@ -209,13 +210,13 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, clockCycle bool) error {
 						return err
 					}
 					if inputter.IsInteractive() {
-						err = dbg.scr.SetFeature(gui.ReqState, gui.StateRunning)
+						err = dbg.scr.SetFeature(gui.ReqState, emulation.Running)
 						if err != nil {
 							return err
 						}
 					}
 				} else {
-					err = dbg.scr.SetFeature(gui.ReqState, gui.StateStepping)
+					err = dbg.scr.SetFeature(gui.ReqState, emulation.Stepping)
 					if err != nil {
 						return err
 					}
@@ -226,7 +227,7 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, clockCycle bool) error {
 					dbg.Rewind.SetComparison()
 				}
 			} else if inputter.IsInteractive() {
-				err = dbg.scr.SetFeature(gui.ReqState, gui.StateStepping)
+				err = dbg.scr.SetFeature(gui.ReqState, emulation.Stepping)
 				if err != nil {
 					return err
 				}
@@ -347,7 +348,7 @@ func (dbg *Debugger) contEmulation(inputter terminal.Input) error {
 
 		// format last CPU execution result for vcs step. this is in addition
 		// to the FormatResult() call in the main dbg.running loop below.
-		dbg.lastResult, err = dbg.Disasm.FormatResult(dbg.lastBank, dbg.VCS.CPU.LastResult, disassembly.EntryLevelExecuted)
+		dbg.lastResult, err = dbg.Disasm.FormatResult(dbg.lastBank, dbg.vcs.CPU.LastResult, disassembly.EntryLevelExecuted)
 		if err != nil {
 			return err
 		}
@@ -374,7 +375,7 @@ func (dbg *Debugger) contEmulation(inputter terminal.Input) error {
 	// get bank information before we execute the next instruction. we
 	// use this when formatting the last result from the CPU. this has
 	// to happen before we call the VCS.Step() function
-	dbg.lastBank = dbg.VCS.Mem.Cart.GetBank(dbg.VCS.CPU.PC.Address())
+	dbg.lastBank = dbg.vcs.Mem.Cart.GetBank(dbg.vcs.CPU.PC.Address())
 
 	// not using the err variable because we'll clobber it before we
 	// get to check the result of VCS.Step()
@@ -382,9 +383,9 @@ func (dbg *Debugger) contEmulation(inputter terminal.Input) error {
 
 	switch dbg.quantum {
 	case QuantumInstruction:
-		stepErr = dbg.VCS.Step(quantumInstruction)
+		stepErr = dbg.vcs.Step(quantumInstruction)
 	case QuantumVideo:
-		stepErr = dbg.VCS.Step(quantumVideo)
+		stepErr = dbg.vcs.Step(quantumVideo)
 	default:
 		stepErr = fmt.Errorf("unknown quantum mode")
 	}
@@ -406,7 +407,7 @@ func (dbg *Debugger) contEmulation(inputter terminal.Input) error {
 		var err error
 
 		// format last execution result even on error
-		dbg.lastResult, err = dbg.Disasm.FormatResult(dbg.lastBank, dbg.VCS.CPU.LastResult, disassembly.EntryLevelExecuted)
+		dbg.lastResult, err = dbg.Disasm.FormatResult(dbg.lastBank, dbg.vcs.CPU.LastResult, disassembly.EntryLevelExecuted)
 		if err != nil {
 			return err
 		}
@@ -417,19 +418,19 @@ func (dbg *Debugger) contEmulation(inputter terminal.Input) error {
 		// the ROM. the TapeLoaded error allows us to do this.
 		if onTapeLoaded, ok := stepErr.(supercharger.FastLoaded); ok {
 			// CPU execution has been interrupted. update state of CPU
-			dbg.VCS.CPU.Interrupted = true
+			dbg.vcs.CPU.Interrupted = true
 
 			// the interrupted CPU means it never got a chance to
 			// finalise the result. we force that here by simply
 			// setting the Final flag to true.
-			dbg.VCS.CPU.LastResult.Final = true
+			dbg.vcs.CPU.LastResult.Final = true
 
 			// we've already obtained the disassembled lastResult so we
 			// need to change the final flag there too
 			dbg.lastResult.Result.Final = true
 
 			// call function to complete tape loading procedure
-			err = onTapeLoaded(dbg.VCS.CPU, dbg.VCS.Mem.RAM, dbg.VCS.RIOT.Timer)
+			err = onTapeLoaded(dbg.vcs.CPU, dbg.vcs.Mem.RAM, dbg.vcs.RIOT.Timer)
 			if err != nil {
 				return err
 			}
@@ -452,23 +453,23 @@ func (dbg *Debugger) contEmulation(inputter terminal.Input) error {
 			// error has occurred before CPU has completed its instruction
 			if !dbg.lastResult.Result.Final {
 				dbg.printLine(terminal.StyleError, "CPU halted mid-instruction. next step may be inaccurate.")
-				dbg.VCS.CPU.Interrupted = true
+				dbg.vcs.CPU.Interrupted = true
 			}
 		}
-	} else if dbg.VCS.CPU.LastResult.Final {
+	} else if dbg.vcs.CPU.LastResult.Final {
 		var err error
 
 		// update entry and store result as last result
-		dbg.lastResult, err = dbg.Disasm.ExecutedEntry(dbg.lastBank, dbg.VCS.CPU.LastResult, dbg.VCS.CPU.PC.Value())
+		dbg.lastResult, err = dbg.Disasm.ExecutedEntry(dbg.lastBank, dbg.vcs.CPU.LastResult, dbg.vcs.CPU.PC.Value())
 		if err != nil {
 			return err
 		}
 
 		// check validity of instruction result
-		err = dbg.VCS.CPU.LastResult.IsValid()
+		err = dbg.vcs.CPU.LastResult.IsValid()
 		if err != nil {
-			dbg.printLine(terminal.StyleError, "%s", dbg.VCS.CPU.LastResult.Defn)
-			dbg.printLine(terminal.StyleError, "%s", dbg.VCS.CPU.LastResult)
+			dbg.printLine(terminal.StyleError, "%s", dbg.vcs.CPU.LastResult.Defn)
+			dbg.printLine(terminal.StyleError, "%s", dbg.vcs.CPU.LastResult)
 			return err
 		}
 	}

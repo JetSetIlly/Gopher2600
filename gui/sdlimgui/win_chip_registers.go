@@ -102,8 +102,8 @@ func (win *winChipRegisters) drawChipRegister(label string, val uint8) {
 		if err != nil {
 			panic(err)
 		}
-		win.img.lz.Dbg.PushRawEvent(func() {
-			err := win.img.lz.Dbg.VCS.Mem.Poke(addresses.ReadAddress[label], uint8(v))
+		win.img.dbg.PushRawEvent(func() {
+			err := win.img.vcs.Mem.Poke(addresses.ReadAddress[label], uint8(v))
 			if err != nil {
 				panic(err)
 			}
@@ -119,8 +119,8 @@ func (win *winChipRegisters) drawChipRegisterBits(read uint8, reg string) {
 		}
 		if seq.rectFill(win.img.cols.registerBit) {
 			b := read ^ (0x80 >> i)
-			win.img.lz.Dbg.PushRawEvent(func() {
-				err := win.img.lz.Dbg.VCS.Mem.Poke(addresses.ReadAddress[reg], b)
+			win.img.dbg.PushRawEvent(func() {
+				err := win.img.vcs.Mem.Poke(addresses.ReadAddress[reg], b)
 				if err != nil {
 					panic(err)
 				}

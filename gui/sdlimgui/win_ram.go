@@ -65,8 +65,8 @@ func (win *winRAM) draw() {
 
 	drawByteGrid(win.img.lz.RAM.RAM, cmp, win.img.cols.ValueDiff, memorymap.OriginRAM,
 		func(addr uint16, data uint8) {
-			win.img.lz.Dbg.PushRawEvent(func() {
-				win.img.lz.Dbg.VCS.Mem.Write(addr, data)
+			win.img.dbg.PushRawEvent(func() {
+				win.img.vcs.Mem.Write(addr, data)
 			})
 		})
 

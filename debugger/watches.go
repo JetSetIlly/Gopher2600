@@ -100,45 +100,45 @@ func (wtc *watches) check(previousResult string) string {
 	for i := range wtc.watches {
 		// continue loop if we're not matching last address accessed
 		if wtc.watches[i].strict {
-			if wtc.watches[i].ai.address != wtc.dbg.VCS.Mem.LastAccessAddress {
+			if wtc.watches[i].ai.address != wtc.dbg.vcs.Mem.LastAccessAddress {
 				continue
 			}
 		} else {
-			if wtc.watches[i].ai.mappedAddress != wtc.dbg.VCS.Mem.LastAccessAddressMapped {
+			if wtc.watches[i].ai.mappedAddress != wtc.dbg.vcs.Mem.LastAccessAddressMapped {
 				continue
 			}
 		}
 
 		// continue if this is a repeat of the last address accessed
-		if wtc.lastAddressAccessed == wtc.dbg.VCS.Mem.LastAccessAddress {
+		if wtc.lastAddressAccessed == wtc.dbg.vcs.Mem.LastAccessAddress {
 			continue
 		}
 
 		// match watch event to the type of memory access
-		if (!wtc.watches[i].ai.read && wtc.dbg.VCS.Mem.LastAccessWrite) ||
-			(wtc.watches[i].ai.read && !wtc.dbg.VCS.Mem.LastAccessWrite) {
+		if (!wtc.watches[i].ai.read && wtc.dbg.vcs.Mem.LastAccessWrite) ||
+			(wtc.watches[i].ai.read && !wtc.dbg.vcs.Mem.LastAccessWrite) {
 			// match watched-for value to the value that was read/written to the
 			// watched address
 			if !wtc.watches[i].matchValue {
 				// prepare string according to event
-				if wtc.dbg.VCS.Mem.LastAccessWrite {
+				if wtc.dbg.vcs.Mem.LastAccessWrite {
 					checkString.WriteString(fmt.Sprintf("watch (write) at %s\n", wtc.watches[i]))
 				} else {
 					checkString.WriteString(fmt.Sprintf("watch (read) at %s\n", wtc.watches[i]))
 				}
-			} else if wtc.watches[i].matchValue && (wtc.watches[i].value == wtc.dbg.VCS.Mem.LastAccessValue) {
+			} else if wtc.watches[i].matchValue && (wtc.watches[i].value == wtc.dbg.vcs.Mem.LastAccessValue) {
 				// prepare string according to event
-				if wtc.dbg.VCS.Mem.LastAccessWrite {
-					checkString.WriteString(fmt.Sprintf("watch (write) at %s %#02x\n", wtc.watches[i], wtc.dbg.VCS.Mem.LastAccessValue))
+				if wtc.dbg.vcs.Mem.LastAccessWrite {
+					checkString.WriteString(fmt.Sprintf("watch (write) at %s %#02x\n", wtc.watches[i], wtc.dbg.vcs.Mem.LastAccessValue))
 				} else {
-					checkString.WriteString(fmt.Sprintf("watch (read) at %s %#02x\n", wtc.watches[i], wtc.dbg.VCS.Mem.LastAccessValue))
+					checkString.WriteString(fmt.Sprintf("watch (read) at %s %#02x\n", wtc.watches[i], wtc.dbg.vcs.Mem.LastAccessValue))
 				}
 			}
 		}
 	}
 
 	// note what the last address accessed was
-	wtc.lastAddressAccessed = wtc.dbg.VCS.Mem.LastAccessAddress
+	wtc.lastAddressAccessed = wtc.dbg.vcs.Mem.LastAccessAddress
 
 	return checkString.String()
 }

@@ -19,7 +19,7 @@ import (
 	"fmt"
 
 	"github.com/jetsetilly/gopher2600/debugger"
-	"github.com/jetsetilly/gopher2600/gui"
+	"github.com/jetsetilly/gopher2600/emulation"
 	"github.com/jetsetilly/gopher2600/gui/sdlimgui/fonts"
 
 	"github.com/inkyblackness/imgui-go/v4"
@@ -97,7 +97,7 @@ func (win *winControl) draw() {
 
 func (win *winControl) drawRunButton() {
 	runDim := imgui.Vec2{X: imguiRemainingWinWidth(), Y: imgui.FrameHeight()}
-	if win.img.state == gui.StateRunning {
+	if win.img.state == emulation.Running {
 		if imguiBooleanButton(win.img.cols, false, fmt.Sprintf("%c Halt", fonts.Halt), runDim) {
 			win.img.term.pushCommand("HALT")
 		}
@@ -204,7 +204,7 @@ func (win *winControl) drawFramHistory() {
 	defer imgui.PopItemWidth()
 
 	if imgui.SliderInt("##rewind", &f, s, e) || win.rewindPending {
-		win.rewindPending = !win.img.lz.Dbg.PushRewind(int(f), f == e)
+		win.rewindPending = !win.img.dbg.PushRewind(int(f), f == e)
 		win.rewindWaiting = true
 		win.rewindTarget = f
 	}
@@ -223,16 +223,16 @@ func (win *winControl) drawFPS() {
 	// fps slider
 	fps := win.img.lz.TV.ReqFPS
 	if imgui.SliderFloatV("##fps", &fps, 1, 100, "%.0f fps", imgui.SliderFlagsNone) {
-		win.img.lz.Dbg.PushRawEvent(func() { win.img.lz.Dbg.VCS.TV.SetFPS(fps) })
+		win.img.dbg.PushRawEvent(func() { win.img.vcs.TV.SetFPS(fps) })
 	}
 
 	// reset to specification rate on right mouse click
 	if imgui.IsItemHoveredV(imgui.HoveredFlagsAllowWhenDisabled) && imgui.IsMouseDown(1) {
-		win.img.lz.Dbg.PushRawEvent(func() { win.img.lz.Dbg.VCS.TV.SetFPS(-1) })
+		win.img.dbg.PushRawEvent(func() { win.img.vcs.TV.SetFPS(-1) })
 	}
 
 	imgui.Spacing()
-	if win.img.state == gui.StateRunning {
+	if win.img.state == emulation.Running {
 		if win.img.lz.TV.ActualFPS <= win.img.lz.TV.ReqFPS*0.95 {
 			imgui.Text("running below requested FPS")
 		} else if win.img.lz.TV.ActualFPS > win.img.lz.TV.ReqFPS*0.95 {

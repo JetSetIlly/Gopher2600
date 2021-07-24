@@ -21,7 +21,7 @@ import (
 	"github.com/jetsetilly/gopher2600/debugger"
 	"github.com/jetsetilly/gopher2600/disassembly"
 	"github.com/jetsetilly/gopher2600/disassembly/symbols"
-	"github.com/jetsetilly/gopher2600/gui"
+	"github.com/jetsetilly/gopher2600/emulation"
 	"github.com/jetsetilly/gopher2600/gui/sdlimgui/fonts"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 
@@ -236,22 +236,22 @@ func (win *winDisasm) draw() {
 
 	// handle different gui states.
 	switch win.img.state {
-	case gui.StateInitialising:
+	case emulation.Initialising:
 		win.focusOnAddr = win.followCPU
 
 		// updateOnPause needs a comparatively long value for StateInitialising
 		win.updateOnPause = 20
-	case gui.StateRunning:
+	case emulation.Running:
 		fallthrough
-	case gui.StateRewinding:
+	case emulation.Rewinding:
 		fallthrough
-	case gui.StateStepping:
+	case emulation.Stepping:
 		win.focusOnAddr = win.followCPU
 		if win.focusOnAddr {
 			win.selectedBank = bank.Number
 			win.updateOnPause = 5
 		}
-	case gui.StatePaused:
+	case emulation.Paused:
 		win.focusOnAddr = win.updateOnPause > 0
 		if win.updateOnPause > 0 {
 			bank := win.img.lz.Cart.CurrBank.Number
@@ -273,9 +273,9 @@ func (win *winDisasm) drawBank(bank int, focusAddr uint16, onBank bool) {
 	var eitr *disassembly.IterateEntries
 
 	if onBank {
-		eitr, err = win.img.lz.Dbg.Disasm.NewEntriesIteration(disassembly.EntryLevelBlessed, bank, focusAddr)
+		eitr, err = win.img.dbg.Disasm.NewEntriesIteration(disassembly.EntryLevelBlessed, bank, focusAddr)
 	} else {
-		eitr, err = win.img.lz.Dbg.Disasm.NewEntriesIteration(disassembly.EntryLevelBlessed, bank)
+		eitr, err = win.img.dbg.Disasm.NewEntriesIteration(disassembly.EntryLevelBlessed, bank)
 	}
 
 	// check that NewBankIteration has succeeded. if it hasn't it probably
@@ -340,7 +340,7 @@ func (win *winDisasm) drawBank(bank int, focusAddr uint16, onBank bool) {
 
 					flgs := imgui.InputTextFlagsEnterReturnsTrue | imgui.InputTextFlagsCharsNoBlank
 					if imgui.InputTextV("##labeledit", &win.labelEdit, flgs, nil) {
-						win.img.lz.Dbg.Disasm.Sym.UpdateLabel(symbols.SourceCustom, bank, e.Result.Address, s, win.labelEdit)
+						win.img.dbg.Disasm.Sym.UpdateLabel(symbols.SourceCustom, bank, e.Result.Address, s, win.labelEdit)
 						win.labelEditTag = ""
 					}
 
@@ -435,7 +435,7 @@ func (win *winDisasm) drawEntry(e *disassembly.Entry, focusAddr uint16, onBank b
 	// single click on the address entry toggles a PC breakpoint
 	if imgui.IsItemClicked() {
 		f := e // copy of pushed disasm entry
-		win.img.lz.Dbg.PushRawEvent(func() { win.img.lz.Dbg.TogglePCBreak(f) })
+		win.img.dbg.PushRawEvent(func() { win.img.dbg.TogglePCBreak(f) })
 	}
 
 	// optional bytecode column

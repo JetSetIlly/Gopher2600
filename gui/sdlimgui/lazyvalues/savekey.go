@@ -56,7 +56,7 @@ func newLazySaveKey(val *LazyValues) *LazySaveKey {
 }
 
 func (lz *LazySaveKey) push() {
-	if sk, ok := lz.val.Dbg.VCS.RIOT.Ports.RightPlayer.(*savekey.SaveKey); ok {
+	if sk, ok := lz.val.vcs.RIOT.Ports.RightPlayer.(*savekey.SaveKey); ok {
 		lz.saveKeyActive.Store(true)
 		lz.sda.Store(sk.SDA.Copy())
 		lz.scl.Store(sk.SCL.Copy())

@@ -45,7 +45,7 @@ func (win *winTIA) drawPlayfield() {
 		win.popupPalette.request(&fgCol, func() {
 			win.update(
 				func() {
-					win.img.lz.Dbg.PushDeepPoke(addresses.WriteAddress["COLUPF"], pf.ForegroundColor, fgCol, 0xfe)
+					win.img.dbg.PushDeepPoke(addresses.WriteAddress["COLUPF"], pf.ForegroundColor, fgCol, 0xfe)
 				},
 				func() {
 					pf.ForegroundColor = fgCol
@@ -61,7 +61,7 @@ func (win *winTIA) drawPlayfield() {
 		win.popupPalette.request(&bgCol, func() {
 			win.update(
 				func() {
-					win.img.lz.Dbg.PushDeepPoke(addresses.WriteAddress["COLUBK"], pf.BackgroundColor, bgCol, 0xfe)
+					win.img.dbg.PushDeepPoke(addresses.WriteAddress["COLUBK"], pf.BackgroundColor, bgCol, 0xfe)
 				},
 				func() {
 					pf.BackgroundColor = bgCol
@@ -88,7 +88,7 @@ func (win *winTIA) drawPlayfield() {
 				if ref {
 					n = addresses.CTRLPFReflectedMask
 				}
-				win.img.lz.Dbg.PushDeepPoke(addresses.WriteAddress["CTRLPF"], o, n, addresses.CTRLPFReflectedMask)
+				win.img.dbg.PushDeepPoke(addresses.WriteAddress["CTRLPF"], o, n, addresses.CTRLPFReflectedMask)
 			},
 			func() {
 				pf.Reflected = ref
@@ -108,7 +108,7 @@ func (win *winTIA) drawPlayfield() {
 				if sm {
 					n = addresses.CTRLPFScoremodeMask
 				}
-				win.img.lz.Dbg.PushDeepPoke(addresses.WriteAddress["CTRLPF"], o, n, addresses.CTRLPFScoremodeMask)
+				win.img.dbg.PushDeepPoke(addresses.WriteAddress["CTRLPF"], o, n, addresses.CTRLPFScoremodeMask)
 			},
 			func() {
 				pf.Scoremode = sm
@@ -128,7 +128,7 @@ func (win *winTIA) drawPlayfield() {
 				if pri {
 					n = addresses.CTRLPFPriorityMask
 				}
-				win.img.lz.Dbg.PushDeepPoke(addresses.WriteAddress["CTRLPF"], o, n, addresses.CTRLPFPriorityMask)
+				win.img.dbg.PushDeepPoke(addresses.WriteAddress["CTRLPF"], o, n, addresses.CTRLPFPriorityMask)
 			},
 			func() {
 				pf.Priority = pri
@@ -143,7 +143,7 @@ func (win *winTIA) drawPlayfield() {
 		if v, err := strconv.ParseUint(ctrlpf, 16, 8); err == nil {
 			win.update(
 				func() {
-					win.img.lz.Dbg.PushDeepPoke(addresses.WriteAddress["CTRLPF"], pf.Ctrlpf, uint8(v), 0xff)
+					win.img.dbg.PushDeepPoke(addresses.WriteAddress["CTRLPF"], pf.Ctrlpf, uint8(v), 0xff)
 				},
 				func() {
 					// update ball copy of CTRLPF too in addition to the playfield copy
@@ -175,7 +175,7 @@ func (win *winTIA) drawPlayfield() {
 			pf0d ^= 0x80 >> i
 			win.update(
 				func() {
-					win.img.lz.Dbg.PushDeepPoke(addresses.WriteAddress["PF0"], pf.PF0, pf0d, 0xff)
+					win.img.dbg.PushDeepPoke(addresses.WriteAddress["PF0"], pf.PF0, pf0d, 0xff)
 				},
 				func() {
 					pf.SetPF0(pf0d)
@@ -202,7 +202,7 @@ func (win *winTIA) drawPlayfield() {
 			pf1d ^= 0x80 >> i
 			win.update(
 				func() {
-					win.img.lz.Dbg.PushDeepPoke(addresses.WriteAddress["PF1"], pf.PF1, pf1d, 0xff)
+					win.img.dbg.PushDeepPoke(addresses.WriteAddress["PF1"], pf.PF1, pf1d, 0xff)
 				},
 				func() {
 					pf.SetPF1(pf1d)
@@ -229,7 +229,7 @@ func (win *winTIA) drawPlayfield() {
 			pf2d ^= 0x80 >> i
 			win.update(
 				func() {
-					win.img.lz.Dbg.PushDeepPoke(addresses.WriteAddress["PF2"], pf.PF2, pf2d, 0xff)
+					win.img.dbg.PushDeepPoke(addresses.WriteAddress["PF2"], pf.PF2, pf2d, 0xff)
 				},
 				func() {
 					pf.SetPF2(pf2d)

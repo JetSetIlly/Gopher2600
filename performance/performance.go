@@ -23,11 +23,13 @@ import (
 
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/curated"
+	"github.com/jetsetilly/gopher2600/emulation"
 	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/setup"
+	"github.com/jetsetilly/gopher2600/userinput"
 )
 
 // sentinal error returned by Run() loop.
@@ -51,7 +53,7 @@ func Check(output io.Writer, profile Profile, includeDetail bool,
 
 	// connect vcs to gui
 	if scr != nil {
-		err = scr.SetFeature(gui.ReqSetPlaymode, vcs, nil)
+		err = scr.SetFeature(gui.ReqSetEmulation, &stubEmulation{vcs: vcs})
 		if err != nil {
 			return curated.Errorf("performance: %v", err)
 		}
@@ -74,7 +76,7 @@ func Check(output io.Writer, profile Profile, includeDetail bool,
 
 	// notify gui that we're running
 	if scr != nil {
-		err = scr.SetFeature(gui.ReqState, gui.StateRunning)
+		err = scr.SetFeature(gui.ReqState, emulation.Running)
 		if err != nil {
 			return curated.Errorf("performance: %v", err)
 		}
@@ -105,7 +107,7 @@ func Check(output io.Writer, profile Profile, includeDetail bool,
 		}()
 
 		// run until specified time elapses
-		err = vcs.Run(func() (hardware.EmulationState, error) {
+		err = vcs.Run(func() (emulation.State, error) {
 			for {
 				select {
 				case v := <-timerChan:
@@ -113,7 +115,7 @@ func Check(output io.Writer, profile Profile, includeDetail bool,
 					// period has finished, return false to cause vcs.Run() to
 					// return
 					if v {
-						return hardware.Halt, curated.Errorf(timedOut)
+						return emulation.Halt, curated.Errorf(timedOut)
 					}
 
 					// timerChan has returned false which indicates that the
@@ -122,7 +124,7 @@ func Check(output io.Writer, profile Profile, includeDetail bool,
 					// frame.
 					startFrame = tv.GetState(signal.ReqFramenum)
 				default:
-					return hardware.Running, nil
+					return emulation.Running, nil
 				}
 			}
 		})
@@ -150,4 +152,29 @@ func Check(output io.Writer, profile Profile, includeDetail bool,
 	output.Write([]byte(fmt.Sprintf("%.2f fps (%d frames in %.2f seconds) %.1f%%\n", fps, numFrames, dur.Seconds(), accuracy)))
 
 	return nil
+}
+
+// stubEmulation is handed to the GUI through ReqSetEmulation. Provides the
+// minimum implementation for the Emulation interface.
+type stubEmulation struct {
+	vcs emulation.VCS
+}
+
+func (e *stubEmulation) VCS() emulation.VCS {
+	return e.vcs
+}
+
+func (e *stubEmulation) Debugger() emulation.Debugger {
+	return nil
+}
+
+func (e *stubEmulation) UserInput() chan userinput.Event {
+	return nil
+}
+
+func (e *stubEmulation) State() emulation.State {
+	return emulation.Running
+}
+
+func (e *stubEmulation) Pause(set bool) {
 }

@@ -16,16 +16,9 @@
 package hardware
 
 import (
+	"github.com/jetsetilly/gopher2600/emulation"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/supercharger"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
-)
-
-type EmulationState int
-
-const (
-	Running EmulationState = iota
-	Paused
-	Halt
 )
 
 // checking continue condition every Run iteration is too frequent. A modest
@@ -38,9 +31,9 @@ const continueCheckFreq = 100
 //
 // Not suitable if continueCheck must run very frequently. If you need to check
 // every CPU or every video cycle then the Step() function should be preferred.
-func (vcs *VCS) Run(continueCheck func() (EmulationState, error)) error {
+func (vcs *VCS) Run(continueCheck func() (emulation.State, error)) error {
 	if continueCheck == nil {
-		continueCheck = func() (EmulationState, error) { return Running, nil }
+		continueCheck = func() (emulation.State, error) { return emulation.Running, nil }
 	}
 
 	// see the equivalient videoCycle() in the VCS.Step() function for an
@@ -59,10 +52,10 @@ func (vcs *VCS) Run(continueCheck func() (EmulationState, error)) error {
 		return nil
 	}
 
-	state := Running
+	state := emulation.Running
 	checkCt := 0
-	for state != Halt {
-		if state == Running {
+	for state != emulation.Halt {
+		if state == emulation.Running {
 			err := vcs.CPU.ExecuteInstruction(videoCycle)
 			if err != nil {
 				// see debugger.inputLoop() function for explanation
@@ -98,16 +91,16 @@ func (vcs *VCS) Run(continueCheck func() (EmulationState, error)) error {
 // RunForFrameCount sets emulator running for the specified number of frames.
 // Useful for FPS and regression tests. Not used by the debugger because traps
 // and steptraps are more flexible.
-func (vcs *VCS) RunForFrameCount(numFrames int, continueCheck func(frame int) (EmulationState, error)) error {
+func (vcs *VCS) RunForFrameCount(numFrames int, continueCheck func(frame int) (emulation.State, error)) error {
 	if continueCheck == nil {
-		continueCheck = func(frame int) (EmulationState, error) { return Running, nil }
+		continueCheck = func(frame int) (emulation.State, error) { return emulation.Running, nil }
 	}
 
 	frameNum := vcs.TV.GetState(signal.ReqFramenum)
 	targetFrame := frameNum + numFrames
 
-	state := Running
-	for frameNum != targetFrame && state != Halt {
+	state := emulation.Running
+	for frameNum != targetFrame && state != emulation.Halt {
 		err := vcs.Step(nil)
 		if err != nil {
 			return err

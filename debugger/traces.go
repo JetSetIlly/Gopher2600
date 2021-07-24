@@ -79,16 +79,16 @@ func (trc *traces) check() string {
 
 	for i := range trc.traces {
 		// continue loop if we're not matching last address accessed
-		if trc.traces[i].ai.address != trc.dbg.VCS.Mem.LastAccessAddress {
+		if trc.traces[i].ai.address != trc.dbg.vcs.Mem.LastAccessAddress {
 			continue
 		}
 
 		// continue if this is a repeat of the last address accessed
-		if trc.lastAddressAccessed == trc.dbg.VCS.Mem.LastAccessAddress {
+		if trc.lastAddressAccessed == trc.dbg.vcs.Mem.LastAccessAddress {
 			continue
 		}
 
-		if trc.dbg.VCS.Mem.LastAccessWrite {
+		if trc.dbg.vcs.Mem.LastAccessWrite {
 			s.WriteString("write ")
 		} else {
 			s.WriteString("read ")
@@ -99,7 +99,7 @@ func (trc *traces) check() string {
 	}
 
 	// note what the last address accessed was
-	trc.lastAddressAccessed = trc.dbg.VCS.Mem.LastAccessAddress
+	trc.lastAddressAccessed = trc.dbg.vcs.Mem.LastAccessAddress
 
 	return s.String()
 }

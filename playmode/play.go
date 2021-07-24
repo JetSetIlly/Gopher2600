@@ -23,6 +23,7 @@ import (
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
+	"github.com/jetsetilly/gopher2600/emulation"
 	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
@@ -40,18 +41,9 @@ import (
 	"github.com/jetsetilly/gopher2600/userinput"
 )
 
-// Playmode defines the public functions required for a GUI implementation to
-// control the emulation in playmode.
-//
-// This is a transitional interface. It will be replaced by an Emulation
-// interface in a new emulation package.
-type Playmode interface {
-	Pause(set bool)
-	VCS() *hardware.VCS
-	UserInput() chan userinput.Event
-}
-
 type playmode struct {
+	state emulation.State
+
 	vcs         *hardware.VCS
 	scr         gui.GUI
 	controllers userinput.Controllers
@@ -59,27 +51,35 @@ type playmode struct {
 	intChan   chan os.Signal
 	userinput chan userinput.Event
 	rawEvents chan func()
-
-	emulationState hardware.EmulationState
 }
 
-// Pause implementes the Playmode interface.
-func (pl *playmode) Pause(set bool) {
-	if set {
-		pl.emulationState = hardware.Paused
-	} else {
-		pl.emulationState = hardware.Running
-	}
-}
-
-// VCS implementes the Playmode interface.
-func (pl *playmode) VCS() *hardware.VCS {
+// VCS implementes the emulation.Emulation interface.
+func (pl *playmode) VCS() emulation.VCS {
 	return pl.vcs
 }
 
-// UserInput implementes the Playmode interface.
+// Debugger implementes the emulation.Emulation interface.
+func (pl *playmode) Debugger() emulation.Debugger {
+	return nil
+}
+
+// UserInput implementes the emulation.Emulation interface.
 func (pl *playmode) UserInput() chan userinput.Event {
 	return pl.userinput
+}
+
+// State implementes the emulation.Emulation interface.
+func (pl *playmode) State() emulation.State {
+	return pl.state
+}
+
+// Pause implementes the emulation.Emulation interface.
+func (pl *playmode) Pause(set bool) {
+	if set {
+		pl.state = emulation.Paused
+	} else {
+		pl.state = emulation.Running
+	}
 }
 
 // Play creates a 'playable' instance of the emulator.
@@ -218,7 +218,7 @@ func Play(tv *television.Television, scr gui.GUI, newRecording bool, cartload ca
 	}
 
 	// connect gui
-	err = scr.SetFeature(gui.ReqSetPlaymode, pl)
+	err = scr.SetFeature(gui.ReqSetEmulation, pl)
 	if err != nil {
 		return curated.Errorf("playmode: %v", err)
 	}
@@ -257,7 +257,8 @@ func Play(tv *television.Television, scr gui.GUI, newRecording bool, cartload ca
 	}
 
 	// notify gui that we're running
-	err = scr.SetFeature(gui.ReqState, gui.StateRunning)
+	pl.state = emulation.Running
+	err = scr.SetFeature(gui.ReqState, pl.state)
 	if err != nil {
 		return curated.Errorf("playmode: %v", err)
 	}

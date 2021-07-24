@@ -49,14 +49,14 @@ func newLazyCPU(val *LazyValues) *LazyCPU {
 }
 
 func (lz *LazyCPU) push() {
-	lz.hasReset.Store(lz.val.Dbg.VCS.CPU.HasReset())
-	lz.rdy.Store(lz.val.Dbg.VCS.CPU.RdyFlg)
-	lz.pc.Store(lz.val.Dbg.VCS.CPU.PC)
-	lz.a.Store(lz.val.Dbg.VCS.CPU.A)
-	lz.x.Store(lz.val.Dbg.VCS.CPU.X)
-	lz.y.Store(lz.val.Dbg.VCS.CPU.Y)
-	lz.sp.Store(lz.val.Dbg.VCS.CPU.SP)
-	lz.statusReg.Store(lz.val.Dbg.VCS.CPU.Status)
+	lz.hasReset.Store(lz.val.vcs.CPU.HasReset())
+	lz.rdy.Store(lz.val.vcs.CPU.RdyFlg)
+	lz.pc.Store(lz.val.vcs.CPU.PC)
+	lz.a.Store(lz.val.vcs.CPU.A)
+	lz.x.Store(lz.val.vcs.CPU.X)
+	lz.y.Store(lz.val.vcs.CPU.Y)
+	lz.sp.Store(lz.val.vcs.CPU.SP)
+	lz.statusReg.Store(lz.val.vcs.CPU.Status)
 }
 
 func (lz *LazyCPU) update() {

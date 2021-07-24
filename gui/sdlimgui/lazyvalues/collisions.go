@@ -47,14 +47,14 @@ func newLazyCollisions(val *LazyValues) *LazyCollisions {
 }
 
 func (lz *LazyCollisions) push() {
-	lz.cxm0p.Store(lz.val.Dbg.VCS.TIA.Video.Collisions.CXM0P)
-	lz.cxm1p.Store(lz.val.Dbg.VCS.TIA.Video.Collisions.CXM1P)
-	lz.cxp0fb.Store(lz.val.Dbg.VCS.TIA.Video.Collisions.CXP0FB)
-	lz.cxp1fb.Store(lz.val.Dbg.VCS.TIA.Video.Collisions.CXP1FB)
-	lz.cxm0fb.Store(lz.val.Dbg.VCS.TIA.Video.Collisions.CXM0FB)
-	lz.cxm1fb.Store(lz.val.Dbg.VCS.TIA.Video.Collisions.CXM1FB)
-	lz.cxblpf.Store(lz.val.Dbg.VCS.TIA.Video.Collisions.CXBLPF)
-	lz.cxppmm.Store(lz.val.Dbg.VCS.TIA.Video.Collisions.CXPPMM)
+	lz.cxm0p.Store(lz.val.vcs.TIA.Video.Collisions.CXM0P)
+	lz.cxm1p.Store(lz.val.vcs.TIA.Video.Collisions.CXM1P)
+	lz.cxp0fb.Store(lz.val.vcs.TIA.Video.Collisions.CXP0FB)
+	lz.cxp1fb.Store(lz.val.vcs.TIA.Video.Collisions.CXP1FB)
+	lz.cxm0fb.Store(lz.val.vcs.TIA.Video.Collisions.CXM0FB)
+	lz.cxm1fb.Store(lz.val.vcs.TIA.Video.Collisions.CXM1FB)
+	lz.cxblpf.Store(lz.val.vcs.TIA.Video.Collisions.CXBLPF)
+	lz.cxppmm.Store(lz.val.vcs.TIA.Video.Collisions.CXPPMM)
 }
 
 func (lz *LazyCollisions) update() {

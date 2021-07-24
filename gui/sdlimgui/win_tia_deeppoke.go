@@ -29,7 +29,7 @@ const allowDeepPoke = false
 // liveScope.
 func (win *winTIA) update(deepPoke func(), current func()) {
 	if !win.deepPoking {
-		win.img.lz.Dbg.PushRawEvent(current)
+		win.img.dbg.PushRawEvent(current)
 		return
 	}
 

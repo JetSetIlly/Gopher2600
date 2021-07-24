@@ -22,6 +22,7 @@ import (
 	"fmt"
 
 	"github.com/jetsetilly/gopher2600/disassembly"
+	"github.com/jetsetilly/gopher2600/emulation"
 	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/logger"
 )
@@ -33,8 +34,8 @@ import (
 func (dbg *Debugger) CatchUpLoop(continueCheck func() bool) error {
 	var err error
 
-	dbg.lastBank = dbg.VCS.Mem.Cart.GetBank(dbg.VCS.CPU.PC.Address())
-	dbg.lastResult, err = dbg.Disasm.FormatResult(dbg.lastBank, dbg.VCS.CPU.LastResult, disassembly.EntryLevelExecuted)
+	dbg.lastBank = dbg.vcs.Mem.Cart.GetBank(dbg.vcs.CPU.PC.Address())
+	dbg.lastResult, err = dbg.Disasm.FormatResult(dbg.lastBank, dbg.vcs.CPU.LastResult, disassembly.EntryLevelExecuted)
 	if err != nil {
 		return err
 	}
@@ -50,7 +51,7 @@ func (dbg *Debugger) CatchUpLoop(continueCheck func() bool) error {
 	case QuantumVideo:
 		onStep = func() error {
 			if dbg.quantum == QuantumVideo {
-				dbg.lastResult, err = dbg.Disasm.FormatResult(dbg.lastBank, dbg.VCS.CPU.LastResult, disassembly.EntryLevelExecuted)
+				dbg.lastResult, err = dbg.Disasm.FormatResult(dbg.lastBank, dbg.vcs.CPU.LastResult, disassembly.EntryLevelExecuted)
 				if err != nil {
 					return nil
 				}
@@ -62,13 +63,13 @@ func (dbg *Debugger) CatchUpLoop(continueCheck func() bool) error {
 	}
 
 	for continueCheck() {
-		err = dbg.VCS.Step(onStep)
+		err = dbg.vcs.Step(onStep)
 		if err != nil {
 			return err
 		}
 
-		dbg.lastBank = dbg.VCS.Mem.Cart.GetBank(dbg.VCS.CPU.PC.Address())
-		dbg.lastResult, err = dbg.Disasm.FormatResult(dbg.lastBank, dbg.VCS.CPU.LastResult, disassembly.EntryLevelExecuted)
+		dbg.lastBank = dbg.vcs.Mem.Cart.GetBank(dbg.vcs.CPU.PC.Address())
+		dbg.lastResult, err = dbg.Disasm.FormatResult(dbg.lastBank, dbg.vcs.CPU.LastResult, disassembly.EntryLevelExecuted)
 		if err != nil {
 			return err
 		}
@@ -115,7 +116,7 @@ func (dbg *Debugger) PushRewind(fn int, last bool) bool {
 	// how we push the doRewind() function depends on what kind of inputloop we
 	// are currently in
 	dbg.PushRawEventImm(func() {
-		dbg.scr.SetFeature(gui.ReqState, gui.StateRewinding)
+		dbg.scr.SetFeature(gui.ReqState, emulation.Rewinding)
 
 		if dbg.isClockCycleInputLoop {
 			dbg.restartInputLoop(doRewind)
@@ -160,7 +161,7 @@ func (dbg *Debugger) PushGotoCoords(frame int, scanline int, clock int) {
 	}
 
 	dbg.PushRawEventImm(func() {
-		dbg.scr.SetFeature(gui.ReqState, gui.StateRewinding)
+		dbg.scr.SetFeature(gui.ReqState, emulation.Rewinding)
 
 		f := func() error {
 			err := dbg.Rewind.GotoFrameCoords(frame, scanline, clock)

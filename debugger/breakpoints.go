@@ -361,10 +361,10 @@ func (bp *breakpoints) parseCommand(tokens *commandline.Tokens) error {
 		// condition for the current BANK. this is arguably what the user
 		// intends to happen.
 		if nb.next == nil && nb.target.label == "PC" && addBankCondition {
-			if bp.dbg.VCS.Mem.Cart.NumBanks() > 1 {
+			if bp.dbg.vcs.Mem.Cart.NumBanks() > 1 {
 				nb.next = &breaker{
 					target: bankTarget(bp.dbg),
-					value:  bp.dbg.VCS.Mem.Cart.GetBank(bp.dbg.VCS.CPU.PC.Address()).Number,
+					value:  bp.dbg.vcs.Mem.Cart.GetBank(bp.dbg.vcs.CPU.PC.Address()).Number,
 				}
 				nb.next.ignoreValue = nb.next.value
 			}
@@ -468,7 +468,7 @@ func (bp *breakpoints) togglePCBreak(e *disassembly.Entry) {
 		value: int(ai.mappedAddress),
 	}
 
-	if bp.dbg.VCS.Mem.Cart.NumBanks() > 1 {
+	if bp.dbg.vcs.Mem.Cart.NumBanks() > 1 {
 		nb.next = &breaker{
 			target: bp.checkBankBreak,
 

@@ -21,6 +21,7 @@ import (
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/debugger"
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
+	"github.com/jetsetilly/gopher2600/emulation"
 	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/gui/crt"
 	"github.com/jetsetilly/gopher2600/gui/sdlaudio"
@@ -29,7 +30,6 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/paths"
-	"github.com/jetsetilly/gopher2600/playmode"
 	"github.com/jetsetilly/gopher2600/reflection"
 	"github.com/jetsetilly/gopher2600/userinput"
 	"github.com/veandco/go-sdl2/sdl"
@@ -50,27 +50,25 @@ type SdlImgui struct {
 	plt     *platform
 	glsl    *glsl
 
+	// vcs and dbg are taken from the emulation field for convenience.
+	// emulation should only be updated therefore via SetEmulation()
+	emulation emulation.Emulation
+	vcs       *hardware.VCS
+	dbg       *debugger.Debugger
+
 	// lazy value system allows safe access to the debugger/emulation from the
 	// GUI thread
 	lz *lazyvalues.LazyValues
 
 	// the gui renders differently depending on EmulationState. use setState()
 	// to set the value
-	state gui.EmulationState
+	state emulation.State
 
 	// isRewindSlider records whether the rewind slider control in the
 	// winControl type is being clicked/moved.
 	//
-	// we can think of this as a special case of gui.State.Rewinding.
+	// we can think of this as a special case of emulation..Rewinding.
 	isRewindSlider bool
-
-	playmode playmode.Playmode
-
-	// vcs is set by ReqSetPlaymode or ReqSetDebugmode. in debug mode the VCS
-	// is accessible via lz.Dbg.VCS but for maximum compatibility between
-	// playmode and debugmode the VCS should be addressed through this pointer
-	// where possible
-	vcs *hardware.VCS
 
 	// television sends the GUI information through the PixelRenderer and
 	// AudioMixer.
@@ -225,22 +223,17 @@ func (img *SdlImgui) draw() {
 }
 
 // set emulation state and handle any changes.
-func (img *SdlImgui) setEmulationState(state gui.EmulationState) {
+func (img *SdlImgui) setEmulationState(state emulation.State) {
 	img.state = state
 
-	switch img.state {
-	case gui.StateInitialising:
-		img.lz.SetActive(false)
-	default:
-		img.lz.SetActive(true)
-	}
+	img.lz.SetEmulationState(state)
 
 	switch img.state {
-	case gui.StatePaused:
+	case emulation.Paused:
 		img.screen.render()
-	case gui.StateRunning:
+	case emulation.Running:
 		img.screen.render()
-	case gui.StateEnding:
+	case emulation.Halt:
 		img.prefs.saveWin()
 	}
 }
@@ -248,19 +241,18 @@ func (img *SdlImgui) setEmulationState(state gui.EmulationState) {
 // is the gui in playmode or not. thread safe. called from emulation thread
 // and gui thread.
 func (img *SdlImgui) isPlaymode() bool {
-	return img.lz.Dbg == nil
+	return img.dbg == nil
 }
 
 // set emulation and handle the changeover gracefully. this includes the saving
 // and loading of preference groups. should only be called from gui thread.
-func (img *SdlImgui) setEmulation(dbg *debugger.Debugger, playmode playmode.Playmode) error {
-	img.playmode = playmode
-	img.lz.Dbg = dbg
+func (img *SdlImgui) setEmulation(emulation emulation.Emulation) error {
+	img.emulation = emulation
+	img.vcs = emulation.VCS().(*hardware.VCS)
+	img.userinput = emulation.UserInput()
 
-	// playmode requesed
-	if dbg == nil {
-		img.vcs = playmode.VCS()
-
+	// playmode if there is no debugger
+	if emulation.Debugger() == nil {
 		// save current preferences
 		if img.prefs != nil {
 			err := img.prefs.save()
@@ -282,8 +274,8 @@ func (img *SdlImgui) setEmulation(dbg *debugger.Debugger, playmode playmode.Play
 		return nil
 	}
 
-	// debugging mode requested
-	img.vcs = dbg.VCS
+	img.dbg = emulation.Debugger().(*debugger.Debugger)
+	img.lz.SetEmulation(emulation)
 
 	// save current preferences
 	if img.prefs != nil {

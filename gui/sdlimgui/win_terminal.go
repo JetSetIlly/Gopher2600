@@ -21,7 +21,7 @@ import (
 	"strings"
 
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
-	"github.com/jetsetilly/gopher2600/gui"
+	"github.com/jetsetilly/gopher2600/emulation"
 	"github.com/jetsetilly/gopher2600/gui/sdlimgui/fonts"
 	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/paths"
@@ -177,7 +177,7 @@ func (win *winTerm) draw() {
 		if imgui.BeginTableV("prompt", 2, flgs, imgui.Vec2{}, 0.0) {
 			// prompt is dependent on running state
 			var prompt string
-			if win.img.state == gui.StateRunning {
+			if win.img.state == emulation.Running {
 				// if emulation is running then make use of a curious effect
 				// animation effect inherent in dear imgui. setting column flag of
 				// first column to "WidthStretch" causes the column to shrink

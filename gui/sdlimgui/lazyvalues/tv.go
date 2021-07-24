@@ -52,24 +52,24 @@ func newLazyTV(val *LazyValues) *LazyTV {
 }
 
 func (lz *LazyTV) push() {
-	lz.spec.Store(lz.val.Dbg.VCS.TV.GetSpec())
-	lz.tvStr.Store(lz.val.Dbg.VCS.TV.String())
-	lz.lastSignal.Store(lz.val.Dbg.VCS.TV.GetLastSignal())
+	lz.spec.Store(lz.val.vcs.TV.GetSpec())
+	lz.tvStr.Store(lz.val.vcs.TV.String())
+	lz.lastSignal.Store(lz.val.vcs.TV.GetLastSignal())
 
-	frame := lz.val.Dbg.VCS.TV.GetState(signal.ReqFramenum)
+	frame := lz.val.vcs.TV.GetState(signal.ReqFramenum)
 	lz.frame.Store(frame)
 
-	scanline := lz.val.Dbg.VCS.TV.GetState(signal.ReqScanline)
+	scanline := lz.val.vcs.TV.GetState(signal.ReqScanline)
 	lz.scanline.Store(scanline)
 
-	clock := lz.val.Dbg.VCS.TV.GetState(signal.ReqClock)
+	clock := lz.val.vcs.TV.GetState(signal.ReqClock)
 	lz.clock.Store(clock)
 
-	actual, hz := lz.val.Dbg.VCS.TV.GetActualFPS()
+	actual, hz := lz.val.vcs.TV.GetActualFPS()
 	lz.hz.Store(hz)
 	lz.actualFPS.Store(actual)
 
-	lz.reqFPS.Store(lz.val.Dbg.VCS.TV.GetReqFPS())
+	lz.reqFPS.Store(lz.val.vcs.TV.GetReqFPS())
 }
 
 func (lz *LazyTV) update() {

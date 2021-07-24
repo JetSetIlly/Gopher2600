@@ -92,9 +92,9 @@ func (win *winCartRAM) draw() {
 			bnk := bank
 			drawByteGrid(a.Data, b.Data, win.img.cols.ValueDiff, origin,
 				func(addr uint16, data uint8) {
-					win.img.lz.Dbg.PushRawEvent(func() {
+					win.img.dbg.PushRawEvent(func() {
 						idx := int(addr - origin)
-						win.img.lz.Dbg.VCS.Mem.Cart.GetRAMbus().PutRAM(bnk, idx, data)
+						win.img.vcs.Mem.Cart.GetRAMbus().PutRAM(bnk, idx, data)
 					})
 				})
 

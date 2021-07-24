@@ -19,6 +19,8 @@ import (
 	"time"
 
 	"github.com/jetsetilly/gopher2600/debugger"
+	"github.com/jetsetilly/gopher2600/emulation"
+	"github.com/jetsetilly/gopher2600/hardware"
 )
 
 // LazyValues contains all values required by a debugger running in a different
@@ -27,9 +29,9 @@ import (
 type LazyValues struct {
 	active bool
 
-	// the debugger is racy. it should not be accessed directly except through
-	// the lazy system or directly with Debugger.PushRawEvent()
-	Dbg *debugger.Debugger
+	// vcs and dbg are taken from the emulation supplied to SetEmulation()
+	vcs *hardware.VCS
+	dbg *debugger.Debugger
 
 	// pointers to these instances. non-pointer instances trigger the race
 	// detector for some reason.
@@ -93,12 +95,24 @@ func NewLazyValues() *LazyValues {
 	return val
 }
 
-// Reset lazy values instance.
-func (val *LazyValues) SetActive(active bool) {
-	val.active = active
-	if !active {
+// SetEmulationState makes sure the lazy system can respond to an emulation in
+// a parituclar state.
+func (val *LazyValues) SetEmulationState(state emulation.State) {
+	switch state {
+	case emulation.Initialising:
+		val.active = false
+		// not setting Cart to nil because it places a burden on users of the
+		// lazy system
+	default:
+		val.active = true
 		val.Cart = newLazyCart(val)
 	}
+}
+
+// Set the underlying emulator.
+func (val *LazyValues) SetEmulation(emulation emulation.Emulation) {
+	val.vcs = emulation.VCS().(*hardware.VCS)
+	val.dbg = emulation.Debugger().(*debugger.Debugger)
 }
 
 // Refresh lazy values.
@@ -107,7 +121,7 @@ func (val *LazyValues) Refresh() {
 		return
 	}
 
-	val.Dbg.PushRawEvent(func() {
+	val.dbg.PushRawEvent(func() {
 		val.Debugger.push()
 		val.CPU.push()
 		val.RAM.push()

@@ -40,10 +40,10 @@ func newLazyPrefs(val *LazyValues) *LazyPrefs {
 }
 
 func (lz *LazyPrefs) push() {
-	lz.fxxxMirror.Store(lz.val.Dbg.Disasm.Prefs.FxxxMirror.Get())
-	lz.symbols.Store(lz.val.Dbg.Disasm.Prefs.Symbols.Get())
-	lz.rewindMaxEntries.Store(lz.val.Dbg.Rewind.Prefs.MaxEntries.Get())
-	lz.rewindFreq.Store(lz.val.Dbg.Rewind.Prefs.Freq.Get())
+	lz.fxxxMirror.Store(lz.val.dbg.Disasm.Prefs.FxxxMirror.Get())
+	lz.symbols.Store(lz.val.dbg.Disasm.Prefs.Symbols.Get())
+	lz.rewindMaxEntries.Store(lz.val.dbg.Rewind.Prefs.MaxEntries.Get())
+	lz.rewindFreq.Store(lz.val.dbg.Rewind.Prefs.Freq.Get())
 }
 func (lz *LazyPrefs) update() {
 	lz.FxxxMirror, _ = lz.fxxxMirror.Load().(bool)

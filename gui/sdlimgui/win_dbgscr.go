@@ -22,7 +22,7 @@ import (
 	"github.com/go-gl/gl/v3.2-core/gl"
 	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/disassembly"
-	"github.com/jetsetilly/gopher2600/gui"
+	"github.com/jetsetilly/gopher2600/emulation"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 	"github.com/jetsetilly/gopher2600/hardware/tia/video"
 	"github.com/jetsetilly/gopher2600/reflection"
@@ -260,11 +260,11 @@ func (win *winDbgScr) draw() {
 	if imgui.IsWindowFocused() {
 		// mouse click will cause the rewind goto coords to run only when the
 		// emulation is paused
-		if win.img.state == gui.StatePaused {
+		if win.img.state == emulation.Paused {
 			if imgui.IsMouseReleased(0) {
 				win.img.screen.gotoCoordsX = win.mouseClock
 				win.img.screen.gotoCoordsY = win.img.wm.dbgScr.mouseScanline
-				win.img.lz.Dbg.PushGotoCoords(win.img.lz.TV.Frame, win.mouseScanline, win.mouseClock-specification.ClksHBlank)
+				win.img.dbg.PushGotoCoords(win.img.lz.TV.Frame, win.mouseScanline, win.mouseClock-specification.ClksHBlank)
 			}
 		}
 	}
@@ -465,7 +465,7 @@ func (win *winDbgScr) drawReflectionTooltip() {
 	imgui.Text(fmt.Sprintf("Scanline: %d", win.mouseScanline))
 	imgui.Text(fmt.Sprintf("Clock: %d", win.mouseClock-specification.ClksHBlank))
 
-	e, _ := win.img.lz.Dbg.Disasm.FormatResult(ref.Bank, ref.CPU, disassembly.EntryLevelBlessed)
+	e, _ := win.img.dbg.Disasm.FormatResult(ref.Bank, ref.CPU, disassembly.EntryLevelBlessed)
 	if e.Address == "" {
 		return
 	}

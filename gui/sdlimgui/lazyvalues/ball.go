@@ -69,21 +69,21 @@ func newLazyBall(val *LazyValues) *LazyBall {
 }
 
 func (lz *LazyBall) push() {
-	lz.bs.Store(lz.val.Dbg.VCS.TIA.Video.Ball)
-	lz.resetPixel.Store(lz.val.Dbg.VCS.TIA.Video.Ball.ResetPixel)
-	lz.hmovedPixel.Store(lz.val.Dbg.VCS.TIA.Video.Ball.HmovedPixel)
-	lz.color.Store(lz.val.Dbg.VCS.TIA.Video.Ball.Color)
-	lz.verticalDelay.Store(lz.val.Dbg.VCS.TIA.Video.Ball.VerticalDelay)
-	lz.enabledDelay.Store(lz.val.Dbg.VCS.TIA.Video.Ball.EnabledDelay)
-	lz.enabled.Store(lz.val.Dbg.VCS.TIA.Video.Ball.Enabled)
-	lz.ctrlpf.Store(lz.val.Dbg.VCS.TIA.Video.Ball.Ctrlpf)
-	lz.size.Store(lz.val.Dbg.VCS.TIA.Video.Ball.Size)
-	lz.hmove.Store(lz.val.Dbg.VCS.TIA.Video.Ball.Hmove)
-	lz.moreHmove.Store(lz.val.Dbg.VCS.TIA.Video.Ball.MoreHMOVE)
-	lz.encActive.Store(lz.val.Dbg.VCS.TIA.Video.Ball.Enclockifier.Active)
-	lz.encSecondHalf.Store(lz.val.Dbg.VCS.TIA.Video.Ball.Enclockifier.SecondHalf)
-	lz.encCpy.Store(lz.val.Dbg.VCS.TIA.Video.Ball.Enclockifier.Cpy)
-	lz.encTicks.Store(lz.val.Dbg.VCS.TIA.Video.Ball.Enclockifier.Ticks)
+	lz.bs.Store(lz.val.vcs.TIA.Video.Ball)
+	lz.resetPixel.Store(lz.val.vcs.TIA.Video.Ball.ResetPixel)
+	lz.hmovedPixel.Store(lz.val.vcs.TIA.Video.Ball.HmovedPixel)
+	lz.color.Store(lz.val.vcs.TIA.Video.Ball.Color)
+	lz.verticalDelay.Store(lz.val.vcs.TIA.Video.Ball.VerticalDelay)
+	lz.enabledDelay.Store(lz.val.vcs.TIA.Video.Ball.EnabledDelay)
+	lz.enabled.Store(lz.val.vcs.TIA.Video.Ball.Enabled)
+	lz.ctrlpf.Store(lz.val.vcs.TIA.Video.Ball.Ctrlpf)
+	lz.size.Store(lz.val.vcs.TIA.Video.Ball.Size)
+	lz.hmove.Store(lz.val.vcs.TIA.Video.Ball.Hmove)
+	lz.moreHmove.Store(lz.val.vcs.TIA.Video.Ball.MoreHMOVE)
+	lz.encActive.Store(lz.val.vcs.TIA.Video.Ball.Enclockifier.Active)
+	lz.encSecondHalf.Store(lz.val.vcs.TIA.Video.Ball.Enclockifier.SecondHalf)
+	lz.encCpy.Store(lz.val.vcs.TIA.Video.Ball.Enclockifier.Cpy)
+	lz.encTicks.Store(lz.val.vcs.TIA.Video.Ball.Enclockifier.Ticks)
 }
 
 func (lz *LazyBall) update() {

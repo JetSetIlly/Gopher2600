@@ -26,6 +26,7 @@ import (
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
 	"github.com/jetsetilly/gopher2600/debugger/terminal/commandline"
 	"github.com/jetsetilly/gopher2600/disassembly"
+	"github.com/jetsetilly/gopher2600/emulation"
 	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/execution"
@@ -49,7 +50,9 @@ import (
 // example, disassembly on a cartridge change (which can happen at any time)
 // updates the Disasm field, it does not reinitialise it.
 type Debugger struct {
-	VCS    *hardware.VCS
+	state emulation.State
+
+	vcs    *hardware.VCS
 	Disasm *disassembly.Disassembly
 
 	// the last loader to be used. we keep a reference to it so we can make
@@ -156,7 +159,7 @@ func NewDebugger(tv *television.Television, scr gui.GUI, term terminal.Terminal,
 	var err error
 
 	// tell GUI that we're in the initialistion phase
-	err = scr.SetFeature(gui.ReqState, gui.StateInitialising)
+	err = scr.SetFeature(gui.ReqState, emulation.Initialising)
 	if err != nil {
 		return nil, curated.Errorf("debugger: %v", err)
 	}
@@ -171,14 +174,14 @@ func NewDebugger(tv *television.Television, scr gui.GUI, term terminal.Terminal,
 	}
 
 	// create a new VCS instance
-	dbg.VCS, err = hardware.NewVCS(dbg.tv)
+	dbg.vcs, err = hardware.NewVCS(dbg.tv)
 	if err != nil {
 		return nil, curated.Errorf("debugger: %v", err)
 	}
 
 	// replace player 1 port with savekey
 	if useSavekey {
-		err = dbg.VCS.RIOT.Ports.Plug(plugging.RightPlayer, savekey.NewSaveKey)
+		err = dbg.vcs.RIOT.Ports.Plug(plugging.RightPlayer, savekey.NewSaveKey)
 		if err != nil {
 			return nil, curated.Errorf("debugger: %v", err)
 		}
@@ -186,12 +189,12 @@ func NewDebugger(tv *television.Television, scr gui.GUI, term terminal.Terminal,
 
 	// set up debugging interface to memory
 	dbg.dbgmem = &memoryDebug{
-		vcs: dbg.VCS,
+		vcs: dbg.vcs,
 	}
 
 	// create a new disassembly instance. also capturing the reference to the
 	// disassembly's symbols table
-	dbg.Disasm, dbg.dbgmem.sym, err = disassembly.NewDisassembly(dbg.VCS)
+	dbg.Disasm, dbg.dbgmem.sym, err = disassembly.NewDisassembly(dbg.vcs)
 	if err != nil {
 		return nil, curated.Errorf("debugger: %v", err)
 	}
@@ -200,7 +203,7 @@ func NewDebugger(tv *television.Television, scr gui.GUI, term terminal.Terminal,
 	dbg.lastResult = &disassembly.Entry{Result: execution.Result{Final: true}}
 
 	// setup reflection monitor
-	dbg.ref = reflection.NewReflector(dbg.VCS)
+	dbg.ref = reflection.NewReflector(dbg.vcs)
 	if r, ok := dbg.scr.(reflection.Broker); ok {
 		dbg.ref.AddRenderer(r.GetReflectionRenderer())
 	}
@@ -208,7 +211,7 @@ func NewDebugger(tv *television.Television, scr gui.GUI, term terminal.Terminal,
 	dbg.tv.AddPauseTrigger(dbg.ref)
 
 	// plug in rewind system
-	dbg.Rewind, err = rewind.NewRewind(dbg.VCS, dbg)
+	dbg.Rewind, err = rewind.NewRewind(dbg.vcs, dbg)
 	if err != nil {
 		return nil, curated.Errorf("debugger: %v", err)
 	}
@@ -216,7 +219,7 @@ func NewDebugger(tv *television.Television, scr gui.GUI, term terminal.Terminal,
 	dbg.deepPoking = make(chan bool, 1)
 
 	// plug TV BoundaryTrigger into CPU
-	dbg.VCS.CPU.AddBoundaryTrigger(dbg.VCS.TV)
+	dbg.vcs.CPU.AddBoundaryTrigger(dbg.vcs.TV)
 
 	// set up breakpoints/traps
 	dbg.breakpoints, err = newBreakpoints(dbg)
@@ -243,7 +246,7 @@ func NewDebugger(tv *television.Television, scr gui.GUI, term terminal.Terminal,
 	signal.Notify(dbg.events.IntEvents, os.Interrupt)
 
 	// connect gui
-	err = dbg.scr.SetFeature(gui.ReqSetDebugmode, dbg, dbg.events.UserInput)
+	err = dbg.scr.SetFeature(gui.ReqSetEmulation, dbg)
 	if err != nil {
 		if !curated.Is(err, gui.UnsupportedGuiFeature) {
 			return nil, curated.Errorf("debugger: %v", err)
@@ -259,6 +262,35 @@ func NewDebugger(tv *television.Television, scr gui.GUI, term terminal.Terminal,
 	// try to add debugger (self) to gui context
 
 	return dbg, nil
+}
+
+// VCS implementes the emulation.Emulation interface.
+func (dbg *Debugger) VCS() emulation.VCS {
+	return dbg.vcs
+}
+
+// Debugger implementes the emulation.Emulation interface.
+func (dbg *Debugger) Debugger() emulation.Debugger {
+	return dbg
+}
+
+// UserInput implementes the emulation.Emulation interface.
+func (dbg *Debugger) UserInput() chan userinput.Event {
+	return dbg.events.UserInput
+}
+
+// State implementes the emulation.Emulation interface.
+func (dbg *Debugger) State() emulation.State {
+	return dbg.state
+}
+
+// Pause implementes the emulation.Emulation interface.
+func (dbg *Debugger) Pause(set bool) {
+	if set {
+		dbg.state = emulation.Paused
+	} else {
+		dbg.state = emulation.Running
+	}
 }
 
 // Start the main debugger sequence.
@@ -346,7 +378,7 @@ func (dbg *Debugger) HasChanged() bool {
 // accordingly also. note that debugging features (breakpoints, etc.) are not
 // reset.
 func (dbg *Debugger) reset() error {
-	err := dbg.VCS.Reset()
+	err := dbg.vcs.Reset()
 	if err != nil {
 		return err
 	}
@@ -372,15 +404,15 @@ func (dbg *Debugger) restartInputLoop(onRestart func() error) {
 // especially important is the repointing of the symbols table in the instance of dbgmem.
 func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) {
 	// tell GUI that we're in the initialistion phase
-	err := dbg.scr.SetFeature(gui.ReqState, gui.StateInitialising)
+	err := dbg.scr.SetFeature(gui.ReqState, emulation.Initialising)
 	if err != nil {
 		return curated.Errorf("debugger: %v", err)
 	}
 	defer func() {
 		if dbg.runUntilHalt && e == nil {
-			_ = dbg.scr.SetFeature(gui.ReqState, gui.StateRunning)
+			_ = dbg.scr.SetFeature(gui.ReqState, emulation.Running)
 		} else {
-			_ = dbg.scr.SetFeature(gui.ReqState, gui.StatePaused)
+			_ = dbg.scr.SetFeature(gui.ReqState, emulation.Paused)
 		}
 	}()
 
@@ -419,14 +451,14 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) 
 	}
 
 	// reset of vcs is implied with attach cartridge
-	err = setup.AttachCartridge(dbg.VCS, cartload)
+	err = setup.AttachCartridge(dbg.vcs, cartload)
 	if err != nil && !curated.Has(err, cartridge.Ejected) {
 		logger.Log("attach", err.Error())
 
 		// an error has occurred so attach the ejected cartridge
 		//
 		// !TODO: a special error cartridge to make it more obvious what has happened
-		err = setup.AttachCartridge(dbg.VCS, cartridgeloader.Loader{})
+		err = setup.AttachCartridge(dbg.vcs, cartridgeloader.Loader{})
 		if err != nil {
 			return err
 		}
@@ -446,15 +478,15 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) 
 
 func (dbg *Debugger) hotload() (e error) {
 	// tell GUI that we're in the initialistion phase
-	err := dbg.scr.SetFeature(gui.ReqState, gui.StateInitialising)
+	err := dbg.scr.SetFeature(gui.ReqState, emulation.Initialising)
 	if err != nil {
 		return curated.Errorf("debugger: %v", err)
 	}
 	defer func() {
 		if dbg.runUntilHalt && e == nil {
-			_ = dbg.scr.SetFeature(gui.ReqState, gui.StateRunning)
+			_ = dbg.scr.SetFeature(gui.ReqState, emulation.Running)
 		} else {
-			_ = dbg.scr.SetFeature(gui.ReqState, gui.StatePaused)
+			_ = dbg.scr.SetFeature(gui.ReqState, emulation.Paused)
 		}
 	}()
 
@@ -466,10 +498,10 @@ func (dbg *Debugger) hotload() (e error) {
 		}
 	}
 
-	cartload := cartridgeloader.NewLoader(dbg.VCS.Mem.Cart.Filename, dbg.VCS.Mem.Cart.ID())
+	cartload := cartridgeloader.NewLoader(dbg.vcs.Mem.Cart.Filename, dbg.vcs.Mem.Cart.ID())
 	dbg.loader = &cartload
 
-	err = dbg.VCS.Mem.Cart.HotLoad(cartload)
+	err = dbg.vcs.Mem.Cart.HotLoad(cartload)
 	if err != nil {
 		return err
 	}

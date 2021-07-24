@@ -20,7 +20,7 @@ import (
 	"image/color"
 	"sync"
 
-	"github.com/jetsetilly/gopher2600/gui"
+	"github.com/jetsetilly/gopher2600/emulation"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 	"github.com/jetsetilly/gopher2600/reflection"
@@ -341,7 +341,7 @@ func (scr *screen) NewFrame(vsynced bool, stable bool) error {
 
 			return nil
 		}
-	} else if scr.img.state != gui.StateRewinding {
+	} else if scr.img.state != emulation.Rewinding {
 		// clear reflection pixels beyond the last X/Y plot
 		//
 		// this is hardly ever required but it is important for consistent
@@ -571,7 +571,7 @@ func (scr *screen) copyPixelsPlaymode() {
 	scr.crit.section.Lock()
 	defer scr.crit.section.Unlock()
 
-	if scr.img.state == gui.StatePaused {
+	if scr.img.state == emulation.Paused {
 		// when emulation is paused we alternate which frame to show. this
 		// simple technique means that two-frame flicker kernels will show a
 		// still image that looks natural.

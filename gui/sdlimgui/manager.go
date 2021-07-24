@@ -196,7 +196,7 @@ func (wm *manager) draw() {
 	wm.screenPos = imgui.WindowPos()
 
 	// no debugger is ready yet so return immediately
-	if wm.img.lz.Dbg == nil {
+	if wm.img.dbg == nil {
 		return
 	}
 

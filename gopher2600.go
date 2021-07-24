@@ -31,6 +31,7 @@ import (
 	"github.com/jetsetilly/gopher2600/debugger/terminal/colorterm"
 	"github.com/jetsetilly/gopher2600/debugger/terminal/plainterm"
 	"github.com/jetsetilly/gopher2600/disassembly"
+	"github.com/jetsetilly/gopher2600/emulation"
 	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/gui/sdlimgui"
 	"github.com/jetsetilly/gopher2600/hardware/television"
@@ -390,7 +391,7 @@ func play(md *modalflag.Modes, sync *mainSync) error {
 		}
 
 		// set ending state
-		err = scr.SetFeature(gui.ReqState, gui.StateEnding)
+		err = scr.SetFeature(gui.ReqState, emulation.Halt)
 		if err != nil {
 			return err
 		}
@@ -535,7 +536,7 @@ func debug(md *modalflag.Modes, sync *mainSync) error {
 	}
 
 	// set ending state
-	err = scr.SetFeature(gui.ReqState, gui.StateEnding)
+	err = scr.SetFeature(gui.ReqState, emulation.Halt)
 	if err != nil {
 		return err
 	}

@@ -74,7 +74,7 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (*target, error) {
 					// instructions, which causes the PC to advance. this means
 					// that a PC break can be triggered when the user probably
 					// doesn't want it to be.
-					bank := dbg.VCS.Mem.Cart.GetBank(dbg.VCS.CPU.PC.Address())
+					bank := dbg.vcs.Mem.Cart.GetBank(dbg.vcs.CPU.PC.Address())
 					if bank.ExecutingCoprocessor {
 						// we return zero. it's highly unlikely a genuine BREAK PC 0
 						// has been requested but even so, this isn't great design.
@@ -85,7 +85,7 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (*target, error) {
 
 					// for breakpoints it is important that the breakpoint
 					// value be normalised through mapAddress() too
-					ai := dbg.dbgmem.mapAddress(dbg.VCS.CPU.PC.Address(), true)
+					ai := dbg.dbgmem.mapAddress(dbg.vcs.CPU.PC.Address(), true)
 					return int(ai.mappedAddress)
 				},
 				format: "%#04x",
@@ -95,7 +95,7 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (*target, error) {
 			trg = &target{
 				label: "A",
 				currentValue: func() targetValue {
-					return int(dbg.VCS.CPU.A.Value())
+					return int(dbg.vcs.CPU.A.Value())
 				},
 				format: "%#02x",
 			}
@@ -104,7 +104,7 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (*target, error) {
 			trg = &target{
 				label: "X",
 				currentValue: func() targetValue {
-					return int(dbg.VCS.CPU.X.Value())
+					return int(dbg.vcs.CPU.X.Value())
 				},
 				format: "%#02x",
 			}
@@ -113,7 +113,7 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (*target, error) {
 			trg = &target{
 				label: "Y",
 				currentValue: func() targetValue {
-					return int(dbg.VCS.CPU.Y.Value())
+					return int(dbg.vcs.CPU.Y.Value())
 				},
 				format: "%#02x",
 			}
@@ -122,7 +122,7 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (*target, error) {
 			trg = &target{
 				label: "SP",
 				currentValue: func() targetValue {
-					return int(dbg.VCS.CPU.SP.Value())
+					return int(dbg.vcs.CPU.SP.Value())
 				},
 				format: "%#02x",
 			}
@@ -132,7 +132,7 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (*target, error) {
 			trg = &target{
 				label: "Frame",
 				currentValue: func() targetValue {
-					return dbg.VCS.TV.GetState(signal.ReqFramenum)
+					return dbg.vcs.TV.GetState(signal.ReqFramenum)
 				},
 			}
 
@@ -140,7 +140,7 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (*target, error) {
 			trg = &target{
 				label: "Scanline",
 				currentValue: func() targetValue {
-					return dbg.VCS.TV.GetState(signal.ReqScanline)
+					return dbg.vcs.TV.GetState(signal.ReqScanline)
 				},
 			}
 
@@ -148,7 +148,7 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (*target, error) {
 			trg = &target{
 				label: "Clock",
 				currentValue: func() targetValue {
-					return dbg.VCS.TV.GetState(signal.ReqClock)
+					return dbg.vcs.TV.GetState(signal.ReqClock)
 				},
 			}
 
@@ -167,10 +167,10 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (*target, error) {
 					trg = &target{
 						label: "Operator",
 						currentValue: func() targetValue {
-							if !dbg.VCS.CPU.LastResult.Final || dbg.VCS.CPU.LastResult.Defn == nil {
+							if !dbg.vcs.CPU.LastResult.Final || dbg.vcs.CPU.LastResult.Defn == nil {
 								return ""
 							}
-							return dbg.VCS.CPU.LastResult.Defn.Operator
+							return dbg.vcs.CPU.LastResult.Defn.Operator
 						},
 					}
 
@@ -178,10 +178,10 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (*target, error) {
 					trg = &target{
 						label: "AddressMode",
 						currentValue: func() targetValue {
-							if !dbg.VCS.CPU.LastResult.Final || dbg.VCS.CPU.LastResult.Defn == nil {
+							if !dbg.vcs.CPU.LastResult.Final || dbg.vcs.CPU.LastResult.Defn == nil {
 								return ""
 							}
-							return int(dbg.VCS.CPU.LastResult.Defn.AddressingMode)
+							return int(dbg.vcs.CPU.LastResult.Defn.AddressingMode)
 						},
 					}
 
@@ -189,10 +189,10 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (*target, error) {
 					trg = &target{
 						label: "Instruction Effect",
 						currentValue: func() targetValue {
-							if !dbg.VCS.CPU.LastResult.Final {
+							if !dbg.vcs.CPU.LastResult.Final {
 								return -1
 							}
-							return int(dbg.VCS.CPU.LastResult.Defn.Effect)
+							return int(dbg.vcs.CPU.LastResult.Defn.Effect)
 						},
 					}
 
@@ -200,7 +200,7 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (*target, error) {
 					trg = &target{
 						label: "PageFault",
 						currentValue: func() targetValue {
-							return dbg.VCS.CPU.LastResult.PageFault
+							return dbg.vcs.CPU.LastResult.PageFault
 						},
 					}
 
@@ -208,7 +208,7 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (*target, error) {
 					trg = &target{
 						label: "CPU Bug",
 						currentValue: func() targetValue {
-							s := dbg.VCS.CPU.LastResult.CPUBug
+							s := dbg.vcs.CPU.LastResult.CPUBug
 							if s == "" {
 								return "ok"
 							}
@@ -237,7 +237,7 @@ func bankTarget(dbg *Debugger) *target {
 	return &target{
 		label: "Bank",
 		currentValue: func() targetValue {
-			return dbg.VCS.Mem.Cart.GetBank(dbg.VCS.CPU.PC.Address()).Number
+			return dbg.vcs.Mem.Cart.GetBank(dbg.vcs.CPU.PC.Address()).Number
 		},
 	}
 }

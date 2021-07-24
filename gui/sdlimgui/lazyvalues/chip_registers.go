@@ -51,23 +51,23 @@ func newLazyChipRegisters(val *LazyValues) *LazyChipRegisters {
 }
 
 func (lz *LazyChipRegisters) push() {
-	v, _ := lz.val.Dbg.VCS.Mem.Peek(addresses.ReadAddress["SWCHA"])
+	v, _ := lz.val.vcs.Mem.Peek(addresses.ReadAddress["SWCHA"])
 	lz.swcha.Store(v)
-	v, _ = lz.val.Dbg.VCS.Mem.Peek(addresses.ReadAddress["SWACNT"])
+	v, _ = lz.val.vcs.Mem.Peek(addresses.ReadAddress["SWACNT"])
 	lz.swacnt.Store(v)
-	v, _ = lz.val.Dbg.VCS.Mem.Peek(addresses.ReadAddress["SWCHB"])
+	v, _ = lz.val.vcs.Mem.Peek(addresses.ReadAddress["SWCHB"])
 	lz.swchb.Store(v)
-	v, _ = lz.val.Dbg.VCS.Mem.Peek(addresses.ReadAddress["SWBCNT"])
+	v, _ = lz.val.vcs.Mem.Peek(addresses.ReadAddress["SWBCNT"])
 	lz.inpt0.Store(v)
-	v, _ = lz.val.Dbg.VCS.Mem.Peek(addresses.ReadAddress["INPT1"])
+	v, _ = lz.val.vcs.Mem.Peek(addresses.ReadAddress["INPT1"])
 	lz.inpt1.Store(v)
-	v, _ = lz.val.Dbg.VCS.Mem.Peek(addresses.ReadAddress["INPT2"])
+	v, _ = lz.val.vcs.Mem.Peek(addresses.ReadAddress["INPT2"])
 	lz.inpt2.Store(v)
-	v, _ = lz.val.Dbg.VCS.Mem.Peek(addresses.ReadAddress["INPT3"])
+	v, _ = lz.val.vcs.Mem.Peek(addresses.ReadAddress["INPT3"])
 	lz.inpt3.Store(v)
-	v, _ = lz.val.Dbg.VCS.Mem.Peek(addresses.ReadAddress["INPT4"])
+	v, _ = lz.val.vcs.Mem.Peek(addresses.ReadAddress["INPT4"])
 	lz.inpt4.Store(v)
-	v, _ = lz.val.Dbg.VCS.Mem.Peek(addresses.ReadAddress["INPT5"])
+	v, _ = lz.val.vcs.Mem.Peek(addresses.ReadAddress["INPT5"])
 	lz.inpt5.Store(v)
 }
 

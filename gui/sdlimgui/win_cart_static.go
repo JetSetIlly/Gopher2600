@@ -77,9 +77,9 @@ func (win *winCartStatic) draw() {
 
 			drawByteGrid(a.Data, b.Data, win.img.cols.ValueDiff, 0,
 				func(addr uint16, data uint8) {
-					win.img.lz.Dbg.PushRawEvent(func() {
+					win.img.dbg.PushRawEvent(func() {
 						idx := int(addr)
-						win.img.lz.Dbg.VCS.Mem.Cart.GetStaticBus().PutStatic(a.Segment, uint16(idx), data)
+						win.img.vcs.Mem.Cart.GetStaticBus().PutStatic(a.Segment, uint16(idx), data)
 					})
 				})
 

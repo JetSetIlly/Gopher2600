@@ -74,9 +74,9 @@ func newLazyPlayer(val *LazyValues, id int) *LazyPlayer {
 }
 
 func (lz *LazyPlayer) push() {
-	pl := lz.val.Dbg.VCS.TIA.Video.Player0
+	pl := lz.val.vcs.TIA.Video.Player0
 	if lz.id != 0 {
-		pl = lz.val.Dbg.VCS.TIA.Video.Player1
+		pl = lz.val.vcs.TIA.Video.Player1
 	}
 	lz.ps.Store(pl)
 	lz.resetPixel.Store(pl.ResetPixel)

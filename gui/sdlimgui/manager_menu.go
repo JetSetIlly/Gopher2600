@@ -19,7 +19,7 @@ import (
 	"fmt"
 
 	"github.com/inkyblackness/imgui-go/v4"
-	"github.com/jetsetilly/gopher2600/gui"
+	"github.com/jetsetilly/gopher2600/emulation"
 	"github.com/jetsetilly/gopher2600/gui/sdlimgui/fonts"
 )
 
@@ -140,7 +140,7 @@ func (wm *manager) drawMenu() {
 	wdth -= rightJustText(wdth, wm.img.lz.Cart.Mapping, true)
 	wdth -= rightJustText(wdth, fmt.Sprintf("%.2fHz", wm.img.lz.TV.Hz), true)
 
-	if wm.img.state == gui.StateRunning {
+	if wm.img.state == emulation.Running {
 		if wm.img.lz.TV.ReqFPS < 1.0 {
 			rightJustText(wdth, "< 1 fps", true)
 		} else {

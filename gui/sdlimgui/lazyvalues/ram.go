@@ -41,7 +41,7 @@ func newLazyRAM(val *LazyValues) *LazyRAM {
 func (lz *LazyRAM) push() {
 	ram := lz.ram.Load().([]atomic.Value)
 	for i := range ram {
-		ram[i].Store(lz.val.Dbg.VCS.Mem.RAM.RAM[i])
+		ram[i].Store(lz.val.vcs.Mem.RAM.RAM[i])
 	}
 	lz.ram.Store(ram)
 }
