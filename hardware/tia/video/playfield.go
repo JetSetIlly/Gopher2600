@@ -261,7 +261,6 @@ func (pf *Playfield) SetPF0(v uint8) {
 	pf.ReflectedData[17] = pf.RegularData[2]
 	pf.ReflectedData[18] = pf.RegularData[1]
 	pf.ReflectedData[19] = pf.RegularData[0]
-	pf.latchRegionData()
 }
 
 // SetPF1 sets the playfield PF1 bits.
@@ -283,7 +282,6 @@ func (pf *Playfield) SetPF1(v uint8) {
 	pf.ReflectedData[13] = pf.RegularData[6]
 	pf.ReflectedData[14] = pf.RegularData[5]
 	pf.ReflectedData[15] = pf.RegularData[4]
-	pf.latchRegionData()
 }
 
 // SetPF2 sets the playfield PF2 bits.
@@ -305,7 +303,6 @@ func (pf *Playfield) SetPF2(v uint8) {
 	pf.ReflectedData[5] = pf.RegularData[14]
 	pf.ReflectedData[6] = pf.RegularData[13]
 	pf.ReflectedData[7] = pf.RegularData[12]
-	pf.latchRegionData()
 }
 
 func (pf *Playfield) setPF0(v uint8) {
