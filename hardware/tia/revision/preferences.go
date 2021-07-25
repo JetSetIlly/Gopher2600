@@ -32,24 +32,24 @@ type Preferences struct {
 	// The names of the preference fields match the Bug enumerations. These
 	// values are updated automatically when the corresponding Dsk* field is
 	// updated.
-	LateVDELGRP0    bool
-	LateVDELGRP1    bool
-	LateRippleStart bool
-	LateRippleEnd   bool
-	LatePFx         bool
-	LateCOLUPF      bool
-	LostMOTCK       bool
-	RESPxHBLANK     bool
+	LateVDELGRP0     bool
+	LateVDELGRP1     bool
+	LateRESPx        bool
+	EarlyScancounter bool
+	LatePFx          bool
+	LateCOLUPF       bool
+	LostMOTCK        bool
+	RESPxHBLANK      bool
 
 	// Disk copies of preferences
-	DskLateVDELGRP0    prefs.Bool
-	DskLateVDELGRP1    prefs.Bool
-	DskLateRippleStart prefs.Bool
-	DskLateRippleEnd   prefs.Bool
-	DskLatePFx         prefs.Bool
-	DskLateCOLUPF      prefs.Bool
-	DskLostMOTCK       prefs.Bool
-	DskRESPxHBLANK     prefs.Bool
+	DskLateVDELGRP0     prefs.Bool
+	DskLateVDELGRP1     prefs.Bool
+	DskLateRESPx        prefs.Bool
+	DskEarlyScancounter prefs.Bool
+	DskLatePFx          prefs.Bool
+	DskLateCOLUPF       prefs.Bool
+	DskLostMOTCK        prefs.Bool
+	DskRESPxHBLANK      prefs.Bool
 }
 
 // NewPreferences is the preferred method of initialisation for the Preferences type.
@@ -77,12 +77,12 @@ func newPreferences() (*Preferences, error) {
 		return nil, curated.Errorf("revision: %v", err)
 	}
 
-	err = p.dsk.Add("tia.revision.hmove.ripplestart", &p.DskLateRippleStart)
+	err = p.dsk.Add("tia.revision.hmove.laterespx", &p.DskLateRESPx)
 	if err != nil {
 		return nil, curated.Errorf("revision: %v", err)
 	}
 
-	err = p.dsk.Add("tia.revision.hmove.rippleend", &p.DskLateRippleEnd)
+	err = p.dsk.Add("tia.revision.hmove.earlyscancounter", &p.DskEarlyScancounter)
 	if err != nil {
 		return nil, curated.Errorf("revision: %v", err)
 	}
@@ -116,12 +116,12 @@ func newPreferences() (*Preferences, error) {
 		p.LateVDELGRP1 = v.(bool)
 		return nil
 	})
-	p.DskLateRippleStart.RegisterCallback(func(v prefs.Value) error {
-		p.LateRippleStart = v.(bool)
+	p.DskLateRESPx.RegisterCallback(func(v prefs.Value) error {
+		p.LateRESPx = v.(bool)
 		return nil
 	})
-	p.DskLateRippleEnd.RegisterCallback(func(v prefs.Value) error {
-		p.LateRippleEnd = v.(bool)
+	p.DskEarlyScancounter.RegisterCallback(func(v prefs.Value) error {
+		p.EarlyScancounter = v.(bool)
 		return nil
 	})
 	p.DskLatePFx.RegisterCallback(func(v prefs.Value) error {

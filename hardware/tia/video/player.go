@@ -470,32 +470,58 @@ func (ps *PlayerSprite) resetPosition() {
 	// threads.
 	//
 	// https://atariage.com/forums/topic/207444-questionproblem-about-sprite-positioning-during-hblank/
-	// https://atariage.com/forums/topic/311795-576-and-1008-characters/?tab=comments#comment-4646705
+	// https://atariage.com/forums/topic/311795-576-and-1008-characters/?tab=comments#comment-4748106
 	// https://github.com/stella-emu/stella/issues/699#issuecomment-698004074
 	//
 	// that said, I'm not entirely sure what's going on and why these
 	// adjustments are required.
+	//
+	// the slideshow ROM in the link below is "wrong" unless LateRESPx is
+	// true. it's not clear if this is correct and whether this coincides with
+	// the
+	//
+	// https://atariage.com/forums/topic/181816-bigger-bitmaps-with-dpc/
 	if hblank {
 		// this tricky branch happens when reset is triggered inside the
-		// HBLANK period and HMOVE is active
-		if !ps.tia.hmove.Latch || ps.tia.hmove.Ripple >= 1 && ps.tia.hmove.Ripple <= 15 {
+		// HBLANK period and HMOVE is active in some way.
+
+		if ps.tia.hmove.Ripple >= 1 && ps.tia.hmove.Ripple <= 15 {
+			// HMOVE is currently rippling note that HMOVE does not need to
+			// have been latched for this to be true
 			delay = 2
-			if ps.tia.hmove.Ripple == 15 {
-				if ps.tia.rev.Prefs.LateRippleStart {
+
+			// if HMOVE is latched or ripple has just started then check the
+			// TIA revision for a longer delay
+			if ps.tia.hmove.Latch || ps.tia.hmove.Ripple == 15 {
+				if ps.tia.rev.Prefs.LateRESPx {
 					delay = 3
 				}
 			}
-		} else {
+		} else if ps.tia.hmove.Latch {
+			// HMOVE has been activated this scanline but not currently rippling.
+			//
+			// maybe surprisingly, this is comparitively unusual. many ROMs if
+			// the reset the player during the HBLANK at all will have called
+			// HMOVE straight after the WSYNC, as advised by the Stella
+			// Programmer's Guide.
+			//
+			// a good examples of where it is required is Midnight Madness
+			// (there is a gap in the crossbar of the T of 'Midnite')
 			delay = 3
+		} else {
+			// HMOVE has not been activated at all this scanline
+			delay = 2
 		}
 	}
 
-	// pause pending start drawing events unless it is about to start this cycle
-	// rules discovered through observation (games that do bad things to HMOVE)
+	// pause pending start drawing events unless it is about to start this
+	// cycle rules discovered through observation (principally, 'games that do
+	// bad things to HMOVE')
 	if !ps.futureStart.AboutToEnd() {
-		// not entirely sure this condition is correct but works for the
-		// known cases. See revision package for more discussion.
-		if ps.tia.rev.Prefs.LateRippleEnd {
+		// not entirely sure this condition is correct but works for the known cases
+		//
+		// https://atariage.com/forums/topic/311795-576-and-1008-characters/?tab=comments#comment-4748106
+		if ps.tia.rev.Prefs.EarlyScancounter {
 			if !(ps.tia.hmove.RippleJustEnded && (ps.pclk == phaseclock.RisingPhi1 || ps.pclk == phaseclock.FallingPhi1)) {
 				ps.futureStart.Pause()
 			}

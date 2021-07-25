@@ -30,24 +30,21 @@ const (
 	LateVDELGRP0 Bug = iota
 	LateVDELGRP1
 
-	// Late HMOVE Ripple
+	// Late RESPx: triggering of a REPSx happens a little later under certain
+	// HMOVE condition.
 	//
-	// "As with the previous tests, variations in positioning only
-	// happen if a strobe to RESxx coincide with an extra motion CLK
-	// pulse after an HMOVE. In all the other cases, all the consoles
-	// behave the same."
-	//
-	// https://github.com/stella-emu/stella/issues/699#issuecomment-698004074
+	// https://atariage.com/forums/topic/311795-576-and-1008-characters/?tab=comments#comment-4748106
 	//
 	// Example ROM: 36 char demos (36_Char_Interlaced_RESP0_cycle0).
-	LateRippleStart
+	LateRESPx
 
-	// Late HMOVE End
+	// EarlyScancounter: a pending scancounter will start a little earlier
+	// under certain HMOVE conditions
 	//
-	// https://atariage.com/forums/topic/311795-576-and-1008-characters/?tab=comments#comment-4646705
+	// https://atariage.com/forums/topic/311795-576-and-1008-characters/?tab=comments#comment-4748106
 	//
 	// Example ROM: 36 char demos (36_Char_Interlaced_RESP0_cycle3).
-	LateRippleEnd
+	EarlyScancounter
 
 	// Late PFx: The setting of the playfield bits happens a video cycle later
 	// that it should.
@@ -103,10 +100,10 @@ func (bug Bug) Description() string {
 		return "GRP1 VDEL gfx on write to GRP0 is not immediate"
 	case LateVDELGRP1:
 		return "GRP0 VDEL gfx on write to GRP1 is not immediate"
-	case LateRippleStart:
-		return "HMOVE ripple starts late"
-	case LateRippleEnd:
-		return "HMOVE ripple ends lat"
+	case LateRESPx:
+		return "RESPx triggers a little later under certain HMOVE conditions"
+	case EarlyScancounter:
+		return "RESPx triggers an early draw under certain HMOVE conditions"
 	case LatePFx:
 		return "PFx bits set late"
 	case LateCOLUPF:
@@ -125,9 +122,9 @@ func (bug Bug) NotableROM() string {
 		return "He-Man"
 	case LateVDELGRP1:
 		return "He-Man"
-	case LateRippleStart:
+	case LateRESPx:
 		return "36 Character Demos"
-	case LateRippleEnd:
+	case EarlyScancounter:
 		return "36 Character Demos"
 	case LatePFx:
 		return "Pesco"

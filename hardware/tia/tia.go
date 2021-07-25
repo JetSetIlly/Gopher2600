@@ -418,6 +418,8 @@ func (tia *TIA) Step(readMemory bool) {
 			// CPU cycle of the scanline; the CLK stuffing will still take
 			// place during the HBlank and the HSYNC latch will be set just
 			// before the counter wraps around."
+			//
+			// note that the ripple counter is not reset
 			tia.Hmove.Latch = false
 
 		case 56: // [SHB]

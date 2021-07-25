@@ -68,7 +68,7 @@ func (win *winTIARevisions) draw() {
 
 	win.drawLateGRPx()
 	imguiSeparator()
-	win.drawLateRipple()
+	win.drawRESPxUnderHMOVE()
 	imguiSeparator()
 	win.drawLatePlayfield()
 	imguiSeparator()
@@ -102,20 +102,20 @@ func (win *winTIARevisions) drawLateGRPx() {
 	win.drawTooltip(revision.LateVDELGRP1)
 }
 
-func (win *winTIARevisions) drawLateRipple() {
-	imgui.Text("HMOVE (ripple)")
+func (win *winTIARevisions) drawRESPxUnderHMOVE() {
+	imgui.Text("RESPx under HMOVE")
 	imgui.Spacing()
-	a := win.img.vcs.TIA.Rev.Prefs.DskLateRippleStart.Get().(bool)
-	if imgui.Checkbox("Late Start", &a) {
-		win.img.vcs.TIA.Rev.Prefs.DskLateRippleStart.Set(a)
+	a := win.img.vcs.TIA.Rev.Prefs.DskLateRESPx.Get().(bool)
+	if imgui.Checkbox("Late RESPx", &a) {
+		win.img.vcs.TIA.Rev.Prefs.DskLateRESPx.Set(a)
 	}
-	win.drawTooltip(revision.LateRippleStart)
+	win.drawTooltip(revision.LateRESPx)
 
-	b := win.img.vcs.TIA.Rev.Prefs.DskLateRippleEnd.Get().(bool)
-	if imgui.Checkbox("Late End", &b) {
-		win.img.vcs.TIA.Rev.Prefs.DskLateRippleEnd.Set(b)
+	b := win.img.vcs.TIA.Rev.Prefs.DskEarlyScancounter.Get().(bool)
+	if imgui.Checkbox("Early Scancounter", &b) {
+		win.img.vcs.TIA.Rev.Prefs.DskEarlyScancounter.Set(b)
 	}
-	win.drawTooltip(revision.LateRippleEnd)
+	win.drawTooltip(revision.EarlyScancounter)
 }
 
 func (win *winTIARevisions) drawLatePlayfield() {

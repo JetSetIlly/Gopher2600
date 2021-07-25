@@ -34,6 +34,8 @@ var defunct = []string{
 	"hardware.arm7.sramAccessTime",
 	"hardware.arm7.clock",
 	"hardware.arm7.defaultMAM",
+	"tia.revision.hmove.ripplestart",
+	"tia.revision.hmove.rippleend",
 }
 
 // returns true if string is in list of defunct values.
