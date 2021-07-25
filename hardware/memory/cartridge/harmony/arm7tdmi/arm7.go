@@ -145,7 +145,7 @@ type ARM struct {
 
 	// rather than call the cycle counting functions directly, we assign the
 	// functions to these fields. in this way, we can use stubs when executing
-	// in immediate mode (when cycle counting isn't necesary)
+	// in immediate mode (when cycle counting isn't necessary)
 	//
 	// other aspects of cycle counting are not expensive and can remain
 	Icycle func()
@@ -158,11 +158,11 @@ type disasmLevel int
 const (
 	disasmNone disasmLevel = iota
 
-	// update entry only if the UpdateExecution is true
+	// update entry only if the UpdateExecution is true.
 	disasmUpdateOnly
 
 	// update all disassembly fields (operator, operands, etc.). this doesn't
-	// need to happen unless the entry is not in the disasm cache
+	// need to happen unless the entry is not in the disasm cache.
 	disasmFull
 )
 
@@ -674,7 +674,7 @@ func (arm *ARM) Run(mamcr uint32) (uint32, float32, error) {
 			arm.Scycle(prefetch, arm.registers[rPC])
 		}
 
-		// default to an S cycle for prefetch unless an instruction explicitely
+		// default to an S cycle for prefetch unless an instruction explicitly
 		// says otherwise
 		arm.prefetchCycle = S
 
@@ -2193,7 +2193,6 @@ func (arm *ARM) executeConditionalBranch(opcode uint16) {
 		}
 	case disasmNone:
 	}
-
 }
 
 func (arm *ARM) executeSoftwareInterrupt(opcode uint16) {

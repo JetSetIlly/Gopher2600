@@ -264,27 +264,27 @@ func NewDebugger(tv *television.Television, scr gui.GUI, term terminal.Terminal,
 	return dbg, nil
 }
 
-// VCS implementes the emulation.Emulation interface.
+// VCS implements the emulation.Emulation interface.
 func (dbg *Debugger) VCS() emulation.VCS {
 	return dbg.vcs
 }
 
-// Debugger implementes the emulation.Emulation interface.
+// Debugger implements the emulation.Emulation interface.
 func (dbg *Debugger) Debugger() emulation.Debugger {
 	return dbg
 }
 
-// UserInput implementes the emulation.Emulation interface.
+// UserInput implements the emulation.Emulation interface.
 func (dbg *Debugger) UserInput() chan userinput.Event {
 	return dbg.events.UserInput
 }
 
-// State implementes the emulation.Emulation interface.
+// State implements the emulation.Emulation interface.
 func (dbg *Debugger) State() emulation.State {
 	return dbg.state
 }
 
-// Pause implementes the emulation.Emulation interface.
+// Pause implements the emulation.Emulation interface.
 func (dbg *Debugger) Pause(set bool) {
 	if set {
 		dbg.state = emulation.Paused

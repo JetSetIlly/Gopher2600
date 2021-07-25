@@ -53,27 +53,27 @@ type playmode struct {
 	rawEvents chan func()
 }
 
-// VCS implementes the emulation.Emulation interface.
+// VCS implements the emulation.Emulation interface.
 func (pl *playmode) VCS() emulation.VCS {
 	return pl.vcs
 }
 
-// Debugger implementes the emulation.Emulation interface.
+// Debugger implements the emulation.Emulation interface.
 func (pl *playmode) Debugger() emulation.Debugger {
 	return nil
 }
 
-// UserInput implementes the emulation.Emulation interface.
+// UserInput implements the emulation.Emulation interface.
 func (pl *playmode) UserInput() chan userinput.Event {
 	return pl.userinput
 }
 
-// State implementes the emulation.Emulation interface.
+// State implements the emulation.Emulation interface.
 func (pl *playmode) State() emulation.State {
 	return pl.state
 }
 
-// Pause implementes the emulation.Emulation interface.
+// Pause implements the emulation.Emulation interface.
 func (pl *playmode) Pause(set bool) {
 	if set {
 		pl.state = emulation.Paused

@@ -500,7 +500,7 @@ func (ps *PlayerSprite) resetPosition() {
 		} else if ps.tia.hmove.Latch {
 			// HMOVE has been activated this scanline but not currently rippling.
 			//
-			// maybe surprisingly, this is comparitively unusual. many ROMs if
+			// maybe surprisingly, this is comparatively unusual. many ROMs if
 			// the reset the player during the HBLANK at all will have called
 			// HMOVE straight after the WSYNC, as advised by the Stella
 			// Programmer's Guide.

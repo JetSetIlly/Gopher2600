@@ -40,7 +40,7 @@ type DisasmEntry struct {
 	CyclesSequence string
 }
 
-// Key implements the CartCoProcDisasmEntry interface
+// Key implements the CartCoProcDisasmEntry interface.
 func (e DisasmEntry) Key() string {
 	return e.Address
 }
@@ -71,7 +71,7 @@ func (s DisasmSummary) String() string {
 	return fmt.Sprintf("N: %d  I: %d  S: %d", s.N, s.I, s.S)
 }
 
-// add cycle order information to summary
+// add cycle order information to summary.
 func (s *DisasmSummary) add(c cycleOrder) {
 	for i := 0; i < c.idx; i++ {
 		switch c.queue[i] {

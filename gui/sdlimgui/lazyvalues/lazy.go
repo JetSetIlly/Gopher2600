@@ -96,7 +96,7 @@ func NewLazyValues() *LazyValues {
 }
 
 // SetEmulationState makes sure the lazy system can respond to an emulation in
-// a parituclar state.
+// a particular state.
 func (val *LazyValues) SetEmulationState(state emulation.State) {
 	switch state {
 	case emulation.Initialising:

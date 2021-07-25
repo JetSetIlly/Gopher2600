@@ -56,7 +56,7 @@ const (
 	BranchTrailFlushed
 )
 
-// the bus activity during a cycle
+// the bus activity during a cycle.
 type busAccess int
 
 const (
@@ -72,7 +72,7 @@ func (bt busAccess) isDataAccess() bool {
 	return bt == dataRead || bt == dataWrite
 }
 
-// the type of cycle being executed
+// the type of cycle being executed.
 type cycleType rune
 
 const (
@@ -248,14 +248,14 @@ func (arm *ARM) nCycle(bus busAccess, addr uint32) {
 	}
 }
 
-// called whenever PC changes unexpectedly (by a branch instruction for example)
+// called whenever PC changes unexpectedly (by a branch instruction for example).
 func (arm *ARM) fillPipeline() {
 	arm.Ncycle(branch, arm.registers[rPC])
 	arm.Scycle(prefetch, arm.registers[rPC]+2)
 }
 
 // the cycle profile for store register type instructions is funky enough to
-// need a specialist function
+// need a specialist function.
 func (arm *ARM) storeRegisterCycles(addr uint32) {
 	arm.Ncycle(dataWrite, addr)
 	arm.prefetchCycle = N

@@ -157,7 +157,7 @@ Although if want to pass flags to the run mode you'll need to specify it.
 
 ## Hand Controllers
 
-Stick, paddle and keyboard inputs are supported. Currently, only sitck and
+Stick, paddle and keyboard inputs are supported. Currently, only stick and
 paddles for the left player are available but keyboard input is available for
 both players.
 
@@ -250,7 +250,8 @@ In playmode, the additional keys are available:
 In the debugger, the additional keys are available:
 
 * `ESC` toggle mouse capture for debugging TV screen
-* ` (backtick) start/stop emulation
+
+The `Pause` key will toggle pausing in both playmode and in the debugger
 
 ### Screenshots
 

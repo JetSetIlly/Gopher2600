@@ -39,7 +39,7 @@ type PlusROMFirstInstallation struct {
 // Note that, like the name suggests, these are requests, they may or may not
 // be satisfied depending other conditions in the GUI.
 const (
-	// set the underlying emulation for the gui
+	// set the underlying emulation for the gui.
 	ReqSetEmulation FeatureReq = "ReqSetEmulation" // emulation.Emulation
 
 	// notify GUI of emulation state. the GUI should use this to alter how
