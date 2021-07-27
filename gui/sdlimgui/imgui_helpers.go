@@ -308,7 +308,7 @@ func drawByteGrid(data []uint8, cmp []uint8, diffCol imgui.Vec4, base uint16, co
 				}
 
 				if b != c {
-					tooltipHover(fmt.Sprintf("was %02x -> is now %02x", c, b))
+					imguiTooltipSimple(fmt.Sprintf("was %02x -> is now %02x", c, b))
 				}
 
 				// undo any color changes
@@ -404,8 +404,10 @@ func (img *SdlImgui) imguiSwatch(col uint8, size float32) (clicked bool) {
 	return clicked
 }
 
-// shows toltip on hover of the previous imgui group. useful for simple tooltips.
-func tooltipHover(tooltip string) {
+// shows tooltip on hover of the previous imgui digest/group. useful for simple
+// tooltips.
+func imguiTooltipSimple(tooltip string) {
+	// split string on newline and display with seperate calls to imgui.Text()
 	tooltip = strings.TrimSpace(tooltip)
 	if tooltip != "" && imgui.IsItemHovered() {
 		s := strings.Split(tooltip, "\n")
@@ -413,6 +415,20 @@ func tooltipHover(tooltip string) {
 		for _, t := range s {
 			imgui.Text(t)
 		}
+		imgui.EndTooltip()
+	}
+}
+
+// shows tooltip that require more complex formatting than a single string.
+//
+// the hoverTest argument says that the tooltip should be displayed only
+// when the last imgui widget/group is being hovered over with the mouse. if
+// this argument is false then it implies that the decision to show the tooltip
+// has already been made by the calling function.
+func imguiTooltip(f func(), hoverTest bool) {
+	if !hoverTest || imgui.IsItemHovered() {
+		imgui.BeginTooltip()
+		f()
 		imgui.EndTooltip()
 	}
 }

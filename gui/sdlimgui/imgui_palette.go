@@ -90,13 +90,15 @@ func (pal *popupPalette) draw() {
 	}
 
 	// information bar
+	imgui.Text("Current: ")
+	imgui.SameLine()
 	imgui.Text(pal.paletteName)
 	imgui.SameLine()
 	imgui.Text(fmt.Sprintf("%02x", *pal.target))
 	imgui.SameLine()
-
-	// remove alpha component
 	imgui.Text(fmt.Sprintf("#%06x", pal.palette[*pal.target]&0x00ffffff))
+
+	imgui.Spacing()
 
 	// step through all colours in palette
 	for i := 0; i < len(pal.palette); i++ {
@@ -120,7 +122,7 @@ func (pal *popupPalette) draw() {
 	imgui.End()
 }
 
-func (pal *popupPalette) colRect(col uint8) (clicked bool) {
+func (pal *popupPalette) colRect(col uint8) bool {
 	c := pal.palette[col]
 
 	// position & dimensions of playfield bit
@@ -129,13 +131,22 @@ func (pal *popupPalette) colRect(col uint8) (clicked bool) {
 	b.X += pal.swatchSize
 	b.Y += pal.swatchSize
 
+	mp := imgui.MousePos()
+	hover := mp.X >= a.X && mp.X <= b.X && mp.Y >= a.Y && mp.Y <= b.Y
+
 	// if mouse is clicked in the range of the playfield bit
-	if imgui.IsMouseClicked(0) {
-		pos := imgui.MousePos()
-		clicked = pos.X >= a.X && pos.X <= b.X && pos.Y >= a.Y && pos.Y <= b.Y
+	clicked := hover && imgui.IsMouseClicked(0)
+
+	// tooltip
+	if hover {
+		imguiTooltip(func() {
+			imgui.Text(fmt.Sprintf("%02x", col))
+			imgui.SameLine()
+			imgui.Text(fmt.Sprintf("#%06x", c&0x00ffffff))
+		}, false)
 	}
 
-	// draw playfield bit
+	// show rectangle with color
 	dl := imgui.WindowDrawList()
 	dl.AddRectFilled(a, b, c)
 

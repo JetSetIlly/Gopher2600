@@ -163,7 +163,7 @@ func (win *winPrefs) drawARM() {
 	if imgui.Checkbox("Immediate ARM Execution", &immediate) {
 		win.img.vcs.Prefs.ARM.Immediate.Set(immediate)
 	}
-	tooltipHover("ARM program consumes no 6507 time (like Stella)\nIf this option is set the other ARM settings are irrelevant")
+	imguiTooltipSimple("ARM program consumes no 6507 time (like Stella)\nIf this option is set the other ARM settings are irrelevant")
 
 	if immediate {
 		imgui.PushItemFlag(imgui.ItemFlagsDisabled, true)
@@ -198,7 +198,7 @@ func (win *winPrefs) drawARM() {
 		imgui.EndCombo()
 	}
 	imgui.PopItemWidth()
-	tooltipHover(`The MAM state at the start of the Thumb program.
+	imguiTooltipSimple(`The MAM state at the start of the Thumb program.
 
 For most purposes, this should be set to 'Driver'. This means that the emulated driver
 for the cartridge mapper decides what the value should be.
@@ -219,7 +219,7 @@ The MAM should almost never be disabled completely.`)
 	if imgui.Checkbox("Abort on Illegal Memory Access", &abortOnIllegalMem) {
 		win.img.vcs.Prefs.ARM.AbortOnIllegalMem.Set(abortOnIllegalMem)
 	}
-	tooltipHover(`Abort thumb program on access to illegal memory. Note that the program
+	imguiTooltipSimple(`Abort thumb program on access to illegal memory. Note that the program
 will always abort if the access is a PC fetch, even if this option is not set.
 
 Illegal accesses will be logged in all instances.`)

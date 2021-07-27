@@ -141,7 +141,7 @@ func (win *winCoProcLastExecution) draw() {
 		if imgui.Button("Save CSV") {
 			win.save()
 		}
-		tooltipHover("CSV file separated by semi-colons")
+		imguiTooltipSimple("CSV file separated by semi-colons")
 
 		imgui.SameLineV(0, 15)
 		if win.showLastExecution {
@@ -201,7 +201,7 @@ func (win *winCoProcLastExecution) drawDisasm(itr *coprocessor.Iterate) {
 				imguiColorLabel("", win.img.cols.CoProcMAM2)
 				tooltip = "MAM-2"
 			}
-			tooltipHover(tooltip)
+			imguiTooltipSimple(tooltip)
 
 			imgui.TableNextColumn()
 			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmAddress)
@@ -229,12 +229,12 @@ func (win *winCoProcLastExecution) drawDisasm(itr *coprocessor.Iterate) {
 				tooltip = "Branch trail was flushed causing a pipeline stall"
 				imguiColorLabel("", win.img.cols.CoProcBranchTrailFlushed)
 			}
-			tooltipHover(tooltip)
+			imguiTooltipSimple(tooltip)
 
 			if entry.MergedIS {
 				imgui.SameLine()
 				imguiColorLabel("", win.img.cols.CoProcMergedIS)
-				tooltipHover("Merged I-S cycle")
+				imguiTooltipSimple("Merged I-S cycle")
 			}
 
 			// cycle sequence
