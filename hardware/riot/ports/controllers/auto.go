@@ -59,6 +59,10 @@ type Auto struct {
 	keyboardUnplugAttempt bool
 	keyboardUnplugTime    time.Time
 	keyboardUnplugDelay   time.Duration
+
+	// value used to compare SWACNT value with. the value is different
+	// depending on which port the controller is plugged into
+	keyboardDetectValue uint8
 }
 
 // the sensitivity values for switching between controller types.
@@ -84,6 +88,13 @@ func NewAuto(port plugging.PortID, bus ports.PeripheralBus) ports.Peripheral {
 	aut := &Auto{
 		port: port,
 		bus:  bus,
+	}
+
+	switch port {
+	case plugging.LeftPlayer:
+		aut.keyboardDetectValue = 0xf0
+	case plugging.RightPlayer:
+		aut.keyboardDetectValue = 0x0f
 	}
 
 	// a two second delay should be sufficient time to require SWACNT to be in
@@ -148,7 +159,7 @@ func (aut *Auto) HandleEvent(event ports.Event, data ports.EventData) error {
 func (aut *Auto) Update(data bus.ChipData) bool {
 	switch data.Name {
 	case "SWACNT":
-		if data.Value&0xf0 == 0xf0 {
+		if data.Value&aut.keyboardDetectValue == aut.keyboardDetectValue {
 			// attach keyboard IF NOT attached already
 			if _, ok := aut.controller.(*Keyboard); !ok {
 				aut.controller = NewKeyboard(aut.port, aut.bus)
@@ -157,7 +168,7 @@ func (aut *Auto) Update(data bus.ChipData) bool {
 				// reset keyboardUnplugAttempt if an unplug attempt has been made
 				aut.keyboardUnplugAttempt = false
 			}
-		} else if data.Value&0xf0 == 0x00 {
+		} else if data.Value&aut.keyboardDetectValue == 0x00 {
 			if _, ok := aut.controller.(*Keyboard); ok {
 				if aut.keyboardUnplugAttempt {
 					if time.Since(aut.keyboardUnplugTime) > aut.keyboardUnplugDelay {
