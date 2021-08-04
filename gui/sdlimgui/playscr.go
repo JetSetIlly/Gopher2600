@@ -253,7 +253,10 @@ func (win *playScr) render() {
 			gl.RGBA, int32(pixels.Bounds().Size().X), int32(pixels.Bounds().Size().Y), 0,
 			gl.RGBA, gl.UNSIGNED_BYTE,
 			gl.Ptr(pixels.Pix))
-	} else if win.scr.crit.stable {
+	} else {
+		// previous versions had a check for whether the screen is stable. this
+		// is wrong, we should always update the texture even when the screen
+		// is "unstable"
 		gl.BindTexture(gl.TEXTURE_2D, win.screenTexture)
 		gl.TexSubImage2D(gl.TEXTURE_2D, 0,
 			0, 0, int32(pixels.Bounds().Size().X), int32(pixels.Bounds().Size().Y),
