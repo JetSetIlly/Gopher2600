@@ -53,7 +53,7 @@ type playScr struct {
 	scaledHeight float32
 
 	// number of scanlines in current image. taken from screen but is crit section safe
-	numScanlines int
+	visibleScanlines int
 
 	// fps
 	fpsOpen  bool
@@ -118,6 +118,9 @@ func newPlayScr(img *SdlImgui) *playScr {
 }
 
 func (win *playScr) draw() {
+	win.img.screen.crit.section.Lock()
+	defer win.img.screen.crit.section.Unlock()
+
 	dl := imgui.BackgroundDrawList()
 	dl.AddImage(imgui.TextureID(win.screenTexture), win.imagePosMin, win.imagePosMax)
 
@@ -126,7 +129,7 @@ func (win *playScr) draw() {
 		select {
 		case <-win.fpsPulse.C:
 			fps, hz := win.img.tv.GetActualFPS()
-			if win.scr.crit.vsynced {
+			if win.scr.crit.frameInfo.VSynced {
 				win.fps = fmt.Sprintf("%03.2f fps", fps)
 			} else {
 				win.fps = "unsynced"
@@ -148,22 +151,17 @@ func (win *playScr) draw() {
 		imguiSeparator()
 
 		imgui.Text(fmt.Sprintf("%.1fx scaling", win.yscaling))
-		imgui.Text(fmt.Sprintf("%d visible scanlines", win.scr.crit.bottomScanline-win.scr.crit.topScanline))
+		imgui.Text(fmt.Sprintf("%d total scanlines", win.scr.crit.frameInfo.TotalScanlines))
 
-		if win.img.screen.crit.topScanline < win.img.screen.crit.spec.AtariSafeTop {
-			imgui.Text("extended screen")
-		} else {
+		if win.img.screen.crit.frameInfo.IsAtariSafe() {
 			imgui.Text("atari safe")
 		}
 
 		imguiSeparator()
 
-		win.img.screen.crit.section.Lock()
-		imgui.Text(win.img.screen.crit.spec.ID)
+		imgui.Text(win.img.screen.crit.frameInfo.Spec.ID)
 		imgui.SameLine()
 		imgui.Text(win.hz)
-
-		win.img.screen.crit.section.Unlock()
 
 		imgui.PopStyleColorV(2)
 		imgui.End()
@@ -274,7 +272,7 @@ func (win *playScr) setScaling() {
 
 	w := float32(win.scr.crit.cropPixels.Bounds().Size().X)
 	h := float32(win.scr.crit.cropPixels.Bounds().Size().Y)
-	adjW := w * pixelWidth * win.scr.crit.spec.AspectBias
+	adjW := w * pixelWidth * win.scr.crit.frameInfo.Spec.AspectBias
 
 	var scaling float32
 
@@ -304,12 +302,12 @@ func (win *playScr) setScaling() {
 	win.imagePosMax = screenRegion.Minus(win.imagePosMin)
 
 	win.yscaling = scaling
-	win.xscaling = scaling * pixelWidth * win.scr.crit.spec.AspectBias
+	win.xscaling = scaling * pixelWidth * win.scr.crit.frameInfo.Spec.AspectBias
 	win.scaledWidth = w * win.xscaling
 	win.scaledHeight = h * win.yscaling
 
-	// get numscanlines while we're in critical section
-	win.numScanlines = win.scr.crit.bottomScanline - win.scr.crit.topScanline
+	// get visibleScanlines while we're in critical section
+	win.visibleScanlines = win.scr.crit.frameInfo.VisibleBottom - win.scr.crit.frameInfo.VisibleTop
 
 	gl.BindTexture(gl.TEXTURE_2D, win.screenTexture)
 }

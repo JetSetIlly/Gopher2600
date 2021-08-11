@@ -56,7 +56,7 @@ func NewVideo(tv *television.Television) (*Video, error) {
 	l := len(dig.digest)
 
 	// allocate enough pixels for entire frame
-	dig.spec = dig.GetSpec()
+	dig.spec = dig.GetFrameInfo().Spec
 	l += ((specification.ClksScanline + 1) * (dig.spec.ScanlinesTotal + 1) * pixelDepth)
 	dig.pixels = make([]byte, l)
 
@@ -81,22 +81,22 @@ func (dig *Video) ResetDigest() {
 // digest is immune from changes to the frame resizing method used by the
 // television implementation. Changes to how the specification is flipped might
 // cause comparison failures however.
-func (dig *Video) Resize(spec specification.Spec, _, _ int) error {
-	if spec.ID == dig.spec.ID {
+func (dig *Video) Resize(current television.FrameInfo) error {
+	if current.Spec.ID == dig.spec.ID {
 		return nil
 	}
 
 	// allocate enough pixels for entire frame
-	dig.spec = spec
+	dig.spec = current.Spec
 	l := len(dig.digest)
-	l += ((specification.ClksScanline + 1) * (spec.ScanlinesTotal + 1) * pixelDepth)
+	l += ((specification.ClksScanline + 1) * (dig.spec.ScanlinesTotal + 1) * pixelDepth)
 	dig.pixels = make([]byte, l)
 
 	return nil
 }
 
 // NewFrame implements television.PixelRenderer interface.
-func (dig *Video) NewFrame(_ bool, _ bool) error {
+func (dig *Video) NewFrame(_ television.FrameInfo) error {
 	// chain fingerprints by copying the value of the last fingerprint
 	// to the head of the video data
 	n := copy(dig.pixels, dig.digest[:])

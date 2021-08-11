@@ -356,7 +356,7 @@ func (img *SdlImgui) imguiWindowQuadrant(p imgui.Vec2) imgui.Vec2 {
 
 // use appropriate palette for television spec.
 func (img *SdlImgui) imguiTVPalette() (string, packedPalette, []imgui.Vec4) {
-	switch img.lz.TV.Spec.ID {
+	switch img.lz.TV.FrameInfo.Spec.ID {
 	case "PAL":
 		return "PAL", img.cols.packedPalettePAL, img.cols.paletteNTSC
 	case "PAL60":

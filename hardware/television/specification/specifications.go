@@ -64,6 +64,11 @@ type Spec struct {
 	ID     string
 	Colors []color.RGBA
 
+	// the nominal refresh rate for the specification. this refresh rate will
+	// be produced if the actual number of scanlines per frame is the same as
+	// OptimalTotal defined below.
+	RefreshRate float32
+
 	// the number of scanlines the 2600 Programmer's guide recommends for the
 	// top/bottom parts of the screen:
 	//
@@ -71,14 +76,17 @@ type Spec struct {
 	// blank (VBLANK) lines, 192 TV picture lines, and 30 overscan lines. Atari’s
 	// research has shown that this pattern will work on all types of TV sets."
 	//
-	// the above figures are in reference to the NTSC protocol
+	// the quoted figures above are in reference to the NTSC protocol
 	ScanlinesVSync    int
-	scanlinesVBlank   int
+	ScanlinesVBlank   int
 	ScanlinesVisible  int
 	ScanlinesOverscan int
 
-	// the total number of scanlines for the entire frame is the sum of the
-	// four individual portions
+	// the optimal number of total scanlines for the entire frame. is the sum of
+	// the four regions defined above.
+	//
+	// if the actual TV frame has a different number than this then the refresh
+	// rate will not be optimal.
 	ScanlinesTotal int
 
 	// the scanline at which the VBLANK should be turned off (Top) and
@@ -97,17 +105,17 @@ type Spec struct {
 	// or
 	//
 	//	Bottom = Total - Overscan
-	AtariSafeTop    int
-	AtariSafeBottom int
+	AtariSafeVisibleTop    int
+	AtariSafeVisibleBottom int
 
 	// resizing of the TV is problematic because we can't rely on the VBLANK to
-	// tell us when the pixels are meant to be in view. The SafeTop an
+	// tell us when the pixels are meant to be in view. The NewSafeVisibleTop an
 	// SafeBottom are the min/max values that the resizer should allow.
 	//
 	// think of these as the "modern" safe values as compared to the Atari
 	// defined safe values.
-	SafeTop    int
-	SafeBottom int
+	NewSafeVisibleTop    int
+	NewSafeVisibleBottom int
 
 	// AspectBias transforms the scaling factor for the X axis. in other words,
 	// for width of every pixel is height of every pixel multiplied by the
@@ -116,9 +124,6 @@ type Spec struct {
 	// AaspectBias transforms the scaling factor for the X axis.
 	// values taken from Stella emulator. useful for A/B testing
 	AspectBias float32
-
-	// the number of frames per second required by the specification
-	FramesPerSecond float32
 }
 
 // GetColor translates a signals to the color type.
@@ -140,8 +145,8 @@ func (spec *Spec) GetColor(col signal.ColorSignal) color.RGBA {
 // to the left side of the screen, waits for the 68 horizontal blank clock
 // counts, and proceeds to draw the next line below."
 //
-// Clock counts are the same for both TV specifications. Vertical
-// information should be accessed via SpecNTSC or SpecPAL.
+// Clock counts are the same for both TV specifications. Vertical information should
+// be accessed via SpecNTSC or SpecPAL.
 const (
 	ClksHBlank   = 68
 	ClksVisible  = 160
@@ -152,6 +157,11 @@ const (
 // specification - value of 312 is the same as the total number of scanlines
 // used by the PAL specification.
 const AbsoluteMaxScanlines = 312
+
+// The number of scanlines at which to flip between the NTSC and PAL
+// specifications. If the number of scanlines generated is greater than this
+// value then the PAL specification should be assumed.
+const PALTrigger = 302
 
 // SpecNTSC is the specification for NTSC television types.
 var SpecNTSC Spec
@@ -167,53 +177,53 @@ func init() {
 		ID:                "NTSC",
 		Colors:            PaletteNTSC,
 		ScanlinesVSync:    3,
-		scanlinesVBlank:   37,
+		ScanlinesVBlank:   37,
 		ScanlinesVisible:  192,
 		ScanlinesOverscan: 30,
 		ScanlinesTotal:    262,
-		FramesPerSecond:   60.0,
+		RefreshRate:       60.0,
 		AspectBias:        0.91,
 	}
 
-	SpecNTSC.AtariSafeTop = SpecNTSC.scanlinesVBlank + SpecNTSC.ScanlinesVSync
-	SpecNTSC.AtariSafeBottom = SpecNTSC.ScanlinesTotal - SpecNTSC.ScanlinesOverscan
+	SpecNTSC.AtariSafeVisibleTop = SpecNTSC.ScanlinesVBlank + SpecNTSC.ScanlinesVSync
+	SpecNTSC.AtariSafeVisibleBottom = SpecNTSC.ScanlinesTotal - SpecNTSC.ScanlinesOverscan
 
 	SpecPAL = Spec{
 		ID:                "PAL",
 		Colors:            PalettePAL,
 		ScanlinesVSync:    3,
-		scanlinesVBlank:   45,
+		ScanlinesVBlank:   45,
 		ScanlinesVisible:  228,
 		ScanlinesOverscan: 36,
 		ScanlinesTotal:    312,
-		FramesPerSecond:   50.0,
+		RefreshRate:       50.0,
 		AspectBias:        1.09,
 	}
 
-	SpecPAL.AtariSafeTop = SpecPAL.scanlinesVBlank + SpecPAL.ScanlinesVSync
-	SpecPAL.AtariSafeBottom = SpecPAL.ScanlinesTotal - SpecPAL.ScanlinesOverscan
+	SpecPAL.AtariSafeVisibleTop = SpecPAL.ScanlinesVBlank + SpecPAL.ScanlinesVSync
+	SpecPAL.AtariSafeVisibleBottom = SpecPAL.ScanlinesTotal - SpecPAL.ScanlinesOverscan
 
 	SpecPAL60 = Spec{
 		ID:                "PAL60",
 		Colors:            PalettePAL,
 		ScanlinesVSync:    3,
-		scanlinesVBlank:   37,
+		ScanlinesVBlank:   37,
 		ScanlinesVisible:  192,
 		ScanlinesOverscan: 30,
 		ScanlinesTotal:    262,
-		FramesPerSecond:   60.0,
+		RefreshRate:       60.0,
 		AspectBias:        0.91,
 	}
 
-	SpecPAL60.AtariSafeTop = SpecPAL60.scanlinesVBlank + SpecPAL60.ScanlinesVSync
-	SpecPAL60.AtariSafeBottom = SpecPAL60.ScanlinesTotal - SpecPAL60.ScanlinesOverscan
+	SpecPAL60.AtariSafeVisibleTop = SpecPAL60.ScanlinesVBlank + SpecPAL60.ScanlinesVSync
+	SpecPAL60.AtariSafeVisibleBottom = SpecPAL60.ScanlinesTotal - SpecPAL60.ScanlinesOverscan
 
 	// Extended values:
 	// - Spike's Peak likes a bottom scanline of 250 (NTSC). this is the largest requirement I've seen.
-	SpecNTSC.SafeTop = 23
-	SpecNTSC.SafeBottom = 250
-	SpecPAL.SafeTop = 30
-	SpecPAL.SafeBottom = 299
-	SpecPAL60.SafeTop = 20
-	SpecPAL60.SafeBottom = 249
+	SpecNTSC.NewSafeVisibleTop = 23
+	SpecNTSC.NewSafeVisibleBottom = 250
+	SpecPAL.NewSafeVisibleTop = 30
+	SpecPAL.NewSafeVisibleBottom = 299
+	SpecPAL60.NewSafeVisibleTop = 20
+	SpecPAL60.NewSafeVisibleBottom = 249
 }

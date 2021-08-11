@@ -31,35 +31,31 @@ import (
 //		television.Television
 //		...
 //	}
+//
+// The most useful source of information though is the FrameInfo type supplied
+// to the PixelRenderer through the Resize() and NewFrame() functions. A
+// current copy of this information is also available from the television type
+// GetFrameInfo() function.
 type PixelRenderer interface {
 	// Resize is called when the television implementation detects that extra
 	// scanlines are required in the display.
 	//
-	// It may be called when television specification has changed. As a point
-	// of convenience a reference to the currently selected specification is
-	// provided. However, renderers should call GetSpec() rather than keeping a
-	// private pointer to the specification, if knowledge of the spec is
-	// required after the Resize() event.
-	//
-	// Renderers should use the values sent by the Resize() function, rather
-	// than the equivalent values in the specification. Unless of course, the
-	// renderer is intended to be strict about specification accuracy.
-	//
-	// Renderers should make sure that any data structures that depend on the
-	// specification being used are still adequate.
-	//
 	// Renderers must be prepared to resize to either a smaller of larger size.
-	Resize(spec specification.Spec, topScanline, bottomScanline int) error
+	//
+	// The VisibleTop and VisibleBottom fields in the FrameInfor argument,
+	// describe the top and bottom scanline that is *visible* on a normal
+	// screen. pixels outside this range that are sent by SetPixel() can be
+	// handled according to the renderers needs but would not normally be shown
+	// for game-playing purposes.
+	Resize(FrameInfo) error
 
-	// NewFrame is called at the start of a new scanline. The synced argument
-	// indicates that the new TV frame has started as result of a valid VSYNC
-	// signal.
+	// NewFrame is called at the start of a new scanline.
 	//
 	// PixelRenderer implementations should consider what to do when a
 	// non-synced frame is submitted. Rolling the screen is a good response to
 	// the non-synced frame, with the possiblity of a one or two tolerance (ie.
 	// do not roll unless the non-sync frame are continuous)
-	NewFrame(synced bool, stable bool) error
+	NewFrame(FrameInfo) error
 
 	// NewScanline is called at the start of a new scanline
 	NewScanline(scanline int) error
@@ -119,7 +115,7 @@ type PauseTrigger interface {
 // subset of PixelRenderer.
 type FrameTrigger interface {
 	// See NewFrame() comment for PixelRenderer interface.
-	NewFrame(synced bool, isStable bool) error
+	NewFrame(FrameInfo) error
 }
 
 // AudioMixer implementations work with sound; most probably playing it. An
@@ -138,11 +134,8 @@ type AudioMixer interface {
 	Reset()
 }
 
-// the maximum number of scanlines allowed by the television implementation.
-const MaxScanlinesAbsolute = 400
-
-// the number of entries in signal history.
-const MaxSignalHistory = specification.ClksScanline * MaxScanlinesAbsolute
+// MaxSignalHistory is the absolute maximum number of entries in a signal history for an entire frame.
+const MaxSignalHistory = specification.ClksScanline * specification.AbsoluteMaxScanlines
 
 // VCSReturnChannel is used to send information from the TV back to the parent
 // console. Named because I think of it as being similar to the Audio Return

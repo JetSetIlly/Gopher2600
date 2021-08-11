@@ -1085,7 +1085,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 					}
 				}
 
-				spec := dbg.tv.GetSpec()
+				spec := dbg.tv.GetFrameInfo().Spec
 				s := strings.Builder{}
 				s.WriteString(spec.ID)
 				dbg.printLine(terminal.StyleInstrument, s.String())

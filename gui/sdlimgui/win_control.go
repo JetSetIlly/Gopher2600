@@ -238,12 +238,12 @@ func (win *winControl) drawFPS() {
 		} else if win.img.lz.TV.ActualFPS > win.img.lz.TV.ReqFPS*0.95 {
 			imgui.Text("running above requested FPS")
 		}
-	} else if win.img.lz.TV.ReqFPS < win.img.lz.TV.Spec.FramesPerSecond {
-		imgui.Text(fmt.Sprintf("below %s rate of %.0f fps", win.img.lz.TV.Spec.ID, win.img.lz.TV.Spec.FramesPerSecond))
-	} else if win.img.lz.TV.ReqFPS > win.img.lz.TV.Spec.FramesPerSecond {
-		imgui.Text(fmt.Sprintf("above %s rate of %.0f fps", win.img.lz.TV.Spec.ID, win.img.lz.TV.Spec.FramesPerSecond))
+	} else if win.img.lz.TV.ReqFPS < win.img.lz.TV.FrameInfo.Spec.RefreshRate {
+		imgui.Text(fmt.Sprintf("below %s rate of %.0f fps", win.img.lz.TV.FrameInfo.Spec.ID, win.img.lz.TV.FrameInfo.Spec.RefreshRate))
+	} else if win.img.lz.TV.ReqFPS > win.img.lz.TV.FrameInfo.Spec.RefreshRate {
+		imgui.Text(fmt.Sprintf("above %s rate of %.0f fps", win.img.lz.TV.FrameInfo.Spec.ID, win.img.lz.TV.FrameInfo.Spec.RefreshRate))
 	} else {
-		imgui.Text(fmt.Sprintf("selected %s rate of %.0f fps", win.img.lz.TV.Spec.ID, win.img.lz.TV.Spec.FramesPerSecond))
+		imgui.Text(fmt.Sprintf("selected %s rate of %.0f fps", win.img.lz.TV.FrameInfo.Spec.ID, win.img.lz.TV.FrameInfo.Spec.RefreshRate))
 	}
 }
 

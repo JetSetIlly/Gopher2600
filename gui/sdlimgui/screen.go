@@ -21,6 +21,7 @@ import (
 	"sync"
 
 	"github.com/jetsetilly/gopher2600/emulation"
+	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 	"github.com/jetsetilly/gopher2600/reflection"
@@ -61,18 +62,12 @@ type screenCrit struct {
 	// critical sectioning
 	section sync.Mutex
 
+	// the most recent frameInfo information from the televsion. updated via
+	// Resize() and NewFrame()
+	frameInfo television.FrameInfo
+
 	// whether or not to sync with monitor refresh rate
 	monitorSync bool
-
-	// copy of the spec being used by the TV. the TV notifies us through the
-	// Resize() function
-	spec specification.Spec
-
-	// whether the current frame was generated from a stable television state
-	stable bool
-
-	// whether the current frame is vsynced
-	vsynced bool
 
 	// the number of consecutive unsynced frames received by NewFrame().
 	// * playmode only
@@ -92,10 +87,6 @@ type screenCrit struct {
 	//
 	// * playmode only
 	unsyncedRecoveryCt int
-
-	// current values for *playable* area of the screen
-	topScanline    int
-	bottomScanline int
 
 	// the pixels array is used in the presentation texture of the play and debug screen.
 	pixels *image.RGBA
@@ -153,7 +144,7 @@ func newScreen(img *SdlImgui) *screen {
 	scr.crit.monitorSync = true
 
 	// default to NTSC. this will change on the first instance of
-	scr.resize(specification.SpecNTSC, specification.SpecNTSC.AtariSafeTop, specification.SpecNTSC.AtariSafeBottom)
+	scr.resize(television.NewFrameInfo(specification.SpecNTSC))
 	scr.Reset()
 
 	return scr
@@ -165,7 +156,7 @@ func newScreen(img *SdlImgui) *screen {
 // called on startup and also whenever the VCS is reset, including when a new
 // cartridge is inserted.
 func (scr *screen) Reset() {
-	// we don't callresize on screen Reset
+	// we don't call resize on screen Reset
 
 	scr.crit.section.Lock()
 	defer scr.crit.section.Unlock()
@@ -176,9 +167,6 @@ func (scr *screen) Reset() {
 
 	scr.crit.lastX = 0
 	scr.crit.lastY = 0
-
-	// screen is vsynced by definition on reset
-	scr.crit.vsynced = true
 }
 
 // clear all pixel information including reflection data.
@@ -213,43 +201,41 @@ func (scr *screen) clearPixels() {
 }
 
 // resize() is called by Resize() and by NewScreen().
-func (scr *screen) resize(spec specification.Spec, topScanline int, bottomScanline int) {
+func (scr *screen) resize(frameInfo television.FrameInfo) {
 	scr.crit.section.Lock()
 	defer scr.crit.section.Unlock()
 
 	// do nothing if resize values are the same as previously
-	if scr.crit.spec.ID == spec.ID && scr.crit.topScanline == topScanline && scr.crit.bottomScanline == bottomScanline {
+	if scr.crit.frameInfo.Spec.ID == frameInfo.Spec.ID &&
+		scr.crit.frameInfo.VisibleTop == frameInfo.VisibleTop &&
+		scr.crit.frameInfo.VisibleBottom == frameInfo.VisibleBottom {
 		return
 	}
 
-	scr.crit.spec = spec
-	scr.crit.topScanline = topScanline
-	scr.crit.bottomScanline = bottomScanline
+	scr.crit.frameInfo = frameInfo
 
-	// the total number scanlines we going to have is the number total number
-	// of scanlines in the screen spec +1. the additional one is so that
-	// scalines with the VSYNC on show up on the uncropped screen. this is
-	// particularly important if we want the cursor to be visible.
-	totalScanlines := spec.ScanlinesTotal + 1
-
-	scr.crit.pixels = image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, totalScanlines))
-	scr.crit.elementPixels = image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, totalScanlines))
-	scr.crit.overlayPixels = image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, totalScanlines))
+	// reallocate memory for new spec. the amount of vertical space is the
+	// MaxScanlines value. the +1 is so that we can draw the debugging cursor
+	// at the limit of the screen.
+	sl := scr.crit.frameInfo.Spec.ScanlinesTotal + 1
+	scr.crit.pixels = image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, sl))
+	scr.crit.elementPixels = image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, sl))
+	scr.crit.overlayPixels = image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, sl))
 
 	for i := range scr.crit.bufferPixels {
-		scr.crit.bufferPixels[i] = image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, totalScanlines))
+		scr.crit.bufferPixels[i] = image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, sl))
 	}
 
 	// allocate reflection info
 	scr.crit.reflection = make([][]reflection.VideoStep, specification.ClksScanline)
 	for x := 0; x < specification.ClksScanline; x++ {
-		scr.crit.reflection[x] = make([]reflection.VideoStep, totalScanlines)
+		scr.crit.reflection[x] = make([]reflection.VideoStep, sl)
 	}
 
 	// create a cropped image from the main
 	crop := image.Rect(
-		specification.ClksHBlank, scr.crit.topScanline,
-		specification.ClksHBlank+specification.ClksVisible, scr.crit.bottomScanline,
+		specification.ClksHBlank, scr.crit.frameInfo.VisibleTop,
+		specification.ClksHBlank+specification.ClksVisible, scr.crit.frameInfo.VisibleBottom,
 	)
 	scr.crit.cropPixels = scr.crit.pixels.SubImage(crop).(*image.RGBA)
 	scr.crit.cropElementPixels = scr.crit.elementPixels.SubImage(crop).(*image.RGBA)
@@ -272,9 +258,9 @@ func (scr *screen) resize(spec specification.Spec, topScanline int, bottomScanli
 // to make sure that the screen specification is accurate.
 //
 // MUST NOT be called from the gui thread.
-func (scr *screen) Resize(spec specification.Spec, topScanline int, bottomScanline int) error {
+func (scr *screen) Resize(frameInfo television.FrameInfo) error {
 	scr.img.polling.service <- func() {
-		scr.resize(spec, topScanline, bottomScanline)
+		scr.resize(frameInfo)
 		scr.img.polling.serviceErr <- nil
 	}
 	return <-scr.img.polling.serviceErr
@@ -283,17 +269,16 @@ func (scr *screen) Resize(spec specification.Spec, topScanline int, bottomScanli
 // NewFrame implements the television.PixelRenderer interface
 //
 // MUST NOT be called from the gui thread.
-func (scr *screen) NewFrame(vsynced bool, stable bool) error {
+func (scr *screen) NewFrame(frameInfo television.FrameInfo) error {
 	// unlocking must be done carefully
 	scr.crit.section.Lock()
 
-	scr.crit.stable = stable
-	scr.crit.vsynced = vsynced
+	scr.crit.frameInfo = frameInfo
 
 	if scr.img.isPlaymode() {
 		// check screen rolling if crtprefs are enabled
 		if scr.img.crtPrefs.Enabled.Get().(bool) {
-			if vsynced {
+			if scr.crit.frameInfo.VSynced {
 				scr.crit.unsyncedCt = 0
 
 				// recovery required
@@ -310,7 +295,7 @@ func (scr *screen) NewFrame(vsynced bool, stable bool) error {
 				// without the stable check, the screen can desync and recover
 				// from a roll on startup on most ROMs, which looks quite cool but
 				// we'll leave it disabled for now.
-				if stable {
+				if scr.crit.frameInfo.Stable {
 					scr.crit.unsyncedCt++
 					if scr.crit.unsyncedCt > scr.img.crtPrefs.UnsyncTolerance.Get().(int) {
 						scr.crit.unsyncedScanline = (scr.crit.unsyncedScanline + scr.crit.lastY) % specification.AbsoluteMaxScanlines
@@ -395,7 +380,7 @@ func (scr *screen) SetPixel(sig signal.SignalAttributes, current bool) error {
 
 	// handle VBLANK by setting pixels to black
 	if !sig.VBlank {
-		col = scr.crit.spec.GetColor(sig.Pixel)
+		col = scr.crit.frameInfo.Spec.GetColor(sig.Pixel)
 	}
 
 	if current {
@@ -405,7 +390,7 @@ func (scr *screen) SetPixel(sig signal.SignalAttributes, current bool) error {
 
 	// if sig is outside the bounds of the image then the SetRGBA() will silently fail
 
-	adjustedScanline := (sig.Scanline + scr.crit.unsyncedScanline) % scr.crit.spec.ScanlinesTotal
+	adjustedScanline := (sig.Scanline + scr.crit.unsyncedScanline) % scr.crit.frameInfo.Spec.ScanlinesTotal
 	scr.crit.bufferPixels[scr.crit.plotIdx].SetRGBA(sig.Clock, adjustedScanline, col)
 
 	return nil
@@ -422,7 +407,7 @@ func (scr *screen) SetPixels(sig []signal.SignalAttributes, current bool) error 
 	var col color.RGBA
 
 	offset := sig[0].Clock * 4
-	adjustedScanline := (sig[0].Scanline + scr.crit.unsyncedScanline) % scr.crit.spec.ScanlinesTotal
+	adjustedScanline := (sig[0].Scanline + scr.crit.unsyncedScanline) % scr.crit.frameInfo.Spec.ScanlinesTotal
 	offset += adjustedScanline * scr.crit.bufferPixels[scr.crit.plotIdx].Rect.Size().X * 4
 
 	for i := range sig[0:] {
@@ -434,7 +419,7 @@ func (scr *screen) SetPixels(sig []signal.SignalAttributes, current bool) error 
 		if sig[i].VBlank {
 			col = color.RGBA{R: 0, G: 0, B: 0}
 		} else {
-			col = scr.crit.spec.GetColor(sig[i].Pixel)
+			col = scr.crit.frameInfo.Spec.GetColor(sig[i].Pixel)
 		}
 
 		scr.crit.bufferPixels[scr.crit.plotIdx].Pix[offset] = col.R
@@ -571,63 +556,65 @@ func (scr *screen) copyPixelsPlaymode() {
 	scr.crit.section.Lock()
 	defer scr.crit.section.Unlock()
 
-	if scr.img.state == emulation.Paused {
-		// when emulation is paused we alternate which frame to show. this
-		// simple technique means that two-frame flicker kernels will show a
-		// still image that looks natural.
-		//
-		// it does mean that for three-frame flicker kernels and single frame
-		// kernels are sub-optimal but I think this is better than allowing a
-		// flicker kernel to show only half the pixels necessary to show a
-		// natural image.
-		if scr.crit.pauseFrame {
-			copy(scr.crit.pixels.Pix, scr.crit.bufferPixels[scr.crit.renderIdx].Pix)
+	if scr.crit.frameInfo.Stable {
+		if scr.img.state == emulation.Paused {
+			// when emulation is paused we alternate which frame to show. this
+			// simple technique means that two-frame flicker kernels will show a
+			// still image that looks natural.
+			//
+			// it does mean that for three-frame flicker kernels and single frame
+			// kernels are sub-optimal but I think this is better than allowing a
+			// flicker kernel to show only half the pixels necessary to show a
+			// natural image.
+			if scr.crit.pauseFrame {
+				copy(scr.crit.pixels.Pix, scr.crit.bufferPixels[scr.crit.renderIdx].Pix)
+			} else {
+				copy(scr.crit.pixels.Pix, scr.crit.bufferPixels[scr.crit.prevRenderIdx].Pix)
+			}
+			scr.crit.pauseFrame = !scr.crit.pauseFrame
+			return
 		} else {
-			copy(scr.crit.pixels.Pix, scr.crit.bufferPixels[scr.crit.prevRenderIdx].Pix)
-		}
-		scr.crit.pauseFrame = !scr.crit.pauseFrame
-		return
-	} else {
-		// attempt to sync frame generation with monitor refresh rate
-		if scr.crit.monitorSync {
-			// advance render index
-			scr.crit.prevRenderIdx = scr.crit.renderIdx
-			scr.crit.renderIdx++
-			if scr.crit.renderIdx >= len(scr.crit.bufferPixels) {
-				scr.crit.renderIdx = 0
-			}
-
-			// render index has bumped into the plotting index. revert render index
-			if scr.crit.renderIdx == scr.crit.plotIdx {
-				// ** emulation not keeping up with screen update **
-
-				// undo frame advancement. in earlier versions of the code we
-				// reduced the renderIdx by two, having the effect of reusing not
-				// the previous frame, but the frame before that.
-				//
-				// it was thought that this would help out the displaying of
-				// two-frame flicker kernels. which it did, but in some cases that
-				// could result in stuttering of moving sprites. it was
-				// particularly bad if the FPS of the ROM was below the refresh
-				// rate of the monitor.
-				//
-				// a good example of this is the introductory scroller in the demo
-				// Ataventure (by KK of DMA). a scroller that updates every frame
-				// at 50fps and causes very noticeable side-effects on a 60Hz
-				// monitor.
-
-				// by undoing the frame advancement however, we will cause the
-				// prevRenderIdx to be the same as the renderIdx, which will cause
-				// an ineffective pause screen for flicker kernels. remedy this by
-				// simply swapping the current and previous index values
-				t := scr.crit.prevRenderIdx
+			// attempt to sync frame generation with monitor refresh rate
+			if scr.crit.monitorSync {
+				// advance render index
 				scr.crit.prevRenderIdx = scr.crit.renderIdx
-				scr.crit.renderIdx = t
-			}
-		}
+				scr.crit.renderIdx++
+				if scr.crit.renderIdx >= len(scr.crit.bufferPixels) {
+					scr.crit.renderIdx = 0
+				}
 
-		// copy pixels from render buffer to the live copy.
-		copy(scr.crit.pixels.Pix, scr.crit.bufferPixels[scr.crit.renderIdx].Pix)
+				// render index has bumped into the plotting index. revert render index
+				if scr.crit.renderIdx == scr.crit.plotIdx {
+					// ** emulation not keeping up with screen update **
+
+					// undo frame advancement. in earlier versions of the code we
+					// reduced the renderIdx by two, having the effect of reusing not
+					// the previous frame, but the frame before that.
+					//
+					// it was thought that this would help out the displaying of
+					// two-frame flicker kernels. which it did, but in some cases that
+					// could result in stuttering of moving sprites. it was
+					// particularly bad if the FPS of the ROM was below the refresh
+					// rate of the monitor.
+					//
+					// a good example of this is the introductory scroller in the demo
+					// Ataventure (by KK of DMA). a scroller that updates every frame
+					// at 50fps and causes very noticeable side-effects on a 60Hz
+					// monitor.
+
+					// by undoing the frame advancement however, we will cause the
+					// prevRenderIdx to be the same as the renderIdx, which will cause
+					// an ineffective pause screen for flicker kernels. remedy this by
+					// simply swapping the current and previous index values
+					t := scr.crit.prevRenderIdx
+					scr.crit.prevRenderIdx = scr.crit.renderIdx
+					scr.crit.renderIdx = t
+				}
+			}
+
+			// copy pixels from render buffer to the live copy.
+			copy(scr.crit.pixels.Pix, scr.crit.bufferPixels[scr.crit.renderIdx].Pix)
+		}
 	}
 
 	// let the emulator thread know it's okay to continue as soon as possible

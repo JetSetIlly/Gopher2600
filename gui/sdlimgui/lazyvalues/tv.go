@@ -18,15 +18,15 @@ package lazyvalues
 import (
 	"sync/atomic"
 
+	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
-	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 )
 
 // LazyTV lazily accesses tv information from the emulator.
 type LazyTV struct {
 	val *LazyValues
 
-	spec       atomic.Value // television.Spec
+	frameInfo  atomic.Value // television.Actual
 	tvStr      atomic.Value // string
 	lastSignal atomic.Value // television.SignalAttributes
 	frame      atomic.Value // int
@@ -36,7 +36,7 @@ type LazyTV struct {
 	actualFPS  atomic.Value // float32
 	reqFPS     atomic.Value // float32
 
-	Spec       specification.Spec
+	FrameInfo  television.FrameInfo
 	TVstr      string
 	LastSignal signal.SignalAttributes
 	Frame      int
@@ -52,7 +52,7 @@ func newLazyTV(val *LazyValues) *LazyTV {
 }
 
 func (lz *LazyTV) push() {
-	lz.spec.Store(lz.val.vcs.TV.GetSpec())
+	lz.frameInfo.Store(lz.val.vcs.TV.GetFrameInfo())
 	lz.tvStr.Store(lz.val.vcs.TV.String())
 	lz.lastSignal.Store(lz.val.vcs.TV.GetLastSignal())
 
@@ -73,7 +73,7 @@ func (lz *LazyTV) push() {
 }
 
 func (lz *LazyTV) update() {
-	lz.Spec, _ = lz.spec.Load().(specification.Spec)
+	lz.FrameInfo, _ = lz.frameInfo.Load().(television.FrameInfo)
 	lz.TVstr, _ = lz.tvStr.Load().(string)
 	lz.LastSignal, _ = lz.lastSignal.Load().(signal.SignalAttributes)
 	lz.Frame, _ = lz.frame.Load().(int)

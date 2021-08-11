@@ -200,7 +200,7 @@ func (win *winDbgScr) draw() {
 		// adjust if image cropped or crt preview is active
 		if win.cropped || win.crtPreview {
 			win.mouseClock += specification.ClksHBlank
-			win.mouseScanline += win.scr.crit.topScanline
+			win.mouseScanline += win.scr.crit.frameInfo.VisibleTop
 		}
 	}
 
@@ -325,7 +325,7 @@ func (win *winDbgScr) draw() {
 
 func (win *winDbgScr) drawSpecCombo() {
 	imgui.PushItemWidth(win.specComboDim.X + imgui.FrameHeight())
-	if imgui.BeginComboV("##spec", win.img.lz.TV.Spec.ID, imgui.ComboFlagsNone) {
+	if imgui.BeginComboV("##spec", win.img.lz.TV.FrameInfo.Spec.ID, imgui.ComboFlagsNone) {
 		for _, s := range specification.SpecList {
 			if imgui.Selectable(s) {
 				win.img.term.pushCommand(fmt.Sprintf("TV SPEC %s", s))
@@ -362,7 +362,7 @@ func (win *winDbgScr) drawCoordsLine() {
 	imgui.Text(win.img.lz.TV.LastSignal.String())
 
 	// unsynced
-	if !win.scr.crit.vsynced {
+	if !win.scr.crit.frameInfo.VSynced {
 		imgui.SameLineV(0, 20)
 		imgui.Text("UNSYNCED")
 	}
@@ -660,7 +660,7 @@ func (win *winDbgScr) setScaling() {
 		w = float32(win.scr.crit.pixels.Bounds().Size().X)
 		h = float32(win.scr.crit.pixels.Bounds().Size().Y)
 	}
-	adjW := w * pixelWidth * win.scr.crit.spec.AspectBias
+	adjW := w * pixelWidth * win.scr.crit.frameInfo.Spec.AspectBias
 
 	var scaling float32
 
@@ -686,10 +686,10 @@ func (win *winDbgScr) setScaling() {
 	}
 
 	win.yscaling = scaling
-	win.xscaling = scaling * pixelWidth * win.scr.crit.spec.AspectBias
+	win.xscaling = scaling * pixelWidth * win.scr.crit.frameInfo.Spec.AspectBias
 	win.scaledWidth = w * win.xscaling
 	win.scaledHeight = h * win.yscaling
 
 	// get numscanlines while we're in critical section
-	win.numScanlines = win.scr.crit.bottomScanline - win.scr.crit.topScanline
+	win.numScanlines = win.scr.crit.frameInfo.VisibleBottom - win.scr.crit.frameInfo.VisibleTop
 }

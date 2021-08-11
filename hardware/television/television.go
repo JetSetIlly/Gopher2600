@@ -28,21 +28,16 @@ import (
 // the number of synced frames where we can expect things to be in flux.
 const leadingFrames = 1
 
-// the number of synced frames required before the tv is considered to be "stable".
-// once the tv is stable then PAL switching or resizing cannot happen. this is
-// particularly important for ROMs that allow its program to run without any
-// VSYNC, such as Andrew Davie's 3e+ chess ROMs.
+// the number of synced frames required before the tv is considered to be
+// "stable". once the tv is stable then specification switching cannot happen.
 const stabilityThreshold = 5
-
-// the number of scanlines at which to flip to the PAL specification.
-const palTrigger = 302
 
 // State encapsulates the television values that can change from moment to
 // moment. Used by the rewind system when recording the current television
 // state.
 type State struct {
-	// television specification (NTSC or PAL)
-	spec specification.Spec
+	// the FrameInfo for the current frame
+	frameInfo FrameInfo
 
 	// auto flag indicates that the tv type/specification should switch if it
 	// appears to be outside of the current spec.
@@ -61,14 +56,12 @@ type State struct {
 	//	- the current scanline number
 	scanline int
 
-	// the number of frames that have been formed in sequence because of a
-	// "synced frame". we use this to decide:
+	// the number of consistent frames seen after reset. once the count reaches
+	// stabilityThreshold then Stable flag in the FrameInfo type is set to
+	// true.
 	//
-	//   * whether the image is "stable"
-	//   * whether specification changes should still occur
-	//
-	// once stableFrames has reached the stabilityThreshold then it is never
-	// reset to zero (except through an explicit call to Reset()).
+	// once stableFrames reaches stabilityThreshold it is never reset except by
+	// an explicit call to Reset()
 	stableFrames int
 
 	// record of signal attributes from the last call to Signal()
@@ -77,13 +70,6 @@ type State struct {
 	// vsyncCount records the number of consecutive clocks the VSYNC signal
 	// has been sustained. we use this to help correctly implement vsync.
 	vsyncCount int
-
-	// the current frame was started as a result of a valid VSYNC signal
-	vsyncedFrame bool
-
-	// top and bottom of screen as detected by vblank/color signal
-	top    int
-	bottom int
 
 	// frame resizer
 	resizer resizer
@@ -186,7 +172,7 @@ func NewTelevision(spec string) (*Television, error) {
 		return nil, err
 	}
 
-	logger.Logf("television", "using %s specification", tv.state.spec.ID)
+	logger.Logf("television", "using %s specification", tv.state.frameInfo.Spec.ID)
 
 	// empty list of renderers
 	tv.renderers = make([]PixelRenderer, 0)
@@ -215,7 +201,6 @@ func (tv *Television) Reset(keepFrameNum bool) error {
 	tv.state.scanline = 0
 	tv.state.stableFrames = 0
 	tv.state.vsyncCount = 0
-	tv.state.vsyncedFrame = false
 	tv.state.lastSignal = signal.SignalAttributes{}
 
 	for i := range tv.signals {
@@ -227,10 +212,10 @@ func (tv *Television) Reset(keepFrameNum bool) error {
 	if tv.state.auto {
 		tv.SetSpec("AUTO")
 	} else {
-		tv.SetSpec(tv.state.spec.ID)
+		tv.SetSpec(tv.state.frameInfo.Spec.ID)
 	}
 
-	logger.Logf("television", "using %s specification", tv.state.spec.ID)
+	logger.Logf("television", "using %s specification", tv.state.frameInfo.Spec.ID)
 
 	for _, m := range tv.mixers {
 		m.Reset()
@@ -255,7 +240,7 @@ func (tv *Television) PlumbState(vcs VCSReturnChannel, s *State) {
 	// make sure vcs knows about current spec
 	tv.vcs = vcs
 	if tv.vcs != nil {
-		_ = tv.vcs.SetClockSpeed(tv.state.spec.ID)
+		_ = tv.vcs.SetClockSpeed(tv.state.frameInfo.Spec.ID)
 	}
 
 	// reset signal history
@@ -264,7 +249,7 @@ func (tv *Television) PlumbState(vcs VCSReturnChannel, s *State) {
 
 	// resize renderers to match current state
 	for _, r := range tv.renderers {
-		_ = r.Resize(tv.state.spec, tv.state.top, tv.state.bottom)
+		_ = r.Resize(tv.state.frameInfo)
 	}
 }
 
@@ -274,7 +259,7 @@ func (tv *Television) AttachVCS(vcs VCSReturnChannel) {
 
 	// notify the newly attached console of the current TV spec
 	if tv.vcs != nil {
-		tv.vcs.SetClockSpeed(tv.state.spec.ID)
+		tv.vcs.SetClockSpeed(tv.state.frameInfo.Spec.ID)
 	}
 }
 
@@ -344,7 +329,7 @@ func (tv *Television) Signal(sig signal.SignalAttributes) error {
 		tv.state.scanline++
 
 		// reached end of screen without VSYNC sequence
-		if tv.state.scanline > tv.state.spec.ScanlinesTotal {
+		if tv.state.scanline > tv.state.frameInfo.Spec.ScanlinesTotal {
 			// fly-back naturally if VBlank is off. a good example of a ROM
 			// that requires correct handling of this is Andrew Davies' Chess
 			// (3e+ test rom)
@@ -446,29 +431,45 @@ func (tv *Television) newScanline() error {
 // the fromVsync arguments is true if a valid VSYNC signal has been detected. a
 // value of false means the frame flyback is unsynced.
 func (tv *Television) newFrame(fromVsync bool) error {
-	// update frame rate based on recent TV signal
-	hzChanged := tv.lmtr.update(tv.state.scanline)
+	tv.state.frameInfo.VSynced = fromVsync
 
-	// a synced frame is one which was generated from a valid VSYNC/VBLANK
-	// sequence and which hasn't cause the update frequency of the television
-	// to change.
-	tv.state.vsyncedFrame = fromVsync && !hzChanged
+	// update refresh rate
+	if tv.state.scanline != tv.state.frameInfo.TotalScanlines {
+		tv.state.frameInfo.TotalScanlines = tv.state.scanline
+		tv.state.frameInfo.RefreshRate = 15734.26 / float32(tv.state.frameInfo.TotalScanlines)
+
+		tv.lmtr.setRefreshRate(tv.state.frameInfo.RefreshRate)
+
+		// if the refresh rate has changed then by definition the frame is not VSynced
+		tv.state.frameInfo.VSynced = false
+	}
 
 	// increase or reset stable frame count as required
 	if tv.state.stableFrames <= stabilityThreshold {
-		if tv.state.vsyncedFrame {
+		if tv.state.frameInfo.VSynced {
 			tv.state.stableFrames++
+			tv.state.frameInfo.Stable = tv.state.stableFrames >= stabilityThreshold
 		} else {
 			tv.state.stableFrames = 0
+			tv.state.frameInfo.Stable = false
 		}
 	}
 
-	// specification change from NTSC to PAL
-	if tv.state.spec.ID == specification.SpecNTSC.ID {
-		if tv.state.stableFrames > leadingFrames && tv.state.stableFrames < stabilityThreshold {
-			if tv.state.auto && tv.state.scanline > palTrigger {
+	// specification change between NTSC and PAL. PAL60 is treated the same as NTSC in this instance
+	if tv.state.stableFrames > leadingFrames && tv.state.stableFrames < stabilityThreshold {
+		switch tv.state.frameInfo.Spec.ID {
+		case specification.SpecPAL60.ID:
+			fallthrough
+		case specification.SpecNTSC.ID:
+			if tv.state.auto && tv.state.scanline > specification.PALTrigger {
 				logger.Logf("television", "auto switching to PAL")
 				_ = tv.SetSpec("PAL")
+			}
+
+		case specification.SpecPAL.ID:
+			if tv.state.auto && tv.state.scanline <= specification.PALTrigger {
+				logger.Logf("television", "auto switching to NTSC")
+				_ = tv.SetSpec("NTSC")
 			}
 		}
 	}
@@ -499,7 +500,7 @@ func (tv *Television) newFrame(fromVsync bool) error {
 	for _, r := range tv.frameTriggers {
 		// notifiying the FrameTrigger of whether the frame is synced or not
 		// depends on the tolerance of the television
-		err := r.NewFrame(tv.state.vsyncedFrame, tv.IsStable())
+		err := r.NewFrame(tv.state.frameInfo)
 		if err != nil {
 			return err
 		}
@@ -571,12 +572,6 @@ func (tv *Television) processSignals(current bool) error {
 	return nil
 }
 
-// IsStable returns true if the television thinks the image being sent by
-// the VCS is stable.
-func (tv *Television) IsStable() bool {
-	return tv.state.stableFrames >= stabilityThreshold
-}
-
 // GetLastSignal Returns a copy of the most SignalAttributes sent to the TV
 // (via the Signal() function).
 func (tv *Television) GetLastSignal() signal.SignalAttributes {
@@ -608,32 +603,30 @@ func (tv *Television) SetSpecConditional(spec string) error {
 func (tv *Television) SetSpec(spec string) error {
 	switch strings.ToUpper(spec) {
 	case "NTSC":
-		tv.state.spec = specification.SpecNTSC
+		tv.state.frameInfo = NewFrameInfo(specification.SpecNTSC)
 		tv.state.auto = false
 	case "PAL":
-		tv.state.spec = specification.SpecPAL
+		tv.state.frameInfo = NewFrameInfo(specification.SpecPAL)
 		tv.state.auto = false
 	case "PAL60":
-		tv.state.spec = specification.SpecPAL60
+		tv.state.frameInfo = NewFrameInfo(specification.SpecPAL60)
 		tv.state.auto = false
 	case "":
 		// the empty string is treated like AUTO
 		fallthrough
 	case "AUTO":
-		tv.state.spec = specification.SpecNTSC
+		tv.state.frameInfo = NewFrameInfo(specification.SpecNTSC)
 		tv.state.auto = true
 	default:
 		return curated.Errorf("television: unsupported spec (%s)", spec)
 	}
 
-	tv.state.top = tv.state.spec.AtariSafeTop
-	tv.state.bottom = tv.state.spec.AtariSafeBottom
 	tv.state.resizer.initialise(tv)
-	tv.lmtr.setRate(tv.state.spec.FramesPerSecond)
-	tv.lmtr.update(tv.state.spec.ScanlinesTotal)
+	tv.lmtr.setRefreshRate(tv.state.frameInfo.Spec.RefreshRate)
+	tv.lmtr.setRate(tv.state.frameInfo.Spec.RefreshRate)
 
 	for _, r := range tv.renderers {
-		err := r.Resize(tv.state.spec, tv.state.top, tv.state.bottom)
+		err := r.Resize(tv.state.frameInfo)
 		if err != nil {
 			return err
 		}
@@ -645,17 +638,6 @@ func (tv *Television) SetSpec(spec string) error {
 	}
 
 	return nil
-}
-
-// GetReqSpecID returns the specification that was requested on creation.
-func (tv *Television) GetReqSpecID() string {
-	return tv.reqSpecID
-}
-
-// GetSpec returns the television's current specification. Renderers should use
-// GetSpec() rather than keeping a private pointer to the specification.
-func (tv *Television) GetSpec() specification.Spec {
-	return tv.state.spec
 }
 
 // Pause indicates that emulation has been paused. All unpushed pixels will be
@@ -713,7 +695,18 @@ func (tv *Television) GetReqFPS() float32 {
 //
 // IS goroutine safe.
 func (tv *Television) GetActualFPS() (float32, float32) {
-	return tv.lmtr.actual.Load().(float32), tv.lmtr.hz.Load().(float32)
+	return tv.lmtr.actual.Load().(float32), tv.state.frameInfo.RefreshRate
+}
+
+// GetReqSpecID returns the specification that was requested on creation.
+func (tv *Television) GetReqSpecID() string {
+	return tv.reqSpecID
+}
+
+// GetFrameInfo returns the television's current frame information. FPS and
+// RefreshRate is returned by GetReqFPS()
+func (tv *Television) GetFrameInfo() FrameInfo {
+	return tv.state.frameInfo
 }
 
 // ReqAdjust requests the frame, scanline and clock values where the requested
@@ -749,11 +742,11 @@ func (tv *Television) ReqAdjust(request signal.StateAdj, adjustment int, reset b
 			clock += specification.ClksScanline
 			scanline--
 		}
-		if scanline > tv.state.bottom {
-			scanline -= tv.state.bottom
+		if scanline > tv.state.frameInfo.VisibleBottom {
+			scanline -= tv.state.frameInfo.VisibleBottom
 			frame++
 		} else if scanline < 0 {
-			scanline += tv.state.bottom
+			scanline += tv.state.frameInfo.VisibleBottom
 			frame--
 		}
 		if frame < 0 {
@@ -774,11 +767,11 @@ func (tv *Television) ReqAdjust(request signal.StateAdj, adjustment int, reset b
 			clock = 0
 		}
 		scanline += adjustment
-		if scanline > tv.state.bottom {
-			scanline -= tv.state.bottom
+		if scanline > tv.state.frameInfo.VisibleBottom {
+			scanline -= tv.state.frameInfo.VisibleBottom
 			frame++
 		} else if scanline < 0 {
-			scanline += tv.state.bottom
+			scanline += tv.state.frameInfo.VisibleBottom
 			frame--
 		}
 		if frame < 0 {

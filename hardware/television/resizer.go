@@ -91,10 +91,10 @@ type resizer struct {
 
 // set resizer's top/bottom values to equal tv top/bottom values.
 func (sr *resizer) initialise(tv *Television) {
-	sr.vblankTop = tv.state.top
-	sr.vblankBottom = tv.state.bottom
-	sr.pendingTop = tv.state.top
-	sr.pendingBottom = tv.state.bottom
+	sr.vblankTop = tv.state.frameInfo.VisibleTop
+	sr.vblankBottom = tv.state.frameInfo.VisibleBottom
+	sr.pendingTop = tv.state.frameInfo.VisibleTop
+	sr.pendingBottom = tv.state.frameInfo.VisibleBottom
 }
 
 func (sr *resizer) examine(tv *Television, sig signal.SignalAttributes) {
@@ -103,7 +103,7 @@ func (sr *resizer) examine(tv *Television, sig signal.SignalAttributes) {
 	// the best example of this is Andrew Davie's chess which simply does
 	// not care about frames during the computer's thinking time - we don't
 	// want to resize during these frames.
-	if !tv.state.vsyncedFrame {
+	if !tv.state.frameInfo.VSynced {
 		// reset any pending changes on an unsynced frame
 		tv.state.resizer.pendingCt = 0
 		sr.pendingTop = sr.vblankTop
@@ -128,9 +128,9 @@ func (sr *resizer) examine(tv *Television, sig signal.SignalAttributes) {
 		// is too conservative but equally we don't ever want the entire screen
 		// to be visible. the new safetop and safebottom values are defined in
 		// our TV specifications.
-		if tv.state.scanline < sr.vblankTop && tv.state.scanline >= tv.state.spec.SafeTop {
+		if tv.state.scanline < sr.vblankTop && tv.state.scanline >= tv.state.frameInfo.Spec.NewSafeVisibleTop {
 			sr.vblankTop = tv.state.scanline
-		} else if tv.state.scanline > sr.vblankBottom && tv.state.scanline <= tv.state.spec.SafeBottom {
+		} else if tv.state.scanline > sr.vblankBottom && tv.state.scanline <= tv.state.frameInfo.Spec.NewSafeVisibleBottom {
 			sr.vblankBottom = tv.state.scanline
 		}
 	}
@@ -139,9 +139,9 @@ func (sr *resizer) examine(tv *Television, sig signal.SignalAttributes) {
 	// non-black pixels. these values are using in the commit() function in the
 	// event that framsHasVblank is false.
 	if tv.state.clock > specification.ClksHBlank && !sig.VBlank && sig.Pixel > 0 {
-		if tv.state.scanline < sr.blackTop && tv.state.scanline >= tv.state.spec.SafeTop {
+		if tv.state.scanline < sr.blackTop && tv.state.scanline >= tv.state.frameInfo.Spec.NewSafeVisibleTop {
 			sr.blackTop = tv.state.scanline
-		} else if tv.state.scanline > sr.blackBottom && tv.state.scanline <= tv.state.spec.SafeBottom {
+		} else if tv.state.scanline > sr.blackBottom && tv.state.scanline <= tv.state.frameInfo.Spec.NewSafeVisibleBottom {
 			sr.blackBottom = tv.state.scanline
 		}
 	}
@@ -171,10 +171,10 @@ func (sr *resizer) commit(tv *Television) error {
 	// make sure candidate top and bottom value are equal to stable top/bottom
 	// at beginning of a frame
 	defer func() {
-		sr.vblankTop = tv.state.top
-		sr.vblankBottom = tv.state.bottom
-		sr.blackTop = tv.state.top
-		sr.blackBottom = tv.state.bottom
+		sr.vblankTop = tv.state.frameInfo.VisibleTop
+		sr.vblankBottom = tv.state.frameInfo.VisibleBottom
+		sr.blackTop = tv.state.frameInfo.VisibleTop
+		sr.blackBottom = tv.state.frameInfo.VisibleBottom
 		sr.frameHasVBlank = false
 	}()
 
@@ -210,7 +210,7 @@ func (sr *resizer) commit(tv *Television) error {
 
 	// if pending top/bottom find themselves back at the stable top/bottom
 	// values then there is no need to do anything.
-	if sr.pendingTop == tv.state.top && sr.pendingBottom == tv.state.bottom {
+	if sr.pendingTop == tv.state.frameInfo.VisibleTop && sr.pendingBottom == tv.state.frameInfo.VisibleBottom {
 		sr.pendingCt = 0
 		return nil
 	}
@@ -224,12 +224,12 @@ func (sr *resizer) commit(tv *Television) error {
 	}
 
 	// return if there's nothing to do
-	if sr.pendingBottom == tv.state.bottom && sr.pendingBottom == tv.state.top {
+	if sr.pendingBottom == tv.state.frameInfo.VisibleBottom && sr.pendingBottom == tv.state.frameInfo.VisibleTop {
 		return nil
 	}
 
 	// sanity check before we do anything drastic
-	if tv.state.top < tv.state.bottom {
+	if tv.state.frameInfo.VisibleTop < tv.state.frameInfo.VisibleBottom {
 		// add one to the bottom value before committing. Ladybug and Hack'Em
 		// Pacman are good examples of ROMs that are "wrong" if we don't do
 		// this
@@ -242,17 +242,17 @@ func (sr *resizer) commit(tv *Television) error {
 		// !!TODO: more elegant way of handling the additional scanline problem
 
 		// clamp bottom scanline to safe bottom
-		if sr.pendingBottom > tv.state.spec.SafeBottom {
-			sr.pendingBottom = tv.state.spec.SafeBottom
+		if sr.pendingBottom > tv.state.frameInfo.Spec.NewSafeVisibleBottom {
+			sr.pendingBottom = tv.state.frameInfo.Spec.NewSafeVisibleBottom
 		}
 
 		// update statble top/bottom values
-		tv.state.top = sr.pendingTop
-		tv.state.bottom = sr.pendingBottom
+		tv.state.frameInfo.VisibleTop = sr.pendingTop
+		tv.state.frameInfo.VisibleBottom = sr.pendingBottom
 
 		// call Resize() for all attached pixel renderers
 		for f := range tv.renderers {
-			err := tv.renderers[f].Resize(tv.state.spec, tv.state.top, tv.state.bottom)
+			err := tv.renderers[f].Resize(tv.state.frameInfo)
 			if err != nil {
 				return err
 			}

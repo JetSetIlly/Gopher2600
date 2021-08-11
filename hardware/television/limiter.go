@@ -34,14 +34,17 @@ type limiter struct {
 	// whether to wait for fps limited each frame
 	limit bool
 
-	// the detected frequency of the incoming TV signal
-	hz atomic.Value // float32
+	// the refresh rate of the TV signal. this is a copy of what is stored in
+	// the FrameInfo type of the TV/state type. that value however is in a
+	// critical section and it is easier/cleaner to store a copy locally as an
+	// atomic value
+	refreshRate atomic.Value // float32
 
 	// the requested number of frames per second
 	requested atomic.Value // float32
 
-	// whether the requested fps is the same as the detected frequency
-	idealRequested atomic.Value // bool
+	// whether the requested frame rate is equal to the refresh rate
+	matchRefreshRate atomic.Value // bool
 
 	// the actual number of frames per second
 	actual atomic.Value // float32
@@ -63,8 +66,8 @@ type limiter struct {
 func (lmtr *limiter) init(tv *Television) {
 	lmtr.tv = tv
 	lmtr.limit = true
-	lmtr.hz.Store(float32(0))
-	lmtr.idealRequested.Store(true)
+	lmtr.refreshRate.Store(float32(0))
+	lmtr.matchRefreshRate.Store(true)
 	lmtr.requested.Store(float32(0))
 	lmtr.actual.Store(float32(0))
 	lmtr.measureTime = time.Now()
@@ -79,27 +82,18 @@ const (
 	ThreshVisual       float32 = 3.0
 )
 
-// make sure limited is running at correct rate. returns true if hz value has
-// changed.
-func (lmtr *limiter) update(scanlines int) bool {
-	// divides the number of scanlines in the frame by the number of scanlines
-	// per second (which doesn't change)
-	hz := 15734.26 / float32(scanlines)
-	if hz != lmtr.hz.Load().(float32) {
-		lmtr.hz.Store(hz)
-		if lmtr.idealRequested.Load().(bool) {
-			lmtr.setRate(hz)
-		}
-		return true
+func (lmtr *limiter) setRefreshRate(refreshRate float32) {
+	lmtr.refreshRate.Store(refreshRate)
+	if lmtr.matchRefreshRate.Load().(bool) {
+		lmtr.setRate(refreshRate)
 	}
-	return false
 }
 
 func (lmtr *limiter) setRate(fps float32) {
 	// if number is negative then default to ideal FPS rate
 	if fps <= 0.0 {
-		lmtr.idealRequested.Store(true)
-		fps = lmtr.hz.Load().(float32)
+		lmtr.matchRefreshRate.Store(true)
+		fps = lmtr.refreshRate.Load().(float32)
 	}
 
 	// if fps is still zero (spec probably hasn't been set) then don't do anything
@@ -119,15 +113,10 @@ func (lmtr *limiter) setRate(fps float32) {
 		// rate checked every scanline
 		//
 		// the requires us to multiply the frame rate by the number scanlines
-		// in a frame. by default this is the ScanlinesTotal value in the spec
+		// in a frame. by default this is the ScanlinesOptimal value in the spec
 		// but if the screen is "bigger" than that then we use the larger
 		// value.
-		scanlines := lmtr.tv.state.spec.ScanlinesTotal
-		if lmtr.tv.state.bottom > lmtr.tv.state.spec.ScanlinesTotal {
-			scanlines = lmtr.tv.state.bottom
-		}
-
-		rate := float32(1000000.0) / (fps * float32(scanlines))
+		rate := float32(1000000.0) / (fps * float32(lmtr.tv.state.frameInfo.TotalScanlines))
 		dur, _ := time.ParseDuration(fmt.Sprintf("%fus", rate))
 		lmtr.pulse.Reset(dur)
 	} else {

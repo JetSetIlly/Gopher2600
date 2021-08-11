@@ -30,17 +30,17 @@ type dbgScreenShader struct {
 
 	crt *crtSequencer
 
-	showCursor   int32 // uniform
-	isCropped    int32 // uniform
-	screenDim    int32 // uniform
-	scalingX     int32 // uniform
-	scalingY     int32 // uniform
-	lastX        int32 // uniform
-	lastY        int32 // uniform
-	hblank       int32 // uniform
-	topScanline  int32 // uniform
-	botScanline  int32 // uniform
-	overlayAlpha int32 // uniform
+	showCursor    int32 // uniform
+	isCropped     int32 // uniform
+	screenDim     int32 // uniform
+	scalingX      int32 // uniform
+	scalingY      int32 // uniform
+	lastX         int32 // uniform
+	lastY         int32 // uniform
+	hblank        int32 // uniform
+	visibleTop    int32 // uniform
+	visibleBottom int32 // uniform
+	overlayAlpha  int32 // uniform
 }
 
 func newDbgScrShader(img *SdlImgui) shaderProgram {
@@ -60,8 +60,8 @@ func newDbgScrShader(img *SdlImgui) shaderProgram {
 	sh.lastX = gl.GetUniformLocation(sh.handle, gl.Str("LastX"+"\x00"))
 	sh.lastY = gl.GetUniformLocation(sh.handle, gl.Str("LastY"+"\x00"))
 	sh.hblank = gl.GetUniformLocation(sh.handle, gl.Str("Hblank"+"\x00"))
-	sh.topScanline = gl.GetUniformLocation(sh.handle, gl.Str("TopScanline"+"\x00"))
-	sh.botScanline = gl.GetUniformLocation(sh.handle, gl.Str("BotScanline"+"\x00"))
+	sh.visibleTop = gl.GetUniformLocation(sh.handle, gl.Str("VisibleTop"+"\x00"))
+	sh.visibleBottom = gl.GetUniformLocation(sh.handle, gl.Str("VisibleBottom"+"\x00"))
 	sh.overlayAlpha = gl.GetUniformLocation(sh.handle, gl.Str("OverlayAlpha"+"\x00"))
 
 	return sh
@@ -157,8 +157,8 @@ func (sh *dbgScreenShader) setAttributes(env shaderEnvironment) {
 
 	// screen geometry
 	gl.Uniform1f(sh.hblank, specification.ClksHBlank*xscaling)
-	gl.Uniform1f(sh.topScanline, float32(sh.img.screen.crit.topScanline)*yscaling)
-	gl.Uniform1f(sh.botScanline, float32(sh.img.screen.crit.bottomScanline)*yscaling)
+	gl.Uniform1f(sh.visibleTop, float32(sh.img.screen.crit.frameInfo.VisibleTop)*yscaling)
+	gl.Uniform1f(sh.visibleBottom, float32(sh.img.screen.crit.frameInfo.VisibleBottom)*yscaling)
 
 	sh.img.screen.crit.section.Unlock()
 	// end of critical section

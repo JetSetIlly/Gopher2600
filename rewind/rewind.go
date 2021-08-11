@@ -676,7 +676,7 @@ func (r *Rewind) GetComparison() *State {
 }
 
 // NewFrame is in an implementation of television.FrameTrigger.
-func (r *Rewind) NewFrame(_ bool, _ bool) error {
+func (r *Rewind) NewFrame(_ television.FrameInfo) error {
 	r.newFrame = true
 	return nil
 }
