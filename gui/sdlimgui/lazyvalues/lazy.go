@@ -101,11 +101,13 @@ func (val *LazyValues) SetEmulationState(state emulation.State) {
 	switch state {
 	case emulation.Initialising:
 		val.active = false
-		// not setting Cart to nil because it places a burden on users of the
-		// lazy system
+
+		// LazyCart stores a lot of atomic types that might change undlerying
+		// type on cartridge load. to avoid a panic we reinitialise the entire
+		// LazyCart type when emulation state is changed to Initialising
+		val.Cart = newLazyCart(val)
 	default:
 		val.active = true
-		val.Cart = newLazyCart(val)
 	}
 }
 
