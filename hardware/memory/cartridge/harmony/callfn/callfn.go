@@ -22,7 +22,6 @@ package callfn
 import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/harmony/arm7tdmi"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
-	"github.com/jetsetilly/gopher2600/logger"
 )
 
 // CallFn keeps track of the CallFn process common to both DPC+ and CDF*
@@ -116,18 +115,12 @@ func (cf *CallFn) Start(cycles float32) {
 		return
 	}
 
-	// cap number of cycles used by the ARM program
+	// we are no longer capping the number of cycles executed here. this is now
+	// done entirely within in the arm7tdmi package.
 	//
-	// I think the real harmony does this (possibly by using Timer0?). that
-	// would explain why some test ROMs work on the hardware when the don't in
-	// this emulator *unless* we cap the number of cycles consumed somehow. the
-	// only question is what the cap should be.
-	const cycleCap = 400000
-
-	if cycles > cycleCap {
-		cycles = cycleCap
-		logger.Logf("ARM7/Callfn", "capping cycles (%.0f) at %d", cycles, cycleCap)
-	}
+	// capping cycles here meant that the ARM program ran to completion, which
+	// is not correct because that means the ARM memory is updated as though the
+	// cap did not exist.
 
 	cf.remainingCycles = cycles
 	cf.resumeCount = 3

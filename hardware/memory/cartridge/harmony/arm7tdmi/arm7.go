@@ -50,6 +50,10 @@ const (
 const Clk = float32(70)
 const clklenFlash = float32(4)
 
+// the maximum number of cycles allowed in a single ARM program execution.
+// no idea if this value is accurate.
+const CycleLimit = 400000
+
 // ARM implements the ARM7TDMI-S LPC2103 processor.
 type ARM struct {
 	prefs *preferences.ARMPreferences
@@ -244,7 +248,7 @@ func (arm *ARM) reset() error {
 func (arm *ARM) findProgramMemory() error {
 	arm.programMemory, arm.programMemoryOffset = arm.mem.MapAddress(arm.registers[rPC], false)
 	if arm.programMemory == nil {
-		return curated.Errorf("ARM: cannot find program memory")
+		return curated.Errorf("ARM7: cannot find program memory")
 	}
 
 	arm.programMemoryOffset = arm.registers[rPC] - arm.programMemoryOffset
@@ -429,7 +433,7 @@ func (arm *ARM) write32bit(addr uint32, val uint32) {
 // to ARM mode. Note that currently, this means the ARM program may run
 // forever.
 //
-// Returns the number of ARM cycles and any errors.
+// Returns the MAMCR state, the number of ARM cycles consumed and any errors.
 func (arm *ARM) Run(mamcr uint32) (uint32, float32, error) {
 	err := arm.reset()
 	if err != nil {
@@ -729,6 +733,12 @@ func (arm *ARM) Run(mamcr uint32) (uint32, float32, error) {
 		arm.mergedIS = false
 		arm.stretchedCycles = 0
 		arm.cycleOrder.reset()
+
+		// limit the number of cycles used by the ARM program
+		if arm.cyclesTotal >= CycleLimit {
+			logger.Logf("ARM7", "reached cycle limit of %d. ending execution early", CycleLimit)
+			break
+		}
 	}
 
 	// end of program execution
@@ -737,7 +747,7 @@ func (arm *ARM) Run(mamcr uint32) (uint32, float32, error) {
 	}
 
 	if arm.executionError != nil {
-		return arm.mam.mamcr, 0, curated.Errorf("ARM: %v", arm.executionError)
+		return arm.mam.mamcr, 0, curated.Errorf("ARM7: %v", arm.executionError)
 	}
 
 	return arm.mam.mamcr, arm.cyclesTotal, nil
