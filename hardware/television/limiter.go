@@ -21,18 +21,14 @@ import (
 	"time"
 )
 
-type limitScale int
-
-const (
-	scaleFrame limitScale = iota
-	scaleScanline
-)
+// VisualUpdating is the value at which the screen drawing process should be
+// shown to the user. ie. the FPS is low enough to require a visual indicator
+// that something is happening.
+const VisualUpdating float32 = 5.0
 
 type limiter struct {
-	tv *Television
-
 	// whether to wait for fps limited each frame
-	limit bool
+	active bool
 
 	// the refresh rate of the TV signal. this is a copy of what is stored in
 	// the FrameInfo type of the TV/state type. that value however is in a
@@ -53,9 +49,9 @@ type limiter struct {
 	// want to be able to see the updates
 	visualUpdates bool
 
-	// event pulse
+	// pulse that performs the limiting. the duration of the ticker will be set
+	// when the frame rate changes
 	pulse *time.Ticker
-	scale limitScale
 
 	// measurement
 	measureCt      int
@@ -63,9 +59,8 @@ type limiter struct {
 	measuringPulse *time.Ticker
 }
 
-func (lmtr *limiter) init(tv *Television) {
-	lmtr.tv = tv
-	lmtr.limit = true
+func (lmtr *limiter) init() {
+	lmtr.active = true
 	lmtr.refreshRate.Store(float32(0))
 	lmtr.matchRefreshRate.Store(true)
 	lmtr.requested.Store(float32(0))
@@ -75,21 +70,14 @@ func (lmtr *limiter) init(tv *Television) {
 	lmtr.measuringPulse = time.NewTicker(time.Second)
 }
 
-// there's no science behind when we flip from scales these values are based simply on
-// what looks effective and what seems to be useable.
-const (
-	theshScanlineScale float32 = 5.0
-	ThreshVisual       float32 = 3.0
-)
-
-func (lmtr *limiter) setRefreshRate(refreshRate float32) {
+func (lmtr *limiter) setRefreshRate(tv *Television, refreshRate float32) {
 	lmtr.refreshRate.Store(refreshRate)
 	if lmtr.matchRefreshRate.Load().(bool) {
-		lmtr.setRate(refreshRate)
+		lmtr.setRate(tv, refreshRate)
 	}
 }
 
-func (lmtr *limiter) setRate(fps float32) {
+func (lmtr *limiter) setRate(tv *Television, fps float32) {
 	// if number is negative then default to ideal FPS rate
 	if fps <= 0.0 {
 		lmtr.matchRefreshRate.Store(true)
@@ -105,49 +93,42 @@ func (lmtr *limiter) setRate(fps float32) {
 	lmtr.requested.Store(fps)
 
 	// set scale and duration to wait according to requested FPS rate
-	if fps <= theshScanlineScale {
-		lmtr.scale = scaleScanline
-
-		// to prevent the emulator from stalling every frame while it waits for
-		// the ticker to catch up, frame rates below theshScanlineScale are
-		// rate checked every scanline
-		//
-		// the requires us to multiply the frame rate by the number scanlines
-		// in a frame. by default this is the ScanlinesOptimal value in the spec
-		// but if the screen is "bigger" than that then we use the larger
-		// value.
-		rate := float32(1000000.0) / (fps * float32(lmtr.tv.state.frameInfo.TotalScanlines))
+	if fps <= VisualUpdating {
+		lmtr.visualUpdates = true
+		rate := float32(1000000.0) / (fps * float32(tv.state.frameInfo.TotalScanlines))
 		dur, _ := time.ParseDuration(fmt.Sprintf("%fus", rate))
 		lmtr.pulse.Reset(dur)
 	} else {
-		lmtr.scale = scaleFrame
+		lmtr.visualUpdates = false
 		rate := float32(1000000.0) / fps
 		dur, _ := time.ParseDuration(fmt.Sprintf("%fus", rate))
 		lmtr.pulse.Reset(dur)
 	}
-
-	// visual updates or not
-	lmtr.visualUpdates = fps <= ThreshVisual
 
 	// restart acutal FPS rate measurement values
 	lmtr.measureCt = 0
 	lmtr.measureTime = time.Now()
 }
 
+// checkFrame should be called every frame
 func (lmtr *limiter) checkFrame() {
 	lmtr.measureCt++
-	if lmtr.scale == scaleFrame && lmtr.limit {
+	if lmtr.active && !lmtr.visualUpdates {
 		<-lmtr.pulse.C
 	}
 }
 
+// checkFrame should be called every scanline
 func (lmtr *limiter) checkScanline() {
-	if lmtr.scale == scaleScanline && lmtr.limit {
+	if lmtr.active && lmtr.visualUpdates {
 		<-lmtr.pulse.C
 	}
 }
 
-// measures frame rate on every tick of the measuringPulse ticker.
+// measures frame rate on every tick of the measuringPulse ticker. callers of
+// measureActual() should be mindful of how ofter the function is called,
+// regardless of the throttle provided by the measuring pulse - checking the
+// pulse channel is itself expensive.
 func (lmtr *limiter) measureActual() {
 	select {
 	case <-lmtr.measuringPulse.C:

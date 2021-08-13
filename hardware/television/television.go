@@ -163,7 +163,7 @@ func NewTelevision(spec string) (*Television, error) {
 	}
 
 	// initialise frame rate limiter
-	tv.lmtr.init(tv)
+	tv.lmtr.init()
 	tv.SetFPS(-1)
 
 	// set specification
@@ -402,7 +402,7 @@ func (tv *Television) Signal(sig signal.SignalAttributes) error {
 	// set pending pixels for pixel-scale frame limiting (but only when the
 	// limiter is active - this is important when rendering frames produced
 	// durint rewinding)
-	if tv.lmtr.limit && tv.lmtr.visualUpdates {
+	if tv.lmtr.active && tv.lmtr.visualUpdates {
 		err := tv.processSignals(true)
 		if err != nil {
 			return err
@@ -436,7 +436,7 @@ func (tv *Television) newFrame(fromVsync bool) error {
 		tv.state.frameInfo.TotalScanlines = tv.state.scanline
 		tv.state.frameInfo.RefreshRate = 15734.26 / float32(tv.state.frameInfo.TotalScanlines)
 
-		tv.lmtr.setRefreshRate(tv.state.frameInfo.RefreshRate)
+		tv.lmtr.setRefreshRate(tv, tv.state.frameInfo.RefreshRate)
 
 		// if the refresh rate has changed then by definition the frame is not VSynced
 		tv.state.frameInfo.VSynced = false
@@ -487,7 +487,7 @@ func (tv *Television) newFrame(fromVsync bool) error {
 
 	// set pending pixels for frame-scale frame limiting or if the frame
 	// limiter is inactive
-	if !tv.lmtr.limit || tv.lmtr.scale == scaleFrame {
+	if !tv.lmtr.active || !tv.lmtr.visualUpdates {
 		err := tv.processSignals(true)
 		if err != nil {
 			return err
@@ -623,8 +623,8 @@ func (tv *Television) SetSpec(spec string) error {
 	}
 
 	tv.state.resizer.initialise(tv)
-	tv.lmtr.setRefreshRate(tv.state.frameInfo.Spec.RefreshRate)
-	tv.lmtr.setRate(tv.state.frameInfo.Spec.RefreshRate)
+	tv.lmtr.setRefreshRate(tv, tv.state.frameInfo.Spec.RefreshRate)
+	tv.lmtr.setRate(tv, tv.state.frameInfo.Spec.RefreshRate)
 
 	for _, r := range tv.renderers {
 		err := r.Resize(tv.state.frameInfo)
@@ -669,16 +669,16 @@ func (tv *Television) PauseRendering(pause bool) {
 // SetFPSCap whether the emulation should wait for FPS limiter. Returns the
 // setting as it was previously.
 func (tv *Television) SetFPSCap(limit bool) bool {
-	cap := tv.lmtr.limit
-	tv.lmtr.limit = limit
-	return cap
+	active := tv.lmtr.active
+	tv.lmtr.active = limit
+	return active
 }
 
 // SetFPS requests the number frames per second. This overrides the frame rate of
 // the specification. A negative value restores frame rate to the ideal value
 // (the frequency of the incoming signal).
 func (tv *Television) SetFPS(fps float32) {
-	tv.lmtr.setRate(fps)
+	tv.lmtr.setRate(tv, fps)
 }
 
 // GetReqFPS returns the requested number of frames per second. Compare with

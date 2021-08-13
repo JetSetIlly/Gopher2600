@@ -173,7 +173,7 @@ func (sh *dbgScreenShader) setAttributes(env shaderEnvironment) {
 		case emulation.Running:
 			// if FPS is low enough then show screen draw even though
 			// emulation is running
-			if sh.img.lz.TV.ReqFPS < television.ThreshVisual {
+			if sh.img.lz.TV.ReqFPS <= television.VisualUpdating {
 				gl.Uniform1i(sh.showCursor, 1)
 			} else {
 				gl.Uniform1i(sh.showCursor, 0)
