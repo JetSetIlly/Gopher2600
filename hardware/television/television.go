@@ -409,8 +409,6 @@ func (tv *Television) Signal(sig signal.SignalAttributes) error {
 		}
 	}
 
-	tv.lmtr.measureActual()
-
 	return nil
 }
 
@@ -508,6 +506,9 @@ func (tv *Television) newFrame(fromVsync bool) error {
 
 	// check frame rate
 	tv.lmtr.checkFrame()
+
+	// measure frame rate
+	tv.lmtr.measureActual()
 
 	return nil
 }
