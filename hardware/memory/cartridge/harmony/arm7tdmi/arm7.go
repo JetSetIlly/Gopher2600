@@ -78,14 +78,24 @@ type ARM struct {
 	// never reads outside this area. the value is assigned on reset()
 	programMemory *[]uint8
 
-	// whether a an access to memory using a read/write function was
-	// unrecognised. when this happens, the access address is logged and the
-	// Thumb program aborted (ie returns early)
-	memoryError bool
+	// length of program memory. in truth this is probably a constant but we
+	// don't really know that for sure
+	programMemoryLen int
 
 	// the amount to adjust the memory address by so that it can be used to
 	// index the programMemory array
 	programMemoryOffset uint32
+
+	// is set to true when an access to memory using a read/write function used
+	// an unrecognised address. when this happens, the address is logged and
+	// the Thumb program aborted (ie returns early)
+	//
+	// note: it is only set to true if abortOnIllegalMem is true
+	memoryError bool
+
+	// whether to foce an error on illegal memory access. set from ARM.prefs at
+	// the start of every arm.Run()
+	abortOnIllegalMem bool
 
 	// collection of functionMap instances. indexed by programMemoryOffset to
 	// retrieve a functionMap
@@ -131,6 +141,14 @@ type ARM struct {
 	cyclesTotal float32
 
 	// \/\/\/ the following are reset at the end of each Run() iteration \/\/\/
+
+	// whether cycle count or not. set from ARM.prefs at the start of every arm.Run()
+	//
+	// used to cut out code that is required only for cycle counting. See
+	// Icycle, Scycle and Ncycle fields which are called so frequently we
+	// forego checking the immediateMode flag each time and have preset a stub
+	// function if required
+	immediateMode bool
 
 	// number of cycles with CLKLEN modulation applied
 	stretchedCycles float32
@@ -260,6 +278,8 @@ func (arm *ARM) findProgramMemory() error {
 		arm.functionMap = arm.executionMap[arm.programMemoryOffset]
 	}
 
+	arm.programMemoryLen = len(*arm.programMemory)
+
 	return nil
 }
 
@@ -297,7 +317,7 @@ func (arm *ARM) read8bit(addr uint32) uint8 {
 		if v, ok := arm.mam.read(addr); ok {
 			return uint8(v)
 		}
-		arm.memoryError = true
+		arm.memoryError = arm.abortOnIllegalMem
 		logger.Logf("ARM7", "read8bit: unrecognised address %08x", addr)
 		return 0
 	}
@@ -317,7 +337,7 @@ func (arm *ARM) write8bit(addr uint32, val uint8) {
 		if ok := arm.mam.write(addr, uint32(val)); ok {
 			return
 		}
-		arm.memoryError = true
+		arm.memoryError = arm.abortOnIllegalMem
 		logger.Logf("ARM7", "write8bit: unrecognised address %08x", addr)
 		return
 	}
@@ -342,7 +362,7 @@ func (arm *ARM) read16bit(addr uint32) uint16 {
 		if v, ok := arm.mam.read(addr); ok {
 			return uint16(v)
 		}
-		arm.memoryError = true
+		arm.memoryError = arm.abortOnIllegalMem
 		logger.Logf("ARM7", "read16bit: unrecognised address %08x", addr)
 		return 0
 	}
@@ -367,7 +387,7 @@ func (arm *ARM) write16bit(addr uint32, val uint16) {
 		if ok := arm.mam.write(addr, uint32(val)); ok {
 			return
 		}
-		arm.memoryError = true
+		arm.memoryError = arm.abortOnIllegalMem
 		logger.Logf("ARM7", "write16bit: unrecognised address %08x", addr)
 		return
 	}
@@ -393,7 +413,7 @@ func (arm *ARM) read32bit(addr uint32) uint32 {
 		if v, ok := arm.mam.read(addr); ok {
 			return v
 		}
-		arm.memoryError = true
+		arm.memoryError = arm.abortOnIllegalMem
 		logger.Logf("ARM7", "read32bit: unrecognised address %08x", addr)
 		return 0
 	}
@@ -418,7 +438,7 @@ func (arm *ARM) write32bit(addr uint32, val uint32) {
 		if ok := arm.mam.write(addr, val); ok {
 			return
 		}
-		arm.memoryError = true
+		arm.memoryError = arm.abortOnIllegalMem
 		logger.Logf("ARM7", "write32bit: unrecognised address %08x", addr)
 		return
 	}
@@ -454,7 +474,8 @@ func (arm *ARM) Run(mamcr uint32) (uint32, float32, error) {
 	}
 
 	// set cycle counting functions
-	if arm.prefs.Immediate.Get().(bool) {
+	arm.immediateMode = arm.prefs.Immediate.Get().(bool)
+	if arm.immediateMode {
 		arm.Icycle = arm.iCycleStub
 		arm.Scycle = arm.sCycleStub
 		arm.Ncycle = arm.nCycleStub
@@ -471,13 +492,17 @@ func (arm *ARM) Run(mamcr uint32) (uint32, float32, error) {
 	}
 
 	// how to handle illegal memory access
-	abortOnIllegalMem := arm.prefs.AbortOnIllegalMem.Get().(bool)
+	arm.abortOnIllegalMem = arm.prefs.AbortOnIllegalMem.Get().(bool)
 
 	// fill pipeline
 	arm.registers[rPC] += 2
 
+	// use to detect branches and whether to fill the pipeline (unused if
+	// arm.immediateMode is true)
+	var expectedPC uint32
+
 	// loop through instructions until we reach an exit condition
-	for arm.continueExecution {
+	for arm.continueExecution && !arm.memoryError {
 		// program counter to execute:
 		//
 		// from "7.6 Data Operations" in "ARM7TDMI-S Technical Reference Manual r4p1", page 1-2
@@ -522,7 +547,7 @@ func (arm *ARM) Run(mamcr uint32) (uint32, float32, error) {
 
 		// check program counter
 		memIdx := executingPC - arm.programMemoryOffset
-		if memIdx+1 >= uint32(len(*arm.programMemory)) {
+		if memIdx+1 >= uint32(arm.programMemoryLen) {
 			// program counter is out-of-range so find program memory again
 			// (using the PC value)
 			err = arm.findProgramMemory()
@@ -534,7 +559,7 @@ func (arm *ARM) Run(mamcr uint32) (uint32, float32, error) {
 
 			// if it's still out-of-range then give up with an error
 			memIdx = executingPC - arm.programMemoryOffset
-			if memIdx+1 >= uint32(len(*arm.programMemory)) {
+			if memIdx+1 >= uint32(arm.programMemoryLen) {
 				// can't find memory so we say the ARM program has finished inadvertently
 				logger.Logf("ARM7", "PC out of range (%#08x). aborting thumb program early", executingPC)
 				break // for loop
@@ -549,144 +574,110 @@ func (arm *ARM) Run(mamcr uint32) (uint32, float32, error) {
 
 		// the expected PC at the end of the execution. if the PC register
 		// does not match fillPipeline() is called
-		expectedPC := arm.registers[rPC]
+		if !arm.immediateMode {
+			expectedPC = arm.registers[rPC]
+		}
 
-		// run from executionMap if possible
+		// run from functionMap if possible
 		formatFunc := arm.functionMap[memIdx]
 		if formatFunc != nil {
 			formatFunc(opcode)
 		} else {
+			// make a reference of the opcode function
+			var f func(opcode uint16)
+
 			// working backwards up the table in Figure 5-1 of the ARM7TDMI Data Sheet.
 			if opcode&0xf000 == 0xf000 {
 				// format 19 - Long branch with link
-				f := arm.executeLongBranchWithLink
-				arm.functionMap[memIdx] = f
-				f(opcode)
+				f = arm.executeLongBranchWithLink
 			} else if opcode&0xf000 == 0xe000 {
 				// format 18 - Unconditional branch
-				f := arm.executeUnconditionalBranch
-				arm.functionMap[memIdx] = f
-				f(opcode)
+				f = arm.executeUnconditionalBranch
 			} else if opcode&0xff00 == 0xdf00 {
 				// format 17 - Software interrupt"
-				f := arm.executeSoftwareInterrupt
-				arm.functionMap[memIdx] = f
-				f(opcode)
+				f = arm.executeSoftwareInterrupt
 			} else if opcode&0xf000 == 0xd000 {
 				// format 16 - Conditional branch
-				f := arm.executeConditionalBranch
-				arm.functionMap[memIdx] = f
-				f(opcode)
+				f = arm.executeConditionalBranch
 			} else if opcode&0xf000 == 0xc000 {
 				// format 15 - Multiple load/store
-				f := arm.executeMultipleLoadStore
-				arm.functionMap[memIdx] = f
-				f(opcode)
+				f = arm.executeMultipleLoadStore
 			} else if opcode&0xf600 == 0xb400 {
 				// format 14 - Push/pop registers
-				f := arm.executePushPopRegisters
-				arm.functionMap[memIdx] = f
-				f(opcode)
+				f = arm.executePushPopRegisters
 			} else if opcode&0xff00 == 0xb000 {
 				// format 13 - Add offset to stack pointer
-				f := arm.executeAddOffsetToSP
-				arm.functionMap[memIdx] = f
-				f(opcode)
+				f = arm.executeAddOffsetToSP
 			} else if opcode&0xf000 == 0xa000 {
 				// format 12 - Load address
-				f := arm.executeLoadAddress
-				arm.functionMap[memIdx] = f
-				f(opcode)
+				f = arm.executeLoadAddress
 			} else if opcode&0xf000 == 0x9000 {
 				// format 11 - SP-relative load/store
-				f := arm.executeSPRelativeLoadStore
-				arm.functionMap[memIdx] = f
-				f(opcode)
+				f = arm.executeSPRelativeLoadStore
 			} else if opcode&0xf000 == 0x8000 {
 				// format 10 - Load/store halfword
-				f := arm.executeLoadStoreHalfword
-				arm.functionMap[memIdx] = f
-				f(opcode)
+				f = arm.executeLoadStoreHalfword
 			} else if opcode&0xe000 == 0x6000 {
 				// format 9 - Load/store with immediate offset
-				f := arm.executeLoadStoreWithImmOffset
-				arm.functionMap[memIdx] = f
-				f(opcode)
+				f = arm.executeLoadStoreWithImmOffset
 			} else if opcode&0xf200 == 0x5200 {
 				// format 8 - Load/store sign-extended byte/halfword
-				f := arm.executeLoadStoreSignExtendedByteHalford
-				arm.functionMap[memIdx] = f
-				f(opcode)
+				f = arm.executeLoadStoreSignExtendedByteHalford
 			} else if opcode&0xf200 == 0x5000 {
 				// format 7 - Load/store with register offset
-				f := arm.executeLoadStoreWithRegisterOffset
-				arm.functionMap[memIdx] = f
-				f(opcode)
+				f = arm.executeLoadStoreWithRegisterOffset
 			} else if opcode&0xf800 == 0x4800 {
 				// format 6 - PC-relative load
-				f := arm.executePCrelativeLoad
-				arm.functionMap[memIdx] = f
-				f(opcode)
+				f = arm.executePCrelativeLoad
 			} else if opcode&0xfc00 == 0x4400 {
 				// format 5 - Hi register operations/branch exchange
-				f := arm.executeHiRegisterOps
-				arm.functionMap[memIdx] = f
-				f(opcode)
+				f = arm.executeHiRegisterOps
 			} else if opcode&0xfc00 == 0x4000 {
 				// format 4 - ALU operations
-				f := arm.executeALUoperations
-				arm.functionMap[memIdx] = f
-				f(opcode)
+				f = arm.executeALUoperations
 			} else if opcode&0xe000 == 0x2000 {
 				// format 3 - Move/compare/add/subtract immediate
-				f := arm.executeMovCmpAddSubImm
-				arm.functionMap[memIdx] = f
-				f(opcode)
+				f = arm.executeMovCmpAddSubImm
 			} else if opcode&0xf800 == 0x1800 {
 				// format 2 - Add/subtract
-				f := arm.executeAddSubtract
-				arm.functionMap[memIdx] = f
-				f(opcode)
+				f = arm.executeAddSubtract
 			} else if opcode&0xe000 == 0x0000 {
 				// format 1 - Move shifted register
-				f := arm.executeMoveShiftedRegister
-				arm.functionMap[memIdx] = f
-				f(opcode)
+				f = arm.executeMoveShiftedRegister
 			} else {
 				panic("undecoded instruction")
 			}
+
+			// store function reference in functionMap and run for the first time
+			arm.functionMap[memIdx] = f
+			f(opcode)
 		}
 
-		// end Run() iteration if a memory access has triggered an error.
-		// details of access have already been logged.
-		if abortOnIllegalMem && arm.memoryError {
-			logger.Logf("ARM7", "illegal memory access detected. aborting thumb program early")
-			break // for loop
+		if !arm.immediateMode {
+			// add additional cycles required to fill pipeline before next iteration
+			if expectedPC != arm.registers[rPC] {
+				arm.fillPipeline()
+			}
+
+			// prefetch cycle for next instruction is associated with and counts
+			// towards the total of the current instruction. most prefetch cycles
+			// are S cycles but store instructions require an N cycle
+			if arm.prefetchCycle == N {
+				arm.Ncycle(prefetch, arm.registers[rPC])
+			} else {
+				arm.Scycle(prefetch, arm.registers[rPC])
+			}
+
+			// default to an S cycle for prefetch unless an instruction explicitly
+			// says otherwise
+			arm.prefetchCycle = S
+
+			// increases total number of program cycles by the stretched cycles for this instruction
+			arm.cyclesTotal += arm.stretchedCycles
+
+			// update timer. assuming an APB divider value of one.
+			arm.timer.step(arm.stretchedCycles)
 		}
-
-		// add additional cycles required to fill pipeline before next iteration
-		if expectedPC != arm.registers[rPC] {
-			arm.fillPipeline()
-		}
-
-		// prefetch cycle for next instruction is associated with and counts
-		// towards the total of the current instruction. most prefetch cycles
-		// are S cycles but store instructions require an N cycle
-		if arm.prefetchCycle == N {
-			arm.Ncycle(prefetch, arm.registers[rPC])
-		} else {
-			arm.Scycle(prefetch, arm.registers[rPC])
-		}
-
-		// default to an S cycle for prefetch unless an instruction explicitly
-		// says otherwise
-		arm.prefetchCycle = S
-
-		// increases total number of program cycles by the stretched cycles for this instruction
-		arm.cyclesTotal += arm.stretchedCycles
-
-		// update timer. assuming an APB divider value of one.
-		arm.timer.step(arm.stretchedCycles)
 
 		// send disasm information to disassembler
 		if arm.disasm != nil {
@@ -728,17 +719,24 @@ func (arm *ARM) Run(mamcr uint32) (uint32, float32, error) {
 			arm.disasm.Step(arm.disasmEntry)
 		}
 
-		// reset instruction specific information
-		arm.branchTrail = BranchTrailNotUsed
-		arm.mergedIS = false
-		arm.stretchedCycles = 0
-		arm.cycleOrder.reset()
+		// reset cycle  information
+		if !arm.immediateMode {
+			arm.branchTrail = BranchTrailNotUsed
+			arm.mergedIS = false
+			arm.stretchedCycles = 0
+			arm.cycleOrder.reset()
 
-		// limit the number of cycles used by the ARM program
-		if arm.cyclesTotal >= CycleLimit {
-			logger.Logf("ARM7", "reached cycle limit of %d. ending execution early", CycleLimit)
-			break
+			// limit the number of cycles used by the ARM program
+			if arm.cyclesTotal >= CycleLimit {
+				logger.Logf("ARM7", "reached cycle limit of %d. ending execution early", CycleLimit)
+				break
+			}
 		}
+	}
+
+	// indicate that program abort was because of illegal memory access
+	if arm.memoryError {
+		logger.Logf("ARM7", "illegal memory access detected. aborting thumb program early")
 	}
 
 	// end of program execution
