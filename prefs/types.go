@@ -20,6 +20,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 
 	"github.com/jetsetilly/gopher2600/curated"
 )
@@ -38,26 +39,22 @@ type pref interface {
 // Bool implements a boolean type in the prefs system.
 type Bool struct {
 	pref
-	crit     sync.Mutex
-	value    bool
+	value    atomic.Value // bool
 	callback func(value Value) error
 }
 
 func (p *Bool) String() string {
-	p.crit.Lock()
-	defer p.crit.Unlock()
-
-	return fmt.Sprintf("%v", p.value)
+	ov := p.value.Load()
+	if ov == nil {
+		return "false"
+	}
+	return fmt.Sprintf("%v", ov.(bool))
 }
 
 // Set new value to Bool type. New value must be of type bool or string. A
 // string value of anything other than "true" (case insensitive) will set the
 // value to false.
 func (p *Bool) Set(v Value) error {
-	p.crit.Lock()
-	// no defer: we have to be careful when we unlock so as not to call
-	// deadlocks in the callback function
-
 	// new value
 	var nv bool
 	switch v := v.(type) {
@@ -71,34 +68,32 @@ func (p *Bool) Set(v Value) error {
 			nv = false
 		}
 	default:
-		p.crit.Unlock()
 		return curated.Errorf("prefs: %v", fmt.Errorf("cannot convert %T to prefs.Bool", v))
 	}
 
 	// value hasn't changed so do not do anything
-	if nv == p.value {
-		p.crit.Unlock()
+	ov := p.value.Load()
+	if ov != nil && nv == ov.(bool) {
 		return nil
 	}
 
 	// store new value
-	p.value = nv
+	p.value.Store(nv)
 
 	if p.callback != nil {
-		p.crit.Unlock()
-		return p.callback(p.value)
+		return p.callback(nv)
 	}
 
-	p.crit.Unlock()
 	return nil
 }
 
 // Get returns the raw pref value.
 func (p *Bool) Get() Value {
-	p.crit.Lock()
-	defer p.crit.Unlock()
-
-	return p.value
+	ov := p.value.Load()
+	if ov == nil {
+		return false
+	}
+	return ov.(bool)
 }
 
 // Reset sets the boolean value to false.
@@ -109,49 +104,46 @@ func (p *Bool) Reset() error {
 // RegisterCallback sets the callback function to be called when the value has
 // changed. Not required but is useful in some contexts.
 func (p *Bool) RegisterCallback(f func(value Value) error) {
-	p.crit.Lock()
-	defer p.crit.Unlock()
-
 	p.callback = f
 }
 
 // String implements a string type in the prefs system.
 type String struct {
 	pref
-	crit     sync.Mutex
 	maxLen   int
-	value    string
+	value    atomic.Value // string
 	callback func(value Value) error
 }
 
 func (p *String) String() string {
-	p.crit.Lock()
-	defer p.crit.Unlock()
-
-	return p.value
+	ov := p.value.Load()
+	if ov == nil {
+		return ""
+	}
+	return ov.(string)
 }
 
 // SetMaxLen sets the maximum length for a string when it is set. To set no
 // limit use a value less than or equal to zero. Note that the existing string
 // will be cropped if necessary - cropped string information will be lost.
 func (p *String) SetMaxLen(max int) {
-	p.crit.Lock()
-	defer p.crit.Unlock()
-
 	p.maxLen = max
 
 	// crop existing string if necessary
-	if p.maxLen > 0 && len(p.value) > p.maxLen {
-		p.value = p.value[:p.maxLen]
+
+	ov := p.value.Load()
+	if ov == nil {
+		// no need to crop string
+		return
+	}
+
+	if p.maxLen > 0 && len(ov.(string)) > p.maxLen {
+		p.value.Store(ov.(string)[:p.maxLen])
 	}
 }
 
 // Set new value to String type. New value must be of type string.
 func (p *String) Set(v Value) error {
-	p.crit.Lock()
-	// no defer: we have to be careful when we unlock so as not to call
-	// deadlocks in the callback function
-
 	// new value
 	nv := fmt.Sprintf("%s", v)
 	if p.maxLen > 0 && len(nv) > p.maxLen {
@@ -159,29 +151,24 @@ func (p *String) Set(v Value) error {
 	}
 
 	// value hasn't changed so do not do anything
-	if nv == p.value {
-		p.crit.Unlock()
+	ov := p.value.Load()
+	if ov != nil && nv == ov.(string) {
 		return nil
 	}
 
 	// store new value
-	p.value = nv
+	p.value.Store(nv)
 
 	if p.callback != nil {
-		p.crit.Unlock()
-		return p.callback(p.value)
+		return p.callback(nv)
 	}
 
-	p.crit.Unlock()
 	return nil
 }
 
 // Get returns the raw pref value.
 func (p *String) Get() Value {
-	p.crit.Lock()
-	defer p.crit.Unlock()
-
-	return p.value
+	return p.String()
 }
 
 // Reset sets the string value to the empty string.
@@ -192,33 +179,26 @@ func (p *String) Reset() error {
 // RegisterCallback sets the callback function to be called when the value has
 // changed. Not required but is useful in some contexts.
 func (p *String) RegisterCallback(f func(value Value) error) {
-	p.crit.Lock()
-	defer p.crit.Unlock()
-
 	p.callback = f
 }
 
 // Int implements a string type in the prefs system.
 type Int struct {
 	pref
-	crit     sync.Mutex
-	value    int
+	value    atomic.Value // int
 	callback func(value Value) error
 }
 
 func (p *Int) String() string {
-	p.crit.Lock()
-	defer p.crit.Unlock()
-
-	return fmt.Sprintf("%d", p.value)
+	ov := p.value.Load()
+	if ov == nil {
+		return "0"
+	}
+	return fmt.Sprintf("%d", ov.(int))
 }
 
 // Set new value to Int type. New value can be an int or string.
 func (p *Int) Set(v Value) error {
-	p.crit.Lock()
-	// no defer: we have to be careful when we unlock so as not to call
-	// deadlocks in the callback function
-
 	// new value
 	var nv int
 	switch v := v.(type) {
@@ -232,38 +212,35 @@ func (p *Int) Set(v Value) error {
 		var err error
 		nv, err = strconv.Atoi(v)
 		if err != nil {
-			p.crit.Unlock()
 			return curated.Errorf("prefs: %v", fmt.Errorf("cannot convert %T to prefs.Int", v))
 		}
 	default:
-		p.crit.Unlock()
 		return curated.Errorf("prefs: %v", fmt.Errorf("cannot convert %T to prefs.Int", v))
 	}
 
 	// value hasn't changed so do not do anything
-	if nv == p.value {
-		p.crit.Unlock()
+	ov := p.value.Load()
+	if ov != nil && nv == ov.(int) {
 		return nil
 	}
 
 	// update stored value
-	p.value = nv
+	p.value.Store(nv)
 
 	if p.callback != nil {
-		p.crit.Unlock()
-		return p.callback(p.value)
+		return p.callback(nv)
 	}
 
-	p.crit.Unlock()
 	return nil
 }
 
 // Get returns the raw pref value.
 func (p *Int) Get() Value {
-	p.crit.Lock()
-	defer p.crit.Unlock()
-
-	return p.value
+	ov := p.value.Load()
+	if ov == nil {
+		return 0
+	}
+	return ov.(int)
 }
 
 // Reset sets the int value to zero.
@@ -274,33 +251,26 @@ func (p *Int) Reset() error {
 // RegisterCallback sets the callback function to be called when the value has
 // changed. Not required but is useful in some contexts.
 func (p *Int) RegisterCallback(f func(value Value) error) {
-	p.crit.Lock()
-	defer p.crit.Unlock()
-
 	p.callback = f
 }
 
 // Int implements a string type in the prefs system.
 type Float struct {
 	pref
-	crit     sync.Mutex
-	value    float64
+	value    atomic.Value // float64
 	callback func(value Value) error
 }
 
 func (p *Float) String() string {
-	p.crit.Lock()
-	defer p.crit.Unlock()
-
-	return fmt.Sprintf("%.3f", p.value)
+	ov := p.value.Load()
+	if ov == nil {
+		return "0.000"
+	}
+	return fmt.Sprintf("%.3f", ov.(float64))
 }
 
 // Set new value to Int type. New value can be an int or string.
 func (p *Float) Set(v Value) error {
-	p.crit.Lock()
-	// no defer: we have to be careful when we unlock so as not to call
-	// deadlocks in the callback function
-
 	// new value
 	var nv float64
 	switch v := v.(type) {
@@ -314,38 +284,35 @@ func (p *Float) Set(v Value) error {
 		var err error
 		nv, err = strconv.ParseFloat(v, 64)
 		if err != nil {
-			p.crit.Unlock()
 			return curated.Errorf("prefs: %v", fmt.Errorf("cannot convert %T to prefs.Float", v))
 		}
 	default:
-		p.crit.Unlock()
 		return curated.Errorf("prefs: %v", fmt.Errorf("cannot convert %T to prefs.Float", v))
 	}
 
 	// value hasn't changed so do not do anything
-	if nv == p.value {
-		p.crit.Unlock()
+	ov := p.value.Load()
+	if ov != nil && nv == ov.(float64) {
 		return nil
 	}
 
 	// update stored value
-	p.value = nv
+	p.value.Store(nv)
 
 	if p.callback != nil {
-		p.crit.Unlock()
-		return p.callback(p.value)
+		return p.callback(nv)
 	}
 
-	p.crit.Unlock()
 	return nil
 }
 
 // Get returns the raw pref value.
 func (p *Float) Get() Value {
-	p.crit.Lock()
-	defer p.crit.Unlock()
-
-	return p.value
+	ov := p.value.Load()
+	if ov == nil {
+		return float64(0.0)
+	}
+	return ov.(float64)
 }
 
 // Reset sets the int value to zero.
@@ -356,9 +323,6 @@ func (p *Float) Reset() error {
 // RegisterCallback sets the callback function to be called when the value has
 // changed. Not required but is useful in some contexts.
 func (p *Float) RegisterCallback(f func(value Value) error) {
-	p.crit.Lock()
-	defer p.crit.Unlock()
-
 	p.callback = f
 }
 
@@ -366,7 +330,10 @@ func (p *Float) RegisterCallback(f func(value Value) error) {
 // cannot be represented by a single live value.  You must use the NewGeneric()
 // function to initialise a new instance of Generic.
 //
-// The Generic prefs type does not have a way of registering a callback function.
+// The Generic prefs type does not have a way of registering a callback
+// function. It is also slower than other prefs types because it must protect
+// potential critical sections with a mutex (other types can use an atomic
+// value)
 type Generic struct {
 	pref
 	crit sync.Mutex

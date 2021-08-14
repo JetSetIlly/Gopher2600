@@ -36,7 +36,7 @@
 // Values that are added to the Disk type must use one of the preference types
 // defined in this package. Currently, there are Bool, String and Int types.
 // There is also a Generic type, that allows the Set() and Get() functions to
-// be defined.
+// be defined as appropriate
 //
 // Once added to the disk object, preference values can be changed in the
 // program in the normal way. Changes can be committed to disk wit the
