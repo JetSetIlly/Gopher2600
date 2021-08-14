@@ -31,8 +31,11 @@ import (
 //		- Ladybug
 //		- Man Goes Down
 //
+//  * frame that needs to be resized after startup period
+//		- Hack Em Hanglyman (pre-release)
+//
 //  * the occasional unsynced frame
-//		- Hack Em Hangly Pacman
+//		- Hack Em Hanglyman (pre-release)
 //
 //  * lots of unsynced frames (during computer "thinking" period)
 //		- Andrew Davies' Chess
@@ -46,7 +49,7 @@ import (
 //	* ROMs that do not set VBLANK *at all*. in these cases the commit()
 //	function uses the black top/bottom values rather than vblank top/bottom
 //	values.
-//		- Hack Em Hangly Pacman
+//		- Hack Em Hanglyman (release and pre-release)
 //		- Legacy of the Beast
 //
 //	* ROMs that *do* set VBLANK but might be caught by the black top/bottom
@@ -97,6 +100,8 @@ func (sr *resizer) initialise(tv *Television) {
 	sr.pendingBottom = tv.state.frameInfo.VisibleBottom
 }
 
+// examine signal for resizing possiblity. this is an expensive operation to do
+// for every single signal/pixel. should probably be throttled in some way.
 func (sr *resizer) examine(tv *Television, sig signal.SignalAttributes) {
 	// do not try to resize during frame that isn't "vsynced".
 	//
@@ -155,6 +160,7 @@ func (sr *resizer) examine(tv *Television, sig signal.SignalAttributes) {
 // the counter will be reset if the screen size changes in the interim.
 const framesUntilResize = 2
 
+// commit resizing possibility found through examine() function.
 func (sr *resizer) commit(tv *Television) error {
 	// only commit on even frames. the only reason we do this is to catch
 	// flicker kernels where pixels are different every frame. this is a bit of

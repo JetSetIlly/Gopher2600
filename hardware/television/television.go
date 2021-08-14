@@ -311,8 +311,22 @@ func (tv *Television) End() error {
 
 // Signal updates the current state of the television.
 func (tv *Television) Signal(sig signal.SignalAttributes) error {
-	// examine signal for resizing possibility
-	tv.state.resizer.examine(tv, sig)
+	// examine signal for resizing possibility.
+	//
+	// throttle how often we do this because it's an expensive operation. the
+	// range check is required because the decision to commit a resize takes
+	// several frames (defined by framesUntilResize)
+	//
+	// if the frame is not stable then we always perfom the check. this is so
+	// we don't see a resizing frame too often because a resize is likely
+	// during startup - Spike's Peak is a good example of a resizing ROM
+	//
+	// the throttle does mean there can be a slight delay before a resize is
+	// committed but this is rare (Hack'Em Hanglyman is a good example of such
+	// a ROM) and the performance benefits are significant
+	if !tv.state.frameInfo.Stable || tv.state.frameNum%16 <= framesUntilResize {
+		tv.state.resizer.examine(tv, sig)
+	}
 
 	// a Signal() is by definition a new color clock. increase the horizontal count
 	tv.state.clock++
