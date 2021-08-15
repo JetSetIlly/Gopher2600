@@ -298,7 +298,10 @@ func (scr *screen) NewFrame(frameInfo television.FrameInfo) error {
 				if scr.crit.frameInfo.Stable {
 					scr.crit.unsyncedCt++
 					if scr.crit.unsyncedCt > scr.img.crtPrefs.UnsyncTolerance.Get().(int) {
-						scr.crit.unsyncedScanline = (scr.crit.unsyncedScanline + scr.crit.lastY) % specification.AbsoluteMaxScanlines
+						scr.crit.unsyncedScanline = (scr.crit.unsyncedScanline + scr.crit.lastY)
+						if scr.crit.unsyncedScanline >= specification.AbsoluteMaxScanlines {
+							scr.crit.unsyncedScanline -= specification.AbsoluteMaxScanlines
+						}
 						scr.crit.unsyncedRecoveryCt = 0
 					}
 				}
@@ -390,7 +393,10 @@ func (scr *screen) SetPixel(sig signal.SignalAttributes, current bool) error {
 
 	// if sig is outside the bounds of the image then the SetRGBA() will silently fail
 
-	adjustedScanline := (sig.Scanline + scr.crit.unsyncedScanline) % scr.crit.frameInfo.Spec.ScanlinesTotal
+	adjustedScanline := (sig.Scanline + scr.crit.unsyncedScanline)
+	if adjustedScanline >= scr.crit.frameInfo.Spec.ScanlinesTotal {
+		adjustedScanline -= scr.crit.frameInfo.Spec.ScanlinesTotal
+	}
 	scr.crit.bufferPixels[scr.crit.plotIdx].SetRGBA(sig.Clock, adjustedScanline, col)
 
 	return nil
@@ -407,14 +413,18 @@ func (scr *screen) SetPixels(sig []signal.SignalAttributes, current bool) error 
 	var col color.RGBA
 
 	offset := sig[0].Clock * 4
-	adjustedScanline := (sig[0].Scanline + scr.crit.unsyncedScanline) % scr.crit.frameInfo.Spec.ScanlinesTotal
+	adjustedScanline := (sig[0].Scanline + scr.crit.unsyncedScanline)
+	if adjustedScanline >= scr.crit.frameInfo.Spec.ScanlinesTotal {
+		adjustedScanline -= scr.crit.frameInfo.Spec.ScanlinesTotal
+	}
 	offset += adjustedScanline * scr.crit.bufferPixels[scr.crit.plotIdx].Rect.Size().X * 4
 
-	for i := range sig[0:] {
-		if offset >= len(scr.crit.bufferPixels[scr.crit.plotIdx].Pix) {
-			return nil
-		}
+	// check that we're not going to encounter an index-out-of-range error
+	if offset+(len(sig)*4) >= len(scr.crit.bufferPixels[scr.crit.plotIdx].Pix) {
+		return nil
+	}
 
+	for i := range sig[0:] {
 		// handle VBLANK by setting pixels to black
 		if sig[i].VBlank {
 			col = color.RGBA{R: 0, G: 0, B: 0}
@@ -422,14 +432,15 @@ func (scr *screen) SetPixels(sig []signal.SignalAttributes, current bool) error 
 			col = scr.crit.frameInfo.Spec.GetColor(sig[i].Pixel)
 		}
 
-		scr.crit.bufferPixels[scr.crit.plotIdx].Pix[offset] = col.R
-		scr.crit.bufferPixels[scr.crit.plotIdx].Pix[offset+1] = col.G
-		scr.crit.bufferPixels[scr.crit.plotIdx].Pix[offset+2] = col.B
+		// Small cap improves performance, see https://golang.org/issue/27857
+		s := scr.crit.bufferPixels[scr.crit.plotIdx].Pix[offset : offset+4 : offset+4]
+		s[0] = col.R
+		s[1] = col.G
+		s[2] = col.B
 
 		// alpha channel never changes
 
 		offset += 4
-		offset %= len(scr.crit.bufferPixels[scr.crit.plotIdx].Pix)
 	}
 
 	if current {
