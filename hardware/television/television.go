@@ -666,6 +666,11 @@ func (tv *Television) Pause(pause bool) error {
 	}
 	if pause {
 		return tv.processSignals(true)
+	} else {
+		// start off the unpaused state by measuring the current framerate.
+		// this "clears" the ticker channel and means the feedback from
+		// GetActualFPS() is less misleading
+		tv.lmtr.measureActual()
 	}
 	return nil
 }
