@@ -21,12 +21,13 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/television"
 )
 
-// Reflector should be run (with the Check() function) every video cycle. The
-// (reflection) Renderer's Reflect() function is consequently also called every
-// video cycle with a populated instance of LastResult.
-type Reflector struct {
+// Gatherer should be run (with the Check() function) every video cycle.
+type Gatherer struct {
 	vcs      *hardware.VCS
 	renderer Renderer
+
+	// whether reflection is enabled or not
+	enabled bool
 
 	// whether the reflector is paused or not. this affects how the VideoStep
 	// history is handled.
@@ -34,39 +35,47 @@ type Reflector struct {
 
 	// VideoStep history. used to buffer reflected VideoSteps when the
 	// Reflector is unpaused.
-	history []VideoStep
+	history []ReflectedVideoStep
 
 	// start/end of the history buffer
 	s, e int
 }
 
-// NewReflector is the preferred method of initialisation for the Monitor type.
-func NewReflector(vcs *hardware.VCS) *Reflector {
-	return &Reflector{
+// NewGatherer is the preferred method of initialisation for the Monitor type.
+func NewGatherer(vcs *hardware.VCS) *Gatherer {
+	return &Gatherer{
 		vcs:     vcs,
-		history: make([]VideoStep, television.MaxSignalHistory),
+		history: make([]ReflectedVideoStep, television.MaxSignalHistory),
+		enabled: true,
 	}
 }
 
 // AddRenderer adds an implementation of the Renderer interface to the Reflector.
-func (ref *Reflector) AddRenderer(renderer Renderer) {
+func (ref *Gatherer) AddRenderer(renderer Renderer) {
 	ref.renderer = renderer
+}
+
+// EnableReflection implements the Reflector interface.
+func (ref *Gatherer) EnableReflection(enabled bool) {
+	ref.enabled = enabled
 }
 
 // Step should be called every video cycle to record the current state of the
 // emulation/system.
-func (ref *Reflector) Step(bank mapper.BankInfo) error {
-	v := VideoStep{
-		// field aligned for storage purposes
-		CPU:               ref.vcs.CPU.LastResult,
-		WSYNC:             !ref.vcs.CPU.RdyFlg,
-		Bank:              bank,
-		VideoElement:      ref.vcs.TIA.Video.LastElement,
+func (ref *Gatherer) Step(bank mapper.BankInfo) error {
+	if !ref.enabled {
+		return nil
+	}
+
+	v := ReflectedVideoStep{
 		TV:                ref.vcs.TV.GetLastSignal(),
+		CPU:               ref.vcs.CPU.LastResult,
+		Bank:              bank,
+		WSYNC:             !ref.vcs.CPU.RdyFlg,
 		Collision:         *ref.vcs.TIA.Video.Collisions,
-		IsHblank:          ref.vcs.TIA.Hblank,
 		CoprocessorActive: bank.ExecutingCoprocessor,
 	}
+
 	if ref.vcs.TIA.Hmove.Future.IsActive() {
 		v.Hmove.Delay = true
 		v.Hmove.DelayCt = ref.vcs.TIA.Hmove.Future.Remaining()
@@ -76,7 +85,6 @@ func (ref *Reflector) Step(bank mapper.BankInfo) error {
 		v.Hmove.RippleCt = ref.vcs.TIA.Hmove.Ripple
 	}
 
-	// RSYNC
 	v.RSYNCalign, v.RSYNCreset = ref.vcs.TIA.RSYNCstate()
 
 	// if reflector is paused then we need to reflect the pixel now
@@ -99,7 +107,7 @@ func (ref *Reflector) Step(bank mapper.BankInfo) error {
 }
 
 // Pause implements the television.PauseTrigger interface.
-func (ref *Reflector) Pause(pause bool) error {
+func (ref *Gatherer) Pause(pause bool) error {
 	ref.paused = pause
 
 	// process all outstanding VideoStep in the history on pause
@@ -118,7 +126,7 @@ func (ref *Reflector) Pause(pause bool) error {
 }
 
 // NewFrame implements the television.FrameTrigger interface.
-func (ref *Reflector) NewFrame(_ television.FrameInfo) error {
+func (ref *Gatherer) NewFrame(_ television.FrameInfo) error {
 	// if reflector is not paused then we must process all outstanding
 	// VideoStep in the history
 	if ref.renderer != nil && !ref.paused {

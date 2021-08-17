@@ -139,7 +139,7 @@ type imguiColors struct {
 	saveKeyBitPointer imgui.PackedColor
 
 	// reflection colors
-	reflectionColors map[reflection.ID]imgui.Vec4
+	reflectionColors map[reflection.ReflectedInfo]imgui.Vec4
 
 	// packed TV palettes
 	packedPaletteNTSC packedPalette
@@ -268,7 +268,7 @@ func newColors() *imguiColors {
 	cols.saveKeyBitPointer = imgui.PackedColorFromVec4(cols.SaveKeyBitPointer)
 
 	// reflection colors in imgui.Vec4 and imgui.PackedColor formats
-	cols.reflectionColors = make(map[reflection.ID]imgui.Vec4)
+	cols.reflectionColors = make(map[reflection.ReflectedInfo]imgui.Vec4)
 	for k, v := range reflectionColors {
 		c := imgui.Vec4{float32(v.R) / 255.0, float32(v.G) / 255.0, float32(v.B) / 255.0, float32(v.A) / 255.0}
 		cols.reflectionColors[k] = c
@@ -314,7 +314,7 @@ func newColors() *imguiColors {
 }
 
 // reflectionColors lists the colors to be used for the reflection overlay.
-var reflectionColors = map[reflection.ID]color.RGBA{
+var reflectionColors = map[reflection.ReflectedInfo]color.RGBA{
 	reflection.WSYNC:             {R: 50, G: 50, B: 255, A: 255},
 	reflection.Collision:         {R: 255, G: 25, B: 25, A: 255},
 	reflection.CXCLR:             {R: 255, G: 25, B: 255, A: 255},

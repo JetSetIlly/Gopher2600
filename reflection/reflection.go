@@ -22,24 +22,6 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/tia/video"
 )
 
-// ID identifies the reflection information that can be ascertained from the
-// contents of a VideoStep. Other information can probably be gleaned but these
-// are the ones that have been identified. For convenience only.
-type ID int
-
-// List of valid Info value.
-const (
-	WSYNC ID = iota
-	Collision
-	CXCLR
-	HMOVEdelay
-	HMOVEripple
-	HMOVElatched
-	RSYNCalign
-	RSYNCreset
-	CoprocessorActive
-)
-
 // Renderer implementations display or otherwise process VideoStep values.
 type Renderer interface {
 	// Mark the start and end of an update event from the television.
@@ -48,7 +30,7 @@ type Renderer interface {
 	UpdatingPixels(updating bool)
 
 	// Reflect sends a VideoStep instance to the Renderer.
-	Reflect(VideoStep) error
+	Reflect(ReflectedVideoStep) error
 }
 
 // Broker implementations can identify a reflection.Renderer.
@@ -56,7 +38,7 @@ type Broker interface {
 	GetReflectionRenderer() Renderer
 }
 
-// VideoStep packages together the details of the the last video step that
+// ReflectedVideoStep packages together the details of the the last video step that
 // would otherwise be difficult for a debugger to access.
 //
 // It includes the CPU execution result, the bank from which the instruction
@@ -65,7 +47,7 @@ type Broker interface {
 //
 // Note that ordering of the structure is important. There's a saving of about
 // 2MB per frame compared to the unoptimal ordering.
-type VideoStep struct {
+type ReflectedVideoStep struct {
 	CPU               execution.Result
 	Collision         video.Collisions
 	Bank              mapper.BankInfo

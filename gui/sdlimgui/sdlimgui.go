@@ -210,7 +210,7 @@ func (img *SdlImgui) GetTerminal() terminal.Terminal {
 	return img.term
 }
 
-// GetReflectionRendere implements reflection.Broker interface.
+// GetReflectionRenderer implements reflection.Broker interface.
 func (img *SdlImgui) GetReflectionRenderer() reflection.Renderer {
 	return img.screen
 }

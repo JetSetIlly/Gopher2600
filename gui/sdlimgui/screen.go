@@ -16,6 +16,7 @@
 package sdlimgui
 
 import (
+	"fmt"
 	"image"
 	"image/color"
 	"sync"
@@ -111,7 +112,7 @@ type screenCrit struct {
 	overlayPixels *image.RGBA
 
 	// 2d array of disasm entries. resized at the same time as overlayPixels resize
-	reflection [][]reflection.VideoStep
+	reflection [][]reflection.ReflectedVideoStep
 
 	// the cropped view of the screen pixels. note that these instances are
 	// created through the SubImage() command and should not be written to
@@ -140,7 +141,7 @@ func newScreen(img *SdlImgui) *screen {
 		emuWaitAck: make(chan bool),
 	}
 
-	scr.crit.overlay = overlayLabels[overlayNone]
+	scr.crit.overlay = reflection.OverlayLabels[reflection.OverlayNone]
 	scr.crit.monitorSync = true
 
 	// default to NTSC. this will change on the first instance of
@@ -194,7 +195,7 @@ func (scr *screen) clearPixels() {
 	// reset reflection information
 	for i := range scr.crit.reflection {
 		for j := range scr.crit.reflection[i] {
-			scr.crit.reflection[i][j] = reflection.VideoStep{}
+			scr.crit.reflection[i][j] = reflection.ReflectedVideoStep{}
 		}
 	}
 	scr.replotOverlay()
@@ -227,9 +228,9 @@ func (scr *screen) resize(frameInfo television.FrameInfo) {
 	}
 
 	// allocate reflection info
-	scr.crit.reflection = make([][]reflection.VideoStep, specification.ClksScanline)
+	scr.crit.reflection = make([][]reflection.ReflectedVideoStep, specification.ClksScanline)
 	for x := 0; x < specification.ClksScanline; x++ {
-		scr.crit.reflection[x] = make([]reflection.VideoStep, sl)
+		scr.crit.reflection[x] = make([]reflection.ReflectedVideoStep, sl)
 	}
 
 	// create a cropped image from the main
@@ -345,11 +346,11 @@ func (scr *screen) NewFrame(frameInfo television.FrameInfo) error {
 		// emulation being paused before the end of the screen)
 		if scr.crit.lastY < len(scr.crit.reflection[0]) {
 			for x := scr.crit.lastX; x < len(scr.crit.reflection); x++ {
-				scr.crit.reflection[x][scr.crit.lastY] = reflection.VideoStep{}
+				scr.crit.reflection[x][scr.crit.lastY] = reflection.ReflectedVideoStep{}
 			}
 			for x := 0; x < len(scr.crit.reflection); x++ {
 				for y := scr.crit.lastY + 1; y < len(scr.crit.reflection[x]); y++ {
-					scr.crit.reflection[x][y] = reflection.VideoStep{}
+					scr.crit.reflection[x][y] = reflection.ReflectedVideoStep{}
 				}
 			}
 		}
@@ -459,7 +460,7 @@ func (scr *screen) EndRendering() error {
 // Reflect implements reflection.Renderer interface.
 //
 // Must only be called between calls to UpdatingPixels(true) and UpdatingPixels(false).
-func (scr *screen) Reflect(v reflection.VideoStep) error {
+func (scr *screen) Reflect(v reflection.ReflectedVideoStep) error {
 	// array indexes into the reflection 2d array are taken from the reflected
 	// TV signal.
 	x := v.TV.Clock
@@ -492,20 +493,20 @@ func (scr *screen) replotOverlay() {
 }
 
 // plotOverlay should be called from within a scr.crit.section Lock().
-func (scr *screen) plotOverlay(x, y int, ref reflection.VideoStep) {
+func (scr *screen) plotOverlay(x, y int, ref reflection.ReflectedVideoStep) {
 	scr.crit.overlayPixels.SetRGBA(x, y, color.RGBA{0, 0, 0, 0})
 	switch scr.crit.overlay {
-	case overlayLabels[overlayWSYNC]:
+	case reflection.OverlayLabels[reflection.OverlayWSYNC]:
 		if ref.WSYNC {
 			scr.crit.overlayPixels.SetRGBA(x, y, reflectionColors[reflection.WSYNC])
 		}
-	case overlayLabels[overlayCollisions]:
+	case reflection.OverlayLabels[reflection.OverlayCollision]:
 		if ref.Collision.LastVideoCycle.IsCXCLR() {
 			scr.crit.overlayPixels.SetRGBA(x, y, reflectionColors[reflection.CXCLR])
 		} else if !ref.Collision.LastVideoCycle.IsNothing() {
 			scr.crit.overlayPixels.SetRGBA(x, y, reflectionColors[reflection.Collision])
 		}
-	case overlayLabels[overlayHMOVE]:
+	case reflection.OverlayLabels[reflection.OverlayHMOVE]:
 		// HmoveCt counts to -1 (or 255 for a uint8)
 		if ref.Hmove.Delay {
 			scr.crit.overlayPixels.SetRGBA(x, y, reflectionColors[reflection.HMOVEdelay])
@@ -516,14 +517,15 @@ func (scr *screen) plotOverlay(x, y int, ref reflection.VideoStep) {
 				scr.crit.overlayPixels.SetRGBA(x, y, reflectionColors[reflection.HMOVElatched])
 			}
 		}
-	case overlayLabels[overlayRSYNC]:
+	case reflection.OverlayLabels[reflection.OverlayRSYNC]:
 		if ref.RSYNCalign {
 			scr.crit.overlayPixels.SetRGBA(x, y, reflectionColors[reflection.RSYNCalign])
 		} else if ref.RSYNCreset {
 			scr.crit.overlayPixels.SetRGBA(x, y, reflectionColors[reflection.RSYNCreset])
 		}
-	case overlayLabels[overlayCoprocessor]:
+	case reflection.OverlayLabels[reflection.OverlayCoproc]:
 		if ref.CoprocessorActive {
+			fmt.Println(1)
 			scr.crit.overlayPixels.SetRGBA(x, y, reflectionColors[reflection.CoprocessorActive])
 		}
 	}

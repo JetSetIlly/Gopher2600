@@ -15,5 +15,5 @@
 
 // Package reflection monitors the emulated hardware for conditions that would
 // otherwise not be visible through normal emulation. The reflection system is
-// run every video cycle.
+// stepped every video cycle.
 package reflection
