@@ -366,11 +366,11 @@ func (tv *Television) Signal(sig signal.SignalAttributes) error {
 
 	// check vsync signal at the time of the flyback
 	if sig.VSync && !tv.state.lastSignal.VSync {
+		tv.state.vsyncCount = 0
 	} else if sig.VSync && tv.state.lastSignal.VSync {
 		tv.state.vsyncCount++
 	} else if !sig.VSync && tv.state.lastSignal.VSync {
 		if tv.state.vsyncCount > 10 {
-			tv.state.vsyncCount = 0
 			err := tv.newFrame(true)
 			if err != nil {
 				return err
