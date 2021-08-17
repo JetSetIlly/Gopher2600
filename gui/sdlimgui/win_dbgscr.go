@@ -23,6 +23,7 @@ import (
 	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/disassembly"
 	"github.com/jetsetilly/gopher2600/emulation"
+	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 	"github.com/jetsetilly/gopher2600/hardware/tia/video"
 	"github.com/jetsetilly/gopher2600/reflection"
@@ -463,9 +464,11 @@ func (win *winDbgScr) drawReflectionTooltip() {
 
 	// pixel swatch. using black swatch if pixel is HBLANKed or VBLANKed
 	_, _, pal := win.img.imguiTVPalette()
-	if ref.IsHblank || ref.TV.VBlank {
-		win.img.imguiSwatch(0, 0.5)
+	if ref.IsHblank || ref.TV.VBlank || ref.TV.Pixel == signal.VideoBlack {
+		imguiColorLabel("No color signal", pal[0])
 	} else {
+		// not using GetColor() function. arguably we should but we've
+		// protected the array access with the VideoBlack test above.
 		imguiColorLabel(ref.VideoElement.String(), pal[ref.TV.Pixel])
 	}
 
