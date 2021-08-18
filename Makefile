@@ -60,7 +60,7 @@ readme_spell: check_pandoc
 	@pandoc README.md -t plain | aspell -a | cut -d ' ' -f 2 | awk 'length($0)>1' | sort | uniq
 
 test:
-	$(goBinary) test ./...
+	$(goBinary) test -shuffle on ./...
 
 race: generate test
 	$(goBinary) run -race gopher2600.go $(profilingRom)
