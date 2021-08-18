@@ -59,8 +59,14 @@ endif
 readme_spell: check_pandoc
 	@pandoc README.md -t plain | aspell -a | cut -d ' ' -f 2 | awk 'length($0)>1' | sort | uniq
 
+
 test:
+# testing with shuffle on is good but it's only available in go 1.17 onwards
+ifeq ($(shell $(goBinary) version | grep -q 1.17 ; echo $$?), 0)
 	$(goBinary) test -shuffle on ./...
+else
+	$(goBinary) test ./...
+endif
 
 race: generate test
 	$(goBinary) run -race gopher2600.go $(profilingRom)
