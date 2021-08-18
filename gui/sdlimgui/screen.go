@@ -420,33 +420,34 @@ func (scr *screen) SetPixels(sig []signal.SignalAttributes, current bool) error 
 	}
 	offset += adjustedScanline * scr.crit.bufferPixels[scr.crit.plotIdx].Rect.Size().X * 4
 
-	// check that we're not going to encounter an index-out-of-range error
-	if offset+(len(sig)*4) >= len(scr.crit.bufferPixels[scr.crit.plotIdx].Pix) {
-		return nil
-	}
+	if offset < len(scr.crit.bufferPixels[scr.crit.plotIdx].Pix)-4 {
+		for i := range sig[0:] {
+			// handle VBLANK by setting pixels to black
+			if sig[i].VBlank {
+				col = color.RGBA{R: 0, G: 0, B: 0}
+			} else {
+				col = scr.crit.frameInfo.Spec.GetColor(sig[i].Pixel)
+			}
 
-	for i := range sig[0:] {
-		// handle VBLANK by setting pixels to black
-		if sig[i].VBlank {
-			col = color.RGBA{R: 0, G: 0, B: 0}
-		} else {
-			col = scr.crit.frameInfo.Spec.GetColor(sig[i].Pixel)
+			// Small cap improves performance, see https://golang.org/issue/27857
+			s := scr.crit.bufferPixels[scr.crit.plotIdx].Pix[offset : offset+4 : offset+4]
+			s[0] = col.R
+			s[1] = col.G
+			s[2] = col.B
+
+			// alpha channel never changes
+
+			// check that we're not going to encounter an index-out-of-range error
+			offset += 4
+			if offset >= len(scr.crit.bufferPixels[scr.crit.plotIdx].Pix)-4 {
+				break // for loop
+			}
 		}
 
-		// Small cap improves performance, see https://golang.org/issue/27857
-		s := scr.crit.bufferPixels[scr.crit.plotIdx].Pix[offset : offset+4 : offset+4]
-		s[0] = col.R
-		s[1] = col.G
-		s[2] = col.B
-
-		// alpha channel never changes
-
-		offset += 4
-	}
-
-	if current {
-		scr.crit.lastX = sig[len(sig)-1].Clock
-		scr.crit.lastY = sig[len(sig)-1].Scanline
+		if current {
+			scr.crit.lastX = sig[len(sig)-1].Clock
+			scr.crit.lastY = sig[len(sig)-1].Scanline
+		}
 	}
 
 	return nil
