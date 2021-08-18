@@ -27,6 +27,7 @@ import (
 	"unsafe"
 
 	"github.com/pkg/term/termios"
+	"golang.org/x/sys/unix"
 )
 
 // termGeometry contains the dimensions of a terminal (usually the output terminal).
@@ -45,9 +46,9 @@ type EasyTerm struct {
 
 	geometry termGeometry
 
-	canAttr    syscall.Termios
-	rawAttr    syscall.Termios
-	cbreakAttr syscall.Termios
+	canAttr    unix.Termios
+	rawAttr    unix.Termios
+	cbreakAttr unix.Termios
 
 	// sig/ack channels to control signal handler
 	terminateHandlerSig chan bool
