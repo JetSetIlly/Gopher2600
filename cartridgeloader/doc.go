@@ -27,8 +27,9 @@
 //             Filename: "roms/Pitfall.bin",
 //     }
 //
-// It is preferred however, that the NewLoader() function is used to initialise
-// the Loader.
+// It is stronly preferred however, that the NewLoader() function is used to
+// initialise the Loader or important fields risk being initialised
+// incorrectly.
 //
 // The NewLoader() function accepts two arguments. The filename of the
 // cartridge (which might be a HTTP url) and the cartridge mapper. In most

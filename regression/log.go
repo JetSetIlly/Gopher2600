@@ -68,8 +68,7 @@ func deserialiseLogEntry(fields database.SerialisedEntry) (database.Entry, error
 	}
 
 	// string fields need no conversion
-	reg.CartLoad.Filename = fields[logFieldCartName]
-	reg.CartLoad.Mapping = fields[logFieldCartMapping]
+	reg.CartLoad = cartridgeloader.NewLoader(fields[videoFieldCartName], fields[videoFieldCartMapping])
 	reg.TVtype = fields[logFieldTVtype]
 	reg.digest = fields[logFieldDigest]
 	reg.Notes = fields[logFieldNotes]
@@ -106,7 +105,7 @@ func (reg LogRegression) String() string {
 func (reg *LogRegression) Serialise() (database.SerialisedEntry, error) {
 	return database.SerialisedEntry{
 			reg.CartLoad.Filename,
-			reg.CartLoad.Mapping,
+			reg.CartLoad.RequestedMapping,
 			reg.TVtype,
 			strconv.Itoa(reg.NumFrames),
 			reg.digest,

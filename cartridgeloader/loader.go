@@ -41,6 +41,9 @@ type Loader struct {
 	// empty string or "AUTO" indicates automatic fingerprinting
 	Mapping string
 
+	// the Mapping value that was used to initialise the loader
+	RequestedMapping string
+
 	// any detected TV spec in the filename. will be the empty string if
 	// nothing is found. note that the empty string is treated like "AUTO" by
 	// television.SetSpec().
@@ -89,16 +92,19 @@ type Loader struct {
 // Alphabetic characters in file extensions can be in upper or lower case or a
 // mixture of both.
 func NewLoader(filename string, mapping string) Loader {
-	cl := Loader{
-		Filename: filename,
-		Mapping:  "AUTO",
-		stream:   new(*io.ReadSeekCloser),
+	mapping = strings.TrimSpace(strings.ToUpper(mapping))
+	if mapping == "" {
+		mapping = "AUTO"
 	}
 
-	mapping = strings.TrimSpace(strings.ToUpper(mapping))
-	if mapping != "AUTO" && mapping != "" {
-		cl.Mapping = mapping
-	} else {
+	cl := Loader{
+		Filename:         filename,
+		Mapping:          mapping,
+		RequestedMapping: mapping,
+		stream:           new(*io.ReadSeekCloser),
+	}
+
+	if mapping == "AUTO" {
 		ext := strings.ToUpper(filepath.Ext(filename))
 		switch ext {
 		case ".BIN":

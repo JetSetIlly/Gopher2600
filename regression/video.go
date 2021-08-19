@@ -75,8 +75,7 @@ func deserialiseVideoEntry(fields database.SerialisedEntry) (database.Entry, err
 	}
 
 	// string fields need no conversion
-	reg.CartLoad.Filename = fields[videoFieldCartName]
-	reg.CartLoad.Mapping = fields[videoFieldCartMapping]
+	reg.CartLoad = cartridgeloader.NewLoader(fields[videoFieldCartName], fields[videoFieldCartMapping])
 	reg.TVtype = fields[videoFieldTVtype]
 	reg.digest = fields[videoFieldDigest]
 	reg.Notes = fields[videoFieldNotes]
@@ -155,7 +154,7 @@ func (reg VideoRegression) String() string {
 func (reg *VideoRegression) Serialise() (database.SerialisedEntry, error) {
 	return database.SerialisedEntry{
 			reg.CartLoad.Filename,
-			reg.CartLoad.Mapping,
+			reg.CartLoad.RequestedMapping,
 			reg.TVtype,
 			strconv.Itoa(reg.NumFrames),
 			reg.State.String(),
