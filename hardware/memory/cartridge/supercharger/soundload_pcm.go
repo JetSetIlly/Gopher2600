@@ -19,35 +19,44 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"path/filepath"
+	"strings"
 
-	"github.com/go-audio/audio"
-	"github.com/go-audio/wav"
+	// "github.com/go-audio/audio"
+	// "github.com/go-audio/wav"
+
 	"github.com/hajimehoshi/go-mp3"
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/logger"
+	"github.com/youpy/go-wav"
 )
 
-// according to the go-mp3 docs:
-//
-// "The stream is always formatted as 16bit (little endian) 2 channels even if
-// the source is single channel MP3. Thus, a sample always consists of 4
-// bytes.".
-const mp3NumChannels = 2
-const mp3SourceBitDepth = 16
+type pcmData struct {
+	totalTime  float64
+	sampleRate float64
 
-// getPCM() tries to interprets the data in the cartridgeloader as sound data,
-// first as WAV data and then as MP3 data. returns an error if data doesn't
-// apepar to either.
-//
-// !!TODO: handle multiple mp3/wav files to create one single multiload tape.
-func getPCM(cl cartridgeloader.Loader) (*audio.Float32Buffer, error) {
-	// try interpreting data as a WAV file
-	wavDec := wav.NewDecoder(&pcmDecoder{data: cl.Data})
-	if wavDec.IsValidFile() {
-		b, err := wavDec.FullPCMBuffer()
+	// data is mono data (taken from the left channel in the case of stero
+	// source files)
+	data []float32
+}
+
+func getPCM(cl cartridgeloader.Loader) (pcmData, error) {
+	p := pcmData{
+		data: make([]float32, 0),
+	}
+
+	switch strings.ToLower(filepath.Ext(cl.Filename)) {
+	case ".wav":
+		dec := wav.NewReader(cl.StreamedData)
+
+		format, err := dec.Format()
 		if err != nil {
-			return nil, fmt.Errorf("soundload: wav file: %v", err)
+			return p, fmt.Errorf("soundload: wav file: %v", err)
 		}
+
+		logger.Log(soundloadLogTag, "loading from wav file")
+
+		p.sampleRate = float64(format.SampleRate)
 
 		// adjust zero value for unsigned data. with wav data we can assume
 		// that a bit-depth of 8 or less is unsigned. bottom of page 60:
@@ -56,115 +65,75 @@ func getPCM(cl cartridgeloader.Loader) (*audio.Float32Buffer, error) {
 		//
 		// data for higher bit-depths is signed and we do not need to do make
 		// any adjustments
-		if wavDec.BitDepth <= 8 {
-			adj := int(math.Pow(2.0, float64(b.SourceBitDepth)) / 2)
-			for i := range b.Data {
-				b.Data[i] -= adj
+		adjust := 0
+		if format.BitsPerSample == 8 {
+			adjust = int(math.Pow(2.0, float64(format.BitsPerSample)/2))
+		}
+
+		logger.Log(soundloadLogTag, "using left channel only")
+
+		err = nil
+		for err != io.EOF {
+			var samples []wav.Sample
+			samples, err = dec.ReadSamples()
+			if err != nil && err != io.EOF {
+				return p, fmt.Errorf("soundload: wav file: %v", err)
+			}
+			for _, s := range samples {
+				p.data = append(p.data, float32(s.Values[0]-adjust))
 			}
 		}
 
-		logger.Log(soundloadLogTag, "loading from wav file")
-		return b.AsFloat32Buffer(), nil
-	}
-
-	// try interpreting data as an MP3 file
-	mp3Dec, err := mp3.NewDecoder(&pcmDecoder{data: cl.Data})
-	if err != nil {
-		return nil, fmt.Errorf("soundload: mp3 file: %v", err)
-	}
-
-	b := &audio.IntBuffer{
-		Format: &audio.Format{
-			NumChannels: mp3NumChannels,
-			SampleRate:  mp3Dec.SampleRate(),
-		},
-		Data:           make([]int, 0, mp3Dec.Length()),
-		SourceBitDepth: mp3SourceBitDepth,
-	}
-
-	d := make([]byte, 4096)
-	for {
-		n, err := mp3Dec.Read(d)
-		if err == io.EOF {
-			break // for loop
-		}
-
+	case ".mp3":
+		dec, err := mp3.NewDecoder(cl.StreamedData)
 		if err != nil {
-			return nil, fmt.Errorf("soundload: mp3 file: %v", err)
+			return p, fmt.Errorf("soundload: mp3 file: %v", err)
 		}
 
-		// two bytes per sample per channel
-		for i := 0; i < n; i += 2 {
-			// little endian 16 bit sample
-			f := int(d[i]) | (int((d[i+1])) << 8)
+		logger.Log(soundloadLogTag, "loading from mp3 file")
 
-			// adjust value if it is not zero (same as interpreting
-			// as two's complement)
-			if f != 0 {
-				f -= 32768
+		// according to the go-mp3 docs:
+		//
+		// "The stream is always formatted as 16bit (little endian) 2 channels even if
+		// the source is single channel MP3. Thus, a sample always consists of 4
+		// bytes.".
+		p.sampleRate = float64(dec.SampleRate())
+
+		logger.Log(soundloadLogTag, "using left channel only")
+
+		err = nil
+		chunk := make([]byte, 4096)
+		for err != io.EOF {
+			var chunkLen int
+			chunkLen, err = dec.Read(chunk)
+			if err != nil && err != io.EOF {
+				return p, fmt.Errorf("soundload: mp3 file: %v", err)
 			}
 
-			b.Data = append(b.Data, f)
+			// index increment of 4 because:
+			//  - two bytes per sample per channel
+			//  - we only want the left channel
+			//  - if we only wanted the right channel we could start with an
+			//		index of 2
+			for i := 2; i < chunkLen; i += 4 {
+				// little endian 16 bit sample
+				f := int(chunk[i]) | (int((chunk[i+1])) << 8)
+
+				// adjust value if it is not zero (same as interpreting
+				// as two's complement)
+				if f != 0 {
+					f -= 32768
+				}
+
+				p.data = append(p.data, float32(f))
+			}
 		}
 	}
 
-	logger.Log(soundloadLogTag, "loading from mp3 file")
-	return b.AsFloat32Buffer(), nil
-}
+	p.totalTime = float64(len(p.data)) / p.sampleRate
 
-// pcmDecoder is an implementation of io.ReadSeeker.
-//
-// this is used by wav.NewDecoder() and mp3.NewDecoder() to load data from the
-// cartridgeloader data.
-type pcmDecoder struct {
-	data   []uint8
-	offset int
-}
+	logger.Logf(soundloadLogTag, "sample rate: %0.2fHz", p.sampleRate)
+	logger.Logf(soundloadLogTag, "total time: %.02fs", p.totalTime)
 
-// Read is an implementation of io.ReadSeeker.
-func (d *pcmDecoder) Read(p []byte) (int, error) {
-	// return EOF error if no more bytes to copy
-	if d.offset >= len(d.data) {
-		return 0, io.EOF
-	}
-
-	// end byte of the data we're copying from
-	n := d.offset + len(p)
-
-	if n > len(d.data) {
-		n = len(d.data)
-	}
-
-	// copy data to p
-	copy(p, d.data[d.offset:n])
-
-	// how many bytes were read
-	n -= d.offset
-
-	// advance offset
-	d.offset += n
-	if d.offset > len(d.data) {
-		d.offset = len(d.data)
-	}
-
-	return n, nil
-}
-
-// Seek is an implementation of io.ReadSeeker.
-func (d *pcmDecoder) Seek(offset int64, whence int) (int64, error) {
-	switch whence {
-	case io.SeekStart:
-		d.offset = int(offset)
-	case io.SeekCurrent:
-		d.offset += int(offset)
-	case io.SeekEnd:
-		d.offset = len(d.data) - int(offset)
-	}
-
-	if d.offset < 0 {
-		d.offset = 0
-		return int64(d.offset), io.EOF
-	}
-
-	return int64(d.offset), nil
+	return p, nil
 }

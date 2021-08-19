@@ -34,11 +34,8 @@ const soundloadLogTag = "supercharger: soundload"
 type SoundLoad struct {
 	cart *Supercharger
 
-	// sample levels
-	samples []float32
-
-	// speed of samples in Hz
-	sampleRate float64
+	// sound data and format information
+	pcm pcmData
 
 	// current index of samples array
 	idx int
@@ -68,28 +65,16 @@ func newSoundLoad(cart *Supercharger, loader cartridgeloader.Loader) (tape, erro
 		cart: cart,
 	}
 
+	var err error
+
 	// get PCM data from data loaded from file
-	pcm, err := getPCM(loader)
+	tap.pcm, err = getPCM(loader)
 	if err != nil {
 		return nil, fmt.Errorf("soundload: %v", err)
 	}
 
-	numChannels := pcm.Format.NumChannels
-	tap.sampleRate = float64(pcm.Format.SampleRate)
-
-	// copy just one channel worth of bits
-	tap.samples = make([]float32, 0, len(pcm.Data)/numChannels)
-	for i := 0; i < len(pcm.Data); i += numChannels {
-		tap.samples = append(tap.samples, pcm.Data[i])
-	}
-
-	// PCM info
-	logger.Logf(soundloadLogTag, "num channels: %d (using one)", numChannels)
-	logger.Logf(soundloadLogTag, "sample rate: %0.2fHz", tap.sampleRate)
-	logger.Logf(soundloadLogTag, "total time: %.02fs", float64(len(tap.samples))/tap.sampleRate)
-
 	// the length of time of each sample in microseconds
-	timePerSample := 1000000.0 / tap.sampleRate
+	timePerSample := 1000000.0 / tap.pcm.sampleRate
 	logger.Logf(soundloadLogTag, "time per sample: %.02fus", timePerSample)
 
 	// number of samples in a cycle for it to be interpreted as a zero or a one
@@ -100,7 +85,7 @@ func newSoundLoad(cart *Supercharger, loader cartridgeloader.Loader) (tape, erro
 		int(317.0/timePerSample), int(340.0/timePerSample), int(2450.0/timePerSample)))
 
 	// calculate tape regulator speed. 1190000 is the frequency at which step() is called (1.19MHz)
-	tap.regulator = int(math.Round(1190000.0 / tap.sampleRate))
+	tap.regulator = int(math.Round(1190000.0 / tap.pcm.sampleRate))
 	logger.Logf(soundloadLogTag, "tape regulator: %d", tap.regulator)
 
 	// rewind tape to start of header
@@ -126,10 +111,10 @@ func (tap *SoundLoad) load() (uint8, error) {
 		}
 		tap.playing = true
 		tap.playDelay = 0
-		logger.Log(soundloadLogTag, "tape: playing")
+		logger.Log(soundloadLogTag, "tape playing")
 	}
 
-	if tap.samples[tap.idx] > 0.0 {
+	if tap.pcm.data[tap.idx] > 0.0 {
 		return 0x01, nil
 	}
 	return 0x00, nil
@@ -142,7 +127,7 @@ func (tap *SoundLoad) step() {
 	if tap.stepLimiter < stepLimit {
 		tap.stepLimiter++
 		if tap.stepLimiter == stepLimit {
-			logger.Log(soundloadLogTag, "tape: stopped")
+			logger.Log(soundloadLogTag, "tape stopped")
 			tap.playing = false
 		}
 	}
@@ -158,7 +143,7 @@ func (tap *SoundLoad) step() {
 	tap.regulatorCt = 0
 
 	// make sure we don't try to read past end of tape
-	if tap.idx >= len(tap.samples)-1 {
+	if tap.idx >= len(tap.pcm.data)-1 {
 		tap.Rewind()
 		return
 	}
@@ -169,14 +154,14 @@ func (tap *SoundLoad) step() {
 func (tap *SoundLoad) Rewind() {
 	// rewinding happens instantaneously
 	tap.idx = 0
-	logger.Log(soundloadLogTag, "tape: rewound")
+	logger.Log(soundloadLogTag, "tape rewound")
 	tap.stepLimiter = 0
 }
 
 // SetTapeCounter implements the mapper.CartTapeBus interface.
 func (tap *SoundLoad) SetTapeCounter(c int) {
-	if c >= len(tap.samples) {
-		c = len(tap.samples)
+	if c >= len(tap.pcm.data) {
+		c = len(tap.pcm.data)
 	}
 	tap.idx = c
 }
@@ -187,17 +172,17 @@ const numStateSamples = 100
 func (tap *SoundLoad) GetTapeState() (bool, mapper.CartTapeState) {
 	state := mapper.CartTapeState{
 		Counter:    tap.idx,
-		MaxCounter: len(tap.samples),
-		Time:       float64(tap.idx) / tap.sampleRate,
-		MaxTime:    float64(len(tap.samples)) / tap.sampleRate,
+		MaxCounter: len(tap.pcm.data),
+		Time:       float64(tap.idx) / tap.pcm.sampleRate,
+		MaxTime:    float64(len(tap.pcm.data)) / tap.pcm.sampleRate,
 		Data:       make([]float32, numStateSamples),
 	}
 
-	if tap.idx < len(tap.samples) {
-		if tap.idx > len(tap.samples)-numStateSamples {
-			copy(state.Data, tap.samples[tap.idx:])
+	if tap.idx < len(tap.pcm.data) {
+		if tap.idx > len(tap.pcm.data)-numStateSamples {
+			copy(state.Data, tap.pcm.data[tap.idx:])
 		} else {
-			copy(state.Data, tap.samples[tap.idx:tap.idx+numStateSamples])
+			copy(state.Data, tap.pcm.data[tap.idx:tap.idx+numStateSamples])
 		}
 	}
 

@@ -69,12 +69,12 @@ type Loader struct {
 
 	// for some file types streaming is necessary. nil until Load() is called
 	// and the cartridge format requires streaming.
-	StreamedData io.ReadSeekCloser
+	StreamedData *os.File
 
 	// pointer to pointer of StreamedData. this is a tricky construct but it
 	// allows us to pass an instance of Loader by value but still be able to
 	// close an opened stream at an "earlier" point in the code.
-	stream **io.ReadSeekCloser
+	stream **os.File
 }
 
 // NewLoader is the preferred method of initialisation for the Loader type.
@@ -101,7 +101,7 @@ func NewLoader(filename string, mapping string) Loader {
 		Filename:         filename,
 		Mapping:          mapping,
 		RequestedMapping: mapping,
-		stream:           new(*io.ReadSeekCloser),
+		stream:           new(*os.File),
 	}
 
 	if mapping == "AUTO" {
@@ -215,7 +215,9 @@ func (cl Loader) IsStreaming() bool {
 // valid schema will use that method to load the data. Currently supported
 // schemes are HTTP and local files.
 func (cl *Loader) Load() error {
-	if cl.Mapping == "MVC" {
+	stream := cl.Mapping == "MVC" || (cl.Mapping == "AR" && cl.IsSoundData)
+
+	if stream {
 		err := cl.Close()
 		if err != nil {
 			return curated.Errorf("cartridgeloader: %v", err)
@@ -227,7 +229,7 @@ func (cl *Loader) Load() error {
 		}
 		logger.Logf("cartridgeloader", "stream open (%s)", cl.Filename)
 
-		*cl.stream = &cl.StreamedData
+		*cl.stream = cl.StreamedData
 
 		return nil
 	}

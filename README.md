@@ -467,11 +467,7 @@ work, resulting in a file that is a multiple of 8448 bytes.
 
 For MP3 and WAV files however, the *waveform* should be concatenated, not the
 individual MP3/WAV files themselves. A command line tool like
-[SoX](https://en.wikipedia.org/wiki/SoX) can be used for this, or a graphical
-program like [Audacity](https://www.audacityteam.org/download/) if you prefer.
-
-Of course, in all cases, the individual parts must be part of a multiload set
-for this to work.
+[SoX](https://github.com/chirlu/sox) can be used for this.
 
 ### Supercharger BIOS
 

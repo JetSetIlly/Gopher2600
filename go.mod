@@ -18,5 +18,8 @@ require (
 	github.com/go-audio/riff v1.0.0 // indirect
 	github.com/go-echarts/go-echarts/v2 v2.2.3 // indirect
 	github.com/rs/cors v1.7.0 // indirect
+	github.com/youpy/go-riff v0.0.0-20131220112943-557d78c11efb // indirect
+	github.com/youpy/go-wav v0.2.0 // indirect
+	github.com/zaf/g711 v0.0.0-20190814101024-76a4a538f52b // indirect
 	golang.org/x/sys v0.0.0-20200909081042-eff7692f9009 // indirect
 )
