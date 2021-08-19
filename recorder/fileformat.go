@@ -22,6 +22,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/curated"
 )
 
@@ -109,7 +110,7 @@ func (plb *Playback) readHeader(lines []string) error {
 	}
 
 	// read header
-	plb.CartLoad.Filename = lines[lineCartName]
+	plb.CartLoad = cartridgeloader.NewLoader(lines[lineCartName], "AUTO")
 	plb.CartLoad.Hash = lines[lineCartHash]
 	plb.TVSpec = lines[lineTVSpec]
 
