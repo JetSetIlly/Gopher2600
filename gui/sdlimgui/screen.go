@@ -99,6 +99,10 @@ type screenCrit struct {
 	// - a five frame buffer seems good. ten frames can feel laggy
 	bufferPixels [5]*image.RGBA
 
+	// the number of scanlines represented in the bufferPixels. this is set
+	// during a resize operation and used to affect screen roll visualisation
+	bufferHeight int
+
 	// which buffer we'll be plotting to and which bufffer we'll be rendering
 	// from. in playmode we make sure these two indexes never meet. in
 	// debugmode we plot and render from the same index, it doesn't matter.
@@ -218,19 +222,19 @@ func (scr *screen) resize(frameInfo television.FrameInfo) {
 	// reallocate memory for new spec. the amount of vertical space is the
 	// MaxScanlines value. the +1 is so that we can draw the debugging cursor
 	// at the limit of the screen.
-	sl := scr.crit.frameInfo.Spec.ScanlinesTotal + 1
-	scr.crit.pixels = image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, sl))
-	scr.crit.elementPixels = image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, sl))
-	scr.crit.overlayPixels = image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, sl))
+	scr.crit.bufferHeight = scr.crit.frameInfo.Spec.ScanlinesTotal + 1
+	scr.crit.pixels = image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, scr.crit.bufferHeight))
+	scr.crit.elementPixels = image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, scr.crit.bufferHeight))
+	scr.crit.overlayPixels = image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, scr.crit.bufferHeight))
 
 	for i := range scr.crit.bufferPixels {
-		scr.crit.bufferPixels[i] = image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, sl))
+		scr.crit.bufferPixels[i] = image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, scr.crit.bufferHeight))
 	}
 
 	// allocate reflection info
 	scr.crit.reflection = make([][]reflection.ReflectedVideoStep, specification.ClksScanline)
 	for x := 0; x < specification.ClksScanline; x++ {
-		scr.crit.reflection[x] = make([]reflection.ReflectedVideoStep, sl)
+		scr.crit.reflection[x] = make([]reflection.ReflectedVideoStep, scr.crit.bufferHeight)
 	}
 
 	// create a cropped image from the main
@@ -380,7 +384,7 @@ func (scr *screen) UpdatingPixels(updating bool) {
 //
 // Must only be called between calls to UpdatingPixels(true) and UpdatingPixels(false).
 func (scr *screen) SetPixel(sig signal.SignalAttributes, current bool) error {
-	col := color.RGBA{R: 0, G: 0, B: 0, A: 255}
+	col := color.RGBA{R: 0, G: 0, B: 0}
 
 	// handle VBLANK by setting pixels to black
 	if !sig.VBlank {
@@ -395,8 +399,8 @@ func (scr *screen) SetPixel(sig signal.SignalAttributes, current bool) error {
 	// if sig is outside the bounds of the image then the SetRGBA() will silently fail
 
 	adjustedScanline := (sig.Scanline + scr.crit.unsyncedScanline)
-	if adjustedScanline >= scr.crit.frameInfo.Spec.ScanlinesTotal {
-		adjustedScanline -= scr.crit.frameInfo.Spec.ScanlinesTotal
+	if adjustedScanline >= scr.crit.bufferHeight {
+		adjustedScanline -= scr.crit.bufferHeight
 	}
 	scr.crit.bufferPixels[scr.crit.plotIdx].SetRGBA(sig.Clock, adjustedScanline, col)
 
@@ -407,47 +411,55 @@ func (scr *screen) SetPixel(sig signal.SignalAttributes, current bool) error {
 //
 // Must only be called between calls to UpdatingPixels(true) and UpdatingPixels(false).
 func (scr *screen) SetPixels(sig []signal.SignalAttributes, current bool) error {
+
 	if len(sig) == 0 {
 		return nil
 	}
 
-	var col color.RGBA
+	adjustedScanline := (sig[0].Scanline + scr.crit.unsyncedScanline)
+	if adjustedScanline >= scr.crit.bufferHeight {
+		adjustedScanline -= scr.crit.bufferHeight
+	}
 
 	offset := sig[0].Clock * 4
-	adjustedScanline := (sig[0].Scanline + scr.crit.unsyncedScanline)
-	if adjustedScanline >= scr.crit.frameInfo.Spec.ScanlinesTotal {
-		adjustedScanline -= scr.crit.frameInfo.Spec.ScanlinesTotal
-	}
 	offset += adjustedScanline * scr.crit.bufferPixels[scr.crit.plotIdx].Rect.Size().X * 4
 
-	if offset < len(scr.crit.bufferPixels[scr.crit.plotIdx].Pix)-4 {
-		for i := range sig[0:] {
-			// handle VBLANK by setting pixels to black
-			if sig[i].VBlank {
-				col = color.RGBA{R: 0, G: 0, B: 0}
-			} else {
-				col = scr.crit.frameInfo.Spec.GetColor(sig[i].Pixel)
-			}
+	var col color.RGBA
 
-			// Small cap improves performance, see https://golang.org/issue/27857
-			s := scr.crit.bufferPixels[scr.crit.plotIdx].Pix[offset : offset+4 : offset+4]
-			s[0] = col.R
-			s[1] = col.G
-			s[2] = col.B
-
-			// alpha channel never changes
-
-			// check that we're not going to encounter an index-out-of-range error
-			offset += 4
-			if offset >= len(scr.crit.bufferPixels[scr.crit.plotIdx].Pix)-4 {
-				break // for loop
-			}
+	for i := range sig {
+		// check that we're not going to encounter an index-out-of-range error
+		if offset >= len(scr.crit.bufferPixels[scr.crit.plotIdx].Pix)-4 {
+			// reset offset. resetting to zero is not satisfactory - we can see
+			// why on the 'thinking' screen of Andrew Davie's 3e+ chess demo,
+			// when the rolled screen doesn't stich together correctly from
+			// frame to frame (if we reset to zero)
+			//
+			// simply stopping the processing is not satisfactory either
+			// because that would leave us with a lot of undrawn pixels
+			offset = sig[i].Clock * 4
 		}
 
-		if current {
-			scr.crit.lastX = sig[len(sig)-1].Clock
-			scr.crit.lastY = sig[len(sig)-1].Scanline
+		// handle VBLANK by setting pixels to black
+		if sig[i].VBlank {
+			col = color.RGBA{R: 0, G: 0, B: 0}
+		} else {
+			col = scr.crit.frameInfo.Spec.GetColor(sig[i].Pixel)
 		}
+
+		// small cap improves performance, see https://golang.org/issue/27857
+		s := scr.crit.bufferPixels[scr.crit.plotIdx].Pix[offset : offset+4 : offset+4]
+		s[0] = col.R
+		s[1] = col.G
+		s[2] = col.B
+
+		// alpha channel never changes
+
+		offset += 4
+	}
+
+	if current {
+		scr.crit.lastX = sig[len(sig)-1].Clock
+		scr.crit.lastY = sig[len(sig)-1].Scanline
 	}
 
 	return nil
