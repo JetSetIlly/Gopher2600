@@ -19,6 +19,9 @@ type state struct {
 	tape      tape
 	registers Registers
 	ram       [3][]uint8
+
+	// is the tape currently in the process of being loaded
+	isLoading bool
 }
 
 func newState() *state {

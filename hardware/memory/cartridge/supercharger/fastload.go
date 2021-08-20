@@ -143,8 +143,8 @@ func (tap *FastLoad) load() (uint8, error) {
 	// a function disguised as an error type. The emulation knows how to interpret
 	// this error and will call the function
 	return 0, FastLoaded(func(mc *cpu.CPU, ram *vcs.RAM, tmr *timer.Timer) error {
-		// requested multiload is saved at RAM address 0xfa.
-		m, err := ram.Peek(0xfa)
+		// look up requested multiload address
+		m, err := ram.Peek(MutliloadByteAddress)
 		if err != nil {
 			return curated.Errorf("supercharger: fastload %v", err)
 		}

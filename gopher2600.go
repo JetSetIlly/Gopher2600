@@ -283,6 +283,7 @@ func play(md *modalflag.Modes, sync *mainSync) error {
 	hiscore := md.AddBool("hiscore", false, "contact hiscore server [EXPERIMENTAL]")
 	log := md.AddBool("log", false, "echo debugging log to stdout")
 	useSavekey := md.AddBool("savekey", false, "use savekey in player 1 port")
+	multiload := md.AddInt("multiload", -1, "force multiload byte (supercharger only; 0 to 255)")
 	profile := md.AddString("profile", "none", "run performance check with profiling: command separated CPU, MEM, TRACE or ALL")
 
 	stats := &[]bool{false}[0]
@@ -364,7 +365,7 @@ func play(md *modalflag.Modes, sync *mainSync) error {
 
 		// set up a running function
 		playLaunch := func() error {
-			err = playmode.Play(tv, scr, *record, cartload, *patchFile, *hiscore, *useSavekey)
+			err = playmode.Play(tv, scr, *record, cartload, *patchFile, *hiscore, *useSavekey, *multiload)
 			if err != nil {
 				return err
 			}

@@ -60,10 +60,6 @@ type Loader struct {
 	// does the Data field consist of sound (PCM) data
 	IsSoundData bool
 
-	// callback function when cartridge has been successfully inserted. not all
-	// cartridge formats support/require this
-	OnInserted func(cart mapper.CartMapper) error
-
 	// cartridge data. empty until Load() is called
 	Data []byte
 
@@ -75,6 +71,14 @@ type Loader struct {
 	// allows us to pass an instance of Loader by value but still be able to
 	// close an opened stream at an "earlier" point in the code.
 	stream **os.File
+
+	// callback function from the cartridge to the VCS. used for example. when
+	// cartridge has been successfully inserted. not all cartridge formats
+	// support/require this
+	//
+	// if the cartridge mapper needs to communicate more information then the
+	// action string should be used
+	VCSHook func(cart mapper.CartMapper, action string) error
 }
 
 // NewLoader is the preferred method of initialisation for the Loader type.

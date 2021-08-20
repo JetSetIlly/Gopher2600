@@ -425,26 +425,38 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) 
 	}
 	dbg.loader = &cartload
 
-	// set OnLoaded function for specific cartridge formats
-	cartload.OnInserted = func(cart mapper.CartMapper) error {
+	// set VCSHook for specific cartridge formats
+	cartload.VCSHook = func(cart mapper.CartMapper, action string) error {
 		if _, ok := cart.(*supercharger.Supercharger); ok {
-			// !!TODO: it would be nice to see partial disassemblies of supercharger tapes
-			// during loading. not completely necessary I don't think, but it would be
-			// nice to have.
-			err := dbg.Disasm.FromMemory()
-			if err != nil {
-				return err
-			}
-			return dbg.tv.Reset(true)
-		} else if pr, ok := cart.(*plusrom.PlusROM); ok {
-			if pr.Prefs.NewInstallation {
-				fi := gui.PlusROMFirstInstallation{Finish: nil, Cart: pr}
-				err := dbg.scr.SetFeature(gui.ReqPlusROMFirstInstallation, &fi)
+			switch action {
+			case supercharger.HookActionLoadStarted:
+				// no action for the debugger
+			case supercharger.HookActionBIOStouch:
+				// !!TODO: it would be nice to see partial disassemblies of supercharger tapes
+				// during loading. not completely necessary I don't think, but it would be
+				// nice to have.
+				err := dbg.Disasm.FromMemory()
 				if err != nil {
-					if !curated.Is(err, gui.UnsupportedGuiFeature) {
-						return curated.Errorf("debugger: %v", err)
+					return err
+				}
+				return dbg.tv.Reset(true)
+			default:
+				logger.Logf("debugger", "unhandled hook action for supercharger (%s)", action)
+			}
+		} else if pr, ok := cart.(*plusrom.PlusROM); ok {
+			switch action {
+			case plusrom.HookActionOnInsertion:
+				if pr.Prefs.NewInstallation {
+					fi := gui.PlusROMFirstInstallation{Finish: nil, Cart: pr}
+					err := dbg.scr.SetFeature(gui.ReqPlusROMFirstInstallation, &fi)
+					if err != nil {
+						if !curated.Is(err, gui.UnsupportedGuiFeature) {
+							return curated.Errorf("debugger: %v", err)
+						}
 					}
 				}
+			default:
+				logger.Logf("debugger", "unhandled hook action for plusrom (%s)", action)
 			}
 		}
 		return nil

@@ -34,6 +34,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/savekey"
 	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/hiscore"
+	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/patch"
 	"github.com/jetsetilly/gopher2600/paths"
 	"github.com/jetsetilly/gopher2600/recorder"
@@ -88,7 +89,7 @@ func (pl *playmode) Pause(set bool) {
 // contents of the file specified in Filename field of the Loader instance will
 // be checked. If it is a playback file then the playback codepath will be
 // used.
-func Play(tv *television.Television, scr gui.GUI, newRecording bool, cartload cartridgeloader.Loader, patchFile string, hiscoreServer bool, useSavekey bool) error {
+func Play(tv *television.Television, scr gui.GUI, newRecording bool, cartload cartridgeloader.Loader, patchFile string, hiscoreServer bool, useSavekey bool, multiload int) error {
 	var recording string
 
 	// if supplied cartridge name is actually a playback file then set
@@ -112,27 +113,42 @@ func Play(tv *television.Television, scr gui.GUI, newRecording bool, cartload ca
 	// a nil error is received
 	var waitForEmulationStart chan error
 
-	// OnLoaded function for specific cartridge formats
-	cartload.OnInserted = func(cart mapper.CartMapper) error {
-		if _, ok := cart.(*supercharger.Supercharger); ok {
-			return tv.Reset(false)
-		} else if pr, ok := cart.(*plusrom.PlusROM); ok {
-			if pr.Prefs.NewInstallation {
-				waitForEmulationStart = make(chan error)
-
-				fi := gui.PlusROMFirstInstallation{Finish: waitForEmulationStart, Cart: pr}
-				err := scr.SetFeature(gui.ReqPlusROMFirstInstallation, &fi)
-				if err != nil {
-					return err
-				}
-			}
-		}
-		return nil
-	}
-
 	vcs, err := hardware.NewVCS(tv)
 	if err != nil {
 		return curated.Errorf("playmode: %v", err)
+	}
+
+	// set VCSHook for specific cartridge formats
+	cartload.VCSHook = func(cart mapper.CartMapper, action string) error {
+		if _, ok := cart.(*supercharger.Supercharger); ok {
+			switch action {
+			case supercharger.HookActionLoadStarted:
+				if multiload > 0 {
+					logger.Logf("playmode", "forcing supercharger multiload (%#02x)", uint8(multiload))
+					vcs.Mem.Poke(supercharger.MutliloadByteAddress, uint8(multiload))
+				}
+			case supercharger.HookActionBIOStouch:
+				return tv.Reset(false)
+			default:
+				logger.Logf("playmode", "unhandled hook action for supercharger (%s)", action)
+			}
+		} else if pr, ok := cart.(*plusrom.PlusROM); ok {
+			switch action {
+			case plusrom.HookActionOnInsertion:
+				if pr.Prefs.NewInstallation {
+					waitForEmulationStart = make(chan error)
+
+					fi := gui.PlusROMFirstInstallation{Finish: waitForEmulationStart, Cart: pr}
+					err := scr.SetFeature(gui.ReqPlusROMFirstInstallation, &fi)
+					if err != nil {
+						return err
+					}
+				}
+			default:
+				logger.Logf("playmode", "unhandled hook action for plusrom (%s)", action)
+			}
+		}
+		return nil
 	}
 
 	// replace player 1 port with savekey

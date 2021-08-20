@@ -24,8 +24,14 @@ import (
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
-// PlusROMError denotes a specific error in the plusrom package.
+// Sentinal error indicating a specific problem with the attempt to load the
+// child cartridge into the PlusROM
 const NotAPlusROM = "not a plus rom: %s"
+
+// Action strings to be used with the VCSHook
+const (
+	HookActionOnInsertion = "plusrom inserted"
+)
 
 // PlusROM wraps another mapper.CartMapper inside a network aware format.
 type PlusROM struct {
@@ -55,7 +61,7 @@ func (s *state) Plumb() {
 	s.child.Plumb()
 }
 
-func NewPlusROM(child mapper.CartMapper, onLoaded func(cart mapper.CartMapper) error) (mapper.CartMapper, error) {
+func NewPlusROM(child mapper.CartMapper, vcsHook func(cart mapper.CartMapper, action string) error) (mapper.CartMapper, error) {
 	cart := &PlusROM{}
 	cart.state = &state{}
 	cart.state.child = child
@@ -138,9 +144,9 @@ func NewPlusROM(child mapper.CartMapper, onLoaded func(cart mapper.CartMapper) e
 	// log success
 	logger.Logf("plusrom", "will connect to %s", cart.net.ai.String())
 
-	// call onloaded function if one is available
-	if onLoaded != nil {
-		err := onLoaded(cart)
+	// call vcsHook function if one is available
+	if vcsHook != nil {
+		err := vcsHook(cart, HookActionOnInsertion)
 		if err != nil {
 			return nil, curated.Errorf("plusrom %v:", err)
 		}

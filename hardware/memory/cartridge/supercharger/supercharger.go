@@ -26,11 +26,19 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
-const MappingID = "AR"
+// Action strings to be used with the VCSHook
+const (
+	HookActionBIOStouch   = "bios touch"
+	HookActionLoadStarted = "load started"
+)
 
 // supercharger has 6k of RAM in total.
 const numRAMBanks = 4
 const bankSize = 2048
+
+// The address in VCS RAM of the multiload byte. Tapes will not load unless the
+// encoded multibyte in the stream is the same as the value in this address.
+const MutliloadByteAddress = 0xfa
 
 // tape defines the operations required by the $fff9 tape loader. With this
 // interface, the Supercharger implementation supports both fast-loading
@@ -49,7 +57,7 @@ type Supercharger struct {
 	bankSize int
 	bios     []uint8
 
-	onInserted func(cart mapper.CartMapper) error
+	vcsHook func(cart mapper.CartMapper, action string) error
 
 	// rewindable state
 	state *state
@@ -59,7 +67,7 @@ type Supercharger struct {
 // Supercharger type.
 func NewSupercharger(cartload cartridgeloader.Loader) (mapper.CartMapper, error) {
 	cart := &Supercharger{
-		mappingID:   MappingID,
+		mappingID:   "AR",
 		description: "supercharger",
 		bankSize:    2048,
 		state:       newState(),
@@ -83,11 +91,11 @@ func NewSupercharger(cartload cartridgeloader.Loader) (mapper.CartMapper, error)
 		return nil, curated.Errorf("supercharger: %v", err)
 	}
 
-	// prepare onInserted function
-	if cartload.OnInserted == nil {
-		cart.onInserted = func(cart mapper.CartMapper) error { return nil }
+	// prepare vcsHook function
+	if cartload.VCSHook == nil {
+		cart.vcsHook = func(cart mapper.CartMapper, action string) error { return nil }
 	} else {
-		cart.onInserted = cartload.OnInserted
+		cart.vcsHook = cartload.VCSHook
 	}
 
 	return cart, nil
@@ -149,6 +157,25 @@ func (cart *Supercharger) Read(fullAddr uint16, passive bool) (uint8, error) {
 		bank--
 	}
 
+	// tape load register has been read
+	if addr == 0x0ff9 {
+		// turn is loading state and call vcs hook if this is the first recent
+		// read of the tape. we assume that the isLoading state will be
+		// sustained until the BIOS is "touched" as described below
+		if !cart.state.isLoading {
+			cart.state.isLoading = true
+			cart.vcsHook(cart, HookActionLoadStarted)
+		}
+
+		// call load() whenever address is touched, although do not allow
+		// it if RAMwrite is false
+		if passive || !cart.state.registers.RAMwrite {
+			return 0, nil
+		}
+
+		return cart.state.tape.load()
+	}
+
 	// control register has been read. I've opted to return the value at the
 	// address before the bank switch. I think this is correct but I'm not
 	// sure.
@@ -159,16 +186,6 @@ func (cart *Supercharger) Read(fullAddr uint16, passive bool) (uint8, error) {
 			cart.state.registers.Delay = 0
 		}
 		return b, nil
-	}
-
-	if addr == 0x0ff9 {
-		// call load() whenever address is touched, although do not allow
-		// it if RAMwrite is false
-		if passive || !cart.state.registers.RAMwrite {
-			return 0, nil
-		}
-
-		return cart.state.tape.load()
 	}
 
 	// note address to be used as the next value in the control register
@@ -183,12 +200,15 @@ func (cart *Supercharger) Read(fullAddr uint16, passive bool) (uint8, error) {
 
 	if bios {
 		if cart.state.registers.ROMpower {
-			// trigger onInserted() function whenever BIOS address $fa1a
+			// trigger vcsHook() function whenever BIOS address $fa1a
 			// (specifically) is touched. note that this method means that the
-			// onInserted() function will be called whatever the context the
+			// vcsHook() function will be called whatever the context the
 			// address is read and not just when the PC is at the address.
 			if fullAddr == 0xfa1a {
-				err := cart.onInserted(cart)
+				// end tape is loading state
+				cart.state.isLoading = false
+
+				err := cart.vcsHook(cart, HookActionBIOStouch)
 				if err != nil {
 					return 0, curated.Errorf("supercharger: %v", err)
 				}
