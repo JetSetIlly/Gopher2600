@@ -426,11 +426,9 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) 
 	dbg.loader = &cartload
 
 	// set VCSHook for specific cartridge formats
-	cartload.VCSHook = func(cart mapper.CartMapper, action string) error {
+	cartload.VCSHook = func(cart mapper.CartMapper, action string, args ...interface{}) error {
 		if _, ok := cart.(*supercharger.Supercharger); ok {
 			switch action {
-			case supercharger.HookActionLoadStarted:
-				// no action for the debugger
 			case supercharger.HookActionBIOStouch:
 				// !!TODO: it would be nice to see partial disassemblies of supercharger tapes
 				// during loading. not completely necessary I don't think, but it would be
@@ -440,6 +438,37 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) 
 					return err
 				}
 				return dbg.tv.Reset(true)
+			case supercharger.HookActionLoadStarted:
+				// no action for the debugger
+			case supercharger.HookActionFastloadEnded:
+				// the supercharger ROM will eventually start execution from the PC
+				// address given in the supercharger file
+
+				// CPU execution has been interrupted. update state of CPU
+				dbg.vcs.CPU.Interrupted = true
+
+				// the interrupted CPU means it never got a chance to
+				// finalise the result. we force that here by simply
+				// setting the Final flag to true.
+				dbg.vcs.CPU.LastResult.Final = true
+
+				// we've already obtained the disassembled lastResult so we
+				// need to change the final flag there too
+				dbg.lastResult.Result.Final = true
+
+				// call function to complete tape loading procedure
+				callback := args[0].(supercharger.FastLoaded)
+				err := callback(dbg.vcs.CPU, dbg.vcs.Mem.RAM, dbg.vcs.RIOT.Timer)
+				if err != nil {
+					return err
+				}
+
+				// (re)disassemble memory on TapeLoaded error signal
+				err = dbg.Disasm.FromMemory()
+				if err != nil {
+					return err
+				}
+
 			default:
 				logger.Logf("debugger", "unhandled hook action for supercharger (%s)", action)
 			}

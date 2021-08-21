@@ -52,27 +52,10 @@ type FastLoad struct {
 	lastLoadCt int
 }
 
-// FastLoaded error is returned on success of FastLoad.load(). It must be
-// honoured (ie. caught and the function called) by the driving emulator for
-// the fastload process to complete.
-//
-// It is unusual to use an error in this way but this is the only effective way
-// of sending a signal that something unusual has happened. In that sense, it
-// is an error, the normal run of the emulator has been interrupted and must be
-// handled.
-//
-// That there is nothing else like this in the 2600 emulation, using an error
-// like this is justified. It is an exception to the rule, so to speak, and
-// setting up another way of sending the "fast load completed" signal is
-// inappropriate.
-//
-// !!TODO: is there a good way of handling FastLoading completion through the
-// cartridgeloader.OnLoader() mechanism?
+// FastLoaded defines the callback function that is sent to the core emulation
+// along with the HookActionFastloadEnded action. The core emulation in turn
+// calls this function to complete the supercharger fastload process.
 type FastLoaded func(*cpu.CPU, *vcs.RAM, *timer.Timer) error
-
-func (er FastLoaded) Error() string {
-	return "supercharger tape loaded, preparing VCS"
-}
 
 // newFastLoad is the preferred method of initialisation for the FastLoad type.
 func newFastLoad(cart *Supercharger, loader cartridgeloader.Loader) (tape, error) {
@@ -139,10 +122,10 @@ func (tap *FastLoad) load() (uint8, error) {
 	pageTable := data[0x2010:0x2028]
 	logger.Logf("supercharger: fastload", "page-table: %v", pageTable)
 
-	// setup cartridge according to tape instructions. we do this by returning
-	// a function disguised as an error type. The emulation knows how to interpret
-	// this error and will call the function
-	return 0, FastLoaded(func(mc *cpu.CPU, ram *vcs.RAM, tmr *timer.Timer) error {
+	// setup cartridge according to tape instructions. this requires
+	// cooperation from the core emulation so we use the
+	// cartridgeloader.VCSHook mechanism.
+	tap.cart.vcsHook(tap.cart, HookActionFastloadEnded, FastLoaded(func(mc *cpu.CPU, ram *vcs.RAM, tmr *timer.Timer) error {
 		// look up requested multiload address
 		m, err := ram.Peek(MutliloadByteAddress)
 		if err != nil {
@@ -225,7 +208,9 @@ func (tap *FastLoad) load() (uint8, error) {
 		tap.lastLoadCt = tap.loadCt
 
 		return nil
-	})
+	}))
+
+	return 0, nil
 }
 
 // step implements the Tape interface.

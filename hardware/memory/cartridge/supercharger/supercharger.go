@@ -26,10 +26,11 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
-// Action strings to be used with the VCSHook
+// Action strings to be used with the cartridgeloader.VCSHook mechanism.
 const (
-	HookActionBIOStouch   = "bios touch"
-	HookActionLoadStarted = "load started"
+	HookActionBIOStouch     = "bios touch"
+	HookActionLoadStarted   = "load started"
+	HookActionFastloadEnded = "fast load ended"
 )
 
 // supercharger has 6k of RAM in total.
@@ -57,7 +58,7 @@ type Supercharger struct {
 	bankSize int
 	bios     []uint8
 
-	vcsHook func(cart mapper.CartMapper, action string) error
+	vcsHook cartridgeloader.VCSHook
 
 	// rewindable state
 	state *state
@@ -71,6 +72,7 @@ func NewSupercharger(cartload cartridgeloader.Loader) (mapper.CartMapper, error)
 		description: "supercharger",
 		bankSize:    2048,
 		state:       newState(),
+		vcsHook:     cartload.VCSHook,
 	}
 
 	var err error
@@ -89,13 +91,6 @@ func NewSupercharger(cartload cartridgeloader.Loader) (mapper.CartMapper, error)
 	}
 	if err != nil {
 		return nil, curated.Errorf("supercharger: %v", err)
-	}
-
-	// prepare vcsHook function
-	if cartload.VCSHook == nil {
-		cart.vcsHook = func(cart mapper.CartMapper, action string) error { return nil }
-	} else {
-		cart.vcsHook = cartload.VCSHook
 	}
 
 	return cart, nil

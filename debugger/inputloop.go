@@ -26,7 +26,6 @@ import (
 	"github.com/jetsetilly/gopher2600/emulation"
 	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/instructions"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/supercharger"
 )
 
 // inputLoop has two modes, defined by the clockCycle argument. when clockCycle
@@ -412,50 +411,21 @@ func (dbg *Debugger) contEmulation(inputter terminal.Input) error {
 			return err
 		}
 
-		// the supercharger ROM will eventually start execution from the PC
-		// address given in the supercharger file. when "fast-loading"
-		// supercharger bin files however, we need a way of doing this without
-		// the ROM. the TapeLoaded error allows us to do this.
-		if onTapeLoaded, ok := stepErr.(supercharger.FastLoaded); ok {
-			// CPU execution has been interrupted. update state of CPU
-			dbg.vcs.CPU.Interrupted = true
-
-			// the interrupted CPU means it never got a chance to
-			// finalise the result. we force that here by simply
-			// setting the Final flag to true.
-			dbg.vcs.CPU.LastResult.Final = true
-
-			// we've already obtained the disassembled lastResult so we
-			// need to change the final flag there too
-			dbg.lastResult.Result.Final = true
-
-			// call function to complete tape loading procedure
-			err = onTapeLoaded(dbg.vcs.CPU, dbg.vcs.Mem.RAM, dbg.vcs.RIOT.Timer)
-			if err != nil {
-				return err
-			}
-
-			// (re)disassemble memory on TapeLoaded error signal
-			err = dbg.Disasm.FromMemory()
-			if err != nil {
-				return err
-			}
-		} else {
-			// exit input loop if error is a plain error
-			if !curated.IsAny(stepErr) {
-				return stepErr
-			}
-
-			// ...set lastStepError instead and allow emulation to halt
-			dbg.lastStepError = true
-			dbg.printLine(terminal.StyleError, "%s", stepErr)
-
-			// error has occurred before CPU has completed its instruction
-			if !dbg.lastResult.Result.Final {
-				dbg.printLine(terminal.StyleError, "CPU halted mid-instruction. next step may be inaccurate.")
-				dbg.vcs.CPU.Interrupted = true
-			}
+		// exit input loop if error is a plain error
+		if !curated.IsAny(stepErr) {
+			return stepErr
 		}
+
+		// ...set lastStepError instead and allow emulation to halt
+		dbg.lastStepError = true
+		dbg.printLine(terminal.StyleError, "%s", stepErr)
+
+		// error has occurred before CPU has completed its instruction
+		if !dbg.lastResult.Result.Final {
+			dbg.printLine(terminal.StyleError, "CPU halted mid-instruction. next step may be inaccurate.")
+			dbg.vcs.CPU.Interrupted = true
+		}
+
 	} else if dbg.vcs.CPU.LastResult.Final {
 		var err error
 

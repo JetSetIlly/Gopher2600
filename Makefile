@@ -4,7 +4,8 @@ compileFlags = '-c 3 -B -wb=false'
 # profilingRom = roms/Homebrew/DPC+ARM/ZaxxonHDDemo_150927_NTSC.bin
 # profilingRom = roms/Rsboxing.bin
 # profilingRom = "test_roms/plusrom/sokoboo Plus.bin"
-profilingRom = "roms/starpath/02 - Communist Mutants From Space (Ntsc).mp3"
+# profilingRom = "roms/starpath/02 - Communist Mutants From Space (Ntsc).mp3"
+profilingRom = "roms/The Official Frogger.bin"
 # profilingRom = roms/Homebrew/CDF/gorfarc_20201231_demo1_NTSC.bin
 # profilingRom = roms/Pitfall.bin
 

@@ -17,7 +17,6 @@ package hardware
 
 import (
 	"github.com/jetsetilly/gopher2600/emulation"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/supercharger"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 )
 
@@ -58,17 +57,7 @@ func (vcs *VCS) Run(continueCheck func() (emulation.State, error)) error {
 		if state == emulation.Running {
 			err := vcs.CPU.ExecuteInstruction(videoCycle)
 			if err != nil {
-				// see debugger.inputLoop() function for explanation
-				if onTapeLoaded, ok := err.(supercharger.FastLoaded); ok {
-					vcs.CPU.Interrupted = true
-					vcs.CPU.LastResult.Final = true
-					err = onTapeLoaded(vcs.CPU, vcs.Mem.RAM, vcs.RIOT.Timer)
-					if err != nil {
-						return err
-					}
-				} else {
-					return err
-				}
+				return err
 			}
 		} else {
 			// paused

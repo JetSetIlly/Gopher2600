@@ -118,17 +118,25 @@ func Play(tv *television.Television, scr gui.GUI, newRecording bool, cartload ca
 		return curated.Errorf("playmode: %v", err)
 	}
 
-	// set VCSHook for specific cartridge formats
-	cartload.VCSHook = func(cart mapper.CartMapper, action string) error {
+	// set VCSHook for specific cartridge formats. see equivalent code in debugger.go
+	cartload.VCSHook = func(cart mapper.CartMapper, action string, args ...interface{}) error {
 		if _, ok := cart.(*supercharger.Supercharger); ok {
 			switch action {
+			case supercharger.HookActionBIOStouch:
+				return tv.Reset(false)
 			case supercharger.HookActionLoadStarted:
 				if multiload > 0 {
 					logger.Logf("playmode", "forcing supercharger multiload (%#02x)", uint8(multiload))
 					vcs.Mem.Poke(supercharger.MutliloadByteAddress, uint8(multiload))
 				}
-			case supercharger.HookActionBIOStouch:
-				return tv.Reset(false)
+			case supercharger.HookActionFastloadEnded:
+				vcs.CPU.Interrupted = true
+				vcs.CPU.LastResult.Final = true
+				callback := args[0].(supercharger.FastLoaded)
+				err := callback(vcs.CPU, vcs.Mem.RAM, vcs.RIOT.Timer)
+				if err != nil {
+					return err
+				}
 			default:
 				logger.Logf("playmode", "unhandled hook action for supercharger (%s)", action)
 			}

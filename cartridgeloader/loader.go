@@ -78,8 +78,18 @@ type Loader struct {
 	//
 	// if the cartridge mapper needs to communicate more information then the
 	// action string should be used
-	VCSHook func(cart mapper.CartMapper, action string) error
+	VCSHook VCSHook
 }
+
+// VCSHook function signature. Used for direct communication between a
+// cartridge mapper and the core emulation. Not often used but necessary for
+// (currently):
+//
+//		. Supercharger (tape start/end, fastload)
+//		. PlusROM (new installation)
+//
+// The emulation must understand how to interpret the action.
+type VCSHook func(cart mapper.CartMapper, action string, args ...interface{}) error
 
 // NewLoader is the preferred method of initialisation for the Loader type.
 //
@@ -106,6 +116,9 @@ func NewLoader(filename string, mapping string) Loader {
 		Mapping:          mapping,
 		RequestedMapping: mapping,
 		stream:           new(*os.File),
+		VCSHook: func(cart mapper.CartMapper, action string, args ...interface{}) error {
+			return nil
+		},
 	}
 
 	if mapping == "AUTO" {

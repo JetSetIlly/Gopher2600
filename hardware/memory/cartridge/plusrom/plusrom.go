@@ -19,6 +19,7 @@ import (
 	"math/rand"
 	"strings"
 
+	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/logger"
@@ -28,7 +29,7 @@ import (
 // child cartridge into the PlusROM
 const NotAPlusROM = "not a plus rom: %s"
 
-// Action strings to be used with the VCSHook
+// Action strings to be used with the cartridgeloader.VCSHook mechanism.
 const (
 	HookActionOnInsertion = "plusrom inserted"
 )
@@ -61,7 +62,7 @@ func (s *state) Plumb() {
 	s.child.Plumb()
 }
 
-func NewPlusROM(child mapper.CartMapper, vcsHook func(cart mapper.CartMapper, action string) error) (mapper.CartMapper, error) {
+func NewPlusROM(child mapper.CartMapper, vcsHook cartridgeloader.VCSHook) (mapper.CartMapper, error) {
 	cart := &PlusROM{}
 	cart.state = &state{}
 	cart.state.child = child
