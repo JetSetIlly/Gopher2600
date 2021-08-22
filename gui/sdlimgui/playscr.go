@@ -22,6 +22,7 @@ import (
 	"github.com/go-gl/gl/v3.2-core/gl"
 	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/gui/sdlimgui/fonts"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 )
 
 // note that values from the lazy package will not be updated in the service
@@ -64,26 +65,9 @@ type playScr struct {
 	// controller alert
 	controllerAlertLeft  controllerAlert
 	controllerAlertRight controllerAlert
-}
 
-// controllerAlert will appear on the screen to indicate a new controller in
-// the player port.
-type controllerAlert struct {
-	frames int
-	desc   string
-}
-
-func (ca *controllerAlert) open(desc string) {
-	ca.desc = desc
-	ca.frames = 60
-}
-
-func (ca *controllerAlert) isOpen() bool {
-	if ca.frames == 0 {
-		return false
-	}
-	ca.frames--
-	return true
+	// cartridge events
+	cartridgeEvent cartridgeEvent
 }
 
 func newPlayScr(img *SdlImgui) *playScr {
@@ -175,6 +159,8 @@ func (win *playScr) draw() {
 	if win.controllerAlertRight.isOpen() {
 		win.drawControllerAlert("##controlleralertright", win.controllerAlertRight.desc, imgui.Vec2{dimen[0], dimen[1]}, true)
 	}
+
+	win.cartridgeEvent.draw(win)
 }
 
 // pos should be the coordinate of the *extreme* bottom left or bottom right of
@@ -310,4 +296,122 @@ func (win *playScr) setScaling() {
 	win.visibleScanlines = win.scr.crit.frameInfo.VisibleBottom - win.scr.crit.frameInfo.VisibleTop
 
 	gl.BindTexture(gl.TEXTURE_2D, win.screenTexture)
+}
+
+// controllerAlert is used to draw an indicator on the screen for controller change events
+type controllerAlert struct {
+	frames int
+	desc   string
+}
+
+func (ca *controllerAlert) open(desc string) {
+	ca.desc = desc
+	ca.frames = 60
+}
+
+func (ca *controllerAlert) isOpen() bool {
+	if ca.frames == 0 {
+		return false
+	}
+	ca.frames--
+	return true
+}
+
+// cartridgeEvent is used to draw an indicator on the screen for cartride
+// events defined in the mapper package.
+type cartridgeEvent struct {
+	open         bool
+	currentEvent mapper.Event
+	frames       int
+}
+
+func (ce *cartridgeEvent) set(event mapper.Event) {
+	ce.currentEvent = event
+	switch ce.currentEvent {
+	case mapper.EventSuperchargerSoundloadStarted:
+		ce.open = true
+	case mapper.EventSuperchargerSoundloadEnded:
+		ce.frames = 60
+	case mapper.EventSuperchargerSoundloadRewind:
+		ce.frames = 60
+	}
+}
+
+func (ce *cartridgeEvent) tick() {
+	if !ce.open || ce.frames <= 0 {
+		return
+	}
+
+	ce.frames--
+
+	if ce.frames == 0 {
+		switch ce.currentEvent {
+		case mapper.EventSuperchargerSoundloadStarted:
+		case mapper.EventSuperchargerSoundloadEnded:
+			ce.open = false
+		case mapper.EventSuperchargerSoundloadRewind:
+			ce.currentEvent = mapper.EventSuperchargerSoundloadStarted
+		}
+	}
+}
+
+func (ce *cartridgeEvent) draw(win *playScr) {
+	if !ce.open {
+		return
+	}
+
+	ce.tick()
+
+	icon := ""
+	subIcon := ""
+
+	switch win.cartridgeEvent.currentEvent {
+	case mapper.EventSuperchargerSoundloadStarted:
+		icon = fmt.Sprintf("%c", fonts.Tape)
+		subIcon = fmt.Sprintf("%c", fonts.TapePlay)
+	case mapper.EventSuperchargerSoundloadEnded:
+		icon = fmt.Sprintf("%c", fonts.Tape)
+		subIcon = fmt.Sprintf("%c", fonts.TapeStop)
+	case mapper.EventSuperchargerSoundloadRewind:
+		icon = fmt.Sprintf("%c", fonts.Tape)
+		subIcon = fmt.Sprintf("%c", fonts.TapeRewind)
+	default:
+		return
+	}
+
+	dimen := win.img.plt.displaySize()
+	pos := imgui.Vec2{dimen[0], 0}
+
+	// position window so that it is right justified and shows entirity of window (calculated with
+	// the knowledge that we're using two glyphs of fixed size)
+	width := win.img.glsl.gopher2600IconsSize * 1.5
+	if subIcon != "" {
+		width += win.img.glsl.largeFontAwesomeSize * 1.5
+	}
+	pos.X -= width
+
+	imgui.SetNextWindowPos(pos)
+	imgui.PushStyleColor(imgui.StyleColorWindowBg, win.img.cols.Transparent)
+	imgui.PushStyleColor(imgui.StyleColorBorder, win.img.cols.Transparent)
+
+	imgui.BeginV("##cartridgeevent", &ce.open, imgui.WindowFlagsAlwaysAutoResize|
+		imgui.WindowFlagsNoScrollbar|imgui.WindowFlagsNoTitleBar|imgui.WindowFlagsNoDecoration)
+
+	imgui.PushFont(win.img.glsl.gopher2600Icons)
+	imgui.Text(icon)
+	imgui.PopFont()
+
+	imgui.SameLine()
+
+	// position sub-icon so that it is centered vertically with the main icon
+	dim := imgui.CursorScreenPos()
+	dim.Y += (win.img.glsl.gopher2600IconsSize - win.img.glsl.largeFontAwesomeSize) * 0.5
+	imgui.SetCursorScreenPos(dim)
+
+	imgui.PushFont(win.img.glsl.largeFontAwesome)
+	imgui.Text(subIcon)
+	imgui.PopFont()
+
+	imgui.PopStyleColorV(2)
+	imgui.End()
 }

@@ -109,6 +109,7 @@ func (tap *SoundLoad) load() (uint8, error) {
 			tap.playDelay++
 			return 0x00, nil
 		}
+		tap.cart.vcsHook(tap.cart, mapper.EventSuperchargerSoundloadStarted)
 		tap.playing = true
 		tap.playDelay = 0
 		logger.Log(soundloadLogTag, "tape playing")
@@ -153,6 +154,7 @@ func (tap *SoundLoad) step() {
 // Rewind implements the mapper.CartTapeBus interface.
 func (tap *SoundLoad) Rewind() {
 	// rewinding happens instantaneously
+	tap.cart.vcsHook(tap.cart, mapper.EventSuperchargerSoundloadRewind)
 	tap.idx = 0
 	logger.Log(soundloadLogTag, "tape rewound")
 	tap.stepLimiter = 0

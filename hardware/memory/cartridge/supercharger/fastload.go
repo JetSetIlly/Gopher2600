@@ -21,6 +21,7 @@ import (
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/cpu"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/vcs"
 	"github.com/jetsetilly/gopher2600/hardware/riot/timer"
 	"github.com/jetsetilly/gopher2600/logger"
@@ -125,7 +126,7 @@ func (tap *FastLoad) load() (uint8, error) {
 	// setup cartridge according to tape instructions. this requires
 	// cooperation from the core emulation so we use the
 	// cartridgeloader.VCSHook mechanism.
-	tap.cart.vcsHook(tap.cart, HookActionFastloadEnded, FastLoaded(func(mc *cpu.CPU, ram *vcs.RAM, tmr *timer.Timer) error {
+	tap.cart.vcsHook(tap.cart, mapper.EventSuperchargerFastloadEnded, FastLoaded(func(mc *cpu.CPU, ram *vcs.RAM, tmr *timer.Timer) error {
 		// look up requested multiload address
 		m, err := ram.Peek(MutliloadByteAddress)
 		if err != nil {

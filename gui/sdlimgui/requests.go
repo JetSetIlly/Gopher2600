@@ -19,6 +19,7 @@ import (
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/emulation"
 	"github.com/jetsetilly/gopher2600/gui"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
 )
 
@@ -129,6 +130,15 @@ func (img *SdlImgui) serviceSetFeature(request featureRequest) {
 			case plugging.RightPlayer:
 				img.playScr.controllerAlertRight.open(request.args[1].(string))
 			}
+		}
+
+	case gui.ReqCartridgeEvent:
+		if img.state == emulation.Initialising {
+			break
+		}
+
+		if img.isPlaymode() {
+			img.playScr.cartridgeEvent.set(request.args[0].(mapper.Event))
 		}
 
 	default:

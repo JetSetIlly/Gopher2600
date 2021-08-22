@@ -26,13 +26,6 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
-// Action strings to be used with the cartridgeloader.VCSHook mechanism.
-const (
-	HookActionBIOStouch     = "bios touch"
-	HookActionLoadStarted   = "load started"
-	HookActionFastloadEnded = "fast load ended"
-)
-
 // supercharger has 6k of RAM in total.
 const numRAMBanks = 4
 const bankSize = 2048
@@ -159,7 +152,7 @@ func (cart *Supercharger) Read(fullAddr uint16, passive bool) (uint8, error) {
 		// sustained until the BIOS is "touched" as described below
 		if !cart.state.isLoading {
 			cart.state.isLoading = true
-			cart.vcsHook(cart, HookActionLoadStarted)
+			cart.vcsHook(cart, mapper.EventSuperchargerLoadStarted)
 		}
 
 		// call load() whenever address is touched, although do not allow
@@ -203,7 +196,7 @@ func (cart *Supercharger) Read(fullAddr uint16, passive bool) (uint8, error) {
 				// end tape is loading state
 				cart.state.isLoading = false
 
-				err := cart.vcsHook(cart, HookActionBIOStouch)
+				err := cart.vcsHook(cart, mapper.EventSuperchargerSoundloadEnded)
 				if err != nil {
 					return 0, curated.Errorf("supercharger: %v", err)
 				}

@@ -119,17 +119,15 @@ func Play(tv *television.Television, scr gui.GUI, newRecording bool, cartload ca
 	}
 
 	// set VCSHook for specific cartridge formats. see equivalent code in debugger.go
-	cartload.VCSHook = func(cart mapper.CartMapper, action string, args ...interface{}) error {
+	cartload.VCSHook = func(cart mapper.CartMapper, event mapper.Event, args ...interface{}) error {
 		if _, ok := cart.(*supercharger.Supercharger); ok {
-			switch action {
-			case supercharger.HookActionBIOStouch:
-				return tv.Reset(false)
-			case supercharger.HookActionLoadStarted:
+			switch event {
+			case mapper.EventSuperchargerLoadStarted:
 				if multiload > 0 {
 					logger.Logf("playmode", "forcing supercharger multiload (%#02x)", uint8(multiload))
 					vcs.Mem.Poke(supercharger.MutliloadByteAddress, uint8(multiload))
 				}
-			case supercharger.HookActionFastloadEnded:
+			case mapper.EventSuperchargerFastloadEnded:
 				vcs.CPU.Interrupted = true
 				vcs.CPU.LastResult.Final = true
 				callback := args[0].(supercharger.FastLoaded)
@@ -137,12 +135,19 @@ func Play(tv *television.Television, scr gui.GUI, newRecording bool, cartload ca
 				if err != nil {
 					return err
 				}
+			case mapper.EventSuperchargerSoundloadStarted:
+				scr.SetFeature(gui.ReqCartridgeEvent, mapper.EventSuperchargerSoundloadStarted)
+			case mapper.EventSuperchargerSoundloadEnded:
+				scr.SetFeature(gui.ReqCartridgeEvent, mapper.EventSuperchargerSoundloadEnded)
+				return tv.Reset(false)
+			case mapper.EventSuperchargerSoundloadRewind:
+				scr.SetFeature(gui.ReqCartridgeEvent, mapper.EventSuperchargerSoundloadRewind)
 			default:
-				logger.Logf("playmode", "unhandled hook action for supercharger (%s)", action)
+				logger.Logf("playmode", "unhandled hook event for supercharger (%v)", event)
 			}
 		} else if pr, ok := cart.(*plusrom.PlusROM); ok {
-			switch action {
-			case plusrom.HookActionOnInsertion:
+			switch event {
+			case mapper.EventPlusromInserted:
 				if pr.Prefs.NewInstallation {
 					waitForEmulationStart = make(chan error)
 
@@ -153,7 +158,7 @@ func Play(tv *television.Television, scr gui.GUI, newRecording bool, cartload ca
 					}
 				}
 			default:
-				logger.Logf("playmode", "unhandled hook action for plusrom (%s)", action)
+				logger.Logf("playmode", "unhandled hook event for plusrom (%v)", event)
 			}
 		}
 		return nil
@@ -325,7 +330,7 @@ func Play(tv *television.Television, scr gui.GUI, newRecording bool, cartload ca
 	return nil
 }
 
-// Plugged implements the pluggin.PlugMonitor interface.
+// Plugged implements the plugging.PlugMonitor interface.
 func (pl *playmode) Plugged(port plugging.PortID, description string) {
 	pl.scr.SetFeature(gui.ReqControllerChange, port, description)
 }

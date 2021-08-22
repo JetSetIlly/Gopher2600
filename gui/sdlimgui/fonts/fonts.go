@@ -48,18 +48,22 @@ var FontAwesome []byte
 
 // Unicode points in FontAwesome for icons used in the application.
 const (
-	Run           = '\uf04b'
-	Halt          = '\uf04c'
-	Back          = '\uf053'
-	Disk          = '\uf0c7'
-	Mouse         = '\uf8cc'
-	GoingForward  = '\uf01e'
-	Persist       = '\uf021'
-	Breakpoint    = '\uf12a'
-	AudioDisabled = '\uf00d'
-	AudioEnabled  = '\uf028'
-	TermPrompt    = '\uf105'
-	ColorSwatch   = '\uf111'
+	Run             = '\uf04b'
+	Halt            = '\uf04c'
+	Back            = '\uf053'
+	Disk            = '\uf0c7'
+	Mouse           = '\uf8cc'
+	GoingForward    = '\uf01e'
+	Persist         = '\uf021'
+	Breakpoint      = '\uf12a'
+	AudioDisabled   = '\uf00d'
+	AudioEnabled    = '\uf028'
+	TermPrompt      = '\uf105'
+	ColorSwatch     = '\uf111'
+	TapeRewind      = '\uf049'
+	TapePlay        = '\uf04b'
+	TapeStop        = '\uf04d'
+	TapeFastForward = '\uf04e'
 )
 
 // The first and last unicode points used in the application. We use this to
@@ -77,11 +81,12 @@ const (
 	Stick    = '\ue000'
 	Paddle   = '\ue001'
 	Keyboard = '\ue002'
+	Tape     = '\ue003'
 )
 
 // The first and last unicode points used in the application. We use this to
 // make sure we're using as small a font texture as possible.
 const (
 	Gopher2600IconMin = '\ue000'
-	Gopher2600IconMax = '\ue002'
+	Gopher2600IconMax = '\ue003'
 )

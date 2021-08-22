@@ -88,8 +88,8 @@ type Loader struct {
 //		. Supercharger (tape start/end, fastload)
 //		. PlusROM (new installation)
 //
-// The emulation must understand how to interpret the action.
-type VCSHook func(cart mapper.CartMapper, action string, args ...interface{}) error
+// The emulation must understand how to interpret the event.
+type VCSHook func(cart mapper.CartMapper, event mapper.Event, args ...interface{}) error
 
 // NewLoader is the preferred method of initialisation for the Loader type.
 //
@@ -116,7 +116,7 @@ func NewLoader(filename string, mapping string) Loader {
 		Mapping:          mapping,
 		RequestedMapping: mapping,
 		stream:           new(*os.File),
-		VCSHook: func(cart mapper.CartMapper, action string, args ...interface{}) error {
+		VCSHook: func(cart mapper.CartMapper, event mapper.Event, args ...interface{}) error {
 			return nil
 		},
 	}

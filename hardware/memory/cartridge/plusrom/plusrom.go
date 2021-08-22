@@ -29,11 +29,6 @@ import (
 // child cartridge into the PlusROM
 const NotAPlusROM = "not a plus rom: %s"
 
-// Action strings to be used with the cartridgeloader.VCSHook mechanism.
-const (
-	HookActionOnInsertion = "plusrom inserted"
-)
-
 // PlusROM wraps another mapper.CartMapper inside a network aware format.
 type PlusROM struct {
 	Prefs *Preferences
@@ -147,7 +142,7 @@ func NewPlusROM(child mapper.CartMapper, vcsHook cartridgeloader.VCSHook) (mappe
 
 	// call vcsHook function if one is available
 	if vcsHook != nil {
-		err := vcsHook(cart, HookActionOnInsertion)
+		err := vcsHook(cart, mapper.EventPlusromInserted)
 		if err != nil {
 			return nil, curated.Errorf("plusrom %v:", err)
 		}

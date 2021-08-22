@@ -426,21 +426,12 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) 
 	dbg.loader = &cartload
 
 	// set VCSHook for specific cartridge formats
-	cartload.VCSHook = func(cart mapper.CartMapper, action string, args ...interface{}) error {
+	cartload.VCSHook = func(cart mapper.CartMapper, event mapper.Event, args ...interface{}) error {
 		if _, ok := cart.(*supercharger.Supercharger); ok {
-			switch action {
-			case supercharger.HookActionBIOStouch:
-				// !!TODO: it would be nice to see partial disassemblies of supercharger tapes
-				// during loading. not completely necessary I don't think, but it would be
-				// nice to have.
-				err := dbg.Disasm.FromMemory()
-				if err != nil {
-					return err
-				}
-				return dbg.tv.Reset(true)
-			case supercharger.HookActionLoadStarted:
-				// no action for the debugger
-			case supercharger.HookActionFastloadEnded:
+			switch event {
+			case mapper.EventSuperchargerLoadStarted:
+				// not required for the debugger
+			case mapper.EventSuperchargerFastloadEnded:
 				// the supercharger ROM will eventually start execution from the PC
 				// address given in the supercharger file
 
@@ -468,13 +459,25 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) 
 				if err != nil {
 					return err
 				}
-
+			case mapper.EventSuperchargerSoundloadStarted:
+				// not required for the debugger
+			case mapper.EventSuperchargerSoundloadEnded:
+				// !!TODO: it would be nice to see partial disassemblies of supercharger tapes
+				// during loading. not completely necessary I don't think, but it would be
+				// nice to have.
+				err := dbg.Disasm.FromMemory()
+				if err != nil {
+					return err
+				}
+				return dbg.tv.Reset(true)
+			case mapper.EventSuperchargerSoundloadRewind:
+				// not required for the debugger
 			default:
-				logger.Logf("debugger", "unhandled hook action for supercharger (%s)", action)
+				logger.Logf("debugger", "unhandled hook event for supercharger (%v)", event)
 			}
 		} else if pr, ok := cart.(*plusrom.PlusROM); ok {
-			switch action {
-			case plusrom.HookActionOnInsertion:
+			switch event {
+			case mapper.EventPlusromInserted:
 				if pr.Prefs.NewInstallation {
 					fi := gui.PlusROMFirstInstallation{Finish: nil, Cart: pr}
 					err := dbg.scr.SetFeature(gui.ReqPlusROMFirstInstallation, &fi)
@@ -485,7 +488,7 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) 
 					}
 				}
 			default:
-				logger.Logf("debugger", "unhandled hook action for plusrom (%s)", action)
+				logger.Logf("debugger", "unhandled hook event for plusrom (%v)", event)
 			}
 		}
 		return nil
