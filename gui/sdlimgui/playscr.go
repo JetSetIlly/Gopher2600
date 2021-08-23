@@ -335,6 +335,9 @@ func (ce *cartridgeEventNotification) set(event mapper.Event) {
 		ce.frames = notificationDuration
 	case mapper.EventSuperchargerSoundloadRewind:
 		ce.frames = notificationDuration
+	case mapper.EventPlusROMNetwork:
+		ce.open = true
+		ce.frames = notificationDuration
 	}
 }
 
@@ -347,11 +350,12 @@ func (ce *cartridgeEventNotification) tick() {
 
 	if ce.frames == 0 {
 		switch ce.currentEvent {
-		case mapper.EventSuperchargerSoundloadStarted:
 		case mapper.EventSuperchargerSoundloadEnded:
 			ce.open = false
 		case mapper.EventSuperchargerSoundloadRewind:
 			ce.currentEvent = mapper.EventSuperchargerSoundloadStarted
+		case mapper.EventPlusROMNetwork:
+			ce.open = false
 		}
 	}
 }
@@ -376,6 +380,8 @@ func (ce *cartridgeEventNotification) draw(win *playScr) {
 	case mapper.EventSuperchargerSoundloadRewind:
 		icon = fmt.Sprintf("%c", fonts.Tape)
 		subIcon = fmt.Sprintf("%c", fonts.TapeRewind)
+	case mapper.EventPlusROMNetwork:
+		icon = fmt.Sprintf("%c", fonts.Wifi)
 	default:
 		return
 	}

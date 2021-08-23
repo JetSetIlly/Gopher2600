@@ -34,6 +34,8 @@ type PlusROM struct {
 	Prefs *Preferences
 	net   *network
 
+	vcsHook cartridgeloader.VCSHook
+
 	state *state
 
 	// rewind boundary is indicated on every network activity
@@ -59,6 +61,7 @@ func (s *state) Plumb() {
 
 func NewPlusROM(child mapper.CartMapper, vcsHook cartridgeloader.VCSHook) (mapper.CartMapper, error) {
 	cart := &PlusROM{}
+	cart.vcsHook = vcsHook
 	cart.state = &state{}
 	cart.state.child = child
 
@@ -141,8 +144,8 @@ func NewPlusROM(child mapper.CartMapper, vcsHook cartridgeloader.VCSHook) (mappe
 	logger.Logf("plusrom", "will connect to %s", cart.net.ai.String())
 
 	// call vcsHook function if one is available
-	if vcsHook != nil {
-		err := vcsHook(cart, mapper.EventPlusromInserted)
+	if cart.vcsHook != nil {
+		err := cart.vcsHook(cart, mapper.EventPlusROMInserted)
 		if err != nil {
 			return nil, curated.Errorf("plusrom %v:", err)
 		}
@@ -210,6 +213,10 @@ func (cart *PlusROM) Write(addr uint16, data uint8, active bool, poke bool) erro
 		// 1FF0 is for writing a byte to the send buffer (max 256 bytes)
 		cart.rewindBoundary = true
 		cart.net.send(data, false)
+		err := cart.vcsHook(cart, mapper.EventPlusROMNetwork)
+		if err != nil {
+			return curated.Errorf("plusrom %v:", err)
+		}
 		return nil
 
 	case 0x0ff1:
@@ -217,6 +224,10 @@ func (cart *PlusROM) Write(addr uint16, data uint8, active bool, poke bool) erro
 		// to the back end API
 		cart.rewindBoundary = true
 		cart.net.send(data, true)
+		err := cart.vcsHook(cart, mapper.EventPlusROMNetwork)
+		if err != nil {
+			return curated.Errorf("plusrom %v:", err)
+		}
 		return nil
 	}
 

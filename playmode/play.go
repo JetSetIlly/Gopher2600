@@ -136,18 +136,27 @@ func Play(tv *television.Television, scr gui.GUI, newRecording bool, cartload ca
 					return err
 				}
 			case mapper.EventSuperchargerSoundloadStarted:
-				scr.SetFeature(gui.ReqCartridgeEvent, mapper.EventSuperchargerSoundloadStarted)
+				err := scr.SetFeature(gui.ReqCartridgeEvent, mapper.EventSuperchargerSoundloadStarted)
+				if err != nil {
+					return err
+				}
 			case mapper.EventSuperchargerSoundloadEnded:
-				scr.SetFeature(gui.ReqCartridgeEvent, mapper.EventSuperchargerSoundloadEnded)
+				err := scr.SetFeature(gui.ReqCartridgeEvent, mapper.EventSuperchargerSoundloadEnded)
+				if err != nil {
+					return err
+				}
 				return tv.Reset(false)
 			case mapper.EventSuperchargerSoundloadRewind:
-				scr.SetFeature(gui.ReqCartridgeEvent, mapper.EventSuperchargerSoundloadRewind)
+				err := scr.SetFeature(gui.ReqCartridgeEvent, mapper.EventSuperchargerSoundloadRewind)
+				if err != nil {
+					return err
+				}
 			default:
 				logger.Logf("playmode", "unhandled hook event for supercharger (%v)", event)
 			}
 		} else if pr, ok := cart.(*plusrom.PlusROM); ok {
 			switch event {
-			case mapper.EventPlusromInserted:
+			case mapper.EventPlusROMInserted:
 				if pr.Prefs.NewInstallation {
 					waitForEmulationStart = make(chan error)
 
@@ -156,6 +165,11 @@ func Play(tv *television.Television, scr gui.GUI, newRecording bool, cartload ca
 					if err != nil {
 						return err
 					}
+				}
+			case mapper.EventPlusROMNetwork:
+				err := scr.SetFeature(gui.ReqCartridgeEvent, mapper.EventPlusROMNetwork)
+				if err != nil {
+					return err
 				}
 			default:
 				logger.Logf("playmode", "unhandled hook event for plusrom (%v)", event)

@@ -41,5 +41,8 @@ const (
 	EventSuperchargerSoundloadRewind
 
 	// PlusROM cartridge has been inserted
-	EventPlusromInserted
+	EventPlusROMInserted
+
+	// PlusROM network activity
+	EventPlusROMNetwork
 )

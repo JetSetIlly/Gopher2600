@@ -477,7 +477,7 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) 
 			}
 		} else if pr, ok := cart.(*plusrom.PlusROM); ok {
 			switch event {
-			case mapper.EventPlusromInserted:
+			case mapper.EventPlusROMInserted:
 				if pr.Prefs.NewInstallation {
 					fi := gui.PlusROMFirstInstallation{Finish: nil, Cart: pr}
 					err := dbg.scr.SetFeature(gui.ReqPlusROMFirstInstallation, &fi)
@@ -487,6 +487,8 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) 
 						}
 					}
 				}
+			case mapper.EventPlusROMNetwork:
+				// not required for debugger
 			default:
 				logger.Logf("debugger", "unhandled hook event for plusrom (%v)", event)
 			}
