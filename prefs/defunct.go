@@ -36,6 +36,8 @@ var defunct = []string{
 	"hardware.arm7.defaultMAM",
 	"tia.revision.hmove.ripplestart",
 	"tia.revision.hmove.rippleend",
+	"sdlimgui.playmode.windowsize",
+	"sdlimgui.playmode.windowpos",
 }
 
 // returns true if string is in list of defunct values.

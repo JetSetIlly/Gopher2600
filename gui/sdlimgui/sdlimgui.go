@@ -175,6 +175,12 @@ func NewSdlImgui(tv *television.Television) (*SdlImgui, error) {
 	}
 	tv.AddAudioMixer(img.audio)
 
+	// load sdlimgui preferences
+	img.prefs, err = newPreferences(img)
+	if err != nil {
+		return nil, curated.Errorf("sdlimgui: %v", err)
+	}
+
 	// initialise crt preferences
 	img.crtPrefs, err = crt.NewPreferences()
 	if err != nil {
@@ -253,44 +259,17 @@ func (img *SdlImgui) setEmulation(emulation emulation.Emulation) error {
 
 	// playmode if there is no debugger
 	if emulation.Debugger() == nil {
-		// save current preferences
-		if img.prefs != nil {
-			err := img.prefs.save()
-			if err != nil {
-				return err
-			}
-		}
-
-		// load playmode preferences
-		var err error
-		img.prefs, err = newPlaymodePreferences(img)
-		if err != nil {
-			return curated.Errorf("sdlimgui: %v", err)
-		}
-
+		img.prefs.setWindowPreferences(true)
 		img.screen.clearTextureRenderers()
 		img.screen.addTextureRenderer(img.playScr)
 
 		return nil
 	}
 
+	// debugger
 	img.dbg = emulation.Debugger().(*debugger.Debugger)
 	img.lz.SetEmulation(emulation)
-
-	// save current preferences
-	if img.prefs != nil {
-		if err := img.prefs.save(); err != nil {
-			return err
-		}
-	}
-
-	// load debugging preferences
-	var err error
-	img.prefs, err = newDebugPreferences(img)
-	if err != nil {
-		return curated.Errorf("sdlimgui: %v", err)
-	}
-
+	img.prefs.setWindowPreferences(false)
 	img.screen.clearTextureRenderers()
 	img.screen.addTextureRenderer(img.wm.dbgScr)
 

@@ -30,6 +30,9 @@ type preferences struct {
 
 	// two disk objects so we can load and save the  preferences assigned to
 	// them separately. both use the same prefs file.
+	//
+	// dsk is created during newPreferences() and dskWin is created during
+	// setWindowPreferences()
 	dsk    *prefs.Disk
 	dskWin *prefs.Disk
 
@@ -37,17 +40,21 @@ type preferences struct {
 	openOnError  prefs.Bool
 	audioEnabled prefs.Bool
 
-	// there are no playmode preferences yet
+	// playmode preferences
+	controllerNotifcations    prefs.Bool
+	plusromNotifications      prefs.Bool
+	superchargerNotifications prefs.Bool
 }
 
-// load debugger preferences. may cause SDL container window to change
-// position/size.
-func newDebugPreferences(img *SdlImgui) (*preferences, error) {
+func newPreferences(img *SdlImgui) (*preferences, error) {
 	p := &preferences{img: img}
 
 	// defaults
 	p.openOnError.Set(true)
 	p.audioEnabled.Set(true)
+	p.controllerNotifcations.Set(true)
+	p.plusromNotifications.Set(true)
+	p.superchargerNotifications.Set(true)
 
 	// setup preferences
 	pth, err := paths.ResourcePath("", prefs.DefaultPrefsFile)
@@ -60,6 +67,7 @@ func newDebugPreferences(img *SdlImgui) (*preferences, error) {
 		return nil, err
 	}
 
+	// debugger
 	err = p.dsk.Add("sdlimgui.debugger.terminalOnError", &p.openOnError)
 	if err != nil {
 		return nil, err
@@ -75,13 +83,23 @@ func newDebugPreferences(img *SdlImgui) (*preferences, error) {
 		return nil
 	})
 
-	err = p.dsk.Load(true)
+	// playmode
+	err = p.dsk.Add("sdlimgui.playmode.controllerNotifcations", &p.controllerNotifcations)
 	if err != nil {
 		return nil, err
 	}
 
-	// windows preferences
-	err = p.addWindowPreferences(pth, "sdlimgui.debugger")
+	err = p.dsk.Add("sdlimgui.playmode.plusromNotifcations", &p.plusromNotifications)
+	if err != nil {
+		return nil, err
+	}
+
+	err = p.dsk.Add("sdlimgui.playmode.superchargerNotifications", &p.superchargerNotifications)
+	if err != nil {
+		return nil, err
+	}
+
+	err = p.dsk.Load(true)
 	if err != nil {
 		return nil, err
 	}
@@ -89,38 +107,28 @@ func newDebugPreferences(img *SdlImgui) (*preferences, error) {
 	return p, nil
 }
 
-// load playmode preferences. may cause SDL container window to change
-// position/size.
-func newPlaymodePreferences(img *SdlImgui) (*preferences, error) {
-	p := &preferences{img: img}
+func (p *preferences) setWindowPreferences(isPlayMode bool) error {
+	// save existing windows preferences if necessary
+	if p.dskWin != nil {
+		err := p.dskWin.Save()
+		if err != nil {
+			return err
+		}
+	}
+
+	var group string
+
+	if isPlayMode {
+		group = "playmode"
+	} else {
+		group = "debugger"
+	}
 
 	// setup preferences
 	pth, err := paths.ResourcePath("", prefs.DefaultPrefsFile)
 	if err != nil {
-		return nil, err
+		return err
 	}
-
-	p.dsk, err = prefs.NewDisk(pth)
-	if err != nil {
-		return nil, err
-	}
-
-	err = p.dsk.Load(true)
-	if err != nil {
-		return nil, err
-	}
-
-	// windows preferences
-	err = p.addWindowPreferences(pth, "sdlimgui.playmode")
-	if err != nil {
-		return nil, err
-	}
-
-	return p, nil
-}
-
-func (p *preferences) addWindowPreferences(pth string, group string) error {
-	var err error
 
 	p.dskWin, err = prefs.NewDisk(pth)
 	if err != nil {

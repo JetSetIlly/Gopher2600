@@ -67,19 +67,10 @@ func (win *winPrefs) draw() {
 		imgui.BeginV(win.id(), &win.open, imgui.WindowFlagsAlwaysAutoResize)
 	}
 
-	imgui.Text("VCS")
-	imgui.Spacing()
-
-	randState := win.img.vcs.Prefs.RandomState.Get().(bool)
-	if imgui.Checkbox("Random State (on startup)", &randState) {
-		win.img.vcs.Prefs.RandomState.Set(randState)
-	}
-
-	randPins := win.img.vcs.Prefs.RandomPins.Get().(bool)
-	if imgui.Checkbox("Random Pins", &randPins) {
-		win.img.vcs.Prefs.RandomPins.Set(randPins)
-	}
-
+	win.drawVCS()
+	imguiSeparator()
+	win.drawPlaymode()
+	imguiSeparator()
 	win.drawARM()
 
 	if !win.img.isPlaymode() {
@@ -122,6 +113,41 @@ func (win *winPrefs) draw() {
 	imgui.End()
 }
 
+func (win *winPrefs) drawPlaymode() {
+	imgui.Text("Playmode")
+	imgui.Spacing()
+
+	controllerNotifications := win.img.prefs.controllerNotifcations.Get().(bool)
+	if imgui.Checkbox("Controller Notifications", &controllerNotifications) {
+		win.img.prefs.controllerNotifcations.Set(controllerNotifications)
+	}
+
+	plusromNotifications := win.img.prefs.plusromNotifications.Get().(bool)
+	if imgui.Checkbox("PlusROM Notifications", &plusromNotifications) {
+		win.img.prefs.plusromNotifications.Set(plusromNotifications)
+	}
+
+	superchargerNotifications := win.img.prefs.superchargerNotifications.Get().(bool)
+	if imgui.Checkbox("Supercharger Notifications", &superchargerNotifications) {
+		win.img.prefs.superchargerNotifications.Set(superchargerNotifications)
+	}
+}
+
+func (win *winPrefs) drawVCS() {
+	imgui.Text("VCS")
+	imgui.Spacing()
+
+	randState := win.img.vcs.Prefs.RandomState.Get().(bool)
+	if imgui.Checkbox("Random State (on startup)", &randState) {
+		win.img.vcs.Prefs.RandomState.Set(randState)
+	}
+
+	randPins := win.img.vcs.Prefs.RandomPins.Get().(bool)
+	if imgui.Checkbox("Random Pins", &randPins) {
+		win.img.vcs.Prefs.RandomPins.Set(randPins)
+	}
+}
+
 // in this function we address vcs directly and not through the lazy system. it
 // seems to be okay. acutal preference values are protected by mutexes in the
 // prefs package so thats not a problem. the co-processor bus however can be
@@ -142,21 +168,18 @@ func (win *winPrefs) drawARM() {
 
 		bus := win.img.vcs.Mem.Cart.GetCoProcBus()
 		hasARM = bus != nil && bus.CoProcID() == arm7tdmi.CoProcID
-
-		if !hasARM {
-			return
-		}
 	} else {
 		hasARM = win.img.lz.CoProc.HasCoProcBus && win.img.lz.CoProc.ID == arm7tdmi.CoProcID
 	}
 
-	imguiSeparator()
 	imgui.Text(arm7tdmi.CoProcID)
+
 	if !hasARM {
 		// not that the current cartridge does not have an ARM coprocessor
 		imgui.SameLine()
 		imgui.Text("(not in current cartridge)")
 	}
+
 	imgui.Spacing()
 
 	immediate := win.img.vcs.Prefs.ARM.Immediate.Get().(bool)
