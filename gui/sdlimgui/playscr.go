@@ -62,20 +62,21 @@ type playScr struct {
 	fps      string
 	hz       string
 
-	// controller alert
-	controllerAlertLeft  controllerAlert
-	controllerAlertRight controllerAlert
+	// controller notifications
+	controllerLeft  controllerNotification
+	controllerRight controllerNotification
 
-	// cartridge events
-	cartridgeEvent cartridgeEvent
+	// cartridge events notifications
+	cartridgeEvent cartridgeEventNotification
 }
 
 func newPlayScr(img *SdlImgui) *playScr {
 	win := &playScr{
-		img:      img,
-		scr:      img.screen,
-		fpsPulse: time.NewTicker(time.Second),
-		fps:      "waiting for fps",
+		img:             img,
+		scr:             img.screen,
+		fpsPulse:        time.NewTicker(time.Second),
+		fps:             "waiting for fps",
+		controllerRight: controllerNotification{rightAlign: true},
 	}
 
 	// set texture, creation of textures will be done after every call to resize()
@@ -151,62 +152,9 @@ func (win *playScr) draw() {
 		imgui.End()
 	}
 
-	dimen := win.img.plt.displaySize()
-	if win.controllerAlertLeft.isOpen() {
-		win.drawControllerAlert("##controlleralertleft", win.controllerAlertLeft.desc, imgui.Vec2{0, dimen[1]}, false)
-	}
-
-	if win.controllerAlertRight.isOpen() {
-		win.drawControllerAlert("##controlleralertright", win.controllerAlertRight.desc, imgui.Vec2{dimen[0], dimen[1]}, true)
-	}
-
+	win.controllerLeft.draw(win)
+	win.controllerRight.draw(win)
 	win.cartridgeEvent.draw(win)
-}
-
-// pos should be the coordinate of the *extreme* bottom left or bottom right of
-// the playscr window. the values will be adjusted according to whether we're
-// display an icon or text.
-func (win *playScr) drawControllerAlert(id string, description string, pos imgui.Vec2, rightJustify bool) {
-	useIcon := false
-
-	switch description {
-	case "Stick":
-		useIcon = true
-		description = fmt.Sprintf("%c %s", fonts.Stick, description)
-	case "Paddle":
-		useIcon = true
-		description = fmt.Sprintf("%c %s", fonts.Paddle, description)
-	case "Keyboard":
-		useIcon = true
-		description = fmt.Sprintf("%c %s", fonts.Keyboard, description)
-	default:
-		// we don't recognise the controller so we'll just print the text
-		pos.Y -= imgui.FrameHeightWithSpacing() * 1.2
-		if rightJustify {
-			pos.X -= imguiTextWidth(len(description))
-		}
-	}
-
-	if useIcon {
-		imgui.PushFont(win.img.glsl.gopher2600Icons)
-		defer imgui.PopFont()
-		pos.Y -= win.img.glsl.gopher2600IconsSize * 1.5
-		if rightJustify {
-			pos.X -= win.img.glsl.gopher2600IconsSize * 1.5
-		}
-	}
-
-	imgui.SetNextWindowPos(pos)
-	imgui.PushStyleColor(imgui.StyleColorWindowBg, win.img.cols.Transparent)
-	imgui.PushStyleColor(imgui.StyleColorBorder, win.img.cols.Transparent)
-
-	imgui.BeginV(id, &win.fpsOpen, imgui.WindowFlagsAlwaysAutoResize|
-		imgui.WindowFlagsNoScrollbar|imgui.WindowFlagsNoTitleBar|imgui.WindowFlagsNoDecoration)
-
-	imgui.Text(description)
-
-	imgui.PopStyleColorV(2)
-	imgui.End()
 }
 
 // resize() implements the textureRenderer interface.
@@ -298,46 +246,99 @@ func (win *playScr) setScaling() {
 	gl.BindTexture(gl.TEXTURE_2D, win.screenTexture)
 }
 
-// controllerAlert is used to draw an indicator on the screen for controller change events
-type controllerAlert struct {
-	frames int
-	desc   string
+const notificationDuration = 60 // frames
+
+// controllerNotification is used to draw an indicator on the screen for controller change events
+type controllerNotification struct {
+	frames     int
+	icon       string
+	rightAlign bool
 }
 
-func (ca *controllerAlert) open(desc string) {
-	ca.desc = desc
-	ca.frames = 60
-}
+func (ca *controllerNotification) set(description string) {
+	ca.frames = notificationDuration
 
-func (ca *controllerAlert) isOpen() bool {
-	if ca.frames == 0 {
-		return false
+	switch description {
+	case "Stick":
+		ca.icon = fmt.Sprintf("%c", fonts.Stick)
+	case "Paddle":
+		ca.icon = fmt.Sprintf("%c", fonts.Paddle)
+	case "Keyboard":
+		ca.icon = fmt.Sprintf("%c", fonts.Keyboard)
+	default:
+		ca.icon = ""
+		return
 	}
-	ca.frames--
-	return true
+
 }
 
-// cartridgeEvent is used to draw an indicator on the screen for cartride
+func (ca *controllerNotification) tick() {
+	ca.frames--
+}
+
+// pos should be the coordinate of the *extreme* bottom left or bottom right of
+// the playscr window. the values will be adjusted according to whether we're
+// display an icon or text.
+func (ca *controllerNotification) draw(win *playScr) {
+	if ca.frames <= 0 {
+		return
+	}
+
+	ca.tick()
+
+	// we'll be using the icon font for display in this window
+	imgui.PushFont(win.img.glsl.gopher2600Icons)
+	defer imgui.PopFont()
+
+	// position window so that it is fully visible at the bottom of the screen.
+	// taking special care of the right aligned window
+	var id string
+	var pos imgui.Vec2
+	dimen := win.img.plt.displaySize()
+	if ca.rightAlign {
+		pos = imgui.Vec2{dimen[0], dimen[1]}
+		id = "##controlleralertright"
+		pos.X -= win.img.glsl.gopher2600IconsSize * 1.5
+	} else {
+		pos = imgui.Vec2{0, dimen[1]}
+		id = "##controlleralertleft"
+	}
+	pos.Y -= win.img.glsl.gopher2600IconsSize * 1.5
+
+	imgui.SetNextWindowPos(pos)
+	imgui.PushStyleColor(imgui.StyleColorWindowBg, win.img.cols.Transparent)
+	imgui.PushStyleColor(imgui.StyleColorBorder, win.img.cols.Transparent)
+
+	imgui.BeginV(id, &win.fpsOpen, imgui.WindowFlagsAlwaysAutoResize|
+		imgui.WindowFlagsNoScrollbar|imgui.WindowFlagsNoTitleBar|imgui.WindowFlagsNoDecoration)
+
+	imgui.Text(ca.icon)
+
+	imgui.PopStyleColorV(2)
+	imgui.End()
+}
+
+// cartridgeEventNotification is used to draw an indicator on the screen for cartride
 // events defined in the mapper package.
-type cartridgeEvent struct {
+type cartridgeEventNotification struct {
 	open         bool
 	currentEvent mapper.Event
 	frames       int
 }
 
-func (ce *cartridgeEvent) set(event mapper.Event) {
+func (ce *cartridgeEventNotification) set(event mapper.Event) {
 	ce.currentEvent = event
 	switch ce.currentEvent {
 	case mapper.EventSuperchargerSoundloadStarted:
 		ce.open = true
 	case mapper.EventSuperchargerSoundloadEnded:
-		ce.frames = 60
+		ce.frames = notificationDuration
 	case mapper.EventSuperchargerSoundloadRewind:
-		ce.frames = 60
+		ce.frames = notificationDuration
 	}
 }
 
-func (ce *cartridgeEvent) tick() {
+func (ce *cartridgeEventNotification) tick() {
 	if !ce.open || ce.frames <= 0 {
 		return
 	}
@@ -355,7 +356,7 @@ func (ce *cartridgeEvent) tick() {
 	}
 }
 
-func (ce *cartridgeEvent) draw(win *playScr) {
+func (ce *cartridgeEventNotification) draw(win *playScr) {
 	if !ce.open {
 		return
 	}
