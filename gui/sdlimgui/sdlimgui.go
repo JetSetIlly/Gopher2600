@@ -187,8 +187,7 @@ func NewSdlImgui(tv *television.Television) (*SdlImgui, error) {
 		return nil, curated.Errorf("sdlimgui: %v", err)
 	}
 
-	// open container window
-	img.plt.window.Show()
+	// container window is open on setEmulation()
 
 	return img, nil
 }
@@ -257,7 +256,9 @@ func (img *SdlImgui) setEmulation(emulation emulation.Emulation) error {
 	img.vcs = emulation.VCS().(*hardware.VCS)
 	img.userinput = emulation.UserInput()
 
-	// playmode if there is no debugger
+	// make sure container window is open after window preferences have been set
+	defer img.plt.window.Show()
+
 	if emulation.Debugger() == nil {
 		img.prefs.setWindowPreferences(true)
 		img.screen.clearTextureRenderers()
