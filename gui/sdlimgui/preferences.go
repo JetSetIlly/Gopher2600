@@ -44,6 +44,9 @@ type preferences struct {
 	controllerNotifcations    prefs.Bool
 	plusromNotifications      prefs.Bool
 	superchargerNotifications prefs.Bool
+
+	// window preferences. these are attached to dskWin rather than dsk.
+	fullScreen prefs.Bool
 }
 
 func newPreferences(img *SdlImgui) (*preferences, error) {
@@ -119,9 +122,9 @@ func (p *preferences) setWindowPreferences(isPlayMode bool) error {
 	var group string
 
 	if isPlayMode {
-		group = "playmode"
+		group = "sdlimgui.playmode"
 	} else {
-		group = "debugger"
+		group = "sdlimgui.debugger"
 	}
 
 	// setup preferences
@@ -131,6 +134,15 @@ func (p *preferences) setWindowPreferences(isPlayMode bool) error {
 	}
 
 	p.dskWin, err = prefs.NewDisk(pth)
+	if err != nil {
+		return err
+	}
+
+	p.fullScreen.RegisterCallback(func(v prefs.Value) error {
+		p.img.plt.setFullScreen(p.fullScreen.Get().(bool))
+		return nil
+	})
+	err = p.dskWin.Add(fmt.Sprintf("%s.fullscreen", group), &p.fullScreen)
 	if err != nil {
 		return err
 	}

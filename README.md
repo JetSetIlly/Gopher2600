@@ -219,14 +219,15 @@ The console's reset switch can be triggered with the gamepad's start button.
 ### Mouse Capture
 
 When using the mouse for paddle control, the mouse must first be 'captured'.
-You will know when the mouse is captured because the mouse pointer will not be
-visible.
+You will know when the mouse is captured because the mouse pointer will no
+longer be visible.
 
-To capture the mouse press the right mouse button. To release the mouse from
-capture press the right mouse button.
+In playmode, the mouse is most conveniently caputred by pressing the right
+mouse button. To release the mouse from capture press the right mouse button.
+The `Scroll Lock` key will also toggle mouse capture.
 
-Note that when put in fullscreen mode the mouse will be captured automatically
-for convenience.
+In the debugger, there is a `Capture Mouse` button in the `Control` window. Or
+you can use the `Scroll Lock` key.
 
 ## Panel
 
@@ -236,7 +237,7 @@ The VCS panel is controlled through the function keys of the keyboard.
 * `F2` Panel Reset
 * `F3` Colour Toggle
 * `F4` Player 0 Pro Toggle
-* `F5` Player 0 Pro Toggle
+* `F5` Player 1 Pro Toggle
 
 In playmode, the additional keys are available:
 
@@ -247,11 +248,12 @@ In playmode, the additional keys are available:
 * `F11` Toggle Fullscreen
 * `F12` Save [Screenshot](#screenshots)
 
-In the debugger, the additional keys are available:
+In addition, the following keys behave the same in both playmode and the
+debugger.
 
-* `ESC` toggle mouse capture for debugging TV screen
-
-The `Pause` key will toggle pausing in both playmode and in the debugger
+* `ESC` Quit
+* `Scroll Lock` Toggle mouse capture 
+* `Pause` Pause/Resume emulation
 
 ### Screenshots
 

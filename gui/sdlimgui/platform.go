@@ -167,14 +167,12 @@ func (plt *platform) postRender() {
 	plt.window.GLSwap()
 }
 
-// toggle the full screeens state.
+// toggle the full screeens state. does not capture mouse
 func (plt *platform) setFullScreen(fullScreen bool) {
 	plt.fullScreen = fullScreen
 	if plt.fullScreen {
 		plt.window.SetFullscreen(sdl.WINDOW_FULLSCREEN_DESKTOP)
-		plt.img.setCapture(true)
 	} else {
 		plt.window.SetFullscreen(0)
-		plt.img.setCapture(false)
 	}
 }

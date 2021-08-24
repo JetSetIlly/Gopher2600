@@ -253,7 +253,7 @@ func (win *winControl) drawMouseCapture() {
 	imgui.SameLine()
 	if win.img.wm.dbgScr.isCaptured {
 		imgui.AlignTextToFramePadding()
-		imgui.Text("RMB or ESC to release mouse")
+		imgui.Text("RMB to release mouse")
 	} else if imgui.Button("Capture mouse") {
 		win.img.setCapture(true)
 	}

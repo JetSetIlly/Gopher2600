@@ -220,6 +220,17 @@ func (img *SdlImgui) GetReflectionRenderer() reflection.Renderer {
 	return img.screen
 }
 
+// quit application sends a request to the emulation.
+func (img *SdlImgui) quit() {
+	if !img.hasModal {
+		select {
+		case img.userinput <- userinput.EventQuit{}:
+		default:
+			logger.Log("sdlimgui", "dropped quit event")
+		}
+	}
+}
+
 // draw gui. called from service loop.
 func (img *SdlImgui) draw() {
 	img.playScr.draw()

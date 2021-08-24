@@ -44,13 +44,7 @@ func (img *SdlImgui) Service() {
 	for ; ev != nil; ev = sdl.PollEvent() {
 		switch ev := ev.(type) {
 		case *sdl.QuitEvent:
-			if !img.hasModal {
-				select {
-				case img.userinput <- userinput.EventQuit{}:
-				default:
-					logger.Log("sdlimgui", "dropped quit event")
-				}
-			}
+			img.quit()
 
 		case *sdl.WindowEvent:
 			img.screen.crit.section.Lock()
@@ -286,6 +280,9 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 		if img.isPlaymode() {
 			switch sdl.GetKeyName(ev.Keysym.Sym) {
 			case "Escape":
+				img.quit()
+
+			case "ScrollLock":
 				img.setCapture(!img.isCaptured())
 
 			case "F7":
@@ -304,7 +301,8 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 				w.setOpen(!w.isOpen())
 
 			case "F11":
-				img.plt.setFullScreen(!img.plt.fullScreen)
+				img.prefs.fullScreen.Set(!img.plt.fullScreen)
+				img.setCapture(img.plt.fullScreen)
 
 			case "F12":
 				shift := ev.Keysym.Mod&sdl.KMOD_LSHIFT == sdl.KMOD_LSHIFT || ev.Keysym.Mod&sdl.KMOD_RSHIFT == sdl.KMOD_RSHIFT
@@ -332,7 +330,7 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 			}
 		} else {
 			switch sdl.GetKeyName(ev.Keysym.Sym) {
-			case "Escape":
+			case "ScrollLock":
 				img.setCapture(!img.isCaptured())
 			case "Pause":
 				if img.state == emulation.Paused {
