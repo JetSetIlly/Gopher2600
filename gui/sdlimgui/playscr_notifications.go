@@ -43,6 +43,8 @@ func (ca *peripheralNotification) set(peripheral plugging.PeripheralID) {
 		ca.icon = fmt.Sprintf("%c", fonts.Paddle)
 	case plugging.PeriphKeypad:
 		ca.icon = fmt.Sprintf("%c", fonts.Keypad)
+	case plugging.PeriphSavekey:
+		ca.icon = fmt.Sprintf("%c", fonts.Savekey)
 	default:
 		ca.icon = ""
 		return

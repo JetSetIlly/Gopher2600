@@ -78,16 +78,17 @@ var Gopher2600Icons []byte
 
 // Unicode points in AtariIcons for icons used in the application.
 const (
-	Stick  = '\ue000'
-	Paddle = '\ue001'
-	Keypad = '\ue002'
-	Tape   = '\ue003'
-	Wifi   = '\ue004'
+	Stick   = '\ue000'
+	Paddle  = '\ue001'
+	Keypad  = '\ue002'
+	Tape    = '\ue003'
+	Wifi    = '\ue004'
+	Savekey = '\ue005'
 )
 
 // The first and last unicode points used in the application. We use this to
 // make sure we're using as small a font texture as possible.
 const (
 	Gopher2600IconMin = '\ue000'
-	Gopher2600IconMax = '\ue004'
+	Gopher2600IconMax = '\ue005'
 )

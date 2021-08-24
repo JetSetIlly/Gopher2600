@@ -92,7 +92,7 @@ func NewSaveKey(port plugging.PortID, bus ports.PeripheralBus) ports.Peripheral 
 	}
 
 	sk.bus.WriteSWCHx(sk.port, 0xf0)
-	logger.Logf("savekey", "savekey attached [%v]", sk.port)
+	logger.Logf("savekey", "attached [%v]", sk.port)
 
 	return sk
 }
