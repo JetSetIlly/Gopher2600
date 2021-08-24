@@ -61,8 +61,8 @@ type playScr struct {
 	hz       string
 
 	// controller notifications
-	controllerLeft  controllerNotification
-	controllerRight controllerNotification
+	peripheralLeft  peripheralNotification
+	peripheralRight peripheralNotification
 
 	// cartridge events notifications
 	cartridgeEvent cartridgeEventNotification
@@ -74,7 +74,7 @@ func newPlayScr(img *SdlImgui) *playScr {
 		scr:             img.screen,
 		fpsPulse:        time.NewTicker(time.Second),
 		fps:             "waiting for fps",
-		controllerRight: controllerNotification{rightAlign: true},
+		peripheralRight: peripheralNotification{rightAlign: true},
 	}
 
 	// set texture, creation of textures will be done after every call to resize()
@@ -150,8 +150,8 @@ func (win *playScr) draw() {
 		imgui.End()
 	}
 
-	win.controllerLeft.draw(win)
-	win.controllerRight.draw(win)
+	win.peripheralLeft.draw(win)
+	win.peripheralRight.draw(win)
 	win.cartridgeEvent.draw(win)
 }
 

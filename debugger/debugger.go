@@ -181,7 +181,7 @@ func NewDebugger(tv *television.Television, scr gui.GUI, term terminal.Terminal,
 
 	// replace player 1 port with savekey
 	if useSavekey {
-		err = dbg.vcs.RIOT.Ports.Plug(plugging.RightPlayer, savekey.NewSaveKey)
+		err = dbg.vcs.RIOT.Ports.Plug(plugging.PortRightPlayer, savekey.NewSaveKey)
 		if err != nil {
 			return nil, curated.Errorf("debugger: %v", err)
 		}

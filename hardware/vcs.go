@@ -86,17 +86,17 @@ func NewVCS(tv *television.Television) (*VCS, error) {
 		return nil, err
 	}
 
-	err = vcs.RIOT.Ports.Plug(plugging.LeftPlayer, controllers.NewAuto)
+	err = vcs.RIOT.Ports.Plug(plugging.PortLeftPlayer, controllers.NewAuto)
 	if err != nil {
 		return nil, err
 	}
 
-	err = vcs.RIOT.Ports.Plug(plugging.RightPlayer, controllers.NewAuto)
+	err = vcs.RIOT.Ports.Plug(plugging.PortRightPlayer, controllers.NewAuto)
 	if err != nil {
 		return nil, err
 	}
 
-	err = vcs.RIOT.Ports.Plug(plugging.Panel, panel.NewPanel)
+	err = vcs.RIOT.Ports.Plug(plugging.PortPanel, panel.NewPanel)
 	if err != nil {
 		return nil, err
 	}

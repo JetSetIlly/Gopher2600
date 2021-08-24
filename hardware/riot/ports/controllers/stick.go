@@ -60,9 +60,9 @@ func NewStick(port plugging.PortID, bus ports.PeripheralBus) ports.Peripheral {
 	}
 
 	switch port {
-	case plugging.LeftPlayer:
+	case plugging.PortLeftPlayer:
 		stk.inptx = addresses.INPT4
-	case plugging.RightPlayer:
+	case plugging.PortRightPlayer:
 		stk.inptx = addresses.INPT5
 	}
 
@@ -85,9 +85,9 @@ func (stk *Stick) PortID() plugging.PortID {
 	return stk.port
 }
 
-// Name implements the ports.Peripheral interface.
-func (stk *Stick) Name() string {
-	return "Stick"
+// ID implements the ports.Peripheral interface.
+func (stk *Stick) ID() plugging.PeripheralID {
+	return plugging.PeriphStick
 }
 
 // HandleEvent implements the ports.Peripheral interface.

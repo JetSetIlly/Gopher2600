@@ -130,13 +130,13 @@ func NewPlayback(transcript string) (*Playback, error) {
 			// support for playback file versions before v1.2
 			switch n {
 			case -1:
-				entry.portID = plugging.Unplugged
+				entry.portID = plugging.PortUnplugged
 			case 1:
-				entry.portID = plugging.LeftPlayer
+				entry.portID = plugging.PortLeftPlayer
 			case 2:
-				entry.portID = plugging.RightPlayer
+				entry.portID = plugging.PortRightPlayer
 			case 3:
-				entry.portID = plugging.Panel
+				entry.portID = plugging.PortPanel
 			default:
 				return nil, curated.Errorf("playback: %s line %d, col %d", err, i+1, len(strings.Join(toks[:fieldPortID+1], fieldSep)))
 			}
@@ -225,7 +225,7 @@ const (
 func (plb *Playback) GetPlayback() (plugging.PortID, ports.Event, ports.EventData, error) {
 	// we've reached the end of the list of events for this id
 	if plb.seqCt >= len(plb.sequence) {
-		return plugging.Unplugged, ports.NoEvent, nil, nil
+		return plugging.PortUnplugged, ports.NoEvent, nil, nil
 	}
 
 	// get current state of the television
@@ -238,11 +238,11 @@ func (plb *Playback) GetPlayback() (plugging.PortID, ports.Event, ports.EventDat
 	if frame == entry.frame && scanline == entry.scanline && clock == entry.clock {
 		plb.seqCt++
 		if entry.hash != plb.digest.Hash() {
-			return plugging.Unplugged, ports.NoEvent, nil, curated.Errorf(PlaybackHashError, entry.line, frame)
+			return plugging.PortUnplugged, ports.NoEvent, nil, curated.Errorf(PlaybackHashError, entry.line, frame)
 		}
 		return entry.portID, entry.event, entry.data, nil
 	}
 
 	// next event does not match
-	return plugging.Unplugged, ports.NoEvent, nil, nil
+	return plugging.PortUnplugged, ports.NoEvent, nil, nil
 }

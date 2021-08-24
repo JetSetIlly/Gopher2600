@@ -26,30 +26,30 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
 )
 
-// Keyboard represents the VCS keyboard (or keypad) type.
-type Keyboard struct {
+// Keypad represents the VCS keypad type.
+type Keypad struct {
 	port   plugging.PortID
 	bus    ports.PeripheralBus
 	column [3]addresses.ChipRegister
 	key    rune
 }
 
-// the value of keyboard.key when nothing is being pressed.
+// the value of keypad.key when nothing is being pressed.
 const noKey = ' '
 
-// NewKeyboard is the preferred method of initialisation for the Keyboard type
+// NewKeypad is the preferred method of initialisation for the Keyboard type
 // Satisifies the ports.NewPeripheral interface and can be used as an argument
 // to ports.AttachPlayer0() and ports.AttachPlayer1().
-func NewKeyboard(port plugging.PortID, bus ports.PeripheralBus) ports.Peripheral {
-	key := &Keyboard{
+func NewKeypad(port plugging.PortID, bus ports.PeripheralBus) ports.Peripheral {
+	key := &Keypad{
 		port: port,
 		bus:  bus,
 	}
 
 	switch port {
-	case plugging.LeftPlayer:
+	case plugging.PortLeftPlayer:
 		key.column = [3]addresses.ChipRegister{addresses.INPT0, addresses.INPT1, addresses.INPT4}
-	case plugging.RightPlayer:
+	case plugging.PortRightPlayer:
 		key.column = [3]addresses.ChipRegister{addresses.INPT2, addresses.INPT3, addresses.INPT5}
 	}
 
@@ -58,32 +58,32 @@ func NewKeyboard(port plugging.PortID, bus ports.PeripheralBus) ports.Peripheral
 }
 
 // Plumb implements the ports.Peripheral interface.
-func (key *Keyboard) Plumb(bus ports.PeripheralBus) {
+func (key *Keypad) Plumb(bus ports.PeripheralBus) {
 	key.bus = bus
 }
 
 // String implements the ports.Peripheral interface.
-func (key *Keyboard) String() string {
-	return fmt.Sprintf("keyboard: key=%v", key.key)
+func (key *Keypad) String() string {
+	return fmt.Sprintf("keypad: key=%v", key.key)
 }
 
 // PortID implements the ports.Peripheral interface.
-func (key *Keyboard) PortID() plugging.PortID {
+func (key *Keypad) PortID() plugging.PortID {
 	return key.port
 }
 
-// Name implements the ports.Peripheral interface.
-func (key *Keyboard) Name() string {
-	return "Keyboard"
+// ID implements the ports.Peripheral interface.
+func (key *Keypad) ID() plugging.PeripheralID {
+	return plugging.PeriphKeypad
 }
 
 // HandleEvent implements the ports.Peripheral interface.
-func (key *Keyboard) HandleEvent(event ports.Event, data ports.EventData) error {
+func (key *Keypad) HandleEvent(event ports.Event, data ports.EventData) error {
 	switch event {
 	case ports.NoEvent:
 		return nil
 
-	case ports.KeyboardDown:
+	case ports.KeypadDown:
 		var k rune
 
 		switch d := data.(type) {
@@ -92,31 +92,31 @@ func (key *Keyboard) HandleEvent(event ports.Event, data ports.EventData) error 
 		case ports.EventDataPlayback:
 			n, err := strconv.ParseInt(string(d), 10, 64)
 			if err != nil {
-				return curated.Errorf("keyboard: %v: unexpected event data", event)
+				return curated.Errorf("keypad: %v: unexpected event data", event)
 			}
 			k = rune(n)
 
 		default:
-			return curated.Errorf("keyboard: %v: unexpected event data", event)
+			return curated.Errorf("keypad: %v: unexpected event data", event)
 		}
 
 		if k != '1' && k != '2' && k != '3' &&
 			k != '4' && k != '5' && k != '6' &&
 			k != '7' && k != '8' && k != '9' &&
 			k != '*' && k != '0' && k != '#' {
-			return curated.Errorf("keyboard: unrecognised rune (%v)", k)
+			return curated.Errorf("keypad: unrecognised rune (%v)", k)
 		}
 
 		// note key for use by readKeyboard()
 		key.key = k
 
-	case ports.KeyboardUp:
+	case ports.KeypadUp:
 		switch d := data.(type) {
 		case nil:
 			// expected data
 		case ports.EventDataPlayback:
 			if len(string(d)) > 0 {
-				return curated.Errorf("keyboard: %v: unexpected event data", event)
+				return curated.Errorf("keypad: %v: unexpected event data", event)
 			}
 		}
 		key.key = noKey
@@ -130,16 +130,16 @@ func (key *Keyboard) HandleEvent(event ports.Event, data ports.EventData) error 
 }
 
 // Update implements the ports.Peripheral interface.
-func (key *Keyboard) Update(data bus.ChipData) bool {
+func (key *Keypad) Update(data bus.ChipData) bool {
 	switch data.Name {
 	case "SWCHA":
 		var column int
 		var v uint8
 
 		switch key.port {
-		case plugging.LeftPlayer:
+		case plugging.PortLeftPlayer:
 			v = data.Value & 0xf0
-		case plugging.RightPlayer:
+		case plugging.PortRightPlayer:
 			v = (data.Value & 0x0f) << 4
 		}
 
@@ -232,13 +232,13 @@ func (key *Keyboard) Update(data bus.ChipData) bool {
 }
 
 // Step implements the ports.Peripheral interface.
-func (key *Keyboard) Step() {
-	// keyboard does not write to SWCHx so unlike the Stick and Paddle
+func (key *Keypad) Step() {
+	// keypad does not write to SWCHx so unlike the Stick and Paddle
 	// controller types there is no need to ensure the SWCHx register retains
 	// its state if it is active
 }
 
 // Reset implements the ports.Peripheral interface.
-func (key *Keyboard) Reset() {
+func (key *Keypad) Reset() {
 	key.key = noKey
 }

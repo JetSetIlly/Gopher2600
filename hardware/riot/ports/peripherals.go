@@ -33,10 +33,8 @@ type Peripheral interface {
 	// The port the peripheral is plugged into
 	PortID() plugging.PortID
 
-	// Name should return the canonical name for the peripheral (eg. "Paddle"
-	// for the paddle peripheral). It shouldn't include information about which
-	// port the peripheral is attached to.
-	Name() string
+	// The ID of the peripheral being represented
+	ID() plugging.PeripheralID
 
 	// handle an incoming input event
 	HandleEvent(Event, EventData) error

@@ -39,30 +39,30 @@ type Auto struct {
 	lastPaddleTime  time.Time
 	paddleTouchCt   int
 
-	// if a keyboard is detected via SWACNT then there is no auto-switching
+	// if a keypad is detected via SWACNT then there is no auto-switching
 	//
-	// to prevent false positives of the SWACNT being in "non-keyboard" mode
-	// and unecessarily switching to a non-keyboard controller and then
+	// to prevent false positives of the SWACNT being in "non-keypad" mode
+	// and unecessarily switching to a non-keypad controller and then
 	// switching immediately back, we time the duration between unplug
-	// attempts. if the duration is long enough (keyboardUnplugDelay) then the
+	// attempts. if the duration is long enough (keypadUnplugDelay) then the
 	// unplugging is allowed.
 	//
 	// a good example of a false positive of this type is the Coke Zero demo.
 	//
 	// it would be better perhaps if we did this the other way around and
-	// introduced a delay before switching to the keyboard controller. but at
+	// introduced a delay before switching to the keypad controller. but at
 	// least one title (Codebreaker) sets the SWACNT once and leaves it at
 	// that so there's nothing to work on. one possibility is to set up a timer
-	// and switching to the keyboard when it expires, unless it's been
+	// and switching to the keypad when it expires, unless it's been
 	// interrupted, but I don't fancy the idea of having to service a timer on
 	// Update()
-	keyboardUnplugAttempt bool
-	keyboardUnplugTime    time.Time
-	keyboardUnplugDelay   time.Duration
+	keypadUnplugAttempt bool
+	keypadUnplugTime    time.Time
+	keypadUnplugDelay   time.Duration
 
 	// value used to compare SWACNT value with. the value is different
 	// depending on which port the controller is plugged into
-	keyboardDetectValue uint8
+	keypadDetectValue uint8
 }
 
 // the sensitivity values for switching between controller types.
@@ -91,15 +91,15 @@ func NewAuto(port plugging.PortID, bus ports.PeripheralBus) ports.Peripheral {
 	}
 
 	switch port {
-	case plugging.LeftPlayer:
-		aut.keyboardDetectValue = 0xf0
-	case plugging.RightPlayer:
-		aut.keyboardDetectValue = 0x0f
+	case plugging.PortLeftPlayer:
+		aut.keypadDetectValue = 0xf0
+	case plugging.PortRightPlayer:
+		aut.keypadDetectValue = 0x0f
 	}
 
 	// a two second delay should be sufficient time to require SWACNT to be in
-	// "non-keyboard" mode before allowing the controller type to switch
-	aut.keyboardUnplugDelay, _ = time.ParseDuration("1s")
+	// "non-keypad" mode before allowing the controller type to switch
+	aut.keypadUnplugDelay, _ = time.ParseDuration("1s")
 
 	aut.Reset()
 	return aut
@@ -121,15 +121,15 @@ func (aut *Auto) PortID() plugging.PortID {
 	return aut.port
 }
 
-// Name implements the ports.Peripheral interface.
-func (aut *Auto) Name() string {
-	return aut.controller.Name()
+// ID implements the ports.Peripheral interface.
+func (aut *Auto) ID() plugging.PeripheralID {
+	return aut.controller.ID()
 }
 
 // HandleEvent implements the ports.Peripheral interface.
 func (aut *Auto) HandleEvent(event ports.Event, data ports.EventData) error {
-	// no autoswitching if keyboard is detected
-	if _, ok := aut.controller.(*Keyboard); !ok {
+	// no autoswitching if keypad is detected
+	if _, ok := aut.controller.(*Keypad); !ok {
 		switch event {
 		case ports.Left:
 			aut.checkStick(event)
@@ -143,10 +143,10 @@ func (aut *Auto) HandleEvent(event ports.Event, data ports.EventData) error {
 			// no check for fire events
 		case ports.PaddleSet:
 			aut.checkPaddle(data)
-		case ports.KeyboardDown:
-			// no check on keyboard down
-		case ports.KeyboardUp:
-			// no check on keyboard up
+		case ports.KeypadDown:
+			// no check on keypad down
+		case ports.KeypadUp:
+			// no check on keypad up
 		}
 	}
 
@@ -159,25 +159,25 @@ func (aut *Auto) HandleEvent(event ports.Event, data ports.EventData) error {
 func (aut *Auto) Update(data bus.ChipData) bool {
 	switch data.Name {
 	case "SWACNT":
-		if data.Value&aut.keyboardDetectValue == aut.keyboardDetectValue {
-			// attach keyboard IF NOT attached already
-			if _, ok := aut.controller.(*Keyboard); !ok {
-				aut.controller = NewKeyboard(aut.port, aut.bus)
+		if data.Value&aut.keypadDetectValue == aut.keypadDetectValue {
+			// attach keypad IF NOT attached already
+			if _, ok := aut.controller.(*Keypad); !ok {
+				aut.controller = NewKeypad(aut.port, aut.bus)
 				aut.plug()
-			} else if aut.keyboardUnplugAttempt {
-				// reset keyboardUnplugAttempt if an unplug attempt has been made
-				aut.keyboardUnplugAttempt = false
+			} else if aut.keypadUnplugAttempt {
+				// reset keypadUnplugAttempt if an unplug attempt has been made
+				aut.keypadUnplugAttempt = false
 			}
-		} else if data.Value&aut.keyboardDetectValue == 0x00 {
-			if _, ok := aut.controller.(*Keyboard); ok {
-				if aut.keyboardUnplugAttempt {
-					if time.Since(aut.keyboardUnplugTime) > aut.keyboardUnplugDelay {
+		} else if data.Value&aut.keypadDetectValue == 0x00 {
+			if _, ok := aut.controller.(*Keypad); ok {
+				if aut.keypadUnplugAttempt {
+					if time.Since(aut.keypadUnplugTime) > aut.keypadUnplugDelay {
 						aut.controller = NewStick(aut.port, aut.bus)
 						aut.plug()
 					}
 				} else {
-					aut.keyboardUnplugAttempt = true
-					aut.keyboardUnplugTime = time.Now()
+					aut.keypadUnplugAttempt = true
+					aut.keypadUnplugTime = time.Now()
 				}
 			}
 		}
@@ -205,7 +205,7 @@ func (aut *Auto) checkStick(event ports.Event) {
 		// stick must be "awake" before counting begins
 		if time.Since(aut.lastStickTime) < wakeTime {
 			// detect stick being waggled. stick detection works a little
-			// differently to paddle and keyboard detection. instead of the stick
+			// differently to paddle and keypad detection. instead of the stick
 			// data we record the stick event.
 			if event != aut.lastStickVal {
 				aut.stickCt++
@@ -284,12 +284,12 @@ func (aut *Auto) resetStickDetection() {
 	aut.stickCt = 0
 }
 
-// plug is called by chceckStick(), checkPaddle() and checkKeyboard() and handles the
+// plug is called by chceckStick(), checkPaddle() and handles the
 // plug monitor.
 func (aut *Auto) plug() {
 	// notify any peripheral monitors
 	if aut.monitor != nil {
-		aut.monitor.Plugged(aut.port, aut.controller.Name())
+		aut.monitor.Plugged(aut.port, aut.controller.ID())
 	}
 
 	// attach any monitors to newly plugged controllers

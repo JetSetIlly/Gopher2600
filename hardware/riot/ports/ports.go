@@ -119,7 +119,7 @@ func (p *Ports) Plug(port plugging.PortID, c NewPeripheral) error {
 
 	// notify monitor of pluggin
 	if p.monitor != nil {
-		p.monitor.Plugged(port, periph.Name())
+		p.monitor.Plugged(port, periph.ID())
 	}
 
 	// attach any existing monitors to the new player peripheral
@@ -128,11 +128,11 @@ func (p *Ports) Plug(port plugging.PortID, c NewPeripheral) error {
 	}
 
 	switch port {
-	case plugging.Panel:
+	case plugging.PortPanel:
 		p.Panel = periph
-	case plugging.LeftPlayer:
+	case plugging.PortLeftPlayer:
 		p.LeftPlayer = periph
-	case plugging.RightPlayer:
+	case plugging.PortRightPlayer:
 		p.RightPlayer = periph
 	default:
 		return fmt.Errorf("can't attach peripheral to port (%v)", port)
@@ -268,8 +268,8 @@ func (p *Ports) AttachPlugMonitor(m plugging.PlugMonitor) {
 
 	// notify monitor of currently plugged peripherals
 	if p.monitor != nil {
-		p.monitor.Plugged(plugging.LeftPlayer, p.LeftPlayer.Name())
-		p.monitor.Plugged(plugging.RightPlayer, p.RightPlayer.Name())
+		p.monitor.Plugged(plugging.PortLeftPlayer, p.LeftPlayer.ID())
+		p.monitor.Plugged(plugging.PortRightPlayer, p.RightPlayer.ID())
 	}
 }
 
@@ -294,7 +294,7 @@ func (p *Ports) GetPlayback() error {
 			return err
 		}
 
-		morePlayback = id != plugging.Unplugged && ev != NoEvent
+		morePlayback = id != plugging.PortUnplugged && ev != NoEvent
 		if morePlayback {
 			err := p.HandleEvent(id, ev, v)
 			if err != nil {
@@ -312,11 +312,11 @@ func (p *Ports) HandleEvent(id plugging.PortID, ev Event, d EventData) error {
 	var err error
 
 	switch id {
-	case plugging.Panel:
+	case plugging.PortPanel:
 		err = p.Panel.HandleEvent(ev, d)
-	case plugging.LeftPlayer:
+	case plugging.PortLeftPlayer:
 		err = p.LeftPlayer.HandleEvent(ev, d)
-	case plugging.RightPlayer:
+	case plugging.PortRightPlayer:
 		err = p.RightPlayer.HandleEvent(ev, d)
 	}
 
@@ -336,19 +336,19 @@ func (p *Ports) HandleEvent(id plugging.PortID, ev Event, d EventData) error {
 // WriteSWCHx implements the MemoryAccess interface.
 func (p *Ports) WriteSWCHx(id plugging.PortID, data uint8) {
 	switch id {
-	case plugging.LeftPlayer:
+	case plugging.PortLeftPlayer:
 		data &= 0xf0              // keep only the bits for player 0
 		data |= p.swchaMux & 0x0f // combine with the existing player 1 bits
 		p.swchaMux = data
 		p.swcha = data & (p.swacnt ^ 0xff)
 		p.riot.ChipWrite(addresses.SWCHA, p.swcha)
-	case plugging.RightPlayer:
+	case plugging.PortRightPlayer:
 		data = (data & 0xf0) >> 4 // move bits into the player 1 nibble
 		data |= p.swchaMux & 0xf0 // combine with the existing player 0 bits
 		p.swchaMux = data
 		p.swcha = data & (p.swacnt ^ 0xff)
 		p.riot.ChipWrite(addresses.SWCHA, p.swcha)
-	case plugging.Panel:
+	case plugging.PortPanel:
 		p.swchb = data
 		p.riot.ChipWrite(addresses.SWCHB, p.swchb)
 	default:

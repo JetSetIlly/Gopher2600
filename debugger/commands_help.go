@@ -374,10 +374,10 @@ Specify the player with the 0 or 1 arguments.
 Note that it is possible to set the stick combinations that would normally not
 be possible with a joystick. For example, LEFT and RIGHT set at the same time.`,
 
-	cmdKeyboard: `Set the keyboard input for Player 0 or Player 1 for the next and subsequent
+	cmdKeypad: `Set the keypad input for Player 0 or Player 1 for the next and subsequent
 video cycles.
 
-If the current controller for that player is not a keyboard (or the auto controller type) then
+If the current controller for that player is not a keypad (or the auto controller type) then
 an error will be returned.
 
 Specify the player with the 0 or 1 arguments.`,

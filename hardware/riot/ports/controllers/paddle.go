@@ -72,10 +72,10 @@ func NewPaddle(port plugging.PortID, bus ports.PeripheralBus) ports.Peripheral {
 
 	// !!TODO: support for paddle player 3 and paddle player 4
 	switch port {
-	case plugging.LeftPlayer:
+	case plugging.PortLeftPlayer:
 		pdl.inptx = addresses.INPT0
 		pdl.buttonMask = 0x80
-	case plugging.RightPlayer:
+	case plugging.PortRightPlayer:
 		pdl.inptx = addresses.INPT1
 		pdl.buttonMask = 0x40
 	}
@@ -98,9 +98,9 @@ func (pdl *Paddle) PortID() plugging.PortID {
 	return pdl.port
 }
 
-// Name implements the ports.Peripheral interface.
-func (pdl *Paddle) Name() string {
-	return "Paddle"
+// ID implements the ports.Peripheral interface.
+func (pdl *Paddle) ID() plugging.PeripheralID {
+	return plugging.PeriphPaddle
 }
 
 // HandleEvent implements the ports.Peripheral interface.

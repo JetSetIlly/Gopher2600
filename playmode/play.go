@@ -180,7 +180,7 @@ func Play(tv *television.Television, scr gui.GUI, newRecording bool, cartload ca
 
 	// replace player 1 port with savekey
 	if useSavekey {
-		err = vcs.RIOT.Ports.Plug(plugging.RightPlayer, savekey.NewSaveKey)
+		err = vcs.RIOT.Ports.Plug(plugging.PortRightPlayer, savekey.NewSaveKey)
 		if err != nil {
 			return curated.Errorf("playmode: %v", err)
 		}
@@ -345,6 +345,6 @@ func Play(tv *television.Television, scr gui.GUI, newRecording bool, cartload ca
 }
 
 // Plugged implements the plugging.PlugMonitor interface.
-func (pl *playmode) Plugged(port plugging.PortID, description string) {
-	pl.scr.SetFeature(gui.ReqControllerChange, port, description)
+func (pl *playmode) Plugged(port plugging.PortID, peripheral plugging.PeripheralID) {
+	pl.scr.SetFeature(gui.ReqControllerChange, port, peripheral)
 }

@@ -125,10 +125,10 @@ func (img *SdlImgui) serviceSetFeature(request featureRequest) {
 		if img.isPlaymode() {
 			port := request.args[0].(plugging.PortID)
 			switch port {
-			case plugging.LeftPlayer:
-				img.playScr.controllerLeft.set(request.args[1].(string))
-			case plugging.RightPlayer:
-				img.playScr.controllerRight.set(request.args[1].(string))
+			case plugging.PortLeftPlayer:
+				img.playScr.peripheralLeft.set(request.args[1].(plugging.PeripheralID))
+			case plugging.PortRightPlayer:
+				img.playScr.peripheralRight.set(request.args[1].(plugging.PeripheralID))
 			}
 		}
 

@@ -47,8 +47,8 @@ const (
 	PaddleSet Event = "PaddleSet" // float32
 
 	// keyboard.
-	KeyboardDown Event = "KeyboardDown" // rune
-	KeyboardUp   Event = "KeyboardUp"   // nil
+	KeypadDown Event = "KeypadDown" // rune
+	KeypadUp   Event = "KeypadUp"   // nil
 
 	// panel.
 	PanelSelect Event = "PanelSelect" // bool

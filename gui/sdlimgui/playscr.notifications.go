@@ -21,27 +21,28 @@ import (
 	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/gui/sdlimgui/fonts"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
+	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
 )
 
 const notificationDuration = 60 // frames
 
-// controllerNotification is used to draw an indicator on the screen for controller change events
-type controllerNotification struct {
+// peripheralNotification is used to draw an indicator on the screen for controller change events
+type peripheralNotification struct {
 	frames     int
 	icon       string
 	rightAlign bool
 }
 
-func (ca *controllerNotification) set(description string) {
+func (ca *peripheralNotification) set(peripheral plugging.PeripheralID) {
 	ca.frames = notificationDuration
 
-	switch description {
-	case "Stick":
+	switch peripheral {
+	case plugging.PeriphStick:
 		ca.icon = fmt.Sprintf("%c", fonts.Stick)
-	case "Paddle":
+	case plugging.PeriphPaddle:
 		ca.icon = fmt.Sprintf("%c", fonts.Paddle)
-	case "Keyboard":
-		ca.icon = fmt.Sprintf("%c", fonts.Keyboard)
+	case plugging.PeriphKeypad:
+		ca.icon = fmt.Sprintf("%c", fonts.Keypad)
 	default:
 		ca.icon = ""
 		return
@@ -49,14 +50,14 @@ func (ca *controllerNotification) set(description string) {
 
 }
 
-func (ca *controllerNotification) tick() {
+func (ca *peripheralNotification) tick() {
 	ca.frames--
 }
 
 // pos should be the coordinate of the *extreme* bottom left or bottom right of
 // the playscr window. the values will be adjusted according to whether we're
 // display an icon or text.
-func (ca *controllerNotification) draw(win *playScr) {
+func (ca *peripheralNotification) draw(win *playScr) {
 	if ca.frames <= 0 {
 		return
 	}

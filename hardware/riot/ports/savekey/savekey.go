@@ -137,9 +137,9 @@ func (sk *SaveKey) PortID() plugging.PortID {
 	return sk.port
 }
 
-// Name implements the ports.Peripheral interface.
-func (sk *SaveKey) Name() string {
-	return "SaveKey"
+// ID implements the ports.Peripheral interface.
+func (sk *SaveKey) ID() plugging.PeripheralID {
+	return plugging.PeriphSavekey
 }
 
 // Reset implements the ports.Peripheral interface.
@@ -164,9 +164,9 @@ func (sk *SaveKey) Update(data bus.ChipData) bool {
 	case "SWCHA":
 		// mask and shift SWCHA value to the normlised value
 		switch sk.port {
-		case plugging.LeftPlayer:
+		case plugging.PortLeftPlayer:
 			sk.swcha = data.Value & 0xf0
-		case plugging.RightPlayer:
+		case plugging.PortRightPlayer:
 			sk.swcha = (data.Value & 0x0f) << 4
 		}
 	}

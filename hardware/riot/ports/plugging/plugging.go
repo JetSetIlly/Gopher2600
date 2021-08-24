@@ -15,13 +15,40 @@
 
 package plugging
 
+// PortID differentiates the different ports in the VCS into which peripherals
+// can be plugged.
+type PortID string
+
+// List of defined PortIDs.
+//
+// We could potentially extend this to support a future Quadtari implementation.
+const (
+	PortUnplugged   PortID = "Unplugged"
+	PortLeftPlayer  PortID = "Left"
+	PortRightPlayer PortID = "Right"
+	PortPanel       PortID = "Panel"
+)
+
+// PeripheralID identifies the class of device a Peripheral implemenation
+// represents.
+type PeripheralID string
+
+// List of valid PeripheralID values.
+const (
+	PeriphPanel   PeripheralID = "Panel"
+	PeriphStick   PeripheralID = "Stick"
+	PeriphPaddle  PeripheralID = "Paddle"
+	PeriphKeypad  PeripheralID = "Keypad"
+	PeriphSavekey PeripheralID = "Savekey"
+)
+
 // PlugMonitor interface implementations will be notified of newly plugged
 // peripherals.
 type PlugMonitor interface {
-	Plugged(port PortID, description string)
+	Plugged(port PortID, peripheral PeripheralID)
 }
 
-// Moniterable implementations are capable of having a PlugMonitor attached to
+// Monitorable implementations are capable of having a PlugMonitor attached to
 // it. The VCS Ports themselves are monitorable but we also use this mechanism
 // in the "auto" controller type and in the future, devices like the Quadtari
 // will be implemented similarly.

@@ -91,7 +91,7 @@ func (win *winControllers) draw() {
 
 func (win *winControllers) drawController(p ports.Peripheral) {
 	imgui.PushItemWidth(win.controllerComboDim.X)
-	if imgui.BeginComboV(fmt.Sprintf("##%v", p.PortID()), p.Name(), imgui.ComboFlagsNoArrowButton) {
+	if imgui.BeginComboV(fmt.Sprintf("##%v", p.PortID()), string(p.ID()), imgui.ComboFlagsNoArrowButton) {
 		for _, s := range controllers.ControllerList {
 			if imgui.Selectable(s) {
 				termCmd := fmt.Sprintf("CONTROLLER %s %s", p.PortID(), s)
@@ -109,7 +109,7 @@ func (win *winControllers) drawController(p ports.Peripheral) {
 		if auto {
 			termCmd = fmt.Sprintf("CONTROLLER %s AUTO", p.PortID())
 		} else {
-			termCmd = fmt.Sprintf("CONTROLLER %s %s", p.PortID(), p.Name())
+			termCmd = fmt.Sprintf("CONTROLLER %s %s", p.PortID(), string(p.ID()))
 		}
 		win.img.term.pushCommand(termCmd)
 	}

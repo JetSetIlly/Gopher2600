@@ -59,7 +59,7 @@ const (
 	cmdController = "CONTROLLER"
 	cmdPanel      = "PANEL"
 	cmdStick      = "STICK"
-	cmdKeyboard   = "KEYBOARD"
+	cmdKeypad     = "KEYPAD"
 
 	// halt conditions.
 	cmdBreak = "BREAK"
@@ -122,7 +122,7 @@ var commandTemplate = []string{
 	cmdController + " [LEFT|RIGHT] (AUTO|STICK|PADDLE|KEYBOARD)",
 	cmdPanel + " (SET [P0PRO|P1PRO|P0AM|P1AM|COL|BW]|TOGGLE [P0|P1|COL]|[HOLD|RELEASE] [SELECT|RESET])",
 	cmdStick + " [LEFT|RIGHT] [LEFT|RIGHT|UP|DOWN|FIRE|NOLEFT|NORIGHT|NOUP|NODOWN|NOFIRE]",
-	cmdKeyboard + " [LEFT|RIGHT] [NONE|0|1|2|3|4|5|6|7|8|9|*|#]",
+	cmdKeypad + " [LEFT|RIGHT] [NONE|0|1|2|3|4|5|6|7|8|9|*|#]",
 
 	// halt conditions
 	cmdBreak + " [%<pc value>S|%<target>S %<value>N] {& %<value>S|%<target>S %<value>S}",

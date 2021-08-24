@@ -106,7 +106,7 @@ func NewRecorder(transcript string, vcs *hardware.VCS) (*Recorder, error) {
 // End flushes all remaining events to the output file and closes it.
 func (rec *Recorder) End() error {
 	// write the power off event to the transcript
-	err := rec.RecordEvent(plugging.Panel, ports.PanelPowerOff, nil)
+	err := rec.RecordEvent(plugging.PortPanel, ports.PanelPowerOff, nil)
 	if err != nil {
 		return curated.Errorf("recorder: %v", err)
 	}

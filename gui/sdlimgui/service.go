@@ -134,7 +134,7 @@ func (img *SdlImgui) Service() {
 			if button != userinput.GamepadButtonNone {
 				select {
 				case img.userinput <- userinput.EventGamepadButton{
-					ID:     plugging.LeftPlayer,
+					ID:     plugging.PortLeftPlayer,
 					Button: button,
 					Down:   ev.State == 1,
 				}:
@@ -169,7 +169,7 @@ func (img *SdlImgui) Service() {
 			if dir != userinput.DPadNone {
 				select {
 				case img.userinput <- userinput.EventGamepadDPad{
-					ID:        plugging.LeftPlayer,
+					ID:        plugging.PortLeftPlayer,
 					Direction: dir,
 				}:
 				default:
@@ -185,7 +185,7 @@ func (img *SdlImgui) Service() {
 			case 1:
 				select {
 				case img.userinput <- userinput.EventGamepadThumbstick{
-					ID:         plugging.LeftPlayer,
+					ID:         plugging.PortLeftPlayer,
 					Thumbstick: userinput.GamepadThumbstickLeft,
 					Horiz:      pad.Axis(0),
 					Vert:       pad.Axis(1),
@@ -198,7 +198,7 @@ func (img *SdlImgui) Service() {
 			case 4:
 				select {
 				case img.userinput <- userinput.EventGamepadThumbstick{
-					ID:         plugging.LeftPlayer,
+					ID:         plugging.PortLeftPlayer,
 					Thumbstick: userinput.GamepadThumbstickRight,
 					Horiz:      pad.Axis(3),
 					Vert:       pad.Axis(4),
@@ -220,7 +220,7 @@ func (img *SdlImgui) Service() {
 			if trigger != userinput.GamepadTriggerNone {
 				select {
 				case img.userinput <- userinput.EventGamepadTrigger{
-					ID:      plugging.LeftPlayer,
+					ID:      plugging.PortLeftPlayer,
 					Trigger: trigger,
 					Amount:  ev.Value,
 				}:

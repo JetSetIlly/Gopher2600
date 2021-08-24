@@ -103,9 +103,9 @@ func (pan *Panel) PortID() plugging.PortID {
 	return pan.id
 }
 
-// Name implements the Peripheral interface.
-func (pan *Panel) Name() string {
-	return "Panel"
+// ID implements the Peripheral interface.
+func (pan *Panel) ID() plugging.PeripheralID {
+	return plugging.PeriphPanel
 }
 
 // Reset implements the Peripheral interface.
@@ -143,7 +143,7 @@ func (pan *Panel) write() {
 		v |= 0x01
 	}
 
-	pan.bus.WriteSWCHx(plugging.Panel, v)
+	pan.bus.WriteSWCHx(plugging.PortPanel, v)
 }
 
 // HandleEvent implements Peripheral interface.
