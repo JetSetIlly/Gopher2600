@@ -282,9 +282,6 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 			case "Escape":
 				img.quit()
 
-			case "ScrollLock":
-				img.setCapture(!img.isCaptured())
-
 			case "F7":
 				img.playScr.fpsOpen = !img.playScr.fpsOpen
 
@@ -316,7 +313,14 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 					img.glsl.shaders[playscrShaderID].(*playscrShader).scheduleScreenshot(modeSingle)
 				}
 
+			case "ScrollLock":
+				fallthrough
+			case "F14":
+				img.setCapture(!img.isCaptured())
+
 			case "Pause":
+				fallthrough
+			case "F15":
 				if img.state == emulation.Paused {
 					img.emulation.Pause(false)
 					img.state = emulation.Running
