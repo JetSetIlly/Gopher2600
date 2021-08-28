@@ -178,14 +178,6 @@ func Play(tv *television.Television, scr gui.GUI, newRecording bool, cartload ca
 		return nil
 	}
 
-	// replace player 1 port with savekey
-	if useSavekey {
-		err = vcs.RIOT.Ports.Plug(plugging.PortRightPlayer, savekey.NewSaveKey)
-		if err != nil {
-			return curated.Errorf("playmode: %v", err)
-		}
-	}
-
 	// attach the cartridge depending on whether it's a new recording an
 	// existing recording (ie. a playback) or when no recording is involved at
 	// all.
@@ -304,6 +296,15 @@ func Play(tv *television.Television, scr gui.GUI, newRecording bool, cartload ca
 	err = scr.SetFeature(gui.ReqState, pl.state)
 	if err != nil {
 		return curated.Errorf("playmode: %v", err)
+	}
+
+	// insert savekey if requested. we're doing this after setting the
+	// emulation state to running so that the savekey icon will be seen.
+	if useSavekey {
+		err = vcs.RIOT.Ports.Plug(plugging.PortRightPlayer, savekey.NewSaveKey)
+		if err != nil {
+			return curated.Errorf("playmode: %v", err)
+		}
 	}
 
 	// note startime
