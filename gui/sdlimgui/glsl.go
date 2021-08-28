@@ -21,7 +21,7 @@ import (
 	"github.com/go-gl/gl/v3.2-core/gl"
 	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/curated"
-	"github.com/jetsetilly/gopher2600/gui/sdlimgui/fonts"
+	"github.com/jetsetilly/gopher2600/gui/fonts"
 )
 
 const (

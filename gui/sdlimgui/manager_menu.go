@@ -20,7 +20,7 @@ import (
 
 	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/emulation"
-	"github.com/jetsetilly/gopher2600/gui/sdlimgui/fonts"
+	"github.com/jetsetilly/gopher2600/gui/fonts"
 )
 
 // the window menus grouped by type. the types are:.

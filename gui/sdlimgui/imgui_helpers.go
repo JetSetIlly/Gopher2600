@@ -21,7 +21,7 @@ import (
 	"strings"
 
 	"github.com/inkyblackness/imgui-go/v4"
-	"github.com/jetsetilly/gopher2600/gui/sdlimgui/fonts"
+	"github.com/jetsetilly/gopher2600/gui/fonts"
 )
 
 // return the height of the window from the current cursor position to the end

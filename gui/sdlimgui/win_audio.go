@@ -19,7 +19,7 @@ import (
 	"math"
 
 	"github.com/inkyblackness/imgui-go/v4"
-	"github.com/jetsetilly/gopher2600/gui/sdlimgui/fonts"
+	"github.com/jetsetilly/gopher2600/gui/fonts"
 )
 
 const winAudioID = "Audio"
