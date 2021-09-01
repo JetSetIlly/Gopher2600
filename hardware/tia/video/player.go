@@ -604,12 +604,14 @@ func (ps *PlayerSprite) pixel() {
 			offset = ps.ScanCounter.Pixel
 		}
 
-		if *ps.gfxData>>offset&0x01 == 0x01 {
-			ps.pixelOn = true
-			ps.pixelCollision = true
-			return
-		}
+		ps.pixelOn = *ps.gfxData>>offset&0x01 == 0x01
+		ps.pixelCollision = ps.pixelOn
+
+		return
 	}
+
+	ps.pixelOn = false
+	ps.pixelCollision = false
 
 	// scancounter is not active but we still need to check what the first
 	// pixel in the scancounter is in case the the player is latching in the
@@ -624,17 +626,11 @@ func (ps *PlayerSprite) pixel() {
 
 	if *ps.tia.hblank && ps.ScanCounter.IsLatching() {
 		if ps.Reflected {
-			ps.pixelOn = false
 			ps.pixelCollision = (*ps.gfxData>>7)&0x01 == 0x01
-			return
+		} else {
+			ps.pixelCollision = *ps.gfxData&0x01 == 0x01
 		}
-		ps.pixelOn = false
-		ps.pixelCollision = *ps.gfxData&0x01 == 0x01
-		return
 	}
-
-	ps.pixelOn = false
-	ps.pixelCollision = false
 }
 
 func (ps *PlayerSprite) setGfxData(data uint8) {
