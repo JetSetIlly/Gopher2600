@@ -71,12 +71,6 @@ func (p *Bool) Set(v Value) error {
 		return curated.Errorf("prefs: %v", fmt.Errorf("cannot convert %T to prefs.Bool", v))
 	}
 
-	// value hasn't changed so do not do anything
-	ov := p.value.Load()
-	if ov != nil && nv == ov.(bool) {
-		return nil
-	}
-
 	// store new value
 	p.value.Store(nv)
 
@@ -101,8 +95,11 @@ func (p *Bool) Reset() error {
 	return p.Set(false)
 }
 
-// RegisterCallback sets the callback function to be called when the value has
-// changed. Not required but is useful in some contexts.
+// RegisterCallback sets the callback function to be called when the value is
+// updated. Note that even if the value hasn't changed, the callback will be
+// executed.
+//
+// Not required but is useful in some contexts.
 func (p *Bool) RegisterCallback(f func(value Value) error) {
 	p.callback = f
 }
@@ -150,12 +147,6 @@ func (p *String) Set(v Value) error {
 		nv = nv[:p.maxLen]
 	}
 
-	// value hasn't changed so do not do anything
-	ov := p.value.Load()
-	if ov != nil && nv == ov.(string) {
-		return nil
-	}
-
 	// store new value
 	p.value.Store(nv)
 
@@ -176,8 +167,11 @@ func (p *String) Reset() error {
 	return p.Set("")
 }
 
-// RegisterCallback sets the callback function to be called when the value has
-// changed. Not required but is useful in some contexts.
+// RegisterCallback sets the callback function to be called when the value is
+// updated. Note that even if the value hasn't changed, the callback will be
+// executed.
+//
+// Not required but is useful in some contexts.
 func (p *String) RegisterCallback(f func(value Value) error) {
 	p.callback = f
 }
@@ -218,12 +212,6 @@ func (p *Int) Set(v Value) error {
 		return curated.Errorf("prefs: %v", fmt.Errorf("cannot convert %T to prefs.Int", v))
 	}
 
-	// value hasn't changed so do not do anything
-	ov := p.value.Load()
-	if ov != nil && nv == ov.(int) {
-		return nil
-	}
-
 	// update stored value
 	p.value.Store(nv)
 
@@ -248,8 +236,11 @@ func (p *Int) Reset() error {
 	return p.Set(0)
 }
 
-// RegisterCallback sets the callback function to be called when the value has
-// changed. Not required but is useful in some contexts.
+// RegisterCallback sets the callback function to be called when the value is
+// updated. Note that even if the value hasn't changed, the callback will be
+// executed.
+//
+// Not required but is useful in some contexts.
 func (p *Int) RegisterCallback(f func(value Value) error) {
 	p.callback = f
 }
@@ -290,12 +281,6 @@ func (p *Float) Set(v Value) error {
 		return curated.Errorf("prefs: %v", fmt.Errorf("cannot convert %T to prefs.Float", v))
 	}
 
-	// value hasn't changed so do not do anything
-	ov := p.value.Load()
-	if ov != nil && nv == ov.(float64) {
-		return nil
-	}
-
 	// update stored value
 	p.value.Store(nv)
 
@@ -320,8 +305,11 @@ func (p *Float) Reset() error {
 	return p.Set(0.0)
 }
 
-// RegisterCallback sets the callback function to be called when the value has
-// changed. Not required but is useful in some contexts.
+// RegisterCallback sets the callback function to be called when the value is
+// updated. Note that even if the value hasn't changed, the callback will be
+// executed.
+//
+// Not required but is useful in some contexts.
 func (p *Float) RegisterCallback(f func(value Value) error) {
 	p.callback = f
 }

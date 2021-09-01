@@ -21,10 +21,17 @@ import (
 	"github.com/jetsetilly/gopher2600/prefs"
 )
 
-// unified preferences for both modes (debugger and playmode). existing
-// instances of the preferences type should be dumped whenever the mode changes
-// and a new instance created with either newDebugPreferences() or
-// newPlaymodePreferences().
+// unified preferences for both modes (debugger and playmode). preferences
+// should be reloaded whenever the emulation mode changes.
+//
+// in the case of most of the prefence values in this struct it won't matter
+// because the preference value is either: the same for both modes, or only
+// used as appropriate in other areas of the gui package.
+//
+// the one value that is tricky to handle is the audioEnabled flag. what we
+// don't want is to check the emulation mode every time the audio buffer is
+// updated. we solve that by registering a callback function which is run
+// whenever the value is set (even if the value hasn't changed).
 type preferences struct {
 	img *SdlImgui
 
@@ -82,7 +89,11 @@ func newPreferences(img *SdlImgui) (*preferences, error) {
 	}
 
 	p.audioEnabled.RegisterCallback(func(enabled prefs.Value) error {
-		p.img.audio.Mute(!enabled.(bool))
+		if img.isPlaymode() {
+			p.img.audio.Mute(false)
+		} else {
+			p.img.audio.Mute(!enabled.(bool))
+		}
 		return nil
 	})
 

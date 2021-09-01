@@ -275,7 +275,9 @@ func (img *SdlImgui) setEmulation(emulation emulation.Emulation) error {
 		img.screen.clearTextureRenderers()
 		img.screen.addTextureRenderer(img.playScr)
 
-		return nil
+		// emulation context has changed so reload prefs to make sure
+		// everything is set correctly
+		return img.prefs.load()
 	}
 
 	// debugger
@@ -285,7 +287,9 @@ func (img *SdlImgui) setEmulation(emulation emulation.Emulation) error {
 	img.screen.clearTextureRenderers()
 	img.screen.addTextureRenderer(img.wm.dbgScr)
 
-	return nil
+	// emulation context has changed so reload prefs to make sure
+	// everything is set correctly
+	return img.prefs.load()
 }
 
 // has mouse been grabbed. only called from gui thread.
