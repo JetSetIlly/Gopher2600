@@ -288,15 +288,15 @@ func (ps *PlayerSprite) rsync(adjustment int) {
 
 // returns true if pixel has changed.
 func (ps *PlayerSprite) tick() bool {
-	// check to see if there is more movement required for this sprite
-	if ps.tia.hmove.Clk {
-		ps.MoreHMOVE = ps.MoreHMOVE && compareHMOVE(ps.tia.hmove.Ripple, ps.Hmove)
-	}
-
-	switch *ps.tia.hblank {
-	case true:
+	if *ps.tia.hblank {
 		// early return if nothing to do
-		if !(ps.tia.hmove.Clk && ps.MoreHMOVE) {
+		if !ps.tia.hmove.Clk {
+			return false
+		}
+
+		// check to see if there is more movement required for this sprite
+		ps.MoreHMOVE = ps.MoreHMOVE && compareHMOVE(ps.tia.hmove.Ripple, ps.Hmove)
+		if !ps.MoreHMOVE {
 			return false
 		}
 
@@ -305,12 +305,13 @@ func (ps *PlayerSprite) tick() bool {
 		if ps.HmovedPixel < 0 {
 			ps.HmovedPixel += specification.ClksVisible
 		}
-	case false:
+	} else if ps.tia.hmove.Clk {
+		// check to see if there is more movement required for this sprite
+		ps.MoreHMOVE = ps.MoreHMOVE && compareHMOVE(ps.tia.hmove.Ripple, ps.Hmove)
+
 		// cancel motion clock if necessary
-		if ps.tia.hmove.Clk && ps.MoreHMOVE {
-			if ps.tia.rev.Prefs.LostMOTCK {
-				return false
-			}
+		if ps.MoreHMOVE && ps.tia.rev.Prefs.LostMOTCK {
+			return false
 		}
 	}
 

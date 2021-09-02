@@ -199,17 +199,16 @@ func (bs *BallSprite) rsync(adjustment int) {
 
 // returns true if pixel has changed.
 func (bs *BallSprite) tick() bool {
-	// check to see if there is more movement required for this sprite
-	if bs.tia.hmove.Clk {
-		bs.MoreHMOVE = bs.MoreHMOVE && compareHMOVE(bs.tia.hmove.Ripple, bs.Hmove)
-	}
 
-	bs.lastHmoveCt = bs.tia.hmove.Ripple
-
-	switch *bs.tia.hblank {
-	case true:
+	if *bs.tia.hblank {
 		// early return if nothing to do
 		if !(bs.tia.hmove.Clk && bs.MoreHMOVE) {
+			return false
+		}
+
+		// check to see if there is more movement required for this sprite
+		bs.MoreHMOVE = bs.MoreHMOVE && compareHMOVE(bs.tia.hmove.Ripple, bs.Hmove)
+		if !bs.MoreHMOVE {
 			return false
 		}
 
@@ -218,14 +217,17 @@ func (bs *BallSprite) tick() bool {
 		if bs.HmovedPixel < 0 {
 			bs.HmovedPixel += specification.ClksVisible
 		}
-	case false:
+	} else if bs.tia.hmove.Clk {
+		// check to see if there is more movement required for this sprite
+		bs.MoreHMOVE = bs.MoreHMOVE && compareHMOVE(bs.tia.hmove.Ripple, bs.Hmove)
+
 		// cancel motion clock if necessary
-		if bs.tia.hmove.Clk && bs.MoreHMOVE {
-			if bs.tia.rev.Prefs.LostMOTCK {
-				return false
-			}
+		if bs.MoreHMOVE && bs.tia.rev.Prefs.LostMOTCK {
+			return false
 		}
 	}
+
+	bs.lastHmoveCt = bs.tia.hmove.Ripple
 
 	// note whether this text is additional hmove tick. see pixel() function
 	// in missile sprite for details

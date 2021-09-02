@@ -224,15 +224,16 @@ func (ms *MissileSprite) rsync(adjustment int) {
 
 // returns true if pixel has changed.
 func (ms *MissileSprite) tick(resetToPlayer bool) bool {
-	// check to see if there is more movement required for this sprite
-	if ms.tia.hmove.Clk {
-		ms.MoreHMOVE = ms.MoreHMOVE && compareHMOVE(ms.tia.hmove.Ripple, ms.Hmove)
-	}
 
-	switch *ms.tia.hblank {
-	case true:
+	if *ms.tia.hblank {
 		// early return if nothing to do
-		if !(ms.tia.hmove.Clk && ms.MoreHMOVE) {
+		if !ms.tia.hmove.Clk {
+			return false
+		}
+
+		// check to see if there is more movement required for this sprite
+		ms.MoreHMOVE = ms.MoreHMOVE && compareHMOVE(ms.tia.hmove.Ripple, ms.Hmove)
+		if !ms.MoreHMOVE {
 			return false
 		}
 
@@ -241,12 +242,13 @@ func (ms *MissileSprite) tick(resetToPlayer bool) bool {
 		if ms.HmovedPixel < 0 {
 			ms.HmovedPixel += specification.ClksVisible
 		}
-	case false:
+	} else if ms.tia.hmove.Clk {
+		// check to see if there is more movement required for this sprite
+		ms.MoreHMOVE = ms.MoreHMOVE && compareHMOVE(ms.tia.hmove.Ripple, ms.Hmove)
+
 		// cancel motion clock if necessary
-		if ms.tia.hmove.Clk && ms.MoreHMOVE {
-			if ms.tia.rev.Prefs.LostMOTCK {
-				return false
-			}
+		if ms.MoreHMOVE && ms.tia.rev.Prefs.LostMOTCK {
+			return false
 		}
 	}
 
