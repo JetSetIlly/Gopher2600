@@ -122,7 +122,22 @@ type FrameTrigger interface {
 // example of an AudioMixer that does not play sound but otherwise works with
 // it is the digest.Audio type.
 type AudioMixer interface {
-	SetAudio(audioData uint8) error
+	// for efficiency reasons, SetAudio() implementations can be sent
+	// SignalAttributes values that do not have valid AudioData (ie.
+	// AudioUpdate bit is zero). implemenations should therefore take care when
+	// processing the sig slice.
+	//
+	// the general algorithm for processing the sig slice is:
+	//
+	//	for _, s := range sig {
+	//		if s&signal.AudioUpdate != signal.AudioUpdate {
+	//			continue
+	//		}
+	//		d := uint8((s & signal.AudioData) >> signal.AudioDataShift)
+	//
+	//		...
+	//	}
+	SetAudio(sig []signal.SignalAttributes) error
 
 	// some mixers may need to conclude and/or dispose of resources gently.
 	// for simplicity, the AudioMixer should be considered unusable after

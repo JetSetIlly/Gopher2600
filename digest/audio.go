@@ -21,6 +21,7 @@ import (
 
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/television"
+	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 )
 
 // the length of the buffer we're using isn't really important. that said, it
@@ -73,13 +74,19 @@ func (dig *Audio) ResetDigest() {
 }
 
 // SetAudio implements the protocol.AudioMixer interface.
-func (dig *Audio) SetAudio(audioData uint8) error {
-	dig.buffer[dig.bufferCt] = audioData
+func (dig *Audio) SetAudio(sig []signal.SignalAttributes) error {
+	for _, s := range sig {
+		if s&signal.AudioUpdate != signal.AudioUpdate {
+			continue
+		}
+		d := uint8((s & signal.AudioData) >> signal.AudioDataShift)
 
-	dig.bufferCt++
+		dig.buffer[dig.bufferCt] = d
 
-	if dig.bufferCt >= audioBufferLength {
-		return dig.flushAudio()
+		dig.bufferCt++
+		if dig.bufferCt >= audioBufferLength {
+			return dig.flushAudio()
+		}
 	}
 
 	return nil

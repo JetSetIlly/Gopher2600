@@ -20,6 +20,7 @@ import (
 
 	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/gui/fonts"
+	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 )
 
 const winAudioID = "Audio"
@@ -119,10 +120,17 @@ func (win *winAudio) draw() {
 }
 
 // SetAudio implements protocol.AudioMixer.
-func (win *winAudio) SetAudio(audioData uint8) error {
-	select {
-	case win.newData <- float32(audioData) / 256:
-	default:
+func (win *winAudio) SetAudio(sig []signal.SignalAttributes) error {
+	for _, s := range sig {
+		if s&signal.AudioUpdate != signal.AudioUpdate {
+			continue
+		}
+		d := uint8((s & signal.AudioData) >> signal.AudioDataShift)
+
+		select {
+		case win.newData <- float32(d) / 256:
+		default:
+		}
 	}
 	return nil
 }

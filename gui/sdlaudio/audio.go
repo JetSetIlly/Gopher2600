@@ -16,6 +16,7 @@
 package sdlaudio
 
 import (
+	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/hardware/tia/audio"
 	"github.com/jetsetilly/gopher2600/logger"
 
@@ -82,53 +83,60 @@ func NewAudio() (*Audio, error) {
 }
 
 // SetAudio implements the protocol.AudioMixer interface.
-func (aud *Audio) SetAudio(audioData uint8) error {
-	aud.buffer[aud.bufferCt] = audioData + aud.spec.Silence
-	aud.bufferCt++
-
-	if aud.bufferCt >= len(aud.buffer) {
-		// if buffer is full then queue audio unconditionally
-		err := sdl.QueueAudio(aud.id, aud.buffer)
-		if err != nil {
-			return err
+func (aud *Audio) SetAudio(sig []signal.SignalAttributes) error {
+	for _, s := range sig {
+		if s&signal.AudioUpdate != signal.AudioUpdate {
+			continue
 		}
-		aud.bufferCt = 0
-	} else {
-		remaining := int(sdl.GetQueuedAudioSize(aud.id))
+		d := uint8((s & signal.AudioData) >> signal.AudioDataShift)
 
-		if remaining < critQueueLength {
-			// if we're running short of bits in the queue the queue what we have
-			// in the buffer and NOT clearing the buffer
-			//
-			// condition valid when the frame rate is SIGNIFICANTLY LESS than 50/60fps
+		aud.buffer[aud.bufferCt] = d + aud.spec.Silence
+		aud.bufferCt++
+
+		if aud.bufferCt >= len(aud.buffer) {
+			// if buffer is full then queue audio unconditionally
 			err := sdl.QueueAudio(aud.id, aud.buffer)
 			if err != nil {
 				return err
 			}
-		} else if remaining < minQueueLength && aud.bufferCt > 10 {
-			// if we're running short of bits in the queue the queue what we have
-			// in the buffer.
-			//
-			// condition valid when the frame rate is LESS than 50/60fps
-			//
-			// the additional condition makes sure we're not queueing a slice
-			// that is too short. SDL has been known to hang with short audio
-			// queues
-			err := sdl.QueueAudio(aud.id, aud.buffer[:aud.bufferCt-1])
-			if err != nil {
-				return err
-			}
 			aud.bufferCt = 0
-		} else if remaining > maxQueueLength {
-			// if length of sdl: audio: queue is getting too long then clear it
-			//
-			// condition valid when the frame rate is SIGNIFICANTLY MORE than 50/60fps
-			//
-			// if we don't do this the video will get ahead of the audio (ie. the audio
-			// will lag)
-			//
-			// this is a brute force approach but it'll do for now
-			sdl.ClearQueuedAudio(aud.id)
+		} else {
+			remaining := int(sdl.GetQueuedAudioSize(aud.id))
+
+			if remaining < critQueueLength {
+				// if we're running short of bits in the queue the queue what we have
+				// in the buffer and NOT clearing the buffer
+				//
+				// condition valid when the frame rate is SIGNIFICANTLY LESS than 50/60fps
+				err := sdl.QueueAudio(aud.id, aud.buffer)
+				if err != nil {
+					return err
+				}
+			} else if remaining < minQueueLength && aud.bufferCt > 10 {
+				// if we're running short of bits in the queue the queue what we have
+				// in the buffer.
+				//
+				// condition valid when the frame rate is LESS than 50/60fps
+				//
+				// the additional condition makes sure we're not queueing a slice
+				// that is too short. SDL has been known to hang with short audio
+				// queues
+				err := sdl.QueueAudio(aud.id, aud.buffer[:aud.bufferCt-1])
+				if err != nil {
+					return err
+				}
+				aud.bufferCt = 0
+			} else if remaining > maxQueueLength {
+				// if length of sdl: audio: queue is getting too long then clear it
+				//
+				// condition valid when the frame rate is SIGNIFICANTLY MORE than 50/60fps
+				//
+				// if we don't do this the video will get ahead of the audio (ie. the audio
+				// will lag)
+				//
+				// this is a brute force approach but it'll do for now
+				sdl.ClearQueuedAudio(aud.id)
+			}
 		}
 	}
 

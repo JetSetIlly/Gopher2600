@@ -22,7 +22,9 @@ import (
 	"os"
 
 	"github.com/jetsetilly/gopher2600/curated"
+	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/hardware/tia/audio"
+	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/youpy/go-wav"
 )
 
@@ -43,12 +45,20 @@ func New(filename string) (*WavWriter, error) {
 }
 
 // SetAudio implements the television.AudioMixer interface.
-func (aw *WavWriter) SetAudio(audioData uint8) error {
-	// bring audioData into the correct range
-	s := wav.Sample{}
-	s.Values[0] = int(audioData)
-	s.Values[1] = s.Values[0]
-	aw.buffer = append(aw.buffer, s)
+func (aw *WavWriter) SetAudio(sig []signal.SignalAttributes) error {
+	for _, s := range sig {
+		if s&signal.AudioUpdate != signal.AudioUpdate {
+			continue
+		}
+		d := uint8((s & signal.AudioData) >> signal.AudioDataShift)
+
+		// bring audioData into the correct range
+		w := wav.Sample{}
+		w.Values[0] = int(d)
+		w.Values[1] = w.Values[0]
+		aw.buffer = append(aw.buffer, w)
+	}
+
 	return nil
 }
 
@@ -72,6 +82,7 @@ func (aw *WavWriter) EndMixing() (rerr error) {
 		return curated.Errorf("wavwriter: %v", "bad parameters for wav encoding")
 	}
 
+	logger.Logf("wavwriter", "writing audio to %s", aw.filename)
 	enc.WriteSamples(aw.buffer)
 
 	return nil

@@ -559,24 +559,16 @@ func (tv *Television) processSignals(current bool) error {
 
 		// mix audio
 		for _, m := range tv.mixers {
-			for i := 0; i < tv.currentIdx; i++ {
-				sig := tv.signals[i]
-				if sig&signal.AudioUpdate == signal.AudioUpdate {
-					err := m.SetAudio(uint8((sig & signal.AudioData) >> signal.AudioDataShift))
-					if err != nil {
-						return err
-					}
-				}
+			// err := m.SetAudio(uint8((sig & signal.AudioData) >> signal.AudioDataShift))
+			err := m.SetAudio(tv.signals[:tv.currentIdx])
+			if err != nil {
+				return curated.Errorf("television: %v", err)
 			}
+
 			if !current {
-				for i := tv.currentIdx + 1; i < tv.lastMaxIdx; i++ {
-					sig := tv.signals[i]
-					if sig&signal.AudioUpdate == signal.AudioUpdate {
-						err := m.SetAudio(uint8((sig & signal.AudioData) >> signal.AudioDataShift))
-						if err != nil {
-							return err
-						}
-					}
+				err = m.SetAudio(tv.signals[tv.currentIdx:tv.lastMaxIdx])
+				if err != nil {
+					return curated.Errorf("television: %v", err)
 				}
 			}
 		}
