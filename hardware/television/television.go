@@ -139,8 +139,7 @@ type Television struct {
 	// instance of current state (as supported by the rewind system)
 	state *State
 
-	// list of signals sent to pixel renderers since the beginning of the
-	// current frame
+	// signals buffered before being forwarded to the attached PixelRenderers
 	signals []signal.SignalAttributes
 
 	// the index to write the next signal
@@ -201,10 +200,10 @@ func (tv *Television) Reset(keepFrameNum bool) error {
 	tv.state.scanline = 0
 	tv.state.stableFrames = 0
 	tv.state.vsyncCount = 0
-	tv.state.lastSignal = signal.SignalAttributes{}
+	tv.state.lastSignal = signal.NoSignal
 
 	for i := range tv.signals {
-		tv.signals[i] = signal.SignalAttributes{}
+		tv.signals[i] = signal.NoSignal
 	}
 	tv.currentIdx = 0
 	tv.lastMaxIdx = len(tv.signals) - 1
@@ -365,11 +364,11 @@ func (tv *Television) Signal(sig signal.SignalAttributes) error {
 	}
 
 	// check vsync signal at the time of the flyback
-	if sig.VSync && !tv.state.lastSignal.VSync {
+	if sig&signal.VSync == signal.VSync && tv.state.lastSignal&signal.VSync != signal.VSync {
 		tv.state.vsyncCount = 0
-	} else if sig.VSync && tv.state.lastSignal.VSync {
+	} else if sig&signal.VSync == signal.VSync && tv.state.lastSignal&signal.VSync == signal.VSync {
 		tv.state.vsyncCount++
-	} else if !sig.VSync && tv.state.lastSignal.VSync {
+	} else if sig&signal.VSync != signal.VSync && tv.state.lastSignal&signal.VSync == signal.VSync {
 		if tv.state.vsyncCount > 10 {
 			err := tv.newFrame(true)
 			if err != nil {
@@ -387,7 +386,7 @@ func (tv *Television) Signal(sig signal.SignalAttributes) error {
 	// is to enable the RSYNC smooth scrolling trick to be displayed correctly.
 	//
 	// https://atariage.com/forums/topic/224946-smooth-scrolling-playfield-i-think-ive-done-it
-	if sig.HSync && !tv.state.lastSignal.HSync {
+	if sig&signal.HSync == signal.HSync && tv.state.lastSignal&signal.HSync != signal.HSync {
 		if tv.state.clock < 13 || tv.state.clock > 22 {
 			tv.state.clock = 16
 		}
@@ -396,8 +395,10 @@ func (tv *Television) Signal(sig signal.SignalAttributes) error {
 	// doing nothing with CBURST signal
 
 	// augment television signal before sending to pixel renderer
-	sig.Clock = tv.state.clock
-	sig.Scanline = tv.state.scanline
+	sig &= ^signal.Clock
+	sig &= ^signal.Scanline
+	sig |= signal.SignalAttributes(tv.state.clock << signal.ClockShift)
+	sig |= signal.SignalAttributes(tv.state.scanline << signal.ScanlineShift)
 
 	// record the current signal settings so they can be used for reference
 	// during the next call to Signal()
@@ -560,8 +561,8 @@ func (tv *Television) processSignals(current bool) error {
 		for _, m := range tv.mixers {
 			for i := 0; i < tv.currentIdx; i++ {
 				sig := tv.signals[i]
-				if sig.AudioUpdate {
-					err := m.SetAudio(sig.AudioData)
+				if sig&signal.AudioUpdate == signal.AudioUpdate {
+					err := m.SetAudio(uint8((sig & signal.AudioData) >> signal.AudioDataShift))
 					if err != nil {
 						return err
 					}
@@ -570,8 +571,8 @@ func (tv *Television) processSignals(current bool) error {
 			if !current {
 				for i := tv.currentIdx + 1; i < tv.lastMaxIdx; i++ {
 					sig := tv.signals[i]
-					if sig.AudioUpdate {
-						err := m.SetAudio(sig.AudioData)
+					if sig&signal.AudioUpdate == signal.AudioUpdate {
+						err := m.SetAudio(uint8((sig & signal.AudioData) >> signal.AudioDataShift))
 						if err != nil {
 							return err
 						}

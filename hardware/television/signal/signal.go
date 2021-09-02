@@ -20,42 +20,51 @@ package signal
 import "strings"
 
 // ColorSignal represents the signal that is sent from the VCS to the television.
-type ColorSignal int
+type ColorSignal uint8
 
 // VideoBlack is the ColorSignal value that indicates no pixel is being output.
-const VideoBlack ColorSignal = -1
+const VideoBlack ColorSignal = 0xff
 
 // SignalAttributes represents the data sent to the television.
-type SignalAttributes struct {
-	VSync     bool
-	VBlank    bool
-	CBurst    bool
-	HSync     bool
-	Pixel     ColorSignal
-	AudioData uint8
+type SignalAttributes uint64
 
-	// whether the AudioData is valid. should be true only every 114th clock,
-	// which equates to 30Khz
-	AudioUpdate bool
+// List of bit masks to be used to with the SignalAttribute type.
+const (
+	VSync       SignalAttributes = 0b00000000000000000000000000000000000001
+	VBlank      SignalAttributes = 0b00000000000000000000000000000000000010
+	CBurst      SignalAttributes = 0b00000000000000000000000000000000000100
+	HSync       SignalAttributes = 0b00000000000000000000000000000000001000
+	AudioUpdate SignalAttributes = 0b00000000000000000000000000000000010000
+	AudioData   SignalAttributes = 0b00000000000000000000000001111111100000 // 8 bits
+	Pixel       SignalAttributes = 0b00000000000000000111111110000000000000 // 8 bits
+	Scanline    SignalAttributes = 0b00000000111111111000000000000000000000 // 9 bits
+	Clock       SignalAttributes = 0b11111111000000000000000000000000000000 // 8 bits (signed)
+)
 
-	// the position on the screen this signal was applied to. added by the
-	// television implementation
-	Scanline int
-	Clock    int
-}
+// List of shift amounts to be used to access the corresponding bits in a
+// SignalAttributes value.
+const (
+	AudioDataShift = 5
+	PixelShift     = 13
+	ScanlineShift  = 21
+	ClockShift     = 30
+)
+
+// NoSignal is the null value of the SignalAttributes type.
+const NoSignal = 0x00
 
 func (a SignalAttributes) String() string {
 	s := strings.Builder{}
-	if a.VSync {
+	if a&VSync == VSync {
 		s.WriteString("VSYNC ")
 	}
-	if a.VBlank {
+	if a&VBlank == VBlank {
 		s.WriteString("VBLANK ")
 	}
-	if a.CBurst {
+	if a&CBurst == CBurst {
 		s.WriteString("CBURST ")
 	}
-	if a.HSync {
+	if a&HSync == HSync {
 		s.WriteString("HSYNC ")
 	}
 	return s.String()

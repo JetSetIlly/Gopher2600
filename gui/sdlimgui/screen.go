@@ -387,22 +387,26 @@ func (scr *screen) SetPixel(sig signal.SignalAttributes, current bool) error {
 	col := color.RGBA{R: 0, G: 0, B: 0}
 
 	// handle VBLANK by setting pixels to black
-	if !sig.VBlank {
-		col = scr.crit.frameInfo.Spec.GetColor(sig.Pixel)
+	if sig&signal.VBlank != signal.VBlank {
+		c := (sig & signal.Pixel) >> signal.PixelShift
+		col = scr.crit.frameInfo.Spec.GetColor(signal.ColorSignal(c))
 	}
 
+	sl := int((sig & signal.Scanline) >> signal.ScanlineShift)
+	cl := int((sig & signal.Clock) >> signal.ClockShift)
+
 	if current {
-		scr.crit.lastX = sig.Clock
-		scr.crit.lastY = sig.Scanline
+		scr.crit.lastX = cl
+		scr.crit.lastY = sl
 	}
 
 	// if sig is outside the bounds of the image then the SetRGBA() will silently fail
 
-	adjustedScanline := (sig.Scanline + scr.crit.unsyncedScanline)
+	adjustedScanline := (sl + scr.crit.unsyncedScanline)
 	if adjustedScanline >= scr.crit.bufferHeight {
 		adjustedScanline -= scr.crit.bufferHeight
 	}
-	scr.crit.bufferPixels[scr.crit.plotIdx].SetRGBA(sig.Clock, adjustedScanline, col)
+	scr.crit.bufferPixels[scr.crit.plotIdx].SetRGBA(cl, adjustedScanline, col)
 
 	return nil
 }
@@ -416,17 +420,23 @@ func (scr *screen) SetPixels(sig []signal.SignalAttributes, current bool) error 
 		return nil
 	}
 
-	adjustedScanline := (sig[0].Scanline + scr.crit.unsyncedScanline)
+	cl := int((sig[0] & signal.Clock) >> signal.ClockShift)
+	sl := int((sig[0] & signal.Scanline) >> signal.ScanlineShift)
+
+	adjustedScanline := (sl + scr.crit.unsyncedScanline)
 	if adjustedScanline >= scr.crit.bufferHeight {
 		adjustedScanline -= scr.crit.bufferHeight
 	}
 
-	offset := sig[0].Clock * 4
+	offset := cl * 4
 	offset += adjustedScanline * scr.crit.bufferPixels[scr.crit.plotIdx].Rect.Size().X * 4
 
 	var col color.RGBA
 
 	for i := range sig {
+		cl = int((sig[i] & signal.Clock) >> signal.ClockShift)
+		sl = int((sig[i] & signal.Scanline) >> signal.ScanlineShift)
+
 		// check that we're not going to encounter an index-out-of-range error
 		if offset >= len(scr.crit.bufferPixels[scr.crit.plotIdx].Pix)-4 {
 			// reset offset. resetting to zero is not satisfactory - we can see
@@ -436,14 +446,15 @@ func (scr *screen) SetPixels(sig []signal.SignalAttributes, current bool) error 
 			//
 			// simply stopping the processing is not satisfactory either
 			// because that would leave us with a lot of undrawn pixels
-			offset = sig[i].Clock * 4
+			offset = cl * 4
 		}
 
 		// handle VBLANK by setting pixels to black
-		if sig[i].VBlank {
+		if sig[i]&signal.VBlank == signal.VBlank {
 			col = color.RGBA{R: 0, G: 0, B: 0}
 		} else {
-			col = scr.crit.frameInfo.Spec.GetColor(sig[i].Pixel)
+			px := signal.ColorSignal((sig[i] & signal.Pixel) >> signal.PixelShift)
+			col = scr.crit.frameInfo.Spec.GetColor(px)
 		}
 
 		// small cap improves performance, see https://golang.org/issue/27857
@@ -458,8 +469,10 @@ func (scr *screen) SetPixels(sig []signal.SignalAttributes, current bool) error 
 	}
 
 	if current {
-		scr.crit.lastX = sig[len(sig)-1].Clock
-		scr.crit.lastY = sig[len(sig)-1].Scanline
+		cl = int((sig[len(sig)-1] & signal.Clock) >> signal.ClockShift)
+		sl = int((sig[len(sig)-1] & signal.Scanline) >> signal.ScanlineShift)
+		scr.crit.lastX = cl
+		scr.crit.lastY = sl
 	}
 
 	return nil
@@ -476,8 +489,8 @@ func (scr *screen) EndRendering() error {
 func (scr *screen) Reflect(v reflection.ReflectedVideoStep) error {
 	// array indexes into the reflection 2d array are taken from the reflected
 	// TV signal.
-	x := v.TV.Clock
-	y := v.TV.Scanline
+	x := int((v.TV & signal.Clock) >> signal.ClockShift)
+	y := int((v.TV & signal.Scanline) >> signal.ScanlineShift)
 
 	// store Reflection instance
 	if x < len(scr.crit.reflection) && y < len(scr.crit.reflection[x]) {

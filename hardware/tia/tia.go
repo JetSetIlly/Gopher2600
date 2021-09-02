@@ -157,7 +157,10 @@ func (tia *TIA) Plumb(tv signal.TelevisionTIA, mem bus.ChipBus, input bus.Update
 func (tia *TIA) ReadMemTIA(data bus.ChipData) bool {
 	switch data.Name {
 	case "VSYNC":
-		tia.sig.VSync = data.Value&0x02 == 0x02
+		tia.sig &= ^signal.VSync
+		if data.Value&0x02 == 0x02 {
+			tia.sig |= signal.VSync
+		}
 		return false
 
 	case "VBLANK":
@@ -292,7 +295,10 @@ func (tia *TIA) resolveDelayedEvents() {
 	// actual vblank signal
 	if v, ok := tia.futureVblank.Tick(); ok {
 		tia.pendingEvents--
-		tia.sig.VBlank = v&0x02 == 0x02
+		tia.sig &= ^signal.VBlank
+		if v&0x02 == 0x02 {
+			tia.sig |= signal.VBlank
+		}
 	}
 
 	if _, ok := tia.futureRsyncAlign.Tick(); ok {
@@ -331,10 +337,11 @@ func (tia *TIA) resolveDelayedEvents() {
 		case "SHB":
 			tia.newScanline()
 		case "RHS":
-			tia.sig.HSync = false
-			tia.sig.CBurst = true
+			tia.sig &= ^signal.HSync
+			tia.sig &= ^signal.CBurst
+			tia.sig |= signal.CBurst
 		case "RCB":
-			tia.sig.CBurst = false
+			tia.sig &= ^signal.CBurst
 		case "RHB":
 			tia.Hblank = false
 		case "LRHB":
@@ -343,8 +350,7 @@ func (tia *TIA) resolveDelayedEvents() {
 	}
 }
 
-// Step moves the state of the tia forward one video cycle returns the state of
-// the CPU's RDY flag.
+// Step moves the state of the tia forward one video cycle
 func (tia *TIA) Step(readMemory bool) {
 	// update debugging information
 	tia.videoCycles++
@@ -437,7 +443,8 @@ func (tia *TIA) Step(readMemory bool) {
 			// this. not clear if this is the case.
 			//
 			// !!TODO: check accuracy of HSync timing
-			tia.sig.HSync = true
+			tia.sig &= ^signal.HSync
+			tia.sig |= signal.HSync
 
 		case 8: // [RHS]
 			// reset HSYNC
@@ -548,9 +555,11 @@ func (tia *TIA) Step(readMemory bool) {
 		// historic reasons (to do with how we handle debug colours) we leave
 		// it up to PixelRenderer implementations to switch to VideoBlack on
 		// VBLANK.
-		tia.sig.Pixel = signal.VideoBlack
+		tia.sig &= ^signal.Pixel
+		tia.sig |= signal.SignalAttributes(signal.VideoBlack) << signal.PixelShift
 	} else {
-		tia.sig.Pixel = signal.ColorSignal(tia.Video.PixelColor)
+		tia.sig &= ^signal.Pixel
+		tia.sig |= signal.SignalAttributes(tia.Video.PixelColor) << signal.PixelShift
 	}
 
 	// late memory resolution
@@ -579,8 +588,14 @@ func (tia *TIA) Step(readMemory bool) {
 
 	// mix audio and copy values to television signal
 	tia.Audio.Mix()
-	tia.sig.AudioUpdate = tia.Audio.MixUpdated
-	tia.sig.AudioData = tia.Audio.MixVolume
+	if tia.Audio.MixUpdated {
+		tia.sig &= ^signal.AudioUpdate
+		tia.sig |= signal.AudioUpdate
+		tia.sig &= ^signal.AudioData
+		tia.sig |= signal.SignalAttributes(tia.Audio.MixVolume) << signal.AudioDataShift
+	} else {
+		tia.sig &= ^signal.AudioUpdate
+	}
 
 	// send signal to television
 	if err := tia.tv.Signal(tia.sig); err != nil {

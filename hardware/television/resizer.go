@@ -117,11 +117,11 @@ func (sr *resizer) examine(tv *Television, sig signal.SignalAttributes) {
 		return
 	}
 
-	sr.frameHasVBlank = sr.frameHasVBlank || sig.VBlank
+	sr.frameHasVBlank = sr.frameHasVBlank || sig&signal.VBlank == signal.VBlank
 
 	// if VBLANK is off at any point after than HBLANK period then note the
 	// change in current top/bottom if appropriate
-	if tv.state.clock > specification.ClksHBlank && !sig.VBlank {
+	if tv.state.clock > specification.ClksHBlank && sig&signal.VBlank != signal.VBlank {
 		// update current top/bottom values
 		//
 		// comparing against current top/bottom scanline, rather than ideal
@@ -143,7 +143,7 @@ func (sr *resizer) examine(tv *Television, sig signal.SignalAttributes) {
 	// some ROMs never set VBLANK. for these cases we also record the extent of
 	// non-black pixels. these values are using in the commit() function in the
 	// event that framsHasVblank is false.
-	if tv.state.clock > specification.ClksHBlank && !sig.VBlank && sig.Pixel > 0 {
+	if tv.state.clock > specification.ClksHBlank && sig&signal.VBlank != signal.VBlank && sig&signal.Pixel != 0 {
 		if tv.state.scanline < sr.blackTop && tv.state.scanline >= tv.state.frameInfo.Spec.NewSafeVisibleTop {
 			sr.blackTop = tv.state.scanline
 		} else if tv.state.scanline > sr.blackBottom && tv.state.scanline <= tv.state.frameInfo.Spec.NewSafeVisibleBottom {

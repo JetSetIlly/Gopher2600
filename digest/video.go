@@ -121,11 +121,14 @@ func (dig *Video) UpdatingPixels(_ bool) {
 func (dig *Video) SetPixel(sig signal.SignalAttributes, _ bool) error {
 	// preserve the first few bytes for a chained fingerprint
 	i := len(dig.digest)
-	i += specification.ClksScanline * sig.Scanline * pixelDepth
-	i += sig.Clock * pixelDepth
+	sl := int((sig & signal.Scanline) >> signal.ScanlineShift)
+	cl := int((sig & signal.Clock) >> signal.ClockShift)
+	i += specification.ClksScanline * sl * pixelDepth
+	i += cl * pixelDepth
 
 	if i <= len(dig.pixels)-pixelDepth {
-		col := dig.spec.GetColor(sig.Pixel)
+		px := signal.ColorSignal((sig & signal.Pixel) >> signal.PixelShift)
+		col := dig.spec.GetColor(px)
 
 		// setting every pixel regardless of vblank value
 		dig.pixels[i] = col.R
