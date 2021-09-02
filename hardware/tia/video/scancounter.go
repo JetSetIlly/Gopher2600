@@ -85,10 +85,8 @@ func (sc *scanCounter) tick() {
 		return
 	}
 
-	tick := true
-
 	// tick pixels differently depending on whether this is the primary copy or
-	// the secondary copies. this is all a but magical for my liking but it
+	// a secondary opy. this is all a bit magical for my liking but it
 	// works and there's some sense to it at least.
 	//
 	// for the primary copy, we delay the use of the live nusiz value until the
@@ -117,11 +115,13 @@ func (sc *scanCounter) tick() {
 		switch sc.LatchedSizeAndCopies {
 		case 0x05:
 			if sc.count < 1 {
-				tick = false
+				sc.count++
+				return
 			}
 		case 0x07:
 			if sc.count < 3 {
-				tick = false
+				sc.count++
+				return
 			}
 		}
 	} else {
@@ -129,31 +129,29 @@ func (sc *scanCounter) tick() {
 		switch *sc.sizeAndCopies {
 		case 0x05:
 			if !(*sc.pclk == phaseclock.FallingPhi1 || *sc.pclk == phaseclock.FallingPhi2) {
-				tick = false
+				sc.count++
+				return
 			}
 		case 0x07:
 			if *sc.pclk != phaseclock.FallingPhi2 {
-				tick = false
+				sc.count++
+				return
 			}
 		}
 	}
 
-	if tick {
-		if sc.Pixel >= 0 {
-			sc.count = 0
-			sc.Pixel--
+	if sc.Pixel >= 0 {
+		sc.count = 0
+		sc.Pixel--
 
-			// default to primary copy whenever we finish drawing. we need this
-			// otherwise the above branch, sc.cpy == 0, will not trigger
-			// correctly in all instances - if we look at the Player.tick()
-			// function we can see why. scanCounter.cpy is set only when the
-			// startDrawingEvent has concluded but we need to update the
-			// latchedSizeAndCopies value for the primary copy before then.
-			if sc.Pixel < 0 {
-				sc.Cpy = 0
-			}
+		// default to primary copy whenever we finish drawing. we need this
+		// otherwise the above branch, sc.cpy == 0, will not trigger
+		// correctly in all instances - if we look at the Player.tick()
+		// function we can see why. scanCounter.cpy is set only when the
+		// startDrawingEvent has concluded but we need to update the
+		// latchedSizeAndCopies value for the primary copy before then.
+		if sc.Pixel < 0 {
+			sc.Cpy = 0
 		}
-	} else {
-		sc.count++
 	}
 }
