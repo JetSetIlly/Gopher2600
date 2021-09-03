@@ -544,7 +544,10 @@ func (dbg *Debugger) hotload() (e error) {
 		}
 	}
 
-	cartload := cartridgeloader.NewLoader(dbg.vcs.Mem.Cart.Filename, dbg.vcs.Mem.Cart.ID())
+	cartload, err := cartridgeloader.NewLoader(dbg.vcs.Mem.Cart.Filename, dbg.vcs.Mem.Cart.ID())
+	if err != nil {
+		return err
+	}
 	dbg.loader = &cartload
 
 	err = dbg.vcs.Mem.Cart.HotLoad(cartload)

@@ -74,13 +74,16 @@ func deserialiseVideoEntry(fields database.SerialisedEntry) (database.Entry, err
 		return nil, curated.Errorf("video: too few fields")
 	}
 
+	var err error
+
 	// string fields need no conversion
-	reg.CartLoad = cartridgeloader.NewLoader(fields[videoFieldCartName], fields[videoFieldCartMapping])
+	reg.CartLoad, err = cartridgeloader.NewLoader(fields[videoFieldCartName], fields[videoFieldCartMapping])
+	if err != nil {
+		return nil, curated.Errorf("video: %v", err)
+	}
 	reg.TVtype = fields[videoFieldTVtype]
 	reg.digest = fields[videoFieldDigest]
 	reg.Notes = fields[videoFieldNotes]
-
-	var err error
 
 	// convert number of frames field
 	reg.NumFrames, err = strconv.Atoi(fields[videoFieldNumFrames])

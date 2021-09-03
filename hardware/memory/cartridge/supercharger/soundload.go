@@ -70,7 +70,7 @@ func newSoundLoad(cart *Supercharger, loader cartridgeloader.Loader) (tape, erro
 	// get PCM data from data loaded from file
 	tap.pcm, err = getPCM(loader)
 	if err != nil {
-		return nil, fmt.Errorf("soundload: %v", err)
+		return nil, err
 	}
 
 	// the length of time of each sample in microseconds

@@ -109,8 +109,14 @@ func (plb *Playback) readHeader(lines []string) error {
 		return curated.Errorf("playback: not a valid transcript (%s)", plb.transcript)
 	}
 
+	var err error
+
 	// read header
-	plb.CartLoad = cartridgeloader.NewLoader(lines[lineCartName], "AUTO")
+	plb.CartLoad, err = cartridgeloader.NewLoader(lines[lineCartName], "AUTO")
+	if err != nil {
+		return curated.Errorf("playback: %v", err)
+	}
+
 	plb.CartLoad.Hash = lines[lineCartHash]
 	plb.TVSpec = lines[lineTVSpec]
 

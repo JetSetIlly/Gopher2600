@@ -67,13 +67,16 @@ func deserialiseLogEntry(fields database.SerialisedEntry) (database.Entry, error
 		return nil, curated.Errorf("log: too few fields")
 	}
 
+	var err error
+
 	// string fields need no conversion
-	reg.CartLoad = cartridgeloader.NewLoader(fields[videoFieldCartName], fields[videoFieldCartMapping])
+	reg.CartLoad, err = cartridgeloader.NewLoader(fields[videoFieldCartName], fields[videoFieldCartMapping])
+	if err != nil {
+		return nil, curated.Errorf("log: %v", err)
+	}
 	reg.TVtype = fields[logFieldTVtype]
 	reg.digest = fields[logFieldDigest]
 	reg.Notes = fields[logFieldNotes]
-
-	var err error
 
 	// convert number of frames field
 	reg.NumFrames, err = strconv.Atoi(fields[logFieldNumFrames])

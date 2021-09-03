@@ -372,7 +372,11 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 
 	case cmdInsert:
 		cart, _ := tokens.Get()
-		err := dbg.attachCartridge(cartridgeloader.NewLoader(cart, "AUTO"))
+		cl, err := cartridgeloader.NewLoader(cart, "AUTO")
+		if err != nil {
+			return err
+		}
+		err = dbg.attachCartridge(cl)
 		if err != nil {
 			return err
 		}

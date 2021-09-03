@@ -307,98 +307,106 @@ func play(md *modalflag.Modes, sync *mainSync) error {
 		statsview.Launch(os.Stdout)
 	}
 
+	var cartload cartridgeloader.Loader
+
 	switch len(md.RemainingArgs()) {
 	case 0:
+		// we could use embedded data in the case of no cartridge argument. use
+		// cartridgeloader.NewLoaderFromEmbed() for this
 		return fmt.Errorf("2600 cartridge required for %s mode", md)
+
 	case 1:
-		cartload := cartridgeloader.NewLoader(md.GetArg(0), *mapping)
+		cartload, err = cartridgeloader.NewLoader(md.GetArg(0), *mapping)
+		if err != nil {
+			return err
+		}
 		defer cartload.Close()
-
-		tv, err := television.NewTelevision(*spec)
-		if err != nil {
-			return err
-		}
-		defer tv.End()
-
-		// add wavwriter mixer if wav argument has been specified
-		if *wav != "" {
-			aw, err := wavwriter.New(*wav)
-			if err != nil {
-				return err
-			}
-			tv.AddAudioMixer(aw)
-		}
-
-		// create gui
-		sync.state <- stateRequest{req: reqCreateGUI,
-			args: guiCreate(func() (guiControl, error) {
-				return sdlimgui.NewSdlImgui(tv)
-			}),
-		}
-
-		// wait for creator result
-		var scr gui.GUI
-		select {
-		case g := <-sync.gui:
-			scr = g.(gui.GUI)
-
-		case err := <-sync.guiError:
-			return err
-		}
-
-		// set fps cap
-		tv.SetFPSCap(*fpsCap)
-		scr.SetFeature(gui.ReqMonitorSync, *fpsCap)
-
-		// set full screen
-		scr.SetFeature(gui.ReqFullScreen, *fullScreen)
-
-		// turn off fallback ctrl-c handling. this so that the playmode can
-		// end playback recordings gracefully
-		sync.state <- stateRequest{req: reqNoIntSig}
-
-		// check for profiling options
-		p, err := performance.ParseProfileString(*profile)
-		if err != nil {
-			return err
-		}
-
-		// set up a running function
-		playLaunch := func() error {
-			err = playmode.Play(tv, scr, *record, cartload, *patchFile, *hiscore, *useSavekey, *multiload)
-			if err != nil {
-				return err
-			}
-			return nil
-		}
-
-		if p == performance.ProfileNone {
-			err = playLaunch()
-			if err != nil {
-				return err
-			}
-		} else {
-			// if profile generation has been requested then pass the
-			// playLaunch() function prepared above, through the RunProfiler()
-			// function
-			err := performance.RunProfiler(p, "play", playLaunch)
-			if err != nil {
-				return err
-			}
-		}
-
-		if *record {
-			fmt.Println("! recording completed")
-		}
-
-		// set ending state
-		err = scr.SetFeature(gui.ReqState, emulation.Halt)
-		if err != nil {
-			return err
-		}
 
 	default:
 		return fmt.Errorf("too many arguments for %s mode", md)
+	}
+
+	tv, err := television.NewTelevision(*spec)
+	if err != nil {
+		return err
+	}
+	defer tv.End()
+
+	// add wavwriter mixer if wav argument has been specified
+	if *wav != "" {
+		aw, err := wavwriter.New(*wav)
+		if err != nil {
+			return err
+		}
+		tv.AddAudioMixer(aw)
+	}
+
+	// create gui
+	sync.state <- stateRequest{req: reqCreateGUI,
+		args: guiCreate(func() (guiControl, error) {
+			return sdlimgui.NewSdlImgui(tv)
+		}),
+	}
+
+	// wait for creator result
+	var scr gui.GUI
+	select {
+	case g := <-sync.gui:
+		scr = g.(gui.GUI)
+
+	case err := <-sync.guiError:
+		return err
+	}
+
+	// set fps cap
+	tv.SetFPSCap(*fpsCap)
+	scr.SetFeature(gui.ReqMonitorSync, *fpsCap)
+
+	// set full screen
+	scr.SetFeature(gui.ReqFullScreen, *fullScreen)
+
+	// turn off fallback ctrl-c handling. this so that the playmode can
+	// end playback recordings gracefully
+	sync.state <- stateRequest{req: reqNoIntSig}
+
+	// check for profiling options
+	o, err := performance.ParseProfileString(*profile)
+	if err != nil {
+		return err
+	}
+
+	// set up a running function
+	playLaunch := func() error {
+		err = playmode.Play(tv, scr, *record, cartload, *patchFile, *hiscore, *useSavekey, *multiload)
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+
+	if o == performance.ProfileNone {
+		err = playLaunch()
+		if err != nil {
+			return err
+		}
+	} else {
+		// if profile generation has been requested then pass the
+		// playLaunch() function prepared above, through the RunProfiler()
+		// function
+		err := performance.RunProfiler(o, "play", playLaunch)
+		if err != nil {
+			return err
+		}
+	}
+
+	if *record {
+		fmt.Println("! recording completed")
+	}
+
+	// set ending state
+	err = scr.SetFeature(gui.ReqState, emulation.Halt)
+	if err != nil {
+		return err
 	}
 
 	return nil
@@ -435,7 +443,10 @@ func debug(md *modalflag.Modes, sync *mainSync) error {
 
 	// cartridge loader. note that there is no deferred cartload.Close(). the
 	// debugger type itself will handle this.
-	cartload := cartridgeloader.NewLoader(md.GetArg(0), *mapping)
+	cartload, err := cartridgeloader.NewLoader(md.GetArg(0), *mapping)
+	if err != nil {
+		return err
+	}
 
 	tv, err := television.NewTelevision(*spec)
 	if err != nil {
@@ -567,7 +578,10 @@ func disasm(md *modalflag.Modes) error {
 			Cycles:   true,
 		}
 
-		cartload := cartridgeloader.NewLoader(md.GetArg(0), *mapping)
+		cartload, err := cartridgeloader.NewLoader(md.GetArg(0), *mapping)
+		if err != nil {
+			return err
+		}
 		defer cartload.Close()
 
 		dsm, err := disassembly.FromCartridge(cartload)
@@ -624,7 +638,10 @@ func perform(md *modalflag.Modes, sync *mainSync) error {
 	case 0:
 		return fmt.Errorf("2600 cartridge required for %s mode", md)
 	case 1:
-		cartload := cartridgeloader.NewLoader(md.GetArg(0), *mapping)
+		cartload, err := cartridgeloader.NewLoader(md.GetArg(0), *mapping)
+		if err != nil {
+			return err
+		}
 		defer cartload.Close()
 
 		tv, err := television.NewTelevision(*spec)
@@ -843,7 +860,10 @@ with the LOG mode. Note that asking for log output will suppress regression prog
 
 		switch strings.ToUpper(*mode) {
 		case "VIDEO":
-			cartload := cartridgeloader.NewLoader(md.GetArg(0), *mapping)
+			cartload, err := cartridgeloader.NewLoader(md.GetArg(0), *mapping)
+			if err != nil {
+				return err
+			}
 			defer cartload.Close()
 
 			statetype, err := regression.NewStateType(*state)
@@ -871,7 +891,10 @@ with the LOG mode. Note that asking for log output will suppress regression prog
 				Notes:  *notes,
 			}
 		case "LOG":
-			cartload := cartridgeloader.NewLoader(md.GetArg(0), *mapping)
+			cartload, err := cartridgeloader.NewLoader(md.GetArg(0), *mapping)
+			if err != nil {
+				return err
+			}
 			defer cartload.Close()
 
 			reg = &regression.LogRegression{

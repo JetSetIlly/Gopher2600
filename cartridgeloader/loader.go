@@ -35,7 +35,9 @@ import (
 // the VCS. it also permits the called to specify the mapping of the cartridge
 // (if necessary. fingerprinting is pretty good).
 type Loader struct {
-	// filename of cartridge to load.
+	// filename of cartridge to load. In the case of embedded data, this field
+	// will contain the name of the data provided to the the
+	// NewLoaderFromEmbed() function.
 	Filename string
 
 	// empty string or "AUTO" indicates automatic fingerprinting
@@ -60,8 +62,12 @@ type Loader struct {
 	// does the Data field consist of sound (PCM) data
 	IsSoundData bool
 
-	// cartridge data. empty until Load() is called
+	// cartridge data. empty until Load() is called unless the loader was
+	// created by NewLoaderFromEmbed()
 	Data []byte
+
+	// whether the data was assigned during NewLoaderFromEmbed()
+	embedded bool
 
 	// for some file types streaming is necessary. nil until Load() is called
 	// and the cartridge format requires streaming.
@@ -70,6 +76,10 @@ type Loader struct {
 	// pointer to pointer of StreamedData. this is a tricky construct but it
 	// allows us to pass an instance of Loader by value but still be able to
 	// close an opened stream at an "earlier" point in the code.
+	//
+	// if stream is nil then the data will not be streamed. if *stream is nil
+	// then the stream is not open. although use the IsStreamed() function for
+	// this information.
 	stream **os.File
 
 	// callback function from the cartridge to the VCS. used for example. when
@@ -105,7 +115,17 @@ type VCSHook func(cart mapper.CartMapper, event mapper.Event, args ...interface{
 //
 // Alphabetic characters in file extensions can be in upper or lower case or a
 // mixture of both.
-func NewLoader(filename string, mapping string) Loader {
+//
+// Filenames can contain whitespace, including leading and trailing whitespace,
+// but cannot consists only of whitespace.
+func NewLoader(filename string, mapping string) (Loader, error) {
+	// check filename but don't change it. we don't want to allow the empty
+	// string or a string only consisting of whitespace, but we do want to
+	// allow filenames with leading/trailing spaces
+	if strings.TrimSpace(filename) == "" {
+		return Loader{}, curated.Errorf("catridgeloader: no filename")
+	}
+
 	mapping = strings.TrimSpace(strings.ToUpper(mapping))
 	if mapping == "" {
 		mapping = "AUTO"
@@ -115,7 +135,6 @@ func NewLoader(filename string, mapping string) Loader {
 		Filename:         filename,
 		Mapping:          mapping,
 		RequestedMapping: mapping,
-		stream:           new(*os.File),
 		VCSHook: func(cart mapper.CartMapper, event mapper.Event, args ...interface{}) error {
 			return nil
 		},
@@ -190,9 +209,51 @@ func NewLoader(filename string, mapping string) Loader {
 		}
 	}
 
+	// create stream pointer only for streaming sources. these file formats are
+	// likely to be very large by comparison to regular cartridge files.
+	if cl.Mapping == "MVC" || (cl.Mapping == "AR" && cl.IsSoundData) {
+		cl.stream = new(*os.File)
+	}
+
 	cl.Spec = specification.SearchSpec(filename)
 
-	return cl
+	return cl, nil
+}
+
+// NewLoaderFromEmbed initialises a loader with an array of bytes. Suitable for
+// loading embedded data (using go:embed for example) into the emulator.
+//
+// The mapping argument should indicate the format of the data or "AUTO" to
+// indicate that the emulator can perform a fingerprint.
+//
+// The name argument should not include a file extension because it won't be
+// used.
+func NewLoaderFromEmbed(name string, data []byte, mapping string) (Loader, error) {
+	if len(data) == 0 {
+		return Loader{}, curated.Errorf("catridgeloader: emebedded data is empty")
+	}
+
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return Loader{}, curated.Errorf("catridgeloader: no name for embedded data")
+	}
+
+	mapping = strings.TrimSpace(strings.ToUpper(mapping))
+	if mapping == "" {
+		mapping = "AUTO"
+	}
+
+	return Loader{
+		Filename:         name,
+		Mapping:          mapping,
+		RequestedMapping: mapping,
+		Data:             data,
+		embedded:         true,
+		Hash:             fmt.Sprintf("%x", sha1.Sum(data)),
+		VCSHook: func(cart mapper.CartMapper, event mapper.Event, args ...interface{}) error {
+			return nil
+		},
+	}, nil
 }
 
 // Close should be called before disposing of a Loader instance.
@@ -211,8 +272,13 @@ func (cl Loader) Close() error {
 	return nil
 }
 
-// ShortName returns a shortened version of the CartridgeLoader filename.
+// ShortName returns a shortened version of the CartridgeLoader filename field.
+// In the case of embedded data, the filename field will be returned unaltered.
 func (cl Loader) ShortName() string {
+	if cl.embedded {
+		return cl.Filename
+	}
+
 	// return the empty string if filename is undefined
 	if len(strings.TrimSpace(cl.Filename)) == 0 {
 		return ""
@@ -223,18 +289,29 @@ func (cl Loader) ShortName() string {
 	return sn
 }
 
-// IsStreaming returns true if Loader is expecting to read a stream of data.
-func (cl Loader) IsStreaming() bool {
-	return cl.stream != nil && *cl.stream != nil
+// IsStreaming returns two booleans. The first will be true if Loader was
+// created for what appears to be a streaming source, and the second will be
+// true if the stream has been open.
+func (cl Loader) IsStreaming() (bool, bool) {
+	return cl.stream != nil, cl.stream != nil && *cl.stream != nil
+}
+
+// IsEmbedded returns true if Loader was created from embedded data. If data
+// has a length of zero then this function will return false.
+func (cl Loader) IsEmbedded() bool {
+	return cl.embedded && len(cl.Data) > 0
 }
 
 // Load the cartridge data and return as a byte array. Loader filenames with a
 // valid schema will use that method to load the data. Currently supported
 // schemes are HTTP and local files.
 func (cl *Loader) Load() error {
-	stream := cl.Mapping == "MVC" || (cl.Mapping == "AR" && cl.IsSoundData)
+	// data is already "loaded" when using embedded data
+	if cl.embedded {
+		return nil
+	}
 
-	if stream {
+	if cl.stream != nil {
 		err := cl.Close()
 		if err != nil {
 			return curated.Errorf("cartridgeloader: %v", err)
