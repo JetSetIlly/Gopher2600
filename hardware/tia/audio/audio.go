@@ -47,7 +47,7 @@ type Audio struct {
 
 	// state of Mix()
 	MixUpdated bool
-	MixVolume  uint8
+	MixVolume  int16
 }
 
 // NewAudio is the preferred method of initialisation for the Audio sub-system.
@@ -91,20 +91,7 @@ func (au *Audio) Mix() {
 	au.channel0.tick()
 	au.channel1.tick()
 
-	// mix channels: deciding the combined output volume for the two channels
-	// is not as straight-forward and is it first seems. what we have here is
-	// the naive implementation, simply adding the two volume values together
-	// (we're not even taking an average). the shift of 2 increases the volume
-	// output without causing clipping.
-	//
-	// because the 2600 sound generator is an analogue circuit however, there
-	// are some subtleties that we have not accounted for. people have worked
-	// on this already. the document, "TIA Sounding off in the Digital Domain"
-	// gives a good description of what's required.
-	//
-	// https://atariage.com/forums/topic/249865-tia-sounding-off-in-the-digital-domain/
-	//
-	// !!TODO: simulate analogue sound generation
+	// mix the volume of the two channels
 	au.MixUpdated = true
-	au.MixVolume = (au.channel0.actualVol + au.channel1.actualVol) << 2
+	au.MixVolume = volumeMix[au.channel0.actualVol|(au.channel1.actualVol<<4)]
 }

@@ -55,7 +55,7 @@ func NewAudio() (*Audio, error) {
 	aud := &Audio{}
 	spec := &sdl.AudioSpec{
 		Freq:     audio.SampleFreq,
-		Format:   sdl.AUDIO_U8,
+		Format:   sdl.AUDIO_S16MSB,
 		Channels: 1,
 		Samples:  uint16(bufferLength),
 	}
@@ -88,9 +88,11 @@ func (aud *Audio) SetAudio(sig []signal.SignalAttributes) error {
 		if s&signal.AudioUpdate != signal.AudioUpdate {
 			continue
 		}
-		d := uint8((s & signal.AudioData) >> signal.AudioDataShift)
 
-		aud.buffer[aud.bufferCt] = d + aud.spec.Silence
+		d := int16((s & signal.AudioData) >> signal.AudioDataShift)
+		aud.buffer[aud.bufferCt] = uint8(d>>8) + aud.spec.Silence
+		aud.bufferCt++
+		aud.buffer[aud.bufferCt] = uint8(d) + aud.spec.Silence
 		aud.bufferCt++
 
 		if aud.bufferCt >= len(aud.buffer) {

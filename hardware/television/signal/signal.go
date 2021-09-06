@@ -30,24 +30,24 @@ type SignalAttributes uint64
 
 // List of bit masks to be used to with the SignalAttribute type.
 const (
-	VSync       SignalAttributes = 0b00000000000000000000000000000000000001
-	VBlank      SignalAttributes = 0b00000000000000000000000000000000000010
-	CBurst      SignalAttributes = 0b00000000000000000000000000000000000100
-	HSync       SignalAttributes = 0b00000000000000000000000000000000001000
-	AudioUpdate SignalAttributes = 0b00000000000000000000000000000000010000
-	AudioData   SignalAttributes = 0b00000000000000000000000001111111100000 // 8 bits
-	Pixel       SignalAttributes = 0b00000000000000000111111110000000000000 // 8 bits
-	Scanline    SignalAttributes = 0b00000000111111111000000000000000000000 // 9 bits
-	Clock       SignalAttributes = 0b11111111000000000000000000000000000000 // 8 bits (signed)
+	VSync       SignalAttributes = 0b0000000000000000000000000000000000000000000001
+	VBlank      SignalAttributes = 0b0000000000000000000000000000000000000000000010
+	CBurst      SignalAttributes = 0b0000000000000000000000000000000000000000000100
+	HSync       SignalAttributes = 0b0000000000000000000000000000000000000000001000
+	AudioUpdate SignalAttributes = 0b0000000000000000000000000000000000000000010000
+	AudioData   SignalAttributes = 0b0000000000000000000000000111111111111111100000 // 16 bits
+	Pixel       SignalAttributes = 0b0000000000000000011111111000000000000000000000 // 8 bits
+	Scanline    SignalAttributes = 0b0000000011111111100000000000000000000000000000 // 9 bits
+	Clock       SignalAttributes = 0b1111111100000000000000000000000000000000000000 // 8 bits (signed)
 )
 
 // List of shift amounts to be used to access the corresponding bits in a
 // SignalAttributes value.
 const (
 	AudioDataShift = 5
-	PixelShift     = 13
-	ScanlineShift  = 21
-	ClockShift     = 30
+	PixelShift     = 21
+	ScanlineShift  = 29
+	ClockShift     = 38
 )
 
 // NoSignal is the null value of the SignalAttributes type.
