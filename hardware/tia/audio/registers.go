@@ -15,7 +15,9 @@
 
 package audio
 
-import "github.com/jetsetilly/gopher2600/hardware/memory/bus"
+import (
+	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
+)
 
 // ReadMemRegisters checks the TIA memory for changes to registers that are
 // interesting to the audio sub-system
@@ -25,56 +27,54 @@ func (au *Audio) ReadMemRegisters(data bus.ChipData) bool {
 	switch data.Name {
 	case "AUDC0":
 		au.channel0.regControl = data.Value & 0x0f
+		au.channel0.reactAUDCx()
 	case "AUDC1":
 		au.channel1.regControl = data.Value & 0x0f
+		au.channel1.reactAUDCx()
 	case "AUDF0":
 		au.channel0.regFreq = data.Value & 0x1f
+		au.channel0.reactAUDCx()
 	case "AUDF1":
 		au.channel1.regFreq = data.Value & 0x1f
+		au.channel1.reactAUDCx()
 	case "AUDV0":
 		au.channel0.regVolume = data.Value & 0x0f
+		au.channel0.reactAUDCx()
 	case "AUDV1":
 		au.channel1.regVolume = data.Value & 0x0f
+		au.channel1.reactAUDCx()
 	default:
 		return true
 	}
-
-	au.channel0.reactAUDCx()
-	au.channel1.reactAUDCx()
 
 	return false
 }
 
 // changing the value of an AUDx registers causes some side effect.
 func (ch *channel) reactAUDCx() {
-	freqClk := uint8(0)
+	freq := uint8(0)
 
 	if ch.regControl == 0x00 || ch.regControl == 0x0b {
 		ch.actualVol = ch.regVolume
 	} else {
-		freqClk = ch.regFreq + 1
+		freq = ch.regFreq
 
 		// from TIASound.c: when bits D2 and D3 are set, the input source is
 		// switched to the 1.19MHz clock, so the '30KHz' source clock is
 		// reduced to approximately 10KHz."
-		//
-		// multiplying the frequency clock by 3 effectively divides clock114 by
-		// a further 3, giving us the 10Khz clock.
-		if ch.regControl&0x0c == 0x0c && ch.regControl != 0x0f {
-			freqClk *= 3
-		}
+		ch.useTenKhz = ch.regControl&0b1100 == 0b1100
 	}
 
-	if freqClk != ch.adjFreq {
+	if ch.freq != freq {
 		// reset frequency if frequency has changed
-		ch.adjFreq = freqClk
+		ch.freq = freq
 
 		// if the channel is now "volume only" or was "volume only" ...
-		if ch.freqClk == 0 || freqClk == 0 {
-			// ... reset the counter
-			ch.freqClk = freqClk
+		if ch.freqCt == 0 || freq == 0 {
+			// ... reset the counters
+			ch.freqCt = 0
 		}
 
-		// ...otherwide let it complete the previous
+		// ...otherwise let it complete the previous
 	}
 }

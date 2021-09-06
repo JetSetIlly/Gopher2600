@@ -38,17 +38,24 @@ type channel struct {
 	poly4ct int
 	poly5ct int
 	poly9ct int
+	div3ct  uint8
 
 	// the different musical notes available to the 2600 are achieved with a
 	// frequency clock. the easiest way to think of this is to think of a
 	// filter to the 30Khz clock signal.
-	freqClk uint8
+	freqCt uint8
 
-	div3ct uint8
+	// if bits 2 and 3 of control register are set (ie. mask 0x0c) then we use
+	// a 10Khz clock rather than a 30Khz clock.
+	useTenKhz bool
 
-	// the adjusted frequency is the value of the frequency register. when the
-	// 10KHz clock is required, this value is increased by a factor of 3
-	adjFreq uint8
+	// the frequency of the channel. this is either the value that's in the
+	// frequency register (regFreq) or zero if the volume bits are set in the
+	// control register (regControl).
+	//
+	// this is the value we count to with freqCt in order to generate the
+	// correct sound
+	freq uint8
 
 	// the different tones are achieved are by adjusting the volume between
 	// zero (silence) and the value in the volume register. actualVol is a
@@ -64,37 +71,22 @@ func (ch *channel) String() string {
 
 // tick should be called at a frequency of 30Khz. when the 10Khz clock is
 // required, the frequency clock is increased by a factor of three.
-func (ch *channel) tick() {
-	// the following resets the volume if the control register is zero. this
-	// condition was originally added to solve the problem of the silence value
-	// emitted by Pitfall not being zero (which is a problem if the machine
-	// isn't fast enough to keep up with the audio buffer - the flip from
-	// Pitfal-silence to actual silence produces an audible click.)
-	//
-	// however, resetting the volume in this way causes some sound producing
-	// methods to fail, notably the speech samples in the Dr Who variant of
-	// Bezerk.
-	//
-	// the code is commented out rather than removed, for future reference.
-	//
-	// reset actual volume value if control register is zero
-	// if ch.regControl == 0x0 {
-	// 	ch.actualVol = 0
-	// }
-
-	// tick frequency clock
-	if ch.freqClk > 1 {
-		ch.freqClk--
+func (ch *channel) tick(tenKhz bool) {
+	// filter out 30Khz signal if channel is set to use the 10Khz signal
+	if ch.useTenKhz && !tenKhz {
 		return
 	}
 
-	if ch.freqClk != 1 {
+	// tick main frequency clock
+	if ch.freqCt == ch.freq || ch.freqCt == 0x1f {
+		ch.freqCt = 0
 		return
 	}
 
-	// when frequency clock reaches zero, reset it back to the adjusted
-	// frequency value
-	ch.freqClk = ch.adjFreq
+	ch.freqCt++
+	if ch.freqCt != ch.freq {
+		return
+	}
 
 	// the 5-bit polynomial clock toggles volume on change of bit. note the
 	// current bit so we can compare
