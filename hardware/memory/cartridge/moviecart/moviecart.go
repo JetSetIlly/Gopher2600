@@ -44,7 +44,8 @@ const (
 	offsetGraphData    = 269
 	offsetTimecodeData = 1229
 	offsetColorData    = 1289
-	offsetEndData      = 2249
+	offsetColorBkData  = 2249
+	offsetEndData      = 2441
 )
 
 // levels for both volume and brightness.
@@ -121,13 +122,14 @@ type state struct {
 	sram []byte
 
 	// data for current field and the indexes into it
-	streamBuffer   [numFields][]byte
-	streamField    int
-	streamAudio    int
-	streamGraph    int
-	streamTimecode int
-	streamColor    int
-	endOfStream    bool
+	streamBuffer     [numFields][]byte
+	streamField      int
+	streamAudio      int
+	streamGraph      int
+	streamTimecode   int
+	streamColor      int
+	streamBackground int
+	endOfStream      bool
 
 	// the audio value to carry to the next frame
 	audioCarry uint8
@@ -146,6 +148,8 @@ type state struct {
 	// frame of two fields.
 	fieldNumber int
 	oddField    bool
+
+	blankLine bool
 
 	// state machine
 	state stateMachineCondition
@@ -562,8 +566,11 @@ func (cart *Moviecart) runStateMachine() {
 			cart.state.lines--
 			cart.state.state = stateMachineRight
 		} else {
+			cart.state.blankLine = cart.state.oddField
+
 			cart.fillAddrLeftLine(false)
 			cart.fillAddrEndLines()
+
 			cart.fillAddrBlankLines()
 
 			// swap stream indexes
@@ -581,29 +588,10 @@ func (cart *Moviecart) runStateMachine() {
 		}
 
 		cart.readField()
-		cart.blankPartialLines()
 		cart.state.lines = 191
 		cart.state.state = stateMachineRight
 		cart.state.osdDisplay = osdNone
-	}
-}
-
-func (cart *Moviecart) blankPartialLines() {
-	if cart.state.oddField {
-		idx := cart.state.streamColor + offsetEndData - offsetColorData
-		if idx < len(cart.state.streamBuffer[cart.state.streamField]) {
-			cart.state.streamBuffer[cart.state.streamField][idx-5] = 0x00
-			cart.state.streamBuffer[cart.state.streamField][idx-4] = 0x00
-			cart.state.streamBuffer[cart.state.streamField][idx-3] = 0x00
-			cart.state.streamBuffer[cart.state.streamField][idx-2] = 0x00
-			cart.state.streamBuffer[cart.state.streamField][idx-1] = 0x00
-		}
-	} else {
-		cart.state.streamBuffer[cart.state.streamField][cart.state.streamColor] = 0x00
-		cart.state.streamBuffer[cart.state.streamField][cart.state.streamColor+1] = 0x00
-		cart.state.streamBuffer[cart.state.streamField][cart.state.streamColor+2] = 0x00
-		cart.state.streamBuffer[cart.state.streamField][cart.state.streamColor+3] = 0x00
-		cart.state.streamBuffer[cart.state.streamField][cart.state.streamColor+4] = 0x00
+		cart.state.blankLine = false
 	}
 }
 
@@ -616,11 +604,14 @@ func (cart *Moviecart) fillAddrRightLine() {
 	cart.writeGraph(addrSetGData8 + 1)
 	cart.writeGraph(addrSetGData9 + 1)
 
-	cart.writeColor(addrSetGCol5 + 1) // col 1/9
-	cart.writeColor(addrSetGCol6 + 1) // col 3/9
-	cart.writeColor(addrSetGCol7 + 1) // col 5/9
-	cart.writeColor(addrSetGCol8 + 1) // col 7/9
-	cart.writeColor(addrSetGCol9 + 1) // col 9/9
+	cart.writeColorStream(addrSetGCol5 + 1) // col 1/9
+	cart.writeColorStream(addrSetGCol6 + 1) // col 3/9
+	cart.writeColorStream(addrSetGCol7 + 1) // col 5/9
+	cart.writeColorStream(addrSetGCol8 + 1) // col 7/9
+	cart.writeColorStream(addrSetGCol9 + 1) // col 9/9
+
+	cart.writeBackgroundStream(addrSetBkColR+1, true)
+	cart.writeBackgroundStream(addrSetPfColR+1, false)
 }
 
 func (cart *Moviecart) fillAddrLeftLine(again bool) {
@@ -632,11 +623,14 @@ func (cart *Moviecart) fillAddrLeftLine(again bool) {
 	cart.writeGraph(addrSetGData3 + 1)
 	cart.writeGraph(addrSetGData4 + 1)
 
-	cart.writeColor(addrSetGCol0 + 1) // col 0/9
-	cart.writeColor(addrSetGCol1 + 1) // col 2/9
-	cart.writeColor(addrSetGCol2 + 1) // col 4/9
-	cart.writeColor(addrSetGCol3 + 1) // col 6/9
-	cart.writeColor(addrSetGCol4 + 1) // col 8/9
+	cart.writeColorStream(addrSetGCol0 + 1) // col 0/9
+	cart.writeColorStream(addrSetGCol1 + 1) // col 2/9
+	cart.writeColorStream(addrSetGCol2 + 1) // col 4/9
+	cart.writeColorStream(addrSetGCol3 + 1) // col 6/9
+	cart.writeColorStream(addrSetGCol4 + 1) // col 8/9
+
+	cart.writeBackgroundStream(addrSetBkColL+1, false)
+	cart.writeBackgroundStream(addrSetPfColL+1, true)
 
 	if again {
 		cart.writeJMPaddr(addrPickContinue+1, addrRightLine)
@@ -748,7 +742,7 @@ func (cart *Moviecart) writeGraph(addr uint16) {
 	cart.write8bit(addr, b)
 }
 
-func (cart *Moviecart) writeColor(addr uint16) {
+func (cart *Moviecart) writeColorStream(addr uint16) {
 	b := cart.state.streamBuffer[cart.state.streamField][cart.state.streamColor]
 	cart.state.streamColor++
 
@@ -771,19 +765,39 @@ func (cart *Moviecart) writeColor(addr uint16) {
 		b &= 0x0f
 	}
 
+	if cart.state.blankLine {
+		b = 0x00
+	}
+
+	cart.write8bit(addr, b)
+}
+
+func (cart *Moviecart) writeBackgroundStream(addr uint16, readCol bool) {
+	var b byte
+	if readCol && cart.state.osdDisplay == osdNone {
+		b = cart.state.streamBuffer[cart.state.streamField][cart.state.streamBackground]
+		cart.state.streamBackground++
+	}
+
+	// adjust brightness
+	brightIdx := int(b & 0x0f)
+	brightIdx += cart.state.brightness
+	if brightIdx >= len(brightLevels) {
+		brightIdx = len(brightLevels) - 1
+	}
+	b = b&0xf0 | brightLevels[brightIdx]
+
+	// best effort conversion of color to B&W
+	if cart.state.forceBW {
+		b &= 0x0f
+	}
+
 	cart.write8bit(addr, b)
 }
 
 const chunkSize = 8 * 512
 
 func (cart *Moviecart) readField() {
-	// reset stream indexes
-	defer func() {
-		cart.state.streamAudio = offsetAudioData
-		cart.state.streamGraph = offsetGraphData
-		cart.state.streamTimecode = offsetTimecodeData
-		cart.state.streamColor = offsetColorData
-	}()
 
 	// the usual playback condition
 	if !cart.state.paused && cart.state.streamChunk > 0 {
@@ -834,6 +848,17 @@ func (cart *Moviecart) readField() {
 	cart.state.fieldNumber |= int(cart.state.streamBuffer[cart.state.streamField][offsetFieldNumber+1]) << 8
 	cart.state.fieldNumber |= int(cart.state.streamBuffer[cart.state.streamField][offsetFieldNumber+2])
 	cart.state.oddField = cart.state.fieldNumber&0x01 == 0x01
+
+	// reset stream indexes
+	cart.state.streamAudio = offsetAudioData
+	cart.state.streamGraph = offsetGraphData
+	cart.state.streamTimecode = offsetTimecodeData
+	cart.state.streamColor = offsetColorData
+	cart.state.streamBackground = offsetColorBkData
+	cart.state.streamBackground++
+	if cart.state.oddField {
+		cart.state.streamBackground++
+	}
 }
 
 // write 8bits of data to SRAM. the address in sram is made up of the current
