@@ -566,9 +566,11 @@ func (tv *Television) processSignals(current bool) error {
 			}
 
 			if !current {
-				err = m.SetAudio(tv.signals[tv.currentIdx:tv.lastMaxIdx])
-				if err != nil {
-					return curated.Errorf("television: %v", err)
+				if tv.currentIdx < tv.lastMaxIdx {
+					err = m.SetAudio(tv.signals[tv.currentIdx:tv.lastMaxIdx])
+					if err != nil {
+						return curated.Errorf("television: %v", err)
+					}
 				}
 			}
 		}
