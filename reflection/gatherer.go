@@ -68,11 +68,13 @@ func (ref *Gatherer) Step(bank mapper.BankInfo) error {
 	}
 
 	v := ReflectedVideoStep{
-		TV:                ref.vcs.TV.GetLastSignal(),
 		CPU:               ref.vcs.CPU.LastResult,
-		Bank:              bank,
 		WSYNC:             !ref.vcs.CPU.RdyFlg,
+		Bank:              bank,
+		VideoElement:      ref.vcs.TIA.Video.LastElement,
+		TV:                ref.vcs.TV.GetLastSignal(),
 		Collision:         *ref.vcs.TIA.Video.Collisions,
+		IsHblank:          ref.vcs.TIA.Hblank,
 		CoprocessorActive: bank.ExecutingCoprocessor,
 	}
 
