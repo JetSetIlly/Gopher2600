@@ -18,7 +18,6 @@ terminal_*
 out
 out2
 output
-*.bin
 *.wasm
 README.html
 MISSING_LICENCE
