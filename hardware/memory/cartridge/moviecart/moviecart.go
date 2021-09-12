@@ -611,7 +611,7 @@ func (cart *Moviecart) fillAddrRightLine() {
 	cart.writeColorStream(addrSetGCol9 + 1) // col 9/9
 
 	cart.writeBackgroundStream(addrSetBkColR+1, true)
-	cart.writeBackgroundStream(addrSetPfColR+1, false)
+	// cart.writeBackgroundStream(addrSetPfColR+1, false)
 }
 
 func (cart *Moviecart) fillAddrLeftLine(again bool) {
@@ -629,7 +629,7 @@ func (cart *Moviecart) fillAddrLeftLine(again bool) {
 	cart.writeColorStream(addrSetGCol3 + 1) // col 6/9
 	cart.writeColorStream(addrSetGCol4 + 1) // col 8/9
 
-	cart.writeBackgroundStream(addrSetBkColL+1, false)
+	// cart.writeBackgroundStream(addrSetBkColL+1, false)
 	cart.writeBackgroundStream(addrSetPfColL+1, true)
 
 	if again {
@@ -855,7 +855,8 @@ func (cart *Moviecart) readField() {
 	cart.state.streamTimecode = offsetTimecodeData
 	cart.state.streamColor = offsetColorData
 	cart.state.streamBackground = offsetColorBkData
-	cart.state.streamBackground++
+
+	// cart.state.streamBackground++
 	if cart.state.oddField {
 		cart.state.streamBackground++
 	}

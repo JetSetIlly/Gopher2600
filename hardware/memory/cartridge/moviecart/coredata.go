@@ -36,40 +36,38 @@ const (
 	addrTitleLoop = 0xb50
 
 	// fillAddrRightLine().
-	addrSetAudRight = 0x948
-	addrSetGData5   = 0x958
-	addrSetGData6   = 0x950
-	addrSetGData7   = 0x968
-	addrSetGData8   = 0x960
-	addrSetGData9   = 0x94a
-	addrSetGCol5    = 0x95c
-	addrSetGCol6    = 0x954
-	addrSetGCol7    = 0x964
-	addrSetGCol8    = 0x96c
-	addrSetGCol9    = 0x94e
-	addrSetBkColR   = 0x976
-	addrSetPfColR   = 0x97c
+	addrSetAudRight = 0x94e
+	addrSetGData5   = 0x95a
+	addrSetGData6   = 0x948
+	addrSetGData7   = 0x96e
+	addrSetGData8   = 0x962
+	addrSetGData9   = 0x952
+	addrSetGCol5    = 0x95e
+	addrSetGCol6    = 0x956
+	addrSetGCol7    = 0x96a
+	addrSetGCol8    = 0x972
+	addrSetGCol9    = 0x954
+	addrSetBkColR   = 0x966
 
 	// fillAddrLeftLine().
-	addrSetAudLeft   = 0x986
+	addrSetAudLeft   = 0x98a
 	addrSetGData0    = 0x992
-	addrSetGData1    = 0x982
-	addrSetGData2    = 0x9a2
+	addrSetGData1    = 0x980
+	addrSetGData2    = 0x9a6
 	addrSetGData3    = 0x99a
-	addrSetGData4    = 0x98a
+	addrSetGData4    = 0x98e
 	addrSetGCol0     = 0x996
-	addrSetGCol1     = 0x98e
-	addrSetGCol2     = 0x99e
-	addrSetGCol3     = 0x9a6
-	addrSetGCol4     = 0x98c
-	addrPickContinue = 0x9ba
-	addrRightLine    = 0x944
+	addrSetGCol1     = 0x986
+	addrSetGCol2     = 0x9a2
+	addrSetGCol3     = 0x9aa
+	addrSetGCol4     = 0x990
+	addrPickContinue = 0x9be
+	addrRightLine    = 0x948
 	addrEndLines     = 0xa80
-	addrSetBkColL    = 0x9b4
-	addrSetPfColL    = 0x9b8
+	addrSetPfColL    = 0x99e
 
 	// fillAddrEndLines().
-	addrSetAudEndlines     = 0xa8c
+	addrSetAudEndlines     = 0xa86
 	addrSetOverscanSize    = 0xa9c
 	addrSetVBlankSize      = 0xab2
 	addrPickExtraLines     = 0xabb // what's this
