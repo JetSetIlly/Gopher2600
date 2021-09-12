@@ -41,7 +41,7 @@ const (
 	addrSetGData6   = 0x948
 	addrSetGData7   = 0x96e
 	addrSetGData8   = 0x962
-	addrSetGData9   = 0x952
+	addrSetGData9   = 0x950
 	addrSetGCol5    = 0x95e
 	addrSetGCol6    = 0x956
 	addrSetGCol7    = 0x96a
@@ -50,30 +50,30 @@ const (
 	addrSetBkColR   = 0x966
 
 	// fillAddrLeftLine().
-	addrSetAudLeft   = 0x98a
-	addrSetGData0    = 0x992
-	addrSetGData1    = 0x980
-	addrSetGData2    = 0x9a6
-	addrSetGData3    = 0x99a
-	addrSetGData4    = 0x98e
-	addrSetGCol0     = 0x996
-	addrSetGCol1     = 0x986
-	addrSetGCol2     = 0x9a2
-	addrSetGCol3     = 0x9aa
-	addrSetGCol4     = 0x990
+	addrSetAudLeft   = 0x98c
+	addrSetGData0    = 0x994
+	addrSetGData1    = 0x982
+	addrSetGData2    = 0x9a8
+	addrSetGData3    = 0x99c
+	addrSetGData4    = 0x990
+	addrSetGCol0     = 0x998
+	addrSetGCol1     = 0x988
+	addrSetGCol2     = 0x9a4
+	addrSetGCol3     = 0x9ac
+	addrSetGCol4     = 0x992
 	addrPickContinue = 0x9be
 	addrRightLine    = 0x948
 	addrEndLines     = 0xa80
-	addrSetPfColL    = 0x99e
+	addrSetPfColL    = 0x9a0
 
 	// fillAddrEndLines().
-	addrSetAudEndlines     = 0xa86
-	addrSetOverscanSize    = 0xa9c
-	addrSetVBlankSize      = 0xab2
-	addrPickExtraLines     = 0xabb // what's this
-	addrPickTransport      = 0xac8
+	addrSetAudEndlines     = 0xa80
+	addrSetOverscanSize    = 0xa9a
+	addrSetVBlankSize      = 0xab0
+	addrPickExtraLines     = 0xab9
+	addrPickTransport      = 0xac6
 	addrTransportDirection = 0x880
-	addrTransportButtons   = 0x896
+	addrTransportButtons   = 0x894
 
 	// fillAddrBlankLines().
 	addrAudioBank = 0xb80
