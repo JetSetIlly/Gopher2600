@@ -110,7 +110,7 @@ func (sr *resizer) examine(tv *Television, sig signal.SignalAttributes) {
 	// want to resize during these frames.
 	if !tv.state.frameInfo.VSynced {
 		// reset any pending changes on an unsynced frame
-		tv.state.resizer.pendingCt = 0
+		sr.pendingCt = 0
 		sr.pendingTop = sr.vblankTop
 		sr.pendingBottom = sr.vblankBottom
 		sr.frameHasVBlank = false

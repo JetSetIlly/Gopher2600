@@ -119,7 +119,7 @@ func (dbg *Debugger) PushRewind(fn int, last bool) bool {
 		dbg.scr.SetFeature(gui.ReqState, emulation.Rewinding)
 
 		if dbg.isClockCycleInputLoop {
-			dbg.restartInputLoop(doRewind)
+			dbg.unwindInputLoop(doRewind)
 
 			// read rewinding channel, this unblocks the channel and allows
 			// calls to PushRewind() run to completion
@@ -174,7 +174,7 @@ func (dbg *Debugger) PushGotoCoords(frame int, scanline int, clock int) {
 			return nil
 		}
 
-		dbg.restartInputLoop(f)
+		dbg.unwindInputLoop(f)
 
 		select {
 		case <-dbg.rewinding:

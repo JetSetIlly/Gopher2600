@@ -40,7 +40,10 @@ type PixelRenderer interface {
 	// Resize is called when the television implementation detects that extra
 	// scanlines are required in the display.
 	//
-	// Renderers must be prepared to resize to either a smaller of larger size.
+	// Renderers must be prepared to resize to either a smaller or larger size.
+	//
+	// Resize can also be called speculatively so implementations should take
+	// care not to perform any resizing unless absolutely necessary.
 	//
 	// The VisibleTop and VisibleBottom fields in the FrameInfor argument,
 	// describe the top and bottom scanline that is *visible* on a normal

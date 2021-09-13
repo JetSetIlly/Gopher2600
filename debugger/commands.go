@@ -184,7 +184,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 	case cmdReset:
 		// resetting in the middle of a CPU instruction requires the input loop
 		// to be unwound before continuing
-		dbg.restartInputLoop(dbg.reset)
+		dbg.unwindInputLoop(dbg.reset)
 		dbg.printLine(terminal.StyleFeedback, "machine reset")
 
 	case cmdRun:
@@ -214,7 +214,6 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 
 		if back {
 			var req signal.StateAdj
-			var f, s, c int
 
 			switch mode {
 			case "":
@@ -237,9 +236,8 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 				return curated.Errorf("unknown STEP BACK mode (%s)", mode)
 			}
 
-			var err error
-
-			f, s, c, err = dbg.vcs.TV.ReqAdjust(req, adj, true)
+			f, s, c, err := dbg.vcs.TV.ReqAdjust(req, adj, true)
+			fmt.Println(f, s, c)
 
 			if err != nil {
 				return err
@@ -248,7 +246,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 			// set gui mode here because we won't have a chance to set it in the input loop
 			dbg.scr.SetFeature(gui.ReqState, emulation.Stepping)
 
-			dbg.restartInputLoop(func() error {
+			dbg.unwindInputLoop(func() error {
 				return dbg.Rewind.GotoFrameCoords(f, s, c)
 			})
 
@@ -344,7 +342,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		if ok {
 			// rewinding in the middle of a CPU instruction requires the input loop
 			// to be unwound before continuing
-			dbg.restartInputLoop(func() error {
+			dbg.unwindInputLoop(func() error {
 				// adjust gui state for rewinding event. put back into a suitable
 				// state afterwards.
 				if dbg.runUntilHalt {

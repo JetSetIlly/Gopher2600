@@ -400,10 +400,9 @@ func plumb(vcs *hardware.VCS, state *State) {
 // note that this will not update the splice point up update the framesSinceSnapshot
 // value. use plumb() with an index into the history for that.
 func (r *Rewind) plumbState(s *State, frame, scanline, clock int) error {
-	// is requested frame before or after the current frame. if so then that
-	// means the emulation is running "backwards" and we'll use this decide
-	// whether to pause TV rendering.
-	backwards := frame <= r.vcs.TV.GetState(signal.ReqFramenum)
+	// pause TV rendering
+	r.vcs.TV.PauseRendering(true)
+	defer r.vcs.TV.PauseRendering(false)
 
 	plumb(r.vcs, s)
 
@@ -422,12 +421,6 @@ func (r *Rewind) plumbState(s *State, frame, scanline, clock int) error {
 	// snapshot adhoc frame as soon as convenient. not required when snapshot
 	// frequency is one
 	adhocFrameDone := r.Prefs.Freq.Get().(int) == 1
-
-	// pause rendering if emulation is running "backwards"
-	if backwards {
-		r.vcs.TV.PauseRendering(true)
-		defer r.vcs.TV.PauseRendering(false)
-	}
 
 	continueCheck := func() bool {
 		nf := r.vcs.TV.GetState(signal.ReqFramenum)
@@ -507,13 +500,18 @@ func (r *Rewind) GotoFrame(frame int) error {
 // history. in those instances, the returned frame number can be used for the
 // plumbing operation or because last==true the GotoLast() can be used for a
 // more natural feeling result.
+//
+// note that findFrameIndex() searches for the frame that is two frames before
+// the one that is requested.
 func (r *Rewind) findFrameIndex(frame int) (idx int, fr int, last bool) {
-	// the binary search is looking for the frame before the one that has been
-	// requested. this is so that we can generate the pixels that will be on
-	// the screen at the beginning of the request frame.
 	sf := frame
-	if sf > 0 {
-		sf--
+	switch sf {
+	case 0:
+		sf = 0
+	case 1:
+		sf = 0
+	default:
+		sf -= 2
 	}
 
 	// initialise binary search
@@ -643,7 +641,8 @@ func (r *Rewind) RunFromState(from *State, to *State, poke PokeHook) error {
 
 // GotoFrameCoords of current frame.
 func (r *Rewind) GotoFrameCoords(frame int, scanline int, clock int) error {
-	// get nearest index of entry from which we can (re)generate the current frame
+	// get nearest index of entry from which we can being to (re)generate the
+	// current frame
 	idx, _, _ := r.findFrameIndex(frame)
 
 	// if found index does not point to an immediately suitable state then try

@@ -315,24 +315,26 @@ func (scr *screen) NewFrame(frameInfo television.FrameInfo) error {
 			scr.crit.unsyncedScanline = 0
 		}
 
-		scr.crit.plotIdx++
-		if scr.crit.plotIdx >= len(scr.crit.bufferPixels) {
-			scr.crit.plotIdx = 0
-		}
+		if scr.img.emulation.State() == emulation.Running {
+			scr.crit.plotIdx++
+			if scr.crit.plotIdx >= len(scr.crit.bufferPixels) {
+				scr.crit.plotIdx = 0
+			}
 
-		// if plot index has crashed into the render index then
-		if scr.crit.plotIdx == scr.crit.renderIdx && scr.crit.monitorSync {
-			// ** screen update not keeping up with emulation **
+			// if plot index has crashed into the render index then
+			if scr.crit.plotIdx == scr.crit.renderIdx && scr.crit.monitorSync {
+				// ** screen update not keeping up with emulation **
 
-			// we must unlock the critical section or the gui thread will not
-			// be able to process the channel
-			scr.crit.section.Unlock()
+				// we must unlock the critical section or the gui thread will not
+				// be able to process the channel
+				scr.crit.section.Unlock()
 
-			// pause emulation until screen has caught up
-			scr.emuWait <- true
-			<-scr.emuWaitAck
+				// pause emulation until screen has caught up
+				scr.emuWait <- true
+				<-scr.emuWaitAck
 
-			return nil
+				return nil
+			}
 		}
 	} else if scr.img.state != emulation.Rewinding {
 		// clear reflection pixels beyond the last X/Y plot
@@ -415,7 +417,6 @@ func (scr *screen) SetPixel(sig signal.SignalAttributes, current bool) error {
 //
 // Must only be called between calls to UpdatingPixels(true) and UpdatingPixels(false).
 func (scr *screen) SetPixels(sig []signal.SignalAttributes, current bool) error {
-
 	if len(sig) == 0 {
 		return nil
 	}
@@ -434,9 +435,6 @@ func (scr *screen) SetPixels(sig []signal.SignalAttributes, current bool) error 
 	var col color.RGBA
 
 	for i := range sig {
-		cl = int((sig[i] & signal.Clock) >> signal.ClockShift)
-		sl = int((sig[i] & signal.Scanline) >> signal.ScanlineShift)
-
 		// check that we're not going to encounter an index-out-of-range error
 		if offset >= len(scr.crit.bufferPixels[scr.crit.plotIdx].Pix)-4 {
 			// reset offset. resetting to zero is not satisfactory - we can see
@@ -446,6 +444,7 @@ func (scr *screen) SetPixels(sig []signal.SignalAttributes, current bool) error 
 			//
 			// simply stopping the processing is not satisfactory either
 			// because that would leave us with a lot of undrawn pixels
+			cl := int((sig[i] & signal.Clock) >> signal.ClockShift)
 			offset = cl * 4
 		}
 
@@ -469,8 +468,8 @@ func (scr *screen) SetPixels(sig []signal.SignalAttributes, current bool) error 
 	}
 
 	if current {
-		cl = int((sig[len(sig)-1] & signal.Clock) >> signal.ClockShift)
-		sl = int((sig[len(sig)-1] & signal.Scanline) >> signal.ScanlineShift)
+		cl := int((sig[len(sig)-1] & signal.Clock) >> signal.ClockShift)
+		sl := int((sig[len(sig)-1] & signal.Scanline) >> signal.ScanlineShift)
 		scr.crit.lastX = cl
 		scr.crit.lastY = sl
 	}
@@ -614,7 +613,7 @@ func (scr *screen) copyPixelsPlaymode() {
 			return
 		} else {
 			// attempt to sync frame generation with monitor refresh rate
-			if scr.crit.monitorSync {
+			if scr.crit.monitorSync && scr.img.emulation.State() == emulation.Running {
 				// advance render index
 				scr.crit.prevRenderIdx = scr.crit.renderIdx
 				scr.crit.renderIdx++

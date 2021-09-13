@@ -142,11 +142,13 @@ type Television struct {
 	// signals buffered before being forwarded to the attached PixelRenderers
 	signals []signal.SignalAttributes
 
-	// the index to write the next signal
-	currentIdx int
+	// the number of signals in the signals array. we send this number of
+	// signals to the PixelRenderer every frame, regardless of whether the TV
+	// has been sent that number of signals
+	signalsPerFrame int
 
-	// the max index from the last frame
-	lastMaxIdx int
+	// the index to write the next signal
+	currentSignalIdx int
 
 	// pause forwarding of signals to pixel renderers
 	pauseRendering bool
@@ -205,8 +207,8 @@ func (tv *Television) Reset(keepFrameNum bool) error {
 	for i := range tv.signals {
 		tv.signals[i] = signal.NoSignal
 	}
-	tv.currentIdx = 0
-	tv.lastMaxIdx = len(tv.signals) - 1
+	tv.currentSignalIdx = 0
+	tv.signalsPerFrame = len(tv.signals) - 1
 
 	if tv.state.auto {
 		tv.SetSpec("AUTO")
@@ -243,13 +245,7 @@ func (tv *Television) PlumbState(vcs VCSReturnChannel, s *State) {
 	}
 
 	// reset signal history
-	tv.currentIdx = 0
-	tv.lastMaxIdx = 0
-
-	// resize renderers to match current state
-	for _, r := range tv.renderers {
-		_ = r.Resize(tv.state.frameInfo)
-	}
+	tv.currentSignalIdx = 0
 }
 
 // AttachVCS attaches an implementation of the VCSReturnChannel.
@@ -405,14 +401,14 @@ func (tv *Television) Signal(sig signal.SignalAttributes) error {
 	tv.state.lastSignal = sig
 
 	// record signal history
-	if tv.currentIdx >= MaxSignalHistory {
+	if tv.currentSignalIdx >= MaxSignalHistory {
 		err := tv.processSignals(true)
 		if err != nil {
 			return err
 		}
 	}
-	tv.signals[tv.currentIdx] = sig
-	tv.currentIdx++
+	tv.signals[tv.currentSignalIdx] = sig
+	tv.currentSignalIdx++
 
 	// set pending pixels for pixel-scale frame limiting (but only when the
 	// limiter is active - this is important when rendering frames produced
@@ -497,8 +493,10 @@ func (tv *Television) newFrame(fromVsync bool) error {
 	tv.state.frameNum++
 	tv.state.scanline = 0
 
-	// note the current index before processSignals() resets the value
-	tv.lastMaxIdx = tv.currentIdx
+	// nullify unused signals
+	for i := tv.currentSignalIdx; i <= tv.signalsPerFrame; i++ {
+		tv.signals[i] = signal.NoSignal
+	}
 
 	// set pending pixels for frame-scale frame limiting or if the frame
 	// limiter is inactive
@@ -536,21 +534,16 @@ func (tv *Television) processSignals(current bool) error {
 		for _, r := range tv.renderers {
 			r.UpdatingPixels(true)
 
-			err := r.SetPixels(tv.signals[:tv.currentIdx], true)
+			err := r.SetPixels(tv.signals[:tv.currentSignalIdx], true)
 			if err != nil {
 				return curated.Errorf("television: %v", err)
 			}
 
 			if !current {
-				// currentIdx can sometimes be larger than lastMaxIdx when
-				// stepping back over an unsynced frame boundary. I've not
-				// tracked down exactly why this is but we should protect
-				// against the possible "slice bounds out of range" panic.
-				if tv.currentIdx < tv.lastMaxIdx {
-					err = r.SetPixels(tv.signals[tv.currentIdx:tv.lastMaxIdx], false)
-					if err != nil {
-						return curated.Errorf("television: %v", err)
-					}
+				// currentIdx shouldn't ever be larger than signalsPerFrame
+				err = r.SetPixels(tv.signals[tv.currentSignalIdx:tv.signalsPerFrame], false)
+				if err != nil {
+					return curated.Errorf("television: %v", err)
 				}
 			}
 
@@ -560,24 +553,23 @@ func (tv *Television) processSignals(current bool) error {
 		// mix audio
 		for _, m := range tv.mixers {
 			// err := m.SetAudio(uint8((sig & signal.AudioData) >> signal.AudioDataShift))
-			err := m.SetAudio(tv.signals[:tv.currentIdx])
+			err := m.SetAudio(tv.signals[:tv.currentSignalIdx])
 			if err != nil {
 				return curated.Errorf("television: %v", err)
 			}
 
 			if !current {
-				if tv.currentIdx < tv.lastMaxIdx {
-					err = m.SetAudio(tv.signals[tv.currentIdx:tv.lastMaxIdx])
-					if err != nil {
-						return curated.Errorf("television: %v", err)
-					}
+				// currentIdx shouldn't ever be larger than signalsPerFrame
+				err = m.SetAudio(tv.signals[tv.currentSignalIdx:tv.signalsPerFrame])
+				if err != nil {
+					return curated.Errorf("television: %v", err)
 				}
 			}
 		}
 	}
 
 	// reset signal history
-	tv.currentIdx = 0
+	tv.currentSignalIdx = 0
 
 	return nil
 }
@@ -764,11 +756,6 @@ func (tv *Television) ReqAdjust(request signal.StateAdj, adjustment int, reset b
 			scanline += tv.state.frameInfo.VisibleBottom
 			frame--
 		}
-		if frame < 0 {
-			frame = 0
-			scanline = 0
-			clock = 0
-		}
 	case signal.AdjInstruction:
 		if adjustment != -1 {
 			err = curated.Errorf("television: can only adjust CPU boundary by -1")
@@ -789,19 +776,19 @@ func (tv *Television) ReqAdjust(request signal.StateAdj, adjustment int, reset b
 			scanline += tv.state.frameInfo.VisibleBottom
 			frame--
 		}
-		if frame < 0 {
-			frame = 0
-			scanline = 0
-		}
 	case signal.AdjFramenum:
 		if reset {
 			clock = 0
 			scanline = 0
 		}
 		frame += adjustment
-		if frame < 0 {
-			frame = 0
-		}
+	}
+
+	// zero values if frame is less than zero
+	if frame < 0 {
+		frame = 0
+		scanline = 0
+		clock = 0
 	}
 
 	return frame, scanline, clock - specification.ClksHBlank, err

@@ -15,7 +15,11 @@
 
 package television
 
-import "github.com/jetsetilly/gopher2600/hardware/television/specification"
+import (
+	"fmt"
+
+	"github.com/jetsetilly/gopher2600/hardware/television/specification"
+)
 
 // FrameInfo records the current frame information, as opposed to the optimal
 // values of the specification, a copy of which is provided as reference.
@@ -54,6 +58,10 @@ func NewFrameInfo(spec specification.Spec) FrameInfo {
 	}
 	info.reset()
 	return info
+}
+
+func (info FrameInfo) String() string {
+	return fmt.Sprintf("top: %d, bottom: %d, total: %d", info.VisibleTop, info.VisibleBottom, info.TotalScanlines)
 }
 
 func (info *FrameInfo) reset() {

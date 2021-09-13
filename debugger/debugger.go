@@ -388,8 +388,8 @@ func (dbg *Debugger) reset() error {
 }
 
 // in the event that the input loop needs to be unwound and restarted then use
-// the restartInputLoop() function for convenience.
-func (dbg *Debugger) restartInputLoop(onRestart func() error) {
+// the unwindInputLoop() function for convenience.
+func (dbg *Debugger) unwindInputLoop(onRestart func() error) {
 	dbg.inputLoopRestart = true
 	dbg.inputLoopOnRestart = onRestart
 }
