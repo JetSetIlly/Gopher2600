@@ -63,49 +63,44 @@ type PixelRenderer interface {
 	// NewScanline is called at the start of a new scanline
 	NewScanline(scanline int) error
 
-	// Mark the start and end of an update event from the television.
-	// SetPixel() should only be called between calls of UpdatingPixels(true)
-	// and UpdatingPixels(false)
-	UpdatingPixels(updating bool)
-
-	// SetPixel sends an instance of SignalAttributes to the Renderer. The
-	// current flag states that this pixel should be considered to be the most
-	// recent outputted by the television for this frame. In most instances,
-	// this will always be true.
+	// SetPixels sends a slice of SignalAttributes to the Renderer.
 	//
-	// things to consider:
+	// The television is guaranteed to only send signal.NoSignal as trailing
+	// filler. For these signals the corresponding pixels should be set to
+	// black (or if appropriate, ignored).
 	//
-	// o the x argument is measured from zero so renderers should decide how to
-	//	handle pixels of during the HBLANK (x < ClksHBlank)
+	// For renderers that are producing an accurate visual image, the pixel
+	// should always be set to video black if VBLANK is on. Some renderers
+	// however may find it useful to set the pixel to the RGB value regardless
+	// of VBLANK.
 	//
-	// o the y argument is also measured from zero but because VBLANK can be
-	//	turned on at any time there's no easy test. the VBLANK flag is sent to
-	//	help renderers decide what to do.
-	//
-	// o for renderers that are producing an accurate visual image, the pixel
-	//	should always be set to video black if VBLANK is on.
-	//
-	//	some renderers however, may find it useful to set the pixel to the RGB
-	//	value regardless of VBLANK. for example, DigestTV does this.
-	//
-	//	a vey important note is that some ROMs use VBLANK to control pixel
-	//	color within the visible display area. ROMs affected:
+	// A very important note is that some ROMs use VBLANK to control pixel
+	// color within the visible display area. For example:
 	//
 	//	* Custer's Revenge
 	//	* Ladybug
 	//	* ET (turns VBLANK off late on scanline 40)
-	SetPixel(sig signal.SignalAttributes, current bool) error
+	//
+	// In other words, the PixelRenderer should not simply assume VBLANK is
+	// restricted to the "off-screen" areas as defined by the FrameInfo sent to
+	// Resize()
+	//
+	// The current flag states that the signals should be considered to be
+	// signals for the current frame. for most applications this will always be
+	// true but in some circumstances, the television will send pixels from the
+	// previous frame if they haven't been drawn yet for the current frame. An
+	// implementation of PixelRenderer may choose to ignore non-current
+	// signals.
 	SetPixels(sig []signal.SignalAttributes, current bool) error
 
 	// Reset all pixels. Called when TV is reset.
 	//
 	// Note that a Reset event does not imply a Resize() event. Implementations
-	// should not call the Resize() function as a byproduct of a Reset().
+	// should not call the Resize() function as a byproduct of a Reset(). The
+	// television will send an explicit Resize() request if it is appropriate.
 	Reset()
 
 	// Some renderers may need to conclude and/or dispose of resources gently.
-	// for simplicity, the PixelRenderer should be considered unusable after
-	// EndRendering() has been called.
 	EndRendering() error
 }
 

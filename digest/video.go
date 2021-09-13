@@ -113,38 +113,34 @@ func (dig *Video) NewScanline(scanline int) error {
 	return nil
 }
 
-// UpdatingPixels implements television.PixelRenderer interface.
-func (dig *Video) UpdatingPixels(_ bool) {
-}
-
-// SetPixel implements television.PixelRenderer interface.
-func (dig *Video) SetPixel(sig signal.SignalAttributes, _ bool) error {
-	// preserve the first few bytes for a chained fingerprint
-	i := len(dig.digest)
-	sl := int((sig & signal.Scanline) >> signal.ScanlineShift)
-	cl := int((sig & signal.Clock) >> signal.ClockShift)
-	i += specification.ClksScanline * sl * pixelDepth
-	i += cl * pixelDepth
-
-	if i <= len(dig.pixels)-pixelDepth {
-		px := signal.ColorSignal((sig & signal.Pixel) >> signal.PixelShift)
-		col := dig.spec.GetColor(px)
-
-		// setting every pixel regardless of vblank value
-		dig.pixels[i] = col.R
-		dig.pixels[i+1] = col.G
-		dig.pixels[i+2] = col.B
-	}
-
-	return nil
-}
-
 // SetPixels implements television.PixelRenderer interface.
 func (dig *Video) SetPixels(sig []signal.SignalAttributes, current bool) error {
+	if len(sig) == 0 || sig[0] == signal.NoSignal {
+		return nil
+	}
+
 	for i := range sig {
-		err := dig.SetPixel(sig[i], current)
-		if err != nil {
-			return err
+		if sig[i] == signal.NoSignal {
+			break
+		}
+
+		// preserve the first few bytes of the pixel array for a chained
+		// fingerprint
+		o := len(dig.digest)
+
+		sl := int((sig[i] & signal.Scanline) >> signal.ScanlineShift)
+		cl := int((sig[i] & signal.Clock) >> signal.ClockShift)
+		o += specification.ClksScanline * sl * pixelDepth
+		o += cl * pixelDepth
+
+		if o <= len(dig.pixels)-pixelDepth {
+			px := signal.ColorSignal((sig[i] & signal.Color) >> signal.ColorShift)
+			col := dig.spec.GetColor(px)
+
+			// setting every pixel regardless of vblank value
+			dig.pixels[o] = col.R
+			dig.pixels[o+1] = col.G
+			dig.pixels[o+2] = col.B
 		}
 	}
 	return nil

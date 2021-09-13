@@ -36,7 +36,7 @@ const (
 	HSync       SignalAttributes = 0b0000000000000000000000000000000000000000001000
 	AudioUpdate SignalAttributes = 0b0000000000000000000000000000000000000000010000
 	AudioData   SignalAttributes = 0b0000000000000000000000000111111111111111100000 // 16 bits
-	Pixel       SignalAttributes = 0b0000000000000000011111111000000000000000000000 // 8 bits
+	Color       SignalAttributes = 0b0000000000000000011111111000000000000000000000 // 8 bits
 	Scanline    SignalAttributes = 0b0000000011111111100000000000000000000000000000 // 9 bits
 	Clock       SignalAttributes = 0b1111111100000000000000000000000000000000000000 // 8 bits (signed)
 )
@@ -45,13 +45,17 @@ const (
 // SignalAttributes value.
 const (
 	AudioDataShift = 5
-	PixelShift     = 21
+	ColorShift     = 21
 	ScanlineShift  = 29
 	ClockShift     = 38
 )
 
-// NoSignal is the null value of the SignalAttributes type.
-const NoSignal = 0x00
+// NoSignal is the null value of the SignalAttributes type. It is assumed that
+// a TV scanline/clock value of 511x255 is impossible and so can never be
+// confused with a real signal
+//
+// Rendering a NoSignal should, by definition, render VideoBlack.
+const NoSignal = Scanline | Clock | (SignalAttributes(VideoBlack) << ColorShift)
 
 func (a SignalAttributes) String() string {
 	s := strings.Builder{}

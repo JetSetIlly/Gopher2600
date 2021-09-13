@@ -555,11 +555,11 @@ func (tia *TIA) Step(readMemory bool) {
 		// historic reasons (to do with how we handle debug colours) we leave
 		// it up to PixelRenderer implementations to switch to VideoBlack on
 		// VBLANK.
-		tia.sig &= ^signal.Pixel
-		tia.sig |= signal.SignalAttributes(signal.VideoBlack) << signal.PixelShift
+		tia.sig &= ^signal.Color
+		tia.sig |= signal.SignalAttributes(signal.VideoBlack) << signal.ColorShift
 	} else {
-		tia.sig &= ^signal.Pixel
-		tia.sig |= signal.SignalAttributes(tia.Video.PixelColor) << signal.PixelShift
+		tia.sig &= ^signal.Color
+		tia.sig |= signal.SignalAttributes(tia.Video.PixelColor) << signal.ColorShift
 	}
 
 	// late memory resolution

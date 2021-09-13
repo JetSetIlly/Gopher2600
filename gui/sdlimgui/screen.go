@@ -374,52 +374,16 @@ func (scr *screen) NewScanline(scanline int) error {
 
 // UpdatingPixels implements the television PixelRenderer and PixelRefresh interfaces.
 func (scr *screen) UpdatingPixels(updating bool) {
-	if updating {
-		scr.crit.section.Lock()
-		return
-	}
-
-	scr.crit.section.Unlock()
-}
-
-// SetPixel implements the television.PixelRenderer interface.
-//
-// Must only be called between calls to UpdatingPixels(true) and UpdatingPixels(false).
-func (scr *screen) SetPixel(sig signal.SignalAttributes, current bool) error {
-	col := color.RGBA{R: 0, G: 0, B: 0}
-
-	// handle VBLANK by setting pixels to black
-	if sig&signal.VBlank != signal.VBlank {
-		c := (sig & signal.Pixel) >> signal.PixelShift
-		col = scr.crit.frameInfo.Spec.GetColor(signal.ColorSignal(c))
-	}
-
-	sl := int((sig & signal.Scanline) >> signal.ScanlineShift)
-	cl := int((sig & signal.Clock) >> signal.ClockShift)
-
-	if current {
-		scr.crit.lastX = cl
-		scr.crit.lastY = sl
-	}
-
-	// if sig is outside the bounds of the image then the SetRGBA() will silently fail
-
-	adjustedScanline := (sl + scr.crit.unsyncedScanline)
-	if adjustedScanline >= scr.crit.bufferHeight {
-		adjustedScanline -= scr.crit.bufferHeight
-	}
-	scr.crit.bufferPixels[scr.crit.plotIdx].SetRGBA(cl, adjustedScanline, col)
-
-	return nil
 }
 
 // SetPixels implements the television.PixelRenderer interface.
-//
-// Must only be called between calls to UpdatingPixels(true) and UpdatingPixels(false).
 func (scr *screen) SetPixels(sig []signal.SignalAttributes, current bool) error {
-	if len(sig) == 0 {
+	if len(sig) == 0 || sig[0] == signal.NoSignal {
 		return nil
 	}
+
+	scr.crit.section.Lock()
+	defer scr.crit.section.Unlock()
 
 	cl := int((sig[0] & signal.Clock) >> signal.ClockShift)
 	sl := int((sig[0] & signal.Scanline) >> signal.ScanlineShift)
@@ -435,6 +399,11 @@ func (scr *screen) SetPixels(sig []signal.SignalAttributes, current bool) error 
 	var col color.RGBA
 
 	for i := range sig {
+		// we accept a sig of signal.NoSignal and use it to black out unused
+		// pixels. this works only because we manually advance the pixel
+		// offset. if we decoded the scanline/clock bits of the sig each
+		// iteration then it would be a lot more (needless) work
+
 		// check that we're not going to encounter an index-out-of-range error
 		if offset >= len(scr.crit.bufferPixels[scr.crit.plotIdx].Pix)-4 {
 			// reset offset. resetting to zero is not satisfactory - we can see
@@ -452,7 +421,7 @@ func (scr *screen) SetPixels(sig []signal.SignalAttributes, current bool) error 
 		if sig[i]&signal.VBlank == signal.VBlank {
 			col = color.RGBA{R: 0, G: 0, B: 0}
 		} else {
-			px := signal.ColorSignal((sig[i] & signal.Pixel) >> signal.PixelShift)
+			px := signal.ColorSignal((sig[i] & signal.Color) >> signal.ColorShift)
 			col = scr.crit.frameInfo.Spec.GetColor(px)
 		}
 

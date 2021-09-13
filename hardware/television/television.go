@@ -412,7 +412,7 @@ func (tv *Television) Signal(sig signal.SignalAttributes) error {
 
 	// set pending pixels for pixel-scale frame limiting (but only when the
 	// limiter is active - this is important when rendering frames produced
-	// durint rewinding)
+	// during rewinding)
 	if tv.lmtr.active && tv.lmtr.visualUpdates {
 		err := tv.processSignals(true)
 		if err != nil {
@@ -474,7 +474,6 @@ func (tv *Television) newFrame(fromVsync bool) error {
 				logger.Logf("television", "auto switching to PAL")
 				_ = tv.SetSpec("PAL")
 			}
-
 		case specification.SpecPAL.ID:
 			if tv.state.auto && tv.state.scanline <= specification.PALTrigger {
 				logger.Logf("television", "auto switching to NTSC")
@@ -526,28 +525,27 @@ func (tv *Television) newFrame(fromVsync bool) error {
 	return nil
 }
 
-// processSignals forwards pixels in the signalHistory buffer to all pixel renderers.
+// processSignals forwards pixels in the signalHistory buffer to all pixel
+// renderers and audio mixers.
 //
-// the "current" argument defines how many pixels to push. if all is true then.
-func (tv *Television) processSignals(current bool) error {
+// the all parameter tells the function to send all signals in the buffer,
+// including those from the previous frame. signals from the previous frame
+// will be marked as non-current.
+func (tv *Television) processSignals(all bool) error {
 	if !tv.pauseRendering {
 		for _, r := range tv.renderers {
-			r.UpdatingPixels(true)
-
 			err := r.SetPixels(tv.signals[:tv.currentSignalIdx], true)
 			if err != nil {
 				return curated.Errorf("television: %v", err)
 			}
 
-			if !current {
+			if !all {
 				// currentIdx shouldn't ever be larger than signalsPerFrame
 				err = r.SetPixels(tv.signals[tv.currentSignalIdx:tv.signalsPerFrame], false)
 				if err != nil {
 					return curated.Errorf("television: %v", err)
 				}
 			}
-
-			r.UpdatingPixels(false)
 		}
 
 		// mix audio
@@ -558,7 +556,7 @@ func (tv *Television) processSignals(current bool) error {
 				return curated.Errorf("television: %v", err)
 			}
 
-			if !current {
+			if !all {
 				// currentIdx shouldn't ever be larger than signalsPerFrame
 				err = m.SetAudio(tv.signals[tv.currentSignalIdx:tv.signalsPerFrame])
 				if err != nil {
