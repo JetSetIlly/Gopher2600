@@ -29,9 +29,12 @@ func Mono(channel0 uint8, channel1 uint8) int16 {
 	return mono[int16(channel0)|int16(channel1<<4)]
 }
 
-// Sterea return a pair of volume value.
-func Stereo(channel0 uint8, channel1 uint8) (int16, int16) {
-	return Mono(channel0, 0), Mono(0, channel1)
+// Stereo return a pair of volume values.
+//
+// A sensible range for the Separation value is 0 to 3. A value of 0 is the
+// more-or-less the same as Mono().
+func Stereo(channel0 uint8, channel1 uint8, separation int) (int16, int16) {
+	return Mono(channel0, channel1>>uint8(separation)), Mono(channel0>>uint8(separation), channel1)
 }
 
 func init() {

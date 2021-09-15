@@ -183,9 +183,39 @@ func (win *winPrefs) drawVCS() {
 		win.img.vcs.Prefs.RandomPins.Set(randPins)
 	}
 
+	imguiSeparator()
+	imgui.Text("Audio")
+	imgui.Spacing()
+
 	stereo := win.img.audio.Prefs.Stereo.Get().(bool)
 	if imgui.Checkbox("Stereo Sound", &stereo) {
 		win.img.audio.Prefs.Stereo.Set(stereo)
+	}
+
+	if !stereo {
+		imgui.PushItemFlag(imgui.ItemFlagsDisabled, true)
+		imgui.PushStyleVarFloat(imgui.StyleVarAlpha, 0.5)
+	}
+
+	separation := int32(win.img.audio.Prefs.Separation.Get().(int))
+
+	label := ""
+	switch separation {
+	case 1:
+		label = "Narrow"
+	case 2:
+		label = "Wide"
+	case 3:
+		label = "Discrete"
+	}
+
+	if imgui.SliderIntV("Separation", &separation, 1, 3, label, 1.0) {
+		win.img.audio.Prefs.Separation.Set(separation)
+	}
+
+	if !stereo {
+		imgui.PopStyleVar()
+		imgui.PopItemFlag()
 	}
 }
 

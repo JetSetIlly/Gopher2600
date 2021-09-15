@@ -45,8 +45,9 @@ const maxQueueLength = 16384
 
 // Audio outputs sound using SDL.
 type Audio struct {
-	Prefs  *Preferences
-	stereo bool
+	Prefs      *Preferences
+	stereo     bool
+	separation int
 
 	id   sdl.AudioDeviceID
 	spec sdl.AudioSpec
@@ -106,7 +107,7 @@ func (aud *Audio) SetAudio(sig []signal.SignalAttributes) error {
 		v1 := uint8((s & signal.AudioChannel1) >> signal.AudioChannel1Shift)
 
 		if aud.stereo {
-			s0, s1 := mix.Stereo(v0, v1)
+			s0, s1 := mix.Stereo(v0, v1, aud.separation)
 			aud.buffer[aud.bufferCt] = uint8(s0>>8) + aud.spec.Silence
 			aud.bufferCt++
 			aud.buffer[aud.bufferCt] = uint8(s0) + aud.spec.Silence
@@ -135,6 +136,7 @@ func (aud *Audio) SetAudio(sig []signal.SignalAttributes) error {
 			}
 			aud.bufferCt = 0
 			aud.stereo = aud.Prefs.Stereo.Get().(bool)
+			aud.separation = aud.Prefs.Separation.Get().(int)
 		} else {
 			remaining := int(sdl.GetQueuedAudioSize(aud.id))
 
@@ -148,6 +150,7 @@ func (aud *Audio) SetAudio(sig []signal.SignalAttributes) error {
 					return err
 				}
 				aud.stereo = aud.Prefs.Stereo.Get().(bool)
+				aud.separation = aud.Prefs.Separation.Get().(int)
 			} else if remaining < minQueueLength && aud.bufferCt > 10 {
 				// if we're running short of bits in the queue the queue what we have
 				// in the buffer.
@@ -163,6 +166,7 @@ func (aud *Audio) SetAudio(sig []signal.SignalAttributes) error {
 				}
 				aud.bufferCt = 0
 				aud.stereo = aud.Prefs.Stereo.Get().(bool)
+				aud.separation = aud.Prefs.Separation.Get().(int)
 			} else if remaining > maxQueueLength {
 				// if length of sdl: audio: queue is getting too long then clear it
 				//

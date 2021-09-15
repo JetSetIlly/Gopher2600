@@ -21,8 +21,9 @@ import (
 )
 
 type Preferences struct {
-	dsk    *prefs.Disk
-	Stereo prefs.Bool
+	dsk        *prefs.Disk
+	Stereo     prefs.Bool
+	Separation prefs.Int
 }
 
 func (p *Preferences) String() string {
@@ -49,6 +50,10 @@ func NewPreferences() (*Preferences, error) {
 	if err != nil {
 		return nil, err
 	}
+	err = p.dsk.Add("sdlaudio.separation", &p.Separation)
+	if err != nil {
+		return nil, err
+	}
 
 	err = p.dsk.Load(true)
 	if err != nil {
@@ -61,6 +66,7 @@ func NewPreferences() (*Preferences, error) {
 // SetDefaults reverts all audio settings to default values.
 func (p *Preferences) SetDefaults() {
 	p.Stereo.Set(false)
+	p.Separation.Set(1)
 }
 
 // Load disassembly preferences and apply to the current disassembly.
