@@ -16,6 +16,7 @@
 package reflection
 
 import (
+	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/television"
@@ -37,8 +38,8 @@ type Gatherer struct {
 	// Reflector is unpaused.
 	history []ReflectedVideoStep
 
-	// start/end of the history buffer
-	s, e int
+	// the next index to be used by Step()
+	historyIdx int
 }
 
 // NewGatherer is the preferred method of initialisation for the Monitor type.
@@ -72,7 +73,7 @@ func (ref *Gatherer) Step(bank mapper.BankInfo) error {
 		WSYNC:             !ref.vcs.CPU.RdyFlg,
 		Bank:              bank,
 		VideoElement:      ref.vcs.TIA.Video.LastElement,
-		LastSignal:        ref.vcs.TV.GetLastSignal(),
+		Signal:            ref.vcs.TV.GetLastSignal(),
 		Collision:         *ref.vcs.TIA.Video.Collisions,
 		IsHblank:          ref.vcs.TIA.Hblank,
 		CoprocessorActive: bank.ExecutingCoprocessor,
@@ -91,20 +92,25 @@ func (ref *Gatherer) Step(bank mapper.BankInfo) error {
 
 	// if reflector is paused then we need to reflect the pixel now
 	if ref.renderer != nil && ref.paused {
-		ref.renderer.UpdatingPixels(true)
-		defer ref.renderer.UpdatingPixels(false)
-		if err := ref.renderer.Reflect(v); err != nil {
-			return err
-		}
-		return nil
+		return ref.renderHistory()
 	}
 
 	// reflector is not paused so we record VideoStep for later processing.
-	if ref.e < television.MaxSignalHistory {
-		ref.history[ref.e] = v
-		ref.e++
+	ref.history[ref.historyIdx] = v
+	ref.historyIdx++
+
+	if ref.historyIdx >= len(ref.history) {
+		return ref.renderHistory()
 	}
 
+	return nil
+}
+
+func (ref *Gatherer) renderHistory() error {
+	if err := ref.renderer.Reflect(ref.history[:ref.historyIdx]); err != nil {
+		return curated.Errorf("reflection: %v", err)
+	}
+	ref.historyIdx = 0
 	return nil
 }
 
@@ -112,16 +118,9 @@ func (ref *Gatherer) Step(bank mapper.BankInfo) error {
 func (ref *Gatherer) Pause(pause bool) error {
 	ref.paused = pause
 
-	// process all outstanding VideoStep in the history on pause
+	// if new state is paused then render history
 	if ref.renderer != nil && ref.paused {
-		ref.renderer.UpdatingPixels(true)
-		defer ref.renderer.UpdatingPixels(false)
-		for i := ref.s; i < ref.e; i++ {
-			if err := ref.renderer.Reflect(ref.history[i]); err != nil {
-				return err
-			}
-		}
-		ref.s = ref.e
+		return ref.renderHistory()
 	}
 
 	return nil
@@ -129,21 +128,11 @@ func (ref *Gatherer) Pause(pause bool) error {
 
 // NewFrame implements the television.FrameTrigger interface.
 func (ref *Gatherer) NewFrame(_ television.FrameInfo) error {
-	// if reflector is not paused then we must process all outstanding
-	// VideoStep in the history
+	// if new state is not paused then render history - the pause state is
+	// handled in the Step() function
 	if ref.renderer != nil && !ref.paused {
-		ref.renderer.UpdatingPixels(true)
-		defer ref.renderer.UpdatingPixels(false)
-		for i := ref.s; i < ref.e; i++ {
-			if err := ref.renderer.Reflect(ref.history[i]); err != nil {
-				return err
-			}
-		}
+		return ref.renderHistory()
 	}
-
-	// reset history indexes
-	ref.s = 0
-	ref.e = 0
 
 	return nil
 }

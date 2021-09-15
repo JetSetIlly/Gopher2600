@@ -24,13 +24,8 @@ import (
 
 // Renderer implementations display or otherwise process VideoStep values.
 type Renderer interface {
-	// Mark the start and end of an update event from the television.
-	// Reflect() should only be called between calls of UpdatingPixels(true)
-	// and UpdatingPixels(false)
-	UpdatingPixels(updating bool)
-
 	// Reflect sends a VideoStep instance to the Renderer.
-	Reflect(ReflectedVideoStep) error
+	Reflect([]ReflectedVideoStep) error
 }
 
 // Broker implementations can identify a reflection.Renderer.
@@ -51,7 +46,7 @@ type ReflectedVideoStep struct {
 	CPU               execution.Result
 	Collision         video.Collisions
 	Bank              mapper.BankInfo
-	LastSignal        signal.SignalAttributes
+	Signal            signal.SignalAttributes
 	Hmove             Hmove
 	VideoElement      video.Element
 	WSYNC             bool

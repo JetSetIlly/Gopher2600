@@ -70,8 +70,8 @@ type PixelRenderer interface {
 	// encountered.
 	//
 	// Signals are consecutive starting at the scanline/clock of the first
-	// signal. THe first signal does not necessary start at scanline and clock
-	// of zero.
+	// signal. The first signal does not necessary start with scanline and
+	// clock values of zero.
 	//
 	// Due to the nature of the television, SetPixels may never receive signals
 	// for some scanline/clock combinations. Implementations should consider

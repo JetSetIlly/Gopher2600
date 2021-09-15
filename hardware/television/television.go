@@ -151,7 +151,7 @@ type Television struct {
 	// information the array can be sliced freely
 	signals []signal.SignalAttributes
 
-	// the index to write the next signal
+	// the index of the most recent Signal()
 	currentSignalIdx int
 
 	// pause forwarding of signals to pixel renderers
@@ -405,7 +405,7 @@ func (tv *Television) Signal(sig signal.SignalAttributes) error {
 
 	// record signal history
 	if tv.currentSignalIdx >= MaxSignalHistory {
-		err := tv.processSignals(true)
+		err := tv.renderSignals(true)
 		if err != nil {
 			return err
 		}
@@ -417,7 +417,7 @@ func (tv *Television) Signal(sig signal.SignalAttributes) error {
 	// limiter is active - this is important when rendering frames produced
 	// during rewinding)
 	if tv.lmtr.active && tv.lmtr.visualUpdates {
-		err := tv.processSignals(true)
+		err := tv.renderSignals(true)
 		if err != nil {
 			return err
 		}
@@ -503,7 +503,7 @@ func (tv *Television) newFrame(fromVsync bool) error {
 	// set pending pixels for frame-scale frame limiting or if the frame
 	// limiter is inactive
 	if !tv.lmtr.active || !tv.lmtr.visualUpdates {
-		err := tv.processSignals(true)
+		err := tv.renderSignals(true)
 		if err != nil {
 			return err
 		}
@@ -528,13 +528,13 @@ func (tv *Television) newFrame(fromVsync bool) error {
 	return nil
 }
 
-// processSignals forwards pixels in the signalHistory buffer to all pixel
+// renderSignals forwards pixels in the signalHistory buffer to all pixel
 // renderers and audio mixers.
 //
 // the all parameter tells the function to send all signals in the buffer,
 // including those from the previous frame. signals from the previous frame
 // will be marked as non-current.
-func (tv *Television) processSignals(all bool) error {
+func (tv *Television) renderSignals(all bool) error {
 	if !tv.pauseRendering {
 		for _, r := range tv.renderers {
 			err := r.SetPixels(tv.signals[:tv.currentSignalIdx], true)
@@ -651,7 +651,7 @@ func (tv *Television) Pause(pause bool) error {
 		}
 	}
 	if pause {
-		return tv.processSignals(true)
+		return tv.renderSignals(true)
 	} else {
 		// start off the unpaused state by measuring the current framerate.
 		// this "clears" the ticker channel and means the feedback from
@@ -667,7 +667,7 @@ func (tv *Television) Pause(pause bool) error {
 func (tv *Television) PauseRendering(pause bool) {
 	tv.pauseRendering = pause
 	if !tv.pauseRendering {
-		tv.processSignals(false)
+		tv.renderSignals(false)
 	}
 }
 

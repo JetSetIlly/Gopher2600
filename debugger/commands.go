@@ -237,7 +237,6 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 			}
 
 			f, s, c, err := dbg.vcs.TV.ReqAdjust(req, adj, true)
-			fmt.Println(f, s, c)
 
 			if err != nil {
 				return err
