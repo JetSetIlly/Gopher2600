@@ -67,45 +67,29 @@ func (win *winPrefs) draw() {
 		imgui.BeginV(win.id(), &win.open, imgui.WindowFlagsAlwaysAutoResize)
 	}
 
-	win.drawVCS()
-	imguiSeparator()
-	win.drawPlaymode()
-	imguiSeparator()
-	win.drawARM()
-
-	if !win.img.isPlaymode() {
-		imguiSeparator()
-		imgui.Text("Debugger")
-		imgui.Spacing()
-
-		if imgui.Checkbox("Use Fxxx Mirror", &win.img.lz.Prefs.FxxxMirror) {
-			win.img.term.pushCommand("PREFS TOGGLE FXXXMIRROR")
-		}
-
-		if imgui.Checkbox("Use Symbols", &win.img.lz.Prefs.Symbols) {
-			win.img.term.pushCommand("PREFS TOGGLE SYMBOLS")
-
-			// if disassembly has address labels then turning symbols off may alter
-			// the vertical scrolling of the disassembly window.
-			//
-			// set focusOnAddr to true to force preference change to take effect
-			win.img.wm.windows[winDisasmID].(*winDisasm).focusOnAddr = true
-		}
-
-		audioEnabled := win.img.prefs.audioEnabled.Get().(bool)
-		if imgui.Checkbox("Audio Enabled (in debugger)", &audioEnabled) {
-			win.img.prefs.audioEnabled.Set(audioEnabled)
-		}
-
-		termOnError := win.img.prefs.openOnError.Get().(bool)
-		if imgui.Checkbox("Open Terminal on Error", &termOnError) {
-			err := win.img.prefs.openOnError.Set(termOnError)
-			if err != nil {
-				logger.Logf("sdlimgui", "could not set preference value: %v", err)
-			}
-		}
-		win.drawRewind()
+	// tab-bar to switch between different "areas" of the TIA
+	imgui.BeginTabBar("")
+	if imgui.BeginTabItem("VCS") {
+		win.drawVCS()
+		imgui.EndTabItem()
 	}
+
+	if imgui.BeginTabItem("Playmode") {
+		win.drawPlaymode()
+		imgui.EndTabItem()
+	}
+
+	if imgui.BeginTabItem("Debugger") {
+		win.drawDebugger()
+		imgui.EndTabItem()
+	}
+
+	if imgui.BeginTabItem("ARM") {
+		win.drawARM()
+		imgui.EndTabItem()
+	}
+
+	imgui.EndTabBar()
 
 	imguiSeparator()
 	win.drawDiskButtons()
@@ -114,9 +98,7 @@ func (win *winPrefs) draw() {
 }
 
 func (win *winPrefs) drawPlaymode() {
-	imgui.Text("Playmode")
 	imgui.Spacing()
-
 	controllerNotifications := win.img.prefs.controllerNotifcations.Get().(bool)
 	if imgui.Checkbox("Controller Notifications", &controllerNotifications) {
 		win.img.prefs.controllerNotifcations.Set(controllerNotifications)
@@ -133,8 +115,62 @@ func (win *winPrefs) drawPlaymode() {
 	}
 }
 
+func (win *winPrefs) drawDebugger() {
+	imgui.Spacing()
+	if imgui.Checkbox("Use Fxxx Mirror", &win.img.lz.Prefs.FxxxMirror) {
+		win.img.term.pushCommand("PREFS TOGGLE FXXXMIRROR")
+	}
+
+	if imgui.Checkbox("Use Symbols", &win.img.lz.Prefs.Symbols) {
+		win.img.term.pushCommand("PREFS TOGGLE SYMBOLS")
+
+		// if disassembly has address labels then turning symbols off may alter
+		// the vertical scrolling of the disassembly window.
+		//
+		// set focusOnAddr to true to force preference change to take effect
+		win.img.wm.windows[winDisasmID].(*winDisasm).focusOnAddr = true
+	}
+
+	audioEnabled := win.img.prefs.audioEnabled.Get().(bool)
+	if imgui.Checkbox("Audio Enabled (in debugger)", &audioEnabled) {
+		win.img.prefs.audioEnabled.Set(audioEnabled)
+	}
+
+	termOnError := win.img.prefs.openOnError.Get().(bool)
+	if imgui.Checkbox("Open Terminal on Error", &termOnError) {
+		err := win.img.prefs.openOnError.Set(termOnError)
+		if err != nil {
+			logger.Logf("sdlimgui", "could not set preference value: %v", err)
+		}
+	}
+
+	imguiSeparator()
+	imgui.Text("Rewind")
+	imgui.Spacing()
+
+	m := int32(win.img.lz.Prefs.RewindMaxEntries)
+	if imgui.SliderIntV("Max Entries##maxentries", &m, 10, 100, fmt.Sprintf("%d", m), imgui.SliderFlagsNone) {
+		win.img.term.pushCommand(fmt.Sprintf("PREFS REWIND MAX %d", m))
+	}
+
+	imgui.Spacing()
+	imguiIndentText("Changing the max entries slider may cause")
+	imguiIndentText("some of your rewind history to be lost.")
+
+	imgui.Spacing()
+	imgui.Spacing()
+
+	f := int32(win.img.lz.Prefs.RewindFreq)
+	if imgui.SliderIntV("Frequency##freq", &f, 1, 5, fmt.Sprintf("%d", f), imgui.SliderFlagsNone) {
+		win.img.term.pushCommand(fmt.Sprintf("PREFS REWIND FREQ %d", f))
+	}
+
+	imgui.Spacing()
+	imguiIndentText("Higher rewind frequencies may cause the")
+	imguiIndentText("rewind controls to feel sluggish.")
+}
+
 func (win *winPrefs) drawVCS() {
-	imgui.Text("VCS")
 	imgui.Spacing()
 
 	randState := win.img.vcs.Prefs.RandomState.Get().(bool)
@@ -146,6 +182,11 @@ func (win *winPrefs) drawVCS() {
 	if imgui.Checkbox("Random Pins", &randPins) {
 		win.img.vcs.Prefs.RandomPins.Set(randPins)
 	}
+
+	stereo := win.img.audio.Prefs.Stereo.Get().(bool)
+	if imgui.Checkbox("Stereo Sound", &stereo) {
+		win.img.audio.Prefs.Stereo.Set(stereo)
+	}
 }
 
 // in this function we address vcs directly and not through the lazy system. it
@@ -153,6 +194,8 @@ func (win *winPrefs) drawVCS() {
 // prefs package so thats not a problem. the co-processor bus however can be
 // contentious so we must be carefult during initialisation phase.
 func (win *winPrefs) drawARM() {
+	imgui.Spacing()
+
 	var hasARM bool
 
 	// show ARM settings if we're in debugging mode or if there is an ARM coprocessor attached
@@ -248,38 +291,15 @@ will always abort if the access is a PC fetch, even if this option is not set.
 Illegal accesses will be logged in all instances.`)
 }
 
-func (win *winPrefs) drawRewind() {
-	imguiSeparator()
-	imgui.Text("Rewind")
-	imgui.Spacing()
-
-	m := int32(win.img.lz.Prefs.RewindMaxEntries)
-	if imgui.SliderIntV("Max Entries##maxentries", &m, 10, 100, fmt.Sprintf("%d", m), imgui.SliderFlagsNone) {
-		win.img.term.pushCommand(fmt.Sprintf("PREFS REWIND MAX %d", m))
-	}
-
-	imgui.Spacing()
-	imguiIndentText("Changing the max entries slider may cause")
-	imguiIndentText("some of your rewind history to be lost.")
-
-	imgui.Spacing()
-	imgui.Spacing()
-
-	f := int32(win.img.lz.Prefs.RewindFreq)
-	if imgui.SliderIntV("Frequency##freq", &f, 1, 5, fmt.Sprintf("%d", f), imgui.SliderFlagsNone) {
-		win.img.term.pushCommand(fmt.Sprintf("PREFS REWIND FREQ %d", f))
-	}
-
-	imgui.Spacing()
-	imguiIndentText("Higher rewind frequencies may cause the")
-	imguiIndentText("rewind controls to feel sluggish.")
-}
-
 func (win *winPrefs) drawDiskButtons() {
 	if imgui.Button("Save") {
 		err := win.img.prefs.save()
 		if err != nil {
 			logger.Logf("sdlimgui", "could not save (imgui debugger) preferences: %v", err)
+		}
+		err = win.img.audio.Prefs.Save()
+		if err != nil {
+			logger.Logf("sdlimgui", "could not save (sdlaudio) preferences: %v", err)
 		}
 		err = win.img.vcs.Prefs.Save()
 		if err != nil {
@@ -293,6 +313,10 @@ func (win *winPrefs) drawDiskButtons() {
 		err := win.img.prefs.load()
 		if err != nil {
 			logger.Logf("sdlimgui", "could not restore (imgui debugger) preferences: %v", err)
+		}
+		err = win.img.audio.Prefs.Load()
+		if err != nil {
+			logger.Logf("sdlimgui", "could not restore (sdlaudio) preferences: %v", err)
 		}
 		err = win.img.vcs.Prefs.Load()
 		if err != nil {
