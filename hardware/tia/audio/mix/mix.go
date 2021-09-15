@@ -13,13 +13,26 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-package audio
-
-// VolumeMix lookup table is created according to the information in the
-// document, "TIA Sounding Off In The Digital Domain", by Chris Brenner.
+// Package mix is used to combine two distinct sound sources into either a mono
+// or stereo signal.
+//
+// The mono mix is created according to the information in the document, "TIA
+// Sounding Off In The Digital Domain", by Chris Brenner.
 //
 // https://atariage.com/forums/topic/249865-tia-sounding-off-in-the-digital-domain/
-var volumeMix [256]int16
+package mix
+
+var mono [256]int16
+
+// Mono returns a single volume value.
+func Mono(channel0 uint8, channel1 uint8) int16 {
+	return mono[int16(channel0)|int16(channel1<<4)]
+}
+
+// Sterea return a pair of volume value.
+func Stereo(channel0 uint8, channel1 uint8) (int16, int16) {
+	return Mono(channel0, 0), Mono(0, channel1)
+}
 
 func init() {
 	var i int
@@ -29,7 +42,7 @@ func init() {
 	rb = 1.0 / 7500.0
 	rc = 1.0 / 15000.0
 	rd = 1.0 / 30000.0
-	volumeMix[0] = 0
+	mono[0] = 0
 	for i = 1; i < 256; i++ {
 		r2 = 0.0
 		if i&0x01 == 0x01 {
@@ -57,6 +70,6 @@ func init() {
 			r2 += ra
 		}
 		r2 = 1.0 / r2
-		volumeMix[i] = int16(32768.0*(1.0-r2/(r1+r2)) + 0.5)
+		mono[i] = int16(32768.0*(1.0-r2/(r1+r2)) + 0.5)
 	}
 }

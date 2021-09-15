@@ -792,6 +792,11 @@ v6.0" file (sometimes named bankswitch_sizes.txt)
 The "Stella Programmer's Guide" by Steve Wright is of course a key document,
 used frequently throughout development.
 
+Audio mixing was improved by the information found in the document, "TIA
+Sounding Off In The Digital Domain", by Chris Brenner.
+
+https://atariage.com/forums/topic/249865-tia-sounding-off-in-the-digital-domain/
+
 The 6507 information was taken from Leventhal's "6502 Assembly Language
 Programming" and the text file "64doc.txt" v1.0, by John West and Marko Makela.
 
@@ -799,9 +804,13 @@ US Patent Number 4,644,495 was referenced for the implementation of the DPC cart
 (the format used in Pitfall 2)
 
 DPC+ format implemented according to notes provided by Spiceware https://atariage.com/forums/topic/163495-harmony-dpc-programming
-and https://atariage.com/forums/blogs/entry/11811-dpcarm-part-6-dpc-cartridge-layout/
+and
 
-DPC+ARM information on Spiceware's blog https://atariage.com/forums/blogs/entry/11712-dpc-arm-development/?tab=comments#comment-27116
+https://atariage.com/forums/blogs/entry/11811-dpcarm-part-6-dpc-cartridge-layout/
+
+DPC+ARM information on Spiceware's blog
+
+https://atariage.com/forums/blogs/entry/11712-dpc-arm-development/?tab=comments#comment-27116
 
 The "Mostly Inclusive Atari 2600 Mapper / Selected Hardware Document" (dated 03/04/12) by Kevin Horton
 

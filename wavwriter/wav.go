@@ -24,6 +24,7 @@ import (
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/hardware/tia/audio"
+	"github.com/jetsetilly/gopher2600/hardware/tia/audio/mix"
 	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/youpy/go-wav"
 )
@@ -50,12 +51,15 @@ func (aw *WavWriter) SetAudio(sig []signal.SignalAttributes) error {
 		if s&signal.AudioUpdate != signal.AudioUpdate {
 			continue
 		}
-		d := uint8((s & signal.AudioData) >> signal.AudioDataShift)
 
-		// bring audioData into the correct range
+		v0 := uint8((s & signal.AudioChannel0) >> signal.AudioChannel0Shift)
+		v1 := uint8((s & signal.AudioChannel1) >> signal.AudioChannel1Shift)
+		v := mix.Mono(v0, v1)
+
 		w := wav.Sample{}
-		w.Values[0] = int(d)
-		w.Values[1] = w.Values[0]
+		w.Values[0] = int(v >> 8)
+		w.Values[1] = int(v)
+
 		aw.buffer = append(aw.buffer, w)
 	}
 

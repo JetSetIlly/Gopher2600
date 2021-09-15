@@ -587,12 +587,13 @@ func (tia *TIA) Step(readMemory bool) {
 	}
 
 	// mix audio and copy values to television signal
-	tia.Audio.Mix()
-	if tia.Audio.MixUpdated {
+	if tia.Audio.Step() {
 		tia.sig &= ^signal.AudioUpdate
 		tia.sig |= signal.AudioUpdate
-		tia.sig &= ^signal.AudioData
-		tia.sig |= signal.SignalAttributes(tia.Audio.MixVolume) << signal.AudioDataShift
+		tia.sig &= ^signal.AudioChannel0
+		tia.sig |= signal.SignalAttributes(tia.Audio.Vol0) << signal.AudioChannel0Shift
+		tia.sig &= ^signal.AudioChannel1
+		tia.sig |= signal.SignalAttributes(tia.Audio.Vol1) << signal.AudioChannel1Shift
 	} else {
 		tia.sig &= ^signal.AudioUpdate
 	}

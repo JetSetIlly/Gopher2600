@@ -31,7 +31,7 @@ type Audio struct {
 	// clock114 is so called because of the observation that the 30Khz
 	// reference frequency described in the Stella Programmer's Guide is
 	// generated from the 3.58Mhz clock divided by 114, giving a sample
-	// frequency of 31403Hz or 31Khz - close enought to the 30Khz referency
+	// frequency of 31403Hz or 31Khz - close enough to the 30Khz referency
 	// frequency we need.  Ron Fries' talks about this in  his original
 	// documentation for TIASound.c
 	clock114 int
@@ -48,9 +48,9 @@ type Audio struct {
 	channel0 channel
 	channel1 channel
 
-	// state of Mix()
-	MixUpdated bool
-	MixVolume  int16
+	// the volume output for each channel
+	Vol0 uint8
+	Vol1 uint8
 }
 
 // NewAudio is the preferred method of initialisation for the Audio sub-system.
@@ -73,9 +73,9 @@ func (au *Audio) String() string {
 	return s.String()
 }
 
-// Mix the two VCS audio channels, returning a boolean indicating whether the
-// sound has been updated and a single value representing the mixed volume.
-func (au *Audio) Mix() {
+// Step the audio on one TIA clock. The step will be filtered to produce a
+// 30Khz clock.
+func (au *Audio) Step() bool {
 	// the reference frequency for all sound produced by the TIA is 30Khz. this
 	// is the 3.58Mhz clock, which the TIA operates at, divided by 114 (see
 	// declaration). Mix() is called every video cycle and we return
@@ -83,8 +83,7 @@ func (au *Audio) Mix() {
 	// audio registers and mix the two signals
 	if au.clock114 < 114 {
 		au.clock114++
-		au.MixUpdated = false
-		return
+		return false
 	}
 	au.clock114 = 0
 
@@ -101,10 +100,8 @@ func (au *Audio) Mix() {
 	au.channel0.tick(au.clock342 == 0)
 	au.channel1.tick(au.clock342 == 0)
 
-	// mix the volume of the two channels
-	au.MixVolume = volumeMix[au.channel0.actualVol|(au.channel1.actualVol<<4)]
+	au.Vol0 = au.channel0.actualVol
+	au.Vol1 = au.channel1.actualVol
 
-	// mix is updated every 30Khz no matter what happens with the 10Khz clock
-	// or on the individual channels
-	au.MixUpdated = true
+	return true
 }

@@ -79,7 +79,7 @@ func (dig *Audio) SetAudio(sig []signal.SignalAttributes) error {
 		if s&signal.AudioUpdate != signal.AudioUpdate {
 			continue
 		}
-		d := uint8((s & signal.AudioData) >> signal.AudioDataShift)
+		d := uint8((s & signal.AudioChannel0) >> signal.AudioChannel0Shift)
 
 		dig.buffer[dig.bufferCt] = d
 

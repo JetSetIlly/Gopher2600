@@ -16,8 +16,10 @@
 package sdlaudio
 
 import (
+	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/hardware/tia/audio"
+	"github.com/jetsetilly/gopher2600/hardware/tia/audio/mix"
 	"github.com/jetsetilly/gopher2600/logger"
 
 	"github.com/veandco/go-sdl2/sdl"
@@ -28,21 +30,24 @@ import (
 //
 // the bufferLegnth value is the maximum size of the buffer. once the buffer is
 // full the audio will be queued.
-const bufferLength = 1024
+const bufferLength = 2048
 
 // if the audio queue is ever less than minQueueLength then the buffer
 // will be pushed to the queue immediately.
-const minQueueLength = 256
+const minQueueLength = 512
 
 // if audio queue is ever less than critQueueLength the the buffer is pushed to
 // the queue but the buffer is not reset.
-const critQueueLength = 64
+const critQueueLength = 128
 
 // if queued audio ever exceeds this value then clip the audio.
-const maxQueueLength = 8192
+const maxQueueLength = 16384
 
 // Audio outputs sound using SDL.
 type Audio struct {
+	Prefs  *Preferences
+	stereo bool
+
 	id   sdl.AudioDeviceID
 	spec sdl.AudioSpec
 
@@ -53,19 +58,27 @@ type Audio struct {
 // NewAudio is the preferred method of initialisation for the Audio Type.
 func NewAudio() (*Audio, error) {
 	aud := &Audio{}
+
+	var err error
+
+	aud.Prefs, err = NewPreferences()
+	if err != nil {
+		return nil, curated.Errorf("sdlaudio: %v", err)
+	}
+	aud.stereo = aud.Prefs.Stereo.Get().(bool)
+
 	spec := &sdl.AudioSpec{
 		Freq:     audio.SampleFreq,
 		Format:   sdl.AUDIO_S16MSB,
-		Channels: 1,
+		Channels: 2,
 		Samples:  uint16(bufferLength),
 	}
 
-	var err error
 	var actualSpec sdl.AudioSpec
 
 	aud.id, err = sdl.OpenAudioDevice("", false, spec, &actualSpec, 0)
 	if err != nil {
-		return nil, err
+		return nil, curated.Errorf("sdlaudio: %v", err)
 	}
 
 	aud.spec = actualSpec
@@ -89,11 +102,30 @@ func (aud *Audio) SetAudio(sig []signal.SignalAttributes) error {
 			continue
 		}
 
-		d := int16((s & signal.AudioData) >> signal.AudioDataShift)
-		aud.buffer[aud.bufferCt] = uint8(d>>8) + aud.spec.Silence
-		aud.bufferCt++
-		aud.buffer[aud.bufferCt] = uint8(d) + aud.spec.Silence
-		aud.bufferCt++
+		v0 := uint8((s & signal.AudioChannel0) >> signal.AudioChannel0Shift)
+		v1 := uint8((s & signal.AudioChannel1) >> signal.AudioChannel1Shift)
+
+		if aud.stereo {
+			s0, s1 := mix.Stereo(v0, v1)
+			aud.buffer[aud.bufferCt] = uint8(s0>>8) + aud.spec.Silence
+			aud.bufferCt++
+			aud.buffer[aud.bufferCt] = uint8(s0) + aud.spec.Silence
+			aud.bufferCt++
+			aud.buffer[aud.bufferCt] = uint8(s1>>8) + aud.spec.Silence
+			aud.bufferCt++
+			aud.buffer[aud.bufferCt] = uint8(s1) + aud.spec.Silence
+			aud.bufferCt++
+		} else {
+			m := mix.Mono(v0, v1)
+			aud.buffer[aud.bufferCt] = uint8(m>>8) + aud.spec.Silence
+			aud.bufferCt++
+			aud.buffer[aud.bufferCt] = uint8(m) + aud.spec.Silence
+			aud.bufferCt++
+			aud.buffer[aud.bufferCt] = uint8(m>>8) + aud.spec.Silence
+			aud.bufferCt++
+			aud.buffer[aud.bufferCt] = uint8(m) + aud.spec.Silence
+			aud.bufferCt++
+		}
 
 		if aud.bufferCt >= len(aud.buffer) {
 			// if buffer is full then queue audio unconditionally
