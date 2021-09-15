@@ -20,7 +20,6 @@ import (
 
 	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/emulation"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/harmony/arm7tdmi"
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
@@ -74,14 +73,26 @@ func (win *winPrefs) draw() {
 		imgui.EndTabItem()
 	}
 
+	if imgui.BeginTabItem("TIA Revisions") {
+		win.drawTIARev()
+		imgui.EndTabItem()
+	}
+
+	if imgui.BeginTabItem("CRT") {
+		win.drawCRT()
+		imgui.EndTabItem()
+	}
+
 	if imgui.BeginTabItem("Playmode") {
 		win.drawPlaymode()
 		imgui.EndTabItem()
 	}
 
-	if imgui.BeginTabItem("Debugger") {
-		win.drawDebugger()
-		imgui.EndTabItem()
+	if !win.img.isPlaymode() {
+		if imgui.BeginTabItem("Debugger") {
+			win.drawDebugger()
+			imgui.EndTabItem()
+		}
 	}
 
 	if imgui.BeginTabItem("ARM") {
@@ -99,18 +110,21 @@ func (win *winPrefs) draw() {
 
 func (win *winPrefs) drawPlaymode() {
 	imgui.Spacing()
+	imgui.Text("Notifications")
+	imgui.Spacing()
+
 	controllerNotifications := win.img.prefs.controllerNotifcations.Get().(bool)
-	if imgui.Checkbox("Controller Notifications", &controllerNotifications) {
+	if imgui.Checkbox("Controller Change", &controllerNotifications) {
 		win.img.prefs.controllerNotifcations.Set(controllerNotifications)
 	}
 
 	plusromNotifications := win.img.prefs.plusromNotifications.Get().(bool)
-	if imgui.Checkbox("PlusROM Notifications", &plusromNotifications) {
+	if imgui.Checkbox("PlusROM Network Activity", &plusromNotifications) {
 		win.img.prefs.plusromNotifications.Set(plusromNotifications)
 	}
 
 	superchargerNotifications := win.img.prefs.superchargerNotifications.Get().(bool)
-	if imgui.Checkbox("Supercharger Notifications", &superchargerNotifications) {
+	if imgui.Checkbox("Supercharger Tape Motion", &superchargerNotifications) {
 		win.img.prefs.superchargerNotifications.Set(superchargerNotifications)
 	}
 }
@@ -224,10 +238,6 @@ func (win *winPrefs) drawVCS() {
 // prefs package so thats not a problem. the co-processor bus however can be
 // contentious so we must be carefult during initialisation phase.
 func (win *winPrefs) drawARM() {
-	imgui.Spacing()
-
-	var hasARM bool
-
 	// show ARM settings if we're in debugging mode or if there is an ARM coprocessor attached
 	if win.img.isPlaymode() {
 		// if emulation is "initialising" then return immediately
@@ -238,19 +248,6 @@ func (win *winPrefs) drawARM() {
 		if win.img.state == emulation.Initialising {
 			return
 		}
-
-		bus := win.img.vcs.Mem.Cart.GetCoProcBus()
-		hasARM = bus != nil && bus.CoProcID() == arm7tdmi.CoProcID
-	} else {
-		hasARM = win.img.lz.CoProc.HasCoProcBus && win.img.lz.CoProc.ID == arm7tdmi.CoProcID
-	}
-
-	imgui.Text(arm7tdmi.CoProcID)
-
-	if !hasARM {
-		// not that the current cartridge does not have an ARM coprocessor
-		imgui.SameLine()
-		imgui.Text("(not in current cartridge)")
 	}
 
 	imgui.Spacing()
@@ -265,6 +262,8 @@ func (win *winPrefs) drawARM() {
 		imgui.PushItemFlag(imgui.ItemFlagsDisabled, true)
 		imgui.PushStyleVarFloat(imgui.StyleVarAlpha, 0.5)
 	}
+
+	imgui.Spacing()
 
 	var mamState string
 	switch win.img.vcs.Prefs.ARM.MAM.Get().(int) {
@@ -335,6 +334,10 @@ func (win *winPrefs) drawDiskButtons() {
 		if err != nil {
 			logger.Logf("sdlimgui", "could not save (hardware) preferences: %v", err)
 		}
+		err = win.img.crtPrefs.Save()
+		if err != nil {
+			logger.Logf("sdlimgui", "could not save (crt) preferences: %v", err)
+		}
 		win.img.term.pushCommand("PREFS SAVE")
 	}
 
@@ -351,6 +354,10 @@ func (win *winPrefs) drawDiskButtons() {
 		err = win.img.vcs.Prefs.Load()
 		if err != nil {
 			logger.Logf("sdlimgui", "could not restore (hardware) preferences: %v", err)
+		}
+		err = win.img.crtPrefs.Load()
+		if err != nil {
+			logger.Logf("sdlimgui", "could not restore (crt) preferences: %v", err)
 		}
 		win.img.term.pushCommand("PREFS LOAD")
 	}

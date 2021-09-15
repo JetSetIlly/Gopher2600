@@ -89,8 +89,6 @@ var windowDefs = [...]windowDef{
 	// windows called from "debugger" menu
 	{create: newFileSelector, menu: menuEntry{group: menuDebugger}},
 	{create: newWinPrefs, menu: menuEntry{group: menuDebugger}},
-	{create: newWinCRTPrefs, menu: menuEntry{group: menuDebugger}},
-	{create: newWinRevisions, menu: menuEntry{group: menuDebugger}},
 	{create: newWinTerm, menu: menuEntry{group: menuDebugger}},
 	{create: newWinLog, menu: menuEntry{group: menuDebugger}},
 
@@ -131,8 +129,6 @@ var windowDefs = [...]windowDef{
 // list of windows that can be opened in playmode in addition to the debugger.
 var playmodeWindows = [...]string{
 	winPrefsID,
-	winCRTPrefsID,
-	winTIARevisionsID,
 }
 
 func newManager(img *SdlImgui) (*manager, error) {

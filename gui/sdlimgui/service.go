@@ -285,16 +285,8 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 			case "F7":
 				img.playScr.fpsOpen = !img.playScr.fpsOpen
 
-			case "F8":
-				w := img.wm.windows[winPrefsID]
-				w.setOpen(!w.isOpen())
-
-			case "F9":
-				w := img.wm.windows[winTIARevisionsID]
-				w.setOpen(!w.isOpen())
-
 			case "F10":
-				w := img.wm.windows[winCRTPrefsID]
+				w := img.wm.windows[winPrefsID]
 				w.setOpen(!w.isOpen())
 
 			case "F11":
