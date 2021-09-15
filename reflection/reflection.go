@@ -51,7 +51,7 @@ type ReflectedVideoStep struct {
 	CPU               execution.Result
 	Collision         video.Collisions
 	Bank              mapper.BankInfo
-	TV                signal.SignalAttributes
+	LastSignal        signal.SignalAttributes
 	Hmove             Hmove
 	VideoElement      video.Element
 	WSYNC             bool

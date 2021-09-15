@@ -72,7 +72,7 @@ func (ref *Gatherer) Step(bank mapper.BankInfo) error {
 		WSYNC:             !ref.vcs.CPU.RdyFlg,
 		Bank:              bank,
 		VideoElement:      ref.vcs.TIA.Video.LastElement,
-		TV:                ref.vcs.TV.GetLastSignal(),
+		LastSignal:        ref.vcs.TV.GetLastSignal(),
 		Collision:         *ref.vcs.TIA.Video.Collisions,
 		IsHblank:          ref.vcs.TIA.Hblank,
 		CoprocessorActive: bank.ExecutingCoprocessor,

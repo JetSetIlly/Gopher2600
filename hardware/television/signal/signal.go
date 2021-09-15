@@ -54,8 +54,9 @@ const (
 // a TV scanline/clock value of 511x255 is impossible and so can never be
 // confused with a real signal
 //
-// Rendering a NoSignal should, by definition, render VideoBlack.
-const NoSignal = Scanline | Clock | (SignalAttributes(VideoBlack) << ColorShift)
+// In an array of SignalAttributes a NoSignal indicates the end of the array -
+// processing should stop.
+const NoSignal = Scanline | Clock
 
 func (a SignalAttributes) String() string {
 	s := strings.Builder{}

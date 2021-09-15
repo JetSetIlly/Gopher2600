@@ -52,12 +52,12 @@ type PixelRenderer interface {
 	// for game-playing purposes.
 	Resize(FrameInfo) error
 
-	// NewFrame is called at the start of a new scanline.
+	// NewFrame is called at the start of a new fame.
 	//
 	// PixelRenderer implementations should consider what to do when a
 	// non-synced frame is submitted. Rolling the screen is a good response to
-	// the non-synced frame, with the possiblity of a one or two tolerance (ie.
-	// do not roll unless the non-sync frame are continuous)
+	// the non-synced frame, with the possiblity of a one or two frame
+	// tolerance (ie. do not roll unless the non-sync frame are continuous)
 	NewFrame(FrameInfo) error
 
 	// NewScanline is called at the start of a new scanline
@@ -66,8 +66,19 @@ type PixelRenderer interface {
 	// SetPixels sends a slice of SignalAttributes to the Renderer.
 	//
 	// The television is guaranteed to only send signal.NoSignal as trailing
-	// filler. For these signals the corresponding pixels should be set to
-	// black (or if appropriate, ignored).
+	// filler. Processing of the slice should stop when the first NoSignal is
+	// encountered.
+	//
+	// Signals are consecutive starting at the scanline/clock of the first
+	// signal. THe first signal does not necessary start at scanline and clock
+	// of zero.
+	//
+	// Due to the nature of the television, SetPixels may never receive signals
+	// for some scanline/clock combinations. Implementations should consider
+	// what to do with pixels that have been set in previous frames but are set
+	// no longer. (These pixels will be either at the very start or very end of
+	// the frame and can probably be ignore for renderers that don't show the
+	// vblank and overscan areas.
 	//
 	// For renderers that are producing an accurate visual image, the pixel
 	// should always be set to video black if VBLANK is on. Some renderers

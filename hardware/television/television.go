@@ -46,15 +46,11 @@ type State struct {
 	// spec and move to PAL if the number of scanlines exceeds the NTSC maximum
 	auto bool
 
-	// state of the television
-	//	- the current color clock. the horizontal position where the next pixel
-	//	will be drawn. also used to check we're receiving the correct signals
-	//	at the correct time.
-	clock int
-	//	- the current frame
+	// state of the television. these values correspond to the most recent
+	// signal received
 	frameNum int
-	//	- the current scanline number
 	scanline int
+	clock    int
 
 	// the number of consistent frames seen after reset. once the count reaches
 	// stabilityThreshold then Stable flag in the FrameInfo type is set to
@@ -75,9 +71,9 @@ type State struct {
 	resizer resizer
 
 	// the frame/scanline/clock of the last CPU instruction
-	boundaryClock    int
 	boundaryFrameNum int
 	boundaryScanline int
+	boundaryClock    int
 }
 
 func (s *State) String() string {
@@ -95,8 +91,7 @@ func (s *State) Snapshot() *State {
 	return &n
 }
 
-// Returns state information. Not that ReqClock counts from
-// "-specifcation.ClksHblank" and not zero as you might expect.
+// GetState Returns information about the current state of the signal.
 func (s *State) GetState(request signal.StateReq) int {
 	switch request {
 	case signal.ReqFramenum:
@@ -139,13 +134,22 @@ type Television struct {
 	// instance of current state (as supported by the rewind system)
 	state *State
 
-	// signals buffered before being forwarded to the attached PixelRenderers
+	// signals are buffered before being forwarded to a PixelRenderer.
+	//
+	// signals in the array are always consecutive.
+	//
+	// the signals in the array will never cross a frame boundary. ie. all
+	// signals belong to the same frame.
+	//
+	// the first signal in the array is not necessary at scanline zero, clock
+	// zero
+	//
+	// information about which scanline/clock a SignalAttribute corresponds to
+	// is part of the SignaalAttributes information (see signal package).
+	//
+	// because each SignalAttribute can be decoded for scanline and clock
+	// information the array can be sliced freely
 	signals []signal.SignalAttributes
-
-	// the number of signals in the signals array. we send this number of
-	// signals to the PixelRenderer every frame, regardless of whether the TV
-	// has been sent that number of signals
-	signalsPerFrame int
 
 	// the index to write the next signal
 	currentSignalIdx int
@@ -208,7 +212,6 @@ func (tv *Television) Reset(keepFrameNum bool) error {
 		tv.signals[i] = signal.NoSignal
 	}
 	tv.currentSignalIdx = 0
-	tv.signalsPerFrame = len(tv.signals) - 1
 
 	if tv.state.auto {
 		tv.SetSpec("AUTO")
@@ -492,8 +495,8 @@ func (tv *Television) newFrame(fromVsync bool) error {
 	tv.state.frameNum++
 	tv.state.scanline = 0
 
-	// nullify unused signals
-	for i := tv.currentSignalIdx; i <= tv.signalsPerFrame; i++ {
+	// nullify unused signals at end of frame
+	for i := tv.currentSignalIdx; i < len(tv.signals); i++ {
 		tv.signals[i] = signal.NoSignal
 	}
 
@@ -540,8 +543,7 @@ func (tv *Television) processSignals(all bool) error {
 			}
 
 			if !all {
-				// currentIdx shouldn't ever be larger than signalsPerFrame
-				err = r.SetPixels(tv.signals[tv.currentSignalIdx:tv.signalsPerFrame], false)
+				err = r.SetPixels(tv.signals[tv.currentSignalIdx:], false)
 				if err != nil {
 					return curated.Errorf("television: %v", err)
 				}
@@ -557,8 +559,7 @@ func (tv *Television) processSignals(all bool) error {
 			}
 
 			if !all {
-				// currentIdx shouldn't ever be larger than signalsPerFrame
-				err = m.SetAudio(tv.signals[tv.currentSignalIdx:tv.signalsPerFrame])
+				err = m.SetAudio(tv.signals[tv.currentSignalIdx:])
 				if err != nil {
 					return curated.Errorf("television: %v", err)
 				}
@@ -641,7 +642,7 @@ func (tv *Television) SetSpec(spec string) error {
 }
 
 // Pause indicates that emulation has been paused. All unpushed pixels will be
-// pushed to immeditately. Not the same as PauseRendering(). Pause() should be
+// pushed immeditately. Not the same as PauseRendering(). Pause() should be
 // used when emulation is stopped. In this case, paused rendering is implied.
 func (tv *Television) Pause(pause bool) error {
 	for _, p := range tv.pauseTriggers {
