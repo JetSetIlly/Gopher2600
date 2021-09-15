@@ -242,9 +242,7 @@ The VCS panel is controlled through the function keys of the keyboard.
 In playmode, the additional keys are available:
 
 * `F7` Show FPS Indicator (also shows TV specification information)
-* `F9` Show Hardware Preferences window
-* `F9` Show TIA Revisions window
-* `F10` Show CRT Preferences window
+* `F10` Show Preferences Window
 * `F11` Toggle Fullscreen
 * `F12` Save [Screenshot](#screenshots)
 
@@ -414,9 +412,13 @@ versions of `Gopher2600` will correct this.
 
 ## TIA Revisions
 
-`Gopher2600` supports common revisions in the TIA chip. The configuration
-window is accessible through the debugger and through the playmode. In the
-latter case by pressing `F9`.
+`Gopher2600` supports common revisions in the TIA chip and can be changed
+through the prefrences window. 
+
+In playmode the preferences window can by opened by pressing `F10`. Select the
+`TIA Revisions` tab:
+
+<img src=".screenshots/tia_rev_prefs.png" height="400" alt="tia preferences tab"/>
 
 A summary of the known TIA revisions / bugs can be found at on [Atari Compendium](http://www.ataricompendium.com/faq/vcs_tia/vcs_tia.html). Not all revisions / bugs are supported by `Gopher2600`
 but the common ones are.
@@ -426,9 +428,10 @@ but the common ones are.
 `Gopher2600` tries to emulate the visual effect of a CRT television. This is by
 no means complete and is an area of active development.
 
-In playmode the preferences window can by opened by pressing `F10`.
+In playmode the preferences window can by opened by pressing `F10`. Select the
+`CRT` tab:
 
-<img src=".screenshots/crt_playmode_prefs_window.png" height="400" alt="crt playmode preferences window"/>
+<img src=".screenshots/crt_playmode_prefs_window.png" height="400" alt="crt preferences tab"/>
 
 In the debugger the preferences window can be opened from the `Debugger` menu
 and a preview can be seen in the `TV Screen` by pressing the `CRT Preview`
@@ -532,10 +535,12 @@ language (Go) - but it may be added in the future.
 ### ARM Preferences
 
 The characteristics of the ARM processor can be changed via the preferences
-window This is available in the debugger via the `Debugger` menu or by pressing
-`F8` when in playmode.
+window.
 
-<img src=".screenshots/arm_prefs.png" width="300" alt="ARM preferences"/> 
+In playmode the preferences window can by opened by pressing `F10`. Select the
+`ARM` tab:
+
+<img src=".screenshots/arm_prefs.png" width="300" alt="ARM preferences tab"/> 
 
 `Immediate ARM Execution` instructs the emulation to execute the Thumb program
 instantaneously without any cycle counting. For performance reasons, you may
