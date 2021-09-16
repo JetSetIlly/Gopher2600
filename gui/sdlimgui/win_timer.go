@@ -63,7 +63,7 @@ func (win *winTimer) draw() {
 		return
 	}
 
-	imgui.SetNextWindowPosV(imgui.Vec2{667, 656}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
+	imgui.SetNextWindowPosV(imgui.Vec2{659, 728}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
 	imgui.BeginV(win.id(), &win.open, imgui.WindowFlagsAlwaysAutoResize)
 
 	imgui.PushItemWidth(win.intervalComboDim.X)
