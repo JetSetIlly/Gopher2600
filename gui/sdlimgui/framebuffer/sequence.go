@@ -31,6 +31,9 @@ type Sequence struct {
 	rbo      uint32
 	width    int32
 	height   int32
+
+	// empty pixels used to clear texture on intiialisation and during Clear()
+	emptyPixels []uint8
 }
 
 // NewSequence is the preferred method of initialisation of the Sequence type.
@@ -59,17 +62,15 @@ func (seq *Sequence) Setup(width int32, height int32) bool {
 
 	seq.width = width
 	seq.height = height
+	seq.emptyPixels = make([]uint8, width*height*4)
 
 	for i := range seq.textures {
-		// allocate some empty pixels for our new texture
-		t := make([]uint8, width*height*4)
-
 		gl.GenTextures(1, &seq.textures[i])
 		gl.BindTexture(gl.TEXTURE_2D, seq.textures[i])
 		gl.TexImage2D(gl.TEXTURE_2D, 0,
 			gl.RGBA, seq.width, seq.height, 0,
 			gl.RGBA, gl.UNSIGNED_BYTE,
-			gl.Ptr(t))
+			gl.Ptr(seq.emptyPixels))
 		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
 		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
 		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_BORDER)
@@ -95,6 +96,17 @@ func (seq *Sequence) bind(idxTexture int) uint32 {
 	id := seq.textures[idxTexture]
 	gl.BindTexture(gl.TEXTURE_2D, id)
 	gl.FramebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, id, 0)
+	return id
+}
+
+// Clear texture. Black pixels
+func (seq *Sequence) Clear(idxTexture int) uint32 {
+	id := seq.bind(idxTexture)
+	gl.BindTexture(gl.TEXTURE_2D, id)
+	gl.TexImage2D(gl.TEXTURE_2D, 0,
+		gl.RGBA, seq.width, seq.height, 0,
+		gl.RGBA, gl.UNSIGNED_BYTE,
+		gl.Ptr(seq.emptyPixels))
 	return id
 }
 

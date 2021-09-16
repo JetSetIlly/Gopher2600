@@ -163,6 +163,10 @@ func (sh *crtSequencer) process(env shaderEnvironment, moreProcessing bool, numS
 		})
 
 		if moreProcessing {
+			// always clear the "more" texture because the shape of the texture
+			// (alpha pixels exposing the window background) may change. this
+			// leaves pixels from a previous shader in the texture.
+			sh.seq.Clear(more)
 			env.srcTextureID = sh.seq.Process(more, func() {
 				noise := sh.img.crtPrefs.Noise.Get().(bool)
 				sh.effectsShaderFlipped.(*effectsShader).setAttributesArgs(env, numScanlines, numClocks, noise)
@@ -175,6 +179,8 @@ func (sh *crtSequencer) process(env shaderEnvironment, moreProcessing bool, numS
 		}
 	} else {
 		if moreProcessing {
+			// see comment above
+			sh.seq.Clear(more)
 			env.srcTextureID = sh.seq.Process(more, func() {
 				sh.colorShaderFlipped.setAttributes(env)
 				env.draw()
