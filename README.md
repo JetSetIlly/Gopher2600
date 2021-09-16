@@ -31,15 +31,66 @@ The graphical [debugger](#debugger) is still in development but the current feat
 
 The following [screenshots](#screenshots) were taken in playmode with CRT effects enabled.
 
-<img src=".screenshots/games/pitfall.jpg" height="200" alt="pitfall"/> <img src=".screenshots/games/heman.jpg" height="200" alt="he-man"/>
-<img src=".screenshots/games/krull.jpg" height="200" alt="krull"/> <img src=".screenshots/games/ladybug.jpg" height="200" alt="ladybug"/>
-<img src=".screenshots/games/thrust.jpg" height="200" alt="thrust"/> <img src=".screenshots/games/mangoesdown.jpg" height="200" alt="man goes down"/>
-<img src=".screenshots/games/beast.jpg" height="200" alt="legacy of the beast"/> <img src=".screenshots/games/chiphead.jpg" height="200" alt="chiphead"/>
-<img src=".screenshots/games/genesis.jpg" height="200" alt="egypt genesis"/> <img src=".screenshots/games/draconian.jpg" height="200" alt="draconian"/>
-<img src=".screenshots/games/galagon.jpg" height="200" alt="galagon"/> <img src=".screenshots/games/turbo.jpg" height="200" alt="turbo"/>
-<img src=".screenshots/games/zookeeper.jpg" height="200" alt="zookeeper"/> <img src=".screenshots/games/moviecart.jpg" height="200" alt="moviecart"/>
+<table align="center">
+	<tr>
+		<td align="center">
+			<img src=".screenshots/games/pitfall.jpg" height="200" alt="pitfall"/>
+		</td>
+		<td align="center">
+			<img src=".screenshots/games/heman.jpg" height="200" alt="he-man"/>
+		</td>
+	</tr>
+	<tr>
+		<td align="center">
+			<img src=".screenshots/games/krull.jpg" height="200" alt="krull"/>
+		</td>
+		<td align="center">
+			<img src=".screenshots/games/ladybug.jpg" height="200" alt="ladybug"/>
+		</td>
+	</tr>
+	<tr>
+		<td align="center">
+			<img src=".screenshots/games/thrust.jpg" height="200" alt="thrust"/>
+		</td>
+		<td align="center">
+			<img src=".screenshots/games/mangoesdown.jpg" height="200" alt="man goes down"/>
+		</td>
+	</tr>
+	<tr>
+		<td align="center">
+			<img src=".screenshots/games/beast.jpg" height="200" alt="soul of the beast"/>
+		</td>
+		<td align="center">
+			<img src=".screenshots/games/chiphead.jpg" height="200" alt="chiphead"/>
+		</td>
+	</tr>
+	<tr>
+		<td align="center">
+			<img src=".screenshots/games/genesis.jpg" height="200" alt="egypt genesis"/>
+		</td>
+		<td align="center">
+			<img src=".screenshots/games/draconian.jpg" height="200" alt="draconian"/>
+		</td>
+	</tr>
+	<tr>
+		<td align="center">
+			<img src=".screenshots/games/galagon.jpg" height="200" alt="galagon"/>
+		</td>
+		<td align="center">
+			<img src=".screenshots/games/turbo.jpg" height="200" alt="turbo"/>
+		</td>
+	</tr>
+	<tr>
+		<td align="center">
+			<img src=".screenshots/games/zookeeper.jpg" height="200" alt="zookeeper"/>
+		</td>
+		<td align="center">
+			<img src=".screenshots/games/moviecart.jpg" height="200" alt="moviecart"/>
+		</td>
+	</tr>
+</table>
 
-Games shown: Pitfall; He-Man; Krull; Ladybug; Thrust; Man Goes Down; [Legacy of the Beast](https://aeriform.itch.io/beast); Chiphead; Egypt 2600BC by Genesis Project; Draconian; [Galagon](https://champ.games/downloads); [Turbo](https://champ.games/downloads); [Zookeeper](https://champ.games/downloads); [Movie Cart demo](#movie-cart).
+Games shown: Pitfall; He-Man; Krull; Ladybug; Thrust; Man Goes Down; [Soul of the Beast](https://aeriform.itch.io/beast); Chiphead; Egypt 2600BC by Genesis Project; Draconian; [Galagon](https://champ.games/downloads); [Turbo](https://champ.games/downloads); [Zookeeper](https://champ.games/downloads); [Movie Cart](#movie-cart).
 
 ## Scope of the project
 
@@ -56,7 +107,7 @@ Because of its origins, any flaws or limitations in the design should be borne
 in mind while the project is still in development. [I am open to any suggestions
 on how to improve the project](#self-reflection).
 
-### Performance
+## Performance
 
 The development machine for `Gopher2600` was an i3-3225 with 16GB of RAM. Host
 operating system throughout the development has been a Linux system (4.x
@@ -96,7 +147,7 @@ performance boost.
 
 ## Compilation
 
-The project has most recently been tested with Go v1.16.5.
+The project has most recently been tested with Go v1.17.
 
 The project uses the Go module system and dependencies will be resolved
 automatically. Do note however, that you will also require the SDL development
@@ -250,55 +301,18 @@ In addition, the following keys behave the same in both playmode and the
 debugger.
 
 * `ESC` Quit
-* `Scroll Lock` Toggle mouse capture 
-* `Pause` Pause/Resume emulation
-
-### Screenshots
-
-`Gopher2600` offers three methods for creating a screenshot. Ideally, the
-emulation will select the best method to use but this is currently not
-possible (although this is an ongoing area of research).
-
-The most basic method is the 'single frame' method. Press `F12` without any
-modifiers and a single image is saved to the working directory (or working
-folder for Windows users). 
-
-The 'double frame' method is useful for kernels that use a two-frame flicker
-kernel. In this method two consecutive frames are blended together to create a
-single image. This method is selected by pressing either `shift` key at the
-same time as the `F12` key.
-
-The 'triple frame' method meanwhile, the image is created by belnding three
-consecutive frames together. This is useful for the far rarer three-frame
-flicker kernel. This method is selected by pressing either `ctrl` key at the
-same time as the `F12` key.
-
-In the case of both the double and triple frame methods, multiple 'exposures'
-are made and saved (currently five). This is because it is not possible to
-guarantee the generation of a good image from a single exposure in all
-circumstances. From the exposures that are made the user can select the best
-image; and if absolutely necessary, make a composite image.
-
-Screenshot filenames will include whether the CRT effects were enabled, the
-name of the ROM file (without extension), the date/time (to make the filename
-unique) and the screenshot method (along with frame exposure).
-
-Some examples:
-
-* crt_Keystone_20210522_190921.jpg
-* crt_CDFJChess_20210522_191008_triple_3.jpg
-* pix_zookeeper_20200308_demo2_NTSC_20210522_190245_double_1.jpg
-
-The dimensions of the image will be the same as the displayed screen (without
-any window padding).
+* `Scroll Lock` Toggle mouse capture (`F14` on some keyboards)
+* `Pause` Pause/Resume emulation (`F15` on some keyboard)
 
 ## Debugger
 
 To run the debugger use the `DEBUG` submode
 
 	> gopher2600 debug roms/Pitfall.bin
-
-<img src=".screenshots/debugger_halo2600.png" height="400" alt="gopher2600 debugging GUI"/>
+	
+<p align=center>
+	<img src=".screenshots/debugger_halo2600.png" height="400" alt="gopher2600 debugging GUI"/>
+</p>
 
 Because the debugger is still in development, full documentation is not yet available. But briefly, the features we can see in this screeshot are:
 
@@ -375,7 +389,7 @@ Scripts can be recorded and played back with the `SCRIPT` command. All commands 
 or colour-clock. Rewinding by frame is best done through the `Control` window of
 the debugger. 
 
-<img src=".screenshots/control_window.png" height="200" alt="control window"/>
+<img align="left" src=".screenshots/control_window.png" width="200" alt="control window"/>
 
 Rewinding to a scanline/colour-clock is done by clicking the left mouse button
 on the debug screen, at the position required. This will change the state of
@@ -412,26 +426,28 @@ versions of `Gopher2600` will correct this.
 
 ## TIA Revisions
 
+<img align="right" src=".screenshots/tia_rev_prefs.png" width="300" alt="tia preferences tab"/>
+
 `Gopher2600` supports common revisions in the TIA chip and can be changed
 through the prefrences window. 
 
 In playmode the preferences window can by opened by pressing `F10`. Select the
 `TIA Revisions` tab:
 
-<img src=".screenshots/tia_rev_prefs.png" height="400" alt="tia preferences tab"/>
-
 A summary of the known TIA revisions / bugs can be found at on [Atari Compendium](http://www.ataricompendium.com/faq/vcs_tia/vcs_tia.html). Not all revisions / bugs are supported by `Gopher2600`
 but the common ones are.
 
+<br clear="right">
+
 ## CRT Effects
+
+<img align="left" src=".screenshots/crt_playmode_prefs_window.png" height="400" alt="crt preferences tab"/>
 
 `Gopher2600` tries to emulate the visual effect of a CRT television. This is by
 no means complete and is an area of active development.
 
 In playmode the preferences window can by opened by pressing `F10`. Select the
 `CRT` tab:
-
-<img src=".screenshots/crt_playmode_prefs_window.png" height="400" alt="crt preferences tab"/>
 
 In the debugger the preferences window can be opened from the `Debugger` menu
 and a preview can be seen in the `TV Screen` by pressing the `CRT Preview`
@@ -440,6 +456,47 @@ checkbox.
 The effects can be turned off completely with the `Pixel Perfect` option. In
 this mode, there is still the option to specify pixel fade. This is roughly
 equivalent to the `phosphor` effect.
+
+<br clear="left">
+
+## Screenshots
+
+`Gopher2600` offers three methods for creating a screenshot. Ideally, the
+emulation will select the best method to use but this is currently not
+possible (although this is an ongoing area of research).
+
+The most basic method is the 'single frame' method. Press `F12` without any
+modifiers and a single image is saved to the working directory (or working
+folder for Windows users). 
+
+The 'double frame' method is useful for kernels that use a two-frame flicker
+kernel. In this method two consecutive frames are blended together to create a
+single image. This method is selected by pressing either `shift` key at the
+same time as the `F12` key.
+
+The 'triple frame' method meanwhile, the image is created by belnding three
+consecutive frames together. This is useful for the far rarer three-frame
+flicker kernel. This method is selected by pressing either `ctrl` key at the
+same time as the `F12` key.
+
+In the case of both the double and triple frame methods, multiple 'exposures'
+are made and saved (currently five). This is because it is not possible to
+guarantee the generation of a good image from a single exposure in all
+circumstances. From the exposures that are made the user can select the best
+image; and if absolutely necessary, make a composite image.
+
+Screenshot filenames will include whether the CRT effects were enabled, the
+name of the ROM file (without extension), the date/time (to make the filename
+unique) and the screenshot method (along with frame exposure).
+
+Some examples:
+
+* crt_Keystone_20210522_190921.jpg
+* crt_CDFJChess_20210522_191008_triple_3.jpg
+* pix_zookeeper_20200308_demo2_NTSC_20210522_190245_double_1.jpg
+
+The dimensions of the image will be the same as the displayed screen (without
+any window padding).
 
 ## Configuration Directory
 
@@ -504,6 +561,8 @@ binary file named simply, `savekey`.
 
 ## PlusROM
 
+<img align="right" src=".screenshots/plusrom_first_installation.png" width="400" alt="plusrom cartridges ask for a username"/>
+
 The Atari2600 [Pluscart](http://pluscart.firmaplus.de/pico/) is a third-party
 peripheral that gives the Atari2600 internet connectivity. `Gopher2600` will
 automatically determine when a PlusROM enabled ROM is loaded.
@@ -513,14 +572,13 @@ username. This username along with the automatically generated ID, will be used
 to identify you on the PlusROM server (different ROMs can have different
 servers.)
 
-<img src=".screenshots/plusrom_first_installation.png" height="200" alt="plusrom cartridges ask for a username"/>
-
 You can change your username through the debugger, either through the PlusROM
 preferences window or through the [terminal](#debugger-terminal) with the `PLUSROM` command.
 
 `PlusROM` cartridges are [rewindable](#rewinding) but cannot be rewound
 backwards past a network event 'boundary'. This to prevent the resending of
 already sent network data.
+<br clear="right">
 
 ## ARM7TDMI Emulation
 
@@ -534,13 +592,13 @@ language (Go) - but it may be added in the future.
 
 ### ARM Preferences
 
+<img align="right" src=".screenshots/arm_prefs.png" width="300" alt="ARM preferences tab"/> 
+
 The characteristics of the ARM processor can be changed via the preferences
 window.
 
 In playmode the preferences window can by opened by pressing `F10`. Select the
 `ARM` tab:
-
-<img src=".screenshots/arm_prefs.png" width="300" alt="ARM preferences tab"/> 
 
 `Immediate ARM Execution` instructs the emulation to execute the Thumb program
 instantaneously without any cycle counting. For performance reasons, you may
@@ -563,16 +621,17 @@ that can be done if the PC value is out of range.
 
 Details of illegal memory accesses are always written to the log, regardless of
 the `Abort on Illegal Memory Access` option.
+<br clear="right">
 
 ### ARM Disassembly
+
+<img align="left" src=".screenshots/arm_disasm.png" width="400" alt="ARM7 last execution
+window"/> 
 
 The `Gopher2600` debugger provides a `last execution` window when an ARM using
 cartridge is loaded. This window shows the disassembly of the most recent
 execution of the ARM program. It is available via the `ARM7TDMI` menu
 which will appear in the menubar if the coprocessor is present.
-
-<img src=".screenshots/arm_disasm.png" width="300" alt="ARM7 last execution
-window"/> 
 
 The `Goto` button wil [rewind](#rewind) the emulation to the point where the
 ARM program last executed.
@@ -583,16 +642,21 @@ commas in this instance).
 
 Note that when the ARM emulation is run in `immediate mode`, the cycles column
 will not contain any meaningful information.
+<br clear="left">
 
 ### Estimation of ARM Execution Time (Cycle Counting)
+
+<img align="right" src=".screenshots/arm_timing.png" width="400" alt="ARM7 execution duration overlay"/> 
 
 For ARM development the `ARM7TDMI` overlay is provided. This overlay will be
 empty if the `Immediate ARM Execution` option is enabled but normally it will
 indicate the period the ARM program is running and the 6507 program is stalled.
 
-<img src=".screenshots/arm_timing.png" width="300" alt="ARM7 execution duration overlay"/> 
-
 Also note that for best results the `cropping` option (see screenshot) should be disabled.
+
+This view is useful during development to make sure you ARM program isn't running for too long.
+
+<br clear="right">
 
 ## Movie Cart
 
@@ -738,7 +802,9 @@ The screen below shows an example of the featured statistics. In this
 instance, this is the debugger running a 4k Atari cartridge (specifically,
 Pitfall).
 
-<img src=".screenshots/statsserver_debug.png" width="600" alt="stats server example charts (for the debugger)"/> 
+<p align="center">
+	<img src=".screenshots/statsserver_debug.png" width="600" alt="stats server example charts (for the debugger)"/> 
+</p>
 
 For people who really want to dig deep into the running program,
 `localhost:12600/debug/pprof/` gives more raw, but still useful
