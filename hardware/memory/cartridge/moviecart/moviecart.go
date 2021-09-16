@@ -798,7 +798,6 @@ func (cart *Moviecart) writeBackgroundStream(addr uint16, readCol bool) {
 const chunkSize = 8 * 512
 
 func (cart *Moviecart) readField() {
-
 	// the usual playback condition
 	if !cart.state.paused && cart.state.streamChunk > 0 {
 		dataOffset := cart.state.streamChunk * chunkSize

@@ -199,7 +199,6 @@ func (bs *BallSprite) rsync(adjustment int) {
 
 // returns true if pixel has changed.
 func (bs *BallSprite) tick() bool {
-
 	if *bs.tia.hblank {
 		// early return if nothing to do
 		if !(bs.tia.hmove.Clk && bs.MoreHMOVE) {

@@ -425,7 +425,6 @@ func (dbg *Debugger) contEmulation(inputter terminal.Input) error {
 			dbg.printLine(terminal.StyleError, "CPU halted mid-instruction. next step may be inaccurate.")
 			dbg.vcs.CPU.Interrupted = true
 		}
-
 	} else if dbg.vcs.CPU.LastResult.Final {
 		var err error
 

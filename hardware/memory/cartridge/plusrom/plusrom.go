@@ -26,7 +26,7 @@ import (
 )
 
 // Sentinal error indicating a specific problem with the attempt to load the
-// child cartridge into the PlusROM
+// child cartridge into the PlusROM.
 const NotAPlusROM = "not a plus rom: %s"
 
 // PlusROM wraps another mapper.CartMapper inside a network aware format.

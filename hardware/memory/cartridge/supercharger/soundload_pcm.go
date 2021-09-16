@@ -23,7 +23,7 @@ import (
 	"strings"
 
 	// "github.com/go-audio/audio"
-	// "github.com/go-audio/wav"
+	// "github.com/go-audio/wav".
 
 	"github.com/hajimehoshi/go-mp3"
 	"github.com/jetsetilly/gopher2600/cartridgeloader"

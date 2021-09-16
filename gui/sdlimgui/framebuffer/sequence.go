@@ -99,7 +99,7 @@ func (seq *Sequence) bind(idxTexture int) uint32 {
 	return id
 }
 
-// Clear texture. Black pixels
+// Clear texture. Black pixels.
 func (seq *Sequence) Clear(idxTexture int) uint32 {
 	id := seq.bind(idxTexture)
 	gl.BindTexture(gl.TEXTURE_2D, id)

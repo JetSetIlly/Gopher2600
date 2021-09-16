@@ -350,7 +350,7 @@ func (tia *TIA) resolveDelayedEvents() {
 	}
 }
 
-// Step moves the state of the tia forward one video cycle
+// Step moves the state of the tia forward one video cycle.
 func (tia *TIA) Step(readMemory bool) {
 	// update debugging information
 	tia.videoCycles++

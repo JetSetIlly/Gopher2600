@@ -39,7 +39,7 @@ type FrameInfo struct {
 	// to change.
 	VSynced bool
 
-	// Stable is true once the televsion frame has been consistent for N frames
+	// Stable is true once the television frame has been consistent for N frames
 	// after reset. This is useful for pixel renderers so that they don't show
 	// the loose frames that often occur after VCS reset.
 	//

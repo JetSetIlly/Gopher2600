@@ -321,7 +321,7 @@ func (p *Float) RegisterCallback(f func(value Value) error) {
 // The Generic prefs type does not have a way of registering a callback
 // function. It is also slower than other prefs types because it must protect
 // potential critical sections with a mutex (other types can use an atomic
-// value)
+// value).
 type Generic struct {
 	pref
 	crit sync.Mutex

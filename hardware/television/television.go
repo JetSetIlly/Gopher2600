@@ -710,7 +710,7 @@ func (tv *Television) GetReqSpecID() string {
 }
 
 // GetFrameInfo returns the television's current frame information. FPS and
-// RefreshRate is returned by GetReqFPS()
+// RefreshRate is returned by GetReqFPS().
 func (tv *Television) GetFrameInfo() FrameInfo {
 	return tv.state.frameInfo
 }

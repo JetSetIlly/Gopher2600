@@ -30,7 +30,7 @@ var coreData []byte
 //
 // these *must* relate to the core.bin embedded above
 //
-// !!TODO: embed core.bin address constants, generated during the assembly process of core.bin
+// !!TODO: embed core.bin address constants, generated during the assembly process of core.bin.
 const (
 	// processAddress().
 	addrTitleLoop = 0xb50

@@ -224,7 +224,6 @@ func (ms *MissileSprite) rsync(adjustment int) {
 
 // returns true if pixel has changed.
 func (ms *MissileSprite) tick(resetToPlayer bool) bool {
-
 	if *ms.tia.hblank {
 		// early return if nothing to do
 		if !ms.tia.hmove.Clk {

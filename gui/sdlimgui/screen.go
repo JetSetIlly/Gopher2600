@@ -62,7 +62,7 @@ type screenCrit struct {
 	// critical sectioning
 	section sync.Mutex
 
-	// the most recent frameInfo information from the televsion. updated via
+	// the most recent frameInfo information from the television. updated via
 	// Resize() and NewFrame()
 	frameInfo television.FrameInfo
 

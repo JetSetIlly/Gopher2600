@@ -110,7 +110,7 @@ func (lmtr *limiter) setRate(tv *Television, fps float32) {
 	lmtr.measureTime = time.Now()
 }
 
-// checkFrame should be called every frame
+// checkFrame should be called every frame.
 func (lmtr *limiter) checkFrame() {
 	lmtr.measureCt++
 	if lmtr.active && !lmtr.visualUpdates {
@@ -118,7 +118,7 @@ func (lmtr *limiter) checkFrame() {
 	}
 }
 
-// checkFrame should be called every scanline
+// checkFrame should be called every scanline.
 func (lmtr *limiter) checkScanline() {
 	if lmtr.active && lmtr.visualUpdates {
 		<-lmtr.pulse.C

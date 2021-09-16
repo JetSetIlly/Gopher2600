@@ -407,7 +407,7 @@ func (img *SdlImgui) imguiSwatch(col uint8, size float32) (clicked bool) {
 // shows tooltip on hover of the previous imgui digest/group. useful for simple
 // tooltips.
 func imguiTooltipSimple(tooltip string) {
-	// split string on newline and display with seperate calls to imgui.Text()
+	// split string on newline and display with separate calls to imgui.Text()
 	tooltip = strings.TrimSpace(tooltip)
 	if tooltip != "" && imgui.IsItemHovered() {
 		s := strings.Split(tooltip, "\n")

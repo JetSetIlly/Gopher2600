@@ -13,6 +13,7 @@ The key features of the emulator:
 * Network access through [PlusROM](#plusrom) emulation
 * [Savekey](#savekey) support
 * [CRT Effects](#crt-effects)
+* Stereo audio output
 * Support for common [TIA revisions](#tia-revisions)
 * Implementation of [Movie Cart](#movie-cart)
 
@@ -84,14 +85,13 @@ Viewer](#statistics-viewer) for details.
 
 There are very few options available to improve performance of the emulator.
 
-One thing you can do is to compile the project with version 1.17 of the Go
-compiler. This compiler version is currently in beta but has been extensively
-used during testing of `Gopher2600` with no problems.
+One thing you can do is to compile the project with at least version 1.17 of
+the Go compiler.
 
 Turning CRT effects off will likely have no effect.
 
 For ROMs that use the [ARM](#arm7tdmi-emulation) chip, setting the ARM to
-`immediate mode` will eliminate cycle counting and hence give a slight
+`immediate mode` will eliminate cycle counting and hence give a modest
 performance boost. 
 
 ## Compilation

@@ -25,24 +25,24 @@ type Event int
 // List of currently defined activities.
 const (
 	// LoadStarted is raised for Supercharger mapper whenever a new tape read
-	// sequence if started
+	// sequence if started.
 	EventSuperchargerLoadStarted Event = iota
 
 	// If Supercharger is loading from a fastload binary then this event is
-	// raised when the loading has been completed
+	// raised when the loading has been completed.
 	EventSuperchargerFastloadEnded
 
 	// If Supercharger is loading from a sound file (eg. mp3 file) then these
-	// events area raised when the loading has started/completed
+	// events area raised when the loading has started/completed.
 	EventSuperchargerSoundloadStarted
 	EventSuperchargerSoundloadEnded
 
-	// tape is rewinding
+	// tape is rewinding.
 	EventSuperchargerSoundloadRewind
 
-	// PlusROM cartridge has been inserted
+	// PlusROM cartridge has been inserted.
 	EventPlusROMInserted
 
-	// PlusROM network activity
+	// PlusROM network activity.
 	EventPlusROMNetwork
 )

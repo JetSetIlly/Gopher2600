@@ -26,7 +26,7 @@ import (
 
 const notificationDuration = 60 // frames
 
-// peripheralNotification is used to draw an indicator on the screen for controller change events
+// peripheralNotification is used to draw an indicator on the screen for controller change events.
 type peripheralNotification struct {
 	frames     int
 	icon       string
@@ -49,7 +49,6 @@ func (ca *peripheralNotification) set(peripheral plugging.PeripheralID) {
 		ca.icon = ""
 		return
 	}
-
 }
 
 func (ca *peripheralNotification) tick() {
@@ -102,7 +101,7 @@ func (ca *peripheralNotification) draw(win *playScr) {
 	imgui.End()
 }
 
-// cartridgeEventNotification is used to draw an indicator on the screen for cartride
+// cartridgeEventNotification is used to draw an indicator on the screen for cartridge
 // events defined in the mapper package.
 type cartridgeEventNotification struct {
 	open         bool
