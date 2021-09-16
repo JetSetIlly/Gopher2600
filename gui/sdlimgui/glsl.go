@@ -89,7 +89,7 @@ func (rnd *glsl) setupFonts() error {
 	defer mergeConfig.Delete()
 	mergeConfig.SetMergeMode(true)
 	mergeConfig.SetPixelSnapH(true)
-	mergeConfig.SetGlyphOffsetY(1.0)
+	mergeConfig.SetGlyphOffsetY(2.0)
 
 	// limit what glyphs we load
 	var glyphBuilder imgui.GlyphRangesBuilder

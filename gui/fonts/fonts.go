@@ -56,7 +56,7 @@ const (
 	GoingForward    = '\uf01e'
 	Persist         = '\uf021'
 	Breakpoint      = '\uf12a'
-	AudioDisabled   = '\uf00d'
+	AudioDisabled   = '\uf026'
 	AudioEnabled    = '\uf028'
 	TermPrompt      = '\uf105'
 	ColorSwatch     = '\uf111'

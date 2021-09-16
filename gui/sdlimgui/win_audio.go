@@ -16,6 +16,7 @@
 package sdlimgui
 
 import (
+	"fmt"
 	"math"
 
 	"github.com/inkyblackness/imgui-go/v4"
@@ -46,9 +47,8 @@ type winAudio struct {
 	newData       chan newAudioData
 	clearData     chan bool
 
-	enabledDim imgui.Vec2
-	monoDim    imgui.Vec2
-	stereoDim  imgui.Vec2
+	monoDim   imgui.Vec2
+	stereoDim imgui.Vec2
 }
 
 func newWinAudio(img *SdlImgui) (window, error) {
@@ -65,9 +65,6 @@ func newWinAudio(img *SdlImgui) (window, error) {
 }
 
 func (win *winAudio) init() {
-	imgui.PushFont(win.img.glsl.largeFontAwesome)
-	defer imgui.PopFont()
-	win.enabledDim = imguiGetFrameDim(string(fonts.AudioDisabled), string(fonts.AudioEnabled))
 	win.monoDim = imgui.Vec2{X: 200 + imgui.CurrentStyle().FramePadding().X + imgui.CurrentStyle().CellPadding().X}
 	win.stereoDim = imgui.Vec2{X: 100}
 }
@@ -98,12 +95,13 @@ func (win *winAudio) draw() {
 	defer imgui.PopStyleColorV(2)
 
 	if win.img.audio.Prefs.Stereo.Get().(bool) {
-		imgui.Text("TV Output (Stereo Mix)")
+		win.drawTVLabel("Stereo")
 		imgui.PlotLinesV("##stereoL", win.stereoLBuffer, 0, "", math.MaxFloat32, math.MaxFloat32, win.stereoDim)
 		imgui.SameLine()
 		imgui.PlotLinesV("##stereoR", win.stereoRBuffer, 0, "", math.MaxFloat32, math.MaxFloat32, win.stereoDim)
 	} else {
-		imgui.Text("TV Output (Mono Mix)")
+		imgui.AlignTextToFramePadding()
+		win.drawTVLabel("Mono")
 		imgui.PlotLinesV("##mono", win.monoBuffer, 0, "", math.MaxFloat32, math.MaxFloat32, win.monoDim)
 	}
 
@@ -137,22 +135,26 @@ func (win *winAudio) draw() {
 	}
 }
 
-func (win *winAudio) drawMute() {
+func (win *winAudio) drawTVLabel(label string) {
+	imgui.AlignTextToFramePadding()
+	imgui.Text(fmt.Sprintf("TV Output (%s)", label))
+	imgui.SameLine()
+
 	enabled := win.img.prefs.audioEnabled.Get().(bool)
 
-	label := string(fonts.AudioDisabled)
+	var output string
 	if enabled {
-		label = string(fonts.AudioEnabled)
+		output = fmt.Sprintf("%c", fonts.AudioEnabled)
+	} else {
+		output = fmt.Sprintf("%c muted", fonts.AudioDisabled)
 	}
 
-	imgui.PushFont(win.img.glsl.largeFontAwesome)
 	imgui.PushStyleColor(imgui.StyleColorButton, win.img.cols.Transparent)
 	imgui.PushStyleColor(imgui.StyleColorButtonActive, win.img.cols.Transparent)
 	imgui.PushStyleColor(imgui.StyleColorButtonHovered, win.img.cols.Transparent)
 	defer imgui.PopStyleColorV(3)
-	defer imgui.PopFont()
 
-	if imgui.ButtonV(label, imgui.Vec2{X: win.enabledDim.X}) {
+	if imgui.Button(output) {
 		win.img.prefs.audioEnabled.Set(!enabled)
 	}
 }
