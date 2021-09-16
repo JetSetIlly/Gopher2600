@@ -9,7 +9,7 @@ The key features of the emulator:
 * [Support for many of the known cartridge formats](#supported-cartridge-formats)
 * Emulation of the [ARM7TDMI](#arm7tdmi-emulation) as found in the `Harmony` cartridge
 * [Gameplay recording and playback](#recording-gameplay)
-* Support for (and auto-detection of) [stick, paddle and keyboard](#hand-controllers)
+* Support for (and auto-detection of) [stick, paddle and keypad](#hand-controllers)
 * Network access through [PlusROM](#plusrom) emulation
 * [Savekey](#savekey) support
 * [CRT Effects](#crt-effects)
@@ -208,8 +208,8 @@ Although if want to pass flags to the run mode you'll need to specify it.
 
 ## Hand Controllers
 
-Stick, paddle and keyboard inputs are supported. Currently, only stick and
-paddles for the left player are available but keyboard input is available for
+Stick, paddle and keypad inputs are supported. Currently, only stick and
+paddles for the left player are available but keypad input is available for
 both players.
 
 ### Stick
@@ -232,16 +232,53 @@ triggers will suffice but other games will perform better when using the mouse.
 `Nightdriver` is an example of a game that plays well with the triggers,
 whereas `Circus Tricks` is better played with the mouse.
 
-### Keyboard
+### Keypad
 
-Keyboard for both player 0 and player 1 are supported. 
+Keypad input for both players is supported. 
 
-|   |p0|   |   |p1|   |
-|:-:|:-:|:-:|:-:|:-:|:-:|
-| 1 | 2 | 3 | 4 | 5 | 6 |		
-| q | w | e | r | t | y |		
-| a | s | d | f | g | h |		
-| z | x | c | v | b | n |
+<table>
+	<tr>
+		<th colspan=3>Left Hand Player</th>
+		<th></th>
+		<th colspan=3>Right Hand Player</th>			
+	</tr>
+	<tr>
+		<td align="center">1</td>
+		<td align="center">2</td>
+		<td align="center">3</td>
+		<td></td>
+		<td align="center">4</td>
+		<td align="center">5</td>
+		<td align="center">6</td>
+	</tr>
+	<tr>
+		<td align="center">q</td>
+		<td align="center">w</td>
+		<td align="center">e</td>
+		<td></td>
+		<td align="center">r</td>
+		<td align="center">t</td>
+		<td align="center">y</td>
+	</tr>
+	<tr>
+		<td align="center">a</td>
+		<td align="center">s</td>
+		<td align="center">d</td>
+		<td></td>
+		<td align="center">f</td>
+		<td align="center">g</td>
+		<td align="center">h</td>
+	</tr>
+	<tr>
+		<td align="center">z</td>
+		<td align="center">x</td>
+		<td align="center">c</td>
+		<td></td>
+		<td align="center">v</td>
+		<td align="center">b</td>
+		<td align="center">n</td>
+	</tr>
+</table>
 
 ### Auto-Detection
 
@@ -250,9 +287,9 @@ by 'waggling' the control a few times in order to wake up the device.
 
 On startup, the stick is assumed to be the controller of choice.
 
-In the case of keyboard controllers, it's possible for the emulation to detect
-for certainty that a keyboard controller is required. It is therefore not
-possible to switch to or from keyboard control manually because there is no
+In the case of keypad controllers, it's possible for the emulation to detect
+for certainty that a keypad controller is required. It is therefore not
+possible to switch to or from keypad control manually because there is no
 need.
 
 ### Gamepad
@@ -360,17 +397,16 @@ by specifying a keyword. The list below shows the currently defined keywords.
 The rest of the section will give a brief run down of debugger features.
 
 	[ $f000 SEI ] >> help
-	         AUDIO          BALL         BREAK     CARTRIDGE         CLEAR
-	    CONTROLLER           CPU   DISASSEMBLY       DISPLAY          DROP
-	          GREP          HALT          HELP        INSERT      KEYBOARD
-	          LAST          LINT          LIST           LOG        MEMMAP
-	      MEMUSAGE       MISSILE        ONHALT        ONSTEP       ONTRACE
-	         PANEL         PATCH          PEEK        PLAYER     PLAYFIELD
-	       PLUSROM          POKE         PREFS       QUANTUM          QUIT
-	           RAM         RESET        REWIND          RIOT           RUN
-	        SCRIPT          STEP         STICK        SYMBOL           TIA
-	         TRACE          TRAP            TV         WATCH
-
+	    AUDIO         BALL        BREAK    CARTRIDGE        CLEAR   CONTROLLER
+          CPU       DISASM      DISPLAY         DROP         GREP         HALT
+         HELP       INSERT       KEYPAD         LAST         LINT         LIST
+          LOG       MEMMAP     MEMUSAGE      MISSILE       ONHALT       ONSTEP
+      ONTRACE        PANEL        PATCH         PEEK       PLAYER    PLAYFIELD
+      PLUSROM         POKE        PREFS      QUANTUM         QUIT          RAM
+        RESET       REWIND         RIOT          RUN       SCRIPT         STEP
+        STICK       SYMBOL          TIA        TRACE         TRAP           TV
+        WATCH
+	
 The debugger allows tab-completion in most situations. For example, pressing `W` followed by the Tab key on your keyboard, will autocomplete the `WATCH` command. This works for command arguments too. It does not currently work for filenames, or symbols. Given a choice of completions, the Tab key will cycle through the available options.
 
 Addresses can be specified by decimal or hexadecimal. Hexadecimal addresses can be written `0x80` or `$80`. The debugger will echo addresses in the first format. Addresses can also be specified by symbol if one is available. The debugger understands the canonical symbol names used in VCS development. For example, `WATCH NUSIZ0` will halt execution whenever address 0x04 (or any of its mirrors) is written to. 
