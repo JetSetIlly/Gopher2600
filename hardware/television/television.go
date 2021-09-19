@@ -443,6 +443,7 @@ func (tv *Television) newScanline() error {
 // the fromVsync arguments is true if a valid VSYNC signal has been detected. a
 // value of false means the frame flyback is unsynced.
 func (tv *Television) newFrame(fromVsync bool) error {
+	// note whether newFrame() was the result of a valid VSYNC or a "natural" flyback
 	tv.state.frameInfo.VSynced = fromVsync
 
 	// update refresh rate
@@ -452,8 +453,10 @@ func (tv *Television) newFrame(fromVsync bool) error {
 
 		tv.lmtr.setRefreshRate(tv, tv.state.frameInfo.RefreshRate)
 
-		// if the refresh rate has changed then by definition the frame is not VSynced
-		tv.state.frameInfo.VSynced = false
+		// previous versions of this code forced frameInfo.VSynced to false if
+		// we reached this point. this is wrong however. even if the number of
+		// scanlines fluctates wildly, the screen is still vsynced if a valid
+		// VSYNC signal has been detected.
 	}
 
 	// increase or reset stable frame count as required
