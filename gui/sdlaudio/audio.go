@@ -40,20 +40,24 @@ const minQueueLength = 512
 // the queue but the buffer is not reset.
 const critQueueLength = 128
 
-// if queued audio ever exceeds this value then clip the audio.
+// if queued audio ever exceeds this value then push the audio into the SDL buffer
 const maxQueueLength = 16384
 
 // Audio outputs sound using SDL.
 type Audio struct {
-	Prefs      *Preferences
-	stereo     bool
-	separation int
-
 	id   sdl.AudioDeviceID
 	spec sdl.AudioSpec
 
 	buffer   []uint8
 	bufferCt int
+
+	Prefs *Preferences
+
+	// local copy of some oft used preference values (too expensive to access
+	// for the preferences system every time SetAudio() is called) . we'll
+	// update these on every call to queueAudio()
+	stereo     bool
+	separation int
 }
 
 // NewAudio is the preferred method of initialisation for the Audio Type.
@@ -130,13 +134,9 @@ func (aud *Audio) SetAudio(sig []signal.SignalAttributes) error {
 
 		if aud.bufferCt >= len(aud.buffer) {
 			// if buffer is full then queue audio unconditionally
-			err := sdl.QueueAudio(aud.id, aud.buffer)
-			if err != nil {
-				return err
+			if err := aud.queueBuffer(); err != nil {
+				return curated.Errorf("sdlaudio", err)
 			}
-			aud.bufferCt = 0
-			aud.stereo = aud.Prefs.Stereo.Get().(bool)
-			aud.separation = aud.Prefs.Separation.Get().(int)
 		} else {
 			remaining := int(sdl.GetQueuedAudioSize(aud.id))
 
@@ -145,12 +145,9 @@ func (aud *Audio) SetAudio(sig []signal.SignalAttributes) error {
 				// in the buffer and NOT clearing the buffer
 				//
 				// condition valid when the frame rate is SIGNIFICANTLY LESS than 50/60fps
-				err := sdl.QueueAudio(aud.id, aud.buffer)
-				if err != nil {
-					return err
+				if err := aud.queueBuffer(); err != nil {
+					return curated.Errorf("sdlaudio", err)
 				}
-				aud.stereo = aud.Prefs.Stereo.Get().(bool)
-				aud.separation = aud.Prefs.Separation.Get().(int)
 			} else if remaining < minQueueLength && aud.bufferCt > 10 {
 				// if we're running short of bits in the queue the queue what we have
 				// in the buffer.
@@ -160,13 +157,9 @@ func (aud *Audio) SetAudio(sig []signal.SignalAttributes) error {
 				// the additional condition makes sure we're not queueing a slice
 				// that is too short. SDL has been known to hang with short audio
 				// queues
-				err := sdl.QueueAudio(aud.id, aud.buffer[:aud.bufferCt-1])
-				if err != nil {
-					return err
+				if err := aud.queueBuffer(); err != nil {
+					return curated.Errorf("sdlaudio", err)
 				}
-				aud.bufferCt = 0
-				aud.stereo = aud.Prefs.Stereo.Get().(bool)
-				aud.separation = aud.Prefs.Separation.Get().(int)
 			} else if remaining > maxQueueLength {
 				// if length of sdl: audio: queue is getting too long then clear it
 				//
@@ -180,6 +173,20 @@ func (aud *Audio) SetAudio(sig []signal.SignalAttributes) error {
 			}
 		}
 	}
+
+	return nil
+}
+
+func (aud *Audio) queueBuffer() error {
+	err := sdl.QueueAudio(aud.id, aud.buffer)
+	if err != nil {
+		return err
+	}
+	aud.bufferCt = 0
+
+	// update local preference values
+	aud.stereo = aud.Prefs.Stereo.Get().(bool)
+	aud.separation = aud.Prefs.Separation.Get().(int)
 
 	return nil
 }

@@ -66,6 +66,5 @@ const (
 	// of the controller.
 	ReqControllerChange FeatureReq = "ReqControllerChange" // plugging.PortID, plugging.PeripheralID
 
-
 	ReqCartridgeEvent FeatureReq = "ReqCartridgeEvent" // mapper.Event
 )
