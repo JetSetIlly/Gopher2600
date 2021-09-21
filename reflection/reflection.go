@@ -25,6 +25,9 @@ import (
 // Renderer implementations display or otherwise process VideoStep values.
 type Renderer interface {
 	// Reflect sends a VideoStep instance to the Renderer.
+	//
+	// Implementations should use the clock/scanline information in the Signal
+	// field of ReflectedVideoStep, rather than processing sequentially.
 	Reflect([]ReflectedVideoStep) error
 }
 
@@ -60,7 +63,8 @@ type ReflectedVideoStep struct {
 // Hmove groups the HMOVE reflection information. It's too complex a property
 // to distil into a single variable.
 //
-// Ordering of the structure is important.
+// Ordering of the structure is important in order to keep memory usage at a
+// minimum.
 type Hmove struct {
 	DelayCt  int
 	Delay    bool

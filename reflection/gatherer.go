@@ -61,9 +61,35 @@ func (ref *Gatherer) EnableReflection(enabled bool) {
 	ref.enabled = enabled
 }
 
-// Step should be called every video cycle to record the current state of the
-// emulation/system.
-func (ref *Gatherer) Step(bank mapper.BankInfo) error {
+// OnInstructionEnd should be called at the conclusion of a single CPU
+// instruction execution. This should be called appropriately by the execution
+// loop, in addition to OnVideoCycle(), because not all information about the
+// CPU can be gathered accurately at the time of the previous video step. And
+// by the time of the next video step the information will be lost.
+func (ref *Gatherer) OnInstructionEnd(bank mapper.BankInfo) error {
+	// in practical terms, we need this function to make sure that the CPU
+	// field is up-to-date. the other fields won't have changed
+
+	if !ref.enabled {
+		return nil
+	}
+
+	// update previous entry. if the history is empty then a new entry will be
+	// added, rather than updated. this can cause problems with reflection
+	// renderers if processing of history is strictly sequential. for this
+	// reason there is an advisory comment in the Renderer interface
+	// definition.
+	if ref.historyIdx > 0 {
+		ref.historyIdx--
+	}
+
+	return ref.OnVideoCycle(bank)
+}
+
+// OnVideoCycle should be called every video cycle to record the current state
+// of the system. See also OnInstructionEnd() in order to gather a complete
+// reflection of the system over time.
+func (ref *Gatherer) OnVideoCycle(bank mapper.BankInfo) error {
 	if !ref.enabled {
 		return nil
 	}
@@ -92,7 +118,7 @@ func (ref *Gatherer) Step(bank mapper.BankInfo) error {
 
 	// if reflector is paused then we need to reflect the pixel now
 	if ref.renderer != nil && ref.paused {
-		return ref.renderHistory()
+		return ref.render()
 	}
 
 	// reflector is not paused so we record VideoStep for later processing.
@@ -100,13 +126,14 @@ func (ref *Gatherer) Step(bank mapper.BankInfo) error {
 	ref.historyIdx++
 
 	if ref.historyIdx >= len(ref.history) {
-		return ref.renderHistory()
+		return ref.render()
 	}
 
 	return nil
 }
 
-func (ref *Gatherer) renderHistory() error {
+// push history to reflection renderer
+func (ref *Gatherer) render() error {
 	if err := ref.renderer.Reflect(ref.history[:ref.historyIdx]); err != nil {
 		return curated.Errorf("reflection: %v", err)
 	}
@@ -120,7 +147,7 @@ func (ref *Gatherer) Pause(pause bool) error {
 
 	// if new state is paused then render history
 	if ref.renderer != nil && ref.paused {
-		return ref.renderHistory()
+		return ref.render()
 	}
 
 	return nil
@@ -131,7 +158,7 @@ func (ref *Gatherer) NewFrame(_ television.FrameInfo) error {
 	// if new state is not paused then render history - the pause state is
 	// handled in the Step() function
 	if ref.renderer != nil && !ref.paused {
-		return ref.renderHistory()
+		return ref.render()
 	}
 
 	return nil

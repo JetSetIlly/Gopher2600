@@ -335,7 +335,7 @@ func (dbg *Debugger) readTerminal(inputter terminal.Input) error {
 
 func (dbg *Debugger) contEmulation(inputter terminal.Input) error {
 	quantumInstruction := func() error {
-		return dbg.ref.Step(dbg.lastBank)
+		return dbg.ref.OnVideoCycle(dbg.lastBank)
 	}
 
 	quantumVideo := func() error {
@@ -387,6 +387,11 @@ func (dbg *Debugger) contEmulation(inputter terminal.Input) error {
 		stepErr = dbg.vcs.Step(quantumVideo)
 	default:
 		stepErr = fmt.Errorf("unknown quantum mode")
+	}
+
+	// make sure reflection has been updated at the end of the instruction
+	if err := dbg.ref.OnInstructionEnd(dbg.lastBank); err != nil {
+		return err
 	}
 
 	if dbg.inputLoopRestart {

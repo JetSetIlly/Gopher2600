@@ -46,7 +46,7 @@ func (dbg *Debugger) CatchUpLoop(continueCheck func() bool) error {
 	switch dbg.quantum {
 	case QuantumInstruction:
 		onStep = func() error {
-			return dbg.ref.Step(dbg.lastBank)
+			return dbg.ref.OnVideoCycle(dbg.lastBank)
 		}
 	case QuantumVideo:
 		onStep = func() error {
@@ -56,7 +56,7 @@ func (dbg *Debugger) CatchUpLoop(continueCheck func() bool) error {
 					return nil
 				}
 			}
-			return dbg.ref.Step(dbg.lastBank)
+			return dbg.ref.OnVideoCycle(dbg.lastBank)
 		}
 	default:
 		return (fmt.Errorf("rewind: unknown quantum mode"))
@@ -64,6 +64,11 @@ func (dbg *Debugger) CatchUpLoop(continueCheck func() bool) error {
 
 	for continueCheck() {
 		err = dbg.vcs.Step(onStep)
+		if err != nil {
+			return err
+		}
+
+		err = dbg.ref.OnInstructionEnd(dbg.lastBank)
 		if err != nil {
 			return err
 		}
