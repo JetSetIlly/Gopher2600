@@ -21,9 +21,16 @@ package debugger
 import (
 	"fmt"
 
+	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/disassembly"
 	"github.com/jetsetilly/gopher2600/emulation"
 	"github.com/jetsetilly/gopher2600/logger"
+)
+
+// Sentinal error to indicate that CatchUpLoop() has reached the desired
+// cooreinates.
+const (
+	caughtUpOnVideoCycle = "CatchUpLoop() has finished on video cycle"
 )
 
 // CatchupLoop is an implementation of the rewind.Runner interface.
@@ -55,21 +62,35 @@ func (dbg *Debugger) CatchUpLoop(continueCheck func() bool) error {
 					return nil
 				}
 			}
-			return dbg.ref.OnVideoCycle(dbg.lastBank)
+			err = dbg.ref.OnVideoCycle(dbg.lastBank)
+			if err != nil {
+				return err
+			}
+			if !continueCheck() {
+				return curated.Errorf(caughtUpOnVideoCycle)
+			}
+			return nil
 		}
 	default:
 		return (fmt.Errorf("rewind: unknown quantum mode"))
 	}
 
-	for continueCheck() {
+	done := false
+
+	for !done {
+		done = !continueCheck()
+
 		err = dbg.vcs.Step(onStep)
 		if err != nil {
-			return err
-		}
-
-		err = dbg.ref.OnInstructionEnd(dbg.lastBank)
-		if err != nil {
-			return err
+			if !curated.Has(err, caughtUpOnVideoCycle) {
+				return err
+			}
+			done = true
+		} else {
+			err = dbg.ref.OnInstructionEnd(dbg.lastBank)
+			if err != nil {
+				return err
+			}
 		}
 
 		dbg.lastBank = dbg.vcs.Mem.Cart.GetBank(dbg.vcs.CPU.PC.Address())
@@ -177,7 +198,7 @@ func (dbg *Debugger) PushGotoCoords(frame int, scanline int, clock int) {
 		}()
 
 		f := func() error {
-			err := dbg.Rewind.GotoFrameCoords(frame, scanline, clock)
+			err := dbg.Rewind.GotoCoords(frame, scanline, clock)
 			if err != nil {
 				return err
 			}

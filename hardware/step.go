@@ -93,7 +93,10 @@ func (vcs *VCS) Step(videoCycleCallback func() error) error {
 	// CPU has been left in the unready state - continue cycling the VCS hardware
 	// until the CPU is ready
 	for !vcs.CPU.RdyFlg {
-		_ = videoCycle()
+		err = videoCycle()
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil

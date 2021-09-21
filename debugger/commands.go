@@ -245,7 +245,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 			dbg.setState(emulation.Stepping)
 
 			dbg.unwindInputLoop(func() error {
-				return dbg.Rewind.GotoFrameCoords(f, s, c)
+				return dbg.Rewind.GotoCoords(f, s, c)
 			})
 
 			return nil
@@ -334,20 +334,15 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		}
 
 	case cmdRewind:
-		// note that we calling the rewind.Goto*() functions directly and not
+		// note that we calling the rewind.GotoFrame() functions directly and not
 		// using the debugger.PushRewind() function.
 		arg, ok := tokens.Get()
 		if ok {
 			// rewinding in the middle of a CPU instruction requires the input loop
 			// to be unwound before continuing
 			dbg.unwindInputLoop(func() error {
-				// adjust gui state for rewinding event. put back into a suitable
-				// state afterwards.
-				if dbg.runUntilHalt {
-					defer dbg.scr.SetFeature(gui.ReqState, emulation.Running)
-				} else {
-					defer dbg.scr.SetFeature(gui.ReqState, emulation.Paused)
-				}
+				// stop emulation on rewind
+				dbg.runUntilHalt = false
 
 				if arg == "LAST" {
 					dbg.Rewind.GotoLast()
@@ -364,6 +359,30 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 				}
 				return nil
 			})
+		}
+
+	case cmdGoto:
+		// note that we calling the rewind.GotoCoords() functions directly and not
+		// using the debugger.PushGotoCoords() function.
+		var clock int
+		var scanline = dbg.vcs.TV.GetState(signal.ReqScanline)
+		var frame = dbg.vcs.TV.GetState(signal.ReqFramenum)
+
+		if s, ok := tokens.Get(); ok {
+			clock, _ = strconv.Atoi(s)
+			if s, ok := tokens.Get(); ok {
+				scanline, _ = strconv.Atoi(s)
+				if s, ok := tokens.Get(); ok {
+					frame, _ = strconv.Atoi(s)
+				}
+			}
+		}
+
+		dbg.scr.SetFeature(gui.ReqState, emulation.Rewinding)
+
+		err := dbg.Rewind.GotoCoords(frame, scanline, clock)
+		if err != nil {
+			return err
 		}
 
 	case cmdInsert:

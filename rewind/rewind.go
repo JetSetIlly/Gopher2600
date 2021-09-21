@@ -588,7 +588,7 @@ func (r *Rewind) GotoState(state *State) error {
 	frame := state.TV.GetState(signal.ReqFramenum)
 	scanline := state.TV.GetState(signal.ReqScanline)
 	clock := state.TV.GetState(signal.ReqClock)
-	return r.GotoFrameCoords(frame, scanline, clock)
+	return r.GotoCoords(frame, scanline, clock)
 }
 
 type PokeHook func(res *State) error
@@ -639,8 +639,8 @@ func (r *Rewind) RunFromState(from *State, to *State, poke PokeHook) error {
 // 	return nil
 // }
 
-// GotoFrameCoords of current frame.
-func (r *Rewind) GotoFrameCoords(frame int, scanline int, clock int) error {
+// GotoCoords moves emulation to specified frame/scanline/clock "coordinates".
+func (r *Rewind) GotoCoords(frame int, scanline int, clock int) error {
 	// get nearest index of entry from which we can being to (re)generate the
 	// current frame
 	idx, _, _ := r.findFrameIndex(frame)

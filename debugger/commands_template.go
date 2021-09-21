@@ -26,6 +26,7 @@ const (
 	cmdQuantum = "QUANTUM"
 	cmdScript  = "SCRIPT"
 	cmdRewind  = "REWIND"
+	cmdGoto    = "GOTO"
 
 	cmdInsert    = "INSERT"
 	cmdCartridge = "CARTRIDGE"
@@ -88,6 +89,7 @@ var commandTemplate = []string{
 	cmdQuantum + " (INSTRUCTION|VIDEO)",
 	cmdScript + " [RECORD %<new file>F|END|%<file>F]",
 	cmdRewind + " [%<frame>N|LAST|SUMMARY]",
+	cmdGoto + " [%<clock>N] (%<scanline>N) (%<frame>N)",
 
 	cmdInsert + " %<cartridge>F",
 	cmdCartridge + " (BANK|MAPPING|HASH|STATIC|REGISTERS|RAM|HOTLOAD)",
