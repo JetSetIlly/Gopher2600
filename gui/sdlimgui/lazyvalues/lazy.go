@@ -16,6 +16,7 @@
 package lazyvalues
 
 import (
+	"sync/atomic"
 	"time"
 
 	"github.com/jetsetilly/gopher2600/debugger"
@@ -61,6 +62,13 @@ type LazyValues struct {
 
 	// current time is put on the channel on every Refresh()
 	RefreshPulse chan time.Time
+
+	// we need a way of making sure we don't update the lazy values too often.
+	// if we're not careful the GUI thread can push refresh requests more
+	// quickly than the debugger input loop can handel them. this is
+	// particularly noticeable during a REWIND or GOTO event
+	refreshScheduled atomic.Value
+	refreshDone      atomic.Value
 }
 
 // NewLazyValues is the preferred method of initialisation for the Values type.
@@ -91,6 +99,9 @@ func NewLazyValues() *LazyValues {
 	val.SaveKey = newLazySaveKey(val)
 	val.Breakpoints = newLazyBreakpoints(val)
 	val.Rewind = newLazyRewind(val)
+
+	val.refreshScheduled.Store(false)
+	val.refreshDone.Store(false)
 
 	return val
 }
@@ -123,6 +134,43 @@ func (val *LazyValues) Refresh() {
 		return
 	}
 
+	if val.refreshDone.Load().(bool) {
+		val.refreshDone.Store(false)
+
+		val.Debugger.update()
+		val.CPU.update()
+		val.RAM.update()
+		val.Timer.update()
+		val.Playfield.update()
+		val.Player0.update()
+		val.Player1.update()
+		val.Missile0.update()
+		val.Missile1.update()
+		val.Ball.update()
+		val.TV.update()
+		val.Cart.update()
+		val.CoProc.update()
+		val.Controllers.update()
+		val.Prefs.update()
+		val.Collisions.update()
+		val.ChipRegisters.update()
+		val.Log.update()
+		val.SaveKey.update()
+		val.Rewind.update()
+		val.Breakpoints.update()
+
+		// put time of refresh on the RefreshPulse channel
+		select {
+		case val.RefreshPulse <- time.Now():
+		default:
+		}
+	}
+
+	if val.refreshScheduled.Load().(bool) {
+		return
+	}
+	val.refreshScheduled.Store(true)
+
 	val.dbg.PushRawEvent(func() {
 		val.Debugger.push()
 		val.CPU.push()
@@ -145,33 +193,7 @@ func (val *LazyValues) Refresh() {
 		val.SaveKey.push()
 		val.Rewind.push()
 		val.Breakpoints.push()
+		val.refreshScheduled.Store(false)
+		val.refreshDone.Store(true)
 	})
-
-	val.Debugger.update()
-	val.CPU.update()
-	val.RAM.update()
-	val.Timer.update()
-	val.Playfield.update()
-	val.Player0.update()
-	val.Player1.update()
-	val.Missile0.update()
-	val.Missile1.update()
-	val.Ball.update()
-	val.TV.update()
-	val.Cart.update()
-	val.CoProc.update()
-	val.Controllers.update()
-	val.Prefs.update()
-	val.Collisions.update()
-	val.ChipRegisters.update()
-	val.Log.update()
-	val.SaveKey.update()
-	val.Rewind.update()
-	val.Breakpoints.update()
-
-	// put time of refresh on the RefreshPulse channel
-	select {
-	case val.RefreshPulse <- time.Now():
-	default:
-	}
 }
