@@ -122,6 +122,12 @@ func (dbg *Debugger) PushRewind(fn int, last bool) bool {
 
 	// the function to push to the debugger/emulation routine
 	doRewind := func() error {
+		state := dbg.State()
+		dbg.setState(emulation.Rewinding)
+		defer func() {
+			dbg.setState(state)
+		}()
+
 		if last {
 			err := dbg.Rewind.GotoLast()
 			if err != nil {
@@ -142,12 +148,6 @@ func (dbg *Debugger) PushRewind(fn int, last bool) bool {
 	// how we push the doRewind() function depends on what kind of inputloop we
 	// are currently in
 	dbg.PushRawEvent(func() {
-		state := dbg.State()
-		dbg.setState(emulation.Rewinding)
-		defer func() {
-			dbg.setState(state)
-		}()
-
 		if dbg.isClockCycleInputLoop {
 			dbg.unwindInputLoop(doRewind)
 
@@ -173,46 +173,4 @@ func (dbg *Debugger) PushRewind(fn int, last bool) bool {
 	})
 
 	return true
-}
-
-// PushGotoCoords is a special case of PushRawEvent(). It prevents too may
-// pushed rewind.GotoFrameCoords() function calls.
-//
-// To be used from the GUI thread.
-func (dbg *Debugger) PushGotoCoords(frame int, scanline int, clock int) {
-	// try pushing to rewinding channel. do not continue if we cannot.
-	//
-	// unlike PushRewind() no indicator of success is returned. the request is
-	// just dropped.
-	select {
-	case dbg.rewinding <- true:
-	default:
-		return
-	}
-
-	dbg.PushRawEventImm(func() {
-		state := dbg.State()
-		dbg.setState(emulation.Rewinding)
-		defer func() {
-			dbg.setState(state)
-		}()
-
-		f := func() error {
-			err := dbg.Rewind.GotoCoords(frame, scanline, clock)
-			if err != nil {
-				return err
-			}
-
-			dbg.runUntilHalt = false
-
-			return nil
-		}
-
-		dbg.unwindInputLoop(f)
-
-		select {
-		case <-dbg.rewinding:
-		default:
-		}
-	})
 }

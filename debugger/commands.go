@@ -345,11 +345,13 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 				dbg.runUntilHalt = false
 
 				if arg == "LAST" {
+					dbg.setState(emulation.Rewinding)
 					dbg.Rewind.GotoLast()
 				} else if arg == "SUMMARY" {
 					dbg.printLine(terminal.StyleInstrument, dbg.Rewind.String())
 				} else {
 					frame, _ := strconv.Atoi(arg)
+					dbg.setState(emulation.Rewinding)
 					err := dbg.Rewind.GotoFrame(frame)
 					if err != nil {
 						return err
@@ -378,7 +380,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 			}
 		}
 
-		dbg.scr.SetFeature(gui.ReqState, emulation.Rewinding)
+		dbg.setState(emulation.Rewinding)
 
 		err := dbg.Rewind.GotoCoords(frame, scanline, clock)
 		if err != nil {

@@ -99,7 +99,7 @@ func (win *winCoProcLastExecution) draw() {
 			itr.Details.Scanline == win.img.lz.TV.Scanline &&
 			itr.Details.Clock == win.img.lz.TV.Clock) {
 			if imgui.Button("Goto") {
-				win.img.dbg.PushGotoCoords(itr.Details.Frame, itr.Details.Scanline, itr.Details.Clock)
+				win.img.term.pushCommand(fmt.Sprintf("GOTO %d %d %d", itr.Details.Clock, itr.Details.Scanline, itr.Details.Frame))
 			}
 		} else {
 			imgui.InvisibleButton("Goto", imgui.Vec2{X: 10, Y: imgui.FrameHeight()})

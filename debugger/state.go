@@ -65,17 +65,3 @@ func (dbg *Debugger) PushRawEvent(f func()) {
 		logger.Log("debugger", "dropped raw event push")
 	}
 }
-
-// PushRawEventImm onto the event queue. Similar to PushRawEvent() but handlers
-// will relinquish control of the handler thread immediately upon completion of
-// pushed funcion.
-//
-// Useful when pushed function has visual side-effects that must be serviced
-// immediately.
-func (dbg *Debugger) PushRawEventImm(f func()) {
-	select {
-	case dbg.events.RawEventsImm <- f:
-	default:
-		logger.Log("debugger", "dropped raw event (gui) push")
-	}
-}

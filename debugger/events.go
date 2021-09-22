@@ -72,10 +72,6 @@ func (dbg *Debugger) checkEvents() error {
 		case ev := <-dbg.events.RawEvents:
 			ev()
 
-		case ev := <-dbg.events.RawEventsImm:
-			ev()
-			return nil
-
 		default:
 			return nil
 		}

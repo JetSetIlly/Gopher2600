@@ -61,18 +61,9 @@ type ReadEvents struct {
 	IntEvents chan os.Signal
 
 	// RawEvents allows functions to be pushed into the debugger goroutine
-	RawEvents chan func()
-
-	// RawEventsImm is a variation of RawEvents that returns control to the
-	// input loop as soon as the function is run.
 	//
-	// Useful when pushed function have side-effects that must be serviced by
-	// the input loop immediately.
-	RawEventsImm chan func()
-
-	// errors are not returned by RawEvents or RawEventsGUI so errors
-	// accumulated inside a raw event function should be logged rather than
-	// dropped.
+	// errors are not returned by RawEvents so errors should be logged
+	RawEvents chan func()
 }
 
 // Output defines the operations required by an interface that allows output.

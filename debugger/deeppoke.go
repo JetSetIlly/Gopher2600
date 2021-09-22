@@ -48,7 +48,7 @@ func (dbg *Debugger) PushDeepPoke(addr uint16, value uint8, newValue uint8, valu
 		return false
 	}
 
-	dbg.PushRawEventImm(func() {
+	dbg.PushRawEvent(func() {
 		err := dbg.doDeepPoke(addr, value, newValue, valueMask)
 		if err != nil {
 			logger.Logf("deep-poke", "%v", err)

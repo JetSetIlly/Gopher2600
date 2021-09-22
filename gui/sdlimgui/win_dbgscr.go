@@ -252,7 +252,7 @@ func (win *winDbgScr) draw() {
 			if imgui.IsMouseReleased(0) {
 				win.img.screen.gotoCoordsX = win.mouseClock
 				win.img.screen.gotoCoordsY = win.img.wm.dbgScr.mouseScanline
-				win.img.dbg.PushGotoCoords(win.img.lz.TV.Frame, win.mouseScanline, win.mouseClock-specification.ClksHBlank)
+				win.img.term.pushCommand(fmt.Sprintf("GOTO %d %d", win.mouseClock-specification.ClksHBlank, win.mouseScanline))
 			}
 		}
 	}

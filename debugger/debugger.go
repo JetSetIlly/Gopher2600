@@ -236,7 +236,6 @@ func NewDebugger(tv *television.Television, scr gui.GUI, term terminal.Terminal,
 		UserInputHandler: dbg.userInputHandler,
 		IntEvents:        make(chan os.Signal, 1),
 		RawEvents:        make(chan func(), 32),
-		RawEventsImm:     make(chan func(), 32),
 	}
 
 	// connect Interrupt signal to dbg.events.intChan
