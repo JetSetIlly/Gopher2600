@@ -25,7 +25,7 @@ type GUI interface {
 	// errors that need handling.
 	SetFeatureNoError(request FeatureReq, args ...FeatureReqData)
 
-	// Return current state of GUI feautre.
+	// Return tcurrent state of GUI feautre.
 	GetFeature(request FeatureReq) (FeatureReqData, error)
 }
 

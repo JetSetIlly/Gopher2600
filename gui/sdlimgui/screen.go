@@ -335,7 +335,7 @@ func (scr *screen) NewFrame(frameInfo television.FrameInfo) error {
 				return nil
 			}
 		}
-	} else if scr.img.state != emulation.Rewinding {
+	} else if scr.img.emulation.State() != emulation.Rewinding {
 		// clear reflection pixels beyond the last X/Y plot
 		//
 		// this is hardly ever required but it is important for consistent
@@ -565,7 +565,7 @@ func (scr *screen) copyPixelsPlaymode() {
 	defer scr.crit.section.Unlock()
 
 	if scr.crit.frameInfo.Stable {
-		if scr.img.state == emulation.Paused {
+		if scr.img.emulation.State() == emulation.Paused {
 			// when emulation is paused we alternate which frame to show. this
 			// simple technique means that two-frame flicker kernels will show a
 			// still image that looks natural.

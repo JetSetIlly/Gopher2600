@@ -132,7 +132,7 @@ func (pol *polling) wait() sdl.Event {
 		pol.alerted = false
 	} else {
 		working := pol.awake ||
-			pol.img.lz.Debugger.HasChanged || pol.img.state != emulation.Paused ||
+			pol.img.lz.Debugger.HasChanged || pol.img.emulation.State() != emulation.Paused ||
 			pol.img.wm.dbgScr.crtPreview
 
 		if working {

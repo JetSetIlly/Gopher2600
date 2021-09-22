@@ -313,12 +313,10 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 			case "Pause":
 				fallthrough
 			case "F15":
-				if img.state == emulation.Paused {
+				if img.emulation.State() == emulation.Paused {
 					img.emulation.Pause(false)
-					img.state = emulation.Running
 				} else {
 					img.emulation.Pause(true)
-					img.state = emulation.Paused
 				}
 
 			default:
@@ -329,7 +327,7 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 			case "ScrollLock":
 				img.setCapture(!img.isCaptured())
 			case "Pause":
-				if img.state == emulation.Paused {
+				if img.emulation.State() == emulation.Paused {
 					img.term.pushCommand("RUN")
 				} else {
 					img.term.pushCommand("HALT")

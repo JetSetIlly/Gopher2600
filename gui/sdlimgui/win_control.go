@@ -97,7 +97,7 @@ func (win *winControl) draw() {
 
 func (win *winControl) drawRunButton() {
 	runDim := imgui.Vec2{X: imguiRemainingWinWidth(), Y: imgui.FrameHeight()}
-	if win.img.state == emulation.Running {
+	if win.img.emulation.State() == emulation.Running {
 		if imguiBooleanButton(win.img.cols, false, fmt.Sprintf("%c Halt", fonts.Halt), runDim) {
 			win.img.term.pushCommand("HALT")
 		}
@@ -232,7 +232,7 @@ func (win *winControl) drawFPS() {
 	}
 
 	imgui.Spacing()
-	if win.img.state == emulation.Running {
+	if win.img.emulation.State() == emulation.Running {
 		if win.img.lz.TV.ActualFPS <= win.img.lz.TV.ReqFPS*0.95 {
 			imgui.Text("running below requested FPS")
 		} else if win.img.lz.TV.ActualFPS > win.img.lz.TV.ReqFPS*0.95 {

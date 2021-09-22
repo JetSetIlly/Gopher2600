@@ -42,9 +42,8 @@ const (
 	// set the underlying emulation for the gui.
 	ReqSetEmulation FeatureReq = "ReqSetEmulation" // emulation.Emulation
 
-	// notify GUI of emulation state. the GUI should use this to alter how
-	// infomration, particularly the display of the PixelRenderer.
-	ReqState FeatureReq = "ReqState" // EmulationState
+	// program is ending. gui should do anything required before final exit.
+	ReqEnd FeatureReq = "ReqEnd" // nil
 
 	// whether gui should try to sync with the monitro refresh rate. not all
 	// gui modes have to obey this but for presentation/play modes it's a good

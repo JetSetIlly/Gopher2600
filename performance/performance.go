@@ -74,14 +74,6 @@ func Check(output io.Writer, profile Profile, includeDetail bool,
 	// get starting frame number (should be 0)
 	startFrame := tv.GetState(signal.ReqFramenum)
 
-	// notify gui that we're running
-	if scr != nil {
-		err = scr.SetFeature(gui.ReqState, emulation.Running)
-		if err != nil {
-			return curated.Errorf("performance: %v", err)
-		}
-	}
-
 	// run for specified period of time
 	runner := func() error {
 		// setup trigger that expires when duration has elapsed. signals true

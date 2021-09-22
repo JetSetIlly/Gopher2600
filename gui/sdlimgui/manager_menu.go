@@ -140,7 +140,7 @@ func (wm *manager) drawMenu() {
 	wdth -= rightJustText(wdth, wm.img.lz.Cart.Mapping, true)
 	wdth -= rightJustText(wdth, fmt.Sprintf("%.2fHz", wm.img.lz.TV.Hz), true)
 
-	if wm.img.state == emulation.Running {
+	if wm.img.emulation.State() == emulation.Running {
 		if wm.img.lz.TV.ReqFPS < 1.0 {
 			rightJustText(wdth, "< 1 fps", true)
 		} else {

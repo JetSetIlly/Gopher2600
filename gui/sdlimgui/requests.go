@@ -37,14 +37,8 @@ func (img *SdlImgui) GetFeature(request gui.FeatureReq) (gui.FeatureReqData, err
 // featureRequests have been handed over to the featureGet channel. we service
 // any requests on that channel here.
 func (img *SdlImgui) serviceGetFeature(request featureRequest) {
-	switch request.request {
-	case gui.ReqState:
-		img.polling.featureGetData <- img.state
-		img.polling.featureGetErr <- nil
-	default:
-		img.polling.featureGetData <- nil
-		img.polling.featureGetErr <- curated.Errorf(gui.UnsupportedGuiFeature, request.request)
-	}
+	img.polling.featureGetData <- nil
+	img.polling.featureGetErr <- curated.Errorf(gui.UnsupportedGuiFeature, request.request)
 }
 
 // SetFeature implements gui.GUI interface.
@@ -81,11 +75,8 @@ func (img *SdlImgui) serviceSetFeature(request featureRequest) {
 			img.setEmulation(request.args[0].(emulation.Emulation))
 		}
 
-	case gui.ReqState:
-		err = argLen(request.args, 1)
-		if err == nil {
-			img.setEmulationState(request.args[0].(emulation.State))
-		}
+	case gui.ReqEnd:
+		img.end()
 
 	case gui.ReqMonitorSync:
 		err = argLen(request.args, 1)
@@ -118,7 +109,7 @@ func (img *SdlImgui) serviceSetFeature(request featureRequest) {
 		}
 
 	case gui.ReqControllerChange:
-		if img.state == emulation.Initialising {
+		if img.emulation.State() == emulation.Initialising {
 			break
 		}
 
@@ -133,7 +124,7 @@ func (img *SdlImgui) serviceSetFeature(request featureRequest) {
 		}
 
 	case gui.ReqCartridgeEvent:
-		if img.state == emulation.Initialising {
+		if img.emulation.State() == emulation.Initialising {
 			break
 		}
 

@@ -24,7 +24,6 @@ import (
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
 	"github.com/jetsetilly/gopher2600/disassembly"
 	"github.com/jetsetilly/gopher2600/emulation"
-	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/instructions"
 )
 
@@ -152,10 +151,7 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, clockCycle bool) error {
 			if err != nil {
 				return err
 			}
-			err = dbg.scr.SetFeature(gui.ReqState, emulation.Paused)
-			if err != nil {
-				return err
-			}
+			dbg.setState(emulation.Paused)
 
 			// take note of current machine state if the emulation was in a running
 			// state and is halting just now
@@ -209,16 +205,10 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, clockCycle bool) error {
 						return err
 					}
 					if inputter.IsInteractive() {
-						err = dbg.scr.SetFeature(gui.ReqState, emulation.Running)
-						if err != nil {
-							return err
-						}
+						dbg.setState(emulation.Running)
 					}
 				} else {
-					err = dbg.scr.SetFeature(gui.ReqState, emulation.Stepping)
-					if err != nil {
-						return err
-					}
+					dbg.setState(emulation.Stepping)
 				}
 
 				// update comparison point before execution continues
@@ -226,10 +216,7 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, clockCycle bool) error {
 					dbg.Rewind.SetComparison()
 				}
 			} else if inputter.IsInteractive() {
-				err = dbg.scr.SetFeature(gui.ReqState, emulation.Stepping)
-				if err != nil {
-					return err
-				}
+				dbg.setState(emulation.Stepping)
 			}
 		}
 

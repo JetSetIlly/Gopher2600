@@ -245,7 +245,7 @@ func (win *winPrefs) drawARM() {
 		// !TODO: lazy system should be extended to work in playmode too. mainly to
 		// help with situations like this. if we access the CoProcBus thought the
 		// lazy system, we wouldn't need to check for initialising state.
-		if win.img.state == emulation.Initialising {
+		if win.img.emulation.State() == emulation.Initialising {
 			return
 		}
 	}

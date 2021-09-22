@@ -248,7 +248,7 @@ func (win *winDbgScr) draw() {
 	if imgui.IsWindowFocused() {
 		// mouse click will cause the rewind goto coords to run only when the
 		// emulation is paused
-		if win.img.state == emulation.Paused {
+		if win.img.emulation.State() == emulation.Paused {
 			if imgui.IsMouseReleased(0) {
 				win.img.screen.gotoCoordsX = win.mouseClock
 				win.img.screen.gotoCoordsY = win.img.wm.dbgScr.mouseScanline

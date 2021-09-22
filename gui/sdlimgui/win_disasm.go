@@ -235,7 +235,7 @@ func (win *winDisasm) draw() {
 	})
 
 	// handle different gui states.
-	switch win.img.state {
+	switch win.img.emulation.State() {
 	case emulation.Initialising:
 		win.focusOnAddr = win.followCPU
 

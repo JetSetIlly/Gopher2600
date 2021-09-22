@@ -60,10 +60,6 @@ type SdlImgui struct {
 	// GUI thread
 	lz *lazyvalues.LazyValues
 
-	// the gui renders differently depending on EmulationState. use setState()
-	// to set the value
-	state emulation.State
-
 	// isRewindSlider records whether the rewind slider control in the
 	// winControl type is being clicked/moved.
 	//
@@ -231,27 +227,17 @@ func (img *SdlImgui) quit() {
 	}
 }
 
+// end program. this differs from quit in that this function is called when we
+// receive a ReqEnd, which *may* have been sent in reponse to a EventQuit.
+func (img *SdlImgui) end() {
+	img.prefs.saveWin()
+}
+
 // draw gui. called from service loop.
 func (img *SdlImgui) draw() {
 	img.playScr.draw()
 	img.wm.draw()
 	img.drawPlusROMFirstInstallation()
-}
-
-// set emulation state and handle any changes.
-func (img *SdlImgui) setEmulationState(state emulation.State) {
-	img.state = state
-
-	img.lz.SetEmulationState(state)
-
-	switch img.state {
-	case emulation.Paused:
-		img.screen.render()
-	case emulation.Running:
-		img.screen.render()
-	case emulation.Halt:
-		img.prefs.saveWin()
-	}
 }
 
 // is the gui in playmode or not. thread safe. called from emulation thread

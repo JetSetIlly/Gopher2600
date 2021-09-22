@@ -291,12 +291,8 @@ func Play(tv *television.Television, scr gui.GUI, newRecording bool, cartload ca
 		}
 	}
 
-	// notify gui that we're running
+	// start off emulation in a running state
 	pl.state = emulation.Running
-	err = scr.SetFeature(gui.ReqState, pl.state)
-	if err != nil {
-		return curated.Errorf("playmode: %v", err)
-	}
 
 	// insert savekey if requested. we're doing this after setting the
 	// emulation state to running so that the savekey icon will be seen.

@@ -167,7 +167,7 @@ func (sh *dbgScreenShader) setAttributes(env shaderEnvironment) {
 	if sh.img.isRewindSlider {
 		gl.Uniform1i(sh.showCursor, 0)
 	} else {
-		switch sh.img.state {
+		switch sh.img.emulation.State() {
 		case emulation.Paused:
 			gl.Uniform1i(sh.showCursor, 1)
 		case emulation.Running:

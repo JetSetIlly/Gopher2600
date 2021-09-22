@@ -23,7 +23,6 @@ import (
 
 	"github.com/jetsetilly/gopher2600/disassembly"
 	"github.com/jetsetilly/gopher2600/emulation"
-	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
@@ -92,7 +91,8 @@ func (dbg *Debugger) PushRewind(fn int, last bool) bool {
 	// try pushing to the rewinding channel.
 	//
 	// if we cannot then that means a rewind is currently taking place and we
-	// return false to indicate that the request rewind has not taken place yet.
+	// return false to indicate that the requested rewind has not taken place
+	// yet.
 	select {
 	case dbg.rewinding <- true:
 	default:
@@ -120,8 +120,12 @@ func (dbg *Debugger) PushRewind(fn int, last bool) bool {
 
 	// how we push the doRewind() function depends on what kind of inputloop we
 	// are currently in
-	dbg.PushRawEventImm(func() {
-		dbg.scr.SetFeature(gui.ReqState, emulation.Rewinding)
+	dbg.PushRawEvent(func() {
+		state := dbg.State()
+		dbg.setState(emulation.Rewinding)
+		defer func() {
+			dbg.setState(state)
+		}()
 
 		if dbg.isClockCycleInputLoop {
 			dbg.unwindInputLoop(doRewind)
@@ -166,7 +170,11 @@ func (dbg *Debugger) PushGotoCoords(frame int, scanline int, clock int) {
 	}
 
 	dbg.PushRawEventImm(func() {
-		dbg.scr.SetFeature(gui.ReqState, emulation.Rewinding)
+		state := dbg.State()
+		dbg.setState(emulation.Rewinding)
+		defer func() {
+			dbg.setState(state)
+		}()
 
 		f := func() error {
 			err := dbg.Rewind.GotoFrameCoords(frame, scanline, clock)
