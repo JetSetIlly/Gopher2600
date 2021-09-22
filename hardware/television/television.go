@@ -154,8 +154,8 @@ type Television struct {
 	// the index of the most recent Signal()
 	currentSignalIdx int
 
-	// pause forwarding of signals to pixel renderers
-	pauseRendering bool
+	// rendering is disabled. signals are not forwarded to pixel renderers
+	disabled bool
 }
 
 // NewReference creates a new instance of the reference television type,
@@ -538,7 +538,7 @@ func (tv *Television) newFrame(fromVsync bool) error {
 // including those from the previous frame. signals from the previous frame
 // will be marked as non-current.
 func (tv *Television) renderSignals(all bool) error {
-	if !tv.pauseRendering {
+	if !tv.disabled {
 		for _, r := range tv.renderers {
 			err := r.SetPixels(tv.signals[:tv.currentSignalIdx], true)
 			if err != nil {
@@ -645,8 +645,10 @@ func (tv *Television) SetSpec(spec string) error {
 }
 
 // Pause indicates that emulation has been paused. All unpushed pixels will be
-// pushed immeditately. Not the same as PauseRendering(). Pause() should be
-// used when emulation is stopped. In this case, paused rendering is implied.
+// pushed immeditately. Not the same as PauseRendering().
+//
+// Pause() should be used when emulation is stopped. In these case
+// PauseRendering() is implied.
 func (tv *Television) Pause(pause bool) error {
 	for _, p := range tv.pauseTriggers {
 		if err := p.Pause(pause); err != nil {
@@ -664,14 +666,17 @@ func (tv *Television) Pause(pause bool) error {
 	return nil
 }
 
-// PauseRendering halts all forwarding to attached pixel renderers. Not the
-// same as Pause(). PauseRendering() should be used when emulation is running
-// but no rendering is to take place.
-func (tv *Television) PauseRendering(pause bool) {
-	tv.pauseRendering = pause
-	if !tv.pauseRendering {
-		tv.renderSignals(false)
+// DisableRendering prevents the television from pushing signals to attached
+// pixel renderers.
+//
+// All outstanding signals will be pushed to the pixel renderers when disabled
+// is set to fale.
+func (tv *Television) DisableRendering(disabled bool) error {
+	tv.disabled = disabled
+	if !tv.disabled {
+		return tv.renderSignals(false)
 	}
+	return nil
 }
 
 // SetFPSCap whether the emulation should wait for FPS limiter. Returns the

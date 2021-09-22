@@ -29,11 +29,16 @@ type Input interface {
 	// If possible the TermRead() implementation should regularly check the
 	// ReadEvents channels for activity. Not all implementations will be able
 	// to do so because of the context in which they operate.
+	//
+	// Implementations that can't check ReadEvents will surely limit the
+	// functionality of the debugger.
 	TermRead(buffer []byte, prompt Prompt, events *ReadEvents) (int, error)
 
 	// TermReadCheck() returns true if there is input to be read. Not all
 	// implementations will be able return anything meaningful in which case a
 	// return value of false is fine.
+	//
+	// Note that TermReadCheck() does not check for events like TermRead().
 	TermReadCheck() bool
 
 	// IsInteractive() should return true for implementations that require user
@@ -53,7 +58,8 @@ const (
 
 // ReadEvents *must* be monitored during a TermRead().
 type ReadEvents struct {
-	// gui events. must be handled immediately by accompanying GuiEventHandler
+	// user input events. these are the inputs into the emulation (ie.
+	// joystick, paddle, etc.)
 	UserInput        chan userinput.Event
 	UserInputHandler func(userinput.Event) error
 
@@ -64,6 +70,10 @@ type ReadEvents struct {
 	//
 	// errors are not returned by RawEvents so errors should be logged
 	RawEvents chan func()
+
+	// RawEventsReturn is the same as RawEvnts but handlers must return control
+	// to the debugger inputloop after the function has run
+	RawEventsReturn chan func()
 }
 
 // Output defines the operations required by an interface that allows output.

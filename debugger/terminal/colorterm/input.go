@@ -123,6 +123,10 @@ func (ct *ColorTerminal) TermRead(input []byte, prompt terminal.Prompt, events *
 		case ev := <-events.RawEvents:
 			ev()
 
+		case ev := <-events.RawEventsReturn:
+			ev()
+			return 0, nil
+
 		case readRune := <-ct.reader:
 			if readRune.err != nil {
 				return inputLen, readRune.err

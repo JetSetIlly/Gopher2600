@@ -20,6 +20,7 @@ import (
 	"os/signal"
 	"strings"
 	"sync/atomic"
+	"time"
 
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/curated"
@@ -115,7 +116,6 @@ type Debugger struct {
 
 	// the Rewind system stores and restores machine state.
 	Rewind     *rewind.Rewind
-	rewinding  chan bool
 	deepPoking chan bool
 
 	// whether the state of the emulation has changed since the last time it
@@ -124,8 +124,7 @@ type Debugger struct {
 
 	// \/\/\/ inputLoop \/\/\/
 
-	// is current inputloop inside a clock cycle
-	isClockCycleInputLoop bool
+	eventCheckPulse *time.Ticker
 
 	// buffer for user input
 	input []byte
@@ -150,8 +149,12 @@ type Debugger struct {
 
 	// some operations require that the input loop be restarted to make sure
 	// continued operation is not inside a video cycle loop
-	inputLoopRestart   bool
-	inputLoopOnRestart func() error
+	unwindLoopRestart func() error
+
+	// after a rewinding event it is necessary to make sure the emulation is in
+	// the correct place
+	catchupContinue func() bool
+	catchupEnd      func()
 }
 
 // NewDebugger creates and initialises everything required for a new debugging
@@ -166,6 +169,9 @@ func NewDebugger(tv *television.Television, scr gui.GUI, term terminal.Terminal,
 
 		// by definition the state of debugger has changed during startup
 		hasChanged: true,
+
+		// the ticker to indicate whether we should check for events in the inputLoop
+		eventCheckPulse: time.NewTicker(50 * time.Millisecond),
 	}
 
 	dbg.state.Store(emulation.Initialising)
@@ -212,7 +218,6 @@ func NewDebugger(tv *television.Television, scr gui.GUI, term terminal.Terminal,
 	if err != nil {
 		return nil, curated.Errorf("debugger: %v", err)
 	}
-	dbg.rewinding = make(chan bool, 1)
 	dbg.deepPoking = make(chan bool, 1)
 
 	// plug TV BoundaryTrigger into CPU
@@ -236,6 +241,7 @@ func NewDebugger(tv *television.Television, scr gui.GUI, term terminal.Terminal,
 		UserInputHandler: dbg.userInputHandler,
 		IntEvents:        make(chan os.Signal, 1),
 		RawEvents:        make(chan func(), 32),
+		RawEventsReturn:  make(chan func(), 32),
 	}
 
 	// connect Interrupt signal to dbg.events.intChan
@@ -281,6 +287,32 @@ func (dbg *Debugger) State() emulation.State {
 }
 
 func (dbg *Debugger) setState(state emulation.State) {
+	switch dbg.State() {
+	case emulation.Rewinding:
+		err := dbg.tv.DisableRendering(false)
+		if err != nil {
+			logger.Logf("debugger", "emulation.Rewinding: %v", err)
+		}
+	}
+
+	switch state {
+	case emulation.Paused:
+		err := dbg.tv.Pause(true)
+		if err != nil {
+			logger.Logf("debugger", "emulation.Paused: %v", err)
+		}
+	case emulation.Running:
+		err := dbg.tv.Pause(false)
+		if err != nil {
+			logger.Logf("debugger", "emulation.Running: %v", err)
+		}
+	case emulation.Rewinding:
+		err := dbg.tv.DisableRendering(true)
+		if err != nil {
+			logger.Logf("debugger", "emulation.Rewinding: %v", err)
+		}
+	}
+
 	dbg.state.Store(state)
 }
 
@@ -340,16 +372,12 @@ func (dbg *Debugger) Start(initScript string, cartload cartridgeloader.Loader) e
 		}
 
 		// handle inputLoopRestart and any on-restart function
-		if dbg.inputLoopRestart {
-			if dbg.inputLoopOnRestart != nil {
-				err := dbg.inputLoopOnRestart()
-				if err != nil {
-					logger.Log("input loop restart", err.Error())
-				}
+		if dbg.unwindLoopRestart != nil {
+			err := dbg.unwindLoopRestart()
+			if err != nil {
+				logger.Log("input loop restart", err.Error())
 			}
-
-			dbg.inputLoopRestart = false
-			dbg.inputLoopOnRestart = nil
+			dbg.unwindLoopRestart = nil
 		} else {
 			done = true
 		}
@@ -385,13 +413,6 @@ func (dbg *Debugger) reset() error {
 	dbg.Rewind.Reset()
 	dbg.lastResult = &disassembly.Entry{Result: execution.Result{Final: true}}
 	return nil
-}
-
-// in the event that the input loop needs to be unwound and restarted then use
-// the unwindInputLoop() function for convenience.
-func (dbg *Debugger) unwindInputLoop(onRestart func() error) {
-	dbg.inputLoopRestart = true
-	dbg.inputLoopOnRestart = onRestart
 }
 
 // attachCartridge makes sure that the cartridge loaded into vcs memory and the

@@ -33,17 +33,7 @@ import (
 
 // Runner provides the rewind package the opportunity to run the emulation.
 type Runner interface {
-	// CatchUpLoop implementations will run the emulation until continueCheck
-	// returns false.
-	//
-	// Note that the TV's frame limiter is turned off before CatchUpLoop() is
-	// called by the rewind system (and turned back to the previous setting
-	// afterwards).
-	//
-	// CatchUpLoop may choose to service events (GUI events etc.) while it is
-	// iterating but depending on required performance this may not be
-	// necessary.
-	CatchUpLoop(continueCheck func() bool) error
+	CatchUpLoop(frame int, scanline int, clock int) error
 }
 
 // State contains pointers to areas of the VCS emulation. They can be read for
@@ -361,16 +351,12 @@ func (r *Rewind) setContinuePoint(idx int, frame int, scanline int, clock int) e
 	r.splice = idx
 
 	s := r.entries[idx]
-	startingFrame := s.TV.GetState(signal.ReqFramenum)
 
 	// plumb in selected entry
 	err := r.plumbState(s, frame, scanline, clock)
 	if err != nil {
 		return err
 	}
-
-	// update frames since snapshot
-	r.framesSinceSnapshot = r.vcs.TV.GetState(signal.ReqFramenum) - startingFrame - 1
 
 	return nil
 }
@@ -400,10 +386,6 @@ func plumb(vcs *hardware.VCS, state *State) {
 // note that this will not update the splice point up update the framesSinceSnapshot
 // value. use plumb() with an index into the history for that.
 func (r *Rewind) plumbState(s *State, frame, scanline, clock int) error {
-	// pause TV rendering
-	r.vcs.TV.PauseRendering(true)
-	defer r.vcs.TV.PauseRendering(false)
-
 	plumb(r.vcs, s)
 
 	// if this is a reset entry then TV must be reset
@@ -414,33 +396,9 @@ func (r *Rewind) plumbState(s *State, frame, scanline, clock int) error {
 		}
 	}
 
-	// turn off TV's fps frame limiter
-	cap := r.vcs.TV.SetFPSCap(false)
-	defer r.vcs.TV.SetFPSCap(cap)
-
-	// snapshot adhoc frame as soon as convenient. not required when snapshot
-	// frequency is one
-	adhocFrameDone := r.Prefs.Freq.Get().(int) == 1
-
-	continueCheck := func() bool {
-		nf := r.vcs.TV.GetState(signal.ReqFramenum)
-		ns := r.vcs.TV.GetState(signal.ReqScanline)
-		nc := r.vcs.TV.GetState(signal.ReqClock)
-
-		if !adhocFrameDone && nf == frame-1 {
-			r.adhocFrame = r.snapshot(levelAdhoc)
-			adhocFrameDone = true
-		}
-
-		// check to see if TV state exceeds the requested state
-		done := nf > frame || (nf == frame && ns > scanline) || (nf == frame && ns == scanline && nc >= clock)
-
-		// do not continue if we have gone too far
-		return !done
-	}
-
 	// run emulation until continueCheck returns false
-	err := r.runner.CatchUpLoop(continueCheck)
+	// err := r.runner.CatchUpLoop(continueCheck)
+	err := r.runner.CatchUpLoop(frame, scanline, clock)
 	if err != nil {
 		return curated.Errorf("rewind", err)
 	}

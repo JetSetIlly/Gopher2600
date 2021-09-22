@@ -184,7 +184,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 	case cmdReset:
 		// resetting in the middle of a CPU instruction requires the input loop
 		// to be unwound before continuing
-		dbg.unwindInputLoop(dbg.reset)
+		dbg.unwindLoop(dbg.reset)
 		dbg.printLine(terminal.StyleFeedback, "machine reset")
 
 	case cmdRun:
@@ -244,7 +244,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 
 			dbg.setState(emulation.Stepping)
 
-			dbg.unwindInputLoop(func() error {
+			dbg.unwindLoop(func() error {
 				return dbg.Rewind.GotoCoords(f, s, c)
 			})
 
@@ -338,34 +338,29 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		// using the debugger.PushRewind() function.
 		arg, ok := tokens.Get()
 		if ok {
-			// rewinding in the middle of a CPU instruction requires the input loop
-			// to be unwound before continuing
-			dbg.unwindInputLoop(func() error {
-				// stop emulation on rewind
-				dbg.runUntilHalt = false
+			// stop emulation on rewind
+			dbg.runUntilHalt = false
 
-				if arg == "LAST" {
-					dbg.setState(emulation.Rewinding)
-					dbg.Rewind.GotoLast()
-				} else if arg == "SUMMARY" {
-					dbg.printLine(terminal.StyleInstrument, dbg.Rewind.String())
-				} else {
-					frame, _ := strconv.Atoi(arg)
-					dbg.setState(emulation.Rewinding)
+			if arg == "LAST" {
+				dbg.setState(emulation.Rewinding)
+				dbg.unwindLoop(dbg.Rewind.GotoLast)
+			} else if arg == "SUMMARY" {
+				dbg.printLine(terminal.StyleInstrument, dbg.Rewind.String())
+			} else {
+				frame, _ := strconv.Atoi(arg)
+				dbg.setState(emulation.Rewinding)
+				dbg.unwindLoop(func() error {
 					err := dbg.Rewind.GotoFrame(frame)
 					if err != nil {
 						return err
 					}
-					frame = dbg.vcs.TV.GetState(signal.ReqFramenum)
-					dbg.printLine(terminal.StyleFeedback, fmt.Sprintf("rewind set to frame %d", frame))
-				}
-				return nil
-			})
+					return nil
+				})
+			}
+			return nil
 		}
 
 	case cmdGoto:
-		// note that we calling the rewind.GotoCoords() functions directly and not
-		// using the debugger.PushGotoCoords() function.
 		var clock int
 		var scanline = dbg.vcs.TV.GetState(signal.ReqScanline)
 		var frame = dbg.vcs.TV.GetState(signal.ReqFramenum)
@@ -382,10 +377,13 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 
 		dbg.setState(emulation.Rewinding)
 
-		err := dbg.Rewind.GotoCoords(frame, scanline, clock)
-		if err != nil {
-			return err
-		}
+		dbg.unwindLoop(func() error {
+			err := dbg.Rewind.GotoCoords(frame, scanline, clock)
+			if err != nil {
+				return err
+			}
+			return nil
+		})
 
 	case cmdInsert:
 		cart, _ := tokens.Get()

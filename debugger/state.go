@@ -55,13 +55,21 @@ func (dbg *Debugger) TogglePCBreak(e *disassembly.Entry) {
 	dbg.breakpoints.togglePCBreak(e)
 }
 
-// PushRawEvent onto the event queue. This can be used to get information out
-// of the debygger into another goroutine. Useful for when there is no
-// equivalent terminal command.
+// PushRawEvent onto the event queue.
 func (dbg *Debugger) PushRawEvent(f func()) {
 	select {
 	case dbg.events.RawEvents <- f:
 	default:
 		logger.Log("debugger", "dropped raw event push")
+	}
+}
+
+// PushRawEventReturn is the same as PushRawEvent but handlers will return to the
+// input loop for immediate action.
+func (dbg *Debugger) PushRawEventReturn(f func()) {
+	select {
+	case dbg.events.RawEventsReturn <- f:
+	default:
+		logger.Log("debugger", "dropped raw event push (to return channel)")
 	}
 }

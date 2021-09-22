@@ -37,7 +37,13 @@ func (dbg *Debugger) userInputHandler(ev userinput.Event) error {
 	return nil
 }
 
-func (dbg *Debugger) checkEvents() error {
+// readEventsHandler is called by inputLoop to make sure the program is
+// handling pushed events and/or user input.
+//
+// used alongside TermReadCheck() it means the inputLoop can react without
+// having to enter the TermRead() function. The TermRead() function is only
+// used when the emulation is halted.
+func (dbg *Debugger) readEventsHandler() error {
 	for {
 		select {
 		case <-dbg.events.IntEvents:
@@ -64,13 +70,17 @@ func (dbg *Debugger) checkEvents() error {
 			dbg.running = false
 
 		case ev := <-dbg.events.UserInput:
-			err := dbg.userInputHandler(ev)
+			err := dbg.events.UserInputHandler(ev)
 			if err != nil {
 				return err
 			}
 
 		case ev := <-dbg.events.RawEvents:
 			ev()
+
+		case ev := <-dbg.events.RawEventsReturn:
+			ev()
+			return nil
 
 		default:
 			return nil
