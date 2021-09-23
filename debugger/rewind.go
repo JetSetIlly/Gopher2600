@@ -22,9 +22,10 @@ import (
 	"github.com/jetsetilly/gopher2600/emulation"
 )
 
-// PushRewind is a special case of PushRawEvent(). It prevents too many pushed
-// rewind.GotoFrame function calls. Returns false if the rewind hasn't been
-// pushed. The caller should try again.
+// PushRewind is a special case of PushRawEvent(). Useful instad of calling
+// pushing the REWIND command and is quicker.
+//
+// Returns false if the rewind hasn't been pushed. The caller should try again.
 //
 // To be used from the GUI thread.
 func (dbg *Debugger) PushRewind(fn int, last bool) bool {
@@ -49,6 +50,38 @@ func (dbg *Debugger) PushRewind(fn int, last bool) bool {
 			}
 		}
 
+		return nil
+	}
+
+	// how we push the doRewind() function depends on what kind of inputloop we
+	// are currently in
+	dbg.PushRawEventReturn(func() {
+		dbg.unwindLoop(doRewind)
+	})
+
+	return true
+}
+
+// PushGotoCoords is a special case of PushRawEvent(). Useful instead of
+// calling pushing the GOTO command and is quicker.
+//
+// Returns false if the rewind hasn't been pushed. The caller should try again.
+//
+// To be used from the GUI thread.
+func (dbg *Debugger) PushGoto(clock int, scanline int, frame int) bool {
+	if dbg.State() == emulation.Rewinding {
+		return false
+	}
+
+	// set state to emulation.Rewinding as soon as possible
+	dbg.setState(emulation.Rewinding)
+
+	// the function to push to the debugger/emulation routine
+	doRewind := func() error {
+		err := dbg.Rewind.GotoCoords(frame, scanline, clock)
+		if err != nil {
+			return err
+		}
 		return nil
 	}
 

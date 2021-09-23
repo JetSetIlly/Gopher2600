@@ -201,8 +201,11 @@ func (win *winDbgScr) draw() {
 	imgui.PushStyleColor(imgui.StyleColorButtonHovered, win.img.cols.Transparent)
 	imgui.PushStyleVarVec2(imgui.StyleVarFramePadding, imgui.Vec2{0.0, 0.0})
 
+	imageHovered := false
+
 	if win.crtPreview {
 		imgui.ImageButton(imgui.TextureID(win.normalTexture), imgui.Vec2{win.scaledWidth, win.scaledHeight})
+		imageHovered = imgui.IsItemHovered()
 	} else {
 		// choose which texture to use depending on whether elements is selected
 		if win.elements {
@@ -210,6 +213,7 @@ func (win *winDbgScr) draw() {
 		} else {
 			imgui.ImageButton(imgui.TextureID(win.normalTexture), imgui.Vec2{win.scaledWidth, win.scaledHeight})
 		}
+		imageHovered = imgui.IsItemHovered()
 
 		// overlay texture on top of screen texture
 		imgui.SetCursorScreenPos(win.screenOrigin)
@@ -245,14 +249,16 @@ func (win *winDbgScr) draw() {
 	}
 
 	// accept mouse clicks if window is focused
-	if imgui.IsWindowFocused() {
+	if imgui.IsWindowFocused() && imageHovered {
 		// mouse click will cause the rewind goto coords to run only when the
 		// emulation is paused
 		if win.img.emulation.State() == emulation.Paused {
-			if imgui.IsMouseReleased(0) {
-				win.img.screen.gotoCoordsX = win.mouseClock
-				win.img.screen.gotoCoordsY = win.img.wm.dbgScr.mouseScanline
-				win.img.term.pushCommand(fmt.Sprintf("GOTO %d %d", win.mouseClock-specification.ClksHBlank, win.mouseScanline))
+			if imgui.IsMouseDown(0) {
+				if win.img.screen.gotoCoordsX != win.mouseClock || win.img.screen.gotoCoordsY != win.img.wm.dbgScr.mouseScanline {
+					win.img.screen.gotoCoordsX = win.mouseClock
+					win.img.screen.gotoCoordsY = win.img.wm.dbgScr.mouseScanline
+					win.img.dbg.PushGoto(win.mouseClock-specification.ClksHBlank, win.mouseScanline, win.img.lz.TV.Frame)
+				}
 			}
 		}
 	}
