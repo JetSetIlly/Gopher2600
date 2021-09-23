@@ -116,14 +116,14 @@ func (ref *Gatherer) OnVideoCycle(bank mapper.BankInfo) error {
 
 	v.RSYNCalign, v.RSYNCreset = ref.vcs.TIA.RSYNCstate()
 
+	// reflector is not paused so we record VideoStep for later processing.
+	ref.history[ref.historyIdx] = v
+	ref.historyIdx++
+
 	// if reflector is paused then we need to reflect the pixel now
 	if ref.renderer != nil && ref.paused {
 		return ref.render()
 	}
-
-	// reflector is not paused so we record VideoStep for later processing.
-	ref.history[ref.historyIdx] = v
-	ref.historyIdx++
 
 	if ref.historyIdx >= len(ref.history) {
 		return ref.render()
