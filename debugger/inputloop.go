@@ -35,6 +35,9 @@ import (
 //
 // generally, this means that unwindLoop should be called whenever a rewind
 // function is being called.
+//
+// note that the debugger state is not changed by this function. it is up to
+// the caller of the function to set emulation.State appropriately.
 func (dbg *Debugger) unwindLoop(onRestart func() error) {
 	dbg.unwindLoopRestart = onRestart
 }

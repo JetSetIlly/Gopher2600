@@ -211,7 +211,6 @@ func NewDebugger(tv *television.Television, scr gui.GUI, term terminal.Terminal,
 		dbg.ref.AddRenderer(r.GetReflectionRenderer())
 	}
 	dbg.tv.AddFrameTrigger(dbg.ref)
-	dbg.tv.AddPauseTrigger(dbg.ref)
 
 	// plug in rewind system
 	dbg.Rewind, err = rewind.NewRewind(dbg.vcs, dbg)
@@ -287,32 +286,8 @@ func (dbg *Debugger) State() emulation.State {
 }
 
 func (dbg *Debugger) setState(state emulation.State) {
-	switch dbg.State() {
-	case emulation.Rewinding:
-		err := dbg.tv.DisableRendering(false)
-		if err != nil {
-			logger.Logf("debugger", "emulation.Rewinding: %v", err)
-		}
-	}
-
-	switch state {
-	case emulation.Paused:
-		err := dbg.tv.Pause(true)
-		if err != nil {
-			logger.Logf("debugger", "emulation.Paused: %v", err)
-		}
-	case emulation.Running:
-		err := dbg.tv.Pause(false)
-		if err != nil {
-			logger.Logf("debugger", "emulation.Running: %v", err)
-		}
-	case emulation.Rewinding:
-		err := dbg.tv.DisableRendering(true)
-		if err != nil {
-			logger.Logf("debugger", "emulation.Rewinding: %v", err)
-		}
-	}
-
+	dbg.tv.SetEmulationState(state)
+	dbg.ref.SetEmulationState(state)
 	dbg.state.Store(state)
 }
 

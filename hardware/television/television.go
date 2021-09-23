@@ -20,6 +20,7 @@ import (
 	"strings"
 
 	"github.com/jetsetilly/gopher2600/curated"
+	"github.com/jetsetilly/gopher2600/emulation"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 	"github.com/jetsetilly/gopher2600/logger"
@@ -125,9 +126,6 @@ type Television struct {
 	// list of FrameTrigger implementations to consult
 	frameTriggers []FrameTrigger
 
-	// list of PauseTrigger implementations to consult
-	pauseTriggers []PauseTrigger
-
 	// list of audio mixers to consult
 	mixers []AudioMixer
 
@@ -154,8 +152,8 @@ type Television struct {
 	// the index of the most recent Signal()
 	currentSignalIdx int
 
-	// rendering is disabled. signals are not forwarded to pixel renderers
-	disabled bool
+	// state of emulation
+	emulationState emulation.State
 }
 
 // NewReference creates a new instance of the reference television type,
@@ -272,11 +270,6 @@ func (tv *Television) AddPixelRenderer(r PixelRenderer) {
 // implemntations can be added.
 func (tv *Television) AddFrameTrigger(f FrameTrigger) {
 	tv.frameTriggers = append(tv.frameTriggers, f)
-}
-
-// AddPauseTrigger registers an implementation of PauseTrigger.
-func (tv *Television) AddPauseTrigger(p PauseTrigger) {
-	tv.pauseTriggers = append(tv.pauseTriggers, p)
 }
 
 // AddAudioMixer registers an implementation of AudioMixer. Multiple
@@ -403,15 +396,13 @@ func (tv *Television) Signal(sig signal.SignalAttributes) error {
 	// during the next call to Signal()
 	tv.state.lastSignal = sig
 
-	// record signal history
-	if tv.currentSignalIdx >= MaxSignalHistory {
-		err := tv.renderSignals(true)
-		if err != nil {
-			return err
-		}
-	}
 	tv.signals[tv.currentSignalIdx] = sig
 	tv.currentSignalIdx++
+
+	// record signal history
+	if tv.currentSignalIdx >= MaxSignalHistory {
+		return tv.renderSignals(true)
+	}
 
 	// set pending pixels for pixel-scale frame limiting (but only when the
 	// limiter is active - this is important when rendering frames produced
@@ -538,7 +529,7 @@ func (tv *Television) newFrame(fromVsync bool) error {
 // including those from the previous frame. signals from the previous frame
 // will be marked as non-current.
 func (tv *Television) renderSignals(all bool) error {
-	if !tv.disabled {
+	if tv.emulationState != emulation.Rewinding {
 		for _, r := range tv.renderers {
 			err := r.SetPixels(tv.signals[:tv.currentSignalIdx], true)
 			if err != nil {
@@ -644,39 +635,30 @@ func (tv *Television) SetSpec(spec string) error {
 	return nil
 }
 
-// Pause indicates that emulation has been paused. All unpushed pixels will be
-// pushed immeditately. Not the same as PauseRendering().
-//
-// Pause() should be used when emulation is stopped. In these case
-// PauseRendering() is implied.
-func (tv *Television) Pause(pause bool) error {
-	for _, p := range tv.pauseTriggers {
-		if err := p.Pause(pause); err != nil {
-			return err
-		}
-	}
-	if pause {
-		return tv.renderSignals(true)
-	} else {
+// SetEmulationState is called by emulation whenever state changes. How we
+// handle incoming signals depends on the current state.
+func (tv *Television) SetEmulationState(state emulation.State) {
+	prev := tv.emulationState
+	tv.emulationState = state
+
+	switch prev {
+	case emulation.Paused:
 		// start off the unpaused state by measuring the current framerate.
 		// this "clears" the ticker channel and means the feedback from
 		// GetActualFPS() is less misleading
 		tv.lmtr.measureActual()
-	}
-	return nil
-}
 
-// DisableRendering prevents the television from pushing signals to attached
-// pixel renderers.
-//
-// All outstanding signals will be pushed to the pixel renderers when disabled
-// is set to fale.
-func (tv *Television) DisableRendering(disabled bool) error {
-	tv.disabled = disabled
-	if !tv.disabled {
-		return tv.renderSignals(false)
+	case emulation.Rewinding:
+		tv.renderSignals(false)
 	}
-	return nil
+
+	switch state {
+	case emulation.Paused:
+		err := tv.renderSignals(true)
+		if err != nil {
+			logger.Logf("television", "%v", err)
+		}
+	}
 }
 
 // SetFPSCap whether the emulation should wait for FPS limiter. Returns the

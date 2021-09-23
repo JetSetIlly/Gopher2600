@@ -17,9 +17,11 @@ package reflection
 
 import (
 	"github.com/jetsetilly/gopher2600/curated"
+	"github.com/jetsetilly/gopher2600/emulation"
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/television"
+	"github.com/jetsetilly/gopher2600/logger"
 )
 
 // Gatherer should be run (with the Check() function) every video cycle.
@@ -27,19 +29,14 @@ type Gatherer struct {
 	vcs      *hardware.VCS
 	renderer Renderer
 
-	// whether reflection is enabled or not
-	enabled bool
-
-	// whether the reflector is paused or not. this affects how the VideoStep
-	// history is handled.
-	paused bool
-
-	// VideoStep history. used to buffer reflected VideoSteps when the
-	// Reflector is unpaused.
+	// history of gathered reflections
 	history []ReflectedVideoStep
 
 	// the next index to be used by Step()
 	historyIdx int
+
+	// state of emulation
+	emulationState emulation.State
 }
 
 // NewGatherer is the preferred method of initialisation for the Monitor type.
@@ -47,18 +44,12 @@ func NewGatherer(vcs *hardware.VCS) *Gatherer {
 	return &Gatherer{
 		vcs:     vcs,
 		history: make([]ReflectedVideoStep, television.MaxSignalHistory),
-		enabled: true,
 	}
 }
 
 // AddRenderer adds an implementation of the Renderer interface to the Reflector.
 func (ref *Gatherer) AddRenderer(renderer Renderer) {
 	ref.renderer = renderer
-}
-
-// EnableReflection implements the Reflector interface.
-func (ref *Gatherer) EnableReflection(enabled bool) {
-	ref.enabled = enabled
 }
 
 // OnInstructionEnd should be called at the conclusion of a single CPU
@@ -69,10 +60,6 @@ func (ref *Gatherer) EnableReflection(enabled bool) {
 func (ref *Gatherer) OnInstructionEnd(bank mapper.BankInfo) error {
 	// in practical terms, we need this function to make sure that the CPU
 	// field is up-to-date. the other fields won't have changed
-
-	if !ref.enabled {
-		return nil
-	}
 
 	// update previous entry. if the history is empty then a new entry will be
 	// added, rather than updated. this can cause problems with reflection
@@ -90,10 +77,6 @@ func (ref *Gatherer) OnInstructionEnd(bank mapper.BankInfo) error {
 // of the system. See also OnInstructionEnd() in order to gather a complete
 // reflection of the system over time.
 func (ref *Gatherer) OnVideoCycle(bank mapper.BankInfo) error {
-	if !ref.enabled {
-		return nil
-	}
-
 	v := ReflectedVideoStep{
 		CPU:               ref.vcs.CPU.LastResult,
 		WSYNC:             !ref.vcs.CPU.RdyFlg,
@@ -120,11 +103,6 @@ func (ref *Gatherer) OnVideoCycle(bank mapper.BankInfo) error {
 	ref.history[ref.historyIdx] = v
 	ref.historyIdx++
 
-	// if reflector is paused then we need to reflect the pixel now
-	if ref.renderer != nil && ref.paused {
-		return ref.render()
-	}
-
 	if ref.historyIdx >= len(ref.history) {
 		return ref.render()
 	}
@@ -134,30 +112,45 @@ func (ref *Gatherer) OnVideoCycle(bank mapper.BankInfo) error {
 
 // push history to reflection renderer
 func (ref *Gatherer) render() error {
-	if err := ref.renderer.Reflect(ref.history[:ref.historyIdx]); err != nil {
-		return curated.Errorf("reflection: %v", err)
+	if ref.emulationState != emulation.Rewinding {
+		if ref.renderer != nil {
+			if err := ref.renderer.Reflect(ref.history); err != nil {
+				return curated.Errorf("reflection: %v", err)
+			}
+		}
 	}
+
+	// reset reflection history
 	ref.historyIdx = 0
+
 	return nil
 }
 
-// Pause implements the television.PauseTrigger interface.
-func (ref *Gatherer) Pause(pause bool) error {
-	ref.paused = pause
+// SetEmulationState is called by emulation whenever state changes. How we
+// handle reflections depends on the current state.
+func (ref *Gatherer) SetEmulationState(state emulation.State) {
+	prev := ref.emulationState
+	ref.emulationState = state
 
-	// if new state is paused then render history
-	if ref.renderer != nil && ref.paused {
-		return ref.render()
+	switch prev {
+	case emulation.Rewinding:
+		ref.render()
 	}
 
-	return nil
+	switch state {
+	case emulation.Paused:
+		err := ref.render()
+		if err != nil {
+			logger.Logf("reflection", "%v", err)
+		}
+	}
 }
 
 // NewFrame implements the television.FrameTrigger interface.
 func (ref *Gatherer) NewFrame(_ television.FrameInfo) error {
 	// if new state is not paused then render history - the pause state is
 	// handled in the Step() function
-	if ref.renderer != nil && !ref.paused {
+	if ref.renderer != nil {
 		return ref.render()
 	}
 

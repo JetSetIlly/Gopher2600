@@ -242,8 +242,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 				return err
 			}
 
-			dbg.setState(emulation.Stepping)
-
+			dbg.setState(emulation.Rewinding)
 			dbg.unwindLoop(func() error {
 				return dbg.Rewind.GotoCoords(f, s, c)
 			})
@@ -376,7 +375,6 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		}
 
 		dbg.setState(emulation.Rewinding)
-
 		dbg.unwindLoop(func() error {
 			err := dbg.Rewind.GotoCoords(frame, scanline, clock)
 			if err != nil {
