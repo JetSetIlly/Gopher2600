@@ -738,11 +738,11 @@ func (tv *Television) ReqAdjust(request signal.StateAdj, adjustment int, reset b
 			clock += specification.ClksScanline
 			scanline--
 		}
-		if scanline > tv.state.frameInfo.VisibleBottom {
-			scanline -= tv.state.frameInfo.VisibleBottom
+		if scanline > tv.state.frameInfo.TotalScanlines {
+			scanline -= tv.state.frameInfo.TotalScanlines
 			frame++
 		} else if scanline < 0 {
-			scanline += tv.state.frameInfo.VisibleBottom
+			scanline += tv.state.frameInfo.TotalScanlines
 			frame--
 		}
 	case signal.AdjInstruction:
@@ -758,11 +758,11 @@ func (tv *Television) ReqAdjust(request signal.StateAdj, adjustment int, reset b
 			clock = 0
 		}
 		scanline += adjustment
-		if scanline > tv.state.frameInfo.VisibleBottom {
-			scanline -= tv.state.frameInfo.VisibleBottom
+		if scanline > tv.state.frameInfo.TotalScanlines {
+			scanline -= tv.state.frameInfo.TotalScanlines
 			frame++
 		} else if scanline < 0 {
-			scanline += tv.state.frameInfo.VisibleBottom
+			scanline += tv.state.frameInfo.TotalScanlines
 			frame--
 		}
 	case signal.AdjFramenum:
