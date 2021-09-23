@@ -26,6 +26,7 @@ import (
 	"github.com/jetsetilly/gopher2600/emulation"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/instructions"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
+	"github.com/jetsetilly/gopher2600/rewind"
 )
 
 // unwindLoop is called whenever it is required that the inputLoop/catchupLoop
@@ -46,7 +47,7 @@ func (dbg *Debugger) unwindLoop(onRestart func() error) {
 //
 // It is called from the rewind package and sets the functions that are
 // required for catchupLoop().
-func (dbg *Debugger) CatchUpLoop(frame int, scanline int, clock int) error {
+func (dbg *Debugger) CatchUpLoop(frame int, scanline int, clock int, callback rewind.CatchUpLoopCallback) error {
 	// turn off TV's fps frame limiter
 	fpsCap := dbg.vcs.TV.SetFPSCap(false)
 
@@ -56,6 +57,8 @@ func (dbg *Debugger) CatchUpLoop(frame int, scanline int, clock int) error {
 		nf := dbg.vcs.TV.GetState(signal.ReqFramenum)
 		ns := dbg.vcs.TV.GetState(signal.ReqScanline)
 		nc := dbg.vcs.TV.GetState(signal.ReqClock)
+
+		callback(nf)
 
 		// returns true if we're to continue
 		return !(nf > frame || (nf == frame && ns > scanline) || (nf == frame && ns == scanline && nc >= clock))

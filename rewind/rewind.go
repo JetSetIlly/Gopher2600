@@ -31,9 +31,13 @@ import (
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
+// CatchUpLoopCallback is called by Runner.CatchUpLoop() implementations. The
+// rewind package will use this to keep the rewind state crisp.
+type CatchUpLoopCallback func(fr int)
+
 // Runner provides the rewind package the opportunity to run the emulation.
 type Runner interface {
-	CatchUpLoop(frame int, scanline int, clock int) error
+	CatchUpLoop(frame int, scanline int, clock int, f CatchUpLoopCallback) error
 }
 
 // State contains pointers to areas of the VCS emulation. They can be read for
@@ -239,6 +243,10 @@ func (r *Rewind) String() string {
 
 // snapshot the supplied VCS instance.
 func snapshot(vcs *hardware.VCS, level snapshotLevel) *State {
+	if !vcs.CPU.LastResult.Final && !vcs.CPU.HasReset() {
+		panic("rewind snapshots should only be made when emualation machine is at an instruction boundary (or freshly reset)")
+	}
+
 	return &State{
 		level: level,
 		CPU:   vcs.CPU.Snapshot(),
@@ -396,9 +404,23 @@ func (r *Rewind) plumbState(s *State, frame, scanline, clock int) error {
 		}
 	}
 
-	// run emulation until continueCheck returns false
-	// err := r.runner.CatchUpLoop(continueCheck)
-	err := r.runner.CatchUpLoop(frame, scanline, clock)
+	// snapshot adhoc frame as soon as convenient. not required when snapshot
+	// frequency is one
+	adhoc := r.Prefs.Freq.Get().(int) == 1
+
+	callback := func(fr int) {
+		if !adhoc && fr == frame-1 {
+			// only make an adhoc snapshot on an instruction boundary. if we
+			// don't check for this then we risk saving an adhoc state that
+			// will immediately crash when it's plumbed in
+			if r.vcs.CPU.LastResult.Final {
+				r.adhocFrame = r.snapshot(levelAdhoc)
+				adhoc = true
+			}
+		}
+	}
+
+	err := r.runner.CatchUpLoop(frame, scanline, clock, callback)
 	if err != nil {
 		return curated.Errorf("rewind", err)
 	}
