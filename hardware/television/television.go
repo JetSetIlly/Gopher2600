@@ -401,14 +401,14 @@ func (tv *Television) Signal(sig signal.SignalAttributes) error {
 
 	// record signal history
 	if tv.currentSignalIdx >= MaxSignalHistory {
-		return tv.renderSignals(true)
+		return tv.renderSignals(false)
 	}
 
 	// set pending pixels for pixel-scale frame limiting (but only when the
 	// limiter is active - this is important when rendering frames produced
 	// during rewinding)
 	if tv.lmtr.active && tv.lmtr.visualUpdates {
-		err := tv.renderSignals(true)
+		err := tv.renderSignals(false)
 		if err != nil {
 			return err
 		}
@@ -497,7 +497,7 @@ func (tv *Television) newFrame(fromVsync bool) error {
 	// set pending pixels for frame-scale frame limiting or if the frame
 	// limiter is inactive
 	if !tv.lmtr.active || !tv.lmtr.visualUpdates {
-		err := tv.renderSignals(true)
+		err := tv.renderSignals(false)
 		if err != nil {
 			return err
 		}
@@ -526,8 +526,9 @@ func (tv *Television) newFrame(fromVsync bool) error {
 // renderers and audio mixers.
 //
 // the all parameter tells the function to send all signals in the buffer,
-// including those from the previous frame. signals from the previous frame
-// will be marked as non-current.
+// including those potentially from the previous frame. signals from the
+// previous frame be rendered with PixelRenderer.SetPixels() with the current
+// parameter of false.
 func (tv *Television) renderSignals(all bool) error {
 	if tv.emulationState != emulation.Rewinding {
 		for _, r := range tv.renderers {
@@ -536,7 +537,7 @@ func (tv *Television) renderSignals(all bool) error {
 				return curated.Errorf("television: %v", err)
 			}
 
-			if !all {
+			if all {
 				err = r.SetPixels(tv.signals[tv.currentSignalIdx:], false)
 				if err != nil {
 					return curated.Errorf("television: %v", err)
@@ -552,7 +553,7 @@ func (tv *Television) renderSignals(all bool) error {
 				return curated.Errorf("television: %v", err)
 			}
 
-			if !all {
+			if all {
 				err = m.SetAudio(tv.signals[tv.currentSignalIdx:])
 				if err != nil {
 					return curated.Errorf("television: %v", err)
@@ -649,12 +650,12 @@ func (tv *Television) SetEmulationState(state emulation.State) {
 		tv.lmtr.measureActual()
 
 	case emulation.Rewinding:
-		tv.renderSignals(false)
+		tv.renderSignals(true)
 	}
 
 	switch state {
 	case emulation.Paused:
-		err := tv.renderSignals(true)
+		err := tv.renderSignals(false)
 		if err != nil {
 			logger.Logf("television", "%v", err)
 		}

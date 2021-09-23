@@ -373,7 +373,7 @@ func (scr *screen) NewScanline(scanline int) error {
 
 // SetPixels implements the television.PixelRenderer interface.
 func (scr *screen) SetPixels(sig []signal.SignalAttributes, current bool) error {
-	if len(sig) == 0 || sig[0] == signal.NoSignal {
+	if len(sig) == 0 {
 		return nil
 	}
 
@@ -394,26 +394,30 @@ func (scr *screen) SetPixels(sig []signal.SignalAttributes, current bool) error 
 	var col color.RGBA
 
 	for i := range sig {
-		if sig[i] == signal.NoSignal {
-			break
-		}
-
 		// we accept a sig of signal.NoSignal and use it to black out unused
-		// pixels. this works only because we manually advance the pixel
-		// offset. if we decoded the scanline/clock bits of the sig each
-		// iteration then it would be a lot more (needless) work
+		// pixels.
+		//
+		// this is only really needed in very rare situations (such as emerging
+		// from a rewind state when the screen is "smaller" then the previous
+		// one drawn). but the performance hit is negligable so it's not worth
+		// bothering with an additional condition.
 
 		// check that we're not going to encounter an index-out-of-range error
+		//
+		// if the offset is too large then check the next signal in the slice
+		// and break the loop if it is a NoSignal
+		//
+		// otherwise adjust offset and continue. an example of a ROM where it
+		// is necessary to reset the offset is Andrew Davie's 3e+ Chess demos.
 		if offset >= len(scr.crit.bufferPixels[scr.crit.plotIdx].Pix)-4 {
-			// reset offset. resetting to zero is not satisfactory - we can see
-			// why on the 'thinking' screen of Andrew Davie's 3e+ chess demo,
-			// when the rolled screen doesn't stich together correctly from
-			// frame to frame (if we reset to zero)
-			//
-			// simply stopping the processing is not satisfactory either
-			// because that would leave us with a lot of undrawn pixels
+			if sig[i] == signal.NoSignal {
+				break // for loop
+			}
+
 			cl := int((sig[i] & signal.Clock) >> signal.ClockShift)
+			sl := int((sig[0] & signal.Scanline) >> signal.ScanlineShift)
 			offset = cl * 4
+			offset += sl * scr.crit.bufferPixels[scr.crit.plotIdx].Rect.Size().X * 4
 		}
 
 		// handle VBLANK by setting pixels to black
