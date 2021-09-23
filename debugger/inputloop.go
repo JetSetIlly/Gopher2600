@@ -81,29 +81,22 @@ func (dbg *Debugger) CatchUpLoop(frame int, scanline int, clock int, callback re
 // catchupLoop is a special purpose loop designed to run inside of the inputLoop. it is called only
 // when catchupContinue has been set in CatchUpLoop(), which is called as a consequence of a rewind event.
 func (dbg *Debugger) catchupLoop(inputter terminal.Input) error {
-	callbackInstruction := func() error {
-		return dbg.ref.OnVideoCycle(dbg.lastBank)
-	}
-
 	// whether the catch up conditions have been met inside a video step (ie.
 	// between CPU instruction boundaries).
-	var endedInVideoStep bool
+	var ended bool
 
-	callbackVideo := func() error {
-		var err error
-
-		// update debugger the same way for video quantum as for cpu quantum
-		err = callbackInstruction()
+	callbackStep := func() error {
+		err := dbg.ref.OnVideoCycle(dbg.lastBank)
 		if err != nil {
 			return err
 		}
 
-		if !endedInVideoStep && dbg.catchupContinue != nil && !dbg.catchupContinue() {
+		if !ended && dbg.catchupContinue != nil && !dbg.catchupContinue() {
 			dbg.lastResult, err = dbg.Disasm.FormatResult(dbg.lastBank, dbg.vcs.CPU.LastResult, disassembly.EntryLevelExecuted)
 			if err != nil {
 				return err
 			}
-			endedInVideoStep = true
+			ended = true
 			dbg.catchupEnd()
 			return dbg.inputLoop(inputter, true)
 		}
@@ -114,22 +107,9 @@ func (dbg *Debugger) catchupLoop(inputter terminal.Input) error {
 	for dbg.catchupContinue() {
 		dbg.lastBank = dbg.vcs.Mem.Cart.GetBank(dbg.vcs.CPU.PC.Address())
 
-		switch dbg.quantum {
-		case QuantumInstruction:
-			err := dbg.vcs.Step(callbackInstruction)
-			if err != nil {
-				return err
-			}
-		case QuantumVideo:
-			err := dbg.vcs.Step(callbackVideo)
-			if err != nil {
-				return err
-			}
-		default:
-			err := fmt.Errorf("unknown quantum mode")
-			if err != nil {
-				return err
-			}
+		err := dbg.vcs.Step(callbackStep)
+		if err != nil {
+			return err
 		}
 
 		// make sure reflection has been updated at the end of the instruction
@@ -138,7 +118,7 @@ func (dbg *Debugger) catchupLoop(inputter terminal.Input) error {
 		}
 
 		// catchup conditions have been met so return immediatly
-		if endedInVideoStep {
+		if ended {
 			return nil
 		}
 	}
