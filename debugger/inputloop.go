@@ -256,6 +256,15 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, clockCycle bool) error {
 
 		// if emulation is to be halted or if we need to check the terminal
 		if haltEmulation {
+			// check that dbg.running hasn't been unset while we've been
+			// waiting for the halt condition.
+			//
+			// this can sometimes happen if the QUIT event is sent whilst the
+			// emulation is halted mid CPU instruction
+			if !dbg.running {
+				break // dbg.running loop
+			}
+
 			// always clear steptraps. if the emulation has halted for any
 			// reason then any existing step trap is stale.
 			dbg.stepTraps.clear()

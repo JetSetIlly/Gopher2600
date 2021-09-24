@@ -348,8 +348,7 @@ func (dbg *Debugger) Start(initScript string, cartload cartridgeloader.Loader) e
 	}()
 
 	// inputloop will continue until debugger is to be terminated
-	done := false
-	for !done {
+	for dbg.running {
 		err = dbg.inputLoop(dbg.term, false)
 		if err != nil {
 			return curated.Errorf("debugger: %v", err)
@@ -363,7 +362,7 @@ func (dbg *Debugger) Start(initScript string, cartload cartridgeloader.Loader) e
 			}
 			dbg.unwindLoopRestart = nil
 		} else {
-			done = true
+			dbg.running = false
 		}
 	}
 
