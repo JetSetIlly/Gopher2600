@@ -149,6 +149,9 @@ type Debugger struct {
 
 	// some operations require that the input loop be restarted to make sure
 	// continued operation is not inside a video cycle loop
+	//
+	// we check this frequently inside the inputLoop() function and functions
+	// called by inputLoop()
 	unwindLoopRestart func() error
 
 	// after a rewinding event it is necessary to make sure the emulation is in

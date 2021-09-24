@@ -92,10 +92,6 @@ func (dbg *Debugger) catchupLoop(inputter terminal.Input) error {
 		}
 
 		if !ended && dbg.catchupContinue != nil && !dbg.catchupContinue() {
-			dbg.lastResult, err = dbg.Disasm.FormatResult(dbg.lastBank, dbg.vcs.CPU.LastResult, disassembly.EntryLevelExecuted)
-			if err != nil {
-				return err
-			}
 			ended = true
 			dbg.catchupEnd()
 			return dbg.inputLoop(inputter, true)
@@ -127,8 +123,6 @@ func (dbg *Debugger) catchupLoop(inputter terminal.Input) error {
 
 	var err error
 
-	dbg.lastResult, err = dbg.Disasm.FormatResult(dbg.lastBank, dbg.vcs.CPU.LastResult, disassembly.EntryLevelExecuted)
-
 	return err
 }
 
@@ -138,14 +132,7 @@ func (dbg *Debugger) catchupLoop(inputter terminal.Input) error {
 func (dbg *Debugger) inputLoop(inputter terminal.Input, clockCycle bool) error {
 	var err error
 
-	// unwindLoopRestart is checked frequently and will cause the inputLoop()
-	// to return early. the function also returns early
 	for dbg.running {
-		if dbg.unwindLoopRestart != nil {
-			return nil
-		}
-
-		// how we enter and leave the catchup loop is very important.
 		if dbg.catchupContinue != nil {
 			if clockCycle {
 				panic("refusing to run catchup loop inside a color clock cycle")
@@ -188,10 +175,12 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, clockCycle bool) error {
 			}
 
 			// unwindLoopRestart or catchupContinue may have been set as a result
-			// of checkEvents()
+			// of readEventsHandler()
+
 			if dbg.unwindLoopRestart != nil {
 				return nil
 			}
+
 			if dbg.catchupContinue != nil {
 				continue // dbg.running loop
 			}
@@ -308,6 +297,12 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, clockCycle bool) error {
 			// that requires it
 			dbg.continueEmulation = false
 
+			// make sure we have an upto date last result disassembly
+			dbg.lastResult, err = dbg.Disasm.FormatResult(dbg.lastBank, dbg.vcs.CPU.LastResult, disassembly.EntryLevelExecuted)
+			if err != nil {
+				return err
+			}
+
 			// read input from terminal inputter and parse/run commands
 			err = dbg.termRead(inputter)
 			if err != nil {
@@ -423,13 +418,6 @@ func (dbg *Debugger) step(inputter terminal.Input, catchup bool) error {
 			return nil
 		}
 
-		// format last CPU execution result for vcs step. this is in addition
-		// to the FormatResult() call in the main dbg.running loop below.
-		dbg.lastResult, err = dbg.Disasm.FormatResult(dbg.lastBank, dbg.vcs.CPU.LastResult, disassembly.EntryLevelExecuted)
-		if err != nil {
-			return err
-		}
-
 		// update debugger the same way for video quantum as for cpu quantum
 		err = callbackInstruction()
 		if err != nil {
@@ -491,14 +479,6 @@ func (dbg *Debugger) step(inputter terminal.Input, catchup bool) error {
 	// the formatted result is returned by the ExecutedEntry() function.
 
 	if stepErr != nil {
-		var err error
-
-		// format last execution result even on error
-		dbg.lastResult, err = dbg.Disasm.FormatResult(dbg.lastBank, dbg.vcs.CPU.LastResult, disassembly.EntryLevelExecuted)
-		if err != nil {
-			return err
-		}
-
 		// exit input loop if error is a plain error
 		if !curated.IsAny(stepErr) {
 			return stepErr
@@ -509,26 +489,22 @@ func (dbg *Debugger) step(inputter terminal.Input, catchup bool) error {
 		dbg.printLine(terminal.StyleError, "%s", stepErr)
 
 		// error has occurred before CPU has completed its instruction
-		if !dbg.lastResult.Result.Final {
+		if !dbg.vcs.CPU.LastResult.Final {
 			dbg.printLine(terminal.StyleError, "CPU halted mid-instruction. next step may be inaccurate.")
 			dbg.vcs.CPU.Interrupted = true
 		}
-	} else if dbg.vcs.CPU.LastResult.Final {
-		var err error
+	}
 
-		// update entry and store result as last result
-		dbg.lastResult, err = dbg.Disasm.ExecutedEntry(dbg.lastBank, dbg.vcs.CPU.LastResult, dbg.vcs.CPU.PC.Value())
-		if err != nil {
-			return err
-		}
+	var err error
 
-		// check validity of instruction result
-		err = dbg.vcs.CPU.LastResult.IsValid()
-		if err != nil {
-			dbg.printLine(terminal.StyleError, "%s", dbg.vcs.CPU.LastResult.Defn)
-			dbg.printLine(terminal.StyleError, "%s", dbg.vcs.CPU.LastResult)
-			return err
-		}
+	// update entry and store result as last result.
+	//
+	// note that it's important to store the formatted lastResult here because
+	// otherwise it won't be updated until the emulation halted. this is
+	// important for visual feedback.
+	dbg.lastResult, err = dbg.Disasm.ExecutedEntry(dbg.lastBank, dbg.vcs.CPU.LastResult, dbg.vcs.CPU.PC.Value())
+	if err != nil {
+		return err
 	}
 
 	return nil
@@ -540,7 +516,6 @@ func (dbg *Debugger) termRead(inputter terminal.Input) error {
 	// get user input from terminal.Input implementatio
 	inputLen, err := inputter.TermRead(dbg.input, dbg.buildPrompt(), dbg.events)
 
-	// check exit video loop and return immediately if required
 	if dbg.unwindLoopRestart != nil {
 		return nil
 	}
