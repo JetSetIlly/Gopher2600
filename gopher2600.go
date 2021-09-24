@@ -716,10 +716,6 @@ func regress(md *modalflag.Modes, sync *mainSync) error {
 			return err
 		}
 
-		// turn off fallback ctrl-c handling. this so that the REGRESS RUN can end
-		// playback recordings gracefully
-		sync.state <- stateRequest{req: reqNoIntSig}
-
 		err = regression.RegressRun(md.Output, *verbose, md.RemainingArgs())
 		if err != nil {
 			return err

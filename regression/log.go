@@ -123,7 +123,7 @@ func (reg LogRegression) CleanUp() error {
 }
 
 // regress implements the regression.Regressor interface.
-func (reg *LogRegression) regress(newRegression bool, output io.Writer, msg string, skipCheck func() bool) (bool, string, error) {
+func (reg *LogRegression) regress(newRegression bool, output io.Writer, msg string) (bool, string, error) {
 	// make sure logger is clear
 	logger.Clear()
 
@@ -164,10 +164,6 @@ func (reg *LogRegression) regress(newRegression bool, output io.Writer, msg stri
 
 	// run emulation
 	err = vcs.RunForFrameCount(reg.NumFrames, func(frame int) (emulation.State, error) {
-		if skipCheck() {
-			return emulation.Ending, curated.Errorf(regressionSkipped)
-		}
-
 		// display progress meter every 1 second
 		select {
 		case <-tck.C:

@@ -103,7 +103,7 @@ func (reg PlaybackRegression) CleanUp() error {
 }
 
 // regress implements the regression.Regressor interface.
-func (reg *PlaybackRegression) regress(newRegression bool, output io.Writer, msg string, skipCheck func() bool) (_ bool, _ string, rerr error) {
+func (reg *PlaybackRegression) regress(newRegression bool, output io.Writer, msg string) (_ bool, _ string, rerr error) {
 	output.Write([]byte(msg))
 
 	plb, err := recorder.NewPlayback(reg.Script)
@@ -152,10 +152,6 @@ func (reg *PlaybackRegression) regress(newRegression bool, output io.Writer, msg
 
 	// run emulation
 	err = vcs.Run(func() (emulation.State, error) {
-		if skipCheck() {
-			return emulation.Ending, curated.Errorf(regressionSkipped)
-		}
-
 		hasEnded, err := plb.EndFrame()
 		if err != nil {
 			return emulation.Ending, curated.Errorf("playback: %v", err)

@@ -179,7 +179,7 @@ func (reg VideoRegression) CleanUp() error {
 }
 
 // regress implements the regression.Regressor interface.
-func (reg *VideoRegression) regress(newRegression bool, output io.Writer, msg string, skipCheck func() bool) (_ bool, _ string, rerr error) {
+func (reg *VideoRegression) regress(newRegression bool, output io.Writer, msg string) (_ bool, _ string, rerr error) {
 	output.Write([]byte(msg))
 
 	// create headless television. we'll use this to initialise the digester
@@ -236,10 +236,6 @@ func (reg *VideoRegression) regress(newRegression bool, output io.Writer, msg st
 
 	// run emulation
 	err = vcs.RunForFrameCount(reg.NumFrames, func(frame int) (emulation.State, error) {
-		if skipCheck() {
-			return emulation.Ending, curated.Errorf(regressionSkipped)
-		}
-
 		// display progress meter every 1 second
 		select {
 		case <-tck.C:
