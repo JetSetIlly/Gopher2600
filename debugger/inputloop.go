@@ -221,7 +221,7 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, clockCycle bool) error {
 		// note that at the moment if we've stopped after a catchupLoop then we
 		// may see break messages and commandOnHalt messages. this doesn't
 		// affect anything but it's arguably not the correct behaviour. in
-		// other words, rewinding should output any of these messages.
+		// other words, rewinding should not output any of these messages.
 		//
 		// TODO: halt messages should not be displayed after a rewind event
 

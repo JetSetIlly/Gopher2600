@@ -243,10 +243,6 @@ func (r *Rewind) String() string {
 
 // snapshot the supplied VCS instance.
 func snapshot(vcs *hardware.VCS, level snapshotLevel) *State {
-	if !vcs.CPU.LastResult.Final && !vcs.CPU.HasReset() {
-		panic("rewind snapshots should only be made when emualation machine is at an instruction boundary (or freshly reset)")
-	}
-
 	return &State{
 		level: level,
 		CPU:   vcs.CPU.Snapshot(),
@@ -271,7 +267,13 @@ func (r *Rewind) GetCurrentState() *State {
 // RecordFrameState should be called after every CPU instruction to check
 // whether a new frame has been triggered since the last call. Delaying a call
 // to this function may result in sub-optimal results.
+//
+// Do not call this function whenthe machine is mid CPU instruction.
 func (r *Rewind) RecordFrameState() {
+	if !r.vcs.CPU.LastResult.Final && !r.vcs.CPU.HasReset() {
+		panic("RecordFrameState() attempted mid CPU instruction")
+	}
+
 	r.boundaryNextFrame = r.boundaryNextFrame || r.vcs.Mem.Cart.RewindBoundary()
 
 	if !r.newFrame {
@@ -302,7 +304,13 @@ func (r *Rewind) RecordFrameState() {
 // RecordExecutionState takes a snapshot of the emulation's ExecutionState state. It
 // will do nothing if the last call to ResolveNewFrame() resulted in a snapshot
 // being taken.
+//
+// Do not call this function whenthe machine is mid CPU instruction.
 func (r *Rewind) RecordExecutionState() {
+	if !r.vcs.CPU.LastResult.Final && !r.vcs.CPU.HasReset() {
+		panic("RecordExecutionState() attempted mid CPU instruction")
+	}
+
 	if !r.justAddedLevelFrame {
 		r.append(r.snapshot(levelExecution))
 	}

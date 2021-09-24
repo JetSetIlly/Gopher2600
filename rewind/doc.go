@@ -27,19 +27,28 @@
 // snapshot every frame (a frequency of one) in order to generate the image
 // data (storing the image data is memory wasteful). For this to work, the
 // Rewind type is initialised with a reference to to the Runner interface.
-// Implementations of the Runner interface should loop until the
-// continueCheck() returns false.
+// Implementations of the Runner interface should loop until frame, scanline,
+// clock are matched (or the nearest point, depending on use case).
 //
 // Regular emulation loops (ie. not catch-up loop of the Runner interface) must
-// call Check() after every CPU instruction to catch frame boundaries as early
-// as possible. The rewind package will take the snapshot at the appropriate
-// time.
+// call RecordFrameState() after every CPU instruction to catch frame
+// boundaries as early as possible. The rewind package will take the snapshot
+// when it notices a new frame has started.
 //
-// The ExecutionState() function can be called to force a snapshot to be taken
-// at any time. This should probably only ever be used when the emulation is
-// paused. The rewind package will delete an execution snapshot when the next
-// snapshot is taken (meaning that there is only ever one execution state in
-// the history at any one time and that it will be at the end).
+// The RecordExecutionState() function can be called to force a snapshot to be
+// taken at any time. This should probably only ever be used when the emulation
+// is paused. The rewind package will delete an execution snapshot when the
+// next snapshot is taken (meaning that there is only ever one execution state
+// in the history at any one time and that it will be at the end).
+//
+// Do not call RecordFrameState() or RecordExecutionState() between CPU
+// instruction boundaries - the program will intentionally panic if this is
+// attempted.
+//
+// Not being able to snapshot state in between CPU instructions isn't as
+// limiting as you may think. The Goto() function can be used to specify frame
+// coordinates to the video cycle level and will take care of finding the
+// nearest snapshot and "catching up" from there.
 //
 // Snapshots are stored in frame order from the splice point. The splice point
 // will be wherever the snapshot history has been rewound to. For example, in a
@@ -52,7 +61,7 @@
 // function is called and is intended to be called whenver the VCS is power
 // cycled (not the reset switch).
 //
-// The Boundrary snapshot occurs when history has been cleared for some other
+// The Boundary snapshot occurs when history has been cleared for some other
 // reason. This was added to better support PlusROM cartridges and to ensure
 // that network events are not replayed. The rewind package will add the
 // boundary snapshot (to an empty history) automatically whenever the
