@@ -41,7 +41,7 @@ func (pl *playmode) userInputHandler(ev userinput.Event) error {
 func (pl *playmode) eventHandler() (emulation.State, error) {
 	select {
 	case <-pl.intChan:
-		return emulation.Halt, curated.Errorf(terminal.UserInterrupt)
+		return emulation.Ending, curated.Errorf(terminal.UserInterrupt)
 
 	case ev := <-pl.userinput:
 		return pl.state, pl.userInputHandler(ev)

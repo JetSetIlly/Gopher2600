@@ -29,7 +29,7 @@ const (
 	Paused
 	Stepping
 	Rewinding
-	Halt
+	Ending
 )
 
 // VCS is a minimal abstraction of the VCS hardware. Exists mainly to avoid a

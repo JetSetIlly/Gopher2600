@@ -53,7 +53,7 @@ func (vcs *VCS) Run(continueCheck func() (emulation.State, error)) error {
 
 	state := emulation.Running
 	checkCt := 0
-	for state != emulation.Halt {
+	for state != emulation.Ending {
 		if state == emulation.Running {
 			err := vcs.CPU.ExecuteInstruction(videoCycle)
 			if err != nil {
@@ -89,7 +89,7 @@ func (vcs *VCS) RunForFrameCount(numFrames int, continueCheck func(frame int) (e
 	targetFrame := frameNum + numFrames
 
 	state := emulation.Running
-	for frameNum != targetFrame && state != emulation.Halt {
+	for frameNum != targetFrame && state != emulation.Ending {
 		err := vcs.Step(nil)
 		if err != nil {
 			return err

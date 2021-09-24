@@ -107,7 +107,7 @@ func Check(output io.Writer, profile Profile, includeDetail bool,
 					// period has finished, return false to cause vcs.Run() to
 					// return
 					if v {
-						return emulation.Halt, curated.Errorf(timedOut)
+						return emulation.Ending, curated.Errorf(timedOut)
 					}
 
 					// timerChan has returned false which indicates that the

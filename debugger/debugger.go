@@ -134,9 +134,13 @@ type Debugger struct {
 
 	// whether the debugger is to continue with the debugging loop
 	// set to false only when debugger is to finish
+	//
+	// not to be confused with Emulation.Running
 	running bool
 
 	// continue emulation until a halt condition is encountered
+	//
+	// we sometimes think of the halt condition as being paused as in Emulation.Paused
 	runUntilHalt bool
 
 	// continue the emulation. this is seemingly only used in the inputLoop()
@@ -145,6 +149,8 @@ type Debugger struct {
 	continueEmulation bool
 
 	// halt the emulation immediately. used by HALT command.
+	//
+	// we sometimes think of the halt condition as being paused as in Emulation.Paused
 	haltImmediately bool
 
 	// some operations require that the input loop be restarted to make sure

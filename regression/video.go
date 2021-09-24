@@ -237,7 +237,7 @@ func (reg *VideoRegression) regress(newRegression bool, output io.Writer, msg st
 	// run emulation
 	err = vcs.RunForFrameCount(reg.NumFrames, func(frame int) (emulation.State, error) {
 		if skipCheck() {
-			return emulation.Halt, curated.Errorf(regressionSkipped)
+			return emulation.Ending, curated.Errorf(regressionSkipped)
 		}
 
 		// display progress meter every 1 second
