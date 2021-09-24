@@ -33,9 +33,6 @@ func (dbg *Debugger) PushRewind(fn int, last bool) bool {
 		return false
 	}
 
-	// set state to emulation.Rewinding as soon as possible
-	dbg.setState(emulation.Rewinding)
-
 	// the function to push to the debugger/emulation routine
 	doRewind := func() error {
 		if last {
@@ -56,6 +53,10 @@ func (dbg *Debugger) PushRewind(fn int, last bool) bool {
 	// how we push the doRewind() function depends on what kind of inputloop we
 	// are currently in
 	dbg.PushRawEventReturn(func() {
+		// set state to emulation.Rewinding as soon as possible (but
+		// remembering that we must do it in the debugger goroutine)
+		dbg.setState(emulation.Rewinding)
+
 		dbg.unwindLoop(doRewind)
 	})
 
@@ -73,9 +74,6 @@ func (dbg *Debugger) PushGoto(clock int, scanline int, frame int) bool {
 		return false
 	}
 
-	// set state to emulation.Rewinding as soon as possible
-	dbg.setState(emulation.Rewinding)
-
 	// the function to push to the debugger/emulation routine
 	doRewind := func() error {
 		err := dbg.Rewind.GotoCoords(frame, scanline, clock)
@@ -88,6 +86,10 @@ func (dbg *Debugger) PushGoto(clock int, scanline int, frame int) bool {
 	// how we push the doRewind() function depends on what kind of inputloop we
 	// are currently in
 	dbg.PushRawEventReturn(func() {
+		// set state to emulation.Rewinding as soon as possible (but
+		// remembering that we must do it in the debugger goroutine)
+		dbg.setState(emulation.Rewinding)
+
 		dbg.unwindLoop(doRewind)
 	})
 
