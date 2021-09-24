@@ -443,11 +443,6 @@ func (tv *Television) newFrame(fromVsync bool) error {
 		tv.state.frameInfo.RefreshRate = 15734.26 / float32(tv.state.frameInfo.TotalScanlines)
 
 		tv.lmtr.setRefreshRate(tv, tv.state.frameInfo.RefreshRate)
-
-		// previous versions of this code forced frameInfo.VSynced to false if
-		// we reached this point. this is wrong however. even if the number of
-		// scanlines fluctates wildly, the screen is still vsynced if a valid
-		// VSYNC signal has been detected.
 	}
 
 	// increase or reset stable frame count as required

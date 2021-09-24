@@ -69,24 +69,15 @@ type screenCrit struct {
 	// whether or not to sync with monitor refresh rate
 	monitorSync bool
 
-	// the number of consecutive unsynced frames received by NewFrame().
+	// the number of consecutive frames where a screenroll might have happened.
+	// once it reaches a threshold then screenroll begins
 	// * playmode only
-	unsyncedCt int
+	screenrollCt int
 
-	// when an unsynced frame is encountered the screen will roll. we only
-	// allow this in playmode. there's no value in seeing the screen-roll in
-	// debug mode.
-	//
-	// unsyncedScanline keeps track of the accumulated scanline position
-	//
+	// the scanline currenty used to emulate a screenroll effect. if the value
+	// is zero then no screenroll is currently taking place
 	// * playmode only
-	unsyncedScanline int
-
-	// unsyncedRecoveryCt is used to help the screen regain the correct
-	// position once a vsynced frame is received.
-	//
-	// * playmode only
-	unsyncedRecoveryCt int
+	screenrollScanline int
 
 	// the pixels array is used in the presentation texture of the play and debug screen.
 	pixels *image.RGBA
@@ -277,41 +268,35 @@ func (scr *screen) NewFrame(frameInfo television.FrameInfo) error {
 	// unlocking must be done carefully
 	scr.crit.section.Lock()
 
-	scr.crit.frameInfo = frameInfo
+	defer func() {
+		scr.crit.frameInfo = frameInfo
+	}()
 
 	if scr.img.isPlaymode() {
 		// check screen rolling if crtprefs are enabled
 		if scr.img.crtPrefs.Enabled.Get().(bool) {
-			if scr.crit.frameInfo.VSynced {
-				scr.crit.unsyncedCt = 0
-
+			if frameInfo.RefreshRate == scr.crit.frameInfo.RefreshRate && frameInfo.VSynced {
 				// recovery required
-				if scr.crit.unsyncedScanline > 0 {
-					scr.crit.unsyncedRecoveryCt++
-					scr.crit.unsyncedScanline *= 8
-					scr.crit.unsyncedScanline /= 10
-
-					if scr.crit.unsyncedScanline == 0 {
-						scr.crit.unsyncedRecoveryCt = 0
-					}
+				if scr.crit.screenrollScanline > 0 {
+					scr.crit.screenrollCt = 0
+					scr.crit.screenrollScanline *= 8
+					scr.crit.screenrollScanline /= 10
 				}
-			} else {
+			} else if scr.crit.frameInfo.Stable {
 				// without the stable check, the screen can desync and recover
 				// from a roll on startup on most ROMs, which looks quite cool but
 				// we'll leave it disabled for now.
-				if scr.crit.frameInfo.Stable {
-					scr.crit.unsyncedCt++
-					if scr.crit.unsyncedCt > scr.img.crtPrefs.UnsyncTolerance.Get().(int) {
-						scr.crit.unsyncedScanline = (scr.crit.unsyncedScanline + scr.crit.lastY)
-						if scr.crit.unsyncedScanline >= specification.AbsoluteMaxScanlines {
-							scr.crit.unsyncedScanline -= specification.AbsoluteMaxScanlines
-						}
-						scr.crit.unsyncedRecoveryCt = 0
+
+				scr.crit.screenrollCt++
+				if scr.crit.screenrollCt > scr.img.crtPrefs.UnsyncTolerance.Get().(int) {
+					scr.crit.screenrollScanline = (scr.crit.screenrollScanline + scr.crit.lastY)
+					if scr.crit.screenrollScanline >= specification.AbsoluteMaxScanlines {
+						scr.crit.screenrollScanline -= specification.AbsoluteMaxScanlines
 					}
 				}
 			}
 		} else {
-			scr.crit.unsyncedScanline = 0
+			scr.crit.screenrollScanline = 0
 		}
 
 		if scr.img.emulation.State() == emulation.Running {
@@ -383,7 +368,7 @@ func (scr *screen) SetPixels(sig []signal.SignalAttributes, current bool) error 
 	cl := int((sig[0] & signal.Clock) >> signal.ClockShift)
 	sl := int((sig[0] & signal.Scanline) >> signal.ScanlineShift)
 
-	adjustedScanline := (sl + scr.crit.unsyncedScanline)
+	adjustedScanline := (sl + scr.crit.screenrollScanline)
 	if adjustedScanline >= scr.crit.bufferHeight {
 		adjustedScanline -= scr.crit.bufferHeight
 	}
@@ -403,21 +388,17 @@ func (scr *screen) SetPixels(sig []signal.SignalAttributes, current bool) error 
 		// bothering with an additional condition.
 
 		// check that we're not going to encounter an index-out-of-range error
-		//
-		// if the offset is too large then check the next signal in the slice
-		// and break the loop if it is a NoSignal
-		//
-		// otherwise adjust offset and continue. an example of a ROM where it
-		// is necessary to reset the offset is Andrew Davie's 3e+ Chess demos.
 		if offset >= len(scr.crit.bufferPixels[scr.crit.plotIdx].Pix)-4 {
-			if sig[i] == signal.NoSignal {
-				break // for loop
+
+			// if we're not currently in a screen roll then just stop drawing pixels
+			if scr.crit.screenrollScanline == 0 {
+				break
 			}
 
+			// otherwise continue drawing or we would be left with a lot of
+			// undrawn pixels and a poor screen roll effect
 			cl := int((sig[i] & signal.Clock) >> signal.ClockShift)
-			sl := int((sig[0] & signal.Scanline) >> signal.ScanlineShift)
 			offset = cl * 4
-			offset += sl * scr.crit.bufferPixels[scr.crit.plotIdx].Rect.Size().X * 4
 		}
 
 		// handle VBLANK by setting pixels to black
