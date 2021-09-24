@@ -171,69 +171,66 @@ func (win *winTerm) draw() {
 		imgui.SetKeyboardFocusHere()
 	}
 
-	// start command line height measurement
+	// measure command line
 	win.inputLineHeight = imguiMeasureHeight(func() {
-		flgs := imgui.TableFlagsSizingFixedFit
-		if imgui.BeginTableV("prompt", 2, flgs, imgui.Vec2{}, 0.0) {
-			// prompt is dependent on running state
-			var prompt string
-			if win.img.emulation.State() == emulation.Running {
-				// if emulation is running then make use of a curious effect
-				// animation effect inherent in dear imgui. setting column flag of
-				// first column to "WidthStretch" causes the column to shrink
-				// from the width it was to just one character, which is
-				// perfect for a running prompt
-				imgui.TableSetupColumnV("", imgui.TableColumnFlagsWidthStretch, 200, 0)
+		imgui.Separator()
+		imgui.Spacing()
 
-				// the prompt has the TermPromp character at the beginning of
-				// the string so that it is visible after the shrinking
-				prompt = fmt.Sprintf("%c %s", fonts.TermPrompt, strings.TrimSpace(win.prompt.Content))
-			} else {
-				// emulation is not running so just use the provided prompt
-				// from the debugger. this will cause the prompt column to
-				// expand and shrink but that's okay, it's still usable.
-				prompt = fmt.Sprintf("%s %c", strings.TrimSpace(win.prompt.Content), fonts.TermPrompt)
-			}
-
-			imgui.TableNextRow()
-			imgui.TableNextColumn()
-
-			// terminal prompt depends on running state
-			imgui.AlignTextToFramePadding()
-			imgui.Text(prompt)
-
-			imgui.TableNextColumn()
-
-			// draw command input box
-			imgui.PushStyleColor(imgui.StyleColorTableRowBg, win.img.cols.TermInput)
-			imgui.PushItemWidth(imgui.WindowWidth() - imgui.CursorPosX())
-
-			if imgui.InputTextV("", &win.input,
-				imgui.InputTextFlagsEnterReturnsTrue|imgui.InputTextFlagsCallbackCompletion|imgui.InputTextFlagsCallbackHistory,
-				win.tabCompleteAndHistory) {
-				win.input = strings.TrimSpace(win.input)
-
-				// send input to inputChan even if it is the empty string because
-				// the empty string might mean something to the received (it does)
-				win.term.inputChan <- win.input
-
-				// only add input to history if it is not empty
-				if win.input != "" {
-					// only add if input is not the same as the last history entry
-					if len(win.history) == 0 || win.input != win.history[len(win.history)-1] {
-						win.history = append(win.history, win.input)
-					}
-					win.historyIdx = len(win.history) - 1
-				}
-
-				win.input = ""
-			}
-
-			imgui.PopItemWidth()
-			imgui.PopStyleColor()
-
-			imgui.EndTable()
+		// show prompt. if emulation is not running we show the prompt as it
+		// was supplied to us by the emulation (via the TermRead() function).
+		//
+		// if the emulation is running then the TermRead() prompt isn't good
+		// enough because it won't be updated until the next TermRead(), which
+		// won't happen until the emulation pauses
+		//
+		// to indicate movement therefore, we use the LastResult as retreived
+		// from the debugger by the lazy system (this is what is shown in the
+		// CPU window)
+		//
+		// note that we don't use LastResult all the time because that will
+		// show the disassembly for the *previous* instruction executed.
+		//
+		// the prompt in the terminal should show the disassembly for the
+		// instruction the PC is *currently* on. in other words, the
+		// disassembly for the inesturction to be executed *next*
+		if win.img.emulation.State() == emulation.Running {
+			imgui.Text(win.img.lz.Debugger.LastResult.String())
+		} else {
+			imgui.Text(win.prompt.Content)
 		}
+
+		// chevron indicator
+		imgui.Spacing()
+		imgui.AlignTextToFramePadding()
+		imgui.Text(fmt.Sprintf("%c", fonts.TermPrompt))
+		imgui.SameLine()
+
+		// command line to be the width of the window
+		imgui.PushItemWidth(-1)
+
+		if imgui.InputTextV("", &win.input,
+			imgui.InputTextFlagsEnterReturnsTrue|imgui.InputTextFlagsCallbackCompletion|imgui.InputTextFlagsCallbackHistory,
+			win.tabCompleteAndHistory) {
+
+			win.input = strings.TrimSpace(win.input)
+
+			// send input to inputChan even if it is the empty string because
+			// the empty string might mean something to the received (it does)
+			win.term.inputChan <- win.input
+
+			// only add input to history if it is not empty
+			if win.input != "" {
+				// only add if input is not the same as the last history entry
+				if len(win.history) == 0 || win.input != win.history[len(win.history)-1] {
+					win.history = append(win.history, win.input)
+				}
+				win.historyIdx = len(win.history) - 1
+			}
+
+			win.input = ""
+		}
+
+		imgui.PopItemWidth()
 	})
 
 	imgui.End()
