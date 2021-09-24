@@ -73,6 +73,11 @@ func (ct *ColorTerminal) IsInteractive() bool {
 	return true
 }
 
+// IsRealTerminal implements the terminal.Input interface.
+func (ct *ColorTerminal) IsRealTerminal() bool {
+	return true
+}
+
 // Silence implements terminal.Terminal interface.
 func (ct *ColorTerminal) Silence(silenced bool) {
 	ct.silenced = silenced

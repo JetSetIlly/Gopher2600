@@ -94,7 +94,7 @@ func (pt PlainTerminal) TermRead(input []byte, prompt terminal.Prompt, events *t
 	// error to the debugging loop
 	//
 	// other events do not need to be checked - they will be serviced by the
-	// debugger inputer loop via the CheckEvents() function.
+	// debugger inputer loop elsewhere
 	select {
 	case <-events.IntEvents:
 		return 0, curated.Errorf(terminal.UserInterrupt)
@@ -111,5 +111,10 @@ func (pt *PlainTerminal) TermReadCheck() bool {
 
 // IsInteractive implements the terminal.Input interface.
 func (pt *PlainTerminal) IsInteractive() bool {
+	return true
+}
+
+// IsRealTerminal implements the terminal.Input interface.
+func (pt *PlainTerminal) IsRealTerminal() bool {
 	return true
 }

@@ -158,8 +158,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 			dbg.printLine(terminal.StyleHelp, debuggerCommands.HelpOverview())
 		}
 
-		// help can be called during script recording but we don't want to
-
+		// we don't want the HELP command to appear in the script
 		dbg.scriptScribe.Rollback()
 
 		return nil
@@ -168,15 +167,10 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		if dbg.scriptScribe.IsActive() {
 			dbg.printLine(terminal.StyleFeedback, "ending script recording")
 
-			// QUIT when script is being recorded is the same as SCRIPT END
-			//
-			// we don't want the QUIT command to appear in the script so
-			// rollback last entry before we commit it in EndSession()
+			// we don't want the QUIT command to appear in the script
 			dbg.scriptScribe.Rollback()
-			err := dbg.scriptScribe.EndSession()
-			if err != nil {
-				return err
-			}
+
+			return dbg.scriptScribe.EndSession()
 		} else {
 			dbg.running = false
 		}
@@ -295,16 +289,16 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 				return err
 			}
 
-			// we don't want SCRIPT RECORD command to appear in the
-			// script
+			// we don't want SCRIPT RECORD command to appear in the script
 			dbg.scriptScribe.Rollback()
 
 			return nil
 
 		case "END":
+			// we don't want SCRIPT END command to appear in the script
 			dbg.scriptScribe.Rollback()
-			err := dbg.scriptScribe.EndSession()
-			return err
+
+			return dbg.scriptScribe.EndSession()
 
 		default:
 			// run a script

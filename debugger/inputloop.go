@@ -26,6 +26,7 @@ import (
 	"github.com/jetsetilly/gopher2600/emulation"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/instructions"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
+	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/rewind"
 )
 
@@ -164,8 +165,11 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, clockCycle bool) error {
 		case <-dbg.eventCheckPulse.C:
 			err = dbg.readEventsHandler()
 			if err != nil {
-				dbg.running = false
-				dbg.printLine(terminal.StyleError, "%s", err)
+				if curated.Has(err, terminal.UserInterrupt) {
+					dbg.handleInterrupt(inputter)
+				} else {
+					dbg.printLine(terminal.StyleError, "%s", err)
+				}
 			}
 
 			// if debugger is no longer running after checking interrupts and
@@ -298,13 +302,13 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, clockCycle bool) error {
 			// command requires it (eg. the RUN command)
 			dbg.runUntilHalt = false
 
-			// reset haltImmediately flag - it will be set again with the next
-			// HALT command
-			dbg.haltImmediately = false
-
 			// reset continueEmulation flag - it will set again by any command
 			// that requires it
 			dbg.continueEmulation = false
+
+			// reset haltImmediately flag - it will be set again with the next
+			// HALT command
+			dbg.haltImmediately = false
 
 			// make sure we have an upto date last result disassembly
 			dbg.lastResult, err = dbg.Disasm.FormatResult(dbg.lastBank, dbg.vcs.CPU.LastResult, disassembly.EntryLevelExecuted)
@@ -529,77 +533,81 @@ func (dbg *Debugger) termRead(inputter terminal.Input) error {
 		return nil
 	}
 
-	// errors returned by UserRead() functions are very rich. the
-	// following block interprets the error carefully and proceeds
-	// appropriately
-	if err != nil {
-		if !curated.IsAny(err) {
-			// if the error originated from outside of gopher2600 then
-			// it is probably serious or unexpected
-			switch err {
-			case io.EOF:
-				// treat EOF errors the same as terminal.UserAbort
-				err = curated.Errorf(terminal.UserAbort)
-			default:
-				// the error is probably serious. exit input loop with err
-				return err
+	// if there was no error from TermRead parse input (leading to execution)
+	// of the command
+	if err == nil {
+		if inputLen > 0 {
+			err = dbg.parseInput(string(dbg.input[:inputLen-1]), inputter.IsInteractive(), false)
+			if err != nil {
+				dbg.printLine(terminal.StyleError, "%s", err)
 			}
 		}
+		return nil
+	}
 
-		// we now know the we have an project specific error
-		if curated.Is(err, terminal.UserInterrupt) {
-			// user interrupts are triggered by the user (in a terminal
-			// environment, usually by pressing ctrl-c)
-			dbg.handleInterrupt(inputter)
-		} else if curated.Is(err, terminal.UserAbort) {
-			// like UserInterrupt but with no confirmation stage
-			dbg.running = false
-			return nil
-		} else {
-			// all other errors are passed upwards to the calling function
+	if !curated.IsAny(err) {
+		switch err {
+		case io.EOF:
+			// treat EOF errors the same as terminal.UserAbort
+			err = curated.Errorf(terminal.UserAbort)
+		default:
 			return err
 		}
 	}
 
-	// sometimes UserRead can return zero bytes read, we need to filter
-	// this out before we try any parsing
-	//
-	// parsing may cause a number of inputLoop flags to changes. for example:
-	// continueEmulation or runUntilHalt.
-	if inputLen > 0 {
-		err = dbg.parseInput(string(dbg.input[:inputLen-1]), inputter.IsInteractive(), false)
-		if err != nil {
-			dbg.printLine(terminal.StyleError, "%s", err)
-		}
+	if curated.Is(err, terminal.UserInterrupt) {
+		// user interrupts are used to quit or halt an operation
+		dbg.handleInterrupt(inputter)
+
+	} else if curated.Is(err, terminal.UserAbort) {
+		// like user interrupts, abort are used to quit the application but
+		// more forcibly
+		dbg.running = false
+		dbg.continueEmulation = false
+		return nil
+
+	} else {
+		// all other errors are passed upwards to the calling function
+		return err
 	}
 
 	return nil
 }
 
 // interrupt errors that are sent back to the debugger need some special care
-// depending on the current state:
-//
-// * if script recording is active then recording is ended
-// * for non-interactive input set running flag to false immediately
-// * otherwise, prompt use for confirmation that the debugger should quit.
+// depending on the current state and what sort of terminal is being used.
 func (dbg *Debugger) handleInterrupt(inputter terminal.Input) {
-	if dbg.scriptScribe.IsActive() {
-		// script recording is in progress so we insert SCRIPT END into the
-		// input stream
-		dbg.input = []byte("SCRIPT END")
+	// end script scribe (if one is running)
+	err := dbg.scriptScribe.EndSession()
+	if err != nil {
+		logger.Logf("debugger", err.Error())
+	}
+
+	// exit immediately if inputter is not a real terminal
+	if !inputter.IsRealTerminal() {
+		dbg.running = false
+		dbg.continueEmulation = false
 		return
 	}
 
+	// if the emulation is currentl running then stop emulation
+	if dbg.runUntilHalt {
+		dbg.runUntilHalt = false
+		dbg.continueEmulation = false
+		return
+	}
+
+	// terminal is not interactive so we set running to false which will
+	// quit the debugger as soon as possible
 	if !inputter.IsInteractive() {
-		// terminal is not interactive so we set running to false which will
-		// quit the debugger as soon as possible
 		dbg.running = false
+		dbg.continueEmulation = false
+		return
 	}
 
 	// terminal is interactive so we ask for quit confirmation
-
 	confirm := make([]byte, 1)
-	_, err := inputter.TermRead(confirm,
+	_, err = inputter.TermRead(confirm,
 		terminal.Prompt{
 			Content: "really quit (y/n) ",
 			Type:    terminal.PromptTypeConfirm},

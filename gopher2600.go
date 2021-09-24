@@ -496,9 +496,7 @@ func debug(md *modalflag.Modes, sync *mainSync) error {
 	}
 
 	// turn off fallback ctrl-c handling. this so that the debugger can handle
-	// quit events with a confirmation request. it also allows the debugger to
-	// use ctrl-c events to interrupt execution of the emulation without
-	// quitting the debugger itself
+	// quit events more gracefully
 	sync.state <- stateRequest{req: reqNoIntSig}
 
 	// prepare new debugger instance
@@ -718,7 +716,8 @@ func regress(md *modalflag.Modes, sync *mainSync) error {
 			return err
 		}
 
-		// turn off default sigint handling
+		// turn off fallback ctrl-c handling. this so that the REGRESS RUN can end
+		// playback recordings gracefully
 		sync.state <- stateRequest{req: reqNoIntSig}
 
 		err = regression.RegressRun(md.Output, *verbose, md.RemainingArgs())

@@ -84,6 +84,10 @@ func (trm *mockTerm) IsInteractive() bool {
 	return false
 }
 
+func (trm *mockTerm) IsRealTerminal() bool {
+	return false
+}
+
 func (trm *mockTerm) TermPrintLine(sty terminal.Style, s string) {
 	if sty == terminal.StyleEcho {
 		return

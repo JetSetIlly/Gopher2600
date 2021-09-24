@@ -100,19 +100,9 @@ func (ct *ColorTerminal) TermRead(input []byte, prompt terminal.Prompt, events *
 		// wait for an event and respond
 		select {
 		case <-events.IntEvents:
-			// terminal is in raw mode so we won't receive these from the
-			// terminal itself but I suppose it's possible to receive them
-			// from somewhere else
-			//
-			// just return the UserInterrupt error and not worry about clearing
-			// the input line. see easyterm.KeyInterrupt for what happens
-			// normally.
 			return 0, curated.Errorf(terminal.UserInterrupt)
 
 		case ev := <-events.UserInput:
-			// handle functions that are passsed on over interruptChannel. these can
-			// be things like events from the television GUI. eg. mouse clicks,
-			// key presses, etc.
 			ct.EasyTerm.TermPrint(ansi.CursorStore)
 			err := events.UserInputHandler(ev)
 			ct.EasyTerm.TermPrint(ansi.CursorRestore)

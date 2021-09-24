@@ -123,7 +123,7 @@ func (trm *term) TermRead(buffer []byte, prompt terminal.Prompt, events *termina
 			return len(inp) + 1, nil
 
 		case <-events.IntEvents:
-			return 0, curated.Errorf(terminal.UserAbort)
+			return 0, curated.Errorf(terminal.UserInterrupt)
 
 		case ev := <-events.RawEvents:
 			ev()
@@ -151,6 +151,11 @@ func (trm *term) TermReadCheck() bool {
 // IsInteractive implements the terminal.Input interface.
 func (trm *term) IsInteractive() bool {
 	return true
+}
+
+// IsRealTerminal implements the terminal.Input interface.
+func (trm *term) IsRealTerminal() bool {
+	return false
 }
 
 // where possible the debugger issues commands via the terminal. this has the

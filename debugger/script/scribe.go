@@ -46,7 +46,7 @@ func (scr Scribe) IsActive() bool {
 // StartSession a new script.
 func (scr *Scribe) StartSession(scriptfile string) error {
 	if scr.IsActive() {
-		return curated.Errorf("script scribe already active")
+		return curated.Errorf("scribe: already active")
 	}
 
 	scr.scriptfile = scriptfile
@@ -55,10 +55,10 @@ func (scr *Scribe) StartSession(scriptfile string) error {
 	if os.IsNotExist(err) {
 		scr.file, err = os.Create(scriptfile)
 		if err != nil {
-			return curated.Errorf("cannot create new script file")
+			return curated.Errorf("scribe: cannot create script file (%s)", scriptfile)
 		}
 	} else {
-		return curated.Errorf("file already exists")
+		return curated.Errorf("scribe: script file already exists (%s)", scriptfile)
 	}
 
 	return nil
@@ -81,7 +81,7 @@ func (scr *Scribe) EndSession() (rerr error) {
 	defer func() {
 		err := scr.file.Close()
 		if err != nil {
-			rerr = curated.Errorf("script: scripe: %v", err)
+			rerr = curated.Errorf("scribe: %v", err.Error())
 		}
 	}()
 
@@ -163,20 +163,20 @@ func (scr *Scribe) Commit() error {
 	if scr.inputLine != "" {
 		n, err := io.WriteString(scr.file, scr.inputLine)
 		if err != nil {
-			return curated.Errorf("script: scribe: %v", err)
+			return curated.Errorf("scribe: %v", err.Error())
 		}
 		if n != len(scr.inputLine) {
-			return curated.Errorf("script: scribe output truncated")
+			return curated.Errorf("scribe: output truncated")
 		}
 	}
 
 	if scr.outputLine != "" {
 		n, err := io.WriteString(scr.file, scr.outputLine)
 		if err != nil {
-			return curated.Errorf("script: scribe: %v", err)
+			return curated.Errorf("scribe: %v", err.Error())
 		}
 		if n != len(scr.outputLine) {
-			return curated.Errorf("script: scribe output truncated")
+			return curated.Errorf("scribe: output truncated")
 		}
 	}
 

@@ -340,10 +340,12 @@ func (dbg *Debugger) Start(initScript string, cartload cartridgeloader.Loader) e
 		}
 	}
 
-	// end script recording gracefully
+	// end script recording gracefully. this way we don't have to worry too
+	// hard about script scribes
 	defer func() {
-		if dbg.scriptScribe.IsActive() {
-			_ = dbg.scriptScribe.EndSession()
+		err := dbg.scriptScribe.EndSession()
+		if err != nil {
+			logger.Logf("debugger", err.Error())
 		}
 	}()
 
