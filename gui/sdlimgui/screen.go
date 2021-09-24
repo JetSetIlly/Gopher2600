@@ -115,8 +115,8 @@ type screenCrit struct {
 	cropElementPixels *image.RGBA
 	cropOverlayPixels *image.RGBA
 
-	// the coordinates of the last SetPixel(). used to help set the alpha
-	// channel when emulation is paused
+	// the coordinates of the last signal sent by SetPixels(). used to help set
+	// the alpha channel when emulation is paused
 	lastX int
 	lastY int
 
@@ -276,9 +276,10 @@ func (scr *screen) NewFrame(frameInfo television.FrameInfo) error {
 		// check screen rolling if crtprefs are enabled
 		if scr.img.crtPrefs.Enabled.Get().(bool) {
 			if frameInfo.RefreshRate == scr.crit.frameInfo.RefreshRate && frameInfo.VSynced {
+				scr.crit.screenrollCt = 0
+
 				// recovery required
 				if scr.crit.screenrollScanline > 0 {
-					scr.crit.screenrollCt = 0
 					scr.crit.screenrollScanline *= 8
 					scr.crit.screenrollScanline /= 10
 				}
@@ -389,7 +390,6 @@ func (scr *screen) SetPixels(sig []signal.SignalAttributes, current bool) error 
 
 		// check that we're not going to encounter an index-out-of-range error
 		if offset >= len(scr.crit.bufferPixels[scr.crit.plotIdx].Pix)-4 {
-
 			// if we're not currently in a screen roll then just stop drawing pixels
 			if scr.crit.screenrollScanline == 0 {
 				break
@@ -418,6 +418,27 @@ func (scr *screen) SetPixels(sig []signal.SignalAttributes, current bool) error 
 		// alpha channel never changes
 
 		offset += 4
+	}
+
+	// make sure that the entirety of the pixel buffer has been blacked out. we
+	// do this by checking the last signal in the array and black out
+	// everything from that point onwards
+	if scr.img.isPlaymode() {
+		sl = int((sig[len(sig)-1] & signal.Scanline) >> signal.ScanlineShift)
+		cl = int((sig[0] & signal.Clock) >> signal.ClockShift)
+		offset = cl * 4
+		offset += sl * scr.crit.bufferPixels[scr.crit.plotIdx].Rect.Size().X * 4
+
+		// the first pixel after the last signal
+		offset += 4
+
+		for offset < len(scr.crit.bufferPixels[scr.crit.plotIdx].Pix)-4 {
+			s := scr.crit.bufferPixels[scr.crit.plotIdx].Pix[offset : offset+3 : offset+3]
+			s[0] = col.R
+			s[1] = col.G
+			s[2] = col.B
+			offset += 4
+		}
 	}
 
 	if current {

@@ -31,7 +31,10 @@ const leadingFrames = 1
 
 // the number of synced frames required before the tv is considered to be
 // "stable". once the tv is stable then specification switching cannot happen.
-const stabilityThreshold = 5
+//
+// resizing can still happen however. so this value is important if we don't
+// want to see the screen jump on ROM startup
+const stabilityThreshold = 6
 
 // State encapsulates the television values that can change from moment to
 // moment. Used by the rewind system when recording the current television
