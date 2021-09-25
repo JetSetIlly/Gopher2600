@@ -8,6 +8,7 @@ uniform float LastX;
 uniform float LastY;
 uniform float Hblank;
 uniform float OverlayAlpha;
+uniform float LastNewFrameAtScanline;
 
 uniform int IsCropped; 
 
@@ -55,13 +56,9 @@ void main()
 		visibleBottom = (VisibleBottom - VisibleTop) / ScreenDim.y;
 		lastY -=  pixelY * VisibleTop;
 	} else {
-		float hblank = pixelX * Hblank;
+		// top/bottom guides
 		float visibleTop = pixelY * VisibleTop;
 		visibleBottom = pixelY * VisibleBottom;
-
-		// screen guides
-		
-		// top/bottom guides
 		if (isNearEqual(Frag_UV.y, visibleTop-pixelY, pixelY) || isNearEqual(Frag_UV.y, visibleBottom+pixelY, pixelY)) {
 			if (mod(floor(gl_FragCoord.x), 4) < 2.0) {
 				Out_Color.r = 1.0;
@@ -73,10 +70,23 @@ void main()
 		}
 
 		// hblank guide
+		float hblank = pixelX * Hblank;
 		if (isNearEqual(Frag_UV.x, hblank-pixelX, pixelX)) {
 			if (mod(floor(gl_FragCoord.y), 4) < 2.0) {
 				Out_Color.r = 1.0;
 				Out_Color.g = 1.0;
+				Out_Color.b = 1.0;
+				Out_Color.a = 0.1;
+				return;
+			}
+		}
+
+		// frame flyback guide
+		float lastNewFrameAtScanline = pixelY * LastNewFrameAtScanline;
+		if (isNearEqual(Frag_UV.y, lastNewFrameAtScanline-pixelY, pixelY)) {
+			if (mod(floor(gl_FragCoord.x), 8) < 3.0) {
+				Out_Color.r = 1.0;
+				Out_Color.g = 0.0;
 				Out_Color.b = 1.0;
 				Out_Color.a = 0.1;
 				return;

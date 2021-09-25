@@ -30,17 +30,18 @@ type dbgScreenShader struct {
 
 	crt *crtSequencer
 
-	showCursor    int32 // uniform
-	isCropped     int32 // uniform
-	screenDim     int32 // uniform
-	scalingX      int32 // uniform
-	scalingY      int32 // uniform
-	lastX         int32 // uniform
-	lastY         int32 // uniform
-	hblank        int32 // uniform
-	visibleTop    int32 // uniform
-	visibleBottom int32 // uniform
-	overlayAlpha  int32 // uniform
+	showCursor             int32 // uniform
+	isCropped              int32 // uniform
+	screenDim              int32 // uniform
+	scalingX               int32 // uniform
+	scalingY               int32 // uniform
+	lastX                  int32 // uniform
+	lastY                  int32 // uniform
+	hblank                 int32 // uniform
+	visibleTop             int32 // uniform
+	visibleBottom          int32 // uniform
+	overlayAlpha           int32 // uniform
+	lastNewFrameAtScanline int32 // uniform
 }
 
 func newDbgScrShader(img *SdlImgui) shaderProgram {
@@ -63,6 +64,8 @@ func newDbgScrShader(img *SdlImgui) shaderProgram {
 	sh.visibleTop = gl.GetUniformLocation(sh.handle, gl.Str("VisibleTop"+"\x00"))
 	sh.visibleBottom = gl.GetUniformLocation(sh.handle, gl.Str("VisibleBottom"+"\x00"))
 	sh.overlayAlpha = gl.GetUniformLocation(sh.handle, gl.Str("OverlayAlpha"+"\x00"))
+
+	sh.lastNewFrameAtScanline = gl.GetUniformLocation(sh.handle, gl.Str("LastNewFrameAtScanline"+"\x00"))
 
 	return sh
 }
@@ -159,6 +162,7 @@ func (sh *dbgScreenShader) setAttributes(env shaderEnvironment) {
 	gl.Uniform1f(sh.hblank, specification.ClksHBlank*xscaling)
 	gl.Uniform1f(sh.visibleTop, float32(sh.img.screen.crit.frameInfo.VisibleTop)*yscaling)
 	gl.Uniform1f(sh.visibleBottom, float32(sh.img.screen.crit.frameInfo.VisibleBottom)*yscaling)
+	gl.Uniform1f(sh.lastNewFrameAtScanline, float32(sh.img.screen.crit.frameInfo.TotalScanlines)*yscaling)
 
 	sh.img.screen.crit.section.Unlock()
 	// end of critical section
