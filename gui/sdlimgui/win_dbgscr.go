@@ -468,6 +468,12 @@ func (win *winDbgScr) drawReflectionTooltip() {
 
 	imguiSeparator()
 
+	// if mouse is over a pixel from the previous frame then show nothing except a note
+	if win.mouseScanline > win.scr.crit.lastY || (win.mouseScanline == win.scr.crit.lastY && win.mouseClock > win.scr.crit.lastX) {
+		imgui.Text("From previous frame")
+		imguiSeparator()
+	}
+
 	// pixel swatch. using black swatch if pixel is HBLANKed or VBLANKed
 	_, _, pal := win.img.imguiTVPalette()
 	px := signal.ColorSignal((ref.Signal & signal.Color) >> signal.ColorShift)
