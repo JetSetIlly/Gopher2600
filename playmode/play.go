@@ -178,6 +178,22 @@ func Play(tv *television.Television, scr gui.GUI, newRecording bool, cartload ca
 		return nil
 	}
 
+	pl := &playmode{
+		vcs:       vcs,
+		scr:       scr,
+		intChan:   make(chan os.Signal, 1),
+		userinput: make(chan userinput.Event, 10),
+		rawEvents: make(chan func(), 1024),
+	}
+
+	// connect gui
+	err = scr.SetFeature(gui.ReqSetEmulation, pl)
+	if err != nil {
+		return curated.Errorf("playmode: %v", err)
+	}
+
+	vcs.RIOT.Ports.AttachPlugMonitor(pl)
+
 	// attach the cartridge depending on whether it's a new recording an
 	// existing recording (ie. a playback) or when no recording is involved at
 	// all.
@@ -243,22 +259,6 @@ func Play(tv *television.Television, scr gui.GUI, newRecording bool, cartload ca
 			}
 		}
 	}
-
-	pl := &playmode{
-		vcs:       vcs,
-		scr:       scr,
-		intChan:   make(chan os.Signal, 1),
-		userinput: make(chan userinput.Event, 10),
-		rawEvents: make(chan func(), 1024),
-	}
-
-	// connect gui
-	err = scr.SetFeature(gui.ReqSetEmulation, pl)
-	if err != nil {
-		return curated.Errorf("playmode: %v", err)
-	}
-
-	vcs.RIOT.Ports.AttachPlugMonitor(pl)
 
 	// if a waitForEmulationStart channel has been created then halt the
 	// goroutine until we receive a non-error signal
