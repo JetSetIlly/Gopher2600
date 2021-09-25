@@ -28,7 +28,8 @@ import (
 // thread to the emulation. Use these values rather than directly accessing
 // those exposed by the emulation.
 type LazyValues struct {
-	active bool
+	emulation emulation.Emulation
+	state     emulation.State
 
 	// vcs and dbg are taken from the emulation supplied to SetEmulation()
 	vcs *hardware.VCS
@@ -74,7 +75,6 @@ type LazyValues struct {
 // NewLazyValues is the preferred method of initialisation for the Values type.
 func NewLazyValues() *LazyValues {
 	val := &LazyValues{
-		active:       true,
 		RefreshPulse: make(chan time.Time),
 	}
 
@@ -106,34 +106,31 @@ func NewLazyValues() *LazyValues {
 	return val
 }
 
-// SetEmulationState makes sure the lazy system can respond to an emulation in
-// a particular state.
-func (val *LazyValues) SetEmulationState(state emulation.State) {
-	switch state {
-	case emulation.Initialising:
-		val.active = false
+func (val *LazyValues) checkEmulationState() {
+	s := val.emulation.State()
+	if val.state == s {
+		return
+	}
+	val.state = s
 
+	switch val.state {
+	case emulation.Initialising:
 		// LazyCart stores a lot of atomic types that might change undlerying
 		// type on cartridge load. to avoid a panic we reinitialise the entire
 		// LazyCart type when emulation state is changed to Initialising
 		val.Cart = newLazyCart(val)
-	default:
-		val.active = true
 	}
 }
 
 // Set the underlying emulator.
 func (val *LazyValues) SetEmulation(emulation emulation.Emulation) {
+	val.emulation = emulation
 	val.vcs = emulation.VCS().(*hardware.VCS)
 	val.dbg = emulation.Debugger().(*debugger.Debugger)
 }
 
 // Refresh lazy values.
 func (val *LazyValues) Refresh() {
-	if !val.active {
-		return
-	}
-
 	if val.refreshDone.Load().(bool) {
 		val.refreshDone.Store(false)
 
@@ -170,6 +167,8 @@ func (val *LazyValues) Refresh() {
 		return
 	}
 	val.refreshScheduled.Store(true)
+
+	val.checkEmulationState()
 
 	val.dbg.PushRawEvent(func() {
 		val.Debugger.push()

@@ -268,9 +268,7 @@ func (scr *screen) NewFrame(frameInfo television.FrameInfo) error {
 	// unlocking must be done carefully
 	scr.crit.section.Lock()
 
-	defer func() {
-		scr.crit.frameInfo = frameInfo
-	}()
+	// we'll store frameInfo at the same time as unlocking the critical section
 
 	if scr.img.isPlaymode() {
 		// check screen rolling if crtprefs are enabled
@@ -312,6 +310,7 @@ func (scr *screen) NewFrame(frameInfo television.FrameInfo) error {
 
 				// we must unlock the critical section or the gui thread will not
 				// be able to process the channel
+				scr.crit.frameInfo = frameInfo
 				scr.crit.section.Unlock()
 
 				// pause emulation until screen has caught up
@@ -347,6 +346,7 @@ func (scr *screen) NewFrame(frameInfo television.FrameInfo) error {
 		}
 	}
 
+	scr.crit.frameInfo = frameInfo
 	scr.crit.section.Unlock()
 
 	return nil
