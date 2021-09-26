@@ -212,10 +212,11 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 			switch mode {
 			case "":
 				// continue with current quantum state
-
-				// adjust by instruction even if quantum is QuantumVideo
-				// because stepping back by Color Clock is not supported yet
-				req = signal.AdjInstruction
+				if dbg.quantum == QuantumInstruction {
+					req = signal.AdjInstruction
+				} else {
+					req = signal.AdjClock
+				}
 			case "INSTRUCTION":
 				dbg.quantum = QuantumInstruction
 				req = signal.AdjInstruction
