@@ -82,8 +82,6 @@ func (dbg *Debugger) CatchUpLoop(frame int, scanline int, clock int, callback re
 // catchupLoop is a special purpose loop designed to run inside of the inputLoop. it is called only
 // when catchupContinue has been set in CatchUpLoop(), which is called as a consequence of a rewind event.
 func (dbg *Debugger) catchupLoop(inputter terminal.Input) error {
-	// whether the catch up conditions have been met inside a video step (ie.
-	// between CPU instruction boundaries).
 	var ended bool
 
 	callbackStep := func() error {
@@ -92,7 +90,19 @@ func (dbg *Debugger) catchupLoop(inputter terminal.Input) error {
 			return err
 		}
 
-		if !ended && dbg.catchupContinue != nil && !dbg.catchupContinue() {
+		if ended {
+			if !dbg.vcs.CPU.LastResult.Final {
+				// if we're in the rewinding state then a new rewind event has
+				// started and we must return immediately so that it can continue
+				if dbg.State() == emulation.Rewinding {
+					return nil
+				}
+
+				// otherwise catchup has ended but we've not reached a CPU
+				// instruction boundary then continue with video-step loop
+				return dbg.inputLoop(inputter, true)
+			}
+		} else if dbg.catchupContinue != nil && !dbg.catchupContinue() {
 			ended = true
 			dbg.catchupEnd()
 			return dbg.inputLoop(inputter, true)
@@ -101,7 +111,8 @@ func (dbg *Debugger) catchupLoop(inputter terminal.Input) error {
 		return nil
 	}
 
-	for dbg.catchupContinue() {
+	// loop until the ended flag is false
+	for !ended {
 		dbg.lastBank = dbg.vcs.Mem.Cart.GetBank(dbg.vcs.CPU.PC.Address())
 
 		err := dbg.vcs.Step(callbackStep)
@@ -113,29 +124,20 @@ func (dbg *Debugger) catchupLoop(inputter terminal.Input) error {
 		if err := dbg.ref.OnInstructionEnd(dbg.lastBank); err != nil {
 			return err
 		}
-
-		// catchup conditions have been met so return immediatly
-		if ended {
-			return nil
-		}
 	}
 
-	dbg.catchupEnd()
-
-	var err error
-
-	return err
+	return nil
 }
 
 // inputLoop has two modes, defined by the clockCycle argument. when clockCycle
 // is true then user will be prompted every video cycle; when false the user
 // is prompted every cpu instruction.
-func (dbg *Debugger) inputLoop(inputter terminal.Input, clockCycle bool) error {
+func (dbg *Debugger) inputLoop(inputter terminal.Input, isVideoStep bool) error {
 	var err error
 
 	for dbg.running {
 		if dbg.catchupContinue != nil {
-			if clockCycle {
+			if isVideoStep {
 				panic("refusing to run catchup loop inside a color clock cycle")
 			}
 
@@ -204,7 +206,7 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, clockCycle bool) error {
 		// c) the debugger has been changed to INSTRUCTION quantum mode
 		//
 		// if we don't do this then debugging output will be wrong and confusing.
-		if clockCycle && dbg.continueEmulation && dbg.quantum == QuantumInstruction {
+		if isVideoStep && dbg.continueEmulation && dbg.quantum == QuantumInstruction {
 			return nil
 		}
 
@@ -237,7 +239,7 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, clockCycle bool) error {
 
 		// check for breakpoints and traps. for video cycle input loops we only
 		// do this if the instruction has affected flow.
-		if !clockCycle || (dbg.vcs.CPU.LastResult.Defn != nil &&
+		if !isVideoStep || (dbg.vcs.CPU.LastResult.Defn != nil &&
 			(dbg.vcs.CPU.LastResult.Defn.Effect == instructions.Flow ||
 				dbg.vcs.CPU.LastResult.Defn.Effect == instructions.Subroutine ||
 				dbg.vcs.CPU.LastResult.Defn.Effect == instructions.Interrupt)) {
@@ -294,7 +296,7 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, clockCycle bool) error {
 
 			// take note of current machine state if the emulation was in a running
 			// state and is halting just now
-			if dbg.continueEmulation && inputter.IsInteractive() && !clockCycle {
+			if dbg.continueEmulation && inputter.IsInteractive() && !isVideoStep {
 				dbg.Rewind.RecordExecutionState()
 			}
 
@@ -356,7 +358,7 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, clockCycle bool) error {
 				}
 
 				// update comparison point before execution continues
-				if !clockCycle {
+				if !isVideoStep {
 					dbg.Rewind.SetComparison()
 				}
 			} else if inputter.IsInteractive() {
@@ -392,7 +394,7 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, clockCycle bool) error {
 			//
 			// in both cases the emulation will continue inside the vcs.Step() function via the
 			// step() function
-			if clockCycle {
+			if isVideoStep {
 				return nil
 			}
 
