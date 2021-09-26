@@ -31,8 +31,6 @@ bool isNearEqual(float x, float y, float epsilon)
 	return abs(x - y) <= epsilon;
 }
 
-const float cursorSize = 1.0;
-
 void main()
 {
 	Out_Color = Frag_Color * texture(Texture, Frag_UV.st);
@@ -56,10 +54,10 @@ void main()
 		visibleBottom = (VisibleBottom - VisibleTop) / ScreenDim.y;
 		lastY -=  pixelY * VisibleTop;
 	} else {
-		// top/bottom guides
+		// visible screen guides
 		float visibleTop = pixelY * VisibleTop;
 		visibleBottom = pixelY * VisibleBottom;
-		if (isNearEqual(Frag_UV.y, visibleTop-pixelY, pixelY) || isNearEqual(Frag_UV.y, visibleBottom+pixelY, pixelY)) {
+		if (isNearEqual(Frag_UV.y, visibleTop, pixelY) || isNearEqual(Frag_UV.y, visibleBottom, pixelY)) {
 			if (mod(floor(gl_FragCoord.x), 4) < 2.0) {
 				Out_Color.r = 1.0;
 				Out_Color.g = 1.0;
@@ -71,7 +69,7 @@ void main()
 
 		// hblank guide
 		float hblank = pixelX * Hblank;
-		if (isNearEqual(Frag_UV.x, hblank-pixelX, pixelX)) {
+		if (isNearEqual(Frag_UV.x, hblank, pixelX)) {
 			if (mod(floor(gl_FragCoord.y), 4) < 2.0) {
 				Out_Color.r = 1.0;
 				Out_Color.g = 1.0;
@@ -83,7 +81,7 @@ void main()
 
 		// frame flyback guide
 		float lastNewFrameAtScanline = pixelY * LastNewFrameAtScanline;
-		if (isNearEqual(Frag_UV.y, lastNewFrameAtScanline-pixelY, pixelY)) {
+		if (isNearEqual(Frag_UV.y, lastNewFrameAtScanline, pixelY)) {
 			if (mod(floor(gl_FragCoord.x), 8) < 3.0) {
 				Out_Color.r = 1.0;
 				Out_Color.g = 0.0;
@@ -94,11 +92,11 @@ void main()
 		}
 	}
 
-	// when ShowCursor is true then there is some additional processing we need to perform
+	// show cursor. the cursor illustrates the *most recent* pixel to be drawn
 	if (ShowCursor == 1) {
 		// draw cursor if pixel is at the last x/y position
 		if (lastY >= 0 && lastX >= 0) {
-			if (isNearEqual(Frag_UV.y, lastY+texelY, cursorSize*texelY) && isNearEqual(Frag_UV.x, lastX+texelX, cursorSize*texelX/2)) {
+			if (isNearEqual(Frag_UV.y, lastY+texelY, texelY) && isNearEqual(Frag_UV.x, lastX+texelX/2, texelX/2)) {
 				Out_Color.r = 1.0;
 				Out_Color.g = 1.0;
 				Out_Color.b = 1.0;
@@ -108,7 +106,7 @@ void main()
 		}
 
 		// draw off-screen cursor for HBLANK
-		if (lastX < 0 && isNearEqual(Frag_UV.y, lastY+texelY, cursorSize*texelY) && isNearEqual(Frag_UV.x, 0, cursorSize*texelX/2)) {
+		if (lastX < 0 && isNearEqual(Frag_UV.y, lastY+texelY, texelY) && isNearEqual(Frag_UV.x, 0, texelX/2)) {
 			Out_Color.r = 1.0;
 			Out_Color.g = 0.0;
 			Out_Color.b = 0.0;
@@ -120,9 +118,9 @@ void main()
 		// consider for drawing an off-screen cursor
 		if (IsCropped == 1) {
 			// when VBLANK is active but HBLANK is off
-			if (isNearEqual(Frag_UV.x, lastX, cursorSize * texelX/2)) {
+			if (isNearEqual(Frag_UV.x, lastX, texelX/2)) {
 				// top of screen
-				if (lastY < 0 && isNearEqual(Frag_UV.y, 0, cursorSize*texelY)) {
+				if (lastY < 0 && isNearEqual(Frag_UV.y, 0, texelY)) {
 					Out_Color.r = 1.0;
 					Out_Color.g = 0.0;
 					Out_Color.b = 0.0;
@@ -132,7 +130,7 @@ void main()
 			
 				// bottom of screen (knocking a pixel off the scanline
 				// boundary check to make sure the cursor is visible)
-				if (lastY > visibleBottom-pixelY && isNearEqual(Frag_UV.y, visibleBottom, cursorSize*texelY)) {
+				if (lastY > visibleBottom-pixelY && isNearEqual(Frag_UV.y, visibleBottom, texelY)) {
 					Out_Color.r = 1.0;
 					Out_Color.g = 0.0;
 					Out_Color.b = 0.0;
@@ -142,9 +140,9 @@ void main()
 			}
 
 			// when HBLANK and VBLANK are both active
-			if (lastX < 0 && isNearEqual(Frag_UV.x, 0, cursorSize*texelX/2)) {
+			if (lastX < 0 && isNearEqual(Frag_UV.x, 0, texelX/2)) {
 				// top/left corner of screen
-				if (lastY < 0 && isNearEqual(Frag_UV.y, 0, cursorSize*texelY)) {
+				if (lastY < 0 && isNearEqual(Frag_UV.y, 0, texelY)) {
 					Out_Color.r = 1.0;
 					Out_Color.g = 0.0;
 					Out_Color.b = 0.0;
@@ -155,7 +153,7 @@ void main()
 				// bottom/left corner of screen (knocking a pixel off the
 				// scanline boundary check to make sure the cursor is
 				// visible)
-				if (lastY > visibleBottom-pixelY && isNearEqual(Frag_UV.y, visibleBottom, cursorSize*texelY)) {
+				if (lastY > visibleBottom-pixelY && isNearEqual(Frag_UV.y, visibleBottom, texelY)) {
 					Out_Color.r = 1.0;
 					Out_Color.g = 0.0;
 					Out_Color.b = 0.0;

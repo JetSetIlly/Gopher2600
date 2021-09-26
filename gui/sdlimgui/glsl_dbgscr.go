@@ -145,8 +145,9 @@ func (sh *dbgScreenShader) setAttributes(env shaderEnvironment) {
 	gl.Uniform1f(sh.scalingY, sh.img.wm.dbgScr.yscaling)
 	gl.Uniform2f(sh.screenDim, width, height)
 
-	cursorX := sh.img.screen.crit.lastX
-	cursorY := sh.img.screen.crit.lastY
+	// cursor is the coordinates of the *most recent* pixel to be drawn
+	cursorX := sh.img.lz.TV.Clock + specification.ClksHBlank
+	cursorY := sh.img.lz.TV.Scanline
 
 	// if crt preview is enabled then force cropping
 	if sh.img.wm.dbgScr.cropped || sh.img.wm.dbgScr.crtPreview {
@@ -159,7 +160,7 @@ func (sh *dbgScreenShader) setAttributes(env shaderEnvironment) {
 	gl.Uniform1f(sh.lastY, float32(cursorY)*yscaling)
 
 	// screen geometry
-	gl.Uniform1f(sh.hblank, specification.ClksHBlank*xscaling)
+	gl.Uniform1f(sh.hblank, (specification.ClksHBlank)*xscaling)
 	gl.Uniform1f(sh.visibleTop, float32(sh.img.screen.crit.frameInfo.VisibleTop)*yscaling)
 	gl.Uniform1f(sh.visibleBottom, float32(sh.img.screen.crit.frameInfo.VisibleBottom)*yscaling)
 	gl.Uniform1f(sh.lastNewFrameAtScanline, float32(sh.img.screen.crit.frameInfo.TotalScanlines)*yscaling)

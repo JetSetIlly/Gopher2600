@@ -469,7 +469,8 @@ func (win *winDbgScr) drawReflectionTooltip() {
 	imguiSeparator()
 
 	// if mouse is over a pixel from the previous frame then show nothing except a note
-	if win.mouseScanline > win.scr.crit.lastY || (win.mouseScanline == win.scr.crit.lastY && win.mouseClock > win.scr.crit.lastX) {
+	if win.mouseScanline > win.img.lz.TV.Scanline ||
+		(win.mouseScanline == win.img.lz.TV.Scanline && win.mouseClock > win.img.lz.TV.Clock+specification.ClksHBlank) {
 		imgui.Text("From previous frame")
 		imguiSeparator()
 	}
