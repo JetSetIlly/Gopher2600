@@ -336,18 +336,15 @@ func (tv *Television) Signal(sig signal.SignalAttributes) error {
 		// bump scanline counter
 		tv.state.scanline++
 
-		// reached end of screen without VSYNC sequence
-		if tv.state.scanline > tv.state.frameInfo.Spec.ScanlinesTotal {
-			// fly-back naturally if VBlank is off. a good example of a ROM
-			// that requires correct handling of this is Andrew Davies' Chess
-			// (3e+ test rom)
-			//
-			// (06/01/21) another example is the Artkaris NTSC version of Lili
-			if tv.state.scanline > specification.AbsoluteMaxScanlines {
-				err := tv.newFrame(false)
-				if err != nil {
-					return err
-				}
+		// fly-back naturally if VBlank is off. a good example of a ROM
+		// that requires correct handling of this is Andrew Davies' Chess
+		// (3e+ test rom)
+		//
+		// (06/01/21) another example is the Artkaris NTSC version of Lili
+		if tv.state.scanline >= specification.AbsoluteMaxScanlines {
+			err := tv.newFrame(false)
+			if err != nil {
+				return err
 			}
 		} else {
 			// if we're not at end of screen then indicate new scanline
@@ -389,29 +386,32 @@ func (tv *Television) Signal(sig signal.SignalAttributes) error {
 
 	// doing nothing with CBURST signal
 
-	// augment television signal before sending to pixel renderer
+	// augment television signal before storing and sending to pixel renderers
 	sig &= ^signal.Clock
 	sig &= ^signal.Scanline
 	sig |= signal.SignalAttributes(tv.state.clock << signal.ClockShift)
 	sig |= signal.SignalAttributes(tv.state.scanline << signal.ScanlineShift)
 
+	// write the signal into the correct index of the signals array. assume
+	// that clock and scanline are constrained elsewhere such that the index
+	// can never run past the end of the signals array
+	tv.currentSignalIdx = tv.state.clock + (tv.state.scanline * specification.ClksScanline)
+	tv.signals[tv.currentSignalIdx] = sig
+
 	// record the current signal settings so they can be used for reference
 	// during the next call to Signal()
 	tv.state.lastSignal = sig
 
-	tv.signals[tv.currentSignalIdx] = sig
-	tv.currentSignalIdx++
-
 	// record signal history
 	if tv.currentSignalIdx >= MaxSignalHistory {
-		return tv.renderSignals(false)
+		return tv.renderSignals()
 	}
 
 	// set pending pixels for pixel-scale frame limiting (but only when the
 	// limiter is active - this is important when rendering frames produced
 	// during rewinding)
 	if tv.lmtr.active && tv.lmtr.visualUpdates {
-		err := tv.renderSignals(false)
+		err := tv.renderSignals()
 		if err != nil {
 			return err
 		}
@@ -495,7 +495,7 @@ func (tv *Television) newFrame(fromVsync bool) error {
 	// set pending pixels for frame-scale frame limiting or if the frame
 	// limiter is inactive
 	if !tv.lmtr.active || !tv.lmtr.visualUpdates {
-		err := tv.renderSignals(false)
+		err := tv.renderSignals()
 		if err != nil {
 			return err
 		}
@@ -522,51 +522,30 @@ func (tv *Television) newFrame(fromVsync bool) error {
 
 // renderSignals forwards pixels in the signalHistory buffer to all pixel
 // renderers and audio mixers.
-//
-// the all parameter tells the function to send all signals in the buffer,
-// including those potentially from the previous frame. signals from the
-// previous frame be rendered with PixelRenderer.SetPixels() with the current
-// parameter of false.
-func (tv *Television) renderSignals(all bool) error {
-	if tv.emulationState != emulation.Rewinding {
-		for _, r := range tv.renderers {
-			err := r.SetPixels(tv.signals[:tv.currentSignalIdx], true)
-			if err != nil {
-				return curated.Errorf("television: %v", err)
-			}
+func (tv *Television) renderSignals() error {
+	// do not render signals if emulation is in the rewinding state
+	if tv.emulationState == emulation.Rewinding {
+		return nil
+	}
 
-			if all {
-				err = r.SetPixels(tv.signals[tv.currentSignalIdx:], false)
-				if err != nil {
-					return curated.Errorf("television: %v", err)
-				}
-			}
-		}
-
-		// mix audio
-		for _, m := range tv.mixers {
-			// err := m.SetAudio(uint8((sig & signal.AudioData) >> signal.AudioDataShift))
-			err := m.SetAudio(tv.signals[:tv.currentSignalIdx])
-			if err != nil {
-				return curated.Errorf("television: %v", err)
-			}
-
-			if all {
-				err = m.SetAudio(tv.signals[tv.currentSignalIdx:])
-				if err != nil {
-					return curated.Errorf("television: %v", err)
-				}
-			}
+	for _, r := range tv.renderers {
+		err := r.SetPixels(tv.signals)
+		if err != nil {
+			return curated.Errorf("television: %v", err)
 		}
 	}
 
-	// reset signal history
-	tv.currentSignalIdx = 0
+	for _, m := range tv.mixers {
+		err := m.SetAudio(tv.signals[:tv.currentSignalIdx])
+		if err != nil {
+			return curated.Errorf("television: %v", err)
+		}
+	}
 
 	return nil
 }
 
-// GetLastSignal Returns a copy of the most SignalAttributes sent to the TV
+// GetLastSignal returns a copy of the most SignalAttributes sent to the TV
 // (via the Signal() function).
 func (tv *Television) GetLastSignal() signal.SignalAttributes {
 	return tv.state.lastSignal
@@ -648,12 +627,12 @@ func (tv *Television) SetEmulationState(state emulation.State) {
 		tv.lmtr.measureActual()
 
 	case emulation.Rewinding:
-		tv.renderSignals(true)
+		tv.renderSignals()
 	}
 
 	switch state {
 	case emulation.Paused:
-		err := tv.renderSignals(false)
+		err := tv.renderSignals()
 		if err != nil {
 			logger.Logf("television", "%v", err)
 		}

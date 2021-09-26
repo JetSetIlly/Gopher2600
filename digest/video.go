@@ -114,7 +114,7 @@ func (dig *Video) NewScanline(scanline int) error {
 }
 
 // SetPixels implements television.PixelRenderer interface.
-func (dig *Video) SetPixels(sig []signal.SignalAttributes, current bool) error {
+func (dig *Video) SetPixels(sig []signal.SignalAttributes) error {
 	if len(sig) == 0 || sig[0] == signal.NoSignal {
 		return nil
 	}

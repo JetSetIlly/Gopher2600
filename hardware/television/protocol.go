@@ -63,22 +63,8 @@ type PixelRenderer interface {
 	// NewScanline is called at the start of a new scanline
 	NewScanline(scanline int) error
 
-	// SetPixels sends a slice of SignalAttributes to the Renderer.
-	//
-	// The television is guaranteed to only send signal.NoSignal as trailing
-	// filler. Processing of the slice should stop when the first NoSignal is
-	// encountered.
-	//
-	// Signals are consecutive starting at the scanline/clock of the first
-	// signal. The first signal does not necessary start with scanline and
-	// clock values of zero.
-	//
-	// Due to the nature of the television, SetPixels may never receive signals
-	// for some scanline/clock combinations. Implementations should consider
-	// what to do with pixels that have been set in previous frames but are set
-	// no longer. (These pixels will be either at the very start or very end of
-	// the frame and can probably be ignore for renderers that don't show the
-	// vblank and overscan areas.
+	// SetPixels is used to Render a series of signals. The number of signals
+	// will always be television.MaxSignalHistory
 	//
 	// For renderers that are producing an accurate visual image, the pixel
 	// should always be set to video black if VBLANK is on. Some renderers
@@ -95,14 +81,7 @@ type PixelRenderer interface {
 	// In other words, the PixelRenderer should not simply assume VBLANK is
 	// restricted to the "off-screen" areas as defined by the FrameInfo sent to
 	// Resize()
-	//
-	// The current flag states that the signals should be considered to be
-	// signals for the current frame. for most applications this will always be
-	// true but in some circumstances, the television will send pixels from the
-	// previous frame if they haven't been drawn yet for the current frame. An
-	// implementation of PixelRenderer may choose to ignore non-current
-	// signals.
-	SetPixels(sig []signal.SignalAttributes, current bool) error
+	SetPixels(sig []signal.SignalAttributes) error
 
 	// Reset all pixels. Called when TV is reset.
 	//

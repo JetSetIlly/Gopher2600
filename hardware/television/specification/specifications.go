@@ -154,9 +154,21 @@ const (
 )
 
 // The absolute number of scanlines allowed by the TV regardless of
-// specification - value of 312 is the same as the total number of scanlines
-// used by the PAL specification.
-const AbsoluteMaxScanlines = 312
+// specification.
+//
+// This is one more than the number of scanlines allowed by the PAL
+// specification. This is so that a ROM that uses the absolute maximum number
+// of scanlines for PAL can accomodate the VSYNC signal, which may just tip
+// over into the extra line.
+//
+// An example of such a ROM is the demo Chiphead.
+//
+// The raises the quesion why we're choosing to render the VSYNC signal. For
+// debugging purposes it is useful to see where the TV thinks it is but it can
+// perhaps be done better.
+//
+// !!TODO: think about how we're sending VSYNC to the pixel renderer
+const AbsoluteMaxScanlines = 313
 
 // The number of scanlines at which to flip between the NTSC and PAL
 // specifications. If the number of scanlines generated is greater than this

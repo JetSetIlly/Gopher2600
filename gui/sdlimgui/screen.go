@@ -105,7 +105,8 @@ type screenCrit struct {
 	elementPixels *image.RGBA
 	overlayPixels *image.RGBA
 
-	// 2d array of disasm entries. resized at the same time as overlayPixels resize
+	// reflection is a 2d array for easier access from winDbgScr. being able to
+	// index by x and y is more convenient
 	reflection [][]reflection.ReflectedVideoStep
 
 	// the cropped view of the screen pixels. note that these instances are
@@ -114,11 +115,6 @@ type screenCrit struct {
 	cropPixels        *image.RGBA
 	cropElementPixels *image.RGBA
 	cropOverlayPixels *image.RGBA
-
-	// the coordinates of the last signal sent by SetPixels(). used to help set
-	// the alpha channel when emulation is paused
-	lastX int
-	lastY int
 
 	// the selected overlay
 	overlay string
@@ -135,8 +131,27 @@ func newScreen(img *SdlImgui) *screen {
 		emuWaitAck: make(chan bool),
 	}
 
+	scr.crit.section.Lock()
+
 	scr.crit.overlay = reflection.OverlayLabels[reflection.OverlayNone]
 	scr.crit.monitorSync = true
+
+	// allocate memory for pixel buffers etc.
+	scr.crit.bufferHeight = specification.AbsoluteMaxScanlines
+	scr.crit.pixels = image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, scr.crit.bufferHeight))
+	scr.crit.elementPixels = image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, scr.crit.bufferHeight))
+	scr.crit.overlayPixels = image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, scr.crit.bufferHeight))
+
+	for i := range scr.crit.bufferPixels {
+		scr.crit.bufferPixels[i] = image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, scr.crit.bufferHeight))
+	}
+
+	scr.crit.reflection = make([][]reflection.ReflectedVideoStep, specification.ClksScanline)
+	for x := 0; x < specification.ClksScanline; x++ {
+		scr.crit.reflection[x] = make([]reflection.ReflectedVideoStep, scr.crit.bufferHeight)
+	}
+
+	scr.crit.section.Unlock()
 
 	// default to NTSC. this will change on the first instance of
 	scr.resize(television.NewFrameInfo(specification.SpecNTSC))
@@ -159,9 +174,6 @@ func (scr *screen) Reset() {
 	scr.clearPixels()
 	scr.crit.plotIdx = 0
 	scr.crit.renderIdx = 0
-
-	scr.crit.lastX = 0
-	scr.crit.lastY = 0
 }
 
 // clear all pixel information including reflection data.
@@ -208,24 +220,6 @@ func (scr *screen) resize(frameInfo television.FrameInfo) {
 	}
 
 	scr.crit.frameInfo = frameInfo
-
-	// reallocate memory for new spec. the amount of vertical space is the
-	// MaxScanlines value. the +1 is so that we can draw the debugging cursor
-	// at the limit of the screen.
-	scr.crit.bufferHeight = scr.crit.frameInfo.Spec.ScanlinesTotal + 1
-	scr.crit.pixels = image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, scr.crit.bufferHeight))
-	scr.crit.elementPixels = image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, scr.crit.bufferHeight))
-	scr.crit.overlayPixels = image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, scr.crit.bufferHeight))
-
-	for i := range scr.crit.bufferPixels {
-		scr.crit.bufferPixels[i] = image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, scr.crit.bufferHeight))
-	}
-
-	// allocate reflection info
-	scr.crit.reflection = make([][]reflection.ReflectedVideoStep, specification.ClksScanline)
-	for x := 0; x < specification.ClksScanline; x++ {
-		scr.crit.reflection[x] = make([]reflection.ReflectedVideoStep, scr.crit.bufferHeight)
-	}
 
 	// create a cropped image from the main
 	crop := image.Rect(
@@ -282,15 +276,25 @@ func (scr *screen) NewFrame(frameInfo television.FrameInfo) error {
 					scr.crit.screenrollScanline /= 10
 				}
 			} else if scr.crit.frameInfo.Stable {
-				// without the stable check, the screen can desync and recover
-				// from a roll on startup on most ROMs, which looks quite cool but
-				// we'll leave it disabled for now.
+				// without the stable check, the screen can roll during startup
+				// of many ROMs. Pitfall for example will fo this.
+				//
+				// it looks quite cool but we'll leave it disabled for now.
+
+				// the amount to adjust the screenrollScanline value by. we
+				// rolling by a fixed amount but an alternative might be to use
+				// the scr.crit.lastY value. however that value can change and
+				// cause the roll to look "ugly"
+				//
+				// using a fixed amout is artificial but it looks better in
+				// more situations
+				const rollAmount = 100
 
 				scr.crit.screenrollCt++
 				if scr.crit.screenrollCt > scr.img.crtPrefs.UnsyncTolerance.Get().(int) {
-					scr.crit.screenrollScanline = (scr.crit.screenrollScanline + scr.crit.lastY)
-					if scr.crit.screenrollScanline >= specification.AbsoluteMaxScanlines {
-						scr.crit.screenrollScanline -= specification.AbsoluteMaxScanlines
+					scr.crit.screenrollScanline += rollAmount
+					if scr.crit.screenrollScanline >= scr.crit.bufferHeight {
+						scr.crit.screenrollScanline -= scr.crit.bufferHeight
 					}
 				}
 			}
@@ -320,30 +324,6 @@ func (scr *screen) NewFrame(frameInfo television.FrameInfo) error {
 				return nil
 			}
 		}
-	} else if scr.img.emulation.State() != emulation.Rewinding {
-		// clear reflection pixels beyond the last X/Y plot
-		//
-		// this is hardly ever required but it is important for consistent
-		// reflection feedback if a frame is smaller than any previous frame.
-		//
-		// for example, during ROM initialisation, the limits of a frame might
-		// be far beyond normal, meaning reflection data from that phase will
-		// remain for the duration of the execution.
-		//
-		// note that we don't do this if the current gui state is
-		// StateRewinding. this is because in the case of GotoCoords() the
-		// lastX and lastY values are probably misleading for this purpose (the
-		// emulation being paused before the end of the screen)
-		if scr.crit.lastY < len(scr.crit.reflection[0]) {
-			for x := scr.crit.lastX; x < len(scr.crit.reflection); x++ {
-				scr.crit.reflection[x][scr.crit.lastY] = reflection.ReflectedVideoStep{}
-			}
-			for x := 0; x < len(scr.crit.reflection); x++ {
-				for y := scr.crit.lastY + 1; y < len(scr.crit.reflection[x]); y++ {
-					scr.crit.reflection[x][y] = reflection.ReflectedVideoStep{}
-				}
-			}
-		}
 	}
 
 	scr.crit.frameInfo = frameInfo
@@ -358,47 +338,20 @@ func (scr *screen) NewScanline(scanline int) error {
 }
 
 // SetPixels implements the television.PixelRenderer interface.
-func (scr *screen) SetPixels(sig []signal.SignalAttributes, current bool) error {
-	if len(sig) == 0 {
-		return nil
-	}
-
+func (scr *screen) SetPixels(sig []signal.SignalAttributes) error {
 	scr.crit.section.Lock()
 	defer scr.crit.section.Unlock()
 
-	cl := int((sig[0] & signal.Clock) >> signal.ClockShift)
-	sl := int((sig[0] & signal.Scanline) >> signal.ScanlineShift)
-
-	adjustedScanline := (sl + scr.crit.screenrollScanline)
-	if adjustedScanline >= scr.crit.bufferHeight {
-		adjustedScanline -= scr.crit.bufferHeight
-	}
-
-	offset := cl * 4
-	offset += adjustedScanline * scr.crit.bufferPixels[scr.crit.plotIdx].Rect.Size().X * 4
-
 	var col color.RGBA
 
+	// offset the pixel writes by the amount of screenroll
+	offset := scr.crit.screenrollScanline * 4 * specification.ClksScanline
+
 	for i := range sig {
-		// we accept a sig of signal.NoSignal and use it to black out unused
-		// pixels.
-		//
-		// this is only really needed in very rare situations (such as emerging
-		// from a rewind state when the screen is "smaller" then the previous
-		// one drawn). but the performance hit is negligable so it's not worth
-		// bothering with an additional condition.
-
-		// check that we're not going to encounter an index-out-of-range error
+		// end of pixel buffer reached but there are still signals to process.
+		// reset offset to zero and continue
 		if offset >= len(scr.crit.bufferPixels[scr.crit.plotIdx].Pix)-4 {
-			// if we're not currently in a screen roll then just stop drawing pixels
-			if scr.crit.screenrollScanline == 0 {
-				break
-			}
-
-			// otherwise continue drawing or we would be left with a lot of
-			// undrawn pixels and a poor screen roll effect
-			cl := int((sig[i] & signal.Clock) >> signal.ClockShift)
-			offset = cl * 4
+			offset = 0
 		}
 
 		// handle VBLANK by setting pixels to black
@@ -420,34 +373,6 @@ func (scr *screen) SetPixels(sig []signal.SignalAttributes, current bool) error 
 		offset += 4
 	}
 
-	// make sure that the entirety of the pixel buffer has been blacked out. we
-	// do this by checking the last signal in the array and black out
-	// everything from that point onwards
-	if scr.img.isPlaymode() {
-		sl = int((sig[len(sig)-1] & signal.Scanline) >> signal.ScanlineShift)
-		cl = int((sig[0] & signal.Clock) >> signal.ClockShift)
-		offset = cl * 4
-		offset += sl * scr.crit.bufferPixels[scr.crit.plotIdx].Rect.Size().X * 4
-
-		// the first pixel after the last signal
-		offset += 4
-
-		for offset < len(scr.crit.bufferPixels[scr.crit.plotIdx].Pix)-4 {
-			s := scr.crit.bufferPixels[scr.crit.plotIdx].Pix[offset : offset+3 : offset+3]
-			s[0] = col.R
-			s[1] = col.G
-			s[2] = col.B
-			offset += 4
-		}
-	}
-
-	if current {
-		cl := int((sig[len(sig)-1] & signal.Clock) >> signal.ClockShift)
-		sl := int((sig[len(sig)-1] & signal.Scanline) >> signal.ScanlineShift)
-		scr.crit.lastX = cl
-		scr.crit.lastY = sl
-	}
-
 	return nil
 }
 
@@ -462,8 +387,7 @@ func (scr *screen) Reflect(ref []reflection.ReflectedVideoStep) error {
 	defer scr.crit.section.Unlock()
 
 	for _, v := range ref {
-		// array indexes into the reflection 2d array are taken from the reflected
-		// TV signal.
+		// array indexes into the reflection 2d array are taken from the reflected TV signal
 		cl := int((v.Signal & signal.Clock) >> signal.ClockShift)
 		sl := int((v.Signal & signal.Scanline) >> signal.ScanlineShift)
 
@@ -471,15 +395,15 @@ func (scr *screen) Reflect(ref []reflection.ReflectedVideoStep) error {
 		if cl < len(scr.crit.reflection) && sl < len(scr.crit.reflection[cl]) {
 			scr.crit.reflection[cl][sl] = v
 
-			// set element pixel according to the video element that ulimately informed
-			// the color of the pixel generated by the videocycle
-			rgb := altColors[v.VideoElement]
-			scr.crit.elementPixels.SetRGBA(cl, sl, rgb)
-
 			// write to overlay. this uses the current overlay settings but it can be
 			// changed later with a call to replotOverlay()
 			scr.plotOverlay(cl, sl, v)
 		}
+
+		// set element pixel according to the video element that ulimately informed
+		// the color of the pixel generated by the videocycle
+		rgb := altColors[v.VideoElement]
+		scr.crit.elementPixels.SetRGBA(cl, sl, rgb)
 	}
 
 	return nil
