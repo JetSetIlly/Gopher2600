@@ -24,11 +24,13 @@ import (
 
 // Renderer implementations display or otherwise process VideoStep values.
 type Renderer interface {
-	// Reflect sends a VideoStep instance to the Renderer.
+	// Reflect is used to render a series of ReflectedVideoSteps. The number of
+	// entries in the array will always be television.MaxSignalHistory.
 	//
-	// Implementations should use the clock/scanline information in the Signal
-	// field of ReflectedVideoStep, rather than processing sequentially.
-	Reflect([]ReflectedVideoStep) error
+	// The layout of the ref array is roughly equivalent to the sig array sent
+	// by PixelRenderer.SetPixels(). That is, the first entry always
+	// corresponds to the top-left pixel.
+	Reflect(ref []ReflectedVideoStep) error
 }
 
 // Broker implementations can identify a reflection.Renderer.

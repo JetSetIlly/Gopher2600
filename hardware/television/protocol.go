@@ -53,18 +53,24 @@ type PixelRenderer interface {
 	Resize(FrameInfo) error
 
 	// NewFrame is called at the start of a new fame.
-	//
-	// PixelRenderer implementations should consider what to do when a
-	// non-synced frame is submitted. Rolling the screen is a good response to
-	// the non-synced frame, with the possiblity of a one or two frame
-	// tolerance (ie. do not roll unless the non-sync frame are continuous)
 	NewFrame(FrameInfo) error
 
 	// NewScanline is called at the start of a new scanline
 	NewScanline(scanline int) error
 
 	// SetPixels is used to Render a series of signals. The number of signals
-	// will always be television.MaxSignalHistory
+	// will always be television.MaxSignalHistory.
+	//
+	// Producing a 2d image from the signals sent by SetPixels() can easily be
+	// done by first allocating a bitmap of width specification.ClksScanline
+	// and height specification.AbsoluateMaxScanlines. This bitmap will have
+	// television.MaxSignalHistory entries.
+	//
+	// Every signal from SetPixels() therefore corresponds to a pixel in the
+	// bitmap - the first entry always referes to the top-left pixel.
+	//
+	// Setting the color of a pixel can be done by extracting the ColorSignal
+	// from the SignalAttributes (see signal package)
 	//
 	// For renderers that are producing an accurate visual image, the pixel
 	// should always be set to video black if VBLANK is on. Some renderers

@@ -16,4 +16,8 @@
 // Package reflection monitors the emulated hardware for conditions that would
 // otherwise not be visible through normal emulation. The reflection system is
 // stepped every video cycle.
+//
+// Note that with regards to the debugger package, OnVideoCycle() is called
+// manually from the input loop as appropriate. However, NewFrame() is handled
+// by the television - the Gatherer having been added as a FrameTrigger.
 package reflection

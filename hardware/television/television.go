@@ -386,16 +386,16 @@ func (tv *Television) Signal(sig signal.SignalAttributes) error {
 
 	// doing nothing with CBURST signal
 
-	// augment television signal before storing and sending to pixel renderers
-	sig &= ^signal.Clock
-	sig &= ^signal.Scanline
-	sig |= signal.SignalAttributes(tv.state.clock << signal.ClockShift)
-	sig |= signal.SignalAttributes(tv.state.scanline << signal.ScanlineShift)
-
-	// write the signal into the correct index of the signals array. assume
-	// that clock and scanline are constrained elsewhere such that the index
-	// can never run past the end of the signals array
+	// assume that clock and scanline are constrained elsewhere such that the
+	// index can never run past the end of the signals array
 	tv.currentSignalIdx = tv.state.clock + (tv.state.scanline * specification.ClksScanline)
+
+	// augment television signal before storing and sending to pixel renderers
+	sig &= ^signal.Index
+	sig |= signal.SignalAttributes(tv.currentSignalIdx << signal.IndexShift)
+
+	// write the signal into the correct index of the signals array.
+
 	tv.signals[tv.currentSignalIdx] = sig
 
 	// record the current signal settings so they can be used for reference

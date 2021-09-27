@@ -21,6 +21,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/television"
+	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
@@ -32,11 +33,11 @@ type Gatherer struct {
 	// history of gathered reflections
 	history []ReflectedVideoStep
 
-	// the next index to be used by Step()
-	historyIdx int
-
 	// state of emulation
 	emulationState emulation.State
+
+	// the index of the most recent signal returned by television.GetLastSignal()
+	lastIdx int
 }
 
 // NewGatherer is the preferred method of initialisation for the Monitor type.
@@ -52,31 +53,9 @@ func (ref *Gatherer) AddRenderer(renderer Renderer) {
 	ref.renderer = renderer
 }
 
-// OnInstructionEnd should be called at the conclusion of a single CPU
-// instruction execution. This should be called appropriately by the execution
-// loop, in addition to OnVideoCycle(), because not all information about the
-// CPU can be gathered accurately at the time of the previous video step. And
-// by the time of the next video step the information will be lost.
-func (ref *Gatherer) OnInstructionEnd(bank mapper.BankInfo) error {
-	// in practical terms, we need this function to make sure that the CPU
-	// field is up-to-date. the other fields won't have changed
-
-	// update previous entry. if the history is empty then a new entry will be
-	// added, rather than updated. this can cause problems with reflection
-	// renderers if processing of history is strictly sequential. for this
-	// reason there is an advisory comment in the Renderer interface
-	// definition.
-	if ref.historyIdx > 0 {
-		ref.historyIdx--
-	}
-
-	return ref.OnVideoCycle(bank)
-}
-
-// OnVideoCycle should be called every video cycle to record the current state
-// of the system. See also OnInstructionEnd() in order to gather a complete
-// reflection of the system over time.
-func (ref *Gatherer) OnVideoCycle(bank mapper.BankInfo) error {
+// Step should be called every video cycle to record a complete
+// reflection of the system.
+func (ref *Gatherer) Step(bank mapper.BankInfo) error {
 	v := ReflectedVideoStep{
 		CPU:               ref.vcs.CPU.LastResult,
 		WSYNC:             !ref.vcs.CPU.RdyFlg,
@@ -99,13 +78,20 @@ func (ref *Gatherer) OnVideoCycle(bank mapper.BankInfo) error {
 
 	v.RSYNCalign, v.RSYNCreset = ref.vcs.TIA.RSYNCstate()
 
-	// reflector is not paused so we record VideoStep for later processing.
-	ref.history[ref.historyIdx] = v
-	ref.historyIdx++
+	idx := int((v.Signal & signal.Index) >> signal.IndexShift)
+	ref.history[idx] = v
 
-	if ref.historyIdx >= len(ref.history) {
-		return ref.render()
+	// nullify entries at the head of the array that do not have a
+	// corresponding signal. this works because signals returned by
+	// GetLastSignal should be linear.
+	//
+	// unlike the nullify loop in NewFrame(), this does not have a
+	// corresponding constructin in the television implementation.
+	for i := ref.lastIdx; i < idx-1; i++ {
+		ref.history[i] = ReflectedVideoStep{}
 	}
+
+	ref.lastIdx = idx
 
 	return nil
 }
@@ -119,9 +105,6 @@ func (ref *Gatherer) render() error {
 			}
 		}
 	}
-
-	// reset reflection history
-	ref.historyIdx = 0
 
 	return nil
 }
@@ -148,6 +131,16 @@ func (ref *Gatherer) SetEmulationState(state emulation.State) {
 
 // NewFrame implements the television.FrameTrigger interface.
 func (ref *Gatherer) NewFrame(_ television.FrameInfo) error {
+	// nullify unused entries at end of frame
+	//
+	// note that this echoes a similar construct in the television.NewFrame()
+	// function. it's important that this happens here or the results in the
+	// Renderer will not be satisfactory.
+	for i := ref.lastIdx; i < len(ref.history); i++ {
+		ref.history[i] = ReflectedVideoStep{}
+	}
+	ref.lastIdx = 0
+
 	// if new state is not paused then render history - the pause state is
 	// handled in the Step() function
 	if ref.renderer != nil {

@@ -51,13 +51,11 @@ func NewVideo(tv *television.Television) (*Video, error) {
 	// register ourselves as a television.Renderer
 	dig.AddPixelRenderer(dig)
 
-	// length of pixels array contains enough room for the previous frames
-	// digest value
+	// length of pixels array contains enough room for the previous frames digest value
 	l := len(dig.digest)
+	l += television.MaxSignalHistory * pixelDepth
 
 	// allocate enough pixels for entire frame
-	dig.spec = dig.GetFrameInfo().Spec
-	l += ((specification.ClksScanline + 1) * (dig.spec.ScanlinesTotal + 1) * pixelDepth)
 	dig.pixels = make([]byte, l)
 
 	return dig, nil
@@ -82,16 +80,7 @@ func (dig *Video) ResetDigest() {
 // television implementation. Changes to how the specification is flipped might
 // cause comparison failures however.
 func (dig *Video) Resize(current television.FrameInfo) error {
-	if current.Spec.ID == dig.spec.ID {
-		return nil
-	}
-
-	// allocate enough pixels for entire frame
 	dig.spec = current.Spec
-	l := len(dig.digest)
-	l += ((specification.ClksScanline + 1) * (dig.spec.ScanlinesTotal + 1) * pixelDepth)
-	dig.pixels = make([]byte, l)
-
 	return nil
 }
 
@@ -115,33 +104,21 @@ func (dig *Video) NewScanline(scanline int) error {
 
 // SetPixels implements television.PixelRenderer interface.
 func (dig *Video) SetPixels(sig []signal.SignalAttributes) error {
-	if len(sig) == 0 || sig[0] == signal.NoSignal {
-		return nil
-	}
+	// offset always starts at after the digest leader
+	offset := len(dig.digest)
 
 	for i := range sig {
-		if sig[i] == signal.NoSignal {
-			break
-		}
+		// ignore VBLANK and extract the color signal in all situations
+		px := signal.ColorSignal((sig[i] & signal.Color) >> signal.ColorShift)
+		col := dig.spec.GetColor(px)
 
-		// preserve the first few bytes of the pixel array for a chained
-		// fingerprint
-		o := len(dig.digest)
+		// setting every pixel regardless of vblank value
+		s := dig.pixels[offset : offset+3 : offset+3]
+		s[0] = col.R
+		s[1] = col.G
+		s[2] = col.B
 
-		sl := int((sig[i] & signal.Scanline) >> signal.ScanlineShift)
-		cl := int((sig[i] & signal.Clock) >> signal.ClockShift)
-		o += specification.ClksScanline * sl * pixelDepth
-		o += cl * pixelDepth
-
-		if o <= len(dig.pixels)-pixelDepth {
-			px := signal.ColorSignal((sig[i] & signal.Color) >> signal.ColorShift)
-			col := dig.spec.GetColor(px)
-
-			// setting every pixel regardless of vblank value
-			dig.pixels[o] = col.R
-			dig.pixels[o+1] = col.G
-			dig.pixels[o+2] = col.B
-		}
+		offset += pixelDepth
 	}
 	return nil
 }

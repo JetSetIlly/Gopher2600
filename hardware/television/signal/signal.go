@@ -38,8 +38,12 @@ const (
 	AudioChannel0 SignalAttributes = 0b0000000000000000000000000000000001111111100000 // 8 bits
 	AudioChannel1 SignalAttributes = 0b0000000000000000000000000111111110000000000000 // 8 bits
 	Color         SignalAttributes = 0b0000000000000000011111111000000000000000000000 // 8 bits
-	Scanline      SignalAttributes = 0b0000000011111111100000000000000000000000000000 // 9 bits
-	Clock         SignalAttributes = 0b1111111100000000000000000000000000000000000000 // 8 bits (signed)
+
+	// Index is additional information relating to the position of the signal
+	// in relation to the top left of the screen. It can mostly be ignored but
+	// it is useful for synchronisation between the television and reflection
+	// packages.
+	Index SignalAttributes = 0b1111111111111111100000000000000000000000000000 // 17 bits
 )
 
 // List of shift amounts to be used to access the corresponding bits in a
@@ -48,17 +52,11 @@ const (
 	AudioChannel0Shift = 5
 	AudioChannel1Shift = 13
 	ColorShift         = 21
-	ScanlineShift      = 29
-	ClockShift         = 38
+	IndexShift         = 29
 )
 
-// NoSignal is the null value of the SignalAttributes type. It is assumed that
-// a TV scanline/clock value of 511x255 is impossible and so can never be
-// confused with a real signal
-//
-// In an array of SignalAttributes a NoSignal indicates the end of the array -
-// processing should stop.
-const NoSignal = Scanline | Clock
+// NoSignal is the null value of the SignalAttributes type.
+const NoSignal = Index
 
 func (a SignalAttributes) String() string {
 	s := strings.Builder{}

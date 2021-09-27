@@ -349,8 +349,10 @@ func (scr *screen) SetPixels(sig []signal.SignalAttributes) error {
 
 	for i := range sig {
 		// end of pixel buffer reached but there are still signals to process.
-		// reset offset to zero and continue
-		if offset >= len(scr.crit.bufferPixels[scr.crit.plotIdx].Pix)-4 {
+		//
+		// this can happen when screen is rolling and offset started off at a
+		// value greater than zero
+		if offset >= len(scr.crit.bufferPixels[scr.crit.plotIdx].Pix) {
 			offset = 0
 		}
 
@@ -386,10 +388,17 @@ func (scr *screen) Reflect(ref []reflection.ReflectedVideoStep) error {
 	scr.crit.section.Lock()
 	defer scr.crit.section.Unlock()
 
-	for _, v := range ref {
-		// array indexes into the reflection 2d array are taken from the reflected TV signal
-		cl := int((v.Signal & signal.Clock) >> signal.ClockShift)
-		sl := int((v.Signal & signal.Scanline) >> signal.ScanlineShift)
+	// we shouldn't ever need to worry about the number of entries in the ref
+	// array but if we do want to make sure then something like the condition
+	// below would be good.
+	//
+	if len(ref) != television.MaxSignalHistory {
+		panic("reflected entries not the same length as reflection buffer")
+	}
+
+	for i, v := range ref {
+		sl := i / specification.ClksScanline
+		cl := i % specification.ClksScanline
 
 		// store Reflection instance
 		if cl < len(scr.crit.reflection) && sl < len(scr.crit.reflection[cl]) {

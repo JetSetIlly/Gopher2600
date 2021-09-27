@@ -85,7 +85,7 @@ func (dbg *Debugger) catchupLoop(inputter terminal.Input) error {
 	var ended bool
 
 	callbackStep := func() error {
-		err := dbg.ref.OnVideoCycle(dbg.lastBank)
+		err := dbg.ref.Step(dbg.lastBank)
 		if err != nil {
 			return err
 		}
@@ -121,7 +121,7 @@ func (dbg *Debugger) catchupLoop(inputter terminal.Input) error {
 		}
 
 		// make sure reflection has been updated at the end of the instruction
-		if err := dbg.ref.OnInstructionEnd(dbg.lastBank); err != nil {
+		if err := dbg.ref.Step(dbg.lastBank); err != nil {
 			return err
 		}
 	}
@@ -423,7 +423,7 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, isVideoStep bool) error 
 
 func (dbg *Debugger) step(inputter terminal.Input, catchup bool) error {
 	callbackInstruction := func() error {
-		return dbg.ref.OnVideoCycle(dbg.lastBank)
+		return dbg.ref.Step(dbg.lastBank)
 	}
 
 	callbackVideo := func() error {
@@ -474,7 +474,7 @@ func (dbg *Debugger) step(inputter terminal.Input, catchup bool) error {
 	}
 
 	// make sure reflection has been updated at the end of the instruction
-	if err := dbg.ref.OnInstructionEnd(dbg.lastBank); err != nil {
+	if err := dbg.ref.Step(dbg.lastBank); err != nil {
 		return err
 	}
 
