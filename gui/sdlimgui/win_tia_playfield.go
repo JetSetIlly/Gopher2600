@@ -243,16 +243,20 @@ func (win *winTIA) drawPlayfield() {
 	imgui.Spacing()
 	imgui.Spacing()
 
-	// playfield data as a sequence
+	// playfield data for the scanline
 	imgui.BeginGroup()
-	imguiLabel("Sequence")
+	imguiLabel("Scanline")
 	seq = newDrawlistSequence(win.img, imgui.Vec2{X: imgui.FrameHeight() * 0.5, Y: imgui.FrameHeight()}, false)
 
 	// first half of the playfield
 	for _, v := range lz.LeftData {
 		var col uint8
 		if v {
-			col = lz.ForegroundColor
+			if lz.Scoremode {
+				col = win.img.lz.Player0.Color
+			} else {
+				col = lz.ForegroundColor
+			}
 		} else {
 			col = lz.BackgroundColor
 		}
@@ -264,7 +268,11 @@ func (win *winTIA) drawPlayfield() {
 	for _, v := range lz.RightData {
 		var col uint8
 		if v {
-			col = lz.ForegroundColor
+			if lz.Scoremode {
+				col = win.img.lz.Player1.Color
+			} else {
+				col = lz.ForegroundColor
+			}
 		} else {
 			col = lz.BackgroundColor
 		}
@@ -289,4 +297,10 @@ func (win *winTIA) drawPlayfield() {
 		dl.AddCircleFilled(p1, imgui.FontSize()*0.20, win.img.cols.tiaPointer)
 	}
 	imgui.EndGroup()
+
+	if lz.Scoremode {
+		imgui.Spacing()
+		imgui.Spacing()
+		imgui.Text("(the scoremode flag affects the color of the playfield)")
+	}
 }
