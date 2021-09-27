@@ -523,18 +523,17 @@ func (tv *Television) newFrame(fromVsync bool) error {
 // renderSignals forwards pixels in the signalHistory buffer to all pixel
 // renderers and audio mixers.
 func (tv *Television) renderSignals() error {
-	// do not render signals if emulation is in the rewinding state
-	if tv.emulationState == emulation.Rewinding {
-		return nil
-	}
-
-	for _, r := range tv.renderers {
-		err := r.SetPixels(tv.signals)
-		if err != nil {
-			return curated.Errorf("television: %v", err)
+	// do not render pixels if emulation is in the rewinding state
+	if tv.emulationState != emulation.Rewinding {
+		for _, r := range tv.renderers {
+			err := r.SetPixels(tv.signals)
+			if err != nil {
+				return curated.Errorf("television: %v", err)
+			}
 		}
 	}
 
+	// but we do mix audio even if the emulation is rewinding
 	for _, m := range tv.mixers {
 		err := m.SetAudio(tv.signals[:tv.currentSignalIdx])
 		if err != nil {
