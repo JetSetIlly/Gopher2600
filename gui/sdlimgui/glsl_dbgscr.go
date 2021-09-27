@@ -146,8 +146,8 @@ func (sh *dbgScreenShader) setAttributes(env shaderEnvironment) {
 	gl.Uniform2f(sh.screenDim, width, height)
 
 	// cursor is the coordinates of the *most recent* pixel to be drawn
-	cursorX := sh.img.lz.TV.Clock + specification.ClksHBlank
-	cursorY := sh.img.lz.TV.Scanline
+	cursorX := sh.img.screen.crit.lastClock
+	cursorY := sh.img.screen.crit.lastScanline
 
 	// if crt preview is enabled then force cropping
 	if sh.img.wm.dbgScr.cropped || sh.img.wm.dbgScr.crtPreview {

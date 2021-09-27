@@ -72,6 +72,15 @@ type PixelRenderer interface {
 	// Setting the color of a pixel can be done by extracting the ColorSignal
 	// from the SignalAttributes (see signal package)
 	//
+	// The last parameter indicates the index of the array entry that was most
+	// recently set. This is useful to know when showing televison images when
+	// the emulation is paused. All entries upto and including last are from
+	// teh *current* frame. All entries afterwards are from the *previous*
+	// frame.
+	//
+	// If the entry contains signal.NoSignal then that screen pixel has not
+	// been written to recently.
+	//
 	// For renderers that are producing an accurate visual image, the pixel
 	// should always be set to video black if VBLANK is on. Some renderers
 	// however may find it useful to set the pixel to the RGB value regardless
@@ -87,7 +96,7 @@ type PixelRenderer interface {
 	// In other words, the PixelRenderer should not simply assume VBLANK is
 	// restricted to the "off-screen" areas as defined by the FrameInfo sent to
 	// Resize()
-	SetPixels(sig []signal.SignalAttributes) error
+	SetPixels(sig []signal.SignalAttributes, last int) error
 
 	// Reset all pixels. Called when TV is reset.
 	//

@@ -103,7 +103,7 @@ func (dig *Video) NewScanline(scanline int) error {
 }
 
 // SetPixels implements television.PixelRenderer interface.
-func (dig *Video) SetPixels(sig []signal.SignalAttributes) error {
+func (dig *Video) SetPixels(sig []signal.SignalAttributes, _ int) error {
 	// offset always starts at after the digest leader
 	offset := len(dig.digest)
 

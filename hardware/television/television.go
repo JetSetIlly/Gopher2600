@@ -526,7 +526,7 @@ func (tv *Television) renderSignals() error {
 	// do not render pixels if emulation is in the rewinding state
 	if tv.emulationState != emulation.Rewinding {
 		for _, r := range tv.renderers {
-			err := r.SetPixels(tv.signals)
+			err := r.SetPixels(tv.signals, tv.currentSignalIdx)
 			if err != nil {
 				return curated.Errorf("television: %v", err)
 			}

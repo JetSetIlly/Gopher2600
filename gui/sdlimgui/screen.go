@@ -122,6 +122,17 @@ type screenCrit struct {
 	// when paused we show two adjacent frames over-and-over. this flag tracks
 	// which of those frames to show
 	pauseFrame bool
+
+	// the coordinates of the most recent pixel to be set by the television
+	//
+	// we experimented with not having these fields and using the Scanline and
+	// Clock values from LazyTV. however, for one of the purposes we want to
+	// use it for, waiting for the lazy system to update causes a visible
+	// artefact in the rendering of the debug screen. it's unfortunate and it
+	// means PixelRenderer.SetPixels() needs an extra argument but it's worth
+	// it IMO
+	lastClock    int
+	lastScanline int
 }
 
 func newScreen(img *SdlImgui) *screen {
@@ -338,7 +349,7 @@ func (scr *screen) NewScanline(scanline int) error {
 }
 
 // SetPixels implements the television.PixelRenderer interface.
-func (scr *screen) SetPixels(sig []signal.SignalAttributes) error {
+func (scr *screen) SetPixels(sig []signal.SignalAttributes, last int) error {
 	scr.crit.section.Lock()
 	defer scr.crit.section.Unlock()
 
@@ -374,6 +385,9 @@ func (scr *screen) SetPixels(sig []signal.SignalAttributes) error {
 
 		offset += 4
 	}
+
+	scr.crit.lastScanline = last / specification.ClksScanline
+	scr.crit.lastClock = last % specification.ClksScanline
 
 	return nil
 }
