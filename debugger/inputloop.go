@@ -85,6 +85,10 @@ func (dbg *Debugger) catchupLoop(inputter terminal.Input) error {
 	var ended bool
 
 	callbackStep := func() error {
+		if dbg.unwindLoopRestart != nil {
+			return nil
+		}
+
 		err := dbg.ref.Step(dbg.lastBank)
 		if err != nil {
 			return err
@@ -118,6 +122,10 @@ func (dbg *Debugger) catchupLoop(inputter terminal.Input) error {
 		err := dbg.vcs.Step(callbackStep)
 		if err != nil {
 			return err
+		}
+
+		if dbg.unwindLoopRestart != nil {
+			return nil
 		}
 
 		// make sure reflection has been updated at the end of the instruction

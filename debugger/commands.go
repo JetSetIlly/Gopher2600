@@ -178,8 +178,14 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 	case cmdReset:
 		// resetting in the middle of a CPU instruction requires the input loop
 		// to be unwound before continuing
-		dbg.unwindLoop(dbg.reset)
-		dbg.printLine(terminal.StyleFeedback, "machine reset")
+		dbg.unwindLoop(func() error {
+			err := dbg.reset()
+			if err != nil {
+				return err
+			}
+			dbg.printLine(terminal.StyleFeedback, "machine reset")
+			return nil
+		})
 
 	case cmdRun:
 		dbg.runUntilHalt = true
@@ -379,20 +385,24 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		})
 
 	case cmdInsert:
-		cart, _ := tokens.Get()
-		cl, err := cartridgeloader.NewLoader(cart, "AUTO")
-		if err != nil {
-			return err
-		}
-		err = dbg.attachCartridge(cl)
-		if err != nil {
-			return err
-		}
+		dbg.unwindLoop(func() error {
+			cart, _ := tokens.Get()
+			cl, err := cartridgeloader.NewLoader(cart, "AUTO")
+			if err != nil {
+				return err
+			}
+			err = dbg.attachCartridge(cl)
+			if err != nil {
+				return err
+			}
 
-		// use cartridge's idea of the filename. the attach process may have
-		// caused a different cartridge to load than the one requested (most
-		// typically this will mean that the cartridge has been ejected)
-		dbg.printLine(terminal.StyleFeedback, "machine reset with new cartridge (%s)", dbg.vcs.Mem.Cart.Filename)
+			// use cartridge's idea of the filename. the attach process may have
+			// caused a different cartridge to load than the one requested (most
+			// typically this will mean that the cartridge has been ejected)
+			dbg.printLine(terminal.StyleFeedback, "machine reset with new cartridge (%s)", dbg.vcs.Mem.Cart.Filename)
+
+			return nil
+		})
 
 	case cmdCartridge:
 		arg, ok := tokens.Get()
