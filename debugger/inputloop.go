@@ -89,6 +89,11 @@ func (dbg *Debugger) catchupLoop(inputter terminal.Input) error {
 			return nil
 		}
 
+		// not updating disassembly. the halt condition in the inputLoop will
+		// give us an opportunity to update *even if the catchupLoop is still
+		// executing*
+
+		// we do need to update the reflection however
 		err := dbg.ref.Step(dbg.lastBank)
 		if err != nil {
 			return err
@@ -124,13 +129,20 @@ func (dbg *Debugger) catchupLoop(inputter terminal.Input) error {
 			return err
 		}
 
-		if dbg.unwindLoopRestart != nil {
-			return nil
+		// update disassembly after every CPU instruction. even during a catch
+		// up we need to do this.
+		dbg.lastResult, err = dbg.Disasm.ExecutedEntry(dbg.lastBank, dbg.vcs.CPU.LastResult, dbg.vcs.CPU.PC.Value())
+		if err != nil {
+			return err
 		}
 
 		// make sure reflection has been updated at the end of the instruction
-		if err := dbg.ref.Step(dbg.lastBank); err != nil {
+		if err = dbg.ref.Step(dbg.lastBank); err != nil {
 			return err
+		}
+
+		if dbg.unwindLoopRestart != nil {
+			return nil
 		}
 	}
 
@@ -279,6 +291,14 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, isVideoStep bool) error 
 				break // dbg.running loop
 			}
 
+			// if this is a video step and we reach this stage then we update the disassembly
+			if isVideoStep {
+				dbg.lastResult, err = dbg.Disasm.ExecutedEntry(dbg.lastBank, dbg.vcs.CPU.LastResult, dbg.vcs.CPU.PC.Value())
+				if err != nil {
+					return err
+				}
+			}
+
 			// always clear steptraps. if the emulation has halted for any
 			// reason then any existing step trap is stale.
 			dbg.stepTraps.clear()
@@ -415,14 +435,6 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, isVideoStep bool) error 
 			if dbg.unwindLoopRestart != nil {
 				return nil
 			}
-
-			// commandOnStep is processed every time emulation has step
-			if dbg.commandOnStep != nil {
-				err := dbg.processTokensList(dbg.commandOnStep)
-				if err != nil {
-					dbg.printLine(terminal.StyleError, "%s", err)
-				}
-			}
 		}
 	}
 
@@ -441,8 +453,12 @@ func (dbg *Debugger) step(inputter terminal.Input, catchup bool) error {
 			return nil
 		}
 
-		// update debugger the same way for video quantum as for cpu quantum
-		err = callbackInstruction()
+		// not updating disassembly. if we end up stopping mid-instruction the
+		// halt branch of the inputLoop() function will give us an opportinity
+		// to update, which is all we need.
+
+		// we do need to update the reflection however
+		err = dbg.ref.Step(dbg.lastBank)
 		if err != nil {
 			return err
 		}
@@ -450,8 +466,10 @@ func (dbg *Debugger) step(inputter terminal.Input, catchup bool) error {
 		// for video quantums we need to run any OnStep commands before
 		// starting a new inputLoop
 		if dbg.commandOnStep != nil {
+
 			// we don't do this if we're in catchup mode
 			if !catchup {
+
 				err := dbg.processTokensList(dbg.commandOnStep)
 				if err != nil {
 					dbg.printLine(terminal.StyleError, "%s", err)
@@ -481,8 +499,16 @@ func (dbg *Debugger) step(inputter terminal.Input, catchup bool) error {
 		stepErr = fmt.Errorf("unknown quantum mode")
 	}
 
+	var err error
+
+	// update disassembly after every CPU instruction. no exceptions.
+	dbg.lastResult, err = dbg.Disasm.ExecutedEntry(dbg.lastBank, dbg.vcs.CPU.LastResult, dbg.vcs.CPU.PC.Value())
+	if err != nil {
+		return err
+	}
+
 	// make sure reflection has been updated at the end of the instruction
-	if err := dbg.ref.Step(dbg.lastBank); err != nil {
+	if err = dbg.ref.Step(dbg.lastBank); err != nil {
 		return err
 	}
 
@@ -516,18 +542,13 @@ func (dbg *Debugger) step(inputter terminal.Input, catchup bool) error {
 			dbg.printLine(terminal.StyleError, "CPU halted mid-instruction. next step may be inaccurate.")
 			dbg.vcs.CPU.Interrupted = true
 		}
-	}
-
-	var err error
-
-	// update entry and store result as last result.
-	//
-	// note that it's important to store the formatted lastResult here because
-	// otherwise it won't be updated until the emulation halted. this is
-	// important for visual feedback.
-	dbg.lastResult, err = dbg.Disasm.ExecutedEntry(dbg.lastBank, dbg.vcs.CPU.LastResult, dbg.vcs.CPU.PC.Value())
-	if err != nil {
-		return err
+	} else if dbg.quantum != QuantumVideo {
+		if dbg.commandOnStep != nil {
+			err := dbg.processTokensList(dbg.commandOnStep)
+			if err != nil {
+				dbg.printLine(terminal.StyleError, "%s", err)
+			}
+		}
 	}
 
 	return nil
