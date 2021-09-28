@@ -254,10 +254,26 @@ func (win *winDbgScr) draw() {
 		// emulation is paused
 		if win.img.emulation.State() == emulation.Paused {
 			if imgui.IsMouseDown(0) {
+				sl := win.mouseScanline
+				cl := win.mouseClock - specification.ClksHBlank
+
+				// if mouse is off the end of the screen then adjust the
+				// scanline (we want to goto) to just before the end of the
+				// screen (the actual end of the screen might be a half
+				// scanline - this limiting effect is purely visual so accuracy
+				// isn't paramount)
+				if sl >= win.img.screen.crit.frameInfo.TotalScanlines {
+					sl = win.img.screen.crit.frameInfo.TotalScanlines - 1
+					if sl < 0 {
+						sl = 0
+					}
+				}
+
+				// match against the actual mouse scanline not the adjusted scanline
 				if win.img.screen.gotoCoordsX != win.mouseClock || win.img.screen.gotoCoordsY != win.img.wm.dbgScr.mouseScanline {
 					win.img.screen.gotoCoordsX = win.mouseClock
 					win.img.screen.gotoCoordsY = win.img.wm.dbgScr.mouseScanline
-					win.img.dbg.PushGoto(win.mouseClock-specification.ClksHBlank, win.mouseScanline, win.img.lz.TV.Frame)
+					win.img.dbg.PushGoto(cl, sl, win.img.lz.TV.Frame)
 				}
 			}
 		}

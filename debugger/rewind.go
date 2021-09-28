@@ -19,6 +19,7 @@ package debugger
 // the debugger than would otherwise be available.
 
 import (
+	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/emulation"
 )
 
@@ -38,12 +39,12 @@ func (dbg *Debugger) PushRewind(fn int, last bool) bool {
 		if last {
 			err := dbg.Rewind.GotoLast()
 			if err != nil {
-				return err
+				return curated.Errorf("push goto last: %v", err)
 			}
 		} else {
 			err := dbg.Rewind.GotoFrame(fn)
 			if err != nil {
-				return err
+				return curated.Errorf("push goto frame: %v", err)
 			}
 		}
 
@@ -78,7 +79,7 @@ func (dbg *Debugger) PushGoto(clock int, scanline int, frame int) bool {
 	doRewind := func() error {
 		err := dbg.Rewind.GotoCoords(frame, scanline, clock)
 		if err != nil {
-			return err
+			return curated.Errorf("push goto coords: %v", err)
 		}
 		return nil
 	}

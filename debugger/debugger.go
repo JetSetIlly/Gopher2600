@@ -360,7 +360,7 @@ func (dbg *Debugger) Start(initScript string, cartload cartridgeloader.Loader) e
 		if dbg.unwindLoopRestart != nil {
 			err := dbg.unwindLoopRestart()
 			if err != nil {
-				logger.Log("input loop restart", err.Error())
+				return curated.Errorf("debugger: %v", err)
 			}
 			dbg.unwindLoopRestart = nil
 		} else {

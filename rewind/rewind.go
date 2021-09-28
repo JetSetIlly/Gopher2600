@@ -37,6 +37,14 @@ type CatchUpLoopCallback func(fr int)
 
 // Runner provides the rewind package the opportunity to run the emulation.
 type Runner interface {
+	// CatchupLoop should loop until the frame/scanline/clock coordinates are
+	// met. f should be called periodically, ideally every video cycle.
+	//
+	// When implementating the CatchupLoop(), care should be takan about what
+	// to do for example, if the scaline/clock coordinates do no exist on the
+	// specified frame. Either stop when the frame becomes too large or don't
+	// request the rewind in the first place. Such details are outside the
+	// scope of the rewind package however.
 	CatchUpLoop(frame int, scanline int, clock int, f CatchUpLoopCallback) error
 }
 
@@ -113,7 +121,7 @@ type Rewind struct {
 	comparison *State
 
 	// adhocFrame is a special snapshot of a state that cannot be found in the
-	// entries array. it is used to speed up consecutive calls to GotoFrameCoords()
+	// entries array. it is used to speed up consecutive calls to GotoCoords()
 	//
 	// only comes into play if snapshot frequency is larger than 1
 	adhocFrame *State
@@ -146,7 +154,7 @@ func NewRewind(vcs *hardware.VCS, runner Runner) (*Rewind, error) {
 
 	r.Prefs, err = newPreferences(r)
 	if err != nil {
-		return nil, curated.Errorf("rewind", err)
+		return nil, curated.Errorf("rewind: %v", err)
 	}
 
 	r.vcs.TV.AddFrameTrigger(r)
@@ -408,7 +416,7 @@ func (r *Rewind) plumbState(s *State, frame, scanline, clock int) error {
 	if s.level == levelReset {
 		err := r.vcs.TV.Reset(false)
 		if err != nil {
-			return curated.Errorf("rewind", err)
+			return curated.Errorf("rewind: %v", err)
 		}
 	}
 
@@ -430,7 +438,7 @@ func (r *Rewind) plumbState(s *State, frame, scanline, clock int) error {
 
 	err := r.runner.CatchUpLoop(frame, scanline, clock, callback)
 	if err != nil {
-		return curated.Errorf("rewind", err)
+		return curated.Errorf("rewind: %v", err)
 	}
 
 	return nil
