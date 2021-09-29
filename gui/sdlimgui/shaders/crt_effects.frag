@@ -75,7 +75,7 @@ void main() {
 	// using y axis to determine scaling.
 	float scaling = float(ScreenDim.y) / float(NumScanlines);
 
-	// scanlines -  only draw if scaling is large enough
+	// scanlines - only draw if scaling is large enough
 	if (Scanlines == 1) {
 		if (scaling > 1) {
 			float scans = clamp(ScanlinesBright+0.18*sin(uv.y*ScreenDim.y*ScanlinesFine), 0.0, 1.0);

@@ -56,7 +56,15 @@ type winDbgScr struct {
 	// imgui coords of mouse
 	mousePos imgui.Vec2
 
-	// clocks and scanline equivalent position of the mouse
+	// scaled mouse coordinates. top-left corner is zero for uncropped screens.
+	// cropped screens are adjusted as required
+	//
+	// use these values to index the reflection array, for example
+	mouseX int
+	mouseY int
+
+	// mouse position adjusted so that clock and scanline represent the
+	// underlying screen (taking cropped setting into account)
 	mouseClock    int
 	mouseScanline int
 
@@ -181,14 +189,21 @@ func (win *winDbgScr) draw() {
 	if !imgui.IsPopupOpen(breakMenuPopupID) {
 		win.mousePos = imgui.MousePos().Minus(win.screenOrigin)
 
-		// scale
-		win.mouseClock = int(win.mousePos.X / win.xscaling)
-		win.mouseScanline = int(win.mousePos.Y / win.yscaling)
+		// scaled mouse position coordinates
+		win.mouseX = int(win.mousePos.X / win.xscaling)
+		win.mouseY = int(win.mousePos.Y / win.yscaling)
 
-		// adjust if image cropped or crt preview is active
+		// corresponding clock and scanline values for scaled mouse coordinates
+		win.mouseClock = win.mouseX
+		win.mouseScanline = win.mouseY
+
+		// adjust depending on whether screen is cropped (or in CRT Preview)
 		if win.cropped || win.crtPreview {
-			win.mouseClock += specification.ClksHBlank
+			win.mouseX += specification.ClksHBlank
+			win.mouseY += win.scr.crit.frameInfo.VisibleTop
 			win.mouseScanline += win.scr.crit.frameInfo.VisibleTop
+		} else {
+			win.mouseClock -= specification.ClksHBlank
 		}
 	}
 
@@ -255,7 +270,7 @@ func (win *winDbgScr) draw() {
 		if win.img.emulation.State() == emulation.Paused {
 			if imgui.IsMouseDown(0) {
 				sl := win.mouseScanline
-				cl := win.mouseClock - specification.ClksHBlank
+				cl := win.mouseClock
 
 				// if mouse is off the end of the screen then adjust the
 				// scanline (we want to goto) to just before the end of the
@@ -463,19 +478,19 @@ func (win *winDbgScr) drawReflectionTooltip() {
 	}
 
 	// upper boundary check
-	if win.mouseClock >= len(win.scr.crit.reflection) || win.mouseScanline >= len(win.scr.crit.reflection[win.mouseClock]) {
+	if win.mouseX >= len(win.scr.crit.reflection) || win.mouseY >= len(win.scr.crit.reflection[win.mouseX]) {
 		return
 	}
 
 	// get reflection information
-	ref := win.scr.crit.reflection[win.mouseClock][win.mouseScanline]
+	ref := win.scr.crit.reflection[win.mouseX][win.mouseY]
 
 	// present tooltip showing pixel coords at a minimum
 	imgui.BeginTooltip()
 	defer imgui.EndTooltip()
 
 	imgui.Text(fmt.Sprintf("Scanline: %d", win.mouseScanline))
-	imgui.Text(fmt.Sprintf("Clock: %d", win.mouseClock-specification.ClksHBlank))
+	imgui.Text(fmt.Sprintf("Clock: %d", win.mouseClock))
 
 	e, _ := win.img.dbg.Disasm.FormatResult(ref.Bank, ref.CPU, disassembly.EntryLevelBlessed)
 	if e.Address == "" {

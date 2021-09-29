@@ -130,8 +130,7 @@ a comma.
 THE OFF argument can be used to toggle the ONSTEP commands temporarily. Use the
 ON argument to resume ONSTEP reporting.`,
 
-	cmdOnTrace: `Define commands to run whenever a trace condition is met. Unlike the ONSTEP
-and ONHALT commands there is no OFF argument.`,
+	cmdOnTrace: `Define commands to run whenever a trace condition is met.`,
 
 	cmdLast: `Prints the disassembly of the last cpu/video cycle. Use the BYTECODE argument 
 to display the raw bytes alongside the disassembly. The DEFN argument meanwhile
@@ -495,8 +494,6 @@ the activity. For example, as a result of "TRACE 0x80":
 	$f006 STA VSYNC,X -> write 0x0080 (RAM)
 	$faa3 STA $80 -> write 0x0080 (RAM)
 	$f0ed LDA $80 -> read 0x0080 (RAM)
-
-There is currently no ONTRACE command.
 
 Generally, WATCH is a more flexible instrument but TRACE can be useful to quickly gather information
 about an address.`,

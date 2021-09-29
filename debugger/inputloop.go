@@ -24,7 +24,6 @@ import (
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
 	"github.com/jetsetilly/gopher2600/disassembly"
 	"github.com/jetsetilly/gopher2600/emulation"
-	"github.com/jetsetilly/gopher2600/hardware/cpu/instructions"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/rewind"
@@ -84,7 +83,7 @@ func (dbg *Debugger) CatchUpLoop(frame int, scanline int, clock int, callback re
 func (dbg *Debugger) catchupLoop(inputter terminal.Input) error {
 	var ended bool
 
-	callbackStep := func() error {
+	callback := func() error {
 		if dbg.unwindLoopRestart != nil {
 			return nil
 		}
@@ -124,7 +123,7 @@ func (dbg *Debugger) catchupLoop(inputter terminal.Input) error {
 	for !ended {
 		dbg.lastBank = dbg.vcs.Mem.Cart.GetBank(dbg.vcs.CPU.PC.Address())
 
-		err := dbg.vcs.Step(callbackStep)
+		err := dbg.vcs.Step(callback)
 		if err != nil {
 			return err
 		}
@@ -242,46 +241,13 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, isVideoStep bool) error 
 			dbg.printLine(terminal.StyleFeedback, fmt.Sprintf(" <trace> %s", trace))
 		}
 
-		// check for halt conditions and process halt state
-		//
-		// note that at the moment if we've stopped after a catchupLoop then we
-		// may see break messages and commandOnHalt messages. this doesn't
-		// affect anything but it's arguably not the correct behaviour. in
-		// other words, rewinding should not output any of these messages.
-		//
-		// TODO: halt messages should not be displayed after a rewind event
-
-		var haltEmulation bool
-		var stepTrapMessage string
-		var breakMessage string
-		var trapMessage string
-		var watchMessage string
-
-		// check for breakpoints and traps. for video cycle input loops we only
-		// do this if the instruction has affected flow.
-		if !isVideoStep || (dbg.vcs.CPU.LastResult.Defn != nil &&
-			(dbg.vcs.CPU.LastResult.Defn.Effect == instructions.Flow ||
-				dbg.vcs.CPU.LastResult.Defn.Effect == instructions.Subroutine ||
-				dbg.vcs.CPU.LastResult.Defn.Effect == instructions.Interrupt)) {
-			breakMessage = dbg.breakpoints.check(breakMessage)
-			trapMessage = dbg.traps.check(trapMessage)
-			watchMessage = dbg.watches.check(watchMessage)
-			stepTrapMessage = dbg.stepTraps.check("")
-		}
-
-		// check for halt conditions
-		haltEmulation = stepTrapMessage != "" || breakMessage != "" ||
-			trapMessage != "" || watchMessage != "" ||
-			dbg.lastStepError || dbg.haltImmediately
-
-		// expand halt to include step-once/many flag
-		haltEmulation = haltEmulation || !dbg.runUntilHalt
+		// bring all the halt conditions together
+		halt := dbg.halting.set || !dbg.runUntilHalt || dbg.haltImmediately || dbg.lastStepError
 
 		// reset last step error
 		dbg.lastStepError = false
 
-		// if emulation is to be halted or if we need to check the terminal
-		if haltEmulation {
+		if halt {
 			// check that dbg.running hasn't been unset while we've been
 			// waiting for the halt condition.
 			//
@@ -304,12 +270,9 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, isVideoStep bool) error 
 			dbg.stepTraps.clear()
 
 			// print and reset accumulated break/trap/watch messages
-			dbg.printLine(terminal.StyleFeedback, breakMessage)
-			dbg.printLine(terminal.StyleFeedback, trapMessage)
-			dbg.printLine(terminal.StyleFeedback, watchMessage)
-			breakMessage = ""
-			trapMessage = ""
-			watchMessage = ""
+			dbg.printLine(terminal.StyleFeedback, dbg.halting.breakMessage)
+			dbg.printLine(terminal.StyleFeedback, dbg.halting.trapMessage)
+			dbg.printLine(terminal.StyleFeedback, dbg.halting.watchMessage)
 
 			// input has halted. print on halt command if it is defined
 			if dbg.commandOnHalt != nil {
@@ -327,6 +290,8 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, isVideoStep bool) error 
 			if dbg.continueEmulation && inputter.IsInteractive() && !isVideoStep {
 				dbg.Rewind.RecordExecutionState()
 			}
+
+			dbg.halting.reset()
 
 			// reset run until halt flag - it will be set again if the parsed
 			// command requires it (eg. the RUN command)
@@ -410,18 +375,12 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, isVideoStep bool) error 
 		}
 
 		if dbg.continueEmulation {
-			// input loops with the clockCycle flag must not execute another call to vcs.Step()
+			// input loops with the isVideoStep flag must never execute another
+			// call to vcs.Step() under any circumstances
 			//
-			// when this happens the previous calls to inputLoop() unwind partially and continue
-			// from where the function was originally called.
-			//
-			// this will be in the callbackVideo callback function in either of:
-			//
-			// a) step()
-			// b) catchupLoop()
-			//
-			// in both cases the emulation will continue inside the vcs.Step() function via the
-			// step() function
+			// we also don't allow this call to inputLoop() to loop. if there
+			// is any more video steps to handle, the function will be called
+			// again
 			if isVideoStep {
 				return nil
 			}
@@ -442,11 +401,7 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, isVideoStep bool) error 
 }
 
 func (dbg *Debugger) step(inputter terminal.Input, catchup bool) error {
-	callbackInstruction := func() error {
-		return dbg.ref.Step(dbg.lastBank)
-	}
-
-	callbackVideo := func() error {
+	callback := func() error {
 		var err error
 
 		if dbg.unwindLoopRestart != nil {
@@ -463,13 +418,11 @@ func (dbg *Debugger) step(inputter terminal.Input, catchup bool) error {
 			return err
 		}
 
-		// for video quantums we need to run any OnStep commands before
+		// for video quantum we need to run any OnStep commands before
 		// starting a new inputLoop
-		if dbg.commandOnStep != nil {
-
+		if dbg.quantum == QuantumVideo && dbg.commandOnStep != nil {
 			// we don't do this if we're in catchup mode
 			if !catchup {
-
 				err := dbg.processTokensList(dbg.commandOnStep)
 				if err != nil {
 					dbg.printLine(terminal.StyleError, "%s", err)
@@ -477,8 +430,16 @@ func (dbg *Debugger) step(inputter terminal.Input, catchup bool) error {
 			}
 		}
 
-		// start another inputLoop() with the clockCycle boolean set to true
-		return dbg.inputLoop(inputter, true)
+		// check halt condition
+		dbg.halting.update(dbg)
+		dbg.continueEmulation = !dbg.halting.set
+
+		if dbg.quantum == QuantumVideo || !dbg.continueEmulation {
+			// start another inputLoop() with the clockCycle boolean set to true
+			return dbg.inputLoop(inputter, true)
+		}
+
+		return nil
 	}
 
 	// get bank information before we execute the next instruction. we
@@ -488,16 +449,7 @@ func (dbg *Debugger) step(inputter terminal.Input, catchup bool) error {
 
 	// not using the err variable because we'll clobber it before we
 	// get to check the result of VCS.Step()
-	var stepErr error
-
-	switch dbg.quantum {
-	case QuantumInstruction:
-		stepErr = dbg.vcs.Step(callbackInstruction)
-	case QuantumVideo:
-		stepErr = dbg.vcs.Step(callbackVideo)
-	default:
-		stepErr = fmt.Errorf("unknown quantum mode")
-	}
+	stepErr := dbg.vcs.Step(callback)
 
 	var err error
 
@@ -522,10 +474,10 @@ func (dbg *Debugger) step(inputter terminal.Input, catchup bool) error {
 		dbg.Rewind.RecordFrameState()
 	}
 
-	// check step error. note that we format and store last CPU
-	// execution result whether there was an error or not. in the case
-	// of an error the resul a fresh formatting. if there was no error
-	// the formatted result is returned by the ExecutedEntry() function.
+	// check step error. note that we format and store last CPU execution
+	// result whether there was an error or not. in the case of an error the
+	// result is a fresh formatting. if there was no error the formatted result
+	// is returned by the ExecutedEntry() function.
 
 	if stepErr != nil {
 		// exit input loop if error is a plain error

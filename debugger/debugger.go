@@ -85,11 +85,14 @@ type Debugger struct {
 	breakpoints *breakpoints
 	traps       *traps
 	watches     *watches
-	traces      *traces
+	stepTraps   *traps
 
-	// single-fire step traps. these are used for the STEP command, allowing
-	// things like "STEP FRAME".
-	stepTraps *traps
+	// halting is used to coordinate the checking of all halting conditions. it
+	// is updated every video cycle as appropriate (ie. not when rewinding)
+	halting haltCoordination
+
+	// trace memory access
+	traces *traces
 
 	// commandOnHalt is the sequence of commands that runs when emulation
 	// halts
