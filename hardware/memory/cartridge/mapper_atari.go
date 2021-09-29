@@ -343,6 +343,16 @@ func (cart *atari2k) Read(addr uint16, passive bool) (uint8, error) {
 	return cart.banks[0][addr&0x07ff], nil
 }
 
+// IterateBank implements the mapper.CartMapper interface.
+func (cart *atari2k) CopyBanks() []mapper.BankContent {
+	c := make([]mapper.BankContent, 1)
+	c[0] = mapper.BankContent{Number: 0,
+		Data:    cart.banks[0],
+		Origins: []uint16{memorymap.OriginCart, memorymap.OriginCart + uint16(cart.bankSize)},
+	}
+	return c
+}
+
 // Write implements the mapper.CartMapper interface.
 func (cart *atari2k) Write(addr uint16, data uint8, passive bool, poke bool) error {
 	if passive {
