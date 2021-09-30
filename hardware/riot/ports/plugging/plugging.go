@@ -35,6 +35,7 @@ type PeripheralID string
 
 // List of valid PeripheralID values.
 const (
+	PeriphNone    PeripheralID = "None"
 	PeriphPanel   PeripheralID = "Panel"
 	PeriphStick   PeripheralID = "Stick"
 	PeriphPaddle  PeripheralID = "Paddle"

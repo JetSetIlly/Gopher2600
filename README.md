@@ -208,20 +208,60 @@ Although if want to pass flags to the run mode you'll need to specify it.
 
 ## Hand Controllers
 
-Stick, paddle and keypad inputs are supported. Currently, only stick and
-paddles for the left player are available but keypad input is available for
-both players.
+Stick, paddle and keypad inputs are supported.
 
 ### Stick
 
-The stick is the most common control method for `Atari 2600` games. The stick
-can be operated with the DPad or left thumbstick of a [gamepad](#gamepad) or by
-the cursor keys on your computer's keyboard. Fire button is the keyboards space
-bar or any of the gamepad's face buttons.
+The stick is the most common control method for `Atari 2600` games. The
+left-side player is controlled with the following keys.
+
+<table>
+	<tr>
+		<th colspan=2>Left-Side Player</th>
+	</tr>
+	<tr>
+		<td align="center">Cursor Keys</td>
+		<td align="center">Stick Direction</td>
+	</tr>
+	<tr>
+		<td align="center">Space</td>
+		<td align="center">Fire Button</td>
+	</tr>
+</table>
+
+The right-side player is controlled with the following keys.
+
+<table>
+	<tr>
+		<th colspan=2>Right-Side Player</th>
+	</tr>
+	<tr>
+		<td align="center">G</td>
+		<td align="center">Left</td>
+	</tr>
+	<tr>
+		<td align="center">J</td>
+		<td align="center">Right</td>
+	</tr>
+	<tr>
+		<td align="center">Y</td>
+		<td align="center">Up</td>
+	</tr>
+	<tr>
+		<td align="center">H</td>
+		<td align="center">Down</td>
+	</tr>
+	<tr>
+		<td align="center">F</td>
+		<td align="center">Fire Button</td>
+	</tr>
+</table>
+
+The stick for the left-side player can also be controlled with a [gamepad](#gamepad).
 
 ### Paddle
 
-The paddle can be controlled with the mouse or [gamepad](#gamepad).
+The paddle for the left-side player can be controlled with the mouse or a [gamepad](#gamepad).
 
 In the case of the mouse, the mouse must be [captured](#mouse-capture).
 
@@ -230,7 +270,9 @@ however and which device is used depends on the game. For some games, the
 triggers will suffice but other games will perform better when using the mouse.
 
 `Nightdriver` is an example of a game that plays well with the triggers,
-whereas `Circus Tricks` is better played with the mouse.
+whereas experience says that `Circus Tricks` is better played with the mouse.
+
+The paddle for the right-side player is not currently supported.
 
 ### Keypad
 
@@ -238,9 +280,9 @@ Keypad input for both players is supported.
 
 <table>
 	<tr>
-		<th colspan=3>Left Hand Player</th>
+		<th colspan=3>Left-Side Player</th>
 		<th></th>
-		<th colspan=3>Right Hand Player</th>			
+		<th colspan=3>Right-Side Player</th>			
 	</tr>
 	<tr>
 		<td align="center">1</td>
@@ -294,9 +336,9 @@ need.
 
 ### Gamepad
 
-For convenience the joystick and paddle can be controlled through a gamepad.
-For the joystick, use the left thumbstick or the DPad. Any of the face buttons
-will act as the joystick's fire button.
+For convenience the joystick and paddle for the left-side player can be
+controlled through a gamepad. For the joystick, use the left thumbstick or the
+DPad. Any of the face buttons will act as the joystick's fire button.
 
 To control the paddle use the left and right analogue triggers. Note that you
 will need to 'waggle' the triggers a couple of times for the emulator to detect

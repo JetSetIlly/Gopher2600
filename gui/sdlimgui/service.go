@@ -342,8 +342,7 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 		}
 	}
 
-	// forward keypresses to userinput.Event channel if in playmore or gui is
-	// in captured state
+	// forward keypresses to userinput.Event channel
 	if img.isPlaymode() || img.isCaptured() {
 		mod := userinput.KeyModNone
 

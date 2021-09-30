@@ -306,8 +306,7 @@ func (p *Ports) GetPlayback() error {
 	return nil
 }
 
-// HandleEvent forwards the Event and EventData to the device connected to the
-// specified PortID.
+// HandleEvent implements userinput.HandleInput interface.
 func (p *Ports) HandleEvent(id plugging.PortID, ev Event, d EventData) error {
 	var err error
 
@@ -331,6 +330,20 @@ func (p *Ports) HandleEvent(id plugging.PortID, ev Event, d EventData) error {
 	}
 
 	return nil
+}
+
+// PeripheralID implements userinput.HandleInput interface.
+func (p *Ports) PeripheralID(id plugging.PortID) plugging.PeripheralID {
+	switch id {
+	case plugging.PortPanel:
+		return p.Panel.ID()
+	case plugging.PortLeftPlayer:
+		return p.LeftPlayer.ID()
+	case plugging.PortRightPlayer:
+		return p.RightPlayer.ID()
+	}
+
+	return plugging.PeriphNone
 }
 
 // WriteSWCHx implements the MemoryAccess interface.
