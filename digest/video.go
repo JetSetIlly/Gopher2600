@@ -46,7 +46,10 @@ const pixelDepth = 3
 // StellaTelevision will be created.
 func NewVideo(tv *television.Television) (*Video, error) {
 	// set up digest tv
-	dig := &Video{Television: tv}
+	dig := &Video{
+		Television: tv,
+		spec:       specification.SpecNTSC,
+	}
 
 	// register ourselves as a television.Renderer
 	dig.AddPixelRenderer(dig)
@@ -79,8 +82,8 @@ func (dig *Video) ResetDigest() {
 // digest is immune from changes to the frame resizing method used by the
 // television implementation. Changes to how the specification is flipped might
 // cause comparison failures however.
-func (dig *Video) Resize(current television.FrameInfo) error {
-	dig.spec = current.Spec
+func (dig *Video) Resize(frameInfo television.FrameInfo) error {
+	dig.spec = frameInfo.Spec
 	return nil
 }
 
