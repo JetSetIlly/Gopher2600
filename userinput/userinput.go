@@ -22,5 +22,10 @@ import (
 
 // HandleInput conceptualises data being sent to the console ports.
 type HandleInput interface {
+	// HandleEvent forwards the Event and EventData to the device connected to the
+	// specified PortID.
 	HandleEvent(id plugging.PortID, ev ports.Event, d ports.EventData) error
+
+	// PeripheralID identifies the device currently attached to the port.
+	PeripheralID(id plugging.PortID) plugging.PeripheralID
 }

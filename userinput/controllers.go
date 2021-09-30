@@ -70,7 +70,7 @@ func (c *Controllers) keyboard(ev EventKeyboard, handle HandleInput) error {
 		case "F5":
 			err = handle.HandleEvent(plugging.PortPanel, ports.PanelTogglePlayer1Pro, nil)
 
-		// joystick
+		// joystick (left player)
 		case "Left":
 			err = handle.HandleEvent(plugging.PortLeftPlayer, ports.Left, ports.DataStickTrue)
 		case "Right":
@@ -81,6 +81,11 @@ func (c *Controllers) keyboard(ev EventKeyboard, handle HandleInput) error {
 			err = handle.HandleEvent(plugging.PortLeftPlayer, ports.Down, ports.DataStickTrue)
 		case "Space":
 			err = handle.HandleEvent(plugging.PortLeftPlayer, ports.Fire, true)
+
+		// joystick (right player)
+		// * keypad and joystick share some keys (see below for other inputs)
+		case "J":
+			err = handle.HandleEvent(plugging.PortRightPlayer, ports.Right, ports.DataStickTrue)
 
 		// keypad (left player)
 		case "1", "2", "3":
@@ -105,6 +110,7 @@ func (c *Controllers) keyboard(ev EventKeyboard, handle HandleInput) error {
 			err = handle.HandleEvent(plugging.PortLeftPlayer, ports.KeypadDown, '#')
 
 		// keypad (right player)
+		// * keypad and joystick share some keys (see below for other inputs)
 		case "4":
 			err = handle.HandleEvent(plugging.PortRightPlayer, ports.KeypadDown, '1')
 		case "5":
@@ -115,20 +121,39 @@ func (c *Controllers) keyboard(ev EventKeyboard, handle HandleInput) error {
 			err = handle.HandleEvent(plugging.PortRightPlayer, ports.KeypadDown, '4')
 		case "T":
 			err = handle.HandleEvent(plugging.PortRightPlayer, ports.KeypadDown, '5')
-		case "Y":
-			err = handle.HandleEvent(plugging.PortRightPlayer, ports.KeypadDown, '6')
-		case "F":
-			err = handle.HandleEvent(plugging.PortRightPlayer, ports.KeypadDown, '7')
-		case "G":
-			err = handle.HandleEvent(plugging.PortRightPlayer, ports.KeypadDown, '8')
-		case "H":
-			err = handle.HandleEvent(plugging.PortRightPlayer, ports.KeypadDown, '9')
 		case "V":
 			err = handle.HandleEvent(plugging.PortRightPlayer, ports.KeypadDown, '*')
 		case "B":
 			err = handle.HandleEvent(plugging.PortRightPlayer, ports.KeypadDown, '0')
 		case "N":
 			err = handle.HandleEvent(plugging.PortRightPlayer, ports.KeypadDown, '#')
+
+		// keypad (right player) *OR* joystick (right player)
+		// * keypad and joystick share some keys (see above for other inputs)
+		case "Y":
+			if handle.PeripheralID(plugging.PortRightPlayer) == plugging.PeriphKeypad {
+				err = handle.HandleEvent(plugging.PortRightPlayer, ports.KeypadDown, '6')
+			} else {
+				err = handle.HandleEvent(plugging.PortRightPlayer, ports.Up, ports.DataStickTrue)
+			}
+		case "F":
+			if handle.PeripheralID(plugging.PortRightPlayer) == plugging.PeriphKeypad {
+				err = handle.HandleEvent(plugging.PortRightPlayer, ports.KeypadDown, '7')
+			} else {
+				err = handle.HandleEvent(plugging.PortRightPlayer, ports.Fire, true)
+			}
+		case "G":
+			if handle.PeripheralID(plugging.PortRightPlayer) == plugging.PeriphKeypad {
+				err = handle.HandleEvent(plugging.PortRightPlayer, ports.KeypadDown, '8')
+			} else {
+				err = handle.HandleEvent(plugging.PortRightPlayer, ports.Left, ports.DataStickTrue)
+			}
+		case "H":
+			if handle.PeripheralID(plugging.PortRightPlayer) == plugging.PeriphKeypad {
+				err = handle.HandleEvent(plugging.PortRightPlayer, ports.KeypadDown, '9')
+			} else {
+				err = handle.HandleEvent(plugging.PortRightPlayer, ports.Down, ports.DataStickTrue)
+			}
 		}
 	} else {
 		switch ev.Key {
@@ -138,7 +163,7 @@ func (c *Controllers) keyboard(ev EventKeyboard, handle HandleInput) error {
 		case "F2":
 			err = handle.HandleEvent(plugging.PortPanel, ports.PanelReset, false)
 
-		// josytick
+		// josytick (left player)
 		case "Left":
 			err = handle.HandleEvent(plugging.PortLeftPlayer, ports.Left, ports.DataStickFalse)
 		case "Right":
@@ -150,13 +175,46 @@ func (c *Controllers) keyboard(ev EventKeyboard, handle HandleInput) error {
 		case "Space":
 			err = handle.HandleEvent(plugging.PortLeftPlayer, ports.Fire, false)
 
+		// joystick (right player)
+		// * keypad and joystick share some keys (see below for other inputs)
+		case "J":
+			err = handle.HandleEvent(plugging.PortRightPlayer, ports.Right, ports.DataStickFalse)
+
 		// keyboard (left player)
 		case "1", "2", "3", "Q", "W", "E", "A", "S", "D", "Z", "X", "C":
 			err = handle.HandleEvent(plugging.PortLeftPlayer, ports.KeypadUp, nil)
 
 		// keyboard (right player)
-		case "4", "5", "6", "R", "T", "Y", "F", "G", "H", "V", "B", "N":
+		// * keypad and joystick share some keys (see below for other inputs)
+		case "4", "5", "6", "R", "T", "V", "B", "N":
 			err = handle.HandleEvent(plugging.PortRightPlayer, ports.KeypadUp, nil)
+
+		// keypad (right player) *OR* joystick (right player)
+		// * keypad and joystick share some keys (see above for other inputs)
+		case "Y":
+			if handle.PeripheralID(plugging.PortRightPlayer) == plugging.PeriphKeypad {
+				err = handle.HandleEvent(plugging.PortRightPlayer, ports.KeypadUp, nil)
+			} else {
+				err = handle.HandleEvent(plugging.PortRightPlayer, ports.Up, ports.DataStickFalse)
+			}
+		case "F":
+			if handle.PeripheralID(plugging.PortRightPlayer) == plugging.PeriphKeypad {
+				err = handle.HandleEvent(plugging.PortRightPlayer, ports.KeypadUp, nil)
+			} else {
+				err = handle.HandleEvent(plugging.PortRightPlayer, ports.Fire, false)
+			}
+		case "G":
+			if handle.PeripheralID(plugging.PortRightPlayer) == plugging.PeriphKeypad {
+				err = handle.HandleEvent(plugging.PortRightPlayer, ports.KeypadUp, nil)
+			} else {
+				err = handle.HandleEvent(plugging.PortRightPlayer, ports.Left, ports.DataStickFalse)
+			}
+		case "H":
+			if handle.PeripheralID(plugging.PortRightPlayer) == plugging.PeriphKeypad {
+				err = handle.HandleEvent(plugging.PortRightPlayer, ports.KeypadUp, nil)
+			} else {
+				err = handle.HandleEvent(plugging.PortRightPlayer, ports.Down, ports.DataStickFalse)
+			}
 		}
 	}
 
