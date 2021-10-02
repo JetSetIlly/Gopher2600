@@ -337,18 +337,13 @@ func (dsm *Disassembly) decode(mc *cpu.CPU, mem *disasmMemory) error {
 					return curated.Errorf("decode: %v", err)
 				}
 
-				// create a new disassembly entry using last result
-				ent, err := dsm.FormatResult(mapper.BankInfo{Number: bank.Number}, mc.LastResult, entryLevel)
-				if err != nil {
-					return curated.Errorf("decode: %v", err)
-				}
-
 				// error on invalid instruction execution
 				if err = mc.LastResult.IsValid(); err != nil {
 					return curated.Errorf("decode: %v", err)
 				}
 
 				// add entry to disassembly
+				ent := dsm.FormatResult(mapper.BankInfo{Number: bank.Number}, mc.LastResult, entryLevel)
 				dsm.entries[bank.Number][address&memorymap.CartridgeBits] = ent
 			}
 		}

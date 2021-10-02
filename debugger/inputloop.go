@@ -22,7 +22,6 @@ import (
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/debugger/script"
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
-	"github.com/jetsetilly/gopher2600/disassembly"
 	"github.com/jetsetilly/gopher2600/emulation"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/logger"
@@ -130,10 +129,7 @@ func (dbg *Debugger) catchupLoop(inputter terminal.Input) error {
 
 		// update disassembly after every CPU instruction. even during a catch
 		// up we need to do this.
-		dbg.lastResult, err = dbg.Disasm.ExecutedEntry(dbg.lastBank, dbg.vcs.CPU.LastResult, dbg.vcs.CPU.PC.Value())
-		if err != nil {
-			return err
-		}
+		dbg.lastResult = dbg.Disasm.ExecutedEntry(dbg.lastBank, dbg.vcs.CPU.LastResult, dbg.vcs.CPU.PC.Value())
 
 		// make sure reflection has been updated at the end of the instruction
 		if err = dbg.ref.Step(dbg.lastBank); err != nil {
@@ -259,10 +255,7 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, isVideoStep bool) error 
 
 			// if this is a video step and we reach this stage then we update the disassembly
 			if isVideoStep {
-				dbg.lastResult, err = dbg.Disasm.ExecutedEntry(dbg.lastBank, dbg.vcs.CPU.LastResult, dbg.vcs.CPU.PC.Value())
-				if err != nil {
-					return err
-				}
+				dbg.lastResult = dbg.Disasm.ExecutedEntry(dbg.lastBank, dbg.vcs.CPU.LastResult, dbg.vcs.CPU.PC.Value())
 			}
 
 			// always clear steptraps. if the emulation has halted for any
@@ -304,12 +297,6 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, isVideoStep bool) error 
 			// reset haltImmediately flag - it will be set again with the next
 			// HALT command
 			dbg.haltImmediately = false
-
-			// make sure we have an upto date last result disassembly
-			dbg.lastResult, err = dbg.Disasm.FormatResult(dbg.lastBank, dbg.vcs.CPU.LastResult, disassembly.EntryLevelExecuted)
-			if err != nil {
-				return err
-			}
 
 			// read input from terminal inputter and parse/run commands
 			err = dbg.termRead(inputter)
@@ -454,10 +441,7 @@ func (dbg *Debugger) step(inputter terminal.Input, catchup bool) error {
 	var err error
 
 	// update disassembly after every CPU instruction. no exceptions.
-	dbg.lastResult, err = dbg.Disasm.ExecutedEntry(dbg.lastBank, dbg.vcs.CPU.LastResult, dbg.vcs.CPU.PC.Value())
-	if err != nil {
-		return err
-	}
+	dbg.lastResult = dbg.Disasm.ExecutedEntry(dbg.lastBank, dbg.vcs.CPU.LastResult, dbg.vcs.CPU.PC.Value())
 
 	// make sure reflection has been updated at the end of the instruction
 	if err = dbg.ref.Step(dbg.lastBank); err != nil {

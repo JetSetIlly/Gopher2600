@@ -492,7 +492,7 @@ func (win *winDbgScr) drawReflectionTooltip() {
 	imgui.Text(fmt.Sprintf("Scanline: %d", win.mouseScanline))
 	imgui.Text(fmt.Sprintf("Clock: %d", win.mouseClock))
 
-	e, _ := win.img.dbg.Disasm.FormatResult(ref.Bank, ref.CPU, disassembly.EntryLevelBlessed)
+	e := win.img.dbg.Disasm.FormatResult(ref.Bank, ref.CPU, disassembly.EntryLevelBlessed)
 	if e.Address == "" {
 		return
 	}

@@ -31,6 +31,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 	"github.com/jetsetilly/gopher2600/hardware/television"
+	"github.com/jetsetilly/gopher2600/logger"
 )
 
 // Disassembly represents the annotated disassembly of a 6507 binary.
@@ -215,50 +216,67 @@ func (dsm *Disassembly) GetEntryByAddress(address uint16) (*Entry, bool) {
 // If the execution.Result was from an instruction in RAM (cartridge RAM or VCS
 // RAM) then the newly created entry is returned but not stored anywhere in the
 // Disassembly.
-func (dsm *Disassembly) ExecutedEntry(bank mapper.BankInfo, result execution.Result, nextAddr uint16) (*Entry, error) {
-	// not touching any result which is not in cartridge space. we are noting
-	// execution results from cartridge RAM. the banks.Details field in the
-	// disassembly entry notes whether execution was from RAM
-	if bank.NonCart {
-		return dsm.FormatResult(bank, result, EntryLevelExecuted)
-	}
-
-	if bank.Number >= len(dsm.entries) {
-		return dsm.FormatResult(bank, result, EntryLevelExecuted)
-	}
-
-	idx := result.Address & memorymap.CartridgeBits
-
-	// get entry at address
-	e := dsm.entries[bank.Number][idx]
-
-	// updating an origin can happen at the same time as iteration which is
+func (dsm *Disassembly) ExecutedEntry(bank mapper.BankInfo, result execution.Result, nextAddr uint16) *Entry {
+	// updating an entry can happen at the same time as iteration which is
 	// probably being run from a different goroutine. acknowledge the critical
 	// section
 	dsm.crit.Lock()
 	defer dsm.crit.Unlock()
 
-	// check for opcode reliability. this can happen when it is expected
-	// (bank.ExecutingCoProcess is true) or when it is unexpected.
-	if bank.ExecutingCoprocessor || e.Result.Defn.OpCode != result.Defn.OpCode {
-		// in either instance we want to return the formatted result of the
-		// actual execution
-		ne, err := dsm.FormatResult(bank, result, EntryLevelExecuted)
-		if err != nil {
-			return nil, curated.Errorf("disassembly: %v", err)
-		}
+	// if co-processor is executing then whatever has been executed by the 6507
+	// will not relate to the permanent disassembly. format the result and
+	// return
+	//
+	// (in fact, there's a possible optimisation here where if we know the
+	// co-processor/mapper being used we can just return a predefined NOP
+	// disassembly)
+	if bank.ExecutingCoprocessor {
+		return dsm.FormatResult(bank, result, EntryLevelExecuted)
+	}
 
-		return ne, nil
+	// if executed entry is in non-cartridge space then we just format the
+	// result and return it. there's nothing else we can really do - there's no
+	// point caching it anywhere
+	if bank.NonCart {
+		return dsm.FormatResult(bank, result, EntryLevelExecuted)
+	}
+
+	// similarly, if bank number is outside the banks we've already decoded
+	// then format the result and return
+	//
+	// I'm not sure when this would apply. maybe it's just a belt-and-braces
+	// check. there's no comment to say why this condition was added so leave
+	// it for now
+	if bank.Number >= len(dsm.entries) {
+		return dsm.FormatResult(bank, result, EntryLevelExecuted)
+	}
+
+	// get disassembly entry at address
+	idx := result.Address & memorymap.CartridgeBits
+	e := dsm.entries[bank.Number][idx]
+
+	// check for opcode reliability. if it's different then return the actual
+	// result and not the one in the entries list.
+	//
+	// this can happen when a ROM with a coprocessor has *just* finished and
+	// therefore bank.ExecutingCoProcessor is false.
+	//
+	// we just accept these are return the formatted result of the actual
+	// instruction. we don't update the disassembly
+	if e.Result.Defn.OpCode != result.Defn.OpCode {
+		return dsm.FormatResult(bank, result, EntryLevelExecuted)
 	}
 
 	// opcode is reliable update disasm entry in the normal way
 	if e == nil {
-		// we're not decoded this bank/address before. note this shouldn't even happen
-		var err error
-		dsm.entries[bank.Number][idx], err = dsm.FormatResult(bank, result, EntryLevelExecuted)
-		if err != nil {
-			return nil, curated.Errorf("disassembly: %v", err)
-		}
+		// we're not decoded this bank/address before
+		//
+		// ideally this wouldn't ever happen but the decode procedure might
+		// have missed it because:
+		//
+		// (a) there's a bug/flaw in the decode procedure
+		// (b) the program has taken an unpredictable path
+		dsm.entries[bank.Number][idx] = dsm.FormatResult(bank, result, EntryLevelExecuted)
 	} else {
 		// we have seen this entry before but it's not been executed. update
 		// entry to reflect results
@@ -268,25 +286,28 @@ func (dsm *Disassembly) ExecutedEntry(bank mapper.BankInfo, result execution.Res
 	// bless next entry in case it was missed by the original decoding. there's
 	// no guarantee that the bank for the next address will be the same as the
 	// current bank, so we have to call the GetBank() function.
-	//
-	// !!TODO: maybe make sure next entry has been disassembled in it's current form
 	bank = dsm.vcs.Mem.Cart.GetBank(nextAddr)
 	ne := dsm.entries[bank.Number][nextAddr&memorymap.CartridgeBits]
-	if ne.Level < EntryLevelBlessed {
+	if ne == nil {
+		logger.Logf("disassembly", "undecoded cartridge location (%#04x)", nextAddr)
+	} else if ne.Level < EntryLevelBlessed {
 		ne.Level = EntryLevelBlessed
 	}
 
-	return e, nil
+	return e
 }
 
-// FormatResult It is the preferred method of initialising for the Entry type.
-// It creates a disassembly.Entry based on the bank and result information.
-func (dsm *Disassembly) FormatResult(bank mapper.BankInfo, result execution.Result, level EntryLevel) (*Entry, error) {
+// FormatResult creates an Entry for supplied result/bank. It will be assigned
+// the specified EntryLevel.
+//
+// If EntryLevel is EntryLevelExecuted then the disassembly will be updated but
+// only if result.Final is true.
+func (dsm *Disassembly) FormatResult(bank mapper.BankInfo, result execution.Result, level EntryLevel) *Entry {
 	// protect against empty definitions. we shouldn't hit this condition from
 	// the disassembly package itself, but it is possible to get it from ad-hoc
 	// formatting from GUI interfaces (see CPU window in sdlimgui)
 	if result.Defn == nil {
-		return &Entry{dsm: dsm}, nil
+		return &Entry{dsm: dsm}
 	}
 
 	e := &Entry{
@@ -385,9 +406,9 @@ func (dsm *Disassembly) FormatResult(bank mapper.BankInfo, result execution.Resu
 		e.DefnCycles = fmt.Sprintf("%d", result.Defn.Cycles)
 	}
 
-	if level == EntryLevelExecuted {
+	if level == EntryLevelExecuted && result.Final {
 		e.updateExecutionEntry(result)
 	}
 
-	return e, nil
+	return e
 }
