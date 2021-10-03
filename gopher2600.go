@@ -697,7 +697,7 @@ func perform(md *modalflag.Modes, sync *mainSync) error {
 
 func regress(md *modalflag.Modes, sync *mainSync) error {
 	md.NewMode()
-	md.AddSubModes("RUN", "LIST", "DELETE", "ADD", "REDUX")
+	md.AddSubModes("RUN", "LIST", "DELETE", "ADD", "REDUX", "CLEANUP")
 
 	p, err := md.Parse()
 	if err != nil || p != modalflag.ParseContinue {
@@ -793,6 +793,25 @@ func regress(md *modalflag.Modes, sync *mainSync) error {
 		}
 
 		return regression.RegressRedux(md.Output, confirmation)
+
+	case "CLEANUP":
+		md.NewMode()
+
+		answerYes := md.AddBool("yes", false, "always answer yes to confirmation")
+
+		p, err := md.Parse()
+		if err != nil || p != modalflag.ParseContinue {
+			return err
+		}
+
+		var confirmation io.Reader
+		if *answerYes {
+			confirmation = &yesReader{}
+		} else {
+			confirmation = os.Stdin
+		}
+
+		return regression.RegressCleanup(md.Output, confirmation)
 	}
 
 	return nil

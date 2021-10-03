@@ -18,8 +18,10 @@ package regression
 import (
 	"fmt"
 	"io"
+	"os"
 	"sort"
 	"strconv"
+	"strings"
 
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/database"
@@ -80,7 +82,7 @@ func RegressList(output io.Writer) error {
 
 	db, err := database.StartSession(dbPth, database.ActivityReading, initDBSession)
 	if err != nil {
-		return err
+		return curated.Errorf("regression: list: %v", err)
 	}
 	defer db.EndSession(false)
 
@@ -103,14 +105,14 @@ func RegressAdd(output io.Writer, reg Regressor) error {
 
 	db, err := database.StartSession(dbPth, database.ActivityCreating, initDBSession)
 	if err != nil {
-		return err
+		return curated.Errorf("regression: add: %v", err)
 	}
 	defer db.EndSession(true)
 
 	msg := fmt.Sprintf("adding: %s", reg)
 	_, _, err = reg.regress(true, output, msg)
 	if err != nil {
-		return err
+		return curated.Errorf("regression: add: %v", err)
 	}
 
 	output.Write([]byte(ansiClearLine))
@@ -130,6 +132,7 @@ func RegressRedux(output io.Writer, confirmation io.Reader) error {
 	}
 
 	output.Write([]byte("redux is a dangerous operation. it will rerun all compatible regression entries.\n"))
+
 	output.Write([]byte("redux? (y/n): "))
 	if !confirm(confirmation) {
 		return nil
@@ -147,7 +150,7 @@ func RegressRedux(output io.Writer, confirmation io.Reader) error {
 
 	db, err := database.StartSession(dbPth, database.ActivityCreating, initDBSession)
 	if err != nil {
-		return err
+		return curated.Errorf("regression: redux: %v", err)
 	}
 	defer db.EndSession(true)
 
@@ -196,6 +199,124 @@ func redux(db *database.Session, output io.Writer, key int, reg Regressor) error
 	return nil
 }
 
+// CleanupScript removes orphaned script files from disk. An orphaned file is
+// one that exists on disk but has no reference in the regression database
+// file.
+func RegressCleanup(output io.Writer, confirmation io.Reader) error {
+	if output == nil {
+		return curated.Errorf("regression: list: io.Writer should not be nil (use a nopWriter)")
+	}
+
+	if confirmation == nil {
+		return curated.Errorf("regression: redux: io.Reader should not be nil")
+	}
+
+	output.Write([]byte("cleanup is a dangerous operation. it will delete all orphaned script files.\n"))
+
+	output.Write([]byte("cleanup? (y/n): "))
+	if !confirm(confirmation) {
+		return nil
+	}
+
+	dbPth, err := paths.ResourcePath("", regressionDBFile)
+	if err != nil {
+		return curated.Errorf("regression: cleanup: %v", err)
+	}
+
+	db, err := database.StartSession(dbPth, database.ActivityReading, initDBSession)
+	if err != nil {
+		return curated.Errorf("regression: cleanup: %v", err)
+	}
+	defer db.EndSession(false)
+
+	// gather list of all files referenced
+	filesReferenced := make([]string, 0)
+
+	err = db.ForEach(func(key int, e database.Entry) error {
+		switch reg := e.(type) {
+		case *VideoRegression:
+			if len(strings.TrimSpace(reg.stateFile)) > 0 {
+				filesReferenced = append(filesReferenced, reg.stateFile)
+			}
+
+		case *PlaybackRegression:
+			filesReferenced = append(filesReferenced, reg.Script)
+
+		case *LogRegression:
+			// no support required
+
+		default:
+			return curated.Errorf("not supported (%v)", reg.ID())
+		}
+
+		return nil
+	})
+	if err != nil {
+		return curated.Errorf("regression: cleanup: %v", err)
+	}
+
+	// gather list of files on disk in path
+	scriptPth, err := paths.ResourcePath("", regressionScripts)
+	if err != nil {
+		return curated.Errorf("regression: list: %v", err)
+	}
+
+	var filesOnDisk []os.DirEntry
+	filesOnDisk, err = os.ReadDir(scriptPth)
+	if err != nil {
+		return curated.Errorf("regression: cleanup: %v", err)
+	}
+
+	// prepare statistics
+	numDeleted := 0
+	numRemain := len(filesReferenced)
+	numErrors := 0
+
+	defer func() {
+		output.Write([]byte(fmt.Sprintf("regression cleanup: %d deleted, %d remain, %d errors\n", numDeleted, numRemain, numErrors)))
+	}()
+
+	// delete any files on disk that are not referenced
+	for _, e := range filesOnDisk {
+		found := false
+
+		n, err := paths.ResourcePath(regressionScripts, e.Name())
+		if err != nil {
+			return curated.Errorf("regression: cleanup: %v", err)
+		}
+
+		for _, f := range filesReferenced {
+			if f == n {
+				found = true
+				break // for range filesRefrenced
+			}
+		}
+
+		if !found {
+			output.Write([]byte(fmt.Sprintf("delete %s? (y/n): ", n)))
+			if confirm(confirmation) {
+				output.Write([]byte(ansiClearLine))
+				err := os.Remove(n)
+				if err != nil {
+					output.Write([]byte(fmt.Sprintf("\rerror deleting: %s (%s)\n", n, err)))
+					numErrors++
+				} else {
+					output.Write([]byte(fmt.Sprintf("\rdeleted: %s\n", n)))
+					numDeleted++
+					numRemain--
+				}
+			} else {
+				output.Write([]byte(ansiClearLine))
+				output.Write([]byte(fmt.Sprintf("\rnot deleting: %s\n", n)))
+			}
+		} else {
+			output.Write([]byte(fmt.Sprintf("\ris referenced: %s\n", n)))
+		}
+	}
+
+	return nil
+}
+
 // RegressDelete removes a cartridge from the regression db.
 func RegressDelete(output io.Writer, confirmation io.Reader, key string) error {
 	if output == nil {
@@ -218,7 +339,7 @@ func RegressDelete(output io.Writer, confirmation io.Reader, key string) error {
 
 	db, err := database.StartSession(dbPth, database.ActivityModifying, initDBSession)
 	if err != nil {
-		return err
+		return curated.Errorf("regression: delete: %v", err)
 	}
 	defer db.EndSession(true)
 
@@ -231,7 +352,7 @@ func RegressDelete(output io.Writer, confirmation io.Reader, key string) error {
 	if confirm(confirmation) {
 		err = db.Delete(v)
 		if err != nil {
-			return err
+			return curated.Errorf("regression: delete: %v", err)
 		}
 		output.Write([]byte(fmt.Sprintf("deleted test #%s from regression database\n", key)))
 	}

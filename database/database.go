@@ -98,7 +98,10 @@ func (db Session) ForEach(f func(key int, e Entry) error) error {
 	for k := range keyList {
 		key := keyList[k]
 		ent := db.entries[key]
-		f(key, ent)
+		err := f(key, ent)
+		if err != nil {
+			return curated.Errorf("database: %v", err)
+		}
 	}
 
 	return nil

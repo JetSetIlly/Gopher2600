@@ -84,7 +84,7 @@ func StartSession(path string, activity Activity, init func(*Session) error) (*S
 		case *os.PathError:
 			return nil, curated.Errorf(NotAvailable, path)
 		}
-		return nil, curated.Errorf("databas: %v", err)
+		return nil, curated.Errorf("database: %v", err)
 	}
 
 	// closing of db.dbfile requires a call to endSession()
