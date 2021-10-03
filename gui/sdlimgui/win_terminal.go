@@ -193,8 +193,13 @@ func (win *winTerm) draw() {
 		// the prompt in the terminal should show the disassembly for the
 		// instruction the PC is *currently* on. in other words, the
 		// disassembly for the inesturction to be executed *next*
-		if win.img.emulation.State() == emulation.Running {
-			imgui.Text(win.img.lz.Debugger.LastResult.String())
+		if win.img.emulation.State() == emulation.Running || !win.img.lz.Debugger.LastResult.Result.Final {
+			res := win.img.lz.Debugger.LastResult
+			imgui.Text(res.String())
+			if !win.img.lz.Debugger.LastResult.Result.Final {
+				imgui.SameLine()
+				imgui.Text(fmt.Sprintf("(%s of %s cycles)", res.ActualCycles, res.DefnCycles))
+			}
 		} else {
 			imgui.Text(win.prompt.Content)
 		}
