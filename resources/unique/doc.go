@@ -13,13 +13,10 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-//go:build !release
-// +build !release
-
-package paths
-
-const gopherConfigDir = ".gopher2600"
-
-func baseResourcePath() (string, error) {
-	return gopherConfigDir, nil
-}
+// Package unique contains functions that compose filenames that should be
+// unique on the filesystem.
+//
+// This is useful in other Gopher2600 packages. For example, it used  to
+// generate filenames for: playback recordings, regression scripts and many
+// other file types.
+package unique

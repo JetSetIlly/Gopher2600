@@ -13,51 +13,33 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-package paths_test
+package resources_test
 
 import (
 	"testing"
 
-	"github.com/jetsetilly/gopher2600/paths"
+	"github.com/jetsetilly/gopher2600/resources"
 	"github.com/jetsetilly/gopher2600/test"
 )
 
-func TestResourcePath(t *testing.T) {
-	pth, err := paths.ResourcePath("foo/bar", "baz")
+func TestJoinPath(t *testing.T) {
+	pth, err := resources.JoinPath("foo/bar", "baz")
 	test.Equate(t, err, nil)
 	test.Equate(t, pth, ".gopher2600/foo/bar/baz")
 
-	pth, err = paths.ResourcePath("foo/bar", "")
+	pth, err = resources.JoinPath("foo", "bar", "baz")
+	test.Equate(t, err, nil)
+	test.Equate(t, pth, ".gopher2600/foo/bar/baz")
+
+	pth, err = resources.JoinPath("foo/bar", "")
 	test.Equate(t, err, nil)
 	test.Equate(t, pth, ".gopher2600/foo/bar")
 
-	pth, err = paths.ResourcePath("", "baz")
+	pth, err = resources.JoinPath("", "baz")
 	test.Equate(t, err, nil)
 	test.Equate(t, pth, ".gopher2600/baz")
 
-	pth, err = paths.ResourcePath("", "")
-	test.Equate(t, err, nil)
-	test.Equate(t, pth, ".gopher2600")
-}
-
-func TestResourceFile(t *testing.T) {
-	pth, err := paths.ResourcePath("foo/bar", "baz")
-	test.Equate(t, err, nil)
-	test.Equate(t, pth, ".gopher2600/foo/bar/baz")
-
-	pth, err = paths.ResourcePath("foo", "bar", "baz")
-	test.Equate(t, err, nil)
-	test.Equate(t, pth, ".gopher2600/foo/bar/baz")
-
-	pth, err = paths.ResourcePath("foo/bar", "")
-	test.Equate(t, err, nil)
-	test.Equate(t, pth, ".gopher2600/foo/bar")
-
-	pth, err = paths.ResourcePath("", "baz")
-	test.Equate(t, err, nil)
-	test.Equate(t, pth, ".gopher2600/baz")
-
-	pth, err = paths.ResourcePath("", "")
+	pth, err = resources.JoinPath("", "")
 	test.Equate(t, err, nil)
 	test.Equate(t, pth, ".gopher2600")
 }

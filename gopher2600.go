@@ -37,11 +37,11 @@ import (
 	"github.com/jetsetilly/gopher2600/hiscore"
 	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/modalflag"
-	"github.com/jetsetilly/gopher2600/paths"
 	"github.com/jetsetilly/gopher2600/performance"
 	"github.com/jetsetilly/gopher2600/playmode"
 	"github.com/jetsetilly/gopher2600/recorder"
 	"github.com/jetsetilly/gopher2600/regression"
+	"github.com/jetsetilly/gopher2600/resources"
 	"github.com/jetsetilly/gopher2600/statsview"
 	"github.com/jetsetilly/gopher2600/wavwriter"
 )
@@ -414,7 +414,7 @@ func play(md *modalflag.Modes, sync *mainSync) error {
 func debug(md *modalflag.Modes, sync *mainSync) error {
 	md.NewMode()
 
-	defInitScript, err := paths.ResourcePath(defaultInitScript)
+	defInitScript, err := resources.JoinPath(defaultInitScript)
 	if err != nil {
 		return err
 	}

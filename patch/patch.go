@@ -25,7 +25,7 @@ import (
 
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge"
-	"github.com/jetsetilly/gopher2600/paths"
+	"github.com/jetsetilly/gopher2600/resources"
 )
 
 const patchPath = "patches"
@@ -39,7 +39,7 @@ const neoSeparator = ":"
 func CartridgeMemory(mem *cartridge.Cartridge, patchFile string) (bool, error) {
 	var err error
 
-	p, err := paths.ResourcePath(patchPath, patchFile)
+	p, err := resources.JoinPath(patchPath, patchFile)
 	if err != nil {
 		return false, curated.Errorf("patch: %v", err)
 	}

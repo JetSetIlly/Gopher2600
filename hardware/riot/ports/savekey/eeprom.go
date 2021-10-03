@@ -19,7 +19,7 @@ import (
 	"os"
 
 	"github.com/jetsetilly/gopher2600/logger"
-	"github.com/jetsetilly/gopher2600/paths"
+	"github.com/jetsetilly/gopher2600/resources"
 )
 
 const saveKeyPath = "savekey"
@@ -60,7 +60,7 @@ func newEeprom() *EEPROM {
 
 // Read EEPROM data from disk.
 func (ee *EEPROM) Read() {
-	fn, err := paths.ResourcePath(saveKeyPath)
+	fn, err := resources.JoinPath(saveKeyPath)
 	if err != nil {
 		logger.Logf("savekey", "could not load eeprom file (%s)", err)
 		return
@@ -98,7 +98,7 @@ func (ee *EEPROM) Read() {
 
 // Write EEPROM data to disk.
 func (ee *EEPROM) Write() {
-	fn, err := paths.ResourcePath(saveKeyPath)
+	fn, err := resources.JoinPath(saveKeyPath)
 	if err != nil {
 		logger.Logf("savekey", "could not write eeprom file (%s)", err)
 		return

@@ -20,7 +20,7 @@ import (
 
 	"github.com/jetsetilly/gopher2600/gui/sdlimgui/framebuffer"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
-	"github.com/jetsetilly/gopher2600/paths"
+	"github.com/jetsetilly/gopher2600/resources/unique"
 )
 
 type screenshotMode int
@@ -95,9 +95,9 @@ func (sh *screenshotSequencer) startProcess(mode screenshotMode) {
 
 	sh.crtProcessing = sh.img.crtPrefs.Enabled.Get().(bool)
 	if sh.crtProcessing {
-		sh.baseFilename = paths.UniqueFilename("crt", sh.img.vcs.Mem.Cart.ShortName)
+		sh.baseFilename = unique.Filename("crt", sh.img.vcs.Mem.Cart.ShortName)
 	} else {
-		sh.baseFilename = paths.UniqueFilename("pix", sh.img.vcs.Mem.Cart.ShortName)
+		sh.baseFilename = unique.Filename("pix", sh.img.vcs.Mem.Cart.ShortName)
 	}
 }
 

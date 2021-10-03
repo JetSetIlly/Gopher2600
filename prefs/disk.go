@@ -24,7 +24,7 @@ import (
 	"unicode"
 
 	"github.com/jetsetilly/gopher2600/curated"
-	"github.com/jetsetilly/gopher2600/paths/fs"
+	"github.com/jetsetilly/gopher2600/resources/fs"
 )
 
 // DefaultPrefsFile is the default filename of the global preferences file.

@@ -25,14 +25,14 @@ import (
 
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/database"
-	"github.com/jetsetilly/gopher2600/paths"
+	"github.com/jetsetilly/gopher2600/resources"
 )
 
 // ansi code for clear line.
 const ansiClearLine = "\033[2K"
 
 // the location of the regressionDB file and the location of any regression
-// scripts. these should be wrapped by paths.ResourcePath().
+// scripts. these should be wrapped by resources.ResourcePath().
 const regressionPath = "regression"
 const regressionDBFile = "db"
 const regressionScripts = "scripts"
@@ -76,7 +76,7 @@ func RegressList(output io.Writer) error {
 		return curated.Errorf("regression: list: io.Writer should not be nil (use a nopWriter)")
 	}
 
-	dbPth, err := paths.ResourcePath(regressionPath, regressionDBFile)
+	dbPth, err := resources.JoinPath(regressionPath, regressionDBFile)
 	if err != nil {
 		return curated.Errorf("regression: list: %v", err)
 	}
@@ -99,7 +99,7 @@ func RegressAdd(output io.Writer, reg Regressor) error {
 		return curated.Errorf("regression: add: io.Writer should not be nil (use a nopWriter)")
 	}
 
-	dbPth, err := paths.ResourcePath(regressionPath, regressionDBFile)
+	dbPth, err := resources.JoinPath(regressionPath, regressionDBFile)
 	if err != nil {
 		return curated.Errorf("regression: add: %v", err)
 	}
@@ -144,7 +144,7 @@ func RegressRedux(output io.Writer, confirmation io.Reader) error {
 		return nil
 	}
 
-	dbPth, err := paths.ResourcePath(regressionPath, regressionDBFile)
+	dbPth, err := resources.JoinPath(regressionPath, regressionDBFile)
 	if err != nil {
 		return curated.Errorf("regression: redux: %v", err)
 	}
@@ -219,7 +219,7 @@ func RegressCleanup(output io.Writer, confirmation io.Reader) error {
 		return nil
 	}
 
-	dbPth, err := paths.ResourcePath(regressionPath, regressionDBFile)
+	dbPth, err := resources.JoinPath(regressionPath, regressionDBFile)
 	if err != nil {
 		return curated.Errorf("regression: cleanup: %v", err)
 	}
@@ -257,7 +257,7 @@ func RegressCleanup(output io.Writer, confirmation io.Reader) error {
 	}
 
 	// gather list of files on disk in path
-	scriptPth, err := paths.ResourcePath(regressionPath, regressionScripts)
+	scriptPth, err := resources.JoinPath(regressionPath, regressionScripts)
 	if err != nil {
 		return curated.Errorf("regression: list: %v", err)
 	}
@@ -281,7 +281,7 @@ func RegressCleanup(output io.Writer, confirmation io.Reader) error {
 	for _, e := range filesOnDisk {
 		found := false
 
-		n, err := paths.ResourcePath(regressionPath, regressionScripts, e.Name())
+		n, err := resources.JoinPath(regressionPath, regressionScripts, e.Name())
 		if err != nil {
 			return curated.Errorf("regression: cleanup: %v", err)
 		}
@@ -333,7 +333,7 @@ func RegressDelete(output io.Writer, confirmation io.Reader, key string) error {
 		return curated.Errorf("regression: delete: invalid key [%s]", key)
 	}
 
-	dbPth, err := paths.ResourcePath(regressionPath, regressionDBFile)
+	dbPth, err := resources.JoinPath(regressionPath, regressionDBFile)
 	if err != nil {
 		return curated.Errorf("regression: delete: %v", err)
 	}
@@ -369,7 +369,7 @@ func RegressRun(output io.Writer, verbose bool, filterKeys []string) error {
 		return curated.Errorf("regression: run: io.Writer should not be nil (use a nopWriter)")
 	}
 
-	dbPth, err := paths.ResourcePath(regressionPath, regressionDBFile)
+	dbPth, err := resources.JoinPath(regressionPath, regressionDBFile)
 	if err != nil {
 		return curated.Errorf("regression: run: %v", err)
 	}

@@ -20,7 +20,7 @@ import (
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/database"
 	"github.com/jetsetilly/gopher2600/hardware"
-	"github.com/jetsetilly/gopher2600/paths"
+	"github.com/jetsetilly/gopher2600/resources"
 )
 
 // the location of the setupDB file.
@@ -65,7 +65,7 @@ func AttachCartridge(vcs *hardware.VCS, cartload cartridgeloader.Loader) error {
 		return curated.Errorf("setup: %v", err)
 	}
 
-	dbPth, err := paths.ResourcePath(setupDBFile)
+	dbPth, err := resources.JoinPath(setupDBFile)
 	if err != nil {
 		return curated.Errorf("setup: %v", err)
 	}

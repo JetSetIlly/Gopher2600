@@ -21,7 +21,7 @@ import (
 
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/logger"
-	"github.com/jetsetilly/gopher2600/paths"
+	"github.com/jetsetilly/gopher2600/resources"
 )
 
 // list of allowed filenames for the supercharger BIOS.
@@ -75,7 +75,7 @@ func loadBIOS(path string) ([]uint8, error) {
 
 	// the emulator's resource path
 	for _, b := range biosFile {
-		p, err := paths.ResourcePath(b)
+		p, err := resources.JoinPath(b)
 		if err != nil {
 			return nil, err
 		}

@@ -269,7 +269,7 @@ func (reg *VideoRegression) regress(newRegression bool, output io.Writer, msg st
 
 		if reg.State != StateNone {
 			// create a unique filename
-			reg.stateFile, err = uniqueFilename("state", reg.CartLoad)
+			reg.stateFile, err = uniqueFilename("state", reg.CartLoad.ShortName())
 			if err != nil {
 				return false, "", curated.Errorf("video: %v", err)
 			}

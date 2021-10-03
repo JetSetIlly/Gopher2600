@@ -13,7 +13,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-package paths
+package unique
 
 import (
 	"fmt"
@@ -21,34 +21,33 @@ import (
 	"time"
 )
 
-// UniqueFilename creates a filename that (assuming a functioning clock) should
-// not collide with any existing file. Note that the function does not test for
+// Filename creates a filename that (assuming a functioning clock) should not
+// collide with any existing file. Note that the function does not test for
 // this.
-//
-// Used to generate filenames for:
-//	- playback recordings
-//	- regression scripts
-//	- terminal output (sdlimgui GUI)
 //
 // Format of returned string is:
 //
-//     prepend_cartname_YYYYMMDD_HHMMSS
+//     filetype_cartname_YYYYMMDD_HHMMSS
 //
 // Where cartname is the string returned by cartload.ShortName(). If there is
 // no cartridge name the returned string will be of the format:
 //
-//     prepend_YYYYMMDD_HHMMSS
-func UniqueFilename(prepend string, shortCartName string) string {
+//     filetype_YYYYMMDD_HHMMSS
+//
+// The filetype argument is simply another way of identifying the file
+// uniquely. For example, if saving a screenshot the filetype might simply be
+// "screenshot" or "photo".
+func Filename(filetype string, cartName string) string {
 	n := time.Now()
 	timestamp := fmt.Sprintf("%04d%02d%02d_%02d%02d%02d", n.Year(), n.Month(), n.Day(), n.Hour(), n.Minute(), n.Second())
 
 	var fn string
 
-	c := strings.TrimSpace(shortCartName)
+	c := strings.TrimSpace(cartName)
 	if len(c) > 0 {
-		fn = fmt.Sprintf("%s_%s_%s", prepend, c, timestamp)
+		fn = fmt.Sprintf("%s_%s_%s", filetype, c, timestamp)
 	} else {
-		fn = fmt.Sprintf("%s_%s", prepend, timestamp)
+		fn = fmt.Sprintf("%s_%s", filetype, timestamp)
 	}
 
 	return fn

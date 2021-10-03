@@ -29,8 +29,8 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/logger"
-	"github.com/jetsetilly/gopher2600/paths"
 	"github.com/jetsetilly/gopher2600/reflection"
+	"github.com/jetsetilly/gopher2600/resources"
 	"github.com/jetsetilly/gopher2600/userinput"
 	"github.com/veandco/go-sdl2/sdl"
 
@@ -137,7 +137,7 @@ func NewSdlImgui(tv *television.Television) (*SdlImgui, error) {
 		return nil, curated.Errorf("sdlimgui: %v", err)
 	}
 
-	iniPath, err := paths.ResourcePath(imguiIniFile)
+	iniPath, err := resources.JoinPath(imguiIniFile)
 	if err != nil {
 		return nil, curated.Errorf("sdlimgui: %v", err)
 	}

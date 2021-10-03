@@ -13,35 +13,23 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-package paths
+//go:build release
+// +build release
+
+package resources
 
 import (
 	"os"
 	"path/filepath"
-
-	"github.com/jetsetilly/gopher2600/paths/fs"
 )
 
-// ResourcePath prepends the supplied path with a with OS/build specific base
-// paths
-//
-// The function creates all folders necessary to reach the end of sub-path. It
-// does not otherwise touch or create the file.
-func ResourcePath(path ...string) (string, error) {
-	b, err := baseResourcePath()
+const gopherConfigDir = "gopher2600"
+
+func baseResourcePath() (string, error) {
+	p, err := os.UserConfigDir()
 	if err != nil {
 		return "", err
 	}
 
-	p := filepath.Join(b, filepath.Join(path...))
-
-	if _, err := os.Stat(p); err == nil {
-		return p, nil
-	}
-
-	if err := fs.MkdirAll(filepath.Dir(p), 0700); err != nil {
-		return "", err
-	}
-
-	return p, nil
+	return filepath.Join(p, gopherConfigDir), nil
 }

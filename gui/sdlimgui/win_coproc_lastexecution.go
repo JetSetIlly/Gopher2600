@@ -23,7 +23,7 @@ import (
 	"github.com/jetsetilly/gopher2600/disassembly/coprocessor"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/harmony/arm7tdmi"
 	"github.com/jetsetilly/gopher2600/logger"
-	"github.com/jetsetilly/gopher2600/paths"
+	"github.com/jetsetilly/gopher2600/resources/unique"
 )
 
 const winCoProcLastExecutionID = "Last Execution"
@@ -270,10 +270,10 @@ func (win *winCoProcLastExecution) save() {
 	var fn string
 	if win.showLastExecution {
 		itr = win.img.dbg.Disasm.Coprocessor.NewIteration(coprocessor.LastExecution)
-		fn = paths.UniqueFilename("coproc_lastexecution", "")
+		fn = unique.Filename("coproc_lastexecution", "")
 	} else {
 		itr = win.img.dbg.Disasm.Coprocessor.NewIteration(coprocessor.Disassembly)
-		fn = paths.UniqueFilename("coproc_disasm", "")
+		fn = unique.Filename("coproc_disasm", "")
 	}
 
 	f, err := os.Create(fmt.Sprintf("%s.csv", fn))

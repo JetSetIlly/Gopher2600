@@ -13,28 +13,33 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-package regression
+package resources
 
 import (
-	"github.com/jetsetilly/gopher2600/resources"
-	"github.com/jetsetilly/gopher2600/resources/unique"
+	"os"
+	"path/filepath"
+
+	"github.com/jetsetilly/gopher2600/resources/fs"
 )
 
-// uniqueFilename is a shim function for unique.Filename().
+// JoinPath prepends the supplied path with a with OS/build specific base
+// paths
 //
-// It create a unique filename from a CatridgeLoader instance. used when saving
-// scripts into regressionScripts directory. calls paths.UniqueFilename() to
-// maintain common formatting used in the project.
-func uniqueFilename(filetype string, cartname string) (string, error) {
-	f := unique.Filename(filetype, cartname)
-
-	scriptsPath, err := resources.JoinPath(regressionPath, regressionScripts)
+// The function creates all folders necessary to reach the end of sub-path. It
+// does not otherwise touch or create the file.
+func JoinPath(path ...string) (string, error) {
+	b, err := baseResourcePath()
 	if err != nil {
 		return "", err
 	}
 
-	p, err := resources.JoinPath(scriptsPath, f)
-	if err != nil {
+	p := filepath.Join(b, filepath.Join(path...))
+
+	if _, err := os.Stat(p); err == nil {
+		return p, nil
+	}
+
+	if err := fs.MkdirAll(filepath.Dir(p), 0700); err != nil {
 		return "", err
 	}
 

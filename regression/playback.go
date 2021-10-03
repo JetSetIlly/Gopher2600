@@ -190,7 +190,7 @@ func (reg *PlaybackRegression) regress(newRegression bool, output io.Writer, msg
 	// regressionScripts directory
 	if newRegression {
 		// create a unique filename
-		newScript, err := uniqueFilename("playback", plb.CartLoad)
+		newScript, err := uniqueFilename("playback", plb.CartLoad.ShortName())
 		if err != nil {
 			return false, "", curated.Errorf("playback: %v", err)
 		}

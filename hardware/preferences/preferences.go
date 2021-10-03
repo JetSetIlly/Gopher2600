@@ -19,8 +19,8 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/jetsetilly/gopher2600/paths"
 	"github.com/jetsetilly/gopher2600/prefs"
+	"github.com/jetsetilly/gopher2600/resources"
 )
 
 // Preferences defines and collates all the preference values used by the debugger.
@@ -83,7 +83,7 @@ func NewPreferences() (*Preferences, error) {
 	p.SetDefaults()
 
 	// setup preferences and load from disk
-	pth, err := paths.ResourcePath(prefs.DefaultPrefsFile)
+	pth, err := resources.JoinPath(prefs.DefaultPrefsFile)
 	if err != nil {
 		return nil, err
 	}

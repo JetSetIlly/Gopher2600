@@ -16,8 +16,8 @@
 package rewind
 
 import (
-	"github.com/jetsetilly/gopher2600/paths"
 	"github.com/jetsetilly/gopher2600/prefs"
+	"github.com/jetsetilly/gopher2600/resources"
 )
 
 type Preferences struct {
@@ -50,7 +50,7 @@ func newPreferences(r *Rewind) (*Preferences, error) {
 	p.Freq.Set(snapshotFreq)
 
 	// save server using the prefs package
-	pth, err := paths.ResourcePath(prefs.DefaultPrefsFile)
+	pth, err := resources.JoinPath(prefs.DefaultPrefsFile)
 	if err != nil {
 		return nil, err
 	}

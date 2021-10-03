@@ -24,7 +24,7 @@ import (
 	"github.com/jetsetilly/gopher2600/emulation"
 	"github.com/jetsetilly/gopher2600/gui/fonts"
 	"github.com/jetsetilly/gopher2600/logger"
-	"github.com/jetsetilly/gopher2600/paths"
+	"github.com/jetsetilly/gopher2600/resources/unique"
 
 	"github.com/inkyblackness/imgui-go/v4"
 )
@@ -237,7 +237,7 @@ func (win *winTerm) draw() {
 }
 
 func (win *winTerm) saveOutput() {
-	fn := paths.UniqueFilename("terminal", "")
+	fn := unique.Filename("terminal", "")
 	f, err := os.Create(fn)
 	if err != nil {
 		win.output = append(win.output, terminalOutput{

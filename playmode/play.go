@@ -36,8 +36,8 @@ import (
 	"github.com/jetsetilly/gopher2600/hiscore"
 	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/patch"
-	"github.com/jetsetilly/gopher2600/paths"
 	"github.com/jetsetilly/gopher2600/recorder"
+	"github.com/jetsetilly/gopher2600/resources/unique"
 	"github.com/jetsetilly/gopher2600/setup"
 	"github.com/jetsetilly/gopher2600/userinput"
 )
@@ -202,7 +202,7 @@ func Play(tv *television.Television, scr gui.GUI, newRecording bool, cartload ca
 		// new recording requested
 
 		// create a unique filename
-		recording = paths.UniqueFilename("recording", cartload.ShortName())
+		recording = unique.Filename("recording", cartload.ShortName())
 
 		// prepare new recording
 		rec, err := recorder.NewRecorder(recording, vcs)

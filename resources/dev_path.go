@@ -13,23 +13,13 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-//go:build release
-// +build release
+//go:build !release
+// +build !release
 
-package paths
+package resources
 
-import (
-	"os"
-	"path/filepath"
-)
-
-const gopherConfigDir = "gopher2600"
+const gopherConfigDir = ".gopher2600"
 
 func baseResourcePath() (string, error) {
-	p, err := os.UserConfigDir()
-	if err != nil {
-		return "", err
-	}
-
-	return filepath.Join(p, gopherConfigDir), nil
+	return gopherConfigDir, nil
 }

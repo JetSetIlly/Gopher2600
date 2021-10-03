@@ -21,9 +21,9 @@
 //
 // The Disk type is the key resource in the package. First, create new Disk
 // instance with NewDisk(), specifying the location of the preferences file
-// (using paths.ResourcePath() as necessary).
+// (using resources.ResourcePath() as necessary).
 //
-//	fn, _ := paths.ResourcePath(prefs.DefaultPrefsFile)
+//	fn, _ := resources.ResourcePath(prefs.DefaultPrefsFile)
 //	prf := prefs.NewDisk(fn)
 //
 // Preference value can then be added with the Add() function, specifying the

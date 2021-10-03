@@ -17,8 +17,8 @@ package sdlimgui
 import (
 	"fmt"
 
-	"github.com/jetsetilly/gopher2600/paths"
 	"github.com/jetsetilly/gopher2600/prefs"
+	"github.com/jetsetilly/gopher2600/resources"
 )
 
 // unified preferences for both modes (debugger and playmode). preferences
@@ -67,7 +67,7 @@ func newPreferences(img *SdlImgui) (*preferences, error) {
 	p.superchargerNotifications.Set(true)
 
 	// setup preferences
-	pth, err := paths.ResourcePath(prefs.DefaultPrefsFile)
+	pth, err := resources.JoinPath(prefs.DefaultPrefsFile)
 	if err != nil {
 		return nil, err
 	}
@@ -139,7 +139,7 @@ func (p *preferences) setWindowPreferences(isPlayMode bool) error {
 	}
 
 	// setup preferences
-	pth, err := paths.ResourcePath(prefs.DefaultPrefsFile)
+	pth, err := resources.JoinPath(prefs.DefaultPrefsFile)
 	if err != nil {
 		return err
 	}
