@@ -65,7 +65,7 @@ func AttachCartridge(vcs *hardware.VCS, cartload cartridgeloader.Loader) error {
 		return curated.Errorf("setup: %v", err)
 	}
 
-	dbPth, err := paths.ResourcePath("", setupDBFile)
+	dbPth, err := paths.ResourcePath(setupDBFile)
 	if err != nil {
 		return curated.Errorf("setup: %v", err)
 	}

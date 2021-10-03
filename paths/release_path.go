@@ -21,31 +21,15 @@ package paths
 import (
 	"os"
 	"path/filepath"
-
-	"github.com/jetsetilly/gopher2600/paths/fs"
 )
 
 const gopherConfigDir = "gopher2600"
 
-// the release version of getBasePath looks for and if necessary creates the
-// gopherConfigDir (and child directories) in the User's configuration
-// directory, which is dependent on the host OS (see os.UserConfigDir()
-// documentation for details).
-func getBasePath(subPth string) (string, error) {
-	cnf, err := os.UserConfigDir()
+func baseResourcePath() (string, error) {
+	p, err := os.UserConfigDir()
 	if err != nil {
 		return "", err
 	}
 
-	pth := filepath.Join(cnf, gopherConfigDir, subPth)
-
-	if _, err := os.Stat(pth); err == nil {
-		return pth, nil
-	}
-
-	if err := fs.MkdirAll(pth, 0700); err != nil {
-		return "", err
-	}
-
-	return pth, nil
+	return filepath.Join(p, gopherConfigDir), nil
 }

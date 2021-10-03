@@ -15,26 +15,33 @@
 
 package paths
 
-import "path/filepath"
+import (
+	"os"
+	"path/filepath"
 
-// ResourcePath returns the resource string (representing the resource to be
-// loaded) prepended with OS/build specific paths.
-//
-// The function takes care of creation of all folders necessary to reach the
-// end of sub-path. It does not otherwise touch or create the file.
-//
-// Either subPth or file can be empty, depending on context.
-func ResourcePath(subPth string, file string) (string, error) {
-	var pth []string
+	"github.com/jetsetilly/gopher2600/paths/fs"
+)
 
-	basePath, err := getBasePath(subPth)
+// ResourcePath prepends the supplied path with a with OS/build specific base
+// paths
+//
+// The function creates all folders necessary to reach the end of sub-path. It
+// does not otherwise touch or create the file.
+func ResourcePath(path ...string) (string, error) {
+	b, err := baseResourcePath()
 	if err != nil {
 		return "", err
 	}
 
-	pth = make([]string, 0)
-	pth = append(pth, basePath)
-	pth = append(pth, file)
+	p := filepath.Join(b, filepath.Join(path...))
 
-	return filepath.Join(pth...), nil
+	if _, err := os.Stat(p); err == nil {
+		return p, nil
+	}
+
+	if err := fs.MkdirAll(filepath.Dir(p), 0700); err != nil {
+		return "", err
+	}
+
+	return p, nil
 }

@@ -26,7 +26,12 @@ import (
 func uniqueFilename(prepend string, cartload cartridgeloader.Loader) (string, error) {
 	f := paths.UniqueFilename(prepend, cartload.ShortName())
 
-	scrPth, err := paths.ResourcePath(regressionScripts, f)
+	scriptsPath, err := paths.ResourcePath(regressionPath, regressionScripts)
+	if err != nil {
+		return "", err
+	}
+
+	scrPth, err := paths.ResourcePath(scriptsPath, f)
 	if err != nil {
 		return "", err
 	}

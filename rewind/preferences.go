@@ -50,7 +50,7 @@ func newPreferences(r *Rewind) (*Preferences, error) {
 	p.Freq.Set(snapshotFreq)
 
 	// save server using the prefs package
-	pth, err := paths.ResourcePath("", prefs.DefaultPrefsFile)
+	pth, err := paths.ResourcePath(prefs.DefaultPrefsFile)
 	if err != nil {
 		return nil, err
 	}

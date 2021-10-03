@@ -137,7 +137,7 @@ func NewSdlImgui(tv *television.Television) (*SdlImgui, error) {
 		return nil, curated.Errorf("sdlimgui: %v", err)
 	}
 
-	iniPath, err := paths.ResourcePath("", imguiIniFile)
+	iniPath, err := paths.ResourcePath(imguiIniFile)
 	if err != nil {
 		return nil, curated.Errorf("sdlimgui: %v", err)
 	}

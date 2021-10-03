@@ -60,7 +60,7 @@ func newEeprom() *EEPROM {
 
 // Read EEPROM data from disk.
 func (ee *EEPROM) Read() {
-	fn, err := paths.ResourcePath("", saveKeyPath)
+	fn, err := paths.ResourcePath(saveKeyPath)
 	if err != nil {
 		logger.Logf("savekey", "could not load eeprom file (%s)", err)
 		return
@@ -98,7 +98,7 @@ func (ee *EEPROM) Read() {
 
 // Write EEPROM data to disk.
 func (ee *EEPROM) Write() {
-	fn, err := paths.ResourcePath("", saveKeyPath)
+	fn, err := paths.ResourcePath(saveKeyPath)
 	if err != nil {
 		logger.Logf("savekey", "could not write eeprom file (%s)", err)
 		return

@@ -18,28 +18,8 @@
 
 package paths
 
-import (
-	"os"
-	"path/filepath"
-
-	"github.com/jetsetilly/gopher2600/paths/fs"
-)
-
 const gopherConfigDir = ".gopher2600"
 
-// the non-release version of getBasePath looks for and if necessary creates
-// the gopherConfigDir (and child directories) in the current working
-// directory.
-func getBasePath(subPth string) (string, error) {
-	pth := filepath.Join(gopherConfigDir, subPth)
-
-	if _, err := os.Stat(pth); err == nil {
-		return pth, nil
-	}
-
-	if err := fs.MkdirAll(pth, 0700); err != nil {
-		return "", err
-	}
-
-	return pth, nil
+func baseResourcePath() (string, error) {
+	return gopherConfigDir, nil
 }

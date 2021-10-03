@@ -75,7 +75,7 @@ func loadBIOS(path string) ([]uint8, error) {
 
 	// the emulator's resource path
 	for _, b := range biosFile {
-		p, err := paths.ResourcePath("", b)
+		p, err := paths.ResourcePath(b)
 		if err != nil {
 			return nil, err
 		}

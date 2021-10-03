@@ -22,8 +22,30 @@ import (
 	"github.com/jetsetilly/gopher2600/test"
 )
 
-func TestPaths(t *testing.T) {
+func TestResourcePath(t *testing.T) {
 	pth, err := paths.ResourcePath("foo/bar", "baz")
+	test.Equate(t, err, nil)
+	test.Equate(t, pth, ".gopher2600/foo/bar/baz")
+
+	pth, err = paths.ResourcePath("foo/bar", "")
+	test.Equate(t, err, nil)
+	test.Equate(t, pth, ".gopher2600/foo/bar")
+
+	pth, err = paths.ResourcePath("", "baz")
+	test.Equate(t, err, nil)
+	test.Equate(t, pth, ".gopher2600/baz")
+
+	pth, err = paths.ResourcePath("", "")
+	test.Equate(t, err, nil)
+	test.Equate(t, pth, ".gopher2600")
+}
+
+func TestResourceFile(t *testing.T) {
+	pth, err := paths.ResourcePath("foo/bar", "baz")
+	test.Equate(t, err, nil)
+	test.Equate(t, pth, ".gopher2600/foo/bar/baz")
+
+	pth, err = paths.ResourcePath("foo", "bar", "baz")
 	test.Equate(t, err, nil)
 	test.Equate(t, pth, ".gopher2600/foo/bar/baz")
 

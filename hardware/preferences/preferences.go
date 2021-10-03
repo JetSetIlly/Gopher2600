@@ -83,7 +83,7 @@ func NewPreferences() (*Preferences, error) {
 	p.SetDefaults()
 
 	// setup preferences and load from disk
-	pth, err := paths.ResourcePath("", prefs.DefaultPrefsFile)
+	pth, err := paths.ResourcePath(prefs.DefaultPrefsFile)
 	if err != nil {
 		return nil, err
 	}

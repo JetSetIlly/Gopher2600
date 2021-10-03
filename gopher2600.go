@@ -414,7 +414,7 @@ func play(md *modalflag.Modes, sync *mainSync) error {
 func debug(md *modalflag.Modes, sync *mainSync) error {
 	md.NewMode()
 
-	defInitScript, err := paths.ResourcePath("", defaultInitScript)
+	defInitScript, err := paths.ResourcePath(defaultInitScript)
 	if err != nil {
 		return err
 	}
