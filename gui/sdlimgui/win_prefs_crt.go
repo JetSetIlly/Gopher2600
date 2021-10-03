@@ -61,6 +61,12 @@ func (win *winPrefs) drawCRT() {
 	win.drawSharpness()
 	imgui.Spacing()
 
+	win.drawBlackLevel()
+	imgui.Spacing()
+
+	imgui.Separator()
+	imgui.Spacing()
+
 	win.drawUnsyncTolerance()
 	imgui.Spacing()
 
@@ -311,6 +317,26 @@ func (win *winPrefs) drawSharpness() {
 
 	if imgui.SliderFloatV("##sharpness", &f, 0.1, 1.1, label, 1.0) {
 		win.img.crtPrefs.Sharpness.Set(f)
+	}
+}
+
+func (win *winPrefs) drawBlackLevel() {
+	imgui.Text("Black Level")
+
+	f := float32(win.img.crtPrefs.BlackLevel.Get().(float64))
+
+	var label string
+
+	if f >= 0.08 {
+		label = "very light"
+	} else if f >= 0.04 {
+		label = "light"
+	} else {
+		label = "dark"
+	}
+
+	if imgui.SliderFloatV("##blacklevel", &f, 0.00, 0.10, label, 1.0) {
+		win.img.crtPrefs.BlackLevel.Set(f)
 	}
 }
 

@@ -259,12 +259,19 @@ func (sh *effectsShader) setAttributesArgs(env shaderEnvironment, numScanlines i
 
 type blackCorrectionShader struct {
 	shader
+	blackLevel int32
 }
 
 func newBlackCorrectionShader() shaderProgram {
 	sh := &blackCorrectionShader{}
 	sh.createProgram(string(shaders.YFlipVertexShader), string(shaders.CRTBlackCorrection))
+	sh.blackLevel = gl.GetUniformLocation(sh.handle, gl.Str("BlackLevel"+"\x00"))
 	return sh
+}
+
+func (sh *blackCorrectionShader) setAttributesArgs(env shaderEnvironment, blackLevel float32) {
+	sh.shader.setAttributes(env)
+	gl.Uniform1f(sh.blackLevel, blackLevel)
 }
 
 type phosphorShader struct {

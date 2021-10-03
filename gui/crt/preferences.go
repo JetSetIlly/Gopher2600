@@ -44,6 +44,7 @@ type Preferences struct {
 	PhosphorLatency prefs.Float
 	PhosphorBloom   prefs.Float
 	Sharpness       prefs.Float
+	BlackLevel      prefs.Float
 
 	PixelPerfectFade prefs.Float
 
@@ -74,6 +75,7 @@ const (
 	phosphorLatency  = 0.5
 	phosphorBloom    = 1.0
 	sharpness        = 0.55
+	blackLevel       = 0.06
 	pixelPerfectFade = 0.4
 	unsyncTolerance  = 2
 )
@@ -170,6 +172,10 @@ func NewPreferences() (*Preferences, error) {
 	if err != nil {
 		return nil, err
 	}
+	err = p.dsk.Add("crt.blackLevel", &p.BlackLevel)
+	if err != nil {
+		return nil, err
+	}
 	err = p.dsk.Add("crt.pixelPerfectFade", &p.PixelPerfectFade)
 	if err != nil {
 		return nil, err
@@ -208,6 +214,7 @@ func (p *Preferences) SetDefaults() {
 	p.PhosphorLatency.Set(phosphorLatency)
 	p.PhosphorBloom.Set(phosphorBloom)
 	p.Sharpness.Set(sharpness)
+	p.BlackLevel.Set(blackLevel)
 	p.PixelPerfectFade.Set(pixelPerfectFade)
 	p.UnsyncTolerance.Set(unsyncTolerance)
 }

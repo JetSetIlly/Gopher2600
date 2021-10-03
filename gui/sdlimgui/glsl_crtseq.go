@@ -143,12 +143,10 @@ func (sh *crtSequencer) process(env shaderEnvironment, moreProcessing bool, numS
 
 	if enabled {
 		// video-black correction
-		if sh.img.crtPrefs.Curve.Get().(bool) {
-			env.srcTextureID = sh.seq.Process(working, func() {
-				sh.blackCorrectionShader.(*blackCorrectionShader).setAttributes(env)
-				env.draw()
-			})
-		}
+		env.srcTextureID = sh.seq.Process(working, func() {
+			sh.blackCorrectionShader.(*blackCorrectionShader).setAttributesArgs(env, float32(sh.img.crtPrefs.BlackLevel.Get().(float64)))
+			env.draw()
+		})
 
 		// blur result of phosphor a little more
 		env.srcTextureID = sh.seq.Process(working, func() {
