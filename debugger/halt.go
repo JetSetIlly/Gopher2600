@@ -15,31 +15,84 @@
 
 package debugger
 
+import (
+	"github.com/jetsetilly/gopher2600/debugger/terminal"
+)
+
+// haltingCoordination ties all the mechanisms that can interrupt the normal
+// running of the emulation.
+//
+// reset() and update() control the coordination itself. updating of the
+// breakpoints, etc. need to be done directly on those fields
 type haltCoordination struct {
-	set bool
+	dbg *Debugger
 
-	breakMessage    string
-	trapMessage     string
-	watchMessage    string
-	stepTrapMessage string
+	// has a halt condition been met since halt has been reset(). once halt
+	// has been set to true it will remain set until explicitely set to fale
+	// (via reset())
+	halt bool
+
+	// halt conditions
+	breakpoints *breakpoints
+	traps       *traps
+	watches     *watches
+
+	// volatile conditions. if these are non-empty they will take precedence
+	// over the non-volatile conditions above.
+	//
+	// volatile conditions are always cleared in the input loop before
+	// emulation continues after a halt
+	volatileBreakpoints *breakpoints
+	volatileTraps       *traps
 }
 
+func newHaltCoordination(dbg *Debugger) (*haltCoordination, error) {
+	h := &haltCoordination{dbg: dbg}
+
+	var err error
+
+	// set up breakpoints/traps
+	h.breakpoints, err = newBreakpoints(dbg)
+	if err != nil {
+		return nil, err
+	}
+	h.traps = newTraps(dbg)
+	h.watches = newWatches(dbg)
+
+	h.volatileBreakpoints, err = newBreakpoints(dbg)
+	if err != nil {
+		return nil, err
+	}
+	h.volatileTraps = newTraps(dbg)
+
+	return h, nil
+}
+
+// reset halt condition.
 func (h *haltCoordination) reset() {
-	h.set = false
-	h.breakMessage = ""
-	h.trapMessage = ""
-	h.watchMessage = ""
-	h.stepTrapMessage = ""
+	h.halt = false
 }
 
-func (h *haltCoordination) update(dbg *Debugger) {
-	// check for breakpoints and traps. for video cycle input loops we only
-	// do this if the instruction has affected flow.
-	h.breakMessage = dbg.breakpoints.check(h.breakMessage)
-	h.trapMessage = dbg.traps.check(h.trapMessage)
-	h.watchMessage = dbg.watches.check(h.watchMessage)
-	h.stepTrapMessage = dbg.stepTraps.check("")
+// check for a halt condition and set the halt flag if found.
+func (h *haltCoordination) check() {
+	// we don't check for regular break/trap/wathes if there are volatileTraps in place
+	if h.volatileTraps.isEmpty() && h.volatileBreakpoints.isEmpty() {
+		breakMessage := h.breakpoints.check()
+		trapMessage := h.traps.check()
+		watchMessage := h.watches.check()
 
-	// check for halt conditions
-	h.set = h.stepTrapMessage != "" || h.breakMessage != "" || h.trapMessage != "" || h.watchMessage != ""
+		h.dbg.printLine(terminal.StyleFeedback, breakMessage)
+		h.dbg.printLine(terminal.StyleFeedback, trapMessage)
+		h.dbg.printLine(terminal.StyleFeedback, watchMessage)
+
+		// check for halt conditions
+		h.halt = h.halt || breakMessage != "" || trapMessage != "" || watchMessage != ""
+
+		return
+	}
+
+	// check volatile conditions
+	breakMessage := h.volatileBreakpoints.check()
+	trapMessage := h.volatileTraps.check()
+	h.halt = h.halt || breakMessage != "" || trapMessage != ""
 }

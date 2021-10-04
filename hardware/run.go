@@ -79,7 +79,7 @@ func (vcs *VCS) Run(continueCheck func() (emulation.State, error)) error {
 
 // RunForFrameCount sets emulator running for the specified number of frames.
 // Useful for FPS and regression tests. Not used by the debugger because traps
-// and steptraps are more flexible.
+// (and volatile traps) are more flexible.
 func (vcs *VCS) RunForFrameCount(numFrames int, continueCheck func(frame int) (emulation.State, error)) error {
 	if continueCheck == nil {
 		continueCheck = func(frame int) (emulation.State, error) { return emulation.Running, nil }

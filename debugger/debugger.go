@@ -81,15 +81,9 @@ type Debugger struct {
 	// required
 	ref *reflection.Gatherer
 
-	// halt conditions
-	breakpoints *breakpoints
-	traps       *traps
-	watches     *watches
-	stepTraps   *traps
-
 	// halting is used to coordinate the checking of all halting conditions. it
 	// is updated every video cycle as appropriate (ie. not when rewinding)
-	halting haltCoordination
+	halting *haltCoordination
 
 	// trace memory access
 	traces *traces
@@ -234,15 +228,14 @@ func NewDebugger(tv *television.Television, scr gui.GUI, term terminal.Terminal,
 	// plug TV BoundaryTrigger into CPU
 	dbg.vcs.CPU.AddBoundaryTrigger(dbg.vcs.TV)
 
-	// set up breakpoints/traps
-	dbg.breakpoints, err = newBreakpoints(dbg)
+	// halting coordination
+	dbg.halting, err = newHaltCoordination(dbg)
 	if err != nil {
 		return nil, curated.Errorf("debugger: %v", err)
 	}
-	dbg.traps = newTraps(dbg)
-	dbg.watches = newWatches(dbg)
+
+	// traces
 	dbg.traces = newTraces(dbg)
-	dbg.stepTraps = newTraps(dbg)
 
 	// make synchronisation channels. RawEvents are pushed thick and fast and
 	// the channel queue should be pretty lengthy to prevent dropped events

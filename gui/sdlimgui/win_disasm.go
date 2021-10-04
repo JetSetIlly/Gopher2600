@@ -467,6 +467,6 @@ func (win *winDisasm) drawEntry(e *disassembly.Entry, focusAddr uint16, onBank b
 	// execution notes column
 	imgui.TableNextColumn()
 	imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmNotes)
-	imgui.Text(e.ExecutionNotes)
+	imgui.Text(e.LastExecutionNotes)
 	imgui.PopStyleColor()
 }

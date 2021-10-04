@@ -84,7 +84,7 @@ var commandTemplate = []string{
 	cmdQuit,
 
 	cmdRun,
-	cmdStep + " (BACK) (INSTRUCTION|VIDEO|SCANLINE|FRAME)",
+	cmdStep + " (BACK|OVER) (INSTRUCTION|VIDEO|SCANLINE|FRAME)",
 	cmdHalt,
 	cmdQuantum + " (INSTRUCTION|VIDEO)",
 	cmdScript + " [RECORD %<new file>F|END|%<file>F]",

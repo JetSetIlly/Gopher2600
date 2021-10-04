@@ -185,16 +185,12 @@ func (win *winCPU) draw() {
 		imgui.Text(res.Operand.String())
 
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmCycles)
-		if !res.Result.Final {
-			imgui.Text(fmt.Sprintf("%s of %s cycles", res.ActualCycles, res.DefnCycles))
-		} else {
-			imgui.Text(fmt.Sprintf("%s cycles", res.ActualCycles))
-			if res.Result.PageFault {
-				imgui.SameLine()
-				imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmNotes)
-				imgui.Text("(page-fault)")
-				imgui.PopStyleColor()
-			}
+		imgui.Text(fmt.Sprintf("%s cycles", res.Cycles()))
+		if res.Result.PageFault {
+			imgui.SameLine()
+			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmNotes)
+			imgui.Text("(page-fault)")
+			imgui.PopStyleColor()
 		}
 
 		imgui.PopStyleColorV(5)

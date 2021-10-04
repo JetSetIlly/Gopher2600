@@ -104,7 +104,7 @@ func (e *Entry) GetField(field Field) string {
 		s = e.Cycles()
 
 	case FldNotes:
-		return e.ExecutionNotes
+		return e.LastExecutionNotes
 	}
 
 	if rightJust {

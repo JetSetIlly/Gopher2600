@@ -143,6 +143,7 @@ func (win *winControl) drawStep() {
 		} else {
 			imgui.Text("CPU Instruction")
 		}
+
 		imgui.EndTable()
 	}
 
@@ -171,6 +172,10 @@ func (win *winControl) drawStep() {
 		}
 
 		imgui.EndTable()
+	}
+
+	if imgui.ButtonV("Step Over", fillWidth) {
+		win.img.term.pushCommand("STEP OVER")
 	}
 }
 

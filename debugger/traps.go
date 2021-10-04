@@ -76,13 +76,8 @@ func (tr *traps) drop(num int) error {
 
 // check compares the current state of the emulation with every trap condition.
 // returns a string listing every condition that matches (separated by \n).
-func (tr *traps) check(previousResult string) string {
-	if len(tr.traps) == 0 {
-		return previousResult
-	}
-
+func (tr *traps) check() string {
 	checkString := strings.Builder{}
-	checkString.WriteString(previousResult)
 	for i := range tr.traps {
 		trapValue := tr.traps[i].target.TargetValue()
 

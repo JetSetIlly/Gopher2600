@@ -29,8 +29,13 @@ a BREAK, TRAP or WATCH condition.`,
 
 	cmdHalt: `Halt emulation. Does nothing if emulation is already halted.`,
 
-	cmdStep: `Step forward one frame, scanline, CPU instruction or color clock. With the BACK keyword
-the emulation can be stepped backwards too, although stepping back by color clock is currently not possible.`,
+	cmdStep: `Step forward one frame, scanline, CPU instruction or color clock. With the BACK option
+the emulation can be stepped backwards too.
+
+The OVER option changes how the STEP command works with JSR opcodes. Stepping OVER a JSR opcode causes
+the STEP to end on the programme after the corresponding RTS. Note that if there is no RTS then the program
+will run forever and you will need to stop the execution with the HALT command (or through the debugging GUI
+or with a CTRL-C on some terminals)`,
 
 	cmdQuantum: `Change or view stepping quantum. The stepping quantum defines the frequency
 at which the emulation is checked and reported upon by the debugger.

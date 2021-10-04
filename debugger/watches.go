@@ -89,13 +89,12 @@ func (wtc *watches) drop(num int) error {
 // check compares the current state of the emulation with every watch
 // condition. returns a string listing every condition that matches (separated
 // by \n).
-func (wtc *watches) check(previousResult string) string {
+func (wtc *watches) check() string {
 	if len(wtc.watches) == 0 {
-		return previousResult
+		return ""
 	}
 
 	checkString := strings.Builder{}
-	checkString.WriteString(previousResult)
 
 	for i := range wtc.watches {
 		// continue loop if we're not matching last address accessed

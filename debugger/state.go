@@ -45,14 +45,14 @@ func (dbg *Debugger) GetLastResult() disassembly.Entry {
 // HasBreak returns true if there is a breakpoint at the address. the second
 // return value indicates if there is a breakpoint at the address AND bank.
 func (dbg *Debugger) HasBreak(addr uint16, bank int) BreakGroup {
-	g, _ := dbg.breakpoints.hasBreak(addr, bank)
+	g, _ := dbg.halting.breakpoints.hasBreak(addr, bank)
 	return g
 }
 
 // TogglePCBreak sets or unsets a PC break at the address rerpresented by th
 // disassembly entry.
 func (dbg *Debugger) TogglePCBreak(e *disassembly.Entry) {
-	dbg.breakpoints.togglePCBreak(e)
+	dbg.halting.breakpoints.togglePCBreak(e)
 }
 
 // PushRawEvent onto the event queue.

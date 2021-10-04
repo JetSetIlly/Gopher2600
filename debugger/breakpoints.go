@@ -180,6 +180,11 @@ func (bp *breakpoints) clear() {
 	bp.breaks = make([]breaker, 0, 10)
 }
 
+// isEmpty returns true if there are no currently defined breakpoints.
+func (bp *breakpoints) isEmpty() bool {
+	return len(bp.breaks) == 0
+}
+
 // drop a specific breakpoint by position in list.
 func (bp *breakpoints) drop(num int) error {
 	if len(bp.breaks)-1 < num {
@@ -198,13 +203,12 @@ func (bp *breakpoints) drop(num int) error {
 // check compares the current state of the emulation with every breakpoint
 // condition. returns a string listing every condition that matches (separated
 // by \n).
-func (bp *breakpoints) check(previousResult string) string {
+func (bp *breakpoints) check() string {
 	if len(bp.breaks) == 0 {
-		return previousResult
+		return ""
 	}
 
 	checkString := strings.Builder{}
-	checkString.WriteString(previousResult)
 	for i := range bp.breaks {
 		// check current value of target with the requested value
 		if bp.breaks[i].check() == checkMatch {

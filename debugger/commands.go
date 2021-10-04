@@ -200,11 +200,25 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		back := false
 
 		if tk, ok := tokens.Get(); ok {
-			back = tk == "BACK"
-			if !back {
-				tokens.Unget()
-			} else {
+			switch tk {
+			case "BACK":
+				back = true
 				adj *= -1
+
+			case "OVER":
+				// if next expected opcode is JSR then add a volatile breakpoint to the
+				// return address
+				e, _ := dbg.Disasm.GetEntryByAddress(dbg.vcs.CPU.PC.Address())
+				if e.Operator == "JSR" {
+					brk := commandline.TokeniseInput(fmt.Sprintf("%#4x", dbg.vcs.CPU.PC.Address()+3))
+					dbg.halting.volatileBreakpoints.parseCommand(brk)
+
+					// breakpoing will take many cycles to trigger so we need to run the emulation
+					dbg.runUntilHalt = true
+				}
+
+			default:
+				tokens.Unget()
 			}
 		}
 
@@ -264,7 +278,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 			tokens.Unget()
 
 			// ignoring error
-			_ = dbg.stepTraps.parseCommand(tokens)
+			_ = dbg.halting.volatileTraps.parseCommand(tokens)
 
 			// trap may take many cycles to trigger
 			dbg.runUntilHalt = true
@@ -1425,19 +1439,19 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		}
 
 	case cmdBreak:
-		err := dbg.breakpoints.parseCommand(tokens)
+		err := dbg.halting.breakpoints.parseCommand(tokens)
 		if err != nil {
 			return curated.Errorf("%v", err)
 		}
 
 	case cmdTrap:
-		err := dbg.traps.parseCommand(tokens)
+		err := dbg.halting.traps.parseCommand(tokens)
 		if err != nil {
 			return curated.Errorf("%v", err)
 		}
 
 	case cmdWatch:
-		err := dbg.watches.parseCommand(tokens)
+		err := dbg.halting.watches.parseCommand(tokens)
 		if err != nil {
 			return curated.Errorf("%v", err)
 		}
@@ -1453,17 +1467,17 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		list = strings.ToUpper(list)
 		switch list {
 		case "BREAKS":
-			dbg.breakpoints.list()
+			dbg.halting.breakpoints.list()
 		case "TRAPS":
-			dbg.traps.list()
+			dbg.halting.traps.list()
 		case "WATCHES":
-			dbg.watches.list()
+			dbg.halting.watches.list()
 		case "TRACES":
 			dbg.traces.list()
 		case "ALL":
-			dbg.breakpoints.list()
-			dbg.traps.list()
-			dbg.watches.list()
+			dbg.halting.breakpoints.list()
+			dbg.halting.traps.list()
+			dbg.halting.watches.list()
 			dbg.traces.list()
 		default:
 			// already caught by command line ValidateTokens()
@@ -1481,19 +1495,19 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		drop = strings.ToUpper(drop)
 		switch drop {
 		case "BREAK":
-			err := dbg.breakpoints.drop(num)
+			err := dbg.halting.breakpoints.drop(num)
 			if err != nil {
 				return err
 			}
 			dbg.printLine(terminal.StyleFeedback, "breakpoint #%d dropped", num)
 		case "TRAP":
-			err := dbg.traps.drop(num)
+			err := dbg.halting.traps.drop(num)
 			if err != nil {
 				return err
 			}
 			dbg.printLine(terminal.StyleFeedback, "trap #%d dropped", num)
 		case "WATCH":
-			err := dbg.watches.drop(num)
+			err := dbg.halting.watches.drop(num)
 			if err != nil {
 				return err
 			}
@@ -1513,21 +1527,21 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		clear = strings.ToUpper(clear)
 		switch clear {
 		case "BREAKS":
-			dbg.breakpoints.clear()
+			dbg.halting.breakpoints.clear()
 			dbg.printLine(terminal.StyleFeedback, "breakpoints cleared")
 		case "TRAPS":
-			dbg.traps.clear()
+			dbg.halting.traps.clear()
 			dbg.printLine(terminal.StyleFeedback, "traps cleared")
 		case "WATCHES":
-			dbg.watches.clear()
+			dbg.halting.watches.clear()
 			dbg.printLine(terminal.StyleFeedback, "watches cleared")
 		case "TRACES":
 			dbg.traces.clear()
 			dbg.printLine(terminal.StyleFeedback, "traces cleared")
 		case "ALL":
-			dbg.breakpoints.clear()
-			dbg.traps.clear()
-			dbg.watches.clear()
+			dbg.halting.breakpoints.clear()
+			dbg.halting.traps.clear()
+			dbg.halting.watches.clear()
 			dbg.traces.clear()
 			dbg.printLine(terminal.StyleFeedback, "breakpoints, traps, watches and traces cleared")
 		default:

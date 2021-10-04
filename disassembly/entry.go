@@ -83,14 +83,10 @@ type Entry struct {
 	// formatted cycles information from instructions.Defintion
 	DefnCycles string
 
-	// actual number of cycles. consider using Cycles() for presentation
-	// purposes
-	ActualCycles string
-
 	// information about the most recent execution of the entry
-	//
 	// should be empty if EntryLevel != EntryLevelExecuted
-	ExecutionNotes string
+	LastExecutedCycles string
+	LastExecutionNotes string
 }
 
 // some fields in the disassembly entry are updated on every execution.
@@ -105,7 +101,7 @@ func (e *Entry) updateExecutionEntry(result execution.Result) {
 	e.Level = EntryLevelExecuted
 
 	// actual cycles
-	e.ActualCycles = fmt.Sprintf("%d", e.Result.Cycles)
+	e.LastExecutedCycles = fmt.Sprintf("%d", e.Result.Cycles)
 
 	// actual notes
 	s := strings.Builder{}
@@ -127,20 +123,20 @@ func (e *Entry) updateExecutionEntry(result execution.Result) {
 		s.WriteString(" ")
 	}
 
-	e.ExecutionNotes = strings.TrimSpace(s.String())
+	e.LastExecutionNotes = strings.TrimSpace(s.String())
 }
 
 // Cycles returns the number of cycles annotated if actual cycles differs from
 // the number of cycles in the definition. for executed branch instructions this
 // will always be the case.
 func (e *Entry) Cycles() string {
-	if e.Level < EntryLevelExecuted || e.DefnCycles == e.ActualCycles {
-		return e.DefnCycles
+	if e.Level < EntryLevelExecuted || e.Result.Final {
+		return e.LastExecutedCycles
 	}
 
 	// if entry hasn't been executed yet or if actual cycles is different to
 	// the cycles defined for the entry then return an annotated string
-	return fmt.Sprintf("%s [%s]", e.DefnCycles, e.ActualCycles)
+	return fmt.Sprintf("%s of %s", e.LastExecutedCycles, e.DefnCycles)
 }
 
 // add decoration to operand according to the addressing mode of the entry.

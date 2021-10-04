@@ -209,20 +209,22 @@ func (dsm *Disassembly) GetEntryByAddress(address uint16) (*Entry, bool) {
 	return dsm.entries[bank.Number][address&memorymap.CartridgeBits], bank.ExecutingCoprocessor
 }
 
-// ExecutedEntry creates an Entry from a cpu result that has actually been
-// executed. When appropriate, the newly created Entry replaces the previous
-// equivalent entry in the disassembly.
+// ExecutedEntry should be called after execution of a CPU instruction. In many
+// instances it behaves the same as FormatResult with an EntryLevel of
+// EntryLevelExecuted. Those intances are:
 //
-// If the execution.Result was from an instruction in RAM (cartridge RAM or VCS
-// RAM) then the newly created entry is returned but not stored anywhere in the
-// Disassembly.
-func (dsm *Disassembly) ExecutedEntry(bank mapper.BankInfo, result execution.Result, nextAddr uint16) *Entry {
-	// updating an entry can happen at the same time as iteration which is
-	// probably being run from a different goroutine. acknowledge the critical
-	// section
-	dsm.crit.Lock()
-	defer dsm.crit.Unlock()
-
+// - a coprocessor is executing (and is interfering with what is being executed)
+// - the instruction being disassembled was retrieved from a non-Cartridge address
+// - the instruction is from an unknown bank
+//
+// It should not be called if execution.Result is not finalised. This will only
+// lead to confusing disassemblies.
+//
+// ExecutedEntry will update the disassembly corresponding to the result. If
+// there is no existing entry, a new entry is added and a messsage is logged
+// saying that there has been a "late decoding" - this suggests a flaw in the
+// decoding process.
+func (dsm *Disassembly) ExecutedEntry(bank mapper.BankInfo, result execution.Result, checkNextAddr bool, nextAddr uint16) *Entry {
 	// if co-processor is executing then whatever has been executed by the 6507
 	// will not relate to the permanent disassembly. format the result and
 	// return
@@ -251,6 +253,12 @@ func (dsm *Disassembly) ExecutedEntry(bank mapper.BankInfo, result execution.Res
 		return dsm.FormatResult(bank, result, EntryLevelExecuted)
 	}
 
+	// updating an entry can happen at the same time as iteration which is
+	// probably being run from a different goroutine. acknowledge the critical
+	// section
+	dsm.crit.Lock()
+	defer dsm.crit.Unlock()
+
 	// get disassembly entry at address
 	idx := result.Address & memorymap.CartridgeBits
 	e := dsm.entries[bank.Number][idx]
@@ -277,21 +285,25 @@ func (dsm *Disassembly) ExecutedEntry(bank mapper.BankInfo, result execution.Res
 		// (a) there's a bug/flaw in the decode procedure
 		// (b) the program has taken an unpredictable path
 		dsm.entries[bank.Number][idx] = dsm.FormatResult(bank, result, EntryLevelExecuted)
+
+		// log late decoding
+		logger.Logf("disassembly", "late decoding of %s", dsm.entries[bank.Number][idx])
 	} else {
-		// we have seen this entry before but it's not been executed. update
-		// entry to reflect results
+		// we have seen this entry before. update entry to reflect results
 		e.updateExecutionEntry(result)
 	}
 
 	// bless next entry in case it was missed by the original decoding. there's
 	// no guarantee that the bank for the next address will be the same as the
 	// current bank, so we have to call the GetBank() function.
-	bank = dsm.vcs.Mem.Cart.GetBank(nextAddr)
-	ne := dsm.entries[bank.Number][nextAddr&memorymap.CartridgeBits]
-	if ne == nil {
-		logger.Logf("disassembly", "undecoded cartridge location (%#04x)", nextAddr)
-	} else if ne.Level < EntryLevelBlessed {
-		ne.Level = EntryLevelBlessed
+	if checkNextAddr {
+		bank = dsm.vcs.Mem.Cart.GetBank(nextAddr)
+		ne := dsm.entries[bank.Number][nextAddr&memorymap.CartridgeBits]
+		if ne == nil {
+			logger.Logf("disassembly", "undecoded cartridge location (%#04x)", nextAddr)
+		} else if ne.Level < EntryLevelBlessed {
+			ne.Level = EntryLevelBlessed
+		}
 	}
 
 	return e
@@ -406,9 +418,8 @@ func (dsm *Disassembly) FormatResult(bank mapper.BankInfo, result execution.Resu
 		e.DefnCycles = fmt.Sprintf("%d", result.Defn.Cycles)
 	}
 
-	if level == EntryLevelExecuted && result.Final {
-		e.updateExecutionEntry(result)
-	}
+	// actual cycles
+	e.LastExecutedCycles = fmt.Sprintf("%d", result.Cycles)
 
 	return e
 }

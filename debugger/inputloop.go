@@ -22,6 +22,7 @@ import (
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/debugger/script"
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
+	"github.com/jetsetilly/gopher2600/disassembly"
 	"github.com/jetsetilly/gopher2600/emulation"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/logger"
@@ -129,7 +130,7 @@ func (dbg *Debugger) catchupLoop(inputter terminal.Input) error {
 
 		// update disassembly after every CPU instruction. even during a catch
 		// up we need to do this.
-		dbg.lastResult = dbg.Disasm.ExecutedEntry(dbg.lastBank, dbg.vcs.CPU.LastResult, dbg.vcs.CPU.PC.Value())
+		dbg.lastResult = dbg.Disasm.ExecutedEntry(dbg.lastBank, dbg.vcs.CPU.LastResult, true, dbg.vcs.CPU.PC.Value())
 
 		// make sure reflection has been updated at the end of the instruction
 		if err = dbg.ref.Step(dbg.lastBank); err != nil {
@@ -238,7 +239,7 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, isVideoStep bool) error 
 		}
 
 		// bring all the halt conditions together
-		halt := dbg.halting.set || !dbg.runUntilHalt || dbg.haltImmediately || dbg.lastStepError
+		halt := dbg.halting.halt || !dbg.runUntilHalt || dbg.haltImmediately || dbg.lastStepError
 
 		// reset last step error
 		dbg.lastStepError = false
@@ -253,19 +254,16 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, isVideoStep bool) error 
 				break // dbg.running loop
 			}
 
-			// if this is a video step and we reach this stage then we update the disassembly
+			// if this is a video step and we reach this stage then we need to
+			// update the disassembly. we do not update the nextAddr however
 			if isVideoStep {
-				dbg.lastResult = dbg.Disasm.ExecutedEntry(dbg.lastBank, dbg.vcs.CPU.LastResult, dbg.vcs.CPU.PC.Value())
+				dbg.lastResult = dbg.Disasm.FormatResult(dbg.lastBank, dbg.vcs.CPU.LastResult, disassembly.EntryLevelExecuted)
 			}
 
-			// always clear steptraps. if the emulation has halted for any
+			// always clear volatile breakpoints/traps. if the emulation has halted for any
 			// reason then any existing step trap is stale.
-			dbg.stepTraps.clear()
-
-			// print and reset accumulated break/trap/watch messages
-			dbg.printLine(terminal.StyleFeedback, dbg.halting.breakMessage)
-			dbg.printLine(terminal.StyleFeedback, dbg.halting.trapMessage)
-			dbg.printLine(terminal.StyleFeedback, dbg.halting.watchMessage)
+			dbg.halting.volatileBreakpoints.clear()
+			dbg.halting.volatileTraps.clear()
 
 			// input has halted. print on halt command if it is defined
 			if dbg.commandOnHalt != nil {
@@ -284,6 +282,7 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, isVideoStep bool) error 
 				dbg.Rewind.RecordExecutionState()
 			}
 
+			// reset halting flag before we resume execution
 			dbg.halting.reset()
 
 			// reset run until halt flag - it will be set again if the parsed
@@ -329,7 +328,7 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, isVideoStep bool) error 
 				// Setting to StateRunning may have different graphical
 				// side-effects which would look ugly when we're only in fact
 				// stepping.
-				if dbg.stepTraps.isEmpty() {
+				if dbg.halting.volatileTraps.isEmpty() {
 					if inputter.IsInteractive() {
 						dbg.setState(emulation.Running)
 					}
@@ -417,10 +416,6 @@ func (dbg *Debugger) step(inputter terminal.Input, catchup bool) error {
 			}
 		}
 
-		// check halt condition
-		dbg.halting.update(dbg)
-		dbg.continueEmulation = !dbg.halting.set
-
 		if dbg.quantum == QuantumVideo || !dbg.continueEmulation {
 			// start another inputLoop() with the clockCycle boolean set to true
 			return dbg.inputLoop(inputter, true)
@@ -438,10 +433,19 @@ func (dbg *Debugger) step(inputter terminal.Input, catchup bool) error {
 	// get to check the result of VCS.Step()
 	stepErr := dbg.vcs.Step(callback)
 
+	// check halt condition. checking here means we can only break on CPU
+	// instruction boundaries. checking every video cycle would be nice for
+	// some targets but for others they can be problematic. for instance PC
+	// breakpoints would break too earlier (an instruction would leave a PC on
+	// the target value but would not be ready to execute if the instruction
+	// affected flow)
+	dbg.halting.check()
+	dbg.continueEmulation = !dbg.halting.halt
+
 	var err error
 
 	// update disassembly after every CPU instruction. no exceptions.
-	dbg.lastResult = dbg.Disasm.ExecutedEntry(dbg.lastBank, dbg.vcs.CPU.LastResult, dbg.vcs.CPU.PC.Value())
+	dbg.lastResult = dbg.Disasm.ExecutedEntry(dbg.lastBank, dbg.vcs.CPU.LastResult, true, dbg.vcs.CPU.PC.Value())
 
 	// make sure reflection has been updated at the end of the instruction
 	if err = dbg.ref.Step(dbg.lastBank); err != nil {
@@ -457,11 +461,6 @@ func (dbg *Debugger) step(inputter terminal.Input, catchup bool) error {
 	if !catchup {
 		dbg.Rewind.RecordFrameState()
 	}
-
-	// check step error. note that we format and store last CPU execution
-	// result whether there was an error or not. in the case of an error the
-	// result is a fresh formatting. if there was no error the formatted result
-	// is returned by the ExecutedEntry() function.
 
 	if stepErr != nil {
 		// exit input loop if error is a plain error
