@@ -75,10 +75,14 @@ func (h *haltCoordination) reset() {
 
 // check for a halt condition and set the halt flag if found.
 func (h *haltCoordination) check() {
+	// whether CPU is at an instruction boundary. breakpoints and traps need to
+	// know this because some targets are sensitive to it
+	instructionBoundary := h.dbg.vcs.CPU.LastResult.Final
+
 	// we don't check for regular break/trap/wathes if there are volatileTraps in place
 	if h.volatileTraps.isEmpty() && h.volatileBreakpoints.isEmpty() {
-		breakMessage := h.breakpoints.check()
-		trapMessage := h.traps.check()
+		breakMessage := h.breakpoints.check(instructionBoundary)
+		trapMessage := h.traps.check(instructionBoundary)
 		watchMessage := h.watches.check()
 
 		h.dbg.printLine(terminal.StyleFeedback, breakMessage)
@@ -92,7 +96,7 @@ func (h *haltCoordination) check() {
 	}
 
 	// check volatile conditions
-	breakMessage := h.volatileBreakpoints.check()
-	trapMessage := h.volatileTraps.check()
+	breakMessage := h.volatileBreakpoints.check(instructionBoundary)
+	trapMessage := h.volatileTraps.check(instructionBoundary)
 	h.halt = h.halt || breakMessage != "" || trapMessage != ""
 }

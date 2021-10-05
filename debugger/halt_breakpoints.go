@@ -203,13 +203,17 @@ func (bp *breakpoints) drop(num int) error {
 // check compares the current state of the emulation with every breakpoint
 // condition. returns a string listing every condition that matches (separated
 // by \n).
-func (bp *breakpoints) check() string {
+func (bp *breakpoints) check(instructionBoundary bool) string {
 	if len(bp.breaks) == 0 {
 		return ""
 	}
 
 	checkString := strings.Builder{}
 	for i := range bp.breaks {
+		if bp.breaks[i].target.instructionBoundary && !instructionBoundary {
+			continue // for loop
+		}
+
 		// check current value of target with the requested value
 		if bp.breaks[i].check() == checkMatch {
 			checkString.WriteString(fmt.Sprintf("break on %s\n", bp.breaks[i]))

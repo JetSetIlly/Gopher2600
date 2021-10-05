@@ -394,10 +394,6 @@ func (dbg *Debugger) step(inputter terminal.Input, catchup bool) error {
 			return nil
 		}
 
-		// not updating disassembly. if we end up stopping mid-instruction the
-		// halt branch of the inputLoop() function will give us an opportinity
-		// to update, which is all we need.
-
 		// we do need to update the reflection however
 		err = dbg.ref.Step(dbg.lastBank)
 		if err != nil {
@@ -416,6 +412,11 @@ func (dbg *Debugger) step(inputter terminal.Input, catchup bool) error {
 			}
 		}
 
+		// check halt condition. a second check is made after vcs.Step()
+		// returns below
+		dbg.halting.check()
+		dbg.continueEmulation = !dbg.halting.halt
+
 		if dbg.quantum == QuantumVideo || !dbg.continueEmulation {
 			// start another inputLoop() with the clockCycle boolean set to true
 			return dbg.inputLoop(inputter, true)
@@ -433,22 +434,17 @@ func (dbg *Debugger) step(inputter terminal.Input, catchup bool) error {
 	// get to check the result of VCS.Step()
 	stepErr := dbg.vcs.Step(callback)
 
-	// check halt condition. checking here means we can only break on CPU
-	// instruction boundaries. checking every video cycle would be nice for
-	// some targets but for others they can be problematic. for instance PC
-	// breakpoints would break too earlier (an instruction would leave a PC on
-	// the target value but would not be ready to execute if the instruction
-	// affected flow)
+	// check halt condition again now that the instruction has finished (the
+	// Final flag is true). this does mean that some breakpoints/traps are
+	// matched twice but that's not currently a problem
 	dbg.halting.check()
 	dbg.continueEmulation = !dbg.halting.halt
-
-	var err error
 
 	// update disassembly after every CPU instruction. no exceptions.
 	dbg.lastResult = dbg.Disasm.ExecutedEntry(dbg.lastBank, dbg.vcs.CPU.LastResult, true, dbg.vcs.CPU.PC.Value())
 
 	// make sure reflection has been updated at the end of the instruction
-	if err = dbg.ref.Step(dbg.lastBank); err != nil {
+	if err := dbg.ref.Step(dbg.lastBank); err != nil {
 		return err
 	}
 

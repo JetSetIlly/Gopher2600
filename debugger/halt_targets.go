@@ -33,6 +33,9 @@ type target struct {
 	// must be a comparable type
 	currentValue targetValue
 	format       string
+
+	// some targets should only be checked on an instruction boundary
+	instructionBoundary bool
 }
 
 func (trg target) Label() string {
@@ -88,7 +91,8 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (*target, error) {
 					ai := dbg.dbgmem.mapAddress(dbg.vcs.CPU.PC.Address(), true)
 					return int(ai.mappedAddress)
 				},
-				format: "%#04x",
+				format:              "%#04x",
+				instructionBoundary: true,
 			}
 
 		case "A":
@@ -97,7 +101,8 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (*target, error) {
 				currentValue: func() targetValue {
 					return int(dbg.vcs.CPU.A.Value())
 				},
-				format: "%#02x",
+				format:              "%#02x",
+				instructionBoundary: false,
 			}
 
 		case "X":
@@ -106,7 +111,8 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (*target, error) {
 				currentValue: func() targetValue {
 					return int(dbg.vcs.CPU.X.Value())
 				},
-				format: "%#02x",
+				format:              "%#02x",
+				instructionBoundary: false,
 			}
 
 		case "Y":
@@ -115,7 +121,8 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (*target, error) {
 				currentValue: func() targetValue {
 					return int(dbg.vcs.CPU.Y.Value())
 				},
-				format: "%#02x",
+				format:              "%#02x",
+				instructionBoundary: false,
 			}
 
 		case "SP":
@@ -124,7 +131,8 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (*target, error) {
 				currentValue: func() targetValue {
 					return int(dbg.vcs.CPU.SP.Value())
 				},
-				format: "%#02x",
+				format:              "%#02x",
+				instructionBoundary: false,
 			}
 
 		// tv state
@@ -134,6 +142,7 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (*target, error) {
 				currentValue: func() targetValue {
 					return dbg.vcs.TV.GetState(signal.ReqFramenum)
 				},
+				instructionBoundary: false,
 			}
 
 		case "SCANLINE", "SL":
@@ -142,6 +151,7 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (*target, error) {
 				currentValue: func() targetValue {
 					return dbg.vcs.TV.GetState(signal.ReqScanline)
 				},
+				instructionBoundary: false,
 			}
 
 		case "CLOCK", "CL":
@@ -150,6 +160,7 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (*target, error) {
 				currentValue: func() targetValue {
 					return dbg.vcs.TV.GetState(signal.ReqClock)
 				},
+				instructionBoundary: false,
 			}
 
 		case "BANK":
@@ -172,6 +183,7 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (*target, error) {
 							}
 							return dbg.vcs.CPU.LastResult.Defn.Operator
 						},
+						instructionBoundary: true,
 					}
 
 				case "ADDRESSMODE", "AM":
@@ -183,6 +195,7 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (*target, error) {
 							}
 							return int(dbg.vcs.CPU.LastResult.Defn.AddressingMode)
 						},
+						instructionBoundary: true,
 					}
 
 				case "EFFECT", "EFF":
@@ -194,6 +207,7 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (*target, error) {
 							}
 							return int(dbg.vcs.CPU.LastResult.Defn.Effect)
 						},
+						instructionBoundary: true,
 					}
 
 				case "PAGEFAULT", "PAGE":
@@ -202,6 +216,7 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (*target, error) {
 						currentValue: func() targetValue {
 							return dbg.vcs.CPU.LastResult.PageFault
 						},
+						instructionBoundary: true,
 					}
 
 				case "BUG":
@@ -214,6 +229,7 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (*target, error) {
 							}
 							return s
 						},
+						instructionBoundary: true,
 					}
 
 				default:
@@ -239,5 +255,6 @@ func bankTarget(dbg *Debugger) *target {
 		currentValue: func() targetValue {
 			return dbg.vcs.Mem.Cart.GetBank(dbg.vcs.CPU.PC.Address()).Number
 		},
+		instructionBoundary: false,
 	}
 }
