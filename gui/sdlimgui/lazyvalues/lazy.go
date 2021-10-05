@@ -17,7 +17,6 @@ package lazyvalues
 
 import (
 	"sync/atomic"
-	"time"
 
 	"github.com/jetsetilly/gopher2600/debugger"
 	"github.com/jetsetilly/gopher2600/emulation"
@@ -61,9 +60,6 @@ type LazyValues struct {
 	// note that LazyBreakpoints works slightly different to the the other Lazy* types.
 	Breakpoints *LazyBreakpoints
 
-	// current time is put on the channel on every Refresh()
-	RefreshPulse chan time.Time
-
 	// we need a way of making sure we don't update the lazy values too often.
 	// if we're not careful the GUI thread can push refresh requests more
 	// quickly than the debugger input loop can handel them. this is
@@ -74,9 +70,7 @@ type LazyValues struct {
 
 // NewLazyValues is the preferred method of initialisation for the Values type.
 func NewLazyValues() *LazyValues {
-	val := &LazyValues{
-		RefreshPulse: make(chan time.Time),
-	}
+	val := &LazyValues{}
 
 	val.Debugger = newLazyDebugger(val)
 	val.CPU = newLazyCPU(val)
@@ -155,12 +149,6 @@ func (val *LazyValues) Refresh() {
 		val.SaveKey.update()
 		val.Rewind.update()
 		val.Breakpoints.update()
-
-		// put time of refresh on the RefreshPulse channel
-		select {
-		case val.RefreshPulse <- time.Now():
-		default:
-		}
 	}
 
 	if val.refreshScheduled.Load().(bool) {

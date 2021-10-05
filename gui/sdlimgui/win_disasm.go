@@ -44,12 +44,7 @@ type winDisasm struct {
 	// selected bank to display
 	selectedBank int
 
-	// selectedBank can be changed by the lazy system in a different goroutine
-	// so we send such changes over a channel and collect at the beginning of
-	// the draw() function.
-	selectedBankRefresh chan int
-
-	// flag wheterh bank combo is open
+	// flag stating whether bank combo is open
 	selectedBankComboOpen bool
 
 	// the address of the top and bottom-most visible entry. used to limit the
@@ -62,37 +57,31 @@ type winDisasm struct {
 
 	// if the PC address is already visible then flash the indicator. this
 	// gives the button something to do rather than giving no feedback at all.
-	focusOnAddrFlash int
+	focusAddrFlash int
 
-	// like focusOnAddrFlash but for the status string
+	// like focusAddrFlash but for the status string
 	statusFlash int
-
-	// because of the inherent delay of the lazy value system we need to keep
-	// the focusOnAddr value at true for a short while after the gui state
-	// flips to StatePaused
-	updateOnPause int
 
 	// whether the entry that the CPU/PC is currently "on" is visible in the
 	// scroller. we use this to decide whether to show the "Goto Current"
 	// button or not.
 	focusAddrIsVisible bool
 
-	// the program counter value in the previous (imgui) frame. we use this to
-	// decide whether to set the focusOnAddr flag.
-	focusAddrPrevFrame uint16
-
 	// label editing. labelEditTag identifies the tag being edited and
 	// labelEdit is the edited version of the label which will be used to
 	// update the label symbols table.
 	labelEditTag string
 	labelEdit    string
+
+	// the length of time to wait before accepting the new emulation state.
+	// this is to iron out the inherent delay in the lazy value system.
+	syncDelay int
 }
 
 func newWinDisasm(img *SdlImgui) (window, error) {
 	win := &winDisasm{
-		img:                 img,
-		followCPU:           true,
-		selectedBankRefresh: make(chan int),
+		img:       img,
+		followCPU: true,
 	}
 	return win, nil
 }
@@ -112,13 +101,13 @@ func (win *winDisasm) setOpen(open bool) {
 	win.open = open
 }
 
-func (win *winDisasm) draw() {
-	// check for refreshed selected bank
-	select {
-	case win.selectedBank = <-win.selectedBankRefresh:
-	default:
-	}
+// the length of time to flash for (ee focusAddrFlash and statusFlash). the
+// unit of time is the number of times the GUI goroutine is serviced. therfore
+// if that time changes the flashing effect should change also
+const focusFlashTime = 20
+const focusFlashPeriod = 5
 
+func (win *winDisasm) draw() {
 	if !win.open {
 		return
 	}
@@ -186,10 +175,10 @@ func (win *winDisasm) draw() {
 			win.focusOnAddr = true
 			win.selectedBank = bank.Number
 			if win.focusAddrIsVisible {
-				win.focusOnAddrFlash = 6
+				win.focusAddrFlash = focusFlashTime
 			}
 		} else {
-			win.statusFlash = 6
+			win.statusFlash = focusFlashTime
 		}
 	}
 
@@ -213,7 +202,7 @@ func (win *winDisasm) draw() {
 	if win.statusFlash > 0 {
 		win.statusFlash--
 	}
-	if win.statusFlash == 0 || win.statusFlash%2 == 0 {
+	if win.statusFlash == 0 || win.statusFlash%focusFlashPeriod == 0 {
 		imguiIndentText(status)
 	} else {
 		imguiIndentText("")
@@ -234,13 +223,27 @@ func (win *winDisasm) draw() {
 		imgui.Checkbox("Follow CPU", &win.followCPU)
 	})
 
-	// handle different gui states.
+	// synchronise with change of emulationState
+	win.sync()
+}
+
+// switching to a new emulationState needs to be handled with care,
+// particularly because of the skew with the update of the lazy value system.
+// the sync() function handles the change of state as best we can. it works
+// well.
+//
+// note that the issue only really arises when we move *to* the Paused state.
+// in other states the gui is either moving too brief or too fast to see
+// anything meaningful.
+func (win *winDisasm) sync() {
+	// the number of gui updates (calls to draw()) to wait before accepting the
+	// number emulation state. this value is arbitrary
+	const syncDelay = 50
+
 	switch win.img.emulation.State() {
 	case emulation.Initialising:
 		win.focusOnAddr = win.followCPU
-
-		// updateOnPause needs a comparatively long value for emulation.Initialising
-		win.updateOnPause = 20
+		win.syncDelay = syncDelay
 	case emulation.Running:
 		fallthrough
 	case emulation.Rewinding:
@@ -248,23 +251,16 @@ func (win *winDisasm) draw() {
 	case emulation.Stepping:
 		win.focusOnAddr = win.followCPU
 		if win.focusOnAddr {
-			win.selectedBank = bank.Number
-			win.updateOnPause = 5
+			win.selectedBank = win.img.lz.Cart.CurrBank.Number
+			win.syncDelay = syncDelay
 		}
 	case emulation.Paused:
-		win.focusOnAddr = win.updateOnPause > 0
-		if win.updateOnPause > 0 {
-			bank := win.img.lz.Cart.CurrBank.Number
-			go func() {
-				<-win.img.lz.RefreshPulse
-				win.selectedBankRefresh <- bank
-			}()
-			win.updateOnPause--
+		win.focusOnAddr = win.syncDelay > 0 && win.followCPU
+		if win.syncDelay > 0 {
+			win.selectedBank = win.img.lz.Cart.CurrBank.Number
+			win.syncDelay--
 		}
 	}
-
-	// record the focusAddr in time for the next frame
-	win.focusAddrPrevFrame = focusAddr
 }
 
 // drawBank specified by bank argument.
@@ -407,10 +403,10 @@ func (win *winDisasm) drawEntry(e *disassembly.Entry, focusAddr uint16, onBank b
 		}
 
 		// draw attention to current entry. flash if necessary
-		if win.focusOnAddrFlash > 0 {
-			win.focusOnAddrFlash--
+		if win.focusAddrFlash > 0 {
+			win.focusAddrFlash--
 		}
-		if win.focusOnAddrFlash == 0 || win.focusOnAddrFlash%2 == 0 {
+		if win.focusAddrFlash == 0 || win.focusAddrFlash%focusFlashPeriod == 0 {
 			imgui.TableSetBgColor(imgui.TableBgTargetRowBg0, win.img.cols.DisasmStep)
 		}
 	}
