@@ -69,7 +69,7 @@ type winDisasm struct {
 
 	// because of the inherent delay of the lazy value system we need to keep
 	// the focusOnAddr value at true for a short while after the gui state
-	// flips to StatePaused after the gui state flips to StatePaused.
+	// flips to StatePaused
 	updateOnPause int
 
 	// whether the entry that the CPU/PC is currently "on" is visible in the
@@ -239,7 +239,7 @@ func (win *winDisasm) draw() {
 	case emulation.Initialising:
 		win.focusOnAddr = win.followCPU
 
-		// updateOnPause needs a comparatively long value for StateInitialising
+		// updateOnPause needs a comparatively long value for emulation.Initialising
 		win.updateOnPause = 20
 	case emulation.Running:
 		fallthrough
@@ -296,6 +296,7 @@ func (win *winDisasm) drawBank(bank int, focusAddr uint16, onBank bool) {
 	if !imgui.BeginTableV("bank", numColumns, flgs, imgui.Vec2{}, 0) {
 		return
 	}
+
 	defer imgui.EndTable()
 
 	// set neutral colors for table rows by default. we'll change it to
@@ -397,17 +398,20 @@ func (win *winDisasm) drawBank(bank int, focusAddr uint16, onBank bool) {
 func (win *winDisasm) drawEntry(e *disassembly.Entry, focusAddr uint16, onBank bool) {
 	imgui.TableNextRow()
 
-	// draw attention to current disasm of current PC address. flash if necessary
+	executionNotes := e.LastExecutionNotes
+
 	if onBank && (e.Result.Address&memorymap.CartridgeBits == focusAddr) {
+		// execution notes
+		if !win.img.lz.Debugger.LastResult.Result.Final {
+			executionNotes = fmt.Sprintf("executing (%s cycles)", win.img.lz.Debugger.LastResult.Cycles())
+		}
+
+		// draw attention to current entry. flash if necessary
 		if win.focusOnAddrFlash > 0 {
 			win.focusOnAddrFlash--
 		}
 		if win.focusOnAddrFlash == 0 || win.focusOnAddrFlash%2 == 0 {
-			hi := win.img.cols.DisasmCPUstep
-			if !win.img.lz.Debugger.LastResult.Result.Final {
-				hi = win.img.cols.DisasmVideoStep
-			}
-			imgui.TableSetBgColor(imgui.TableBgTargetRowBg0, hi)
+			imgui.TableSetBgColor(imgui.TableBgTargetRowBg0, win.img.cols.DisasmStep)
 		}
 	}
 
@@ -461,12 +465,12 @@ func (win *winDisasm) drawEntry(e *disassembly.Entry, focusAddr uint16, onBank b
 	// cycles column
 	imgui.TableNextColumn()
 	imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmCycles)
-	imgui.Text(e.Cycles())
+	imgui.Text(e.DefnCycles)
 	imgui.PopStyleColor()
 
 	// execution notes column
 	imgui.TableNextColumn()
 	imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmNotes)
-	imgui.Text(e.LastExecutionNotes)
+	imgui.Text(executionNotes)
 	imgui.PopStyleColor()
 }
