@@ -16,7 +16,6 @@
 package debugger
 
 import (
-	"fmt"
 	"io"
 
 	"github.com/jetsetilly/gopher2600/curated"
@@ -227,6 +226,9 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, isVideoStep bool) error 
 		}
 
 		// check trace and output in context of last CPU result
+		//
+		// unlike halt conditions, I don't believe there is any need to do
+		// check every video cycle
 		trace := dbg.traces.check()
 		if trace != "" {
 			if dbg.commandOnTrace != nil {
@@ -235,7 +237,7 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, isVideoStep bool) error 
 					dbg.printLine(terminal.StyleError, "%s", err)
 				}
 			}
-			dbg.printLine(terminal.StyleFeedback, fmt.Sprintf(" <trace> %s", trace))
+			dbg.printLine(terminal.StyleFeedback, trace)
 		}
 
 		// bring all the halt conditions together

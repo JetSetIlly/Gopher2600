@@ -157,29 +157,24 @@ func (wtc *watches) list() {
 // parse tokens and add new watch. unlike breakpoints and traps, only one watch
 // at a time can be specified on the command line.
 func (wtc *watches) parseCommand(tokens *commandline.Tokens) error {
-	var event int
+	var read bool
 	var strict bool
-
-	const (
-		either int = iota
-		read
-		write
-	)
 
 	// event type
 	arg, _ := tokens.Get()
 	arg = strings.ToUpper(arg)
 	switch arg {
 	case "READ":
-		event = read
+		read = true
 	case "WRITE":
-		event = write
+		read = false
 	default:
-		event = either
+		// default watch event is READ
+		read = true
 		tokens.Unget()
 	}
 
-	// mirror address or not
+	// strict addressing or not
 	arg, _ = tokens.Get()
 	arg = strings.ToUpper(arg)
 	switch arg {
@@ -196,18 +191,15 @@ func (wtc *watches) parseCommand(tokens *commandline.Tokens) error {
 	// convert address
 	var ai *addressInfo
 
-	switch event {
-	default:
-		fallthrough // default to read case
-	case read:
+	if read {
 		ai = wtc.dbg.dbgmem.mapAddress(a, true)
-	case write:
+	} else {
 		ai = wtc.dbg.dbgmem.mapAddress(a, false)
 	}
 
 	// mapping of the address was unsuccessful
 	if ai == nil {
-		return curated.Errorf("invalid watch address: %s", a)
+		return curated.Errorf("invalid watch address (%s) expecting 16-bit address or symbol", a)
 	}
 
 	// get value if possible
@@ -217,7 +209,7 @@ func (wtc *watches) parseCommand(tokens *commandline.Tokens) error {
 	if useVal {
 		val, err = strconv.ParseUint(v, 0, 8)
 		if err != nil {
-			return curated.Errorf("invalid watch value (%s)", a)
+			return curated.Errorf("invalid watch value (%s) expecting 8-bit value", a)
 		}
 	}
 

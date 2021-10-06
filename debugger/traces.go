@@ -16,6 +16,7 @@
 package debugger
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/jetsetilly/gopher2600/curated"
@@ -78,20 +79,17 @@ func (trc *traces) check() string {
 	s := strings.Builder{}
 
 	for i := range trc.traces {
-		// continue loop if we're not matching last address accessed
-		if trc.traces[i].ai.address != trc.dbg.vcs.Mem.LastAccessAddress {
+		// continue if this is a repeat of the last address accessed
+		if trc.lastAddressAccessed == trc.dbg.vcs.Mem.LastAccessAddressMapped {
 			continue
 		}
 
-		// continue if this is a repeat of the last address accessed
-		if trc.lastAddressAccessed == trc.dbg.vcs.Mem.LastAccessAddress {
-			continue
-		}
+		v := trc.dbg.vcs.Mem.LastAccessValue
 
 		if trc.dbg.vcs.Mem.LastAccessWrite {
-			s.WriteString("write ")
+			s.WriteString(fmt.Sprintf("write %#02x to ", v))
 		} else {
-			s.WriteString("read ")
+			s.WriteString(fmt.Sprintf("read %#02x from ", v))
 		}
 
 		s.WriteString(trc.traces[i].String())
@@ -128,7 +126,7 @@ func (trc *traces) parseCommand(tokens *commandline.Tokens) error {
 	if ai == nil {
 		ai = trc.dbg.dbgmem.mapAddress(a, false)
 		if ai == nil {
-			return curated.Errorf("invalid trace address: %s", a)
+			return curated.Errorf("invalid trace address (%s) expecting 16-bit address or symbol", a)
 		}
 	}
 
