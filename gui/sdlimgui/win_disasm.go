@@ -76,6 +76,8 @@ type winDisasm struct {
 	// the length of time to wait before accepting the new emulation state.
 	// this is to iron out the inherent delay in the lazy value system.
 	syncDelay int
+
+	contextMenu string
 }
 
 func newWinDisasm(img *SdlImgui) (window, error) {
@@ -288,7 +290,6 @@ func (win *winDisasm) drawBank(bank int, focusAddr uint16, onBank bool) {
 	numColumns := 7
 	flgs := imgui.TableFlagsNone
 	flgs |= imgui.TableFlagsSizingFixedFit
-	flgs |= imgui.TableFlagsRowBg
 	if !imgui.BeginTableV("bank", numColumns, flgs, imgui.Vec2{}, 0) {
 		return
 	}
@@ -321,42 +322,7 @@ func (win *winDisasm) drawBank(bank int, focusAddr uint16, onBank bool) {
 		}
 
 		for i := clipper.DisplayStart; i < clipper.DisplayEnd; i++ {
-			// try to draw address label
-			s := e.Label.String()
-			if len(s) > 0 {
-				imgui.TableNextRow()
-
-				// put in address column (second column)
-				imgui.TableNextColumn()
-				imgui.TableNextColumn()
-
-				// address label (and label editing)
-				labelEditTag := fmt.Sprintf("%s%s", e.Bank.Name, e.Address)
-				if win.labelEditTag == labelEditTag {
-					imgui.PushItemWidth(imguiTextWidth(len(win.labelEdit)))
-
-					flgs := imgui.InputTextFlagsEnterReturnsTrue | imgui.InputTextFlagsCharsNoBlank
-					if imgui.InputTextV("##labeledit", &win.labelEdit, flgs, nil) {
-						win.img.dbg.Disasm.Sym.UpdateLabel(symbols.SourceCustom, bank, e.Result.Address, s, win.labelEdit)
-						win.labelEditTag = ""
-					}
-
-					if imgui.IsAnyMouseDown() && !imgui.IsItemHovered() {
-						win.labelEditTag = ""
-					} else {
-						imgui.SetKeyboardFocusHere()
-					}
-
-					imgui.PopItemWidth()
-				} else {
-					imgui.Text(e.Label.String())
-					if imgui.IsItemClicked() && imgui.IsMouseDoubleClicked(0) {
-						win.labelEditTag = labelEditTag
-						win.labelEdit = s
-					}
-				}
-			}
-
+			win.drawLabel(e, bank)
 			win.drawEntry(e, focusAddr, onBank)
 
 			// if the current CPU entry is visible then raise the focusAddrIsVisible flag
@@ -391,6 +357,45 @@ func (win *winDisasm) drawBank(bank int, focusAddr uint16, onBank bool) {
 	win.img.lz.Breakpoints.SetUpdateList(bank, win.addressTopList, win.addressBotList)
 }
 
+func (win *winDisasm) drawLabel(e *disassembly.Entry, bank int) {
+	// try to draw address label
+	s := e.Label.String()
+	if len(s) > 0 {
+		imgui.TableNextRow()
+
+		// put in address column (second column)
+		imgui.TableNextColumn()
+		imgui.TableNextColumn()
+
+		// address label (and label editing)
+		labelEditTag := fmt.Sprintf("%s%s", e.Bank.Name, e.Address)
+		if win.labelEditTag == labelEditTag {
+			imgui.PushItemWidth(imguiTextWidth(len(win.labelEdit)))
+
+			flgs := imgui.InputTextFlagsEnterReturnsTrue | imgui.InputTextFlagsCharsNoBlank
+			if imgui.InputTextV("##labeledit", &win.labelEdit, flgs, nil) {
+				win.img.dbg.Disasm.Sym.UpdateLabel(symbols.SourceCustom, bank, e.Result.Address, s, win.labelEdit)
+				win.labelEditTag = ""
+			}
+
+			if imgui.IsAnyMouseDown() && !imgui.IsItemHovered() {
+				win.labelEditTag = ""
+			} else {
+				imgui.SetKeyboardFocusHere()
+			}
+
+			imgui.PopItemWidth()
+		} else {
+			imgui.Text(e.Label.String())
+			if imgui.IsItemClicked() && imgui.IsMouseDoubleClicked(0) {
+				win.labelEditTag = labelEditTag
+				win.labelEdit = s
+			}
+		}
+	}
+
+}
+
 func (win *winDisasm) drawEntry(e *disassembly.Entry, focusAddr uint16, onBank bool) {
 	imgui.TableNextRow()
 
@@ -411,6 +416,8 @@ func (win *winDisasm) drawEntry(e *disassembly.Entry, focusAddr uint16, onBank b
 		}
 	}
 
+	hasPCbreak := false
+
 	// breakpoint indicator column
 	imgui.TableNextColumn()
 	switch win.img.lz.Breakpoints.HasBreak(e.Result.Address) {
@@ -418,6 +425,7 @@ func (win *winDisasm) drawEntry(e *disassembly.Entry, focusAddr uint16, onBank b
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmBreakAddress)
 		imgui.Text(fmt.Sprintf("%c", fonts.Breakpoint))
 		imgui.PopStyleColor()
+		hasPCbreak = true
 	case debugger.BrkOther:
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmBreakOther)
 		imgui.Text("#")
@@ -434,8 +442,15 @@ func (win *winDisasm) drawEntry(e *disassembly.Entry, focusAddr uint16, onBank b
 
 	// single click on the address entry toggles a PC breakpoint
 	if imgui.IsItemClicked() {
-		f := e // copy of pushed disasm entry
-		win.img.dbg.PushRawEvent(func() { win.img.dbg.TogglePCBreak(f) })
+		win.toggleBreak(e)
+	}
+
+	if imgui.IsItemHovered() && imgui.IsMouseDown(1) {
+		imgui.OpenPopup(disasmBreakMenuID)
+		win.contextMenu = e.Address
+	}
+	if e.Address == win.contextMenu {
+		win.drawDisasmBreakMenu(e, hasPCbreak)
 	}
 
 	// optional bytecode column
@@ -469,4 +484,30 @@ func (win *winDisasm) drawEntry(e *disassembly.Entry, focusAddr uint16, onBank b
 	imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmNotes)
 	imgui.Text(executionNotes)
 	imgui.PopStyleColor()
+}
+
+const disasmBreakMenuID = "disasmBreakMenu"
+
+func (win *winDisasm) drawDisasmBreakMenu(e *disassembly.Entry, hasPCbreak bool) {
+	if imgui.BeginPopup(disasmBreakMenuID) {
+		imgui.Text("Break on PC Address")
+		imguiSeparator()
+
+		var s string
+		if hasPCbreak {
+			s = fmt.Sprintf("Clear %s", e.Address)
+		} else {
+			s = fmt.Sprintf("Set %s", e.Address)
+		}
+
+		if imgui.Selectable(s) {
+			win.toggleBreak(e)
+		}
+		imgui.EndPopup()
+	}
+}
+
+func (win *winDisasm) toggleBreak(e *disassembly.Entry) {
+	f := e // copy of pushed disasm entry
+	win.img.dbg.PushRawEvent(func() { win.img.dbg.TogglePCBreak(f) })
 }

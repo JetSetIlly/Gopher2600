@@ -141,7 +141,7 @@ func (win *winDbgScr) setOpen(open bool) {
 	win.open = open
 }
 
-const breakMenuPopupID = "breakmenu"
+const breakMenuPopupID = "dbgScreenBreakMenu"
 
 func (win *winDbgScr) draw() {
 	if !win.open {
@@ -243,15 +243,15 @@ func (win *winDbgScr) draw() {
 		}
 
 		if imgui.BeginPopup(breakMenuPopupID) {
-			imgui.Text("Break")
+			imgui.Text("Break on TV Coords")
 			imguiSeparator()
-			if imgui.Selectable(fmt.Sprintf("Scanline=%d", win.mouseScanline)) {
+			if imgui.Selectable(fmt.Sprintf("Scanline %d", win.mouseScanline)) {
 				win.img.term.pushCommand(fmt.Sprintf("BREAK SL %d", win.mouseScanline))
 			}
-			if imgui.Selectable(fmt.Sprintf("Clock=%d", win.mouseClock)) {
+			if imgui.Selectable(fmt.Sprintf("Clock %d", win.mouseClock)) {
 				win.img.term.pushCommand(fmt.Sprintf("BREAK CL %d", win.mouseClock))
 			}
-			if imgui.Selectable(fmt.Sprintf("Scanline=%d & Clock=%d", win.mouseScanline, win.mouseClock)) {
+			if imgui.Selectable(fmt.Sprintf("Scanline %d & Clock %d", win.mouseScanline, win.mouseClock)) {
 				win.img.term.pushCommand(fmt.Sprintf("BREAK SL %d & CL %d", win.mouseScanline, win.mouseClock))
 			}
 			imgui.EndPopup()
