@@ -21,7 +21,9 @@ import (
 	"github.com/inkyblackness/imgui-go/v4"
 )
 
-func (win *winPrefs) drawCRT() {
+func (win *winPrefs) drawCRT() setDefaultPrefs {
+	imgui.Spacing()
+
 	// disable all CRT effect options if pixel-perfect is on
 	imgui.PushItemWidth(-1)
 	pixPerf := win.drawPixelPerfect()
@@ -55,6 +57,8 @@ func (win *winPrefs) drawCRT() {
 
 		imgui.TableNextColumn()
 		imgui.PushItemWidth(-1)
+		win.drawInterference()
+		imgui.Spacing()
 		win.drawNoise()
 		imgui.Spacing()
 		win.drawFringing()
@@ -81,6 +85,7 @@ func (win *winPrefs) drawCRT() {
 	win.drawUnsyncTolerance()
 	imgui.PopItemWidth()
 
+	return win.img.crtPrefs
 }
 
 func (win *winPrefs) drawCurve() {
@@ -185,6 +190,31 @@ func (win *winPrefs) drawScanlines() {
 
 	if imgui.SliderFloatV("##scanlinesfine", &fine, 1.5, 2.5, label, 1.0) {
 		win.img.crtPrefs.ScanlinesFine.Set(fine)
+	}
+}
+
+func (win *winPrefs) drawInterference() {
+	b := win.img.crtPrefs.Interference.Get().(bool)
+	if imgui.Checkbox("Interference##interference", &b) {
+		win.img.crtPrefs.Interference.Set(b)
+	}
+
+	f := float32(win.img.crtPrefs.InterferenceLevel.Get().(float64))
+
+	var label string
+
+	if f >= 0.18 {
+		label = "very high"
+	} else if f >= 0.16 {
+		label = "high"
+	} else if f >= 0.14 {
+		label = "low"
+	} else {
+		label = "very low"
+	}
+
+	if imgui.SliderFloatV("##interferencelevel", &f, 0.1, 0.2, label, 1.0) {
+		win.img.crtPrefs.InterferenceLevel.Set(f)
 	}
 }
 

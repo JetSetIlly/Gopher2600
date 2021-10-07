@@ -226,7 +226,7 @@ func (sh *screenshotSequencer) process(env shaderEnvironment) {
 		env.srcTextureID = sh.seq.Process(final, func() {
 			numScanlines := sh.img.wm.dbgScr.numScanlines
 			numClocks := specification.ClksVisible
-			sh.effectsShaderFlipped.(*effectsShader).setAttributesArgs(env, numScanlines, numClocks, false)
+			sh.effectsShaderFlipped.(*effectsShader).setAttributesArgs(env, numScanlines, numClocks, false, false)
 			env.draw()
 		})
 	} else {

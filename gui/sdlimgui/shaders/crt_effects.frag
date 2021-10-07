@@ -21,6 +21,7 @@ uniform int NumClocks;
 uniform int Curve;
 uniform int ShadowMask;
 uniform int Scanlines;
+uniform int Interference;
 uniform int Noise;
 uniform int Fringing;
 uniform float CurveAmount;
@@ -28,6 +29,7 @@ uniform float MaskBright;
 uniform float MaskFine;
 uniform float ScanlinesBright;
 uniform float ScanlinesFine;
+uniform float InterferenceLevel;
 uniform float NoiseLevel;
 uniform float FringingAmount;
 uniform float Time;
@@ -44,6 +46,41 @@ float PHI = 1.61803398874989484820459;  // Φ = Golden Ratio
 float gold_noise(in vec2 xy){
 	return fract(tan(distance(xy*PHI, xy)*Time)*xy.x);
 }
+
+// From: Hash without Sine by Dave Hoskins
+// https://www.shadertoy.com/view/4djSRW
+vec4 hash41(float p)
+{
+	vec4 p4 = fract(vec4(p) * vec4(.1031, .1030, .0973, .1099));
+    p4 += dot(p4, p4.wzxy+33.33);
+    return fract((p4.xxyz+p4.yzzw)*p4.zywx);    
+}
+
+// From: ZX Spectrum SCREEN$ by Paul Malin
+// https://www.shadertoy.com/view/ss3Xzj
+vec4 interferenceSmoothNoise1D(float x)
+{
+    float f0 = floor(x);
+    float fr = fract(x);
+
+    vec4 h0 = hash41( f0 );
+    vec4 h1 = hash41( f0 + 1.0 );
+
+    return h1 * fr + h0 * (1.0 - fr);
+}
+
+
+// From: ZX Spectrum SCREEN$ by Paul Malin
+// https://www.shadertoy.com/view/ss3Xzj
+vec4 interferenceNoise(vec2 uv)
+{
+    float scanLine = floor(uv.y * ScreenDim.y); 
+    float scanPos = scanLine + uv.x;
+	float timeSeed = fract( Time * 123.78 );
+    
+    return interferenceSmoothNoise1D( scanPos * 234.5 + timeSeed * 12345.6 );
+}
+
 
 // taken directly from https://github.com/mattiasgustavsson/crtview/
 vec2 curve(in vec2 uv)
@@ -95,8 +132,17 @@ void main() {
 		}
 	}
 
-	// noise (includes flicker)
+	// RF Interference
+	if (Interference == 1) {
+		// interferencw
+		vec4 noise = interferenceNoise(uv);
+		uv.x += noise.w * InterferenceLevel / 100;
+	}
+
+	// noise 
 	if (Noise == 1) {
+
+		// noise
 		float n;
 		n = gold_noise(gl_FragCoord.xy);
 		if (n < 0.33) {
@@ -108,8 +154,8 @@ void main() {
 		}
 
 		// flicker
-		/* float level = 0.004; */
-		/* Crt_Color *= (1.0-level*(sin(50.0*Time+uv.y*2.0)*0.5+0.5)); */
+		float level = 0.004;
+		Crt_Color *= (1.0-level*(sin(50.0*Time+uv.y*2.0)*0.5+0.5));
 	}
 
 	// fringing (chromatic aberration)

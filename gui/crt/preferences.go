@@ -25,26 +25,28 @@ type Preferences struct {
 
 	Enabled prefs.Bool
 
-	Curve     prefs.Bool
-	Mask      prefs.Bool
-	Scanlines prefs.Bool
-	Noise     prefs.Bool
-	Fringing  prefs.Bool
-	Ghosting  prefs.Bool
-	Phosphor  prefs.Bool
+	Curve        prefs.Bool
+	Mask         prefs.Bool
+	Scanlines    prefs.Bool
+	Interference prefs.Bool
+	Noise        prefs.Bool
+	Fringing     prefs.Bool
+	Ghosting     prefs.Bool
+	Phosphor     prefs.Bool
 
-	CurveAmount     prefs.Float
-	MaskBright      prefs.Float
-	MaskFine        prefs.Float
-	ScanlinesBright prefs.Float
-	ScanlinesFine   prefs.Float
-	NoiseLevel      prefs.Float
-	FringingAmount  prefs.Float
-	GhostingAmount  prefs.Float
-	PhosphorLatency prefs.Float
-	PhosphorBloom   prefs.Float
-	Sharpness       prefs.Float
-	BlackLevel      prefs.Float
+	CurveAmount       prefs.Float
+	MaskBright        prefs.Float
+	MaskFine          prefs.Float
+	ScanlinesBright   prefs.Float
+	ScanlinesFine     prefs.Float
+	InterferenceLevel prefs.Float
+	NoiseLevel        prefs.Float
+	FringingAmount    prefs.Float
+	GhostingAmount    prefs.Float
+	PhosphorLatency   prefs.Float
+	PhosphorBloom     prefs.Float
+	Sharpness         prefs.Float
+	BlackLevel        prefs.Float
 
 	PixelPerfectFade prefs.Float
 
@@ -56,28 +58,30 @@ func (p *Preferences) String() string {
 }
 
 const (
-	enabled          = true
-	curve            = true
-	mask             = true
-	scanlines        = true
-	noise            = true
-	fringing         = true
-	ghosting         = true
-	phosphor         = true
-	curveAmount      = 0.5
-	maskBright       = 0.70
-	maskFine         = 2.9
-	scanlinesBright  = 0.70
-	scanlinesFine    = 1.80
-	noiseLevel       = 0.19
-	fringingAmount   = 0.15
-	ghostingAmount   = 2.9
-	phosphorLatency  = 0.5
-	phosphorBloom    = 1.0
-	sharpness        = 0.55
-	blackLevel       = 0.06
-	pixelPerfectFade = 0.4
-	unsyncTolerance  = 2
+	enabled           = true
+	curve             = true
+	mask              = true
+	scanlines         = true
+	interference      = true
+	noise             = true
+	fringing          = true
+	ghosting          = true
+	phosphor          = true
+	curveAmount       = 0.5
+	maskBright        = 0.70
+	maskFine          = 2.9
+	scanlinesBright   = 0.70
+	scanlinesFine     = 1.80
+	interferenceLevel = 0.15
+	noiseLevel        = 0.19
+	fringingAmount    = 0.15
+	ghostingAmount    = 2.9
+	phosphorLatency   = 0.5
+	phosphorBloom     = 1.0
+	sharpness         = 0.55
+	blackLevel        = 0.06
+	pixelPerfectFade  = 0.4
+	unsyncTolerance   = 2
 )
 
 // NewPreferences is the preferred method of initialisation for the Preferences type.
@@ -109,6 +113,10 @@ func NewPreferences() (*Preferences, error) {
 		return nil, err
 	}
 	err = p.dsk.Add("crt.scanlines", &p.Scanlines)
+	if err != nil {
+		return nil, err
+	}
+	err = p.dsk.Add("crt.interference", &p.Interference)
 	if err != nil {
 		return nil, err
 	}
@@ -145,6 +153,10 @@ func NewPreferences() (*Preferences, error) {
 		return nil, err
 	}
 	err = p.dsk.Add("crt.scanlinesFine", &p.ScanlinesFine)
+	if err != nil {
+		return nil, err
+	}
+	err = p.dsk.Add("crt.interferenceLevel", &p.InterferenceLevel)
 	if err != nil {
 		return nil, err
 	}
@@ -199,6 +211,7 @@ func (p *Preferences) SetDefaults() {
 	p.Curve.Set(curve)
 	p.Mask.Set(mask)
 	p.Scanlines.Set(scanlines)
+	p.Interference.Set(interference)
 	p.Noise.Set(noise)
 	p.Fringing.Set(fringing)
 	p.Ghosting.Set(ghosting)
@@ -208,6 +221,7 @@ func (p *Preferences) SetDefaults() {
 	p.MaskFine.Set(maskFine)
 	p.ScanlinesBright.Set(scanlinesBright)
 	p.ScanlinesFine.Set(scanlinesFine)
+	p.InterferenceLevel.Set(interferenceLevel)
 	p.NoiseLevel.Set(noiseLevel)
 	p.FringingAmount.Set(fringingAmount)
 	p.GhostingAmount.Set(ghostingAmount)

@@ -53,10 +53,19 @@ func (win *winPrefs) setOpen(open bool) {
 	win.open = open
 }
 
+// the sub draw() functions may return a setDefaultPrefs instance. if an
+// instance is returned then SetDefaults() will be used to draw a "Set
+// Defaults" button
+type setDefaultPrefs interface {
+	SetDefaults()
+}
+
 func (win *winPrefs) draw() {
 	if !win.open {
 		return
 	}
+
+	var setDef setDefaultPrefs
 
 	if win.img.isPlaymode() {
 		imgui.SetNextWindowPosV(imgui.Vec2{25, 25}, imgui.ConditionAppearing, imgui.Vec2{0, 0})
@@ -79,7 +88,7 @@ func (win *winPrefs) draw() {
 	}
 
 	if imgui.BeginTabItem("CRT") {
-		win.drawCRT()
+		setDef = win.drawCRT()
 		imgui.EndTabItem()
 	}
 
@@ -104,6 +113,14 @@ func (win *winPrefs) draw() {
 
 	imguiSeparator()
 	win.drawDiskButtons()
+
+	// draw "Set Defaults" button
+	if setDef != nil {
+		imgui.SameLine()
+		if imgui.Button("Set Defaults") {
+			setDef.SetDefaults()
+		}
+	}
 
 	imgui.End()
 }

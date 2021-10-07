@@ -166,14 +166,16 @@ func (sh *crtSequencer) process(env shaderEnvironment, moreProcessing bool, numS
 			// leaves pixels from a previous shader in the texture.
 			sh.seq.Clear(more)
 			env.srcTextureID = sh.seq.Process(more, func() {
+				interference := sh.img.crtPrefs.Interference.Get().(bool)
 				noise := sh.img.crtPrefs.Noise.Get().(bool)
-				sh.effectsShaderFlipped.(*effectsShader).setAttributesArgs(env, numScanlines, numClocks, noise)
+				sh.effectsShaderFlipped.(*effectsShader).setAttributesArgs(env, numScanlines, numClocks, interference, noise)
 				env.draw()
 			})
 		} else {
 			env.useInternalProj = false
+			interference := sh.img.crtPrefs.Interference.Get().(bool)
 			noise := sh.img.crtPrefs.Noise.Get().(bool)
-			sh.effectsShader.(*effectsShader).setAttributesArgs(env, numScanlines, numClocks, noise)
+			sh.effectsShader.(*effectsShader).setAttributesArgs(env, numScanlines, numClocks, interference, noise)
 		}
 	} else {
 		if moreProcessing {
