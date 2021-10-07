@@ -399,8 +399,8 @@ func (win *winDisasm) drawLabel(e *disassembly.Entry, bank int) {
 func (win *winDisasm) drawEntry(e *disassembly.Entry, focusAddr uint16, onBank bool) {
 	imgui.TableNextRow()
 
+	// prepare execution notes and handle focus-flash
 	executionNotes := e.LastExecutionNotes
-
 	if onBank && (e.Result.Address&memorymap.CartridgeBits == focusAddr) {
 		// execution notes
 		if !win.img.lz.Debugger.LastResult.Result.Final {
@@ -416,21 +416,44 @@ func (win *winDisasm) drawEntry(e *disassembly.Entry, focusAddr uint16, onBank b
 		}
 	}
 
-	hasPCbreak := false
+	// does this entry/address have a PC break applied to it
+	hasPCbreak := win.img.lz.Breakpoints.HasBreak(e.Result.Address) == debugger.BrkPCAddress
 
-	// breakpoint indicator column
+	// first column is a selectable that spans all lines and the breakpoint indicator
+	//
+	// the selectable isn't visible but it's something against which we can
+	// IsItemClick() and IsItemHovered(). this is so we can toggle a PC break
+	// and open a context menu
 	imgui.TableNextColumn()
-	switch win.img.lz.Breakpoints.HasBreak(e.Result.Address) {
-	case debugger.BrkPCAddress:
+
+	imgui.PushStyleColor(imgui.StyleColorHeaderHovered, win.img.cols.DisasmHover)
+	imgui.PushStyleColor(imgui.StyleColorHeaderActive, win.img.cols.DisasmHover)
+	defer imgui.PopStyleColorV(2)
+
+	imgui.SelectableV("", false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{0, 0})
+	imgui.SameLine()
+
+	// single click on the address entry toggles a PC breakpoint
+	if imgui.IsItemClicked() {
+		win.toggleBreak(e)
+	}
+
+	// context menu on right mouse button
+	if imgui.IsItemHovered() && imgui.IsMouseDown(1) {
+		imgui.OpenPopup(disasmBreakMenuID)
+		win.contextMenu = e.Address
+	}
+	if e.Address == win.contextMenu {
+		win.drawDisasmBreakMenu(e, hasPCbreak)
+	}
+
+	// breakpoint indicator column. using the same column as the selectable
+	// above (which spans all columns)
+	if hasPCbreak {
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmBreakAddress)
 		imgui.Text(fmt.Sprintf("%c", fonts.Breakpoint))
 		imgui.PopStyleColor()
-		hasPCbreak = true
-	case debugger.BrkOther:
-		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmBreakOther)
-		imgui.Text("#")
-		imgui.PopStyleColor()
-	default:
+	} else {
 		imgui.Text(" ")
 	}
 
@@ -439,19 +462,6 @@ func (win *winDisasm) drawEntry(e *disassembly.Entry, focusAddr uint16, onBank b
 	imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmAddress)
 	imgui.Text(e.Address)
 	imgui.PopStyleColor()
-
-	// single click on the address entry toggles a PC breakpoint
-	if imgui.IsItemClicked() {
-		win.toggleBreak(e)
-	}
-
-	if imgui.IsItemHovered() && imgui.IsMouseDown(1) {
-		imgui.OpenPopup(disasmBreakMenuID)
-		win.contextMenu = e.Address
-	}
-	if e.Address == win.contextMenu {
-		win.drawDisasmBreakMenu(e, hasPCbreak)
-	}
 
 	// optional bytecode column
 	if win.showByteCode {

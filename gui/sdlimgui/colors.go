@@ -81,6 +81,7 @@ type imguiColors struct {
 
 	// disassembly other
 	DisasmStep         imgui.Vec4
+	DisasmHover        imgui.Vec4
 	DisasmBreakAddress imgui.Vec4
 	DisasmBreakOther   imgui.Vec4
 
@@ -193,7 +194,8 @@ func newColors() *imguiColors {
 		DisasmNotes:    imgui.Vec4{0.8, 0.8, 0.8, 1.0},
 
 		// disassembly other
-		DisasmStep: imgui.Vec4{1.0, 1.0, 1.0, 0.1},
+		DisasmStep:  imgui.Vec4{1.0, 1.0, 1.0, 0.1},
+		DisasmHover: imgui.Vec4{0.5, 0.5, 0.5, 0.1},
 		// deferring DisasmBreakAddress & DisasmBreakOther
 
 		// coprocessor last execution
