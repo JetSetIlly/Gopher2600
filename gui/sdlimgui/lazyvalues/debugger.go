@@ -30,7 +30,7 @@ type LazyDebugger struct {
 	lastResult atomic.Value // disassembly.Entry
 	hasChanged atomic.Value // bool
 
-	Quantum    debugger.QuantumMode
+	Quantum    debugger.Quantum
 	LastResult disassembly.Entry
 	HasChanged bool
 }
@@ -54,7 +54,7 @@ func (lz *LazyDebugger) push() {
 }
 
 func (lz *LazyDebugger) update() {
-	lz.Quantum, _ = lz.quantum.Load().(debugger.QuantumMode)
+	lz.Quantum, _ = lz.quantum.Load().(debugger.Quantum)
 	if lz.lastResult.Load() != nil {
 		lz.LastResult = lz.lastResult.Load().(disassembly.Entry)
 	}

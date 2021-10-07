@@ -32,8 +32,8 @@ import (
 // function should be used to avoid an awkward critical section.
 
 // GetQuantum returns the current quantum value.
-func (dbg *Debugger) GetQuantum() QuantumMode {
-	return dbg.quantum
+func (dbg *Debugger) GetQuantum() Quantum {
+	return dbg.stepQuantum
 }
 
 // GetLastResult returns the formatted disasembly entry of the last CPU

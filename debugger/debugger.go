@@ -101,8 +101,8 @@ type Debugger struct {
 	commandOnTrace       []*commandline.Tokens
 	commandOnTraceStored []*commandline.Tokens
 
-	// quantum to use when stepping/running
-	quantum QuantumMode
+	// stepQuantum to use when stepping/running
+	stepQuantum Quantum
 
 	// when reading input from the terminal there are other events
 	// that need to be monitored
@@ -114,6 +114,17 @@ type Debugger struct {
 	// the Rewind system stores and restores machine state.
 	Rewind     *rewind.Rewind
 	deepPoking chan bool
+
+	// catchupQuantum differs from the quantum field in that it only applies in
+	// the catchupLoop (part of the rewind system). it is set just before the
+	// rewind process is started.
+	//
+	// the value it is set to depends on the context. For the STEP BACK command
+	// it is set to the current stepQuantym
+	//
+	// for PushGoto() the quantum is set to QuantumVideo, while for
+	// PushRewind() it is set to the current stepQuantum
+	catchupQuantum Quantum
 
 	// whether the state of the emulation has changed since the last time it
 	// was checked - use HasChanged() function

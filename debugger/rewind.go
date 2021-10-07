@@ -36,6 +36,9 @@ func (dbg *Debugger) PushRewind(fn int, last bool) bool {
 
 	// the function to push to the debugger/emulation routine
 	doRewind := func() error {
+		// upate catchupQuantum before starting rewind process
+		dbg.catchupQuantum = dbg.stepQuantum
+
 		if last {
 			err := dbg.Rewind.GotoLast()
 			if err != nil {
@@ -77,6 +80,9 @@ func (dbg *Debugger) PushGoto(clock int, scanline int, frame int) bool {
 
 	// the function to push to the debugger/emulation routine
 	doRewind := func() error {
+		// upate catchupQuantum before starting rewind process
+		dbg.catchupQuantum = QuantumVideo
+
 		err := dbg.Rewind.GotoCoords(frame, scanline, clock)
 		if err != nil {
 			return curated.Errorf("push goto coords: %v", err)

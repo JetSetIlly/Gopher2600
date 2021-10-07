@@ -15,16 +15,16 @@
 
 package debugger
 
-// QuantumMode specifies the step granularity of the emulator.
-type QuantumMode int
+// Quantum specifies the step granularity of the emulator.
+type Quantum int
 
 // List of valid QuantumModes.
 const (
-	QuantumInstruction QuantumMode = iota
+	QuantumInstruction Quantum = iota
 	QuantumVideo
 )
 
-func (mode QuantumMode) String() string {
+func (mode Quantum) String() string {
 	switch mode {
 	case QuantumInstruction:
 		return "Instruction"

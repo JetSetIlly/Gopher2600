@@ -112,6 +112,11 @@ func (dbg *Debugger) catchupLoop(inputter terminal.Input) error {
 		} else if dbg.catchupContinue != nil && !dbg.catchupContinue() {
 			ended = true
 			dbg.catchupEnd()
+
+			if dbg.catchupQuantum == QuantumInstruction {
+				return nil
+			}
+
 			return dbg.inputLoop(inputter, true)
 		}
 
@@ -221,7 +226,7 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, isVideoStep bool) error 
 		// c) the debugger has been changed to INSTRUCTION quantum mode
 		//
 		// if we don't do this then debugging output will be wrong and confusing.
-		if isVideoStep && dbg.continueEmulation && dbg.quantum == QuantumInstruction {
+		if isVideoStep && dbg.continueEmulation && dbg.stepQuantum == QuantumInstruction {
 			return nil
 		}
 
@@ -404,7 +409,7 @@ func (dbg *Debugger) step(inputter terminal.Input, catchup bool) error {
 
 		// for video quantum we need to run any OnStep commands before
 		// starting a new inputLoop
-		if dbg.quantum == QuantumVideo && dbg.commandOnStep != nil {
+		if dbg.stepQuantum == QuantumVideo && dbg.commandOnStep != nil {
 			// we don't do this if we're in catchup mode
 			if !catchup {
 				err := dbg.processTokensList(dbg.commandOnStep)
@@ -419,7 +424,7 @@ func (dbg *Debugger) step(inputter terminal.Input, catchup bool) error {
 		dbg.halting.check()
 		dbg.continueEmulation = !dbg.halting.halt
 
-		if dbg.quantum == QuantumVideo || !dbg.continueEmulation {
+		if dbg.stepQuantum == QuantumVideo || !dbg.continueEmulation {
 			// start another inputLoop() with the clockCycle boolean set to true
 			return dbg.inputLoop(inputter, true)
 		}
@@ -475,7 +480,7 @@ func (dbg *Debugger) step(inputter terminal.Input, catchup bool) error {
 			dbg.printLine(terminal.StyleError, "CPU halted mid-instruction. next step may be inaccurate.")
 			dbg.vcs.CPU.Interrupted = true
 		}
-	} else if dbg.quantum != QuantumVideo {
+	} else if dbg.stepQuantum != QuantumVideo {
 		if dbg.commandOnStep != nil {
 			err := dbg.processTokensList(dbg.commandOnStep)
 			if err != nil {

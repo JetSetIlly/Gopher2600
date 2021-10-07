@@ -232,16 +232,16 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 			switch mode {
 			case "":
 				// continue with current quantum state
-				if dbg.quantum == QuantumInstruction {
+				if dbg.stepQuantum == QuantumInstruction {
 					req = signal.AdjInstruction
 				} else {
 					req = signal.AdjClock
 				}
 			case "INSTRUCTION":
-				dbg.quantum = QuantumInstruction
+				dbg.stepQuantum = QuantumInstruction
 				req = signal.AdjInstruction
 			case "VIDEO":
-				dbg.quantum = QuantumVideo
+				dbg.stepQuantum = QuantumVideo
 				req = signal.AdjClock
 			case "SCANLINE":
 				req = signal.AdjScanline
@@ -259,6 +259,9 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 
 			dbg.setState(emulation.Rewinding)
 			dbg.unwindLoop(func() error {
+				// update catchupQuantum before starting rewind process
+				dbg.catchupQuantum = dbg.stepQuantum
+
 				return dbg.Rewind.GotoCoords(f, s, c)
 			})
 
@@ -270,9 +273,9 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		case "":
 			// continue with current quantum state
 		case "INSTRUCTION":
-			dbg.quantum = QuantumInstruction
+			dbg.stepQuantum = QuantumInstruction
 		case "VIDEO":
-			dbg.quantum = QuantumVideo
+			dbg.stepQuantum = QuantumVideo
 		default:
 			// do not change quantum
 			tokens.Unget()
@@ -292,11 +295,11 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		mode = strings.ToUpper(mode)
 		switch mode {
 		case "INSTRUCTION":
-			dbg.quantum = QuantumInstruction
+			dbg.stepQuantum = QuantumInstruction
 		case "VIDEO":
-			dbg.quantum = QuantumVideo
+			dbg.stepQuantum = QuantumVideo
 		default:
-			dbg.printLine(terminal.StyleFeedback, "set to %s", dbg.quantum)
+			dbg.printLine(terminal.StyleFeedback, "set to %s", dbg.stepQuantum)
 		}
 
 	case cmdScript:
