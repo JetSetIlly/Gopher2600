@@ -22,59 +22,65 @@ import (
 )
 
 func (win *winPrefs) drawCRT() {
-	// sliders to fill width of the window
-	imgui.PushItemWidth(300)
-	defer imgui.PopItemWidth()
-
-	imgui.Spacing()
-	pixPerf := win.drawPixelPerfect()
-	imgui.Spacing()
-
 	// disable all CRT effect options if pixel-perfect is on
+	imgui.PushItemWidth(-1)
+	pixPerf := win.drawPixelPerfect()
+	imgui.PopItemWidth()
 	if pixPerf {
 		imgui.PushItemFlag(imgui.ItemFlagsDisabled, true)
 		imgui.PushStyleVarFloat(imgui.StyleVarAlpha, 0.5)
+		defer imgui.PopStyleVar()
+		defer imgui.PopItemFlag()
 	}
 
+	imgui.Spacing()
 	imgui.Separator()
 	imgui.Spacing()
 
-	win.drawCurve()
-	imgui.Spacing()
+	if imgui.BeginTableV("crtPrefs", 3, imgui.TableFlagsBordersInnerV, imgui.Vec2{}, 1.0) {
+		imgui.TableSetupColumnV("0", imgui.TableColumnFlagsWidthFixed, 200, 0)
+		imgui.TableSetupColumnV("1", imgui.TableColumnFlagsWidthFixed, 200, 1)
+		imgui.TableSetupColumnV("2", imgui.TableColumnFlagsWidthFixed, 200, 2)
 
-	win.drawMask()
-	imgui.Spacing()
+		imgui.TableNextRow()
 
-	win.drawScanlines()
-	imgui.Spacing()
+		imgui.TableNextColumn()
+		imgui.PushItemWidth(-1)
+		win.drawCurve()
+		imgui.Spacing()
+		win.drawMask()
+		imgui.Spacing()
+		win.drawScanlines()
+		imgui.PopItemWidth()
 
-	win.drawNoise()
-	imgui.Spacing()
+		imgui.TableNextColumn()
+		imgui.PushItemWidth(-1)
+		win.drawNoise()
+		imgui.Spacing()
+		win.drawFringing()
+		imgui.Spacing()
+		win.drawGhosting()
+		imgui.PopItemWidth()
 
-	win.drawFringing()
-	imgui.Spacing()
+		imgui.TableNextColumn()
+		imgui.PushItemWidth(-1)
+		win.drawPhosphor()
+		win.drawSharpness()
+		imgui.Spacing()
+		win.drawBlackLevel()
+		imgui.PopItemWidth()
 
-	win.drawGhosting()
-	imgui.Spacing()
+		imgui.EndTable()
+	}
 
-	win.drawPhosphor()
-	win.drawSharpness()
 	imgui.Spacing()
-
-	win.drawBlackLevel()
-	imgui.Spacing()
-
 	imgui.Separator()
 	imgui.Spacing()
 
+	imgui.PushItemWidth(-1)
 	win.drawUnsyncTolerance()
-	imgui.Spacing()
+	imgui.PopItemWidth()
 
-	// end of disabling rule before drawing the disk buttons
-	if pixPerf {
-		imgui.PopStyleVar()
-		imgui.PopItemFlag()
-	}
 }
 
 func (win *winPrefs) drawCurve() {
