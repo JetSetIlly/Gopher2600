@@ -179,7 +179,8 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		// resetting in the middle of a CPU instruction requires the input loop
 		// to be unwound before continuing
 		dbg.unwindLoop(func() error {
-			err := dbg.reset()
+			// don't reset breakpoints, etc.
+			err := dbg.reset(false)
 			if err != nil {
 				return err
 			}

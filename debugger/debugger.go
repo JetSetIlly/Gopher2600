@@ -397,12 +397,25 @@ func (dbg *Debugger) HasChanged() bool {
 // reset of VCS should go through this function to makes sure debugger is reset
 // accordingly also. note that debugging features (breakpoints, etc.) are not
 // reset.
-func (dbg *Debugger) reset() error {
+//
+// the newCartridge flag will cause breakpoints, traces, etc. to be reset
+// as well. it is sometimes appropriate to reset these (eg. on new cartridge
+// insert)
+func (dbg *Debugger) reset(newCartridge bool) error {
 	err := dbg.vcs.Reset()
 	if err != nil {
 		return err
 	}
 	dbg.Rewind.Reset()
+
+	// reset other debugger properties that might not make sense for a new cartride
+	if newCartridge {
+		dbg.halting.breakpoints.clear()
+		dbg.halting.traps.clear()
+		dbg.halting.watches.clear()
+		dbg.traces.clear()
+	}
+
 	dbg.lastResult = &disassembly.Entry{Result: execution.Result{Final: true}}
 	return nil
 }
@@ -525,8 +538,8 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) 
 		return err
 	}
 
-	// make sure everything is reset after disassembly
-	dbg.reset()
+	// make sure everything is reset after disassembly (including breakpoints, etc.)
+	dbg.reset(true)
 
 	return nil
 }
