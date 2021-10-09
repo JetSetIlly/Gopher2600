@@ -24,38 +24,36 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 )
 
-// targetValue represents the value that is to be monitored.
+// targetValue represents the underlying value of the target. for example in
+// the case of the CPU program counter target, the underlying type is a uint16.
+//
+// !!TODO: candidate for generic / comparable type
 type targetValue interface{}
 
 type target struct {
+	// a label for the label
 	label string
 
-	// must be a comparable type
-	currentValue targetValue
-	format       string
+	// the current value of the target. note this may not be the same value as the
+	// underlying target. for example, target PC will return zero if there is a
+	// coprocessor running.
+	value func() targetValue
+
+	// the value returned by the value field/function can be formatted for
+	// presentation purposes with formatValue()
+	format string
 
 	// some targets should only be checked on an instruction boundary
 	instructionBoundary bool
 }
 
-func (trg target) Label() string {
-	return trg.label
-}
-
-func (trg target) TargetValue() targetValue {
-	switch v := trg.currentValue.(type) {
-	case func() targetValue:
-		return v()
-	default:
-		return v
-	}
-}
-
-func (trg target) FormatValue(val targetValue) string {
+// returns value() formated by the format string. accepts a target value as an
+// argument so the format string can be used on any valid targetValue.
+func (trg target) stringValue(v targetValue) string {
 	if trg.format == "" {
-		return fmt.Sprintf("%v", val)
+		return fmt.Sprintf("%v", v)
 	}
-	return fmt.Sprintf(trg.format, val)
+	return fmt.Sprintf(trg.format, v)
 }
 
 // parseTarget interprets the next token and returns a target if it is
@@ -71,8 +69,8 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (*target, error) {
 		case "PC":
 			trg = &target{
 				label: "PC",
-				currentValue: func() targetValue {
-					// check that there is no coprocessor runnig - the ARM
+				value: func() targetValue {
+					// check that there is no coprocessor running - the ARM
 					// class of coprocessors cause the 6507 to run NOP
 					// instructions, which causes the PC to advance. this means
 					// that a PC break can be triggered when the user probably
@@ -98,48 +96,48 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (*target, error) {
 		case "A":
 			trg = &target{
 				label: "A",
-				currentValue: func() targetValue {
+				value: func() targetValue {
 					return int(dbg.vcs.CPU.A.Value())
 				},
 				format:              "%#02x",
-				instructionBoundary: false,
+				instructionBoundary: true,
 			}
 
 		case "X":
 			trg = &target{
 				label: "X",
-				currentValue: func() targetValue {
+				value: func() targetValue {
 					return int(dbg.vcs.CPU.X.Value())
 				},
 				format:              "%#02x",
-				instructionBoundary: false,
+				instructionBoundary: true,
 			}
 
 		case "Y":
 			trg = &target{
 				label: "Y",
-				currentValue: func() targetValue {
+				value: func() targetValue {
 					return int(dbg.vcs.CPU.Y.Value())
 				},
 				format:              "%#02x",
-				instructionBoundary: false,
+				instructionBoundary: true,
 			}
 
 		case "SP":
 			trg = &target{
 				label: "SP",
-				currentValue: func() targetValue {
+				value: func() targetValue {
 					return int(dbg.vcs.CPU.SP.Value())
 				},
 				format:              "%#02x",
-				instructionBoundary: false,
+				instructionBoundary: true,
 			}
 
 		// tv state
 		case "FRAMENUM", "FRAME", "FR":
 			trg = &target{
 				label: "Frame",
-				currentValue: func() targetValue {
+				value: func() targetValue {
 					return dbg.vcs.TV.GetState(signal.ReqFramenum)
 				},
 				instructionBoundary: false,
@@ -148,7 +146,7 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (*target, error) {
 		case "SCANLINE", "SL":
 			trg = &target{
 				label: "Scanline",
-				currentValue: func() targetValue {
+				value: func() targetValue {
 					return dbg.vcs.TV.GetState(signal.ReqScanline)
 				},
 				instructionBoundary: false,
@@ -157,7 +155,7 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (*target, error) {
 		case "CLOCK", "CL":
 			trg = &target{
 				label: "Clock",
-				currentValue: func() targetValue {
+				value: func() targetValue {
 					return dbg.vcs.TV.GetState(signal.ReqClock)
 				},
 				instructionBoundary: false,
@@ -177,7 +175,7 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (*target, error) {
 				case "OPERATOR", "OP":
 					trg = &target{
 						label: "Operator",
-						currentValue: func() targetValue {
+						value: func() targetValue {
 							if !dbg.vcs.CPU.LastResult.Final || dbg.vcs.CPU.LastResult.Defn == nil {
 								return ""
 							}
@@ -189,7 +187,7 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (*target, error) {
 				case "ADDRESSMODE", "AM":
 					trg = &target{
 						label: "AddressMode",
-						currentValue: func() targetValue {
+						value: func() targetValue {
 							if !dbg.vcs.CPU.LastResult.Final || dbg.vcs.CPU.LastResult.Defn == nil {
 								return ""
 							}
@@ -201,7 +199,7 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (*target, error) {
 				case "EFFECT", "EFF":
 					trg = &target{
 						label: "Instruction Effect",
-						currentValue: func() targetValue {
+						value: func() targetValue {
 							if !dbg.vcs.CPU.LastResult.Final {
 								return -1
 							}
@@ -213,7 +211,7 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (*target, error) {
 				case "PAGEFAULT", "PAGE":
 					trg = &target{
 						label: "PageFault",
-						currentValue: func() targetValue {
+						value: func() targetValue {
 							return dbg.vcs.CPU.LastResult.PageFault
 						},
 						instructionBoundary: true,
@@ -222,7 +220,7 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (*target, error) {
 				case "BUG":
 					trg = &target{
 						label: "CPU Bug",
-						currentValue: func() targetValue {
+						value: func() targetValue {
 							s := dbg.vcs.CPU.LastResult.CPUBug
 							if s == "" {
 								return "ok"
@@ -248,13 +246,13 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (*target, error) {
 }
 
 // a bank target is generated automatically by the breakpoints system and also
-// explicitly in parseTarget().
+// explicitly by parseTarget()
 func bankTarget(dbg *Debugger) *target {
 	return &target{
 		label: "Bank",
-		currentValue: func() targetValue {
+		value: func() targetValue {
 			return dbg.vcs.Mem.Cart.GetBank(dbg.vcs.CPU.PC.Address()).Number
 		},
-		instructionBoundary: false,
+		instructionBoundary: true,
 	}
 }

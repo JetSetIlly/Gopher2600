@@ -35,11 +35,11 @@ type traps struct {
 
 type trapper struct {
 	target    *target
-	origValue interface{}
+	origValue targetValue
 }
 
 func (tr trapper) String() string {
-	return tr.target.Label()
+	return tr.target.label
 }
 
 // newTraps is the preferred method of initialisation for the traps type.
@@ -83,10 +83,10 @@ func (tr *traps) check(instructionBoundary bool) string {
 			continue // for loop
 		}
 
-		trapValue := tr.traps[i].target.TargetValue()
+		trapValue := tr.traps[i].target.value()
 
 		if trapValue != tr.traps[i].origValue {
-			checkString.WriteString(fmt.Sprintf("trap on %s [%v->%v]\n", tr.traps[i].target.Label(), tr.traps[i].origValue, trapValue))
+			checkString.WriteString(fmt.Sprintf("trap on %s [%v->%v]\n", tr.traps[i].target.label, tr.traps[i].origValue, trapValue))
 			tr.traps[i].origValue = trapValue
 		}
 	}
@@ -100,7 +100,7 @@ func (tr traps) list() {
 	} else {
 		tr.dbg.printLine(terminal.StyleFeedback, "traps:")
 		for i := range tr.traps {
-			tr.dbg.printLine(terminal.StyleFeedback, "% 2d: %s", i, tr.traps[i].target.Label())
+			tr.dbg.printLine(terminal.StyleFeedback, "% 2d: %s", i, tr.traps[i].target.label)
 		}
 	}
 }
@@ -116,12 +116,12 @@ func (tr *traps) parseCommand(tokens *commandline.Tokens) error {
 		}
 
 		for _, t := range tr.traps {
-			if t.target.Label() == tgt.Label() {
+			if t.target.label == tgt.label {
 				return curated.Errorf("trap exists (%s)", t)
 			}
 		}
 
-		tr.traps = append(tr.traps, trapper{target: tgt, origValue: tgt.TargetValue()})
+		tr.traps = append(tr.traps, trapper{target: tgt, origValue: tgt.value()})
 
 		_, present = tokens.Peek()
 	}

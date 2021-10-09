@@ -48,9 +48,16 @@ type breakpoints struct {
 type breaker struct {
 	target *target
 
-	// must be comparable types and the same type as each other
-	value       interface{}
-	ignoreValue interface{}
+	// the requested value to break on
+	value targetValue
+
+	// skipNext indicates that a break success should be skipped or ignored
+	// because the target value isn't new. in other words, we only break when
+	// the target has changed *to* the value not when it already *is* the value
+	//
+	// without this we risk the user becoming trapped in a perpetual break
+	// condition, which probably isn't what the user wants or expects
+	skipNext bool
 
 	// single linked list ANDs breakers together
 	next *breaker
@@ -58,10 +65,10 @@ type breaker struct {
 
 func (bk breaker) String() string {
 	s := strings.Builder{}
-	s.WriteString(fmt.Sprintf("%s->%s", bk.target.Label(), bk.target.FormatValue(bk.value)))
+	s.WriteString(fmt.Sprintf("%s->%s", bk.target.label, bk.target.stringValue(bk.value)))
 	n := bk.next
 	for n != nil {
-		s.WriteString(fmt.Sprintf(" & %s->%s", n.target.Label(), n.target.FormatValue(n.value)))
+		s.WriteString(fmt.Sprintf(" & %s->%s", n.target.label, n.target.stringValue(n.value)))
 		n = n.next
 	}
 	return s.String()
@@ -124,14 +131,16 @@ const (
 // check checks the specific break condition with the current value of
 // the break target.
 func (bk *breaker) check() checkResult {
-	currVal := bk.target.TargetValue()
-	m := currVal == bk.value
-	if !m {
-		bk.ignoreValue = nil
+	if bk.target.value() != bk.value {
+		// target value differs from break value so the next time it matches
+		// we don't want to skip the match
+		bk.skipNext = false
 		return checkNoMatch
 	}
 
-	if currVal == bk.ignoreValue {
+	// target value matches break value but it hasn't changed since the
+	// previous check. we don't want to break if this is true
+	if bk.skipNext {
 		return checkIgnoredValue
 	}
 
@@ -141,7 +150,8 @@ func (bk *breaker) check() checkResult {
 		}
 	}
 
-	bk.ignoreValue = currVal
+	// this is a match. we should skip the next match.
+	bk.skipNext = true
 
 	return checkMatch
 }
@@ -277,8 +287,8 @@ func (bp *breakpoints) parseCommand(tokens *commandline.Tokens) error {
 	addBankCondition := true
 
 	// loop over tokens:
-	//	o if token is a valid type value then add the breakpoint for the current target
-	//  o if it is not a valid type value, try to change the target
+	// - if token is a valid type value then add the breakpoint for the current target
+	// - if it is not a valid type value, try to change the target
 	tok, present := tokens.Get()
 	for present {
 		var val interface{}
@@ -286,7 +296,7 @@ func (bp *breakpoints) parseCommand(tokens *commandline.Tokens) error {
 
 		// try to interpret the token depending on the type of value the target
 		// expects
-		switch tgt.TargetValue().(type) {
+		switch tgt.value().(type) {
 		case string:
 			// if token is string type then make it uppercase for now
 			//
@@ -306,15 +316,15 @@ func (bp *breakpoints) parseCommand(tokens *commandline.Tokens) error {
 			case "false":
 				val = false
 			default:
-				err = curated.Errorf("invalid value (%s) for target (%s)", tok, tgt.Label())
+				err = curated.Errorf("invalid value (%s) for target (%s)", tok, tgt.label)
 			}
 		default:
-			return curated.Errorf("unsupported value type (%T) for target (%s)", tgt.TargetValue(), tgt.Label())
+			return curated.Errorf("unsupported value type (%T) for target (%s)", tgt.value(), tgt.label)
 		}
 
 		if err == nil {
 			// special handling for PC
-			if tgt.Label() == "PC" {
+			if tgt.label == "PC" {
 				ai := bp.dbg.dbgmem.mapAddress(uint16(val.(int)), true)
 				val = int(ai.mappedAddress)
 
@@ -361,7 +371,7 @@ func (bp *breakpoints) parseCommand(tokens *commandline.Tokens) error {
 	}
 
 	if !resolvedTarget {
-		return curated.Errorf("need a value (%T) to break on (%s)", tgt.TargetValue(), tgt.Label())
+		return curated.Errorf("need a value (%T) to break on (%s)", tgt.value(), tgt.label)
 	}
 
 	for _, nb := range newBreaks {
@@ -374,7 +384,7 @@ func (bp *breakpoints) parseCommand(tokens *commandline.Tokens) error {
 					target: bankTarget(bp.dbg),
 					value:  bp.dbg.vcs.Mem.Cart.GetBank(bp.dbg.vcs.CPU.PC.Address()).Number,
 				}
-				nb.next.ignoreValue = nb.next.value
+				nb.next.skipNext = true
 			}
 		}
 
