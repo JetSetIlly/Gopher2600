@@ -148,11 +148,13 @@ func (win *winPrefs) drawPlaymode() {
 
 func (win *winPrefs) drawDebugger() {
 	imgui.Spacing()
-	if imgui.Checkbox("Use Fxxx Mirror", &win.img.lz.Prefs.FxxxMirror) {
+	usefxxmirror := win.img.dbg.Disasm.Prefs.FxxxMirror.Get().(bool)
+	if imgui.Checkbox("Use Fxxx Mirror", &usefxxmirror) {
 		win.img.term.pushCommand("PREFS TOGGLE FXXXMIRROR")
 	}
 
-	if imgui.Checkbox("Use Symbols", &win.img.lz.Prefs.Symbols) {
+	usesymbols := win.img.dbg.Disasm.Prefs.Symbols.Get().(bool)
+	if imgui.Checkbox("Use Symbols", &usesymbols) {
 		win.img.term.pushCommand("PREFS TOGGLE SYMBOLS")
 
 		// if disassembly has address labels then turning symbols off may alter
@@ -179,9 +181,9 @@ func (win *winPrefs) drawDebugger() {
 	imgui.Text("Rewind")
 	imgui.Spacing()
 
-	m := int32(win.img.lz.Prefs.RewindMaxEntries)
-	if imgui.SliderIntV("Max Entries##maxentries", &m, 10, 100, fmt.Sprintf("%d", m), imgui.SliderFlagsNone) {
-		win.img.term.pushCommand(fmt.Sprintf("PREFS REWIND MAX %d", m))
+	rewindMaxEntries := int32(win.img.dbg.Rewind.Prefs.MaxEntries.Get().(int))
+	if imgui.SliderIntV("Max Entries##maxentries", &rewindMaxEntries, 10, 100, fmt.Sprintf("%d", rewindMaxEntries), imgui.SliderFlagsNone) {
+		win.img.term.pushCommand(fmt.Sprintf("PREFS REWIND MAX %d", rewindMaxEntries))
 	}
 
 	imgui.Spacing()
@@ -191,9 +193,9 @@ func (win *winPrefs) drawDebugger() {
 	imgui.Spacing()
 	imgui.Spacing()
 
-	f := int32(win.img.lz.Prefs.RewindFreq)
-	if imgui.SliderIntV("Frequency##freq", &f, 1, 5, fmt.Sprintf("%d", f), imgui.SliderFlagsNone) {
-		win.img.term.pushCommand(fmt.Sprintf("PREFS REWIND FREQ %d", f))
+	rewindFreq := int32(win.img.dbg.Rewind.Prefs.Freq.Get().(int))
+	if imgui.SliderIntV("Frequency##freq", &rewindFreq, 1, 5, fmt.Sprintf("%d", rewindFreq), imgui.SliderFlagsNone) {
+		win.img.term.pushCommand(fmt.Sprintf("PREFS REWIND FREQ %d", rewindFreq))
 	}
 
 	imgui.Spacing()

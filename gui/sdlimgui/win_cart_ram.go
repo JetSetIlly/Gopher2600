@@ -85,7 +85,7 @@ func (win *winCartRAM) draw() {
 
 			// show cartridge origin for mapped RAM banks
 			origin := a.Origin
-			if win.img.lz.Prefs.FxxxMirror {
+			if win.img.dbg.Disasm.Prefs.FxxxMirror.Get().(bool) {
 				origin = (origin & memorymap.CartridgeBits) | memorymap.OriginCartFxxxMirror
 			}
 

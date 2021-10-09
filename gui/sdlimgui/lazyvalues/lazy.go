@@ -50,7 +50,6 @@ type LazyValues struct {
 	Cart          *LazyCart
 	CoProc        *LazyCoProc
 	Controllers   *LazyControllers
-	Prefs         *LazyPrefs
 	Collisions    *LazyCollisions
 	ChipRegisters *LazyChipRegisters
 	Log           *LazyLog
@@ -86,7 +85,6 @@ func NewLazyValues() *LazyValues {
 	val.Cart = newLazyCart(val)
 	val.CoProc = newLazyCoProc(val)
 	val.Controllers = newLazyControllers(val)
-	val.Prefs = newLazyPrefs(val)
 	val.Collisions = newLazyCollisions(val)
 	val.ChipRegisters = newLazyChipRegisters(val)
 	val.Log = newLazyLog(val)
@@ -142,7 +140,6 @@ func (val *LazyValues) Refresh() {
 		val.Cart.update()
 		val.CoProc.update()
 		val.Controllers.update()
-		val.Prefs.update()
 		val.Collisions.update()
 		val.ChipRegisters.update()
 		val.Log.update()
@@ -173,7 +170,6 @@ func (val *LazyValues) Refresh() {
 		val.Cart.push()
 		val.CoProc.push()
 		val.Controllers.push()
-		val.Prefs.push()
 		val.Collisions.push()
 		val.ChipRegisters.push()
 		val.Log.push()
