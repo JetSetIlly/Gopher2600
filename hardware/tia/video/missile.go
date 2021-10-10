@@ -49,7 +49,7 @@ var MissileSizes = []string{
 // MissileSprite represents a moveable missile sprite in the VCS graphical display.
 // The VCS has two missile sprites.
 type MissileSprite struct {
-	tia *tia
+	tia tia
 
 	// ^^^ references to other parts of the VCS ^^^
 
@@ -93,7 +93,7 @@ type MissileSprite struct {
 	pixelCollision bool
 }
 
-func newMissileSprite(label string, tia *tia) *MissileSprite {
+func newMissileSprite(label string, tia tia) *MissileSprite {
 	ms := &MissileSprite{
 		tia:   tia,
 		label: label,
@@ -112,7 +112,7 @@ func (ms *MissileSprite) Snapshot() *MissileSprite {
 }
 
 // Plumb changes into missile sprite.
-func (ms *MissileSprite) Plumb(tia *tia) {
+func (ms *MissileSprite) Plumb(tia tia) {
 	ms.tia = tia
 	ms.Enclockifier.size = &ms.Size
 }

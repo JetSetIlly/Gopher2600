@@ -240,7 +240,7 @@ func (win *winDisasm) draw() {
 func (win *winDisasm) sync() {
 	// the number of gui updates (calls to draw()) to wait before accepting the
 	// number emulation state. this value is arbitrary
-	const syncDelay = 50
+	const syncDelay = 100
 
 	switch win.img.emulation.State() {
 	case emulation.Initialising:

@@ -64,7 +64,7 @@ func (e *Element) String() string {
 // Video contains all the components of the video sub-system of the VCS TIA chip.
 type Video struct {
 	// reference to important TIA state
-	tia *tia
+	tia tia
 
 	// collision matrix
 	Collisions *Collisions
@@ -124,7 +124,7 @@ type tia struct {
 func NewVideo(mem bus.ChipBus, tv signal.TelevisionSprite, rev *revision.TIARevision,
 	pclk *phaseclock.PhaseClock, hsync *polycounter.Polycounter,
 	hblank *bool, hmove *hmove.Hmove) *Video {
-	tia := &tia{
+	tia := tia{
 		tv:     tv,
 		rev:    rev,
 		pclk:   pclk,
@@ -164,7 +164,7 @@ func (vd *Video) Plumb(mem bus.ChipBus, tv signal.TelevisionSprite, rev *revisio
 	hblank *bool, hmove *hmove.Hmove) {
 	vd.Collisions.Plumb(mem)
 
-	vd.tia = &tia{
+	vd.tia = tia{
 		tv:     tv,
 		rev:    rev,
 		pclk:   pclk,

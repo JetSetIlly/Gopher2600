@@ -39,7 +39,7 @@ const RegionWidth = 20
 // Playfield represnets the static playfield and background, the non-sprite
 // areas of the graphical display.
 type Playfield struct {
-	tia *tia
+	tia tia
 
 	// the color for the when playfield is on/off
 	ForegroundColor uint8
@@ -97,7 +97,7 @@ type Playfield struct {
 	color uint8
 }
 
-func newPlayfield(tia *tia) *Playfield {
+func newPlayfield(tia tia) *Playfield {
 	pf := &Playfield{
 		tia:           tia,
 		RegularData:   make([]bool, RegionWidth),
@@ -136,7 +136,7 @@ func (pf *Playfield) Snapshot() *Playfield {
 }
 
 // Plumb changes into playfield.
-func (pf *Playfield) Plumb(tia *tia) {
+func (pf *Playfield) Plumb(tia tia) {
 	pf.tia = tia
 }
 

@@ -246,15 +246,20 @@ func (reg *VideoRegression) regress(newRegression bool, output io.Writer, msg st
 		// store state. StateTV stores every video cycle. other State types
 		// can (should?) choose to only store state if it is different to the
 		// previous entry
-		switch reg.State {
-		case StateTV:
-			state = append(state, tv.String())
-		case StatePorts:
-			state = append(state, vcs.RIOT.Ports.String())
-		case StateTimer:
-			state = append(state, vcs.RIOT.Timer.String())
-		case StateCPU:
-			state = append(state, vcs.CPU.String())
+		//
+		// do not record state if CPU is not ready. this cuts down on needless
+		// entries - the state of the machine won't have changed much
+		if vcs.CPU.RdyFlg {
+			switch reg.State {
+			case StateTV:
+				state = append(state, tv.String())
+			case StatePorts:
+				state = append(state, vcs.RIOT.Ports.String())
+			case StateTimer:
+				state = append(state, vcs.RIOT.Timer.String())
+			case StateCPU:
+				state = append(state, vcs.CPU.String())
+			}
 		}
 
 		return emulation.Running, nil

@@ -58,7 +58,7 @@ var playerSizesBrief = []string{
 type PlayerSprite struct {
 	// references to some fundamental TIA properties. various combinations of
 	// these affect the latching delay when resetting the sprite
-	tia *tia
+	tia tia
 
 	// ^^^ references to other parts of the VCS ^^^
 
@@ -134,7 +134,7 @@ type PlayerSprite struct {
 	pixelCollision bool
 }
 
-func newPlayerSprite(label string, tia *tia) *PlayerSprite {
+func newPlayerSprite(label string, tia tia) *PlayerSprite {
 	ps := &PlayerSprite{
 		label: label,
 		tia:   tia,
@@ -157,7 +157,7 @@ func (ps *PlayerSprite) Snapshot() *PlayerSprite {
 }
 
 // Plumb changes into player sprite.
-func (ps *PlayerSprite) Plumb(tia *tia) {
+func (ps *PlayerSprite) Plumb(tia tia) {
 	ps.tia = tia
 	ps.ScanCounter.sizeAndCopies = &ps.SizeAndCopies
 	ps.ScanCounter.pclk = &ps.pclk

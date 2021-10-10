@@ -44,7 +44,7 @@ var ballSizesBrief = []string{
 
 // BallSprite represents the moveable ball sprite in the VCS graphical display.
 type BallSprite struct {
-	tia *tia
+	tia tia
 
 	// ^^^ references to other parts of the VCS ^^^
 
@@ -94,7 +94,7 @@ type BallSprite struct {
 	pixelCollision bool
 }
 
-func newBallSprite(label string, tia *tia) *BallSprite {
+func newBallSprite(label string, tia tia) *BallSprite {
 	bs := &BallSprite{
 		tia:   tia,
 		label: label,
@@ -113,7 +113,7 @@ func (bs *BallSprite) Snapshot() *BallSprite {
 }
 
 // Plumb changes into ball sprite.
-func (bs *BallSprite) Plumb(tia *tia) {
+func (bs *BallSprite) Plumb(tia tia) {
 	bs.tia = tia
 	bs.Enclockifier.size = &bs.Size
 }
@@ -201,7 +201,7 @@ func (bs *BallSprite) rsync(adjustment int) {
 func (bs *BallSprite) tick() bool {
 	if *bs.tia.hblank {
 		// early return if nothing to do
-		if !(bs.tia.hmove.Clk && bs.MoreHMOVE) {
+		if !bs.tia.hmove.Clk {
 			return false
 		}
 
