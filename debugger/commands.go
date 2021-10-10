@@ -25,6 +25,7 @@ import (
 
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/curated"
+	"github.com/jetsetilly/gopher2600/debugger/dbgmem"
 	"github.com/jetsetilly/gopher2600/debugger/script"
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
 	"github.com/jetsetilly/gopher2600/debugger/terminal/commandline"
@@ -608,26 +609,26 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 					// already caught by command line ValidateTokens()
 
 				case "LABELS":
-					dbg.dbgmem.sym.ListLabels(dbg.printStyle(terminal.StyleFeedback))
+					dbg.dbgmem.Sym.ListLabels(dbg.printStyle(terminal.StyleFeedback))
 
 				case "READ":
-					dbg.dbgmem.sym.ListReadSymbols(dbg.printStyle(terminal.StyleFeedback))
+					dbg.dbgmem.Sym.ListReadSymbols(dbg.printStyle(terminal.StyleFeedback))
 
 				case "WRITE":
-					dbg.dbgmem.sym.ListWriteSymbols(dbg.printStyle(terminal.StyleFeedback))
+					dbg.dbgmem.Sym.ListWriteSymbols(dbg.printStyle(terminal.StyleFeedback))
 				}
 			} else {
-				dbg.dbgmem.sym.ListSymbols(dbg.printStyle(terminal.StyleFeedback))
+				dbg.dbgmem.Sym.ListSymbols(dbg.printStyle(terminal.StyleFeedback))
 			}
 
 		default:
 			symbol := tok
-			aiRead := dbg.dbgmem.mapAddress(symbol, true)
+			aiRead := dbg.dbgmem.MapAddress(symbol, true)
 			if aiRead != nil {
 				dbg.printLine(terminal.StyleFeedback, "%s [READ]", aiRead.String())
 			}
 
-			aiWrite := dbg.dbgmem.mapAddress(symbol, false)
+			aiWrite := dbg.dbgmem.MapAddress(symbol, false)
 			if aiWrite != nil {
 				dbg.printLine(terminal.StyleFeedback, "%s [WRITE]", aiWrite.String())
 			}
@@ -907,32 +908,32 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 
 			s := strings.Builder{}
 
-			ai := dbg.dbgmem.mapAddress(address, true)
+			ai := dbg.dbgmem.MapAddress(address, true)
 			if ai != nil {
 				hasMapped = true
 				s.WriteString("Read:\n")
-				if ai.address != ai.mappedAddress {
-					s.WriteString(fmt.Sprintf("  %#04x maps to %#04x ", ai.address, ai.mappedAddress))
+				if ai.Address != ai.MappedAddress {
+					s.WriteString(fmt.Sprintf("  %#04x maps to %#04x ", ai.Address, ai.MappedAddress))
 				} else {
-					s.WriteString(fmt.Sprintf("  %#04x ", ai.address))
+					s.WriteString(fmt.Sprintf("  %#04x ", ai.Address))
 				}
-				s.WriteString(fmt.Sprintf("in area %s\n", ai.area.String()))
-				if ai.addressLabel != "" {
-					s.WriteString(fmt.Sprintf("  labelled as %s\n", ai.addressLabel))
+				s.WriteString(fmt.Sprintf("in area %s\n", ai.Area.String()))
+				if ai.AddressLabel != "" {
+					s.WriteString(fmt.Sprintf("  labelled as %s\n", ai.AddressLabel))
 				}
 			}
-			ai = dbg.dbgmem.mapAddress(address, false)
+			ai = dbg.dbgmem.MapAddress(address, false)
 			if ai != nil {
 				hasMapped = true
 				s.WriteString("Write:\n")
-				if ai.address != ai.mappedAddress {
-					s.WriteString(fmt.Sprintf("  %#04x maps to %#04x ", ai.address, ai.mappedAddress))
+				if ai.Address != ai.MappedAddress {
+					s.WriteString(fmt.Sprintf("  %#04x maps to %#04x ", ai.Address, ai.MappedAddress))
 				} else {
-					s.WriteString(fmt.Sprintf("  %#04x ", ai.address))
+					s.WriteString(fmt.Sprintf("  %#04x ", ai.Address))
 				}
-				s.WriteString(fmt.Sprintf("in area %s\n", ai.area.String()))
-				if ai.addressLabel != "" {
-					s.WriteString(fmt.Sprintf("  labelled as %s\n", ai.addressLabel))
+				s.WriteString(fmt.Sprintf("in area %s\n", ai.Area.String()))
+				if ai.AddressLabel != "" {
+					s.WriteString(fmt.Sprintf("  labelled as %s\n", ai.AddressLabel))
 				}
 			}
 
@@ -1033,7 +1034,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 
 		for ok {
 			// perform peek
-			ai, err := dbg.dbgmem.peek(a)
+			ai, err := dbg.dbgmem.Peek(a)
 			if err != nil {
 				dbg.printLine(terminal.StyleError, "%s", err)
 			} else {
@@ -1049,17 +1050,17 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		a, _ := tokens.Get()
 
 		// convert address. note that the calls to dbgmem.poke() also call
-		// mapAddress(). the reason we map the address here is because we want
+		// MapAddress(). the reason we map the address here is because we want
 		// a numeric address that we can iterate with in the for loop below.
 		// simply converting to a number is no good because we want the user to
 		// be able to specify an address by name, so we may as well just call
-		// mapAddress, even if it does seem redundant.
-		ai := dbg.dbgmem.mapAddress(a, false)
+		// MapAddress(), even if it does seem redundant.
+		ai := dbg.dbgmem.MapAddress(a, false)
 		if ai == nil {
-			dbg.printLine(terminal.StyleError, fmt.Sprintf(pokeError, a))
+			dbg.printLine(terminal.StyleError, fmt.Sprintf(dbgmem.PokeError, a))
 			return nil
 		}
-		addr := ai.mappedAddress
+		addr := ai.MappedAddress
 
 		// get (first) value token
 		v, ok := tokens.Get()
@@ -1072,7 +1073,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 				continue // for loop (without advancing address)
 			}
 
-			ai, err := dbg.dbgmem.poke(addr, uint8(val))
+			ai, err := dbg.dbgmem.Poke(addr, uint8(val))
 			if err != nil {
 				dbg.printLine(terminal.StyleError, "%s", err)
 			} else {

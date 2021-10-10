@@ -21,12 +21,13 @@ import (
 	"strings"
 
 	"github.com/jetsetilly/gopher2600/curated"
+	"github.com/jetsetilly/gopher2600/debugger/dbgmem"
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
 	"github.com/jetsetilly/gopher2600/debugger/terminal/commandline"
 )
 
 type watcher struct {
-	ai addressInfo
+	ai dbgmem.AddressInfo
 
 	// whether to watch for a specific value. a matchValue of false means the
 	// watcher will match regardless of the value
@@ -44,7 +45,7 @@ func (w watcher) String() string {
 		val = fmt.Sprintf(" (value=%#02x)", w.value)
 	}
 	event := "write"
-	if w.ai.read {
+	if w.ai.Read {
 		event = "read"
 	}
 	return fmt.Sprintf("%s %s%s", w.ai, event, val)
@@ -99,11 +100,11 @@ func (wtc *watches) check() string {
 	for i := range wtc.watches {
 		// continue loop if we're not matching last address accessed
 		if wtc.watches[i].strict {
-			if wtc.watches[i].ai.address != wtc.dbg.vcs.Mem.LastAccessAddress {
+			if wtc.watches[i].ai.Address != wtc.dbg.vcs.Mem.LastAccessAddress {
 				continue
 			}
 		} else {
-			if wtc.watches[i].ai.mappedAddress != wtc.dbg.vcs.Mem.LastAccessAddressMapped {
+			if wtc.watches[i].ai.MappedAddress != wtc.dbg.vcs.Mem.LastAccessAddressMapped {
 				continue
 			}
 		}
@@ -114,8 +115,8 @@ func (wtc *watches) check() string {
 		}
 
 		// match watch event to the type of memory access
-		if (!wtc.watches[i].ai.read && wtc.dbg.vcs.Mem.LastAccessWrite) ||
-			(wtc.watches[i].ai.read && !wtc.dbg.vcs.Mem.LastAccessWrite) {
+		if (!wtc.watches[i].ai.Read && wtc.dbg.vcs.Mem.LastAccessWrite) ||
+			(wtc.watches[i].ai.Read && !wtc.dbg.vcs.Mem.LastAccessWrite) {
 			// match watched-for value to the value that was read/written to the
 			// watched address
 			if !wtc.watches[i].matchValue {
@@ -189,12 +190,12 @@ func (wtc *watches) parseCommand(tokens *commandline.Tokens) error {
 	a, _ := tokens.Get()
 
 	// convert address
-	var ai *addressInfo
+	var ai *dbgmem.AddressInfo
 
 	if read {
-		ai = wtc.dbg.dbgmem.mapAddress(a, true)
+		ai = wtc.dbg.dbgmem.MapAddress(a, true)
 	} else {
-		ai = wtc.dbg.dbgmem.mapAddress(a, false)
+		ai = wtc.dbg.dbgmem.MapAddress(a, false)
 	}
 
 	// mapping of the address was unsuccessful
@@ -230,8 +231,8 @@ func (wtc *watches) parseCommand(tokens *commandline.Tokens) error {
 		// an existing watch (or vice-versa) but that's okay, the check()
 		// function will list all matches. plus, if we combine two watches such
 		// that only the larger set remains, it may confuse the user
-		if w.ai.address == nw.ai.address &&
-			w.ai.read == nw.ai.read &&
+		if w.ai.Address == nw.ai.Address &&
+			w.ai.Read == nw.ai.Read &&
 			w.matchValue == nw.matchValue && w.value == nw.value {
 			return curated.Errorf("already being watched (%s)", w)
 		}

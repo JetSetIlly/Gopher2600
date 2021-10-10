@@ -20,12 +20,13 @@ import (
 	"strings"
 
 	"github.com/jetsetilly/gopher2600/curated"
+	"github.com/jetsetilly/gopher2600/debugger/dbgmem"
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
 	"github.com/jetsetilly/gopher2600/debugger/terminal/commandline"
 )
 
 type tracer struct {
-	ai addressInfo
+	ai dbgmem.AddressInfo
 }
 
 func (t tracer) String() string {
@@ -121,10 +122,10 @@ func (trc *traces) parseCommand(tokens *commandline.Tokens) error {
 	a, _ := tokens.Get()
 
 	// convert address
-	var ai *addressInfo
-	ai = trc.dbg.dbgmem.mapAddress(a, true)
+	var ai *dbgmem.AddressInfo
+	ai = trc.dbg.dbgmem.MapAddress(a, true)
 	if ai == nil {
-		ai = trc.dbg.dbgmem.mapAddress(a, false)
+		ai = trc.dbg.dbgmem.MapAddress(a, false)
 		if ai == nil {
 			return curated.Errorf("invalid trace address (%s) expecting 16-bit address or symbol", a)
 		}
@@ -134,7 +135,7 @@ func (trc *traces) parseCommand(tokens *commandline.Tokens) error {
 
 	// check to see if trace already exists
 	for _, t := range trc.traces {
-		if t.ai.address == nt.ai.address {
+		if t.ai.Address == nt.ai.Address {
 			return curated.Errorf("already being traced (%s)", t)
 		}
 	}

@@ -24,6 +24,7 @@ import (
 
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/curated"
+	"github.com/jetsetilly/gopher2600/debugger/dbgmem"
 	"github.com/jetsetilly/gopher2600/debugger/script"
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
 	"github.com/jetsetilly/gopher2600/debugger/terminal/commandline"
@@ -74,7 +75,7 @@ type Debugger struct {
 	// interface to the vcs memory with additional debugging functions
 	// - access to vcs memory from the debugger (eg. peeking and poking) is
 	// most fruitfully performed through this structure
-	dbgmem *memoryDebug
+	dbgmem *dbgmem.DbgMem
 
 	// reflection is used to provideo additional information about the
 	// emulation. it is inherently slow so should be deactivated if not
@@ -208,13 +209,13 @@ func NewDebugger(tv *television.Television, scr gui.GUI, term terminal.Terminal,
 	}
 
 	// set up debugging interface to memory
-	dbg.dbgmem = &memoryDebug{
-		vcs: dbg.vcs,
+	dbg.dbgmem = &dbgmem.DbgMem{
+		VCS: dbg.vcs,
 	}
 
 	// create a new disassembly instance. also capturing the reference to the
 	// disassembly's symbols table
-	dbg.Disasm, dbg.dbgmem.sym, err = disassembly.NewDisassembly(dbg.vcs)
+	dbg.Disasm, dbg.dbgmem.Sym, err = disassembly.NewDisassembly(dbg.vcs)
 	if err != nil {
 		return nil, curated.Errorf("debugger: %v", err)
 	}

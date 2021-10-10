@@ -325,12 +325,12 @@ func (bp *breakpoints) parseCommand(tokens *commandline.Tokens) error {
 		if err == nil {
 			// special handling for PC
 			if tgt.label == "PC" {
-				ai := bp.dbg.dbgmem.mapAddress(uint16(val.(int)), true)
-				val = int(ai.mappedAddress)
+				ai := bp.dbg.dbgmem.MapAddress(uint16(val.(int)), true)
+				val = int(ai.MappedAddress)
 
 				// unusual case but if PC break is not in cartridge area we
 				// don't want to add a bank condition
-				addBankCondition = addBankCondition && ai.area == memorymap.Cartridge
+				addBankCondition = addBankCondition && ai.Area == memorymap.Cartridge
 			}
 
 			if andBreaks {
@@ -427,7 +427,7 @@ const (
 
 // !!TODO: detect other break types?
 func (bp *breakpoints) hasBreak(addr uint16, bank int) (BreakGroup, int) {
-	ai := bp.dbg.dbgmem.mapAddress(addr, true)
+	ai := bp.dbg.dbgmem.MapAddress(addr, true)
 
 	check := breaker{
 		target: bp.checkPcBreak,
@@ -435,7 +435,7 @@ func (bp *breakpoints) hasBreak(addr uint16, bank int) (BreakGroup, int) {
 		// casting value to type because that's how the target value is stored
 		// for the program counter (see TargetValue() implementation for the
 		// ProgramCounter type in the registers package)
-		value: int(ai.mappedAddress),
+		value: int(ai.MappedAddress),
 	}
 
 	// we start with the very specific - address and bank
@@ -478,12 +478,12 @@ func (bp *breakpoints) togglePCBreak(e *disassembly.Entry) {
 	}
 
 	// no equivalent breakpoint existed so add one
-	ai := bp.dbg.dbgmem.mapAddress(e.Result.Address, true)
+	ai := bp.dbg.dbgmem.MapAddress(e.Result.Address, true)
 	nb := breaker{
 		target: bp.checkPcBreak,
 
 		// see above for casting commentary
-		value: int(ai.mappedAddress),
+		value: int(ai.MappedAddress),
 	}
 
 	if bp.dbg.vcs.Mem.Cart.NumBanks() > 1 {
