@@ -1120,13 +1120,13 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 				newspec, ok := tokens.Get()
 				if ok {
 					// unknown specifciations already handled by ValidateTokens()
-					err := dbg.tv.SetSpec(newspec)
+					err := dbg.vcs.TV.SetSpec(newspec)
 					if err != nil {
 						return err
 					}
 				}
 
-				spec := dbg.tv.GetFrameInfo().Spec
+				spec := dbg.vcs.TV.GetFrameInfo().Spec
 				s := strings.Builder{}
 				s.WriteString(spec.ID)
 				dbg.printLine(terminal.StyleInstrument, s.String())
@@ -1134,7 +1134,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 				// already caught by command line ValidateTokens()
 			}
 		} else {
-			dbg.printLine(terminal.StyleInstrument, dbg.tv.String())
+			dbg.printLine(terminal.StyleInstrument, dbg.vcs.TV.String())
 		}
 
 	// information about the machine (sprites, playfield)
@@ -1197,10 +1197,10 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		action = strings.ToUpper(action)
 		switch action {
 		case "ON":
-			err = dbg.scr.SetFeature(gui.ReqSetVisibility, true)
+			err = dbg.gui.SetFeature(gui.ReqSetVisibility, true)
 
 		case "OFF":
-			err = dbg.scr.SetFeature(gui.ReqSetVisibility, false)
+			err = dbg.gui.SetFeature(gui.ReqSetVisibility, false)
 		}
 
 		if err != nil {

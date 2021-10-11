@@ -143,9 +143,5 @@ func (ref *Gatherer) NewFrame(_ television.FrameInfo) error {
 
 	// if new state is not paused then render history - the pause state is
 	// handled in the Step() function
-	if ref.renderer != nil {
-		return ref.render()
-	}
-
-	return nil
+	return ref.render()
 }

@@ -66,9 +66,8 @@ type Debugger struct {
 	lastBank   mapper.BankInfo
 	lastResult *disassembly.Entry
 
-	// gui, tv and terminal
-	tv          *television.Television
-	scr         gui.GUI
+	// gui, terminal and controllers
+	gui         gui.GUI
 	term        terminal.Terminal
 	controllers userinput.Controllers
 
@@ -181,8 +180,7 @@ func NewDebugger(tv *television.Television, scr gui.GUI, term terminal.Terminal,
 	var err error
 
 	dbg := &Debugger{
-		tv:   tv,
-		scr:  scr,
+		gui:  scr,
 		term: term,
 
 		// by definition the state of debugger has changed during startup
@@ -195,7 +193,7 @@ func NewDebugger(tv *television.Television, scr gui.GUI, term terminal.Terminal,
 	dbg.state.Store(emulation.Initialising)
 
 	// create a new VCS instance
-	dbg.vcs, err = hardware.NewVCS(dbg.tv)
+	dbg.vcs, err = hardware.NewVCS(tv)
 	if err != nil {
 		return nil, curated.Errorf("debugger: %v", err)
 	}
@@ -225,10 +223,9 @@ func NewDebugger(tv *television.Television, scr gui.GUI, term terminal.Terminal,
 
 	// setup reflection monitor
 	dbg.ref = reflection.NewGatherer(dbg.vcs)
-	if r, ok := dbg.scr.(reflection.Broker); ok {
+	if r, ok := dbg.gui.(reflection.Broker); ok {
 		dbg.ref.AddRenderer(r.GetReflectionRenderer())
 	}
-	dbg.tv.AddFrameTrigger(dbg.ref)
 
 	// plug in rewind system
 	dbg.Rewind, err = rewind.NewRewind(dbg.vcs, dbg)
@@ -236,6 +233,10 @@ func NewDebugger(tv *television.Television, scr gui.GUI, term terminal.Terminal,
 		return nil, curated.Errorf("debugger: %v", err)
 	}
 	dbg.deepPoking = make(chan bool, 1)
+
+	// frame triggers
+	dbg.vcs.TV.AddFrameTrigger(dbg.ref)
+	dbg.vcs.TV.AddFrameTrigger(dbg.Rewind)
 
 	// plug TV BoundaryTrigger into CPU
 	dbg.vcs.CPU.AddBoundaryTrigger(dbg.vcs.TV)
@@ -264,7 +265,7 @@ func NewDebugger(tv *television.Television, scr gui.GUI, term terminal.Terminal,
 	signal.Notify(dbg.events.IntEvents, os.Interrupt)
 
 	// connect gui
-	err = dbg.scr.SetFeature(gui.ReqSetEmulation, dbg)
+	err = dbg.gui.SetFeature(gui.ReqSetEmulation, dbg)
 	if err != nil {
 		if !curated.Is(err, gui.UnsupportedGuiFeature) {
 			return nil, curated.Errorf("debugger: %v", err)
@@ -303,7 +304,8 @@ func (dbg *Debugger) State() emulation.State {
 }
 
 func (dbg *Debugger) setState(state emulation.State) {
-	dbg.tv.SetEmulationState(state)
+	dbg.vcs.TV.SetEmulationState(state)
+	dbg.Rewind.SetEmulationState(state)
 	dbg.ref.SetEmulationState(state)
 	dbg.state.Store(state)
 }
@@ -492,7 +494,7 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) 
 				if err != nil {
 					return err
 				}
-				return dbg.tv.Reset(true)
+				return dbg.vcs.TV.Reset(true)
 			case mapper.EventSuperchargerSoundloadRewind:
 				// not required for the debugger
 			default:
@@ -503,7 +505,7 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) 
 			case mapper.EventPlusROMInserted:
 				if pr.Prefs.NewInstallation {
 					fi := gui.PlusROMFirstInstallation{Finish: nil, Cart: pr}
-					err := dbg.scr.SetFeature(gui.ReqPlusROMFirstInstallation, &fi)
+					err := dbg.gui.SetFeature(gui.ReqPlusROMFirstInstallation, &fi)
 					if err != nil {
 						if !curated.Is(err, gui.UnsupportedGuiFeature) {
 							return curated.Errorf("debugger: %v", err)

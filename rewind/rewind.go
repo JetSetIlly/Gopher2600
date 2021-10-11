@@ -20,6 +20,7 @@ import (
 	"strings"
 
 	"github.com/jetsetilly/gopher2600/curated"
+	"github.com/jetsetilly/gopher2600/emulation"
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/cpu"
 	"github.com/jetsetilly/gopher2600/hardware/memory"
@@ -106,10 +107,19 @@ type Rewind struct {
 	vcs    *hardware.VCS
 	runner Runner
 
+	// state of emulation
+	emulationState emulation.State
+
 	// prefs for the rewind system
 	Prefs *Preferences
 
-	// circular arry of snapshotted entries
+	// timeline information. note that this is kept for convenience and sent as
+	// a response to GetTimeline(). for internal package purposes the Start and
+	// End fields are not useful and only updated when GetTimeline() is called.
+	timeline Timeline
+
+	// circular arry of snapshotted entries. start and end indicate the first
+	// and last index. the last index can be smaller the start index
 	entries []*State
 	start   int
 	end     int
@@ -157,10 +167,17 @@ func NewRewind(vcs *hardware.VCS, runner Runner) (*Rewind, error) {
 		return nil, curated.Errorf("rewind: %v", err)
 	}
 
-	r.vcs.TV.AddFrameTrigger(r)
+	r.timeline = newTimeline()
+
 	r.allocate()
 
 	return r, nil
+}
+
+// SetEmulationState is called by emulation whenever state changes. How we
+// handle the rewind depends on the current state.
+func (r *Rewind) SetEmulationState(state emulation.State) {
+	r.emulationState = state
 }
 
 // initialise space for entries and reset rewind system.
@@ -325,7 +342,7 @@ func (r *Rewind) RecordExecutionState() {
 }
 
 // append the state to the end of the list of entries. handles  the splice
-// point correctly and any rogetting of old states that have expired.
+// point correctly and any forgetting of old states that have expired.
 func (r *Rewind) append(s *State) {
 	// chop off the end entry if it is in execution entry. we must do this
 	// before any further appending. this is enough to ensure that there is
@@ -364,6 +381,9 @@ func (r *Rewind) append(s *State) {
 			r.start = 0
 		}
 	}
+
+	// splice timeline at current frame number
+	r.timeline.splice(r.vcs.TV.GetState(signal.ReqFramenum))
 }
 
 // setContinuePoint sets the splice point to the supplied index. the emulation
@@ -444,7 +464,7 @@ func (r *Rewind) plumbState(s *State, frame, scanline, clock int) error {
 	return nil
 }
 
-// GotoLast sets the position to the last in the timeline.
+// GotoLast sets the emulation state to the most recent entry.
 func (r *Rewind) GotoLast() error {
 	idx := r.end - 1
 	if idx < 0 {
@@ -476,8 +496,9 @@ func (r *Rewind) GotoLast() error {
 	return r.setContinuePoint(idx, frame, scanline, clock)
 }
 
-// GotoFrame searches the timeline for the frame number. If the precise frame
-// number can not be found the nearest frame will be plumbed in.
+// GotoFrame searches the rewind history for the frame number. If the precise
+// frame number can not be found the nearest frame will be plumbed in and the
+// emulation run to match the requested frame.
 func (r *Rewind) GotoFrame(frame int) error {
 	idx, foundFrame, last := r.findFrameIndex(frame)
 
@@ -671,44 +692,17 @@ func (r *Rewind) GetComparison() *State {
 }
 
 // NewFrame is in an implementation of television.FrameTrigger.
-func (r *Rewind) NewFrame(_ television.FrameInfo) error {
+func (r *Rewind) NewFrame(frameInfo television.FrameInfo) error {
+	// do not alter the timeline information if we're in the rewinding state
+	if r.emulationState != emulation.Rewinding {
+		r.timeline.FrameNum = append(r.timeline.FrameNum, frameInfo.FrameNum)
+		r.timeline.TotalScanlines = append(r.timeline.TotalScanlines, frameInfo.TotalScanlines)
+		if len(r.timeline.TotalScanlines) > timelineLength {
+			r.timeline.FrameNum = r.timeline.FrameNum[1:]
+			r.timeline.TotalScanlines = r.timeline.TotalScanlines[1:]
+		}
+	}
+
 	r.newFrame = true
 	return nil
-}
-
-// Summary of the current state of the rewind system. The frame numbers for the
-// snapshots at the start and end of the rewind history.
-//
-// Useful for GUIs for example, to present the range of frame numbers that are
-// available in the rewind history.
-//
-// Note that there is no information about what type of snapshots the start and
-// end frames are. This is intentional - I'm not sure that information would be
-// useful.
-type Summary struct {
-	Start int
-	End   int
-}
-
-func (r Rewind) GetSummary() Summary {
-	e := r.end - 1
-	if e < 0 {
-		e += len(r.entries)
-	}
-
-	// because of how we generate visual state we cannot generate the image for
-	// the first frame in the history unless the first entry represents a
-	// machine reset
-	//
-	// this has a consequence when the first time the circular array wraps
-	// around for the first time (the number of available entries drops by one)
-	sf := r.entries[r.start].TV.GetState(signal.ReqFramenum)
-	if r.entries[r.start].level != levelReset {
-		sf++
-	}
-
-	return Summary{
-		Start: sf,
-		End:   r.entries[e].TV.GetState(signal.ReqFramenum),
-	}
 }

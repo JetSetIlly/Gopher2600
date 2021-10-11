@@ -437,6 +437,9 @@ func (tv *Television) newScanline() error {
 // the fromVsync arguments is true if a valid VSYNC signal has been detected. a
 // value of false means the frame flyback is unsynced.
 func (tv *Television) newFrame(fromVsync bool) error {
+	// give the frameInfo a number
+	tv.state.frameInfo.FrameNum = tv.state.frameNum
+
 	// note whether newFrame() was the result of a valid VSYNC or a "natural" flyback
 	tv.state.frameInfo.VSynced = fromVsync
 

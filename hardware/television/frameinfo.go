@@ -26,6 +26,8 @@ import (
 type FrameInfo struct {
 	Spec specification.Spec
 
+	FrameNum int
+
 	VisibleTop    int
 	VisibleBottom int
 

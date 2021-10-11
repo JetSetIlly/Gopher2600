@@ -101,6 +101,7 @@ var windowDefs = [...]windowDef{
 	{create: newWinCPU, menu: menuEntry{group: menuVCS}, open: true},
 	{create: newWinDisasm, menu: menuEntry{group: menuVCS}, open: true},
 	{create: newWinDbgScr, menu: menuEntry{group: menuVCS}, open: true},
+	{create: newWinTimeline, menu: menuEntry{group: menuVCS}, open: true},
 	{create: newWinRAM, menu: menuEntry{group: menuVCS}, open: true},
 	{create: newWinTIA, menu: menuEntry{group: menuVCS}, open: true},
 	{create: newWinTimer, menu: menuEntry{group: menuVCS}, open: true},

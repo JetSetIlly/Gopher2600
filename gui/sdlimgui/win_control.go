@@ -183,8 +183,8 @@ func (win *winControl) drawFramHistory() {
 	imgui.Text("Frame History")
 	imgui.Spacing()
 
-	s := int32(win.img.lz.Rewind.Summary.Start)
-	e := int32(win.img.lz.Rewind.Summary.End)
+	s := int32(win.img.lz.Rewind.Timeline.AvailableStart)
+	e := int32(win.img.lz.Rewind.Timeline.AvailableEnd)
 	f := int32(win.img.lz.TV.Frame)
 
 	// we want the slider to always reflect the current frame or, if a
