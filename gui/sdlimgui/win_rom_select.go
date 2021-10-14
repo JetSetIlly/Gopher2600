@@ -23,6 +23,7 @@ import (
 
 	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
+	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
@@ -45,6 +46,9 @@ type winSelectROM struct {
 
 	// height of options line at bottom of window. valid after first frame
 	controlHeight float32
+
+	// see comment for openForPlaymode()
+	playmodeNotify chan string
 }
 
 func newFileSelector(img *SdlImgui) (window, error) {
@@ -101,8 +105,27 @@ func (win *winSelectROM) setOpen(open bool) {
 	win.open = false
 }
 
+// opening the file requester in playmode requires a slightly different
+// approach, using a notify channel to return the selected file to the
+// emulation go routine.
+//
+// this will likely change in the future.
+func (win *winSelectROM) openForPlaymode(notify chan string) error {
+	if win.playmodeNotify != nil {
+		return curated.Errorf("ROM selector notify channel in use")
+	}
+	win.playmodeNotify = notify
+	win.setOpen(true)
+	return nil
+}
+
 func (win *winSelectROM) draw() {
 	if !win.open {
+		if win.playmodeNotify != nil {
+			win.playmodeNotify <- ""
+			win.playmodeNotify = nil
+		}
+
 		// set centreOnFile to true, ready for next time window is open
 		win.centreOnFile = true
 		return
@@ -111,9 +134,20 @@ func (win *winSelectROM) draw() {
 	// reset centreOnFile at end of draw
 	defer func() { win.centreOnFile = false }()
 
-	imgui.SetNextWindowPosV(imgui.Vec2{70, 58}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
-	imgui.SetNextWindowSizeV(imgui.Vec2{375, 397}, imgui.ConditionFirstUseEver)
-	imgui.BeginV(win.id(), &win.open, 0)
+	// window size/positioning dependent on emulation mode. also we don't want
+	// to save window settings for playmode
+	var flgs imgui.Condition
+	var winFlgs imgui.WindowFlags
+	if win.img.isPlaymode() {
+		flgs = imgui.ConditionAppearing
+		winFlgs = imgui.WindowFlagsNoSavedSettings
+	} else {
+		flgs = imgui.ConditionFirstUseEver
+		winFlgs = imgui.WindowFlagsNone
+	}
+	imgui.SetNextWindowPosV(imgui.Vec2{70, 58}, flgs, imgui.Vec2{0, 0})
+	imgui.SetNextWindowSizeV(imgui.Vec2{375, 397}, flgs)
+	imgui.BeginV(win.id(), &win.open, winFlgs)
 
 	if imgui.Button("Parent") {
 		d := filepath.Dir(win.currPath)
@@ -234,12 +268,16 @@ func (win *winSelectROM) draw() {
 			}
 
 			if imgui.Button(s) {
-				// build terminal command and run
-				cmd := strings.Builder{}
-				cmd.WriteString("INSERT \"")
-				cmd.WriteString(win.selectedFile)
-				cmd.WriteString("\"")
-				win.img.term.pushCommand(cmd.String())
+				if win.playmodeNotify == nil {
+					cmd := strings.Builder{}
+					cmd.WriteString("INSERT \"")
+					cmd.WriteString(win.selectedFile)
+					cmd.WriteString("\"")
+					win.img.term.pushCommand(cmd.String())
+				} else {
+					win.playmodeNotify <- win.selectedFile
+					win.playmodeNotify = nil
+				}
 				win.setOpen(false)
 			}
 		}

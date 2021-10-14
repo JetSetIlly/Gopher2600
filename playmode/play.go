@@ -90,6 +90,54 @@ func (pl *playmode) Pause(set bool) {
 // be checked. If it is a playback file then the playback codepath will be
 // used.
 func Play(tv *television.Television, scr gui.GUI, newRecording bool, cartload cartridgeloader.Loader, patchFile string, hiscoreServer bool, useSavekey bool, multiload int) error {
+
+	vcs, err := hardware.NewVCS(tv)
+	if err != nil {
+		return curated.Errorf("playmode: %v", err)
+	}
+
+	pl := &playmode{
+		vcs:       vcs,
+		scr:       scr,
+		intChan:   make(chan os.Signal, 1),
+		userinput: make(chan userinput.Event, 10),
+		rawEvents: make(chan func(), 1024),
+	}
+
+	// connect gui
+	err = scr.SetFeature(gui.ReqSetEmulation, pl)
+	if err != nil {
+		return curated.Errorf("playmode: %v", err)
+	}
+
+	vcs.RIOT.Ports.AttachPlugMonitor(pl)
+
+	if cartload.Filename == "" {
+		filename := make(chan string, 1)
+		err = scr.SetFeature(gui.ReqROMSelector, filename)
+		if err != nil {
+			return curated.Errorf("playmode: %v", err)
+		}
+
+		// a ROM selector has been reqiested. now wait for an event, either a
+		// filename from the selector or a quit event.
+		done := false
+		for !done {
+			select {
+			case ev := <-pl.userinput:
+				if _, ok := ev.(userinput.EventQuit); ok {
+					done = true
+				}
+			case fn := <-filename:
+				cartload, err = cartridgeloader.NewLoader(fn, "AUTO")
+				if err != nil {
+					return curated.Errorf("playmode: %v", err)
+				}
+				done = true
+			}
+		}
+	}
+
 	var recording string
 
 	// if supplied cartridge name is actually a playback file then set
@@ -112,11 +160,6 @@ func Play(tv *television.Television, scr gui.GUI, newRecording bool, cartload ca
 	// when allocation this channel will be used to halt emulation start until
 	// a nil error is received
 	var waitForEmulationStart chan error
-
-	vcs, err := hardware.NewVCS(tv)
-	if err != nil {
-		return curated.Errorf("playmode: %v", err)
-	}
 
 	// set VCSHook for specific cartridge formats. see equivalent code in debugger.go
 	cartload.VCSHook = func(cart mapper.CartMapper, event mapper.Event, args ...interface{}) error {
@@ -177,22 +220,6 @@ func Play(tv *television.Television, scr gui.GUI, newRecording bool, cartload ca
 		}
 		return nil
 	}
-
-	pl := &playmode{
-		vcs:       vcs,
-		scr:       scr,
-		intChan:   make(chan os.Signal, 1),
-		userinput: make(chan userinput.Event, 10),
-		rawEvents: make(chan func(), 1024),
-	}
-
-	// connect gui
-	err = scr.SetFeature(gui.ReqSetEmulation, pl)
-	if err != nil {
-		return curated.Errorf("playmode: %v", err)
-	}
-
-	vcs.RIOT.Ports.AttachPlugMonitor(pl)
 
 	// attach the cartridge depending on whether it's a new recording an
 	// existing recording (ie. a playback) or when no recording is involved at

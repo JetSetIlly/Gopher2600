@@ -310,9 +310,7 @@ func play(md *modalflag.Modes, sync *mainSync) error {
 
 	switch len(md.RemainingArgs()) {
 	case 0:
-		// we could use embedded data in the case of no cartridge argument. use
-		// cartridgeloader.NewLoaderFromEmbed() for this
-		return fmt.Errorf("2600 cartridge required for %s mode", md)
+		// allow loading from file requester
 
 	case 1:
 		cartload, err = cartridgeloader.NewLoader(md.GetArg(0), *mapping)
@@ -440,13 +438,6 @@ func debug(md *modalflag.Modes, sync *mainSync) error {
 		statsview.Launch(os.Stdout)
 	}
 
-	// cartridge loader. note that there is no deferred cartload.Close(). the
-	// debugger type itself will handle this.
-	cartload, err := cartridgeloader.NewLoader(md.GetArg(0), *mapping)
-	if err != nil {
-		return err
-	}
-
 	tv, err := television.NewTelevision(*spec)
 	if err != nil {
 		return err
@@ -505,43 +496,51 @@ func debug(md *modalflag.Modes, sync *mainSync) error {
 		return err
 	}
 
+	var cartload cartridgeloader.Loader
+
 	switch len(md.RemainingArgs()) {
 	case 0:
-		return fmt.Errorf("2600 cartridge required for %s mode", md)
+		// allow launch with no ROM specified on command line
 
 	case 1:
-		// check for profiling options
-		p, err := performance.ParseProfileString(*profile)
+		// cartridge loader. note that there is no deferred cartload.Close(). the
+		// debugger type itself will handle this.
+		cartload, err = cartridgeloader.NewLoader(md.GetArg(0), *mapping)
 		if err != nil {
 			return err
 		}
-
-		// set up a launch function
-		dbgLaunch := func() error {
-			err := dbg.Start(*initScript, cartload)
-			if err != nil {
-				return err
-			}
-			return nil
-		}
-
-		if p == performance.ProfileNone {
-			// no profile required so run dbgLaunch() function as normal
-			err := dbgLaunch()
-			if err != nil {
-				return err
-			}
-		} else {
-			// if profile generation has been requested then pass the dbgLaunch()
-			// function prepared above, through the RunProfiler() function
-			err := performance.RunProfiler(p, "debugger", dbgLaunch)
-			if err != nil {
-				return err
-			}
-		}
-
 	default:
 		return fmt.Errorf("too many arguments for %s mode", md)
+	}
+
+	// check for profiling options
+	prf, err := performance.ParseProfileString(*profile)
+	if err != nil {
+		return err
+	}
+
+	// set up a launch function
+	dbgLaunch := func() error {
+		err := dbg.Start(*initScript, cartload)
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+
+	if prf == performance.ProfileNone {
+		// no profile required so run dbgLaunch() function as normal
+		err := dbgLaunch()
+		if err != nil {
+			return err
+		}
+	} else {
+		// if profile generation has been requested then pass the dbgLaunch()
+		// function prepared above, through the RunProfiler() function
+		err := performance.RunProfiler(prf, "debugger", dbgLaunch)
+		if err != nil {
+			return err
+		}
 	}
 
 	// set ending state

@@ -69,6 +69,19 @@ func (img *SdlImgui) serviceSetFeature(request featureRequest) {
 	var err error
 
 	switch request.request {
+	case gui.ReqROMSelector:
+		if img.isPlaymode() {
+			err = argLen(request.args, 1)
+			if err == nil {
+				err = img.wm.windows[winSelectROMID].(*winSelectROM).openForPlaymode(request.args[0].(chan string))
+			}
+		} else {
+			err = argLen(request.args, 0)
+			if err == nil {
+				img.wm.windows[winSelectROMID].setOpen(true)
+			}
+		}
+
 	case gui.ReqSetEmulation:
 		err = argLen(request.args, 1)
 		if err == nil {
