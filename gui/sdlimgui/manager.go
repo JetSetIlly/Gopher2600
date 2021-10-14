@@ -129,6 +129,7 @@ var windowDefs = [...]windowDef{
 // list of windows that can be opened in playmode in addition to the debugger.
 var playmodeWindows = [...]string{
 	winPrefsID,
+	winSelectROMID,
 }
 
 func newManager(img *SdlImgui) (*manager, error) {

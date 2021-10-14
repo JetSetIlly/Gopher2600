@@ -311,9 +311,7 @@ func play(md *modalflag.Modes, sync *mainSync) error {
 
 	switch len(md.RemainingArgs()) {
 	case 0:
-		// we could use embedded data in the case of no cartridge argument. use
-		// cartridgeloader.NewLoaderFromEmbed() for this
-		return fmt.Errorf("2600 cartridge required for %s mode", md)
+		// allow loading from file requester
 
 	case 1:
 		cartload, err = cartridgeloader.NewLoader(md.GetArg(0), *mapping)
