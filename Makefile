@@ -134,13 +134,13 @@ release_statsview: check_upx generate
 	rm gopher2600_statsview
 
 # cross_windows_dynamic: generate 
-# 	CGO_ENABLED="1" CC="/usr/bin/x86_64-w64-mingw32-gcc" CXX="/usr/bin/x86_64-w64-mingw32-g++" GOOS="windows" GOARCH="amd64" CGO_LDFLAGS="-lmingw32 -lSDL2" CGO_CFLAGS="-D_REENTRANT" go build -tags "release" -gcflags $(compileFlags) -ldflags="-s -w" .
+# 	CGO_ENABLED="1" CC="/usr/bin/x86_64-w64-mingw32-gcc" CXX="/usr/bin/x86_64-w64-mingw32-g++" GOOS="windows" GOARCH="amd64" CGO_LDFLAGS="-lmingw32 -lSDL2" CGO_CFLAGS="-D_REENTRANT" go build -tags "release" -gcflags $(compileFlags) -ldflags="-s -w -H=windowsgui" -o gopher2600_windows_amd64.exe .
 
 cross_windows: generate 
-	CGO_ENABLED="1" CC="/usr/bin/x86_64-w64-mingw32-gcc" CXX="/usr/bin/x86_64-w64-mingw32-g++" GOOS="windows" GOARCH="amd64" CGO_LDFLAGS="-static-libgcc -static-libstdc++" $(goBinary) build -tags "static release" -gcflags $(compileFlags) -ldflags "-s -w" -o gopher2600_windows_amd64.exe .
+	CGO_ENABLED="1" CC="/usr/bin/x86_64-w64-mingw32-gcc" CXX="/usr/bin/x86_64-w64-mingw32-g++" GOOS="windows" GOARCH="amd64" CGO_LDFLAGS="-static-libgcc -static-libstdc++" $(goBinary) build -tags "static release" -gcflags $(compileFlags) -ldflags "-s -w -H=windowsgui" -o gopher2600_windows_amd64.exe .
 
 cross_windows_statsview: generate 
-	CGO_ENABLED="1" CC="/usr/bin/x86_64-w64-mingw32-gcc" CXX="/usr/bin/x86_64-w64-mingw32-g++" GOOS="windows" GOARCH="amd64" CGO_LDFLAGS="-static-libgcc -static-libstdc++" $(goBinary) build -tags "static release statsview" -gcflags $(compileFlags) -ldflags "-s -w" -o gopher2600_statsview_windows_amd64.exe .
+	CGO_ENABLED="1" CC="/usr/bin/x86_64-w64-mingw32-gcc" CXX="/usr/bin/x86_64-w64-mingw32-g++" GOOS="windows" GOARCH="amd64" CGO_LDFLAGS="-static-libgcc -static-libstdc++" $(goBinary) build -tags "static release statsview" -gcflags $(compileFlags) -ldflags "-s -w -H=windowsgui" -o gopher2600_statsview_windows_amd64.exe .
 
 binaries: release release_statsview cross_windows cross_windows_statsview
 	@echo "build release binaries"
