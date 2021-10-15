@@ -119,9 +119,22 @@ func Play(tv *television.Television, scr gui.GUI, newRecording bool, cartload ca
 			return curated.Errorf("playmode: %v", err)
 		}
 
-		cartload, err = cartridgeloader.NewLoader(<-filename, "AUTO")
-		if err != nil {
-			return curated.Errorf("playmode: %v", err)
+		// a ROM selector has been reqiested. now wait for an event, either a
+		// filename from the selector or a quit event.
+		done := false
+		for !done {
+			select {
+			case ev := <-pl.userinput:
+				if _, ok := ev.(userinput.EventQuit); ok {
+					done = true
+				}
+			case fn := <-filename:
+				cartload, err = cartridgeloader.NewLoader(fn, "AUTO")
+				if err != nil {
+					return curated.Errorf("playmode: %v", err)
+				}
+				done = true
+			}
 		}
 	}
 
