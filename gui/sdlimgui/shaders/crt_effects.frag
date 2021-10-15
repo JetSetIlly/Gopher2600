@@ -141,8 +141,6 @@ void main() {
 
 	// noise 
 	if (Noise == 1) {
-
-		// noise
 		float n;
 		n = gold_noise(gl_FragCoord.xy);
 		if (n < 0.33) {
@@ -154,8 +152,8 @@ void main() {
 		}
 
 		// flicker
-		float level = 0.004;
-		Crt_Color *= (1.0-level*(sin(50.0*Time+uv.y*2.0)*0.5+0.5));
+		/* float level = 0.004; */
+		/* Crt_Color *= (1.0-level*(sin(50.0*Time+uv.y*2.0)*0.5+0.5)); */
 	}
 
 	// fringing (chromatic aberration)
