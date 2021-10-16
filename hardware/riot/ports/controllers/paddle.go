@@ -202,3 +202,8 @@ func (pdl *Paddle) Reset() {
 	pdl.ticks = 0.0
 	pdl.resistance = 0.0
 }
+
+// IsActive implements the ports.Peripheral interface.
+func (pdl *Paddle) IsActive() bool {
+	return false
+}

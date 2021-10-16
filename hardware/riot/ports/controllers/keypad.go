@@ -242,3 +242,8 @@ func (key *Keypad) Step() {
 func (key *Keypad) Reset() {
 	key.key = noKey
 }
+
+// IsActive implements the ports.Peripheral interface.
+func (key *Keypad) IsActive() bool {
+	return false
+}

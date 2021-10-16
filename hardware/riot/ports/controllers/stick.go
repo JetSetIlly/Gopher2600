@@ -224,3 +224,8 @@ func (stk *Stick) Reset() {
 	stk.bus.WriteSWCHx(stk.port, stk.axis)
 	stk.bus.WriteINPTx(stk.inptx, stk.button)
 }
+
+// IsActive implements the ports.Peripheral interface.
+func (stk *Stick) IsActive() bool {
+	return stk.button == stickFire || stk.axis != axisCenter
+}

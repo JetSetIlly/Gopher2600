@@ -306,3 +306,8 @@ func (aut *Auto) AttachPlugMonitor(m plugging.PlugMonitor) {
 		a.AttachPlugMonitor(m)
 	}
 }
+
+// IsActive implements the ports.Peripheral interface.
+func (aut *Auto) IsActive() bool {
+	return aut.controller.IsActive()
+}

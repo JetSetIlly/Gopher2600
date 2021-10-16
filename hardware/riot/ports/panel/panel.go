@@ -208,3 +208,8 @@ func (pan *Panel) Update(data bus.ChipData) bool {
 // Step implements the Peripheral interface.
 func (pan *Panel) Step() {
 }
+
+// IsActive implements the ports.Peripheral interface.
+func (pan *Panel) IsActive() bool {
+	return false
+}

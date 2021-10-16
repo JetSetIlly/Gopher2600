@@ -17,16 +17,39 @@ package rewind
 
 import (
 	"github.com/jetsetilly/gopher2600/curated"
+	"github.com/jetsetilly/gopher2600/emulation"
+	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 )
+
+func (r *Rewind) addTimelineEntry(frameInfo television.FrameInfo) {
+	// do not alter the timeline information if we're in the rewinding state
+	if r.emulationState != emulation.Rewinding {
+		r.timeline.FrameNum = append(r.timeline.FrameNum, frameInfo.FrameNum)
+		r.timeline.TotalScanlines = append(r.timeline.TotalScanlines, frameInfo.TotalScanlines)
+		r.timeline.LeftPlayerInput = append(r.timeline.LeftPlayerInput, r.vcs.RIOT.Ports.LeftPlayer.IsActive())
+		r.timeline.RightPlayerInput = append(r.timeline.RightPlayerInput, r.vcs.RIOT.Ports.RightPlayer.IsActive())
+		r.timeline.PanelInput = append(r.timeline.PanelInput, r.vcs.RIOT.Ports.Panel.IsActive())
+		if len(r.timeline.TotalScanlines) > timelineLength {
+			r.timeline.FrameNum = r.timeline.FrameNum[1:]
+			r.timeline.TotalScanlines = r.timeline.TotalScanlines[1:]
+			r.timeline.LeftPlayerInput = r.timeline.LeftPlayerInput[1:]
+			r.timeline.RightPlayerInput = r.timeline.RightPlayerInput[1:]
+			r.timeline.PanelInput = r.timeline.PanelInput[1:]
+		}
+	}
+}
 
 // Timeline provides a summary of the current state of the rewind system.
 //
 // Useful for GUIs for example, to present the range of frame numbers that are
 // available in the rewind history.
 type Timeline struct {
-	FrameNum       []int
-	TotalScanlines []int
+	FrameNum         []int
+	TotalScanlines   []int
+	LeftPlayerInput  []bool
+	RightPlayerInput []bool
+	PanelInput       []bool
 
 	// These two "available" fields state the earliest and latest frames that
 	// are available in the rewind history.
@@ -40,8 +63,11 @@ const timelineLength = 1000
 
 func newTimeline() Timeline {
 	return Timeline{
-		FrameNum:       make([]int, 0),
-		TotalScanlines: make([]int, 0),
+		FrameNum:         make([]int, 0),
+		TotalScanlines:   make([]int, 0),
+		LeftPlayerInput:  make([]bool, 0),
+		RightPlayerInput: make([]bool, 0),
+		PanelInput:       make([]bool, 0),
 	}
 }
 
@@ -80,6 +106,9 @@ func (tl *Timeline) splice(frameNumber int) {
 		if frameNumber == tl.FrameNum[i] {
 			tl.FrameNum = tl.FrameNum[:i]
 			tl.TotalScanlines = tl.TotalScanlines[:i]
+			tl.LeftPlayerInput = tl.LeftPlayerInput[:i]
+			tl.RightPlayerInput = tl.RightPlayerInput[:i]
+			tl.PanelInput = tl.PanelInput[:i]
 			break // for loop
 		}
 	}

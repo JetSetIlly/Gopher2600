@@ -48,6 +48,9 @@ type Peripheral interface {
 	// reset state of peripheral. this has nothing to do with the reset switch
 	// on the VCS panel
 	Reset()
+
+	// whether the peripheral is currently "active"
+	IsActive() bool
 }
 
 // NewPeripheral defines the function signature for a creating a new

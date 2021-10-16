@@ -35,7 +35,7 @@ type Ports struct {
 	RightPlayer Peripheral
 
 	playback EventPlayback
-	recorder EventRecorder
+	recorder []EventRecorder
 
 	monitor plugging.PlugMonitor
 
@@ -85,6 +85,7 @@ func NewPorts(riotMem bus.ChipBus, tiaMem bus.ChipBus) *Ports {
 	p := &Ports{
 		riot:         riotMem,
 		tia:          tiaMem,
+		recorder:     make([]EventRecorder, 0),
 		swchaFromCPU: 0x00,
 		swacnt:       0x00,
 		latch:        false,
@@ -248,7 +249,7 @@ func (p *Ports) AttachPlayback(b EventPlayback) {
 // AttachEventRecorder attaches an EventRecorder implementation to all ports
 // that implement RecordablePort.
 func (p *Ports) AttachEventRecorder(r EventRecorder) {
-	p.recorder = r
+	p.recorder = append(p.recorder, r)
 }
 
 // AttchPlugMonitor implements the plugging.Monitorable interface.
@@ -325,8 +326,8 @@ func (p *Ports) HandleEvent(id plugging.PortID, ev Event, d EventData) error {
 	}
 
 	// record event with the EventRecorder
-	if p.recorder != nil {
-		return p.recorder.RecordEvent(id, ev, d)
+	for _, r := range p.recorder {
+		return r.RecordEvent(id, ev, d)
 	}
 
 	return nil

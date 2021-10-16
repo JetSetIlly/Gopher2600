@@ -30,14 +30,6 @@ const winControlID = "Control"
 type winControl struct {
 	img  *SdlImgui
 	open bool
-
-	// rewinding state. target is the frame number that the user wants to
-	// rewind to. pending means that the request hasn't happened yet (the
-	// request will be repeated until pending is false). waiting means the
-	// request has been made but has not completed yet.
-	rewindTarget  int32
-	rewindPending bool
-	rewindWaiting bool
 }
 
 func newWinControl(img *SdlImgui) (window, error) {
@@ -76,11 +68,6 @@ func (win *winControl) draw() {
 	// stepping
 	imgui.Spacing()
 	win.drawStep()
-
-	// frame history
-	imgui.Separator()
-	imgui.Spacing()
-	win.drawFramHistory()
 
 	// fps
 	imgui.Separator()
@@ -177,44 +164,6 @@ func (win *winControl) drawStep() {
 	if imgui.ButtonV("Step Over", fillWidth) {
 		win.img.term.pushCommand("STEP OVER")
 	}
-}
-
-func (win *winControl) drawFramHistory() {
-	imgui.Text("Frame History")
-	imgui.Spacing()
-
-	s := int32(win.img.lz.Rewind.Timeline.AvailableStart)
-	e := int32(win.img.lz.Rewind.Timeline.AvailableEnd)
-	f := int32(win.img.lz.TV.Frame)
-
-	// we want the slider to always reflect the current frame or, if a
-	// rewinding is currently taking place, it should should show the target
-	// frame.
-	if win.rewindWaiting {
-		if f == win.rewindTarget {
-			win.rewindWaiting = false
-			win.rewindTarget = f
-		} else {
-			// rewiding is still taking place so make f equal to the target frame
-			f = win.rewindTarget
-		}
-	} else {
-		// keep track of running tv frame
-		win.rewindTarget = f
-	}
-
-	// rewind slider
-	w := imguiRemainingWinWidth()
-	imgui.PushItemWidth(w)
-	defer imgui.PopItemWidth()
-
-	if imgui.SliderInt("##rewind", &f, s, e) || win.rewindPending {
-		win.rewindPending = !win.img.dbg.PushRewind(int(f), f == e)
-		win.rewindWaiting = true
-		win.rewindTarget = f
-	}
-
-	win.img.isRewindSlider = imgui.IsItemFocused() && imgui.IsMouseDown(0)
 }
 
 func (win *winControl) drawFPS() {

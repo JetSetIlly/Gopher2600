@@ -102,6 +102,8 @@ type imguiColors struct {
 	TimelineScanlinePlot   imgui.Vec4
 	TimelineRewindRange    imgui.Vec4
 	TimelineCurrentPointer imgui.Vec4
+	TimelineCmpPointer     imgui.Vec4
+	TimelineLeftPlayer     imgui.Vec4
 
 	// tia window
 	TIApointer imgui.Vec4
@@ -147,6 +149,8 @@ type imguiColors struct {
 	timelineScanlinePlot   imgui.PackedColor
 	timelineRewindRange    imgui.PackedColor
 	timelineCurrentPointer imgui.PackedColor
+	timelineCmpPointer     imgui.PackedColor
+	timelineLeftPlayer     imgui.PackedColor
 
 	// reflection colors
 	reflectionColors map[reflection.ReflectedInfo]imgui.Vec4
@@ -225,6 +229,8 @@ func newColors() *imguiColors {
 		TimelineScanlinePlot:   imgui.Vec4{0.79, 0.04, 0.04, 1.0},
 		TimelineRewindRange:    imgui.Vec4{0.79, 0.38, 0.04, 1.0},
 		TimelineCurrentPointer: imgui.Vec4{0.79, 0.38, 0.04, 1.0}, // same as TimelineRewindRange
+		TimelineCmpPointer:     imgui.Vec4{0.30, 0.20, 0.50, 1.0}, // same as ValueDiff
+		TimelineLeftPlayer:     imgui.Vec4{0.38, 0.79, 0.04, 1.0}, // same as TimelineRewindRange
 
 		// tia
 		TIApointer: imgui.Vec4{0.8, 0.8, 0.8, 1.0},
@@ -286,6 +292,8 @@ func newColors() *imguiColors {
 	cols.timelineScanlinePlot = imgui.PackedColorFromVec4(cols.TimelineScanlinePlot)
 	cols.timelineRewindRange = imgui.PackedColorFromVec4(cols.TimelineRewindRange)
 	cols.timelineCurrentPointer = imgui.PackedColorFromVec4(cols.TimelineCurrentPointer)
+	cols.timelineCmpPointer = imgui.PackedColorFromVec4(cols.TimelineCmpPointer)
+	cols.timelineLeftPlayer = imgui.PackedColorFromVec4(cols.TimelineLeftPlayer)
 
 	// reflection colors in imgui.Vec4 and imgui.PackedColor formats
 	cols.reflectionColors = make(map[reflection.ReflectedInfo]imgui.Vec4)

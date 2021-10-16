@@ -16,7 +16,10 @@
 package sdlimgui
 
 import (
+	"fmt"
+
 	"github.com/inkyblackness/imgui-go/v4"
+	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 )
 
@@ -25,6 +28,9 @@ const winTimelineID = "Timeline"
 type winTimeline struct {
 	img  *SdlImgui
 	open bool
+
+	// whether the rewind "slider" is active
+	rewindingActive bool
 }
 
 func newWinTimeline(img *SdlImgui) (window, error) {
@@ -57,7 +63,7 @@ func (win *winTimeline) draw() {
 	const winHeightRatio = 0.05
 	const scanlineRatio = specification.AbsoluteMaxScanlines * winHeightRatio
 
-	imgui.SetNextWindowPosV(imgui.Vec2{0, 0}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
+	imgui.SetNextWindowPosV(imgui.Vec2{37, 732}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
 
 	flgs := imgui.WindowFlagsAlwaysAutoResize | imgui.WindowFlagsNoDecoration
 	imgui.BeginV(win.id(), &win.open, flgs)
@@ -66,12 +72,31 @@ func (win *winTimeline) draw() {
 	win.drawTimeline()
 
 	imguiSeparator()
-	imgui.Text("controls")
+	win.drawRewindSummary()
+	imgui.SameLineV(0, 20)
+	win.drawKey()
+}
+
+func (win *winTimeline) drawKey() {
+	imguiColorLabel("Scanlines", win.img.cols.TimelineScanlinePlot)
+	imgui.SameLineV(0, 20)
+	imguiColorLabel("Left Player", win.img.cols.TimelineLeftPlayer)
+	imgui.SameLineV(0, 20)
+	imguiColorLabel("Rewind", win.img.cols.TimelineRewindRange)
+	imgui.SameLineV(0, 20)
+	imguiColorLabel("Comparison", win.img.cols.TimelineCmpPointer)
+}
+
+func (win *winTimeline) drawRewindSummary() {
+	imgui.Text(fmt.Sprintf("Rewind frames: %d to %d", win.img.lz.Rewind.Timeline.AvailableStart, win.img.lz.Rewind.Timeline.AvailableEnd))
 }
 
 func (win *winTimeline) drawTimeline() {
 	const plotWidth = 2
-	const plotHeight = 1
+	const plotHeight = 2
+
+	imgui.BeginGroup()
+	defer imgui.EndGroup()
 
 	timeline := win.img.lz.Rewind.Timeline
 	dl := imgui.WindowDrawList()
@@ -81,23 +106,48 @@ func (win *winTimeline) drawTimeline() {
 	traceSize := imgui.Vec2{X: width, Y: 50}
 	traceScale := (traceSize.Y - (plotHeight * 2)) / specification.AbsoluteMaxScanlines
 
-	imgui.BeginChildV("##timelineplot", traceSize, false, imgui.WindowFlagsNone)
+	imgui.BeginChildV("##timelineplot", traceSize, false, imgui.WindowFlagsNoMove)
 	pos := imgui.CursorScreenPos()
 
 	x := pos.X
-	for i := range timeline.TotalScanlines {
-		l := float32(timeline.TotalScanlines[i])
-		l *= traceScale
-
-		y := pos.Y + traceSize.Y - l
-		rmin := imgui.Vec2{X: x, Y: y}
+	botY := pos.Y + traceSize.Y
+	for i := range timeline.FrameNum {
+		sl := float32(timeline.TotalScanlines[i]) * traceScale
+		rmin := imgui.Vec2{X: x, Y: botY - sl}
 		rmax := rmin.Plus(imgui.Vec2{X: plotWidth, Y: plotHeight})
-
 		dl.AddRectFilled(rmin, rmax, win.img.cols.timelineScanlinePlot)
+
+		// left player input
+		if timeline.LeftPlayerInput[i] {
+			rmin := imgui.Vec2{X: x, Y: botY}
+			rmax := rmin.Plus(imgui.Vec2{X: plotWidth, Y: plotHeight})
+			dl.AddRectFilled(rmin, rmax, win.img.cols.timelineLeftPlayer)
+		}
+
+		// TODO: right player and panel input
+
 		x += plotWidth
 	}
 
 	imgui.EndChild()
+
+	// update rewind state
+	if imgui.IsMouseDown(0) && (imgui.IsItemHovered() || win.rewindingActive) {
+		win.rewindingActive = true
+		x := imgui.MousePos().X
+		x -= pos.X
+		fr := int(x / plotWidth)
+
+		if fr != win.img.lz.TV.Frame {
+			s := win.img.lz.Rewind.Timeline.AvailableStart
+			e := win.img.lz.Rewind.Timeline.AvailableEnd
+			if fr >= s && fr <= e {
+				win.img.dbg.PushRewind(fr, fr == e)
+			}
+		}
+	} else {
+		win.rewindingActive = false
+	}
 
 	// indicators
 	const indicatorHeight = 5
@@ -113,13 +163,22 @@ func (win *winTimeline) drawTimeline() {
 
 	imgui.EndChild()
 
-	// current frame indicator
+	// frame indicators
 	const currentRadius = 3
 	currentSize := imgui.Vec2{X: width, Y: currentRadius}
 	imgui.BeginChildV("##timelinecurrent", currentSize, false, imgui.WindowFlagsNone)
 	pos = imgui.CursorScreenPos()
 
-	fr := win.img.lz.TV.Frame
+	var fr int
+
+	// comparison frame indicator
+	if win.img.lz.Rewind.Comparison != nil {
+		fr = win.img.lz.Rewind.Comparison.TV.GetState(signal.ReqFramenum)
+		dl.AddCircleFilled(imgui.Vec2{X: pos.X + float32(fr*plotWidth), Y: pos.Y + currentRadius}, currentRadius, win.img.cols.timelineCmpPointer)
+	}
+
+	// current frame indicator
+	fr = win.img.lz.TV.Frame
 	dl.AddCircleFilled(imgui.Vec2{X: pos.X + float32(fr*plotWidth), Y: pos.Y + currentRadius}, currentRadius, win.img.cols.timelineCurrentPointer)
 
 	imgui.EndChild()

@@ -168,7 +168,6 @@ func NewRewind(vcs *hardware.VCS, runner Runner) (*Rewind, error) {
 	}
 
 	r.timeline = newTimeline()
-
 	r.allocate()
 
 	return r, nil
@@ -693,16 +692,7 @@ func (r *Rewind) GetComparison() *State {
 
 // NewFrame is in an implementation of television.FrameTrigger.
 func (r *Rewind) NewFrame(frameInfo television.FrameInfo) error {
-	// do not alter the timeline information if we're in the rewinding state
-	if r.emulationState != emulation.Rewinding {
-		r.timeline.FrameNum = append(r.timeline.FrameNum, frameInfo.FrameNum)
-		r.timeline.TotalScanlines = append(r.timeline.TotalScanlines, frameInfo.TotalScanlines)
-		if len(r.timeline.TotalScanlines) > timelineLength {
-			r.timeline.FrameNum = r.timeline.FrameNum[1:]
-			r.timeline.TotalScanlines = r.timeline.TotalScanlines[1:]
-		}
-	}
-
+	r.addTimelineEntry(frameInfo)
 	r.newFrame = true
 	return nil
 }
