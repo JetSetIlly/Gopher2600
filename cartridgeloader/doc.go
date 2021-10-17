@@ -123,4 +123,9 @@
 // happen that is outside of the scope of the cartridge package. Currently,
 // this is used by the Supercharder and PlusROM.
 //
+// VCSHook
+//
+// Some cartridge mappers will generate events (see mapper.Event type). The
+// VCSHook can be specified in order to respond to those events.
+//
 package cartridgeloader

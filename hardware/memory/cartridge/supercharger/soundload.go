@@ -24,6 +24,29 @@ import (
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
+// Brief explanation of how the "tape" works:
+//
+// The tape "plays" and "stops" and "rewinds" automatically when the 6507 requires it.
+//
+// This is my current strategy:
+//
+// 1) Tape will play when address 1ff9 (or any of the cartridge mirrors) is
+//    read. The RAM write bit must also be set for the tape to start playing.
+//
+// 2) Tape will stop when address fa1a (specifically) is read. This is the
+//    point in the BIOS at which the program jumps to VCS RAM (at address
+//    0x00fa) and the loaded program begins.
+//
+// 3) Rewinding: The "tape" is just a sound file (the emulator supports most
+//    WAV and MP3 files) so "playing" is nothing more than keeping track of how
+//    much of the file has been read and moving that progress pointer along
+//    every CPU cycle. "Rewinding" therefore, is just a case of resetting the
+//    progress pointer to zero when the end of the file has been reached.
+//
+// Eight bits of data is returned from the current tape position on every
+// subsequent read of address 1ff9. Decoding of the audio signal is handled by
+// the Supercharger BIOS.
+
 // tag string used in called to Log().
 const soundloadLogTag = "supercharger: soundload"
 

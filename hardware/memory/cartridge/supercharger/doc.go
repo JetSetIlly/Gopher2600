@@ -17,19 +17,14 @@
 // implementation is complex enough for it to be spread over more than one file
 // and so for purposes of clarity it has been placed in its own package.
 //
-// The supercharger is interfaced in the same way as other cartridge formats.
-// The fastload mechanism however, requires special handling, which is
-// unfortunate but unavoidable. It is worth summarising here:
+// The package supports both loading from a sound file (supporting most WAV and
+// MP3 files) or from a "fastload" file.
 //
-// As a result of a fast-load of a BIN file into supercharger memory, the
-// supercharger package will return an error of type supercharger.FastLoaded
+// Tape loading "events" are handled through the cartridgeloader packages
+// VCSHook mechanism. See the mapper.Event type for list of Supercharger
+// events.
 //
-// The FastLoaded error indicates an exception to the normal running of the
-// emulation. For the loading to complete the error needs special handling.
-// There are two places in Gopher2600 where this handling takes place. One is
-// in the debugger.inputLoop() and the other in hardware.run() (the latter is
-// called from the playmode package).
-//
-// Wherever it is handled, the error should be caught and interpreted as a
-// function and called, with a reference to the emulator's CPU, RAM and Timer.
+// When loading from a sound file, Supercharger events can be ignored if so
+// desired but for fastload files, the emulator needs to help the Supercharger
+// mapper. See the playmode package reference implementation for details.
 package supercharger
