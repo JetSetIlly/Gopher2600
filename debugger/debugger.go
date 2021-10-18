@@ -232,11 +232,15 @@ func NewDebugger(tv *television.Television, scr gui.GUI, term terminal.Terminal,
 	if err != nil {
 		return nil, curated.Errorf("debugger: %v", err)
 	}
+	dbg.Rewind.AddTimelineCounter(dbg.ref) // using reflection monitor for the timeline counter
 	dbg.deepPoking = make(chan bool, 1)
 
-	// frame triggers
-	dbg.vcs.TV.AddFrameTrigger(dbg.ref)
+	// frame triggers. deliberately adding rewind before reflection because the
+	// latter implements rewind.TimelineCounter. we want to reset
+	// TimelineCounts in reflection.Gatherer  but we need to call
+	// TimelineCounts() from the rewind packge before that happens
 	dbg.vcs.TV.AddFrameTrigger(dbg.Rewind)
+	dbg.vcs.TV.AddFrameTrigger(dbg.ref)
 
 	// plug TV BoundaryTrigger into CPU
 	dbg.vcs.CPU.AddBoundaryTrigger(dbg.vcs.TV)

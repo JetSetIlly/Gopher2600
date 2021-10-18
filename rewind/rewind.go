@@ -105,6 +105,7 @@ const overhead = 2
 // Rewind contains a history of machine states for the emulation.
 type Rewind struct {
 	vcs    *hardware.VCS
+	ctr    TimelineCounter
 	runner Runner
 
 	// state of emulation
@@ -177,6 +178,15 @@ func NewRewind(vcs *hardware.VCS, runner Runner) (*Rewind, error) {
 // handle the rewind depends on the current state.
 func (r *Rewind) SetEmulationState(state emulation.State) {
 	r.emulationState = state
+}
+
+// AddTimelineCounter to the rewind system. Augments Timeline information that
+// would otherwisde be awkward to gather.
+//
+// Only one timeline counter can be used at any one time (ie. subsequent calls
+// to AddTimelineCounter() will override previous calls.)
+func (r *Rewind) AddTimelineCounter(ctr TimelineCounter) {
+	r.ctr = ctr
 }
 
 // initialise space for entries and reset rewind system.

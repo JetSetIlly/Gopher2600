@@ -78,7 +78,13 @@ func (win *winTimeline) draw() {
 }
 
 func (win *winTimeline) drawKey() {
-	imguiColorLabel("Scanlines", win.img.cols.TimelineScanlinePlot)
+	imguiColorLabel("Scanlines", win.img.cols.TimelineScanlines)
+	imgui.SameLineV(0, 20)
+	imguiColorLabel("WSYNC", win.img.cols.TimelineWSYNC)
+	if win.img.lz.CoProc.HasCoProcBus {
+		imgui.SameLineV(0, 20)
+		imguiColorLabel(win.img.lz.CoProc.ID, win.img.cols.TimelineCoProc)
+	}
 	imgui.SameLineV(0, 20)
 	imguiColorLabel("Left Player", win.img.cols.TimelineLeftPlayer)
 	imgui.SameLineV(0, 20)
@@ -93,7 +99,7 @@ func (win *winTimeline) drawRewindSummary() {
 
 func (win *winTimeline) drawTimeline() {
 	const traceWidth = 2
-	const traceHeight = 2
+	const traceHeight = 1
 	const rangeHeight = 5
 	const frameIndicatorRadius = 4
 
@@ -131,7 +137,23 @@ func (win *winTimeline) drawTimeline() {
 
 		rmin := imgui.Vec2{X: x, Y: y}
 		rmax := rmin.Plus(imgui.Vec2{X: traceWidth, Y: traceHeight})
-		dl.AddRectFilled(rmin, rmax, win.img.cols.timelineScanlinePlot)
+		dl.AddRectFilled(rmin, rmax, win.img.cols.timelineScanlines)
+
+		// WSYNC
+		y = pos.Y + traceSize.Y
+		y -= float32(timeline.Counts[i].WSYNC) * traceSize.Y / specification.AbsoluteMaxClks
+		rmin = imgui.Vec2{X: x, Y: y}
+		rmax = rmin.Plus(imgui.Vec2{X: traceWidth, Y: traceHeight})
+		dl.AddRectFilled(rmin, rmax, win.img.cols.timelineWSYNC)
+
+		// CoProc
+		if win.img.lz.CoProc.HasCoProcBus {
+			y = pos.Y
+			y += float32(timeline.Counts[i].CoProc) * traceSize.Y / specification.AbsoluteMaxClks
+			rmin = imgui.Vec2{X: x, Y: y}
+			rmax = rmin.Plus(imgui.Vec2{X: traceWidth, Y: traceHeight})
+			dl.AddRectFilled(rmin, rmax, win.img.cols.timelineCoProc)
+		}
 
 		x += traceWidth
 	}

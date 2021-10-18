@@ -270,7 +270,8 @@ func (tv *Television) AddPixelRenderer(r PixelRenderer) {
 }
 
 // AddFrameTrigger registers an implementation of FrameTrigger. Multiple
-// implemntations can be added.
+// implemntations can be added. Triggers are served in the order that they have
+// been added.
 func (tv *Television) AddFrameTrigger(f FrameTrigger) {
 	tv.frameTriggers = append(tv.frameTriggers, f)
 }

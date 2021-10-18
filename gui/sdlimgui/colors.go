@@ -99,7 +99,9 @@ type imguiColors struct {
 
 	// timeline plot
 	TimelineMarkers        imgui.Vec4
-	TimelineScanlinePlot   imgui.Vec4
+	TimelineScanlines      imgui.Vec4
+	TimelineWSYNC          imgui.Vec4
+	TimelineCoProc         imgui.Vec4
 	TimelineRewindRange    imgui.Vec4
 	TimelineCurrentPointer imgui.Vec4
 	TimelineCmpPointer     imgui.Vec4
@@ -146,7 +148,9 @@ type imguiColors struct {
 	saveKeyBit             imgui.PackedColor
 	saveKeyBitPointer      imgui.PackedColor
 	timelineMarkers        imgui.PackedColor
-	timelineScanlinePlot   imgui.PackedColor
+	timelineScanlines      imgui.PackedColor
+	timelineWSYNC          imgui.PackedColor
+	timelineCoProc         imgui.PackedColor
 	timelineRewindRange    imgui.PackedColor
 	timelineCurrentPointer imgui.PackedColor
 	timelineCmpPointer     imgui.PackedColor
@@ -224,9 +228,10 @@ func newColors() *imguiColors {
 		AudioOscBg:   imgui.Vec4{0.21, 0.29, 0.23, 1.0},
 		AudioOscLine: imgui.Vec4{0.10, 0.97, 0.29, 1.0},
 
-		// history plot
-		TimelineMarkers:        imgui.Vec4{1.00, 1.00, 1.00, 1.0},
-		TimelineScanlinePlot:   imgui.Vec4{0.79, 0.04, 0.04, 1.0},
+		// timeline
+		TimelineMarkers:   imgui.Vec4{1.00, 1.00, 1.00, 1.0},
+		TimelineScanlines: imgui.Vec4{0.79, 0.04, 0.04, 1.0},
+		// deferred TimelineWSYNC and TimelineCoProc
 		TimelineRewindRange:    imgui.Vec4{0.79, 0.38, 0.04, 1.0},
 		TimelineCurrentPointer: imgui.Vec4{0.79, 0.38, 0.04, 1.0}, // same as TimelineRewindRange
 		TimelineCmpPointer:     imgui.Vec4{0.30, 0.20, 0.50, 1.0}, // same as ValueDiff
@@ -273,6 +278,13 @@ func newColors() *imguiColors {
 	style.SetColor(imgui.StyleColorTitleBgActive, cols.TitleBgActive)
 	style.SetColor(imgui.StyleColorBorder, cols.Border)
 
+	// reflection colors in imgui.Vec4 and imgui.PackedColor formats
+	cols.reflectionColors = make(map[reflection.ReflectedInfo]imgui.Vec4)
+	for k, v := range reflectionColors {
+		c := imgui.Vec4{float32(v.R) / 255.0, float32(v.G) / 255.0, float32(v.B) / 255.0, float32(v.A) / 255.0}
+		cols.reflectionColors[k] = c
+	}
+
 	// we deferred setting of some colours. set them now.
 	cols.CapturedScreenTitle = cols.TitleBgActive
 	cols.CapturedScreenBorder = cols.TitleBgActive
@@ -281,6 +293,8 @@ func newColors() *imguiColors {
 	cols.CollisionBit = imgui.CurrentStyle().Color(imgui.StyleColorButton)
 	cols.RegisterBit = imgui.CurrentStyle().Color(imgui.StyleColorButton)
 	cols.SaveKeyBit = imgui.CurrentStyle().Color(imgui.StyleColorButton)
+	cols.TimelineWSYNC = cols.reflectionColors[reflection.WSYNC]
+	cols.TimelineCoProc = cols.reflectionColors[reflection.CoprocessorActive]
 
 	// colors that are used in context where an imgui.PackedColor is required
 	cols.tiaPointer = imgui.PackedColorFromVec4(cols.TIApointer)
@@ -289,18 +303,13 @@ func newColors() *imguiColors {
 	cols.saveKeyBit = imgui.PackedColorFromVec4(cols.SaveKeyBit)
 	cols.saveKeyBitPointer = imgui.PackedColorFromVec4(cols.SaveKeyBitPointer)
 	cols.timelineMarkers = imgui.PackedColorFromVec4(cols.TimelineMarkers)
-	cols.timelineScanlinePlot = imgui.PackedColorFromVec4(cols.TimelineScanlinePlot)
+	cols.timelineScanlines = imgui.PackedColorFromVec4(cols.TimelineScanlines)
+	cols.timelineWSYNC = imgui.PackedColorFromVec4(cols.TimelineWSYNC)
+	cols.timelineCoProc = imgui.PackedColorFromVec4(cols.TimelineCoProc)
 	cols.timelineRewindRange = imgui.PackedColorFromVec4(cols.TimelineRewindRange)
 	cols.timelineCurrentPointer = imgui.PackedColorFromVec4(cols.TimelineCurrentPointer)
 	cols.timelineCmpPointer = imgui.PackedColorFromVec4(cols.TimelineCmpPointer)
 	cols.timelineLeftPlayer = imgui.PackedColorFromVec4(cols.TimelineLeftPlayer)
-
-	// reflection colors in imgui.Vec4 and imgui.PackedColor formats
-	cols.reflectionColors = make(map[reflection.ReflectedInfo]imgui.Vec4)
-	for k, v := range reflectionColors {
-		c := imgui.Vec4{float32(v.R) / 255.0, float32(v.G) / 255.0, float32(v.B) / 255.0, float32(v.A) / 255.0}
-		cols.reflectionColors[k] = c
-	}
 
 	// convert 2600 colours to format usable by imgui
 

@@ -170,6 +170,10 @@ const (
 // !!TODO: think about how we're sending VSYNC to the pixel renderer
 const AbsoluteMaxScanlines = 313
 
+// The absolute number of color clock allowed by the TV regardless of
+// specification.
+const AbsoluteMaxClks = AbsoluteMaxScanlines * ClksScanline
+
 // The number of scanlines at which to flip between the NTSC and PAL
 // specifications. If the number of scanlines generated is greater than this
 // value then the PAL specification should be assumed.

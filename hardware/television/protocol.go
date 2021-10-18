@@ -153,7 +153,7 @@ type AudioMixer interface {
 }
 
 // MaxSignalHistory is the absolute maximum number of entries in a signal history for an entire frame.
-const MaxSignalHistory = specification.ClksScanline * specification.AbsoluteMaxScanlines
+const MaxSignalHistory = specification.AbsoluteMaxClks
 
 // VCSReturnChannel is used to send information from the TV back to the parent
 // console. Named because I think of it as being similar to the Audio Return

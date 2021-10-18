@@ -22,17 +22,41 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 )
 
+// TimelineCounts is returned by a TimelineCounter implementation. The value
+// should be updated every *video* cycle. Users can divide by three to get the
+// color-clock count.
+type TimelineCounts struct {
+	WSYNC  int
+	CoProc int
+}
+
+// TimelineCounter implementations provide system information for the
+// timeline that would otherwise be awkward to collate.
+//
+// Implementations should reset counts in time for the next call to
+// TimelineCounts().
+type TimelineCounter interface {
+	TimelineCounts() TimelineCounts
+}
+
 func (r *Rewind) addTimelineEntry(frameInfo television.FrameInfo) {
 	// do not alter the timeline information if we're in the rewinding state
 	if r.emulationState != emulation.Rewinding {
+		cts := TimelineCounts{}
+		if r.ctr != nil {
+			cts = r.ctr.TimelineCounts()
+		}
+
 		r.timeline.FrameNum = append(r.timeline.FrameNum, frameInfo.FrameNum)
 		r.timeline.TotalScanlines = append(r.timeline.TotalScanlines, frameInfo.TotalScanlines)
+		r.timeline.Counts = append(r.timeline.Counts, cts)
 		r.timeline.LeftPlayerInput = append(r.timeline.LeftPlayerInput, r.vcs.RIOT.Ports.LeftPlayer.IsActive())
 		r.timeline.RightPlayerInput = append(r.timeline.RightPlayerInput, r.vcs.RIOT.Ports.RightPlayer.IsActive())
 		r.timeline.PanelInput = append(r.timeline.PanelInput, r.vcs.RIOT.Ports.Panel.IsActive())
 		if len(r.timeline.TotalScanlines) > timelineLength {
 			r.timeline.FrameNum = r.timeline.FrameNum[1:]
 			r.timeline.TotalScanlines = r.timeline.TotalScanlines[1:]
+			r.timeline.Counts = r.timeline.Counts[1:]
 			r.timeline.LeftPlayerInput = r.timeline.LeftPlayerInput[1:]
 			r.timeline.RightPlayerInput = r.timeline.RightPlayerInput[1:]
 			r.timeline.PanelInput = r.timeline.PanelInput[1:]
@@ -47,9 +71,12 @@ func (r *Rewind) addTimelineEntry(frameInfo television.FrameInfo) {
 type Timeline struct {
 	FrameNum         []int
 	TotalScanlines   []int
+	Counts           []TimelineCounts
 	LeftPlayerInput  []bool
 	RightPlayerInput []bool
 	PanelInput       []bool
+
+	// will be updated if reflection has been attached
 
 	// These two "available" fields state the earliest and latest frames that
 	// are available in the rewind history.
@@ -65,6 +92,7 @@ func newTimeline() Timeline {
 	return Timeline{
 		FrameNum:         make([]int, 0),
 		TotalScanlines:   make([]int, 0),
+		Counts:           make([]TimelineCounts, 0),
 		LeftPlayerInput:  make([]bool, 0),
 		RightPlayerInput: make([]bool, 0),
 		PanelInput:       make([]bool, 0),
@@ -81,11 +109,7 @@ func (tl *Timeline) checkIntegrity() error {
 	}
 
 	if tl.AvailableStart < tl.FrameNum[0] {
-		return curated.Errorf("earliest rewind state not in timeline")
-	}
-
-	if tl.AvailableEnd > tl.FrameNum[len(tl.FrameNum)-1] {
-		return curated.Errorf("most recent rewind state not in timeline")
+		return curated.Errorf("earliest rewind state not in timeline (%d < %d)", tl.AvailableStart, tl.FrameNum[0])
 	}
 
 	if len(tl.FrameNum) > 1 {
@@ -106,6 +130,7 @@ func (tl *Timeline) splice(frameNumber int) {
 		if frameNumber == tl.FrameNum[i] {
 			tl.FrameNum = tl.FrameNum[:i]
 			tl.TotalScanlines = tl.TotalScanlines[:i]
+			tl.Counts = tl.Counts[:i]
 			tl.LeftPlayerInput = tl.LeftPlayerInput[:i]
 			tl.RightPlayerInput = tl.RightPlayerInput[:i]
 			tl.PanelInput = tl.PanelInput[:i]
@@ -114,7 +139,7 @@ func (tl *Timeline) splice(frameNumber int) {
 	}
 }
 
-func (r Rewind) GetTimeline() Timeline {
+func (r *Rewind) GetTimeline() Timeline {
 	if err := r.timeline.checkIntegrity(); err != nil {
 		panic(err)
 	}
