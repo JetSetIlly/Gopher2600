@@ -105,7 +105,7 @@ func (win *winTimeline) drawTimeline() {
 	var offset int
 
 	// the width that can be seen in the window at any one time
-	availableWidth := win.img.plt.displaySize()[0] * 0.40
+	availableWidth := win.img.plt.displaySize()[0] * 0.80
 
 	imgui.BeginGroup()
 
@@ -204,13 +204,24 @@ func (win *winTimeline) drawTimeline() {
 		x -= pos.X
 		fr := int(x/traceWidth) + offset
 
-		if fr != win.img.lz.TV.Frame {
-			s := win.img.lz.Rewind.Timeline.AvailableStart
-			e := win.img.lz.Rewind.Timeline.AvailableEnd
-			if fr >= s && fr <= e {
-				win.img.dbg.PushRewind(fr, fr == e)
+		s := win.img.lz.Rewind.Timeline.AvailableStart
+		e := win.img.lz.Rewind.Timeline.AvailableEnd
+
+		// making sure we only call PushRewind() when we need to. also,
+		// allowing mouse to travel beyond the rewind boundaries (and without
+		// calling PushRewind() too often)
+		if fr >= e {
+			if win.img.lz.TV.Frame < e {
+				win.img.dbg.PushRewind(fr, true)
 			}
+		} else if fr <= s {
+			if win.img.lz.TV.Frame > s {
+				win.img.dbg.PushRewind(fr, false)
+			}
+		} else if fr != win.img.lz.TV.Frame {
+			win.img.dbg.PushRewind(fr, fr == e)
 		}
+
 	} else {
 		win.rewindingActive = false
 	}
