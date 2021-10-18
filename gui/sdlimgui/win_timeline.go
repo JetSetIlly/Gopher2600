@@ -109,16 +109,26 @@ func (win *winTimeline) drawTimeline() {
 
 	var traceSize imgui.Vec2
 	var pos imgui.Vec2
-	var offset int
+	var traceOffset int
+	var rewindOffset int
 
 	// the width that can be seen in the window at any one time
 	availableWidth := win.img.plt.displaySize()[0] * 0.80
 
 	imgui.BeginGroup()
 
+	// traceOffset adjusts the placement of the traces in the window
+	//
 	// check if end of timeline overflows the available width
 	if len(timeline.FrameNum)*traceWidth >= int(availableWidth) {
-		offset = len(timeline.FrameNum) - int(availableWidth/traceWidth)
+		traceOffset = len(timeline.FrameNum) - int(availableWidth/traceWidth)
+	}
+
+	// similar to traceOffset, rewindOffset adjusts the placement of the rewind
+	// range and frame indicators (current, comparison)
+	rewindOffset = traceOffset
+	if len(timeline.FrameNum) > 0 {
+		rewindOffset += timeline.FrameNum[0]
 	}
 
 	// scanline trace
@@ -127,8 +137,8 @@ func (win *winTimeline) drawTimeline() {
 	pos = imgui.CursorScreenPos()
 
 	x := pos.X
-	for i := range timeline.FrameNum[offset:] {
-		i += offset
+	for i := range timeline.FrameNum[traceOffset:] {
+		i += traceOffset
 
 		// plotting from bottom
 		y := pos.Y + traceSize.Y
@@ -187,8 +197,8 @@ func (win *winTimeline) drawTimeline() {
 	pos = imgui.CursorScreenPos()
 	x = pos.X
 	y := pos.Y
-	for i := range timeline.FrameNum[offset:] {
-		i += offset
+	for i := range timeline.FrameNum[traceOffset:] {
+		i += traceOffset
 
 		if timeline.LeftPlayerInput[i] {
 			dl.AddRectFilled(imgui.Vec2{X: x, Y: y},
@@ -205,8 +215,8 @@ func (win *winTimeline) drawTimeline() {
 	imgui.BeginChildV("##timelineindicators", traceSize, false, imgui.WindowFlagsNoMove)
 	pos = imgui.CursorScreenPos()
 
-	dl.AddRectFilled(imgui.Vec2{X: pos.X + float32((timeline.AvailableStart-offset)*traceWidth), Y: pos.Y},
-		imgui.Vec2{X: pos.X + float32((timeline.AvailableEnd-offset)*traceWidth), Y: pos.Y + traceSize.Y},
+	dl.AddRectFilled(imgui.Vec2{X: pos.X + float32((timeline.AvailableStart-rewindOffset)*traceWidth), Y: pos.Y},
+		imgui.Vec2{X: pos.X + float32((timeline.AvailableEnd-rewindOffset)*traceWidth), Y: pos.Y + traceSize.Y},
 		win.img.cols.timelineRewindRange)
 
 	imgui.EndChild()
@@ -218,7 +228,7 @@ func (win *winTimeline) drawTimeline() {
 
 	// comparison frame indicator
 	if win.img.lz.Rewind.Comparison != nil {
-		fr := win.img.lz.Rewind.Comparison.TV.GetState(signal.ReqFramenum) - offset
+		fr := win.img.lz.Rewind.Comparison.TV.GetState(signal.ReqFramenum) - rewindOffset
 
 		if fr < 0 {
 			// draw triangle indicating that the comparison frame is not
@@ -233,7 +243,7 @@ func (win *winTimeline) drawTimeline() {
 	}
 
 	// current frame indicator
-	fr := win.img.lz.TV.Frame - offset
+	fr := win.img.lz.TV.Frame - rewindOffset
 	dl.AddCircleFilled(imgui.Vec2{X: pos.X + float32(fr*traceWidth), Y: pos.Y + frameIndicatorRadius}, frameIndicatorRadius, win.img.cols.timelineCurrentPointer)
 
 	imgui.EndChild()
@@ -245,7 +255,7 @@ func (win *winTimeline) drawTimeline() {
 		win.rewindingActive = true
 		x := imgui.MousePos().X
 		x -= pos.X
-		fr := int(x/traceWidth) + offset
+		fr := int(x/traceWidth) + rewindOffset
 
 		s := win.img.lz.Rewind.Timeline.AvailableStart
 		e := win.img.lz.Rewind.Timeline.AvailableEnd
