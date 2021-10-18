@@ -100,6 +100,7 @@ func (win *winTimeline) drawRewindSummary() {
 func (win *winTimeline) drawTimeline() {
 	const traceWidth = 2
 	const traceHeight = 1
+	const inputHeight = 2
 	const rangeHeight = 5
 	const frameIndicatorRadius = 4
 
@@ -135,24 +136,44 @@ func (win *winTimeline) drawTimeline() {
 		// scale TotalScanlines value so that it covers the entire height of traceSize
 		y -= float32(timeline.TotalScanlines[i]) * traceSize.Y / specification.AbsoluteMaxScanlines
 
-		rmin := imgui.Vec2{X: x, Y: y}
-		rmax := rmin.Plus(imgui.Vec2{X: traceWidth, Y: traceHeight})
-		dl.AddRectFilled(rmin, rmax, win.img.cols.timelineScanlines)
+		dl.AddRectFilled(imgui.Vec2{X: x, Y: y},
+			imgui.Vec2{X: x + traceWidth, Y: y + traceHeight},
+			win.img.cols.timelineScanlines)
 
 		// WSYNC
 		y = pos.Y + traceSize.Y
 		y -= float32(timeline.Counts[i].WSYNC) * traceSize.Y / specification.AbsoluteMaxClks
-		rmin = imgui.Vec2{X: x, Y: y}
-		rmax = rmin.Plus(imgui.Vec2{X: traceWidth, Y: traceHeight})
-		dl.AddRectFilled(rmin, rmax, win.img.cols.timelineWSYNC)
+
+		// add jitter to trace to indicate changes in value through exaggeration
+		if i > 0 {
+			if timeline.Counts[i].WSYNC < timeline.Counts[i-1].WSYNC {
+				y++
+			} else if timeline.Counts[i].WSYNC > timeline.Counts[i-1].WSYNC {
+				y--
+			}
+		}
+
+		dl.AddRectFilled(imgui.Vec2{X: x, Y: y},
+			imgui.Vec2{X: x + traceWidth, Y: y + traceHeight},
+			win.img.cols.timelineWSYNC)
 
 		// CoProc
 		if win.img.lz.CoProc.HasCoProcBus {
 			y = pos.Y
 			y += float32(timeline.Counts[i].CoProc) * traceSize.Y / specification.AbsoluteMaxClks
-			rmin = imgui.Vec2{X: x, Y: y}
-			rmax = rmin.Plus(imgui.Vec2{X: traceWidth, Y: traceHeight})
-			dl.AddRectFilled(rmin, rmax, win.img.cols.timelineCoProc)
+
+			// add jitter to trace to indicate changes in value through exaggeration
+			if i > 0 {
+				if timeline.Counts[i].CoProc < timeline.Counts[i-1].CoProc {
+					y++
+				} else if timeline.Counts[i].CoProc > timeline.Counts[i-1].CoProc {
+					y--
+				}
+			}
+
+			dl.AddRectFilled(imgui.Vec2{X: x, Y: y},
+				imgui.Vec2{X: x + traceWidth, Y: y + traceHeight},
+				win.img.cols.timelineCoProc)
 		}
 
 		x += traceWidth
@@ -161,7 +182,7 @@ func (win *winTimeline) drawTimeline() {
 
 	// input trace
 	// TODO: right player and panel input
-	traceSize = imgui.Vec2{X: availableWidth, Y: traceHeight}
+	traceSize = imgui.Vec2{X: availableWidth, Y: inputHeight}
 	imgui.BeginChildV("##timelineinputtrace", traceSize, false, imgui.WindowFlagsNoMove)
 	pos = imgui.CursorScreenPos()
 	x = pos.X
@@ -170,9 +191,9 @@ func (win *winTimeline) drawTimeline() {
 		i += offset
 
 		if timeline.LeftPlayerInput[i] {
-			rmin := imgui.Vec2{X: x, Y: y}
-			rmax := rmin.Plus(imgui.Vec2{X: traceWidth, Y: traceHeight})
-			dl.AddRectFilled(rmin, rmax, win.img.cols.timelineLeftPlayer)
+			dl.AddRectFilled(imgui.Vec2{X: x, Y: y},
+				imgui.Vec2{X: x + traceWidth, Y: y + inputHeight},
+				win.img.cols.timelineLeftPlayer)
 		}
 
 		x += traceWidth
