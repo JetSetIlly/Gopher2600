@@ -459,12 +459,6 @@ func (dbg *Debugger) step(inputter terminal.Input, catchup bool) error {
 		return nil
 	}
 
-	// update rewind state if the last CPU instruction took place during a new
-	// frame event. but not if we're in catchup mode
-	if !catchup {
-		dbg.Rewind.RecordFrameState()
-	}
-
 	if stepErr != nil {
 		// exit input loop if error is a plain error
 		if !curated.IsAny(stepErr) {
@@ -480,11 +474,19 @@ func (dbg *Debugger) step(inputter terminal.Input, catchup bool) error {
 			dbg.printLine(terminal.StyleError, "CPU halted mid-instruction. next step may be inaccurate.")
 			dbg.vcs.CPU.Interrupted = true
 		}
-	} else if dbg.stepQuantum != QuantumVideo {
-		if dbg.commandOnStep != nil {
-			err := dbg.processTokensList(dbg.commandOnStep)
-			if err != nil {
-				dbg.printLine(terminal.StyleError, "%s", err)
+	} else {
+		// update rewind state if the last CPU instruction took place during a new
+		// frame event. but not if we're in catchup mode
+		if !catchup {
+			dbg.Rewind.RecordFrameState()
+		}
+
+		if dbg.stepQuantum != QuantumVideo {
+			if dbg.commandOnStep != nil {
+				err := dbg.processTokensList(dbg.commandOnStep)
+				if err != nil {
+					dbg.printLine(terminal.StyleError, "%s", err)
+				}
 			}
 		}
 	}

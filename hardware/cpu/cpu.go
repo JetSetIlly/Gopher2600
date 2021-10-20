@@ -301,7 +301,7 @@ func (mc *CPU) read16Bit(address uint16) (uint16, error) {
 type read8BitPCeffect int
 
 const (
-	nothing read8BitPCeffect = iota
+	brk read8BitPCeffect = iota
 	newOpcode
 	loNibble
 	hiNibble
@@ -331,7 +331,15 @@ func (mc *CPU) read8BitPC(effect read8BitPCeffect) error {
 	mc.LastResult.ByteCount++
 
 	switch effect {
-	case nothing:
+	case brk:
+		// the BRK command causes the PC to advance by two but that case we
+		// don't want to record that the additional byte has been read
+		//
+		// an alternative stategry would be to define the BRK command to have a
+		// different addressing mode - rather than IMMEDIATE, a new mode called
+		// IMMEDIATE_BRK could be defined. routines that check for execution
+		// correctness would need to be made aware of the new addressing mode
+		mc.LastResult.ByteCount--
 
 	case newOpcode:
 		// look up definition
@@ -463,7 +471,7 @@ func (mc *CPU) branch(flag bool, address uint16) error {
 
 		// check to see whether branching has crossed a page
 		if mc.LastResult.PageFault {
-			// phantom read
+			// phantom reed
 			// +1 cycle
 			_, err := mc.read8Bit(mc.PC.Address())
 			if err != nil {
@@ -612,15 +620,12 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 		if defn.Operator == "BRK" {
 			// BRK is unusual in that it increases the PC by two bytes despite
-			// being an implied addressing mode.
+			// being an implied addressing instruction
 			// +1 cycle
-			err = mc.read8BitPC(nothing)
+			err = mc.read8BitPC(brk)
 			if err != nil {
 				return err
 			}
-
-			// but we don't LastResult to show this
-			mc.LastResult.ByteCount--
 		} else {
 			// phantom read
 			// +1 cycle

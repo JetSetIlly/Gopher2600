@@ -302,10 +302,11 @@ func (r *Rewind) GetCurrentState() *State {
 // whether a new frame has been triggered since the last call. Delaying a call
 // to this function may result in sub-optimal results.
 //
-// Do not call this function whenthe machine is mid CPU instruction.
+// Does nothing if called when the machine is mid CPU instruction.
 func (r *Rewind) RecordFrameState() {
 	if !r.vcs.CPU.LastResult.Final && !r.vcs.CPU.HasReset() {
-		panic("RecordFrameState() attempted mid CPU instruction")
+		logger.Logf("rewind", "RecordFrameState() attempted mid CPU instruction")
+		return
 	}
 
 	r.boundaryNextFrame = r.boundaryNextFrame || r.vcs.Mem.Cart.RewindBoundary()
@@ -339,10 +340,11 @@ func (r *Rewind) RecordFrameState() {
 // will do nothing if the last call to ResolveNewFrame() resulted in a snapshot
 // being taken.
 //
-// Do not call this function whenthe machine is mid CPU instruction.
+// Does nothing if called when the machine is mid CPU instruction.
 func (r *Rewind) RecordExecutionState() {
 	if !r.vcs.CPU.LastResult.Final && !r.vcs.CPU.HasReset() {
-		panic("RecordExecutionState() attempted mid CPU instruction")
+		logger.Logf("rewind", "RecordExecutionState() attempted mid CPU instruction")
+		return
 	}
 
 	if !r.justAddedLevelFrame {

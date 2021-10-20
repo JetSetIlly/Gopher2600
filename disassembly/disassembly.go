@@ -370,7 +370,7 @@ func (dsm *Disassembly) FormatResult(bank mapper.BankInfo, result execution.Resu
 		case 0:
 			panic("this makes no sense. we must have read at least one byte to know how many bytes to expect")
 		default:
-			panic("we should not be able to read more bytes than the expected number")
+			panic("we should not be able to read more bytes than the expected number (expected 3)")
 		}
 	case 2:
 		switch result.ByteCount {
@@ -384,7 +384,7 @@ func (dsm *Disassembly) FormatResult(bank mapper.BankInfo, result execution.Resu
 		case 0:
 			panic("this makes no sense. we must have read at least one byte to know how many bytes to expect")
 		default:
-			panic("we should not be able to read more bytes than the expected number")
+			panic("we should not be able to read more bytes than the expected number (expected 2)")
 		}
 	case 1:
 		switch result.ByteCount {
@@ -393,7 +393,7 @@ func (dsm *Disassembly) FormatResult(bank mapper.BankInfo, result execution.Resu
 		case 0:
 			panic("this makes no sense. we must have read at least one byte to know how many bytes to expect")
 		default:
-			panic("we shoud not be able to read more bytes than the expected number")
+			panic("we should not be able to read more bytes than the expected number (expected 1)")
 		}
 	case 0:
 		panic("instructions of zero bytes is not possible")
