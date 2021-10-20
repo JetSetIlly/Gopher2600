@@ -146,6 +146,15 @@ func (win *winTimeline) drawTimeline() {
 		// scale TotalScanlines value so that it covers the entire height of traceSize
 		y -= float32(timeline.TotalScanlines[i]) * traceSize.Y / specification.AbsoluteMaxScanlines
 
+		// add jitter to trace to indicate changes in value through exaggeration
+		if i > 0 {
+			if timeline.TotalScanlines[i] < timeline.TotalScanlines[i-1] {
+				y++
+			} else if timeline.TotalScanlines[i] > timeline.TotalScanlines[i-1] {
+				y--
+			}
+		}
+
 		dl.AddRectFilled(imgui.Vec2{X: x, Y: y},
 			imgui.Vec2{X: x + traceWidth, Y: y + traceHeight},
 			win.img.cols.timelineScanlines)
