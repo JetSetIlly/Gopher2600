@@ -21,14 +21,20 @@ import (
 
 	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/disassembly/coprocessor"
+	"github.com/jetsetilly/gopher2600/emulation"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/harmony/arm7tdmi"
 	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/resources/unique"
 )
 
-const winCoProcLastExecutionID = "Last Execution"
+// in this case of the coprocessor disassmebly window the actual window title
+// is prepended with the actual coprocessor ID (eg. ARM7TDMI). The ID constant
+// below is used in the normal way however.
 
-type winCoProcLastExecution struct {
+const winCoProcDisasmID = "Coprocessor Disassembly"
+const winCoProcDisasmMenu = "Disassembly"
+
+type winCoProcDisasm struct {
 	img  *SdlImgui
 	open bool
 
@@ -36,93 +42,128 @@ type winCoProcLastExecution struct {
 	showLastExecution bool
 }
 
-func newWinCoProcLastExecution(img *SdlImgui) (window, error) {
-	win := &winCoProcLastExecution{
+func newWinCoProcDisasm(img *SdlImgui) (window, error) {
+	win := &winCoProcDisasm{
 		img:               img,
 		showLastExecution: true,
 	}
 	return win, nil
 }
 
-func (win *winCoProcLastExecution) init() {
+func (win *winCoProcDisasm) init() {
 }
 
-func (win *winCoProcLastExecution) id() string {
-	return winCoProcLastExecutionID
+func (win *winCoProcDisasm) id() string {
+	return winCoProcDisasmID
 }
 
-func (win *winCoProcLastExecution) isOpen() bool {
+func (win *winCoProcDisasm) isOpen() bool {
 	return win.open
 }
 
-func (win *winCoProcLastExecution) setOpen(open bool) {
+func (win *winCoProcDisasm) setOpen(open bool) {
 	win.open = open
 }
 
-func (win *winCoProcLastExecution) draw() {
+func (win *winCoProcDisasm) draw() {
 	if !win.open {
 		return
 	}
 
-	if !win.img.lz.CoProc.HasCoProcBus || win.img.dbg.Disasm.Coprocessor == nil {
+	if !win.img.lz.CoProc.HasCoProcBus {
 		return
 	}
 
 	imgui.SetNextWindowPosV(imgui.Vec2{465, 285}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
-	imgui.SetNextWindowSizeV(imgui.Vec2{353, 466}, imgui.ConditionFirstUseEver)
+	imgui.SetNextWindowSizeV(imgui.Vec2{507, 526}, imgui.ConditionFirstUseEver)
 
-	title := fmt.Sprintf("%s %s", win.img.lz.CoProc.ID, winCoProcLastExecutionID)
-	imgui.BeginV(title, &win.open, 0)
+	title := fmt.Sprintf("%s %s", win.img.lz.CoProc.ID, winCoProcDisasmID)
+	imgui.BeginV(title, &win.open, imgui.WindowFlagsNone)
 	defer imgui.End()
 
-	var itr *coprocessor.Iterate
-	if win.showLastExecution {
-		itr = win.img.dbg.Disasm.Coprocessor.NewIteration(coprocessor.LastExecution)
-	} else {
-		itr = win.img.dbg.Disasm.Coprocessor.NewIteration(coprocessor.Disassembly)
-	}
-
-	if itr.Count != 0 {
-		imguiLabel("Last execution at:")
-		imgui.SameLineV(0, 15)
-		imguiLabel("Frame:")
-		imguiLabel(fmt.Sprintf("%-4d", itr.Details.Frame))
-		imgui.SameLineV(0, 15)
-		imguiLabel("Scanline:")
-		imguiLabel(fmt.Sprintf("%-3d", itr.Details.Scanline))
-		imgui.SameLineV(0, 15)
-		imguiLabel("Clock:")
-		imguiLabel(fmt.Sprintf("%-3d", itr.Details.Clock))
-
-		imgui.SameLineV(0, 15)
-		if !(itr.Details.Frame == win.img.lz.TV.Frame &&
-			itr.Details.Scanline == win.img.lz.TV.Scanline &&
-			itr.Details.Clock == win.img.lz.TV.Clock) {
-			if imgui.Button("Goto") {
-				win.img.term.pushCommand(fmt.Sprintf("GOTO %d %d %d", itr.Details.Clock, itr.Details.Scanline, itr.Details.Frame))
+	// show enable button only if coprocessor disassembly is disabled
+	if !win.img.dbg.Disasm.Coprocessor.IsEnabled() {
+		if imgui.Button("Enable disassembly") {
+			win.img.dbg.Disasm.Coprocessor.Enable(true)
+			if win.img.emulation.State() != emulation.Running {
+				// rerun the last two frames in order to gather as much disasm
+				// information as possible.
+				win.img.dbg.PushRerunLastNFrames(2)
 			}
-		} else {
-			imgui.InvisibleButton("Goto", imgui.Vec2{X: 10, Y: imgui.FrameHeight()})
 		}
-
-		imguiSeparator()
+	} else {
+		if imgui.Button("Disable disassembly") {
+			win.img.dbg.Disasm.Coprocessor.Enable(false)
+		}
 	}
 
-	win.drawDisasm(itr)
+	imguiSeparator()
+
+	imgui.BeginTabBar("")
+	if imgui.BeginTabItem("Disassembly") {
+		itr := win.img.dbg.Disasm.Coprocessor.NewIteration(coprocessor.Disassembly)
+		win.drawDisasm(itr)
+		imgui.EndTabItem()
+	}
+	if imgui.BeginTabItem("Last Execution") {
+		itr := win.img.dbg.Disasm.Coprocessor.NewIteration(coprocessor.LastExecution)
+		win.drawLastExecution(itr)
+		imgui.EndTabItem()
+	}
+	imgui.EndTabBar()
+}
+
+func (win *winCoProcDisasm) drawDisasm(itr *coprocessor.Iterate) {
+	if itr.Count == 0 {
+		imgui.Spacing()
+		imgui.Text("Coprocessor has not yet executed.")
+		imgui.Spacing()
+		return
+	}
+
+	if !win.img.dbg.Disasm.Coprocessor.IsEnabled() {
+		imgui.Spacing()
+		imgui.Text("Execution disassembly is disabled. Disassembly below may be")
+		imgui.Text("incomplete. Last disassembled execution was at: ")
+		imgui.Text(fmt.Sprintf("Frame: %-4d", itr.LastStart.Frame))
+		imgui.SameLine()
+		imgui.Text(fmt.Sprintf("Scanline: %-3d", itr.LastStart.Scanline))
+		imgui.SameLine()
+		imgui.Text(fmt.Sprintf("Clock: %-3d", itr.LastStart.Clock))
+		imgui.Spacing()
+	}
+
+	win.drawIteration(itr, false)
+}
+
+func (win *winCoProcDisasm) drawLastExecution(itr *coprocessor.Iterate) {
+	if itr.Count == 0 {
+		imgui.Spacing()
+		imgui.Text("Execution disassembly is disabled")
+		imgui.Spacing()
+		return
+	}
+
+	imgui.Spacing()
+	imgui.Text("Started at:")
+	imgui.SameLine()
+	imgui.Text(fmt.Sprintf("Frame: %-4d", itr.LastStart.Frame))
+	imgui.SameLine()
+	imgui.Text(fmt.Sprintf("Scanline: %-3d", itr.LastStart.Scanline))
+	imgui.SameLine()
+	imgui.Text(fmt.Sprintf("Clock: %-3d", itr.LastStart.Clock))
+	imgui.Spacing()
+
+	win.drawIteration(itr, true)
 
 	win.summaryHeight = imguiMeasureHeight(func() {
 		imguiSeparator()
 
-		if itr.Count == 0 {
-			imgui.Text("Coprocessor has not yet executed.")
-			return
-		}
-
-		if summary, ok := itr.Details.Summary.(arm7tdmi.DisasmSummary); ok {
+		if summary, ok := itr.Summary.(arm7tdmi.DisasmSummary); ok {
 			if summary.ImmediateMode {
 				imgui.Text("Execution ran in immediate mode. Cycle counting disabled")
 				imgui.Spacing()
-			} else if imgui.BeginTableV("cycles", 3, imgui.TableFlagsBordersOuter, imgui.Vec2{}, 0.0) {
+			} else if imgui.BeginTableV("cycles", 3, imgui.TableFlagsNone, imgui.Vec2{}, 0.0) {
 				imgui.TableNextRow()
 				imgui.TableNextColumn()
 				imgui.Text(fmt.Sprintf("N: %d", summary.N))
@@ -135,25 +176,16 @@ func (win *winCoProcLastExecution) draw() {
 		} else {
 			imgui.Text("cannot find a summary of execution")
 		}
-
-		imgui.Spacing()
-
-		if imgui.Button("Save CSV") {
-			win.save()
-		}
-		imguiTooltipSimple("CSV file separated by semi-colons")
-
-		imgui.SameLineV(0, 15)
-		if win.showLastExecution {
-			imgui.Checkbox("Showing last executed sequence", &win.showLastExecution)
-		} else {
-			imgui.Checkbox("Showing disassembled program", &win.showLastExecution)
-		}
 	})
 }
 
-func (win *winCoProcLastExecution) drawDisasm(itr *coprocessor.Iterate) {
-	height := imguiRemainingWinHeight() - win.summaryHeight
+func (win *winCoProcDisasm) drawIteration(itr *coprocessor.Iterate, adjustHeightForSummary bool) {
+	height := imguiRemainingWinHeight()
+
+	if adjustHeightForSummary {
+		height -= win.summaryHeight
+	}
+
 	imgui.BeginChildV("lastexecution", imgui.Vec2{X: 0, Y: height}, false, 0)
 	defer imgui.EndChild()
 
@@ -265,7 +297,7 @@ func (win *winCoProcLastExecution) drawDisasm(itr *coprocessor.Iterate) {
 	}
 }
 
-func (win *winCoProcLastExecution) save() {
+func (win *winCoProcDisasm) save() {
 	var itr *coprocessor.Iterate
 	var fn string
 	if win.showLastExecution {

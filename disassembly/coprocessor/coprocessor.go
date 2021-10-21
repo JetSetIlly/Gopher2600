@@ -25,81 +25,116 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 )
 
-// Coprocessor is used to handle the disassembly of instructions from an
+// CoProcessor is used to handle the disassembly of instructions from an
 // attached cartridge that contains a coprocessor.
-type Coprocessor struct {
+type CoProcessor struct {
 	crit sync.Mutex
 	vcs  *hardware.VCS
 
-	lastExecution        []mapper.CartCoProcDisasmEntry
-	lastExecutionDetails LastExecutionDetails
+	enabled bool
 
-	entries     map[string]mapper.CartCoProcDisasmEntry
-	entriesKeys []string
+	cart mapper.CartCoProcBus
+
+	disasm     map[string]mapper.CartCoProcDisasmEntry
+	disasmKeys []string // sorted keys into the disasm map
+
+	lastExecution        []mapper.CartCoProcDisasmEntry
+	lastExecutionSummary mapper.CartCoProcDisasmSummary
+
+	lastStart StartCoords
 }
 
-type LastExecutionDetails struct {
-	// values at beginning of execution
+// StartCoords of coprocessor execution.
+type StartCoords struct {
 	Frame    int
 	Scanline int
 	Clock    int
-
-	// values at end of execution
-	Summary mapper.CartCoProcDisasmSummary
 }
 
 // Add returns a new Coprocessor instance if cartridge implements the
 // coprocessor bus.
-func Add(vcs *hardware.VCS, cart *cartridge.Cartridge) *Coprocessor {
-	cpd := cart.GetCoProcBus()
-	if cpd == nil {
-		return nil
-	}
-
-	cop := &Coprocessor{
+func Add(vcs *hardware.VCS, cart *cartridge.Cartridge) *CoProcessor {
+	cop := &CoProcessor{
 		vcs:           vcs,
 		lastExecution: make([]mapper.CartCoProcDisasmEntry, 0, 1024),
 	}
-	cop.entries = make(map[string]mapper.CartCoProcDisasmEntry)
-	cop.entriesKeys = make([]string, 0, 1024)
-	cpd.SetDisassembler(cop)
+
+	cop.cart = cart.GetCoProcBus()
+	if cop.cart == nil {
+		return nil
+	}
+
+	cop.disasm = make(map[string]mapper.CartCoProcDisasmEntry)
+	cop.disasmKeys = make([]string, 0, 1024)
+
+	cop.Enable(false)
+
 	return cop
 }
 
-// Start implements the CartCoProcDisassembler interface.
-func (cop *Coprocessor) Start() {
+// IsEnabled returns true if coprocessor disassembly is currently active.
+func (cop *CoProcessor) IsEnabled() bool {
+	cop.crit.Lock()
+	defer cop.crit.Unlock()
+	return cop.enabled
+}
+
+// Enable or disable coprocessor disassembly. We retain the disassembly
+// (including last execution) already gathered but the LastExecution field is
+// cleared on disable. The general disassembly is maintained.
+func (cop *CoProcessor) Enable(enable bool) {
 	cop.crit.Lock()
 	defer cop.crit.Unlock()
 
-	cop.lastExecution = cop.lastExecution[:0]
+	cop.enabled = enable
+	if cop.enabled {
+		cop.cart.SetDisassembler(cop)
+	} else {
+		cop.cart.SetDisassembler(nil)
+		cop.lastExecution = cop.lastExecution[:0]
+	}
+}
 
-	// add one clock to frame/scanline/clock values. the Reset() function will
-	// have been called on the last CPU cycle of the instruction that triggers
-	// the coprocessor reset. the TV will not have moved onto the beginning of
-	// the next instruction yet so we must figure it out here
-	fn, sl, cl, _ := cop.vcs.TV.ReqAdjust(signal.AdjCPUCycle, 1, false)
-	cop.lastExecutionDetails.Frame = fn
-	cop.lastExecutionDetails.Scanline = sl
-	cop.lastExecutionDetails.Clock = cl
+// Start implements the CartCoProcDisassembler interface.
+func (cop *CoProcessor) Start() {
+	cop.crit.Lock()
+	defer cop.crit.Unlock()
+
+	if cop.enabled {
+		// add one clock to frame/scanline/clock values. the Reset() function will
+		// have been called on the last CPU cycle of the instruction that triggers
+		// the coprocessor reset. the TV will not have moved onto the beginning of
+		// the next instruction yet so we must figure it out here
+		fn, sl, cl, _ := cop.vcs.TV.ReqAdjust(signal.AdjCPUCycle, 1, false)
+		cop.lastStart.Frame = fn
+		cop.lastStart.Scanline = sl
+		cop.lastStart.Clock = cl
+	}
+
+	cop.lastExecution = cop.lastExecution[:0]
 }
 
 // Step implements the CartCoProcDisassembler interface.
-func (cop *Coprocessor) Step(entry mapper.CartCoProcDisasmEntry) {
+func (cop *CoProcessor) Step(entry mapper.CartCoProcDisasmEntry) {
 	cop.crit.Lock()
 	defer cop.crit.Unlock()
 	cop.lastExecution = append(cop.lastExecution, entry)
-
-	key := entry.Key()
-	if _, ok := cop.entries[key]; !ok {
-		cop.entriesKeys = append(cop.entriesKeys, key)
-		sort.Strings(cop.entriesKeys)
-	}
-	cop.entries[key] = entry
 }
 
 // End implements the CartCoProcDisassembler interface.
-func (cop *Coprocessor) End(summary mapper.CartCoProcDisasmSummary) {
+func (cop *CoProcessor) End(summary mapper.CartCoProcDisasmSummary) {
 	cop.crit.Lock()
 	defer cop.crit.Unlock()
-	cop.lastExecutionDetails.Summary = summary
+
+	cop.lastExecutionSummary = summary
+
+	for _, entry := range cop.lastExecution {
+		key := entry.Key()
+		if _, ok := cop.disasm[key]; !ok {
+			cop.disasmKeys = append(cop.disasmKeys, key)
+		}
+		cop.disasm[key] = entry
+	}
+
+	sort.Strings(cop.disasmKeys)
 }

@@ -25,7 +25,10 @@ type Iterate struct {
 	disasm []mapper.CartCoProcDisasmEntry
 
 	// information about the last execution (eg. screen coordinates)
-	Details LastExecutionDetails
+	Summary mapper.CartCoProcDisasmSummary
+
+	// the coordinates of the most recent execution in the disassembly
+	LastStart StartCoords
 
 	// number of entries in the iterations
 	Count int
@@ -43,7 +46,7 @@ const (
 
 // NewIteration is the preferred method if initialistation for the Iterate
 // type.
-func (cop *Coprocessor) NewIteration(iterationType IterationType) *Iterate {
+func (cop *CoProcessor) NewIteration(iterationType IterationType) *Iterate {
 	cop.crit.Lock()
 	defer cop.crit.Unlock()
 
@@ -53,13 +56,14 @@ func (cop *Coprocessor) NewIteration(iterationType IterationType) *Iterate {
 		itr.disasm = make([]mapper.CartCoProcDisasmEntry, len(cop.lastExecution))
 		copy(itr.disasm, cop.lastExecution)
 	} else if iterationType == Disassembly {
-		itr.disasm = make([]mapper.CartCoProcDisasmEntry, 0, len(cop.entries))
-		for _, k := range cop.entriesKeys {
-			itr.disasm = append(itr.disasm, cop.entries[k])
+		itr.disasm = make([]mapper.CartCoProcDisasmEntry, 0, len(cop.disasm))
+		for _, k := range cop.disasmKeys {
+			itr.disasm = append(itr.disasm, cop.disasm[k])
 		}
 	}
 	itr.Count = len(itr.disasm)
-	itr.Details = cop.lastExecutionDetails
+	itr.Summary = cop.lastExecutionSummary
+	itr.LastStart = cop.lastStart
 
 	return itr
 }

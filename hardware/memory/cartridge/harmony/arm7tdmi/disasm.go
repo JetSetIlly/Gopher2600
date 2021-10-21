@@ -58,13 +58,14 @@ func (e DisasmEntry) String() string {
 
 // DisasmSummary implements the CartCoProcDisasmSummary interface.
 type DisasmSummary struct {
-	N int
-	I int
-	S int
-
 	// whether this particular execution was run in immediate mode (ie. no
 	// cycle counting)
 	ImmediateMode bool
+
+	// count of N, I and S cycles. will be zero if ImmediateMode is true.
+	N int
+	I int
+	S int
 }
 
 func (s DisasmSummary) String() string {

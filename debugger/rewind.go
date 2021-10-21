@@ -21,6 +21,7 @@ package debugger
 import (
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/emulation"
+	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 )
 
 // PushRewind is a special case of PushRawEvent(). Useful instad of calling
@@ -97,6 +98,64 @@ func (dbg *Debugger) PushGoto(clock int, scanline int, frame int) bool {
 		// remembering that we must do it in the debugger goroutine)
 		dbg.setState(emulation.Rewinding)
 
+		dbg.unwindLoop(doRewind)
+	})
+
+	return true
+}
+
+// PushGotoCoords is a special case of PushRawEvent().
+//
+// Returns false if the rewind hasn't been pushed. The caller may try again.
+//
+// To be used from the GUI thread.
+func (dbg *Debugger) PushRerunLastNFrames(frames int) bool {
+	if dbg.State() == emulation.Rewinding {
+		return false
+	}
+
+	// the disadvantage of RerunLastNFrames() is that it will always land on a
+	// CPU instruction boundary (this is because we must unwind the existing
+	// input loop before calling the rewind function)
+	//
+	// if we're in between instruction boundaries therefore we need to push a
+	// GotoCoords() request. get the current coordinates now
+	var frame int
+	var scanline int
+	var clock int
+	correctCoords := !dbg.lastResult.Result.Final
+	if correctCoords {
+		frame = dbg.vcs.TV.GetState(signal.ReqFramenum)
+		scanline = dbg.vcs.TV.GetState(signal.ReqScanline)
+		clock = dbg.vcs.TV.GetState(signal.ReqClock)
+	}
+
+	// the function to push to the debugger/emulation routine
+	doRewind := func() error {
+		err := dbg.Rewind.RerunLastNFrames(frames)
+		if err != nil {
+			return curated.Errorf("push rerun last N Frame: %v", err)
+		}
+
+		if correctCoords {
+			err = dbg.Rewind.GotoCoords(frame, scanline, clock)
+			if err != nil {
+				return curated.Errorf("push rerun last N Frame: %v", err)
+			}
+		}
+
+		return nil
+	}
+
+	// how we push the doRewind() function depends on what kind of inputloop we
+	// are currently in
+	dbg.PushRawEventReturn(func() {
+		// upate catchupQuantum before starting rewind process
+		dbg.catchupQuantum = QuantumVideo
+
+		// set state to emulation.Rewinding as soon as possible (but
+		// remembering that we must do it in the debugger goroutine)
+		dbg.setState(emulation.Rewinding)
 		dbg.unwindLoop(doRewind)
 	})
 

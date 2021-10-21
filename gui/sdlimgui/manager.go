@@ -116,7 +116,7 @@ var windowDefs = [...]windowDef{
 	{create: newWinCartStatic, menu: menuEntry{group: menuCart, restrictBus: menuRestrictStatic}},
 
 	// coprocessor windows
-	{create: newWinCoProcLastExecution, menu: menuEntry{group: menuCoProc, restrictBus: menuRestrictCoProc}},
+	{create: newWinCoProcDisasm, menu: menuEntry{group: menuCoProc, restrictBus: menuRestrictCoProc, label: winCoProcDisasmMenu}},
 
 	// plusrom windows
 	{create: newWinPlusROMNetwork, menu: menuEntry{group: menuPlusROM, label: winPlusROMNetworkMenu}},

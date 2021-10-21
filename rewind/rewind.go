@@ -645,27 +645,27 @@ func (r *Rewind) RunFromState(from *State, to *State, poke PokeHook) error {
 	return nil
 }
 
-// // RerunLastNFrames runs the emulation from the a point N frames in the past to
-// // the current state.
-// func (r *Rewind) RerunLastNFrames(frames int) error {
-// 	to := r.GetCurrentState()
-// 	ff := to.TV.GetState(signal.ReqFramenum) - frames
-// 	if ff < 0 {
-// 		ff = 0
-// 	}
-// 	idx, _, _ := r.findFrameIndex(ff)
+// RerunLastNFrames runs the emulation from the a point N frames in the past to
+// the current state.
+func (r *Rewind) RerunLastNFrames(frames int) error {
+	to := r.GetCurrentState()
+	ff := to.TV.GetState(signal.ReqFramenum) - frames
+	if ff < 0 {
+		ff = 0
+	}
+	idx, _, _ := r.findFrameIndex(ff)
 
-// 	tf := to.TV.GetState(signal.ReqFramenum)
-// 	ts := to.TV.GetState(signal.ReqScanline)
-// 	tc := to.TV.GetState(signal.ReqClock)
+	tf := to.TV.GetState(signal.ReqFramenum)
+	ts := to.TV.GetState(signal.ReqScanline)
+	tc := to.TV.GetState(signal.ReqClock)
 
-// 	err := r.setContinuePoint(idx, tf, ts, tc)
-// 	if err != nil {
-// 		return curated.Errorf("rewind: %v", err)
-// 	}
+	err := r.setContinuePoint(idx, tf, ts, tc)
+	if err != nil {
+		return curated.Errorf("rewind: %v", err)
+	}
 
-// 	return nil
-// }
+	return nil
+}
 
 // GotoCoords moves emulation to specified frame/scanline/clock "coordinates".
 func (r *Rewind) GotoCoords(frame int, scanline int, clock int) error {

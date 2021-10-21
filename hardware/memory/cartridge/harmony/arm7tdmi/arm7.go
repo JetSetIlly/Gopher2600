@@ -196,6 +196,7 @@ func NewARM(mmap MemoryMap, prefs *preferences.ARMPreferences, mem SharedMemory,
 		mem:          mem,
 		hook:         hook,
 		executionMap: make(map[uint32][]func(_ uint16)),
+		disasmCache:  make(map[uint32]DisasmEntry),
 	}
 
 	arm.mam.mmap = mmap
@@ -229,11 +230,6 @@ func (arm *ARM) CoProcID() string {
 // SetDisassembler implements the mapper.CartCoProcBus interface.
 func (arm *ARM) SetDisassembler(disasm mapper.CartCoProcDisassembler) {
 	arm.disasm = disasm
-	if arm.disasm == nil {
-		arm.disasmCache = nil
-	} else {
-		arm.disasmCache = make(map[uint32]DisasmEntry)
-	}
 }
 
 // PlumbSharedMemory should be used to update the shared memory reference.

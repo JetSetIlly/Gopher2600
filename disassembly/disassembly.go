@@ -50,7 +50,7 @@ type Disassembly struct {
 	entries [][]*Entry
 
 	// any cartridge coprocessor that we find
-	Coprocessor *coprocessor.Coprocessor
+	Coprocessor *coprocessor.CoProcessor
 
 	// critical sectioning. the iteration functions in particular may be called
 	// from a different goroutine. entries in the (disasm array) will likely be
@@ -177,6 +177,8 @@ func (dsm *Disassembly) FromMemory() error {
 	mc := cpu.NewCPU(nil, mem)
 	mc.NoFlowControl = true
 
+	dsm.Coprocessor = coprocessor.Add(dsm.vcs, dsm.vcs.Mem.Cart)
+
 	dsm.crit.Unlock()
 	// end of critical section
 
@@ -185,9 +187,6 @@ func (dsm *Disassembly) FromMemory() error {
 	if err != nil {
 		return curated.Errorf("disassembly: %v", err)
 	}
-
-	// try added coprocessor disasm support
-	dsm.Coprocessor = coprocessor.Add(dsm.vcs, dsm.vcs.Mem.Cart)
 
 	return nil
 }
