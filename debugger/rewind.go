@@ -74,7 +74,7 @@ func (dbg *Debugger) PushRewind(fn int, last bool) bool {
 // Returns false if the rewind hasn't been pushed. The caller should try again.
 //
 // To be used from the GUI thread.
-func (dbg *Debugger) PushGoto(clock int, scanline int, frame int) bool {
+func (dbg *Debugger) PushGoto(coords signal.TelevisionCoords) bool {
 	if dbg.State() == emulation.Rewinding {
 		return false
 	}
@@ -84,7 +84,7 @@ func (dbg *Debugger) PushGoto(clock int, scanline int, frame int) bool {
 		// upate catchupQuantum before starting rewind process
 		dbg.catchupQuantum = QuantumVideo
 
-		err := dbg.Rewind.GotoCoords(frame, scanline, clock)
+		err := dbg.Rewind.GotoCoords(coords)
 		if err != nil {
 			return curated.Errorf("push goto coords: %v", err)
 		}
@@ -120,15 +120,8 @@ func (dbg *Debugger) PushRerunLastNFrames(frames int) bool {
 	//
 	// if we're in between instruction boundaries therefore we need to push a
 	// GotoCoords() request. get the current coordinates now
-	var frame int
-	var scanline int
-	var clock int
 	correctCoords := !dbg.lastResult.Result.Final
-	if correctCoords {
-		frame = dbg.vcs.TV.GetState(signal.ReqFramenum)
-		scanline = dbg.vcs.TV.GetState(signal.ReqScanline)
-		clock = dbg.vcs.TV.GetState(signal.ReqClock)
-	}
+	coords := dbg.vcs.TV.GetCoords()
 
 	// the function to push to the debugger/emulation routine
 	doRewind := func() error {
@@ -138,7 +131,7 @@ func (dbg *Debugger) PushRerunLastNFrames(frames int) bool {
 		}
 
 		if correctCoords {
-			err = dbg.Rewind.GotoCoords(frame, scanline, clock)
+			err = dbg.Rewind.GotoCoords(coords)
 			if err != nil {
 				return curated.Errorf("push rerun last N Frame: %v", err)
 			}

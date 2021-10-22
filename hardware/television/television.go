@@ -52,6 +52,10 @@ type State struct {
 
 	// state of the television. these values correspond to the most recent
 	// signal received
+	//
+	// not using TelevisionCoords type here.
+	//
+	// clock field counts from zero not -specification.ClksHblank
 	frameNum int
 	scanline int
 	clock    int
@@ -74,10 +78,8 @@ type State struct {
 	// frame resizer
 	resizer resizer
 
-	// the frame/scanline/clock of the last CPU instruction
-	boundaryFrameNum int
-	boundaryScanline int
-	boundaryClock    int
+	// the coords of the last CPU instruction
+	lastCPUInstruction signal.TelevisionCoords
 }
 
 func (s *State) String() string {
@@ -106,6 +108,15 @@ func (s *State) GetState(request signal.StateReq) int {
 		return s.clock - specification.ClksHBlank
 	}
 	panic(fmt.Sprintf("television: unhandled tv state request (%v)", request))
+}
+
+// GetCoords returns an instance of signal.TelevisionCoords.
+func (s *State) GetCoords() signal.TelevisionCoords {
+	return signal.TelevisionCoords{
+		Frame:    s.frameNum,
+		Scanline: s.scanline,
+		Clock:    s.clock - specification.ClksHBlank,
+	}
 }
 
 // Television is a Television implementation of the Television interface. In all
@@ -548,17 +559,6 @@ func (tv *Television) renderSignals() error {
 	return nil
 }
 
-// GetLastSignal returns a copy of the most SignalAttributes sent to the TV
-// (via the Signal() function).
-func (tv *Television) GetLastSignal() signal.SignalAttributes {
-	return tv.state.lastSignal
-}
-
-// GetState returns state information for the TV.
-func (tv *Television) GetState(request signal.StateReq) int {
-	return tv.state.GetState(request)
-}
-
 // SetSpecConditional sets the television's specification if the original
 // specification (not the current spec, the original) is "AUTO".
 //
@@ -686,9 +686,24 @@ func (tv *Television) GetFrameInfo() FrameInfo {
 	return tv.state.frameInfo
 }
 
-// ReqAdjust requests the frame, scanline and clock values where the requested
-// StateReq has been adjusted by the specified value. All values will be
-// adjusted as required.
+// GetLastSignal returns a copy of the most SignalAttributes sent to the TV
+// (via the Signal() function).
+func (tv *Television) GetLastSignal() signal.SignalAttributes {
+	return tv.state.lastSignal
+}
+
+// GetState returns state information for the TV.
+func (tv *Television) GetState(request signal.StateReq) int {
+	return tv.state.GetState(request)
+}
+
+// GetCoords returns an instance of signal.TelevisionCoords.
+func (tv *Television) GetCoords() signal.TelevisionCoords {
+	return tv.state.GetCoords()
+}
+
+// GetAdjustedCoords returns a signal.TelevisionCoords with the current coords
+// adjusted by the specified value
 //
 // The reset argument instructs the function to return values that have been
 // reset to zero as appropriate. So when request is ReqFramenum, the scanline
@@ -697,10 +712,8 @@ func (tv *Television) GetFrameInfo() FrameInfo {
 //
 // In the case of a StateAdj of AdjCPUCycle the only allowed adjustment value
 // is -1. Any other value will return an error.
-func (tv *Television) ReqAdjust(request signal.StateAdj, adjustment int, reset bool) (int, int, int, error) {
-	clock := tv.state.clock
-	scanline := tv.state.scanline
-	frame := tv.state.frameNum
+func (tv *Television) GetAdjustedCoords(request signal.StateAdj, adjustment int, reset bool) (signal.TelevisionCoords, error) {
+	coords := tv.GetCoords()
 
 	var err error
 
@@ -711,62 +724,60 @@ func (tv *Television) ReqAdjust(request signal.StateAdj, adjustment int, reset b
 		adjustment *= 3
 		fallthrough
 	case signal.AdjClock:
-		clock += adjustment
-		if clock >= specification.ClksScanline {
-			clock -= specification.ClksScanline
-			scanline++
-		} else if clock < 0 {
-			clock += specification.ClksScanline
-			scanline--
+		coords.Clock += adjustment
+		if coords.Clock >= specification.ClksScanline {
+			coords.Clock -= specification.ClksScanline
+			coords.Scanline++
+		} else if coords.Clock < 0 {
+			coords.Clock += specification.ClksScanline
+			coords.Scanline--
 		}
-		if scanline > tv.state.frameInfo.TotalScanlines {
-			scanline -= tv.state.frameInfo.TotalScanlines
-			frame++
-		} else if scanline < 0 {
-			scanline += tv.state.frameInfo.TotalScanlines
-			frame--
+		if coords.Scanline > tv.state.frameInfo.TotalScanlines {
+			coords.Scanline -= tv.state.frameInfo.TotalScanlines
+			coords.Frame++
+		} else if coords.Scanline < 0 {
+			coords.Scanline += tv.state.frameInfo.TotalScanlines
+			coords.Frame--
 		}
 	case signal.AdjInstruction:
 		if adjustment != -1 {
 			err = curated.Errorf("television: can only adjust CPU boundary by -1")
 		} else {
-			clock = tv.state.boundaryClock
-			scanline = tv.state.boundaryScanline
-			frame = tv.state.boundaryFrameNum
+			coords.Clock = tv.state.lastCPUInstruction.Clock
+			coords.Scanline = tv.state.lastCPUInstruction.Scanline
+			coords.Frame = tv.state.lastCPUInstruction.Frame
 		}
 	case signal.AdjScanline:
 		if reset {
-			clock = 0
+			coords.Clock = 0
 		}
-		scanline += adjustment
-		if scanline > tv.state.frameInfo.TotalScanlines {
-			scanline -= tv.state.frameInfo.TotalScanlines
-			frame++
-		} else if scanline < 0 {
-			scanline += tv.state.frameInfo.TotalScanlines
-			frame--
+		coords.Scanline += adjustment
+		if coords.Scanline > tv.state.frameInfo.TotalScanlines {
+			coords.Scanline -= tv.state.frameInfo.TotalScanlines
+			coords.Frame++
+		} else if coords.Scanline < 0 {
+			coords.Scanline += tv.state.frameInfo.TotalScanlines
+			coords.Frame--
 		}
 	case signal.AdjFramenum:
 		if reset {
-			clock = 0
-			scanline = 0
+			coords.Clock = 0
+			coords.Scanline = 0
 		}
-		frame += adjustment
+		coords.Frame += adjustment
 	}
 
 	// zero values if frame is less than zero
-	if frame < 0 {
-		frame = 0
-		scanline = 0
-		clock = 0
+	if coords.Frame < 0 {
+		coords.Frame = 0
+		coords.Scanline = 0
+		coords.Clock = 0
 	}
 
-	return frame, scanline, clock - specification.ClksHBlank, err
+	return coords, err
 }
 
 // InstructionBoundary implements the cpu.BoundaryTrigger interface.
 func (tv *Television) InstructionBoundary() {
-	tv.state.boundaryClock = tv.state.clock
-	tv.state.boundaryFrameNum = tv.state.frameNum
-	tv.state.boundaryScanline = tv.state.scanline
+	tv.state.lastCPUInstruction = tv.state.GetCoords()
 }

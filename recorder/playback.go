@@ -32,13 +32,11 @@ import (
 )
 
 type playbackEntry struct {
-	portID   plugging.PortID
-	event    ports.Event
-	data     ports.EventData
-	frame    int
-	scanline int
-	clock    int
-	hash     string
+	portID plugging.PortID
+	event  ports.Event
+	data   ports.EventData
+	coords signal.TelevisionCoords
+	hash   string
 
 	// the line in the recording file the playback event appears
 	line int
@@ -149,21 +147,21 @@ func NewPlayback(transcript string) (*Playback, error) {
 		// implementation will handle parsing of this type.
 		entry.data = ports.EventDataPlayback(toks[fieldEventData])
 
-		entry.frame, err = strconv.Atoi(toks[fieldFrame])
+		entry.coords.Frame, err = strconv.Atoi(toks[fieldFrame])
 		if err != nil {
 			return nil, curated.Errorf("playback: %s line %d, col %d", err, i+1, len(strings.Join(toks[:fieldFrame+1], fieldSep)))
 		}
 
 		// assuming that frames are listed in order in the file. update
 		// endFrame with the most recent frame every time
-		plb.endFrame = entry.frame
+		plb.endFrame = entry.coords.Frame
 
-		entry.scanline, err = strconv.Atoi(toks[fieldScanline])
+		entry.coords.Scanline, err = strconv.Atoi(toks[fieldScanline])
 		if err != nil {
 			return nil, curated.Errorf("playback: %s line %d, col %d", err, i+1, len(strings.Join(toks[:fieldScanline+1], fieldSep)))
 		}
 
-		entry.clock, err = strconv.Atoi(toks[fieldClock])
+		entry.coords.Clock, err = strconv.Atoi(toks[fieldClock])
 		if err != nil {
 			return nil, curated.Errorf("playback: %s line %d, col %d", err, i+1, len(strings.Join(toks[:fieldClock+1], fieldSep)))
 		}
@@ -229,16 +227,14 @@ func (plb *Playback) GetPlayback() (plugging.PortID, ports.Event, ports.EventDat
 	}
 
 	// get current state of the television
-	frame := plb.vcs.TV.GetState(signal.ReqFramenum)
-	scanline := plb.vcs.TV.GetState(signal.ReqScanline)
-	clock := plb.vcs.TV.GetState(signal.ReqClock)
+	coords := plb.vcs.TV.GetCoords()
 
 	// compare current state with the recording
 	entry := plb.sequence[plb.seqCt]
-	if frame == entry.frame && scanline == entry.scanline && clock == entry.clock {
+	if entry.coords.Equal(coords) {
 		plb.seqCt++
 		if entry.hash != plb.digest.Hash() {
-			return plugging.PortUnplugged, ports.NoEvent, nil, curated.Errorf(PlaybackHashError, entry.line, frame)
+			return plugging.PortUnplugged, ports.NoEvent, nil, curated.Errorf(PlaybackHashError, entry.line, coords.Frame)
 		}
 		return entry.portID, entry.event, entry.data, nil
 	}

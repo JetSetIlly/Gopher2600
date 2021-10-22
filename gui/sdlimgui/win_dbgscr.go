@@ -269,18 +269,21 @@ func (win *winDbgScr) draw() {
 		// emulation is paused
 		if win.img.emulation.State() == emulation.Paused {
 			if imgui.IsMouseDown(0) {
-				sl := win.mouseScanline
-				cl := win.mouseClock
+				coords := signal.TelevisionCoords{
+					Frame:    win.img.lz.TV.Coords.Frame,
+					Scanline: win.mouseScanline,
+					Clock:    win.mouseClock,
+				}
 
 				// if mouse is off the end of the screen then adjust the
 				// scanline (we want to goto) to just before the end of the
 				// screen (the actual end of the screen might be a half
 				// scanline - this limiting effect is purely visual so accuracy
 				// isn't paramount)
-				if sl >= win.img.screen.crit.frameInfo.TotalScanlines {
-					sl = win.img.screen.crit.frameInfo.TotalScanlines - 1
-					if sl < 0 {
-						sl = 0
+				if coords.Scanline >= win.img.screen.crit.frameInfo.TotalScanlines {
+					coords.Scanline = win.img.screen.crit.frameInfo.TotalScanlines - 1
+					if coords.Scanline < 0 {
+						coords.Scanline = 0
 					}
 				}
 
@@ -288,7 +291,7 @@ func (win *winDbgScr) draw() {
 				if win.img.screen.gotoCoordsX != win.mouseClock || win.img.screen.gotoCoordsY != win.img.wm.dbgScr.mouseScanline {
 					win.img.screen.gotoCoordsX = win.mouseClock
 					win.img.screen.gotoCoordsY = win.img.wm.dbgScr.mouseScanline
-					win.img.dbg.PushGoto(cl, sl, win.img.lz.TV.Frame)
+					win.img.dbg.PushGoto(coords)
 				}
 			}
 		}
@@ -368,19 +371,19 @@ func (win *winDbgScr) drawCoordsLine() {
 
 	imgui.Text("Frame:")
 	imgui.SameLine()
-	imgui.Text(fmt.Sprintf("%-4d", win.img.lz.TV.Frame))
+	imgui.Text(fmt.Sprintf("%-4d", win.img.lz.TV.Coords.Frame))
 
 	imgui.SameLineV(0, 15)
 	imgui.Text("Scanline:")
 	imgui.SameLine()
-	if win.img.lz.TV.Scanline > 999 {
+	if win.img.lz.TV.Coords.Scanline > 999 {
 	} else {
-		imgui.Text(fmt.Sprintf("%-3d", win.img.lz.TV.Scanline))
+		imgui.Text(fmt.Sprintf("%-3d", win.img.lz.TV.Coords.Scanline))
 	}
 	imgui.SameLineV(0, 15)
 	imgui.Text("Clock:")
 	imgui.SameLine()
-	imgui.Text(fmt.Sprintf("%-3d", win.img.lz.TV.Clock))
+	imgui.Text(fmt.Sprintf("%-3d", win.img.lz.TV.Coords.Clock))
 
 	// include tv signal information
 	imgui.SameLineV(0, 20)

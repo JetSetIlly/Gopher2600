@@ -252,7 +252,7 @@ func (win *winTimeline) drawTimeline() {
 	}
 
 	// current frame indicator
-	fr := win.img.lz.TV.Frame - rewindOffset
+	fr := win.img.lz.TV.Coords.Frame - rewindOffset
 	dl.AddCircleFilled(imgui.Vec2{X: pos.X + float32(fr*traceWidth), Y: pos.Y + frameIndicatorRadius}, frameIndicatorRadius, win.img.cols.timelineCurrentPointer)
 
 	imgui.EndChild()
@@ -273,14 +273,14 @@ func (win *winTimeline) drawTimeline() {
 		// allowing mouse to travel beyond the rewind boundaries (and without
 		// calling PushRewind() too often)
 		if fr >= e {
-			if win.img.lz.TV.Frame < e {
+			if win.img.lz.TV.Coords.Frame < e {
 				win.img.dbg.PushRewind(fr, true)
 			}
 		} else if fr <= s {
-			if win.img.lz.TV.Frame > s {
+			if win.img.lz.TV.Coords.Frame > s {
 				win.img.dbg.PushRewind(fr, false)
 			}
-		} else if fr != win.img.lz.TV.Frame {
+		} else if fr != win.img.lz.TV.Coords.Frame {
 			win.img.dbg.PushRewind(fr, fr == e)
 		}
 

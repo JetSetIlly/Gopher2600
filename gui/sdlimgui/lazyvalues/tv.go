@@ -28,10 +28,8 @@ type LazyTV struct {
 
 	frameInfo  atomic.Value // television.Actual
 	tvStr      atomic.Value // string
-	lastSignal atomic.Value // television.SignalAttributes
-	frame      atomic.Value // int
-	scanline   atomic.Value // int
-	clock      atomic.Value // int
+	lastSignal atomic.Value // signal.SignalAttributes
+	coords     atomic.Value // signal.TelevisionCoords
 	hz         atomic.Value // float32
 	actualFPS  atomic.Value // float32
 	reqFPS     atomic.Value // float32
@@ -39,9 +37,7 @@ type LazyTV struct {
 	FrameInfo  television.FrameInfo
 	TVstr      string
 	LastSignal signal.SignalAttributes
-	Frame      int
-	Scanline   int
-	Clock      int
+	Coords     signal.TelevisionCoords
 	Hz         float32
 	ActualFPS  float32
 	ReqFPS     float32
@@ -56,14 +52,8 @@ func (lz *LazyTV) push() {
 	lz.tvStr.Store(lz.val.vcs.TV.String())
 	lz.lastSignal.Store(lz.val.vcs.TV.GetLastSignal())
 
-	frame := lz.val.vcs.TV.GetState(signal.ReqFramenum)
-	lz.frame.Store(frame)
-
-	scanline := lz.val.vcs.TV.GetState(signal.ReqScanline)
-	lz.scanline.Store(scanline)
-
-	clock := lz.val.vcs.TV.GetState(signal.ReqClock)
-	lz.clock.Store(clock)
+	coords := lz.val.vcs.TV.GetCoords()
+	lz.coords.Store(coords)
 
 	actual, hz := lz.val.vcs.TV.GetActualFPS()
 	lz.hz.Store(hz)
@@ -76,9 +66,7 @@ func (lz *LazyTV) update() {
 	lz.FrameInfo, _ = lz.frameInfo.Load().(television.FrameInfo)
 	lz.TVstr, _ = lz.tvStr.Load().(string)
 	lz.LastSignal, _ = lz.lastSignal.Load().(signal.SignalAttributes)
-	lz.Frame, _ = lz.frame.Load().(int)
-	lz.Scanline, _ = lz.scanline.Load().(int)
-	lz.Clock, _ = lz.clock.Load().(int)
+	lz.Coords, _ = lz.coords.Load().(signal.TelevisionCoords)
 	lz.Hz, _ = lz.hz.Load().(float32)
 	lz.ActualFPS, _ = lz.actualFPS.Load().(float32)
 	lz.ReqFPS, _ = lz.reqFPS.Load().(float32)

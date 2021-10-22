@@ -46,7 +46,7 @@ type Runner interface {
 	// specified frame. Either stop when the frame becomes too large or don't
 	// request the rewind in the first place. Such details are outside the
 	// scope of the rewind package however.
-	CatchUpLoop(frame int, scanline int, clock int, f CatchUpLoopCallback) error
+	CatchUpLoop(signal.TelevisionCoords, CatchUpLoopCallback) error
 }
 
 // State contains pointers to areas of the VCS emulation. They can be read for
@@ -399,7 +399,7 @@ func (r *Rewind) append(s *State) {
 
 // setContinuePoint sets the splice point to the supplied index. the emulation
 // will be run to the supplied frame, scanline, clock point.
-func (r *Rewind) setContinuePoint(idx int, frame int, scanline int, clock int) error {
+func (r *Rewind) setContinuePoint(idx int, coords signal.TelevisionCoords) error {
 	// current index is the index we're plumbing in. this has nothing to do
 	// with the frame number (especially important to remember if frequency is
 	// greater than 1)
@@ -408,7 +408,7 @@ func (r *Rewind) setContinuePoint(idx int, frame int, scanline int, clock int) e
 	s := r.entries[idx]
 
 	// plumb in selected entry
-	err := r.plumbState(s, frame, scanline, clock)
+	err := r.plumbState(s, coords)
 	if err != nil {
 		return err
 	}
@@ -440,7 +440,7 @@ func plumb(vcs *hardware.VCS, state *State) {
 //
 // note that this will not update the splice point up update the framesSinceSnapshot
 // value. use plumb() with an index into the history for that.
-func (r *Rewind) plumbState(s *State, frame, scanline, clock int) error {
+func (r *Rewind) plumbState(s *State, coords signal.TelevisionCoords) error {
 	plumb(r.vcs, s)
 
 	// if this is a reset entry then TV must be reset
@@ -456,7 +456,7 @@ func (r *Rewind) plumbState(s *State, frame, scanline, clock int) error {
 	adhoc := r.Prefs.Freq.Get().(int) == 1
 
 	callback := func(fr int) {
-		if !adhoc && fr == frame-1 {
+		if !adhoc && fr == coords.Frame-1 {
 			// only make an adhoc snapshot on an instruction boundary. if we
 			// don't check for this then we risk saving an adhoc state that
 			// will immediately crash when it's plumbed in
@@ -467,7 +467,7 @@ func (r *Rewind) plumbState(s *State, frame, scanline, clock int) error {
 		}
 	}
 
-	err := r.runner.CatchUpLoop(frame, scanline, clock, callback)
+	err := r.runner.CatchUpLoop(coords, callback)
 	if err != nil {
 		return curated.Errorf("rewind: %v", err)
 	}
@@ -482,14 +482,12 @@ func (r *Rewind) GotoLast() error {
 		idx += len(r.entries)
 	}
 
-	frame := r.entries[idx].TV.GetState(signal.ReqFramenum)
-	clock := -specification.ClksHBlank
-	scanline := 0
+	coords := r.entries[idx].TV.GetCoords()
 
-	// use more specific scanline/clock values if entry is an "execution" entry
-	if r.entries[idx].level == levelExecution {
-		scanline = r.entries[idx].TV.GetState(signal.ReqScanline)
-		clock = r.entries[idx].TV.GetState(signal.ReqClock)
+	// got ot the beginning of the frame if last entry is not an execution frame
+	if r.entries[idx].level != levelExecution {
+		coords.Scanline = 0
+		coords.Clock = -specification.ClksHBlank
 	}
 
 	// make adjustments to the index so we plumbing from a suitable place
@@ -504,21 +502,27 @@ func (r *Rewind) GotoLast() error {
 		idx = r.start
 	}
 
-	return r.setContinuePoint(idx, frame, scanline, clock)
+	return r.setContinuePoint(idx, coords)
 }
 
 // GotoFrame searches the rewind history for the frame number. If the precise
 // frame number can not be found the nearest frame will be plumbed in and the
 // emulation run to match the requested frame.
 func (r *Rewind) GotoFrame(frame int) error {
-	idx, foundFrame, last := r.findFrameIndex(frame)
+	idx, frame, last := r.findFrameIndex(frame)
+
+	coords := signal.TelevisionCoords{
+		Frame:    frame,
+		Scanline: 0,
+		Clock:    -specification.ClksHBlank,
+	}
 
 	// it is more appropriate to plumb with GotoLast() if last is true
 	if last {
 		return r.GotoLast()
 	}
 
-	return r.setContinuePoint(idx, foundFrame, 0, -specification.ClksHBlank)
+	return r.setContinuePoint(idx, coords)
 }
 
 // find index nearest to the requested frame. returns the index and the frame
@@ -613,10 +617,7 @@ func (r *Rewind) findFrameIndex(frame int) (idx int, fr int, last bool) {
 
 // GotoState will the run the VCS to the quoted state.
 func (r *Rewind) GotoState(state *State) error {
-	frame := state.TV.GetState(signal.ReqFramenum)
-	scanline := state.TV.GetState(signal.ReqScanline)
-	clock := state.TV.GetState(signal.ReqClock)
-	return r.GotoCoords(frame, scanline, clock)
+	return r.GotoCoords(state.TV.GetCoords())
 }
 
 type PokeHook func(res *State) error
@@ -633,11 +634,7 @@ func (r *Rewind) RunFromState(from *State, to *State, poke PokeHook) error {
 		}
 	}
 
-	tf := to.TV.GetState(signal.ReqFramenum)
-	ts := to.TV.GetState(signal.ReqScanline)
-	tc := to.TV.GetState(signal.ReqClock)
-
-	err := r.setContinuePoint(idx, tf, ts, tc)
+	err := r.setContinuePoint(idx, to.TV.GetCoords())
 	if err != nil {
 		return curated.Errorf("rewind: %v", err)
 	}
@@ -655,11 +652,7 @@ func (r *Rewind) RerunLastNFrames(frames int) error {
 	}
 	idx, _, _ := r.findFrameIndex(ff)
 
-	tf := to.TV.GetState(signal.ReqFramenum)
-	ts := to.TV.GetState(signal.ReqScanline)
-	tc := to.TV.GetState(signal.ReqClock)
-
-	err := r.setContinuePoint(idx, tf, ts, tc)
+	err := r.setContinuePoint(idx, to.TV.GetCoords())
 	if err != nil {
 		return curated.Errorf("rewind: %v", err)
 	}
@@ -668,23 +661,23 @@ func (r *Rewind) RerunLastNFrames(frames int) error {
 }
 
 // GotoCoords moves emulation to specified frame/scanline/clock "coordinates".
-func (r *Rewind) GotoCoords(frame int, scanline int, clock int) error {
+func (r *Rewind) GotoCoords(coords signal.TelevisionCoords) error {
 	// get nearest index of entry from which we can being to (re)generate the
 	// current frame
-	idx, _, _ := r.findFrameIndex(frame)
+	idx, _, _ := r.findFrameIndex(coords.Frame)
 
 	// if found index does not point to an immediately suitable state then try
 	// the adhocFrame state if available
-	if frame != r.entries[idx].TV.GetState(signal.ReqFramenum)+1 {
-		if r.adhocFrame != nil && r.adhocFrame.TV.GetState(signal.ReqFramenum) == frame-1 {
-			return r.plumbState(r.adhocFrame, frame, scanline, clock)
+	if coords.Frame != r.entries[idx].TV.GetState(signal.ReqFramenum)+1 {
+		if r.adhocFrame != nil && r.adhocFrame.TV.GetState(signal.ReqFramenum) == coords.Frame-1 {
+			return r.plumbState(r.adhocFrame, coords)
 		}
 	}
 
 	// we've not used adhoc this time so nillify it
 	r.adhocFrame = nil
 
-	err := r.setContinuePoint(idx, frame, scanline, clock)
+	err := r.setContinuePoint(idx, coords)
 	if err != nil {
 		return err
 	}

@@ -25,7 +25,6 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
-	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 )
 
 // Recorder transcribes user input to a file. The recorded file is intended
@@ -147,9 +146,7 @@ func (rec *Recorder) RecordEvent(id plugging.PortID, event ports.Event, data por
 	}
 
 	// create line and write to file
-	frame := rec.vcs.TV.GetState(signal.ReqFramenum)
-	scanline := rec.vcs.TV.GetState(signal.ReqScanline)
-	clock := rec.vcs.TV.GetState(signal.ReqClock)
+	coords := rec.vcs.TV.GetCoords()
 
 	// convert data of nil type to the empty string
 	if data == nil {
@@ -160,9 +157,9 @@ func (rec *Recorder) RecordEvent(id plugging.PortID, event ports.Event, data por
 		id, fieldSep,
 		event, fieldSep,
 		data, fieldSep,
-		frame, fieldSep,
-		scanline, fieldSep,
-		clock, fieldSep,
+		coords.Frame, fieldSep,
+		coords.Scanline, fieldSep,
+		coords.Clock, fieldSep,
 		rec.digest.Hash(),
 	)
 

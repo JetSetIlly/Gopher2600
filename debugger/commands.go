@@ -253,8 +253,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 				return curated.Errorf("unknown STEP BACK mode (%s)", mode)
 			}
 
-			f, s, c, err := dbg.vcs.TV.ReqAdjust(req, adj, true)
-
+			coords, err := dbg.vcs.TV.GetAdjustedCoords(req, adj, true)
 			if err != nil {
 				return err
 			}
@@ -264,7 +263,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 				// update catchupQuantum before starting rewind process
 				dbg.catchupQuantum = dbg.stepQuantum
 
-				return dbg.Rewind.GotoCoords(f, s, c)
+				return dbg.Rewind.GotoCoords(coords)
 			})
 
 			return nil
@@ -380,23 +379,21 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		}
 
 	case cmdGoto:
-		var clock int
-		var scanline = dbg.vcs.TV.GetState(signal.ReqScanline)
-		var frame = dbg.vcs.TV.GetState(signal.ReqFramenum)
+		coords := dbg.vcs.TV.GetCoords()
 
 		if s, ok := tokens.Get(); ok {
-			clock, _ = strconv.Atoi(s)
+			coords.Clock, _ = strconv.Atoi(s)
 			if s, ok := tokens.Get(); ok {
-				scanline, _ = strconv.Atoi(s)
+				coords.Scanline, _ = strconv.Atoi(s)
 				if s, ok := tokens.Get(); ok {
-					frame, _ = strconv.Atoi(s)
+					coords.Frame, _ = strconv.Atoi(s)
 				}
 			}
 		}
 
 		dbg.setState(emulation.Rewinding)
 		dbg.unwindLoop(func() error {
-			err := dbg.Rewind.GotoCoords(frame, scanline, clock)
+			err := dbg.Rewind.GotoCoords(coords)
 			if err != nil {
 				return err
 			}

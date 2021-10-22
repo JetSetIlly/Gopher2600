@@ -46,21 +46,19 @@ func (dbg *Debugger) unwindLoop(onRestart func() error) {
 //
 // It is called from the rewind package and sets the functions that are
 // required for catchupLoop().
-func (dbg *Debugger) CatchUpLoop(frame int, scanline int, clock int, callback rewind.CatchUpLoopCallback) error {
+func (dbg *Debugger) CatchUpLoop(coords signal.TelevisionCoords, callback rewind.CatchUpLoopCallback) error {
 	// turn off TV's fps frame limiter
 	fpsCap := dbg.vcs.TV.SetFPSCap(false)
 
 	// we've already set emulation state to emulation.Rewinding
 
 	dbg.catchupContinue = func() bool {
-		nf := dbg.vcs.TV.GetState(signal.ReqFramenum)
-		ns := dbg.vcs.TV.GetState(signal.ReqScanline)
-		nc := dbg.vcs.TV.GetState(signal.ReqClock)
+		newCoords := dbg.vcs.TV.GetCoords()
 
-		callback(nf)
+		callback(newCoords.Frame)
 
 		// returns true if we're to continue
-		return !(nf > frame || (nf == frame && ns > scanline) || (nf == frame && ns == scanline && nc >= clock))
+		return !newCoords.GreaterThanOrEqual(coords)
 	}
 
 	dbg.catchupEnd = func() {

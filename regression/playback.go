@@ -30,7 +30,6 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
 	"github.com/jetsetilly/gopher2600/hardware/television"
-	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/recorder"
 )
 
@@ -176,11 +175,8 @@ func (reg *PlaybackRegression) regress(newRegression bool, output io.Writer, msg
 			// PlaybackHashError means that a screen digest somewhere in the
 			// playback script did not work. filter error and return false to
 			// indicate failure
-			fr := tv.GetState(signal.ReqFramenum)
-			sl := tv.GetState(signal.ReqScanline)
-			cl := tv.GetState(signal.ReqClock)
-			failm := fmt.Sprintf("%v: at fr=%d, sl=%d, cl=%d", err, fr, sl, cl)
-			return false, failm, nil
+			coords := tv.GetCoords()
+			return false, fmt.Sprintf("%v: at fr=%d, sl=%d, cl=%d", err, coords.Frame, coords.Scanline, coords.Clock), nil
 		} else {
 			return false, "", curated.Errorf("playback: %v", err)
 		}

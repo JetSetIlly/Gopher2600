@@ -41,14 +41,7 @@ type CoProcessor struct {
 	lastExecution        []mapper.CartCoProcDisasmEntry
 	lastExecutionSummary mapper.CartCoProcDisasmSummary
 
-	lastStart StartCoords
-}
-
-// StartCoords of coprocessor execution.
-type StartCoords struct {
-	Frame    int
-	Scanline int
-	Clock    int
+	lastStart signal.TelevisionCoords
 }
 
 // Add returns a new Coprocessor instance if cartridge implements the
@@ -105,10 +98,7 @@ func (cop *CoProcessor) Start() {
 		// have been called on the last CPU cycle of the instruction that triggers
 		// the coprocessor reset. the TV will not have moved onto the beginning of
 		// the next instruction yet so we must figure it out here
-		fn, sl, cl, _ := cop.vcs.TV.ReqAdjust(signal.AdjCPUCycle, 1, false)
-		cop.lastStart.Frame = fn
-		cop.lastStart.Scanline = sl
-		cop.lastStart.Clock = cl
+		cop.lastStart, _ = cop.vcs.TV.GetAdjustedCoords(signal.AdjCPUCycle, 1, false)
 	}
 
 	cop.lastExecution = cop.lastExecution[:0]

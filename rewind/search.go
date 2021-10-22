@@ -22,7 +22,6 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 	"github.com/jetsetilly/gopher2600/hardware/television"
-	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 )
 
 // SearchMemoryWrite runs an emulation between two states looking for the
@@ -59,12 +58,10 @@ func (r *Rewind) SearchMemoryWrite(tgt *State, addr uint16, value uint8, valueMa
 
 	// get current screen coordinates. the emulation will run until these
 	// values are met, if not sooner.
-	ef := tgt.TV.GetState(signal.ReqFramenum)
-	es := tgt.TV.GetState(signal.ReqScanline)
-	ec := tgt.TV.GetState(signal.ReqClock)
+	endCoords := tgt.TV.GetCoords()
 
 	// find a recent state from the rewind history and plumb it our searchVCS
-	idx, _, _ := r.findFrameIndex(ef)
+	idx, _, _ := r.findFrameIndex(endCoords.Frame)
 	plumb(searchVCS, r.entries[idx])
 
 	// loop until we reach (or just surpass) the target State
@@ -83,10 +80,8 @@ func (r *Rewind) SearchMemoryWrite(tgt *State, addr uint16, value uint8, valueMa
 		}
 
 		// check to see if TV state exceeds the requested state
-		sf := searchVCS.TV.GetState(signal.ReqFramenum)
-		ss := searchVCS.TV.GetState(signal.ReqScanline)
-		sc := searchVCS.TV.GetState(signal.ReqClock)
-		done = sf > ef || (sf == ef && ss > es) || (sf == ef && ss == es && sc >= ec)
+		searchCoords := searchVCS.TV.GetCoords()
+		done = searchCoords.GreaterThanOrEqual(endCoords)
 	}
 
 	// make sure the matching state is the last address match we found.
@@ -127,12 +122,10 @@ func (r *Rewind) SearchRegisterWrite(tgt *State, reg rune, value uint8, valueMas
 
 	// get current screen coordinates. the emulation will run until these
 	// values are met, if not sooner.
-	ef := tgt.TV.GetState(signal.ReqFramenum)
-	es := tgt.TV.GetState(signal.ReqScanline)
-	ec := tgt.TV.GetState(signal.ReqClock)
+	endCoords := tgt.TV.GetCoords()
 
 	// find a recent state and plumb it into searchVCS
-	idx, _, _ := r.findFrameIndex(ef)
+	idx, _, _ := r.findFrameIndex(endCoords.Frame)
 	plumb(searchVCS, r.entries[idx])
 
 	// onLoad() is called whenever a CPU register is loaded with a new value
@@ -169,10 +162,8 @@ func (r *Rewind) SearchRegisterWrite(tgt *State, reg rune, value uint8, valueMas
 		}
 
 		// check to see if TV state exceeds the requested state
-		sf := searchVCS.TV.GetState(signal.ReqFramenum)
-		ss := searchVCS.TV.GetState(signal.ReqScanline)
-		sc := searchVCS.TV.GetState(signal.ReqClock)
-		done = sf > ef || (sf == ef && ss > es) || (sf == ef && ss == es && sc >= ec)
+		searchCoords := searchVCS.TV.GetCoords()
+		done = searchCoords.GreaterThanOrEqual(endCoords)
 	}
 
 	// make sure the matching state is the last address match we found.
