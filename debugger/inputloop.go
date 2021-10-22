@@ -23,7 +23,7 @@ import (
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
 	"github.com/jetsetilly/gopher2600/disassembly"
 	"github.com/jetsetilly/gopher2600/emulation"
-	"github.com/jetsetilly/gopher2600/hardware/television/signal"
+	"github.com/jetsetilly/gopher2600/hardware/television/coords"
 	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/rewind"
 )
@@ -46,7 +46,7 @@ func (dbg *Debugger) unwindLoop(onRestart func() error) {
 //
 // It is called from the rewind package and sets the functions that are
 // required for catchupLoop().
-func (dbg *Debugger) CatchUpLoop(coords signal.TelevisionCoords, callback rewind.CatchUpLoopCallback) error {
+func (dbg *Debugger) CatchUpLoop(tgt coords.TelevisionCoords, callback rewind.CatchUpLoopCallback) error {
 	// turn off TV's fps frame limiter
 	fpsCap := dbg.vcs.TV.SetFPSCap(false)
 
@@ -58,7 +58,7 @@ func (dbg *Debugger) CatchUpLoop(coords signal.TelevisionCoords, callback rewind
 		callback(newCoords.Frame)
 
 		// returns true if we're to continue
-		return !newCoords.GreaterThanOrEqual(coords)
+		return !coords.GreaterThanOrEqual(newCoords, tgt)
 	}
 
 	dbg.catchupEnd = func() {

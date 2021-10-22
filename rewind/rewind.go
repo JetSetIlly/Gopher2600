@@ -26,6 +26,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory"
 	"github.com/jetsetilly/gopher2600/hardware/riot"
 	"github.com/jetsetilly/gopher2600/hardware/television"
+	"github.com/jetsetilly/gopher2600/hardware/television/coords"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 	"github.com/jetsetilly/gopher2600/hardware/tia"
@@ -46,7 +47,7 @@ type Runner interface {
 	// specified frame. Either stop when the frame becomes too large or don't
 	// request the rewind in the first place. Such details are outside the
 	// scope of the rewind package however.
-	CatchUpLoop(signal.TelevisionCoords, CatchUpLoopCallback) error
+	CatchUpLoop(coords.TelevisionCoords, CatchUpLoopCallback) error
 }
 
 // State contains pointers to areas of the VCS emulation. They can be read for
@@ -399,7 +400,7 @@ func (r *Rewind) append(s *State) {
 
 // setContinuePoint sets the splice point to the supplied index. the emulation
 // will be run to the supplied frame, scanline, clock point.
-func (r *Rewind) setContinuePoint(idx int, coords signal.TelevisionCoords) error {
+func (r *Rewind) setContinuePoint(idx int, coords coords.TelevisionCoords) error {
 	// current index is the index we're plumbing in. this has nothing to do
 	// with the frame number (especially important to remember if frequency is
 	// greater than 1)
@@ -440,7 +441,7 @@ func plumb(vcs *hardware.VCS, state *State) {
 //
 // note that this will not update the splice point up update the framesSinceSnapshot
 // value. use plumb() with an index into the history for that.
-func (r *Rewind) plumbState(s *State, coords signal.TelevisionCoords) error {
+func (r *Rewind) plumbState(s *State, coords coords.TelevisionCoords) error {
 	plumb(r.vcs, s)
 
 	// if this is a reset entry then TV must be reset
@@ -511,7 +512,7 @@ func (r *Rewind) GotoLast() error {
 func (r *Rewind) GotoFrame(frame int) error {
 	idx, frame, last := r.findFrameIndex(frame)
 
-	coords := signal.TelevisionCoords{
+	coords := coords.TelevisionCoords{
 		Frame:    frame,
 		Scanline: 0,
 		Clock:    -specification.ClksHBlank,
@@ -661,7 +662,7 @@ func (r *Rewind) RerunLastNFrames(frames int) error {
 }
 
 // GotoCoords moves emulation to specified frame/scanline/clock "coordinates".
-func (r *Rewind) GotoCoords(coords signal.TelevisionCoords) error {
+func (r *Rewind) GotoCoords(coords coords.TelevisionCoords) error {
 	// get nearest index of entry from which we can being to (re)generate the
 	// current frame
 	idx, _, _ := r.findFrameIndex(coords.Frame)

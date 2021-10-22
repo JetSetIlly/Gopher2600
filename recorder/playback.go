@@ -28,6 +28,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
+	"github.com/jetsetilly/gopher2600/hardware/television/coords"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 )
 
@@ -35,7 +36,7 @@ type playbackEntry struct {
 	portID plugging.PortID
 	event  ports.Event
 	data   ports.EventData
-	coords signal.TelevisionCoords
+	coords coords.TelevisionCoords
 	hash   string
 
 	// the line in the recording file the playback event appears
@@ -227,14 +228,14 @@ func (plb *Playback) GetPlayback() (plugging.PortID, ports.Event, ports.EventDat
 	}
 
 	// get current state of the television
-	coords := plb.vcs.TV.GetCoords()
+	curr := plb.vcs.TV.GetCoords()
 
 	// compare current state with the recording
 	entry := plb.sequence[plb.seqCt]
-	if entry.coords.Equal(coords) {
+	if coords.Equal(entry.coords, curr) {
 		plb.seqCt++
 		if entry.hash != plb.digest.Hash() {
-			return plugging.PortUnplugged, ports.NoEvent, nil, curated.Errorf(PlaybackHashError, entry.line, coords.Frame)
+			return plugging.PortUnplugged, ports.NoEvent, nil, curated.Errorf(PlaybackHashError, entry.line, curr.Frame)
 		}
 		return entry.portID, entry.event, entry.data, nil
 	}

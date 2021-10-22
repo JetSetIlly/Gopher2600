@@ -21,7 +21,7 @@ package debugger
 import (
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/emulation"
-	"github.com/jetsetilly/gopher2600/hardware/television/signal"
+	"github.com/jetsetilly/gopher2600/hardware/television/coords"
 )
 
 // PushRewind is a special case of PushRawEvent(). Useful instad of calling
@@ -74,7 +74,7 @@ func (dbg *Debugger) PushRewind(fn int, last bool) bool {
 // Returns false if the rewind hasn't been pushed. The caller should try again.
 //
 // To be used from the GUI thread.
-func (dbg *Debugger) PushGoto(coords signal.TelevisionCoords) bool {
+func (dbg *Debugger) PushGoto(coords coords.TelevisionCoords) bool {
 	if dbg.State() == emulation.Rewinding {
 		return false
 	}

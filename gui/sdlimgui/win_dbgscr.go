@@ -23,6 +23,7 @@ import (
 	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/disassembly"
 	"github.com/jetsetilly/gopher2600/emulation"
+	"github.com/jetsetilly/gopher2600/hardware/television/coords"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 	"github.com/jetsetilly/gopher2600/hardware/tia/video"
@@ -269,7 +270,7 @@ func (win *winDbgScr) draw() {
 		// emulation is paused
 		if win.img.emulation.State() == emulation.Paused {
 			if imgui.IsMouseDown(0) {
-				coords := signal.TelevisionCoords{
+				coords := coords.TelevisionCoords{
 					Frame:    win.img.lz.TV.Coords.Frame,
 					Scanline: win.mouseScanline,
 					Clock:    win.mouseClock,

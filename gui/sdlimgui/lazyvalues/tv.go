@@ -19,6 +19,7 @@ import (
 	"sync/atomic"
 
 	"github.com/jetsetilly/gopher2600/hardware/television"
+	"github.com/jetsetilly/gopher2600/hardware/television/coords"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 )
 
@@ -29,7 +30,7 @@ type LazyTV struct {
 	frameInfo  atomic.Value // television.Actual
 	tvStr      atomic.Value // string
 	lastSignal atomic.Value // signal.SignalAttributes
-	coords     atomic.Value // signal.TelevisionCoords
+	coords     atomic.Value // coords.TelevisionCoords
 	hz         atomic.Value // float32
 	actualFPS  atomic.Value // float32
 	reqFPS     atomic.Value // float32
@@ -37,7 +38,7 @@ type LazyTV struct {
 	FrameInfo  television.FrameInfo
 	TVstr      string
 	LastSignal signal.SignalAttributes
-	Coords     signal.TelevisionCoords
+	Coords     coords.TelevisionCoords
 	Hz         float32
 	ActualFPS  float32
 	ReqFPS     float32
@@ -66,7 +67,7 @@ func (lz *LazyTV) update() {
 	lz.FrameInfo, _ = lz.frameInfo.Load().(television.FrameInfo)
 	lz.TVstr, _ = lz.tvStr.Load().(string)
 	lz.LastSignal, _ = lz.lastSignal.Load().(signal.SignalAttributes)
-	lz.Coords, _ = lz.coords.Load().(signal.TelevisionCoords)
+	lz.Coords, _ = lz.coords.Load().(coords.TelevisionCoords)
 	lz.Hz, _ = lz.hz.Load().(float32)
 	lz.ActualFPS, _ = lz.actualFPS.Load().(float32)
 	lz.ReqFPS, _ = lz.reqFPS.Load().(float32)

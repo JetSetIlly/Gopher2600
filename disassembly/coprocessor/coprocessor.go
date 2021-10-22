@@ -22,6 +22,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
+	"github.com/jetsetilly/gopher2600/hardware/television/coords"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 )
 
@@ -41,7 +42,7 @@ type CoProcessor struct {
 	lastExecution        []mapper.CartCoProcDisasmEntry
 	lastExecutionSummary mapper.CartCoProcDisasmSummary
 
-	lastStart signal.TelevisionCoords
+	lastStart coords.TelevisionCoords
 }
 
 // Add returns a new Coprocessor instance if cartridge implements the

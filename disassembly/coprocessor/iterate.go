@@ -17,7 +17,7 @@ package coprocessor
 
 import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
-	"github.com/jetsetilly/gopher2600/hardware/television/signal"
+	"github.com/jetsetilly/gopher2600/hardware/television/coords"
 )
 
 // Iterate facilitates traversal over the disasm of the the last execution of
@@ -31,7 +31,7 @@ type Iterate struct {
 	Summary mapper.CartCoProcDisasmSummary
 
 	// the coordinates of the most recent execution in the disassembly
-	LastStart signal.TelevisionCoords
+	LastStart coords.TelevisionCoords
 
 	// number of entries in the iterations
 	Count int

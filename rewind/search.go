@@ -22,6 +22,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 	"github.com/jetsetilly/gopher2600/hardware/television"
+	"github.com/jetsetilly/gopher2600/hardware/television/coords"
 )
 
 // SearchMemoryWrite runs an emulation between two states looking for the
@@ -81,7 +82,7 @@ func (r *Rewind) SearchMemoryWrite(tgt *State, addr uint16, value uint8, valueMa
 
 		// check to see if TV state exceeds the requested state
 		searchCoords := searchVCS.TV.GetCoords()
-		done = searchCoords.GreaterThanOrEqual(endCoords)
+		done = coords.GreaterThanOrEqual(searchCoords, endCoords)
 	}
 
 	// make sure the matching state is the last address match we found.
@@ -163,7 +164,7 @@ func (r *Rewind) SearchRegisterWrite(tgt *State, reg rune, value uint8, valueMas
 
 		// check to see if TV state exceeds the requested state
 		searchCoords := searchVCS.TV.GetCoords()
-		done = searchCoords.GreaterThanOrEqual(endCoords)
+		done = coords.GreaterThanOrEqual(searchCoords, endCoords)
 	}
 
 	// make sure the matching state is the last address match we found.

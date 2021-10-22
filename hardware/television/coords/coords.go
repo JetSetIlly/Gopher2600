@@ -13,9 +13,12 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-// Package signal exposes the interface between the VCS and the television
-// implementation.
-package signal
+// Package coords represents and can work with television coorindates
+//
+// Coordinates represent the state of the emulation from the point of the
+// television and are used throughout the emulation for rewinding,
+// recording/playback and general information.
+package coords
 
 // TelevisionCoords represents the state of the TV at any moment in time. It
 // can be used when all three values need to be stored or passed around.
@@ -27,14 +30,14 @@ type TelevisionCoords struct {
 	Clock    int
 }
 
-// GreaterThan compares two instances of TelevisionCoords and return true if
+// Equal compares two instances of TelevisionCoords and return true if
 // both are equal.
-func (coords TelevisionCoords) Equal(cmp TelevisionCoords) bool {
-	return coords.Frame == cmp.Frame && coords.Scanline == cmp.Scanline && coords.Clock == cmp.Clock
+func Equal(A, B TelevisionCoords) bool {
+	return A.Frame == B.Frame && A.Scanline == B.Scanline && A.Clock == B.Clock
 }
 
-// GreaterThanOrEqual compares two instances of TelevisionCoords and return true if
-// coords is greater than the cmp parameter.
-func (coords TelevisionCoords) GreaterThanOrEqual(cmp TelevisionCoords) bool {
-	return coords.Frame > cmp.Frame || (coords.Frame == cmp.Frame && coords.Scanline > cmp.Scanline) || (coords.Frame == cmp.Frame && coords.Scanline == cmp.Scanline && coords.Clock >= cmp.Clock)
+// GreaterThanOrEqual compares two instances of TelevisionCoords and return
+// true if A is greater than or equal to B.
+func GreaterThanOrEqual(A, B TelevisionCoords) bool {
+	return A.Frame > B.Frame || (A.Frame == B.Frame && A.Scanline > B.Scanline) || (A.Frame == B.Frame && A.Scanline == B.Scanline && A.Clock >= B.Clock)
 }

@@ -21,6 +21,7 @@ import (
 
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/emulation"
+	"github.com/jetsetilly/gopher2600/hardware/television/coords"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 	"github.com/jetsetilly/gopher2600/logger"
@@ -79,7 +80,7 @@ type State struct {
 	resizer resizer
 
 	// the coords of the last CPU instruction
-	lastCPUInstruction signal.TelevisionCoords
+	lastCPUInstruction coords.TelevisionCoords
 }
 
 func (s *State) String() string {
@@ -110,9 +111,9 @@ func (s *State) GetState(request signal.StateReq) int {
 	panic(fmt.Sprintf("television: unhandled tv state request (%v)", request))
 }
 
-// GetCoords returns an instance of signal.TelevisionCoords.
-func (s *State) GetCoords() signal.TelevisionCoords {
-	return signal.TelevisionCoords{
+// GetCoords returns an instance of coords.TelevisionCoords.
+func (s *State) GetCoords() coords.TelevisionCoords {
+	return coords.TelevisionCoords{
 		Frame:    s.frameNum,
 		Scanline: s.scanline,
 		Clock:    s.clock - specification.ClksHBlank,
@@ -697,12 +698,12 @@ func (tv *Television) GetState(request signal.StateReq) int {
 	return tv.state.GetState(request)
 }
 
-// GetCoords returns an instance of signal.TelevisionCoords.
-func (tv *Television) GetCoords() signal.TelevisionCoords {
+// GetCoords returns an instance of coords.TelevisionCoords.
+func (tv *Television) GetCoords() coords.TelevisionCoords {
 	return tv.state.GetCoords()
 }
 
-// GetAdjustedCoords returns a signal.TelevisionCoords with the current coords
+// GetAdjustedCoords returns a coords.TelevisionCoords with the current coords
 // adjusted by the specified value
 //
 // The reset argument instructs the function to return values that have been
@@ -712,7 +713,7 @@ func (tv *Television) GetCoords() signal.TelevisionCoords {
 //
 // In the case of a StateAdj of AdjCPUCycle the only allowed adjustment value
 // is -1. Any other value will return an error.
-func (tv *Television) GetAdjustedCoords(request signal.StateAdj, adjustment int, reset bool) (signal.TelevisionCoords, error) {
+func (tv *Television) GetAdjustedCoords(request signal.StateAdj, adjustment int, reset bool) (coords.TelevisionCoords, error) {
 	coords := tv.GetCoords()
 
 	var err error
