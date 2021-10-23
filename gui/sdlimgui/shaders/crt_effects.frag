@@ -25,9 +25,9 @@ uniform int Interference;
 uniform int Noise;
 uniform int Fringing;
 uniform float CurveAmount;
-uniform float MaskBright;
+uniform float MaskIntensity;
 uniform float MaskFine;
-uniform float ScanlinesBright;
+uniform float ScanlinesIntensity;
 uniform float ScanlinesFine;
 uniform float InterferenceLevel;
 uniform float NoiseLevel;
@@ -94,6 +94,8 @@ vec2 curve(in vec2 uv)
 	return uv;
 }
 
+const float brightnessCorrection = 0.7;
+
 void main() {
 	vec4 Crt_Color;
 	vec2 uv = Frag_UV;
@@ -115,28 +117,32 @@ void main() {
 	// scanlines - only draw if scaling is large enough
 	if (Scanlines == 1) {
 		if (scaling > 1) {
-			float scans = clamp(ScanlinesBright+0.18*sin(uv.y*ScreenDim.y*ScanlinesFine), 0.0, 1.0);
+			float scans = clamp(brightnessCorrection+ScanlinesIntensity*sin(uv.y*ScreenDim.y*ScanlinesFine), 0.0, 1.0);
 			Crt_Color.rgb *= vec3(scans);
 		} else {
-			Crt_Color.rgb *= ScanlinesBright;
+			Crt_Color.rgb *= brightnessCorrection;
 		}
+	} else {
+		Crt_Color.rgb *= brightnessCorrection;
 	}
 
 	// shadow mask - only draw if scaling is large enough
 	if (ShadowMask == 1) {
 		if (scaling > 1) {
-			float mask = clamp(MaskBright+0.06*sin(uv.x*ScreenDim.x*MaskFine), 0.0, 1.0);
+			float mask = clamp(brightnessCorrection+MaskIntensity*sin(uv.x*ScreenDim.x*MaskFine), 0.0, 1.0);
 			Crt_Color.rgb *= vec3(mask);
 		} else {
-			Crt_Color.rgb *= MaskBright;
+			Crt_Color.rgb *= brightnessCorrection;
 		}
+	} else {
+		Crt_Color.rgb *= brightnessCorrection;
 	}
 
 	// RF Interference
 	if (Interference == 1) {
 		// interferencw
 		vec4 noise = interferenceNoise(uv);
-		uv.x += noise.w * InterferenceLevel / 100;
+		uv.x += noise.w * InterferenceLevel / 150;
 	}
 
 	// noise 

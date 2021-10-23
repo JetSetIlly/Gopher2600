@@ -117,22 +117,22 @@ func (win *winPrefs) drawMask() {
 		win.img.crtPrefs.Mask.Set(b)
 	}
 
-	f := float32(win.img.crtPrefs.MaskBright.Get().(float64))
+	f := float32(win.img.crtPrefs.MaskIntensity.Get().(float64))
 
 	var label string
 
-	if f >= 1.0 {
-		label = "very bright"
-	} else if f >= 0.75 {
-		label = "bright"
-	} else if f >= 0.5 {
-		label = "dark"
+	if f >= 0.1 {
+		label = "very visible"
+	} else if f >= 0.075 {
+		label = "visible"
+	} else if f >= 0.05 {
+		label = "faint"
 	} else {
-		label = "very dark"
+		label = "very faint"
 	}
 
-	if imgui.SliderFloatV("##maskbright", &f, 0.25, 1.25, label, 1.0) {
-		win.img.crtPrefs.MaskBright.Set(f)
+	if imgui.SliderFloatV("##maskintensity", &f, 0.025, 0.125, label, 1.0) {
+		win.img.crtPrefs.MaskIntensity.Set(f)
 	}
 
 	fine := float32(win.img.crtPrefs.MaskFine.Get().(float64))
@@ -158,22 +158,22 @@ func (win *winPrefs) drawScanlines() {
 		win.img.crtPrefs.Scanlines.Set(b)
 	}
 
-	f := float32(win.img.crtPrefs.ScanlinesBright.Get().(float64))
+	f := float32(win.img.crtPrefs.ScanlinesIntensity.Get().(float64))
 
 	var label string
 
-	if f > 1.0 {
-		label = "very bright"
-	} else if f > 0.75 {
-		label = "bright"
-	} else if f >= 0.5 {
-		label = "dark"
+	if f > 0.1 {
+		label = "very visible"
+	} else if f > 0.075 {
+		label = "visible"
+	} else if f >= 0.05 {
+		label = "faint"
 	} else {
-		label = "very dark"
+		label = "very faint"
 	}
 
-	if imgui.SliderFloatV("##scanlinesbright", &f, 0.25, 1.25, label, 1.0) {
-		win.img.crtPrefs.ScanlinesBright.Set(f)
+	if imgui.SliderFloatV("##scanlinesintensity", &f, 0.025, 0.125, label, 1.0) {
+		win.img.crtPrefs.ScanlinesIntensity.Set(f)
 	}
 
 	fine := float32(win.img.crtPrefs.ScanlinesFine.Get().(float64))

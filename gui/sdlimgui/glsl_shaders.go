@@ -186,24 +186,24 @@ type effectsShader struct {
 
 	img *SdlImgui
 
-	screenDim         int32
-	numScanlines      int32
-	numClocks         int32
-	curve             int32
-	shadowMask        int32
-	scanlines         int32
-	interference      int32
-	noise             int32
-	fringing          int32
-	curveAmount       int32
-	maskBright        int32
-	maskFine          int32
-	scanlinesBright   int32
-	scanlinesFine     int32
-	interferenceLevel int32
-	noiseLevel        int32
-	fringingAmount    int32
-	time              int32
+	screenDim          int32
+	numScanlines       int32
+	numClocks          int32
+	curve              int32
+	shadowMask         int32
+	scanlines          int32
+	interference       int32
+	noise              int32
+	fringing           int32
+	curveAmount        int32
+	maskIntensity      int32
+	maskFine           int32
+	scanlinesIntensity int32
+	scanlinesFine      int32
+	interferenceLevel  int32
+	noiseLevel         int32
+	fringingAmount     int32
+	time               int32
 }
 
 func newEffectsShader(img *SdlImgui, yflip bool) shaderProgram {
@@ -226,9 +226,9 @@ func newEffectsShader(img *SdlImgui, yflip bool) shaderProgram {
 	sh.noise = gl.GetUniformLocation(sh.handle, gl.Str("Noise"+"\x00"))
 	sh.fringing = gl.GetUniformLocation(sh.handle, gl.Str("Fringing"+"\x00"))
 	sh.curveAmount = gl.GetUniformLocation(sh.handle, gl.Str("CurveAmount"+"\x00"))
-	sh.maskBright = gl.GetUniformLocation(sh.handle, gl.Str("MaskBright"+"\x00"))
+	sh.maskIntensity = gl.GetUniformLocation(sh.handle, gl.Str("MaskIntensity"+"\x00"))
 	sh.maskFine = gl.GetUniformLocation(sh.handle, gl.Str("MaskFine"+"\x00"))
-	sh.scanlinesBright = gl.GetUniformLocation(sh.handle, gl.Str("ScanlinesBright"+"\x00"))
+	sh.scanlinesIntensity = gl.GetUniformLocation(sh.handle, gl.Str("ScanlinesIntensity"+"\x00"))
 	sh.scanlinesFine = gl.GetUniformLocation(sh.handle, gl.Str("ScanlinesFine"+"\x00"))
 	sh.interferenceLevel = gl.GetUniformLocation(sh.handle, gl.Str("InterferenceLevel"+"\x00"))
 	sh.noiseLevel = gl.GetUniformLocation(sh.handle, gl.Str("NoiseLevel"+"\x00"))
@@ -253,9 +253,9 @@ func (sh *effectsShader) setAttributesArgs(env shaderEnvironment, numScanlines i
 	gl.Uniform1i(sh.noise, boolToInt32(noise))
 	gl.Uniform1i(sh.fringing, boolToInt32(sh.img.crtPrefs.Fringing.Get().(bool)))
 	gl.Uniform1f(sh.curveAmount, float32(sh.img.crtPrefs.CurveAmount.Get().(float64)))
-	gl.Uniform1f(sh.maskBright, float32(sh.img.crtPrefs.MaskBright.Get().(float64)))
+	gl.Uniform1f(sh.maskIntensity, float32(sh.img.crtPrefs.MaskIntensity.Get().(float64)))
 	gl.Uniform1f(sh.maskFine, float32(sh.img.crtPrefs.MaskFine.Get().(float64)))
-	gl.Uniform1f(sh.scanlinesBright, float32(sh.img.crtPrefs.ScanlinesBright.Get().(float64)))
+	gl.Uniform1f(sh.scanlinesIntensity, float32(sh.img.crtPrefs.ScanlinesIntensity.Get().(float64)))
 	gl.Uniform1f(sh.scanlinesFine, float32(sh.img.crtPrefs.ScanlinesFine.Get().(float64)))
 	gl.Uniform1f(sh.interferenceLevel, float32(sh.img.crtPrefs.InterferenceLevel.Get().(float64)))
 	gl.Uniform1f(sh.noiseLevel, float32(sh.img.crtPrefs.NoiseLevel.Get().(float64)))
