@@ -17,7 +17,11 @@
 // implementation.
 package signal
 
-import "strings"
+import (
+	"strings"
+
+	"github.com/jetsetilly/gopher2600/hardware/television/coords"
+)
 
 // ColorSignal represents the signal that is sent from the VCS to the television.
 type ColorSignal uint8
@@ -75,36 +79,13 @@ func (a SignalAttributes) String() string {
 	return s.String()
 }
 
-// StateReq is used to identify which television attribute is being asked
-// with the GetState() function.
-type StateReq int
-
-// List of valid state requests.
-const (
-	ReqFramenum StateReq = iota
-	ReqScanline
-	ReqClock
-)
-
-// StateAdj is used to specify adjustment scale for the ReqAdjust() function.
-type StateAdj int
-
-// List of valid adjustment scales.
-const (
-	AdjFramenum StateAdj = iota
-	AdjScanline
-	AdjInstruction
-	AdjCPUCycle
-	AdjClock
-)
-
 // TelevisionTIA exposes only the functions required by the TIA.
 type TelevisionTIA interface {
 	Signal(SignalAttributes) error
-	GetState(StateReq) int
+	GetCoords() coords.TelevisionCoords
 }
 
 // TelevisionSprite exposes only the functions required by the video sprites.
 type TelevisionSprite interface {
-	GetState(StateReq) int
+	GetCoords() coords.TelevisionCoords
 }

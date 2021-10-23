@@ -19,7 +19,6 @@ import (
 	"fmt"
 
 	"github.com/inkyblackness/imgui-go/v4"
-	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 )
 
@@ -237,7 +236,7 @@ func (win *winTimeline) drawTimeline() {
 
 	// comparison frame indicator
 	if win.img.lz.Rewind.Comparison != nil {
-		fr := win.img.lz.Rewind.Comparison.TV.GetState(signal.ReqFramenum) - rewindOffset
+		fr := win.img.lz.Rewind.Comparison.TV.GetCoords().Frame - rewindOffset
 
 		if fr < 0 {
 			// draw triangle indicating that the comparison frame is not

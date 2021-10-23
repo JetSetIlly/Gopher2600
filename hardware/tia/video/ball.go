@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 	"github.com/jetsetilly/gopher2600/hardware/tia/delay"
 	"github.com/jetsetilly/gopher2600/hardware/tia/phaseclock"
@@ -327,7 +326,7 @@ func (bs *BallSprite) _futureResetPosition() {
 
 	// the pixel at which the sprite has been reset, in relation to the
 	// left edge of the screen
-	bs.ResetPixel = bs.tia.tv.GetState(signal.ReqClock)
+	bs.ResetPixel = bs.tia.tv.GetCoords().Clock
 
 	if bs.ResetPixel >= 0 {
 		// resetPixel adjusted by 1 because the tv is not yet in the correct

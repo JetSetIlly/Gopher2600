@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 	"github.com/jetsetilly/gopher2600/hardware/tia/delay"
 	"github.com/jetsetilly/gopher2600/hardware/tia/phaseclock"
@@ -461,7 +460,7 @@ func (ps *PlayerSprite) resetPosition() {
 	// for us.
 	if (*ps.tia.hsync == 16 || *ps.tia.hsync == 18) && *ps.tia.pclk == phaseclock.RisingPhi2 {
 		if ps.tia.rev.Prefs.RESPxHBLANK {
-			hblank = !revision.HeatThreshold(ps.tia.tv.GetState(signal.ReqScanline))
+			hblank = !revision.HeatThreshold(ps.tia.tv.GetCoords().Scanline)
 		}
 	}
 
@@ -546,7 +545,7 @@ func (ps *PlayerSprite) resetPosition() {
 func (ps *PlayerSprite) _futureResetPosition() {
 	// the pixel at which the sprite has been reset, in relation to the
 	// left edge of the screen
-	ps.ResetPixel = ps.tia.tv.GetState(signal.ReqClock)
+	ps.ResetPixel = ps.tia.tv.GetCoords().Clock
 
 	if ps.ResetPixel >= 0 {
 		// resetPixel adjusted by +1 because the tv is not yet in the correct.

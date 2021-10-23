@@ -22,8 +22,8 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
+	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/hardware/television/coords"
-	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 )
 
 // CoProcessor is used to handle the disassembly of instructions from an
@@ -99,7 +99,7 @@ func (cop *CoProcessor) Start() {
 		// have been called on the last CPU cycle of the instruction that triggers
 		// the coprocessor reset. the TV will not have moved onto the beginning of
 		// the next instruction yet so we must figure it out here
-		cop.lastStart, _ = cop.vcs.TV.GetAdjustedCoords(signal.AdjCPUCycle, 1, false)
+		cop.lastStart = cop.vcs.TV.AdjCoords(television.AdjCPUCycle, 1)
 	}
 
 	cop.lastExecution = cop.lastExecution[:0]

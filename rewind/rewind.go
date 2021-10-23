@@ -27,7 +27,6 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/riot"
 	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/hardware/television/coords"
-	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 	"github.com/jetsetilly/gopher2600/hardware/tia"
 	"github.com/jetsetilly/gopher2600/logger"
@@ -94,7 +93,7 @@ func (s State) String() string {
 	case levelAdhoc:
 		return "c"
 	}
-	return fmt.Sprintf("%d", s.TV.GetState(signal.ReqFramenum))
+	return fmt.Sprintf("%d", s.TV.GetCoords().Frame)
 }
 
 // an overhead of two is required. (1) to accommodate the end index required for
@@ -321,7 +320,7 @@ func (r *Rewind) RecordFrameState() {
 	if r.boundaryNextFrame {
 		r.boundaryNextFrame = false
 		r.reset(levelBoundary)
-		logger.Logf("rewind", "boundary added at frame %d", r.vcs.TV.GetState(signal.ReqFramenum))
+		logger.Logf("rewind", "boundary added at frame %d", r.vcs.TV.GetCoords().Frame)
 		return
 	}
 
@@ -395,7 +394,7 @@ func (r *Rewind) append(s *State) {
 	}
 
 	// splice timeline at current frame number
-	r.timeline.splice(r.vcs.TV.GetState(signal.ReqFramenum))
+	r.timeline.splice(r.vcs.TV.GetCoords().Frame)
 }
 
 // setContinuePoint sets the splice point to the supplied index. the emulation
@@ -558,13 +557,13 @@ func (r *Rewind) findFrameIndex(frame int) (idx int, fr int, last bool) {
 	// then plumb in the nearest entry
 
 	// is requested frame too old (ie. before the start of the array)
-	fn := r.entries[s].TV.GetState(signal.ReqFramenum)
+	fn := r.entries[s].TV.GetCoords().Frame
 	if sf < fn {
 		return s, fn + 1, false
 	}
 
 	// is requested frame too new (ie. past the end of the array)
-	fn = r.entries[e].TV.GetState(signal.ReqFramenum)
+	fn = r.entries[e].TV.GetCoords().Frame
 	if sf >= fn {
 		e--
 		if e < 0 {
@@ -580,7 +579,7 @@ func (r *Rewind) findFrameIndex(frame int) (idx int, fr int, last bool) {
 	// binary search. if start (lower) is greater then end (upper) then check
 	// which half of the circular array to concentrate on.
 	if r.start > e {
-		fn := r.entries[len(r.entries)-1].TV.GetState(signal.ReqFramenum)
+		fn := r.entries[len(r.entries)-1].TV.GetCoords().Frame
 		if sf <= fn {
 			e = len(r.entries) - 1
 		} else {
@@ -596,7 +595,7 @@ func (r *Rewind) findFrameIndex(frame int) (idx int, fr int, last bool) {
 	for s <= e {
 		idx := (s + e) / 2
 
-		fn := r.entries[idx].TV.GetState(signal.ReqFramenum)
+		fn := r.entries[idx].TV.GetCoords().Frame
 
 		// check for match, taking into consideration the gaps introduced by
 		// the frequency value
@@ -625,7 +624,7 @@ type PokeHook func(res *State) error
 
 // RunFromState will the run the VCS from one state to another state.
 func (r *Rewind) RunFromState(from *State, to *State, poke PokeHook) error {
-	ff := from.TV.GetState(signal.ReqFramenum)
+	ff := from.TV.GetCoords().Frame
 	idx, _, _ := r.findFrameIndex(ff)
 
 	if poke != nil {
@@ -647,7 +646,7 @@ func (r *Rewind) RunFromState(from *State, to *State, poke PokeHook) error {
 // the current state.
 func (r *Rewind) RerunLastNFrames(frames int) error {
 	to := r.GetCurrentState()
-	ff := to.TV.GetState(signal.ReqFramenum) - frames
+	ff := to.TV.GetCoords().Frame
 	if ff < 0 {
 		ff = 0
 	}
@@ -669,8 +668,8 @@ func (r *Rewind) GotoCoords(coords coords.TelevisionCoords) error {
 
 	// if found index does not point to an immediately suitable state then try
 	// the adhocFrame state if available
-	if coords.Frame != r.entries[idx].TV.GetState(signal.ReqFramenum)+1 {
-		if r.adhocFrame != nil && r.adhocFrame.TV.GetState(signal.ReqFramenum) == coords.Frame-1 {
+	if coords.Frame != r.entries[idx].TV.GetCoords().Frame+1 {
+		if r.adhocFrame != nil && r.adhocFrame.TV.GetCoords().Frame == coords.Frame-1 {
 			return r.plumbState(r.adhocFrame, coords)
 		}
 	}

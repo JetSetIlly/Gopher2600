@@ -40,6 +40,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/savekey"
 	"github.com/jetsetilly/gopher2600/hardware/television"
+	"github.com/jetsetilly/gopher2600/hardware/television/coords"
 	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/reflection"
 	"github.com/jetsetilly/gopher2600/rewind"
@@ -65,6 +66,9 @@ type Debugger struct {
 	// the bank and formatted result of the last step (cpu or video)
 	lastBank   mapper.BankInfo
 	lastResult *disassembly.Entry
+
+	// the television coords of the last CPU instruction
+	lastCPUboundary coords.TelevisionCoords
 
 	// gui, terminal and controllers
 	gui         gui.GUI
@@ -241,9 +245,6 @@ func NewDebugger(tv *television.Television, scr gui.GUI, term terminal.Terminal,
 	// TimelineCounts() from the rewind packge before that happens
 	dbg.vcs.TV.AddFrameTrigger(dbg.Rewind)
 	dbg.vcs.TV.AddFrameTrigger(dbg.ref)
-
-	// plug TV BoundaryTrigger into CPU
-	dbg.vcs.CPU.AddBoundaryTrigger(dbg.vcs.TV)
 
 	// halting coordination
 	dbg.halting, err = newHaltCoordination(dbg)

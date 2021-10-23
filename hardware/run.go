@@ -17,7 +17,6 @@ package hardware
 
 import (
 	"github.com/jetsetilly/gopher2600/emulation"
-	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 )
 
 // checking continue condition every Run iteration is too frequent. A modest
@@ -85,7 +84,7 @@ func (vcs *VCS) RunForFrameCount(numFrames int, continueCheck func(frame int) (e
 		continueCheck = func(frame int) (emulation.State, error) { return emulation.Running, nil }
 	}
 
-	frameNum := vcs.TV.GetState(signal.ReqFramenum)
+	frameNum := vcs.TV.GetCoords().Frame
 	targetFrame := frameNum + numFrames
 
 	state := emulation.Running
@@ -95,7 +94,7 @@ func (vcs *VCS) RunForFrameCount(numFrames int, continueCheck func(frame int) (e
 			return err
 		}
 
-		frameNum = vcs.TV.GetState(signal.ReqFramenum)
+		frameNum = vcs.TV.GetCoords().Frame
 
 		state, err = continueCheck(frameNum)
 		if err != nil {

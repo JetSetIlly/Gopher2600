@@ -27,7 +27,6 @@ import (
 	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/television"
-	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/setup"
 	"github.com/jetsetilly/gopher2600/userinput"
 )
@@ -72,7 +71,7 @@ func Check(output io.Writer, profile Profile, includeDetail bool,
 	}
 
 	// get starting frame number (should be 0)
-	startFrame := tv.GetState(signal.ReqFramenum)
+	startFrame := tv.GetCoords().Frame
 
 	// run for specified period of time
 	runner := func() error {
@@ -91,7 +90,7 @@ func Check(output io.Writer, profile Profile, includeDetail bool,
 				// signal parent function that 2 second leadtime has elapsed
 				timerChan <- false
 
-				// race condition when GetState() is called
+				// race condition when GetCoords() is called
 				time.AfterFunc(dur, func() {
 					timerChan <- true
 				})
@@ -114,7 +113,7 @@ func Check(output io.Writer, profile Profile, includeDetail bool,
 					// leadtime has concluded. this means the performance
 					// measurement has begun and we should record the start
 					// frame.
-					startFrame = tv.GetState(signal.ReqFramenum)
+					startFrame = tv.GetCoords().Frame
 				default:
 					return emulation.Running, nil
 				}
@@ -136,7 +135,7 @@ func Check(output io.Writer, profile Profile, includeDetail bool,
 	}
 
 	// get ending frame number
-	endFrame := vcs.TV.GetState(signal.ReqFramenum)
+	endFrame := vcs.TV.GetCoords().Frame
 
 	// calculate performance
 	numFrames := endFrame - startFrame

@@ -21,7 +21,6 @@ import (
 
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/debugger/terminal/commandline"
-	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 )
 
 // targetValue represents the underlying value of the target. for example in
@@ -138,7 +137,7 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (*target, error) {
 			trg = &target{
 				label: "Frame",
 				value: func() targetValue {
-					return dbg.vcs.TV.GetState(signal.ReqFramenum)
+					return dbg.vcs.TV.GetCoords().Frame
 				},
 				instructionBoundary: false,
 			}
@@ -147,7 +146,7 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (*target, error) {
 			trg = &target{
 				label: "Scanline",
 				value: func() targetValue {
-					return dbg.vcs.TV.GetState(signal.ReqScanline)
+					return dbg.vcs.TV.GetCoords().Scanline
 				},
 				instructionBoundary: false,
 			}
@@ -156,7 +155,7 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (*target, error) {
 			trg = &target{
 				label: "Clock",
 				value: func() targetValue {
-					return dbg.vcs.TV.GetState(signal.ReqClock)
+					return dbg.vcs.TV.GetCoords().Clock
 				},
 				instructionBoundary: false,
 			}

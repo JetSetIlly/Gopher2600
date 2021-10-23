@@ -98,19 +98,6 @@ func (s *State) Snapshot() *State {
 	return &n
 }
 
-// GetState Returns information about the current state of the signal.
-func (s *State) GetState(request signal.StateReq) int {
-	switch request {
-	case signal.ReqFramenum:
-		return s.frameNum
-	case signal.ReqScanline:
-		return s.scanline
-	case signal.ReqClock:
-		return s.clock - specification.ClksHBlank
-	}
-	panic(fmt.Sprintf("television: unhandled tv state request (%v)", request))
-}
-
 // GetCoords returns an instance of coords.TelevisionCoords.
 func (s *State) GetCoords() coords.TelevisionCoords {
 	return coords.TelevisionCoords{
@@ -177,7 +164,7 @@ func NewTelevision(spec string) (*Television, error) {
 	tv := &Television{
 		reqSpecID: strings.ToUpper(spec),
 		state:     &State{},
-		signals:   make([]signal.SignalAttributes, MaxSignalHistory),
+		signals:   make([]signal.SignalAttributes, specification.AbsoluteMaxClks),
 	}
 
 	// initialise frame rate limiter
@@ -416,7 +403,7 @@ func (tv *Television) Signal(sig signal.SignalAttributes) error {
 	tv.state.lastSignal = sig
 
 	// record signal history
-	if tv.currentSignalIdx >= MaxSignalHistory {
+	if tv.currentSignalIdx >= len(tv.signals) {
 		return tv.renderSignals()
 	}
 
@@ -681,8 +668,7 @@ func (tv *Television) GetReqSpecID() string {
 	return tv.reqSpecID
 }
 
-// GetFrameInfo returns the television's current frame information. FPS and
-// RefreshRate is returned by GetReqFPS().
+// GetFrameInfo returns the television's current frame information.
 func (tv *Television) GetFrameInfo() FrameInfo {
 	return tv.state.frameInfo
 }
@@ -693,92 +679,7 @@ func (tv *Television) GetLastSignal() signal.SignalAttributes {
 	return tv.state.lastSignal
 }
 
-// GetState returns state information for the TV.
-func (tv *Television) GetState(request signal.StateReq) int {
-	return tv.state.GetState(request)
-}
-
 // GetCoords returns an instance of coords.TelevisionCoords.
 func (tv *Television) GetCoords() coords.TelevisionCoords {
 	return tv.state.GetCoords()
-}
-
-// GetAdjustedCoords returns a coords.TelevisionCoords with the current coords
-// adjusted by the specified value
-//
-// The reset argument instructs the function to return values that have been
-// reset to zero as appropriate. So when request is ReqFramenum, the scanline
-// and clock values will be zero; when request is ReqScanline, the clock value
-// will be zero. It has no affect when request is ReqClock.
-//
-// In the case of a StateAdj of AdjCPUCycle the only allowed adjustment value
-// is -1. Any other value will return an error.
-func (tv *Television) GetAdjustedCoords(request signal.StateAdj, adjustment int, reset bool) (coords.TelevisionCoords, error) {
-	coords := tv.GetCoords()
-
-	var err error
-
-	switch request {
-	case signal.AdjCPUCycle:
-		// adjusting by CPU cycle is the same as adjusting by video cycle
-		// accept to say that a CPU cycle is the equivalent of 3 video cycles
-		adjustment *= 3
-		fallthrough
-	case signal.AdjClock:
-		coords.Clock += adjustment
-		if coords.Clock >= specification.ClksScanline {
-			coords.Clock -= specification.ClksScanline
-			coords.Scanline++
-		} else if coords.Clock < 0 {
-			coords.Clock += specification.ClksScanline
-			coords.Scanline--
-		}
-		if coords.Scanline > tv.state.frameInfo.TotalScanlines {
-			coords.Scanline -= tv.state.frameInfo.TotalScanlines
-			coords.Frame++
-		} else if coords.Scanline < 0 {
-			coords.Scanline += tv.state.frameInfo.TotalScanlines
-			coords.Frame--
-		}
-	case signal.AdjInstruction:
-		if adjustment != -1 {
-			err = curated.Errorf("television: can only adjust CPU boundary by -1")
-		} else {
-			coords.Clock = tv.state.lastCPUInstruction.Clock
-			coords.Scanline = tv.state.lastCPUInstruction.Scanline
-			coords.Frame = tv.state.lastCPUInstruction.Frame
-		}
-	case signal.AdjScanline:
-		if reset {
-			coords.Clock = 0
-		}
-		coords.Scanline += adjustment
-		if coords.Scanline > tv.state.frameInfo.TotalScanlines {
-			coords.Scanline -= tv.state.frameInfo.TotalScanlines
-			coords.Frame++
-		} else if coords.Scanline < 0 {
-			coords.Scanline += tv.state.frameInfo.TotalScanlines
-			coords.Frame--
-		}
-	case signal.AdjFramenum:
-		if reset {
-			coords.Clock = 0
-			coords.Scanline = 0
-		}
-		coords.Frame += adjustment
-	}
-
-	// zero values if frame is less than zero
-	if coords.Frame < 0 {
-		coords.Frame = 0
-		coords.Scanline = 0
-		coords.Clock = 0
-	}
-
-	return coords, err
-}
-
-// InstructionBoundary implements the cpu.BoundaryTrigger interface.
-func (tv *Television) InstructionBoundary() {
-	tv.state.lastCPUInstruction = tv.state.GetCoords()
 }

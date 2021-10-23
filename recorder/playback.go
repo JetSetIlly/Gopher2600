@@ -29,7 +29,6 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
 	"github.com/jetsetilly/gopher2600/hardware/television/coords"
-	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 )
 
 type playbackEntry struct {
@@ -62,14 +61,14 @@ type Playback struct {
 }
 
 func (plb Playback) String() string {
-	currFrame := plb.digest.GetState(signal.ReqFramenum)
+	currFrame := plb.digest.GetCoords().Frame
 	return fmt.Sprintf("%d/%d (%.1f%%)", currFrame, plb.endFrame, 100*(float64(currFrame)/float64(plb.endFrame)))
 }
 
 // EndFrame returns true if emulation has gone past the last frame of the
 // playback.
 func (plb Playback) EndFrame() (bool, error) {
-	currFrame := plb.digest.GetState(signal.ReqFramenum)
+	currFrame := plb.digest.GetCoords().Frame
 	if currFrame > plb.endFrame {
 		return true, nil
 	}

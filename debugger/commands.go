@@ -38,7 +38,8 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/controllers"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
-	"github.com/jetsetilly/gopher2600/hardware/television/signal"
+	"github.com/jetsetilly/gopher2600/hardware/television"
+	"github.com/jetsetilly/gopher2600/hardware/television/coords"
 	"github.com/jetsetilly/gopher2600/linter"
 	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/patch"
@@ -198,14 +199,14 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		dbg.haltImmediately = true
 
 	case cmdStep:
-		adj := 1
+		adjAmount := 1
 		back := false
 
 		if tk, ok := tokens.Get(); ok {
 			switch tk {
 			case "BACK":
 				back = true
-				adj *= -1
+				adjAmount *= -1
 
 			case "OVER":
 				// if next expected opcode is JSR then add a volatile breakpoint to the
@@ -229,33 +230,37 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		mode = strings.ToUpper(mode)
 
 		if back {
-			var req signal.StateAdj
+			var instruction bool
+			var adj television.Adj
 
 			switch mode {
 			case "":
 				// continue with current quantum state
 				if dbg.stepQuantum == QuantumInstruction {
-					req = signal.AdjInstruction
+					instruction = true
 				} else {
-					req = signal.AdjClock
+					adj = television.AdjClock
 				}
 			case "INSTRUCTION":
 				dbg.stepQuantum = QuantumInstruction
-				req = signal.AdjInstruction
+				instruction = true
 			case "VIDEO":
 				dbg.stepQuantum = QuantumVideo
-				req = signal.AdjClock
+				adj = television.AdjClock
 			case "SCANLINE":
-				req = signal.AdjScanline
+				adj = television.AdjScanline
 			case "FRAME":
-				req = signal.AdjFramenum
+				adj = television.AdjFrame
 			default:
 				return curated.Errorf("unknown STEP BACK mode (%s)", mode)
 			}
 
-			coords, err := dbg.vcs.TV.GetAdjustedCoords(req, adj, true)
-			if err != nil {
-				return err
+			var coords coords.TelevisionCoords
+
+			if instruction {
+				coords = dbg.lastCPUboundary
+			} else {
+				coords = dbg.vcs.TV.AdjCoords(adj, adjAmount)
 			}
 
 			dbg.setState(emulation.Rewinding)

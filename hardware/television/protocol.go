@@ -17,7 +17,6 @@ package television
 
 import (
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
-	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 )
 
 // PixelRenderer implementations displays, or otherwise works with, visual
@@ -151,9 +150,6 @@ type AudioMixer interface {
 	// example, a cartridge change.
 	Reset()
 }
-
-// MaxSignalHistory is the absolute maximum number of entries in a signal history for an entire frame.
-const MaxSignalHistory = specification.AbsoluteMaxClks
 
 // VCSReturnChannel is used to send information from the TV back to the parent
 // console. Named because I think of it as being similar to the Audio Return

@@ -19,7 +19,6 @@ import (
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/emulation"
 	"github.com/jetsetilly/gopher2600/hardware/television"
-	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 )
 
 // TimelineCounts is returned by a TimelineCounter implementation. The value
@@ -155,13 +154,13 @@ func (r *Rewind) GetTimeline() Timeline {
 	//
 	// this has a consequence when the first time the circular array wraps
 	// around for the first time (the number of available entries drops by one)
-	sf := r.entries[r.start].TV.GetState(signal.ReqFramenum)
+	sf := r.entries[r.start].TV.GetCoords().Frame
 	if r.entries[r.start].level != levelReset {
 		sf++
 	}
 
 	r.timeline.AvailableStart = sf
-	r.timeline.AvailableEnd = r.entries[e].TV.GetState(signal.ReqFramenum)
+	r.timeline.AvailableEnd = r.entries[e].TV.GetCoords().Frame
 
 	return r.timeline
 }

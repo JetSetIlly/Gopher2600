@@ -125,6 +125,9 @@ func (dbg *Debugger) catchupLoop(inputter terminal.Input) error {
 	for !ended {
 		dbg.lastBank = dbg.vcs.Mem.Cart.GetBank(dbg.vcs.CPU.PC.Address())
 
+		// coords of CPU instruction before calling vcs.Step()
+		dbg.lastCPUboundary = dbg.vcs.TV.GetCoords()
+
 		err := dbg.vcs.Step(callback)
 		if err != nil {
 			return err
@@ -434,6 +437,9 @@ func (dbg *Debugger) step(inputter terminal.Input, catchup bool) error {
 	// use this when formatting the last result from the CPU. this has
 	// to happen before we call the VCS.Step() function
 	dbg.lastBank = dbg.vcs.Mem.Cart.GetBank(dbg.vcs.CPU.PC.Address())
+
+	// coords of CPU instruction before calling vcs.Step()
+	dbg.lastCPUboundary = dbg.vcs.TV.GetCoords()
 
 	// not using the err variable because we'll clobber it before we
 	// get to check the result of VCS.Step()

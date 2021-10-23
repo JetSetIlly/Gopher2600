@@ -406,7 +406,7 @@ func (scr *screen) Reflect(ref []reflection.ReflectedVideoStep) error {
 	// array but if we do want to make sure then something like the condition
 	// below would be good.
 	//
-	if len(ref) != television.MaxSignalHistory {
+	if len(ref) != specification.AbsoluteMaxClks {
 		panic("reflected entries not the same length as reflection buffer")
 	}
 

@@ -56,7 +56,7 @@ func NewVideo(tv *television.Television) (*Video, error) {
 
 	// length of pixels array contains enough room for the previous frames digest value
 	l := len(dig.digest)
-	l += television.MaxSignalHistory * pixelDepth
+	l += specification.AbsoluteMaxClks * pixelDepth
 
 	// allocate enough pixels for entire frame
 	dig.pixels = make([]byte, l)

@@ -42,7 +42,9 @@
 // the current incoming TV signal. For debugging purposes, the framerate can
 // also be set to a specific value
 //
-// Framesize adaptation is also handled by the television package.
+// Framesize adaptation is also handled by the television package. Current
+// information about the frame can be acquired with GetFrameInfo(). FrameInfo
+// will also be sent to the PixelRenderers as appropriate.
 //
 // Screen Rolling
 //

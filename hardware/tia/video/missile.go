@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 	"github.com/jetsetilly/gopher2600/hardware/tia/delay"
 	"github.com/jetsetilly/gopher2600/hardware/tia/phaseclock"
@@ -262,7 +261,7 @@ func (ms *MissileSprite) tick(resetToPlayer bool) bool {
 		ms.pclk = phaseclock.ResetValue
 
 		// missile-to-player also resets position information
-		ms.ResetPixel = ms.tia.tv.GetState(signal.ReqClock)
+		ms.ResetPixel = ms.tia.tv.GetCoords().Clock
 		ms.HmovedPixel = ms.ResetPixel
 	}
 
@@ -391,7 +390,7 @@ func (ms *MissileSprite) resetPosition() {
 func (ms *MissileSprite) _futureResetPosition() {
 	// the pixel at which the sprite has been reset, in relation to the
 	// left edge of the screen
-	ms.ResetPixel = ms.tia.tv.GetState(signal.ReqClock)
+	ms.ResetPixel = ms.tia.tv.GetCoords().Clock
 
 	if ms.ResetPixel >= 0 {
 		// resetPixel adjusted by 1 because the tv is not yet in the correct

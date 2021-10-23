@@ -22,6 +22,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
+	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/rewind"
 )
@@ -50,7 +51,7 @@ type Gatherer struct {
 func NewGatherer(vcs *hardware.VCS) *Gatherer {
 	return &Gatherer{
 		vcs:     vcs,
-		history: make([]ReflectedVideoStep, television.MaxSignalHistory),
+		history: make([]ReflectedVideoStep, specification.AbsoluteMaxClks),
 	}
 }
 
