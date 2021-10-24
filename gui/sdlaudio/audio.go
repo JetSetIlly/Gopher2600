@@ -25,20 +25,20 @@ import (
 	"github.com/veandco/go-sdl2/sdl"
 )
 
-// the buffer length is important to get right. unfortunately, there's no
-// special way (that I know of) that can tells us what the ideal value is
+// number of samples in the SDL audio buffer at any one time. tha value is an
+// estimate calculated by dividing the VCS audio frequency by the frame rate of
+// the PAL specification.
 //
-// the bufferLegnth value is the maximum size of the buffer. once the buffer is
-// full the audio will be queued.
-const bufferLength = 2048
+//	31403 / 50 = 628.06
+//
+// (any value we use must be a multiple of four)
+const bufferLength = 628
 
-// if the audio queue is ever less than minQueueLength then the buffer
-// will be pushed to the queue immediately.
-const minQueueLength = 512
-
-// if audio queue is ever less than critQueueLength the the buffer is pushed to
-// the queue but the buffer is not reset.
-const critQueueLength = 128
+// realtimeDemand is the minimum number of samples that need to be in the SDL
+// queue for MoreAudio() to return false
+//
+// no reasoning behind this value, it's just what seems to work well in practice
+const realtimeDemand = bufferLength * 5
 
 // if queued audio ever exceeds this value then push the audio into the SDL buffer
 const maxQueueLength = 16384
@@ -91,7 +91,10 @@ func NewAudio() (*Audio, error) {
 	logger.Logf("sdl: audio", "frequency: %d samples/sec", aud.spec.Freq)
 	logger.Logf("sdl: audio", "format: %d", aud.spec.Format)
 	logger.Logf("sdl: audio", "channels: %d", aud.spec.Channels)
-	logger.Logf("sdl: audio", "buffer size: %d samples", aud.spec.Samples)
+	logger.Logf("sdl: audio", "buffer size: %d samples", bufferLength)
+	logger.Logf("sdl: audio", "realtime demand: %d samples", realtimeDemand)
+	logger.Logf("sdl: audio", "max samples: %d samples", maxQueueLength)
+	logger.Logf("sdl: audio", "silence: %d", aud.spec.Silence)
 
 	sdl.PauseAudioDevice(aud.id, false)
 
@@ -100,8 +103,20 @@ func NewAudio() (*Audio, error) {
 	return aud, nil
 }
 
+// SetAudio implements the protocol.RealtimeAudioMixer interface.
+func (aud *Audio) MoreAudio() bool {
+	return sdl.GetQueuedAudioSize(aud.id) < realtimeDemand
+}
+
 // SetAudio implements the protocol.AudioMixer interface.
 func (aud *Audio) SetAudio(sig []signal.SignalAttributes) error {
+	if aud.MoreAudio() {
+		// if buffer is full then queue audio unconditionally
+		if err := aud.queueBuffer(); err != nil {
+			return curated.Errorf("sdlaudio", err)
+		}
+	}
+
 	for _, s := range sig {
 		if s&signal.AudioUpdate != signal.AudioUpdate {
 			continue
@@ -132,45 +147,26 @@ func (aud *Audio) SetAudio(sig []signal.SignalAttributes) error {
 			aud.bufferCt++
 		}
 
+		remaining := int(sdl.GetQueuedAudioSize(aud.id))
 		if aud.bufferCt >= len(aud.buffer) {
-			// if buffer is full then queue audio unconditionally
 			if err := aud.queueBuffer(); err != nil {
 				return curated.Errorf("sdlaudio", err)
 			}
-		} else {
-			remaining := int(sdl.GetQueuedAudioSize(aud.id))
-
-			if remaining < critQueueLength {
-				// if we're running short of bits in the queue the queue what we have
-				// in the buffer and NOT clearing the buffer
-				//
-				// condition valid when the frame rate is SIGNIFICANTLY LESS than 50/60fps
-				if err := aud.queueBuffer(); err != nil {
-					return curated.Errorf("sdlaudio", err)
-				}
-			} else if remaining < minQueueLength && aud.bufferCt > 10 {
-				// if we're running short of bits in the queue the queue what we have
-				// in the buffer.
-				//
-				// condition valid when the frame rate is LESS than 50/60fps
-				//
-				// the additional condition makes sure we're not queueing a slice
-				// that is too short. SDL has been known to hang with short audio
-				// queues
-				if err := aud.queueBuffer(); err != nil {
-					return curated.Errorf("sdlaudio", err)
-				}
-			} else if remaining > maxQueueLength {
-				// if length of sdl: audio: queue is getting too long then clear it
-				//
-				// condition valid when the frame rate is SIGNIFICANTLY MORE than 50/60fps
-				//
-				// if we don't do this the video will get ahead of the audio (ie. the audio
-				// will lag)
-				//
-				// this is a brute force approach but it'll do for now
-				sdl.ClearQueuedAudio(aud.id)
+		} else if remaining < realtimeDemand {
+			if err := aud.queueBuffer(); err != nil {
+				return curated.Errorf("sdlaudio", err)
 			}
+		} else if remaining > maxQueueLength {
+			// if length of sdl: audio: queue is getting too long then clear it
+			//
+			// condition valid when the frame rate is SIGNIFICANTLY MORE than 50/60fps
+			//
+			// if we don't do this the video will get ahead of the audio (ie. the audio
+			// will lag)
+			//
+			// this is a brute force approach but it'll do for now
+			sdl.ClearQueuedAudio(aud.id)
+			break // for loop
 		}
 	}
 
@@ -178,7 +174,7 @@ func (aud *Audio) SetAudio(sig []signal.SignalAttributes) error {
 }
 
 func (aud *Audio) queueBuffer() error {
-	err := sdl.QueueAudio(aud.id, aud.buffer)
+	err := sdl.QueueAudio(aud.id, aud.buffer[:aud.bufferCt])
 	if err != nil {
 		return err
 	}

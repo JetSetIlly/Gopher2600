@@ -151,6 +151,17 @@ type AudioMixer interface {
 	Reset()
 }
 
+// RealtimeAudioMixer is an extension for the AudioMixer interface.
+// Implementations of this interface expect to be given more audio data on
+// demand.
+//
+// MoreAudio() is called periodically (every scanline) and the implementation
+// should return true if more audio data is required immediately.
+type RealtimeAudioMixer interface {
+	AudioMixer
+	MoreAudio() bool
+}
+
 // VCSReturnChannel is used to send information from the TV back to the parent
 // console. Named because I think of it as being similar to the Audio Return
 // Channel (ARC) present in modern TVs.

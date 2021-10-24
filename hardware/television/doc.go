@@ -25,6 +25,11 @@
 // AddPixelRenderer() and AddAudioMixer(). These can be used to add as many
 // renderers and mixers as required.
 //
+// For audio outputs that are time sensitive, the AddRealtimeAudioMixer()
+// function should be used. This requires a slightly different implementation
+// (see RealtimeAudioMixer interface) and only one such implemenation can be
+// registered at any one time.
+//
 // There is also the FrameTrigger and PauseTrigger interfaces for applications
 // that have limited need for a full pixel renderer.
 //

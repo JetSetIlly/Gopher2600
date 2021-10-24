@@ -131,6 +131,9 @@ type Television struct {
 	// list of audio mixers to consult
 	mixers []AudioMixer
 
+	// realtime mixer. only one allowed
+	realtimeMixer RealtimeAudioMixer
+
 	// instance of current state (as supported by the rewind system)
 	state *State
 
@@ -153,6 +156,12 @@ type Television struct {
 
 	// the index of the most recent Signal()
 	currentSignalIdx int
+
+	// indicates whether the realtime audio mixer needs data quickly. if the
+	// flag is true then we push the audio signal on every vcs clock
+	//
+	// realtime requirement is checked every scanline
+	realtimeAudio bool
 
 	// state of emulation
 	emulationState emulation.State
@@ -279,6 +288,12 @@ func (tv *Television) AddFrameTrigger(f FrameTrigger) {
 // implemntations can be added.
 func (tv *Television) AddAudioMixer(m AudioMixer) {
 	tv.mixers = append(tv.mixers, m)
+}
+
+// AddRealtimeAudioMixer registers an implementation of AudioMixer. Multiple
+// implemntations can be added.
+func (tv *Television) AddRealtimeAudioMixer(m RealtimeAudioMixer) {
+	tv.realtimeMixer = m
 }
 
 // some televisions may need to conclude and/or dispose of resources
@@ -417,6 +432,13 @@ func (tv *Television) Signal(sig signal.SignalAttributes) error {
 		}
 	}
 
+	if tv.realtimeAudio && tv.realtimeMixer != nil {
+		err := tv.realtimeMixer.SetAudio([]signal.SignalAttributes{sig})
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -426,6 +448,17 @@ func (tv *Television) newScanline() error {
 		err := r.NewScanline(tv.state.scanline)
 		if err != nil {
 			return err
+		}
+	}
+
+	// check for realtime mixing requirements
+	if tv.realtimeMixer != nil {
+		tv.realtimeAudio = tv.lmtr.realtimeAudio && tv.realtimeMixer.MoreAudio()
+		if tv.realtimeAudio {
+			err := tv.realtimeMixer.SetAudio(tv.signals[:tv.currentSignalIdx])
+			if err != nil {
+				return err
+			}
 		}
 	}
 
@@ -533,6 +566,13 @@ func (tv *Television) renderSignals() error {
 			if err != nil {
 				return curated.Errorf("television: %v", err)
 			}
+		}
+	}
+
+	if tv.realtimeMixer != nil {
+		err := tv.realtimeMixer.SetAudio(tv.signals[:tv.currentSignalIdx])
+		if err != nil {
+			return curated.Errorf("television: %v", err)
 		}
 	}
 

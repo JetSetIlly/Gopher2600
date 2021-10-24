@@ -57,6 +57,13 @@ type limiter struct {
 	measureCt      int
 	measureTime    time.Time
 	measuringPulse *time.Ticker
+
+	// realtime audio should not be allowed if actual speed of the emulation is
+	// too low or too high
+	//
+	// this is good for machines that just run too slow (realtime audio might
+	// sound odd) but it's also good for the debugger I think
+	realtimeAudio bool
 }
 
 func (lmtr *limiter) init() {
@@ -133,11 +140,18 @@ func (lmtr *limiter) measureActual() {
 	select {
 	case <-lmtr.measuringPulse.C:
 		t := time.Now()
-		lmtr.actual.Store(float32(lmtr.measureCt) / float32(t.Sub(lmtr.measureTime).Seconds()))
+
+		actual := float32(lmtr.measureCt) / float32(t.Sub(lmtr.measureTime).Seconds())
+		lmtr.actual.Store(actual)
 
 		// reset time and count ready for next measurement
 		lmtr.measureTime = t
 		lmtr.measureCt = 0
+
+		// check whether realtimeAudio should be allowed
+		refresh := lmtr.refreshRate.Load().(float32)
+		lmtr.realtimeAudio = actual >= refresh*0.90 && actual <= refresh*1.1
+
 	default:
 	}
 }

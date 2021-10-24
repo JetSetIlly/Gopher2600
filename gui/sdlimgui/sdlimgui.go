@@ -169,7 +169,7 @@ func NewSdlImgui(tv *television.Television) (*SdlImgui, error) {
 	if err != nil {
 		return nil, curated.Errorf("sdlimgui: %v", err)
 	}
-	tv.AddAudioMixer(img.audio)
+	tv.AddRealtimeAudioMixer(img.audio)
 
 	// load sdlimgui preferences
 	img.prefs, err = newPreferences(img)
