@@ -533,11 +533,11 @@ func (scr *screen) copyPixelsPlaymode() {
 				copy(scr.crit.pixels.Pix, scr.crit.bufferPixels[scr.crit.prevRenderIdx].Pix)
 			}
 			scr.crit.pauseFrame = !scr.crit.pauseFrame
-			return
 		} else {
 			// attempt to sync frame generation with monitor refresh rate
 			if scr.crit.monitorSync && scr.img.emulation.State() == emulation.Running {
 				// advance render index
+				prev := scr.crit.prevRenderIdx
 				scr.crit.prevRenderIdx = scr.crit.renderIdx
 				scr.crit.renderIdx++
 				if scr.crit.renderIdx >= len(scr.crit.bufferPixels) {
@@ -548,28 +548,9 @@ func (scr *screen) copyPixelsPlaymode() {
 				if scr.crit.renderIdx == scr.crit.plotIdx {
 					// ** emulation not keeping up with screen update **
 
-					// undo frame advancement. in earlier versions of the code we
-					// reduced the renderIdx by two, having the effect of reusing not
-					// the previous frame, but the frame before that.
-					//
-					// it was thought that this would help out the displaying of
-					// two-frame flicker kernels. which it did, but in some cases that
-					// could result in stuttering of moving sprites. it was
-					// particularly bad if the FPS of the ROM was below the refresh
-					// rate of the monitor.
-					//
-					// a good example of this is the introductory scroller in the demo
-					// Ataventure (by KK of DMA). a scroller that updates every frame
-					// at 50fps and causes very noticeable side-effects on a 60Hz
-					// monitor.
-
-					// by undoing the frame advancement however, we will cause the
-					// prevRenderIdx to be the same as the renderIdx, which will cause
-					// an ineffective pause screen for flicker kernels. remedy this by
-					// simply swapping the current and previous index values
-					t := scr.crit.prevRenderIdx
-					scr.crit.prevRenderIdx = scr.crit.renderIdx
-					scr.crit.renderIdx = t
+					// undo frame advancement
+					scr.crit.renderIdx = scr.crit.prevRenderIdx
+					scr.crit.prevRenderIdx = prev
 				}
 			}
 

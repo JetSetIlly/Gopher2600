@@ -70,6 +70,7 @@ func (vcs *VCS) Run(continueCheck func() (emulation.State, error)) error {
 			if err != nil {
 				return err
 			}
+			checkCt = 0
 		}
 	}
 

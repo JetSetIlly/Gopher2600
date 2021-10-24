@@ -73,7 +73,7 @@ func newPlayScr(img *SdlImgui) *playScr {
 		img:             img,
 		scr:             img.screen,
 		fpsPulse:        time.NewTicker(time.Second),
-		fps:             "waiting for fps",
+		fps:             "waiting",
 		peripheralRight: peripheralNotification{rightAlign: true},
 	}
 
@@ -129,7 +129,12 @@ func (win *playScr) draw() {
 		imgui.BeginV("##playscrfps", &win.fpsOpen, imgui.WindowFlagsAlwaysAutoResize|
 			imgui.WindowFlagsNoScrollbar|imgui.WindowFlagsNoTitleBar|imgui.WindowFlagsNoDecoration)
 
-		imgui.Text(win.fps)
+		imgui.Text(fmt.Sprintf("Emulation: %s", win.fps))
+		if win.img.polling.measuredRenderingTime == 0.0 {
+			imgui.Text("Rendering: waiting")
+		} else {
+			imgui.Text(fmt.Sprintf("Rendering: %03.2f fps", win.img.polling.measuredRenderingTime))
+		}
 
 		imguiSeparator()
 
