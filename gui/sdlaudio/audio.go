@@ -58,6 +58,10 @@ type Audio struct {
 	// update these on every call to queueAudio()
 	stereo     bool
 	separation int
+
+	// the next call to MoreAudio() will return true if this flag is set,
+	// regardless of anything else
+	realtimeDemand bool
 }
 
 // NewAudio is the preferred method of initialisation for the Audio Type.
@@ -105,18 +109,15 @@ func NewAudio() (*Audio, error) {
 
 // SetAudio implements the protocol.RealtimeAudioMixer interface.
 func (aud *Audio) MoreAudio() bool {
+	if aud.realtimeDemand {
+		aud.realtimeDemand = false
+		return true
+	}
 	return sdl.GetQueuedAudioSize(aud.id) < realtimeDemand
 }
 
 // SetAudio implements the protocol.AudioMixer interface.
 func (aud *Audio) SetAudio(sig []signal.SignalAttributes) error {
-	if aud.MoreAudio() {
-		// if buffer is full then queue audio unconditionally
-		if err := aud.queueBuffer(); err != nil {
-			return curated.Errorf("sdlaudio", err)
-		}
-	}
-
 	for _, s := range sig {
 		if s&signal.AudioUpdate != signal.AudioUpdate {
 			continue
@@ -153,6 +154,7 @@ func (aud *Audio) SetAudio(sig []signal.SignalAttributes) error {
 				return curated.Errorf("sdlaudio", err)
 			}
 		} else if remaining < realtimeDemand {
+			aud.realtimeDemand = true
 			if err := aud.queueBuffer(); err != nil {
 				return curated.Errorf("sdlaudio", err)
 			}
