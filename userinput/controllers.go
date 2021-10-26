@@ -24,16 +24,16 @@ import (
 type Controllers struct {
 	trigger GamepadTrigger
 	paddle  float32
+
+	// whether or not the last HandleUserInput() was for an event that was
+	// consumed by the emulation as an input (controller or panel)
+	LastKeyHandled bool
 }
 
-// mouseMotion handles mouse events sent from a GUI. Returns true if key
-// has been handled, false otherwise.
 func (c *Controllers) mouseMotion(ev EventMouseMotion, handle HandleInput) error {
 	return handle.HandleEvent(plugging.PortLeftPlayer, ports.PaddleSet, ev.X)
 }
 
-// mouseButton handles mouse events sent from a GUI. Returns true if key
-// has been handled, false otherwise.
 func (c *Controllers) mouseButton(ev EventMouseButton, handle HandleInput) error {
 	var err error
 
@@ -49,12 +49,16 @@ func (c *Controllers) mouseButton(ev EventMouseButton, handle HandleInput) error
 	return err
 }
 
-// keyboard handles keypresses sent from a GUI. Returns true if
-// key has been handled, false otherwise.
-//
-// For reasons of consistency, this handler is used by the debugger too.
 func (c *Controllers) keyboard(ev EventKeyboard, handle HandleInput) error {
 	var err error
+
+	if ev.Repeat {
+		c.LastKeyHandled = false
+		return nil
+	}
+
+	// by default we'll say the key has been handled, unless specified otherwise
+	c.LastKeyHandled = true
 
 	if ev.Down && ev.Mod == KeyModNone {
 		switch ev.Key {
@@ -154,6 +158,8 @@ func (c *Controllers) keyboard(ev EventKeyboard, handle HandleInput) error {
 			} else {
 				err = handle.HandleEvent(plugging.PortRightPlayer, ports.Down, ports.DataStickTrue)
 			}
+		default:
+			c.LastKeyHandled = false
 		}
 	} else {
 		switch ev.Key {
@@ -215,6 +221,8 @@ func (c *Controllers) keyboard(ev EventKeyboard, handle HandleInput) error {
 			} else {
 				err = handle.HandleEvent(plugging.PortRightPlayer, ports.Down, ports.DataStickFalse)
 			}
+		default:
+			c.LastKeyHandled = false
 		}
 	}
 
@@ -349,7 +357,8 @@ func (c *Controllers) gamepadTriggers(ev EventGamepadTrigger, handle HandleInput
 }
 
 // HandleUserInput deciphers the Event and forwards the input to the Atari 2600
-// player ports. Returns True if event is a Quit event and False otherwise.
+// player ports. Returns True if event should cause emulation to quit; in
+// addition to any error.
 func (c *Controllers) HandleUserInput(ev Event, handle HandleInput) (bool, error) {
 	var err error
 	switch ev := ev.(type) {

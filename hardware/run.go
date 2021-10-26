@@ -19,17 +19,16 @@ import (
 	"github.com/jetsetilly/gopher2600/emulation"
 )
 
-// checking continue condition every Run iteration is too frequent. A modest
-// brake on how often it is called improves and smooths out performance.
-const continueCheckFreq = 100
+// A convenient value to use as the checkFreq parameter of the Run() function.
+// Can give a modest improvement to performance.
+const PerformanceBrake = 100
 
 // Run sets the emulation running as quickly as possible. continuteCheck()
 // should return false when an external event (eg. a GUI event) indicates that
 // the emulation should stop.
 //
-// Not suitable if continueCheck must run very frequently. If you need to check
-// every CPU or every video cycle then the Step() function should be preferred.
-func (vcs *VCS) Run(continueCheck func() (emulation.State, error)) error {
+// The frequency of the check is given by the checkFreq parameter.
+func (vcs *VCS) Run(continueCheck func() (emulation.State, error), checkFreq int) error {
 	if continueCheck == nil {
 		continueCheck = func() (emulation.State, error) { return emulation.Running, nil }
 	}
@@ -64,7 +63,7 @@ func (vcs *VCS) Run(continueCheck func() (emulation.State, error)) error {
 
 		// only call continue check every N iterations
 		checkCt++
-		if checkCt >= continueCheckFreq {
+		if checkCt >= checkFreq {
 			var err error
 			state, err = continueCheck()
 			if err != nil {

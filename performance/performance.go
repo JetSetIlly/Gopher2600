@@ -118,7 +118,7 @@ func Check(output io.Writer, profile Profile, includeDetail bool,
 					return emulation.Running, nil
 				}
 			}
-		})
+		}, hardware.PerformanceBrake)
 		return err
 	}
 

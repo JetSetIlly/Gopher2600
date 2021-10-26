@@ -150,7 +150,7 @@ func (lmtr *limiter) measureActual() {
 
 		// check whether realtimeAudio should be allowed
 		refresh := lmtr.refreshRate.Load().(float32)
-		lmtr.realtimeAudio = actual >= refresh*0.90 && actual <= refresh*1.1
+		lmtr.realtimeAudio = actual >= refresh*0.95 && actual <= refresh*1.05
 
 	default:
 	}

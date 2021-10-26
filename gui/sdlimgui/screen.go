@@ -93,9 +93,21 @@ type screenCrit struct {
 	// during a resize operation and used to affect screen roll visualisation
 	bufferHeight int
 
+	// count of how many of the bufferPixel entries have been used. reset to
+	// len(bufferPixels) when emulation is paused and reduced every time a new
+	// bufferPixel position is used.
+	//
+	// it is used to prevent the renderIdx using a buffer that hasn't been used
+	// recently. this is important after a series of rewind and pause states
+	//
+	// * playmode only
+	bufferUsed int
+
 	// which buffer we'll be plotting to and which bufffer we'll be rendering
 	// from. in playmode we make sure these two indexes never meet. in
 	// debugmode we plot and render from the same index, it doesn't matter.
+	//
+	// * in debug mode these values never change
 	plotIdx       int
 	renderIdx     int
 	prevRenderIdx int
@@ -288,7 +300,7 @@ func (scr *screen) NewFrame(frameInfo television.FrameInfo) error {
 				}
 			} else if scr.crit.frameInfo.Stable {
 				// without the stable check, the screen can roll during startup
-				// of many ROMs. Pitfall for example will fo this.
+				// of many ROMs. Pitfall for example will do this.
 				//
 				// it looks quite cool but we'll leave it disabled for now.
 
@@ -313,7 +325,18 @@ func (scr *screen) NewFrame(frameInfo television.FrameInfo) error {
 			scr.crit.screenrollScanline = 0
 		}
 
-		if scr.img.emulation.State() == emulation.Running {
+		switch scr.img.emulation.State() {
+		case emulation.Rewinding:
+			fallthrough
+		case emulation.Paused:
+			scr.crit.renderIdx = scr.crit.plotIdx
+			scr.crit.prevRenderIdx = scr.crit.plotIdx
+			scr.crit.bufferUsed = len(scr.crit.bufferPixels)
+		case emulation.Running:
+			if scr.crit.bufferUsed > 0 {
+				scr.crit.bufferUsed--
+			}
+
 			scr.crit.plotIdx++
 			if scr.crit.plotIdx >= len(scr.crit.bufferPixels) {
 				scr.crit.plotIdx = 0
@@ -518,45 +541,27 @@ func (scr *screen) copyPixelsPlaymode() {
 	defer scr.crit.section.Unlock()
 
 	if scr.crit.frameInfo.Stable {
-		if scr.img.emulation.State() == emulation.Paused {
-			// when emulation is paused we alternate which frame to show. this
-			// simple technique means that two-frame flicker kernels will show a
-			// still image that looks natural.
-			//
-			// it does mean that for three-frame flicker kernels and single frame
-			// kernels are sub-optimal but I think this is better than allowing a
-			// flicker kernel to show only half the pixels necessary to show a
-			// natural image.
-			if scr.crit.pauseFrame {
-				copy(scr.crit.pixels.Pix, scr.crit.bufferPixels[scr.crit.renderIdx].Pix)
-			} else {
-				copy(scr.crit.pixels.Pix, scr.crit.bufferPixels[scr.crit.prevRenderIdx].Pix)
-			}
-			scr.crit.pauseFrame = !scr.crit.pauseFrame
-		} else {
-			// attempt to sync frame generation with monitor refresh rate
-			if scr.crit.monitorSync && scr.img.emulation.State() == emulation.Running {
-				// advance render index
-				prev := scr.crit.prevRenderIdx
-				scr.crit.prevRenderIdx = scr.crit.renderIdx
-				scr.crit.renderIdx++
-				if scr.crit.renderIdx >= len(scr.crit.bufferPixels) {
-					scr.crit.renderIdx = 0
-				}
-
-				// render index has bumped into the plotting index. revert render index
-				if scr.crit.renderIdx == scr.crit.plotIdx {
-					// ** emulation not keeping up with screen update **
-
-					// undo frame advancement
-					scr.crit.renderIdx = scr.crit.prevRenderIdx
-					scr.crit.prevRenderIdx = prev
-				}
+		if scr.crit.monitorSync && scr.crit.bufferUsed == 0 {
+			// advance render index
+			prev := scr.crit.prevRenderIdx
+			scr.crit.prevRenderIdx = scr.crit.renderIdx
+			scr.crit.renderIdx++
+			if scr.crit.renderIdx >= len(scr.crit.bufferPixels) {
+				scr.crit.renderIdx = 0
 			}
 
-			// copy pixels from render buffer to the live copy.
-			copy(scr.crit.pixels.Pix, scr.crit.bufferPixels[scr.crit.renderIdx].Pix)
+			// render index has bumped into the plotting index. revert render index
+			if scr.crit.renderIdx == scr.crit.plotIdx {
+				// ** emulation not keeping up with screen update **
+
+				// undo frame advancement
+				scr.crit.renderIdx = scr.crit.prevRenderIdx
+				scr.crit.prevRenderIdx = prev
+			}
 		}
+
+		// copy pixels from render buffer to the live copy.
+		copy(scr.crit.pixels.Pix, scr.crit.bufferPixels[scr.crit.renderIdx].Pix)
 	}
 
 	// let the emulator thread know it's okay to continue as soon as possible

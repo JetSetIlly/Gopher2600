@@ -119,6 +119,11 @@ func (img *SdlImgui) Service() {
 				deltaY--
 			}
 			img.io.AddMouseWheelDelta(deltaX*2, deltaY*2)
+			select {
+			case img.userinput <- userinput.EventMouseWheel{Delta: deltaY}:
+			default:
+				logger.Log("sdlimgui", "dropped mouse wheel event")
+			}
 
 		case *sdl.JoyButtonEvent:
 			button := userinput.GamepadButtonNone
@@ -361,15 +366,15 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 		case sdl.KEYDOWN:
 			fallthrough
 		case sdl.KEYUP:
-			if ev.Repeat == 0 {
-				select {
-				case img.userinput <- userinput.EventKeyboard{
-					Key:  sdl.GetKeyName(ev.Keysym.Sym),
-					Mod:  mod,
-					Down: ev.Type == sdl.KEYDOWN}:
-				default:
-					logger.Log("sdlimgui", "dropped key up event")
-				}
+			select {
+			case img.userinput <- userinput.EventKeyboard{
+				Key:    sdl.GetKeyName(ev.Keysym.Sym),
+				Down:   ev.Type == sdl.KEYDOWN,
+				Repeat: ev.Repeat != 0,
+				Mod:    mod,
+			}:
+			default:
+				logger.Log("sdlimgui", "dropped key up event")
 			}
 		}
 

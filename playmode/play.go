@@ -33,11 +33,13 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/savekey"
 	"github.com/jetsetilly/gopher2600/hardware/television"
+	"github.com/jetsetilly/gopher2600/hardware/television/coords"
 	"github.com/jetsetilly/gopher2600/hiscore"
 	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/patch"
 	"github.com/jetsetilly/gopher2600/recorder"
 	"github.com/jetsetilly/gopher2600/resources/unique"
+	"github.com/jetsetilly/gopher2600/rewind"
 	"github.com/jetsetilly/gopher2600/setup"
 	"github.com/jetsetilly/gopher2600/userinput"
 )
@@ -49,9 +51,32 @@ type playmode struct {
 	scr         gui.GUI
 	controllers userinput.Controllers
 
+	rewind *rewind.Rewind
+
 	intChan   chan os.Signal
 	userinput chan userinput.Event
 	rawEvents chan func()
+}
+
+func (pl *playmode) setState(state emulation.State) {
+	pl.state = state
+	pl.vcs.TV.SetEmulationState(state)
+}
+
+// CatchUpLoop implements the rewind.Runner interface.
+func (pl *playmode) CatchUpLoop(tgt coords.TelevisionCoords, callback rewind.CatchUpLoopCallback) error {
+	fpscap := pl.vcs.TV.SetFPSCap(false)
+	defer pl.vcs.TV.SetFPSCap(fpscap)
+
+	pl.vcs.Run(func() (emulation.State, error) {
+		coords := pl.vcs.TV.GetCoords()
+		if coords.Frame >= tgt.Frame {
+			return emulation.Ending, nil
+		}
+		return emulation.Running, nil
+	}, 1)
+
+	return nil
 }
 
 // VCS implements the emulation.Emulation interface.
@@ -77,9 +102,9 @@ func (pl *playmode) State() emulation.State {
 // Pause implements the emulation.Emulation interface.
 func (pl *playmode) Pause(set bool) {
 	if set {
-		pl.state = emulation.Paused
+		pl.setState(emulation.Paused)
 	} else {
-		pl.state = emulation.Running
+		pl.setState(emulation.Running)
 	}
 }
 
@@ -318,9 +343,6 @@ func Play(tv *television.Television, scr gui.GUI, newRecording bool, cartload ca
 		}
 	}
 
-	// start off emulation in a running state
-	pl.state = emulation.Running
-
 	// insert savekey if requested. we're doing this after setting the
 	// emulation state to running so that the savekey icon will be seen.
 	if useSavekey {
@@ -330,11 +352,26 @@ func Play(tv *television.Television, scr gui.GUI, newRecording bool, cartload ca
 		}
 	}
 
+	// setup rewind system
+	pl.rewind, err = rewind.NewRewind(vcs, pl)
+	if err != nil {
+		return curated.Errorf("playmode: %v", err)
+	}
+	tv.AddFrameTrigger(pl.rewind)
+
+	// start off emulation in a running state
+	pl.setState(emulation.Running)
+
 	// note startime
 	startTime := time.Now()
 
 	// run and handle events
-	err = vcs.Run(pl.eventHandler)
+	err = vcs.Run(func() (emulation.State, error) {
+		if pl.state == emulation.Running {
+			pl.rewind.RecordFrameState()
+		}
+		return pl.eventHandler()
+	}, hardware.PerformanceBrake)
 
 	// figure out amount of time played
 	playTime := time.Since(startTime)

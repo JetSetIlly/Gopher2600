@@ -461,7 +461,7 @@ func (tv *Television) newScanline() error {
 
 	// check for realtime mixing requirements. if it is required then
 	// immediately push the audio data that have
-	if tv.realtimeMixer != nil {
+	if tv.realtimeMixer != nil && tv.emulationState == emulation.Running {
 		tv.realtimeAudio = tv.lmtr.realtimeAudio && tv.realtimeMixer.MoreAudio()
 		if tv.realtimeAudio {
 			err := tv.realtimeMixer.SetAudio(tv.signals[:tv.currentSignalIdx])

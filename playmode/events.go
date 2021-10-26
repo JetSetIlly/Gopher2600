@@ -25,7 +25,46 @@ import (
 // sentinal error returned when GUI detects a quit event.
 const quitEvent = "user input quit event"
 
+func (pl *playmode) doRewind(amount int) {
+	pl.setState(emulation.Rewinding)
+	coords := pl.vcs.TV.GetCoords()
+	pl.rewind.GotoFrame(coords.Frame + amount)
+	pl.setState(emulation.Paused)
+}
+
 func (pl *playmode) userInputHandler(ev userinput.Event) error {
+	// handle some events specifically for rewinding.
+	rewindKeys := false
+
+	switch ev := ev.(type) {
+	case userinput.EventMouseWheel:
+		pl.doRewind(int(ev.Delta))
+		rewindKeys = true
+
+	case userinput.EventKeyboard:
+		if ev.Down {
+			switch ev.Key {
+			case "Left":
+				if ev.Mod == userinput.KeyModShift {
+					pl.doRewind(-1)
+					rewindKeys = true
+				}
+			case "Right":
+				if ev.Mod == userinput.KeyModShift {
+					pl.doRewind(1)
+					rewindKeys = true
+				}
+			}
+		} else if ev.Mod != userinput.KeyModNone {
+			rewindKeys = true
+		}
+	}
+
+	// the user event has triggered a rewind so return immediately
+	if rewindKeys {
+		return nil
+	}
+
 	quit, err := pl.controllers.HandleUserInput(ev, pl.vcs.RIOT.Ports)
 	if err != nil {
 		return curated.Errorf("playmode: %v", err)
@@ -33,6 +72,12 @@ func (pl *playmode) userInputHandler(ev userinput.Event) error {
 
 	if quit {
 		return curated.Errorf(quitEvent)
+	}
+
+	// resume emulation if the last event was recognised as a controller input
+	// from the keyboard
+	if pl.state == emulation.Paused && pl.controllers.LastKeyHandled {
+		pl.setState(emulation.Running)
 	}
 
 	return nil
