@@ -109,7 +109,7 @@ type Rewind struct {
 	runner Runner
 
 	// state of emulation
-	emulationState emulation.State
+	emulation emulation.Emulation
 
 	// prefs for the rewind system
 	Prefs *Preferences
@@ -174,10 +174,9 @@ func NewRewind(vcs *hardware.VCS, runner Runner) (*Rewind, error) {
 	return r, nil
 }
 
-// SetEmulationState is called by emulation whenever state changes. How we
-// handle the rewind depends on the current state.
-func (r *Rewind) SetEmulationState(state emulation.State) {
-	r.emulationState = state
+// SetEmulation registers the host emulation with the rewind system.
+func (r *Rewind) SetEmulation(emulation emulation.Emulation) {
+	r.emulation = emulation
 }
 
 // AddTimelineCounter to the rewind system. Augments Timeline information that
@@ -509,17 +508,16 @@ func (r *Rewind) GotoLast() error {
 // frame number can not be found the nearest frame will be plumbed in and the
 // emulation run to match the requested frame.
 func (r *Rewind) GotoFrame(frame int) error {
-	idx, frame, last := r.findFrameIndex(frame)
+	idx, frame, future := r.findFrameIndex(frame)
+
+	if future {
+		return nil
+	}
 
 	coords := coords.TelevisionCoords{
 		Frame:    frame,
 		Scanline: 0,
 		Clock:    -specification.ClksHBlank,
-	}
-
-	// it is more appropriate to plumb with GotoLast() if last is true
-	if last {
-		return r.GotoLast()
 	}
 
 	return r.setContinuePoint(idx, coords)
@@ -528,22 +526,15 @@ func (r *Rewind) GotoFrame(frame int) error {
 // find index nearest to the requested frame. returns the index and the frame
 // number that is actually possible with the rewind system.
 //
-// the last value indicates that the requested frame is past the end of the
-// history. in those instances, the returned frame number can be used for the
-// plumbing operation or because last==true the GotoLast() can be used for a
-// more natural feeling result.
+// the future value indicates that the requested frame is past the end of the
+// history. in those instances, the rewind procedure should stop.
 //
 // note that findFrameIndex() searches for the frame that is two frames before
 // the one that is requested.
-func (r *Rewind) findFrameIndex(frame int) (idx int, fr int, last bool) {
-	sf := frame
-	switch sf {
-	case 0:
-		sf = 0
-	case 1:
-		sf = 0
-	default:
-		sf -= 2
+func (r *Rewind) findFrameIndex(frame int) (idx int, fr int, future bool) {
+	sf := frame - 1
+	if r.emulation != nil && r.emulation.Debugger() != nil {
+		sf--
 	}
 
 	// initialise binary search
@@ -564,15 +555,8 @@ func (r *Rewind) findFrameIndex(frame int) (idx int, fr int, last bool) {
 
 	// is requested frame too new (ie. past the end of the array)
 	fn = r.entries[e].TV.GetCoords().Frame
-	if sf >= fn {
-		e--
-		if e < 0 {
-			e += len(r.entries)
-		}
-		if r.entries[e] == nil {
-			return r.start, fn, true
-		}
-		return e, fn, true
+	if frame > fn {
+		return 0, 0, true
 	}
 
 	// because r.entries is a cirular array, there's an additional step to the

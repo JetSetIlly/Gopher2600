@@ -15,4 +15,12 @@
 
 // Package emulation is an abstraction of the various modes Gopher2600 can
 // operate in, principally play-mode and the debugger.
+//
+// It is useful when linking packages/types that require a *passive* knowledge
+// of the emulation. For example, a GUI might want to know what the current
+// state of the emulation is.
+//
+// Some package types might still need an active knowledge of the emulation
+// however. In which case, simply relying on the Emulation interface is
+// probably not enough.
 package emulation

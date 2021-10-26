@@ -34,11 +34,16 @@ const (
 
 // VCS is a minimal abstraction of the VCS hardware. Exists mainly to avoid a
 // circular import to the hardware package.
+//
+// The only likely implementation of this interface is the hardware.VCS type.
 type VCS interface {
 }
 
 // VCS is a minimal abstraction of the Gopher2600 debugger. Exists mainly to
 // avoid a circular import to the debugger package.
+//
+// The only likely implementation of this interface is the debugger.Debugger
+// type.
 type Debugger interface {
 }
 

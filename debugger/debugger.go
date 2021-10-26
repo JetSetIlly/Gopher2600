@@ -236,6 +236,7 @@ func NewDebugger(tv *television.Television, scr gui.GUI, term terminal.Terminal,
 	if err != nil {
 		return nil, curated.Errorf("debugger: %v", err)
 	}
+	dbg.Rewind.SetEmulation(dbg)
 	dbg.Rewind.AddTimelineCounter(dbg.ref) // using reflection monitor for the timeline counter
 	dbg.deepPoking = make(chan bool, 1)
 
@@ -310,7 +311,6 @@ func (dbg *Debugger) State() emulation.State {
 
 func (dbg *Debugger) setState(state emulation.State) {
 	dbg.vcs.TV.SetEmulationState(state)
-	dbg.Rewind.SetEmulationState(state)
 	dbg.ref.SetEmulationState(state)
 	dbg.state.Store(state)
 }
