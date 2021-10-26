@@ -19,6 +19,7 @@ import (
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
 	"github.com/jetsetilly/gopher2600/emulation"
+	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/userinput"
 )
 
@@ -26,10 +27,29 @@ import (
 const quitEvent = "user input quit event"
 
 func (pl *playmode) doRewind(amount int) {
-	pl.setState(emulation.Rewinding)
 	coords := pl.vcs.TV.GetCoords()
+	tl := pl.rewind.GetTimeline()
+
+	if amount < 0 && coords.Frame-1 <= tl.AvailableStart {
+		pl.scr.SetFeature(gui.ReqEmulationEvent, emulation.EventRewindAtStart)
+		pl.setState(emulation.Paused)
+		return
+	}
+	if amount > 0 && coords.Frame+1 >= tl.AvailableEnd {
+		pl.scr.SetFeature(gui.ReqEmulationEvent, emulation.EventRewindAtEnd)
+		pl.setState(emulation.Paused)
+		return
+	}
+
+	pl.setState(emulation.Rewinding)
 	pl.rewind.GotoFrame(coords.Frame + amount)
 	pl.setState(emulation.Paused)
+
+	if amount < 0 {
+		pl.scr.SetFeature(gui.ReqEmulationEvent, emulation.EventRewindBack)
+	} else {
+		pl.scr.SetFeature(gui.ReqEmulationEvent, emulation.EventRewindFoward)
+	}
 }
 
 func (pl *playmode) userInputHandler(ev userinput.Event) error {
@@ -78,6 +98,7 @@ func (pl *playmode) userInputHandler(ev userinput.Event) error {
 	// from the keyboard
 	if pl.state == emulation.Paused && pl.controllers.LastKeyHandled {
 		pl.setState(emulation.Running)
+		pl.scr.SetFeature(gui.ReqEmulationEvent, emulation.EventRun)
 	}
 
 	return nil

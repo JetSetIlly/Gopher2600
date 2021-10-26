@@ -64,6 +64,9 @@ type playScr struct {
 	peripheralLeft  peripheralNotification
 	peripheralRight peripheralNotification
 
+	// emulation events notifications
+	emulationEvent emulationEventNotification
+
 	// cartridge events notifications
 	cartridgeEvent cartridgeEventNotification
 }
@@ -157,6 +160,7 @@ func (win *playScr) draw() {
 
 	win.peripheralLeft.draw(win)
 	win.peripheralRight.draw(win)
+	win.emulationEvent.draw(win)
 	win.cartridgeEvent.draw(win)
 }
 

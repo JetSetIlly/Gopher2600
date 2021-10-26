@@ -56,3 +56,18 @@ type Emulation interface {
 	State() State
 	Pause(set bool)
 }
+
+// Event describes an event that might occur in the emulation which is outside
+// of the scope of the VCS. For example, when the emulation is paused an
+// EventPause can be sent to the GUI (see FeatureReq type in the gui package).
+type Event int
+
+// List of currently defined events.
+const (
+	EventPause Event = iota
+	EventRun
+	EventRewindBack
+	EventRewindFoward
+	EventRewindAtStart
+	EventRewindAtEnd
+)

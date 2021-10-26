@@ -136,6 +136,11 @@ func (img *SdlImgui) serviceSetFeature(request featureRequest) {
 			}
 		}
 
+	case gui.ReqEmulationEvent:
+		if img.isPlaymode() {
+			img.playScr.emulationEvent.set(request.args[0].(emulation.Event))
+		}
+
 	case gui.ReqCartridgeEvent:
 		if img.isPlaymode() {
 			img.playScr.cartridgeEvent.set(request.args[0].(mapper.Event))

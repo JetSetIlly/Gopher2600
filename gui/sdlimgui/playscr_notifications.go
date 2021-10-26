@@ -19,6 +19,7 @@ import (
 	"fmt"
 
 	"github.com/inkyblackness/imgui-go/v4"
+	"github.com/jetsetilly/gopher2600/emulation"
 	"github.com/jetsetilly/gopher2600/gui/fonts"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
@@ -33,37 +34,37 @@ type peripheralNotification struct {
 	rightAlign bool
 }
 
-func (ca *peripheralNotification) set(peripheral plugging.PeripheralID) {
-	ca.frames = notificationDuration
+func (pn *peripheralNotification) set(peripheral plugging.PeripheralID) {
+	pn.frames = notificationDuration
 
 	switch peripheral {
 	case plugging.PeriphStick:
-		ca.icon = fmt.Sprintf("%c", fonts.Stick)
+		pn.icon = fmt.Sprintf("%c", fonts.Stick)
 	case plugging.PeriphPaddle:
-		ca.icon = fmt.Sprintf("%c", fonts.Paddle)
+		pn.icon = fmt.Sprintf("%c", fonts.Paddle)
 	case plugging.PeriphKeypad:
-		ca.icon = fmt.Sprintf("%c", fonts.Keypad)
+		pn.icon = fmt.Sprintf("%c", fonts.Keypad)
 	case plugging.PeriphSavekey:
-		ca.icon = fmt.Sprintf("%c", fonts.Savekey)
+		pn.icon = fmt.Sprintf("%c", fonts.Savekey)
 	default:
-		ca.icon = ""
+		pn.icon = ""
 		return
 	}
 }
 
-func (ca *peripheralNotification) tick() {
-	ca.frames--
+func (pn *peripheralNotification) tick() {
+	pn.frames--
 }
 
 // pos should be the coordinate of the *extreme* bottom left or bottom right of
 // the playscr window. the values will be adjusted according to whether we're
 // display an icon or text.
-func (ca *peripheralNotification) draw(win *playScr) {
-	if ca.frames <= 0 {
+func (pn *peripheralNotification) draw(win *playScr) {
+	if pn.frames <= 0 {
 		return
 	}
 
-	ca.tick()
+	pn.tick()
 
 	if !win.img.prefs.controllerNotifcations.Get().(bool) {
 		return
@@ -78,7 +79,7 @@ func (ca *peripheralNotification) draw(win *playScr) {
 	var id string
 	var pos imgui.Vec2
 	dimen := win.img.plt.displaySize()
-	if ca.rightAlign {
+	if pn.rightAlign {
 		pos = imgui.Vec2{dimen[0], dimen[1]}
 		id = "##controlleralertright"
 		pos.X -= win.img.glsl.gopher2600IconsSize * 1.5
@@ -95,7 +96,81 @@ func (ca *peripheralNotification) draw(win *playScr) {
 	imgui.BeginV(id, &win.fpsOpen, imgui.WindowFlagsAlwaysAutoResize|
 		imgui.WindowFlagsNoScrollbar|imgui.WindowFlagsNoTitleBar|imgui.WindowFlagsNoDecoration)
 
-	imgui.Text(ca.icon)
+	imgui.Text(pn.icon)
+
+	imgui.PopStyleColorV(2)
+	imgui.End()
+}
+
+// emulationEventNotification is used to draw an indicator on the screen for
+// events defined in the emulation package.
+type emulationEventNotification struct {
+	open         bool
+	currentEvent emulation.Event
+	frames       int
+}
+
+func (ee *emulationEventNotification) set(event emulation.Event) {
+	ee.currentEvent = event
+	ee.open = true
+	ee.frames = notificationDuration
+}
+
+func (ee *emulationEventNotification) tick() {
+	if !ee.open || ee.frames <= 0 {
+		return
+	}
+
+	ee.frames--
+
+	if ee.frames == 0 {
+		switch ee.currentEvent {
+		case emulation.EventRewindBack:
+			ee.currentEvent = emulation.EventPause
+		case emulation.EventRewindFoward:
+			ee.currentEvent = emulation.EventPause
+		case emulation.EventRewindAtStart:
+			ee.currentEvent = emulation.EventPause
+		case emulation.EventRewindAtEnd:
+			ee.currentEvent = emulation.EventPause
+		}
+
+		if ee.currentEvent != emulation.EventPause {
+			ee.open = false
+		}
+	}
+}
+
+func (ee *emulationEventNotification) draw(win *playScr) {
+	if !ee.open {
+		return
+	}
+
+	ee.tick()
+
+	imgui.SetNextWindowPos(imgui.Vec2{X: 10, Y: 10})
+	imgui.PushStyleColor(imgui.StyleColorWindowBg, win.img.cols.Transparent)
+	imgui.PushStyleColor(imgui.StyleColorBorder, win.img.cols.Transparent)
+
+	imgui.BeginV("##cartridgeevent", &ee.open, imgui.WindowFlagsAlwaysAutoResize|
+		imgui.WindowFlagsNoScrollbar|imgui.WindowFlagsNoTitleBar|imgui.WindowFlagsNoDecoration)
+
+	imgui.PushFont(win.img.glsl.veryLargeFontAwesome)
+	switch ee.currentEvent {
+	case emulation.EventPause:
+		imgui.Text(string(fonts.EmulationPause))
+	case emulation.EventRun:
+		imgui.Text(string(fonts.EmulationRun))
+	case emulation.EventRewindBack:
+		imgui.Text(string(fonts.EmulationRewindBack))
+	case emulation.EventRewindFoward:
+		imgui.Text(string(fonts.EmulationRewindForward))
+	case emulation.EventRewindAtStart:
+		imgui.Text(string(fonts.EmulationRewindAtStart))
+	case emulation.EventRewindAtEnd:
+		imgui.Text(string(fonts.EmulationRewindAtEnd))
+	}
+	imgui.PopFont()
 
 	imgui.PopStyleColorV(2)
 	imgui.End()

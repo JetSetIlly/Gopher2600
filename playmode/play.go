@@ -101,10 +101,14 @@ func (pl *playmode) State() emulation.State {
 
 // Pause implements the emulation.Emulation interface.
 func (pl *playmode) Pause(set bool) {
-	if set {
-		pl.setState(emulation.Paused)
-	} else {
-		pl.setState(emulation.Running)
+	pl.rawEvents <- func() {
+		if set {
+			pl.setState(emulation.Paused)
+			pl.scr.SetFeature(gui.ReqEmulationEvent, emulation.EventPause)
+		} else {
+			pl.setState(emulation.Running)
+			pl.scr.SetFeature(gui.ReqEmulationEvent, emulation.EventRun)
+		}
 	}
 }
 

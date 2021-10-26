@@ -39,6 +39,9 @@ type glsl struct {
 	largeFontAwesome     imgui.Font
 	largeFontAwesomeSize float32
 
+	veryLargeFontAwesome     imgui.Font
+	veryLargeFontAwesomeSize float32
+
 	gopher2600Icons     imgui.Font
 	gopher2600IconsSize float32
 
@@ -113,7 +116,7 @@ func (rnd *glsl) setupFonts() error {
 	rnd.gopher2600IconsSize = 52.0
 	rnd.gopher2600Icons = atlas.AddFontFromMemoryTTFV(fonts.Gopher2600Icons, rnd.gopher2600IconsSize, gopher2600IconConfig, gopherIconBuilder.Build().GlyphRanges)
 	if font == 0 {
-		return curated.Errorf("font: error loading font from memory")
+		return curated.Errorf("font: error loading Gopher2600 font from memory")
 	}
 
 	// load large icons
@@ -121,13 +124,27 @@ func (rnd *glsl) setupFonts() error {
 	defer largeFontAwesomeConfig.Delete()
 	largeFontAwesomeConfig.SetPixelSnapH(true)
 
-	var largFontAwesomeBuilder imgui.GlyphRangesBuilder
-	largFontAwesomeBuilder.Add(fonts.FontAwesomeMin, fonts.FontAwesomeMax)
+	var largeFontAwesomeBuilder imgui.GlyphRangesBuilder
+	largeFontAwesomeBuilder.Add(fonts.FontAwesomeMin, fonts.FontAwesomeMax)
 
 	rnd.largeFontAwesomeSize = 22.0
-	rnd.largeFontAwesome = atlas.AddFontFromMemoryTTFV(fonts.FontAwesome, rnd.largeFontAwesomeSize, largeFontAwesomeConfig, largFontAwesomeBuilder.Build().GlyphRanges)
+	rnd.largeFontAwesome = atlas.AddFontFromMemoryTTFV(fonts.FontAwesome, rnd.largeFontAwesomeSize, largeFontAwesomeConfig, largeFontAwesomeBuilder.Build().GlyphRanges)
 	if font == 0 {
-		return curated.Errorf("font: error loading font from memory")
+		return curated.Errorf("font: error loading large FA font from memory")
+	}
+
+	// load very-large icons
+	veryLargeFontAwesomeConfig := imgui.NewFontConfig()
+	defer veryLargeFontAwesomeConfig.Delete()
+	veryLargeFontAwesomeConfig.SetPixelSnapH(true)
+
+	var veryLargeFontAwesomeBuilder imgui.GlyphRangesBuilder
+	veryLargeFontAwesomeBuilder.Add(fonts.FontAwesomeMin, fonts.FontAwesomeMax)
+
+	rnd.veryLargeFontAwesomeSize = 44.0
+	rnd.veryLargeFontAwesome = atlas.AddFontFromMemoryTTFV(fonts.FontAwesome, rnd.veryLargeFontAwesomeSize, veryLargeFontAwesomeConfig, veryLargeFontAwesomeBuilder.Build().GlyphRanges)
+	if font == 0 {
+		return curated.Errorf("font: error loading very large FA font from memory")
 	}
 
 	// create font texture

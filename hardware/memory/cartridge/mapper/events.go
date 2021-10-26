@@ -22,7 +22,7 @@ package mapper
 // not normal and needs special handling from the core emulation.
 type Event int
 
-// List of currently defined activities.
+// List of currently defined events.
 const (
 	// LoadStarted is raised for Supercharger mapper whenever a new tape read
 	// sequence if started.
