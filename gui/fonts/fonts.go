@@ -70,6 +70,9 @@ const (
 	EmulationRewindForward = '\uf04e'
 	EmulationRewindAtStart = '\uf049'
 	EmulationRewindAtEnd   = '\uf050'
+	MusicNote              = '\uf001'
+	VolumeUp               = '\uf062'
+	VolumeDown             = '\uf063'
 )
 
 // The first and last unicode points used in the application. We use this to

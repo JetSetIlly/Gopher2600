@@ -74,6 +74,11 @@ func (pl *playmode) VCS() emulation.VCS {
 	return pl.vcs
 }
 
+// TV implements the emulation.Emulation interface.
+func (pl *playmode) TV() emulation.TV {
+	return pl.vcs.TV
+}
+
 // Debugger implements the emulation.Emulation interface.
 func (pl *playmode) Debugger() emulation.Debugger {
 	return nil

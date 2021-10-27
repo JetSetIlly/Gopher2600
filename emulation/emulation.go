@@ -32,6 +32,14 @@ const (
 	Ending
 )
 
+// TV is a minimal abstraction of the TV hardware. Exists mainly to avoid a
+// circular import to the hardware package.
+//
+// The only likely implementation of this interface is the
+// television.Television type.
+type TV interface {
+}
+
 // VCS is a minimal abstraction of the VCS hardware. Exists mainly to avoid a
 // circular import to the hardware package.
 //
@@ -50,6 +58,7 @@ type Debugger interface {
 // Emulation defines the public functions required for a GUI implementation
 // (and possibly other things) to interface with the underlying emulator.
 type Emulation interface {
+	TV() TV
 	VCS() VCS
 	Debugger() Debugger
 	UserInput() chan userinput.Event

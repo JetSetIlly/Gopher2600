@@ -106,6 +106,9 @@ var windowDefs = [...]windowDef{
 	{create: newWinTIA, menu: menuEntry{group: menuVCS}, open: true},
 	{create: newWinTimer, menu: menuEntry{group: menuVCS}, open: true},
 
+	// windows that appear in the "tools" menu
+	{create: newWinTracker, menu: menuEntry{group: menuTools}, open: false},
+
 	// windows that appear in cartridge specific menu
 	{create: newWinDPCregisters, menu: menuEntry{group: menuCart, restrictBus: menuRestrictRegister, restrictMapper: []string{"DPC"}}},
 	{create: newWinDPCplusRegisters, menu: menuEntry{group: menuCart, restrictBus: menuRestrictRegister, restrictMapper: []string{"DPC+"}}},

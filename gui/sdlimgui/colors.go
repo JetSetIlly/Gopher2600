@@ -97,6 +97,12 @@ type imguiColors struct {
 	AudioOscBg   imgui.Vec4
 	AudioOscLine imgui.Vec4
 
+	// audio tracker
+	AudioTrackerHeader   imgui.Vec4
+	AudioTrackerRow      imgui.Vec4
+	AudioTrackerRowAlt   imgui.Vec4
+	AudioTrackerRowHover imgui.Vec4
+
 	// timeline plot
 	TimelineMarkers        imgui.Vec4
 	TimelineScanlines      imgui.Vec4
@@ -227,6 +233,12 @@ func newColors() *imguiColors {
 		// audio oscilloscope
 		AudioOscBg:   imgui.Vec4{0.21, 0.29, 0.23, 1.0},
 		AudioOscLine: imgui.Vec4{0.10, 0.97, 0.29, 1.0},
+
+		// audio tracker
+		AudioTrackerHeader:   imgui.Vec4{0.09, 0.09, 0.09, 1.0},
+		AudioTrackerRow:      imgui.Vec4{0.10, 0.10, 0.10, 1.0},
+		AudioTrackerRowAlt:   imgui.Vec4{0.12, 0.12, 0.12, 1.0},
+		AudioTrackerRowHover: imgui.Vec4{0.12, 0.12, 0.15, 1.0},
 
 		// timeline
 		TimelineMarkers:   imgui.Vec4{1.00, 1.00, 1.00, 1.0},

@@ -15,24 +15,9 @@
 
 package audio
 
-import (
-	"fmt"
-	"strings"
-)
-
 type channel struct {
-	// each channel has three registers that control its output. from the
-	// "Stella Programmer's Guide":
-	//
-	// "Each audio circuit has three registers that control a noise-tone
-	// generator (what kind of sound), a frequency selection (high or low pitch
-	// of the sound), and a volume control."
-	//
-	// not all the bits are used in each register. the comments below indicate
-	// how many of the least-significant bits are used.
-	regControl uint8 // 4 bit
-	regFreq    uint8 // 5 bit
-	regVolume  uint8 // 4 bit
+	registers        Registers
+	registersChanged bool
 
 	// which bit of each polynomial counter to use next
 	poly4ct int
@@ -64,9 +49,7 @@ type channel struct {
 }
 
 func (ch *channel) String() string {
-	s := strings.Builder{}
-	s.WriteString(fmt.Sprintf("%04b @ %05b ^ %04b", ch.regControl, ch.regFreq, ch.regVolume))
-	return s.String()
+	return ch.registers.String()
 }
 
 // tick should be called at a frequency of 30Khz. when the 10Khz clock is
@@ -99,14 +82,14 @@ func (ch *channel) tick(tenKhz bool) {
 	}
 
 	// check for clock tick
-	if (ch.regControl&0x02 == 0x0) ||
-		((ch.regControl&0x01 == 0x0) && div31[ch.poly5ct] != 0) ||
-		((ch.regControl&0x01 == 0x1) && poly5bit[ch.poly5ct] != 0) ||
-		((ch.regControl&0x0f == 0xf) && poly5bit[ch.poly5ct] != prevBit5) {
-		if ch.regControl&0x04 == 0x04 {
+	if (ch.registers.Control&0x02 == 0x0) ||
+		((ch.registers.Control&0x01 == 0x0) && div31[ch.poly5ct] != 0) ||
+		((ch.registers.Control&0x01 == 0x1) && poly5bit[ch.poly5ct] != 0) ||
+		((ch.registers.Control&0x0f == 0xf) && poly5bit[ch.poly5ct] != prevBit5) {
+		if ch.registers.Control&0x04 == 0x04 {
 			// use pure clock
 
-			if ch.regControl&0x0f == 0x0f {
+			if ch.registers.Control&0x0f == 0x0f {
 				// use poly5/div3
 				if poly5bit[ch.poly5ct] != prevBit5 {
 					ch.div3ct++
@@ -117,7 +100,7 @@ func (ch *channel) tick(tenKhz bool) {
 						if ch.actualVol != 0 {
 							ch.actualVol = 0
 						} else {
-							ch.actualVol = ch.regVolume
+							ch.actualVol = ch.registers.Volume
 						}
 					}
 				}
@@ -126,13 +109,13 @@ func (ch *channel) tick(tenKhz bool) {
 				if ch.actualVol != 0 {
 					ch.actualVol = 0
 				} else {
-					ch.actualVol = ch.regVolume
+					ch.actualVol = ch.registers.Volume
 				}
 			}
-		} else if ch.regControl&0x08 == 0x08 {
+		} else if ch.registers.Control&0x08 == 0x08 {
 			// use poly poly5/poly9
 
-			if ch.regControl == 0x08 {
+			if ch.registers.Control == 0x08 {
 				// use poly9
 				ch.poly9ct++
 				if ch.poly9ct >= len(poly9bit) {
@@ -141,22 +124,22 @@ func (ch *channel) tick(tenKhz bool) {
 
 				// toggle volume
 				if poly9bit[ch.poly9ct] != 0 {
-					ch.actualVol = ch.regVolume
+					ch.actualVol = ch.registers.Volume
 				} else {
 					ch.actualVol = 0
 				}
-			} else if ch.regControl&0x02 != 0 {
-				if ch.actualVol != 0 || ch.regControl&0x01 == 0x01 {
+			} else if ch.registers.Control&0x02 != 0 {
+				if ch.actualVol != 0 || ch.registers.Control&0x01 == 0x01 {
 					ch.actualVol = 0
 				} else {
-					ch.actualVol = ch.regVolume
+					ch.actualVol = ch.registers.Volume
 				}
 			} else {
 				// use poly5. we've already bumped poly5 counter forward
 
 				// toggle volume
 				if poly5bit[ch.poly5ct] == 1 {
-					ch.actualVol = ch.regVolume
+					ch.actualVol = ch.registers.Volume
 				} else {
 					ch.actualVol = 0
 				}
@@ -169,7 +152,7 @@ func (ch *channel) tick(tenKhz bool) {
 			}
 
 			if poly4bit[ch.poly4ct] == 1 {
-				ch.actualVol = ch.regVolume
+				ch.actualVol = ch.registers.Volume
 			} else {
 				ch.actualVol = 0
 			}

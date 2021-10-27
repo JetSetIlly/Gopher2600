@@ -19,6 +19,13 @@ import (
 	"strings"
 )
 
+// Tracker implementations display or otherwise record the state of the audio
+// registers for each channel.
+type Tracker interface {
+	// Tick is called every video cycle
+	Tick(channel int, reg Registers, changed bool)
+}
+
 // SampleFreq represents the number of samples generated per second. This is
 // the 30Khz reference frequency desribed in the Stella Programmer's Guide.
 const SampleFreq = 31403
@@ -51,11 +58,27 @@ type Audio struct {
 	// the volume output for each channel
 	Vol0 uint8
 	Vol1 uint8
+
+	tracker Tracker
 }
 
 // NewAudio is the preferred method of initialisation for the Audio sub-system.
 func NewAudio() *Audio {
 	return &Audio{}
+}
+
+func (au *Audio) Reset() {
+	au.clock114 = 0
+	au.clock342 = 0
+	au.channel0 = channel{}
+	au.channel1 = channel{}
+	au.Vol0 = 0
+	au.Vol1 = 0
+}
+
+// SetTracker adds a Tracker implementation to the Audio sub-system.
+func (au *Audio) SetTracker(tracker Tracker) {
+	au.tracker = tracker
 }
 
 // Snapshot creates a copy of the TIA Audio sub-system in its current state.
@@ -76,6 +99,11 @@ func (au *Audio) String() string {
 // Step the audio on one TIA clock. The step will be filtered to produce a
 // 30Khz clock.
 func (au *Audio) Step() bool {
+	if au.tracker != nil {
+		au.tracker.Tick(0, au.channel0.registers, au.channel0.registersChanged)
+		au.tracker.Tick(1, au.channel1.registers, au.channel1.registersChanged)
+	}
+
 	// the reference frequency for all sound produced by the TIA is 30Khz. this
 	// is the 3.58Mhz clock, which the TIA operates at, divided by 114 (see
 	// declaration). Mix() is called every video cycle and we return
@@ -102,6 +130,9 @@ func (au *Audio) Step() bool {
 
 	au.Vol0 = au.channel0.actualVol
 	au.Vol1 = au.channel1.actualVol
+
+	au.channel0.registersChanged = false
+	au.channel1.registersChanged = false
 
 	return true
 }

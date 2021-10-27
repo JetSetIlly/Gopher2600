@@ -53,6 +53,7 @@ type LazyValues struct {
 	Collisions    *LazyCollisions
 	ChipRegisters *LazyChipRegisters
 	Log           *LazyLog
+	Tracker       *LazyTracker
 	SaveKey       *LazySaveKey
 	Rewind        *LazyRewind
 
@@ -88,6 +89,7 @@ func NewLazyValues() *LazyValues {
 	val.Collisions = newLazyCollisions(val)
 	val.ChipRegisters = newLazyChipRegisters(val)
 	val.Log = newLazyLog(val)
+	val.Tracker = newLazyTracker(val)
 	val.SaveKey = newLazySaveKey(val)
 	val.Breakpoints = newLazyBreakpoints(val)
 	val.Rewind = newLazyRewind(val)
@@ -143,6 +145,7 @@ func (val *LazyValues) Refresh() {
 		val.Collisions.update()
 		val.ChipRegisters.update()
 		val.Log.update()
+		val.Tracker.update()
 		val.SaveKey.update()
 		val.Rewind.update()
 		val.Breakpoints.update()
@@ -173,6 +176,7 @@ func (val *LazyValues) Refresh() {
 		val.Collisions.push()
 		val.ChipRegisters.push()
 		val.Log.push()
+		val.Tracker.push()
 		val.SaveKey.push()
 		val.Rewind.push()
 		val.Breakpoints.push()

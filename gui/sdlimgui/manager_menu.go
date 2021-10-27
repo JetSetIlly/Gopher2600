@@ -30,6 +30,7 @@ type menuGroup int
 const (
 	menuDebugger menuGroup = iota
 	menuVCS
+	menuTools
 	menuCart
 	menuCoProc
 	menuPlusROM
@@ -88,7 +89,14 @@ func (wm *manager) drawMenu() {
 		for _, m := range wm.menu[menuVCS] {
 			wm.drawMenuEntry(m)
 		}
+		imgui.EndMenu()
+	}
 
+	// tools menu
+	if imgui.BeginMenu("Tools") {
+		for _, m := range wm.menu[menuTools] {
+			wm.drawMenuEntry(m)
+		}
 		imgui.EndMenu()
 	}
 

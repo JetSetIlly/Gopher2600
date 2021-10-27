@@ -45,6 +45,7 @@ import (
 	"github.com/jetsetilly/gopher2600/reflection"
 	"github.com/jetsetilly/gopher2600/rewind"
 	"github.com/jetsetilly/gopher2600/setup"
+	"github.com/jetsetilly/gopher2600/tracker"
 	"github.com/jetsetilly/gopher2600/userinput"
 )
 
@@ -118,6 +119,9 @@ type Debugger struct {
 	// the Rewind system stores and restores machine state.
 	Rewind     *rewind.Rewind
 	deepPoking chan bool
+
+	// audio tracker stores audio state over time
+	Tracker *tracker.Tracker
 
 	// catchupQuantum differs from the quantum field in that it only applies in
 	// the catchupLoop (part of the rewind system). it is set just before the
@@ -246,6 +250,10 @@ func NewDebugger(tv *television.Television, scr gui.GUI, term terminal.Terminal,
 	dbg.vcs.TV.AddFrameTrigger(dbg.Rewind)
 	dbg.vcs.TV.AddFrameTrigger(dbg.ref)
 
+	// add audio tracker
+	dbg.Tracker = tracker.NewTracker(dbg)
+	dbg.vcs.TIA.Audio.SetTracker(dbg.Tracker)
+
 	// halting coordination
 	dbg.halting, err = newHaltCoordination(dbg)
 	if err != nil {
@@ -291,6 +299,11 @@ func NewDebugger(tv *television.Television, scr gui.GUI, term terminal.Terminal,
 // VCS implements the emulation.Emulation interface.
 func (dbg *Debugger) VCS() emulation.VCS {
 	return dbg.vcs
+}
+
+// TV implements the emulation.Emulation interface.
+func (dbg *Debugger) TV() emulation.TV {
+	return dbg.vcs.TV
 }
 
 // Debugger implements the emulation.Emulation interface.

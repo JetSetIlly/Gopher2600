@@ -20,6 +20,8 @@
 // recording/playback and general information.
 package coords
 
+import "fmt"
+
 // TelevisionCoords represents the state of the TV at any moment in time. It
 // can be used when all three values need to be stored or passed around.
 //
@@ -28,6 +30,11 @@ type TelevisionCoords struct {
 	Frame    int
 	Scanline int
 	Clock    int
+}
+
+func (c TelevisionCoords) String() string {
+	return fmt.Sprintf("Frame: %-4d  Scanline: %-3d    Clock: %-3d",
+		c.Frame, c.Scanline, c.Clock)
 }
 
 // Equal compares two instances of TelevisionCoords and return true if

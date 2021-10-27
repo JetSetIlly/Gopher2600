@@ -370,27 +370,14 @@ func (win *winDbgScr) drawCoordsLine() {
 	imgui.Text("")
 	imgui.SameLineV(0, 15)
 
-	imgui.Text("Frame:")
-	imgui.SameLine()
-	imgui.Text(fmt.Sprintf("%-4d", win.img.lz.TV.Coords.Frame))
+	// TV coordinates
+	imgui.Text(win.img.lz.TV.Coords.String())
 
-	imgui.SameLineV(0, 15)
-	imgui.Text("Scanline:")
-	imgui.SameLine()
-	if win.img.lz.TV.Coords.Scanline > 999 {
-	} else {
-		imgui.Text(fmt.Sprintf("%-3d", win.img.lz.TV.Coords.Scanline))
-	}
-	imgui.SameLineV(0, 15)
-	imgui.Text("Clock:")
-	imgui.SameLine()
-	imgui.Text(fmt.Sprintf("%-3d", win.img.lz.TV.Coords.Clock))
-
-	// include tv signal information
+	// tv signal information
 	imgui.SameLineV(0, 20)
 	imgui.Text(win.img.lz.TV.LastSignal.String())
 
-	// unsynced
+	// unsynced indicator
 	if !win.scr.crit.frameInfo.VSynced {
 		imgui.SameLineV(0, 20)
 		imgui.Text("UNSYNCED")

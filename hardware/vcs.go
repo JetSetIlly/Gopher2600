@@ -144,10 +144,17 @@ func (vcs *VCS) Reset() error {
 	}
 
 	// easiest way of resetting the TIA is to just create new one
+	//
+	// 27/10/21 - we do want to save the audio though in order to keep any
+	// attached trackers
+	//
+	// TODO: proper Reset() function for the TIA
+	audio := vcs.TIA.Audio
 	vcs.TIA, err = tia.NewTIA(vcs.TV, vcs.Mem.TIA, vcs.RIOT.Ports, vcs.CPU)
 	if err != nil {
 		return err
 	}
+	vcs.TIA.Audio = audio
 
 	// other areas of the VCS are simply reset because the emulation may have
 	// altered the part of the state that we do *not* want to reset. notably,
