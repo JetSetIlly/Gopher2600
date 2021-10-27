@@ -24,33 +24,7 @@ import (
 )
 
 // sentinal error returned when GUI detects a quit event.
-const quitEvent = "user input quit event"
-
-func (pl *playmode) doRewind(amount int) {
-	coords := pl.vcs.TV.GetCoords()
-	tl := pl.rewind.GetTimeline()
-
-	if amount < 0 && coords.Frame-1 <= tl.AvailableStart {
-		pl.scr.SetFeature(gui.ReqEmulationEvent, emulation.EventRewindAtStart)
-		pl.setState(emulation.Paused)
-		return
-	}
-	if amount > 0 && coords.Frame+1 >= tl.AvailableEnd {
-		pl.scr.SetFeature(gui.ReqEmulationEvent, emulation.EventRewindAtEnd)
-		pl.setState(emulation.Paused)
-		return
-	}
-
-	pl.setState(emulation.Rewinding)
-	pl.rewind.GotoFrame(coords.Frame + amount)
-	pl.setState(emulation.Paused)
-
-	if amount < 0 {
-		pl.scr.SetFeature(gui.ReqEmulationEvent, emulation.EventRewindBack)
-	} else {
-		pl.scr.SetFeature(gui.ReqEmulationEvent, emulation.EventRewindFoward)
-	}
-}
+const playmodeQuit = "playmodeQuit"
 
 func (pl *playmode) userInputHandler(ev userinput.Event) error {
 	// handle some events specifically for rewinding.
@@ -91,7 +65,7 @@ func (pl *playmode) userInputHandler(ev userinput.Event) error {
 	}
 
 	if quit {
-		return curated.Errorf(quitEvent)
+		return curated.Errorf(playmodeQuit)
 	}
 
 	// resume emulation if the last event was recognised as a controller input

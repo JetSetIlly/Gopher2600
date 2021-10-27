@@ -104,12 +104,12 @@ const overhead = 2
 
 // Rewind contains a history of machine states for the emulation.
 type Rewind struct {
-	vcs    *hardware.VCS
-	ctr    TimelineCounter
-	runner Runner
-
-	// state of emulation
 	emulation emulation.Emulation
+	vcs       *hardware.VCS
+	runner    Runner
+
+	// optional timeline counter implementation
+	ctr TimelineCounter
 
 	// prefs for the rewind system
 	Prefs *Preferences
@@ -155,10 +155,11 @@ type Rewind struct {
 }
 
 // NewRewind is the preferred method of initialisation for the Rewind type.
-func NewRewind(vcs *hardware.VCS, runner Runner) (*Rewind, error) {
+func NewRewind(emulation emulation.Emulation, runner Runner) (*Rewind, error) {
 	r := &Rewind{
-		vcs:    vcs,
-		runner: runner,
+		emulation: emulation,
+		vcs:       emulation.VCS().(*hardware.VCS),
+		runner:    runner,
 	}
 
 	var err error
@@ -172,11 +173,6 @@ func NewRewind(vcs *hardware.VCS, runner Runner) (*Rewind, error) {
 	r.allocate()
 
 	return r, nil
-}
-
-// SetEmulation registers the host emulation with the rewind system.
-func (r *Rewind) SetEmulation(emulation emulation.Emulation) {
-	r.emulation = emulation
 }
 
 // AddTimelineCounter to the rewind system. Augments Timeline information that
@@ -533,7 +529,7 @@ func (r *Rewind) GotoFrame(frame int) error {
 // the one that is requested.
 func (r *Rewind) findFrameIndex(frame int) (idx int, fr int, future bool) {
 	sf := frame - 1
-	if r.emulation != nil && r.emulation.Debugger() != nil {
+	if r.emulation.Debugger() != nil {
 		sf--
 	}
 

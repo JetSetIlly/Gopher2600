@@ -40,7 +40,7 @@ type TimelineCounter interface {
 
 func (r *Rewind) addTimelineEntry(frameInfo television.FrameInfo) {
 	// do not alter the timeline information if we're in the rewinding state
-	if r.emulation != nil && r.emulation.State() != emulation.Rewinding {
+	if r.emulation.State() != emulation.Rewinding {
 		cts := TimelineCounts{}
 		if r.ctr != nil {
 			cts = r.ctr.TimelineCounts()

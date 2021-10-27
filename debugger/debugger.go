@@ -232,11 +232,10 @@ func NewDebugger(tv *television.Television, scr gui.GUI, term terminal.Terminal,
 	}
 
 	// plug in rewind system
-	dbg.Rewind, err = rewind.NewRewind(dbg.vcs, dbg)
+	dbg.Rewind, err = rewind.NewRewind(dbg, dbg)
 	if err != nil {
 		return nil, curated.Errorf("debugger: %v", err)
 	}
-	dbg.Rewind.SetEmulation(dbg)
 	dbg.Rewind.AddTimelineCounter(dbg.ref) // using reflection monitor for the timeline counter
 	dbg.deepPoking = make(chan bool, 1)
 

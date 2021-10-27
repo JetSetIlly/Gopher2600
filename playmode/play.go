@@ -18,6 +18,7 @@ package playmode
 import (
 	"os"
 	"os/signal"
+	"sync"
 	"time"
 
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
@@ -33,7 +34,6 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/savekey"
 	"github.com/jetsetilly/gopher2600/hardware/television"
-	"github.com/jetsetilly/gopher2600/hardware/television/coords"
 	"github.com/jetsetilly/gopher2600/hiscore"
 	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/patch"
@@ -45,7 +45,11 @@ import (
 )
 
 type playmode struct {
+	crit  sync.Mutex
 	state emulation.State
+
+	// the following won't ever change after initialisation and there's no
+	// chance they'll be caught in a critical section
 
 	vcs         *hardware.VCS
 	scr         gui.GUI
@@ -59,24 +63,10 @@ type playmode struct {
 }
 
 func (pl *playmode) setState(state emulation.State) {
+	pl.crit.Lock()
+	defer pl.crit.Unlock()
 	pl.state = state
 	pl.vcs.TV.SetEmulationState(state)
-}
-
-// CatchUpLoop implements the rewind.Runner interface.
-func (pl *playmode) CatchUpLoop(tgt coords.TelevisionCoords, callback rewind.CatchUpLoopCallback) error {
-	fpscap := pl.vcs.TV.SetFPSCap(false)
-	defer pl.vcs.TV.SetFPSCap(fpscap)
-
-	pl.vcs.Run(func() (emulation.State, error) {
-		coords := pl.vcs.TV.GetCoords()
-		if coords.Frame >= tgt.Frame {
-			return emulation.Ending, nil
-		}
-		return emulation.Running, nil
-	}, 1)
-
-	return nil
 }
 
 // VCS implements the emulation.Emulation interface.
@@ -96,6 +86,8 @@ func (pl *playmode) UserInput() chan userinput.Event {
 
 // State implements the emulation.Emulation interface.
 func (pl *playmode) State() emulation.State {
+	pl.crit.Lock()
+	defer pl.crit.Unlock()
 	return pl.state
 }
 
@@ -110,6 +102,11 @@ func (pl *playmode) Pause(set bool) {
 			pl.scr.SetFeature(gui.ReqEmulationEvent, emulation.EventRun)
 		}
 	}
+}
+
+// Plugged implements the plugging.PlugMonitor interface.
+func (pl *playmode) Plugged(port plugging.PortID, peripheral plugging.PeripheralID) {
+	pl.scr.SetFeature(gui.ReqControllerChange, port, peripheral)
 }
 
 // Play creates a 'playable' instance of the emulator.
@@ -357,7 +354,7 @@ func Play(tv *television.Television, scr gui.GUI, newRecording bool, cartload ca
 	}
 
 	// setup rewind system
-	pl.rewind, err = rewind.NewRewind(vcs, pl)
+	pl.rewind, err = rewind.NewRewind(pl, pl)
 	if err != nil {
 		return curated.Errorf("playmode: %v", err)
 	}
@@ -388,28 +385,19 @@ func Play(tv *television.Television, scr gui.GUI, newRecording bool, cartload ca
 	}
 
 	if err != nil {
+		// some error messages are okay and are to be expected. swallow the
+		// error and return as normal
 		if curated.Has(err, ports.PowerOff) {
-			// PowerOff is okay and is to be expected. swallow the error
-			// message and return as normal
 			return nil
 		}
-		if curated.Has(err, quitEvent) {
-			// quitEvent is okay and is to be expected. swallow the error
-			// message and return as normal
+		if curated.Has(err, playmodeQuit) {
 			return nil
 		}
 		if curated.Has(err, terminal.UserInterrupt) {
-			// quitEvent is okay and is to be expected. swallow the error
-			// message and return as normal
 			return nil
 		}
 		return curated.Errorf("playmode: %v", err)
 	}
 
 	return nil
-}
-
-// Plugged implements the plugging.PlugMonitor interface.
-func (pl *playmode) Plugged(port plugging.PortID, peripheral plugging.PeripheralID) {
-	pl.scr.SetFeature(gui.ReqControllerChange, port, peripheral)
 }
