@@ -24,8 +24,7 @@ import "math/rand"
 // packed with 8 bits per byte, using only a single bit per byte keeps the math
 // simple, which is important for efficient processing".
 var poly4bit = [15]uint8{1, 1, 0, 1, 1, 1, 0, 0, 0, 0, 1, 0, 1, 0, 0}
-var poly5bit = [31]uint8{0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 1, 1, 1, 0, 0,
-	0, 1, 1, 0, 1, 1, 1, 0, 1, 0, 1, 0, 0, 0, 0, 1}
+var poly5bit = [31]uint8{0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 0, 1, 1, 1, 0, 1, 0, 1, 0, 0, 0, 0, 1}
 
 // from TIASound.c:
 //
@@ -33,8 +32,7 @@ var poly5bit = [31]uint8{0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 1, 1, 1, 0, 0,
 // way it operates.  It does not have a 50% duty cycle, but instead has a 13:18
 // ratio (of course, 13+18 = 31).  This could also be implemented by using
 // counters".
-var div31 = [31]uint8{0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+var div31 = [31]uint8{0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
 
 // from TIASound.c (referring to 9 bit polynomial table):
 //

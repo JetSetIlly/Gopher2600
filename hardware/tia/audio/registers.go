@@ -82,29 +82,26 @@ func (au *Audio) ReadMemRegisters(data bus.ChipData) bool {
 func (ch *channel) reactAUDCx() {
 	ch.registersChanged = true
 
-	freq := uint8(0)
-
 	if ch.registers.Control == 0x00 || ch.registers.Control == 0x0b {
 		ch.actualVol = ch.registers.Volume
-	} else {
-		freq = ch.registers.Freq
-
-		// from TIASound.c: when bits D2 and D3 are set, the input source is
-		// switched to the 1.19MHz clock, so the '30KHz' source clock is
-		// reduced to approximately 10KHz."
-		ch.useTenKhz = ch.registers.Control&0b1100 == 0b1100
+		return
 	}
 
-	if ch.freq != freq {
+	// from TIASound.c: when bits D2 and D3 are set, the input source is
+	// switched to the 1.19MHz clock, so the '30KHz' source clock is
+	// reduced to approximately 10KHz."
+	ch.useTenKhz = ch.registers.Control&0b1100 == 0b1100
+
+	if ch.freq != ch.registers.Freq {
 		// reset frequency if frequency has changed
-		ch.freq = freq
+		ch.freq = ch.registers.Freq
 
 		// if the channel is now "volume only" or was "volume only" ...
-		if ch.freqCt == 0 || freq == 0 {
+		if ch.freqCt == 0 || ch.registers.Freq == 0 {
 			// ... reset the counters
-			ch.freqCt = 0
+			ch.freqCt = ch.registers.Freq
 		}
 
-		// ...otherwise let it complete the previous
+		// ...otherwise let it complete the previous frequency count
 	}
 }

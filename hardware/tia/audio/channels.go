@@ -60,13 +60,21 @@ func (ch *channel) tick(tenKhz bool) {
 		return
 	}
 
-	// tick main frequency clock
-	if ch.freqCt == ch.freq || ch.freqCt == 0x1f {
-		ch.freqCt = 0
+	// nothing to do except change the volume if control register is 0x00.
+	// volume has already been changed with reactAUDCx() which is called
+	// whenever an audio register is changed
+	if ch.registers.Control == 0x00 {
 		return
 	}
 
-	ch.freqCt++
+	// tick main frequency clock
+	if ch.freqCt == ch.freq || ch.freqCt == 31 {
+		ch.freqCt = 0
+	} else {
+		ch.freqCt++
+	}
+
+	// update output volume only when the counter reaches the target frequency value
 	if ch.freqCt != ch.freq {
 		return
 	}
@@ -86,6 +94,7 @@ func (ch *channel) tick(tenKhz bool) {
 		((ch.registers.Control&0x01 == 0x0) && div31[ch.poly5ct] != 0) ||
 		((ch.registers.Control&0x01 == 0x1) && poly5bit[ch.poly5ct] != 0) ||
 		((ch.registers.Control&0x0f == 0xf) && poly5bit[ch.poly5ct] != prevBit5) {
+
 		if ch.registers.Control&0x04 == 0x04 {
 			// use pure clock
 
