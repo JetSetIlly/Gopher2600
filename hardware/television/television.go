@@ -134,18 +134,6 @@ type Television struct {
 	// realtime mixer. only one allowed
 	realtimeMixer RealtimeAudioMixer
 
-	// indicates whether the realtime audio mixer needs data quickly. if the
-	// flag is true then we push the audio signal on every vcs clock
-	//
-	// realtime requirement is checked every scanline. audio is pushed
-	// immediately if the mixer requires more audio
-	//
-	// note that realtime system as written will cause the same audio data to
-	// be sent to the mixer multiple time. this is intentional. we want to fill
-	// the buffer as quickly as possible in order for the realtime requirement
-	// to end as soon as possible
-	realtimeAudio bool
-
 	// instance of current state (as supported by the rewind system)
 	state *State
 
@@ -169,6 +157,11 @@ type Television struct {
 	// the index of the most recent Signal()
 	currentSignalIdx int
 
+	// copy of the signals and currentSignalIdx fields from the previous frame.
+	// we use solely to support the realtime audio mixer
+	prevSignals   []signal.SignalAttributes
+	prevSignalIdx int
+
 	// state of emulation
 	emulationState emulation.State
 }
@@ -177,9 +170,10 @@ type Television struct {
 // satisfying the Television interface.
 func NewTelevision(spec string) (*Television, error) {
 	tv := &Television{
-		reqSpecID: strings.ToUpper(spec),
-		state:     &State{},
-		signals:   make([]signal.SignalAttributes, specification.AbsoluteMaxClks),
+		reqSpecID:   strings.ToUpper(spec),
+		state:       &State{},
+		signals:     make([]signal.SignalAttributes, specification.AbsoluteMaxClks),
+		prevSignals: make([]signal.SignalAttributes, specification.AbsoluteMaxClks),
 	}
 
 	// initialise frame rate limiter
@@ -438,15 +432,6 @@ func (tv *Television) Signal(sig signal.SignalAttributes) error {
 		}
 	}
 
-	// if the realtime audio flag has been set then feed the realtimeMixer with
-	// audio data as we receive it
-	if tv.realtimeMixer != nil && tv.realtimeAudio {
-		err := tv.realtimeMixer.SetAudio([]signal.SignalAttributes{sig})
-		if err != nil {
-			return err
-		}
-	}
-
 	return nil
 }
 
@@ -460,13 +445,16 @@ func (tv *Television) newScanline() error {
 	}
 
 	// check for realtime mixing requirements. if it is required then
-	// immediately push the audio data that have
-	if tv.realtimeMixer != nil && tv.emulationState == emulation.Running {
-		tv.realtimeAudio = tv.lmtr.realtimeAudio && tv.realtimeMixer.MoreAudio()
-		if tv.realtimeAudio {
-			err := tv.realtimeMixer.SetAudio(tv.signals[:tv.currentSignalIdx])
-			if err != nil {
-				return err
+	// immediately push the audio data from the previous frame to the mixer
+	if tv.realtimeMixer != nil && tv.emulationState == emulation.Running && tv.state.frameInfo.Stable {
+		if tv.lmtr.realtimeAudio && tv.realtimeMixer.MoreAudio() {
+			// send the signals for the equivalent scanlines of the previous frame
+			i := tv.prevSignalIdx - (tv.state.frameInfo.TotalScanlines-tv.state.scanline)*specification.ClksScanline
+			if i > 0 {
+				err := tv.realtimeMixer.SetAudio(tv.prevSignals[:tv.prevSignalIdx])
+				if err != nil {
+					return err
+				}
 			}
 		}
 	}
@@ -578,7 +566,7 @@ func (tv *Television) renderSignals() error {
 		}
 	}
 
-	if tv.realtimeMixer != nil {
+	if tv.realtimeMixer != nil && tv.state.frameInfo.Stable {
 		err := tv.realtimeMixer.SetAudio(tv.signals[:tv.currentSignalIdx])
 		if err != nil {
 			return curated.Errorf("television: %v", err)
@@ -592,6 +580,9 @@ func (tv *Television) renderSignals() error {
 			return curated.Errorf("television: %v", err)
 		}
 	}
+
+	copy(tv.prevSignals, tv.signals)
+	tv.prevSignalIdx = tv.currentSignalIdx
 
 	return nil
 }

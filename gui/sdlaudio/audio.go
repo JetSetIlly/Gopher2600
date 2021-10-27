@@ -38,7 +38,7 @@ const bufferLength = 628
 // queue for MoreAudio() to return false
 //
 // no reasoning behind this value, it's just what seems to work well in practice
-const realtimeDemand = bufferLength * 5
+const realtimeDemand = bufferLength * 2
 
 // if queued audio ever exceeds this value then push the audio into the SDL buffer
 const maxQueueLength = 16384
@@ -58,10 +58,6 @@ type Audio struct {
 	// update these on every call to queueAudio()
 	stereo     bool
 	separation int
-
-	// the next call to MoreAudio() will return true if this flag is set,
-	// regardless of anything else
-	realtimeDemand bool
 }
 
 // NewAudio is the preferred method of initialisation for the Audio Type.
@@ -109,10 +105,6 @@ func NewAudio() (*Audio, error) {
 
 // SetAudio implements the protocol.RealtimeAudioMixer interface.
 func (aud *Audio) MoreAudio() bool {
-	if aud.realtimeDemand {
-		aud.realtimeDemand = false
-		return true
-	}
 	return sdl.GetQueuedAudioSize(aud.id) < realtimeDemand
 }
 
@@ -154,7 +146,6 @@ func (aud *Audio) SetAudio(sig []signal.SignalAttributes) error {
 				return curated.Errorf("sdlaudio", err)
 			}
 		} else if remaining < realtimeDemand {
-			aud.realtimeDemand = true
 			if err := aud.queueBuffer(); err != nil {
 				return curated.Errorf("sdlaudio", err)
 			}
