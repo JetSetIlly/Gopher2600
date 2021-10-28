@@ -17,16 +17,33 @@
 // or stereo signal.
 //
 // The mono mix is created according to the information in the document, "TIA
-// Sounding Off In The Digital Domain", by Chris Brenner.
+// Sounding Off In The Digital Domain", by Chris Brenner. Announcment link
+// below:
 //
 // https://atariage.com/forums/topic/249865-tia-sounding-off-in-the-digital-domain/
+//
+// The exact implementation here is an optimisation of that work, as found by
+// Thomas Jzentsh (as mentioned in the link above)
+//
+// Both 6502.ts and Stella source was used as reference. Both projects are
+// exactly equivalent.
+//
+//   6502.ts (published under the MIT licence)
+//		https://github.com/6502ts/6502.ts/blob/6f923e5fe693b82a2448ffac1f85aea9693cacff/src/machine/stella/tia/PCMAudio.ts
+//		https://github.com/6502ts/6502.ts/blob/6f923e5fe693b82a2448ffac1f85aea9693cacff/src/machine/stella/tia/PCMChannel.ts
+//
+//  Stella (published under the GNU GPL v2.0 licence)
+//		https://github.com/stella-emu/stella/blob/e6af23d6c12893dd17711002971087f28f87c31f/src/emucore/tia/Audio.cxx
+//		https://github.com/stella-emu/stella/blob/e6af23d6c12893dd17711002971087f28f87c31f/src/emucore/tia/AudioChannel.cxx
 package mix
 
-var mono [256]int16
+const maxVolume = 0x1e
+
+var mono [maxVolume + 1]int16
 
 // Mono returns a single volume value.
 func Mono(channel0 uint8, channel1 uint8) int16 {
-	return mono[int16(channel0)|int16(channel1<<4)]
+	return mono[int16(channel0+channel1)]
 }
 
 // Stereo return a pair of volume values.
@@ -38,41 +55,7 @@ func Stereo(channel0 uint8, channel1 uint8, separation int) (int16, int16) {
 }
 
 func init() {
-	var i int
-	var r1, r2, ra, rb, rc, rd float32
-	r1 = 1000.0
-	ra = 1.0 / 3750.0
-	rb = 1.0 / 7500.0
-	rc = 1.0 / 15000.0
-	rd = 1.0 / 30000.0
-	mono[0] = 0
-	for i = 1; i < 256; i++ {
-		r2 = 0.0
-		if i&0x01 == 0x01 {
-			r2 += rd
-		}
-		if i&0x02 == 0x02 {
-			r2 += rc
-		}
-		if i&0x04 == 0x04 {
-			r2 += rb
-		}
-		if i&0x08 == 0x08 {
-			r2 += ra
-		}
-		if i&0x10 == 0x10 {
-			r2 += rd
-		}
-		if i&0x20 == 0x20 {
-			r2 += rc
-		}
-		if i&0x40 == 0x40 {
-			r2 += rb
-		}
-		if i&0x80 == 0x80 {
-			r2 += ra
-		}
-		r2 = 1.0 / r2
-		mono[i] = int16(32768.0*(1.0-r2/(r1+r2)) + 0.5)
+	for vol := 0; vol < len(mono); vol++ {
+		mono[vol] = int16(0x7fff * float32(vol) / float32(maxVolume) * (30 + 1*float32(maxVolume)) / (30 + 1*float32(vol)))
 	}
 }

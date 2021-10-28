@@ -13,22 +13,19 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-// Package audio implements the audio generation of the TIA. The implementation
-// is taken almost directly from Ron Fries' original implementation, found in
-// TIASound.c (easily searchable). The bit patterns are taken from there and
-// the channels are mixed in the same way.
+// Package audio implements the audio generation of the TIA. Originally,
+// Gopher2600 used Ron Fries' audio implementation but this has now been
+// completely superceded by the work of Chris Brenner.
 //
-// Unlike the Fries' implementation, the Step() function is called every video
-// cycle, returning a new sample every 114th video clock. The TIA_Process()
-// function in Frie's implementation meanwhile is called to fill a buffer. The
-// sample buffer in this emulation must sit outside of the TIA emulation.
+// Chris's work has been used in both the 6502.ts and Stella projects. Source
+// from both projects was used as reference. Both projects are exactly
+// equivalent.
 //
-// TIASound.c is published under the GNU Library GPL v2.0
+//   6502.ts (published under the MIT licence)
+//		https://github.com/6502ts/6502.ts/blob/6f923e5fe693b82a2448ffac1f85aea9693cacff/src/machine/stella/tia/PCMAudio.ts
+//		https://github.com/6502ts/6502.ts/blob/6f923e5fe693b82a2448ffac1f85aea9693cacff/src/machine/stella/tia/PCMChannel.ts
 //
-// Some modifications were made to Fries' alogorithm in accordance to similar
-// modifications made to the TIASnd.cxx file of the Stella emulator v5.1.3.
-// Stella is published under the GNU GPL v2.0.
-//
-// The audio package does not mix the sound from the two independent audio
-// channels. For that, see the mix package.
+//  Stella (published under the GNU GPL v2.0 licence)
+//		https://github.com/stella-emu/stella/blob/e6af23d6c12893dd17711002971087f28f87c31f/src/emucore/tia/Audio.cxx
+//		https://github.com/stella-emu/stella/blob/e6af23d6c12893dd17711002971087f28f87c31f/src/emucore/tia/AudioChannel.cxx
 package audio

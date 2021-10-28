@@ -13,7 +13,7 @@ The key features of the emulator:
 * Network access through [PlusROM](#plusrom) emulation
 * [Savekey](#savekey) support
 * [CRT Effects](#crt-effects)
-* Stereo audio output
+* Accurate audio reproduction (and optional stereo output)
 * Support for common [TIA revisions](#tia-revisions)
 * Implementation of [Movie Cart](#movie-cart)
 
@@ -909,12 +909,11 @@ No reference to the Stella source was made at all except for the following:
 * During the development of the CDF cartridge formats. These recent formats don't
 seem to be documented anywhere accept in the Stella source.
 
-* The audio sub-system to convince myself that I was going about the problem
-correctly. Primarily however, `Gopher2600's` audio implementation references
-Ron Fries' original TIASound.c file.
-
 * ParkerBros fingerprint taken from Stella. I can't remember why I did this but
 a comment in the fingerprint.go file says I did.
+
+* As a reference for the audio implementation (the 6502.ts project was also
+  referenced for this reason)
 
 Many notes and clues from the AtariAge message boards. Most significantly the
 following threads proved very useful indeed:
@@ -923,6 +922,7 @@ following threads proved very useful indeed:
 * "Properly model NUSIZ during player decode and draw"
 * "Requesting help in improving TIA emulation in Stella" 
 * "3F Bankswitching"
+* "TIA Sounding Off in the Digital Domain"
 
 And from and old mailing list:
 
@@ -941,8 +941,7 @@ v6.0" file (sometimes named bankswitch_sizes.txt)
 The "Stella Programmer's Guide" by Steve Wright is of course a key document,
 used frequently throughout development.
 
-Audio mixing was improved by the information found in the document, "TIA
-Sounding Off In The Digital Domain", by Chris Brenner.
+The TIA Audio implementation is based almost entirely on the work of Chris Brenner.
 
 https://atariage.com/forums/topic/249865-tia-sounding-off-in-the-digital-domain/
 
@@ -1034,6 +1033,8 @@ The following projects are used in the `Gopher2600` project:
 * https://github.com/go-audio/wav
 * https://github.com/hajimehoshi/go-mp3
 * https://github.com/pkg/term
+
+Bother 6502.ts and Stella were used as reference for the Audio implementation.
 
 Statsview provided by:
 

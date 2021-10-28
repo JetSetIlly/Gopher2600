@@ -19,32 +19,15 @@ type channel struct {
 	registers        Registers
 	registersChanged bool
 
-	// which bit of each polynomial counter to use next
-	poly4ct int
-	poly5ct int
-	poly9ct int
-	div3ct  uint8
+	clockEnable      bool
+	noiseFeedback    bool
+	noiseCounterBit4 bool
+	pulseCounterHold bool
 
-	// the different musical notes available to the 2600 are achieved with a
-	// frequency clock. the easiest way to think of this is to think of a
-	// filter to the 30Khz clock signal.
-	freqCt uint8
+	divCounter   uint8
+	pulseCounter uint8
+	noiseCounter uint8
 
-	// if bits 2 and 3 of control register are set (ie. mask 0x0c) then we use
-	// a 10Khz clock rather than a 30Khz clock.
-	useTenKhz bool
-
-	// the frequency of the channel. this is either the value that's in the
-	// frequency register (regFreq) or zero if the volume bits are set in the
-	// control register (regControl).
-	//
-	// this is the value we count to with freqCt in order to generate the
-	// correct sound
-	freq uint8
-
-	// the different tones are achieved are by adjusting the volume between
-	// zero (silence) and the value in the volume register. actualVol is a
-	// record of that value.
 	actualVol uint8
 }
 
@@ -54,117 +37,88 @@ func (ch *channel) String() string {
 
 // tick should be called at a frequency of 30Khz. when the 10Khz clock is
 // required, the frequency clock is increased by a factor of three.
-func (ch *channel) tick(tenKhz bool) {
-	// filter out 30Khz signal if channel is set to use the 10Khz signal
-	if ch.useTenKhz && !tenKhz {
-		return
+func (ch *channel) tick() {
+	ch.phase0()
+	ch.phase1()
+}
+
+func (ch *channel) phase0() {
+	// phase 0
+
+	if ch.clockEnable {
+		ch.noiseCounterBit4 = ch.noiseCounter&0x01 != 0x00
+
+		switch ch.registers.Control & 0x03 {
+		case 0x00:
+			fallthrough
+		case 0x01:
+			ch.pulseCounterHold = false
+		case 0x02:
+			ch.pulseCounterHold = ch.noiseCounter&0x1e != 0x02
+		case 0x03:
+			ch.pulseCounterHold = !ch.noiseCounterBit4
+		}
+
+		switch ch.registers.Control & 0x03 {
+		case 0x00:
+			ch.noiseFeedback = (((ch.pulseCounter ^ ch.noiseCounter) & 0x01) != 0x00) ||
+				!(ch.noiseCounter != 0x00 || ch.pulseCounter != 0x0a) ||
+				(ch.registers.Control&0x0c == 0x00)
+		default:
+			var n uint8
+			if ch.noiseCounter&0x04 != 0x00 {
+				n = 1
+			}
+			ch.noiseFeedback = (n^(ch.noiseCounter&0x01) != 0x00) || ch.noiseCounter == 0
+		}
 	}
 
-	// nothing to do except change the volume if control register is 0x00.
-	// volume has already been changed with reactAUDCx() which is called
-	// whenever an audio register is changed
-	if ch.registers.Control == 0x00 {
-		return
-	}
+	ch.clockEnable = ch.divCounter == ch.registers.Freq
 
-	// tick main frequency clock
-	if ch.freqCt == ch.freq || ch.freqCt == 31 {
-		ch.freqCt = 0
+	if ch.divCounter == ch.registers.Freq || ch.divCounter == 0x1f {
+		ch.divCounter = 0
 	} else {
-		ch.freqCt++
+		ch.divCounter++
 	}
+}
 
-	// update output volume only when the counter reaches the target frequency value
-	if ch.freqCt != ch.freq {
-		return
-	}
+func (ch *channel) phase1() {
+	// phase 1
 
-	// the 5-bit polynomial clock toggles volume on change of bit. note the
-	// current bit so we can compare
-	var prevBit5 = poly5bit[ch.poly5ct]
+	if ch.clockEnable {
+		pulseFeedback := false
 
-	// advance 5-bit polynomial clock
-	ch.poly5ct++
-	if ch.poly5ct >= len(poly5bit) {
-		ch.poly5ct = 0
-	}
-
-	// check for clock tick
-	if (ch.registers.Control&0x02 == 0x0) ||
-		((ch.registers.Control&0x01 == 0x0) && div31[ch.poly5ct] != 0) ||
-		((ch.registers.Control&0x01 == 0x1) && poly5bit[ch.poly5ct] != 0) ||
-		((ch.registers.Control&0x0f == 0xf) && poly5bit[ch.poly5ct] != prevBit5) {
-
-		if ch.registers.Control&0x04 == 0x04 {
-			// use pure clock
-
-			if ch.registers.Control&0x0f == 0x0f {
-				// use poly5/div3
-				if poly5bit[ch.poly5ct] != prevBit5 {
-					ch.div3ct++
-					if ch.div3ct == 3 {
-						ch.div3ct = 0
-
-						// toggle volume
-						if ch.actualVol != 0 {
-							ch.actualVol = 0
-						} else {
-							ch.actualVol = ch.registers.Volume
-						}
-					}
-				}
-			} else {
-				// toggle volume
-				if ch.actualVol != 0 {
-					ch.actualVol = 0
-				} else {
-					ch.actualVol = ch.registers.Volume
-				}
+		switch ch.registers.Control >> 2 {
+		case 0x00:
+			var n uint8
+			if ch.pulseCounter&0x02 != 0x00 {
+				n = 1
 			}
-		} else if ch.registers.Control&0x08 == 0x08 {
-			// use poly poly5/poly9
+			pulseFeedback = (n^(ch.pulseCounter&0x01) != 0x00) &&
+				(ch.pulseCounter != 0x0a) &&
+				(ch.registers.Control&0x03 != 0x00)
+		case 0x01:
+			pulseFeedback = ch.pulseCounter&0x08 == 0x00
+		case 0x02:
+			pulseFeedback = !ch.noiseCounterBit4
+		case 0x03:
+			pulseFeedback = !((ch.pulseCounter&0x02 != 0x00) || (ch.pulseCounter&0x0e == 0x00))
+		}
 
-			if ch.registers.Control == 0x08 {
-				// use poly9
-				ch.poly9ct++
-				if ch.poly9ct >= len(poly9bit) {
-					ch.poly9ct = 0
-				}
+		ch.noiseCounter >>= 1
 
-				// toggle volume
-				if poly9bit[ch.poly9ct] != 0 {
-					ch.actualVol = ch.registers.Volume
-				} else {
-					ch.actualVol = 0
-				}
-			} else if ch.registers.Control&0x02 != 0 {
-				if ch.actualVol != 0 || ch.registers.Control&0x01 == 0x01 {
-					ch.actualVol = 0
-				} else {
-					ch.actualVol = ch.registers.Volume
-				}
-			} else {
-				// use poly5. we've already bumped poly5 counter forward
+		if ch.noiseFeedback {
+			ch.noiseCounter |= 0x10
+		}
 
-				// toggle volume
-				if poly5bit[ch.poly5ct] == 1 {
-					ch.actualVol = ch.registers.Volume
-				} else {
-					ch.actualVol = 0
-				}
-			}
-		} else {
-			// use poly 4
-			ch.poly4ct++
-			if ch.poly4ct >= len(poly4bit) {
-				ch.poly4ct = 0
-			}
+		if !ch.pulseCounterHold {
+			ch.pulseCounter = ^(ch.pulseCounter >> 1) & 0x07
 
-			if poly4bit[ch.poly4ct] == 1 {
-				ch.actualVol = ch.registers.Volume
-			} else {
-				ch.actualVol = 0
+			if pulseFeedback {
+				ch.pulseCounter |= 0x08
 			}
 		}
 	}
+
+	ch.actualVol = (ch.pulseCounter & 0x01) * ch.registers.Volume
 }
