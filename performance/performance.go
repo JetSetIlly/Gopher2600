@@ -52,7 +52,7 @@ func Check(output io.Writer, profile Profile, includeDetail bool,
 
 	// connect vcs to gui
 	if scr != nil {
-		err = scr.SetFeature(gui.ReqSetEmulation, &stubEmulation{vcs: vcs})
+		err = scr.SetFeature(gui.ReqSetEmulation, &stubEmulation{vcs: vcs, tv: tv})
 		if err != nil {
 			return curated.Errorf("performance: %v", err)
 		}
@@ -149,10 +149,15 @@ func Check(output io.Writer, profile Profile, includeDetail bool,
 // minimum implementation for the Emulation interface.
 type stubEmulation struct {
 	vcs emulation.VCS
+	tv  emulation.TV
 }
 
 func (e *stubEmulation) VCS() emulation.VCS {
 	return e.vcs
+}
+
+func (e *stubEmulation) TV() emulation.TV {
+	return e.tv
 }
 
 func (e *stubEmulation) Debugger() emulation.Debugger {
