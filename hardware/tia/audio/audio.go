@@ -23,7 +23,7 @@ import (
 // registers for each channel.
 type Tracker interface {
 	// Tick is called every video cycle
-	Tick(channel int, reg Registers, changed bool)
+	Tick(channel int, reg Registers)
 }
 
 // SampleFreq represents the number of samples generated per second. This is
@@ -98,8 +98,14 @@ func (au *Audio) String() string {
 // 30Khz clock.
 func (au *Audio) Step() bool {
 	if au.tracker != nil {
-		au.tracker.Tick(0, au.channel0.registers, au.channel0.registersChanged)
-		au.tracker.Tick(1, au.channel1.registers, au.channel1.registersChanged)
+		// it's impossible for both channels to have changed in a single video cycle
+		if au.channel0.registersChanged {
+			au.tracker.Tick(0, au.channel0.registers)
+		} else if au.channel1.registersChanged {
+			au.tracker.Tick(1, au.channel1.registers)
+		}
+		au.channel0.registersChanged = false
+		au.channel1.registersChanged = false
 	}
 
 	defer func() {
@@ -136,9 +142,6 @@ func (au *Audio) Step() bool {
 
 	au.Vol0 = au.channel0.actualVol
 	au.Vol1 = au.channel1.actualVol
-
-	au.channel0.registersChanged = false
-	au.channel1.registersChanged = false
 
 	return true
 }

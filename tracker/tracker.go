@@ -53,34 +53,33 @@ func NewTracker(emulation emulation.Emulation) *Tracker {
 }
 
 // Tick implements the audio.Tracker interface
-func (tr *Tracker) Tick(channel int, reg audio.Registers, changed bool) {
+func (tr *Tracker) Tick(channel int, reg audio.Registers) {
 	if tr.emulation.State() == emulation.Rewinding {
 		return
 	}
 
-	if changed {
-		switch channel {
-		case 0:
-			changed = !audio.CmpRegisters(reg, tr.prevRegister0)
-			tr.prevRegister0 = reg
-		case 1:
-			changed = !audio.CmpRegisters(reg, tr.prevRegister1)
-			tr.prevRegister1 = reg
-		}
+	changed := false
+	switch channel {
+	case 0:
+		changed = !audio.CmpRegisters(reg, tr.prevRegister0)
+		tr.prevRegister0 = reg
+	case 1:
+		changed = !audio.CmpRegisters(reg, tr.prevRegister1)
+		tr.prevRegister1 = reg
+	}
 
+	if changed {
 		tv := tr.emulation.TV().(*television.Television)
 
-		if changed {
-			tr.entries = append(tr.entries, Entry{
-				Coords:      tv.GetCoords(),
-				Channel:     channel,
-				Registers:   reg,
-				Distortion:  LookupDistortion(reg),
-				MusicalNote: LookupMusicalNote(tv, reg),
-			})
-			if len(tr.entries) > 1024 {
-				tr.entries = tr.entries[1:]
-			}
+		tr.entries = append(tr.entries, Entry{
+			Coords:      tv.GetCoords(),
+			Channel:     channel,
+			Registers:   reg,
+			Distortion:  LookupDistortion(reg),
+			MusicalNote: LookupMusicalNote(tv, reg),
+		})
+		if len(tr.entries) > 1024 {
+			tr.entries = tr.entries[1:]
 		}
 	}
 }
