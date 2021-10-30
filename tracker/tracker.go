@@ -29,6 +29,7 @@ type Entry struct {
 
 	Distortion  string
 	MusicalNote MusicalNote
+	PianoKey    PianoKey
 }
 
 // Tracker implements the audio.Tracker interface and keeps a history of the
@@ -40,8 +41,9 @@ type Tracker struct {
 
 	// previous register values so we can compare to see whether the registers
 	// have change and thus worth recording
-	prevRegister0 audio.Registers
-	prevRegister1 audio.Registers
+	prevRegister [2]audio.Registers
+
+	lastEntry [2]Entry
 }
 
 // NewTracker is the preferred method of initialisation for the Tracker type.
@@ -58,33 +60,36 @@ func (tr *Tracker) Tick(channel int, reg audio.Registers) {
 		return
 	}
 
-	changed := false
-	switch channel {
-	case 0:
-		changed = !audio.CmpRegisters(reg, tr.prevRegister0)
-		tr.prevRegister0 = reg
-	case 1:
-		changed = !audio.CmpRegisters(reg, tr.prevRegister1)
-		tr.prevRegister1 = reg
-	}
+	changed := !audio.CmpRegisters(reg, tr.prevRegister[channel])
+	tr.prevRegister[channel] = reg
 
 	if changed {
 		tv := tr.emulation.TV().(*television.Television)
 
-		tr.entries = append(tr.entries, Entry{
+		e := Entry{
 			Coords:      tv.GetCoords(),
 			Channel:     channel,
 			Registers:   reg,
 			Distortion:  LookupDistortion(reg),
 			MusicalNote: LookupMusicalNote(tv, reg),
-		})
+		}
+		e.PianoKey = NoteToPianoKey(e.MusicalNote)
+		tr.entries = append(tr.entries, e)
 		if len(tr.entries) > 1024 {
 			tr.entries = tr.entries[1:]
 		}
+
+		// store recent entry
+		tr.lastEntry[channel] = e
 	}
 }
 
 // Copy makes a copy of the Tracker entries.
 func (tr *Tracker) Copy() []Entry {
 	return tr.entries
+}
+
+// GetLast entry for channel.
+func (tr *Tracker) GetLast(channel int) Entry {
+	return tr.lastEntry[channel]
 }

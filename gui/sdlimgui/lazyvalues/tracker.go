@@ -25,8 +25,10 @@ import (
 type LazyTracker struct {
 	val *LazyValues
 
-	entries atomic.Value // []tracker.Entry
-	Entries []tracker.Entry
+	entries   atomic.Value // []tracker.Entry
+	lastEntry [2]atomic.Value
+	Entries   []tracker.Entry
+	LastEntry [2]tracker.Entry
 }
 
 func newLazyTracker(val *LazyValues) *LazyTracker {
@@ -35,8 +37,12 @@ func newLazyTracker(val *LazyValues) *LazyTracker {
 
 func (lz *LazyTracker) push() {
 	lz.entries.Store(lz.val.dbg.Tracker.Copy())
+	lz.lastEntry[0].Store(lz.val.dbg.Tracker.GetLast(0))
+	lz.lastEntry[1].Store(lz.val.dbg.Tracker.GetLast(1))
 }
 
 func (lz *LazyTracker) update() {
 	lz.Entries = lz.entries.Load().([]tracker.Entry)
+	lz.LastEntry[0] = lz.lastEntry[0].Load().(tracker.Entry)
+	lz.LastEntry[1] = lz.lastEntry[1].Load().(tracker.Entry)
 }

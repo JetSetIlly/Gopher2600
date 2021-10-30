@@ -108,6 +108,7 @@ var windowDefs = [...]windowDef{
 
 	// windows that appear in the "tools" menu
 	{create: newWinTracker, menu: menuEntry{group: menuTools}, open: false},
+	{create: newWinPianoKeys, menu: menuEntry{group: menuTools}, open: false},
 
 	// windows that appear in cartridge specific menu
 	{create: newWinDPCregisters, menu: menuEntry{group: menuCart, restrictBus: menuRestrictRegister, restrictMapper: []string{"DPC"}}},
