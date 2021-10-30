@@ -157,10 +157,19 @@ type Television struct {
 	// the index of the most recent Signal()
 	currentSignalIdx int
 
-	// copy of the signals and currentSignalIdx fields from the previous frame.
-	// we use solely to support the realtime audio mixer
-	prevSignals   []signal.SignalAttributes
-	prevSignalIdx int
+	// the index of the first Signal() in the frame
+	firstSignalIdx int
+
+	// copy of the signals and index fields from the previous frame. we use
+	// solely to support the realtime audio mixer
+	//
+	// updated in renderSignals() function. might need more nuanced
+	// copying/appending. for example if renderSignals() is called multiple
+	// times per frame. currently this will only happen in the debugger when
+	// execution is halted mid frame so I don't think it's an issue
+	prevSignals       []signal.SignalAttributes
+	prevSignalLastIdx int
+	prevSignalFirst   int
 
 	// state of emulation
 	emulationState emulation.State
@@ -221,6 +230,7 @@ func (tv *Television) Reset(keepFrameNum bool) error {
 		tv.signals[i] = signal.NoSignal
 	}
 	tv.currentSignalIdx = 0
+	tv.firstSignalIdx = 0
 
 	if tv.state.auto {
 		tv.SetSpec("AUTO")
@@ -258,6 +268,7 @@ func (tv *Television) PlumbState(vcs VCSReturnChannel, s *State) {
 
 	// reset signal history
 	tv.currentSignalIdx = 0
+	tv.firstSignalIdx = 0
 }
 
 // AttachVCS attaches an implementation of the VCSReturnChannel.
@@ -449,9 +460,9 @@ func (tv *Television) newScanline() error {
 	if tv.realtimeMixer != nil && tv.emulationState == emulation.Running && tv.state.frameInfo.Stable {
 		if tv.lmtr.realtimeAudio && tv.realtimeMixer.MoreAudio() {
 			// send the signals for the equivalent scanlines of the previous frame
-			i := tv.prevSignalIdx - (tv.state.frameInfo.TotalScanlines-tv.state.scanline)*specification.ClksScanline
+			i := tv.prevSignalLastIdx - (tv.state.frameInfo.TotalScanlines-tv.state.scanline)*specification.ClksScanline
 			if i > 0 {
-				err := tv.realtimeMixer.SetAudio(tv.prevSignals[:tv.prevSignalIdx])
+				err := tv.realtimeMixer.SetAudio(tv.prevSignals[:tv.prevSignalLastIdx])
 				if err != nil {
 					return err
 				}
@@ -550,6 +561,9 @@ func (tv *Television) newFrame(fromVsync bool) error {
 	// measure frame rate
 	tv.lmtr.measureActual()
 
+	// signal index at beginning of new frame
+	tv.firstSignalIdx = tv.state.clock + (tv.state.scanline * specification.ClksScanline)
+
 	return nil
 }
 
@@ -566,8 +580,9 @@ func (tv *Television) renderSignals() error {
 		}
 	}
 
+	// update realtime mixers
 	if tv.realtimeMixer != nil && tv.state.frameInfo.Stable {
-		err := tv.realtimeMixer.SetAudio(tv.signals[:tv.currentSignalIdx])
+		err := tv.realtimeMixer.SetAudio(tv.signals[tv.firstSignalIdx:tv.currentSignalIdx])
 		if err != nil {
 			return curated.Errorf("television: %v", err)
 		}
@@ -575,14 +590,16 @@ func (tv *Television) renderSignals() error {
 
 	// but we do mix audio even if the emulation is rewinding
 	for _, m := range tv.mixers {
-		err := m.SetAudio(tv.signals[:tv.currentSignalIdx])
+		err := m.SetAudio(tv.signals[tv.firstSignalIdx:tv.currentSignalIdx])
 		if err != nil {
 			return curated.Errorf("television: %v", err)
 		}
 	}
 
+	// make a copy of signals just rendered
 	copy(tv.prevSignals, tv.signals)
-	tv.prevSignalIdx = tv.currentSignalIdx
+	tv.prevSignalLastIdx = tv.currentSignalIdx
+	tv.prevSignalFirst = tv.firstSignalIdx
 
 	return nil
 }
