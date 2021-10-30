@@ -67,8 +67,8 @@ func (win *winTracker) draw() {
 		return
 	}
 
-	imgui.SetNextWindowPosV(imgui.Vec2{574, 97}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
-	imgui.SetNextWindowSizeV(imgui.Vec2{496, 614}, imgui.ConditionFirstUseEver)
+	imgui.SetNextWindowPosV(imgui.Vec2{494, 274}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
+	imgui.SetNextWindowSizeV(imgui.Vec2{658, 469}, imgui.ConditionFirstUseEver)
 
 	imgui.BeginV(win.id(), &win.open, 0)
 	defer imgui.End()
@@ -89,41 +89,42 @@ func (win *winTracker) draw() {
 		tableFlags |= imgui.TableFlagsBordersV
 		tableFlags |= imgui.TableFlagsBordersOuter
 
+		const tableColumns = 14
+
+		tableSetupColumns := func() {
+			imgui.TableSetupColumnV("", imgui.TableColumnFlagsNone, 0, 0)
+			imgui.TableSetupColumnV("", imgui.TableColumnFlagsNone, 15, 1)
+			imgui.TableSetupColumnV("AUDC0", imgui.TableColumnFlagsNone, 40, 2)
+			imgui.TableSetupColumnV("Description", imgui.TableColumnFlagsNone, 80, 2)
+			imgui.TableSetupColumnV("AUDF0", imgui.TableColumnFlagsNone, 40, 3)
+			imgui.TableSetupColumnV("Note", imgui.TableColumnFlagsNone, 30, 3)
+			imgui.TableSetupColumnV("AUDV0", imgui.TableColumnFlagsNone, 40, 4)
+			imgui.TableSetupColumnV("", imgui.TableColumnFlagsNone, 0, 5)
+			imgui.TableSetupColumnV("", imgui.TableColumnFlagsNone, 15, 6)
+			imgui.TableSetupColumnV("AUDC1", imgui.TableColumnFlagsNone, 40, 2)
+			imgui.TableSetupColumnV("Description", imgui.TableColumnFlagsNone, 80, 2)
+			imgui.TableSetupColumnV("AUDF1", imgui.TableColumnFlagsNone, 40, 8)
+			imgui.TableSetupColumnV("Note", imgui.TableColumnFlagsNone, 30, 3)
+			imgui.TableSetupColumnV("AUDV1", imgui.TableColumnFlagsNone, 40, 9)
+		}
+
 		// I can't get the header of the table to freeze in the scroller so I'm
 		// fudging the effect by having a separate table just for the header.
-		if !imgui.BeginTableV("trackerHeader", 10, tableFlags, imgui.Vec2{}, 0) {
+		if !imgui.BeginTableV("trackerHeader", tableColumns, tableFlags, imgui.Vec2{}, 0) {
 			return
 		}
-		imgui.TableSetupColumnV("", imgui.TableColumnFlagsNone, 0, 0)
-		imgui.TableSetupColumnV("0", imgui.TableColumnFlagsNone, 15, 1)
-		imgui.TableSetupColumnV("Control", imgui.TableColumnFlagsNone, 100, 2)
-		imgui.TableSetupColumnV("Freq", imgui.TableColumnFlagsNone, 40, 3)
-		imgui.TableSetupColumnV("Vol", imgui.TableColumnFlagsNone, 30, 4)
-		imgui.TableSetupColumnV("", imgui.TableColumnFlagsNone, 0, 5)
-		imgui.TableSetupColumnV("1", imgui.TableColumnFlagsNone, 15, 6)
-		imgui.TableSetupColumnV("Control", imgui.TableColumnFlagsNone, 100, 7)
-		imgui.TableSetupColumnV("Freq", imgui.TableColumnFlagsNone, 40, 8)
-		imgui.TableSetupColumnV("Vol", imgui.TableColumnFlagsNone, 30, 9)
+		tableSetupColumns()
 		imgui.TableHeadersRow()
 		imgui.EndTable()
 
 		// new child that contains the main scrollable table
 		imgui.BeginChildV("##trackerscroller", imgui.Vec2{X: 0, Y: imguiRemainingWinHeight() - win.footerHeight}, false, 0)
 
-		if !imgui.BeginTableV("tracker", 10, tableFlags, imgui.Vec2{}, 0) {
+		if !imgui.BeginTableV("tracker", tableColumns, tableFlags, imgui.Vec2{}, 0) {
 			return
 		}
 
-		imgui.TableSetupColumnV("", imgui.TableColumnFlagsNone, 0, 0)
-		imgui.TableSetupColumnV("0", imgui.TableColumnFlagsNone, 15, 1)
-		imgui.TableSetupColumnV("Control", imgui.TableColumnFlagsNone, 100, 2)
-		imgui.TableSetupColumnV("Freq", imgui.TableColumnFlagsNone, 40, 3)
-		imgui.TableSetupColumnV("Vol", imgui.TableColumnFlagsNone, 30, 4)
-		imgui.TableSetupColumnV("", imgui.TableColumnFlagsNone, 0, 5)
-		imgui.TableSetupColumnV("1", imgui.TableColumnFlagsNone, 15, 6)
-		imgui.TableSetupColumnV("Control", imgui.TableColumnFlagsNone, 100, 7)
-		imgui.TableSetupColumnV("Freq", imgui.TableColumnFlagsNone, 40, 8)
-		imgui.TableSetupColumnV("Vol", imgui.TableColumnFlagsNone, 30, 9)
+		tableSetupColumns()
 
 		// altenate row colors at change of frame number
 		var lastEntry tracker.Entry
@@ -181,16 +182,32 @@ func (win *winTracker) draw() {
 					imgui.TableNextColumn()
 					imgui.TableNextColumn()
 					imgui.TableNextColumn()
+					imgui.TableNextColumn()
+					imgui.TableNextColumn()
+				}
+
+				// convert musical note into something worth showing
+				musicalNote := string(entry.MusicalNote)
+				imgui.TableNextColumn()
+				switch entry.MusicalNote {
+				case tracker.Noise:
+					musicalNote = ""
+				case tracker.Low:
+					musicalNote = ""
+				case tracker.Silence:
+					musicalNote = ""
+				default:
+					imgui.Text(fmt.Sprintf("%c", fonts.MusicNote))
 				}
 
 				imgui.TableNextColumn()
-				if entry.MusicalNote != tracker.NoMusicalNote {
-					imgui.Text(fmt.Sprintf("%c", fonts.MusicNote))
-				}
+				imgui.Text(fmt.Sprintf("%04b", entry.Registers.Control&0x0f))
 				imgui.TableNextColumn()
-				imgui.Text(fmt.Sprintf("(%01x) %s", entry.Registers.Control&0x0f, entry.Distortion))
+				imgui.Text(fmt.Sprintf("%s", entry.Distortion))
 				imgui.TableNextColumn()
-				imgui.Text(fmt.Sprintf("%05b", entry.Registers.Freq))
+				imgui.Text(fmt.Sprintf("%05b", entry.Registers.Freq&0x1f))
+				imgui.TableNextColumn()
+				imgui.Text(musicalNote)
 				imgui.TableNextColumn()
 
 				// volum column
@@ -217,7 +234,6 @@ func (win *winTracker) draw() {
 
 				// record last entry for comparison purposes next iteration
 				lastEntry = entry
-
 			}
 		}
 
@@ -233,7 +249,7 @@ func (win *winTracker) draw() {
 			imgui.Spacing()
 
 			imgui.AlignTextToFramePadding()
-			imgui.Text(fmt.Sprintf("Last change: %s", lastEntry.Coords))
+			imgui.Text(fmt.Sprintf("Last change: %s", win.img.lz.Tracker.Entries[numEntries-1].Coords))
 
 			imgui.SameLineV(0, 15)
 			if imgui.Button("Rewind to") {
