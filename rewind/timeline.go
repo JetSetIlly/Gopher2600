@@ -103,12 +103,24 @@ func (tl *Timeline) checkIntegrity() error {
 		return curated.Errorf("timeline arrays are different lengths")
 	}
 
-	if len(tl.FrameNum) == 0 {
-		return nil
+	if len(tl.FrameNum) != len(tl.Counts) {
+		return curated.Errorf("timeline arrays are different lengths")
 	}
 
-	if tl.AvailableStart < tl.FrameNum[0] {
-		return curated.Errorf("earliest rewind state not in timeline (%d < %d)", tl.AvailableStart, tl.FrameNum[0])
+	if len(tl.FrameNum) != len(tl.LeftPlayerInput) {
+		return curated.Errorf("timeline arrays are different lengths")
+	}
+
+	if len(tl.FrameNum) != len(tl.RightPlayerInput) {
+		return curated.Errorf("timeline arrays are different lengths")
+	}
+
+	if len(tl.FrameNum) != len(tl.PanelInput) {
+		return curated.Errorf("timeline arrays are different lengths")
+	}
+
+	if len(tl.FrameNum) == 0 {
+		return nil
 	}
 
 	if len(tl.FrameNum) > 1 {
