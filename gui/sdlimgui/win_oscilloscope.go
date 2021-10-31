@@ -25,9 +25,9 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/tia/audio/mix"
 )
 
-const winAudioID = "Audio"
+const winOscilloscopeID = "Oscilloscope"
 
-type newAudioData struct {
+type oscilloscopeData struct {
 	mono    float32
 	stereoL float32
 	stereoR float32
@@ -35,7 +35,7 @@ type newAudioData struct {
 	chan1   float32
 }
 
-type winAudio struct {
+type winOscilloscope struct {
 	img  *SdlImgui
 	open bool
 
@@ -44,17 +44,17 @@ type winAudio struct {
 	stereoRBuffer []float32
 	chan0Buffer   []float32
 	chan1Buffer   []float32
-	newData       chan newAudioData
+	newData       chan oscilloscopeData
 	clearData     chan bool
 
 	monoDim   imgui.Vec2
 	stereoDim imgui.Vec2
 }
 
-func newWinAudio(img *SdlImgui) (window, error) {
-	win := &winAudio{
+func newWinOscilloscope(img *SdlImgui) (window, error) {
+	win := &winOscilloscope{
 		img:       img,
-		newData:   make(chan newAudioData, 2048),
+		newData:   make(chan oscilloscopeData, 2048),
 		clearData: make(chan bool, 1),
 	}
 	win.reset()
@@ -64,24 +64,24 @@ func newWinAudio(img *SdlImgui) (window, error) {
 	return win, nil
 }
 
-func (win *winAudio) init() {
+func (win *winOscilloscope) init() {
 	win.monoDim = imgui.Vec2{X: 200 + imgui.CurrentStyle().FramePadding().X + imgui.CurrentStyle().CellPadding().X}
 	win.stereoDim = imgui.Vec2{X: 100}
 }
 
-func (win *winAudio) id() string {
-	return winAudioID
+func (win *winOscilloscope) id() string {
+	return winOscilloscopeID
 }
 
-func (win *winAudio) isOpen() bool {
+func (win *winOscilloscope) isOpen() bool {
 	return win.open
 }
 
-func (win *winAudio) setOpen(open bool) {
+func (win *winOscilloscope) setOpen(open bool) {
 	win.open = open
 }
 
-func (win *winAudio) draw() {
+func (win *winOscilloscope) draw() {
 	if !win.open {
 		return
 	}
@@ -135,7 +135,7 @@ func (win *winAudio) draw() {
 	}
 }
 
-func (win *winAudio) drawTVLabel(label string) {
+func (win *winOscilloscope) drawTVLabel(label string) {
 	imgui.AlignTextToFramePadding()
 	imgui.Text(fmt.Sprintf("TV Output (%s)", label))
 	imgui.SameLine()
@@ -160,7 +160,7 @@ func (win *winAudio) drawTVLabel(label string) {
 }
 
 // SetAudio implements protocol.AudioMixer.
-func (win *winAudio) SetAudio(sig []signal.SignalAttributes) error {
+func (win *winOscilloscope) SetAudio(sig []signal.SignalAttributes) error {
 	for _, s := range sig {
 		if s&signal.AudioUpdate != signal.AudioUpdate {
 			continue
@@ -173,7 +173,7 @@ func (win *winAudio) SetAudio(sig []signal.SignalAttributes) error {
 		sep := win.img.audio.Prefs.Separation.Get().(int)
 		s0, s1 := mix.Stereo(v0, v1, sep)
 
-		nd := newAudioData{
+		nd := oscilloscopeData{
 			mono:    float32(m) / 256,
 			chan0:   float32(v0) / 256,
 			chan1:   float32(v1) / 256,
@@ -190,14 +190,14 @@ func (win *winAudio) SetAudio(sig []signal.SignalAttributes) error {
 }
 
 // EndMixing implements protocol.AudioMixer.
-func (win *winAudio) EndMixing() error {
+func (win *winOscilloscope) EndMixing() error {
 	return nil
 }
 
 // Reset implements protocol.AudioMixer.
 //
 // Should not be called by the GUI gorountine. Use winAudio.reset() instead.
-func (win *winAudio) Reset() {
+func (win *winOscilloscope) Reset() {
 	select {
 	case win.clearData <- true:
 	default:
@@ -206,7 +206,7 @@ func (win *winAudio) Reset() {
 	}
 }
 
-func (win *winAudio) reset() {
+func (win *winOscilloscope) reset() {
 	win.monoBuffer = make([]float32, 2048)
 	win.chan0Buffer = make([]float32, 2048)
 	win.chan1Buffer = make([]float32, 2048)

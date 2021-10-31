@@ -93,7 +93,6 @@ var windowDefs = [...]windowDef{
 	{create: newWinLog, menu: menuEntry{group: menuDebugger}},
 
 	// windows that appear in the "vcs" menu
-	{create: newWinAudio, menu: menuEntry{group: menuVCS}, open: true},
 	{create: newWinChipRegisters, menu: menuEntry{group: menuVCS}},
 	{create: newWinCollisions, menu: menuEntry{group: menuVCS}},
 	{create: newWinControl, menu: menuEntry{group: menuVCS}, open: true},
@@ -101,14 +100,15 @@ var windowDefs = [...]windowDef{
 	{create: newWinCPU, menu: menuEntry{group: menuVCS}, open: true},
 	{create: newWinDisasm, menu: menuEntry{group: menuVCS}, open: true},
 	{create: newWinDbgScr, menu: menuEntry{group: menuVCS}, open: true},
-	{create: newWinTimeline, menu: menuEntry{group: menuVCS}, open: true},
 	{create: newWinRAM, menu: menuEntry{group: menuVCS}, open: true},
 	{create: newWinTIA, menu: menuEntry{group: menuVCS}, open: true},
 	{create: newWinTimer, menu: menuEntry{group: menuVCS}, open: true},
 
 	// windows that appear in the "tools" menu
+	{create: newWinOscilloscope, menu: menuEntry{group: menuTools}, open: true},
 	{create: newWinTracker, menu: menuEntry{group: menuTools}, open: false},
 	{create: newWinPianoKeys, menu: menuEntry{group: menuTools}, open: false},
+	{create: newWinTimeline, menu: menuEntry{group: menuTools}, open: true},
 
 	// windows that appear in cartridge specific menu
 	{create: newWinDPCregisters, menu: menuEntry{group: menuCart, restrictBus: menuRestrictRegister, restrictMapper: []string{"DPC"}}},
