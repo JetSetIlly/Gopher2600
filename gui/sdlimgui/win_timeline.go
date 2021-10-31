@@ -64,8 +64,7 @@ func (win *winTimeline) draw() {
 
 	imgui.SetNextWindowPosV(imgui.Vec2{37, 732}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
 
-	flgs := imgui.WindowFlagsAlwaysAutoResize | imgui.WindowFlagsNoDecoration
-	imgui.BeginV(win.id(), &win.open, flgs)
+	imgui.BeginV(win.id(), &win.open, imgui.WindowFlagsAlwaysAutoResize|imgui.WindowFlagsNoDecoration)
 	defer imgui.End()
 
 	win.drawTimeline()

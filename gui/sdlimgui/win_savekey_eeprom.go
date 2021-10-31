@@ -62,7 +62,7 @@ func (win *winSaveKeyEEPROM) draw() {
 
 	imgui.SetNextWindowPosV(imgui.Vec2{469, 285}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
 	imgui.SetNextWindowSizeV(imgui.Vec2{394, 356}, imgui.ConditionFirstUseEver)
-	imgui.BeginV(win.id(), &win.open, 0)
+	imgui.BeginV(win.id(), &win.open, imgui.WindowFlagsNone)
 
 	imgui.BeginChildV("eepromData", imgui.Vec2{X: 0, Y: imguiRemainingWinHeight() - win.statusHeight}, false, 0)
 

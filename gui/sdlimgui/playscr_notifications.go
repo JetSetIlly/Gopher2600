@@ -94,7 +94,8 @@ func (pn *peripheralNotification) draw(win *playScr) {
 	imgui.PushStyleColor(imgui.StyleColorBorder, win.img.cols.Transparent)
 
 	imgui.BeginV(id, &win.fpsOpen, imgui.WindowFlagsAlwaysAutoResize|
-		imgui.WindowFlagsNoScrollbar|imgui.WindowFlagsNoTitleBar|imgui.WindowFlagsNoDecoration)
+		imgui.WindowFlagsNoScrollbar|imgui.WindowFlagsNoTitleBar|
+		imgui.WindowFlagsNoDecoration|imgui.WindowFlagsNoSavedSettings)
 
 	imgui.Text(pn.icon)
 
@@ -153,7 +154,8 @@ func (ee *emulationEventNotification) draw(win *playScr) {
 	imgui.PushStyleColor(imgui.StyleColorBorder, win.img.cols.Transparent)
 
 	imgui.BeginV("##cartridgeevent", &ee.open, imgui.WindowFlagsAlwaysAutoResize|
-		imgui.WindowFlagsNoScrollbar|imgui.WindowFlagsNoTitleBar|imgui.WindowFlagsNoDecoration)
+		imgui.WindowFlagsNoScrollbar|imgui.WindowFlagsNoTitleBar|
+		imgui.WindowFlagsNoDecoration|imgui.WindowFlagsNoSavedSettings)
 
 	imgui.PushFont(win.img.glsl.veryLargeFontAwesome)
 	switch ee.currentEvent {

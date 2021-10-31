@@ -72,9 +72,10 @@ func (win *winCartRAM) draw() {
 
 	imgui.SetNextWindowPosV(imgui.Vec2{533, 430}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
 	imgui.SetNextWindowSizeV(imgui.Vec2{469, 262}, imgui.ConditionFirstUseEver)
+	imgui.SetNextWindowSizeConstraints(imgui.Vec2{469, 262}, imgui.Vec2{469, 1000})
 
 	title := fmt.Sprintf("%s %s", win.img.lz.Cart.ID, winCartRAMID)
-	imgui.BeginV(title, &win.open, 0)
+	imgui.BeginV(title, &win.open, imgui.WindowFlagsNone)
 
 	imgui.BeginTabBarV("", imgui.TabBarFlagsFittingPolicyScroll)
 	for bank := range win.img.lz.Cart.RAM {

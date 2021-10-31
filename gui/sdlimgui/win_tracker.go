@@ -69,8 +69,9 @@ func (win *winTracker) draw() {
 
 	imgui.SetNextWindowPosV(imgui.Vec2{494, 274}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
 	imgui.SetNextWindowSizeV(imgui.Vec2{658, 469}, imgui.ConditionFirstUseEver)
+	imgui.SetNextWindowSizeConstraints(imgui.Vec2{-1, 200}, imgui.Vec2{-1, 1000})
 
-	imgui.BeginV(win.id(), &win.open, 0)
+	imgui.BeginV(win.id(), &win.open, imgui.WindowFlagsNone)
 	defer imgui.End()
 
 	imgui.PushStyleColor(imgui.StyleColorHeaderHovered, win.img.cols.DisasmHover)
@@ -80,43 +81,44 @@ func (win *winTracker) draw() {
 	imgui.PushStyleColor(imgui.StyleColorTableHeaderBg, win.img.cols.AudioTrackerHeader)
 	defer imgui.PopStyleColor()
 
+	tableFlags := imgui.TableFlagsNone
+	tableFlags |= imgui.TableFlagsSizingFixedFit
+	tableFlags |= imgui.TableFlagsBordersV
+	tableFlags |= imgui.TableFlagsBordersOuter
+
+	const tableColumns = 14
+
+	tableSetupColumns := func() {
+		imgui.TableSetupColumnV("", imgui.TableColumnFlagsNone, 0, 0)
+		imgui.TableSetupColumnV("", imgui.TableColumnFlagsNone, 15, 1)
+		imgui.TableSetupColumnV("AUDC0", imgui.TableColumnFlagsNone, 40, 2)
+		imgui.TableSetupColumnV("Description", imgui.TableColumnFlagsNone, 80, 2)
+		imgui.TableSetupColumnV("AUDF0", imgui.TableColumnFlagsNone, 40, 3)
+		imgui.TableSetupColumnV("Note", imgui.TableColumnFlagsNone, 30, 3)
+		imgui.TableSetupColumnV("AUDV0", imgui.TableColumnFlagsNone, 40, 4)
+		imgui.TableSetupColumnV("", imgui.TableColumnFlagsNone, 0, 5)
+		imgui.TableSetupColumnV("", imgui.TableColumnFlagsNone, 15, 6)
+		imgui.TableSetupColumnV("AUDC1", imgui.TableColumnFlagsNone, 40, 2)
+		imgui.TableSetupColumnV("Description", imgui.TableColumnFlagsNone, 80, 2)
+		imgui.TableSetupColumnV("AUDF1", imgui.TableColumnFlagsNone, 40, 8)
+		imgui.TableSetupColumnV("Note", imgui.TableColumnFlagsNone, 30, 3)
+		imgui.TableSetupColumnV("AUDV1", imgui.TableColumnFlagsNone, 40, 9)
+	}
+
+	// I can't get the header of the table to freeze in the scroller so I'm
+	// fudging the effect by having a separate table just for the header.
+	if !imgui.BeginTableV("trackerHeader", tableColumns, tableFlags, imgui.Vec2{}, 0) {
+		return
+	}
+	tableSetupColumns()
+	imgui.TableHeadersRow()
+	imgui.EndTable()
+
 	numEntries := len(win.img.lz.Tracker.Entries)
 	if numEntries == 0 {
+		imgui.Spacing()
 		imgui.Text("No audio output/changes yet")
 	} else {
-		tableFlags := imgui.TableFlagsNone
-		tableFlags |= imgui.TableFlagsSizingFixedFit
-		tableFlags |= imgui.TableFlagsBordersV
-		tableFlags |= imgui.TableFlagsBordersOuter
-
-		const tableColumns = 14
-
-		tableSetupColumns := func() {
-			imgui.TableSetupColumnV("", imgui.TableColumnFlagsNone, 0, 0)
-			imgui.TableSetupColumnV("", imgui.TableColumnFlagsNone, 15, 1)
-			imgui.TableSetupColumnV("AUDC0", imgui.TableColumnFlagsNone, 40, 2)
-			imgui.TableSetupColumnV("Description", imgui.TableColumnFlagsNone, 80, 2)
-			imgui.TableSetupColumnV("AUDF0", imgui.TableColumnFlagsNone, 40, 3)
-			imgui.TableSetupColumnV("Note", imgui.TableColumnFlagsNone, 30, 3)
-			imgui.TableSetupColumnV("AUDV0", imgui.TableColumnFlagsNone, 40, 4)
-			imgui.TableSetupColumnV("", imgui.TableColumnFlagsNone, 0, 5)
-			imgui.TableSetupColumnV("", imgui.TableColumnFlagsNone, 15, 6)
-			imgui.TableSetupColumnV("AUDC1", imgui.TableColumnFlagsNone, 40, 2)
-			imgui.TableSetupColumnV("Description", imgui.TableColumnFlagsNone, 80, 2)
-			imgui.TableSetupColumnV("AUDF1", imgui.TableColumnFlagsNone, 40, 8)
-			imgui.TableSetupColumnV("Note", imgui.TableColumnFlagsNone, 30, 3)
-			imgui.TableSetupColumnV("AUDV1", imgui.TableColumnFlagsNone, 40, 9)
-		}
-
-		// I can't get the header of the table to freeze in the scroller so I'm
-		// fudging the effect by having a separate table just for the header.
-		if !imgui.BeginTableV("trackerHeader", tableColumns, tableFlags, imgui.Vec2{}, 0) {
-			return
-		}
-		tableSetupColumns()
-		imgui.TableHeadersRow()
-		imgui.EndTable()
-
 		// new child that contains the main scrollable table
 		imgui.BeginChildV("##trackerscroller", imgui.Vec2{X: 0, Y: imguiRemainingWinHeight() - win.footerHeight}, false, 0)
 

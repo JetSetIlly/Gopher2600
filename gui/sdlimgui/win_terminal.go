@@ -116,7 +116,7 @@ func (win *winTerm) draw() {
 
 	imgui.PushStyleColor(imgui.StyleColorWindowBg, win.img.cols.TermBackground)
 	imgui.PushStyleVarVec2(imgui.StyleVarFramePadding, imgui.Vec2{2, 2})
-	imgui.BeginV(win.id(), &win.open, 0)
+	imgui.BeginV(win.id(), &win.open, imgui.WindowFlagsNone)
 	imgui.PopStyleVar()
 	imgui.PopStyleColor()
 

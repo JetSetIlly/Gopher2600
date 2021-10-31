@@ -63,10 +63,11 @@ func (win *winCartStatic) draw() {
 	comp := win.img.lz.Rewind.Comparison.Mem.Cart.GetStaticBus().GetStatic()
 
 	imgui.SetNextWindowPosV(imgui.Vec2{117, 248}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
-	imgui.SetNextWindowSizeV(imgui.Vec2{394, 356}, imgui.ConditionFirstUseEver)
+	imgui.SetNextWindowSizeV(imgui.Vec2{473, 552}, imgui.ConditionFirstUseEver)
+	imgui.SetNextWindowSizeConstraints(imgui.Vec2{473, 300}, imgui.Vec2{473, 1000})
 
 	title := fmt.Sprintf("%s %s", win.img.lz.Cart.ID, winCartStaticID)
-	imgui.BeginV(title, &win.open, 0)
+	imgui.BeginV(title, &win.open, imgui.WindowFlagsNone)
 
 	imgui.BeginTabBar("")
 	for s := range win.img.lz.Cart.Static {

@@ -130,7 +130,8 @@ func (win *playScr) draw() {
 		imgui.PushStyleColor(imgui.StyleColorBorder, win.img.cols.Transparent)
 
 		imgui.BeginV("##playscrfps", &win.fpsOpen, imgui.WindowFlagsAlwaysAutoResize|
-			imgui.WindowFlagsNoScrollbar|imgui.WindowFlagsNoTitleBar|imgui.WindowFlagsNoDecoration)
+			imgui.WindowFlagsNoScrollbar|imgui.WindowFlagsNoTitleBar|
+			imgui.WindowFlagsNoDecoration|imgui.WindowFlagsNoSavedSettings)
 
 		imgui.Text(fmt.Sprintf("Emulation: %s", win.fps))
 		if win.img.polling.measuredRenderingTime == 0.0 {

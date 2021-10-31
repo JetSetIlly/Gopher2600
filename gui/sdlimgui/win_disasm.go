@@ -115,8 +115,10 @@ func (win *winDisasm) draw() {
 	}
 
 	imgui.SetNextWindowPosV(imgui.Vec2{941, 272}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
-	imgui.SetNextWindowSizeV(imgui.Vec2{355, 552}, imgui.ConditionFirstUseEver)
-	imgui.BeginV(win.id(), &win.open, 0)
+	imgui.SetNextWindowSizeV(imgui.Vec2{500, 552}, imgui.ConditionFirstUseEver)
+	imgui.SetNextWindowSizeConstraints(imgui.Vec2{400, 300}, imgui.Vec2{500, 1000})
+
+	imgui.BeginV(win.id(), &win.open, imgui.WindowFlagsNone)
 	defer imgui.End()
 
 	// the bank that is currently selected

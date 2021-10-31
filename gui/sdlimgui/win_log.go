@@ -58,7 +58,7 @@ func (win *winLog) draw() {
 	imgui.SetNextWindowSizeV(imgui.Vec2{570, 335}, imgui.ConditionFirstUseEver)
 
 	imgui.PushStyleColor(imgui.StyleColorWindowBg, win.img.cols.LogBackground)
-	imgui.BeginV(win.id(), &win.open, 0)
+	imgui.BeginV(win.id(), &win.open, imgui.WindowFlagsNone)
 	imgui.PopStyleColor()
 
 	var clipper imgui.ListClipper

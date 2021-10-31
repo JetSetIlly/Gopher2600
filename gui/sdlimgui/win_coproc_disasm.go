@@ -75,7 +75,8 @@ func (win *winCoProcDisasm) draw() {
 	}
 
 	imgui.SetNextWindowPosV(imgui.Vec2{465, 285}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
-	imgui.SetNextWindowSizeV(imgui.Vec2{507, 526}, imgui.ConditionFirstUseEver)
+	imgui.SetNextWindowSizeV(imgui.Vec2{551, 526}, imgui.ConditionFirstUseEver)
+	imgui.SetNextWindowSizeConstraints(imgui.Vec2{551, 300}, imgui.Vec2{800, 1000})
 
 	title := fmt.Sprintf("%s %s", win.img.lz.CoProc.ID, winCoProcDisasmID)
 	imgui.BeginV(title, &win.open, imgui.WindowFlagsNone)
@@ -124,12 +125,8 @@ func (win *winCoProcDisasm) drawDisasm(itr *coprocessor.Iterate) {
 	if !win.img.dbg.Disasm.Coprocessor.IsEnabled() {
 		imgui.Spacing()
 		imgui.Text("Execution disassembly is disabled. Disassembly below may be")
-		imgui.Text("incomplete. Last disassembled execution was at: ")
-		imgui.Text(fmt.Sprintf("Frame: %-4d", itr.LastStart.Frame))
-		imgui.SameLine()
-		imgui.Text(fmt.Sprintf("Scanline: %-3d", itr.LastStart.Scanline))
-		imgui.SameLine()
-		imgui.Text(fmt.Sprintf("Clock: %-3d", itr.LastStart.Clock))
+		imgui.Text("incomplete. Last disassembly was at:")
+		imgui.Text(itr.LastStart.String())
 		imgui.Spacing()
 	}
 
