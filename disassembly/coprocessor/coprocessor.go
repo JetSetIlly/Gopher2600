@@ -109,6 +109,13 @@ func (cop *CoProcessor) Start() {
 func (cop *CoProcessor) Step(entry mapper.CartCoProcDisasmEntry) {
 	cop.crit.Lock()
 	defer cop.crit.Unlock()
+
+	// check that coprocessor disassmebler hasn't been disabled in the period
+	// while we were waiting for the critical section lock
+	if !cop.enabled {
+		return
+	}
+
 	cop.lastExecution = append(cop.lastExecution, entry)
 }
 
