@@ -88,6 +88,11 @@ func (au *Audio) String() string {
 	return s.String()
 }
 
+// RSYNC resets clock228 to zero.
+func (au *Audio) RSYNC() {
+	au.clock228 = 0
+}
+
 // Step the audio on one TIA clock. The step will be filtered to produce a
 // 30Khz clock.
 func (au *Audio) Step() bool {

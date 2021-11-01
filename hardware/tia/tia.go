@@ -312,6 +312,9 @@ func (tia *TIA) resolveDelayedEvents() {
 		if adj > 0 {
 			tia.Video.RSYNC(adj)
 		}
+
+		// not sure if audio clock should reset on RSYNC
+		tia.Audio.RSYNC()
 	}
 
 	if _, ok := tia.futureRsyncReset.Tick(); ok {
