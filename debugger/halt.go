@@ -85,12 +85,20 @@ func (h *haltCoordination) check() {
 		trapMessage := h.traps.check(instructionBoundary)
 		watchMessage := h.watches.check()
 
-		h.dbg.printLine(terminal.StyleFeedback, breakMessage)
-		h.dbg.printLine(terminal.StyleFeedback, trapMessage)
-		h.dbg.printLine(terminal.StyleFeedback, watchMessage)
+		if breakMessage != "" {
+			h.dbg.printLine(terminal.StyleFeedback, breakMessage)
+			h.halt = true
+		}
 
-		// check for halt conditions
-		h.halt = h.halt || breakMessage != "" || trapMessage != "" || watchMessage != ""
+		if trapMessage != "" {
+			h.dbg.printLine(terminal.StyleFeedback, trapMessage)
+			h.halt = true
+		}
+
+		if watchMessage != "" {
+			h.dbg.printLine(terminal.StyleFeedback, watchMessage)
+			h.halt = true
+		}
 
 		return
 	}

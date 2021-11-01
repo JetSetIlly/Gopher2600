@@ -198,7 +198,7 @@ func (win *winTerm) draw() {
 			imgui.Text(res.String())
 			if !win.img.lz.Debugger.LastResult.Result.Final {
 				imgui.SameLine()
-				imgui.Text(fmt.Sprintf("(%s of %s cycles)", res.LastExecutedCycles, res.DefnCycles))
+				imgui.Text(res.Cycles())
 			}
 		} else {
 			imgui.Text(win.prompt.Content)

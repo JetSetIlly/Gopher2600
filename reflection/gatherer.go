@@ -63,30 +63,30 @@ func (ref *Gatherer) AddRenderer(renderer Renderer) {
 // Step should be called every video cycle to record a complete
 // reflection of the system.
 func (ref *Gatherer) Step(bank mapper.BankInfo) error {
-	v := ReflectedVideoStep{
-		CPU:               ref.vcs.CPU.LastResult,
-		WSYNC:             !ref.vcs.CPU.RdyFlg,
-		Bank:              bank,
-		VideoElement:      ref.vcs.TIA.Video.LastElement,
-		Signal:            ref.vcs.TV.GetLastSignal(),
-		Collision:         *ref.vcs.TIA.Video.Collisions,
-		IsHblank:          ref.vcs.TIA.Hblank,
-		CoprocessorActive: bank.ExecutingCoprocessor,
-	}
+	sig := ref.vcs.TV.GetLastSignal()
+
+	idx := int((sig & signal.Index) >> signal.IndexShift)
+	h := ref.history[idx : idx+1]
+
+	h[0].CPU = ref.vcs.CPU.LastResult
+	h[0].WSYNC = !ref.vcs.CPU.RdyFlg
+	h[0].Bank = bank
+	h[0].VideoElement = ref.vcs.TIA.Video.LastElement
+	h[0].Signal = sig
+	h[0].Collision = *ref.vcs.TIA.Video.Collisions
+	h[0].IsHblank = ref.vcs.TIA.Hblank
+	h[0].CoprocessorActive = bank.ExecutingCoprocessor
 
 	if ref.vcs.TIA.Hmove.Future.IsActive() {
-		v.Hmove.Delay = true
-		v.Hmove.DelayCt = ref.vcs.TIA.Hmove.Future.Remaining()
+		h[0].Hmove.Delay = true
+		h[0].Hmove.DelayCt = ref.vcs.TIA.Hmove.Future.Remaining()
 	}
 	if ref.vcs.TIA.Hmove.Latch {
-		v.Hmove.Latch = true
-		v.Hmove.RippleCt = ref.vcs.TIA.Hmove.Ripple
+		h[0].Hmove.Latch = true
+		h[0].Hmove.RippleCt = ref.vcs.TIA.Hmove.Ripple
 	}
 
-	v.RSYNCalign, v.RSYNCreset = ref.vcs.TIA.RSYNCstate()
-
-	idx := int((v.Signal & signal.Index) >> signal.IndexShift)
-	ref.history[idx] = v
+	h[0].RSYNCalign, h[0].RSYNCreset = ref.vcs.TIA.RSYNCstate()
 
 	// nullify entries at the head of the array that do not have a
 	// corresponding signal. this works because signals returned by
@@ -98,15 +98,15 @@ func (ref *Gatherer) Step(bank mapper.BankInfo) error {
 		ref.history[i] = ReflectedVideoStep{}
 	}
 
-	ref.lastIdx = idx
-
 	// update timeline counts
-	if v.WSYNC {
+	if h[0].WSYNC {
 		ref.timelineCounts.WSYNC++
 	}
-	if v.CoprocessorActive {
+	if h[0].CoprocessorActive {
 		ref.timelineCounts.CoProc++
 	}
+
+	ref.lastIdx = idx
 
 	return nil
 }

@@ -407,7 +407,7 @@ func (win *winDbgScr) drawOverlayCombo() {
 			if i != int(reflection.OverlayCoproc) {
 				if imgui.Selectable(s) {
 					win.img.screen.crit.overlay = s
-					win.img.screen.replotOverlay()
+					win.img.screen.plotOverlay()
 				}
 			} else if win.img.lz.CoProc.HasCoProcBus {
 				// if ROM has a coprocessor change the option label to the
@@ -417,7 +417,7 @@ func (win *winDbgScr) drawOverlayCombo() {
 					// string. this way we don't need any fancy conditions
 					// elsewhere
 					win.img.screen.crit.overlay = s
-					win.img.screen.replotOverlay()
+					win.img.screen.plotOverlay()
 				}
 			}
 		}
@@ -463,18 +463,19 @@ func (win *winDbgScr) drawReflectionTooltip() {
 		return
 	}
 
-	// lower boundary check
+	// outside bounds of window
 	if win.mousePos.X < 0.0 || win.mousePos.Y < 0.0 {
 		return
 	}
 
-	// upper boundary check
-	if win.mouseX >= len(win.scr.crit.reflection) || win.mouseY >= len(win.scr.crit.reflection[win.mouseX]) {
+	mouseOffset := win.mouseX + win.mouseY*specification.ClksScanline
+
+	if mouseOffset < 0 || mouseOffset > len(win.scr.crit.reflection) {
 		return
 	}
 
 	// get reflection information
-	ref := win.scr.crit.reflection[win.mouseX][win.mouseY]
+	ref := win.scr.crit.reflection[mouseOffset]
 
 	// present tooltip showing pixel coords at a minimum
 	imgui.BeginTooltip()

@@ -29,7 +29,7 @@ import (
 // EntryLevel describes the level of the Entry.
 type EntryLevel int
 
-// List of valid EntryL in increasing reliability.
+// List of valid EntryLevel in increasing reliability.
 //
 // Decoded entries have been decoded as though every byte point is a valid
 // instruction. Blessed entries meanwhile take into consideration the preceding
@@ -85,7 +85,6 @@ type Entry struct {
 
 	// information about the most recent execution of the entry
 	// should be empty if EntryLevel != EntryLevelExecuted
-	LastExecutedCycles string
 	LastExecutionNotes string
 }
 
@@ -94,36 +93,35 @@ func (e *Entry) updateExecutionEntry(result execution.Result) {
 	e.Result = result
 
 	// update result instance in Label and Operand fields
-	e.Label.result = e.Result
+	e.Label.address = e.Result.Address
 	e.Operand.result = e.Result
 
 	// indicate that entry has been executed
 	e.Level = EntryLevelExecuted
 
-	// actual cycles
-	e.LastExecutedCycles = fmt.Sprintf("%d", e.Result.Cycles)
+	// updatge execution notes only when necessary
+	isBranch := e.Result.Defn.IsBranch()
+	if isBranch || e.Result.PageFault {
+		s := strings.Builder{}
 
-	// actual notes
-	s := strings.Builder{}
-
-	if e.Result.PageFault {
-		s.WriteString("page-fault [+1] ")
-	}
-
-	if e.Result.Defn.IsBranch() {
-		if e.Result.BranchSuccess {
-			s.WriteString("branched")
-		} else {
-			s.WriteString("next")
+		if e.Result.PageFault {
+			s.WriteString("page-fault [+1] ")
 		}
-	}
 
-	if e.Result.CPUBug != "" {
-		s.WriteString(e.Result.CPUBug)
-		s.WriteString(" ")
-	}
+		if isBranch {
+			if e.Result.BranchSuccess {
+				s.WriteString("branched")
+			} else {
+				s.WriteString("next")
+			}
+		}
 
-	e.LastExecutionNotes = strings.TrimSpace(s.String())
+		if e.Result.CPUBug != "" {
+			s.WriteString(e.Result.CPUBug)
+		}
+
+		e.LastExecutionNotes = s.String()
+	}
 }
 
 // Cycles returns the number of cycles annotated if actual cycles differs from
@@ -131,12 +129,12 @@ func (e *Entry) updateExecutionEntry(result execution.Result) {
 // will always be the case.
 func (e *Entry) Cycles() string {
 	if e.Level < EntryLevelExecuted || e.Result.Final {
-		return e.LastExecutedCycles
+		return fmt.Sprintf("%d", e.Result.Cycles)
 	}
 
 	// if entry hasn't been executed yet or if actual cycles is different to
 	// the cycles defined for the entry then return an annotated string
-	return fmt.Sprintf("%s of %s", e.LastExecutedCycles, e.DefnCycles)
+	return fmt.Sprintf("%d of %s", e.Result.Cycles, e.DefnCycles)
 }
 
 // add decoration to operand according to the addressing mode of the entry.
@@ -195,9 +193,9 @@ func absoluteBranchDestination(addr uint16, operand uint16) uint16 {
 // returns any address label for the entry. Use GetField() function for
 // a white-space padded label.
 type Label struct {
-	dsm    *Disassembly
-	result execution.Result
-	bank   int
+	dsm     *Disassembly
+	address uint16
+	bank    int
 }
 
 func (l Label) String() string {
@@ -209,7 +207,7 @@ func (l Label) String() string {
 // if a symbol is not available then the the bool return value will be false.
 func (l Label) genString() (string, bool) {
 	if l.dsm.Prefs.Symbols.Get().(bool) {
-		ma, _ := memorymap.MapAddress(l.result.Address, true)
+		ma, _ := memorymap.MapAddress(l.address, true)
 		if e, ok := l.dsm.Sym.GetLabel(l.bank, ma); ok {
 			return e.Symbol, true
 		}

@@ -262,18 +262,6 @@ func (dsm *Disassembly) ExecutedEntry(bank mapper.BankInfo, result execution.Res
 	idx := result.Address & memorymap.CartridgeBits
 	e := dsm.entries[bank.Number][idx]
 
-	// check for opcode reliability. if it's different then return the actual
-	// result and not the one in the entries list.
-	//
-	// this can happen when a ROM with a coprocessor has *just* finished and
-	// therefore bank.ExecutingCoProcessor is false.
-	//
-	// we just accept these are return the formatted result of the actual
-	// instruction. we don't update the disassembly
-	if e.Result.Defn.OpCode != result.Defn.OpCode {
-		return dsm.FormatResult(bank, result, EntryLevelExecuted)
-	}
-
 	// opcode is reliable update disasm entry in the normal way
 	if e == nil {
 		// we're not decoded this bank/address before
@@ -288,6 +276,18 @@ func (dsm *Disassembly) ExecutedEntry(bank mapper.BankInfo, result execution.Res
 		// log late decoding
 		logger.Logf("disassembly", "late decoding of %s", dsm.entries[bank.Number][idx])
 	} else {
+		// check for opcode reliability. if it's different then return the actual
+		// result and not the one in the entries list.
+		//
+		// this can happen when a ROM with a coprocessor has *just* finished and
+		// therefore bank.ExecutingCoProcessor is false.
+		//
+		// we just accept these are return the formatted result of the actual
+		// instruction. we don't update the disassembly
+		if e.Result.Defn.OpCode != result.Defn.OpCode {
+			return dsm.FormatResult(bank, result, EntryLevelExecuted)
+		}
+
 		// we have seen this entry before. update entry to reflect results
 		e.updateExecutionEntry(result)
 	}
@@ -327,9 +327,9 @@ func (dsm *Disassembly) FormatResult(bank mapper.BankInfo, result execution.Resu
 		Level:  level,
 		Bank:   bank,
 		Label: Label{
-			dsm:    dsm,
-			result: result,
-			bank:   bank.Number,
+			dsm:     dsm,
+			address: result.Address,
+			bank:    bank.Number,
 		},
 		Operand: Operand{
 			dsm:    dsm,
@@ -416,9 +416,6 @@ func (dsm *Disassembly) FormatResult(bank mapper.BankInfo, result execution.Resu
 	} else {
 		e.DefnCycles = fmt.Sprintf("%d", result.Defn.Cycles)
 	}
-
-	// actual cycles
-	e.LastExecutedCycles = fmt.Sprintf("%d", result.Cycles)
 
 	return e
 }

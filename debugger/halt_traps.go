@@ -77,6 +77,10 @@ func (tr *traps) drop(num int) error {
 // check compares the current state of the emulation with every trap condition.
 // returns a string listing every condition that matches (separated by \n).
 func (tr *traps) check(instructionBoundary bool) string {
+	if len(tr.traps) == 0 {
+		return ""
+	}
+
 	checkString := strings.Builder{}
 	for i := range tr.traps {
 		if tr.traps[i].target.instructionBoundary && !instructionBoundary {

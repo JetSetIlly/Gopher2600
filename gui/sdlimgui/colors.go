@@ -163,7 +163,7 @@ type imguiColors struct {
 	timelineLeftPlayer     imgui.PackedColor
 
 	// reflection colors
-	reflectionColors map[reflection.ReflectedInfo]imgui.Vec4
+	reflectionColors []imgui.Vec4
 
 	// packed TV palettes
 	packedPaletteNTSC packedPalette
@@ -291,10 +291,10 @@ func newColors() *imguiColors {
 	style.SetColor(imgui.StyleColorBorder, cols.Border)
 
 	// reflection colors in imgui.Vec4 and imgui.PackedColor formats
-	cols.reflectionColors = make(map[reflection.ReflectedInfo]imgui.Vec4)
-	for k, v := range reflectionColors {
+	cols.reflectionColors = make([]imgui.Vec4, len(reflectionColors))
+	for i, v := range reflectionColors {
 		c := imgui.Vec4{float32(v.R) / 255.0, float32(v.G) / 255.0, float32(v.B) / 255.0, float32(v.A) / 255.0}
-		cols.reflectionColors[k] = c
+		cols.reflectionColors[i] = c
 	}
 
 	// we deferred setting of some colours. set them now.
@@ -363,7 +363,7 @@ func newColors() *imguiColors {
 }
 
 // reflectionColors lists the colors to be used for the reflection overlay.
-var reflectionColors = map[reflection.ReflectedInfo]color.RGBA{
+var reflectionColors = []color.RGBA{
 	reflection.WSYNC:             {R: 50, G: 50, B: 255, A: 255},
 	reflection.Collision:         {R: 255, G: 25, B: 25, A: 255},
 	reflection.CXCLR:             {R: 255, G: 25, B: 255, A: 255},
@@ -378,7 +378,7 @@ var reflectionColors = map[reflection.ReflectedInfo]color.RGBA{
 // altColors lists the colors to be used when displaying TIA video in a
 // debugger's "debug colors" mode. these colors are the same as the the debug
 // colors found in the Stella emulator.
-var altColors = map[video.Element]color.RGBA{
+var altColors = []color.RGBA{
 	video.ElementBackground: {R: 17, G: 17, B: 17, A: 255},
 	video.ElementBall:       {R: 132, G: 200, B: 252, A: 255},
 	video.ElementPlayfield:  {R: 146, G: 70, B: 192, A: 255},

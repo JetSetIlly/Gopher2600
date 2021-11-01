@@ -37,17 +37,10 @@ const (
 	// and update) the delay is visually a lot longer in some situations (for
 	// example, when editing the PC value and seeing the change in the disasm
 	// window).
-	debugSleepPeriod = 10
+	debugSleepPeriod = 40
 
 	// idleSleepPeriod should not be too long because the sleep is not preempted.
 	idleSleepPeriod = 500
-)
-
-// time periods used to slow down / speed up event handling (in milliseconds).
-const (
-	// frictionPeriod is applied to mouse events. mouse events can come in
-	// thick and fast and we don't want/need to service everyone.
-	frictionPeriod = 50
 
 	// the period of inactivity required before the main sleep period drops to
 	// the idlsSleepPeriod value.
@@ -170,16 +163,6 @@ func (pol *polling) wait() sdl.Event {
 	} else if pol.awake {
 		// keep awake flag set for wakefullnessPeriod milliseconds
 		pol.awake = time.Since(pol.lastEvent).Milliseconds() < wakefullnessPeriod
-	}
-
-	// slow down mouse events unless input has been "captured". if we don't do
-	// this then waggling the mouse over the screen will increase CPU usage
-	// significantly. CPU usage will still increase but by a smaller margin.
-	if !pol.img.isCaptured() {
-		switch ev.(type) {
-		case *sdl.MouseMotionEvent:
-			time.Sleep(frictionPeriod * time.Millisecond)
-		}
 	}
 
 	return ev
