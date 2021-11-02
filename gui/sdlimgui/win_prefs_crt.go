@@ -409,9 +409,9 @@ func (win *winPrefs) drawUnsyncTolerance() {
 	t := int32(win.img.crtPrefs.UnsyncTolerance.Get().(int))
 	var label string
 	if t == 0 {
-		label = "immediately"
+		label = "no tolerance"
 	} else {
-		label = fmt.Sprintf("after %d frames", t)
+		label = fmt.Sprintf("%d scanlines", t)
 	}
 
 	if imgui.SliderIntV("##unsyncTolerance", &t, 0, 5, label, 1.0) {

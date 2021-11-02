@@ -290,6 +290,16 @@ func (scr *screen) Resize(frameInfo television.FrameInfo) error {
 	return <-scr.img.polling.serviceErr
 }
 
+func (scr *screen) recoverFromScreenRoll() {
+	scr.crit.screenrollCt = 0
+
+	// recovery required
+	if scr.crit.screenrollScanline > 0 {
+		scr.crit.screenrollScanline *= 8
+		scr.crit.screenrollScanline /= 10
+	}
+}
+
 // NewFrame implements the television.PixelRenderer interface
 //
 // MUST NOT be called from the gui thread.
@@ -303,13 +313,7 @@ func (scr *screen) NewFrame(frameInfo television.FrameInfo) error {
 		// check screen rolling if crtprefs are enabled
 		if scr.img.crtPrefs.Enabled.Get().(bool) {
 			if frameInfo.RefreshRate == scr.crit.frameInfo.RefreshRate && frameInfo.VSynced {
-				scr.crit.screenrollCt = 0
-
-				// recovery required
-				if scr.crit.screenrollScanline > 0 {
-					scr.crit.screenrollScanline *= 8
-					scr.crit.screenrollScanline /= 10
-				}
+				scr.recoverFromScreenRoll()
 			} else if scr.crit.frameInfo.Stable {
 				// without the stable check, the screen can roll during startup
 				// of many ROMs. Pitfall for example will do this.
@@ -325,12 +329,18 @@ func (scr *screen) NewFrame(frameInfo television.FrameInfo) error {
 				// more situations
 				const rollAmount = 100
 
-				scr.crit.screenrollCt++
-				if scr.crit.screenrollCt > scr.img.crtPrefs.UnsyncTolerance.Get().(int) {
+				diff := frameInfo.TotalScanlines - scr.crit.frameInfo.TotalScanlines
+				if diff < 0 {
+					diff -= 1
+				}
+
+				if diff > scr.img.crtPrefs.UnsyncTolerance.Get().(int) {
 					scr.crit.screenrollScanline += rollAmount
 					if scr.crit.screenrollScanline >= scr.crit.bufferHeight {
 						scr.crit.screenrollScanline -= scr.crit.bufferHeight
 					}
+				} else {
+					scr.recoverFromScreenRoll()
 				}
 			}
 		} else {
