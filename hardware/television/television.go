@@ -186,7 +186,7 @@ func NewTelevision(spec string) (*Television, error) {
 	}
 
 	// initialise frame rate limiter
-	tv.lmtr.init()
+	tv.lmtr.init(tv)
 	tv.SetFPS(-1)
 
 	// set specification
@@ -488,8 +488,7 @@ func (tv *Television) newFrame(fromVsync bool) error {
 	if tv.state.scanline != tv.state.frameInfo.TotalScanlines {
 		tv.state.frameInfo.TotalScanlines = tv.state.scanline
 		tv.state.frameInfo.RefreshRate = 15734.26 / float32(tv.state.frameInfo.TotalScanlines)
-
-		tv.lmtr.setRefreshRate(tv, tv.state.frameInfo.RefreshRate)
+		tv.lmtr.setRefreshRate(tv.state.frameInfo.RefreshRate)
 	}
 
 	// increase or reset stable frame count as required
@@ -643,8 +642,8 @@ func (tv *Television) SetSpec(spec string) error {
 	}
 
 	tv.state.resizer.initialise(tv)
-	tv.lmtr.setRefreshRate(tv, tv.state.frameInfo.Spec.RefreshRate)
-	tv.lmtr.setRate(tv, tv.state.frameInfo.Spec.RefreshRate)
+	tv.lmtr.setRefreshRate(tv.state.frameInfo.Spec.RefreshRate)
+	tv.lmtr.setRate(tv.state.frameInfo.Spec.RefreshRate)
 
 	for _, r := range tv.renderers {
 		err := r.Resize(tv.state.frameInfo)
@@ -699,7 +698,7 @@ func (tv *Television) SetFPSCap(limit bool) bool {
 // the specification. A negative value restores frame rate to the ideal value
 // (the frequency of the incoming signal).
 func (tv *Television) SetFPS(fps float32) {
-	tv.lmtr.setRate(tv, fps)
+	tv.lmtr.setRate(fps)
 }
 
 // GetReqFPS returns the requested number of frames per second. Compare with

@@ -27,6 +27,8 @@ import (
 const VisualUpdating float32 = 5.0
 
 type limiter struct {
+	tv *Television
+
 	// whether to wait for fps limited each frame
 	active bool
 
@@ -50,13 +52,30 @@ type limiter struct {
 	visualUpdates bool
 
 	// pulse that performs the limiting. the duration of the ticker will be set
-	// when the frame rate changes
+	// when the frame rate changes.
+	//
+	// some kernels will fluctuate wildly between
 	pulse *time.Ticker
 
 	// measurement
 	measureCt      int
 	measureTime    time.Time
 	measuringPulse *time.Ticker
+
+	// the number of frames to wait after setRefreshRate() before the frame
+	// limiter is adjusted to match
+	//
+	// some kernels will cause the refresh rate to flucutate wildly and
+	// immediately altering the frame limiter will cause performance problems
+	//
+	// value will decrease to zero on every checkFrame(). rate will change when
+	// it reaches zero
+	//
+	// if matchRefreshRate is true then the matchRefreshRateDelay will be set
+	// to a value of half refresh-rate
+	//
+	// is not set if setRate() is called directly
+	matchRefreshRateDelay int
 
 	// realtime audio should not be allowed if actual speed of the emulation is
 	// too low or too high
@@ -66,7 +85,8 @@ type limiter struct {
 	realtimeAudio bool
 }
 
-func (lmtr *limiter) init() {
+func (lmtr *limiter) init(tv *Television) {
+	lmtr.tv = tv
 	lmtr.active = true
 	lmtr.refreshRate.Store(float32(0))
 	lmtr.matchRefreshRate.Store(true)
@@ -77,19 +97,24 @@ func (lmtr *limiter) init() {
 	lmtr.measuringPulse = time.NewTicker(time.Second)
 }
 
-func (lmtr *limiter) setRefreshRate(tv *Television, refreshRate float32) {
+func (lmtr *limiter) setRefreshRate(refreshRate float32) {
 	lmtr.refreshRate.Store(refreshRate)
 	if lmtr.matchRefreshRate.Load().(bool) {
-		lmtr.setRate(tv, refreshRate)
+		lmtr.matchRefreshRateDelay = int(refreshRate / 2)
 	}
 }
 
-func (lmtr *limiter) setRate(tv *Television, fps float32) {
+func (lmtr *limiter) setRate(fps float32) {
 	// if number is negative then default to ideal FPS rate
 	if fps <= 0.0 {
 		lmtr.matchRefreshRate.Store(true)
 		fps = lmtr.refreshRate.Load().(float32)
+	} else {
+		lmtr.matchRefreshRate.Store(false)
 	}
+
+	// reset refresh rate delay counter
+	lmtr.matchRefreshRateDelay = 0
 
 	// if fps is still zero (spec probably hasn't been set) then don't do anything
 	if fps == 0.0 {
@@ -102,7 +127,7 @@ func (lmtr *limiter) setRate(tv *Television, fps float32) {
 	// set scale and duration to wait according to requested FPS rate
 	if fps <= VisualUpdating {
 		lmtr.visualUpdates = true
-		rate := float32(1000000.0) / (fps * float32(tv.state.frameInfo.TotalScanlines))
+		rate := float32(1000000.0) / (fps * float32(lmtr.tv.state.frameInfo.TotalScanlines))
 		dur, _ := time.ParseDuration(fmt.Sprintf("%fus", rate))
 		lmtr.pulse.Reset(dur)
 	} else {
@@ -122,6 +147,14 @@ func (lmtr *limiter) checkFrame() {
 	lmtr.measureCt++
 	if lmtr.active && !lmtr.visualUpdates {
 		<-lmtr.pulse.C
+	}
+
+	// check to see if rate is to change
+	if lmtr.matchRefreshRateDelay > 0 {
+		lmtr.matchRefreshRateDelay--
+		if lmtr.matchRefreshRateDelay == 0 {
+			lmtr.setRate(lmtr.refreshRate.Load().(float32))
+		}
 	}
 }
 
