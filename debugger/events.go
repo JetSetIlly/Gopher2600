@@ -18,10 +18,45 @@ package debugger
 import (
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
+	"github.com/jetsetilly/gopher2600/emulation"
 	"github.com/jetsetilly/gopher2600/userinput"
 )
 
 func (dbg *Debugger) userInputHandler(ev userinput.Event) error {
+	switch dbg.mode {
+	case emulation.ModePlay:
+		handled := false
+
+		switch ev := ev.(type) {
+		case userinput.EventMouseWheel:
+			dbg.playmodeRewind(int(ev.Delta) * 2)
+			handled = true
+
+		case userinput.EventKeyboard:
+			if ev.Down {
+				switch ev.Key {
+				case "Left":
+					if ev.Mod == userinput.KeyModShift {
+						dbg.playmodeRewind(-2)
+						handled = true
+					}
+				case "Right":
+					if ev.Mod == userinput.KeyModShift {
+						dbg.playmodeRewind(2)
+						handled = true
+					}
+				}
+			} else if ev.Mod != userinput.KeyModNone {
+				handled = true
+			}
+		}
+
+		// the user event has triggered a rewind so return immediately
+		if handled {
+			return nil
+		}
+	}
+
 	quit, err := dbg.controllers.HandleUserInput(ev, dbg.vcs.RIOT.Ports)
 	if err != nil {
 		return curated.Errorf("debugger: %v", err)

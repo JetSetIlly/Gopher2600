@@ -556,7 +556,7 @@ func (scr *screen) copyPixelsDebugmode() {
 	defer scr.crit.section.Unlock()
 
 	// copy pixels from render buffer to the live copy.
-	copy(scr.crit.pixels.Pix, scr.crit.bufferPixels[scr.crit.renderIdx].Pix)
+	copy(scr.crit.pixels.Pix, scr.crit.bufferPixels[scr.crit.plotIdx].Pix)
 }
 
 // copy pixels from buffer to the pixels.

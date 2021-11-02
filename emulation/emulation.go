@@ -19,19 +19,6 @@ import (
 	"github.com/jetsetilly/gopher2600/userinput"
 )
 
-// State indicates the emulation's state.
-type State int
-
-// List of possible emulation states.
-const (
-	Initialising State = iota
-	Running
-	Paused
-	Stepping
-	Rewinding
-	Ending
-)
-
 // TV is a minimal abstraction of the TV hardware. Exists mainly to avoid a
 // circular import to the hardware package.
 //
@@ -62,16 +49,45 @@ type Emulation interface {
 	VCS() VCS
 	Debugger() Debugger
 	UserInput() chan userinput.Event
+
+	// Send a request to set an emulation feature.
+	SetFeature(request FeatureReq, args ...FeatureReqData) error
+
+	// Immediate request for the state of the emulation.
 	State() State
-	Pause(set bool)
 }
+
+// Mode inidicates the broad features of the emulation. For example, Debugger
+// indicates that the emulation is capable or is willing to handle debugging
+// features.
+type Mode int
+
+// List of defined modes.
+const (
+	ModeNone Mode = iota
+	ModeDebugger
+	ModePlay
+)
+
+// State indicates the emulation's state.
+type State int
+
+// List of possible emulation states.
+const (
+	Initialising State = iota
+	Running
+	Paused
+	Stepping
+	Rewinding
+	Ending
+)
 
 // Event describes an event that might occur in the emulation which is outside
 // of the scope of the VCS. For example, when the emulation is paused an
 // EventPause can be sent to the GUI (see FeatureReq type in the gui package).
 type Event int
 
-// List of currently defined events.
+// List of defined events.
 const (
 	EventPause Event = iota
 	EventRun

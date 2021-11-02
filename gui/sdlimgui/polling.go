@@ -19,7 +19,6 @@ import (
 	"time"
 
 	"github.com/jetsetilly/gopher2600/emulation"
-	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/veandco/go-sdl2/sdl"
 )
 
@@ -58,11 +57,8 @@ type polling struct {
 	// ReqFeature() and GetFeature() hands off requests to the featureReq
 	// channel for servicing. think of these as pecial instances of the
 	// service chan
-	featureSet     chan featureRequest
-	featureSetErr  chan error
-	featureGet     chan featureRequest
-	featureGetData chan gui.FeatureReqData
-	featureGetErr  chan error
+	featureSet    chan featureRequest
+	featureSetErr chan error
 
 	// the following are not used in playmode
 
@@ -92,9 +88,6 @@ func newPolling(img *SdlImgui) *polling {
 		serviceErr:     make(chan error, 1),
 		featureSet:     make(chan featureRequest, 1),
 		featureSetErr:  make(chan error, 1),
-		featureGet:     make(chan featureRequest, 1),
-		featureGetData: make(chan gui.FeatureReqData, 1),
-		featureGetErr:  make(chan error, 1),
 		measuringPulse: time.NewTicker(time.Second),
 	}
 
@@ -127,8 +120,6 @@ func (pol *polling) wait() sdl.Event {
 		f()
 	case r := <-pol.featureSet:
 		pol.img.serviceSetFeature(r)
-	case r := <-pol.featureGet:
-		pol.img.serviceGetFeature(r)
 	default:
 	}
 
@@ -144,7 +135,8 @@ func (pol *polling) wait() sdl.Event {
 		pol.alerted = false
 	} else {
 		working := pol.awake ||
-			pol.img.lz.Debugger.HasChanged || pol.img.emulation.State() != emulation.Paused ||
+			pol.img.lz.Debugger.HasChanged ||
+			pol.img.emulation.State() != emulation.Paused ||
 			pol.img.wm.dbgScr.crtPreview
 
 		if working {

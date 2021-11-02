@@ -1,9 +1,9 @@
 compileFlags = '-c 3 -B -wb=false'
 
-profilingRom = roms/Homebrew/hs_2600.bin
+# profilingRom = roms/Homebrew/hs_2600.bin
 # profilingRom = roms/Homebrew/CDF/galaga_dmo_v2_NTSC.bin
 # profilingRom = roms/Homebrew/DPC+ARM/ZaxxonHDDemo_150927_NTSC.bin
-# profilingRom = roms/Rsboxing.bin
+profilingRom = roms/Rsboxing.bin
 # profilingRom = "test_roms/plusrom/sokoboo Plus.bin"
 # profilingRom = "roms/starpath/02 - Communist Mutants From Space (Ntsc).mp3"
 # profilingRom = "roms/The Official Frogger.bin"
@@ -84,6 +84,12 @@ profile_cpu: generate test
 	@echo "performance mode running for 20s"
 	@./gopher2600 performance --profile=cpu --fpscap=false --duration=20s $(profilingRom)
 	@$(goBinary) tool pprof -http : ./gopher2600 performance_cpu.profile
+
+profile_cpu_play: generate test
+	@$(goBinary) build -gcflags $(compileFlags)
+	@echo "performance mode running for 20s"
+	@./gopher2600 play --profile=cpu $(profilingRom)
+	@$(goBinary) tool pprof -http : ./gopher2600 play_cpu.profile
 
 profile_cpu_debug : generate test
 	@$(goBinary) build -gcflags $(compileFlags)

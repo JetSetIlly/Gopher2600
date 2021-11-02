@@ -285,7 +285,6 @@ func (tv *Television) AttachVCS(vcs VCSReturnChannel) {
 // implemntations can be added.
 func (tv *Television) AddPixelRenderer(r PixelRenderer) {
 	tv.renderers = append(tv.renderers, r)
-	tv.frameTriggers = append(tv.frameTriggers, r)
 }
 
 // AddFrameTrigger registers an implementation of FrameTrigger. Multiple
@@ -293,6 +292,11 @@ func (tv *Television) AddPixelRenderer(r PixelRenderer) {
 // been added.
 func (tv *Television) AddFrameTrigger(f FrameTrigger) {
 	tv.frameTriggers = append(tv.frameTriggers, f)
+}
+
+// ClearFrameTriggers removes all existing frame triggers from the television.
+func (tv *Television) ClearFrameTriggers() {
+	tv.frameTriggers = tv.frameTriggers[:0]
 }
 
 // AddAudioMixer registers an implementation of AudioMixer. Multiple
@@ -544,10 +548,16 @@ func (tv *Television) newFrame(fromVsync bool) error {
 		}
 	}
 
+	// process all pixel renderers
+	for _, r := range tv.renderers {
+		err := r.NewFrame(tv.state.frameInfo)
+		if err != nil {
+			return err
+		}
+	}
+
 	// process all FrameTriggers
 	for _, r := range tv.frameTriggers {
-		// notifiying the FrameTrigger of whether the frame is synced or not
-		// depends on the tolerance of the television
 		err := r.NewFrame(tv.state.frameInfo)
 		if err != nil {
 			return err

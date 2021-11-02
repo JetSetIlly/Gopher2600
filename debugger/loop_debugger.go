@@ -23,9 +23,7 @@ import (
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
 	"github.com/jetsetilly/gopher2600/disassembly"
 	"github.com/jetsetilly/gopher2600/emulation"
-	"github.com/jetsetilly/gopher2600/hardware/television/coords"
 	"github.com/jetsetilly/gopher2600/logger"
-	"github.com/jetsetilly/gopher2600/rewind"
 )
 
 // unwindLoop is called whenever it is required that the inputLoop/catchupLoop
@@ -40,39 +38,6 @@ import (
 // the caller of the function to set emulation.State appropriately.
 func (dbg *Debugger) unwindLoop(onRestart func() error) {
 	dbg.unwindLoopRestart = onRestart
-}
-
-// CatchUpLoop implements the rewind.Runner interface.
-//
-// It is called from the rewind package and sets the functions that are
-// required for catchupLoop().
-func (dbg *Debugger) CatchUpLoop(tgt coords.TelevisionCoords, callback rewind.CatchUpLoopCallback) error {
-	// turn off TV's fps frame limiter
-	fpsCap := dbg.vcs.TV.SetFPSCap(false)
-
-	// we've already set emulation state to emulation.Rewinding
-
-	dbg.catchupContinue = func() bool {
-		newCoords := dbg.vcs.TV.GetCoords()
-
-		callback(newCoords.Frame)
-
-		// returns true if we're to continue
-		return !coords.GreaterThanOrEqual(newCoords, tgt)
-	}
-
-	dbg.catchupEnd = func() {
-		dbg.vcs.TV.SetFPSCap(fpsCap)
-		dbg.catchupContinue = nil
-		dbg.catchupEnd = nil
-		dbg.setState(emulation.Paused)
-		dbg.continueEmulation = false
-		dbg.runUntilHalt = false
-	}
-
-	dbg.PushRawEventReturn(func() {})
-
-	return nil
 }
 
 // catchupLoop is a special purpose loop designed to run inside of the inputLoop. it is called only
@@ -157,6 +122,10 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, isVideoStep bool) error 
 	var err error
 
 	for dbg.running {
+		if dbg.mode != emulation.ModeDebugger {
+			return nil
+		}
+
 		if dbg.catchupContinue != nil {
 			if isVideoStep {
 				panic("refusing to run catchup loop inside a color clock cycle")
@@ -193,6 +162,11 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, isVideoStep bool) error 
 				} else {
 					dbg.printLine(terminal.StyleError, "%s", err)
 				}
+			}
+
+			// emulation has been put into a different mode. exit loop immediately
+			if dbg.mode != emulation.ModeDebugger {
+				return nil
 			}
 
 			// if debugger is no longer running after checking interrupts and
@@ -313,6 +287,11 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, isVideoStep bool) error 
 					return nil
 				}
 				return err
+			}
+
+			// emulation has been put into a different mode. exit loop immediately
+			if dbg.mode != emulation.ModeDebugger {
+				return nil
 			}
 
 			// hasChanged flag may have been false for a long time after the

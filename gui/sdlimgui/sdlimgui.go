@@ -38,8 +38,6 @@ import (
 )
 
 // imguiIniFile is where imgui will store the coordinates of the imgui windows
-// !!TODO: duplicate imgui.SetIniFilename so that is uses prefs package. we
-// should be able to do this a smart implementation of io.Reader and io.Writer.
 const imguiIniFile = "debugger_imgui.ini"
 
 // SdlImgui is an sdl based visualiser using imgui.
@@ -50,25 +48,21 @@ type SdlImgui struct {
 	plt     *platform
 	glsl    *glsl
 
-	// vcs and dbg are taken from the emulation field for convenience.
-	// emulation should only be updated therefore via SetEmulation()
+	// parent emulation. should be set via setEmulation() only
 	emulation emulation.Emulation
+
+	// the current mode of the underlying
+	mode emulation.Mode
+
+	// taken from the emulation field and assigned in the setEmulation() function
+	tv        *television.Television
 	vcs       *hardware.VCS
 	dbg       *debugger.Debugger
+	userinput chan userinput.Event
 
 	// lazy value system allows safe access to the debugger/emulation from the
 	// GUI thread
 	lz *lazyvalues.LazyValues
-
-	// isRewindSlider records whether the rewind slider control in the
-	// winControl type is being clicked/moved.
-	//
-	// we can think of this as a special case of emulation..Rewinding.
-	isRewindSlider bool
-
-	// television sends the GUI information through the PixelRenderer and
-	// AudioMixer.
-	tv *television.Television
 
 	// terminal interface to the debugger. this is distinct from the
 	// winTerminal type.
@@ -93,10 +87,6 @@ type SdlImgui struct {
 	// service loop is important to the GUI's responsiveness.
 	polling *polling
 
-	// userinput channel is not created but assigned with ReqSetPlaymode and
-	// ReqSetDebugmode requests
-	userinput chan userinput.Event
-
 	// mouse coords at last frame. used by service loop to keep track of mouse motion
 	mouseX, mouseY int32
 
@@ -115,14 +105,27 @@ type SdlImgui struct {
 // NewSdlImgui is the preferred method of initialisation for type SdlImgui
 //
 // MUST ONLY be called from the gui thread.
-func NewSdlImgui(tv *television.Television) (*SdlImgui, error) {
+func NewSdlImgui(e emulation.Emulation) (*SdlImgui, error) {
 	img := &SdlImgui{
 		context: imgui.CreateContext(nil),
 		io:      imgui.CurrentIO(),
-		tv:      tv,
 	}
 
-	var err error
+	img.emulation = e
+	img.tv = e.TV().(*television.Television)
+	img.vcs = e.VCS().(*hardware.VCS)
+	switch dbg := e.Debugger().(type) {
+	case *debugger.Debugger:
+		img.dbg = dbg
+	}
+	img.userinput = e.UserInput()
+
+	// path to dear imgui ini file
+	iniPath, err := resources.JoinPath(imguiIniFile)
+	if err != nil {
+		return nil, curated.Errorf("sdlimgui: %v", err)
+	}
+	img.io.SetIniFilename(iniPath)
 
 	// define colors
 	img.cols = newColors()
@@ -137,13 +140,7 @@ func NewSdlImgui(tv *television.Television) (*SdlImgui, error) {
 		return nil, curated.Errorf("sdlimgui: %v", err)
 	}
 
-	iniPath, err := resources.JoinPath(imguiIniFile)
-	if err != nil {
-		return nil, curated.Errorf("sdlimgui: %v", err)
-	}
-	img.io.SetIniFilename(iniPath)
-
-	img.lz = lazyvalues.NewLazyValues()
+	img.lz = lazyvalues.NewLazyValues(img.emulation)
 	img.screen = newScreen(img)
 	img.term = newTerm()
 
@@ -159,7 +156,7 @@ func NewSdlImgui(tv *television.Television) (*SdlImgui, error) {
 
 	// connect pixel renderer/referesher to television and texture renderer to
 	// pixel renderer
-	tv.AddPixelRenderer(img.screen)
+	img.tv.AddPixelRenderer(img.screen)
 
 	// texture renderers are added depending on playmode
 
@@ -169,7 +166,7 @@ func NewSdlImgui(tv *television.Television) (*SdlImgui, error) {
 	if err != nil {
 		return nil, curated.Errorf("sdlimgui: %v", err)
 	}
-	tv.AddRealtimeAudioMixer(img.audio)
+	img.tv.AddRealtimeAudioMixer(img.audio)
 
 	// load sdlimgui preferences
 	img.prefs, err = newPreferences(img)
@@ -183,7 +180,7 @@ func NewSdlImgui(tv *television.Television) (*SdlImgui, error) {
 		return nil, curated.Errorf("sdlimgui: %v", err)
 	}
 
-	// container window is open on setEmulation()
+	// container window is open on setEmulationMode()
 
 	return img, nil
 }
@@ -235,7 +232,9 @@ func (img *SdlImgui) end() {
 
 // draw gui. called from service loop.
 func (img *SdlImgui) draw() {
-	img.playScr.draw()
+	if img.mode == emulation.ModePlay {
+		img.playScr.draw()
+	}
 	img.wm.draw()
 	img.drawPlusROMFirstInstallation()
 }
@@ -243,39 +242,47 @@ func (img *SdlImgui) draw() {
 // is the gui in playmode or not. thread safe. called from emulation thread
 // and gui thread.
 func (img *SdlImgui) isPlaymode() bool {
-	return img.dbg == nil
+	return img.mode == emulation.ModePlay
 }
 
 // set emulation and handle the changeover gracefully. this includes the saving
-// and loading of preference groups. should only be called from gui thread.
-func (img *SdlImgui) setEmulation(emulation emulation.Emulation) error {
-	img.emulation = emulation
-	img.vcs = emulation.VCS().(*hardware.VCS)
-	img.userinput = emulation.UserInput()
+// and loading of preference groups.
+//
+// should only be called from gui thread.
+func (img *SdlImgui) setEmulationMode(mode emulation.Mode) error {
+	img.mode = mode
+	img.lz.SetEmulationMode(mode)
 
-	// make sure container window is open after window preferences have been set
-	defer img.plt.window.Show()
+	switch mode {
+	case emulation.ModeNone:
+		img.plt.window.Hide()
 
-	if emulation.Debugger() == nil {
+	case emulation.ModeDebugger:
+		img.prefs.setWindowPreferences(false)
+		img.screen.clearTextureRenderers()
+		img.screen.addTextureRenderer(img.wm.dbgScr)
+
+		err := img.prefs.load()
+		if err != nil {
+			return err
+		}
+
+		img.plt.window.Show()
+
+	case emulation.ModePlay:
 		img.prefs.setWindowPreferences(true)
 		img.screen.clearTextureRenderers()
 		img.screen.addTextureRenderer(img.playScr)
 
-		// emulation context has changed so reload prefs to make sure
-		// everything is set correctly
-		return img.prefs.load()
+		err := img.prefs.load()
+		if err != nil {
+			return err
+		}
+
+		img.plt.window.Show()
 	}
 
-	// debugger
-	img.dbg = emulation.Debugger().(*debugger.Debugger)
-	img.lz.SetEmulation(emulation)
-	img.prefs.setWindowPreferences(false)
-	img.screen.clearTextureRenderers()
-	img.screen.addTextureRenderer(img.wm.dbgScr)
-
-	// emulation context has changed so reload prefs to make sure
-	// everything is set correctly
-	return img.prefs.load()
+	return nil
 }
 
 // has mouse been grabbed. only called from gui thread.

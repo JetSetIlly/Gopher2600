@@ -106,6 +106,11 @@ func NewVCS(tv *television.Television) (*VCS, error) {
 	return vcs, nil
 }
 
+// End cleans up any resources that may be dangling.
+func (vcs *VCS) End() {
+	vcs.TV.End()
+}
+
 // AttachCartridge to this VCS. While this function can be called directly it
 // is advised that the setup package be used in most circumstances.
 func (vcs *VCS) AttachCartridge(cartload cartridgeloader.Loader) error {

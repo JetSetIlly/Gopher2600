@@ -21,6 +21,7 @@ import (
 	"github.com/jetsetilly/gopher2600/debugger"
 	"github.com/jetsetilly/gopher2600/emulation"
 	"github.com/jetsetilly/gopher2600/hardware"
+	"github.com/jetsetilly/gopher2600/hardware/television"
 )
 
 // LazyValues contains all values required by a debugger running in a different
@@ -28,11 +29,14 @@ import (
 // those exposed by the emulation.
 type LazyValues struct {
 	emulation emulation.Emulation
-	state     emulation.State
 
 	// vcs and dbg are taken from the emulation supplied to SetEmulation()
+	tv  *television.Television
 	vcs *hardware.VCS
 	dbg *debugger.Debugger
+
+	mode  emulation.Mode
+	state emulation.State
 
 	// pointers to these instances. non-pointer instances trigger the race
 	// detector for some reason.
@@ -69,8 +73,16 @@ type LazyValues struct {
 }
 
 // NewLazyValues is the preferred method of initialisation for the Values type.
-func NewLazyValues() *LazyValues {
+func NewLazyValues(e emulation.Emulation) *LazyValues {
 	val := &LazyValues{}
+
+	val.emulation = e
+	val.tv = e.TV().(*television.Television)
+	val.vcs = e.VCS().(*hardware.VCS)
+	switch dbg := e.Debugger().(type) {
+	case *debugger.Debugger:
+		val.dbg = dbg
+	}
 
 	val.Debugger = newLazyDebugger(val)
 	val.CPU = newLazyCPU(val)
@@ -100,7 +112,11 @@ func NewLazyValues() *LazyValues {
 	return val
 }
 
-func (val *LazyValues) checkEmulationState() {
+// check state of the underlying emulation. this is the best way of making sure
+// that the atomic value types are consistent.
+//
+// currently, this only affects the cartridge type.
+func (val *LazyValues) stateCheck() {
 	s := val.emulation.State()
 	if val.state == s {
 		return
@@ -116,15 +132,17 @@ func (val *LazyValues) checkEmulationState() {
 	}
 }
 
-// Set the underlying emulator.
-func (val *LazyValues) SetEmulation(emulation emulation.Emulation) {
-	val.emulation = emulation
-	val.vcs = emulation.VCS().(*hardware.VCS)
-	val.dbg = emulation.Debugger().(*debugger.Debugger)
+// Set the underlying emulator mode.
+func (val *LazyValues) SetEmulationMode(mode emulation.Mode) {
+	val.mode = mode
 }
 
 // Refresh lazy values.
 func (val *LazyValues) Refresh() {
+	if val.emulation == nil {
+		return
+	}
+
 	if val.refreshDone.Load().(bool) {
 		val.refreshDone.Store(false)
 
@@ -156,7 +174,7 @@ func (val *LazyValues) Refresh() {
 	}
 	val.refreshScheduled.Store(true)
 
-	val.checkEmulationState()
+	val.stateCheck()
 
 	val.dbg.PushRawEvent(func() {
 		val.Debugger.push()

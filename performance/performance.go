@@ -34,15 +34,26 @@ import (
 // sentinal error returned by Run() loop.
 const timedOut = "timed out"
 
+// CreateUserInterface is used to initialise the user interface used by the performance package.
+type CreateUserInterface func(emulation.Emulation) (gui.GUI, error)
+
 // Check the performance of the emulator using the supplied tv/gui/cartridge
 // combinataion. Emulation will run of specificed duration and will create a
 // cpu, memory profile, a trace (or a combination of those) as defined by the
 // Profile argument. The includeDetail argument will create any profile file
 // with additional detail in the filename.
-func Check(output io.Writer, profile Profile, includeDetail bool,
-	tv *television.Television, scr gui.GUI, cartload cartridgeloader.Loader,
-	duration string) error {
+func Check(create CreateUserInterface, output io.Writer, profile Profile, includeDetail bool, cartload cartridgeloader.Loader,
+	spec string, fpsCap bool, duration string) error {
 	var err error
+
+	tv, err := television.NewTelevision(spec)
+	if err != nil {
+		return err
+	}
+	defer tv.End()
+
+	// fpscap for tv (see below for monitor sync option)
+	tv.SetFPSCap(fpsCap)
 
 	// create vcs
 	vcs, err := hardware.NewVCS(tv)
@@ -50,9 +61,9 @@ func Check(output io.Writer, profile Profile, includeDetail bool,
 		return curated.Errorf("performance: %v", err)
 	}
 
-	// connect vcs to gui
-	if scr != nil {
-		err = scr.SetFeature(gui.ReqSetEmulation, &stubEmulation{vcs: vcs, tv: tv})
+	// create GUI
+	if create != nil {
+		_, err = create(&stubEmulation{vcs: vcs, tv: tv})
 		if err != nil {
 			return curated.Errorf("performance: %v", err)
 		}
@@ -152,12 +163,12 @@ type stubEmulation struct {
 	tv  emulation.TV
 }
 
-func (e *stubEmulation) VCS() emulation.VCS {
-	return e.vcs
-}
-
 func (e *stubEmulation) TV() emulation.TV {
 	return e.tv
+}
+
+func (e *stubEmulation) VCS() emulation.VCS {
+	return e.vcs
 }
 
 func (e *stubEmulation) Debugger() emulation.Debugger {
@@ -168,9 +179,10 @@ func (e *stubEmulation) UserInput() chan userinput.Event {
 	return nil
 }
 
-func (e *stubEmulation) State() emulation.State {
-	return emulation.Running
+func (e *stubEmulation) SetFeature(request emulation.FeatureReq, args ...emulation.FeatureReqData) error {
+	return nil
 }
 
-func (e *stubEmulation) Pause(set bool) {
+func (e *stubEmulation) State() emulation.State {
+	return emulation.Running
 }

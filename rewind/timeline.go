@@ -129,7 +129,7 @@ func (tl *Timeline) checkIntegrity() error {
 		prev := tl.FrameNum[0]
 		for _, fn := range tl.FrameNum[1:] {
 			if fn != prev+1 {
-				return curated.Errorf("frame numbers in timeline are not consecutive")
+				return curated.Errorf("frame numbers in timeline are not consecutive (mising frame %d)", prev+1)
 			}
 			prev = fn
 		}

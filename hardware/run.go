@@ -16,6 +16,7 @@
 package hardware
 
 import (
+	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/emulation"
 )
 
@@ -52,13 +53,15 @@ func (vcs *VCS) Run(continueCheck func() (emulation.State, error), checkFreq int
 	state := emulation.Running
 	checkCt := 0
 	for state != emulation.Ending {
-		if state == emulation.Running {
+		switch state {
+		case emulation.Running:
 			err := vcs.CPU.ExecuteInstruction(videoCycle)
 			if err != nil {
 				return err
 			}
-		} else {
-			// paused
+		case emulation.Paused:
+		default:
+			return curated.Errorf("vcs: unsupported emulation state (%d) in Run() function", state)
 		}
 
 		// only call continue check every N iterations

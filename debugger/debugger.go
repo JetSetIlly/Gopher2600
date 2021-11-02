@@ -55,6 +55,11 @@ import (
 // example, disassembly on a cartridge change (which can happen at any time)
 // updates the Disasm field, it does not reinitialise it.
 type Debugger struct {
+	// current mode of the emulation
+	mode emulation.Mode
+
+	// state is an atomic value because we need to be able to read it from the
+	// GUI thread (see State() function)
 	state atomic.Value // emulation.State
 
 	vcs    *hardware.VCS
@@ -182,15 +187,16 @@ type Debugger struct {
 	catchupEnd      func()
 }
 
+// CreateUserInterface is used to initialise the user interface used by the emulation.
+type CreateUserInterface func(emulation.Emulation) (gui.GUI, terminal.Terminal, error)
+
 // NewDebugger creates and initialises everything required for a new debugging
-// session. Use the Start() method to actually begin the session.
-func NewDebugger(tv *television.Television, scr gui.GUI, term terminal.Terminal, useSavekey bool) (*Debugger, error) {
-	var err error
-
+// session.
+//
+// It should be followed up with a call to AddUserInterface() and call the
+// Start() method to actually begin the emulation.
+func NewDebugger(create CreateUserInterface, mode emulation.Mode, spec string, useSavekey bool) (*Debugger, error) {
 	dbg := &Debugger{
-		gui:  scr,
-		term: term,
-
 		// by definition the state of debugger has changed during startup
 		hasChanged: true,
 
@@ -199,6 +205,13 @@ func NewDebugger(tv *television.Television, scr gui.GUI, term terminal.Terminal,
 	}
 
 	dbg.state.Store(emulation.Initialising)
+
+	// creat a new television. this will be used during the initialisation of
+	// the VCS and not referred to directly again
+	tv, err := television.NewTelevision(spec)
+	if err != nil {
+		return nil, curated.Errorf("debugger: %v", err)
+	}
 
 	// create a new VCS instance
 	dbg.vcs, err = hardware.NewVCS(tv)
@@ -229,31 +242,6 @@ func NewDebugger(tv *television.Television, scr gui.GUI, term terminal.Terminal,
 	// create a minimal lastResult for initialisation
 	dbg.lastResult = &disassembly.Entry{Result: execution.Result{Final: true}}
 
-	// setup reflection monitor
-	dbg.ref = reflection.NewGatherer(dbg.vcs)
-	if r, ok := dbg.gui.(reflection.Broker); ok {
-		dbg.ref.AddRenderer(r.GetReflectionRenderer())
-	}
-
-	// plug in rewind system
-	dbg.Rewind, err = rewind.NewRewind(dbg, dbg)
-	if err != nil {
-		return nil, curated.Errorf("debugger: %v", err)
-	}
-	dbg.Rewind.AddTimelineCounter(dbg.ref) // using reflection monitor for the timeline counter
-	dbg.deepPoking = make(chan bool, 1)
-
-	// frame triggers. deliberately adding rewind before reflection because the
-	// latter implements rewind.TimelineCounter. we want to reset
-	// TimelineCounts in reflection.Gatherer  but we need to call
-	// TimelineCounts() from the rewind packge before that happens
-	dbg.vcs.TV.AddFrameTrigger(dbg.Rewind)
-	dbg.vcs.TV.AddFrameTrigger(dbg.ref)
-
-	// add audio tracker
-	dbg.Tracker = tracker.NewTracker(dbg)
-	dbg.vcs.TIA.Audio.SetTracker(dbg.Tracker)
-
 	// halting coordination
 	dbg.halting, err = newHaltCoordination(dbg)
 	if err != nil {
@@ -277,23 +265,58 @@ func NewDebugger(tv *television.Television, scr gui.GUI, term terminal.Terminal,
 	// connect Interrupt signal to dbg.events.intChan
 	signal.Notify(dbg.events.IntEvents, os.Interrupt)
 
-	// connect gui
-	err = dbg.gui.SetFeature(gui.ReqSetEmulation, dbg)
-	if err != nil {
-		if !curated.Is(err, gui.UnsupportedGuiFeature) {
-			return nil, curated.Errorf("debugger: %v", err)
-		}
-	}
-
 	// allocate memory for user input
 	dbg.input = make([]byte, 255)
+
+	// create GUI
+	dbg.gui, dbg.term, err = create(dbg)
+	if err != nil {
+		return nil, curated.Errorf("debugger: %v", err)
+	}
 
 	// add tab completion to terminal
 	dbg.term.RegisterTabCompletion(commandline.NewTabCompletion(debuggerCommands))
 
-	// try to add debugger (self) to gui context
+	// setup reflection monitor
+	dbg.ref = reflection.NewGatherer(dbg.vcs)
+	if r, ok := dbg.gui.(reflection.Broker); ok {
+		dbg.ref.AddRenderer(r.GetReflectionRenderer())
+	}
+
+	// plug in rewind system
+	dbg.Rewind, err = rewind.NewRewind(dbg, dbg)
+	if err != nil {
+		return nil, curated.Errorf("debugger: %v", err)
+	}
+	dbg.Rewind.AddTimelineCounter(dbg.ref) // using reflection monitor for the timeline counter
+	dbg.deepPoking = make(chan bool, 1)
+
+	// adding TV frame triggers in setMode(). what the TV triggers on depending
+	// on the mode for performance reasons (eg. no reflection required in
+	// playmode)
+
+	// add audio tracker
+	dbg.Tracker = tracker.NewTracker(dbg)
+	dbg.vcs.TIA.Audio.SetTracker(dbg.Tracker)
+
+	// set mode to the value requested in the function paramenters
+	err = dbg.setMode(mode)
+	if err != nil {
+		return nil, curated.Errorf("debugger: %v", err)
+	}
 
 	return dbg, nil
+}
+
+// End cleans up any resources that may be dangling.
+func (dbg *Debugger) End() {
+	dbg.vcs.End()
+
+	// set ending state
+	err := dbg.gui.SetFeature(gui.ReqEnd)
+	if err != nil {
+		logger.Log("debugger", err.Error())
+	}
 }
 
 // VCS implements the emulation.Emulation interface.
@@ -322,18 +345,79 @@ func (dbg *Debugger) State() emulation.State {
 }
 
 func (dbg *Debugger) setState(state emulation.State) {
-	dbg.vcs.TV.SetEmulationState(state)
-	dbg.ref.SetEmulationState(state)
-	dbg.state.Store(state)
+	dbg.setStateQuiet(state, false)
 }
 
-// Pause implements the emulation.Emulation interface.
-func (dbg *Debugger) Pause(set bool) {
-	if set {
-		dbg.setState(emulation.Paused)
-	} else {
-		dbg.setState(emulation.Running)
+// same as setState but with quiet argument, to indicate that EmulationEvent
+// should not be issued to the gui.
+func (dbg *Debugger) setStateQuiet(state emulation.State, quiet bool) {
+	dbg.vcs.TV.SetEmulationState(state)
+	dbg.ref.SetEmulationState(state)
+
+	prevState := dbg.State()
+	dbg.state.Store(state)
+
+	if !quiet && dbg.mode == emulation.ModePlay {
+		switch state {
+		case emulation.Paused:
+			dbg.gui.SetFeature(gui.ReqEmulationEvent, emulation.EventPause)
+		case emulation.Running:
+			if prevState != emulation.Initialising {
+				dbg.gui.SetFeature(gui.ReqEmulationEvent, emulation.EventRun)
+			}
+		}
 	}
+}
+
+func (dbg *Debugger) setMode(mode emulation.Mode) error {
+	if mode == dbg.mode {
+		return nil
+	}
+
+	prevMode := dbg.mode
+	dbg.mode = mode
+
+	// notify gui of change
+	err := dbg.gui.SetFeature(gui.ReqSetEmulationMode, mode)
+	if err != nil {
+		return err
+	}
+
+	// clear all frame triggers. we'll add what's required depending on the
+	// selected mode
+	dbg.vcs.TV.ClearFrameTriggers()
+
+	// swtich mode and make sure emulation is in correct state. we say that
+	// emulation is always running when entering playmode and always paused
+	// when entering debug mode.
+	//
+	// * the reason for this is simplicity. if we allow playmode to begin
+	// paused for example it complicates how we render the screen (see sdlimgui
+	// screen.go)
+
+	switch dbg.mode {
+	case emulation.ModePlay:
+		dbg.vcs.TV.AddFrameTrigger(dbg.Rewind)
+		dbg.setState(emulation.Running)
+	case emulation.ModeDebugger:
+		// frame triggers. deliberately adding rewind before reflection because the
+		// latter implements rewind.TimelineCounter. we want to reset
+		// TimelineCounts in reflection.Gatherer  but we need to call
+		// TimelineCounts() from the rewind packge before that happens
+		dbg.vcs.TV.AddFrameTrigger(dbg.ref)
+		dbg.vcs.TV.AddFrameTrigger(dbg.Rewind)
+		dbg.setState(emulation.Paused)
+
+		// debugger needs knowledge about previous frames (via the reflector)
+		// if we moving from playmode
+		if prevMode == emulation.ModePlay {
+			dbg.PushRerunLastNFrames(2)
+		}
+	default:
+		return curated.Errorf("emulation mode not supported: %s", mode)
+	}
+
+	return nil
 }
 
 // Start the main debugger sequence.
@@ -344,6 +428,36 @@ func (dbg *Debugger) Start(initScript string, cartload cartridgeloader.Loader) e
 		return curated.Errorf("debugger: %v", err)
 	}
 	defer dbg.term.CleanUp()
+
+	// simple detection of whether cartridge is ejected when starting in
+	// playmode. if it is ejected then open ROM selected.
+	if dbg.mode == emulation.ModePlay {
+		if cartload.Filename == "" {
+			filename := make(chan string, 1)
+			err = dbg.gui.SetFeature(gui.ReqROMSelector, filename)
+			if err != nil {
+				return curated.Errorf("playmode: %v", err)
+			}
+
+			// a ROM selector has been reqiested. now wait for an event, either a
+			// filename from the selector or a quit event.
+			done := false
+			for !done {
+				select {
+				case ev := <-dbg.events.UserInput:
+					if _, ok := ev.(userinput.EventQuit); ok {
+						done = true
+					}
+				case fn := <-filename:
+					cartload, err = cartridgeloader.NewLoader(fn, "AUTO")
+					if err != nil {
+						return curated.Errorf("debugger: %v", err)
+					}
+					done = true
+				}
+			}
+		}
+	}
 
 	err = dbg.attachCartridge(cartload)
 	if err != nil {
@@ -378,20 +492,41 @@ func (dbg *Debugger) Start(initScript string, cartload cartridgeloader.Loader) e
 
 	// inputloop will continue until debugger is to be terminated
 	for dbg.running {
-		err = dbg.inputLoop(dbg.term, false)
-		if err != nil {
-			return curated.Errorf("debugger: %v", err)
-		}
-
-		// handle inputLoopRestart and any on-restart function
-		if dbg.unwindLoopRestart != nil {
-			err := dbg.unwindLoopRestart()
+		switch dbg.mode {
+		case emulation.ModePlay:
+			err = dbg.playLoop()
 			if err != nil {
 				return curated.Errorf("debugger: %v", err)
 			}
-			dbg.unwindLoopRestart = nil
-		} else {
-			dbg.running = false
+		case emulation.ModeDebugger:
+			switch dbg.State() {
+			case emulation.Running:
+				dbg.runUntilHalt = true
+				dbg.continueEmulation = true
+			case emulation.Paused:
+				dbg.haltImmediately = true
+			case emulation.Rewinding:
+			default:
+				return curated.Errorf("emulation state not supported on *start* of debugging loop: %s", dbg.State())
+			}
+
+			err = dbg.inputLoop(dbg.term, false)
+			if err != nil {
+				return curated.Errorf("debugger: %v", err)
+			}
+
+			// handle inputLoopRestart and any on-restart function
+			if dbg.unwindLoopRestart != nil {
+				err := dbg.unwindLoopRestart()
+				if err != nil {
+					return curated.Errorf("debugger: %v", err)
+				}
+				dbg.unwindLoopRestart = nil
+			} else if dbg.State() == emulation.Ending {
+				dbg.running = false
+			}
+		default:
+			return curated.Errorf("emulation mode not supported: %s", dbg.mode)
 		}
 	}
 
@@ -450,11 +585,18 @@ func (dbg *Debugger) reset(newCartridge bool) error {
 // especially important is the repointing of the symbols table in the instance of dbgmem.
 func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) {
 	dbg.setState(emulation.Initialising)
+
+	// set state after initialisation according to the emulation mode
 	defer func() {
-		if dbg.runUntilHalt && e == nil {
+		switch dbg.mode {
+		case emulation.ModeDebugger:
+			if dbg.runUntilHalt && e == nil {
+				dbg.setState(emulation.Running)
+			} else {
+				dbg.setState(emulation.Paused)
+			}
+		case emulation.ModePlay:
 			dbg.setState(emulation.Running)
-		} else {
-			dbg.setState(emulation.Paused)
 		}
 	}()
 
@@ -502,18 +644,30 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) 
 					return err
 				}
 			case mapper.EventSuperchargerSoundloadStarted:
-				// not required for the debugger
-			case mapper.EventSuperchargerSoundloadEnded:
-				// !!TODO: it would be nice to see partial disassemblies of supercharger tapes
-				// during loading. not completely necessary I don't think, but it would be
-				// nice to have.
-				err := dbg.Disasm.FromMemory()
+				err := dbg.gui.SetFeature(gui.ReqCartridgeEvent, mapper.EventSuperchargerSoundloadStarted)
 				if err != nil {
 					return err
 				}
+			case mapper.EventSuperchargerSoundloadEnded:
+				err := dbg.gui.SetFeature(gui.ReqCartridgeEvent, mapper.EventSuperchargerSoundloadEnded)
+				if err != nil {
+					return err
+				}
+
+				// !!TODO: it would be nice to see partial disassemblies of supercharger tapes
+				// during loading. not completely necessary I don't think, but it would be
+				// nice to have.
+				err = dbg.Disasm.FromMemory()
+				if err != nil {
+					return err
+				}
+
 				return dbg.vcs.TV.Reset(true)
 			case mapper.EventSuperchargerSoundloadRewind:
-				// not required for the debugger
+				err := dbg.gui.SetFeature(gui.ReqCartridgeEvent, mapper.EventSuperchargerSoundloadRewind)
+				if err != nil {
+					return err
+				}
 			default:
 				logger.Logf("debugger", "unhandled hook event for supercharger (%v)", event)
 			}
@@ -530,7 +684,10 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) 
 					}
 				}
 			case mapper.EventPlusROMNetwork:
-				// not required for debugger
+				err := dbg.gui.SetFeature(gui.ReqCartridgeEvent, mapper.EventPlusROMNetwork)
+				if err != nil {
+					return err
+				}
 			default:
 				logger.Logf("debugger", "unhandled hook event for plusrom (%v)", event)
 			}
@@ -571,7 +728,7 @@ func (dbg *Debugger) hotload() (e error) {
 		if dbg.runUntilHalt && e == nil {
 			dbg.setState(emulation.Running)
 		} else {
-			dbg.setState(emulation.Paused)
+			dbg.gui.SetFeature(gui.ReqEmulationEvent, emulation.EventPause)
 		}
 	}()
 

@@ -39,8 +39,8 @@ type PlusROMFirstInstallation struct {
 // Note that, like the name suggests, these are requests, they may or may not
 // be satisfied depending other conditions in the GUI.
 const (
-	// set the underlying emulation for the gui.
-	ReqSetEmulation FeatureReq = "ReqSetEmulation" // emulation.Emulation
+	// notify gui of the underlying emulation mode.
+	ReqSetEmulationMode FeatureReq = "ReqSetEmulationMode" // emulation.Mode
 
 	// program is ending. gui should do anything required before final exit.
 	ReqEnd FeatureReq = "ReqEnd" // nil
@@ -77,4 +77,9 @@ const (
 	// if emulation is a debugging emulation, in which case the 'chan string'
 	// can be nil
 	ReqROMSelector FeatureReq = "ReqROMSelector" // chan string
+)
+
+// Sentinal error returned if GUI does no support requested feature.
+const (
+	UnsupportedGuiFeature = "unsupported gui feature: %v"
 )

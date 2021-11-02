@@ -23,8 +23,8 @@ import (
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/debugger"
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
+	"github.com/jetsetilly/gopher2600/emulation"
 	"github.com/jetsetilly/gopher2600/gui"
-	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/prefs"
 )
 
@@ -32,13 +32,6 @@ type mockGUI struct{}
 
 func (g *mockGUI) SetFeature(request gui.FeatureReq, args ...gui.FeatureReqData) error {
 	return nil
-}
-
-func (g *mockGUI) SetFeatureNoError(request gui.FeatureReq, args ...gui.FeatureReqData) {
-}
-
-func (g *mockGUI) GetFeature(request gui.FeatureReq) (gui.FeatureReqData, error) {
-	return nil, nil
 }
 
 type mockTerm struct {
@@ -149,14 +142,14 @@ func (trm *mockTerm) testSequence() {
 func TestDebugger_withNonExistantInitScript(t *testing.T) {
 	prefs.DisableSaving = true
 
-	trm := newMockTerm(t)
+	var trm *mockTerm
 
-	tv, err := television.NewTelevision("NTSC")
-	if err != nil {
-		t.Fatalf(err.Error())
+	create := func(e emulation.Emulation) (gui.GUI, terminal.Terminal, error) {
+		trm = newMockTerm(t)
+		return &mockGUI{}, trm, nil
 	}
 
-	dbg, err := debugger.NewDebugger(tv, &mockGUI{}, trm, false)
+	dbg, err := debugger.NewDebugger(create, emulation.ModeDebugger, "AUTO", false)
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
@@ -172,13 +165,14 @@ func TestDebugger_withNonExistantInitScript(t *testing.T) {
 func TestDebugger(t *testing.T) {
 	prefs.DisableSaving = true
 
-	trm := newMockTerm(t)
-	tv, err := television.NewTelevision("NTSC")
-	if err != nil {
-		t.Fatalf(err.Error())
+	var trm *mockTerm
+
+	create := func(e emulation.Emulation) (gui.GUI, terminal.Terminal, error) {
+		trm = newMockTerm(t)
+		return &mockGUI{}, trm, nil
 	}
 
-	dbg, err := debugger.NewDebugger(tv, &mockGUI{}, trm, false)
+	dbg, err := debugger.NewDebugger(create, emulation.ModeDebugger, "AUTO", false)
 	if err != nil {
 		t.Fatalf(err.Error())
 	}

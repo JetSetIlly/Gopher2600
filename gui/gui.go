@@ -17,19 +17,8 @@ package gui
 
 // GUI defines the operations that can be performed on visual user interfaces.
 type GUI interface {
-	// Send a request to set a GUI feature.
+	// Send a request to set a GUI feature. Returns an error so that it can be
+	// shown in the appropriate context (terminal or the log depending on what
+	// was being requested)
 	SetFeature(request FeatureReq, args ...FeatureReqData) error
-
-	// Same as SetFeature() but not waiting for the result. Useful in time
-	// critical situations when you are absolutely sure there will be no
-	// errors that need handling.
-	SetFeatureNoError(request FeatureReq, args ...FeatureReqData)
-
-	// Return tcurrent state of GUI feautre.
-	GetFeature(request FeatureReq) (FeatureReqData, error)
 }
-
-// Sentinal error returned if GUI does no support requested feature.
-const (
-	UnsupportedGuiFeature = "unsupported gui feature: %v"
-)

@@ -28,7 +28,8 @@ import (
 // Service implements GuiCreator interface.
 func (img *SdlImgui) Service() {
 	// refresh lazy values
-	if !img.isPlaymode() {
+	switch img.mode {
+	case emulation.ModeDebugger:
 		img.lz.Refresh()
 	}
 
@@ -287,6 +288,11 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 			case "Escape":
 				img.quit()
 
+			case "`":
+				fallthrough
+			case "F6":
+				img.emulation.SetFeature(emulation.ReqSetMode, emulation.ModeDebugger)
+
 			case "F7":
 				img.playScr.fpsOpen = !img.playScr.fpsOpen
 
@@ -318,10 +324,14 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 			case "Pause":
 				fallthrough
 			case "F15":
+				var err error
 				if img.emulation.State() == emulation.Paused {
-					img.emulation.Pause(false)
+					err = img.emulation.SetFeature(emulation.ReqSetPause, false)
 				} else {
-					img.emulation.Pause(true)
+					err = img.emulation.SetFeature(emulation.ReqSetPause, true)
+				}
+				if err != nil {
+					logger.Logf("sdlimgui", err.Error())
 				}
 
 			default:
@@ -329,9 +339,17 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 			}
 		} else {
 			switch sdl.GetKeyName(ev.Keysym.Sym) {
+			case "`":
+				fallthrough
+			case "F6":
+				img.emulation.SetFeature(emulation.ReqSetMode, emulation.ModePlay)
+
 			case "ScrollLock":
 				img.setCapture(!img.isCaptured())
+
 			case "Pause":
+				fallthrough
+			case "F15":
 				if img.emulation.State() == emulation.Paused {
 					img.term.pushCommand("RUN")
 				} else {

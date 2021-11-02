@@ -169,25 +169,21 @@ func (sh *dbgScreenShader) setAttributes(env shaderEnvironment) {
 	// end of critical section
 
 	// show cursor
-	if sh.img.isRewindSlider {
-		gl.Uniform1i(sh.showCursor, 0)
-	} else {
-		switch sh.img.emulation.State() {
-		case emulation.Paused:
+	switch sh.img.emulation.State() {
+	case emulation.Paused:
+		gl.Uniform1i(sh.showCursor, 1)
+	case emulation.Running:
+		// if FPS is low enough then show screen draw even though
+		// emulation is running
+		if sh.img.lz.TV.ReqFPS <= television.VisualUpdating {
 			gl.Uniform1i(sh.showCursor, 1)
-		case emulation.Running:
-			// if FPS is low enough then show screen draw even though
-			// emulation is running
-			if sh.img.lz.TV.ReqFPS <= television.VisualUpdating {
-				gl.Uniform1i(sh.showCursor, 1)
-			} else {
-				gl.Uniform1i(sh.showCursor, 0)
-			}
-		case emulation.Stepping:
-			gl.Uniform1i(sh.showCursor, 1)
-		case emulation.Rewinding:
-			gl.Uniform1i(sh.showCursor, 1)
+		} else {
+			gl.Uniform1i(sh.showCursor, 0)
 		}
+	case emulation.Stepping:
+		gl.Uniform1i(sh.showCursor, 1)
+	case emulation.Rewinding:
+		gl.Uniform1i(sh.showCursor, 1)
 	}
 }
 

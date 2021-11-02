@@ -28,31 +28,10 @@ type featureRequest struct {
 	args    []gui.FeatureReqData
 }
 
-// GetFeature implements gui.GUI interface.
-func (img *SdlImgui) GetFeature(request gui.FeatureReq) (gui.FeatureReqData, error) {
-	img.polling.featureGet <- featureRequest{request: request}
-	return <-img.polling.featureGetData, <-img.polling.featureGetErr
-}
-
-// featureRequests have been handed over to the featureGet channel. we service
-// any requests on that channel here.
-func (img *SdlImgui) serviceGetFeature(request featureRequest) {
-	img.polling.featureGetData <- nil
-	img.polling.featureGetErr <- curated.Errorf(gui.UnsupportedGuiFeature, request.request)
-}
-
 // SetFeature implements gui.GUI interface.
 func (img *SdlImgui) SetFeature(request gui.FeatureReq, args ...gui.FeatureReqData) error {
 	img.polling.featureSet <- featureRequest{request: request, args: args}
 	return <-img.polling.featureSetErr
-}
-
-// SetFeatureNoError implements gui.GUI interface.
-func (img *SdlImgui) SetFeatureNoError(request gui.FeatureReq, args ...gui.FeatureReqData) {
-	img.polling.featureSet <- featureRequest{request: request, args: args}
-	go func() {
-		<-img.polling.featureSetErr
-	}()
 }
 
 // check length of arguments sent with feature request.
@@ -69,27 +48,17 @@ func (img *SdlImgui) serviceSetFeature(request featureRequest) {
 	var err error
 
 	switch request.request {
-	case gui.ReqROMSelector:
-		if img.isPlaymode() {
-			err = argLen(request.args, 1)
-			if err == nil {
-				err = img.wm.windows[winSelectROMID].(*winSelectROM).openForPlaymode(request.args[0].(chan string))
-			}
-		} else {
-			err = argLen(request.args, 0)
-			if err == nil {
-				img.wm.windows[winSelectROMID].setOpen(true)
-			}
-		}
-
-	case gui.ReqSetEmulation:
+	case gui.ReqSetEmulationMode:
 		err = argLen(request.args, 1)
 		if err == nil {
-			img.setEmulation(request.args[0].(emulation.Emulation))
+			img.setEmulationMode(request.args[0].(emulation.Mode))
 		}
 
 	case gui.ReqEnd:
-		img.end()
+		err = argLen(request.args, 0)
+		if err == nil {
+			img.end()
+		}
 
 	case gui.ReqMonitorSync:
 		err = argLen(request.args, 1)
@@ -97,12 +66,6 @@ func (img *SdlImgui) serviceSetFeature(request featureRequest) {
 			img.screen.crit.section.Lock()
 			img.screen.crit.monitorSync = request.args[0].(bool)
 			img.screen.crit.section.Unlock()
-		}
-
-	case gui.ReqFullScreen:
-		err = argLen(request.args, 1)
-		if err == nil {
-			img.plt.setFullScreen(request.args[0].(bool))
 		}
 
 	case gui.ReqSetVisibility:
@@ -113,6 +76,12 @@ func (img *SdlImgui) serviceSetFeature(request featureRequest) {
 			} else {
 				img.wm.dbgScr.setOpen(request.args[0].(bool))
 			}
+		}
+
+	case gui.ReqFullScreen:
+		err = argLen(request.args, 1)
+		if err == nil {
+			img.plt.setFullScreen(request.args[0].(bool))
 		}
 
 	case gui.ReqPlusROMFirstInstallation:
@@ -127,23 +96,45 @@ func (img *SdlImgui) serviceSetFeature(request featureRequest) {
 		}
 
 		if img.isPlaymode() {
-			port := request.args[0].(plugging.PortID)
-			switch port {
-			case plugging.PortLeftPlayer:
-				img.playScr.peripheralLeft.set(request.args[1].(plugging.PeripheralID))
-			case plugging.PortRightPlayer:
-				img.playScr.peripheralRight.set(request.args[1].(plugging.PeripheralID))
+			err = argLen(request.args, 1)
+			if err == nil {
+				port := request.args[0].(plugging.PortID)
+				switch port {
+				case plugging.PortLeftPlayer:
+					img.playScr.peripheralLeft.set(request.args[1].(plugging.PeripheralID))
+				case plugging.PortRightPlayer:
+					img.playScr.peripheralRight.set(request.args[1].(plugging.PeripheralID))
+				}
 			}
 		}
 
 	case gui.ReqEmulationEvent:
 		if img.isPlaymode() {
-			img.playScr.emulationEvent.set(request.args[0].(emulation.Event))
+			err = argLen(request.args, 1)
+			if err == nil {
+				img.playScr.emulationEvent.set(request.args[0].(emulation.Event))
+			}
 		}
 
 	case gui.ReqCartridgeEvent:
 		if img.isPlaymode() {
-			img.playScr.cartridgeEvent.set(request.args[0].(mapper.Event))
+			err = argLen(request.args, 1)
+			if err == nil {
+				img.playScr.cartridgeEvent.set(request.args[0].(mapper.Event))
+			}
+		}
+
+	case gui.ReqROMSelector:
+		if img.isPlaymode() {
+			err = argLen(request.args, 1)
+			if err == nil {
+				err = img.wm.windows[winSelectROMID].(*winSelectROM).openForPlaymode(request.args[0].(chan string))
+			}
+		} else {
+			err = argLen(request.args, 0)
+			if err == nil {
+				img.wm.windows[winSelectROMID].setOpen(true)
+			}
 		}
 
 	default:

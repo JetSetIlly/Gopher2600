@@ -31,19 +31,17 @@ import (
 	"github.com/jetsetilly/gopher2600/debugger/terminal/colorterm"
 	"github.com/jetsetilly/gopher2600/debugger/terminal/plainterm"
 	"github.com/jetsetilly/gopher2600/disassembly"
+	"github.com/jetsetilly/gopher2600/emulation"
 	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/gui/sdlimgui"
-	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/hiscore"
 	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/modalflag"
 	"github.com/jetsetilly/gopher2600/performance"
-	"github.com/jetsetilly/gopher2600/playmode"
 	"github.com/jetsetilly/gopher2600/recorder"
 	"github.com/jetsetilly/gopher2600/regression"
 	"github.com/jetsetilly/gopher2600/resources"
 	"github.com/jetsetilly/gopher2600/statsview"
-	"github.com/jetsetilly/gopher2600/wavwriter"
 )
 
 const defaultInitScript = "debuggerInit"
@@ -242,10 +240,10 @@ func launch(sync *mainSync) {
 		fallthrough
 
 	case "PLAY":
-		err = play(md, sync)
+		err = emulate(emulation.ModePlay, md, sync)
 
 	case "DEBUG":
-		err = debug(md, sync)
+		err = emulate(emulation.ModeDebugger, md, sync)
 
 	case "DISASM":
 		err = disasm(md)
@@ -269,147 +267,147 @@ func launch(sync *mainSync) {
 	sync.state <- stateRequest{req: reqQuit}
 }
 
-func play(md *modalflag.Modes, sync *mainSync) error {
-	md.NewMode()
+// func play(md *modalflag.Modes, sync *mainSync) error {
+// md.NewMode()
 
-	mapping := md.AddString("mapping", "AUTO", "force use of cartridge mapping")
-	spec := md.AddString("tv", "AUTO", "television specification: NTSC, PAL, PAL60")
-	fullScreen := md.AddBool("fullscreen", false, "start in fullscreen mode")
-	fpsCap := md.AddBool("fpscap", true, "cap fps to specification")
-	record := md.AddBool("record", false, "record user input to a file")
-	wav := md.AddString("wav", "", "record audio to wav file")
-	patchFile := md.AddString("patch", "", "patch file to apply (cartridge args only)")
-	hiscore := md.AddBool("hiscore", false, "contact hiscore server [EXPERIMENTAL]")
-	log := md.AddBool("log", false, "echo debugging log to stdout")
-	useSavekey := md.AddBool("savekey", false, "use savekey in player 1 port")
-	multiload := md.AddInt("multiload", -1, "force multiload byte (supercharger only; 0 to 255)")
-	profile := md.AddString("profile", "none", "run performance check with profiling: command separated CPU, MEM, TRACE or ALL")
+// mapping := md.AddString("mapping", "AUTO", "force use of cartridge mapping")
+// spec := md.AddString("tv", "AUTO", "television specification: NTSC, PAL, PAL60")
+// fullScreen := md.AddBool("fullscreen", false, "start in fullscreen mode")
+// fpsCap := md.AddBool("fpscap", true, "cap fps to specification")
+// record := md.AddBool("record", false, "record user input to a file")
+// wav := md.AddString("wav", "", "record audio to wav file")
+// patchFile := md.AddString("patch", "", "patch file to apply (cartridge args only)")
+// hiscore := md.AddBool("hiscore", false, "contact hiscore server [EXPERIMENTAL]")
+// log := md.AddBool("log", false, "echo debugging log to stdout")
+// useSavekey := md.AddBool("savekey", false, "use savekey in player 1 port")
+// multiload := md.AddInt("multiload", -1, "force multiload byte (supercharger only; 0 to 255)")
+// profile := md.AddString("profile", "none", "run performance check with profiling: command separated CPU, MEM, TRACE or ALL")
 
-	stats := &[]bool{false}[0]
-	if statsview.Available() {
-		stats = md.AddBool("statsview", false, fmt.Sprintf("run stats server (%s)", statsview.Address))
-	}
+// stats := &[]bool{false}[0]
+// if statsview.Available() {
+// 	stats = md.AddBool("statsview", false, fmt.Sprintf("run stats server (%s)", statsview.Address))
+// }
 
-	p, err := md.Parse()
-	if err != nil || p != modalflag.ParseContinue {
-		return err
-	}
+// p, err := md.Parse()
+// if err != nil || p != modalflag.ParseContinue {
+// 	return err
+// }
 
-	// set debugging log echo
-	if *log {
-		logger.SetEcho(os.Stdout)
-	} else {
-		logger.SetEcho(nil)
-	}
+// // set debugging log echo
+// if *log {
+// 	logger.SetEcho(os.Stdout)
+// } else {
+// 	logger.SetEcho(nil)
+// }
 
-	if *stats {
-		statsview.Launch(os.Stdout)
-	}
+// if *stats {
+// 	statsview.Launch(os.Stdout)
+// }
 
-	var cartload cartridgeloader.Loader
+// var cartload cartridgeloader.Loader
 
-	switch len(md.RemainingArgs()) {
-	case 0:
-		// allow loading from file requester
+// switch len(md.RemainingArgs()) {
+// case 0:
+// 	// allow loading from file requester
 
-	case 1:
-		cartload, err = cartridgeloader.NewLoader(md.GetArg(0), *mapping)
-		if err != nil {
-			return err
-		}
-		defer cartload.Close()
+// case 1:
+// 	cartload, err = cartridgeloader.NewLoader(md.GetArg(0), *mapping)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	defer cartload.Close()
 
-	default:
-		return fmt.Errorf("too many arguments for %s mode", md)
-	}
+// default:
+// 	return fmt.Errorf("too many arguments for %s mode", md)
+// }
 
-	tv, err := television.NewTelevision(*spec)
-	if err != nil {
-		return err
-	}
-	defer tv.End()
+// tv, err := television.NewTelevision(*spec)
+// if err != nil {
+// 	return err
+// }
+// defer tv.End()
 
-	// add wavwriter mixer if wav argument has been specified
-	if *wav != "" {
-		aw, err := wavwriter.New(*wav)
-		if err != nil {
-			return err
-		}
-		tv.AddAudioMixer(aw)
-	}
+// // add wavwriter mixer if wav argument has been specified
+// if *wav != "" {
+// 	aw, err := wavwriter.New(*wav)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	tv.AddAudioMixer(aw)
+// }
 
-	// create gui
-	sync.state <- stateRequest{req: reqCreateGUI,
-		args: guiCreate(func() (guiControl, error) {
-			return sdlimgui.NewSdlImgui(tv)
-		}),
-	}
+// // create gui
+// sync.state <- stateRequest{req: reqCreateGUI,
+// 	args: guiCreate(func() (guiControl, error) {
+// 		return sdlimgui.NewSdlImgui(tv)
+// 	}),
+// }
 
-	// wait for creator result
-	var scr gui.GUI
-	select {
-	case g := <-sync.gui:
-		scr = g.(gui.GUI)
+// // wait for creator result
+// var scr gui.GUI
+// select {
+// case g := <-sync.gui:
+// 	scr = g.(gui.GUI)
 
-	case err := <-sync.guiError:
-		return err
-	}
+// case err := <-sync.guiError:
+// 	return err
+// }
 
-	// set fps cap
-	tv.SetFPSCap(*fpsCap)
-	scr.SetFeature(gui.ReqMonitorSync, *fpsCap)
+// // set fps cap
+// tv.SetFPSCap(*fpsCap)
+// scr.SetFeature(gui.ReqMonitorSync, *fpsCap)
 
-	// set full screen
-	scr.SetFeature(gui.ReqFullScreen, *fullScreen)
+// // set full screen
+// scr.SetFeature(gui.ReqFullScreen, *fullScreen)
 
-	// turn off fallback ctrl-c handling. this so that the playmode can
-	// end playback recordings gracefully
-	sync.state <- stateRequest{req: reqNoIntSig}
+// // turn off fallback ctrl-c handling. this so that the playmode can
+// // end playback recordings gracefully
+// sync.state <- stateRequest{req: reqNoIntSig}
 
-	// check for profiling options
-	o, err := performance.ParseProfileString(*profile)
-	if err != nil {
-		return err
-	}
+// // check for profiling options
+// o, err := performance.ParseProfileString(*profile)
+// if err != nil {
+// 	return err
+// }
 
-	// set up a running function
-	playLaunch := func() error {
-		err = playmode.Play(tv, scr, *record, cartload, *patchFile, *hiscore, *useSavekey, *multiload)
-		if err != nil {
-			return err
-		}
-		return nil
-	}
+// // set up a running function
+// playLaunch := func() error {
+// 	err = playmode.Play(tv, scr, *record, cartload, *patchFile, *hiscore, *useSavekey, *multiload)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	return nil
+// }
 
-	if o == performance.ProfileNone {
-		err = playLaunch()
-		if err != nil {
-			return err
-		}
-	} else {
-		// if profile generation has been requested then pass the
-		// playLaunch() function prepared above, through the RunProfiler()
-		// function
-		err := performance.RunProfiler(o, "play", playLaunch)
-		if err != nil {
-			return err
-		}
-	}
+// if o == performance.ProfileNone {
+// 	err = playLaunch()
+// 	if err != nil {
+// 		return err
+// 	}
+// } else {
+// 	// if profile generation has been requested then pass the
+// 	// playLaunch() function prepared above, through the RunProfiler()
+// 	// function
+// 	err := performance.RunProfiler(o, "play", playLaunch)
+// 	if err != nil {
+// 		return err
+// 	}
+// }
 
-	if *record {
-		fmt.Println("! recording completed")
-	}
+// if *record {
+// 	fmt.Println("! recording completed")
+// }
 
-	// set ending state
-	err = scr.SetFeature(gui.ReqEnd)
-	if err != nil {
-		return err
-	}
+// // set ending state
+// err = scr.SetFeature(gui.ReqEnd)
+// if err != nil {
+// 	return err
+// }
 
-	return nil
-}
+// return nil
+// }
 
-func debug(md *modalflag.Modes, sync *mainSync) error {
+func emulate(emulationMode emulation.Mode, md *modalflag.Modes, sync *mainSync) error {
 	md.NewMode()
 
 	defInitScript, err := resources.JoinPath(defaultInitScript)
@@ -438,63 +436,62 @@ func debug(md *modalflag.Modes, sync *mainSync) error {
 		statsview.Launch(os.Stdout)
 	}
 
-	tv, err := television.NewTelevision(*spec)
+	create := func(e emulation.Emulation) (gui.GUI, terminal.Terminal, error) {
+		var term terminal.Terminal
+		var scr gui.GUI
+
+		// create gui
+		if *termType == "IMGUI" {
+			sync.state <- stateRequest{req: reqCreateGUI,
+				args: guiCreate(func() (guiControl, error) {
+					return sdlimgui.NewSdlImgui(e)
+				}),
+			}
+
+			// wait for creator result
+			select {
+			case g := <-sync.gui:
+				scr = g.(gui.GUI)
+			case err := <-sync.guiError:
+				return nil, nil, err
+			}
+
+			// if gui implements the terminal.Broker interface use that terminal
+			// as a preference
+			if b, ok := scr.(terminal.Broker); ok {
+				term = b.GetTerminal()
+			}
+		} else {
+			scr = gui.Stub{}
+		}
+
+		// if the GUI does not supply a terminal then use a color or plain terminal
+		// as a fallback
+		if term == nil {
+			switch strings.ToUpper(*termType) {
+			default:
+				fmt.Printf("! unknown terminal type (%s) defaulting to plain\n", *termType)
+				fallthrough
+			case "PLAIN":
+				term = &plainterm.PlainTerminal{}
+			case "COLOR":
+				term = &colorterm.ColorTerminal{}
+			}
+		}
+
+		return scr, term, nil
+	}
+
+	// prepare new debugger instance
+	dbg, err := debugger.NewDebugger(create, emulationMode, *spec, *useSavekey)
 	if err != nil {
 		return err
 	}
-	defer tv.End()
-
-	var term terminal.Terminal
-	var scr gui.GUI
-
-	// create gui
-	if *termType == "IMGUI" {
-		sync.state <- stateRequest{req: reqCreateGUI,
-			args: guiCreate(func() (guiControl, error) {
-				return sdlimgui.NewSdlImgui(tv)
-			}),
-		}
-
-		// wait for creator result
-		select {
-		case g := <-sync.gui:
-			scr = g.(gui.GUI)
-		case err := <-sync.guiError:
-			return err
-		}
-
-		// if gui implements the terminal.Broker interface use that terminal
-		// as a preference
-		if b, ok := scr.(terminal.Broker); ok {
-			term = b.GetTerminal()
-		}
-	} else {
-		scr = gui.Stub{}
-	}
-
-	// if the GUI does not supply a terminal then use a color or plain terminal
-	// as a fallback
-	if term == nil {
-		switch strings.ToUpper(*termType) {
-		default:
-			fmt.Printf("! unknown terminal type (%s) defaulting to plain\n", *termType)
-			fallthrough
-		case "PLAIN":
-			term = &plainterm.PlainTerminal{}
-		case "COLOR":
-			term = &colorterm.ColorTerminal{}
-		}
-	}
+	defer dbg.End()
 
 	// turn off fallback ctrl-c handling. this so that the debugger can handle
 	// quit events more gracefully
 	sync.state <- stateRequest{req: reqNoIntSig}
-
-	// prepare new debugger instance
-	dbg, err := debugger.NewDebugger(tv, scr, term, *useSavekey)
-	if err != nil {
-		return err
-	}
 
 	var cartload cartridgeloader.Loader
 
@@ -535,18 +532,21 @@ func debug(md *modalflag.Modes, sync *mainSync) error {
 			return err
 		}
 	} else {
+		// filename argument for RunProfiler
+		s := ""
+		switch emulationMode {
+		case emulation.ModeDebugger:
+			s = "debugger"
+		case emulation.ModePlay:
+			s = "play"
+		}
+
 		// if profile generation has been requested then pass the dbgLaunch()
 		// function prepared above, through the RunProfiler() function
-		err := performance.RunProfiler(prf, "debugger", dbgLaunch)
+		err := performance.RunProfiler(prf, s, dbgLaunch)
 		if err != nil {
 			return err
 		}
-	}
-
-	// set ending state
-	err = scr.SetFeature(gui.ReqEnd)
-	if err != nil {
-		return err
 	}
 
 	return nil
@@ -640,36 +640,33 @@ func perform(md *modalflag.Modes, sync *mainSync) error {
 		}
 		defer cartload.Close()
 
-		tv, err := television.NewTelevision(*spec)
-		if err != nil {
-			return err
-		}
-		defer tv.End()
-
-		// fpscap for tv (see below for monitor sync option)
-		tv.SetFPSCap(*fpsCap)
-
-		// GUI instance if required
-		var scr gui.GUI
+		var create performance.CreateUserInterface
 
 		if *display {
-			// create gui
-			sync.state <- stateRequest{req: reqCreateGUI,
-				args: guiCreate(func() (guiControl, error) {
-					return sdlimgui.NewSdlImgui(tv)
-				}),
-			}
+			create = func(e emulation.Emulation) (gui.GUI, error) {
+				// create gui
+				sync.state <- stateRequest{req: reqCreateGUI,
+					args: guiCreate(func() (guiControl, error) {
+						return sdlimgui.NewSdlImgui(e)
+					}),
+				}
 
-			// wait for creator result
-			select {
-			case g := <-sync.gui:
-				scr = g.(gui.GUI)
-			case err := <-sync.guiError:
-				return err
-			}
+				var scr gui.GUI
 
-			// fpscap for gui (see above for tv option)
-			scr.SetFeature(gui.ReqMonitorSync, *fpsCap)
+				// wait for creator result
+				select {
+				case g := <-sync.gui:
+					scr = g.(gui.GUI)
+				case err := <-sync.guiError:
+					return nil, err
+				}
+
+				// fpscap for gui (see above for tv option)
+				scr.SetFeature(gui.ReqMonitorSync, *fpsCap)
+				scr.SetFeature(gui.ReqSetEmulationMode, emulation.ModePlay)
+
+				return scr, nil
+			}
 		}
 
 		// check for profiling options
@@ -679,7 +676,7 @@ func perform(md *modalflag.Modes, sync *mainSync) error {
 		}
 
 		// run performance check
-		err = performance.Check(md.Output, p, false, tv, scr, cartload, *duration)
+		err = performance.Check(create, md.Output, p, false, cartload, *spec, *fpsCap, *duration)
 		if err != nil {
 			return err
 		}
