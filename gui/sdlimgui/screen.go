@@ -448,8 +448,7 @@ func (scr *screen) plotOverlay() {
 	var col color.RGBA
 
 	// offset the pixel writes by the amount of screenroll
-	offset := scr.crit.screenrollScanline * specification.ClksScanline
-	rgba_offset := offset * 4
+	offset := scr.crit.screenrollScanline * 4 * specification.ClksScanline
 
 	for i := range scr.crit.reflection {
 		// end of pixel buffer reached but there are still signals to process.
@@ -462,20 +461,20 @@ func (scr *screen) plotOverlay() {
 
 		// overlay pixels must set alpha channel
 		col = scr.reflectionColor(&scr.crit.reflection[i])
-		s := scr.crit.overlayPixels.Pix[rgba_offset : rgba_offset+4 : rgba_offset+4]
+		s := scr.crit.overlayPixels.Pix[offset : offset+4 : offset+4]
 		s[0] = col.R
 		s[1] = col.G
 		s[2] = col.B
 		s[3] = col.A
 
 		col = altColors[scr.crit.reflection[i].VideoElement]
-		s = scr.crit.elementPixels.Pix[rgba_offset : rgba_offset+3 : rgba_offset+3]
+		s = scr.crit.elementPixels.Pix[offset : offset+3 : offset+3]
 		s[0] = col.R
 		s[1] = col.G
 		s[2] = col.B
 
 		offset++
-		rgba_offset += 4
+		offset += 4
 	}
 }
 
