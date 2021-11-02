@@ -465,7 +465,7 @@ func (scr *screen) plotOverlay() {
 		//
 		// this can happen when screen is rolling and offset started off at a
 		// value greater than zero
-		if offset >= len(scr.crit.reflection) {
+		if offset >= len(scr.crit.overlayPixels.Pix) {
 			offset = 0
 		}
 
@@ -483,7 +483,6 @@ func (scr *screen) plotOverlay() {
 		s[1] = col.G
 		s[2] = col.B
 
-		offset++
 		offset += 4
 	}
 }

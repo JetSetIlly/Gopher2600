@@ -37,8 +37,17 @@ type Gatherer struct {
 	// because Gatherer.Step() is called every VideoCycle
 	timelineCounts rewind.TimelineCounts
 
-	// history of gathered reflections
 	history []ReflectedVideoStep
+
+	// history of gathered reflections that we send to the Renderer.
+	//
+	// prevent a race error with the GUI thread. see historyIdx field.
+	renderedHistory [2][]ReflectedVideoStep
+
+	// which history we're using. we change this every time we call render() so
+	// that the ReflectedVideoStep instances are never in a critical section
+	// with the GUI thread.
+	renderedHistoryIdx int
 
 	// state of emulation
 	emulationState emulation.State
@@ -49,10 +58,16 @@ type Gatherer struct {
 
 // NewGatherer is the preferred method of initialisation for the Monitor type.
 func NewGatherer(vcs *hardware.VCS) *Gatherer {
-	return &Gatherer{
+	ref := &Gatherer{
 		vcs:     vcs,
 		history: make([]ReflectedVideoStep, specification.AbsoluteMaxClks),
 	}
+
+	for i := range ref.renderedHistory {
+		ref.renderedHistory[i] = make([]ReflectedVideoStep, specification.AbsoluteMaxClks)
+	}
+
+	return ref
 }
 
 // AddRenderer adds an implementation of the Renderer interface to the Reflector.
@@ -95,7 +110,7 @@ func (ref *Gatherer) Step(bank mapper.BankInfo) error {
 	// unlike the nullify loop in NewFrame(), this does not have a
 	// corresponding constructin in the television implementation.
 	for i := ref.lastIdx; i < idx-1; i++ {
-		ref.history[i] = ReflectedVideoStep{}
+		ref.renderedHistory[ref.renderedHistoryIdx][i] = ReflectedVideoStep{}
 	}
 
 	// update timeline counts
@@ -115,8 +130,13 @@ func (ref *Gatherer) Step(bank mapper.BankInfo) error {
 func (ref *Gatherer) render() error {
 	if ref.emulationState != emulation.Rewinding {
 		if ref.renderer != nil {
-			if err := ref.renderer.Reflect(ref.history); err != nil {
+			copy(ref.renderedHistory[ref.renderedHistoryIdx], ref.history)
+			if err := ref.renderer.Reflect(ref.renderedHistory[ref.renderedHistoryIdx]); err != nil {
 				return curated.Errorf("reflection: %v", err)
+			}
+			ref.renderedHistoryIdx++
+			if ref.renderedHistoryIdx >= len(ref.renderedHistory) {
+				ref.renderedHistoryIdx = 0
 			}
 		}
 	}
@@ -151,8 +171,8 @@ func (ref *Gatherer) NewFrame(_ television.FrameInfo) error {
 	// note that this echoes a similar construct in the television.NewFrame()
 	// function. it's important that this happens here or the results in the
 	// Renderer will not be satisfactory.
-	for i := ref.lastIdx; i < len(ref.history); i++ {
-		ref.history[i] = ReflectedVideoStep{}
+	for i := ref.lastIdx; i < len(ref.renderedHistory); i++ {
+		ref.renderedHistory[ref.renderedHistoryIdx][i] = ReflectedVideoStep{}
 	}
 	ref.lastIdx = 0
 

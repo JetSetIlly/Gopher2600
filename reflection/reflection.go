@@ -30,6 +30,10 @@ type Renderer interface {
 	// The layout of the ref array is roughly equivalent to the sig array sent
 	// by PixelRenderer.SetPixels(). That is, the first entry always
 	// corresponds to the top-left pixel.
+	//
+	// It's important that implementations forget about and do not reference
+	// any previous arrays as otherwise this will cause race errors with the
+	// reflection package (which is probably running in a different thread).
 	Reflect(ref []ReflectedVideoStep) error
 }
 
