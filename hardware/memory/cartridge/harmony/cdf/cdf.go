@@ -141,7 +141,7 @@ func (cart *cdf) Snapshot() mapper.CartMapper {
 
 // Plumb implements the mapper.CartMapper interface.
 func (cart *cdf) Plumb() {
-	cart.arm.PlumbSharedMemory(cart.state.static)
+	cart.arm.Plumb(cart.state.static, cart)
 }
 
 // Reset implements the mapper.CartMapper interface.

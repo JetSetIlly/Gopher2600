@@ -201,20 +201,13 @@ func NewARM(mmap MemoryMap, prefs *preferences.ARMPreferences, mem SharedMemory,
 
 	arm.mam.mmap = mmap
 	arm.timer.mmap = mmap
-	arm.Plumb()
 
-	return arm
-}
-
-func (arm *ARM) Plumb() error {
-	// reseting on Plumb() seems odd but we reset() on every call to Run()
-	// anyway. that is to say the ARM isn't stateful between executions - apart
-	// from shared memory but that's handled outside of the arm7tdmi package.
 	err := arm.reset()
 	if err != nil {
-		return err
+		logger.Logf("ARM7", "reset: %s", err.Error())
 	}
-	return nil
+
+	return arm
 }
 
 // CoProcID is the ID returned by the ARM type. This const value can be used
@@ -232,10 +225,11 @@ func (arm *ARM) SetDisassembler(disasm mapper.CartCoProcDisassembler) {
 	arm.disasm = disasm
 }
 
-// PlumbSharedMemory should be used to update the shared memory reference.
+// Plumb should be used to update the shared memory reference.
 // Useful when used in conjunction with the rewind system.
-func (arm *ARM) PlumbSharedMemory(mem SharedMemory) {
+func (arm *ARM) Plumb(mem SharedMemory, hook CartridgeHook) {
 	arm.mem = mem
+	arm.hook = hook
 }
 
 func (arm *ARM) reset() error {

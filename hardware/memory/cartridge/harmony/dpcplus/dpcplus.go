@@ -135,7 +135,7 @@ func (cart *dpcPlus) Snapshot() mapper.CartMapper {
 
 // Plumb implements the mapper.CartMapper interface.
 func (cart *dpcPlus) Plumb() {
-	cart.arm.PlumbSharedMemory(cart.state.static)
+	cart.arm.Plumb(cart.state.static, cart)
 }
 
 // Reset implements the mapper.CartMapper interface.

@@ -74,5 +74,6 @@ func (s *State) Snapshot() *State {
 	n := *s
 	n.static = s.static.Snapshot()
 	n.parameters = make([]uint8, len(s.parameters))
+	copy(n.parameters, s.parameters)
 	return &n
 }
