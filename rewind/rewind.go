@@ -523,7 +523,8 @@ func (r *Rewind) GotoFrame(frame int) error {
 // number that is actually possible with the rewind system.
 //
 // the future value indicates that the requested frame is past the end of the
-// history. in those instances, the rewind procedure should stop.
+// history. if future is true then idx and frame will point to the most recent
+// entry that we do have.
 //
 // note that findFrameIndex() searches for the frame that is two frames before
 // the one that is requested.
@@ -552,7 +553,7 @@ func (r *Rewind) findFrameIndex(frame int) (idx int, fr int, future bool) {
 	// is requested frame too new (ie. past the end of the array)
 	fn = r.entries[e].TV.GetCoords().Frame
 	if frame > fn {
-		return 0, 0, true
+		return e, fn, true
 	}
 
 	// because r.entries is a cirular array, there's an additional step to the
@@ -644,7 +645,13 @@ func (r *Rewind) RerunLastNFrames(frames int) error {
 func (r *Rewind) GotoCoords(coords coords.TelevisionCoords) error {
 	// get nearest index of entry from which we can being to (re)generate the
 	// current frame
-	idx, _, _ := r.findFrameIndex(coords.Frame)
+	idx, frame, future := r.findFrameIndex(coords.Frame)
+
+	// requested frame is in the future but allow function to continue using
+	// the most recent frame number we do have
+	if future {
+		coords.Frame = frame
+	}
 
 	// if found index does not point to an immediately suitable state then try
 	// the adhocFrame state if available

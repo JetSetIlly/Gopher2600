@@ -40,26 +40,28 @@ type TimelineCounter interface {
 
 func (r *Rewind) addTimelineEntry(frameInfo television.FrameInfo) {
 	// do not alter the timeline information if we're in the rewinding state
-	if r.emulation.State() != emulation.Rewinding {
-		cts := TimelineCounts{}
-		if r.ctr != nil {
-			cts = r.ctr.TimelineCounts()
-		}
+	if r.emulation.State() == emulation.Rewinding {
+		return
+	}
 
-		r.timeline.FrameNum = append(r.timeline.FrameNum, frameInfo.FrameNum)
-		r.timeline.TotalScanlines = append(r.timeline.TotalScanlines, frameInfo.TotalScanlines)
-		r.timeline.Counts = append(r.timeline.Counts, cts)
-		r.timeline.LeftPlayerInput = append(r.timeline.LeftPlayerInput, r.vcs.RIOT.Ports.LeftPlayer.IsActive())
-		r.timeline.RightPlayerInput = append(r.timeline.RightPlayerInput, r.vcs.RIOT.Ports.RightPlayer.IsActive())
-		r.timeline.PanelInput = append(r.timeline.PanelInput, r.vcs.RIOT.Ports.Panel.IsActive())
-		if len(r.timeline.TotalScanlines) > timelineLength {
-			r.timeline.FrameNum = r.timeline.FrameNum[1:]
-			r.timeline.TotalScanlines = r.timeline.TotalScanlines[1:]
-			r.timeline.Counts = r.timeline.Counts[1:]
-			r.timeline.LeftPlayerInput = r.timeline.LeftPlayerInput[1:]
-			r.timeline.RightPlayerInput = r.timeline.RightPlayerInput[1:]
-			r.timeline.PanelInput = r.timeline.PanelInput[1:]
-		}
+	cts := TimelineCounts{}
+	if r.ctr != nil {
+		cts = r.ctr.TimelineCounts()
+	}
+
+	r.timeline.FrameNum = append(r.timeline.FrameNum, frameInfo.FrameNum)
+	r.timeline.TotalScanlines = append(r.timeline.TotalScanlines, frameInfo.TotalScanlines)
+	r.timeline.Counts = append(r.timeline.Counts, cts)
+	r.timeline.LeftPlayerInput = append(r.timeline.LeftPlayerInput, r.vcs.RIOT.Ports.LeftPlayer.IsActive())
+	r.timeline.RightPlayerInput = append(r.timeline.RightPlayerInput, r.vcs.RIOT.Ports.RightPlayer.IsActive())
+	r.timeline.PanelInput = append(r.timeline.PanelInput, r.vcs.RIOT.Ports.Panel.IsActive())
+	if len(r.timeline.FrameNum) > timelineLength {
+		r.timeline.FrameNum = r.timeline.FrameNum[1:]
+		r.timeline.TotalScanlines = r.timeline.TotalScanlines[1:]
+		r.timeline.Counts = r.timeline.Counts[1:]
+		r.timeline.LeftPlayerInput = r.timeline.LeftPlayerInput[1:]
+		r.timeline.RightPlayerInput = r.timeline.RightPlayerInput[1:]
+		r.timeline.PanelInput = r.timeline.PanelInput[1:]
 	}
 }
 
