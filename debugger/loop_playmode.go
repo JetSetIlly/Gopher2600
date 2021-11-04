@@ -36,12 +36,22 @@ func (dbg *Debugger) playLoop() error {
 			dbg.Rewind.RecordFrameState()
 		}
 
-		state := dbg.State()
-		if dbg.mode != emulation.ModePlay {
-			state = emulation.Ending
+		// breakpoint, trap, watch check. vcs.Run() call the continueCheck
+		// funcion every CPU cycle and not every video cycle. this means some
+		// halting conditions may miss or be late
+		dbg.halting.check()
+		if dbg.halting.halt {
+			// set debugging mode. halting messages will be preserved and
+			// shown when entering debugging mode
+			dbg.setMode(emulation.ModeDebugger)
+			return emulation.Ending, nil
 		}
 
-		return state, nil
+		if dbg.mode != emulation.ModePlay {
+			return emulation.Ending, nil
+		}
+
+		return dbg.State(), nil
 	}, hardware.PerformanceBrake)
 }
 
