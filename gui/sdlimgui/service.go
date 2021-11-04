@@ -284,27 +284,25 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 		handled := true
 
 		if img.isPlaymode() {
-			switch sdl.GetKeyName(ev.Keysym.Sym) {
-			case "Escape":
+			switch ev.Keysym.Scancode {
+			case sdl.SCANCODE_ESCAPE:
 				img.quit()
 
-			case "`":
-				fallthrough
-			case "F6":
+			case sdl.SCANCODE_GRAVE:
 				img.emulation.SetFeature(emulation.ReqSetMode, emulation.ModeDebugger)
 
-			case "F7":
+			case sdl.SCANCODE_F7:
 				img.playScr.fpsOpen = !img.playScr.fpsOpen
 
-			case "F10":
+			case sdl.SCANCODE_F8:
 				w := img.wm.windows[winPrefsID]
 				w.setOpen(!w.isOpen())
 
-			case "F11":
+			case sdl.SCANCODE_F11:
 				img.prefs.fullScreen.Set(!img.plt.fullScreen)
 				img.setCapture(img.plt.fullScreen)
 
-			case "F12":
+			case sdl.SCANCODE_F12:
 				shift := ev.Keysym.Mod&sdl.KMOD_LSHIFT == sdl.KMOD_LSHIFT || ev.Keysym.Mod&sdl.KMOD_RSHIFT == sdl.KMOD_RSHIFT
 				ctrl := ev.Keysym.Mod&sdl.KMOD_LCTRL == sdl.KMOD_LCTRL || ev.Keysym.Mod&sdl.KMOD_RCTRL == sdl.KMOD_RCTRL
 
@@ -316,14 +314,14 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 					img.glsl.shaders[playscrShaderID].(*playscrShader).scheduleScreenshot(modeSingle)
 				}
 
-			case "ScrollLock":
+			case sdl.SCANCODE_F14:
 				fallthrough
-			case "F14":
+			case sdl.SCANCODE_SCROLLLOCK:
 				img.setCapture(!img.isCaptured())
 
-			case "Pause":
+			case sdl.SCANCODE_F15:
 				fallthrough
-			case "F15":
+			case sdl.SCANCODE_PAUSE:
 				var err error
 				if img.emulation.State() == emulation.Paused {
 					err = img.emulation.SetFeature(emulation.ReqSetPause, false)
@@ -338,18 +336,18 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 				handled = false
 			}
 		} else {
-			switch sdl.GetKeyName(ev.Keysym.Sym) {
-			case "`":
-				fallthrough
-			case "F6":
+			switch ev.Keysym.Scancode {
+			case sdl.SCANCODE_GRAVE:
 				img.emulation.SetFeature(emulation.ReqSetMode, emulation.ModePlay)
 
-			case "ScrollLock":
+			case sdl.SCANCODE_F14:
+				fallthrough
+			case sdl.SCANCODE_SCROLLLOCK:
 				img.setCapture(!img.isCaptured())
 
-			case "Pause":
+			case sdl.SCANCODE_F15:
 				fallthrough
-			case "F15":
+			case sdl.SCANCODE_PAUSE:
 				if img.emulation.State() == emulation.Paused {
 					img.term.pushCommand("RUN")
 				} else {
@@ -386,7 +384,7 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 		case sdl.KEYUP:
 			select {
 			case img.userinput <- userinput.EventKeyboard{
-				Key:    sdl.GetKeyName(ev.Keysym.Sym),
+				Key:    sdl.GetScancodeName(ev.Keysym.Scancode),
 				Down:   ev.Type == sdl.KEYDOWN,
 				Repeat: ev.Repeat != 0,
 				Mod:    mod,
