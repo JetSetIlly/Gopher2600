@@ -34,9 +34,6 @@ type platform struct {
 	mode   sdl.DisplayMode
 
 	gamepad []*sdl.GameController
-
-	// whether window is full screen or not
-	fullScreen bool
 }
 
 // newPlatform is the preferred method of initialisation for the platform type.
@@ -72,7 +69,7 @@ func newPlatform(img *SdlImgui) (*platform, error) {
 
 	plt.window, err = sdl.CreateWindow(windowTitle,
 		sdl.WINDOWPOS_UNDEFINED, sdl.WINDOWPOS_UNDEFINED,
-		plt.mode.W, plt.mode.H,
+		int32(float32(plt.mode.W)*0.80), int32(float32(plt.mode.H)*0.80),
 		sdl.WINDOW_OPENGL|sdl.WINDOW_ALLOW_HIGHDPI|sdl.WINDOW_RESIZABLE|sdl.WINDOW_HIDDEN)
 
 	if err != nil {
@@ -169,8 +166,7 @@ func (plt *platform) postRender() {
 
 // toggle the full screeens state. does not capture mouse.
 func (plt *platform) setFullScreen(fullScreen bool) {
-	plt.fullScreen = fullScreen
-	if plt.fullScreen {
+	if fullScreen {
 		plt.window.SetFullscreen(sdl.WINDOW_FULLSCREEN_DESKTOP)
 	} else {
 		plt.window.SetFullscreen(0)

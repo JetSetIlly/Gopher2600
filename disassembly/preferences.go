@@ -69,7 +69,7 @@ func newPreferences(dsm *Disassembly) (*Preferences, error) {
 		return nil, err
 	}
 
-	p.FxxxMirror.RegisterCallback(func(v prefs.Value) error {
+	p.FxxxMirror.SetHookPost(func(v prefs.Value) error {
 		if v.(bool) {
 			p.mirrorOrigin = memorymap.OriginCartFxxxMirror
 		} else {

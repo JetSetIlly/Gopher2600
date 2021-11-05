@@ -299,8 +299,7 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 				w.setOpen(!w.isOpen())
 
 			case sdl.SCANCODE_F11:
-				img.prefs.fullScreen.Set(!img.plt.fullScreen)
-				img.setCapture(img.plt.fullScreen)
+				img.prefs.fullScreen.Set(!img.prefs.fullScreen.Get().(bool))
 
 			case sdl.SCANCODE_F12:
 				shift := ev.Keysym.Mod&sdl.KMOD_LSHIFT == sdl.KMOD_LSHIFT || ev.Keysym.Mod&sdl.KMOD_RSHIFT == sdl.KMOD_RSHIFT
@@ -341,6 +340,9 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 			switch ev.Keysym.Scancode {
 			case sdl.SCANCODE_GRAVE:
 				img.emulation.SetFeature(emulation.ReqSetMode, emulation.ModePlay)
+
+			case sdl.SCANCODE_F11:
+				img.prefs.fullScreen.Set(!img.prefs.fullScreen.Get().(bool))
 
 			case sdl.SCANCODE_F14:
 				fallthrough

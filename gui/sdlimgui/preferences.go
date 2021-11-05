@@ -17,6 +17,7 @@ package sdlimgui
 import (
 	"fmt"
 
+	"github.com/jetsetilly/gopher2600/emulation"
 	"github.com/jetsetilly/gopher2600/prefs"
 	"github.com/jetsetilly/gopher2600/resources"
 )
@@ -35,13 +36,8 @@ import (
 type preferences struct {
 	img *SdlImgui
 
-	// two disk objects so we can load and save the  preferences assigned to
-	// them separately. both use the same prefs file.
-	//
-	// dsk is created during newPreferences() and dskWin is created during
-	// setWindowPreferences()
-	dsk    *prefs.Disk
-	dskWin *prefs.Disk
+	// sdlimgui preferences on disk
+	dsk *prefs.Disk
 
 	// debugger preferences
 	openOnError  prefs.Bool
@@ -52,7 +48,12 @@ type preferences struct {
 	plusromNotifications      prefs.Bool
 	superchargerNotifications prefs.Bool
 
-	// window preferences. these are attached to dskWin rather than dsk.
+	// window preferences are split over two prefs.Disk instances, to allow
+	// geometry to be saved at a different time to the fullscreen preference
+	dskWinGeom       *prefs.Disk
+	dskWinFullScreen *prefs.Disk
+
+	// full screen preference
 	fullScreen prefs.Bool
 }
 
@@ -88,7 +89,7 @@ func newPreferences(img *SdlImgui) (*preferences, error) {
 		return nil, err
 	}
 
-	p.audioEnabled.RegisterCallback(func(enabled prefs.Value) error {
+	p.audioEnabled.SetHookPost(func(enabled prefs.Value) error {
 		if img.isPlaymode() {
 			p.img.audio.Mute(false)
 		} else {
@@ -121,21 +122,35 @@ func newPreferences(img *SdlImgui) (*preferences, error) {
 	return p, nil
 }
 
-func (p *preferences) setWindowPreferences(isPlayMode bool) error {
+// load preferences from disk. does not load window preferences.
+func (p *preferences) load() error {
+	return p.dsk.Load(false)
+}
+
+// save preferences to disk. does not save window preferences.
+func (p *preferences) save() error {
+	return p.dsk.Save()
+}
+
+// load window preferences for whatever mode we're currently in.
+func (p *preferences) loadWindowPreferences() error {
 	// save existing windows preferences if necessary
-	if p.dskWin != nil {
-		err := p.dskWin.Save()
-		if err != nil {
-			return err
-		}
+	err := p.saveWindowPreferences()
+	if err != nil {
+		return err
 	}
 
 	var group string
 
-	if isPlayMode {
-		group = "sdlimgui.playmode"
-	} else {
+	switch p.img.mode {
+	case emulation.ModeNone:
+		p.img.plt.window.Hide()
+	case emulation.ModeDebugger:
 		group = "sdlimgui.debugger"
+	case emulation.ModePlay:
+		group = "sdlimgui.playmode"
+	default:
+		panic(fmt.Sprintf("cannot set window mode for unsupported emulation mode (%s)", p.img.mode))
 	}
 
 	// setup preferences
@@ -144,64 +159,89 @@ func (p *preferences) setWindowPreferences(isPlayMode bool) error {
 		return err
 	}
 
-	p.dskWin, err = prefs.NewDisk(pth)
+	// force window out of fullscreen. if we don't we can't guarantee that the
+	// positioning of the window occurs before the full screen setting is
+	// applied.
+	//
+	// this is noticeable when moving from an emulation mode with fullscreen
+	// set to a mode with it unset. similar to how moving from a large window
+	// to a small window
+	p.img.plt.setFullScreen(false)
+
+	// full screen preferences
+	p.dskWinFullScreen, err = prefs.NewDisk(pth)
 	if err != nil {
 		return err
 	}
 
-	p.fullScreen.RegisterCallback(func(v prefs.Value) error {
-		p.img.plt.setFullScreen(p.fullScreen.Get().(bool))
+	p.fullScreen.SetHookPre(func(v prefs.Value) error {
+		// save window geometry if we're not *currently* in fullscreen mode
+		// (this is a pre hook)
+		//
+		// a post hook is no good because it means the wrong geometry will be
+		// saved. we want to save the non-fullscreen user preference.
+		if !p.fullScreen.Get().(bool) {
+			if p.dskWinGeom != nil {
+				err := p.dskWinGeom.Save()
+				if err != nil {
+					return err
+				}
+			}
+		}
+		p.img.plt.setFullScreen(v.(bool))
 		return nil
 	})
-	err = p.dskWin.Add(fmt.Sprintf("%s.fullscreen", group), &p.fullScreen)
+	err = p.dskWinFullScreen.Add(fmt.Sprintf("%s.fullscreen", group), &p.fullScreen)
 	if err != nil {
 		return err
 	}
 
-	err = p.dskWin.Add(fmt.Sprintf("%s.windowSize", group), prefs.NewGeneric(
+	// window geometry preferences
+	p.dskWinGeom, err = prefs.NewDisk(pth)
+	if err != nil {
+		return err
+	}
+
+	err = p.dskWinGeom.Add(fmt.Sprintf("%s.windowGeometry", group), prefs.NewGeneric(
 		func(s string) error {
 			var w, h int32
-			_, err := fmt.Sscanf(s, "%d,%d", &w, &h)
-			if err != nil {
-				return err
-			}
-			p.img.plt.window.SetSize(w, h)
-			return nil
-		},
-		func() string {
-			w, h := p.img.plt.window.GetSize()
-			return fmt.Sprintf("%d,%d", w, h)
-		},
-	))
-	if err != nil {
-		return err
-	}
-
-	err = p.dskWin.Add(fmt.Sprintf("%s.windowPos", group), prefs.NewGeneric(
-		func(s string) error {
 			var x, y int32
-			_, err := fmt.Sscanf(s, "%d,%d", &x, &y)
+			_, err := fmt.Sscanf(s, "%d, %d, %d, %d", &x, &y, &w, &h)
 			if err != nil {
 				return err
 			}
-			// !!TODO: SetPosition doesn't seem to set window position as you
-			// might expect. On XWindow with Cinnamon WM, it seems to place the
-			// window top to the window further down and slightly to the right
-			// of where it should be. This means that the window "drifts" down
-			// the screen on subsequent loads
+
+			// set size before position. if we don't then switching from a
+			// larger window to a smaller window will not be positioned
+			// correctly.
+			p.img.plt.window.SetSize(w, h)
 			p.img.plt.window.SetPosition(x, y)
+
 			return nil
 		},
 		func() string {
-			x, y := p.img.plt.window.GetPosition()
-			return fmt.Sprintf("%d,%d", x, y)
+			// if emulation is not running full screen, return the window
+			// geometry...
+			if !p.fullScreen.Get().(bool) {
+				x, y := p.img.plt.window.GetPosition()
+				w, h := p.img.plt.window.GetSize()
+				return fmt.Sprintf("%d, %d, %d, %d", x, y, w, h)
+			}
+
+			// ... otherwise, indicate that the previous value is to be used
+			return prefs.GenericGetValueUndefined
 		},
 	))
 	if err != nil {
 		return err
 	}
 
-	err = p.dskWin.Load(true)
+	err = p.dskWinGeom.Load(true)
+	if err != nil {
+		return err
+	}
+
+	err = p.dskWinFullScreen.Load(true)
 	if err != nil {
 		return err
 	}
@@ -209,22 +249,22 @@ func (p *preferences) setWindowPreferences(isPlayMode bool) error {
 	return nil
 }
 
-// load preferences from disk.
-func (p *preferences) load() error {
-	return p.dsk.Load(false)
-}
+// save window preferences to disk. saves preferences for whatever emulation
+// mode we're currently in.
+func (p *preferences) saveWindowPreferences() error {
+	if p.dskWinFullScreen != nil {
+		err := p.dskWinFullScreen.Save()
+		if err != nil {
+			return err
+		}
+	}
 
-// save preferences to disk.
-func (p *preferences) save() error {
-	return p.dsk.Save()
-}
+	if p.dskWinGeom != nil {
+		err := p.dskWinGeom.Save()
+		if err != nil {
+			return err
+		}
+	}
 
-// loadWin preferences from disk.
-// func (p *preferences) loadWin() error {
-// 	return p.dskWin.Load(false)
-// }.
-
-// saveWin preferences to disk.
-func (p *preferences) saveWin() error {
-	return p.dskWin.Save()
+	return nil
 }

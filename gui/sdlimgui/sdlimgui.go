@@ -227,7 +227,7 @@ func (img *SdlImgui) quit() {
 // end program. this differs from quit in that this function is called when we
 // receive a ReqEnd, which *may* have been sent in reponse to a EventQuit.
 func (img *SdlImgui) end() {
-	img.prefs.saveWin()
+	img.prefs.saveWindowPreferences()
 }
 
 // draw gui. called from service loop.
@@ -252,13 +252,10 @@ func (img *SdlImgui) isPlaymode() bool {
 func (img *SdlImgui) setEmulationMode(mode emulation.Mode) error {
 	img.mode = mode
 	img.lz.SetEmulationMode(mode)
+	img.prefs.loadWindowPreferences()
 
 	switch mode {
-	case emulation.ModeNone:
-		img.plt.window.Hide()
-
 	case emulation.ModeDebugger:
-		img.prefs.setWindowPreferences(false)
 		img.screen.clearTextureRenderers()
 		img.screen.addTextureRenderer(img.wm.dbgScr)
 
@@ -270,7 +267,6 @@ func (img *SdlImgui) setEmulationMode(mode emulation.Mode) error {
 		img.plt.window.Show()
 
 	case emulation.ModePlay:
-		img.prefs.setWindowPreferences(true)
 		img.screen.clearTextureRenderers()
 		img.screen.addTextureRenderer(img.playScr)
 

@@ -108,35 +108,35 @@ func newPreferences() (*Preferences, error) {
 	}
 
 	// register callbacks to update the "live" values from the disk value
-	p.DskLateVDELGRP0.RegisterCallback(func(v prefs.Value) error {
+	p.DskLateVDELGRP0.SetHookPost(func(v prefs.Value) error {
 		p.LateVDELGRP0 = v.(bool)
 		return nil
 	})
-	p.DskLateVDELGRP1.RegisterCallback(func(v prefs.Value) error {
+	p.DskLateVDELGRP1.SetHookPost(func(v prefs.Value) error {
 		p.LateVDELGRP1 = v.(bool)
 		return nil
 	})
-	p.DskLateRESPx.RegisterCallback(func(v prefs.Value) error {
+	p.DskLateRESPx.SetHookPost(func(v prefs.Value) error {
 		p.LateRESPx = v.(bool)
 		return nil
 	})
-	p.DskEarlyScancounter.RegisterCallback(func(v prefs.Value) error {
+	p.DskEarlyScancounter.SetHookPost(func(v prefs.Value) error {
 		p.EarlyScancounter = v.(bool)
 		return nil
 	})
-	p.DskLatePFx.RegisterCallback(func(v prefs.Value) error {
+	p.DskLatePFx.SetHookPost(func(v prefs.Value) error {
 		p.LatePFx = v.(bool)
 		return nil
 	})
-	p.DskLateCOLUPF.RegisterCallback(func(v prefs.Value) error {
+	p.DskLateCOLUPF.SetHookPost(func(v prefs.Value) error {
 		p.LateCOLUPF = v.(bool)
 		return nil
 	})
-	p.DskLostMOTCK.RegisterCallback(func(v prefs.Value) error {
+	p.DskLostMOTCK.SetHookPost(func(v prefs.Value) error {
 		p.LostMOTCK = v.(bool)
 		return nil
 	})
-	p.DskRESPxHBLANK.RegisterCallback(func(v prefs.Value) error {
+	p.DskRESPxHBLANK.SetHookPost(func(v prefs.Value) error {
 		p.RESPxHBLANK = v.(bool)
 		return nil
 	})

@@ -42,6 +42,10 @@ var defunct = []string{
 	"tia.revision.hmove.rippleend",
 	"sdlimgui.playmode.windowsize",
 	"sdlimgui.playmode.windowpos",
+	"sdlimgui.playmode.windowSize",
+	"sdlimgui.playmode.windowPos",
+	"sdlimgui.debugger.windowSize",
+	"sdlimgui.debugger.windowPos",
 }
 
 // returns true if string is in list of defunct values.

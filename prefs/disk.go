@@ -155,11 +155,12 @@ func (dsk *Disk) Save() (rerr error) {
 	}
 
 	// write entries (combination of old and live entries) to disk
-	n, err = fmt.Fprint(f, entries.String())
+	s := entries.String()
+	n, err = fmt.Fprint(f, s)
 	if err != nil {
 		return curated.Errorf("prefs: %v", err)
 	}
-	if n != len(entries.String()) {
+	if n != len(s) {
 		return curated.Errorf("prefs: %v", "incorrect number of characters writtent to file")
 	}
 

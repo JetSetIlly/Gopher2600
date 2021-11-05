@@ -40,7 +40,8 @@ type pref interface {
 type Bool struct {
 	pref
 	value    atomic.Value // bool
-	callback func(value Value) error
+	hookPre  func(value Value) error
+	hookPost func(value Value) error
 }
 
 func (p *Bool) String() string {
@@ -71,11 +72,21 @@ func (p *Bool) Set(v Value) error {
 		return curated.Errorf("prefs: %v", fmt.Errorf("cannot convert %T to prefs.Bool", v))
 	}
 
+	if p.hookPre != nil {
+		err := p.hookPre(nv)
+		if err != nil {
+			return curated.Errorf("prefs: %v", err)
+		}
+	}
+
 	// store new value
 	p.value.Store(nv)
 
-	if p.callback != nil {
-		return p.callback(nv)
+	if p.hookPost != nil {
+		err := p.hookPost(nv)
+		if err != nil {
+			return curated.Errorf("prefs: %v", err)
+		}
 	}
 
 	return nil
@@ -95,13 +106,22 @@ func (p *Bool) Reset() error {
 	return p.Set(false)
 }
 
-// RegisterCallback sets the callback function to be called when the value is
-// updated. Note that even if the value hasn't changed, the callback will be
-// executed.
+// SetHookPre sets the callback function to be called just before the prefs
+// value is updated. Note that even if the value hasn't changed, the callback
+// will be executed.
 //
 // Not required but is useful in some contexts.
-func (p *Bool) RegisterCallback(f func(value Value) error) {
-	p.callback = f
+func (p *Bool) SetHookPre(f func(value Value) error) {
+	p.hookPre = f
+}
+
+// SetHookPost sets the callback function to be called just after the prefs
+// value is updated. Note that even if the value hasn't changed, the callback
+// will be executed.
+//
+// Not required but is useful in some contexts.
+func (p *Bool) SetHookPost(f func(value Value) error) {
+	p.hookPost = f
 }
 
 // String implements a string type in the prefs system.
@@ -109,7 +129,8 @@ type String struct {
 	pref
 	maxLen   int
 	value    atomic.Value // string
-	callback func(value Value) error
+	hookPre  func(value Value) error
+	hookPost func(value Value) error
 }
 
 func (p *String) String() string {
@@ -147,11 +168,21 @@ func (p *String) Set(v Value) error {
 		nv = nv[:p.maxLen]
 	}
 
+	if p.hookPre != nil {
+		err := p.hookPre(nv)
+		if err != nil {
+			return curated.Errorf("prefs: %v", err)
+		}
+	}
+
 	// store new value
 	p.value.Store(nv)
 
-	if p.callback != nil {
-		return p.callback(nv)
+	if p.hookPost != nil {
+		err := p.hookPost(nv)
+		if err != nil {
+			return curated.Errorf("prefs: %v", err)
+		}
 	}
 
 	return nil
@@ -167,20 +198,30 @@ func (p *String) Reset() error {
 	return p.Set("")
 }
 
-// RegisterCallback sets the callback function to be called when the value is
-// updated. Note that even if the value hasn't changed, the callback will be
-// executed.
+// SetHookPre sets the callback function to be called just before the prefs
+// value is updated. Note that even if the value hasn't changed, the callback
+// will be executed.
 //
 // Not required but is useful in some contexts.
-func (p *String) RegisterCallback(f func(value Value) error) {
-	p.callback = f
+func (p *String) SetHookPre(f func(value Value) error) {
+	p.hookPre = f
+}
+
+// SetHookPost sets the callback function to be called just after the prefs
+// value is updated. Note that even if the value hasn't changed, the callback
+// will be executed.
+//
+// Not required but is useful in some contexts.
+func (p *String) SetHookPost(f func(value Value) error) {
+	p.hookPost = f
 }
 
 // Int implements a string type in the prefs system.
 type Int struct {
 	pref
 	value    atomic.Value // int
-	callback func(value Value) error
+	hookPre  func(value Value) error
+	hookPost func(value Value) error
 }
 
 func (p *Int) String() string {
@@ -212,11 +253,21 @@ func (p *Int) Set(v Value) error {
 		return curated.Errorf("prefs: %v", fmt.Errorf("cannot convert %T to prefs.Int", v))
 	}
 
+	if p.hookPre != nil {
+		err := p.hookPre(nv)
+		if err != nil {
+			return curated.Errorf("prefs: %v", err)
+		}
+	}
+
 	// update stored value
 	p.value.Store(nv)
 
-	if p.callback != nil {
-		return p.callback(nv)
+	if p.hookPost != nil {
+		err := p.hookPost(nv)
+		if err != nil {
+			return curated.Errorf("prefs: %v", err)
+		}
 	}
 
 	return nil
@@ -236,20 +287,30 @@ func (p *Int) Reset() error {
 	return p.Set(0)
 }
 
-// RegisterCallback sets the callback function to be called when the value is
-// updated. Note that even if the value hasn't changed, the callback will be
-// executed.
+// SetHookPre sets the callback function to be called just before the prefs
+// value is updated. Note that even if the value hasn't changed, the callback
+// will be executed.
 //
 // Not required but is useful in some contexts.
-func (p *Int) RegisterCallback(f func(value Value) error) {
-	p.callback = f
+func (p *Int) SetHookPre(f func(value Value) error) {
+	p.hookPre = f
+}
+
+// SetHookPost sets the callback function to be called just after the prefs
+// value is updated. Note that even if the value hasn't changed, the callback
+// will be executed.
+//
+// Not required but is useful in some contexts.
+func (p *Int) SetHookPost(f func(value Value) error) {
+	p.hookPost = f
 }
 
 // Int implements a string type in the prefs system.
 type Float struct {
 	pref
 	value    atomic.Value // float64
-	callback func(value Value) error
+	hookPre  func(value Value) error
+	hookPost func(value Value) error
 }
 
 func (p *Float) String() string {
@@ -281,11 +342,21 @@ func (p *Float) Set(v Value) error {
 		return curated.Errorf("prefs: %v", fmt.Errorf("cannot convert %T to prefs.Float", v))
 	}
 
+	if p.hookPre != nil {
+		err := p.hookPre(nv)
+		if err != nil {
+			return curated.Errorf("prefs: %v", err)
+		}
+	}
+
 	// update stored value
 	p.value.Store(nv)
 
-	if p.callback != nil {
-		return p.callback(nv)
+	if p.hookPost != nil {
+		err := p.hookPost(nv)
+		if err != nil {
+			return curated.Errorf("prefs: %v", err)
+		}
 	}
 
 	return nil
@@ -305,13 +376,22 @@ func (p *Float) Reset() error {
 	return p.Set(0.0)
 }
 
-// RegisterCallback sets the callback function to be called when the value is
-// updated. Note that even if the value hasn't changed, the callback will be
-// executed.
+// SetHookPre sets the callback function to be called just before the prefs
+// value is updated. Note that even if the value hasn't changed, the callback
+// will be executed.
 //
 // Not required but is useful in some contexts.
-func (p *Float) RegisterCallback(f func(value Value) error) {
-	p.callback = f
+func (p *Float) SetHookPre(f func(value Value) error) {
+	p.hookPre = f
+}
+
+// SetHookPost sets the callback function to be called just after the prefs
+// value is updated. Note that even if the value hasn't changed, the callback
+// will be executed.
+//
+// Not required but is useful in some contexts.
+func (p *Float) SetHookPost(f func(value Value) error) {
+	p.hookPost = f
 }
 
 // Generic is a general purpose prefererences type, useful for values that
@@ -322,12 +402,22 @@ func (p *Float) RegisterCallback(f func(value Value) error) {
 // function. It is also slower than other prefs types because it must protect
 // potential critical sections with a mutex (other types can use an atomic
 // value).
+//
+// if get returns "" then the most recent value sent to set() will be used.
 type Generic struct {
 	pref
 	crit sync.Mutex
 	set  func(string) error
 	get  func() string
+
+	// the last value sent to set() function
+	mostRecentSetValue string
 }
+
+// GenericGetValueUndefined is a special return value for the get() function
+// (see NewGeneric()). It indicates that the value is currently unavailable and
+// the most recent previous value should be used.
+const GenericGetValueUndefined = "GenericGetValueUndefined"
 
 // NewGeneric is the preferred method of initialisation for the Generic type.
 func NewGeneric(set func(string) error, get func() string) *Generic {
@@ -338,16 +428,15 @@ func NewGeneric(set func(string) error, get func() string) *Generic {
 }
 
 func (p *Generic) String() string {
-	p.crit.Lock()
-	defer p.crit.Unlock()
-
-	return p.get()
+	return p.Get().(string)
 }
 
 // Set triggers the set value procedure for the generic type.
 func (p *Generic) Set(v Value) error {
 	p.crit.Lock()
 	defer p.crit.Unlock()
+
+	p.mostRecentSetValue = v.(string)
 
 	err := p.set(v.(string))
 	if err != nil {
@@ -362,7 +451,14 @@ func (p *Generic) Get() Value {
 	p.crit.Lock()
 	defer p.crit.Unlock()
 
-	return p.get()
+	s := p.get()
+	if s == GenericGetValueUndefined {
+		s = p.mostRecentSetValue
+	} else {
+		p.mostRecentSetValue = s
+	}
+
+	return s
 }
 
 // Reset sets the generic value to the empty string.

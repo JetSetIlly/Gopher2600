@@ -74,7 +74,7 @@ func newPreferences(r *Rewind) (*Preferences, error) {
 		return nil, err
 	}
 
-	p.MaxEntries.RegisterCallback(func(_ prefs.Value) error {
+	p.MaxEntries.SetHookPost(func(_ prefs.Value) error {
 		r.allocate()
 		return nil
 	})
