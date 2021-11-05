@@ -314,6 +314,8 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 					img.glsl.shaders[playscrShaderID].(*playscrShader).scheduleScreenshot(modeSingle)
 				}
 
+				img.playScr.emulationEvent.set(emulation.EventScreenshot)
+
 			case sdl.SCANCODE_F14:
 				fallthrough
 			case sdl.SCANCODE_SCROLLLOCK:

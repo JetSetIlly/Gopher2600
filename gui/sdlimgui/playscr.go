@@ -78,6 +78,7 @@ func newPlayScr(img *SdlImgui) *playScr {
 		fpsPulse:        time.NewTicker(time.Second),
 		fps:             "waiting",
 		peripheralRight: peripheralNotification{rightAlign: true},
+		emulationEvent:  emulationEventNotification{emulation: img.emulation},
 	}
 
 	// set texture, creation of textures will be done after every call to resize()

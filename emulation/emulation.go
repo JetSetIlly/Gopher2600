@@ -95,4 +95,5 @@ const (
 	EventRewindFoward
 	EventRewindAtStart
 	EventRewindAtEnd
+	EventScreenshot
 )

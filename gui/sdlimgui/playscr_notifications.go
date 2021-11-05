@@ -106,6 +106,7 @@ func (pn *peripheralNotification) draw(win *playScr) {
 // emulationEventNotification is used to draw an indicator on the screen for
 // events defined in the emulation package.
 type emulationEventNotification struct {
+	emulation    emulation.Emulation
 	open         bool
 	currentEvent emulation.Event
 	frames       int
@@ -125,14 +126,8 @@ func (ee *emulationEventNotification) tick() {
 	ee.frames--
 
 	if ee.frames == 0 {
-		switch ee.currentEvent {
-		case emulation.EventRewindBack:
-			ee.currentEvent = emulation.EventPause
-		case emulation.EventRewindFoward:
-			ee.currentEvent = emulation.EventPause
-		case emulation.EventRewindAtStart:
-			ee.currentEvent = emulation.EventPause
-		case emulation.EventRewindAtEnd:
+		// if emulation is paused then force the current event to EventPause
+		if ee.emulation.State() == emulation.Paused {
 			ee.currentEvent = emulation.EventPause
 		}
 
@@ -171,6 +166,8 @@ func (ee *emulationEventNotification) draw(win *playScr) {
 		imgui.Text(string(fonts.EmulationRewindAtStart))
 	case emulation.EventRewindAtEnd:
 		imgui.Text(string(fonts.EmulationRewindAtEnd))
+	case emulation.EventScreenshot:
+		imgui.Text(string(fonts.Camera))
 	}
 	imgui.PopFont()
 
