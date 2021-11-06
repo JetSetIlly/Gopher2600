@@ -59,6 +59,15 @@ func (dbg *Debugger) playmodeRewind(amount int) {
 	coords := dbg.vcs.TV.GetCoords()
 	tl := dbg.Rewind.GetTimeline()
 
+	// adjust amount by current rewindAccumulation value (see CatchUpLoop()
+	// function)
+	if amount < 0 {
+		amount -= dbg.rewindAccumulation
+	} else {
+		amount += dbg.rewindAccumulation
+	}
+	dbg.rewindAccumulation = 0
+
 	if amount < 0 && coords.Frame-1 <= tl.AvailableStart {
 		dbg.setState(emulation.Paused)
 		return

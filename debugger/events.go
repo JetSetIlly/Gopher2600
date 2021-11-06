@@ -29,7 +29,7 @@ func (dbg *Debugger) userInputHandler(ev userinput.Event) error {
 
 		switch ev := ev.(type) {
 		case userinput.EventMouseWheel:
-			dbg.playmodeRewind(int(ev.Delta) * 2)
+			dbg.playmodeRewind(int(ev.Delta))
 			handled = true
 
 		case userinput.EventKeyboard:
@@ -37,12 +37,12 @@ func (dbg *Debugger) userInputHandler(ev userinput.Event) error {
 				switch ev.Key {
 				case "Left":
 					if ev.Mod == userinput.KeyModShift {
-						dbg.playmodeRewind(-2)
+						dbg.playmodeRewind(-1)
 						handled = true
 					}
 				case "Right":
 					if ev.Mod == userinput.KeyModShift {
-						dbg.playmodeRewind(2)
+						dbg.playmodeRewind(1)
 						handled = true
 					}
 				}
@@ -57,16 +57,24 @@ func (dbg *Debugger) userInputHandler(ev userinput.Event) error {
 		}
 	}
 
-	quit, err := dbg.controllers.HandleUserInput(ev, dbg.vcs.RIOT.Ports)
+	err := dbg.controllers.HandleUserInput(ev, dbg.vcs.RIOT.Ports)
 	if err != nil {
 		return curated.Errorf("debugger: %v", err)
 	}
 
 	// on quit set running to false and return a UserInterrupt to make sure we
 	// loop and check the dbg.running flag as soon as possible.
-	if quit {
+	if dbg.controllers.Quit {
 		dbg.running = false
 		return curated.Errorf(terminal.UserInterrupt)
+	}
+
+	// the user input was something that controls the emulation (eg. a joystick
+	// direction). unpause if the emulation is currently paused
+	//
+	// * we're only allowing this for playmode
+	if dbg.mode == emulation.ModePlay && dbg.State() == emulation.Paused && dbg.controllers.HandledByController {
+		dbg.SetFeature(emulation.ReqSetPause, false)
 	}
 
 	return nil

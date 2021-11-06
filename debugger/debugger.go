@@ -121,9 +121,13 @@ type Debugger struct {
 	// record user input to a script file
 	scriptScribe script.Scribe
 
-	// the Rewind system stores and restores machine state.
+	// the Rewind system stores and restores machine state
 	Rewind     *rewind.Rewind
 	deepPoking chan bool
+
+	// the number of rewind request events dropped while rewind is active (see
+	// CatchUpLoop() function)
+	rewindAccumulation int
 
 	// audio tracker stores audio state over time
 	Tracker *tracker.Tracker

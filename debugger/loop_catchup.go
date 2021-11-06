@@ -36,6 +36,8 @@ func (dbg *Debugger) CatchUpLoop(tgt coords.TelevisionCoords, callback rewind.Ca
 			// this prevents the rewind from feeling laggy
 			select {
 			case _ = <-dbg.events.UserInput:
+				// assume all dropped events relate to rewind requests
+				dbg.rewindAccumulation++
 			default:
 			}
 
