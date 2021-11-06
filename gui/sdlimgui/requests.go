@@ -91,12 +91,8 @@ func (img *SdlImgui) serviceSetFeature(request featureRequest) {
 		}
 
 	case gui.ReqControllerChange:
-		if img.emulation.State() == emulation.Initialising {
-			break
-		}
-
 		if img.isPlaymode() {
-			err = argLen(request.args, 1)
+			err = argLen(request.args, 2)
 			if err == nil {
 				port := request.args[0].(plugging.PortID)
 				switch port {

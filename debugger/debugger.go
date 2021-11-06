@@ -303,6 +303,9 @@ func NewDebugger(create CreateUserInterface, mode emulation.Mode, spec string, u
 	dbg.Tracker = tracker.NewTracker(dbg)
 	dbg.vcs.TIA.Audio.SetTracker(dbg.Tracker)
 
+	// add plug monitor
+	dbg.vcs.RIOT.Ports.AttachPlugMonitor(dbg)
+
 	// set mode to the value requested in the function paramenters
 	err = dbg.setMode(mode)
 	if err != nil {
@@ -801,4 +804,9 @@ func (dbg *Debugger) parseInput(input string, interactive bool, auto bool) error
 	}
 
 	return nil
+}
+
+// Plugged implements the plugging.PlugMonitor interface.
+func (dbg *Debugger) Plugged(port plugging.PortID, peripheral plugging.PeripheralID) {
+	dbg.gui.SetFeature(gui.ReqControllerChange, port, peripheral)
 }
