@@ -294,7 +294,7 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 			case sdl.SCANCODE_F7:
 				img.playScr.fpsOpen = !img.playScr.fpsOpen
 
-			case sdl.SCANCODE_F8:
+			case sdl.SCANCODE_F10:
 				w := img.wm.windows[winPrefsID]
 				w.setOpen(!w.isOpen())
 
@@ -340,6 +340,10 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 			switch ev.Keysym.Scancode {
 			case sdl.SCANCODE_GRAVE:
 				img.emulation.SetFeature(emulation.ReqSetMode, emulation.ModePlay)
+
+			case sdl.SCANCODE_F10:
+				w := img.wm.windows[winPrefsID]
+				w.setOpen(!w.isOpen())
 
 			case sdl.SCANCODE_F11:
 				img.prefs.fullScreen.Set(!img.prefs.fullScreen.Get().(bool))
