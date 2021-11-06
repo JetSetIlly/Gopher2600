@@ -232,9 +232,14 @@ func (img *SdlImgui) end() {
 
 // draw gui. called from service loop.
 func (img *SdlImgui) draw() {
+	if img.emulation.State() == emulation.EmulatorStart {
+		return
+	}
+
 	if img.mode == emulation.ModePlay {
 		img.playScr.draw()
 	}
+
 	img.wm.draw()
 	img.drawPlusROMFirstInstallation()
 }

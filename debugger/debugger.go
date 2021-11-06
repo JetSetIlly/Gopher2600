@@ -208,7 +208,8 @@ func NewDebugger(create CreateUserInterface, mode emulation.Mode, spec string, u
 		eventCheckPulse: time.NewTicker(50 * time.Millisecond),
 	}
 
-	dbg.state.Store(emulation.Initialising)
+	// emulator is starting
+	dbg.state.Store(emulation.EmulatorStart)
 
 	// creat a new television. this will be used during the initialisation of
 	// the VCS and not referred to directly again
@@ -369,7 +370,7 @@ func (dbg *Debugger) setStateQuiet(state emulation.State, quiet bool) {
 		case emulation.Paused:
 			dbg.gui.SetFeature(gui.ReqEmulationEvent, emulation.EventPause)
 		case emulation.Running:
-			if prevState != emulation.Initialising {
+			if prevState > emulation.Initialising {
 				dbg.gui.SetFeature(gui.ReqEmulationEvent, emulation.EventRun)
 			}
 		}

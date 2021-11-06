@@ -73,12 +73,22 @@ const (
 type State int
 
 // List of possible emulation states.
+//
+// EmulatorStart is the default state and should never be entered once the
+// emulator has begun.
+//
+// Initialising can be used when reinitialising the emulator. for example, when
+// a new cartridge is being inserted.
+//
+// Values are ordered so that order comparisons are meaningful. For example,
+// Running is "greater than" Stepping, Paused, etc.
 const (
-	Initialising State = iota
-	Running
+	EmulatorStart State = iota
+	Initialising
 	Paused
 	Stepping
 	Rewinding
+	Running
 	Ending
 )
 
