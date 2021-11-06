@@ -400,12 +400,14 @@ func (dbg *Debugger) setMode(mode emulation.Mode) error {
 		dbg.vcs.TV.AddFrameTrigger(dbg.Rewind)
 		dbg.setState(emulation.Running)
 	case emulation.ModeDebugger:
-		// frame triggers. deliberately adding rewind before reflection because the
-		// latter implements rewind.TimelineCounter. we want to reset
-		// TimelineCounts in reflection.Gatherer  but we need to call
-		// TimelineCounts() from the rewind packge before that happens
-		dbg.vcs.TV.AddFrameTrigger(dbg.ref)
+		// frame triggers.
+		//
+		// deliberately adding rewind before reflection because the latter
+		// implements rewind.TimelineCounter. we want to reset TimelineCounts
+		// in reflection.Gatherer but we need to call TimelineCounts() from the
+		// rewind packge before that happens
 		dbg.vcs.TV.AddFrameTrigger(dbg.Rewind)
+		dbg.vcs.TV.AddFrameTrigger(dbg.ref)
 		dbg.setState(emulation.Paused)
 
 		// debugger needs knowledge about previous frames (via the reflector)
