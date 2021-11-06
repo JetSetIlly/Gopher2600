@@ -113,6 +113,7 @@ func (win *winTimeline) drawTimeline() {
 	// the width that can be seen in the window at any one time
 	availableWidth := win.img.plt.displaySize()[0] * 0.80
 
+	// trace group
 	imgui.BeginGroup()
 
 	// traceOffset adjusts the placement of the traces in the window
@@ -157,7 +158,7 @@ func (win *winTimeline) drawTimeline() {
 			imgui.Vec2{X: x + traceWidth, Y: y + traceHeight},
 			win.img.cols.timelineScanlines)
 
-		// WSYNC
+		// plot WSYNC from the bottom
 		y = pos.Y + traceSize.Y
 		y -= float32(timeline.Counts[i].WSYNC) * traceSize.Y / specification.AbsoluteMaxClks
 
@@ -176,6 +177,7 @@ func (win *winTimeline) drawTimeline() {
 
 		// CoProc
 		if win.img.lz.CoProc.HasCoProcBus {
+			// plot coprocessor from the top
 			y = pos.Y
 			y += float32(timeline.Counts[i].CoProc) * traceSize.Y / specification.AbsoluteMaxClks
 
@@ -257,15 +259,17 @@ func (win *winTimeline) drawTimeline() {
 
 	imgui.EndGroup()
 
-	// rewind "slider" is attached to scanline trace
-	if imgui.IsMouseDown(0) && (imgui.IsItemHoveredV(imgui.HoveredFlagsAllowWhenOverlapped) || win.rewindingActive) {
-		win.rewindingActive = true
-		x := imgui.MousePos().X
-		x -= pos.X
-		fr := int(x/traceWidth) + rewindOffset
+	// hover information for the trace ground
+	hovered := imgui.IsItemHoveredV(imgui.HoveredFlagsAllowWhenOverlapped)
+	hoverX := imgui.MousePos().X - pos.X
 
+	// rewind "slider" is attached to scanline trace
+	if imgui.IsMouseDown(0) && (hovered || win.rewindingActive) {
 		s := win.img.lz.Rewind.Timeline.AvailableStart
 		e := win.img.lz.Rewind.Timeline.AvailableEnd
+
+		fr := int(hoverX/traceWidth) + rewindOffset
+		win.rewindingActive = true
 
 		// making sure we only call PushRewind() when we need to. also,
 		// allowing mouse to travel beyond the rewind boundaries (and without
@@ -281,8 +285,38 @@ func (win *winTimeline) drawTimeline() {
 		} else if fr != win.img.lz.TV.Coords.Frame {
 			win.img.dbg.PushRewind(fr, fr == e)
 		}
-
 	} else {
 		win.rewindingActive = false
+
+		if hovered && len(win.img.lz.Rewind.Timeline.FrameNum) > 0 {
+			fr := int(hoverX/traceWidth) + traceOffset
+			s := win.img.lz.Rewind.Timeline.FrameNum[0]
+			e := win.img.lz.Rewind.Timeline.FrameNum[len(win.img.lz.Rewind.Timeline.FrameNum)-1]
+
+			if fr >= s && fr <= e {
+				imgui.BeginTooltip()
+				imgui.Text(fmt.Sprintf("Frame: %d", fr))
+				if fr >= s && fr <= e {
+					// adjust text color slightly - the colors we use for the
+					// plots are too dark
+					textColAdj := imgui.Vec4{0.2, 0.2, 0.2, 0.0}
+
+					imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.TimelineScanlines.Plus(textColAdj))
+					imgui.Text(fmt.Sprintf("Scanlines: %d", win.img.lz.Rewind.Timeline.TotalScanlines[fr]))
+					imgui.PopStyleColor()
+
+					imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.TimelineWSYNC.Plus(textColAdj))
+					imgui.Text(fmt.Sprintf("WSYNC %%: %.01f%%", win.img.lz.Rewind.Timeline.Ratios[fr].WSYNC*100))
+					imgui.PopStyleColor()
+
+					if win.img.lz.CoProc.HasCoProcBus {
+						imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.TimelineCoProc.Plus(textColAdj))
+						imgui.Text(fmt.Sprintf("%s %%: %.01f%%", win.img.lz.CoProc.ID, win.img.lz.Rewind.Timeline.Ratios[fr].CoProc*100))
+						imgui.PopStyleColor()
+					}
+				}
+				imgui.EndTooltip()
+			}
+		}
 	}
 }

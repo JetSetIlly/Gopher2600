@@ -19,6 +19,7 @@ import (
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/emulation"
 	"github.com/jetsetilly/gopher2600/hardware/television"
+	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 )
 
 // TimelineCounts is returned by a TimelineCounter implementation. The value
@@ -38,6 +39,11 @@ type TimelineCounter interface {
 	TimelineCounts() TimelineCounts
 }
 
+type TimelineRatios struct {
+	WSYNC  float32
+	CoProc float32
+}
+
 func (r *Rewind) addTimelineEntry(frameInfo television.FrameInfo) {
 	// do not alter the timeline information if we're in the rewinding state
 	if r.emulation.State() == emulation.Rewinding {
@@ -55,14 +61,24 @@ func (r *Rewind) addTimelineEntry(frameInfo television.FrameInfo) {
 	r.timeline.LeftPlayerInput = append(r.timeline.LeftPlayerInput, r.vcs.RIOT.Ports.LeftPlayer.IsActive())
 	r.timeline.RightPlayerInput = append(r.timeline.RightPlayerInput, r.vcs.RIOT.Ports.RightPlayer.IsActive())
 	r.timeline.PanelInput = append(r.timeline.PanelInput, r.vcs.RIOT.Ports.Panel.IsActive())
+
+	// ratios
+	b := float32(frameInfo.TotalScanlines * specification.ClksScanline)
+	r.timeline.Ratios = append(r.timeline.Ratios, TimelineRatios{
+		WSYNC:  float32(cts.WSYNC) / b,
+		CoProc: float32(cts.CoProc) / b,
+	})
+
 	if len(r.timeline.FrameNum) > timelineLength {
 		r.timeline.FrameNum = r.timeline.FrameNum[1:]
 		r.timeline.TotalScanlines = r.timeline.TotalScanlines[1:]
 		r.timeline.Counts = r.timeline.Counts[1:]
+		r.timeline.Ratios = r.timeline.Ratios[1:]
 		r.timeline.LeftPlayerInput = r.timeline.LeftPlayerInput[1:]
 		r.timeline.RightPlayerInput = r.timeline.RightPlayerInput[1:]
 		r.timeline.PanelInput = r.timeline.PanelInput[1:]
 	}
+
 }
 
 // Timeline provides a summary of the current state of the rewind system.
@@ -73,6 +89,7 @@ type Timeline struct {
 	FrameNum         []int
 	TotalScanlines   []int
 	Counts           []TimelineCounts
+	Ratios           []TimelineRatios
 	LeftPlayerInput  []bool
 	RightPlayerInput []bool
 	PanelInput       []bool
