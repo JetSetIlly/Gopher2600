@@ -171,7 +171,7 @@ func (vcs *VCS) Reset() error {
 
 	// reset of ports must happen after reset of memory because ports will
 	// update memory to the current state of the peripherals
-	vcs.RIOT.Ports.Reset()
+	vcs.RIOT.Ports.ResetPeripherals()
 
 	// reset PC using reset address in cartridge memory
 	err = vcs.CPU.LoadPCIndirect(addresses.Reset)

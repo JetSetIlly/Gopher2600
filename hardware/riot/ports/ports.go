@@ -99,7 +99,9 @@ func (p *Ports) Snapshot() *Ports {
 	return &n
 }
 
-// Plumb new ChipBusses into the Ports sub-system.
+// Plumb new ChipBusses into the Ports sub-system. Depending on context it
+// might be advidable for ResetPeripherals() to be called after plumbing has
+// succeeded.
 func (p *Ports) Plumb(riotMem bus.ChipBus, tiaMem bus.ChipBus) {
 	p.riot = riotMem
 	p.tia = tiaMem
@@ -151,8 +153,8 @@ func (p *Ports) String() string {
 	return s.String()
 }
 
-// Reset peripherals to an initial state.
-func (p *Ports) Reset() {
+// ResetPeripherals to an initial state.
+func (p *Ports) ResetPeripherals() {
 	if p.LeftPlayer != nil {
 		p.LeftPlayer.Reset()
 	}

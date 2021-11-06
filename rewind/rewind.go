@@ -428,6 +428,11 @@ func plumb(vcs *hardware.VCS, state *State) {
 	vcs.Mem.Plumb()
 	vcs.RIOT.Plumb(vcs.Mem.RIOT, vcs.Mem.TIA)
 	vcs.TIA.Plumb(vcs.TV, vcs.Mem.TIA, vcs.RIOT.Ports, vcs.CPU)
+
+	// reset peripherals after new state has been plumbed. without this,
+	// controllers can feel odd if the newly plumbed state has left RIOT memory
+	// in a latched state
+	vcs.RIOT.Ports.ResetPeripherals()
 }
 
 // plumb in state supplied as the argument. catch-up loop will halt as soon as
