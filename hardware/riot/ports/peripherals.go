@@ -37,7 +37,7 @@ type Peripheral interface {
 	ID() plugging.PeripheralID
 
 	// handle an incoming input event
-	HandleEvent(Event, EventData) error
+	HandleEvent(Event, EventData) (bool, error)
 
 	// memory has been updated. peripherals are notified.
 	Update(bus.ChipData) bool

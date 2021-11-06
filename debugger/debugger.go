@@ -352,12 +352,21 @@ func (dbg *Debugger) State() emulation.State {
 	return dbg.state.Load().(emulation.State)
 }
 
+// set the emulation state
+//
+// * if the state is the Paused or Running state consider using
+// debugger.SetFeature(ReqSetPause) even from within the debugger package
+// (SetFeature() puts the request on the RawEvent Queue meaning it will be
+// inserted in the input loop correctly)
 func (dbg *Debugger) setState(state emulation.State) {
 	dbg.setStateQuiet(state, false)
 }
 
 // same as setState but with quiet argument, to indicate that EmulationEvent
 // should not be issued to the gui.
+//
+// * see setState() comment, although debugger.SetFeature(ReqSetPause) will
+// always be "noisy"
 func (dbg *Debugger) setStateQuiet(state emulation.State, quiet bool) {
 	dbg.vcs.TV.SetEmulationState(state)
 	dbg.ref.SetEmulationState(state)
@@ -377,6 +386,11 @@ func (dbg *Debugger) setStateQuiet(state emulation.State, quiet bool) {
 	}
 }
 
+// set the emulation mode
+//
+// * consider using debugger.SetFeature(ReqSetMode) even from within the
+// debugger package (SetFeature() puts the request on the RawEvent Queue
+// meaning it will be inserted in the input loop correctly)
 func (dbg *Debugger) setMode(mode emulation.Mode) error {
 	if mode == dbg.mode {
 		return nil

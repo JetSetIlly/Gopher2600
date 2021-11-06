@@ -78,10 +78,10 @@ func (key *Keypad) ID() plugging.PeripheralID {
 }
 
 // HandleEvent implements the ports.Peripheral interface.
-func (key *Keypad) HandleEvent(event ports.Event, data ports.EventData) error {
+func (key *Keypad) HandleEvent(event ports.Event, data ports.EventData) (bool, error) {
 	switch event {
 	case ports.NoEvent:
-		return nil
+		return false, nil
 
 	case ports.KeypadDown:
 		var k rune
@@ -92,19 +92,19 @@ func (key *Keypad) HandleEvent(event ports.Event, data ports.EventData) error {
 		case ports.EventDataPlayback:
 			n, err := strconv.ParseInt(string(d), 10, 64)
 			if err != nil {
-				return curated.Errorf("keypad: %v: unexpected event data", event)
+				return false, curated.Errorf("keypad: %v: unexpected event data", event)
 			}
 			k = rune(n)
 
 		default:
-			return curated.Errorf("keypad: %v: unexpected event data", event)
+			return false, curated.Errorf("keypad: %v: unexpected event data", event)
 		}
 
 		if k != '1' && k != '2' && k != '3' &&
 			k != '4' && k != '5' && k != '6' &&
 			k != '7' && k != '8' && k != '9' &&
 			k != '*' && k != '0' && k != '#' {
-			return curated.Errorf("keypad: unrecognised rune (%v)", k)
+			return false, curated.Errorf("keypad: unrecognised rune (%v)", k)
 		}
 
 		// note key for use by readKeyboard()
@@ -116,17 +116,16 @@ func (key *Keypad) HandleEvent(event ports.Event, data ports.EventData) error {
 			// expected data
 		case ports.EventDataPlayback:
 			if len(string(d)) > 0 {
-				return curated.Errorf("keypad: %v: unexpected event data", event)
+				return false, curated.Errorf("keypad: %v: unexpected event data", event)
 			}
 		}
 		key.key = noKey
 
 	default:
-		// silently ignore unhandled event
-		return nil
+		return false, nil
 	}
 
-	return nil
+	return true, nil
 }
 
 // Update implements the ports.Peripheral interface.

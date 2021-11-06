@@ -127,7 +127,7 @@ func (aut *Auto) ID() plugging.PeripheralID {
 }
 
 // HandleEvent implements the ports.Peripheral interface.
-func (aut *Auto) HandleEvent(event ports.Event, data ports.EventData) error {
+func (aut *Auto) HandleEvent(event ports.Event, data ports.EventData) (bool, error) {
 	// no autoswitching if keypad is detected
 	if _, ok := aut.controller.(*Keypad); !ok {
 		switch event {
@@ -150,9 +150,7 @@ func (aut *Auto) HandleEvent(event ports.Event, data ports.EventData) error {
 		}
 	}
 
-	err := aut.controller.HandleEvent(event, data)
-
-	return err
+	return aut.controller.HandleEvent(event, data)
 }
 
 // Update implements the ports.Peripheral interface.

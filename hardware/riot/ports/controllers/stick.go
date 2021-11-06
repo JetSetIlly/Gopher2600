@@ -91,10 +91,10 @@ func (stk *Stick) ID() plugging.PeripheralID {
 }
 
 // HandleEvent implements the ports.Peripheral interface.
-func (stk *Stick) HandleEvent(event ports.Event, data ports.EventData) error {
+func (stk *Stick) HandleEvent(event ports.Event, data ports.EventData) (bool, error) {
 	switch event {
 	case ports.NoEvent:
-		return nil
+		return false, nil
 
 	case ports.Fire:
 		switch d := data.(type) {
@@ -108,7 +108,7 @@ func (stk *Stick) HandleEvent(event ports.Event, data ports.EventData) error {
 		case ports.EventDataPlayback:
 			b, err := strconv.ParseBool(string(d))
 			if err != nil {
-				return curated.Errorf("stick: %v: unexpected event data", event)
+				return false, curated.Errorf("stick: %v: unexpected event data", event)
 			}
 			if b {
 				stk.button = stickFire
@@ -116,10 +116,10 @@ func (stk *Stick) HandleEvent(event ports.Event, data ports.EventData) error {
 				stk.button = stickNoFire
 			}
 		default:
-			return curated.Errorf("stick: %v: unexpected event data", event)
+			return false, curated.Errorf("stick: %v: unexpected event data", event)
 		}
 		stk.bus.WriteINPTx(stk.inptx, stk.button)
-		return nil
+		return true, nil
 
 	case ports.Centre:
 		switch d := data.(type) {
@@ -127,14 +127,14 @@ func (stk *Stick) HandleEvent(event ports.Event, data ports.EventData) error {
 			// ideal path
 		case ports.EventDataPlayback:
 			if len(d) > 0 {
-				return curated.Errorf("stick: %v: unexpected event data", event)
+				return false, curated.Errorf("stick: %v: unexpected event data", event)
 			}
 		default:
-			return curated.Errorf("stick: %v: unexpected event data", event)
+			return false, curated.Errorf("stick: %v: unexpected event data", event)
 		}
 		stk.axis = axisCenter
 		stk.bus.WriteSWCHx(stk.port, stk.axis)
-		return nil
+		return true, nil
 	}
 
 	var axis uint8
@@ -157,8 +157,7 @@ func (stk *Stick) HandleEvent(event ports.Event, data ports.EventData) error {
 	case ports.RightDown:
 		axis = axisRight | axisDown
 	default:
-		// silently ignore unhandled event
-		return nil
+		return false, nil
 	}
 
 	var e ports.EventDataStick
@@ -170,7 +169,7 @@ func (stk *Stick) HandleEvent(event ports.Event, data ports.EventData) error {
 	case ports.EventDataPlayback:
 		e = ports.EventDataStick(d)
 	default:
-		return curated.Errorf("stick: %v: unexpected event data", event)
+		return false, curated.Errorf("stick: %v: unexpected event data", event)
 	}
 
 	// set/unset bits according to the event data
@@ -182,13 +181,13 @@ func (stk *Stick) HandleEvent(event ports.Event, data ports.EventData) error {
 		stk.axis = axisCenter
 		stk.axis ^= axis
 	} else {
-		return curated.Errorf("stick: %v: unexpected event data (%v)", event, e)
+		return false, curated.Errorf("stick: %v: unexpected event data (%v)", event, e)
 	}
 
 	// update register
 	stk.bus.WriteSWCHx(stk.port, stk.axis)
 
-	return nil
+	return true, nil
 }
 
 // Update implements the ports.Peripheral interface.

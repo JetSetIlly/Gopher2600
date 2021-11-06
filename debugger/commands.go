@@ -1318,43 +1318,43 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 			arg, _ := tokens.Get()
 			switch strings.ToUpper(arg) {
 			case "P0":
-				err = dbg.vcs.RIOT.Ports.HandleEvent(plugging.PortPanel, ports.PanelTogglePlayer0Pro, nil)
+				_, err = dbg.vcs.RIOT.Ports.HandleEvent(plugging.PortPanel, ports.PanelTogglePlayer0Pro, nil)
 			case "P1":
-				err = dbg.vcs.RIOT.Ports.HandleEvent(plugging.PortPanel, ports.PanelTogglePlayer1Pro, nil)
+				_, err = dbg.vcs.RIOT.Ports.HandleEvent(plugging.PortPanel, ports.PanelTogglePlayer1Pro, nil)
 			case "COL":
-				err = dbg.vcs.RIOT.Ports.HandleEvent(plugging.PortPanel, ports.PanelToggleColor, nil)
+				_, err = dbg.vcs.RIOT.Ports.HandleEvent(plugging.PortPanel, ports.PanelToggleColor, nil)
 			}
 		case "SET":
 			arg, _ := tokens.Get()
 			switch strings.ToUpper(arg) {
 			case "P0PRO":
-				err = dbg.vcs.RIOT.Ports.HandleEvent(plugging.PortPanel, ports.PanelSetPlayer0Pro, true)
+				_, err = dbg.vcs.RIOT.Ports.HandleEvent(plugging.PortPanel, ports.PanelSetPlayer0Pro, true)
 			case "P1PRO":
-				err = dbg.vcs.RIOT.Ports.HandleEvent(plugging.PortPanel, ports.PanelSetPlayer1Pro, true)
+				_, err = dbg.vcs.RIOT.Ports.HandleEvent(plugging.PortPanel, ports.PanelSetPlayer1Pro, true)
 			case "P0AM":
-				err = dbg.vcs.RIOT.Ports.HandleEvent(plugging.PortPanel, ports.PanelSetPlayer0Pro, false)
+				_, err = dbg.vcs.RIOT.Ports.HandleEvent(plugging.PortPanel, ports.PanelSetPlayer0Pro, false)
 			case "P1AM":
-				err = dbg.vcs.RIOT.Ports.HandleEvent(plugging.PortPanel, ports.PanelSetPlayer1Pro, false)
+				_, err = dbg.vcs.RIOT.Ports.HandleEvent(plugging.PortPanel, ports.PanelSetPlayer1Pro, false)
 			case "COL":
-				err = dbg.vcs.RIOT.Ports.HandleEvent(plugging.PortPanel, ports.PanelSetColor, true)
+				_, err = dbg.vcs.RIOT.Ports.HandleEvent(plugging.PortPanel, ports.PanelSetColor, true)
 			case "BW":
-				err = dbg.vcs.RIOT.Ports.HandleEvent(plugging.PortPanel, ports.PanelSetColor, false)
+				_, err = dbg.vcs.RIOT.Ports.HandleEvent(plugging.PortPanel, ports.PanelSetColor, false)
 			}
 		case "HOLD":
 			arg, _ := tokens.Get()
 			switch strings.ToUpper(arg) {
 			case "SELECT":
-				err = dbg.vcs.RIOT.Ports.HandleEvent(plugging.PortPanel, ports.PanelSelect, true)
+				_, err = dbg.vcs.RIOT.Ports.HandleEvent(plugging.PortPanel, ports.PanelSelect, true)
 			case "RESET":
-				err = dbg.vcs.RIOT.Ports.HandleEvent(plugging.PortPanel, ports.PanelReset, true)
+				_, err = dbg.vcs.RIOT.Ports.HandleEvent(plugging.PortPanel, ports.PanelReset, true)
 			}
 		case "RELEASE":
 			arg, _ := tokens.Get()
 			switch strings.ToUpper(arg) {
 			case "SELECT":
-				err = dbg.vcs.RIOT.Ports.HandleEvent(plugging.PortPanel, ports.PanelSelect, false)
+				_, err = dbg.vcs.RIOT.Ports.HandleEvent(plugging.PortPanel, ports.PanelSelect, false)
 			case "RESET":
-				err = dbg.vcs.RIOT.Ports.HandleEvent(plugging.PortPanel, ports.PanelReset, false)
+				_, err = dbg.vcs.RIOT.Ports.HandleEvent(plugging.PortPanel, ports.PanelReset, false)
 			}
 		}
 
@@ -1410,9 +1410,9 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		n, _ := strconv.Atoi(stick)
 		switch n {
 		case 0:
-			err = dbg.vcs.RIOT.Ports.HandleEvent(plugging.PortLeftPlayer, event, value)
+			_, err = dbg.vcs.RIOT.Ports.HandleEvent(plugging.PortLeftPlayer, event, value)
 		case 1:
-			err = dbg.vcs.RIOT.Ports.HandleEvent(plugging.PortRightPlayer, event, value)
+			_, err = dbg.vcs.RIOT.Ports.HandleEvent(plugging.PortRightPlayer, event, value)
 		}
 
 		if err != nil {
@@ -1429,15 +1429,15 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		switch n {
 		case 0:
 			if strings.ToUpper(key) == "NONE" {
-				err = dbg.vcs.RIOT.Ports.HandleEvent(plugging.PortLeftPlayer, ports.KeypadUp, nil)
+				_, err = dbg.vcs.RIOT.Ports.HandleEvent(plugging.PortLeftPlayer, ports.KeypadUp, nil)
 			} else {
-				err = dbg.vcs.RIOT.Ports.HandleEvent(plugging.PortLeftPlayer, ports.KeypadDown, rune(key[0]))
+				_, err = dbg.vcs.RIOT.Ports.HandleEvent(plugging.PortLeftPlayer, ports.KeypadDown, rune(key[0]))
 			}
 		case 1:
 			if strings.ToUpper(key) == "NONE" {
-				err = dbg.vcs.RIOT.Ports.HandleEvent(plugging.PortRightPlayer, ports.KeypadUp, nil)
+				_, err = dbg.vcs.RIOT.Ports.HandleEvent(plugging.PortRightPlayer, ports.KeypadUp, nil)
 			} else {
-				err = dbg.vcs.RIOT.Ports.HandleEvent(plugging.PortRightPlayer, ports.KeypadDown, rune(key[0]))
+				_, err = dbg.vcs.RIOT.Ports.HandleEvent(plugging.PortRightPlayer, ports.KeypadDown, rune(key[0]))
 			}
 		}
 

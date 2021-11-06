@@ -23,14 +23,20 @@ import (
 )
 
 func (dbg *Debugger) userInputHandler(ev userinput.Event) error {
+	// quite event
+	switch ev.(type) {
+	case userinput.EventQuit:
+		dbg.running = false
+		return curated.Errorf(terminal.UserInterrupt)
+	}
+
+	// mode specific special input (not passed to the VCS as controller input)
 	switch dbg.mode {
 	case emulation.ModePlay:
-		handled := false
-
 		switch ev := ev.(type) {
 		case userinput.EventMouseWheel:
 			dbg.playmodeRewind(int(ev.Delta))
-			handled = true
+			return nil
 
 		case userinput.EventKeyboard:
 			if ev.Down {
@@ -38,42 +44,63 @@ func (dbg *Debugger) userInputHandler(ev userinput.Event) error {
 				case "Left":
 					if ev.Mod == userinput.KeyModShift {
 						dbg.playmodeRewind(-1)
-						handled = true
 					}
 				case "Right":
 					if ev.Mod == userinput.KeyModShift {
 						dbg.playmodeRewind(1)
-						handled = true
 					}
 				}
 			} else if ev.Mod != userinput.KeyModNone {
-				handled = true
+				return nil
+			}
+		case userinput.EventGamepadButton:
+			if ev.Down {
+				switch ev.Button {
+				case userinput.GamepadButtonBumperLeft:
+					dbg.playmodeRewind(-1)
+					return nil
+				case userinput.GamepadButtonBumperRight:
+					dbg.playmodeRewind(1)
+					return nil
+				}
 			}
 		}
+	}
 
-		// the user event has triggered a rewind so return immediately
-		if handled {
-			return nil
+	// applies to both playmode and debugger
+	switch ev := ev.(type) {
+	case userinput.EventGamepadButton:
+		if ev.Down {
+			switch ev.Button {
+			case userinput.GamepadButtonBack:
+				if dbg.State() != emulation.Paused {
+					dbg.SetFeature(emulation.ReqSetPause, true)
+				} else {
+					dbg.SetFeature(emulation.ReqSetPause, false)
+				}
+				return nil
+			case userinput.GamepadButtonGuide:
+				switch dbg.mode {
+				case emulation.ModePlay:
+					dbg.SetFeature(emulation.ReqSetMode, emulation.ModeDebugger)
+				case emulation.ModeDebugger:
+					dbg.SetFeature(emulation.ReqSetMode, emulation.ModePlay)
+				}
+			}
 		}
 	}
 
-	err := dbg.controllers.HandleUserInput(ev, dbg.vcs.RIOT.Ports)
+	// pass to VCS controller emulation via the userinput package
+	handled, err := dbg.controllers.HandleUserInput(ev, dbg.vcs.RIOT.Ports)
 	if err != nil {
 		return curated.Errorf("debugger: %v", err)
-	}
-
-	// on quit set running to false and return a UserInterrupt to make sure we
-	// loop and check the dbg.running flag as soon as possible.
-	if dbg.controllers.Quit {
-		dbg.running = false
-		return curated.Errorf(terminal.UserInterrupt)
 	}
 
 	// the user input was something that controls the emulation (eg. a joystick
 	// direction). unpause if the emulation is currently paused
 	//
 	// * we're only allowing this for playmode
-	if dbg.mode == emulation.ModePlay && dbg.State() == emulation.Paused && dbg.controllers.HandledByController {
+	if dbg.mode == emulation.ModePlay && dbg.State() == emulation.Paused && handled {
 		dbg.SetFeature(emulation.ReqSetPause, false)
 	}
 

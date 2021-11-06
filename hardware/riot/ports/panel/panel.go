@@ -147,7 +147,7 @@ func (pan *Panel) write() {
 }
 
 // HandleEvent implements Peripheral interface.
-func (pan *Panel) HandleEvent(event ports.Event, value ports.EventData) error {
+func (pan *Panel) HandleEvent(event ports.Event, value ports.EventData) (bool, error) {
 	var v bool
 	switch d := value.(type) {
 	case bool:
@@ -157,7 +157,7 @@ func (pan *Panel) HandleEvent(event ports.Event, value ports.EventData) error {
 			var err error
 			v, err = strconv.ParseBool(string(d))
 			if err != nil {
-				return curated.Errorf("panel: %v: unexpected event data", event)
+				return false, curated.Errorf("panel: %v: unexpected event data", event)
 			}
 		}
 	}
@@ -188,16 +188,15 @@ func (pan *Panel) HandleEvent(event ports.Event, value ports.EventData) error {
 		pan.p1pro = !pan.p1pro
 
 	case ports.PanelPowerOff:
-		return curated.Errorf(ports.PowerOff)
+		return false, curated.Errorf(ports.PowerOff)
 
 	default:
-		// silently ignore unhandled event
-		return nil
+		return false, nil
 	}
 
 	pan.write()
 
-	return nil
+	return true, nil
 }
 
 // Update implements the Peripheral interface.

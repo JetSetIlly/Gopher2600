@@ -104,10 +104,10 @@ func (pdl *Paddle) ID() plugging.PeripheralID {
 }
 
 // HandleEvent implements the ports.Peripheral interface.
-func (pdl *Paddle) HandleEvent(event ports.Event, data ports.EventData) error {
+func (pdl *Paddle) HandleEvent(event ports.Event, data ports.EventData) (bool, error) {
 	switch event {
 	case ports.NoEvent:
-		return nil
+		return false, nil
 
 	case ports.Fire:
 		switch d := data.(type) {
@@ -120,7 +120,7 @@ func (pdl *Paddle) HandleEvent(event ports.Event, data ports.EventData) error {
 		case ports.EventDataPlayback:
 			b, err := strconv.ParseBool(string(d))
 			if err != nil {
-				return curated.Errorf("paddle: %v: unexpected event data", event)
+				return false, curated.Errorf("paddle: %v: unexpected event data", event)
 			}
 			if b {
 				pdl.fire = paddleFire
@@ -128,7 +128,7 @@ func (pdl *Paddle) HandleEvent(event ports.Event, data ports.EventData) error {
 				pdl.fire = paddleNoFire
 			}
 		default:
-			return curated.Errorf("paddle: %v: unexpected event data", event)
+			return false, curated.Errorf("paddle: %v: unexpected event data", event)
 		}
 
 		pdl.bus.WriteSWCHx(pdl.port, pdl.fire)
@@ -142,22 +142,21 @@ func (pdl *Paddle) HandleEvent(event ports.Event, data ports.EventData) error {
 		case ports.EventDataPlayback:
 			f, err := strconv.ParseFloat(string(d), 32)
 			if err != nil {
-				return curated.Errorf("paddle: %v: unexpected event data", event)
+				return false, curated.Errorf("paddle: %v: unexpected event data", event)
 			}
 			r = float32(f)
 		default:
-			return curated.Errorf("paddle: %v: unexpected event data", event)
+			return false, curated.Errorf("paddle: %v: unexpected event data", event)
 		}
 
 		// reverse value so that we left and right are the correct way around (for a mouse)
 		pdl.resistance = 1.0 - r
 
 	default:
-		// silently ignore unhandled event
-		return nil
+		return false, nil
 	}
 
-	return nil
+	return true, nil
 }
 
 // Update implements the ports.Peripheral interface.

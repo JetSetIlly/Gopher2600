@@ -333,8 +333,8 @@ func (sk *SaveKey) Step() {
 }
 
 // HandleEvent implements the ports.Peripheral interface.
-func (sk *SaveKey) HandleEvent(_ ports.Event, _ ports.EventData) error {
-	return nil
+func (sk *SaveKey) HandleEvent(_ ports.Event, _ ports.EventData) (bool, error) {
+	return false, nil
 }
 
 // IsActive implements the ports.Peripheral interface.

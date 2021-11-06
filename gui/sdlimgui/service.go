@@ -131,10 +131,16 @@ func (img *SdlImgui) Service() {
 			switch ev.Button {
 			case 0:
 				button = userinput.GamepadButtonA
+			case 4:
+				button = userinput.GamepadButtonBumperLeft
+			case 5:
+				button = userinput.GamepadButtonBumperRight
 			case 6:
 				button = userinput.GamepadButtonBack
 			case 7:
 				button = userinput.GamepadButtonStart
+			case 8:
+				button = userinput.GamepadButtonGuide
 			}
 
 			if button != userinput.GamepadButtonNone {

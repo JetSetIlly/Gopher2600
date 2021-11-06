@@ -299,7 +299,7 @@ func (p *Ports) GetPlayback() error {
 
 		morePlayback = id != plugging.PortUnplugged && ev != NoEvent
 		if morePlayback {
-			err := p.HandleEvent(id, ev, v)
+			_, err := p.HandleEvent(id, ev, v)
 			if err != nil {
 				return err
 			}
@@ -310,29 +310,30 @@ func (p *Ports) GetPlayback() error {
 }
 
 // HandleEvent implements userinput.HandleInput interface.
-func (p *Ports) HandleEvent(id plugging.PortID, ev Event, d EventData) error {
+func (p *Ports) HandleEvent(id plugging.PortID, ev Event, d EventData) (bool, error) {
+	var handled bool
 	var err error
 
 	switch id {
 	case plugging.PortPanel:
-		err = p.Panel.HandleEvent(ev, d)
+		handled, err = p.Panel.HandleEvent(ev, d)
 	case plugging.PortLeftPlayer:
-		err = p.LeftPlayer.HandleEvent(ev, d)
+		handled, err = p.LeftPlayer.HandleEvent(ev, d)
 	case plugging.PortRightPlayer:
-		err = p.RightPlayer.HandleEvent(ev, d)
+		handled, err = p.RightPlayer.HandleEvent(ev, d)
 	}
 
 	// if error was because of an unhandled event then return without error
 	if err != nil {
-		return curated.Errorf("ports: %v", err)
+		return handled, curated.Errorf("ports: %v", err)
 	}
 
 	// record event with the EventRecorder
 	for _, r := range p.recorder {
-		return r.RecordEvent(id, ev, d)
+		return handled, r.RecordEvent(id, ev, d)
 	}
 
-	return nil
+	return handled, nil
 }
 
 // PeripheralID implements userinput.HandleInput interface.
