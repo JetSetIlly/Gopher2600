@@ -48,7 +48,11 @@ func (w watcher) String() string {
 	if w.ai.Read {
 		event = "read"
 	}
-	return fmt.Sprintf("%s %s%s", w.ai, event, val)
+	strict := ""
+	if w.strict {
+		strict = " (strict)"
+	}
+	return fmt.Sprintf("%s %s%s%s", w.ai, event, val, strict)
 }
 
 // the list of currently defined watches in the system.
@@ -56,6 +60,7 @@ type watches struct {
 	dbg                 *Debugger
 	watches             []watcher
 	lastAddressAccessed uint16
+	lastAddressWrite    bool
 }
 
 // newWatches is the preferred method of initialisation for the watches type.
@@ -95,50 +100,58 @@ func (wtc *watches) check() string {
 		return ""
 	}
 
+	// no check for phantom access
+	if wtc.dbg.vcs.CPU.PhantomMemAccess {
+		return ""
+	}
+
+	// no check if access address & write flag haven't changed
+	//
+	// note that the write flag comparison is required otherwise RMW
+	// instructions will not be caught on the write signal (which would mean
+	// that a WRITE watch will never match a RMW instruction)
+	if wtc.lastAddressAccessed == wtc.dbg.vcs.Mem.LastAccessAddress && wtc.lastAddressWrite == wtc.dbg.vcs.Mem.LastAccessWrite {
+		return ""
+	}
+
 	checkString := strings.Builder{}
 
-	for i := range wtc.watches {
-		// continue loop if we're not matching last address accessed
-		if wtc.watches[i].strict {
-			if wtc.watches[i].ai.Address != wtc.dbg.vcs.Mem.LastAccessAddress {
-				continue
-			}
+	for _, w := range wtc.watches {
+		var accessAddress uint16
+		var watchAddress uint16
+
+		// pick which addresses to comare depending on whether watch is strict
+		if w.strict {
+			accessAddress = wtc.dbg.vcs.Mem.LastAccessAddress
+			watchAddress = w.ai.Address
 		} else {
-			if wtc.watches[i].ai.MappedAddress != wtc.dbg.vcs.Mem.LastAccessAddressMapped {
-				continue
-			}
+			accessAddress = wtc.dbg.vcs.Mem.LastAccessAddressMapped
+			watchAddress = w.ai.MappedAddress
 		}
 
-		// continue if this is a repeat of the last address accessed
-		if wtc.lastAddressAccessed == wtc.dbg.vcs.Mem.LastAccessAddress {
+		// continue loop if we're not matching last address accessed
+		if watchAddress != accessAddress {
 			continue
 		}
 
-		// match watch event to the type of memory access
-		if (!wtc.watches[i].ai.Read && wtc.dbg.vcs.Mem.LastAccessWrite) ||
-			(wtc.watches[i].ai.Read && !wtc.dbg.vcs.Mem.LastAccessWrite) {
-			// match watched-for value to the value that was read/written to the
-			// watched address
-			if !wtc.watches[i].matchValue {
-				// prepare string according to event
-				if wtc.dbg.vcs.Mem.LastAccessWrite {
-					checkString.WriteString(fmt.Sprintf("watch (write) at %s\n", wtc.watches[i]))
-				} else {
-					checkString.WriteString(fmt.Sprintf("watch (read) at %s\n", wtc.watches[i]))
-				}
-			} else if wtc.watches[i].matchValue && (wtc.watches[i].value == wtc.dbg.vcs.Mem.LastAccessValue) {
-				// prepare string according to event
-				if wtc.dbg.vcs.Mem.LastAccessWrite {
-					checkString.WriteString(fmt.Sprintf("watch (write) at %s %#02x\n", wtc.watches[i], wtc.dbg.vcs.Mem.LastAccessValue))
-				} else {
-					checkString.WriteString(fmt.Sprintf("watch (read) at %s %#02x\n", wtc.watches[i], wtc.dbg.vcs.Mem.LastAccessValue))
-				}
+		if w.matchValue && w.value != wtc.dbg.vcs.Mem.LastAccessValue {
+			continue
+		}
+
+		if w.ai.Read {
+			if !wtc.dbg.vcs.Mem.LastAccessWrite {
+				checkString.WriteString(fmt.Sprintf("watch at %s (read value %#02x)\n", w, wtc.dbg.vcs.Mem.LastAccessValue))
+			}
+		} else {
+			if wtc.dbg.vcs.Mem.LastAccessWrite {
+				checkString.WriteString(fmt.Sprintf("watch at %s (written value %#02x)\n", w, wtc.dbg.vcs.Mem.LastAccessValue))
 			}
 		}
 	}
 
 	// note what the last address accessed was
 	wtc.lastAddressAccessed = wtc.dbg.vcs.Mem.LastAccessAddress
+	wtc.lastAddressWrite = wtc.dbg.vcs.Mem.LastAccessWrite
 
 	return checkString.String()
 }

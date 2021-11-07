@@ -27,17 +27,25 @@ import (
 
 type tracer struct {
 	ai dbgmem.AddressInfo
+
+	// whether the address should be interpreted strictly or whether mirrors
+	// should be considered too
+	strict bool
 }
 
 func (t tracer) String() string {
-	return t.ai.String()
+	strict := ""
+	if t.strict {
+		strict = " (strict)"
+	}
+	return fmt.Sprintf("%s%s", t.ai, strict)
 }
 
 // the list of currently defined traces in the system.
 type traces struct {
-	dbg                 *Debugger
-	traces              []tracer
-	lastAddressAccessed uint16
+	dbg                       *Debugger
+	traces                    []tracer
+	lastAddressAccessedMapped uint16
 }
 
 // newTraces is the preferred method of initialisation for the traces type.
@@ -77,28 +85,50 @@ func (trc *traces) check() string {
 		return ""
 	}
 
+	// no check for phantom access
+	if trc.dbg.vcs.CPU.PhantomMemAccess {
+		return ""
+	}
+
+	// no check if access address hasn't changed.
+	//
+	// note that unlike watches.check() we don't compare the write flag - we
+	// want to trace both types of accesses even if it's on the same address.
+	if trc.lastAddressAccessedMapped == trc.dbg.vcs.Mem.LastAccessAddressMapped {
+		return ""
+	}
+
 	s := strings.Builder{}
 
-	for i := range trc.traces {
-		// continue if this is a repeat of the last address accessed
-		if trc.lastAddressAccessed == trc.dbg.vcs.Mem.LastAccessAddressMapped {
+	for _, t := range trc.traces {
+		var accessAddress uint16
+		var traceAddress uint16
+
+		// pick which addresses to comare depending on whether watch is strict
+		if t.strict {
+			accessAddress = trc.dbg.vcs.Mem.LastAccessAddress
+			traceAddress = t.ai.Address
+		} else {
+			accessAddress = trc.dbg.vcs.Mem.LastAccessAddressMapped
+			traceAddress = t.ai.MappedAddress
+		}
+
+		if traceAddress != accessAddress {
 			continue
 		}
 
-		v := trc.dbg.vcs.Mem.LastAccessValue
-
 		if trc.dbg.vcs.Mem.LastAccessWrite {
-			s.WriteString(fmt.Sprintf("write %#02x to ", v))
+			s.WriteString(fmt.Sprintf("write %#02x to ", trc.dbg.vcs.Mem.LastAccessValue))
 		} else {
-			s.WriteString(fmt.Sprintf("read %#02x from ", v))
+			s.WriteString(fmt.Sprintf("read %#02x from ", trc.dbg.vcs.Mem.LastAccessValue))
 		}
 
-		s.WriteString(trc.traces[i].String())
+		s.WriteString(t.String())
 		break // for loop
 	}
 
 	// note what the last address accessed was
-	trc.lastAddressAccessed = trc.dbg.vcs.Mem.LastAccessAddress
+	trc.lastAddressAccessedMapped = trc.dbg.vcs.Mem.LastAccessAddressMapped
 
 	return s.String()
 }
@@ -118,6 +148,19 @@ func (trc *traces) list() {
 // parse tokens and add new trace. only one trace at a time can be specified on
 // the command line.
 func (trc *traces) parseCommand(tokens *commandline.Tokens) error {
+	var strict bool
+
+	// strict addressing or not
+	arg, _ := tokens.Get()
+	arg = strings.ToUpper(arg)
+	switch arg {
+	case "STRICT":
+		strict = true
+	default:
+		strict = false
+		tokens.Unget()
+	}
+
 	// get address. required.
 	a, _ := tokens.Get()
 
@@ -131,7 +174,7 @@ func (trc *traces) parseCommand(tokens *commandline.Tokens) error {
 		}
 	}
 
-	nt := tracer{ai: *ai}
+	nt := tracer{ai: *ai, strict: strict}
 
 	// check to see if trace already exists
 	for _, t := range trc.traces {

@@ -73,6 +73,9 @@ type CPU struct {
 	// otherwise be considered an error. Resets to false on every call to
 	// ExecuteInstruction()
 	Interrupted bool
+
+	// Whether the last memory access by the CPU was a phantom access
+	PhantomMemAccess bool
 }
 
 // NewCPU is the preferred method of initialisation for the CPU structure. Note
@@ -189,7 +192,7 @@ func (mc *CPU) LoadPC(directAddress uint16) error {
 //
 // side-effects:
 //	* calls cycleCallback after memory read
-func (mc *CPU) read8Bit(address uint16) (uint8, error) {
+func (mc *CPU) read8Bit(address uint16, phantom bool) (uint8, error) {
 	val, err := mc.mem.Read(address)
 
 	if err != nil {
@@ -214,6 +217,8 @@ func (mc *CPU) read8Bit(address uint16) (uint8, error) {
 // side-effects:
 //	* calls cycleCallback after memory read
 func (mc *CPU) read8BitZeroPage(address uint8) (uint8, error) {
+	mc.PhantomMemAccess = false
+
 	val, err := mc.mem.(bus.CPUBusZeroPage).ReadZeroPage(address)
 
 	if err != nil {
@@ -236,7 +241,7 @@ func (mc *CPU) read8BitZeroPage(address uint8) (uint8, error) {
 // write8Bit writes 8 bits to the specified address. there are no side effects
 // on the state of the CPU which means that *cycleCallback must be called by the
 // calling function as appropriate*.
-func (mc *CPU) write8Bit(address uint16, value uint8) error {
+func (mc *CPU) write8Bit(address uint16, value uint8, phantom bool) error {
 	err := mc.mem.Write(address, value)
 
 	if err != nil {
@@ -254,6 +259,8 @@ func (mc *CPU) write8Bit(address uint16, value uint8) error {
 // side-effects:
 //	* calls cycleCallback after each 8bit read
 func (mc *CPU) read16Bit(address uint16) (uint16, error) {
+	mc.PhantomMemAccess = false
+
 	lo, err := mc.mem.Read(address)
 	if err != nil {
 		if !curated.Has(err, bus.AddressError) {
@@ -444,7 +451,7 @@ func (mc *CPU) branch(flag bool, address uint16) error {
 
 		// phantom read
 		// +1 cycle
-		_, err := mc.read8Bit(mc.PC.Address())
+		_, err := mc.read8Bit(mc.PC.Address(), true)
 		if err != nil {
 			return err
 		}
@@ -464,7 +471,7 @@ func (mc *CPU) branch(flag bool, address uint16) error {
 		if mc.LastResult.PageFault {
 			// phantom reed
 			// +1 cycle
-			_, err := mc.read8Bit(mc.PC.Address())
+			_, err := mc.read8Bit(mc.PC.Address(), true)
 			if err != nil {
 				return err
 			}
@@ -615,7 +622,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		} else {
 			// phantom read
 			// +1 cycle
-			_, err = mc.read8Bit(mc.PC.Address())
+			_, err = mc.read8Bit(mc.PC.Address(), true)
 			if err != nil {
 				return err
 			}
@@ -744,7 +751,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 		// phantom read before adjusting the index
 		// +1 cycle
-		_, err = mc.read8Bit(uint16(indirectAddress))
+		_, err = mc.read8Bit(uint16(indirectAddress), true)
 		if err != nil {
 			return err
 		}
@@ -795,7 +802,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		if mc.LastResult.PageFault || defn.Effect == instructions.Write || defn.Effect == instructions.RMW {
 			// phantom read (always happens for Write and RMW)
 			// +1 cycle
-			_, err = mc.read8Bit((indexedAddress & 0xff00) | (address & 0x00ff))
+			_, err = mc.read8Bit((indexedAddress&0xff00)|(address&0x00ff), true)
 			if err != nil {
 				return err
 			}
@@ -823,7 +830,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		if mc.LastResult.PageFault || defn.Effect == instructions.Write || defn.Effect == instructions.RMW {
 			// phantom read (always happens for Write and RMW)
 			// +1 cycle
-			_, err := mc.read8Bit((indirectAddress & 0xff00) | (address & 0x00ff))
+			_, err := mc.read8Bit((indirectAddress&0xff00)|(address&0x00ff), true)
 			if err != nil {
 				return err
 			}
@@ -851,7 +858,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		if mc.LastResult.PageFault || defn.Effect == instructions.Write || defn.Effect == instructions.RMW {
 			// phantom read (always happens for Write and RMW)
 			// +1 cycle
-			_, err := mc.read8Bit((indirectAddress & 0xff00) | (address & 0x00ff))
+			_, err := mc.read8Bit((indirectAddress&0xff00)|(address&0x00ff), true)
 			if err != nil {
 				return err
 			}
@@ -933,7 +940,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 			if zeroPage {
 				value, err = mc.read8BitZeroPage(uint8(address))
 			} else {
-				value, err = mc.read8Bit(address)
+				value, err = mc.read8Bit(address, false)
 			}
 			if err != nil {
 				return err
@@ -944,7 +951,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 			if zeroPage {
 				value, err = mc.read8BitZeroPage(uint8(address))
 			} else {
-				value, err = mc.read8Bit(address)
+				value, err = mc.read8Bit(address, false)
 			}
 			if err != nil {
 				return err
@@ -952,7 +959,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 			// phantom write
 			// +1 cycle
-			err = mc.write8Bit(address, value)
+			err = mc.write8Bit(address, value, true)
 			if err != nil {
 				return err
 			}
@@ -993,7 +1000,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 	case "PHA":
 		// +1 cycle
-		err = mc.write8Bit(mc.SP.Address(), mc.A.Value())
+		err = mc.write8Bit(mc.SP.Address(), mc.A.Value(), false)
 		if err != nil {
 			return err
 		}
@@ -1014,7 +1021,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		}
 
 		// +1 cycle
-		value, err = mc.read8Bit(mc.SP.Address())
+		value, err = mc.read8Bit(mc.SP.Address(), false)
 		if err != nil {
 			return err
 		}
@@ -1024,7 +1031,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 	case "PHP":
 		// +1 cycle
-		err = mc.write8Bit(mc.SP.Address(), mc.Status.Value())
+		err = mc.write8Bit(mc.SP.Address(), mc.Status.Value(), false)
 		if err != nil {
 			return err
 		}
@@ -1044,7 +1051,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 			return err
 		}
 		// +1 cycle
-		value, err = mc.read8Bit(mc.SP.Address())
+		value, err = mc.read8Bit(mc.SP.Address(), false)
 		if err != nil {
 			return err
 		}
@@ -1111,7 +1118,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 	case "STA":
 		// +1 cycle
-		err = mc.write8Bit(address, mc.A.Value())
+		err = mc.write8Bit(address, mc.A.Value(), false)
 		if err != nil {
 			return err
 		}
@@ -1123,7 +1130,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 	case "STX":
 		// +1 cycle
-		err = mc.write8Bit(address, mc.X.Value())
+		err = mc.write8Bit(address, mc.X.Value(), false)
 		if err != nil {
 			return err
 		}
@@ -1135,7 +1142,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 	case "STY":
 		// +1 cycle
-		err = mc.write8Bit(address, mc.Y.Value())
+		err = mc.write8Bit(address, mc.Y.Value(), false)
 		if err != nil {
 			return err
 		}
@@ -1363,7 +1370,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 		// push MSB of PC onto stack, and decrement SP
 		// +1 cycle
-		err = mc.write8Bit(mc.SP.Address(), uint8(mc.PC.Address()>>8))
+		err = mc.write8Bit(mc.SP.Address(), uint8(mc.PC.Address()>>8), false)
 		if err != nil {
 			return err
 		}
@@ -1376,7 +1383,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 		// push LSB of PC onto stack, and decrement SP
 		// +1 cycle
-		err = mc.write8Bit(mc.SP.Address(), uint8(mc.PC.Address()))
+		err = mc.write8Bit(mc.SP.Address(), uint8(mc.PC.Address()), false)
 		if err != nil {
 			return err
 		}
@@ -1438,7 +1445,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 	case "BRK":
 		// push PC onto register (same effect as JSR)
-		err := mc.write8Bit(mc.SP.Address(), uint8(mc.PC.Address()>>8))
+		err := mc.write8Bit(mc.SP.Address(), uint8(mc.PC.Address()>>8), false)
 		if err != nil {
 			return err
 		}
@@ -1451,7 +1458,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 			return err
 		}
 
-		err = mc.write8Bit(mc.SP.Address(), uint8(mc.PC.Address()))
+		err = mc.write8Bit(mc.SP.Address(), uint8(mc.PC.Address()), false)
 		if err != nil {
 			return err
 		}
@@ -1465,7 +1472,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		}
 
 		// push status register (same effect as PHP)
-		err = mc.write8Bit(mc.SP.Address(), mc.Status.Value())
+		err = mc.write8Bit(mc.SP.Address(), mc.Status.Value(), false)
 		if err != nil {
 			return err
 		}
@@ -1506,7 +1513,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		}
 
 		// +1 cycles
-		value, err = mc.read8Bit(mc.SP.Address())
+		value, err = mc.read8Bit(mc.SP.Address(), false)
 		if err != nil {
 			return err
 		}
@@ -1589,7 +1596,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		r.AND(mc.X.Value())
 
 		// +1 cycle
-		err = mc.write8Bit(address, r.Value())
+		err = mc.write8Bit(address, r.Value(), false)
 		if err != nil {
 			return err
 		}
@@ -1648,7 +1655,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 	// for RMW instructions: write altered value back to memory
 	if defn.Effect == instructions.RMW {
-		err = mc.write8Bit(address, value)
+		err = mc.write8Bit(address, value, false)
 		if err != nil {
 			return err
 		}

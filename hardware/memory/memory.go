@@ -48,20 +48,13 @@ type Memory struct {
 	//  . as above but the mapped address
 	//  . the value that was written/read from the last address accessed
 	//  . whether the last address accessed was written or read
-	//  . the ID of the last memory access (currently a timestamp)
+	//
+	// Users of this fields shoudl also consider the possibility that the
+	// access was a phantom access (PhantomAccess flag in CPU type)
 	LastAccessAddress       uint16
 	LastAccessAddressMapped uint16
 	LastAccessValue         uint8
 	LastAccessWrite         bool
-	LastAccessID            int
-
-	// accessCount is incremented every time memory is read or written to.  the
-	// current value of accessCount is noted every read and write and
-	// immediately incremented.
-	//
-	// for practical purposes, the cycle period of type int is sufficiently
-	// large as to allow us to consider LastAccessID to be unique.
-	accessCount int
 }
 
 // NewMemory is the preferred method of initialisation for Memory.
@@ -173,8 +166,6 @@ func (mem *Memory) read(address uint16, zeroPage bool) (uint8, error) {
 	mem.LastAccessAddressMapped = ma
 	mem.LastAccessWrite = false
 	mem.LastAccessValue = data
-	mem.LastAccessID = mem.accessCount
-	mem.accessCount++
 
 	return data, err
 }
@@ -201,8 +192,6 @@ func (mem *Memory) Write(address uint16, data uint8) error {
 	mem.LastAccessAddressMapped = ma
 	mem.LastAccessWrite = true
 	mem.LastAccessValue = data
-	mem.LastAccessID = mem.accessCount
-	mem.accessCount++
 
 	// see the commentary for the Listen() function in the Cartridge interface
 	// for an explanation for what is going on here. more to the point, we only

@@ -490,7 +490,7 @@ is read.
 
 Existing watches can be reviewed with the LIST command and deleted with the DROP or CLEAR commands`,
 
-	cmdTrace: `"Trace activity on the specied memory address. This means any activity, read or write.
+	cmdTrace: `Trace activity on the specied memory address. This means any activity, read or write.
 There is no way to isolate one activity from the other. Use WATCH for that.
 
 When activity at a TRACED address is found the terminal will display the CPU instruction that caused
