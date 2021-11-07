@@ -44,10 +44,6 @@ func (c *Controllers) mouseButton(ev EventMouseButton, handle HandleInput) (bool
 }
 
 func (c *Controllers) keyboard(ev EventKeyboard, handle HandleInput) (bool, error) {
-	if ev.Repeat {
-		return false, nil
-	}
-
 	if ev.Down && ev.Mod == KeyModNone {
 		switch ev.Key {
 		// panel

@@ -62,12 +62,26 @@ type Debugger struct {
 	// GUI thread (see State() function)
 	state atomic.Value // emulation.State
 
-	vcs    *hardware.VCS
-	Disasm *disassembly.Disassembly
+	vcs *hardware.VCS
 
 	// the last loader to be used. we keep a reference to it so we can make
 	// sure Close() is called on end
 	loader *cartridgeloader.Loader
+
+	// GUI, terminal and controllers
+	gui         gui.GUI
+	term        terminal.Terminal
+	controllers userinput.Controllers
+
+	// when reading input from the terminal there are other events
+	// that need to be monitored
+	events *terminal.ReadEvents
+
+	// how often the events field should be checked
+	eventCheckPulse *time.Ticker
+
+	// cartridge disassembly
+	Disasm *disassembly.Disassembly
 
 	// the bank and formatted result of the last step (cpu or video)
 	lastBank   mapper.BankInfo
@@ -75,11 +89,6 @@ type Debugger struct {
 
 	// the television coords of the last CPU instruction
 	lastCPUboundary coords.TelevisionCoords
-
-	// gui, terminal and controllers
-	gui         gui.GUI
-	term        terminal.Terminal
-	controllers userinput.Controllers
 
 	// interface to the vcs memory with additional debugging functions
 	// - access to vcs memory from the debugger (eg. peeking and poking) is
@@ -114,24 +123,6 @@ type Debugger struct {
 	// stepQuantum to use when stepping/running
 	stepQuantum Quantum
 
-	// when reading input from the terminal there are other events
-	// that need to be monitored
-	events *terminal.ReadEvents
-
-	// record user input to a script file
-	scriptScribe script.Scribe
-
-	// the Rewind system stores and restores machine state
-	Rewind     *rewind.Rewind
-	deepPoking chan bool
-
-	// the number of rewind request events dropped while rewind is active (see
-	// CatchUpLoop() function)
-	rewindAccumulation int
-
-	// audio tracker stores audio state over time
-	Tracker *tracker.Tracker
-
 	// catchupQuantum differs from the quantum field in that it only applies in
 	// the catchupLoop (part of the rewind system). it is set just before the
 	// rewind process is started.
@@ -143,13 +134,40 @@ type Debugger struct {
 	// PushRewind() it is set to the current stepQuantum
 	catchupQuantum Quantum
 
+	// record user input to a script file
+	scriptScribe script.Scribe
+
+	// the Rewind system stores and restores machine state
+	Rewind     *rewind.Rewind
+	deepPoking chan bool
+
+	// the amount we rewind by is dependent on how fast the mouse wheel is
+	// moving or for how long the keyboard (or gamepad bumpers) have been
+	// depressed.
+	//
+	// when rewinding by mousewheel, events are likely to be sent during the
+	// rewind catchup loop so we accumulate the mousewheel delta and rewind
+	// when we return to the normal loop
+	//
+	// keyboard/bumper rewind is slightly different. for every machine cycle
+	// (in the normal playloop - not the catchup loop) that the keyboard is
+	// held down we increase (or decrease when going backwards) the
+	// accumulation value. we use this to determine how quickly the rewind
+	// should progress. the accumulation value is zeroed when the key/bumpers
+	// are released
+	//
+	// * playmode only
+	rewindMouseWheelAccumulation int
+	rewindKeyboardAccumulation   int
+
+	// audio tracker stores audio state over time
+	Tracker *tracker.Tracker
+
 	// whether the state of the emulation has changed since the last time it
 	// was checked - use HasChanged() function
 	hasChanged bool
 
-	// \/\/\/ inputLoop \/\/\/
-
-	eventCheckPulse *time.Ticker
+	// \/\/\/ debugger inputLoop \/\/\/
 
 	// buffer for user input
 	input []byte
@@ -435,7 +453,7 @@ func (dbg *Debugger) setMode(mode emulation.Mode) error {
 		// debugger needs knowledge about previous frames (via the reflector)
 		// if we moving from playmode
 		if prevMode == emulation.ModePlay {
-			dbg.PushRerunLastNFrames(2)
+			dbg.RerunLastNFrames(2)
 		}
 	default:
 		return curated.Errorf("emulation mode not supported: %s", mode)
@@ -563,14 +581,6 @@ func (dbg *Debugger) Start(initScript string, cartload cartridgeloader.Loader) e
 	}
 
 	return nil
-}
-
-// HasChanged returns true if emulation state has changed since last call to
-// the function.
-func (dbg *Debugger) HasChanged() bool {
-	v := dbg.hasChanged
-	dbg.hasChanged = false
-	return v
 }
 
 // reset of VCS should go through this function to makes sure debugger is reset
@@ -824,4 +834,26 @@ func (dbg *Debugger) parseInput(input string, interactive bool, auto bool) error
 // Plugged implements the plugging.PlugMonitor interface.
 func (dbg *Debugger) Plugged(port plugging.PortID, peripheral plugging.PeripheralID) {
 	dbg.gui.SetFeature(gui.ReqControllerChange, port, peripheral)
+}
+
+// PushRawEvent onto the event queue.
+//
+// Used to ensure that the events are inserted into the emulation loop
+// correctly.
+func (dbg *Debugger) PushRawEvent(f func()) {
+	select {
+	case dbg.events.RawEvents <- f:
+	default:
+		logger.Log("debugger", "dropped raw event push")
+	}
+}
+
+// PushRawEventReturn is the same as PushRawEvent but handlers will return to the
+// input loop for immediate action.
+func (dbg *Debugger) PushRawEventReturn(f func()) {
+	select {
+	case dbg.events.RawEventsReturn <- f:
+	default:
+		logger.Log("debugger", "dropped raw event push (to return channel)")
+	}
 }

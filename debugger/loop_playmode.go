@@ -17,7 +17,6 @@ package debugger
 
 import (
 	"github.com/jetsetilly/gopher2600/emulation"
-	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/hardware"
 )
 
@@ -32,6 +31,7 @@ func (dbg *Debugger) playLoop() error {
 			}
 		default:
 		}
+
 		if dbg.state.Load().(emulation.State) == emulation.Running {
 			dbg.Rewind.RecordFrameState()
 		}
@@ -51,40 +51,22 @@ func (dbg *Debugger) playLoop() error {
 			return emulation.Ending, nil
 		}
 
+		if dbg.rewindKeyboardAccumulation != 0 {
+			amount := 0
+			if dbg.rewindKeyboardAccumulation < 0 {
+				if dbg.rewindKeyboardAccumulation > -100 {
+					dbg.rewindKeyboardAccumulation--
+				}
+				amount = (dbg.rewindKeyboardAccumulation / 10) - 1
+			} else {
+				if dbg.rewindKeyboardAccumulation < 100 {
+					dbg.rewindKeyboardAccumulation++
+				}
+				amount = (dbg.rewindKeyboardAccumulation / 10) + 1
+			}
+			dbg.RewindByAmount(amount)
+		}
+
 		return dbg.State(), nil
 	}, hardware.PerformanceBrake)
-}
-
-func (dbg *Debugger) playmodeRewind(amount int) {
-	coords := dbg.vcs.TV.GetCoords()
-	tl := dbg.Rewind.GetTimeline()
-
-	// adjust amount by current rewindAccumulation value (see CatchUpLoop()
-	// function)
-	if amount < 0 {
-		amount -= dbg.rewindAccumulation
-	} else {
-		amount += dbg.rewindAccumulation
-	}
-	dbg.rewindAccumulation = 0
-
-	if amount < 0 && coords.Frame-1 <= tl.AvailableStart {
-		dbg.setState(emulation.Paused)
-		return
-	}
-	if amount > 0 && coords.Frame+1 >= tl.AvailableEnd {
-		dbg.setStateQuiet(emulation.Paused, true)
-		dbg.gui.SetFeature(gui.ReqEmulationEvent, emulation.EventRewindAtEnd)
-		return
-	}
-
-	dbg.setStateQuiet(emulation.Rewinding, true)
-	dbg.Rewind.GotoFrame(coords.Frame + amount)
-	dbg.setStateQuiet(emulation.Paused, true)
-
-	if amount < 0 {
-		dbg.gui.SetFeature(gui.ReqEmulationEvent, emulation.EventRewindBack)
-	} else {
-		dbg.gui.SetFeature(gui.ReqEmulationEvent, emulation.EventRewindFoward)
-	}
 }

@@ -25,7 +25,11 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
 )
 
-const notificationDuration = 60 // frames
+const (
+	notificationDurationPeripheral = 60
+	notificationDurationCartridge  = 60
+	notificationDurationEvent      = 10
+)
 
 // peripheralNotification is used to draw an indicator on the screen for controller change events.
 type peripheralNotification struct {
@@ -35,7 +39,7 @@ type peripheralNotification struct {
 }
 
 func (pn *peripheralNotification) set(peripheral plugging.PeripheralID) {
-	pn.frames = notificationDuration
+	pn.frames = notificationDurationPeripheral
 
 	switch peripheral {
 	case plugging.PeriphStick:
@@ -115,7 +119,7 @@ type emulationEventNotification struct {
 func (ee *emulationEventNotification) set(event emulation.Event) {
 	ee.currentEvent = event
 	ee.open = true
-	ee.frames = notificationDuration
+	ee.frames = notificationDurationEvent
 }
 
 func (ee *emulationEventNotification) tick() {
@@ -189,12 +193,12 @@ func (ce *cartridgeEventNotification) set(event mapper.Event) {
 	case mapper.EventSuperchargerSoundloadStarted:
 		ce.open = true
 	case mapper.EventSuperchargerSoundloadEnded:
-		ce.frames = notificationDuration
+		ce.frames = notificationDurationCartridge
 	case mapper.EventSuperchargerSoundloadRewind:
-		ce.frames = notificationDuration
+		ce.frames = notificationDurationCartridge
 	case mapper.EventPlusROMNetwork:
 		ce.open = true
-		ce.frames = notificationDuration
+		ce.frames = notificationDurationCartridge
 	}
 }
 

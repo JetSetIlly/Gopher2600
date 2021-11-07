@@ -292,7 +292,7 @@ func (win *winDbgScr) draw() {
 				if win.img.screen.gotoCoordsX != win.mouseClock || win.img.screen.gotoCoordsY != win.img.wm.dbgScr.mouseScanline {
 					win.img.screen.gotoCoordsX = win.mouseClock
 					win.img.screen.gotoCoordsY = win.img.wm.dbgScr.mouseScanline
-					win.img.dbg.PushGoto(coords)
+					win.img.dbg.GotoCoords(coords)
 				}
 			}
 		}

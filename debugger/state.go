@@ -17,12 +17,11 @@ package debugger
 
 import (
 	"github.com/jetsetilly/gopher2600/disassembly"
-	"github.com/jetsetilly/gopher2600/logger"
 )
 
 // The functions in this file are all about getting information in/out of the
-// debugger that would otherwise be awkward or impossible through terminal
-// commands.
+// debugger that would otherwise be awkward or too slow to serviced through
+// terminal commands.
 //
 // All of these functions are candidates for being replaced by terminal
 // commands, with the understanding that doing so might: (a) be impossible to
@@ -55,21 +54,10 @@ func (dbg *Debugger) TogglePCBreak(e *disassembly.Entry) {
 	dbg.halting.breakpoints.togglePCBreak(e)
 }
 
-// PushRawEvent onto the event queue.
-func (dbg *Debugger) PushRawEvent(f func()) {
-	select {
-	case dbg.events.RawEvents <- f:
-	default:
-		logger.Log("debugger", "dropped raw event push")
-	}
-}
-
-// PushRawEventReturn is the same as PushRawEvent but handlers will return to the
-// input loop for immediate action.
-func (dbg *Debugger) PushRawEventReturn(f func()) {
-	select {
-	case dbg.events.RawEventsReturn <- f:
-	default:
-		logger.Log("debugger", "dropped raw event push (to return channel)")
-	}
+// HasChanged returns true if emulation state has changed since last call to
+// the function.
+func (dbg *Debugger) HasChanged() bool {
+	v := dbg.hasChanged
+	dbg.hasChanged = false
+	return v
 }

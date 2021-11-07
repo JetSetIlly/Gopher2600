@@ -32,14 +32,7 @@ func (dbg *Debugger) CatchUpLoop(tgt coords.TelevisionCoords, callback rewind.Ca
 		defer dbg.vcs.TV.SetFPSCap(fpscap)
 
 		dbg.vcs.Run(func() (emulation.State, error) {
-			// swallow any user events received while catchup is going on
-			// this prevents the rewind from feeling laggy
-			select {
-			case _ = <-dbg.events.UserInput:
-				// assume all dropped events relate to rewind requests
-				dbg.rewindAccumulation++
-			default:
-			}
+			dbg.userInputHandler_catchUpLoop()
 
 			coords := dbg.vcs.TV.GetCoords()
 			if coords.Frame >= tgt.Frame {

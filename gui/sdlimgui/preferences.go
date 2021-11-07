@@ -150,7 +150,7 @@ func (p *preferences) loadWindowPreferences() error {
 	case emulation.ModePlay:
 		group = "sdlimgui.playmode"
 	default:
-		panic(fmt.Sprintf("cannot set window mode for unsupported emulation mode (%s)", p.img.mode))
+		panic(fmt.Sprintf("cannot set window mode for unsupported emulation mode (%v)", p.img.mode))
 	}
 
 	// setup preferences

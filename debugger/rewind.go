@@ -19,138 +19,189 @@ package debugger
 // the debugger than would otherwise be available.
 
 import (
+	"fmt"
+
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/emulation"
+	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/hardware/television/coords"
 )
 
-// PushRewind is a special case of PushRawEvent(). Useful instad of calling
-// pushing the REWIND command and is quicker.
-//
-// Returns false if the rewind hasn't been pushed. The caller should try again.
-//
-// To be used from the GUI thread.
-func (dbg *Debugger) PushRewind(fn int, last bool) bool {
-	if dbg.State() == emulation.Rewinding {
-		return false
-	}
+// RewindByAmount moves forwards or backwards by specified frames. Negative
+// numbers indicate backwards
+func (dbg *Debugger) RewindByAmount(amount int) bool {
+	switch dbg.mode {
+	default:
+		panic(fmt.Sprintf("Rewind: unsupported mode (%v)", dbg.mode))
 
-	// the function to push to the debugger/emulation routine
-	doRewind := func() error {
-		// upate catchupQuantum before starting rewind process
-		dbg.catchupQuantum = dbg.stepQuantum
+	case emulation.ModePlay:
+		coords := dbg.vcs.TV.GetCoords()
+		tl := dbg.Rewind.GetTimeline()
 
-		if last {
-			err := dbg.Rewind.GotoLast()
-			if err != nil {
-				return curated.Errorf("push goto last: %v", err)
-			}
+		if amount < 0 && coords.Frame-1 <= tl.AvailableStart {
+			dbg.setState(emulation.Paused)
+			return false
+		}
+
+		if amount > 0 && coords.Frame+1 >= tl.AvailableEnd {
+			dbg.setStateQuiet(emulation.Paused, true)
+			dbg.gui.SetFeature(gui.ReqEmulationEvent, emulation.EventRewindAtEnd)
+			return false
+		}
+
+		dbg.setStateQuiet(emulation.Rewinding, true)
+		dbg.Rewind.GotoFrame(coords.Frame + amount)
+		dbg.setStateQuiet(emulation.Paused, true)
+
+		if amount < 0 {
+			dbg.gui.SetFeature(gui.ReqEmulationEvent, emulation.EventRewindBack)
 		} else {
-			err := dbg.Rewind.GotoFrame(fn)
-			if err != nil {
-				return curated.Errorf("push goto frame: %v", err)
+			dbg.gui.SetFeature(gui.ReqEmulationEvent, emulation.EventRewindFoward)
+		}
+
+		return true
+	}
+
+	return false
+}
+
+// RewindToFrame measure from the current frame.
+func (dbg *Debugger) RewindToFrame(fn int, last bool) bool {
+	switch dbg.mode {
+	default:
+		panic(fmt.Sprintf("RewindToFrame: unsupported mode (%v)", dbg.mode))
+
+	case emulation.ModeDebugger:
+		if dbg.State() == emulation.Rewinding {
+			return false
+		}
+
+		// the function to push to the debugger/emulation routine
+		doRewind := func() error {
+			// upate catchupQuantum before starting rewind process
+			dbg.catchupQuantum = dbg.stepQuantum
+
+			if last {
+				err := dbg.Rewind.GotoLast()
+				if err != nil {
+					return curated.Errorf("push goto last: %v", err)
+				}
+			} else {
+				err := dbg.Rewind.GotoFrame(fn)
+				if err != nil {
+					return curated.Errorf("push goto frame: %v", err)
+				}
 			}
+
+			return nil
 		}
 
-		return nil
+		// how we push the doRewind() function depends on what kind of inputloop we
+		// are currently in
+		dbg.PushRawEventReturn(func() {
+			// set state to emulation.Rewinding as soon as possible (but
+			// remembering that we must do it in the debugger goroutine)
+			dbg.setState(emulation.Rewinding)
+
+			dbg.unwindLoop(doRewind)
+		})
+
+		return true
 	}
 
-	// how we push the doRewind() function depends on what kind of inputloop we
-	// are currently in
-	dbg.PushRawEventReturn(func() {
-		// set state to emulation.Rewinding as soon as possible (but
-		// remembering that we must do it in the debugger goroutine)
-		dbg.setState(emulation.Rewinding)
-
-		dbg.unwindLoop(doRewind)
-	})
-
-	return true
+	return false
 }
 
-// PushGotoCoords is a special case of PushRawEvent(). Useful instead of
-// calling pushing the GOTO command and is quicker.
-//
-// Returns false if the rewind hasn't been pushed. The caller should try again.
-//
-// To be used from the GUI thread.
-func (dbg *Debugger) PushGoto(coords coords.TelevisionCoords) bool {
-	if dbg.State() == emulation.Rewinding {
-		return false
-	}
+// GotoCoords rewinds the emulation to the specified coordinates.
+func (dbg *Debugger) GotoCoords(coords coords.TelevisionCoords) bool {
+	switch dbg.mode {
+	default:
+		panic(fmt.Sprintf("GotoCoords: unsupported mode (%v)", dbg.mode))
 
-	// the function to push to the debugger/emulation routine
-	doRewind := func() error {
-		// upate catchupQuantum before starting rewind process
-		dbg.catchupQuantum = QuantumVideo
-
-		err := dbg.Rewind.GotoCoords(coords)
-		if err != nil {
-			return curated.Errorf("push goto coords: %v", err)
+	case emulation.ModeDebugger:
+		if dbg.State() == emulation.Rewinding {
+			return false
 		}
-		return nil
+
+		// the function to push to the debugger/emulation routine
+		doRewind := func() error {
+			// upate catchupQuantum before starting rewind process
+			dbg.catchupQuantum = QuantumVideo
+
+			err := dbg.Rewind.GotoCoords(coords)
+			if err != nil {
+				return curated.Errorf("push goto coords: %v", err)
+			}
+			return nil
+		}
+
+		// how we push the doRewind() function depends on what kind of inputloop we
+		// are currently in
+		dbg.PushRawEventReturn(func() {
+			// set state to emulation.Rewinding as soon as possible (but
+			// remembering that we must do it in the debugger goroutine)
+			dbg.setState(emulation.Rewinding)
+
+			dbg.unwindLoop(doRewind)
+		})
+
+		return true
 	}
 
-	// how we push the doRewind() function depends on what kind of inputloop we
-	// are currently in
-	dbg.PushRawEventReturn(func() {
-		// set state to emulation.Rewinding as soon as possible (but
-		// remembering that we must do it in the debugger goroutine)
-		dbg.setState(emulation.Rewinding)
-
-		dbg.unwindLoop(doRewind)
-	})
-
-	return true
+	return false
 }
 
-// PushGotoCoords is a special case of PushRawEvent().
-//
-// Returns false if the rewind hasn't been pushed. The caller may try again.
-//
-// To be used from the GUI thread.
-func (dbg *Debugger) PushRerunLastNFrames(frames int) bool {
-	if dbg.State() == emulation.Rewinding {
-		return false
-	}
+// RerunLastNFrames measured from the current frame.
+func (dbg *Debugger) RerunLastNFrames(frames int) bool {
+	switch dbg.mode {
+	default:
+		panic(fmt.Sprintf("RerunLastNFrames: unsupported mode (%v)", dbg.mode))
 
-	// the disadvantage of RerunLastNFrames() is that it will always land on a
-	// CPU instruction boundary (this is because we must unwind the existing
-	// input loop before calling the rewind function)
-	//
-	// if we're in between instruction boundaries therefore we need to push a
-	// GotoCoords() request. get the current coordinates now
-	correctCoords := !dbg.lastResult.Result.Final
-	coords := dbg.vcs.TV.GetCoords()
-
-	// the function to push to the debugger/emulation routine
-	doRewind := func() error {
-		err := dbg.Rewind.RerunLastNFrames(frames)
-		if err != nil {
-			return curated.Errorf("push rerun last N Frame: %v", err)
+	case emulation.ModeDebugger:
+		if dbg.State() == emulation.Rewinding {
+			return false
 		}
 
-		if correctCoords {
-			err = dbg.Rewind.GotoCoords(coords)
+		// the disadvantage of RerunLastNFrames() is that it will always land on a
+		// CPU instruction boundary (this is because we must unwind the existing
+		// input loop before calling the rewind function)
+		//
+		// if we're in between instruction boundaries therefore we need to push a
+		// GotoCoords() request. get the current coordinates now
+		correctCoords := !dbg.lastResult.Result.Final
+		coords := dbg.vcs.TV.GetCoords()
+
+		// the function to push to the debugger/emulation routine
+		doRewind := func() error {
+			err := dbg.Rewind.RerunLastNFrames(frames)
 			if err != nil {
 				return curated.Errorf("push rerun last N Frame: %v", err)
 			}
+
+			if correctCoords {
+				err = dbg.Rewind.GotoCoords(coords)
+				if err != nil {
+					return curated.Errorf("push rerun last N Frame: %v", err)
+				}
+			}
+
+			return nil
 		}
 
-		return nil
+		// how we push the doRewind() function depends on what kind of inputloop we
+		// are currently in
+		dbg.PushRawEventReturn(func() {
+			// upate catchupQuantum before starting rewind process
+			dbg.catchupQuantum = QuantumVideo
+
+			// set state to emulation.Rewinding as soon as possible (but
+			// remembering that we must do it in the debugger goroutine)
+			dbg.setState(emulation.Rewinding)
+			dbg.unwindLoop(doRewind)
+		})
+
+		return true
 	}
 
-	// how we push the doRewind() function depends on what kind of inputloop we
-	// are currently in
-	dbg.PushRawEventReturn(func() {
-		// upate catchupQuantum before starting rewind process
-		dbg.catchupQuantum = QuantumVideo
-
-		// set state to emulation.Rewinding as soon as possible (but
-		// remembering that we must do it in the debugger goroutine)
-		dbg.setState(emulation.Rewinding)
-		dbg.unwindLoop(doRewind)
-	})
-
-	return true
+	return false
 }

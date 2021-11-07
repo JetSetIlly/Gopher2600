@@ -172,7 +172,7 @@ func (win *winTracker) draw() {
 				if entry.Coords == win.contextMenu {
 					if imgui.BeginPopup(trackerContextMenuID) {
 						if imgui.Selectable("Rewind to") {
-							win.img.dbg.PushGoto(entry.Coords)
+							win.img.dbg.GotoCoords(entry.Coords)
 						}
 						imgui.EndPopup()
 					}
@@ -255,7 +255,7 @@ func (win *winTracker) draw() {
 
 			imgui.SameLineV(0, 15)
 			if imgui.Button("Rewind to") {
-				win.img.dbg.PushGoto(lastEntry.Coords)
+				win.img.dbg.GotoCoords(lastEntry.Coords)
 			}
 		})
 	}

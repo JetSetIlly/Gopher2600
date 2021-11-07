@@ -89,7 +89,7 @@ func (win *winCoProcDisasm) draw() {
 			if win.img.emulation.State() != emulation.Running {
 				// rerun the last two frames in order to gather as much disasm
 				// information as possible.
-				win.img.dbg.PushRerunLastNFrames(2)
+				win.img.dbg.RerunLastNFrames(2)
 			}
 		}
 	} else {

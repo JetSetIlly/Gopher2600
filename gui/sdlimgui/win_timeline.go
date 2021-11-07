@@ -276,14 +276,14 @@ func (win *winTimeline) drawTimeline() {
 		// calling PushRewind() too often)
 		if fr >= e {
 			if win.img.lz.TV.Coords.Frame < e {
-				win.img.dbg.PushRewind(fr, true)
+				win.img.dbg.RewindToFrame(fr, true)
 			}
 		} else if fr <= s {
 			if win.img.lz.TV.Coords.Frame > s {
-				win.img.dbg.PushRewind(fr, false)
+				win.img.dbg.RewindToFrame(fr, false)
 			}
 		} else if fr != win.img.lz.TV.Coords.Frame {
-			win.img.dbg.PushRewind(fr, fr == e)
+			win.img.dbg.RewindToFrame(fr, fr == e)
 		}
 	} else {
 		win.rewindingActive = false
