@@ -43,7 +43,7 @@ var mono [maxVolume + 1]int16
 
 // Mono returns a single volume value.
 func Mono(channel0 uint8, channel1 uint8) int16 {
-	return mono[int16(channel0+channel1)]
+	return mono[int16(channel0+channel1)] >> 3
 }
 
 // Stereo return a pair of volume values.
