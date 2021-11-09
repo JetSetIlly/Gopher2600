@@ -27,8 +27,8 @@ import (
 	"github.com/jetsetilly/gopher2600/rewind"
 )
 
-// Gatherer should be run (with the Check() function) every video cycle.
-type Gatherer struct {
+// Reflector should be run (with the Check() function) every video cycle.
+type Reflector struct {
 	vcs      *hardware.VCS
 	renderer Renderer
 
@@ -56,28 +56,30 @@ type Gatherer struct {
 	lastIdx int
 }
 
-// NewGatherer is the preferred method of initialisation for the Monitor type.
-func NewGatherer(vcs *hardware.VCS) *Gatherer {
-	ref := &Gatherer{
-		vcs:     vcs,
-		history: make([]ReflectedVideoStep, specification.AbsoluteMaxClks),
-	}
-
-	for i := range ref.renderedHistory {
-		ref.renderedHistory[i] = make([]ReflectedVideoStep, specification.AbsoluteMaxClks)
-	}
-
+// NewReflector is the preferred method of initialisation for the Monitor type.
+func NewReflector(vcs *hardware.VCS) *Reflector {
+	ref := &Reflector{vcs: vcs}
+	ref.Clear()
 	return ref
 }
 
 // AddRenderer adds an implementation of the Renderer interface to the Reflector.
-func (ref *Gatherer) AddRenderer(renderer Renderer) {
+func (ref *Reflector) AddRenderer(renderer Renderer) {
 	ref.renderer = renderer
+}
+
+// Clear existing reflected information.
+func (ref *Reflector) Clear() {
+	ref.history = make([]ReflectedVideoStep, specification.AbsoluteMaxClks)
+	for i := range ref.renderedHistory {
+		ref.renderedHistory[i] = make([]ReflectedVideoStep, specification.AbsoluteMaxClks)
+	}
+
 }
 
 // Step should be called every video cycle to record a complete
 // reflection of the system.
-func (ref *Gatherer) Step(bank mapper.BankInfo) error {
+func (ref *Reflector) Step(bank mapper.BankInfo) error {
 	sig := ref.vcs.TV.GetLastSignal()
 
 	idx := int((sig & signal.Index) >> signal.IndexShift)
@@ -127,7 +129,7 @@ func (ref *Gatherer) Step(bank mapper.BankInfo) error {
 }
 
 // push history to reflection renderer
-func (ref *Gatherer) render() error {
+func (ref *Reflector) render() error {
 	if ref.emulationState != emulation.Rewinding {
 		if ref.renderer != nil {
 			copy(ref.renderedHistory[ref.renderedHistoryIdx], ref.history)
@@ -146,7 +148,7 @@ func (ref *Gatherer) render() error {
 
 // SetEmulationState is called by emulation whenever state changes. How we
 // handle reflections depends on the current state.
-func (ref *Gatherer) SetEmulationState(state emulation.State) {
+func (ref *Reflector) SetEmulationState(state emulation.State) {
 	prev := ref.emulationState
 	ref.emulationState = state
 
@@ -165,7 +167,7 @@ func (ref *Gatherer) SetEmulationState(state emulation.State) {
 }
 
 // NewFrame implements the television.FrameTrigger interface.
-func (ref *Gatherer) NewFrame(_ television.FrameInfo) error {
+func (ref *Reflector) NewFrame(_ television.FrameInfo) error {
 	// nullify unused entries at end of frame
 	//
 	// note that this echoes a similar construct in the television.NewFrame()
@@ -185,6 +187,6 @@ func (ref *Gatherer) NewFrame(_ television.FrameInfo) error {
 }
 
 // TimelineCounts implements rewind.TimelineCounter
-func (ref *Gatherer) TimelineCounts() rewind.TimelineCounts {
+func (ref *Reflector) TimelineCounts() rewind.TimelineCounts {
 	return ref.timelineCounts
 }

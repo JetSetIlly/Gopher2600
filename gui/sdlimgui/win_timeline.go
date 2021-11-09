@@ -75,6 +75,15 @@ func (win *winTimeline) draw() {
 	win.drawKey()
 }
 
+const (
+	traceWidth           = 2
+	traceHeight          = 1
+	inputHeight          = 2
+	rangeHeight          = 5
+	frameIndicatorRadius = 4
+	unmeasuredDotPitch   = traceWidth + 1
+)
+
 func (win *winTimeline) drawKey() {
 	imguiColorLabel("Scanlines", win.img.cols.TimelineScanlines)
 	imgui.SameLineV(0, 20)
@@ -96,12 +105,6 @@ func (win *winTimeline) drawRewindSummary() {
 }
 
 func (win *winTimeline) drawTimeline() {
-	const traceWidth = 2
-	const traceHeight = 1
-	const inputHeight = 2
-	const rangeHeight = 5
-	const frameIndicatorRadius = 4
-
 	timeline := win.img.lz.Rewind.Timeline
 	dl := imgui.WindowDrawList()
 
@@ -146,7 +149,7 @@ func (win *winTimeline) drawTimeline() {
 		y -= float32(timeline.TotalScanlines[i]) * traceSize.Y / specification.AbsoluteMaxScanlines
 
 		// add jitter to trace to indicate changes in value through exaggeration
-		if i > 0 {
+		if i > 0 && timeline.Counts[i-1].ValidCounts {
 			if timeline.TotalScanlines[i] < timeline.TotalScanlines[i-1] {
 				y++
 			} else if timeline.TotalScanlines[i] > timeline.TotalScanlines[i-1] {
@@ -158,12 +161,14 @@ func (win *winTimeline) drawTimeline() {
 			imgui.Vec2{X: x + traceWidth, Y: y + traceHeight},
 			win.img.cols.timelineScanlines)
 
+		// plottin timeline counts only if the counts entry is valid
+
 		// plot WSYNC from the bottom
 		y = pos.Y + traceSize.Y
 		y -= float32(timeline.Counts[i].WSYNC) * traceSize.Y / specification.AbsoluteMaxClks
 
 		// add jitter to trace to indicate changes in value through exaggeration
-		if i > 0 {
+		if i > 0 && timeline.Counts[i-1].ValidCounts {
 			if timeline.Counts[i].WSYNC < timeline.Counts[i-1].WSYNC {
 				y++
 			} else if timeline.Counts[i].WSYNC > timeline.Counts[i-1].WSYNC {
@@ -171,18 +176,20 @@ func (win *winTimeline) drawTimeline() {
 			}
 		}
 
-		dl.AddRectFilled(imgui.Vec2{X: x, Y: y},
-			imgui.Vec2{X: x + traceWidth, Y: y + traceHeight},
-			win.img.cols.timelineWSYNC)
+		// plot a dotted line if count isn't valid and a solid line if it is
+		if timeline.Counts[i].ValidCounts || int(x)%unmeasuredDotPitch == 0 {
+			dl.AddRectFilled(imgui.Vec2{X: x, Y: y},
+				imgui.Vec2{X: x + traceWidth, Y: y + traceHeight},
+				win.img.cols.timelineWSYNC)
+		}
 
-		// CoProc
+		// plot coprocessor from the top
 		if win.img.lz.CoProc.HasCoProcBus {
-			// plot coprocessor from the top
 			y = pos.Y
 			y += float32(timeline.Counts[i].CoProc) * traceSize.Y / specification.AbsoluteMaxClks
 
 			// add jitter to trace to indicate changes in value through exaggeration
-			if i > 0 {
+			if i > 0 && timeline.Counts[i-1].ValidCounts {
 				if timeline.Counts[i].CoProc < timeline.Counts[i-1].CoProc {
 					y++
 				} else if timeline.Counts[i].CoProc > timeline.Counts[i-1].CoProc {
@@ -190,9 +197,12 @@ func (win *winTimeline) drawTimeline() {
 				}
 			}
 
-			dl.AddRectFilled(imgui.Vec2{X: x, Y: y},
-				imgui.Vec2{X: x + traceWidth, Y: y + traceHeight},
-				win.img.cols.timelineCoProc)
+			// plot a dotted line if count isn't valid and a solid line if it is
+			if timeline.Counts[i].ValidCounts || int(x)%unmeasuredDotPitch == 0 {
+				dl.AddRectFilled(imgui.Vec2{X: x, Y: y},
+					imgui.Vec2{X: x + traceWidth, Y: y + traceHeight},
+					win.img.cols.timelineCoProc)
+			}
 		}
 
 		x += traceWidth

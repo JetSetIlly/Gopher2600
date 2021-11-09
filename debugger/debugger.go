@@ -81,6 +81,8 @@ type Debugger struct {
 	eventCheckPulse *time.Ticker
 
 	// cartridge disassembly
+	//
+	// * allocated when entering debugger mode
 	Disasm *disassembly.Disassembly
 
 	// the bank and formatted result of the last step (cpu or video)
@@ -98,7 +100,9 @@ type Debugger struct {
 	// reflection is used to provideo additional information about the
 	// emulation. it is inherently slow so should be deactivated if not
 	// required
-	ref *reflection.Gatherer
+	//
+	// * allocated when entering debugger mode
+	ref *reflection.Reflector
 
 	// halting is used to coordinate the checking of all halting conditions. it
 	// is updated every video cycle as appropriate (ie. not when rewinding)
@@ -255,11 +259,12 @@ func NewDebugger(create CreateUserInterface, mode emulation.Mode, spec string, u
 		VCS: dbg.vcs,
 	}
 
-	// create a new disassembly instance. also capturing the reference to the
-	// disassembly's symbols table
-	dbg.Disasm, dbg.dbgmem.Sym, err = disassembly.NewDisassembly(dbg.vcs)
-	if err != nil {
-		return nil, curated.Errorf("debugger: %v", err)
+	// create a new disassembly instance
+	if dbg.Disasm == nil {
+		dbg.Disasm, dbg.dbgmem.Sym, err = disassembly.NewDisassembly(dbg.vcs)
+		if err != nil {
+			return nil, curated.Errorf("debugger: %v", err)
+		}
 	}
 
 	// create a minimal lastResult for initialisation
@@ -300,19 +305,18 @@ func NewDebugger(create CreateUserInterface, mode emulation.Mode, spec string, u
 	// add tab completion to terminal
 	dbg.term.RegisterTabCompletion(commandline.NewTabCompletion(debuggerCommands))
 
-	// setup reflection monitor
-	dbg.ref = reflection.NewGatherer(dbg.vcs)
-	if r, ok := dbg.gui.(reflection.Broker); ok {
-		dbg.ref.AddRenderer(r.GetReflectionRenderer())
-	}
-
 	// plug in rewind system
 	dbg.Rewind, err = rewind.NewRewind(dbg, dbg)
 	if err != nil {
 		return nil, curated.Errorf("debugger: %v", err)
 	}
-	dbg.Rewind.AddTimelineCounter(dbg.ref) // using reflection monitor for the timeline counter
 	dbg.deepPoking = make(chan bool, 1)
+
+	// plug in reflection system
+	dbg.ref = reflection.NewReflector(dbg.vcs)
+	if r, ok := dbg.gui.(reflection.Broker); ok {
+		dbg.ref.AddRenderer(r.GetReflectionRenderer())
+	}
 
 	// adding TV frame triggers in setMode(). what the TV triggers on depending
 	// on the mode for performance reasons (eg. no reflection required in
@@ -387,7 +391,9 @@ func (dbg *Debugger) setState(state emulation.State) {
 // always be "noisy"
 func (dbg *Debugger) setStateQuiet(state emulation.State, quiet bool) {
 	dbg.vcs.TV.SetEmulationState(state)
-	dbg.ref.SetEmulationState(state)
+	if dbg.ref != nil {
+		dbg.ref.SetEmulationState(state)
+	}
 
 	prevState := dbg.State()
 	dbg.state.Store(state)
@@ -439,7 +445,15 @@ func (dbg *Debugger) setMode(mode emulation.Mode) error {
 	case emulation.ModePlay:
 		dbg.vcs.TV.AddFrameTrigger(dbg.Rewind)
 		dbg.setState(emulation.Running)
+
+		// remove timeline counter in playmode because we the counts won't be
+		// updated in playmode
+		dbg.Rewind.AddTimelineCounter(nil)
+
 	case emulation.ModeDebugger:
+		// using reflection monitor for the timeline counter
+		dbg.Rewind.AddTimelineCounter(dbg.ref)
+
 		// frame triggers.
 		//
 		// deliberately adding rewind before reflection because the latter
@@ -451,7 +465,7 @@ func (dbg *Debugger) setMode(mode emulation.Mode) error {
 		dbg.setState(emulation.Paused)
 
 		// debugger needs knowledge about previous frames (via the reflector)
-		// if we moving from playmode
+		// if we're moving from playmode
 		if prevMode == emulation.ModePlay {
 			dbg.RerunLastNFrames(2)
 		}
@@ -743,7 +757,9 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) 
 		}
 	}
 
-	// disassemble newly attached cartridge
+	// clear existing reflection data
+	dbg.ref.Clear()
+
 	err = dbg.Disasm.FromMemory()
 	if err != nil {
 		return err

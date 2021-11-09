@@ -77,7 +77,7 @@ race_debug: generate test
 	$(goBinary) run -race gopher2600.go debug $(profilingRom)
 
 profile:
-	@echo use make targets profile_cpu, profile_mem or profile_trace; also profile_cpu_debug & profile_cpu_display
+	@echo use make targets profile_cpu, profile_mem, etc.
 
 profile_cpu: generate test
 	@$(goBinary) build -gcflags $(compileFlags)
@@ -105,6 +105,12 @@ profile_cpu_display: generate test
 
 profile_cpu_again:
 	@$(goBinary) tool pprof -http : ./gopher2600 performance_cpu.profile
+
+profile_mem : generate test
+	@$(goBinary) build -gcflags $(compileFlags)
+	@echo "use window close button to end (CTRL-C will quit the Makefile script)"
+	@./gopher2600 play --profile=mem $(profilingRom)
+	@$(goBinary) tool pprof -http : ./gopher2600 play_mem.profile
 
 profile_mem_debug : generate test
 	@$(goBinary) build -gcflags $(compileFlags)
