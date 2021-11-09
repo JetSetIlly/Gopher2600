@@ -39,7 +39,8 @@ func (dbg *Debugger) RewindByAmount(amount int) bool {
 		tl := dbg.Rewind.GetTimeline()
 
 		if amount < 0 && coords.Frame-1 <= tl.AvailableStart {
-			dbg.setState(emulation.Paused)
+			dbg.setStateQuiet(emulation.Paused, true)
+			dbg.gui.SetFeature(gui.ReqEmulationEvent, emulation.EventRewindAtStart)
 			return false
 		}
 

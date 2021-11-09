@@ -282,7 +282,14 @@ func (c *Controllers) gamepadThumbstick(ev EventGamepadThumbstick, handle Handle
 		return handle.HandleEvent(ev.ID, ports.Up, ports.DataStickSet)
 	}
 
-	return handle.HandleEvent(ev.ID, ports.Centre, nil)
+	// never report that the centre event has been handled by the emulated
+	// machine.
+	//
+	// for example, it prevents deadzone signals causing the emulation to unpause
+	//
+	// this might be wrong behaviour in some situations.
+	_, err := handle.HandleEvent(ev.ID, ports.Centre, nil)
+	return false, err
 }
 
 func (c *Controllers) gamepadTriggers(ev EventGamepadTrigger, handle HandleInput) (bool, error) {
