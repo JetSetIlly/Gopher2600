@@ -213,7 +213,10 @@ func (wtc *watches) parseCommand(tokens *commandline.Tokens) error {
 
 	// mapping of the address was unsuccessful
 	if ai == nil {
-		return curated.Errorf("invalid watch address (%s) expecting 16-bit address or symbol", a)
+		if read {
+			return curated.Errorf("invalid watch address (%s) expecting 16-bit address or a read symbol", a)
+		}
+		return curated.Errorf("invalid watch address (%s) expecting 16-bit address or a write symbol", a)
 	}
 
 	// get value if possible

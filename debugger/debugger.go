@@ -420,6 +420,20 @@ func (dbg *Debugger) setMode(mode emulation.Mode) error {
 		return nil
 	}
 
+	// if there is a halting condition that is not allowed in playmode (see
+	// targets type) then do not change the emulation mode
+	//
+	// however, because the user has asked to switch to playmode we should
+	// cause the debugger mode to run until the halting condition is matched
+	// (which we know will occur in the almost immediate future)
+	if mode == emulation.ModePlay && !dbg.halting.allowPlaymode() {
+		if dbg.mode == emulation.ModeDebugger {
+			dbg.runUntilHalt = true
+			dbg.continueEmulation = true
+		}
+		return nil
+	}
+
 	prevMode := dbg.mode
 	dbg.mode = mode
 

@@ -50,7 +50,7 @@ func (trm *mockTerm) testWatches() {
 
 	// try adding an invalid read address by symbol
 	trm.sndInput("WATCH READ VSYNC")
-	trm.cmpOutput("invalid watch address (VSYNC) expecting 16-bit address or symbol")
+	trm.cmpOutput("invalid watch address (VSYNC) expecting 16-bit address or a read symbol")
 
 	// add address by symbol. no read/write modifier means it tries
 	trm.sndInput("WATCH WRITE VSYNC")

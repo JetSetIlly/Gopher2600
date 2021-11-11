@@ -29,6 +29,7 @@ import (
 	"github.com/jetsetilly/gopher2600/debugger/terminal/commandline"
 	"github.com/jetsetilly/gopher2600/disassembly"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
+	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 )
 
 // breakpoints keeps track of all the currently defined breakers.
@@ -132,8 +133,6 @@ const (
 // the break target.
 func (bk *breaker) check() checkResult {
 	if bk.target.value() != bk.value {
-		// target value differs from break value so the next time it matches
-		// we don't want to skip the match
 		bk.skipNext = false
 		return checkNoMatch
 	}
@@ -213,18 +212,17 @@ func (bp *breakpoints) drop(num int) error {
 // check compares the current state of the emulation with every breakpoint
 // condition. returns a string listing every condition that matches (separated
 // by \n).
-func (bp *breakpoints) check(instructionBoundary bool) string {
+func (bp *breakpoints) check() string {
 	if len(bp.breaks) == 0 {
 		return ""
 	}
 
 	checkString := strings.Builder{}
 	for i := range bp.breaks {
-		if bp.breaks[i].target.instructionBoundary && !instructionBoundary {
+		if bp.breaks[i].target.instructionBoundary && !bp.dbg.vcs.CPU.LastResult.Final {
 			continue // for loop
 		}
 
-		// check current value of target with the requested value
 		if bp.breaks[i].check() == checkMatch {
 			checkString.WriteString(fmt.Sprintf("break on %s\n", bp.breaks[i]))
 		}
@@ -299,15 +297,15 @@ func (bp *breakpoints) parseCommand(tokens *commandline.Tokens) error {
 		switch tgt.value().(type) {
 		case string:
 			// if token is string type then make it uppercase for now
-			//
-			// !!TODO: more sophisticated transforms of breakpoint information
-			// see also "special handling for PC" below
 			val = strings.ToUpper(tok)
 		case int:
 			var v int64
 			v, err = strconv.ParseInt(tok, 0, 32)
 			if err == nil {
 				val = int(v)
+			} else {
+				// !!TODO: allow symbol lookup for targets with integer values
+				err = curated.Errorf("invalid value (%s) for target (%s)", tok, tgt.label)
 			}
 		case bool:
 			switch strings.ToLower(tok) {
@@ -323,14 +321,29 @@ func (bp *breakpoints) parseCommand(tokens *commandline.Tokens) error {
 		}
 
 		if err == nil {
-			// special handling for PC
-			if tgt.label == "PC" {
+			// special handling for some targets
+			switch tgt.label {
+			case "PC":
 				ai := bp.dbg.dbgmem.MapAddress(uint16(val.(int)), true)
 				val = int(ai.MappedAddress)
 
 				// unusual case but if PC break is not in cartridge area we
 				// don't want to add a bank condition
 				addBankCondition = addBankCondition && ai.Area == memorymap.Cartridge
+			case "Scanline":
+				if val.(int) < 0 {
+					return curated.Errorf("scanline value must be greater than or equal to 0")
+				}
+				if val.(int) > specification.AbsoluteMaxScanlines {
+					return curated.Errorf("scanline value must be less than or equal to %d", specification.AbsoluteMaxScanlines)
+				}
+			case "Clock":
+				if val.(int) < -specification.ClksHBlank {
+					return curated.Errorf("clock value must be greater than or equal to %d", -specification.ClksHBlank)
+				}
+				if val.(int) > specification.ClksVisible {
+					return curated.Errorf("scanline value must be less than or equal to %d", specification.ClksVisible)
+				}
 			}
 
 			if andBreaks {

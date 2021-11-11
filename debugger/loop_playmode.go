@@ -27,9 +27,11 @@ func (dbg *Debugger) playLoop() error {
 
 	// run and handle events
 	return dbg.vcs.Run(func() (emulation.State, error) {
-		// run continueCheck() function is called every CPU instruction so fuzziness
-		// is the number of cycles of the most recent instruction multiplied
-		// by three (the number of video cycles per CPU cycle)
+		// run continueCheck() function is called every CPU instruction. for
+		// some halt conditions this is too infrequent
+		//
+		// for this reason we should never find ourselves in the playLoop if
+		// these halt conditions exist. see setMode() function
 		dbg.halting.check()
 		if dbg.halting.halt {
 			// set debugging mode. halting messages will be preserved and

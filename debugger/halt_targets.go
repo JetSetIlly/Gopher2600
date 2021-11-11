@@ -44,6 +44,10 @@ type target struct {
 
 	// some targets should only be checked on an instruction boundary
 	instructionBoundary bool
+
+	// this target will always break in playmode almost immediately. we use
+	// this flag to decide whether to allow the debugger to switch to playmode
+	notInPlaymode bool
 }
 
 // returns value() formated by the format string. accepts a target value as an
@@ -139,7 +143,6 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (*target, error) {
 				value: func() targetValue {
 					return dbg.vcs.TV.GetCoords().Frame
 				},
-				instructionBoundary: false,
 			}
 
 		case "SCANLINE", "SL":
@@ -148,7 +151,10 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (*target, error) {
 				value: func() targetValue {
 					return dbg.vcs.TV.GetCoords().Scanline
 				},
-				instructionBoundary: false,
+
+				// specifying scanline to be notInPlaymode was considered but
+				// this will occasionaly not be true. for example, a scanline
+				// value that is beyond the extent of the generated TV frame
 			}
 
 		case "CLOCK", "CL":
@@ -157,7 +163,16 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (*target, error) {
 				value: func() targetValue {
 					return dbg.vcs.TV.GetCoords().Clock
 				},
-				instructionBoundary: false,
+
+				// it is impossible to measure the clock value accurately in
+				// playmode because the state of the machine is only checked
+				// after every CPU instruction
+				//
+				// another reason not to allow playmode when this halt target
+				// is being used, is that the emulation will almost immediately
+				// halt - the clock value *will* be reached within 228 ticks of
+				// the emulation
+				notInPlaymode: true,
 			}
 
 		case "BANK":
