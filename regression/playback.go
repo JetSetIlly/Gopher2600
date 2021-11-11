@@ -166,7 +166,7 @@ func (reg *PlaybackRegression) regress(newRegression bool, output io.Writer, msg
 		default:
 		}
 		return emulation.Running, nil
-	}, hardware.PerformanceBrake)
+	})
 
 	if err != nil {
 		if curated.Has(err, ports.PowerOff) {

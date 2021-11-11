@@ -108,28 +108,40 @@ func Check(create CreateUserInterface, output io.Writer, profile Profile, includ
 			})
 		}()
 
+		// only check for end of measurement period every PerformanceBrake CPU
+		// instructions. checking the timerChan is relatively expensive (worth
+		// a frame a two every 5 seconds)
+		performanceBrake := 0
+
 		// run until specified time elapses
 		err = vcs.Run(func() (emulation.State, error) {
 			for {
-				select {
-				case v := <-timerChan:
-					// timerChan has returned true, which means measurement
-					// period has finished, return false to cause vcs.Run() to
-					// return
-					if v {
-						return emulation.Ending, curated.Errorf(timedOut)
-					}
+				performanceBrake++
+				if performanceBrake >= hardware.PerformanceBrake {
+					performanceBrake = 0
 
-					// timerChan has returned false which indicates that the
-					// leadtime has concluded. this means the performance
-					// measurement has begun and we should record the start
-					// frame.
-					startFrame = tv.GetCoords().Frame
-				default:
-					return emulation.Running, nil
+					select {
+					case v := <-timerChan:
+						// timerChan has returned true, which means measurement
+						// period has finished, return false to cause vcs.Run() to
+						// return
+						if v {
+							return emulation.Ending, curated.Errorf(timedOut)
+						}
+
+						// timerChan has returned false which indicates that the
+						// leadtime has concluded. this means the performance
+						// measurement has begun and we should record the start
+						// frame.
+						startFrame = tv.GetCoords().Frame
+					default:
+						return emulation.Running, nil
+					}
 				}
+
+				return emulation.Running, nil
 			}
-		}, hardware.PerformanceBrake)
+		})
 		return err
 	}
 

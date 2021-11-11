@@ -20,16 +20,29 @@ import (
 	"github.com/jetsetilly/gopher2600/emulation"
 )
 
-// A convenient value to use as the checkFreq parameter of the Run() function.
-// Can give a modest improvement to performance.
+// While the continueCheck() function only runs at the end of a CPU instruction
+// (unlike the corresponding function in VCS.Step() which runs every video
+// cycle), it can still be expensive to do a full continue check every time.
+//
+// It depends on context whether it is used or not but the PerformanceBrake is
+// a standard value that can be used to filter out expensive code paths within
+// a continueCheck() implementation. For example:
+//
+//		performanceFilter++
+//		if performanceFilter >= hardware.PerfomrmanceBrake {
+//			performanceFilter = 0
+//			if end_condition == true {
+//				return emulation.Ending, nill
+//			}
+//		}
+//		return emulation.Running, nill
+//
 const PerformanceBrake = 100
 
 // Run sets the emulation running as quickly as possible. continuteCheck()
 // should return false when an external event (eg. a GUI event) indicates that
 // the emulation should stop.
-//
-// The frequency of the check is given by the checkFreq parameter.
-func (vcs *VCS) Run(continueCheck func() (emulation.State, error), checkFreq int) error {
+func (vcs *VCS) Run(continueCheck func() (emulation.State, error)) error {
 	if continueCheck == nil {
 		continueCheck = func() (emulation.State, error) { return emulation.Running, nil }
 	}
@@ -50,8 +63,10 @@ func (vcs *VCS) Run(continueCheck func() (emulation.State, error), checkFreq int
 		return nil
 	}
 
+	var err error
+
 	state := emulation.Running
-	checkCt := 0
+
 	for state != emulation.Ending {
 		switch state {
 		case emulation.Running:
@@ -64,15 +79,9 @@ func (vcs *VCS) Run(continueCheck func() (emulation.State, error), checkFreq int
 			return curated.Errorf("vcs: unsupported emulation state (%d) in Run() function", state)
 		}
 
-		// only call continue check every N iterations
-		checkCt++
-		if checkCt >= checkFreq {
-			var err error
-			state, err = continueCheck()
-			if err != nil {
-				return err
-			}
-			checkCt = 0
+		state, err = continueCheck()
+		if err != nil {
+			return err
 		}
 	}
 

@@ -39,7 +39,7 @@ func (dbg *Debugger) CatchUpLoop(tgt coords.TelevisionCoords, callback rewind.Ca
 				return emulation.Ending, nil
 			}
 			return emulation.Running, nil
-		}, 1)
+		})
 
 	case emulation.ModeDebugger:
 		// turn off TV's fps frame limiter
