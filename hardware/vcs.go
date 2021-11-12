@@ -32,6 +32,9 @@ import (
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
+// The number of times the TIA updates every CPU cycle.
+const ColorClocksPerCPUCycle = 3
+
 // VCS struct is the main container for the emulated components of the VCS.
 type VCS struct {
 	Prefs *preferences.Preferences

@@ -25,8 +25,29 @@ func (dbg *Debugger) playLoop() error {
 	// instructions
 	performanceBrake := 0
 
+	// update lastBank at the start of the play loop
+	dbg.lastBank = dbg.vcs.Mem.Cart.GetBank(dbg.vcs.CPU.PC.Address())
+
 	// run and handle events
 	return dbg.vcs.Run(func() (emulation.State, error) {
+		// update counters. because of the way LastResult works we need to make
+		// sure we only use it in the event that the CPU RdyFlag is set
+		//
+		// if it isn't then we know that the CPU ticked once before returning
+		// and allowing this function to run. meaning the the number of cycles
+		// tell the counter to Step() is ColorClocksPerCPUCycle
+		//
+		// in all other cases the number of cycles to count is ColorClocksPerCPUCycle
+		// multiplied by the number of cycles in the instruction
+		if dbg.vcs.CPU.RdyFlg {
+			dbg.counter.Step(dbg.vcs.CPU.LastResult.Cycles*hardware.ColorClocksPerCPUCycle, dbg.lastBank)
+		} else {
+			dbg.counter.Step(hardware.ColorClocksPerCPUCycle, dbg.lastBank)
+		}
+
+		// we must keep lastBank updated during the play loop
+		dbg.lastBank = dbg.vcs.Mem.Cart.GetBank(dbg.vcs.CPU.PC.Address())
+
 		// run continueCheck() function is called every CPU instruction. for
 		// some halt conditions this is too infrequent
 		//

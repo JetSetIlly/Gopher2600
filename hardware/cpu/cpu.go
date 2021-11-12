@@ -56,6 +56,9 @@ type CPU struct {
 	// last result. the address field is guaranteed to be always valid except
 	// when the CPU has just been reset. we use this fact to help us decide
 	// whether the CPU has just been reset (see HasReset() function)
+	//
+	// note a peculiarity in the current emulation means that LastResult is not
+	// reset unless the RdyFlg is true at the start of the execution.
 	LastResult execution.Result
 
 	// NoFlowControl sets whether the cpu responds accurately to instructions

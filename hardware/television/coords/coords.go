@@ -48,3 +48,9 @@ func Equal(A, B TelevisionCoords) bool {
 func GreaterThanOrEqual(A, B TelevisionCoords) bool {
 	return A.Frame > B.Frame || (A.Frame == B.Frame && A.Scanline > B.Scanline) || (A.Frame == B.Frame && A.Scanline == B.Scanline && A.Clock >= B.Clock)
 }
+
+// GreaterThan compares two instances of TelevisionCoords and return true if A
+// is greater than to B.
+func GreaterThan(A, B TelevisionCoords) bool {
+	return A.Frame > B.Frame || (A.Frame == B.Frame && A.Scanline > B.Scanline) || (A.Frame == B.Frame && A.Scanline == B.Scanline && A.Clock > B.Clock)
+}

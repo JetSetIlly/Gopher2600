@@ -13,11 +13,10 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-// Package reflection monitors the emulated hardware for conditions that would
-// otherwise not be visible through normal emulation. The reflection system
-// must be stepped every video cycle if all information is to be gathered.
+// Package counter is closely related to the reflection package. Rather than
+// detailed screen level information about the emulated system however, counter
+// simply accumulates simple state information as a numeric value.
 //
-// Note that with regards to the debugger package, Step() is called manually
-// from the input loop as appropriate. However, NewFrame() is handled by the
-// television - the Reflector having been added as a FrameTrigger.
-package reflection
+// It is closely related to the rewind package and implements the
+// TimelineCounter interface.
+package counter

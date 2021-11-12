@@ -24,18 +24,12 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 	"github.com/jetsetilly/gopher2600/logger"
-	"github.com/jetsetilly/gopher2600/rewind"
 )
 
 // Reflector should be run (with the Check() function) every video cycle.
 type Reflector struct {
 	vcs      *hardware.VCS
 	renderer Renderer
-
-	// counts to be sent to the rewind package on a call to TimelineCounts().
-	// the reflection gatherer is a convenient way to count for the timeline
-	// because Gatherer.Step() is called every VideoCycle
-	timelineCounts rewind.TimelineCounts
 
 	history []ReflectedVideoStep
 
@@ -115,14 +109,6 @@ func (ref *Reflector) Step(bank mapper.BankInfo) error {
 		ref.renderedHistory[ref.renderedHistoryIdx][i] = ReflectedVideoStep{}
 	}
 
-	// update timeline counts
-	if h[0].WSYNC {
-		ref.timelineCounts.WSYNC++
-	}
-	if h[0].CoprocessorActive {
-		ref.timelineCounts.CoProc++
-	}
-
 	ref.lastIdx = idx
 
 	return nil
@@ -178,15 +164,7 @@ func (ref *Reflector) NewFrame(_ television.FrameInfo) error {
 	}
 	ref.lastIdx = 0
 
-	// reset timeline counts on a new frame
-	ref.timelineCounts = rewind.TimelineCounts{}
-
 	// if new state is not paused then render history - the pause state is
 	// handled in the Step() function
 	return ref.render()
-}
-
-// TimelineCounts implements rewind.TimelineCounter
-func (ref *Reflector) TimelineCounts() rewind.TimelineCounts {
-	return ref.timelineCounts
 }

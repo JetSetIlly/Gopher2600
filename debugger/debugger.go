@@ -43,6 +43,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/television/coords"
 	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/reflection"
+	"github.com/jetsetilly/gopher2600/reflection/counter"
 	"github.com/jetsetilly/gopher2600/rewind"
 	"github.com/jetsetilly/gopher2600/setup"
 	"github.com/jetsetilly/gopher2600/tracker"
@@ -55,13 +56,16 @@ import (
 // example, disassembly on a cartridge change (which can happen at any time)
 // updates the Disasm field, it does not reinitialise it.
 type Debugger struct {
-	// current mode of the emulation
+	// current mode of the emulation. use setMode() to set the value
 	mode emulation.Mode
 
 	// state is an atomic value because we need to be able to read it from the
 	// GUI thread (see State() function)
 	state atomic.Value // emulation.State
 
+	// reference to emulated hardware. this pointer never changes through the
+	// life of the emulation even though the hardware may change and the
+	// components may change (during rewind for example)
 	vcs *hardware.VCS
 
 	// the last loader to be used. we keep a reference to it so we can make
@@ -103,6 +107,10 @@ type Debugger struct {
 	//
 	// * allocated when entering debugger mode
 	ref *reflection.Reflector
+
+	// closely related to the relection system is the counter. generally
+	// updated, cleared, etc. at the same time as the reflection system.
+	counter *counter.Counter
 
 	// halting is used to coordinate the checking of all halting conditions. it
 	// is updated every video cycle as appropriate (ie. not when rewinding)
@@ -305,18 +313,22 @@ func NewDebugger(create CreateUserInterface, mode emulation.Mode, spec string, u
 	// add tab completion to terminal
 	dbg.term.RegisterTabCompletion(commandline.NewTabCompletion(debuggerCommands))
 
-	// plug in rewind system
+	// create rewind system
 	dbg.Rewind, err = rewind.NewRewind(dbg, dbg)
 	if err != nil {
 		return nil, curated.Errorf("debugger: %v", err)
 	}
 	dbg.deepPoking = make(chan bool, 1)
 
-	// plug in reflection system
+	// add reflection system to the GUI
 	dbg.ref = reflection.NewReflector(dbg.vcs)
 	if r, ok := dbg.gui.(reflection.Broker); ok {
 		dbg.ref.AddRenderer(r.GetReflectionRenderer())
 	}
+
+	// add counter to rewind system
+	dbg.counter = counter.NewCounter(dbg.vcs)
+	dbg.Rewind.AddTimelineCounter(dbg.counter)
 
 	// adding TV frame triggers in setMode(). what the TV triggers on depending
 	// on the mode for performance reasons (eg. no reflection required in
@@ -458,24 +470,13 @@ func (dbg *Debugger) setMode(mode emulation.Mode) error {
 	switch dbg.mode {
 	case emulation.ModePlay:
 		dbg.vcs.TV.AddFrameTrigger(dbg.Rewind)
+		dbg.vcs.TV.AddFrameTrigger(dbg.counter)
 		dbg.setState(emulation.Running)
 
-		// remove timeline counter in playmode because we the counts won't be
-		// updated in playmode
-		dbg.Rewind.AddTimelineCounter(nil)
-
 	case emulation.ModeDebugger:
-		// using reflection monitor for the timeline counter
-		dbg.Rewind.AddTimelineCounter(dbg.ref)
-
-		// frame triggers.
-		//
-		// deliberately adding rewind before reflection because the latter
-		// implements rewind.TimelineCounter. we want to reset TimelineCounts
-		// in reflection.Gatherer but we need to call TimelineCounts() from the
-		// rewind packge before that happens
 		dbg.vcs.TV.AddFrameTrigger(dbg.Rewind)
 		dbg.vcs.TV.AddFrameTrigger(dbg.ref)
+		dbg.vcs.TV.AddFrameTrigger(dbg.counter)
 		dbg.setState(emulation.Paused)
 
 		// debugger needs knowledge about previous frames (via the reflector)
@@ -771,8 +772,9 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) 
 		}
 	}
 
-	// clear existing reflection data
+	// clear existing reflection and counter data
 	dbg.ref.Clear()
+	dbg.counter.Clear()
 
 	err = dbg.Disasm.FromMemory()
 	if err != nil {

@@ -59,6 +59,7 @@ func (dbg *Debugger) catchupLoop(inputter terminal.Input) error {
 		if err != nil {
 			return err
 		}
+		dbg.counter.Step(1, dbg.lastBank)
 
 		if ended {
 			if !dbg.vcs.CPU.LastResult.Final {
@@ -106,6 +107,7 @@ func (dbg *Debugger) catchupLoop(inputter terminal.Input) error {
 		if err = dbg.ref.Step(dbg.lastBank); err != nil {
 			return err
 		}
+		dbg.counter.Step(1, dbg.lastBank)
 
 		if dbg.unwindLoopRestart != nil {
 			return nil
@@ -386,6 +388,7 @@ func (dbg *Debugger) step(inputter terminal.Input, catchup bool) error {
 		if err != nil {
 			return err
 		}
+		dbg.counter.Step(1, dbg.lastBank)
 
 		// for video quantum we need to run any OnStep commands before
 		// starting a new inputLoop
@@ -437,6 +440,7 @@ func (dbg *Debugger) step(inputter terminal.Input, catchup bool) error {
 	if err := dbg.ref.Step(dbg.lastBank); err != nil {
 		return err
 	}
+	dbg.counter.Step(1, dbg.lastBank)
 
 	if dbg.unwindLoopRestart != nil {
 		return nil

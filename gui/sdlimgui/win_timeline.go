@@ -149,7 +149,7 @@ func (win *winTimeline) drawTimeline() {
 		y -= float32(timeline.TotalScanlines[i]) * traceSize.Y / specification.AbsoluteMaxScanlines
 
 		// add jitter to trace to indicate changes in value through exaggeration
-		if i > 0 && timeline.Counts[i-1].ValidCounts {
+		if i > 0 {
 			if timeline.TotalScanlines[i] < timeline.TotalScanlines[i-1] {
 				y++
 			} else if timeline.TotalScanlines[i] > timeline.TotalScanlines[i-1] {
@@ -168,7 +168,7 @@ func (win *winTimeline) drawTimeline() {
 		y -= float32(timeline.Counts[i].WSYNC) * traceSize.Y / specification.AbsoluteMaxClks
 
 		// add jitter to trace to indicate changes in value through exaggeration
-		if i > 0 && timeline.Counts[i-1].ValidCounts {
+		if i > 0 {
 			if timeline.Counts[i].WSYNC < timeline.Counts[i-1].WSYNC {
 				y++
 			} else if timeline.Counts[i].WSYNC > timeline.Counts[i-1].WSYNC {
@@ -177,11 +177,9 @@ func (win *winTimeline) drawTimeline() {
 		}
 
 		// plot a dotted line if count isn't valid and a solid line if it is
-		if timeline.Counts[i].ValidCounts || int(x)%unmeasuredDotPitch == 0 {
-			dl.AddRectFilled(imgui.Vec2{X: x, Y: y},
-				imgui.Vec2{X: x + traceWidth, Y: y + traceHeight},
-				win.img.cols.timelineWSYNC)
-		}
+		dl.AddRectFilled(imgui.Vec2{X: x, Y: y},
+			imgui.Vec2{X: x + traceWidth, Y: y + traceHeight},
+			win.img.cols.timelineWSYNC)
 
 		// plot coprocessor from the top
 		if win.img.lz.CoProc.HasCoProcBus {
@@ -189,7 +187,7 @@ func (win *winTimeline) drawTimeline() {
 			y += float32(timeline.Counts[i].CoProc) * traceSize.Y / specification.AbsoluteMaxClks
 
 			// add jitter to trace to indicate changes in value through exaggeration
-			if i > 0 && timeline.Counts[i-1].ValidCounts {
+			if i > 0 {
 				if timeline.Counts[i].CoProc < timeline.Counts[i-1].CoProc {
 					y++
 				} else if timeline.Counts[i].CoProc > timeline.Counts[i-1].CoProc {
@@ -198,11 +196,9 @@ func (win *winTimeline) drawTimeline() {
 			}
 
 			// plot a dotted line if count isn't valid and a solid line if it is
-			if timeline.Counts[i].ValidCounts || int(x)%unmeasuredDotPitch == 0 {
-				dl.AddRectFilled(imgui.Vec2{X: x, Y: y},
-					imgui.Vec2{X: x + traceWidth, Y: y + traceHeight},
-					win.img.cols.timelineCoProc)
-			}
+			dl.AddRectFilled(imgui.Vec2{X: x, Y: y},
+				imgui.Vec2{X: x + traceWidth, Y: y + traceHeight},
+				win.img.cols.timelineCoProc)
 		}
 
 		x += traceWidth

@@ -25,12 +25,9 @@ import (
 // TimelineCounts is returned by a TimelineCounter implementation. The value
 // should be updated every *video* cycle. Users can divide by three to get the
 // color-clock count.
-//
-// If ValidCounts is false then the counts shouldn't be used.
 type TimelineCounts struct {
-	ValidCounts bool
-	WSYNC       int
-	CoProc      int
+	WSYNC  int
+	CoProc int
 }
 
 // TimelineCounter implementations provide system information for the
@@ -56,10 +53,6 @@ func (r *Rewind) addTimelineEntry(frameInfo television.FrameInfo) {
 	cts := TimelineCounts{}
 	if r.ctr != nil {
 		cts = r.ctr.TimelineCounts()
-
-		// making the assumption that TimelineCounts is valid if the
-		// TimelineCounter interface is available
-		cts.ValidCounts = true
 	}
 
 	r.timeline.FrameNum = append(r.timeline.FrameNum, frameInfo.FrameNum)
