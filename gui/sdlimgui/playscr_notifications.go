@@ -28,6 +28,7 @@ import (
 const (
 	notificationDurationPeripheral = 60
 	notificationDurationCartridge  = 60
+	notificationDurationEventRun   = 60
 	notificationDurationEvent      = 10
 )
 
@@ -119,7 +120,12 @@ type emulationEventNotification struct {
 func (ee *emulationEventNotification) set(event emulation.Event) {
 	ee.currentEvent = event
 	ee.open = true
-	ee.frames = notificationDurationEvent
+	switch event {
+	case emulation.EventRun:
+		ee.frames = notificationDurationEventRun
+	default:
+		ee.frames = notificationDurationEvent
+	}
 }
 
 func (ee *emulationEventNotification) tick() {
