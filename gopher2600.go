@@ -421,6 +421,7 @@ func emulate(emulationMode emulation.Mode, md *modalflag.Modes, sync *mainSync) 
 	initScript := md.AddString("initscript", defInitScript, "script to run on debugger start")
 	useSavekey := md.AddBool("savekey", false, "use savekey in player 1 port")
 	profile := md.AddString("profile", "none", "run performance check with profiling: command separated CPU, MEM, TRACE or ALL")
+	log := md.AddBool("log", false, "echo debugging log to stdout")
 
 	stats := &[]bool{false}[0]
 	if statsview.Available() {
@@ -430,6 +431,13 @@ func emulate(emulationMode emulation.Mode, md *modalflag.Modes, sync *mainSync) 
 	p, err := md.Parse()
 	if err != nil || p != modalflag.ParseContinue {
 		return err
+	}
+
+	// set debugging log echo
+	if *log {
+		logger.SetEcho(os.Stdout)
+	} else {
+		logger.SetEcho(nil)
 	}
 
 	if *stats {
