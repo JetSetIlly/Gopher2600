@@ -25,7 +25,7 @@ import (
 // It is called from the rewind package and sets the functions that are
 // required for catchupLoop().
 func (dbg *Debugger) CatchUpLoop(tgt coords.TelevisionCoords) error {
-	switch dbg.mode {
+	switch dbg.Mode() {
 	case emulation.ModePlay:
 		fpscap := dbg.vcs.TV.SetFPSCap(false)
 		defer dbg.vcs.TV.SetFPSCap(fpscap)

@@ -30,9 +30,9 @@ import (
 // RewindByAmount moves forwards or backwards by specified frames. Negative
 // numbers indicate backwards
 func (dbg *Debugger) RewindByAmount(amount int) bool {
-	switch dbg.mode {
+	switch dbg.Mode() {
 	default:
-		panic(fmt.Sprintf("Rewind: unsupported mode (%v)", dbg.mode))
+		panic(fmt.Sprintf("Rewind: unsupported mode (%v)", dbg.Mode()))
 
 	case emulation.ModePlay:
 		coords := dbg.vcs.TV.GetCoords()
@@ -68,9 +68,9 @@ func (dbg *Debugger) RewindByAmount(amount int) bool {
 
 // RewindToFrame measure from the current frame.
 func (dbg *Debugger) RewindToFrame(fn int, last bool) bool {
-	switch dbg.mode {
+	switch dbg.Mode() {
 	default:
-		panic(fmt.Sprintf("RewindToFrame: unsupported mode (%v)", dbg.mode))
+		panic(fmt.Sprintf("RewindToFrame: unsupported mode (%v)", dbg.Mode()))
 
 	case emulation.ModeDebugger:
 		if dbg.State() == emulation.Rewinding {
@@ -115,9 +115,9 @@ func (dbg *Debugger) RewindToFrame(fn int, last bool) bool {
 
 // GotoCoords rewinds the emulation to the specified coordinates.
 func (dbg *Debugger) GotoCoords(coords coords.TelevisionCoords) bool {
-	switch dbg.mode {
+	switch dbg.Mode() {
 	default:
-		panic(fmt.Sprintf("GotoCoords: unsupported mode (%v)", dbg.mode))
+		panic(fmt.Sprintf("GotoCoords: unsupported mode (%v)", dbg.Mode()))
 
 	case emulation.ModeDebugger:
 		if dbg.State() == emulation.Rewinding {
@@ -154,9 +154,9 @@ func (dbg *Debugger) GotoCoords(coords coords.TelevisionCoords) bool {
 
 // RerunLastNFrames measured from the current frame.
 func (dbg *Debugger) RerunLastNFrames(frames int) bool {
-	switch dbg.mode {
+	switch dbg.Mode() {
 	default:
-		panic(fmt.Sprintf("RerunLastNFrames: unsupported mode (%v)", dbg.mode))
+		panic(fmt.Sprintf("RerunLastNFrames: unsupported mode (%v)", dbg.Mode()))
 
 	case emulation.ModeDebugger:
 		if dbg.State() == emulation.Rewinding {

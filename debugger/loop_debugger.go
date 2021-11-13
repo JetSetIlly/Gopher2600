@@ -124,7 +124,7 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, isVideoStep bool) error 
 	var err error
 
 	for dbg.running {
-		if dbg.mode != emulation.ModeDebugger {
+		if dbg.Mode() != emulation.ModeDebugger {
 			return nil
 		}
 
@@ -167,7 +167,7 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, isVideoStep bool) error 
 			}
 
 			// emulation has been put into a different mode. exit loop immediately
-			if dbg.mode != emulation.ModeDebugger {
+			if dbg.Mode() != emulation.ModeDebugger {
 				return nil
 			}
 
@@ -292,7 +292,7 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, isVideoStep bool) error 
 			}
 
 			// emulation has been put into a different mode. exit loop immediately
-			if dbg.mode != emulation.ModeDebugger {
+			if dbg.Mode() != emulation.ModeDebugger {
 				return nil
 			}
 

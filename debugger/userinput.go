@@ -44,7 +44,7 @@ func (dbg *Debugger) userInputHandler(ev userinput.Event) error {
 	}
 
 	// mode specific special input (not passed to the VCS as controller input)
-	switch dbg.mode {
+	switch dbg.Mode() {
 	case emulation.ModePlay:
 		switch ev := ev.(type) {
 		case userinput.EventMouseWheel:
@@ -113,7 +113,7 @@ func (dbg *Debugger) userInputHandler(ev userinput.Event) error {
 				}
 				return nil
 			case userinput.GamepadButtonGuide:
-				switch dbg.mode {
+				switch dbg.Mode() {
 				case emulation.ModePlay:
 					dbg.SetFeature(emulation.ReqSetMode, emulation.ModeDebugger)
 				case emulation.ModeDebugger:
@@ -133,7 +133,7 @@ func (dbg *Debugger) userInputHandler(ev userinput.Event) error {
 	// direction). unpause if the emulation is currently paused
 	//
 	// * we're only allowing this for playmode
-	if dbg.mode == emulation.ModePlay && dbg.State() == emulation.Paused && handled {
+	if dbg.Mode() == emulation.ModePlay && dbg.State() == emulation.Paused && handled {
 		dbg.SetFeature(emulation.ReqSetPause, false)
 	}
 

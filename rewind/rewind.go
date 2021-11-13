@@ -462,7 +462,7 @@ type findResults struct {
 // the one that is requested.
 func (r *Rewind) findFrameIndex(frame int) findResults {
 	sf := frame - 1
-	if r.emulation.Debugger() != nil {
+	if r.emulation.Mode() == emulation.ModeDebugger {
 		sf--
 	}
 

@@ -57,7 +57,7 @@ import (
 // updates the Disasm field, it does not reinitialise it.
 type Debugger struct {
 	// current mode of the emulation. use setMode() to set the value
-	mode emulation.Mode
+	mode atomic.Value // emulation.Mode
 
 	// state is an atomic value because we need to be able to read it from the
 	// GUI thread (see State() function)
@@ -238,8 +238,11 @@ func NewDebugger(create CreateUserInterface, mode emulation.Mode, spec string, u
 		eventCheckPulse: time.NewTicker(50 * time.Millisecond),
 	}
 
-	// emulator is starting
+	// emulator is starting in the "none" mode (the advangatge of this is that
+	// we get to set the underlying type of the atomic.Value early before
+	// anyone has a change to call State() or Mode() from another thread)
 	dbg.state.Store(emulation.EmulatorStart)
+	dbg.mode.Store(emulation.ModeNone)
 
 	// creat a new television. this will be used during the initialisation of
 	// the VCS and not referred to directly again
@@ -386,6 +389,11 @@ func (dbg *Debugger) State() emulation.State {
 	return dbg.state.Load().(emulation.State)
 }
 
+// Mode implements the emulation.Emulation interface.
+func (dbg *Debugger) Mode() emulation.Mode {
+	return dbg.mode.Load().(emulation.Mode)
+}
+
 // set the emulation state
 //
 // * if the state is the Paused or Running state consider using
@@ -410,7 +418,7 @@ func (dbg *Debugger) setStateQuiet(state emulation.State, quiet bool) {
 	prevState := dbg.State()
 	dbg.state.Store(state)
 
-	if !quiet && dbg.mode == emulation.ModePlay {
+	if !quiet && dbg.Mode() == emulation.ModePlay {
 		switch state {
 		case emulation.Paused:
 			dbg.gui.SetFeature(gui.ReqEmulationEvent, emulation.EventPause)
@@ -428,7 +436,7 @@ func (dbg *Debugger) setStateQuiet(state emulation.State, quiet bool) {
 // debugger package (SetFeature() puts the request on the RawEvent Queue
 // meaning it will be inserted in the input loop correctly)
 func (dbg *Debugger) setMode(mode emulation.Mode) error {
-	if mode == dbg.mode {
+	if dbg.Mode() == mode {
 		return nil
 	}
 
@@ -439,15 +447,15 @@ func (dbg *Debugger) setMode(mode emulation.Mode) error {
 	// cause the debugger mode to run until the halting condition is matched
 	// (which we know will occur in the almost immediate future)
 	if mode == emulation.ModePlay && !dbg.halting.allowPlaymode() {
-		if dbg.mode == emulation.ModeDebugger {
+		if dbg.Mode() == emulation.ModeDebugger {
 			dbg.runUntilHalt = true
 			dbg.continueEmulation = true
 		}
 		return nil
 	}
 
-	prevMode := dbg.mode
-	dbg.mode = mode
+	prevMode := dbg.Mode()
+	dbg.mode.Store(mode)
 
 	// notify gui of change
 	err := dbg.gui.SetFeature(gui.ReqSetEmulationMode, mode)
@@ -467,7 +475,7 @@ func (dbg *Debugger) setMode(mode emulation.Mode) error {
 	// paused for example it complicates how we render the screen (see sdlimgui
 	// screen.go)
 
-	switch dbg.mode {
+	switch dbg.Mode() {
 	case emulation.ModePlay:
 		dbg.vcs.TV.AddFrameTrigger(dbg.Rewind)
 		dbg.vcs.TV.AddFrameTrigger(dbg.counter)
@@ -502,7 +510,7 @@ func (dbg *Debugger) Start(initScript string, cartload cartridgeloader.Loader) e
 
 	// simple detection of whether cartridge is ejected when starting in
 	// playmode. if it is ejected then open ROM selected.
-	if dbg.mode == emulation.ModePlay {
+	if dbg.Mode() == emulation.ModePlay {
 		if cartload.Filename == "" {
 			filename := make(chan string, 1)
 			err = dbg.gui.SetFeature(gui.ReqROMSelector, filename)
@@ -563,7 +571,7 @@ func (dbg *Debugger) Start(initScript string, cartload cartridgeloader.Loader) e
 
 	// inputloop will continue until debugger is to be terminated
 	for dbg.running {
-		switch dbg.mode {
+		switch dbg.Mode() {
 		case emulation.ModePlay:
 			err = dbg.playLoop()
 			if err != nil {
@@ -651,7 +659,7 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) 
 
 	// set state after initialisation according to the emulation mode
 	defer func() {
-		switch dbg.mode {
+		switch dbg.Mode() {
 		case emulation.ModeDebugger:
 			if dbg.runUntilHalt && e == nil {
 				dbg.setState(emulation.Running)

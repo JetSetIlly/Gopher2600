@@ -36,7 +36,7 @@ func (dbg *Debugger) SetFeature(request emulation.FeatureReq, args ...emulation.
 	case emulation.ReqSetPause:
 		err = argLen(args, 1)
 		if err == nil {
-			switch dbg.mode {
+			switch dbg.Mode() {
 			case emulation.ModePlay:
 				dbg.PushRawEvent(func() {
 					// Pause implements the emulation.Emulation interface.

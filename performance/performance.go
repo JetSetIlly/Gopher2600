@@ -198,3 +198,7 @@ func (e *stubEmulation) SetFeature(request emulation.FeatureReq, args ...emulati
 func (e *stubEmulation) State() emulation.State {
 	return emulation.Running
 }
+
+func (e *stubEmulation) Mode() emulation.Mode {
+	return emulation.ModePlay
+}

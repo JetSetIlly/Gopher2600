@@ -50,11 +50,12 @@ type Emulation interface {
 	Debugger() Debugger
 	UserInput() chan userinput.Event
 
-	// Send a request to set an emulation feature.
+	// Send a request to set an emulation feature
 	SetFeature(request FeatureReq, args ...FeatureReqData) error
 
-	// Immediate request for the state of the emulation.
+	// Immediate request for the state and mode of the emulation
 	State() State
+	Mode() Mode
 }
 
 // Mode inidicates the broad features of the emulation. For example, Debugger

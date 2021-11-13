@@ -61,7 +61,7 @@ func (dbg *Debugger) playLoop() error {
 			return emulation.Ending, nil
 		}
 
-		if dbg.mode != emulation.ModePlay {
+		if dbg.Mode() != emulation.ModePlay {
 			return emulation.Ending, nil
 		}
 
