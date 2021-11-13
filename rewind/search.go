@@ -62,7 +62,7 @@ func (r *Rewind) SearchMemoryWrite(tgt *State, addr uint16, value uint8, valueMa
 	endCoords := tgt.TV.GetCoords()
 
 	// find a recent state from the rewind history and plumb it our searchVCS
-	idx, _, _ := r.findFrameIndex(endCoords.Frame)
+	idx := r.findFrameIndex(endCoords.Frame).fromIdx
 	plumb(searchVCS, r.entries[idx])
 
 	// loop until we reach (or just surpass) the target State
@@ -75,7 +75,7 @@ func (r *Rewind) SearchMemoryWrite(tgt *State, addr uint16, value uint8, valueMa
 
 		if searchVCS.Mem.LastAccessWrite && searchVCS.Mem.LastAccessAddressMapped == addr {
 			if searchVCS.Mem.LastAccessValue&valueMask == value&valueMask {
-				matchingState = snapshot(searchVCS, levelAdhoc)
+				matchingState = snapshot(searchVCS, levelTemporary)
 			}
 			mostRecentTVstate = searchTV.String()
 		}
@@ -126,7 +126,7 @@ func (r *Rewind) SearchRegisterWrite(tgt *State, reg rune, value uint8, valueMas
 	endCoords := tgt.TV.GetCoords()
 
 	// find a recent state and plumb it into searchVCS
-	idx, _, _ := r.findFrameIndex(endCoords.Frame)
+	idx := r.findFrameIndex(endCoords.Frame).fromIdx
 	plumb(searchVCS, r.entries[idx])
 
 	// onLoad() is called whenever a CPU register is loaded with a new value
@@ -159,7 +159,7 @@ func (r *Rewind) SearchRegisterWrite(tgt *State, reg rune, value uint8, valueMas
 		// make snapshot of current state at CPU instruction boundary
 		if match {
 			match = false
-			matchingState = snapshot(searchVCS, levelAdhoc)
+			matchingState = snapshot(searchVCS, levelTemporary)
 		}
 
 		// check to see if TV state exceeds the requested state

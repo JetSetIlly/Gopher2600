@@ -44,52 +44,18 @@ type TimelineRatios struct {
 	CoProc float32
 }
 
-func (r *Rewind) addTimelineEntry(frameInfo television.FrameInfo) {
-	// do not alter the timeline information if we're in the rewinding state
-	if r.emulation.State() == emulation.Rewinding {
-		return
-	}
-
-	cts := TimelineCounts{}
-	if r.ctr != nil {
-		cts = r.ctr.TimelineCounts()
-	}
-
-	r.timeline.FrameNum = append(r.timeline.FrameNum, frameInfo.FrameNum)
-	r.timeline.TotalScanlines = append(r.timeline.TotalScanlines, frameInfo.TotalScanlines)
-	r.timeline.Counts = append(r.timeline.Counts, cts)
-	r.timeline.LeftPlayerInput = append(r.timeline.LeftPlayerInput, r.vcs.RIOT.Ports.LeftPlayer.IsActive())
-	r.timeline.RightPlayerInput = append(r.timeline.RightPlayerInput, r.vcs.RIOT.Ports.RightPlayer.IsActive())
-	r.timeline.PanelInput = append(r.timeline.PanelInput, r.vcs.RIOT.Ports.Panel.IsActive())
-
-	// ratios
-	b := float32(frameInfo.TotalScanlines * specification.ClksScanline)
-	r.timeline.Ratios = append(r.timeline.Ratios, TimelineRatios{
-		WSYNC:  float32(cts.WSYNC) / b,
-		CoProc: float32(cts.CoProc) / b,
-	})
-
-	if len(r.timeline.FrameNum) > timelineLength {
-		r.timeline.FrameNum = r.timeline.FrameNum[1:]
-		r.timeline.TotalScanlines = r.timeline.TotalScanlines[1:]
-		r.timeline.Counts = r.timeline.Counts[1:]
-		r.timeline.Ratios = r.timeline.Ratios[1:]
-		r.timeline.LeftPlayerInput = r.timeline.LeftPlayerInput[1:]
-		r.timeline.RightPlayerInput = r.timeline.RightPlayerInput[1:]
-		r.timeline.PanelInput = r.timeline.PanelInput[1:]
-	}
-
-}
-
 // Timeline provides a summary of the current state of the rewind system.
 //
 // Useful for GUIs for example, to present the range of frame numbers that are
 // available in the rewind history.
 type Timeline struct {
-	FrameNum         []int
-	TotalScanlines   []int
-	Counts           []TimelineCounts
-	Ratios           []TimelineRatios
+	FrameNum       []int
+	TotalScanlines []int
+	Counts         []TimelineCounts
+	Ratios         []TimelineRatios
+
+	// peripheral input (including the panel). entry is true if the peripheral
+	// was "active" at the end of a frame
 	LeftPlayerInput  []bool
 	RightPlayerInput []bool
 	PanelInput       []bool
@@ -155,29 +121,14 @@ func (tl *Timeline) checkIntegrity() error {
 	return nil
 }
 
-func (tl *Timeline) splice(frameNumber int) {
-	for i := range tl.FrameNum {
-		if frameNumber == tl.FrameNum[i] {
-			tl.FrameNum = tl.FrameNum[:i]
-			tl.TotalScanlines = tl.TotalScanlines[:i]
-			tl.Counts = tl.Counts[:i]
-			tl.LeftPlayerInput = tl.LeftPlayerInput[:i]
-			tl.RightPlayerInput = tl.RightPlayerInput[:i]
-			tl.PanelInput = tl.PanelInput[:i]
-			break // for loop
-		}
-	}
-}
-
+// GetTimeline returns a copy of the current Timeline. Checks integrity of the
+// timeline and will cause the program to panic if it is insane.
 func (r *Rewind) GetTimeline() Timeline {
 	if err := r.timeline.checkIntegrity(); err != nil {
 		panic(err)
 	}
 
-	e := r.end - 1
-	if e < 0 {
-		e += len(r.entries)
-	}
+	e := r.lastEntryIdx()
 
 	// because of how we generate visual state we cannot generate the image for
 	// the first frame in the history unless the first entry represents a
@@ -194,4 +145,57 @@ func (r *Rewind) GetTimeline() Timeline {
 	r.timeline.AvailableEnd = r.entries[e].TV.GetCoords().Frame
 
 	return r.timeline
+}
+
+func (r *Rewind) addTimelineEntry(frameInfo television.FrameInfo) {
+	// do not alter the timeline information if we're in the rewinding state
+	if r.emulation.State() == emulation.Rewinding {
+		return
+	}
+
+	// splice timeline if newframe is less than the current end framenum. this
+	// can happen when the  machine has been rewound to an earlier state
+	if len(r.timeline.FrameNum) > 0 && frameInfo.FrameNum <= r.timeline.FrameNum[len(r.timeline.FrameNum)-1] {
+		for i := range r.timeline.FrameNum {
+			if frameInfo.FrameNum <= r.timeline.FrameNum[i] {
+				r.timeline.FrameNum = r.timeline.FrameNum[:i]
+				r.timeline.TotalScanlines = r.timeline.TotalScanlines[:i]
+				r.timeline.Counts = r.timeline.Counts[:i]
+				r.timeline.LeftPlayerInput = r.timeline.LeftPlayerInput[:i]
+				r.timeline.RightPlayerInput = r.timeline.RightPlayerInput[:i]
+				r.timeline.PanelInput = r.timeline.PanelInput[:i]
+				break // for loop
+			}
+		}
+	}
+
+	cts := TimelineCounts{}
+	if r.ctr != nil {
+		cts = r.ctr.TimelineCounts()
+	}
+
+	r.timeline.FrameNum = append(r.timeline.FrameNum, frameInfo.FrameNum)
+	r.timeline.TotalScanlines = append(r.timeline.TotalScanlines, frameInfo.TotalScanlines)
+	r.timeline.Counts = append(r.timeline.Counts, cts)
+	r.timeline.LeftPlayerInput = append(r.timeline.LeftPlayerInput, r.vcs.RIOT.Ports.LeftPlayer.IsActive())
+	r.timeline.RightPlayerInput = append(r.timeline.RightPlayerInput, r.vcs.RIOT.Ports.RightPlayer.IsActive())
+	r.timeline.PanelInput = append(r.timeline.PanelInput, r.vcs.RIOT.Ports.Panel.IsActive())
+
+	// ratios
+	b := float32(frameInfo.TotalScanlines * specification.ClksScanline)
+	r.timeline.Ratios = append(r.timeline.Ratios, TimelineRatios{
+		WSYNC:  float32(cts.WSYNC) / b,
+		CoProc: float32(cts.CoProc) / b,
+	})
+
+	if len(r.timeline.FrameNum) > timelineLength {
+		r.timeline.FrameNum = r.timeline.FrameNum[1:]
+		r.timeline.TotalScanlines = r.timeline.TotalScanlines[1:]
+		r.timeline.Counts = r.timeline.Counts[1:]
+		r.timeline.Ratios = r.timeline.Ratios[1:]
+		r.timeline.LeftPlayerInput = r.timeline.LeftPlayerInput[1:]
+		r.timeline.RightPlayerInput = r.timeline.RightPlayerInput[1:]
+		r.timeline.PanelInput = r.timeline.PanelInput[1:]
+	}
+
 }

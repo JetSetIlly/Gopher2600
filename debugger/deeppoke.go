@@ -95,7 +95,7 @@ func (dbg *Debugger) doDeepPoke(addr uint16, value uint8, newValue uint8, valueM
 		}
 
 		// run from found poking.state to the "current state" in the real emulation
-		err = dbg.Rewind.RunFromState(poking.state, currentState, pokeHook)
+		err = dbg.Rewind.RunPoke(poking.state, currentState, pokeHook)
 		if err != nil {
 			return err
 		}
@@ -109,7 +109,7 @@ func (dbg *Debugger) doDeepPoke(addr uint16, value uint8, newValue uint8, valueM
 		}
 
 		// run from found poking.state to the "current state" in the real emulation
-		err = dbg.Rewind.RunFromState(poking.state, currentState, nil)
+		err = dbg.Rewind.RunPoke(poking.state, currentState, nil)
 		if err != nil {
 			return err
 		}

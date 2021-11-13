@@ -18,14 +18,13 @@ package debugger
 import (
 	"github.com/jetsetilly/gopher2600/emulation"
 	"github.com/jetsetilly/gopher2600/hardware/television/coords"
-	"github.com/jetsetilly/gopher2600/rewind"
 )
 
 // CatchUpLoop implements the rewind.Runner interface.
 //
 // It is called from the rewind package and sets the functions that are
 // required for catchupLoop().
-func (dbg *Debugger) CatchUpLoop(tgt coords.TelevisionCoords, callback rewind.CatchUpLoopCallback) error {
+func (dbg *Debugger) CatchUpLoop(tgt coords.TelevisionCoords) error {
 	switch dbg.mode {
 	case emulation.ModePlay:
 		fpscap := dbg.vcs.TV.SetFPSCap(false)
@@ -49,8 +48,6 @@ func (dbg *Debugger) CatchUpLoop(tgt coords.TelevisionCoords, callback rewind.Ca
 
 		dbg.catchupContinue = func() bool {
 			newCoords := dbg.vcs.TV.GetCoords()
-
-			callback(newCoords.Frame)
 
 			// returns true if we're to continue
 			return !coords.GreaterThanOrEqual(newCoords, tgt)
