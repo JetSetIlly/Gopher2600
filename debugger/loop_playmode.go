@@ -18,9 +18,28 @@ package debugger
 import (
 	"github.com/jetsetilly/gopher2600/emulation"
 	"github.com/jetsetilly/gopher2600/hardware"
+	"github.com/jetsetilly/gopher2600/userinput"
 )
 
 func (dbg *Debugger) playLoop() error {
+	if dbg.firstROMSelection != nil {
+		done := false
+		for !done {
+			select {
+			case ev := <-dbg.events.RawEvents:
+				ev()
+			case ev := <-dbg.events.UserInput:
+				if _, ok := ev.(userinput.EventQuit); ok {
+					dbg.running = false
+					return nil
+				}
+			case <-dbg.firstROMSelection:
+				dbg.firstROMSelection = nil
+				done = true
+			}
+		}
+	}
+
 	// only check for end of measurement period every PerformanceBrake CPU
 	// instructions
 	performanceBrake := 0

@@ -59,6 +59,13 @@ type Debugger struct {
 	// current mode of the emulation. use setMode() to set the value
 	mode atomic.Value // emulation.Mode
 
+	// when playmode is started without a ROM specified we send the GUI a
+	// ReqROMSelector request. we create the firstROMSelection channel and wait
+	// for a response from the InsertCartridge() function. sending and
+	// receiving on this channel occur in the same goroutine so the chanel must
+	// be buffered
+	firstROMSelection chan bool
+
 	// state is an atomic value because we need to be able to read it from the
 	// GUI thread (see State() function)
 	state atomic.Value // emulation.State
@@ -510,37 +517,17 @@ func (dbg *Debugger) Start(initScript string, cartload cartridgeloader.Loader) e
 
 	// simple detection of whether cartridge is ejected when starting in
 	// playmode. if it is ejected then open ROM selected.
-	if dbg.Mode() == emulation.ModePlay {
-		if cartload.Filename == "" {
-			filename := make(chan string, 1)
-			err = dbg.gui.SetFeature(gui.ReqROMSelector, filename)
-			if err != nil {
-				return curated.Errorf("playmode: %v", err)
-			}
-
-			// a ROM selector has been reqiested. now wait for an event, either a
-			// filename from the selector or a quit event.
-			done := false
-			for !done {
-				select {
-				case ev := <-dbg.events.UserInput:
-					if _, ok := ev.(userinput.EventQuit); ok {
-						done = true
-					}
-				case fn := <-filename:
-					cartload, err = cartridgeloader.NewLoader(fn, "AUTO")
-					if err != nil {
-						return curated.Errorf("debugger: %v", err)
-					}
-					done = true
-				}
-			}
+	if dbg.Mode() == emulation.ModePlay && cartload.Filename == "" {
+		dbg.firstROMSelection = make(chan bool, 1)
+		err = dbg.gui.SetFeature(gui.ReqROMSelector)
+		if err != nil {
+			return curated.Errorf("debugger: %v", err)
 		}
-	}
-
-	err = dbg.attachCartridge(cartload)
-	if err != nil {
-		return curated.Errorf("debugger: %v", err)
+	} else {
+		err = dbg.attachCartridge(cartload)
+		if err != nil {
+			return curated.Errorf("debugger: %v", err)
+		}
 	}
 
 	dbg.running = true

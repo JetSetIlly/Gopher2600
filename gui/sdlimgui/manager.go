@@ -54,7 +54,8 @@ type manager struct {
 	//		window[title].(*windowType)
 	//
 	// the following fields are provided for convenience.
-	dbgScr *winDbgScr
+	dbgScr    *winDbgScr
+	selectROM *winSelectROM
 
 	// the position of the screen on the current display. the SDL function
 	// Window.GetPosition() is unsuitable for use in conjunction with imgui
@@ -171,6 +172,7 @@ func newManager(img *SdlImgui) (*manager, error) {
 
 	// get references to specific windows that need to be referenced elsewhere in the system
 	wm.dbgScr = wm.windows[winDbgScrID].(*winDbgScr)
+	wm.selectROM = wm.windows[winSelectROMID].(*winSelectROM)
 
 	return wm, nil
 }

@@ -372,8 +372,8 @@ func (r *Rewind) append(s *State) {
 	}
 }
 
-// plumb in state supplied as the argument
-func plumb(vcs *hardware.VCS, state *State) {
+// Plumb state into VCS.
+func Plumb(vcs *hardware.VCS, state *State) {
 	// tv plumbing works a bit different to other areas because we're only
 	// recording the state of the TV not the entire TV itself.
 	vcs.TV.PlumbState(vcs, state.TV.Snapshot())
@@ -401,7 +401,7 @@ func plumb(vcs *hardware.VCS, state *State) {
 //
 // note that this will not change the splice point. use setSplicePoint() for that
 func (r *Rewind) runFromStateToCoords(fromState *State, toCoords coords.TelevisionCoords) error {
-	plumb(r.vcs, fromState)
+	Plumb(r.vcs, fromState)
 
 	// if this is a reset entry then TV must be reset
 	if fromState.level == levelReset {

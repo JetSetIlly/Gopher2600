@@ -1,7 +1,7 @@
 compileFlags = '-c 3 -B -wb=false'
 
 # profilingRom = roms/Homebrew/hs_2600.bin
-profilingRom = roms/Homebrew/CDF/galaga_dmo_v2_NTSC.bin
+# profilingRom = roms/Homebrew/CDF/galaga_dmo_v2_NTSC.bin
 # profilingRom = roms/Homebrew/DPC+ARM/ZaxxonHDDemo_150927_NTSC.bin
 # profilingRom = roms/Rsboxing.bin
 # profilingRom = "test_roms/plusrom/sokoboo Plus.bin"
@@ -9,6 +9,7 @@ profilingRom = roms/Homebrew/CDF/galaga_dmo_v2_NTSC.bin
 # profilingRom = "roms/The Official Frogger.bin"
 # profilingRom = roms/Homebrew/CDF/gorfarc_20201231_demo1_NTSC.bin
 # profilingRom = roms/Pitfall.bin
+profilingRom = 
 
 .PHONY: all clean tidy generate check_lint lint check_glsl glsl_validate check_pandoc readme_spell test race race_debug profile profile_cpu profile_cpu_again profile_mem_debug profile_trace build_assertions build check_upx release release_statsview cross_windows cross_windows_statsview binaries check_gotip build_with_gotip
 

@@ -16,6 +16,8 @@
 package debugger
 
 import (
+	"github.com/jetsetilly/gopher2600/cartridgeloader"
+	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/disassembly"
 )
 
@@ -60,4 +62,20 @@ func (dbg *Debugger) HasChanged() bool {
 	v := dbg.hasChanged
 	dbg.hasChanged = false
 	return v
+}
+
+// InsertCartridge into running emulation.
+func (dbg *Debugger) InsertCartridge(filename string) error {
+	cartload, err := cartridgeloader.NewLoader(filename, "AUTO")
+	if err != nil {
+		return curated.Errorf("debugger: %v", err)
+	}
+	err = dbg.attachCartridge(cartload)
+	if err != nil {
+		return curated.Errorf("debugger: %v", err)
+	}
+	if dbg.firstROMSelection != nil {
+		dbg.firstROMSelection <- true
+	}
+	return nil
 }

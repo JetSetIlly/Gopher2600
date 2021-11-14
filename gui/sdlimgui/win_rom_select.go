@@ -17,14 +17,18 @@ package sdlimgui
 
 import (
 	"fmt"
+	"image"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/go-gl/gl/v3.2-core/gl"
 	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/curated"
+	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 	"github.com/jetsetilly/gopher2600/logger"
+	"github.com/jetsetilly/gopher2600/thumbnailer"
 )
 
 const winSelectROMID = "Select ROM"
@@ -47,8 +51,9 @@ type winSelectROM struct {
 	// height of options line at bottom of window. valid after first frame
 	controlHeight float32
 
-	// see comment for openForPlaymode()
-	playmodeNotify chan string
+	thmb        *thumbnailer.Thumbnailer
+	thmbReceive chan *image.RGBA
+	thmbTexture uint32
 }
 
 func newFileSelector(img *SdlImgui) (window, error) {
@@ -60,13 +65,26 @@ func newFileSelector(img *SdlImgui) (window, error) {
 		centreOnFile: true,
 	}
 
+	var err error
+
+	// create a new thumbnailer instance
+	win.thmb, err = thumbnailer.NewThumbnailer()
+	if err != nil {
+		return nil, curated.Errorf("debugger: %v", err)
+	}
+
 	path, err := os.Getwd()
 	win.err = err
-
+	path = filepath.Join(path, "roms")
 	err = win.setPath(path)
 	if err != nil {
 		return nil, err
 	}
+
+	gl.GenTextures(1, &win.thmbTexture)
+	gl.BindTexture(gl.TEXTURE_2D, win.thmbTexture)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
 
 	return win, nil
 }
@@ -86,46 +104,51 @@ func (win *winSelectROM) setOpen(open bool) {
 	if open {
 		win.open = true
 
-		// goto current cartridge location
-		f, err := filepath.Abs(win.img.lz.Cart.Filename)
+		path, err := os.Getwd()
+		path = filepath.Join(path, "roms")
+		err = win.setPath(path)
 		if err != nil {
-			f = win.img.lz.Cart.Filename
+			logger.Logf("sdlimgui", "error setting path (%s)", path)
 		}
 
-		d := filepath.Dir(f)
-		err = win.setPath(d)
-		if err != nil {
-			logger.Logf("sdlimgui", "error setting path (%s)", d)
-		}
-		win.selectedFile = win.img.lz.Cart.Filename
+		// goto current cartridge location
+		// f, err := filepath.Abs(win.img.lz.Cart.Filename)
+		// if err != nil {
+		// 	f = win.img.lz.Cart.Filename
+		// }
+
+		// d := filepath.Dir(f)
+		// err = win.setPath(d)
+		// if err != nil {
+		// 	logger.Logf("sdlimgui", "error setting path (%s)", d)
+		// }
+		// win.setSelectedFile(win.img.lz.Cart.Filename)
 
 		return
+	} else {
+		win.thmb.EndCreation()
 	}
 
 	win.open = false
 }
 
-// opening the file requester in playmode requires a slightly different
-// approach, using a notify channel to return the selected file to the
-// emulation go routine.
-//
-// this will likely change in the future.
-func (win *winSelectROM) openForPlaymode(notify chan string) error {
-	if win.playmodeNotify != nil {
-		return curated.Errorf("ROM selector notify channel in use")
-	}
-	win.playmodeNotify = notify
-	win.setOpen(true)
-	return nil
-}
-
 func (win *winSelectROM) draw() {
-	if !win.open {
-		if win.playmodeNotify != nil {
-			win.playmodeNotify <- ""
-			win.playmodeNotify = nil
-		}
+	select {
+	case img := <-win.thmbReceive:
+		if img != nil {
+			gl.PixelStorei(gl.UNPACK_ROW_LENGTH, int32(img.Stride)/4)
+			defer gl.PixelStorei(gl.UNPACK_ROW_LENGTH, 0)
 
+			gl.BindTexture(gl.TEXTURE_2D, win.thmbTexture)
+			gl.TexImage2D(gl.TEXTURE_2D, 0,
+				gl.RGBA, int32(img.Bounds().Size().X), int32(img.Bounds().Size().Y), 0,
+				gl.RGBA, gl.UNSIGNED_BYTE,
+				gl.Ptr(img.Pix))
+		}
+	default:
+	}
+
+	if !win.open {
 		// set centreOnFile to true, ready for next time window is open
 		win.centreOnFile = true
 		return
@@ -145,8 +168,9 @@ func (win *winSelectROM) draw() {
 		flgs = imgui.ConditionFirstUseEver
 		winFlgs = imgui.WindowFlagsNone
 	}
-	imgui.SetNextWindowPosV(imgui.Vec2{70, 58}, flgs, imgui.Vec2{0, 0})
-	imgui.SetNextWindowSizeV(imgui.Vec2{375, 397}, flgs)
+	winFlgs |= imgui.WindowFlagsAlwaysAutoResize
+	imgui.SetNextWindowPosV(imgui.Vec2{20, 20}, flgs, imgui.Vec2{0, 0})
+	// imgui.SetNextWindowSizeV(imgui.Vec2{375, 700}, flgs)
 	imgui.BeginV(win.id(), &win.open, winFlgs)
 
 	if imgui.Button("Parent") {
@@ -161,8 +185,13 @@ func (win *winSelectROM) draw() {
 	imgui.SameLine()
 	imgui.Text(win.currPath)
 
+	imgui.BeginTable("romSelector", 2)
+
+	imgui.TableNextRow()
+	imgui.TableNextColumn()
+
 	height := imgui.WindowHeight() - imgui.CursorPosY() - win.controlHeight - imgui.CurrentStyle().FramePadding().Y*2 - imgui.CurrentStyle().ItemInnerSpacing().Y
-	imgui.BeginChildV("##selector", imgui.Vec2{X: 0, Y: height}, true, 0)
+	imgui.BeginChildV("##selector", imgui.Vec2{X: 300, Y: height}, true, 0)
 
 	if win.scrollToTop {
 		imgui.SetScrollY(0)
@@ -235,13 +264,18 @@ func (win *winSelectROM) draw() {
 			}
 
 			if imgui.SelectableV(f.Name(), selected, 0, imgui.Vec2{0, 0}) {
-				win.selectedFile = filepath.Join(win.currPath, f.Name())
+				win.setSelectedFile(filepath.Join(win.currPath, f.Name()))
 			}
 		}
 	}
 	imgui.PopStyleColor()
 
 	imgui.EndChild()
+
+	imgui.TableNextColumn()
+	imgui.Image(imgui.TextureID(win.thmbTexture), imgui.Vec2{specification.ClksVisible * 3, specification.AbsoluteMaxScanlines})
+
+	imgui.EndTable()
 
 	// control buttons. start controlHeight measurement
 	win.controlHeight = imguiMeasureHeight(func() {
@@ -268,16 +302,12 @@ func (win *winSelectROM) draw() {
 			}
 
 			if imgui.Button(s) {
-				if win.playmodeNotify == nil {
-					cmd := strings.Builder{}
-					cmd.WriteString("INSERT \"")
-					cmd.WriteString(win.selectedFile)
-					cmd.WriteString("\"")
-					win.img.term.pushCommand(cmd.String())
-				} else {
-					win.playmodeNotify <- win.selectedFile
-					win.playmodeNotify = nil
-				}
+				win.img.dbg.PushRawEvent(func() {
+					err := win.img.dbg.InsertCartridge(win.selectedFile)
+					if err != nil {
+						logger.Logf("sdlimgui", err.Error())
+					}
+				})
 				win.setOpen(false)
 			}
 		}
@@ -288,10 +318,26 @@ func (win *winSelectROM) draw() {
 
 func (win *winSelectROM) setPath(path string) error {
 	var err error
-
 	win.currPath = filepath.Clean(path)
 	win.entries, err = os.ReadDir(win.currPath)
-	win.selectedFile = ""
+	if err != nil {
+		return err
+	}
+	win.setSelectedFile("")
+	return nil
+}
 
-	return err
+func (win *winSelectROM) setSelectedFile(filename string) {
+	win.selectedFile = filename
+	if filename == "" {
+		return
+	}
+
+	cartload, err := cartridgeloader.NewLoader(filename, "AUTO")
+	if err != nil {
+		logger.Logf("ROM Select", err.Error())
+		return
+	}
+
+	win.thmbReceive = win.thmb.Create(cartload, thumbnailer.UndefinedNumFrames)
 }
