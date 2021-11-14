@@ -132,10 +132,6 @@ type Rewind struct {
 	// a new frame has been triggered. resolve as soon as possible.
 	newFrame bool
 
-	// the number frames since snapshot (not counting levelExecution
-	// snapshots)
-	framesSinceSnapshot int
-
 	// a rewind boundary has been detected. call reset() on next frame.
 	boundaryNextFrame bool
 }
@@ -196,7 +192,6 @@ func (r *Rewind) reset(level snapshotLevel) {
 	r.comparison = nil
 
 	r.newFrame = false
-	r.framesSinceSnapshot = 0
 	r.boundaryNextFrame = false
 
 	// start and next equal to begin with. the first call to append() below
@@ -310,13 +305,10 @@ func (r *Rewind) RecordFrameState() {
 		return
 	}
 
-	// add state only if frequency check passes
-	r.framesSinceSnapshot++
-	if r.framesSinceSnapshot%r.Prefs.Freq.Get().(int) != 0 {
+	fn := r.vcs.TV.GetCoords().Frame
+	if fn%r.Prefs.Freq.Get().(int) != 0 {
 		return
 	}
-
-	r.framesSinceSnapshot = 0
 
 	r.append(r.snapshot(levelFrame))
 }
@@ -407,8 +399,7 @@ func plumb(vcs *hardware.VCS, state *State) {
 
 // run from the supplied state until the cooridinates are reached.
 //
-// note that this will not change the splice point or update the
-// framesSinceSnapshot value. use setSplicePoint() for that
+// note that this will not change the splice point. use setSplicePoint() for that
 func (r *Rewind) runFromStateToCoords(fromState *State, toCoords coords.TelevisionCoords) error {
 	plumb(r.vcs, fromState)
 
@@ -461,9 +452,9 @@ type findResults struct {
 // note that findFrameIndex() searches for the frame that is two frames before
 // the one that is requested.
 func (r *Rewind) findFrameIndex(frame int) findResults {
-	sf := frame - 1
+	searchFrame := frame - 1
 	if r.emulation.Mode() == emulation.ModeDebugger {
-		sf--
+		searchFrame--
 	}
 
 	// initialise binary search
@@ -475,31 +466,30 @@ func (r *Rewind) findFrameIndex(frame int) findResults {
 
 	// is requested frame too old (ie. before the start of the array)
 	fn := r.entries[s].TV.GetCoords().Frame
-	if sf < fn {
+	if searchFrame < fn {
 		return findResults{fromIdx: s, fromFrame: fn}
 	}
 
 	// is requested frame too new (ie. past the end of the array)
 	fn = r.entries[e].TV.GetCoords().Frame
-	if frame > fn {
+	if searchFrame > fn {
 		return findResults{fromIdx: e, fromFrame: fn, isFuture: true}
 	}
+	// the range which we must consider to be a match
+	freqAdj := r.Prefs.Freq.Get().(int) - 1
 
 	// because r.entries is a cirular array, there's an additional step to the
 	// binary search. if start (lower) is greater then end (upper) then check
 	// which half of the circular array to concentrate on.
-	if r.start > e {
+	if s > e {
 		fn := r.entries[len(r.entries)-1].TV.GetCoords().Frame
-		if sf <= fn {
+		if searchFrame <= fn+freqAdj {
 			e = len(r.entries) - 1
 		} else {
 			e = r.start - 1
 			s = 0
 		}
 	}
-
-	// the range which we must consider to be a match
-	freqAdj := r.Prefs.Freq.Get().(int) - 1
 
 	// normal binary search
 	for s <= e {
@@ -509,20 +499,19 @@ func (r *Rewind) findFrameIndex(frame int) findResults {
 
 		// check for match, taking into consideration the gaps introduced by
 		// the frequency value
-		if sf >= fn && sf <= fn+freqAdj {
+		if searchFrame >= fn && searchFrame <= fn+freqAdj {
 			return findResults{fromIdx: idx, fromFrame: fn}
 		}
 
-		if sf < fn {
+		if searchFrame < fn {
 			e = idx - 1
 		}
-		if sf > fn {
+		if searchFrame > fn {
 			s = idx + 1
 		}
 	}
 
-	logger.Logf("rewind", "cannot find frame %d in the rewind history", frame)
-	return findResults{fromIdx: e, fromFrame: r.entries[e].TV.GetCoords().Frame}
+	panic(fmt.Sprintf("rewind: cannot find frame %d in the rewind history", frame))
 }
 
 // RerunLastNFrames runs the emulation from the a point N frames in the past to
@@ -598,7 +587,7 @@ func (r *Rewind) GotoFrame(frame int) error {
 
 // SetComparison points comparison to the most recent rewound entry.
 func (r *Rewind) SetComparison() {
-	r.comparison = r.entries[r.splice]
+	r.comparison = r.GetCurrentState()
 }
 
 // GetComparison gets a reference to current comparison point.
