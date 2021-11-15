@@ -111,18 +111,21 @@ func (win *winSelectROM) setOpen(open bool) {
 			logger.Logf("sdlimgui", "error setting path (%s)", path)
 		}
 
-		// goto current cartridge location
-		// f, err := filepath.Abs(win.img.lz.Cart.Filename)
-		// if err != nil {
-		// 	f = win.img.lz.Cart.Filename
-		// }
+		// goto current cartridge location. directly accessing filename
+		// from VCS - there's very little risk of a race condition here but you
+		// never know so we should bear it in mind
+		f, err := filepath.Abs(win.img.vcs.Mem.Cart.Filename)
+		if err != nil {
+			f = win.img.lz.Cart.Filename
+		}
 
-		// d := filepath.Dir(f)
-		// err = win.setPath(d)
-		// if err != nil {
-		// 	logger.Logf("sdlimgui", "error setting path (%s)", d)
-		// }
-		// win.setSelectedFile(win.img.lz.Cart.Filename)
+		d := filepath.Dir(f)
+		err = win.setPath(d)
+		if err != nil {
+			logger.Logf("sdlimgui", "error setting path (%s)", d)
+		}
+
+		win.setSelectedFile(f)
 
 		return
 	} else {
