@@ -499,9 +499,10 @@ func nilCycleCallback() error {
 	return nil
 }
 
-// Sentinal error returned by ExecuteInstruction if an unimplemented opcode is encountered.
+// Sentinal errors returned by ExecuteInstruction
 const (
 	UnimplementedInstruction = "cpu: unimplemented instruction (%#02x) at (%#04x)"
+	ResetMidInstruction      = "cpu: appears to have been reset mid-instruction"
 )
 
 // ExecuteInstruction steps CPU forward one instruction. The basic process when
@@ -601,6 +602,14 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 	// whether the data-read should be a zero page read or not
 	var zeroPage bool
 
+	// sometimes the CPU may be reset mid-instruction. if this happens
+	// LastResult.Defn will be nil. there's nothing we can do except return
+	// immediately
+	defn := mc.LastResult.Defn
+	if defn == nil {
+		return curated.Errorf(ResetMidInstruction)
+	}
+
 	// get address to use when reading/writing from/to memory (note that in the
 	// case of immediate addressing, we are actually getting the value to use
 	// in the instruction, not the address).
@@ -608,7 +617,6 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 	// we also take the opportunity to set the InstructionData value for the
 	// StepResult and whether a page fault has occurred. note that we don't do
 	// this in the case of JSR
-	defn := mc.LastResult.Defn
 	switch defn.AddressingMode {
 	case instructions.Implied:
 		// implied mode does not use any additional bytes. however, the next
