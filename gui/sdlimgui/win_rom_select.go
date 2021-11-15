@@ -172,149 +172,150 @@ func (win *winSelectROM) draw() {
 		winFlgs = imgui.WindowFlagsNone
 	}
 	winFlgs |= imgui.WindowFlagsAlwaysAutoResize
+
 	imgui.SetNextWindowPosV(imgui.Vec2{20, 20}, flgs, imgui.Vec2{0, 0})
-	// imgui.SetNextWindowSizeV(imgui.Vec2{375, 700}, flgs)
-	imgui.BeginV(win.id(), &win.open, winFlgs)
 
-	if imgui.Button("Parent") {
-		d := filepath.Dir(win.currPath)
-		err := win.setPath(d)
-		if err != nil {
-			logger.Logf("sdlimgui", "error setting path (%s)", d)
-		}
-		win.scrollToTop = true
-	}
-
-	imgui.SameLine()
-	imgui.Text(win.currPath)
-
-	imgui.BeginTable("romSelector", 2)
-
-	imgui.TableNextRow()
-	imgui.TableNextColumn()
-
-	height := imgui.WindowHeight() - imgui.CursorPosY() - win.controlHeight - imgui.CurrentStyle().FramePadding().Y*2 - imgui.CurrentStyle().ItemInnerSpacing().Y
-	imgui.BeginChildV("##selector", imgui.Vec2{X: 300, Y: height}, true, 0)
-
-	if win.scrollToTop {
-		imgui.SetScrollY(0)
-		win.scrollToTop = false
-	}
-
-	// list directories
-	imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.ROMSelectDir)
-	for _, f := range win.entries {
-		// ignore dot files
-		if !win.showHidden && f.Name()[0] == '.' {
-			continue
-		}
-
-		fi, err := os.Stat(filepath.Join(win.currPath, f.Name()))
-		if err != nil {
-			continue
-		}
-
-		if fi.Mode().IsDir() {
-			s := strings.Builder{}
-			s.WriteString(f.Name())
-			s.WriteString(" [dir]")
-
-			if imgui.Selectable(s.String()) {
-				d := filepath.Join(win.currPath, f.Name())
-				err = win.setPath(d)
-				if err != nil {
-					logger.Logf("sdlimgui", "error setting path (%s)", d)
-				}
-				win.scrollToTop = true
+	if imgui.BeginV(win.id(), &win.open, winFlgs) {
+		if imgui.Button("Parent") {
+			d := filepath.Dir(win.currPath)
+			err := win.setPath(d)
+			if err != nil {
+				logger.Logf("sdlimgui", "error setting path (%s)", d)
 			}
-		}
-	}
-	imgui.PopStyleColor()
-
-	// list files
-	imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.ROMSelectFile)
-	for _, f := range win.entries {
-		// ignore dot files
-		if !win.showHidden && f.Name()[0] == '.' {
-			continue
+			win.scrollToTop = true
 		}
 
-		fi, err := os.Stat(filepath.Join(win.currPath, f.Name()))
-		if err != nil {
-			continue
-		}
-
-		// ignore invalid file extensions unless showAllFiles flags is set
-		ext := strings.ToUpper(filepath.Ext(fi.Name()))
-		if !win.showAllFiles {
-			hasExt := false
-			for _, e := range cartridgeloader.FileExtensions {
-				if e == ext {
-					hasExt = true
-					break
-				}
-			}
-			if !hasExt {
-				continue // to next file
-			}
-		}
-
-		if fi.Mode().IsRegular() {
-			selected := f.Name() == filepath.Base(win.selectedFile)
-
-			if selected && win.centreOnFile {
-				imgui.SetScrollHereY(0.0)
-			}
-
-			if imgui.SelectableV(f.Name(), selected, 0, imgui.Vec2{0, 0}) {
-				win.setSelectedFile(filepath.Join(win.currPath, f.Name()))
-			}
-		}
-	}
-	imgui.PopStyleColor()
-
-	imgui.EndChild()
-
-	imgui.TableNextColumn()
-	imgui.Image(imgui.TextureID(win.thmbTexture), imgui.Vec2{specification.ClksVisible * 3, specification.AbsoluteMaxScanlines})
-
-	imgui.EndTable()
-
-	// control buttons. start controlHeight measurement
-	win.controlHeight = imguiMeasureHeight(func() {
-		imgui.Checkbox("Show all files", &win.showAllFiles)
 		imgui.SameLine()
-		imgui.Checkbox("Show hidden entries", &win.showHidden)
+		imgui.Text(win.currPath)
 
-		imgui.Spacing()
+		if imgui.BeginTable("romSelector", 2) {
+			imgui.TableNextRow()
+			imgui.TableNextColumn()
 
-		if imgui.Button("Cancel") {
-			win.setOpen(false)
-		}
+			height := imgui.WindowHeight() - imgui.CursorPosY() - win.controlHeight - imgui.CurrentStyle().FramePadding().Y*2 - imgui.CurrentStyle().ItemInnerSpacing().Y
+			imgui.BeginChildV("##selector", imgui.Vec2{X: 300, Y: height}, true, 0)
 
-		if win.selectedFile != "" {
-			imgui.SameLine()
-
-			var s string
-
-			// load or reload button
-			if win.selectedFile == win.img.lz.Cart.Filename {
-				s = fmt.Sprintf("Reload %s", filepath.Base(win.selectedFile))
-			} else {
-				s = fmt.Sprintf("Load %s", filepath.Base(win.selectedFile))
+			if win.scrollToTop {
+				imgui.SetScrollY(0)
+				win.scrollToTop = false
 			}
 
-			if imgui.Button(s) {
-				win.img.dbg.PushRawEvent(func() {
-					err := win.img.dbg.InsertCartridge(win.selectedFile)
-					if err != nil {
-						logger.Logf("sdlimgui", err.Error())
+			// list directories
+			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.ROMSelectDir)
+			for _, f := range win.entries {
+				// ignore dot files
+				if !win.showHidden && f.Name()[0] == '.' {
+					continue
+				}
+
+				fi, err := os.Stat(filepath.Join(win.currPath, f.Name()))
+				if err != nil {
+					continue
+				}
+
+				if fi.Mode().IsDir() {
+					s := strings.Builder{}
+					s.WriteString(f.Name())
+					s.WriteString(" [dir]")
+
+					if imgui.Selectable(s.String()) {
+						d := filepath.Join(win.currPath, f.Name())
+						err = win.setPath(d)
+						if err != nil {
+							logger.Logf("sdlimgui", "error setting path (%s)", d)
+						}
+						win.scrollToTop = true
 					}
-				})
+				}
+			}
+			imgui.PopStyleColor()
+
+			// list files
+			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.ROMSelectFile)
+			for _, f := range win.entries {
+				// ignore dot files
+				if !win.showHidden && f.Name()[0] == '.' {
+					continue
+				}
+
+				fi, err := os.Stat(filepath.Join(win.currPath, f.Name()))
+				if err != nil {
+					continue
+				}
+
+				// ignore invalid file extensions unless showAllFiles flags is set
+				ext := strings.ToUpper(filepath.Ext(fi.Name()))
+				if !win.showAllFiles {
+					hasExt := false
+					for _, e := range cartridgeloader.FileExtensions {
+						if e == ext {
+							hasExt = true
+							break
+						}
+					}
+					if !hasExt {
+						continue // to next file
+					}
+				}
+
+				if fi.Mode().IsRegular() {
+					selected := f.Name() == filepath.Base(win.selectedFile)
+
+					if selected && win.centreOnFile {
+						imgui.SetScrollHereY(0.0)
+					}
+
+					if imgui.SelectableV(f.Name(), selected, 0, imgui.Vec2{0, 0}) {
+						win.setSelectedFile(filepath.Join(win.currPath, f.Name()))
+					}
+				}
+			}
+			imgui.PopStyleColor()
+
+			imgui.EndChild()
+
+			imgui.TableNextColumn()
+			imgui.Image(imgui.TextureID(win.thmbTexture), imgui.Vec2{specification.ClksVisible * 3, specification.AbsoluteMaxScanlines})
+
+			imgui.EndTable()
+		}
+
+		// control buttons. start controlHeight measurement
+		win.controlHeight = imguiMeasureHeight(func() {
+			imgui.Checkbox("Show all files", &win.showAllFiles)
+			imgui.SameLine()
+			imgui.Checkbox("Show hidden entries", &win.showHidden)
+
+			imgui.Spacing()
+
+			if imgui.Button("Cancel") {
 				win.setOpen(false)
 			}
-		}
-	})
+
+			if win.selectedFile != "" {
+				imgui.SameLine()
+
+				var s string
+
+				// load or reload button
+				if win.selectedFile == win.img.lz.Cart.Filename {
+					s = fmt.Sprintf("Reload %s", filepath.Base(win.selectedFile))
+				} else {
+					s = fmt.Sprintf("Load %s", filepath.Base(win.selectedFile))
+				}
+
+				if imgui.Button(s) {
+					win.img.dbg.PushRawEvent(func() {
+						err := win.img.dbg.InsertCartridge(win.selectedFile)
+						if err != nil {
+							logger.Logf("sdlimgui", err.Error())
+						}
+					})
+					win.setOpen(false)
+				}
+			}
+		})
+	}
 
 	imgui.End()
 }
