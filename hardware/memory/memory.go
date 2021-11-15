@@ -81,8 +81,8 @@ func (mem *Memory) Snapshot() *Memory {
 }
 
 // Plumb makes sure everythin is ship-shape after a rewind event.
-func (mem *Memory) Plumb() {
-	mem.Cart.Plumb()
+func (mem *Memory) Plumb(fromDifferentEmulation bool) {
+	mem.Cart.Plumb(fromDifferentEmulation)
 }
 
 // Reset contents of memory.

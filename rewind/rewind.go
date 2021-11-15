@@ -376,7 +376,7 @@ func (r *Rewind) append(s *State) {
 }
 
 // Plumb state into VCS.
-func Plumb(vcs *hardware.VCS, state *State) {
+func Plumb(vcs *hardware.VCS, state *State, fromDifferentEmulation bool) {
 	// tv plumbing works a bit different to other areas because we're only
 	// recording the state of the TV not the entire TV itself.
 	vcs.TV.PlumbState(vcs, state.TV.Snapshot())
@@ -390,7 +390,7 @@ func Plumb(vcs *hardware.VCS, state *State) {
 	vcs.TIA = state.TIA.Snapshot()
 
 	vcs.CPU.Plumb(vcs.Mem)
-	vcs.Mem.Plumb()
+	vcs.Mem.Plumb(fromDifferentEmulation)
 	vcs.RIOT.Plumb(vcs.Mem.RIOT, vcs.Mem.TIA)
 	vcs.TIA.Plumb(vcs.TV, vcs.Mem.TIA, vcs.RIOT.Ports, vcs.CPU)
 
@@ -404,7 +404,7 @@ func Plumb(vcs *hardware.VCS, state *State) {
 //
 // note that this will not change the splice point. use setSplicePoint() for that
 func (r *Rewind) runFromStateToCoords(fromState *State, toCoords coords.TelevisionCoords) error {
-	Plumb(r.vcs, fromState)
+	Plumb(r.vcs, fromState, false)
 
 	// if this is a reset entry then TV must be reset
 	if fromState.level == levelReset {
@@ -610,4 +610,11 @@ func (r *Rewind) NewFrame(frameInfo television.FrameInfo) error {
 	r.addTimelineEntry(frameInfo)
 	r.newFrame = true
 	return nil
+}
+
+func (r *Rewind) GetState(frame int) *State {
+	// get nearest index of entry from which we can being to (re)generate the
+	// current frame
+	res := r.findFrameIndex(frame)
+	return r.entries[res.fromIdx]
 }

@@ -335,5 +335,5 @@ func (win *winSelectROM) setSelectedFile(filename string) {
 	}
 	cartload.EmulationLabel = thumbnailer.EmulationLabel
 
-	win.thmbReceive = win.thmb.Create(cartload, thumbnailer.UndefinedNumFrames)
+	win.thmbReceive = win.thmb.CreateFromLoader(cartload, thumbnailer.UndefinedNumFrames)
 }

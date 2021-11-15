@@ -68,6 +68,14 @@ type CartMapper interface {
 	CopyBanks() []BankContent
 }
 
+// PlumbFromDifferentEmulation is for mappers that are sensitive to being
+// transferred from one emulation to another. When it is known that a state is
+// being copied from one instance of hardware.VCS to another then this
+// interface should be used if available.
+type PlumbFromDifferentEmulation interface {
+	PlumbFromDifferentEmulation()
+}
+
 // OptionalSuperchip are implemented by cartMappers that have an optional
 // superchip. This shouldn't be used to decide if a cartridge has additional
 // RAM or not. Use the CartRAMbus interface for that.

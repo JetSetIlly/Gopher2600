@@ -63,7 +63,7 @@ func (r *Rewind) SearchMemoryWrite(tgt *State, addr uint16, value uint8, valueMa
 
 	// find a recent state from the rewind history and plumb it our searchVCS
 	idx := r.findFrameIndex(endCoords.Frame).fromIdx
-	Plumb(searchVCS, r.entries[idx])
+	Plumb(searchVCS, r.entries[idx], false)
 
 	// loop until we reach (or just surpass) the target State
 	done := false
@@ -127,7 +127,7 @@ func (r *Rewind) SearchRegisterWrite(tgt *State, reg rune, value uint8, valueMas
 
 	// find a recent state and plumb it into searchVCS
 	idx := r.findFrameIndex(endCoords.Frame).fromIdx
-	Plumb(searchVCS, r.entries[idx])
+	Plumb(searchVCS, r.entries[idx], false)
 
 	// onLoad() is called whenever a CPU register is loaded with a new value
 	match := false

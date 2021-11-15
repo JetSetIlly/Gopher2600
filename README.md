@@ -451,8 +451,8 @@ frame is indicated by the orange circle.
 <img src=".screenshots/timeline_window.png" width="500" alt="timeline window"/>
 
 Hovering over the timeline will show details of the frame (number of scanlines,
-percentage of WSYNC usage, etc.). Clicking on the timeline will instantly take
-the emulation to that state.
+percentage of WSYNC usage, etc.) and thumbnail preview. Clicking on the
+timeline will instantly take the emulation to that state.
 
 The `TV Screen` window is fully interactive and clicking or dragging on any
 portion of the screen will take the emulation to that scanline/clock of the

@@ -67,7 +67,13 @@ func (cart *Cartridge) Snapshot() *Cartridge {
 	return &n
 }
 
-func (cart *Cartridge) Plumb() {
+func (cart *Cartridge) Plumb(fromDifferentEmulation bool) {
+	if fromDifferentEmulation {
+		if m, ok := cart.mapper.(mapper.PlumbFromDifferentEmulation); ok {
+			m.PlumbFromDifferentEmulation()
+			return
+		}
+	}
 	cart.mapper.Plumb()
 }
 

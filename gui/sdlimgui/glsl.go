@@ -277,6 +277,8 @@ func (rnd *glsl) render() {
 					shader = rnd.shaders[playscrShaderID]
 				case rnd.img.wm.selectROM.thmbTexture:
 					shader = rnd.shaders[colorShaderID]
+				case rnd.img.wm.timeline.thmbTexture:
+					shader = rnd.shaders[colorShaderID]
 				default:
 					shader = rnd.shaders[guiShaderID]
 				}

@@ -138,6 +138,11 @@ func (cart *dpcPlus) Plumb() {
 	cart.arm.Plumb(cart.state.static, cart)
 }
 
+// Plumb implements the mapper.CartMapper interface.
+func (cart *dpcPlus) PlumbFromDifferentEmulation() {
+	cart.arm = arm7tdmi.NewARM(cart.version.mmap, &cart.prefs.ARM, cart.state.static, cart)
+}
+
 // Reset implements the mapper.CartMapper interface.
 func (cart *dpcPlus) Reset(randSrc *rand.Rand) {
 	cart.state.initialise(randSrc, len(cart.banks)-1)

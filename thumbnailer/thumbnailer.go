@@ -29,6 +29,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 	"github.com/jetsetilly/gopher2600/logger"
+	"github.com/jetsetilly/gopher2600/rewind"
 )
 
 // Label that can be used in the EmulationLabel field of the cartridgeloader.Loader type. to indicate
@@ -102,17 +103,7 @@ func (thmb *Thumbnailer) EndCreation() {
 	}
 }
 
-// UndefinedNumFrames indicates the that the thumbnailing emulation should run
-// until it is explicitely stopped with the EndCreation() function (or
-// implicitely with a second call to Create())
-const UndefinedNumFrames = -1
-
-// Create will cause images to be returned from a running emulation initialised
-// with the specified cartridge loader. The emulation will run for a number of
-// frames before ending.
-//
-// It returns the channel over which new frames will be sent.
-func (thmb *Thumbnailer) Create(loader cartridgeloader.Loader, numFrames int) chan *image.RGBA {
+func (thmb *Thumbnailer) wait() {
 	// drain existing emulationQuit channel
 	select {
 	case <-thmb.emulationQuit:
@@ -127,6 +118,20 @@ func (thmb *Thumbnailer) Create(loader cartridgeloader.Loader, numFrames int) ch
 		thmb.emulationQuit <- true
 		<-thmb.emulationCompleted
 	}
+}
+
+// UndefinedNumFrames indicates the that the thumbnailing emulation should run
+// until it is explicitely stopped with the EndCreation() function (or
+// implicitely with a second call to Create())
+const UndefinedNumFrames = -1
+
+// CreateFromLoader will cause images to be returned from a running emulation initialised
+// with the specified cartridge loader. The emulation will run for a number of
+// frames before ending.
+//
+// It returns the channel over which new frames will be sent.
+func (thmb *Thumbnailer) CreateFromLoader(loader cartridgeloader.Loader, numFrames int) chan *image.RGBA {
+	thmb.wait()
 
 	go func() {
 		defer func() {
@@ -139,6 +144,8 @@ func (thmb *Thumbnailer) Create(loader cartridgeloader.Loader, numFrames int) ch
 			return
 		}
 
+		tgtFrame := thmb.vcs.TV.GetCoords().Frame + numFrames
+
 		err = thmb.vcs.Run(func() (emulation.State, error) {
 			select {
 			case <-thmb.emulationQuit:
@@ -146,7 +153,45 @@ func (thmb *Thumbnailer) Create(loader cartridgeloader.Loader, numFrames int) ch
 			default:
 			}
 
-			if numFrames != UndefinedNumFrames && thmb.vcs.TV.GetCoords().Frame >= numFrames {
+			if numFrames != UndefinedNumFrames && thmb.vcs.TV.GetCoords().Frame >= tgtFrame {
+				return emulation.Ending, nil
+			}
+			return emulation.Running, nil
+		})
+		if err != nil {
+			logger.Logf("thumbnailer", err.Error())
+			return
+		}
+	}()
+
+	return thmb.renderChannel
+}
+
+// CreateFromState will cause images to be returned from a running emulation initialised
+// with the specified cartridge loader. The emulation will run for a number of
+// frames before ending.
+//
+// It returns the channel over which new frames will be sent.
+func (thmb *Thumbnailer) CreateFromState(state *rewind.State, numFrames int) chan *image.RGBA {
+	thmb.wait()
+
+	go func() {
+		defer func() {
+			thmb.emulationCompleted <- true
+		}()
+
+		rewind.Plumb(thmb.vcs, state, true)
+
+		tgtFrame := thmb.vcs.TV.GetCoords().Frame + numFrames
+
+		err := thmb.vcs.Run(func() (emulation.State, error) {
+			select {
+			case <-thmb.emulationQuit:
+				return emulation.Ending, nil
+			default:
+			}
+
+			if numFrames != UndefinedNumFrames && thmb.vcs.TV.GetCoords().Frame >= tgtFrame {
 				return emulation.Ending, nil
 			}
 			return emulation.Running, nil

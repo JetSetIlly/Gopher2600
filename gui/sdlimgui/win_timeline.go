@@ -17,9 +17,13 @@ package sdlimgui
 
 import (
 	"fmt"
+	"image"
 
+	"github.com/go-gl/gl/v3.2-core/gl"
 	"github.com/inkyblackness/imgui-go/v4"
+	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
+	"github.com/jetsetilly/gopher2600/thumbnailer"
 )
 
 const winTimelineID = "Timeline"
@@ -30,12 +34,32 @@ type winTimeline struct {
 
 	// whether the rewind "slider" is active
 	rewindingActive bool
+
+	thmb        *thumbnailer.Thumbnailer
+	thmbReceive chan *image.RGBA
+	thmbTexture uint32
+
+	thumbnailFrame int
 }
 
 func newWinTimeline(img *SdlImgui) (window, error) {
 	win := &winTimeline{
 		img: img,
 	}
+
+	var err error
+
+	// create a new thumbnailer instance
+	win.thmb, err = thumbnailer.NewThumbnailer()
+	if err != nil {
+		return nil, curated.Errorf("debugger: %v", err)
+	}
+
+	gl.GenTextures(1, &win.thmbTexture)
+	gl.BindTexture(gl.TEXTURE_2D, win.thmbTexture)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+
 	return win, nil
 }
 
@@ -55,6 +79,21 @@ func (win *winTimeline) setOpen(open bool) {
 }
 
 func (win *winTimeline) draw() {
+	select {
+	case img := <-win.thmbReceive:
+		if img != nil {
+			gl.PixelStorei(gl.UNPACK_ROW_LENGTH, int32(img.Stride)/4)
+			defer gl.PixelStorei(gl.UNPACK_ROW_LENGTH, 0)
+
+			gl.BindTexture(gl.TEXTURE_2D, win.thmbTexture)
+			gl.TexImage2D(gl.TEXTURE_2D, 0,
+				gl.RGBA, int32(img.Bounds().Size().X), int32(img.Bounds().Size().Y), 0,
+				gl.RGBA, gl.UNSIGNED_BYTE,
+				gl.Ptr(img.Pix))
+		}
+	default:
+	}
+
 	if !win.open {
 		return
 	}
@@ -266,57 +305,90 @@ func (win *winTimeline) drawTimeline() {
 	hovered := imgui.IsItemHoveredV(imgui.HoveredFlagsAllowWhenOverlapped)
 	hoverX := imgui.MousePos().X - pos.X
 
+	rewindStartFrame := win.img.lz.Rewind.Timeline.AvailableStart
+	rewindEndFrame := win.img.lz.Rewind.Timeline.AvailableEnd
+	rewindHoverFrame := int(hoverX/traceWidth) + rewindOffset
+
 	// rewind "slider" is attached to scanline trace
 	if imgui.IsMouseDown(0) && (hovered || win.rewindingActive) {
-		s := win.img.lz.Rewind.Timeline.AvailableStart
-		e := win.img.lz.Rewind.Timeline.AvailableEnd
-
-		fr := int(hoverX/traceWidth) + rewindOffset
 		win.rewindingActive = true
 
 		// making sure we only call PushRewind() when we need to. also,
 		// allowing mouse to travel beyond the rewind boundaries (and without
 		// calling PushRewind() too often)
-		if fr >= e {
-			if win.img.lz.TV.Coords.Frame < e {
-				win.img.dbg.RewindToFrame(fr, true)
+		if rewindHoverFrame >= rewindEndFrame {
+			if win.img.lz.TV.Coords.Frame < rewindEndFrame {
+				win.img.dbg.RewindToFrame(rewindHoverFrame, true)
 			}
-		} else if fr <= s {
-			if win.img.lz.TV.Coords.Frame > s {
-				win.img.dbg.RewindToFrame(fr, false)
+		} else if rewindHoverFrame <= rewindStartFrame {
+			if win.img.lz.TV.Coords.Frame > rewindStartFrame {
+				win.img.dbg.RewindToFrame(rewindHoverFrame, false)
 			}
-		} else if fr != win.img.lz.TV.Coords.Frame {
-			win.img.dbg.RewindToFrame(fr, fr == e)
+		} else if rewindHoverFrame != win.img.lz.TV.Coords.Frame {
+			win.img.dbg.RewindToFrame(rewindHoverFrame, rewindHoverFrame == rewindEndFrame)
 		}
 	} else {
 		win.rewindingActive = false
 
 		if hovered && len(win.img.lz.Rewind.Timeline.FrameNum) > 0 {
-			fr := int(hoverX/traceWidth) + traceOffset
-			s := win.img.lz.Rewind.Timeline.FrameNum[0]
-			e := win.img.lz.Rewind.Timeline.FrameNum[len(win.img.lz.Rewind.Timeline.FrameNum)-1]
+			traceHoverIdx := int(hoverX/traceWidth) + traceOffset
+			traceStartFrame := win.img.lz.Rewind.Timeline.FrameNum[0]
+			traceEndFrame := win.img.lz.Rewind.Timeline.FrameNum[len(win.img.lz.Rewind.Timeline.FrameNum)-1]
+			traceHoverFrame := traceHoverIdx + traceStartFrame
 
-			if fr >= s && fr <= e {
+			if traceHoverFrame >= traceStartFrame && traceHoverFrame <= traceEndFrame {
+				thumbnail := rewindHoverFrame >= rewindStartFrame && rewindHoverFrame <= rewindEndFrame
+
 				imgui.BeginTooltip()
-				imgui.Text(fmt.Sprintf("Frame: %d", fr))
-				if fr >= s && fr <= e {
+
+				flgs := imgui.TableFlagsNone
+				if thumbnail {
+					flgs = imgui.TableFlagsPadOuterX
+				}
+				if imgui.BeginTableV("timelineTooltip", 2, flgs, imgui.Vec2{}, 10.0) {
+					imgui.TableNextRow()
+					imgui.TableNextColumn()
+
+					imgui.Text(fmt.Sprintf("Frame: %d", traceHoverFrame))
+
 					// adjust text color slightly - the colors we use for the
 					// plots are too dark
 					textColAdj := imgui.Vec4{0.2, 0.2, 0.2, 0.0}
 
+					imgui.Text("Scanlines:")
 					imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.TimelineScanlines.Plus(textColAdj))
-					imgui.Text(fmt.Sprintf("Scanlines: %d", win.img.lz.Rewind.Timeline.TotalScanlines[fr]))
+					imgui.SameLine()
+					imgui.Text(fmt.Sprintf("%d", win.img.lz.Rewind.Timeline.TotalScanlines[traceHoverIdx]))
 					imgui.PopStyleColor()
 
+					imgui.Text("WSYNC:")
 					imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.TimelineWSYNC.Plus(textColAdj))
-					imgui.Text(fmt.Sprintf("WSYNC %%: %.01f%%", win.img.lz.Rewind.Timeline.Ratios[fr].WSYNC*100))
+					imgui.SameLine()
+					imgui.Text(fmt.Sprintf("%.01f%%", win.img.lz.Rewind.Timeline.Ratios[traceHoverIdx].WSYNC*100))
 					imgui.PopStyleColor()
 
 					if win.img.lz.CoProc.HasCoProcBus {
+						imgui.Text(win.img.lz.CoProc.ID)
 						imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.TimelineCoProc.Plus(textColAdj))
-						imgui.Text(fmt.Sprintf("%s %%: %.01f%%", win.img.lz.CoProc.ID, win.img.lz.Rewind.Timeline.Ratios[fr].CoProc*100))
+						imgui.SameLine()
+						imgui.Text(fmt.Sprintf("%.01f%%", win.img.lz.Rewind.Timeline.Ratios[traceHoverIdx].CoProc*100))
 						imgui.PopStyleColor()
 					}
+
+					// show rewind thumbnail if hover is in range of rewind
+					if thumbnail {
+						imgui.TableNextColumn()
+
+						// selecting the correct thumbnail requires different indexing than the timline
+						if win.thumbnailFrame != rewindHoverFrame {
+							win.thmbReceive = win.thmb.CreateFromState(win.img.dbg.Rewind.GetState(rewindHoverFrame), 1)
+							win.thumbnailFrame = rewindHoverFrame
+						}
+
+						imgui.Image(imgui.TextureID(win.thmbTexture), imgui.Vec2{specification.ClksVisible * 3, specification.AbsoluteMaxScanlines}.Times(0.3))
+					}
+
+					imgui.EndTable()
 				}
 				imgui.EndTooltip()
 			}
