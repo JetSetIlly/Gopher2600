@@ -525,7 +525,14 @@ func (r *Rewind) RerunLastNFrames(frames int) error {
 	if ff < 0 {
 		ff = 0
 	}
-	idx := r.findFrameIndex(ff).fromIdx
+
+	// the +1 fixes a bug when switching from playmode to the debugger. without
+	// it we lose a frame at the next RecordFrameState() because the splice is
+	// pointing in the wrong place
+	//
+	// we only use RerunLastNFrame() in that one place at the moment so it
+	// should be fine
+	idx := r.findFrameIndex(ff).fromIdx + 1
 
 	err := r.setSplicePoint(idx, to.TV.GetCoords())
 	if err != nil {
