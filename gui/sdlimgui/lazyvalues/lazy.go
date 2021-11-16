@@ -35,9 +35,6 @@ type LazyValues struct {
 	vcs *hardware.VCS
 	dbg *debugger.Debugger
 
-	mode  emulation.Mode
-	state emulation.State
-
 	// pointers to these instances. non-pointer instances trigger the race
 	// detector for some reason.
 	Debugger      *LazyDebugger
@@ -112,31 +109,6 @@ func NewLazyValues(e emulation.Emulation) *LazyValues {
 	return val
 }
 
-// check state of the underlying emulation. this is the best way of making sure
-// that the atomic value types are consistent.
-//
-// currently, this only affects the cartridge type.
-func (val *LazyValues) stateCheck() {
-	s := val.emulation.State()
-	if val.state == s {
-		return
-	}
-	val.state = s
-
-	switch val.state {
-	case emulation.Initialising:
-		// LazyCart stores a lot of atomic types that might change undlerying
-		// type on cartridge load. to avoid a panic we reinitialise the entire
-		// LazyCart type when emulation state is changed to Initialising
-		val.Cart = newLazyCart(val)
-	}
-}
-
-// Set the underlying emulator mode.
-func (val *LazyValues) SetEmulationMode(mode emulation.Mode) {
-	val.mode = mode
-}
-
 // Refresh lazy values.
 func (val *LazyValues) Refresh() {
 	if val.emulation == nil {
@@ -173,8 +145,6 @@ func (val *LazyValues) Refresh() {
 		return
 	}
 	val.refreshScheduled.Store(true)
-
-	val.stateCheck()
 
 	val.dbg.PushRawEvent(func() {
 		val.Debugger.push()

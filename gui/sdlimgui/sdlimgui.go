@@ -256,7 +256,6 @@ func (img *SdlImgui) isPlaymode() bool {
 // should only be called from gui thread.
 func (img *SdlImgui) setEmulationMode(mode emulation.Mode) error {
 	img.mode = mode
-	img.lz.SetEmulationMode(mode)
 	img.prefs.loadWindowPreferences()
 
 	switch mode {

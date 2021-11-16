@@ -32,16 +32,16 @@ type LazyCart struct {
 	numBanks atomic.Value // int
 	currBank atomic.Value // int
 
-	staticBus atomic.Value // mapper.CartStaticBus
+	staticBus atomic.Value // mapper.CartStaticBus (in container)
 	static    atomic.Value // mapper.CartStatic
 
-	registersBus atomic.Value // mapper.CartRegistersBus
-	registers    atomic.Value // mapper.CartRegisters
+	registersBus atomic.Value // mapper.CartRegistersBus (in container)
+	registers    atomic.Value // mapper.CartRegisters (in container)
 
-	ramBus atomic.Value // mapper.CartRAMbus
+	ramBus atomic.Value // mapper.CartRAMbus (in container)
 	ram    atomic.Value // []mapper.CartRAM
 
-	tapeBus   atomic.Value // mapper.CartTapeBus
+	tapeBus   atomic.Value // mapper.CartTapeBus (in continer)
 	tapeState atomic.Value // mapper.CartTapeState
 
 	plusROM         atomic.Value // plusrom.PlusROM
@@ -78,7 +78,19 @@ type LazyCart struct {
 }
 
 func newLazyCart(val *LazyValues) *LazyCart {
-	return &LazyCart{val: val}
+	lz := &LazyCart{val: val}
+	lz.staticBus.Store(container{})
+	lz.static.Store(container{})
+	lz.registersBus.Store(container{})
+	lz.registers.Store(container{})
+	lz.ramBus.Store(container{})
+	lz.tapeBus.Store(container{})
+	lz.tapeState.Store(container{})
+	return lz
+}
+
+type container struct {
+	v interface{}
 }
 
 func (lz *LazyCart) push() {
@@ -90,44 +102,39 @@ func (lz *LazyCart) push() {
 
 	sb := lz.val.vcs.Mem.Cart.GetStaticBus()
 	if sb != nil {
-		lz.staticBus.Store(sb)
-
-		// make sure CartStaticBus implementation is meaningful
-		a := sb.GetStatic()
-		if a != nil {
-			lz.static.Store(a)
-		}
+		lz.staticBus.Store(container{v: sb})
+		lz.static.Store(container{v: sb.GetStatic()})
+	} else {
+		lz.staticBus.Store(container{v: nil})
+		lz.static.Store(container{v: nil})
 	}
 
 	rb := lz.val.vcs.Mem.Cart.GetRegistersBus()
 	if rb != nil {
-		lz.registersBus.Store(rb)
-
-		// make sure CartRegistersBus implementation is meaningful
-		a := rb.GetRegisters()
-		if a != nil {
-			lz.registers.Store(a)
-		}
+		lz.registersBus.Store(container{v: rb})
+		lz.registers.Store(container{v: rb.GetRegisters()})
+	} else {
+		lz.registersBus.Store(container{v: nil})
+		lz.registers.Store(container{v: nil})
 	}
 
 	r := lz.val.vcs.Mem.Cart.GetRAMbus()
 	if r != nil {
-		lz.ramBus.Store(r)
-
-		// make sure CartRAMBus implementation is meaningful
-		a := r.GetRAM()
-		if a != nil {
-			lz.ram.Store(a)
-		}
+		lz.ramBus.Store(container{v: r})
+		lz.ram.Store(container{v: r.GetRAM()})
+	} else {
+		lz.ramBus.Store(container{v: nil})
+		lz.ram.Store(container{v: nil})
 	}
 
 	t := lz.val.vcs.Mem.Cart.GetTapeBus()
 	if t != nil {
-		// make sure CartTapeBus implementation is meaningful
-		if ok, s := t.GetTapeState(); ok {
-			lz.tapeBus.Store(t)
-			lz.tapeState.Store(s)
-		}
+		lz.tapeBus.Store(container{v: t})
+		_, state := t.GetTapeState()
+		lz.tapeState.Store(container{v: state})
+	} else {
+		lz.tapeBus.Store(container{v: nil})
+		lz.tapeState.Store(container{v: nil})
 	}
 
 	c := lz.val.vcs.Mem.Cart.GetContainer()
@@ -152,48 +159,42 @@ func (lz *LazyCart) update() {
 	lz.NumBanks, _ = lz.numBanks.Load().(int)
 	lz.CurrBank, _ = lz.currBank.Load().(mapper.BankInfo)
 
-	_, lz.HasStaticBus = lz.staticBus.Load().(mapper.CartStaticBus)
+	_, lz.HasStaticBus = lz.staticBus.Load().(container).v.(mapper.CartStaticBus)
 	if lz.HasStaticBus {
-		lz.Static, _ = lz.static.Load().([]mapper.CartStatic)
-
 		// a cartridge can implement a static bus but not actually have a
 		// static area. this additional test checks for that
 		//
 		// required for plusrom cartridges
-		if lz.Static == nil {
-			lz.HasStaticBus = false
-		}
+		lz.Static = lz.static.Load().(container).v.([]mapper.CartStatic)
+		lz.HasStaticBus = lz.Static != nil
 	}
 
-	_, lz.HasRegistersBus = lz.registersBus.Load().(mapper.CartRegistersBus)
+	_, lz.HasRegistersBus = lz.registersBus.Load().(container).v.(mapper.CartRegistersBus)
 	if lz.HasRegistersBus {
-		lz.Registers, _ = lz.registers.Load().(mapper.CartRegisters)
-
-		// a cartridge can implement a coprocessor bus but not actually have a
-		// coprocessor. this additional test checks for that
+		// a cartridge can implement a registers bus but not actually have any
+		// registers. this additional test checks for that
 		//
 		// required for plusrom cartridges
-		if lz.Registers == nil {
-			lz.HasRegistersBus = false
+		if r, ok := lz.registers.Load().(container).v.(mapper.CartRegisters); ok {
+			lz.Registers = r
+		} else {
+			lz.HasRegistersBus = lz.Registers != nil
 		}
 	}
 
-	_, lz.HasRAMbus = lz.ramBus.Load().(mapper.CartRAMbus)
+	_, lz.HasRAMbus = lz.ramBus.Load().(container).v.(mapper.CartRAMbus)
 	if lz.HasRAMbus {
-		lz.RAM, _ = lz.ram.Load().([]mapper.CartRAM)
-
 		// a cartridge can implement a ram bus but not actually have any ram.
 		// this additional test checks for that
 		//
 		// required for plusrom catridges and atari cartridges without a superchip
-		if lz.RAM == nil {
-			lz.HasRAMbus = false
-		}
+		lz.RAM = lz.ram.Load().(container).v.([]mapper.CartRAM)
+		lz.HasRAMbus = lz.RAM != nil
 	}
 
-	_, lz.HasTapeBus = lz.tapeBus.Load().(mapper.CartTapeBus)
+	_, lz.HasTapeBus = lz.tapeBus.Load().(container).v.(mapper.CartTapeBus)
 	if lz.HasTapeBus {
-		lz.TapeState, _ = lz.tapeState.Load().(mapper.CartTapeState)
+		lz.TapeState, _ = lz.tapeState.Load().(container).v.(mapper.CartTapeState)
 	}
 
 	_, lz.IsPlusROM = lz.plusROM.Load().(*plusrom.PlusROM)
