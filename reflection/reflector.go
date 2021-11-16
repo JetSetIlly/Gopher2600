@@ -68,13 +68,21 @@ func (ref *Reflector) Clear() {
 	for i := range ref.renderedHistory {
 		ref.renderedHistory[i] = make([]ReflectedVideoStep, specification.AbsoluteMaxClks)
 	}
-
 }
 
 // Step should be called every video cycle to record a complete
 // reflection of the system.
 func (ref *Reflector) Step(bank mapper.BankInfo) error {
 	sig := ref.vcs.TV.GetLastSignal()
+
+	// check that signal is not the NoSignal signal
+	//
+	// at the time of writng, this can sometimes happen if the VCS has been
+	// reset but the emulator loop has not been unwound. The newly reset TV
+	// will return an invalid signal leading to an index that is too large
+	if sig == signal.NoSignal {
+		return nil
+	}
 
 	idx := int((sig & signal.Index) >> signal.IndexShift)
 	h := ref.history[idx : idx+1]
