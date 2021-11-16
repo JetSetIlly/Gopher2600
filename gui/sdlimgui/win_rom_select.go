@@ -173,7 +173,7 @@ func (win *winSelectROM) draw() {
 	}
 	winFlgs |= imgui.WindowFlagsAlwaysAutoResize
 
-	imgui.SetNextWindowPosV(imgui.Vec2{20, 20}, flgs, imgui.Vec2{0, 0})
+	imgui.SetNextWindowPosV(imgui.Vec2{75, 75}, flgs, imgui.Vec2{0, 0})
 
 	if imgui.BeginV(win.id(), &win.open, winFlgs) {
 		if imgui.Button("Parent") {

@@ -120,10 +120,13 @@ func (img *SdlImgui) Service() {
 				deltaY--
 			}
 			img.io.AddMouseWheelDelta(deltaX*2, deltaY*2)
-			select {
-			case img.userinput <- userinput.EventMouseWheel{Delta: deltaY}:
-			default:
-				logger.Log("sdlimgui", "dropped mouse wheel event")
+
+			if !img.wm.selectROM.open {
+				select {
+				case img.userinput <- userinput.EventMouseWheel{Delta: deltaY}:
+				default:
+					logger.Log("sdlimgui", "dropped mouse wheel event")
+				}
 			}
 
 		case *sdl.JoyButtonEvent:
