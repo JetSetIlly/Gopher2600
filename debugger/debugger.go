@@ -32,7 +32,6 @@ import (
 	"github.com/jetsetilly/gopher2600/emulation"
 	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/hardware"
-	"github.com/jetsetilly/gopher2600/hardware/cpu"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/execution"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
@@ -579,9 +578,7 @@ func (dbg *Debugger) Start(initScript string, cartload cartridgeloader.Loader) e
 
 			err = dbg.inputLoop(dbg.term, false)
 			if err != nil {
-				if !curated.Has(err, cpu.ResetMidInstruction) {
-					return curated.Errorf("debugger: %v", err)
-				}
+				return curated.Errorf("debugger: %v", err)
 			}
 
 			// handle inputLoopRestart and any on-restart function

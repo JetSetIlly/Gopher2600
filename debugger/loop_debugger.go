@@ -23,6 +23,7 @@ import (
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
 	"github.com/jetsetilly/gopher2600/disassembly"
 	"github.com/jetsetilly/gopher2600/emulation"
+	"github.com/jetsetilly/gopher2600/hardware/cpu"
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
@@ -87,7 +88,14 @@ func (dbg *Debugger) catchupLoop(inputter terminal.Input) error {
 		return nil
 	}
 
-	// loop until the ended flag is false
+	// loop until the ended flag is false.
+	//
+	// there are a couple of additional conditions we need to be careful of in
+	// this loop. first is what happens when a new cartridge is inserted or the
+	// machine is otherwise reset. in those situations the CPU may be in an
+	// illegal state so we need to (a) check for the cpu.ResetMidInstruction
+	// sentinal error; and (b) whether the CPU has the HasReset() flag raised.
+	// in both situations the loop is ended early
 	for !ended {
 		dbg.lastBank = dbg.vcs.Mem.Cart.GetBank(dbg.vcs.CPU.PC.Address())
 
@@ -96,7 +104,14 @@ func (dbg *Debugger) catchupLoop(inputter terminal.Input) error {
 
 		err := dbg.vcs.Step(callback)
 		if err != nil {
+			if curated.Has(err, cpu.ResetMidInstruction) {
+				return nil
+			}
 			return err
+		}
+
+		if dbg.vcs.CPU.HasReset() {
+			return nil
 		}
 
 		// update disassembly after every CPU instruction. even during a catch
