@@ -482,22 +482,9 @@ func (tv *Television) newScanline() error {
 // the fromVsync arguments is true if a valid VSYNC signal has been detected. a
 // value of false means the frame flyback is unsynced.
 func (tv *Television) newFrame(fromVsync bool) error {
-	// give the frameInfo a number
-	tv.state.frameInfo.FrameNum = tv.state.frameNum
-
-	// note whether newFrame() was the result of a valid VSYNC or a "natural" flyback
-	tv.state.frameInfo.VSynced = fromVsync
-
-	// update refresh rate
-	if tv.state.scanline != tv.state.frameInfo.TotalScanlines {
-		tv.state.frameInfo.TotalScanlines = tv.state.scanline
-		tv.state.frameInfo.RefreshRate = 15734.26 / float32(tv.state.frameInfo.TotalScanlines)
-		tv.lmtr.setRefreshRate(tv.state.frameInfo.RefreshRate)
-	}
-
 	// increase or reset stable frame count as required
 	if tv.state.stableFrames <= stabilityThreshold {
-		if tv.state.frameInfo.VSynced {
+		if fromVsync {
 			tv.state.stableFrames++
 			tv.state.frameInfo.Stable = tv.state.stableFrames >= stabilityThreshold
 		} else {
@@ -506,7 +493,11 @@ func (tv *Television) newFrame(fromVsync bool) error {
 		}
 	}
 
-	// specification change between NTSC and PAL. PAL60 is treated the same as NTSC in this instance
+	// specification change between NTSC and PAL. PAL60 is treated the same as
+	// NTSC in this instance
+	//
+	// Note that SetSpec() resets the frameInfo completely so we must set the
+	// framenumber and vsynced after any possible SetSpec()
 	if tv.state.stableFrames > leadingFrames && tv.state.stableFrames < stabilityThreshold {
 		switch tv.state.frameInfo.Spec.ID {
 		case specification.SpecPAL60.ID:
@@ -522,7 +513,21 @@ func (tv *Television) newFrame(fromVsync bool) error {
 				_ = tv.SetSpec("NTSC")
 			}
 		}
+	} else {
+		// there has been no SetSpec() so we should update refresh rate
+		// normally if necessary
+		if tv.state.scanline != tv.state.frameInfo.TotalScanlines {
+			tv.state.frameInfo.TotalScanlines = tv.state.scanline
+			tv.state.frameInfo.RefreshRate = 15734.26 / float32(tv.state.frameInfo.TotalScanlines)
+			tv.lmtr.setRefreshRate(tv.state.frameInfo.RefreshRate)
+		}
 	}
+
+	// update frame number
+	tv.state.frameInfo.FrameNum = tv.state.frameNum
+
+	// note whether newFrame() was the result of a valid VSYNC or a "natural" flyback
+	tv.state.frameInfo.VSynced = fromVsync
 
 	// commit any resizing that maybe pending
 	err := tv.state.resizer.commit(tv)
