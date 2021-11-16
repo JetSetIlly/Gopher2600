@@ -73,14 +73,6 @@ func newFileSelector(img *SdlImgui) (window, error) {
 		return nil, curated.Errorf("debugger: %v", err)
 	}
 
-	path, err := os.Getwd()
-	win.err = err
-	path = filepath.Join(path, "roms")
-	err = win.setPath(path)
-	if err != nil {
-		return nil, err
-	}
-
 	gl.GenTextures(1, &win.thmbTexture)
 	gl.BindTexture(gl.TEXTURE_2D, win.thmbTexture)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
@@ -105,7 +97,6 @@ func (win *winSelectROM) setOpen(open bool) {
 		win.open = true
 
 		path, err := os.Getwd()
-		path = filepath.Join(path, "roms")
 		err = win.setPath(path)
 		if err != nil {
 			logger.Logf("sdlimgui", "error setting path (%s)", path)
