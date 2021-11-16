@@ -218,6 +218,9 @@ func (r *Rewind) reset(level snapshotLevel) {
 
 	// first comparison is to the snapshot of the reset machine
 	r.comparison = r.entries[r.start]
+
+	// timeline should be reset at the same time
+	r.timeline.reset()
 }
 
 func (r *Rewind) String() string {
