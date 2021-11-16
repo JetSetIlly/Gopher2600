@@ -36,6 +36,9 @@ type Symbols struct {
 // newSymbols is the preferred method of initialisation for the Symbols type. In
 // many instances however, ReadSymbolsFile() might be more appropriate.
 func (sym *Symbols) initialise(numBanks int) {
+	sym.crit.Lock()
+	defer sym.crit.Unlock()
+
 	sym.label = make([]*table, numBanks)
 	for i := range sym.label {
 		sym.label[i] = newTable()
@@ -47,6 +50,7 @@ func (sym *Symbols) initialise(numBanks int) {
 	sym.canonise(nil)
 }
 
+// should be called in critical section
 func (sym *Symbols) resort() {
 	for _, l := range sym.label {
 		sort.Sort(l)
