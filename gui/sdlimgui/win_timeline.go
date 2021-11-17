@@ -64,14 +64,11 @@ func (win *winTimeline) draw() {
 
 	imgui.SetNextWindowPosV(imgui.Vec2{37, 732}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
 
-	imgui.BeginV(win.id(), &win.open, imgui.WindowFlagsAlwaysAutoResize|imgui.WindowFlagsNoDecoration)
+	imgui.BeginV(win.id(), &win.open, imgui.WindowFlagsAlwaysAutoResize)
 	defer imgui.End()
 
 	win.drawTimeline()
-
 	imguiSeparator()
-	win.drawRewindSummary()
-	imgui.SameLineV(0, 20)
 	win.drawKey()
 }
 
@@ -86,17 +83,17 @@ const (
 
 func (win *winTimeline) drawKey() {
 	imguiColorLabel("Scanlines", win.img.cols.TimelineScanlines)
-	imgui.SameLineV(0, 20)
+	imgui.SameLine()
 	imguiColorLabel("WSYNC", win.img.cols.TimelineWSYNC)
+	imgui.SameLine()
 	if win.img.lz.CoProc.HasCoProcBus {
-		imgui.SameLineV(0, 20)
 		imguiColorLabel(win.img.lz.CoProc.ID, win.img.cols.TimelineCoProc)
+		imgui.SameLine()
 	}
-	imgui.SameLineV(0, 20)
 	imguiColorLabel("Left Player", win.img.cols.TimelineLeftPlayer)
-	imgui.SameLineV(0, 20)
+	imgui.SameLine()
 	imguiColorLabel("Rewind", win.img.cols.TimelineRewindRange)
-	imgui.SameLineV(0, 20)
+	imgui.SameLine()
 	imguiColorLabel("Comparison", win.img.cols.TimelineCmpPointer)
 }
 

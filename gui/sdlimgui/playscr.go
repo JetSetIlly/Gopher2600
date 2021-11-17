@@ -111,59 +111,63 @@ func (win *playScr) draw() {
 	dl := imgui.BackgroundDrawList()
 	dl.AddImage(imgui.TextureID(win.screenTexture), win.imagePosMin, win.imagePosMax)
 
-	if win.fpsOpen {
-		// update fps
-		select {
-		case <-win.fpsPulse.C:
-			fps, hz := win.img.tv.GetActualFPS()
-			if win.scr.crit.frameInfo.VSynced {
-				win.fps = fmt.Sprintf("%03.2f fps", fps)
-			} else {
-				win.fps = "unsynced"
-			}
-			win.hz = fmt.Sprintf("%03.2fhz", hz)
-		default:
-		}
-
-		imgui.SetNextWindowPos(imgui.Vec2{0, 0})
-
-		imgui.PushStyleColor(imgui.StyleColorWindowBg, win.img.cols.Transparent)
-		imgui.PushStyleColor(imgui.StyleColorBorder, win.img.cols.Transparent)
-
-		imgui.BeginV("##playscrfps", &win.fpsOpen, imgui.WindowFlagsAlwaysAutoResize|
-			imgui.WindowFlagsNoScrollbar|imgui.WindowFlagsNoTitleBar|
-			imgui.WindowFlagsNoDecoration|imgui.WindowFlagsNoSavedSettings)
-
-		imgui.Text(fmt.Sprintf("Emulation: %s", win.fps))
-		if win.img.polling.measuredRenderingTime == 0.0 {
-			imgui.Text("Rendering: waiting")
-		} else {
-			imgui.Text(fmt.Sprintf("Rendering: %03.2f fps", win.img.polling.measuredRenderingTime))
-		}
-
-		imguiSeparator()
-
-		imgui.Text(fmt.Sprintf("%.1fx scaling", win.yscaling))
-		imgui.Text(fmt.Sprintf("%d total scanlines", win.scr.crit.frameInfo.TotalScanlines))
-
-		if win.img.screen.crit.frameInfo.IsAtariSafe() {
-			imgui.Text("atari safe")
-		}
-
-		imguiSeparator()
-
-		imgui.Text(win.img.screen.crit.frameInfo.Spec.ID)
-		imgui.SameLine()
-		imgui.Text(win.hz)
-
-		imgui.PopStyleColorV(2)
-		imgui.End()
-	}
-
 	win.peripheralLeft.draw(win)
 	win.peripheralRight.draw(win)
 	win.emulationEvent.draw(win)
 	win.cartridgeEvent.draw(win)
+
+	// show FPS window if emulation event window is not open
+	if !win.emulationEvent.open {
+		if win.fpsOpen {
+			// update fps
+			select {
+			case <-win.fpsPulse.C:
+				fps, hz := win.img.tv.GetActualFPS()
+				if win.scr.crit.frameInfo.VSynced {
+					win.fps = fmt.Sprintf("%03.2f fps", fps)
+				} else {
+					win.fps = "unsynced"
+				}
+				win.hz = fmt.Sprintf("%03.2fhz", hz)
+			default:
+			}
+
+			imgui.SetNextWindowPos(imgui.Vec2{0, 0})
+
+			imgui.PushStyleColor(imgui.StyleColorWindowBg, win.img.cols.Transparent)
+			imgui.PushStyleColor(imgui.StyleColorBorder, win.img.cols.Transparent)
+
+			imgui.BeginV("##playscrfps", &win.fpsOpen, imgui.WindowFlagsAlwaysAutoResize|
+				imgui.WindowFlagsNoScrollbar|imgui.WindowFlagsNoTitleBar|
+				imgui.WindowFlagsNoDecoration|imgui.WindowFlagsNoSavedSettings|
+				imgui.WindowFlagsNoBringToFrontOnFocus)
+
+			imgui.Text(fmt.Sprintf("Emulation: %s", win.fps))
+			if win.img.polling.measuredRenderingTime == 0.0 {
+				imgui.Text("Rendering: waiting")
+			} else {
+				imgui.Text(fmt.Sprintf("Rendering: %03.2f fps", win.img.polling.measuredRenderingTime))
+			}
+
+			imguiSeparator()
+
+			imgui.Text(fmt.Sprintf("%.1fx scaling", win.yscaling))
+			imgui.Text(fmt.Sprintf("%d total scanlines", win.scr.crit.frameInfo.TotalScanlines))
+
+			if win.img.screen.crit.frameInfo.IsAtariSafe() {
+				imgui.Text("atari safe")
+			}
+
+			imguiSeparator()
+
+			imgui.Text(win.img.screen.crit.frameInfo.Spec.ID)
+			imgui.SameLine()
+			imgui.Text(win.hz)
+
+			imgui.PopStyleColorV(2)
+			imgui.End()
+		}
+	}
 }
 
 // resize() implements the textureRenderer interface.

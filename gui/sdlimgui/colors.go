@@ -103,6 +103,10 @@ type imguiColors struct {
 	AudioTrackerRowAlt   imgui.Vec4
 	AudioTrackerRowHover imgui.Vec4
 
+	// piano keys
+	PianoKeysBackground imgui.Vec4
+	PianoKeysBorder     imgui.Vec4
+
 	// timeline plot
 	TimelineMarkers        imgui.Vec4
 	TimelineScanlines      imgui.Vec4
@@ -239,6 +243,10 @@ func newColors() *imguiColors {
 		AudioTrackerRow:      imgui.Vec4{0.10, 0.10, 0.10, 1.0},
 		AudioTrackerRowAlt:   imgui.Vec4{0.12, 0.12, 0.12, 1.0},
 		AudioTrackerRowHover: imgui.Vec4{0.12, 0.12, 0.15, 1.0},
+
+		// piano keys
+		PianoKeysBackground: imgui.Vec4{0.10, 0.09, 0.05, 1.0},
+		PianoKeysBorder:     imgui.Vec4{0.29, 0.20, 0.14, 1.0},
 
 		// timeline
 		TimelineMarkers:   imgui.Vec4{1.00, 1.00, 1.00, 1.0},

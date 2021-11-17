@@ -82,10 +82,11 @@ func (win *winPianoKeys) draw() {
 	imgui.SetNextWindowPosV(imgui.Vec2{96, 454}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
 	imgui.SetNextWindowSizeV(imgui.Vec2{pianoWidth + wp.X*2, whiteKeyLength + wp.Y*2}, imgui.ConditionAlways)
 
-	imgui.PushStyleColor(imgui.StyleColorWindowBg, win.img.cols.AudioTrackerHeader)
+	imgui.PushStyleColor(imgui.StyleColorWindowBg, win.img.cols.PianoKeysBackground)
+	imgui.PushStyleColor(imgui.StyleColorBorder, win.img.cols.PianoKeysBorder)
 	imgui.PushStyleVarFloat(imgui.StyleVarWindowBorderSize, 3.0)
-	imgui.PushStyleVarFloat(imgui.StyleVarWindowRounding, 3.0)
-	defer imgui.PopStyleColor()
+	imgui.PushStyleVarFloat(imgui.StyleVarWindowRounding, 6.0)
+	defer imgui.PopStyleColorV(2)
 	defer imgui.PopStyleVarV(2)
 
 	imgui.BeginV(win.id(), &win.open, imgui.WindowFlagsNoResize|imgui.WindowFlagsNoTitleBar)

@@ -160,7 +160,8 @@ func (ee *emulationEventNotification) draw(win *playScr) {
 
 	imgui.BeginV("##cartridgeevent", &ee.open, imgui.WindowFlagsAlwaysAutoResize|
 		imgui.WindowFlagsNoScrollbar|imgui.WindowFlagsNoTitleBar|
-		imgui.WindowFlagsNoDecoration|imgui.WindowFlagsNoSavedSettings)
+		imgui.WindowFlagsNoDecoration|imgui.WindowFlagsNoSavedSettings|
+		imgui.WindowFlagsNoBringToFrontOnFocus)
 
 	imgui.PushFont(win.img.glsl.veryLargeFontAwesome)
 	switch ee.currentEvent {

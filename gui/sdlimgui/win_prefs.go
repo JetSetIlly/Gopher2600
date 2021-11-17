@@ -68,7 +68,7 @@ func (win *winPrefs) draw() {
 	var setDef setDefaultPrefs
 
 	if win.img.isPlaymode() {
-		imgui.SetNextWindowPosV(imgui.Vec2{25, 25}, imgui.ConditionAppearing, imgui.Vec2{0, 0})
+		imgui.SetNextWindowPosV(imgui.Vec2{100, 40}, imgui.ConditionAppearing, imgui.Vec2{0, 0})
 		imgui.BeginV(win.id(), &win.open, imgui.WindowFlagsNoSavedSettings|imgui.WindowFlagsAlwaysAutoResize)
 	} else {
 		imgui.SetNextWindowPosV(imgui.Vec2{29, 61}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
@@ -97,11 +97,9 @@ func (win *winPrefs) draw() {
 		imgui.EndTabItem()
 	}
 
-	if !win.img.isPlaymode() {
-		if imgui.BeginTabItem("Debugger") {
-			win.drawDebugger()
-			imgui.EndTabItem()
-		}
+	if imgui.BeginTabItem("Debugger") {
+		win.drawDebugger()
+		imgui.EndTabItem()
 	}
 
 	if imgui.BeginTabItem("ARM") {

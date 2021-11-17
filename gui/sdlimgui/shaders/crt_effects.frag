@@ -129,7 +129,7 @@ void main() {
 	// shadow mask - only draw if scaling is large enough
 	if (ShadowMask == 1) {
 		if (scaling > 1) {
-			float mask = clamp(brightnessCorrection+MaskIntensity*sin(uv.x*ScreenDim.x*MaskFine), 0.0, 1.0);
+			float mask = clamp(brightnessCorrection+MaskIntensity*sin(uv.x*ScreenDim.y*MaskFine), 0.0, 1.0);
 			Crt_Color.rgb *= vec3(mask);
 		} else {
 			Crt_Color.rgb *= brightnessCorrection;
