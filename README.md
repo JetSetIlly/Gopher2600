@@ -21,7 +21,7 @@ The graphical [debugger](#debugger) is still in development but the current feat
 
 * CPU and Video stepping
 * Breakpoints, traps, watches on various CPU, TIA, RIOT targets
-* [Interactive rewinding](#rewinding)
+* [Interactive rewinding](#rewinding) (also available in playmode)
 * Specialist windows for specific cartridge types (eg. supercharger tape)
 * Script recording and playback
 * Line [terminal](#debugger-terminal) interface for harder to reach parts of the emulation
@@ -344,7 +344,16 @@ To control the paddle use the left and right analogue triggers. Note that you
 will need to 'waggle' the triggers a couple of times for the emulator to detect
 that you want to switch to the paddle.
 
-The console's reset switch can be triggered with the gamepad's start button.
+When in `playmode` the gamepad has some additional functionality:
+
+The console's reset switch can be triggered with the gamepad's `start` button,
+whilst the `back` button pauses and unpauses the emulation.
+
+The bumper/shoulder button can be used to rewind the gameplay.
+
+The `guide` button will switch to the debugger.
+
+These button combinations will likely change in the future.
 
 ### Mouse Capture
 
@@ -382,53 +391,26 @@ debugger.
 * `ESC` Quit
 * `Scroll Lock` Toggle mouse capture (`F14` on some keyboards)
 * `Pause` Pause/Resume emulation (`F15` on some keyboard)
+* `Key below the Escape key` Switch between playmode and debugger
+
+In playmode the `Tab` key will open up the ROM selector.
 
 ## Debugger
 
-To run the debugger use the `DEBUG` submode
+The debugger is available by pressing the `key under the Escape key` (the back
+tick key on UK keyboards or the tilde key on US keyboard). This key can also be
+used to switch back to playmode.
 
-	> gopher2600 debug roms/Pitfall.bin
-	
+Alternatively the command line `DEBUG` option can be used
+
 <p align=center>
 	<img src=".screenshots/debugger_halo2600.png" height="400" alt="gopher2600 debugging GUI"/>
 </p>
 
-Because the debugger is still in development, full documentation is not yet available. But briefly, the features we can see in this screeshot are:
-
-The menu-bar across the top of the screen shows the `Debugger`, `VCS` and in this instance a `Cartridge` menu
-
-* From `Debugger` menu you can open the preferences windows the terminal and others.
-* The `VCS` menu contains options to open windows that relate to the VCS itself.
-	* Many of them are already open but other, less frequently required windows are also available
-* The `Cartridge` menu appears when the loaded cartridge type has additional features. For example:
-	* Cartridge memory and or registers
-	* In this case, this is the menu for the `Supercharger` format.
-* At the very right of the menu bar we can see the file path for the loaded cartridge
-
-Below the menu-bar are the debugging windows. In this screenshot we can see:
-
-* The `TV Screen`. This shows the television output from the VCS.
-	* The screen is 'interactive' and will show information about the pixel underneath the cursor
-	* Clicking the screen will move the VCS emulation to the point where the VCS is outputting that pixel. This is part of the [rewind](#rewinding) system.
-	* Also available are a variety of `overlays`. Click the overlay button (labelled `no overlay` in the screenshot and select which overlay you want.
-* The `Audio` window shows the waveform of the recent sound output.
-* The `Control` window allow you to `Run/Halt`, `Step` and also `rewind` through the emulation.
-	* The toggle to right of the `Step` button will put the emulation into `video-cycle` mode. This will allow you to step by a single color-clock at a time, rather than a single CPU instruction.
-	* The `<` buttons will step back by eith a CPU instruction, a scanline or an entire frame. Stepping back by video-cycle is not currently supported.
-* The `Timer` window shows the current state of the RIOT Timer.
-* The `CPU` window shows the current state of the 6507.
-* The `Disassembly` window shows the disassembled ROM.
-	* If a 'DASM' generated symbol file is available then that will be used.
-	* If a symbols file isn't available then the standard symbols will be used. This includes symbols for special cartridge areas that might exists. For example, a hotspot address for switching banks will be indicated with `BANK1`, `BANK2`, etc. instead of the address.
-	* Add or remove a `PC Breakpoint` by clicking on the address.
-* The `RAM` window shows the contents of the VCS RAM. Cartidge RAM if available will be show in the `Cartridge RAM` window. Not shown but available through the cartridge menu when appropriate.
-	* The highlighted bytes indicate those bytes that have changed since the emulation last halted.	
-* The `TIA` window details the six graphical parts of the VCS's graphics chip.
-	* The state of the `TIA` can be changed manually but note that the changes will not be retained when the emulation next updates that part of the TIA. 
-
-Note that much of the information presented in the windows is editable. For example, the contents of the CPU's PC register can be edited via the window. As in all areas of this project, the user is encouraged to experiment.
-
-A (old) video of the debugger in action can be found [here](https://www.youtube.com/watch?v=3vLyRw8iVCA).
+The screenshot above shows a typical window layout of the debugger. The menu
+bar at the top provides more windows, some of which are specific to certain
+cartridge mappers. For example, for cartridges with a `ARM7TDMI` an ARM
+disassembly window is provided.
 
 #### Debugger Terminal
 
@@ -439,15 +421,15 @@ by specifying a keyword. The list below shows the currently defined keywords.
 The rest of the section will give a brief run down of debugger features.
 
 	[ $f000 SEI ] >> help
-	    AUDIO         BALL        BREAK    CARTRIDGE        CLEAR   CONTROLLER
-          CPU       DISASM      DISPLAY         DROP         GREP         HALT
-         HELP       INSERT       KEYPAD         LAST         LINT         LIST
-          LOG       MEMMAP     MEMUSAGE      MISSILE       ONHALT       ONSTEP
-      ONTRACE        PANEL        PATCH         PEEK       PLAYER    PLAYFIELD
-      PLUSROM         POKE        PREFS      QUANTUM         QUIT          RAM
-        RESET       REWIND         RIOT          RUN       SCRIPT         STEP
-        STICK       SYMBOL          TIA        TRACE         TRAP           TV
-        WATCH
+        AUDIO         BALL        BREAK    CARTRIDGE        CLEAR   CONTROLLER
+          CPU       DISASM      DISPLAY         DROP         GOTO         GREP
+         HALT         HELP       INSERT       KEYPAD         LAST         LINT
+         LIST          LOG       MEMMAP     MEMUSAGE      MISSILE       ONHALT
+       ONSTEP      ONTRACE        PANEL        PATCH         PEEK       PLAYER
+    PLAYFIELD      PLUSROM         POKE        PREFS      QUANTUM         QUIT
+          RAM        RESET       REWIND         RIOT          RUN       SCRIPT
+         STEP        STICK       SYMBOL          TIA        TRACE         TRAP
+           TV        WATCH
 	
 The debugger allows tab-completion in most situations. For example, pressing `W` followed by the Tab key on your keyboard, will autocomplete the `WATCH` command. This works for command arguments too. It does not currently work for filenames, or symbols. Given a choice of completions, the Tab key will cycle through the available options.
 
@@ -455,52 +437,45 @@ Addresses can be specified by decimal or hexadecimal. Hexadecimal addresses can 
 
 Watches are one of the three facilities that will halt execution of the emulator. The other two are `TRAP` and `BREAK`. Both of these commands will halt execution when a "target" changes or meets some condition. An example of a target is the Programmer Counter or the Scanline value. See `HELP BREAK` and `HELP TRAP` for more information.
 
-Whenever the emulation does halt, the `ONHALT` command will run. For example, a previous call to `ONHALT CPU` will cause the `CPU` command to run whenever the emulation stops. Similarly, the `ONSTEP` command applies whenever the emulation is stepped forward. By default, the `LAST` command is run on every step.
-
-The debugger can step forward either, one CPU instruction at a time, or by one video cycle at a time. We can change this mode with the `QUANTUM` command. We can also conveniently use the `STEP` command, for example `STEP CLOCK`, performing the quantum change and stepping forward in one go. The STEP command can also be to step forward one scanline or one frame. It can also be used to STEP backwards, although in some cases the REWIND command might be more convenient.
-
 Scripts can be recorded and played back with the `SCRIPT` command. All commands are available when in script recording mode, except `RUN` and further `SCRIPT RECORD` command. Playing back a script while recording a new script is possible.
 
 #### Rewinding
 
 `Gopher2600` allows emulation state to be rewound to an earlier frame, scanline
-or colour-clock. Rewinding by frame is best done through the `Control` window of
-the debugger. 
+or colour-clock. 
 
-<img align="left" src=".screenshots/control_window.png" width="200" alt="control window"/>
+The `timeline` window allows you to move to any frame available in the rewind
+history. The available history is indicated by the orange line. The current
+frame is indicated by the orange circle.
 
-Rewinding to a scanline/colour-clock is done by clicking the left mouse button
-on the debug screen, at the position required. This will change the state of
-the emulation accordingly. This can be done with any frame in the rewind
-history without damaging the rewind history.
+<img src=".screenshots/timeline_window.png" width="500" alt="timeline window"/>
 
-The rewind history will be cropped and continue from the current point whenever
-the emulation is run or stepped.
+Hovering over the timeline will show details of the frame (number of scanlines,
+percentage of WSYNC usage, etc.). Clicking on the timeline will instantly take
+the emulation to that state.
+
+The `TV Screen` window is fully interactive and clicking or dragging on any
+portion of the screen will take the emulation to that scanline/clock of the
+current frame.
+
+##### Rewind History Size
+
+(How rewind states are stored is an area of current development. This section
+will change in the near future)
 
 The number of rewind states stored can be set via the preferences window (or
-through the terminal). In addition the snapshot frequency can also be altered.
-The frequency defines how many frames must pass before another snapshot is
-taken. This affects the number of frames that can be stored. For example, if
-number of states is 100 and frequency is 1 then one-hundred frames can be
-stored in the rewind history. On the other hand, if the number of states is 100
-and frequency is 5 then five-hundred frames can be stored.
+through the terminal). The more rewind states that can be stored the more
+memory on your computer is required.
 
-The rewind frequency does not affect the granularity of the rewind history.
-This means that you can rewind to any frame in the rewind history even if no no
-explicit snapshot has been taken.
+The snapshot frequency can also be altered. The frequency defines how many
+frames must pass before another snapshot is taken.
 
-The downside of large frequencies is that input events (from a joystick for
-example) may be lost if they occurred between snapshots. Future versions of
-`Gopher2600` will correct this.
+The frequency does not affect the granularity of the rewind history however.
+This means that you can rewind to any frame in the rewind history even if the
+frame falls in between the snapshot frequency.
 
-Rewind is also not currently available in playmode. Again, future version of
-`Gopher2600` will allow this.
-
-Video quantum is also not fully supported. While the rewind system will work
-when in video-stepping mode you can not currently interactively alter the
-screen position to the level of an individual colour-clock. Left-clicking on the
-screen, as described above, will 'quantise' to the next CPU instruction. Future
-versions of `Gopher2600` will correct this.
+Currently however, a large snapshot frequency can bman user input can be lost.
+Future version of the emulator will correct this.
 
 ## TIA Revisions
 
@@ -514,12 +489,11 @@ In playmode the preferences window can by opened by pressing `F10`. Select the
 
 A summary of the known TIA revisions / bugs can be found at on [Atari Compendium](http://www.ataricompendium.com/faq/vcs_tia/vcs_tia.html). Not all revisions / bugs are supported by `Gopher2600`
 but the common ones are.
-
 <br clear="right">
 
 ## CRT Effects
 
-<img align="left" src=".screenshots/crt_playmode_prefs_window.png" height="400" alt="crt preferences tab"/>
+<img src=".screenshots/crt_playmode_prefs_window.png" height="400" alt="crt preferences tab"/>
 
 `Gopher2600` tries to emulate the visual effect of a CRT television. This is by
 no means complete and is an area of active development.
@@ -534,8 +508,6 @@ checkbox.
 The effects can be turned off completely with the `Pixel Perfect` option. In
 this mode, there is still the option to specify pixel fade. This is roughly
 equivalent to the `phosphor` effect.
-
-<br clear="left">
 
 ## Screenshots
 
@@ -703,20 +675,10 @@ the `Abort on Illegal Memory Access` option.
 
 ### ARM Disassembly
 
-<img align="left" src=".screenshots/arm_disasm.png" width="400" alt="ARM7 last execution
-window"/> 
+<img align="left" src=".screenshots/arm_disasm.png" width="400" alt="ARM7 disassembly window"/> 
 
-The `Gopher2600` debugger provides a `last execution` window when an ARM using
-cartridge is loaded. This window shows the disassembly of the most recent
-execution of the ARM program. It is available via the `ARM7TDMI` menu
-which will appear in the menubar if the coprocessor is present.
-
-The `Goto` button wil [rewind](#rewind) the emulation to the point where the
-ARM program last executed.
-
-The `Save CSV` button meanwhile will write a copy of the disassembly to a file
-in the working directory. The file will be a semi-colon separated CSV file (not
-commas in this instance).
+The `Gopher2600` debugger provides a `dissasembly` window for ARM programs. By
+default disassembly is turned off for performance reasons.
 
 Note that when the ARM emulation is run in `immediate mode`, the cycles column
 will not contain any meaningful information.
@@ -733,7 +695,6 @@ indicate the period the ARM program is running and the 6507 program is stalled.
 Also note that for best results the `cropping` option (see screenshot) should be disabled.
 
 This view is useful during development to make sure you ARM program isn't running for too long.
-
 <br clear="right">
 
 ## Movie Cart
