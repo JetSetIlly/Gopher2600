@@ -89,6 +89,17 @@ type Loader struct {
 	// if the cartridge mapper needs to communicate more information then the
 	// action string should be used
 	VCSHook VCSHook
+
+	// for purely emulation purposes, a cartridge needs to know what type of
+	// emulation it is running in. for example, is the emulation the one that
+	// is used to produce thumbnails in the file requester
+	//
+	// the cartridge can change how it works so that it is more suitable for
+	// the emulation's purpose
+	//
+	// if the EmulationLabel string is empty then mappers should assume that
+	// they are in the main emulation
+	EmulationLabel string
 }
 
 // VCSHook function signature. Used for direct communication between a

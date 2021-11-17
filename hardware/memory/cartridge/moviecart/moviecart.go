@@ -190,6 +190,10 @@ type state struct {
 
 	// index into the static osd data
 	osdIdx int
+
+	// whether the cartridge loader has indicated that it wants to shorten the
+	// title card duration
+	shortTitleCard bool
 }
 
 // what part of the OSD is currently being display.
@@ -218,7 +222,13 @@ func (s *state) Snapshot() *state {
 }
 
 func (s *state) initialise() {
-	s.totalCycles = 0
+	if s.shortTitleCard {
+		// shorten title card. we don't want to eliminate it entirely so say
+		// that it has run 75% of the normal duration already on initialisation
+		s.totalCycles = titleCycles * 0.75
+	} else {
+		s.totalCycles = 0
+	}
 	copy(s.sram, coreData)
 	s.state = stateMachineNewField
 	s.paused = false
@@ -250,6 +260,13 @@ func NewMoviecart(loader cartridgeloader.Loader) (mapper.CartMapper, error) {
 
 	cart.state = newState()
 	cart.banks = make([]byte, 4096)
+
+	// if the emulation has been labelled as a thumbnailer then shorten the
+	// title card sequence
+	if loader.EmulationLabel == loader.EmulationLabel {
+		cart.state.shortTitleCard = true
+		cart.state.initialise()
+	}
 
 	// put core data into bank ROM. this is so that we have something to
 	// disassemble.

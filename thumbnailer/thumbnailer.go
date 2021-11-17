@@ -31,6 +31,10 @@ import (
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
+// Label that can be used in the EmulationLabel field of the cartridgeloader.Loader type. to indicate
+// that the cartridge has been loaded into the thumbnailer emulation
+const EmulationLabel = "thumbnailer"
+
 // Thumbnailer type handles the emulation necessary for thumbnail image
 // generation.
 type Thumbnailer struct {

@@ -333,6 +333,7 @@ func (win *winSelectROM) setSelectedFile(filename string) {
 		logger.Logf("ROM Select", err.Error())
 		return
 	}
+	cartload.EmulationLabel = thumbnailer.EmulationLabel
 
 	win.thmbReceive = win.thmb.Create(cartload, thumbnailer.UndefinedNumFrames)
 }
