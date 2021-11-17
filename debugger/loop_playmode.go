@@ -102,7 +102,7 @@ func (dbg *Debugger) playLoop() error {
 		}
 
 		if dbg.state.Load().(emulation.State) == emulation.Running {
-			dbg.Rewind.RecordFrameState()
+			dbg.Rewind.RecordState()
 		}
 
 		if dbg.rewindKeyboardAccumulation != 0 {

@@ -79,6 +79,11 @@ func newPreferences(r *Rewind) (*Preferences, error) {
 		return nil
 	})
 
+	p.Freq.SetHookPost(func(_ prefs.Value) error {
+		r.allocate()
+		return nil
+	})
+
 	return p, nil
 }
 

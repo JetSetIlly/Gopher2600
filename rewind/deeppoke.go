@@ -22,7 +22,7 @@ type PokeHook func(res *State) error
 // RunPoke will the run the VCS from one state to another state applying
 // the supplied PokeHook to the from State
 func (r *Rewind) RunPoke(from *State, to *State, poke PokeHook) error {
-	fromIdx := r.findFrameIndex(from.TV.GetCoords().Frame).fromIdx
+	fromIdx := r.findFrameIndex(from.TV.GetCoords().Frame).nearestIdx
 
 	if poke != nil {
 		err := poke(r.entries[fromIdx])

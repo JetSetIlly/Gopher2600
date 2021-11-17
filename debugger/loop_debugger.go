@@ -277,8 +277,8 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, isVideoStep bool) error 
 
 			// take note of current machine state if the emulation was in a running
 			// state and is halting just now
-			if dbg.continueEmulation && inputter.IsInteractive() && !isVideoStep {
-				dbg.Rewind.RecordExecutionState()
+			if dbg.continueEmulation && inputter.IsInteractive() {
+				dbg.Rewind.RecordExecutionCoords()
 			}
 
 			// reset halting flag before we resume execution
@@ -480,7 +480,7 @@ func (dbg *Debugger) step(inputter terminal.Input, catchup bool) error {
 		// update rewind state if the last CPU instruction took place during a new
 		// frame event. but not if we're in catchup mode
 		if !catchup {
-			dbg.Rewind.RecordFrameState()
+			dbg.Rewind.RecordState()
 		}
 
 		if dbg.stepQuantum != QuantumVideo {

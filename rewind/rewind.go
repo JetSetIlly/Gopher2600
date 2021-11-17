@@ -67,11 +67,16 @@ const (
 	levelReset snapshotLevel = iota
 	levelBoundary
 
-	// there can be many frame entries in the rewind history.
+	// a frame entry is a recording on a frame boundary (as soon as possible
+	// after a new frame). when they are made is based on the current snapshot
+	// frequency.
+	//
+	// there can be many frame entries the rewind history.
 	levelFrame
 
-	// execution entries should only ever appear once at the end of the
-	// history, if at all.
+	// execution entries only ever appear once at the end of the history.
+	// moreover they only ever appear when the snapshot frequency is greater
+	// than one.
 	levelExecution
 
 	// temporary entries should never appear in the history.
@@ -129,6 +134,9 @@ type Rewind struct {
 	// pointer to the comparison point
 	comparison *State
 
+	// coordinates of execution state
+	executionCoords coords.TelevisionCoords
+
 	// a new frame has been triggered. resolve as soon as possible.
 	newFrame bool
 
@@ -173,10 +181,12 @@ func (r *Rewind) allocate() {
 }
 
 // Reset rewind system removes all entries and takes a snapshot of the
-// execution state. This should be called whenever a new cartridge is attached
-// to the emulation.
+// execution state. Resets timeline too.
+//
+// This should be called whenever a new cartridge is attached to the emulation.
 func (r *Rewind) Reset() {
 	r.reset(levelReset)
+	r.timeline.reset()
 }
 
 // reset rewind system and use the specified snapshotLevel for the first entry.
@@ -219,30 +229,30 @@ func (r *Rewind) reset(level snapshotLevel) {
 	// first comparison is to the snapshot of the reset machine
 	r.comparison = r.entries[r.start]
 
-	// timeline should be reset at the same time
-	r.timeline.reset()
 }
 
 func (r *Rewind) String() string {
 	s := strings.Builder{}
 
-	i := r.start
-	for i < r.next && i < len(r.entries) {
-		e := r.entries[i]
-		if e != nil {
-			s.WriteString(fmt.Sprintf("%s ", e.String()))
-		}
-		i++
-	}
-
-	if i != r.next {
-		i = 0
-		for i < r.next {
+	if r.start < r.next {
+		for i := r.start; i < r.next; i++ {
 			e := r.entries[i]
 			if e != nil {
 				s.WriteString(fmt.Sprintf("%s ", e.String()))
 			}
-			i++
+		}
+	} else {
+		for i := r.start; i < len(r.entries); i++ {
+			e := r.entries[i]
+			if e != nil {
+				s.WriteString(fmt.Sprintf("%s ", e.String()))
+			}
+		}
+		for i := 0; i < r.next; i++ {
+			e := r.entries[i]
+			if e != nil {
+				s.WriteString(fmt.Sprintf("%s ", e.String()))
+			}
 		}
 	}
 
@@ -283,12 +293,9 @@ func (r *Rewind) GetCurrentState() *State {
 	return r.snapshot(levelTemporary)
 }
 
-// RecordFrameState should be called after every CPU instruction to check
-// whether a new frame has been triggered since the last call. Delaying a call
-// to this function may result in sub-optimal results.
-//
-// Does nothing if called when the machine is mid CPU instruction.
-func (r *Rewind) RecordFrameState() {
+// RecordState should be called after every CPU instruction. A new state will
+// be recorded if the current rewind policy agrees.
+func (r *Rewind) RecordState() {
 	if !r.vcs.CPU.LastResult.Final && !r.vcs.CPU.HasReset() {
 		logger.Logf("rewind", "RecordFrameState() attempted mid CPU instruction")
 		return
@@ -310,27 +317,16 @@ func (r *Rewind) RecordFrameState() {
 
 	fn := r.vcs.TV.GetCoords().Frame
 	if fn%r.Prefs.Freq.Get().(int) != 0 {
+		r.append(r.snapshot(levelExecution))
 		return
 	}
 
 	r.append(r.snapshot(levelFrame))
 }
 
-// RecordExecutionState takes a snapshot of the emulation's ExecutionState
-// state.
-//
-// Does nothing if called when the machine is mid CPU instruction.
-func (r *Rewind) RecordExecutionState() {
-	if !r.vcs.CPU.LastResult.Final && !r.vcs.CPU.HasReset() {
-		logger.Logf("rewind", "RecordExecutionState() attempted mid CPU instruction")
-		return
-	}
-
-	// no need to record the execution state if the current state is the same
-	// as the most recent state recorded
-	if !coords.Equal(r.vcs.TV.GetCoords(), r.entries[r.lastEntryIdx()].TV.GetCoords()) {
-		r.append(r.snapshot(levelExecution))
-	}
+// RecordExecutionCoords records the coordinates of the current execution state.
+func (r *Rewind) RecordExecutionCoords() {
+	r.executionCoords = r.vcs.TV.GetCoords()
 }
 
 // append the state to the end of the list of entries. handles the splice
@@ -339,7 +335,7 @@ func (r *Rewind) append(s *State) {
 	// chop off the end entry if it is in execution entry. we must do this
 	// before any further appending. this is enough to ensure that there is
 	// never more than one execution entry in the history.
-	if r.entries[r.splice].level == levelExecution {
+	if r.entries[r.splice] != nil && r.entries[r.splice].level == levelExecution {
 		r.next = r.splice
 		if r.splice == 0 {
 			r.splice = len(r.entries) - 1
@@ -425,7 +421,11 @@ func (r *Rewind) runFromStateToCoords(fromState *State, toCoords coords.Televisi
 // setSplicePoint sets the splice point to the supplied index. the emulation
 // will be run to the supplied frame, scanline, clock point.
 func (r *Rewind) setSplicePoint(fromIdx int, toCoords coords.TelevisionCoords) error {
-	r.splice = fromIdx
+	r.splice = fromIdx + 1
+	if r.splice >= len(r.entries) {
+		r.splice -= len(r.entries)
+	}
+
 	fromState := r.entries[fromIdx]
 
 	// plumb in selected entry
@@ -440,9 +440,9 @@ func (r *Rewind) setSplicePoint(fromIdx int, toCoords coords.TelevisionCoords) e
 // findFrameIndex returns a lot of information and so is wrapped in a
 // findResults type
 type findResults struct {
-	fromIdx   int
-	fromFrame int
-	isFuture  bool
+	nearestIdx   int
+	nearestFrame int
+	future       bool
 }
 
 // find index nearest to the requested frame. returns the index and the frame
@@ -470,13 +470,13 @@ func (r *Rewind) findFrameIndex(frame int) findResults {
 	// is requested frame too old (ie. before the start of the array)
 	fn := r.entries[s].TV.GetCoords().Frame
 	if searchFrame < fn {
-		return findResults{fromIdx: s, fromFrame: fn}
+		return findResults{nearestIdx: s, nearestFrame: fn}
 	}
 
 	// is requested frame too new (ie. past the end of the array)
 	fn = r.entries[e].TV.GetCoords().Frame
 	if searchFrame > fn {
-		return findResults{fromIdx: e, fromFrame: fn, isFuture: true}
+		return findResults{nearestIdx: e, nearestFrame: fn, future: true}
 	}
 	// the range which we must consider to be a match
 	freqAdj := r.Prefs.Freq.Get().(int) - 1
@@ -503,7 +503,7 @@ func (r *Rewind) findFrameIndex(frame int) findResults {
 		// check for match, taking into consideration the gaps introduced by
 		// the frequency value
 		if searchFrame >= fn && searchFrame <= fn+freqAdj {
-			return findResults{fromIdx: idx, fromFrame: fn}
+			return findResults{nearestIdx: idx, nearestFrame: fn}
 		}
 
 		if searchFrame < fn {
@@ -526,14 +526,7 @@ func (r *Rewind) RerunLastNFrames(frames int) error {
 		ff = 0
 	}
 
-	// the +1 fixes a bug when switching from playmode to the debugger. without
-	// it we lose a frame at the next RecordFrameState() because the splice is
-	// pointing in the wrong place
-	//
-	// we only use RerunLastNFrame() in that one place at the moment so it
-	// should be fine
-	idx := r.findFrameIndex(ff).fromIdx + 1
-
+	idx := r.findFrameIndex(ff).nearestIdx
 	err := r.setSplicePoint(idx, to.TV.GetCoords())
 	if err != nil {
 		return curated.Errorf("rewind: %v", err)
@@ -548,11 +541,12 @@ func (r *Rewind) GotoCoords(toCoords coords.TelevisionCoords) error {
 	// current frame
 	res := r.findFrameIndex(toCoords.Frame)
 
-	if res.isFuture {
-		toCoords.Frame = res.fromFrame
+	if res.future {
+		toCoords = r.entries[res.nearestIdx].TV.GetCoords()
 	}
 
-	err := r.setSplicePoint(res.fromIdx, toCoords)
+	idx := res.nearestIdx
+	err := r.setSplicePoint(idx, toCoords)
 	if err != nil {
 		return err
 	}
@@ -564,30 +558,7 @@ func (r *Rewind) GotoCoords(toCoords coords.TelevisionCoords) error {
 // GotoLast goes to the last entry in the rewind history. It handles situations
 // when the last entry is an execution state.
 func (r *Rewind) GotoLast() error {
-	e := r.lastEntryIdx()
-
-	toCoords := r.entries[e].TV.GetCoords()
-
-	// goto the beginning of the frame if last entry is not an execution frame
-	if r.entries[e].level != levelExecution {
-		toCoords.Scanline = 0
-		toCoords.Clock = -specification.ClksHBlank
-	}
-
-	// make adjustments to the index so we call setSplicePoint from a suitable place.
-	e -= 2
-	if e < 0 {
-		e += len(r.entries)
-	}
-
-	// boundary checks to make sure we haven't gone back past the beginning of
-	// the circular array. this can happen if a REWIND LAST command, for
-	// example, is issued before any history has been recorded
-	if r.entries[e] == nil {
-		e = r.start
-	}
-
-	return r.setSplicePoint(e, toCoords)
+	return r.GotoCoords(r.executionCoords)
 }
 
 // GotoFrame is a special case of GotoCoords that requires the frame number only.
@@ -616,5 +587,5 @@ func (r *Rewind) GetState(frame int) *State {
 	// get nearest index of entry from which we can being to (re)generate the
 	// current frame
 	res := r.findFrameIndex(frame)
-	return r.entries[res.fromIdx]
+	return r.entries[res.nearestIdx]
 }

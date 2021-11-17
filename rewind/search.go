@@ -62,7 +62,7 @@ func (r *Rewind) SearchMemoryWrite(tgt *State, addr uint16, value uint8, valueMa
 	endCoords := tgt.TV.GetCoords()
 
 	// find a recent state from the rewind history and plumb it our searchVCS
-	idx := r.findFrameIndex(endCoords.Frame).fromIdx
+	idx := r.findFrameIndex(endCoords.Frame).nearestIdx
 	Plumb(searchVCS, r.entries[idx], false)
 
 	// loop until we reach (or just surpass) the target State
@@ -126,7 +126,7 @@ func (r *Rewind) SearchRegisterWrite(tgt *State, reg rune, value uint8, valueMas
 	endCoords := tgt.TV.GetCoords()
 
 	// find a recent state and plumb it into searchVCS
-	idx := r.findFrameIndex(endCoords.Frame).fromIdx
+	idx := r.findFrameIndex(endCoords.Frame).nearestIdx
 	Plumb(searchVCS, r.entries[idx], false)
 
 	// onLoad() is called whenever a CPU register is loaded with a new value
