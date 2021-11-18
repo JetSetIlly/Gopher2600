@@ -206,8 +206,6 @@ type Debugger struct {
 	runUntilHalt bool
 
 	// continue the emulation. this is seemingly only used in the inputLoop()
-	// but because we nest calls to inputLoop on occasion it is better to keep
-	// here in the debugger type
 	continueEmulation bool
 
 	// halt the emulation immediately. used by HALT command.
@@ -226,6 +224,14 @@ type Debugger struct {
 	// the correct place
 	catchupContinue func() bool
 	catchupEnd      func()
+
+	// the debugger catchup loop will end on a video cycle if necessary. this
+	// is what we want in most situations but occasionally it is useful to stop
+	// on an instruction boundary. catchupEndAdj will ensure that the debugger
+	// halts on an instruction boundary
+	//
+	// the value will reset to false at the end of a catchup loop
+	catchupEndAdj bool
 }
 
 // CreateUserInterface is used to initialise the user interface used by the emulation.
@@ -495,8 +501,15 @@ func (dbg *Debugger) setMode(mode emulation.Mode) error {
 		dbg.setState(emulation.Paused)
 
 		// debugger needs knowledge about previous frames (via the reflector)
-		// if we're moving from playmode
+		// if we're moving from playmode. also we want to make sure we end on
+		// an instruction boundary.
+		//
+		// playmode will always break on an instruction boundary but without
+		// catchupEndAdj we will always enter the debugger on the last cycle of
+		// an instruction. although correct in terms of coordinates, is
+		// confusing.
 		if prevMode == emulation.ModePlay {
+			dbg.catchupEndAdj = true
 			dbg.RerunLastNFrames(2)
 		}
 	default:

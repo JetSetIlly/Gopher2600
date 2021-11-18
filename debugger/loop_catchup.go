@@ -58,8 +58,9 @@ func (dbg *Debugger) CatchUpLoop(tgt coords.TelevisionCoords) error {
 			dbg.catchupContinue = nil
 			dbg.catchupEnd = nil
 			dbg.setState(emulation.Paused)
-			dbg.continueEmulation = false
 			dbg.runUntilHalt = false
+			dbg.continueEmulation = dbg.catchupEndAdj
+			dbg.catchupEndAdj = false
 		}
 
 		dbg.PushRawEventReturn(func() {})
