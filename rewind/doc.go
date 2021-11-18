@@ -41,15 +41,6 @@
 // next snapshot is taken (meaning that there is only ever one execution state
 // in the history at any one time and that it will be at the end).
 //
-// Do not call RecordFrameState() or RecordExecutionState() between CPU
-// instruction boundaries - the program will intentionally panic if this is
-// attempted.
-//
-// Not being able to snapshot state in between CPU instructions isn't as
-// limiting as you may think. The Goto() function can be used to specify frame
-// coordinates to the video cycle level and will take care of finding the
-// nearest snapshot and "catching up" from there.
-//
 // Snapshots are stored in frame order from the splice point. The splice point
 // will be wherever the snapshot history has been rewound to. For example, in a
 // history of length 100 frames: the emulation has rewound back to frame 50.

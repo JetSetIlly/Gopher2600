@@ -286,13 +286,6 @@ func (r *Rewind) snapshot(level snapshotLevel) *State {
 	return snapshot(r.vcs, level)
 }
 
-// GetCurrentState returns a temporary snapshot of the current state.
-//
-// It is not added to the rewind history.
-func (r *Rewind) GetCurrentState() *State {
-	return r.snapshot(levelTemporary)
-}
-
 // RecordState should be called after every CPU instruction. A new state will
 // be recorded if the current rewind policy agrees.
 func (r *Rewind) RecordState() {
@@ -571,11 +564,6 @@ func (r *Rewind) SetComparison() {
 	r.comparison = r.GetCurrentState()
 }
 
-// GetComparison gets a reference to current comparison point.
-func (r *Rewind) GetComparison() *State {
-	return r.comparison
-}
-
 // NewFrame is in an implementation of television.FrameTrigger.
 func (r *Rewind) NewFrame(frameInfo television.FrameInfo) error {
 	r.addTimelineEntry(frameInfo)
@@ -583,9 +571,30 @@ func (r *Rewind) NewFrame(frameInfo television.FrameInfo) error {
 	return nil
 }
 
+// GetState returns a copy for the nearest state for the indicated frame.
 func (r *Rewind) GetState(frame int) *State {
 	// get nearest index of entry from which we can being to (re)generate the
 	// current frame
 	res := r.findFrameIndex(frame)
-	return r.entries[res.nearestIdx]
+	s := r.entries[res.nearestIdx]
+
+	// return copy of state
+	return &State{
+		TV:   s.TV.Snapshot(),
+		CPU:  s.CPU.Snapshot(),
+		Mem:  s.Mem.Snapshot(),
+		RIOT: s.RIOT.Snapshot(),
+		TIA:  s.TIA.Snapshot(),
+	}
+}
+
+// GetCurrentState returns a temporary snapshot of the current state.
+func (r *Rewind) GetCurrentState() *State {
+	return r.snapshot(levelTemporary)
+}
+
+// GetComparisonState gets a reference to current comparison point. This is not
+// a copy of the state but the actual state.
+func (r *Rewind) GetComparisonState() *State {
+	return r.comparison
 }

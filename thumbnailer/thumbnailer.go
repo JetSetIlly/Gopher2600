@@ -13,8 +13,6 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-// Package thumbnailer can be used to create a single thumbnail or a series of
-// thumbnail images with the Create() function.
 package thumbnailer
 
 import (
@@ -49,7 +47,7 @@ type Thumbnailer struct {
 	emulationQuit      chan bool
 	emulationCompleted chan bool
 
-	renderChannel chan *image.RGBA
+	Render chan *image.RGBA
 }
 
 // NewThumbnailer is the preferred method of initialisation for the Thumbnailer type.
@@ -57,7 +55,7 @@ func NewThumbnailer() (*Thumbnailer, error) {
 	thmb := &Thumbnailer{
 		emulationQuit:      make(chan bool, 1),
 		emulationCompleted: make(chan bool, 1),
-		renderChannel:      make(chan *image.RGBA, 1),
+		Render:             make(chan *image.RGBA, 1),
 	}
 
 	// emulation has completed, by definition, on startup
@@ -80,16 +78,9 @@ func NewThumbnailer() (*Thumbnailer, error) {
 
 	thmb.img = image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, specification.AbsoluteMaxScanlines))
 
-	// clear pixels. setting the alpha channel so we don't have to later (the
-	// alpha channel never changes)
-	for y := 0; y < thmb.img.Bounds().Size().Y; y++ {
-		for x := 0; x < thmb.img.Bounds().Size().X; x++ {
-			thmb.img.SetRGBA(x, y, color.RGBA{0, 0, 0, 255})
-		}
-	}
-
 	// start with a NTSC television as default
 	thmb.Resize(television.NewFrameInfo(specification.SpecNTSC))
+	thmb.Reset()
 
 	return thmb, nil
 }
@@ -128,9 +119,7 @@ const UndefinedNumFrames = -1
 // CreateFromLoader will cause images to be returned from a running emulation initialised
 // with the specified cartridge loader. The emulation will run for a number of
 // frames before ending.
-//
-// It returns the channel over which new frames will be sent.
-func (thmb *Thumbnailer) CreateFromLoader(loader cartridgeloader.Loader, numFrames int) chan *image.RGBA {
+func (thmb *Thumbnailer) CreateFromLoader(loader cartridgeloader.Loader, numFrames int) {
 	thmb.wait()
 
 	go func() {
@@ -163,16 +152,14 @@ func (thmb *Thumbnailer) CreateFromLoader(loader cartridgeloader.Loader, numFram
 			return
 		}
 	}()
-
-	return thmb.renderChannel
 }
 
-// CreateFromState will cause images to be returned from a running emulation initialised
-// with the specified cartridge loader. The emulation will run for a number of
-// frames before ending.
+// CreateFromState will cause images to be returned from a running emulation
+// initialised with the specified cartridge loader. The emulation will run for
+// a number of frames before ending.
 //
-// It returns the channel over which new frames will be sent.
-func (thmb *Thumbnailer) CreateFromState(state *rewind.State, numFrames int) chan *image.RGBA {
+// See comment for rewind.GetState() about how to use handle rewind.State.
+func (thmb *Thumbnailer) CreateFromState(state *rewind.State, numFrames int) {
 	thmb.wait()
 
 	go func() {
@@ -181,10 +168,11 @@ func (thmb *Thumbnailer) CreateFromState(state *rewind.State, numFrames int) cha
 		}()
 
 		rewind.Plumb(thmb.vcs, state, true)
-		thmb.vcs.TIA.Audio.SetTracker(nil)
-		thmb.vcs.RIOT.Ports.AttachEventRecorder(nil)
-		thmb.vcs.RIOT.Ports.AttachPlayback(nil)
-		thmb.vcs.RIOT.Ports.AttachPlugMonitor(nil)
+
+		// the state we've just plumbed into the thumbnailing emulation is from
+		// a different emulation which potentially has some links to that
+		// emulator still remaining
+		thmb.vcs.DetatchEmulationExtras()
 
 		tgtFrame := thmb.vcs.TV.GetCoords().Frame + numFrames
 
@@ -205,8 +193,6 @@ func (thmb *Thumbnailer) CreateFromState(state *rewind.State, numFrames int) cha
 			return
 		}
 	}()
-
-	return thmb.renderChannel
 }
 
 // Resize implements the television.PixelRenderer interface.
@@ -224,6 +210,10 @@ func (thmb *Thumbnailer) Resize(frameInfo television.FrameInfo) error {
 
 // NewFrame implements the television.PixelRenderer interface.
 func (thmb *Thumbnailer) NewFrame(frameInfo television.FrameInfo) error {
+	if !frameInfo.Stable {
+		return nil
+	}
+
 	thmb.frameInfo = frameInfo
 
 	img := *thmb.cropImg
@@ -231,7 +221,7 @@ func (thmb *Thumbnailer) NewFrame(frameInfo television.FrameInfo) error {
 	copy(img.Pix, thmb.cropImg.Pix)
 
 	select {
-	case thmb.renderChannel <- &img:
+	case thmb.Render <- &img:
 	default:
 	}
 
@@ -270,6 +260,22 @@ func (thmb *Thumbnailer) SetPixels(sig []signal.SignalAttributes, last int) erro
 
 // Reset implements the television.PixelRenderer interface.
 func (thmb *Thumbnailer) Reset() {
+	// clear pixels. setting the alpha channel so we don't have to later (the
+	// alpha channel never changes)
+	for y := 0; y < thmb.img.Bounds().Size().Y; y++ {
+		for x := 0; x < thmb.img.Bounds().Size().X; x++ {
+			thmb.img.SetRGBA(x, y, color.RGBA{0, 0, 0, 255})
+		}
+	}
+
+	img := *thmb.cropImg
+	img.Pix = make([]uint8, len(thmb.cropImg.Pix))
+	copy(img.Pix, thmb.cropImg.Pix)
+
+	select {
+	case thmb.Render <- &img:
+	default:
+	}
 }
 
 // EndRendering implements the television.PixelRenderer interface.

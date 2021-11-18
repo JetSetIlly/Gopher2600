@@ -214,3 +214,13 @@ func (vcs *VCS) SetClockSpeed(tvSpec string) error {
 	}
 	return curated.Errorf("vcs: cannot set clock speed for unknown tv specification (%s)", tvSpec)
 }
+
+// DetatchEmulationExtras removes all possible monitors, recorders, etc. from
+// the emulation.  Currently this mean: the TIA audio tracker, the RIOT event
+// recorders and playback, and RIOT plug monitor.
+func (vcs *VCS) DetatchEmulationExtras() {
+	vcs.TIA.Audio.SetTracker(nil)
+	vcs.RIOT.Ports.AttachEventRecorder(nil)
+	vcs.RIOT.Ports.AttachPlayback(nil)
+	vcs.RIOT.Ports.AttachPlugMonitor(nil)
+}

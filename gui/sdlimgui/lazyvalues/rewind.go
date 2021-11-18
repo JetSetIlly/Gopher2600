@@ -40,7 +40,7 @@ func newLazyRewind(val *LazyValues) *LazyRewind {
 
 func (lz *LazyRewind) push() {
 	lz.timeline.Store(lz.val.dbg.Rewind.GetTimeline())
-	lz.comparison.Store(lz.val.dbg.Rewind.GetComparison())
+	lz.comparison.Store(lz.val.dbg.Rewind.GetComparisonState())
 }
 
 func (lz *LazyRewind) update() {

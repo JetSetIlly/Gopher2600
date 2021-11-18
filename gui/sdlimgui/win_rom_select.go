@@ -17,7 +17,6 @@ package sdlimgui
 
 import (
 	"fmt"
-	"image"
 	"os"
 	"path/filepath"
 	"strings"
@@ -52,7 +51,6 @@ type winSelectROM struct {
 	controlHeight float32
 
 	thmb        *thumbnailer.Thumbnailer
-	thmbReceive chan *image.RGBA
 	thmbTexture uint32
 }
 
@@ -67,7 +65,6 @@ func newFileSelector(img *SdlImgui) (window, error) {
 
 	var err error
 
-	// create a new thumbnailer instance
 	win.thmb, err = thumbnailer.NewThumbnailer()
 	if err != nil {
 		return nil, curated.Errorf("debugger: %v", err)
@@ -127,8 +124,9 @@ func (win *winSelectROM) setOpen(open bool) {
 }
 
 func (win *winSelectROM) draw() {
+	// receive new thumbnail data and copy to texture
 	select {
-	case img := <-win.thmbReceive:
+	case img := <-win.thmb.Render:
 		if img != nil {
 			gl.PixelStorei(gl.UNPACK_ROW_LENGTH, int32(img.Stride)/4)
 			defer gl.PixelStorei(gl.UNPACK_ROW_LENGTH, 0)
@@ -335,5 +333,5 @@ func (win *winSelectROM) setSelectedFile(filename string) {
 	}
 	cartload.EmulationLabel = thumbnailer.EmulationLabel
 
-	win.thmbReceive = win.thmb.CreateFromLoader(cartload, thumbnailer.UndefinedNumFrames)
+	win.thmb.CreateFromLoader(cartload, thumbnailer.UndefinedNumFrames)
 }

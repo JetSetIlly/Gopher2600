@@ -17,7 +17,6 @@ package sdlimgui
 
 import (
 	"fmt"
-	"image"
 
 	"github.com/go-gl/gl/v3.2-core/gl"
 	"github.com/inkyblackness/imgui-go/v4"
@@ -35,11 +34,11 @@ type winTimeline struct {
 	// whether the rewind "slider" is active
 	rewindingActive bool
 
+	// thumbnailer will be using emulation states created in the main emulation
+	// goroutine so we must thumbnail those states in the same goroutine.
 	thmb        *thumbnailer.Thumbnailer
-	thmbReceive chan *image.RGBA
 	thmbTexture uint32
-
-	thumbnailFrame int
+	thmbFrame   int
 }
 
 func newWinTimeline(img *SdlImgui) (window, error) {
@@ -49,7 +48,6 @@ func newWinTimeline(img *SdlImgui) (window, error) {
 
 	var err error
 
-	// create a new thumbnailer instance
 	win.thmb, err = thumbnailer.NewThumbnailer()
 	if err != nil {
 		return nil, curated.Errorf("debugger: %v", err)
@@ -79,8 +77,9 @@ func (win *winTimeline) setOpen(open bool) {
 }
 
 func (win *winTimeline) draw() {
+	// receive new thumbnail data and copy to texture
 	select {
-	case img := <-win.thmbReceive:
+	case img := <-win.thmb.Render:
 		if img != nil {
 			gl.PixelStorei(gl.UNPACK_ROW_LENGTH, int32(img.Stride)/4)
 			defer gl.PixelStorei(gl.UNPACK_ROW_LENGTH, 0)
@@ -171,7 +170,7 @@ func (win *winTimeline) drawTimeline() {
 
 	// scanline trace
 	traceSize = imgui.Vec2{X: availableWidth, Y: 50}
-	imgui.BeginChildV("##timelinescanlinetrace", traceSize, false, imgui.WindowFlagsNoMove)
+	imgui.BeginChildV("##timelinetrace", traceSize, false, imgui.WindowFlagsNoMove)
 	pos = imgui.CursorScreenPos()
 
 	x := pos.X
@@ -244,7 +243,7 @@ func (win *winTimeline) drawTimeline() {
 	// input trace
 	// TODO: right player and panel input
 	traceSize = imgui.Vec2{X: availableWidth, Y: inputHeight}
-	imgui.BeginChildV("##timelineinputtrace", traceSize, false, imgui.WindowFlagsNoMove)
+	imgui.BeginChildV("##timelinetrace_input", traceSize, false, imgui.WindowFlagsNoMove)
 	pos = imgui.CursorScreenPos()
 	x = pos.X
 	y := pos.Y
@@ -263,7 +262,7 @@ func (win *winTimeline) drawTimeline() {
 
 	// rewind range indicator
 	traceSize = imgui.Vec2{X: availableWidth, Y: rangeHeight}
-	imgui.BeginChildV("##timelineindicators", traceSize, false, imgui.WindowFlagsNoMove)
+	imgui.BeginChildV("##timelinetrace_indicators", traceSize, false, imgui.WindowFlagsNoMove)
 	pos = imgui.CursorScreenPos()
 
 	dl.AddRectFilled(imgui.Vec2{X: pos.X + float32((timeline.AvailableStart-rewindOffset)*traceWidth), Y: pos.Y},
@@ -274,7 +273,7 @@ func (win *winTimeline) drawTimeline() {
 
 	// frame indicators
 	traceSize = imgui.Vec2{X: availableWidth, Y: frameIndicatorRadius}
-	imgui.BeginChildV("##timelinecurrent", traceSize, false, imgui.WindowFlagsNoMove)
+	imgui.BeginChildV("##timelinetrace_current", traceSize, false, imgui.WindowFlagsNoMove)
 	pos = imgui.CursorScreenPos()
 
 	// comparison frame indicator
@@ -309,7 +308,8 @@ func (win *winTimeline) drawTimeline() {
 	rewindEndFrame := win.img.lz.Rewind.Timeline.AvailableEnd
 	rewindHoverFrame := int(hoverX/traceWidth) + rewindOffset
 
-	// rewind "slider" is attached to scanline trace
+	// hover and clicking works on the group
+
 	if imgui.IsMouseDown(0) && (hovered || win.rewindingActive) {
 		win.rewindingActive = true
 
@@ -380,9 +380,15 @@ func (win *winTimeline) drawTimeline() {
 						imgui.TableNextColumn()
 
 						// selecting the correct thumbnail requires different indexing than the timline
-						if win.thumbnailFrame != rewindHoverFrame {
-							win.thmbReceive = win.thmb.CreateFromState(win.img.dbg.Rewind.GetState(rewindHoverFrame), 1)
-							win.thumbnailFrame = rewindHoverFrame
+						if win.thmbFrame != rewindHoverFrame {
+							win.thmbFrame = rewindHoverFrame
+
+							// Rewind.GetState must be run in the emulation thread. CreateFromState doesn't need to be but
+							// because the thumbnailer runs in its own goroutine there's no real time penalty on the main
+							// emulation even when it is running
+							win.img.dbg.PushRawEvent(func() {
+								win.thmb.CreateFromState(win.img.dbg.Rewind.GetState(rewindHoverFrame), 1)
+							})
 						}
 
 						imgui.Image(imgui.TextureID(win.thmbTexture), imgui.Vec2{specification.ClksVisible * 3, specification.AbsoluteMaxScanlines}.Times(0.3))
