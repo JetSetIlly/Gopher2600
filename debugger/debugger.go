@@ -59,12 +59,12 @@ type Debugger struct {
 	// current mode of the emulation. use setMode() to set the value
 	mode atomic.Value // emulation.Mode
 
-	// when playmode is started without a ROM specified we send the GUI a
-	// ReqROMSelector request. we create the firstROMSelection channel and wait
-	// for a response from the InsertCartridge() function. sending and
-	// receiving on this channel occur in the same goroutine so the chanel must
-	// be buffered
-	firstROMSelection chan bool
+	// when playmode is entered without a ROM specified we send the GUI a
+	// ReqROMSelector request. we create the forcedROMselection channel and
+	// wait for a response from the InsertCartridge() function. sending and
+	// receiving on this channel occur in the same goroutine so the channel
+	// must be buffered
+	forcedROMselection chan bool
 
 	// state is an atomic value because we need to be able to read it from the
 	// GUI thread (see State() function)
@@ -242,7 +242,7 @@ type CreateUserInterface func(emulation.Emulation) (gui.GUI, terminal.Terminal, 
 //
 // It should be followed up with a call to AddUserInterface() and call the
 // Start() method to actually begin the emulation.
-func NewDebugger(create CreateUserInterface, mode emulation.Mode, spec string, useSavekey bool) (*Debugger, error) {
+func NewDebugger(create CreateUserInterface, spec string, useSavekey bool) (*Debugger, error) {
 	dbg := &Debugger{
 		// by definition the state of debugger has changed during startup
 		hasChanged: true,
@@ -356,12 +356,6 @@ func NewDebugger(create CreateUserInterface, mode emulation.Mode, spec string, u
 
 	// add plug monitor
 	dbg.vcs.RIOT.Ports.AttachPlugMonitor(dbg)
-
-	// set mode to the value requested in the function paramenters
-	err = dbg.setMode(mode)
-	if err != nil {
-		return nil, curated.Errorf("debugger: %v", err)
-	}
 
 	return dbg, nil
 }
@@ -492,7 +486,18 @@ func (dbg *Debugger) setMode(mode emulation.Mode) error {
 	case emulation.ModePlay:
 		dbg.vcs.TV.AddFrameTrigger(dbg.Rewind)
 		dbg.vcs.TV.AddFrameTrigger(dbg.counter)
-		dbg.setState(emulation.Running)
+
+		// simple detection of whether cartridge is ejected when switching to
+		// playmode. if it is ejected then open ROM selected.
+		if dbg.Mode() == emulation.ModePlay && dbg.vcs.Mem.Cart.IsEjected() {
+			dbg.forcedROMselection = make(chan bool, 1)
+			err = dbg.gui.SetFeature(gui.ReqROMSelector)
+			if err != nil {
+				return curated.Errorf("debugger: %v", err)
+			}
+		} else {
+			dbg.setState(emulation.Running)
+		}
 
 	case emulation.ModeDebugger:
 		dbg.vcs.TV.AddFrameTrigger(dbg.Rewind)
@@ -520,7 +525,7 @@ func (dbg *Debugger) setMode(mode emulation.Mode) error {
 }
 
 // Start the main debugger sequence.
-func (dbg *Debugger) Start(initScript string, cartload cartridgeloader.Loader) error {
+func (dbg *Debugger) Start(mode emulation.Mode, initScript string, cartload cartridgeloader.Loader) error {
 	// prepare user interface
 	err := dbg.term.Initialise()
 	if err != nil {
@@ -528,19 +533,15 @@ func (dbg *Debugger) Start(initScript string, cartload cartridgeloader.Loader) e
 	}
 	defer dbg.term.CleanUp()
 
-	// simple detection of whether cartridge is ejected when starting in
-	// playmode. if it is ejected then open ROM selected.
-	if dbg.Mode() == emulation.ModePlay && cartload.Filename == "" {
-		dbg.firstROMSelection = make(chan bool, 1)
-		err = dbg.gui.SetFeature(gui.ReqROMSelector)
-		if err != nil {
-			return curated.Errorf("debugger: %v", err)
-		}
-	} else {
-		err = dbg.attachCartridge(cartload)
-		if err != nil {
-			return curated.Errorf("debugger: %v", err)
-		}
+	err = dbg.attachCartridge(cartload)
+	if err != nil {
+		return curated.Errorf("debugger: %v", err)
+	}
+
+	// set mode to the value requested in the function paramenters
+	err = dbg.setMode(mode)
+	if err != nil {
+		return curated.Errorf("debugger: %v", err)
 	}
 
 	dbg.running = true

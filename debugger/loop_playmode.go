@@ -22,7 +22,7 @@ import (
 )
 
 func (dbg *Debugger) playLoop() error {
-	if dbg.firstROMSelection != nil {
+	if dbg.forcedROMselection != nil {
 		done := false
 		for !done {
 			select {
@@ -33,8 +33,8 @@ func (dbg *Debugger) playLoop() error {
 					dbg.running = false
 					return nil
 				}
-			case <-dbg.firstROMSelection:
-				dbg.firstROMSelection = nil
+			case <-dbg.forcedROMselection:
+				dbg.forcedROMselection = nil
 				done = true
 			}
 		}

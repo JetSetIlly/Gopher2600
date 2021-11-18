@@ -74,8 +74,8 @@ func (dbg *Debugger) InsertCartridge(filename string) error {
 	if err != nil {
 		return curated.Errorf("debugger: %v", err)
 	}
-	if dbg.firstROMSelection != nil {
-		dbg.firstROMSelection <- true
+	if dbg.forcedROMselection != nil {
+		dbg.forcedROMselection <- true
 	}
 	return nil
 }

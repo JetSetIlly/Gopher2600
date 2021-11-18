@@ -491,7 +491,7 @@ func emulate(emulationMode emulation.Mode, md *modalflag.Modes, sync *mainSync) 
 	}
 
 	// prepare new debugger instance
-	dbg, err := debugger.NewDebugger(create, emulationMode, *spec, *useSavekey)
+	dbg, err := debugger.NewDebugger(create, *spec, *useSavekey)
 	if err != nil {
 		return err
 	}
@@ -526,7 +526,7 @@ func emulate(emulationMode emulation.Mode, md *modalflag.Modes, sync *mainSync) 
 
 	// set up a launch function
 	dbgLaunch := func() error {
-		err := dbg.Start(*initScript, cartload)
+		err := dbg.Start(emulationMode, *initScript, cartload)
 		if err != nil {
 			return err
 		}
