@@ -105,6 +105,13 @@ func NewAuto(port plugging.PortID, bus ports.PeripheralBus) ports.Peripheral {
 	return aut
 }
 
+// Snapshot implements the Peripheral interface.
+func (aut *Auto) Snapshot() ports.Peripheral {
+	n := *aut
+	n.controller = aut.controller.Snapshot()
+	return &n
+}
+
 // Plumb implements the Peripheral interface.
 func (aut *Auto) Plumb(bus ports.PeripheralBus) {
 	aut.bus = bus

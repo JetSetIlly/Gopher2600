@@ -181,6 +181,10 @@ func (thmb *Thumbnailer) CreateFromState(state *rewind.State, numFrames int) cha
 		}()
 
 		rewind.Plumb(thmb.vcs, state, true)
+		thmb.vcs.TIA.Audio.SetTracker(nil)
+		thmb.vcs.RIOT.Ports.AttachEventRecorder(nil)
+		thmb.vcs.RIOT.Ports.AttachPlayback(nil)
+		thmb.vcs.RIOT.Ports.AttachPlugMonitor(nil)
 
 		tgtFrame := thmb.vcs.TV.GetCoords().Frame + numFrames
 

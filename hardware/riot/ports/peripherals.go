@@ -27,6 +27,9 @@ type Peripheral interface {
 	// String should return information about the state of the peripheral
 	String() string
 
+	// Snapshot the instance of the Peripheral
+	Snapshot() Peripheral
+
 	// Plumb a new PeripheralBus into the Peripheral
 	Plumb(PeripheralBus)
 

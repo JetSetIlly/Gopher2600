@@ -97,6 +97,12 @@ func NewSaveKey(port plugging.PortID, bus ports.PeripheralBus) ports.Peripheral 
 	return sk
 }
 
+// Snapshot implements the Peripheral interface.
+func (sk *SaveKey) Snapshot() ports.Peripheral {
+	n := *sk
+	return &n
+}
+
 // Plumb implements the ports.Peripheral interface.
 func (sk *SaveKey) Plumb(bus ports.PeripheralBus) {
 	sk.bus = bus

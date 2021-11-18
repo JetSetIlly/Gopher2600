@@ -96,6 +96,9 @@ func NewPorts(riotMem bus.ChipBus, tiaMem bus.ChipBus) *Ports {
 // Snapshot returns a copy of the RIOT Ports sub-system in its current state.
 func (p *Ports) Snapshot() *Ports {
 	n := *p
+	n.Panel = p.Panel.Snapshot()
+	n.LeftPlayer = p.LeftPlayer.Snapshot()
+	n.RightPlayer = p.RightPlayer.Snapshot()
 	return &n
 }
 

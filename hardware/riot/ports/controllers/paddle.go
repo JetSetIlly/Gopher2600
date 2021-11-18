@@ -83,6 +83,12 @@ func NewPaddle(port plugging.PortID, bus ports.PeripheralBus) ports.Peripheral {
 	return pdl
 }
 
+// Snapshot implements the Peripheral interface.
+func (pdl *Paddle) Snapshot() ports.Peripheral {
+	n := *pdl
+	return &n
+}
+
 // Plumb implements the ports.Peripheral interface.
 func (pdl *Paddle) Plumb(bus ports.PeripheralBus) {
 	pdl.bus = bus

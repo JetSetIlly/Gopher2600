@@ -70,6 +70,12 @@ func NewStick(port plugging.PortID, bus ports.PeripheralBus) ports.Peripheral {
 	return stk
 }
 
+// Snapshot implements the Peripheral interface.
+func (stk *Stick) Snapshot() ports.Peripheral {
+	n := *stk
+	return &n
+}
+
 // Plumb implements the ports.Peripheral interface.
 func (stk *Stick) Plumb(bus ports.PeripheralBus) {
 	stk.bus = bus
