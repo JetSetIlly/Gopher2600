@@ -283,34 +283,34 @@ func (cart *parkerBros) CopyBanks() []mapper.BankContent {
 func (cart *parkerBros) ReadHotspots() map[uint16]mapper.CartHotspotInfo {
 	return map[uint16]mapper.CartHotspotInfo{
 		// segment 0
-		0x0fe0: {Symbol: "B0S0", Action: mapper.HotspotBankSwitch},
-		0x0fe1: {Symbol: "B1S0", Action: mapper.HotspotBankSwitch},
-		0x0fe2: {Symbol: "B2S0", Action: mapper.HotspotBankSwitch},
-		0x0fe3: {Symbol: "B3S0", Action: mapper.HotspotBankSwitch},
-		0x0fe4: {Symbol: "B4S0", Action: mapper.HotspotBankSwitch},
-		0x0fe5: {Symbol: "B5S0", Action: mapper.HotspotBankSwitch},
-		0x0fe6: {Symbol: "B6S0", Action: mapper.HotspotBankSwitch},
-		0x0fe7: {Symbol: "B7S0", Action: mapper.HotspotBankSwitch},
+		0x1fe0: {Symbol: "B0S0", Action: mapper.HotspotBankSwitch},
+		0x1fe1: {Symbol: "B1S0", Action: mapper.HotspotBankSwitch},
+		0x1fe2: {Symbol: "B2S0", Action: mapper.HotspotBankSwitch},
+		0x1fe3: {Symbol: "B3S0", Action: mapper.HotspotBankSwitch},
+		0x1fe4: {Symbol: "B4S0", Action: mapper.HotspotBankSwitch},
+		0x1fe5: {Symbol: "B5S0", Action: mapper.HotspotBankSwitch},
+		0x1fe6: {Symbol: "B6S0", Action: mapper.HotspotBankSwitch},
+		0x1fe7: {Symbol: "B7S0", Action: mapper.HotspotBankSwitch},
 
 		// segment 1
-		0x0fe8: {Symbol: "B0S1", Action: mapper.HotspotBankSwitch},
-		0x0fe9: {Symbol: "B1S1", Action: mapper.HotspotBankSwitch},
-		0x0fea: {Symbol: "B2S1", Action: mapper.HotspotBankSwitch},
-		0x0feb: {Symbol: "B3S1", Action: mapper.HotspotBankSwitch},
-		0x0fec: {Symbol: "B4S1", Action: mapper.HotspotBankSwitch},
-		0x0fed: {Symbol: "B5S1", Action: mapper.HotspotBankSwitch},
-		0x0fee: {Symbol: "B6S1", Action: mapper.HotspotBankSwitch},
-		0x0fef: {Symbol: "B7S1", Action: mapper.HotspotBankSwitch},
+		0x1fe8: {Symbol: "B0S1", Action: mapper.HotspotBankSwitch},
+		0x1fe9: {Symbol: "B1S1", Action: mapper.HotspotBankSwitch},
+		0x1fea: {Symbol: "B2S1", Action: mapper.HotspotBankSwitch},
+		0x1feb: {Symbol: "B3S1", Action: mapper.HotspotBankSwitch},
+		0x1fec: {Symbol: "B4S1", Action: mapper.HotspotBankSwitch},
+		0x1fed: {Symbol: "B5S1", Action: mapper.HotspotBankSwitch},
+		0x1fee: {Symbol: "B6S1", Action: mapper.HotspotBankSwitch},
+		0x1fef: {Symbol: "B7S1", Action: mapper.HotspotBankSwitch},
 
 		// segment 2
-		0x0ff0: {Symbol: "B0S2", Action: mapper.HotspotBankSwitch},
-		0x0ff1: {Symbol: "B1S2", Action: mapper.HotspotBankSwitch},
-		0x0ff2: {Symbol: "B2S2", Action: mapper.HotspotBankSwitch},
-		0x0ff3: {Symbol: "B3S2", Action: mapper.HotspotBankSwitch},
-		0x0ff4: {Symbol: "B4S2", Action: mapper.HotspotBankSwitch},
-		0x0ff5: {Symbol: "B5S2", Action: mapper.HotspotBankSwitch},
-		0x0ff6: {Symbol: "B6S2", Action: mapper.HotspotBankSwitch},
-		0x0ff7: {Symbol: "B7S2", Action: mapper.HotspotBankSwitch},
+		0x1ff0: {Symbol: "B0S2", Action: mapper.HotspotBankSwitch},
+		0x1ff1: {Symbol: "B1S2", Action: mapper.HotspotBankSwitch},
+		0x1ff2: {Symbol: "B2S2", Action: mapper.HotspotBankSwitch},
+		0x1ff3: {Symbol: "B3S2", Action: mapper.HotspotBankSwitch},
+		0x1ff4: {Symbol: "B4S2", Action: mapper.HotspotBankSwitch},
+		0x1ff5: {Symbol: "B5S2", Action: mapper.HotspotBankSwitch},
+		0x1ff6: {Symbol: "B6S2", Action: mapper.HotspotBankSwitch},
+		0x1ff7: {Symbol: "B7S2", Action: mapper.HotspotBankSwitch},
 	}
 }
 
