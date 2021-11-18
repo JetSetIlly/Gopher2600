@@ -50,7 +50,11 @@ var FontAwesome []byte
 const (
 	Run                    = '\uf04b'
 	Halt                   = '\uf04c'
-	Back                   = '\uf053'
+	BackClock              = '\uf104'
+	BackInstruction        = '\uf100'
+	BackScanline           = '\uf106'
+	BackFrame              = '\uf102'
+	StepOver               = '\uf2f9'
 	Disk                   = '\uf0c7'
 	Mouse                  = '\uf8cc'
 	GoingForward           = '\uf01e'

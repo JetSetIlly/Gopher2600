@@ -21,15 +21,15 @@ type Quantum int
 // List of valid QuantumModes.
 const (
 	QuantumInstruction Quantum = iota
-	QuantumVideo
+	QuantumClock
 )
 
 func (mode Quantum) String() string {
 	switch mode {
 	case QuantumInstruction:
 		return "Instruction"
-	case QuantumVideo:
-		return "Video"
+	case QuantumClock:
+		return "Clock"
 	default:
 		return "unrecognised quantum mode"
 	}

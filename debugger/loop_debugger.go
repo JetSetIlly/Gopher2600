@@ -407,7 +407,7 @@ func (dbg *Debugger) step(inputter terminal.Input, catchup bool) error {
 
 		// for video quantum we need to run any OnStep commands before
 		// starting a new inputLoop
-		if dbg.stepQuantum == QuantumVideo && dbg.commandOnStep != nil {
+		if dbg.stepQuantum == QuantumClock && dbg.commandOnStep != nil {
 			// we don't do this if we're in catchup mode
 			if !catchup {
 				err := dbg.processTokensList(dbg.commandOnStep)
@@ -422,7 +422,7 @@ func (dbg *Debugger) step(inputter terminal.Input, catchup bool) error {
 		dbg.halting.check()
 		dbg.continueEmulation = !dbg.halting.halt
 
-		if dbg.stepQuantum == QuantumVideo || !dbg.continueEmulation {
+		if dbg.stepQuantum == QuantumClock || !dbg.continueEmulation {
 			// start another inputLoop() with the clockCycle boolean set to true
 			return dbg.inputLoop(inputter, true)
 		}
@@ -483,7 +483,7 @@ func (dbg *Debugger) step(inputter terminal.Input, catchup bool) error {
 			dbg.Rewind.RecordState()
 		}
 
-		if dbg.stepQuantum != QuantumVideo {
+		if dbg.stepQuantum != QuantumClock {
 			if dbg.commandOnStep != nil {
 				err := dbg.processTokensList(dbg.commandOnStep)
 				if err != nil {

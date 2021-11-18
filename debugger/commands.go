@@ -244,8 +244,8 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 			case "INSTRUCTION":
 				dbg.stepQuantum = QuantumInstruction
 				instruction = true
-			case "VIDEO":
-				dbg.stepQuantum = QuantumVideo
+			case "CLOCK":
+				dbg.stepQuantum = QuantumClock
 				adj = television.AdjClock
 			case "SCANLINE":
 				adj = television.AdjScanline
@@ -280,8 +280,8 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 			// continue with current quantum state
 		case "INSTRUCTION":
 			dbg.stepQuantum = QuantumInstruction
-		case "VIDEO":
-			dbg.stepQuantum = QuantumVideo
+		case "CLOCK":
+			dbg.stepQuantum = QuantumClock
 		default:
 			// do not change quantum
 			tokens.Unget()
@@ -302,8 +302,8 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		switch mode {
 		case "INSTRUCTION":
 			dbg.stepQuantum = QuantumInstruction
-		case "VIDEO":
-			dbg.stepQuantum = QuantumVideo
+		case "CLOCK":
+			dbg.stepQuantum = QuantumClock
 		default:
 			dbg.printLine(terminal.StyleFeedback, "set to %s", dbg.stepQuantum)
 		}

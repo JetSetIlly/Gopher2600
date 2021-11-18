@@ -105,7 +105,12 @@ func (win *winControl) drawStep() {
 		// step button
 		imgui.TableNextColumn()
 
-		if imgui.Button(fmt.Sprintf("%c ##Step", fonts.Back)) {
+		icon := fonts.BackInstruction
+		if win.img.lz.Debugger.Quantum == debugger.QuantumClock {
+			icon = fonts.BackClock
+		}
+
+		if imgui.Button(fmt.Sprintf("%c ##Step", icon)) {
 			win.img.term.pushCommand("STEP BACK")
 		}
 		imgui.SameLineV(0.0, 0.0)
@@ -115,17 +120,17 @@ func (win *winControl) drawStep() {
 
 		imgui.TableNextColumn()
 
-		if imguiToggleButton("##quantumToggle", win.img.lz.Debugger.Quantum == debugger.QuantumVideo, win.img.cols.TitleBgActive) {
-			if win.img.lz.Debugger.Quantum == debugger.QuantumVideo {
+		if imguiToggleButton("##quantumToggle", win.img.lz.Debugger.Quantum == debugger.QuantumClock, win.img.cols.TitleBgActive) {
+			if win.img.lz.Debugger.Quantum == debugger.QuantumClock {
 				win.img.term.pushCommand("QUANTUM INSTRUCTION")
 			} else {
-				win.img.term.pushCommand("QUANTUM VIDEO")
+				win.img.term.pushCommand("QUANTUM CLOCK")
 			}
 		}
 
 		imgui.SameLine()
 		imgui.AlignTextToFramePadding()
-		if win.img.lz.Debugger.Quantum == debugger.QuantumVideo {
+		if win.img.lz.Debugger.Quantum == debugger.QuantumClock {
 			imgui.Text("Video Clock")
 		} else {
 			imgui.Text("CPU Instruction")
@@ -134,13 +139,17 @@ func (win *winControl) drawStep() {
 		imgui.EndTable()
 	}
 
+	if imgui.ButtonV(fmt.Sprintf("%c Step Over", fonts.StepOver), fillWidth) {
+		win.img.term.pushCommand("STEP OVER")
+	}
+
 	if imgui.BeginTable("stepframescanline", 2) {
 		imgui.TableSetupColumnV("registers", imgui.TableColumnFlagsWidthFixed, imguiDivideWinWidth(2), 1)
 		imgui.TableSetupColumnV("registers", imgui.TableColumnFlagsWidthFixed, imguiDivideWinWidth(2), 2)
 		imgui.TableNextRow()
 		imgui.TableNextColumn()
 
-		if imgui.Button(fmt.Sprintf("%c ##Frame", fonts.Back)) {
+		if imgui.Button(fmt.Sprintf("%c ##Frame", fonts.BackFrame)) {
 			win.img.term.pushCommand("STEP BACK FRAME")
 		}
 		imgui.SameLineV(0.0, 0.0)
@@ -150,7 +159,7 @@ func (win *winControl) drawStep() {
 
 		imgui.TableNextColumn()
 
-		if imgui.Button(fmt.Sprintf("%c ##Scanline", fonts.Back)) {
+		if imgui.Button(fmt.Sprintf("%c ##Scanline", fonts.BackScanline)) {
 			win.img.term.pushCommand("STEP BACK SCANLINE")
 		}
 		imgui.SameLineV(0.0, 0.0)
@@ -161,9 +170,6 @@ func (win *winControl) drawStep() {
 		imgui.EndTable()
 	}
 
-	if imgui.ButtonV("Step Over", fillWidth) {
-		win.img.term.pushCommand("STEP OVER")
-	}
 }
 
 func (win *winControl) drawFPS() {
@@ -189,15 +195,17 @@ func (win *winControl) drawFPS() {
 	if win.img.emulation.State() == emulation.Running {
 		if win.img.lz.TV.ActualFPS <= win.img.lz.TV.ReqFPS*0.95 {
 			imgui.Text("running below requested FPS")
-		} else if win.img.lz.TV.ActualFPS > win.img.lz.TV.ReqFPS*0.95 {
+		} else if win.img.lz.TV.ActualFPS > win.img.lz.TV.ReqFPS*1.05 {
 			imgui.Text("running above requested FPS")
+		} else {
+			imgui.Text("running at requested FPS")
 		}
-	} else if win.img.lz.TV.ReqFPS < win.img.lz.TV.FrameInfo.Spec.RefreshRate {
-		imgui.Text(fmt.Sprintf("below %s rate of %.0f fps", win.img.lz.TV.FrameInfo.Spec.ID, win.img.lz.TV.FrameInfo.Spec.RefreshRate))
-	} else if win.img.lz.TV.ReqFPS > win.img.lz.TV.FrameInfo.Spec.RefreshRate {
-		imgui.Text(fmt.Sprintf("above %s rate of %.0f fps", win.img.lz.TV.FrameInfo.Spec.ID, win.img.lz.TV.FrameInfo.Spec.RefreshRate))
+	} else if win.img.lz.TV.ReqFPS < win.img.lz.TV.FrameInfo.Spec.RefreshRate*0.95 {
+		imgui.Text(fmt.Sprintf("below ideal frequency of %.0fHz", win.img.lz.TV.FrameInfo.Spec.RefreshRate))
+	} else if win.img.lz.TV.ReqFPS > win.img.lz.TV.FrameInfo.Spec.RefreshRate*1.05 {
+		imgui.Text(fmt.Sprintf("above ideal frequency of %.0fHz", win.img.lz.TV.FrameInfo.Spec.RefreshRate))
 	} else {
-		imgui.Text(fmt.Sprintf("selected %s rate of %.0f fps", win.img.lz.TV.FrameInfo.Spec.ID, win.img.lz.TV.FrameInfo.Spec.RefreshRate))
+		imgui.Text(fmt.Sprintf("ideal frequency %.0fHz", win.img.lz.TV.FrameInfo.Spec.RefreshRate))
 	}
 }
 

@@ -147,7 +147,7 @@ type Debugger struct {
 	// rewind process is started.
 	//
 	// the value it is set to depends on the context. For the STEP BACK command
-	// it is set to the current stepQuantym
+	// it is set to the current stepQuantum
 	//
 	// for PushGoto() the quantum is set to QuantumVideo, while for
 	// PushRewind() it is set to the current stepQuantum

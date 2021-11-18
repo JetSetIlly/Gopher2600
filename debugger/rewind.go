@@ -127,7 +127,7 @@ func (dbg *Debugger) GotoCoords(coords coords.TelevisionCoords) bool {
 		// the function to push to the debugger/emulation routine
 		doRewind := func() error {
 			// upate catchupQuantum before starting rewind process
-			dbg.catchupQuantum = QuantumVideo
+			dbg.catchupQuantum = QuantumClock
 
 			err := dbg.Rewind.GotoCoords(coords)
 			if err != nil {
@@ -193,7 +193,7 @@ func (dbg *Debugger) RerunLastNFrames(frames int) bool {
 		// are currently in
 		dbg.PushRawEventReturn(func() {
 			// upate catchupQuantum before starting rewind process
-			dbg.catchupQuantum = QuantumVideo
+			dbg.catchupQuantum = QuantumClock
 
 			// set state to emulation.Rewinding as soon as possible (but
 			// remembering that we must do it in the debugger goroutine)
