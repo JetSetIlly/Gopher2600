@@ -143,7 +143,7 @@ func (win *winTerm) draw() {
 		// if output has been added to, scroll to bottom of window
 		if win.moreOutput {
 			win.moreOutput = false
-			imgui.SetScrollHereY(1.0)
+			imgui.SetScrollHereY(0.0)
 		}
 
 		imgui.EndChild()
@@ -214,8 +214,8 @@ func (win *winTerm) draw() {
 		imgui.PushItemWidth(-1)
 
 		if imgui.InputTextV("", &win.input,
-			imgui.InputTextFlagsEnterReturnsTrue|imgui.InputTextFlagsCallbackCompletion|imgui.InputTextFlagsCallbackHistory,
-			win.tabCompleteAndHistory) {
+			imgui.InputTextFlagsEnterReturnsTrue|imgui.InputTextFlagsCallbackCompletion|
+				imgui.InputTextFlagsCallbackHistory, win.tabCompleteAndHistory) {
 
 			win.input = strings.TrimSpace(win.input)
 
