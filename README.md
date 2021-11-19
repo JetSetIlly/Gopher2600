@@ -16,15 +16,16 @@ The key features of the emulator:
 * Accurate audio reproduction (and optional stereo output)
 * Support for common [TIA revisions](#tia-revisions)
 * Implementation of [Movie Cart](#movie-cart)
+* [Gameplay rewinding](#rewinding)
+* Tracker/Piano Keys visualisation
 
-The graphical [debugger](#debugger) is still in development but the current features include:
+The graphical [debugger](#debugger) includexe:
 
-* CPU and Video stepping
+* Color Clock level interaction
 * Breakpoints, traps, watches on various CPU, TIA, RIOT targets
-* [Interactive rewinding](#rewinding) (also available in playmode)
 * Specialist windows for specific cartridge types (eg. supercharger tape)
-* Script recording and playback
 * Line [terminal](#debugger-terminal) interface for harder to reach parts of the emulation
+* Script recording and playback
 * [Regression Database](#regression-database)
 
 ## Example Screenshots
@@ -381,6 +382,7 @@ The VCS panel is controlled through the function keys of the keyboard.
 In playmode, the additional keys are available:
 
 * `F7` Show FPS Indicator (also shows TV specification information)
+* `F9` Show Audio Tracker Window
 * `F10` Show Preferences Window
 * `F11` Toggle Fullscreen
 * `F12` Save [Screenshot](#screenshots)

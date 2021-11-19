@@ -675,6 +675,7 @@ func (dbg *Debugger) reset(newCartridge bool) error {
 		return err
 	}
 	dbg.Rewind.Reset()
+	dbg.Tracker.Reset()
 
 	// reset other debugger properties that might not make sense for a new cartride
 	if newCartridge {

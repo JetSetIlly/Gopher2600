@@ -46,12 +46,19 @@ type Tracker struct {
 	lastEntry [2]Entry
 }
 
+const maxTrackerEntries = 1024
+
 // NewTracker is the preferred method of initialisation for the Tracker type.
 func NewTracker(emulation emulation.Emulation) *Tracker {
 	return &Tracker{
 		emulation: emulation,
-		entries:   make([]Entry, 0, 1024),
+		entries:   make([]Entry, 0, maxTrackerEntries),
 	}
+}
+
+// Reset removes all entries from tracker list.
+func (tr *Tracker) Reset() {
+	tr.entries = tr.entries[:0]
 }
 
 // Tick implements the audio.Tracker interface
@@ -75,7 +82,8 @@ func (tr *Tracker) Tick(channel int, reg audio.Registers) {
 		}
 		e.PianoKey = NoteToPianoKey(e.MusicalNote)
 		tr.entries = append(tr.entries, e)
-		if len(tr.entries) > 1024 {
+
+		if len(tr.entries) > maxTrackerEntries {
 			tr.entries = tr.entries[1:]
 		}
 

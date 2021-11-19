@@ -31,13 +31,21 @@ type winTracker struct {
 	img  *SdlImgui
 	open bool
 
-	footerHeight float32
-	contextMenu  coords.TelevisionCoords
+	contextMenu coords.TelevisionCoords
+
+	// piano keys
+	blackKeys       imgui.PackedColor
+	whiteKeys       imgui.PackedColor
+	whiteKeysGap    imgui.PackedColor
+	pianoKeysHeight float32
 }
 
 func newWinTracker(img *SdlImgui) (window, error) {
 	win := &winTracker{
-		img: img,
+		img:          img,
+		blackKeys:    imgui.PackedColorFromVec4(imgui.Vec4{0, 0, 0, 1.0}),
+		whiteKeys:    imgui.PackedColorFromVec4(imgui.Vec4{1.0, 1.0, 0.90, 1.0}),
+		whiteKeysGap: imgui.PackedColorFromVec4(imgui.Vec4{0.2, 0.2, 0.2, 1.0}),
 	}
 	return win, nil
 }
@@ -45,7 +53,7 @@ func newWinTracker(img *SdlImgui) (window, error) {
 func (win *winTracker) init() {
 	// nominal value to stop scrollbar appearing for a frame (it takes a
 	// frame before we set the correct footerHeight value
-	win.footerHeight = imgui.FrameHeight() + imgui.CurrentStyle().FramePadding().Y
+	win.pianoKeysHeight = imgui.FrameHeight() + imgui.CurrentStyle().FramePadding().Y
 }
 
 func (win *winTracker) id() string {
@@ -114,14 +122,14 @@ func (win *winTracker) draw() {
 	imgui.TableHeadersRow()
 	imgui.EndTable()
 
+	// new child that contains the main scrollable table
+	imgui.BeginChildV("##trackerscroller", imgui.Vec2{X: 0, Y: imguiRemainingWinHeight() - win.pianoKeysHeight}, false, 0)
+
 	numEntries := len(win.img.lz.Tracker.Entries)
 	if numEntries == 0 {
 		imgui.Spacing()
 		imgui.Text("No audio output/changes yet")
 	} else {
-		// new child that contains the main scrollable table
-		imgui.BeginChildV("##trackerscroller", imgui.Vec2{X: 0, Y: imguiRemainingWinHeight() - win.footerHeight}, false, 0)
-
 		if !imgui.BeginTableV("tracker", tableColumns, tableFlags, imgui.Vec2{}, 0) {
 			return
 		}
@@ -244,19 +252,8 @@ func (win *winTracker) draw() {
 		if win.img.emulation.State() == emulation.Running {
 			imgui.SetScrollHereY(1.0)
 		}
-
-		imgui.EndChild()
-
-		win.footerHeight = imguiMeasureHeight(func() {
-			imgui.Spacing()
-
-			imgui.AlignTextToFramePadding()
-			imgui.Text(fmt.Sprintf("Last change: %s", win.img.lz.Tracker.Entries[numEntries-1].Coords))
-
-			imgui.SameLineV(0, 15)
-			if imgui.Button("Rewind to") {
-				win.img.dbg.GotoCoords(lastEntry.Coords)
-			}
-		})
 	}
+	imgui.EndChild()
+
+	win.pianoKeysHeight = win.drawPianoKeys()
 }

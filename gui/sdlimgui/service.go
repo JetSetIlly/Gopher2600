@@ -31,6 +31,8 @@ func (img *SdlImgui) Service() {
 	switch img.mode {
 	case emulation.ModeDebugger:
 		img.lz.Refresh()
+	case emulation.ModePlay:
+		img.lz.FastRefresh()
 	}
 
 	// poll for sdl event or timeout
@@ -311,6 +313,10 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 
 			case sdl.SCANCODE_F7:
 				img.playScr.fpsOpen = !img.playScr.fpsOpen
+
+			case sdl.SCANCODE_F9:
+				w := img.wm.windows[winTrackerID]
+				w.setOpen(!w.isOpen())
 
 			case sdl.SCANCODE_F10:
 				w := img.wm.windows[winPrefsID]

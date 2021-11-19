@@ -109,7 +109,6 @@ var windowDefs = [...]windowDef{
 	// windows that appear in the "tools" menu
 	{create: newWinOscilloscope, menu: menuEntry{group: menuTools}, open: true},
 	{create: newWinTracker, menu: menuEntry{group: menuTools}, open: false},
-	{create: newWinPianoKeys, menu: menuEntry{group: menuTools}, open: false},
 	{create: newWinTimeline, menu: menuEntry{group: menuTools}, open: true},
 
 	// windows that appear in cartridge specific menu
@@ -137,6 +136,7 @@ var windowDefs = [...]windowDef{
 var playmodeWindows = [...]string{
 	winPrefsID,
 	winSelectROMID,
+	winTrackerID,
 }
 
 func newManager(img *SdlImgui) (*manager, error) {

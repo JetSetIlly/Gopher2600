@@ -172,3 +172,28 @@ func (val *LazyValues) Refresh() {
 		val.refreshDone.Store(true)
 	})
 }
+
+// FastRefresh lazy values. Updates only the values that are needed in playmode.
+func (val *LazyValues) FastRefresh() {
+	if val.emulation == nil {
+		return
+	}
+
+	if val.refreshDone.Load().(bool) {
+		val.refreshDone.Store(false)
+		val.TV.update()
+		val.Tracker.update()
+	}
+
+	if val.refreshScheduled.Load().(bool) {
+		return
+	}
+	val.refreshScheduled.Store(true)
+
+	val.dbg.PushRawEvent(func() {
+		val.TV.push()
+		val.Tracker.push()
+		val.refreshScheduled.Store(false)
+		val.refreshDone.Store(true)
+	})
+}
