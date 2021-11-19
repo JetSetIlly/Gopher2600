@@ -40,7 +40,7 @@ func (dbg *Debugger) userInputHandler(ev userinput.Event) error {
 	switch ev.(type) {
 	case userinput.EventQuit:
 		dbg.running = false
-		return curated.Errorf(terminal.UserInterrupt)
+		return curated.Errorf(terminal.UserQuit)
 	}
 
 	// mode specific special input (not passed to the VCS as controller input)

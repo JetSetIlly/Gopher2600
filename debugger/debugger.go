@@ -371,23 +371,6 @@ func NewDebugger(create CreateUserInterface, spec string, useSavekey bool) (*Deb
 	return dbg, nil
 }
 
-// End cleans up any resources that may be dangling.
-func (dbg *Debugger) End() {
-	dbg.vcs.End()
-
-	// set ending state
-	err := dbg.gui.SetFeature(gui.ReqEnd)
-	if err != nil {
-		logger.Log("debugger", err.Error())
-	}
-
-	// save preferences
-	err = dbg.Prefs.Save()
-	if err != nil {
-		logger.Log("debugger", err.Error())
-	}
-}
-
 // VCS implements the emulation.Emulation interface.
 func (dbg *Debugger) VCS() emulation.VCS {
 	return dbg.vcs
@@ -540,8 +523,37 @@ func (dbg *Debugger) setMode(mode emulation.Mode) error {
 	return nil
 }
 
-// Start the main debugger sequence.
+// End cleans up any resources that may be dangling.
+func (dbg *Debugger) end() {
+	dbg.vcs.End()
+
+	// set ending state
+	err := dbg.gui.SetFeature(gui.ReqEnd)
+	if err != nil {
+		logger.Log("debugger", err.Error())
+	}
+
+	// save preferences
+	err = dbg.Prefs.Save()
+	if err != nil {
+		logger.Log("debugger", err.Error())
+	}
+}
+
+// Starts the main emulation sequence.
 func (dbg *Debugger) Start(mode emulation.Mode, initScript string, cartload cartridgeloader.Loader) error {
+	defer dbg.end()
+	err := dbg.start(mode, initScript, cartload)
+	if err != nil {
+		if curated.Has(err, terminal.UserQuit) {
+			return nil
+		}
+		return curated.Errorf("debugger: %v", err)
+	}
+	return nil
+}
+
+func (dbg *Debugger) start(mode emulation.Mode, initScript string, cartload cartridgeloader.Loader) error {
 	// prepare user interface
 	err := dbg.term.Initialise()
 	if err != nil {

@@ -16,6 +16,8 @@
 package debugger
 
 import (
+	"github.com/jetsetilly/gopher2600/curated"
+	"github.com/jetsetilly/gopher2600/debugger/terminal"
 	"github.com/jetsetilly/gopher2600/emulation"
 	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/hardware"
@@ -37,12 +39,13 @@ func (dbg *Debugger) playLoop() error {
 		done := false
 		for !done {
 			select {
+			case <-dbg.events.IntEvents:
+				return curated.Errorf(terminal.UserInterrupt)
 			case ev := <-dbg.events.RawEvents:
 				ev()
 			case ev := <-dbg.events.UserInput:
 				if _, ok := ev.(userinput.EventQuit); ok {
-					dbg.running = false
-					return nil
+					return curated.Errorf(terminal.UserQuit)
 				}
 			case <-dbg.forcedROMselection:
 				dbg.forcedROMselection = nil
@@ -107,7 +110,7 @@ func (dbg *Debugger) playLoop() error {
 		case <-dbg.eventCheckPulse.C:
 			err := dbg.readEventsHandler()
 			if err != nil {
-				return emulation.Ending, nil
+				return emulation.Ending, err
 			}
 		default:
 		}

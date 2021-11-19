@@ -51,13 +51,13 @@ type Input interface {
 	IsRealTerminal() bool
 }
 
-// Sentinal errors. Returned by TermRead() if caught whilst waiting for input.
-// Not all terminal implementations will return these errors because of the
-// context in which they operate and in those instances signals should be
-// cuaght by the IntEvents channel found in the ReadEvents type.
+// Sentinal errors controlling program exit
 const (
 	UserInterrupt = "user interrupt"
 	UserAbort     = "user abort"
+
+	// UserQuit indicates an intentional quit and should probably be caught and silenced
+	UserQuit = "user quit"
 )
 
 // ReadEvents *must* be monitored during a TermRead().

@@ -444,6 +444,13 @@ func emulate(emulationMode emulation.Mode, md *modalflag.Modes, sync *mainSync) 
 		statsview.Launch(os.Stdout)
 	}
 
+	// turn off fallback ctrl-c handling. this so that the debugger can handle
+	// quit events more gracefully
+	//
+	// we must do this before creating the emulation or we'll just end up
+	// turning the emulation's interrupt handler off
+	sync.state <- stateRequest{req: reqNoIntSig}
+
 	create := func(e emulation.Emulation) (gui.GUI, terminal.Terminal, error) {
 		var term terminal.Terminal
 		var scr gui.GUI
@@ -495,11 +502,6 @@ func emulate(emulationMode emulation.Mode, md *modalflag.Modes, sync *mainSync) 
 	if err != nil {
 		return err
 	}
-	defer dbg.End()
-
-	// turn off fallback ctrl-c handling. this so that the debugger can handle
-	// quit events more gracefully
-	sync.state <- stateRequest{req: reqNoIntSig}
 
 	var cartload cartridgeloader.Loader
 
