@@ -245,7 +245,7 @@ type CreateUserInterface func(emulation.Emulation) (gui.GUI, terminal.Terminal, 
 //
 // It should be followed up with a call to AddUserInterface() and call the
 // Start() method to actually begin the emulation.
-func NewDebugger(create CreateUserInterface, spec string, useSavekey bool) (*Debugger, error) {
+func NewDebugger(create CreateUserInterface, spec string, useSavekey bool, fpsCap bool) (*Debugger, error) {
 	dbg := &Debugger{
 		// by definition the state of debugger has changed during startup
 		hasChanged: true,
@@ -367,6 +367,10 @@ func NewDebugger(create CreateUserInterface, spec string, useSavekey bool) (*Deb
 
 	// add plug monitor
 	dbg.vcs.RIOT.Ports.AttachPlugMonitor(dbg)
+
+	// set fps cap
+	dbg.vcs.TV.SetFPSCap(fpsCap)
+	dbg.gui.SetFeature(gui.ReqMonitorSync, fpsCap)
 
 	return dbg, nil
 }

@@ -11,7 +11,7 @@ profilingRom = roms/Rsboxing.bin
 # profilingRom = roms/Pitfall.bin
 # profilingRom = 
 
-.PHONY: all clean tidy generate check_lint lint check_glsl glsl_validate check_pandoc readme_spell test race race_debug profile profile_cpu profile_cpu_again profile_mem_debug profile_trace build_assertions build check_upx release release_statsview cross_windows cross_windows_statsview binaries check_gotip build_with_gotip
+.PHONY: all clean tidy generate check_lint lint lint_fix check_glsl glsl_validate check_pandoc readme_spell test race race_debug profile profile_cpu profile_cpu_play profile_cpu_debug profile_mem_play profile_mem_debug profile_trace build_assertions build check_upx release release_statsview cross_windows cross_windows_statsview
 
 goBinary = go
 # goBinary = ~/Go/dev_github/go/bin/go
@@ -88,26 +88,17 @@ profile_cpu: generate test
 
 profile_cpu_play: generate test
 	@$(goBinary) build -gcflags $(compileFlags)
-	@echo "performance mode running for 20s"
+	@echo "use window close button to end (CTRL-C will quit the Makefile script)"
 	@./gopher2600 play --profile=cpu $(profilingRom)
 	@$(goBinary) tool pprof -http : ./gopher2600 play_cpu.profile
 
 profile_cpu_debug : generate test
 	@$(goBinary) build -gcflags $(compileFlags)
-	@echo "performance mode running for 20s"
+	@echo "use window close button to end (CTRL-C will quit the Makefile script)"
 	@./gopher2600 debug --profile=cpu $(profilingRom)
 	@$(goBinary) tool pprof -http : ./gopher2600 debugger_cpu.profile
 
-profile_cpu_display: generate test
-	@$(goBinary) build -gcflags $(compileFlags)
-	@echo "performance mode running for 20s"
-	@./gopher2600 performance --profile=cpu --fpscap=false --display --duration=20s $(profilingRom)
-	@$(goBinary) tool pprof -http : ./gopher2600 performance_cpu.profile
-
-profile_cpu_again:
-	@$(goBinary) tool pprof -http : ./gopher2600 performance_cpu.profile
-
-profile_mem : generate test
+profile_mem_play : generate test
 	@$(goBinary) build -gcflags $(compileFlags)
 	@echo "use window close button to end (CTRL-C will quit the Makefile script)"
 	@./gopher2600 play --profile=mem $(profilingRom)
@@ -161,6 +152,3 @@ cross_windows: generate
 
 cross_windows_statsview: generate 
 	CGO_ENABLED="1" CC="/usr/bin/x86_64-w64-mingw32-gcc" CXX="/usr/bin/x86_64-w64-mingw32-g++" GOOS="windows" GOARCH="amd64" CGO_LDFLAGS="-static-libgcc -static-libstdc++" $(goBinary) build -tags "static release statsview" -gcflags $(compileFlags) -ldflags "-s -w -H=windowsgui" -o gopher2600_statsview_windows_amd64.exe .
-
-binaries: release release_statsview cross_windows cross_windows_statsview
-	@echo "build release binaries"

@@ -417,6 +417,7 @@ func emulate(emulationMode emulation.Mode, md *modalflag.Modes, sync *mainSync) 
 
 	mapping := md.AddString("mapping", "AUTO", "force use of cartridge mapping")
 	spec := md.AddString("tv", "AUTO", "television specification: NTSC, PAL, PAL60")
+	fpsCap := md.AddBool("fpscap", true, "cap fps to TV specification")
 	termType := md.AddString("term", "IMGUI", "terminal type to use in debug mode: IMGUI, COLOR, PLAIN")
 	initScript := md.AddString("initscript", defInitScript, "script to run on debugger start")
 	useSavekey := md.AddBool("savekey", false, "use savekey in player 1 port")
@@ -498,7 +499,7 @@ func emulate(emulationMode emulation.Mode, md *modalflag.Modes, sync *mainSync) 
 	}
 
 	// prepare new debugger instance
-	dbg, err := debugger.NewDebugger(create, *spec, *useSavekey)
+	dbg, err := debugger.NewDebugger(create, *spec, *useSavekey, *fpsCap)
 	if err != nil {
 		return err
 	}
@@ -622,7 +623,6 @@ func perform(md *modalflag.Modes, sync *mainSync) error {
 
 	mapping := md.AddString("mapping", "AUTO", "force use of cartridge mapping")
 	spec := md.AddString("tv", "AUTO", "television specification: NTSC, PAL, PAL60")
-	display := md.AddBool("display", false, "display TV output")
 	fpsCap := md.AddBool("fpscap", true, "cap FPS to specification")
 	duration := md.AddString("duration", "5s", "run duration (note: there is a 2s overhead)")
 	profile := md.AddString("profile", "NONE", "run performance check with profiling: command separated CPU, MEM, TRACE or ALL")
@@ -650,35 +650,6 @@ func perform(md *modalflag.Modes, sync *mainSync) error {
 		}
 		defer cartload.Close()
 
-		var create performance.CreateUserInterface
-
-		if *display {
-			create = func(e emulation.Emulation) (gui.GUI, error) {
-				// create gui
-				sync.state <- stateRequest{req: reqCreateGUI,
-					args: guiCreate(func() (guiControl, error) {
-						return sdlimgui.NewSdlImgui(e)
-					}),
-				}
-
-				var scr gui.GUI
-
-				// wait for creator result
-				select {
-				case g := <-sync.gui:
-					scr = g.(gui.GUI)
-				case err := <-sync.guiError:
-					return nil, err
-				}
-
-				// fpscap for gui (see above for tv option)
-				scr.SetFeature(gui.ReqMonitorSync, *fpsCap)
-				scr.SetFeature(gui.ReqSetEmulationMode, emulation.ModePlay)
-
-				return scr, nil
-			}
-		}
-
 		// check for profiling options
 		p, err := performance.ParseProfileString(*profile)
 		if err != nil {
@@ -686,7 +657,7 @@ func perform(md *modalflag.Modes, sync *mainSync) error {
 		}
 
 		// run performance check
-		err = performance.Check(create, md.Output, p, false, cartload, *spec, *fpsCap, *duration)
+		err = performance.Check(md.Output, p, cartload, *spec, *fpsCap, *duration)
 		if err != nil {
 			return err
 		}

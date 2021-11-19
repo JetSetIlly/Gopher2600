@@ -18,13 +18,11 @@ package performance
 import (
 	"fmt"
 	"io"
-	"runtime"
 	"time"
 
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/emulation"
-	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/setup"
@@ -34,16 +32,12 @@ import (
 // sentinal error returned by Run() loop.
 const timedOut = "timed out"
 
-// CreateUserInterface is used to initialise the user interface used by the performance package.
-type CreateUserInterface func(emulation.Emulation) (gui.GUI, error)
-
-// Check the performance of the emulator using the supplied tv/gui/cartridge
-// combinataion. Emulation will run of specificed duration and will create a
-// cpu, memory profile, a trace (or a combination of those) as defined by the
-// Profile argument. The includeDetail argument will create any profile file
-// with additional detail in the filename.
-func Check(create CreateUserInterface, output io.Writer, profile Profile, includeDetail bool, cartload cartridgeloader.Loader,
-	spec string, fpsCap bool, duration string) error {
+// Check the performance of the emulator using the supplied cartridge.
+//
+// Emulation will run of specificed duration and will create a cpu, memory
+// profile, a trace (or a combination of those) as defined by the Profile
+// argument.
+func Check(output io.Writer, profile Profile, cartload cartridgeloader.Loader, spec string, fpsCap bool, duration string) error {
 	var err error
 
 	tv, err := television.NewTelevision(spec)
@@ -59,14 +53,6 @@ func Check(create CreateUserInterface, output io.Writer, profile Profile, includ
 	vcs, err := hardware.NewVCS(tv)
 	if err != nil {
 		return curated.Errorf("performance: %v", err)
-	}
-
-	// create GUI
-	if create != nil {
-		_, err = create(&stubEmulation{vcs: vcs, tv: tv})
-		if err != nil {
-			return curated.Errorf("performance: %v", err)
-		}
 	}
 
 	// attach cartridge to the vcs
@@ -145,14 +131,9 @@ func Check(create CreateUserInterface, output io.Writer, profile Profile, includ
 		return err
 	}
 
-	tag := "performance"
-	if includeDetail {
-		tag = fmt.Sprintf("%s_%s_%s", tag, duration, runtime.Version())
-	}
-
 	// launch runner directly or through the CPU profiler, depending on
 	// supplied arguments
-	err = RunProfiler(profile, tag, runner)
+	err = RunProfiler(profile, "performance", runner)
 	if err != nil && !curated.Is(err, timedOut) {
 		return curated.Errorf("performance: %v", err)
 	}
