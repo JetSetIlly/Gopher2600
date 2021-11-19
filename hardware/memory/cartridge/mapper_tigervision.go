@@ -83,8 +83,8 @@ func newTigervision(data []byte) (mapper.CartMapper, error) {
 	return cart, nil
 }
 
-// Mapping implements the mapper.CartMapper interface.
-func (cart *tigervision) Mapping() string {
+// MappedBanks implements the mapper.CartMapper interface.
+func (cart *tigervision) MappedBanks() string {
 	return fmt.Sprintf("Banks: %d %d", cart.state.segment[0], cart.state.segment[1])
 }
 

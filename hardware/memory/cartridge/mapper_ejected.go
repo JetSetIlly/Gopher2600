@@ -30,8 +30,8 @@ func newEjected() *ejected {
 	return &ejected{}
 }
 
-// Mapping implements the mapper.CartMapper interface.
-func (cart *ejected) Mapping() string {
+// MappedBanks implements the mapper.CartMapper interface.
+func (cart *ejected) MappedBanks() string {
 	return "ejected"
 }
 

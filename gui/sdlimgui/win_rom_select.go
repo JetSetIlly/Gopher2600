@@ -93,27 +93,33 @@ func (win *winSelectROM) setOpen(open bool) {
 	if open {
 		win.open = true
 
-		path, err := os.Getwd()
-		err = win.setPath(path)
-		if err != nil {
-			logger.Logf("sdlimgui", "error setting path (%s)", path)
+		var err error
+		var p string
+
+		// open at the most recently selected ROM
+		f := win.img.dbg.Prefs.RecentROM.String()
+		if f == "" {
+			p, err = os.Getwd()
+			if err != nil {
+				logger.Logf("sdlimgui", err.Error())
+			}
+		} else {
+			p = filepath.Dir(f)
 		}
 
-		// goto current cartridge location. directly accessing filename
-		// from VCS - there's very little risk of a race condition here but you
-		// never know so we should bear it in mind
-		f, err := filepath.Abs(win.img.vcs.Mem.Cart.Filename)
+		// set path and selected file
+		err = win.setPath(p)
 		if err != nil {
-			f = win.img.lz.Cart.Filename
+			logger.Logf("sdlimgui", "error setting path (%s)", p)
 		}
-
-		d := filepath.Dir(f)
-		err = win.setPath(d)
-		if err != nil {
-			logger.Logf("sdlimgui", "error setting path (%s)", d)
-		}
-
 		win.setSelectedFile(f)
+
+		// clear texture
+		gl.BindTexture(gl.TEXTURE_2D, win.thmbTexture)
+		gl.TexImage2D(gl.TEXTURE_2D, 0,
+			gl.RGBA, 1, 1, 0,
+			gl.RGBA, gl.UNSIGNED_BYTE,
+			gl.Ptr([]uint8{0}))
 
 		return
 	} else {
@@ -257,6 +263,9 @@ func (win *winSelectROM) draw() {
 					if imgui.SelectableV(f.Name(), selected, 0, imgui.Vec2{0, 0}) {
 						win.setSelectedFile(filepath.Join(win.currPath, f.Name()))
 					}
+					if imgui.IsItemHovered() && imgui.IsMouseDoubleClicked(0) {
+						win.insertCartridge()
+					}
 				}
 			}
 			imgui.PopStyleColor()
@@ -265,6 +274,13 @@ func (win *winSelectROM) draw() {
 
 			imgui.TableNextColumn()
 			imgui.Image(imgui.TextureID(win.thmbTexture), imgui.Vec2{specification.ClksVisible * 3, specification.AbsoluteMaxScanlines})
+
+			imguiSeparator()
+			if win.thmb.IsEmulating() {
+				imgui.Text(win.thmb.String())
+			} else {
+				imgui.Text("")
+			}
 
 			imgui.EndTable()
 		}
@@ -282,7 +298,6 @@ func (win *winSelectROM) draw() {
 			}
 
 			if win.selectedFile != "" {
-				imgui.SameLine()
 
 				var s string
 
@@ -293,20 +308,40 @@ func (win *winSelectROM) draw() {
 					s = fmt.Sprintf("Load %s", filepath.Base(win.selectedFile))
 				}
 
-				if imgui.Button(s) {
-					win.img.dbg.PushRawEvent(func() {
-						err := win.img.dbg.InsertCartridge(win.selectedFile)
-						if err != nil {
-							logger.Logf("sdlimgui", err.Error())
-						}
-					})
-					win.setOpen(false)
+				// only show load cartridge button if the file is being
+				// emulated by the thumbnailer. if it's not then that's a good
+				// sign that the file isn't supported
+				if win.thmb.IsEmulating() {
+					imgui.SameLine()
+					if imgui.Button(s) {
+						win.insertCartridge()
+					}
 				}
 			}
 		})
 	}
 
 	imgui.End()
+}
+
+func (win *winSelectROM) insertCartridge() {
+	// do not try to load cartridge if the file is not being emulated by the
+	// thumbnailer. if it's not then that's a good sign that the file isn't
+	// supported
+	if !win.thmb.IsEmulating() {
+		return
+	}
+
+	win.img.dbg.PushRawEvent(func() {
+		err := win.img.dbg.InsertCartridge(win.selectedFile)
+		if err != nil {
+			logger.Logf("sdlimgui", err.Error())
+		}
+	})
+	win.setOpen(false)
+
+	// tell thumbnailer to stop emulating
+	win.thmb.EndCreation()
 }
 
 func (win *winSelectROM) setPath(path string) error {
@@ -321,11 +356,18 @@ func (win *winSelectROM) setPath(path string) error {
 }
 
 func (win *winSelectROM) setSelectedFile(filename string) {
+	// do nothing if this file has already been selected
+	if win.selectedFile == filename {
+		return
+	}
+
+	// update selected file. return immediately if the filename is empty
 	win.selectedFile = filename
 	if filename == "" {
 		return
 	}
 
+	// create cartridge loader and start thumbnail emulation
 	cartload, err := cartridgeloader.NewLoader(filename, "AUTO")
 	if err != nil {
 		logger.Logf("ROM Select", err.Error())

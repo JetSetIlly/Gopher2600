@@ -68,8 +68,8 @@ func newSuperbank(data []byte) (mapper.CartMapper, error) {
 	return cart, nil
 }
 
-// Mapping implements the mapper.CartMapper interface.
-func (cart *superbank) Mapping() string {
+// MappedBanks implements the mapper.CartMapper interface.
+func (cart *superbank) MappedBanks() string {
 	return fmt.Sprintf("Bank: %d", cart.state.bank)
 }
 

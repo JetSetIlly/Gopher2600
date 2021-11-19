@@ -106,8 +106,8 @@ func NewDPCplus(prefs *preferences.Preferences, data []byte) (mapper.CartMapper,
 	return cart, nil
 }
 
-// Mapping implements the mapper.CartMapper interface.
-func (cart *dpcPlus) Mapping() string {
+// MappedBanks implements the mapper.CartMapper interface.
+func (cart *dpcPlus) MappedBanks() string {
 	return fmt.Sprintf("Bank: %d", cart.state.bank)
 }
 

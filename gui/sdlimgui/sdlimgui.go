@@ -232,6 +232,10 @@ func (img *SdlImgui) end() {
 
 // draw gui. called from service loop.
 func (img *SdlImgui) draw() {
+	if img.mode == emulation.ModeNone {
+		return
+	}
+
 	if img.emulation.State() == emulation.EmulatorStart {
 		return
 	}

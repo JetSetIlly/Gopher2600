@@ -154,9 +154,9 @@ func NewPlusROM(child mapper.CartMapper, vcsHook cartridgeloader.VCSHook) (mappe
 	return cart, nil
 }
 
-// Mapping implements the mapper.CartMapper interface.
-func (cart *PlusROM) Mapping() string {
-	return cart.state.child.Mapping()
+// MappedBanks implements the mapper.CartMapper interface.
+func (cart *PlusROM) MappedBanks() string {
+	return cart.state.child.MappedBanks()
 }
 
 // ID implements the mapper.CartMapper interface.

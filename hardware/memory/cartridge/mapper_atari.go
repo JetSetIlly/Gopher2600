@@ -102,8 +102,8 @@ func hasEmptyArea(d []uint8) bool {
 	return true
 }
 
-// Mapping implements the mapper.CartMapper interface.
-func (cart *atari) Mapping() string {
+// MappedBanks implements the mapper.CartMapper interface.
+func (cart *atari) MappedBanks() string {
 	return fmt.Sprintf("Bank: %d", cart.state.bank)
 }
 

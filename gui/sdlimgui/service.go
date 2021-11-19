@@ -302,7 +302,9 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 				img.quit()
 
 			case sdl.SCANCODE_TAB:
-				img.wm.selectROM.setOpen(true)
+				if !img.wm.selectROM.open {
+					img.wm.selectROM.setOpen(true)
+				}
 
 			case sdl.SCANCODE_GRAVE:
 				img.emulation.SetFeature(emulation.ReqSetMode, emulation.ModeDebugger)

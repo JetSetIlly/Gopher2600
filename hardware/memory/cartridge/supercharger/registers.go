@@ -67,14 +67,14 @@ func (r Registers) String() string {
 	s.WriteString(fmt.Sprintf("RAM write: %v", r.RAMwrite))
 	s.WriteString(fmt.Sprintf("  ROM power: %v\n", r.ROMpower))
 
-	s.WriteString(r.Mapping())
+	s.WriteString(r.MappedBanks())
 
 	return s.String()
 }
 
-// Mapping is like string but just the bank information. we use this when
+// MappedBanks is like string but just the bank information. we use this when
 // building the mapper summary, the String() function is too verbose for that.
-func (r *Registers) Mapping() string {
+func (r *Registers) MappedBanks() string {
 	s := strings.Builder{}
 
 	s.WriteString("Banks: ")

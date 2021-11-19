@@ -96,7 +96,7 @@ type container struct {
 func (lz *LazyCart) push() {
 	lz.id.Store(lz.val.vcs.Mem.Cart.ID())
 	lz.filename.Store(lz.val.vcs.Mem.Cart.Filename)
-	lz.mapping.Store(lz.val.vcs.Mem.Cart.Mapping())
+	lz.mapping.Store(lz.val.vcs.Mem.Cart.MappedBanks())
 	lz.numBanks.Store(lz.val.vcs.Mem.Cart.NumBanks())
 	lz.currBank.Store(lz.val.vcs.Mem.Cart.GetBank(lz.val.vcs.CPU.PC.Address()))
 

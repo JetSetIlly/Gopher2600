@@ -66,8 +66,8 @@ func new3e(data []byte) (mapper.CartMapper, error) {
 	return cart, nil
 }
 
-// Mapping implements the mapper.CartMapper interface.
-func (cart *m3e) Mapping() string {
+// MappedBanks implements the mapper.CartMapper interface.
+func (cart *m3e) MappedBanks() string {
 	s := strings.Builder{}
 	s.WriteString("segments: ")
 	for i := range cart.state.segment {

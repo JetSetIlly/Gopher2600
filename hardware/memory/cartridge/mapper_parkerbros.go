@@ -75,8 +75,8 @@ func newParkerBros(data []byte) (mapper.CartMapper, error) {
 	return cart, nil
 }
 
-// Mapping implements the mapper.CartMapper interface.
-func (cart *parkerBros) Mapping() string {
+// MappedBanks implements the mapper.CartMapper interface.
+func (cart *parkerBros) MappedBanks() string {
 	return fmt.Sprintf("Banks: %d %d %d %d", cart.state.segment[0], cart.state.segment[1], cart.state.segment[2], cart.state.segment[3])
 }
 

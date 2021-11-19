@@ -112,8 +112,8 @@ func NewCDF(prefs *preferences.Preferences, version string, data []byte) (mapper
 	return cart, nil
 }
 
-// Mapping implements the mapper.CartMapper interface.
-func (cart *cdf) Mapping() string {
+// MappedBanks implements the mapper.CartMapper interface.
+func (cart *cdf) MappedBanks() string {
 	return fmt.Sprintf("Bank: %d", cart.state.bank)
 }
 

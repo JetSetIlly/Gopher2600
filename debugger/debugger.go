@@ -70,6 +70,9 @@ type Debugger struct {
 	// GUI thread (see State() function)
 	state atomic.Value // emulation.State
 
+	// preferences for the emulation
+	Prefs *Preferences
+
 	// reference to emulated hardware. this pointer never changes through the
 	// life of the emulation even though the hardware may change and the
 	// components may change (during rewind for example)
@@ -257,6 +260,14 @@ func NewDebugger(create CreateUserInterface, spec string, useSavekey bool) (*Deb
 	dbg.state.Store(emulation.EmulatorStart)
 	dbg.mode.Store(emulation.ModeNone)
 
+	var err error
+
+	// load preferences
+	dbg.Prefs, err = newPreferences()
+	if err != nil {
+		return nil, curated.Errorf("debugger: %v", err)
+	}
+
 	// creat a new television. this will be used during the initialisation of
 	// the VCS and not referred to directly again
 	tv, err := television.NewTelevision(spec)
@@ -366,6 +377,12 @@ func (dbg *Debugger) End() {
 
 	// set ending state
 	err := dbg.gui.SetFeature(gui.ReqEnd)
+	if err != nil {
+		logger.Log("debugger", err.Error())
+	}
+
+	// save preferences
+	err = dbg.Prefs.Save()
 	if err != nil {
 		logger.Log("debugger", err.Error())
 	}
@@ -490,8 +507,7 @@ func (dbg *Debugger) setMode(mode emulation.Mode) error {
 		// simple detection of whether cartridge is ejected when switching to
 		// playmode. if it is ejected then open ROM selected.
 		if dbg.Mode() == emulation.ModePlay && dbg.vcs.Mem.Cart.IsEjected() {
-			dbg.forcedROMselection = make(chan bool, 1)
-			err = dbg.gui.SetFeature(gui.ReqROMSelector)
+			err = dbg.forceROMSelector()
 			if err != nil {
 				return curated.Errorf("debugger: %v", err)
 			}
@@ -576,7 +592,16 @@ func (dbg *Debugger) Start(mode emulation.Mode, initScript string, cartload cart
 		case emulation.ModePlay:
 			err = dbg.playLoop()
 			if err != nil {
-				return curated.Errorf("debugger: %v", err)
+				// if we ever encounter a cartridge ejected error in playmode
+				// then simply open up the ROM selector
+				if curated.Has(err, cartridge.Ejected) {
+					err = dbg.forceROMSelector()
+					if err != nil {
+						return curated.Errorf("debugger: %v", err)
+					}
+				} else {
+					return curated.Errorf("debugger: %v", err)
+				}
 			}
 		case emulation.ModeDebugger:
 			switch dbg.State() {
@@ -792,6 +817,11 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) 
 
 	// make sure everything is reset after disassembly (including breakpoints, etc.)
 	dbg.reset(true)
+
+	// record the most filename as the most recent ROM loaded if appropriate
+	if !dbg.vcs.Mem.Cart.IsEjected() {
+		dbg.Prefs.RecentROM.Set(cartload.Filename)
+	}
 
 	return nil
 }

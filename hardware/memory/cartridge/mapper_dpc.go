@@ -76,8 +76,8 @@ func newDPC(data []byte) (mapper.CartMapper, error) {
 	return cart, nil
 }
 
-// Mapping implements the mapper.CartMapper interface.
-func (cart *dpc) Mapping() string {
+// MappedBanks implements the mapper.CartMapper interface.
+func (cart *dpc) MappedBanks() string {
 	return fmt.Sprintf("Bank: %d", cart.state.bank)
 }
 

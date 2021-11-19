@@ -110,8 +110,8 @@ func newMnetwork(data []byte) (mapper.CartMapper, error) {
 	return cart, nil
 }
 
-// Mapping implements the mapper.CartMapper interface.
-func (cart *mnetwork) Mapping() string {
+// MappedBanks implements the mapper.CartMapper interface.
+func (cart *mnetwork) MappedBanks() string {
 	s := strings.Builder{}
 	s.WriteString(fmt.Sprintf("Bank: %d ", cart.state.bank))
 	s.WriteString(fmt.Sprintf(" RAM: %d", cart.state.ram256byteIdx))

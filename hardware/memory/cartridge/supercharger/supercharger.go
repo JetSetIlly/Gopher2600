@@ -89,9 +89,9 @@ func NewSupercharger(cartload cartridgeloader.Loader) (mapper.CartMapper, error)
 	return cart, nil
 }
 
-// Mapping implements the mapper.CartMapper interface.
-func (cart *Supercharger) Mapping() string {
-	return cart.state.registers.Mapping()
+// MappedBanks implements the mapper.CartMapper interface.
+func (cart *Supercharger) MappedBanks() string {
+	return cart.state.registers.MappedBanks()
 }
 
 // ID implements the cartMapper interface.

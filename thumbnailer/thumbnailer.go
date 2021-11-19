@@ -16,8 +16,11 @@
 package thumbnailer
 
 import (
+	"fmt"
 	"image"
 	"image/color"
+	"strings"
+	"sync/atomic"
 
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/curated"
@@ -44,6 +47,7 @@ type Thumbnailer struct {
 	img     *image.RGBA
 	cropImg *image.RGBA
 
+	isEmulating        atomic.Value
 	emulationQuit      chan bool
 	emulationCompleted chan bool
 
@@ -60,6 +64,9 @@ func NewThumbnailer() (*Thumbnailer, error) {
 
 	// emulation has completed, by definition, on startup
 	thmb.emulationCompleted <- true
+
+	// set isEmulating atomic as a boolean
+	thmb.isEmulating.Store(false)
 
 	// create a new television. this will be used during the initialisation of
 	// the VCS and not referred to directly again
@@ -83,6 +90,22 @@ func NewThumbnailer() (*Thumbnailer, error) {
 	thmb.Reset()
 
 	return thmb, nil
+}
+
+func (thmb *Thumbnailer) String() string {
+	cart := thmb.vcs.Mem.Cart
+	s := strings.Builder{}
+	s.WriteString(fmt.Sprintf("%s (%s cartridge)", cart.ShortName, cart.ID()))
+	if cc := cart.GetContainer(); cc != nil {
+		s.WriteString(fmt.Sprintf(" [in %s]", cc.ContainerID()))
+	}
+	return s.String()
+}
+
+// IsEmulating returns true if the thumbnail emulator is working. Useful for
+// testing whether the cartridgeloader was an emulatable file.
+func (thmb *Thumbnailer) IsEmulating() bool {
+	return thmb.isEmulating.Load().(bool)
 }
 
 // EndCreation ends a running emulation that is creating a stream of
@@ -125,6 +148,7 @@ func (thmb *Thumbnailer) CreateFromLoader(loader cartridgeloader.Loader, numFram
 	go func() {
 		defer func() {
 			thmb.emulationCompleted <- true
+			thmb.isEmulating.Store(false)
 		}()
 
 		err := thmb.vcs.AttachCartridge(loader)
@@ -132,6 +156,10 @@ func (thmb *Thumbnailer) CreateFromLoader(loader cartridgeloader.Loader, numFram
 			logger.Logf("thumbnailer", err.Error())
 			return
 		}
+
+		// if we get to this point then we can be reasonably sure that the
+		// cartridgeloader is emulatable
+		thmb.isEmulating.Store(true)
 
 		tgtFrame := thmb.vcs.TV.GetCoords().Frame + numFrames
 

@@ -16,6 +16,9 @@
 package cartridge
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
@@ -86,18 +89,39 @@ func (cart *Cartridge) Reset() {
 	}
 }
 
+// String returns a summary of the cartridge, it's mapper and any containers.
+//
+// For just the filename use the Filename field or the ShortName field.
+// Filename includes the path.
+//
+// For just the mapping use the ID() function and for just the container ID use
+// the ContainerID() function.
 func (cart *Cartridge) String() string {
-	return cart.Filename
+	s := strings.Builder{}
+	s.WriteString(fmt.Sprintf("%s (%s)", cart.ShortName, cart.ID()))
+	if cc := cart.GetContainer(); cc != nil {
+		s.WriteString(fmt.Sprintf(" [%s]", cc.ContainerID()))
+	}
+	return s.String()
 }
 
-// Mapping returns a string summary of the mapping. ie. what banks are mapped in.
-func (cart *Cartridge) Mapping() string {
-	return cart.mapper.Mapping()
+// MappedBanks returns a string summary of the mapping. ie. what banks are mapped in.
+func (cart *Cartridge) MappedBanks() string {
+	return cart.mapper.MappedBanks()
 }
 
 // ID returns the cartridge mapping ID.
 func (cart *Cartridge) ID() string {
 	return cart.mapper.ID()
+}
+
+// Container returns the cartridge continer ID. If the cartridge is not in a
+// container the empty string is returned.
+func (cart *Cartridge) ContainerID() string {
+	if cc := cart.GetContainer(); cc != nil {
+		return cc.ContainerID()
+	}
+	return ""
 }
 
 // Peek is an implementation of memory.DebugBus. Address must be normalised.

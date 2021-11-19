@@ -31,7 +31,7 @@ type CartContainer interface {
 // convenience, functions with an address argument receive that address
 // normalised to a range of 0x0000 to 0x0fff.
 type CartMapper interface {
-	Mapping() string
+	MappedBanks() string
 	ID() string
 
 	Snapshot() CartMapper

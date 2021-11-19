@@ -429,13 +429,34 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		arg, ok := tokens.Get()
 		if ok {
 			switch arg {
-			case "BANK":
-				fallthrough
-
-			case "MAPPING":
+			case "PATH":
 				dbg.printLine(
 					terminal.StyleInstrument,
-					dbg.vcs.Mem.Cart.Mapping(),
+					dbg.vcs.Mem.Cart.Filename,
+				)
+
+			case "NAME":
+				dbg.printLine(
+					terminal.StyleInstrument,
+					dbg.vcs.Mem.Cart.ShortName,
+				)
+
+			case "MAPPER":
+				dbg.printLine(
+					terminal.StyleInstrument,
+					dbg.vcs.Mem.Cart.ID(),
+				)
+
+			case "CONTAINER":
+				dbg.printLine(
+					terminal.StyleInstrument,
+					dbg.vcs.Mem.Cart.ContainerID(),
+				)
+
+			case "MAPPEDBANKS":
+				dbg.printLine(
+					terminal.StyleInstrument,
+					dbg.vcs.Mem.Cart.MappedBanks(),
 				)
 
 			case "HASH":

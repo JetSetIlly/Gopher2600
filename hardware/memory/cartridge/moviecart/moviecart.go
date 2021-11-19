@@ -280,8 +280,8 @@ func NewMoviecart(loader cartridgeloader.Loader) (mapper.CartMapper, error) {
 	return cart, nil
 }
 
-// Mapping implements the mapper.CartMapper interface.
-func (cart *Moviecart) Mapping() string {
+// MappedBanks implements the mapper.CartMapper interface.
+func (cart *Moviecart) MappedBanks() string {
 	return fmt.Sprintf("Field: %d", cart.state.fieldNumber)
 }
 
