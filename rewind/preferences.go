@@ -34,7 +34,7 @@ func (p *Preferences) String() string {
 }
 
 // the maximum number of entries to store before the earliest steps are forgotten.
-const maxEntries = 100
+const maxEntries = 250
 
 // how often a frame snapshot of the system be taken. the higher the number,
 // the more laggy the rewind system will feel, particularly in a GUI.

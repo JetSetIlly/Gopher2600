@@ -508,7 +508,6 @@ about an address.`,
 	cmdClear: "Clear all BREAKS, TRAPS, WATCHES and TRACES.",
 
 	// meta
-	cmdPrefs: "Set preferences for debugger.",
 	cmdLog: `Print log to terminal. The LAST argument will cause the most recent log entry to be printed.
 
 Note that while "ONSTEP LOG LAST" is a valid construct it may not print what you expect - it will always print the last

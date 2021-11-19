@@ -97,8 +97,15 @@ func (win *winPrefs) draw() {
 		imgui.EndTabItem()
 	}
 
-	if imgui.BeginTabItem("Debugger") {
-		win.drawDebugger()
+	if win.img.mode == emulation.ModeDebugger {
+		if imgui.BeginTabItem("Debugger") {
+			win.drawDebugger()
+			imgui.EndTabItem()
+		}
+	}
+
+	if imgui.BeginTabItem("Rewind") {
+		win.drawRewind()
 		imgui.EndTabItem()
 	}
 
@@ -148,12 +155,12 @@ func (win *winPrefs) drawDebugger() {
 	imgui.Spacing()
 	usefxxmirror := win.img.dbg.Disasm.Prefs.FxxxMirror.Get().(bool)
 	if imgui.Checkbox("Use Fxxx Mirror", &usefxxmirror) {
-		win.img.term.pushCommand("PREFS TOGGLE FXXXMIRROR")
+		win.img.dbg.Disasm.Prefs.FxxxMirror.Set(usefxxmirror)
 	}
 
 	usesymbols := win.img.dbg.Disasm.Prefs.Symbols.Get().(bool)
 	if imgui.Checkbox("Use Symbols", &usesymbols) {
-		win.img.term.pushCommand("PREFS TOGGLE SYMBOLS")
+		win.img.dbg.Disasm.Prefs.Symbols.Set(usesymbols)
 
 		// if disassembly has address labels then turning symbols off may alter
 		// the vertical scrolling of the disassembly window.
@@ -174,26 +181,26 @@ func (win *winPrefs) drawDebugger() {
 			logger.Logf("sdlimgui", "could not set preference value: %v", err)
 		}
 	}
+}
 
-	imguiSeparator()
-	imgui.Text("Rewind")
+func (win *winPrefs) drawRewind() {
 	imgui.Spacing()
 
 	rewindMaxEntries := int32(win.img.dbg.Rewind.Prefs.MaxEntries.Get().(int))
-	if imgui.SliderIntV("Max Entries##maxentries", &rewindMaxEntries, 10, 100, fmt.Sprintf("%d", rewindMaxEntries), imgui.SliderFlagsNone) {
-		win.img.term.pushCommand(fmt.Sprintf("PREFS REWIND MAX %d", rewindMaxEntries))
+	if imgui.SliderIntV("Max Entries##maxentries", &rewindMaxEntries, 10, 500, fmt.Sprintf("%d", rewindMaxEntries), imgui.SliderFlagsNone) {
+		win.img.dbg.Rewind.Prefs.MaxEntries.Set(rewindMaxEntries)
 	}
 
 	imgui.Spacing()
-	imguiIndentText("Changing the max entries slider may cause")
-	imguiIndentText("some of your rewind history to be lost.")
+	imguiIndentText("Changing these values will cause the")
+	imguiIndentText("existing rewind history to be lost.")
 
 	imgui.Spacing()
 	imgui.Spacing()
 
 	rewindFreq := int32(win.img.dbg.Rewind.Prefs.Freq.Get().(int))
 	if imgui.SliderIntV("Frequency##freq", &rewindFreq, 1, 5, fmt.Sprintf("%d", rewindFreq), imgui.SliderFlagsNone) {
-		win.img.term.pushCommand(fmt.Sprintf("PREFS REWIND FREQ %d", rewindFreq))
+		win.img.dbg.Rewind.Prefs.Freq.Set(rewindFreq)
 	}
 
 	imgui.Spacing()
@@ -255,18 +262,6 @@ func (win *winPrefs) drawVCS() {
 // prefs package so thats not a problem. the co-processor bus however can be
 // contentious so we must be carefult during initialisation phase.
 func (win *winPrefs) drawARM() {
-	// show ARM settings if we're in debugging mode or if there is an ARM coprocessor attached
-	if win.img.isPlaymode() {
-		// if emulation is "initialising" then return immediately
-		//
-		// !TODO: lazy system should be extended to work in playmode too. mainly to
-		// help with situations like this. if we access the CoProcBus thought the
-		// lazy system, we wouldn't need to check for initialising state.
-		if win.img.emulation.State() == emulation.Initialising {
-			return
-		}
-	}
-
 	imgui.Spacing()
 
 	immediate := win.img.vcs.Prefs.ARM.Immediate.Get().(bool)
@@ -339,43 +334,75 @@ Illegal accesses will be logged in all instances.`)
 
 func (win *winPrefs) drawDiskButtons() {
 	if imgui.Button("Save") {
-		err := win.img.prefs.save()
-		if err != nil {
-			logger.Logf("sdlimgui", "could not save (imgui debugger) preferences: %v", err)
-		}
-		err = win.img.audio.Prefs.Save()
-		if err != nil {
-			logger.Logf("sdlimgui", "could not save (sdlaudio) preferences: %v", err)
-		}
-		err = win.img.vcs.Prefs.Save()
-		if err != nil {
-			logger.Logf("sdlimgui", "could not save (hardware) preferences: %v", err)
-		}
-		err = win.img.crtPrefs.Save()
-		if err != nil {
-			logger.Logf("sdlimgui", "could not save (crt) preferences: %v", err)
-		}
-		win.img.term.pushCommand("PREFS SAVE")
+		win.img.dbg.PushRawEvent(func() {
+			err := win.img.prefs.save()
+			if err != nil {
+				logger.Logf("sdlimgui", "could not save (imgui debugger) preferences: %v", err)
+			}
+			err = win.img.audio.Prefs.Save()
+			if err != nil {
+				logger.Logf("sdlimgui", "could not save (sdlaudio) preferences: %v", err)
+			}
+			err = win.img.vcs.TIA.Rev.Prefs.Save()
+			if err != nil {
+				logger.Logf("sdlimgui", "could not save (tia revisions) preferences: %v", err)
+			}
+			err = win.img.vcs.Prefs.Save()
+			if err != nil {
+				logger.Logf("sdlimgui", "could not save (hardware) preferences: %v", err)
+			}
+			err = win.img.crtPrefs.Save()
+			if err != nil {
+				logger.Logf("sdlimgui", "could not save (crt) preferences: %v", err)
+			}
+			err = win.img.dbg.Rewind.Prefs.Save()
+			if err != nil {
+				logger.Logf("sdlimgui", "could not save (rewind) preferences: %v", err)
+			}
+
+			if win.img.mode == emulation.ModeDebugger {
+				err = win.img.dbg.Disasm.Prefs.Save()
+				if err != nil {
+					logger.Logf("sdlimgui", "could not save (disasm) preferences: %v", err)
+				}
+			}
+		})
 	}
 
 	imgui.SameLine()
 	if imgui.Button("Restore") {
-		err := win.img.prefs.load()
-		if err != nil {
-			logger.Logf("sdlimgui", "could not restore (imgui debugger) preferences: %v", err)
-		}
-		err = win.img.audio.Prefs.Load()
-		if err != nil {
-			logger.Logf("sdlimgui", "could not restore (sdlaudio) preferences: %v", err)
-		}
-		err = win.img.vcs.Prefs.Load()
-		if err != nil {
-			logger.Logf("sdlimgui", "could not restore (hardware) preferences: %v", err)
-		}
-		err = win.img.crtPrefs.Load()
-		if err != nil {
-			logger.Logf("sdlimgui", "could not restore (crt) preferences: %v", err)
-		}
-		win.img.term.pushCommand("PREFS LOAD")
+		win.img.dbg.PushRawEvent(func() {
+			err := win.img.prefs.load()
+			if err != nil {
+				logger.Logf("sdlimgui", "could not restore (imgui debugger) preferences: %v", err)
+			}
+			err = win.img.audio.Prefs.Load()
+			if err != nil {
+				logger.Logf("sdlimgui", "could not restore (sdlaudio) preferences: %v", err)
+			}
+			err = win.img.vcs.Prefs.Load()
+			if err != nil {
+				logger.Logf("sdlimgui", "could not restore (hardware) preferences: %v", err)
+			}
+			err = win.img.vcs.TIA.Rev.Prefs.Load()
+			if err != nil {
+				logger.Logf("sdlimgui", "could not restore (tia revisions) preferences: %v", err)
+			}
+			err = win.img.crtPrefs.Load()
+			if err != nil {
+				logger.Logf("sdlimgui", "could not restore (crt) preferences: %v", err)
+			}
+			err = win.img.dbg.Rewind.Prefs.Load()
+			if err != nil {
+				logger.Logf("sdlimgui", "could not restore (rewind) preferences: %v", err)
+			}
+
+			if win.img.mode == emulation.ModeDebugger {
+				err = win.img.dbg.Disasm.Prefs.Load()
+				if err != nil {
+					logger.Logf("sdlimgui", "could not restore (disasm) preferences: %v", err)
+				}
+			}
+		})
 	}
 }

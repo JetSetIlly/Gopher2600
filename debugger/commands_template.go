@@ -72,7 +72,6 @@ const (
 	cmdClear = "CLEAR"
 
 	// meta.
-	cmdPrefs    = "PREFS"
 	cmdLog      = "LOG"
 	cmdMemUsage = "MEMUSAGE"
 )
@@ -136,7 +135,6 @@ var commandTemplate = []string{
 	cmdClear + " [BREAKS|TRAPS|WATCHES|TRACES|ALL]",
 
 	// emulation
-	cmdPrefs + " ([LOAD|SAVE]|[SET|UNSET|TOGGLE] [FXXXMIRROR|SYMBOLS]|REWIND [MAX %<entries>N|FREQ %<frames>N])",
 	cmdLog + " (LAST|RECENT|CLEAR)",
 	cmdMemUsage,
 }
