@@ -26,6 +26,8 @@ import (
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/emulation"
 	"github.com/jetsetilly/gopher2600/hardware"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/supercharger"
 	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
@@ -142,8 +144,37 @@ const UndefinedNumFrames = -1
 // CreateFromLoader will cause images to be returned from a running emulation initialised
 // with the specified cartridge loader. The emulation will run for a number of
 // frames before ending.
-func (thmb *Thumbnailer) CreateFromLoader(loader cartridgeloader.Loader, numFrames int) {
+func (thmb *Thumbnailer) CreateFromLoader(cartload cartridgeloader.Loader, numFrames int) {
 	thmb.wait()
+
+	// loading hook support required for supercharger
+	cartload.VCSHook = func(cart mapper.CartMapper, event mapper.Event, args ...interface{}) error {
+		if _, ok := cart.(*supercharger.Supercharger); ok {
+			switch event {
+			case mapper.EventSuperchargerFastloadEnded:
+				// the supercharger ROM will eventually start execution from the PC
+				// address given in the supercharger file
+
+				// CPU execution has been interrupted. update state of CPU
+				thmb.vcs.CPU.Interrupted = true
+
+				// the interrupted CPU means it never got a chance to
+				// finalise the result. we force that here by simply
+				// setting the Final flag to true.
+				thmb.vcs.CPU.LastResult.Final = true
+
+				// call function to complete tape loading procedure
+				callback := args[0].(supercharger.FastLoaded)
+				err := callback(thmb.vcs.CPU, thmb.vcs.Mem.RAM, thmb.vcs.RIOT.Timer)
+				if err != nil {
+					return err
+				}
+			case mapper.EventSuperchargerSoundloadEnded:
+				return thmb.vcs.TV.Reset(true)
+			}
+		}
+		return nil
+	}
 
 	go func() {
 		defer func() {
@@ -151,7 +182,7 @@ func (thmb *Thumbnailer) CreateFromLoader(loader cartridgeloader.Loader, numFram
 			thmb.isEmulating.Store(false)
 		}()
 
-		err := thmb.vcs.AttachCartridge(loader)
+		err := thmb.vcs.AttachCartridge(cartload)
 		if err != nil {
 			logger.Logf("thumbnailer", err.Error())
 			return
