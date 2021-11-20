@@ -62,7 +62,7 @@ func newPreferences(img *SdlImgui) (*preferences, error) {
 
 	// defaults
 	p.openOnError.Set(true)
-	p.audioEnabled.Set(true)
+	p.audioEnabled.Set(false)
 	p.controllerNotifcations.Set(true)
 	p.plusromNotifications.Set(true)
 	p.superchargerNotifications.Set(true)
