@@ -114,17 +114,15 @@ The development machine for `Gopher2600` was an i3-3225 with 16GB of RAM. Host
 operating system throughout the development has been a Linux system (4.x
 series).
 
-In playmode I can get a sustained frame rate of 60fps capped - good enough for
-NTSC. This includes emulation of the ARM7 chip if required.
-
-In debug mode, I can get around 35fps. 
+In playmode I can get a sustained frame rate of 60fps capped and 113fps
+uncapped. In debug mode, I can get around 42fps. 
 
 To get a performance rating for your installation you can run the following:
 
-	> gopher2600 performance -display -fpscap=false
+	> gopher2600 performance -fpscap=false <rom file>
 
-Which gives the maximum frame rate with the display. Omit the `-display` option
-for an absolute value.
+For performance measurement with the display you can press the `F7` key while
+playing a ROM to bring up the `FPS indicator`. 
 
 Memory usage is currently around 40MB of system memory in playmode and around 120MB in
 debug mode. This can vary on the ROM used however. It shouldn't ever be a
@@ -422,10 +420,10 @@ The rest of the section will give a brief run down of debugger features.
          HALT         HELP       INSERT       KEYPAD         LAST         LINT
          LIST          LOG       MEMMAP     MEMUSAGE      MISSILE       ONHALT
        ONSTEP      ONTRACE        PANEL        PATCH         PEEK       PLAYER
-    PLAYFIELD      PLUSROM         POKE        PREFS      QUANTUM         QUIT
-          RAM        RESET       REWIND         RIOT          RUN       SCRIPT
-         STEP        STICK       SYMBOL          TIA        TRACE         TRAP
-           TV        WATCH
+    PLAYFIELD      PLUSROM         POKE      QUANTUM         QUIT          RAM
+        RESET       REWIND         RIOT          RUN       SCRIPT         STEP
+        STICK       SYMBOL          TIA        TRACE         TRAP           TV
+        WATCH
 	
 The debugger allows tab-completion in most situations. For example, pressing `W` followed by the Tab key on your keyboard, will autocomplete the `WATCH` command. This works for command arguments too. It does not currently work for filenames, or symbols. Given a choice of completions, the Tab key will cycle through the available options.
 
