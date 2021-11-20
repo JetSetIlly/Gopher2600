@@ -110,7 +110,7 @@ func (lmtr *limiter) setRate(fps float32) {
 		lmtr.matchRefreshRate.Store(true)
 		fps = lmtr.refreshRate.Load().(float32)
 	} else {
-		lmtr.matchRefreshRate.Store(false)
+		lmtr.matchRefreshRate.Store(fps == lmtr.refreshRate.Load().(float32))
 	}
 
 	// reset refresh rate delay counter
