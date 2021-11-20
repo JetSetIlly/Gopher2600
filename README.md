@@ -908,6 +908,10 @@ The TIA Audio implementation is based almost entirely on the work of Chris Brenn
 
 https://atariage.com/forums/topic/249865-tia-sounding-off-in-the-digital-domain/
 
+Musical information as seen in the tracker window taken from Random Terrain.
+
+https://www.randomterrain.com/atari-2600-memories-music-and-sound.html
+
 The 6507 information was taken from Leventhal's "6502 Assembly Language
 Programming" and the text file "64doc.txt" v1.0, by John West and Marko Makela.
 
