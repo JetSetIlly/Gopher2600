@@ -434,7 +434,7 @@ func (dbg *Debugger) setStateQuiet(state emulation.State, quiet bool) {
 		case emulation.Paused:
 			dbg.gui.SetFeature(gui.ReqEmulationEvent, emulation.EventPause)
 		case emulation.Running:
-			if prevState > emulation.Initialising {
+			if prevState > emulation.EmulatorStart {
 				dbg.gui.SetFeature(gui.ReqEmulationEvent, emulation.EventRun)
 			}
 		}
