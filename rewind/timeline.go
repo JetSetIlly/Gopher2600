@@ -77,6 +77,7 @@ func newTimeline() Timeline {
 		FrameNum:         make([]int, 0),
 		TotalScanlines:   make([]int, 0),
 		Counts:           make([]TimelineCounts, 0),
+		Ratios:           make([]TimelineRatios, 0),
 		LeftPlayerInput:  make([]bool, 0),
 		RightPlayerInput: make([]bool, 0),
 		PanelInput:       make([]bool, 0),
@@ -87,6 +88,7 @@ func (tl *Timeline) reset() {
 	tl.FrameNum = tl.FrameNum[:0]
 	tl.TotalScanlines = tl.TotalScanlines[:0]
 	tl.Counts = tl.Counts[:0]
+	tl.Ratios = tl.Ratios[:0]
 	tl.LeftPlayerInput = tl.LeftPlayerInput[:0]
 	tl.RightPlayerInput = tl.RightPlayerInput[:0]
 	tl.PanelInput = tl.PanelInput[:0]
