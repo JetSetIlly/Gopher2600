@@ -100,7 +100,7 @@ func (win *winTimeline) draw() {
 	const winHeightRatio = 0.05
 	const scanlineRatio = specification.AbsoluteMaxScanlines * winHeightRatio
 
-	imgui.SetNextWindowPosV(imgui.Vec2{37, 732}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
+	imgui.SetNextWindowPosV(imgui.Vec2{39, 722}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
 
 	imgui.BeginV(win.id(), &win.open, imgui.WindowFlagsAlwaysAutoResize)
 	defer imgui.End()

@@ -80,7 +80,7 @@ func (win *winTIA) draw() {
 		return
 	}
 
-	imgui.SetNextWindowPosV(imgui.Vec2{X: 21, Y: 491}, imgui.ConditionFirstUseEver, imgui.Vec2{X: 0, Y: 0})
+	imgui.SetNextWindowPosV(imgui.Vec2{X: 31, Y: 470}, imgui.ConditionFirstUseEver, imgui.Vec2{X: 0, Y: 0})
 	imgui.SetNextWindowSizeV(imgui.Vec2{X: 531, Y: 241}, imgui.ConditionFirstUseEver)
 	imgui.BeginV(win.id(), &win.open, imgui.WindowFlagsNoResize)
 

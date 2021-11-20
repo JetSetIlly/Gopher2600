@@ -59,7 +59,7 @@ func (win *winControl) draw() {
 		return
 	}
 
-	imgui.SetNextWindowPosV(imgui.Vec2{665, 272}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
+	imgui.SetNextWindowPosV(imgui.Vec2{699, 45}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
 	imgui.BeginV(win.id(), &win.open, imgui.WindowFlagsAlwaysAutoResize)
 
 	// running
