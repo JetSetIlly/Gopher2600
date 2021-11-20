@@ -334,7 +334,7 @@ func (scr *screen) NewFrame(frameInfo television.FrameInfo) error {
 					diff -= 1
 				}
 
-				if diff > scr.img.crtPrefs.UnsyncTolerance.Get().(int) {
+				if diff > scr.img.crtPrefs.SyncSpeedScanlines.Get().(int) {
 					scr.crit.screenrollScanline += rollAmount
 					if scr.crit.screenrollScanline >= scr.crit.bufferHeight {
 						scr.crit.screenrollScanline -= scr.crit.bufferHeight

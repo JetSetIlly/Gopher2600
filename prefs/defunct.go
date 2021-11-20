@@ -46,6 +46,7 @@ var defunct = []string{
 	"sdlimgui.playmode.windowPos",
 	"sdlimgui.debugger.windowSize",
 	"sdlimgui.debugger.windowPos",
+	"crt.unsyncTolerance",
 }
 
 // returns true if string is in list of defunct values.

@@ -19,6 +19,7 @@ import (
 	"fmt"
 
 	"github.com/inkyblackness/imgui-go/v4"
+	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 )
 
 func (win *winPrefs) drawCRT() setDefaultPrefs {
@@ -82,7 +83,7 @@ func (win *winPrefs) drawCRT() setDefaultPrefs {
 	imgui.Spacing()
 
 	imgui.PushItemWidth(-1)
-	win.drawUnsyncTolerance()
+	win.drawSyncSpeed()
 	imgui.PopItemWidth()
 
 	return win.img.crtPrefs
@@ -403,10 +404,10 @@ func (win *winPrefs) drawPixelPerfect() bool {
 	return b
 }
 
-func (win *winPrefs) drawUnsyncTolerance() {
-	imgui.Text("Screen Roll on lost VSYNC")
+func (win *winPrefs) drawSyncSpeed() {
+	imgui.Text("Synchronisation Speed")
 
-	t := int32(win.img.crtPrefs.UnsyncTolerance.Get().(int))
+	t := int32(win.img.crtPrefs.SyncSpeedScanlines.Get().(int))
 	var label string
 	if t == 0 {
 		label = "no tolerance"
@@ -414,7 +415,7 @@ func (win *winPrefs) drawUnsyncTolerance() {
 		label = fmt.Sprintf("%d scanlines", t)
 	}
 
-	if imgui.SliderIntV("##unsyncTolerance", &t, 0, 5, label, 1.0) {
-		win.img.crtPrefs.UnsyncTolerance.Set(t)
+	if imgui.SliderIntV("##syncSpeed", &t, 0, specification.AbsoluteMaxScanlines, label, 1.0) {
+		win.img.crtPrefs.SyncSpeedScanlines.Set(t)
 	}
 }
