@@ -43,6 +43,9 @@ func (dbg *Debugger) playLoop() error {
 				return curated.Errorf(terminal.UserInterrupt)
 			case ev := <-dbg.events.RawEvents:
 				ev()
+			case ev := <-dbg.events.RawEventsReturn:
+				ev()
+				return nil
 			case ev := <-dbg.events.UserInput:
 				if _, ok := ev.(userinput.EventQuit); ok {
 					return curated.Errorf(terminal.UserQuit)

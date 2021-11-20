@@ -42,7 +42,7 @@ func (cart *ejected) ID() string {
 
 // Snapshot implements the mapper.CartMapper interface.
 func (cart *ejected) Snapshot() mapper.CartMapper {
-	return nil
+	return &ejected{}
 }
 
 // Plumb implements the mapper.CartMapper interface.
@@ -55,12 +55,13 @@ func (cart *ejected) Reset(_ *rand.Rand) {
 
 // Read implements the cartMapper interface.
 func (cart *ejected) Read(_ uint16, _ bool) (uint8, error) {
-	return 0, curated.Errorf(Ejected)
+	// return NOP. this is almost certainly not correct but it's good enough for now
+	return 0xea, nil
 }
 
 // Write implements the cartMapper interface.
 func (cart *ejected) Write(_ uint16, _ uint8, _, _ bool) error {
-	return curated.Errorf(Ejected)
+	return nil
 }
 
 // NumBanks implements the cartMapper interface.

@@ -192,10 +192,17 @@ func (r *Rewind) addTimelineEntry(frameInfo television.FrameInfo) {
 
 	// ratios
 	b := float32(frameInfo.TotalScanlines * specification.ClksScanline)
-	r.timeline.Ratios = append(r.timeline.Ratios, TimelineRatios{
-		WSYNC:  float32(cts.WSYNC) / b,
-		CoProc: float32(cts.CoProc) / b,
-	})
+	if b == 0 {
+		r.timeline.Ratios = append(r.timeline.Ratios, TimelineRatios{
+			WSYNC:  0,
+			CoProc: 0,
+		})
+	} else {
+		r.timeline.Ratios = append(r.timeline.Ratios, TimelineRatios{
+			WSYNC:  float32(cts.WSYNC) / b,
+			CoProc: float32(cts.CoProc) / b,
+		})
+	}
 
 	if len(r.timeline.FrameNum) > timelineLength {
 		r.timeline.FrameNum = r.timeline.FrameNum[1:]

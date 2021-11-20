@@ -411,6 +411,7 @@ func (tv *Television) Signal(sig signal.SignalAttributes) error {
 	if sig&signal.HSync == signal.HSync && tv.state.lastSignal&signal.HSync != signal.HSync {
 		if tv.state.clock < 13 || tv.state.clock > 22 {
 			tv.state.clock = 16
+
 		}
 	}
 
@@ -419,6 +420,16 @@ func (tv *Television) Signal(sig signal.SignalAttributes) error {
 	// assume that clock and scanline are constrained elsewhere such that the
 	// index can never run past the end of the signals array
 	tv.currentSignalIdx = tv.state.clock + (tv.state.scanline * specification.ClksScanline)
+
+	// sometimes the current signal can come out "behind" the firstSignalIdx.
+	// this can happen when RSYNC is triggered on the first scanline of the
+	// frame. not common but we should handle it
+	//
+	// in practical terms, if we don't handle this then sending signals to the
+	// audio mixers will cause a "slice bounds out of range" panic
+	if tv.currentSignalIdx < tv.firstSignalIdx {
+		tv.firstSignalIdx = tv.currentSignalIdx
+	}
 
 	// augment television signal before storing and sending to pixel renderers
 	sig &= ^signal.Index

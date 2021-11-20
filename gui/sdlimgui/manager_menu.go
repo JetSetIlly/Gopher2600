@@ -17,6 +17,7 @@ package sdlimgui
 
 import (
 	"fmt"
+	"math"
 
 	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/emulation"
@@ -146,15 +147,28 @@ func (wm *manager) drawMenu() {
 	wdth -= rightJustText(wdth, wm.img.lz.Cart.Filename, true)
 	wdth -= rightJustText(wdth, wm.img.lz.Cart.ID, true)
 	wdth -= rightJustText(wdth, wm.img.lz.Cart.Mapping, true)
-	wdth -= rightJustText(wdth, fmt.Sprintf("%.2fHz", wm.img.lz.TV.Hz), true)
+
+	if math.IsInf(float64(wm.img.lz.TV.Hz), 0) || wm.img.lz.TV.Hz > wm.img.lz.TV.FrameInfo.Spec.RefreshRate*2 {
+		wdth -= rightJustText(wdth, "- Hz", true)
+		if imgui.IsItemHovered() {
+			imgui.BeginTooltip()
+			imgui.Text("TV refresh rate is indeterminate")
+			imgui.EndTooltip()
+		}
+	} else {
+		wdth -= rightJustText(wdth, fmt.Sprintf("%.2fHz", wm.img.lz.TV.Hz), true)
+	}
 
 	if wm.img.emulation.State() == emulation.Running {
 		if wm.img.lz.TV.ReqFPS < 1.0 {
-			rightJustText(wdth, "< 1 fps", true)
+			wdth -= rightJustText(wdth, "< 1 fps", true)
+		} else if math.IsInf(float64(wm.img.lz.TV.ActualFPS), 0) {
+			wdth -= rightJustText(wdth, "- fps", true)
 		} else {
-			rightJustText(wdth, fmt.Sprintf("%.1f fps", wm.img.lz.TV.ActualFPS), true)
+			wdth -= rightJustText(wdth, fmt.Sprintf("%.1f fps", wm.img.lz.TV.ActualFPS), true)
 		}
 	}
+
 }
 
 func rightJustText(width float32, text string, sep bool) float32 {
