@@ -35,10 +35,6 @@ import (
 	"github.com/jetsetilly/gopher2600/rewind"
 )
 
-// Label that can be used in the EmulationLabel field of the cartridgeloader.Loader type. to indicate
-// that the cartridge has been loaded into the thumbnailer emulation
-const EmulationLabel = "thumbnailer"
-
 // Thumbnailer type handles the emulation necessary for thumbnail image
 // generation.
 type Thumbnailer struct {
@@ -146,6 +142,9 @@ const UndefinedNumFrames = -1
 // frames before ending.
 func (thmb *Thumbnailer) CreateFromLoader(cartload cartridgeloader.Loader, numFrames int) {
 	thmb.wait()
+
+	// label cartridge loader as coming from the thumbaniler emulation
+	cartload.EmulationLabel = emulation.ThumbnailerLabel
 
 	// loading hook support required for supercharger
 	cartload.VCSHook = func(cart mapper.CartMapper, event mapper.Event, args ...interface{}) error {

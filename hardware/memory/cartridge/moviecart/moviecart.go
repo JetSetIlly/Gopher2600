@@ -21,6 +21,7 @@ import (
 	"math/rand"
 
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
+	"github.com/jetsetilly/gopher2600/emulation"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 	"github.com/jetsetilly/gopher2600/logger"
@@ -263,7 +264,7 @@ func NewMoviecart(loader cartridgeloader.Loader) (mapper.CartMapper, error) {
 
 	// if the emulation has been labelled as a thumbnailer then shorten the
 	// title card sequence
-	if loader.EmulationLabel == loader.EmulationLabel {
+	if loader.EmulationLabel == emulation.ThumbnailerLabel {
 		cart.state.shortTitleCard = true
 		cart.state.initialise()
 	}
