@@ -21,11 +21,6 @@ import (
 	"time"
 )
 
-// VisualUpdating is the value at which the screen drawing process should be
-// shown to the user. ie. the FPS is low enough to require a visual indicator
-// that something is happening.
-const VisualUpdating float32 = 5.0
-
 type limiter struct {
 	tv *Television
 
@@ -46,10 +41,6 @@ type limiter struct {
 
 	// the actual number of frames per second
 	actual atomic.Value // float32
-
-	// whether to update the screen visually - when frame rate is low enough we
-	// want to be able to see the updates
-	visualUpdates bool
 
 	// pulse that performs the limiting. the duration of the ticker will be set
 	// when the frame rate changes.
@@ -125,17 +116,9 @@ func (lmtr *limiter) setRate(fps float32) {
 	lmtr.requested.Store(fps)
 
 	// set scale and duration to wait according to requested FPS rate
-	if fps <= VisualUpdating {
-		lmtr.visualUpdates = true
-		rate := float32(1000000.0) / (fps * float32(lmtr.tv.state.frameInfo.TotalScanlines))
-		dur, _ := time.ParseDuration(fmt.Sprintf("%fus", rate))
-		lmtr.pulse.Reset(dur)
-	} else {
-		lmtr.visualUpdates = false
-		rate := float32(1000000.0) / fps
-		dur, _ := time.ParseDuration(fmt.Sprintf("%fus", rate))
-		lmtr.pulse.Reset(dur)
-	}
+	rate := float32(1000000.0) / fps
+	dur, _ := time.ParseDuration(fmt.Sprintf("%fus", rate))
+	lmtr.pulse.Reset(dur)
 
 	// restart acutal FPS rate measurement values
 	lmtr.measureCt = 0
@@ -145,7 +128,7 @@ func (lmtr *limiter) setRate(fps float32) {
 // checkFrame should be called every frame.
 func (lmtr *limiter) checkFrame() {
 	lmtr.measureCt++
-	if lmtr.active && !lmtr.visualUpdates {
+	if lmtr.active {
 		<-lmtr.pulse.C
 	}
 
@@ -160,9 +143,6 @@ func (lmtr *limiter) checkFrame() {
 
 // checkFrame should be called every scanline.
 func (lmtr *limiter) checkScanline() {
-	if lmtr.active && lmtr.visualUpdates {
-		<-lmtr.pulse.C
-	}
 }
 
 // measures frame rate on every tick of the measuringPulse ticker. callers of

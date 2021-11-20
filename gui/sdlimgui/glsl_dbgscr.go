@@ -19,7 +19,6 @@ import (
 	"github.com/go-gl/gl/v3.2-core/gl"
 	"github.com/jetsetilly/gopher2600/emulation"
 	"github.com/jetsetilly/gopher2600/gui/sdlimgui/shaders"
-	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 )
 
@@ -173,13 +172,7 @@ func (sh *dbgScreenShader) setAttributes(env shaderEnvironment) {
 	case emulation.Paused:
 		gl.Uniform1i(sh.showCursor, 1)
 	case emulation.Running:
-		// if FPS is low enough then show screen draw even though
-		// emulation is running
-		if sh.img.lz.TV.ReqFPS <= television.VisualUpdating {
-			gl.Uniform1i(sh.showCursor, 1)
-		} else {
-			gl.Uniform1i(sh.showCursor, 0)
-		}
+		gl.Uniform1i(sh.showCursor, 0)
 	case emulation.Stepping:
 		gl.Uniform1i(sh.showCursor, 1)
 	case emulation.Rewinding:

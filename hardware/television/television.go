@@ -448,16 +448,6 @@ func (tv *Television) Signal(sig signal.SignalAttributes) error {
 		return tv.renderSignals()
 	}
 
-	// set pending pixels for pixel-scale frame limiting (but only when the
-	// limiter is active - this is important when rendering frames produced
-	// during rewinding)
-	if tv.lmtr.active && tv.lmtr.visualUpdates {
-		err := tv.renderSignals()
-		if err != nil {
-			return err
-		}
-	}
-
 	return nil
 }
 
@@ -555,13 +545,10 @@ func (tv *Television) newFrame(fromVsync bool) error {
 		tv.signals[i] = signal.NoSignal
 	}
 
-	// set pending pixels for frame-scale frame limiting or if the frame
-	// limiter is inactive
-	if !tv.lmtr.active || !tv.lmtr.visualUpdates {
-		err := tv.renderSignals()
-		if err != nil {
-			return err
-		}
+	// set pending pixels
+	err = tv.renderSignals()
+	if err != nil {
+		return err
 	}
 
 	// process all pixel renderers
