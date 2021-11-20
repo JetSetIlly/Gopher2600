@@ -302,51 +302,59 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 			switch ev.Keysym.Scancode {
 			case sdl.SCANCODE_ESCAPE:
 				img.quit()
-
+			case sdl.SCANCODE_F7:
+				img.playScr.fpsOpen = !img.playScr.fpsOpen
 			case sdl.SCANCODE_TAB:
 				if !img.wm.selectROM.open {
 					img.wm.selectROM.setOpen(true)
 				}
+			default:
+				handled = false
+			}
+		}
 
-			case sdl.SCANCODE_GRAVE:
+		switch ev.Keysym.Scancode {
+		case sdl.SCANCODE_GRAVE:
+			if img.isPlaymode() {
 				img.emulation.SetFeature(emulation.ReqSetMode, emulation.ModeDebugger)
+			} else {
+				img.emulation.SetFeature(emulation.ReqSetMode, emulation.ModePlay)
+			}
 
-			case sdl.SCANCODE_F7:
-				img.playScr.fpsOpen = !img.playScr.fpsOpen
+		case sdl.SCANCODE_F9:
+			w := img.wm.windows[winTrackerID]
+			w.setOpen(!w.isOpen())
 
-			case sdl.SCANCODE_F9:
-				w := img.wm.windows[winTrackerID]
-				w.setOpen(!w.isOpen())
+		case sdl.SCANCODE_F10:
+			w := img.wm.windows[winPrefsID]
+			w.setOpen(!w.isOpen())
 
-			case sdl.SCANCODE_F10:
-				w := img.wm.windows[winPrefsID]
-				w.setOpen(!w.isOpen())
+		case sdl.SCANCODE_F11:
+			img.prefs.fullScreen.Set(!img.prefs.fullScreen.Get().(bool))
 
-			case sdl.SCANCODE_F11:
-				img.prefs.fullScreen.Set(!img.prefs.fullScreen.Get().(bool))
+		case sdl.SCANCODE_F12:
+			shift := ev.Keysym.Mod&sdl.KMOD_LSHIFT == sdl.KMOD_LSHIFT || ev.Keysym.Mod&sdl.KMOD_RSHIFT == sdl.KMOD_RSHIFT
+			ctrl := ev.Keysym.Mod&sdl.KMOD_LCTRL == sdl.KMOD_LCTRL || ev.Keysym.Mod&sdl.KMOD_RCTRL == sdl.KMOD_RCTRL
 
-			case sdl.SCANCODE_F12:
-				shift := ev.Keysym.Mod&sdl.KMOD_LSHIFT == sdl.KMOD_LSHIFT || ev.Keysym.Mod&sdl.KMOD_RSHIFT == sdl.KMOD_RSHIFT
-				ctrl := ev.Keysym.Mod&sdl.KMOD_LCTRL == sdl.KMOD_LCTRL || ev.Keysym.Mod&sdl.KMOD_RCTRL == sdl.KMOD_RCTRL
+			if ctrl && !shift {
+				img.glsl.shaders[playscrShaderID].(*playscrShader).scheduleScreenshot(modeTriple)
+			} else if shift && !ctrl {
+				img.glsl.shaders[playscrShaderID].(*playscrShader).scheduleScreenshot(modeDouble)
+			} else {
+				img.glsl.shaders[playscrShaderID].(*playscrShader).scheduleScreenshot(modeSingle)
+			}
 
-				if ctrl && !shift {
-					img.glsl.shaders[playscrShaderID].(*playscrShader).scheduleScreenshot(modeTriple)
-				} else if shift && !ctrl {
-					img.glsl.shaders[playscrShaderID].(*playscrShader).scheduleScreenshot(modeDouble)
-				} else {
-					img.glsl.shaders[playscrShaderID].(*playscrShader).scheduleScreenshot(modeSingle)
-				}
+			img.playScr.emulationEvent.set(emulation.EventScreenshot)
 
-				img.playScr.emulationEvent.set(emulation.EventScreenshot)
+		case sdl.SCANCODE_F14:
+			fallthrough
+		case sdl.SCANCODE_SCROLLLOCK:
+			img.setCapture(!img.isCaptured())
 
-			case sdl.SCANCODE_F14:
-				fallthrough
-			case sdl.SCANCODE_SCROLLLOCK:
-				img.setCapture(!img.isCaptured())
-
-			case sdl.SCANCODE_F15:
-				fallthrough
-			case sdl.SCANCODE_PAUSE:
+		case sdl.SCANCODE_F15:
+			fallthrough
+		case sdl.SCANCODE_PAUSE:
+			if img.isPlaymode() {
 				var err error
 				if img.emulation.State() == emulation.Paused {
 					err = img.emulation.SetFeature(emulation.ReqSetPause, false)
@@ -356,38 +364,16 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 				if err != nil {
 					logger.Logf("sdlimgui", err.Error())
 				}
-
-			default:
-				handled = false
-			}
-		} else {
-			switch ev.Keysym.Scancode {
-			case sdl.SCANCODE_GRAVE:
-				img.emulation.SetFeature(emulation.ReqSetMode, emulation.ModePlay)
-
-			case sdl.SCANCODE_F10:
-				w := img.wm.windows[winPrefsID]
-				w.setOpen(!w.isOpen())
-
-			case sdl.SCANCODE_F11:
-				img.prefs.fullScreen.Set(!img.prefs.fullScreen.Get().(bool))
-
-			case sdl.SCANCODE_F14:
-				fallthrough
-			case sdl.SCANCODE_SCROLLLOCK:
-				img.setCapture(!img.isCaptured())
-
-			case sdl.SCANCODE_F15:
-				fallthrough
-			case sdl.SCANCODE_PAUSE:
+			} else {
 				if img.emulation.State() == emulation.Paused {
 					img.term.pushCommand("RUN")
 				} else {
 					img.term.pushCommand("HALT")
 				}
-			default:
-				handled = false
 			}
+
+		default:
+			handled = false
 		}
 
 		if handled {

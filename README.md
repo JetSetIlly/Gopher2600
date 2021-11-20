@@ -369,7 +369,7 @@ The `Scroll Lock` key will also toggle mouse capture.
 In the debugger, there is a `Capture Mouse` button in the `Control` window. Or
 you can use the `Scroll Lock` key.
 
-## Panel
+### Panel
 
 The VCS panel is controlled through the function keys of the keyboard.
 
@@ -379,35 +379,29 @@ The VCS panel is controlled through the function keys of the keyboard.
 * `F4` Player 0 Pro Toggle
 * `F5` Player 1 Pro Toggle
 
-In playmode, the additional keys are available:
+## Emulation Hotkeys
 
-* `F7` Show FPS Indicator (also shows TV specification information)
+* `ESC` Quit
 * `F9` Show Audio Tracker Window
 * `F10` Show Preferences Window
 * `F11` Toggle Fullscreen
 * `F12` Save [Screenshot](#screenshots)
-
-In addition, the following keys behave the same in both playmode and the
-debugger.
-
-* `ESC` Quit
 * `Scroll Lock` Toggle mouse capture (`F14` on some keyboards)
 * `Pause` Pause/Resume emulation (`F15` on some keyboard)
-* `Key below the Escape key` Switch between playmode and debugger
 
-In playmode the `Tab` key will open up the ROM selector.
+In playmode only: 
+
+* `F7` FPS Indicator
+* `Tab` Opent the ROM selector
+
+The final hotkey switches between the playmode and the debugger. I'll describe
+this key as the `key below the Escape key`.
+
+What this key is differs from keyboard to keyboard - in the UK it is the `back
+tick` key while on US keyboards it is the `tilde` key. Regardless, the key was
+chosen because it the same key that is used by default in `Stella`.
 
 ## Debugger
-
-The debugger is available by pressing the `key under the Escape key` (the back
-tick key on UK keyboards or the tilde key on US keyboard). This key can also be
-used to switch back to playmode.
-
-Alternatively the command line `DEBUG` option can be used
-
-<p align=center>
-	<img src=".screenshots/debugger_halo2600.png" height="400" alt="gopher2600 debugging GUI"/>
-</p>
 
 The screenshot above shows a typical window layout of the debugger. The menu
 bar at the top provides more windows, some of which are specific to certain
