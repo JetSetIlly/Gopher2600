@@ -216,6 +216,18 @@ type Debugger struct {
 	// we sometimes think of the halt condition as being paused as in Emulation.Paused
 	haltImmediately bool
 
+	// in very specific circumstances it is necessary to step out of debugger
+	// loop if it's in the middle of a video step. this happens very rarely but
+	// is necessary in order to *feel* natural to the user - without it it can
+	// sometimes require an extra STEP instruction to continue, which can be
+	// confusing
+	//
+	// it can be thought of as a lightweight unwind loop function
+	//
+	// it is currently used only to implement stepping (in instruction quantum)
+	// when the emulation state is "inside" the WSYNC
+	stepOutOfVideoStepInputLoop bool
+
 	// some operations require that the input loop be restarted to make sure
 	// continued operation is not inside a video cycle loop
 	//

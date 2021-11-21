@@ -278,6 +278,18 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		switch mode {
 		case "":
 			// continue with current quantum state
+
+			// if quantum is instruction and CPU is not RDY then STEP is best
+			// implemented as TRAP RDY
+			if dbg.stepQuantum == QuantumInstruction && !dbg.vcs.CPU.RdyFlg {
+				_ = dbg.halting.volatileTraps.parseCommand(commandline.TokeniseInput("RDY"))
+				dbg.runUntilHalt = true
+
+				// when the RDY flag changes the input loop will think it's
+				// inside a video step. we need to force the loop to return
+				// to the non-video step loop
+				dbg.stepOutOfVideoStepInputLoop = true
+			}
 		case "INSTRUCTION":
 			dbg.stepQuantum = QuantumInstruction
 		case "CLOCK":

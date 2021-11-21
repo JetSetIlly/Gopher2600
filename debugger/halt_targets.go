@@ -136,6 +136,16 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (*target, error) {
 				instructionBoundary: true,
 			}
 
+		case "RDY":
+			trg = &target{
+				label: "RDY",
+				value: func() targetValue {
+					return bool(dbg.vcs.CPU.RdyFlg)
+				},
+				format:              "%v",
+				instructionBoundary: true,
+			}
+
 		// tv state
 		case "FRAMENUM", "FRAME", "FR":
 			trg = &target{

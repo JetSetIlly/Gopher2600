@@ -100,7 +100,9 @@ func (dbg *Debugger) catchupLoop(inputter terminal.Input) error {
 		dbg.lastBank = dbg.vcs.Mem.Cart.GetBank(dbg.vcs.CPU.PC.Address())
 
 		// coords of CPU instruction before calling vcs.Step()
-		dbg.lastCPUboundary = dbg.vcs.TV.GetCoords()
+		if dbg.vcs.CPU.RdyFlg {
+			dbg.lastCPUboundary = dbg.vcs.TV.GetCoords()
+		}
 
 		err := dbg.vcs.Step(callback)
 		if err != nil {
@@ -296,6 +298,18 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, isVideoStep bool) error 
 			// HALT command
 			dbg.haltImmediately = false
 
+			// we've been instructed to abandon this inputLoop() if we're in a
+			// video step. we forget about the instruction immediately but only
+			// return if we really are in a video step
+			if dbg.stepOutOfVideoStepInputLoop {
+				dbg.stepOutOfVideoStepInputLoop = false
+				if isVideoStep {
+					return nil
+				} else {
+					logger.Log("debugger", "asked to 'step out of video step input loop' inappropriately")
+				}
+			}
+
 			// read input from terminal inputter and parse/run commands
 			err = dbg.termRead(inputter)
 			if err != nil {
@@ -380,6 +394,16 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, isVideoStep bool) error 
 				return err
 			}
 
+			// skip over WSYNC (CPU RDY flag is false) only if we're in instruction quantum
+			if dbg.stepQuantum == QuantumInstruction {
+				for !dbg.vcs.CPU.RdyFlg {
+					err = dbg.step(inputter, false)
+					if err != nil {
+						return err
+					}
+				}
+			}
+
 			// check exit video loop
 			if dbg.unwindLoopRestart != nil {
 				return nil
@@ -405,8 +429,8 @@ func (dbg *Debugger) step(inputter terminal.Input, catchup bool) error {
 		}
 		dbg.counter.Step(1, dbg.lastBank)
 
-		// for video quantum we need to run any OnStep commands before
-		// starting a new inputLoop
+		// process commandOnStep for clock quantum (equivalent for instruction
+		// quantum is the main body of Debugger.step() below)
 		if dbg.stepQuantum == QuantumClock && dbg.commandOnStep != nil {
 			// we don't do this if we're in catchup mode
 			if !catchup {
@@ -436,7 +460,9 @@ func (dbg *Debugger) step(inputter terminal.Input, catchup bool) error {
 	dbg.lastBank = dbg.vcs.Mem.Cart.GetBank(dbg.vcs.CPU.PC.Address())
 
 	// coords of CPU instruction before calling vcs.Step()
-	dbg.lastCPUboundary = dbg.vcs.TV.GetCoords()
+	if dbg.vcs.CPU.RdyFlg {
+		dbg.lastCPUboundary = dbg.vcs.TV.GetCoords()
+	}
 
 	// not using the err variable because we'll clobber it before we
 	// get to check the result of VCS.Step()
@@ -483,7 +509,9 @@ func (dbg *Debugger) step(inputter terminal.Input, catchup bool) error {
 			dbg.Rewind.RecordState()
 		}
 
-		if dbg.stepQuantum != QuantumClock {
+		// process commandOnStep for instruction quantum (equivalent for clock
+		// quantum is the vcs.Step() callback above)
+		if dbg.stepQuantum == QuantumInstruction && dbg.vcs.CPU.RdyFlg {
 			if dbg.commandOnStep != nil {
 				err := dbg.processTokensList(dbg.commandOnStep)
 				if err != nil {
