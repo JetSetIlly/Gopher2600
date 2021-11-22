@@ -1014,3 +1014,10 @@ Some ideas for the fragment shader taken from:
 * https://www.shadertoy.com/view/ltB3zD
 * https://github.com/mattiasgustavsson/crtview
 
+## Personal Thanks and Acknowledgements
+
+At various times during the development of this project, the following people
+have provided advice and encouragement: Andrew Rice, David Kelly. And those
+from AtariAge who have provided testing, advice and most importantly,
+encouragement: Al Nafuur; Andrew Davie; Rob Bairos; MrSQL; Thomas Jenztsch;
+DirtyHairy; Spiceware; ZeroPageHomebrew; Karl G. Thank-you.
