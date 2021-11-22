@@ -401,6 +401,8 @@ chosen because it the same key that is used by default in `Stella`.
 
 ## Debugger
 
+<img src=".screenshots/debugger_halo2600.png" alt="debugger window"/>
+
 The screenshot above shows a typical window layout of the debugger. The menu
 bar at the top provides more windows, some of which are specific to certain
 cartridge mappers. For example, for cartridges with a `ARM7TDMI` an ARM
