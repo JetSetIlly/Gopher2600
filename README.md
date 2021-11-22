@@ -399,7 +399,8 @@ The final hotkey switches between the playmode and the debugger. I'll describe
 this key as the `key below the Escape key`.
 
 What this key is differs from keyboard to keyboard - in the UK it is the `back
-tick` key while on US keyboards it is the `tilde` key. Regardless, the key was
+tick` key while on US keyboards it is the `tilde` key; and on the standard
+German T1 keyboard it is the degree/circumflex key. Regardless, the key was
 chosen because it the same key that is used by default in `Stella`.
 
 ## Debugger
@@ -562,7 +563,9 @@ is `.config/gopher2600`.
 For MacOS the directory for release executables is `~/Library/Application Support/gopher2600`
 
 For Windows, a `gopher2600` will be placed somewhere in the user's `%AppData%`
-folder, either in the `Local` or `Roaming` sub-folder.
+folder, either in the `Local` or `Roaming` sub-folder. For example:
+
+	C:\Users\USER_NAME\AppData\Roaming\gopher2600
 
 In all instances, the directory, sub-directory and files will be created automatically
 as required.
