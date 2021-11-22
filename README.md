@@ -1,8 +1,9 @@
+<img align="left" src=".resources/logo.png" width="300" alt="gopher2600 logo"/>
+
 # Gopher2600
 
-`Gopher2600` is an emulator for the Atari 2600 written in the Go language. The accuracy of the emulation is very high and the 6507, TIA and RIOT chips appear to operate without bugs. Certainly, there are no known outstanding issues with any of the emulated chips.
-
-It compare favourably with `Stella` except for [speed](#performance) and final project polish. 
+`Gopher2600` is an emulator for the Atari 2600 written in the Go language. The accuracy of the emulation is very high and the 6507, TIA and RIOT chips appear to operate without bugs. Certainly, there are no known outstanding issues with any of the emulated chips. It compares favourably with `Stella` except for [speed](#performance) and final project polish. 
+<br clear="left">
 
 The key features of the emulator:
 
@@ -27,6 +28,8 @@ The graphical [debugger](#debugger) includexe:
 * Line [terminal](#debugger-terminal) interface for harder to reach parts of the emulation
 * Script recording and playback
 * [Regression Database](#regression-database)
+
+Logo is based on [Gopherize.me](https://github.com/matryer/gopherize.me) which itself is based on the work of [Ashley McNamara](https://github.com/ashleymcnamara/gophers) and is [licensed under the Creative Commons](https://github.com/ashleymcnamara/gophers/blob/master/LICENSE).
 
 ## Example Screenshots
 
