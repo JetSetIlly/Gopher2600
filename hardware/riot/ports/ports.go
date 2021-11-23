@@ -64,7 +64,7 @@ type Ports struct {
 	// the swcha field is a copy of the SWCHA register as it was written by the
 	// CPU. it is not necessarily the value of SWCHA as written by the RIOT.
 	//
-	// we need this so that chancing the SWACNT (by the CPU) will cause the
+	// we need this so that changing the SWACNT (by the CPU) will cause the
 	// correct value to be written to be written to the SWCHA register.
 	//
 	// we can think of these as the input lines that are used in conjunction

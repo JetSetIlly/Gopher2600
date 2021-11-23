@@ -85,7 +85,7 @@ type Debugger struct {
 	// GUI, terminal and controllers
 	gui         gui.GUI
 	term        terminal.Terminal
-	controllers userinput.Controllers
+	controllers *userinput.Controllers
 
 	// when reading input from the terminal there are other events
 	// that need to be monitored
@@ -292,6 +292,10 @@ func NewDebugger(create CreateUserInterface, spec string, useSavekey bool, fpsCa
 	if err != nil {
 		return nil, curated.Errorf("debugger: %v", err)
 	}
+
+	// create userinput/controllers handler
+	dbg.controllers = userinput.NewControllers()
+	dbg.controllers.AddInputHandler(dbg.vcs)
 
 	// replace player 1 port with savekey
 	if useSavekey {

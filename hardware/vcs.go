@@ -24,6 +24,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge"
 	"github.com/jetsetilly/gopher2600/hardware/preferences"
 	"github.com/jetsetilly/gopher2600/hardware/riot"
+	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/controllers"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/panel"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
@@ -223,4 +224,25 @@ func (vcs *VCS) DetatchEmulationExtras() {
 	vcs.RIOT.Ports.AttachEventRecorder(nil)
 	vcs.RIOT.Ports.AttachPlayback(nil)
 	vcs.RIOT.Ports.AttachPlugMonitor(nil)
+}
+
+// HandleEvent implements userinput.HandleInput interface.
+//
+// A note about the userinput.HandleInput interface:
+//
+// We don't want the interface to be implemented by the Ports type directly.
+// This is because a Ports instance will grow stale during a rewind event.
+// However, we want the Controllers type to always refer to the current Ports
+// implementation. Defining and implementing the interface like this means that
+// the Controllers are always referring to the currently plumbed Ports
+// instance.
+func (vcs *VCS) ForwardEventToRIOT(id plugging.PortID, ev ports.Event, d ports.EventData) (bool, error) {
+	return vcs.RIOT.Ports.HandleEvent(id, ev, d)
+}
+
+// PeripheralID implements userinput.HandleInput interface.
+//
+// * See comment to ForwardEventToRIOT() above.
+func (vcs *VCS) PeripheralIDFromRIOT(id plugging.PortID) plugging.PeripheralID {
+	return vcs.RIOT.Ports.PeripheralID(id)
 }

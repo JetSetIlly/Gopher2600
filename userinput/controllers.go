@@ -22,239 +22,295 @@ import (
 
 // Controllers keeps track of hardware userinput options.
 type Controllers struct {
+	inputHandlers []HandleInput
+
 	trigger GamepadTrigger
 	paddle  float32
 }
 
-func (c *Controllers) mouseMotion(ev EventMouseMotion, handle HandleInput) (bool, error) {
-	return handle.HandleEvent(plugging.PortLeftPlayer, ports.PaddleSet, ev.X)
+// Controllers is the preferred method of initialisation for the Controllers type.
+func NewControllers() *Controllers {
+	return &Controllers{
+		inputHandlers: make([]HandleInput, 0),
+	}
 }
 
-func (c *Controllers) mouseButton(ev EventMouseButton, handle HandleInput) (bool, error) {
+// handleEvents sends the port/event information to each HandleInput
+// implementation.
+//
+// returns True if event has been handled/recognised by at least one of the
+// registered input handlers.
+func (c *Controllers) handleEvents(id plugging.PortID, ev ports.Event, d ports.EventData) (bool, error) {
+	var handled bool
+	for _, h := range c.inputHandlers {
+		v, err := h.ForwardEventToRIOT(id, ev, d)
+		if err != nil {
+			return handled, err
+		}
+		handled = handled || v
+	}
+	return handled, nil
+}
+
+func (c *Controllers) mouseMotion(ev EventMouseMotion) (bool, error) {
+	return c.handleEvents(plugging.PortLeftPlayer, ports.PaddleSet, ev.X)
+}
+
+func (c *Controllers) mouseButton(ev EventMouseButton) (bool, error) {
 	switch ev.Button {
 	case MouseButtonLeft:
 		if ev.Down {
-			return handle.HandleEvent(plugging.PortLeftPlayer, ports.Fire, true)
+			return c.handleEvents(plugging.PortLeftPlayer, ports.Fire, true)
 		} else {
-			return handle.HandleEvent(plugging.PortLeftPlayer, ports.Fire, false)
+			return c.handleEvents(plugging.PortLeftPlayer, ports.Fire, false)
 		}
 	}
 
 	return false, nil
 }
 
-func (c *Controllers) keyboard(ev EventKeyboard, handle HandleInput) (bool, error) {
+// differentiateKeyboard is called by the keyboard() function in order to
+// disambiguate physical key presses and sending the correct event depending on
+// the attached peripheral.
+//
+// like the handleEvent() function if sends the port/event information to each
+// HandleInput implemtation, when appropriate.
+//
+// returns True if event has been handled/recognised by at least one of the
+// registered input handlers.
+func (c *Controllers) differentiateKeyboard(key string, down bool) (bool, error) {
+	var handled bool
+
+	var ev ports.Event
+	var d ports.EventData
+
+	var keyEv ports.Event
+	var stickEvData ports.EventData
+	var fireEvData bool
+	if down {
+		keyEv = ports.KeypadDown
+		stickEvData = ports.DataStickTrue
+		fireEvData = true
+	} else {
+		keyEv = ports.KeypadUp
+		stickEvData = ports.DataStickFalse
+		fireEvData = false
+	}
+
+	for _, h := range c.inputHandlers {
+		switch key {
+		case "Y":
+			if h.PeripheralIDFromRIOT(plugging.PortRightPlayer) == plugging.PeriphKeypad {
+				ev = keyEv
+				d = '6'
+			} else {
+				ev = ports.Up
+				d = stickEvData
+			}
+		case "F":
+			if h.PeripheralIDFromRIOT(plugging.PortRightPlayer) == plugging.PeriphKeypad {
+				ev = keyEv
+				d = '7'
+			} else {
+				ev = ports.Fire
+				d = fireEvData
+			}
+		case "G":
+			if h.PeripheralIDFromRIOT(plugging.PortRightPlayer) == plugging.PeriphKeypad {
+				ev = keyEv
+				d = '8'
+			} else {
+				ev = ports.Left
+				d = stickEvData
+			}
+		case "H":
+			if h.PeripheralIDFromRIOT(plugging.PortRightPlayer) == plugging.PeriphKeypad {
+				ev = keyEv
+				d = '9'
+			} else {
+				ev = ports.Down
+				d = stickEvData
+			}
+		default:
+		}
+
+		// all differentiated keyboard events go to the right player port
+		v, err := h.ForwardEventToRIOT(plugging.PortRightPlayer, ev, d)
+		if err != nil {
+			return handled, err
+		}
+		handled = handled || v
+	}
+
+	return handled, nil
+}
+
+func (c *Controllers) keyboard(ev EventKeyboard) (bool, error) {
 	if ev.Down && ev.Mod == KeyModNone {
 		switch ev.Key {
 		// panel
 		case "F1":
-			return handle.HandleEvent(plugging.PortPanel, ports.PanelSelect, true)
+			return c.handleEvents(plugging.PortPanel, ports.PanelSelect, true)
 		case "F2":
-			return handle.HandleEvent(plugging.PortPanel, ports.PanelReset, true)
+			return c.handleEvents(plugging.PortPanel, ports.PanelReset, true)
 		case "F3":
-			return handle.HandleEvent(plugging.PortPanel, ports.PanelToggleColor, nil)
+			return c.handleEvents(plugging.PortPanel, ports.PanelToggleColor, nil)
 		case "F4":
-			return handle.HandleEvent(plugging.PortPanel, ports.PanelTogglePlayer0Pro, nil)
+			return c.handleEvents(plugging.PortPanel, ports.PanelTogglePlayer0Pro, nil)
 		case "F5":
-			return handle.HandleEvent(plugging.PortPanel, ports.PanelTogglePlayer1Pro, nil)
+			return c.handleEvents(plugging.PortPanel, ports.PanelTogglePlayer1Pro, nil)
 
 		// joystick (left player)
 		case "Left":
-			return handle.HandleEvent(plugging.PortLeftPlayer, ports.Left, ports.DataStickTrue)
+			return c.handleEvents(plugging.PortLeftPlayer, ports.Left, ports.DataStickTrue)
 		case "Right":
-			return handle.HandleEvent(plugging.PortLeftPlayer, ports.Right, ports.DataStickTrue)
+			return c.handleEvents(plugging.PortLeftPlayer, ports.Right, ports.DataStickTrue)
 		case "Up":
-			return handle.HandleEvent(plugging.PortLeftPlayer, ports.Up, ports.DataStickTrue)
+			return c.handleEvents(plugging.PortLeftPlayer, ports.Up, ports.DataStickTrue)
 		case "Down":
-			return handle.HandleEvent(plugging.PortLeftPlayer, ports.Down, ports.DataStickTrue)
+			return c.handleEvents(plugging.PortLeftPlayer, ports.Down, ports.DataStickTrue)
 		case "Space":
-			return handle.HandleEvent(plugging.PortLeftPlayer, ports.Fire, true)
+			return c.handleEvents(plugging.PortLeftPlayer, ports.Fire, true)
 
 		// joystick (right player)
 		// * keypad and joystick share some keys (see below for other inputs)
 		case "J":
-			return handle.HandleEvent(plugging.PortRightPlayer, ports.Right, ports.DataStickTrue)
+			return c.handleEvents(plugging.PortRightPlayer, ports.Right, ports.DataStickTrue)
 
 		// keypad (left player)
 		case "1", "2", "3":
-			return handle.HandleEvent(plugging.PortLeftPlayer, ports.KeypadDown, rune(ev.Key[0]))
+			return c.handleEvents(plugging.PortLeftPlayer, ports.KeypadDown, rune(ev.Key[0]))
 		case "Q":
-			return handle.HandleEvent(plugging.PortLeftPlayer, ports.KeypadDown, '4')
+			return c.handleEvents(plugging.PortLeftPlayer, ports.KeypadDown, '4')
 		case "W":
-			return handle.HandleEvent(plugging.PortLeftPlayer, ports.KeypadDown, '5')
+			return c.handleEvents(plugging.PortLeftPlayer, ports.KeypadDown, '5')
 		case "E":
-			return handle.HandleEvent(plugging.PortLeftPlayer, ports.KeypadDown, '6')
+			return c.handleEvents(plugging.PortLeftPlayer, ports.KeypadDown, '6')
 		case "A":
-			return handle.HandleEvent(plugging.PortLeftPlayer, ports.KeypadDown, '7')
+			return c.handleEvents(plugging.PortLeftPlayer, ports.KeypadDown, '7')
 		case "S":
-			return handle.HandleEvent(plugging.PortLeftPlayer, ports.KeypadDown, '8')
+			return c.handleEvents(plugging.PortLeftPlayer, ports.KeypadDown, '8')
 		case "D":
-			return handle.HandleEvent(plugging.PortLeftPlayer, ports.KeypadDown, '9')
+			return c.handleEvents(plugging.PortLeftPlayer, ports.KeypadDown, '9')
 		case "Z":
-			return handle.HandleEvent(plugging.PortLeftPlayer, ports.KeypadDown, '*')
+			return c.handleEvents(plugging.PortLeftPlayer, ports.KeypadDown, '*')
 		case "X":
-			return handle.HandleEvent(plugging.PortLeftPlayer, ports.KeypadDown, '0')
+			return c.handleEvents(plugging.PortLeftPlayer, ports.KeypadDown, '0')
 		case "C":
-			return handle.HandleEvent(plugging.PortLeftPlayer, ports.KeypadDown, '#')
+			return c.handleEvents(plugging.PortLeftPlayer, ports.KeypadDown, '#')
 
 		// keypad (right player)
 		// * keypad and joystick share some keys (see below for other inputs)
 		case "4":
-			return handle.HandleEvent(plugging.PortRightPlayer, ports.KeypadDown, '1')
+			return c.handleEvents(plugging.PortRightPlayer, ports.KeypadDown, '1')
 		case "5":
-			return handle.HandleEvent(plugging.PortRightPlayer, ports.KeypadDown, '2')
+			return c.handleEvents(plugging.PortRightPlayer, ports.KeypadDown, '2')
 		case "6":
-			return handle.HandleEvent(plugging.PortRightPlayer, ports.KeypadDown, '3')
+			return c.handleEvents(plugging.PortRightPlayer, ports.KeypadDown, '3')
 		case "R":
-			return handle.HandleEvent(plugging.PortRightPlayer, ports.KeypadDown, '4')
+			return c.handleEvents(plugging.PortRightPlayer, ports.KeypadDown, '4')
 		case "T":
-			return handle.HandleEvent(plugging.PortRightPlayer, ports.KeypadDown, '5')
+			return c.handleEvents(plugging.PortRightPlayer, ports.KeypadDown, '5')
 		case "V":
-			return handle.HandleEvent(plugging.PortRightPlayer, ports.KeypadDown, '*')
+			return c.handleEvents(plugging.PortRightPlayer, ports.KeypadDown, '*')
 		case "B":
-			return handle.HandleEvent(plugging.PortRightPlayer, ports.KeypadDown, '0')
+			return c.handleEvents(plugging.PortRightPlayer, ports.KeypadDown, '0')
 		case "N":
-			return handle.HandleEvent(plugging.PortRightPlayer, ports.KeypadDown, '#')
+			return c.handleEvents(plugging.PortRightPlayer, ports.KeypadDown, '#')
 
-		// keypad (right player) *OR* joystick (right player)
-		// * keypad and joystick share some keys (see above for other inputs)
-		case "Y":
-			if handle.PeripheralID(plugging.PortRightPlayer) == plugging.PeriphKeypad {
-				return handle.HandleEvent(plugging.PortRightPlayer, ports.KeypadDown, '6')
-			} else {
-				return handle.HandleEvent(plugging.PortRightPlayer, ports.Up, ports.DataStickTrue)
-			}
-		case "F":
-			if handle.PeripheralID(plugging.PortRightPlayer) == plugging.PeriphKeypad {
-				return handle.HandleEvent(plugging.PortRightPlayer, ports.KeypadDown, '7')
-			} else {
-				return handle.HandleEvent(plugging.PortRightPlayer, ports.Fire, true)
-			}
-		case "G":
-			if handle.PeripheralID(plugging.PortRightPlayer) == plugging.PeriphKeypad {
-				return handle.HandleEvent(plugging.PortRightPlayer, ports.KeypadDown, '8')
-			} else {
-				return handle.HandleEvent(plugging.PortRightPlayer, ports.Left, ports.DataStickTrue)
-			}
-		case "H":
-			if handle.PeripheralID(plugging.PortRightPlayer) == plugging.PeriphKeypad {
-				return handle.HandleEvent(plugging.PortRightPlayer, ports.KeypadDown, '9')
-			} else {
-				return handle.HandleEvent(plugging.PortRightPlayer, ports.Down, ports.DataStickTrue)
-			}
 		default:
+			// keypad (right player) *OR* joystick (right player)
+			// * keypad and joystick share some keys (see above for other inputs)
+			return c.differentiateKeyboard(ev.Key, true)
 		}
 	} else {
 		switch ev.Key {
 		// panel
 		case "F1":
-			return handle.HandleEvent(plugging.PortPanel, ports.PanelSelect, false)
+			return c.handleEvents(plugging.PortPanel, ports.PanelSelect, false)
 		case "F2":
-			return handle.HandleEvent(plugging.PortPanel, ports.PanelReset, false)
+			return c.handleEvents(plugging.PortPanel, ports.PanelReset, false)
 
 		// josytick (left player)
 		case "Left":
-			return handle.HandleEvent(plugging.PortLeftPlayer, ports.Left, ports.DataStickFalse)
+			return c.handleEvents(plugging.PortLeftPlayer, ports.Left, ports.DataStickFalse)
 		case "Right":
-			return handle.HandleEvent(plugging.PortLeftPlayer, ports.Right, ports.DataStickFalse)
+			return c.handleEvents(plugging.PortLeftPlayer, ports.Right, ports.DataStickFalse)
 		case "Up":
-			return handle.HandleEvent(plugging.PortLeftPlayer, ports.Up, ports.DataStickFalse)
+			return c.handleEvents(plugging.PortLeftPlayer, ports.Up, ports.DataStickFalse)
 		case "Down":
-			return handle.HandleEvent(plugging.PortLeftPlayer, ports.Down, ports.DataStickFalse)
+			return c.handleEvents(plugging.PortLeftPlayer, ports.Down, ports.DataStickFalse)
 		case "Space":
-			return handle.HandleEvent(plugging.PortLeftPlayer, ports.Fire, false)
+			return c.handleEvents(plugging.PortLeftPlayer, ports.Fire, false)
 
 		// joystick (right player)
 		// * keypad and joystick share some keys (see below for other inputs)
 		case "J":
-			return handle.HandleEvent(plugging.PortRightPlayer, ports.Right, ports.DataStickFalse)
+			return c.handleEvents(plugging.PortRightPlayer, ports.Right, ports.DataStickFalse)
 
 		// keyboard (left player)
 		case "1", "2", "3", "Q", "W", "E", "A", "S", "D", "Z", "X", "C":
-			return handle.HandleEvent(plugging.PortLeftPlayer, ports.KeypadUp, nil)
+			return c.handleEvents(plugging.PortLeftPlayer, ports.KeypadUp, nil)
 
 		// keyboard (right player)
 		// * keypad and joystick share some keys (see below for other inputs)
 		case "4", "5", "6", "R", "T", "V", "B", "N":
-			return handle.HandleEvent(plugging.PortRightPlayer, ports.KeypadUp, nil)
+			return c.handleEvents(plugging.PortRightPlayer, ports.KeypadUp, nil)
 
-		// keypad (right player) *OR* joystick (right player)
-		// * keypad and joystick share some keys (see above for other inputs)
-		case "Y":
-			if handle.PeripheralID(plugging.PortRightPlayer) == plugging.PeriphKeypad {
-				return handle.HandleEvent(plugging.PortRightPlayer, ports.KeypadUp, nil)
-			} else {
-				return handle.HandleEvent(plugging.PortRightPlayer, ports.Up, ports.DataStickFalse)
-			}
-		case "F":
-			if handle.PeripheralID(plugging.PortRightPlayer) == plugging.PeriphKeypad {
-				return handle.HandleEvent(plugging.PortRightPlayer, ports.KeypadUp, nil)
-			} else {
-				return handle.HandleEvent(plugging.PortRightPlayer, ports.Fire, false)
-			}
-		case "G":
-			if handle.PeripheralID(plugging.PortRightPlayer) == plugging.PeriphKeypad {
-				return handle.HandleEvent(plugging.PortRightPlayer, ports.KeypadUp, nil)
-			} else {
-				return handle.HandleEvent(plugging.PortRightPlayer, ports.Left, ports.DataStickFalse)
-			}
-		case "H":
-			if handle.PeripheralID(plugging.PortRightPlayer) == plugging.PeriphKeypad {
-				return handle.HandleEvent(plugging.PortRightPlayer, ports.KeypadUp, nil)
-			} else {
-				return handle.HandleEvent(plugging.PortRightPlayer, ports.Down, ports.DataStickFalse)
-			}
 		default:
+			// keypad (right player) *OR* joystick (right player)
+			// * keypad and joystick share some keys (see above for other inputs)
+			return c.differentiateKeyboard(ev.Key, false)
 		}
 	}
 
 	return false, nil
 }
 
-func (c *Controllers) gamepadDPad(ev EventGamepadDPad, handle HandleInput) (bool, error) {
+func (c *Controllers) gamepadDPad(ev EventGamepadDPad) (bool, error) {
 	switch ev.Direction {
 	case DPadCentre:
-		return handle.HandleEvent(ev.ID, ports.Centre, nil)
+		return c.handleEvents(ev.ID, ports.Centre, nil)
 
 	case DPadUp:
-		return handle.HandleEvent(ev.ID, ports.Up, ports.DataStickSet)
+		return c.handleEvents(ev.ID, ports.Up, ports.DataStickSet)
 
 	case DPadDown:
-		return handle.HandleEvent(ev.ID, ports.Down, ports.DataStickSet)
+		return c.handleEvents(ev.ID, ports.Down, ports.DataStickSet)
 
 	case DPadLeft:
-		return handle.HandleEvent(ev.ID, ports.Left, ports.DataStickSet)
+		return c.handleEvents(ev.ID, ports.Left, ports.DataStickSet)
 
 	case DPadRight:
-		return handle.HandleEvent(ev.ID, ports.Right, ports.DataStickSet)
+		return c.handleEvents(ev.ID, ports.Right, ports.DataStickSet)
 
 	case DPadLeftUp:
-		return handle.HandleEvent(ev.ID, ports.LeftUp, ports.DataStickSet)
+		return c.handleEvents(ev.ID, ports.LeftUp, ports.DataStickSet)
 
 	case DPadLeftDown:
-		return handle.HandleEvent(ev.ID, ports.LeftDown, ports.DataStickSet)
+		return c.handleEvents(ev.ID, ports.LeftDown, ports.DataStickSet)
 
 	case DPadRightUp:
-		return handle.HandleEvent(ev.ID, ports.RightUp, ports.DataStickSet)
+		return c.handleEvents(ev.ID, ports.RightUp, ports.DataStickSet)
 
 	case DPadRightDown:
-		return handle.HandleEvent(ev.ID, ports.RightDown, ports.DataStickSet)
+		return c.handleEvents(ev.ID, ports.RightDown, ports.DataStickSet)
 	}
 
 	return false, nil
 }
 
-func (c *Controllers) gamepadButton(ev EventGamepadButton, handle HandleInput) (bool, error) {
+func (c *Controllers) gamepadButton(ev EventGamepadButton) (bool, error) {
 	switch ev.Button {
 	case GamepadButtonStart:
-		return handle.HandleEvent(plugging.PortPanel, ports.PanelReset, ev.Down)
+		return c.handleEvents(plugging.PortPanel, ports.PanelReset, ev.Down)
 	case GamepadButtonA:
-		return handle.HandleEvent(ev.ID, ports.Fire, ev.Down)
+		return c.handleEvents(ev.ID, ports.Fire, ev.Down)
 	}
 	return false, nil
 }
 
-func (c *Controllers) gamepadThumbstick(ev EventGamepadThumbstick, handle HandleInput) (bool, error) {
+func (c *Controllers) gamepadThumbstick(ev EventGamepadThumbstick) (bool, error) {
 	if ev.Thumbstick != GamepadThumbstickLeft {
 		return false, nil
 	}
@@ -264,22 +320,22 @@ func (c *Controllers) gamepadThumbstick(ev EventGamepadThumbstick, handle Handle
 
 	if ev.Horiz > deadzone {
 		if ev.Vert > deadzone {
-			return handle.HandleEvent(ev.ID, ports.RightDown, ports.DataStickSet)
+			return c.handleEvents(ev.ID, ports.RightDown, ports.DataStickSet)
 		} else if ev.Vert < -deadzone {
-			return handle.HandleEvent(ev.ID, ports.RightUp, ports.DataStickSet)
+			return c.handleEvents(ev.ID, ports.RightUp, ports.DataStickSet)
 		}
-		return handle.HandleEvent(ev.ID, ports.Right, ports.DataStickSet)
+		return c.handleEvents(ev.ID, ports.Right, ports.DataStickSet)
 	} else if ev.Horiz < -deadzone {
 		if ev.Vert > deadzone {
-			return handle.HandleEvent(ev.ID, ports.LeftDown, ports.DataStickSet)
+			return c.handleEvents(ev.ID, ports.LeftDown, ports.DataStickSet)
 		} else if ev.Vert < -deadzone {
-			return handle.HandleEvent(ev.ID, ports.LeftUp, ports.DataStickSet)
+			return c.handleEvents(ev.ID, ports.LeftUp, ports.DataStickSet)
 		}
-		return handle.HandleEvent(ev.ID, ports.Left, ports.DataStickSet)
+		return c.handleEvents(ev.ID, ports.Left, ports.DataStickSet)
 	} else if ev.Vert > deadzone {
-		return handle.HandleEvent(ev.ID, ports.Down, ports.DataStickSet)
+		return c.handleEvents(ev.ID, ports.Down, ports.DataStickSet)
 	} else if ev.Vert < -deadzone {
-		return handle.HandleEvent(ev.ID, ports.Up, ports.DataStickSet)
+		return c.handleEvents(ev.ID, ports.Up, ports.DataStickSet)
 	}
 
 	// never report that the centre event has been handled by the emulated
@@ -288,11 +344,11 @@ func (c *Controllers) gamepadThumbstick(ev EventGamepadThumbstick, handle Handle
 	// for example, it prevents deadzone signals causing the emulation to unpause
 	//
 	// this might be wrong behaviour in some situations.
-	_, err := handle.HandleEvent(ev.ID, ports.Centre, nil)
+	_, err := c.handleEvents(ev.ID, ports.Centre, nil)
 	return false, err
 }
 
-func (c *Controllers) gamepadTriggers(ev EventGamepadTrigger, handle HandleInput) (bool, error) {
+func (c *Controllers) gamepadTriggers(ev EventGamepadTrigger) (bool, error) {
 	if c.trigger != GamepadTriggerNone && c.trigger != ev.Trigger {
 		return false, nil
 	}
@@ -342,30 +398,43 @@ func (c *Controllers) gamepadTriggers(ev EventGamepadTrigger, handle HandleInput
 	}
 
 	c.paddle = n
-	return handle.HandleEvent(ev.ID, ports.PaddleSet, c.paddle)
+	return c.handleEvents(ev.ID, ports.PaddleSet, c.paddle)
 }
 
 // HandleUserInput deciphers the Event and forwards the input to the Atari 2600
-// player ports. Returns True if event should cause emulation to quit; in
-// addition to any error.
-func (c *Controllers) HandleUserInput(ev Event, handle HandleInput) (bool, error) {
+// player ports.
+//
+// Returns True if event has been handled/recognised by at least one of the
+// registered input handlers.
+func (c *Controllers) HandleUserInput(ev Event) (bool, error) {
 	switch ev := ev.(type) {
 	case EventKeyboard:
-		return c.keyboard(ev, handle)
+		return c.keyboard(ev)
 	case EventMouseButton:
-		return c.mouseButton(ev, handle)
+		return c.mouseButton(ev)
 	case EventMouseMotion:
-		return c.mouseMotion(ev, handle)
+		return c.mouseMotion(ev)
 	case EventGamepadDPad:
-		return c.gamepadDPad(ev, handle)
+		return c.gamepadDPad(ev)
 	case EventGamepadButton:
-		return c.gamepadButton(ev, handle)
+		return c.gamepadButton(ev)
 	case EventGamepadThumbstick:
-		return c.gamepadThumbstick(ev, handle)
+		return c.gamepadThumbstick(ev)
 	case EventGamepadTrigger:
-		return c.gamepadTriggers(ev, handle)
+		return c.gamepadTriggers(ev)
 	default:
 	}
 
 	return false, nil
+}
+
+// Clear current list of input handlers.
+func (c *Controllers) ClearInputHandlers() {
+	c.inputHandlers = c.inputHandlers[0:]
+}
+
+// Add HandleInput implementation to list of input handlers. Each input handler
+// will receive the ports.Event and ports.EventData.
+func (c *Controllers) AddInputHandler(h HandleInput) {
+	c.inputHandlers = append(c.inputHandlers, h)
 }

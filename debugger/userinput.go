@@ -124,7 +124,7 @@ func (dbg *Debugger) userInputHandler(ev userinput.Event) error {
 	}
 
 	// pass to VCS controller emulation via the userinput package
-	handled, err := dbg.controllers.HandleUserInput(ev, dbg.vcs.RIOT.Ports)
+	handled, err := dbg.controllers.HandleUserInput(ev)
 	if err != nil {
 		return curated.Errorf("debugger: %v", err)
 	}

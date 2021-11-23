@@ -26,8 +26,8 @@ type HandleInput interface {
 	// specified PortID.
 	//
 	// Returns true if the port understood and handled the event.
-	HandleEvent(id plugging.PortID, ev ports.Event, d ports.EventData) (bool, error)
+	ForwardEventToRIOT(id plugging.PortID, ev ports.Event, d ports.EventData) (bool, error)
 
 	// PeripheralID identifies the device currently attached to the port.
-	PeripheralID(id plugging.PortID) plugging.PeripheralID
+	PeripheralIDFromRIOT(id plugging.PortID) plugging.PeripheralID
 }
