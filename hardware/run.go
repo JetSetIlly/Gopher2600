@@ -50,13 +50,23 @@ func (vcs *VCS) Run(continueCheck func() (emulation.State, error)) error {
 	// see the equivalient videoCycle() in the VCS.Step() function for an
 	// explanation for what's going on here:
 	videoCycle := func() error {
-		if err := vcs.RIOT.Ports.GetPlayback(); err != nil {
+		if err := vcs.RIOT.Ports.HandleDrivenEvents(); err != nil {
 			return err
 		}
 
-		vcs.TIA.Step(false)
-		vcs.TIA.Step(false)
-		vcs.TIA.Step(true)
+		if err := vcs.RIOT.Ports.HandlePlaybackEvents(); err != nil {
+			return err
+		}
+
+		if err := vcs.TIA.Step(false); err != nil {
+			return err
+		}
+		if err := vcs.TIA.Step(false); err != nil {
+			return err
+		}
+		if err := vcs.TIA.Step(true); err != nil {
+			return err
+		}
 		vcs.RIOT.Step()
 		vcs.Mem.Cart.Step(vcs.Clock)
 

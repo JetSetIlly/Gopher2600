@@ -85,7 +85,8 @@ type TelevisionTIA interface {
 	GetCoords() coords.TelevisionCoords
 }
 
-// TelevisionSprite exposes only the functions required by the video sprites.
-type TelevisionSprite interface {
+// TelevisionCoords allows probing of the current "coordinates" of the
+// television. Useful for measuring time.
+type TelevisionCoords interface {
 	GetCoords() coords.TelevisionCoords
 }

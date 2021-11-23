@@ -110,6 +110,7 @@ var windowDefs = [...]windowDef{
 	{create: newWinOscilloscope, menu: menuEntry{group: menuTools}, open: true},
 	{create: newWinTracker, menu: menuEntry{group: menuTools}, open: false},
 	{create: newWinTimeline, menu: menuEntry{group: menuTools}, open: true},
+	{create: newWinComparison, menu: menuEntry{group: menuTools}, open: false},
 
 	// windows that appear in cartridge specific menu
 	{create: newWinDPCregisters, menu: menuEntry{group: menuCart, restrictBus: menuRestrictRegister, restrictMapper: []string{"DPC"}}},
@@ -137,6 +138,7 @@ var playmodeWindows = [...]string{
 	winPrefsID,
 	winSelectROMID,
 	winTrackerID,
+	winComparisonID,
 }
 
 func newManager(img *SdlImgui) (*manager, error) {

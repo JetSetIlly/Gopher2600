@@ -76,7 +76,10 @@ const (
 	// open ROM selector and return selection over channel. channel is unused
 	// if emulation is a debugging emulation, in which case the 'chan string'
 	// can be nil
-	ReqROMSelector FeatureReq = "ReqROMSelector" // chan string
+	ReqROMSelector FeatureReq = "ReqROMSelector" // nil
+
+	// request for a comparison window to be opened
+	ReqComparison FeatureReq = "ReqComparison" // chan *image.RGBA, chan *image.RGBA
 )
 
 // Sentinal error returned if GUI does no support requested feature.

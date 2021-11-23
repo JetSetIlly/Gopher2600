@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
+	"github.com/jetsetilly/gopher2600/comparison"
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/debugger/dbgmem"
 	"github.com/jetsetilly/gopher2600/debugger/script"
@@ -81,6 +82,9 @@ type Debugger struct {
 	// the last loader to be used. we keep a reference to it so we can make
 	// sure Close() is called on end
 	loader *cartridgeloader.Loader
+
+	// comparison emulator
+	comparison *comparison.Comparison
 
 	// GUI, terminal and controllers
 	gui         gui.GUI
@@ -563,9 +567,14 @@ func (dbg *Debugger) end() {
 }
 
 // Starts the main emulation sequence.
-func (dbg *Debugger) Start(mode emulation.Mode, initScript string, cartload cartridgeloader.Loader) error {
+func (dbg *Debugger) Start(mode emulation.Mode, initScript string, cartload cartridgeloader.Loader, comparisonROM string) error {
+	err := dbg.addComparisonEmulation(comparisonROM)
+	if err != nil {
+		return curated.Errorf("debugger: %v", err)
+	}
+
 	defer dbg.end()
-	err := dbg.start(mode, initScript, cartload)
+	err = dbg.start(mode, initScript, cartload)
 	if err != nil {
 		if curated.Has(err, terminal.UserQuit) {
 			return nil
@@ -857,6 +866,29 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) 
 	if !dbg.vcs.Mem.Cart.IsEjected() {
 		dbg.Prefs.RecentROM.Set(cartload.Filename)
 	}
+
+	return nil
+}
+
+func (dbg *Debugger) addComparisonEmulation(comparisonROM string) error {
+	if comparisonROM == "" {
+		return nil
+	}
+
+	var err error
+
+	dbg.comparison, err = comparison.NewComparison(dbg.vcs)
+	if err != nil {
+		return curated.Errorf("debugger: %v", err)
+	}
+	dbg.gui.SetFeature(gui.ReqComparison, dbg.comparison.Render, dbg.comparison.DiffRender)
+
+	cartload, err := cartridgeloader.NewLoader(comparisonROM, "AUTO")
+	if err != nil {
+		return curated.Errorf("debugger: %v", err)
+	}
+
+	dbg.comparison.CreateFromLoader(cartload)
 
 	return nil
 }

@@ -59,8 +59,8 @@ type ARMPreferences struct {
 	// NOTE: this may be superceded in the future to allow for more flexibility
 	Model prefs.String
 
-	// whether the ARM coprocessor (as found in Harmony cartridges) execute
-	// instantly or if the cycle accurate steppint is attempted
+	// whether the ARM coprocessor (as found in Harmony cartridges) executes
+	// instantly
 	Immediate prefs.Bool
 
 	// a value of MAMDriver says to use the driver supplied MAM value. any

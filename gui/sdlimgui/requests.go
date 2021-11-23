@@ -16,6 +16,8 @@
 package sdlimgui
 
 import (
+	"image"
+
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/emulation"
 	"github.com/jetsetilly/gopher2600/gui"
@@ -124,6 +126,14 @@ func (img *SdlImgui) serviceSetFeature(request featureRequest) {
 		err = argLen(request.args, 0)
 		if err == nil {
 			img.wm.windows[winSelectROMID].setOpen(true)
+		}
+
+	case gui.ReqComparison:
+		err = argLen(request.args, 2)
+		if err == nil {
+			img.wm.windows[winComparisonID].(*winComparison).render = request.args[0].(chan *image.RGBA)
+			img.wm.windows[winComparisonID].(*winComparison).diffRender = request.args[1].(chan *image.RGBA)
+			img.wm.windows[winComparisonID].(*winComparison).setOpen(true)
 		}
 
 	default:

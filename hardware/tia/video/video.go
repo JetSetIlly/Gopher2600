@@ -100,7 +100,7 @@ type Video struct {
 
 // tia is a convenient packaging of TIA state that is required by the playfield/sprites.
 type tia struct {
-	tv     signal.TelevisionSprite
+	tv     signal.TelevisionCoords
 	rev    *revision.TIARevision
 	pclk   *phaseclock.PhaseClock
 	hsync  *polycounter.Polycounter
@@ -121,7 +121,7 @@ type tia struct {
 // The references to the TIA's HBLANK state and whether HMOVE is latched, are
 // required to tune the delays experienced by the various sprite events (eg.
 // reset position).
-func NewVideo(mem bus.ChipBus, tv signal.TelevisionSprite, rev *revision.TIARevision,
+func NewVideo(mem bus.ChipBus, tv signal.TelevisionCoords, rev *revision.TIARevision,
 	pclk *phaseclock.PhaseClock, hsync *polycounter.Polycounter,
 	hblank *bool, hmove *hmove.Hmove) *Video {
 	tia := tia{
@@ -159,7 +159,7 @@ func (vd *Video) Snapshot() *Video {
 }
 
 // Plumb ChipBus into TIA/Video components. Update pointers that refer to parent TIA.
-func (vd *Video) Plumb(mem bus.ChipBus, tv signal.TelevisionSprite, rev *revision.TIARevision,
+func (vd *Video) Plumb(mem bus.ChipBus, tv signal.TelevisionCoords, rev *revision.TIARevision,
 	pclk *phaseclock.PhaseClock, hsync *polycounter.Polycounter,
 	hblank *bool, hmove *hmove.Hmove) {
 	vd.Collisions.Plumb(mem)

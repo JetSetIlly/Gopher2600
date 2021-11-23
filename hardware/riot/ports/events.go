@@ -15,7 +15,10 @@
 
 package ports
 
-import "github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
+import (
+	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
+	"github.com/jetsetilly/gopher2600/hardware/television/coords"
+)
 
 // Event represents the actions that can be performed at one of the VCS ports,
 // either the panel or one of the two player ports.
@@ -119,4 +122,13 @@ type EventPlayback interface {
 // to differentiate between multiple devices.
 type EventRecorder interface {
 	RecordEvent(plugging.PortID, Event, EventData) error
+}
+
+// DrivenEvent is the data passed from a "driver" emulation to a "passenger"
+// emulation.
+type DrivenEvent struct {
+	time coords.TelevisionCoords
+	id   plugging.PortID
+	ev   Event
+	d    EventData
 }

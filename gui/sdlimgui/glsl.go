@@ -279,6 +279,10 @@ func (rnd *glsl) render() {
 					shader = rnd.shaders[colorShaderID]
 				case rnd.img.wm.timeline.thmbTexture:
 					shader = rnd.shaders[colorShaderID]
+				case rnd.img.wm.windows[winComparisonID].(*winComparison).cmpTexture:
+					shader = rnd.shaders[colorShaderID]
+				case rnd.img.wm.windows[winComparisonID].(*winComparison).diffTexture:
+					shader = rnd.shaders[colorShaderID]
 				default:
 					shader = rnd.shaders[guiShaderID]
 				}

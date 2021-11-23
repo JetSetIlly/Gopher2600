@@ -208,7 +208,10 @@ func (plb *Playback) AttachToVCS(vcs *hardware.VCS) error {
 	}
 
 	// attach playback to all vcs ports
-	vcs.RIOT.Ports.AttachPlayback(plb)
+	err = vcs.RIOT.Ports.AttachPlayback(plb)
+	if err != nil {
+		return curated.Errorf("playback: %v", err)
+	}
 
 	return nil
 }

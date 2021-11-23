@@ -435,6 +435,10 @@ func (c *Controllers) ClearInputHandlers() {
 
 // Add HandleInput implementation to list of input handlers. Each input handler
 // will receive the ports.Event and ports.EventData.
+//
+// In many instances when running two parallel emulators that require the same
+// user input it is better to add the "driver" and "passenger" emulations to
+// RIOT.Ports
 func (c *Controllers) AddInputHandler(h HandleInput) {
 	c.inputHandlers = append(c.inputHandlers, h)
 }

@@ -112,4 +112,7 @@ const (
 
 // Label that can be used in the EmulationLabel field of the cartridgeloader.Loader type. to indicate
 // that the cartridge has been loaded into the thumbnailer emulation
-const ThumbnailerLabel = "thumbnailer"
+const (
+	ThumbnailerLabel = "thumbnailer"
+	ComparisonLabel  = "comparison"
+)

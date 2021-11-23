@@ -13,14 +13,15 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-// Package userinput handles input from real hardware that the the user of the
-// emulator is using to control the emualted console.
+// Package userinput translates real hardware input from the user's computer,
+// to the emulated console. It abstracts real user interface to the emulated
+// interface.
 //
-// It can be thought of as a translation layer between the GUI implementation
-// and the hardware riot.ports package. As such, this package attempts to hide
-// details of the GUI implementation while protecting the ports package from
-// complication.
+// The Controllers type processes userinput Events (input from a gamepad for
+// example) with the HandleUserInput function. That input is translated into
+// an event understood by the emulation (paddle left for example).
 //
-// The GUI implementation in use during development was SDL and so there will
-// be a bias towards that system.
+// Many emulations can be attached to a single Controllers type with the
+// AddInputHandler(). However, the DrivenEvent mechanism in the riot.ports
+// package is a better way to do this in many instances.
 package userinput

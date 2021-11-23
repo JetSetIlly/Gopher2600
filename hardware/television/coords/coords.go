@@ -16,8 +16,12 @@
 // Package coords represents and can work with television coorindates
 //
 // Coordinates represent the state of the emulation from the point of the
-// television and are used throughout the emulation for rewinding,
-// recording/playback and general information.
+// television. A good way to think about them is as a measurement of time. They
+// define *when* something happened (this pixel was drawn, this user input was
+// received, etc.) relative to the start of the emulation.
+//
+// They are used throughout the emulation for rewinding, recording/playback and
+// many other sub-systems.
 package coords
 
 import "fmt"

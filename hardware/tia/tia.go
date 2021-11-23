@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/cpu"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
@@ -354,7 +355,7 @@ func (tia *TIA) resolveDelayedEvents() {
 }
 
 // Step moves the state of the tia forward one video cycle.
-func (tia *TIA) Step(readMemory bool) {
+func (tia *TIA) Step(readMemory bool) error {
 	// update debugging information
 	tia.videoCycles++
 
@@ -604,6 +605,8 @@ func (tia *TIA) Step(readMemory bool) {
 	// send signal to television
 	if err := tia.tv.Signal(tia.sig); err != nil {
 		// TODO: handle error
-		return
+		return curated.Errorf("TIA: %v", err)
 	}
+
+	return nil
 }
