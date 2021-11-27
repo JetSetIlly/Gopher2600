@@ -24,7 +24,7 @@ clean:
 	@echo "removing binary, profiling files and windows manifests"
 	@rm -f gopher2600_* gopher2600
 	@rm -f *.profile
-	@rm rsrc_windows_amd64.syso
+	@rm -f rsrc_windows_amd64.syso
 	@find ./ -type f | grep "\.orig" | xargs -r rm
 
 tidy:
