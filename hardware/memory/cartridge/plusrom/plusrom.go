@@ -33,11 +33,9 @@ const NotAPlusROM = "not a plus rom: %s"
 type PlusROM struct {
 	instance *instance.Instance
 
-	Prefs *Preferences
-	net   *network
-
 	vcsHook cartridgeloader.VCSHook
 
+	net   *network
 	state *state
 
 	// rewind boundary is indicated on every network activity
@@ -67,14 +65,7 @@ func NewPlusROM(instance *instance.Instance, child mapper.CartMapper, vcsHook ca
 	cart.state = &state{}
 	cart.state.child = child
 
-	var err error
-
-	cart.Prefs, err = newPreferences()
-	if err != nil {
-		return nil, curated.Errorf("plusrom: %v", err)
-	}
-
-	cart.net = newNetwork(cart.Prefs)
+	cart.net = newNetwork(cart.instance)
 
 	// get reference to last bank
 	bank := child.CopyBanks()[cart.NumBanks()-1]

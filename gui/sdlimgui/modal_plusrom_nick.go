@@ -17,17 +17,17 @@ package sdlimgui
 
 import (
 	"github.com/inkyblackness/imgui-go/v4"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/plusrom"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/plusrom/plusnet"
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
 func (img *SdlImgui) drawPlusROMFirstInstallation() {
-	if img.plusROMFirstInstallation == nil {
+	if !img.plusROMFirstInstallation {
 		return
 	}
 
-	nick := img.plusROMFirstInstallation.Cart.Prefs.Nick.String()
-	id := img.plusROMFirstInstallation.Cart.Prefs.ID.String()
+	nick := img.vcs.Instance.Prefs.PlusROM.Nick.String()
+	id := img.vcs.Instance.Prefs.PlusROM.ID.String()
 
 	img.hasModal = true
 
@@ -44,12 +44,12 @@ func (img *SdlImgui) drawPlusROMFirstInstallation() {
 		imgui.Text("Nick")
 		imgui.SameLine()
 
-		if imguiTextInput("##nick", plusrom.MaxNickLength, &nick, true) {
-			err := img.plusROMFirstInstallation.Cart.Prefs.Nick.Set(nick)
+		if imguiTextInput("##nick", plusnet.MaxNickLength, &nick, true) {
+			err := img.vcs.Instance.Prefs.PlusROM.Nick.Set(nick)
 			if err != nil {
-				logger.Logf("sdlimgui", "could not set preference value: %v", err)
+				logger.Logf("sdlimgui", "could not set plusrom nick: %v", err)
 			}
-			err = img.plusROMFirstInstallation.Cart.Prefs.Save()
+			err = img.vcs.Instance.Prefs.PlusROM.Save()
 			if err != nil {
 				logger.Logf("sdlimgui", "could not save preferences: %v", err)
 			}
@@ -66,20 +66,17 @@ func (img *SdlImgui) drawPlusROMFirstInstallation() {
 
 		if len(nick) >= 1 {
 			if imgui.Button("I'm happy with my nick") {
-				err := img.plusROMFirstInstallation.Cart.Prefs.Nick.Set(nick)
+				err := img.vcs.Instance.Prefs.PlusROM.Nick.Set(nick)
 				if err != nil {
 					logger.Logf("sdlimgui", "could not set preference value: %v", err)
 				}
-				err = img.plusROMFirstInstallation.Cart.Prefs.Save()
+				err = img.vcs.Instance.Prefs.PlusROM.Save()
 				if err != nil {
 					logger.Logf("sdlimgui", "could not save preferences: %v", err)
 				}
 
-				select {
-				case img.plusROMFirstInstallation.Finish <- nil:
-				default:
-				}
-				img.plusROMFirstInstallation = nil
+				// first installation has finished
+				img.plusROMFirstInstallation = false
 
 				imgui.CloseCurrentPopup()
 				img.hasModal = false

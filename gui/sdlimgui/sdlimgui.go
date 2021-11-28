@@ -22,7 +22,6 @@ import (
 	"github.com/jetsetilly/gopher2600/debugger"
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
 	"github.com/jetsetilly/gopher2600/emulation"
-	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/gui/crt"
 	"github.com/jetsetilly/gopher2600/gui/sdlaudio"
 	"github.com/jetsetilly/gopher2600/gui/sdlimgui/lazyvalues"
@@ -99,7 +98,7 @@ type SdlImgui struct {
 	hasModal bool
 
 	// a request for the PlusROM first installation procedure has been received
-	plusROMFirstInstallation *gui.PlusROMFirstInstallation
+	plusROMFirstInstallation bool
 }
 
 // NewSdlImgui is the preferred method of initialisation for type SdlImgui

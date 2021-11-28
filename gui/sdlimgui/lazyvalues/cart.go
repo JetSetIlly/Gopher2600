@@ -71,8 +71,6 @@ type LazyCart struct {
 
 	IsPlusROM       bool
 	PlusROMAddrInfo plusrom.AddrInfo
-	PlusROMNick     string
-	PlusROMID       string
 	PlusROMRecvBuff []uint8
 	PlusROMSendBuff []uint8
 }
@@ -142,8 +140,6 @@ func (lz *LazyCart) push() {
 		if pr, ok := c.(*plusrom.PlusROM); ok {
 			lz.plusROM.Store(pr)
 			lz.plusROMAddrInfo.Store(pr.CopyAddrInfo())
-			lz.plusROMNick.Store(pr.Prefs.Nick.Get())
-			lz.plusROMID.Store(pr.Prefs.ID.Get())
 			lz.plusROMRecvBuff.Store(pr.CopyRecvBuffer())
 			lz.plusROMSendBuff.Store(pr.CopySendBuffer())
 		} else {
@@ -200,8 +196,6 @@ func (lz *LazyCart) update() {
 	_, lz.IsPlusROM = lz.plusROM.Load().(*plusrom.PlusROM)
 	if lz.IsPlusROM {
 		lz.PlusROMAddrInfo, _ = lz.plusROMAddrInfo.Load().(plusrom.AddrInfo)
-		lz.PlusROMNick, _ = lz.plusROMNick.Load().(string)
-		lz.PlusROMID, _ = lz.plusROMID.Load().(string)
 		lz.PlusROMRecvBuff, _ = lz.plusROMRecvBuff.Load().([]uint8)
 		lz.PlusROMSendBuff, _ = lz.plusROMSendBuff.Load().([]uint8)
 	}

@@ -22,6 +22,7 @@ import (
 	"net/http/httputil"
 	"sync"
 
+	"github.com/jetsetilly/gopher2600/hardware/instance"
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
@@ -31,8 +32,8 @@ const (
 )
 
 type network struct {
-	prefs *Preferences
-	ai    AddrInfo
+	instance *instance.Instance
+	ai       AddrInfo
 
 	// these buffers should only be accessed directly by the emulator goroutine
 	// (ie. not from the send() goroutine or by any UI goroutine come to that)
@@ -53,9 +54,9 @@ type network struct {
 	sendLock sync.Mutex
 }
 
-func newNetwork(prefs *Preferences) *network {
+func newNetwork(instance *instance.Instance) *network {
 	return &network{
-		prefs:    prefs,
+		instance: instance,
 		respChan: make(chan bytes.Buffer, 5),
 	}
 }
@@ -102,7 +103,7 @@ func (n *network) send(data uint8, send bool) {
 			// their request, that consists of a nickname given by the user and
 			// a generated uuid (starting with "WE") separated by a space
 			// character."
-			id := fmt.Sprintf("%s WE%s", n.prefs.Nick.String(), n.prefs.ID.String())
+			id := fmt.Sprintf("%s WE%s", n.instance.Prefs.PlusROM.Nick.String(), n.instance.Prefs.PlusROM.ID.String())
 			req.Header.Set("PlusStore-ID", id)
 
 			logger.Logf("plusrom [net]", "PlusStore-ID: %s", id)

@@ -13,22 +13,18 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-package plusrom
+package preferences
 
 import (
 	"fmt"
 	"math/rand"
 
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/plusrom/plusnet"
 	"github.com/jetsetilly/gopher2600/prefs"
 	"github.com/jetsetilly/gopher2600/resources"
 )
 
-const (
-	MaxNickLength = 10
-	MaxIDLength   = 22
-)
-
-type Preferences struct {
+type PlusROMPreferences struct {
 	dsk *prefs.Disk
 
 	Nick prefs.String
@@ -38,11 +34,11 @@ type Preferences struct {
 	NewInstallation bool
 }
 
-func newPreferences() (*Preferences, error) {
-	p := &Preferences{}
+func newPlusROMpreferences() (*PlusROMPreferences, error) {
+	p := &PlusROMPreferences{}
 
-	p.Nick.SetMaxLen(MaxNickLength)
-	p.ID.SetMaxLen(MaxIDLength)
+	p.Nick.SetMaxLen(plusnet.MaxNickLength)
+	p.ID.SetMaxLen(plusnet.MaxIDLength)
 
 	// save server using the prefs package
 	pth, err := resources.JoinPath(prefs.DefaultPrefsFile)
@@ -89,11 +85,11 @@ func newPreferences() (*Preferences, error) {
 }
 
 // Load disassembly preferences and apply to the current disassembly.
-func (p *Preferences) Load() error {
+func (p *PlusROMPreferences) Load() error {
 	return p.dsk.Load(false)
 }
 
 // Save current disassembly preferences to disk.
-func (p *Preferences) Save() error {
+func (p *PlusROMPreferences) Save() error {
 	return p.dsk.Save()
 }

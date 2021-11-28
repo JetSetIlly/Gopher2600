@@ -126,7 +126,7 @@ var windowDefs = [...]windowDef{
 
 	// plusrom windows
 	{create: newWinPlusROMNetwork, menu: menuEntry{group: menuPlusROM, label: winPlusROMNetworkMenu}},
-	{create: newWinPlusROMPrefs, menu: menuEntry{group: menuPlusROM, label: winPlusROMPrefsMenu}},
+	{create: newWinPlusROMNick, menu: menuEntry{group: menuPlusROM, label: winPlusROMNickMenu}},
 
 	// savekey windows
 	{create: newWinSaveKeyI2C, menu: menuEntry{group: menuSaveKey, label: winSaveKeyI2CMenu}},

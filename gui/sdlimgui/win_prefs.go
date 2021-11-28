@@ -114,6 +114,11 @@ func (win *winPrefs) draw() {
 		imgui.EndTabItem()
 	}
 
+	if imgui.BeginTabItem("PlusROM") {
+		win.drawPlusROM()
+		imgui.EndTabItem()
+	}
+
 	imgui.EndTabBar()
 
 	imguiSeparator()
@@ -257,12 +262,13 @@ func (win *winPrefs) drawVCS() {
 	}
 }
 
-// in this function we address vcs directly and not through the lazy system. it
-// seems to be okay. acutal preference values are protected by mutexes in the
-// prefs package so thats not a problem. the co-processor bus however can be
-// contentious so we must be carefult during initialisation phase.
 func (win *winPrefs) drawARM() {
 	imgui.Spacing()
+
+	if !win.img.lz.CoProc.HasCoProcBus {
+		imgui.Text("Current ROM does not have an ARM coprocessor")
+		imguiSeparator()
+	}
 
 	immediate := win.img.vcs.Instance.Prefs.ARM.Immediate.Get().(bool)
 	if imgui.Checkbox("Immediate ARM Execution", &immediate) {
@@ -332,6 +338,17 @@ will always abort if the access is a PC fetch, even if this option is not set.
 Illegal accesses will be logged in all instances.`)
 }
 
+func (win *winPrefs) drawPlusROM() {
+	imgui.Spacing()
+
+	if !win.img.lz.Cart.IsPlusROM {
+		imgui.Text("Current ROM is not a PlusROM")
+		imguiSeparator()
+	}
+
+	drawPlusROMNick(win.img)
+}
+
 func (win *winPrefs) drawDiskButtons() {
 	if imgui.Button("Save") {
 		win.img.dbg.PushRawEvent(func() {
@@ -350,6 +367,10 @@ func (win *winPrefs) drawDiskButtons() {
 			err = win.img.vcs.Instance.Prefs.ARM.Save()
 			if err != nil {
 				logger.Logf("sdlimgui", "could not save (arm) preferences: %v", err)
+			}
+			err = win.img.vcs.Instance.Prefs.PlusROM.Save()
+			if err != nil {
+				logger.Logf("sdlimgui", "could not save (plusrom) preferences: %v", err)
 			}
 			err = win.img.vcs.TIA.Rev.Prefs.Save()
 			if err != nil {
@@ -391,6 +412,10 @@ func (win *winPrefs) drawDiskButtons() {
 			err = win.img.vcs.Instance.Prefs.ARM.Load()
 			if err != nil {
 				logger.Logf("sdlimgui", "could not restore (arm) preferences: %v", err)
+			}
+			err = win.img.vcs.Instance.Prefs.PlusROM.Load()
+			if err != nil {
+				logger.Logf("sdlimgui", "could not restore (plusrom) preferences: %v", err)
 			}
 			err = win.img.vcs.TIA.Rev.Prefs.Load()
 			if err != nil {

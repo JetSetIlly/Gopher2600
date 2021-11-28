@@ -15,8 +15,6 @@
 
 package gui
 
-import "github.com/jetsetilly/gopher2600/hardware/memory/cartridge/plusrom"
-
 // FeatureReq is used to request the setting of a gui attribute
 // eg. toggling the overlay.
 type FeatureReq string
@@ -24,13 +22,6 @@ type FeatureReq string
 // FeatureReqData represents the information associated with a FeatureReq. See
 // commentary for the defined FeatureReq values for the underlying type.
 type FeatureReqData interface{}
-
-// PlusROMFirstInstallation is used to pass information to the GUI as part of
-// the request.
-type PlusROMFirstInstallation struct {
-	Finish chan error
-	Cart   *plusrom.PlusROM
-}
 
 // List of valid feature requests. argument must be of the type specified or
 // else the interface{} type conversion will fail and the application will
@@ -59,7 +50,7 @@ const (
 	ReqFullScreen FeatureReq = "ReqFullScreen" // bool
 
 	// special request for PlusROM cartridges.
-	ReqPlusROMFirstInstallation FeatureReq = "ReqPlusROMFirstInstallation" // PlusROMFirstInstallation
+	ReqPlusROMFirstInstallation FeatureReq = "ReqPlusROMFirstInstallation" // none
 
 	// controller has changed for one of the ports. the string is a description
 	// of the controller.

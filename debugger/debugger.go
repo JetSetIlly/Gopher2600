@@ -812,12 +812,11 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) 
 			default:
 				logger.Logf("debugger", "unhandled hook event for supercharger (%v)", event)
 			}
-		} else if pr, ok := cart.(*plusrom.PlusROM); ok {
+		} else if _, ok := cart.(*plusrom.PlusROM); ok {
 			switch event {
 			case mapper.EventPlusROMInserted:
-				if pr.Prefs.NewInstallation {
-					fi := gui.PlusROMFirstInstallation{Finish: nil, Cart: pr}
-					err := dbg.gui.SetFeature(gui.ReqPlusROMFirstInstallation, &fi)
+				if dbg.vcs.Instance.Prefs.PlusROM.NewInstallation {
+					err := dbg.gui.SetFeature(gui.ReqPlusROMFirstInstallation)
 					if err != nil {
 						if !curated.Is(err, gui.UnsupportedGuiFeature) {
 							return curated.Errorf("debugger: %v", err)

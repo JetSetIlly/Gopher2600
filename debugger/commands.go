@@ -1257,21 +1257,21 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		switch option {
 		case "NICK":
 			nick, _ := tokens.Get()
-			err := plusrom.Prefs.Nick.Set(nick)
+			err := dbg.vcs.Instance.Prefs.PlusROM.Nick.Set(nick)
 			if err != nil {
 				return err
 			}
-			err = plusrom.Prefs.Save()
+			err = dbg.vcs.Instance.Prefs.PlusROM.Save()
 			if err != nil {
 				return err
 			}
 		case "ID":
 			id, _ := tokens.Get()
-			err := plusrom.Prefs.ID.Set(id)
+			err := dbg.vcs.Instance.Prefs.PlusROM.ID.Set(id)
 			if err != nil {
 				return err
 			}
-			err = plusrom.Prefs.Save()
+			err = dbg.vcs.Instance.Prefs.PlusROM.Save()
 			if err != nil {
 				return err
 			}
@@ -1284,8 +1284,8 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 			path, _ := tokens.Get()
 			plusrom.SetAddrInfo(ai.Host, path)
 		default:
-			dbg.printLine(terminal.StyleFeedback, fmt.Sprintf("Nick: %s", plusrom.Prefs.Nick.String()))
-			dbg.printLine(terminal.StyleFeedback, fmt.Sprintf("ID: %s", plusrom.Prefs.ID.String()))
+			dbg.printLine(terminal.StyleFeedback, fmt.Sprintf("Nick: %s", dbg.vcs.Instance.Prefs.PlusROM.Nick.String()))
+			dbg.printLine(terminal.StyleFeedback, fmt.Sprintf("ID: %s", dbg.vcs.Instance.Prefs.PlusROM.ID.String()))
 			ai := plusrom.CopyAddrInfo()
 			dbg.printLine(terminal.StyleFeedback, fmt.Sprintf("Host: %s", ai.Host))
 			dbg.printLine(terminal.StyleFeedback, fmt.Sprintf("Path: %s", ai.Path))

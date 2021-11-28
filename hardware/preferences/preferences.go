@@ -35,6 +35,9 @@ type Preferences struct {
 
 	// preferences used by the ARM sub-system
 	ARM *ARMPreferences
+
+	// preferences used by PlusROM cartridges
+	PlusROM *PlusROMPreferences
 }
 
 func (p *Preferences) String() string {
@@ -69,6 +72,11 @@ func NewPreferences() (*Preferences, error) {
 	}
 
 	p.ARM, err = newARMprefrences()
+	if err != nil {
+		return nil, err
+	}
+
+	p.PlusROM, err = newPlusROMpreferences()
 	if err != nil {
 		return nil, err
 	}

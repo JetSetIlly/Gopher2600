@@ -87,10 +87,7 @@ func (img *SdlImgui) serviceSetFeature(request featureRequest) {
 		}
 
 	case gui.ReqPlusROMFirstInstallation:
-		err = argLen(request.args, 1)
-		if err == nil {
-			img.plusROMFirstInstallation = request.args[0].(*gui.PlusROMFirstInstallation)
-		}
+		img.plusROMFirstInstallation = true
 
 	case gui.ReqControllerChange:
 		if img.isPlaymode() {
