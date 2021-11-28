@@ -17,9 +17,9 @@ package dpcplus
 
 import (
 	"fmt"
-	"math/rand"
 
 	"github.com/jetsetilly/gopher2600/curated"
+	"github.com/jetsetilly/gopher2600/hardware/instance"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/harmony/arm7tdmi"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
@@ -34,7 +34,7 @@ import (
 //
 // https://atariage.com/forums/blogs/entry/11811-dpcarm-part-6-dpc-cartridge-layout/
 type dpcPlus struct {
-	prefs *preferences.Preferences
+	instance *instance.Instance
 
 	mappingID   string
 	description string
@@ -63,9 +63,9 @@ const (
 )
 
 // NewDPCplus is the preferred method of initialisation for the harmony type.
-func NewDPCplus(prefs *preferences.Preferences, data []byte) (mapper.CartMapper, error) {
+func NewDPCplus(instance *instance.Instance, data []byte) (mapper.CartMapper, error) {
 	cart := &dpcPlus{
-		prefs:       prefs,
+		instance:    instance,
 		mappingID:   "DPC+",
 		description: "Harmony (DPC+)",
 		bankSize:    4096,
@@ -73,7 +73,7 @@ func NewDPCplus(prefs *preferences.Preferences, data []byte) (mapper.CartMapper,
 	}
 
 	// create addresses
-	cart.version = newVersion(arm7tdmi.NewMemoryMap(prefs.ARM.Model.Get().(string)))
+	cart.version = newVersion(arm7tdmi.NewMemoryMap(instance.Prefs.ARM.Model.Get().(string)))
 
 	// amount of data used for cartridges
 	bankLen := len(data) - dataSize - driverSize - freqSize
@@ -101,7 +101,7 @@ func NewDPCplus(prefs *preferences.Preferences, data []byte) (mapper.CartMapper,
 	//
 	// if bank0 has any ARM code then it will start at offset 0x08. first eight
 	// bytes are the ARM header
-	cart.arm = arm7tdmi.NewARM(cart.version.mmap, &prefs.ARM, cart.state.static, cart)
+	cart.arm = arm7tdmi.NewARM(cart.version.mmap, &instance.Prefs.ARM, cart.state.static, cart)
 
 	return cart, nil
 }
@@ -140,12 +140,12 @@ func (cart *dpcPlus) Plumb() {
 
 // Plumb implements the mapper.CartMapper interface.
 func (cart *dpcPlus) PlumbFromDifferentEmulation() {
-	cart.arm = arm7tdmi.NewARM(cart.version.mmap, &cart.prefs.ARM, cart.state.static, cart)
+	cart.arm = arm7tdmi.NewARM(cart.version.mmap, &cart.instance.Prefs.ARM, cart.state.static, cart)
 }
 
 // Reset implements the mapper.CartMapper interface.
-func (cart *dpcPlus) Reset(randSrc *rand.Rand) {
-	cart.state.initialise(randSrc, len(cart.banks)-1)
+func (cart *dpcPlus) Reset() {
+	cart.state.initialise(cart.instance.RandSrc, len(cart.banks)-1)
 }
 
 // Read implements the mapper.CartMapper interface.
@@ -497,7 +497,7 @@ func (cart *dpcPlus) Write(addr uint16, data uint8, passive bool, poke bool) err
 			}
 			cart.state.callfn.Start(cycles)
 
-			if cart.prefs.ARM.MAM.Get().(int) == preferences.MAMDriver {
+			if cart.instance.Prefs.ARM.MAM.Get().(int) == preferences.MAMDriver {
 				cart.state.mamcr = mamcr
 				if cart.state.mamcr != dpcPlusMAMCR {
 					logger.Logf("DPC+", "thumb program has left MAM in mode %d", cart.state.mamcr)
@@ -722,7 +722,7 @@ func (cart *dpcPlus) Step(clock float32) {
 
 	// Step ARM state if the ARM program is NOT running
 	if cart.state.callfn.IsActive() {
-		if !cart.state.callfn.Step(cart.prefs.ARM.Immediate.Get().(bool), clock) {
+		if !cart.state.callfn.Step(cart.instance.Prefs.ARM.Immediate.Get().(bool), clock) {
 			cart.arm.Step(clock)
 		}
 	} else {

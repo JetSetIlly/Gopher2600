@@ -16,9 +16,6 @@
 package preferences
 
 import (
-	"math/rand"
-	"time"
-
 	"github.com/jetsetilly/gopher2600/prefs"
 	"github.com/jetsetilly/gopher2600/resources"
 )
@@ -26,13 +23,6 @@ import (
 // Preferences defines and collates all the preference values used by the debugger.
 type Preferences struct {
 	dsk *prefs.Disk
-
-	// random values generated in the hardware package should use the following
-	// number source
-	RandSrc *rand.Rand
-
-	// the number used to seed RandSrc
-	RandSeed int64
 
 	// initialise hardware to unknown state after reset
 	RandomState prefs.Bool
@@ -126,24 +116,12 @@ func NewPreferences() (*Preferences, error) {
 // SetDefaults reverts all settings to default values.
 func (p *Preferences) SetDefaults() {
 	// initialise random number generator
-	p.Reseed(0)
 	p.RandomState.Set(false)
 	p.RandomPins.Set(false)
 	p.ARM.Model.Set("LPC2000")
 	p.ARM.Immediate.Set(false)
 	p.ARM.MAM.Set(-1)
 	p.ARM.AbortOnIllegalMem.Set(false)
-}
-
-// Reseed initialises the random number generator. Use a seed value of 0 to
-// initialise with the current time.
-func (p *Preferences) Reseed(seed int64) {
-	if seed == 0 {
-		p.RandSeed = int64(time.Now().Nanosecond())
-	} else {
-		p.RandSeed = seed
-	}
-	p.RandSrc = rand.New(rand.NewSource(p.RandSeed))
 }
 
 // Reset all hardware preferences to the default values.

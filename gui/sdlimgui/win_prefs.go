@@ -211,14 +211,14 @@ func (win *winPrefs) drawRewind() {
 func (win *winPrefs) drawVCS() {
 	imgui.Spacing()
 
-	randState := win.img.vcs.Prefs.RandomState.Get().(bool)
+	randState := win.img.vcs.Instance.Prefs.RandomState.Get().(bool)
 	if imgui.Checkbox("Random State (on startup)", &randState) {
-		win.img.vcs.Prefs.RandomState.Set(randState)
+		win.img.vcs.Instance.Prefs.RandomState.Set(randState)
 	}
 
-	randPins := win.img.vcs.Prefs.RandomPins.Get().(bool)
+	randPins := win.img.vcs.Instance.Prefs.RandomPins.Get().(bool)
 	if imgui.Checkbox("Random Pins", &randPins) {
-		win.img.vcs.Prefs.RandomPins.Set(randPins)
+		win.img.vcs.Instance.Prefs.RandomPins.Set(randPins)
 	}
 
 	imguiSeparator()
@@ -264,9 +264,9 @@ func (win *winPrefs) drawVCS() {
 func (win *winPrefs) drawARM() {
 	imgui.Spacing()
 
-	immediate := win.img.vcs.Prefs.ARM.Immediate.Get().(bool)
+	immediate := win.img.vcs.Instance.Prefs.ARM.Immediate.Get().(bool)
 	if imgui.Checkbox("Immediate ARM Execution", &immediate) {
-		win.img.vcs.Prefs.ARM.Immediate.Set(immediate)
+		win.img.vcs.Instance.Prefs.ARM.Immediate.Set(immediate)
 	}
 	imguiTooltipSimple("ARM program consumes no 6507 time (like Stella)\nIf this option is set the other ARM settings are irrelevant")
 
@@ -278,7 +278,7 @@ func (win *winPrefs) drawARM() {
 	imgui.Spacing()
 
 	var mamState string
-	switch win.img.vcs.Prefs.ARM.MAM.Get().(int) {
+	switch win.img.vcs.Instance.Prefs.ARM.MAM.Get().(int) {
 	case -1:
 		mamState = "Driver"
 	case 0:
@@ -291,16 +291,16 @@ func (win *winPrefs) drawARM() {
 	imgui.PushItemWidth(imguiGetFrameDim("Disabled").X + imgui.FrameHeight())
 	if imgui.BeginComboV("Default MAM State##mam", mamState, imgui.ComboFlagsNone) {
 		if imgui.Selectable("Driver") {
-			win.img.vcs.Prefs.ARM.MAM.Set(-1)
+			win.img.vcs.Instance.Prefs.ARM.MAM.Set(-1)
 		}
 		if imgui.Selectable("Disabled") {
-			win.img.vcs.Prefs.ARM.MAM.Set(0)
+			win.img.vcs.Instance.Prefs.ARM.MAM.Set(0)
 		}
 		if imgui.Selectable("Partial") {
-			win.img.vcs.Prefs.ARM.MAM.Set(1)
+			win.img.vcs.Instance.Prefs.ARM.MAM.Set(1)
 		}
 		if imgui.Selectable("Full") {
-			win.img.vcs.Prefs.ARM.MAM.Set(2)
+			win.img.vcs.Instance.Prefs.ARM.MAM.Set(2)
 		}
 		imgui.EndCombo()
 	}
@@ -322,9 +322,9 @@ The MAM should almost never be disabled completely.`)
 
 	imgui.Spacing()
 
-	abortOnIllegalMem := win.img.vcs.Prefs.ARM.AbortOnIllegalMem.Get().(bool)
+	abortOnIllegalMem := win.img.vcs.Instance.Prefs.ARM.AbortOnIllegalMem.Get().(bool)
 	if imgui.Checkbox("Abort on Illegal Memory Access", &abortOnIllegalMem) {
-		win.img.vcs.Prefs.ARM.AbortOnIllegalMem.Set(abortOnIllegalMem)
+		win.img.vcs.Instance.Prefs.ARM.AbortOnIllegalMem.Set(abortOnIllegalMem)
 	}
 	imguiTooltipSimple(`Abort thumb program on access to illegal memory. Note that the program
 will always abort if the access is a PC fetch, even if this option is not set.
@@ -347,7 +347,7 @@ func (win *winPrefs) drawDiskButtons() {
 			if err != nil {
 				logger.Logf("sdlimgui", "could not save (tia revisions) preferences: %v", err)
 			}
-			err = win.img.vcs.Prefs.Save()
+			err = win.img.vcs.Instance.Prefs.Save()
 			if err != nil {
 				logger.Logf("sdlimgui", "could not save (hardware) preferences: %v", err)
 			}
@@ -380,7 +380,7 @@ func (win *winPrefs) drawDiskButtons() {
 			if err != nil {
 				logger.Logf("sdlimgui", "could not restore (sdlaudio) preferences: %v", err)
 			}
-			err = win.img.vcs.Prefs.Load()
+			err = win.img.vcs.Instance.Prefs.Load()
 			if err != nil {
 				logger.Logf("sdlimgui", "could not restore (hardware) preferences: %v", err)
 			}

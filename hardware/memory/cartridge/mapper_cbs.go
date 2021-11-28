@@ -17,9 +17,9 @@ package cartridge
 
 import (
 	"fmt"
-	"math/rand"
 
 	"github.com/jetsetilly/gopher2600/curated"
+	"github.com/jetsetilly/gopher2600/hardware/instance"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
@@ -39,6 +39,8 @@ import (
 //	- Omega Race
 //	- Gorf
 type cbs struct {
+	instance *instance.Instance
+
 	mappingID   string
 	description string
 
@@ -50,8 +52,9 @@ type cbs struct {
 	state *cbsState
 }
 
-func newCBS(data []byte) (mapper.CartMapper, error) {
+func newCBS(instance *instance.Instance, data []byte) (mapper.CartMapper, error) {
 	cart := &cbs{
+		instance:    instance,
 		mappingID:   "FA",
 		description: "CBS",
 		bankSize:    4096,
@@ -95,10 +98,10 @@ func (cart *cbs) Plumb() {
 }
 
 // Reset implements the cartMapper interface.
-func (cart *cbs) Reset(randSrc *rand.Rand) {
+func (cart *cbs) Reset() {
 	for i := range cart.state.ram {
-		if randSrc != nil {
-			cart.state.ram[i] = uint8(randSrc.Intn(0xff))
+		if cart.instance.Prefs.RandomState.Get().(bool) {
+			cart.state.ram[i] = uint8(cart.instance.RandSrc.Intn(0xff))
 		} else {
 			cart.state.ram[i] = 0
 		}

@@ -19,12 +19,12 @@ import (
 	"math/rand"
 
 	"github.com/jetsetilly/gopher2600/curated"
+	"github.com/jetsetilly/gopher2600/hardware/instance"
 	"github.com/jetsetilly/gopher2600/hardware/memory/addresses"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 	"github.com/jetsetilly/gopher2600/hardware/memory/vcs"
-	"github.com/jetsetilly/gopher2600/hardware/preferences"
 )
 
 // Memory is the monolithic representation of the memory in 2600.
@@ -32,7 +32,7 @@ type Memory struct {
 	bus.DebugBus
 	bus.CPUBus
 
-	prefs *preferences.Preferences
+	instance *instance.Instance
 
 	// the four memory areas
 	RIOT *vcs.ChipMemory
@@ -58,13 +58,13 @@ type Memory struct {
 }
 
 // NewMemory is the preferred method of initialisation for Memory.
-func NewMemory(prefs *preferences.Preferences) *Memory {
+func NewMemory(instance *instance.Instance) *Memory {
 	mem := &Memory{
-		prefs: prefs,
-		RIOT:  vcs.NewRIOT(prefs),
-		TIA:   vcs.NewTIA(prefs),
-		RAM:   vcs.NewRAM(prefs),
-		Cart:  cartridge.NewCartridge(prefs),
+		instance: instance,
+		RIOT:     vcs.NewRIOT(instance),
+		TIA:      vcs.NewTIA(instance),
+		RAM:      vcs.NewRAM(instance),
+		Cart:     cartridge.NewCartridge(instance),
 	}
 	mem.Reset()
 	return mem
@@ -142,14 +142,14 @@ func (mem *Memory) read(address uint16, zeroPage bool) (uint8, error) {
 	if ma < uint16(len(addresses.DataMasks)) {
 		if !zeroPage {
 			data &= addresses.DataMasks[ma]
-			if mem.prefs != nil && mem.prefs.RandomPins.Get().(bool) {
+			if mem.instance != nil && mem.instance.Prefs.RandomPins.Get().(bool) {
 				data |= uint8(rand.Int()) & (addresses.DataMasks[ma] ^ 0xff)
 			} else {
 				data |= uint8((address>>8)&0xff) & (addresses.DataMasks[ma] ^ 0xff)
 			}
 		} else {
 			data &= addresses.DataMasks[ma]
-			if mem.prefs != nil && mem.prefs.RandomPins.Get().(bool) {
+			if mem.instance != nil && mem.instance.Prefs.RandomPins.Get().(bool) {
 				data |= uint8(rand.Int()) & (addresses.DataMasks[ma] ^ 0xff)
 			} else {
 				data |= uint8(address&0x00ff) & (addresses.DataMasks[ma] ^ 0xff)

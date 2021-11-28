@@ -22,15 +22,15 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/cpu/execution"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/instructions"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/registers"
+	"github.com/jetsetilly/gopher2600/hardware/instance"
 	"github.com/jetsetilly/gopher2600/hardware/memory/addresses"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
-	"github.com/jetsetilly/gopher2600/hardware/preferences"
 )
 
 // CPU implements the 6507 found as found in the Atari 2600. Register logic is
 // implemented by the Register type in the registers sub-package.
 type CPU struct {
-	prefs *preferences.Preferences
+	instance *instance.Instance
 
 	PC     registers.ProgramCounter
 	A      registers.Register
@@ -83,9 +83,9 @@ type CPU struct {
 
 // NewCPU is the preferred method of initialisation for the CPU structure. Note
 // that the CPU will be initialised in a random state.
-func NewCPU(prefs *preferences.Preferences, mem bus.CPUBus) *CPU {
+func NewCPU(instance *instance.Instance, mem bus.CPUBus) *CPU {
 	return &CPU{
-		prefs:        prefs,
+		instance:     instance,
 		mem:          mem,
 		PC:           registers.NewProgramCounter(0),
 		A:            registers.NewRegister(0, "A"),
@@ -122,13 +122,15 @@ func (mc *CPU) Reset() {
 	mc.LastResult.Reset()
 	mc.Interrupted = true
 
-	if mc.prefs != nil && mc.prefs.RandomState.Get().(bool) {
-		mc.PC.Load(uint16(mc.prefs.RandSrc.Intn(0xffff)))
-		mc.A.Load(uint8(mc.prefs.RandSrc.Intn(0xff)))
-		mc.X.Load(uint8(mc.prefs.RandSrc.Intn(0xff)))
-		mc.Y.Load(uint8(mc.prefs.RandSrc.Intn(0xff)))
-		mc.SP.Load(uint8(mc.prefs.RandSrc.Intn(0xff)))
-		mc.Status.FromValue(uint8(mc.prefs.RandSrc.Intn(0xff)))
+	// checking for instance == nil because it's possible for NewCPU to be
+	// called with a nil instance (test package)
+	if mc.instance != nil && mc.instance.Prefs.RandomState.Get().(bool) {
+		mc.PC.Load(uint16(mc.instance.RandSrc.Intn(0xffff)))
+		mc.A.Load(uint8(mc.instance.RandSrc.Intn(0xff)))
+		mc.X.Load(uint8(mc.instance.RandSrc.Intn(0xff)))
+		mc.Y.Load(uint8(mc.instance.RandSrc.Intn(0xff)))
+		mc.SP.Load(uint8(mc.instance.RandSrc.Intn(0xff)))
+		mc.Status.FromValue(uint8(mc.instance.RandSrc.Intn(0xff)))
 	} else {
 		mc.PC.Load(0)
 		mc.A.Load(0)

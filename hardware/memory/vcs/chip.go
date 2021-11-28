@@ -19,9 +19,9 @@ import (
 	"fmt"
 
 	"github.com/jetsetilly/gopher2600/curated"
+	"github.com/jetsetilly/gopher2600/hardware/instance"
 	"github.com/jetsetilly/gopher2600/hardware/memory/addresses"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
-	"github.com/jetsetilly/gopher2600/hardware/preferences"
 )
 
 // ChipMemory defines the information for and operations allowed for those
@@ -31,7 +31,7 @@ type ChipMemory struct {
 	bus.ChipBus
 	bus.CPUBus
 
-	prefs *preferences.Preferences
+	instance *instance.Instance
 
 	// because we're servicing two different memory areas with this type, we
 	// need to store the origin and memtop values here, rather than using the

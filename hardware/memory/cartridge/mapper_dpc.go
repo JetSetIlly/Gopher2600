@@ -22,6 +22,7 @@ import (
 	"strings"
 
 	"github.com/jetsetilly/gopher2600/curated"
+	"github.com/jetsetilly/gopher2600/hardware/instance"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
@@ -32,6 +33,8 @@ import (
 // column, line number & figure references to US patent 4,644,495 are used to
 // support coding decisions.
 type dpc struct {
+	instance *instance.Instance
+
 	mappingID   string
 	description string
 
@@ -47,10 +50,11 @@ type dpc struct {
 	state *dpcState
 }
 
-func newDPC(data []byte) (mapper.CartMapper, error) {
+func newDPC(instance *instance.Instance, data []byte) (mapper.CartMapper, error) {
 	const staticSize = 2048
 
 	cart := &dpc{
+		instance:    instance,
 		description: "pitfall2 style",
 		mappingID:   "DPC",
 		bankSize:    4096,
@@ -98,8 +102,8 @@ func (cart *dpc) Plumb() {
 }
 
 // Reset implements the mapper.CartMapper interface.
-func (cart *dpc) Reset(randSrc *rand.Rand) {
-	cart.state.registers.reset(randSrc)
+func (cart *dpc) Reset() {
+	cart.state.registers.reset(cart.instance.RandSrc)
 	cart.state.bank = len(cart.banks) - 1
 }
 

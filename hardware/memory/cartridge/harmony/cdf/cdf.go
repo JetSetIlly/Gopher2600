@@ -17,19 +17,18 @@ package cdf
 
 import (
 	"fmt"
-	"math/rand"
 
 	"github.com/jetsetilly/gopher2600/curated"
+	"github.com/jetsetilly/gopher2600/hardware/instance"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/harmony/arm7tdmi"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
-	"github.com/jetsetilly/gopher2600/hardware/preferences"
 )
 
 // cdf implements the cartMapper interface.
 type cdf struct {
-	prefs *preferences.Preferences
+	instance *instance.Instance
 
 	mappingID string
 
@@ -70,9 +69,9 @@ const (
 )
 
 // NewCDF is the preferred method of initialisation for the harmony type.
-func NewCDF(prefs *preferences.Preferences, version string, data []byte) (mapper.CartMapper, error) {
+func NewCDF(instance *instance.Instance, version string, data []byte) (mapper.CartMapper, error) {
 	cart := &cdf{
-		prefs:     prefs,
+		instance:  instance,
 		mappingID: "CDF",
 		bankSize:  4096,
 		state:     newCDFstate(),
@@ -80,7 +79,7 @@ func NewCDF(prefs *preferences.Preferences, version string, data []byte) (mapper
 
 	var err error
 	cart.version, err = newVersion(
-		arm7tdmi.NewMemoryMap(prefs.ARM.Model.Get().(string)),
+		arm7tdmi.NewMemoryMap(instance.Prefs.ARM.Model.Get().(string)),
 		version, data)
 	if err != nil {
 		return nil, curated.Errorf("CDF: %v", err)
@@ -107,7 +106,7 @@ func NewCDF(prefs *preferences.Preferences, version string, data []byte) (mapper
 	//
 	// if bank0 has any ARM code then it will start at offset 0x08. first eight
 	// bytes are the ARM header
-	cart.arm = arm7tdmi.NewARM(cart.version.mmap, &cart.prefs.ARM, cart.state.static, cart)
+	cart.arm = arm7tdmi.NewARM(cart.version.mmap, &cart.instance.Prefs.ARM, cart.state.static, cart)
 
 	return cart, nil
 }
@@ -146,11 +145,11 @@ func (cart *cdf) Plumb() {
 
 // Plumb implements the mapper.CartMapper interface.
 func (cart *cdf) PlumbFromDifferentEmulation() {
-	cart.arm = arm7tdmi.NewARM(cart.version.mmap, &cart.prefs.ARM, cart.state.static, cart)
+	cart.arm = arm7tdmi.NewARM(cart.version.mmap, &cart.instance.Prefs.ARM, cart.state.static, cart)
 }
 
 // Reset implements the mapper.CartMapper interface.
-func (cart *cdf) Reset(_ *rand.Rand) {
+func (cart *cdf) Reset() {
 	bank := len(cart.banks) - 1
 	if cart.version.submapping == "CDFJ+" {
 		bank = 0
@@ -427,7 +426,7 @@ func (cart *cdf) Step(clock float32) {
 
 	// Step ARM state if the ARM program is NOT running
 	if cart.state.callfn.IsActive() {
-		if !cart.state.callfn.Step(cart.prefs.ARM.Immediate.Get().(bool), clock) {
+		if !cart.state.callfn.Step(cart.instance.Prefs.ARM.Immediate.Get().(bool), clock) {
 			cart.arm.Step(clock)
 		}
 	} else {

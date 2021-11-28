@@ -19,10 +19,10 @@ import (
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/cpu"
+	"github.com/jetsetilly/gopher2600/hardware/instance"
 	"github.com/jetsetilly/gopher2600/hardware/memory"
 	"github.com/jetsetilly/gopher2600/hardware/memory/addresses"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge"
-	"github.com/jetsetilly/gopher2600/hardware/preferences"
 	"github.com/jetsetilly/gopher2600/hardware/riot"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/controllers"
@@ -38,8 +38,10 @@ const ColorClocksPerCPUCycle = 3
 
 // VCS struct is the main container for the emulated components of the VCS.
 type VCS struct {
-	Prefs *preferences.Preferences
-	TV    *television.Television
+	Instance *instance.Instance
+
+	// the television is not "part" of the VCS console but it's part of the VCS system
+	TV *television.Television
 
 	// references to the different components of the VCS. do not take copies of
 	// these pointer values because the rewind feature will change them.
@@ -68,22 +70,22 @@ type VCS struct {
 // NewVCS creates a new VCS and everything associated with the hardware. It is
 // used for all aspects of emulation: debugging sessions, and regular play.
 func NewVCS(tv *television.Television) (*VCS, error) {
-	// set up preferences
-	prefs, err := preferences.NewPreferences()
+	// set up instance
+	instance, err := instance.NewInstance()
 	if err != nil {
 		return nil, err
 	}
 
 	// set up hardware
 	vcs := &VCS{
-		Prefs: prefs,
-		TV:    tv,
-		Clock: ntscClock,
+		Instance: instance,
+		TV:       tv,
+		Clock:    ntscClock,
 	}
 
-	vcs.Mem = memory.NewMemory(vcs.Prefs)
-	vcs.CPU = cpu.NewCPU(vcs.Prefs, vcs.Mem)
-	vcs.RIOT = riot.NewRIOT(vcs.Prefs, vcs.Mem.RIOT, vcs.Mem.TIA)
+	vcs.Mem = memory.NewMemory(vcs.Instance)
+	vcs.CPU = cpu.NewCPU(vcs.Instance, vcs.Mem)
+	vcs.RIOT = riot.NewRIOT(vcs.Instance, vcs.Mem.RIOT, vcs.Mem.TIA)
 
 	vcs.TIA, err = tia.NewTIA(vcs.TV, vcs.Mem.TIA, vcs.RIOT.Ports, vcs.CPU)
 	if err != nil {

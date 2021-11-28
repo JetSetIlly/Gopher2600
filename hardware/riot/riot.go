@@ -18,8 +18,8 @@ package riot
 import (
 	"strings"
 
+	"github.com/jetsetilly/gopher2600/hardware/instance"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
-	"github.com/jetsetilly/gopher2600/hardware/preferences"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
 	"github.com/jetsetilly/gopher2600/hardware/riot/timer"
 )
@@ -28,19 +28,19 @@ import (
 type RIOT struct {
 	mem bus.ChipBus
 
-	prefs *preferences.Preferences
+	instance *instance.Instance
 
 	Timer *timer.Timer
 	Ports *ports.Ports
 }
 
 // NewRIOT is the preferred method of initialisation for the RIOT type.
-func NewRIOT(prefs *preferences.Preferences, mem bus.ChipBus, tiaMem bus.ChipBus) *RIOT {
+func NewRIOT(instance *instance.Instance, mem bus.ChipBus, tiaMem bus.ChipBus) *RIOT {
 	return &RIOT{
-		prefs: prefs,
-		mem:   mem,
-		Timer: timer.NewTimer(prefs, mem),
-		Ports: ports.NewPorts(mem, tiaMem),
+		instance: instance,
+		mem:      mem,
+		Timer:    timer.NewTimer(instance, mem),
+		Ports:    ports.NewPorts(mem, tiaMem),
 	}
 }
 

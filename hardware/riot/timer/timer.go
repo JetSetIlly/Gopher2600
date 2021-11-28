@@ -18,9 +18,9 @@ package timer
 import (
 	"fmt"
 
+	"github.com/jetsetilly/gopher2600/hardware/instance"
 	"github.com/jetsetilly/gopher2600/hardware/memory/addresses"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
-	"github.com/jetsetilly/gopher2600/hardware/preferences"
 )
 
 // Interval indicates how often (in CPU cycles) the timer value decreases.
@@ -62,7 +62,7 @@ func (in Interval) String() string {
 type Timer struct {
 	mem bus.ChipBus
 
-	prefs *preferences.Preferences
+	instance *instance.Instance
 
 	// the interval value most recently requested by the CPU
 	Divider Interval
@@ -87,11 +87,11 @@ type Timer struct {
 }
 
 // NewTimer is the preferred method of initialisation of the Timer type.
-func NewTimer(prefs *preferences.Preferences, mem bus.ChipBus) *Timer {
+func NewTimer(instance *instance.Instance, mem bus.ChipBus) *Timer {
 	tmr := &Timer{
-		prefs:   prefs,
-		mem:     mem,
-		Divider: T1024T,
+		instance: instance,
+		mem:      mem,
+		Divider:  T1024T,
 	}
 
 	tmr.Reset()
@@ -103,10 +103,10 @@ func NewTimer(prefs *preferences.Preferences, mem bus.ChipBus) *Timer {
 func (tmr *Timer) Reset() {
 	tmr.pa7 = true
 
-	if tmr.prefs.RandomState.Get().(bool) {
+	if tmr.instance.Prefs.RandomState.Get().(bool) {
 		tmr.Divider = T1024T
-		tmr.TicksRemaining = tmr.prefs.RandSrc.Intn(0xffff)
-		tmr.INTIMvalue = uint8(tmr.prefs.RandSrc.Intn(0xff))
+		tmr.TicksRemaining = tmr.instance.RandSrc.Intn(0xffff)
+		tmr.INTIMvalue = uint8(tmr.instance.RandSrc.Intn(0xff))
 	} else {
 		tmr.Divider = T1024T
 		tmr.TicksRemaining = int(T1024T)

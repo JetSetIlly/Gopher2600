@@ -18,10 +18,10 @@ package moviecart
 import (
 	"fmt"
 	"io"
-	"math/rand"
 
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/emulation"
+	"github.com/jetsetilly/gopher2600/hardware/instance"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 	"github.com/jetsetilly/gopher2600/logger"
@@ -243,6 +243,8 @@ func (s *state) initialise() {
 }
 
 type Moviecart struct {
+	instance *instance.Instance
+
 	mappingID   string
 	description string
 
@@ -252,8 +254,9 @@ type Moviecart struct {
 	state *state
 }
 
-func NewMoviecart(loader cartridgeloader.Loader) (mapper.CartMapper, error) {
+func NewMoviecart(instance *instance.Instance, loader cartridgeloader.Loader) (mapper.CartMapper, error) {
 	cart := &Moviecart{
+		instance:    instance,
 		loader:      loader.StreamedData,
 		mappingID:   "MC",
 		description: "Moviecart",
@@ -303,7 +306,7 @@ func (cart *Moviecart) Plumb() {
 }
 
 // Reset implements the mapper.CartMapper interface.
-func (cart *Moviecart) Reset(randSrc *rand.Rand) {
+func (cart *Moviecart) Reset() {
 }
 
 // Read implements the mapper.CartMapper interface.

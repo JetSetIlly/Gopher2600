@@ -17,11 +17,11 @@ package supercharger
 
 import (
 	"fmt"
-	"math/rand"
 	"path/filepath"
 
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/curated"
+	"github.com/jetsetilly/gopher2600/hardware/instance"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
@@ -45,6 +45,8 @@ type tape interface {
 
 // Supercharger represents a supercharger cartridge.
 type Supercharger struct {
+	instance *instance.Instance
+
 	mappingID   string
 	description string
 
@@ -59,8 +61,9 @@ type Supercharger struct {
 
 // NewSupercharger is the preferred method of initialisation for the
 // Supercharger type.
-func NewSupercharger(cartload cartridgeloader.Loader) (mapper.CartMapper, error) {
+func NewSupercharger(instance *instance.Instance, cartload cartridgeloader.Loader) (mapper.CartMapper, error) {
 	cart := &Supercharger{
+		instance:    instance,
 		mappingID:   "AR",
 		description: "supercharger",
 		bankSize:    2048,
@@ -111,14 +114,10 @@ func (cart *Supercharger) Plumb() {
 }
 
 // Reset implements the mapper.CartMapper interface.
-func (cart *Supercharger) Reset(randSrc *rand.Rand) {
+func (cart *Supercharger) Reset() {
 	for b := range cart.state.ram {
 		for i := range cart.state.ram[b] {
-			if randSrc != nil {
-				cart.state.ram[b][i] = uint8(randSrc.Intn(0xff))
-			} else {
-				cart.state.ram[b][i] = 0
-			}
+			cart.state.ram[b][i] = uint8(cart.instance.RandSrc.Intn(0xff))
 		}
 	}
 

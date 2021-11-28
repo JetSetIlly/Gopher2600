@@ -17,15 +17,17 @@ package cartridge
 
 import (
 	"fmt"
-	"math/rand"
 
 	"github.com/jetsetilly/gopher2600/curated"
+	"github.com/jetsetilly/gopher2600/hardware/instance"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
 type superbank struct {
+	instance *instance.Instance
+
 	mappingID   string
 	description string
 
@@ -44,8 +46,9 @@ type superbank struct {
 	// !!TODO: hotspot info for superbank
 }
 
-func newSuperbank(data []byte) (mapper.CartMapper, error) {
+func newSuperbank(instance *instance.Instance, data []byte) (mapper.CartMapper, error) {
 	cart := &superbank{
+		instance:    instance,
 		mappingID:   "SB",
 		description: "Superbank",
 		bankSize:    4096,
@@ -90,7 +93,7 @@ func (cart *superbank) Plumb() {
 }
 
 // Reset implements the cartMapper interface.
-func (cart *superbank) Reset(randSrc *rand.Rand) {
+func (cart *superbank) Reset() {
 	cart.state.bank = len(cart.banks) - 1
 }
 

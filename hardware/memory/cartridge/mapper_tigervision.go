@@ -17,9 +17,9 @@ package cartridge
 
 import (
 	"fmt"
-	"math/rand"
 
 	"github.com/jetsetilly/gopher2600/curated"
+	"github.com/jetsetilly/gopher2600/hardware/instance"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
@@ -43,6 +43,8 @@ import (
 //	- Miner2049
 //	- River Patrol
 type tigervision struct {
+	instance *instance.Instance
+
 	mappingID   string
 	description string
 
@@ -59,8 +61,9 @@ type tigervision struct {
 
 // should work with any size cartridge that is a multiple of 2048:
 //  - tested with 8k (Miner2049 etc.) and 32k (Genesis_Egypt demo).
-func newTigervision(data []byte) (mapper.CartMapper, error) {
+func newTigervision(instance *instance.Instance, data []byte) (mapper.CartMapper, error) {
 	cart := &tigervision{
+		instance:    instance,
 		mappingID:   "3F",
 		description: "tigervision",
 		bankSize:    2048,
@@ -105,7 +108,7 @@ func (cart *tigervision) Plumb() {
 }
 
 // Reset implements the mapper.CartMapper interface.
-func (cart *tigervision) Reset(randSrc *rand.Rand) {
+func (cart *tigervision) Reset() {
 	cart.state.segment[0] = cart.NumBanks() - 2
 
 	// the last segment always points to the last bank

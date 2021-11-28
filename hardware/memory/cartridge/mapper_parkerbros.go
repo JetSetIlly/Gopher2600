@@ -17,9 +17,9 @@ package cartridge
 
 import (
 	"fmt"
-	"math/rand"
 
 	"github.com/jetsetilly/gopher2600/curated"
+	"github.com/jetsetilly/gopher2600/hardware/instance"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
@@ -41,6 +41,8 @@ import (
 //  - Lord of the Rings
 //  - etc.
 type parkerBros struct {
+	instance *instance.Instance
+
 	mappingID   string
 	description string
 
@@ -52,8 +54,9 @@ type parkerBros struct {
 	state *parkerBrosState
 }
 
-func newParkerBros(data []byte) (mapper.CartMapper, error) {
+func newParkerBros(instance *instance.Instance, data []byte) (mapper.CartMapper, error) {
 	cart := &parkerBros{
+		instance:    instance,
 		mappingID:   "E0",
 		description: "parker bros",
 		bankSize:    1024,
@@ -97,7 +100,7 @@ func (cart *parkerBros) Plumb() {
 }
 
 // Reset implements the mapper.CartMapper interface.
-func (cart *parkerBros) Reset(randSrc *rand.Rand) {
+func (cart *parkerBros) Reset() {
 	cart.state.segment[0] = cart.NumBanks() - 4
 	cart.state.segment[1] = cart.NumBanks() - 3
 	cart.state.segment[2] = cart.NumBanks() - 2

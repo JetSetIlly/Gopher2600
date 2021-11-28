@@ -17,9 +17,9 @@ package cartridge
 
 import (
 	"fmt"
-	"math/rand"
 
 	"github.com/jetsetilly/gopher2600/curated"
+	"github.com/jetsetilly/gopher2600/hardware/instance"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
@@ -68,6 +68,8 @@ import (
 // cart to differentiate between read and write operations.
 
 type atari struct {
+	instance *instance.Instance
+
 	mappingID   string
 	description string //nolint: structcheck
 
@@ -113,10 +115,10 @@ func (cart *atari) ID() string {
 }
 
 // Reset implements the mapper.CartMapper interface.
-func (cart *atari) Reset(randSrc *rand.Rand) {
+func (cart *atari) Reset() {
 	for i := range cart.state.ram {
-		if randSrc != nil {
-			cart.state.ram[i] = uint8(randSrc.Intn(0xff))
+		if cart.instance.Prefs.RandomState.Get().(bool) {
+			cart.state.ram[i] = uint8(cart.instance.RandSrc.Intn(0xff))
 		} else {
 			cart.state.ram[i] = 0
 		}
@@ -239,8 +241,9 @@ type atari4k struct {
 	atari
 }
 
-func newAtari4k(data []byte) (mapper.CartMapper, error) {
+func newAtari4k(instance *instance.Instance, data []byte) (mapper.CartMapper, error) {
 	cart := &atari4k{}
+	cart.instance = instance
 	cart.bankSize = 4096
 	cart.mappingID = "4k"
 	cart.description = "atari 4k"
@@ -300,8 +303,9 @@ type atari2k struct {
 	atari
 }
 
-func newAtari2k(data []byte) (mapper.CartMapper, error) {
+func newAtari2k(instance *instance.Instance, data []byte) (mapper.CartMapper, error) {
 	cart := &atari2k{}
+	cart.instance = instance
 	cart.bankSize = 2048
 	cart.mappingID = "2k"
 	cart.description = "atari 2k"
@@ -369,8 +373,9 @@ type atari8k struct {
 	atari
 }
 
-func newAtari8k(data []uint8) (mapper.CartMapper, error) {
+func newAtari8k(instance *instance.Instance, data []uint8) (mapper.CartMapper, error) {
 	cart := &atari8k{}
+	cart.instance = instance
 	cart.bankSize = 4096
 	cart.mappingID = "F8"
 	cart.description = "atari 8k"
@@ -469,8 +474,9 @@ type atari16k struct {
 	atari
 }
 
-func newAtari16k(data []byte) (mapper.CartMapper, error) {
+func newAtari16k(instance *instance.Instance, data []byte) (mapper.CartMapper, error) {
 	cart := &atari16k{}
+	cart.instance = instance
 	cart.bankSize = 4096
 	cart.mappingID = "F6"
 	cart.description = "atari 16k"
@@ -575,8 +581,9 @@ type atari32k struct {
 	atari
 }
 
-func newAtari32k(data []byte) (mapper.CartMapper, error) {
+func newAtari32k(instance *instance.Instance, data []byte) (mapper.CartMapper, error) {
 	cart := &atari32k{}
+	cart.instance = instance
 	cart.bankSize = 4096
 	cart.mappingID = "F4"
 	cart.description = "atari 32k"

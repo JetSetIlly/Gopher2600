@@ -13,27 +13,9 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-package vcs
-
-import (
-	"github.com/jetsetilly/gopher2600/hardware/instance"
-	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
-)
-
-// NewRIOT is the preferred method of initialisation for the RIOT memory area.
-func NewRIOT(instance *instance.Instance) *ChipMemory {
-	chip := &ChipMemory{
-		instance: instance,
-		origin:   memorymap.OriginRIOT,
-		memtop:   memorymap.MemtopRIOT,
-	}
-
-	// allocate the minimal amount of memory
-	chip.memory = make([]uint8, chip.memtop-chip.origin+1)
-
-	// SWCHA should be set when a peripheral is attached
-
-	// SWCHB is set in panel attachement
-
-	return chip
-}
+// Package instance defines those parts of the emulation that might change from
+// instance to instance of the VCS type, but is not actually the VCS itself.
+//
+// Particularly useful when running more than one instance of the emulation in
+// parallel.
+package instance

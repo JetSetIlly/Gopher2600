@@ -17,10 +17,10 @@ package cartridge
 
 import (
 	"fmt"
-	"math/rand"
 	"strings"
 
 	"github.com/jetsetilly/gopher2600/curated"
+	"github.com/jetsetilly/gopher2600/hardware/instance"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
@@ -75,6 +75,8 @@ import (
 const num256ByteRAMbanks = 4
 
 type mnetwork struct {
+	instance *instance.Instance
+
 	mappingID   string
 	description string
 
@@ -85,8 +87,9 @@ type mnetwork struct {
 	state *mnetworkState
 }
 
-func newMnetwork(data []byte) (mapper.CartMapper, error) {
+func newMnetwork(instance *instance.Instance, data []byte) (mapper.CartMapper, error) {
 	cart := &mnetwork{
+		instance:    instance,
 		description: "mnetwork",
 		mappingID:   "E7",
 		bankSize:    2048,
@@ -140,11 +143,11 @@ func (cart *mnetwork) Plumb() {
 }
 
 // Reset implements the mapper.CartMapper interface.
-func (cart *mnetwork) Reset(randSrc *rand.Rand) {
+func (cart *mnetwork) Reset() {
 	for b := range cart.state.ram256byte {
 		for i := range cart.state.ram256byte[b] {
-			if randSrc != nil {
-				cart.state.ram256byte[b][i] = uint8(randSrc.Intn(0xff))
+			if cart.instance.Prefs.RandomState.Get().(bool) {
+				cart.state.ram256byte[b][i] = uint8(cart.instance.RandSrc.Intn(0xff))
 			} else {
 				cart.state.ram256byte[b][i] = 0
 			}
@@ -152,8 +155,8 @@ func (cart *mnetwork) Reset(randSrc *rand.Rand) {
 	}
 
 	for i := range cart.state.ram1k {
-		if randSrc != nil {
-			cart.state.ram1k[i] = uint8(randSrc.Intn(0xff))
+		if cart.instance.Prefs.RandomState.Get().(bool) {
+			cart.state.ram1k[i] = uint8(cart.instance.RandSrc.Intn(0xff))
 		} else {
 			cart.state.ram1k[i] = 0
 		}

@@ -16,11 +16,11 @@
 package plusrom
 
 import (
-	"math/rand"
 	"strings"
 
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/curated"
+	"github.com/jetsetilly/gopher2600/hardware/instance"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/logger"
 )
@@ -31,6 +31,8 @@ const NotAPlusROM = "not a plus rom: %s"
 
 // PlusROM wraps another mapper.CartMapper inside a network aware format.
 type PlusROM struct {
+	instance *instance.Instance
+
 	Prefs *Preferences
 	net   *network
 
@@ -59,8 +61,8 @@ func (s *state) Plumb() {
 	s.child.Plumb()
 }
 
-func NewPlusROM(child mapper.CartMapper, vcsHook cartridgeloader.VCSHook) (mapper.CartMapper, error) {
-	cart := &PlusROM{}
+func NewPlusROM(instance *instance.Instance, child mapper.CartMapper, vcsHook cartridgeloader.VCSHook) (mapper.CartMapper, error) {
+	cart := &PlusROM{instance: instance}
 	cart.vcsHook = vcsHook
 	cart.state = &state{}
 	cart.state.child = child
@@ -183,8 +185,8 @@ func (cart *PlusROM) ContainerID() string {
 }
 
 // Reset implements the mapper.CartMapper interface.
-func (cart *PlusROM) Reset(randSrc *rand.Rand) {
-	cart.state.child.Reset(randSrc)
+func (cart *PlusROM) Reset() {
+	cart.state.child.Reset()
 }
 
 // READ implements the mapper.CartMapper interface.

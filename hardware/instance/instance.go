@@ -13,27 +13,38 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-package vcs
+package instance
 
 import (
-	"github.com/jetsetilly/gopher2600/hardware/instance"
-	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
+	"math/rand"
+	"time"
+
+	"github.com/jetsetilly/gopher2600/hardware/preferences"
 )
 
-// NewRIOT is the preferred method of initialisation for the RIOT memory area.
-func NewRIOT(instance *instance.Instance) *ChipMemory {
-	chip := &ChipMemory{
-		instance: instance,
-		origin:   memorymap.OriginRIOT,
-		memtop:   memorymap.MemtopRIOT,
+type Instance struct {
+	Prefs *preferences.Preferences
+
+	// random values generated in the hardware package should use the following
+	// number source
+	RandSrc *rand.Rand
+
+	// the number used to seed RandSrc
+	randSeed int64
+}
+
+func NewInstance() (*Instance, error) {
+	ins := &Instance{}
+
+	var err error
+
+	ins.Prefs, err = preferences.NewPreferences()
+	if err != nil {
+		return nil, err
 	}
 
-	// allocate the minimal amount of memory
-	chip.memory = make([]uint8, chip.memtop-chip.origin+1)
+	ins.randSeed = int64(time.Now().Nanosecond())
+	ins.RandSrc = rand.New(rand.NewSource(ins.randSeed))
 
-	// SWCHA should be set when a peripheral is attached
-
-	// SWCHB is set in panel attachement
-
-	return chip
+	return ins, nil
 }

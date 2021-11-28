@@ -21,6 +21,7 @@ import (
 
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/curated"
+	"github.com/jetsetilly/gopher2600/hardware/instance"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/harmony/cdf"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/harmony/dpcplus"
@@ -29,7 +30,6 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/plusrom"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/supercharger"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
-	"github.com/jetsetilly/gopher2600/hardware/preferences"
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
@@ -38,7 +38,7 @@ type Cartridge struct {
 	bus.DebugBus
 	bus.CPUBus
 
-	prefs *preferences.Preferences
+	instance *instance.Instance
 
 	// filename/hash taken from cartridgeloader. choosing not to keep a
 	// reference to the cartridge loader itself.
@@ -58,8 +58,8 @@ const (
 
 // NewCartridge is the preferred method of initialisation for the cartridge
 // type.
-func NewCartridge(prefs *preferences.Preferences) *Cartridge {
-	cart := &Cartridge{prefs: prefs}
+func NewCartridge(instance *instance.Instance) *Cartridge {
+	cart := &Cartridge{instance: instance}
 	cart.Eject()
 	return cart
 }
@@ -82,11 +82,7 @@ func (cart *Cartridge) Plumb(fromDifferentEmulation bool) {
 
 // Reset volative contents of Cartridge.
 func (cart *Cartridge) Reset() {
-	if cart.prefs != nil && cart.prefs.RandomState.Get().(bool) {
-		cart.mapper.Reset(cart.prefs.RandSrc)
-	} else {
-		cart.mapper.Reset(nil)
-	}
+	cart.mapper.Reset()
 }
 
 // String returns a summary of the cartridge, it's mapper and any containers.
@@ -203,7 +199,7 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 		// format)
 		if cart.fingerprintPlusROM(cartload) {
 			// try creating a NewPlusROM instance
-			pr, err := plusrom.NewPlusROM(cart.mapper, cartload.VCSHook)
+			pr, err := plusrom.NewPlusROM(cart.instance, cart.mapper, cartload.VCSHook)
 
 			if err != nil {
 				// if the error is a NotAPlusROM error then log the false
@@ -235,46 +231,46 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 
 	switch cartload.Mapping {
 	case "2k":
-		cart.mapper, err = newAtari2k(cartload.Data)
+		cart.mapper, err = newAtari2k(cart.instance, cartload.Data)
 	case "4k":
-		cart.mapper, err = newAtari4k(cartload.Data)
+		cart.mapper, err = newAtari4k(cart.instance, cartload.Data)
 	case "F8":
-		cart.mapper, err = newAtari8k(cartload.Data)
+		cart.mapper, err = newAtari8k(cart.instance, cartload.Data)
 	case "F6":
-		cart.mapper, err = newAtari16k(cartload.Data)
+		cart.mapper, err = newAtari16k(cart.instance, cartload.Data)
 	case "F4":
-		cart.mapper, err = newAtari32k(cartload.Data)
+		cart.mapper, err = newAtari32k(cart.instance, cartload.Data)
 	case "2k+":
-		cart.mapper, err = newAtari2k(cartload.Data)
+		cart.mapper, err = newAtari2k(cart.instance, cartload.Data)
 		addSuperchip = true
 	case "4k+":
-		cart.mapper, err = newAtari4k(cartload.Data)
+		cart.mapper, err = newAtari4k(cart.instance, cartload.Data)
 		addSuperchip = true
 	case "F8+":
-		cart.mapper, err = newAtari8k(cartload.Data)
+		cart.mapper, err = newAtari8k(cart.instance, cartload.Data)
 		addSuperchip = true
 	case "F6+":
-		cart.mapper, err = newAtari16k(cartload.Data)
+		cart.mapper, err = newAtari16k(cart.instance, cartload.Data)
 		addSuperchip = true
 	case "F4+":
-		cart.mapper, err = newAtari32k(cartload.Data)
+		cart.mapper, err = newAtari32k(cart.instance, cartload.Data)
 		addSuperchip = true
 	case "FA":
-		cart.mapper, err = newCBS(cartload.Data)
+		cart.mapper, err = newCBS(cart.instance, cartload.Data)
 	case "FE":
 		// !!TODO: FE cartridge mapping
 	case "E0":
-		cart.mapper, err = newParkerBros(cartload.Data)
+		cart.mapper, err = newParkerBros(cart.instance, cartload.Data)
 	case "E7":
-		cart.mapper, err = newMnetwork(cartload.Data)
+		cart.mapper, err = newMnetwork(cart.instance, cartload.Data)
 	case "3F":
-		cart.mapper, err = newTigervision(cartload.Data)
+		cart.mapper, err = newTigervision(cart.instance, cartload.Data)
 	case "AR":
-		cart.mapper, err = supercharger.NewSupercharger(cartload)
+		cart.mapper, err = supercharger.NewSupercharger(cart.instance, cartload)
 	case "DF":
-		cart.mapper, err = newDF(cartload.Data)
+		cart.mapper, err = newDF(cart.instance, cartload.Data)
 	case "3E":
-		cart.mapper, err = new3e(cartload.Data)
+		cart.mapper, err = new3e(cart.instance, cartload.Data)
 	case "E3P":
 		// synonym for 3E+
 		fallthrough
@@ -282,18 +278,18 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 		// synonym for 3E+
 		fallthrough
 	case "3E+":
-		cart.mapper, err = new3ePlus(cartload.Data)
+		cart.mapper, err = new3ePlus(cart.instance, cartload.Data)
 	case "SB":
-		cart.mapper, err = newSuperbank(cartload.Data)
+		cart.mapper, err = newSuperbank(cart.instance, cartload.Data)
 	case "DPC":
-		cart.mapper, err = newDPC(cartload.Data)
+		cart.mapper, err = newDPC(cart.instance, cartload.Data)
 	case "DPC+":
-		cart.mapper, err = dpcplus.NewDPCplus(cart.prefs, cartload.Data)
+		cart.mapper, err = dpcplus.NewDPCplus(cart.instance, cartload.Data)
 	case "CDF":
 		// CDF mapper defaults to version CDFJ
-		cart.mapper, err = cdf.NewCDF(cart.prefs, "CDFJ", cartload.Data)
+		cart.mapper, err = cdf.NewCDF(cart.instance, "CDFJ", cartload.Data)
 	case "MVC":
-		cart.mapper, err = moviecart.NewMoviecart(cartload)
+		cart.mapper, err = moviecart.NewMoviecart(cart.instance, cartload)
 	}
 
 	if err != nil {
