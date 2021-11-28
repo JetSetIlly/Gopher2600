@@ -13,28 +13,31 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
+// Package instance defines those parts of the emulation that might change from
+// instance to instance of the VCS type, but is not actually the VCS itself.
+//
+// Particularly useful when running more than one instance of the emulation in
+// parallel.
 package instance
 
 import (
-	"math/rand"
-	"time"
-
 	"github.com/jetsetilly/gopher2600/hardware/preferences"
+	"github.com/jetsetilly/gopher2600/hardware/television/signal"
+	"github.com/jetsetilly/gopher2600/random"
 )
 
+// Instance defines those parts of the emulation that might change from
+// instance to instance of the VCS type, but is not actually the VCS itself.
 type Instance struct {
-	Prefs *preferences.Preferences
-
-	// random values generated in the hardware package should use the following
-	// number source
-	RandSrc *rand.Rand
-
-	// the number used to seed RandSrc
-	randSeed int64
+	Prefs  *preferences.Preferences
+	Random *random.Random
 }
 
-func NewInstance() (*Instance, error) {
-	ins := &Instance{}
+// NewInstance is the preferred method of initialisation for the Instance type.
+func NewInstance(coords signal.TelevisionCoords) (*Instance, error) {
+	ins := &Instance{
+		Random: random.NewRandom(coords),
+	}
 
 	var err error
 
@@ -42,9 +45,6 @@ func NewInstance() (*Instance, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	ins.randSeed = int64(time.Now().Nanosecond())
-	ins.RandSrc = rand.New(rand.NewSource(ins.randSeed))
 
 	return ins, nil
 }

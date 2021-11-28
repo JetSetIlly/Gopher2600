@@ -145,7 +145,7 @@ func (cart *dpcPlus) PlumbFromDifferentEmulation() {
 
 // Reset implements the mapper.CartMapper interface.
 func (cart *dpcPlus) Reset() {
-	cart.state.initialise(cart.instance.RandSrc, len(cart.banks)-1)
+	cart.state.initialise(cart.instance.Random, len(cart.banks)-1)
 }
 
 // Read implements the mapper.CartMapper interface.

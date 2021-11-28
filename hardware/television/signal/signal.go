@@ -86,7 +86,9 @@ type TelevisionTIA interface {
 }
 
 // TelevisionCoords allows probing of the current "coordinates" of the
-// television. Useful for measuring time.
+// television. ie. the frame, scanline and clock (horizontal position).
+//
+// Useful for the measurement of time.
 type TelevisionCoords interface {
 	GetCoords() coords.TelevisionCoords
 }

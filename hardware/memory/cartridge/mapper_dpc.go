@@ -17,7 +17,6 @@ package cartridge
 
 import (
 	"fmt"
-	"math/rand"
 	"strconv"
 	"strings"
 
@@ -26,6 +25,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
+	"github.com/jetsetilly/gopher2600/random"
 )
 
 // dpc implements the mapper.CartMapper interface.
@@ -103,7 +103,7 @@ func (cart *dpc) Plumb() {
 
 // Reset implements the mapper.CartMapper interface.
 func (cart *dpc) Reset() {
-	cart.state.registers.reset(cart.instance.RandSrc)
+	cart.state.registers.reset(cart.instance.Random)
 	cart.state.bank = len(cart.banks) - 1
 }
 
@@ -621,13 +621,13 @@ func (r DPCregisters) String() string {
 	return s.String()
 }
 
-func (r *DPCregisters) reset(randSrc *rand.Rand) {
+func (r *DPCregisters) reset(rand *random.Random) {
 	for i := range r.Fetcher {
-		if randSrc != nil {
-			r.Fetcher[i].Low = byte(randSrc.Intn(0xff))
-			r.Fetcher[i].Hi = byte(randSrc.Intn(0xff))
-			r.Fetcher[i].Top = byte(randSrc.Intn(0xff))
-			r.Fetcher[i].Bottom = byte(randSrc.Intn(0xff))
+		if rand != nil {
+			r.Fetcher[i].Low = byte(rand.Intn(0xff))
+			r.Fetcher[i].Hi = byte(rand.Intn(0xff))
+			r.Fetcher[i].Top = byte(rand.Intn(0xff))
+			r.Fetcher[i].Bottom = byte(rand.Intn(0xff))
 		} else {
 			r.Fetcher[i].Low = 0
 			r.Fetcher[i].Hi = 0
@@ -641,8 +641,8 @@ func (r *DPCregisters) reset(randSrc *rand.Rand) {
 		r.Fetcher[i].OSCclock = false
 	}
 
-	if randSrc != nil {
-		r.RNG = uint8(randSrc.Intn(0xff))
+	if rand != nil {
+		r.RNG = uint8(rand.Intn(0xff))
 	} else {
 		r.RNG = 0
 	}

@@ -105,8 +105,8 @@ func (tmr *Timer) Reset() {
 
 	if tmr.instance.Prefs.RandomState.Get().(bool) {
 		tmr.Divider = T1024T
-		tmr.TicksRemaining = tmr.instance.RandSrc.Intn(0xffff)
-		tmr.INTIMvalue = uint8(tmr.instance.RandSrc.Intn(0xff))
+		tmr.TicksRemaining = tmr.instance.Random.Intn(0xffff)
+		tmr.INTIMvalue = uint8(tmr.instance.Random.Intn(0xff))
 	} else {
 		tmr.Divider = T1024T
 		tmr.TicksRemaining = int(T1024T)

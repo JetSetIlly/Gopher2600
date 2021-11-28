@@ -17,11 +17,11 @@ package dpcplus
 
 import (
 	"fmt"
-	"math/rand"
 	"strconv"
 	"strings"
 
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
+	"github.com/jetsetilly/gopher2600/random"
 )
 
 // Registers implements the bus.CartRegisters interface.
@@ -81,13 +81,13 @@ func (r Registers) String() string {
 	return s.String()
 }
 
-func (r *Registers) reset(randSrc *rand.Rand) {
+func (r *Registers) reset(rand *random.Random) {
 	for i := range r.Fetcher {
-		if randSrc != nil {
-			r.Fetcher[i].Low = byte(randSrc.Intn(0xff))
-			r.Fetcher[i].Hi = byte(randSrc.Intn(0xff))
-			r.Fetcher[i].Top = byte(randSrc.Intn(0xff))
-			r.Fetcher[i].Bottom = byte(randSrc.Intn(0xff))
+		if rand != nil {
+			r.Fetcher[i].Low = byte(rand.Intn(0xff))
+			r.Fetcher[i].Hi = byte(rand.Intn(0xff))
+			r.Fetcher[i].Top = byte(rand.Intn(0xff))
+			r.Fetcher[i].Bottom = byte(rand.Intn(0xff))
 		} else {
 			r.Fetcher[i].Low = 0
 			r.Fetcher[i].Hi = 0
@@ -97,11 +97,11 @@ func (r *Registers) reset(randSrc *rand.Rand) {
 	}
 
 	for i := range r.FracFetcher {
-		if randSrc != nil {
-			r.FracFetcher[i].Low = byte(randSrc.Intn(0xff))
-			r.FracFetcher[i].Hi = byte(randSrc.Intn(0xff))
-			r.FracFetcher[i].Increment = byte(randSrc.Intn(0xff))
-			r.FracFetcher[i].Count = byte(randSrc.Intn(0xff))
+		if rand != nil {
+			r.FracFetcher[i].Low = byte(rand.Intn(0xff))
+			r.FracFetcher[i].Hi = byte(rand.Intn(0xff))
+			r.FracFetcher[i].Increment = byte(rand.Intn(0xff))
+			r.FracFetcher[i].Count = byte(rand.Intn(0xff))
 		} else {
 			r.FracFetcher[i].Low = 0
 			r.FracFetcher[i].Hi = 0
@@ -111,10 +111,10 @@ func (r *Registers) reset(randSrc *rand.Rand) {
 	}
 
 	for i := range r.MusicFetcher {
-		if randSrc != nil {
-			r.MusicFetcher[i].Waveform = uint32(randSrc.Intn(0xffffffff))
-			r.MusicFetcher[i].Freq = uint32(randSrc.Intn(0xffffffff))
-			r.MusicFetcher[i].Count = uint32(randSrc.Intn(0xffffffff))
+		if rand != nil {
+			r.MusicFetcher[i].Waveform = uint32(rand.Intn(0xffffffff))
+			r.MusicFetcher[i].Freq = uint32(rand.Intn(0xffffffff))
+			r.MusicFetcher[i].Count = uint32(rand.Intn(0xffffffff))
 		} else {
 			r.MusicFetcher[i].Waveform = 0
 			r.MusicFetcher[i].Freq = 0
@@ -122,8 +122,8 @@ func (r *Registers) reset(randSrc *rand.Rand) {
 		}
 	}
 
-	if randSrc != nil {
-		r.RNG.Value = uint32(randSrc.Intn(0xffffffff))
+	if rand != nil {
+		r.RNG.Value = uint32(rand.Intn(0xffffffff))
 	} else {
 		r.RNG.Value = 0
 	}

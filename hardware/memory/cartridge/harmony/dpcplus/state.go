@@ -16,9 +16,8 @@
 package dpcplus
 
 import (
-	"math/rand"
-
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/harmony/callfn"
+	"github.com/jetsetilly/gopher2600/random"
 )
 
 type State struct {
@@ -59,8 +58,8 @@ func newDPCPlusState() *State {
 // the ideal MAMCR value given to the arm7tdmi.Run() command.
 const dpcPlusMAMCR = 2
 
-func (s *State) initialise(randSrc *rand.Rand, bank int) {
-	s.registers.reset(randSrc)
+func (s *State) initialise(rand *random.Random, bank int) {
+	s.registers.reset(rand)
 	s.bank = bank
 	s.lda = false
 	s.beats = 0

@@ -113,7 +113,7 @@ func (cart *m3ePlus) Reset() {
 	for b := range cart.state.ram {
 		for i := range cart.state.ram[b] {
 			if cart.instance.Prefs.RandomState.Get().(bool) {
-				cart.state.ram[b][i] = uint8(cart.instance.RandSrc.Intn(0xff))
+				cart.state.ram[b][i] = uint8(cart.instance.Random.Intn(0xff))
 			} else {
 				cart.state.ram[b][i] = 0
 			}

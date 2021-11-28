@@ -125,12 +125,12 @@ func (mc *CPU) Reset() {
 	// checking for instance == nil because it's possible for NewCPU to be
 	// called with a nil instance (test package)
 	if mc.instance != nil && mc.instance.Prefs.RandomState.Get().(bool) {
-		mc.PC.Load(uint16(mc.instance.RandSrc.Intn(0xffff)))
-		mc.A.Load(uint8(mc.instance.RandSrc.Intn(0xff)))
-		mc.X.Load(uint8(mc.instance.RandSrc.Intn(0xff)))
-		mc.Y.Load(uint8(mc.instance.RandSrc.Intn(0xff)))
-		mc.SP.Load(uint8(mc.instance.RandSrc.Intn(0xff)))
-		mc.Status.FromValue(uint8(mc.instance.RandSrc.Intn(0xff)))
+		mc.PC.Load(uint16(mc.instance.Random.Intn(0xffff)))
+		mc.A.Load(uint8(mc.instance.Random.Intn(0xff)))
+		mc.X.Load(uint8(mc.instance.Random.Intn(0xff)))
+		mc.Y.Load(uint8(mc.instance.Random.Intn(0xff)))
+		mc.SP.Load(uint8(mc.instance.Random.Intn(0xff)))
+		mc.Status.FromValue(uint8(mc.instance.Random.Intn(0xff)))
 	} else {
 		mc.PC.Load(0)
 		mc.A.Load(0)

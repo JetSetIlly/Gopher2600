@@ -71,7 +71,7 @@ type VCS struct {
 // used for all aspects of emulation: debugging sessions, and regular play.
 func NewVCS(tv *television.Television) (*VCS, error) {
 	// set up instance
-	instance, err := instance.NewInstance()
+	instance, err := instance.NewInstance(tv)
 	if err != nil {
 		return nil, err
 	}
