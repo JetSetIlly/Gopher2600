@@ -343,13 +343,17 @@ func (win *winPrefs) drawDiskButtons() {
 			if err != nil {
 				logger.Logf("sdlimgui", "could not save (sdlaudio) preferences: %v", err)
 			}
+			err = win.img.vcs.Instance.Prefs.Save()
+			if err != nil {
+				logger.Logf("sdlimgui", "could not save (vcs) preferences: %v", err)
+			}
+			err = win.img.vcs.Instance.Prefs.ARM.Save()
+			if err != nil {
+				logger.Logf("sdlimgui", "could not save (arm) preferences: %v", err)
+			}
 			err = win.img.vcs.TIA.Rev.Prefs.Save()
 			if err != nil {
 				logger.Logf("sdlimgui", "could not save (tia revisions) preferences: %v", err)
-			}
-			err = win.img.vcs.Instance.Prefs.Save()
-			if err != nil {
-				logger.Logf("sdlimgui", "could not save (hardware) preferences: %v", err)
 			}
 			err = win.img.crtPrefs.Save()
 			if err != nil {
@@ -382,7 +386,11 @@ func (win *winPrefs) drawDiskButtons() {
 			}
 			err = win.img.vcs.Instance.Prefs.Load()
 			if err != nil {
-				logger.Logf("sdlimgui", "could not restore (hardware) preferences: %v", err)
+				logger.Logf("sdlimgui", "could not restore (vcs) preferences: %v", err)
+			}
+			err = win.img.vcs.Instance.Prefs.ARM.Load()
+			if err != nil {
+				logger.Logf("sdlimgui", "could not restore (arm) preferences: %v", err)
 			}
 			err = win.img.vcs.TIA.Rev.Prefs.Load()
 			if err != nil {

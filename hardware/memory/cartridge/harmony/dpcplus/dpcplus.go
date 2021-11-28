@@ -101,7 +101,7 @@ func NewDPCplus(instance *instance.Instance, data []byte) (mapper.CartMapper, er
 	//
 	// if bank0 has any ARM code then it will start at offset 0x08. first eight
 	// bytes are the ARM header
-	cart.arm = arm7tdmi.NewARM(cart.version.mmap, &instance.Prefs.ARM, cart.state.static, cart)
+	cart.arm = arm7tdmi.NewARM(cart.version.mmap, instance.Prefs.ARM, cart.state.static, cart)
 
 	return cart, nil
 }
@@ -140,7 +140,7 @@ func (cart *dpcPlus) Plumb() {
 
 // Plumb implements the mapper.CartMapper interface.
 func (cart *dpcPlus) PlumbFromDifferentEmulation() {
-	cart.arm = arm7tdmi.NewARM(cart.version.mmap, &cart.instance.Prefs.ARM, cart.state.static, cart)
+	cart.arm = arm7tdmi.NewARM(cart.version.mmap, cart.instance.Prefs.ARM, cart.state.static, cart)
 }
 
 // Reset implements the mapper.CartMapper interface.

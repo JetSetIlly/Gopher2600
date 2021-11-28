@@ -20,30 +20,39 @@ import (
 	"github.com/jetsetilly/gopher2600/resources"
 )
 
-// Preferences defines and collates all the preference values used by the emulation.
-type Preferences struct {
+// Indicators that the ARM should put the MAM into the mode inidcated by the
+// emulated driver for the cartridge mapper.
+const MAMDriver = -1
+
+type ARMPreferences struct {
 	dsk *prefs.Disk
 
-	// initialise hardware to unknown state after reset
-	RandomState prefs.Bool
+	// the specific model of ARM to use. this will affect things like memory
+	// addressing for cartridge formats that use the ARM.
+	//
+	// NOTE: this may be superceded in the future to allow for more flexibility
+	Model prefs.String
 
-	// unused pins when reading TIA/RIOT registers take the value of the last
-	// value on the bus. if RandomPins is true then the values of the unusued
-	// pins are randomised. this is the equivalent of the Stella option "drive
-	// unused pins randomly on a read/peek"
-	RandomPins prefs.Bool
+	// whether the ARM coprocessor (as found in Harmony cartridges) executes
+	// instantly
+	Immediate prefs.Bool
 
-	// preferences used by the ARM sub-system
-	ARM *ARMPreferences
+	// a value of MAMDriver says to use the driver supplied MAM value. any
+	// other value "forces" the MAM setting on Thumb program execution.
+	MAM prefs.Int
+
+	// abort Thumb program is it tries to access memory that does not exist.
+	// for example: reading from Flash memory above the 32k memtop (for 32k
+	// ROMs)
+	AbortOnIllegalMem prefs.Bool
 }
 
-func (p *Preferences) String() string {
+func (p *ARMPreferences) String() string {
 	return p.dsk.String()
 }
 
-// NewPreferences is the preferred method of initialisation for the Preferences type.
-func NewPreferences() (*Preferences, error) {
-	p := &Preferences{}
+func newARMprefrences() (*ARMPreferences, error) {
+	p := &ARMPreferences{}
 	p.SetDefaults()
 
 	// setup preferences and load from disk
@@ -55,11 +64,19 @@ func NewPreferences() (*Preferences, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = p.dsk.Add("hardware.randState", &p.RandomState)
+	err = p.dsk.Add("hardware.arm7.model", &p.Model)
 	if err != nil {
 		return nil, err
 	}
-	err = p.dsk.Add("hardware.randPins", &p.RandomPins)
+	err = p.dsk.Add("hardware.arm7.immediate", &p.Immediate)
+	if err != nil {
+		return nil, err
+	}
+	err = p.dsk.Add("hardware.arm7.mam", &p.MAM)
+	if err != nil {
+		return nil, err
+	}
+	err = p.dsk.Add("hardware.arm7.abortOnIllegalMem", &p.AbortOnIllegalMem)
 	if err != nil {
 		return nil, err
 	}
@@ -68,32 +85,29 @@ func NewPreferences() (*Preferences, error) {
 		return nil, err
 	}
 
-	p.ARM, err = newARMprefrences()
-	if err != nil {
-		return nil, err
-	}
-
 	return p, nil
 }
 
 // SetDefaults reverts all settings to default values.
-func (p *Preferences) SetDefaults() {
+func (p *ARMPreferences) SetDefaults() {
 	// initialise random number generator
-	p.RandomState.Set(false)
-	p.RandomPins.Set(false)
+	p.Model.Set("LPC2000")
+	p.Immediate.Set(false)
+	p.MAM.Set(-1)
+	p.AbortOnIllegalMem.Set(false)
 }
 
 // Reset all hardware preferences to the default values.
-func (p *Preferences) Reset() error {
+func (p *ARMPreferences) Reset() error {
 	return p.dsk.Reset()
 }
 
 // Load current hardware preference from disk.
-func (p *Preferences) Load() error {
+func (p *ARMPreferences) Load() error {
 	return p.dsk.Load(false)
 }
 
 // Save current hardware preferences to disk.
-func (p *Preferences) Save() error {
+func (p *ARMPreferences) Save() error {
 	return p.dsk.Save()
 }
