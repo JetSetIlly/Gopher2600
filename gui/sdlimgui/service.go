@@ -382,7 +382,7 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 	}
 
 	// forward keypresses to userinput.Event channel
-	if img.isPlaymode() || img.isCaptured() {
+	if img.isCaptured() || (img.isPlaymode() && !imgui.IsAnyItemActive()) {
 		mod := userinput.KeyModNone
 
 		if sdl.GetModState()&sdl.KMOD_LALT == sdl.KMOD_LALT ||
