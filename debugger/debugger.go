@@ -441,6 +441,12 @@ func (dbg *Debugger) setState(state emulation.State) {
 // * see setState() comment, although debugger.SetFeature(ReqSetPause) will
 // always be "noisy"
 func (dbg *Debugger) setStateQuiet(state emulation.State, quiet bool) {
+	// do not allow comparison emulation in the rewinding state. remove it if
+	// we ever enter the rewinding state
+	if state == emulation.Rewinding {
+		dbg.removeComparisonEmulation()
+	}
+
 	dbg.vcs.TV.SetEmulationState(state)
 	if dbg.ref != nil {
 		dbg.ref.SetEmulationState(state)
@@ -568,6 +574,13 @@ func (dbg *Debugger) end() {
 
 // Starts the main emulation sequence.
 func (dbg *Debugger) Start(mode emulation.Mode, initScript string, cartload cartridgeloader.Loader, comparisonROM string) error {
+	// do not allow comparison emulation inside the debugger. it's far too
+	// complicated running two emulations that must be synced in the debugger
+	// loop
+	if mode == emulation.ModeDebugger && comparisonROM != "" {
+		return curated.Errorf("debugger: cannot run comparison emulation inside the debugger")
+	}
+
 	err := dbg.addComparisonEmulation(comparisonROM)
 	if err != nil {
 		return curated.Errorf("debugger: %v", err)
@@ -890,6 +903,16 @@ func (dbg *Debugger) addComparisonEmulation(comparisonROM string) error {
 	dbg.comparison.CreateFromLoader(cartload)
 
 	return nil
+}
+
+func (dbg *Debugger) removeComparisonEmulation() {
+	if dbg.comparison == nil {
+		return
+	}
+
+	dbg.comparison.Quit()
+	dbg.comparison = nil
+	dbg.gui.SetFeature(gui.ReqComparison, nil, nil)
 }
 
 func (dbg *Debugger) hotload() (e error) {

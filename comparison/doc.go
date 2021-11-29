@@ -16,15 +16,15 @@
 // Package comparison facilitates the running of a comparison emulator
 // alongside the main emulation.
 //
-// The package synchronises the two emulations and the main emulation will
-// always be exactly one frame ahead of the comparison emulation. Either
-// emulation will be stalled for the duration that the other emulation
-// completes the next frame.
+// The package synchronises the two emulations and the main emulation (which
+// we'll refer to as the "driver emulation") will always be one frame ahead of
+// the comparison emulation. Either emulation will be stalled for the duration
+// that the other emulation completes the next frame.
 //
-// User input is synchronised by setting the main emulation's RIOT Ports as a
+// User input is synchronised by setting the driver emulation's RIOT Ports as a
 // driver and the comparison emulation's as a passenger (see RIOT package).
 //
-// Note that the main emulation will be stalled and will not be able to service
+// Note that the driver emulation will be stalled and will not be able to service
 // any of the normal communication channels for the duration that the
 // comparison emulation is running.
 //
@@ -32,4 +32,10 @@
 // the frame-by-frame video output of the emulation; and the second stream
 // shows the differences (as white pixels) between corresponding frames from
 // the two emulations. Each video stream has a one frame buffer.
+//
+// The comparison emulation does not handle the rewind state at all. This means
+// that if the driver emulation is put into the rewinding state the constraints
+// on how the emulations are synchronised will very likely be broken. For
+// simplicity the comparison emulation should be abandoned whenever the driver
+// emulation enters the rewinding state.
 package comparison

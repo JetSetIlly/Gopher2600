@@ -46,9 +46,8 @@ type Comparison struct {
 	diffImg     *image.RGBA
 	cropDiffImg *image.RGBA
 
-	isEmulating        atomic.Value
-	emulationQuit      chan bool
-	emulationCompleted chan bool
+	isEmulating   atomic.Value
+	emulationQuit chan bool
 
 	Render     chan *image.RGBA
 	DiffRender chan *image.RGBA
@@ -59,16 +58,12 @@ type Comparison struct {
 }
 
 // NewComparison is the preferred method of initialisation for the Comparison type.
-func NewComparison(driver *hardware.VCS) (*Comparison, error) {
+func NewComparison(driverVCS *hardware.VCS) (*Comparison, error) {
 	cmp := &Comparison{
-		emulationQuit:      make(chan bool, 1),
-		emulationCompleted: make(chan bool, 1),
-		Render:             make(chan *image.RGBA, 1),
-		DiffRender:         make(chan *image.RGBA, 1),
+		emulationQuit: make(chan bool, 1),
+		Render:        make(chan *image.RGBA, 1),
+		DiffRender:    make(chan *image.RGBA, 1),
 	}
-
-	// emulation has completed, by definition, on startup
-	cmp.emulationCompleted <- true
 
 	// set isEmulating atomic as a boolean
 	cmp.isEmulating.Store(false)
@@ -96,8 +91,8 @@ func NewComparison(driver *hardware.VCS) (*Comparison, error) {
 	cmp.Reset()
 
 	// create driver
-	cmp.driver = newDriver()
-	driver.TV.AddPixelRenderer(&cmp.driver)
+	cmp.driver = newDriver(driverVCS.TV)
+	driverVCS.TV.AddPixelRenderer(&cmp.driver)
 
 	// synchronise RIOT ports
 	sync := make(chan ports.DrivenEvent, 32)
@@ -105,7 +100,7 @@ func NewComparison(driver *hardware.VCS) (*Comparison, error) {
 	if err != nil {
 		return nil, curated.Errorf("comparison: %v", err)
 	}
-	err = driver.RIOT.Ports.SynchroniseWithPassenger(sync, driver.TV)
+	err = driverVCS.RIOT.Ports.SynchroniseWithPassenger(sync, driverVCS.TV)
 	if err != nil {
 		return nil, curated.Errorf("comparison: %v", err)
 	}
@@ -129,13 +124,16 @@ func (cmp *Comparison) IsEmulating() bool {
 	return cmp.isEmulating.Load().(bool)
 }
 
-// EndCreation ends a running emulation that is creating a stream of comparison
-// images. Safe to use even when no emulation is running.
-func (cmp *Comparison) EndCreation() {
-	select {
-	case cmp.emulationQuit <- true:
-	default:
-	}
+// Quit ends the running comparison emulation.
+func (cmp *Comparison) Quit() {
+	// very important that we remove the pixel renderer from the main
+	// emulation's television that we added as part of the newDriver()
+	// function. if we don't then the renderer will continue firing and get
+	// jammed waiting on a channel that has been abandone
+	cmp.driver.tv.RemovePixelRenderer(&cmp.driver)
+
+	// send quit signal to the comparison emulation
+	cmp.emulationQuit <- true
 }
 
 // CreateFromLoader will cause images to be generated from a running emulation
@@ -179,7 +177,7 @@ func (cmp *Comparison) CreateFromLoader(cartload cartridgeloader.Loader) error {
 
 	go func() {
 		defer func() {
-			cmp.emulationCompleted <- true
+			cmp.driver.quit <- nil
 			cmp.isEmulating.Store(false)
 		}()
 

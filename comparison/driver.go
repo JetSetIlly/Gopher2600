@@ -25,6 +25,8 @@ import (
 )
 
 type driver struct {
+	tv *television.Television
+
 	frameInfo television.FrameInfo
 
 	img     [2]*image.RGBA
@@ -33,12 +35,12 @@ type driver struct {
 
 	sync chan bool
 	ack  chan bool
-
 	quit chan error
 }
 
-func newDriver() driver {
+func newDriver(tv *television.Television) driver {
 	drv := driver{
+		tv:   tv,
 		sync: make(chan bool),
 		ack:  make(chan bool),
 		quit: make(chan error),

@@ -423,7 +423,12 @@ func emulate(emulationMode emulation.Mode, md *modalflag.Modes, sync *mainSync) 
 	useSavekey := md.AddBool("savekey", false, "use savekey in player 1 port")
 	profile := md.AddString("profile", "none", "run performance check with profiling: command separated CPU, MEM, TRACE or ALL")
 	log := md.AddBool("log", false, "echo debugging log to stdout")
-	comparison := md.AddString("comparison", "", "ROM to run in parallel for comparison")
+
+	// some arguments are mode specific
+	var comparison *string
+	if emulationMode == emulation.ModePlay {
+		comparison = md.AddString("comparison", "", "ROM to run in parallel for comparison")
+	}
 
 	stats := &[]bool{false}[0]
 	if statsview.Available() {
@@ -530,7 +535,14 @@ func emulate(emulationMode emulation.Mode, md *modalflag.Modes, sync *mainSync) 
 
 	// set up a launch function
 	dbgLaunch := func() error {
-		err := dbg.Start(emulationMode, *initScript, cartload, *comparison)
+		// check if comparison was defined and dereference if it was, otherwise
+		// comp is just the empty string
+		var comp string
+		if comparison != nil {
+			comp = *comparison
+		}
+
+		err := dbg.Start(emulationMode, *initScript, cartload, comp)
 		if err != nil {
 			return err
 		}

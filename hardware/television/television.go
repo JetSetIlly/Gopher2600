@@ -281,6 +281,17 @@ func (tv *Television) AttachVCS(vcs VCSReturnChannel) {
 	}
 }
 
+// RemovePixelRenderer removes a single PixelRenderer implementation from the
+// list of renderers. Order is not maintained.
+func (tv *Television) RemovePixelRenderer(r PixelRenderer) {
+	for i := range tv.renderers {
+		if tv.renderers[i] == r {
+			tv.renderers[i] = tv.renderers[len(tv.renderers)-1]
+			tv.renderers = tv.renderers[:len(tv.renderers)-1]
+		}
+	}
+}
+
 // AddPixelRenderer registers an implementation of PixelRenderer. Multiple
 // implemntations can be added.
 func (tv *Television) AddPixelRenderer(r PixelRenderer) {

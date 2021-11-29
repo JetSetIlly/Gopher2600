@@ -128,9 +128,16 @@ func (img *SdlImgui) serviceSetFeature(request featureRequest) {
 	case gui.ReqComparison:
 		err = argLen(request.args, 2)
 		if err == nil {
-			img.wm.windows[winComparisonID].(*winComparison).render = request.args[0].(chan *image.RGBA)
-			img.wm.windows[winComparisonID].(*winComparison).diffRender = request.args[1].(chan *image.RGBA)
-			img.wm.windows[winComparisonID].(*winComparison).setOpen(true)
+			open := false
+			if request.args[0] != nil {
+				img.wm.windows[winComparisonID].(*winComparison).render = request.args[0].(chan *image.RGBA)
+				open = true
+			}
+			if request.args[1] != nil {
+				img.wm.windows[winComparisonID].(*winComparison).diffRender = request.args[1].(chan *image.RGBA)
+				open = true
+			}
+			img.wm.windows[winComparisonID].(*winComparison).setOpen(open)
 		}
 
 	default:
