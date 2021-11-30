@@ -22,7 +22,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 )
 
-func (win *winPrefs) drawCRT() setDefaultPrefs {
+func (win *winPrefs) drawCRT() {
 	imgui.Spacing()
 
 	// disable all CRT effect options if pixel-perfect is on
@@ -85,8 +85,6 @@ func (win *winPrefs) drawCRT() setDefaultPrefs {
 	imgui.PushItemWidth(-1)
 	win.drawSyncSpeed()
 	imgui.PopItemWidth()
-
-	return win.img.crtPrefs
 }
 
 func (win *winPrefs) drawCurve() {

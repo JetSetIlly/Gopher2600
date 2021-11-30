@@ -66,6 +66,7 @@ func (win *winPrefs) draw() {
 	}
 
 	var setDef setDefaultPrefs
+	var setDefLabel = ""
 
 	if win.img.isPlaymode() {
 		imgui.SetNextWindowPosV(imgui.Vec2{100, 40}, imgui.ConditionAppearing, imgui.Vec2{0, 0})
@@ -88,8 +89,10 @@ func (win *winPrefs) draw() {
 	}
 
 	if imgui.BeginTabItem("CRT") {
-		setDef = win.drawCRT()
+		win.drawCRT()
 		imgui.EndTabItem()
+		setDef = win.img.crtPrefs
+		setDefLabel = "CRT"
 	}
 
 	if imgui.BeginTabItem("Playmode") {
@@ -107,11 +110,15 @@ func (win *winPrefs) draw() {
 	if imgui.BeginTabItem("Rewind") {
 		win.drawRewind()
 		imgui.EndTabItem()
+		setDef = win.img.dbg.Rewind.Prefs
+		setDefLabel = "Rewind"
 	}
 
 	if imgui.BeginTabItem("ARM") {
 		win.drawARM()
 		imgui.EndTabItem()
+		setDef = win.img.vcs.Instance.Prefs.ARM
+		setDefLabel = "ARM"
 	}
 
 	if imgui.BeginTabItem("PlusROM") {
@@ -127,8 +134,10 @@ func (win *winPrefs) draw() {
 	// draw "Set Defaults" button
 	if setDef != nil {
 		imgui.SameLine()
-		if imgui.Button("Set Defaults") {
-			setDef.SetDefaults()
+		if imgui.Button(fmt.Sprintf("Set %s Defaults", setDefLabel)) {
+			// some preferences are sensitive to the goroutine SetDefaults() is
+			// called within
+			win.img.dbg.PushRawEvent(setDef.SetDefaults)
 		}
 	}
 
@@ -193,7 +202,9 @@ func (win *winPrefs) drawRewind() {
 
 	rewindMaxEntries := int32(win.img.dbg.Rewind.Prefs.MaxEntries.Get().(int))
 	if imgui.SliderIntV("Max Entries##maxentries", &rewindMaxEntries, 10, 500, fmt.Sprintf("%d", rewindMaxEntries), imgui.SliderFlagsNone) {
-		win.img.dbg.Rewind.Prefs.MaxEntries.Set(rewindMaxEntries)
+		win.img.dbg.PushRawEvent(func() {
+			win.img.dbg.Rewind.Prefs.MaxEntries.Set(rewindMaxEntries)
+		})
 	}
 
 	imgui.Spacing()
@@ -205,7 +216,9 @@ func (win *winPrefs) drawRewind() {
 
 	rewindFreq := int32(win.img.dbg.Rewind.Prefs.Freq.Get().(int))
 	if imgui.SliderIntV("Frequency##freq", &rewindFreq, 1, 5, fmt.Sprintf("%d", rewindFreq), imgui.SliderFlagsNone) {
-		win.img.dbg.Rewind.Prefs.Freq.Set(rewindFreq)
+		win.img.dbg.PushRawEvent(func() {
+			win.img.dbg.Rewind.Prefs.Freq.Set(rewindFreq)
+		})
 	}
 
 	imgui.Spacing()
@@ -350,7 +363,7 @@ func (win *winPrefs) drawPlusROM() {
 }
 
 func (win *winPrefs) drawDiskButtons() {
-	if imgui.Button("Save") {
+	if imgui.Button("Save All") {
 		win.img.dbg.PushRawEvent(func() {
 			err := win.img.prefs.save()
 			if err != nil {
@@ -395,7 +408,7 @@ func (win *winPrefs) drawDiskButtons() {
 	}
 
 	imgui.SameLine()
-	if imgui.Button("Restore") {
+	if imgui.Button("Restore All") {
 		win.img.dbg.PushRawEvent(func() {
 			err := win.img.prefs.load()
 			if err != nil {

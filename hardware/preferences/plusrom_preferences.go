@@ -38,7 +38,6 @@ func newPlusROMpreferences() (*PlusROMPreferences, error) {
 	p := &PlusROMPreferences{}
 	p.SetDefaults()
 
-	// save server using the prefs package
 	pth, err := resources.JoinPath(prefs.DefaultPrefsFile)
 	if err != nil {
 		return nil, err

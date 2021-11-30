@@ -45,11 +45,8 @@ const snapshotFreq = 1
 // newPreferences is the preferred method of initialisation for the Preferences type.
 func newPreferences(r *Rewind) (*Preferences, error) {
 	p := &Preferences{r: r}
+	p.SetDefaults()
 
-	p.MaxEntries.Set(maxEntries)
-	p.Freq.Set(snapshotFreq)
-
-	// save server using the prefs package
 	pth, err := resources.JoinPath(prefs.DefaultPrefsFile)
 	if err != nil {
 		return nil, err
@@ -85,6 +82,12 @@ func newPreferences(r *Rewind) (*Preferences, error) {
 	})
 
 	return p, nil
+}
+
+// SetDefaults reverts all settings to default values.
+func (p *Preferences) SetDefaults() {
+	p.MaxEntries.Set(maxEntries)
+	p.Freq.Set(snapshotFreq)
 }
 
 // Load disassembly preferences and apply to the current disassembly.

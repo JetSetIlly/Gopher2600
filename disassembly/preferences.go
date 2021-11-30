@@ -44,12 +44,18 @@ func (p *Preferences) String() string {
 func newPreferences(dsm *Disassembly) (*Preferences, error) {
 	p := &Preferences{dsm: dsm}
 
-	// set defaults
-	p.FxxxMirror.Set(true)
-	p.Symbols.Set(true)
-	p.mirrorOrigin = memorymap.OriginCartFxxxMirror
+	p.FxxxMirror.SetHookPost(func(v prefs.Value) error {
+		if v.(bool) {
+			p.mirrorOrigin = memorymap.OriginCartFxxxMirror
+		} else {
+			p.mirrorOrigin = memorymap.OriginCart
+		}
+		dsm.setCartMirror()
+		return nil
+	})
 
-	// save server using the prefs package
+	p.SetDefaults()
+
 	pth, err := resources.JoinPath(prefs.DefaultPrefsFile)
 	if err != nil {
 		return nil, err
@@ -69,22 +75,19 @@ func newPreferences(dsm *Disassembly) (*Preferences, error) {
 		return nil, err
 	}
 
-	p.FxxxMirror.SetHookPost(func(v prefs.Value) error {
-		if v.(bool) {
-			p.mirrorOrigin = memorymap.OriginCartFxxxMirror
-		} else {
-			p.mirrorOrigin = memorymap.OriginCart
-		}
-		dsm.setCartMirror()
-		return nil
-	})
-
 	err = p.dsk.Load(true)
 	if err != nil {
 		return nil, err
 	}
 
 	return p, nil
+}
+
+// SetDefaults reverts all settings to default values.
+func (p *Preferences) SetDefaults() {
+	p.FxxxMirror.Set(true)
+	p.Symbols.Set(true)
+	p.mirrorOrigin = memorymap.OriginCartFxxxMirror
 }
 
 // Load disassembly preferences and apply to the current disassembly.

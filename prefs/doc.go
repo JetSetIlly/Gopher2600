@@ -42,6 +42,12 @@
 // program in the normal way. Changes can be committed to disk wit the
 // Disk.Save() function and restoried with Disk.Load().
 //
+//Concurrency
+//
+// Generally, it is safe to access a prefs value from any goroutine. However,
+// Set() should be used with care *if* SetHookPost() or SetHookPre() has been
+// set for that value.
+//
 //Note
 //
 // While saved preference files are stored in UTF-8 it is not a good idea for

@@ -55,7 +55,6 @@ func newARMprefrences() (*ARMPreferences, error) {
 	p := &ARMPreferences{}
 	p.SetDefaults()
 
-	// setup preferences and load from disk
 	pth, err := resources.JoinPath(prefs.DefaultPrefsFile)
 	if err != nil {
 		return nil, err

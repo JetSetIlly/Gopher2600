@@ -57,7 +57,6 @@ type RevisionPreferences struct {
 
 func newRevisionPreferences() (*RevisionPreferences, error) {
 	p := &RevisionPreferences{}
-	p.SetDefaults()
 
 	// register callbacks to update the "live" values from the disk value
 	p.DskLateVDELGRP0.SetHookPost(func(v prefs.Value) error {
@@ -93,7 +92,8 @@ func newRevisionPreferences() (*RevisionPreferences, error) {
 		return nil
 	})
 
-	// save server using the prefs package
+	p.SetDefaults()
+
 	pth, err := resources.JoinPath(prefs.DefaultPrefsFile)
 	if err != nil {
 		return nil, curated.Errorf("revision: %v", err)
