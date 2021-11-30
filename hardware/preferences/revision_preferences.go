@@ -13,7 +13,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-package revision
+package preferences
 
 import (
 	"github.com/jetsetilly/gopher2600/curated"
@@ -21,12 +21,15 @@ import (
 	"github.com/jetsetilly/gopher2600/resources"
 )
 
-// Preferences for TIA revisins. Use the "live" values inside the emulation
-// code. Accessing the Dsk* values through the prefs system is too slow.
+// RevisionPreferences defines the details of the TIA revisins.
+//
+// Unlike the other preferences types in this pacakge, "live" values should be
+// preferred in most case because accessing the Dsk* values through the prefs
+// system is too slow.
 //
 // The Dsk* values should be used from any GUI preferences editor however - the
 // live values will be updated automatically when the Dsk* value are changed.
-type Preferences struct {
+type RevisionPreferences struct {
 	dsk *prefs.Disk
 
 	// The names of the preference fields match the Bug enumerations. These
@@ -52,9 +55,43 @@ type Preferences struct {
 	DskRESPxHBLANK      prefs.Bool
 }
 
-// NewPreferences is the preferred method of initialisation for the Preferences type.
-func newPreferences() (*Preferences, error) {
-	p := &Preferences{}
+func newRevisionPreferences() (*RevisionPreferences, error) {
+	p := &RevisionPreferences{}
+	p.SetDefaults()
+
+	// register callbacks to update the "live" values from the disk value
+	p.DskLateVDELGRP0.SetHookPost(func(v prefs.Value) error {
+		p.LateVDELGRP0 = v.(bool)
+		return nil
+	})
+	p.DskLateVDELGRP1.SetHookPost(func(v prefs.Value) error {
+		p.LateVDELGRP1 = v.(bool)
+		return nil
+	})
+	p.DskLateRESPx.SetHookPost(func(v prefs.Value) error {
+		p.LateRESPx = v.(bool)
+		return nil
+	})
+	p.DskEarlyScancounter.SetHookPost(func(v prefs.Value) error {
+		p.EarlyScancounter = v.(bool)
+		return nil
+	})
+	p.DskLatePFx.SetHookPost(func(v prefs.Value) error {
+		p.LatePFx = v.(bool)
+		return nil
+	})
+	p.DskLateCOLUPF.SetHookPost(func(v prefs.Value) error {
+		p.LateCOLUPF = v.(bool)
+		return nil
+	})
+	p.DskLostMOTCK.SetHookPost(func(v prefs.Value) error {
+		p.LostMOTCK = v.(bool)
+		return nil
+	})
+	p.DskRESPxHBLANK.SetHookPost(func(v prefs.Value) error {
+		p.RESPxHBLANK = v.(bool)
+		return nil
+	})
 
 	// save server using the prefs package
 	pth, err := resources.JoinPath(prefs.DefaultPrefsFile)
@@ -107,54 +144,32 @@ func newPreferences() (*Preferences, error) {
 		return nil, curated.Errorf("revision: %v", err)
 	}
 
-	// register callbacks to update the "live" values from the disk value
-	p.DskLateVDELGRP0.SetHookPost(func(v prefs.Value) error {
-		p.LateVDELGRP0 = v.(bool)
-		return nil
-	})
-	p.DskLateVDELGRP1.SetHookPost(func(v prefs.Value) error {
-		p.LateVDELGRP1 = v.(bool)
-		return nil
-	})
-	p.DskLateRESPx.SetHookPost(func(v prefs.Value) error {
-		p.LateRESPx = v.(bool)
-		return nil
-	})
-	p.DskEarlyScancounter.SetHookPost(func(v prefs.Value) error {
-		p.EarlyScancounter = v.(bool)
-		return nil
-	})
-	p.DskLatePFx.SetHookPost(func(v prefs.Value) error {
-		p.LatePFx = v.(bool)
-		return nil
-	})
-	p.DskLateCOLUPF.SetHookPost(func(v prefs.Value) error {
-		p.LateCOLUPF = v.(bool)
-		return nil
-	})
-	p.DskLostMOTCK.SetHookPost(func(v prefs.Value) error {
-		p.LostMOTCK = v.(bool)
-		return nil
-	})
-	p.DskRESPxHBLANK.SetHookPost(func(v prefs.Value) error {
-		p.RESPxHBLANK = v.(bool)
-		return nil
-	})
-
 	err = p.dsk.Load(true)
 	if err != nil {
-		return nil, curated.Errorf("revision: %v", err)
+		return nil, err
 	}
 
 	return p, nil
 }
 
-// Load disassembly preferences and apply to the current disassembly.
-func (p *Preferences) Load() error {
+// SetDefaults reverts all settings to default values.
+func (p *RevisionPreferences) SetDefaults() {
+	p.DskLateVDELGRP0.Set(false)
+	p.DskLateVDELGRP1.Set(false)
+	p.DskLateRESPx.Set(false)
+	p.DskEarlyScancounter.Set(false)
+	p.DskLatePFx.Set(false)
+	p.DskLateCOLUPF.Set(false)
+	p.DskLostMOTCK.Set(false)
+	p.DskRESPxHBLANK.Set(false)
+}
+
+// Load revision preferences from disk.
+func (p *RevisionPreferences) Load() error {
 	return p.dsk.Load(false)
 }
 
-// Save current disassembly preferences to disk.
-func (p *Preferences) Save() error {
+// Save current revision preferences to disk.
+func (p *RevisionPreferences) Save() error {
 	return p.dsk.Save()
 }

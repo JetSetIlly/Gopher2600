@@ -38,6 +38,10 @@ type Preferences struct {
 
 	// preferences used by PlusROM cartridges
 	PlusROM *PlusROMPreferences
+
+	// preferences used by the TIA package in order to emulate different
+	// revisions of the TIA chip
+	Revision *RevisionPreferences
 }
 
 func (p *Preferences) String() string {
@@ -81,6 +85,11 @@ func NewPreferences() (*Preferences, error) {
 		return nil, err
 	}
 
+	p.Revision, err = newRevisionPreferences()
+	if err != nil {
+		return nil, err
+	}
+
 	return p, nil
 }
 
@@ -89,11 +98,6 @@ func (p *Preferences) SetDefaults() {
 	// initialise random number generator
 	p.RandomState.Set(false)
 	p.RandomPins.Set(false)
-}
-
-// Reset all hardware preferences to the default values.
-func (p *Preferences) Reset() error {
-	return p.dsk.Reset()
 }
 
 // Load current hardware preference from disk.

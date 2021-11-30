@@ -87,7 +87,7 @@ func NewVCS(tv *television.Television) (*VCS, error) {
 	vcs.CPU = cpu.NewCPU(vcs.Instance, vcs.Mem)
 	vcs.RIOT = riot.NewRIOT(vcs.Instance, vcs.Mem.RIOT, vcs.Mem.TIA)
 
-	vcs.TIA, err = tia.NewTIA(vcs.TV, vcs.Mem.TIA, vcs.RIOT.Ports, vcs.CPU)
+	vcs.TIA, err = tia.NewTIA(vcs.Instance, vcs.TV, vcs.Mem.TIA, vcs.RIOT.Ports, vcs.CPU)
 	if err != nil {
 		return nil, err
 	}
@@ -161,7 +161,7 @@ func (vcs *VCS) Reset() error {
 	//
 	// TODO: proper Reset() function for the TIA
 	audio := vcs.TIA.Audio
-	vcs.TIA, err = tia.NewTIA(vcs.TV, vcs.Mem.TIA, vcs.RIOT.Ports, vcs.CPU)
+	vcs.TIA, err = tia.NewTIA(vcs.Instance, vcs.TV, vcs.Mem.TIA, vcs.RIOT.Ports, vcs.CPU)
 	if err != nil {
 		return err
 	}

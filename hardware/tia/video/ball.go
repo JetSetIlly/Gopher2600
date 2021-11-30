@@ -220,7 +220,7 @@ func (bs *BallSprite) tick() bool {
 		bs.MoreHMOVE = bs.MoreHMOVE && compareHMOVE(bs.tia.hmove.Ripple, bs.Hmove)
 
 		// cancel motion clock if necessary
-		if bs.MoreHMOVE && bs.tia.rev.Prefs.LostMOTCK {
+		if bs.MoreHMOVE && bs.tia.instance.Prefs.Revision.LostMOTCK {
 			return false
 		}
 	}

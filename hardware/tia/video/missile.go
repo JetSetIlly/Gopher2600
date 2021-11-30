@@ -245,7 +245,7 @@ func (ms *MissileSprite) tick(resetToPlayer bool) bool {
 		ms.MoreHMOVE = ms.MoreHMOVE && compareHMOVE(ms.tia.hmove.Ripple, ms.Hmove)
 
 		// cancel motion clock if necessary
-		if ms.MoreHMOVE && ms.tia.rev.Prefs.LostMOTCK {
+		if ms.MoreHMOVE && ms.tia.instance.Prefs.Revision.LostMOTCK {
 			return false
 		}
 	}

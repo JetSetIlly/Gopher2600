@@ -26,9 +26,9 @@ import (
 
 // RIOT represents the PIA 6532 found in the VCS.
 type RIOT struct {
-	mem bus.ChipBus
-
 	instance *instance.Instance
+
+	mem bus.ChipBus
 
 	Timer *timer.Timer
 	Ports *ports.Ports

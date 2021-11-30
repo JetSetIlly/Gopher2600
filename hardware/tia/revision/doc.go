@@ -20,4 +20,7 @@
 // are listed at the URL below.
 //
 // http://www.ataricompendium.com/faq/vcs_tia/vcs_tia.html
+//
+// Preferences defining the details of the TIA revision can be found in the
+// hardware.preferences package.
 package revision

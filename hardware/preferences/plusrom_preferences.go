@@ -36,9 +36,7 @@ type PlusROMPreferences struct {
 
 func newPlusROMpreferences() (*PlusROMPreferences, error) {
 	p := &PlusROMPreferences{}
-
-	p.Nick.SetMaxLen(plusnet.MaxNickLength)
-	p.ID.SetMaxLen(plusnet.MaxIDLength)
+	p.SetDefaults()
 
 	// save server using the prefs package
 	pth, err := resources.JoinPath(prefs.DefaultPrefsFile)
@@ -84,12 +82,18 @@ func newPlusROMpreferences() (*PlusROMPreferences, error) {
 	return p, nil
 }
 
-// Load disassembly preferences and apply to the current disassembly.
+// SetDefaults reverts all settings to default values.
+func (p *PlusROMPreferences) SetDefaults() {
+	p.Nick.SetMaxLen(plusnet.MaxNickLength)
+	p.ID.SetMaxLen(plusnet.MaxIDLength)
+}
+
+// Load plusrom preferences from disk.
 func (p *PlusROMPreferences) Load() error {
 	return p.dsk.Load(false)
 }
 
-// Save current disassembly preferences to disk.
+// Save current plusrom preferences to disk.
 func (p *PlusROMPreferences) Save() error {
 	return p.dsk.Save()
 }

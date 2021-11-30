@@ -36,6 +36,10 @@ func init() {
 // emulation. Required for the rewind package and parallel emulations.
 type Random struct {
 	coords signal.TelevisionCoords
+
+	// use zero seed rather than the random base seed. this is only really
+	// useful for normalised instances where random numbers must be predictable
+	ZeroSeed bool
 }
 
 // NewRandom is the preferred method of initialisation for the Random type.
@@ -52,6 +56,9 @@ func coordsSum(c coords.TelevisionCoords) int64 {
 
 // new RNG from the standard library
 func (rnd *Random) rand() *rand.Rand {
+	if rnd.ZeroSeed {
+		return rand.New(rand.NewSource(coordsSum(rnd.coords.GetCoords())))
+	}
 	return rand.New(rand.NewSource(baseSeed + coordsSum(rnd.coords.GetCoords())))
 }
 

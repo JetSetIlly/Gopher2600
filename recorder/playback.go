@@ -189,11 +189,8 @@ func (plb *Playback) AttachToVCS(vcs *hardware.VCS) error {
 	var err error
 
 	// we want the machine in a known state. the easiest way to do this is to
-	// reset the hardware preferences
-	err = vcs.Instance.Prefs.Reset()
-	if err != nil {
-		return curated.Errorf("playback: %v", err)
-	}
+	// default the hardware preferences
+	vcs.Instance.Normalise()
 
 	// validate header. keep it simple and disallow any difference in tv
 	// specification. some combinations may work but there's no compelling

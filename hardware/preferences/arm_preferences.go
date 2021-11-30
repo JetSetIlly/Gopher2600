@@ -97,17 +97,12 @@ func (p *ARMPreferences) SetDefaults() {
 	p.AbortOnIllegalMem.Set(false)
 }
 
-// Reset all hardware preferences to the default values.
-func (p *ARMPreferences) Reset() error {
-	return p.dsk.Reset()
-}
-
-// Load current hardware preference from disk.
+// Load current arm preference from disk.
 func (p *ARMPreferences) Load() error {
 	return p.dsk.Load(false)
 }
 
-// Save current hardware preferences to disk.
+// Save current arm preferences to disk.
 func (p *ARMPreferences) Save() error {
 	return p.dsk.Save()
 }

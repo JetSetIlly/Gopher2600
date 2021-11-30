@@ -21,6 +21,7 @@ import (
 
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/cpu"
+	"github.com/jetsetilly/gopher2600/hardware/instance"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/hardware/tia/audio"
@@ -28,13 +29,12 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/tia/hmove"
 	"github.com/jetsetilly/gopher2600/hardware/tia/phaseclock"
 	"github.com/jetsetilly/gopher2600/hardware/tia/polycounter"
-	"github.com/jetsetilly/gopher2600/hardware/tia/revision"
 	"github.com/jetsetilly/gopher2600/hardware/tia/video"
 )
 
 // TIA contains all the sub-components of the VCS TIA sub-system.
 type TIA struct {
-	Rev *revision.TIARevision
+	instance *instance.Instance
 
 	tv  signal.TelevisionTIA
 	mem bus.ChipBus
@@ -109,23 +109,18 @@ func (tia *TIA) String() string {
 }
 
 // NewTIA creates a TIA, to be used in a VCS emulation.
-func NewTIA(tv signal.TelevisionTIA, mem bus.ChipBus, input bus.UpdateBus, cpu *cpu.CPU) (*TIA, error) {
+func NewTIA(instance *instance.Instance, tv signal.TelevisionTIA, mem bus.ChipBus, input bus.UpdateBus, cpu *cpu.CPU) (*TIA, error) {
 	tia := &TIA{
-		tv:      tv,
-		mem:     mem,
-		input:   input,
-		Hblank:  true,
-		rdyFlag: &cpu.RdyFlg,
-	}
-
-	var err error
-	tia.Rev, err = revision.NewTIARevision(tv)
-	if err != nil {
-		return nil, err
+		instance: instance,
+		tv:       tv,
+		mem:      mem,
+		input:    input,
+		Hblank:   true,
+		rdyFlag:  &cpu.RdyFlg,
 	}
 
 	tia.Audio = audio.NewAudio()
-	tia.Video = video.NewVideo(mem, tv, tia.Rev, &tia.pclk, &tia.hsync, &tia.Hblank, &tia.Hmove)
+	tia.Video = video.NewVideo(instance, mem, tv, &tia.pclk, &tia.hsync, &tia.Hblank, &tia.Hmove)
 	tia.Hmove.Reset()
 	tia.pclk = phaseclock.ResetValue
 
@@ -149,7 +144,7 @@ func (tia *TIA) Plumb(tv signal.TelevisionTIA, mem bus.ChipBus, input bus.Update
 	tia.mem = mem
 	tia.input = input
 	tia.rdyFlag = &cpu.RdyFlg
-	tia.Video.Plumb(tia.mem, tia.tv, tia.Rev, &tia.pclk, &tia.hsync, &tia.Hblank, &tia.Hmove)
+	tia.Video.Plumb(tia.instance, tia.mem, tia.tv, &tia.pclk, &tia.hsync, &tia.Hblank, &tia.Hmove)
 }
 
 // ReadMemTIA checks for side effects in the TIA sub-system.
@@ -518,13 +513,13 @@ func (tia *TIA) Step(readMemory bool) error {
 
 			// update playfield color register (depending on TIA revision)
 			if readMemory {
-				if !tia.Rev.Prefs.LateCOLUPF {
+				if !tia.instance.Prefs.Revision.LateCOLUPF {
 					readMemory = tia.Video.ReadMemPlayfieldColor(memoryData)
 				}
 
 				if readMemory {
 					// update playfield bits (depending on TIA revisions)
-					if !tia.Rev.Prefs.LatePFx {
+					if !tia.instance.Prefs.Revision.LatePFx {
 						readMemory = tia.Video.ReadMemPlayfield(memoryData)
 					}
 				}
@@ -539,7 +534,7 @@ func (tia *TIA) Step(readMemory bool) error {
 
 	// update playfield bits (depending on TIA revisions)
 	if readMemory {
-		if tia.Rev.Prefs.LatePFx {
+		if tia.instance.Prefs.Revision.LatePFx {
 			readMemory = tia.Video.ReadMemPlayfield(memoryData)
 		}
 	}
@@ -581,7 +576,7 @@ func (tia *TIA) Step(readMemory bool) error {
 
 					if readMemory {
 						// update playfield color register (depending on TIA revision)
-						if tia.Rev.Prefs.LateCOLUPF {
+						if tia.instance.Prefs.Revision.LateCOLUPF {
 							_ = tia.Video.ReadMemPlayfieldColor(memoryData)
 						}
 					}

@@ -309,7 +309,7 @@ func (ps *PlayerSprite) tick() bool {
 		ps.MoreHMOVE = ps.MoreHMOVE && compareHMOVE(ps.tia.hmove.Ripple, ps.Hmove)
 
 		// cancel motion clock if necessary
-		if ps.MoreHMOVE && ps.tia.rev.Prefs.LostMOTCK {
+		if ps.MoreHMOVE && ps.tia.instance.Prefs.Revision.LostMOTCK {
 			return false
 		}
 	}
@@ -459,7 +459,7 @@ func (ps *PlayerSprite) resetPosition() {
 	// HeatThreshold() function handles the increasing operating temperature
 	// for us.
 	if (*ps.tia.hsync == 16 || *ps.tia.hsync == 18) && *ps.tia.pclk == phaseclock.RisingPhi2 {
-		if ps.tia.rev.Prefs.RESPxHBLANK {
+		if ps.tia.instance.Prefs.Revision.RESPxHBLANK {
 			hblank = !revision.HeatThreshold(ps.tia.tv.GetCoords().Scanline)
 		}
 	}
@@ -493,7 +493,7 @@ func (ps *PlayerSprite) resetPosition() {
 			// if HMOVE is latched or ripple has just started then check the
 			// TIA revision for a longer delay
 			if ps.tia.hmove.Latch || ps.tia.hmove.Ripple == 15 {
-				if ps.tia.rev.Prefs.LateRESPx {
+				if ps.tia.instance.Prefs.Revision.LateRESPx {
 					delay = 3
 				}
 			}
@@ -521,7 +521,7 @@ func (ps *PlayerSprite) resetPosition() {
 		// not entirely sure this condition is correct but works for the known cases
 		//
 		// https://atariage.com/forums/topic/311795-576-and-1008-characters/?tab=comments#comment-4748106
-		if ps.tia.rev.Prefs.EarlyScancounter {
+		if ps.tia.instance.Prefs.Revision.EarlyScancounter {
 			if !(ps.tia.hmove.RippleJustEnded && (ps.pclk == phaseclock.RisingPhi1 || ps.pclk == phaseclock.FallingPhi1)) {
 				ps.futureStart.Pause()
 			}

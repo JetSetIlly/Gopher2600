@@ -372,7 +372,7 @@ func (win *winPrefs) drawDiskButtons() {
 			if err != nil {
 				logger.Logf("sdlimgui", "could not save (plusrom) preferences: %v", err)
 			}
-			err = win.img.vcs.TIA.Rev.Prefs.Save()
+			err = win.img.vcs.Instance.Prefs.Revision.Save()
 			if err != nil {
 				logger.Logf("sdlimgui", "could not save (tia revisions) preferences: %v", err)
 			}
@@ -417,7 +417,7 @@ func (win *winPrefs) drawDiskButtons() {
 			if err != nil {
 				logger.Logf("sdlimgui", "could not restore (plusrom) preferences: %v", err)
 			}
-			err = win.img.vcs.TIA.Rev.Prefs.Load()
+			err = win.img.vcs.Instance.Prefs.Revision.Load()
 			if err != nil {
 				logger.Logf("sdlimgui", "could not restore (tia revisions) preferences: %v", err)
 			}

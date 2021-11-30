@@ -26,8 +26,9 @@ import (
 	"github.com/jetsetilly/gopher2600/random"
 )
 
-// Instance defines those parts of the emulation that might change from
-// instance to instance of the VCS type, but is not actually the VCS itself.
+// Instance defines those parts of the emulation that might change between
+// different instantiations of the VCS type, but is not actually the VCS
+// itself.
 type Instance struct {
 	Prefs  *preferences.Preferences
 	Random *random.Random
@@ -47,4 +48,15 @@ func NewInstance(coords signal.TelevisionCoords) (*Instance, error) {
 	}
 
 	return ins, nil
+}
+
+// Normalise ensures the VCS instance is in an known default state. Useful for
+// regression testing where the initial state must be the same for every run of
+// the test.
+func (ins *Instance) Normalise() {
+	ins.Random.ZeroSeed = true
+	ins.Prefs.SetDefaults()
+	ins.Prefs.Revision.SetDefaults()
+	ins.Prefs.ARM.SetDefaults()
+	ins.Prefs.PlusROM.SetDefaults()
 }
