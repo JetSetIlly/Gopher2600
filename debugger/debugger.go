@@ -22,6 +22,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	bot "github.com/jetsetilly/gopher2600/bots"
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/comparison"
 	"github.com/jetsetilly/gopher2600/curated"
@@ -625,6 +626,8 @@ func (dbg *Debugger) start(mode emulation.Mode, initScript string, cartload cart
 	if err != nil {
 		return curated.Errorf("debugger: %v", err)
 	}
+
+	bot.VideoChessBot(dbg.vcs)
 
 	dbg.running = true
 
