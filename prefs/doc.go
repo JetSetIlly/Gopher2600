@@ -48,6 +48,42 @@
 // Set() should be used with care *if* SetHookPost() or SetHookPre() has been
 // set for that value.
 //
+//Command Line Support
+//
+// The *CommandLine*() functions are designed to help with the overriding of
+// disk values with a value given on the command line. These values are added
+// as a group with AddCommandLineGroup(). For example
+//
+//   AddCommandLineGroup("foo::bar; baz::qux")
+//
+// (see below for more detail about the format of the prefs string)
+//
+// These values are then looked up when preferences are first loaded by an
+// instance of the Disk type. The command line value will be used instead of
+// the saved value for the first load only. If Load() is never called then the
+// command line value will not be used -- this shouldn't be an issue because it
+// is good practice for Load() to always be called after the a set of prefs
+// values have been added with the Add() function
+//
+// Commandline groups can be nested. Subsequent calls to AddCommandLineGroup()
+// will hide the previous group until EndCommandLineGroup() is called.
+//
+// The prefs string used with AddCommandLineGroup() mirror the format of the
+// preferences file except that entries are separated by semi-colons instead of
+// newlines.
+//
+// For example, if the preferences file has the following entries:
+//
+//		a.b.c :: 100
+//		d.e.f.g :: false
+//		h.i :: wibble
+//
+// A valid string to use with AddCommandLineGroup() might be:
+//
+//		a.b.c::100; h.i::wibble
+//
+// Leading and trailing spaces around the key and value are stripped.
+//
 //Note
 //
 // While saved preference files are stored in UTF-8 it is not a good idea for

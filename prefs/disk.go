@@ -151,7 +151,7 @@ func (dsk *Disk) Save() (rerr error) {
 		return curated.Errorf("prefs: %v", err)
 	}
 	if n != len(WarningBoilerPlate)+1 {
-		return curated.Errorf("prefs: %v", "incorrect number of characters writtent to file")
+		return curated.Errorf("prefs: %v", "incorrect number of characters written to file")
 	}
 
 	// write entries (combination of old and live entries) to disk
@@ -161,7 +161,7 @@ func (dsk *Disk) Save() (rerr error) {
 		return curated.Errorf("prefs: %v", err)
 	}
 	if n != len(s) {
-		return curated.Errorf("prefs: %v", "incorrect number of characters writtent to file")
+		return curated.Errorf("prefs: %v", "incorrect number of characters written to file")
 	}
 
 	return nil
@@ -174,6 +174,13 @@ func (dsk *Disk) Load(saveOnFirstUse bool) error {
 	numLoaded, err := load(dsk.path, &dsk.entries, true)
 	if err != nil {
 		return err
+	}
+
+	// override loaded values
+	for k := range dsk.entries {
+		if ok, v := GetCommandLinePref(k); ok {
+			dsk.entries[k].Set(v)
+		}
 	}
 
 	// if the number of entries loaded by the load() function is not equal to

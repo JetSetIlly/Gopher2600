@@ -43,6 +43,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/hardware/television/coords"
 	"github.com/jetsetilly/gopher2600/logger"
+	"github.com/jetsetilly/gopher2600/prefs"
 	"github.com/jetsetilly/gopher2600/reflection"
 	"github.com/jetsetilly/gopher2600/reflection/counter"
 	"github.com/jetsetilly/gopher2600/rewind"
@@ -573,7 +574,7 @@ func (dbg *Debugger) end() {
 }
 
 // Starts the main emulation sequence.
-func (dbg *Debugger) Start(mode emulation.Mode, initScript string, cartload cartridgeloader.Loader, comparisonROM string) error {
+func (dbg *Debugger) Start(mode emulation.Mode, initScript string, cartload cartridgeloader.Loader, comparisonROM string, comparisonPrefs string) error {
 	// do not allow comparison emulation inside the debugger. it's far too
 	// complicated running two emulations that must be synced in the debugger
 	// loop
@@ -581,9 +582,18 @@ func (dbg *Debugger) Start(mode emulation.Mode, initScript string, cartload cart
 		return curated.Errorf("debugger: cannot run comparison emulation inside the debugger")
 	}
 
+	// add any bespoke comparision prefs
+	prefs.PushCommandLineStack(comparisonPrefs)
+
 	err := dbg.addComparisonEmulation(comparisonROM)
 	if err != nil {
 		return curated.Errorf("debugger: %v", err)
+	}
+
+	// check use of comparison prefs
+	comparisonPrefs = prefs.PopCommandLineStack()
+	if comparisonPrefs != "" {
+		logger.Logf("debugger", "%s unused for comparison emulation", comparisonPrefs)
 	}
 
 	defer dbg.end()

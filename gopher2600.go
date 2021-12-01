@@ -425,9 +425,11 @@ func emulate(emulationMode emulation.Mode, md *modalflag.Modes, sync *mainSync) 
 	log := md.AddBool("log", false, "echo debugging log to stdout")
 
 	// some arguments are mode specific
-	var comparison *string
+	var comparisonROM *string
+	var comparisonPrefs *string
 	if emulationMode == emulation.ModePlay {
-		comparison = md.AddString("comparison", "", "ROM to run in parallel for comparison")
+		comparisonROM = md.AddString("comparisonROM", "", "ROM to run in parallel for comparison")
+		comparisonPrefs = md.AddString("comparisonPrefs", "", "preferences for comparison emulation")
 	}
 
 	stats := &[]bool{false}[0]
@@ -538,11 +540,17 @@ func emulate(emulationMode emulation.Mode, md *modalflag.Modes, sync *mainSync) 
 		// check if comparison was defined and dereference if it was, otherwise
 		// comp is just the empty string
 		var comp string
-		if comparison != nil {
-			comp = *comparison
+		if comparisonROM != nil {
+			comp = *comparisonROM
 		}
 
-		err := dbg.Start(emulationMode, *initScript, cartload, comp)
+		// same for compPrefs
+		var compPrefs string
+		if comparisonPrefs != nil {
+			compPrefs = *comparisonPrefs
+		}
+
+		err := dbg.Start(emulationMode, *initScript, cartload, comp, compPrefs)
 		if err != nil {
 			return err
 		}

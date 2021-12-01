@@ -156,7 +156,7 @@ func TestDebugger_withNonExistantInitScript(t *testing.T) {
 
 	go trm.testSequence()
 
-	err = dbg.Start(emulation.ModeDebugger, "non_existent_script", cartridgeloader.Loader{}, "")
+	err = dbg.Start(emulation.ModeDebugger, "non_existent_script", cartridgeloader.Loader{}, "", "")
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
@@ -179,7 +179,7 @@ func TestDebugger(t *testing.T) {
 
 	go trm.testSequence()
 
-	err = dbg.Start(emulation.ModeDebugger, "", cartridgeloader.Loader{}, "")
+	err = dbg.Start(emulation.ModeDebugger, "", cartridgeloader.Loader{}, "", "")
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
