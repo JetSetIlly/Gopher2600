@@ -26,10 +26,21 @@ import (
 	"github.com/jetsetilly/gopher2600/random"
 )
 
+// Label indicates the context of the instance.
+type Label string
+
+// List of value Label values.
+const (
+	Main        Label = ""
+	Thumbnailer Label = "thumbnailer"
+	Comparison  Label = "comparison"
+)
+
 // Instance defines those parts of the emulation that might change between
 // different instantiations of the VCS type, but is not actually the VCS
 // itself.
 type Instance struct {
+	Label  Label
 	Prefs  *preferences.Preferences
 	Random *random.Random
 }

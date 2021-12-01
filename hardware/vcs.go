@@ -69,6 +69,9 @@ type VCS struct {
 
 // NewVCS creates a new VCS and everything associated with the hardware. It is
 // used for all aspects of emulation: debugging sessions, and regular play.
+//
+// The Instance.Context field should be updated except in the case of the
+// "main" emulation.
 func NewVCS(tv *television.Television) (*VCS, error) {
 	// set up instance
 	instance, err := instance.NewInstance(tv)

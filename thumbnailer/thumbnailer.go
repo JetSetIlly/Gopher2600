@@ -26,6 +26,7 @@ import (
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/emulation"
 	"github.com/jetsetilly/gopher2600/hardware"
+	"github.com/jetsetilly/gopher2600/hardware/instance"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/supercharger"
 	"github.com/jetsetilly/gopher2600/hardware/television"
@@ -80,6 +81,7 @@ func NewThumbnailer() (*Thumbnailer, error) {
 	if err != nil {
 		return nil, curated.Errorf("thumbnailer: %v", err)
 	}
+	thmb.vcs.Instance.Label = instance.Thumbnailer
 
 	thmb.img = image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, specification.AbsoluteMaxScanlines))
 
@@ -142,9 +144,6 @@ const UndefinedNumFrames = -1
 // a number of frames before ending.
 func (thmb *Thumbnailer) CreateFromLoader(cartload cartridgeloader.Loader, numFrames int) {
 	thmb.wait()
-
-	// label cartridge loader as coming from the thumbaniler emulation
-	cartload.EmulationLabel = emulation.ThumbnailerLabel
 
 	// loading hook support required for supercharger
 	cartload.VCSHook = func(cart mapper.CartMapper, event mapper.Event, args ...interface{}) error {

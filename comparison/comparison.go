@@ -26,6 +26,7 @@ import (
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/emulation"
 	"github.com/jetsetilly/gopher2600/hardware"
+	"github.com/jetsetilly/gopher2600/hardware/instance"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/supercharger"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
@@ -82,6 +83,7 @@ func NewComparison(driverVCS *hardware.VCS) (*Comparison, error) {
 	if err != nil {
 		return nil, curated.Errorf("comparison: %v", err)
 	}
+	cmp.VCS.Instance.Label = instance.Comparison
 
 	cmp.img = image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, specification.AbsoluteMaxScanlines))
 	cmp.diffImg = image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, specification.AbsoluteMaxScanlines))
@@ -142,9 +144,6 @@ func (cmp *Comparison) CreateFromLoader(cartload cartridgeloader.Loader) error {
 	if cmp.IsEmulating() {
 		return curated.Errorf("comparison: emulation already running")
 	}
-
-	// label cartridge loader as coming from the comparison emulation
-	cartload.EmulationLabel = emulation.ComparisonLabel
 
 	// loading hook support required for supercharger
 	cartload.VCSHook = func(cart mapper.CartMapper, event mapper.Event, args ...interface{}) error {
