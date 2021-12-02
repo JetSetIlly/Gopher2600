@@ -165,6 +165,8 @@ func (ee *emulationEventNotification) draw(win *playScr) {
 
 	imgui.PushFont(win.img.glsl.veryLargeFontAwesome)
 	switch ee.currentEvent {
+	case emulation.EventInitialising:
+		imgui.Text("")
 	case emulation.EventPause:
 		imgui.Text(string(fonts.EmulationPause))
 	case emulation.EventRun:

@@ -443,10 +443,12 @@ func (dbg *Debugger) setStateQuiet(state emulation.State, quiet bool) {
 
 	if !quiet && dbg.Mode() == emulation.ModePlay {
 		switch state {
+		case emulation.Initialising:
+			dbg.gui.SetFeature(gui.ReqEmulationEvent, emulation.EventInitialising)
 		case emulation.Paused:
 			dbg.gui.SetFeature(gui.ReqEmulationEvent, emulation.EventPause)
 		case emulation.Running:
-			if prevState > emulation.EmulatorStart {
+			if prevState > emulation.Initialising {
 				dbg.gui.SetFeature(gui.ReqEmulationEvent, emulation.EventRun)
 			}
 		}

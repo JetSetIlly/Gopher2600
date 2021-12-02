@@ -100,7 +100,8 @@ type Event int
 
 // List of defined events.
 const (
-	EventPause Event = iota
+	EventInitialising Event = iota
+	EventPause
 	EventRun
 	EventRewindBack
 	EventRewindFoward
