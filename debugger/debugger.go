@@ -627,7 +627,14 @@ func (dbg *Debugger) start(mode emulation.Mode, initScript string, cartload cart
 		return curated.Errorf("debugger: %v", err)
 	}
 
-	bot.VideoChessBot(dbg.vcs)
+	botRender, err := bot.VideoChessBot(dbg.vcs)
+	if err != nil {
+		return curated.Errorf("debugger: %v", err)
+	}
+	err = dbg.gui.SetFeature(gui.ReqBot, botRender)
+	if err != nil {
+		return curated.Errorf("debugger: %v", err)
+	}
 
 	dbg.running = true
 

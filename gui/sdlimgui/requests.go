@@ -140,6 +140,17 @@ func (img *SdlImgui) serviceSetFeature(request featureRequest) {
 			img.wm.windows[winComparisonID].(*winComparison).setOpen(open)
 		}
 
+	case gui.ReqBot:
+		err = argLen(request.args, 1)
+		if err == nil {
+			open := false
+			if request.args[0] != nil {
+				img.wm.windows[winBotID].(*winBot).render = request.args[0].(chan *image.RGBA)
+				open = true
+			}
+			img.wm.windows[winBotID].(*winBot).setOpen(open)
+		}
+
 	default:
 		err = curated.Errorf(gui.UnsupportedGuiFeature, request.request)
 	}

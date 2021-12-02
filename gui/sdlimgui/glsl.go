@@ -283,6 +283,8 @@ func (rnd *glsl) render() {
 					shader = rnd.shaders[colorShaderID]
 				case rnd.img.wm.windows[winComparisonID].(*winComparison).diffTexture:
 					shader = rnd.shaders[colorShaderID]
+				case rnd.img.wm.windows[winBotID].(*winBot).obsTexture:
+					shader = rnd.shaders[colorShaderID]
 				default:
 					shader = rnd.shaders[guiShaderID]
 				}

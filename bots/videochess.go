@@ -16,139 +16,358 @@
 package bot
 
 import (
+	"crypto/sha1"
 	"fmt"
-	"time"
+	"image"
+	"image/color"
+	"image/draw"
 
 	"github.com/jetsetilly/gopher2600/bots/uci"
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
+	"github.com/jetsetilly/gopher2600/hardware/television"
+	"github.com/jetsetilly/gopher2600/hardware/television/signal"
+	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 )
 
-func VideoChessBot(vcs *hardware.VCS) error {
-	uci, err := uci.NewUCI("/usr/local/bin/stockfish")
-	if err != nil {
-		return curated.Errorf("bot: %v", err)
+const (
+	boardMarginLeft = 44
+	boardMarginTop  = 70
+	squareWidth     = 8
+	squareHeight    = 17
+)
+
+var startingImage = [sha1.Size]byte{206, 150, 33, 111, 96, 82, 105, 37, 18, 218, 111, 99, 43, 70, 231, 84, 152, 24, 218, 150}
+
+var cursorSampleDataEvenColumns = [...]uint8{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 172, 120, 60, 255, 172, 120, 60, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 172, 120, 60, 255, 172, 120, 60, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 172, 120, 60, 255, 172, 120, 60, 255, 0, 0, 0, 0, 172, 120, 60, 255, 172, 120, 60, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 172, 120, 60, 255, 172, 120, 60, 255, 172, 120, 60, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 172, 120, 60, 255, 172, 120, 60, 255, 0, 0, 0, 0, 172, 120, 60, 255, 172, 120, 60, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 172, 120, 60, 255, 172, 120, 60, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 172, 120, 60, 255, 172, 120, 60, 255, 0, 0, 0, 0}
+
+var cursorSampleDataOddColumns = [...]uint8{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 172, 120, 60, 255, 172, 120, 60, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 172, 120, 60, 255, 172, 120, 60, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 172, 120, 60, 255, 172, 120, 60, 255, 0, 0, 0, 0, 172, 120, 60, 255, 172, 120, 60, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 172, 120, 60, 255, 172, 120, 60, 255, 172, 120, 60, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 172, 120, 60, 255, 172, 120, 60, 255, 0, 0, 0, 0, 172, 120, 60, 255, 172, 120, 60, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 172, 120, 60, 255, 172, 120, 60, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 172, 120, 60, 255, 172, 120, 60, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+
+var boardIndicator = [...]uint8{28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 164, 184, 252, 255, 164, 184, 252, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 164, 184, 252, 255, 164, 184, 252, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 164, 184, 252, 255, 164, 184, 252, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 164, 184, 252, 255, 164, 184, 252, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 164, 184, 252, 255, 164, 184, 252, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255}
+
+type observer struct {
+	frameInfo television.FrameInfo
+	img       *image.RGBA
+	analysis  chan *image.RGBA
+
+	audioFeedback chan bool
+}
+
+func newObserver() *observer {
+	obs := &observer{
+		img:           image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, specification.AbsoluteMaxScanlines)),
+		analysis:      make(chan *image.RGBA, 1),
+		audioFeedback: make(chan bool, 1),
 	}
 
-	uci.Start()
+	obs.Resize(television.NewFrameInfo(specification.SpecNTSC))
+	obs.Reset()
 
-	go func() {
-		prevPosition := make([]uint8, 64)
-		position := make([]uint8, 64)
+	return obs
+}
 
-		startingPos := [...]uint8{5, 4, 3, 2, 1, 3, 4, 5, 70, 70, 70, 70, 70, 70, 70, 70, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 142, 142, 142, 142, 142, 142, 142, 142, 13, 12, 11, 10, 9, 11, 12, 13}
+const audioSilence = 15
 
-		started := false
-		for !started {
-			<-time.After(100 * time.Millisecond)
-			copy(position, vcs.Mem.RAM.RAM)
-
-			started = true
-			for i := range startingPos {
-				if position[i] != startingPos[i] {
-					started = false
-					break // for loop
-				}
-			}
-			if started {
-				fmt.Println("* video chess recognised")
+func (o *observer) SetAudio(sig []signal.SignalAttributes) error {
+	for _, s := range sig {
+		if uint8((s&signal.AudioChannel0)>>signal.AudioChannel0Shift) != audioSilence {
+			select {
+			case o.audioFeedback <- true:
+			default:
 			}
 		}
+	}
+	return nil
+}
 
-		copy(prevPosition, position)
-		uci.SubmitMove <- ""
+func (o *observer) EndMixing() error {
+	return nil
+}
 
-		cursorCol := 3
-		cursorRow := 4
+func (obs *observer) Resize(frameInfo television.FrameInfo) error {
+	obs.frameInfo = frameInfo
+	return nil
+}
 
-		for {
-			// wait fro move from UCI
-			move := <-uci.GetMove
-			fmt.Printf("* playing move %s\n", move)
+func (obs *observer) NewFrame(frameInfo television.FrameInfo) error {
+	obs.frameInfo = frameInfo
 
-			// convert move into row/col numbers
-			fromCol := int(move[0]) - 97
-			fromRow := int(move[1]) - 48
-			toCol := int(move[2]) - 97
-			toRow := int(move[3]) - 48
+	img := *obs.img
+	img.Pix = make([]uint8, len(obs.img.Pix))
+	copy(img.Pix, obs.img.Pix)
 
-			// move to piece being moved
-			moveCol := cursorCol - fromCol
-			moveRow := cursorRow - fromRow
-			moveCursor(vcs, moveCol, moveRow, true)
-
-			// move piece to new position
-			moveCol = fromCol - toCol
-			moveRow = fromRow - toRow
-			moveCursor(vcs, moveCol, moveRow, false)
-
-			fmt.Println("* vcs is thinking")
-			copy(prevPosition, vcs.Mem.RAM.RAM)
-
-			waitForUpdate(vcs)
-
-			foundMove := false
-			for !foundMove {
-				fromFound := false
-				toFound := false
-
-				waiting := true
-				for waiting {
-					<-time.After(10 * time.Millisecond)
-					sl := vcs.TV.GetCoords().Scanline
-					if sl > 2 && sl < 200 {
-						copy(position, vcs.Mem.RAM.RAM)
-						waiting = false
-					}
-				}
-
-				// check for changed position for black pieces
-				for i := range position {
-					// 1 king
-					// 2 queen
-					// 3 bishop
-					// 4 knight
-					// 5 rook
-					// 6 pawn
-					piece := position[i] & 0x0f
-					prevPiece := prevPosition[i] & 0x0f
-
-					if piece != prevPiece {
-						if piece >= 1 && piece <= 6 {
-							toCol = i % 8
-							toRow = 8 - (i / 8)
-							toFound = true
-						} else if piece == 8 {
-							fromCol = i % 8
-							fromRow = 8 - (i / 8)
-							fromFound = true
-						}
-					}
-				}
-
-				foundMove = toFound && fromFound
-			}
-
-			move = fmt.Sprintf("%c%d%c%d", rune(fromCol+97), fromRow, rune(toCol+97), toRow)
-			fmt.Printf("* vcs played %s\n", move)
-
-			uci.SubmitMove <- move
-
-			copy(prevPosition, position)
-
-			cursorCol = fromCol
-			cursorRow = fromRow
-		}
-	}()
+	select {
+	case obs.analysis <- &img:
+	default:
+	}
 
 	return nil
 }
 
-func moveCursor(vcs *hardware.VCS, moveCol int, moveRow int, shortcut bool) {
-	waitForUpdate(vcs)
+func (obs *observer) NewScanline(scanline int) error {
+	return nil
+}
 
+func (obs *observer) SetPixels(sig []signal.SignalAttributes, last int) error {
+	var col color.RGBA
+	var offset int
+
+	for i := range sig {
+		// handle VBLANK by setting pixels to black
+		if sig[i]&signal.VBlank == signal.VBlank {
+			col = color.RGBA{R: 0, G: 0, B: 0}
+		} else {
+			px := signal.ColorSignal((sig[i] & signal.Color) >> signal.ColorShift)
+			col = obs.frameInfo.Spec.GetColor(px)
+		}
+
+		// small cap improves performance, see https://golang.org/issue/27857
+		s := obs.img.Pix[offset : offset+3 : offset+3]
+		s[0] = col.R
+		s[1] = col.G
+		s[2] = col.B
+
+		offset += 4
+	}
+	return nil
+}
+
+func (obs *observer) Reset() {
+	// clear pixels. setting the alpha channel so we don't have to later (the
+	// alpha channel never changes)
+	for y := 0; y < obs.img.Bounds().Size().Y; y++ {
+		for x := 0; x < obs.img.Bounds().Size().X; x++ {
+			obs.img.SetRGBA(x, y, color.RGBA{0, 0, 0, 255})
+		}
+	}
+}
+
+func (obs *observer) EndRendering() error {
+	return nil
+}
+
+type videoChessBot struct {
+	obs *observer
+
+	// the most recent position
+	currentPosition *image.RGBA
+
+	// a copy of the board at the end of the previous move by white
+	prevPosition *image.RGBA
+
+	// the square last looked at in detail
+	inspectionSquare *image.RGBA
+	cmpSquare        *image.RGBA
+
+	moveFrom image.Rectangle
+	moveTo   image.Rectangle
+
+	debuggingRender chan *image.RGBA
+}
+
+// composites a simple debugging image to be sent over the debuggingRender channel
+func (bot *videoChessBot) commitDebuggingRender() {
+	img := *bot.currentPosition
+	img.Pix = make([]uint8, len(bot.currentPosition.Pix))
+	copy(img.Pix, bot.currentPosition.Pix)
+
+	col := color.RGBA{200, 50, 50, 100}
+	draw.Draw(&img, bot.moveFrom, &image.Uniform{col}, image.Point{}, draw.Over)
+	col = color.RGBA{50, 200, 50, 100}
+	draw.Draw(&img, bot.moveTo, &image.Uniform{col}, image.Point{}, draw.Over)
+
+	draw.Draw(&img, bot.inspectionSquare.Bounds().Bounds().Add(image.Point{X: 10, Y: 10}), bot.inspectionSquare, image.Point{}, draw.Src)
+
+	select {
+	case bot.debuggingRender <- &img:
+	default:
+	}
+}
+
+// returns the image.Rectangle for a square on the chess board
+func (bot *videoChessBot) getRect(col int, row int) image.Rectangle {
+	minX := specification.ClksHBlank + boardMarginLeft + (col * squareWidth)
+	minY := boardMarginTop + (row * squareHeight)
+	maxX := minX + squareWidth
+	maxY := minY + squareHeight
+	return image.Rect(minX, minY, maxX, maxY)
+}
+
+// checks that board is present - board disappears during "thinking" so it's
+// important we only continue once the board reappears
+//
+// returns true if board is visible
+func (bot *videoChessBot) lookForBoard() bool {
+	clip := bot.getRect(2, -1)
+	draw.Draw(bot.inspectionSquare, bot.inspectionSquare.Bounds(), bot.currentPosition.SubImage(clip), clip.Min, draw.Src)
+	for i := range boardIndicator {
+		if boardIndicator[i] != bot.inspectionSquare.Pix[i] {
+			return false
+		}
+	}
+	return true
+}
+
+// compares currentPosition with prevPosition for a change. returns fromCol,
+// fromRow and toCol, toRow - indicating the move
+//
+// rows are flipped to normal chess orientation. rows are counted from the
+// bottom (white side) in chess.
+func (bot *videoChessBot) lookForVCSMove() (int, int, int, int) {
+	fromCol := -1
+	fromRow := -1
+	toCol := -1
+	toRow := -1
+
+	for row := 0; row < 8; row++ {
+		for col := 0; col < 8; col++ {
+			b := bot.isCursor(bot.prevPosition, col, row)
+			a := bot.isCursor(bot.currentPosition, col, row)
+			if a && !b {
+				fromCol = col
+				fromRow = row
+
+				// end for loops
+				col = 8
+				row = 8
+			}
+		}
+	}
+
+	if fromCol == -1 && fromRow == -1 {
+		return -1, -1, -1, -1
+	}
+
+	for row := 0; row < 8; row++ {
+		for col := 0; col < 8; col++ {
+			if !bot.isCursor(bot.currentPosition, col, row) {
+				if !bot.isCursor(bot.prevPosition, col, row) {
+					if !bot.cmpPositions(col, row) {
+						toCol = col
+						toRow = row
+
+						// end for loops
+						col = 8
+						row = 8
+					}
+				}
+			}
+		}
+	}
+
+	return fromCol, 8 - fromRow, toCol, 8 - toRow
+}
+
+// returns false if equivalent squares in the currentPosition and prevPosition images are different.
+func (bot *videoChessBot) cmpPositions(col int, row int) bool {
+	clip := bot.getRect(col, row)
+
+	draw.Draw(bot.inspectionSquare, bot.inspectionSquare.Bounds(), bot.currentPosition.SubImage(clip), clip.Min, draw.Src)
+	draw.Draw(bot.cmpSquare, bot.inspectionSquare.Bounds(), bot.prevPosition.SubImage(clip), clip.Min, draw.Src)
+
+	for i := 4; i < len(bot.inspectionSquare.Pix); i += 4 {
+		if bot.inspectionSquare.Pix[i] != bot.cmpSquare.Pix[i] {
+			return false
+		}
+	}
+
+	return true
+}
+
+// searches currentPosition image for the cursor. returns col and row of found
+// cursor. -1 if it is not found.
+//
+// rows are flipped to normal chess orientation. rows are counted from the
+// bottom (white side) in chess.
+func (bot *videoChessBot) lookForCursor() (int, int) {
+	// counting from top-to-bottom and left-to-right
+	for row := 0; row < 8; row++ {
+		for col := 0; col < 8; col++ {
+			if bot.isCursor(bot.currentPosition, col, row) {
+				return col, 8 - row
+			}
+		}
+	}
+
+	return -1, -1
+}
+
+// checks the seearchImage at the square indicated by col/row to see if it is
+// contains the cursor
+func (bot *videoChessBot) isCursor(searchImage *image.RGBA, col int, row int) bool {
+	clip := bot.getRect(col, row)
+
+	draw.Draw(bot.inspectionSquare, bot.inspectionSquare.Bounds(), searchImage.SubImage(clip), clip.Min, draw.Src)
+
+	m := 0
+	if col%2 == 0 {
+		for i := range bot.inspectionSquare.Pix {
+			if cursorSampleDataEvenColumns[i] > 0 && bot.inspectionSquare.Pix[i] == cursorSampleDataEvenColumns[i] {
+				m++
+			}
+		}
+	} else {
+		for i := range bot.inspectionSquare.Pix {
+			if cursorSampleDataOddColumns[i] > 0 && bot.inspectionSquare.Pix[i] == cursorSampleDataOddColumns[i] {
+				m++
+			}
+		}
+	}
+
+	return m == 76
+}
+
+func (bot *videoChessBot) isEmptySquare(searchImage *image.RGBA, col int, row int) bool {
+	clip := bot.getRect(col, row)
+
+	draw.Draw(bot.inspectionSquare, bot.inspectionSquare.Bounds(), searchImage.SubImage(clip), clip.Min, draw.Src)
+	seq := bot.inspectionSquare.Pix[:4]
+
+	for i := 4; i < len(bot.inspectionSquare.Pix); i += 4 {
+		if bot.inspectionSquare.Pix[i] != seq[0] || bot.inspectionSquare.Pix[i+1] != seq[1] || bot.inspectionSquare.Pix[i+2] != seq[2] {
+			return false
+		}
+	}
+
+	return true
+}
+
+// number of frames to leave stick down. too long and the cursor will move
+// more than one square
+const downDuration = 20
+
+// moves cursor once in the suppied direction. tries as often as necessary
+// until it hears the audible feedback.
+func (bot *videoChessBot) moveCursorOnceStep(vcs *hardware.VCS, portid plugging.PortID, direction ports.Event) {
+	bot.waitForFrames(1)
+
+	draining := true
+	for draining {
+		select {
+		case <-bot.obs.audioFeedback:
+		default:
+			draining = false
+		}
+	}
+
+	waiting := true
+	for waiting {
+		vcs.ForwardEventToRIOT(portid, direction, ports.DataStickTrue)
+		bot.waitForFrames(downDuration)
+		vcs.ForwardEventToRIOT(portid, direction, ports.DataStickFalse)
+		select {
+		case <-bot.obs.audioFeedback:
+			waiting = false
+		default:
+		}
+	}
+}
+
+// move cursor by the number of columns/rows indicated. negative columns
+// indicate right and negative rows indicate up.
+func (bot *videoChessBot) moveCursor(vcs *hardware.VCS, moveCol int, moveRow int, shortcut bool) {
 	if moveCol == moveRow || -moveCol == moveRow {
 		fmt.Printf("* moving cursor (diagonally) %d %d\n", moveCol, moveRow)
 
@@ -170,10 +389,7 @@ func moveCursor(vcs *hardware.VCS, moveCol int, moveRow int, shortcut bool) {
 		}
 
 		for i := 0; i < move; i++ {
-			vcs.ForwardEventToRIOT(plugging.PortLeftPlayer, direction, ports.DataStickTrue)
-			waitForFrames(vcs)
-			vcs.ForwardEventToRIOT(plugging.PortLeftPlayer, direction, ports.DataStickFalse)
-			waitForUpdate(vcs)
+			bot.moveCursorOnceStep(vcs, plugging.PortLeftPlayer, direction)
 		}
 	} else {
 		fmt.Printf("* moving cursor %d %d\n", moveCol, moveRow)
@@ -181,14 +397,10 @@ func moveCursor(vcs *hardware.VCS, moveCol int, moveRow int, shortcut bool) {
 		if shortcut {
 			if moveCol > 4 {
 				moveCol -= 8
-
-				// correct moveRow caused by board wrap
-				moveRow--
+				moveRow-- // correct moveRow caused by board wrap
 			} else if moveCol < -4 {
 				moveCol += 8
-
-				// correct moveRow caused by board wrap
-				moveRow++
+				moveRow++ // correct moveRow caused by board wrap
 			}
 			if moveRow > 4 {
 				moveRow -= 8
@@ -199,71 +411,180 @@ func moveCursor(vcs *hardware.VCS, moveCol int, moveRow int, shortcut bool) {
 
 		if moveCol > 0 {
 			for i := 0; i < moveCol; i++ {
-				vcs.ForwardEventToRIOT(plugging.PortLeftPlayer, ports.Left, ports.DataStickTrue)
-				waitForFrames(vcs)
-				vcs.ForwardEventToRIOT(plugging.PortLeftPlayer, ports.Left, ports.DataStickFalse)
-				waitForUpdate(vcs)
+				bot.moveCursorOnceStep(vcs, plugging.PortLeftPlayer, ports.Left)
 			}
 		} else if moveCol < 0 {
 			for i := 0; i > moveCol; i-- {
-				vcs.ForwardEventToRIOT(plugging.PortLeftPlayer, ports.Right, ports.DataStickTrue)
-				waitForFrames(vcs)
-				vcs.ForwardEventToRIOT(plugging.PortLeftPlayer, ports.Right, ports.DataStickFalse)
-				waitForUpdate(vcs)
+				bot.moveCursorOnceStep(vcs, plugging.PortLeftPlayer, ports.Right)
 			}
 		}
 
 		if moveRow > 0 {
 			for i := 0; i < moveRow; i++ {
-				vcs.ForwardEventToRIOT(plugging.PortLeftPlayer, ports.Down, ports.DataStickTrue)
-				waitForFrames(vcs)
-				vcs.ForwardEventToRIOT(plugging.PortLeftPlayer, ports.Down, ports.DataStickFalse)
-				waitForUpdate(vcs)
+				bot.moveCursorOnceStep(vcs, plugging.PortLeftPlayer, ports.Down)
 			}
 		} else if moveRow < 0 {
 			for i := 0; i > moveRow; i-- {
-				vcs.ForwardEventToRIOT(plugging.PortLeftPlayer, ports.Up, ports.DataStickTrue)
-				waitForFrames(vcs)
-				vcs.ForwardEventToRIOT(plugging.PortLeftPlayer, ports.Up, ports.DataStickFalse)
-				waitForUpdate(vcs)
+				bot.moveCursorOnceStep(vcs, plugging.PortLeftPlayer, ports.Up)
 			}
 		}
 	}
 
-	waitForUpdate(vcs)
-	vcs.ForwardEventToRIOT(plugging.PortLeftPlayer, ports.Fire, true)
-	waitForFrames(vcs)
-	vcs.ForwardEventToRIOT(plugging.PortLeftPlayer, ports.Fire, false)
-	waitForUpdate(vcs)
-}
+	bot.waitForFrames(1)
 
-func waitForFrames(vcs *hardware.VCS) {
-	targetFrame := vcs.TV.GetCoords().Frame + 20
+	draining := true
+	for draining {
+		select {
+		case <-bot.obs.audioFeedback:
+		default:
+			draining = false
+		}
+	}
+
 	waiting := true
 	for waiting {
-		<-time.After(10 * time.Millisecond)
-		waiting = vcs.TV.GetCoords().Frame < targetFrame
+		vcs.ForwardEventToRIOT(plugging.PortLeftPlayer, ports.Fire, true)
+		bot.waitForFrames(downDuration)
+		vcs.ForwardEventToRIOT(plugging.PortLeftPlayer, ports.Fire, false)
+		select {
+		case <-bot.obs.audioFeedback:
+			waiting = false
+		default:
+		}
 	}
 }
 
-func waitForUpdate(vcs *hardware.VCS) {
-	waiting := true
-	for waiting {
-		<-time.After(10 * time.Millisecond)
-		v, err := vcs.Mem.RAM.Peek(0xf4)
-		if err != nil {
-			panic(err)
-		}
-		waiting = v != 0x00
+// block goroutine until n frames have passed
+func (bot *videoChessBot) waitForFrames(n int) {
+	for i := 0; i < n; i++ {
+		<-bot.obs.analysis
 	}
 }
 
-func printBoard(position []uint8) {
-	for i := range position {
-		if i%8 == 0 {
-			fmt.Println("")
-		}
-		fmt.Printf("%02x ", position[i])
+func VideoChessBot(vcs *hardware.VCS) (chan *image.RGBA, error) {
+	bot := videoChessBot{
+		obs:              newObserver(),
+		prevPosition:     image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, specification.AbsoluteMaxScanlines)),
+		inspectionSquare: image.NewRGBA(image.Rect(0, 0, squareWidth, squareHeight)),
+		cmpSquare:        image.NewRGBA(image.Rect(0, 0, squareWidth, squareHeight)),
+		debuggingRender:  make(chan *image.RGBA, 1),
 	}
-	fmt.Println("")
+
+	vcs.TV.AddPixelRenderer(bot.obs)
+	vcs.TV.AddAudioMixer(bot.obs)
+
+	uci, err := uci.NewUCI("/usr/local/bin/stockfish")
+	if err != nil {
+		return nil, curated.Errorf("bot: %v", err)
+	}
+
+	uci.Start()
+
+	go func() {
+		started := false
+		for !started {
+			bot.currentPosition = <-bot.obs.analysis
+			imgHash := sha1.Sum(bot.currentPosition.Pix)
+			started = startingImage == imgHash
+		}
+
+		fmt.Println("* Video Chess recognised")
+
+		// bot is playing white so ask for first move by submitting an empty move
+		uci.SubmitMove <- ""
+
+		for {
+			var cursorCol, cursorRow int
+
+			waiting := true
+			for waiting {
+				bot.currentPosition = <-bot.obs.analysis
+				cursorCol, cursorRow = bot.lookForCursor()
+				waiting = cursorCol == -1 || cursorRow == -1
+				bot.commitDebuggingRender()
+			}
+
+			// wait for move from UCI engine
+			move := <-uci.GetMove
+			fmt.Printf("* playing move %s\n", move)
+
+			// convert move into row/col numbers
+			fromCol := int(move[0]) - 97
+			fromRow := int(move[1]) - 48
+			toCol := int(move[2]) - 97
+			toRow := int(move[3]) - 48
+
+			// move to piece being moved
+			moveCol := cursorCol - fromCol
+			moveRow := cursorRow - fromRow
+			bot.moveCursor(vcs, moveCol, moveRow, true)
+			bot.commitDebuggingRender()
+
+			// move piece to new position
+			moveCol = fromCol - toCol
+			moveRow = fromRow - toRow
+			bot.moveCursor(vcs, moveCol, moveRow, false)
+
+			// correct from/to row values after moving
+			fromRow = 8 - fromRow
+			toRow = 8 - toRow
+
+			// move rectangles for move we just made
+			bot.moveFrom = bot.getRect(fromCol, fromRow)
+			bot.moveTo = bot.getRect(toCol, toRow)
+			bot.commitDebuggingRender()
+
+			// moved piece flashes so we should wait for the correct frame and
+			// then remember the white position
+			waiting = true
+			for waiting {
+				bot.currentPosition = <-bot.obs.analysis
+				waiting = bot.isEmptySquare(bot.currentPosition, toCol, toRow)
+				bot.commitDebuggingRender()
+			}
+			copy(bot.prevPosition.Pix, bot.currentPosition.Pix)
+
+			// wait for board to disappear to indicate the the VCS is thinking
+			waiting = true
+			for waiting {
+				bot.currentPosition = <-bot.obs.analysis
+				waiting = bot.lookForBoard()
+			}
+
+			fmt.Println("* vcs is thinking")
+
+			// wait for it to reappear to indicate that the VCS move has been made
+			waiting = true
+			for waiting {
+				bot.currentPosition = <-bot.obs.analysis
+				waiting = !bot.lookForBoard()
+			}
+
+			// figure out which piece has been moved
+			waiting = true
+			for waiting {
+				bot.currentPosition = <-bot.obs.analysis
+				fromCol, fromRow, toCol, toRow = bot.lookForVCSMove()
+				waiting = fromCol == -1 || fromRow == -1 || toCol == -1 || toRow == -1
+			}
+
+			// highlight 'from' and 'to' squanre
+			bot.moveFrom = bot.getRect(fromCol, fromRow)
+			bot.moveTo = bot.getRect(toCol, toRow)
+
+			// convert VCS move information to UCI notation
+			move = fmt.Sprintf("%c%d%c%d", rune(fromCol+97), fromRow, rune(toCol+97), toRow)
+			fmt.Printf("* vcs played %s\n", move)
+
+			// submit to UCI engine
+			uci.SubmitMove <- move
+
+			// draw move just made by the VCS
+			bot.moveFrom = bot.getRect(fromCol, 8-fromRow)
+			bot.moveTo = bot.getRect(toCol, 8-toRow)
+			bot.commitDebuggingRender()
+		}
+	}()
+
+	return bot.debuggingRender, nil
 }
