@@ -13,6 +13,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
+// Package uci handles a running UCI engine.
 package uci
 
 import (
@@ -22,9 +23,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jetsetilly/gopher2600/debugger/terminal/colorterm/easyterm/ansi"
+	"github.com/jetsetilly/gopher2600/bots"
+	"github.com/jetsetilly/gopher2600/logger"
 )
 
+// UCI handles a running UCI engine, accepts move and offers the best move to
+// play next.
 type UCI struct {
 	stdin  io.WriteCloser
 	stdout io.ReadCloser
@@ -40,21 +44,25 @@ type UCI struct {
 	// channel
 	GetMove chan string
 
-	// end the UCI program
+	// end the UCI program. the UCI should not be restarted after it has quit
 	Quit chan bool
+
+	diagnostic chan bots.Diagnostic
 }
 
-func (uci *UCI) Close() {
+func (uci *UCI) close() {
 	_ = uci.stdin.Close()
 	_ = uci.stdout.Close()
 }
 
-func NewUCI(pathToEngine string) (*UCI, error) {
+// NewUCI prepares and launches a new UCI engine.
+func NewUCI(pathToEngine string, diagnostic chan bots.Diagnostic) (*UCI, error) {
 	uci := &UCI{
 		SubmitMove: make(chan string),
 		GetMove:    make(chan string),
 		Quit:       make(chan bool),
 		moves:      make([]string, 0, 100),
+		diagnostic: diagnostic,
 	}
 
 	cmd := exec.Command(pathToEngine)
@@ -88,12 +96,7 @@ func NewUCI(pathToEngine string) (*UCI, error) {
 	return uci, nil
 }
 
-func print(s string) {
-	fmt.Print(ansi.Pens["blue"])
-	fmt.Print(s)
-	fmt.Print(ansi.NormalPen)
-}
-
+// Start communication with the UCI engine.
 func (uci *UCI) Start() error {
 	buf := make([]byte, 4096)
 
@@ -102,7 +105,14 @@ func (uci *UCI) Start() error {
 	if err != nil {
 		return err
 	}
-	print(string(buf[:n]))
+
+	select {
+	case uci.diagnostic <- bots.Diagnostic{
+		Group:      "UCI",
+		Diagnostic: string(buf[:n]),
+	}:
+	default:
+	}
 
 	// submit isready
 	_, err = uci.stdin.Write([]byte("uci\n"))
@@ -153,7 +163,8 @@ func (uci *UCI) Start() error {
 
 				_, err = uci.stdin.Write([]byte("go depth 10\n"))
 				if err != nil {
-					panic(err)
+					logger.Logf("uci", err.Error())
+					return
 				}
 
 				done := false
@@ -162,10 +173,17 @@ func (uci *UCI) Start() error {
 
 					n, err = uci.stdout.Read(buf)
 					if err != nil {
-						panic(err)
+						logger.Logf("uci", err.Error())
+						return
 					}
 
-					print(string(buf[:n]))
+					select {
+					case uci.diagnostic <- bots.Diagnostic{
+						Group:      "UCI",
+						Diagnostic: string(buf[:n]),
+					}:
+					default:
+					}
 
 					if n > 0 {
 						s := strings.Index(string(buf[:n]), "bestmove ")
@@ -179,7 +197,7 @@ func (uci *UCI) Start() error {
 				}
 
 			case <-uci.Quit:
-				uci.Close()
+				uci.close()
 			}
 		}
 	}()

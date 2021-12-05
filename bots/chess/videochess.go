@@ -13,7 +13,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-package bot
+package chess
 
 import (
 	"crypto/sha1"
@@ -22,12 +22,12 @@ import (
 	"image/color"
 	"image/draw"
 
-	"github.com/jetsetilly/gopher2600/bots/uci"
+	"github.com/jetsetilly/gopher2600/bots"
+	"github.com/jetsetilly/gopher2600/bots/chess/uci"
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
 	"github.com/jetsetilly/gopher2600/hardware/television"
-	"github.com/jetsetilly/gopher2600/hardware/television/coords"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 )
@@ -148,23 +148,15 @@ func (obs *observer) EndRendering() error {
 	return nil
 }
 
-// TV defines the functions required by a bot.
-type TV interface {
-	AddPixelRenderer(television.PixelRenderer)
-	AddAudioMixer(television.AudioMixer)
-	GetCoords() coords.TelevisionCoords
-}
-
-// VCS defines the functions required by a bot.
-type VCS interface {
-	QueueEvent(ports.InputEvent) error
-}
-
 type videoChessBot struct {
 	obs *observer
 
-	vcs VCS
-	tv  TV
+	vcs bots.VCS
+	tv  bots.TV
+
+	// quit as soon as possible when a value appears on the channel
+	quit     chan bool
+	quitting bool
 
 	// the most recent position
 	currentPosition *image.RGBA
@@ -179,10 +171,10 @@ type videoChessBot struct {
 	moveFrom image.Rectangle
 	moveTo   image.Rectangle
 
-	debuggingRender chan *image.RGBA
+	feedback bots.Feedback
 }
 
-// composites a simple debugging image to be sent over the debuggingRender channel
+// composites a simple debugging image and forward it onto the feeback.Images channel.
 func (bot *videoChessBot) commitDebuggingRender() {
 	img := *bot.currentPosition
 	img.Pix = make([]uint8, len(bot.currentPosition.Pix))
@@ -193,10 +185,11 @@ func (bot *videoChessBot) commitDebuggingRender() {
 	col = color.RGBA{50, 200, 50, 100}
 	draw.Draw(&img, bot.moveTo, &image.Uniform{col}, image.Point{}, draw.Over)
 
-	draw.Draw(&img, bot.inspectionSquare.Bounds().Bounds().Add(image.Point{X: 10, Y: 10}), bot.inspectionSquare, image.Point{}, draw.Src)
+	r := bot.inspectionSquare.Bounds()
+	draw.Draw(&img, r.Add(image.Point{X: 10, Y: 10}), bot.inspectionSquare, image.Point{}, draw.Src)
 
 	select {
-	case bot.debuggingRender <- &img:
+	case bot.feedback.Images <- &img:
 	default:
 	}
 }
@@ -384,7 +377,10 @@ func (bot *videoChessBot) moveCursorOnceStep(portid plugging.PortID, direction p
 // indicate right and negative rows indicate up.
 func (bot *videoChessBot) moveCursor(moveCol int, moveRow int, shortcut bool) {
 	if moveCol == moveRow || -moveCol == moveRow {
-		fmt.Printf("* moving cursor (diagonally) %d %d\n", moveCol, moveRow)
+		bot.feedback.Diagnostic <- bots.Diagnostic{
+			Group:      "VideoChess",
+			Diagnostic: fmt.Sprintf("moving cursor (diagonally) %d %d\n", moveCol, moveRow),
+		}
 
 		move := moveCol
 		if move < 0 {
@@ -407,7 +403,10 @@ func (bot *videoChessBot) moveCursor(moveCol int, moveRow int, shortcut bool) {
 			bot.moveCursorOnceStep(plugging.PortLeftPlayer, direction)
 		}
 	} else {
-		fmt.Printf("* moving cursor %d %d\n", moveCol, moveRow)
+		bot.feedback.Diagnostic <- bots.Diagnostic{
+			Group:      "VideoChess",
+			Diagnostic: fmt.Sprintf("moving cursor %d %d\n", moveCol, moveRow),
+		}
 
 		if shortcut {
 			if moveCol > 4 {
@@ -451,6 +450,9 @@ func (bot *videoChessBot) moveCursor(moveCol int, moveRow int, shortcut bool) {
 	for draining {
 		select {
 		case <-bot.obs.audioFeedback:
+		case <-bot.quit:
+			bot.quitting = true
+			return
 		default:
 			draining = false
 		}
@@ -464,6 +466,9 @@ func (bot *videoChessBot) moveCursor(moveCol int, moveRow int, shortcut bool) {
 		select {
 		case <-bot.obs.audioFeedback:
 			waiting = false
+		case <-bot.quit:
+			bot.quitting = true
+			return
 		default:
 		}
 	}
@@ -472,26 +477,35 @@ func (bot *videoChessBot) moveCursor(moveCol int, moveRow int, shortcut bool) {
 // block goroutine until n frames have passed
 func (bot *videoChessBot) waitForFrames(n int) {
 	for i := 0; i < n; i++ {
-		<-bot.obs.analysis
+		select {
+		case <-bot.obs.analysis:
+		case <-bot.quit:
+			bot.quitting = true
+			return
+		}
 	}
 }
 
-// VideoChessBot creates a new bot able to play chess (via a UCI engine).
-func VideoChessBot(vcs VCS, tv TV) (chan *image.RGBA, error) {
-	bot := videoChessBot{
+// NewVideoChess creates a new bot able to play chess (via a UCI engine).
+func NewVideoChess(vcs bots.VCS, tv bots.TV) (bots.Bot, error) {
+	bot := &videoChessBot{
 		obs:              newObserver(),
 		vcs:              vcs,
 		tv:               tv,
+		quit:             make(chan bool),
 		prevPosition:     image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, specification.AbsoluteMaxScanlines)),
 		inspectionSquare: image.NewRGBA(image.Rect(0, 0, squareWidth, squareHeight)),
 		cmpSquare:        image.NewRGBA(image.Rect(0, 0, squareWidth, squareHeight)),
-		debuggingRender:  make(chan *image.RGBA, 1),
+		feedback: bots.Feedback{
+			Images:     make(chan *image.RGBA, 1),
+			Diagnostic: make(chan bots.Diagnostic, 64),
+		},
 	}
 
 	tv.AddPixelRenderer(bot.obs)
 	tv.AddAudioMixer(bot.obs)
 
-	uci, err := uci.NewUCI("/usr/local/bin/stockfish")
+	uci, err := uci.NewUCI("/usr/local/bin/stockfish", bot.feedback.Diagnostic)
 	if err != nil {
 		return nil, curated.Errorf("bot: %v", err)
 	}
@@ -499,14 +513,25 @@ func VideoChessBot(vcs VCS, tv TV) (chan *image.RGBA, error) {
 	uci.Start()
 
 	go func() {
+		defer func() {
+			uci.Quit <- true
+		}()
+
 		started := false
 		for !started {
-			bot.currentPosition = <-bot.obs.analysis
+			select {
+			case bot.currentPosition = <-bot.obs.analysis:
+			case <-bot.quit:
+				return
+			}
 			imgHash := sha1.Sum(bot.currentPosition.Pix)
 			started = startingImage == imgHash
 		}
 
-		fmt.Println("* Video Chess recognised")
+		bot.feedback.Diagnostic <- bots.Diagnostic{
+			Group:      "VideoChess",
+			Diagnostic: "Video Chess recognised",
+		}
 
 		// bot is playing white so ask for first move by submitting an empty move
 		uci.SubmitMove <- ""
@@ -516,15 +541,27 @@ func VideoChessBot(vcs VCS, tv TV) (chan *image.RGBA, error) {
 
 			waiting := true
 			for waiting {
-				bot.currentPosition = <-bot.obs.analysis
+				select {
+				case bot.currentPosition = <-bot.obs.analysis:
+				case <-bot.quit:
+					return
+				}
 				cursorCol, cursorRow = bot.lookForCursor()
 				waiting = cursorCol == -1 || cursorRow == -1
 				bot.commitDebuggingRender()
 			}
 
 			// wait for move from UCI engine
-			move := <-uci.GetMove
-			fmt.Printf("* playing move %s\n", move)
+			var move string
+			select {
+			case move = <-uci.GetMove:
+				bot.feedback.Diagnostic <- bots.Diagnostic{
+					Group:      "VideoChess",
+					Diagnostic: fmt.Sprintf("playing move %s\n", move),
+				}
+			case <-bot.quit:
+				return
+			}
 
 			// convert move into row/col numbers
 			fromCol := int(move[0]) - 97
@@ -536,12 +573,18 @@ func VideoChessBot(vcs VCS, tv TV) (chan *image.RGBA, error) {
 			moveCol := cursorCol - fromCol
 			moveRow := cursorRow - fromRow
 			bot.moveCursor(moveCol, moveRow, true)
+			if bot.quitting {
+				return
+			}
 			bot.commitDebuggingRender()
 
 			// move piece to new position
 			moveCol = fromCol - toCol
 			moveRow = fromRow - toRow
 			bot.moveCursor(moveCol, moveRow, false)
+			if bot.quitting {
+				return
+			}
 
 			// correct from/to row values after moving
 			fromRow = 8 - fromRow
@@ -556,7 +599,11 @@ func VideoChessBot(vcs VCS, tv TV) (chan *image.RGBA, error) {
 			// then remember the white position
 			waiting = true
 			for waiting {
-				bot.currentPosition = <-bot.obs.analysis
+				select {
+				case bot.currentPosition = <-bot.obs.analysis:
+				case <-bot.quit:
+					return
+				}
 				waiting = bot.isEmptySquare(bot.currentPosition, toCol, toRow)
 				bot.commitDebuggingRender()
 			}
@@ -565,23 +612,38 @@ func VideoChessBot(vcs VCS, tv TV) (chan *image.RGBA, error) {
 			// wait for board to disappear to indicate the the VCS is thinking
 			waiting = true
 			for waiting {
-				bot.currentPosition = <-bot.obs.analysis
+				select {
+				case bot.currentPosition = <-bot.obs.analysis:
+				case <-bot.quit:
+					return
+				}
 				waiting = bot.lookForBoard()
 			}
 
-			fmt.Println("* vcs is thinking")
+			bot.feedback.Diagnostic <- bots.Diagnostic{
+				Group:      "VideoChess",
+				Diagnostic: "vcs is thinking",
+			}
 
 			// wait for it to reappear to indicate that the VCS move has been made
 			waiting = true
 			for waiting {
-				bot.currentPosition = <-bot.obs.analysis
+				select {
+				case bot.currentPosition = <-bot.obs.analysis:
+				case <-bot.quit:
+					return
+				}
 				waiting = !bot.lookForBoard()
 			}
 
 			// figure out which piece has been moved
 			waiting = true
 			for waiting {
-				bot.currentPosition = <-bot.obs.analysis
+				select {
+				case bot.currentPosition = <-bot.obs.analysis:
+				case <-bot.quit:
+					return
+				}
 				fromCol, fromRow, toCol, toRow = bot.lookForVCSMove()
 				waiting = fromCol == -1 || fromRow == -1 || toCol == -1 || toRow == -1
 			}
@@ -590,9 +652,13 @@ func VideoChessBot(vcs VCS, tv TV) (chan *image.RGBA, error) {
 			bot.moveFrom = bot.getRect(fromCol, fromRow)
 			bot.moveTo = bot.getRect(toCol, toRow)
 
-			// convert VCS move information to UCI notation
 			move = fmt.Sprintf("%c%d%c%d", rune(fromCol+97), fromRow, rune(toCol+97), toRow)
-			fmt.Printf("* vcs played %s\n", move)
+
+			// convert VCS move information to UCI notation
+			bot.feedback.Diagnostic <- bots.Diagnostic{
+				Group:      "VideoChess",
+				Diagnostic: fmt.Sprintf("vcs played %s\n", move),
+			}
 
 			// submit to UCI engine
 			uci.SubmitMove <- move
@@ -604,5 +670,21 @@ func VideoChessBot(vcs VCS, tv TV) (chan *image.RGBA, error) {
 		}
 	}()
 
-	return bot.debuggingRender, nil
+	return bot, nil
+}
+
+// BotID implements the bots.Bot interface.
+func (bot *videoChessBot) BotID() string {
+	return "videochess"
+}
+
+// Quit implements the bots.Bot interface.
+func (bot *videoChessBot) Quit() {
+	// wait until quit has been honoured
+	bot.quit <- true
+}
+
+// Feedback implements the bots.Bot interface.
+func (bot *videoChessBot) Feedback() bots.Feedback {
+	return bot.feedback
 }

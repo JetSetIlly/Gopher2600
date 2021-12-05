@@ -16,10 +16,11 @@
 package sdlimgui
 
 import (
-	"image"
+	"strings"
 
 	"github.com/go-gl/gl/v3.2-core/gl"
 	"github.com/inkyblackness/imgui-go/v4"
+	"github.com/jetsetilly/gopher2600/bots"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 )
 
@@ -29,15 +30,17 @@ type winBot struct {
 	img  *SdlImgui
 	open bool
 
-	obsTexture uint32
+	obsTexture  uint32
+	diagnostics []bots.Diagnostic
 
 	// render channels are given to use by the main emulation through a GUI request
-	render chan *image.RGBA
+	feedback bots.Feedback
 }
 
 func newWinBot(img *SdlImgui) (window, error) {
 	win := &winBot{
-		img: img,
+		img:         img,
+		diagnostics: make([]bots.Diagnostic, 0, 1024),
 	}
 
 	gl.GenTextures(1, &win.obsTexture)
@@ -60,10 +63,6 @@ func (win *winBot) isOpen() bool {
 }
 
 func (win *winBot) setOpen(open bool) {
-	if win.render == nil {
-		return
-	}
-
 	win.open = open
 
 	if win.open {
@@ -79,7 +78,7 @@ func (win *winBot) setOpen(open bool) {
 func (win *winBot) draw() {
 	// receive new thumbnail data and copy to texture
 	select {
-	case img := <-win.render:
+	case img := <-win.feedback.Images:
 		if img != nil {
 			gl.PixelStorei(gl.UNPACK_ROW_LENGTH, int32(img.Stride)/4)
 			defer gl.PixelStorei(gl.UNPACK_ROW_LENGTH, 0)
@@ -93,14 +92,43 @@ func (win *winBot) draw() {
 	default:
 	}
 
+	done := false
+	for !done {
+		select {
+		case d := <-win.feedback.Diagnostic:
+			if len(win.diagnostics) == cap(win.diagnostics) {
+				win.diagnostics = win.diagnostics[1:]
+			}
+			win.diagnostics = append(win.diagnostics, d)
+		default:
+			done = true
+		}
+	}
+
 	if !win.open {
 		return
 	}
 
 	imgui.SetNextWindowPosV(imgui.Vec2{75, 75}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
+	imgui.SetNextWindowSizeV(imgui.Vec2{500, 525}, imgui.ConditionFirstUseEver)
 
-	if imgui.BeginV(win.id(), &win.open, imgui.WindowFlagsAlwaysAutoResize) {
+	if imgui.BeginV(win.id(), &win.open, imgui.WindowFlagsNone) {
 		imgui.Image(imgui.TextureID(win.obsTexture), imgui.Vec2{specification.ClksVisible * 3, specification.AbsoluteMaxScanlines})
+
+		if imgui.BeginChildV("##log", imgui.Vec2{}, true, imgui.WindowFlagsAlwaysAutoResize) {
+			var clipper imgui.ListClipper
+			clipper.Begin(len(win.diagnostics))
+			for clipper.Step() {
+				for i := clipper.DisplayStart; i < clipper.DisplayEnd; i++ {
+					imgui.Text(win.diagnostics[i].Group)
+					for _, s := range strings.Split(win.diagnostics[i].Diagnostic, "\n") {
+						imgui.SameLine()
+						imgui.Text(s)
+					}
+				}
+			}
+			imgui.EndChild()
+		}
 	}
 	imgui.End()
 }

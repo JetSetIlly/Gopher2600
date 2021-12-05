@@ -18,6 +18,7 @@ package sdlimgui
 import (
 	"image"
 
+	"github.com/jetsetilly/gopher2600/bots"
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/emulation"
 	"github.com/jetsetilly/gopher2600/gui"
@@ -140,13 +141,14 @@ func (img *SdlImgui) serviceSetFeature(request featureRequest) {
 			img.wm.windows[winComparisonID].(*winComparison).setOpen(open)
 		}
 
-	case gui.ReqBot:
+	case gui.ReqBotFeedback:
 		err = argLen(request.args, 1)
 		if err == nil {
 			open := false
 			if request.args[0] != nil {
-				img.wm.windows[winBotID].(*winBot).render = request.args[0].(chan *image.RGBA)
-				open = true
+				f := request.args[0].(bots.Feedback)
+				img.wm.windows[winBotID].(*winBot).feedback = f
+				open = f != bots.Feedback{}
 			}
 			img.wm.windows[winBotID].(*winBot).setOpen(open)
 		}

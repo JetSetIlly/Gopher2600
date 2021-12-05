@@ -22,7 +22,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	bot "github.com/jetsetilly/gopher2600/bots"
+	"github.com/jetsetilly/gopher2600/bots/wrangler"
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/comparison"
 	"github.com/jetsetilly/gopher2600/curated"
@@ -92,6 +92,9 @@ type Debugger struct {
 	gui         gui.GUI
 	term        terminal.Terminal
 	controllers *userinput.Controllers
+
+	// bots coordinator
+	bots *wrangler.Bots
 
 	// when reading input from the terminal there are other events
 	// that need to be monitored
@@ -310,6 +313,9 @@ func NewDebugger(create CreateUserInterface, spec string, useSavekey bool, fpsCa
 			return nil, curated.Errorf("debugger: %v", err)
 		}
 	}
+
+	// create bot coordinator
+	dbg.bots = wrangler.NewBots(dbg.vcs, dbg.vcs.TV)
 
 	// set up debugging interface to memory
 	dbg.dbgmem = &dbgmem.DbgMem{
@@ -559,6 +565,7 @@ func (dbg *Debugger) setMode(mode emulation.Mode) error {
 
 // End cleans up any resources that may be dangling.
 func (dbg *Debugger) end() {
+	dbg.bots.Quit()
 	dbg.vcs.End()
 
 	// set ending state
@@ -627,15 +634,7 @@ func (dbg *Debugger) start(mode emulation.Mode, initScript string, cartload cart
 		return curated.Errorf("debugger: %v", err)
 	}
 
-	botRender, err := bot.VideoChessBot(dbg.vcs, dbg.vcs.TV)
-	if err != nil {
-		return curated.Errorf("debugger: %v", err)
-	}
-	err = dbg.gui.SetFeature(gui.ReqBot, botRender)
-	if err != nil {
-		return curated.Errorf("debugger: %v", err)
-	}
-
+	// debugger is running
 	dbg.running = true
 
 	// run initialisation script
@@ -893,6 +892,16 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) 
 
 	// make sure everything is reset after disassembly (including breakpoints, etc.)
 	dbg.reset(true)
+
+	// activate bot if possible
+	feedback, err := dbg.bots.ActivateBot(dbg.vcs.Mem.Cart.Hash)
+	if err != nil {
+		return curated.Errorf("debugger: %v", err)
+	}
+	err = dbg.gui.SetFeature(gui.ReqBotFeedback, feedback)
+	if err != nil {
+		return curated.Errorf("debugger: %v", err)
+	}
 
 	// record the most filename as the most recent ROM loaded if appropriate
 	if !dbg.vcs.Mem.Cart.IsEjected() {
