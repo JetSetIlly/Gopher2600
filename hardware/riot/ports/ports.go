@@ -23,8 +23,13 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/addresses"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
-	"github.com/jetsetilly/gopher2600/hardware/television/signal"
+	"github.com/jetsetilly/gopher2600/hardware/television/coords"
 )
+
+// TV defines the television functions required by the Ports type.
+type TV interface {
+	GetCoords() coords.TelevisionCoords
+}
 
 // Input implements the input/output part of the RIOT (the IO in RIOT).
 type Ports struct {
@@ -80,15 +85,20 @@ type Ports struct {
 	// we use it to mux the Player0 and Player 1 nibbles into the single register
 	swchaMux uint8
 
+	// events pushed onto the input queue
+	pushed chan InputEvent
+
 	// the following fields all relate to driven input, for either the driver
 	// or for the passenger (the driven)
-	fromDriver      chan DrivenEvent
-	toPassenger     chan DrivenEvent
+	fromDriver      chan InputEvent
+	toPassenger     chan InputEvent
 	checkForDriven  bool
-	drivenInputData DrivenEvent
+	drivenInputData InputEvent
 
 	// the time of driven events are measured by television coordinates
-	tv signal.TelevisionCoords
+	//
+	// not used except to synchronise driver and passenger emulations
+	tv TV
 }
 
 // NewPorts is the preferred method of initialisation of the Ports type.
@@ -100,6 +110,7 @@ func NewPorts(riotMem bus.ChipBus, tiaMem bus.ChipBus) *Ports {
 		swchaFromCPU: 0x00,
 		swacnt:       0x00,
 		latch:        false,
+		pushed:       make(chan InputEvent, 64),
 	}
 	return p
 }
@@ -258,7 +269,7 @@ func (p *Ports) Step() {
 
 // SynchroniseWithDriver implies that the emulation will receive driven events
 // from another emulation.
-func (p *Ports) SynchroniseWithDriver(driver chan DrivenEvent, tv signal.TelevisionCoords) error {
+func (p *Ports) SynchroniseWithDriver(driver chan InputEvent, tv TV) error {
 	if p.toPassenger != nil {
 		return curated.Errorf("ports: cannot sync with driver: emulation already defined as a driver of input")
 	}
@@ -272,7 +283,7 @@ func (p *Ports) SynchroniseWithDriver(driver chan DrivenEvent, tv signal.Televis
 
 // SynchroniseWithPassenger connects the emulation to a second emulation (the
 // passenger) to which user input events will be "driven".
-func (p *Ports) SynchroniseWithPassenger(passenger chan DrivenEvent, tv signal.TelevisionCoords) error {
+func (p *Ports) SynchroniseWithPassenger(passenger chan InputEvent, tv TV) error {
 	if p.fromDriver != nil {
 		return curated.Errorf("ports: cannot sync with passenger: emulation already defined as being driven")
 	}
@@ -318,6 +329,9 @@ func (p *Ports) AttachPlugMonitor(m plugging.PlugMonitor) {
 }
 
 // PeripheralID implements userinput.HandleInput interface.
+//
+// Consider using PeripheralID() function in the VCS type rather than this
+// function directly.
 func (p *Ports) PeripheralID(id plugging.PortID) plugging.PeripheralID {
 	switch id {
 	case plugging.PortPanel:

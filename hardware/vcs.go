@@ -231,23 +231,24 @@ func (vcs *VCS) DetatchEmulationExtras() {
 	vcs.RIOT.Ports.AttachPlugMonitor(nil)
 }
 
-// HandleEvent implements userinput.HandleInput interface.
+// HandleInputEvent forwards an input event to VCS Ports.
 //
-// A note about the userinput.HandleInput interface:
-//
-// We don't want the interface to be implemented by the Ports type directly.
-// This is because a Ports instance will grow stale during a rewind event.
-// However, we want the Controllers type to always refer to the current Ports
-// implementation. Defining and implementing the interface like this means that
-// the Controllers are always referring to the currently plumbed Ports
-// instance.
-func (vcs *VCS) ForwardEventToRIOT(id plugging.PortID, ev ports.Event, d ports.EventData) (bool, error) {
-	return vcs.RIOT.Ports.HandleEvent(id, ev, d)
+// It's important that this function be used in preference to calling the
+// HandleInputEvent() function in the RIOT.Ports directly. For rewind reasons
+// it is likely that any direct reference to RIOT.Ports will grow stale.
+func (vcs *VCS) HandleInputEvent(inp ports.InputEvent) (bool, error) {
+	return vcs.RIOT.Ports.HandleInputEvent(inp)
 }
 
-// PeripheralID implements userinput.HandleInput interface.
+// PeripheralID forwards a request of the PeripheralID of the PortID to VCS
+// Ports.
 //
-// * See comment to ForwardEventToRIOT() above.
-func (vcs *VCS) PeripheralIDFromRIOT(id plugging.PortID) plugging.PeripheralID {
+// See important comment in HandleInputEvent() above.
+func (vcs *VCS) PeripheralID(id plugging.PortID) plugging.PeripheralID {
 	return vcs.RIOT.Ports.PeripheralID(id)
+}
+
+// QueueEvent forwards an input event to VCS Ports.
+func (vcs *VCS) QueueEvent(inp ports.InputEvent) error {
+	return vcs.RIOT.Ports.QueueEvent(inp)
 }

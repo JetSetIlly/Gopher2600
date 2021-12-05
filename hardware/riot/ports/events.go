@@ -104,6 +104,15 @@ const (
 	DataStickSet   EventDataStick = "set"
 )
 
+// InputEvent defines the data required for single input event. Time can be
+// uninitialised if necessary.
+type InputEvent struct {
+	Time coords.TelevisionCoords
+	Port plugging.PortID
+	Ev   Event
+	D    EventData
+}
+
 // Playback implementations feed controller Events to the device on request
 // with the CheckInput() function.
 //
@@ -112,7 +121,7 @@ const (
 type EventPlayback interface {
 	// note the type restrictions on EventData in the type definition's
 	// commentary
-	GetPlayback() (plugging.PortID, Event, EventData, error)
+	GetPlayback() (InputEvent, error)
 }
 
 // EventRecorder implementations mirror an incoming event.
@@ -121,14 +130,5 @@ type EventPlayback interface {
 // peripheral at once. The ID parameter of the EventRecord() function will help
 // to differentiate between multiple devices.
 type EventRecorder interface {
-	RecordEvent(plugging.PortID, Event, EventData) error
-}
-
-// DrivenEvent is the data passed from a "driver" emulation to a "passenger"
-// emulation.
-type DrivenEvent struct {
-	time coords.TelevisionCoords
-	id   plugging.PortID
-	ev   Event
-	d    EventData
+	RecordEvent(InputEvent) error
 }

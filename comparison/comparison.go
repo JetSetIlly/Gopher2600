@@ -97,7 +97,7 @@ func NewComparison(driverVCS *hardware.VCS) (*Comparison, error) {
 	driverVCS.TV.AddPixelRenderer(&cmp.driver)
 
 	// synchronise RIOT ports
-	sync := make(chan ports.DrivenEvent, 32)
+	sync := make(chan ports.InputEvent, 32)
 	err = cmp.VCS.RIOT.Ports.SynchroniseWithDriver(sync, tv)
 	if err != nil {
 		return nil, curated.Errorf("comparison: %v", err)

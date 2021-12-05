@@ -19,8 +19,6 @@ package signal
 
 import (
 	"strings"
-
-	"github.com/jetsetilly/gopher2600/hardware/television/coords"
 )
 
 // ColorSignal represents the signal that is sent from the VCS to the television.
@@ -77,18 +75,4 @@ func (a SignalAttributes) String() string {
 		s.WriteString("HSYNC ")
 	}
 	return s.String()
-}
-
-// TelevisionTIA exposes only the functions required by the TIA.
-type TelevisionTIA interface {
-	Signal(SignalAttributes) error
-	GetCoords() coords.TelevisionCoords
-}
-
-// TelevisionCoords allows probing of the current "coordinates" of the
-// television. ie. the frame, scanline and clock (horizontal position).
-//
-// Useful for the measurement of time.
-type TelevisionCoords interface {
-	GetCoords() coords.TelevisionCoords
 }

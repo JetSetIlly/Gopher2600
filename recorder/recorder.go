@@ -101,8 +101,14 @@ func NewRecorder(transcript string, vcs *hardware.VCS) (*Recorder, error) {
 
 // End flushes all remaining events to the output file and closes it.
 func (rec *Recorder) End() error {
+	off := ports.InputEvent{
+		Time: rec.vcs.TV.GetCoords(),
+		Port: plugging.PortPanel,
+		Ev:   ports.PanelPowerOff,
+	}
+
 	// write the power off event to the transcript
-	err := rec.RecordEvent(plugging.PortPanel, ports.PanelPowerOff, nil)
+	err := rec.RecordEvent(off)
 	if err != nil {
 		return curated.Errorf("recorder: %v", err)
 	}
@@ -116,7 +122,7 @@ func (rec *Recorder) End() error {
 }
 
 // RecordEvent implements the ports.EventRecorder interface.
-func (rec *Recorder) RecordEvent(id plugging.PortID, event ports.Event, data ports.EventData) error {
+func (rec *Recorder) RecordEvent(inp ports.InputEvent) error {
 	var err error
 
 	// write header if it's not been written already
@@ -129,7 +135,7 @@ func (rec *Recorder) RecordEvent(id plugging.PortID, event ports.Event, data por
 	}
 
 	// don't do anything if event is the NoEvent
-	if event == ports.NoEvent {
+	if inp.Ev == ports.NoEvent {
 		return nil
 	}
 
@@ -142,21 +148,18 @@ func (rec *Recorder) RecordEvent(id plugging.PortID, event ports.Event, data por
 		return curated.Errorf("recorder: hardware is not suitable for recording")
 	}
 
-	// create line and write to file
-	coords := rec.vcs.TV.GetCoords()
-
 	// convert data of nil type to the empty string
-	if data == nil {
-		data = ""
+	if inp.D == nil {
+		inp.D = ""
 	}
 
 	line := fmt.Sprintf("%v%s%v%s%v%s%v%s%v%s%v%s%v\n",
-		id, fieldSep,
-		event, fieldSep,
-		data, fieldSep,
-		coords.Frame, fieldSep,
-		coords.Scanline, fieldSep,
-		coords.Clock, fieldSep,
+		inp.Port, fieldSep,
+		inp.Ev, fieldSep,
+		inp.D, fieldSep,
+		inp.Time.Frame, fieldSep,
+		inp.Time.Scanline, fieldSep,
+		inp.Time.Clock, fieldSep,
 		rec.digest.Hash(),
 	)
 

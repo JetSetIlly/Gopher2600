@@ -24,10 +24,10 @@ import (
 
 	"github.com/jetsetilly/gopher2600/bots/uci"
 	"github.com/jetsetilly/gopher2600/curated"
-	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
 	"github.com/jetsetilly/gopher2600/hardware/television"
+	"github.com/jetsetilly/gopher2600/hardware/television/coords"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 )
@@ -148,8 +148,23 @@ func (obs *observer) EndRendering() error {
 	return nil
 }
 
+// TV defines the functions required by a bot.
+type TV interface {
+	AddPixelRenderer(television.PixelRenderer)
+	AddAudioMixer(television.AudioMixer)
+	GetCoords() coords.TelevisionCoords
+}
+
+// VCS defines the functions required by a bot.
+type VCS interface {
+	QueueEvent(ports.InputEvent) error
+}
+
 type videoChessBot struct {
 	obs *observer
+
+	vcs VCS
+	tv  TV
 
 	// the most recent position
 	currentPosition *image.RGBA
@@ -340,7 +355,7 @@ const downDuration = 20
 
 // moves cursor once in the suppied direction. tries as often as necessary
 // until it hears the audible feedback.
-func (bot *videoChessBot) moveCursorOnceStep(vcs *hardware.VCS, portid plugging.PortID, direction ports.Event) {
+func (bot *videoChessBot) moveCursorOnceStep(portid plugging.PortID, direction ports.Event) {
 	bot.waitForFrames(1)
 
 	draining := true
@@ -354,9 +369,9 @@ func (bot *videoChessBot) moveCursorOnceStep(vcs *hardware.VCS, portid plugging.
 
 	waiting := true
 	for waiting {
-		vcs.ForwardEventToRIOT(portid, direction, ports.DataStickTrue)
+		bot.vcs.QueueEvent(ports.InputEvent{Time: bot.tv.GetCoords(), Port: portid, Ev: direction, D: ports.DataStickTrue})
 		bot.waitForFrames(downDuration)
-		vcs.ForwardEventToRIOT(portid, direction, ports.DataStickFalse)
+		bot.vcs.QueueEvent(ports.InputEvent{Time: bot.tv.GetCoords(), Port: portid, Ev: direction, D: ports.DataStickFalse})
 		select {
 		case <-bot.obs.audioFeedback:
 			waiting = false
@@ -367,7 +382,7 @@ func (bot *videoChessBot) moveCursorOnceStep(vcs *hardware.VCS, portid plugging.
 
 // move cursor by the number of columns/rows indicated. negative columns
 // indicate right and negative rows indicate up.
-func (bot *videoChessBot) moveCursor(vcs *hardware.VCS, moveCol int, moveRow int, shortcut bool) {
+func (bot *videoChessBot) moveCursor(moveCol int, moveRow int, shortcut bool) {
 	if moveCol == moveRow || -moveCol == moveRow {
 		fmt.Printf("* moving cursor (diagonally) %d %d\n", moveCol, moveRow)
 
@@ -389,7 +404,7 @@ func (bot *videoChessBot) moveCursor(vcs *hardware.VCS, moveCol int, moveRow int
 		}
 
 		for i := 0; i < move; i++ {
-			bot.moveCursorOnceStep(vcs, plugging.PortLeftPlayer, direction)
+			bot.moveCursorOnceStep(plugging.PortLeftPlayer, direction)
 		}
 	} else {
 		fmt.Printf("* moving cursor %d %d\n", moveCol, moveRow)
@@ -411,21 +426,21 @@ func (bot *videoChessBot) moveCursor(vcs *hardware.VCS, moveCol int, moveRow int
 
 		if moveCol > 0 {
 			for i := 0; i < moveCol; i++ {
-				bot.moveCursorOnceStep(vcs, plugging.PortLeftPlayer, ports.Left)
+				bot.moveCursorOnceStep(plugging.PortLeftPlayer, ports.Left)
 			}
 		} else if moveCol < 0 {
 			for i := 0; i > moveCol; i-- {
-				bot.moveCursorOnceStep(vcs, plugging.PortLeftPlayer, ports.Right)
+				bot.moveCursorOnceStep(plugging.PortLeftPlayer, ports.Right)
 			}
 		}
 
 		if moveRow > 0 {
 			for i := 0; i < moveRow; i++ {
-				bot.moveCursorOnceStep(vcs, plugging.PortLeftPlayer, ports.Down)
+				bot.moveCursorOnceStep(plugging.PortLeftPlayer, ports.Down)
 			}
 		} else if moveRow < 0 {
 			for i := 0; i > moveRow; i-- {
-				bot.moveCursorOnceStep(vcs, plugging.PortLeftPlayer, ports.Up)
+				bot.moveCursorOnceStep(plugging.PortLeftPlayer, ports.Up)
 			}
 		}
 	}
@@ -443,9 +458,9 @@ func (bot *videoChessBot) moveCursor(vcs *hardware.VCS, moveCol int, moveRow int
 
 	waiting := true
 	for waiting {
-		vcs.ForwardEventToRIOT(plugging.PortLeftPlayer, ports.Fire, true)
+		bot.vcs.QueueEvent(ports.InputEvent{Time: bot.tv.GetCoords(), Port: plugging.PortLeftPlayer, Ev: ports.Fire, D: true})
 		bot.waitForFrames(downDuration)
-		vcs.ForwardEventToRIOT(plugging.PortLeftPlayer, ports.Fire, false)
+		bot.vcs.QueueEvent(ports.InputEvent{Time: bot.tv.GetCoords(), Port: plugging.PortLeftPlayer, Ev: ports.Fire, D: false})
 		select {
 		case <-bot.obs.audioFeedback:
 			waiting = false
@@ -461,17 +476,20 @@ func (bot *videoChessBot) waitForFrames(n int) {
 	}
 }
 
-func VideoChessBot(vcs *hardware.VCS) (chan *image.RGBA, error) {
+// VideoChessBot creates a new bot able to play chess (via a UCI engine).
+func VideoChessBot(vcs VCS, tv TV) (chan *image.RGBA, error) {
 	bot := videoChessBot{
 		obs:              newObserver(),
+		vcs:              vcs,
+		tv:               tv,
 		prevPosition:     image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, specification.AbsoluteMaxScanlines)),
 		inspectionSquare: image.NewRGBA(image.Rect(0, 0, squareWidth, squareHeight)),
 		cmpSquare:        image.NewRGBA(image.Rect(0, 0, squareWidth, squareHeight)),
 		debuggingRender:  make(chan *image.RGBA, 1),
 	}
 
-	vcs.TV.AddPixelRenderer(bot.obs)
-	vcs.TV.AddAudioMixer(bot.obs)
+	tv.AddPixelRenderer(bot.obs)
+	tv.AddAudioMixer(bot.obs)
 
 	uci, err := uci.NewUCI("/usr/local/bin/stockfish")
 	if err != nil {
@@ -517,13 +535,13 @@ func VideoChessBot(vcs *hardware.VCS) (chan *image.RGBA, error) {
 			// move to piece being moved
 			moveCol := cursorCol - fromCol
 			moveRow := cursorRow - fromRow
-			bot.moveCursor(vcs, moveCol, moveRow, true)
+			bot.moveCursor(moveCol, moveRow, true)
 			bot.commitDebuggingRender()
 
 			// move piece to new position
 			moveCol = fromCol - toCol
 			moveRow = fromRow - toRow
-			bot.moveCursor(vcs, moveCol, moveRow, false)
+			bot.moveCursor(moveCol, moveRow, false)
 
 			// correct from/to row values after moving
 			fromRow = 8 - fromRow

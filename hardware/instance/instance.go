@@ -22,7 +22,6 @@ package instance
 
 import (
 	"github.com/jetsetilly/gopher2600/hardware/preferences"
-	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/random"
 )
 
@@ -46,9 +45,9 @@ type Instance struct {
 }
 
 // NewInstance is the preferred method of initialisation for the Instance type.
-func NewInstance(coords signal.TelevisionCoords) (*Instance, error) {
+func NewInstance(tv random.TV) (*Instance, error) {
 	ins := &Instance{
-		Random: random.NewRandom(coords),
+		Random: random.NewRandom(tv),
 	}
 
 	var err error

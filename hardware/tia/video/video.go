@@ -19,7 +19,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/instance"
 	"github.com/jetsetilly/gopher2600/hardware/memory/addresses"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
-	"github.com/jetsetilly/gopher2600/hardware/television/signal"
+	"github.com/jetsetilly/gopher2600/hardware/television/coords"
 	"github.com/jetsetilly/gopher2600/hardware/tia/delay"
 	"github.com/jetsetilly/gopher2600/hardware/tia/hmove"
 	"github.com/jetsetilly/gopher2600/hardware/tia/phaseclock"
@@ -59,6 +59,11 @@ func (e *Element) String() string {
 		return "Missile 1"
 	}
 	panic("unknown video element")
+}
+
+// TV defines the television functions required by the Video type(s).
+type TV interface {
+	GetCoords() coords.TelevisionCoords
 }
 
 // Video contains all the components of the video sub-system of the VCS TIA chip.
@@ -101,7 +106,7 @@ type Video struct {
 // tia is a convenient packaging of TIA state that is required by the playfield/sprites.
 type tia struct {
 	instance *instance.Instance
-	tv       signal.TelevisionCoords
+	tv       TV
 	pclk     *phaseclock.PhaseClock
 	hsync    *polycounter.Polycounter
 	hblank   *bool
@@ -121,7 +126,7 @@ type tia struct {
 // The references to the TIA's HBLANK state and whether HMOVE is latched, are
 // required to tune the delays experienced by the various sprite events (eg.
 // reset position).
-func NewVideo(instance *instance.Instance, mem bus.ChipBus, tv signal.TelevisionCoords, pclk *phaseclock.PhaseClock,
+func NewVideo(instance *instance.Instance, mem bus.ChipBus, tv TV, pclk *phaseclock.PhaseClock,
 	hsync *polycounter.Polycounter, hblank *bool, hmove *hmove.Hmove) *Video {
 	tia := tia{
 		instance: instance,
@@ -158,7 +163,7 @@ func (vd *Video) Snapshot() *Video {
 }
 
 // Plumb ChipBus into TIA/Video components. Update pointers that refer to parent TIA.
-func (vd *Video) Plumb(instance *instance.Instance, mem bus.ChipBus, tv signal.TelevisionCoords, pclk *phaseclock.PhaseClock,
+func (vd *Video) Plumb(instance *instance.Instance, mem bus.ChipBus, tv TV, pclk *phaseclock.PhaseClock,
 	hsync *polycounter.Polycounter, hblank *bool, hmove *hmove.Hmove) {
 	vd.Collisions.Plumb(mem)
 

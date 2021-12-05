@@ -21,19 +21,54 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/television/coords"
 )
 
-// HandleDrivenEvents checks for input driven from a another emulation.
-func (p *Ports) HandleDrivenEvents() error {
+func (p *Ports) HandleInputEvents() error {
+	err := p.handlePushedEvents()
+	if err != nil {
+		return err
+	}
+
+	err = p.handleDrivenEvents()
+	if err != nil {
+		return err
+	}
+
+	err = p.handlePlaybackEvents()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (p *Ports) handlePushedEvents() error {
+	done := false
+	for !done {
+		select {
+		case inp := <-p.pushed:
+			_, err := p.HandleInputEvent(inp)
+			if err != nil {
+				return err
+			}
+		default:
+			done = true
+		}
+	}
+	return nil
+}
+
+// handleDrivenEvents checks for input driven from a another emulation.
+func (p *Ports) handleDrivenEvents() error {
 	if p.checkForDriven {
-		f := p.drivenInputData
+		inp := p.drivenInputData
 		done := false
 		for !done {
 			c := p.tv.GetCoords()
-			if coords.Equal(c, f.time) {
-				_, err := p.HandleEvent(f.id, f.ev, f.d)
+			if coords.Equal(c, inp.Time) {
+				_, err := p.HandleInputEvent(inp)
 				if err != nil {
 					return err
 				}
-			} else if coords.GreaterThan(c, f.time) {
+			} else if coords.GreaterThan(c, inp.Time) {
 				return curated.Errorf("ports: driven input seen too late. emulations not synced correctly.")
 			} else {
 				return nil
@@ -49,7 +84,7 @@ func (p *Ports) HandleDrivenEvents() error {
 				p.checkForDriven = false
 			}
 
-			f = p.drivenInputData
+			inp = p.drivenInputData
 		}
 	}
 
@@ -67,8 +102,8 @@ func (p *Ports) HandleDrivenEvents() error {
 	return nil
 }
 
-// HandlePlaybackEvents requests playback events from all attached and eligible peripherals.
-func (p *Ports) HandlePlaybackEvents() error {
+// handlePlaybackEvents requests playback events from all attached and eligible peripherals.
+func (p *Ports) handlePlaybackEvents() error {
 	if p.playback == nil {
 		return nil
 	}
@@ -83,14 +118,14 @@ func (p *Ports) HandlePlaybackEvents() error {
 	// set when the TV state is at fr=0 sl=0 cl=0
 	morePlayback := true
 	for morePlayback {
-		id, ev, v, err := p.playback.GetPlayback()
+		inp, err := p.playback.GetPlayback()
 		if err != nil {
 			return err
 		}
 
-		morePlayback = id != plugging.PortUnplugged && ev != NoEvent
+		morePlayback = inp.Port != plugging.PortUnplugged && inp.Ev != NoEvent
 		if morePlayback {
-			_, err := p.HandleEvent(id, ev, v)
+			_, err := p.HandleInputEvent(inp)
 			if err != nil {
 				return err
 			}
@@ -100,25 +135,30 @@ func (p *Ports) HandlePlaybackEvents() error {
 	return nil
 }
 
-// HandleEvent implements userinput.HandleInput interface.
-func (p *Ports) HandleEvent(id plugging.PortID, ev Event, d EventData) (bool, error) {
+// HandleInputEvent should only be used from the same gorouine as the
+// emulation. Events should be queued with QueueEvent() otherwise.
+//
+// Consider using HandleInputEvent() function in the VCS type rather than this
+// function directly.
+func (p *Ports) HandleInputEvent(inp InputEvent) (bool, error) {
 	var handled bool
 	var err error
 
-	switch id {
+	switch inp.Port {
 	case plugging.PortPanel:
-		handled, err = p.Panel.HandleEvent(ev, d)
+		handled, err = p.Panel.HandleEvent(inp.Ev, inp.D)
 	case plugging.PortLeftPlayer:
-		handled, err = p.LeftPlayer.HandleEvent(ev, d)
+		handled, err = p.LeftPlayer.HandleEvent(inp.Ev, inp.D)
 	case plugging.PortRightPlayer:
-		handled, err = p.RightPlayer.HandleEvent(ev, d)
+		handled, err = p.RightPlayer.HandleEvent(inp.Ev, inp.D)
 	}
 
+	// forward to passenger if one is defined
 	if handled && p.toPassenger != nil {
 		select {
-		case p.toPassenger <- DrivenEvent{time: p.tv.GetCoords(), id: id, ev: ev, d: d}:
+		case p.toPassenger <- inp:
 		default:
-			return handled, curated.Errorf("ports: %v", err)
+			return handled, curated.Errorf("ports: passenger event queue is full: input dropped")
 		}
 	}
 
@@ -129,8 +169,19 @@ func (p *Ports) HandleEvent(id plugging.PortID, ev Event, d EventData) (bool, er
 
 	// record event with the EventRecorder
 	for _, r := range p.recorder {
-		return handled, r.RecordEvent(id, ev, d)
+		return handled, r.RecordEvent(inp)
 	}
 
 	return handled, nil
+}
+
+// QueueEvent pushes an InputEvent onto the queue. Will drop the event and
+// return an error if queue is full.
+func (p *Ports) QueueEvent(inp InputEvent) error {
+	select {
+	case p.pushed <- inp:
+	default:
+		return curated.Errorf("ports: pushed event queue is full: input dropped")
+	}
+	return nil
 }

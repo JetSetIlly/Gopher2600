@@ -300,7 +300,7 @@ func NewDebugger(create CreateUserInterface, spec string, useSavekey bool, fpsCa
 	}
 
 	// create userinput/controllers handler
-	dbg.controllers = userinput.NewControllers()
+	dbg.controllers = userinput.NewControllers(tv)
 	dbg.controllers.AddInputHandler(dbg.vcs)
 
 	// replace player 1 port with savekey
@@ -627,7 +627,7 @@ func (dbg *Debugger) start(mode emulation.Mode, initScript string, cartload cart
 		return curated.Errorf("debugger: %v", err)
 	}
 
-	botRender, err := bot.VideoChessBot(dbg.vcs)
+	botRender, err := bot.VideoChessBot(dbg.vcs, dbg.vcs.TV)
 	if err != nil {
 		return curated.Errorf("debugger: %v", err)
 	}

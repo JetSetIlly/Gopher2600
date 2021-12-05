@@ -23,6 +23,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/cpu"
 	"github.com/jetsetilly/gopher2600/hardware/instance"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
+	"github.com/jetsetilly/gopher2600/hardware/television/coords"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/hardware/tia/audio"
 	"github.com/jetsetilly/gopher2600/hardware/tia/delay"
@@ -32,11 +33,17 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/tia/video"
 )
 
+// TV defines the television functions required by the TIA type.
+type TV interface {
+	Signal(signal.SignalAttributes) error
+	GetCoords() coords.TelevisionCoords
+}
+
 // TIA contains all the sub-components of the VCS TIA sub-system.
 type TIA struct {
 	instance *instance.Instance
 
-	tv  signal.TelevisionTIA
+	tv  TV
 	mem bus.ChipBus
 
 	// the VBLANK register also affects the input sub-system
@@ -109,7 +116,7 @@ func (tia *TIA) String() string {
 }
 
 // NewTIA creates a TIA, to be used in a VCS emulation.
-func NewTIA(instance *instance.Instance, tv signal.TelevisionTIA, mem bus.ChipBus, input bus.UpdateBus, cpu *cpu.CPU) (*TIA, error) {
+func NewTIA(instance *instance.Instance, tv TV, mem bus.ChipBus, input bus.UpdateBus, cpu *cpu.CPU) (*TIA, error) {
 	tia := &TIA{
 		instance: instance,
 		tv:       tv,
@@ -139,7 +146,7 @@ func (tia *TIA) Snapshot() *TIA {
 }
 
 // Plumb the a new ChipBus into the TIA.
-func (tia *TIA) Plumb(tv signal.TelevisionTIA, mem bus.ChipBus, input bus.UpdateBus, cpu *cpu.CPU) {
+func (tia *TIA) Plumb(tv TV, mem bus.ChipBus, input bus.UpdateBus, cpu *cpu.CPU) {
 	tia.tv = tv
 	tia.mem = mem
 	tia.input = input

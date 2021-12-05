@@ -22,12 +22,12 @@ import (
 
 // HandleInput conceptualises data being sent to the console ports.
 type HandleInput interface {
-	// HandleEvent forwards the Event and EventData to the device connected to the
+	// HandleInputEvent forwards the Event and EventData to the device connected to the
 	// specified PortID.
 	//
 	// Returns true if the port understood and handled the event.
-	ForwardEventToRIOT(id plugging.PortID, ev ports.Event, d ports.EventData) (bool, error)
+	HandleInputEvent(ports.InputEvent) (bool, error)
 
 	// PeripheralID identifies the device currently attached to the port.
-	PeripheralIDFromRIOT(id plugging.PortID) plugging.PeripheralID
+	PeripheralID(id plugging.PortID) plugging.PeripheralID
 }

@@ -20,7 +20,6 @@ import (
 	"time"
 
 	"github.com/jetsetilly/gopher2600/hardware/television/coords"
-	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 )
 
@@ -32,10 +31,15 @@ func init() {
 	baseSeed = int64(time.Now().Nanosecond())
 }
 
+// TV defines the television functions required by the Random type.
+type TV interface {
+	GetCoords() coords.TelevisionCoords
+}
+
 // Random is a random number generator that is sensitive to time within the
 // emulation. Required for the rewind package and parallel emulations.
 type Random struct {
-	coords signal.TelevisionCoords
+	tv TV
 
 	// use zero seed rather than the random base seed. this is only really
 	// useful for normalised instances where random numbers must be predictable
@@ -43,9 +47,9 @@ type Random struct {
 }
 
 // NewRandom is the preferred method of initialisation for the Random type.
-func NewRandom(coords signal.TelevisionCoords) *Random {
+func NewRandom(tv TV) *Random {
 	return &Random{
-		coords: coords,
+		tv: tv,
 	}
 }
 
@@ -57,9 +61,9 @@ func coordsSum(c coords.TelevisionCoords) int64 {
 // new RNG from the standard library
 func (rnd *Random) rand() *rand.Rand {
 	if rnd.ZeroSeed {
-		return rand.New(rand.NewSource(coordsSum(rnd.coords.GetCoords())))
+		return rand.New(rand.NewSource(coordsSum(rnd.tv.GetCoords())))
 	}
-	return rand.New(rand.NewSource(baseSeed + coordsSum(rnd.coords.GetCoords())))
+	return rand.New(rand.NewSource(baseSeed + coordsSum(rnd.tv.GetCoords())))
 }
 
 func (rnd *Random) Intn(n int) int {

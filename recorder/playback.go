@@ -32,11 +32,8 @@ import (
 )
 
 type playbackEntry struct {
-	portID plugging.PortID
-	event  ports.Event
-	data   ports.EventData
-	coords coords.TelevisionCoords
-	hash   string
+	event ports.InputEvent
+	hash  string
 
 	// the line in the recording file the playback event appears
 	line int
@@ -123,45 +120,45 @@ func NewPlayback(transcript string) (*Playback, error) {
 		// get PortID
 		n, err := strconv.Atoi(toks[fieldPortID])
 		if err != nil {
-			entry.portID = plugging.PortID(toks[fieldPortID])
+			entry.event.Port = plugging.PortID(toks[fieldPortID])
 		} else {
 			// support for playback file versions before v1.2
 			switch n {
 			case -1:
-				entry.portID = plugging.PortUnplugged
+				entry.event.Port = plugging.PortUnplugged
 			case 1:
-				entry.portID = plugging.PortLeftPlayer
+				entry.event.Port = plugging.PortLeftPlayer
 			case 2:
-				entry.portID = plugging.PortRightPlayer
+				entry.event.Port = plugging.PortRightPlayer
 			case 3:
-				entry.portID = plugging.PortPanel
+				entry.event.Port = plugging.PortPanel
 			default:
 				return nil, curated.Errorf("playback: %s line %d, col %d", err, i+1, len(strings.Join(toks[:fieldPortID+1], fieldSep)))
 			}
 		}
 
 		// no need to convert event field
-		entry.event = ports.Event(toks[fieldEvent])
+		entry.event.Ev = ports.Event(toks[fieldEvent])
 
 		// entry data is of ports.EventDataPlayback type. The ports
 		// implementation will handle parsing of this type.
-		entry.data = ports.EventDataPlayback(toks[fieldEventData])
+		entry.event.D = ports.EventDataPlayback(toks[fieldEventData])
 
-		entry.coords.Frame, err = strconv.Atoi(toks[fieldFrame])
+		entry.event.Time.Frame, err = strconv.Atoi(toks[fieldFrame])
 		if err != nil {
 			return nil, curated.Errorf("playback: %s line %d, col %d", err, i+1, len(strings.Join(toks[:fieldFrame+1], fieldSep)))
 		}
 
 		// assuming that frames are listed in order in the file. update
 		// endFrame with the most recent frame every time
-		plb.endFrame = entry.coords.Frame
+		plb.endFrame = entry.event.Time.Frame
 
-		entry.coords.Scanline, err = strconv.Atoi(toks[fieldScanline])
+		entry.event.Time.Scanline, err = strconv.Atoi(toks[fieldScanline])
 		if err != nil {
 			return nil, curated.Errorf("playback: %s line %d, col %d", err, i+1, len(strings.Join(toks[:fieldScanline+1], fieldSep)))
 		}
 
-		entry.coords.Clock, err = strconv.Atoi(toks[fieldClock])
+		entry.event.Time.Clock, err = strconv.Atoi(toks[fieldClock])
 		if err != nil {
 			return nil, curated.Errorf("playback: %s line %d, col %d", err, i+1, len(strings.Join(toks[:fieldClock+1], fieldSep)))
 		}
@@ -220,25 +217,36 @@ const (
 
 // GetPlayback returns an event and source PortID for an event occurring at the
 // current TV frame/scanline/clock.
-func (plb *Playback) GetPlayback() (plugging.PortID, ports.Event, ports.EventData, error) {
+func (plb *Playback) GetPlayback() (ports.InputEvent, error) {
 	// we've reached the end of the list of events for this id
 	if plb.seqCt >= len(plb.sequence) {
-		return plugging.PortUnplugged, ports.NoEvent, nil, nil
+		return ports.InputEvent{
+			Port: plugging.PortUnplugged,
+			Ev:   ports.NoEvent,
+		}, nil
 	}
 
 	// get current state of the television
-	curr := plb.vcs.TV.GetCoords()
+	c := plb.vcs.TV.GetCoords()
 
 	// compare current state with the recording
 	entry := plb.sequence[plb.seqCt]
-	if coords.Equal(entry.coords, curr) {
+	if coords.Equal(entry.event.Time, c) {
 		plb.seqCt++
 		if entry.hash != plb.digest.Hash() {
-			return plugging.PortUnplugged, ports.NoEvent, nil, curated.Errorf(PlaybackHashError, entry.line, curr.Frame)
+			return ports.InputEvent{
+				Time: c,
+				Port: plugging.PortUnplugged,
+				Ev:   ports.NoEvent,
+			}, curated.Errorf(PlaybackHashError, entry.line, c.Frame)
 		}
-		return entry.portID, entry.event, entry.data, nil
+		return entry.event, nil
 	}
 
 	// next event does not match
-	return plugging.PortUnplugged, ports.NoEvent, nil, nil
+	return ports.InputEvent{
+		Time: c,
+		Port: plugging.PortUnplugged,
+		Ev:   ports.NoEvent,
+	}, nil
 }

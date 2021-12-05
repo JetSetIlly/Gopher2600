@@ -18,19 +18,26 @@ package userinput
 import (
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
+	"github.com/jetsetilly/gopher2600/hardware/television/coords"
 )
+
+// TV defines the television functions required by the Controllers type.
+type TV interface {
+	GetCoords() coords.TelevisionCoords
+}
 
 // Controllers keeps track of hardware userinput options.
 type Controllers struct {
+	tv            TV
 	inputHandlers []HandleInput
-
-	trigger GamepadTrigger
-	paddle  float32
+	trigger       GamepadTrigger
+	paddle        float32
 }
 
 // Controllers is the preferred method of initialisation for the Controllers type.
-func NewControllers() *Controllers {
+func NewControllers(tv TV) *Controllers {
 	return &Controllers{
+		tv:            tv,
 		inputHandlers: make([]HandleInput, 0),
 	}
 }
@@ -43,7 +50,7 @@ func NewControllers() *Controllers {
 func (c *Controllers) handleEvents(id plugging.PortID, ev ports.Event, d ports.EventData) (bool, error) {
 	var handled bool
 	for _, h := range c.inputHandlers {
-		v, err := h.ForwardEventToRIOT(id, ev, d)
+		v, err := h.HandleInputEvent(ports.InputEvent{Time: c.tv.GetCoords(), Port: id, Ev: ev, D: d})
 		if err != nil {
 			return handled, err
 		}
@@ -100,7 +107,7 @@ func (c *Controllers) differentiateKeyboard(key string, down bool) (bool, error)
 	for _, h := range c.inputHandlers {
 		switch key {
 		case "Y":
-			if h.PeripheralIDFromRIOT(plugging.PortRightPlayer) == plugging.PeriphKeypad {
+			if h.PeripheralID(plugging.PortRightPlayer) == plugging.PeriphKeypad {
 				ev = keyEv
 				d = '6'
 			} else {
@@ -108,7 +115,7 @@ func (c *Controllers) differentiateKeyboard(key string, down bool) (bool, error)
 				d = stickEvData
 			}
 		case "F":
-			if h.PeripheralIDFromRIOT(plugging.PortRightPlayer) == plugging.PeriphKeypad {
+			if h.PeripheralID(plugging.PortRightPlayer) == plugging.PeriphKeypad {
 				ev = keyEv
 				d = '7'
 			} else {
@@ -116,7 +123,7 @@ func (c *Controllers) differentiateKeyboard(key string, down bool) (bool, error)
 				d = fireEvData
 			}
 		case "G":
-			if h.PeripheralIDFromRIOT(plugging.PortRightPlayer) == plugging.PeriphKeypad {
+			if h.PeripheralID(plugging.PortRightPlayer) == plugging.PeriphKeypad {
 				ev = keyEv
 				d = '8'
 			} else {
@@ -124,7 +131,7 @@ func (c *Controllers) differentiateKeyboard(key string, down bool) (bool, error)
 				d = stickEvData
 			}
 		case "H":
-			if h.PeripheralIDFromRIOT(plugging.PortRightPlayer) == plugging.PeriphKeypad {
+			if h.PeripheralID(plugging.PortRightPlayer) == plugging.PeriphKeypad {
 				ev = keyEv
 				d = '9'
 			} else {
@@ -135,7 +142,7 @@ func (c *Controllers) differentiateKeyboard(key string, down bool) (bool, error)
 		}
 
 		// all differentiated keyboard events go to the right player port
-		v, err := h.ForwardEventToRIOT(plugging.PortRightPlayer, ev, d)
+		v, err := h.HandleInputEvent(ports.InputEvent{Time: c.tv.GetCoords(), Port: plugging.PortRightPlayer, Ev: ev, D: d})
 		if err != nil {
 			return handled, err
 		}
