@@ -321,6 +321,10 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 				img.emulation.SetFeature(emulation.ReqSetMode, emulation.ModePlay)
 			}
 
+		case sdl.SCANCODE_F8:
+			w := img.wm.windows[winBotID]
+			w.setOpen(!w.isOpen())
+
 		case sdl.SCANCODE_F9:
 			w := img.wm.windows[winTrackerID]
 			w.setOpen(!w.isOpen())

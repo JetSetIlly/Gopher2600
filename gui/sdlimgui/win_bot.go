@@ -32,6 +32,7 @@ type winBot struct {
 
 	obsTexture  uint32
 	diagnostics []bots.Diagnostic
+	dirty       bool
 
 	// render channels are given to use by the main emulation through a GUI request
 	feedback bots.Feedback
@@ -62,16 +63,29 @@ func (win *winBot) isOpen() bool {
 	return win.open
 }
 
+// start bot session will effectively end a bot session if feedback channels are nil
+func (win *winBot) startBotSession(feedback bots.Feedback) {
+	win.feedback = feedback
+
+	gl.BindTexture(gl.TEXTURE_2D, win.obsTexture)
+	gl.TexImage2D(gl.TEXTURE_2D, 0,
+		gl.RGBA, 1, 1, 0,
+		gl.RGBA, gl.UNSIGNED_BYTE,
+		gl.Ptr([]uint8{0}))
+
+	win.diagnostics = win.diagnostics[:]
+}
+
+// do not open if no bot is defined
 func (win *winBot) setOpen(open bool) {
+	if win.feedback.Diagnostic == nil || win.feedback.Images == nil {
+		return
+	}
+
 	win.open = open
 
 	if win.open {
 		// clear texture
-		gl.BindTexture(gl.TEXTURE_2D, win.obsTexture)
-		gl.TexImage2D(gl.TEXTURE_2D, 0,
-			gl.RGBA, 1, 1, 0,
-			gl.RGBA, gl.UNSIGNED_BYTE,
-			gl.Ptr([]uint8{0}))
 	}
 }
 
@@ -100,6 +114,7 @@ func (win *winBot) draw() {
 				win.diagnostics = win.diagnostics[1:]
 			}
 			win.diagnostics = append(win.diagnostics, d)
+			win.dirty = true
 		default:
 			done = true
 		}
@@ -111,6 +126,7 @@ func (win *winBot) draw() {
 
 	imgui.SetNextWindowPosV(imgui.Vec2{75, 75}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
 	imgui.SetNextWindowSizeV(imgui.Vec2{500, 525}, imgui.ConditionFirstUseEver)
+	imgui.SetNextWindowSizeConstraints(imgui.Vec2{500, 500}, imgui.Vec2{500, 800})
 
 	if imgui.BeginV(win.id(), &win.open, imgui.WindowFlagsNone) {
 		imgui.Image(imgui.TextureID(win.obsTexture), imgui.Vec2{specification.ClksVisible * 3, specification.AbsoluteMaxScanlines})
@@ -126,6 +142,11 @@ func (win *winBot) draw() {
 						imgui.Text(s)
 					}
 				}
+			}
+
+			if win.dirty {
+				imgui.SetScrollHereY(0.0)
+				win.dirty = false
 			}
 			imgui.EndChild()
 		}

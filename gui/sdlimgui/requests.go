@@ -144,13 +144,10 @@ func (img *SdlImgui) serviceSetFeature(request featureRequest) {
 	case gui.ReqBotFeedback:
 		err = argLen(request.args, 1)
 		if err == nil {
-			open := false
 			if request.args[0] != nil {
 				f := request.args[0].(bots.Feedback)
-				img.wm.windows[winBotID].(*winBot).feedback = f
-				open = f != bots.Feedback{}
+				img.wm.windows[winBotID].(*winBot).startBotSession(f)
 			}
-			img.wm.windows[winBotID].(*winBot).setOpen(open)
 		}
 
 	default:
