@@ -19,4 +19,5 @@ require (
 	github.com/rs/cors v1.7.0 // indirect
 	github.com/youpy/go-riff v0.0.0-20131220112943-557d78c11efb // indirect
 	github.com/zaf/g711 v0.0.0-20190814101024-76a4a538f52b // indirect
+	golang.org/x/image v0.0.0-20211028202545-6944b10bf410 // indirect
 )

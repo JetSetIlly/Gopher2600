@@ -20,7 +20,8 @@ import (
 	"fmt"
 	"image"
 	"image/color"
-	"image/draw"
+
+	"golang.org/x/image/draw"
 
 	"github.com/jetsetilly/gopher2600/bots"
 	"github.com/jetsetilly/gopher2600/bots/chess/uci"
@@ -186,7 +187,8 @@ func (bot *videoChessBot) commitDebuggingRender() {
 	draw.Draw(&img, bot.moveTo, &image.Uniform{col}, image.Point{}, draw.Over)
 
 	r := bot.inspectionSquare.Bounds()
-	draw.Draw(&img, r.Add(image.Point{X: 10, Y: 10}), bot.inspectionSquare, image.Point{}, draw.Src)
+	r.Max = r.Max.Mul(3)
+	draw.NearestNeighbor.Scale(&img, r.Add(image.Point{X: 10, Y: 10}), bot.inspectionSquare, bot.inspectionSquare.Bounds(), draw.Src, nil)
 
 	select {
 	case bot.feedback.Images <- &img:
