@@ -760,6 +760,9 @@ func (tv *Television) GetLastSignal() signal.SignalAttributes {
 }
 
 // GetCoords returns an instance of coords.TelevisionCoords.
+//
+// Like all Television functions this function is not safe to call from
+// goroutines other than the one that created the Television.
 func (tv *Television) GetCoords() coords.TelevisionCoords {
 	return tv.state.GetCoords()
 }

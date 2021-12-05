@@ -101,10 +101,12 @@ func NewRecorder(transcript string, vcs *hardware.VCS) (*Recorder, error) {
 
 // End flushes all remaining events to the output file and closes it.
 func (rec *Recorder) End() error {
-	off := ports.InputEvent{
+	off := ports.TimedInputEvent{
 		Time: rec.vcs.TV.GetCoords(),
-		Port: plugging.PortPanel,
-		Ev:   ports.PanelPowerOff,
+		InputEvent: ports.InputEvent{
+			Port: plugging.PortPanel,
+			Ev:   ports.PanelPowerOff,
+		},
 	}
 
 	// write the power off event to the transcript
@@ -122,7 +124,7 @@ func (rec *Recorder) End() error {
 }
 
 // RecordEvent implements the ports.EventRecorder interface.
-func (rec *Recorder) RecordEvent(inp ports.InputEvent) error {
+func (rec *Recorder) RecordEvent(inp ports.TimedInputEvent) error {
 	var err error
 
 	// write header if it's not been written already

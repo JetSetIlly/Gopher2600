@@ -18,26 +18,18 @@ package userinput
 import (
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
-	"github.com/jetsetilly/gopher2600/hardware/television/coords"
 )
-
-// TV defines the television functions required by the Controllers type.
-type TV interface {
-	GetCoords() coords.TelevisionCoords
-}
 
 // Controllers keeps track of hardware userinput options.
 type Controllers struct {
-	tv            TV
 	inputHandlers []HandleInput
 	trigger       GamepadTrigger
 	paddle        float32
 }
 
 // Controllers is the preferred method of initialisation for the Controllers type.
-func NewControllers(tv TV) *Controllers {
+func NewControllers() *Controllers {
 	return &Controllers{
-		tv:            tv,
 		inputHandlers: make([]HandleInput, 0),
 	}
 }
@@ -50,7 +42,7 @@ func NewControllers(tv TV) *Controllers {
 func (c *Controllers) handleEvents(id plugging.PortID, ev ports.Event, d ports.EventData) (bool, error) {
 	var handled bool
 	for _, h := range c.inputHandlers {
-		v, err := h.HandleInputEvent(ports.InputEvent{Time: c.tv.GetCoords(), Port: id, Ev: ev, D: d})
+		v, err := h.HandleInputEvent(ports.InputEvent{Port: id, Ev: ev, D: d})
 		if err != nil {
 			return handled, err
 		}
@@ -142,7 +134,7 @@ func (c *Controllers) differentiateKeyboard(key string, down bool) (bool, error)
 		}
 
 		// all differentiated keyboard events go to the right player port
-		v, err := h.HandleInputEvent(ports.InputEvent{Time: c.tv.GetCoords(), Port: plugging.PortRightPlayer, Ev: ev, D: d})
+		v, err := h.HandleInputEvent(ports.InputEvent{Port: plugging.PortRightPlayer, Ev: ev, D: d})
 		if err != nil {
 			return handled, err
 		}

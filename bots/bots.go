@@ -22,14 +22,12 @@ import (
 
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
 	"github.com/jetsetilly/gopher2600/hardware/television"
-	"github.com/jetsetilly/gopher2600/hardware/television/coords"
 )
 
 // TV defines the television functions required by a bot.
 type TV interface {
 	AddPixelRenderer(television.PixelRenderer)
 	AddAudioMixer(television.AudioMixer)
-	GetCoords() coords.TelevisionCoords
 }
 
 // VCS defines the VCS functions required by a bot.

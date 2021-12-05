@@ -69,4 +69,9 @@
 //
 // A good additionl policy would be to only roll if several, consecutive
 // unsynced frames are indicated.
+//
+// Concurrency
+//
+// None of the functions in the Television type are safe to be called from
+// goroutines other than the one the type was created in.
 package television

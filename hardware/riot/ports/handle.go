@@ -64,7 +64,7 @@ func (p *Ports) handleDrivenEvents() error {
 		for !done {
 			c := p.tv.GetCoords()
 			if coords.Equal(c, inp.Time) {
-				_, err := p.HandleInputEvent(inp)
+				_, err := p.HandleInputEvent(inp.InputEvent)
 				if err != nil {
 					return err
 				}
@@ -125,7 +125,7 @@ func (p *Ports) handlePlaybackEvents() error {
 
 		morePlayback = inp.Port != plugging.PortUnplugged && inp.Ev != NoEvent
 		if morePlayback {
-			_, err := p.HandleInputEvent(inp)
+			_, err := p.HandleInputEvent(inp.InputEvent)
 			if err != nil {
 				return err
 			}
@@ -156,7 +156,7 @@ func (p *Ports) HandleInputEvent(inp InputEvent) (bool, error) {
 	// forward to passenger if one is defined
 	if handled && p.toPassenger != nil {
 		select {
-		case p.toPassenger <- inp:
+		case p.toPassenger <- TimedInputEvent{Time: p.tv.GetCoords(), InputEvent: inp}:
 		default:
 			return handled, curated.Errorf("ports: passenger event queue is full: input dropped")
 		}
@@ -169,7 +169,7 @@ func (p *Ports) HandleInputEvent(inp InputEvent) (bool, error) {
 
 	// record event with the EventRecorder
 	for _, r := range p.recorder {
-		return handled, r.RecordEvent(inp)
+		return handled, r.RecordEvent(TimedInputEvent{Time: p.tv.GetCoords(), InputEvent: inp})
 	}
 
 	return handled, nil

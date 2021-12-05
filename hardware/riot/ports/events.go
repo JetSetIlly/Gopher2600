@@ -104,13 +104,18 @@ const (
 	DataStickSet   EventDataStick = "set"
 )
 
-// InputEvent defines the data required for single input event. Time can be
-// uninitialised if necessary.
+// InputEvent defines the data required for single input event.
 type InputEvent struct {
-	Time coords.TelevisionCoords
 	Port plugging.PortID
 	Ev   Event
 	D    EventData
+}
+
+// TimedInputEvent embeds the InputEvent type and adds a Time field (time
+// measured by TelevisionCoords).
+type TimedInputEvent struct {
+	Time coords.TelevisionCoords
+	InputEvent
 }
 
 // Playback implementations feed controller Events to the device on request
@@ -121,7 +126,7 @@ type InputEvent struct {
 type EventPlayback interface {
 	// note the type restrictions on EventData in the type definition's
 	// commentary
-	GetPlayback() (InputEvent, error)
+	GetPlayback() (TimedInputEvent, error)
 }
 
 // EventRecorder implementations mirror an incoming event.
@@ -130,5 +135,5 @@ type EventPlayback interface {
 // peripheral at once. The ID parameter of the EventRecord() function will help
 // to differentiate between multiple devices.
 type EventRecorder interface {
-	RecordEvent(InputEvent) error
+	RecordEvent(TimedInputEvent) error
 }

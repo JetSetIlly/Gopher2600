@@ -32,7 +32,7 @@ import (
 )
 
 type playbackEntry struct {
-	event ports.InputEvent
+	event ports.TimedInputEvent
 	hash  string
 
 	// the line in the recording file the playback event appears
@@ -217,36 +217,43 @@ const (
 
 // GetPlayback returns an event and source PortID for an event occurring at the
 // current TV frame/scanline/clock.
-func (plb *Playback) GetPlayback() (ports.InputEvent, error) {
-	// we've reached the end of the list of events for this id
-	if plb.seqCt >= len(plb.sequence) {
-		return ports.InputEvent{
-			Port: plugging.PortUnplugged,
-			Ev:   ports.NoEvent,
-		}, nil
-	}
-
+func (plb *Playback) GetPlayback() (ports.TimedInputEvent, error) {
 	// get current state of the television
 	c := plb.vcs.TV.GetCoords()
+
+	// we've reached the end of the list of events for this id
+	if plb.seqCt >= len(plb.sequence) {
+		return ports.TimedInputEvent{
+			Time: c,
+			InputEvent: ports.InputEvent{
+				Port: plugging.PortUnplugged,
+				Ev:   ports.NoEvent,
+			},
+		}, nil
+	}
 
 	// compare current state with the recording
 	entry := plb.sequence[plb.seqCt]
 	if coords.Equal(entry.event.Time, c) {
 		plb.seqCt++
 		if entry.hash != plb.digest.Hash() {
-			return ports.InputEvent{
+			return ports.TimedInputEvent{
 				Time: c,
-				Port: plugging.PortUnplugged,
-				Ev:   ports.NoEvent,
+				InputEvent: ports.InputEvent{
+					Port: plugging.PortUnplugged,
+					Ev:   ports.NoEvent,
+				},
 			}, curated.Errorf(PlaybackHashError, entry.line, c.Frame)
 		}
 		return entry.event, nil
 	}
 
 	// next event does not match
-	return ports.InputEvent{
+	return ports.TimedInputEvent{
 		Time: c,
-		Port: plugging.PortUnplugged,
-		Ev:   ports.NoEvent,
+		InputEvent: ports.InputEvent{
+			Port: plugging.PortUnplugged,
+			Ev:   ports.NoEvent,
+		},
 	}, nil
 }

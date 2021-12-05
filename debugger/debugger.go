@@ -303,7 +303,7 @@ func NewDebugger(create CreateUserInterface, spec string, useSavekey bool, fpsCa
 	}
 
 	// create userinput/controllers handler
-	dbg.controllers = userinput.NewControllers(tv)
+	dbg.controllers = userinput.NewControllers()
 	dbg.controllers.AddInputHandler(dbg.vcs)
 
 	// replace player 1 port with savekey

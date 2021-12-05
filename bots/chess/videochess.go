@@ -362,9 +362,9 @@ func (bot *videoChessBot) moveCursorOnceStep(portid plugging.PortID, direction p
 
 	waiting := true
 	for waiting {
-		bot.vcs.QueueEvent(ports.InputEvent{Time: bot.tv.GetCoords(), Port: portid, Ev: direction, D: ports.DataStickTrue})
+		bot.vcs.QueueEvent(ports.InputEvent{Port: portid, Ev: direction, D: ports.DataStickTrue})
 		bot.waitForFrames(downDuration)
-		bot.vcs.QueueEvent(ports.InputEvent{Time: bot.tv.GetCoords(), Port: portid, Ev: direction, D: ports.DataStickFalse})
+		bot.vcs.QueueEvent(ports.InputEvent{Port: portid, Ev: direction, D: ports.DataStickFalse})
 		select {
 		case <-bot.obs.audioFeedback:
 			waiting = false
@@ -460,9 +460,9 @@ func (bot *videoChessBot) moveCursor(moveCol int, moveRow int, shortcut bool) {
 
 	waiting := true
 	for waiting {
-		bot.vcs.QueueEvent(ports.InputEvent{Time: bot.tv.GetCoords(), Port: plugging.PortLeftPlayer, Ev: ports.Fire, D: true})
+		bot.vcs.QueueEvent(ports.InputEvent{Port: plugging.PortLeftPlayer, Ev: ports.Fire, D: true})
 		bot.waitForFrames(downDuration)
-		bot.vcs.QueueEvent(ports.InputEvent{Time: bot.tv.GetCoords(), Port: plugging.PortLeftPlayer, Ev: ports.Fire, D: false})
+		bot.vcs.QueueEvent(ports.InputEvent{Port: plugging.PortLeftPlayer, Ev: ports.Fire, D: false})
 		select {
 		case <-bot.obs.audioFeedback:
 			waiting = false

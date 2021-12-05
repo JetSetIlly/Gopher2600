@@ -90,10 +90,10 @@ type Ports struct {
 
 	// the following fields all relate to driven input, for either the driver
 	// or for the passenger (the driven)
-	fromDriver      chan InputEvent
-	toPassenger     chan InputEvent
+	fromDriver      chan TimedInputEvent
+	toPassenger     chan TimedInputEvent
 	checkForDriven  bool
-	drivenInputData InputEvent
+	drivenInputData TimedInputEvent
 
 	// the time of driven events are measured by television coordinates
 	//
@@ -269,7 +269,7 @@ func (p *Ports) Step() {
 
 // SynchroniseWithDriver implies that the emulation will receive driven events
 // from another emulation.
-func (p *Ports) SynchroniseWithDriver(driver chan InputEvent, tv TV) error {
+func (p *Ports) SynchroniseWithDriver(driver chan TimedInputEvent, tv TV) error {
 	if p.toPassenger != nil {
 		return curated.Errorf("ports: cannot sync with driver: emulation already defined as a driver of input")
 	}
@@ -283,7 +283,7 @@ func (p *Ports) SynchroniseWithDriver(driver chan InputEvent, tv TV) error {
 
 // SynchroniseWithPassenger connects the emulation to a second emulation (the
 // passenger) to which user input events will be "driven".
-func (p *Ports) SynchroniseWithPassenger(passenger chan InputEvent, tv TV) error {
+func (p *Ports) SynchroniseWithPassenger(passenger chan TimedInputEvent, tv TV) error {
 	if p.fromDriver != nil {
 		return curated.Errorf("ports: cannot sync with passenger: emulation already defined as being driven")
 	}
