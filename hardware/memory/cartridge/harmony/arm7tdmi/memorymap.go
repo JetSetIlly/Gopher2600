@@ -62,7 +62,7 @@ func NewMemoryMap(model string) MemoryMap {
 		mmap.TIMERvalue = mmap.PeripheralsOrigin | 0x00008008
 		mmap.TIMERprescale = mmap.PeripheralsOrigin | 0x00008010
 		mmap.TIMERprescaleMax = mmap.PeripheralsOrigin | 0x0000800C
-		mmap.APBDIV = mmap.PeripheralsOrigin | 0x001FC100
+		mmap.APBDIV = mmap.PeripheralsOrigin | 0x001fc100
 		mmap.MAMCR = mmap.PeripheralsOrigin | 0x001fc000
 		mmap.MAMTIM = mmap.PeripheralsOrigin | 0x001fc004
 

@@ -308,7 +308,7 @@ func (arm *ARM) read8bit(addr uint32) uint8 {
 			return uint8(v)
 		}
 		arm.memoryError = arm.abortOnIllegalMem
-		logger.Logf("ARM7", "read8bit: unrecognised address %08x", addr)
+		logger.Logf("ARM7", "read8bit: unrecognised address %08x (PC: %08x)", addr, arm.registers[rPC])
 		return 0
 	}
 
@@ -328,7 +328,7 @@ func (arm *ARM) write8bit(addr uint32, val uint8) {
 			return
 		}
 		arm.memoryError = arm.abortOnIllegalMem
-		logger.Logf("ARM7", "write8bit: unrecognised address %08x", addr)
+		logger.Logf("ARM7", "write8bit: unrecognised address %08x (PC: %08x)", addr, arm.registers[rPC])
 		return
 	}
 
@@ -338,7 +338,7 @@ func (arm *ARM) write8bit(addr uint32, val uint8) {
 func (arm *ARM) read16bit(addr uint32) uint16 {
 	// check 16 bit alignment
 	if addr&0x01 != 0x00 {
-		logger.Logf("ARM7", "misaligned 16 bit read (%08x)", addr)
+		logger.Logf("ARM7", "misaligned 16 bit read (%08x) (PC: %08x)", addr, arm.registers[rPC])
 	}
 
 	var mem *[]uint8
@@ -353,7 +353,7 @@ func (arm *ARM) read16bit(addr uint32) uint16 {
 			return uint16(v)
 		}
 		arm.memoryError = arm.abortOnIllegalMem
-		logger.Logf("ARM7", "read16bit: unrecognised address %08x", addr)
+		logger.Logf("ARM7", "read16bit: unrecognised address %08x (PC: %08x)", addr, arm.registers[rPC])
 		return 0
 	}
 
@@ -363,7 +363,7 @@ func (arm *ARM) read16bit(addr uint32) uint16 {
 func (arm *ARM) write16bit(addr uint32, val uint16) {
 	// check 16 bit alignment
 	if addr&0x01 != 0x00 {
-		logger.Logf("ARM7", "misaligned 16 bit write (%08x)", addr)
+		logger.Logf("ARM7", "misaligned 16 bit write (%08x) (PC: %08x)", addr, arm.registers[rPC])
 	}
 
 	var mem *[]uint8
@@ -378,7 +378,7 @@ func (arm *ARM) write16bit(addr uint32, val uint16) {
 			return
 		}
 		arm.memoryError = arm.abortOnIllegalMem
-		logger.Logf("ARM7", "write16bit: unrecognised address %08x", addr)
+		logger.Logf("ARM7", "write16bit: unrecognised address %08x (PC: %08x)", addr, arm.registers[rPC])
 		return
 	}
 
@@ -389,7 +389,7 @@ func (arm *ARM) write16bit(addr uint32, val uint16) {
 func (arm *ARM) read32bit(addr uint32) uint32 {
 	// check 32 bit alignment
 	if addr&0x03 != 0x00 {
-		logger.Logf("ARM7", "misaligned 32 bit read (%08x)", addr)
+		logger.Logf("ARM7", "misaligned 32 bit read (%08x) (PC: %08x)", addr, arm.registers[rPC])
 	}
 
 	var mem *[]uint8
@@ -404,7 +404,7 @@ func (arm *ARM) read32bit(addr uint32) uint32 {
 			return v
 		}
 		arm.memoryError = arm.abortOnIllegalMem
-		logger.Logf("ARM7", "read32bit: unrecognised address %08x", addr)
+		logger.Logf("ARM7", "read32bit: unrecognised address %08x (PC: %08x)", addr, arm.registers[rPC])
 		return 0
 	}
 
@@ -414,7 +414,7 @@ func (arm *ARM) read32bit(addr uint32) uint32 {
 func (arm *ARM) write32bit(addr uint32, val uint32) {
 	// check 32 bit alignment
 	if addr&0x03 != 0x00 {
-		logger.Logf("ARM7", "misaligned 32 bit write (%08x)", addr)
+		logger.Logf("ARM7", "misaligned 32 bit write (%08x) (PC: %08x)", addr, arm.registers[rPC])
 	}
 
 	var mem *[]uint8
@@ -429,7 +429,7 @@ func (arm *ARM) write32bit(addr uint32, val uint32) {
 			return
 		}
 		arm.memoryError = arm.abortOnIllegalMem
-		logger.Logf("ARM7", "write32bit: unrecognised address %08x", addr)
+		logger.Logf("ARM7", "write32bit: unrecognised address %08x (PC: %08x)", addr, arm.registers[rPC])
 		return
 	}
 
