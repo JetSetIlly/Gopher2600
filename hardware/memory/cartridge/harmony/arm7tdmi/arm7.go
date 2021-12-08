@@ -1,4 +1,3 @@
-// This file is part of Gopher2600.
 //
 // Gopher2600 is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -21,6 +20,7 @@ import (
 	"strings"
 
 	"github.com/jetsetilly/gopher2600/curated"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/harmony/arm7tdmi/mapfile"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/preferences"
 	"github.com/jetsetilly/gopher2600/logger"
@@ -173,6 +173,12 @@ type ARM struct {
 	Icycle func()
 	Scycle func(bus busAccess, addr uint32)
 	Ncycle func(bus busAccess, addr uint32)
+
+	// mapfile for binary (if available)
+	mapFile *mapfile.Mapfile
+
+	// illegal accesses already encountered. duplicate accesses will not be logged.
+	illegalAccesses map[string]bool
 }
 
 type disasmLevel int
@@ -189,14 +195,15 @@ const (
 )
 
 // NewARM is the preferred method of initialisation for the ARM type.
-func NewARM(mmap MemoryMap, prefs *preferences.ARMPreferences, mem SharedMemory, hook CartridgeHook) *ARM {
+func NewARM(mmap MemoryMap, prefs *preferences.ARMPreferences, mem SharedMemory, hook CartridgeHook, pathToROM string) *ARM {
 	arm := &ARM{
-		prefs:        prefs,
-		mmap:         mmap,
-		mem:          mem,
-		hook:         hook,
-		executionMap: make(map[uint32][]func(_ uint16)),
-		disasmCache:  make(map[uint32]DisasmEntry),
+		prefs:           prefs,
+		mmap:            mmap,
+		mem:             mem,
+		hook:            hook,
+		executionMap:    make(map[uint32][]func(_ uint16)),
+		disasmCache:     make(map[uint32]DisasmEntry),
+		illegalAccesses: make(map[string]bool),
 	}
 
 	arm.mam.mmap = mmap
@@ -205,6 +212,11 @@ func NewARM(mmap MemoryMap, prefs *preferences.ARMPreferences, mem SharedMemory,
 	err := arm.reset()
 	if err != nil {
 		logger.Logf("ARM7", "reset: %s", err.Error())
+	}
+
+	arm.mapFile, err = mapfile.NewMapFile(pathToROM)
+	if err != nil {
+		logger.Logf("ARM7", err.Error())
 	}
 
 	return arm
@@ -308,7 +320,19 @@ func (arm *ARM) read8bit(addr uint32) uint8 {
 			return uint8(v)
 		}
 		arm.memoryError = arm.abortOnIllegalMem
-		logger.Logf("ARM7", "read8bit: unrecognised address %08x (PC: %08x)", addr, arm.registers[rPC])
+
+		accessKey := fmt.Sprintf("%08x%08x", addr, arm.registers[rPC])
+		if _, ok := arm.illegalAccesses[accessKey]; !ok {
+			arm.illegalAccesses[accessKey] = true
+
+			logger.Logf("ARM7", "read8bit: unrecognised address %08x (PC: %08x)", addr, arm.registers[rPC])
+			if arm.mapFile != nil {
+				programLabel := arm.mapFile.FindProgramAccess(arm.registers[rPC])
+				if programLabel != "" {
+					logger.Logf("ARM7", "mapfile: access in %s()", programLabel)
+				}
+			}
+		}
 		return 0
 	}
 
@@ -328,7 +352,19 @@ func (arm *ARM) write8bit(addr uint32, val uint8) {
 			return
 		}
 		arm.memoryError = arm.abortOnIllegalMem
-		logger.Logf("ARM7", "write8bit: unrecognised address %08x (PC: %08x)", addr, arm.registers[rPC])
+
+		accessKey := fmt.Sprintf("%08x%08x", addr, arm.registers[rPC])
+		if _, ok := arm.illegalAccesses[accessKey]; !ok {
+			arm.illegalAccesses[accessKey] = true
+
+			logger.Logf("ARM7", "write8bit: unrecognised address %08x (PC: %08x)", addr, arm.registers[rPC])
+			if arm.mapFile != nil {
+				programLabel := arm.mapFile.FindProgramAccess(arm.registers[rPC])
+				if programLabel != "" {
+					logger.Logf("ARM7", "mapfile: access in %s()", programLabel)
+				}
+			}
+		}
 		return
 	}
 
@@ -353,7 +389,19 @@ func (arm *ARM) read16bit(addr uint32) uint16 {
 			return uint16(v)
 		}
 		arm.memoryError = arm.abortOnIllegalMem
-		logger.Logf("ARM7", "read16bit: unrecognised address %08x (PC: %08x)", addr, arm.registers[rPC])
+
+		accessKey := fmt.Sprintf("%08x%08x", addr, arm.registers[rPC])
+		if _, ok := arm.illegalAccesses[accessKey]; !ok {
+			arm.illegalAccesses[accessKey] = true
+
+			logger.Logf("ARM7", "read16bit: unrecognised address %08x (PC: %08x)", addr, arm.registers[rPC])
+			if arm.mapFile != nil {
+				programLabel := arm.mapFile.FindProgramAccess(arm.registers[rPC])
+				if programLabel != "" {
+					logger.Logf("ARM7", "mapfile: access in %s()", programLabel)
+				}
+			}
+		}
 		return 0
 	}
 
@@ -378,7 +426,19 @@ func (arm *ARM) write16bit(addr uint32, val uint16) {
 			return
 		}
 		arm.memoryError = arm.abortOnIllegalMem
-		logger.Logf("ARM7", "write16bit: unrecognised address %08x (PC: %08x)", addr, arm.registers[rPC])
+
+		accessKey := fmt.Sprintf("%08x%08x", addr, arm.registers[rPC])
+		if _, ok := arm.illegalAccesses[accessKey]; !ok {
+			arm.illegalAccesses[accessKey] = true
+
+			logger.Logf("ARM7", "write16bit: unrecognised address %08x (PC: %08x)", addr, arm.registers[rPC])
+			if arm.mapFile != nil {
+				programLabel := arm.mapFile.FindProgramAccess(arm.registers[rPC])
+				if programLabel != "" {
+					logger.Logf("ARM7", "mapfile: access in %s()", programLabel)
+				}
+			}
+		}
 		return
 	}
 
@@ -404,7 +464,19 @@ func (arm *ARM) read32bit(addr uint32) uint32 {
 			return v
 		}
 		arm.memoryError = arm.abortOnIllegalMem
-		logger.Logf("ARM7", "read32bit: unrecognised address %08x (PC: %08x)", addr, arm.registers[rPC])
+
+		accessKey := fmt.Sprintf("%08x%08x", addr, arm.registers[rPC])
+		if _, ok := arm.illegalAccesses[accessKey]; !ok {
+			arm.illegalAccesses[accessKey] = true
+
+			logger.Logf("ARM7", "read32bit: unrecognised address %08x (PC: %08x)", addr, arm.registers[rPC])
+			if arm.mapFile != nil {
+				programLabel := arm.mapFile.FindProgramAccess(arm.registers[rPC])
+				if programLabel != "" {
+					logger.Logf("ARM7", "mapfile: access in %s()", programLabel)
+				}
+			}
+		}
 		return 0
 	}
 
@@ -429,7 +501,19 @@ func (arm *ARM) write32bit(addr uint32, val uint32) {
 			return
 		}
 		arm.memoryError = arm.abortOnIllegalMem
-		logger.Logf("ARM7", "write32bit: unrecognised address %08x (PC: %08x)", addr, arm.registers[rPC])
+
+		accessKey := fmt.Sprintf("%08x%08x", addr, arm.registers[rPC])
+		if _, ok := arm.illegalAccesses[accessKey]; !ok {
+			arm.illegalAccesses[accessKey] = true
+
+			logger.Logf("ARM7", "write32bit: unrecognised address %08x (PC: %08x)", addr, arm.registers[rPC])
+			if arm.mapFile != nil {
+				programLabel := arm.mapFile.FindProgramAccess(arm.registers[rPC])
+				if programLabel != "" {
+					logger.Logf("ARM7", "mapfile: access in %s()", programLabel)
+				}
+			}
+		}
 		return
 	}
 
