@@ -20,7 +20,9 @@ import (
 	"strings"
 
 	"github.com/jetsetilly/gopher2600/curated"
+	"github.com/jetsetilly/gopher2600/debugger/terminal/colorterm/easyterm/ansi"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/harmony/arm7tdmi/mapfile"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/harmony/arm7tdmi/objdump"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/preferences"
 	"github.com/jetsetilly/gopher2600/logger"
@@ -68,6 +70,9 @@ type ARM struct {
 	// ARM registers
 	registers [rCount]uint32
 	status    status
+
+	// the PC of the instruction being executed
+	executingPC uint32
 
 	// "peripherals" connected to the variety of ARM7TDMI-S used in the Harmony
 	// cartridge.
@@ -175,7 +180,10 @@ type ARM struct {
 	Ncycle func(bus busAccess, addr uint32)
 
 	// mapfile for binary (if available)
-	mapFile *mapfile.Mapfile
+	mapfile *mapfile.Mapfile
+
+	// obj dump for binary (if available)
+	objdump *objdump.ObjDump
 
 	// illegal accesses already encountered. duplicate accesses will not be logged.
 	illegalAccesses map[string]bool
@@ -214,7 +222,12 @@ func NewARM(mmap MemoryMap, prefs *preferences.ARMPreferences, mem SharedMemory,
 		logger.Logf("ARM7", "reset: %s", err.Error())
 	}
 
-	arm.mapFile, err = mapfile.NewMapFile(pathToROM)
+	arm.mapfile, err = mapfile.NewMapFile(pathToROM)
+	if err != nil {
+		logger.Logf("ARM7", err.Error())
+	}
+
+	arm.objdump, err = objdump.NewObjDump(pathToROM)
 	if err != nil {
 		logger.Logf("ARM7", err.Error())
 	}
@@ -307,6 +320,21 @@ func (arm *ARM) Step(vcsClock float32) {
 	arm.timer.stepFromVCS(Clk, vcsClock)
 }
 
+func (arm *ARM) lookupSource() {
+	if arm.mapfile != nil {
+		programLabel := arm.mapfile.FindProgramAccess(arm.executingPC)
+		if programLabel != "" {
+			logger.Logf("ARM7", "mapfile: access in %s%s()%s", ansi.DimPens["cyan"], programLabel, ansi.NormalPen)
+		}
+	}
+	if arm.objdump != nil {
+		src := arm.objdump.FindProgramAccess(arm.executingPC)
+		if src != "" {
+			logger.Logf("ARM7", "objdump:\n%s%s%s", ansi.DimPens["cyan"], src, ansi.NormalPen)
+		}
+	}
+}
+
 func (arm *ARM) read8bit(addr uint32) uint8 {
 	var mem *[]uint8
 
@@ -321,17 +349,11 @@ func (arm *ARM) read8bit(addr uint32) uint8 {
 		}
 		arm.memoryError = arm.abortOnIllegalMem
 
-		accessKey := fmt.Sprintf("%08x%08x", addr, arm.registers[rPC])
+		accessKey := fmt.Sprintf("%08x%08x", addr, arm.executingPC)
 		if _, ok := arm.illegalAccesses[accessKey]; !ok {
 			arm.illegalAccesses[accessKey] = true
-
-			logger.Logf("ARM7", "read8bit: unrecognised address %08x (PC: %08x)", addr, arm.registers[rPC])
-			if arm.mapFile != nil {
-				programLabel := arm.mapFile.FindProgramAccess(arm.registers[rPC])
-				if programLabel != "" {
-					logger.Logf("ARM7", "mapfile: access in %s()", programLabel)
-				}
-			}
+			logger.Logf("ARM7", "read8bit: unrecognised address %08x (PC: %08x)", addr, arm.executingPC)
+			arm.lookupSource()
 		}
 		return 0
 	}
@@ -353,17 +375,11 @@ func (arm *ARM) write8bit(addr uint32, val uint8) {
 		}
 		arm.memoryError = arm.abortOnIllegalMem
 
-		accessKey := fmt.Sprintf("%08x%08x", addr, arm.registers[rPC])
+		accessKey := fmt.Sprintf("%08x%08x", addr, arm.executingPC)
 		if _, ok := arm.illegalAccesses[accessKey]; !ok {
 			arm.illegalAccesses[accessKey] = true
-
-			logger.Logf("ARM7", "write8bit: unrecognised address %08x (PC: %08x)", addr, arm.registers[rPC])
-			if arm.mapFile != nil {
-				programLabel := arm.mapFile.FindProgramAccess(arm.registers[rPC])
-				if programLabel != "" {
-					logger.Logf("ARM7", "mapfile: access in %s()", programLabel)
-				}
-			}
+			logger.Logf("ARM7", "write8bit: unrecognised address %08x (PC: %08x)", addr, arm.executingPC)
+			arm.lookupSource()
 		}
 		return
 	}
@@ -390,17 +406,11 @@ func (arm *ARM) read16bit(addr uint32) uint16 {
 		}
 		arm.memoryError = arm.abortOnIllegalMem
 
-		accessKey := fmt.Sprintf("%08x%08x", addr, arm.registers[rPC])
+		accessKey := fmt.Sprintf("%08x%08x", addr, arm.executingPC)
 		if _, ok := arm.illegalAccesses[accessKey]; !ok {
 			arm.illegalAccesses[accessKey] = true
-
-			logger.Logf("ARM7", "read16bit: unrecognised address %08x (PC: %08x)", addr, arm.registers[rPC])
-			if arm.mapFile != nil {
-				programLabel := arm.mapFile.FindProgramAccess(arm.registers[rPC])
-				if programLabel != "" {
-					logger.Logf("ARM7", "mapfile: access in %s()", programLabel)
-				}
-			}
+			logger.Logf("ARM7", "read16bit: unrecognised address %08x (PC: %08x)", addr, arm.executingPC)
+			arm.lookupSource()
 		}
 		return 0
 	}
@@ -427,17 +437,11 @@ func (arm *ARM) write16bit(addr uint32, val uint16) {
 		}
 		arm.memoryError = arm.abortOnIllegalMem
 
-		accessKey := fmt.Sprintf("%08x%08x", addr, arm.registers[rPC])
+		accessKey := fmt.Sprintf("%08x%08x", addr, arm.executingPC)
 		if _, ok := arm.illegalAccesses[accessKey]; !ok {
 			arm.illegalAccesses[accessKey] = true
-
-			logger.Logf("ARM7", "write16bit: unrecognised address %08x (PC: %08x)", addr, arm.registers[rPC])
-			if arm.mapFile != nil {
-				programLabel := arm.mapFile.FindProgramAccess(arm.registers[rPC])
-				if programLabel != "" {
-					logger.Logf("ARM7", "mapfile: access in %s()", programLabel)
-				}
-			}
+			logger.Logf("ARM7", "write16bit: unrecognised address %08x (PC: %08x)", addr, arm.executingPC)
+			arm.lookupSource()
 		}
 		return
 	}
@@ -465,17 +469,11 @@ func (arm *ARM) read32bit(addr uint32) uint32 {
 		}
 		arm.memoryError = arm.abortOnIllegalMem
 
-		accessKey := fmt.Sprintf("%08x%08x", addr, arm.registers[rPC])
+		accessKey := fmt.Sprintf("%08x%08x", addr, arm.executingPC)
 		if _, ok := arm.illegalAccesses[accessKey]; !ok {
 			arm.illegalAccesses[accessKey] = true
-
-			logger.Logf("ARM7", "read32bit: unrecognised address %08x (PC: %08x)", addr, arm.registers[rPC])
-			if arm.mapFile != nil {
-				programLabel := arm.mapFile.FindProgramAccess(arm.registers[rPC])
-				if programLabel != "" {
-					logger.Logf("ARM7", "mapfile: access in %s()", programLabel)
-				}
-			}
+			logger.Logf("ARM7", "read32bit: unrecognised address %08x (PC: %08x)", addr, arm.executingPC)
+			arm.lookupSource()
 		}
 		return 0
 	}
@@ -502,17 +500,11 @@ func (arm *ARM) write32bit(addr uint32, val uint32) {
 		}
 		arm.memoryError = arm.abortOnIllegalMem
 
-		accessKey := fmt.Sprintf("%08x%08x", addr, arm.registers[rPC])
+		accessKey := fmt.Sprintf("%08x%08x", addr, arm.executingPC)
 		if _, ok := arm.illegalAccesses[accessKey]; !ok {
 			arm.illegalAccesses[accessKey] = true
-
-			logger.Logf("ARM7", "write32bit: unrecognised address %08x (PC: %08x)", addr, arm.registers[rPC])
-			if arm.mapFile != nil {
-				programLabel := arm.mapFile.FindProgramAccess(arm.registers[rPC])
-				if programLabel != "" {
-					logger.Logf("ARM7", "mapfile: access in %s()", programLabel)
-				}
-			}
+			logger.Logf("ARM7", "write32bit: unrecognised address %08x (PC: %08x)", addr, arm.executingPC)
+			arm.lookupSource()
 		}
 		return
 	}
@@ -584,7 +576,7 @@ func (arm *ARM) Run(mamcr uint32) (uint32, float32, error) {
 		// "The program counter points to the instruction being fetched rather than to the instruction
 		// being executed. This is important because it means that the Program Counter (PC)
 		// value used in an executing instruction is always two instructions ahead of the address."
-		executingPC := arm.registers[rPC] - 2
+		arm.executingPC = arm.registers[rPC] - 2
 
 		// set disasmLevel for the next instruction
 		if arm.disasm == nil {
@@ -594,7 +586,7 @@ func (arm *ARM) Run(mamcr uint32) (uint32, float32, error) {
 			arm.disasmLevel = disasmFull
 
 			// check cache for existing disasm entry
-			if e, ok := arm.disasmCache[executingPC]; ok {
+			if e, ok := arm.disasmCache[arm.executingPC]; ok {
 				// use cached entry
 				arm.disasmEntry = e
 
@@ -610,7 +602,7 @@ func (arm *ARM) Run(mamcr uint32) (uint32, float32, error) {
 			// in an initial state
 			if arm.disasmLevel == disasmFull {
 				arm.disasmEntry.Location = ""
-				arm.disasmEntry.Address = fmt.Sprintf("%08x", executingPC)
+				arm.disasmEntry.Address = fmt.Sprintf("%08x", arm.executingPC)
 				arm.disasmEntry.Operator = ""
 				arm.disasmEntry.Operand = ""
 				arm.disasmEntry.Cycles = 0.0
@@ -620,22 +612,22 @@ func (arm *ARM) Run(mamcr uint32) (uint32, float32, error) {
 		}
 
 		// check program counter
-		memIdx := executingPC - arm.programMemoryOffset
+		memIdx := arm.executingPC - arm.programMemoryOffset
 		if memIdx+1 >= uint32(arm.programMemoryLen) {
 			// program counter is out-of-range so find program memory again
 			// (using the PC value)
 			err = arm.findProgramMemory()
 			if err != nil {
 				// can't find memory so we say the ARM program has finished inadvertently
-				logger.Logf("ARM7", "PC out of range (%#08x). aborting thumb program early", executingPC)
+				logger.Logf("ARM7", "PC out of range (%#08x). aborting thumb program early", arm.executingPC)
 				break // for loop
 			}
 
 			// if it's still out-of-range then give up with an error
-			memIdx = executingPC - arm.programMemoryOffset
+			memIdx = arm.executingPC - arm.programMemoryOffset
 			if memIdx+1 >= uint32(arm.programMemoryLen) {
 				// can't find memory so we say the ARM program has finished inadvertently
-				logger.Logf("ARM7", "PC out of range (%#08x). aborting thumb program early", executingPC)
+				logger.Logf("ARM7", "PC out of range (%#08x). aborting thumb program early", arm.executingPC)
 				break // for loop
 			}
 		}
@@ -781,11 +773,11 @@ func (arm *ARM) Run(mamcr uint32) (uint32, float32, error) {
 				// operand fields and insert into cache
 				arm.disasmEntry.Operator = fmt.Sprintf("%-4s", arm.disasmEntry.Operator)
 				arm.disasmEntry.Operand = fmt.Sprintf("%-16s", arm.disasmEntry.Operand)
-				arm.disasmCache[executingPC] = arm.disasmEntry
+				arm.disasmCache[arm.executingPC] = arm.disasmEntry
 			case disasmUpdateOnly:
 				// entry is cached but notes may have changed so we recache
 				// the entry
-				arm.disasmCache[executingPC] = arm.disasmEntry
+				arm.disasmCache[arm.executingPC] = arm.disasmEntry
 			case disasmNone:
 			}
 
