@@ -35,7 +35,7 @@ type winBot struct {
 	dirty       bool
 
 	// render channels are given to use by the main emulation through a GUI request
-	feedback bots.Feedback
+	feedback *bots.Feedback
 }
 
 func newWinBot(img *SdlImgui) (window, error) {
@@ -64,7 +64,7 @@ func (win *winBot) isOpen() bool {
 }
 
 // start bot session will effectively end a bot session if feedback channels are nil
-func (win *winBot) startBotSession(feedback bots.Feedback) {
+func (win *winBot) startBotSession(feedback *bots.Feedback) {
 	win.feedback = feedback
 
 	gl.BindTexture(gl.TEXTURE_2D, win.obsTexture)
@@ -78,18 +78,19 @@ func (win *winBot) startBotSession(feedback bots.Feedback) {
 
 // do not open if no bot is defined
 func (win *winBot) setOpen(open bool) {
-	if win.feedback.Diagnostic == nil || win.feedback.Images == nil {
+	if win.feedback == nil {
+		win.open = false
 		return
 	}
-
 	win.open = open
-
-	if win.open {
-		// clear texture
-	}
 }
 
 func (win *winBot) draw() {
+	// no bot feedback instance
+	if win.feedback == nil {
+		return
+	}
+
 	// receive new thumbnail data and copy to texture
 	select {
 	case img := <-win.feedback.Images:

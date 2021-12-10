@@ -56,5 +56,5 @@ type Feedback struct {
 type Bot interface {
 	BotID() string
 	Quit()
-	Feedback() Feedback
+	Feedback() *Feedback
 }

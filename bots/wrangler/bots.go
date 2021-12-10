@@ -41,7 +41,7 @@ func NewBots(vcs bots.VCS, tv bots.TV) *Bots {
 }
 
 // ActivateBot uses the cartridge hash value to and loads any available bot.
-func (b *Bots) ActivateBot(cartHash string) (bots.Feedback, error) {
+func (b *Bots) ActivateBot(cartHash string) (*bots.Feedback, error) {
 	b.Quit()
 
 	var err error
@@ -50,12 +50,12 @@ func (b *Bots) ActivateBot(cartHash string) (bots.Feedback, error) {
 	case "043ef523e4fcb9fc2fc2fda21f15671bf8620fc3":
 		b.running, err = chess.NewVideoChess(b.vcs, b.tv)
 		if err != nil {
-			return bots.Feedback{}, curated.Errorf("bots: %v", err)
+			return nil, curated.Errorf("bots: %v", err)
 		}
 		logger.Logf("bots", "%s start", b.running.BotID())
 
 	default:
-		return bots.Feedback{}, nil
+		return nil, nil
 	}
 
 	return b.running.Feedback(), nil

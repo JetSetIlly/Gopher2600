@@ -509,7 +509,7 @@ func NewVideoChess(vcs bots.VCS, tv bots.TV) (bots.Bot, error) {
 
 	uci, err := uci.NewUCI("/usr/local/bin/stockfish", bot.feedback.Diagnostic)
 	if err != nil {
-		return nil, curated.Errorf("bot: %v", err)
+		return nil, curated.Errorf("videochess: %v", err)
 	}
 
 	uci.Start()
@@ -687,6 +687,6 @@ func (bot *videoChessBot) Quit() {
 }
 
 // Feedback implements the bots.Bot interface.
-func (bot *videoChessBot) Feedback() bots.Feedback {
-	return bot.feedback
+func (bot *videoChessBot) Feedback() *bots.Feedback {
+	return &bot.feedback
 }

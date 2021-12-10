@@ -72,8 +72,9 @@ const (
 	// request for a comparison window to be opened
 	ReqComparison FeatureReq = "ReqComparison" // chan *image.RGBA, chan *image.RGBA
 
-	// request for a bot window to be opened
-	ReqBotFeedback FeatureReq = "ReqBotFeedback" // bots.Feedback
+	// request for bot features to be enabled. a nil argument will cause the
+	// bot features to be removed
+	ReqBotFeedback FeatureReq = "ReqBotFeedback" // *bots.Feedback
 )
 
 // Sentinal error returned if GUI does no support requested feature.

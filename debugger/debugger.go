@@ -565,6 +565,7 @@ func (dbg *Debugger) setMode(mode emulation.Mode) error {
 
 // End cleans up any resources that may be dangling.
 func (dbg *Debugger) end() {
+	dbg.removeComparisonEmulation()
 	dbg.bots.Quit()
 	dbg.vcs.End()
 
@@ -757,6 +758,9 @@ func (dbg *Debugger) reset(newCartridge bool) error {
 // this is the glue that hold the cartridge and disassembly packages together.
 // especially important is the repointing of the symbols table in the instance of dbgmem.
 func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) {
+	// stop any existing bots
+	dbg.bots.Quit()
+
 	dbg.setState(emulation.Initialising)
 
 	// set state after initialisation according to the emulation mode
@@ -896,8 +900,10 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) 
 	// activate bot if possible
 	feedback, err := dbg.bots.ActivateBot(dbg.vcs.Mem.Cart.Hash)
 	if err != nil {
-		return curated.Errorf("debugger: %v", err)
+		logger.Logf("debugger", err.Error())
 	}
+
+	// always ReqBotFeedback. if feedback is nil then the bot features will be disbaled
 	err = dbg.gui.SetFeature(gui.ReqBotFeedback, feedback)
 	if err != nil {
 		return curated.Errorf("debugger: %v", err)
