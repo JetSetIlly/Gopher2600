@@ -80,7 +80,7 @@ func (mem *Memory) Snapshot() *Memory {
 	return &n
 }
 
-// Plumb makes sure everythin is ship-shape after a rewind event.
+// Plumb makes sure everything is ship-shape after a rewind event.
 func (mem *Memory) Plumb(fromDifferentEmulation bool) {
 	mem.Cart.Plumb(fromDifferentEmulation)
 }

@@ -23,13 +23,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/addresses"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
-	"github.com/jetsetilly/gopher2600/hardware/television/coords"
 )
-
-// TV defines the television functions required by the Ports type.
-type TV interface {
-	GetCoords() coords.TelevisionCoords
-}
 
 // Input implements the input/output part of the RIOT (the IO in RIOT).
 type Ports struct {
@@ -39,9 +33,6 @@ type Ports struct {
 	Panel       Peripheral
 	LeftPlayer  Peripheral
 	RightPlayer Peripheral
-
-	playback EventPlayback
-	recorder []EventRecorder
 
 	monitor plugging.PlugMonitor
 
@@ -84,21 +75,6 @@ type Ports struct {
 	//
 	// we use it to mux the Player0 and Player 1 nibbles into the single register
 	swchaMux uint8
-
-	// events pushed onto the input queue
-	pushed chan InputEvent
-
-	// the following fields all relate to driven input, for either the driver
-	// or for the passenger (the driven)
-	fromDriver      chan TimedInputEvent
-	toPassenger     chan TimedInputEvent
-	checkForDriven  bool
-	drivenInputData TimedInputEvent
-
-	// the time of driven events are measured by television coordinates
-	//
-	// not used except to synchronise driver and passenger emulations
-	tv TV
 }
 
 // NewPorts is the preferred method of initialisation of the Ports type.
@@ -106,11 +82,9 @@ func NewPorts(riotMem bus.ChipBus, tiaMem bus.ChipBus) *Ports {
 	p := &Ports{
 		riot:         riotMem,
 		tia:          tiaMem,
-		recorder:     make([]EventRecorder, 0),
 		swchaFromCPU: 0x00,
 		swacnt:       0x00,
 		latch:        false,
-		pushed:       make(chan InputEvent, 64),
 	}
 	return p
 }
@@ -267,45 +241,6 @@ func (p *Ports) Step() {
 	p.Panel.Step()
 }
 
-// SynchroniseWithDriver implies that the emulation will receive driven events
-// from another emulation.
-func (p *Ports) SynchroniseWithDriver(driver chan TimedInputEvent, tv TV) error {
-	if p.toPassenger != nil {
-		return curated.Errorf("ports: cannot sync with driver: emulation already defined as a driver of input")
-	}
-	if p.playback != nil {
-		return curated.Errorf("ports: cannot sync with driver: emulation is already receiving input from a playback")
-	}
-	p.tv = tv
-	p.fromDriver = driver
-	return nil
-}
-
-// SynchroniseWithPassenger connects the emulation to a second emulation (the
-// passenger) to which user input events will be "driven".
-func (p *Ports) SynchroniseWithPassenger(passenger chan TimedInputEvent, tv TV) error {
-	if p.fromDriver != nil {
-		return curated.Errorf("ports: cannot sync with passenger: emulation already defined as being driven")
-	}
-	p.tv = tv
-	p.toPassenger = passenger
-	return nil
-}
-
-// AttachPlayback attaches an EventPlayback implementation.
-func (p *Ports) AttachPlayback(b EventPlayback) error {
-	if p.fromDriver != nil {
-		return curated.Errorf("ports: cannot attach playback: emulation already defined as being driven")
-	}
-	p.playback = b
-	return nil
-}
-
-// AttachEventRecorder attaches an EventRecorder implementation.
-func (p *Ports) AttachEventRecorder(r EventRecorder) {
-	p.recorder = append(p.recorder, r)
-}
-
 // AttchPlugMonitor implements the plugging.Monitorable interface.
 func (p *Ports) AttachPlugMonitor(m plugging.PlugMonitor) {
 	p.monitor = m
@@ -328,10 +263,7 @@ func (p *Ports) AttachPlugMonitor(m plugging.PlugMonitor) {
 	}
 }
 
-// PeripheralID implements userinput.HandleInput interface.
-//
-// Consider using PeripheralID() function in the VCS type rather than this
-// function directly.
+// PeripheralID returns the ID of the peripheral in the identified port.
 func (p *Ports) PeripheralID(id plugging.PortID) plugging.PeripheralID {
 	switch id {
 	case plugging.PortPanel:
@@ -375,4 +307,27 @@ func (p *Ports) WriteINPTx(inptx addresses.ChipRegister, data uint8) {
 	if data != 0x80 || !p.latch {
 		p.tia.ChipWrite(inptx, data)
 	}
+}
+
+// HandleInputEvent forwards the InputEvent to the perupheral in the correct
+// port. Returns true if the event was handled and false if not.
+func (p *Ports) HandleInputEvent(inp InputEvent) (bool, error) {
+	var handled bool
+	var err error
+
+	switch inp.Port {
+	case plugging.PortPanel:
+		handled, err = p.Panel.HandleEvent(inp.Ev, inp.D)
+	case plugging.PortLeftPlayer:
+		handled, err = p.LeftPlayer.HandleEvent(inp.Ev, inp.D)
+	case plugging.PortRightPlayer:
+		handled, err = p.RightPlayer.HandleEvent(inp.Ev, inp.D)
+	}
+
+	// if error was because of an unhandled event then return without error
+	if err != nil {
+		return handled, curated.Errorf("ports: %v", err)
+	}
+
+	return handled, nil
 }

@@ -117,36 +117,36 @@ func (set PanelSetup) matchCartHash(hash string) bool {
 func (set PanelSetup) apply(vcs *hardware.VCS) error {
 	if set.p0 {
 		inp := ports.InputEvent{Port: plugging.PortPanel, Ev: ports.PanelSetPlayer0Pro, D: true}
-		if _, err := vcs.HandleInputEvent(inp); err != nil {
+		if _, err := vcs.Input.HandleInputEvent(inp); err != nil {
 			return err
 		}
 	} else {
 		inp := ports.InputEvent{Port: plugging.PortPanel, Ev: ports.PanelSetPlayer0Pro, D: false}
-		if _, err := vcs.HandleInputEvent(inp); err != nil {
+		if _, err := vcs.Input.HandleInputEvent(inp); err != nil {
 			return err
 		}
 	}
 
 	if set.p1 {
 		inp := ports.InputEvent{Port: plugging.PortPanel, Ev: ports.PanelSetPlayer1Pro, D: true}
-		if _, err := vcs.HandleInputEvent(inp); err != nil {
+		if _, err := vcs.Input.HandleInputEvent(inp); err != nil {
 			return err
 		}
 	} else {
 		inp := ports.InputEvent{Port: plugging.PortPanel, Ev: ports.PanelSetPlayer1Pro, D: false}
-		if _, err := vcs.HandleInputEvent(inp); err != nil {
+		if _, err := vcs.Input.HandleInputEvent(inp); err != nil {
 			return err
 		}
 	}
 
 	if set.col {
 		inp := ports.InputEvent{Port: plugging.PortPanel, Ev: ports.PanelSetColor, D: true}
-		if _, err := vcs.HandleInputEvent(inp); err != nil {
+		if _, err := vcs.Input.HandleInputEvent(inp); err != nil {
 			return err
 		}
 	} else {
 		inp := ports.InputEvent{Port: plugging.PortPanel, Ev: ports.PanelSetColor, D: false}
-		if _, err := vcs.HandleInputEvent(inp); err != nil {
+		if _, err := vcs.Input.HandleInputEvent(inp); err != nil {
 			return err
 		}
 	}

@@ -74,6 +74,9 @@ func (plb Playback) EndFrame() (bool, error) {
 }
 
 // NewPlayback is the preferred method of implementation for the Playback type.
+//
+// The returned playback must be attached to the VCS input system (with
+// AttachToVCSInput() function) for it it to be useful.
 func NewPlayback(transcript string) (*Playback, error) {
 	var err error
 
@@ -172,11 +175,11 @@ func NewPlayback(transcript string) (*Playback, error) {
 	return plb, nil
 }
 
-// AttachToVCS attaches the playback instance (an implementation of the
-// playback interface) to all the ports of the VCS, including the panel.
+// AttachToVCSInput attaches the playback instance (an implementation of the
+// playback interface) to all the input system of the VCS.
 //
-// Note that this will reset the VCS.
-func (plb *Playback) AttachToVCS(vcs *hardware.VCS) error {
+// Note that the VCS instance will be normalised as a result of this call.
+func (plb *Playback) AttachToVCSInput(vcs *hardware.VCS) error {
 	// check we're working with correct information
 	if vcs == nil || vcs.TV == nil {
 		return curated.Errorf("playback: no playback hardware available")
@@ -201,11 +204,8 @@ func (plb *Playback) AttachToVCS(vcs *hardware.VCS) error {
 		return curated.Errorf("playback: %v", err)
 	}
 
-	// attach playback to all vcs ports
-	err = vcs.RIOT.Ports.AttachPlayback(plb)
-	if err != nil {
-		return curated.Errorf("playback: %v", err)
-	}
+	// attach playback to all VCS Input system
+	vcs.Input.AttachPlayback(plb)
 
 	return nil
 }

@@ -50,7 +50,7 @@ func (vcs *VCS) Run(continueCheck func() (emulation.State, error)) error {
 	// see the equivalient videoCycle() in the VCS.Step() function for an
 	// explanation for what's going on here:
 	videoCycle := func() error {
-		if err := vcs.RIOT.Ports.HandleInputEvents(); err != nil {
+		if err := vcs.Input.Process(); err != nil {
 			return err
 		}
 

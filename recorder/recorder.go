@@ -44,7 +44,7 @@ type Recorder struct {
 // type. Note that attaching of the Recorder to all the ports of the VCS
 // (including the panel) is implicit in this function call.
 //
-// Note that this will reset the VCS.
+// Note that the VCS instance will be normalised as a result of this call.
 func NewRecorder(transcript string, vcs *hardware.VCS) (*Recorder, error) {
 	var err error
 
@@ -67,8 +67,8 @@ func NewRecorder(transcript string, vcs *hardware.VCS) (*Recorder, error) {
 		return nil, curated.Errorf("recorder: %v", err)
 	}
 
-	// attach recorder to vcs peripherals, including the panel
-	vcs.RIOT.Ports.AttachEventRecorder(rec)
+	// attach recorder to vcs input system
+	vcs.Input.AttachRecorder(rec)
 
 	// video digester for playback verification
 	rec.digest, err = digest.NewVideo(vcs.TV)

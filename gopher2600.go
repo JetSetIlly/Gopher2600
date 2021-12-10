@@ -44,8 +44,6 @@ import (
 	"github.com/jetsetilly/gopher2600/statsview"
 )
 
-const defaultInitScript = "debuggerInit"
-
 // communication between the main goroutine and the launch goroutine.
 type mainSync struct {
 	state chan stateRequest
@@ -267,145 +265,7 @@ func launch(sync *mainSync) {
 	sync.state <- stateRequest{req: reqQuit}
 }
 
-// func play(md *modalflag.Modes, sync *mainSync) error {
-// md.NewMode()
-
-// mapping := md.AddString("mapping", "AUTO", "force use of cartridge mapping")
-// spec := md.AddString("tv", "AUTO", "television specification: NTSC, PAL, PAL60")
-// fullScreen := md.AddBool("fullscreen", false, "start in fullscreen mode")
-// fpsCap := md.AddBool("fpscap", true, "cap fps to specification")
-// record := md.AddBool("record", false, "record user input to a file")
-// wav := md.AddString("wav", "", "record audio to wav file")
-// patchFile := md.AddString("patch", "", "patch file to apply (cartridge args only)")
-// hiscore := md.AddBool("hiscore", false, "contact hiscore server [EXPERIMENTAL]")
-// log := md.AddBool("log", false, "echo debugging log to stdout")
-// useSavekey := md.AddBool("savekey", false, "use savekey in player 1 port")
-// multiload := md.AddInt("multiload", -1, "force multiload byte (supercharger only; 0 to 255)")
-// profile := md.AddString("profile", "none", "run performance check with profiling: command separated CPU, MEM, TRACE or ALL")
-
-// stats := &[]bool{false}[0]
-// if statsview.Available() {
-// 	stats = md.AddBool("statsview", false, fmt.Sprintf("run stats server (%s)", statsview.Address))
-// }
-
-// p, err := md.Parse()
-// if err != nil || p != modalflag.ParseContinue {
-// 	return err
-// }
-
-// // set debugging log echo
-// if *log {
-// 	logger.SetEcho(os.Stdout)
-// } else {
-// 	logger.SetEcho(nil)
-// }
-
-// if *stats {
-// 	statsview.Launch(os.Stdout)
-// }
-
-// var cartload cartridgeloader.Loader
-
-// switch len(md.RemainingArgs()) {
-// case 0:
-// 	// allow loading from file requester
-
-// case 1:
-// 	cartload, err = cartridgeloader.NewLoader(md.GetArg(0), *mapping)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	defer cartload.Close()
-
-// default:
-// 	return fmt.Errorf("too many arguments for %s mode", md)
-// }
-
-// tv, err := television.NewTelevision(*spec)
-// if err != nil {
-// 	return err
-// }
-// defer tv.End()
-
-// // add wavwriter mixer if wav argument has been specified
-// if *wav != "" {
-// 	aw, err := wavwriter.New(*wav)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	tv.AddAudioMixer(aw)
-// }
-
-// // create gui
-// sync.state <- stateRequest{req: reqCreateGUI,
-// 	args: guiCreate(func() (guiControl, error) {
-// 		return sdlimgui.NewSdlImgui(tv)
-// 	}),
-// }
-
-// // wait for creator result
-// var scr gui.GUI
-// select {
-// case g := <-sync.gui:
-// 	scr = g.(gui.GUI)
-
-// case err := <-sync.guiError:
-// 	return err
-// }
-
-// // set fps cap
-// tv.SetFPSCap(*fpsCap)
-// scr.SetFeature(gui.ReqMonitorSync, *fpsCap)
-
-// // set full screen
-// scr.SetFeature(gui.ReqFullScreen, *fullScreen)
-
-// // turn off fallback ctrl-c handling. this so that the playmode can
-// // end playback recordings gracefully
-// sync.state <- stateRequest{req: reqNoIntSig}
-
-// // check for profiling options
-// o, err := performance.ParseProfileString(*profile)
-// if err != nil {
-// 	return err
-// }
-
-// // set up a running function
-// playLaunch := func() error {
-// 	err = playmode.Play(tv, scr, *record, cartload, *patchFile, *hiscore, *useSavekey, *multiload)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	return nil
-// }
-
-// if o == performance.ProfileNone {
-// 	err = playLaunch()
-// 	if err != nil {
-// 		return err
-// 	}
-// } else {
-// 	// if profile generation has been requested then pass the
-// 	// playLaunch() function prepared above, through the RunProfiler()
-// 	// function
-// 	err := performance.RunProfiler(o, "play", playLaunch)
-// 	if err != nil {
-// 		return err
-// 	}
-// }
-
-// if *record {
-// 	fmt.Println("! recording completed")
-// }
-
-// // set ending state
-// err = scr.SetFeature(gui.ReqEnd)
-// if err != nil {
-// 	return err
-// }
-
-// return nil
-// }
+const defaultInitScript = "debuggerInit"
 
 func emulate(emulationMode emulation.Mode, md *modalflag.Modes, sync *mainSync) error {
 	md.NewMode()
@@ -418,28 +278,47 @@ func emulate(emulationMode emulation.Mode, md *modalflag.Modes, sync *mainSync) 
 	mapping := md.AddString("mapping", "AUTO", "force use of cartridge mapping")
 	spec := md.AddString("tv", "AUTO", "television specification: NTSC, PAL, PAL60")
 	fpsCap := md.AddBool("fpscap", true, "cap fps to TV specification")
-	termType := md.AddString("term", "IMGUI", "terminal type to use in debug mode: IMGUI, COLOR, PLAIN")
-	initScript := md.AddString("initscript", defInitScript, "script to run on debugger start")
 	useSavekey := md.AddBool("savekey", false, "use savekey in player 1 port")
 	profile := md.AddString("profile", "none", "run performance check with profiling: command separated CPU, MEM, TRACE or ALL")
 	log := md.AddBool("log", false, "echo debugging log to stdout")
+	termType := md.AddString("term", "IMGUI", "terminal type to use in debug mode: IMGUI, COLOR, PLAIN")
 
-	// some arguments are mode specific
+	// wav := md.AddString("wav", "", "record audio to wav file")
+	// patchFile := md.AddString("patch", "", "patch file to apply (cartridge args only)")
+	// hiscore := md.AddBool("hiscore", false, "contact hiscore server [EXPERIMENTAL]")
+	// multiload := md.AddInt("multiload", -1, "force multiload byte (supercharger only; 0 to 255)")
+
+	// playmode specific arguments
 	var comparisonROM *string
 	var comparisonPrefs *string
+	var record *bool
 	if emulationMode == emulation.ModePlay {
 		comparisonROM = md.AddString("comparisonROM", "", "ROM to run in parallel for comparison")
 		comparisonPrefs = md.AddString("comparisonPrefs", "", "preferences for comparison emulation")
+		record = md.AddBool("record", false, "record user input to a file")
 	}
 
-	stats := &[]bool{false}[0]
+	// debugger specific arguments
+	var initScript *string
+	if emulationMode == emulation.ModeDebugger {
+		initScript = md.AddString("initscript", defInitScript, "script to run on debugger start")
+	}
+
+	// statsview if available
+	var stats *bool
 	if statsview.Available() {
 		stats = md.AddBool("statsview", false, fmt.Sprintf("run stats server (%s)", statsview.Address))
 	}
 
+	// parse arguments
 	p, err := md.Parse()
 	if err != nil || p != modalflag.ParseContinue {
 		return err
+	}
+
+	// check remaining arguments
+	if len(md.RemainingArgs()) > 1 {
+		return fmt.Errorf("too many arguments for %s mode", md)
 	}
 
 	// set debugging log echo
@@ -449,7 +328,7 @@ func emulate(emulationMode emulation.Mode, md *modalflag.Modes, sync *mainSync) 
 		logger.SetEcho(nil)
 	}
 
-	if *stats {
+	if stats != nil && *stats {
 		statsview.Launch(os.Stdout)
 	}
 
@@ -460,6 +339,7 @@ func emulate(emulationMode emulation.Mode, md *modalflag.Modes, sync *mainSync) 
 	// turning the emulation's interrupt handler off
 	sync.state <- stateRequest{req: reqNoIntSig}
 
+	// GUI create function
 	create := func(e emulation.Emulation) (gui.GUI, terminal.Terminal, error) {
 		var term terminal.Terminal
 		var scr gui.GUI
@@ -512,23 +392,6 @@ func emulate(emulationMode emulation.Mode, md *modalflag.Modes, sync *mainSync) 
 		return err
 	}
 
-	var cartload cartridgeloader.Loader
-
-	switch len(md.RemainingArgs()) {
-	case 0:
-		// allow launch with no ROM specified on command line
-
-	case 1:
-		// cartridge loader. note that there is no deferred cartload.Close(). the
-		// debugger type itself will handle this.
-		cartload, err = cartridgeloader.NewLoader(md.GetArg(0), *mapping)
-		if err != nil {
-			return err
-		}
-	default:
-		return fmt.Errorf("too many arguments for %s mode", md)
-	}
-
 	// check for profiling options
 	prf, err := performance.ParseProfileString(*profile)
 	if err != nil {
@@ -537,23 +400,21 @@ func emulate(emulationMode emulation.Mode, md *modalflag.Modes, sync *mainSync) 
 
 	// set up a launch function
 	dbgLaunch := func() error {
-		// check if comparison was defined and dereference if it was, otherwise
-		// comp is just the empty string
-		var comp string
-		if comparisonROM != nil {
-			comp = *comparisonROM
+
+		switch emulationMode {
+		case emulation.ModeDebugger:
+			err := dbg.StartInDebugMode(*initScript, md.GetArg(0), *mapping)
+			if err != nil {
+				return err
+			}
+
+		case emulation.ModePlay:
+			err := dbg.StartInPlayMode(md.GetArg(0), *mapping, *record, *comparisonROM, *comparisonPrefs)
+			if err != nil {
+				return err
+			}
 		}
 
-		// same for compPrefs
-		var compPrefs string
-		if comparisonPrefs != nil {
-			compPrefs = *comparisonPrefs
-		}
-
-		err := dbg.Start(emulationMode, *initScript, cartload, comp, compPrefs)
-		if err != nil {
-			return err
-		}
 		return nil
 	}
 

@@ -152,8 +152,8 @@ func (obs *observer) EndRendering() error {
 type videoChessBot struct {
 	obs *observer
 
-	vcs bots.VCS
-	tv  bots.TV
+	input bots.Input
+	tv    bots.TV
 
 	// quit as soon as possible when a value appears on the channel
 	quit     chan bool
@@ -364,9 +364,9 @@ func (bot *videoChessBot) moveCursorOnceStep(portid plugging.PortID, direction p
 
 	waiting := true
 	for waiting {
-		bot.vcs.QueueEvent(ports.InputEvent{Port: portid, Ev: direction, D: ports.DataStickTrue})
+		bot.input.PushEvent(ports.InputEvent{Port: portid, Ev: direction, D: ports.DataStickTrue})
 		bot.waitForFrames(downDuration)
-		bot.vcs.QueueEvent(ports.InputEvent{Port: portid, Ev: direction, D: ports.DataStickFalse})
+		bot.input.PushEvent(ports.InputEvent{Port: portid, Ev: direction, D: ports.DataStickFalse})
 		select {
 		case <-bot.obs.audioFeedback:
 			waiting = false
@@ -462,9 +462,9 @@ func (bot *videoChessBot) moveCursor(moveCol int, moveRow int, shortcut bool) {
 
 	waiting := true
 	for waiting {
-		bot.vcs.QueueEvent(ports.InputEvent{Port: plugging.PortLeftPlayer, Ev: ports.Fire, D: true})
+		bot.input.PushEvent(ports.InputEvent{Port: plugging.PortLeftPlayer, Ev: ports.Fire, D: true})
 		bot.waitForFrames(downDuration)
-		bot.vcs.QueueEvent(ports.InputEvent{Port: plugging.PortLeftPlayer, Ev: ports.Fire, D: false})
+		bot.input.PushEvent(ports.InputEvent{Port: plugging.PortLeftPlayer, Ev: ports.Fire, D: false})
 		select {
 		case <-bot.obs.audioFeedback:
 			waiting = false
@@ -489,10 +489,10 @@ func (bot *videoChessBot) waitForFrames(n int) {
 }
 
 // NewVideoChess creates a new bot able to play chess (via a UCI engine).
-func NewVideoChess(vcs bots.VCS, tv bots.TV) (bots.Bot, error) {
+func NewVideoChess(vcs bots.Input, tv bots.TV) (bots.Bot, error) {
 	bot := &videoChessBot{
 		obs:              newObserver(),
-		vcs:              vcs,
+		input:            vcs,
 		tv:               tv,
 		quit:             make(chan bool),
 		prevPosition:     image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, specification.AbsoluteMaxScanlines)),

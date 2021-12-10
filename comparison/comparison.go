@@ -98,11 +98,11 @@ func NewComparison(driverVCS *hardware.VCS) (*Comparison, error) {
 
 	// synchronise RIOT ports
 	sync := make(chan ports.TimedInputEvent, 32)
-	err = cmp.VCS.RIOT.Ports.SynchroniseWithDriver(sync, tv)
+	err = cmp.VCS.Input.AttachPassenger(sync)
 	if err != nil {
 		return nil, curated.Errorf("comparison: %v", err)
 	}
-	err = driverVCS.RIOT.Ports.SynchroniseWithPassenger(sync, driverVCS.TV)
+	err = driverVCS.Input.AttachDriver(sync)
 	if err != nil {
 		return nil, curated.Errorf("comparison: %v", err)
 	}
@@ -180,6 +180,7 @@ func (cmp *Comparison) CreateFromLoader(cartload cartridgeloader.Loader) error {
 			cmp.isEmulating.Store(false)
 		}()
 
+		// not using setup system to attach cartridge. maybe we should?
 		err := cmp.VCS.AttachCartridge(cartload)
 		if err != nil {
 			cmp.driver.quit <- err

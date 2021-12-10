@@ -30,9 +30,9 @@ type TV interface {
 	AddAudioMixer(television.AudioMixer)
 }
 
-// VCS defines the VCS functions required by a bot.
-type VCS interface {
-	QueueEvent(ports.InputEvent) error
+// Input defines the Input functions required by a bot.
+type Input interface {
+	PushEvent(ports.InputEvent) error
 }
 
 // Diagnostic instances are sent over the Feedback Diagnostic channel.

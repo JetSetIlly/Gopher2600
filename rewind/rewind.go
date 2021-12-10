@@ -378,15 +378,8 @@ func Plumb(vcs *hardware.VCS, state *State, fromDifferentEmulation bool) {
 	vcs.RIOT = state.RIOT.Snapshot()
 	vcs.TIA = state.TIA.Snapshot()
 
-	vcs.CPU.Plumb(vcs.Mem)
-	vcs.Mem.Plumb(fromDifferentEmulation)
-	vcs.RIOT.Plumb(vcs.Mem.RIOT, vcs.Mem.TIA)
-	vcs.TIA.Plumb(vcs.TV, vcs.Mem.TIA, vcs.RIOT.Ports, vcs.CPU)
-
-	// reset peripherals after new state has been plumbed. without this,
-	// controllers can feel odd if the newly plumbed state has left RIOT memory
-	// in a latched state
-	vcs.RIOT.Ports.ResetPeripherals()
+	// finish off plumbing process
+	vcs.Plumb(fromDifferentEmulation)
 }
 
 // run from the supplied state until the cooridinates are reached.

@@ -45,8 +45,10 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/television/coords"
 	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/prefs"
+	"github.com/jetsetilly/gopher2600/recorder"
 	"github.com/jetsetilly/gopher2600/reflection"
 	"github.com/jetsetilly/gopher2600/reflection/counter"
+	"github.com/jetsetilly/gopher2600/resources/unique"
 	"github.com/jetsetilly/gopher2600/rewind"
 	"github.com/jetsetilly/gopher2600/setup"
 	"github.com/jetsetilly/gopher2600/tracker"
@@ -84,6 +86,10 @@ type Debugger struct {
 	// the last loader to be used. we keep a reference to it so we can make
 	// sure Close() is called on end
 	loader *cartridgeloader.Loader
+
+	// gameplay recorder/playback
+	recorder *recorder.Recorder
+	playback *recorder.Playback
 
 	// comparison emulator
 	comparison *comparison.Comparison
@@ -304,7 +310,7 @@ func NewDebugger(create CreateUserInterface, spec string, useSavekey bool, fpsCa
 
 	// create userinput/controllers handler
 	dbg.controllers = userinput.NewControllers()
-	dbg.controllers.AddInputHandler(dbg.vcs)
+	dbg.controllers.AddInputHandler(dbg.vcs.Input)
 
 	// replace player 1 port with savekey
 	if useSavekey {
@@ -315,7 +321,7 @@ func NewDebugger(create CreateUserInterface, spec string, useSavekey bool, fpsCa
 	}
 
 	// create bot coordinator
-	dbg.bots = wrangler.NewBots(dbg.vcs, dbg.vcs.TV)
+	dbg.bots = wrangler.NewBots(dbg.vcs.Input, dbg.vcs.TV)
 
 	// set up debugging interface to memory
 	dbg.dbgmem = &dbgmem.DbgMem{
@@ -400,6 +406,12 @@ func NewDebugger(create CreateUserInterface, spec string, useSavekey bool, fpsCa
 	dbg.vcs.TV.SetFPSCap(fpsCap)
 	dbg.gui.SetFeature(gui.ReqMonitorSync, fpsCap)
 
+	// initialise terminal
+	err = dbg.term.Initialise()
+	if err != nil {
+		return nil, curated.Errorf("debugger: %v", err)
+	}
+
 	return dbg, nil
 }
 
@@ -449,10 +461,13 @@ func (dbg *Debugger) setState(state emulation.State) {
 // * see setState() comment, although debugger.SetFeature(ReqSetPause) will
 // always be "noisy"
 func (dbg *Debugger) setStateQuiet(state emulation.State, quiet bool) {
-	// do not allow comparison emulation in the rewinding state. remove it if
-	// we ever enter the rewinding state
 	if state == emulation.Rewinding {
+		dbg.endPlayback()
+		dbg.endRecording()
 		dbg.endComparison()
+
+		// it is thought that bots are okay to enter the rewinding state. this
+		// might not be true in all future cases.
 	}
 
 	dbg.vcs.TV.SetEmulationState(state)
@@ -486,6 +501,9 @@ func (dbg *Debugger) setMode(mode emulation.Mode) error {
 	if dbg.Mode() == mode {
 		return nil
 	}
+
+	// don't stop the recording, playback, comparison or bot sub-systems on
+	// change of mode
 
 	// if there is a halting condition that is not allowed in playmode (see
 	// targets type) then do not change the emulation mode
@@ -565,9 +583,14 @@ func (dbg *Debugger) setMode(mode emulation.Mode) error {
 
 // End cleans up any resources that may be dangling.
 func (dbg *Debugger) end() {
+	dbg.endPlayback()
+	dbg.endRecording()
 	dbg.endComparison()
 	dbg.bots.Quit()
+
 	dbg.vcs.End()
+
+	defer dbg.term.CleanUp()
 
 	// set ending state
 	err := dbg.gui.SetFeature(gui.ReqEnd)
@@ -582,57 +605,33 @@ func (dbg *Debugger) end() {
 	}
 }
 
-// Starts the main emulation sequence.
-func (dbg *Debugger) Start(mode emulation.Mode, initScript string, cartload cartridgeloader.Loader, comparisonROM string, comparisonPrefs string) error {
-	// do not allow comparison emulation inside the debugger. it's far too
-	// complicated running two emulations that must be synced in the debugger
-	// loop
-	if mode == emulation.ModeDebugger && comparisonROM != "" {
-		return curated.Errorf("debugger: cannot run comparison emulation inside the debugger")
-	}
+// StartInDebugMode starts the emulation with the debugger activated.
+func (dbg *Debugger) StartInDebugMode(initScript string, filename string, mapping string) error {
+	// set running flag as early as possible
+	dbg.running = true
 
 	var err error
+	var cartload cartridgeloader.Loader
 
-	defer dbg.end()
-	err = dbg.start(mode, initScript, cartload, comparisonROM, comparisonPrefs)
-	if err != nil {
-		if curated.Has(err, terminal.UserQuit) {
-			return nil
+	if filename == "" {
+		cartload = cartridgeloader.Loader{}
+	} else {
+		cartload, err = cartridgeloader.NewLoader(filename, mapping)
+		if err != nil {
+			return curated.Errorf("debugger: %v", err)
 		}
-		return curated.Errorf("debugger: %v", err)
 	}
-
-	return nil
-}
-
-func (dbg *Debugger) start(mode emulation.Mode, initScript string, cartload cartridgeloader.Loader, comparisonROM string, comparisonPrefs string) error {
-	// prepare user interface
-	err := dbg.term.Initialise()
-	if err != nil {
-		return curated.Errorf("debugger: %v", err)
-	}
-	defer dbg.term.CleanUp()
 
 	err = dbg.attachCartridge(cartload)
 	if err != nil {
 		return curated.Errorf("debugger: %v", err)
 	}
 
-	err = dbg.startComparison(comparisonROM, comparisonPrefs)
+	err = dbg.setMode(emulation.ModeDebugger)
 	if err != nil {
 		return curated.Errorf("debugger: %v", err)
 	}
 
-	// set mode to the value requested in the function paramenters
-	err = dbg.setMode(mode)
-	if err != nil {
-		return curated.Errorf("debugger: %v", err)
-	}
-
-	// debugger is running
-	dbg.running = true
-
-	// run initialisation script
 	if initScript != "" {
 		scr, err := script.RescribeScript(initScript)
 		if err == nil {
@@ -647,6 +646,80 @@ func (dbg *Debugger) start(mode emulation.Mode, initScript string, cartload cart
 		}
 	}
 
+	defer dbg.end()
+	err = dbg.run()
+	if err != nil {
+		if curated.Has(err, terminal.UserQuit) {
+			return nil
+		}
+		return curated.Errorf("debugger: %v", err)
+	}
+
+	return nil
+}
+
+// StartInPlaymode starts the emulation ready for game-play.
+func (dbg *Debugger) StartInPlayMode(filename string, mapping string, record bool, comparisonROM string, comparisonPrefs string) error {
+	// set running flag as early as possible
+	dbg.running = true
+
+	var err error
+	var cartload cartridgeloader.Loader
+
+	if filename == "" {
+		cartload = cartridgeloader.Loader{}
+	} else {
+		cartload, err = cartridgeloader.NewLoader(filename, mapping)
+		if err != nil {
+			return curated.Errorf("debugger: %v", err)
+		}
+	}
+
+	err = recorder.IsPlaybackFile(filename)
+	if err != nil {
+		if !curated.Is(err, recorder.NotAPlaybackFile) {
+			return curated.Errorf("debugger: %v", err)
+		}
+
+		err = dbg.attachCartridge(cartload)
+		if err != nil {
+			return curated.Errorf("debugger: %v", err)
+		}
+
+		if record {
+			dbg.startRecording(cartload.ShortName())
+		}
+	} else {
+		if record {
+			return curated.Errorf("debugger: cannot make a new recording using a playback file")
+		}
+
+		dbg.startPlayback(filename)
+	}
+
+	err = dbg.startComparison(comparisonROM, comparisonPrefs)
+	if err != nil {
+		return curated.Errorf("debugger: %v", err)
+	}
+
+	err = dbg.setMode(emulation.ModePlay)
+	if err != nil {
+		return curated.Errorf("debugger: %v", err)
+	}
+
+	defer dbg.end()
+	err = dbg.run()
+	if err != nil {
+		if curated.Has(err, terminal.UserQuit) {
+			return nil
+		}
+		return curated.Errorf("debugger: %v", err)
+	}
+
+	return nil
+}
+
+func (dbg *Debugger) run() error {
 	// end script recording gracefully. this way we don't have to worry too
 	// hard about script scribes
 	defer func() {
@@ -660,7 +733,7 @@ func (dbg *Debugger) start(mode emulation.Mode, initScript string, cartload cart
 	for dbg.running {
 		switch dbg.Mode() {
 		case emulation.ModePlay:
-			err = dbg.playLoop()
+			err := dbg.playLoop()
 			if err != nil {
 				// if we ever encounter a cartridge ejected error in playmode
 				// then simply open up the ROM selector
@@ -685,7 +758,7 @@ func (dbg *Debugger) start(mode emulation.Mode, initScript string, cartload cart
 				return curated.Errorf("emulation state not supported on *start* of debugging loop: %s", dbg.State())
 			}
 
-			err = dbg.inputLoop(dbg.term, false)
+			err := dbg.inputLoop(dbg.term, false)
 			if err != nil {
 				return curated.Errorf("debugger: %v", err)
 			}
@@ -707,7 +780,7 @@ func (dbg *Debugger) start(mode emulation.Mode, initScript string, cartload cart
 
 	// make sure any cartridge loader has been finished with
 	if dbg.loader != nil {
-		err = dbg.loader.Close()
+		err := dbg.loader.Close()
 		if err != nil {
 			return curated.Errorf("debugger: %v", err)
 		}
@@ -752,7 +825,9 @@ func (dbg *Debugger) reset(newCartridge bool) error {
 // this is the glue that hold the cartridge and disassembly packages together.
 // especially important is the repointing of the symbols table in the instance of dbgmem.
 func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) {
-	// stop any existing comparison emulation and any existing bots
+	// stop optional sub-systems that shouldn't survive a new cartridge insertion
+	dbg.endPlayback()
+	dbg.endRecording()
 	dbg.endComparison()
 	dbg.bots.Quit()
 
@@ -911,6 +986,63 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) 
 	}
 
 	return nil
+}
+
+func (dbg *Debugger) startRecording(cartShortName string) error {
+	recording := unique.Filename("recording", cartShortName)
+
+	var err error
+
+	dbg.recorder, err = recorder.NewRecorder(recording, dbg.vcs)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (dbg *Debugger) endRecording() {
+	if dbg.recorder == nil {
+		return
+	}
+	defer func() {
+		dbg.recorder = nil
+	}()
+
+	err := dbg.recorder.End()
+	if err != nil {
+		logger.Logf("debugger", err.Error())
+	}
+}
+
+func (dbg *Debugger) startPlayback(filename string) error {
+	plb, err := recorder.NewPlayback(filename)
+	if err != nil {
+		return err
+	}
+
+	err = dbg.attachCartridge(plb.CartLoad)
+	if err != nil {
+		return err
+	}
+
+	err = plb.AttachToVCSInput(dbg.vcs)
+	if err != nil {
+		return err
+	}
+
+	dbg.playback = plb
+
+	return nil
+}
+
+func (dbg *Debugger) endPlayback() {
+	if dbg.playback == nil {
+		return
+	}
+
+	dbg.playback = nil
+	dbg.vcs.Input.AttachPlayback(nil)
 }
 
 func (dbg *Debugger) startComparison(comparisonROM string, comparisonPrefs string) error {

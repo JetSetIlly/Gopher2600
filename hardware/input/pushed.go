@@ -13,21 +13,36 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-package userinput
+package input
 
 import (
+	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
-	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
 )
 
-// HandleInput conceptualises data being sent to the console ports.
-type HandleInput interface {
-	// PeripheralID identifies the device currently attached to the port.
-	PeripheralID(id plugging.PortID) plugging.PeripheralID
+// PushEvent pushes an InputEvent onto the queue. Will drop the event and
+// return an error if queue is full.
+func (inp *Input) PushEvent(ev ports.InputEvent) error {
+	select {
+	case inp.pushed <- ev:
+	default:
+		return curated.Errorf("ports: pushed event queue is full: input dropped")
+	}
+	return nil
+}
 
-	// HandleInputEvent forwards the Event and EventData to the device connected to the
-	// specified PortID.
-	//
-	// Returns true if the port understood and handled the event.
-	HandleInputEvent(ports.InputEvent) (bool, error)
+func (inp *Input) handlePushedEvents() error {
+	done := false
+	for !done {
+		select {
+		case ev := <-inp.pushed:
+			_, err := inp.ports.HandleInputEvent(ev)
+			if err != nil {
+				return err
+			}
+		default:
+			done = true
+		}
+	}
+	return nil
 }

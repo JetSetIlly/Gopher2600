@@ -19,12 +19,12 @@ import (
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/cpu"
+	"github.com/jetsetilly/gopher2600/hardware/input"
 	"github.com/jetsetilly/gopher2600/hardware/instance"
 	"github.com/jetsetilly/gopher2600/hardware/memory"
 	"github.com/jetsetilly/gopher2600/hardware/memory/addresses"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge"
 	"github.com/jetsetilly/gopher2600/hardware/riot"
-	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/controllers"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/panel"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
@@ -49,6 +49,8 @@ type VCS struct {
 	Mem  *memory.Memory
 	RIOT *riot.RIOT
 	TIA  *tia.TIA
+
+	Input *input.Input
 
 	// The Clock defines the basic speed at which the the machine is runningt. This governs
 	// the speed of the CPU, the RIOT and attached peripherals. The TIA runs at
@@ -90,6 +92,8 @@ func NewVCS(tv *television.Television) (*VCS, error) {
 	vcs.CPU = cpu.NewCPU(vcs.Instance, vcs.Mem)
 	vcs.RIOT = riot.NewRIOT(vcs.Instance, vcs.Mem.RIOT, vcs.Mem.TIA)
 
+	vcs.Input = input.NewInput(vcs.TV, vcs.RIOT.Ports)
+
 	vcs.TIA, err = tia.NewTIA(vcs.Instance, vcs.TV, vcs.Mem.TIA, vcs.RIOT.Ports, vcs.CPU)
 	if err != nil {
 		return nil, err
@@ -118,6 +122,21 @@ func NewVCS(tv *television.Television) (*VCS, error) {
 // End cleans up any resources that may be dangling.
 func (vcs *VCS) End() {
 	vcs.TV.End()
+}
+
+// Plumb the various VCS sub-systems together after a rewind.
+func (vcs *VCS) Plumb(fromDifferentEmulation bool) {
+	vcs.CPU.Plumb(vcs.Mem)
+	vcs.Mem.Plumb(fromDifferentEmulation)
+	vcs.RIOT.Plumb(vcs.Mem.RIOT, vcs.Mem.TIA)
+	vcs.TIA.Plumb(vcs.TV, vcs.Mem.TIA, vcs.RIOT.Ports, vcs.CPU)
+
+	// reset peripherals after new state has been plumbed. without this,
+	// controllers can feel odd if the newly plumbed state has left RIOT memory
+	// in a latched state
+	vcs.RIOT.Ports.ResetPeripherals()
+
+	vcs.Input.Plumb(vcs.RIOT.Ports)
 }
 
 // AttachCartridge to this VCS. While this function can be called directly it
@@ -226,29 +245,7 @@ func (vcs *VCS) SetClockSpeed(tvSpec string) error {
 // recorders and playback, and RIOT plug monitor.
 func (vcs *VCS) DetatchEmulationExtras() {
 	vcs.TIA.Audio.SetTracker(nil)
-	vcs.RIOT.Ports.AttachEventRecorder(nil)
-	vcs.RIOT.Ports.AttachPlayback(nil)
+	vcs.Input.AttachRecorder(nil)
+	vcs.Input.AttachPlayback(nil)
 	vcs.RIOT.Ports.AttachPlugMonitor(nil)
-}
-
-// HandleInputEvent forwards an input event to VCS Ports.
-//
-// It's important that this function be used in preference to calling the
-// HandleInputEvent() function in the RIOT.Ports directly. For rewind reasons
-// it is likely that any direct reference to RIOT.Ports will grow stale.
-func (vcs *VCS) HandleInputEvent(inp ports.InputEvent) (bool, error) {
-	return vcs.RIOT.Ports.HandleInputEvent(inp)
-}
-
-// PeripheralID forwards a request of the PeripheralID of the PortID to VCS
-// Ports.
-//
-// See important comment in HandleInputEvent() above.
-func (vcs *VCS) PeripheralID(id plugging.PortID) plugging.PeripheralID {
-	return vcs.RIOT.Ports.PeripheralID(id)
-}
-
-// QueueEvent forwards an input event to VCS Ports.
-func (vcs *VCS) QueueEvent(inp ports.InputEvent) error {
-	return vcs.RIOT.Ports.QueueEvent(inp)
 }

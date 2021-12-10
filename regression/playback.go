@@ -132,7 +132,7 @@ func (reg *PlaybackRegression) regress(newRegression bool, output io.Writer, msg
 	// function according to the current features of the recorder package and
 	// the saved script
 
-	err = plb.AttachToVCS(vcs)
+	err = plb.AttachToVCSInput(vcs)
 	if err != nil {
 		return false, "", curated.Errorf("playback: %v", err)
 	}

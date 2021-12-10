@@ -117,23 +117,3 @@ type TimedInputEvent struct {
 	Time coords.TelevisionCoords
 	InputEvent
 }
-
-// Playback implementations feed controller Events to the device on request
-// with the CheckInput() function.
-//
-// Intended for playback of controller events previously recorded to a file on
-// disk but usable for many purposes I suspect. For example, AI control.
-type EventPlayback interface {
-	// note the type restrictions on EventData in the type definition's
-	// commentary
-	GetPlayback() (TimedInputEvent, error)
-}
-
-// EventRecorder implementations mirror an incoming event.
-//
-// Implementations should be able to handle being attached to more than one
-// peripheral at once. The ID parameter of the EventRecord() function will help
-// to differentiate between multiple devices.
-type EventRecorder interface {
-	RecordEvent(TimedInputEvent) error
-}

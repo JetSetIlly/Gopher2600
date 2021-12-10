@@ -1352,55 +1352,55 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 			switch strings.ToUpper(arg) {
 			case "P0":
 				inp := ports.InputEvent{Port: plugging.PortPanel, Ev: ports.PanelTogglePlayer0Pro, D: nil}
-				_, err = dbg.vcs.HandleInputEvent(inp)
+				_, err = dbg.vcs.Input.HandleInputEvent(inp)
 			case "P1":
 				inp := ports.InputEvent{Port: plugging.PortPanel, Ev: ports.PanelTogglePlayer1Pro, D: nil}
-				_, err = dbg.vcs.HandleInputEvent(inp)
+				_, err = dbg.vcs.Input.HandleInputEvent(inp)
 			case "COL":
 				inp := ports.InputEvent{Port: plugging.PortPanel, Ev: ports.PanelToggleColor, D: nil}
-				_, err = dbg.vcs.HandleInputEvent(inp)
+				_, err = dbg.vcs.Input.HandleInputEvent(inp)
 			}
 		case "SET":
 			arg, _ := tokens.Get()
 			switch strings.ToUpper(arg) {
 			case "P0PRO":
 				inp := ports.InputEvent{Port: plugging.PortPanel, Ev: ports.PanelSetPlayer0Pro, D: true}
-				_, err = dbg.vcs.HandleInputEvent(inp)
+				_, err = dbg.vcs.Input.HandleInputEvent(inp)
 			case "P1PRO":
 				inp := ports.InputEvent{Port: plugging.PortPanel, Ev: ports.PanelSetPlayer1Pro, D: true}
-				_, err = dbg.vcs.HandleInputEvent(inp)
+				_, err = dbg.vcs.Input.HandleInputEvent(inp)
 			case "P0AM":
 				inp := ports.InputEvent{Port: plugging.PortPanel, Ev: ports.PanelSetPlayer0Pro, D: false}
-				_, err = dbg.vcs.HandleInputEvent(inp)
+				_, err = dbg.vcs.Input.HandleInputEvent(inp)
 			case "P1AM":
 				inp := ports.InputEvent{Port: plugging.PortPanel, Ev: ports.PanelSetPlayer1Pro, D: false}
-				_, err = dbg.vcs.HandleInputEvent(inp)
+				_, err = dbg.vcs.Input.HandleInputEvent(inp)
 			case "COL":
 				inp := ports.InputEvent{Port: plugging.PortPanel, Ev: ports.PanelSetColor, D: true}
-				_, err = dbg.vcs.HandleInputEvent(inp)
+				_, err = dbg.vcs.Input.HandleInputEvent(inp)
 			case "BW":
 				inp := ports.InputEvent{Port: plugging.PortPanel, Ev: ports.PanelSetColor, D: false}
-				_, err = dbg.vcs.HandleInputEvent(inp)
+				_, err = dbg.vcs.Input.HandleInputEvent(inp)
 			}
 		case "HOLD":
 			arg, _ := tokens.Get()
 			switch strings.ToUpper(arg) {
 			case "SELECT":
 				inp := ports.InputEvent{Port: plugging.PortPanel, Ev: ports.PanelSelect, D: true}
-				_, err = dbg.vcs.HandleInputEvent(inp)
+				_, err = dbg.vcs.Input.HandleInputEvent(inp)
 			case "RESET":
 				inp := ports.InputEvent{Port: plugging.PortPanel, Ev: ports.PanelReset, D: true}
-				_, err = dbg.vcs.HandleInputEvent(inp)
+				_, err = dbg.vcs.Input.HandleInputEvent(inp)
 			}
 		case "RELEASE":
 			arg, _ := tokens.Get()
 			switch strings.ToUpper(arg) {
 			case "SELECT":
 				inp := ports.InputEvent{Port: plugging.PortPanel, Ev: ports.PanelSelect, D: false}
-				_, err = dbg.vcs.HandleInputEvent(inp)
+				_, err = dbg.vcs.Input.HandleInputEvent(inp)
 			case "RESET":
 				inp := ports.InputEvent{Port: plugging.PortPanel, Ev: ports.PanelReset, D: false}
-				_, err = dbg.vcs.HandleInputEvent(inp)
+				_, err = dbg.vcs.Input.HandleInputEvent(inp)
 			}
 		}
 
@@ -1457,10 +1457,10 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		switch n {
 		case 0:
 			inp := ports.InputEvent{Port: plugging.PortLeftPlayer, Ev: event, D: value}
-			_, err = dbg.vcs.HandleInputEvent(inp)
+			_, err = dbg.vcs.Input.HandleInputEvent(inp)
 		case 1:
 			inp := ports.InputEvent{Port: plugging.PortRightPlayer, Ev: event, D: value}
-			_, err = dbg.vcs.HandleInputEvent(inp)
+			_, err = dbg.vcs.Input.HandleInputEvent(inp)
 		}
 
 		if err != nil {
@@ -1478,18 +1478,18 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		case 0:
 			if strings.ToUpper(key) == "NONE" {
 				inp := ports.InputEvent{Port: plugging.PortLeftPlayer, Ev: ports.KeypadUp, D: nil}
-				_, err = dbg.vcs.HandleInputEvent(inp)
+				_, err = dbg.vcs.Input.HandleInputEvent(inp)
 			} else {
 				inp := ports.InputEvent{Port: plugging.PortLeftPlayer, Ev: ports.KeypadDown, D: rune(key[0])}
-				_, err = dbg.vcs.HandleInputEvent(inp)
+				_, err = dbg.vcs.Input.HandleInputEvent(inp)
 			}
 		case 1:
 			if strings.ToUpper(key) == "NONE" {
 				inp := ports.InputEvent{Port: plugging.PortRightPlayer, Ev: ports.KeypadUp, D: nil}
-				_, err = dbg.vcs.HandleInputEvent(inp)
+				_, err = dbg.vcs.Input.HandleInputEvent(inp)
 			} else {
 				inp := ports.InputEvent{Port: plugging.PortLeftPlayer, Ev: ports.KeypadDown, D: rune(key[0])}
-				_, err = dbg.vcs.HandleInputEvent(inp)
+				_, err = dbg.vcs.Input.HandleInputEvent(inp)
 			}
 		}
 

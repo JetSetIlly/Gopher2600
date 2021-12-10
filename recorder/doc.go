@@ -13,12 +13,10 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-// Package recorder handles recording and playback of user input. The Recorder
-// type implements the riot.input.EventRecorder() interface. Once added as a
-// transcriber to the VCS port, it will record all user input to the specified
-// file.
+// Package recorder handles recording and playback of input through the VCS
+// input system. See input package.
 //
-// To keep things simple, recording gameplay will use the VCS in it's default
-// state. Future versions of the recorder fileformat will support localised
-// preferences.
+// To keep things simple, recording gameplay will use the VCS in it's
+// normalised state. Future versions of the recorder fileformat will support
+// localised preferences.
 package recorder

@@ -20,7 +20,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/debugger"
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
 	"github.com/jetsetilly/gopher2600/emulation"
@@ -156,7 +155,7 @@ func TestDebugger_withNonExistantInitScript(t *testing.T) {
 
 	go trm.testSequence()
 
-	err = dbg.Start(emulation.ModeDebugger, "non_existent_script", cartridgeloader.Loader{}, "", "")
+	err = dbg.StartInDebugMode("", "", "")
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
@@ -179,7 +178,7 @@ func TestDebugger(t *testing.T) {
 
 	go trm.testSequence()
 
-	err = dbg.Start(emulation.ModeDebugger, "", cartridgeloader.Loader{}, "", "")
+	err = dbg.StartInDebugMode("", "", "")
 	if err != nil {
 		t.Fatalf(err.Error())
 	}

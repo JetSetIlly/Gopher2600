@@ -16,17 +16,12 @@
 // Package ports represents the input/output parts of the VCS (the IO in
 // RIOT).
 //
-// Emulated peripherals are plugged into the VCS with the Plug() function.
 // Input from "real" devices is handled by HandleEvent() which passes the event
 // to peripherals in the specified PortID.
 //
-// Emulations can share user input through the DrivenEvent mechanism. The driver
-// emulation should call SynchroniseWithPassenger() and the passenger emulation
-// should call SynchroniseWithDriver().
+// HandleEvent() should probably no be called directly but instead only through
+// the input package
 //
-// With the DrivenEvent mechanism, the driver sends events to the passenger.
-// Both emulations will receive the same user input at the same time, relative
-// to television coordinates, so it is important that the driver is running
-// ahead of the passenger at all time. See comparison package for model
-// implementation.
+// Emulated peripherals are plugged into the VCS with the Plug() function.
+// Plugging events can be monitored with the plugging.PlugMonitor interface.
 package ports

@@ -26,17 +26,17 @@ import (
 
 // Bots keeps track of the running bot and handles loading and termination.
 type Bots struct {
-	vcs bots.VCS
-	tv  bots.TV
+	input bots.Input
+	tv    bots.TV
 
 	running bots.Bot
 }
 
 // NewBots is the preferred method of initialisation for the Bots type.
-func NewBots(vcs bots.VCS, tv bots.TV) *Bots {
+func NewBots(input bots.Input, tv bots.TV) *Bots {
 	return &Bots{
-		vcs: vcs,
-		tv:  tv,
+		input: input,
+		tv:    tv,
 	}
 }
 
@@ -48,7 +48,7 @@ func (b *Bots) ActivateBot(cartHash string) (*bots.Feedback, error) {
 
 	switch cartHash {
 	case "043ef523e4fcb9fc2fc2fda21f15671bf8620fc3":
-		b.running, err = chess.NewVideoChess(b.vcs, b.tv)
+		b.running, err = chess.NewVideoChess(b.input, b.tv)
 		if err != nil {
 			return nil, curated.Errorf("bots: %v", err)
 		}
