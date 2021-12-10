@@ -452,7 +452,7 @@ func (dbg *Debugger) setStateQuiet(state emulation.State, quiet bool) {
 	// do not allow comparison emulation in the rewinding state. remove it if
 	// we ever enter the rewinding state
 	if state == emulation.Rewinding {
-		dbg.removeComparisonEmulation()
+		dbg.endComparison()
 	}
 
 	dbg.vcs.TV.SetEmulationState(state)
@@ -565,7 +565,7 @@ func (dbg *Debugger) setMode(mode emulation.Mode) error {
 
 // End cleans up any resources that may be dangling.
 func (dbg *Debugger) end() {
-	dbg.removeComparisonEmulation()
+	dbg.endComparison()
 	dbg.bots.Quit()
 	dbg.vcs.End()
 
@@ -591,32 +591,21 @@ func (dbg *Debugger) Start(mode emulation.Mode, initScript string, cartload cart
 		return curated.Errorf("debugger: cannot run comparison emulation inside the debugger")
 	}
 
-	// add any bespoke comparision prefs
-	prefs.PushCommandLineStack(comparisonPrefs)
-
-	err := dbg.addComparisonEmulation(comparisonROM)
-	if err != nil {
-		return curated.Errorf("debugger: %v", err)
-	}
-
-	// check use of comparison prefs
-	comparisonPrefs = prefs.PopCommandLineStack()
-	if comparisonPrefs != "" {
-		logger.Logf("debugger", "%s unused for comparison emulation", comparisonPrefs)
-	}
+	var err error
 
 	defer dbg.end()
-	err = dbg.start(mode, initScript, cartload)
+	err = dbg.start(mode, initScript, cartload, comparisonROM, comparisonPrefs)
 	if err != nil {
 		if curated.Has(err, terminal.UserQuit) {
 			return nil
 		}
 		return curated.Errorf("debugger: %v", err)
 	}
+
 	return nil
 }
 
-func (dbg *Debugger) start(mode emulation.Mode, initScript string, cartload cartridgeloader.Loader) error {
+func (dbg *Debugger) start(mode emulation.Mode, initScript string, cartload cartridgeloader.Loader, comparisonROM string, comparisonPrefs string) error {
 	// prepare user interface
 	err := dbg.term.Initialise()
 	if err != nil {
@@ -625,6 +614,11 @@ func (dbg *Debugger) start(mode emulation.Mode, initScript string, cartload cart
 	defer dbg.term.CleanUp()
 
 	err = dbg.attachCartridge(cartload)
+	if err != nil {
+		return curated.Errorf("debugger: %v", err)
+	}
+
+	err = dbg.startComparison(comparisonROM, comparisonPrefs)
 	if err != nil {
 		return curated.Errorf("debugger: %v", err)
 	}
@@ -758,9 +752,11 @@ func (dbg *Debugger) reset(newCartridge bool) error {
 // this is the glue that hold the cartridge and disassembly packages together.
 // especially important is the repointing of the symbols table in the instance of dbgmem.
 func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) {
-	// stop any existing bots
+	// stop any existing comparison emulation and any existing bots
+	dbg.endComparison()
 	dbg.bots.Quit()
 
+	// attching a cartridge implies the initialise state
 	dbg.setState(emulation.Initialising)
 
 	// set state after initialisation according to the emulation mode
@@ -917,30 +913,39 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) 
 	return nil
 }
 
-func (dbg *Debugger) addComparisonEmulation(comparisonROM string) error {
+func (dbg *Debugger) startComparison(comparisonROM string, comparisonPrefs string) error {
 	if comparisonROM == "" {
 		return nil
 	}
+
+	// add any bespoke comparision prefs
+	prefs.PushCommandLineStack(comparisonPrefs)
 
 	var err error
 
 	dbg.comparison, err = comparison.NewComparison(dbg.vcs)
 	if err != nil {
-		return curated.Errorf("debugger: %v", err)
+		return err
 	}
 	dbg.gui.SetFeature(gui.ReqComparison, dbg.comparison.Render, dbg.comparison.DiffRender)
 
 	cartload, err := cartridgeloader.NewLoader(comparisonROM, "AUTO")
 	if err != nil {
-		return curated.Errorf("debugger: %v", err)
+		return err
 	}
 
 	dbg.comparison.CreateFromLoader(cartload)
 
+	// check use of comparison prefs
+	comparisonPrefs = prefs.PopCommandLineStack()
+	if comparisonPrefs != "" {
+		logger.Logf("debugger", "%s unused for comparison emulation", comparisonPrefs)
+	}
+
 	return nil
 }
 
-func (dbg *Debugger) removeComparisonEmulation() {
+func (dbg *Debugger) endComparison() {
 	if dbg.comparison == nil {
 		return
 	}
