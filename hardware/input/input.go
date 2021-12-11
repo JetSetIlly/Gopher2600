@@ -70,7 +70,14 @@ func (inp *Input) PeripheralID(id plugging.PortID) plugging.PeripheralID {
 }
 
 // HandleInputEvent forwards an input event to VCS Ports.
+//
+// If a playback is currently active the input will not be handled and false
+// will be returned.
 func (inp *Input) HandleInputEvent(ev ports.InputEvent) (bool, error) {
+	if inp.playback != nil {
+		return false, nil
+	}
+
 	if inp.recorder != nil {
 		err := inp.recorder.RecordEvent(ports.TimedInputEvent{Time: inp.tv.GetCoords(), InputEvent: ev})
 		if err != nil {

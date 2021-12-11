@@ -34,6 +34,7 @@ import (
 	"github.com/jetsetilly/gopher2600/emulation"
 	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/gui/sdlimgui"
+	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
 	"github.com/jetsetilly/gopher2600/hiscore"
 	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/modalflag"
@@ -257,9 +258,12 @@ func launch(sync *mainSync) {
 	}
 
 	if err != nil {
-		fmt.Printf("* error in %s mode: %s\n", md.String(), err)
-		sync.state <- stateRequest{req: reqQuit, args: 20}
-		return
+		// swallow power off error messages
+		if !curated.Has(err, ports.PowerOff) {
+			fmt.Printf("* error in %s mode: %s\n", md.String(), err)
+			sync.state <- stateRequest{req: reqQuit, args: 20}
+			return
+		}
 	}
 
 	sync.state <- stateRequest{req: reqQuit}
