@@ -323,7 +323,7 @@ func emulate(emulationMode emulation.Mode, md *modalflag.Modes, sync *mainSync) 
 
 	// set debugging log echo
 	if *log {
-		logger.SetEcho(os.Stdout)
+		logger.SetEcho(logger.NewColorizer(os.Stdout))
 	} else {
 		logger.SetEcho(nil)
 	}
@@ -517,7 +517,7 @@ func perform(md *modalflag.Modes, sync *mainSync) error {
 
 	// set debugging log echo
 	if *log {
-		logger.SetEcho(os.Stdout)
+		logger.SetEcho(logger.NewColorizer(os.Stdout))
 	} else {
 		logger.SetEcho(nil)
 	}
@@ -708,7 +708,7 @@ with the LOG mode. Note that asking for log output will suppress regression prog
 
 	// set debugging log echo
 	if *log {
-		logger.SetEcho(os.Stdout)
+		logger.SetEcho(logger.NewColorizer(os.Stdout))
 		md.Output = &nopWriter{}
 	} else {
 		logger.SetEcho(nil)

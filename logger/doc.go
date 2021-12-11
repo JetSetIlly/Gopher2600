@@ -20,5 +20,8 @@
 // Log entries can be grouped together with the tag argument in the Log()
 // command.
 //
+// The Colorizer type can be used with SetEcho() to output a simply coloured
+// log entries (using ANSI control codes).
+//
 // The logger package should not be used inside any init() function.
 package logger
