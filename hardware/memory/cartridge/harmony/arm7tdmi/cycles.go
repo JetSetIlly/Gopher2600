@@ -157,7 +157,7 @@ func (arm *ARM) sCycle(bus busAccess, addr uint32) {
 	}
 	arm.lastCycle = S
 
-	if !arm.mmap.isFlash(addr) {
+	if !arm.mmap.IsFlash(addr) {
 		arm.stretchedCycles++
 		return
 	}
@@ -227,7 +227,7 @@ func (arm *ARM) nCycle(bus busAccess, addr uint32) {
 	}
 	arm.lastCycle = N
 
-	if !arm.mmap.isFlash(addr) {
+	if !arm.mmap.IsFlash(addr) {
 		arm.stretchedCycles += float32(mclkNonFlash)
 		return
 	}

@@ -13,13 +13,15 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-package arm7tdmi
+// Package memorymodel handles differences in memory addressing For example,
+// the Harmony family is different to the PlusCart family.
+package memorymodel
 
 import (
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
-type MemoryMap struct {
+type Map struct {
 	Model string
 
 	FlashOrigin       uint32
@@ -39,19 +41,23 @@ type MemoryMap struct {
 	MAMTIM           uint32
 }
 
-// NewMemoryMap is the preferred method of initialisation for the MemoryMap type.
-func NewMemoryMap(model string) MemoryMap {
-	mmap := MemoryMap{
+const (
+	Harmony  = "LPC2000"
+	PlusCart = "STM32F407VGT6"
+)
+
+// NewMap is the preferred method of initialisation for the Map type.
+func NewMap(model string) Map {
+	mmap := Map{
 		Model: model,
 	}
 
 	switch mmap.Model {
 	default:
-		logger.Logf("ARM7", "unknown ARM7 model (%s). defaulting to LPC2000", mmap.Model)
+		logger.Logf("ARM Mem Model", "unknown ARM memory model (%s) defaulting to Harmony", mmap.Model)
 		fallthrough
 
-	case "LPC2000":
-		// Harmony
+	case Harmony:
 		mmap.FlashOrigin = uint32(0x00000000)
 		mmap.Flash32kMemtop = uint32(0x00007fff)
 		mmap.Flash64kMemtop = uint32(0x000fffff)
@@ -62,12 +68,11 @@ func NewMemoryMap(model string) MemoryMap {
 		mmap.TIMERvalue = mmap.PeripheralsOrigin | 0x00008008
 		mmap.TIMERprescale = mmap.PeripheralsOrigin | 0x00008010
 		mmap.TIMERprescaleMax = mmap.PeripheralsOrigin | 0x0000800C
-		mmap.APBDIV = mmap.PeripheralsOrigin | 0x001FC100
+		mmap.APBDIV = mmap.PeripheralsOrigin | 0x001fc100
 		mmap.MAMCR = mmap.PeripheralsOrigin | 0x001fc000
 		mmap.MAMTIM = mmap.PeripheralsOrigin | 0x001fc004
 
-	case "STM32F407VGT6":
-		// PlusCart/UnoCart
+	case PlusCart:
 		mmap.FlashOrigin = uint32(0x20000000)
 		mmap.Flash32kMemtop = uint32(0x20007fff)
 		mmap.Flash64kMemtop = uint32(0x200fffff)
@@ -76,13 +81,14 @@ func NewMemoryMap(model string) MemoryMap {
 		mmap.PeripheralsMemtop = uint32(0xffffffff)
 	}
 
-	logger.Logf("ARM7", "using %s", mmap.Model)
-	logger.Logf("ARM7", "flash origin: %#08x", mmap.FlashOrigin)
-	logger.Logf("ARM7", "sram origin: %#08x", mmap.SRAMOrigin)
+	logger.Logf("ARM Mem Model", "using %s", mmap.Model)
+	logger.Logf("ARM Mem Model", "flash origin: %#08x", mmap.FlashOrigin)
+	logger.Logf("ARM Mem Model", "sram origin: %#08x", mmap.SRAMOrigin)
 
 	return mmap
 }
 
-func (mmap MemoryMap) isFlash(addr uint32) bool {
+// IsFlash returns true if address is in flash memory range.
+func (mmap Map) IsFlash(addr uint32) bool {
 	return addr >= mmap.FlashOrigin && addr <= mmap.Flash64kMemtop
 }

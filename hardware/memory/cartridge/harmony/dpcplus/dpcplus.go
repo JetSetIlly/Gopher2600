@@ -36,8 +36,8 @@ import (
 type dpcPlus struct {
 	instance *instance.Instance
 
-	mappingID   string
-	description string
+	pathToROM string
+	mappingID string
 
 	// additional CPU - used by some ROMs
 	arm *arm7tdmi.ARM
@@ -63,17 +63,17 @@ const (
 )
 
 // NewDPCplus is the preferred method of initialisation for the harmony type.
-func NewDPCplus(instance *instance.Instance, data []byte) (mapper.CartMapper, error) {
+func NewDPCplus(instance *instance.Instance, pathToROM string, data []byte) (mapper.CartMapper, error) {
 	cart := &dpcPlus{
-		instance:    instance,
-		mappingID:   "DPC+",
-		description: "Harmony (DPC+)",
-		bankSize:    4096,
-		state:       newDPCPlusState(),
+		instance:  instance,
+		pathToROM: pathToROM,
+		mappingID: "DPC+",
+		bankSize:  4096,
+		state:     newDPCPlusState(),
 	}
 
 	// create addresses
-	cart.version = newVersion(arm7tdmi.NewMemoryMap(instance.Prefs.ARM.Model.Get().(string)))
+	cart.version = newVersion(instance.Prefs.ARM.Model.Get().(string))
 
 	// amount of data used for cartridges
 	bankLen := len(data) - dataSize - driverSize - freqSize
@@ -101,7 +101,7 @@ func NewDPCplus(instance *instance.Instance, data []byte) (mapper.CartMapper, er
 	//
 	// if bank0 has any ARM code then it will start at offset 0x08. first eight
 	// bytes are the ARM header
-	cart.arm = arm7tdmi.NewARM(cart.version.mmap, instance.Prefs.ARM, cart.state.static, cart)
+	cart.arm = arm7tdmi.NewARM(cart.version.mmap, instance.Prefs.ARM, cart.state.static, cart, pathToROM)
 
 	return cart, nil
 }
@@ -140,7 +140,7 @@ func (cart *dpcPlus) Plumb() {
 
 // Plumb implements the mapper.CartMapper interface.
 func (cart *dpcPlus) PlumbFromDifferentEmulation() {
-	cart.arm = arm7tdmi.NewARM(cart.version.mmap, cart.instance.Prefs.ARM, cart.state.static, cart)
+	cart.arm = arm7tdmi.NewARM(cart.version.mmap, cart.instance.Prefs.ARM, cart.state.static, cart, cart.pathToROM)
 }
 
 // Reset implements the mapper.CartMapper interface.

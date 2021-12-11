@@ -30,6 +30,7 @@ import (
 type cdf struct {
 	instance *instance.Instance
 
+	pathToROM string
 	mappingID string
 
 	// additional CPU - used by some ROMs
@@ -69,18 +70,17 @@ const (
 )
 
 // NewCDF is the preferred method of initialisation for the harmony type.
-func NewCDF(instance *instance.Instance, version string, data []byte) (mapper.CartMapper, error) {
+func NewCDF(instance *instance.Instance, pathToROM string, version string, data []byte) (mapper.CartMapper, error) {
 	cart := &cdf{
 		instance:  instance,
+		pathToROM: pathToROM,
 		mappingID: "CDF",
 		bankSize:  4096,
 		state:     newCDFstate(),
 	}
 
 	var err error
-	cart.version, err = newVersion(
-		arm7tdmi.NewMemoryMap(instance.Prefs.ARM.Model.Get().(string)),
-		version, data)
+	cart.version, err = newVersion(instance.Prefs.ARM.Model.Get().(string), version, data)
 	if err != nil {
 		return nil, curated.Errorf("CDF: %v", err)
 	}
@@ -106,7 +106,7 @@ func NewCDF(instance *instance.Instance, version string, data []byte) (mapper.Ca
 	//
 	// if bank0 has any ARM code then it will start at offset 0x08. first eight
 	// bytes are the ARM header
-	cart.arm = arm7tdmi.NewARM(cart.version.mmap, cart.instance.Prefs.ARM, cart.state.static, cart)
+	cart.arm = arm7tdmi.NewARM(cart.version.mmap, cart.instance.Prefs.ARM, cart.state.static, cart, pathToROM)
 
 	return cart, nil
 }
@@ -145,7 +145,7 @@ func (cart *cdf) Plumb() {
 
 // Plumb implements the mapper.CartMapper interface.
 func (cart *cdf) PlumbFromDifferentEmulation() {
-	cart.arm = arm7tdmi.NewARM(cart.version.mmap, cart.instance.Prefs.ARM, cart.state.static, cart)
+	cart.arm = arm7tdmi.NewARM(cart.version.mmap, cart.instance.Prefs.ARM, cart.state.static, cart, cart.pathToROM)
 }
 
 // Reset implements the mapper.CartMapper interface.
@@ -537,7 +537,7 @@ func (cart *cdf) ARMinterrupt(addr uint32, val1 uint32, val2 uint32) (arm7tdmi.A
 
 	if cart.version.submapping == "CDF0" {
 		switch addr {
-		case 0x000006e2:
+		case cart.version.mmap.FlashOrigin | 0x000006e2:
 			r.InterruptEvent = "Set music note"
 			if val1 >= uint32(len(cart.state.registers.MusicFetcher)) {
 				return r, curated.Errorf("music fetcher index (%d) too high ", val1)
@@ -545,7 +545,7 @@ func (cart *cdf) ARMinterrupt(addr uint32, val1 uint32, val2 uint32) (arm7tdmi.A
 			cart.state.registers.MusicFetcher[val1].Freq = val2
 			r.NumMemAccess = 2
 			r.NumAdditionalCycles = 11
-		case 0x000006e6:
+		case cart.version.mmap.FlashOrigin | 0x000006e6:
 			// reset wave
 			r.InterruptEvent = "Reset wave"
 			if val1 >= uint32(len(cart.state.registers.MusicFetcher)) {
@@ -554,7 +554,7 @@ func (cart *cdf) ARMinterrupt(addr uint32, val1 uint32, val2 uint32) (arm7tdmi.A
 			cart.state.registers.MusicFetcher[val1].Count = 0
 			r.NumMemAccess = 3
 			r.NumAdditionalCycles = 13
-		case 0x000006ea:
+		case cart.version.mmap.FlashOrigin | 0x000006ea:
 			r.InterruptEvent = "Get wave pointer"
 			if val1 >= uint32(len(cart.state.registers.MusicFetcher)) {
 				return r, curated.Errorf("music fetcher index (%d) too high ", val1)
@@ -564,7 +564,7 @@ func (cart *cdf) ARMinterrupt(addr uint32, val1 uint32, val2 uint32) (arm7tdmi.A
 			r.SaveResult = true
 			r.NumMemAccess = 3
 			r.NumAdditionalCycles = 13
-		case 0x000006ee:
+		case cart.version.mmap.FlashOrigin | 0x000006ee:
 			r.InterruptEvent = "Set wave size"
 			if val1 >= uint32(len(cart.state.registers.MusicFetcher)) {
 				return r, curated.Errorf("music fetcher index (%d) too high ", val1)
@@ -581,7 +581,7 @@ func (cart *cdf) ARMinterrupt(addr uint32, val1 uint32, val2 uint32) (arm7tdmi.A
 	}
 
 	switch addr {
-	case 0x00000752:
+	case cart.version.mmap.FlashOrigin | 0x00000752:
 		r.InterruptEvent = "Set music note"
 		if val1 >= uint32(len(cart.state.registers.MusicFetcher)) {
 			return r, curated.Errorf("music fetcher index (%d) too high ", val1)
@@ -589,7 +589,7 @@ func (cart *cdf) ARMinterrupt(addr uint32, val1 uint32, val2 uint32) (arm7tdmi.A
 		cart.state.registers.MusicFetcher[val1].Freq = val2
 		r.NumMemAccess = 2
 		r.NumAdditionalCycles = 11
-	case 0x00000756:
+	case cart.version.mmap.FlashOrigin | 0x00000756:
 		r.InterruptEvent = "Reset wave"
 		if val1 >= uint32(len(cart.state.registers.MusicFetcher)) {
 			return r, curated.Errorf("music fetcher index (%d) too high ", val1)
@@ -597,7 +597,7 @@ func (cart *cdf) ARMinterrupt(addr uint32, val1 uint32, val2 uint32) (arm7tdmi.A
 		cart.state.registers.MusicFetcher[val1].Count = 0
 		r.NumMemAccess = 3
 		r.NumAdditionalCycles = 13
-	case 0x0000075a:
+	case cart.version.mmap.FlashOrigin | 0x0000075a:
 		r.InterruptEvent = "Get wave pointer"
 		if val1 >= uint32(len(cart.state.registers.MusicFetcher)) {
 			return r, curated.Errorf("music fetcher index (%d) too high ", val1)
@@ -607,7 +607,7 @@ func (cart *cdf) ARMinterrupt(addr uint32, val1 uint32, val2 uint32) (arm7tdmi.A
 		r.SaveResult = true
 		r.NumMemAccess = 3
 		r.NumAdditionalCycles = 13
-	case 0x0000075e:
+	case cart.version.mmap.FlashOrigin | 0x0000075e:
 		r.InterruptEvent = "Set wave size"
 		if val1 >= uint32(len(cart.state.registers.MusicFetcher)) {
 			return r, curated.Errorf("music fetcher index (%d) too high ", val1)

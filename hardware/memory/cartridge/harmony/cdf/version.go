@@ -17,16 +17,15 @@ package cdf
 
 import (
 	"github.com/jetsetilly/gopher2600/curated"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/harmony/arm7tdmi"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/harmony/arm7tdmi/memorymodel"
 )
 
 // versions contains the information that can differ between CDF versions.
 type version struct {
-	mmap arm7tdmi.MemoryMap
+	mmap memorymodel.Map
 
-	// mappingID and description differ depending on the version
-	submapping  string
-	description string
+	// mappingID depends on the version
+	submapping string
 
 	// the base index for the CDF registers. These values are indexes into the
 	// data RAM.
@@ -75,7 +74,16 @@ type version struct {
 	mamcr uint32
 }
 
-func newVersion(mmap arm7tdmi.MemoryMap, v string, data []uint8) (version, error) {
+func newVersion(memmodel string, v string, data []uint8) (version, error) {
+	if memmodel == "AUTO" {
+		if data[0x863]&0x20 == 0x20 && data[0x867]&0x20 == 0x20 {
+			memmodel = memorymodel.PlusCart
+		} else {
+			memmodel = memorymodel.Harmony
+		}
+	}
+	mmap := memorymodel.NewMap(memmodel)
+
 	r := version{
 		mmap: mmap,
 
@@ -103,7 +111,6 @@ func newVersion(mmap arm7tdmi.MemoryMap, v string, data []uint8) (version, error
 	switch v {
 	case "CDF0":
 		r.submapping = "CDF0"
-		r.description = "Harmony (CDF0)"
 		r.fetcherBase = 0x06e0
 		r.incrementBase = 0x0768
 		r.musicBase = 0x07f0
@@ -117,7 +124,6 @@ func newVersion(mmap arm7tdmi.MemoryMap, v string, data []uint8) (version, error
 
 	case "CDFJ+":
 		r.submapping = "CDFJ+"
-		r.description = "Harmony (CDFJ+)"
 		r.fetcherBase = 0x0098
 		r.incrementBase = 0x0124
 		r.musicBase = 0x01b0
@@ -155,7 +161,6 @@ func newVersion(mmap arm7tdmi.MemoryMap, v string, data []uint8) (version, error
 
 	case "CDFJ":
 		r.submapping = "CDFJ"
-		r.description = "Harmony (CDFJ)"
 		r.fetcherBase = 0x0098
 		r.incrementBase = 0x0124
 		r.musicBase = 0x01b0
@@ -169,7 +174,6 @@ func newVersion(mmap arm7tdmi.MemoryMap, v string, data []uint8) (version, error
 
 	case "CDF1":
 		r.submapping = "CDF1"
-		r.description = "Harmony (CDF1)"
 		r.fetcherBase = 0x00a0
 		r.incrementBase = 0x0128
 		r.musicBase = 0x01b0

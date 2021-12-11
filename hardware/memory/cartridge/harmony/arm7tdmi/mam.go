@@ -16,13 +16,14 @@
 package arm7tdmi
 
 import (
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/harmony/arm7tdmi/memorymodel"
 	"github.com/jetsetilly/gopher2600/hardware/preferences"
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
 // memory addressing module. not fully implemented.
 type mam struct {
-	mmap MemoryMap
+	mmap memorymodel.Map
 
 	// valid values for mamcr are 0, 1 or 2 are valid. we can think of these
 	// respectively, as "disable", "partial" and "full"

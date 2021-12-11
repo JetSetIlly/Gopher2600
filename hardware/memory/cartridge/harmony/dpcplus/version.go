@@ -15,12 +15,14 @@
 
 package dpcplus
 
-import "github.com/jetsetilly/gopher2600/hardware/memory/cartridge/harmony/arm7tdmi"
+import (
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/harmony/arm7tdmi/memorymodel"
+)
 
 // there is only one version of DPC+ currently but this method of specifying
 // addresses mirrors how we do it in the CDF type.
 type version struct {
-	mmap arm7tdmi.MemoryMap
+	mmap memorymodel.Map
 
 	driverOriginROM uint32
 	driverMemtopROM uint32
@@ -41,10 +43,11 @@ type version struct {
 	stackOriginRAM uint32
 }
 
-func newVersion(mmap arm7tdmi.MemoryMap) version {
-	return version{
-		mmap: mmap,
+func newVersion(memmodel string) version {
+	mmap := memorymodel.NewMap(memmodel)
 
+	return version{
+		mmap:            mmap,
 		driverOriginROM: mmap.FlashOrigin,
 		driverMemtopROM: mmap.FlashOrigin | 0x00000bff,
 		customOriginROM: mmap.FlashOrigin | 0x00000c00,
