@@ -47,6 +47,8 @@ var defunct = []string{
 	"sdlimgui.debugger.windowSize",
 	"sdlimgui.debugger.windowPos",
 	"crt.unsyncTolerance",
+	"hiscore.authtoken",
+	"hiscore.server",
 }
 
 // returns true if string is in list of defunct values.

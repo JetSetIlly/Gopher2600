@@ -19,6 +19,7 @@
 package wavwriter
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/jetsetilly/gopher2600/curated"
@@ -35,10 +36,10 @@ type WavWriter struct {
 	buffer   []wav.Sample
 }
 
-// New is the preferred method of initialisation for the Audio2Wav type.
-func New(filename string) (*WavWriter, error) {
+// NewWavWriter is the preferred method of initialisation for the WavWriter type.
+func NewWavWriter(filename string) (*WavWriter, error) {
 	aw := &WavWriter{
-		filename: filename,
+		filename: fmt.Sprintf("%s.wav", filename),
 		buffer:   make([]wav.Sample, 0),
 	}
 

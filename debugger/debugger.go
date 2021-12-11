@@ -44,6 +44,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/hardware/television/coords"
 	"github.com/jetsetilly/gopher2600/logger"
+	"github.com/jetsetilly/gopher2600/patch"
 	"github.com/jetsetilly/gopher2600/prefs"
 	"github.com/jetsetilly/gopher2600/recorder"
 	"github.com/jetsetilly/gopher2600/reflection"
@@ -53,6 +54,7 @@ import (
 	"github.com/jetsetilly/gopher2600/setup"
 	"github.com/jetsetilly/gopher2600/tracker"
 	"github.com/jetsetilly/gopher2600/userinput"
+	"github.com/jetsetilly/gopher2600/wavwriter"
 )
 
 // Debugger is the basic debugging frontend for the emulation. In order to be
@@ -86,6 +88,11 @@ type Debugger struct {
 	// the last loader to be used. we keep a reference to it so we can make
 	// sure Close() is called on end
 	loader *cartridgeloader.Loader
+
+	// supercharger multiload byte to force on mapper.EventSuperchargerLoadStarted
+	//
+	// a value of -1 means a value will not be forced.
+	multiload int
 
 	// gameplay recorder/playback
 	recorder *recorder.Recorder
@@ -272,13 +279,16 @@ type CreateUserInterface func(emulation.Emulation) (gui.GUI, terminal.Terminal, 
 //
 // It should be followed up with a call to AddUserInterface() and call the
 // Start() method to actually begin the emulation.
-func NewDebugger(create CreateUserInterface, spec string, useSavekey bool, fpsCap bool) (*Debugger, error) {
+func NewDebugger(create CreateUserInterface, spec string, useSavekey bool, fpsCap bool, multiload int) (*Debugger, error) {
 	dbg := &Debugger{
 		// by definition the state of debugger has changed during startup
 		hasChanged: true,
 
 		// the ticker to indicate whether we should check for events in the inputLoop
 		eventCheckPulse: time.NewTicker(50 * time.Millisecond),
+
+		// supercharger multiload byte
+		multiload: multiload,
 	}
 
 	// emulator is starting in the "none" mode (the advangatge of this is that
@@ -659,7 +669,10 @@ func (dbg *Debugger) StartInDebugMode(initScript string, filename string, mappin
 }
 
 // StartInPlaymode starts the emulation ready for game-play.
-func (dbg *Debugger) StartInPlayMode(filename string, mapping string, record bool, comparisonROM string, comparisonPrefs string) error {
+func (dbg *Debugger) StartInPlayMode(filename string, mapping string, record bool,
+	comparisonROM string, comparisonPrefs string,
+	patchFile string, wav bool) error {
+
 	// set running flag as early as possible
 	dbg.running = true
 
@@ -686,6 +699,26 @@ func (dbg *Debugger) StartInPlayMode(filename string, mapping string, record boo
 			return curated.Errorf("debugger: %v", err)
 		}
 
+		// apply patch if requested. note that this will be in addition to any
+		// patches applied during setup.AttachCartridge
+		if patchFile != "" {
+			_, err := patch.CartridgeMemory(dbg.vcs.Mem.Cart, patchFile)
+			if err != nil {
+				return curated.Errorf("debugger: %v", err)
+			}
+		}
+
+		// record wav file
+		if wav {
+			fn := unique.Filename("audio", cartload.ShortName())
+			ww, err := wavwriter.NewWavWriter(fn)
+			if err != nil {
+				return curated.Errorf("debugger: %v", err)
+			}
+			dbg.vcs.TV.AddAudioMixer(ww)
+		}
+
+		// record gameplay
 		if record {
 			dbg.startRecording(cartload.ShortName())
 		}
@@ -862,7 +895,11 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) 
 		if _, ok := cart.(*supercharger.Supercharger); ok {
 			switch event {
 			case mapper.EventSuperchargerLoadStarted:
-				// not required for the debugger
+				if dbg.multiload >= 0 {
+					logger.Logf("debugger", "forcing supercharger multiload (%#02x)", uint8(dbg.multiload))
+					dbg.vcs.Mem.Poke(supercharger.MutliloadByteAddress, uint8(dbg.multiload))
+				}
+
 			case mapper.EventSuperchargerFastloadEnded:
 				// the supercharger ROM will eventually start execution from the PC
 				// address given in the supercharger file

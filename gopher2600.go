@@ -35,7 +35,6 @@ import (
 	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/gui/sdlimgui"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
-	"github.com/jetsetilly/gopher2600/hiscore"
 	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/modalflag"
 	"github.com/jetsetilly/gopher2600/performance"
@@ -252,9 +251,6 @@ func launch(sync *mainSync) {
 
 	case "REGRESS":
 		err = regress(md, sync)
-
-	case "HISCORE":
-		err = hiscoreServer(md)
 	}
 
 	if err != nil {
@@ -286,20 +282,20 @@ func emulate(emulationMode emulation.Mode, md *modalflag.Modes, sync *mainSync) 
 	profile := md.AddString("profile", "none", "run performance check with profiling: command separated CPU, MEM, TRACE or ALL")
 	log := md.AddBool("log", false, "echo debugging log to stdout")
 	termType := md.AddString("term", "IMGUI", "terminal type to use in debug mode: IMGUI, COLOR, PLAIN")
-
-	// wav := md.AddString("wav", "", "record audio to wav file")
-	// patchFile := md.AddString("patch", "", "patch file to apply (cartridge args only)")
-	// hiscore := md.AddBool("hiscore", false, "contact hiscore server [EXPERIMENTAL]")
-	// multiload := md.AddInt("multiload", -1, "force multiload byte (supercharger only; 0 to 255)")
+	multiload := md.AddInt("multiload", -1, "force multiload byte (supercharger only; 0 to 255)")
 
 	// playmode specific arguments
 	var comparisonROM *string
 	var comparisonPrefs *string
 	var record *bool
+	var patchFile *string
+	var wav *bool
 	if emulationMode == emulation.ModePlay {
 		comparisonROM = md.AddString("comparisonROM", "", "ROM to run in parallel for comparison")
 		comparisonPrefs = md.AddString("comparisonPrefs", "", "preferences for comparison emulation")
 		record = md.AddBool("record", false, "record user input to a file")
+		patchFile = md.AddString("patch", "", "patch to apply to main emulation (not playback files)")
+		wav = md.AddBool("wav", false, "record audio to wav file")
 	}
 
 	// debugger specific arguments
@@ -391,7 +387,7 @@ func emulate(emulationMode emulation.Mode, md *modalflag.Modes, sync *mainSync) 
 	}
 
 	// prepare new debugger instance
-	dbg, err := debugger.NewDebugger(create, *spec, *useSavekey, *fpsCap)
+	dbg, err := debugger.NewDebugger(create, *spec, *useSavekey, *fpsCap, *multiload)
 	if err != nil {
 		return err
 	}
@@ -413,7 +409,7 @@ func emulate(emulationMode emulation.Mode, md *modalflag.Modes, sync *mainSync) 
 			}
 
 		case emulation.ModePlay:
-			err := dbg.StartInPlayMode(md.GetArg(0), *mapping, *record, *comparisonROM, *comparisonPrefs)
+			err := dbg.StartInPlayMode(md.GetArg(0), *mapping, *record, *comparisonROM, *comparisonPrefs, *patchFile, *wav)
 			if err != nil {
 				return err
 			}
@@ -790,78 +786,6 @@ with the LOG mode. Note that asking for log output will suppress regression prog
 		}
 	default:
 		return fmt.Errorf("regression tests can only be added one at a time")
-	}
-
-	return nil
-}
-
-func hiscoreServer(md *modalflag.Modes) error {
-	md.NewMode()
-	md.AddSubModes("ABOUT", "SETSERVER", "LOGIN", "LOGOFF")
-	md.AdditionalHelp("Hiscore server support is EXPERIMENTAL")
-
-	p, err := md.Parse()
-	if err != nil || p != modalflag.ParseContinue {
-		return err
-	}
-
-	switch md.Mode() {
-	case "ABOUT":
-		fmt.Println("The hiscore server is experimental and is not currently fully functioning")
-
-	case "LOGIN":
-		md.NewMode()
-		p, err := md.Parse()
-		if err != nil || p != modalflag.ParseContinue {
-			return err
-		}
-
-		username := ""
-		args := md.RemainingArgs()
-
-		switch len(args) {
-		case 0:
-			// an empty string is okay
-		case 1:
-			username = args[0]
-		default:
-			return fmt.Errorf("too many arguments for %s", md)
-		}
-
-		err = hiscore.Login(os.Stdin, os.Stdout, username)
-		if err != nil {
-			return err
-		}
-
-	case "LOGOFF":
-		err = hiscore.Logoff()
-		if err != nil {
-			return err
-		}
-
-	case "SETSERVER":
-		md.NewMode()
-		p, err := md.Parse()
-		if err != nil || p != modalflag.ParseContinue {
-			return err
-		}
-
-		server := ""
-		args := md.RemainingArgs()
-
-		switch len(args) {
-		case 0:
-			// an empty string is okay
-		case 1:
-			server = args[0]
-		default:
-			return fmt.Errorf("too many arguments for %s", md)
-		}
-
-		err = hiscore.SetServer(os.Stdin, os.Stdout, server)
-		if err != nil {
-			return err
-		}
 	}
 
 	return nil

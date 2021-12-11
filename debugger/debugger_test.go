@@ -148,7 +148,7 @@ func TestDebugger_withNonExistantInitScript(t *testing.T) {
 		return &mockGUI{}, trm, nil
 	}
 
-	dbg, err := debugger.NewDebugger(create, "AUTO", false, true)
+	dbg, err := debugger.NewDebugger(create, "AUTO", false, true, -1)
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
@@ -171,7 +171,7 @@ func TestDebugger(t *testing.T) {
 		return &mockGUI{}, trm, nil
 	}
 
-	dbg, err := debugger.NewDebugger(create, "AUTO", false, true)
+	dbg, err := debugger.NewDebugger(create, "AUTO", false, true, -1)
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
