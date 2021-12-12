@@ -19,7 +19,7 @@ import (
 	"fmt"
 
 	"github.com/inkyblackness/imgui-go/v4"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/harmony/cdf"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/cdf"
 )
 
 const winCDFRegistersID = "CDF Registers"

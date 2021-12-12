@@ -15,7 +15,7 @@
 
 package cdf
 
-import "github.com/jetsetilly/gopher2600/hardware/memory/cartridge/harmony/callfn"
+import "github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm7tdmi/callfn"
 
 type State struct {
 	// currently selected bank

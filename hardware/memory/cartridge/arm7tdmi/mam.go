@@ -16,7 +16,7 @@
 package arm7tdmi
 
 import (
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/harmony/arm7tdmi/memorymodel"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm7tdmi/memorymodel"
 	"github.com/jetsetilly/gopher2600/hardware/preferences"
 	"github.com/jetsetilly/gopher2600/logger"
 )

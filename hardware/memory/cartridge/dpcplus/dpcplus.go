@@ -21,7 +21,7 @@ import (
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/instance"
 	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/harmony/arm7tdmi"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm7tdmi"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 	"github.com/jetsetilly/gopher2600/hardware/preferences"
@@ -62,7 +62,7 @@ const (
 	freqSize   = 1024 // 1k
 )
 
-// NewDPCplus is the preferred method of initialisation for the harmony type.
+// NewDPCplus is the preferred method of initialisation for the dpcPlus type.
 func NewDPCplus(instance *instance.Instance, pathToROM string, data []byte) (mapper.CartMapper, error) {
 	cart := &dpcPlus{
 		instance:  instance,

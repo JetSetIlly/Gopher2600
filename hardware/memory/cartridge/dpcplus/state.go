@@ -16,7 +16,7 @@
 package dpcplus
 
 import (
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/harmony/callfn"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm7tdmi/callfn"
 	"github.com/jetsetilly/gopher2600/random"
 )
 

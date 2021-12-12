@@ -17,7 +17,7 @@ package cdf
 
 import (
 	"github.com/jetsetilly/gopher2600/curated"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/harmony/arm7tdmi/memorymodel"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm7tdmi/memorymodel"
 )
 
 // versions contains the information that can differ between CDF versions.
@@ -74,16 +74,16 @@ type version struct {
 	mamcr uint32
 }
 
-func newVersion(memmodel string, v string, data []uint8) (version, error) {
-	if memmodel == "AUTO" {
+func newVersion(memModel string, v string, data []uint8) (version, error) {
+	if memModel == "AUTO" {
 		if data[0x863]&0x20 == 0x20 && data[0x867]&0x20 == 0x20 {
-			memmodel = memorymodel.PlusCart
+			memModel = memorymodel.PlusCart
 		} else {
-			memmodel = memorymodel.Harmony
+			memModel = memorymodel.Harmony
 		}
 	}
 
-	mmap := memorymodel.NewMap(memmodel)
+	mmap := memorymodel.NewMap(memModel)
 
 	r := version{
 		mmap: mmap,

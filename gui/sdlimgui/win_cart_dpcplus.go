@@ -19,7 +19,7 @@ import (
 	"fmt"
 
 	"github.com/inkyblackness/imgui-go/v4"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/harmony/dpcplus"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/dpcplus"
 )
 
 const winDPCplusRegistersID = "DPC+ Registers"

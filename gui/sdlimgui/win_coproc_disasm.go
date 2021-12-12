@@ -22,7 +22,7 @@ import (
 	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/disassembly/coprocessor"
 	"github.com/jetsetilly/gopher2600/emulation"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/harmony/arm7tdmi"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm7tdmi"
 	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/resources/unique"
 )

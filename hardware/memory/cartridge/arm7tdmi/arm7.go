@@ -21,9 +21,9 @@ import (
 	"strings"
 
 	"github.com/jetsetilly/gopher2600/curated"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/harmony/arm7tdmi/mapfile"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/harmony/arm7tdmi/memorymodel"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/harmony/arm7tdmi/objdump"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm7tdmi/mapfile"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm7tdmi/memorymodel"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm7tdmi/objdump"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/preferences"
 	"github.com/jetsetilly/gopher2600/logger"

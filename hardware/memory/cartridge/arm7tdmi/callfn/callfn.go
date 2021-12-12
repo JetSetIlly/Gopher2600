@@ -20,7 +20,7 @@
 package callfn
 
 import (
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/harmony/arm7tdmi"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm7tdmi"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 

@@ -18,7 +18,7 @@ package arm7tdmi
 import (
 	"fmt"
 
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/harmony/arm7tdmi/memorymodel"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm7tdmi/memorymodel"
 )
 
 type timer struct {

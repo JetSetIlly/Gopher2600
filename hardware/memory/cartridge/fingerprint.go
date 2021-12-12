@@ -21,8 +21,8 @@ import (
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/instance"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/harmony/cdf"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/harmony/dpcplus"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/cdf"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/dpcplus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/supercharger"
 )
