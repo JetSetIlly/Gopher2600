@@ -82,6 +82,7 @@ func newVersion(memmodel string, v string, data []uint8) (version, error) {
 			memmodel = memorymodel.Harmony
 		}
 	}
+
 	mmap := memorymodel.NewMap(memmodel)
 
 	r := version{

@@ -42,6 +42,7 @@ type Mapfile struct {
 }
 
 const mapFile = "armcode.map"
+const mapFile_older = "custom2.map"
 
 func findMapFile(pathToROM string) *os.File {
 	// current working directory
@@ -66,6 +67,12 @@ func findMapFile(pathToROM string) *os.File {
 
 	// main/bin sub-directory
 	sf, err = os.Open(filepath.Join(dir, "main", "bin", mapFile))
+	if err == nil {
+		return sf
+	}
+
+	// custom/bin sub-directory. some older DPC+ sources uses this layout
+	sf, err = os.Open(filepath.Join(dir, "custom", "bin", mapFile_older))
 	if err == nil {
 		return sf
 	}

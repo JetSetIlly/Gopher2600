@@ -43,8 +43,16 @@ type version struct {
 	stackOriginRAM uint32
 }
 
-func newVersion(memmodel string) version {
-	mmap := memorymodel.NewMap(memmodel)
+func newVersion(memModel string, data []uint8) version {
+	if memModel == "AUTO" {
+		if data[0xc4b]&0x20 == 0x20 && data[0xc4f]&0x20 == 0x20 {
+			memModel = memorymodel.PlusCart
+		} else {
+			memModel = memorymodel.Harmony
+		}
+	}
+
+	mmap := memorymodel.NewMap(memModel)
 
 	return version{
 		mmap:            mmap,

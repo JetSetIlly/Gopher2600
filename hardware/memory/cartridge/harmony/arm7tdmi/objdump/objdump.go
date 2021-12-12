@@ -13,7 +13,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-// package map file is a very basic parser for obj files as produced by
+// package objdump file is a very basic parser for obj files as produced by
 // "objdump -S" on the base elf file that is used to create a cartridge binary
 //
 // FindDataAccess() and FindProgramAccess() will return best-guess labels for
@@ -30,16 +30,17 @@ import (
 	"github.com/jetsetilly/gopher2600/curated"
 )
 
-// ObjDump contains the parsed information from the map file.
+// ObjDump contains the parsed information from the obj file.
 type ObjDump struct {
 	lines []string
 }
 
-const mapFile = "armcode.obj"
+const objFile = "armcode.obj"
+const objFile_older = "custom2.obj"
 
 func findObjDump(pathToROM string) *os.File {
 	// current working directory
-	sf, err := os.Open(mapFile)
+	sf, err := os.Open(objFile)
 	if err == nil {
 		return sf
 	}
@@ -47,19 +48,25 @@ func findObjDump(pathToROM string) *os.File {
 	dir := filepath.Dir(pathToROM)
 
 	// same directory as binary
-	sf, err = os.Open(filepath.Join(dir, mapFile))
+	sf, err = os.Open(filepath.Join(dir, objFile))
 	if err == nil {
 		return sf
 	}
 
 	// main sub-directory
-	sf, err = os.Open(filepath.Join(dir, "main", mapFile))
+	sf, err = os.Open(filepath.Join(dir, "main", objFile))
 	if err == nil {
 		return sf
 	}
 
 	// main/bin sub-directory
-	sf, err = os.Open(filepath.Join(dir, "main", "bin", mapFile))
+	sf, err = os.Open(filepath.Join(dir, "main", "bin", objFile))
+	if err == nil {
+		return sf
+	}
+
+	// custom/bin sub-directory. some older DPC+ sources uses this layout
+	sf, err = os.Open(filepath.Join(dir, "custom", "bin", objFile_older))
 	if err == nil {
 		return sf
 	}
@@ -67,20 +74,20 @@ func findObjDump(pathToROM string) *os.File {
 	return nil
 }
 
-// NewObjDump loads and parses a map file. Returns a new instance of Mapfile or
+// NewObjDump loads and parses a obj file. Returns a new instance of Mapfile or
 // any errors.
 func NewObjDump(pathToROM string) (*ObjDump, error) {
 	obj := &ObjDump{}
 
 	sf := findObjDump(pathToROM)
 	if sf == nil {
-		return nil, curated.Errorf("mapfile: gcc .map file not available (%s)", mapFile)
+		return nil, curated.Errorf("objfile: gcc .obj file not available (%s)", objFile)
 	}
 	defer sf.Close()
 
 	data, err := io.ReadAll(sf)
 	if err != nil {
-		return nil, curated.Errorf("mapfile: processing error: %v", err)
+		return nil, curated.Errorf("objfile: processing error: %v", err)
 	}
 	obj.lines = strings.Split(string(data), "\n")
 
