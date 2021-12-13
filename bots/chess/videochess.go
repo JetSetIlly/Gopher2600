@@ -49,10 +49,9 @@ var cursorSampleDataOddColumns = [...]uint8{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
 var boardIndicator = [...]uint8{28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 164, 184, 252, 255, 164, 184, 252, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 164, 184, 252, 255, 164, 184, 252, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 164, 184, 252, 255, 164, 184, 252, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 164, 184, 252, 255, 164, 184, 252, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 164, 184, 252, 255, 164, 184, 252, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255, 28, 32, 156, 255}
 
 type observer struct {
-	frameInfo television.FrameInfo
-	img       *image.RGBA
-	analysis  chan *image.RGBA
-
+	frameInfo     television.FrameInfo
+	img           *image.RGBA
+	analysis      chan *image.RGBA
 	audioFeedback chan bool
 }
 
@@ -132,6 +131,7 @@ func (obs *observer) SetPixels(sig []signal.SignalAttributes, last int) error {
 
 		offset += 4
 	}
+
 	return nil
 }
 
@@ -149,6 +149,13 @@ func (obs *observer) EndRendering() error {
 	return nil
 }
 
+type chessColors struct {
+	blackSquare color.RGBA
+	whiteSquare color.RGBA
+	blackPiece  color.RGBA
+	whitePiece  color.RGBA
+}
+
 type videoChessBot struct {
 	obs *observer
 
@@ -158,6 +165,9 @@ type videoChessBot struct {
 	// quit as soon as possible when a value appears on the channel
 	quit     chan bool
 	quitting bool
+
+	// the various colors used by video chess
+	colors chessColors
 
 	// the most recent position
 	currentPosition *image.RGBA
@@ -223,7 +233,7 @@ func (bot *videoChessBot) lookForBoard() bool {
 // compares currentPosition with prevPosition for a change. returns fromCol,
 // fromRow and toCol, toRow - indicating the move
 //
-// rows are flipped to normal chess orientation. rows are counted from the
+// returned row value is flipped to normal chess orientation. rows are counted from the
 // bottom (white side) in chess.
 func (bot *videoChessBot) lookForVCSMove() (int, int, int, int) {
 	fromCol := -1
@@ -254,7 +264,7 @@ func (bot *videoChessBot) lookForVCSMove() (int, int, int, int) {
 		for col := 0; col < 8; col++ {
 			if !bot.isCursor(bot.currentPosition, col, row) {
 				if !bot.isCursor(bot.prevPosition, col, row) {
-					if !bot.cmpPositions(col, row) {
+					if !bot.cmpBlackPosition(col, row) {
 						toCol = col
 						toRow = row
 
@@ -270,27 +280,40 @@ func (bot *videoChessBot) lookForVCSMove() (int, int, int, int) {
 	return fromCol, 8 - fromRow, toCol, 8 - toRow
 }
 
-// returns false if equivalent squares in the currentPosition and prevPosition images are different.
-func (bot *videoChessBot) cmpPositions(col int, row int) bool {
+// returns false if equivalent squares in the currentPosition and prevPosition
+// images are different. only empty sqaures and black pieces are considered.
+func (bot *videoChessBot) cmpBlackPosition(col int, row int) bool {
 	clip := bot.getRect(col, row)
 
 	draw.Draw(bot.inspectionSquare, bot.inspectionSquare.Bounds(), bot.currentPosition.SubImage(clip), clip.Min, draw.Src)
 	draw.Draw(bot.cmpSquare, bot.inspectionSquare.Bounds(), bot.prevPosition.SubImage(clip), clip.Min, draw.Src)
 
-	for i := 4; i < len(bot.inspectionSquare.Pix); i += 4 {
+	// it just happens to be that the red component of all the possible colors
+	// are different so we can restrict our inspection just to that component.
+	for i := 0; i < len(bot.inspectionSquare.Pix); i += 4 {
+
+		// limit inspection to the black pieces. we do this by returning true,
+		// indicating that the square hasn't changed
+		r := bot.inspectionSquare.Pix[i]
+		if r == bot.colors.whitePiece.R {
+			return true
+		}
+
+		// value is different. return false to indicate difference
 		if bot.inspectionSquare.Pix[i] != bot.cmpSquare.Pix[i] {
 			return false
 		}
 	}
 
+	// nothing has changed
 	return true
 }
 
 // searches currentPosition image for the cursor. returns col and row of found
 // cursor. -1 if it is not found.
 //
-// rows are flipped to normal chess orientation. rows are counted from the
-// bottom (white side) in chess.
+// returned row value is flipped to normal chess orientation. rows are counted
+// from the bottom (white side) in chess.
 func (bot *videoChessBot) lookForCursor() (int, int) {
 	// counting from top-to-bottom and left-to-right
 	for row := 0; row < 8; row++ {
@@ -489,7 +512,11 @@ func (bot *videoChessBot) waitForFrames(n int) {
 }
 
 // NewVideoChess creates a new bot able to play chess (via a UCI engine).
-func NewVideoChess(vcs bots.Input, tv bots.TV) (bots.Bot, error) {
+func NewVideoChess(vcs bots.Input, tv bots.TV, specID string) (bots.Bot, error) {
+	if specID != "NTSC" {
+		return nil, curated.Errorf("videochess: television spec %s is unsupported")
+	}
+
 	bot := &videoChessBot{
 		obs:              newObserver(),
 		input:            vcs,
@@ -503,6 +530,17 @@ func NewVideoChess(vcs bots.Input, tv bots.TV) (bots.Bot, error) {
 			Diagnostic: make(chan bots.Diagnostic, 64),
 		},
 	}
+
+	// the colors used by VideoChess. this is for the NTSC version of VideoChess
+	//
+	// 130 = black squares
+	// 132 = white squares
+	// 38 = black pieces
+	// 142 = white pieces
+	bot.colors.blackSquare = specification.SpecNTSC.GetColor(130)
+	bot.colors.whiteSquare = specification.SpecNTSC.GetColor(132)
+	bot.colors.blackPiece = specification.SpecNTSC.GetColor(38)
+	bot.colors.whitePiece = specification.SpecNTSC.GetColor(142)
 
 	tv.AddPixelRenderer(bot.obs)
 	tv.AddAudioMixer(bot.obs)
@@ -532,7 +570,7 @@ func NewVideoChess(vcs bots.Input, tv bots.TV) (bots.Bot, error) {
 
 		bot.feedback.Diagnostic <- bots.Diagnostic{
 			Group:      "VideoChess",
-			Diagnostic: "Video Chess recognised",
+			Diagnostic: "video chess recognised",
 		}
 
 		// bot is playing white so ask for first move by submitting an empty move
@@ -684,6 +722,8 @@ func (bot *videoChessBot) BotID() string {
 func (bot *videoChessBot) Quit() {
 	// wait until quit has been honoured
 	bot.quit <- true
+	bot.tv.RemovePixelRenderer(bot.obs)
+	bot.tv.RemoveAudioMixer(bot.obs)
 }
 
 // Feedback implements the bots.Bot interface.

@@ -48,7 +48,8 @@ func (b *Bots) ActivateBot(cartHash string) (*bots.Feedback, error) {
 
 	switch cartHash {
 	case "043ef523e4fcb9fc2fc2fda21f15671bf8620fc3":
-		b.running, err = chess.NewVideoChess(b.input, b.tv)
+		// NTSC version of VideoChess
+		b.running, err = chess.NewVideoChess(b.input, b.tv, "NTSC")
 		if err != nil {
 			return nil, curated.Errorf("bots: %v", err)
 		}

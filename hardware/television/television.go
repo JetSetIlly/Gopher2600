@@ -324,6 +324,18 @@ func (tv *Television) AddAudioMixer(m AudioMixer) {
 	tv.mixers = append(tv.mixers, m)
 }
 
+// RemoveAudioMixer removes a single AudioMixer implementation from the
+// list of miser. Order is not maintained.
+func (tv *Television) RemoveAudioMixer(m AudioMixer) {
+	for i := range tv.mixers {
+		if tv.mixers[i] == m {
+			tv.mixers[i] = tv.mixers[len(tv.mixers)-1]
+			tv.mixers = tv.mixers[:len(tv.mixers)-1]
+			return
+		}
+	}
+}
+
 // AddRealtimeAudioMixer registers an implementation of AudioMixer. Multiple
 // implemntations can be added.
 func (tv *Television) AddRealtimeAudioMixer(m RealtimeAudioMixer) {

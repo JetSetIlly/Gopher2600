@@ -32,6 +32,8 @@ import (
 type TV interface {
 	AddPixelRenderer(television.PixelRenderer)
 	AddAudioMixer(television.AudioMixer)
+	RemovePixelRenderer(television.PixelRenderer)
+	RemoveAudioMixer(television.AudioMixer)
 }
 
 // Input defines the Input functions required by a bot.
