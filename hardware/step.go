@@ -57,7 +57,7 @@ func (vcs *VCS) Step(videoCycleCallback func() error) error {
 	// I don't believe any visual or audible artefacts of the VCS (undocumented
 	// or not) rely on the details of the CPU-TIA relationship.
 	videoCycle := func() error {
-		if err := vcs.Input.Process(); err != nil {
+		if err := vcs.Input.Handle(); err != nil {
 			return err
 		}
 

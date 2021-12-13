@@ -13,8 +13,12 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-// Package bots is the root package for the bot subsystem. Sub-packages
-// reference this package.
+// Package bots is the root package for the bot subsystem. Bots are loaded and
+// unloaded by the Wrangler package.
+//
+// Bots monitor audio and video through the AudioMixer and PixelRenderer
+// interfaces. They issue input to the emulation through the input.PushEvent()
+// mechanism.
 package bots
 
 import (
@@ -33,6 +37,7 @@ type TV interface {
 // Input defines the Input functions required by a bot.
 type Input interface {
 	PushEvent(ports.InputEvent) error
+	AllowPushedEvents(bool)
 }
 
 // Diagnostic instances are sent over the Feedback Diagnostic channel.

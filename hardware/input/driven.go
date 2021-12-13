@@ -73,7 +73,7 @@ func (inp *Input) AttachPassenger(driver chan ports.TimedInputEvent) error {
 		return curated.Errorf("input: attach passenger: emulation already defined as an input driver")
 	}
 	inp.fromDriver = driver
-	inp.setProcessFunc()
+	inp.setHandleFunc()
 	return nil
 }
 

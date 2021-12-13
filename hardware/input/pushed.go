@@ -20,6 +20,15 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
 )
 
+// AllowPushedEvents or not. Should not be allowed unless absolutely necessary.
+func (inp *Input) AllowPushedEvents(allow bool) {
+	if allow {
+		inp.tv.AddFrameTrigger(inp)
+	} else {
+		inp.tv.RemoveFrameTrigger(inp)
+	}
+}
+
 // PushEvent pushes an InputEvent onto the queue. Will drop the event and
 // return an error if queue is full.
 func (inp *Input) PushEvent(ev ports.InputEvent) error {
@@ -31,7 +40,7 @@ func (inp *Input) PushEvent(ev ports.InputEvent) error {
 	return nil
 }
 
-func (inp *Input) handlePushedEvents() error {
+func (inp *Input) handlePushed() error {
 	done := false
 	for !done {
 		select {

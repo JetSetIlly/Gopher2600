@@ -57,7 +57,7 @@ func (inp *Input) AttachPlayback(pb EventPlayback) error {
 		return curated.Errorf("input: attach playback: emulator already has a recorder attached")
 	}
 	inp.playback = pb
-	inp.setProcessFunc()
+	inp.setHandleFunc()
 	return nil
 }
 

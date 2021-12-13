@@ -53,8 +53,10 @@ func (b *Bots) ActivateBot(cartHash string) (*bots.Feedback, error) {
 			return nil, curated.Errorf("bots: %v", err)
 		}
 		logger.Logf("bots", "%s start", b.running.BotID())
+		b.input.AllowPushedEvents(true)
 
 	default:
+		b.input.AllowPushedEvents(false)
 		return nil, nil
 	}
 
@@ -67,5 +69,6 @@ func (b *Bots) Quit() {
 		b.running.Quit()
 		logger.Logf("bots", "%s finished", b.running.BotID())
 		b.running = nil
+		b.input.AllowPushedEvents(false)
 	}
 }

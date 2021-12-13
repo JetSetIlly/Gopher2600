@@ -288,6 +288,7 @@ func (tv *Television) RemovePixelRenderer(r PixelRenderer) {
 		if tv.renderers[i] == r {
 			tv.renderers[i] = tv.renderers[len(tv.renderers)-1]
 			tv.renderers = tv.renderers[:len(tv.renderers)-1]
+			return
 		}
 	}
 }
@@ -298,16 +299,23 @@ func (tv *Television) AddPixelRenderer(r PixelRenderer) {
 	tv.renderers = append(tv.renderers, r)
 }
 
+// RemoveFrameTrigger removes a single FrameTrigger implementation from the
+// list of renderers. Order is not maintained.
+func (tv *Television) RemoveFrameTrigger(r FrameTrigger) {
+	for i := range tv.frameTriggers {
+		if tv.frameTriggers[i] == r {
+			tv.frameTriggers[i] = tv.frameTriggers[len(tv.frameTriggers)-1]
+			tv.frameTriggers = tv.frameTriggers[:len(tv.frameTriggers)-1]
+			return
+		}
+	}
+}
+
 // AddFrameTrigger registers an implementation of FrameTrigger. Multiple
 // implemntations can be added. Triggers are served in the order that they have
 // been added.
 func (tv *Television) AddFrameTrigger(f FrameTrigger) {
 	tv.frameTriggers = append(tv.frameTriggers, f)
-}
-
-// ClearFrameTriggers removes all existing frame triggers from the television.
-func (tv *Television) ClearFrameTriggers() {
-	tv.frameTriggers = tv.frameTriggers[:0]
 }
 
 // AddAudioMixer registers an implementation of AudioMixer. Multiple

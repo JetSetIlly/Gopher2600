@@ -19,12 +19,15 @@ import (
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
+	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/hardware/television/coords"
 )
 
 // TV defines the television functions required by the Input system.
 type TV interface {
 	GetCoords() coords.TelevisionCoords
+	AddFrameTrigger(television.FrameTrigger)
+	RemoveFrameTrigger(television.FrameTrigger)
 }
 
 // Input handles all forms of input into the VCS.
@@ -36,7 +39,8 @@ type Input struct {
 	recorder EventRecorder
 
 	// events pushed onto the input queue
-	pushed chan ports.InputEvent
+	pushed      chan ports.InputEvent
+	pushedBrake int
 
 	// the following fields all relate to driven input, for either the driver
 	// or for the passenger (the driven)
@@ -45,8 +49,8 @@ type Input struct {
 	checkForDriven   bool
 	drivenInputEvent ports.TimedInputEvent
 
-	// Process function should be called every VCS step
-	Process func() error
+	// Handle function should be called every VCS step
+	Handle func() error
 }
 
 func NewInput(tv TV, p *ports.Ports) *Input {
@@ -55,7 +59,7 @@ func NewInput(tv TV, p *ports.Ports) *Input {
 		ports:  p,
 		pushed: make(chan ports.InputEvent, 64),
 	}
-	inp.setProcessFunc()
+	inp.setHandleFunc()
 	return inp
 }
 
@@ -102,12 +106,9 @@ func (inp *Input) HandleInputEvent(ev ports.InputEvent) (bool, error) {
 	return handled, nil
 }
 
-func (inp *Input) setProcessFunc() {
+func (inp *Input) setHandleFunc() {
 	if inp.fromDriver != nil && inp.playback != nil {
-		inp.Process = func() error {
-			if err := inp.handlePushedEvents(); err != nil {
-				return err
-			}
+		inp.Handle = func() error {
 			if err := inp.handlePlaybackEvents(); err != nil {
 				return err
 			}
@@ -120,10 +121,7 @@ func (inp *Input) setProcessFunc() {
 	}
 
 	if inp.fromDriver != nil {
-		inp.Process = func() error {
-			if err := inp.handlePushedEvents(); err != nil {
-				return err
-			}
+		inp.Handle = func() error {
 			if err := inp.handleDrivenEvents(); err != nil {
 				return err
 			}
@@ -133,10 +131,7 @@ func (inp *Input) setProcessFunc() {
 	}
 
 	if inp.playback != nil {
-		inp.Process = func() error {
-			if err := inp.handlePushedEvents(); err != nil {
-				return err
-			}
+		inp.Handle = func() error {
 			if err := inp.handlePlaybackEvents(); err != nil {
 				return err
 			}
@@ -145,5 +140,12 @@ func (inp *Input) setProcessFunc() {
 		return
 	}
 
-	inp.Process = inp.handlePushedEvents
+	inp.Handle = func() error {
+		return nil
+	}
+}
+
+// See NewFrame() comment for PixelRenderer interface.
+func (inp *Input) NewFrame(_ television.FrameInfo) error {
+	return inp.handlePushed()
 }
