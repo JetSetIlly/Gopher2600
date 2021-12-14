@@ -16,6 +16,7 @@
 package lazyvalues
 
 import (
+	"strings"
 	"sync/atomic"
 
 	"github.com/jetsetilly/gopher2600/logger"
@@ -25,12 +26,16 @@ import (
 type LazyLog struct {
 	val *LazyValues
 
-	log atomic.Value // []logger.Entry
-	Log []logger.Entry
+	entries atomic.Value // []logger.Entry
+	Entries []logger.Entry
 
 	// have log contents changed
 	dirty atomic.Value // bool
 	Dirty bool
+
+	// the number of lines in the log. not the same as the number of entries -
+	// an entry might consist of many lines
+	NumLines int
 
 	// used to detect dirty logs
 	timeoflast int
@@ -46,7 +51,7 @@ func (lz *LazyLog) push() {
 		lz.timeoflast = t
 		lz.dirty.Store(true)
 		if l := logger.Copy(); l != nil {
-			lz.log.Store(l)
+			lz.entries.Store(l)
 		}
 	}
 }
@@ -55,8 +60,15 @@ func (lz *LazyLog) update() {
 	lz.Dirty, _ = lz.dirty.Load().(bool)
 	if lz.Dirty {
 		lz.dirty.Store(false)
-		if l, ok := lz.log.Load().([]logger.Entry); ok {
-			lz.Log = l
+		if l, ok := lz.entries.Load().([]logger.Entry); ok {
+			lz.Entries = l
+		}
+
+		// number of lines is equal to the number of entries plus the number of
+		// \n characters (works because log strings do not end with a \n)
+		lz.NumLines = 0
+		for _, l := range lz.Entries {
+			lz.NumLines += 1 + strings.Count(l.String(), "\n")
 		}
 	}
 }

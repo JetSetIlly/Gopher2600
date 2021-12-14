@@ -36,7 +36,6 @@ func (e *Entry) String() string {
 	if e.repeated > 0 {
 		s.WriteString(fmt.Sprintf(" (repeat x%d)", e.repeated+1))
 	}
-	s.WriteString("\n")
 	return s.String()
 }
 
@@ -159,6 +158,7 @@ func (l *logger) write(output io.Writer) {
 
 	for _, e := range entries {
 		io.WriteString(output, e.String())
+		io.WriteString(output, "\n")
 	}
 }
 
@@ -168,6 +168,7 @@ func (l *logger) writeRecent(output io.Writer) {
 
 	for _, e := range entries {
 		io.WriteString(output, e.String())
+		io.WriteString(output, "\n")
 	}
 }
 
@@ -177,6 +178,7 @@ func (l *logger) tail(output io.Writer, number int) {
 
 	for _, e := range entries {
 		io.WriteString(output, e.String())
+		io.WriteString(output, "\n")
 	}
 }
 

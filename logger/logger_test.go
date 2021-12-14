@@ -16,6 +16,7 @@
 package logger_test
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/jetsetilly/gopher2600/logger"
@@ -43,6 +44,7 @@ func TestLogger(t *testing.T) {
 	// asking for too many entries in a Tail() should be okay
 	tw.Clear()
 	logger.Tail(tw, 100)
+	fmt.Println(tw)
 	test.Equate(t, tw.Compare("test: this is a test\ntest2: this is another test\n"), true)
 
 	// asking for exactly the correct number of entries is okay

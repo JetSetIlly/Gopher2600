@@ -149,7 +149,8 @@ type imguiColors struct {
 	ToolTipBG imgui.Vec4
 
 	// log
-	LogBackground imgui.Vec4
+	LogBackground        imgui.Vec4
+	LogMultilineEmphasis imgui.Vec4
 
 	// packed equivalents of the above colors (where appropriate)
 	tiaPointer             imgui.PackedColor
@@ -287,7 +288,8 @@ func newColors() *imguiColors {
 		ToolTipBG: imgui.Vec4{0.2, 0.1, 0.2, 0.8},
 
 		// log
-		LogBackground: imgui.Vec4{0.2, 0.2, 0.3, 0.9},
+		LogBackground:        imgui.Vec4{0.2, 0.2, 0.3, 0.9},
+		LogMultilineEmphasis: imgui.Vec4{1.0, 0.5, 0.5, 1.0},
 	}
 
 	// set default colors

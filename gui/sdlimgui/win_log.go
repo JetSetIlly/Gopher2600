@@ -16,6 +16,8 @@
 package sdlimgui
 
 import (
+	"strings"
+
 	"github.com/inkyblackness/imgui-go/v4"
 )
 
@@ -62,16 +64,24 @@ func (win *winLog) draw() {
 	imgui.PopStyleColor()
 
 	var clipper imgui.ListClipper
-	clipper.Begin(len(win.img.lz.Log.Log))
+	clipper.Begin(win.img.lz.Log.NumLines)
 	for clipper.Step() {
-		for i := clipper.DisplayStart; i < clipper.DisplayEnd; i++ {
-			imgui.Text(win.img.lz.Log.Log[i].String())
+		for i := clipper.DisplayStart; i < clipper.DisplayEnd && i < len(win.img.lz.Log.Entries); i++ {
+			sp := strings.Split(win.img.lz.Log.Entries[i].String(), "\n")
+			imgui.Text(sp[0])
+			if len(sp) > 1 {
+				imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.LogMultilineEmphasis)
+				for _, s := range sp[1:] {
+					imgui.Text(s)
+				}
+				imgui.PopStyleColor()
+			}
 		}
 	}
 
 	// scroll to end if log has been dirtied (ie. a new entry)
 	if win.img.lz.Log.Dirty {
-		imgui.SetScrollHereY(0.0)
+		imgui.SetScrollHereY(1.0)
 		win.img.lz.Log.Dirty = false
 	}
 
