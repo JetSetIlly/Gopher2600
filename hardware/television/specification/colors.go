@@ -25,7 +25,7 @@ var PalettePAL = []color.RGBA{}
 
 // VideoBlack is the color produced by a television in the absence of a color
 // signal.
-var videoBlack = color.RGBA{0, 0, 0, 255}
+var VideoBlack = color.RGBA{0, 0, 0, 255}
 
 // the raw color values are the component RGB values expressed as a single 32
 // bit number. we'll use these raw values in the init() function below to

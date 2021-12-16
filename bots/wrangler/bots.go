@@ -20,6 +20,7 @@ package wrangler
 import (
 	"github.com/jetsetilly/gopher2600/bots"
 	"github.com/jetsetilly/gopher2600/bots/chess"
+	"github.com/jetsetilly/gopher2600/bots/spacejockey"
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/logger"
 )
@@ -53,7 +54,16 @@ func (b *Bots) ActivateBot(cartHash string) (*bots.Feedback, error) {
 		if err != nil {
 			return nil, curated.Errorf("bots: %v", err)
 		}
-		logger.Logf("bots", "%s start", b.running.BotID())
+		logger.Logf("bots", "%s started", b.running.BotID())
+		b.input.AllowPushedEvents(true)
+
+	case "5bdd8af54020fa43065750bd4239a497695d403b":
+		// NTSC version of SpaceJockey
+		b.running, err = spacejockey.NewSpaceJockey(b.input, b.tv, "NTSC")
+		if err != nil {
+			return nil, curated.Errorf("bots: %v", err)
+		}
+		logger.Logf("bots", "%s started", b.running.BotID())
 		b.input.AllowPushedEvents(true)
 
 	default:

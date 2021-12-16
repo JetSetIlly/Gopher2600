@@ -132,7 +132,7 @@ func (spec *Spec) GetColor(col signal.ColorSignal) color.RGBA {
 	// careful to make sure the value is valid. if it's not a valid index then
 	// assume the intention was video black
 	if col == signal.VideoBlack {
-		return videoBlack
+		return VideoBlack
 	}
 	return spec.Colors[col]
 }
