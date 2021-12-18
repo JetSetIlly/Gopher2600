@@ -889,8 +889,15 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		if err != nil {
 			return err
 		}
-		indirectAddress := uint8(mc.LastResult.InstructionData)
 
+		// phantom read from base address before index adjustment
+		// +1 cycles
+		_, err := mc.read8Bit(mc.LastResult.InstructionData, true)
+		if err != nil {
+			return err
+		}
+
+		indirectAddress := uint8(mc.LastResult.InstructionData)
 		mc.acc8.Load(indirectAddress)
 		mc.acc8.Add(mc.X.Value(), false)
 		address = mc.acc8.Address()
@@ -898,13 +905,6 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		// make a note of zero page index bug
 		if uint16(indirectAddress+mc.X.Value())&0xff00 != uint16(indirectAddress)&0xff00 {
 			mc.LastResult.CPUBug = "zero page index bug"
-		}
-
-		// +1 cycle
-		mc.LastResult.Cycles++
-		err = mc.cycleCallback()
-		if err != nil {
-			return err
 		}
 
 	case instructions.ZeroPageIndexedY:
@@ -917,8 +917,15 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		if err != nil {
 			return err
 		}
-		indirectAddress := uint8(mc.LastResult.InstructionData)
 
+		// phantom read from base address before index adjustment
+		// +1 cycles
+		_, err := mc.read8Bit(mc.LastResult.InstructionData, true)
+		if err != nil {
+			return err
+		}
+
+		indirectAddress := uint8(mc.LastResult.InstructionData)
 		mc.acc8.Load(indirectAddress)
 		mc.acc8.Add(mc.Y.Value(), false)
 		address = mc.acc8.Address()
@@ -926,13 +933,6 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		// make a note of zero page index bug
 		if uint16(indirectAddress+mc.Y.Value())&0xff00 != uint16(indirectAddress)&0xff00 {
 			mc.LastResult.CPUBug = "zero page index bug"
-		}
-
-		// +1 cycle
-		mc.LastResult.Cycles++
-		err = mc.cycleCallback()
-		if err != nil {
-			return err
 		}
 
 	default:
@@ -949,7 +949,6 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 	if !(defn.AddressingMode == instructions.Implied || defn.AddressingMode == instructions.Immediate) {
 		if defn.Effect == instructions.Read {
 			// +1 cycle
-
 			if zeroPage {
 				value, err = mc.read8BitZeroPage(uint8(address))
 			} else {
@@ -960,7 +959,6 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 			}
 		} else if defn.Effect == instructions.RMW {
 			// +1 cycle
-
 			if zeroPage {
 				value, err = mc.read8BitZeroPage(uint8(address))
 			} else {

@@ -81,14 +81,16 @@ var DataMasks = []uint8{
 	// significant bit is used, for the purposes of masking it acts just like
 	// the other collision registers
 	0b11000000, // CXBLPF
-
 	0b11000000, // CXPPMM
-	0b10000000, // INPT0
-	0b10000000, // INPT1
-	0b10000000, // INPT2
-	0b10000000, // INPT3
-	0b10000000, // INPT4
-	0b10000000, // INPT5
+
+	// similarly for the INPT registers. as reported in this bug report.
+	// https://github.com/JetSetIlly/Gopher2600/issues/16#issue-1083935291
+	0b11000000, // INPT0
+	0b11000000, // INPT1
+	0b11000000, // INPT2
+	0b11000000, // INPT3
+	0b11000000, // INPT4
+	0b11000000, // INPT5
 
 	// the contents of the last two locations are "undefined" according to the
 	// Stella Programmer's Guide but are readable anyway. we can see through

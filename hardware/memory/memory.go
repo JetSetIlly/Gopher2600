@@ -132,11 +132,12 @@ func (mem *Memory) read(address uint16, zeroPage bool) (uint8, error) {
 	//                                    ----------------------------
 
 	// some memory areas do not change all the bits on the data bus, leaving
-	// some bits of the address in the result
+	// some bits of the previous value on the data bus in the result. for
+	// example, LDA $01, the actual loading of the $01 into the A register, the
+	// most recent value read was the 01 of the instruction.
 	//
-	// if the mapped address has an entry in the Mask array then use the most
-	// significant byte of the non-mapped address and apply it to the data bits
-	// specified in the mask
+	// if the (mapped) address being read has an entry in the DataMasks array
+	// then use the LastAccessValue and apply it to the zero bits in the mask.
 	//
 	// see commentary for DataMasks array for extensive explanation
 	if ma < uint16(len(addresses.DataMasks)) {
@@ -145,14 +146,14 @@ func (mem *Memory) read(address uint16, zeroPage bool) (uint8, error) {
 			if mem.instance != nil && mem.instance.Prefs.RandomPins.Get().(bool) {
 				data |= uint8(rand.Int()) & (addresses.DataMasks[ma] ^ 0xff)
 			} else {
-				data |= uint8((address>>8)&0xff) & (addresses.DataMasks[ma] ^ 0xff)
+				data |= mem.LastAccessValue & (addresses.DataMasks[ma] ^ 0xff)
 			}
 		} else {
 			data &= addresses.DataMasks[ma]
 			if mem.instance != nil && mem.instance.Prefs.RandomPins.Get().(bool) {
 				data |= uint8(rand.Int()) & (addresses.DataMasks[ma] ^ 0xff)
 			} else {
-				data |= uint8(address&0x00ff) & (addresses.DataMasks[ma] ^ 0xff)
+				data |= mem.LastAccessValue & (addresses.DataMasks[ma] ^ 0xff)
 			}
 		}
 	}

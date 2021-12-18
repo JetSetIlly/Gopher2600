@@ -43,30 +43,35 @@ func readDataZeroPage(t *testing.T, mem *memory.Memory, address uint8, expectedD
 	}
 }
 
+func writeDataNotTested(t *testing.T, mem *memory.Memory, address uint16, value uint8) {
+	err := mem.Write(address, value)
+	if err != nil {
+		t.Errorf("unexpected error (%s)", err)
+	}
+}
+
+func readDataNotTested(t *testing.T, mem *memory.Memory, address uint16) {
+	_, err := mem.Read(address)
+	if err != nil {
+		t.Errorf("unexpected error (%s)", err)
+	}
+}
+
 func TestDataMask(t *testing.T) {
 	mem := memory.NewMemory(nil)
 
-	// no data in register
-	readDataZeroPage(t, mem, 0x00, 0x00)
-	readDataZeroPage(t, mem, 0x02, 0x02)
-	readData(t, mem, 0x02, 0x00)
-	readData(t, mem, 0x171, 0x01)
+	// preare some test memory
+	writeDataNotTested(t, mem, 0x80, 0xff)
+	writeDataNotTested(t, mem, 0x81, 0x55)
+	writeDataNotTested(t, mem, 0x82, 0xfe)
 
-	// high bits set in register
-	mem.TIA.ChipWrite(0x00, 0x40)
-	readData(t, mem, 0x00, 0x40)
-	mem.TIA.ChipWrite(0x01, 0x80)
-	readDataZeroPage(t, mem, 0x01, 0x81)
+	readDataNotTested(t, mem, 0x80)
+	readData(t, mem, 0x02, 0x3f)
 
-	// low bits set too. low bits in address supercede low bits in register
-	mem.TIA.ChipWrite(0x01, 0x8f)
-	readDataZeroPage(t, mem, 0x01, 0x81)
-	readData(t, mem, 0x01, 0x80)
-
-	mem.TIA.ChipWrite(0x02, 0xc7)
-	readDataZeroPage(t, mem, 0x02, 0xc2)
-	readData(t, mem, 0x02, 0xc0)
+	readDataNotTested(t, mem, 0x81)
+	readData(t, mem, 0x02, 0x15)
 
 	// non-zero-page addressing
-	readData(t, mem, 0x171, 0x81)
+	readDataNotTested(t, mem, 0x82)
+	readData(t, mem, 0x171, 0x3e)
 }
