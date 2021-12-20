@@ -73,6 +73,9 @@ func imguiGetFrameDim(s string, t ...string) imgui.Vec2 {
 // returns the pixel width of a text string length characters wide. assumes all
 // characters are of the same width. Uses the 'X' character for measurement.
 func imguiTextWidth(length int) float32 {
+	if length < 1 {
+		return 0
+	}
 	return imguiGetFrameDim(strings.Repeat("X", length)).X
 }
 

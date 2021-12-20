@@ -118,9 +118,9 @@ func (trc *traces) check() string {
 		}
 
 		if trc.dbg.vcs.Mem.LastAccessWrite {
-			s.WriteString(fmt.Sprintf("write %#02x to ", trc.dbg.vcs.Mem.LastAccessValue))
+			s.WriteString(fmt.Sprintf("write %#02x to ", trc.dbg.vcs.Mem.LastAccessData))
 		} else {
-			s.WriteString(fmt.Sprintf("read %#02x from ", trc.dbg.vcs.Mem.LastAccessValue))
+			s.WriteString(fmt.Sprintf("read %#02x from ", trc.dbg.vcs.Mem.LastAccessData))
 		}
 
 		s.WriteString(t.String())

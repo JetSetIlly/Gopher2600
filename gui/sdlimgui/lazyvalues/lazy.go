@@ -39,6 +39,8 @@ type LazyValues struct {
 	// detector for some reason.
 	Debugger      *LazyDebugger
 	CPU           *LazyCPU
+	Mem           *LazyMem
+	Phaseclock    *LazyPhaseClock
 	RAM           *LazyRAM
 	Timer         *LazyTimer
 	Playfield     *LazyPlayfield
@@ -83,6 +85,8 @@ func NewLazyValues(e emulation.Emulation) *LazyValues {
 
 	val.Debugger = newLazyDebugger(val)
 	val.CPU = newLazyCPU(val)
+	val.Mem = newLazyMem(val)
+	val.Phaseclock = newLazyPhaseClock(val)
 	val.RAM = newLazyRAM(val)
 	val.Timer = newLazyTimer(val)
 	val.Playfield = newLazyPlayfield(val)
@@ -120,6 +124,8 @@ func (val *LazyValues) Refresh() {
 
 		val.Debugger.update()
 		val.CPU.update()
+		val.Mem.update()
+		val.Phaseclock.update()
 		val.RAM.update()
 		val.Timer.update()
 		val.Playfield.update()
@@ -149,6 +155,8 @@ func (val *LazyValues) Refresh() {
 	val.dbg.PushRawEvent(func() {
 		val.Debugger.push()
 		val.CPU.push()
+		val.Mem.push()
+		val.Phaseclock.push()
 		val.RAM.push()
 		val.Timer.push()
 		val.Playfield.push()

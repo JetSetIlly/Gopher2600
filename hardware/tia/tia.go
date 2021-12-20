@@ -82,7 +82,7 @@ type TIA struct {
 	// The counter decodes shown below provide all the horizontal timing for
 	// the control lines used to construct a valid TV signal."
 	hsync polycounter.Polycounter
-	pclk  phaseclock.PhaseClock
+	PClk  phaseclock.PhaseClock
 
 	// some events are delayed. note that there are delay.Event instances in
 	// the Hmove type.
@@ -109,7 +109,7 @@ func (tia *TIA) Label() string {
 func (tia *TIA) String() string {
 	s := strings.Builder{}
 	s.WriteString(fmt.Sprintf("%s %s %03d %04.01f",
-		tia.hsync, tia.pclk,
+		tia.hsync, tia.PClk,
 		tia.videoCycles, float64(tia.videoCycles)/3.0,
 	))
 	return s.String()
@@ -127,9 +127,9 @@ func NewTIA(instance *instance.Instance, tv TV, mem bus.ChipBus, input bus.Updat
 	}
 
 	tia.Audio = audio.NewAudio()
-	tia.Video = video.NewVideo(instance, mem, tv, &tia.pclk, &tia.hsync, &tia.Hblank, &tia.Hmove)
+	tia.Video = video.NewVideo(instance, mem, tv, &tia.PClk, &tia.hsync, &tia.Hblank, &tia.Hmove)
 	tia.Hmove.Reset()
-	tia.pclk = phaseclock.ResetValue
+	tia.PClk = phaseclock.ResetValue
 
 	return tia, nil
 }
@@ -151,7 +151,7 @@ func (tia *TIA) Plumb(tv TV, mem bus.ChipBus, input bus.UpdateBus, cpu *cpu.CPU)
 	tia.mem = mem
 	tia.input = input
 	tia.rdyFlag = &cpu.RdyFlg
-	tia.Video.Plumb(tia.instance, tia.mem, tia.tv, &tia.pclk, &tia.hsync, &tia.Hblank, &tia.Hmove)
+	tia.Video.Plumb(tia.instance, tia.mem, tia.tv, &tia.PClk, &tia.hsync, &tia.Hblank, &tia.Hmove)
 }
 
 // ReadMemTIA checks for side effects in the TIA sub-system.
@@ -189,7 +189,7 @@ func (tia *TIA) ReadMemTIA(data bus.ChipData) bool {
 		//
 		// "RSYNC resets the two-phase clock for the HSync counter to the H@1
 		// rising edge when strobed."
-		tia.pclk = phaseclock.AlignValue
+		tia.PClk = phaseclock.AlignValue
 
 		// from TIA_HW_Notes.txt:
 		//
@@ -231,7 +231,7 @@ func (tia *TIA) ReadMemTIA(data bus.ChipData) bool {
 
 		// not forgetting that we count from zero, the following delay
 		// values range from 3 to 6, as described in TIA_HW_Notes
-		switch tia.pclk {
+		switch tia.PClk {
 		case 0:
 			delayDuration = 5
 		case 1:
@@ -323,7 +323,7 @@ func (tia *TIA) resolveDelayedEvents() {
 	if _, ok := tia.futureRsyncReset.Tick(); ok {
 		tia.pendingEvents--
 		tia.hsync = polycounter.ResetValue
-		tia.pclk = phaseclock.ResetValue
+		tia.PClk = phaseclock.ResetValue
 	}
 
 	if _, ok := tia.Hmove.FutureLatch.Tick(); ok {
@@ -374,14 +374,14 @@ func (tia *TIA) Step(readMemory bool) error {
 	}
 
 	// tick phase clock
-	tia.pclk++
-	if tia.pclk >= phaseclock.NumStates {
-		tia.pclk = 0
+	tia.PClk++
+	if tia.PClk >= phaseclock.NumStates {
+		tia.PClk = 0
 	}
 
 	// "one extra CLK pulse is sent every 4 CLK" and "on every H@1 signal [...]
 	// as an extra 'stuffed' clock signal."
-	tia.Hmove.Clk = tia.pclk == phaseclock.RisingPhi2
+	tia.Hmove.Clk = tia.PClk == phaseclock.RisingPhi2
 
 	// tick delayed events and run payload if appropriate
 	if tia.pendingEvents > 0 {
@@ -398,7 +398,7 @@ func (tia *TIA) Step(readMemory bool) error {
 	// the context of this passage is the Horizontal Sync Counter. It is
 	// explicitly saying that the HSYNC counter ticks forward on the rising
 	// edge of Phi2.
-	if tia.pclk == phaseclock.RisingPhi2 {
+	if tia.PClk == phaseclock.RisingPhi2 {
 		tia.hsync++
 		if tia.hsync >= polycounter.LenTable6Bit {
 			tia.hsync = 0

@@ -134,17 +134,17 @@ func (wtc *watches) check() string {
 			continue
 		}
 
-		if w.matchValue && w.value != wtc.dbg.vcs.Mem.LastAccessValue {
+		if w.matchValue && w.value != wtc.dbg.vcs.Mem.LastAccessData {
 			continue
 		}
 
 		if w.ai.Read {
 			if !wtc.dbg.vcs.Mem.LastAccessWrite {
-				checkString.WriteString(fmt.Sprintf("watch at %s (read value %#02x)\n", w, wtc.dbg.vcs.Mem.LastAccessValue))
+				checkString.WriteString(fmt.Sprintf("watch at %s (read value %#02x)\n", w, wtc.dbg.vcs.Mem.LastAccessData))
 			}
 		} else {
 			if wtc.dbg.vcs.Mem.LastAccessWrite {
-				checkString.WriteString(fmt.Sprintf("watch at %s (written value %#02x)\n", w, wtc.dbg.vcs.Mem.LastAccessValue))
+				checkString.WriteString(fmt.Sprintf("watch at %s (written value %#02x)\n", w, wtc.dbg.vcs.Mem.LastAccessData))
 			}
 		}
 	}

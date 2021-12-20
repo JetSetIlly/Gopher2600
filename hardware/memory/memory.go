@@ -53,8 +53,9 @@ type Memory struct {
 	// access was a phantom access (PhantomAccess flag in CPU type)
 	LastAccessAddress       uint16
 	LastAccessAddressMapped uint16
-	LastAccessValue         uint8
+	LastAccessData          uint8
 	LastAccessWrite         bool
+	LastAccessMask          uint8
 }
 
 // NewMemory is the preferred method of initialisation for Memory.
@@ -141,21 +142,24 @@ func (mem *Memory) read(address uint16, zeroPage bool) (uint8, error) {
 	//
 	// see commentary for DataMasks array for extensive explanation
 	if ma < uint16(len(addresses.DataMasks)) {
+		mem.LastAccessMask = addresses.DataMasks[ma]
 		if !zeroPage {
 			data &= addresses.DataMasks[ma]
 			if mem.instance != nil && mem.instance.Prefs.RandomPins.Get().(bool) {
 				data |= uint8(rand.Int()) & (addresses.DataMasks[ma] ^ 0xff)
 			} else {
-				data |= mem.LastAccessValue & (addresses.DataMasks[ma] ^ 0xff)
+				data |= mem.LastAccessData & (addresses.DataMasks[ma] ^ 0xff)
 			}
 		} else {
 			data &= addresses.DataMasks[ma]
 			if mem.instance != nil && mem.instance.Prefs.RandomPins.Get().(bool) {
 				data |= uint8(rand.Int()) & (addresses.DataMasks[ma] ^ 0xff)
 			} else {
-				data |= mem.LastAccessValue & (addresses.DataMasks[ma] ^ 0xff)
+				data |= mem.LastAccessData & (addresses.DataMasks[ma] ^ 0xff)
 			}
 		}
+	} else {
+		mem.LastAccessMask = 0xff
 	}
 
 	// see the commentary for the Listen() function in the Cartridge interface
@@ -166,7 +170,7 @@ func (mem *Memory) read(address uint16, zeroPage bool) (uint8, error) {
 	mem.LastAccessAddress = address
 	mem.LastAccessAddressMapped = ma
 	mem.LastAccessWrite = false
-	mem.LastAccessValue = data
+	mem.LastAccessData = data
 
 	return data, err
 }
@@ -192,7 +196,7 @@ func (mem *Memory) Write(address uint16, data uint8) error {
 	mem.LastAccessAddress = address
 	mem.LastAccessAddressMapped = ma
 	mem.LastAccessWrite = true
-	mem.LastAccessValue = data
+	mem.LastAccessData = data
 
 	// see the commentary for the Listen() function in the Cartridge interface
 	// for an explanation for what is going on here. more to the point, we only

@@ -74,7 +74,7 @@ func (r *Rewind) SearchMemoryWrite(tgt *State, addr uint16, value uint8, valueMa
 		}
 
 		if searchVCS.Mem.LastAccessWrite && searchVCS.Mem.LastAccessAddressMapped == addr {
-			if searchVCS.Mem.LastAccessValue&valueMask == value&valueMask {
+			if searchVCS.Mem.LastAccessData&valueMask == value&valueMask {
 				matchingState = snapshot(searchVCS, levelTemporary)
 			}
 			mostRecentTVstate = searchTV.String()
