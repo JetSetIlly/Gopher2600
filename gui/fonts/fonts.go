@@ -32,6 +32,7 @@
 //
 // https://creativecommons.org/licenses/by/4.0/legalcode
 //
+//
 // The FontAwesome font (fa-solid-900.ttf) was downloaded on 18th March 2020
 // from https://fontawesome.com/download using the "Free for Web" button. Full
 // URL was:
@@ -39,6 +40,13 @@
 // https://use.fontawesome.com/releases/v5.15.2/fontawesome-free-5.15.2-web.zip
 //
 // FontAwesome is licenced under the Font Awesome Free License.
+//
+//
+// Hack-Regular was downloaded on 20th December 2021 from permalink URL:
+//
+// https://github.com/source-foundry/Hack/blob/a737c121cabb337fdfe655d8c7304729f351e30f/build/ttf/Hack-Regular.ttf
+//
+// Hack-Regular is licenced under the MIT License.
 package fonts
 
 import _ "embed"
@@ -105,4 +113,14 @@ const (
 const (
 	Gopher2600IconMin = '\ue000'
 	Gopher2600IconMax = '\ue005'
+)
+
+//go:embed "Hack-Regular.ttf"
+var Hack []byte
+
+// The first and last unicode points used in the application. We use this to
+// make sure we're using as small a font texture as possible.
+const (
+	HackMin = '\u0003'
+	HackMax = '\u1ef9'
 )

@@ -27,15 +27,52 @@ import (
 const win6507PinoutID = "6507 Pinout"
 
 type win6507Pinout struct {
-	img           *SdlImgui
-	open          bool
+	img  *SdlImgui
+	open bool
+
 	busInfoHeight float32
+
+	// Vec4 colors for address and data bus. used as the basis for the
+	// packed colors and for styling text
+	addressBus    imgui.Vec4
+	addressBusOff imgui.Vec4
+	dataBus       imgui.Vec4
+	dataBusOff    imgui.Vec4
+
+	// packed colours are used for the drawlist primitives used to create the
+	// pinout image
+	body          imgui.PackedColor
+	bodyOutline   imgui.PackedColor
+	pinOn         imgui.PackedColor
+	pinOff        imgui.PackedColor
+	addressPinOn  imgui.PackedColor
+	addressPinOff imgui.PackedColor
+	dataPinOn     imgui.PackedColor
+	dataPinOff    imgui.PackedColor
+	rdyPinOn      imgui.PackedColor
+	rdyPinOff     imgui.PackedColor
 }
 
 func newWin6507Pinout(img *SdlImgui) (window, error) {
 	win := &win6507Pinout{
 		img: img,
 	}
+
+	win.addressBus = imgui.Vec4{0.3, 0.8, 0.8, 1.0}
+	win.addressBusOff = imgui.Vec4{0.3, 0.8, 0.8, 0.5}
+	win.dataBus = imgui.Vec4{0.8, 0.8, 0.3, 1.0}
+	win.dataBusOff = imgui.Vec4{0.8, 0.8, 0.3, 0.5}
+
+	win.body = imgui.PackedColorFromVec4(imgui.Vec4{0.1, 0.1, 0.1, 1.0})
+	win.bodyOutline = imgui.PackedColorFromVec4(imgui.Vec4{1.0, 1.0, 1.0, 0.8})
+	win.pinOn = imgui.PackedColorFromVec4(imgui.Vec4{0.8, 0.8, 0.8, 1.0})
+	win.pinOff = imgui.PackedColorFromVec4(imgui.Vec4{0.8, 0.8, 0.8, 0.5})
+	win.addressPinOn = imgui.PackedColorFromVec4(win.addressBus)
+	win.addressPinOff = imgui.PackedColorFromVec4(win.addressBusOff)
+	win.dataPinOn = imgui.PackedColorFromVec4(win.dataBus)
+	win.dataPinOff = imgui.PackedColorFromVec4(win.dataBusOff)
+	win.rdyPinOn = imgui.PackedColorFromVec4(win.img.cols.True)
+	win.rdyPinOff = imgui.PackedColorFromVec4(win.img.cols.False)
 
 	return win, nil
 }
@@ -75,32 +112,15 @@ func (win *win6507Pinout) draw() {
 	chipDim := imgui.Vec2{X: avail.X * 0.5, Y: avail.Y * 0.9}
 	chipPos := imgui.Vec2{X: p.X + avail.X*0.5 - chipDim.X*0.5, Y: p.Y + avail.Y*0.5 - chipDim.Y*0.5}
 
-	// colors
-	addressBus := imgui.Vec4{0.3, 0.8, 0.8, 1.0}
-	addressBusOff := imgui.Vec4{0.3, 0.8, 0.8, 0.5}
-	dataBus := imgui.Vec4{0.8, 0.8, 0.3, 1.0}
-	dataBusOff := imgui.Vec4{0.8, 0.8, 0.3, 0.5}
-
 	if imgui.BeginChildV("pinout", avail, false, imgui.WindowFlagsNone) {
 		dl := imgui.WindowDrawList()
-
-		// colors
-		body := imgui.PackedColorFromVec4(imgui.Vec4{0.1, 0.1, 0.1, 1.0})
-		bodyOutline := imgui.PackedColorFromVec4(imgui.Vec4{1.0, 1.0, 1.0, 0.8})
-		pinOn := imgui.PackedColorFromVec4(imgui.Vec4{0.8, 0.8, 0.8, 1.0})
-		pinOff := imgui.PackedColorFromVec4(imgui.Vec4{0.8, 0.8, 0.8, 0.5})
-		addressOn := imgui.PackedColorFromVec4(addressBus)
-		addressOff := imgui.PackedColorFromVec4(addressBusOff)
-		dataOn := imgui.PackedColorFromVec4(dataBus)
-		dataOff := imgui.PackedColorFromVec4(dataBusOff)
-		rdy := imgui.PackedColorFromVec4(win.img.cols.True)
-		notRdy := imgui.PackedColorFromVec4(win.img.cols.False)
+		imgui.PushFont(win.img.glsl.hack)
 
 		const lineThick = 2.0
 
 		// main body
 		dl.AddRectFilledV(chipPos, imgui.Vec2{chipPos.X + chipDim.X, chipPos.Y + chipDim.Y},
-			body, 0, imgui.DrawCornerFlagsAll)
+			win.body, 0, imgui.DrawCornerFlagsAll)
 
 		// pins
 		pinSpacing := chipDim.Y / 14
@@ -114,38 +134,38 @@ func (win *win6507Pinout) draw() {
 		// left pins
 		pinX := chipPos.X - pinSize
 		for i := 0; i < 14; i++ {
-			col := pinOff
+			col := win.pinOff
 			label := ""
 			switch i {
 			case 0:
 				// RES
 				if !win.img.lz.CPU.HasReset {
-					col = pinOn
+					col = win.pinOn
 				}
 				label = "RES"
 			case 1:
 				// Vss
-				col = pinOn
+				col = win.pinOn
 				label = "Vss"
 			case 2:
 				// RDY
 				if win.img.lz.CPU.RdyFlg {
-					col = rdy
+					col = win.rdyPinOn
 				} else {
-					col = notRdy
+					col = win.rdyPinOff
 				}
 				label = "RDY"
 			case 3:
 				// Vcc
-				col = pinOn
+				col = win.pinOn
 				label = "Vcc"
 			default:
 				// address pins
 				m := uint16(0x01 << (i - 4))
 				if addressBus&m == m {
-					col = addressOn
+					col = win.addressPinOn
 				} else {
-					col = addressOff
+					col = win.addressPinOff
 				}
 				label = fmt.Sprintf("A%d", i-4)
 			}
@@ -161,29 +181,29 @@ func (win *win6507Pinout) draw() {
 
 		pinX = chipPos.X + chipDim.X
 		for i := 0; i < 14; i++ {
-			col := pinOff
+			col := win.pinOff
 			label := ""
 			switch i {
 			case 0:
 				switch win.img.lz.Phaseclock.LastPClk {
 				case phaseclock.RisingPhi2:
-					col = pinOn
+					col = win.pinOn
 				case phaseclock.FallingPhi2:
-					col = pinOn
+					col = win.pinOn
 				}
-				label = "@2"
+				label = "φ2"
 			case 1:
 				switch win.img.lz.Phaseclock.LastPClk {
 				case phaseclock.RisingPhi1:
-					col = pinOn
+					col = win.pinOn
 				case phaseclock.FallingPhi1:
-					col = pinOn
+					col = win.pinOn
 				}
-				label = "@1"
+				label = "φ1"
 			case 2:
 				// R/W
 				if win.img.lz.Mem.LastAccessWrite {
-					col = pinOn
+					col = win.pinOn
 				}
 				label = "R/W"
 			default:
@@ -191,18 +211,18 @@ func (win *win6507Pinout) draw() {
 					// address pins
 					m := uint16(0x01 << (23 - i))
 					if addressBus&m == m {
-						col = addressOn
+						col = win.addressPinOn
 					} else {
-						col = addressOff
+						col = win.addressPinOff
 					}
 					label = fmt.Sprintf("A%d", (23 - i))
 				} else {
 					// data pins
 					m := uint16(0x01 << (i - 3))
 					if uint16(dataBus)&m == m {
-						col = dataOn
+						col = win.dataPinOn
 					} else {
-						col = dataOff
+						col = win.dataPinOff
 					}
 					label = fmt.Sprintf("D%d", i-3)
 				}
@@ -213,14 +233,15 @@ func (win *win6507Pinout) draw() {
 			dl.AddRectFilledV(pinPos, imgui.Vec2{pinPos.X + pinSize, pinPos.Y + pinSize},
 				col, 0, imgui.DrawCornerFlagsNone)
 
-			textPos := imgui.Vec2{X: chipPos.X + chipDim.X + lineThick*2 - imguiTextWidth(len(label)), Y: pinPos.Y + pinTextAdj}
+			textPos := imgui.Vec2{X: chipPos.X + chipDim.X + lineThick*2 - imguiGetFrameDim(label).X, Y: pinPos.Y + pinTextAdj}
 			dl.AddText(textPos, col, label)
 		}
 
 		// main chip body (outline)
 		dl.AddRectV(chipPos, imgui.Vec2{chipPos.X + chipDim.X, chipPos.Y + chipDim.Y},
-			bodyOutline, 0, imgui.DrawCornerFlagsAll, lineThick)
+			win.bodyOutline, 0, imgui.DrawCornerFlagsAll, lineThick)
 
+		imgui.PopFont()
 		imgui.EndChild()
 	}
 
@@ -237,10 +258,10 @@ func (win *win6507Pinout) draw() {
 
 				imgui.TableNextRow()
 				imgui.TableNextColumn()
-				imguiColorLabel("Address", addressBus)
+				imguiColorLabel("Address", win.addressBus)
 
 				imgui.TableNextColumn()
-				imgui.PushStyleColor(imgui.StyleColorText, addressBus)
+				imgui.PushStyleColor(imgui.StyleColorText, win.addressBus)
 				imgui.Text(fmt.Sprintf("%013b", win.img.lz.Mem.LastAccessAddress&0x1fff))
 				imgui.PopStyleColor()
 
@@ -253,7 +274,7 @@ func (win *win6507Pinout) draw() {
 
 				imgui.TableNextRow()
 				imgui.TableNextColumn()
-				imguiColorLabel("Data", dataBus)
+				imguiColorLabel("Data", win.dataBus)
 
 				imgui.TableNextColumn()
 				if win.img.lz.Mem.LastAccessMask != 0xff {
@@ -269,14 +290,14 @@ func (win *win6507Pinout) draw() {
 							s2.WriteString(fmt.Sprintf("%d", (win.img.lz.Mem.LastAccessData>>i)&0x01))
 						}
 					}
-					imgui.PushStyleColor(imgui.StyleColorText, dataBus)
+					imgui.PushStyleColor(imgui.StyleColorText, win.dataBus)
 					imgui.Text(s1.String())
 					imgui.SetCursorScreenPos(p)
-					imgui.PushStyleColor(imgui.StyleColorText, dataBusOff)
+					imgui.PushStyleColor(imgui.StyleColorText, win.dataBusOff)
 					imgui.Text(s2.String())
 					imgui.PopStyleColorV(2)
 				} else {
-					imgui.PushStyleColor(imgui.StyleColorText, dataBus)
+					imgui.PushStyleColor(imgui.StyleColorText, win.dataBus)
 					imgui.Text(fmt.Sprintf("%08b", win.img.lz.Mem.LastAccessData))
 					imgui.PopStyleColor()
 				}

@@ -1001,6 +1001,13 @@ The following projects are used in the `Gopher2600` project:
 * https://github.com/hajimehoshi/go-mp3
 * https://github.com/pkg/term
 
+* FontAwesome
+	* https://fontawesome.com/
+	* licensed under the Font Awesome Free License
+* Hack-Regular 
+	* https://github.com/source-foundry/Hack
+	* licensed under the MIT License
+
 Bother 6502.ts and Stella were used as reference for the Audio implementation.
 
 Statsview provided by:

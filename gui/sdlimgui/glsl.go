@@ -45,6 +45,9 @@ type glsl struct {
 	gopher2600Icons     imgui.Font
 	gopher2600IconsSize float32
 
+	hack     imgui.Font
+	hackSize float32
+
 	shaders     [numShaders]shaderProgram
 	fontTexture uint32
 
@@ -98,25 +101,10 @@ func (rnd *glsl) setupFonts() error {
 	var glyphBuilder imgui.GlyphRangesBuilder
 	glyphBuilder.Add(fonts.FontAwesomeMin, fonts.FontAwesomeMax)
 
-	// load font
+	// load font awesome
 	font := atlas.AddFontFromMemoryTTFV(fonts.FontAwesome, 13.0, mergeConfig, glyphBuilder.Build().GlyphRanges)
 	if font == 0 {
 		return curated.Errorf("font: error loading font from memory")
-	}
-
-	// load gopher icons
-	gopher2600IconConfig := imgui.NewFontConfig()
-	defer gopher2600IconConfig.Delete()
-	gopher2600IconConfig.SetPixelSnapH(true)
-	gopher2600IconConfig.SetGlyphOffsetY(1.0)
-
-	var gopherIconBuilder imgui.GlyphRangesBuilder
-	gopherIconBuilder.Add(fonts.Gopher2600IconMin, fonts.Gopher2600IconMax)
-
-	rnd.gopher2600IconsSize = 52.0
-	rnd.gopher2600Icons = atlas.AddFontFromMemoryTTFV(fonts.Gopher2600Icons, rnd.gopher2600IconsSize, gopher2600IconConfig, gopherIconBuilder.Build().GlyphRanges)
-	if font == 0 {
-		return curated.Errorf("font: error loading Gopher2600 font from memory")
 	}
 
 	// load large icons
@@ -145,6 +133,36 @@ func (rnd *glsl) setupFonts() error {
 	rnd.veryLargeFontAwesome = atlas.AddFontFromMemoryTTFV(fonts.FontAwesome, rnd.veryLargeFontAwesomeSize, veryLargeFontAwesomeConfig, veryLargeFontAwesomeBuilder.Build().GlyphRanges)
 	if font == 0 {
 		return curated.Errorf("font: error loading very large FA font from memory")
+	}
+
+	// load gopher icons
+	gopher2600IconConfig := imgui.NewFontConfig()
+	defer gopher2600IconConfig.Delete()
+	gopher2600IconConfig.SetPixelSnapH(true)
+	gopher2600IconConfig.SetGlyphOffsetY(1.0)
+
+	var gopher2600IconBuilder imgui.GlyphRangesBuilder
+	gopher2600IconBuilder.Add(fonts.Gopher2600IconMin, fonts.Gopher2600IconMax)
+
+	rnd.gopher2600IconsSize = 52.0
+	rnd.gopher2600Icons = atlas.AddFontFromMemoryTTFV(fonts.Gopher2600Icons, rnd.gopher2600IconsSize, gopher2600IconConfig, gopher2600IconBuilder.Build().GlyphRanges)
+	if font == 0 {
+		return curated.Errorf("font: error loading Gopher2600 font from memory")
+	}
+
+	// load hack font
+	hackConfig := imgui.NewFontConfig()
+	defer hackConfig.Delete()
+	hackConfig.SetPixelSnapH(true)
+	hackConfig.SetGlyphOffsetY(1.0)
+
+	var hackBuilder imgui.GlyphRangesBuilder
+	hackBuilder.Add(fonts.HackMin, fonts.HackMax)
+
+	rnd.hackSize = 11.0
+	rnd.hack = atlas.AddFontFromMemoryTTFV(fonts.Hack, rnd.hackSize, hackConfig, hackBuilder.Build().GlyphRanges)
+	if font == 0 {
+		return curated.Errorf("font: error loading hack font from memory")
 	}
 
 	// create font texture
