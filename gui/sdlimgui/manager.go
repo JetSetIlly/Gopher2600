@@ -110,8 +110,6 @@ var windowDefs = [...]windowDef{
 	{create: newWinOscilloscope, menu: menuEntry{group: menuTools}, open: true},
 	{create: newWinTracker, menu: menuEntry{group: menuTools}, open: false},
 	{create: newWinTimeline, menu: menuEntry{group: menuTools}, open: true},
-	{create: newWinComparison, menu: menuEntry{group: menuTools}, open: false},
-	{create: newWinBot, menu: menuEntry{group: menuTools}, open: false},
 
 	// windows that appear in cartridge specific menu
 	{create: newWinDPCregisters, menu: menuEntry{group: menuCart, restrictBus: menuRestrictRegister, restrictMapper: []string{"DPC"}}},
@@ -132,6 +130,10 @@ var windowDefs = [...]windowDef{
 	// savekey windows
 	{create: newWinSaveKeyI2C, menu: menuEntry{group: menuSaveKey, label: winSaveKeyI2CMenu}},
 	{create: newWinSaveKeyEEPROM, menu: menuEntry{group: menuSaveKey, label: winSaveKeyEEPROMMenu}},
+
+	// windows that do not have a menu entry (windows for playmode only)
+	{create: newWinComparison, menu: menuEntry{group: menuNone}, open: false},
+	{create: newWinBot, menu: menuEntry{group: menuNone}, open: false},
 }
 
 // list of windows that can be opened in playmode in addition to the debugger.

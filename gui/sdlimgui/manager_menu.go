@@ -36,6 +36,7 @@ const (
 	menuCoProc
 	menuPlusROM
 	menuSaveKey
+	menuNone
 )
 
 // restrict menu entry for those cartridges with specific buses.
