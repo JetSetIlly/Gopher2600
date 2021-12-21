@@ -120,14 +120,10 @@ func (pan *Panel) Reset() {
 	pan.write()
 }
 
+// commit changes to RIOT memory
 func (pan *Panel) write() {
-	// commit changes to RIOT memory
-	v := uint8(0)
-
-	// pins 2, 4 and 5 are not used and always value value of 1
-	v |= 0x20
-	v |= 0x10
-	v |= 0x04
+	// pins 2, 4 and 5 are not used and from the view of the panel are always set
+	v := uint8(0x34)
 
 	if pan.p0pro {
 		v |= 0x80

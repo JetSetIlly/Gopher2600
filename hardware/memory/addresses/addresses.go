@@ -105,6 +105,8 @@ var TIAWriteSymbols = map[uint16]string{
 var RIOTWriteSymbols = map[uint16]string{
 	0x0280: "SWCHA",
 	0x0281: "SWACNT",
+	0x0282: "SWCHB",
+	0x0283: "SWBCNT",
 	0x0294: "TIM1T",
 	0x0295: "TIM8T",
 	0x0296: "TIM64T",

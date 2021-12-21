@@ -54,12 +54,9 @@ type Ports struct {
 	// itself.
 	swcha uint8
 
-	// local copy of the SWCHB register. used exclusively for reference
-	// purposes
-	swchb uint8
-
-	// the swcha field is a copy of the SWCHA register as it was written by the
-	// CPU. it is not necessarily the value of SWCHA as written by the RIOT.
+	// the swchaFromCPU field is a copy of the SWCHA register as it was written
+	// by the CPU. it is not necessarily the value of SWCHA as written by the
+	// RIOT.
 	//
 	// we need this so that changing the SWACNT (by the CPU) will cause the
 	// correct value to be written to be written to the SWCHA register.
@@ -75,6 +72,16 @@ type Ports struct {
 	//
 	// we use it to mux the Player0 and Player 1 nibbles into the single register
 	swchaMux uint8
+
+	// port B equivalents of the above. there is no swchbMux field because only
+	// one peripheral uses port B at a time.
+	//
+	// there is a swchbFromPeriph however. this is the value as written by the
+	// peripheral (the panel) before SWBCNT has been applied to it
+	swbcnt          uint8
+	swchb           uint8
+	swchbFromCPU    uint8
+	swchbFromPeriph uint8
 }
 
 // NewPorts is the preferred method of initialisation of the Ports type.
@@ -186,13 +193,11 @@ func (p *Ports) Update(data bus.ChipData) bool {
 		//
 		// we should think of this write as the default event in case the
 		// peripheral chooses to do nothing with the new value
-		p.swcha = (p.swacnt ^ 0xff) | p.swchaFromCPU
+		p.swcha = ^p.swacnt | p.swchaFromCPU
 		p.riot.ChipWrite(addresses.SWCHA, p.swcha)
 
 		// mask value with SWACNT bits before passing to peripheral
 		data.Value &= p.swacnt
-
-		// peripheral update for SWCHA
 		_ = p.LeftPlayer.Update(data)
 		_ = p.RightPlayer.Update(data)
 
@@ -200,13 +205,13 @@ func (p *Ports) Update(data bus.ChipData) bool {
 		p.swacnt = data.Value
 		p.riot.ChipWrite(addresses.SWACNT, p.swacnt)
 
-		// i/o bits have changed so change the data in the SWCHA register
-		p.swcha = (p.swacnt ^ 0xff) | p.swchaFromCPU
-		p.riot.ChipWrite(addresses.SWCHA, p.swcha)
-
 		// peripheral update for SWACNT
 		_ = p.LeftPlayer.Update(data)
 		_ = p.RightPlayer.Update(data)
+
+		// i/o bits have changed so change the data in the SWCHA register
+		p.swcha = ^p.swacnt | p.swchaFromCPU
+		p.riot.ChipWrite(addresses.SWCHA, p.swcha)
 
 		// adjusting SWACNT also affects the SWCHA lines to the peripheral.
 		// adjust SWCHA lines and update peripheral with new SWCHA data
@@ -218,10 +223,16 @@ func (p *Ports) Update(data bus.ChipData) bool {
 		_ = p.RightPlayer.Update(data)
 
 	case "SWCHB":
-		fallthrough
+		p.swchbFromCPU = data.Value
+		p.swchb = (p.swchbFromCPU & p.swbcnt) | (p.swchbFromPeriph & ^p.swbcnt)
+		p.riot.ChipWrite(addresses.SWCHB, p.swchb)
 
 	case "SWBCNT":
-		_ = p.Panel.Update(data)
+		p.swbcnt = data.Value
+		p.riot.ChipWrite(addresses.SWBCNT, p.swbcnt)
+
+		p.swchb = (p.swchbFromCPU & p.swbcnt) | (p.swchbFromPeriph & ^p.swbcnt)
+		p.riot.ChipWrite(addresses.SWCHB, p.swchb)
 	}
 
 	return false
@@ -277,30 +288,31 @@ func (p *Ports) PeripheralID(id plugging.PortID) plugging.PeripheralID {
 	return plugging.PeriphNone
 }
 
-// WriteSWCHx implements the MemoryAccess interface.
+// WriteSWCHx implements the peripheral.PeripheralBus interface.
 func (p *Ports) WriteSWCHx(id plugging.PortID, data uint8) {
 	switch id {
 	case plugging.PortLeftPlayer:
 		data &= 0xf0              // keep only the bits for player 0
 		data |= p.swchaMux & 0x0f // combine with the existing player 1 bits
 		p.swchaMux = data
-		p.swcha = data & (p.swacnt ^ 0xff)
+		p.swcha = data & ^p.swacnt
 		p.riot.ChipWrite(addresses.SWCHA, p.swcha)
 	case plugging.PortRightPlayer:
 		data = (data & 0xf0) >> 4 // move bits into the player 1 nibble
 		data |= p.swchaMux & 0xf0 // combine with the existing player 0 bits
 		p.swchaMux = data
-		p.swcha = data & (p.swacnt ^ 0xff)
+		p.swcha = data & ^p.swacnt
 		p.riot.ChipWrite(addresses.SWCHA, p.swcha)
 	case plugging.PortPanel:
-		p.swchb = data
+		p.swchbFromPeriph = data
+		p.swchb = (p.swchbFromCPU & p.swbcnt) | (p.swchbFromPeriph & ^p.swbcnt)
 		p.riot.ChipWrite(addresses.SWCHB, p.swchb)
 	default:
 		return
 	}
 }
 
-// WriteINPTx implements the MemoryAccess interface.
+// WriteINPTx implements the peripheral.PeripheralBus interface.
 func (p *Ports) WriteINPTx(inptx addresses.ChipRegister, data uint8) {
 	// write memory if button is pressed or it is not and the button latch
 	// is false

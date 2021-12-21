@@ -33,7 +33,7 @@ func NewRIOT(instance *instance.Instance) *ChipMemory {
 
 	// SWCHA should be set when a peripheral is attached
 
-	// SWCHB is set in panel attachement
+	// SWCHB is set in panel peripheral
 
 	return chip
 }
