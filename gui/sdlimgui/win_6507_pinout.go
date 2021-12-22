@@ -100,9 +100,9 @@ func (win *win6507Pinout) draw() {
 	imgui.SetNextWindowPosV(imgui.Vec2{756, 117}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
 	imgui.SetNextWindowSizeV(imgui.Vec2{326, 338}, imgui.ConditionFirstUseEver)
 	imgui.SetNextWindowSizeConstraints(imgui.Vec2{326, 338}, imgui.Vec2{529, 593})
-	if !imgui.BeginV(win.id(), &win.open, imgui.WindowFlagsNone) {
-		return
-	}
+
+	imgui.BeginV(win.id(), &win.open, imgui.WindowFlagsNone)
+	defer imgui.End()
 
 	avail := imgui.ContentRegionAvail()
 	avail.Y -= win.busInfoHeight
@@ -316,6 +316,4 @@ func (win *win6507Pinout) draw() {
 			}
 		}
 	})
-
-	imgui.End()
 }
