@@ -18,27 +18,35 @@ package resources
 import (
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/jetsetilly/gopher2600/resources/fs"
 )
 
 // JoinPath prepends the supplied path with a with OS/build specific base
-// paths
+// paths, if required.
 //
 // The function creates all folders necessary to reach the end of sub-path. It
 // does not otherwise touch or create the file.
 func JoinPath(path ...string) (string, error) {
+	// join supplied path
+	p := filepath.Join(path...)
+
+	// do not prepend OS/build specific base path if it is already present
 	b, err := baseResourcePath()
 	if err != nil {
 		return "", err
 	}
+	if !strings.HasPrefix(p, b) {
+		p = filepath.Join(b, filepath.Join(path...))
+	}
 
-	p := filepath.Join(b, filepath.Join(path...))
-
+	// check if path already exists
 	if _, err := os.Stat(p); err == nil {
 		return p, nil
 	}
 
+	// create path if necessary
 	if err := fs.MkdirAll(filepath.Dir(p), 0700); err != nil {
 		return "", err
 	}
