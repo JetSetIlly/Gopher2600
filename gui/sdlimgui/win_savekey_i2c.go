@@ -181,7 +181,7 @@ func (win *winSaveKeyI2C) drawBits() {
 
 	imgui.SameLine()
 
-	seq := newDrawlistSequence(win.img, imgui.Vec2{X: imgui.FrameHeight() * 0.75, Y: imgui.FrameHeight() * 0.75}, true)
+	seq := newDrawlistSequence(imgui.Vec2{X: imgui.FrameHeight() * 0.75, Y: imgui.FrameHeight() * 0.75}, true)
 	for i := 0; i < 8; i++ {
 		if (bits<<i)&0x80 != 0x80 {
 			seq.nextItemDepressed = true

@@ -157,11 +157,14 @@ func (win *winTIA) drawPlayfield() {
 	imgui.Spacing()
 	imgui.Spacing()
 
+	// tv palette used to draw bit sequences with correct colours
+	_, palette, _ := win.img.imguiTVPalette()
+
 	// playfield data
 	imgui.BeginGroup()
 	imguiLabel("PF0")
 	imgui.SameLine()
-	seq := newDrawlistSequence(win.img, imgui.Vec2{X: imgui.FrameHeight(), Y: imgui.FrameHeight()}, false)
+	seq := newDrawlistSequence(imgui.Vec2{X: imgui.FrameHeight(), Y: imgui.FrameHeight()}, false)
 	pf0d := lz.PF0
 	for i := 0; i < 4; i++ {
 		var col uint8
@@ -171,7 +174,7 @@ func (win *winTIA) drawPlayfield() {
 			col = lz.BackgroundColor
 			seq.nextItemDepressed = true
 		}
-		if seq.rectFillTvCol(col) {
+		if seq.rectFill(palette[col]) {
 			pf0d ^= 0x80 >> i
 			win.update(
 				func() {
@@ -198,7 +201,7 @@ func (win *winTIA) drawPlayfield() {
 			col = lz.BackgroundColor
 			seq.nextItemDepressed = true
 		}
-		if seq.rectFillTvCol(col) {
+		if seq.rectFill(palette[col]) {
 			pf1d ^= 0x80 >> i
 			win.update(
 				func() {
@@ -225,7 +228,7 @@ func (win *winTIA) drawPlayfield() {
 			col = lz.BackgroundColor
 			seq.nextItemDepressed = true
 		}
-		if seq.rectFillTvCol(col) {
+		if seq.rectFill(palette[col]) {
 			pf2d ^= 0x80 >> i
 			win.update(
 				func() {
@@ -246,7 +249,7 @@ func (win *winTIA) drawPlayfield() {
 	// playfield data for the scanline
 	imgui.BeginGroup()
 	imguiLabel("Scanline")
-	seq = newDrawlistSequence(win.img, imgui.Vec2{X: imgui.FrameHeight() * 0.5, Y: imgui.FrameHeight()}, false)
+	seq = newDrawlistSequence(imgui.Vec2{X: imgui.FrameHeight() * 0.5, Y: imgui.FrameHeight()}, false)
 
 	// first half of the playfield
 	for _, v := range lz.LeftData {
@@ -260,7 +263,7 @@ func (win *winTIA) drawPlayfield() {
 		} else {
 			col = lz.BackgroundColor
 		}
-		seq.rectFillTvCol(col)
+		seq.rectFill(palette[col])
 		seq.sameLine()
 	}
 
@@ -276,7 +279,7 @@ func (win *winTIA) drawPlayfield() {
 		} else {
 			col = lz.BackgroundColor
 		}
-		seq.rectFillTvCol(col)
+		seq.rectFill(palette[col])
 		seq.sameLine()
 	}
 	seq.end()

@@ -435,3 +435,41 @@ func imguiTooltip(f func(), hoverTest bool) {
 		imgui.EndTooltip()
 	}
 }
+
+// draw value with hex input and bit toggles. doesn't draw a label.
+//
+// if onWrite is nil then the hex input is not drawn.
+func drawRegister(id string, val uint8, mask uint8, col imgui.PackedColor, onWrite func(uint8)) {
+	if onWrite != nil {
+		v := fmt.Sprintf("%02x", val)
+		if imguiHexInput(id, 2, &v) {
+			v, err := strconv.ParseUint(v, 16, 8)
+			if err != nil {
+				panic(err)
+			}
+			onWrite(uint8(v) & mask)
+		}
+
+		imgui.SameLine()
+	}
+
+	seq := newDrawlistSequence(imgui.Vec2{X: imgui.FrameHeight() * 0.75, Y: imgui.FrameHeight() * 0.75}, true)
+	for i := 0; i < 8; i++ {
+		if mask<<i&0x80 == 0x80 {
+			if (val<<i)&0x80 != 0x80 {
+				seq.nextItemDepressed = true
+			}
+			if seq.rectFill(col) {
+				v := val ^ (0x80 >> i)
+				if onWrite != nil {
+					onWrite(uint8(v & mask))
+				}
+			}
+		} else {
+			seq.nextItemDepressed = true
+			seq.rectEmpty(col)
+		}
+		seq.sameLine()
+	}
+	seq.end()
+}

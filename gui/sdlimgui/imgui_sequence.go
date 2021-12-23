@@ -22,8 +22,6 @@ import (
 // drawlistSequence provides a neat way of drawlist elements of a uniform size in
 // sequence.
 type drawlistSequence struct {
-	img              *SdlImgui
-	palette          packedPalette
 	size             imgui.Vec2
 	spacing          imgui.Vec2
 	depressionAmount float32
@@ -41,17 +39,15 @@ type drawlistSequence struct {
 
 // create and start a new sequence. spacing is expressed as fraction of the
 // current FontSize().
-func newDrawlistSequence(img *SdlImgui, size imgui.Vec2, alignFramePadding bool) *drawlistSequence {
+func newDrawlistSequence(size imgui.Vec2, alignFramePadding bool) *drawlistSequence {
 	const spacing = 0.1
 
 	seq := &drawlistSequence{
-		img:               img,
 		size:              size,
 		spacing:           imgui.Vec2{X: imgui.FontSize() * spacing, Y: imgui.FontSize() * spacing},
 		depressionAmount:  2.0,
 		alignFramePadding: alignFramePadding,
 	}
-	_, seq.palette, _ = img.imguiTVPalette()
 	seq.start()
 	return seq
 }
@@ -88,10 +84,6 @@ func (seq *drawlistSequence) sameLine() {
 // returns the X value that is in the middle of the n'th element.
 func (seq *drawlistSequence) offsetX(n int) float32 {
 	return seq.startX + float32(n)*(seq.size.X+seq.spacing.X) + seq.size.X*0.5
-}
-
-func (seq *drawlistSequence) rectFillTvCol(col uint8) (clicked bool) {
-	return seq.rectFill(seq.palette[col])
 }
 
 func (seq *drawlistSequence) rectFill(col imgui.PackedColor) (clicked bool) {

@@ -17,7 +17,7 @@ package sdlimgui
 
 import (
 	"github.com/inkyblackness/imgui-go/v4"
-	"github.com/jetsetilly/gopher2600/hardware/tia/video"
+	"github.com/jetsetilly/gopher2600/hardware/memory/addresses"
 )
 
 const winCollisionsID = "Collisions"
@@ -57,23 +57,71 @@ func (win *winCollisions) draw() {
 
 	imgui.SetNextWindowPosV(imgui.Vec2{530, 455}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
 	imgui.BeginV(win.id(), &win.open, imgui.WindowFlagsAlwaysAutoResize)
+	defer imgui.End()
 
 	imguiLabel("CXM0P ")
-	win.drawCollision(win.img.lz.Collisions.CXM0P, &win.img.vcs.TIA.Video.Collisions.CXM0P, video.CollisionMask)
+	drawRegister("##CXM0P", win.img.lz.Collisions.CXM0P, addresses.DataMasks[addresses.CXM0P], win.img.cols.collisionBit,
+		func(v uint8) {
+			win.img.dbg.PushRawEvent(func() {
+				win.img.vcs.TIA.Video.Collisions.CXM0P = v
+			})
+		})
+
 	imguiLabel("CXM1P ")
-	win.drawCollision(win.img.lz.Collisions.CXM1P, &win.img.vcs.TIA.Video.Collisions.CXM1P, video.CollisionMask)
+	drawRegister("##CXM1P", win.img.lz.Collisions.CXM1P, addresses.DataMasks[addresses.CXM1P], win.img.cols.collisionBit,
+		func(v uint8) {
+			win.img.dbg.PushRawEvent(func() {
+				win.img.vcs.TIA.Video.Collisions.CXM1P = v
+			})
+		})
+
 	imguiLabel("CXP0FB")
-	win.drawCollision(win.img.lz.Collisions.CXP0FB, &win.img.vcs.TIA.Video.Collisions.CXP0FB, video.CollisionMask)
+	drawRegister("##CXP0FB", win.img.lz.Collisions.CXP0FB, addresses.DataMasks[addresses.CXP0FB], win.img.cols.collisionBit,
+		func(v uint8) {
+			win.img.dbg.PushRawEvent(func() {
+				win.img.vcs.TIA.Video.Collisions.CXP0FB = v
+			})
+		})
+
 	imguiLabel("CXP1FB")
-	win.drawCollision(win.img.lz.Collisions.CXP1FB, &win.img.vcs.TIA.Video.Collisions.CXP1FB, video.CollisionMask)
+	drawRegister("##CXP1FB", win.img.lz.Collisions.CXP1FB, addresses.DataMasks[addresses.CXP1FB], win.img.cols.collisionBit,
+		func(v uint8) {
+			win.img.dbg.PushRawEvent(func() {
+				win.img.vcs.TIA.Video.Collisions.CXP1FB = v
+			})
+		})
+
 	imguiLabel("CXM0FB")
-	win.drawCollision(win.img.lz.Collisions.CXM0FB, &win.img.vcs.TIA.Video.Collisions.CXM0FB, video.CollisionMask)
+	drawRegister("##CXM0FB", win.img.lz.Collisions.CXM0FB, addresses.DataMasks[addresses.CXM0FB], win.img.cols.collisionBit,
+		func(v uint8) {
+			win.img.dbg.PushRawEvent(func() {
+				win.img.vcs.TIA.Video.Collisions.CXM0FB = v
+			})
+		})
+
 	imguiLabel("CXM1FB")
-	win.drawCollision(win.img.lz.Collisions.CXM1FB, &win.img.vcs.TIA.Video.Collisions.CXM1FB, video.CollisionMask)
+	drawRegister("##CXM1FB", win.img.lz.Collisions.CXM1FB, addresses.DataMasks[addresses.CXM1FB], win.img.cols.collisionBit,
+		func(v uint8) {
+			win.img.dbg.PushRawEvent(func() {
+				win.img.vcs.TIA.Video.Collisions.CXM1FB = v
+			})
+		})
+
 	imguiLabel("CXBLPF")
-	win.drawCollision(win.img.lz.Collisions.CXBLPF, &win.img.vcs.TIA.Video.Collisions.CXBLPF, video.CollisionCXBLPFMask)
+	drawRegister("##CXBLPF", win.img.lz.Collisions.CXBLPF, addresses.DataMasks[addresses.CXBLPF], win.img.cols.collisionBit,
+		func(v uint8) {
+			win.img.dbg.PushRawEvent(func() {
+				win.img.vcs.TIA.Video.Collisions.CXBLPF = v
+			})
+		})
+
 	imguiLabel("CXPPMM")
-	win.drawCollision(win.img.lz.Collisions.CXPPMM, &win.img.vcs.TIA.Video.Collisions.CXPPMM, video.CollisionMask)
+	drawRegister("##CXPPMM", win.img.lz.Collisions.CXPPMM, addresses.DataMasks[addresses.CXPPMM], win.img.cols.collisionBit,
+		func(v uint8) {
+			win.img.dbg.PushRawEvent(func() {
+				win.img.vcs.TIA.Video.Collisions.CXPPMM = v
+			})
+		})
 
 	imgui.Spacing()
 
@@ -82,36 +130,4 @@ func (win *winCollisions) draw() {
 			win.img.vcs.TIA.Video.Collisions.Clear()
 		})
 	}
-
-	imgui.End()
-}
-
-func (win *winCollisions) drawCollision(read uint8, write *uint8, mask uint8) {
-	drawCollision(win.img, read, mask,
-		func(b uint8) {
-			win.img.dbg.PushRawEvent(func() {
-				*write = b
-			})
-		})
-}
-
-// drawCollision() is used by the dbgscr tooltip for the collision layer.
-func drawCollision(img *SdlImgui, value uint8, mask uint8, onWrite func(uint8)) {
-	seq := newDrawlistSequence(img, imgui.Vec2{X: imgui.FrameHeight() * 0.75, Y: imgui.FrameHeight() * 0.75}, false)
-	for i := 0; i < 8; i++ {
-		if mask<<i&0x80 == 0x80 {
-			if (value<<i)&0x80 != 0x80 {
-				seq.nextItemDepressed = true
-			}
-			if seq.rectFill(img.cols.collisionBit) {
-				b := value ^ (0x80 >> i)
-				onWrite(b)
-			}
-		} else {
-			seq.nextItemDepressed = true
-			seq.rectEmpty(img.cols.collisionBit)
-		}
-		seq.sameLine()
-	}
-	seq.end()
 }

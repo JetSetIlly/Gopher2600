@@ -17,7 +17,6 @@ package sdlimgui
 
 import (
 	"fmt"
-	"strconv"
 
 	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/gui/fonts"
@@ -77,9 +76,11 @@ func (win *winPorts) draw() {
 		imguiLabel("SWCHA")
 
 		imgui.TableNextColumn()
-		win.drawRegister("##SWCHA_W", win.img.lz.Ports.SWCHA_W, 0xff, true,
+		drawRegister("##SWCHA_W", win.img.lz.Ports.SWCHA_W, 0xff, win.img.cols.portsBit,
 			func(v uint8) {
-				win.img.vcs.RIOT.Ports.SetField("swcha_w", v)
+				win.img.dbg.PushRawEvent(func() {
+					win.img.vcs.RIOT.Ports.SetField("swcha_w", v)
+				})
 			})
 
 		imgui.TableNextColumn()
@@ -89,9 +90,11 @@ func (win *winPorts) draw() {
 		imguiLabel("SWCHB")
 
 		imgui.TableNextColumn()
-		win.drawRegister("##SWCHB_W", win.img.lz.Ports.SWCHB_W, 0xff, true,
+		drawRegister("##SWCHB_W", win.img.lz.Ports.SWCHB_W, 0xff, win.img.cols.portsBit,
 			func(v uint8) {
-				win.img.vcs.RIOT.Ports.SetField("swchb_w", v)
+				win.img.dbg.PushRawEvent(func() {
+					win.img.vcs.RIOT.Ports.SetField("swchb_w", v)
+				})
 			})
 
 		// SWCHx CNT flags
@@ -101,9 +104,11 @@ func (win *winPorts) draw() {
 		imguiLabel("SWACNT")
 
 		imgui.TableNextColumn()
-		win.drawRegister("##SWACNT", win.img.lz.Ports.SWACNT, 0xff, true,
+		drawRegister("##SWACNT", win.img.lz.Ports.SWACNT, 0xff, win.img.cols.portsBit,
 			func(v uint8) {
-				win.img.vcs.RIOT.Ports.SetField("swacnt", v)
+				win.img.dbg.PushRawEvent(func() {
+					win.img.vcs.RIOT.Ports.SetField("swacnt", v)
+				})
 			})
 
 		imgui.TableNextColumn()
@@ -111,9 +116,11 @@ func (win *winPorts) draw() {
 		imguiLabel("SWBCNT")
 
 		imgui.TableNextColumn()
-		win.drawRegister("##SWBCNT", win.img.lz.Ports.SWBCNT, 0xff, true,
+		drawRegister("##SWBCNT", win.img.lz.Ports.SWBCNT, 0xff, win.img.cols.portsBit,
 			func(v uint8) {
-				win.img.vcs.RIOT.Ports.SetField("swbcnt", v)
+				win.img.dbg.PushRawEvent(func() {
+					win.img.vcs.RIOT.Ports.SetField("swbcnt", v)
+				})
 			})
 
 		// actual SWCHx values
@@ -127,9 +134,11 @@ func (win *winPorts) draw() {
 		imguiLabel("SWCHA")
 
 		imgui.TableNextColumn()
-		win.drawRegister("##SWCHA_R", win.img.lz.Ports.SWCHA, 0xff, true,
+		drawRegister("##SWCHA_R", win.img.lz.Ports.SWCHA, 0xff, win.img.cols.portsBit,
 			func(v uint8) {
-				win.img.vcs.RIOT.Ports.SetField("swcha", v)
+				win.img.dbg.PushRawEvent(func() {
+					win.img.vcs.RIOT.Ports.SetField("swcha", v)
+				})
 			})
 
 		imgui.TableNextColumn()
@@ -141,9 +150,11 @@ func (win *winPorts) draw() {
 		imguiLabel("SWCHB")
 
 		imgui.TableNextColumn()
-		win.drawRegister("##SWCHB_R", win.img.lz.Ports.SWCHB, 0xff, true,
+		drawRegister("##SWCHB_R", win.img.lz.Ports.SWCHB, 0xff, win.img.cols.portsBit,
 			func(v uint8) {
-				win.img.vcs.RIOT.Ports.SetField("swchb", v)
+				win.img.dbg.PushRawEvent(func() {
+					win.img.vcs.RIOT.Ports.SetField("swchb", v)
+				})
 			})
 
 		imgui.EndTable()
@@ -159,12 +170,14 @@ func (win *winPorts) draw() {
 		imguiLabel("INPT0")
 
 		imgui.TableNextColumn()
-		win.drawRegister("##INPT0", win.img.lz.Ports.INPT0, addresses.DataMasks[addresses.INPT0], false,
+		drawRegister("##INPT0", win.img.lz.Ports.INPT0, addresses.DataMasks[addresses.INPT0], win.img.cols.portsBit,
 			func(v uint8) {
-				err := win.img.vcs.Mem.Poke(addresses.ReadAddress["INPT0"], v)
-				if err != nil {
-					panic(err)
-				}
+				win.img.dbg.PushRawEvent(func() {
+					err := win.img.vcs.Mem.Poke(addresses.ReadAddress["INPT0"], v)
+					if err != nil {
+						panic(err)
+					}
+				})
 			})
 
 		imgui.TableNextColumn()
@@ -172,12 +185,14 @@ func (win *winPorts) draw() {
 		imguiLabel("INPT1")
 
 		imgui.TableNextColumn()
-		win.drawRegister("##INPT1", win.img.lz.Ports.INPT1, addresses.DataMasks[addresses.INPT1], false,
+		drawRegister("##INPT1", win.img.lz.Ports.INPT1, addresses.DataMasks[addresses.INPT1], win.img.cols.portsBit,
 			func(v uint8) {
-				err := win.img.vcs.Mem.Poke(addresses.ReadAddress["INPT1"], v)
-				if err != nil {
-					panic(err)
-				}
+				win.img.dbg.PushRawEvent(func() {
+					err := win.img.vcs.Mem.Poke(addresses.ReadAddress["INPT1"], v)
+					if err != nil {
+						panic(err)
+					}
+				})
 			})
 
 		imgui.TableNextRow()
@@ -187,12 +202,14 @@ func (win *winPorts) draw() {
 		imguiLabel("INPT2")
 
 		imgui.TableNextColumn()
-		win.drawRegister("##INPT2", win.img.lz.Ports.INPT2, addresses.DataMasks[addresses.INPT2], false,
+		drawRegister("##INPT2", win.img.lz.Ports.INPT2, addresses.DataMasks[addresses.INPT2], win.img.cols.portsBit,
 			func(v uint8) {
-				err := win.img.vcs.Mem.Poke(addresses.ReadAddress["INPT2"], v)
-				if err != nil {
-					panic(err)
-				}
+				win.img.dbg.PushRawEvent(func() {
+					err := win.img.vcs.Mem.Poke(addresses.ReadAddress["INPT2"], v)
+					if err != nil {
+						panic(err)
+					}
+				})
 			})
 
 		imgui.TableNextColumn()
@@ -200,12 +217,14 @@ func (win *winPorts) draw() {
 		imguiLabel("INPT3")
 
 		imgui.TableNextColumn()
-		win.drawRegister("##INPT3", win.img.lz.Ports.INPT3, addresses.DataMasks[addresses.INPT3], false,
+		drawRegister("##INPT3", win.img.lz.Ports.INPT3, addresses.DataMasks[addresses.INPT3], win.img.cols.portsBit,
 			func(v uint8) {
-				err := win.img.vcs.Mem.Poke(addresses.ReadAddress["INPT3"], v)
-				if err != nil {
-					panic(err)
-				}
+				win.img.dbg.PushRawEvent(func() {
+					err := win.img.vcs.Mem.Poke(addresses.ReadAddress["INPT3"], v)
+					if err != nil {
+						panic(err)
+					}
+				})
 			})
 
 		imgui.TableNextRow()
@@ -215,12 +234,14 @@ func (win *winPorts) draw() {
 		imguiLabel("INPT4")
 
 		imgui.TableNextColumn()
-		win.drawRegister("##INPT4", win.img.lz.Ports.INPT4, addresses.DataMasks[addresses.INPT4], false,
+		drawRegister("##INPT4", win.img.lz.Ports.INPT4, addresses.DataMasks[addresses.INPT4], win.img.cols.portsBit,
 			func(v uint8) {
-				err := win.img.vcs.Mem.Poke(addresses.ReadAddress["INPT4"], v)
-				if err != nil {
-					panic(err)
-				}
+				win.img.dbg.PushRawEvent(func() {
+					err := win.img.vcs.Mem.Poke(addresses.ReadAddress["INPT4"], v)
+					if err != nil {
+						panic(err)
+					}
+				})
 			})
 
 		imgui.TableNextColumn()
@@ -228,12 +249,14 @@ func (win *winPorts) draw() {
 		imguiLabel("INPT5")
 
 		imgui.TableNextColumn()
-		win.drawRegister("##INPT5", win.img.lz.Ports.INPT5, addresses.DataMasks[addresses.INPT5], false,
+		drawRegister("##INPT5", win.img.lz.Ports.INPT5, addresses.DataMasks[addresses.INPT5], win.img.cols.portsBit,
 			func(v uint8) {
-				err := win.img.vcs.Mem.Poke(addresses.ReadAddress["INPT5"], v)
-				if err != nil {
-					panic(err)
-				}
+				win.img.dbg.PushRawEvent(func() {
+					err := win.img.vcs.Mem.Poke(addresses.ReadAddress["INPT5"], v)
+					if err != nil {
+						panic(err)
+					}
+				})
 			})
 
 		imgui.EndTable()
@@ -242,35 +265,4 @@ func (win *winPorts) draw() {
 	// poking chip registers may not have the effect the user
 	// expects (compare to poking CPU registers for example)
 	// !!TODO: warning/help text for chip registers window
-}
-
-func (win *winPorts) drawRegister(id string, val uint8, mask uint8, bits bool, onWrite func(uint8)) {
-	v := fmt.Sprintf("%02x", val)
-	if imguiHexInput(id, 2, &v) {
-		v, err := strconv.ParseUint(v, 16, 8)
-		if err != nil {
-			panic(err)
-		}
-		win.img.dbg.PushRawEvent(func() { onWrite(uint8(v)) })
-	}
-
-	imgui.SameLine()
-
-	seq := newDrawlistSequence(win.img, imgui.Vec2{X: imgui.FrameHeight() * 0.75, Y: imgui.FrameHeight() * 0.75}, true)
-	for i := 0; i < 8; i++ {
-		if mask<<i&0x80 == 0x80 {
-			if (val<<i)&0x80 != 0x80 {
-				seq.nextItemDepressed = true
-			}
-			if seq.rectFill(win.img.cols.riotIOBit) {
-				v := val ^ (0x80 >> i)
-				win.img.dbg.PushRawEvent(func() { onWrite(uint8(v)) })
-			}
-		} else {
-			seq.nextItemDepressed = true
-			seq.rectEmpty(win.img.cols.riotIOBit)
-		}
-		seq.sameLine()
-	}
-	seq.end()
 }

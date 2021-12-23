@@ -23,10 +23,10 @@ import (
 	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/disassembly"
 	"github.com/jetsetilly/gopher2600/emulation"
+	"github.com/jetsetilly/gopher2600/hardware/memory/addresses"
 	"github.com/jetsetilly/gopher2600/hardware/television/coords"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
-	"github.com/jetsetilly/gopher2600/hardware/tia/video"
 	"github.com/jetsetilly/gopher2600/reflection"
 )
 
@@ -559,21 +559,21 @@ func (win *winDbgScr) drawReflectionTooltip() {
 		imguiSeparator()
 
 		imguiLabel("CXM0P ")
-		drawCollision(win.img, ref.Collision.CXM0P, video.CollisionMask, func(_ uint8) {})
+		drawRegister("##CXM0P", win.img.lz.Collisions.CXM0P, addresses.DataMasks[addresses.CXM0P], win.img.cols.collisionBit, nil)
 		imguiLabel("CXM1P ")
-		drawCollision(win.img, ref.Collision.CXM1P, video.CollisionMask, func(_ uint8) {})
+		drawRegister("##CXM1P", win.img.lz.Collisions.CXM1P, addresses.DataMasks[addresses.CXM1P], win.img.cols.collisionBit, nil)
 		imguiLabel("CXP0FB")
-		drawCollision(win.img, ref.Collision.CXP0FB, video.CollisionMask, func(_ uint8) {})
+		drawRegister("##CXP0FB", win.img.lz.Collisions.CXP0FB, addresses.DataMasks[addresses.CXP0FB], win.img.cols.collisionBit, nil)
 		imguiLabel("CXP1FB")
-		drawCollision(win.img, ref.Collision.CXP1FB, video.CollisionMask, func(_ uint8) {})
+		drawRegister("##CXP1FB", win.img.lz.Collisions.CXP1FB, addresses.DataMasks[addresses.CXP1FB], win.img.cols.collisionBit, nil)
 		imguiLabel("CXM0FB")
-		drawCollision(win.img, ref.Collision.CXM0FB, video.CollisionMask, func(_ uint8) {})
+		drawRegister("##CXM0FB", win.img.lz.Collisions.CXM0FB, addresses.DataMasks[addresses.CXM0FB], win.img.cols.collisionBit, nil)
 		imguiLabel("CXM1FB")
-		drawCollision(win.img, ref.Collision.CXM1FB, video.CollisionMask, func(_ uint8) {})
+		drawRegister("##CXM1FB", win.img.lz.Collisions.CXM1FB, addresses.DataMasks[addresses.CXM1FB], win.img.cols.collisionBit, nil)
 		imguiLabel("CXBLPF")
-		drawCollision(win.img, ref.Collision.CXBLPF, video.CollisionMask, func(_ uint8) {})
+		drawRegister("##CXBLPF", win.img.lz.Collisions.CXBLPF, addresses.DataMasks[addresses.CXBLPF], win.img.cols.collisionBit, nil)
 		imguiLabel("CXPPMM")
-		drawCollision(win.img, ref.Collision.CXPPMM, video.CollisionMask, func(_ uint8) {})
+		drawRegister("##CXPPMM", win.img.lz.Collisions.CXPPMM, addresses.DataMasks[addresses.CXPPMM], win.img.cols.collisionBit, nil)
 
 		imguiSeparator()
 

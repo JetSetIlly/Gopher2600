@@ -120,9 +120,12 @@ func (win *winTIA) drawPlayer(num int) {
 	imgui.Spacing()
 	imgui.Spacing()
 
+	// tv palette used to draw bit sequences with correct colours
+	_, palette, _ := win.img.imguiTVPalette()
+
 	// graphics data - new
 	imguiLabel("New Gfx")
-	ngfxSeq := newDrawlistSequence(win.img, imgui.Vec2{X: imgui.FrameHeight(), Y: imgui.FrameHeight()}, false)
+	ngfxSeq := newDrawlistSequence(imgui.Vec2{X: imgui.FrameHeight(), Y: imgui.FrameHeight()}, false)
 	od := lz.GfxDataNew
 	for i := 0; i < 8; i++ {
 		var col uint8
@@ -132,7 +135,7 @@ func (win *winTIA) drawPlayer(num int) {
 			col = 0x0
 			ngfxSeq.nextItemDepressed = true
 		}
-		if ngfxSeq.rectFillTvCol(col) {
+		if ngfxSeq.rectFill(palette[col]) {
 			od ^= 0x80 >> i
 			win.img.dbg.PushRawEvent(func() { ps.GfxDataNew = od })
 		}
@@ -146,7 +149,7 @@ func (win *winTIA) drawPlayer(num int) {
 	// graphics data - old
 	imgui.SameLine()
 	imguiLabel("Old Gfx")
-	ogfxSeq := newDrawlistSequence(win.img, imgui.Vec2{X: imgui.FrameHeight(), Y: imgui.FrameHeight()}, false)
+	ogfxSeq := newDrawlistSequence(imgui.Vec2{X: imgui.FrameHeight(), Y: imgui.FrameHeight()}, false)
 	nd := lz.GfxDataOld
 	for i := 0; i < 8; i++ {
 		var col uint8
@@ -156,7 +159,7 @@ func (win *winTIA) drawPlayer(num int) {
 			col = 0x0
 			ogfxSeq.nextItemDepressed = true
 		}
-		if ogfxSeq.rectFillTvCol(col) {
+		if ogfxSeq.rectFill(palette[col]) {
 			nd ^= 0x80 >> i
 			win.img.dbg.PushRawEvent(func() { ps.GfxDataOld = nd })
 		}
