@@ -104,7 +104,7 @@ const (
 )
 
 // Peek returns the contents of the memory address, without triggering any side
-// effects. address can be expressed numerically or symbolically.
+// effects. The supplied address can be numeric of symbolic.
 func (dbgmem DbgMem) Peek(address interface{}) (*AddressInfo, error) {
 	ai := dbgmem.MapAddress(address, true)
 	if ai == nil {
@@ -127,10 +127,17 @@ func (dbgmem DbgMem) Peek(address interface{}) (*AddressInfo, error) {
 	return ai, nil
 }
 
-// Poke writes a value at the specified address, which may be numeric or
-// symbolic.
+// Poke writes a value at the specified address. The supplied address be
+// numeric or symbolic.
 func (dbgmem DbgMem) Poke(address interface{}, data uint8) (*AddressInfo, error) {
-	ai := dbgmem.MapAddress(address, false)
+	// although the words "read" and "write" might lead us to think that we
+	// "peek" from "read" addresses and "poke" to "write" addresses, it is in
+	// fact necessary to treat "poke" addresses as "read" addresses
+	//
+	// on the surface this doesn't appear to be correct but on further thought
+	// it is obviously true - we are in fact changing the value that is
+	// subsequently read by the CPU, so that means poking to a read address
+	ai := dbgmem.MapAddress(address, true)
 	if ai == nil {
 		return nil, curated.Errorf(PokeError, address)
 	}

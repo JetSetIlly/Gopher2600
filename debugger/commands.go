@@ -1089,8 +1089,11 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		// a numeric address that we can iterate with in the for loop below.
 		// simply converting to a number is no good because we want the user to
 		// be able to specify an address by name, so we may as well just call
-		// MapAddress(), even if it does seem redundant.
-		ai := dbg.dbgmem.MapAddress(a, false)
+		// MapAddress(), even if it does seem redundant
+		//
+		// see comment in DbgMem.Poke() for why we treat the address as a
+		// "read" address
+		ai := dbg.dbgmem.MapAddress(a, true)
 		if ai == nil {
 			dbg.printLine(terminal.StyleError, fmt.Sprintf(dbgmem.PokeError, a))
 			return nil
