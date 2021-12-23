@@ -123,8 +123,8 @@ type imguiColors struct {
 	// collision window
 	CollisionBit imgui.Vec4
 
-	// chip registers window
-	RegisterBit imgui.Vec4
+	// riot i/o window
+	RIOTIOBit imgui.Vec4
 
 	// savekey i2c/eeprom window
 	SaveKeyBit        imgui.Vec4
@@ -155,7 +155,7 @@ type imguiColors struct {
 	// packed equivalents of the above colors (where appropriate)
 	tiaPointer             imgui.PackedColor
 	collisionBit           imgui.PackedColor
-	registerBit            imgui.PackedColor
+	riotIOBit              imgui.PackedColor
 	saveKeyBit             imgui.PackedColor
 	saveKeyBitPointer      imgui.PackedColor
 	timelineMarkers        imgui.PackedColor
@@ -313,7 +313,7 @@ func newColors() *imguiColors {
 	cols.DisasmBreakAddress = cols.DisasmAddress
 	cols.DisasmBreakOther = cols.DisasmOperator
 	cols.CollisionBit = imgui.CurrentStyle().Color(imgui.StyleColorButton)
-	cols.RegisterBit = imgui.CurrentStyle().Color(imgui.StyleColorButton)
+	cols.RIOTIOBit = imgui.CurrentStyle().Color(imgui.StyleColorButton)
 	cols.SaveKeyBit = imgui.CurrentStyle().Color(imgui.StyleColorButton)
 	cols.TimelineWSYNC = cols.reflectionColors[reflection.WSYNC]
 	cols.TimelineCoProc = cols.reflectionColors[reflection.CoprocessorActive]
@@ -321,7 +321,7 @@ func newColors() *imguiColors {
 	// colors that are used in context where an imgui.PackedColor is required
 	cols.tiaPointer = imgui.PackedColorFromVec4(cols.TIApointer)
 	cols.collisionBit = imgui.PackedColorFromVec4(cols.CollisionBit)
-	cols.registerBit = imgui.PackedColorFromVec4(cols.RegisterBit)
+	cols.riotIOBit = imgui.PackedColorFromVec4(cols.RIOTIOBit)
 	cols.saveKeyBit = imgui.PackedColorFromVec4(cols.SaveKeyBit)
 	cols.saveKeyBitPointer = imgui.PackedColorFromVec4(cols.SaveKeyBitPointer)
 	cols.timelineMarkers = imgui.PackedColorFromVec4(cols.TimelineMarkers)

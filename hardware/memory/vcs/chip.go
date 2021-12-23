@@ -85,7 +85,7 @@ func (area *ChipMemory) Poke(address uint16, value uint8) error {
 }
 
 // ChipRead is an implementation of memory.ChipBus.
-func (area *ChipMemory) ChipRead() (bool, bus.ChipData) {
+func (area *ChipMemory) ChipHasChanged() (bool, bus.ChipData) {
 	if area.writeSignal {
 		area.writeSignal = false
 		return true, bus.ChipData{Name: addresses.Write[area.writeAddress], Value: area.writeData}
@@ -97,6 +97,11 @@ func (area *ChipMemory) ChipRead() (bool, bus.ChipData) {
 // ChipWrite is an implementation of memory.ChipBus.
 func (area *ChipMemory) ChipWrite(reg addresses.ChipRegister, data uint8) {
 	area.memory[reg] = data
+}
+
+// ChipRefer is an implementation of memory.ChipBus.
+func (area *ChipMemory) ChipRefer(reg addresses.ChipRegister) uint8 {
+	return area.memory[reg]
 }
 
 // LastReadRegister is an implementation of memory.ChipBus.

@@ -571,7 +571,7 @@ func (win *winDbgScr) drawReflectionTooltip() {
 		imguiLabel("CXM1FB")
 		drawCollision(win.img, ref.Collision.CXM1FB, video.CollisionMask, func(_ uint8) {})
 		imguiLabel("CXBLPF")
-		drawCollision(win.img, ref.Collision.CXBLPF, video.CollisionCXBLPFMask, func(_ uint8) {})
+		drawCollision(win.img, ref.Collision.CXBLPF, video.CollisionMask, func(_ uint8) {})
 		imguiLabel("CXPPMM")
 		drawCollision(win.img, ref.Collision.CXPPMM, video.CollisionMask, func(_ uint8) {})
 

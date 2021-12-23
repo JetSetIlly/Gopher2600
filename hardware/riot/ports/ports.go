@@ -42,19 +42,7 @@ type Ports struct {
 	// to affect how INPTx registers are written. see WriteINPTx() function
 	latch bool
 
-	// the swacnt field is the local copy of the SWACNT register. used to mask
-	// bits in the SWCHA register. a 1 bit indicates the corresponding SWCHA
-	// bit is used for output from the VCS, while a 0 bit indicates that it is
-	// used for input to the VCS.
-	swacnt uint8
-
-	// the swcha field is the local copy of SWCHA register. note that we use
-	// this only for reference purporses (particular the String() function).
-	// the two swcha* derived fields below are of more use to the emulation
-	// itself.
-	swcha uint8
-
-	// the swchaFromCPU field is a copy of the SWCHA register as it was written
+	// the swcha_w field is a copy of the SWCHA register as it was written
 	// by the CPU. it is not necessarily the value of SWCHA as written by the
 	// RIOT.
 	//
@@ -63,35 +51,31 @@ type Ports struct {
 	//
 	// we can think of these as the input lines that are used in conjunction
 	// with the SWACNT bits to create the SWCHA register
-	swchaFromCPU uint8
+	swcha_w uint8
 
-	// swchaMux is the value that has most recently been written to the SWCHA
+	// swcha_mux is the value that has most recently been written to the SWCHA
 	// register by the RIOT
 	//
 	// the value has *not* been masked by the swacnt value
 	//
 	// we use it to mux the Player0 and Player 1 nibbles into the single register
-	swchaMux uint8
+	swcha_mux uint8
 
 	// port B equivalents of the above. there is no swchbMux field because only
 	// one peripheral uses port B at a time.
 	//
-	// there is a swchbFromPeriph however. this is the value as written by the
+	// there is a swchb_raw however. this is the value as written by the
 	// peripheral (the panel) before SWBCNT has been applied to it
-	swbcnt          uint8
-	swchb           uint8
-	swchbFromCPU    uint8
-	swchbFromPeriph uint8
+	swchb_w   uint8
+	swchb_raw uint8
 }
 
 // NewPorts is the preferred method of initialisation of the Ports type.
 func NewPorts(riotMem bus.ChipBus, tiaMem bus.ChipBus) *Ports {
 	p := &Ports{
-		riot:         riotMem,
-		tia:          tiaMem,
-		swchaFromCPU: 0x00,
-		swacnt:       0x00,
-		latch:        false,
+		riot:  riotMem,
+		tia:   tiaMem,
+		latch: false,
 	}
 	return p
 }
@@ -152,10 +136,21 @@ func (p *Ports) Plug(port plugging.PortID, c NewPeripheral) error {
 
 func (p *Ports) String() string {
 	s := strings.Builder{}
-	s.WriteString(fmt.Sprintf("SWACNT: %#02x", p.swacnt))
-	s.WriteString(fmt.Sprintf("  SWCHA: %#02x", p.swcha))
-	s.WriteString(fmt.Sprintf("  SWCHA (from CPU): %#02x", p.swchaFromCPU))
-	s.WriteString(fmt.Sprintf("  SWCHB: %#02x", p.swchb))
+	s.WriteString(fmt.Sprintf("SWCHA(W): %#02x ", p.swcha_w))
+	s.WriteString(fmt.Sprintf("SWACNT: %#02x ", p.riot.ChipRefer(addresses.SWACNT)))
+	swcha := p.riot.ChipRefer(addresses.SWCHA)
+	s.WriteString(fmt.Sprintf("SWCHA: %#02x ", swcha))
+	if swcha != p.deriveSWCHA() {
+		s.WriteString("[SWCHA has been poked] ")
+	}
+
+	s.WriteString(fmt.Sprintf("SWCHB(W): %#02x ", p.swchb_w))
+	s.WriteString(fmt.Sprintf("SWBCNT: %#02x ", p.riot.ChipRefer(addresses.SWBCNT)))
+	swchb := p.riot.ChipRefer(addresses.SWCHB)
+	s.WriteString(fmt.Sprintf("SWCHB: %#02x ", swchb))
+	if swchb != p.deriveSWCHB() {
+		s.WriteString("[SWCHB has been poked] ")
+	}
 	return s.String()
 }
 
@@ -185,7 +180,7 @@ func (p *Ports) Update(data bus.ChipData) bool {
 		_ = p.RightPlayer.Update(data)
 
 	case "SWCHA":
-		p.swchaFromCPU = data.Value
+		p.swcha_w = data.Value
 
 		// mask value and set SWCHA register. some peripherals may call
 		// WriteSWCHx() as part of the Update() function which will write over
@@ -193,46 +188,41 @@ func (p *Ports) Update(data bus.ChipData) bool {
 		//
 		// we should think of this write as the default event in case the
 		// peripheral chooses to do nothing with the new value
-		p.swcha = ^p.swacnt | p.swchaFromCPU
-		p.riot.ChipWrite(addresses.SWCHA, p.swcha)
+		swcha := ^(p.riot.ChipRefer(addresses.SWACNT)) | p.swcha_w
+		p.riot.ChipWrite(addresses.SWCHA, swcha)
 
 		// mask value with SWACNT bits before passing to peripheral
-		data.Value &= p.swacnt
+		data.Value &= p.riot.ChipRefer(addresses.SWACNT)
 		_ = p.LeftPlayer.Update(data)
 		_ = p.RightPlayer.Update(data)
 
 	case "SWACNT":
-		p.swacnt = data.Value
-		p.riot.ChipWrite(addresses.SWACNT, p.swacnt)
+		p.riot.ChipWrite(addresses.SWACNT, data.Value)
 
 		// peripheral update for SWACNT
 		_ = p.LeftPlayer.Update(data)
 		_ = p.RightPlayer.Update(data)
 
 		// i/o bits have changed so change the data in the SWCHA register
-		p.swcha = ^p.swacnt | p.swchaFromCPU
-		p.riot.ChipWrite(addresses.SWCHA, p.swcha)
+		swcha := ^(p.riot.ChipRefer(addresses.SWACNT)) | p.swcha_w
+		p.riot.ChipWrite(addresses.SWCHA, swcha)
 
 		// adjusting SWACNT also affects the SWCHA lines to the peripheral.
 		// adjust SWCHA lines and update peripheral with new SWCHA data
 		data = bus.ChipData{
 			Name:  "SWCHA",
-			Value: p.swcha,
+			Value: p.riot.ChipRefer(addresses.SWCHA),
 		}
 		_ = p.LeftPlayer.Update(data)
 		_ = p.RightPlayer.Update(data)
 
 	case "SWCHB":
-		p.swchbFromCPU = data.Value
-		p.swchb = (p.swchbFromCPU & p.swbcnt) | (p.swchbFromPeriph & ^p.swbcnt)
-		p.riot.ChipWrite(addresses.SWCHB, p.swchb)
+		p.swchb_w = data.Value
+		p.riot.ChipWrite(addresses.SWCHB, p.deriveSWCHB())
 
 	case "SWBCNT":
-		p.swbcnt = data.Value
-		p.riot.ChipWrite(addresses.SWBCNT, p.swbcnt)
-
-		p.swchb = (p.swchbFromCPU & p.swbcnt) | (p.swchbFromPeriph & ^p.swbcnt)
-		p.riot.ChipWrite(addresses.SWCHB, p.swchb)
+		p.riot.ChipWrite(addresses.SWBCNT, data.Value)
+		p.riot.ChipWrite(addresses.SWCHB, p.deriveSWCHB())
 	}
 
 	return false
@@ -292,21 +282,18 @@ func (p *Ports) PeripheralID(id plugging.PortID) plugging.PeripheralID {
 func (p *Ports) WriteSWCHx(id plugging.PortID, data uint8) {
 	switch id {
 	case plugging.PortLeftPlayer:
-		data &= 0xf0              // keep only the bits for player 0
-		data |= p.swchaMux & 0x0f // combine with the existing player 1 bits
-		p.swchaMux = data
-		p.swcha = data & ^p.swacnt
-		p.riot.ChipWrite(addresses.SWCHA, p.swcha)
+		data &= 0xf0               // keep only the bits for player 0
+		data |= p.swcha_mux & 0x0f // combine with the existing player 1 bits
+		p.swcha_mux = data
+		p.riot.ChipWrite(addresses.SWCHA, p.deriveSWCHA())
 	case plugging.PortRightPlayer:
-		data = (data & 0xf0) >> 4 // move bits into the player 1 nibble
-		data |= p.swchaMux & 0xf0 // combine with the existing player 0 bits
-		p.swchaMux = data
-		p.swcha = data & ^p.swacnt
-		p.riot.ChipWrite(addresses.SWCHA, p.swcha)
+		data = (data & 0xf0) >> 4  // move bits into the player 1 nibble
+		data |= p.swcha_mux & 0xf0 // combine with the existing player 0 bits
+		p.swcha_mux = data
+		p.riot.ChipWrite(addresses.SWCHA, p.deriveSWCHA())
 	case plugging.PortPanel:
-		p.swchbFromPeriph = data
-		p.swchb = (p.swchbFromCPU & p.swbcnt) | (p.swchbFromPeriph & ^p.swbcnt)
-		p.riot.ChipWrite(addresses.SWCHB, p.swchb)
+		p.swchb_raw = data
+		p.riot.ChipWrite(addresses.SWCHB, p.deriveSWCHB())
 	default:
 		return
 	}
@@ -342,4 +329,88 @@ func (p *Ports) HandleInputEvent(inp InputEvent) (bool, error) {
 	}
 
 	return handled, nil
+}
+
+// GetField returns the value of the named field.
+//
+// This is the same as a Peek() on the equivalent memory location in most
+// cases, but there are a couple of fields that are not directly associated
+// with a memory location.
+//
+// swacnt, swcha, swacnt and swbcnt are directly as they would be if read by
+// Peek()
+//
+// swcha_w and swchb_w are the swcha and swchb values as most recently written
+// by the 6507 program (or with the SetField() function)
+//
+// swcha_derived is the value SWCHA should be if the RIOT ports logic hasn't
+// been interfered with. swcha_derived and swcha may be unequal because of a
+// Poke() or SetField("swcha").
+//
+// swchb_derived is the same as swcha_derived except for SWCHB register.
+func (p *Ports) GetField(reg string) uint8 {
+	switch reg {
+	case "swcha_w":
+		return p.swcha_w
+	case "swacnt":
+		return p.riot.ChipRefer(addresses.SWACNT)
+	case "swcha":
+		return p.riot.ChipRefer(addresses.SWCHA)
+	case "swcha_derived":
+		return p.deriveSWCHA()
+
+	case "swchb_w":
+		return p.swchb_w
+	case "swbcnt":
+		return p.riot.ChipRefer(addresses.SWBCNT)
+	case "swchb":
+		return p.riot.ChipRefer(addresses.SWCHB)
+	case "swchb_derived":
+		return p.deriveSWCHB()
+	}
+
+	panic(fmt.Sprintf("Ports.GetField: unknown register: %s", reg))
+}
+
+// SetField sets the named field with a new value.
+//
+// Fieldnames the same as described for GetField() except that you cannot
+// update the swchb_derived field.
+func (p *Ports) SetField(reg string, v uint8) {
+	switch reg {
+	case "swcha_w":
+		p.swcha_w = v
+		p.riot.ChipWrite(addresses.SWCHA, p.deriveSWCHA())
+	case "swacnt":
+		p.riot.ChipWrite(addresses.SWACNT, v)
+		p.riot.ChipWrite(addresses.SWCHA, p.deriveSWCHA())
+	case "swcha":
+		p.riot.ChipWrite(addresses.SWCHA, v)
+
+	case "swchb_w":
+		p.swchb_w = v
+		p.riot.ChipWrite(addresses.SWCHB, p.deriveSWCHB())
+	case "swbcnt":
+		p.riot.ChipWrite(addresses.SWBCNT, v)
+		p.riot.ChipWrite(addresses.SWCHB, p.deriveSWCHB())
+	case "swchb":
+		p.riot.ChipWrite(addresses.SWCHB, v)
+
+	default:
+		panic(fmt.Sprintf("Ports.SetField: unknown register: %s", reg))
+	}
+}
+
+// the derived value of SWCHA. the value it should be if the RIOT logic has
+// proceeded normally (ie. no poking).
+func (p *Ports) deriveSWCHA() uint8 {
+	swacnt := p.riot.ChipRefer(addresses.SWACNT)
+	return (p.swcha_w & swacnt) | (p.swcha_mux & ^swacnt)
+}
+
+// the derived value of SWCHB. the value it should be if the RIOT logic has
+// proceeded normally (ie. no poking).
+func (p *Ports) deriveSWCHB() uint8 {
+	swbcnt := p.riot.ChipRefer(addresses.SWBCNT)
+	return (p.swchb_w & swbcnt) | (p.swchb_raw & ^swbcnt)
 }

@@ -37,28 +37,28 @@ type LazyValues struct {
 
 	// pointers to these instances. non-pointer instances trigger the race
 	// detector for some reason.
-	Debugger      *LazyDebugger
-	CPU           *LazyCPU
-	Mem           *LazyMem
-	Phaseclock    *LazyPhaseClock
-	RAM           *LazyRAM
-	Timer         *LazyTimer
-	Playfield     *LazyPlayfield
-	Player0       *LazyPlayer
-	Player1       *LazyPlayer
-	Missile0      *LazyMissile
-	Missile1      *LazyMissile
-	Ball          *LazyBall
-	TV            *LazyTV
-	Cart          *LazyCart
-	CoProc        *LazyCoProc
-	Controllers   *LazyControllers
-	Collisions    *LazyCollisions
-	ChipRegisters *LazyChipRegisters
-	Log           *LazyLog
-	Tracker       *LazyTracker
-	SaveKey       *LazySaveKey
-	Rewind        *LazyRewind
+	Debugger    *LazyDebugger
+	CPU         *LazyCPU
+	Mem         *LazyMem
+	Phaseclock  *LazyPhaseClock
+	RAM         *LazyRAM
+	Timer       *LazyTimer
+	Playfield   *LazyPlayfield
+	Player0     *LazyPlayer
+	Player1     *LazyPlayer
+	Missile0    *LazyMissile
+	Missile1    *LazyMissile
+	Ball        *LazyBall
+	TV          *LazyTV
+	Cart        *LazyCart
+	CoProc      *LazyCoProc
+	Controllers *LazyControllers
+	Collisions  *LazyCollisions
+	Ports       *LazyPorts
+	Log         *LazyLog
+	Tracker     *LazyTracker
+	SaveKey     *LazySaveKey
+	Rewind      *LazyRewind
 
 	// note that LazyBreakpoints works slightly different to the the other Lazy* types.
 	Breakpoints *LazyBreakpoints
@@ -100,7 +100,7 @@ func NewLazyValues(e emulation.Emulation) *LazyValues {
 	val.CoProc = newLazyCoProc(val)
 	val.Controllers = newLazyControllers(val)
 	val.Collisions = newLazyCollisions(val)
-	val.ChipRegisters = newLazyChipRegisters(val)
+	val.Ports = newLazyPorts(val)
 	val.Log = newLazyLog(val)
 	val.Tracker = newLazyTracker(val)
 	val.SaveKey = newLazySaveKey(val)
@@ -139,7 +139,7 @@ func (val *LazyValues) Refresh() {
 		val.CoProc.update()
 		val.Controllers.update()
 		val.Collisions.update()
-		val.ChipRegisters.update()
+		val.Ports.update()
 		val.Log.update()
 		val.Tracker.update()
 		val.SaveKey.update()
@@ -170,7 +170,7 @@ func (val *LazyValues) Refresh() {
 		val.CoProc.push()
 		val.Controllers.push()
 		val.Collisions.push()
-		val.ChipRegisters.push()
+		val.Ports.push()
 		val.Log.push()
 		val.Tracker.push()
 		val.SaveKey.push()

@@ -86,6 +86,8 @@ const (
 	VolumeUp               = '\uf062'
 	VolumeDown             = '\uf063'
 	Camera                 = '\uf030'
+	Chip                   = '\uf2db'
+	Unlocked               = '\uf13e'
 )
 
 // The first and last unicode points used in the application. We use this to

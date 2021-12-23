@@ -34,8 +34,12 @@ type Memory struct {
 
 	instance *instance.Instance
 
-	// the four memory areas
+	// peeking and poking of RIOT Ports memory should be done through the
+	// GetField() and SetField() of the RIOT.Ports type as a preference.
+	// Setting SWCHB or SWBCNT directly may not have the result you expect
+	// although it is a valid action.
 	RIOT *vcs.ChipMemory
+
 	TIA  *vcs.ChipMemory
 	RAM  *vcs.RAM
 	Cart *cartridge.Cartridge

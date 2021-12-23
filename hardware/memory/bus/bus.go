@@ -55,12 +55,17 @@ type ChipData struct {
 // ChipBus defines the operations for the memory system when accessed from the
 // VCS chips (TIA, RIOT). Only ChipMemory implements this interface.
 type ChipBus interface {
-	// ChipRead checks to see if the chip's memory area has been written to. if
+	// ChipHasChanged checks to see if the chip's memory area has been written to. if
 	// it has the function returns true and an instance of ChipData
-	ChipRead() (bool, ChipData)
+	ChipHasChanged() (bool, ChipData)
 
 	// ChipWrite writes the data to the chip memory
 	ChipWrite(reg addresses.ChipRegister, data uint8)
+
+	// ChipRefer reads the data from chip memory and can be used by the
+	// implementation of the chip logic behind the memory - rather than keeping
+	// a local copy of the value.
+	ChipRefer(reg addresses.ChipRegister) uint8
 
 	// LastReadRegister returns the register name of the last memory location
 	// *read* by the CPU

@@ -365,7 +365,7 @@ func (tia *TIA) Step(readMemory bool) error {
 
 	// early memory resolution
 	if readMemory {
-		readMemory, memoryData = tia.mem.ChipRead()
+		readMemory, memoryData = tia.mem.ChipHasChanged()
 
 		// make alterations to video state and playfield
 		if readMemory {

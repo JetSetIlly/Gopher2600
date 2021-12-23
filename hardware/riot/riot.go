@@ -68,7 +68,7 @@ func (riot *RIOT) String() string {
 // UpdateRIOT checks for the most recent write by the CPU to the RIOT memory
 // registers.
 func (riot *RIOT) UpdateRIOT() {
-	ok, data := riot.mem.ChipRead()
+	ok, data := riot.mem.ChipHasChanged()
 	if !ok {
 		return
 	}

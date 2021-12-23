@@ -95,7 +95,6 @@ var windowDefs = [...]windowDef{
 	{create: newWinLog, menu: menuEntry{group: menuDebugger}},
 
 	// windows that appear in the "vcs" menu
-	{create: newWinChipRegisters, menu: menuEntry{group: menuVCS}},
 	{create: newWinCollisions, menu: menuEntry{group: menuVCS}},
 	{create: newWinControl, menu: menuEntry{group: menuVCS}, open: true},
 	{create: newWinControllers, menu: menuEntry{group: menuVCS}},
@@ -103,6 +102,7 @@ var windowDefs = [...]windowDef{
 	{create: newWinDisasm, menu: menuEntry{group: menuVCS}, open: true},
 	{create: newWinDbgScr, menu: menuEntry{group: menuVCS}, open: true},
 	{create: newWinRAM, menu: menuEntry{group: menuVCS}, open: true},
+	{create: newWinPorts, menu: menuEntry{group: menuVCS}},
 	{create: newWinTIA, menu: menuEntry{group: menuVCS}, open: true},
 	{create: newWinTimer, menu: menuEntry{group: menuVCS}, open: true},
 
