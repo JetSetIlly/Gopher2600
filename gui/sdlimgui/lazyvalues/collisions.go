@@ -17,6 +17,8 @@ package lazyvalues
 
 import (
 	"sync/atomic"
+
+	"github.com/jetsetilly/gopher2600/hardware/memory/addresses"
 )
 
 // LazyTimer lazily accesses RIOT timer information from the emulator.
@@ -47,14 +49,22 @@ func newLazyCollisions(val *LazyValues) *LazyCollisions {
 }
 
 func (lz *LazyCollisions) push() {
-	lz.cxm0p.Store(lz.val.vcs.TIA.Video.Collisions.CXM0P)
-	lz.cxm1p.Store(lz.val.vcs.TIA.Video.Collisions.CXM1P)
-	lz.cxp0fb.Store(lz.val.vcs.TIA.Video.Collisions.CXP0FB)
-	lz.cxp1fb.Store(lz.val.vcs.TIA.Video.Collisions.CXP1FB)
-	lz.cxm0fb.Store(lz.val.vcs.TIA.Video.Collisions.CXM0FB)
-	lz.cxm1fb.Store(lz.val.vcs.TIA.Video.Collisions.CXM1FB)
-	lz.cxblpf.Store(lz.val.vcs.TIA.Video.Collisions.CXBLPF)
-	lz.cxppmm.Store(lz.val.vcs.TIA.Video.Collisions.CXPPMM)
+	v, _ := lz.val.vcs.Mem.Peek(addresses.ReadAddress["CXM0P"])
+	lz.cxm0p.Store(v)
+	v, _ = lz.val.vcs.Mem.Peek(addresses.ReadAddress["CXM1P"])
+	lz.cxm1p.Store(v)
+	v, _ = lz.val.vcs.Mem.Peek(addresses.ReadAddress["CXP0FB"])
+	lz.cxp0fb.Store(v)
+	v, _ = lz.val.vcs.Mem.Peek(addresses.ReadAddress["CXP1FB"])
+	lz.cxp1fb.Store(v)
+	v, _ = lz.val.vcs.Mem.Peek(addresses.ReadAddress["CXM0FB"])
+	lz.cxm0fb.Store(v)
+	v, _ = lz.val.vcs.Mem.Peek(addresses.ReadAddress["CXM1FB"])
+	lz.cxm1fb.Store(v)
+	v, _ = lz.val.vcs.Mem.Peek(addresses.ReadAddress["CXBLPF"])
+	lz.cxblpf.Store(v)
+	v, _ = lz.val.vcs.Mem.Peek(addresses.ReadAddress["CXPPMM"])
+	lz.cxppmm.Store(v)
 }
 
 func (lz *LazyCollisions) update() {
