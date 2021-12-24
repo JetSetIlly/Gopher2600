@@ -18,7 +18,7 @@ package lazyvalues
 import (
 	"sync/atomic"
 
-	"github.com/jetsetilly/gopher2600/hardware/memory/addresses"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
 )
 
 // LazyPorts lazily accesses RIOT Ports information from the emulator.
@@ -79,17 +79,17 @@ func (lz *LazyPorts) push() {
 	v = lz.val.vcs.RIOT.Ports.GetField("swchb_derived")
 	lz.swchb_derived.Store(v)
 
-	v, _ = lz.val.vcs.Mem.Peek(addresses.ReadAddress["INPT0"])
+	v, _ = lz.val.vcs.Mem.Peek(cpubus.ReadAddress[cpubus.INPT0])
 	lz.inpt0.Store(v)
-	v, _ = lz.val.vcs.Mem.Peek(addresses.ReadAddress["INPT1"])
+	v, _ = lz.val.vcs.Mem.Peek(cpubus.ReadAddress[cpubus.INPT1])
 	lz.inpt1.Store(v)
-	v, _ = lz.val.vcs.Mem.Peek(addresses.ReadAddress["INPT2"])
+	v, _ = lz.val.vcs.Mem.Peek(cpubus.ReadAddress[cpubus.INPT2])
 	lz.inpt2.Store(v)
-	v, _ = lz.val.vcs.Mem.Peek(addresses.ReadAddress["INPT3"])
+	v, _ = lz.val.vcs.Mem.Peek(cpubus.ReadAddress[cpubus.INPT3])
 	lz.inpt3.Store(v)
-	v, _ = lz.val.vcs.Mem.Peek(addresses.ReadAddress["INPT4"])
+	v, _ = lz.val.vcs.Mem.Peek(cpubus.ReadAddress[cpubus.INPT4])
 	lz.inpt4.Store(v)
-	v, _ = lz.val.vcs.Mem.Peek(addresses.ReadAddress["INPT5"])
+	v, _ = lz.val.vcs.Mem.Peek(cpubus.ReadAddress[cpubus.INPT5])
 	lz.inpt5.Store(v)
 }
 

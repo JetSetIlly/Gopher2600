@@ -22,8 +22,8 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/input"
 	"github.com/jetsetilly/gopher2600/hardware/instance"
 	"github.com/jetsetilly/gopher2600/hardware/memory"
-	"github.com/jetsetilly/gopher2600/hardware/memory/addresses"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
 	"github.com/jetsetilly/gopher2600/hardware/riot"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/controllers"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/panel"
@@ -202,7 +202,7 @@ func (vcs *VCS) Reset() error {
 	vcs.RIOT.Ports.ResetPeripherals()
 
 	// reset PC using reset address in cartridge memory
-	err = vcs.CPU.LoadPCIndirect(addresses.Reset)
+	err = vcs.CPU.LoadPCIndirect(cpubus.Reset)
 	if err != nil {
 		if !curated.Is(err, cartridge.Ejected) {
 			return err

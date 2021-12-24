@@ -23,7 +23,7 @@ import (
 	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/disassembly"
 	"github.com/jetsetilly/gopher2600/emulation"
-	"github.com/jetsetilly/gopher2600/hardware/memory/addresses"
+	"github.com/jetsetilly/gopher2600/hardware/memory/vcs"
 	"github.com/jetsetilly/gopher2600/hardware/television/coords"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
@@ -559,21 +559,21 @@ func (win *winDbgScr) drawReflectionTooltip() {
 		imguiSeparator()
 
 		imguiLabel("CXM0P ")
-		drawRegister("##CXM0P", win.img.lz.Collisions.CXM0P, addresses.DataMasks[addresses.CXM0P], win.img.cols.collisionBit, nil)
+		drawRegister("##CXM0P", win.img.lz.Collisions.CXM0P, vcs.TIADrivenPins, win.img.cols.collisionBit, nil)
 		imguiLabel("CXM1P ")
-		drawRegister("##CXM1P", win.img.lz.Collisions.CXM1P, addresses.DataMasks[addresses.CXM1P], win.img.cols.collisionBit, nil)
+		drawRegister("##CXM1P", win.img.lz.Collisions.CXM1P, vcs.TIADrivenPins, win.img.cols.collisionBit, nil)
 		imguiLabel("CXP0FB")
-		drawRegister("##CXP0FB", win.img.lz.Collisions.CXP0FB, addresses.DataMasks[addresses.CXP0FB], win.img.cols.collisionBit, nil)
+		drawRegister("##CXP0FB", win.img.lz.Collisions.CXP0FB, vcs.TIADrivenPins, win.img.cols.collisionBit, nil)
 		imguiLabel("CXP1FB")
-		drawRegister("##CXP1FB", win.img.lz.Collisions.CXP1FB, addresses.DataMasks[addresses.CXP1FB], win.img.cols.collisionBit, nil)
+		drawRegister("##CXP1FB", win.img.lz.Collisions.CXP1FB, vcs.TIADrivenPins, win.img.cols.collisionBit, nil)
 		imguiLabel("CXM0FB")
-		drawRegister("##CXM0FB", win.img.lz.Collisions.CXM0FB, addresses.DataMasks[addresses.CXM0FB], win.img.cols.collisionBit, nil)
+		drawRegister("##CXM0FB", win.img.lz.Collisions.CXM0FB, vcs.TIADrivenPins, win.img.cols.collisionBit, nil)
 		imguiLabel("CXM1FB")
-		drawRegister("##CXM1FB", win.img.lz.Collisions.CXM1FB, addresses.DataMasks[addresses.CXM1FB], win.img.cols.collisionBit, nil)
+		drawRegister("##CXM1FB", win.img.lz.Collisions.CXM1FB, vcs.TIADrivenPins, win.img.cols.collisionBit, nil)
 		imguiLabel("CXBLPF")
-		drawRegister("##CXBLPF", win.img.lz.Collisions.CXBLPF, addresses.DataMasks[addresses.CXBLPF], win.img.cols.collisionBit, nil)
+		drawRegister("##CXBLPF", win.img.lz.Collisions.CXBLPF, vcs.TIADrivenPins, win.img.cols.collisionBit, nil)
 		imguiLabel("CXPPMM")
-		drawRegister("##CXPPMM", win.img.lz.Collisions.CXPPMM, addresses.DataMasks[addresses.CXPPMM], win.img.cols.collisionBit, nil)
+		drawRegister("##CXPPMM", win.img.lz.Collisions.CXPPMM, vcs.TIADrivenPins, win.img.cols.collisionBit, nil)
 
 		imguiSeparator()
 

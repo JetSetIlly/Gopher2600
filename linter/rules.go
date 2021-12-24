@@ -18,7 +18,7 @@ package linter
 import (
 	"github.com/jetsetilly/gopher2600/disassembly"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/instructions"
-	"github.com/jetsetilly/gopher2600/hardware/memory/addresses"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
@@ -33,7 +33,7 @@ func rules(e *disassembly.Entry) []*LintEntry {
 			ma, area := memorymap.MapAddress(e.Result.InstructionData, true)
 			switch area {
 			case memorymap.TIA:
-				if _, ok := addresses.TIAReadSymbols[ma]; !ok {
+				if _, ok := cpubus.TIAReadSymbols[ma]; !ok {
 					le := &LintEntry{
 						DisasmEntry: e,
 						Error:       "reading a write only TIA address",
@@ -43,7 +43,7 @@ func rules(e *disassembly.Entry) []*LintEntry {
 				}
 
 			case memorymap.RIOT:
-				if _, ok := addresses.RIOTReadSymbols[ma]; !ok {
+				if _, ok := cpubus.RIOTReadSymbols[ma]; !ok {
 					le := &LintEntry{
 						DisasmEntry: e,
 						Error:       "reading a write only RIOT address",
@@ -58,7 +58,7 @@ func rules(e *disassembly.Entry) []*LintEntry {
 			ma, area := memorymap.MapAddress(e.Result.InstructionData, false)
 			switch area {
 			case memorymap.TIA:
-				if _, ok := addresses.TIAWriteSymbols[ma]; !ok {
+				if _, ok := cpubus.TIAWriteSymbols[ma]; !ok {
 					le := &LintEntry{
 						DisasmEntry: e,
 						Error:       "writing a read only TIA address",
@@ -68,7 +68,7 @@ func rules(e *disassembly.Entry) []*LintEntry {
 				}
 
 			case memorymap.RIOT:
-				if _, ok := addresses.RIOTWriteSymbols[ma]; !ok {
+				if _, ok := cpubus.RIOTWriteSymbols[ma]; !ok {
 					le := &LintEntry{
 						DisasmEntry: e,
 						Error:       "writing a read only RIOT address",

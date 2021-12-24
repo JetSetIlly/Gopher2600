@@ -23,8 +23,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/cpu/instructions"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/registers"
 	"github.com/jetsetilly/gopher2600/hardware/instance"
-	"github.com/jetsetilly/gopher2600/hardware/memory/addresses"
-	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
 )
 
 // CPU implements the 6507 found as found in the Atari 2600. Register logic is
@@ -43,7 +42,7 @@ type CPU struct {
 	acc8  registers.Register
 	acc16 registers.ProgramCounter
 
-	mem          bus.CPUBus
+	mem          cpubus.Memory
 	instructions []*instructions.Definition
 
 	// cycleCallback is called for additional emulator functionality
@@ -83,7 +82,7 @@ type CPU struct {
 
 // NewCPU is the preferred method of initialisation for the CPU structure. Note
 // that the CPU will be initialised in a random state.
-func NewCPU(instance *instance.Instance, mem bus.CPUBus) *CPU {
+func NewCPU(instance *instance.Instance, mem cpubus.Memory) *CPU {
 	return &CPU{
 		instance:     instance,
 		mem:          mem,
@@ -106,7 +105,7 @@ func (mc *CPU) Snapshot() *CPU {
 }
 
 // Plumb a new CPUBus into the CPU.
-func (mc *CPU) Plumb(mem bus.CPUBus) {
+func (mc *CPU) Plumb(mem cpubus.Memory) {
 	mc.mem = mem
 }
 
@@ -165,7 +164,7 @@ func (mc *CPU) LoadPCIndirect(indirectAddress uint16) error {
 
 	lo, err := mc.mem.Read(indirectAddress)
 	if err != nil {
-		if !curated.Has(err, bus.AddressError) {
+		if !curated.Has(err, cpubus.AddressError) {
 			return err
 		}
 		mc.LastResult.Error = err.Error()
@@ -173,7 +172,7 @@ func (mc *CPU) LoadPCIndirect(indirectAddress uint16) error {
 
 	hi, err := mc.mem.Read(indirectAddress + 1)
 	if err != nil {
-		if !curated.Has(err, bus.AddressError) {
+		if !curated.Has(err, cpubus.AddressError) {
 			return err
 		}
 		mc.LastResult.Error = err.Error()
@@ -203,9 +202,8 @@ func (mc *CPU) read8Bit(address uint16, phantom bool) (uint8, error) {
 	mc.PhantomMemAccess = phantom
 
 	val, err := mc.mem.Read(address)
-
 	if err != nil {
-		if !curated.Has(err, bus.AddressError) {
+		if !curated.Has(err, cpubus.AddressError) {
 			return 0, err
 		}
 		mc.LastResult.Error = err.Error()
@@ -228,10 +226,9 @@ func (mc *CPU) read8Bit(address uint16, phantom bool) (uint8, error) {
 func (mc *CPU) read8BitZeroPage(address uint8) (uint8, error) {
 	mc.PhantomMemAccess = false
 
-	val, err := mc.mem.(bus.CPUBusZeroPage).ReadZeroPage(address)
-
+	val, err := mc.mem.Read(uint16(address))
 	if err != nil {
-		if !curated.Has(err, bus.AddressError) {
+		if !curated.Has(err, cpubus.AddressError) {
 			return 0, err
 		}
 		mc.LastResult.Error = err.Error()
@@ -254,9 +251,8 @@ func (mc *CPU) write8Bit(address uint16, value uint8, phantom bool) error {
 	mc.PhantomMemAccess = phantom
 
 	err := mc.mem.Write(address, value)
-
 	if err != nil {
-		if !curated.Has(err, bus.AddressError) {
+		if !curated.Has(err, cpubus.AddressError) {
 			return err
 		}
 		mc.LastResult.Error = err.Error()
@@ -274,7 +270,7 @@ func (mc *CPU) read16Bit(address uint16) (uint16, error) {
 
 	lo, err := mc.mem.Read(address)
 	if err != nil {
-		if !curated.Has(err, bus.AddressError) {
+		if !curated.Has(err, cpubus.AddressError) {
 			return 0, err
 		}
 		mc.LastResult.Error = err.Error()
@@ -289,7 +285,7 @@ func (mc *CPU) read16Bit(address uint16) (uint16, error) {
 
 	hi, err := mc.mem.Read(address + 1)
 	if err != nil {
-		if !curated.Has(err, bus.AddressError) {
+		if !curated.Has(err, cpubus.AddressError) {
 			return 0, err
 		}
 		mc.LastResult.Error = err.Error()
@@ -327,7 +323,7 @@ func (mc *CPU) read8BitPC(effect read8BitPCeffect) error {
 	v, err := mc.mem.Read(mc.PC.Address())
 
 	if err != nil {
-		if !curated.Has(err, bus.AddressError) {
+		if !curated.Has(err, cpubus.AddressError) {
 			return err
 		}
 		mc.LastResult.Error = err.Error()
@@ -388,7 +384,7 @@ func (mc *CPU) read8BitPC(effect read8BitPCeffect) error {
 func (mc *CPU) read16BitPC() error {
 	lo, err := mc.mem.Read(mc.PC.Address())
 	if err != nil {
-		if !curated.Has(err, bus.AddressError) {
+		if !curated.Has(err, cpubus.AddressError) {
 			return err
 		}
 		mc.LastResult.Error = err.Error()
@@ -412,7 +408,7 @@ func (mc *CPU) read16BitPC() error {
 
 	hi, err := mc.mem.Read(mc.PC.Address())
 	if err != nil {
-		if !curated.Has(err, bus.AddressError) {
+		if !curated.Has(err, cpubus.AddressError) {
 			return err
 		}
 		mc.LastResult.Error = err.Error()
@@ -716,7 +712,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 			lo, err = mc.mem.Read(indirectAddress)
 			if err != nil {
-				if !curated.Has(err, bus.AddressError) {
+				if !curated.Has(err, cpubus.AddressError) {
 					return err
 				}
 				mc.LastResult.Error = err.Error()
@@ -726,7 +722,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 			mc.LastResult.Cycles++
 			err = mc.cycleCallback()
 			if err != nil {
-				if !curated.Has(err, bus.AddressError) {
+				if !curated.Has(err, cpubus.AddressError) {
 					return err
 				}
 				mc.LastResult.Error = err.Error()
@@ -1507,7 +1503,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 		// perform jump
 		var brkAddress uint16
-		brkAddress, err = mc.read16Bit(addresses.IRQ)
+		brkAddress, err = mc.read16Bit(cpubus.IRQ)
 		if err != nil {
 			return err
 		}

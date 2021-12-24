@@ -22,6 +22,7 @@ import (
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/cpu"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/vcs"
 	"github.com/jetsetilly/gopher2600/hardware/riot/timer"
 	"github.com/jetsetilly/gopher2600/logger"
@@ -190,7 +191,7 @@ func (tap *FastLoad) load() (uint8, error) {
 
 		// reset timer. in references to real tape loading, the number of ticks
 		// is the value at the moment the PC reaches address 0x00fa
-		tmr.SetInterval("TIM64T")
+		tmr.SetInterval(cpubus.TIM64T)
 		tmr.SetValue(0x0a)
 		tmr.SetTicks(0x1e)
 

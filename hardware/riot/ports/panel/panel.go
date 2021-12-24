@@ -21,7 +21,7 @@ import (
 	"strings"
 
 	"github.com/jetsetilly/gopher2600/curated"
-	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
+	"github.com/jetsetilly/gopher2600/hardware/memory/chipbus"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
 )
@@ -202,7 +202,7 @@ func (pan *Panel) HandleEvent(event ports.Event, value ports.EventData) (bool, e
 }
 
 // Update implements the Peripheral interface.
-func (pan *Panel) Update(data bus.ChipData) bool {
+func (pan *Panel) Update(data chipbus.ChangedRegister) bool {
 	return false
 }
 

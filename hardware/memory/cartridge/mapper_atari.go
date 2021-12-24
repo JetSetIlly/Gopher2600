@@ -20,8 +20,8 @@ import (
 
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/instance"
-	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
@@ -167,7 +167,7 @@ func (cart *atari) Write(addr uint16, data uint8, passive bool, poke bool) error
 		return nil
 	}
 
-	return curated.Errorf("atari: %v", curated.Errorf(bus.AddressError, addr))
+	return curated.Errorf("atari: %v", curated.Errorf(cpubus.AddressError, addr))
 }
 
 // Patch implements the mapper.CartMapper interface.

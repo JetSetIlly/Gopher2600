@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/jetsetilly/gopher2600/hardware/riot/timer"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
 
 	"github.com/inkyblackness/imgui-go/v4"
 )
@@ -42,8 +42,10 @@ func newWinTimer(img *SdlImgui) (window, error) {
 	return win, nil
 }
 
+var intervalList = []string{"TIM1T", "TIM8T", "TIM64T", "T1024T"}
+
 func (win *winTimer) init() {
-	win.intervalComboDim = imguiGetFrameDim("", timer.IntervalList...)
+	win.intervalComboDim = imguiGetFrameDim("", intervalList...)
 }
 
 func (win *winTimer) id() string {
@@ -68,9 +70,21 @@ func (win *winTimer) draw() {
 
 	imgui.PushItemWidth(win.intervalComboDim.X)
 	if imgui.BeginComboV("##timerinterval", win.img.lz.Timer.Divider, imgui.ComboFlagsNoArrowButton) {
-		for _, s := range timer.IntervalList {
+		for _, s := range intervalList {
 			if imgui.Selectable(s) {
-				t := s // being careful about scope
+				var t cpubus.Register
+				switch s {
+				case "TIM1T":
+					t = cpubus.TIM1T
+				case "TIM8T":
+					t = cpubus.TIM8T
+				case "TIM64T":
+					t = cpubus.TIM64T
+				case "T1024T":
+					t = cpubus.T1024T
+				default:
+					panic("unknown timer interval")
+				}
 				win.img.dbg.PushRawEvent(func() {
 					win.img.vcs.RIOT.Timer.SetInterval(t)
 				})

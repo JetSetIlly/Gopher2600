@@ -16,8 +16,8 @@
 package symbols
 
 import (
-	"github.com/jetsetilly/gopher2600/hardware/memory/addresses"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 	"github.com/jetsetilly/gopher2600/logger"
 )
@@ -31,14 +31,20 @@ func (sym *Symbols) canonise(cart *cartridge.Cartridge) {
 
 	// loop through the array of canonical names.
 	//
-	// note that because Read and Write in the addresses package are sparse
+	// note that because Read and Write in the cpubus package are sparse
 	// arrays we need to filter out the empty entries. (the Read and Write
 	// structures used to be maps and we didn't need to do this)
-	for k, v := range addresses.ReadSymbols {
-		sym.read.add(SourceSystem, k, v)
+	for k, v := range cpubus.TIAReadSymbols {
+		sym.read.add(SourceSystem, k, string(v))
 	}
-	for k, v := range addresses.WriteSymbols {
-		sym.write.add(SourceSystem, k, v)
+	for k, v := range cpubus.RIOTReadSymbols {
+		sym.read.add(SourceSystem, k, string(v))
+	}
+	for k, v := range cpubus.TIAWriteSymbols {
+		sym.write.add(SourceSystem, k, string(v))
+	}
+	for k, v := range cpubus.RIOTWriteSymbols {
+		sym.write.add(SourceSystem, k, string(v))
 	}
 
 	// add cartridge canonical symbols from cartridge hotspot information

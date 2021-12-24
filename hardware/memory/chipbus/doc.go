@@ -13,14 +13,9 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-// Package bus defines the memory bus concept. For an explanation see the
-// memory package documentation.
-package bus
-
-// DebugBus defines the meta-operations for all memory areas. Think of these
-// functions as "debugging" functions, that is operations outside of the normal
-// operation of the machine.
-type DebugBus interface {
-	Peek(address uint16) (uint8, error)
-	Poke(address uint16, value uint8) error
-}
+// Package chipbus defines the operations, addresses and symbols that are
+// required by the TIA and RIOT chips when updated values in memory.
+//
+// It also defines the operations required by the TIA and RIOT chips in order
+// to respond to changes made by the CPU.
+package chipbus

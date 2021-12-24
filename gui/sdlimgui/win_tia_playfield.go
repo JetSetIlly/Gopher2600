@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/jetsetilly/gopher2600/hardware/memory/addresses"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
 	"github.com/jetsetilly/gopher2600/hardware/tia/video"
 
 	"github.com/inkyblackness/imgui-go/v4"
@@ -45,7 +45,7 @@ func (win *winTIA) drawPlayfield() {
 		win.popupPalette.request(&fgCol, func() {
 			win.update(
 				func() {
-					win.img.dbg.PushDeepPoke(addresses.WriteAddress["COLUPF"], pf.ForegroundColor, fgCol, 0xfe)
+					win.img.dbg.PushDeepPoke(cpubus.WriteAddress[cpubus.COLUPF], pf.ForegroundColor, fgCol, 0xfe)
 				},
 				func() {
 					pf.ForegroundColor = fgCol
@@ -61,7 +61,7 @@ func (win *winTIA) drawPlayfield() {
 		win.popupPalette.request(&bgCol, func() {
 			win.update(
 				func() {
-					win.img.dbg.PushDeepPoke(addresses.WriteAddress["COLUBK"], pf.BackgroundColor, bgCol, 0xfe)
+					win.img.dbg.PushDeepPoke(cpubus.WriteAddress[cpubus.COLUBK], pf.BackgroundColor, bgCol, 0xfe)
 				},
 				func() {
 					pf.BackgroundColor = bgCol
@@ -82,13 +82,13 @@ func (win *winTIA) drawPlayfield() {
 			func() {
 				var o uint8
 				if pf.Reflected {
-					o = addresses.CTRLPFReflectedMask
+					o = video.CTRLPFReflectedMask
 				}
 				var n uint8
 				if ref {
-					n = addresses.CTRLPFReflectedMask
+					n = video.CTRLPFReflectedMask
 				}
-				win.img.dbg.PushDeepPoke(addresses.WriteAddress["CTRLPF"], o, n, addresses.CTRLPFReflectedMask)
+				win.img.dbg.PushDeepPoke(cpubus.WriteAddress[cpubus.CTRLPF], o, n, video.CTRLPFReflectedMask)
 			},
 			func() {
 				pf.Reflected = ref
@@ -102,13 +102,13 @@ func (win *winTIA) drawPlayfield() {
 			func() {
 				var o uint8
 				if pf.Scoremode {
-					o = addresses.CTRLPFScoremodeMask
+					o = video.CTRLPFScoremodeMask
 				}
 				var n uint8
 				if sm {
-					n = addresses.CTRLPFScoremodeMask
+					n = video.CTRLPFScoremodeMask
 				}
-				win.img.dbg.PushDeepPoke(addresses.WriteAddress["CTRLPF"], o, n, addresses.CTRLPFScoremodeMask)
+				win.img.dbg.PushDeepPoke(cpubus.WriteAddress[cpubus.CTRLPF], o, n, video.CTRLPFScoremodeMask)
 			},
 			func() {
 				pf.Scoremode = sm
@@ -122,13 +122,13 @@ func (win *winTIA) drawPlayfield() {
 			func() {
 				var o uint8
 				if pf.Priority {
-					o = addresses.CTRLPFPriorityMask
+					o = video.CTRLPFPriorityMask
 				}
 				var n uint8
 				if pri {
-					n = addresses.CTRLPFPriorityMask
+					n = video.CTRLPFPriorityMask
 				}
-				win.img.dbg.PushDeepPoke(addresses.WriteAddress["CTRLPF"], o, n, addresses.CTRLPFPriorityMask)
+				win.img.dbg.PushDeepPoke(cpubus.WriteAddress[cpubus.CTRLPF], o, n, video.CTRLPFPriorityMask)
 			},
 			func() {
 				pf.Priority = pri
@@ -143,7 +143,7 @@ func (win *winTIA) drawPlayfield() {
 		if v, err := strconv.ParseUint(ctrlpf, 16, 8); err == nil {
 			win.update(
 				func() {
-					win.img.dbg.PushDeepPoke(addresses.WriteAddress["CTRLPF"], pf.Ctrlpf, uint8(v), 0xff)
+					win.img.dbg.PushDeepPoke(cpubus.WriteAddress[cpubus.CTRLPF], pf.Ctrlpf, uint8(v), 0xff)
 				},
 				func() {
 					// update ball copy of CTRLPF too in addition to the playfield copy
@@ -178,7 +178,7 @@ func (win *winTIA) drawPlayfield() {
 			pf0d ^= 0x80 >> i
 			win.update(
 				func() {
-					win.img.dbg.PushDeepPoke(addresses.WriteAddress["PF0"], pf.PF0, pf0d, 0xff)
+					win.img.dbg.PushDeepPoke(cpubus.WriteAddress[cpubus.PF0], pf.PF0, pf0d, 0xff)
 				},
 				func() {
 					pf.SetPF0(pf0d)
@@ -205,7 +205,7 @@ func (win *winTIA) drawPlayfield() {
 			pf1d ^= 0x80 >> i
 			win.update(
 				func() {
-					win.img.dbg.PushDeepPoke(addresses.WriteAddress["PF1"], pf.PF1, pf1d, 0xff)
+					win.img.dbg.PushDeepPoke(cpubus.WriteAddress[cpubus.PF1], pf.PF1, pf1d, 0xff)
 				},
 				func() {
 					pf.SetPF1(pf1d)
@@ -232,7 +232,7 @@ func (win *winTIA) drawPlayfield() {
 			pf2d ^= 0x80 >> i
 			win.update(
 				func() {
-					win.img.dbg.PushDeepPoke(addresses.WriteAddress["PF2"], pf.PF2, pf2d, 0xff)
+					win.img.dbg.PushDeepPoke(cpubus.WriteAddress[cpubus.PF2], pf.PF2, pf2d, 0xff)
 				},
 				func() {
 					pf.SetPF2(pf2d)

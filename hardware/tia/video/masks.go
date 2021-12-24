@@ -13,11 +13,20 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-// Package bus is used to define access patterns for different areas of the
-// emulation to the VCS memory. For example, the VCS chips (the TIA and the
-// RIOT) access memory differently to the CPU. By restricting access to memory
-// from the chip to the ChipBus interface, we can prevent
-//
-// The DebugBus is for the exclusive use of debuggers and exposes a Peek() and
-// Poke() function.
-package bus
+package video
+
+// Not all bits in TIA graphic registers are used. The following masks can be
+// be used to keep only the relevant bits from the value that has been written
+// to the register.
+const (
+	CTRLPFPriorityMask  = 0x04
+	CTRLPFScoremodeMask = 0x02
+	CTRLPFReflectedMask = 0x01
+	REFPxMask           = 0x08
+	VDELPxMask          = 0x01
+	RESMPxMask          = 0x02
+	ENAxxMask           = 0x02
+	HMxxMask            = 0xf0
+	NUSIZxCopiesMask    = 0x07
+	NUSIZxSizeMask      = 0x03
+)

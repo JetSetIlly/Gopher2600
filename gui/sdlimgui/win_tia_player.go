@@ -20,7 +20,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/jetsetilly/gopher2600/hardware/memory/addresses"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
 	"github.com/jetsetilly/gopher2600/hardware/tia/video"
 
 	"github.com/inkyblackness/imgui-go/v4"
@@ -64,22 +64,22 @@ func (win *winTIA) drawPlayer(num int) {
 			func() {
 				var o uint8
 				if ps.Reflected {
-					o = addresses.REFPxMask
+					o = video.REFPxMask
 				}
 				var n uint8
 				if ref {
-					n = addresses.REFPxMask
+					n = video.REFPxMask
 				}
-				var reg string
+				var reg cpubus.Register
 				switch num {
 				case 0:
-					reg = "REFP0"
+					reg = cpubus.REFP0
 				case 1:
-					reg = "REFP1"
+					reg = cpubus.REFP1
 				default:
 					panic("unexecpted player number")
 				}
-				win.img.dbg.PushDeepPoke(addresses.WriteAddress[reg], o, n, addresses.REFPxMask)
+				win.img.dbg.PushDeepPoke(cpubus.WriteAddress[reg], o, n, video.REFPxMask)
 			},
 			func() {
 				ps.Reflected = ref

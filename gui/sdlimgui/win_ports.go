@@ -20,7 +20,8 @@ import (
 
 	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/gui/fonts"
-	"github.com/jetsetilly/gopher2600/hardware/memory/addresses"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
+	"github.com/jetsetilly/gopher2600/hardware/memory/vcs"
 )
 
 const winPortsID = "Ports"
@@ -170,10 +171,10 @@ func (win *winPorts) draw() {
 		imguiLabel("INPT0")
 
 		imgui.TableNextColumn()
-		drawRegister("##INPT0", win.img.lz.Ports.INPT0, addresses.DataMasks[addresses.INPT0], win.img.cols.portsBit,
+		drawRegister("##INPT0", win.img.lz.Ports.INPT0, vcs.TIADrivenPins, win.img.cols.portsBit,
 			func(v uint8) {
 				win.img.dbg.PushRawEvent(func() {
-					err := win.img.vcs.Mem.Poke(addresses.ReadAddress["INPT0"], v)
+					err := win.img.vcs.Mem.Poke(cpubus.ReadAddress[cpubus.INPT0], v)
 					if err != nil {
 						panic(err)
 					}
@@ -185,10 +186,10 @@ func (win *winPorts) draw() {
 		imguiLabel("INPT1")
 
 		imgui.TableNextColumn()
-		drawRegister("##INPT1", win.img.lz.Ports.INPT1, addresses.DataMasks[addresses.INPT1], win.img.cols.portsBit,
+		drawRegister("##INPT1", win.img.lz.Ports.INPT1, vcs.TIADrivenPins, win.img.cols.portsBit,
 			func(v uint8) {
 				win.img.dbg.PushRawEvent(func() {
-					err := win.img.vcs.Mem.Poke(addresses.ReadAddress["INPT1"], v)
+					err := win.img.vcs.Mem.Poke(cpubus.ReadAddress[cpubus.INPT1], v)
 					if err != nil {
 						panic(err)
 					}
@@ -202,10 +203,10 @@ func (win *winPorts) draw() {
 		imguiLabel("INPT2")
 
 		imgui.TableNextColumn()
-		drawRegister("##INPT2", win.img.lz.Ports.INPT2, addresses.DataMasks[addresses.INPT2], win.img.cols.portsBit,
+		drawRegister("##INPT2", win.img.lz.Ports.INPT2, vcs.TIADrivenPins, win.img.cols.portsBit,
 			func(v uint8) {
 				win.img.dbg.PushRawEvent(func() {
-					err := win.img.vcs.Mem.Poke(addresses.ReadAddress["INPT2"], v)
+					err := win.img.vcs.Mem.Poke(cpubus.ReadAddress[cpubus.INPT2], v)
 					if err != nil {
 						panic(err)
 					}
@@ -217,10 +218,10 @@ func (win *winPorts) draw() {
 		imguiLabel("INPT3")
 
 		imgui.TableNextColumn()
-		drawRegister("##INPT3", win.img.lz.Ports.INPT3, addresses.DataMasks[addresses.INPT3], win.img.cols.portsBit,
+		drawRegister("##INPT3", win.img.lz.Ports.INPT3, vcs.TIADrivenPins, win.img.cols.portsBit,
 			func(v uint8) {
 				win.img.dbg.PushRawEvent(func() {
-					err := win.img.vcs.Mem.Poke(addresses.ReadAddress["INPT3"], v)
+					err := win.img.vcs.Mem.Poke(cpubus.ReadAddress[cpubus.INPT3], v)
 					if err != nil {
 						panic(err)
 					}
@@ -234,10 +235,10 @@ func (win *winPorts) draw() {
 		imguiLabel("INPT4")
 
 		imgui.TableNextColumn()
-		drawRegister("##INPT4", win.img.lz.Ports.INPT4, addresses.DataMasks[addresses.INPT4], win.img.cols.portsBit,
+		drawRegister("##INPT4", win.img.lz.Ports.INPT4, vcs.TIADrivenPins, win.img.cols.portsBit,
 			func(v uint8) {
 				win.img.dbg.PushRawEvent(func() {
-					err := win.img.vcs.Mem.Poke(addresses.ReadAddress["INPT4"], v)
+					err := win.img.vcs.Mem.Poke(cpubus.ReadAddress[cpubus.INPT4], v)
 					if err != nil {
 						panic(err)
 					}
@@ -249,10 +250,10 @@ func (win *winPorts) draw() {
 		imguiLabel("INPT5")
 
 		imgui.TableNextColumn()
-		drawRegister("##INPT5", win.img.lz.Ports.INPT5, addresses.DataMasks[addresses.INPT5], win.img.cols.portsBit,
+		drawRegister("##INPT5", win.img.lz.Ports.INPT5, vcs.TIADrivenPins, win.img.cols.portsBit,
 			func(v uint8) {
 				win.img.dbg.PushRawEvent(func() {
-					err := win.img.vcs.Mem.Poke(addresses.ReadAddress["INPT5"], v)
+					err := win.img.vcs.Mem.Poke(cpubus.ReadAddress[cpubus.INPT5], v)
 					if err != nil {
 						panic(err)
 					}

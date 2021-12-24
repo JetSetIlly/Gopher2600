@@ -124,12 +124,12 @@ func (r *Registers) transitionCount(addr uint16) {
 	}
 }
 
-// GetRegisters implements the mapper.CartDebugBus interface.
+// GetRegisters implements the mapper.CartRegistersBus interface.
 func (cart Supercharger) GetRegisters() mapper.CartRegisters {
 	return cart.state.registers
 }
 
-// PutRegister implements the mapper.CartDebugBus interface
+// PutRegister implements the mapper.CartRegistersBus interface
 //
 // the register argument must be one of the following and after the = sign, the
 // type to which the data argument will be converted.

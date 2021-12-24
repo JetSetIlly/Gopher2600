@@ -13,23 +13,20 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-package addresses
+package chipbus
 
-// ChipRegister specifies the offset of a chip register in the chip memory
+// Register specifies the offset of a chip register in the chip memory
 // areas. It is used in contexts where a register is required, as opposed to an
 // address.
-type ChipRegister int
+type Register int
 
 // TIA registers
 //
 // These value are used by the emulator to specify known addresses. For
 // example, when writing collision information we know we need the CXM0P
 // register. these named values make the code more readable
-//
-// Values are enumerated from 0; value is added to the origin address of the
-// TIA in ChipBus.ChipWrite implementation.
 const (
-	CXM0P ChipRegister = iota
+	CXM0P Register = iota
 	CXM1P
 	CXP0FB
 	CXP1FB
@@ -50,11 +47,8 @@ const (
 // These value are used by the emulator to specify known addresses. For
 // example, the timer updates itself every cycle and stores time remaining
 // value in the INTIM register.
-//
-// Values are enumerated from 0; value is added to the origin address of the
-// TIA in ChipBus.ChipWrite implementation.
 const (
-	SWCHA ChipRegister = iota
+	SWCHA Register = iota
 	SWACNT
 	SWCHB
 	SWBCNT

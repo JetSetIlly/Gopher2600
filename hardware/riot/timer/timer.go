@@ -19,8 +19,8 @@ import (
 	"fmt"
 
 	"github.com/jetsetilly/gopher2600/hardware/instance"
-	"github.com/jetsetilly/gopher2600/hardware/memory/addresses"
-	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
+	"github.com/jetsetilly/gopher2600/hardware/memory/chipbus"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
 )
 
 // Interval indicates how often (in CPU cycles) the timer value decreases.
@@ -41,9 +41,6 @@ const (
 	T1024T Interval = 1024
 )
 
-// IntervalList is a list of all possible string representations of the Interval type.
-var IntervalList = []string{"TIM1T", "TIM8T", "TIM64T", "T1024T"}
-
 func (in Interval) String() string {
 	switch in {
 	case TIM1T:
@@ -60,7 +57,7 @@ func (in Interval) String() string {
 
 // Timer implements the timer part of the PIA 6532 (the T in RIOT).
 type Timer struct {
-	mem bus.ChipBus
+	mem chipbus.Memory
 
 	instance *instance.Instance
 
@@ -87,7 +84,7 @@ type Timer struct {
 }
 
 // NewTimer is the preferred method of initialisation of the Timer type.
-func NewTimer(instance *instance.Instance, mem bus.ChipBus) *Timer {
+func NewTimer(instance *instance.Instance, mem chipbus.Memory) *Timer {
 	tmr := &Timer{
 		instance: instance,
 		mem:      mem,
@@ -113,8 +110,8 @@ func (tmr *Timer) Reset() {
 		tmr.INTIMvalue = 0
 	}
 
-	tmr.mem.ChipWrite(addresses.INTIM, tmr.INTIMvalue)
-	tmr.mem.ChipWrite(addresses.TIMINT, tmr.timintValue())
+	tmr.mem.ChipWrite(chipbus.INTIM, tmr.INTIMvalue)
+	tmr.mem.ChipWrite(chipbus.TIMINT, tmr.timintValue())
 }
 
 // Snapshot creates a copy of the RIOT Timer in its current state.
@@ -124,7 +121,7 @@ func (tmr *Timer) Snapshot() *Timer {
 }
 
 // Plumb a new ChipBus into the Timer.
-func (tmr *Timer) Plumb(mem bus.ChipBus) {
+func (tmr *Timer) Plumb(mem chipbus.Memory) {
 	tmr.mem = mem
 }
 
@@ -151,9 +148,9 @@ func (tmr *Timer) timintValue() uint8 {
 // Update checks to see if ChipData applies to the Timer type and updates the
 // internal timer state accordingly.
 //
-// Returns true if ChipData requires more attention.
-func (tmr *Timer) Update(data bus.ChipData) bool {
-	if tmr.SetInterval(data.Name) {
+// Returns true if ChipData has *not* been serviced.
+func (tmr *Timer) Update(data chipbus.ChangedRegister) bool {
+	if tmr.SetInterval(data.Register) {
 		return true
 	}
 
@@ -161,10 +158,10 @@ func (tmr *Timer) Update(data bus.ChipData) bool {
 	// TIMINT register as reading. See commentary in the Step() function
 	if tmr.TicksRemaining == 0 && tmr.INTIMvalue == 0xff {
 		tmr.expired = true
-		tmr.mem.ChipWrite(addresses.TIMINT, tmr.timintValue())
+		tmr.mem.ChipWrite(chipbus.TIMINT, tmr.timintValue())
 	} else {
 		tmr.expired = false
-		tmr.mem.ChipWrite(addresses.TIMINT, tmr.timintValue())
+		tmr.mem.ChipWrite(chipbus.TIMINT, tmr.timintValue())
 	}
 
 	tmr.INTIMvalue = data.Value
@@ -181,40 +178,42 @@ func (tmr *Timer) Update(data bus.ChipData) bool {
 	tmr.TicksRemaining = 0
 
 	// write value to INTIM straight-away
-	tmr.mem.ChipWrite(addresses.INTIM, tmr.INTIMvalue)
+	tmr.mem.ChipWrite(chipbus.INTIM, tmr.INTIMvalue)
 
 	return false
 }
 
 // Step timer forward one cycle.
 func (tmr *Timer) Step() {
-	switch tmr.mem.LastReadRegister() {
-	case "INTIM":
-		// if INTIM is *read* then the decrement reverts to once per timer
-		// interval. this won't have any discernable effect unless the timer
-		// interval has been flipped to 1 when INTIM cycles back to 255
-		//
-		// if the expired flag has *just* been set (ie. in the previous cycle)
-		// then do not do the reversion. see discussion:
-		//
-		// https://atariage.com/forums/topic/303277-to-roll-or-not-to-roll/
-		//
-		// https://atariage.com/forums/topic/133686-please-explain-riot-timmers/?do=findComment&comment=1617207
-		if tmr.TicksRemaining != 0 || tmr.INTIMvalue != 0xff {
-			tmr.expired = false
-			tmr.mem.ChipWrite(addresses.TIMINT, tmr.timintValue())
+	if ok, a := tmr.mem.LastReadAddress(); ok {
+		switch cpubus.Read[a] {
+		case cpubus.INTIM:
+			// if INTIM is *read* then the decrement reverts to once per timer
+			// interval. this won't have any discernable effect unless the timer
+			// interval has been flipped to 1 when INTIM cycles back to 255
+			//
+			// if the expired flag has *just* been set (ie. in the previous cycle)
+			// then do not do the reversion. see discussion:
+			//
+			// https://atariage.com/forums/topic/303277-to-roll-or-not-to-roll/
+			//
+			// https://atariage.com/forums/topic/133686-please-explain-riot-timmers/?do=findComment&comment=1617207
+			if tmr.TicksRemaining != 0 || tmr.INTIMvalue != 0xff {
+				tmr.expired = false
+				tmr.mem.ChipWrite(chipbus.TIMINT, tmr.timintValue())
+			}
+		case cpubus.TIMINT:
+			// from the NMOS 6532:
+			//
+			// "Clearing of the PA7 Interrupt Flag occurs when the microprocessor
+			// reads the Interrupt Flag Register."
+			//
+			// and from the Rockwell 6532 documentation:
+			//
+			// "To clear PA7 interrupt flag, simply read the Interrupt Flag
+			// Register"
+			tmr.pa7 = false
 		}
-	case "TIMINT":
-		// from the NMOS 6532:
-		//
-		// "Clearing of the PA7 Interrupt Flag occurs when the microprocessor
-		// reads the Interrupt Flag Register."
-		//
-		// and from the Rockwell 6532 documentation:
-		//
-		// "To clear PA7 interrupt flag, simply read the Interrupt Flag
-		// Register"
-		tmr.pa7 = false
 	}
 
 	tmr.TicksRemaining--
@@ -222,11 +221,11 @@ func (tmr *Timer) Step() {
 		tmr.INTIMvalue--
 		if tmr.INTIMvalue == 0xff {
 			tmr.expired = true
-			tmr.mem.ChipWrite(addresses.TIMINT, tmr.timintValue())
+			tmr.mem.ChipWrite(chipbus.TIMINT, tmr.timintValue())
 		}
 
 		// copy value to INTIM memory register
-		tmr.mem.ChipWrite(addresses.INTIM, tmr.INTIMvalue)
+		tmr.mem.ChipWrite(chipbus.INTIM, tmr.INTIMvalue)
 
 		if tmr.expired {
 			tmr.TicksRemaining = 0
@@ -239,19 +238,19 @@ func (tmr *Timer) Step() {
 // SetValue sets the timer value. Prefer this to setting INTIMvalue directly.
 func (tmr *Timer) SetValue(value uint8) {
 	tmr.INTIMvalue = value
-	tmr.mem.ChipWrite(addresses.INTIM, tmr.INTIMvalue)
+	tmr.mem.ChipWrite(chipbus.INTIM, tmr.INTIMvalue)
 }
 
 // SetInterval sets the timer interval based on timer register name.
-func (tmr *Timer) SetInterval(interval string) bool {
+func (tmr *Timer) SetInterval(interval cpubus.Register) bool {
 	switch interval {
-	case "TIM1T":
+	case cpubus.TIM1T:
 		tmr.Divider = TIM1T
-	case "TIM8T":
+	case cpubus.TIM8T:
 		tmr.Divider = TIM8T
-	case "TIM64T":
+	case cpubus.TIM64T:
 		tmr.Divider = TIM64T
-	case "T1024T":
+	case cpubus.T1024T:
 		tmr.Divider = T1024T
 	default:
 		return true

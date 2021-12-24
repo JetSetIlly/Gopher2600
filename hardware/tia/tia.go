@@ -22,7 +22,8 @@ import (
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/cpu"
 	"github.com/jetsetilly/gopher2600/hardware/instance"
-	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
+	"github.com/jetsetilly/gopher2600/hardware/memory/chipbus"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
 	"github.com/jetsetilly/gopher2600/hardware/television/coords"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/hardware/tia/audio"
@@ -39,15 +40,23 @@ type TV interface {
 	GetCoords() coords.TelevisionCoords
 }
 
+// RIOTports is used to connect the TIA with the RIOT Ports implementation. We
+// need this because the RIOT is affected by one of the bits in the VBLANK
+// signal but because VBLANK is in the TIA address space we need to forward it
+// from here.
+type RIOTports interface {
+	Update(chipbus.ChangedRegister) bool
+}
+
 // TIA contains all the sub-components of the VCS TIA sub-system.
 type TIA struct {
 	instance *instance.Instance
 
 	tv  TV
-	mem bus.ChipBus
+	mem chipbus.Memory
 
-	// the VBLANK register also affects the input sub-system
-	input bus.UpdateBus
+	// the VBLANK register also affects the RIOT sub-system
+	riot RIOTports
 
 	// number of video cycles since the last WSYNC. also cycles back to 0 on
 	// RSYNC and when polycounter reaches count 56
@@ -116,12 +125,12 @@ func (tia *TIA) String() string {
 }
 
 // NewTIA creates a TIA, to be used in a VCS emulation.
-func NewTIA(instance *instance.Instance, tv TV, mem bus.ChipBus, input bus.UpdateBus, cpu *cpu.CPU) (*TIA, error) {
+func NewTIA(instance *instance.Instance, tv TV, mem chipbus.Memory, riot RIOTports, cpu *cpu.CPU) (*TIA, error) {
 	tia := &TIA{
 		instance: instance,
 		tv:       tv,
 		mem:      mem,
-		input:    input,
+		riot:     riot,
 		Hblank:   true,
 		rdyFlag:  &cpu.RdyFlg,
 	}
@@ -146,45 +155,45 @@ func (tia *TIA) Snapshot() *TIA {
 }
 
 // Plumb the a new ChipBus into the TIA.
-func (tia *TIA) Plumb(tv TV, mem bus.ChipBus, input bus.UpdateBus, cpu *cpu.CPU) {
+func (tia *TIA) Plumb(tv TV, mem chipbus.Memory, riot RIOTports, cpu *cpu.CPU) {
 	tia.tv = tv
 	tia.mem = mem
-	tia.input = input
+	tia.riot = riot
 	tia.rdyFlag = &cpu.RdyFlg
 	tia.Video.Plumb(tia.instance, tia.mem, tia.tv, &tia.PClk, &tia.hsync, &tia.Hblank, &tia.Hmove)
 }
 
-// ReadMemTIA checks for side effects in the TIA sub-system.
+// Update checks to see if ChipData applies tot he TIA and updates accordingly.
 //
 // Returns true if ChipData has *not* been serviced.
-func (tia *TIA) ReadMemTIA(data bus.ChipData) bool {
-	switch data.Name {
-	case "VSYNC":
+func (tia *TIA) Update(data chipbus.ChangedRegister) bool {
+	switch data.Register {
+	case cpubus.VSYNC:
 		tia.sig &= ^signal.VSync
 		if data.Value&0x02 == 0x02 {
 			tia.sig |= signal.VSync
 		}
 		return false
 
-	case "VBLANK":
+	case cpubus.VBLANK:
 		// homebrew Donkey Kong shows the need for a delay of at least one
 		// cycle for VBLANK. see area just before score box on play screen
 		tia.futureVblank.Schedule(1, data.Value)
 		tia.pendingEvents++
 
-		// the VBLANK register also affects the input sub-system
-		tia.input.Update(data)
+		// the VBLANK register also affects the RIOT riot sub-system
+		tia.riot.Update(data)
 
 		return false
 
-	case "WSYNC":
+	case cpubus.WSYNC:
 		// CPU has indicated that it wants to wait for the beginning of the
 		// next scanline. value is reset to false when TIA reaches end of
 		// scanline
 		*tia.rdyFlag = false
 		return false
 
-	case "RSYNC":
+	case cpubus.RSYNC:
 		// from TIA_HW_Notes.txt:
 		//
 		// "RSYNC resets the two-phase clock for the HSync counter to the H@1
@@ -217,7 +226,7 @@ func (tia *TIA) ReadMemTIA(data bus.ChipData) bool {
 
 		return false
 
-	case "HMOVE":
+	case cpubus.HMOVE:
 		// the scheduling for HMOVE is divided into two tranches, starting at
 		// the same time:
 		//
@@ -356,20 +365,21 @@ func (tia *TIA) resolveDelayedEvents() {
 	}
 }
 
-// Step moves the state of the tia forward one video cycle.
-func (tia *TIA) Step(readMemory bool) error {
+// Step moves the state of the tia forward one video cycle. The update argument
+// should be true if TIA is to be updated by changes in the TIA Chip memory.
+func (tia *TIA) Step(update bool) error {
 	// update debugging information
 	tia.videoCycles++
 
-	var memoryData bus.ChipData
+	var data chipbus.ChangedRegister
 
 	// early memory resolution
-	if readMemory {
-		readMemory, memoryData = tia.mem.ChipHasChanged()
+	if update {
+		update, data = tia.mem.ChipHasChanged()
 
 		// make alterations to video state and playfield
-		if readMemory {
-			readMemory = tia.ReadMemTIA(memoryData)
+		if update {
+			update = tia.Update(data)
 		}
 	}
 
@@ -502,7 +512,7 @@ func (tia *TIA) Step(readMemory bool) error {
 	}
 
 	// mid-subcycle memory resolution
-	if readMemory {
+	if update {
 		// alter state of video subsystem. occurring after ticking of TIA clock
 		// because some the side effects of some registers require that. in
 		// particular, the RESxx registers need to have correct information about
@@ -512,22 +522,22 @@ func (tia *TIA) Step(readMemory bool) error {
 		// HSYNC tick and see how the ball sprite is rendered incorrectly in
 		// Keystone Kapers (this is because the ball is reset on the very last
 		// pixel and before HBLANK etc. are in the state they need to be)
-		readMemory = tia.Video.ReadMemSpritePositioning(memoryData)
+		update = tia.Video.UpdateSpritePositioning(data)
 
 		// update color registers
-		if readMemory {
-			readMemory = tia.Video.ReadMemColor(memoryData)
+		if update {
+			update = tia.Video.UpdateColor(data)
 
 			// update playfield color register (depending on TIA revision)
-			if readMemory {
+			if update {
 				if !tia.instance.Prefs.Revision.LateCOLUPF {
-					readMemory = tia.Video.ReadMemPlayfieldColor(memoryData)
+					update = tia.Video.UpdatePlayfieldColor(data)
 				}
 
-				if readMemory {
+				if update {
 					// update playfield bits (depending on TIA revisions)
 					if !tia.instance.Prefs.Revision.LatePFx {
-						readMemory = tia.Video.ReadMemPlayfield(memoryData)
+						update = tia.Video.UpdatePlayfield(data)
 					}
 				}
 			}
@@ -540,9 +550,9 @@ func (tia *TIA) Step(readMemory bool) error {
 	tia.Video.Tick()
 
 	// update playfield bits (depending on TIA revisions)
-	if readMemory {
+	if update {
 		if tia.instance.Prefs.Revision.LatePFx {
-			readMemory = tia.Video.ReadMemPlayfield(memoryData)
+			update = tia.Video.UpdatePlayfield(data)
 		}
 	}
 
@@ -569,22 +579,22 @@ func (tia *TIA) Step(readMemory bool) error {
 	}
 
 	// late memory resolution
-	if readMemory {
-		readMemory = tia.Video.ReadMemSpriteHMOVE(memoryData)
+	if update {
+		update = tia.Video.UpdateSpriteHMOVE(data)
 
-		if readMemory {
-			readMemory = tia.Video.ReadMemSpriteVariations(memoryData)
+		if update {
+			update = tia.Video.UpdateSpriteVariations(data)
 
-			if readMemory {
-				readMemory = tia.Video.ReadMemSpritePixels(memoryData)
+			if update {
+				update = tia.Video.UpdateSpritePixels(data)
 
-				if readMemory {
-					readMemory = tia.Audio.ReadMemRegisters(memoryData)
+				if update {
+					update = tia.Audio.ReadMemRegisters(data)
 
-					if readMemory {
+					if update {
 						// update playfield color register (depending on TIA revision)
 						if tia.instance.Prefs.Revision.LateCOLUPF {
-							_ = tia.Video.ReadMemPlayfieldColor(memoryData)
+							_ = tia.Video.UpdatePlayfieldColor(data)
 						}
 					}
 				}

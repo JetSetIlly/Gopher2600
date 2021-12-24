@@ -20,8 +20,8 @@ import (
 	"strconv"
 
 	"github.com/jetsetilly/gopher2600/curated"
-	"github.com/jetsetilly/gopher2600/hardware/memory/addresses"
-	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
+	"github.com/jetsetilly/gopher2600/hardware/memory/chipbus"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
 )
@@ -45,7 +45,7 @@ type Stick struct {
 	axis   uint8
 	button uint8
 
-	inptx addresses.ChipRegister
+	inptx chipbus.Register
 }
 
 // NewStick is the preferred method of initialisation for the Stick type
@@ -61,9 +61,9 @@ func NewStick(port plugging.PortID, bus ports.PeripheralBus) ports.Peripheral {
 
 	switch port {
 	case plugging.PortLeftPlayer:
-		stk.inptx = addresses.INPT4
+		stk.inptx = chipbus.INPT4
 	case plugging.PortRightPlayer:
-		stk.inptx = addresses.INPT5
+		stk.inptx = chipbus.INPT5
 	}
 
 	stk.Reset()
@@ -197,9 +197,9 @@ func (stk *Stick) HandleEvent(event ports.Event, data ports.EventData) (bool, er
 }
 
 // Update implements the ports.Peripheral interface.
-func (stk *Stick) Update(data bus.ChipData) bool {
-	switch data.Name {
-	case "VBLANK":
+func (stk *Stick) Update(data chipbus.ChangedRegister) bool {
+	switch data.Register {
+	case cpubus.VBLANK:
 		if data.Value&0x40 != 0x40 {
 			if stk.button == stickNoFire {
 				stk.bus.WriteINPTx(stk.inptx, stk.button)

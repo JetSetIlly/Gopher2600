@@ -142,7 +142,7 @@ func (stc *Static) read8bit(addr uint32) uint8 {
 // 		uint32((*mem)[addr+3])<<24
 // }.
 
-// GetStatic implements the bus.CartDebugBus interface.
+// GetStatic implements the bus.CartRegistersBus interface.
 func (cart *cdf) GetStatic() []mapper.CartStatic {
 	numSegments := 3
 	if cart.version.submapping == "CDFJ+" {
@@ -169,7 +169,7 @@ func (cart *cdf) GetStatic() []mapper.CartStatic {
 	return s
 }
 
-// StaticWrite implements the bus.CartDebugBus interface.
+// StaticWrite implements the bus.CartRegistersBus interface.
 func (cart *cdf) PutStatic(segment string, idx uint16, data uint8) error {
 	switch segment {
 	case "Driver":

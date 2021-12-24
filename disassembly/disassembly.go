@@ -27,8 +27,8 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/cpu"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/execution"
-	"github.com/jetsetilly/gopher2600/hardware/memory/addresses"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/logger"
@@ -145,7 +145,7 @@ func (dsm *Disassembly) FromMemory() error {
 		return curated.Errorf("disassembly: %v", err)
 	}
 
-	startingBank := dsm.vcs.Mem.Cart.GetBank(addresses.Reset).Number
+	startingBank := dsm.vcs.Mem.Cart.GetBank(cpubus.Reset).Number
 
 	mem := newDisasmMemory(startingBank, copiedBanks)
 	if mem == nil {

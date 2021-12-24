@@ -19,7 +19,7 @@ import (
 	"strings"
 
 	"github.com/jetsetilly/gopher2600/hardware/instance"
-	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
+	"github.com/jetsetilly/gopher2600/hardware/memory/chipbus"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
 	"github.com/jetsetilly/gopher2600/hardware/riot/timer"
 )
@@ -28,14 +28,14 @@ import (
 type RIOT struct {
 	instance *instance.Instance
 
-	mem bus.ChipBus
+	mem chipbus.Memory
 
 	Timer *timer.Timer
 	Ports *ports.Ports
 }
 
 // NewRIOT is the preferred method of initialisation for the RIOT type.
-func NewRIOT(instance *instance.Instance, mem bus.ChipBus, tiaMem bus.ChipBus) *RIOT {
+func NewRIOT(instance *instance.Instance, mem chipbus.Memory, tiaMem chipbus.Memory) *RIOT {
 	return &RIOT{
 		instance: instance,
 		mem:      mem,
@@ -53,7 +53,7 @@ func (riot *RIOT) Snapshot() *RIOT {
 }
 
 // Plumb new ChipBusses into the RIOT.
-func (riot *RIOT) Plumb(mem bus.ChipBus, tiaMem bus.ChipBus) {
+func (riot *RIOT) Plumb(mem chipbus.Memory, tiaMem chipbus.Memory) {
 	riot.mem = mem
 	riot.Timer.Plumb(mem)
 	riot.Ports.Plumb(mem, tiaMem)
@@ -65,26 +65,17 @@ func (riot *RIOT) String() string {
 	return s.String()
 }
 
-// UpdateRIOT checks for the most recent write by the CPU to the RIOT memory
-// registers.
-func (riot *RIOT) UpdateRIOT() {
-	ok, data := riot.mem.ChipHasChanged()
-	if !ok {
-		return
-	}
-
-	ok = riot.Timer.Update(data)
-	if !ok {
-		return
-	}
-
-	_ = riot.Ports.Update(data)
-}
-
 // Step moves the state of the RIOT forward one video cycle. Does not include
 // the stepping of the RIOT Ports. See StepPorts().
 func (riot *RIOT) Step() {
-	riot.UpdateRIOT()
+	ok, data := riot.mem.ChipHasChanged()
+	if ok {
+		ok = riot.Timer.Update(data)
+		if ok {
+			_ = riot.Ports.Update(data)
+		}
+	}
+
 	riot.Timer.Step()
 
 	// there is potentially some performance saving by calling Ports.Step()

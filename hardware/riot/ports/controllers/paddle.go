@@ -20,8 +20,8 @@ import (
 	"strconv"
 
 	"github.com/jetsetilly/gopher2600/curated"
-	"github.com/jetsetilly/gopher2600/hardware/memory/addresses"
-	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
+	"github.com/jetsetilly/gopher2600/hardware/memory/chipbus"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
 )
@@ -47,7 +47,7 @@ type Paddle struct {
 	bus  ports.PeripheralBus
 
 	// register to write puck charge to
-	inptx addresses.ChipRegister
+	inptx chipbus.Register
 
 	// button data is always written to SWCHA but which bit depends on the player
 	buttonMask uint8
@@ -73,10 +73,10 @@ func NewPaddle(port plugging.PortID, bus ports.PeripheralBus) ports.Peripheral {
 	// !!TODO: support for paddle player 3 and paddle player 4
 	switch port {
 	case plugging.PortLeftPlayer:
-		pdl.inptx = addresses.INPT0
+		pdl.inptx = chipbus.INPT0
 		pdl.buttonMask = 0x80
 	case plugging.PortRightPlayer:
-		pdl.inptx = addresses.INPT1
+		pdl.inptx = chipbus.INPT1
 		pdl.buttonMask = 0x40
 	}
 
@@ -166,9 +166,9 @@ func (pdl *Paddle) HandleEvent(event ports.Event, data ports.EventData) (bool, e
 }
 
 // Update implements the ports.Peripheral interface.
-func (pdl *Paddle) Update(data bus.ChipData) bool {
-	switch data.Name {
-	case "VBLANK":
+func (pdl *Paddle) Update(data chipbus.ChangedRegister) bool {
+	switch data.Register {
+	case cpubus.VBLANK:
 		if data.Value&0x80 == 0x80 {
 			// ground paddle's puck
 			pdl.charge = 0x00

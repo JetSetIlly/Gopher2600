@@ -16,8 +16,7 @@
 package ports
 
 import (
-	"github.com/jetsetilly/gopher2600/hardware/memory/addresses"
-	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
+	"github.com/jetsetilly/gopher2600/hardware/memory/chipbus"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
 )
 
@@ -43,7 +42,7 @@ type Peripheral interface {
 	HandleEvent(Event, EventData) (bool, error)
 
 	// memory has been updated. peripherals are notified.
-	Update(bus.ChipData) bool
+	Update(chipbus.ChangedRegister) bool
 
 	// step is called every CPU clock. important for paddle devices
 	Step()
@@ -64,7 +63,7 @@ type NewPeripheral func(plugging.PortID, PeripheralBus) Peripheral
 // this bus definition here rather than the Bus package because it is very
 // specific to this package and sub-packages.
 type PeripheralBus interface {
-	WriteINPTx(inptx addresses.ChipRegister, data uint8)
+	WriteINPTx(inptx chipbus.Register, data uint8)
 
 	// the SWCHA register is logically divided into two nibbles. player 0
 	// uses the upper nibble and player 1 uses the lower nibble. peripherals

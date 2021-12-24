@@ -17,7 +17,8 @@ package sdlimgui
 
 import (
 	"github.com/inkyblackness/imgui-go/v4"
-	"github.com/jetsetilly/gopher2600/hardware/memory/addresses"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
+	"github.com/jetsetilly/gopher2600/hardware/memory/vcs"
 )
 
 const winCollisionsID = "Collisions"
@@ -60,66 +61,66 @@ func (win *winCollisions) draw() {
 	defer imgui.End()
 
 	imguiLabel("CXM0P ")
-	drawRegister("##CXM0P", win.img.lz.Collisions.CXM0P, addresses.DataMasks[addresses.CXM0P], win.img.cols.collisionBit,
+	drawRegister("##CXM0P", win.img.lz.Collisions.CXM0P, vcs.TIADrivenPins, win.img.cols.collisionBit,
 		func(v uint8) {
 			win.img.dbg.PushRawEvent(func() {
-				win.img.vcs.Mem.Poke(addresses.ReadAddress["CXM0P"], v)
+				win.img.vcs.Mem.Poke(cpubus.ReadAddress[cpubus.CXM0P], v)
 			})
 		})
 
 	imguiLabel("CXM1P ")
-	drawRegister("##CXM1P", win.img.lz.Collisions.CXM1P, addresses.DataMasks[addresses.CXM1P], win.img.cols.collisionBit,
+	drawRegister("##CXM1P", win.img.lz.Collisions.CXM1P, vcs.TIADrivenPins, win.img.cols.collisionBit,
 		func(v uint8) {
 			win.img.dbg.PushRawEvent(func() {
-				win.img.vcs.Mem.Poke(addresses.ReadAddress["CXM1P"], v)
+				win.img.vcs.Mem.Poke(cpubus.ReadAddress[cpubus.CXM1P], v)
 			})
 		})
 
 	imguiLabel("CXP0FB")
-	drawRegister("##CXP0FB", win.img.lz.Collisions.CXP0FB, addresses.DataMasks[addresses.CXP0FB], win.img.cols.collisionBit,
+	drawRegister("##CXP0FB", win.img.lz.Collisions.CXP0FB, vcs.TIADrivenPins, win.img.cols.collisionBit,
 		func(v uint8) {
 			win.img.dbg.PushRawEvent(func() {
-				win.img.vcs.Mem.Poke(addresses.ReadAddress["CXPOFB"], v)
+				win.img.vcs.Mem.Poke(cpubus.ReadAddress[cpubus.CXP0FB], v)
 			})
 		})
 
 	imguiLabel("CXP1FB")
-	drawRegister("##CXP1FB", win.img.lz.Collisions.CXP1FB, addresses.DataMasks[addresses.CXP1FB], win.img.cols.collisionBit,
+	drawRegister("##CXP1FB", win.img.lz.Collisions.CXP1FB, vcs.TIADrivenPins, win.img.cols.collisionBit,
 		func(v uint8) {
 			win.img.dbg.PushRawEvent(func() {
-				win.img.vcs.Mem.Poke(addresses.ReadAddress["CXP1FB"], v)
+				win.img.vcs.Mem.Poke(cpubus.ReadAddress[cpubus.CXP1FB], v)
 			})
 		})
 
 	imguiLabel("CXM0FB")
-	drawRegister("##CXM0FB", win.img.lz.Collisions.CXM0FB, addresses.DataMasks[addresses.CXM0FB], win.img.cols.collisionBit,
+	drawRegister("##CXM0FB", win.img.lz.Collisions.CXM0FB, vcs.TIADrivenPins, win.img.cols.collisionBit,
 		func(v uint8) {
 			win.img.dbg.PushRawEvent(func() {
-				win.img.vcs.Mem.Poke(addresses.ReadAddress["CXM0FB"], v)
+				win.img.vcs.Mem.Poke(cpubus.ReadAddress[cpubus.CXM0FB], v)
 			})
 		})
 
 	imguiLabel("CXM1FB")
-	drawRegister("##CXM1FB", win.img.lz.Collisions.CXM1FB, addresses.DataMasks[addresses.CXM1FB], win.img.cols.collisionBit,
+	drawRegister("##CXM1FB", win.img.lz.Collisions.CXM1FB, vcs.TIADrivenPins, win.img.cols.collisionBit,
 		func(v uint8) {
 			win.img.dbg.PushRawEvent(func() {
-				win.img.vcs.Mem.Poke(addresses.ReadAddress["CXM1FB"], v)
+				win.img.vcs.Mem.Poke(cpubus.ReadAddress[cpubus.CXM1FB], v)
 			})
 		})
 
 	imguiLabel("CXBLPF")
-	drawRegister("##CXBLPF", win.img.lz.Collisions.CXBLPF, addresses.DataMasks[addresses.CXBLPF], win.img.cols.collisionBit,
+	drawRegister("##CXBLPF", win.img.lz.Collisions.CXBLPF, vcs.TIADrivenPins, win.img.cols.collisionBit,
 		func(v uint8) {
 			win.img.dbg.PushRawEvent(func() {
-				win.img.vcs.Mem.Poke(addresses.ReadAddress["CXBLPF"], v)
+				win.img.vcs.Mem.Poke(cpubus.ReadAddress[cpubus.CXBLPF], v)
 			})
 		})
 
 	imguiLabel("CXPPMM")
-	drawRegister("##CXPPMM", win.img.lz.Collisions.CXPPMM, addresses.DataMasks[addresses.CXPPMM], win.img.cols.collisionBit,
+	drawRegister("##CXPPMM", win.img.lz.Collisions.CXPPMM, vcs.TIADrivenPins, win.img.cols.collisionBit,
 		func(v uint8) {
 			win.img.dbg.PushRawEvent(func() {
-				win.img.vcs.Mem.Poke(addresses.ReadAddress["CXPPMM"], v)
+				win.img.vcs.Mem.Poke(cpubus.ReadAddress[cpubus.CXPPMM], v)
 			})
 		})
 

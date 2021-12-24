@@ -19,7 +19,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
+	"github.com/jetsetilly/gopher2600/hardware/memory/chipbus"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
 )
@@ -161,9 +162,9 @@ func (aut *Auto) HandleEvent(event ports.Event, data ports.EventData) (bool, err
 }
 
 // Update implements the ports.Peripheral interface.
-func (aut *Auto) Update(data bus.ChipData) bool {
-	switch data.Name {
-	case "SWACNT":
+func (aut *Auto) Update(data chipbus.ChangedRegister) bool {
+	switch data.Register {
+	case cpubus.SWACNT:
 		if data.Value&aut.keypadDetectValue == aut.keypadDetectValue {
 			// attach keypad IF NOT attached already
 			if _, ok := aut.controller.(*Keypad); !ok {

@@ -22,7 +22,6 @@ import (
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/instance"
-	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/cdf"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/dpcplus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
@@ -35,9 +34,6 @@ import (
 
 // Cartridge defines the information and operations for a VCS cartridge.
 type Cartridge struct {
-	bus.DebugBus
-	bus.CPUBus
-
 	instance *instance.Instance
 
 	// filename/hash taken from cartridgeloader. choosing not to keep a

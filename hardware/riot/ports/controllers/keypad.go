@@ -20,8 +20,8 @@ import (
 	"strconv"
 
 	"github.com/jetsetilly/gopher2600/curated"
-	"github.com/jetsetilly/gopher2600/hardware/memory/addresses"
-	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
+	"github.com/jetsetilly/gopher2600/hardware/memory/chipbus"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
 )
@@ -30,7 +30,7 @@ import (
 type Keypad struct {
 	port   plugging.PortID
 	bus    ports.PeripheralBus
-	column [3]addresses.ChipRegister
+	column [3]chipbus.Register
 	key    rune
 }
 
@@ -48,9 +48,9 @@ func NewKeypad(port plugging.PortID, bus ports.PeripheralBus) ports.Peripheral {
 
 	switch port {
 	case plugging.PortLeftPlayer:
-		key.column = [3]addresses.ChipRegister{addresses.INPT0, addresses.INPT1, addresses.INPT4}
+		key.column = [3]chipbus.Register{chipbus.INPT0, chipbus.INPT1, chipbus.INPT4}
 	case plugging.PortRightPlayer:
-		key.column = [3]addresses.ChipRegister{addresses.INPT2, addresses.INPT3, addresses.INPT5}
+		key.column = [3]chipbus.Register{chipbus.INPT2, chipbus.INPT3, chipbus.INPT5}
 	}
 
 	key.Reset()
@@ -135,9 +135,9 @@ func (key *Keypad) HandleEvent(event ports.Event, data ports.EventData) (bool, e
 }
 
 // Update implements the ports.Peripheral interface.
-func (key *Keypad) Update(data bus.ChipData) bool {
-	switch data.Name {
-	case "SWCHA":
+func (key *Keypad) Update(data chipbus.ChangedRegister) bool {
+	switch data.Register {
+	case cpubus.SWCHA:
 		var column int
 		var v uint8
 

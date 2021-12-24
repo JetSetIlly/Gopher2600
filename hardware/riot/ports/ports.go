@@ -20,15 +20,15 @@ import (
 	"strings"
 
 	"github.com/jetsetilly/gopher2600/curated"
-	"github.com/jetsetilly/gopher2600/hardware/memory/addresses"
-	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
+	"github.com/jetsetilly/gopher2600/hardware/memory/chipbus"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
 )
 
 // Input implements the input/output part of the RIOT (the IO in RIOT).
 type Ports struct {
-	riot bus.ChipBus
-	tia  bus.ChipBus
+	riot chipbus.Memory
+	tia  chipbus.Memory
 
 	Panel       Peripheral
 	LeftPlayer  Peripheral
@@ -71,7 +71,7 @@ type Ports struct {
 }
 
 // NewPorts is the preferred method of initialisation of the Ports type.
-func NewPorts(riotMem bus.ChipBus, tiaMem bus.ChipBus) *Ports {
+func NewPorts(riotMem chipbus.Memory, tiaMem chipbus.Memory) *Ports {
 	p := &Ports{
 		riot:  riotMem,
 		tia:   tiaMem,
@@ -92,7 +92,7 @@ func (p *Ports) Snapshot() *Ports {
 // Plumb new ChipBusses into the Ports sub-system. Depending on context it
 // might be advidable for ResetPeripherals() to be called after plumbing has
 // succeeded.
-func (p *Ports) Plumb(riotMem bus.ChipBus, tiaMem bus.ChipBus) {
+func (p *Ports) Plumb(riotMem chipbus.Memory, tiaMem chipbus.Memory) {
 	p.riot = riotMem
 	p.tia = tiaMem
 	if p.Panel != nil {
@@ -137,16 +137,16 @@ func (p *Ports) Plug(port plugging.PortID, c NewPeripheral) error {
 func (p *Ports) String() string {
 	s := strings.Builder{}
 	s.WriteString(fmt.Sprintf("SWCHA(W): %#02x ", p.swcha_w))
-	s.WriteString(fmt.Sprintf("SWACNT: %#02x ", p.riot.ChipRefer(addresses.SWACNT)))
-	swcha := p.riot.ChipRefer(addresses.SWCHA)
+	s.WriteString(fmt.Sprintf("SWACNT: %#02x ", p.riot.ChipRefer(chipbus.SWACNT)))
+	swcha := p.riot.ChipRefer(chipbus.SWCHA)
 	s.WriteString(fmt.Sprintf("SWCHA: %#02x ", swcha))
 	if swcha != p.deriveSWCHA() {
 		s.WriteString("[SWCHA has been poked] ")
 	}
 
 	s.WriteString(fmt.Sprintf("SWCHB(W): %#02x ", p.swchb_w))
-	s.WriteString(fmt.Sprintf("SWBCNT: %#02x ", p.riot.ChipRefer(addresses.SWBCNT)))
-	swchb := p.riot.ChipRefer(addresses.SWCHB)
+	s.WriteString(fmt.Sprintf("SWBCNT: %#02x ", p.riot.ChipRefer(chipbus.SWBCNT)))
+	swchb := p.riot.ChipRefer(chipbus.SWCHB)
 	s.WriteString(fmt.Sprintf("SWCHB: %#02x ", swchb))
 	if swchb != p.deriveSWCHB() {
 		s.WriteString("[SWCHB has been poked] ")
@@ -170,16 +170,16 @@ func (p *Ports) ResetPeripherals() {
 // Update checks to see if ChipData applies to the Input type and updates the
 // internal controller/panel states accordingly. Returns true if ChipData
 // requires more attention.
-func (p *Ports) Update(data bus.ChipData) bool {
-	switch data.Name {
-	case "VBLANK":
+func (p *Ports) Update(data chipbus.ChangedRegister) bool {
+	switch data.Register {
+	case cpubus.VBLANK:
 		p.latch = data.Value&0x40 == 0x40
 
 		// peripheral update
 		_ = p.LeftPlayer.Update(data)
 		_ = p.RightPlayer.Update(data)
 
-	case "SWCHA":
+	case cpubus.SWCHA:
 		p.swcha_w = data.Value
 
 		// mask value and set SWCHA register. some peripherals may call
@@ -188,41 +188,41 @@ func (p *Ports) Update(data bus.ChipData) bool {
 		//
 		// we should think of this write as the default event in case the
 		// peripheral chooses to do nothing with the new value
-		swcha := ^(p.riot.ChipRefer(addresses.SWACNT)) | p.swcha_w
-		p.riot.ChipWrite(addresses.SWCHA, swcha)
+		swcha := ^(p.riot.ChipRefer(chipbus.SWACNT)) | p.swcha_w
+		p.riot.ChipWrite(chipbus.SWCHA, swcha)
 
 		// mask value with SWACNT bits before passing to peripheral
-		data.Value &= p.riot.ChipRefer(addresses.SWACNT)
+		data.Value &= p.riot.ChipRefer(chipbus.SWACNT)
 		_ = p.LeftPlayer.Update(data)
 		_ = p.RightPlayer.Update(data)
 
-	case "SWACNT":
-		p.riot.ChipWrite(addresses.SWACNT, data.Value)
+	case cpubus.SWACNT:
+		p.riot.ChipWrite(chipbus.SWACNT, data.Value)
 
 		// peripheral update for SWACNT
 		_ = p.LeftPlayer.Update(data)
 		_ = p.RightPlayer.Update(data)
 
 		// i/o bits have changed so change the data in the SWCHA register
-		swcha := ^(p.riot.ChipRefer(addresses.SWACNT)) | p.swcha_w
-		p.riot.ChipWrite(addresses.SWCHA, swcha)
+		swcha := ^(p.riot.ChipRefer(chipbus.SWACNT)) | p.swcha_w
+		p.riot.ChipWrite(chipbus.SWCHA, swcha)
 
 		// adjusting SWACNT also affects the SWCHA lines to the peripheral.
 		// adjust SWCHA lines and update peripheral with new SWCHA data
-		data = bus.ChipData{
-			Name:  "SWCHA",
-			Value: p.riot.ChipRefer(addresses.SWCHA),
+		data = chipbus.ChangedRegister{
+			Register: cpubus.SWCHA,
+			Value:    p.riot.ChipRefer(chipbus.SWCHA),
 		}
 		_ = p.LeftPlayer.Update(data)
 		_ = p.RightPlayer.Update(data)
 
-	case "SWCHB":
+	case cpubus.SWCHB:
 		p.swchb_w = data.Value
-		p.riot.ChipWrite(addresses.SWCHB, p.deriveSWCHB())
+		p.riot.ChipWrite(chipbus.SWCHB, p.deriveSWCHB())
 
-	case "SWBCNT":
-		p.riot.ChipWrite(addresses.SWBCNT, data.Value)
-		p.riot.ChipWrite(addresses.SWCHB, p.deriveSWCHB())
+	case cpubus.SWBCNT:
+		p.riot.ChipWrite(chipbus.SWBCNT, data.Value)
+		p.riot.ChipWrite(chipbus.SWCHB, p.deriveSWCHB())
 	}
 
 	return false
@@ -285,22 +285,22 @@ func (p *Ports) WriteSWCHx(id plugging.PortID, data uint8) {
 		data &= 0xf0               // keep only the bits for player 0
 		data |= p.swcha_mux & 0x0f // combine with the existing player 1 bits
 		p.swcha_mux = data
-		p.riot.ChipWrite(addresses.SWCHA, p.deriveSWCHA())
+		p.riot.ChipWrite(chipbus.SWCHA, p.deriveSWCHA())
 	case plugging.PortRightPlayer:
 		data = (data & 0xf0) >> 4  // move bits into the player 1 nibble
 		data |= p.swcha_mux & 0xf0 // combine with the existing player 0 bits
 		p.swcha_mux = data
-		p.riot.ChipWrite(addresses.SWCHA, p.deriveSWCHA())
+		p.riot.ChipWrite(chipbus.SWCHA, p.deriveSWCHA())
 	case plugging.PortPanel:
 		p.swchb_raw = data
-		p.riot.ChipWrite(addresses.SWCHB, p.deriveSWCHB())
+		p.riot.ChipWrite(chipbus.SWCHB, p.deriveSWCHB())
 	default:
 		return
 	}
 }
 
 // WriteINPTx implements the peripheral.PeripheralBus interface.
-func (p *Ports) WriteINPTx(inptx addresses.ChipRegister, data uint8) {
+func (p *Ports) WriteINPTx(inptx chipbus.Register, data uint8) {
 	// write memory if button is pressed or it is not and the button latch
 	// is false
 	if data != 0x80 || !p.latch {
@@ -353,18 +353,18 @@ func (p *Ports) GetField(reg string) uint8 {
 	case "swcha_w":
 		return p.swcha_w
 	case "swacnt":
-		return p.riot.ChipRefer(addresses.SWACNT)
+		return p.riot.ChipRefer(chipbus.SWACNT)
 	case "swcha":
-		return p.riot.ChipRefer(addresses.SWCHA)
+		return p.riot.ChipRefer(chipbus.SWCHA)
 	case "swcha_derived":
 		return p.deriveSWCHA()
 
 	case "swchb_w":
 		return p.swchb_w
 	case "swbcnt":
-		return p.riot.ChipRefer(addresses.SWBCNT)
+		return p.riot.ChipRefer(chipbus.SWBCNT)
 	case "swchb":
-		return p.riot.ChipRefer(addresses.SWCHB)
+		return p.riot.ChipRefer(chipbus.SWCHB)
 	case "swchb_derived":
 		return p.deriveSWCHB()
 	}
@@ -380,21 +380,21 @@ func (p *Ports) SetField(reg string, v uint8) {
 	switch reg {
 	case "swcha_w":
 		p.swcha_w = v
-		p.riot.ChipWrite(addresses.SWCHA, p.deriveSWCHA())
+		p.riot.ChipWrite(chipbus.SWCHA, p.deriveSWCHA())
 	case "swacnt":
-		p.riot.ChipWrite(addresses.SWACNT, v)
-		p.riot.ChipWrite(addresses.SWCHA, p.deriveSWCHA())
+		p.riot.ChipWrite(chipbus.SWACNT, v)
+		p.riot.ChipWrite(chipbus.SWCHA, p.deriveSWCHA())
 	case "swcha":
-		p.riot.ChipWrite(addresses.SWCHA, v)
+		p.riot.ChipWrite(chipbus.SWCHA, v)
 
 	case "swchb_w":
 		p.swchb_w = v
-		p.riot.ChipWrite(addresses.SWCHB, p.deriveSWCHB())
+		p.riot.ChipWrite(chipbus.SWCHB, p.deriveSWCHB())
 	case "swbcnt":
-		p.riot.ChipWrite(addresses.SWBCNT, v)
-		p.riot.ChipWrite(addresses.SWCHB, p.deriveSWCHB())
+		p.riot.ChipWrite(chipbus.SWBCNT, v)
+		p.riot.ChipWrite(chipbus.SWCHB, p.deriveSWCHB())
 	case "swchb":
-		p.riot.ChipWrite(addresses.SWCHB, v)
+		p.riot.ChipWrite(chipbus.SWCHB, v)
 
 	default:
 		panic(fmt.Sprintf("Ports.SetField: unknown register: %s", reg))
@@ -404,13 +404,13 @@ func (p *Ports) SetField(reg string, v uint8) {
 // the derived value of SWCHA. the value it should be if the RIOT logic has
 // proceeded normally (ie. no poking).
 func (p *Ports) deriveSWCHA() uint8 {
-	swacnt := p.riot.ChipRefer(addresses.SWACNT)
+	swacnt := p.riot.ChipRefer(chipbus.SWACNT)
 	return (p.swcha_w & swacnt) | (p.swcha_mux & ^swacnt)
 }
 
 // the derived value of SWCHB. the value it should be if the RIOT logic has
 // proceeded normally (ie. no poking).
 func (p *Ports) deriveSWCHB() uint8 {
-	swbcnt := p.riot.ChipRefer(addresses.SWBCNT)
+	swbcnt := p.riot.ChipRefer(chipbus.SWBCNT)
 	return (p.swchb_w & swbcnt) | (p.swchb_raw & ^swbcnt)
 }

@@ -18,13 +18,12 @@ package video
 import (
 	"strings"
 
-	"github.com/jetsetilly/gopher2600/hardware/memory/addresses"
-	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
+	"github.com/jetsetilly/gopher2600/hardware/memory/chipbus"
 )
 
 // Collisions represents the various collision registers in the VCS.
 type Collisions struct {
-	mem bus.ChipBus
+	mem chipbus.Memory
 
 	// LastVideoCycle records the combination of collision bits for the most recent
 	// video cycle. Facilitates production of string information.
@@ -146,7 +145,7 @@ func (col CollisionEvent) String() string {
 	return strings.TrimSuffix(s.String(), "\n")
 }
 
-func newCollisions(mem bus.ChipBus) *Collisions {
+func newCollisions(mem chipbus.Memory) *Collisions {
 	col := &Collisions{mem: mem}
 	col.Clear()
 	return col
@@ -159,20 +158,20 @@ func (col *Collisions) Snapshot() *Collisions {
 }
 
 // Plumb a new ChipBus into the collision system.
-func (col *Collisions) Plumb(mem bus.ChipBus) {
+func (col *Collisions) Plumb(mem chipbus.Memory) {
 	col.mem = mem
 }
 
 // Clear all bits in the collision registers.
 func (col *Collisions) Clear() {
-	col.mem.ChipWrite(addresses.CXM0P, 0x00)
-	col.mem.ChipWrite(addresses.CXM1P, 0x00)
-	col.mem.ChipWrite(addresses.CXP0FB, 0x00)
-	col.mem.ChipWrite(addresses.CXP1FB, 0x00)
-	col.mem.ChipWrite(addresses.CXM0FB, 0x00)
-	col.mem.ChipWrite(addresses.CXM1FB, 0x00)
-	col.mem.ChipWrite(addresses.CXBLPF, 0x00)
-	col.mem.ChipWrite(addresses.CXPPMM, 0x00)
+	col.mem.ChipWrite(chipbus.CXM0P, 0x00)
+	col.mem.ChipWrite(chipbus.CXM1P, 0x00)
+	col.mem.ChipWrite(chipbus.CXP0FB, 0x00)
+	col.mem.ChipWrite(chipbus.CXP1FB, 0x00)
+	col.mem.ChipWrite(chipbus.CXM0FB, 0x00)
+	col.mem.ChipWrite(chipbus.CXM1FB, 0x00)
+	col.mem.ChipWrite(chipbus.CXBLPF, 0x00)
+	col.mem.ChipWrite(chipbus.CXPPMM, 0x00)
 	col.LastVideoCycle = cxclr
 }
 
@@ -186,109 +185,109 @@ func (col *Collisions) tick(p0, p1, m0, m1, bl, pf bool) {
 
 	if m0 {
 		if p1 {
-			v := col.mem.ChipRefer(addresses.CXM0P)
+			v := col.mem.ChipRefer(chipbus.CXM0P)
 			v |= 0x80
 			col.LastVideoCycle |= m0p1
-			col.mem.ChipWrite(addresses.CXM0P, v)
+			col.mem.ChipWrite(chipbus.CXM0P, v)
 		}
 		if p0 {
-			v := col.mem.ChipRefer(addresses.CXM0P)
+			v := col.mem.ChipRefer(chipbus.CXM0P)
 			v |= 0x40
 			col.LastVideoCycle |= m0p0
-			col.mem.ChipWrite(addresses.CXM0P, v)
+			col.mem.ChipWrite(chipbus.CXM0P, v)
 		}
 
 		if pf {
-			v := col.mem.ChipRefer(addresses.CXM0FB)
+			v := col.mem.ChipRefer(chipbus.CXM0FB)
 			v |= 0x80
 			col.LastVideoCycle |= m0pf
-			col.mem.ChipWrite(addresses.CXM0FB, v)
+			col.mem.ChipWrite(chipbus.CXM0FB, v)
 		}
 		if bl {
-			v := col.mem.ChipRefer(addresses.CXM0FB)
+			v := col.mem.ChipRefer(chipbus.CXM0FB)
 			v |= 0x40
 			col.LastVideoCycle |= m0bl
-			col.mem.ChipWrite(addresses.CXM0FB, v)
+			col.mem.ChipWrite(chipbus.CXM0FB, v)
 		}
 	}
 
 	if m1 {
 		if p0 {
-			v := col.mem.ChipRefer(addresses.CXM1P)
+			v := col.mem.ChipRefer(chipbus.CXM1P)
 			v |= 0x80
 			col.LastVideoCycle |= m1p0
-			col.mem.ChipWrite(addresses.CXM1P, v)
+			col.mem.ChipWrite(chipbus.CXM1P, v)
 		}
 		if p1 {
-			v := col.mem.ChipRefer(addresses.CXM1P)
+			v := col.mem.ChipRefer(chipbus.CXM1P)
 			v |= 0x40
 			col.LastVideoCycle |= m1p1
-			col.mem.ChipWrite(addresses.CXM1P, v)
+			col.mem.ChipWrite(chipbus.CXM1P, v)
 		}
 
 		if pf {
-			v := col.mem.ChipRefer(addresses.CXM1FB)
+			v := col.mem.ChipRefer(chipbus.CXM1FB)
 			v |= 0x80
 			col.LastVideoCycle |= m1pf
-			col.mem.ChipWrite(addresses.CXM1FB, v)
+			col.mem.ChipWrite(chipbus.CXM1FB, v)
 		}
 		if bl {
-			v := col.mem.ChipRefer(addresses.CXM1FB)
+			v := col.mem.ChipRefer(chipbus.CXM1FB)
 			v |= 0x40
 			col.LastVideoCycle |= m1bl
-			col.mem.ChipWrite(addresses.CXM1FB, v)
+			col.mem.ChipWrite(chipbus.CXM1FB, v)
 		}
 	}
 
 	if p0 {
 		if pf {
-			v := col.mem.ChipRefer(addresses.CXP0FB)
+			v := col.mem.ChipRefer(chipbus.CXP0FB)
 			v |= 0x80
 			col.LastVideoCycle |= p0pf
-			col.mem.ChipWrite(addresses.CXP0FB, v)
+			col.mem.ChipWrite(chipbus.CXP0FB, v)
 		}
 		if bl {
-			v := col.mem.ChipRefer(addresses.CXP0FB)
+			v := col.mem.ChipRefer(chipbus.CXP0FB)
 			v |= 0x40
 			col.LastVideoCycle |= p0bl
-			col.mem.ChipWrite(addresses.CXP0FB, v)
+			col.mem.ChipWrite(chipbus.CXP0FB, v)
 		}
 	}
 
 	if p1 {
 		if pf {
-			v := col.mem.ChipRefer(addresses.CXP1FB)
+			v := col.mem.ChipRefer(chipbus.CXP1FB)
 			v |= 0x80
 			col.LastVideoCycle |= p1pf
-			col.mem.ChipWrite(addresses.CXP1FB, v)
+			col.mem.ChipWrite(chipbus.CXP1FB, v)
 		}
 		if bl {
-			v := col.mem.ChipRefer(addresses.CXP1FB)
+			v := col.mem.ChipRefer(chipbus.CXP1FB)
 			v |= 0x40
 			col.LastVideoCycle |= p1bl
-			col.mem.ChipWrite(addresses.CXP1FB, v)
+			col.mem.ChipWrite(chipbus.CXP1FB, v)
 		}
 	}
 
 	if bl && pf {
-		v := col.mem.ChipRefer(addresses.CXBLPF)
+		v := col.mem.ChipRefer(chipbus.CXBLPF)
 		v |= 0x80
 		col.LastVideoCycle |= blpf
-		col.mem.ChipWrite(addresses.CXBLPF, v)
+		col.mem.ChipWrite(chipbus.CXBLPF, v)
 	}
 	// no bit 6 for CXBLPF
 
 	if p0 && p1 {
-		v := col.mem.ChipRefer(addresses.CXPPMM)
+		v := col.mem.ChipRefer(chipbus.CXPPMM)
 		v |= 0x80
 		col.LastVideoCycle |= p0p1
-		col.mem.ChipWrite(addresses.CXPPMM, v)
+		col.mem.ChipWrite(chipbus.CXPPMM, v)
 	}
 
 	if m0 && m1 {
-		v := col.mem.ChipRefer(addresses.CXPPMM)
+		v := col.mem.ChipRefer(chipbus.CXPPMM)
 		v |= 0x40
 		col.LastVideoCycle |= m0m1
-		col.mem.ChipWrite(addresses.CXPPMM, v)
+		col.mem.ChipWrite(chipbus.CXPPMM, v)
 	}
 }

@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/jetsetilly/gopher2600/hardware/memory/addresses"
 	"github.com/jetsetilly/gopher2600/hardware/tia/phaseclock"
 )
 
@@ -319,9 +318,9 @@ func (pf *Playfield) setPF2(v uint8) {
 
 func (pf *Playfield) SetCTRLPF(value uint8) {
 	pf.Ctrlpf = value
-	pf.Scoremode = value&addresses.CTRLPFScoremodeMask == addresses.CTRLPFScoremodeMask
-	pf.Priority = value&addresses.CTRLPFPriorityMask == addresses.CTRLPFPriorityMask
-	pf.Reflected = value&addresses.CTRLPFReflectedMask == addresses.CTRLPFReflectedMask
+	pf.Scoremode = value&CTRLPFScoremodeMask == CTRLPFScoremodeMask
+	pf.Priority = value&CTRLPFPriorityMask == CTRLPFPriorityMask
+	pf.Reflected = value&CTRLPFReflectedMask == CTRLPFReflectedMask
 }
 
 func (pf *Playfield) setColor(col uint8) {

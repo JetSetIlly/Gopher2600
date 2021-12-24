@@ -56,7 +56,7 @@ func (r Registers) String() string {
 	return s.String()
 }
 
-// GetRegisters implements the bus.CartDebugBus interface.
+// GetRegisters implements the bus.CartRegistersBus interface.
 func (cart *cdf) GetRegisters() mapper.CartRegisters {
 	for i := range cart.state.registers.Datastream {
 		cart.state.registers.Datastream[i].Pointer = cart.readDatastreamPointer(i)
@@ -66,7 +66,7 @@ func (cart *cdf) GetRegisters() mapper.CartRegisters {
 	return cart.state.registers
 }
 
-// PutRegister implements the bus.CartDebugBus interface
+// PutRegister implements the bus.CartRegistersBus interface
 //
 // Register specification is divided with the "::" string. The following table
 // describes what the valid register strings and, after the = sign, the type to

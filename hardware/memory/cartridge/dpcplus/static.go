@@ -146,7 +146,7 @@ func (stc *Static) MapAddress(addr uint32, write bool) (*[]byte, uint32) {
 	return nil, addr
 }
 
-// GetStatic implements the bus.CartDebugBus interface.
+// GetStatic implements the bus.CartRegistersBus interface.
 func (cart *dpcPlus) GetStatic() []mapper.CartStatic {
 	s := make([]mapper.CartStatic, 3)
 
@@ -165,7 +165,7 @@ func (cart *dpcPlus) GetStatic() []mapper.CartStatic {
 	return s
 }
 
-// StaticWrite implements the bus.CartDebugBus interface.
+// StaticWrite implements the bus.CartRegistersBus interface.
 func (cart *dpcPlus) PutStatic(segment string, idx uint16, data uint8) error {
 	switch segment {
 	case "Driver":

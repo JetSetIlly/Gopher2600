@@ -144,7 +144,7 @@ type CartRegistersBus interface {
 	// need to be a structured string to uniquely identify a register (eg. a
 	// JSON string, although that's probably going over the top). The details
 	// of what is valid should be specified in the documentation of the mappers
-	// that use the CartDebugBus.
+	// that use the CartRegistersbus.
 	//
 	// The data string will be converted to whatever type is required for the
 	// register. For simple types then this will be usual Go representation,

@@ -32,17 +32,6 @@ func readData(t *testing.T, mem *memory.Memory, address uint16, expectedData uin
 	}
 }
 
-func readDataZeroPage(t *testing.T, mem *memory.Memory, address uint8, expectedData uint8) {
-	t.Helper()
-	d, err := mem.ReadZeroPage(address)
-	if err != nil {
-		t.Errorf("unexpected error (%s)", err)
-	}
-	if d != expectedData {
-		t.Errorf("expecting %#02x received %#02x", expectedData, d)
-	}
-}
-
 func writeDataNotTested(t *testing.T, mem *memory.Memory, address uint16, value uint8) {
 	err := mem.Write(address, value)
 	if err != nil {
@@ -57,7 +46,7 @@ func readDataNotTested(t *testing.T, mem *memory.Memory, address uint16) {
 	}
 }
 
-func TestDataMask(t *testing.T) {
+func TestTIADrivenPins(t *testing.T) {
 	mem := memory.NewMemory(nil)
 
 	// preare some test memory

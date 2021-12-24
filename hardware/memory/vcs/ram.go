@@ -19,19 +19,14 @@ import (
 	"encoding/hex"
 
 	"github.com/jetsetilly/gopher2600/hardware/instance"
-	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
 // RAM represents the 128bytes of RAM in the PIA 6532 chip, found in the Atari
 // VCS.
 type RAM struct {
-	bus.DebugBus
-	bus.CPUBus
-
 	instance *instance.Instance
-
-	RAM []uint8
+	RAM      []uint8
 }
 
 // NewRAM is the preferred method of initialisation for the RAM memory area.

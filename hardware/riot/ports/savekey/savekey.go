@@ -19,7 +19,8 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
+	"github.com/jetsetilly/gopher2600/hardware/memory/chipbus"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
 	"github.com/jetsetilly/gopher2600/logger"
@@ -165,9 +166,9 @@ const (
 )
 
 // Update implements the ports.Peripheral interface.
-func (sk *SaveKey) Update(data bus.ChipData) bool {
-	switch data.Name {
-	case "SWCHA":
+func (sk *SaveKey) Update(data chipbus.ChangedRegister) bool {
+	switch data.Register {
+	case cpubus.SWCHA:
 		// mask and shift SWCHA value to the normlised value
 		switch sk.port {
 		case plugging.PortLeftPlayer:

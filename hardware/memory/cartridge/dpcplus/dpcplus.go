@@ -20,9 +20,9 @@ import (
 
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/instance"
-	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm7tdmi"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 	"github.com/jetsetilly/gopher2600/hardware/preferences"
 	"github.com/jetsetilly/gopher2600/logger"
@@ -183,7 +183,7 @@ func (cart *dpcPlus) Read(addr uint16, passive bool) (uint8, error) {
 	}
 
 	if addr > 0x0027 {
-		return 0, curated.Errorf("DPC+: %v", curated.Errorf(bus.AddressError, addr))
+		return 0, curated.Errorf("DPC+: %v", curated.Errorf(cpubus.AddressError, addr))
 	}
 
 	switch addr {
@@ -315,7 +315,7 @@ func (cart *dpcPlus) Write(addr uint16, data uint8, passive bool, poke bool) err
 	}
 
 	if addr < 0x0028 || addr > 0x007f {
-		return curated.Errorf("DPC+: %v", curated.Errorf(bus.AddressError, addr))
+		return curated.Errorf("DPC+: %v", curated.Errorf(cpubus.AddressError, addr))
 	}
 
 	switch addr {
@@ -646,7 +646,7 @@ func (cart *dpcPlus) Write(addr uint16, data uint8, passive bool, poke bool) err
 		return nil
 	}
 
-	return curated.Errorf("DPC+: %v", curated.Errorf(bus.AddressError, addr))
+	return curated.Errorf("DPC+: %v", curated.Errorf(cpubus.AddressError, addr))
 }
 
 // bankswitch on hotspot access.

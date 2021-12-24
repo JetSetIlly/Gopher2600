@@ -17,8 +17,8 @@ package video
 
 import (
 	"github.com/jetsetilly/gopher2600/hardware/instance"
-	"github.com/jetsetilly/gopher2600/hardware/memory/addresses"
-	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
+	"github.com/jetsetilly/gopher2600/hardware/memory/chipbus"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
 	"github.com/jetsetilly/gopher2600/hardware/television/coords"
 	"github.com/jetsetilly/gopher2600/hardware/tia/delay"
 	"github.com/jetsetilly/gopher2600/hardware/tia/hmove"
@@ -126,7 +126,7 @@ type tia struct {
 // The references to the TIA's HBLANK state and whether HMOVE is latched, are
 // required to tune the delays experienced by the various sprite events (eg.
 // reset position).
-func NewVideo(instance *instance.Instance, mem bus.ChipBus, tv TV, pclk *phaseclock.PhaseClock,
+func NewVideo(instance *instance.Instance, mem chipbus.Memory, tv TV, pclk *phaseclock.PhaseClock,
 	hsync *polycounter.Polycounter, hblank *bool, hmove *hmove.Hmove) *Video {
 	tia := tia{
 		instance: instance,
@@ -163,7 +163,7 @@ func (vd *Video) Snapshot() *Video {
 }
 
 // Plumb ChipBus into TIA/Video components. Update pointers that refer to parent TIA.
-func (vd *Video) Plumb(instance *instance.Instance, mem bus.ChipBus, tv TV, pclk *phaseclock.PhaseClock,
+func (vd *Video) Plumb(instance *instance.Instance, mem chipbus.Memory, tv TV, pclk *phaseclock.PhaseClock,
 	hsync *polycounter.Polycounter, hblank *bool, hmove *hmove.Hmove) {
 	vd.Collisions.Plumb(mem)
 
@@ -415,21 +415,21 @@ func (vd *Video) Pixel() {
 	}
 }
 
-// ReadMemPlayfield checks TIA memory for new playfield data. Note that CTRLPF
-// is serviced in ReadMemSpriteVariations().
+// UpdatePlayfield checks TIA memory for new playfield data. Note that CTRLPF
+// is serviced in UpdateSpriteVariations().
 //
 // Returns true if ChipData has *not* been serviced.
-func (vd *Video) ReadMemPlayfield(data bus.ChipData) bool {
+func (vd *Video) UpdatePlayfield(data chipbus.ChangedRegister) bool {
 	// homebrew Donkey Kong shows the need for a delay of at least two cycles
 	// to write new playfield data
-	switch data.Name {
-	case "PF0":
+	switch data.Register {
+	case cpubus.PF0:
 		vd.writingRegister = "PF0"
 		vd.writing.Schedule(2, data.Value)
-	case "PF1":
+	case cpubus.PF1:
 		vd.writingRegister = "PF1"
 		vd.writing.Schedule(2, data.Value)
-	case "PF2":
+	case cpubus.PF2:
 		vd.writingRegister = "PF2"
 		vd.writing.Schedule(2, data.Value)
 	default:
@@ -439,11 +439,11 @@ func (vd *Video) ReadMemPlayfield(data bus.ChipData) bool {
 	return false
 }
 
-// ReadMemSpriteHMOVE checks TIA memory for changes in sprite HMOVE settings.
+// UpdateSpriteHMOVE checks TIA memory for changes in sprite HMOVE settings.
 //
 // Returns true if ChipData has *not* been serviced.
-func (vd *Video) ReadMemSpriteHMOVE(data bus.ChipData) bool {
-	switch data.Name {
+func (vd *Video) UpdateSpriteHMOVE(data chipbus.ChangedRegister) bool {
+	switch data.Register {
 	// horizontal movement values range from -8 to +7 for convenience we
 	// convert this to the range 0 to 15. from TIA_HW_Notes.txt:
 	//
@@ -475,22 +475,22 @@ func (vd *Video) ReadMemSpriteHMOVE(data bus.ChipData) bool {
 	//
 	// the only common value that satisfies all test cases is 1, which equates
 	// to a delay of two cycles
-	case "HMP0":
+	case cpubus.HMP0:
 		vd.writingRegister = "HMP0"
-		vd.writing.Schedule(1, data.Value&addresses.HMxxMask)
-	case "HMP1":
+		vd.writing.Schedule(1, data.Value&HMxxMask)
+	case cpubus.HMP1:
 		vd.writingRegister = "HMP1"
-		vd.writing.Schedule(1, data.Value&addresses.HMxxMask)
-	case "HMM0":
+		vd.writing.Schedule(1, data.Value&HMxxMask)
+	case cpubus.HMM0:
 		vd.writingRegister = "HMM0"
-		vd.writing.Schedule(1, data.Value&addresses.HMxxMask)
-	case "HMM1":
+		vd.writing.Schedule(1, data.Value&HMxxMask)
+	case cpubus.HMM1:
 		vd.writingRegister = "HMM1"
-		vd.writing.Schedule(1, data.Value&addresses.HMxxMask)
-	case "HMBL":
+		vd.writing.Schedule(1, data.Value&HMxxMask)
+	case cpubus.HMBL:
 		vd.writingRegister = "HMBL"
-		vd.writing.Schedule(1, data.Value&addresses.HMxxMask)
-	case "HMCLR":
+		vd.writing.Schedule(1, data.Value&HMxxMask)
+	case cpubus.HMCLR:
 		vd.writingRegister = "HMCLR"
 		vd.writing.Schedule(1, 0)
 
@@ -502,24 +502,24 @@ func (vd *Video) ReadMemSpriteHMOVE(data bus.ChipData) bool {
 	return false
 }
 
-// ReadMemSpritePositioning checks TIA memory for strobing of reset registers.
+// UpdateSpritePositioning checks TIA memory for strobing of reset registers.
 //
-// Returns true if memory.ChipData has not been serviced.
-func (vd *Video) ReadMemSpritePositioning(data bus.ChipData) bool {
-	switch data.Name {
+// Returns true if ChipData has *not* been serviced.
+func (vd *Video) UpdateSpritePositioning(data chipbus.ChangedRegister) bool {
+	switch data.Register {
 	// the reset registers *must* be serviced after HSYNC has been ticked.
 	// resets are resolved after a short delay, governed by the sprite itself
-	case "RESP0":
+	case cpubus.RESP0:
 		vd.Player0.resetPosition()
-	case "RESP1":
+	case cpubus.RESP1:
 		vd.Player1.resetPosition()
-	case "RESM0":
+	case cpubus.RESM0:
 		vd.Missile0.resetPosition()
-	case "RESM1":
+	case cpubus.RESM1:
 		vd.Missile1.resetPosition()
-	case "RESBL":
+	case cpubus.RESBL:
 		vd.Ball.resetPosition()
-	case "VDELBL":
+	case cpubus.VDELBL:
 		vd.spriteHasChanged = true
 		vd.Ball.setVerticalDelay(data.Value&0x01 == 0x01)
 	default:
@@ -530,20 +530,20 @@ func (vd *Video) ReadMemSpritePositioning(data bus.ChipData) bool {
 	return false
 }
 
-// ReadMemColor checks TIA memory for changes to color registers.
+// UpdateColor checks TIA memory for changes to color registers.
 //
-// See ReadMemPlayfieldColor() also.
+// See UpdatePlayfieldColor() also.
 //
-// Returns true if memory.ChipData has not been serviced.
-func (vd *Video) ReadMemColor(data bus.ChipData) bool {
-	switch data.Name {
-	case "COLUP0":
+// Returns true if ChipData has *not* been serviced.
+func (vd *Video) UpdateColor(data chipbus.ChangedRegister) bool {
+	switch data.Register {
+	case cpubus.COLUP0:
 		vd.Player0.setColor(data.Value & 0xfe)
 		vd.Missile0.setColor(data.Value & 0xfe)
-	case "COLUP1":
+	case cpubus.COLUP1:
 		vd.Player1.setColor(data.Value & 0xfe)
 		vd.Missile1.setColor(data.Value & 0xfe)
-	case "COLUBK":
+	case cpubus.COLUBK:
 		vd.Playfield.setBackground(data.Value & 0xfe)
 	default:
 		return true
@@ -552,17 +552,17 @@ func (vd *Video) ReadMemColor(data bus.ChipData) bool {
 	return false
 }
 
-// ReadMemPlayfieldColor checks TIA memory for changes to playfield color
+// UpdatePlayfieldColor checks TIA memory for changes to playfield color
 // registers.
 //
-// Separate from the ReadMemColor() function because some TIA revisions (or
+// Separate from the UpdateColor() function because some TIA revisions (or
 // sometimes for some other reason eg.RGB mod) are slower when updating the
 // playfield color register than the other registers.
 //
-// Returns true if memory.ChipData has not been serviced.
-func (vd *Video) ReadMemPlayfieldColor(data bus.ChipData) bool {
-	switch data.Name {
-	case "COLUPF":
+// Returns true if ChipData has *not* been serviced.
+func (vd *Video) UpdatePlayfieldColor(data chipbus.ChangedRegister) bool {
+	switch data.Register {
+	case cpubus.COLUPF:
 		vd.Playfield.setColor(data.Value & 0xfe)
 		vd.Ball.setColor(data.Value & 0xfe)
 	default:
@@ -572,16 +572,16 @@ func (vd *Video) ReadMemPlayfieldColor(data bus.ChipData) bool {
 	return false
 }
 
-// ReadMemSpritePixels checks TIA memory for attribute changes that *must* occur
+// UpdateSpritePixels checks TIA memory for attribute changes that *must* occur
 // after a call to Pixel().
 //
-// Returns true if memory.ChipData has not been serviced.
-func (vd *Video) ReadMemSpritePixels(data bus.ChipData) bool {
+// Returns true if ChipData has *not* been serviced.
+func (vd *Video) UpdateSpritePixels(data chipbus.ChangedRegister) bool {
 	// the barnstormer ROM demonstrate perfectly how GRP0 is affected if we
 	// alter its state before a call to Pixel().  if we write do alter state
 	// before Pixel(), then an unwanted artefact can be seen on scanline 61.
-	switch data.Name {
-	case "GRP0":
+	switch data.Register {
+	case cpubus.GRP0:
 		vd.Player0.setGfxData(data.Value)
 		if vd.tia.instance.Prefs.Revision.LateVDELGRP0 {
 			vd.writing.Schedule(1, 0)
@@ -590,7 +590,7 @@ func (vd *Video) ReadMemSpritePixels(data bus.ChipData) bool {
 			vd.Player1.setOldGfxData()
 		}
 
-	case "GRP1":
+	case cpubus.GRP1:
 		vd.Player1.setGfxData(data.Value)
 		if vd.tia.instance.Prefs.Revision.LateVDELGRP1 {
 			vd.writing.Schedule(1, 0)
@@ -600,12 +600,12 @@ func (vd *Video) ReadMemSpritePixels(data bus.ChipData) bool {
 			vd.Ball.setEnableDelay()
 		}
 
-	case "ENAM0":
-		vd.Missile0.setEnable(data.Value&addresses.ENAxxMask == addresses.ENAxxMask)
-	case "ENAM1":
-		vd.Missile1.setEnable(data.Value&addresses.ENAxxMask == addresses.ENAxxMask)
-	case "ENABL":
-		vd.Ball.setEnable(data.Value&addresses.ENAxxMask == addresses.ENAxxMask)
+	case cpubus.ENAM0:
+		vd.Missile0.setEnable(data.Value&ENAxxMask == ENAxxMask)
+	case cpubus.ENAM1:
+		vd.Missile1.setEnable(data.Value&ENAxxMask == ENAxxMask)
+	case cpubus.ENABL:
+		vd.Ball.setEnable(data.Value&ENAxxMask == ENAxxMask)
 	default:
 		return true
 	}
@@ -614,35 +614,35 @@ func (vd *Video) ReadMemSpritePixels(data bus.ChipData) bool {
 	return false
 }
 
-// ReadMemSpriteVariations checks TIA memory for writes to registers that affect
+// UpdateSpriteVariations checks TIA memory for writes to registers that affect
 // how sprite pixels are output. Note that CTRLPF is serviced here rather than
-// in ReadMemPlayfield(), because it affects the ball sprite.
+// in UpdatePlayfield(), because it affects the ball sprite.
 //
-// Returns true if memory.ChipData has not been serviced.
-func (vd *Video) ReadMemSpriteVariations(data bus.ChipData) bool {
-	switch data.Name {
-	case "CTRLPF":
+// Returns true if ChipData has *not* been serviced.
+func (vd *Video) UpdateSpriteVariations(data chipbus.ChangedRegister) bool {
+	switch data.Register {
+	case cpubus.CTRLPF:
 		vd.Ball.SetCTRLPF(data.Value)
 		vd.Playfield.SetCTRLPF(data.Value)
-	case "VDELP0":
-		vd.Player0.SetVerticalDelay(data.Value&addresses.VDELPxMask == addresses.VDELPxMask)
-	case "VDELP1":
-		vd.Player1.SetVerticalDelay(data.Value&addresses.VDELPxMask == addresses.VDELPxMask)
-	case "REFP0":
-		vd.Player0.setReflection(data.Value&addresses.REFPxMask == addresses.REFPxMask)
-	case "REFP1":
-		vd.Player1.setReflection(data.Value&addresses.REFPxMask == addresses.REFPxMask)
-	case "RESMP0":
-		vd.Missile0.setResetToPlayer(data.Value&addresses.RESMPxMask == addresses.RESMPxMask)
-	case "RESMP1":
-		vd.Missile1.setResetToPlayer(data.Value&addresses.RESMPxMask == addresses.RESMPxMask)
-	case "NUSIZ0":
+	case cpubus.VDELP0:
+		vd.Player0.SetVerticalDelay(data.Value&VDELPxMask == VDELPxMask)
+	case cpubus.VDELP1:
+		vd.Player1.SetVerticalDelay(data.Value&VDELPxMask == VDELPxMask)
+	case cpubus.REFP0:
+		vd.Player0.setReflection(data.Value&REFPxMask == REFPxMask)
+	case cpubus.REFP1:
+		vd.Player1.setReflection(data.Value&REFPxMask == REFPxMask)
+	case cpubus.RESMP0:
+		vd.Missile0.setResetToPlayer(data.Value&RESMPxMask == RESMPxMask)
+	case cpubus.RESMP1:
+		vd.Missile1.setResetToPlayer(data.Value&RESMPxMask == RESMPxMask)
+	case cpubus.NUSIZ0:
 		vd.Player0.setNUSIZ(data.Value)
 		vd.Missile0.SetNUSIZ(data.Value)
-	case "NUSIZ1":
+	case cpubus.NUSIZ1:
 		vd.Player1.setNUSIZ(data.Value)
 		vd.Missile1.SetNUSIZ(data.Value)
-	case "CXCLR":
+	case cpubus.CXCLR:
 		vd.Collisions.Clear()
 	default:
 		return true
@@ -664,13 +664,13 @@ func (vd *Video) UpdateCTRLPF() {
 	ctrlpf := vd.Ball.Size << 4
 
 	if vd.Playfield.Reflected {
-		ctrlpf |= addresses.CTRLPFReflectedMask
+		ctrlpf |= CTRLPFReflectedMask
 	}
 	if vd.Playfield.Scoremode {
-		ctrlpf |= addresses.CTRLPFScoremodeMask
+		ctrlpf |= CTRLPFScoremodeMask
 	}
 	if vd.Playfield.Priority {
-		ctrlpf |= addresses.CTRLPFPriorityMask
+		ctrlpf |= CTRLPFPriorityMask
 	}
 
 	vd.Playfield.Ctrlpf = ctrlpf
@@ -689,12 +689,12 @@ func (vd *Video) UpdateNUSIZ(num int, fromMissile bool) {
 
 	if num == 0 {
 		if fromMissile {
-			vd.Missile0.Copies &= addresses.NUSIZxCopiesMask
-			vd.Missile0.Size &= addresses.NUSIZxSizeMask
+			vd.Missile0.Copies &= NUSIZxCopiesMask
+			vd.Missile0.Size &= NUSIZxSizeMask
 			vd.Player0.SizeAndCopies = vd.Missile0.Copies
 			nusiz = vd.Missile0.Copies | vd.Missile0.Size<<4
 		} else {
-			vd.Player0.SizeAndCopies &= addresses.NUSIZxCopiesMask
+			vd.Player0.SizeAndCopies &= NUSIZxCopiesMask
 			vd.Missile0.Copies = vd.Player0.SizeAndCopies
 			nusiz = vd.Player0.SizeAndCopies | vd.Missile0.Size<<4
 		}
@@ -702,12 +702,12 @@ func (vd *Video) UpdateNUSIZ(num int, fromMissile bool) {
 		vd.Missile0.Nusiz = nusiz
 	} else {
 		if fromMissile {
-			vd.Missile1.Copies &= addresses.NUSIZxCopiesMask
-			vd.Missile1.Size &= addresses.NUSIZxSizeMask
+			vd.Missile1.Copies &= NUSIZxCopiesMask
+			vd.Missile1.Size &= NUSIZxSizeMask
 			vd.Player1.SizeAndCopies = vd.Missile1.Copies
 			nusiz = vd.Missile1.Copies | vd.Missile1.Size<<4
 		} else {
-			vd.Player1.SizeAndCopies &= addresses.NUSIZxCopiesMask
+			vd.Player1.SizeAndCopies &= NUSIZxCopiesMask
 			vd.Missile1.Copies = vd.Player1.SizeAndCopies
 			nusiz = vd.Player1.SizeAndCopies | vd.Missile1.Size<<4
 		}

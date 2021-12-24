@@ -22,7 +22,7 @@ import (
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/disassembly/symbols"
 	"github.com/jetsetilly/gopher2600/hardware"
-	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
@@ -116,7 +116,7 @@ func (dbgmem DbgMem) Peek(address interface{}) (*AddressInfo, error) {
 	var err error
 	ai.Data, err = area.Peek(ai.MappedAddress)
 	if err != nil {
-		if curated.Is(err, bus.AddressError) {
+		if curated.Is(err, cpubus.AddressError) {
 			return nil, curated.Errorf(PeekError, address)
 		}
 		return nil, err
@@ -146,7 +146,7 @@ func (dbgmem DbgMem) Poke(address interface{}, data uint8) (*AddressInfo, error)
 
 	err := area.Poke(ai.MappedAddress, data)
 	if err != nil {
-		if curated.Is(err, bus.AddressError) {
+		if curated.Is(err, cpubus.AddressError) {
 			return nil, curated.Errorf(PokeError, address)
 		}
 		return nil, err

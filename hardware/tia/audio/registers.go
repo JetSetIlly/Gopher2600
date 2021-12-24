@@ -18,7 +18,8 @@ package audio
 import (
 	"fmt"
 
-	"github.com/jetsetilly/gopher2600/hardware/memory/bus"
+	"github.com/jetsetilly/gopher2600/hardware/memory/chipbus"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
 )
 
 // each channel has three registers that control its output. from the
@@ -51,24 +52,24 @@ func CmpRegisters(a Registers, b Registers) bool {
 // interesting to the audio sub-system
 //
 // Returns true if memory.ChipData has not been serviced.
-func (au *Audio) ReadMemRegisters(data bus.ChipData) bool {
-	switch data.Name {
-	case "AUDC0":
+func (au *Audio) ReadMemRegisters(data chipbus.ChangedRegister) bool {
+	switch data.Register {
+	case cpubus.AUDC0:
 		au.channel0.registers.Control = data.Value & 0x0f
 		au.channel0.reactAUDCx()
-	case "AUDC1":
+	case cpubus.AUDC1:
 		au.channel1.registers.Control = data.Value & 0x0f
 		au.channel1.reactAUDCx()
-	case "AUDF0":
+	case cpubus.AUDF0:
 		au.channel0.registers.Freq = data.Value & 0x1f
 		au.channel0.reactAUDCx()
-	case "AUDF1":
+	case cpubus.AUDF1:
 		au.channel1.registers.Freq = data.Value & 0x1f
 		au.channel1.reactAUDCx()
-	case "AUDV0":
+	case cpubus.AUDV0:
 		au.channel0.registers.Volume = data.Value & 0x0f
 		au.channel0.reactAUDCx()
-	case "AUDV1":
+	case cpubus.AUDV1:
 		au.channel1.registers.Volume = data.Value & 0x0f
 		au.channel1.reactAUDCx()
 	default:
