@@ -155,6 +155,8 @@ func (mc *CPU) HasReset() bool {
 
 // LoadPCIndirect loads the contents of indirectAddress into the PC.
 func (mc *CPU) LoadPCIndirect(indirectAddress uint16) error {
+	mc.PhantomMemAccess = false
+
 	if !mc.LastResult.Final && !mc.Interrupted {
 		return curated.Errorf("cpu: load PC indirect invalid mid-instruction")
 	}
@@ -198,6 +200,8 @@ func (mc *CPU) LoadPC(directAddress uint16) error {
 // side-effects:
 //	* calls cycleCallback after memory read
 func (mc *CPU) read8Bit(address uint16, phantom bool) (uint8, error) {
+	mc.PhantomMemAccess = phantom
+
 	val, err := mc.mem.Read(address)
 
 	if err != nil {
@@ -247,6 +251,8 @@ func (mc *CPU) read8BitZeroPage(address uint8) (uint8, error) {
 // on the state of the CPU which means that *cycleCallback must be called by the
 // calling function as appropriate*.
 func (mc *CPU) write8Bit(address uint16, value uint8, phantom bool) error {
+	mc.PhantomMemAccess = phantom
+
 	err := mc.mem.Write(address, value)
 
 	if err != nil {
