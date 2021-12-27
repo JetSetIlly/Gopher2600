@@ -61,22 +61,22 @@ func newLazyPorts(val *LazyValues) *LazyPorts {
 }
 
 func (lz *LazyPorts) push() {
-	v := lz.val.vcs.RIOT.Ports.GetField("swcha")
+	v := lz.val.vcs.RIOT.Ports.PeekField("swcha")
 	lz.swcha.Store(v)
-	v = lz.val.vcs.RIOT.Ports.GetField("swacnt")
+	v = lz.val.vcs.RIOT.Ports.PeekField("swacnt")
 	lz.swacnt.Store(v)
-	v = lz.val.vcs.RIOT.Ports.GetField("swcha_w")
+	v = lz.val.vcs.RIOT.Ports.PeekField("swcha_w")
 	lz.swcha_w.Store(v)
-	v = lz.val.vcs.RIOT.Ports.GetField("swcha_derived")
+	v = lz.val.vcs.RIOT.Ports.PeekField("swcha_derived")
 	lz.swcha_derived.Store(v)
 
-	v = lz.val.vcs.RIOT.Ports.GetField("swchb")
+	v = lz.val.vcs.RIOT.Ports.PeekField("swchb")
 	lz.swchb.Store(v)
-	v = lz.val.vcs.RIOT.Ports.GetField("swbcnt")
+	v = lz.val.vcs.RIOT.Ports.PeekField("swbcnt")
 	lz.swbcnt.Store(v)
-	v = lz.val.vcs.RIOT.Ports.GetField("swchb_w")
+	v = lz.val.vcs.RIOT.Ports.PeekField("swchb_w")
 	lz.swchb_w.Store(v)
-	v = lz.val.vcs.RIOT.Ports.GetField("swchb_derived")
+	v = lz.val.vcs.RIOT.Ports.PeekField("swchb_derived")
 	lz.swchb_derived.Store(v)
 
 	v, _ = lz.val.vcs.Mem.Peek(cpubus.ReadAddress[cpubus.INPT0])

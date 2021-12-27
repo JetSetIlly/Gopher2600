@@ -80,7 +80,7 @@ func (win *winPorts) draw() {
 		drawRegister("##SWCHA_W", win.img.lz.Ports.SWCHA_W, 0xff, win.img.cols.portsBit,
 			func(v uint8) {
 				win.img.dbg.PushRawEvent(func() {
-					win.img.vcs.RIOT.Ports.SetField("swcha_w", v)
+					win.img.vcs.RIOT.Ports.PokeField("swcha_w", v)
 				})
 			})
 
@@ -94,7 +94,7 @@ func (win *winPorts) draw() {
 		drawRegister("##SWCHB_W", win.img.lz.Ports.SWCHB_W, 0xff, win.img.cols.portsBit,
 			func(v uint8) {
 				win.img.dbg.PushRawEvent(func() {
-					win.img.vcs.RIOT.Ports.SetField("swchb_w", v)
+					win.img.vcs.RIOT.Ports.PokeField("swchb_w", v)
 				})
 			})
 
@@ -108,7 +108,7 @@ func (win *winPorts) draw() {
 		drawRegister("##SWACNT", win.img.lz.Ports.SWACNT, 0xff, win.img.cols.portsBit,
 			func(v uint8) {
 				win.img.dbg.PushRawEvent(func() {
-					win.img.vcs.RIOT.Ports.SetField("swacnt", v)
+					win.img.vcs.RIOT.Ports.PokeField("swacnt", v)
 				})
 			})
 
@@ -120,7 +120,7 @@ func (win *winPorts) draw() {
 		drawRegister("##SWBCNT", win.img.lz.Ports.SWBCNT, 0xff, win.img.cols.portsBit,
 			func(v uint8) {
 				win.img.dbg.PushRawEvent(func() {
-					win.img.vcs.RIOT.Ports.SetField("swbcnt", v)
+					win.img.vcs.RIOT.Ports.PokeField("swbcnt", v)
 				})
 			})
 
@@ -138,7 +138,7 @@ func (win *winPorts) draw() {
 		drawRegister("##SWCHA_R", win.img.lz.Ports.SWCHA, 0xff, win.img.cols.portsBit,
 			func(v uint8) {
 				win.img.dbg.PushRawEvent(func() {
-					win.img.vcs.RIOT.Ports.SetField("swcha", v)
+					win.img.vcs.RIOT.Ports.PokeField("swcha", v)
 				})
 			})
 
@@ -154,7 +154,7 @@ func (win *winPorts) draw() {
 		drawRegister("##SWCHB_R", win.img.lz.Ports.SWCHB, 0xff, win.img.cols.portsBit,
 			func(v uint8) {
 				win.img.dbg.PushRawEvent(func() {
-					win.img.vcs.RIOT.Ports.SetField("swchb", v)
+					win.img.vcs.RIOT.Ports.PokeField("swchb", v)
 				})
 			})
 

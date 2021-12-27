@@ -331,7 +331,7 @@ func (p *Ports) HandleInputEvent(inp InputEvent) (bool, error) {
 	return handled, nil
 }
 
-// GetField returns the value of the named field.
+// PeekField returns the value of the named field.
 //
 // This is the same as a Peek() on the equivalent memory location in most
 // cases, but there are a couple of fields that are not directly associated
@@ -341,15 +341,15 @@ func (p *Ports) HandleInputEvent(inp InputEvent) (bool, error) {
 // Peek()
 //
 // swcha_w and swchb_w are the swcha and swchb values as most recently written
-// by the 6507 program (or with the SetField() function)
+// by the 6507 program (or with the PokeField() function)
 //
 // swcha_derived is the value SWCHA should be if the RIOT ports logic hasn't
 // been interfered with. swcha_derived and swcha may be unequal because of a
-// Poke() or SetField("swcha").
+// Poke() or PokeField("swcha").
 //
 // swchb_derived is the same as swcha_derived except for SWCHB register.
-func (p *Ports) GetField(reg string) uint8 {
-	switch reg {
+func (p *Ports) PeekField(fld string) uint8 {
+	switch fld {
 	case "swcha_w":
 		return p.swcha_w
 	case "swacnt":
@@ -369,15 +369,15 @@ func (p *Ports) GetField(reg string) uint8 {
 		return p.deriveSWCHB()
 	}
 
-	panic(fmt.Sprintf("Ports.GetField: unknown register: %s", reg))
+	panic(fmt.Sprintf("Ports.PeekField: unknown field: %s", fld))
 }
 
-// SetField sets the named field with a new value.
+// PokeField sets the named field with a new value.
 //
-// Fieldnames the same as described for GetField() except that you cannot
+// Fieldnames the same as described for PeekField() except that you cannot
 // update the swchb_derived field.
-func (p *Ports) SetField(reg string, v uint8) {
-	switch reg {
+func (p *Ports) PokeField(fld string, v uint8) {
+	switch fld {
 	case "swcha_w":
 		p.swcha_w = v
 		p.riot.ChipWrite(chipbus.SWCHA, p.deriveSWCHA())
@@ -397,7 +397,7 @@ func (p *Ports) SetField(reg string, v uint8) {
 		p.riot.ChipWrite(chipbus.SWCHB, v)
 
 	default:
-		panic(fmt.Sprintf("Ports.SetField: unknown register: %s", reg))
+		panic(fmt.Sprintf("Ports.PokeField: unknown field: %s", fld))
 	}
 }
 

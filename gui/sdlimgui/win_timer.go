@@ -19,9 +19,8 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
-
 	"github.com/inkyblackness/imgui-go/v4"
+	"github.com/jetsetilly/gopher2600/hardware/riot/timer"
 )
 
 const winTimerID = "Timer"
@@ -29,9 +28,6 @@ const winTimerID = "Timer"
 type winTimer struct {
 	img  *SdlImgui
 	open bool
-
-	// required dimensions for interval dropdown
-	intervalComboDim imgui.Vec2
 }
 
 func newWinTimer(img *SdlImgui) (window, error) {
@@ -42,10 +38,9 @@ func newWinTimer(img *SdlImgui) (window, error) {
 	return win, nil
 }
 
-var intervalList = []string{"TIM1T", "TIM8T", "TIM64T", "T1024T"}
+var dividerList = []string{"TIM1T", "TIM8T", "TIM64T", "T1024T"}
 
 func (win *winTimer) init() {
-	win.intervalComboDim = imguiGetFrameDim("", intervalList...)
 }
 
 func (win *winTimer) id() string {
@@ -68,39 +63,36 @@ func (win *winTimer) draw() {
 	imgui.SetNextWindowPosV(imgui.Vec2{825, 617}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
 	imgui.BeginV(win.id(), &win.open, imgui.WindowFlagsAlwaysAutoResize)
 
-	imgui.PushItemWidth(win.intervalComboDim.X)
-	if imgui.BeginComboV("##timerinterval", win.img.lz.Timer.Divider, imgui.ComboFlagsNoArrowButton) {
-		for _, s := range intervalList {
+	if imgui.BeginComboV("##divider", win.img.lz.Timer.Divider.String(), imgui.ComboFlagsNone) {
+		for _, s := range dividerList {
 			if imgui.Selectable(s) {
-				var t cpubus.Register
+				var div timer.Divider
 				switch s {
 				case "TIM1T":
-					t = cpubus.TIM1T
+					div = timer.TIM1T
 				case "TIM8T":
-					t = cpubus.TIM8T
+					div = timer.TIM8T
 				case "TIM64T":
-					t = cpubus.TIM64T
+					div = timer.TIM64T
 				case "T1024T":
-					t = cpubus.T1024T
+					div = timer.T1024T
 				default:
-					panic("unknown timer interval")
+					panic("unknown timer divider")
 				}
 				win.img.dbg.PushRawEvent(func() {
-					win.img.vcs.RIOT.Timer.SetInterval(t)
+					win.img.vcs.RIOT.Timer.PokeField("divider", div)
 				})
 			}
 		}
 
 		imgui.EndCombo()
 	}
-	imgui.PopItemWidth()
 
-	imgui.SameLine()
-	value := fmt.Sprintf("%02x", win.img.lz.Timer.INTIMvalue)
-	imguiLabel("Value")
-	if imguiHexInput("##value", 2, &value) {
-		if v, err := strconv.ParseUint(value, 16, 8); err == nil {
-			win.img.dbg.PushRawEvent(func() { win.img.vcs.RIOT.Timer.SetValue(uint8(v)) })
+	intim := fmt.Sprintf("%02x", win.img.lz.Timer.INTIM)
+	imguiLabel("INTIM")
+	if imguiHexInput("##intim", 2, &intim) {
+		if v, err := strconv.ParseUint(intim, 16, 8); err == nil {
+			win.img.dbg.PushRawEvent(func() { win.img.vcs.RIOT.Timer.PokeField("intim", uint8(v)) })
 		}
 	}
 
@@ -108,10 +100,18 @@ func (win *winTimer) draw() {
 	remaining := fmt.Sprintf("%04x", win.img.lz.Timer.TicksRemaining)
 	imguiLabel("Ticks")
 	if imguiHexInput("##remaining", 4, &remaining) {
-		if v, err := strconv.ParseUint(value, 16, 16); err == nil {
-			win.img.dbg.PushRawEvent(func() { win.img.vcs.RIOT.Timer.TicksRemaining = int(v) })
+		if v, err := strconv.ParseUint(remaining, 16, 16); err == nil {
+			win.img.dbg.PushRawEvent(func() { win.img.vcs.RIOT.Timer.PokeField("ticksRemaining", int(v)) })
 		}
 	}
+
+	imguiLabel("TIMINT")
+	drawRegister("##TIMINT", win.img.lz.Timer.TIMINT, timer.MaskTIMINT, win.img.cols.timerBit,
+		func(v uint8) {
+			win.img.dbg.PushRawEvent(func() {
+				win.img.vcs.RIOT.Timer.PokeField("timint", v)
+			})
+		})
 
 	imgui.End()
 }

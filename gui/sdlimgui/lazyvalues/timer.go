@@ -15,19 +15,25 @@
 
 package lazyvalues
 
-import "sync/atomic"
+import (
+	"sync/atomic"
+
+	"github.com/jetsetilly/gopher2600/hardware/riot/timer"
+)
 
 // LazyTimer lazily accesses RIOT timer information from the emulator.
 type LazyTimer struct {
 	val *LazyValues
 
-	divider        atomic.Value // string
+	divider        atomic.Value // timer.Divider
 	intim          atomic.Value // uint8
 	ticksRemaining atomic.Value // int
+	timint         atomic.Value // uint8
 
-	Divider        string
-	INTIMvalue     uint8
+	Divider        timer.Divider
+	INTIM          uint8
 	TicksRemaining int
+	TIMINT         uint8
 }
 
 func newLazyTimer(val *LazyValues) *LazyTimer {
@@ -35,13 +41,15 @@ func newLazyTimer(val *LazyValues) *LazyTimer {
 }
 
 func (lz *LazyTimer) push() {
-	lz.divider.Store(lz.val.vcs.RIOT.Timer.Divider.String())
-	lz.intim.Store(lz.val.vcs.RIOT.Timer.INTIMvalue)
-	lz.ticksRemaining.Store(lz.val.vcs.RIOT.Timer.TicksRemaining)
+	lz.divider.Store(lz.val.vcs.RIOT.Timer.PeekField("divider"))
+	lz.intim.Store(lz.val.vcs.RIOT.Timer.PeekField("intim"))
+	lz.ticksRemaining.Store(lz.val.vcs.RIOT.Timer.PeekField("ticksRemaining"))
+	lz.timint.Store(lz.val.vcs.RIOT.Timer.PeekField("timint"))
 }
 
 func (lz *LazyTimer) update() {
-	lz.Divider, _ = lz.divider.Load().(string)
-	lz.INTIMvalue, _ = lz.intim.Load().(uint8)
+	lz.Divider, _ = lz.divider.Load().(timer.Divider)
+	lz.INTIM, _ = lz.intim.Load().(uint8)
 	lz.TicksRemaining, _ = lz.ticksRemaining.Load().(int)
+	lz.TIMINT, _ = lz.timint.Load().(uint8)
 }

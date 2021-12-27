@@ -469,6 +469,7 @@ func drawRegister(id string, val uint8, mask uint8, col imgui.PackedColor, onWri
 			seq.nextItemDepressed = true
 			seq.rectEmpty(col)
 		}
+
 		seq.sameLine()
 	}
 	seq.end()

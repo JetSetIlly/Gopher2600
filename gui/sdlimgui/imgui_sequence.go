@@ -35,6 +35,9 @@ type drawlistSequence struct {
 
 	// align drawlist sequence in the same way as imgui.AlignFramePadding()
 	alignFramePadding bool
+
+	// whether last element was hovered over
+	hovered bool
 }
 
 // create and start a new sequence. spacing is expressed as fraction of the
@@ -107,9 +110,10 @@ func (seq *drawlistSequence) rectFill(col imgui.PackedColor) (clicked bool) {
 	b.Y += seq.size.Y
 
 	// if mouse is clicked in the range of the playfield bit
-	if imgui.IsWindowHovered() && imgui.IsMouseClicked(0) {
+	if imgui.IsWindowHovered() {
 		pos := imgui.MousePos()
-		clicked = pos.X >= a.X && pos.X <= b.X && pos.Y >= a.Y && pos.Y <= b.Y
+		seq.hovered = pos.X >= a.X && pos.X <= b.X && pos.Y >= a.Y && pos.Y <= b.Y
+		clicked = seq.hovered && imgui.IsMouseClicked(0)
 	}
 
 	// draw square
