@@ -29,6 +29,7 @@ const (
 	notificationDurationPeripheral = 60
 	notificationDurationCartridge  = 60
 	notificationDurationEventRun   = 60
+	notificationDurationScreenshot = 60
 	notificationDurationEvent      = 10
 )
 
@@ -123,6 +124,8 @@ func (ee *emulationEventNotification) set(event emulation.Event) {
 	switch event {
 	case emulation.EventRun:
 		ee.frames = notificationDurationEventRun
+	case emulation.EventScreenshot:
+		ee.frames = notificationDurationScreenshot
 	default:
 		ee.frames = notificationDurationEvent
 	}
