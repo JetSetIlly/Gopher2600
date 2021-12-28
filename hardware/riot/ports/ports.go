@@ -348,7 +348,7 @@ func (p *Ports) HandleInputEvent(inp InputEvent) (bool, error) {
 // Poke() or PokeField("swcha").
 //
 // swchb_derived is the same as swcha_derived except for SWCHB register.
-func (p *Ports) PeekField(fld string) uint8 {
+func (p *Ports) PeekField(fld string) interface{} {
 	switch fld {
 	case "swcha_w":
 		return p.swcha_w
@@ -376,25 +376,25 @@ func (p *Ports) PeekField(fld string) uint8 {
 //
 // Fieldnames the same as described for PeekField() except that you cannot
 // update the swchb_derived field.
-func (p *Ports) PokeField(fld string, v uint8) {
+func (p *Ports) PokeField(fld string, v interface{}) {
 	switch fld {
 	case "swcha_w":
-		p.swcha_w = v
+		p.swcha_w = v.(uint8)
 		p.riot.ChipWrite(chipbus.SWCHA, p.deriveSWCHA())
 	case "swacnt":
-		p.riot.ChipWrite(chipbus.SWACNT, v)
+		p.riot.ChipWrite(chipbus.SWACNT, v.(uint8))
 		p.riot.ChipWrite(chipbus.SWCHA, p.deriveSWCHA())
 	case "swcha":
-		p.riot.ChipWrite(chipbus.SWCHA, v)
+		p.riot.ChipWrite(chipbus.SWCHA, v.(uint8))
 
 	case "swchb_w":
-		p.swchb_w = v
+		p.swchb_w = v.(uint8)
 		p.riot.ChipWrite(chipbus.SWCHB, p.deriveSWCHB())
 	case "swbcnt":
-		p.riot.ChipWrite(chipbus.SWBCNT, v)
+		p.riot.ChipWrite(chipbus.SWBCNT, v.(uint8))
 		p.riot.ChipWrite(chipbus.SWCHB, p.deriveSWCHB())
 	case "swchb":
-		p.riot.ChipWrite(chipbus.SWCHB, v)
+		p.riot.ChipWrite(chipbus.SWCHB, v.(uint8))
 
 	default:
 		panic(fmt.Sprintf("Ports.PokeField: unknown field: %s", fld))

@@ -32,6 +32,26 @@ type DebugBus interface {
 	Poke(address uint16, value uint8) error
 }
 
+// Note that in many cases poking a register will not have the effect you might
+// imagine. It is often better, therefore, to affect a "field" rather than a
+// single address. This is because poking doesn't change the state of the
+// hardware that leads to the value that is eventually put into the register.
+//
+// For hardware components where this is important the functions PeekField()
+// and PokeField() are provided.
+//
+// The field argument and value type is component specific. The allowed values
+// and types for each field will be provided in the documentation of the
+// DebugFieldBus implemention.
+//
+// Note that unlike the functions in the DebugBus interface, these functions
+// will not return an error. The functions should panic on any unexpected
+// error.
+type FieldBus interface {
+	PeekField(field string) interface{}
+	PokeField(field string, value interface{})
+}
+
 // Memory is the monolithic representation of the memory in 2600.
 type Memory struct {
 	instance *instance.Instance
