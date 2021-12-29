@@ -477,135 +477,134 @@ func (win *winDbgScr) drawReflectionTooltip() {
 	// get reflection information
 	ref := win.scr.crit.reflection[mouseOffset]
 
-	// present tooltip showing pixel coords at a minimum
-	imgui.BeginTooltip()
-	defer imgui.EndTooltip()
+	// draw tooltip
+	imguiTooltip(func() {
+		imgui.Text(fmt.Sprintf("Scanline: %d", win.mouseScanline))
+		imgui.Text(fmt.Sprintf("Clock: %d", win.mouseClock))
 
-	imgui.Text(fmt.Sprintf("Scanline: %d", win.mouseScanline))
-	imgui.Text(fmt.Sprintf("Clock: %d", win.mouseClock))
-
-	e := win.img.dbg.Disasm.FormatResult(ref.Bank, ref.CPU, disassembly.EntryLevelBlessed)
-	if e.Address == "" {
-		return
-	}
-
-	imguiSeparator()
-
-	// if mouse is over a pixel from the previous frame then show nothing except a note
-	if win.img.emulation.State() == emulation.Paused {
-		if win.mouseScanline > win.img.screen.crit.lastScanline ||
-			(win.mouseScanline == win.img.screen.crit.lastScanline && win.mouseClock > win.img.screen.crit.lastClock) {
-			imgui.Text("From previous frame")
-			imguiSeparator()
+		e := win.img.dbg.Disasm.FormatResult(ref.Bank, ref.CPU, disassembly.EntryLevelBlessed)
+		if e.Address == "" {
+			return
 		}
-	}
-
-	// pixel swatch. using black swatch if pixel is HBLANKed or VBLANKed
-	_, _, pal := win.img.imguiTVPalette()
-	px := signal.ColorSignal((ref.Signal & signal.Color) >> signal.ColorShift)
-	if ref.IsHblank || ref.Signal&signal.VBlank == signal.VBlank || px == signal.VideoBlack {
-		imguiColorLabel("No color signal", pal[0])
-	} else {
-		// not using GetColor() function. arguably we should but we've
-		// protected the array access with the VideoBlack test above.
-		imguiColorLabel(ref.VideoElement.String(), pal[px])
-	}
-
-	imgui.Spacing()
-
-	// instruction information
-	imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmBreakAddress)
-	if win.img.lz.Cart.NumBanks > 1 {
-		imgui.Text(fmt.Sprintf("%s [bank %s]", e.Address, ref.Bank))
-	} else {
-		imgui.Text(e.Address)
-	}
-	imgui.PopStyleColor()
-
-	imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmOperator)
-	imgui.Text(e.Operator)
-	imgui.PopStyleColor()
-
-	if e.Operand.String() != "" {
-		imgui.SameLine()
-		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmOperand)
-		imgui.Text(e.Operand.String())
-		imgui.PopStyleColor()
-	}
-
-	switch win.scr.crit.overlay {
-	case reflection.OverlayLabels[reflection.OverlayNone]:
-		s := ref.Signal.String()
-		if ref.IsHblank && len(s) > 0 {
-			imguiSeparator()
-			imgui.Text("HBLANK")
-			imgui.SameLine()
-			imgui.Text(s)
-		} else if ref.IsHblank {
-			imguiSeparator()
-			imgui.Text("HBLANK")
-		} else if len(s) > 0 {
-			imguiSeparator()
-			imgui.Text(s)
-		}
-	case reflection.OverlayLabels[reflection.OverlayWSYNC]:
-		imguiSeparator()
-		if ref.WSYNC {
-			imgui.Text("6507 is not ready")
-		} else {
-			imgui.Text("6507 program is running")
-		}
-	case reflection.OverlayLabels[reflection.OverlayCollision]:
-		imguiSeparator()
-
-		imguiLabel("CXM0P ")
-		drawRegister("##CXM0P", win.img.lz.Collisions.CXM0P, vcs.TIADrivenPins, win.img.cols.collisionBit, nil)
-		imguiLabel("CXM1P ")
-		drawRegister("##CXM1P", win.img.lz.Collisions.CXM1P, vcs.TIADrivenPins, win.img.cols.collisionBit, nil)
-		imguiLabel("CXP0FB")
-		drawRegister("##CXP0FB", win.img.lz.Collisions.CXP0FB, vcs.TIADrivenPins, win.img.cols.collisionBit, nil)
-		imguiLabel("CXP1FB")
-		drawRegister("##CXP1FB", win.img.lz.Collisions.CXP1FB, vcs.TIADrivenPins, win.img.cols.collisionBit, nil)
-		imguiLabel("CXM0FB")
-		drawRegister("##CXM0FB", win.img.lz.Collisions.CXM0FB, vcs.TIADrivenPins, win.img.cols.collisionBit, nil)
-		imguiLabel("CXM1FB")
-		drawRegister("##CXM1FB", win.img.lz.Collisions.CXM1FB, vcs.TIADrivenPins, win.img.cols.collisionBit, nil)
-		imguiLabel("CXBLPF")
-		drawRegister("##CXBLPF", win.img.lz.Collisions.CXBLPF, vcs.TIADrivenPins, win.img.cols.collisionBit, nil)
-		imguiLabel("CXPPMM")
-		drawRegister("##CXPPMM", win.img.lz.Collisions.CXPPMM, vcs.TIADrivenPins, win.img.cols.collisionBit, nil)
 
 		imguiSeparator()
 
-		s := ref.Collision.LastVideoCycle.String()
-		if s != "" {
-			imgui.Text(s)
-		} else {
-			imgui.Text("no new collision")
-		}
-	case reflection.OverlayLabels[reflection.OverlayHMOVE]:
-		imguiSeparator()
-		if ref.Hmove.Delay {
-			imgui.Text(fmt.Sprintf("HMOVE delay: %d", ref.Hmove.DelayCt))
-		} else if ref.Hmove.Latch {
-			if ref.Hmove.RippleCt != 255 {
-				imgui.Text(fmt.Sprintf("HMOVE ripple: %d", ref.Hmove.RippleCt))
-			} else {
-				imgui.Text("HMOVE latched")
+		// if mouse is over a pixel from the previous frame then show nothing except a note
+		if win.img.emulation.State() == emulation.Paused {
+			if win.mouseScanline > win.img.screen.crit.lastScanline ||
+				(win.mouseScanline == win.img.screen.crit.lastScanline && win.mouseClock > win.img.screen.crit.lastClock) {
+				imgui.Text("From previous frame")
+				imguiSeparator()
 			}
-		} else {
-			imgui.Text("no HMOVE")
 		}
-	case reflection.OverlayLabels[reflection.OverlayRSYNC]:
-		// no RSYNC specific hover information
-	case reflection.OverlayLabels[reflection.OverlayCoproc]:
-		imguiSeparator()
-		if ref.CoprocessorActive {
-			imgui.Text(fmt.Sprintf("%s is working", win.img.lz.CoProc.ID))
+
+		// pixel swatch. using black swatch if pixel is HBLANKed or VBLANKed
+		_, _, pal := win.img.imguiTVPalette()
+		px := signal.ColorSignal((ref.Signal & signal.Color) >> signal.ColorShift)
+		if ref.IsHblank || ref.Signal&signal.VBlank == signal.VBlank || px == signal.VideoBlack {
+			imguiColorLabel("No color signal", pal[0])
 		} else {
-			imgui.Text("6507 program is running")
+			// not using GetColor() function. arguably we should but we've
+			// protected the array access with the VideoBlack test above.
+			imguiColorLabel(ref.VideoElement.String(), pal[px])
 		}
-	}
+
+		imgui.Spacing()
+
+		// instruction information
+		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmBreakAddress)
+		if win.img.lz.Cart.NumBanks > 1 {
+			imgui.Text(fmt.Sprintf("%s [bank %s]", e.Address, ref.Bank))
+		} else {
+			imgui.Text(e.Address)
+		}
+		imgui.PopStyleColor()
+
+		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmOperator)
+		imgui.Text(e.Operator)
+		imgui.PopStyleColor()
+
+		if e.Operand.String() != "" {
+			imgui.SameLine()
+			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmOperand)
+			imgui.Text(e.Operand.String())
+			imgui.PopStyleColor()
+		}
+
+		switch win.scr.crit.overlay {
+		case reflection.OverlayLabels[reflection.OverlayNone]:
+			s := ref.Signal.String()
+			if ref.IsHblank && len(s) > 0 {
+				imguiSeparator()
+				imgui.Text("HBLANK")
+				imgui.SameLine()
+				imgui.Text(s)
+			} else if ref.IsHblank {
+				imguiSeparator()
+				imgui.Text("HBLANK")
+			} else if len(s) > 0 {
+				imguiSeparator()
+				imgui.Text(s)
+			}
+		case reflection.OverlayLabels[reflection.OverlayWSYNC]:
+			imguiSeparator()
+			if ref.WSYNC {
+				imgui.Text("6507 is not ready")
+			} else {
+				imgui.Text("6507 program is running")
+			}
+		case reflection.OverlayLabels[reflection.OverlayCollision]:
+			imguiSeparator()
+
+			imguiLabel("CXM0P ")
+			drawRegister("##CXM0P", win.img.lz.Collisions.CXM0P, vcs.TIADrivenPins, win.img.cols.collisionBit, nil)
+			imguiLabel("CXM1P ")
+			drawRegister("##CXM1P", win.img.lz.Collisions.CXM1P, vcs.TIADrivenPins, win.img.cols.collisionBit, nil)
+			imguiLabel("CXP0FB")
+			drawRegister("##CXP0FB", win.img.lz.Collisions.CXP0FB, vcs.TIADrivenPins, win.img.cols.collisionBit, nil)
+			imguiLabel("CXP1FB")
+			drawRegister("##CXP1FB", win.img.lz.Collisions.CXP1FB, vcs.TIADrivenPins, win.img.cols.collisionBit, nil)
+			imguiLabel("CXM0FB")
+			drawRegister("##CXM0FB", win.img.lz.Collisions.CXM0FB, vcs.TIADrivenPins, win.img.cols.collisionBit, nil)
+			imguiLabel("CXM1FB")
+			drawRegister("##CXM1FB", win.img.lz.Collisions.CXM1FB, vcs.TIADrivenPins, win.img.cols.collisionBit, nil)
+			imguiLabel("CXBLPF")
+			drawRegister("##CXBLPF", win.img.lz.Collisions.CXBLPF, vcs.TIADrivenPins, win.img.cols.collisionBit, nil)
+			imguiLabel("CXPPMM")
+			drawRegister("##CXPPMM", win.img.lz.Collisions.CXPPMM, vcs.TIADrivenPins, win.img.cols.collisionBit, nil)
+
+			imguiSeparator()
+
+			s := ref.Collision.LastVideoCycle.String()
+			if s != "" {
+				imgui.Text(s)
+			} else {
+				imgui.Text("no new collision")
+			}
+		case reflection.OverlayLabels[reflection.OverlayHMOVE]:
+			imguiSeparator()
+			if ref.Hmove.Delay {
+				imgui.Text(fmt.Sprintf("HMOVE delay: %d", ref.Hmove.DelayCt))
+			} else if ref.Hmove.Latch {
+				if ref.Hmove.RippleCt != 255 {
+					imgui.Text(fmt.Sprintf("HMOVE ripple: %d", ref.Hmove.RippleCt))
+				} else {
+					imgui.Text("HMOVE latched")
+				}
+			} else {
+				imgui.Text("no HMOVE")
+			}
+		case reflection.OverlayLabels[reflection.OverlayRSYNC]:
+			// no RSYNC specific hover information
+		case reflection.OverlayLabels[reflection.OverlayCoproc]:
+			imguiSeparator()
+			if ref.CoprocessorActive {
+				imgui.Text(fmt.Sprintf("%s is working", win.img.lz.CoProc.ID))
+			} else {
+				imgui.Text("6507 program is running")
+			}
+		}
+	}, false)
 }
 
 // resize() implements the textureRenderer interface.

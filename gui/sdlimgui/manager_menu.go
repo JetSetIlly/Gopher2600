@@ -151,11 +151,7 @@ func (wm *manager) drawMenu() {
 
 	if math.IsInf(float64(wm.img.lz.TV.Hz), 0) || wm.img.lz.TV.Hz > wm.img.lz.TV.FrameInfo.Spec.RefreshRate*2 {
 		wdth -= rightJustText(wdth, "- Hz", true)
-		if imgui.IsItemHovered() {
-			imgui.BeginTooltip()
-			imgui.Text("TV refresh rate is indeterminate")
-			imgui.EndTooltip()
-		}
+		imguiTooltip(func() { imgui.Text("TV refresh rate is indeterminate") }, true)
 	} else {
 		wdth -= rightJustText(wdth, fmt.Sprintf("%.2fHz", wm.img.lz.TV.Hz), true)
 	}

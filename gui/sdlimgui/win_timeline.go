@@ -339,64 +339,63 @@ func (win *winTimeline) drawTimeline() {
 			if traceHoverFrame >= traceStartFrame && traceHoverFrame <= traceEndFrame {
 				thumbnail := rewindHoverFrame >= rewindStartFrame && rewindHoverFrame <= rewindEndFrame
 
-				imgui.BeginTooltip()
-
-				flgs := imgui.TableFlagsNone
-				if thumbnail {
-					flgs = imgui.TableFlagsPadOuterX
-				}
-				if imgui.BeginTableV("timelineTooltip", 2, flgs, imgui.Vec2{}, 10.0) {
-					imgui.TableNextRow()
-					imgui.TableNextColumn()
-
-					imgui.Text(fmt.Sprintf("Frame: %d", traceHoverFrame))
-
-					// adjust text color slightly - the colors we use for the
-					// plots are too dark
-					textColAdj := imgui.Vec4{0.2, 0.2, 0.2, 0.0}
-
-					imgui.Text("Scanlines:")
-					imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.TimelineScanlines.Plus(textColAdj))
-					imgui.SameLine()
-					imgui.Text(fmt.Sprintf("%d", win.img.lz.Rewind.Timeline.TotalScanlines[traceHoverIdx]))
-					imgui.PopStyleColor()
-
-					imgui.Text("WSYNC:")
-					imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.TimelineWSYNC.Plus(textColAdj))
-					imgui.SameLine()
-					imgui.Text(fmt.Sprintf("%.01f%%", win.img.lz.Rewind.Timeline.Ratios[traceHoverIdx].WSYNC*100))
-					imgui.PopStyleColor()
-
-					if win.img.lz.CoProc.HasCoProcBus {
-						imgui.Text(win.img.lz.CoProc.ID)
-						imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.TimelineCoProc.Plus(textColAdj))
-						imgui.SameLine()
-						imgui.Text(fmt.Sprintf("%.01f%%", win.img.lz.Rewind.Timeline.Ratios[traceHoverIdx].CoProc*100))
-						imgui.PopStyleColor()
-					}
-
-					// show rewind thumbnail if hover is in range of rewind
+				imguiTooltip(func() {
+					flgs := imgui.TableFlagsNone
 					if thumbnail {
+						flgs = imgui.TableFlagsPadOuterX
+					}
+					if imgui.BeginTableV("timelineTooltip", 2, flgs, imgui.Vec2{}, 10.0) {
+						imgui.TableNextRow()
 						imgui.TableNextColumn()
 
-						// selecting the correct thumbnail requires different indexing than the timline
-						if win.thmbFrame != rewindHoverFrame {
-							win.thmbFrame = rewindHoverFrame
+						imgui.Text(fmt.Sprintf("Frame: %d", traceHoverFrame))
 
-							// Rewind.GetState must be run in the emulation thread. CreateFromState doesn't need to be but
-							// because the thumbnailer runs in its own goroutine there's no real time penalty on the main
-							// emulation even when it is running
-							win.img.dbg.PushRawEvent(func() {
-								win.thmb.CreateFromState(win.img.dbg.Rewind.GetState(rewindHoverFrame), 1)
-							})
+						// adjust text color slightly - the colors we use for the
+						// plots are too dark
+						textColAdj := imgui.Vec4{0.2, 0.2, 0.2, 0.0}
+
+						imgui.Text("Scanlines:")
+						imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.TimelineScanlines.Plus(textColAdj))
+						imgui.SameLine()
+						imgui.Text(fmt.Sprintf("%d", win.img.lz.Rewind.Timeline.TotalScanlines[traceHoverIdx]))
+						imgui.PopStyleColor()
+
+						imgui.Text("WSYNC:")
+						imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.TimelineWSYNC.Plus(textColAdj))
+						imgui.SameLine()
+						imgui.Text(fmt.Sprintf("%.01f%%", win.img.lz.Rewind.Timeline.Ratios[traceHoverIdx].WSYNC*100))
+						imgui.PopStyleColor()
+
+						if win.img.lz.CoProc.HasCoProcBus {
+							imgui.Text(win.img.lz.CoProc.ID)
+							imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.TimelineCoProc.Plus(textColAdj))
+							imgui.SameLine()
+							imgui.Text(fmt.Sprintf("%.01f%%", win.img.lz.Rewind.Timeline.Ratios[traceHoverIdx].CoProc*100))
+							imgui.PopStyleColor()
 						}
 
-						imgui.Image(imgui.TextureID(win.thmbTexture), imgui.Vec2{specification.ClksVisible * 3, specification.AbsoluteMaxScanlines}.Times(0.3))
-					}
+						// show rewind thumbnail if hover is in range of rewind
+						if thumbnail {
+							imgui.TableNextColumn()
 
-					imgui.EndTable()
-				}
-				imgui.EndTooltip()
+							// selecting the correct thumbnail requires different indexing than the timline
+							if win.thmbFrame != rewindHoverFrame {
+								win.thmbFrame = rewindHoverFrame
+
+								// Rewind.GetState must be run in the emulation thread. CreateFromState doesn't need to be but
+								// because the thumbnailer runs in its own goroutine there's no real time penalty on the main
+								// emulation even when it is running
+								win.img.dbg.PushRawEvent(func() {
+									win.thmb.CreateFromState(win.img.dbg.Rewind.GetState(rewindHoverFrame), 1)
+								})
+							}
+
+							imgui.Image(imgui.TextureID(win.thmbTexture), imgui.Vec2{specification.ClksVisible * 3, specification.AbsoluteMaxScanlines}.Times(0.3))
+						}
+
+						imgui.EndTable()
+					}
+				}, false)
 			}
 		}
 	}

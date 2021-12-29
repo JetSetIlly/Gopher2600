@@ -255,6 +255,7 @@ func drawByteGrid(data []uint8, cmp []uint8, diffCol imgui.Vec4, base uint16, co
 	// on the length of the data slice
 	columnFormat := fmt.Sprintf("%%0%dx- ", len(fmt.Sprintf("%x", len(data)-1))-1)
 
+	defaultItemInnerSpacing := imgui.CurrentStyle().ItemInnerSpacing()
 	imgui.PushStyleVarVec2(imgui.StyleVarItemSpacing, imgui.Vec2{})
 	imgui.PushItemWidth(imguiTextWidth(2))
 
@@ -311,7 +312,12 @@ func drawByteGrid(data []uint8, cmp []uint8, diffCol imgui.Vec4, base uint16, co
 				}
 
 				if b != c {
-					imguiTooltipSimple(fmt.Sprintf("was %02x -> is now %02x", c, b))
+					imgui.PushStyleVarVec2(imgui.StyleVarItemSpacing, defaultItemInnerSpacing)
+					imguiTooltip(func() {
+						imgui.Text("Byte change")
+						imgui.Text(fmt.Sprintf("%02x is now %02x", c, b))
+					}, true)
+					imgui.PopStyleVar()
 				}
 
 				// undo any color changes
@@ -405,35 +411,6 @@ func (img *SdlImgui) imguiSwatch(col uint8, size float32) (clicked bool) {
 	imgui.SetCursorScreenPos(p)
 
 	return clicked
-}
-
-// shows tooltip on hover of the previous imgui digest/group. useful for simple
-// tooltips.
-func imguiTooltipSimple(tooltip string) {
-	// split string on newline and display with separate calls to imgui.Text()
-	tooltip = strings.TrimSpace(tooltip)
-	if tooltip != "" && imgui.IsItemHovered() {
-		s := strings.Split(tooltip, "\n")
-		imgui.BeginTooltip()
-		for _, t := range s {
-			imgui.Text(t)
-		}
-		imgui.EndTooltip()
-	}
-}
-
-// shows tooltip that require more complex formatting than a single string.
-//
-// the hoverTest argument says that the tooltip should be displayed only
-// when the last imgui widget/group is being hovered over with the mouse. if
-// this argument is false then it implies that the decision to show the tooltip
-// has already been made by the calling function.
-func imguiTooltip(f func(), hoverTest bool) {
-	if !hoverTest || imgui.IsItemHovered() {
-		imgui.BeginTooltip()
-		f()
-		imgui.EndTooltip()
-	}
 }
 
 // draw value with hex input and bit toggles. doesn't draw a label.

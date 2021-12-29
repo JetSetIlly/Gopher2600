@@ -190,14 +190,15 @@ func newColors() *imguiColors {
 		TitleBgActive: imgui.Vec4{0.16, 0.29, 0.48, 1.0},
 		Border:        imgui.Vec4{0.14, 0.14, 0.29, 1.0},
 
-		PlayWindowBg:     imgui.Vec4{0.0, 0.0, 0.0, 1.0},
-		PlayWindowBorder: imgui.Vec4{0.0, 0.0, 0.0, 1.0},
-
 		// additional general colors
 		True:        imgui.Vec4{0.3, 0.6, 0.3, 1.0},
 		False:       imgui.Vec4{0.6, 0.3, 0.3, 1.0},
 		TrueFalse:   imgui.Vec4{0.6, 0.6, 0.3, 1.0},
 		Transparent: imgui.Vec4{0.0, 0.0, 0.0, 0.0},
+
+		// playscreen color
+		PlayWindowBg:     imgui.Vec4{0.0, 0.0, 0.0, 1.0},
+		PlayWindowBorder: imgui.Vec4{0.0, 0.0, 0.0, 1.0},
 
 		// ROM selector
 		ROMSelectDir:  imgui.Vec4{1.0, 0.5, 0.5, 1.0},

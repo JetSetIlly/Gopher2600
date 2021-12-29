@@ -165,13 +165,12 @@ func (win *winTracker) draw() {
 
 				imgui.TableNextColumn()
 				imgui.SelectableV("", false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{0, 0})
-				if imgui.IsItemHovered() {
-					imgui.BeginTooltip()
+				imguiTooltip(func() {
 					imgui.Text(fmt.Sprintf("Frame: %d", entry.Coords.Frame))
 					imgui.Text(fmt.Sprintf("Scanline: %d", entry.Coords.Scanline))
 					imgui.Text(fmt.Sprintf("Clock: %d", entry.Coords.Clock))
-					imgui.EndTooltip()
-				}
+				}, true)
+
 				// context menu on right mouse button
 				if imgui.IsItemHovered() && imgui.IsMouseDown(1) {
 					imgui.OpenPopup(trackerContextMenuID)
