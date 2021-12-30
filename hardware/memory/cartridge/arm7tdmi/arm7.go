@@ -21,9 +21,7 @@ import (
 	"strings"
 
 	"github.com/jetsetilly/gopher2600/curated"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm7tdmi/mapfile"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm7tdmi/memorymodel"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm7tdmi/objdump"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/preferences"
 	"github.com/jetsetilly/gopher2600/logger"
@@ -133,9 +131,6 @@ type ARM struct {
 	// interface to an option development package
 	dev mapper.CartCoProcDeveloper
 
-	// the number of times an instruction has run
-	devHeatmap map[uint32]int
-
 	// \/\/\/ the following fields relate to cycle counting. there's a possible
 	// optimisation whereby we don't do any cycle counting at all (or minimise
 	// it at least) if the emulation is running in immediate mode
@@ -186,12 +181,6 @@ type ARM struct {
 	Scycle func(bus busAccess, addr uint32)
 	Ncycle func(bus busAccess, addr uint32)
 
-	// mapfile for binary (if available)
-	mapfile *mapfile.Mapfile
-
-	// obj dump for binary (if available)
-	objdump *objdump.ObjDump
-
 	// illegal accesses already encountered. duplicate accesses will not be logged.
 	illegalAccesses map[string]bool
 }
@@ -218,7 +207,6 @@ func NewARM(mmap memorymodel.Map, prefs *preferences.ARMPreferences, mem SharedM
 		hook:            hook,
 		executionMap:    make(map[uint32][]func(_ uint16)),
 		disasmCache:     make(map[uint32]DisasmEntry),
-		devHeatmap:      make(map[uint32]int),
 		illegalAccesses: make(map[string]bool),
 	}
 
@@ -228,16 +216,6 @@ func NewARM(mmap memorymodel.Map, prefs *preferences.ARMPreferences, mem SharedM
 	err := arm.reset()
 	if err != nil {
 		logger.Logf("ARM7", "reset: %s", err.Error())
-	}
-
-	arm.mapfile, err = mapfile.NewMapFile(pathToROM)
-	if err != nil {
-		logger.Logf("ARM7", err.Error())
-	}
-
-	arm.objdump, err = objdump.NewObjDump(pathToROM)
-	if err != nil {
-		logger.Logf("ARM7", err.Error())
 	}
 
 	return arm
@@ -333,21 +311,6 @@ func (arm *ARM) Step(vcsClock float32) {
 	arm.timer.stepFromVCS(Clk, vcsClock)
 }
 
-func (arm *ARM) lookupSource() {
-	if arm.mapfile != nil {
-		programLabel := arm.mapfile.FindProgramAccess(arm.executingPC)
-		if programLabel != "" {
-			logger.Logf("ARM7", "mapfile: access in %s()", programLabel)
-		}
-	}
-	if arm.objdump != nil {
-		src := arm.objdump.FindProgramAccess(arm.executingPC)
-		if src != "" {
-			logger.Logf("ARM7", "objdump:\n%s", src)
-		}
-	}
-}
-
 func (arm *ARM) read8bit(addr uint32) uint8 {
 	var mem *[]uint8
 
@@ -366,7 +329,9 @@ func (arm *ARM) read8bit(addr uint32) uint8 {
 		if _, ok := arm.illegalAccesses[accessKey]; !ok {
 			arm.illegalAccesses[accessKey] = true
 			logger.Logf("ARM7", "read8bit: unrecognised address %08x (PC: %08x)", addr, arm.executingPC)
-			arm.lookupSource()
+			if arm.dev != nil {
+				arm.dev.LookupSource(arm.executingPC)
+			}
 		}
 		return 0
 	}
@@ -392,7 +357,9 @@ func (arm *ARM) write8bit(addr uint32, val uint8) {
 		if _, ok := arm.illegalAccesses[accessKey]; !ok {
 			arm.illegalAccesses[accessKey] = true
 			logger.Logf("ARM7", "write8bit: unrecognised address %08x (PC: %08x)", addr, arm.executingPC)
-			arm.lookupSource()
+			if arm.dev != nil {
+				arm.dev.LookupSource(arm.executingPC)
+			}
 		}
 		return
 	}
@@ -423,7 +390,9 @@ func (arm *ARM) read16bit(addr uint32) uint16 {
 		if _, ok := arm.illegalAccesses[accessKey]; !ok {
 			arm.illegalAccesses[accessKey] = true
 			logger.Logf("ARM7", "read16bit: unrecognised address %08x (PC: %08x)", addr, arm.executingPC)
-			arm.lookupSource()
+			if arm.dev != nil {
+				arm.dev.LookupSource(arm.executingPC)
+			}
 		}
 		return 0
 	}
@@ -454,7 +423,9 @@ func (arm *ARM) write16bit(addr uint32, val uint16) {
 		if _, ok := arm.illegalAccesses[accessKey]; !ok {
 			arm.illegalAccesses[accessKey] = true
 			logger.Logf("ARM7", "write16bit: unrecognised address %08x (PC: %08x)", addr, arm.executingPC)
-			arm.lookupSource()
+			if arm.dev != nil {
+				arm.dev.LookupSource(arm.executingPC)
+			}
 		}
 		return
 	}
@@ -486,7 +457,9 @@ func (arm *ARM) read32bit(addr uint32) uint32 {
 		if _, ok := arm.illegalAccesses[accessKey]; !ok {
 			arm.illegalAccesses[accessKey] = true
 			logger.Logf("ARM7", "read32bit: unrecognised address %08x (PC: %08x)", addr, arm.executingPC)
-			arm.lookupSource()
+			if arm.dev != nil {
+				arm.dev.LookupSource(arm.executingPC)
+			}
 		}
 		return 0
 	}
@@ -517,7 +490,9 @@ func (arm *ARM) write32bit(addr uint32, val uint32) {
 		if _, ok := arm.illegalAccesses[accessKey]; !ok {
 			arm.illegalAccesses[accessKey] = true
 			logger.Logf("ARM7", "write32bit: unrecognised address %08x (PC: %08x)", addr, arm.executingPC)
-			arm.lookupSource()
+			if arm.dev != nil {
+				arm.dev.LookupSource(arm.executingPC)
+			}
 		}
 		return
 	}
@@ -623,15 +598,6 @@ func (arm *ARM) Run(mamcr uint32) (uint32, float32, error) {
 				arm.disasmEntry.updateNotes = false
 			}
 
-		}
-
-		// accumulate heatmap
-		if arm.dev != nil {
-			if c, ok := arm.devHeatmap[arm.executingPC]; ok {
-				arm.devHeatmap[arm.executingPC] = c + 1
-			} else {
-				arm.devHeatmap[arm.executingPC] = 1
-			}
 		}
 
 		// check program counter

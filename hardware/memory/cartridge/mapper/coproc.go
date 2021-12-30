@@ -44,6 +44,7 @@ type CartCoProcDisassembler interface {
 // CartCoProcDeveloper is used by the coprocessor to provide functions
 // available to developers when the source code is available.
 type CartCoProcDeveloper interface {
+	LookupSource(addr uint32)
 }
 
 // CartCoProcBus is implemented by cartridge mappers that have a coprocessor that

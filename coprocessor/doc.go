@@ -13,11 +13,6 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-// Package coprocessor is used to capture execution/disassembly information
-// from any program running on a coprocessor that may be present in an attached
-// VCS cartridge. For example, CDFJ mapped cartridges have an ARM7TDMI
-// available.
-//
-// Package coprocessor contains type definitions are interfaces that are used
-// to communicate with cartridge coprocessors.
+// Package coprocessor contains the helper functions for cartridge
+// coprocessors. In practice this means the ARM processor.
 package coprocessor

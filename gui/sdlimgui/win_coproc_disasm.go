@@ -20,7 +20,7 @@ import (
 	"os"
 
 	"github.com/inkyblackness/imgui-go/v4"
-	"github.com/jetsetilly/gopher2600/coprocessor/disassembly"
+	"github.com/jetsetilly/gopher2600/coprocessor"
 	"github.com/jetsetilly/gopher2600/emulation"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm7tdmi"
 	"github.com/jetsetilly/gopher2600/logger"
@@ -102,19 +102,19 @@ func (win *winCoProcDisasm) draw() {
 
 	imgui.BeginTabBar("")
 	if imgui.BeginTabItem("Disassembly") {
-		itr := win.img.dbg.CoProcDisasm.NewIteration(disassembly.Disassembly)
+		itr := win.img.dbg.CoProcDisasm.NewIteration(coprocessor.IterateComplete)
 		win.drawDisasm(itr)
 		imgui.EndTabItem()
 	}
 	if imgui.BeginTabItem("Last Execution") {
-		itr := win.img.dbg.CoProcDisasm.NewIteration(disassembly.LastExecution)
+		itr := win.img.dbg.CoProcDisasm.NewIteration(coprocessor.IterateLast)
 		win.drawLastExecution(itr)
 		imgui.EndTabItem()
 	}
 	imgui.EndTabBar()
 }
 
-func (win *winCoProcDisasm) drawDisasm(itr *disassembly.Iterate) {
+func (win *winCoProcDisasm) drawDisasm(itr *coprocessor.Iterate) {
 	if itr.Count == 0 {
 		imgui.Spacing()
 		imgui.Text("Coprocessor has not yet executed.")
@@ -133,7 +133,7 @@ func (win *winCoProcDisasm) drawDisasm(itr *disassembly.Iterate) {
 	win.drawIteration(itr, false)
 }
 
-func (win *winCoProcDisasm) drawLastExecution(itr *disassembly.Iterate) {
+func (win *winCoProcDisasm) drawLastExecution(itr *coprocessor.Iterate) {
 	if itr.Count == 0 {
 		imgui.Spacing()
 		imgui.Text("Execution disassembly is disabled")
@@ -176,7 +176,7 @@ func (win *winCoProcDisasm) drawLastExecution(itr *disassembly.Iterate) {
 	})
 }
 
-func (win *winCoProcDisasm) drawIteration(itr *disassembly.Iterate, adjustHeightForSummary bool) {
+func (win *winCoProcDisasm) drawIteration(itr *coprocessor.Iterate, adjustHeightForSummary bool) {
 	height := imguiRemainingWinHeight()
 
 	if adjustHeightForSummary {
@@ -295,13 +295,13 @@ func (win *winCoProcDisasm) drawIteration(itr *disassembly.Iterate, adjustHeight
 }
 
 func (win *winCoProcDisasm) save() {
-	var itr *disassembly.Iterate
+	var itr *coprocessor.Iterate
 	var fn string
 	if win.showLastExecution {
-		itr = win.img.dbg.CoProcDisasm.NewIteration(disassembly.LastExecution)
+		itr = win.img.dbg.CoProcDisasm.NewIteration(coprocessor.IterateLast)
 		fn = unique.Filename("coproc_lastexecution", "")
 	} else {
-		itr = win.img.dbg.CoProcDisasm.NewIteration(disassembly.Disassembly)
+		itr = win.img.dbg.CoProcDisasm.NewIteration(coprocessor.IterateComplete)
 		fn = unique.Filename("coproc_disasm", "")
 	}
 

@@ -13,7 +13,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-package disassembly
+package coprocessor
 
 import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
@@ -43,22 +43,22 @@ type Iterate struct {
 type IterationType int
 
 const (
-	LastExecution IterationType = iota
-	Disassembly
+	IterateLast IterationType = iota
+	IterateComplete
 )
 
 // NewIteration is the preferred method if initialistation for the Iterate
 // type.
-func (cop *CoProcessor) NewIteration(iterationType IterationType) *Iterate {
+func (cop *Disassembly) NewIteration(iterationType IterationType) *Iterate {
 	cop.crit.Lock()
 	defer cop.crit.Unlock()
 
 	itr := &Iterate{}
 
-	if iterationType == LastExecution {
+	if iterationType == IterateLast {
 		itr.disasm = make([]mapper.CartCoProcDisasmEntry, len(cop.lastExecution))
 		copy(itr.disasm, cop.lastExecution)
-	} else if iterationType == Disassembly {
+	} else if iterationType == IterateComplete {
 		itr.disasm = make([]mapper.CartCoProcDisasmEntry, 0, len(cop.disasm))
 		for _, k := range cop.disasmKeys {
 			itr.disasm = append(itr.disasm, cop.disasm[k])

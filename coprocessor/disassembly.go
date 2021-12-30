@@ -13,28 +13,30 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-package disassembly
+package coprocessor
 
 import (
 	"sort"
 	"sync"
 
-	"github.com/jetsetilly/gopher2600/hardware"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/hardware/television/coords"
 )
 
-// CoProcessor is used to handle the disassembly of instructions from an
+type TV interface {
+	AdjCoords(adj television.Adj, amount int) coords.TelevisionCoords
+}
+
+// Disassembly is used to handle the disassembly of instructions from an
 // attached cartridge that contains a coprocessor.
-type CoProcessor struct {
+type Disassembly struct {
 	crit sync.Mutex
-	vcs  *hardware.VCS
+
+	tv   TV
+	cart mapper.CartCoProcBus
 
 	enabled bool
-
-	cart mapper.CartCoProcBus
 
 	disasm     map[string]mapper.CartCoProcDisasmEntry
 	disasmKeys []string // sorted keys into the disasm map
@@ -45,17 +47,17 @@ type CoProcessor struct {
 	lastStart coords.TelevisionCoords
 }
 
-// NewCoProcessorDisasm returns a new Coprocessor instance if cartridge implements the
+// NewDisassembly returns a new Coprocessor instance if cartridge implements the
 // coprocessor bus.
-func NewCoProcessorDisasm(vcs *hardware.VCS, cart *cartridge.Cartridge) *CoProcessor {
-	cop := &CoProcessor{
-		vcs:           vcs,
-		lastExecution: make([]mapper.CartCoProcDisasmEntry, 0, 1024),
+func NewDisassembly(tv TV, cart mapper.CartCoProcBus) *Disassembly {
+	if cart == nil {
+		return nil
 	}
 
-	cop.cart = cart.GetCoProcBus()
-	if cop.cart == nil {
-		return nil
+	cop := &Disassembly{
+		tv:            tv,
+		cart:          cart,
+		lastExecution: make([]mapper.CartCoProcDisasmEntry, 0, 1024),
 	}
 
 	cop.disasm = make(map[string]mapper.CartCoProcDisasmEntry)
@@ -67,7 +69,7 @@ func NewCoProcessorDisasm(vcs *hardware.VCS, cart *cartridge.Cartridge) *CoProce
 }
 
 // IsEnabled returns true if coprocessor disassembly is currently active.
-func (cop *CoProcessor) IsEnabled() bool {
+func (cop *Disassembly) IsEnabled() bool {
 	cop.crit.Lock()
 	defer cop.crit.Unlock()
 	return cop.enabled
@@ -76,7 +78,7 @@ func (cop *CoProcessor) IsEnabled() bool {
 // Enable or disable coprocessor disassembly. We retain the disassembly
 // (including last execution) already gathered but the LastExecution field is
 // cleared on disable. The general disassembly is maintained.
-func (cop *CoProcessor) Enable(enable bool) {
+func (cop *Disassembly) Enable(enable bool) {
 	cop.crit.Lock()
 	defer cop.crit.Unlock()
 
@@ -90,7 +92,7 @@ func (cop *CoProcessor) Enable(enable bool) {
 }
 
 // Start implements the CartCoProcDisassembler interface.
-func (cop *CoProcessor) Start() {
+func (cop *Disassembly) Start() {
 	cop.crit.Lock()
 	defer cop.crit.Unlock()
 
@@ -99,14 +101,14 @@ func (cop *CoProcessor) Start() {
 		// have been called on the last CPU cycle of the instruction that triggers
 		// the coprocessor reset. the TV will not have moved onto the beginning of
 		// the next instruction yet so we must figure it out here
-		cop.lastStart = cop.vcs.TV.AdjCoords(television.AdjCPUCycle, 1)
+		cop.lastStart = cop.tv.AdjCoords(television.AdjCPUCycle, 1)
 	}
 
 	cop.lastExecution = cop.lastExecution[:0]
 }
 
 // Step implements the CartCoProcDisassembler interface.
-func (cop *CoProcessor) Step(entry mapper.CartCoProcDisasmEntry) {
+func (cop *Disassembly) Step(entry mapper.CartCoProcDisasmEntry) {
 	cop.crit.Lock()
 	defer cop.crit.Unlock()
 
@@ -120,7 +122,7 @@ func (cop *CoProcessor) Step(entry mapper.CartCoProcDisasmEntry) {
 }
 
 // End implements the CartCoProcDisassembler interface.
-func (cop *CoProcessor) End(summary mapper.CartCoProcDisasmSummary) {
+func (cop *Disassembly) End(summary mapper.CartCoProcDisasmSummary) {
 	cop.crit.Lock()
 	defer cop.crit.Unlock()
 
