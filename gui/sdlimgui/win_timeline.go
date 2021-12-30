@@ -124,8 +124,8 @@ func (win *winTimeline) drawKey() {
 	imgui.SameLine()
 	imguiColorLabel("WSYNC", win.img.cols.TimelineWSYNC)
 	imgui.SameLine()
-	if win.img.lz.CoProc.HasCoProcBus {
-		imguiColorLabel(win.img.lz.CoProc.ID, win.img.cols.TimelineCoProc)
+	if win.img.lz.Cart.HasCoProcBus {
+		imguiColorLabel(win.img.lz.Cart.CoProcID, win.img.cols.TimelineCoProc)
 		imgui.SameLine()
 	}
 	imguiColorLabel("Left Player", win.img.cols.TimelineLeftPlayer)
@@ -217,7 +217,7 @@ func (win *winTimeline) drawTimeline() {
 			win.img.cols.timelineWSYNC)
 
 		// plot coprocessor from the top
-		if win.img.lz.CoProc.HasCoProcBus {
+		if win.img.lz.Cart.HasCoProcBus {
 			y = pos.Y
 			y += float32(timeline.Counts[i].CoProc) * traceSize.Y / specification.AbsoluteMaxClks
 
@@ -366,8 +366,8 @@ func (win *winTimeline) drawTimeline() {
 						imgui.Text(fmt.Sprintf("%.01f%%", win.img.lz.Rewind.Timeline.Ratios[traceHoverIdx].WSYNC*100))
 						imgui.PopStyleColor()
 
-						if win.img.lz.CoProc.HasCoProcBus {
-							imgui.Text(win.img.lz.CoProc.ID)
+						if win.img.lz.Cart.HasCoProcBus {
+							imgui.Text(win.img.lz.Cart.CoProcID)
 							imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.TimelineCoProc.Plus(textColAdj))
 							imgui.SameLine()
 							imgui.Text(fmt.Sprintf("%.01f%%", win.img.lz.Rewind.Timeline.Ratios[traceHoverIdx].CoProc*100))

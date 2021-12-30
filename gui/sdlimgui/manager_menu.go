@@ -113,8 +113,8 @@ func (wm *manager) drawMenu() {
 	}
 
 	// coprocessor menu. include test to see if menu should appear at all.
-	if wm.img.lz.CoProc.HasCoProcBus {
-		if imgui.BeginMenu(wm.img.lz.CoProc.ID) {
+	if wm.img.lz.Cart.HasCoProcBus {
+		if imgui.BeginMenu(wm.img.lz.Cart.CoProcID) {
 			for _, m := range wm.menu[menuCoProc] {
 				wm.drawMenuEntry(m)
 			}

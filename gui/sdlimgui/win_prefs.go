@@ -278,7 +278,7 @@ func (win *winPrefs) drawVCS() {
 func (win *winPrefs) drawARM() {
 	imgui.Spacing()
 
-	if !win.img.lz.CoProc.HasCoProcBus {
+	if !win.img.lz.Cart.HasCoProcBus {
 		imgui.Text("Current ROM does not have an ARM coprocessor")
 		imguiSeparator()
 	}

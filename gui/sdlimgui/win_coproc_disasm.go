@@ -70,7 +70,7 @@ func (win *winCoProcDisasm) draw() {
 		return
 	}
 
-	if !win.img.lz.CoProc.HasCoProcBus {
+	if !win.img.lz.Cart.HasCoProcBus {
 		return
 	}
 
@@ -78,7 +78,7 @@ func (win *winCoProcDisasm) draw() {
 	imgui.SetNextWindowSizeV(imgui.Vec2{551, 526}, imgui.ConditionFirstUseEver)
 	imgui.SetNextWindowSizeConstraints(imgui.Vec2{551, 300}, imgui.Vec2{800, 1000})
 
-	title := fmt.Sprintf("%s %s", win.img.lz.CoProc.ID, winCoProcDisasmID)
+	title := fmt.Sprintf("%s %s", win.img.lz.Cart.CoProcID, winCoProcDisasmID)
 	imgui.BeginV(title, &win.open, imgui.WindowFlagsNone)
 	defer imgui.End()
 

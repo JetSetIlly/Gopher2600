@@ -42,9 +42,12 @@ type LazyCart struct {
 	ram    atomic.Value // []mapper.CartRAM
 
 	tapeBus   atomic.Value // mapper.CartTapeBus (in continer)
-	tapeState atomic.Value // mapper.CartTapeState
+	tapeState atomic.Value // mapper.CartTapeState (in container)
 
-	plusROM         atomic.Value // plusrom.PlusROM
+	coProcBus atomic.Value // mapper.CartCoProcBus (in container)
+	coprocID  atomic.Value // string
+
+	plusROM         atomic.Value // plusrom.PlusROM (in container)
 	plusROMAddrInfo atomic.Value // plusrom.AddrInfo
 	plusROMNick     atomic.Value // string (from prefs.String.Get())
 	plusROMID       atomic.Value // string (from prefs.String.Get())
@@ -69,6 +72,9 @@ type LazyCart struct {
 	HasTapeBus bool
 	TapeState  mapper.CartTapeState
 
+	HasCoProcBus bool
+	CoProcID     string
+
 	IsPlusROM       bool
 	PlusROMAddrInfo plusrom.AddrInfo
 	PlusROMRecvBuff []uint8
@@ -82,8 +88,11 @@ func newLazyCart(val *LazyValues) *LazyCart {
 	lz.registersBus.Store(container{})
 	lz.registers.Store(container{})
 	lz.ramBus.Store(container{})
+	lz.ram.Store(container{})
 	lz.tapeBus.Store(container{})
 	lz.tapeState.Store(container{})
+	lz.plusROM.Store(container{})
+	lz.coProcBus.Store(container{})
 	return lz
 }
 
@@ -138,13 +147,23 @@ func (lz *LazyCart) push() {
 	c := lz.val.vcs.Mem.Cart.GetContainer()
 	if c != nil {
 		if pr, ok := c.(*plusrom.PlusROM); ok {
-			lz.plusROM.Store(pr)
+			lz.plusROM.Store(container{v: pr})
 			lz.plusROMAddrInfo.Store(pr.CopyAddrInfo())
 			lz.plusROMRecvBuff.Store(pr.CopyRecvBuffer())
 			lz.plusROMSendBuff.Store(pr.CopySendBuffer())
 		} else {
 			lz.plusROM.Store(nil)
 		}
+	} else {
+		lz.plusROM.Store(container{v: nil})
+	}
+
+	cp := lz.val.vcs.Mem.Cart.GetCoProcBus()
+	if cp != nil {
+		lz.coProcBus.Store(container{v: cp})
+		lz.coprocID.Store(cp.CoProcID())
+	} else {
+		lz.coProcBus.Store(container{v: nil})
 	}
 }
 
@@ -193,10 +212,15 @@ func (lz *LazyCart) update() {
 		lz.TapeState, _ = lz.tapeState.Load().(container).v.(mapper.CartTapeState)
 	}
 
-	_, lz.IsPlusROM = lz.plusROM.Load().(*plusrom.PlusROM)
+	_, lz.IsPlusROM = lz.plusROM.Load().(container).v.(*plusrom.PlusROM)
 	if lz.IsPlusROM {
 		lz.PlusROMAddrInfo, _ = lz.plusROMAddrInfo.Load().(plusrom.AddrInfo)
 		lz.PlusROMRecvBuff, _ = lz.plusROMRecvBuff.Load().([]uint8)
 		lz.PlusROMSendBuff, _ = lz.plusROMSendBuff.Load().([]uint8)
+	}
+
+	_, lz.HasCoProcBus = lz.coProcBus.Load().(container).v.(mapper.CartCoProcBus)
+	if lz.HasCoProcBus {
+		lz.CoProcID, _ = lz.coprocID.Load().(string)
 	}
 }

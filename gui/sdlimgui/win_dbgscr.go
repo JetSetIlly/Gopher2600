@@ -387,11 +387,11 @@ func (win *winDbgScr) drawCoordsLine() {
 func (win *winDbgScr) drawOverlayCombo() {
 	imgui.PushItemWidth(win.overlayComboDim.X + imgui.FrameHeight())
 
-	// change coprocessor text to CoProc.ID if a coprocessor is present
+	// change coprocessor text to CoProcID if a coprocessor is present
 	v := win.img.screen.crit.overlay
 	if v == reflection.OverlayLabels[reflection.OverlayCoproc] {
-		if win.img.lz.CoProc.HasCoProcBus {
-			v = win.img.lz.CoProc.ID
+		if win.img.lz.Cart.HasCoProcBus {
+			v = win.img.lz.Cart.CoProcID
 		} else {
 			// it's possible for the coprocessor overlay to be selected and
 			// then a different ROM loaded that has no coprocessor. in this
@@ -409,10 +409,10 @@ func (win *winDbgScr) drawOverlayCombo() {
 					win.img.screen.crit.overlay = s
 					win.img.screen.plotOverlay()
 				}
-			} else if win.img.lz.CoProc.HasCoProcBus {
+			} else if win.img.lz.Cart.HasCoProcBus {
 				// if ROM has a coprocessor change the option label to the
 				// appropriate coprocessor ID
-				if imgui.Selectable(win.img.lz.CoProc.ID) {
+				if imgui.Selectable(win.img.lz.Cart.CoProcID) {
 					// we still store the "Coprocessor" string and not the ID
 					// string. this way we don't need any fancy conditions
 					// elsewhere
@@ -452,7 +452,7 @@ func (win *winDbgScr) drawOverlayColorKey() {
 		imgui.SameLineV(0, 20)
 
 		// display text includes coprocessor ID
-		key := fmt.Sprintf("%s Active", win.img.lz.CoProc.ID)
+		key := fmt.Sprintf("%s Active", win.img.lz.Cart.CoProcID)
 		imguiColorLabel(key, win.img.cols.reflectionColors[reflection.CoprocessorActive])
 	}
 }
@@ -599,7 +599,7 @@ func (win *winDbgScr) drawReflectionTooltip() {
 		case reflection.OverlayLabels[reflection.OverlayCoproc]:
 			imguiSeparator()
 			if ref.CoprocessorActive {
-				imgui.Text(fmt.Sprintf("%s is working", win.img.lz.CoProc.ID))
+				imgui.Text(fmt.Sprintf("%s is working", win.img.lz.Cart.CoProcID))
 			} else {
 				imgui.Text("6507 program is running")
 			}
