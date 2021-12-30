@@ -17,4 +17,7 @@
 // from any program running on a coprocessor that may be present in an attached
 // VCS cartridge. For example, CDFJ mapped cartridges have an ARM7TDMI
 // available.
+//
+// Package coprocessor contains type definitions are interfaces that are used
+// to communicate with cartridge coprocessors.
 package coprocessor

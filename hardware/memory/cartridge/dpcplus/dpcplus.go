@@ -121,6 +121,11 @@ func (cart *dpcPlus) SetDisassembler(disasm mapper.CartCoProcDisassembler) {
 	cart.arm.SetDisassembler(disasm)
 }
 
+// SetDeveloper implements the mapper.CartCoProcBus interface.
+func (cart *dpcPlus) SetDeveloper(dev mapper.CartCoProcDeveloper) {
+	cart.arm.SetDeveloper(dev)
+}
+
 // ID implements the mapper.CartMapper interface.
 func (cart *dpcPlus) ID() string {
 	return cart.mappingID

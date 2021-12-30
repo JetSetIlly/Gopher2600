@@ -25,6 +25,7 @@ import (
 	"github.com/jetsetilly/gopher2600/bots/wrangler"
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/comparison"
+	coprocDisasm "github.com/jetsetilly/gopher2600/coprocessor/disassembly"
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/debugger/dbgmem"
 	"github.com/jetsetilly/gopher2600/debugger/script"
@@ -119,7 +120,8 @@ type Debugger struct {
 	// cartridge disassembly
 	//
 	// * allocated when entering debugger mode
-	Disasm *disassembly.Disassembly
+	Disasm       *disassembly.Disassembly
+	CoProcDisasm *coprocDisasm.CoProcessor
 
 	// the bank and formatted result of the last step (cpu or video)
 	lastBank   mapper.BankInfo
@@ -339,11 +341,9 @@ func NewDebugger(create CreateUserInterface, spec string, useSavekey bool, fpsCa
 	}
 
 	// create a new disassembly instance
-	if dbg.Disasm == nil {
-		dbg.Disasm, dbg.dbgmem.Sym, err = disassembly.NewDisassembly(dbg.vcs)
-		if err != nil {
-			return nil, curated.Errorf("debugger: %v", err)
-		}
+	dbg.Disasm, dbg.dbgmem.Sym, err = disassembly.NewDisassembly(dbg.vcs)
+	if err != nil {
+		return nil, curated.Errorf("debugger: %v", err)
 	}
 
 	// create a minimal lastResult for initialisation
@@ -1003,6 +1003,11 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) 
 	dbg.counter.Clear()
 
 	err = dbg.Disasm.FromMemory()
+	if err != nil {
+		return err
+	}
+
+	dbg.CoProcDisasm = coprocDisasm.NewCoProcessorDisasm(dbg.vcs, dbg.vcs.Mem.Cart)
 	if err != nil {
 		return err
 	}

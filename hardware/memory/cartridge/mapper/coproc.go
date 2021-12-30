@@ -41,11 +41,17 @@ type CartCoProcDisassembler interface {
 	End(CartCoProcDisasmSummary)
 }
 
+// CartCoProcDeveloper is used by the coprocessor to provide functions
+// available to developers when the source code is available.
+type CartCoProcDeveloper interface {
+}
+
 // CartCoProcBus is implemented by cartridge mappers that have a coprocessor that
 // functions independently from the VCS.
 type CartCoProcBus interface {
 	CoProcID() string
 	SetDisassembler(CartCoProcDisassembler)
+	SetDeveloper(CartCoProcDeveloper)
 }
 
 // CartCoProcDisassemblerStdout is a minimial implementation of the CartCoProcDisassembler

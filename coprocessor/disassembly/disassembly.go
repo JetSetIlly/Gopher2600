@@ -13,7 +13,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-package coprocessor
+package disassembly
 
 import (
 	"sort"
@@ -45,9 +45,9 @@ type CoProcessor struct {
 	lastStart coords.TelevisionCoords
 }
 
-// Add returns a new Coprocessor instance if cartridge implements the
+// NewCoProcessorDisasm returns a new Coprocessor instance if cartridge implements the
 // coprocessor bus.
-func Add(vcs *hardware.VCS, cart *cartridge.Cartridge) *CoProcessor {
+func NewCoProcessorDisasm(vcs *hardware.VCS, cart *cartridge.Cartridge) *CoProcessor {
 	cop := &CoProcessor{
 		vcs:           vcs,
 		lastExecution: make([]mapper.CartCoProcDisasmEntry, 0, 1024),

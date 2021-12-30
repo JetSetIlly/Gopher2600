@@ -126,6 +126,11 @@ func (cart *cdf) SetDisassembler(disasm mapper.CartCoProcDisassembler) {
 	cart.arm.SetDisassembler(disasm)
 }
 
+// SetDeveloper implements the mapper.CartCoProcBus interface.
+func (cart *cdf) SetDeveloper(dev mapper.CartCoProcDeveloper) {
+	cart.arm.SetDeveloper(dev)
+}
+
 // ID implements the mapper.CartMapper interface.
 func (cart *cdf) ID() string {
 	return cart.version.submapping

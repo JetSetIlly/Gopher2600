@@ -130,6 +130,12 @@ type ARM struct {
 	// the next disasmEntry to send to attached disassembler
 	disasmEntry DisasmEntry
 
+	// interface to an option development package
+	dev mapper.CartCoProcDeveloper
+
+	// the number of times an instruction has run
+	devHeatmap map[uint32]int
+
 	// \/\/\/ the following fields relate to cycle counting. there's a possible
 	// optimisation whereby we don't do any cycle counting at all (or minimise
 	// it at least) if the emulation is running in immediate mode
@@ -212,6 +218,7 @@ func NewARM(mmap memorymodel.Map, prefs *preferences.ARMPreferences, mem SharedM
 		hook:            hook,
 		executionMap:    make(map[uint32][]func(_ uint16)),
 		disasmCache:     make(map[uint32]DisasmEntry),
+		devHeatmap:      make(map[uint32]int),
 		illegalAccesses: make(map[string]bool),
 	}
 
@@ -249,6 +256,11 @@ func (arm *ARM) CoProcID() string {
 // SetDisassembler implements the mapper.CartCoProcBus interface.
 func (arm *ARM) SetDisassembler(disasm mapper.CartCoProcDisassembler) {
 	arm.disasm = disasm
+}
+
+// SetDeveloper implements the mapper.CartCoProcBus interface.
+func (arm *ARM) SetDeveloper(dev mapper.CartCoProcDeveloper) {
+	arm.dev = dev
 }
 
 // Plumb should be used to update the shared memory reference.
@@ -609,6 +621,16 @@ func (arm *ARM) Run(mamcr uint32) (uint32, float32, error) {
 				arm.disasmEntry.Cycles = 0.0
 				arm.disasmEntry.ExecutionNotes = ""
 				arm.disasmEntry.updateNotes = false
+			}
+
+		}
+
+		// accumulate heatmap
+		if arm.dev != nil {
+			if c, ok := arm.devHeatmap[arm.executingPC]; ok {
+				arm.devHeatmap[arm.executingPC] = c + 1
+			} else {
+				arm.devHeatmap[arm.executingPC] = 1
 			}
 		}
 

@@ -22,7 +22,6 @@ import (
 
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/curated"
-	"github.com/jetsetilly/gopher2600/disassembly/coprocessor"
 	"github.com/jetsetilly/gopher2600/disassembly/symbols"
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/cpu"
@@ -48,9 +47,6 @@ type Disassembly struct {
 
 	// indexed by bank and address. address should be masked with memorymap.CartridgeBits before access
 	entries [][]*Entry
-
-	// any cartridge coprocessor that we find
-	Coprocessor *coprocessor.CoProcessor
 
 	// critical sectioning. the iteration functions in particular may be called
 	// from a different goroutine. entries in the (disasm array) will likely be
@@ -176,8 +172,6 @@ func (dsm *Disassembly) FromMemory() error {
 	// create a new NoFlowControl CPU to help disassemble memory
 	mc := cpu.NewCPU(nil, mem)
 	mc.NoFlowControl = true
-
-	dsm.Coprocessor = coprocessor.Add(dsm.vcs, dsm.vcs.Mem.Cart)
 
 	dsm.crit.Unlock()
 	// end of critical section

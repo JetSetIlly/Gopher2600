@@ -20,7 +20,7 @@ import (
 	"os"
 
 	"github.com/inkyblackness/imgui-go/v4"
-	"github.com/jetsetilly/gopher2600/disassembly/coprocessor"
+	"github.com/jetsetilly/gopher2600/coprocessor/disassembly"
 	"github.com/jetsetilly/gopher2600/emulation"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm7tdmi"
 	"github.com/jetsetilly/gopher2600/logger"
@@ -70,7 +70,7 @@ func (win *winCoProcDisasm) draw() {
 		return
 	}
 
-	if !win.img.lz.Cart.HasCoProcBus {
+	if !win.img.lz.Cart.HasCoProcBus || win.img.dbg.CoProcDisasm == nil {
 		return
 	}
 
@@ -83,9 +83,9 @@ func (win *winCoProcDisasm) draw() {
 	defer imgui.End()
 
 	// show enable button only if coprocessor disassembly is disabled
-	if !win.img.dbg.Disasm.Coprocessor.IsEnabled() {
+	if !win.img.dbg.CoProcDisasm.IsEnabled() {
 		if imgui.Button("Enable disassembly") {
-			win.img.dbg.Disasm.Coprocessor.Enable(true)
+			win.img.dbg.CoProcDisasm.Enable(true)
 			if win.img.emulation.State() != emulation.Running {
 				// rerun the last two frames in order to gather as much disasm
 				// information as possible.
@@ -94,7 +94,7 @@ func (win *winCoProcDisasm) draw() {
 		}
 	} else {
 		if imgui.Button("Disable disassembly") {
-			win.img.dbg.Disasm.Coprocessor.Enable(false)
+			win.img.dbg.CoProcDisasm.Enable(false)
 		}
 	}
 
@@ -102,19 +102,19 @@ func (win *winCoProcDisasm) draw() {
 
 	imgui.BeginTabBar("")
 	if imgui.BeginTabItem("Disassembly") {
-		itr := win.img.dbg.Disasm.Coprocessor.NewIteration(coprocessor.Disassembly)
+		itr := win.img.dbg.CoProcDisasm.NewIteration(disassembly.Disassembly)
 		win.drawDisasm(itr)
 		imgui.EndTabItem()
 	}
 	if imgui.BeginTabItem("Last Execution") {
-		itr := win.img.dbg.Disasm.Coprocessor.NewIteration(coprocessor.LastExecution)
+		itr := win.img.dbg.CoProcDisasm.NewIteration(disassembly.LastExecution)
 		win.drawLastExecution(itr)
 		imgui.EndTabItem()
 	}
 	imgui.EndTabBar()
 }
 
-func (win *winCoProcDisasm) drawDisasm(itr *coprocessor.Iterate) {
+func (win *winCoProcDisasm) drawDisasm(itr *disassembly.Iterate) {
 	if itr.Count == 0 {
 		imgui.Spacing()
 		imgui.Text("Coprocessor has not yet executed.")
@@ -122,7 +122,7 @@ func (win *winCoProcDisasm) drawDisasm(itr *coprocessor.Iterate) {
 		return
 	}
 
-	if !win.img.dbg.Disasm.Coprocessor.IsEnabled() {
+	if !win.img.dbg.CoProcDisasm.IsEnabled() {
 		imgui.Spacing()
 		imgui.Text("Execution disassembly is disabled. Disassembly below may be")
 		imgui.Text("incomplete. Last disassembly was at:")
@@ -133,7 +133,7 @@ func (win *winCoProcDisasm) drawDisasm(itr *coprocessor.Iterate) {
 	win.drawIteration(itr, false)
 }
 
-func (win *winCoProcDisasm) drawLastExecution(itr *coprocessor.Iterate) {
+func (win *winCoProcDisasm) drawLastExecution(itr *disassembly.Iterate) {
 	if itr.Count == 0 {
 		imgui.Spacing()
 		imgui.Text("Execution disassembly is disabled")
@@ -176,7 +176,7 @@ func (win *winCoProcDisasm) drawLastExecution(itr *coprocessor.Iterate) {
 	})
 }
 
-func (win *winCoProcDisasm) drawIteration(itr *coprocessor.Iterate, adjustHeightForSummary bool) {
+func (win *winCoProcDisasm) drawIteration(itr *disassembly.Iterate, adjustHeightForSummary bool) {
 	height := imguiRemainingWinHeight()
 
 	if adjustHeightForSummary {
@@ -295,13 +295,13 @@ func (win *winCoProcDisasm) drawIteration(itr *coprocessor.Iterate, adjustHeight
 }
 
 func (win *winCoProcDisasm) save() {
-	var itr *coprocessor.Iterate
+	var itr *disassembly.Iterate
 	var fn string
 	if win.showLastExecution {
-		itr = win.img.dbg.Disasm.Coprocessor.NewIteration(coprocessor.LastExecution)
+		itr = win.img.dbg.CoProcDisasm.NewIteration(disassembly.LastExecution)
 		fn = unique.Filename("coproc_lastexecution", "")
 	} else {
-		itr = win.img.dbg.Disasm.Coprocessor.NewIteration(coprocessor.Disassembly)
+		itr = win.img.dbg.CoProcDisasm.NewIteration(disassembly.Disassembly)
 		fn = unique.Filename("coproc_disasm", "")
 	}
 
