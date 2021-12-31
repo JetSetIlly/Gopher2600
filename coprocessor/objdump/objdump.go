@@ -21,18 +21,26 @@
 package objdump
 
 import (
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 
 	"github.com/jetsetilly/gopher2600/curated"
 )
 
+type Entry struct {
+	Asm string
+	Src *string
+}
+
 // ObjDump contains the parsed information from the obj file.
 type ObjDump struct {
-	lines []string
+	asm map[uint32]Entry
+	src []string
 }
 
 const objFile = "armcode.obj"
@@ -77,7 +85,10 @@ func findObjDump(pathToROM string) *os.File {
 // NewObjDump loads and parses a obj file. Returns a new instance of Mapfile or
 // any errors.
 func NewObjDump(pathToROM string) (*ObjDump, error) {
-	obj := &ObjDump{}
+	obj := &ObjDump{
+		src: make([]string, 0),
+		asm: make(map[uint32]Entry),
+	}
 
 	sf := findObjDump(pathToROM)
 	if sf == nil {
@@ -89,61 +100,52 @@ func NewObjDump(pathToROM string) (*ObjDump, error) {
 	if err != nil {
 		return nil, curated.Errorf("objfile: processing error: %v", err)
 	}
-	obj.lines = strings.Split(string(data), "\n")
+	lines := strings.Split(string(data), "\n")
+
+	var src strings.Builder
+
+	asmMatch, err := regexp.Compile("^[[:xdigit:]]{8}:.*$")
+	if err != nil {
+		panic(fmt.Sprintf("objdump: %s", err.Error()))
+	}
+
+	srcIdx := -1
+
+	for _, l := range lines {
+		if asmMatch.Match([]byte(l)) {
+			var addr uint32
+			var asm string
+
+			a, err := strconv.ParseUint(l[:8], 16, 32)
+			if err == nil {
+				if src.Len() > 0 {
+					obj.src = append(obj.src, src.String())
+					srcIdx++
+					src.Reset()
+				}
+
+				addr = uint32(a)
+				asm = strings.TrimSpace(l[9:])
+				obj.asm[addr] = Entry{
+					Asm: asm,
+					Src: &obj.src[srcIdx],
+				}
+			}
+		} else {
+			var a, b string
+			n, _ := fmt.Sscanf(l, "%8x <%s>\n", &a, &b)
+			if n != 2 {
+				src.WriteString(l)
+				src.WriteRune('\n')
+			}
+		}
+	}
 
 	return obj, nil
-}
-
-// FindDataAccess returns the data label for the supplied address. Addresses
-// will be matched exactly.
-func (obj *ObjDump) FindDataAccess(address uint32) string {
-	return ""
 }
 
 // FindProgramAccess returns the program (function) label for the supplied
 // address. Addresses may be in a range.
 func (obj *ObjDump) FindProgramAccess(address uint32) string {
-	var start int
-	var end int
-
-	src := false
-
-	for i, l := range obj.lines {
-		flds := strings.Fields(l)
-		if len(flds) == 0 {
-			continue
-		}
-
-		if len(flds) >= 2 {
-			if flds[0][len(flds[0])-1] == ':' {
-				if src {
-					end = i
-					src = false
-				}
-
-				v, err := strconv.ParseInt(flds[0][:len(flds[0])-1], 16, 64)
-				pc := uint32(v)
-				if err == nil {
-					if pc == address {
-						break // for loop
-					}
-				}
-			} else if !src {
-				start = i
-				src = true
-			}
-		}
-
-	}
-
-	s := strings.Builder{}
-
-	if end > start {
-		for _, l := range obj.lines[start:end] {
-			s.WriteString(l)
-			s.WriteString("\n")
-		}
-	}
-
-	return strings.TrimRight(s.String(), "\n")
+	return *obj.asm[address].Src
 }
