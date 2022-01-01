@@ -30,7 +30,7 @@ type Developer struct {
 	mapfile *mapfile.Mapfile
 
 	// obj dump for binary (if available)
-	objdump *objdump.ObjDump
+	Source *objdump.ObjDump
 }
 
 // NewDeveloper is the preferred method of initialisation for the Developer type.
@@ -52,7 +52,7 @@ func NewDeveloper(pathToROM string, cart mapper.CartCoProcBus) *Developer {
 		logger.Logf("developer", err.Error())
 	}
 
-	dev.objdump, err = objdump.NewObjDump(pathToROM)
+	dev.Source, err = objdump.NewObjDump(pathToROM)
 	if err != nil {
 		logger.Logf("developer", err.Error())
 	}
@@ -65,14 +65,14 @@ func (dev *Developer) LookupSource(addr uint32) {
 	if dev.mapfile != nil {
 		programLabel := dev.mapfile.FindProgramAccess(addr)
 		if programLabel != "" {
-			logger.Logf("developer", "mapfile: previous memory access:\n\t%s()", programLabel)
+			logger.Logf("developer", "mapfile: %s()", programLabel)
 		}
 	}
 
-	if dev.objdump != nil {
-		src := dev.objdump.FindProgramAccess(addr)
+	if dev.Source != nil {
+		src := dev.Source.FindProgramAccess(addr)
 		if src != "" {
-			logger.Logf("developer", "objdump:\n%s", src)
+			logger.Logf("developer", "objdump: %s", src)
 		}
 
 	}

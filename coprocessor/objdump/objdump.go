@@ -23,24 +23,49 @@ package objdump
 import (
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 
 	"github.com/jetsetilly/gopher2600/curated"
+	"github.com/jetsetilly/gopher2600/logger"
 )
 
-type Entry struct {
-	Asm string
-	Src *string
+// asmEntry associates an asm asmEntry with a block of source (which might be a
+// single line)
+type asmEntry struct {
+	asm string
+	src *line
+}
+
+// asmEntry associates an asm asmEntry with a block of source (which might be a
+// single line)
+type srcEntry struct {
+	block string
+	addr  []uint32
+}
+
+type line struct {
+	file    *file
+	number  int // counting from one
+	content string
+	asm     []*asmEntry
+}
+
+type file struct {
+	filename string
+	lines    []line
 }
 
 // ObjDump contains the parsed information from the obj file.
 type ObjDump struct {
-	asm map[uint32]Entry
-	src []string
+	files     map[string]*file
+	files_key []string
+	asm       map[uint32]asmEntry
 }
 
 const objFile = "armcode.obj"
@@ -82,64 +107,135 @@ func findObjDump(pathToROM string) *os.File {
 	return nil
 }
 
-// NewObjDump loads and parses a obj file. Returns a new instance of Mapfile or
-// any errors.
-func NewObjDump(pathToROM string) (*ObjDump, error) {
-	obj := &ObjDump{
-		src: make([]string, 0),
-		asm: make(map[uint32]Entry),
+func readSourceFile(filename string, pathToROM string) (*file, error) {
+	// remove superfluous path direction
+	filename = filepath.Clean(filename)
+
+	fl := file{
+		filename: filename,
 	}
 
+	var err error
+	var b []byte
+
+	// try to open file. first as a path relative to the ROM and if that fails,
+	// as an absolute path
+	b, err = ioutil.ReadFile(filepath.Join(filepath.Dir(pathToROM), filename))
+	if err != nil {
+		b, err = ioutil.ReadFile(filename)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// split files into lines
+	for i, s := range strings.Split(string(b), "\n") {
+		fl.lines = append(fl.lines, line{
+			file:    &fl,
+			number:  i + 1,
+			content: s,
+		})
+	}
+
+	return &fl, nil
+}
+
+// NewObjDump loads and parses an obj file. Returns a new instance of ObjDump
+// or any errors.
+func NewObjDump(pathToROM string) (*ObjDump, error) {
+	obj := &ObjDump{
+		files:     make(map[string]*file),
+		files_key: make([]string, 0),
+		asm:       make(map[uint32]asmEntry),
+	}
+
+	// find objdump file and open it
 	sf := findObjDump(pathToROM)
 	if sf == nil {
 		return nil, curated.Errorf("objfile: gcc .obj file not available (%s)", objFile)
 	}
 	defer sf.Close()
 
+	// read all data, split into lines
 	data, err := io.ReadAll(sf)
 	if err != nil {
 		return nil, curated.Errorf("objfile: processing error: %v", err)
 	}
 	lines := strings.Split(string(data), "\n")
 
-	var src strings.Builder
-
 	asmMatch, err := regexp.Compile("^[[:xdigit:]]{8}:.*$")
 	if err != nil {
 		panic(fmt.Sprintf("objdump: %s", err.Error()))
 	}
 
-	srcIdx := -1
+	fileMatch, err := regexp.Compile("^[[:print:]]+:[[:digit:]]+$")
+	if err != nil {
+		panic(fmt.Sprintf("objdump: %s", err.Error()))
+	}
 
-	for _, l := range lines {
-		if asmMatch.Match([]byte(l)) {
-			var addr uint32
-			var asm string
+	// map of ReadFile errors already seen, so we don't print the same error
+	// over and over
+	fileNotFound := make(map[string]bool)
 
-			a, err := strconv.ParseUint(l[:8], 16, 32)
-			if err == nil {
-				if src.Len() > 0 {
-					obj.src = append(obj.src, src.String())
-					srcIdx++
-					src.Reset()
-				}
+	var currentLine *line
 
-				addr = uint32(a)
-				asm = strings.TrimSpace(l[9:])
-				obj.asm[addr] = Entry{
-					Asm: asm,
-					Src: &obj.src[srcIdx],
-				}
+	for _, ol := range lines {
+		if fileMatch.Match([]byte(ol)) {
+			fm := strings.Split(ol, ":")
+			if len(fm) != 2 {
+				logger.Log("objdump", "malformed filename/linenumber entry")
+				continue // for loop
 			}
-		} else {
-			var a, b string
-			n, _ := fmt.Sscanf(l, "%8x <%s>\n", &a, &b)
-			if n != 2 {
-				src.WriteString(l)
-				src.WriteRune('\n')
+
+			// file has not been seen before
+			if _, ok := obj.files[fm[0]]; !ok {
+				var err error
+				obj.files[fm[0]], err = readSourceFile(fm[0], pathToROM)
+
+				if err != nil {
+					delete(obj.files, fm[0])
+					if _, ok := fileNotFound[err.Error()]; !ok {
+						fileNotFound[err.Error()] = true
+						logger.Log("objdump", err.Error())
+					}
+
+					continue // for loop
+				}
+
+				// add filename to list of keys
+				obj.files_key = append(obj.files_key, fm[0])
+			}
+
+			// parse line number directive and note current line
+			ln, err := strconv.ParseUint(fm[1], 10, 32)
+			if err != nil {
+				logger.Log("objdump", err.Error())
+				continue
+			}
+
+			// we index lines from zero but lines are counted from one in the objdump
+			ln -= 1
+
+			currentLine = &obj.files[fm[0]].lines[ln]
+
+		} else if asmMatch.Match([]byte(ol)) {
+			addr, err := strconv.ParseUint(ol[:8], 16, 32)
+			if err == nil {
+				if currentLine != nil {
+					obj.asm[uint32(addr)] = asmEntry{
+						asm: strings.TrimSpace(ol[9:]),
+						src: currentLine,
+					}
+
+					asmEntry := obj.asm[uint32(addr)]
+					currentLine.asm = append(currentLine.asm, &asmEntry)
+				}
 			}
 		}
 	}
+
+	// sort list of filename keys
+	sort.Strings(obj.files_key)
 
 	return obj, nil
 }
@@ -147,5 +243,21 @@ func NewObjDump(pathToROM string) (*ObjDump, error) {
 // FindProgramAccess returns the program (function) label for the supplied
 // address. Addresses may be in a range.
 func (obj *ObjDump) FindProgramAccess(address uint32) string {
-	return *obj.asm[address].Src
+	asm := obj.asm[address]
+	return fmt.Sprintf("%s:%d\n%s", asm.src.file.filename, asm.src.number, asm.src.content)
+}
+
+// dump everything to io.Writer.
+func (obj *ObjDump) dump(w io.Writer) {
+	for fn, f := range obj.files {
+		w.Write([]byte(fmt.Sprintf("%s\n", fn)))
+		w.Write([]byte(fmt.Sprintf("-------\n")))
+
+		for _, ln := range f.lines {
+			w.Write([]byte(fmt.Sprintf("%d:\t%s\n", ln.number, ln.content)))
+			for _, asm := range ln.asm {
+				w.Write([]byte(fmt.Sprintf("%s\n", asm.asm)))
+			}
+		}
+	}
 }

@@ -100,7 +100,7 @@ func (win *winCoProcDisasm) draw() {
 
 	imguiSeparator()
 
-	imgui.BeginTabBar("")
+	imgui.BeginTabBar("##coprocDisasmTabBar")
 	if imgui.BeginTabItem("Disassembly") {
 		itr := win.img.dbg.CoProcDisasm.NewIteration(coprocessor.IterateComplete)
 		win.drawDisasm(itr)
