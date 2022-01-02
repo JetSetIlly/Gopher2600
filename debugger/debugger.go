@@ -25,7 +25,8 @@ import (
 	"github.com/jetsetilly/gopher2600/bots/wrangler"
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/comparison"
-	"github.com/jetsetilly/gopher2600/coprocessor"
+	coprocDev "github.com/jetsetilly/gopher2600/coprocessor/developer"
+	coprocDisasm "github.com/jetsetilly/gopher2600/coprocessor/disassembly"
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/debugger/dbgmem"
 	"github.com/jetsetilly/gopher2600/debugger/script"
@@ -121,8 +122,8 @@ type Debugger struct {
 	//
 	// * allocated when entering debugger mode
 	Disasm       *disassembly.Disassembly
-	CoProcDisasm *coprocessor.Disassembly
-	CoProcDev    *coprocessor.Developer
+	CoProcDisasm *coprocDisasm.Disassembly
+	CoProcDev    *coprocDev.Developer
 
 	// the bank and formatted result of the last step (cpu or video)
 	lastBank   mapper.BankInfo
@@ -1009,8 +1010,8 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) 
 	}
 
 	coproc := dbg.vcs.Mem.Cart.GetCoProcBus()
-	dbg.CoProcDisasm = coprocessor.NewDisassembly(dbg.vcs.TV, coproc)
-	dbg.CoProcDev = coprocessor.NewDeveloper(cartload.Filename, coproc)
+	dbg.CoProcDisasm = coprocDisasm.NewDisassembly(dbg.vcs.TV, coproc)
+	dbg.CoProcDev = coprocDev.NewDeveloper(cartload.Filename, coproc)
 
 	// make sure everything is reset after disassembly (including breakpoints, etc.)
 	dbg.reset(true)

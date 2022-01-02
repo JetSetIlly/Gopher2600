@@ -13,13 +13,9 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-// Package coprocessor contains the helper functions for cartridge
-// coprocessors. In practice this means the ARM processor but we'll try to keep
-// it general in case of future developments in the 2600 scene.
+// Package disassembly facilitates the disassembly of any coprocessor program
+// in compatible ROM.
 //
-// The two subpackages, developer and disassembly, are distinct. The reason for
-// the distinction is this: the developer package will only be used if the
-// development files for the emulated ROM can be found. The disassembly package
-// meanwhile, will work with any ROM and will endeavour to provide an accurate
-// disassembly of the running coprocessor program.
-package coprocessor
+// Should not be confused with the disassembly package in the project root,
+// which handles disassembly of the 6507 program.
+package disassembly

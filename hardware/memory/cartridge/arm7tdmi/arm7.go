@@ -183,6 +183,9 @@ type ARM struct {
 
 	// illegal accesses already encountered. duplicate accesses will not be logged.
 	illegalAccesses map[string]bool
+
+	// addresses of instructions that have been executed
+	executedAddresses map[uint32]float32
 }
 
 type disasmLevel int
@@ -265,6 +268,10 @@ func (arm *ARM) reset() error {
 
 	arm.memoryError = false
 
+	if arm.dev != nil {
+		arm.executedAddresses = make(map[uint32]float32)
+	}
+
 	return arm.findProgramMemory()
 }
 
@@ -311,6 +318,19 @@ func (arm *ARM) Step(vcsClock float32) {
 	arm.timer.stepFromVCS(Clk, vcsClock)
 }
 
+// the read/write functions will sometimes be asked to access memory that is
+// "illegal". this function logs the error with as much information as it can
+func (arm *ARM) logSourceAccess(tag string, addr uint32) {
+	logger.Logf("ARM7", "%s: unrecognised address %08x (PC: %08x)", tag, addr, arm.executingPC)
+	if arm.dev == nil {
+		return
+	}
+	ref := arm.dev.LookupSource(arm.executingPC)
+	if ref.Filename != "" {
+		logger.Logf("ARM7", "%s: %s:%d in %s\n%s", tag, ref.Filename, ref.LineNumber, ref.Function, ref.Content)
+	}
+}
+
 func (arm *ARM) read8bit(addr uint32) uint8 {
 	var mem *[]uint8
 
@@ -328,10 +348,7 @@ func (arm *ARM) read8bit(addr uint32) uint8 {
 		accessKey := fmt.Sprintf("%08x%08x", addr, arm.executingPC)
 		if _, ok := arm.illegalAccesses[accessKey]; !ok {
 			arm.illegalAccesses[accessKey] = true
-			logger.Logf("ARM7", "read8bit: unrecognised address %08x (PC: %08x)", addr, arm.executingPC)
-			if arm.dev != nil {
-				arm.dev.LookupSource(arm.executingPC)
-			}
+			arm.logSourceAccess("read8bit", addr)
 		}
 		return 0
 	}
@@ -356,10 +373,7 @@ func (arm *ARM) write8bit(addr uint32, val uint8) {
 		accessKey := fmt.Sprintf("%08x%08x", addr, arm.executingPC)
 		if _, ok := arm.illegalAccesses[accessKey]; !ok {
 			arm.illegalAccesses[accessKey] = true
-			logger.Logf("ARM7", "write8bit: unrecognised address %08x (PC: %08x)", addr, arm.executingPC)
-			if arm.dev != nil {
-				arm.dev.LookupSource(arm.executingPC)
-			}
+			arm.logSourceAccess("write8bit", addr)
 		}
 		return
 	}
@@ -389,10 +403,7 @@ func (arm *ARM) read16bit(addr uint32) uint16 {
 		accessKey := fmt.Sprintf("%08x%08x", addr, arm.executingPC)
 		if _, ok := arm.illegalAccesses[accessKey]; !ok {
 			arm.illegalAccesses[accessKey] = true
-			logger.Logf("ARM7", "read16bit: unrecognised address %08x (PC: %08x)", addr, arm.executingPC)
-			if arm.dev != nil {
-				arm.dev.LookupSource(arm.executingPC)
-			}
+			arm.logSourceAccess("read16bit", addr)
 		}
 		return 0
 	}
@@ -422,10 +433,7 @@ func (arm *ARM) write16bit(addr uint32, val uint16) {
 		accessKey := fmt.Sprintf("%08x%08x", addr, arm.executingPC)
 		if _, ok := arm.illegalAccesses[accessKey]; !ok {
 			arm.illegalAccesses[accessKey] = true
-			logger.Logf("ARM7", "write16bit: unrecognised address %08x (PC: %08x)", addr, arm.executingPC)
-			if arm.dev != nil {
-				arm.dev.LookupSource(arm.executingPC)
-			}
+			arm.logSourceAccess("write16bit", addr)
 		}
 		return
 	}
@@ -456,10 +464,7 @@ func (arm *ARM) read32bit(addr uint32) uint32 {
 		accessKey := fmt.Sprintf("%08x%08x", addr, arm.executingPC)
 		if _, ok := arm.illegalAccesses[accessKey]; !ok {
 			arm.illegalAccesses[accessKey] = true
-			logger.Logf("ARM7", "read32bit: unrecognised address %08x (PC: %08x)", addr, arm.executingPC)
-			if arm.dev != nil {
-				arm.dev.LookupSource(arm.executingPC)
-			}
+			arm.logSourceAccess("read32bit", addr)
 		}
 		return 0
 	}
@@ -489,10 +494,7 @@ func (arm *ARM) write32bit(addr uint32, val uint32) {
 		accessKey := fmt.Sprintf("%08x%08x", addr, arm.executingPC)
 		if _, ok := arm.illegalAccesses[accessKey]; !ok {
 			arm.illegalAccesses[accessKey] = true
-			logger.Logf("ARM7", "write32bit: unrecognised address %08x (PC: %08x)", addr, arm.executingPC)
-			if arm.dev != nil {
-				arm.dev.LookupSource(arm.executingPC)
-			}
+			arm.logSourceAccess("write32bit", addr)
 		}
 		return
 	}
@@ -774,6 +776,11 @@ func (arm *ARM) Run(mamcr uint32) (uint32, float32, error) {
 			arm.disasm.Step(arm.disasmEntry)
 		}
 
+		// accumulate execution counts
+		if arm.dev != nil {
+			arm.executedAddresses[arm.executingPC] += arm.stretchedCycles
+		}
+
 		// reset cycle  information
 		if !arm.immediateMode {
 			arm.branchTrail = BranchTrailNotUsed
@@ -795,8 +802,15 @@ func (arm *ARM) Run(mamcr uint32) (uint32, float32, error) {
 	}
 
 	// end of program execution
+
+	// update disassembly
 	if arm.disasm != nil {
 		arm.disasm.End(programSummary)
+	}
+
+	// update developer
+	if arm.dev != nil {
+		arm.dev.ExecutionProfile(arm.executedAddresses)
 	}
 
 	if arm.executionError != nil {

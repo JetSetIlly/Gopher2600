@@ -16,6 +16,9 @@
 // Package disassembly coordinates the disassembly of Atari2600 (6507)
 // cartridges.
 //
+// Should not be confused with the disassembly sub-package that is found in the
+// coprocessor package.
+//
 // For quick disassemblies the FromCartridge() function can be used.  Debuggers
 // will probably find it more useful however, to disassemble from the memory of
 // an already instantiated VCS.

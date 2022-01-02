@@ -13,13 +13,12 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-// Package coprocessor contains the helper functions for cartridge
-// coprocessors. In practice this means the ARM processor but we'll try to keep
-// it general in case of future developments in the 2600 scene.
+// Package developer offers additional functionality to the developer of ROMs
+// that use a coprocessor. For instance, it handles the loading of .map and
+// .obj files if they have been generated during the compilation of the 2600
+// ROM. The .map and .obj files are used to provide source code level
+// information during execution.
 //
-// The two subpackages, developer and disassembly, are distinct. The reason for
-// the distinction is this: the developer package will only be used if the
-// development files for the emulated ROM can be found. The disassembly package
-// meanwhile, will work with any ROM and will endeavour to provide an accurate
-// disassembly of the running coprocessor program.
-package coprocessor
+// Objdump type is a very basic parser for obj files as produced by "objdump
+// -S" on the base elf file that is used to create a cartridge binary
+package developer

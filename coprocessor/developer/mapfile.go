@@ -13,12 +13,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-// package map file is a very basic parser for GCC style mapfiles.
-// FindDataAccess() and FindProgramAccess() will return best-guess labels for
-// the supplied address.
-//
-// Map file must be in the working directory and be called "armcode.map"
-package mapfile
+package developer
 
 import (
 	"io"
@@ -35,8 +30,10 @@ type entry struct {
 	label   string
 }
 
-// Mapfile contains the parsed information from the map file.
-type Mapfile struct {
+// mapfile contains the parsed information from the map file. this supplements
+// the information found in the Source structure and provides a little more
+// detail that isn't easily retrieved with just the Source mechanism.
+type mapfile struct {
 	data    []entry
 	program []entry
 }
@@ -44,62 +41,73 @@ type Mapfile struct {
 const mapFile = "armcode.map"
 const mapFile_older = "custom2.map"
 
-func findMapFile(pathToROM string) *os.File {
+func findMapFile(romDir string) *os.File {
 	// current working directory
-	sf, err := os.Open(mapFile)
+	fl, err := os.Open(mapFile)
 	if err == nil {
-		return sf
+		return fl
 	}
 
-	dir := filepath.Dir(pathToROM)
-
 	// same direcotry as binary
-	sf, err = os.Open(filepath.Join(dir, mapFile))
+	fl, err = os.Open(filepath.Join(romDir, mapFile))
 	if err == nil {
-		return sf
+		return fl
 	}
 
 	// main sub-directory
-	sf, err = os.Open(filepath.Join(dir, "main", mapFile))
+	fl, err = os.Open(filepath.Join(romDir, "main", mapFile))
 	if err == nil {
-		return sf
+		return fl
 	}
 
 	// main/bin sub-directory
-	sf, err = os.Open(filepath.Join(dir, "main", "bin", mapFile))
+	fl, err = os.Open(filepath.Join(romDir, "main", "bin", mapFile))
 	if err == nil {
-		return sf
+		return fl
 	}
 
 	// custom/bin sub-directory. some older DPC+ sources uses this layout
-	sf, err = os.Open(filepath.Join(dir, "custom", "bin", mapFile_older))
+	fl, err = os.Open(filepath.Join(romDir, "custom", "bin", mapFile_older))
 	if err == nil {
-		return sf
+		return fl
+	}
+
+	// jetsetilly source tree
+	fl, err = os.Open(filepath.Join(romDir, "arm", "main.map"))
+	if err == nil {
+		return fl
 	}
 
 	return nil
 }
 
-// NewMapFile loads and parses a map file. Returns a new instance of Mapfile or
+// newMapFile loads and parses a map file. Returns a new instance of Mapfile or
 // any errors.
-func NewMapFile(pathToROM string) (*Mapfile, error) {
-	mf := &Mapfile{
+func newMapFile(pathToROM string) (*mapfile, error) {
+	mf := &mapfile{
 		data:    make([]entry, 0, 32),
 		program: make([]entry, 0, 32),
 	}
 
-	sf := findMapFile(pathToROM)
-	if sf == nil {
+	// path to ROM without the filename
+	romDir := filepath.Dir(pathToROM)
+
+	// find objdump file and open it
+	fl := findMapFile(romDir)
+	if fl == nil {
 		return nil, curated.Errorf("mapfile: gcc .map file not available (%s)", mapFile)
 	}
-	defer sf.Close()
+	defer fl.Close()
 
-	data, err := io.ReadAll(sf)
+	// read all data, split into lines
+	data, err := io.ReadAll(fl)
 	if err != nil {
 		return nil, curated.Errorf("mapfile: processing error: %v", err)
 	}
 	lines := strings.Split(string(data), "\n")
 
+	// find the start of mapfile that we're interested in. everything we skip
+	// is of no interest or misleading
 	for i, l := range lines {
 		if l == "Linker script and memory map" {
 			lines = lines[i:]
@@ -110,7 +118,9 @@ func NewMapFile(pathToROM string) (*Mapfile, error) {
 	var entryArray *[]entry
 	var deferredfunctionName string
 
+	// examine remaining lines of mapfile
 	for _, l := range lines {
+		// ignore empty lines
 		flds := strings.Fields(l)
 		if len(flds) == 0 {
 			continue // for loop
@@ -167,28 +177,17 @@ func NewMapFile(pathToROM string) (*Mapfile, error) {
 	return mf, nil
 }
 
-// FindDataAccess returns the data label for the supplied address. Addresses
-// will be matched exactly.
-func (mf *Mapfile) FindDataAccess(address uint32) string {
-	for _, e := range mf.data {
-		if address == e.address {
-			return e.label
-		}
-	}
-	return ""
-}
-
-// FindProgramAccess returns the program (function) label for the supplied
+// findProgramAccess returns the function name for the supplied
 // address. Addresses may be in a range.
-func (mf *Mapfile) FindProgramAccess(address uint32) string {
-	label := ""
+func (mf *mapfile) findProgramAccess(address uint32) string {
+	functionName := ""
 
 	for _, e := range mf.program {
 		if address < e.address {
-			return label
+			return functionName
 		}
-		label = e.label
+		functionName = e.label
 	}
 
-	return label
+	return functionName
 }

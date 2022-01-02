@@ -41,10 +41,21 @@ type CartCoProcDisassembler interface {
 	End(CartCoProcDisasmSummary)
 }
 
+// CoProcSourceReference is returned by CartCoProcDeveloper.LookupSource.
+type CoProcSourceReference struct {
+	Function   string
+	Filename   string
+	LineNumber int
+	Content    string
+}
+
 // CartCoProcDeveloper is used by the coprocessor to provide functions
 // available to developers when the source code is available.
 type CartCoProcDeveloper interface {
-	LookupSource(addr uint32)
+	LookupSource(addr uint32) CoProcSourceReference
+
+	// accumulate cycles for executed addresses
+	ExecutionProfile(addr map[uint32]float32)
 }
 
 // CartCoProcBus is implemented by cartridge mappers that have a coprocessor that

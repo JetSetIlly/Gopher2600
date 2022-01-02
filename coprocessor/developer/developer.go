@@ -13,11 +13,11 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-package coprocessor
+package developer
 
 import (
-	"github.com/jetsetilly/gopher2600/coprocessor/mapfile"
-	"github.com/jetsetilly/gopher2600/coprocessor/objdump"
+	"sync"
+
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/logger"
 )
@@ -27,10 +27,11 @@ type Developer struct {
 	cart mapper.CartCoProcBus
 
 	// mapfile for binary (if available)
-	mapfile *mapfile.Mapfile
+	mapfile *mapfile
 
 	// obj dump for binary (if available)
-	Source *objdump.ObjDump
+	source     *Source
+	sourceLock sync.Mutex
 }
 
 // NewDeveloper is the preferred method of initialisation for the Developer type.
@@ -47,12 +48,12 @@ func NewDeveloper(pathToROM string, cart mapper.CartCoProcBus) *Developer {
 
 	dev.cart.SetDeveloper(dev)
 
-	dev.mapfile, err = mapfile.NewMapFile(pathToROM)
+	dev.mapfile, err = newMapFile(pathToROM)
 	if err != nil {
 		logger.Logf("developer", err.Error())
 	}
 
-	dev.Source, err = objdump.NewObjDump(pathToROM)
+	dev.source, err = newSource(pathToROM)
 	if err != nil {
 		logger.Logf("developer", err.Error())
 	}
@@ -61,19 +62,42 @@ func NewDeveloper(pathToROM string, cart mapper.CartCoProcBus) *Developer {
 }
 
 // LookupSource implements the CartCoProcDeveloper interface.
-func (dev *Developer) LookupSource(addr uint32) {
+func (dev *Developer) LookupSource(addr uint32) mapper.CoProcSourceReference {
+	dev.sourceLock.Lock()
+	defer dev.sourceLock.Unlock()
+
+	var ref mapper.CoProcSourceReference
+
+	if dev.source != nil {
+		ref = dev.source.findProgramAccess(addr)
+	}
+
 	if dev.mapfile != nil {
-		programLabel := dev.mapfile.FindProgramAccess(addr)
-		if programLabel != "" {
-			logger.Logf("developer", "mapfile: %s()", programLabel)
-		}
+		ref.Function = dev.mapfile.findProgramAccess(addr)
 	}
 
-	if dev.Source != nil {
-		src := dev.Source.FindProgramAccess(addr)
-		if src != "" {
-			logger.Logf("developer", "objdump: %s", src)
-		}
+	return ref
+}
 
+// ExecutionProfile implements the CartCoProcDeveloper interface.
+func (dev *Developer) ExecutionProfile(addr map[uint32]float32) {
+	dev.sourceLock.Lock()
+	defer dev.sourceLock.Unlock()
+
+	if dev.source != nil {
+		for k, v := range addr {
+			dev.source.execute(k, v)
+		}
 	}
+}
+
+// BorrowSource will lock the source code structure for the durction of the
+// supplied function, which will be executed with the source code structure as
+// an argument.
+//
+// Should not be called from the emulation goroutine.
+func (dev *Developer) BorrowSource(f func(*Source)) {
+	dev.sourceLock.Lock()
+	defer dev.sourceLock.Unlock()
+	f(dev.source)
 }
