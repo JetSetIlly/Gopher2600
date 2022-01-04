@@ -624,7 +624,14 @@ func (tv *Television) renderSignals() error {
 	}
 
 	// update realtime mixers
-	if tv.realtimeMixer != nil && tv.state.frameInfo.Stable {
+	//
+	// an additional condition saying the realtimeMixer is used only once the
+	// frame is stable has been removed. it was thought to improve sound on
+	// startup for some ROMs but in some pathological cases it means sound is
+	// never output. in particular, the tunabit demo ROM.
+	//
+	// https://atariage.com/forums/topic/274172-tiatune-tia-music-player-with-correct-tuning/
+	if tv.realtimeMixer != nil {
 		err := tv.realtimeMixer.SetAudio(tv.signals[tv.firstSignalIdx:tv.currentSignalIdx])
 		if err != nil {
 			return curated.Errorf("television: %v", err)
