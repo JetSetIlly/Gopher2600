@@ -35,8 +35,7 @@ import (
 type dpc struct {
 	instance *instance.Instance
 
-	mappingID   string
-	description string
+	mappingID string
 
 	// dpc cartridge have two banks of 4096 bytes
 	bankSize int
@@ -54,11 +53,10 @@ func newDPC(instance *instance.Instance, data []byte) (mapper.CartMapper, error)
 	const staticSize = 2048
 
 	cart := &dpc{
-		instance:    instance,
-		description: "pitfall2 style",
-		mappingID:   "DPC",
-		bankSize:    4096,
-		state:       newDPCState(),
+		instance:  instance,
+		mappingID: "DPC",
+		bankSize:  4096,
+		state:     newDPCState(),
 	}
 
 	cart.banks = make([][]uint8, cart.NumBanks())

@@ -43,8 +43,7 @@ import (
 type parkerBros struct {
 	instance *instance.Instance
 
-	mappingID   string
-	description string
+	mappingID string
 
 	// parkerBros cartridges have 8 banks of 1024 bytes
 	bankSize int
@@ -56,11 +55,10 @@ type parkerBros struct {
 
 func newParkerBros(instance *instance.Instance, data []byte) (mapper.CartMapper, error) {
 	cart := &parkerBros{
-		instance:    instance,
-		mappingID:   "E0",
-		description: "parker bros",
-		bankSize:    1024,
-		state:       newParkerBrosState(),
+		instance:  instance,
+		mappingID: "E0",
+		bankSize:  1024,
+		state:     newParkerBrosState(),
 	}
 
 	cart.banks = make([][]uint8, cart.NumBanks())

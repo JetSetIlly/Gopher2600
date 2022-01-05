@@ -29,8 +29,7 @@ import (
 type m3ePlus struct {
 	instance *instance.Instance
 
-	mappingID   string
-	description string
+	mappingID string
 
 	// 3e+ cartridge memory is segmented
 	bankSize int
@@ -54,10 +53,9 @@ type m3ePlus struct {
 //		- chess (Andrew Davie)
 func new3ePlus(instance *instance.Instance, data []byte) (mapper.CartMapper, error) {
 	cart := &m3ePlus{
-		mappingID:   "3E+",
-		description: "", // no description
-		bankSize:    1024,
-		state:       newM3ePlusState(),
+		mappingID: "3E+",
+		bankSize:  1024,
+		state:     newM3ePlusState(),
 	}
 
 	if len(data)%cart.bankSize != 0 {

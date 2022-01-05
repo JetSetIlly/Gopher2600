@@ -244,8 +244,7 @@ func (s *state) initialise() {
 type Moviecart struct {
 	instance *instance.Instance
 
-	mappingID   string
-	description string
+	mappingID string
 
 	loader io.ReadSeekCloser
 	banks  []byte
@@ -255,10 +254,9 @@ type Moviecart struct {
 
 func NewMoviecart(ins *instance.Instance, loader cartridgeloader.Loader) (mapper.CartMapper, error) {
 	cart := &Moviecart{
-		instance:    ins,
-		loader:      loader.StreamedData,
-		mappingID:   "MC",
-		description: "Moviecart",
+		instance:  ins,
+		loader:    loader.StreamedData,
+		mappingID: "MC",
 	}
 
 	cart.state = newState()

@@ -28,8 +28,7 @@ import (
 type superbank struct {
 	instance *instance.Instance
 
-	mappingID   string
-	description string
+	mappingID string
 
 	// superbank cartridges can have 32 banks (128k) or 64 banks (256k)
 	bankSize int
@@ -48,11 +47,10 @@ type superbank struct {
 
 func newSuperbank(instance *instance.Instance, data []byte) (mapper.CartMapper, error) {
 	cart := &superbank{
-		instance:    instance,
-		mappingID:   "SB",
-		description: "Superbank",
-		bankSize:    4096,
-		state:       newSuperbankState(),
+		instance:  instance,
+		mappingID: "SB",
+		bankSize:  4096,
+		state:     newSuperbankState(),
 	}
 
 	if len(data)%cart.bankSize != 0 {

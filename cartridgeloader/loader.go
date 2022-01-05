@@ -149,9 +149,9 @@ func NewLoader(filename string, mapping string) (Loader, error) {
 			fallthrough
 		case ".A26":
 			cl.Mapping = "AUTO"
-		case ".2k":
+		case ".2K":
 			fallthrough
-		case ".4k":
+		case ".4K":
 			fallthrough
 		case ".F8":
 			fallthrough
@@ -159,15 +159,25 @@ func NewLoader(filename string, mapping string) (Loader, error) {
 			fallthrough
 		case ".F4":
 			fallthrough
-		case ".2k+":
+		case ".2K+":
 			fallthrough
-		case ".4k+":
+		case ".2KSC":
+			fallthrough
+		case ".4K+":
+			fallthrough
+		case ".4KSC":
 			fallthrough
 		case ".F8+":
 			fallthrough
+		case ".F8SC":
+			fallthrough
 		case ".F6+":
 			fallthrough
+		case ".F6SC":
+			fallthrough
 		case ".F4+":
+			fallthrough
+		case ".F4SC":
 			fallthrough
 		case ".FA":
 			fallthrough
@@ -192,6 +202,8 @@ func NewLoader(filename string, mapping string) (Loader, error) {
 		case ".3E+":
 			fallthrough
 		case ".EF":
+			fallthrough
+		case ".EFSC":
 			fallthrough
 		case ".SB":
 			fallthrough

@@ -41,8 +41,7 @@ import (
 type cbs struct {
 	instance *instance.Instance
 
-	mappingID   string
-	description string
+	mappingID string
 
 	// cbs cartridges have 3 banks of 4096 bytes
 	bankSize int
@@ -54,11 +53,10 @@ type cbs struct {
 
 func newCBS(instance *instance.Instance, data []byte) (mapper.CartMapper, error) {
 	cart := &cbs{
-		instance:    instance,
-		mappingID:   "FA",
-		description: "CBS",
-		bankSize:    4096,
-		state:       newCbsState(),
+		instance:  instance,
+		mappingID: "FA",
+		bankSize:  4096,
+		state:     newCbsState(),
 	}
 
 	if len(data) != cart.bankSize*cart.NumBanks() {

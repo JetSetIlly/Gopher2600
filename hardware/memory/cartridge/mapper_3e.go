@@ -29,8 +29,7 @@ import (
 type m3e struct {
 	instance *instance.Instance
 
-	mappingID   string
-	description string
+	mappingID string
 
 	bankSize int
 	banks    [][]uint8
@@ -45,11 +44,10 @@ type m3e struct {
 //	- Sokoboo
 func new3e(instance *instance.Instance, data []byte) (mapper.CartMapper, error) {
 	cart := &m3e{
-		instance:    instance,
-		mappingID:   "3E",
-		description: "m3e",
-		bankSize:    2048,
-		state:       newM3eState(),
+		instance:  instance,
+		mappingID: "3E",
+		bankSize:  2048,
+		state:     newM3eState(),
 	}
 
 	if len(data)%cart.bankSize != 0 {

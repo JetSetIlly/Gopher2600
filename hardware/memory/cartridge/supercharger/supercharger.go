@@ -47,8 +47,7 @@ type tape interface {
 type Supercharger struct {
 	instance *instance.Instance
 
-	mappingID   string
-	description string
+	mappingID string
 
 	bankSize int
 	bios     []uint8
@@ -63,12 +62,11 @@ type Supercharger struct {
 // Supercharger type.
 func NewSupercharger(instance *instance.Instance, cartload cartridgeloader.Loader) (mapper.CartMapper, error) {
 	cart := &Supercharger{
-		instance:    instance,
-		mappingID:   "AR",
-		description: "supercharger",
-		bankSize:    2048,
-		state:       newState(),
-		vcsHook:     cartload.VCSHook,
+		instance:  instance,
+		mappingID: "AR",
+		bankSize:  2048,
+		state:     newState(),
+		vcsHook:   cartload.VCSHook,
 	}
 
 	var err error

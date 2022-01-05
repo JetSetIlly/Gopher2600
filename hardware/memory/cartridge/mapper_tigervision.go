@@ -45,8 +45,7 @@ import (
 type tigervision struct {
 	instance *instance.Instance
 
-	mappingID   string
-	description string
+	mappingID string
 
 	// tigervision cartridges traditionally have 4 of banks of 2048 bytes. but
 	// it can theoretically support anything up to 512 banks
@@ -63,11 +62,10 @@ type tigervision struct {
 //  - tested with 8k (Miner2049 etc.) and 32k (Genesis_Egypt demo).
 func newTigervision(instance *instance.Instance, data []byte) (mapper.CartMapper, error) {
 	cart := &tigervision{
-		instance:    instance,
-		mappingID:   "3F",
-		description: "tigervision",
-		bankSize:    2048,
-		state:       newTigervisionState(),
+		instance:  instance,
+		mappingID: "3F",
+		bankSize:  2048,
+		state:     newTigervisionState(),
 	}
 
 	if len(data)%cart.bankSize != 0 {

@@ -17,6 +17,7 @@ package cartridge
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/instance"
@@ -28,8 +29,7 @@ import (
 type ef struct {
 	instance *instance.Instance
 
-	mappingID   string
-	description string
+	mappingID string
 
 	// ef cartridges have 3 banks of 4096 bytes
 	bankSize int
@@ -37,15 +37,21 @@ type ef struct {
 
 	// rewindable state
 	state *efState
+
+	// superchip signature ID has been detected. we use this to decide whether
+	// the cartridge RAM should be allocated
+	//
+	// the superchip is not added automatically
+	needsSuperchip bool
 }
 
+// returns new ef type, whether a superchip is required, and any errors
 func newEF(instance *instance.Instance, data []byte) (mapper.CartMapper, error) {
 	cart := &ef{
-		instance:    instance,
-		mappingID:   "EF",
-		description: "16 bank 64k",
-		bankSize:    4096,
-		state:       newEFstate(),
+		instance:  instance,
+		mappingID: "EF",
+		bankSize:  4096,
+		state:     newEFstate(),
 	}
 
 	if len(data) != cart.bankSize*cart.NumBanks() {
@@ -59,6 +65,10 @@ func newEF(instance *instance.Instance, data []byte) (mapper.CartMapper, error) 
 		offset := k * cart.bankSize
 		copy(cart.banks[k], data[offset:offset+cart.bankSize])
 	}
+
+	// EF cartridge is a superchip cartridge if the string EFSC appears in the
+	// data somewhere
+	cart.needsSuperchip = strings.Index(string(data), "EFSC") != -1
 
 	return cart, nil
 }
@@ -93,6 +103,12 @@ func (cart *ef) Reset() {
 func (cart *ef) Read(addr uint16, passive bool) (uint8, error) {
 	cart.bankswitch(addr, passive)
 
+	if cart.state.ram != nil {
+		if addr >= 0x80 && addr <= 0xff {
+			return cart.state.ram[addr-superchipRAMsize], nil
+		}
+	}
+
 	return cart.banks[cart.state.bank][addr], nil
 }
 
@@ -100,6 +116,13 @@ func (cart *ef) Read(addr uint16, passive bool) (uint8, error) {
 func (cart *ef) Write(addr uint16, data uint8, passive bool, poke bool) error {
 	if cart.bankswitch(addr, passive) {
 		return nil
+	}
+
+	if cart.state.ram != nil {
+		if addr <= 0x7f {
+			cart.state.ram[addr] = data
+			return nil
+		}
 	}
 
 	if poke {
@@ -193,10 +216,49 @@ func (cart *ef) WriteHotspots() map[uint16]mapper.CartHotspotInfo {
 	return cart.ReadHotspots()
 }
 
+// AddSuperchip implements the mapper.OptionalSuperchip interface.
+func (cart *ef) AddSuperchip() {
+	if cart.needsSuperchip && cart.state.ram == nil {
+		cart.mappingID = fmt.Sprintf("%s (SC)", cart.mappingID)
+		cart.state.ram = make([]uint8, superchipRAMsize)
+	}
+}
+
+// GetRAM implements the mapper.CartRAMBus interface.
+func (cart *ef) GetRAM() []mapper.CartRAM {
+	if cart.state.ram == nil {
+		return nil
+	}
+
+	r := make([]mapper.CartRAM, 1)
+	r[0] = mapper.CartRAM{
+		Label:  "Superchip",
+		Origin: 0x1080,
+		Data:   make([]uint8, len(cart.state.ram)),
+		Mapped: true,
+	}
+
+	copy(r[0].Data, cart.state.ram)
+	return r
+}
+
+// PutRAM implements the mapper.CartRAMBus interface.
+func (cart *ef) PutRAM(_ int, idx int, data uint8) {
+	if cart.state.ram == nil {
+		return
+	}
+
+	cart.state.ram[idx] = data
+}
+
 // rewindable state for the CBS cartridge.
 type efState struct {
 	// identifies the currently selected bank
 	bank int
+
+	// some atari ROMs support aditional RAM. this is sometimes referred to as
+	// the superchip. ram is only added when it is detected
+	ram []uint8
 }
 
 func newEFstate() *efState {
@@ -206,5 +268,9 @@ func newEFstate() *efState {
 // Snapshot implements the mapper.CartMapper interface.
 func (s *efState) Snapshot() *efState {
 	n := *s
+	if s.ram != nil {
+		n.ram = make([]uint8, len(s.ram))
+		copy(n.ram, s.ram)
+	}
 	return &n
 }

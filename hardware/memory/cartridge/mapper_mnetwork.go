@@ -77,8 +77,7 @@ const num256ByteRAMbanks = 4
 type mnetwork struct {
 	instance *instance.Instance
 
-	mappingID   string
-	description string
+	mappingID string
 
 	// mnetwork cartridges have 8 banks of 2048 bytes
 	bankSize int
@@ -89,11 +88,10 @@ type mnetwork struct {
 
 func newMnetwork(instance *instance.Instance, data []byte) (mapper.CartMapper, error) {
 	cart := &mnetwork{
-		instance:    instance,
-		description: "mnetwork",
-		mappingID:   "E7",
-		bankSize:    2048,
-		state:       newMnetworkState(),
+		instance:  instance,
+		mappingID: "E7",
+		bankSize:  2048,
+		state:     newMnetworkState(),
 	}
 
 	// mnetwork supports a number of sizes NumBanks() won't be valid until

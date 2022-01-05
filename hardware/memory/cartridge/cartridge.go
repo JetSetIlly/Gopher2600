@@ -183,6 +183,13 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 	cart.Hash = cartload.Hash
 	cart.mapper = newEjected()
 
+	// log result of Attach() on function return
+	defer func() {
+		if _, ok := cart.mapper.(*ejected); !ok {
+			logger.Logf("cartridge", "inserted %s", cart.mapper.ID())
+		}
+	}()
+
 	// fingerprint cartridgeloader.Loader
 	if cartload.Mapping == "" || cartload.Mapping == "AUTO" {
 		err := cart.fingerprint(cartload)
@@ -223,12 +230,12 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 
 	// a specific cartridge mapper was specified
 
-	addSuperchip := false
+	trySuperchip := false
 
-	switch cartload.Mapping {
-	case "2k":
+	switch strings.ToUpper(cartload.Mapping) {
+	case "2K":
 		cart.mapper, err = newAtari2k(cart.instance, cartload.Data)
-	case "4k":
+	case "4K":
 		cart.mapper, err = newAtari4k(cart.instance, cartload.Data)
 	case "F8":
 		cart.mapper, err = newAtari8k(cart.instance, cartload.Data)
@@ -236,21 +243,21 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 		cart.mapper, err = newAtari16k(cart.instance, cartload.Data)
 	case "F4":
 		cart.mapper, err = newAtari32k(cart.instance, cartload.Data)
-	case "2k+":
+	case "2KSC":
 		cart.mapper, err = newAtari2k(cart.instance, cartload.Data)
-		addSuperchip = true
-	case "4k+":
+		trySuperchip = true
+	case "4KSC":
 		cart.mapper, err = newAtari4k(cart.instance, cartload.Data)
-		addSuperchip = true
-	case "F8+":
+		trySuperchip = true
+	case "F8SC":
 		cart.mapper, err = newAtari8k(cart.instance, cartload.Data)
-		addSuperchip = true
-	case "F6+":
+		trySuperchip = true
+	case "F6SC":
 		cart.mapper, err = newAtari16k(cart.instance, cartload.Data)
-		addSuperchip = true
-	case "F4+":
+		trySuperchip = true
+	case "F4SC":
 		cart.mapper, err = newAtari32k(cart.instance, cartload.Data)
-		addSuperchip = true
+		trySuperchip = true
 	case "FA":
 		cart.mapper, err = newCBS(cart.instance, cartload.Data)
 	case "FE":
@@ -277,6 +284,9 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 		cart.mapper, err = new3ePlus(cart.instance, cartload.Data)
 	case "EF":
 		cart.mapper, err = newEF(cart.instance, cartload.Data)
+	case "EFSC":
+		cart.mapper, err = newEF(cart.instance, cartload.Data)
+		trySuperchip = true
 	case "SB":
 		cart.mapper, err = newSuperbank(cart.instance, cartload.Data)
 	case "DPC":
@@ -294,9 +304,11 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 		return curated.Errorf("cartridge: %v", err)
 	}
 
-	if addSuperchip {
+	if trySuperchip {
 		if superchip, ok := cart.mapper.(mapper.OptionalSuperchip); ok {
 			superchip.AddSuperchip()
+		} else {
+			logger.Logf("cartridge", "cannot add superchip to %s mapper", cart.ID())
 		}
 	}
 

@@ -254,6 +254,13 @@ func fingerprint32k(data []byte) func(*instance.Instance, []byte) (mapper.CartMa
 	return newAtari32k
 }
 
+func fingerprint64k(data []byte) func(*instance.Instance, []byte) (mapper.CartMapper, error) {
+	// some EF cartridges have EFEF embedded as a string but this isn't a
+	// requirement. for now, because only EF cartridges are 64k, we'll just
+	// assume the data should be treated as EF
+	return newEF
+}
+
 func fingerprint128k(data []byte) func(*instance.Instance, []byte) (mapper.CartMapper, error) {
 	if fingerprintDF(data) {
 		return newDF
@@ -341,9 +348,7 @@ func (cart *Cartridge) fingerprint(cartload cartridgeloader.Loader) error {
 		}
 
 	case 65536:
-		// EF is the only 64k cartridge format that I'm aware of so there is no
-		// need for fingerprinting
-		cart.mapper, err = newEF(cart.instance, cartload.Data)
+		cart.mapper, err = fingerprint64k(cartload.Data)(cart.instance, cartload.Data)
 		if err != nil {
 			return err
 		}

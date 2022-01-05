@@ -28,8 +28,7 @@ import (
 type df struct {
 	instance *instance.Instance
 
-	mappingID   string
-	description string
+	mappingID string
 
 	// df cartridges have 3 banks of 4096 bytes
 	bankSize int
@@ -42,11 +41,10 @@ type df struct {
 // example ROM: penult RPG.
 func newDF(instance *instance.Instance, data []byte) (mapper.CartMapper, error) {
 	cart := &df{
-		instance:    instance,
-		mappingID:   "DF",
-		description: "128KB",
-		bankSize:    4096,
-		state:       newDfState(),
+		instance:  instance,
+		mappingID: "DF",
+		bankSize:  4096,
+		state:     newDfState(),
 	}
 
 	if len(data) != cart.bankSize*cart.NumBanks() {

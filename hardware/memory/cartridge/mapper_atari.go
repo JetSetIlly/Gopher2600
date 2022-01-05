@@ -70,22 +70,24 @@ import (
 type atari struct {
 	instance *instance.Instance
 
-	mappingID   string
-	description string //nolint: structcheck
+	mappingID string
 
 	// atari formats apart from 2k and 4k are divided into banks. 2k and 4k
 	// ROMs conceptually have one bank
 	bankSize int
 	banks    [][]uint8
 
-	// binrary file has empty area(s). we use this to decide whether
-	// AddSuperchip() should allocate ram field
-	binaryHasEmptyArea bool
-
 	// rewindable state
 	state *atariState
+
+	// binary file has empty area(s). we use this to decide whether
+	// the cartridge RAM should be allocated
+	//
+	// the superchip is not added automatically
+	needsSuperchip bool
 }
 
+// size of superchip RAM
 const superchipRAMsize = 128
 
 // look for empty area (representing RAM) in binary data.
@@ -210,6 +212,10 @@ func (cart *atari) GetRAM() []mapper.CartRAM {
 
 // PutRAM implements the mapper.CartRAMBus interface.
 func (cart *atari) PutRAM(_ int, idx int, data uint8) {
+	if cart.state.ram == nil {
+		return
+	}
+
 	cart.state.ram[idx] = data
 }
 
@@ -227,7 +233,8 @@ func (cart *atari) CopyBanks() []mapper.BankContent {
 
 // AddSuperchip implements the mapper.OptionalSuperchip interface.
 func (cart *atari) AddSuperchip() {
-	if cart.binaryHasEmptyArea {
+	if cart.needsSuperchip && cart.state.ram == nil {
+		cart.mappingID = fmt.Sprintf("%s (SC)", cart.mappingID)
 		cart.state.ram = make([]uint8, superchipRAMsize)
 	}
 }
@@ -246,9 +253,8 @@ func newAtari4k(instance *instance.Instance, data []byte) (mapper.CartMapper, er
 	cart.instance = instance
 	cart.bankSize = 4096
 	cart.mappingID = "4k"
-	cart.description = "atari 4k"
 	cart.banks = make([][]uint8, 1)
-	cart.binaryHasEmptyArea = hasEmptyArea(data)
+	cart.needsSuperchip = hasEmptyArea(data)
 	cart.state = newAtariState()
 
 	if len(data) != cart.bankSize*cart.NumBanks() {
@@ -308,9 +314,8 @@ func newAtari2k(instance *instance.Instance, data []byte) (mapper.CartMapper, er
 	cart.instance = instance
 	cart.bankSize = 2048
 	cart.mappingID = "2k"
-	cart.description = "atari 2k"
 	cart.banks = make([][]uint8, 1)
-	cart.binaryHasEmptyArea = hasEmptyArea(data)
+	cart.needsSuperchip = hasEmptyArea(data)
 	cart.state = newAtariState()
 
 	if len(data) != cart.bankSize*cart.NumBanks() {
@@ -378,9 +383,8 @@ func newAtari8k(instance *instance.Instance, data []uint8) (mapper.CartMapper, e
 	cart.instance = instance
 	cart.bankSize = 4096
 	cart.mappingID = "F8"
-	cart.description = "atari 8k"
 	cart.banks = make([][]uint8, cart.NumBanks())
-	cart.binaryHasEmptyArea = hasEmptyArea(data)
+	cart.needsSuperchip = hasEmptyArea(data)
 	cart.state = newAtariState()
 
 	if len(data) != cart.bankSize*cart.NumBanks() {
@@ -479,9 +483,8 @@ func newAtari16k(instance *instance.Instance, data []byte) (mapper.CartMapper, e
 	cart.instance = instance
 	cart.bankSize = 4096
 	cart.mappingID = "F6"
-	cart.description = "atari 16k"
 	cart.banks = make([][]uint8, cart.NumBanks())
-	cart.binaryHasEmptyArea = hasEmptyArea(data)
+	cart.needsSuperchip = hasEmptyArea(data)
 	cart.state = newAtariState()
 
 	if len(data) != cart.bankSize*cart.NumBanks() {
@@ -586,9 +589,8 @@ func newAtari32k(instance *instance.Instance, data []byte) (mapper.CartMapper, e
 	cart.instance = instance
 	cart.bankSize = 4096
 	cart.mappingID = "F4"
-	cart.description = "atari 32k"
 	cart.banks = make([][]uint8, cart.NumBanks())
-	cart.binaryHasEmptyArea = hasEmptyArea(data)
+	cart.needsSuperchip = hasEmptyArea(data)
 	cart.state = newAtariState()
 
 	if len(data) != cart.bankSize*cart.NumBanks() {
