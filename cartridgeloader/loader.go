@@ -191,6 +191,8 @@ func NewLoader(filename string, mapping string) (Loader, error) {
 			fallthrough // synonym for 3E+
 		case ".3E+":
 			fallthrough
+		case ".EF":
+			fallthrough
 		case ".SB":
 			fallthrough
 		case ".DPC":

@@ -341,7 +341,12 @@ func (cart *Cartridge) fingerprint(cartload cartridgeloader.Loader) error {
 		}
 
 	case 65536:
-		return curated.Errorf("65536 bytes not yet supported")
+		// EF is the only 64k cartridge format that I'm aware of so there is no
+		// need for fingerprinting
+		cart.mapper, err = newEF(cart.instance, cartload.Data)
+		if err != nil {
+			return err
+		}
 
 	case 131072:
 		cart.mapper, err = fingerprint128k(cartload.Data)(cart.instance, cartload.Data)

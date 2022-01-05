@@ -820,6 +820,7 @@ Modern formats supported:
 * 3E
 * 3E+
 * DF
+* EF
 * DPC+
 * CDF (including CDFJ and CDFJ+)
 
@@ -876,7 +877,9 @@ seem to be documented anywhere accept in the Stella source.
 a comment in the fingerprint.go file says I did.
 
 * As a reference for the audio implementation (the 6502.ts project was also
-  referenced for this reason)
+  referenced for this reason).
+
+* The EF cartridge format.
 
 Many notes and clues from the AtariAge message boards. Most significantly the
 following threads proved very useful indeed:

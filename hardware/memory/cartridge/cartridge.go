@@ -275,6 +275,8 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 		fallthrough
 	case "3E+":
 		cart.mapper, err = new3ePlus(cart.instance, cartload.Data)
+	case "EF":
+		cart.mapper, err = newEF(cart.instance, cartload.Data)
 	case "SB":
 		cart.mapper, err = newSuperbank(cart.instance, cartload.Data)
 	case "DPC":
