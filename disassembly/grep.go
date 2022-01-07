@@ -36,29 +36,34 @@ func (dsm *Disassembly) Grep(output io.Writer, scope GrepScope, search string, c
 		search = strings.ToUpper(search)
 	}
 
-	return dsm.IterateBlessed(output, func(e *Entry) string {
-		var s, m string
+	for b := range dsm.disasmEntries.Entries {
+		for _, e := range dsm.disasmEntries.Entries[b] {
+			if e.Level >= EntryLevelBlessed {
+				var s, m string
 
-		// limit scope of grep to the correct Instruction field
-		switch scope {
-		case GrepOperator:
-			s = e.Operator
-		case GrepOperand:
-			s = e.Operand.String()
-		case GrepAll:
-			s = e.String()
+				// limit scope of grep to the correct Instruction field
+				switch scope {
+				case GrepOperator:
+					s = e.Operator
+				case GrepOperand:
+					s = e.Operand.String()
+				case GrepAll:
+					s = e.String()
+				}
+
+				if !caseSensitive {
+					m = strings.ToUpper(s)
+				} else {
+					m = s
+				}
+
+				if strings.Contains(m, search) {
+					output.Write([]byte(e.StringColumnated(ColumnAttr{})))
+					output.Write([]byte("\n"))
+				}
+			}
 		}
+	}
 
-		if !caseSensitive {
-			m = strings.ToUpper(s)
-		} else {
-			m = s
-		}
-
-		if strings.Contains(m, search) {
-			return e.StringColumnated(ColumnAttr{})
-		}
-
-		return ""
-	})
+	return nil
 }

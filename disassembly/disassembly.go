@@ -45,21 +45,18 @@ type Disassembly struct {
 	// symbols used to format disassembly output
 	Sym symbols.Symbols
 
-	// indexed by bank and address. address should be masked with memorymap.CartridgeBits before access
-	entries [][]*Entry
+	// disasmEntries entries. use BorrowDisasm() for goroutines other than the
+	// emulation goroutine
+	disasmEntries DisasmEntries
 
-	// critical sectioning. the iteration functions in particular may be called
-	// from a different goroutine. entries in the (disasm array) will likely be
-	// updating more or less constantly with ExecuteEntry() so it's important
-	// we enforce the critical sections
-	//
-	// experiments with gochannel driven disassembly service proved too slow
-	// for iterating. this is because waiting for the result from any disasm
-	// service goroutine is inherently slow.
-	//
-	// whether a sync.Mutex is the best low level synchronisation method is
-	// another question.
+	// critical sectioning to protect disasmEntries
 	crit sync.Mutex
+}
+
+// DisasmEntries contains the individual disassembled entries of the current ROM.
+type DisasmEntries struct {
+	// indexed by bank and address. address should be masked with memorymap.CartridgeBits before access
+	Entries [][]*Entry
 }
 
 // NewDisassembly is the preferred method of initialisation for the Disassembly
@@ -158,9 +155,9 @@ func (dsm *Disassembly) FromMemory() error {
 
 	// allocate memory for disassembly. the GUI may find itself trying to
 	// iterate through disassembly at the same time as we're doing this.
-	dsm.entries = make([][]*Entry, dsm.vcs.Mem.Cart.NumBanks())
-	for b := 0; b < len(dsm.entries); b++ {
-		dsm.entries[b] = make([]*Entry, memorymap.CartridgeBits+1)
+	dsm.disasmEntries.Entries = make([][]*Entry, dsm.vcs.Mem.Cart.NumBanks())
+	for b := 0; b < len(dsm.disasmEntries.Entries); b++ {
+		dsm.disasmEntries.Entries[b] = make([]*Entry, memorymap.CartridgeBits+1)
 	}
 
 	// exit early if cartridge memory self reports as being ejected
@@ -199,7 +196,7 @@ func (dsm *Disassembly) GetEntryByAddress(address uint16) (*Entry, bool) {
 		return nil, bank.ExecutingCoprocessor
 	}
 
-	return dsm.entries[bank.Number][address&memorymap.CartridgeBits], bank.ExecutingCoprocessor
+	return dsm.disasmEntries.Entries[bank.Number][address&memorymap.CartridgeBits], bank.ExecutingCoprocessor
 }
 
 // ExecutedEntry should be called after execution of a CPU instruction. In many
@@ -242,7 +239,7 @@ func (dsm *Disassembly) ExecutedEntry(bank mapper.BankInfo, result execution.Res
 	// I'm not sure when this would apply. maybe it's just a belt-and-braces
 	// check. there's no comment to say why this condition was added so leave
 	// it for now
-	if bank.Number >= len(dsm.entries) {
+	if bank.Number >= len(dsm.disasmEntries.Entries) {
 		return dsm.FormatResult(bank, result, EntryLevelExecuted)
 	}
 
@@ -254,7 +251,7 @@ func (dsm *Disassembly) ExecutedEntry(bank mapper.BankInfo, result execution.Res
 
 	// get disassembly entry at address
 	idx := result.Address & memorymap.CartridgeBits
-	e := dsm.entries[bank.Number][idx]
+	e := dsm.disasmEntries.Entries[bank.Number][idx]
 
 	// opcode is reliable update disasm entry in the normal way
 	if e == nil {
@@ -265,10 +262,10 @@ func (dsm *Disassembly) ExecutedEntry(bank mapper.BankInfo, result execution.Res
 		//
 		// (a) there's a bug/flaw in the decode procedure
 		// (b) the program has taken an unpredictable path
-		dsm.entries[bank.Number][idx] = dsm.FormatResult(bank, result, EntryLevelExecuted)
+		dsm.disasmEntries.Entries[bank.Number][idx] = dsm.FormatResult(bank, result, EntryLevelExecuted)
 
 		// log late decoding
-		logger.Logf("disassembly", "late decoding of %s", dsm.entries[bank.Number][idx])
+		logger.Logf("disassembly", "late decoding of %s", dsm.disasmEntries.Entries[bank.Number][idx])
 	} else {
 		// check for opcode reliability. if it's different then return the actual
 		// result and not the one in the entries list.
@@ -291,7 +288,7 @@ func (dsm *Disassembly) ExecutedEntry(bank mapper.BankInfo, result execution.Res
 	// current bank, so we have to call the GetBank() function.
 	if checkNextAddr {
 		bank = dsm.vcs.Mem.Cart.GetBank(nextAddr)
-		ne := dsm.entries[bank.Number][nextAddr&memorymap.CartridgeBits]
+		ne := dsm.disasmEntries.Entries[bank.Number][nextAddr&memorymap.CartridgeBits]
 		if ne == nil {
 			logger.Logf("disassembly", "undecoded cartridge location (%#04x)", nextAddr)
 		} else if ne.Level < EntryLevelBlessed {
@@ -412,4 +409,15 @@ func (dsm *Disassembly) FormatResult(bank mapper.BankInfo, result execution.Resu
 	}
 
 	return e
+}
+
+// BorrowDisasm will lock the DisasmEntries structure for the durction of the
+// supplied function, which will be executed with the disasm structure as an
+// argument.
+//
+// Should not be called from the emulation goroutine.
+func (dsm *Disassembly) BorrowDisasm(f func(*DisasmEntries)) {
+	dsm.crit.Lock()
+	defer dsm.crit.Unlock()
+	f(&dsm.disasmEntries)
 }

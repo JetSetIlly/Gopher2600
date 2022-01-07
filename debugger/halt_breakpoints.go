@@ -424,22 +424,8 @@ func (bp *breakpoints) checkBreaker(nb breaker) int {
 	return noBreakEqualivalent
 }
 
-// BreakGroup indicates the broad category of breakpoint an address has.
-type BreakGroup int
-
-// List of valid BreakGroup values.
-const (
-	BrkNone BreakGroup = iota
-
-	// a breakpoint.
-	BrkPCAddress
-
-	// a breakpoint on something other than the program counter / address.
-	BrkOther
-)
-
-// !!TODO: detect other break types?
-func (bp *breakpoints) hasBreak(addr uint16, bank int) (BreakGroup, int) {
+// HasPCBreak returns true ifan address/bank has a PC breakpoint associated with it.
+func (bp breakpoints) HasPCBreak(addr uint16, bank int) (bool, int) {
 	ai := bp.dbg.dbgmem.MapAddress(addr, true)
 
 	check := breaker{
@@ -465,7 +451,7 @@ func (bp *breakpoints) hasBreak(addr uint16, bank int) (BreakGroup, int) {
 	// and we say that the disassembly.Entry has a breakpoint for *this*
 	// bank
 	if i := bp.checkBreaker(check); i != noBreakEqualivalent {
-		return BrkPCAddress, i
+		return true, i
 	}
 
 	// if checkBreaker doesn't report an existing breakpoint, we remove the
@@ -475,17 +461,17 @@ func (bp *breakpoints) hasBreak(addr uint16, bank int) (BreakGroup, int) {
 	// bank
 	check.next = nil
 	if i := bp.checkBreaker(check); i != noBreakEqualivalent {
-		return BrkPCAddress, i
+		return true, i
 	}
 
 	// there is no breakpoint at that matches this disassembly entry
-	return BrkNone, noBreakEqualivalent
+	return false, noBreakEqualivalent
 }
 
 func (bp *breakpoints) togglePCBreak(e *disassembly.Entry) {
-	g, i := bp.hasBreak(e.Result.Address, e.Bank.Number)
+	has, i := bp.HasPCBreak(e.Result.Address, e.Bank.Number)
 
-	if i != noBreakEqualivalent && g == BrkPCAddress {
+	if i != noBreakEqualivalent && has {
 		_ = bp.drop(i) // ignoring errors
 		return
 	}

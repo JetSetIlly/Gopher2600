@@ -43,11 +43,18 @@ func (dbg *Debugger) GetLastResult() disassembly.Entry {
 	return *dbg.lastResult
 }
 
-// HasBreak returns true if there is a breakpoint at the address. the second
-// return value indicates if there is a breakpoint at the address AND bank.
-func (dbg *Debugger) HasBreak(addr uint16, bank int) BreakGroup {
-	g, _ := dbg.halting.breakpoints.hasBreak(addr, bank)
-	return g
+// BreakpointsQuery allows others packages to query the currently set
+// breakpoints.
+type BreakpointsQuery interface {
+	HasPCBreak(addr uint16, bank int) (bool, int)
+}
+
+// QueryBreakpoints returns an instance of BreakpointsQuery.
+func (dbg *Debugger) QueryBreakpoints() BreakpointsQuery {
+	bq := *dbg.halting.breakpoints
+	bq.breaks = make([]breaker, len(dbg.halting.breakpoints.breaks))
+	copy(bq.breaks, dbg.halting.breakpoints.breaks)
+	return bq
 }
 
 // TogglePCBreak sets or unsets a PC break at the address rerpresented by th

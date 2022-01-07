@@ -24,20 +24,31 @@ import (
 
 // Write the entire disassembly to io.Writer.
 func (dsm *Disassembly) Write(output io.Writer, attr ColumnAttr) error {
-	dsm.IterateBlessed(output, func(e *Entry) string {
-		return e.StringColumnated(attr)
-	})
+	for b := range dsm.disasmEntries.Entries {
+		for _, e := range dsm.disasmEntries.Entries[b] {
+			if e.Level >= EntryLevelBlessed {
+				output.Write([]byte(e.StringColumnated(attr)))
+				output.Write([]byte("\n"))
+			}
+		}
+	}
+
 	return nil
 }
 
 // WriteBank writes the disassembly of the selected bank to io.Writer.
 func (dsm *Disassembly) WriteBank(output io.Writer, attr ColumnAttr, bank int) error {
-	dsm.IterateBlessed(output, func(e *Entry) string {
-		if e.Bank.Number != bank {
-			return ""
+	if bank >= len(dsm.disasmEntries.Entries) {
+		return nil
+	}
+
+	for _, e := range dsm.disasmEntries.Entries[bank] {
+		if e.Level >= EntryLevelBlessed {
+			output.Write([]byte(e.StringColumnated(attr)))
+			output.Write([]byte("\n"))
 		}
-		return e.StringColumnated(attr)
-	})
+	}
+
 	return nil
 }
 

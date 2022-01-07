@@ -26,13 +26,15 @@ import (
 type LazyDebugger struct {
 	val *LazyValues
 
-	quantum    atomic.Value // debugger.QuantumMode
-	lastResult atomic.Value // disassembly.Entry
-	hasChanged atomic.Value // bool
+	quantum     atomic.Value // debugger.QuantumMode
+	lastResult  atomic.Value // disassembly.Entry
+	breakpoints atomic.Value // debugger.BreakpointsQuery
+	hasChanged  atomic.Value // bool
 
-	Quantum    debugger.Quantum
-	LastResult disassembly.Entry
-	HasChanged bool
+	Quantum     debugger.Quantum
+	LastResult  disassembly.Entry
+	Breakpoints debugger.BreakpointsQuery
+	HasChanged  bool
 }
 
 func newLazyDebugger(val *LazyValues) *LazyDebugger {
@@ -44,6 +46,7 @@ func newLazyDebugger(val *LazyValues) *LazyDebugger {
 func (lz *LazyDebugger) push() {
 	lz.quantum.Store(lz.val.dbg.GetQuantum())
 	lz.lastResult.Store(lz.val.dbg.GetLastResult())
+	lz.breakpoints.Store(lz.val.dbg.QueryBreakpoints())
 
 	// because the push() and update() pair don't interlock exactly, the
 	// hasChanged field must be latched. unlatching is performed in the
@@ -58,6 +61,8 @@ func (lz *LazyDebugger) update() {
 	if lz.lastResult.Load() != nil {
 		lz.LastResult = lz.lastResult.Load().(disassembly.Entry)
 	}
+
+	lz.Breakpoints, _ = lz.breakpoints.Load().(debugger.BreakpointsQuery)
 
 	// load current hasChanged value and unlatch (see push() function)
 	lz.HasChanged = lz.hasChanged.Load().(bool)

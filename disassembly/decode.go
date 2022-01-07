@@ -46,7 +46,7 @@ func (dsm *Disassembly) disassemble(mc *cpu.CPU, mem *disasmMemory) error {
 
 func (dsm *Disassembly) bless(mc *cpu.CPU, mem *disasmMemory) error {
 	// bless from reset address for every bank
-	for b := range dsm.entries {
+	for b := range dsm.disasmEntries.Entries {
 		// get reset address from starting bank, taking into account the
 		// possibility that bank is smalled thank 4096 bytes
 		resetVector := cpubus.Reset & (uint16(len(mem.banks[b].Data) - 1))
@@ -73,9 +73,9 @@ func (dsm *Disassembly) bless(mc *cpu.CPU, mem *disasmMemory) error {
 
 		// loop through every bank in the cartridge and collate a list of blessings
 		// for the bank
-		for b := range dsm.entries {
-			for i := range dsm.entries[b] {
-				e := dsm.entries[b][i]
+		for b := range dsm.disasmEntries.Entries {
+			for i := range dsm.disasmEntries.Entries[b] {
+				e := dsm.disasmEntries.Entries[b][i]
 
 				// ignore any non-blessed entry
 				if e.Level != EntryLevelBlessed {
@@ -145,10 +145,10 @@ func (dsm *Disassembly) bless(mc *cpu.CPU, mem *disasmMemory) error {
 	// this also removes labels that have been added from any symbols file that
 	// pertain to entries that are unblessed. this is inentional because the
 	// symbols.ReadSymbolsFile() function is far too permissive.
-	for b := range dsm.entries {
-		for i := range dsm.entries[b] {
-			if dsm.entries[b][i].Level < EntryLevelBlessed {
-				_ = dsm.Sym.RemoveLabel(b, dsm.entries[b][i].Result.Address)
+	for b := range dsm.disasmEntries.Entries {
+		for i := range dsm.disasmEntries.Entries[b] {
+			if dsm.disasmEntries.Entries[b][i].Level < EntryLevelBlessed {
+				_ = dsm.Sym.RemoveLabel(b, dsm.disasmEntries.Entries[b][i].Result.Address)
 			}
 		}
 	}
@@ -215,8 +215,8 @@ func (dsm *Disassembly) blessSequence(bank int, addr uint16, commit bool) bool {
 	//  . an RTS instruction
 	//  . a branch instruction
 	//  . an interrupt
-	for a < uint16(len(dsm.entries[bank])) {
-		instruction := dsm.entries[bank][a]
+	for a < uint16(len(dsm.disasmEntries.Entries[bank])) {
+		instruction := dsm.disasmEntries.Entries[bank][a]
 
 		// end run if entry has already been blessed
 		if instruction.Level == EntryLevelBlessed {
@@ -315,7 +315,7 @@ func (dsm *Disassembly) decode(mc *cpu.CPU, mem *disasmMemory) error {
 			// the bank space will have level == EntryLevelUnused
 			for address := memorymap.OriginCart; address <= memorymap.MemtopCart; address++ {
 				// continue if entry has already been decoded
-				e := dsm.entries[bank.Number][address&memorymap.CartridgeBits]
+				e := dsm.disasmEntries.Entries[bank.Number][address&memorymap.CartridgeBits]
 				if e != nil && e.Level > EntryLevelUnmappable {
 					continue
 				}
@@ -344,14 +344,14 @@ func (dsm *Disassembly) decode(mc *cpu.CPU, mem *disasmMemory) error {
 
 				// add entry to disassembly
 				ent := dsm.FormatResult(mapper.BankInfo{Number: bank.Number}, mc.LastResult, entryLevel)
-				dsm.entries[bank.Number][address&memorymap.CartridgeBits] = ent
+				dsm.disasmEntries.Entries[bank.Number][address&memorymap.CartridgeBits] = ent
 			}
 		}
 	}
 
 	// sanity checks
-	for b := range dsm.entries {
-		for _, a := range dsm.entries[b] {
+	for b := range dsm.disasmEntries.Entries {
+		for _, a := range dsm.disasmEntries.Entries[b] {
 			if a == nil {
 				return curated.Errorf("decode: not every address has been decoded")
 			}

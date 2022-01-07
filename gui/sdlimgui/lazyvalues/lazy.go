@@ -59,9 +59,6 @@ type LazyValues struct {
 	SaveKey     *LazySaveKey
 	Rewind      *LazyRewind
 
-	// note that LazyBreakpoints works slightly different to the the other Lazy* types.
-	Breakpoints *LazyBreakpoints
-
 	// we need a way of making sure we don't update the lazy values too often.
 	// if we're not careful the GUI thread can push refresh requests more
 	// quickly than the debugger input loop can handel them. this is
@@ -102,7 +99,6 @@ func NewLazyValues(e emulation.Emulation) *LazyValues {
 	val.Log = newLazyLog(val)
 	val.Tracker = newLazyTracker(val)
 	val.SaveKey = newLazySaveKey(val)
-	val.Breakpoints = newLazyBreakpoints(val)
 	val.Rewind = newLazyRewind(val)
 
 	val.refreshScheduled.Store(false)
@@ -141,7 +137,6 @@ func (val *LazyValues) Refresh() {
 		val.Tracker.update()
 		val.SaveKey.update()
 		val.Rewind.update()
-		val.Breakpoints.update()
 	}
 
 	if val.refreshScheduled.Load().(bool) {
@@ -171,7 +166,6 @@ func (val *LazyValues) Refresh() {
 		val.Tracker.push()
 		val.SaveKey.push()
 		val.Rewind.push()
-		val.Breakpoints.push()
 		val.refreshScheduled.Store(false)
 		val.refreshDone.Store(true)
 	})

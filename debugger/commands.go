@@ -40,7 +40,6 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
 	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/hardware/television/coords"
-	"github.com/jetsetilly/gopher2600/linter"
 	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/patch"
 )
@@ -599,14 +598,6 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		}
 
 		dbg.printLine(terminal.StyleFeedback, s.String())
-
-	case cmdLint:
-		output := &strings.Builder{}
-		err := linter.Write(dbg.Disasm, output)
-		if err != nil {
-			return err
-		}
-		dbg.printLine(terminal.StyleFeedback, output.String())
 
 	case cmdGrep:
 		scope := disassembly.GrepAll
