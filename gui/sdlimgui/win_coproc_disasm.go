@@ -17,14 +17,11 @@ package sdlimgui
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/coprocessor/disassembly"
 	"github.com/jetsetilly/gopher2600/emulation"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm7tdmi"
-	"github.com/jetsetilly/gopher2600/logger"
-	"github.com/jetsetilly/gopher2600/resources/unique"
 )
 
 // in this case of the coprocessor disassmebly window the actual window title
@@ -102,61 +99,104 @@ func (win *winCoProcDisasm) draw() {
 
 	imgui.BeginTabBar("##coprocDisasmTabBar")
 	if imgui.BeginTabItem("Disassembly") {
-		itr := win.img.dbg.CoProcDisasm.NewIteration(disassembly.IterateComplete)
-		win.drawDisasm(itr)
+		win.img.dbg.CoProcDisasm.BorrowDisassembly(win.drawDisasm)
 		imgui.EndTabItem()
 	}
 	if imgui.BeginTabItem("Last Execution") {
-		itr := win.img.dbg.CoProcDisasm.NewIteration(disassembly.IterateLast)
-		win.drawLastExecution(itr)
+		win.img.dbg.CoProcDisasm.BorrowDisassembly(win.drawLastExecution)
 		imgui.EndTabItem()
 	}
 	imgui.EndTabBar()
 }
 
-func (win *winCoProcDisasm) drawDisasm(itr *disassembly.Iterate) {
-	if itr.Count == 0 {
+func (win *winCoProcDisasm) drawDisasm(dsm *disassembly.DisasmEntries) {
+	if !dsm.Enabled {
 		imgui.Spacing()
-		imgui.Text("Coprocessor has not yet executed.")
-		imgui.Spacing()
+		imgui.Text("Execution disassembly is disabled")
 		return
 	}
 
-	if !win.img.dbg.CoProcDisasm.IsEnabled() {
-		imgui.Spacing()
-		imgui.Text("Execution disassembly is disabled. Disassembly below may be")
-		imgui.Text("incomplete. Last disassembly was at:")
-		imgui.Text(itr.LastStart.String())
-		imgui.Spacing()
+	height := imguiRemainingWinHeight()
+	imgui.BeginChildV("disasm", imgui.Vec2{X: 0, Y: height}, false, 0)
+
+	flgs := imgui.TableFlagsNone
+	flgs |= imgui.TableFlagsSizingFixedFit
+	flgs |= imgui.TableFlagsRowBg
+	if !imgui.BeginTableV("disasmTable", 9, flgs, imgui.Vec2{}, 0) {
+		return
 	}
 
-	win.drawIteration(itr, false)
+	// set neutral colors for table rows by default. we'll change it to
+	// something more meaningful as appropriate (eg. entry at PC address)
+	imgui.PushStyleColor(imgui.StyleColorTableRowBg, win.img.cols.WindowBg)
+	imgui.PushStyleColor(imgui.StyleColorTableRowBgAlt, win.img.cols.WindowBg)
+
+	// only draw elements that will be visible
+	var clipper imgui.ListClipper
+	clipper.Begin(len(dsm.Entries))
+	for clipper.Step() {
+		for i := clipper.DisplayStart; i < clipper.DisplayEnd; i++ {
+			k := dsm.Keys[i]
+			e := dsm.Entries[k]
+			win.drawEntry(e.(arm7tdmi.DisasmEntry))
+		}
+	}
+
+	imgui.PopStyleColorV(2)
+	imgui.EndTable()
+	imgui.EndChild()
 }
 
-func (win *winCoProcDisasm) drawLastExecution(itr *disassembly.Iterate) {
-	if itr.Count == 0 {
+func (win *winCoProcDisasm) drawLastExecution(dsm *disassembly.DisasmEntries) {
+	if !dsm.Enabled {
 		imgui.Spacing()
 		imgui.Text("Execution disassembly is disabled")
-		imgui.Spacing()
 		return
 	}
 
 	imgui.Spacing()
 	imgui.Text("Started at:")
 	imgui.SameLine()
-	imgui.Text(fmt.Sprintf("Frame: %-4d", itr.LastStart.Frame))
+	imgui.Text(fmt.Sprintf("Frame: %-4d", dsm.LastStart.Frame))
 	imgui.SameLine()
-	imgui.Text(fmt.Sprintf("Scanline: %-3d", itr.LastStart.Scanline))
+	imgui.Text(fmt.Sprintf("Scanline: %-3d", dsm.LastStart.Scanline))
 	imgui.SameLine()
-	imgui.Text(fmt.Sprintf("Clock: %-3d", itr.LastStart.Clock))
+	imgui.Text(fmt.Sprintf("Clock: %-3d", dsm.LastStart.Clock))
 	imgui.Spacing()
 
-	win.drawIteration(itr, true)
+	height := imguiRemainingWinHeight() - win.summaryHeight
+	imgui.BeginChildV("disasm", imgui.Vec2{X: 0, Y: height}, false, 0)
+
+	flgs := imgui.TableFlagsNone
+	flgs |= imgui.TableFlagsSizingFixedFit
+	flgs |= imgui.TableFlagsRowBg
+	if !imgui.BeginTableV("disasmTable", 9, flgs, imgui.Vec2{}, 0) {
+		return
+	}
+
+	// set neutral colors for table rows by default. we'll change it to
+	// something more meaningful as appropriate (eg. entry at PC address)
+	imgui.PushStyleColor(imgui.StyleColorTableRowBg, win.img.cols.WindowBg)
+	imgui.PushStyleColor(imgui.StyleColorTableRowBgAlt, win.img.cols.WindowBg)
+
+	// only draw elements that will be visible
+	var clipper imgui.ListClipper
+	clipper.Begin(len(dsm.Entries))
+	for clipper.Step() {
+		for i := clipper.DisplayStart; i < clipper.DisplayEnd; i++ {
+			e := dsm.LastExecution[i]
+			win.drawEntry(e.(arm7tdmi.DisasmEntry))
+		}
+	}
+
+	imgui.PopStyleColorV(2)
+	imgui.EndTable()
+	imgui.EndChild()
 
 	win.summaryHeight = imguiMeasureHeight(func() {
 		imguiSeparator()
 
-		if summary, ok := itr.Summary.(arm7tdmi.DisasmSummary); ok {
+		if summary, ok := dsm.LastExecutionSummary.(arm7tdmi.DisasmSummary); ok {
 			if summary.ImmediateMode {
 				imgui.Text("Execution ran in immediate mode. Cycle counting disabled")
 				imgui.Spacing()
@@ -176,151 +216,84 @@ func (win *winCoProcDisasm) drawLastExecution(itr *disassembly.Iterate) {
 	})
 }
 
-func (win *winCoProcDisasm) drawIteration(itr *disassembly.Iterate, adjustHeightForSummary bool) {
-	height := imguiRemainingWinHeight()
+func (win *winCoProcDisasm) drawEntry(e arm7tdmi.DisasmEntry) {
+	// several columns use a tooltip
+	tooltip := ""
 
-	if adjustHeightForSummary {
-		height -= win.summaryHeight
+	imgui.TableNextRow()
+
+	// highlight line mouse is over
+	imgui.TableNextColumn()
+	imgui.PushStyleColor(imgui.StyleColorHeaderHovered, win.img.cols.DisasmHover)
+	imgui.PushStyleColor(imgui.StyleColorHeaderActive, win.img.cols.DisasmHover)
+	imgui.SelectableV("", false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{0, 0})
+	imgui.PopStyleColorV(2)
+
+	imgui.TableNextColumn()
+	switch e.MAMCR {
+	case 0:
+		imguiColorLabel("", win.img.cols.CoProcMAM0)
+		tooltip = "MAM-0"
+	case 1:
+		imguiColorLabel("", win.img.cols.CoProcMAM1)
+		tooltip = "MAM-1"
+	case 2:
+		imguiColorLabel("", win.img.cols.CoProcMAM2)
+		tooltip = "MAM-2"
+	}
+	imguiTooltipSimple(tooltip)
+
+	imgui.TableNextColumn()
+	imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmAddress)
+	imgui.Text(e.Address)
+	imgui.PopStyleColor()
+
+	imgui.TableNextColumn()
+	imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmOperator)
+	imgui.Text(e.Operator)
+	imgui.PopStyleColor()
+
+	imgui.TableNextColumn()
+	imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmOperand)
+	imgui.Text(e.Operand)
+	imgui.PopStyleColor()
+
+	// branch trail and merged IS indicator
+	imgui.TableNextColumn()
+	tooltip = ""
+	switch e.BranchTrail {
+	case arm7tdmi.BranchTrailUsed:
+		tooltip = "Branch trail was used"
+		imguiColorLabel("", win.img.cols.CoProcBranchTrailUsed)
+	case arm7tdmi.BranchTrailFlushed:
+		tooltip = "Branch trail was flushed causing a pipeline stall"
+		imguiColorLabel("", win.img.cols.CoProcBranchTrailFlushed)
+	}
+	imguiTooltipSimple(tooltip)
+
+	if e.MergedIS {
+		imgui.SameLine()
+		imguiColorLabel("", win.img.cols.CoProcMergedIS)
+		imguiTooltipSimple("Merged I-S cycle")
 	}
 
-	imgui.BeginChildV("lastexecution", imgui.Vec2{X: 0, Y: height}, false, 0)
-	defer imgui.EndChild()
+	// cycle sequence
+	imgui.TableNextColumn()
+	imgui.Text(e.CyclesSequence)
 
-	flgs := imgui.TableFlagsNone
-	flgs |= imgui.TableFlagsSizingFixedFit
-	flgs |= imgui.TableFlagsRowBg
-	if !imgui.BeginTableV("lastexecution", 8, flgs, imgui.Vec2{}, 0) {
-		return
-	}
-	defer imgui.EndTable()
-
-	// set neutral colors for table rows by default. we'll change it to
-	// something more meaningful as appropriate (eg. entry at PC address)
-	imgui.PushStyleColor(imgui.StyleColorTableRowBg, win.img.cols.WindowBg)
-	imgui.PushStyleColor(imgui.StyleColorTableRowBgAlt, win.img.cols.WindowBg)
-	defer imgui.PopStyleColorV(2)
-
-	// only draw elements that will be visible
-	var clipper imgui.ListClipper
-	clipper.Begin(itr.Count)
-	for clipper.Step() {
-		_, _ = itr.Start()
-		e, ok := itr.SkipNext(clipper.DisplayStart)
-		if !ok {
-			break // clipper.Step() loop
-		}
-
-		// several columns use a tooltip
-		tooltip := ""
-
-		for i := clipper.DisplayStart; i < clipper.DisplayEnd; i++ {
-			entry := (*e).(arm7tdmi.DisasmEntry)
-
-			imgui.TableNextRow()
-
-			imgui.TableNextColumn()
-			switch entry.MAMCR {
-			case 0:
-				imguiColorLabel("", win.img.cols.CoProcMAM0)
-				tooltip = "MAM-0"
-			case 1:
-				imguiColorLabel("", win.img.cols.CoProcMAM1)
-				tooltip = "MAM-1"
-			case 2:
-				imguiColorLabel("", win.img.cols.CoProcMAM2)
-				tooltip = "MAM-2"
-			}
-			imguiTooltipSimple(tooltip)
-
-			imgui.TableNextColumn()
-			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmAddress)
-			imgui.Text(entry.Address)
-			imgui.PopStyleColor()
-
-			imgui.TableNextColumn()
-			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmOperator)
-			imgui.Text(entry.Operator)
-			imgui.PopStyleColor()
-
-			imgui.TableNextColumn()
-			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmOperand)
-			imgui.Text(entry.Operand)
-			imgui.PopStyleColor()
-
-			// branch trail and merged IS indicator
-			imgui.TableNextColumn()
-			tooltip = ""
-			switch entry.BranchTrail {
-			case arm7tdmi.BranchTrailUsed:
-				tooltip = "Branch trail was used"
-				imguiColorLabel("", win.img.cols.CoProcBranchTrailUsed)
-			case arm7tdmi.BranchTrailFlushed:
-				tooltip = "Branch trail was flushed causing a pipeline stall"
-				imguiColorLabel("", win.img.cols.CoProcBranchTrailFlushed)
-			}
-			imguiTooltipSimple(tooltip)
-
-			if entry.MergedIS {
-				imgui.SameLine()
-				imguiColorLabel("", win.img.cols.CoProcMergedIS)
-				imguiTooltipSimple("Merged I-S cycle")
-			}
-
-			// cycle sequence
-			imgui.TableNextColumn()
-			imgui.Text(entry.CyclesSequence)
-
-			// cycles total
-			imgui.TableNextColumn()
-			if entry.Cycles > 0 {
-				imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmCycles)
-				imgui.Text(fmt.Sprintf("%d", entry.Cycles))
-				imgui.PopStyleColor()
-			} else {
-				imgui.Text("??")
-			}
-
-			// execution notes
-			imgui.TableNextColumn()
-			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmNotes)
-			imgui.Text(entry.ExecutionNotes)
-			imgui.PopStyleColor()
-
-			e, ok = itr.Next()
-			if !ok {
-				break // clipper.DisplayStart loop
-			}
-		}
-	}
-}
-
-func (win *winCoProcDisasm) save() {
-	var itr *disassembly.Iterate
-	var fn string
-	if win.showLastExecution {
-		itr = win.img.dbg.CoProcDisasm.NewIteration(disassembly.IterateLast)
-		fn = unique.Filename("coproc_lastexecution", "")
+	// cycles total
+	imgui.TableNextColumn()
+	if e.Cycles > 0 {
+		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmCycles)
+		imgui.Text(fmt.Sprintf("%d", e.Cycles))
+		imgui.PopStyleColor()
 	} else {
-		itr = win.img.dbg.CoProcDisasm.NewIteration(disassembly.IterateComplete)
-		fn = unique.Filename("coproc_disasm", "")
+		imgui.Text("??")
 	}
 
-	f, err := os.Create(fmt.Sprintf("%s.csv", fn))
-	if err != nil {
-		logger.Logf("sdlimgui", "error saving last coproc execution: %v", err)
-		return
-	}
-	defer func() {
-		err := f.Close()
-		if err != nil {
-			logger.Logf("sdlimgui", "error saving last coproc execution: %v", err)
-		}
-	}()
-
-	e, _ := itr.Start()
-	for e != nil {
-		f.Write([]byte((*e).String()))
-		f.Write([]byte("\n"))
-		e, _ = itr.Next()
-	}
+	// execution notes
+	imgui.TableNextColumn()
+	imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmNotes)
+	imgui.Text(e.ExecutionNotes)
+	imgui.PopStyleColor()
 }

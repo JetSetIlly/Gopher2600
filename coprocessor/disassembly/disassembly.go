@@ -36,15 +36,21 @@ type Disassembly struct {
 	tv   TV
 	cart mapper.CartCoProcBus
 
-	enabled bool
+	disasm DisasmEntries
+}
 
-	disasm     map[string]mapper.CartCoProcDisasmEntry
-	disasmKeys []string // sorted keys into the disasm map
+// DisasmEntries contains all the current information about the coprocessor
+// disassembly, including whether disassembly is currently enabled.
+type DisasmEntries struct {
+	Enabled bool
 
-	lastExecution        []mapper.CartCoProcDisasmEntry
-	lastExecutionSummary mapper.CartCoProcDisasmSummary
+	Entries map[string]mapper.CartCoProcDisasmEntry
+	Keys    []string // sorted keys into the disasm map
 
-	lastStart coords.TelevisionCoords
+	LastExecution        []mapper.CartCoProcDisasmEntry
+	LastExecutionSummary mapper.CartCoProcDisasmSummary
+
+	LastStart coords.TelevisionCoords
 }
 
 // NewDisassembly returns a new Coprocessor instance if cartridge implements the
@@ -54,87 +60,100 @@ func NewDisassembly(tv TV, cart mapper.CartCoProcBus) *Disassembly {
 		return nil
 	}
 
-	cop := &Disassembly{
-		tv:            tv,
-		cart:          cart,
-		lastExecution: make([]mapper.CartCoProcDisasmEntry, 0, 1024),
+	dsm := &Disassembly{
+		tv:   tv,
+		cart: cart,
+		disasm: DisasmEntries{
+			LastExecution: make([]mapper.CartCoProcDisasmEntry, 0, 1024),
+		},
 	}
 
-	cop.disasm = make(map[string]mapper.CartCoProcDisasmEntry)
-	cop.disasmKeys = make([]string, 0, 1024)
+	dsm.disasm.Entries = make(map[string]mapper.CartCoProcDisasmEntry)
+	dsm.disasm.Keys = make([]string, 0, 1024)
 
-	cop.Enable(false)
+	dsm.Enable(false)
 
-	return cop
+	return dsm
 }
 
 // IsEnabled returns true if coprocessor disassembly is currently active.
-func (cop *Disassembly) IsEnabled() bool {
-	cop.crit.Lock()
-	defer cop.crit.Unlock()
-	return cop.enabled
+func (dsm *Disassembly) IsEnabled() bool {
+	dsm.crit.Lock()
+	defer dsm.crit.Unlock()
+	return dsm.disasm.Enabled
 }
 
 // Enable or disable coprocessor disassembly. We retain the disassembly
 // (including last execution) already gathered but the LastExecution field is
 // cleared on disable. The general disassembly is maintained.
-func (cop *Disassembly) Enable(enable bool) {
-	cop.crit.Lock()
-	defer cop.crit.Unlock()
+func (dsm *Disassembly) Enable(enable bool) {
+	dsm.crit.Lock()
+	defer dsm.crit.Unlock()
 
-	cop.enabled = enable
-	if cop.enabled {
-		cop.cart.SetDisassembler(cop)
+	dsm.disasm.Enabled = enable
+	if dsm.disasm.Enabled {
+		dsm.cart.SetDisassembler(dsm)
 	} else {
-		cop.cart.SetDisassembler(nil)
-		cop.lastExecution = cop.lastExecution[:0]
+		dsm.cart.SetDisassembler(nil)
+		dsm.disasm.LastExecution = dsm.disasm.LastExecution[:0]
 	}
 }
 
 // Start implements the CartCoProcDisassembler interface.
-func (cop *Disassembly) Start() {
-	cop.crit.Lock()
-	defer cop.crit.Unlock()
+func (dsm *Disassembly) Start() {
+	dsm.crit.Lock()
+	defer dsm.crit.Unlock()
 
-	if cop.enabled {
+	if dsm.disasm.Enabled {
 		// add one clock to frame/scanline/clock values. the Reset() function will
 		// have been called on the last CPU cycle of the instruction that triggers
 		// the coprocessor reset. the TV will not have moved onto the beginning of
 		// the next instruction yet so we must figure it out here
-		cop.lastStart = cop.tv.AdjCoords(television.AdjCPUCycle, 1)
+		dsm.disasm.LastStart = dsm.tv.AdjCoords(television.AdjCPUCycle, 1)
 	}
 
-	cop.lastExecution = cop.lastExecution[:0]
+	dsm.disasm.LastExecution = dsm.disasm.LastExecution[:0]
 }
 
 // Step implements the CartCoProcDisassembler interface.
-func (cop *Disassembly) Step(entry mapper.CartCoProcDisasmEntry) {
-	cop.crit.Lock()
-	defer cop.crit.Unlock()
+func (dsm *Disassembly) Step(entry mapper.CartCoProcDisasmEntry) {
+	dsm.crit.Lock()
+	defer dsm.crit.Unlock()
 
 	// check that coprocessor disassmebler hasn't been disabled in the period
 	// while we were waiting for the critical section lock
-	if !cop.enabled {
+	if !dsm.disasm.Enabled {
 		return
 	}
 
-	cop.lastExecution = append(cop.lastExecution, entry)
+	dsm.disasm.LastExecution = append(dsm.disasm.LastExecution, entry)
 }
 
 // End implements the CartCoProcDisassembler interface.
-func (cop *Disassembly) End(summary mapper.CartCoProcDisasmSummary) {
-	cop.crit.Lock()
-	defer cop.crit.Unlock()
+func (dsm *Disassembly) End(summary mapper.CartCoProcDisasmSummary) {
+	dsm.crit.Lock()
+	defer dsm.crit.Unlock()
 
-	cop.lastExecutionSummary = summary
+	dsm.disasm.LastExecutionSummary = summary
 
-	for _, entry := range cop.lastExecution {
+	for _, entry := range dsm.disasm.LastExecution {
 		key := entry.Key()
-		if _, ok := cop.disasm[key]; !ok {
-			cop.disasmKeys = append(cop.disasmKeys, key)
+		if _, ok := dsm.disasm.Entries[key]; !ok {
+			dsm.disasm.Keys = append(dsm.disasm.Keys, key)
 		}
-		cop.disasm[key] = entry
+		dsm.disasm.Entries[key] = entry
 	}
 
-	sort.Strings(cop.disasmKeys)
+	sort.Strings(dsm.disasm.Keys)
+}
+
+// BorrowDisasm will lock the DisasmEntries structure for the durction of the
+// supplied function, which will be executed with the disasm structure as an
+// argument.
+//
+// Should not be called from the emulation goroutine.
+func (dsm *Disassembly) BorrowDisassembly(f func(*DisasmEntries)) {
+	dsm.crit.Lock()
+	defer dsm.crit.Unlock()
+	f(&dsm.disasm)
 }
