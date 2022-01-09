@@ -16,6 +16,7 @@
 package developer
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
@@ -32,6 +33,10 @@ type Developer struct {
 	// obj dump for binary (if available)
 	source     *Source
 	sourceLock sync.Mutex
+
+	// illegal accesses already encountered. duplicate accesses will not be logged.
+	illegalAccess     IllegalAccess
+	illegalAccessLock sync.Mutex
 }
 
 // NewDeveloper is the preferred method of initialisation for the Developer type.
@@ -44,6 +49,10 @@ func NewDeveloper(pathToROM string, cart mapper.CartCoProcBus) *Developer {
 
 	dev := &Developer{
 		cart: cart,
+		illegalAccess: IllegalAccess{
+			entries: make(map[string]IllegalAccessEntry),
+			Log:     make([]IllegalAccessEntry, 0),
+		},
 	}
 
 	dev.cart.SetDeveloper(dev)
@@ -61,22 +70,48 @@ func NewDeveloper(pathToROM string, cart mapper.CartCoProcBus) *Developer {
 	return dev
 }
 
+// IllegalAccess implements the CartCoProcDeveloper interface.
+func (dev *Developer) IllegalAccess(event string, pc uint32, addr uint32) string {
+	accessKey := fmt.Sprintf("%08x%08x", addr, pc)
+	if _, ok := dev.illegalAccess.entries[accessKey]; ok {
+		return ""
+	}
+
+	frag := dev.LookupSource(pc)
+
+	e := IllegalAccessEntry{
+		Event:      event,
+		PC:         pc,
+		AccessAddr: addr,
+		Source:     frag,
+	}
+
+	dev.illegalAccess.entries[accessKey] = e
+	dev.illegalAccess.Log = append(dev.illegalAccess.Log, e)
+
+	if frag.String() == "" {
+		return ""
+	}
+
+	return fmt.Sprintf("%s\n%s", frag.String(), frag.Content)
+}
+
 // LookupSource implements the CartCoProcDeveloper interface.
-func (dev *Developer) LookupSource(addr uint32) mapper.CoProcSourceReference {
+func (dev *Developer) LookupSource(addr uint32) SourceFragment {
 	dev.sourceLock.Lock()
 	defer dev.sourceLock.Unlock()
 
-	var ref mapper.CoProcSourceReference
+	var frag SourceFragment
 
 	if dev.source != nil {
-		ref = dev.source.findProgramAccess(addr)
+		frag = dev.source.findProgramAccess(addr)
 	}
 
 	if dev.mapfile != nil {
-		ref.Function = dev.mapfile.findProgramAccess(addr)
+		frag.Function = dev.mapfile.findProgramAccess(addr)
 	}
 
-	return ref
+	return frag
 }
 
 // ExecutionProfile implements the CartCoProcDeveloper interface.
@@ -94,10 +129,17 @@ func (dev *Developer) ExecutionProfile(addr map[uint32]float32) {
 // BorrowSource will lock the source code structure for the durction of the
 // supplied function, which will be executed with the source code structure as
 // an argument.
-//
-// Should not be called from the emulation goroutine.
 func (dev *Developer) BorrowSource(f func(*Source)) {
 	dev.sourceLock.Lock()
 	defer dev.sourceLock.Unlock()
 	f(dev.source)
+}
+
+// BorrowIllegalAccess will lock the illegal access log for the duratoin of the
+// supplied fucntion, which will be executed with the illegal access log as an
+// argument.
+func (dev *Developer) BorrowIllegalAccess(f func(*IllegalAccess)) {
+	dev.illegalAccessLock.Lock()
+	defer dev.illegalAccessLock.Unlock()
+	f(&dev.illegalAccess)
 }

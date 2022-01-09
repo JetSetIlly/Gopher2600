@@ -54,6 +54,7 @@ const (
 	cmdDisplay   = "DISPLAY"
 
 	cmdPlusROM = "PLUSROM"
+	cmdCoProc  = "COPROC"
 
 	// user input.
 	cmdController = "CONTROLLER"
@@ -116,6 +117,7 @@ var commandTemplate = []string{
 
 	// peripherals (components that might not be present)
 	cmdPlusROM + " (NICK [%<name>S]|ID [%<id>S]|HOST [%<host>S]|PATH [%<path>S])",
+	cmdCoProc + " (ID|LIST [ILLEGAL|SOURCEFILES])",
 
 	// user input
 	cmdController + " [LEFT|RIGHT] (AUTO|STICK|PADDLE|KEYBOARD)",

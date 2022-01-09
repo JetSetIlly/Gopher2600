@@ -181,9 +181,6 @@ type ARM struct {
 	Scycle func(bus busAccess, addr uint32)
 	Ncycle func(bus busAccess, addr uint32)
 
-	// illegal accesses already encountered. duplicate accesses will not be logged.
-	illegalAccesses map[string]bool
-
 	// addresses of instructions that have been executed
 	executedAddresses map[uint32]float32
 }
@@ -204,13 +201,12 @@ const (
 // NewARM is the preferred method of initialisation for the ARM type.
 func NewARM(mmap memorymodel.Map, prefs *preferences.ARMPreferences, mem SharedMemory, hook CartridgeHook, pathToROM string) *ARM {
 	arm := &ARM{
-		prefs:           prefs,
-		mmap:            mmap,
-		mem:             mem,
-		hook:            hook,
-		executionMap:    make(map[uint32][]func(_ uint16)),
-		disasmCache:     make(map[uint32]DisasmEntry),
-		illegalAccesses: make(map[string]bool),
+		prefs:        prefs,
+		mmap:         mmap,
+		mem:          mem,
+		hook:         hook,
+		executionMap: make(map[uint32][]func(_ uint16)),
+		disasmCache:  make(map[uint32]DisasmEntry),
 	}
 
 	arm.mam.mmap = mmap
@@ -318,16 +314,14 @@ func (arm *ARM) Step(vcsClock float32) {
 	arm.timer.stepFromVCS(Clk, vcsClock)
 }
 
-// the read/write functions will sometimes be asked to access memory that is
-// "illegal". this function logs the error with as much information as it can
-func (arm *ARM) logSourceAccess(tag string, addr uint32) {
-	logger.Logf("ARM7", "%s: unrecognised address %08x (PC: %08x)", tag, addr, arm.executingPC)
+func (arm *ARM) illegalAccess(event string, addr uint32) {
+	logger.Logf("ARM7", "%s: unrecognised address %08x (PC: %08x)", event, addr, arm.executingPC)
 	if arm.dev == nil {
 		return
 	}
-	ref := arm.dev.LookupSource(arm.executingPC)
-	if ref.Filename != "" {
-		logger.Logf("ARM7", "%s: %s:%d in %s\n%s", tag, ref.Filename, ref.LineNumber, ref.Function, ref.Content)
+	log := arm.dev.IllegalAccess(event, arm.executingPC, addr)
+	if log != "" {
+		logger.Logf("ARM7", "%s: %s", event, log)
 	}
 }
 
@@ -344,12 +338,8 @@ func (arm *ARM) read8bit(addr uint32) uint8 {
 			return uint8(v)
 		}
 		arm.memoryError = arm.abortOnIllegalMem
+		arm.illegalAccess("read8bit", addr)
 
-		accessKey := fmt.Sprintf("%08x%08x", addr, arm.executingPC)
-		if _, ok := arm.illegalAccesses[accessKey]; !ok {
-			arm.illegalAccesses[accessKey] = true
-			arm.logSourceAccess("read8bit", addr)
-		}
 		return 0
 	}
 
@@ -369,12 +359,8 @@ func (arm *ARM) write8bit(addr uint32, val uint8) {
 			return
 		}
 		arm.memoryError = arm.abortOnIllegalMem
+		arm.illegalAccess("write8bit", addr)
 
-		accessKey := fmt.Sprintf("%08x%08x", addr, arm.executingPC)
-		if _, ok := arm.illegalAccesses[accessKey]; !ok {
-			arm.illegalAccesses[accessKey] = true
-			arm.logSourceAccess("write8bit", addr)
-		}
 		return
 	}
 
@@ -399,12 +385,8 @@ func (arm *ARM) read16bit(addr uint32) uint16 {
 			return uint16(v)
 		}
 		arm.memoryError = arm.abortOnIllegalMem
+		arm.illegalAccess("read16bit", addr)
 
-		accessKey := fmt.Sprintf("%08x%08x", addr, arm.executingPC)
-		if _, ok := arm.illegalAccesses[accessKey]; !ok {
-			arm.illegalAccesses[accessKey] = true
-			arm.logSourceAccess("read16bit", addr)
-		}
 		return 0
 	}
 
@@ -429,12 +411,8 @@ func (arm *ARM) write16bit(addr uint32, val uint16) {
 			return
 		}
 		arm.memoryError = arm.abortOnIllegalMem
+		arm.illegalAccess("write16bit", addr)
 
-		accessKey := fmt.Sprintf("%08x%08x", addr, arm.executingPC)
-		if _, ok := arm.illegalAccesses[accessKey]; !ok {
-			arm.illegalAccesses[accessKey] = true
-			arm.logSourceAccess("write16bit", addr)
-		}
 		return
 	}
 
@@ -460,12 +438,8 @@ func (arm *ARM) read32bit(addr uint32) uint32 {
 			return v
 		}
 		arm.memoryError = arm.abortOnIllegalMem
+		arm.illegalAccess("read32bit", addr)
 
-		accessKey := fmt.Sprintf("%08x%08x", addr, arm.executingPC)
-		if _, ok := arm.illegalAccesses[accessKey]; !ok {
-			arm.illegalAccesses[accessKey] = true
-			arm.logSourceAccess("read32bit", addr)
-		}
 		return 0
 	}
 
@@ -490,12 +464,8 @@ func (arm *ARM) write32bit(addr uint32, val uint32) {
 			return
 		}
 		arm.memoryError = arm.abortOnIllegalMem
+		arm.illegalAccess("write32bit", addr)
 
-		accessKey := fmt.Sprintf("%08x%08x", addr, arm.executingPC)
-		if _, ok := arm.illegalAccesses[accessKey]; !ok {
-			arm.illegalAccesses[accessKey] = true
-			arm.logSourceAccess("write32bit", addr)
-		}
 		return
 	}
 

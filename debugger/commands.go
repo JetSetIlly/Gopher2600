@@ -24,6 +24,7 @@ import (
 	"strings"
 
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
+	"github.com/jetsetilly/gopher2600/coprocessor/developer"
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/debugger/dbgmem"
 	"github.com/jetsetilly/gopher2600/debugger/script"
@@ -1283,6 +1284,48 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 			ai := plusrom.CopyAddrInfo()
 			dbg.printLine(terminal.StyleFeedback, fmt.Sprintf("Host: %s", ai.Host))
 			dbg.printLine(terminal.StyleFeedback, fmt.Sprintf("Path: %s", ai.Path))
+		}
+
+	case cmdCoProc:
+		coproc := dbg.vcs.Mem.Cart.GetCoProcBus()
+		if coproc == nil {
+			dbg.printLine(terminal.StyleError, "cartridge does not have a coprocessor")
+			return nil
+		}
+
+		option, _ := tokens.Get()
+
+		switch option {
+		case "LIST":
+			arg, _ := tokens.Get()
+			switch arg {
+			case "ILLEGAL":
+				dbg.CoProcDev.BorrowIllegalAccess(func(log *developer.IllegalAccess) {
+					for _, e := range log.Log {
+						if e.Source.IsValid() {
+							dbg.printLine(terminal.StyleFeedback, e.Source.String())
+							dbg.printLine(terminal.StyleFeedback, e.Source.Content)
+						} else {
+							dbg.printLine(terminal.StyleFeedback,
+								fmt.Sprintf("%s at address %08x (PC: %08x)", e.Event, e.AccessAddr, e.PC))
+						}
+					}
+				})
+			case "SOURCEFILES":
+				dbg.CoProcDev.BorrowSource(func(src *developer.Source) {
+					if src == nil {
+						dbg.printLine(terminal.StyleError, "no source files found")
+						return
+					}
+					for _, fn := range src.FilesNames {
+						dbg.printLine(terminal.StyleFeedback, fn)
+					}
+				})
+			}
+		case "ID":
+			fallthrough
+		default:
+			dbg.printLine(terminal.StyleFeedback, coproc.CoProcID())
 		}
 
 	case cmdController:

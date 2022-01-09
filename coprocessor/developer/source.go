@@ -27,9 +27,34 @@ import (
 	"strings"
 
 	"github.com/jetsetilly/gopher2600/curated"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/logger"
 )
+
+// SourceFragment specifies a specific line in a file along with content and
+// function name.
+type SourceFragment struct {
+	Function   string
+	Filename   string
+	LineNumber int
+	Content    string
+}
+
+// IsValid tests whether the SourceFragment has meaningful information in it.
+func (frag SourceFragment) IsValid() bool {
+	return frag.Filename != ""
+}
+
+func (frag SourceFragment) String() string {
+	if !frag.IsValid() {
+		return ""
+	}
+
+	function := ""
+	if frag.Function != "" {
+		function = fmt.Sprintf(" %s()", frag.Function)
+	}
+	return fmt.Sprintf("%s:%d%s", frag.Filename, frag.LineNumber, function)
+}
 
 // SrcFile represents a single file of original source code. A file is made up
 // of many SrcLine entries.
@@ -254,10 +279,10 @@ func newSource(pathToROM string) (*Source, error) {
 
 // findProgramAccess returns the program (function) label for the supplied
 // address. Addresses may be in a range.
-func (obj *Source) findProgramAccess(address uint32) mapper.CoProcSourceReference {
+func (obj *Source) findProgramAccess(address uint32) SourceFragment {
 	asm := obj.asm[address]
 
-	return mapper.CoProcSourceReference{
+	return SourceFragment{
 		Filename:   asm.src.file.Filename,
 		LineNumber: asm.src.LineNumber,
 		Content:    asm.src.Content,

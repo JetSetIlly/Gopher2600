@@ -364,6 +364,8 @@ basis and only for the duration of the session (the ROM must be changed for it t
 The NICK and ID can be changed for the session but also be saved to disk and be used across
 all PlusROM cartridges.`,
 
+	cmdCoProc: `Returns information about any coprocessor in the inserted cartridge.`,
+
 	// user input
 	cmdController: `Change the current controller type for the specified player. The AUTO
 controller handles changes of controller according to user input and where possible what
