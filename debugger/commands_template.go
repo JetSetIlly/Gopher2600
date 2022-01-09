@@ -117,7 +117,7 @@ var commandTemplate = []string{
 
 	// peripherals (components that might not be present)
 	cmdPlusROM + " (NICK [%<name>S]|ID [%<id>S]|HOST [%<host>S]|PATH [%<path>S])",
-	cmdCoProc + " (ID|LIST [ILLEGAL|SOURCEFILES])",
+	cmdCoProc + " (ID|LIST [ILLEGAL|SOURCEFILES]|TOP (%<top>N))",
 
 	// user input
 	cmdController + " [LEFT|RIGHT] (AUTO|STICK|PADDLE|KEYBOARD)",

@@ -60,17 +60,21 @@ func (frag SourceFragment) String() string {
 // of many SrcLine entries.
 type SrcFile struct {
 	Filename string
-	Lines    []SrcLine
+	Lines    []*SrcLine
 }
 
 // SrcLine represents a single line of source in a SrcFile.
 type SrcLine struct {
-	file       *SrcFile
+	File       *SrcFile
 	LineNumber int // counting from one
 	Content    string
-	Asm        []SrcLineAsm
+	Asm        []*SrcLineAsm
 
 	CycleCount float32
+}
+
+func (src *SrcLine) String() string {
+	return fmt.Sprintf("%s: %d", src.File.Filename, src.LineNumber)
 }
 
 // SrcLineAsm associates an asm with a block of source (which might be a single line).
@@ -86,6 +90,31 @@ type Source struct {
 	FilesNames      []string
 	asm             map[uint32]*SrcLineAsm
 	TotalCycleCount float32
+
+	SrcLinesAll SrcLinesAll
+}
+
+// SrcLinesAll orders every line of executable source code in the identified
+// source files. Useful for determining the most expensive lines of source code
+// in terms of execution time.
+type SrcLinesAll struct {
+	Ordered []*SrcLine
+}
+
+// Len implements sort.Interface.
+func (e SrcLinesAll) Len() int {
+	return len(e.Ordered)
+}
+
+// Less implements sort.Interface.
+func (e SrcLinesAll) Less(i int, j int) bool {
+	// higher cycle counts come first
+	return e.Ordered[i].CycleCount > e.Ordered[j].CycleCount
+}
+
+// Swap implements sort.Interface.
+func (e SrcLinesAll) Swap(i int, j int) {
+	e.Ordered[i], e.Ordered[j] = e.Ordered[j], e.Ordered[i]
 }
 
 const objFile = "armcode.obj"
@@ -154,8 +183,8 @@ func readSourceFile(filename string, pathToROM string) (*SrcFile, error) {
 
 	// split files into lines
 	for i, s := range strings.Split(string(b), "\n") {
-		fl.Lines = append(fl.Lines, SrcLine{
-			file:       &fl,
+		fl.Lines = append(fl.Lines, &SrcLine{
+			File:       &fl,
 			LineNumber: i + 1,
 			Content:    s,
 		})
@@ -171,6 +200,9 @@ func newSource(pathToROM string) (*Source, error) {
 		Files:      make(map[string]*SrcFile),
 		FilesNames: make([]string, 0),
 		asm:        make(map[uint32]*SrcLineAsm),
+		SrcLinesAll: SrcLinesAll{
+			Ordered: make([]*SrcLine, 0),
+		},
 	}
 
 	// path to ROM without the filename
@@ -254,7 +286,7 @@ func newSource(pathToROM string) (*Source, error) {
 			// we index lines from zero but lines are counted from one in the objdump
 			ln -= 1
 
-			currentLine = &obj.Files[fm[0]].Lines[ln]
+			currentLine = obj.Files[fm[0]].Lines[ln]
 
 		} else if asmMatch.Match([]byte(ol)) {
 			addr, err := strconv.ParseUint(strings.TrimSpace(ol[:8]), 16, 32)
@@ -265,11 +297,23 @@ func newSource(pathToROM string) (*Source, error) {
 						src: currentLine,
 					}
 					obj.asm[uint32(addr)] = &asmEntry
-					currentLine.Asm = append(currentLine.Asm, asmEntry)
+					currentLine.Asm = append(currentLine.Asm, &asmEntry)
 				}
 			}
 		}
 	}
+
+	// populate SrcLinesAll by recursing through every file and every line
+	for _, f := range obj.Files {
+		for _, l := range f.Lines {
+			if len(l.Asm) > 0 {
+				obj.SrcLinesAll.Ordered = append(obj.SrcLinesAll.Ordered, l)
+			}
+		}
+	}
+
+	// sort SrcLinesAll
+	sort.Sort(obj.SrcLinesAll)
 
 	// sort list of filename keys
 	sort.Strings(obj.FilesNames)
@@ -283,7 +327,7 @@ func (obj *Source) findProgramAccess(address uint32) SourceFragment {
 	asm := obj.asm[address]
 
 	return SourceFragment{
-		Filename:   asm.src.file.Filename,
+		Filename:   asm.src.File.Filename,
 		LineNumber: asm.src.LineNumber,
 		Content:    asm.src.Content,
 	}
@@ -309,5 +353,6 @@ func (obj *Source) execute(address uint32, ct float32) {
 	if a, ok := obj.asm[address]; ok {
 		a.src.CycleCount += ct
 		obj.TotalCycleCount += ct
+		sort.Sort(obj.SrcLinesAll)
 	}
 }

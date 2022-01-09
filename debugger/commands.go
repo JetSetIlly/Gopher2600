@@ -1296,6 +1296,31 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		option, _ := tokens.Get()
 
 		switch option {
+		case "TOP":
+			top := 10 // default of top 10
+
+			arg, ok := tokens.Get()
+			if ok {
+				n, err := strconv.ParseInt(arg, 0, 32)
+				if err != nil {
+					dbg.printLine(terminal.StyleError, err.Error())
+					return nil
+				}
+				top = int(n)
+			}
+
+			dbg.CoProcDev.BorrowSource(func(src *developer.Source) {
+				if src == nil {
+					dbg.printLine(terminal.StyleError, "no source files found")
+					return
+				}
+
+				for i := 1; i <= top; i++ {
+					l := src.SrcLinesAll.Ordered[i]
+					dbg.printLine(terminal.StyleFeedback, fmt.Sprintf("%02d: %s", i, l.String()))
+				}
+			})
+
 		case "LIST":
 			arg, _ := tokens.Get()
 			switch arg {
@@ -1311,6 +1336,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 						}
 					}
 				})
+
 			case "SOURCEFILES":
 				dbg.CoProcDev.BorrowSource(func(src *developer.Source) {
 					if src == nil {
