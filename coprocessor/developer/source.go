@@ -53,8 +53,13 @@ type SrcLine struct {
 	// or otherwise unsused
 	Asm []*SrcLineAsm
 
-	// the accumulated number of cycles this line has consumed on the coprocessor
-	CycleCount float32
+	// the number of cycles this line has instruction consumed on the
+	// coprocessor during the course of the previous frame
+	FrameCycles     float32
+	nextFrameCycles float32
+
+	// the total number of cycles over the lifetime of the program
+	LifetimeCycles float32
 }
 
 func (src *SrcLine) String() string {
@@ -70,7 +75,7 @@ type SrcLineAsm struct {
 	Instruction string
 
 	// the line of source code this instruction was generated for
-	src *SrcLine
+	line *SrcLine
 }
 
 // Source files for the currently loaded ROM. It is built through a combination
@@ -86,33 +91,52 @@ type Source struct {
 	// have SrcLineAsm entries are included.
 	//
 	// sorted by cycle count from highest to lowest
-	SrcLinesAll SrcLinesAll
+	ExecutedLines ExecutedLines
 
-	// the total number of cycles the entire program has consumed on the coprocessor
-	TotalCycleCount float32
+	// the number of cycles this line has instruction consumed on the
+	// coprocessor during the course of the previous frame
+	FrameCycles     float32
+	nextFrameCycles float32
+
+	// the total number of cycles over the lifetime of the program
+	TotalCycles float32
 }
 
-// SrcLinesAll orders every line of executable source code in the identified
+// ExecutedLines orders every line of executable source code in the identified
 // source files. Useful for determining the most expensive lines of source code
 // in terms of execution time.
-type SrcLinesAll struct {
-	Ordered []*SrcLine
+type ExecutedLines struct {
+	Lines []*SrcLine
+
+	// if true then Lines will be sorted by TotalCycles, otherwise sorted by FrameCycles
+	byLifetimeCycles bool
+}
+
+// SortedBy returns a string describing the sort method
+func (e ExecutedLines) SortedBy() string {
+	if e.byLifetimeCycles {
+		return "lifetime"
+	}
+	return "previous frame"
 }
 
 // Len implements sort.Interface.
-func (e SrcLinesAll) Len() int {
-	return len(e.Ordered)
+func (e ExecutedLines) Len() int {
+	return len(e.Lines)
 }
 
 // Less implements sort.Interface.
-func (e SrcLinesAll) Less(i int, j int) bool {
+func (e ExecutedLines) Less(i int, j int) bool {
 	// higher cycle counts come first
-	return e.Ordered[i].CycleCount > e.Ordered[j].CycleCount
+	if e.byLifetimeCycles {
+		return e.Lines[i].LifetimeCycles > e.Lines[j].LifetimeCycles
+	}
+	return e.Lines[i].FrameCycles > e.Lines[j].FrameCycles
 }
 
 // Swap implements sort.Interface.
-func (e SrcLinesAll) Swap(i int, j int) {
-	e.Ordered[i], e.Ordered[j] = e.Ordered[j], e.Ordered[i]
+func (e ExecutedLines) Swap(i int, j int) {
+	e.Lines[i], e.Lines[j] = e.Lines[j], e.Lines[i]
 }
 
 const objFile = "armcode.obj"
@@ -198,8 +222,8 @@ func newSource(pathToROM string) (*Source, error) {
 		Files:      make(map[string]*SrcFile),
 		FilesNames: make([]string, 0),
 		asm:        make(map[uint32]*SrcLineAsm),
-		SrcLinesAll: SrcLinesAll{
-			Ordered: make([]*SrcLine, 0),
+		ExecutedLines: ExecutedLines{
+			Lines: make([]*SrcLine, 0),
 		},
 	}
 
@@ -297,7 +321,7 @@ func newSource(pathToROM string) (*Source, error) {
 					asmEntry := SrcLineAsm{
 						Addr:        uint32(addr),
 						Instruction: strings.TrimSpace(ol[addrEnd+1:]),
-						src:         currentLine,
+						line:        currentLine,
 					}
 					src.asm[uint32(addr)] = &asmEntry
 					currentLine.Asm = append(currentLine.Asm, &asmEntry)
@@ -325,13 +349,13 @@ func newSource(pathToROM string) (*Source, error) {
 	for _, f := range src.Files {
 		for _, l := range f.Lines {
 			if len(l.Asm) > 0 {
-				src.SrcLinesAll.Ordered = append(src.SrcLinesAll.Ordered, l)
+				src.ExecutedLines.Lines = append(src.ExecutedLines.Lines, l)
 			}
 		}
 	}
 
 	// sort SrcLinesAll
-	sort.Sort(src.SrcLinesAll)
+	sort.Sort(src.ExecutedLines)
 
 	// sort list of filename keys
 	sort.Strings(src.FilesNames)
@@ -346,7 +370,7 @@ func (src *Source) findProgramAccess(address uint32) *SrcLine {
 	if asm == nil {
 		return nil
 	}
-	return asm.src
+	return asm.line
 }
 
 // dump everything to io.Writer.
@@ -367,7 +391,19 @@ func (src *Source) dump(w io.Writer) {
 // execute address and increase source line count.
 func (src *Source) execute(address uint32, ct float32) {
 	if a, ok := src.asm[address]; ok {
-		a.src.CycleCount += ct
-		src.TotalCycleCount += ct
+		a.line.nextFrameCycles += ct
+		src.nextFrameCycles += ct
+		a.line.LifetimeCycles += ct
+		src.TotalCycles += ct
 	}
+}
+
+// Resort the execution source lines.
+func (src *Source) Resort(byLifetimeCycles bool) {
+	if src.ExecutedLines.byLifetimeCycles == byLifetimeCycles {
+		return
+	}
+
+	src.ExecutedLines.byLifetimeCycles = byLifetimeCycles
+	sort.Sort(src.ExecutedLines)
 }

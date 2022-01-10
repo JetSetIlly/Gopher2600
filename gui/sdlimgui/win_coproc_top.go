@@ -80,8 +80,6 @@ func (win *winCoProcTop) draw() {
 		return
 	}
 
-	const top = 25
-
 	// safely iterate over top execution information
 	win.img.dbg.CoProcDev.BorrowSource(func(src *developer.Source) {
 		if src == nil {
@@ -90,77 +88,19 @@ func (win *winCoProcTop) draw() {
 		}
 
 		imgui.BeginChildV("##coprocTopMain", imgui.Vec2{X: 0, Y: imguiRemainingWinHeight() - win.optionsHeight}, false, 0)
-		imgui.BeginTableV("##coprocTopTable", 5, imgui.TableFlagsSizingFixedFit, imgui.Vec2{}, 0.0)
+		imgui.BeginTabBar("##coprocSourceTabBar")
 
-		// first column is a dummy column so that Selectable (span all columns) works correctly
-		width := imgui.ContentRegionAvail().X
-		imgui.TableSetupColumnV("", imgui.TableColumnFlagsNone, 0, 0)
-		imgui.TableSetupColumnV("File", imgui.TableColumnFlagsNone, width*0.35, 1)
-		imgui.TableSetupColumnV("Line", imgui.TableColumnFlagsNone, width*0.1, 2)
-		imgui.TableSetupColumnV("Function", imgui.TableColumnFlagsNone, width*0.35, 3)
-		imgui.TableSetupColumnV("Load", imgui.TableColumnFlagsNone, width*0.1, 4)
-
-		if src == nil {
-			imgui.Text("No source files available")
-			return
+		if imgui.BeginTabItemV("Previous Frame    ", nil, imgui.TabItemFlagsNone) {
+			win.drawExecutionTop(src, false)
+			imgui.EndTabItem()
 		}
 
-		imgui.TableHeadersRow()
-
-		for i := 0; i < top; i++ {
-			imgui.TableNextRow()
-			ln := src.SrcLinesAll.Ordered[i]
-
-			imgui.TableNextColumn()
-			imgui.PushStyleColor(imgui.StyleColorHeaderHovered, win.img.cols.CoProcSourceHover)
-			imgui.PushStyleColor(imgui.StyleColorHeaderActive, win.img.cols.CoProcSourceHover)
-			imgui.SelectableV("", false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{0, 0})
-			imgui.PopStyleColorV(2)
-
-			// asm on tooltip
-			if win.showAsm {
-				imguiTooltip(func() {
-					limit := 0
-					for _, asm := range ln.Asm {
-						imgui.Text(asm.Instruction)
-						limit++
-						if limit > 10 {
-							imgui.Text("...more")
-							break // for loop
-						}
-					}
-				}, true)
-			}
-
-			// open source window on click
-			if imgui.IsItemClicked() {
-				srcWin := win.img.wm.windows[winCoProcSourceID].(*winCoProcSource)
-				srcWin.gotoSource(ln)
-			}
-
-			imgui.TableNextColumn()
-			imgui.Text(ln.File.Filename)
-
-			imgui.TableNextColumn()
-			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLineNumber)
-			imgui.Text(fmt.Sprintf("%d", ln.LineNumber))
-			imgui.PopStyleColor()
-
-			imgui.TableNextColumn()
-			if ln.Function == "" {
-				imgui.Text("unknown function")
-			} else {
-				imgui.Text(fmt.Sprintf("%s()", ln.Function))
-			}
-			imgui.TableNextColumn()
-			if ln.CycleCount > 0 {
-				imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLoad)
-				imgui.Text(fmt.Sprintf("%0.2f%%", ln.CycleCount/src.TotalCycleCount*100.0))
-				imgui.PopStyleColor()
-			}
+		if imgui.BeginTabItemV("Lifetime    ", nil, imgui.TabItemFlagsNone) {
+			win.drawExecutionTop(src, true)
+			imgui.EndTabItem()
 		}
 
-		imgui.EndTable()
+		imgui.EndTabBar()
 		imgui.EndChild()
 
 		// options toolbar at foot of window
@@ -170,4 +110,90 @@ func (win *winCoProcTop) draw() {
 			imgui.Checkbox("Show ASM in Tooltip", &win.showAsm)
 		})
 	})
+}
+
+func (win *winCoProcTop) drawExecutionTop(src *developer.Source, byLifetimeCycles bool) {
+	src.Resort(byLifetimeCycles)
+
+	const top = 25
+
+	imgui.Spacing()
+	imgui.BeginTableV("##coprocTopTable", 5, imgui.TableFlagsSizingFixedFit, imgui.Vec2{}, 0.0)
+
+	// first column is a dummy column so that Selectable (span all columns) works correctly
+	width := imgui.ContentRegionAvail().X
+	imgui.TableSetupColumnV("", imgui.TableColumnFlagsNone, 0, 0)
+	imgui.TableSetupColumnV("File", imgui.TableColumnFlagsNone, width*0.35, 1)
+	imgui.TableSetupColumnV("Line", imgui.TableColumnFlagsNone, width*0.1, 2)
+	imgui.TableSetupColumnV("Function", imgui.TableColumnFlagsNone, width*0.35, 3)
+	imgui.TableSetupColumnV("Load", imgui.TableColumnFlagsNone, width*0.1, 4)
+
+	if src == nil {
+		imgui.Text("No source files available")
+		return
+	}
+
+	imgui.TableHeadersRow()
+
+	for i := 0; i < top; i++ {
+		imgui.TableNextRow()
+		ln := src.ExecutedLines.Lines[i]
+
+		imgui.TableNextColumn()
+		imgui.PushStyleColor(imgui.StyleColorHeaderHovered, win.img.cols.CoProcSourceHover)
+		imgui.PushStyleColor(imgui.StyleColorHeaderActive, win.img.cols.CoProcSourceHover)
+		imgui.SelectableV("", false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{0, 0})
+		imgui.PopStyleColorV(2)
+
+		// asm on tooltip
+		if win.showAsm {
+			imguiTooltip(func() {
+				limit := 0
+				for _, asm := range ln.Asm {
+					imgui.Text(asm.Instruction)
+					limit++
+					if limit > 10 {
+						imgui.Text("...more")
+						break // for loop
+					}
+				}
+			}, true)
+		}
+
+		// open source window on click
+		if imgui.IsItemClicked() {
+			srcWin := win.img.wm.windows[winCoProcSourceID].(*winCoProcSource)
+			srcWin.gotoSource(ln)
+		}
+
+		imgui.TableNextColumn()
+		imgui.Text(ln.File.Filename)
+
+		imgui.TableNextColumn()
+		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLineNumber)
+		imgui.Text(fmt.Sprintf("%d", ln.LineNumber))
+		imgui.PopStyleColor()
+
+		imgui.TableNextColumn()
+		if ln.Function == "" {
+			imgui.Text("unknown function")
+		} else {
+			imgui.Text(fmt.Sprintf("%s()", ln.Function))
+		}
+		imgui.TableNextColumn()
+
+		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLoad)
+		if byLifetimeCycles {
+			if src.TotalCycles > 0 {
+				imgui.Text(fmt.Sprintf("%0.2f%%", ln.LifetimeCycles/src.TotalCycles*100.0))
+			}
+		} else {
+			if src.FrameCycles > 0 {
+				imgui.Text(fmt.Sprintf("%0.2f%%", ln.FrameCycles/src.FrameCycles*100.0))
+			}
+		}
+		imgui.PopStyleColor()
+	}
+
+	imgui.EndTable()
 }

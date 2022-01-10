@@ -21,6 +21,7 @@ import (
 	"sync"
 
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
+	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
@@ -110,7 +111,7 @@ func (dev *Developer) ExecutionProfile(addr map[uint32]float32) {
 			dev.source.execute(k, v)
 		}
 
-		sort.Sort(dev.source.SrcLinesAll)
+		sort.Sort(dev.source.ExecutedLines)
 	}
 }
 
@@ -132,4 +133,20 @@ func (dev *Developer) BorrowIllegalAccess(f func(*IllegalAccess)) {
 	dev.illegalAccessLock.Lock()
 	defer dev.illegalAccessLock.Unlock()
 	f(&dev.illegalAccess)
+}
+
+// NewFrame implements the television.FrameTrigger interface.
+func (dev *Developer) NewFrame(_ television.FrameInfo) error {
+	dev.sourceLock.Lock()
+	defer dev.sourceLock.Unlock()
+
+	for _, s := range dev.source.ExecutedLines.Lines {
+		s.FrameCycles = s.nextFrameCycles
+		s.nextFrameCycles = 0
+	}
+
+	dev.source.FrameCycles = dev.source.nextFrameCycles
+	dev.source.nextFrameCycles = 0
+
+	return nil
 }

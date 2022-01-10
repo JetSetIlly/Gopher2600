@@ -1315,8 +1315,9 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 					return
 				}
 
-				for i := 1; i <= top; i++ {
-					l := src.SrcLinesAll.Ordered[i]
+				dbg.printLine(terminal.StyleFeedback, fmt.Sprintf("sorted by %s", strings.ToUpper(src.ExecutedLines.SortedBy())))
+				for i := 0; i < top; i++ {
+					l := src.ExecutedLines.Lines[i]
 					dbg.printLine(terminal.StyleFeedback, fmt.Sprintf("%02d: %s", i, l.String()))
 				}
 			})
@@ -1347,6 +1348,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 						dbg.printLine(terminal.StyleFeedback, fn)
 					}
 				})
+			default:
 			}
 		case "ID":
 			fallthrough

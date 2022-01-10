@@ -170,9 +170,9 @@ func (win *winCoProcSource) draw() {
 
 						// percentage of time taken by this line
 						imgui.TableNextColumn()
-						if ln.CycleCount > 0 {
+						if ln.FrameCycles > 0 {
 							imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLoad)
-							imgui.Text(fmt.Sprintf("%0.2f%%", ln.CycleCount/src.TotalCycleCount*100.0))
+							imgui.Text(fmt.Sprintf("%0.2f%%", ln.FrameCycles/src.FrameCycles*100.0))
 							imgui.PopStyleColor()
 						}
 
