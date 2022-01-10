@@ -27,9 +27,6 @@ import (
 type Developer struct {
 	cart mapper.CartCoProcBus
 
-	// mapfile for binary (if available)
-	mapfile *mapfile
-
 	// obj dump for binary (if available)
 	source     *Source
 	sourceLock sync.Mutex
@@ -57,11 +54,6 @@ func NewDeveloper(pathToROM string, cart mapper.CartCoProcBus) *Developer {
 
 	dev.cart.SetDeveloper(dev)
 
-	dev.mapfile, err = newMapFile(pathToROM)
-	if err != nil {
-		logger.Logf("developer", err.Error())
-	}
-
 	dev.source, err = newSource(pathToROM)
 	if err != nil {
 		logger.Logf("developer", err.Error())
@@ -72,46 +64,36 @@ func NewDeveloper(pathToROM string, cart mapper.CartCoProcBus) *Developer {
 
 // IllegalAccess implements the CartCoProcDeveloper interface.
 func (dev *Developer) IllegalAccess(event string, pc uint32, addr uint32) string {
+	dev.sourceLock.Lock()
+	defer dev.sourceLock.Unlock()
+
 	accessKey := fmt.Sprintf("%08x%08x", addr, pc)
 	if _, ok := dev.illegalAccess.entries[accessKey]; ok {
 		return ""
 	}
 
-	frag := dev.LookupSource(pc)
-
 	e := IllegalAccessEntry{
 		Event:      event,
 		PC:         pc,
 		AccessAddr: addr,
-		Source:     frag,
+		Source:     dev.source.findProgramAccess(pc),
 	}
 
 	dev.illegalAccess.entries[accessKey] = e
 	dev.illegalAccess.Log = append(dev.illegalAccess.Log, e)
 
-	if frag.String() == "" {
-		return ""
+	if e.Source == nil {
+		return "<unknown source line>"
 	}
 
-	return fmt.Sprintf("%s\n%s", frag.String(), frag.Content)
-}
-
-// LookupSource implements the CartCoProcDeveloper interface.
-func (dev *Developer) LookupSource(addr uint32) SourceFragment {
-	dev.sourceLock.Lock()
-	defer dev.sourceLock.Unlock()
-
-	var frag SourceFragment
-
-	if dev.source != nil {
-		frag = dev.source.findProgramAccess(addr)
+	function := ""
+	if e.Source.Function != "" {
+		function = fmt.Sprintf(": %s()", e.Source.Function)
+	} else {
+		function = "<unknown function>"
 	}
 
-	if dev.mapfile != nil {
-		frag.Function = dev.mapfile.findProgramAccess(addr)
-	}
-
-	return frag
+	return fmt.Sprintf("%s%s\n%s", e.Source.String(), function, e.Source.Content)
 }
 
 // ExecutionProfile implements the CartCoProcDeveloper interface.
@@ -135,7 +117,7 @@ func (dev *Developer) BorrowSource(f func(*Source)) {
 	f(dev.source)
 }
 
-// BorrowIllegalAccess will lock the illegal access log for the duratoin of the
+// BorrowIllegalAccess will lock the illegal access log for the duration of the
 // supplied fucntion, which will be executed with the illegal access log as an
 // argument.
 func (dev *Developer) BorrowIllegalAccess(f func(*IllegalAccess)) {

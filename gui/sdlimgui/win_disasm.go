@@ -363,8 +363,6 @@ func (win *winDisasm) drawBank(bank int, focusAddr uint16, onBank bool) {
 			if onBank && win.focusOnAddr && focusAddrCt != -1 {
 				y := imgui.FontSize() + imgui.CurrentStyle().ItemInnerSpacing().Y
 				y = float32(focusAddrCt) * y
-
-				// scroll to pixel value
 				imgui.SetScrollY(y)
 			}
 		}

@@ -85,6 +85,10 @@ type imguiColors struct {
 	DisasmBreakAddress imgui.Vec4
 	DisasmBreakOther   imgui.Vec4
 
+	// coprocessor source (and related) windows
+	CoProcSourceSelected imgui.Vec4
+	CoProcSourceHover    imgui.Vec4
+
 	// coprocessor last execution
 	CoProcMAM0               imgui.Vec4
 	CoProcMAM1               imgui.Vec4
@@ -232,7 +236,11 @@ func newColors() *imguiColors {
 		DisasmHover: imgui.Vec4{0.5, 0.5, 0.5, 0.1},
 		// deferring DisasmBreakAddress & DisasmBreakOther
 
-		// coprocessor last execution
+		// coprocessor source (and related) windows
+		CoProcSourceSelected: imgui.Vec4{1.0, 1.0, 1.0, 0.1},
+		CoProcSourceHover:    imgui.Vec4{0.5, 0.5, 0.5, 0.1},
+
+		// coprocessor disassembly
 		CoProcMAM0:               imgui.Vec4{0.6, 0.3, 0.3, 1.0},
 		CoProcMAM1:               imgui.Vec4{0.6, 0.6, 0.3, 1.0},
 		CoProcMAM2:               imgui.Vec4{0.3, 0.6, 0.3, 1.0},

@@ -124,6 +124,7 @@ var windowDefs = [...]windowDef{
 	// coprocessor windows
 	{create: newWinCoProcDisasm, menu: menuEntry{group: menuCoProc, restrictBus: menuRestrictCoProc, label: winCoProcDisasmMenu}},
 	{create: newWinCoProcSource, menu: menuEntry{group: menuCoProc, restrictBus: menuRestrictCoProc, label: winCoProcSourceMenu}},
+	{create: newWinCoProcTop, menu: menuEntry{group: menuCoProc, restrictBus: menuRestrictCoProc, label: winCoProcTopMenu}},
 
 	// plusrom windows
 	{create: newWinPlusROMNetwork, menu: menuEntry{group: menuPlusROM, label: winPlusROMNetworkMenu}},

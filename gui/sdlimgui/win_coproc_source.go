@@ -36,6 +36,10 @@ type winCoProcSource struct {
 	showAsm       bool
 	showNumbering bool
 	optionsHeight float32
+
+	scrollTo     int
+	scrollToFile string
+	selectedLine int
 }
 
 func newWinCoProcSource(img *SdlImgui) (window, error) {
@@ -87,11 +91,17 @@ func (win *winCoProcSource) draw() {
 	imgui.BeginChildV("##coprocSourceMain", imgui.Vec2{X: 0, Y: imguiRemainingWinHeight() - win.optionsHeight}, false, 0)
 	imgui.BeginTabBar("##coprocSourceTabBar")
 
-	// safely iterate over source codet
+	// safely iterate over source code
 	win.img.dbg.CoProcDev.BorrowSource(func(src *developer.Source) {
 		for _, fn := range src.FilesNames {
-			if imgui.BeginTabItemV(fn, nil, 0) {
-				imgui.BeginChildV("lastexecution", imgui.Vec2{X: 0, Y: imguiRemainingWinHeight()}, false, 0)
+			// auto-select to tab as appropriate
+			tabItemFlg := imgui.TabItemFlagsNone
+			if win.scrollTo > 0 && win.scrollToFile == fn {
+				tabItemFlg = imgui.TabItemFlagsSetSelected
+			}
+
+			if imgui.BeginTabItemV(fn, nil, tabItemFlg) {
+				imgui.BeginChildV("##coprocSource", imgui.Vec2{X: 0, Y: imguiRemainingWinHeight()}, false, 0)
 				imgui.BeginTableV("##coprocSourceTable", 5, imgui.TableFlagsSizingFixedFit, imgui.Vec2{}, 0.0)
 
 				// first column is a dummy column so that Selectable (span all columns) works correctly
@@ -107,10 +117,22 @@ func (win *winCoProcSource) draw() {
 						ln := src.Files[fn].Lines[i]
 						imgui.TableNextRow()
 
+						// scroll to correct line
+						if win.scrollTo > 0 {
+							y := imgui.FontSize() + imgui.CurrentStyle().ItemInnerSpacing().Y
+							y = float32(win.selectedLine-10) * y
+							imgui.SetScrollY(y)
+						}
+
+						// highlight selected line
+						if ln.LineNumber == win.selectedLine {
+							imgui.TableSetBgColor(imgui.TableBgTargetRowBg0, win.img.cols.CoProcSourceSelected)
+						}
+
 						// highlight line mouse is over
 						imgui.TableNextColumn()
-						imgui.PushStyleColor(imgui.StyleColorHeaderHovered, win.img.cols.DisasmHover)
-						imgui.PushStyleColor(imgui.StyleColorHeaderActive, win.img.cols.DisasmHover)
+						imgui.PushStyleColor(imgui.StyleColorHeaderHovered, win.img.cols.CoProcSourceHover)
+						imgui.PushStyleColor(imgui.StyleColorHeaderActive, win.img.cols.CoProcSourceHover)
 						imgui.SelectableV("", false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{0, 0})
 						imgui.PopStyleColorV(2)
 
@@ -122,7 +144,7 @@ func (win *winCoProcSource) draw() {
 								imguiTooltip(func() {
 									limit := 0
 									for _, asm := range ln.Asm {
-										imgui.Text(asm.Asm)
+										imgui.Text(asm.Instruction)
 										limit++
 										if limit > 10 {
 											imgui.Text("...more")
@@ -175,4 +197,15 @@ func (win *winCoProcSource) draw() {
 		imgui.SameLineV(0, 15)
 		imgui.Checkbox("Show Numbering", &win.showNumbering)
 	})
+
+	if win.scrollTo > 0 {
+		win.scrollTo--
+	}
+}
+
+func (win *winCoProcSource) gotoSource(ln *developer.SrcLine) {
+	win.setOpen(true)
+	win.scrollTo = 10
+	win.scrollToFile = ln.File.Filename
+	win.selectedLine = ln.LineNumber
 }

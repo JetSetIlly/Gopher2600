@@ -1327,7 +1327,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 			case "ILLEGAL":
 				dbg.CoProcDev.BorrowIllegalAccess(func(log *developer.IllegalAccess) {
 					for _, e := range log.Log {
-						if e.Source.IsValid() {
+						if e.Source != nil {
 							dbg.printLine(terminal.StyleFeedback, e.Source.String())
 							dbg.printLine(terminal.StyleFeedback, e.Source.Content)
 						} else {

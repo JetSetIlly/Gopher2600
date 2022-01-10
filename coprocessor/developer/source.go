@@ -30,46 +30,30 @@ import (
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
-// SourceFragment specifies a specific line in a file along with content and
-// function name.
-type SourceFragment struct {
-	Function   string
-	Filename   string
-	LineNumber int
-	Content    string
-}
-
-// IsValid tests whether the SourceFragment has meaningful information in it.
-func (frag SourceFragment) IsValid() bool {
-	return frag.Filename != ""
-}
-
-func (frag SourceFragment) String() string {
-	if !frag.IsValid() {
-		return ""
-	}
-
-	function := ""
-	if frag.Function != "" {
-		function = fmt.Sprintf(" %s()", frag.Function)
-	}
-	return fmt.Sprintf("%s:%d%s", frag.Filename, frag.LineNumber, function)
-}
-
 // SrcFile represents a single file of original source code. A file is made up
 // of many SrcLine entries.
 type SrcFile struct {
+	// name and path of loaded file
 	Filename string
-	Lines    []*SrcLine
+
+	// the lines of the file
+	Lines []*SrcLine
 }
 
 // SrcLine represents a single line of source in a SrcFile.
 type SrcLine struct {
-	File       *SrcFile
-	LineNumber int // counting from one
-	Content    string
-	Asm        []*SrcLineAsm
+	// the file the line is found in
+	File *SrcFile
 
+	Function   string // function name line is contained in (if found)
+	LineNumber int    // counting from one
+	Content    string // the actual line
+
+	// the generated assembly for this line. will be empty if line is a comment
+	// or otherwise unsused
+	Asm []*SrcLineAsm
+
+	// the accumulated number of cycles this line has consumed on the coprocessor
 	CycleCount float32
 }
 
@@ -79,19 +63,33 @@ func (src *SrcLine) String() string {
 
 // SrcLineAsm associates an asm with a block of source (which might be a single line).
 type SrcLineAsm struct {
-	Asm string
+	// address of instruction
+	Addr uint32
+
+	// the actual coprocessor instruction
+	Instruction string
+
+	// the line of source code this instruction was generated for
 	src *SrcLine
 }
 
 // Source files for the currently loaded ROM. It is built through a combination
 // of a binary objdump and the original source files.
 type Source struct {
-	Files           map[string]*SrcFile
-	FilesNames      []string
-	asm             map[uint32]*SrcLineAsm
-	TotalCycleCount float32
+	Files      map[string]*SrcFile
+	FilesNames []string
 
+	// all the asm instructions in the program
+	asm map[uint32]*SrcLineAsm
+
+	// A list of all the source lines in the program. only those lines that
+	// have SrcLineAsm entries are included.
+	//
+	// sorted by cycle count from highest to lowest
 	SrcLinesAll SrcLinesAll
+
+	// the total number of cycles the entire program has consumed on the coprocessor
+	TotalCycleCount float32
 }
 
 // SrcLinesAll orders every line of executable source code in the identified
@@ -224,7 +222,7 @@ func newSource(pathToROM string) (*Source, error) {
 
 	// regexes for lines in objdump file
 
-	// lines that refer to a source fil
+	// lines that refer to a source file
 	fileMatch, err := regexp.Compile("^[[:print:]]+:[[:digit:]]+$")
 	if err != nil {
 		panic(fmt.Sprintf("objdump: %s", err.Error()))
@@ -289,15 +287,35 @@ func newSource(pathToROM string) (*Source, error) {
 			currentLine = obj.Files[fm[0]].Lines[ln]
 
 		} else if asmMatch.Match([]byte(ol)) {
-			addr, err := strconv.ParseUint(strings.TrimSpace(ol[:8]), 16, 32)
+			// addrEnd always seems to  be at index 8 but we'll search for it
+			// anyway because a fixed value doesn't seem safe
+			addrEnd := strings.Index(ol, ":")
+
+			addr, err := strconv.ParseUint(strings.TrimSpace(ol[:addrEnd]), 16, 32)
 			if err == nil {
 				if currentLine != nil {
 					asmEntry := SrcLineAsm{
-						Asm: strings.TrimSpace(ol[9:]),
-						src: currentLine,
+						Addr:        uint32(addr),
+						Instruction: strings.TrimSpace(ol[addrEnd+1:]),
+						src:         currentLine,
 					}
 					obj.asm[uint32(addr)] = &asmEntry
 					currentLine.Asm = append(currentLine.Asm, &asmEntry)
+				}
+			}
+		}
+	}
+
+	// label every source line theat belongs to a function. we'll use a map
+	// file for this because it's easier
+	mapfile, err := newMapFile(pathToROM)
+	if err != nil {
+		logger.Logf("developer", err.Error())
+	} else {
+		for _, f := range obj.Files {
+			for _, l := range f.Lines {
+				if len(l.Asm) > 0 {
+					l.Function = mapfile.findFunctionName(l.Asm[0].Addr)
 				}
 			}
 		}
@@ -323,14 +341,12 @@ func newSource(pathToROM string) (*Source, error) {
 
 // findProgramAccess returns the program (function) label for the supplied
 // address. Addresses may be in a range.
-func (obj *Source) findProgramAccess(address uint32) SourceFragment {
+func (obj *Source) findProgramAccess(address uint32) *SrcLine {
 	asm := obj.asm[address]
-
-	return SourceFragment{
-		Filename:   asm.src.File.Filename,
-		LineNumber: asm.src.LineNumber,
-		Content:    asm.src.Content,
+	if asm == nil {
+		return nil
 	}
+	return asm.src
 }
 
 // dump everything to io.Writer.
@@ -342,7 +358,7 @@ func (obj *Source) dump(w io.Writer) {
 		for _, ln := range f.Lines {
 			w.Write([]byte(fmt.Sprintf("%d:\t%s\n", ln.LineNumber, ln.Content)))
 			for _, asm := range ln.Asm {
-				w.Write([]byte(fmt.Sprintf("%s\n", asm.Asm)))
+				w.Write([]byte(fmt.Sprintf("%s\n", asm.Instruction)))
 			}
 		}
 	}

@@ -177,9 +177,9 @@ func newMapFile(pathToROM string) (*mapfile, error) {
 	return mf, nil
 }
 
-// findProgramAccess returns the function name for the supplied
-// address. Addresses may be in a range.
-func (mf *mapfile) findProgramAccess(address uint32) string {
+// findFunctionName returns the function name for the supplied address. returns
+// the empty string if function name cannot be found.
+func (mf *mapfile) findFunctionName(address uint32) string {
 	functionName := ""
 
 	for _, e := range mf.program {
