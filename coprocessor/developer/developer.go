@@ -76,7 +76,10 @@ func (dev *Developer) IllegalAccess(event string, pc uint32, addr uint32) string
 		Event:      event,
 		PC:         pc,
 		AccessAddr: addr,
-		Source:     dev.source.findProgramAccess(pc),
+	}
+
+	if dev.source != nil {
+		e.Source = dev.source.findProgramAccess(pc)
 	}
 
 	dev.illegalAccess.entries[accessKey] = e
@@ -111,6 +114,8 @@ func (dev *Developer) ExecutionProfile(addr map[uint32]float32) {
 // BorrowSource will lock the source code structure for the durction of the
 // supplied function, which will be executed with the source code structure as
 // an argument.
+//
+// May return nil.
 func (dev *Developer) BorrowSource(f func(*Source)) {
 	dev.sourceLock.Lock()
 	defer dev.sourceLock.Unlock()

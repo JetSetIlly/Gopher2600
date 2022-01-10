@@ -87,12 +87,17 @@ func (win *winCoProcSource) draw() {
 		return
 	}
 
-	// new child that contains the main scrollable table
-	imgui.BeginChildV("##coprocSourceMain", imgui.Vec2{X: 0, Y: imguiRemainingWinHeight() - win.optionsHeight}, false, 0)
-	imgui.BeginTabBar("##coprocSourceTabBar")
-
 	// safely iterate over source code
 	win.img.dbg.CoProcDev.BorrowSource(func(src *developer.Source) {
+		if src == nil {
+			imgui.Text("No source files available")
+			return
+		}
+
+		// new child that contains the main scrollable table
+		imgui.BeginChildV("##coprocSourceMain", imgui.Vec2{X: 0, Y: imguiRemainingWinHeight() - win.optionsHeight}, false, 0)
+		imgui.BeginTabBar("##coprocSourceTabBar")
+
 		for _, fn := range src.FilesNames {
 			// auto-select to tab as appropriate
 			tabItemFlg := imgui.TabItemFlagsNone
@@ -114,6 +119,10 @@ func (win *winCoProcSource) draw() {
 				clipper.Begin(len(src.Files[fn].Lines))
 				for clipper.Step() {
 					for i := clipper.DisplayStart; i < clipper.DisplayEnd; i++ {
+						if i >= len(src.Files[fn].Lines) {
+							break
+						}
+
 						ln := src.Files[fn].Lines[i]
 						imgui.TableNextRow()
 
@@ -184,18 +193,18 @@ func (win *winCoProcSource) draw() {
 				imgui.EndTabItem()
 			}
 		}
-	})
 
-	imgui.EndTabBar()
-	imgui.EndChild()
+		imgui.EndTabBar()
+		imgui.EndChild()
 
-	// options toolbar at foot of window
-	win.optionsHeight = imguiMeasureHeight(func() {
-		imgui.Separator()
-		imgui.Spacing()
-		imgui.Checkbox("Show ASM in Tooltip", &win.showAsm)
-		imgui.SameLineV(0, 15)
-		imgui.Checkbox("Show Numbering", &win.showNumbering)
+		// options toolbar at foot of window
+		win.optionsHeight = imguiMeasureHeight(func() {
+			imgui.Separator()
+			imgui.Spacing()
+			imgui.Checkbox("Show ASM in Tooltip", &win.showAsm)
+			imgui.SameLineV(0, 15)
+			imgui.Checkbox("Show Numbering", &win.showNumbering)
+		})
 	})
 
 	if win.scrollTo > 0 {

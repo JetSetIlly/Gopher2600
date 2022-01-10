@@ -82,12 +82,14 @@ func (win *winCoProcDisasm) draw() {
 	// show enable button only if coprocessor disassembly is disabled
 	if !win.img.dbg.CoProcDisasm.IsEnabled() {
 		if imgui.Button("Enable disassembly") {
-			win.img.dbg.CoProcDisasm.Enable(true)
-			if win.img.emulation.State() != emulation.Running {
-				// rerun the last two frames in order to gather as much disasm
-				// information as possible.
-				win.img.dbg.RerunLastNFrames(2)
-			}
+			win.img.dbg.PushRawEvent(func() {
+				win.img.dbg.CoProcDisasm.Enable(true)
+				if win.img.emulation.State() != emulation.Running {
+					// rerun the last two frames in order to gather as much disasm
+					// information as possible.
+					win.img.dbg.RerunLastNFrames(2)
+				}
+			})
 		}
 	} else {
 		if imgui.Button("Disable disassembly") {
@@ -122,9 +124,7 @@ func (win *winCoProcDisasm) drawDisasm(dsm *disassembly.DisasmEntries) {
 	flgs := imgui.TableFlagsNone
 	flgs |= imgui.TableFlagsSizingFixedFit
 	flgs |= imgui.TableFlagsRowBg
-	if !imgui.BeginTableV("disasmTable", 9, flgs, imgui.Vec2{}, 0) {
-		return
-	}
+	imgui.BeginTableV("disasmTable", 9, flgs, imgui.Vec2{}, 0)
 
 	// set neutral colors for table rows by default. we'll change it to
 	// something more meaningful as appropriate (eg. entry at PC address)
@@ -136,6 +136,10 @@ func (win *winCoProcDisasm) drawDisasm(dsm *disassembly.DisasmEntries) {
 	clipper.Begin(len(dsm.Entries))
 	for clipper.Step() {
 		for i := clipper.DisplayStart; i < clipper.DisplayEnd; i++ {
+			if i >= len(dsm.Keys) {
+				imgui.Text("")
+				break
+			}
 			k := dsm.Keys[i]
 			e := dsm.Entries[k]
 			win.drawEntry(e.(arm7tdmi.DisasmEntry))
@@ -170,9 +174,7 @@ func (win *winCoProcDisasm) drawLastExecution(dsm *disassembly.DisasmEntries) {
 	flgs := imgui.TableFlagsNone
 	flgs |= imgui.TableFlagsSizingFixedFit
 	flgs |= imgui.TableFlagsRowBg
-	if !imgui.BeginTableV("disasmTable", 9, flgs, imgui.Vec2{}, 0) {
-		return
-	}
+	imgui.BeginTableV("disasmTable", 9, flgs, imgui.Vec2{}, 0)
 
 	// set neutral colors for table rows by default. we'll change it to
 	// something more meaningful as appropriate (eg. entry at PC address)
@@ -184,6 +186,10 @@ func (win *winCoProcDisasm) drawLastExecution(dsm *disassembly.DisasmEntries) {
 	clipper.Begin(len(dsm.Entries))
 	for clipper.Step() {
 		for i := clipper.DisplayStart; i < clipper.DisplayEnd; i++ {
+			if i >= len(dsm.LastExecution) {
+				imgui.Text("")
+				break
+			}
 			e := dsm.LastExecution[i]
 			win.drawEntry(e.(arm7tdmi.DisasmEntry))
 		}

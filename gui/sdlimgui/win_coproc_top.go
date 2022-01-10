@@ -84,17 +84,27 @@ func (win *winCoProcTop) draw() {
 
 	const top = 25
 
-	imgui.BeginTableV("##coprocTop", 5, imgui.TableFlagsSizingFixedFit|imgui.TableFlagsBorders, imgui.Vec2{}, 0.0)
-
-	// first column is a dummy column so that Selectable (span all columns) works correctly
-	imgui.TableSetupColumnV("", imgui.TableColumnFlagsNone, 1, 0)
-	imgui.TableSetupColumnV("File", imgui.TableColumnFlagsNone, -1, 1)
-	imgui.TableSetupColumnV("Line", imgui.TableColumnFlagsNone, 40, 2)
-	imgui.TableSetupColumnV("Function", imgui.TableColumnFlagsNone, -1, 3)
-	imgui.TableSetupColumnV("Load", imgui.TableColumnFlagsNone, 40, 4)
-
 	// safely iterate over top execution information
 	win.img.dbg.CoProcDev.BorrowSource(func(src *developer.Source) {
+		if src == nil {
+			imgui.Text("No source files available")
+			return
+		}
+
+		imgui.BeginTableV("##coprocTop", 5, imgui.TableFlagsSizingFixedFit|imgui.TableFlagsBorders, imgui.Vec2{}, 0.0)
+
+		// first column is a dummy column so that Selectable (span all columns) works correctly
+		imgui.TableSetupColumnV("", imgui.TableColumnFlagsNone, 1, 0)
+		imgui.TableSetupColumnV("File", imgui.TableColumnFlagsNone, -1, 1)
+		imgui.TableSetupColumnV("Line", imgui.TableColumnFlagsNone, 40, 2)
+		imgui.TableSetupColumnV("Function", imgui.TableColumnFlagsNone, -1, 3)
+		imgui.TableSetupColumnV("Load", imgui.TableColumnFlagsNone, 40, 4)
+
+		if src == nil {
+			imgui.Text("No source files available")
+			return
+		}
+
 		imgui.TableHeadersRow()
 
 		for i := 0; i < top; i++ {
@@ -142,7 +152,7 @@ func (win *winCoProcTop) draw() {
 				imgui.Text(fmt.Sprintf("%0.1f%%", ln.CycleCount/src.TotalCycleCount*100.0))
 			}
 		}
-	})
 
-	imgui.EndTable()
+		imgui.EndTable()
+	})
 }
