@@ -281,6 +281,16 @@ func (tv *Television) AttachVCS(vcs VCSReturnChannel) {
 	}
 }
 
+// AddPixelRenderer adds an implementation of PixelRenderer.
+func (tv *Television) AddPixelRenderer(r PixelRenderer) {
+	for i := range tv.renderers {
+		if tv.renderers[i] == r {
+			return
+		}
+	}
+	tv.renderers = append(tv.renderers, r)
+}
+
 // RemovePixelRenderer removes a single PixelRenderer implementation from the
 // list of renderers. Order is not maintained.
 func (tv *Television) RemovePixelRenderer(r PixelRenderer) {
@@ -293,17 +303,21 @@ func (tv *Television) RemovePixelRenderer(r PixelRenderer) {
 	}
 }
 
-// AddPixelRenderer registers an implementation of PixelRenderer. Multiple
-// implemntations can be added.
-func (tv *Television) AddPixelRenderer(r PixelRenderer) {
-	tv.renderers = append(tv.renderers, r)
+// AddFrameTrigger adds an implementation of FrameTrigger.
+func (tv *Television) AddFrameTrigger(f FrameTrigger) {
+	for i := range tv.frameTriggers {
+		if tv.frameTriggers[i] == f {
+			return
+		}
+	}
+	tv.frameTriggers = append(tv.frameTriggers, f)
 }
 
 // RemoveFrameTrigger removes a single FrameTrigger implementation from the
-// list of renderers. Order is not maintained.
-func (tv *Television) RemoveFrameTrigger(r FrameTrigger) {
+// list of triggers. Order is not maintained.
+func (tv *Television) RemoveFrameTrigger(f FrameTrigger) {
 	for i := range tv.frameTriggers {
-		if tv.frameTriggers[i] == r {
+		if tv.frameTriggers[i] == f {
 			tv.frameTriggers[i] = tv.frameTriggers[len(tv.frameTriggers)-1]
 			tv.frameTriggers = tv.frameTriggers[:len(tv.frameTriggers)-1]
 			return
@@ -311,21 +325,18 @@ func (tv *Television) RemoveFrameTrigger(r FrameTrigger) {
 	}
 }
 
-// AddFrameTrigger registers an implementation of FrameTrigger. Multiple
-// implemntations can be added. Triggers are served in the order that they have
-// been added.
-func (tv *Television) AddFrameTrigger(f FrameTrigger) {
-	tv.frameTriggers = append(tv.frameTriggers, f)
-}
-
-// AddAudioMixer registers an implementation of AudioMixer. Multiple
-// implemntations can be added.
+// AddAudioMixer adds an implementation of AudioMixer.
 func (tv *Television) AddAudioMixer(m AudioMixer) {
+	for i := range tv.mixers {
+		if tv.mixers[i] == m {
+			return
+		}
+	}
 	tv.mixers = append(tv.mixers, m)
 }
 
 // RemoveAudioMixer removes a single AudioMixer implementation from the
-// list of miser. Order is not maintained.
+// list of mixers. Order is not maintained.
 func (tv *Television) RemoveAudioMixer(m AudioMixer) {
 	for i := range tv.mixers {
 		if tv.mixers[i] == m {
@@ -336,9 +347,15 @@ func (tv *Television) RemoveAudioMixer(m AudioMixer) {
 	}
 }
 
-// AddRealtimeAudioMixer registers an implementation of AudioMixer. Multiple
-// implemntations can be added.
+// AddRealtimeAudioMixer adds a RealtimeAudioMixer. Any previous assignment is
+// lost.
 func (tv *Television) AddRealtimeAudioMixer(m RealtimeAudioMixer) {
+	tv.realtimeMixer = m
+}
+
+// RemoveRealtimeAudioMixer removes a RealtimeAudioMixer implementation from
+// the Television.
+func (tv *Television) RemoveRealtimeAudioMixer(m RealtimeAudioMixer) {
 	tv.realtimeMixer = m
 }
 

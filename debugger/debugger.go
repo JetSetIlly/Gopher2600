@@ -538,6 +538,15 @@ func (dbg *Debugger) setMode(mode emulation.Mode) error {
 		return err
 	}
 
+	// remove all triggers that we work with in the debugger. we'll add the
+	// one's we want depending on playmode.
+	//
+	// note that we don't remove *every* frame trigger because other sub-systems
+	// might have added their own.
+	dbg.vcs.TV.RemoveFrameTrigger(dbg.ref)
+	dbg.vcs.TV.RemoveFrameTrigger(dbg.Rewind)
+	dbg.vcs.TV.RemoveFrameTrigger(dbg.counter)
+
 	// swtich mode and make sure emulation is in correct state. we say that
 	// emulation is always running when entering playmode and always paused
 	// when entering debug mode.
@@ -548,7 +557,6 @@ func (dbg *Debugger) setMode(mode emulation.Mode) error {
 
 	switch dbg.Mode() {
 	case emulation.ModePlay:
-		dbg.vcs.TV.RemoveFrameTrigger(dbg.ref)
 		dbg.vcs.TV.AddFrameTrigger(dbg.Rewind)
 		dbg.vcs.TV.AddFrameTrigger(dbg.counter)
 
