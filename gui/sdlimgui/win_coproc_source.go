@@ -110,10 +110,12 @@ func (win *winCoProcSource) draw() {
 				imgui.BeginTableV("##coprocSourceTable", 5, imgui.TableFlagsSizingFixedFit, imgui.Vec2{}, 0.0)
 
 				// first column is a dummy column so that Selectable (span all columns) works correctly
-				imgui.TableSetupColumnV("", imgui.TableColumnFlagsNone, 1, 0)
-				imgui.TableSetupColumnV("", imgui.TableColumnFlagsNone, 20, 1)
-				imgui.TableSetupColumnV("", imgui.TableColumnFlagsNone, 30, 2)
-				imgui.TableSetupColumnV("", imgui.TableColumnFlagsNone, 40, 3)
+				width := imgui.ContentRegionAvail().X
+				imgui.TableSetupColumnV("", imgui.TableColumnFlagsNone, 0, 0)
+				imgui.TableSetupColumnV("Icon", imgui.TableColumnFlagsNone, width*0.04, 1)
+				imgui.TableSetupColumnV("Load", imgui.TableColumnFlagsNone, width*0.07, 2)
+				imgui.TableSetupColumnV("Number", imgui.TableColumnFlagsNone, width*0.04, 3)
+				imgui.TableSetupColumnV("Source", imgui.TableColumnFlagsNone, width*0.85, 4)
 
 				var clipper imgui.ListClipper
 				clipper.Begin(len(src.Files[fn].Lines))
@@ -169,15 +171,15 @@ func (win *winCoProcSource) draw() {
 						// percentage of time taken by this line
 						imgui.TableNextColumn()
 						if ln.CycleCount > 0 {
-							imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmOperator)
-							imgui.Text(fmt.Sprintf("%0.1f%%", ln.CycleCount/src.TotalCycleCount*100.0))
+							imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLoad)
+							imgui.Text(fmt.Sprintf("%0.2f%%", ln.CycleCount/src.TotalCycleCount*100.0))
 							imgui.PopStyleColor()
 						}
 
 						// line numbering
 						imgui.TableNextColumn()
 						if win.showNumbering {
-							imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmAddress)
+							imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLineNumber)
 							imgui.Text(fmt.Sprintf("%d", ln.LineNumber))
 							imgui.PopStyleColor()
 						}

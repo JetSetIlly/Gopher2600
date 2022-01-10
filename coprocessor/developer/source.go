@@ -194,7 +194,7 @@ func readSourceFile(filename string, pathToROM string) (*SrcFile, error) {
 // newSource loads and parses an obj file. Returns a new instance of ObjDump
 // or any errors.
 func newSource(pathToROM string) (*Source, error) {
-	obj := &Source{
+	src := &Source{
 		Files:      make(map[string]*SrcFile),
 		FilesNames: make([]string, 0),
 		asm:        make(map[uint32]*SrcLineAsm),
@@ -256,12 +256,12 @@ func newSource(pathToROM string) (*Source, error) {
 			}
 
 			// objdump refers to a file that has not been seen before - read the source file
-			if _, ok := obj.Files[fm[0]]; !ok {
+			if _, ok := src.Files[fm[0]]; !ok {
 				var err error
-				obj.Files[fm[0]], err = readSourceFile(fm[0], pathToROM)
+				src.Files[fm[0]], err = readSourceFile(fm[0], pathToROM)
 
 				if err != nil {
-					delete(obj.Files, fm[0])
+					delete(src.Files, fm[0])
 					if _, ok := fileNotFound[err.Error()]; !ok {
 						fileNotFound[err.Error()] = true
 						logger.Log("objdump", err.Error())
@@ -271,7 +271,7 @@ func newSource(pathToROM string) (*Source, error) {
 				}
 
 				// add filename to list of keys
-				obj.FilesNames = append(obj.FilesNames, fm[0])
+				src.FilesNames = append(src.FilesNames, fm[0])
 			}
 
 			// parse line number directive and note current line
@@ -284,7 +284,7 @@ func newSource(pathToROM string) (*Source, error) {
 			// we index lines from zero but lines are counted from one in the objdump
 			ln -= 1
 
-			currentLine = obj.Files[fm[0]].Lines[ln]
+			currentLine = src.Files[fm[0]].Lines[ln]
 
 		} else if asmMatch.Match([]byte(ol)) {
 			// addrEnd always seems to  be at index 8 but we'll search for it
@@ -299,7 +299,7 @@ func newSource(pathToROM string) (*Source, error) {
 						Instruction: strings.TrimSpace(ol[addrEnd+1:]),
 						src:         currentLine,
 					}
-					obj.asm[uint32(addr)] = &asmEntry
+					src.asm[uint32(addr)] = &asmEntry
 					currentLine.Asm = append(currentLine.Asm, &asmEntry)
 				}
 			}
@@ -312,7 +312,7 @@ func newSource(pathToROM string) (*Source, error) {
 	if err != nil {
 		logger.Logf("developer", err.Error())
 	} else {
-		for _, f := range obj.Files {
+		for _, f := range src.Files {
 			for _, l := range f.Lines {
 				if len(l.Asm) > 0 {
 					l.Function = mapfile.findFunctionName(l.Asm[0].Addr)
@@ -322,27 +322,27 @@ func newSource(pathToROM string) (*Source, error) {
 	}
 
 	// populate SrcLinesAll by recursing through every file and every line
-	for _, f := range obj.Files {
+	for _, f := range src.Files {
 		for _, l := range f.Lines {
 			if len(l.Asm) > 0 {
-				obj.SrcLinesAll.Ordered = append(obj.SrcLinesAll.Ordered, l)
+				src.SrcLinesAll.Ordered = append(src.SrcLinesAll.Ordered, l)
 			}
 		}
 	}
 
 	// sort SrcLinesAll
-	sort.Sort(obj.SrcLinesAll)
+	sort.Sort(src.SrcLinesAll)
 
 	// sort list of filename keys
-	sort.Strings(obj.FilesNames)
+	sort.Strings(src.FilesNames)
 
-	return obj, nil
+	return src, nil
 }
 
 // findProgramAccess returns the program (function) label for the supplied
 // address. Addresses may be in a range.
-func (obj *Source) findProgramAccess(address uint32) *SrcLine {
-	asm := obj.asm[address]
+func (src *Source) findProgramAccess(address uint32) *SrcLine {
+	asm := src.asm[address]
 	if asm == nil {
 		return nil
 	}
@@ -350,8 +350,8 @@ func (obj *Source) findProgramAccess(address uint32) *SrcLine {
 }
 
 // dump everything to io.Writer.
-func (obj *Source) dump(w io.Writer) {
-	for fn, f := range obj.Files {
+func (src *Source) dump(w io.Writer) {
+	for fn, f := range src.Files {
 		w.Write([]byte(fmt.Sprintf("%s\n", fn)))
 		w.Write([]byte(fmt.Sprintf("-------\n")))
 
@@ -365,10 +365,9 @@ func (obj *Source) dump(w io.Writer) {
 }
 
 // execute address and increase source line count.
-func (obj *Source) execute(address uint32, ct float32) {
-	if a, ok := obj.asm[address]; ok {
+func (src *Source) execute(address uint32, ct float32) {
+	if a, ok := src.asm[address]; ok {
 		a.src.CycleCount += ct
-		obj.TotalCycleCount += ct
-		sort.Sort(obj.SrcLinesAll)
+		src.TotalCycleCount += ct
 	}
 }

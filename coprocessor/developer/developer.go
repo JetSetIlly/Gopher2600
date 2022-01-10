@@ -17,6 +17,7 @@ package developer
 
 import (
 	"fmt"
+	"sort"
 	"sync"
 
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
@@ -108,6 +109,8 @@ func (dev *Developer) ExecutionProfile(addr map[uint32]float32) {
 		for k, v := range addr {
 			dev.source.execute(k, v)
 		}
+
+		sort.Sort(dev.source.SrcLinesAll)
 	}
 }
 
