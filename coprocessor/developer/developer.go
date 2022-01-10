@@ -140,6 +140,10 @@ func (dev *Developer) NewFrame(_ television.FrameInfo) error {
 	dev.sourceLock.Lock()
 	defer dev.sourceLock.Unlock()
 
+	if dev.source == nil {
+		return nil
+	}
+
 	for _, s := range dev.source.ExecutedLines.Lines {
 		s.FrameCycles = s.nextFrameCycles
 		s.nextFrameCycles = 0
