@@ -27,40 +27,40 @@ import (
 // is prepended with the actual coprocessor ID (eg. ARM7TDMI). The ID constant
 // below is used in the normal way however.
 
-const winCoProcTopID = "Coprocessor Top"
-const winCoProcTopMenu = "Top"
+const winCoProcPerformanceID = "Coprocessor Performance"
+const winCoProcPerformanceMenu = "Performance"
 
-type winCoProcTop struct {
+type winCoProcPerformance struct {
 	img           *SdlImgui
 	open          bool
 	showSrc       bool
 	optionsHeight float32
 }
 
-func newWinCoProcTop(img *SdlImgui) (window, error) {
-	win := &winCoProcTop{
+func newWinCoProcPerformance(img *SdlImgui) (window, error) {
+	win := &winCoProcPerformance{
 		img:     img,
 		showSrc: true,
 	}
 	return win, nil
 }
 
-func (win *winCoProcTop) init() {
+func (win *winCoProcPerformance) init() {
 }
 
-func (win *winCoProcTop) id() string {
-	return winCoProcTopID
+func (win *winCoProcPerformance) id() string {
+	return winCoProcPerformanceID
 }
 
-func (win *winCoProcTop) isOpen() bool {
+func (win *winCoProcPerformance) isOpen() bool {
 	return win.open
 }
 
-func (win *winCoProcTop) setOpen(open bool) {
+func (win *winCoProcPerformance) setOpen(open bool) {
 	win.open = open
 }
 
-func (win *winCoProcTop) draw() {
+func (win *winCoProcPerformance) draw() {
 	if !win.open {
 		return
 	}
@@ -73,7 +73,7 @@ func (win *winCoProcTop) draw() {
 	imgui.SetNextWindowSizeV(imgui.Vec2{551, 526}, imgui.ConditionFirstUseEver)
 	imgui.SetNextWindowSizeConstraints(imgui.Vec2{551, 300}, imgui.Vec2{800, 1000})
 
-	title := fmt.Sprintf("%s %s", win.img.lz.Cart.CoProcID, winCoProcTopID)
+	title := fmt.Sprintf("%s %s", win.img.lz.Cart.CoProcID, winCoProcPerformanceID)
 	imgui.BeginV(title, &win.open, imgui.WindowFlagsNone)
 	defer imgui.End()
 
@@ -84,16 +84,16 @@ func (win *winCoProcTop) draw() {
 			return
 		}
 
-		imgui.BeginChildV("##coprocTopMain", imgui.Vec2{X: 0, Y: imguiRemainingWinHeight() - win.optionsHeight}, false, 0)
+		imgui.BeginChildV("##coprocPerformanceMain", imgui.Vec2{X: 0, Y: imguiRemainingWinHeight() - win.optionsHeight}, false, 0)
 		imgui.BeginTabBar("##coprocSourceTabBar")
 
 		if imgui.BeginTabItemV("Previous Frame", nil, imgui.TabItemFlagsNone) {
-			win.drawExecutionTop(src, false)
+			win.drawExecutionPerformance(src, false)
 			imgui.EndTabItem()
 		}
 
 		if imgui.BeginTabItemV("Lifetime", nil, imgui.TabItemFlagsNone) {
-			win.drawExecutionTop(src, true)
+			win.drawExecutionPerformance(src, true)
 			imgui.EndTabItem()
 		}
 
@@ -109,13 +109,13 @@ func (win *winCoProcTop) draw() {
 	})
 }
 
-func (win *winCoProcTop) drawExecutionTop(src *developer.Source, byLifetimeCycles bool) {
+func (win *winCoProcPerformance) drawExecutionPerformance(src *developer.Source, byLifetimeCycles bool) {
 	src.Resort(byLifetimeCycles)
 
 	const top = 25
 
 	imgui.Spacing()
-	imgui.BeginTableV("##coprocTopTable", 5, imgui.TableFlagsSizingFixedFit, imgui.Vec2{}, 0.0)
+	imgui.BeginTableV("##coprocPerformanceTable", 5, imgui.TableFlagsSizingFixedFit, imgui.Vec2{}, 0.0)
 
 	// first column is a dummy column so that Selectable (span all columns) works correctly
 	width := imgui.ContentRegionAvail().X
