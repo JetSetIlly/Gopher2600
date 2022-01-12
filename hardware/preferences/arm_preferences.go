@@ -90,7 +90,7 @@ func newARMprefrences() (*ARMPreferences, error) {
 // SetDefaults reverts all settings to default values.
 func (p *ARMPreferences) SetDefaults() {
 	// initialise random number generator
-	p.Model.Set("LPC2000")
+	p.Model.Set("AUTO")
 	p.Immediate.Set(false)
 	p.MAM.Set(-1)
 	p.AbortOnIllegalMem.Set(false)
