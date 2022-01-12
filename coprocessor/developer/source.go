@@ -279,6 +279,11 @@ func newSource(pathToROM string) (*Source, error) {
 				continue // for loop
 			}
 
+			// convert UNIX seperator (which may be used in the .obj file) to
+			// the native host path separator
+			fm[0] = strings.Join(strings.Split(fm[0], "/"), string(filepath.Separator))
+			fm[0] = fmt.Sprintf("%s%s", filepath.VolumeName(romDir), fm[0])
+
 			// chop off path prefix
 			prefix := fmt.Sprintf("%s%c", romDir, filepath.Separator)
 			if strings.HasPrefix(fm[0], prefix) {
