@@ -123,6 +123,7 @@ var windowDefs = [...]windowDef{
 
 	// coprocessor windows
 	{create: newWinCoProcDisasm, menu: menuEntry{group: menuCoProc, restrictBus: menuRestrictCoProc, label: winCoProcDisasmMenu}},
+	{create: newWinCoProcIllegalAccess, menu: menuEntry{group: menuCoProc, restrictBus: menuRestrictCoProc, label: winCoProcIllegalAccessMenu}},
 	{create: newWinCoProcSource, menu: menuEntry{group: menuCoProc, restrictBus: menuRestrictCoProc, label: winCoProcSourceMenu}},
 	{create: newWinCoProcTop, menu: menuEntry{group: menuCoProc, restrictBus: menuRestrictCoProc, label: winCoProcTopMenu}},
 

@@ -60,6 +60,12 @@ type SrcLine struct {
 
 	// the total number of cycles over the lifetime of the program
 	LifetimeCycles float32
+
+	// whether this src line has been responsible for an illegal access
+	IllegalAccess bool
+
+	// the number of times the line has been responsible for an illegal access
+	IllegalCount int
 }
 
 func (src *SrcLine) String() string {

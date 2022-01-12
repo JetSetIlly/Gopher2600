@@ -17,6 +17,7 @@ package sdlimgui
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/coprocessor/developer"
@@ -32,13 +33,14 @@ const winCoProcTopMenu = "Top"
 type winCoProcTop struct {
 	img           *SdlImgui
 	open          bool
-	showAsm       bool
+	showSrc       bool
 	optionsHeight float32
 }
 
 func newWinCoProcTop(img *SdlImgui) (window, error) {
 	win := &winCoProcTop{
-		img: img,
+		img:     img,
+		showSrc: true,
 	}
 	return win, nil
 }
@@ -75,11 +77,6 @@ func (win *winCoProcTop) draw() {
 	imgui.BeginV(title, &win.open, imgui.WindowFlagsNone)
 	defer imgui.End()
 
-	if win.img.dbg.CoProcDev == nil {
-		imgui.Text("No source files available")
-		return
-	}
-
 	// safely iterate over top execution information
 	win.img.dbg.CoProcDev.BorrowSource(func(src *developer.Source) {
 		if src == nil {
@@ -90,12 +87,12 @@ func (win *winCoProcTop) draw() {
 		imgui.BeginChildV("##coprocTopMain", imgui.Vec2{X: 0, Y: imguiRemainingWinHeight() - win.optionsHeight}, false, 0)
 		imgui.BeginTabBar("##coprocSourceTabBar")
 
-		if imgui.BeginTabItemV("Previous Frame    ", nil, imgui.TabItemFlagsNone) {
+		if imgui.BeginTabItemV("Previous Frame", nil, imgui.TabItemFlagsNone) {
 			win.drawExecutionTop(src, false)
 			imgui.EndTabItem()
 		}
 
-		if imgui.BeginTabItemV("Lifetime    ", nil, imgui.TabItemFlagsNone) {
+		if imgui.BeginTabItemV("Lifetime", nil, imgui.TabItemFlagsNone) {
 			win.drawExecutionTop(src, true)
 			imgui.EndTabItem()
 		}
@@ -107,7 +104,7 @@ func (win *winCoProcTop) draw() {
 		win.optionsHeight = imguiMeasureHeight(func() {
 			imgui.Separator()
 			imgui.Spacing()
-			imgui.Checkbox("Show ASM in Tooltip", &win.showAsm)
+			imgui.Checkbox("Show Source in Tooltip", &win.showSrc)
 		})
 	})
 }
@@ -145,18 +142,17 @@ func (win *winCoProcTop) drawExecutionTop(src *developer.Source, byLifetimeCycle
 		imgui.SelectableV("", false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{0, 0})
 		imgui.PopStyleColorV(2)
 
-		// asm on tooltip
-		if win.showAsm {
+		// source on tooltip
+		if win.showSrc {
 			imguiTooltip(func() {
-				limit := 0
-				for _, asm := range ln.Asm {
-					imgui.Text(asm.Instruction)
-					limit++
-					if limit > 10 {
-						imgui.Text("...more")
-						break // for loop
-					}
-				}
+				imgui.Text(ln.File.Filename)
+				imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLineNumber)
+				imgui.Text(fmt.Sprintf("Line: %d", ln.LineNumber))
+				imgui.PopStyleColor()
+				imgui.Spacing()
+				imgui.Separator()
+				imgui.Spacing()
+				imgui.Text(strings.TrimSpace(ln.Content))
 			}, true)
 		}
 
@@ -176,12 +172,12 @@ func (win *winCoProcTop) drawExecutionTop(src *developer.Source, byLifetimeCycle
 
 		imgui.TableNextColumn()
 		if ln.Function == "" {
-			imgui.Text("unknown function")
+			imgui.Text(developer.UnknownFunction)
 		} else {
 			imgui.Text(fmt.Sprintf("%s()", ln.Function))
 		}
-		imgui.TableNextColumn()
 
+		imgui.TableNextColumn()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLoad)
 		if byLifetimeCycles {
 			if src.TotalCycles > 0 {

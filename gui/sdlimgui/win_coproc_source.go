@@ -34,7 +34,6 @@ type winCoProcSource struct {
 	img           *SdlImgui
 	open          bool
 	showAsm       bool
-	showNumbering bool
 	optionsHeight float32
 
 	scrollTo     int
@@ -44,8 +43,8 @@ type winCoProcSource struct {
 
 func newWinCoProcSource(img *SdlImgui) (window, error) {
 	win := &winCoProcSource{
-		img:           img,
-		showNumbering: true,
+		img:     img,
+		showAsm: true,
 	}
 	return win, nil
 }
@@ -81,11 +80,6 @@ func (win *winCoProcSource) draw() {
 	title := fmt.Sprintf("%s %s", win.img.lz.Cart.CoProcID, winCoProcSourceID)
 	imgui.BeginV(title, &win.open, imgui.WindowFlagsNone)
 	defer imgui.End()
-
-	if win.img.dbg.CoProcDev == nil {
-		imgui.Text("No source files available")
-		return
-	}
 
 	// safely iterate over source code
 	win.img.dbg.CoProcDev.BorrowSource(func(src *developer.Source) {
@@ -153,6 +147,13 @@ func (win *winCoProcSource) draw() {
 						if len(ln.Asm) > 0 {
 							if win.showAsm {
 								imguiTooltip(func() {
+									imgui.Text(ln.File.Filename)
+									imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLineNumber)
+									imgui.Text(fmt.Sprintf("Line: %d", ln.LineNumber))
+									imgui.PopStyleColor()
+									imgui.Spacing()
+									imgui.Separator()
+									imgui.Spacing()
 									limit := 0
 									for _, asm := range ln.Asm {
 										imgui.Text(asm.Instruction)
@@ -165,7 +166,13 @@ func (win *winCoProcSource) draw() {
 								}, true)
 							}
 
-							imgui.Text(string(fonts.Chip))
+							if ln.IllegalAccess {
+								imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceBug)
+								imgui.Text(string(fonts.Bug))
+								imgui.PopStyleColor()
+							} else {
+								imgui.Text(string(fonts.Chip))
+							}
 						}
 
 						// percentage of time taken by this line
@@ -178,11 +185,9 @@ func (win *winCoProcSource) draw() {
 
 						// line numbering
 						imgui.TableNextColumn()
-						if win.showNumbering {
-							imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLineNumber)
-							imgui.Text(fmt.Sprintf("%d", ln.LineNumber))
-							imgui.PopStyleColor()
-						}
+						imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLineNumber)
+						imgui.Text(fmt.Sprintf("%d", ln.LineNumber))
+						imgui.PopStyleColor()
 
 						// source line
 						imgui.TableNextColumn()
@@ -204,8 +209,6 @@ func (win *winCoProcSource) draw() {
 			imgui.Separator()
 			imgui.Spacing()
 			imgui.Checkbox("Show ASM in Tooltip", &win.showAsm)
-			imgui.SameLineV(0, 15)
-			imgui.Checkbox("Show Numbering", &win.showNumbering)
 		})
 	})
 

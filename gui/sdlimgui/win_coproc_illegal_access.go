@@ -1,0 +1,161 @@
+// This file is part of Gopher2600.
+//
+// Gopher2600 is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Gopher2600 is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
+
+package sdlimgui
+
+import (
+	"fmt"
+	"strings"
+
+	"github.com/inkyblackness/imgui-go/v4"
+	"github.com/jetsetilly/gopher2600/coprocessor/developer"
+)
+
+// in this case of the coprocessor disassmebly window the actual window title
+// is prepended with the actual coprocessor ID (eg. ARM7TDMI). The ID constant
+// below is used in the normal way however.
+
+const winCoProcIllegalAccessID = "Coprocessor Illegal Accesses"
+const winCoProcIllegalAccessMenu = "Illegal Accesses"
+
+type winCoProcIllegalAccess struct {
+	img           *SdlImgui
+	open          bool
+	showSrc       bool
+	optionsHeight float32
+}
+
+func newWinCoProcIllegalAccess(img *SdlImgui) (window, error) {
+	win := &winCoProcIllegalAccess{
+		img:     img,
+		showSrc: true,
+	}
+	return win, nil
+}
+
+func (win *winCoProcIllegalAccess) init() {
+}
+
+func (win *winCoProcIllegalAccess) id() string {
+	return winCoProcIllegalAccessID
+}
+
+func (win *winCoProcIllegalAccess) isOpen() bool {
+	return win.open
+}
+
+func (win *winCoProcIllegalAccess) setOpen(open bool) {
+	win.open = open
+}
+
+func (win *winCoProcIllegalAccess) draw() {
+	if !win.open {
+		return
+	}
+
+	if !win.img.lz.Cart.HasCoProcBus || win.img.dbg.CoProcDev == nil {
+		return
+	}
+
+	imgui.SetNextWindowPosV(imgui.Vec2{1051, 89}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
+	imgui.SetNextWindowSizeV(imgui.Vec2{520, 390}, imgui.ConditionFirstUseEver)
+	imgui.SetNextWindowSizeConstraints(imgui.Vec2{400, 300}, imgui.Vec2{551, 1000})
+
+	title := fmt.Sprintf("%s %s", win.img.lz.Cart.CoProcID, winCoProcIllegalAccessID)
+	imgui.BeginV(title, &win.open, imgui.WindowFlagsNone)
+	defer imgui.End()
+
+	// safely iterate over top execution information
+	win.img.dbg.CoProcDev.BorrowIllegalAccess(func(ill *developer.IllegalAccess) {
+		if ill == nil || len(ill.Log) == 0 {
+			imgui.Text("No illegal accesses")
+			return
+		}
+
+		imgui.BeginChildV("##coprocIllegalAccessMain", imgui.Vec2{X: 0, Y: imguiRemainingWinHeight() - win.optionsHeight}, false, 0)
+
+		imgui.Spacing()
+		imgui.BeginTableV("##coprocIllegalAccessTable", 4, imgui.TableFlagsSizingFixedFit, imgui.Vec2{}, 0.0)
+
+		// first column is a dummy column so that Selectable (span all columns) works correctly
+		width := imgui.ContentRegionAvail().X
+		imgui.TableSetupColumnV("", imgui.TableColumnFlagsNone, 0, 0)
+		imgui.TableSetupColumnV("Event", imgui.TableColumnFlagsNone, width*0.20, 1)
+		imgui.TableSetupColumnV("Address", imgui.TableColumnFlagsNone, width*0.20, 3)
+		imgui.TableSetupColumnV("Function", imgui.TableColumnFlagsNone, width*0.40, 3)
+
+		imgui.TableHeadersRow()
+
+		for i := 0; i < len(ill.Log); i++ {
+			imgui.TableNextRow()
+			lg := ill.Log[i]
+
+			imgui.TableNextColumn()
+			imgui.PushStyleColor(imgui.StyleColorHeaderHovered, win.img.cols.CoProcSourceHover)
+			imgui.PushStyleColor(imgui.StyleColorHeaderActive, win.img.cols.CoProcSourceHover)
+			imgui.SelectableV("", false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{0, 0})
+			imgui.PopStyleColorV(2)
+
+			// source on tooltip
+			if win.showSrc && lg.SrcLine != nil {
+				imguiTooltip(func() {
+					imgui.Text(lg.SrcLine.File.Filename)
+					imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLineNumber)
+					imgui.Text(fmt.Sprintf("Line: %d", lg.SrcLine.LineNumber))
+					imgui.PopStyleColor()
+					imgui.Spacing()
+					imgui.Separator()
+					imgui.Spacing()
+					imgui.Text(strings.TrimSpace(lg.SrcLine.Content))
+				}, true)
+			}
+
+			// open source window on click
+			if imgui.IsItemClicked() && lg.SrcLine != nil {
+				srcWin := win.img.wm.windows[winCoProcSourceID].(*winCoProcSource)
+				srcWin.gotoSource(lg.SrcLine)
+			}
+
+			imgui.TableNextColumn()
+			imgui.Text(lg.Event)
+
+			imgui.TableNextColumn()
+			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcIllegalAccessAddress)
+			imgui.Text(fmt.Sprintf("%#08x", lg.AccessAddr))
+			imgui.PopStyleColor()
+
+			imgui.TableNextColumn()
+			if lg.SrcLine == nil || lg.SrcLine.Function == "" {
+				imgui.Text(developer.UnknownFunction)
+			} else {
+				imgui.Text(fmt.Sprintf("%s()", lg.SrcLine.Function))
+			}
+		}
+
+		imgui.EndTable()
+		imgui.EndChild()
+
+		if win.img.dbg.CoProcDev.HasSource() {
+			// options toolbar at foot of window
+			win.optionsHeight = imguiMeasureHeight(func() {
+				imgui.Separator()
+				imgui.Spacing()
+				imgui.Checkbox("Show Source in Tooltip", &win.showSrc)
+			})
+		} else {
+			win.optionsHeight = 0.0
+		}
+	})
+}

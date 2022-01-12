@@ -64,13 +64,20 @@ func NewDeveloper(pathToROM string, cart mapper.CartCoProcBus) *Developer {
 	return dev
 }
 
+// Strings used to indicate unknown values.
+const (
+	UnknownFunction   = "<unknown function>"
+	UnknownSourceLine = "<unknown source line>"
+)
+
 // IllegalAccess implements the CartCoProcDeveloper interface.
 func (dev *Developer) IllegalAccess(event string, pc uint32, addr uint32) string {
 	dev.sourceLock.Lock()
 	defer dev.sourceLock.Unlock()
 
 	accessKey := fmt.Sprintf("%08x%08x", addr, pc)
-	if _, ok := dev.illegalAccess.entries[accessKey]; ok {
+	if e, ok := dev.illegalAccess.entries[accessKey]; ok {
+		e.SrcLine.IllegalCount++
 		return ""
 	}
 
@@ -81,24 +88,27 @@ func (dev *Developer) IllegalAccess(event string, pc uint32, addr uint32) string
 	}
 
 	if dev.source != nil {
-		e.Source = dev.source.findProgramAccess(pc)
+		e.SrcLine = dev.source.findProgramAccess(pc)
 	}
 
 	dev.illegalAccess.entries[accessKey] = e
 	dev.illegalAccess.Log = append(dev.illegalAccess.Log, e)
 
-	if e.Source == nil {
-		return "<unknown source line>"
+	if e.SrcLine == nil {
+		return UnknownSourceLine
 	}
+
+	e.SrcLine.IllegalAccess = true
+	e.SrcLine.IllegalCount++
 
 	function := ""
-	if e.Source.Function != "" {
-		function = fmt.Sprintf(": %s()", e.Source.Function)
+	if e.SrcLine.Function != "" {
+		function = fmt.Sprintf(": %s()", e.SrcLine.Function)
 	} else {
-		function = "<unknown function>"
+		function = UnknownFunction
 	}
 
-	return fmt.Sprintf("%s%s\n%s", e.Source.String(), function, e.Source.Content)
+	return fmt.Sprintf("%s%s\n%s", e.SrcLine.String(), function, e.SrcLine.Content)
 }
 
 // ExecutionProfile implements the CartCoProcDeveloper interface.
@@ -113,6 +123,13 @@ func (dev *Developer) ExecutionProfile(addr map[uint32]float32) {
 
 		sort.Sort(dev.source.ExecutedLines)
 	}
+}
+
+// HasSource returns true if source information has been found.
+func (dev *Developer) HasSource() bool {
+	dev.sourceLock.Lock()
+	defer dev.sourceLock.Unlock()
+	return dev.source != nil
 }
 
 // BorrowSource will lock the source code structure for the durction of the

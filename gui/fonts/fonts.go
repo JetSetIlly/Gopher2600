@@ -88,6 +88,7 @@ const (
 	Camera                 = '\uf030'
 	Chip                   = '\uf2db'
 	Unlocked               = '\uf13e'
+	Bug                    = '\uf188'
 )
 
 // The first and last unicode points used in the application. We use this to

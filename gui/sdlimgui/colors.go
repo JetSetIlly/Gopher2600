@@ -86,10 +86,14 @@ type imguiColors struct {
 	DisasmBreakOther   imgui.Vec4
 
 	// coprocessor source (and related) windows
-	CoProcSourceSelected   imgui.Vec4
-	CoProcSourceHover      imgui.Vec4
-	CoProcSourceLineNumber imgui.Vec4
-	CoProcSourceLoad       imgui.Vec4
+	CoProcSourceSelected       imgui.Vec4
+	CoProcSourceHover          imgui.Vec4
+	CoProcSourceLineNumber     imgui.Vec4
+	CoProcSourceLoad           imgui.Vec4
+	CoProcSourceBug            imgui.Vec4
+	CoProcIllegalAccessRead    imgui.Vec4
+	CoProcIllegalAccessWrite   imgui.Vec4
+	CoProcIllegalAccessAddress imgui.Vec4
 
 	// coprocessor last execution
 	CoProcMAM0               imgui.Vec4
@@ -239,10 +243,14 @@ func newColors() *imguiColors {
 		// deferring DisasmBreakAddress & DisasmBreakOther
 
 		// coprocessor source (and related) windows
-		CoProcSourceSelected:   imgui.Vec4{1.0, 1.0, 1.0, 0.1},
-		CoProcSourceHover:      imgui.Vec4{0.5, 0.5, 0.5, 0.1},
-		CoProcSourceLineNumber: imgui.Vec4{0.5, 0.8, 0.3, 1.0},
-		CoProcSourceLoad:       imgui.Vec4{0.8, 0.3, 0.3, 1.0},
+		CoProcSourceSelected:       imgui.Vec4{1.0, 1.0, 1.0, 0.1},
+		CoProcSourceHover:          imgui.Vec4{0.5, 0.5, 0.5, 0.1},
+		CoProcSourceLineNumber:     imgui.Vec4{0.5, 0.8, 0.3, 1.0},
+		CoProcSourceLoad:           imgui.Vec4{0.8, 0.3, 0.3, 1.0},
+		CoProcSourceBug:            imgui.Vec4{0.5, 0.5, 0.8, 1.0},
+		CoProcIllegalAccessRead:    imgui.Vec4{0.8, 0.3, 0.8, 1.0},
+		CoProcIllegalAccessWrite:   imgui.Vec4{0.8, 0.5, 0.4, 1.0},
+		CoProcIllegalAccessAddress: imgui.Vec4{0.5, 0.5, 0.8, 1.0},
 
 		// coprocessor disassembly
 		CoProcMAM0:               imgui.Vec4{0.6, 0.3, 0.3, 1.0},
