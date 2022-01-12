@@ -1012,7 +1012,9 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) 
 	coproc := dbg.vcs.Mem.Cart.GetCoProcBus()
 	dbg.CoProcDisasm = coprocDisasm.NewDisassembly(dbg.vcs.TV, coproc)
 	dbg.CoProcDev = coprocDev.NewDeveloper(cartload.Filename, coproc)
-	dbg.vcs.TV.AddFrameTrigger(dbg.CoProcDev)
+	if dbg.CoProcDev != nil {
+		dbg.vcs.TV.AddFrameTrigger(dbg.CoProcDev)
+	}
 
 	// make sure everything is reset after disassembly (including breakpoints, etc.)
 	dbg.reset(true)
