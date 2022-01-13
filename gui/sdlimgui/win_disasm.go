@@ -19,9 +19,9 @@ import (
 	"fmt"
 
 	"github.com/jetsetilly/gopher2600/disassembly"
-	"github.com/jetsetilly/gopher2600/disassembly/symbols"
 	"github.com/jetsetilly/gopher2600/emulation"
 	"github.com/jetsetilly/gopher2600/gui/fonts"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 
 	"github.com/inkyblackness/imgui-go/v4"
@@ -33,12 +33,16 @@ type winDisasm struct {
 	img  *SdlImgui
 	open bool
 
+	// more recently seen emulation state
+	lastSeenState emulation.State
+	lastSeenPC    uint16
+
 	// height of options line at bottom of window. valid after first frame
 	optionsHeight float32
 
 	// options
-	followCPU    bool
-	showByteCode bool
+	showDetails bool
+	followCPU   bool
 
 	// selected bank to display
 	selectedBank int
@@ -49,40 +53,39 @@ type winDisasm struct {
 	// whether to focus on the PC address
 	focusOnAddr bool
 
-	// if the PC address is already visible then flash the indicator. this
-	// gives the button something to do rather than giving no feedback at all.
-	focusAddrFlash int
+	// widths of columns in the disasm table
+	//
+	// widthOperands is implied and is the width of the window minus widthSum
+	widthBreak    float32
+	widthAddr     float32
+	widthOperator float32
+	widthCycles   float32
+	widthNotes    float32
+	widthSum      float32
 
-	// like focusAddrFlash but for the status string
-	statusFlash int
-
-	// whether the entry that the CPU/PC is currently "on" is visible in the
-	// scroller. we use this to decide whether to show the "Goto Current"
-	// button or not.
-	focusAddrIsVisible bool
-
-	// label editing. labelEditTag identifies the tag being edited and
-	// labelEdit is the edited version of the label which will be used to
-	// update the label symbols table.
-	labelEditTag string
-	labelEdit    string
-
-	// the length of time to wait before accepting the new emulation state.
-	// this is to iron out the inherent delay in the lazy value system.
-	syncDelay int
-
-	contextMenu string
+	// widths of goto column in control bar. bank selector column takes the
+	// remainder of the space
+	widthGoto float32
 }
 
 func newWinDisasm(img *SdlImgui) (window, error) {
 	win := &winDisasm{
-		img:       img,
-		followCPU: true,
+		img:         img,
+		showDetails: true,
+		followCPU:   true,
 	}
 	return win, nil
 }
 
 func (win *winDisasm) init() {
+	win.widthBreak = imgui.CalcTextSize("! ", true, 0).X
+	win.widthAddr = imgui.CalcTextSize("$FFFF", true, 0).X
+	win.widthOperator = imgui.CalcTextSize("AND ", true, 0).X
+	win.widthCycles = imgui.CalcTextSize("2/3 ", true, 0).X
+	win.widthNotes = imgui.CalcTextSize(string(fonts.ExecutionNotes), true, 0).X
+	win.widthSum = win.widthBreak + win.widthAddr + win.widthOperator + win.widthCycles + win.widthNotes
+
+	win.widthGoto = imgui.CalcTextSize(string(fonts.DisasmGotoCurrent), true, 0).X
 }
 
 func (win *winDisasm) id() string {
@@ -97,18 +100,10 @@ func (win *winDisasm) setOpen(open bool) {
 	win.open = open
 }
 
-// the length of time to flash for (ee focusAddrFlash and statusFlash). the
-// unit of time is the number of times the GUI goroutine is serviced. therfore
-// if that time changes the flashing effect should change also
-const focusFlashTime = 10
-const focusFlashPeriod = 2
-
 func (win *winDisasm) draw() {
 	if !win.open {
 		return
 	}
-
-	win.checkEmulationState()
 
 	imgui.SetNextWindowPosV(imgui.Vec2{1021, 34}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
 	imgui.SetNextWindowSizeV(imgui.Vec2{500, 552}, imgui.ConditionFirstUseEver)
@@ -117,8 +112,26 @@ func (win *winDisasm) draw() {
 	imgui.BeginV(win.id(), &win.open, imgui.WindowFlagsNone)
 	defer imgui.End()
 
+	if imgui.IsWindowCollapsed() {
+		return
+	}
+
 	// the bank that is currently selected
 	bank := win.img.lz.Cart.CurrBank
+
+	// focus on address if the state has changed to the paused state; or the PC
+	// has changed and the followCPU option is set
+	//
+	// using the lazy emulation.State value rather than the live state - the
+	// live state can cause synchronisation problems meaning focus is lost
+	if (win.img.lz.Debugger.State == emulation.Paused && win.lastSeenState != emulation.Paused) ||
+		(win.followCPU && win.img.lz.CPU.PC.Address() != win.lastSeenPC) {
+
+		win.focusOnAddr = true
+		win.selectedBank = bank.Number
+	}
+	win.lastSeenPC = win.img.lz.CPU.PC.Address()
+	win.lastSeenState = win.img.lz.Debugger.State
 
 	// the value of focusAddr depends on the state of the CPU. if the Final
 	// state of the CPU's last execution result is true then we can be sure the
@@ -129,24 +142,73 @@ func (win *winDisasm) draw() {
 	if bank.ExecutingCoprocessor {
 		// if coprocessor is running then jam the focusAddr value at address the
 		// CPU will resume from once the coprocessor has finished.
-		focusAddr = bank.CoprocessorResumeAddr
+		focusAddr = bank.CoprocessorResumeAddr & memorymap.CartridgeBits
 	} else {
 		// focus address (and bank) depends on if we're in the middle of an
 		// CPU instruction or not. special condition for freshly reset CPUs
 		if win.img.lz.Debugger.LastResult.Result.Final || win.img.lz.CPU.HasReset {
-			focusAddr = win.img.lz.CPU.PC.Address()
+			focusAddr = win.img.lz.CPU.PC.Address() & memorymap.CartridgeBits
 		} else {
-			focusAddr = win.img.lz.Debugger.LastResult.Result.Address
+			focusAddr = win.img.lz.Debugger.LastResult.Result.Address & memorymap.CartridgeBits
 			bank = win.img.lz.Debugger.LastResult.Bank
 		}
 	}
 
-	// only keep cartridge bits
-	focusAddr &= memorymap.CartridgeBits
+	win.drawControlBar(bank)
+
+	// draw all entries for bank. being careful with the onBank argument,
+	// making sure to test bank.NonCart
+	win.drawBank(win.selectedBank, focusAddr, win.selectedBank == bank.Number && !bank.NonCart)
+
+	win.drawOptions(bank)
+}
+
+func (win *winDisasm) drawControlBar(bank mapper.BankInfo) {
+	flgs := imgui.TableFlagsNone
+	flgs |= imgui.TableFlagsSizingFixedFit
+	numColumns := 2
+	imgui.BeginTableV("##controlBar", numColumns, flgs, imgui.Vec2{}, 0)
+
+	bankWidth := imgui.ContentRegionAvail().X - imgui.CurrentStyle().ItemSpacing().X*float32(numColumns)
+	bankWidth -= win.widthGoto
+	imgui.TableSetupColumnV("goto", imgui.TableColumnFlagsNone, win.widthGoto, 0)
+	imgui.TableSetupColumnV("bank", imgui.TableColumnFlagsNone, bankWidth, 1)
+
+	imgui.TableNextRow()
+
+	// goto current PC
+	imgui.TableNextColumn()
+	imgui.AlignTextToFramePadding()
+	imgui.Text(string(fonts.DisasmGotoCurrent))
+	if imgui.IsItemHovered() {
+		if imgui.IsItemClicked() {
+			win.focusOnAddr = true
+			win.selectedBank = bank.Number
+		} else {
+			imguiTooltip(func() {
+				imgui.Text("Focus on PC address")
+				imgui.SameLine()
+				imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmAddress)
+				imgui.Text(fmt.Sprintf("$%04x", win.img.lz.CPU.PC.Address()))
+				imgui.PopStyleColor()
+
+				if win.img.lz.Cart.NumBanks > 1 {
+					imgui.SameLine()
+					imgui.Text("bank")
+					imgui.SameLine()
+					imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmBank)
+					imgui.Text(bank.String())
+					imgui.PopStyleColor()
+				}
+			}, true)
+		}
+	}
 
 	// bank selector / information
+	imgui.TableNextColumn()
 	comboPreview := fmt.Sprintf("Viewing bank %d", win.selectedBank)
-	if imgui.BeginComboV("##bankselect", comboPreview, imgui.ComboFlagsNoArrowButton) {
+	imgui.PushItemWidth(imgui.ContentRegionAvail().X)
+	if imgui.BeginComboV("##bankselect", comboPreview, imgui.ComboFlagsNone) {
 		for n := 0; n < win.img.lz.Cart.NumBanks; n++ {
 			if imgui.Selectable(fmt.Sprintf("View bank %d", n)) {
 				win.selectedBank = n
@@ -164,130 +226,77 @@ func (win *winDisasm) draw() {
 	} else {
 		win.selectedBankComboOpen = false
 	}
+	imgui.PopItemWidth()
 
-	// show goto current button. do not not show if focusAddr is visible or if
-	// debugger is currently running. the latter case isn't important except
-	// when the followCPU option is false. if it is then the "Goto Current"
-	// button might flash on/off, which is annoying.
-	imgui.SameLine()
-	if imgui.Button("Goto Current") {
-		if !bank.NonCart {
-			win.focusOnAddr = true
-			win.selectedBank = bank.Number
-			if win.focusAddrIsVisible {
-				win.focusAddrFlash = focusFlashTime
-			}
-		} else {
-			win.statusFlash = focusFlashTime
-		}
-	}
+	imgui.EndTable()
 
-	// show status information. indicating that the CPU is executing
-	// instructions that are not being disassembled for one reason or another.
-	//
-	// "Goto Current" button will cause status string to flash in the same
-	// style as the focusAddr will flash.
-	var status string
-	if bank.ExecutingCoprocessor {
-		status = "executing coprocessor instructions"
-	} else if bank.NonCart {
-		status = "executing non-cartridge addresses"
-	} else if bank.IsSegmented {
-		if bank.Name != "" {
-			status = fmt.Sprintf("executing %s in segment %d", bank.Name, bank.Segment)
-		} else {
-			status = fmt.Sprintf("executing %d in segment %d", bank.Number, bank.Segment)
-		}
-	}
-	if win.statusFlash > 0 {
-		win.statusFlash--
-	}
-	if win.statusFlash == 0 || win.statusFlash%focusFlashPeriod == 0 {
-		imguiIndentText(status)
-	} else {
-		imguiIndentText("")
-	}
+	imgui.Spacing()
+	imgui.Separator()
+	imgui.Spacing()
+}
 
-	// turn off currentPCisVisible by default, we'll turn it on if required
-	win.focusAddrIsVisible = false
-
-	// draw all entries for bank. being careful with the onBank argument,
-	// making sure to test bank.NonCart
-	win.drawBank(win.selectedBank, focusAddr, win.selectedBank == bank.Number && !bank.NonCart)
-
+func (win *winDisasm) drawOptions(bank mapper.BankInfo) {
 	// draw options and status line. start height measurement
 	win.optionsHeight = imguiMeasureHeight(func() {
 		imgui.Spacing()
-		imgui.Checkbox("Show Bytecode", &win.showByteCode)
-		imgui.SameLine()
+		imgui.Separator()
+		imgui.Spacing()
+		imgui.Checkbox("Show Details in Tooltip", &win.showDetails)
+		imgui.SameLineV(0, 15)
 		imgui.Checkbox("Follow CPU", &win.followCPU)
+
+		// special execution icon
+		if bank.ExecutingCoprocessor {
+			imgui.SameLineV(0, 15)
+			imgui.AlignTextToFramePadding()
+			imgui.Text(string(fonts.CoProcExecution))
+			imguiTooltipSimple("CoProcessor is executing")
+		} else if bank.NonCart {
+			imgui.SameLineV(0, 15)
+			imgui.AlignTextToFramePadding()
+			imgui.Text(string(fonts.NonCartExecution))
+			imguiTooltipSimple("Executing a non-cartridge address!")
+		}
 	})
 }
 
-// switching to a new emulationState needs to be handled with care,
-// particularly because of the skew with the update of the lazy value system.
-// the checkEmulationState() function handles the change of state as best we
-// can. it works well.
-//
-// note that the issue only really arises when we move *to* the Paused state.
-// in other states the gui is either moving too brief or too fast to see
-// anything meaningful.
-func (win *winDisasm) checkEmulationState() {
-	// the number of gui updates (calls to draw()) to wait before accepting the
-	// number emulation state. these values is arbitrary
-	const (
-		syncDelayInitialising = 100
-		syncDelayDefault      = 30
-	)
-
-	switch win.img.emulation.State() {
-	case emulation.EmulatorStart:
-		fallthrough
-	case emulation.Initialising:
-		win.focusOnAddr = true
-		win.syncDelay = syncDelayInitialising
-	default:
-		win.focusOnAddr = win.followCPU
-		if win.focusOnAddr {
-			win.selectedBank = win.img.lz.Cart.CurrBank.Number
-			win.syncDelay = syncDelayDefault
-		}
-	case emulation.Paused:
-		win.focusOnAddr = win.syncDelay > 0 && win.followCPU
-		if win.syncDelay > 0 {
-			win.selectedBank = win.img.lz.Cart.CurrBank.Number
-			win.syncDelay--
-		}
+func (win *winDisasm) startTable() {
+	numColumns := 6
+	flgs := imgui.TableFlagsNone
+	flgs |= imgui.TableFlagsSizingFixedFit
+	if !imgui.BeginTableV("bank", numColumns, flgs, imgui.Vec2{}, 0) {
+		return
 	}
+
+	operandWidth := imgui.ContentRegionAvail().X - imgui.CurrentStyle().ItemSpacing().X*float32(numColumns)
+	operandWidth -= win.widthSum
+
+	imgui.TableSetupColumnV("break", imgui.TableColumnFlagsNone, win.widthBreak, 0)
+	imgui.TableSetupColumnV("address", imgui.TableColumnFlagsNone, win.widthAddr, 1)
+	imgui.TableSetupColumnV("operator", imgui.TableColumnFlagsNone, win.widthOperator, 2)
+	imgui.TableSetupColumnV("operand", imgui.TableColumnFlagsNone, operandWidth, 3)
+	imgui.TableSetupColumnV("cycles", imgui.TableColumnFlagsNone, win.widthCycles, 4)
+	imgui.TableSetupColumnV("notes", imgui.TableColumnFlagsNone, win.widthNotes, 5)
 }
 
 // drawBank specified by bank argument.
-func (win *winDisasm) drawBank(bank int, focusAddr uint16, onBank bool) {
+func (win *winDisasm) drawBank(selectedBank int, focusAddr uint16, onBank bool) {
 	win.img.dbg.Disasm.BorrowDisasm(func(dsmEntries *disassembly.DisasmEntries) {
 		height := imguiRemainingWinHeight() - win.optionsHeight
-		imgui.BeginChildV(fmt.Sprintf("bank %d", bank), imgui.Vec2{X: 0, Y: height}, false, 0)
-		defer imgui.EndChild()
+		imgui.BeginChildV(fmt.Sprintf("bank %d", selectedBank), imgui.Vec2{X: 0, Y: height}, false, imgui.WindowFlagsAlwaysVerticalScrollbar)
 
-		numColumns := 7
-		flgs := imgui.TableFlagsNone
-		flgs |= imgui.TableFlagsSizingFixedFit
-		if !imgui.BeginTableV("bank", numColumns, flgs, imgui.Vec2{}, 0) {
-			return
-		}
-
-		defer imgui.EndTable()
+		win.startTable()
 
 		// set neutral colors for table rows by default. we'll change it to
 		// something more meaningful as appropriate (eg. entry at PC address)
 		imgui.PushStyleColor(imgui.StyleColorTableRowBg, win.img.cols.WindowBg)
 		imgui.PushStyleColor(imgui.StyleColorTableRowBgAlt, win.img.cols.WindowBg)
-		defer imgui.PopStyleColorV(2)
 
-		// number of blessed entries in disasm. being careful to include labels
-		// in the count
+		// number of blessed entries in disasm. being careful to include labels in the count
 		ct := 0
-		focusAddrCt := -1
-		for _, e := range dsmEntries.Entries[bank] {
+		focusCt := 0
+		focusCtApply := false
+		for _, e := range dsmEntries.Entries[selectedBank] {
 			if e.Level >= disassembly.EntryLevelBlessed {
 				ct++
 				if e.Label.String() != "" {
@@ -295,135 +304,120 @@ func (win *winDisasm) drawBank(bank int, focusAddr uint16, onBank bool) {
 				}
 
 				if onBank && e.Result.Address&memorymap.CartridgeBits == focusAddr {
-					focusAddrCt = ct - 4
+					focusCt = ct
+					focusCtApply = true
 				}
 			}
 		}
 
-		var clipper imgui.ListClipper
-		clipper.Begin(ct)
-		for clipper.Step() {
-			// skip entries that aren't to be displayed
-			n := 0
-			e := dsmEntries.Entries[bank][n]
-			skip := clipper.DisplayStart
-			for skip > 0 {
-				if e == nil {
-					return
-				}
-				skip--
-				if e.Label.String() != "" {
+		func() {
+			var clipper imgui.ListClipper
+			clipper.Begin(ct)
+			for clipper.Step() {
+				// skip entries that aren't to be displayed
+				n := 0
+				e := dsmEntries.Entries[selectedBank][n]
+				skip := clipper.DisplayStart
+				for skip > 0 {
+					if e == nil {
+						return
+					}
 					skip--
-				}
+					if e.Label.String() != "" {
+						skip--
+					}
 
-				// skip non-blessed entries
-				n++
-				if n >= len(dsmEntries.Entries[bank]) {
-					return
-				}
-				e = dsmEntries.Entries[bank][n]
-				for e.Level < disassembly.EntryLevelBlessed {
+					// skip non-blessed entries
 					n++
-					if n >= len(dsmEntries.Entries[bank]) {
+					if n >= len(dsmEntries.Entries[selectedBank]) {
 						return
 					}
-					e = dsmEntries.Entries[bank][n]
-				}
-			}
-
-			// draw labels and entries that are to be displayed
-			for i := clipper.DisplayStart; i < clipper.DisplayEnd; i++ {
-				win.drawLabel(e, bank)
-				win.drawEntry(e, focusAddr, onBank, bank)
-
-				if onBank && e.Result.Address&memorymap.CartridgeBits == focusAddr {
-					win.focusAddrIsVisible = win.focusAddrIsVisible || imgui.IsItemVisible()
+					e = dsmEntries.Entries[selectedBank][n]
+					for e.Level < disassembly.EntryLevelBlessed {
+						n++
+						if n >= len(dsmEntries.Entries[selectedBank]) {
+							return
+						}
+						e = dsmEntries.Entries[selectedBank][n]
+					}
 				}
 
-				// skip non-blessed entries
-				n++
-				if n >= len(dsmEntries.Entries[bank]) {
-					return
-				}
-				e = dsmEntries.Entries[bank][n]
-				for e.Level < disassembly.EntryLevelBlessed {
+				// draw labels and entries that are to be displayed
+				for i := clipper.DisplayStart; i < clipper.DisplayEnd; i++ {
+					win.drawLabel(e, selectedBank)
+					win.drawEntry(e, focusAddr, onBank, selectedBank)
+
+					// skip non-blessed entries
 					n++
-					if n >= len(dsmEntries.Entries[bank]) {
+					if n >= len(dsmEntries.Entries[selectedBank]) {
 						return
 					}
-					e = dsmEntries.Entries[bank][n]
+					e = dsmEntries.Entries[selectedBank][n]
+					for e.Level < disassembly.EntryLevelBlessed {
+						n++
+						if n >= len(dsmEntries.Entries[selectedBank]) {
+							return
+						}
+						e = dsmEntries.Entries[selectedBank][n]
+					}
 				}
 			}
+		}()
 
-			// scroll to correct entry
-			//
-			// note that this is inside the clipper.Step() loop. I have no idea
-			// why is necessary but it we SetScrollY() outside the loop then
-			// success is inconsistent
-			if onBank && win.focusOnAddr && focusAddrCt != -1 {
-				y := imgui.FontSize() + imgui.CurrentStyle().ItemInnerSpacing().Y
-				y = float32(focusAddrCt) * y
-				imgui.SetScrollY(y)
-			}
+		// scroll to correct entry. this is in addition to the automated
+		// scrolling we do in drawEntry(). both are required as a consequence
+		// of how ListClipper works
+		if onBank && win.focusOnAddr && focusCtApply {
+			y := imgui.FontSize() + imgui.CurrentStyle().ItemInnerSpacing().Y
+
+			// leave a small gap between the top of the scroll window and
+			// the focused entry
+			const focusGap = 7
+
+			y = float32(focusCt-focusGap) * y
+			imgui.SetScrollY(y)
 		}
+
+		imgui.PopStyleColorV(2)
+		imgui.EndTable()
+		imgui.EndChild()
 	})
 }
 
 func (win *winDisasm) drawLabel(e *disassembly.Entry, bank int) {
-	// try to draw address label
-	s := e.Label.String()
-	if len(s) > 0 {
-		imgui.TableNextRow()
-
-		// put in address column (second column)
-		imgui.TableNextColumn()
-		imgui.TableNextColumn()
-
-		// address label (and label editing)
-		labelEditTag := fmt.Sprintf("%s%s", e.Bank.Name, e.Address)
-		if win.labelEditTag == labelEditTag {
-			imgui.PushItemWidth(imguiTextWidth(len(win.labelEdit)))
-
-			flgs := imgui.InputTextFlagsEnterReturnsTrue | imgui.InputTextFlagsCharsNoBlank
-			if imgui.InputTextV("##labeledit", &win.labelEdit, flgs, nil) {
-				win.img.dbg.Disasm.Sym.UpdateLabel(symbols.SourceCustom, bank, e.Result.Address, s, win.labelEdit)
-				win.labelEditTag = ""
-			}
-
-			if imgui.IsAnyMouseDown() && !imgui.IsItemHovered() {
-				win.labelEditTag = ""
-			} else {
-				imgui.SetKeyboardFocusHere()
-			}
-
-			imgui.PopItemWidth()
-		} else {
-			imgui.Text(e.Label.String())
-			if imgui.IsItemClicked() && imgui.IsMouseDoubleClicked(0) {
-				win.labelEditTag = labelEditTag
-				win.labelEdit = s
-			}
-		}
+	// no label to draw
+	label := e.Label.String()
+	if len(label) == 0 {
+		return
 	}
+
+	// end existing disasm table before drawing label. (re)start table before
+	// the end of the function
+	imgui.EndTable()
+	defer win.startTable()
+
+	imgui.PushStyleColor(imgui.StyleColorHeaderHovered, win.img.cols.DisasmHover)
+	imgui.PushStyleColor(imgui.StyleColorHeaderActive, win.img.cols.DisasmHover)
+	defer imgui.PopStyleColorV(2)
+	imgui.SelectableV("", false, imgui.SelectableFlagsNone, imgui.Vec2{0, 0})
+	imgui.SameLine()
+
+	imgui.Text(e.Label.String())
 }
 
 func (win *winDisasm) drawEntry(e *disassembly.Entry, focusAddr uint16, onBank bool, bank int) {
 	imgui.TableNextRow()
 
-	// prepare execution notes and handle focus-flash
-	executionNotes := e.LastExecutionNotes
+	// highligh current PC entry
 	if onBank && (e.Result.Address&memorymap.CartridgeBits == focusAddr) {
-		// execution notes
-		if !win.img.lz.Debugger.LastResult.Result.Final {
-			executionNotes = fmt.Sprintf("executing (%s cycles)", win.img.lz.Debugger.LastResult.Cycles())
-		}
+		imgui.TableSetBgColor(imgui.TableBgTargetRowBg0, win.img.cols.DisasmStep)
 
-		// draw attention to current entry. flash if necessary
-		if win.focusAddrFlash > 0 {
-			win.focusAddrFlash--
-		}
-		if win.focusAddrFlash == 0 || win.focusAddrFlash%focusFlashPeriod == 0 {
-			imgui.TableSetBgColor(imgui.TableBgTargetRowBg0, win.img.cols.DisasmStep)
+		// scroll to this entry if required. this is in addition to the
+		// calculated scrolling we do in the drawBank() loop. both are required
+		// as a consequence of how ListClipper works
+		if win.focusOnAddr {
+			imgui.SetScrollHereY(0.20)
+			win.focusOnAddr = false
 		}
 	}
 
@@ -439,36 +433,80 @@ func (win *winDisasm) drawEntry(e *disassembly.Entry, focusAddr uint16, onBank b
 	// IsItemClick() and IsItemHovered(). this is so we can toggle a PC break
 	// and open a context menu
 	imgui.TableNextColumn()
-
 	imgui.PushStyleColor(imgui.StyleColorHeaderHovered, win.img.cols.DisasmHover)
 	imgui.PushStyleColor(imgui.StyleColorHeaderActive, win.img.cols.DisasmHover)
 	defer imgui.PopStyleColorV(2)
 
 	imgui.SelectableV("", false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{0, 0})
-	imgui.SameLine()
 
 	// single click on the address entry toggles a PC breakpoint
 	if imgui.IsItemClicked() {
 		win.toggleBreak(e)
 	}
 
-	// context menu on right mouse button
-	if imgui.IsItemHovered() && imgui.IsMouseDown(1) {
-		imgui.OpenPopup(disasmBreakMenuID)
-		win.contextMenu = e.Address
-	}
-	if e.Address == win.contextMenu {
-		win.drawDisasmBreakMenu(e, hasPCbreak)
+	// tooltip on hover and context menu on right mouse button
+	if imgui.IsItemHovered() {
+		imguiTooltip(func() {
+			imgui.Text("Address:")
+			imgui.SameLine()
+			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmAddress)
+			imgui.Text(e.Address)
+			imgui.PopStyleColor()
+
+			imgui.Text("Bytecode:")
+			imgui.SameLine()
+			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmByteCode)
+			imgui.Text(e.Bytecode)
+			imgui.PopStyleColor()
+
+			imgui.Text("Instruction:")
+			imgui.SameLine()
+			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmOperator)
+			imgui.Text(e.Operator)
+			imgui.PopStyleColor()
+			imgui.SameLine()
+			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmOperand)
+			imgui.Text(e.Operand.String())
+			imgui.PopStyleColor()
+
+			// treat an instruction that is "cycling" differently
+			if !win.img.lz.Debugger.LastResult.Result.Final {
+				if onBank && (e.Result.Address&memorymap.CartridgeBits == focusAddr) {
+					imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmCycles)
+					imgui.Text(fmt.Sprintf("%c cycling instruction (%s)", fonts.CyclingInstruction, win.img.lz.Debugger.LastResult.Cycles()))
+					imgui.PopStyleColor()
+				}
+			} else {
+				if e.Level == disassembly.EntryLevelExecuted {
+					imgui.Text("Cycles:")
+					imgui.SameLine()
+					imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmCycles)
+					imgui.Text(e.Cycles())
+					imgui.PopStyleColor()
+
+					if e.LastExecutionNotes != "" {
+						imgui.Spacing()
+						imgui.Separator()
+						imgui.Spacing()
+						imgui.Text(fmt.Sprintf("%c %s", fonts.ExecutionNotes, e.LastExecutionNotes))
+					}
+				} else {
+					imgui.Spacing()
+					imgui.Separator()
+					imgui.Spacing()
+					imgui.Text("Never executed")
+				}
+			}
+		}, true)
 	}
 
 	// breakpoint indicator column. using the same column as the selectable
 	// above (which spans all columns)
+	imgui.SameLine()
 	if hasPCbreak {
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmBreakAddress)
 		imgui.Text(fmt.Sprintf("%c", fonts.Breakpoint))
 		imgui.PopStyleColor()
-	} else {
-		imgui.Text(" ")
 	}
 
 	// address column
@@ -476,14 +514,6 @@ func (win *winDisasm) drawEntry(e *disassembly.Entry, focusAddr uint16, onBank b
 	imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmAddress)
 	imgui.Text(e.Address)
 	imgui.PopStyleColor()
-
-	// optional bytecode column
-	if win.showByteCode {
-		imgui.TableNextColumn()
-		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmByteCode)
-		imgui.Text(e.Bytecode)
-		imgui.PopStyleColor()
-	}
 
 	// operator column
 	imgui.TableNextColumn()
@@ -500,35 +530,20 @@ func (win *winDisasm) drawEntry(e *disassembly.Entry, focusAddr uint16, onBank b
 	// cycles column
 	imgui.TableNextColumn()
 	imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmCycles)
-	imgui.Text(e.DefnCycles)
+	if !win.img.lz.Debugger.LastResult.Result.Final && onBank && (e.Result.Address&memorymap.CartridgeBits == focusAddr) {
+		imgui.Text(string(fonts.CyclingInstruction))
+	} else {
+		imgui.Text(e.DefnCycles)
+	}
 	imgui.PopStyleColor()
 
 	// execution notes column
 	imgui.TableNextColumn()
 	imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmNotes)
-	imgui.Text(executionNotes)
-	imgui.PopStyleColor()
-}
-
-const disasmBreakMenuID = "disasmBreakMenu"
-
-func (win *winDisasm) drawDisasmBreakMenu(e *disassembly.Entry, hasPCbreak bool) {
-	if imgui.BeginPopup(disasmBreakMenuID) {
-		imgui.Text("Break on PC Address")
-		imguiSeparator()
-
-		var s string
-		if hasPCbreak {
-			s = fmt.Sprintf("Clear %s", e.Address)
-		} else {
-			s = fmt.Sprintf("Set %s", e.Address)
-		}
-
-		if imgui.Selectable(s) {
-			win.toggleBreak(e)
-		}
-		imgui.EndPopup()
+	if e.LastExecutionNotes != "" {
+		imgui.Text(string(fonts.ExecutionNotes))
 	}
+	imgui.PopStyleColor()
 }
 
 func (win *winDisasm) toggleBreak(e *disassembly.Entry) {

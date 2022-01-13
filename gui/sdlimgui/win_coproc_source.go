@@ -168,7 +168,7 @@ func (win *winCoProcSource) draw() {
 
 							if ln.IllegalAccess {
 								imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceBug)
-								imgui.Text(string(fonts.Bug))
+								imgui.Text(string(fonts.CoProcBug))
 								imgui.PopStyleColor()
 							} else {
 								imgui.Text(string(fonts.Chip))

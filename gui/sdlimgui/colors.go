@@ -83,7 +83,6 @@ type imguiColors struct {
 	DisasmStep         imgui.Vec4
 	DisasmHover        imgui.Vec4
 	DisasmBreakAddress imgui.Vec4
-	DisasmBreakOther   imgui.Vec4
 
 	// coprocessor source (and related) windows
 	CoProcSourceSelected       imgui.Vec4
@@ -229,18 +228,18 @@ func newColors() *imguiColors {
 
 		// disassembly entry columns
 		DisasmLocation: imgui.Vec4{0.8, 0.8, 0.8, 1.0},
-		DisasmBank:     imgui.Vec4{0.8, 0.8, 0.8, 1.0},
+		DisasmBank:     imgui.Vec4{0.6, 0.6, 0.8, 1.0},
 		DisasmAddress:  imgui.Vec4{0.8, 0.4, 0.4, 1.0},
-		DisasmByteCode: imgui.Vec4{0.6, 0.3, 0.4, 1.0},
+		DisasmByteCode: imgui.Vec4{0.5, 0.5, 0.6, 1.0},
 		DisasmOperator: imgui.Vec4{0.4, 0.4, 0.8, 1.0},
 		DisasmOperand:  imgui.Vec4{0.8, 0.8, 0.3, 1.0},
 		DisasmCycles:   imgui.Vec4{0.8, 0.8, 0.8, 1.0},
 		DisasmNotes:    imgui.Vec4{0.8, 0.8, 0.8, 1.0},
 
 		// disassembly other
-		DisasmStep:  imgui.Vec4{1.0, 1.0, 1.0, 0.1},
-		DisasmHover: imgui.Vec4{0.5, 0.5, 0.5, 0.1},
-		// deferring DisasmBreakAddress & DisasmBreakOther
+		DisasmStep:         imgui.Vec4{1.0, 1.0, 1.0, 0.1},
+		DisasmHover:        imgui.Vec4{0.5, 0.5, 0.5, 0.1},
+		DisasmBreakAddress: imgui.Vec4{0.7, 0.7, 0.7, 1.0},
 
 		// coprocessor source (and related) windows
 		CoProcSourceSelected:       imgui.Vec4{1.0, 1.0, 1.0, 0.1},
@@ -335,8 +334,6 @@ func newColors() *imguiColors {
 	// we deferred setting of some colours. set them now.
 	cols.CapturedScreenTitle = cols.TitleBgActive
 	cols.CapturedScreenBorder = cols.TitleBgActive
-	cols.DisasmBreakAddress = cols.DisasmAddress
-	cols.DisasmBreakOther = cols.DisasmOperator
 	cols.CollisionBit = imgui.CurrentStyle().Color(imgui.StyleColorButton)
 	cols.PortsBit = imgui.CurrentStyle().Color(imgui.StyleColorButton)
 	cols.TimerBit = imgui.CurrentStyle().Color(imgui.StyleColorButton)

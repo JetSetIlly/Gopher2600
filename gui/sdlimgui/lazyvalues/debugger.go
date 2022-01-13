@@ -20,6 +20,7 @@ import (
 
 	"github.com/jetsetilly/gopher2600/debugger"
 	"github.com/jetsetilly/gopher2600/disassembly"
+	"github.com/jetsetilly/gopher2600/emulation"
 )
 
 // LazyDebugger lazily accesses Debugger information.
@@ -30,11 +31,18 @@ type LazyDebugger struct {
 	lastResult  atomic.Value // disassembly.Entry
 	breakpoints atomic.Value // debugger.BreakpointsQuery
 	hasChanged  atomic.Value // bool
+	state       atomic.Value // emulation.State
 
 	Quantum     debugger.Quantum
 	LastResult  disassembly.Entry
 	Breakpoints debugger.BreakpointsQuery
 	HasChanged  bool
+
+	// the emulation.State below is taken at the same time as the reset of the
+	// lazy values. this value should be used in preference to the live
+	// emulation.State() value (which is safe to obtain outside of the lazy
+	// system) when synchronisation is important
+	State emulation.State
 }
 
 func newLazyDebugger(val *LazyValues) *LazyDebugger {
@@ -54,10 +62,13 @@ func (lz *LazyDebugger) push() {
 	if !lz.hasChanged.Load().(bool) {
 		lz.hasChanged.Store(lz.val.dbg.HasChanged())
 	}
+
+	lz.state.Store(lz.val.dbg.State())
 }
 
 func (lz *LazyDebugger) update() {
 	lz.Quantum, _ = lz.quantum.Load().(debugger.Quantum)
+
 	if lz.lastResult.Load() != nil {
 		lz.LastResult = lz.lastResult.Load().(disassembly.Entry)
 	}
@@ -67,4 +78,5 @@ func (lz *LazyDebugger) update() {
 	// load current hasChanged value and unlatch (see push() function)
 	lz.HasChanged = lz.hasChanged.Load().(bool)
 	lz.hasChanged.Store(false)
+	lz.State, _ = lz.state.Load().(emulation.State)
 }

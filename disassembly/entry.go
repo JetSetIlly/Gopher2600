@@ -104,15 +104,19 @@ func (e *Entry) updateExecutionEntry(result execution.Result) {
 	if isBranch || e.Result.PageFault {
 		s := strings.Builder{}
 
-		if e.Result.PageFault {
-			s.WriteString("page-fault [+1] ")
-		}
-
 		if isBranch {
 			if e.Result.BranchSuccess {
-				s.WriteString("branched")
+				s.WriteString("branch succeeded ")
 			} else {
-				s.WriteString("next")
+				s.WriteString("branch failed ")
+			}
+
+			if e.Result.PageFault {
+				s.WriteString("with page-fault ")
+			}
+		} else {
+			if e.Result.PageFault {
+				s.WriteString("page-fault ")
 			}
 		}
 

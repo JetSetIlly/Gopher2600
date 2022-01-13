@@ -88,7 +88,12 @@ const (
 	Camera                 = '\uf030'
 	Chip                   = '\uf2db'
 	Unlocked               = '\uf13e'
-	Bug                    = '\uf188'
+	CoProcBug              = '\uf188'
+	ExecutionNotes         = '\uf02b'
+	CyclingInstruction     = '\uf206'
+	NonCartExecution       = '\uf54c'
+	CoProcExecution        = '\uf085'
+	DisasmGotoCurrent      = '\uf530'
 )
 
 // The first and last unicode points used in the application. We use this to
