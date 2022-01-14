@@ -49,6 +49,9 @@ type Disassembly struct {
 	// emulation goroutine
 	disasmEntries DisasmEntries
 
+	// will be true if disasmEntries contains valid entries
+	validDisassembly bool
+
 	// critical sectioning to protect disasmEntries
 	crit sync.Mutex
 }
@@ -131,6 +134,9 @@ func (dsm *Disassembly) FromMemory() error {
 	// we have to be careful to manually unlock before returning an error.
 	dsm.crit.Lock()
 
+	// invalidate disassembly before continuing
+	dsm.validDisassembly = false
+
 	// create new memory
 	copiedBanks, err := dsm.vcs.Mem.Cart.CopyBanks()
 	if err != nil {
@@ -178,6 +184,11 @@ func (dsm *Disassembly) FromMemory() error {
 	if err != nil {
 		return curated.Errorf("disassembly: %v", err)
 	}
+
+	// disassembly has finished with no problems
+	dsm.crit.Lock()
+	dsm.validDisassembly = true
+	dsm.crit.Unlock()
 
 	return nil
 }
@@ -415,9 +426,17 @@ func (dsm *Disassembly) FormatResult(bank mapper.BankInfo, result execution.Resu
 // supplied function, which will be executed with the disasm structure as an
 // argument.
 //
+// Function will be executed with a nil argument if disassembly is not valid.
+//
 // Should not be called from the emulation goroutine.
 func (dsm *Disassembly) BorrowDisasm(f func(*DisasmEntries)) {
 	dsm.crit.Lock()
 	defer dsm.crit.Unlock()
+
+	if !dsm.validDisassembly {
+		f(nil)
+		return
+	}
+
 	f(&dsm.disasmEntries)
 }

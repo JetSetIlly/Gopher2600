@@ -281,9 +281,14 @@ func (win *winDisasm) startTable() {
 
 // drawBank specified by bank argument.
 func (win *winDisasm) drawBank(selectedBank int, focusAddr uint16, onBank bool) {
+	height := imguiRemainingWinHeight() - win.optionsHeight
+	imgui.BeginChildV(fmt.Sprintf("bank %d", selectedBank), imgui.Vec2{X: 0, Y: height}, false, imgui.WindowFlagsAlwaysVerticalScrollbar)
+
 	win.img.dbg.Disasm.BorrowDisasm(func(dsmEntries *disassembly.DisasmEntries) {
-		height := imguiRemainingWinHeight() - win.optionsHeight
-		imgui.BeginChildV(fmt.Sprintf("bank %d", selectedBank), imgui.Vec2{X: 0, Y: height}, false, imgui.WindowFlagsAlwaysVerticalScrollbar)
+		if dsmEntries == nil {
+			imgui.Text("No disassembly available")
+			return
+		}
 
 		win.startTable()
 
@@ -380,8 +385,9 @@ func (win *winDisasm) drawBank(selectedBank int, focusAddr uint16, onBank bool) 
 
 		imgui.PopStyleColorV(2)
 		imgui.EndTable()
-		imgui.EndChild()
 	})
+
+	imgui.EndChild()
 }
 
 func (win *winDisasm) drawLabel(e *disassembly.Entry, bank int) {
