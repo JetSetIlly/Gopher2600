@@ -77,7 +77,7 @@ func (pn *peripheralNotification) draw(win *playScr) {
 	}
 
 	// we'll be using the icon font for display in this window
-	imgui.PushFont(win.img.glsl.gopher2600Icons)
+	imgui.PushFont(win.img.glsl.fonts.gopher2600Icons)
 	defer imgui.PopFont()
 
 	// position window so that it is fully visible at the bottom of the screen.
@@ -88,12 +88,12 @@ func (pn *peripheralNotification) draw(win *playScr) {
 	if pn.rightAlign {
 		pos = imgui.Vec2{dimen[0], dimen[1]}
 		id = "##controlleralertright"
-		pos.X -= win.img.glsl.gopher2600IconsSize * 1.5
+		pos.X -= win.img.glsl.fonts.gopher2600IconsSize * 1.5
 	} else {
 		pos = imgui.Vec2{0, dimen[1]}
 		id = "##controlleralertleft"
 	}
-	pos.Y -= win.img.glsl.gopher2600IconsSize * 1.5
+	pos.Y -= win.img.glsl.fonts.gopher2600IconsSize * 1.5
 
 	imgui.SetNextWindowPos(pos)
 	imgui.PushStyleColor(imgui.StyleColorWindowBg, win.img.cols.Transparent)
@@ -166,7 +166,7 @@ func (ee *emulationEventNotification) draw(win *playScr) {
 		imgui.WindowFlagsNoDecoration|imgui.WindowFlagsNoSavedSettings|
 		imgui.WindowFlagsNoBringToFrontOnFocus)
 
-	imgui.PushFont(win.img.glsl.veryLargeFontAwesome)
+	imgui.PushFont(win.img.glsl.fonts.veryLargeFontAwesome)
 	switch ee.currentEvent {
 	case emulation.EventInitialising:
 		imgui.Text("")
@@ -281,9 +281,9 @@ func (ce *cartridgeEventNotification) draw(win *playScr) {
 
 	// position window so that it is right justified and shows entirity of window (calculated with
 	// the knowledge that we're using two glyphs of fixed size)
-	width := win.img.glsl.gopher2600IconsSize * 1.5
+	width := win.img.glsl.fonts.gopher2600IconsSize * 1.5
 	if subIcon != "" {
-		width += win.img.glsl.largeFontAwesomeSize * 1.5
+		width += win.img.glsl.fonts.largeFontAwesomeSize * 1.5
 	}
 	pos.X -= width
 
@@ -294,7 +294,7 @@ func (ce *cartridgeEventNotification) draw(win *playScr) {
 	imgui.BeginV("##cartridgeevent", &ce.open, imgui.WindowFlagsAlwaysAutoResize|
 		imgui.WindowFlagsNoScrollbar|imgui.WindowFlagsNoTitleBar|imgui.WindowFlagsNoDecoration)
 
-	imgui.PushFont(win.img.glsl.gopher2600Icons)
+	imgui.PushFont(win.img.glsl.fonts.gopher2600Icons)
 	imgui.Text(icon)
 	imgui.PopFont()
 
@@ -303,10 +303,10 @@ func (ce *cartridgeEventNotification) draw(win *playScr) {
 	if subIcon != "" {
 		// position sub-icon so that it is centered vertically with the main icon
 		dim := imgui.CursorScreenPos()
-		dim.Y += (win.img.glsl.gopher2600IconsSize - win.img.glsl.largeFontAwesomeSize) * 0.5
+		dim.Y += (win.img.glsl.fonts.gopher2600IconsSize - win.img.glsl.fonts.largeFontAwesomeSize) * 0.5
 		imgui.SetCursorScreenPos(dim)
 
-		imgui.PushFont(win.img.glsl.largeFontAwesome)
+		imgui.PushFont(win.img.glsl.fonts.largeFontAwesome)
 		imgui.Text(subIcon)
 		imgui.PopFont()
 	}

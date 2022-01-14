@@ -20,8 +20,6 @@ import (
 
 	"github.com/go-gl/gl/v3.2-core/gl"
 	"github.com/inkyblackness/imgui-go/v4"
-	"github.com/jetsetilly/gopher2600/curated"
-	"github.com/jetsetilly/gopher2600/gui/fonts"
 )
 
 const (
@@ -34,22 +32,10 @@ const (
 )
 
 type glsl struct {
-	img *SdlImgui
+	img   *SdlImgui
+	fonts *glslFonts
 
-	largeFontAwesome     imgui.Font
-	largeFontAwesomeSize float32
-
-	veryLargeFontAwesome     imgui.Font
-	veryLargeFontAwesomeSize float32
-
-	gopher2600Icons     imgui.Font
-	gopher2600IconsSize float32
-
-	hack     imgui.Font
-	hackSize float32
-
-	shaders     [numShaders]shaderProgram
-	fontTexture uint32
+	shaders [numShaders]shaderProgram
 
 	vboHandle      uint32
 	elementsHandle uint32
@@ -65,7 +51,7 @@ func newGlsl(img *SdlImgui) (*glsl, error) {
 
 	rnd.setupShaders()
 
-	err = rnd.setupFonts()
+	rnd.fonts, err = newGLSLfonts()
 	if err != nil {
 		return nil, fmt.Errorf("glsl: %v", err)
 	}
@@ -84,100 +70,6 @@ func (rnd *glsl) setupShaders() {
 	rnd.shaders[playscrShaderID] = newPlayscrShader(rnd.img)
 }
 
-func (rnd *glsl) setupFonts() error {
-	// add default font
-	atlas := imgui.CurrentIO().Fonts()
-	atlas.AddFontDefault()
-
-	// config for font loading. merging with default font and adjusting offset
-	// so that the icons align better.
-	mergeConfig := imgui.NewFontConfig()
-	defer mergeConfig.Delete()
-	mergeConfig.SetMergeMode(true)
-	mergeConfig.SetPixelSnapH(true)
-	mergeConfig.SetGlyphOffsetY(2.0)
-
-	// limit what glyphs we load
-	var glyphBuilder imgui.GlyphRangesBuilder
-	glyphBuilder.Add(fonts.FontAwesomeMin, fonts.FontAwesomeMax)
-
-	// load font awesome
-	font := atlas.AddFontFromMemoryTTFV(fonts.FontAwesome, 13.0, mergeConfig, glyphBuilder.Build().GlyphRanges)
-	if font == 0 {
-		return curated.Errorf("font: error loading font from memory")
-	}
-
-	// load large icons
-	largeFontAwesomeConfig := imgui.NewFontConfig()
-	defer largeFontAwesomeConfig.Delete()
-	largeFontAwesomeConfig.SetPixelSnapH(true)
-
-	var largeFontAwesomeBuilder imgui.GlyphRangesBuilder
-	largeFontAwesomeBuilder.Add(fonts.FontAwesomeMin, fonts.FontAwesomeMax)
-
-	rnd.largeFontAwesomeSize = 22.0
-	rnd.largeFontAwesome = atlas.AddFontFromMemoryTTFV(fonts.FontAwesome, rnd.largeFontAwesomeSize, largeFontAwesomeConfig, largeFontAwesomeBuilder.Build().GlyphRanges)
-	if font == 0 {
-		return curated.Errorf("font: error loading large FA font from memory")
-	}
-
-	// load very-large icons
-	veryLargeFontAwesomeConfig := imgui.NewFontConfig()
-	defer veryLargeFontAwesomeConfig.Delete()
-	veryLargeFontAwesomeConfig.SetPixelSnapH(true)
-
-	var veryLargeFontAwesomeBuilder imgui.GlyphRangesBuilder
-	veryLargeFontAwesomeBuilder.Add(fonts.FontAwesomeMin, fonts.FontAwesomeMax)
-
-	rnd.veryLargeFontAwesomeSize = 44.0
-	rnd.veryLargeFontAwesome = atlas.AddFontFromMemoryTTFV(fonts.FontAwesome, rnd.veryLargeFontAwesomeSize, veryLargeFontAwesomeConfig, veryLargeFontAwesomeBuilder.Build().GlyphRanges)
-	if font == 0 {
-		return curated.Errorf("font: error loading very large FA font from memory")
-	}
-
-	// load gopher icons
-	gopher2600IconConfig := imgui.NewFontConfig()
-	defer gopher2600IconConfig.Delete()
-	gopher2600IconConfig.SetPixelSnapH(true)
-	gopher2600IconConfig.SetGlyphOffsetY(1.0)
-
-	var gopher2600IconBuilder imgui.GlyphRangesBuilder
-	gopher2600IconBuilder.Add(fonts.Gopher2600IconMin, fonts.Gopher2600IconMax)
-
-	rnd.gopher2600IconsSize = 52.0
-	rnd.gopher2600Icons = atlas.AddFontFromMemoryTTFV(fonts.Gopher2600Icons, rnd.gopher2600IconsSize, gopher2600IconConfig, gopher2600IconBuilder.Build().GlyphRanges)
-	if font == 0 {
-		return curated.Errorf("font: error loading Gopher2600 font from memory")
-	}
-
-	// load hack font
-	hackConfig := imgui.NewFontConfig()
-	defer hackConfig.Delete()
-	hackConfig.SetPixelSnapH(true)
-	hackConfig.SetGlyphOffsetY(1.0)
-
-	var hackBuilder imgui.GlyphRangesBuilder
-	hackBuilder.Add(fonts.HackMin, fonts.HackMax)
-
-	rnd.hackSize = 11.0
-	rnd.hack = atlas.AddFontFromMemoryTTFV(fonts.Hack, rnd.hackSize, hackConfig, hackBuilder.Build().GlyphRanges)
-	if font == 0 {
-		return curated.Errorf("font: error loading hack font from memory")
-	}
-
-	// create font texture
-	image := atlas.TextureDataAlpha8()
-	gl.GenTextures(1, &rnd.fontTexture)
-	gl.BindTexture(gl.TEXTURE_2D, rnd.fontTexture)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
-	gl.PixelStorei(gl.UNPACK_ROW_LENGTH, 0)
-	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RED, int32(image.Width), int32(image.Height), 0, gl.RED, gl.UNSIGNED_BYTE, image.Pixels)
-	atlas.SetTextureID(imgui.TextureID(rnd.fontTexture))
-
-	return nil
-}
-
 func (rnd *glsl) destroy() {
 	if rnd.vboHandle != 0 {
 		gl.DeleteBuffers(1, &rnd.vboHandle)
@@ -189,16 +81,12 @@ func (rnd *glsl) destroy() {
 	}
 	rnd.elementsHandle = 0
 
+	rnd.fonts.destroy()
+
 	for i := range rnd.shaders {
 		if rnd.shaders[i] != nil {
 			rnd.shaders[i].destroy()
 		}
-	}
-
-	if rnd.fontTexture != 0 {
-		gl.DeleteTextures(1, &rnd.fontTexture)
-		imgui.CurrentIO().Fonts().SetTextureID(0)
-		rnd.fontTexture = 0
 	}
 }
 

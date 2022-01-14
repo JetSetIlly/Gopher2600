@@ -647,13 +647,13 @@ func (win *winDbgScr) render() {
 
 		gl.BindTexture(gl.TEXTURE_2D, win.elementsTexture)
 		gl.TexImage2D(gl.TEXTURE_2D, 0,
-			gl.RGBA, int32(pixels.Bounds().Size().X), int32(pixels.Bounds().Size().Y), 0,
+			gl.RGBA, int32(elements.Bounds().Size().X), int32(elements.Bounds().Size().Y), 0,
 			gl.RGBA, gl.UNSIGNED_BYTE,
 			gl.Ptr(elements.Pix))
 
 		gl.BindTexture(gl.TEXTURE_2D, win.overlayTexture)
 		gl.TexImage2D(gl.TEXTURE_2D, 0,
-			gl.RGBA, int32(pixels.Bounds().Size().X), int32(pixels.Bounds().Size().Y), 0,
+			gl.RGBA, int32(overlay.Bounds().Size().X), int32(overlay.Bounds().Size().Y), 0,
 			gl.RGBA, gl.UNSIGNED_BYTE,
 			gl.Ptr(overlay.Pix))
 
@@ -667,13 +667,13 @@ func (win *winDbgScr) render() {
 
 		gl.BindTexture(gl.TEXTURE_2D, win.elementsTexture)
 		gl.TexSubImage2D(gl.TEXTURE_2D, 0,
-			0, 0, int32(pixels.Bounds().Size().X), int32(pixels.Bounds().Size().Y),
+			0, 0, int32(elements.Bounds().Size().X), int32(elements.Bounds().Size().Y),
 			gl.RGBA, gl.UNSIGNED_BYTE,
 			gl.Ptr(elements.Pix))
 
 		gl.BindTexture(gl.TEXTURE_2D, win.overlayTexture)
 		gl.TexSubImage2D(gl.TEXTURE_2D, 0,
-			0, 0, int32(pixels.Bounds().Size().X), int32(pixels.Bounds().Size().Y),
+			0, 0, int32(overlay.Bounds().Size().X), int32(overlay.Bounds().Size().Y),
 			gl.RGBA, gl.UNSIGNED_BYTE,
 			gl.Ptr(overlay.Pix))
 	}
