@@ -29,6 +29,14 @@ import (
 
 const winDisasmID = "Disassembly"
 
+type disasmFilter int
+
+const (
+	filterBank disasmFilter = iota
+	filterCPUBug
+	filterPageFault
+)
+
 type winDisasm struct {
 	img  *SdlImgui
 	open bool
@@ -45,6 +53,7 @@ type winDisasm struct {
 	followCPU   bool
 
 	// selected bank to display
+	filter       disasmFilter
 	selectedBank int
 
 	// flag stating whether bank combo is open
@@ -82,7 +91,7 @@ func (win *winDisasm) init() {
 	win.widthAddr = imgui.CalcTextSize("$FFFF", true, 0).X
 	win.widthOperator = imgui.CalcTextSize("AND ", true, 0).X
 	win.widthCycles = imgui.CalcTextSize("2/3 ", true, 0).X
-	win.widthNotes = imgui.CalcTextSize(string(fonts.ExecutionNotes), true, 0).X
+	win.widthNotes = imgui.CalcTextSize(string(fonts.CPUBug), true, 0).X
 	win.widthSum = win.widthBreak + win.widthAddr + win.widthOperator + win.widthCycles + win.widthNotes
 
 	win.widthGoto = imgui.CalcTextSize(string(fonts.DisasmGotoCurrent), true, 0).X
@@ -158,7 +167,7 @@ func (win *winDisasm) draw() {
 
 	// draw all entries for bank. being careful with the onBank argument,
 	// making sure to test bank.NonCart
-	win.drawBank(win.selectedBank, focusAddr, win.selectedBank == bank.Number && !bank.NonCart)
+	win.drawBank(focusAddr, win.selectedBank == bank.Number && !bank.NonCart)
 
 	win.drawOptions(bank)
 }
@@ -184,6 +193,7 @@ func (win *winDisasm) drawControlBar(bank mapper.BankInfo) {
 		if imgui.IsItemClicked() {
 			win.focusOnAddr = true
 			win.selectedBank = bank.Number
+			win.filter = filterBank
 		} else {
 			imguiTooltip(func() {
 				imgui.Text("Focus on PC address")
@@ -206,11 +216,21 @@ func (win *winDisasm) drawControlBar(bank mapper.BankInfo) {
 
 	// bank selector / information
 	imgui.TableNextColumn()
-	comboPreview := fmt.Sprintf("Viewing bank %d", win.selectedBank)
+	comboPreview := ""
+	switch win.filter {
+	case filterBank:
+		comboPreview = fmt.Sprintf("Viewing bank %d", win.selectedBank)
+	case filterCPUBug:
+		comboPreview = fmt.Sprintf("Viewing %c CPU Bugs", fonts.CPUBug)
+	case filterPageFault:
+		comboPreview = fmt.Sprintf("Viewing %c Page Faults", fonts.PageFault)
+	}
+
 	imgui.PushItemWidth(imgui.ContentRegionAvail().X)
-	if imgui.BeginComboV("##bankselect", comboPreview, imgui.ComboFlagsNone) {
+	if imgui.BeginComboV("##filter", comboPreview, imgui.ComboFlagsHeightLargest) {
 		for n := 0; n < win.img.lz.Cart.NumBanks; n++ {
 			if imgui.Selectable(fmt.Sprintf("View bank %d", n)) {
+				win.filter = filterBank
 				win.selectedBank = n
 			}
 
@@ -219,6 +239,21 @@ func (win *winDisasm) drawControlBar(bank mapper.BankInfo) {
 				imgui.SetScrollHereY(0.0)
 			}
 		}
+
+		imgui.Spacing()
+		imgui.Separator()
+		imgui.Spacing()
+
+		if imgui.Selectable(fmt.Sprintf("View %c CPU Bugs", fonts.CPUBug)) {
+			win.filter = filterCPUBug
+		}
+
+		imgui.Spacing()
+
+		if imgui.Selectable(fmt.Sprintf("View %c Page Faults", fonts.PageFault)) {
+			win.filter = filterPageFault
+		}
+
 		imgui.EndCombo()
 
 		// note that combo is open *after* it has been drawn
@@ -280,29 +315,98 @@ func (win *winDisasm) startTable() {
 }
 
 // drawBank specified by bank argument.
-func (win *winDisasm) drawBank(selectedBank int, focusAddr uint16, onBank bool) {
+func (win *winDisasm) drawBank(focusAddr uint16, onBank bool) {
 	height := imguiRemainingWinHeight() - win.optionsHeight
-	imgui.BeginChildV(fmt.Sprintf("bank %d", selectedBank), imgui.Vec2{X: 0, Y: height}, false, imgui.WindowFlagsAlwaysVerticalScrollbar)
+	imgui.BeginChildV(fmt.Sprintf("bank %d", win.selectedBank), imgui.Vec2{X: 0, Y: height}, false, imgui.WindowFlagsAlwaysVerticalScrollbar)
 
 	win.img.dbg.Disasm.BorrowDisasm(func(dsmEntries *disassembly.DisasmEntries) {
+		// the method of iteration is different depending on the selected filter
+		iterateBank := 0
+		iterateIdx := 0
+		headerRequired := false
+
+		// reset should be called at outset of a new iteration
+		iterateReset := func() {
+			iterateBank = 0
+			iterateIdx = 0
+			headerRequired = true
+		}
+
+		// iterateNext moves iterateIdx and iterateBank. returns false when
+		// iteration has ended
+		iterateNext := func() bool {
+			iterateIdx++
+			if iterateIdx >= len(dsmEntries.Entries[iterateBank]) {
+				iterateIdx = 0
+				iterateBank++
+				headerRequired = true
+				if iterateBank >= len(dsmEntries.Entries) {
+					return false
+				}
+			}
+			return true
+		}
+
+		// iterateFilter returns true if entry satisifies the filter conditions
+		iterateFilter := func(_ *disassembly.Entry) bool {
+			return true
+		}
+
+		// iterateDraw presents the entry according to the current rules
+		iterateDraw := func(e *disassembly.Entry) {
+			if headerRequired {
+				imgui.EndTable()
+				imgui.Text(fmt.Sprintf("Bank %d", iterateBank))
+				win.startTable()
+				headerRequired = false
+			}
+			win.drawEntry(e, focusAddr, onBank, iterateBank)
+		}
+
+		// alter iterate functions according to selected filter
+		switch win.filter {
+		case filterBank:
+			iterateFilter = func(e *disassembly.Entry) bool {
+				return e.Level >= disassembly.EntryLevelBlessed && iterateBank == win.selectedBank
+			}
+			iterateReset = func() {
+				iterateBank = win.selectedBank
+				iterateIdx = 0
+			}
+			iterateNext = func() bool {
+				iterateIdx++
+				return iterateIdx < len(dsmEntries.Entries[iterateBank])
+			}
+			iterateDraw = func(e *disassembly.Entry) {
+				win.drawLabel(e, iterateBank)
+				win.drawEntry(e, focusAddr, onBank, iterateBank)
+			}
+		case filterCPUBug:
+			iterateFilter = func(e *disassembly.Entry) bool {
+				return e.Level >= disassembly.EntryLevelExecuted && e.Result.CPUBug != ""
+			}
+		case filterPageFault:
+			iterateFilter = func(e *disassembly.Entry) bool {
+				return e.Level >= disassembly.EntryLevelExecuted && e.Result.PageFault
+			}
+		}
+
+		// nothing to do so return immediately
 		if dsmEntries == nil {
-			imgui.Text("No disassembly available")
 			return
 		}
 
 		win.startTable()
 
-		// set neutral colors for table rows by default. we'll change it to
-		// something more meaningful as appropriate (eg. entry at PC address)
-		imgui.PushStyleColor(imgui.StyleColorTableRowBg, win.img.cols.WindowBg)
-		imgui.PushStyleColor(imgui.StyleColorTableRowBgAlt, win.img.cols.WindowBg)
-
 		// number of blessed entries in disasm. being careful to include labels in the count
 		ct := 0
 		focusCt := 0
 		focusCtApply := false
-		for _, e := range dsmEntries.Entries[selectedBank] {
-			if e.Level >= disassembly.EntryLevelBlessed {
+
+		iterateReset()
+		e := dsmEntries.Entries[iterateBank][iterateIdx]
+		for {
+			if iterateFilter(e) {
 				ct++
 				if e.Label.String() != "" {
 					ct++
@@ -313,57 +417,66 @@ func (win *winDisasm) drawBank(selectedBank int, focusAddr uint16, onBank bool) 
 					focusCtApply = true
 				}
 			}
+
+			if !iterateNext() {
+				break
+			}
+			e = dsmEntries.Entries[iterateBank][iterateIdx]
 		}
 
+		// wrap list clipper in anonymous function call. convenient to just
+		// return from the function from inside a nested loop
 		func() {
+			// start iteration again
+			iterateReset()
+			e = dsmEntries.Entries[iterateBank][iterateIdx]
+
 			var clipper imgui.ListClipper
 			clipper.Begin(ct)
 			for clipper.Step() {
 				// skip entries that aren't to be displayed
-				n := 0
-				e := dsmEntries.Entries[selectedBank][n]
 				skip := clipper.DisplayStart
-				for skip > 0 {
+				for skip > 1 {
 					if e == nil {
 						return
 					}
+
+					// skip entries counting label as appropriate
 					skip--
 					if e.Label.String() != "" {
 						skip--
 					}
 
 					// skip non-blessed entries
-					n++
-					if n >= len(dsmEntries.Entries[selectedBank]) {
+					if !iterateNext() {
 						return
 					}
-					e = dsmEntries.Entries[selectedBank][n]
-					for e.Level < disassembly.EntryLevelBlessed {
-						n++
-						if n >= len(dsmEntries.Entries[selectedBank]) {
+					e = dsmEntries.Entries[iterateBank][iterateIdx]
+					for !iterateFilter(e) {
+						if !iterateNext() {
 							return
 						}
-						e = dsmEntries.Entries[selectedBank][n]
+						e = dsmEntries.Entries[iterateBank][iterateIdx]
 					}
 				}
 
-				// draw labels and entries that are to be displayed
 				for i := clipper.DisplayStart; i < clipper.DisplayEnd; i++ {
-					win.drawLabel(e, selectedBank)
-					win.drawEntry(e, focusAddr, onBank, selectedBank)
+					if iterateFilter(e) {
+						iterateDraw(e)
+					} else {
+						i--
+					}
 
 					// skip non-blessed entries
-					n++
-					if n >= len(dsmEntries.Entries[selectedBank]) {
+					if !iterateNext() {
 						return
 					}
-					e = dsmEntries.Entries[selectedBank][n]
-					for e.Level < disassembly.EntryLevelBlessed {
-						n++
-						if n >= len(dsmEntries.Entries[selectedBank]) {
+					e = dsmEntries.Entries[iterateBank][iterateIdx]
+					for !iterateFilter(e) {
+						if !iterateNext() {
 							return
 						}
-						e = dsmEntries.Entries[selectedBank][n]
+						e = dsmEntries.Entries[iterateBank][iterateIdx]
 					}
 				}
 			}
@@ -383,7 +496,6 @@ func (win *winDisasm) drawBank(selectedBank int, focusAddr uint16, onBank bool) 
 			imgui.SetScrollY(y)
 		}
 
-		imgui.PopStyleColorV(2)
 		imgui.EndTable()
 	})
 
@@ -543,13 +655,17 @@ func (win *winDisasm) drawEntry(e *disassembly.Entry, focusAddr uint16, onBank b
 	}
 	imgui.PopStyleColor()
 
-	// execution notes column
+	// notes column
 	imgui.TableNextColumn()
-	imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmNotes)
-	if e.LastExecutionNotes != "" {
-		imgui.Text(string(fonts.ExecutionNotes))
+	if e.Level == disassembly.EntryLevelExecuted {
+		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmNotes)
+		if e.Result.CPUBug != "" {
+			imgui.Text(string(fonts.CPUBug))
+		} else if e.Result.PageFault {
+			imgui.Text(string(fonts.PageFault))
+		}
+		imgui.PopStyleColor()
 	}
-	imgui.PopStyleColor()
 }
 
 func (win *winDisasm) toggleBreak(e *disassembly.Entry) {

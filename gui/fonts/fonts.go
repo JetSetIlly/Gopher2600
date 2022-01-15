@@ -90,10 +90,14 @@ const (
 	Unlocked               = '\uf13e'
 	CoProcBug              = '\uf188'
 	ExecutionNotes         = '\uf02b'
-	CyclingInstruction     = '\uf206'
+	CPUBug                 = '\uf188'
+	CyclingInstruction     = '\uf84a'
 	NonCartExecution       = '\uf54c'
 	CoProcExecution        = '\uf085'
 	DisasmGotoCurrent      = '\uf530'
+	Filter                 = '\uf0b0'
+	PageFault              = '\uf0fe'
+	Bot                    = '\uf544'
 )
 
 // The first and last unicode points used in the application. We use this to
