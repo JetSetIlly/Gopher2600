@@ -80,9 +80,6 @@ type Entry struct {
 	Operator string
 	Operand  Operand
 
-	// formatted cycles information from instructions.Defintion
-	DefnCycles string
-
 	// information about the most recent execution of the entry
 	// should be empty if EntryLevel != EntryLevelExecuted
 	LastExecutionNotes string
@@ -138,7 +135,7 @@ func (e *Entry) Cycles() string {
 
 	// if entry hasn't been executed yet or if actual cycles is different to
 	// the cycles defined for the entry then return an annotated string
-	return fmt.Sprintf("%d of %s", e.Result.Cycles, e.DefnCycles)
+	return fmt.Sprintf("%d of %s", e.Result.Cycles, e.Result.Defn.Cycles.Formatted)
 }
 
 // add decoration to operand according to the addressing mode of the entry.

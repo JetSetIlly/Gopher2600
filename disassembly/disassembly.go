@@ -412,13 +412,6 @@ func (dsm *Disassembly) FormatResult(bank mapper.BankInfo, result execution.Resu
 		e.Operand.nonSymbolic = addrModeDecoration(e.Operand.nonSymbolic, e.Result.Defn.AddressingMode)
 	}
 
-	// definintion cycles
-	if result.Defn.IsBranch() {
-		e.DefnCycles = fmt.Sprintf("%d/%d", result.Defn.Cycles, result.Defn.Cycles+1)
-	} else {
-		e.DefnCycles = fmt.Sprintf("%d", result.Defn.Cycles)
-	}
-
 	return e
 }
 

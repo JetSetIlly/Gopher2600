@@ -585,7 +585,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 				OpCode:   opcode,
 				Operator: "??",
 				Bytes:    1,
-				Cycles:   0,
+				Cycles:   instructions.Cycles{Value: 0, Formatted: "0"},
 				// remaining fields are undefined
 			}
 		}

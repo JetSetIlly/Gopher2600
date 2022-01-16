@@ -651,7 +651,7 @@ func (win *winDisasm) drawEntry(e *disassembly.Entry, focusAddr uint16, onBank b
 	if !win.img.lz.Debugger.LastResult.Result.Final && onBank && (e.Result.Address&memorymap.CartridgeBits == focusAddr) {
 		imgui.Text(string(fonts.CyclingInstruction))
 	} else {
-		imgui.Text(e.DefnCycles)
+		imgui.Text(e.Result.Defn.Cycles.Formatted)
 	}
 	imgui.PopStyleColor()
 

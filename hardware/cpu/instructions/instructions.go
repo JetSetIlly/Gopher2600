@@ -91,12 +91,24 @@ const (
 	Interrupt
 )
 
+// Cycles is the number of cycles for the instruction. The Formatted value is
+// the Value field formatted as a string with the condition that branch instructions
+// are formatted as:
+//
+//		Value/Value+1
+//
+// We do not format any potential PageSensitive cycle.
+type Cycles struct {
+	Value     int
+	Formatted string
+}
+
 // Definition defines each instruction in the instruction set; one per instruction.
 type Definition struct {
 	OpCode         uint8
 	Operator       string
 	Bytes          int
-	Cycles         int
+	Cycles         Cycles
 	AddressingMode AddressingMode
 	PageSensitive  bool
 	Effect         EffectCategory
@@ -110,7 +122,7 @@ func (defn Definition) String() string {
 	if defn.Operator == "" {
 		return "undecoded instruction"
 	}
-	return fmt.Sprintf("%02x %s +%dbytes (%d cycles) [mode=%d pagesens=%t effect=%d]", defn.OpCode, defn.Operator, defn.Bytes, defn.Cycles, defn.AddressingMode, defn.PageSensitive, defn.Effect)
+	return fmt.Sprintf("%02x %s +%dbytes (%s cycles) [mode=%d pagesens=%t effect=%d]", defn.OpCode, defn.Operator, defn.Bytes, defn.Cycles.Formatted, defn.AddressingMode, defn.PageSensitive, defn.Effect)
 }
 
 // IsBranch returns true if instruction is a branch instruction.

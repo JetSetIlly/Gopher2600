@@ -39,32 +39,32 @@ func (r Result) IsValid() error {
 	// if a bug has been triggered, don't perform the number of cycles check
 	if r.CPUBug == "" {
 		if r.Defn.IsBranch() {
-			if r.Cycles != r.Defn.Cycles && r.Cycles != r.Defn.Cycles+1 && r.Cycles != r.Defn.Cycles+2 {
+			if r.Cycles != r.Defn.Cycles.Value && r.Cycles != r.Defn.Cycles.Value+1 && r.Cycles != r.Defn.Cycles.Value+2 {
 				return curated.Errorf("cpu: number of cycles wrong for opcode %#02x [%s] (%d instead of %d, %d or %d)",
 					r.Defn.OpCode,
 					r.Defn.Operator,
 					r.Cycles,
-					r.Defn.Cycles,
-					r.Defn.Cycles+1,
-					r.Defn.Cycles+2)
+					r.Defn.Cycles.Value,
+					r.Defn.Cycles.Value+1,
+					r.Defn.Cycles.Value+2)
 			}
 		} else {
 			if r.Defn.PageSensitive {
-				if r.PageFault && r.Cycles != r.Defn.Cycles && r.Cycles != r.Defn.Cycles+1 {
+				if r.PageFault && r.Cycles != r.Defn.Cycles.Value && r.Cycles != r.Defn.Cycles.Value+1 {
 					return curated.Errorf("cpu: number of cycles wrong for opcode %#02x [%s] (%d instead of %d, %d)",
 						r.Defn.OpCode,
 						r.Defn.Operator,
 						r.Cycles,
-						r.Defn.Cycles,
-						r.Defn.Cycles+1)
+						r.Defn.Cycles.Value,
+						r.Defn.Cycles.Value+1)
 				}
 			} else {
-				if r.Cycles != r.Defn.Cycles {
+				if r.Cycles != r.Defn.Cycles.Value {
 					return curated.Errorf("cpu: number of cycles wrong for opcode %#02x [%s] (%d instead of %d)",
 						r.Defn.OpCode,
 						r.Defn.Operator,
 						r.Cycles,
-						r.Defn.Cycles)
+						r.Defn.Cycles.Value)
 				}
 			}
 		}
