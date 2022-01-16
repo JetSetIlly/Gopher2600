@@ -21,7 +21,6 @@ import (
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/debugger/script"
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
-	"github.com/jetsetilly/gopher2600/disassembly"
 	"github.com/jetsetilly/gopher2600/emulation"
 	"github.com/jetsetilly/gopher2600/hardware/cpu"
 	"github.com/jetsetilly/gopher2600/logger"
@@ -258,7 +257,7 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, isVideoStep bool) error 
 			// if this is a video step and we reach this stage then we need to
 			// update the disassembly. we do not update the nextAddr however
 			if isVideoStep {
-				dbg.lastResult = dbg.Disasm.FormatResult(dbg.lastBank, dbg.vcs.CPU.LastResult, disassembly.EntryLevelExecuted)
+				dbg.lastResult = dbg.Disasm.ExecutedEntry(dbg.lastBank, dbg.vcs.CPU.LastResult, false, 0)
 			}
 
 			// always clear volatile breakpoints/traps. if the emulation has halted for any

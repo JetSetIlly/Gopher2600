@@ -57,11 +57,17 @@ const (
 type Entry struct {
 	dsm *Disassembly
 
-	// the level of reliability of the information in the Entry
+	// the level of reliability of the information in the Entry.
+	//
+	// note that it is possible for EntryLevelExecuted entries to be partially
+	// executed. check Result.Final if required.
 	Level EntryLevel
 
 	// copy of the CPU execution. must not be updated except through
-	// updateExecutionEntry() function
+	// updateExecutionEntry() function.
+	//
+	// not that the the Final field of execution.Result may be false is the
+	// emulation is stopped mid-execution.
 	Result execution.Result
 
 	// execution.Result does not specify which bank the instruction is from
@@ -85,8 +91,12 @@ type Entry struct {
 func (e *Entry) updateExecutionEntry(result execution.Result) {
 	e.Result = result
 
-	// update result instance in Label and Operand fields
+	// update address in label. we probably don't need to do this but it might
+	// be useful to know what the *actual* address of the instruction. ie.
+	// which mirror is used by the program at that point in the execution.
 	e.Label.address = e.Result.Address
+
+	// update result instance in Operand fields
 	e.Operand.result = e.Result
 
 	// indicate that entry has been executed

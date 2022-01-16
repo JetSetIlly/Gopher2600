@@ -588,7 +588,7 @@ func (win *winDisasm) drawEntry(e *disassembly.Entry, focusAddr uint16, onBank b
 			imgui.PopStyleColor()
 
 			// treat an instruction that is "cycling" differently
-			if !win.img.lz.Debugger.LastResult.Result.Final && onBank && (e.Result.Address&memorymap.CartridgeBits == focusAddr) {
+			if !e.Result.Final {
 				imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmCycles)
 				imgui.Text(fmt.Sprintf("%c cycling instruction (%s)", fonts.CyclingInstruction, e.Cycles()))
 				imgui.PopStyleColor()
@@ -647,7 +647,7 @@ func (win *winDisasm) drawEntry(e *disassembly.Entry, focusAddr uint16, onBank b
 	// cycles column
 	imgui.TableNextColumn()
 	imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmCycles)
-	if !win.img.lz.Debugger.LastResult.Result.Final && onBank && (e.Result.Address&memorymap.CartridgeBits == focusAddr) {
+	if !e.Result.Final {
 		imgui.Text(string(fonts.CyclingInstruction))
 	} else {
 		imgui.Text(e.Result.Defn.Cycles.Formatted)
