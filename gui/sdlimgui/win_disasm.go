@@ -588,32 +588,31 @@ func (win *winDisasm) drawEntry(e *disassembly.Entry, focusAddr uint16, onBank b
 			imgui.PopStyleColor()
 
 			// treat an instruction that is "cycling" differently
-			if !win.img.lz.Debugger.LastResult.Result.Final {
-				if onBank && (e.Result.Address&memorymap.CartridgeBits == focusAddr) {
-					imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmCycles)
-					imgui.Text(fmt.Sprintf("%c cycling instruction (%s)", fonts.CyclingInstruction, win.img.lz.Debugger.LastResult.Cycles()))
-					imgui.PopStyleColor()
-				}
+			if !win.img.lz.Debugger.LastResult.Result.Final && onBank && (e.Result.Address&memorymap.CartridgeBits == focusAddr) {
+				imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmCycles)
+				imgui.Text(fmt.Sprintf("%c cycling instruction (%s)", fonts.CyclingInstruction, e.Cycles()))
+				imgui.PopStyleColor()
 			} else {
-				if e.Level == disassembly.EntryLevelExecuted {
-					imgui.Text("Cycles:")
-					imgui.SameLine()
-					imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmCycles)
-					imgui.Text(e.Cycles())
-					imgui.PopStyleColor()
+				imgui.Text("Cycles:")
+				imgui.SameLine()
+				imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmCycles)
+				imgui.Text(e.Cycles())
+				imgui.PopStyleColor()
+			}
 
-					if e.LastExecutionNotes != "" {
-						imgui.Spacing()
-						imgui.Separator()
-						imgui.Spacing()
-						imgui.Text(fmt.Sprintf("%c %s", fonts.ExecutionNotes, e.LastExecutionNotes))
-					}
-				} else {
+			if e.Level == disassembly.EntryLevelExecuted {
+				notes := e.Notes()
+				if notes != "" {
 					imgui.Spacing()
 					imgui.Separator()
 					imgui.Spacing()
-					imgui.Text("Never executed")
+					imgui.Text(fmt.Sprintf("%c %s", fonts.ExecutionNotes, notes))
 				}
+			} else {
+				imgui.Spacing()
+				imgui.Separator()
+				imgui.Spacing()
+				imgui.Text(fmt.Sprintf("%c never exectued", fonts.ExecutionNotes))
 			}
 		}, true)
 	}

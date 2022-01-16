@@ -910,9 +910,6 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		s.WriteString(" ")
 		s.WriteString(dbg.lastResult.GetField(disassembly.FldCycles))
 		s.WriteString(" ")
-		if !dbg.lastResult.Result.Final {
-			s.WriteString(fmt.Sprintf("(of %s) ", dbg.lastResult.Result.Defn.Cycles.Formatted))
-		}
 		s.WriteString(dbg.lastResult.GetField(disassembly.FldNotes))
 
 		// change terminal output style depending on condition of last CPU result

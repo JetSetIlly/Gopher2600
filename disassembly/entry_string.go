@@ -25,7 +25,7 @@ import (
 //
 // See StringColumnated() for a fancier option.
 func (e *Entry) String() string {
-	operand := e.Operand.genString()
+	operand := e.Operand.String()
 	return fmt.Sprintf("%s %s %s", e.Address, e.Operator, operand)
 }
 

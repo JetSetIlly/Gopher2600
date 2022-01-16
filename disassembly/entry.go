@@ -60,6 +60,10 @@ type Entry struct {
 	// the level of reliability of the information in the Entry
 	Level EntryLevel
 
+	// copy of the CPU execution. must not be updated except through
+	// updateExecutionEntry() function
+	Result execution.Result
+
 	// execution.Result does not specify which bank the instruction is from
 	// because that information isn't available to the CPU. we note it here if
 	// possible.
@@ -67,22 +71,14 @@ type Entry struct {
 
 	// the entries below are not defined if Level == EntryLevelUnused
 
-	// copy of the CPU execution. must not be updated except through
-	// updateExecutionEntry() function
-	Result execution.Result
-
-	// string representations of information in execution.Result. GetField()
-	// will apply white-space padding and should be preferred in most
-	// instances.
+	// string representations of information in execution.Result
+	//
+	// entry.GetField() will apply white spacing padding suitable for columnation
 	Label    Label
 	Bytecode string
 	Address  string
 	Operator string
 	Operand  Operand
-
-	// information about the most recent execution of the entry
-	// should be empty if EntryLevel != EntryLevelExecuted
-	LastExecutionNotes string
 }
 
 // some fields in the disassembly entry are updated on every execution.
@@ -95,47 +91,59 @@ func (e *Entry) updateExecutionEntry(result execution.Result) {
 
 	// indicate that entry has been executed
 	e.Level = EntryLevelExecuted
-
-	// updatge execution notes only when necessary
-	isBranch := e.Result.Defn.IsBranch()
-	if isBranch || e.Result.PageFault {
-		s := strings.Builder{}
-
-		if isBranch {
-			if e.Result.BranchSuccess {
-				s.WriteString("branch succeeded ")
-			} else {
-				s.WriteString("branch failed ")
-			}
-
-			if e.Result.PageFault {
-				s.WriteString("with page-fault ")
-			}
-		} else {
-			if e.Result.PageFault {
-				s.WriteString("page-fault ")
-			}
-		}
-
-		if e.Result.CPUBug != "" {
-			s.WriteString(e.Result.CPUBug)
-		}
-
-		e.LastExecutionNotes = s.String()
-	}
 }
 
 // Cycles returns the number of cycles annotated if actual cycles differs from
 // the number of cycles in the definition. for executed branch instructions this
 // will always be the case.
 func (e *Entry) Cycles() string {
-	if e.Level < EntryLevelExecuted || e.Result.Final {
+	if e.Level < EntryLevelExecuted {
+		return e.Result.Defn.Cycles.Formatted
+	}
+
+	if e.Result.Final {
 		return fmt.Sprintf("%d", e.Result.Cycles)
 	}
 
 	// if entry hasn't been executed yet or if actual cycles is different to
 	// the cycles defined for the entry then return an annotated string
 	return fmt.Sprintf("%d of %s", e.Result.Cycles, e.Result.Defn.Cycles.Formatted)
+}
+
+// Notes returns a string returning notes about the most recent execution. The
+// information is made up of the BranchSuccess, PageFault and CPUBug fields.
+func (e *Entry) Notes() string {
+	if e.Level < EntryLevelExecuted {
+		return ""
+	}
+
+	if !e.Result.Final {
+		return ""
+	}
+
+	s := strings.Builder{}
+
+	if e.Result.Defn.IsBranch() {
+		if e.Result.BranchSuccess {
+			s.WriteString("branch succeeded ")
+		} else {
+			s.WriteString("branch failed ")
+		}
+
+		if e.Result.PageFault {
+			s.WriteString("with page-fault ")
+		}
+	} else {
+		if e.Result.PageFault {
+			s.WriteString("page-fault ")
+		}
+	}
+
+	if e.Result.CPUBug != "" {
+		s.WriteString(e.Result.CPUBug)
+	}
+
+	return s.String()
 }
 
 // add decoration to operand according to the addressing mode of the entry.
@@ -199,22 +207,17 @@ type Label struct {
 	bank    int
 }
 
-func (l Label) String() string {
-	s, _ := l.genString()
-	return s
-}
-
-// genString returns the address label as a symbol (if a symbol is available)
+// String returns the address label as a symbol (if a symbol is available)
 // if a symbol is not available then the the bool return value will be false.
-func (l Label) genString() (string, bool) {
-	if l.dsm.Prefs.Symbols.Get().(bool) {
-		ma, _ := memorymap.MapAddress(l.address, true)
-		if e, ok := l.dsm.Sym.GetLabel(l.bank, ma); ok {
-			return e.Symbol, true
+func (lb Label) String() string {
+	if lb.dsm.Prefs.Symbols.Get().(bool) {
+		ma, _ := memorymap.MapAddress(lb.address, true)
+		if e, ok := lb.dsm.Sym.GetLabel(lb.bank, ma); ok {
+			return e.Symbol
 		}
 	}
 
-	return "", false
+	return ""
 }
 
 // Operand implements the Stringer interface. The String() implementation
@@ -227,52 +230,48 @@ type Operand struct {
 	bank        int
 }
 
-func (l Operand) String() string {
-	return l.genString()
-}
-
-// genString returns the operand as a symbol (if a symbol is available) if
+// String returns the operand as a symbol (if a symbol is available) if
 // a symbol is not available then the the bool return value will be false.
-func (l Operand) genString() string {
-	if l.dsm == nil || !l.dsm.Prefs.Symbols.Get().(bool) {
-		return l.nonSymbolic
+func (op Operand) String() string {
+	if op.dsm == nil || !op.dsm.Prefs.Symbols.Get().(bool) {
+		return op.nonSymbolic
 	}
 
-	s := l.nonSymbolic
+	s := op.nonSymbolic
 
 	// use symbol for the operand if available/appropriate. we should only do
 	// this if operand has been decoded
-	if l.result.Defn.AddressingMode == instructions.Immediate {
+	if op.result.Defn.AddressingMode == instructions.Immediate {
 		// TODO: immediate symbols
 
-	} else if l.result.ByteCount > 1 {
+	} else if op.result.ByteCount > 1 {
 		// instruction data is only valid if bytecount is 2 or more
 
-		operand := l.result.InstructionData
+		operand := op.result.InstructionData
 
-		switch l.result.Defn.Effect {
+		switch op.result.Defn.Effect {
 		case instructions.Flow:
-			if l.result.Defn.IsBranch() {
-				operand = absoluteBranchDestination(l.result.Address, operand)
+			if op.result.Defn.IsBranch() {
+				operand = absoluteBranchDestination(op.result.Address, operand)
 
 				// look up mock program counter value in symbol table
-				if e, ok := l.dsm.Sym.GetLabel(l.bank, operand); ok {
+				if e, ok := op.dsm.Sym.GetLabel(op.bank, operand); ok {
 					s = e.Symbol
 				}
-			} else if e, ok := l.dsm.Sym.GetLabel(l.bank, operand); ok {
-				s = addrModeDecoration(e.Symbol, l.result.Defn.AddressingMode)
+			} else if e, ok := op.dsm.Sym.GetLabel(op.bank, operand); ok {
+				s = addrModeDecoration(e.Symbol, op.result.Defn.AddressingMode)
 			}
 		case instructions.Read:
-			if e, ok := l.dsm.Sym.GetSymbol(operand, true); ok {
-				s = addrModeDecoration(e.Symbol, l.result.Defn.AddressingMode)
+			if e, ok := op.dsm.Sym.GetSymbol(operand, true); ok {
+				s = addrModeDecoration(e.Symbol, op.result.Defn.AddressingMode)
 			}
 
 		case instructions.Write:
 			fallthrough
 
 		case instructions.RMW:
-			if e, ok := l.dsm.Sym.GetSymbol(operand, false); ok {
-				s = addrModeDecoration(e.Symbol, l.result.Defn.AddressingMode)
+			if e, ok := op.dsm.Sym.GetSymbol(operand, false); ok {
+				s = addrModeDecoration(e.Symbol, op.result.Defn.AddressingMode)
 			}
 		}
 	}

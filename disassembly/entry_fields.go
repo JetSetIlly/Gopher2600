@@ -74,9 +74,8 @@ func (e *Entry) GetField(field Field) string {
 
 	switch field {
 	case FldLabel:
-		var ok bool
-		s, ok = e.Label.genString()
-		if !ok {
+		s = e.Label.String()
+		if s == "" {
 			w = 0
 		} else {
 			w = e.dsm.Sym.LabelWidth()
@@ -96,7 +95,7 @@ func (e *Entry) GetField(field Field) string {
 		s = e.Operator
 
 	case FldOperand:
-		s = e.Operand.genString()
+		s = e.Operand.String()
 		w = e.dsm.Sym.SymbolWidth() + widthOperandDecoration
 
 	case FldCycles:
@@ -104,7 +103,7 @@ func (e *Entry) GetField(field Field) string {
 		s = e.Cycles()
 
 	case FldNotes:
-		return e.LastExecutionNotes
+		return e.Notes()
 	}
 
 	if rightJust {
@@ -112,5 +111,6 @@ func (e *Entry) GetField(field Field) string {
 	} else {
 		s = fmt.Sprintf(fmt.Sprintf("%%%ds", w), s)
 	}
+
 	return s
 }
