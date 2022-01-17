@@ -185,7 +185,16 @@ func (cart *atari) Patch(offset int, data uint8) error {
 }
 
 // Listen implements the mapper.CartMapper interface.
-func (cart *atari) Listen(_ uint16, _ uint8) {
+func (cart *atari) Listen(addr uint16, data uint8) {
+	if cart.state.ram != nil {
+		if addr&memorymap.OriginCart == memorymap.OriginCart {
+			addr &= memorymap.MaskCart
+			addr ^= memorymap.OriginCart
+			if addr&0xff80 == 0x0000 {
+				cart.state.ram[addr&0x7f] = data
+			}
+		}
+	}
 }
 
 // Step implements the mapper.CartMapper interface.

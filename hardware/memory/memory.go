@@ -165,10 +165,16 @@ func (mem *Memory) read(address uint16) (uint8, error) {
 	// we do not return error early because we still want to note the
 	// LastAccessAddress, call the cartridge.Listen() function etc. or,
 	// for example, the WATCH command will not function as expected
+	//
+	// note that we're using the previous data bus value not the new data bus
+	// value. this matches observations made by Al_Nafuur with the following
+	// binary.
+	//
+	// https://atariage.com/forums/topic/329888-indexed-read-page-crossing-and-sc-ram/
 
 	// see the commentary for the Listen() function in the Cartridge interface
 	// for an explanation for what is going on here.
-	mem.Cart.Listen(address, data)
+	mem.Cart.Listen(address, mem.LastAccessData)
 
 	// the following is only used by the debugger
 	mem.LastAccessAddress = address
