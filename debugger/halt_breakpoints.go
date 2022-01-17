@@ -469,7 +469,7 @@ func (bp breakpoints) HasPCBreak(addr uint16, bank int) (bool, int) {
 }
 
 func (bp *breakpoints) togglePCBreak(e *disassembly.Entry) {
-	has, i := bp.HasPCBreak(e.Result.Address, e.Bank.Number)
+	has, i := bp.HasPCBreak(e.Result.Address, e.Bank)
 
 	if i != noBreakEqualivalent && has {
 		_ = bp.drop(i) // ignoring errors
@@ -490,7 +490,7 @@ func (bp *breakpoints) togglePCBreak(e *disassembly.Entry) {
 			target: bp.checkBankBreak,
 
 			// see above for casting commentary
-			value: e.Bank.Number,
+			value: e.Bank,
 		}
 	}
 

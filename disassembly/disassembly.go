@@ -327,7 +327,7 @@ func (dsm *Disassembly) FormatResult(bank mapper.BankInfo, result execution.Resu
 		dsm:    dsm,
 		Result: result,
 		Level:  level,
-		Bank:   bank,
+		Bank:   bank.Number,
 		Label: Label{
 			dsm:     dsm,
 			address: result.Address,

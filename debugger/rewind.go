@@ -169,7 +169,7 @@ func (dbg *Debugger) RerunLastNFrames(frames int) bool {
 		//
 		// if we're in between instruction boundaries therefore we need to push a
 		// GotoCoords() request. get the current coordinates now
-		correctCoords := !dbg.lastResult.Result.Final
+		correctCoords := !dbg.liveDisasmEntry.Result.Final
 		coords := dbg.vcs.TV.GetCoords()
 
 		// the function to push to the debugger/emulation routine

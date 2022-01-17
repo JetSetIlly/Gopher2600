@@ -22,7 +22,6 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/cpu/execution"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/instructions"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/registers"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
@@ -57,6 +56,11 @@ const (
 type Entry struct {
 	dsm *Disassembly
 
+	// the bank this entry belongs to. note that this is just the bank number;
+	// we're not storing a copy of mapper.BankInfo. that's not needed for
+	// disassembly purposes
+	Bank int
+
 	// the level of reliability of the information in the Entry.
 	//
 	// note that it is possible for EntryLevelExecuted entries to be partially
@@ -69,11 +73,6 @@ type Entry struct {
 	// not that the the Final field of execution.Result may be false is the
 	// emulation is stopped mid-execution.
 	Result execution.Result
-
-	// execution.Result does not specify which bank the instruction is from
-	// because that information isn't available to the CPU. we note it here if
-	// possible.
-	Bank mapper.BankInfo
 
 	// the entries below are not defined if Level == EntryLevelUnused
 

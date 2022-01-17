@@ -18,6 +18,7 @@ package lazyvalues
 import (
 	"sync/atomic"
 
+	"github.com/jetsetilly/gopher2600/hardware/cpu/execution"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/registers"
 )
 
@@ -25,23 +26,25 @@ import (
 type LazyCPU struct {
 	val *LazyValues
 
-	hasReset  atomic.Value // bool
-	rdy       atomic.Value // bool
-	pc        atomic.Value // registers.ProgramCounter
-	a         atomic.Value // registers.Register
-	x         atomic.Value // registers.Register
-	y         atomic.Value // registers.Register
-	sp        atomic.Value // registers.Register
-	statusReg atomic.Value // registers.StatusRegister
+	hasReset   atomic.Value // bool
+	rdy        atomic.Value // bool
+	pc         atomic.Value // registers.ProgramCounter
+	a          atomic.Value // registers.Register
+	x          atomic.Value // registers.Register
+	y          atomic.Value // registers.Register
+	sp         atomic.Value // registers.Register
+	statusReg  atomic.Value // registers.StatusRegister
+	lastResult atomic.Value // execution.Result
 
-	HasReset  bool
-	RdyFlg    bool
-	PC        registers.ProgramCounter
-	A         registers.Register
-	X         registers.Register
-	Y         registers.Register
-	SP        registers.Register
-	StatusReg registers.StatusRegister
+	HasReset   bool
+	RdyFlg     bool
+	PC         registers.ProgramCounter
+	A          registers.Register
+	X          registers.Register
+	Y          registers.Register
+	SP         registers.Register
+	StatusReg  registers.StatusRegister
+	LastResult execution.Result
 }
 
 func newLazyCPU(val *LazyValues) *LazyCPU {
@@ -57,6 +60,7 @@ func (lz *LazyCPU) push() {
 	lz.y.Store(lz.val.vcs.CPU.Y)
 	lz.sp.Store(lz.val.vcs.CPU.SP)
 	lz.statusReg.Store(lz.val.vcs.CPU.Status)
+	lz.lastResult.Store(lz.val.vcs.CPU.LastResult)
 }
 
 func (lz *LazyCPU) update() {
@@ -68,4 +72,5 @@ func (lz *LazyCPU) update() {
 	lz.Y, _ = lz.y.Load().(registers.Register)
 	lz.SP, _ = lz.sp.Load().(registers.Register)
 	lz.StatusReg, _ = lz.statusReg.Load().(registers.StatusRegister)
+	lz.LastResult, _ = lz.lastResult.Load().(execution.Result)
 }

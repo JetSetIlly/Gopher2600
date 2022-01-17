@@ -27,16 +27,16 @@ import (
 type LazyDebugger struct {
 	val *LazyValues
 
-	quantum     atomic.Value // debugger.QuantumMode
-	lastResult  atomic.Value // disassembly.Entry
-	breakpoints atomic.Value // debugger.BreakpointsQuery
-	hasChanged  atomic.Value // bool
-	state       atomic.Value // emulation.State
+	quantum         atomic.Value // debugger.QuantumMode
+	liveDisasmEntry atomic.Value // disassembly.Entry
+	breakpoints     atomic.Value // debugger.BreakpointsQuery
+	hasChanged      atomic.Value // bool
+	state           atomic.Value // emulation.State
 
-	Quantum     debugger.Quantum
-	LastResult  disassembly.Entry
-	Breakpoints debugger.BreakpointsQuery
-	HasChanged  bool
+	Quantum         debugger.Quantum
+	LiveDisasmEntry disassembly.Entry
+	Breakpoints     debugger.BreakpointsQuery
+	HasChanged      bool
 
 	// the emulation.State below is taken at the same time as the reset of the
 	// lazy values. this value should be used in preference to the live
@@ -53,7 +53,7 @@ func newLazyDebugger(val *LazyValues) *LazyDebugger {
 
 func (lz *LazyDebugger) push() {
 	lz.quantum.Store(lz.val.dbg.GetQuantum())
-	lz.lastResult.Store(lz.val.dbg.GetLastResult())
+	lz.liveDisasmEntry.Store(lz.val.dbg.GetLiveDisasmEntry())
 	lz.breakpoints.Store(lz.val.dbg.QueryBreakpoints())
 
 	// because the push() and update() pair don't interlock exactly, the
@@ -69,8 +69,8 @@ func (lz *LazyDebugger) push() {
 func (lz *LazyDebugger) update() {
 	lz.Quantum, _ = lz.quantum.Load().(debugger.Quantum)
 
-	if lz.lastResult.Load() != nil {
-		lz.LastResult = lz.lastResult.Load().(disassembly.Entry)
+	if lz.liveDisasmEntry.Load() != nil {
+		lz.LiveDisasmEntry = lz.liveDisasmEntry.Load().(disassembly.Entry)
 	}
 
 	lz.Breakpoints, _ = lz.breakpoints.Load().(debugger.BreakpointsQuery)

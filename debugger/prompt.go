@@ -37,7 +37,7 @@ func (dbg *Debugger) buildPrompt() terminal.Prompt {
 		// lastResult. in these instances we want the prompt to report the
 		// instruction that the CPU is working on, not the next one to be
 		// stepped into.
-		e = dbg.lastResult
+		e = dbg.liveDisasmEntry
 	}
 
 	// build prompt based on how confident we are of the contents of the

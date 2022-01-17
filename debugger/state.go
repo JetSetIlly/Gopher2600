@@ -37,10 +37,10 @@ func (dbg *Debugger) GetQuantum() Quantum {
 	return dbg.stepQuantum
 }
 
-// GetLastResult returns the formatted disasembly entry of the last CPU
-// execution.
-func (dbg *Debugger) GetLastResult() disassembly.Entry {
-	return *dbg.lastResult
+// GetLiveDisasmEntry returns the formatted disasembly entry of the last CPU
+// execution and the bank information.
+func (dbg *Debugger) GetLiveDisasmEntry() disassembly.Entry {
+	return *dbg.liveDisasmEntry
 }
 
 // BreakpointsQuery allows others packages to query the currently set

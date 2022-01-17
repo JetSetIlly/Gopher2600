@@ -125,12 +125,16 @@ type Debugger struct {
 	CoProcDisasm *coprocDisasm.Disassembly
 	CoProcDev    *coprocDev.Developer
 
-	// the bank and formatted result of the last step (cpu or video)
-	lastBank   mapper.BankInfo
-	lastResult *disassembly.Entry
+	// the live disassembly entry. updated every CPU step or on halt (which may
+	// be mid instruction)
+	liveDisasmEntry *disassembly.Entry
+
+	// the live bank information. updated every CPU step or on halt (which may
+	// be mid instruction)
+	liveBankInfo mapper.BankInfo
 
 	// the television coords of the last CPU instruction
-	lastCPUboundary coords.TelevisionCoords
+	cpuBoundaryLastInstruction coords.TelevisionCoords
 
 	// interface to the vcs memory with additional debugging functions
 	// - access to vcs memory from the debugger (eg. peeking and poking) is
@@ -349,7 +353,7 @@ func NewDebugger(create CreateUserInterface, spec string, useSavekey bool, fpsCa
 	}
 
 	// create a minimal lastResult for initialisation
-	dbg.lastResult = &disassembly.Entry{Result: execution.Result{Final: true}}
+	dbg.liveDisasmEntry = &disassembly.Entry{Result: execution.Result{Final: true}}
 
 	// halting coordination
 	dbg.halting, err = newHaltCoordination(dbg)
@@ -852,7 +856,7 @@ func (dbg *Debugger) reset(newCartridge bool) error {
 		dbg.traces.clear()
 	}
 
-	dbg.lastResult = &disassembly.Entry{Result: execution.Result{Final: true}}
+	dbg.liveDisasmEntry = &disassembly.Entry{Result: execution.Result{Final: true}}
 	return nil
 }
 
@@ -921,7 +925,7 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) 
 
 				// we've already obtained the disassembled lastResult so we
 				// need to change the final flag there too
-				dbg.lastResult.Result.Final = true
+				dbg.liveDisasmEntry.Result.Final = true
 
 				// call function to complete tape loading procedure
 				callback := args[0].(supercharger.FastLoaded)

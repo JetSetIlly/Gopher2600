@@ -21,7 +21,6 @@ import (
 	"github.com/jetsetilly/gopher2600/disassembly"
 	"github.com/jetsetilly/gopher2600/emulation"
 	"github.com/jetsetilly/gopher2600/gui/fonts"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 
 	"github.com/inkyblackness/imgui-go/v4"
@@ -125,19 +124,22 @@ func (win *winDisasm) draw() {
 		return
 	}
 
-	// the bank that is currently selected
-	bank := win.img.lz.Cart.CurrBank
+	// the currBank that is currently selected
+	currBank := win.img.lz.Cart.CurrBank
 
-	// focus on address if the state has changed to the paused state; or the PC
-	// has changed and the followCPU option is set
+	// focus on address if the state has changed to the paused state and
+	// followCPU is set; or the PC has changed (this is because the state
+	// change might be missed)
 	//
 	// using the lazy emulation.State value rather than the live state - the
 	// live state can cause synchronisation problems meaning focus is lost
-	if (win.img.lz.Debugger.State == emulation.Paused && win.lastSeenState != emulation.Paused) ||
-		(win.followCPU && win.img.lz.CPU.PC.Address() != win.lastSeenPC) {
+	if win.followCPU {
+		if (win.img.lz.Debugger.State == emulation.Paused && win.lastSeenState != emulation.Paused) ||
+			win.img.lz.CPU.PC.Address() != win.lastSeenPC {
 
-		win.focusOnAddr = true
-		win.selectedBank = bank.Number
+			win.focusOnAddr = true
+			win.selectedBank = currBank.Number
+		}
 	}
 	win.lastSeenPC = win.img.lz.CPU.PC.Address()
 	win.lastSeenState = win.img.lz.Debugger.State
@@ -148,31 +150,28 @@ func (win *winDisasm) draw() {
 	// we can never be sure when we are going to draw this window
 	var focusAddr uint16
 
-	if bank.ExecutingCoprocessor {
+	if currBank.ExecutingCoprocessor {
 		// if coprocessor is running then jam the focusAddr value at address the
 		// CPU will resume from once the coprocessor has finished.
-		focusAddr = bank.CoprocessorResumeAddr & memorymap.CartridgeBits
+		focusAddr = currBank.CoprocessorResumeAddr & memorymap.CartridgeBits
 	} else {
-		// focus address (and bank) depends on if we're in the middle of an
-		// CPU instruction or not. special condition for freshly reset CPUs
-		if win.img.lz.Debugger.LastResult.Result.Final || win.img.lz.CPU.HasReset {
+		// focus address depends on if we're in the middle of an CPU
+		// instruction or not. special condition for freshly reset CPUs
+		if win.img.lz.Debugger.LiveDisasmEntry.Result.Final || win.img.lz.CPU.HasReset {
 			focusAddr = win.img.lz.CPU.PC.Address() & memorymap.CartridgeBits
 		} else {
-			focusAddr = win.img.lz.Debugger.LastResult.Result.Address & memorymap.CartridgeBits
-			bank = win.img.lz.Debugger.LastResult.Bank
+			focusAddr = win.img.lz.Debugger.LiveDisasmEntry.Result.Address & memorymap.CartridgeBits
 		}
 	}
 
-	win.drawControlBar(bank)
-
-	// draw all entries for bank. being careful with the onBank argument,
-	// making sure to test bank.NonCart
-	win.drawBank(focusAddr, win.selectedBank == bank.Number && !bank.NonCart)
-
-	win.drawOptions(bank)
+	win.drawControlBar()
+	win.drawBank(focusAddr)
+	win.drawOptions()
 }
 
-func (win *winDisasm) drawControlBar(bank mapper.BankInfo) {
+func (win *winDisasm) drawControlBar() {
+	currBank := win.img.lz.Cart.CurrBank
+
 	flgs := imgui.TableFlagsNone
 	flgs |= imgui.TableFlagsSizingFixedFit
 	numColumns := 2
@@ -192,7 +191,7 @@ func (win *winDisasm) drawControlBar(bank mapper.BankInfo) {
 	if imgui.IsItemHovered() {
 		if imgui.IsItemClicked() {
 			win.focusOnAddr = true
-			win.selectedBank = bank.Number
+			win.selectedBank = currBank.Number
 			win.filter = filterBank
 		} else {
 			imguiTooltip(func() {
@@ -207,7 +206,7 @@ func (win *winDisasm) drawControlBar(bank mapper.BankInfo) {
 					imgui.Text("bank")
 					imgui.SameLine()
 					imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmBank)
-					imgui.Text(bank.String())
+					imgui.Text(currBank.String())
 					imgui.PopStyleColor()
 				}
 			}, true)
@@ -270,7 +269,9 @@ func (win *winDisasm) drawControlBar(bank mapper.BankInfo) {
 	imgui.Spacing()
 }
 
-func (win *winDisasm) drawOptions(bank mapper.BankInfo) {
+func (win *winDisasm) drawOptions() {
+	currBank := win.img.lz.Cart.CurrBank
+
 	// draw options and status line. start height measurement
 	win.optionsHeight = imguiMeasureHeight(func() {
 		imgui.Spacing()
@@ -278,15 +279,21 @@ func (win *winDisasm) drawOptions(bank mapper.BankInfo) {
 		imgui.Spacing()
 		imgui.Checkbox("Show Details in Tooltip", &win.showDetails)
 		imgui.SameLineV(0, 15)
-		imgui.Checkbox("Follow CPU", &win.followCPU)
+		if imgui.Checkbox("Follow CPU", &win.followCPU) {
+			// goto current PC on option being set to true
+			if win.followCPU {
+				win.focusOnAddr = true
+				win.selectedBank = currBank.Number
+			}
+		}
 
 		// special execution icon
-		if bank.ExecutingCoprocessor {
+		if currBank.ExecutingCoprocessor {
 			imgui.SameLineV(0, 15)
 			imgui.AlignTextToFramePadding()
 			imgui.Text(string(fonts.CoProcExecution))
-			imguiTooltipSimple("CoProcessor is executing")
-		} else if bank.NonCart {
+			win.drawCoProcTooltip()
+		} else if currBank.NonCart {
 			imgui.SameLineV(0, 15)
 			imgui.AlignTextToFramePadding()
 			imgui.Text(string(fonts.NonCartExecution))
@@ -315,7 +322,10 @@ func (win *winDisasm) startTable() {
 }
 
 // drawBank specified by bank argument.
-func (win *winDisasm) drawBank(focusAddr uint16, onBank bool) {
+func (win *winDisasm) drawBank(focusAddr uint16) {
+	currBank := win.img.lz.Cart.CurrBank
+	onBank := win.selectedBank == currBank.Number && !currBank.NonCart
+
 	height := imguiRemainingWinHeight() - win.optionsHeight
 	imgui.BeginChildV(fmt.Sprintf("bank %d", win.selectedBank), imgui.Vec2{X: 0, Y: height}, false, imgui.WindowFlagsAlwaysVerticalScrollbar)
 
@@ -380,6 +390,9 @@ func (win *winDisasm) drawBank(focusAddr uint16, onBank bool) {
 			iterateDraw = func(e *disassembly.Entry) {
 				win.drawLabel(e, iterateBank)
 				win.drawEntry(e, focusAddr, onBank, iterateBank)
+				if currBank.ExecutingCoprocessor && onBank && e.Result.Address&memorymap.CartridgeBits == focusAddr {
+					win.drawEntryCoProcessorExecution()
+				}
 			}
 		case filterCPUBug:
 			iterateFilter = func(e *disassembly.Entry) bool {
@@ -523,6 +536,25 @@ func (win *winDisasm) drawLabel(e *disassembly.Entry, bank int) {
 	imgui.Text(e.Label.String())
 }
 
+func (win *winDisasm) drawCoProcTooltip() {
+	imguiTooltipSimple("Coprocessor is executing")
+}
+
+func (win *winDisasm) drawEntryCoProcessorExecution() {
+	imgui.EndTable()
+	defer win.startTable()
+
+	imgui.PushStyleColor(imgui.StyleColorHeaderHovered, win.img.cols.DisasmHover)
+	imgui.PushStyleColor(imgui.StyleColorHeaderActive, win.img.cols.DisasmHover)
+	defer imgui.PopStyleColorV(2)
+	imgui.SelectableV("", false, imgui.SelectableFlagsNone, imgui.Vec2{0, 0})
+
+	win.drawCoProcTooltip()
+
+	imgui.SameLine()
+	imgui.Text(fmt.Sprintf("    %c 6507 will resume here", fonts.CoProcExecution))
+}
+
 func (win *winDisasm) drawEntry(e *disassembly.Entry, focusAddr uint16, onBank bool, bank int) {
 	imgui.TableNextRow()
 
@@ -563,7 +595,7 @@ func (win *winDisasm) drawEntry(e *disassembly.Entry, focusAddr uint16, onBank b
 	}
 
 	// tooltip on hover and context menu on right mouse button
-	if imgui.IsItemHovered() {
+	if win.showDetails && imgui.IsItemHovered() {
 		imguiTooltip(func() {
 			imgui.Text("Address:")
 			imgui.SameLine()
@@ -612,7 +644,7 @@ func (win *winDisasm) drawEntry(e *disassembly.Entry, focusAddr uint16, onBank b
 				imgui.Spacing()
 				imgui.Separator()
 				imgui.Spacing()
-				imgui.Text(fmt.Sprintf("%c never exectued", fonts.ExecutionNotes))
+				imgui.Text(fmt.Sprintf("%c never executed", fonts.ExecutionNotes))
 			}
 		}, true)
 	}

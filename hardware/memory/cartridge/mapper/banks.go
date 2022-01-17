@@ -86,6 +86,9 @@ type BankInfo struct {
 
 // very basic String representation of BankInfo.
 func (b BankInfo) String() string {
+	if b.ExecutingCoprocessor {
+		return "*"
+	}
 	if b.NonCart {
 		return "-"
 	}

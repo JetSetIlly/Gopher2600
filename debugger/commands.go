@@ -258,7 +258,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 			var coords coords.TelevisionCoords
 
 			if instruction {
-				coords = dbg.lastCPUboundary
+				coords = dbg.cpuBoundaryLastInstruction
 			} else {
 				coords = dbg.vcs.TV.AdjCoords(adj, adjAmount)
 			}
@@ -869,7 +869,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		return nil
 
 	case cmdLast:
-		if dbg.lastResult == nil || dbg.lastResult.Result.Defn == nil {
+		if dbg.liveDisasmEntry == nil || dbg.liveDisasmEntry.Result.Defn == nil {
 			dbg.printLine(terminal.StyleFeedback, "no instruction decoded yet")
 			return nil
 		}
@@ -896,24 +896,24 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		s := strings.Builder{}
 
 		if dbg.vcs.Mem.Cart.NumBanks() > 1 {
-			s.WriteString(fmt.Sprintf("[%s] ", dbg.lastResult.Bank))
+			s.WriteString(fmt.Sprintf("[%s] ", dbg.liveBankInfo))
 		}
-		s.WriteString(dbg.lastResult.GetField(disassembly.FldAddress))
+		s.WriteString(dbg.liveDisasmEntry.GetField(disassembly.FldAddress))
 		s.WriteString(" ")
 		if bytecode {
-			s.WriteString(dbg.lastResult.GetField(disassembly.FldBytecode))
+			s.WriteString(dbg.liveDisasmEntry.GetField(disassembly.FldBytecode))
 			s.WriteString(" ")
 		}
-		s.WriteString(dbg.lastResult.GetField(disassembly.FldOperator))
+		s.WriteString(dbg.liveDisasmEntry.GetField(disassembly.FldOperator))
 		s.WriteString(" ")
-		s.WriteString(dbg.lastResult.GetField(disassembly.FldOperand))
+		s.WriteString(dbg.liveDisasmEntry.GetField(disassembly.FldOperand))
 		s.WriteString(" ")
-		s.WriteString(dbg.lastResult.GetField(disassembly.FldCycles))
+		s.WriteString(dbg.liveDisasmEntry.GetField(disassembly.FldCycles))
 		s.WriteString(" ")
-		s.WriteString(dbg.lastResult.GetField(disassembly.FldNotes))
+		s.WriteString(dbg.liveDisasmEntry.GetField(disassembly.FldNotes))
 
 		// change terminal output style depending on condition of last CPU result
-		if dbg.lastResult.Result.Final {
+		if dbg.liveDisasmEntry.Result.Final {
 			dbg.printLine(terminal.StyleCPUStep, s.String())
 		} else {
 			dbg.printLine(terminal.StyleVideoStep, s.String())

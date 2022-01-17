@@ -55,11 +55,11 @@ func (dbg *Debugger) catchupLoop(inputter terminal.Input) error {
 		// executing*
 
 		// we do need to update the reflection however
-		err := dbg.ref.Step(dbg.lastBank)
+		err := dbg.ref.Step(dbg.liveBankInfo)
 		if err != nil {
 			return err
 		}
-		dbg.counter.Step(1, dbg.lastBank)
+		dbg.counter.Step(1, dbg.liveBankInfo)
 
 		if ended {
 			if !dbg.vcs.CPU.LastResult.Final {
@@ -96,11 +96,11 @@ func (dbg *Debugger) catchupLoop(inputter terminal.Input) error {
 	// sentinal error; and (b) whether the CPU has the HasReset() flag raised.
 	// in both situations the loop is ended early
 	for !ended {
-		dbg.lastBank = dbg.vcs.Mem.Cart.GetBank(dbg.vcs.CPU.PC.Address())
+		dbg.liveBankInfo = dbg.vcs.Mem.Cart.GetBank(dbg.vcs.CPU.PC.Address())
 
 		// coords of CPU instruction before calling vcs.Step()
 		if dbg.vcs.CPU.RdyFlg {
-			dbg.lastCPUboundary = dbg.vcs.TV.GetCoords()
+			dbg.cpuBoundaryLastInstruction = dbg.vcs.TV.GetCoords()
 		}
 
 		err := dbg.vcs.Step(callback)
@@ -117,13 +117,13 @@ func (dbg *Debugger) catchupLoop(inputter terminal.Input) error {
 
 		// update disassembly after every CPU instruction. even during a catch
 		// up we need to do this.
-		dbg.lastResult = dbg.Disasm.ExecutedEntry(dbg.lastBank, dbg.vcs.CPU.LastResult, true, dbg.vcs.CPU.PC.Value())
+		dbg.liveDisasmEntry = dbg.Disasm.ExecutedEntry(dbg.liveBankInfo, dbg.vcs.CPU.LastResult, true, dbg.vcs.CPU.PC.Value())
 
 		// make sure reflection has been updated at the end of the instruction
-		if err = dbg.ref.Step(dbg.lastBank); err != nil {
+		if err = dbg.ref.Step(dbg.liveBankInfo); err != nil {
 			return err
 		}
-		dbg.counter.Step(1, dbg.lastBank)
+		dbg.counter.Step(1, dbg.liveBankInfo)
 
 		if dbg.unwindLoopRestart != nil {
 			return nil
@@ -257,7 +257,8 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, isVideoStep bool) error 
 			// if this is a video step and we reach this stage then we need to
 			// update the disassembly. we do not update the nextAddr however
 			if isVideoStep {
-				dbg.lastResult = dbg.Disasm.ExecutedEntry(dbg.lastBank, dbg.vcs.CPU.LastResult, false, 0)
+				dbg.liveBankInfo = dbg.vcs.Mem.Cart.GetBank(dbg.vcs.CPU.PC.Address())
+				dbg.liveDisasmEntry = dbg.Disasm.ExecutedEntry(dbg.liveBankInfo, dbg.vcs.CPU.LastResult, false, 0)
 			}
 
 			// always clear volatile breakpoints/traps. if the emulation has halted for any
@@ -422,11 +423,11 @@ func (dbg *Debugger) step(inputter terminal.Input, catchup bool) error {
 		}
 
 		// we do need to update the reflection however
-		err = dbg.ref.Step(dbg.lastBank)
+		err = dbg.ref.Step(dbg.liveBankInfo)
 		if err != nil {
 			return err
 		}
-		dbg.counter.Step(1, dbg.lastBank)
+		dbg.counter.Step(1, dbg.liveBankInfo)
 
 		// process commandOnStep for clock quantum (equivalent for instruction
 		// quantum is the main body of Debugger.step() below)
@@ -456,11 +457,11 @@ func (dbg *Debugger) step(inputter terminal.Input, catchup bool) error {
 	// get bank information before we execute the next instruction. we
 	// use this when formatting the last result from the CPU. this has
 	// to happen before we call the VCS.Step() function
-	dbg.lastBank = dbg.vcs.Mem.Cart.GetBank(dbg.vcs.CPU.PC.Address())
+	dbg.liveBankInfo = dbg.vcs.Mem.Cart.GetBank(dbg.vcs.CPU.PC.Address())
 
 	// coords of CPU instruction before calling vcs.Step()
 	if dbg.vcs.CPU.RdyFlg {
-		dbg.lastCPUboundary = dbg.vcs.TV.GetCoords()
+		dbg.cpuBoundaryLastInstruction = dbg.vcs.TV.GetCoords()
 	}
 
 	// not using the err variable because we'll clobber it before we
@@ -474,13 +475,13 @@ func (dbg *Debugger) step(inputter terminal.Input, catchup bool) error {
 	dbg.continueEmulation = !dbg.halting.halt
 
 	// update disassembly after every CPU instruction. no exceptions.
-	dbg.lastResult = dbg.Disasm.ExecutedEntry(dbg.lastBank, dbg.vcs.CPU.LastResult, true, dbg.vcs.CPU.PC.Value())
+	dbg.liveDisasmEntry = dbg.Disasm.ExecutedEntry(dbg.liveBankInfo, dbg.vcs.CPU.LastResult, true, dbg.vcs.CPU.PC.Value())
 
 	// make sure reflection has been updated at the end of the instruction
-	if err := dbg.ref.Step(dbg.lastBank); err != nil {
+	if err := dbg.ref.Step(dbg.liveBankInfo); err != nil {
 		return err
 	}
-	dbg.counter.Step(1, dbg.lastBank)
+	dbg.counter.Step(1, dbg.liveBankInfo)
 
 	if dbg.unwindLoopRestart != nil {
 		return nil

@@ -168,14 +168,14 @@ func (win *winCPU) draw() {
 
 	imgui.Spacing()
 
-	res := win.img.lz.Debugger.LastResult
+	res := win.img.lz.Debugger.LiveDisasmEntry
 	if res.Address != "" {
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmAddress)
 		imgui.Text(res.Address)
 
 		imgui.SameLine()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmBank)
-		imgui.Text(fmt.Sprintf("[bank %d]", res.Bank.Number))
+		imgui.Text(fmt.Sprintf("[bank %d]", res.Bank))
 
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmOperator)
 		imgui.Text(res.Operator)
