@@ -73,8 +73,8 @@ func (r *Rewind) SearchMemoryWrite(tgt *State, addr uint16, value uint8, valueMa
 			return nil, curated.Errorf("rewind: search: %v", err)
 		}
 
-		if searchVCS.Mem.LastAccessWrite && searchVCS.Mem.LastAccessAddressMapped == addr {
-			if searchVCS.Mem.LastAccessData&valueMask == value&valueMask {
+		if searchVCS.Mem.LastCPUWrite && searchVCS.Mem.LastCPUAddressMapped == addr {
+			if searchVCS.Mem.LastCPUData&valueMask == value&valueMask {
 				matchingState = snapshot(searchVCS, levelTemporary)
 			}
 			mostRecentTVstate = searchTV.String()

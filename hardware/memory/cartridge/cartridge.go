@@ -132,21 +132,13 @@ func (cart *Cartridge) Patch(offset int, data uint8) error {
 	return cart.mapper.Patch(offset, data)
 }
 
-// Read is an implementation of memory.CPUBus. Address should not be
-// normalised.
+// Read is an implementation of memory.CPUBus.
 func (cart *Cartridge) Read(addr uint16) (uint8, error) {
-	if _, ok := cart.mapper.(*supercharger.Supercharger); ok {
-		return cart.mapper.Read(addr, false)
-	}
 	return cart.mapper.Read(addr&memorymap.CartridgeBits, false)
 }
 
-// Write is an implementation of memory.CPUBus. Address should not be
-// normalised.
+// Write is an implementation of memory.CPUBus.
 func (cart *Cartridge) Write(addr uint16, data uint8) error {
-	if _, ok := cart.mapper.(*supercharger.Supercharger); ok {
-		return cart.mapper.Write(addr, data, false, false)
-	}
 	return cart.mapper.Write(addr&memorymap.CartridgeBits, data, false, false)
 }
 

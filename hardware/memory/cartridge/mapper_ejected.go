@@ -20,7 +20,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 )
 
-// ejected implements the cartMapper interface.
+// ejected implements the mapper.CartMapper interface.
 type ejected struct {
 }
 
@@ -33,7 +33,7 @@ func (cart *ejected) MappedBanks() string {
 	return "ejected"
 }
 
-// ID implements the cartMapper interface.
+// ID implements the mapper.CartMapper interface.
 func (cart *ejected) ID() string {
 	return "-"
 }
@@ -47,41 +47,41 @@ func (cart *ejected) Snapshot() mapper.CartMapper {
 func (cart *ejected) Plumb() {
 }
 
-// Reset implements the cartMapper interface.
+// Reset implements the mapper.CartMapper interface.
 func (cart *ejected) Reset() {
 }
 
-// Read implements the cartMapper interface.
+// Read implements the mapper.CartMapper interface.
 func (cart *ejected) Read(_ uint16, _ bool) (uint8, error) {
 	// return NOP. this is almost certainly not correct but it's good enough for now
 	return 0xea, nil
 }
 
-// Write implements the cartMapper interface.
+// Write implements the mapper.CartMapper interface.
 func (cart *ejected) Write(_ uint16, _ uint8, _, _ bool) error {
 	return nil
 }
 
-// NumBanks implements the cartMapper interface.
+// NumBanks implements the mapper.CartMapper interface.
 func (cart *ejected) NumBanks() int {
 	return 1
 }
 
-// GetBank implements the cartMapper interface.
+// GetBank implements the mapper.CartMapper interface.
 func (cart *ejected) GetBank(_ uint16) mapper.BankInfo {
 	return mapper.BankInfo{Number: 0, IsRAM: false}
 }
 
-// Patch implements the cartMapper interface.
+// Patch implements the mapper.CartMapper interface.
 func (cart *ejected) Patch(_ int, _ uint8) error {
 	return curated.Errorf(Ejected)
 }
 
-// Listen implements the cartMapper interface.
+// Listen implements the mapper.CartMapper interface.
 func (cart *ejected) Listen(_ uint16, _ uint8) {
 }
 
-// Step implements the cartMapper interface.
+// Step implements the mapper.CartMapper interface.
 func (cart *ejected) Step(_ float32) {
 }
 

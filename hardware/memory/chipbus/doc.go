@@ -16,6 +16,10 @@
 // Package chipbus defines the operations, addresses and symbols that are
 // required by the TIA and RIOT chips when updated values in memory.
 //
+// Another way to think of this is: the operations, etc. that are required to
+// interface with the VCS memory from the perspective of the TIA and RIOT
+// chips.
+//
 // It also defines the operations required by the TIA and RIOT chips in order
 // to respond to changes made by the CPU.
 package chipbus

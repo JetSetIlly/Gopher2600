@@ -110,7 +110,7 @@ func (wtc *watches) check() string {
 	// note that the write flag comparison is required otherwise RMW
 	// instructions will not be caught on the write signal (which would mean
 	// that a WRITE watch will never match a RMW instruction)
-	if wtc.lastAddressAccessed == wtc.dbg.vcs.Mem.LastAccessAddress && wtc.lastAddressWrite == wtc.dbg.vcs.Mem.LastAccessWrite {
+	if wtc.lastAddressAccessed == wtc.dbg.vcs.Mem.LastCPUAddressLiteral && wtc.lastAddressWrite == wtc.dbg.vcs.Mem.LastCPUWrite {
 		return ""
 	}
 
@@ -122,10 +122,10 @@ func (wtc *watches) check() string {
 
 		// pick which addresses to comare depending on whether watch is strict
 		if w.strict {
-			accessAddress = wtc.dbg.vcs.Mem.LastAccessAddress
+			accessAddress = wtc.dbg.vcs.Mem.LastCPUAddressLiteral
 			watchAddress = w.ai.Address
 		} else {
-			accessAddress = wtc.dbg.vcs.Mem.LastAccessAddressMapped
+			accessAddress = wtc.dbg.vcs.Mem.LastCPUAddressMapped
 			watchAddress = w.ai.MappedAddress
 		}
 
@@ -134,24 +134,24 @@ func (wtc *watches) check() string {
 			continue
 		}
 
-		if w.matchValue && w.value != wtc.dbg.vcs.Mem.LastAccessData {
+		if w.matchValue && w.value != wtc.dbg.vcs.Mem.LastCPUData {
 			continue
 		}
 
 		if w.ai.Read {
-			if !wtc.dbg.vcs.Mem.LastAccessWrite {
-				checkString.WriteString(fmt.Sprintf("watch at %s (read value %#02x)\n", w, wtc.dbg.vcs.Mem.LastAccessData))
+			if !wtc.dbg.vcs.Mem.LastCPUWrite {
+				checkString.WriteString(fmt.Sprintf("watch at %s (read value %#02x)\n", w, wtc.dbg.vcs.Mem.LastCPUData))
 			}
 		} else {
-			if wtc.dbg.vcs.Mem.LastAccessWrite {
-				checkString.WriteString(fmt.Sprintf("watch at %s (written value %#02x)\n", w, wtc.dbg.vcs.Mem.LastAccessData))
+			if wtc.dbg.vcs.Mem.LastCPUWrite {
+				checkString.WriteString(fmt.Sprintf("watch at %s (written value %#02x)\n", w, wtc.dbg.vcs.Mem.LastCPUData))
 			}
 		}
 	}
 
 	// note what the last address accessed was
-	wtc.lastAddressAccessed = wtc.dbg.vcs.Mem.LastAccessAddress
-	wtc.lastAddressWrite = wtc.dbg.vcs.Mem.LastAccessWrite
+	wtc.lastAddressAccessed = wtc.dbg.vcs.Mem.LastCPUAddressLiteral
+	wtc.lastAddressWrite = wtc.dbg.vcs.Mem.LastCPUWrite
 
 	return checkString.String()
 }

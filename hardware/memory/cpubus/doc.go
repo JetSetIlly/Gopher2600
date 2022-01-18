@@ -15,4 +15,7 @@
 
 // Package cpubus defines the operations, addresses and symbols that are
 // required by the CPU when writing to memory.
+//
+// Another way to think of this is: the operations, etc. that are required to
+// interface with the VCS memory from the perspective of the CPU.
 package cpubus

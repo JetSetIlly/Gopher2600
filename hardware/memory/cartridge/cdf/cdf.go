@@ -26,7 +26,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
-// cdf implements the cartMapper interface.
+// cdf implements the mapper.CartMapper interface.
 type cdf struct {
 	instance *instance.Instance
 

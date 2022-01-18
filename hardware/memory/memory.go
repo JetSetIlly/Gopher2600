@@ -61,22 +61,32 @@ type Memory struct {
 	RAM  *vcs.RAM
 	Cart *cartridge.Cartridge
 
-	// the following are only used by the debugging interface. it would be
-	// lovely to remove these for non-debugging emulation but there's not much
-	// impact on performance so they can stay for now:
+	// the following are only used by the debugging interface
 	//
-	//  . a note of the last (unmapped) memory address to be accessed
+	//  . a note of the last literal memory address to be accessed
 	//  . as above but the mapped address
 	//  . the value that was written/read from the last address accessed
 	//  . whether the last address accessed was written or read
+	//  . the pins that were driven during the last read access by the CPU
 	//
-	// Users of this fields shoudl also consider the possibility that the
+	// Users of this fields should also consider the possibility that the
 	// access was a phantom access (PhantomAccess flag in CPU type)
-	LastAccessAddress       uint16
-	LastAccessAddressMapped uint16
-	LastAccessData          uint8
-	LastAccessWrite         bool
-	LastAccessMask          uint8
+	//
+	// * the literal address is the address as it appears in the 6507 program.
+	// and therefore it might be more than 13 bits wide. as such it is not
+	// representative of what happens on the address bus
+	//
+	// it is sometimes useful to know what the literal address is, distinct
+	// from the mapped address, for debugging purposes.
+	LastCPUAddressLiteral uint16
+	LastCPUAddressMapped  uint16
+	LastCPUData           uint8
+	LastCPUWrite          bool
+	LastCPUDrivenPins     uint8
+
+	// the actual values that have been put on the address and data buses.
+	AddressBus uint16
+	DataBus    uint8
 }
 
 // NewMemory is the preferred method of initialisation for Memory.
@@ -136,51 +146,46 @@ func (mem *Memory) read(address uint16) (uint8, error) {
 	ma, ar := memorymap.MapAddress(address, true)
 	area := mem.GetArea(ar)
 
-	var data uint8
-	var err error
+	// read data from area
+	data, err := area.(cpubus.Memory).Read(ma)
 
-	if ar == memorymap.Cartridge {
-		// some cartridge mappers want to see the unmapped address
-		data, err = area.(*cartridge.Cartridge).Read(address)
-	} else {
-		data, err = area.(cpubus.Memory).Read(ma)
-
-		// TIA addresses do not drive all the pins on the data bus, leaving
-		// some bits of the previous value on the data bus in the result.
-		//
-		// see commentary for TIADriverPins for extensive explanation
-		if ar == memorymap.TIA {
-			mem.LastAccessMask = vcs.TIADrivenPins
-			data &= vcs.TIADrivenPins
-			if mem.instance != nil && mem.instance.Prefs.RandomPins.Get().(bool) {
-				data |= uint8(mem.instance.Random.Intn(0xff)) & ^vcs.TIADrivenPins
-			} else {
-				data |= mem.LastAccessData & ^vcs.TIADrivenPins
-			}
+	// TIA addresses do not drive all the pins on the data bus, leaving
+	// some bits of the previous value on the data bus in the result.
+	//
+	// see commentary for TIADriverPins for extensive explanation
+	if ar == memorymap.TIA {
+		mem.LastCPUDrivenPins = vcs.TIADrivenPins
+		data &= vcs.TIADrivenPins
+		if mem.instance != nil && mem.instance.Prefs.RandomPins.Get().(bool) {
+			data |= uint8(mem.instance.Random.Intn(0xff)) & ^vcs.TIADrivenPins
 		} else {
-			mem.LastAccessMask = 0xff
+			data |= mem.LastCPUData & ^vcs.TIADrivenPins
 		}
+	} else {
+		mem.LastCPUDrivenPins = 0xff
 	}
 
-	// we do not return error early because we still want to note the
-	// LastAccessAddress, call the cartridge.Listen() function etc. or,
-	// for example, the WATCH command will not function as expected
+	// update address bus
+	mem.AddressBus = address & memorymap.Memtop
+
+	// see the commentary for the Listen() function in the Cartridge interface
+	// for an explanation for what is going on here.
 	//
 	// note that we're using the previous data bus value not the new data bus
 	// value. this matches observations made by Al_Nafuur with the following
 	// binary.
 	//
 	// https://atariage.com/forums/topic/329888-indexed-read-page-crossing-and-sc-ram/
+	mem.Cart.Listen(mem.AddressBus, mem.DataBus)
 
-	// see the commentary for the Listen() function in the Cartridge interface
-	// for an explanation for what is going on here.
-	mem.Cart.Listen(address, mem.LastAccessData)
+	// update data bus
+	mem.DataBus = data
 
-	// the following is only used by the debugger
-	mem.LastAccessAddress = address
-	mem.LastAccessAddressMapped = ma
-	mem.LastAccessWrite = false
-	mem.LastAccessData = data
+	// update debugging information
+	mem.LastCPUAddressLiteral = address
+	mem.LastCPUAddressMapped = ma
+	mem.LastCPUWrite = false
+	mem.LastCPUData = data
 
 	return data, err
 }
@@ -197,15 +202,19 @@ func (mem *Memory) Write(address uint16, data uint8) error {
 	ma, ar := memorymap.MapAddress(address, false)
 	area := mem.GetArea(ar)
 
-	mem.LastAccessAddress = address
-	mem.LastAccessAddressMapped = ma
-	mem.LastAccessWrite = true
-	mem.LastAccessData = data
+	// update address bus
+	mem.AddressBus = address & memorymap.Memtop
+	mem.DataBus = data
 
 	// see the commentary for the Listen() function in the Cartridge interface
-	// for an explanation for what is going on here. more to the point, we only
-	// need to "listen" if the mapped address is not in Cartridge space
-	mem.Cart.Listen(address, data)
+	// for an explanation for what is going on here.
+	mem.Cart.Listen(mem.AddressBus, mem.DataBus)
+
+	// update debugging information
+	mem.LastCPUAddressLiteral = address
+	mem.LastCPUAddressMapped = ma
+	mem.LastCPUWrite = true
+	mem.LastCPUData = data
 
 	return area.(cpubus.Memory).Write(ma, data)
 }

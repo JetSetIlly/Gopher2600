@@ -128,8 +128,8 @@ func (win *win6507Pinout) draw() {
 		pinTextAdj := (pinSize - imgui.TextLineHeight()) / 2
 
 		// address/data values (for convenience)
-		addressBus := win.img.lz.Mem.LastAccessAddress
-		dataBus := win.img.lz.Mem.LastAccessData
+		addressBus := win.img.lz.Mem.AddressBus
+		dataBus := win.img.lz.Mem.DataBus
 
 		// left pins
 		pinX := chipPos.X - pinSize
@@ -262,14 +262,14 @@ func (win *win6507Pinout) draw() {
 
 				imgui.TableNextColumn()
 				imgui.PushStyleColor(imgui.StyleColorText, win.addressBus)
-				imgui.Text(fmt.Sprintf("%013b", win.img.lz.Mem.LastAccessAddress&0x1fff))
+				imgui.Text(fmt.Sprintf("%013b", win.img.lz.Mem.AddressBus&0x1fff))
 				imgui.PopStyleColor()
 
 				imgui.TableNextColumn()
-				imgui.Text(fmt.Sprintf("%#04x", win.img.lz.Mem.LastAccessAddress&0x1fff))
+				imgui.Text(fmt.Sprintf("%#04x", win.img.lz.Mem.AddressBus&0x1fff))
 
 				imgui.TableNextColumn()
-				_, area := memorymap.MapAddress(win.img.lz.Mem.LastAccessAddress, !win.img.lz.Mem.LastAccessWrite)
+				_, area := memorymap.MapAddress(win.img.lz.Mem.AddressBus, !win.img.lz.Mem.LastAccessWrite)
 				imgui.Text(area.String())
 
 				imgui.TableNextRow()
@@ -283,11 +283,11 @@ func (win *win6507Pinout) draw() {
 					s2 := strings.Builder{}
 					for i := 7; i >= 0; i-- {
 						if (win.img.lz.Mem.LastAccessMask>>i)&0x01 == 0x01 {
-							s1.WriteString(fmt.Sprintf("%d", (win.img.lz.Mem.LastAccessData>>i)&0x01))
+							s1.WriteString(fmt.Sprintf("%d", (win.img.lz.Mem.DataBus>>i)&0x01))
 							s2.WriteRune(' ')
 						} else {
 							s1.WriteRune(' ')
-							s2.WriteString(fmt.Sprintf("%d", (win.img.lz.Mem.LastAccessData>>i)&0x01))
+							s2.WriteString(fmt.Sprintf("%d", (win.img.lz.Mem.DataBus>>i)&0x01))
 						}
 					}
 					imgui.PushStyleColor(imgui.StyleColorText, win.dataBus)
@@ -298,12 +298,12 @@ func (win *win6507Pinout) draw() {
 					imgui.PopStyleColorV(2)
 				} else {
 					imgui.PushStyleColor(imgui.StyleColorText, win.dataBus)
-					imgui.Text(fmt.Sprintf("%08b", win.img.lz.Mem.LastAccessData))
+					imgui.Text(fmt.Sprintf("%08b", win.img.lz.Mem.DataBus))
 					imgui.PopStyleColor()
 				}
 
 				imgui.TableNextColumn()
-				imgui.Text(fmt.Sprintf("%#02x", win.img.lz.Mem.LastAccessData))
+				imgui.Text(fmt.Sprintf("%#02x", win.img.lz.Mem.DataBus))
 
 				imgui.TableNextColumn()
 				if win.img.lz.Mem.LastAccessWrite {

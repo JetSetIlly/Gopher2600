@@ -38,8 +38,11 @@ type CartMapper interface {
 	// explicit reset (possibly with randomisation)
 	Reset()
 
+	// the addr parameter for Read() and Write() will be *just* the cartridge
+	// bits. there is no mirror information in the addr value
 	Read(addr uint16, active bool) (data uint8, err error)
 	Write(addr uint16, data uint8, active bool, poke bool) error
+
 	NumBanks() int
 	GetBank(addr uint16) BankInfo
 
@@ -72,9 +75,9 @@ type PlumbFromDifferentEmulation interface {
 	PlumbFromDifferentEmulation()
 }
 
-// OptionalSuperchip are implemented by cartMappers that have an optional
-// superchip. This shouldn't be used to decide if a cartridge has additional
-// RAM or not. Use the CartRAMbus interface for that.
+// OptionalSuperchip are implemented by CartMapper implementations that require
+// an optional superchip. This shouldn't be used to decide if a cartridge has
+// additional RAM or not. Use the CartRAMbus interface for that.
 type OptionalSuperchip interface {
 	AddSuperchip()
 }

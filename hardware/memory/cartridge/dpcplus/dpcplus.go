@@ -28,7 +28,7 @@ import (
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
-// dpcPlus implements the cartMapper interface.
+// dpcPlus implements the mapper.CartMapper interface.
 //
 // https://atariage.com/forums/topic/163495-harmony-dpc-programming
 //

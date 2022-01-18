@@ -95,7 +95,7 @@ func (cart *Supercharger) MappedBanks() string {
 	return cart.state.registers.MappedBanks()
 }
 
-// ID implements the cartMapper interface.
+// ID implements the mapper.CartMapper interface.
 func (cart *Supercharger) ID() string {
 	return cart.mappingID
 }
@@ -125,10 +125,8 @@ func (cart *Supercharger) Reset() {
 	cart.state.registers.RAMwrite = true
 }
 
-// Read implements the cartMapper interface.
-func (cart *Supercharger) Read(fullAddr uint16, passive bool) (uint8, error) {
-	addr := fullAddr & memorymap.CartridgeBits
-
+// Read implements the mapper.CartMapper interface.
+func (cart *Supercharger) Read(addr uint16, passive bool) (uint8, error) {
 	// what bank to read. bank zero refers to the BIOS. bank 1 to 3 refer to
 	// one of the RAM banks
 	bank := cart.GetBank(addr).Number
@@ -175,9 +173,9 @@ func (cart *Supercharger) Read(fullAddr uint16, passive bool) (uint8, error) {
 
 	// note address to be used as the next value in the control register
 	if !passive {
-		if fullAddr&0xf000 == 0xf000 && fullAddr <= 0xf0ff {
+		if addr <= 0x00ff {
 			if cart.state.registers.Delay == 0 {
-				cart.state.registers.Value = uint8(fullAddr & 0x00ff)
+				cart.state.registers.Value = uint8(addr)
 				cart.state.registers.Delay = 6
 			}
 		}
@@ -189,7 +187,7 @@ func (cart *Supercharger) Read(fullAddr uint16, passive bool) (uint8, error) {
 			// (specifically) is touched. note that this method means that the
 			// vcsHook() function will be called whatever the context the
 			// address is read and not just when the PC is at the address.
-			if fullAddr == 0xfa1a {
+			if addr == 0x0a1a {
 				// end tape is loading state
 				cart.state.isLoading = false
 
@@ -208,7 +206,7 @@ func (cart *Supercharger) Read(fullAddr uint16, passive bool) (uint8, error) {
 	if !passive && cart.state.registers.Delay == 1 {
 		if cart.state.registers.RAMwrite {
 			cart.state.ram[bank][addr&0x07ff] = cart.state.registers.Value
-			cart.state.registers.LastWriteAddress = fullAddr
+			cart.state.registers.LastWriteAddress = memorymap.OriginCart | addr
 			cart.state.registers.LastWriteValue = cart.state.registers.Value
 		}
 	}
@@ -216,17 +214,17 @@ func (cart *Supercharger) Read(fullAddr uint16, passive bool) (uint8, error) {
 	return cart.state.ram[bank][addr&0x07ff], nil
 }
 
-// Write implements the cartMapper interface.
+// Write implements the mapper.CartMapper interface.
 func (cart *Supercharger) Write(addr uint16, data uint8, passive bool, poke bool) error {
 	return nil
 }
 
-// NumBanks implements the cartMapper interface.
+// NumBanks implements the mapper.CartMapper interface.
 func (cart *Supercharger) NumBanks() int {
 	return numRAMBanks
 }
 
-// GetBank implements the cartMapper interface.
+// GetBank implements the mapper.CartMapper interface.
 func (cart *Supercharger) GetBank(addr uint16) mapper.BankInfo {
 	switch cart.state.registers.BankingMode {
 	case 0:
@@ -280,17 +278,17 @@ func (cart *Supercharger) GetBank(addr uint16) mapper.BankInfo {
 	panic("unknown banking method")
 }
 
-// Patch implements the cartMapper interface.
+// Patch implements the mapper.CartMapper interface.
 func (cart *Supercharger) Patch(_ int, _ uint8) error {
 	return curated.Errorf("supercharger: %v", "not patchable")
 }
 
-// Listen implements the cartMapper interface.
+// Listen implements the mapper.CartMapper interface.
 func (cart *Supercharger) Listen(addr uint16, _ uint8) {
 	cart.state.registers.transitionCount(addr)
 }
 
-// Step implements the cartMapper interface.
+// Step implements the mapper.CartMapper interface.
 func (cart *Supercharger) Step(_ float32) {
 	cart.state.tape.step()
 }

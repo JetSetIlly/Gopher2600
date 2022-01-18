@@ -94,7 +94,7 @@ func (trc *traces) check() string {
 	//
 	// note that unlike watches.check() we don't compare the write flag - we
 	// want to trace both types of accesses even if it's on the same address.
-	if trc.lastAddressAccessedMapped == trc.dbg.vcs.Mem.LastAccessAddressMapped {
+	if trc.lastAddressAccessedMapped == trc.dbg.vcs.Mem.LastCPUAddressMapped {
 		return ""
 	}
 
@@ -106,10 +106,10 @@ func (trc *traces) check() string {
 
 		// pick which addresses to comare depending on whether watch is strict
 		if t.strict {
-			accessAddress = trc.dbg.vcs.Mem.LastAccessAddress
+			accessAddress = trc.dbg.vcs.Mem.LastCPUAddressLiteral
 			traceAddress = t.ai.Address
 		} else {
-			accessAddress = trc.dbg.vcs.Mem.LastAccessAddressMapped
+			accessAddress = trc.dbg.vcs.Mem.LastCPUAddressMapped
 			traceAddress = t.ai.MappedAddress
 		}
 
@@ -117,10 +117,10 @@ func (trc *traces) check() string {
 			continue
 		}
 
-		if trc.dbg.vcs.Mem.LastAccessWrite {
-			s.WriteString(fmt.Sprintf("write %#02x to ", trc.dbg.vcs.Mem.LastAccessData))
+		if trc.dbg.vcs.Mem.LastCPUWrite {
+			s.WriteString(fmt.Sprintf("write %#02x to ", trc.dbg.vcs.Mem.LastCPUData))
 		} else {
-			s.WriteString(fmt.Sprintf("read %#02x from ", trc.dbg.vcs.Mem.LastAccessData))
+			s.WriteString(fmt.Sprintf("read %#02x from ", trc.dbg.vcs.Mem.LastCPUData))
 		}
 
 		s.WriteString(t.String())
@@ -128,7 +128,7 @@ func (trc *traces) check() string {
 	}
 
 	// note what the last address accessed was
-	trc.lastAddressAccessedMapped = trc.dbg.vcs.Mem.LastAccessAddressMapped
+	trc.lastAddressAccessedMapped = trc.dbg.vcs.Mem.LastCPUAddressMapped
 
 	return s.String()
 }

@@ -95,7 +95,7 @@ func (cart *cbs) Snapshot() mapper.CartMapper {
 func (cart *cbs) Plumb() {
 }
 
-// Reset implements the cartMapper interface.
+// Reset implements the mapper.CartMapper interface.
 func (cart *cbs) Reset() {
 	for i := range cart.state.ram {
 		if cart.instance.Prefs.RandomState.Get().(bool) {

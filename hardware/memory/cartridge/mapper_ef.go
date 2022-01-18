@@ -94,7 +94,7 @@ func (cart *ef) Snapshot() mapper.CartMapper {
 func (cart *ef) Plumb() {
 }
 
-// Reset implements the cartMapper interface.
+// Reset implements the mapper.CartMapper interface.
 func (cart *ef) Reset() {
 	cart.state.bank = 0 //len(cart.banks) - 1
 }

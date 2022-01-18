@@ -23,17 +23,16 @@ import (
 type LazyMem struct {
 	val *LazyValues
 
-	lastAccessAddress       atomic.Value // uint16
+	addressBus              atomic.Value // uint16
 	lastAccessAddressMapped atomic.Value // uint16
 	lastAccessData          atomic.Value // uint8
 	lastAccessWrite         atomic.Value // bool
 	lastAccessMask          atomic.Value // uint8
 
-	LastAccessAddress       uint16
-	LastAccessAddressMapped uint16
-	LastAccessData          uint8
-	LastAccessWrite         bool
-	LastAccessMask          uint8
+	AddressBus      uint16
+	DataBus         uint8
+	LastAccessWrite bool
+	LastAccessMask  uint8
 }
 
 func newLazyMem(val *LazyValues) *LazyMem {
@@ -41,17 +40,15 @@ func newLazyMem(val *LazyValues) *LazyMem {
 }
 
 func (lz *LazyMem) push() {
-	lz.lastAccessAddress.Store(lz.val.vcs.Mem.LastAccessAddress)
-	lz.lastAccessAddressMapped.Store(lz.val.vcs.Mem.LastAccessAddressMapped)
-	lz.lastAccessData.Store(lz.val.vcs.Mem.LastAccessData)
-	lz.lastAccessWrite.Store(lz.val.vcs.Mem.LastAccessWrite)
-	lz.lastAccessMask.Store(lz.val.vcs.Mem.LastAccessMask)
+	lz.addressBus.Store(lz.val.vcs.Mem.AddressBus)
+	lz.lastAccessData.Store(lz.val.vcs.Mem.DataBus)
+	lz.lastAccessWrite.Store(lz.val.vcs.Mem.LastCPUWrite)
+	lz.lastAccessMask.Store(lz.val.vcs.Mem.LastCPUDrivenPins)
 }
 
 func (lz *LazyMem) update() {
-	lz.LastAccessAddress, _ = lz.lastAccessAddress.Load().(uint16)
-	lz.LastAccessAddressMapped, _ = lz.lastAccessAddressMapped.Load().(uint16)
-	lz.LastAccessData, _ = lz.lastAccessData.Load().(uint8)
+	lz.AddressBus, _ = lz.addressBus.Load().(uint16)
+	lz.DataBus, _ = lz.lastAccessData.Load().(uint8)
 	lz.LastAccessWrite, _ = lz.lastAccessWrite.Load().(bool)
 	lz.LastAccessMask, _ = lz.lastAccessMask.Load().(uint8)
 }

@@ -90,7 +90,7 @@ func (cart *superbank) Snapshot() mapper.CartMapper {
 func (cart *superbank) Plumb() {
 }
 
-// Reset implements the cartMapper interface.
+// Reset implements the mapper.CartMapper interface.
 func (cart *superbank) Reset() {
 	cart.state.bank = len(cart.banks) - 1
 }
