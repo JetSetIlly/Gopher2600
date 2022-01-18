@@ -17,6 +17,8 @@ package sdlimgui
 
 import (
 	"fmt"
+	"sync/atomic"
+	"time"
 
 	"github.com/jetsetilly/gopher2600/debugger"
 	"github.com/jetsetilly/gopher2600/emulation"
@@ -30,6 +32,10 @@ const winControlID = "Control"
 type winControl struct {
 	img  *SdlImgui
 	open bool
+
+	repeatID     string
+	repeatTime   time.Time
+	repeatFPSCap atomic.Value // bool
 }
 
 func newWinControl(img *SdlImgui) (window, error) {
@@ -52,6 +58,37 @@ func (win *winControl) isOpen() bool {
 
 func (win *winControl) setOpen(open bool) {
 	win.open = open
+}
+
+func (win *winControl) repeatButton(id string, f func()) {
+	win.repeatButtonV(id, f, imgui.Vec2{})
+}
+
+func (win *winControl) repeatButtonV(id string, f func(), fill imgui.Vec2) {
+	imgui.ButtonV(id, fill)
+	if imgui.IsItemActive() {
+		if id != win.repeatID {
+			win.img.dbg.PushRawEvent(func() {
+				v := win.img.vcs.TV.SetFPSCap(false)
+				win.repeatFPSCap.Store(v)
+			})
+			win.repeatID = id
+			win.repeatTime = time.Now()
+			f()
+			return
+		}
+
+		dur := time.Since(win.repeatTime)
+		if dur > 5e+8 { // half a second in nanoseconds
+			f()
+		}
+	} else if imgui.IsItemDeactivated() {
+		win.repeatID = ""
+		win.img.dbg.PushRawEvent(func() {
+			v := win.repeatFPSCap.Load().(bool)
+			win.img.vcs.TV.SetFPSCap(v)
+		})
+	}
 }
 
 func (win *winControl) draw() {
@@ -110,13 +147,14 @@ func (win *winControl) drawStep() {
 			icon = fonts.BackClock
 		}
 
-		if imgui.Button(fmt.Sprintf("%c ##Step", icon)) {
+		win.repeatButton(fmt.Sprintf("%c ##Step", icon), func() {
 			win.img.term.pushCommand("STEP BACK")
-		}
+		})
+
 		imgui.SameLineV(0.0, 0.0)
-		if imgui.ButtonV("Step", fillWidth) {
+		win.repeatButtonV("Step", func() {
 			win.img.term.pushCommand("STEP")
-		}
+		}, fillWidth)
 
 		imgui.TableNextColumn()
 
@@ -139,9 +177,9 @@ func (win *winControl) drawStep() {
 		imgui.EndTable()
 	}
 
-	if imgui.ButtonV(fmt.Sprintf("%c Step Over", fonts.StepOver), fillWidth) {
+	win.repeatButtonV(fmt.Sprintf("%c Step Over", fonts.StepOver), func() {
 		win.img.term.pushCommand("STEP OVER")
-	}
+	}, fillWidth)
 
 	if imgui.BeginTable("stepframescanline", 2) {
 		imgui.TableSetupColumnV("registers", imgui.TableColumnFlagsWidthFixed, imguiDivideWinWidth(2), 1)
@@ -149,23 +187,23 @@ func (win *winControl) drawStep() {
 		imgui.TableNextRow()
 		imgui.TableNextColumn()
 
-		if imgui.Button(fmt.Sprintf("%c ##Frame", fonts.BackFrame)) {
+		win.repeatButton(fmt.Sprintf("%c ##Frame", fonts.BackFrame), func() {
 			win.img.term.pushCommand("STEP BACK FRAME")
-		}
+		})
 		imgui.SameLineV(0.0, 0.0)
-		if imgui.ButtonV("Frame", fillWidth) {
+		win.repeatButtonV("Frame", func() {
 			win.img.term.pushCommand("STEP FRAME")
-		}
+		}, fillWidth)
 
 		imgui.TableNextColumn()
 
-		if imgui.Button(fmt.Sprintf("%c ##Scanline", fonts.BackScanline)) {
+		win.repeatButton(fmt.Sprintf("%c ##Scanline", fonts.BackScanline), func() {
 			win.img.term.pushCommand("STEP BACK SCANLINE")
-		}
+		})
 		imgui.SameLineV(0.0, 0.0)
-		if imgui.ButtonV("Scanline", fillWidth) {
+		win.repeatButtonV("Scanline", func() {
 			win.img.term.pushCommand("STEP SCANLINE")
-		}
+		}, fillWidth)
 
 		imgui.EndTable()
 	}
