@@ -157,7 +157,7 @@ func (mem *Memory) read(address uint16) (uint8, error) {
 		mem.LastCPUDrivenPins = vcs.TIADrivenPins
 		data &= vcs.TIADrivenPins
 		if mem.instance != nil && mem.instance.Prefs.RandomPins.Get().(bool) {
-			data |= uint8(mem.instance.Random.Intn(0xff)) & ^vcs.TIADrivenPins
+			data |= uint8(mem.instance.Random.Rewindable(0xff)) & ^vcs.TIADrivenPins
 		} else {
 			data |= mem.LastCPUData & ^vcs.TIADrivenPins
 		}

@@ -50,7 +50,7 @@ func (ram *RAM) Snapshot() *RAM {
 func (ram *RAM) Reset() {
 	for i := range ram.RAM {
 		if ram.instance != nil && ram.instance.Prefs.RandomState.Get().(bool) {
-			ram.RAM[i] = uint8(ram.instance.Random.Intn(0xff))
+			ram.RAM[i] = uint8(ram.instance.Random.NoRewind(0xff))
 		} else {
 			ram.RAM[i] = 0
 		}

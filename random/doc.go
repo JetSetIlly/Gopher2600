@@ -16,12 +16,20 @@
 // Package random should be used in preference to the math/rand package when a
 // random number is required inside the emulation.
 //
-// It ultimately uses the RNG from the standard library but adds an
-// understanding of how time is measured inside the emulation and ensures that
-// the same random number is generated at the same point in the emulation's
-// "timeline".
+// There are two functions belonging to the Rewind type that return random
+// numbers:
 //
-// An essential ingredient when generating random numbers in parallel
-// emulations, that are meant to be identical; and when rewinding and replaying
-// a single emulation.
+// Rewindable() returns numbers based on the current television coordinates.
+// The number will always return the same number for the same coordinates. As
+// such it is compatible with the emulator's rewind system.
+//
+// NoRewind() returns random numbers regardless of the current television
+// coordinates. It is therefore, not compatiable with the emulator's rewind
+// system.
+//
+// Parallel emulators should return the same sequence of random numbers even if
+// NoRewind() is used.
+//
+// If the same random numbers are required every single time then set ZeroSeed
+// to true. This is useful for testing purposes.
 package random

@@ -622,10 +622,10 @@ func (r DPCregisters) String() string {
 func (r *DPCregisters) reset(rand *random.Random) {
 	for i := range r.Fetcher {
 		if rand != nil {
-			r.Fetcher[i].Low = byte(rand.Intn(0xff))
-			r.Fetcher[i].Hi = byte(rand.Intn(0xff))
-			r.Fetcher[i].Top = byte(rand.Intn(0xff))
-			r.Fetcher[i].Bottom = byte(rand.Intn(0xff))
+			r.Fetcher[i].Low = byte(rand.NoRewind(0xff))
+			r.Fetcher[i].Hi = byte(rand.NoRewind(0xff))
+			r.Fetcher[i].Top = byte(rand.NoRewind(0xff))
+			r.Fetcher[i].Bottom = byte(rand.NoRewind(0xff))
 		} else {
 			r.Fetcher[i].Low = 0
 			r.Fetcher[i].Hi = 0
@@ -640,7 +640,7 @@ func (r *DPCregisters) reset(rand *random.Random) {
 	}
 
 	if rand != nil {
-		r.RNG = uint8(rand.Intn(0xff))
+		r.RNG = uint8(rand.NoRewind(0xff))
 	} else {
 		r.RNG = 0
 	}

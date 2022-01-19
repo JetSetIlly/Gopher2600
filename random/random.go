@@ -44,12 +44,16 @@ type Random struct {
 	// use zero seed rather than the random base seed. this is only really
 	// useful for normalised instances where random numbers must be predictable
 	ZeroSeed bool
+
+	// standard Go random number generator for NoRewind()
+	nonRewindable rand.Source
 }
 
 // NewRandom is the preferred method of initialisation for the Random type.
 func NewRandom(tv TV) *Random {
 	return &Random{
-		tv: tv,
+		tv:            tv,
+		nonRewindable: rand.NewSource(baseSeed),
 	}
 }
 
@@ -58,14 +62,43 @@ func coordsSum(c coords.TelevisionCoords) int64 {
 	return int64(c.Frame*specification.AbsoluteMaxClks + c.Scanline*specification.ClksScanline + c.Clock)
 }
 
-// new RNG from the standard library
-func (rnd *Random) rand() *rand.Rand {
-	if rnd.ZeroSeed {
-		return rand.New(rand.NewSource(coordsSum(rnd.tv.GetCoords())))
+// Rewindable generates a random number very quickly and based on the current
+// television coordinates. It's only really suitable for use in a running
+// emulation.
+//
+// It does however have the property of being predictable during a sesssion and
+// so is compatible with the rewind system.
+//
+// The returned number will between zero and value given in the n parameter.
+func (rnd *Random) Rewindable(n int) int {
+	if n == 0 {
+		return 0
 	}
-	return rand.New(rand.NewSource(baseSeed + coordsSum(rnd.tv.GetCoords())))
+
+	seed := coordsSum(rnd.tv.GetCoords())
+	if !rnd.ZeroSeed {
+		seed += baseSeed
+	}
+	seed *= seed
+	b := seed >> 32
+	if b != 0 {
+		seed %= b
+	}
+
+	return int(seed % int64(n))
 }
 
-func (rnd *Random) Intn(n int) int {
-	return rnd.rand().Intn(n)
+// NoRewind uses the standard Go library for generating random numbers. It can
+// be used to generate random numbers on a non-running emulation but it is not
+// therefore compatible with the rewind system.
+//
+// It is useful for generating a random state on startup.
+//
+// The returned number will between zero and value given in the n parameter.
+func (rnd *Random) NoRewind(n int) int {
+	if n == 0 {
+		return 0
+	}
+
+	return int(rnd.nonRewindable.Int63() % int64(n))
 }
