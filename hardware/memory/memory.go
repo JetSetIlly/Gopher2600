@@ -176,6 +176,10 @@ func (mem *Memory) read(address uint16) (uint8, error) {
 	// binary.
 	//
 	// https://atariage.com/forums/topic/329888-indexed-read-page-crossing-and-sc-ram/
+	//
+	// we can think of this as the new address being put on the bus before the
+	// data bus is changed. the cartridge responds to the address change
+	// immediately, before the new data has been put on the bus
 	mem.Cart.Listen(mem.AddressBus, mem.DataBus)
 
 	// update data bus

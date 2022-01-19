@@ -181,7 +181,23 @@ func (cart *cbs) Patch(offset int, data uint8) error {
 }
 
 // Listen implements the mapper.CartMapper interface.
-func (cart *cbs) Listen(_ uint16, _ uint8) {
+func (cart *cbs) Listen(addr uint16, data uint8) {
+	// Sometimes, cartridge addresses can be accessed inadvertently. in most
+	// instances, there are no consequences but in the case of the Superchip,
+	// the write addresses can be accessed and the RAM data changed. we handle
+	// that here.
+	//
+	// https://atariage.com/forums/topic/329888-indexed-read-page-crossing-and-sc-ram/
+	if cart.state.ram != nil {
+		if addr&memorymap.OriginCart == memorymap.OriginCart {
+			addr &= memorymap.MaskCart
+			addr ^= memorymap.OriginCart
+			// CBS RAM is 256 bytes
+			if addr&0xff00 == 0x0000 {
+				cart.state.ram[addr&0xff] = data
+			}
+		}
+	}
 }
 
 // Step implements the mapper.CartMapper interface.
