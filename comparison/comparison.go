@@ -294,10 +294,6 @@ func (cmp *Comparison) diff() error {
 		return curated.Errorf("comparison: frames are different sizes")
 	}
 
-	if cmp.frameInfo.TotalScanlines != cmp.driver.frameInfo.TotalScanlines || cmp.frameInfo.VisibleTop != cmp.driver.frameInfo.VisibleTop || cmp.frameInfo.VisibleBottom != cmp.driver.frameInfo.VisibleBottom {
-		return curated.Errorf("comparison: unaligned frames")
-	}
-
 	for i := 0; i < len(cmp.cropImg.Pix); i += 4 {
 		a := cmp.cropImg.Pix[i : i+3 : i+3]
 		b := drvImg.Pix[i : i+3 : i+3]
