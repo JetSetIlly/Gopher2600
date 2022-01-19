@@ -54,7 +54,6 @@ type LazyValues struct {
 	Controllers *LazyControllers
 	Collisions  *LazyCollisions
 	Ports       *LazyPorts
-	Log         *LazyLog
 	Tracker     *LazyTracker
 	SaveKey     *LazySaveKey
 	Rewind      *LazyRewind
@@ -96,7 +95,6 @@ func NewLazyValues(e emulation.Emulation) *LazyValues {
 	val.Controllers = newLazyControllers(val)
 	val.Collisions = newLazyCollisions(val)
 	val.Ports = newLazyPorts(val)
-	val.Log = newLazyLog(val)
 	val.Tracker = newLazyTracker(val)
 	val.SaveKey = newLazySaveKey(val)
 	val.Rewind = newLazyRewind(val)
@@ -133,7 +131,6 @@ func (val *LazyValues) Refresh() {
 		val.Controllers.update()
 		val.Collisions.update()
 		val.Ports.update()
-		val.Log.update()
 		val.Tracker.update()
 		val.SaveKey.update()
 		val.Rewind.update()
@@ -162,7 +159,6 @@ func (val *LazyValues) Refresh() {
 		val.Controllers.push()
 		val.Collisions.push()
 		val.Ports.push()
-		val.Log.push()
 		val.Tracker.push()
 		val.SaveKey.push()
 		val.Rewind.push()

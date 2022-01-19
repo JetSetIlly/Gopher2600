@@ -19,129 +19,84 @@ import (
 	"fmt"
 	"io"
 	"strings"
-	"sync/atomic"
-	"time"
+	"sync"
 )
 
 // Entry represents a single line/entry in the log.
 type Entry struct {
-	tag      string
-	detail   string
-	repeated int
+	Tag      string
+	Detail   string
+	Repeated int
 }
 
 func (e *Entry) String() string {
 	s := strings.Builder{}
-	s.WriteString(fmt.Sprintf("%s: %s", e.tag, e.detail))
-	if e.repeated > 0 {
-		s.WriteString(fmt.Sprintf(" (repeat x%d)", e.repeated+1))
+	s.WriteString(fmt.Sprintf("%s: %s", e.Tag, e.Detail))
+	if e.Repeated > 0 {
+		s.WriteString(fmt.Sprintf(" (repeat x%d)", e.Repeated+1))
 	}
 	return s.String()
 }
 
-const allEntries = -1
-
 // not exposing logger to outside of the package. the package level functions
 // can be used to log to the central logger.
 type logger struct {
-	// add a new Entry
-	add chan Entry
+	crit sync.Mutex
 
-	// get and del return the requested number of entries counting from the
-	// most recent. to specify all entries use the allEntries constant
-	get    chan int
-	del    chan int
-	recent chan bool
+	entries    []Entry
+	maxEntries int
 
-	// array of Entries from the service goroutine
-	entries chan []Entry
+	// the index of newest entry not seen by the writeRecent() function
+	recentStart int
 
 	// if echo is not nil than write new entry to the io.Writer
 	echo io.Writer
-
-	// the index of the last entry sent over the recent channel
-	lastRecent int
-
-	// timestamp in nanoseconds of last log event
-	lastLogTime atomic.Value // int
 }
 
 func newLogger(maxEntries int) *logger {
-	l := &logger{
-		add:     make(chan Entry),
-		get:     make(chan int),
-		del:     make(chan int),
-		recent:  make(chan bool),
-		entries: make(chan []Entry),
+	return &logger{
+		entries:    make([]Entry, 0, maxEntries),
+		maxEntries: maxEntries,
 	}
-	l.lastLogTime.Store(0)
-
-	// the loggger service gorountine is simple enough to inline and still
-	// retain clarity
-	go func() {
-		entries := make([]Entry, 0, maxEntries)
-
-		for {
-			select {
-			case e := <-l.add:
-				last := Entry{}
-				if len(entries) > 0 {
-					last = entries[len(entries)-1]
-				}
-
-				if last.tag == e.tag && last.detail == e.detail {
-					entries[len(entries)-1].repeated++
-				} else {
-					entries = append(entries, e)
-				}
-
-				if len(entries) > maxEntries {
-					l.lastRecent -= maxEntries - len(entries)
-					if l.lastRecent < 0 {
-						l.lastRecent = 0
-					}
-					entries = entries[len(entries)-maxEntries:]
-				}
-
-			case n := <-l.get:
-				if n < 0 || n > len(entries) {
-					n = len(entries)
-				}
-				l.entries <- entries[len(entries)-n:]
-
-			case v := <-l.recent:
-				if v {
-					l.entries <- entries[l.lastRecent:]
-					l.lastRecent = len(entries)
-				}
-
-			case n := <-l.del:
-				if n < 0 || n > len(entries) {
-					n = len(entries)
-				}
-				entries = entries[:len(entries)-n]
-				l.lastRecent = 0
-			}
-		}
-	}()
-
-	return l
 }
 
 func (l *logger) log(tag, detail string) {
+	l.crit.Lock()
+	defer l.crit.Unlock()
+
 	// remove first part of the details string if it's the same as the tag
 	p := strings.SplitN(detail, ": ", 3)
 	if len(p) > 1 && p[0] == tag {
 		detail = strings.Join(p[1:], ": ")
 	}
 
-	e := Entry{tag: tag, detail: detail}
-	l.add <- e
+	last := Entry{}
+	if len(l.entries) > 0 {
+		last = l.entries[len(l.entries)-1]
+	}
+
+	e := Entry{
+		Tag:    tag,
+		Detail: detail,
+	}
+
+	if last.Tag == e.Tag && last.Detail == e.Detail {
+		l.entries[len(l.entries)-1].Repeated++
+		return
+	} else {
+		l.entries = append(l.entries, e)
+	}
+
+	if len(l.entries) > l.maxEntries {
+		l.recentStart -= l.maxEntries - len(l.entries)
+		if l.recentStart < 0 {
+			l.recentStart = 0
+		}
+	}
+
 	if l.echo != nil {
 		l.echo.Write([]byte(e.String()))
 	}
-
-	l.lastLogTime.Store(time.Now().Nanosecond())
 }
 
 func (l *logger) logf(tag, detail string, args ...interface{}) {
@@ -149,48 +104,60 @@ func (l *logger) logf(tag, detail string, args ...interface{}) {
 }
 
 func (l *logger) clear() {
-	l.del <- allEntries
+	l.crit.Lock()
+	defer l.crit.Unlock()
+
+	l.entries = l.entries[:0]
+	l.recentStart = 0
 }
 
 func (l *logger) write(output io.Writer) {
-	l.get <- allEntries
-	entries := <-l.entries
+	l.crit.Lock()
+	defer l.crit.Unlock()
 
-	for _, e := range entries {
+	for _, e := range l.entries {
 		io.WriteString(output, e.String())
 		io.WriteString(output, "\n")
 	}
 }
 
 func (l *logger) writeRecent(output io.Writer) {
-	l.recent <- true
-	entries := <-l.entries
+	l.crit.Lock()
+	defer l.crit.Unlock()
 
-	for _, e := range entries {
+	for _, e := range l.entries[l.recentStart:] {
 		io.WriteString(output, e.String())
 		io.WriteString(output, "\n")
 	}
+
+	l.recentStart = len(l.entries)
 }
 
 func (l *logger) tail(output io.Writer, number int) {
-	l.get <- number
-	entries := <-l.entries
+	l.crit.Lock()
+	defer l.crit.Unlock()
 
-	for _, e := range entries {
+	s := len(l.entries) - number
+	if s < 0 {
+		s = 0
+	}
+
+	for _, e := range l.entries[s:] {
 		io.WriteString(output, e.String())
 		io.WriteString(output, "\n")
 	}
 }
 
-func (l *logger) copy() []Entry {
-	l.get <- allEntries
-	return <-l.entries
-}
-
-func (l *logger) timeoflast() int {
-	return l.lastLogTime.Load().(int)
-}
-
 func (l *logger) setEcho(output io.Writer) {
+	l.crit.Lock()
+	defer l.crit.Unlock()
+
 	l.echo = output
+}
+
+func (l *logger) borrowLog(f func([]Entry)) {
+	l.crit.Lock()
+	defer l.crit.Unlock()
+
+	f(l.entries)
 }

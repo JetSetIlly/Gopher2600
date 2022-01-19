@@ -60,17 +60,13 @@ func Tail(output io.Writer, number int) {
 	central.tail(output, number)
 }
 
-// Slice returns a copy all log entries.
-func Copy() []Entry {
-	return central.copy()
-}
-
-// TimeOfLast returns the timestamp in nanoseconds of the most recent log event.
-func TimeOfLast() int {
-	return central.timeoflast()
-}
-
 // SetEcho to print new entries to os.Stdout.
 func SetEcho(output io.Writer) {
 	central.setEcho(output)
+}
+
+// BorrowLog gives the provided function the critial section and access to the
+// list of log entries.
+func BorrowLog(f func([]Entry)) {
+	central.borrowLog(f)
 }
