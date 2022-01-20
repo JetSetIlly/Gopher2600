@@ -174,17 +174,32 @@ func (cart *tigervision) Listen(addr uint16, data uint8) {
 	// in TIA space is okay. from  the description from Kevin Horton's document
 	// (quoted above) whenever an address in TIA space is written to, the lower
 	// 3 bits of the value being written is used to set the segment.
+	//
+	// however, taken literally, the foregoing can have issue with phantom
+	// reads. for example, Miner2049 with the instruction STA VSYNC,X (bank 2
+	// address $3611) will cause a phantom read of $0000 - but this produces
+	// incorrect results
+	//
+	// the following comment provides sufficient details to emulate the scheme
+	// correctly:
+	//
+	// https://atariage.com/forums/topic/329888-indexed-read-page-crossing-and-sc-ram/?do=findComment&comment=4988836
+	//
+	// alex_79 writes: "The bankswitch happens if any address with both A6 and
+	// A7 low is accessed, and if A12 goes from low to high right after that
+	// access."
 
-	// !!TODO: lint check for data writes that specify a bank > NumBanks(). the
-	// format allows this but it might be a mistake
-
-	// bankswitch on hotspot access
-	if addr < 0x40 {
+	// A12 is high after being low (bankswitchPending implies that A12 was low
+	// on the previous bus transition)
+	if cart.state.bankswitchPending && addr&0x1000 == 0x1000 {
 		cart.state.segment[0] = int(data & uint8(cart.NumBanks()-1))
 	}
 
-	// this bank switching method causes a problem when the CPU wants to write
-	// to TIA space for real and not cause a bankswitch. for this reason,
+	// A6 and A7 is low. A12 must be low also.
+	cart.state.bankswitchPending = addr&0x10c0 == 0x0000
+
+	// this bank switching method can cause problems when the CPU wants to
+	// write to TIA space for real and not cause a bankswitch. for this reason,
 	// tigervision cartridges use mirror addresses to write to the TIA.
 }
 
@@ -223,6 +238,8 @@ func (cart *tigervision) CopyBanks() []mapper.BankContent {
 
 // rewindable state for the tigervision cartridges.
 type tigervisionState struct {
+	bankswitchPending bool
+
 	// tigervision cartridges divide memory into two 2k segments
 	//  o the last segment always points to the last bank
 	//  o the first segment can point to any of the other three
