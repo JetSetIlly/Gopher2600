@@ -53,6 +53,7 @@ type m3ePlus struct {
 //		- chess (Andrew Davie)
 func new3ePlus(instance *instance.Instance, data []byte) (mapper.CartMapper, error) {
 	cart := &m3ePlus{
+		instance:  instance,
 		mappingID: "3E+",
 		bankSize:  1024,
 		state:     newM3ePlusState(),
