@@ -530,13 +530,13 @@ func (tia *TIA) Step(update bool) error {
 
 			// update playfield color register (depending on TIA revision)
 			if update {
-				if !tia.instance.Prefs.Revision.LateCOLUPF {
+				if !tia.instance.Revision.LateCOLUPF {
 					update = tia.Video.UpdatePlayfieldColor(data)
 				}
 
 				if update {
 					// update playfield bits (depending on TIA revisions)
-					if !tia.instance.Prefs.Revision.LatePFx {
+					if !tia.instance.Revision.LatePFx {
 						update = tia.Video.UpdatePlayfield(data)
 					}
 				}
@@ -551,7 +551,7 @@ func (tia *TIA) Step(update bool) error {
 
 	// update playfield bits (depending on TIA revisions)
 	if update {
-		if tia.instance.Prefs.Revision.LatePFx {
+		if tia.instance.Revision.LatePFx {
 			update = tia.Video.UpdatePlayfield(data)
 		}
 	}
@@ -593,7 +593,7 @@ func (tia *TIA) Step(update bool) error {
 
 					if update {
 						// update playfield color register (depending on TIA revision)
-						if tia.instance.Prefs.Revision.LateCOLUPF {
+						if tia.instance.Revision.LateCOLUPF {
 							_ = tia.Video.UpdatePlayfieldColor(data)
 						}
 					}

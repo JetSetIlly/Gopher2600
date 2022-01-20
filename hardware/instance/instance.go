@@ -39,9 +39,20 @@ const (
 // different instantiations of the VCS type, but is not actually the VCS
 // itself.
 type Instance struct {
-	Label  Label
-	Prefs  *preferences.Preferences
+	Label Label
+
 	Random *random.Random
+
+	// the prefrences of the running instance. this instance can be shared
+	// with other running instances of the emulation.
+	Prefs *preferences.Preferences
+
+	// for performance purposes revision preferences are treated slightly
+	// different to other preference values. rather than accessing the fields
+	// in Prefs.Revision directly, the TIA emulation should read the fields in
+	// the LiveRevisionPreferences type. these values are updated with the
+	// UpdateRevision() function.
+	Revision preferences.LiveRevisionPreferences
 }
 
 // NewInstance is the preferred method of initialisation for the Instance type.
@@ -77,4 +88,10 @@ func (ins *Instance) Normalise() {
 	ins.Prefs.Revision.SetDefaults()
 	ins.Prefs.ARM.SetDefaults()
 	ins.Prefs.PlusROM.SetDefaults()
+}
+
+// UpdateRevision updates the live revision preference values for the running
+// emulation.
+func (ins *Instance) UpdateRevision() {
+	ins.Revision = ins.Prefs.Revision.Live()
 }

@@ -50,6 +50,9 @@ func (vcs *VCS) Run(continueCheck func() (emulation.State, error)) error {
 	// see the equivalient videoCycle() in the VCS.Step() function for an
 	// explanation for what's going on here:
 	videoCycle := func() error {
+		// make sure TIA preferences are up to date
+		vcs.Instance.UpdateRevision()
+
 		if err := vcs.Input.Handle(); err != nil {
 			return err
 		}

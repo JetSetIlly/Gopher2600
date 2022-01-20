@@ -16,22 +16,15 @@
 package preferences
 
 import (
+	"sync/atomic"
+
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/prefs"
 	"github.com/jetsetilly/gopher2600/resources"
 )
 
-// RevisionPreferences defines the details of the TIA revisins.
-//
-// Unlike the other preferences types in this pacakge, "live" values should be
-// preferred in most case because accessing the Dsk* values through the prefs
-// system is too slow.
-//
-// The Dsk* values should be used from any GUI preferences editor however - the
-// live values will be updated automatically when the Dsk* value are changed.
-type RevisionPreferences struct {
-	dsk *prefs.Disk
-
+// LiveRevisionPrefrences encapsulates the current revision values.
+type LiveRevisionPreferences struct {
 	// The names of the preference fields match the Bug enumerations. These
 	// values are updated automatically when the corresponding Dsk* field is
 	// updated.
@@ -43,52 +36,81 @@ type RevisionPreferences struct {
 	LateCOLUPF       bool
 	LostMOTCK        bool
 	RESPxHBLANK      bool
+}
+
+// RevisionPreferences defines the details of the TIA revisins.
+//
+// For performance critical situations, access these prefence values via the
+// results of the Live() function. This provides a copy of the preferences that
+// are goroutine safe and without performance overhead.
+type RevisionPreferences struct {
+	dsk *prefs.Disk
+
+	live atomic.Value
 
 	// Disk copies of preferences
-	DskLateVDELGRP0     prefs.Bool
-	DskLateVDELGRP1     prefs.Bool
-	DskLateRESPx        prefs.Bool
-	DskEarlyScancounter prefs.Bool
-	DskLatePFx          prefs.Bool
-	DskLateCOLUPF       prefs.Bool
-	DskLostMOTCK        prefs.Bool
-	DskRESPxHBLANK      prefs.Bool
+	LateVDELGRP0     prefs.Bool
+	LateVDELGRP1     prefs.Bool
+	LateRESPx        prefs.Bool
+	EarlyScancounter prefs.Bool
+	LatePFx          prefs.Bool
+	LateCOLUPF       prefs.Bool
+	LostMOTCK        prefs.Bool
+	RESPxHBLANK      prefs.Bool
 }
 
 func newRevisionPreferences() (*RevisionPreferences, error) {
 	p := &RevisionPreferences{}
 
+	p.live.Store(LiveRevisionPreferences{})
+
 	// register callbacks to update the "live" values from the disk value
-	p.DskLateVDELGRP0.SetHookPost(func(v prefs.Value) error {
-		p.LateVDELGRP0 = v.(bool)
+	p.LateVDELGRP0.SetHookPost(func(v prefs.Value) error {
+		live := p.live.Load().(LiveRevisionPreferences)
+		live.LateVDELGRP0 = v.(bool)
+		p.live.Store(live)
 		return nil
 	})
-	p.DskLateVDELGRP1.SetHookPost(func(v prefs.Value) error {
-		p.LateVDELGRP1 = v.(bool)
+	p.LateVDELGRP1.SetHookPost(func(v prefs.Value) error {
+		live := p.live.Load().(LiveRevisionPreferences)
+		live.LateVDELGRP1 = v.(bool)
+		p.live.Store(live)
 		return nil
 	})
-	p.DskLateRESPx.SetHookPost(func(v prefs.Value) error {
-		p.LateRESPx = v.(bool)
+	p.LateRESPx.SetHookPost(func(v prefs.Value) error {
+		live := p.live.Load().(LiveRevisionPreferences)
+		live.LateRESPx = v.(bool)
+		p.live.Store(live)
 		return nil
 	})
-	p.DskEarlyScancounter.SetHookPost(func(v prefs.Value) error {
-		p.EarlyScancounter = v.(bool)
+	p.EarlyScancounter.SetHookPost(func(v prefs.Value) error {
+		live := p.live.Load().(LiveRevisionPreferences)
+		live.EarlyScancounter = v.(bool)
+		p.live.Store(live)
 		return nil
 	})
-	p.DskLatePFx.SetHookPost(func(v prefs.Value) error {
-		p.LatePFx = v.(bool)
+	p.LatePFx.SetHookPost(func(v prefs.Value) error {
+		live := p.live.Load().(LiveRevisionPreferences)
+		live.LatePFx = v.(bool)
+		p.live.Store(live)
 		return nil
 	})
-	p.DskLateCOLUPF.SetHookPost(func(v prefs.Value) error {
-		p.LateCOLUPF = v.(bool)
+	p.LateCOLUPF.SetHookPost(func(v prefs.Value) error {
+		live := p.live.Load().(LiveRevisionPreferences)
+		live.LateCOLUPF = v.(bool)
+		p.live.Store(live)
 		return nil
 	})
-	p.DskLostMOTCK.SetHookPost(func(v prefs.Value) error {
-		p.LostMOTCK = v.(bool)
+	p.LostMOTCK.SetHookPost(func(v prefs.Value) error {
+		live := p.live.Load().(LiveRevisionPreferences)
+		live.LostMOTCK = v.(bool)
+		p.live.Store(live)
 		return nil
 	})
-	p.DskRESPxHBLANK.SetHookPost(func(v prefs.Value) error {
-		p.RESPxHBLANK = v.(bool)
+	p.RESPxHBLANK.SetHookPost(func(v prefs.Value) error {
+		live := p.live.Load().(LiveRevisionPreferences)
+		live.RESPxHBLANK = v.(bool)
+		p.live.Store(live)
 		return nil
 	})
 
@@ -104,42 +126,42 @@ func newRevisionPreferences() (*RevisionPreferences, error) {
 		return nil, curated.Errorf("revision: %v", err)
 	}
 
-	err = p.dsk.Add("tia.revision.grp0.latevdel", &p.DskLateVDELGRP0)
+	err = p.dsk.Add("tia.revision.grp0.latevdel", &p.LateVDELGRP0)
 	if err != nil {
 		return nil, curated.Errorf("revision: %v", err)
 	}
 
-	err = p.dsk.Add("tia.revision.grp1.latevdel", &p.DskLateVDELGRP1)
+	err = p.dsk.Add("tia.revision.grp1.latevdel", &p.LateVDELGRP1)
 	if err != nil {
 		return nil, curated.Errorf("revision: %v", err)
 	}
 
-	err = p.dsk.Add("tia.revision.hmove.laterespx", &p.DskLateRESPx)
+	err = p.dsk.Add("tia.revision.hmove.laterespx", &p.LateRESPx)
 	if err != nil {
 		return nil, curated.Errorf("revision: %v", err)
 	}
 
-	err = p.dsk.Add("tia.revision.hmove.earlyscancounter", &p.DskEarlyScancounter)
+	err = p.dsk.Add("tia.revision.hmove.earlyscancounter", &p.EarlyScancounter)
 	if err != nil {
 		return nil, curated.Errorf("revision: %v", err)
 	}
 
-	err = p.dsk.Add("tia.revision.playfield.latepfx", &p.DskLatePFx)
+	err = p.dsk.Add("tia.revision.playfield.latepfx", &p.LatePFx)
 	if err != nil {
 		return nil, curated.Errorf("revision: %v", err)
 	}
 
-	err = p.dsk.Add("tia.revision.playfield.latecolupf", &p.DskLateCOLUPF)
+	err = p.dsk.Add("tia.revision.playfield.latecolupf", &p.LateCOLUPF)
 	if err != nil {
 		return nil, curated.Errorf("revision: %v", err)
 	}
 
-	err = p.dsk.Add("tia.revision.lostmotck", &p.DskLostMOTCK)
+	err = p.dsk.Add("tia.revision.lostmotck", &p.LostMOTCK)
 	if err != nil {
 		return nil, curated.Errorf("revision: %v", err)
 	}
 
-	err = p.dsk.Add("tia.revision.respx.hmovethreshold", &p.DskRESPxHBLANK)
+	err = p.dsk.Add("tia.revision.respx.hmovethreshold", &p.RESPxHBLANK)
 	if err != nil {
 		return nil, curated.Errorf("revision: %v", err)
 	}
@@ -154,14 +176,14 @@ func newRevisionPreferences() (*RevisionPreferences, error) {
 
 // SetDefaults reverts all settings to default values.
 func (p *RevisionPreferences) SetDefaults() {
-	p.DskLateVDELGRP0.Set(false)
-	p.DskLateVDELGRP1.Set(false)
-	p.DskLateRESPx.Set(false)
-	p.DskEarlyScancounter.Set(false)
-	p.DskLatePFx.Set(false)
-	p.DskLateCOLUPF.Set(false)
-	p.DskLostMOTCK.Set(false)
-	p.DskRESPxHBLANK.Set(false)
+	p.LateVDELGRP0.Set(false)
+	p.LateVDELGRP1.Set(false)
+	p.LateRESPx.Set(false)
+	p.EarlyScancounter.Set(false)
+	p.LatePFx.Set(false)
+	p.LateCOLUPF.Set(false)
+	p.LostMOTCK.Set(false)
+	p.RESPxHBLANK.Set(false)
 }
 
 // Load revision preferences from disk.
@@ -172,4 +194,9 @@ func (p *RevisionPreferences) Load() error {
 // Save current revision preferences to disk.
 func (p *RevisionPreferences) Save() error {
 	return p.dsk.Save()
+}
+
+// Live returns a copy of the live revision preference values
+func (p *RevisionPreferences) Live() LiveRevisionPreferences {
+	return p.live.Load().(LiveRevisionPreferences)
 }
