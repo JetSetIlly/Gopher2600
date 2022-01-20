@@ -79,7 +79,7 @@ func NewComparison(driverVCS *hardware.VCS) (*Comparison, error) {
 	tv.SetFPSCap(true)
 
 	// create a new VCS instance
-	cmp.VCS, err = hardware.NewVCS(tv)
+	cmp.VCS, err = hardware.NewVCS(tv, driverVCS.Instance.Prefs)
 	if err != nil {
 		return nil, curated.Errorf("comparison: %v", err)
 	}

@@ -29,6 +29,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/instance"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/supercharger"
+	"github.com/jetsetilly/gopher2600/hardware/preferences"
 	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
@@ -54,7 +55,7 @@ type Thumbnailer struct {
 }
 
 // NewThumbnailer is the preferred method of initialisation for the Thumbnailer type.
-func NewThumbnailer() (*Thumbnailer, error) {
+func NewThumbnailer(prefs *preferences.Preferences) (*Thumbnailer, error) {
 	thmb := &Thumbnailer{
 		emulationQuit:      make(chan bool, 1),
 		emulationCompleted: make(chan bool, 1),
@@ -77,7 +78,7 @@ func NewThumbnailer() (*Thumbnailer, error) {
 	tv.SetFPSCap(true)
 
 	// create a new VCS instance
-	thmb.vcs, err = hardware.NewVCS(tv)
+	thmb.vcs, err = hardware.NewVCS(tv, prefs)
 	if err != nil {
 		return nil, curated.Errorf("thumbnailer: %v", err)
 	}

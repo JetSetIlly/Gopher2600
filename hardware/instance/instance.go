@@ -45,17 +45,25 @@ type Instance struct {
 }
 
 // NewInstance is the preferred method of initialisation for the Instance type.
-func NewInstance(tv random.TV) (*Instance, error) {
+//
+// The two arguments must be supplied. In the case of the prefs field it can by
+// nil and a new prefs instance will be created. Providing a non-nil value
+// allows the preferences of more than one VCS instance to be synchronised.
+func NewInstance(tv random.TV, prefs *preferences.Preferences) (*Instance, error) {
 	ins := &Instance{
 		Random: random.NewRandom(tv),
 	}
 
 	var err error
 
-	ins.Prefs, err = preferences.NewPreferences()
-	if err != nil {
-		return nil, err
+	if prefs == nil {
+		prefs, err = preferences.NewPreferences()
+		if err != nil {
+			return nil, err
+		}
 	}
+
+	ins.Prefs = prefs
 
 	return ins, nil
 }

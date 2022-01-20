@@ -196,7 +196,7 @@ func (reg *VideoRegression) regress(newRegression bool, output io.Writer, msg st
 	}
 
 	// create VCS and attach cartridge
-	vcs, err := hardware.NewVCS(tv)
+	vcs, err := hardware.NewVCS(tv, nil)
 	if err != nil {
 		return false, "", curated.Errorf("video: %v", err)
 	}

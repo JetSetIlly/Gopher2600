@@ -65,7 +65,7 @@ func newFileSelector(img *SdlImgui) (window, error) {
 
 	var err error
 
-	win.thmb, err = thumbnailer.NewThumbnailer()
+	win.thmb, err = thumbnailer.NewThumbnailer(win.img.vcs.Instance.Prefs)
 	if err != nil {
 		return nil, curated.Errorf("debugger: %v", err)
 	}

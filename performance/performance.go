@@ -50,7 +50,7 @@ func Check(output io.Writer, profile Profile, cartload cartridgeloader.Loader, s
 	tv.SetFPSCap(fpsCap)
 
 	// create vcs
-	vcs, err := hardware.NewVCS(tv)
+	vcs, err := hardware.NewVCS(tv, nil)
 	if err != nil {
 		return curated.Errorf("performance: %v", err)
 	}

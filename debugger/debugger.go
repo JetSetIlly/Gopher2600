@@ -321,7 +321,7 @@ func NewDebugger(create CreateUserInterface, spec string, useSavekey bool, fpsCa
 	}
 
 	// create a new VCS instance
-	dbg.vcs, err = hardware.NewVCS(tv)
+	dbg.vcs, err = hardware.NewVCS(tv, nil)
 	if err != nil {
 		return nil, curated.Errorf("debugger: %v", err)
 	}

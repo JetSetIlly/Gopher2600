@@ -122,7 +122,7 @@ func (reg *PlaybackRegression) regress(newRegression bool, output io.Writer, msg
 		return false, "", curated.Errorf("playback: %v", err)
 	}
 
-	vcs, err := hardware.NewVCS(tv)
+	vcs, err := hardware.NewVCS(tv, nil)
 	if err != nil {
 		return false, "", curated.Errorf("playback: %v", err)
 	}

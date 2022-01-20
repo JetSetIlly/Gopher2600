@@ -24,6 +24,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
+	"github.com/jetsetilly/gopher2600/hardware/preferences"
 	"github.com/jetsetilly/gopher2600/hardware/riot"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/controllers"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/panel"
@@ -72,11 +73,15 @@ type VCS struct {
 // NewVCS creates a new VCS and everything associated with the hardware. It is
 // used for all aspects of emulation: debugging sessions, and regular play.
 //
+// The two arguments must be supplied. In the case of the prefs field it can by
+// nil and a new prefs instance will be created. Providing a non-nil value
+// allows the preferences of more than one VCS instance to be synchronised.
+//
 // The Instance.Context field should be updated except in the case of the
 // "main" emulation.
-func NewVCS(tv *television.Television) (*VCS, error) {
+func NewVCS(tv *television.Television, prefs *preferences.Preferences) (*VCS, error) {
 	// set up instance
-	instance, err := instance.NewInstance(tv)
+	instance, err := instance.NewInstance(tv, prefs)
 	if err != nil {
 		return nil, err
 	}

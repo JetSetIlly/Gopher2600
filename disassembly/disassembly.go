@@ -93,7 +93,7 @@ func FromCartridge(cartload cartridgeloader.Loader) (*Disassembly, error) {
 		return nil, curated.Errorf("disassembly: %v", err)
 	}
 
-	vcs, err := hardware.NewVCS(tv)
+	vcs, err := hardware.NewVCS(tv, nil)
 	if err != nil {
 		return nil, curated.Errorf("disassembly: %v", err)
 	}
