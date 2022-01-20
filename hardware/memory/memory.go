@@ -165,22 +165,41 @@ func (mem *Memory) read(address uint16) (uint8, error) {
 		mem.LastCPUDrivenPins = 0xff
 	}
 
-	// update address bus
-	mem.AddressBus = address & memorymap.Memtop
+	// the address bus value is the literal address masked to the 13 bits
+	// available to the 6507
+	addressBus := address & memorymap.Memtop
 
-	// see the commentary for the Listen() function in the Cartridge interface
-	// for an explanation for what is going on here.
-	//
-	// note that we're using the previous data bus value not the new data bus
-	// value. this matches observations made by Al_Nafuur with the following
-	// binary.
-	//
-	// https://atariage.com/forums/topic/329888-indexed-read-page-crossing-and-sc-ram/
-	//
-	// we can think of this as the new address being put on the bus before the
-	// data bus is changed. the cartridge responds to the address change
-	// immediately, before the new data has been put on the bus
-	mem.Cart.Listen(mem.AddressBus, mem.DataBus)
+	// the cartridge can respond to an address transition
+	if mem.AddressBus != addressBus {
+		// update address bus
+		mem.AddressBus = addressBus
+
+		// note that we're using the previous data bus value not the new data bus
+		// value. this matches observations made by Al_Nafuur with the following
+		// binary:
+		//
+		// https://atariage.com/forums/topic/329888-indexed-read-page-crossing-and-sc-ram/
+		//
+		// we can think of this as the new address being put on the bus before the
+		// data bus is changed. the cartridge responds to the address change
+		// immediately, before the new data has been put on the bus
+		//
+		// this behaviour seems to be dependent on the host cartridge. the
+		// current behaviour reflects what happens on the PlusCart (and
+		// probably the UnoCart). original cartridge hardware and Harmony are
+		// different:
+		//
+		// https://atariage.com/forums/topic/285759-stella-getting-into-details-help-wanted/
+		//
+		// TODO: emulate what happens to the DataBus when it's not being explicitely driven
+		//
+		// To summarise what I know so far:
+		//
+		// UnoCart/PlusCart  |  mem.DataBus
+		// Harmony           |  mem.DataBus | 0b01000000
+		//
+		mem.Cart.Listen(mem.AddressBus, mem.DataBus)
+	}
 
 	// update data bus
 	mem.DataBus = data
@@ -206,13 +225,20 @@ func (mem *Memory) Write(address uint16, data uint8) error {
 	ma, ar := memorymap.MapAddress(address, false)
 	area := mem.GetArea(ar)
 
-	// update address bus
-	mem.AddressBus = address & memorymap.Memtop
+	// update data bus
 	mem.DataBus = data
 
-	// see the commentary for the Listen() function in the Cartridge interface
-	// for an explanation for what is going on here.
-	mem.Cart.Listen(mem.AddressBus, mem.DataBus)
+	// the address bus value is the literal address masked to the 13 bits
+	// available to the 6507
+	addressBus := address & memorymap.Memtop
+
+	// the cartridge can respond to an address transition
+	if addressBus != mem.AddressBus {
+		// update address bus
+		mem.AddressBus = addressBus
+
+		mem.Cart.Listen(mem.AddressBus, mem.DataBus)
+	}
 
 	// update debugging information
 	mem.LastCPUAddressLiteral = address
