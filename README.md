@@ -1,16 +1,18 @@
-<img align="left" src=".resources/logo.png" width="300" alt="gopher2600 logo"/>
+<img align="left" src=".resources/logo.png" width="250" alt="gopher2600 logo"/>
 
 # Gopher2600
 
-`Gopher2600` is an emulator for the Atari 2600 written in the Go language. The accuracy of the emulation is very high and the 6507, TIA and RIOT chips appear to operate without bugs. Certainly, there are no known outstanding issues with any of the emulated chips. It compares favourably with `Stella` except for [speed](#performance) and final project polish. 
+`Gopher2600` is an emulator for the Atari 2600 written in the Go language.
+
+The accuracy of the emulation is very high and there are no known outstanding problems with the 6507, TIA and RIOT chip emulation.
+
+It is an ongoing project and bug reports are welcome.
 <br clear="left">
 
 The key features of the emulator:
 
 * [Support for many of the known cartridge formats](#supported-cartridge-formats)
 * Emulation of the [ARM7TDMI](#arm7tdmi-emulation) as found in the `Harmony` cartridge
-* [Gameplay recording and playback](#recording-gameplay)
-* Support for (and auto-detection of) [stick, paddle and keypad](#hand-controllers)
 * Network access through [PlusROM](#plusrom) emulation
 * [Savekey](#savekey) support
 * [CRT Effects](#crt-effects)
@@ -19,8 +21,10 @@ The key features of the emulator:
 * Implementation of [Movie Cart](#movie-cart)
 * [Gameplay rewinding](#rewinding)
 * Tracker/Piano Keys visualisation
+* [Gameplay recording and playback](#recording-gameplay)
+* Support for (and auto-detection of) [stick, paddle and keypad](#hand-controllers)
 
-The graphical [debugger](#debugger) includexe:
+The graphical [debugger](#debugger):
 
 * Color Clock level interaction
 * Breakpoints, traps, watches on various CPU, TIA, RIOT targets
@@ -95,21 +99,6 @@ The following [screenshots](#screenshots) were taken in playmode with CRT effect
 </table>
 
 Games shown: Pitfall; He-Man; Krull; Ladybug; Thrust; Man Goes Down; [Soul of the Beast](https://aeriform.itch.io/beast); Chiphead; Egypt 2600BC by Genesis Project; Draconian; [Galagon](https://champ.games/downloads); [Turbo](https://champ.games/downloads); [Zookeeper](https://champ.games/downloads); [Movie Cart](#movie-cart).
-
-## Scope of the project
-
-`Gopher2600` was started as for fun and educational purposes, as way of
-learning more about the `Atari 2600` and also about the
-[Go programming language](https://golang.org/).
-
-The original intent was to create a tool for static analysis of a 6507 program
-to help in the creation of `Atari 2600` games. I soon realised however that I
-would need to emulate more of the 2600 and not just the CPU for this to be
-useful.
-
-Because of its origins, any flaws or limitations in the design should be borne
-in mind while the project is still in development. [I am open to any suggestions
-on how to improve the project](#self-reflection).
 
 ## Performance
 
@@ -200,13 +189,9 @@ about a sub-mode. For example:
 
 	> gopher2600 debug -help
 
-To run a cartridge, you don't need to specify a sub-mode. For example:
+To run a cartridge, you don't need to specify a sub-mode. The following will run the emulator in `playmode`:
 
 	> gopher2600 roms/Pitfall.bin
-
-Although if want to pass flags to the run mode you'll need to specify it.
-
-	> gopher2600 run -help
 
 ## Hand Controllers
 
@@ -405,7 +390,7 @@ chosen because it the same key that is used by default in `Stella`.
 
 ## Debugger
 
-<img src=".screenshots/debugger_halo2600.png" alt="debugger window"/>
+<img src=".screenshots/debugger.png" alt="debugger window"/>
 
 The screenshot above shows a typical window layout of the debugger. The menu
 bar at the top provides more windows, some of which are specific to certain
@@ -971,25 +956,6 @@ at https://godoc.org/github.com/JetSetIlly/Gopher2600
 
 Finally, development and maintenance documentation is beginning to be stored in its
 own Github repository: https://github.com/JetSetIlly/Gopher2600-Dev-Docs
-
-## Self Reflection
-
-There are some design decisions that would perhaps be made differently if I had
-known where the program was going. For instance, because the project was a way
-of learning a new programming language I chose to implement my own "database"
-to [store regression test information](#regression-database). A more natural
-choice would be to use SQlite but actually the current solution works quite
-well.
-
-A couple of packages may well be useful in other projects. The `prefs` package
-is quite versatile. With a bit of work it could be generalised and put to use
-in other projects. I think though, this package is a natural candidate to be
-rewritten with type parameters. Not yet available in Go but scheduled for
-release in 2022.
-
-I would also replace the `commandline` package. It works quite nicely but as
-you would expect from a home-baked solution there are limitations to the
-parser. It should be rewritten with `flex` & `yacc`.
 
 ## Other Software / Libraries
 
