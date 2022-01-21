@@ -49,6 +49,8 @@ type SrcLine struct {
 	LineNumber int    // counting from one
 	Content    string // the actual line
 
+	Inlined bool
+
 	// the generated assembly for this line. will be empty if line is a comment
 	// or otherwise unsused
 	Asm []*SrcLineAsm
@@ -350,7 +352,27 @@ func newSource(pathToROM string) (*Source, error) {
 		for _, f := range src.Files {
 			for _, l := range f.Lines {
 				if len(l.Asm) > 0 {
-					l.Function = mapfile.findFunctionName(l.Asm[0].Addr)
+					// get function name for line using the address of the
+					// first assembly instruction
+					e := mapfile.findEntry(l.Asm[0].Addr)
+					l.Function = e.functionName
+
+					// rudimentary detection of inline functions. to do this
+					// we're assuming that the filename as detected by the
+					// objfile parsing is "similar" to the .o file detected by
+					// the mapfile parsing
+					if len(e.objfile) > 0 && len(l.File.Filename) > 0 {
+						// because the build system may put the output file in
+						// a different location to the source file we'll just
+						// look at the base filename (without the path)
+						//
+						// again, this is very rudimentary - we need a better
+						// way of finding inline functions
+						a := filepath.Base(e.objfile)
+						b := filepath.Base(l.File.Filename)
+
+						l.Inlined = a[:len(a)-2] != b[:len(b)-2]
+					}
 				}
 			}
 		}

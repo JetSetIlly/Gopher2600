@@ -26,15 +26,16 @@ import (
 )
 
 type entry struct {
-	address uint32
-	label   string
+	address      uint32
+	functionName string
+	objfile      string
+	line         int
 }
 
 // mapfile contains the parsed information from the map file. this supplements
 // the information found in the Source structure and provides a little more
 // detail that isn't easily retrieved with just the Source mechanism.
 type mapfile struct {
-	data    []entry
 	program []entry
 }
 
@@ -85,7 +86,6 @@ func findMapFile(romDir string) *os.File {
 // any errors.
 func newMapFile(pathToROM string) (*mapfile, error) {
 	mf := &mapfile{
-		data:    make([]entry, 0, 32),
 		program: make([]entry, 0, 32),
 	}
 
@@ -115,61 +115,45 @@ func newMapFile(pathToROM string) (*mapfile, error) {
 		}
 	}
 
-	var entryArray *[]entry
-	var deferredfunctionName string
+	var functionName string
 
 	// examine remaining lines of mapfile
-	for _, l := range lines {
+	for ln, l := range lines {
 		// ignore empty lines
 		flds := strings.Fields(l)
 		if len(flds) == 0 {
 			continue // for loop
 		}
 
-		if deferredfunctionName != "" {
-			address, err := strconv.ParseInt(flds[0], 0, 64)
-			if err != nil {
-				return nil, curated.Errorf("mapfile: processing error: %v", err)
+		if strings.HasSuffix(l, ".o") {
+			// found an .o file, if a function name has been found recently
+			// then add a new entry
+
+			if functionName != "" {
+				n := strings.LastIndex(l, " ")
+				objFile := l[n+1:]
+
+				address, err := strconv.ParseInt(flds[0], 0, 64)
+				if err != nil {
+					return nil, curated.Errorf("mapfile: processing error: %v", err)
+				}
+
+				mf.program = append(mf.program, entry{
+					address:      uint32(address),
+					functionName: functionName,
+					objfile:      objFile,
+					line:         ln,
+				})
+
+				functionName = ""
 			}
 
-			(*entryArray) = append(*entryArray, entry{
-				address: uint32(address),
-				label:   deferredfunctionName,
-			})
+		} else if len(flds) == 1 && strings.HasPrefix(flds[0], ".text.") {
+			functionName = flds[0][6:]
 
-			deferredfunctionName = ""
-			continue // for loop
-		}
-
-		if strings.HasPrefix(flds[0], "0x") {
-			if entryArray != nil {
-				if !(flds[1][0] == '.' || flds[1][0] == '_') {
-					address, err := strconv.ParseInt(flds[0], 0, 64)
-					if err != nil {
-						return nil, curated.Errorf("mapfile: processing error: %v", err)
-					}
-
-					(*entryArray) = append(*entryArray, entry{
-						address: uint32(address),
-						label:   flds[1],
-					})
-				}
-			}
-		} else {
-			switch flds[0] {
-			case ".rodata":
-				entryArray = &mf.data
-			case ".data":
-				entryArray = &mf.data
-			case "COMMON":
-				entryArray = &mf.data
-			default:
-				if len(flds) == 1 && strings.HasPrefix(flds[0], ".text.") {
-					deferredfunctionName = flds[0][6:]
-					entryArray = &mf.program
-				} else {
-					entryArray = nil
-				}
+			// special condition for main function
+			if functionName == "startup.main" {
+				functionName = "main"
 			}
 		}
 	}
@@ -179,15 +163,15 @@ func newMapFile(pathToROM string) (*mapfile, error) {
 
 // findFunctionName returns the function name for the supplied address. returns
 // the empty string if function name cannot be found.
-func (mf *mapfile) findFunctionName(address uint32) string {
-	functionName := ""
+func (mf *mapfile) findEntry(address uint32) entry {
+	re := entry{}
 
 	for _, e := range mf.program {
 		if address < e.address {
-			return functionName
+			return re
 		}
-		functionName = e.label
+		re = e
 	}
 
-	return functionName
+	return re
 }

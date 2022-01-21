@@ -21,6 +21,7 @@ import (
 
 	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/coprocessor/developer"
+	"github.com/jetsetilly/gopher2600/gui/fonts"
 )
 
 // in this case of the coprocessor disassmebly window the actual window title
@@ -113,9 +114,10 @@ func (win *winCoProcPerformance) drawExecutionPerformance(src *developer.Source,
 	src.Resort(byLifetimeCycles)
 
 	const top = 25
+	const numColumns = 6
 
 	imgui.Spacing()
-	imgui.BeginTableV("##coprocPerformanceTable", 5, imgui.TableFlagsSizingFixedFit, imgui.Vec2{}, 0.0)
+	imgui.BeginTableV("##coprocPerformanceTable", numColumns, imgui.TableFlagsSizingFixedFit, imgui.Vec2{}, 0.0)
 
 	// first column is a dummy column so that Selectable (span all columns) works correctly
 	width := imgui.ContentRegionAvail().X
@@ -124,6 +126,7 @@ func (win *winCoProcPerformance) drawExecutionPerformance(src *developer.Source,
 	imgui.TableSetupColumnV("Line", imgui.TableColumnFlagsNone, width*0.1, 2)
 	imgui.TableSetupColumnV("Function", imgui.TableColumnFlagsNone, width*0.35, 3)
 	imgui.TableSetupColumnV("Load", imgui.TableColumnFlagsNone, width*0.1, 4)
+	imgui.TableSetupColumnV("", imgui.TableColumnFlagsNone, 0, 5)
 
 	if src == nil {
 		imgui.Text("No source files available")
@@ -189,6 +192,11 @@ func (win *winCoProcPerformance) drawExecutionPerformance(src *developer.Source,
 			}
 		}
 		imgui.PopStyleColor()
+
+		imgui.TableNextColumn()
+		if ln.Inlined {
+			imgui.Text(string(fonts.InlineFunction))
+		}
 	}
 
 	imgui.EndTable()
