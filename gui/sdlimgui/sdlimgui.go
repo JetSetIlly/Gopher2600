@@ -17,6 +17,7 @@ package sdlimgui
 
 import (
 	"io"
+	"time"
 
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/debugger"
@@ -88,6 +89,11 @@ type SdlImgui struct {
 
 	// mouse coords at last frame. used by service loop to keep track of mouse motion
 	mouseX, mouseY int32
+
+	// the time the window was focused. we use this to prevent the TAB key from
+	// opening the ROM requester if the window was focused with the alt-TAB key
+	// combo used by Windows and many Linux desktops
+	windowFocusedTime time.Time
 
 	// gui specific preferences. crt preferences are handled separately. all
 	// other preferences are handled by the emulation

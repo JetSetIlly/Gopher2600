@@ -16,6 +16,8 @@
 package sdlimgui
 
 import (
+	"time"
+
 	"github.com/jetsetilly/gopher2600/emulation"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
 	"github.com/jetsetilly/gopher2600/logger"
@@ -50,6 +52,13 @@ func (img *SdlImgui) Service() {
 			img.quit()
 
 		case *sdl.WindowEvent:
+			switch ev.Event {
+			case sdl.WINDOWEVENT_FOCUS_GAINED:
+				// the time when the window gained focus see windowFocusedTime
+				// declaration for an explanation
+				img.windowFocusedTime = time.Now()
+			}
+
 			img.screen.crit.section.Lock()
 			img.playScr.setScaling()
 			img.polling.alert()
@@ -295,18 +304,27 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 		return
 	}
 
-	if ev.Type == sdl.KEYUP && ev.Repeat == 0 {
+	if ev.Type == sdl.KEYUP {
 		handled := true
 
 		if img.isPlaymode() {
 			switch ev.Keysym.Scancode {
 			case sdl.SCANCODE_ESCAPE:
-				img.quit()
+				// close ROM selector if it's open otherwise quit application
+				if img.wm.selectROM.open {
+					img.wm.selectROM.setOpen(false)
+				} else {
+					img.quit()
+				}
+
 			case sdl.SCANCODE_F7:
 				img.playScr.fpsOpen = !img.playScr.fpsOpen
+
 			case sdl.SCANCODE_TAB:
-				if !img.wm.selectROM.open {
-					img.wm.selectROM.setOpen(true)
+				// only open ROM selector if window has been focused for a
+				// while. see windowFocusedTime declaration for an explanation
+				if time.Since(img.windowFocusedTime) > 500*time.Millisecond {
+					img.wm.selectROM.setOpen(!img.wm.selectROM.open)
 				}
 			default:
 				handled = false
@@ -411,7 +429,7 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 				Mod:  mod,
 			}:
 			default:
-				logger.Log("sdlimgui", "dropped key up event")
+				logger.Log("sdlimgui", "dropped keyboard event")
 			}
 		}
 
