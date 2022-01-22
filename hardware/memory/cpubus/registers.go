@@ -221,17 +221,21 @@ func init() {
 	Read = make([]Register, chipTop+1)
 	for k, v := range TIAReadSymbols {
 		Read[k] = v
+		ReadAddress[v] = k
 	}
 	for k, v := range RIOTReadSymbols {
 		Read[k] = v
+		ReadAddress[v] = k
 	}
 
 	Write = make([]Register, chipTop+1)
 	for k, v := range TIAWriteSymbols {
 		Write[k] = v
+		WriteAddress[v] = k
 	}
 	for k, v := range RIOTWriteSymbols {
 		Write[k] = v
+		WriteAddress[v] = k
 	}
 }
 
