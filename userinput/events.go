@@ -105,6 +105,7 @@ const (
 	GamepadButtonBack
 	GamepadButtonStart
 	GamepadButtonA
+	GamepadButtonB
 	GamepadButtonBumperLeft
 	GamepadButtonBumperRight
 	GamepadButtonGuide

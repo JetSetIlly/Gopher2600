@@ -38,6 +38,7 @@ const (
 	PeriphNone    PeripheralID = "None"
 	PeriphPanel   PeripheralID = "Panel"
 	PeriphStick   PeripheralID = "Stick"
+	PeriphGamepad PeripheralID = "Gamepad"
 	PeriphPaddle  PeripheralID = "Paddle"
 	PeriphKeypad  PeripheralID = "Keypad"
 	PeriphSavekey PeripheralID = "Savekey"

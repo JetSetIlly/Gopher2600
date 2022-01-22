@@ -145,6 +145,8 @@ func (img *SdlImgui) Service() {
 			switch ev.Button {
 			case 0:
 				button = userinput.GamepadButtonA
+			case 1:
+				button = userinput.GamepadButtonB
 			case 4:
 				button = userinput.GamepadButtonBumperLeft
 			case 5:

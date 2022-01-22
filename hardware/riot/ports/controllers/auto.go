@@ -178,7 +178,7 @@ func (aut *Auto) Update(data chipbus.ChangedRegister) bool {
 			if _, ok := aut.controller.(*Keypad); ok {
 				if aut.keypadUnplugAttempt {
 					if time.Since(aut.keypadUnplugTime) > aut.keypadUnplugDelay {
-						aut.controller = NewStick(aut.port, aut.bus)
+						aut.controller = NewGamepad(aut.port, aut.bus)
 						aut.plug()
 					}
 				} else {
@@ -199,7 +199,7 @@ func (aut *Auto) Step() {
 
 // Reset implements the ports.Peripheral interface.
 func (aut *Auto) Reset() {
-	aut.controller = NewStick(aut.port, aut.bus)
+	aut.controller = NewGamepad(aut.port, aut.bus)
 	aut.resetStickDetection()
 	aut.resetPaddleDetection()
 }
@@ -216,7 +216,7 @@ func (aut *Auto) checkStick(event ports.Event) {
 			if event != aut.lastStickVal {
 				aut.stickCt++
 				if aut.stickCt >= autoStickSensitivity {
-					aut.controller = NewStick(aut.port, aut.bus)
+					aut.controller = NewGamepad(aut.port, aut.bus)
 					aut.plug()
 				}
 			}

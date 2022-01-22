@@ -305,6 +305,8 @@ func (c *Controllers) gamepadButton(ev EventGamepadButton) (bool, error) {
 		return c.handleEvents(plugging.PortPanel, ports.PanelReset, ev.Down)
 	case GamepadButtonA:
 		return c.handleEvents(ev.ID, ports.Fire, ev.Down)
+	case GamepadButtonB:
+		return c.handleEvents(ev.ID, ports.SecondFire, ev.Down)
 	}
 	return false, nil
 }

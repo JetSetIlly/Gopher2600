@@ -46,6 +46,9 @@ const (
 	RightUp   Event = "RightUp"   // EventDataStick
 	RightDown Event = "RightDown" // EventDataStick
 
+	// gamepad second button
+	SecondFire Event = "SecondFire" // bool
+
 	// paddles.
 	PaddleSet Event = "PaddleSet" // float32
 
