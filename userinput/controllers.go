@@ -83,9 +83,11 @@ func (c *Controllers) differentiateKeyboard(key string, down bool) (bool, error)
 	var ev ports.Event
 	var d ports.EventData
 
+	var portID plugging.PortID
 	var keyEv ports.Event
 	var stickEvData ports.EventData
-	var fireEvData bool
+	var fireEvData ports.EventData
+
 	if down {
 		keyEv = ports.KeypadDown
 		stickEvData = ports.DataStickTrue
@@ -100,41 +102,69 @@ func (c *Controllers) differentiateKeyboard(key string, down bool) (bool, error)
 		switch key {
 		case "Y":
 			if h.PeripheralID(plugging.PortRightPlayer) == plugging.PeriphKeypad {
+				portID = plugging.PortRightPlayer
 				ev = keyEv
 				d = '6'
 			} else {
+				portID = plugging.PortRightPlayer
 				ev = ports.Up
 				d = stickEvData
 			}
 		case "F":
 			if h.PeripheralID(plugging.PortRightPlayer) == plugging.PeriphKeypad {
+				portID = plugging.PortRightPlayer
 				ev = keyEv
 				d = '7'
 			} else {
+				portID = plugging.PortRightPlayer
 				ev = ports.Fire
 				d = fireEvData
 			}
 		case "G":
 			if h.PeripheralID(plugging.PortRightPlayer) == plugging.PeriphKeypad {
+				portID = plugging.PortRightPlayer
 				ev = keyEv
 				d = '8'
 			} else {
+				portID = plugging.PortRightPlayer
 				ev = ports.Left
 				d = stickEvData
 			}
 		case "H":
 			if h.PeripheralID(plugging.PortRightPlayer) == plugging.PeriphKeypad {
+				portID = plugging.PortRightPlayer
 				ev = keyEv
 				d = '9'
 			} else {
+				portID = plugging.PortRightPlayer
 				ev = ports.Down
 				d = stickEvData
+			}
+		case "B":
+			if h.PeripheralID(plugging.PortRightPlayer) == plugging.PeriphKeypad {
+				portID = plugging.PortRightPlayer
+				ev = keyEv
+				d = '0'
+			} else {
+				portID = plugging.PortLeftPlayer
+				ev = ports.SecondFire
+				d = fireEvData
+			}
+		case "6":
+			if h.PeripheralID(plugging.PortRightPlayer) == plugging.PeriphKeypad {
+				portID = plugging.PortRightPlayer
+				ev = keyEv
+				d = '6'
+			} else {
+				portID = plugging.PortRightPlayer
+				ev = ports.SecondFire
+				d = fireEvData
 			}
 		default:
 		}
 
 		// all differentiated keyboard events go to the right player port
-		v, err := h.HandleInputEvent(ports.InputEvent{Port: plugging.PortRightPlayer, Ev: ev, D: d})
+		v, err := h.HandleInputEvent(ports.InputEvent{Port: portID, Ev: ev, D: d})
 		if err != nil {
 			return handled, err
 		}
@@ -204,16 +234,12 @@ func (c *Controllers) keyboard(ev EventKeyboard) (bool, error) {
 			return c.handleEvents(plugging.PortRightPlayer, ports.KeypadDown, '1')
 		case "5":
 			return c.handleEvents(plugging.PortRightPlayer, ports.KeypadDown, '2')
-		case "6":
-			return c.handleEvents(plugging.PortRightPlayer, ports.KeypadDown, '3')
 		case "R":
 			return c.handleEvents(plugging.PortRightPlayer, ports.KeypadDown, '4')
 		case "T":
 			return c.handleEvents(plugging.PortRightPlayer, ports.KeypadDown, '5')
 		case "V":
 			return c.handleEvents(plugging.PortRightPlayer, ports.KeypadDown, '*')
-		case "B":
-			return c.handleEvents(plugging.PortRightPlayer, ports.KeypadDown, '0')
 		case "N":
 			return c.handleEvents(plugging.PortRightPlayer, ports.KeypadDown, '#')
 
@@ -253,7 +279,7 @@ func (c *Controllers) keyboard(ev EventKeyboard) (bool, error) {
 
 		// keyboard (right player)
 		// * keypad and joystick share some keys (see below for other inputs)
-		case "4", "5", "6", "R", "T", "V", "B", "N":
+		case "4", "5", "R", "T", "V", "N":
 			return c.handleEvents(plugging.PortRightPlayer, ports.KeypadUp, nil)
 
 		default:

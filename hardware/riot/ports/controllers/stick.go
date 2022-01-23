@@ -42,10 +42,10 @@ type Stick struct {
 	port plugging.PortID
 	bus  ports.PeripheralBus
 
-	axis   uint8
-	button uint8
+	axis uint8
 
-	inptx chipbus.Register
+	button      uint8
+	buttonInptx chipbus.Register
 }
 
 // NewStick is the preferred method of initialisation for the Stick type
@@ -61,9 +61,9 @@ func NewStick(port plugging.PortID, bus ports.PeripheralBus) ports.Peripheral {
 
 	switch port {
 	case plugging.PortLeftPlayer:
-		stk.inptx = chipbus.INPT4
+		stk.buttonInptx = chipbus.INPT4
 	case plugging.PortRightPlayer:
-		stk.inptx = chipbus.INPT5
+		stk.buttonInptx = chipbus.INPT5
 	}
 
 	stk.Reset()
@@ -124,7 +124,7 @@ func (stk *Stick) HandleEvent(event ports.Event, data ports.EventData) (bool, er
 		default:
 			return false, curated.Errorf("stick: %v: unexpected event data", event)
 		}
-		stk.bus.WriteINPTx(stk.inptx, stk.button)
+		stk.bus.WriteINPTx(stk.buttonInptx, stk.button)
 		return true, nil
 
 	case ports.Centre:
@@ -202,7 +202,7 @@ func (stk *Stick) Update(data chipbus.ChangedRegister) bool {
 	case cpubus.VBLANK:
 		if data.Value&0x40 != 0x40 {
 			if stk.button == stickNoFire {
-				stk.bus.WriteINPTx(stk.inptx, stk.button)
+				stk.bus.WriteINPTx(stk.buttonInptx, stk.button)
 			}
 		}
 
@@ -227,7 +227,7 @@ func (stk *Stick) Step() {
 // Reset implements the ports.Peripheral interface.
 func (stk *Stick) Reset() {
 	stk.bus.WriteSWCHx(stk.port, stk.axis)
-	stk.bus.WriteINPTx(stk.inptx, stk.button)
+	stk.bus.WriteINPTx(stk.buttonInptx, stk.button)
 }
 
 // IsActive implements the ports.Peripheral interface.

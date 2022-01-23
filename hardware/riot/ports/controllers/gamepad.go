@@ -39,18 +39,18 @@ type Gamepad struct {
 	port plugging.PortID
 	bus  ports.PeripheralBus
 
-	axis   uint8
-	button uint8
+	axis uint8
 
-	inptx chipbus.Register
+	button      uint8
+	buttonInptx chipbus.Register
 
-	secondButton    uint8
-	secondButtonReg chipbus.Register
+	second      uint8
+	secondInptx chipbus.Register
 }
 
 const (
-	secondButtonFire   = 0x00
-	secondButtonNoFire = 0x80
+	secondFire   = 0x00
+	secondNoFire = 0x80
 )
 
 // NewGamepad is the preferred method of initialisation for the Gamepad type
@@ -58,19 +58,20 @@ const (
 // to ports.AttachPlayer0() and ports.AttachPlayer1().
 func NewGamepad(port plugging.PortID, bus ports.PeripheralBus) ports.Peripheral {
 	pad := &Gamepad{
-		port:            port,
-		bus:             bus,
-		axis:            axisCenter,
-		button:          stickNoFire,
-		secondButton:    secondButtonNoFire,
-		secondButtonReg: chipbus.INPT1,
+		port:   port,
+		bus:    bus,
+		axis:   axisCenter,
+		button: stickNoFire,
+		second: secondNoFire,
 	}
 
 	switch port {
 	case plugging.PortLeftPlayer:
-		pad.inptx = chipbus.INPT4
+		pad.buttonInptx = chipbus.INPT4
+		pad.secondInptx = chipbus.INPT1
 	case plugging.PortRightPlayer:
-		pad.inptx = chipbus.INPT5
+		pad.buttonInptx = chipbus.INPT5
+		pad.secondInptx = chipbus.INPT3
 	}
 
 	pad.Reset()
@@ -107,13 +108,29 @@ func (pad *Gamepad) ID() plugging.PeripheralID {
 func (pad *Gamepad) HandleEvent(event ports.Event, data ports.EventData) (bool, error) {
 	switch event {
 	case ports.SecondFire:
-		switch data.(bool) {
-		case true:
-			pad.secondButton = secondButtonFire
-		case false:
-			pad.secondButton = secondButtonNoFire
+		switch d := data.(type) {
+		case bool:
+			// support for playback file versions before v1.1
+			if d {
+				pad.second = secondFire
+			} else {
+				pad.second = secondNoFire
+			}
+		case ports.EventDataPlayback:
+			b, err := strconv.ParseBool(string(d))
+			if err != nil {
+				return false, curated.Errorf("gamepad: %v: unexpected event data", event)
+			}
+			if b {
+				pad.second = secondFire
+			} else {
+				pad.second = secondNoFire
+			}
+		default:
+			return false, curated.Errorf("gamepad: %v: unexpected event data", event)
 		}
-		pad.bus.WriteINPTx(pad.secondButtonReg, pad.secondButton)
+		pad.bus.WriteINPTx(pad.secondInptx, pad.second)
+		return true, nil
 	}
 
 	switch event {
@@ -142,7 +159,7 @@ func (pad *Gamepad) HandleEvent(event ports.Event, data ports.EventData) (bool, 
 		default:
 			return false, curated.Errorf("gamepad: %v: unexpected event data", event)
 		}
-		pad.bus.WriteINPTx(pad.inptx, pad.button)
+		pad.bus.WriteINPTx(pad.buttonInptx, pad.button)
 		return true, nil
 
 	case ports.Centre:
@@ -220,10 +237,10 @@ func (pad *Gamepad) Update(data chipbus.ChangedRegister) bool {
 	case cpubus.VBLANK:
 		if data.Value&0x40 != 0x40 {
 			if pad.button == stickNoFire {
-				pad.bus.WriteINPTx(pad.inptx, pad.button)
+				pad.bus.WriteINPTx(pad.buttonInptx, pad.button)
 			}
-			if pad.secondButton == secondButtonFire {
-				pad.bus.WriteINPTx(pad.secondButtonReg, pad.secondButton)
+			if pad.second == secondFire {
+				pad.bus.WriteINPTx(pad.secondInptx, pad.second)
 			}
 		}
 
@@ -248,11 +265,11 @@ func (pad *Gamepad) Step() {
 // Reset implements the ports.Peripheral interface.
 func (pad *Gamepad) Reset() {
 	pad.bus.WriteSWCHx(pad.port, pad.axis)
-	pad.bus.WriteINPTx(pad.inptx, pad.button)
-	pad.bus.WriteINPTx(pad.secondButtonReg, pad.secondButton)
+	pad.bus.WriteINPTx(pad.buttonInptx, pad.button)
+	pad.bus.WriteINPTx(pad.secondInptx, pad.second)
 }
 
 // IsActive implements the ports.Peripheral interface.
 func (pad *Gamepad) IsActive() bool {
-	return pad.button == stickFire || pad.axis != axisCenter || pad.secondButton == secondButtonFire
+	return pad.button == stickFire || pad.axis != axisCenter || pad.second == secondFire
 }
