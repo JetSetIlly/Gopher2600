@@ -233,7 +233,7 @@ func (win *winDisasm) drawControlBar() {
 				win.selectedBank = n
 			}
 
-			// set scroll on first frame combo is open
+			// set scroll on the first frame that the combo is open
 			if !win.selectedBankComboOpen && n == win.selectedBank {
 				imgui.SetScrollHereY(0.0)
 			}
@@ -495,9 +495,11 @@ func (win *winDisasm) drawBank(focusAddr uint16) {
 			}
 		}()
 
-		// scroll to correct entry. this is in addition to the automated
-		// scrolling we do in drawEntry(). both are required as a consequence
-		// of how ListClipper works
+		// scroll to correct entry. we do this rather than a SetScrollHereY()
+		// call in drawEntry() because we may need to focus on an address that
+		// hasn't been drawn - ListClipper will only draw the entries that are
+		// currently visible and by it's nature, focusOnAddr will want to work
+		// with entries that may not be visible
 		if onBank && win.focusOnAddr && focusCtApply {
 			y := imgui.FontSize() + imgui.CurrentStyle().ItemInnerSpacing().Y
 
@@ -561,14 +563,6 @@ func (win *winDisasm) drawEntry(e *disassembly.Entry, focusAddr uint16, onBank b
 	// highligh current PC entry
 	if onBank && (e.Result.Address&memorymap.CartridgeBits == focusAddr) {
 		imgui.TableSetBgColor(imgui.TableBgTargetRowBg0, win.img.cols.DisasmStep)
-
-		// scroll to this entry if required. this is in addition to the
-		// calculated scrolling we do in the drawBank() loop. both are required
-		// as a consequence of how ListClipper works
-		if win.focusOnAddr {
-			imgui.SetScrollHereY(0.20)
-			win.focusOnAddr = false
-		}
 	}
 
 	// does this entry/address have a PC break applied to it

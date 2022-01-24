@@ -55,7 +55,7 @@ func (dsm *Disassembly) bless(mc *cpu.CPU, mem *disasmMemory) error {
 		// make sure reset address is valid
 		_, area := memorymap.MapAddress(resetAddr, true)
 		if area == memorymap.Cartridge {
-			_ = dsm.blessSequence(mem.startingBank, resetAddr, true)
+			_ = dsm.blessSequence(b, resetAddr, true)
 		}
 	}
 
