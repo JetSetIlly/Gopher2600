@@ -751,6 +751,10 @@ func (dbg *Debugger) StartInPlayMode(filename string, mapping string, record boo
 		return curated.Errorf("debugger: %v", err)
 	}
 
+	// wait a very short time to give window time to open. this would be better
+	// and more consistently achieved with the help of a synchronisation channel
+	<-time.After(250 * time.Millisecond)
+
 	defer dbg.end()
 	err = dbg.run()
 	if err != nil {
