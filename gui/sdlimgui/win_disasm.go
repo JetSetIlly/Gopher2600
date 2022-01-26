@@ -330,6 +330,18 @@ func (win *winDisasm) drawBank(focusAddr uint16) {
 	imgui.BeginChildV(fmt.Sprintf("bank %d", win.selectedBank), imgui.Vec2{X: 0, Y: height}, false, imgui.WindowFlagsAlwaysVerticalScrollbar)
 
 	win.img.dbg.Disasm.BorrowDisasm(func(dsmEntries *disassembly.DisasmEntries) {
+		// borrow disasm callback can be called with a nil pointer
+		if dsmEntries == nil {
+			return
+		}
+
+		// very important that we check to see if selectedBank is not too high
+		// for the number of entries disasm entries. the disassembly might be
+		// in the process of changing while we're drawing the current frame
+		if win.selectedBank >= len(dsmEntries.Entries) {
+			return
+		}
+
 		// the method of iteration is different depending on the selected filter
 		iterateBank := 0
 		iterateIdx := 0
