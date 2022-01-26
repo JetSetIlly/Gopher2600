@@ -84,6 +84,8 @@ func (win *winPrefs) drawCRT() {
 
 	imgui.PushItemWidth(-1)
 	win.drawSyncSpeed()
+	imgui.Spacing()
+	win.drawSyncPowerOn()
 	imgui.PopItemWidth()
 }
 
@@ -415,5 +417,12 @@ func (win *winPrefs) drawSyncSpeed() {
 
 	if imgui.SliderIntV("##syncSpeed", &t, 0, specification.AbsoluteMaxScanlines, label, 1.0) {
 		win.img.crtPrefs.SyncSpeedScanlines.Set(t)
+	}
+}
+
+func (win *winPrefs) drawSyncPowerOn() {
+	b := win.img.crtPrefs.SyncPowerOn.Get().(bool)
+	if imgui.Checkbox("Syncronise On Power##poweron", &b) {
+		win.img.crtPrefs.SyncPowerOn.Set(b)
 	}
 }

@@ -314,33 +314,33 @@ func (scr *screen) NewFrame(frameInfo television.FrameInfo) error {
 		if scr.img.crtPrefs.Enabled.Get().(bool) {
 			if frameInfo.RefreshRate == scr.crit.frameInfo.RefreshRate && frameInfo.VSynced {
 				scr.recoverFromScreenRoll()
-			} else if scr.crit.frameInfo.Stable {
+			} else {
 				// without the stable check, the screen can roll during startup
 				// of many ROMs. Pitfall for example will do this.
-				//
-				// it looks quite cool but we'll leave it disabled for now.
+				syncPowerOn := scr.img.crtPrefs.SyncPowerOn.Get().(bool)
+				if syncPowerOn || (!syncPowerOn && scr.crit.frameInfo.Stable) {
+					// the amount to adjust the screenrollScanline value by. we
+					// rolling by a fixed amount but an alternative might be to use
+					// the scr.crit.lastY value. however that value can change and
+					// cause the roll to look "ugly"
+					//
+					// using a fixed amout is artificial but it looks better in
+					// more situations
+					const rollAmount = 100
 
-				// the amount to adjust the screenrollScanline value by. we
-				// rolling by a fixed amount but an alternative might be to use
-				// the scr.crit.lastY value. however that value can change and
-				// cause the roll to look "ugly"
-				//
-				// using a fixed amout is artificial but it looks better in
-				// more situations
-				const rollAmount = 100
-
-				diff := frameInfo.TotalScanlines - scr.crit.frameInfo.TotalScanlines
-				if diff < 0 {
-					diff -= 1
-				}
-
-				if diff > scr.img.crtPrefs.SyncSpeedScanlines.Get().(int) {
-					scr.crit.screenrollScanline += rollAmount
-					if scr.crit.screenrollScanline >= scr.crit.bufferHeight {
-						scr.crit.screenrollScanline -= scr.crit.bufferHeight
+					diff := frameInfo.TotalScanlines - scr.crit.frameInfo.TotalScanlines
+					if diff < 0 {
+						diff -= 1
 					}
-				} else {
-					scr.recoverFromScreenRoll()
+
+					if diff > scr.img.crtPrefs.SyncSpeedScanlines.Get().(int) {
+						scr.crit.screenrollScanline += rollAmount
+						if scr.crit.screenrollScanline >= scr.crit.bufferHeight {
+							scr.crit.screenrollScanline -= scr.crit.bufferHeight
+						}
+					} else {
+						scr.recoverFromScreenRoll()
+					}
 				}
 			}
 		} else {
@@ -564,29 +564,27 @@ func (scr *screen) copyPixelsPlaymode() {
 	scr.crit.section.Lock()
 	defer scr.crit.section.Unlock()
 
-	if scr.crit.frameInfo.Stable {
-		if scr.crit.monitorSync && scr.crit.bufferUsed == 0 {
-			// advance render index
-			prev := scr.crit.prevRenderIdx
-			scr.crit.prevRenderIdx = scr.crit.renderIdx
-			scr.crit.renderIdx++
-			if scr.crit.renderIdx >= len(scr.crit.bufferPixels) {
-				scr.crit.renderIdx = 0
-			}
-
-			// render index has bumped into the plotting index. revert render index
-			if scr.crit.renderIdx == scr.crit.plotIdx {
-				// ** emulation not keeping up with screen update **
-
-				// undo frame advancement
-				scr.crit.renderIdx = scr.crit.prevRenderIdx
-				scr.crit.prevRenderIdx = prev
-			}
+	if scr.crit.monitorSync && scr.crit.bufferUsed == 0 {
+		// advance render index
+		prev := scr.crit.prevRenderIdx
+		scr.crit.prevRenderIdx = scr.crit.renderIdx
+		scr.crit.renderIdx++
+		if scr.crit.renderIdx >= len(scr.crit.bufferPixels) {
+			scr.crit.renderIdx = 0
 		}
 
-		// copy pixels from render buffer to the live copy.
-		copy(scr.crit.pixels.Pix, scr.crit.bufferPixels[scr.crit.renderIdx].Pix)
+		// render index has bumped into the plotting index. revert render index
+		if scr.crit.renderIdx == scr.crit.plotIdx {
+			// ** emulation not keeping up with screen update **
+
+			// undo frame advancement
+			scr.crit.renderIdx = scr.crit.prevRenderIdx
+			scr.crit.prevRenderIdx = prev
+		}
 	}
+
+	// copy pixels from render buffer to the live copy.
+	copy(scr.crit.pixels.Pix, scr.crit.bufferPixels[scr.crit.renderIdx].Pix)
 
 	// let the emulator thread know it's okay to continue as soon as possible
 	//
