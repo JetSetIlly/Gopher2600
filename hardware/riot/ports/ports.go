@@ -301,9 +301,15 @@ func (p *Ports) WriteSWCHx(id plugging.PortID, data uint8) {
 
 // WriteINPTx implements the peripheral.PeripheralBus interface.
 func (p *Ports) WriteINPTx(inptx chipbus.Register, data uint8) {
+	// the VBLANK latch bit only applies to INPT4 and INPT5
+	latch := false
+	if inptx == chipbus.INPT4 || inptx == chipbus.INPT5 {
+		latch = p.latch
+	}
+
 	// write memory if button is pressed or it is not and the button latch
 	// is false
-	if data != 0x80 || !p.latch {
+	if data != 0x80 || !latch {
 		p.tia.ChipWrite(inptx, data)
 	}
 }
