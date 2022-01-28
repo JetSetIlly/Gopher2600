@@ -195,7 +195,7 @@ To run a cartridge, you don't need to specify a sub-mode. The following will run
 
 ## Hand Controllers
 
-Stick, paddle and keypad inputs are supported.
+Stick, paddle and keypad inputs are supported by the emulator.
 
 ### Stick
 
@@ -261,6 +261,16 @@ whereas experience says that `Circus Tricks` is better played with the mouse.
 
 The paddle for the right-side player is not currently supported.
 
+### Genesis Gamepad
+
+Some ROMs make use of a Megadrive/Genesis style gamepad. Emulation of these
+devices is the same as the regular stick.
+
+For these devices the `B` key on the keyboard can be used as the B button for
+the player one pad; and the `6` key for the player two pad.
+
+When using a real gamepad the `B` button can be used as expected.
+
 ### Keypad
 
 Keypad input for both players is supported. 
@@ -309,27 +319,25 @@ Keypad input for both players is supported.
 	</tr>
 </table>
 
-### Auto-Detection
+## Atari 2600 Front Panel
 
-`Gopher2600` supports auto-detection of input devices. In general, this is done
-by 'waggling' the control a few times in order to wake up the device.
+The VCS panel is controlled through the function keys of the keyboard.
 
-On startup, the stick is assumed to be the controller of choice.
+* `F1` Panel Select
+* `F2` Panel Reset
+* `F3` Colour Toggle
+* `F4` Player 0 Pro Toggle
+* `F5` Player 1 Pro Toggle
 
-In the case of keypad controllers, it's possible for the emulation to detect
-for certainty that a keypad controller is required. It is therefore not
-possible to switch to or from keypad control manually because there is no
-need.
+## Hardware Controllers
 
-### Gamepad
+### Modern Gamepad
 
 For convenience the joystick and paddle for the left-side player can be
 controlled through a gamepad. For the joystick, use the left thumbstick or the
 DPad. Any of the face buttons will act as the joystick's fire button.
 
-To control the paddle use the left and right analogue triggers. Note that you
-will need to 'waggle' the triggers a couple of times for the emulator to detect
-that you want to switch to the paddle.
+To control the paddle use the left and right analogue triggers.
 
 When in `playmode` the gamepad has some additional functionality:
 
@@ -354,16 +362,6 @@ The `Scroll Lock` key will also toggle mouse capture.
 
 In the debugger, there is a `Capture Mouse` button in the `Control` window. Or
 you can use the `Scroll Lock` key.
-
-### Panel
-
-The VCS panel is controlled through the function keys of the keyboard.
-
-* `F1` Panel Select
-* `F2` Panel Reset
-* `F3` Colour Toggle
-* `F4` Player 0 Pro Toggle
-* `F5` Player 1 Pro Toggle
 
 ## Emulation Hotkeys
 
@@ -853,7 +851,7 @@ The Stella project (https://stella-emu.github.io/) was used as a reference for
 video output. In the absence of VCS hardware (which I don't have) Stella was
 the only option I had for checking video accuracy.
 
-No reference to the Stella source was made at all except for the following:
+In addition, Stella was used as reference 
 
 * During the development of the CDF cartridge formats. These recent formats don't
 seem to be documented anywhere accept in the Stella source.
@@ -865,6 +863,8 @@ a comment in the fingerprint.go file says I did.
   referenced for this reason).
 
 * The EF cartridge format.
+
+* Fingerprint patterns for automated controller/peripheral selection.
 
 Many notes and clues from the AtariAge message boards. Most significantly the
 following threads proved very useful indeed:
