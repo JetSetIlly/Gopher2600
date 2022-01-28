@@ -41,7 +41,6 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/plusrom"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/supercharger"
-	"github.com/jetsetilly/gopher2600/hardware/peripherals/savekey"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
 	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/hardware/television/coords"
@@ -287,7 +286,7 @@ type CreateUserInterface func(emulation.Emulation) (gui.GUI, terminal.Terminal, 
 //
 // It should be followed up with a call to AddUserInterface() and call the
 // Start() method to actually begin the emulation.
-func NewDebugger(create CreateUserInterface, spec string, useSavekey bool, fpsCap bool, multiload int) (*Debugger, error) {
+func NewDebugger(create CreateUserInterface, spec string, fpsCap bool, multiload int) (*Debugger, error) {
 	dbg := &Debugger{
 		// by definition the state of debugger has changed during startup
 		hasChanged: true,
@@ -329,14 +328,6 @@ func NewDebugger(create CreateUserInterface, spec string, useSavekey bool, fpsCa
 	// create userinput/controllers handler
 	dbg.controllers = userinput.NewControllers()
 	dbg.controllers.AddInputHandler(dbg.vcs.Input)
-
-	// replace player 1 port with savekey
-	if useSavekey {
-		err = dbg.vcs.RIOT.Ports.Plug(plugging.PortRightPlayer, savekey.NewSaveKey)
-		if err != nil {
-			return nil, curated.Errorf("debugger: %v", err)
-		}
-	}
 
 	// create bot coordinator
 	dbg.bots = wrangler.NewBots(dbg.vcs.Input, dbg.vcs.TV)

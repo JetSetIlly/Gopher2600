@@ -278,7 +278,6 @@ func emulate(emulationMode emulation.Mode, md *modalflag.Modes, sync *mainSync) 
 	mapping := md.AddString("mapping", "AUTO", "force use of cartridge mapping")
 	spec := md.AddString("tv", "AUTO", "television specification: NTSC, PAL, PAL60")
 	fpsCap := md.AddBool("fpscap", true, "cap fps to TV specification")
-	useSavekey := md.AddBool("savekey", false, "use savekey in player 1 port")
 	profile := md.AddString("profile", "none", "run performance check with profiling: command separated CPU, MEM, TRACE or ALL")
 	log := md.AddBool("log", false, "echo debugging log to stdout")
 	termType := md.AddString("term", "IMGUI", "terminal type to use in debug mode: IMGUI, COLOR, PLAIN")
@@ -387,7 +386,7 @@ func emulate(emulationMode emulation.Mode, md *modalflag.Modes, sync *mainSync) 
 	}
 
 	// prepare new debugger instance
-	dbg, err := debugger.NewDebugger(create, *spec, *useSavekey, *fpsCap, *multiload)
+	dbg, err := debugger.NewDebugger(create, *spec, *fpsCap, *multiload)
 	if err != nil {
 		return err
 	}
