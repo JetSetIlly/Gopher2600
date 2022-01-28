@@ -353,7 +353,7 @@ func (cart *Moviecart) CopyBanks() []mapper.BankContent {
 }
 
 func (cart *Moviecart) processAddress(addr uint16) {
-	if addr >= 0xfffa {
+	if addr >= 0x1ffa {
 		cart.state.initialise()
 	}
 
