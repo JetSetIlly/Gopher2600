@@ -367,9 +367,7 @@ all PlusROM cartridges.`,
 	cmdCoProc: `Returns information about any coprocessor in the inserted cartridge.`,
 
 	// user input
-	cmdController: `Change the current controller type for the specified player. The AUTO
-controller handles changes of controller according to user input and where possible what
-can be inferred from the ROM.`,
+	cmdPeripheral: `Change the current peripheral for the specified player port.`,
 
 	cmdPanel: "Inspect and set front panel settings. Switches can be set or toggled.",
 

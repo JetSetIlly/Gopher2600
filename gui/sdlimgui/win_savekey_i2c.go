@@ -20,7 +20,7 @@ import (
 	"strconv"
 
 	"github.com/inkyblackness/imgui-go/v4"
-	"github.com/jetsetilly/gopher2600/hardware/riot/ports/savekey"
+	"github.com/jetsetilly/gopher2600/hardware/peripherals/savekey"
 )
 
 const winSaveKeyI2CID = "SaveKey I2C"

@@ -24,9 +24,10 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
+	"github.com/jetsetilly/gopher2600/hardware/peripherals"
+	"github.com/jetsetilly/gopher2600/hardware/peripherals/controllers"
 	"github.com/jetsetilly/gopher2600/hardware/preferences"
 	"github.com/jetsetilly/gopher2600/hardware/riot"
-	"github.com/jetsetilly/gopher2600/hardware/riot/ports/controllers"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/panel"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
 	"github.com/jetsetilly/gopher2600/hardware/television"
@@ -104,12 +105,12 @@ func NewVCS(tv *television.Television, prefs *preferences.Preferences) (*VCS, er
 		return nil, err
 	}
 
-	err = vcs.RIOT.Ports.Plug(plugging.PortLeftPlayer, controllers.NewAuto)
+	err = vcs.RIOT.Ports.Plug(plugging.PortLeftPlayer, controllers.NewStick)
 	if err != nil {
 		return nil, err
 	}
 
-	err = vcs.RIOT.Ports.Plug(plugging.PortRightPlayer, controllers.NewAuto)
+	err = vcs.RIOT.Ports.Plug(plugging.PortRightPlayer, controllers.NewStick)
 	if err != nil {
 		return nil, err
 	}
@@ -156,6 +157,16 @@ func (vcs *VCS) AttachCartridge(cartload cartridgeloader.Loader) error {
 		vcs.Mem.Cart.Eject()
 	} else {
 		err := vcs.Mem.Cart.Attach(cartload)
+		if err != nil {
+			return err
+		}
+
+		err = vcs.RIOT.Ports.Plug(plugging.PortLeftPlayer, peripherals.Fingerprint(plugging.PortLeftPlayer, *cartload.Data))
+		if err != nil {
+			return err
+		}
+
+		err = vcs.RIOT.Ports.Plug(plugging.PortRightPlayer, peripherals.Fingerprint(plugging.PortRightPlayer, *cartload.Data))
 		if err != nil {
 			return err
 		}

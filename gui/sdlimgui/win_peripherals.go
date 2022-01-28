@@ -19,13 +19,13 @@ import (
 	"fmt"
 
 	"github.com/inkyblackness/imgui-go/v4"
+	"github.com/jetsetilly/gopher2600/hardware/peripherals"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
-	"github.com/jetsetilly/gopher2600/hardware/riot/ports/controllers"
 )
 
-const winControllersID = "Controllers"
+const winPeripheralsID = "Peripherals"
 
-type winControllers struct {
+type winPeripherals struct {
 	img  *SdlImgui
 	open bool
 
@@ -33,38 +33,38 @@ type winControllers struct {
 	controllerComboDim imgui.Vec2
 }
 
-func newWinControllers(img *SdlImgui) (window, error) {
-	win := &winControllers{
+func newWinPeripherals(img *SdlImgui) (window, error) {
+	win := &winPeripherals{
 		img: img,
 	}
 
 	return win, nil
 }
 
-func (win *winControllers) init() {
-	win.controllerComboDim = imguiGetFrameDim("", controllers.ControllerList...)
+func (win *winPeripherals) init() {
+	win.controllerComboDim = imguiGetFrameDim("", peripherals.Available...)
 }
 
-func (win *winControllers) id() string {
-	return winControllersID
+func (win *winPeripherals) id() string {
+	return winPeripheralsID
 }
 
-func (win *winControllers) isOpen() bool {
+func (win *winPeripherals) isOpen() bool {
 	return win.open
 }
 
-func (win *winControllers) setOpen(open bool) {
+func (win *winPeripherals) setOpen(open bool) {
 	win.open = open
 }
 
-func (win *winControllers) draw() {
+func (win *winPeripherals) draw() {
 	if !win.open {
 		return
 	}
 
 	// don't show the window if either of the controllers are unplugged
 	// !!TODO: show something meaningful for unplugged controllers
-	if win.img.lz.Controllers.LeftPlayer == nil || win.img.lz.Controllers.RightPlayer == nil {
+	if win.img.lz.Peripherals.LeftPlayer == nil || win.img.lz.Peripherals.RightPlayer == nil {
 		return
 	}
 
@@ -75,7 +75,7 @@ func (win *winControllers) draw() {
 	imgui.Spacing()
 	imgui.Text("Left")
 	imgui.Spacing()
-	win.drawController(win.img.lz.Controllers.LeftPlayer)
+	win.drawPeripheral(win.img.lz.Peripherals.LeftPlayer)
 	imgui.EndGroup()
 
 	imgui.SameLine()
@@ -83,18 +83,18 @@ func (win *winControllers) draw() {
 	imgui.BeginGroup()
 	imgui.Text("Right")
 	imgui.Spacing()
-	win.drawController(win.img.lz.Controllers.RightPlayer)
+	win.drawPeripheral(win.img.lz.Peripherals.RightPlayer)
 	imgui.EndGroup()
 
 	imgui.End()
 }
 
-func (win *winControllers) drawController(p ports.Peripheral) {
+func (win *winPeripherals) drawPeripheral(p ports.Peripheral) {
 	imgui.PushItemWidth(win.controllerComboDim.X)
 	if imgui.BeginComboV(fmt.Sprintf("##%v", p.PortID()), string(p.ID()), imgui.ComboFlagsNoArrowButton) {
-		for _, s := range controllers.ControllerList {
+		for _, s := range peripherals.Available {
 			if imgui.Selectable(s) {
-				termCmd := fmt.Sprintf("CONTROLLER %s %s", p.PortID(), s)
+				termCmd := fmt.Sprintf("PERIPHERAL %s %s", p.PortID(), s)
 				win.img.term.pushCommand(termCmd)
 			}
 		}
@@ -102,15 +102,4 @@ func (win *winControllers) drawController(p ports.Peripheral) {
 		imgui.EndCombo()
 	}
 	imgui.PopItemWidth()
-
-	_, auto := p.(*controllers.Auto)
-	if imgui.Checkbox(fmt.Sprintf("Auto##%v", p.PortID()), &auto) {
-		var termCmd string
-		if auto {
-			termCmd = fmt.Sprintf("CONTROLLER %s AUTO", p.PortID())
-		} else {
-			termCmd = fmt.Sprintf("CONTROLLER %s %s", p.PortID(), string(p.ID()))
-		}
-		win.img.term.pushCommand(termCmd)
-	}
 }

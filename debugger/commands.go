@@ -36,8 +36,9 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/cpu/registers"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/plusrom"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
+	"github.com/jetsetilly/gopher2600/hardware/peripherals/controllers"
+	"github.com/jetsetilly/gopher2600/hardware/peripherals/savekey"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
-	"github.com/jetsetilly/gopher2600/hardware/riot/ports/controllers"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
 	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/hardware/television/coords"
@@ -1353,7 +1354,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 			dbg.printLine(terminal.StyleFeedback, coproc.CoProcID())
 		}
 
-	case cmdController:
+	case cmdPeripheral:
 		player, _ := tokens.Get()
 
 		var id plugging.PortID
@@ -1369,14 +1370,16 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		controller, ok := tokens.Get()
 		if ok {
 			switch strings.ToUpper(controller) {
-			case "AUTO":
-				err = dbg.vcs.RIOT.Ports.Plug(id, controllers.NewAuto)
 			case "STICK":
 				err = dbg.vcs.RIOT.Ports.Plug(id, controllers.NewStick)
 			case "PADDLE":
 				err = dbg.vcs.RIOT.Ports.Plug(id, controllers.NewPaddle)
 			case "KEYPAD":
 				err = dbg.vcs.RIOT.Ports.Plug(id, controllers.NewKeypad)
+			case "GAMEPAD":
+				err = dbg.vcs.RIOT.Ports.Plug(id, controllers.NewGamepad)
+			case "SAVEKEY":
+				err = dbg.vcs.RIOT.Ports.Plug(id, savekey.NewSaveKey)
 			}
 		}
 
@@ -1392,12 +1395,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 			p = dbg.vcs.RIOT.Ports.RightPlayer
 		}
 
-		s := strings.Builder{}
-		if _, ok := p.(*controllers.Auto); ok {
-			s.WriteString("[auto] ")
-		}
-		s.WriteString(p.String())
-		dbg.printLine(terminal.StyleInstrument, s.String())
+		dbg.printLine(terminal.StyleInstrument, p.String())
 
 	case cmdPanel:
 		mode, ok := tokens.Get()

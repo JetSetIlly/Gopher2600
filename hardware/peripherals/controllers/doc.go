@@ -13,9 +13,6 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
+// Package controllers contains the implementations for all the emulated
+// controllers for the VCS.
 package controllers
-
-// ControllerList is the list of controllers. These are the values that can be
-// returned by the ID() function of the ports.Peripheral implementations in
-// this package.
-var ControllerList = []string{"Stick", "Paddle", "Keyboard"}

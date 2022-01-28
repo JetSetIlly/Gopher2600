@@ -18,7 +18,7 @@ package lazyvalues
 import (
 	"sync/atomic"
 
-	"github.com/jetsetilly/gopher2600/hardware/riot/ports/savekey"
+	"github.com/jetsetilly/gopher2600/hardware/peripherals/savekey"
 )
 
 // LazyChipRegisters lazily accesses chip registere information from the emulator.

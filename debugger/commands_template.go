@@ -57,7 +57,7 @@ const (
 	cmdCoProc  = "COPROC"
 
 	// user input.
-	cmdController = "CONTROLLER"
+	cmdPeripheral = "PERIPHERAL"
 	cmdPanel      = "PANEL"
 	cmdStick      = "STICK"
 	cmdKeypad     = "KEYPAD"
@@ -120,7 +120,7 @@ var commandTemplate = []string{
 	cmdCoProc + " (ID|LIST [ILLEGAL|SOURCEFILES]|TOP (%<top>N))",
 
 	// user input
-	cmdController + " [LEFT|RIGHT] (AUTO|STICK|PADDLE|KEYBOARD)",
+	cmdPeripheral + " [LEFT|RIGHT] (STICK|PADDLE|KEYPAD|GAMEPAD|SAVEKEY)",
 	cmdPanel + " (SET [P0PRO|P1PRO|P0AM|P1AM|COL|BW]|TOGGLE [P0|P1|COL]|[HOLD|RELEASE] [SELECT|RESET])",
 	cmdStick + " [LEFT|RIGHT] [LEFT|RIGHT|UP|DOWN|FIRE|NOLEFT|NORIGHT|NOUP|NODOWN|NOFIRE]",
 	cmdKeypad + " [LEFT|RIGHT] [NONE|0|1|2|3|4|5|6|7|8|9|*|#]",

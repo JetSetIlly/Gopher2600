@@ -143,7 +143,7 @@ func NewLoader(filename string, mapping string) (Loader, error) {
 		},
 	}
 
-	// create an empty slice as the default data
+	// create an empty slice for the Data field to refer to
 	data := make([]byte, 0)
 	cl.Data = &data
 
@@ -349,7 +349,7 @@ func (cl *Loader) Load() error {
 		return nil
 	}
 
-	if len(*cl.Data) > 0 {
+	if cl.Data != nil && len(*cl.Data) > 0 {
 		return nil
 	}
 

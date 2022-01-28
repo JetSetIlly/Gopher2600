@@ -26,8 +26,8 @@ type periphShim struct {
 	periph ports.Peripheral
 }
 
-// LazyControllers lazily accesses controller information from the emulator.
-type LazyControllers struct {
+// LazyPeripherals lazily accesses controller information from the emulator.
+type LazyPeripherals struct {
 	val *LazyValues
 
 	// unlike the other lazy types we can't use atomic values here because the
@@ -40,8 +40,8 @@ type LazyControllers struct {
 	RightPlayer ports.Peripheral
 }
 
-func newLazyControllers(val *LazyValues) *LazyControllers {
-	lz := &LazyControllers{
+func newLazyPeripherals(val *LazyValues) *LazyPeripherals {
+	lz := &LazyPeripherals{
 		val: val,
 	}
 	lz.left.Store(periphShim{})
@@ -49,12 +49,12 @@ func newLazyControllers(val *LazyValues) *LazyControllers {
 	return lz
 }
 
-func (lz *LazyControllers) push() {
+func (lz *LazyPeripherals) push() {
 	lz.left.Store(periphShim{periph: lz.val.vcs.RIOT.Ports.LeftPlayer})
 	lz.right.Store(periphShim{periph: lz.val.vcs.RIOT.Ports.RightPlayer})
 }
 
-func (lz *LazyControllers) update() {
+func (lz *LazyPeripherals) update() {
 	lz.LeftPlayer = lz.left.Load().(periphShim).periph
 	lz.RightPlayer = lz.right.Load().(periphShim).periph
 }

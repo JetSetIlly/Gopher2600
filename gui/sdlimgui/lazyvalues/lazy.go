@@ -51,7 +51,7 @@ type LazyValues struct {
 	Ball        *LazyBall
 	TV          *LazyTV
 	Cart        *LazyCart
-	Controllers *LazyControllers
+	Peripherals *LazyPeripherals
 	Collisions  *LazyCollisions
 	Ports       *LazyPorts
 	Tracker     *LazyTracker
@@ -92,7 +92,7 @@ func NewLazyValues(e emulation.Emulation) *LazyValues {
 	val.Ball = newLazyBall(val)
 	val.TV = newLazyTV(val)
 	val.Cart = newLazyCart(val)
-	val.Controllers = newLazyControllers(val)
+	val.Peripherals = newLazyPeripherals(val)
 	val.Collisions = newLazyCollisions(val)
 	val.Ports = newLazyPorts(val)
 	val.Tracker = newLazyTracker(val)
@@ -128,7 +128,7 @@ func (val *LazyValues) Refresh() {
 		val.Ball.update()
 		val.TV.update()
 		val.Cart.update()
-		val.Controllers.update()
+		val.Peripherals.update()
 		val.Collisions.update()
 		val.Ports.update()
 		val.Tracker.update()
@@ -156,7 +156,7 @@ func (val *LazyValues) Refresh() {
 		val.Ball.push()
 		val.TV.push()
 		val.Cart.push()
-		val.Controllers.push()
+		val.Peripherals.push()
 		val.Collisions.push()
 		val.Ports.push()
 		val.Tracker.push()
