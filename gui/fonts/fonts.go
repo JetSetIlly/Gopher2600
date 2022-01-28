@@ -119,13 +119,14 @@ const (
 	Tape    = '\ue003'
 	Wifi    = '\ue004'
 	Savekey = '\ue005'
+	Gamepad = '\ue006'
 )
 
 // The first and last unicode points used in the application. We use this to
 // make sure we're using as small a font texture as possible.
 const (
 	Gopher2600IconMin = '\ue000'
-	Gopher2600IconMax = '\ue005'
+	Gopher2600IconMax = '\ue006'
 )
 
 //go:embed "Hack-Regular.ttf"

@@ -26,7 +26,7 @@ import (
 )
 
 const (
-	notificationDurationPeripheral = 60
+	notificationDurationPeripheral = 90
 	notificationDurationCartridge  = 60
 	notificationDurationEventRun   = 60
 	notificationDurationScreenshot = 60
@@ -52,6 +52,8 @@ func (pn *peripheralNotification) set(peripheral plugging.PeripheralID) {
 		pn.icon = fmt.Sprintf("%c", fonts.Keypad)
 	case plugging.PeriphSavekey:
 		pn.icon = fmt.Sprintf("%c", fonts.Savekey)
+	case plugging.PeriphGamepad:
+		pn.icon = fmt.Sprintf("%c", fonts.Gamepad)
 	default:
 		pn.icon = ""
 		return
@@ -88,12 +90,13 @@ func (pn *peripheralNotification) draw(win *playScr) {
 	if pn.rightAlign {
 		pos = imgui.Vec2{dimen[0], dimen[1]}
 		id = "##controlleralertright"
-		pos.X -= win.img.glsl.fonts.gopher2600IconsSize * 1.5
+		pos.X -= win.img.glsl.fonts.gopher2600IconsSize * 1.35
 	} else {
 		pos = imgui.Vec2{0, dimen[1]}
 		id = "##controlleralertleft"
+		pos.X += win.img.glsl.fonts.gopher2600IconsSize * 0.20
 	}
-	pos.Y -= win.img.glsl.fonts.gopher2600IconsSize * 1.5
+	pos.Y -= win.img.glsl.fonts.gopher2600IconsSize * 1.35
 
 	imgui.SetNextWindowPos(pos)
 	imgui.PushStyleColor(imgui.StyleColorWindowBg, win.img.cols.Transparent)

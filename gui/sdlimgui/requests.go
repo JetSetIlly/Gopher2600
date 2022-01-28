@@ -91,16 +91,14 @@ func (img *SdlImgui) serviceSetFeature(request featureRequest) {
 		img.plusROMFirstInstallation = true
 
 	case gui.ReqControllerChange:
-		if img.isPlaymode() {
-			err = argLen(request.args, 2)
-			if err == nil {
-				port := request.args[0].(plugging.PortID)
-				switch port {
-				case plugging.PortLeftPlayer:
-					img.playScr.peripheralLeft.set(request.args[1].(plugging.PeripheralID))
-				case plugging.PortRightPlayer:
-					img.playScr.peripheralRight.set(request.args[1].(plugging.PeripheralID))
-				}
+		err = argLen(request.args, 2)
+		if err == nil {
+			port := request.args[0].(plugging.PortID)
+			switch port {
+			case plugging.PortLeftPlayer:
+				img.playScr.peripheralLeft.set(request.args[1].(plugging.PeripheralID))
+			case plugging.PortRightPlayer:
+				img.playScr.peripheralRight.set(request.args[1].(plugging.PeripheralID))
 			}
 		}
 

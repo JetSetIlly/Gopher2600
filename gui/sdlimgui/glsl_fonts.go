@@ -108,7 +108,7 @@ func newGLSLfonts() (*glslFonts, error) {
 	var gopher2600IconBuilder imgui.GlyphRangesBuilder
 	gopher2600IconBuilder.Add(fonts.Gopher2600IconMin, fonts.Gopher2600IconMax)
 
-	fnts.gopher2600IconsSize = 52.0
+	fnts.gopher2600IconsSize = 60.0
 	fnts.gopher2600Icons = atlas.AddFontFromMemoryTTFV(fonts.Gopher2600Icons, fnts.gopher2600IconsSize, gopher2600IconConfig, gopher2600IconBuilder.Build().GlyphRanges)
 	if font == 0 {
 		return nil, curated.Errorf("font: error loading Gopher2600 font from memory")
