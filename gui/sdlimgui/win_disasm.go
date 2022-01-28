@@ -437,7 +437,7 @@ func (win *winDisasm) drawBank(focusAddr uint16) {
 					ct++
 				}
 
-				if onBank && e.Result.Address&memorymap.CartridgeBits == focusAddr {
+				if win.focusOnAddr && onBank && e.Result.Address&memorymap.CartridgeBits == focusAddr {
 					focusCt = ct
 					focusCtApply = true
 				}
@@ -521,6 +521,10 @@ func (win *winDisasm) drawBank(focusAddr uint16) {
 
 			y = float32(focusCt-focusGap) * y
 			imgui.SetScrollY(y)
+
+			// address has been focused so we turn off the focus flag - it will
+			// be set again if necessary
+			win.focusOnAddr = false
 		}
 
 		imgui.EndTable()
@@ -575,6 +579,9 @@ func (win *winDisasm) drawEntry(e *disassembly.Entry, focusAddr uint16, onBank b
 	// highligh current PC entry
 	if onBank && (e.Result.Address&memorymap.CartridgeBits == focusAddr) {
 		imgui.TableSetBgColor(imgui.TableBgTargetRowBg0, win.img.cols.DisasmStep)
+
+		// focussed entry has been drawn so unset focus flag
+		win.focusOnAddr = false
 	}
 
 	// does this entry/address have a PC break applied to it
