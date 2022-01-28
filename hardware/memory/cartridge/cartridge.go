@@ -226,46 +226,46 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 
 	switch strings.ToUpper(cartload.Mapping) {
 	case "2K":
-		cart.mapper, err = newAtari2k(cart.instance, cartload.Data)
+		cart.mapper, err = newAtari2k(cart.instance, *cartload.Data)
 	case "4K":
-		cart.mapper, err = newAtari4k(cart.instance, cartload.Data)
+		cart.mapper, err = newAtari4k(cart.instance, *cartload.Data)
 	case "F8":
-		cart.mapper, err = newAtari8k(cart.instance, cartload.Data)
+		cart.mapper, err = newAtari8k(cart.instance, *cartload.Data)
 	case "F6":
-		cart.mapper, err = newAtari16k(cart.instance, cartload.Data)
+		cart.mapper, err = newAtari16k(cart.instance, *cartload.Data)
 	case "F4":
-		cart.mapper, err = newAtari32k(cart.instance, cartload.Data)
+		cart.mapper, err = newAtari32k(cart.instance, *cartload.Data)
 	case "2KSC":
-		cart.mapper, err = newAtari2k(cart.instance, cartload.Data)
+		cart.mapper, err = newAtari2k(cart.instance, *cartload.Data)
 		trySuperchip = true
 	case "4KSC":
-		cart.mapper, err = newAtari4k(cart.instance, cartload.Data)
+		cart.mapper, err = newAtari4k(cart.instance, *cartload.Data)
 		trySuperchip = true
 	case "F8SC":
-		cart.mapper, err = newAtari8k(cart.instance, cartload.Data)
+		cart.mapper, err = newAtari8k(cart.instance, *cartload.Data)
 		trySuperchip = true
 	case "F6SC":
-		cart.mapper, err = newAtari16k(cart.instance, cartload.Data)
+		cart.mapper, err = newAtari16k(cart.instance, *cartload.Data)
 		trySuperchip = true
 	case "F4SC":
-		cart.mapper, err = newAtari32k(cart.instance, cartload.Data)
+		cart.mapper, err = newAtari32k(cart.instance, *cartload.Data)
 		trySuperchip = true
 	case "FA":
-		cart.mapper, err = newCBS(cart.instance, cartload.Data)
+		cart.mapper, err = newCBS(cart.instance, *cartload.Data)
 	case "FE":
 		// !!TODO: FE cartridge mapping
 	case "E0":
-		cart.mapper, err = newParkerBros(cart.instance, cartload.Data)
+		cart.mapper, err = newParkerBros(cart.instance, *cartload.Data)
 	case "E7":
-		cart.mapper, err = newMnetwork(cart.instance, cartload.Data)
+		cart.mapper, err = newMnetwork(cart.instance, *cartload.Data)
 	case "3F":
-		cart.mapper, err = newTigervision(cart.instance, cartload.Data)
+		cart.mapper, err = newTigervision(cart.instance, *cartload.Data)
 	case "AR":
 		cart.mapper, err = supercharger.NewSupercharger(cart.instance, cartload)
 	case "DF":
-		cart.mapper, err = newDF(cart.instance, cartload.Data)
+		cart.mapper, err = newDF(cart.instance, *cartload.Data)
 	case "3E":
-		cart.mapper, err = new3e(cart.instance, cartload.Data)
+		cart.mapper, err = new3e(cart.instance, *cartload.Data)
 	case "E3P":
 		// synonym for 3E+
 		fallthrough
@@ -273,21 +273,21 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 		// synonym for 3E+
 		fallthrough
 	case "3E+":
-		cart.mapper, err = new3ePlus(cart.instance, cartload.Data)
+		cart.mapper, err = new3ePlus(cart.instance, *cartload.Data)
 	case "EF":
-		cart.mapper, err = newEF(cart.instance, cartload.Data)
+		cart.mapper, err = newEF(cart.instance, *cartload.Data)
 	case "EFSC":
-		cart.mapper, err = newEF(cart.instance, cartload.Data)
+		cart.mapper, err = newEF(cart.instance, *cartload.Data)
 		trySuperchip = true
 	case "SB":
-		cart.mapper, err = newSuperbank(cart.instance, cartload.Data)
+		cart.mapper, err = newSuperbank(cart.instance, *cartload.Data)
 	case "DPC":
-		cart.mapper, err = newDPC(cart.instance, cartload.Data)
+		cart.mapper, err = newDPC(cart.instance, *cartload.Data)
 	case "DPC+":
-		cart.mapper, err = dpcplus.NewDPCplus(cart.instance, cart.Filename, cartload.Data)
+		cart.mapper, err = dpcplus.NewDPCplus(cart.instance, cart.Filename, *cartload.Data)
 	case "CDF":
 		// CDF mapper defaults to version CDFJ
-		cart.mapper, err = cdf.NewCDF(cart.instance, cart.Filename, "CDFJ", cartload.Data)
+		cart.mapper, err = cdf.NewCDF(cart.instance, cart.Filename, "CDFJ", *cartload.Data)
 	case "MVC":
 		cart.mapper, err = moviecart.NewMoviecart(cart.instance, cartload)
 	}
@@ -354,7 +354,7 @@ func (cart *Cartridge) HotLoad(cartload cartridgeloader.Loader) error {
 
 		cart.Hash = cartload.Hash
 
-		err = hl.HotLoad(cartload.Data)
+		err = hl.HotLoad(*cartload.Data)
 		if err != nil {
 			return err
 		}

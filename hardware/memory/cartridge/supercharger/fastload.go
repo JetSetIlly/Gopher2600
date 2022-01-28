@@ -62,7 +62,7 @@ type FastLoaded func(*cpu.CPU, *vcs.RAM, *timer.Timer) error
 func newFastLoad(cart *Supercharger, loader cartridgeloader.Loader) (tape, error) {
 	tap := &FastLoad{
 		cart: cart,
-		data: loader.Data,
+		data: *loader.Data,
 	}
 
 	if len(tap.data)%8448 != 0 {

@@ -64,7 +64,10 @@ type Loader struct {
 
 	// cartridge data. empty until Load() is called unless the loader was
 	// created by NewLoaderFromEmbed()
-	Data []byte
+	//
+	// the pointer-to-a-slice construct allows the cartridge to be
+	// loaded/changed by a Loader instance that has been passed by value.
+	Data *[]byte
 
 	// whether the data was assigned during NewLoaderFromEmbed()
 	embedded bool
@@ -139,6 +142,10 @@ func NewLoader(filename string, mapping string) (Loader, error) {
 			return nil
 		},
 	}
+
+	// create an empty slice as the default data
+	data := make([]byte, 0)
+	cl.Data = &data
 
 	if mapping == "AUTO" {
 		ext := strings.ToUpper(filepath.Ext(filename))
@@ -261,7 +268,7 @@ func NewLoaderFromEmbed(name string, data []byte, mapping string) (Loader, error
 		Filename:         name,
 		Mapping:          mapping,
 		RequestedMapping: mapping,
-		Data:             data,
+		Data:             &data,
 		embedded:         true,
 		Hash:             fmt.Sprintf("%x", sha1.Sum(data)),
 		VCSHook: func(cart mapper.CartMapper, event mapper.Event, args ...interface{}) error {
@@ -313,7 +320,7 @@ func (cl Loader) IsStreaming() (bool, bool) {
 // IsEmbedded returns true if Loader was created from embedded data. If data
 // has a length of zero then this function will return false.
 func (cl Loader) IsEmbedded() bool {
-	return cl.embedded && len(cl.Data) > 0
+	return cl.embedded && len(*cl.Data) > 0
 }
 
 // Load the cartridge data and return as a byte array. Loader filenames with a
@@ -342,7 +349,7 @@ func (cl *Loader) Load() error {
 		return nil
 	}
 
-	if len(cl.Data) > 0 {
+	if len(*cl.Data) > 0 {
 		return nil
 	}
 
@@ -363,7 +370,7 @@ func (cl *Loader) Load() error {
 		}
 		defer resp.Body.Close()
 
-		cl.Data, err = io.ReadAll(resp.Body)
+		*cl.Data, err = io.ReadAll(resp.Body)
 		if err != nil {
 			return curated.Errorf("cartridgeloader: %v", err)
 		}
@@ -381,14 +388,14 @@ func (cl *Loader) Load() error {
 		}
 		defer f.Close()
 
-		cl.Data, err = io.ReadAll(f)
+		*cl.Data, err = io.ReadAll(f)
 		if err != nil {
 			return curated.Errorf("cartridgeloader: %v", err)
 		}
 	}
 
 	// generate hash
-	hash := fmt.Sprintf("%x", sha1.Sum(cl.Data))
+	hash := fmt.Sprintf("%x", sha1.Sum(*cl.Data))
 
 	// check for hash consistency
 	if cl.Hash != "" && cl.Hash != hash {
