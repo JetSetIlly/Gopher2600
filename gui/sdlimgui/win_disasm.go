@@ -512,7 +512,7 @@ func (win *winDisasm) drawBank(focusAddr uint16) {
 		// hasn't been drawn - ListClipper will only draw the entries that are
 		// currently visible and by it's nature, focusOnAddr will want to work
 		// with entries that may not be visible
-		if onBank && win.focusOnAddr && focusCtApply {
+		if onBank && focusCtApply {
 			y := imgui.FontSize() + imgui.CurrentStyle().ItemInnerSpacing().Y
 
 			// leave a small gap between the top of the scroll window and
