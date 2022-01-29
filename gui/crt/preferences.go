@@ -83,7 +83,7 @@ const (
 	blackLevel         = 0.06
 	pixelPerfectFade   = 0.4
 	syncSpeedScanlines = 65
-	syncPowerOn        = false
+	syncPowerOn        = true
 )
 
 // NewPreferences is the preferred method of initialisation for the Preferences type.

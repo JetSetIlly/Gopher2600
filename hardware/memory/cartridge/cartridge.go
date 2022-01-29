@@ -177,6 +177,12 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 
 	// log result of Attach() on function return
 	defer func() {
+		// we might have arrived here as a result of an error so we should
+		// check cart.mapper before trying to access it
+		if cart.mapper == nil {
+			return
+		}
+
 		if _, ok := cart.mapper.(*ejected); !ok {
 			logger.Logf("cartridge", "inserted %s", cart.mapper.ID())
 		}
