@@ -22,7 +22,7 @@ The key features of the emulator:
 * [Gameplay rewinding](#rewinding)
 * Tracker/Piano Keys visualisation
 * [Gameplay recording and playback](#recording-gameplay)
-* Support for (and auto-detection of) [stick, paddle and keypad](#hand-controllers)
+* Support for (and auto-detection of) the stick, paddle, keypad and also Sega Genesis style [controllers](#hand-controllers)
 
 The graphical [debugger](#debugger):
 
@@ -404,11 +404,11 @@ by specifying a keyword. The list below shows the currently defined keywords.
 The rest of the section will give a brief run down of debugger features.
 
 	[ $f000 SEI ] >> help
-        AUDIO         BALL        BREAK    CARTRIDGE        CLEAR   CONTROLLER
+        AUDIO         BALL        BREAK    CARTRIDGE        CLEAR       COPROC
           CPU       DISASM      DISPLAY         DROP         GOTO         GREP
-         HALT         HELP       INSERT       KEYPAD         LAST         LINT
-         LIST          LOG       MEMMAP     MEMUSAGE      MISSILE       ONHALT
-       ONSTEP      ONTRACE        PANEL        PATCH         PEEK       PLAYER
+         HALT         HELP       INSERT       KEYPAD         LAST         LIST
+          LOG       MEMMAP     MEMUSAGE      MISSILE       ONHALT       ONSTEP
+      ONTRACE        PANEL        PATCH         PEEK   PERIPHERAL       PLAYER
     PLAYFIELD      PLUSROM         POKE      QUANTUM         QUIT          RAM
         RESET       REWIND         RIOT          RUN       SCRIPT         STEP
         STICK       SYMBOL          TIA        TRACE         TRAP           TV
@@ -416,7 +416,7 @@ The rest of the section will give a brief run down of debugger features.
 	
 The debugger allows tab-completion in most situations. For example, pressing `W` followed by the Tab key on your keyboard, will autocomplete the `WATCH` command. This works for command arguments too. It does not currently work for filenames, or symbols. Given a choice of completions, the Tab key will cycle through the available options.
 
-Addresses can be specified by decimal or hexadecimal. Hexadecimal addresses can be written `0x80` or `$80`. The debugger will echo addresses in the first format. Addresses can also be specified by symbol if one is available. The debugger understands the canonical symbol names used in VCS development. For example, `WATCH NUSIZ0` will halt execution whenever address 0x04 (or any of its mirrors) is written to. 
+Addresses can be specified by decimal or hexadecimal. Hexadecimal addresses can be written `0x80` or `$80`. The debugger will echo addresses in the first format. Addresses can also be specified by symbol if one is available. The debugger understands the canonical symbol names used in VCS development. For example, `WATCH WRITE VBLANK` will halt execution whenever VBLANK (including all the mirrors) is written to. 
 
 Watches are one of the three facilities that will halt execution of the emulator. The other two are `TRAP` and `BREAK`. Both of these commands will halt execution when a "target" changes or meets some condition. An example of a target is the Programmer Counter or the Scanline value. See `HELP BREAK` and `HELP TRAP` for more information.
 
