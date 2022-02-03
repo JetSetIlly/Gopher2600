@@ -151,6 +151,10 @@ func (win *winTimeline) drawTimeline() {
 	// the width that can be seen in the window at any one time
 	availableWidth := win.img.plt.displaySize()[0] * 0.80
 
+	// whether the timeline is hovered over. each child in the trace group is
+	// tested and the results ORed together
+	hovered := false
+
 	// trace group
 	imgui.BeginGroup()
 
@@ -239,6 +243,7 @@ func (win *winTimeline) drawTimeline() {
 		x += traceWidth
 	}
 	imgui.EndChild()
+	hovered = hovered || imgui.IsItemHovered()
 
 	// input trace
 	// TODO: right player and panel input
@@ -259,6 +264,7 @@ func (win *winTimeline) drawTimeline() {
 		x += traceWidth
 	}
 	imgui.EndChild()
+	hovered = hovered || imgui.IsItemHovered()
 
 	// rewind range indicator
 	traceSize = imgui.Vec2{X: availableWidth, Y: rangeHeight}
@@ -270,6 +276,7 @@ func (win *winTimeline) drawTimeline() {
 		win.img.cols.timelineRewindRange)
 
 	imgui.EndChild()
+	hovered = hovered || imgui.IsItemHovered()
 
 	// frame indicators
 	traceSize = imgui.Vec2{X: availableWidth, Y: frameIndicatorRadius}
@@ -297,11 +304,11 @@ func (win *winTimeline) drawTimeline() {
 	dl.AddCircleFilled(imgui.Vec2{X: pos.X + float32(fr*traceWidth), Y: pos.Y + frameIndicatorRadius}, frameIndicatorRadius, win.img.cols.timelineCurrentPointer)
 
 	imgui.EndChild()
+	hovered = hovered || imgui.IsItemHovered()
 
 	imgui.EndGroup()
 
-	// hover information for the trace ground
-	hovered := imgui.IsItemHoveredV(imgui.HoveredFlagsAllowWhenOverlapped)
+	// mouse hover position
 	hoverX := imgui.MousePos().X - pos.X
 
 	rewindStartFrame := win.img.lz.Rewind.Timeline.AvailableStart
