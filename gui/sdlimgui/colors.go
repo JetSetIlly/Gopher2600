@@ -245,7 +245,7 @@ func newColors() *imguiColors {
 		CoProcSourceSelected:       imgui.Vec4{1.0, 1.0, 1.0, 0.1},
 		CoProcSourceHover:          imgui.Vec4{0.5, 0.5, 0.5, 0.1},
 		CoProcSourceLineNumber:     imgui.Vec4{0.5, 0.8, 0.3, 1.0},
-		CoProcSourceLoad:           imgui.Vec4{0.8, 0.3, 0.3, 1.0},
+		CoProcSourceLoad:           imgui.Vec4{0.9, 0.5, 0.5, 1.0},
 		CoProcSourceBug:            imgui.Vec4{0.5, 0.5, 0.8, 1.0},
 		CoProcIllegalAccessRead:    imgui.Vec4{0.8, 0.3, 0.8, 1.0},
 		CoProcIllegalAccessWrite:   imgui.Vec4{0.8, 0.5, 0.4, 1.0},
