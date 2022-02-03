@@ -52,8 +52,10 @@ const Clk = float32(70)
 const clklenFlash = float32(4)
 
 // the maximum number of cycles allowed in a single ARM program execution.
-// no idea if this value is accurate.
-const CycleLimit = 400000
+// no idea if this value is sufficient.
+//
+// 03/02/2022 - raised to accomodate CDFJBoulderDash development
+const CycleLimit = 1000000
 
 // ARM implements the ARM7TDMI-S LPC2103 processor.
 type ARM struct {
