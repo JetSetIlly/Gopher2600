@@ -20,7 +20,7 @@ import "fmt"
 // CartCoProcDisasmEntry represents a single decoded instruction by the coprocessor.
 type CartCoProcDisasmEntry interface {
 	Key() string
-	String() string
+	CSV() string
 }
 
 // CartCoProcDisasmSummary represents a summary of a coprocessor execution.
