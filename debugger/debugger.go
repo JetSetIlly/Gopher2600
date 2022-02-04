@@ -18,6 +18,7 @@ package debugger
 import (
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -1010,7 +1011,7 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) 
 
 	coproc := dbg.vcs.Mem.Cart.GetCoProcBus()
 	dbg.CoProcDisasm = coprocDisasm.NewDisassembly(dbg.vcs.TV, coproc)
-	dbg.CoProcDev = coprocDev.NewDeveloper(cartload.Filename, coproc)
+	dbg.CoProcDev = coprocDev.NewDeveloper(filepath.Dir(cartload.Filename), coproc)
 	if dbg.CoProcDev != nil {
 		dbg.vcs.TV.AddFrameTrigger(dbg.CoProcDev)
 	}

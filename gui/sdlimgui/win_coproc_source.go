@@ -92,14 +92,14 @@ func (win *winCoProcSource) draw() {
 		imgui.BeginChildV("##coprocSourceMain", imgui.Vec2{X: 0, Y: imguiRemainingWinHeight() - win.optionsHeight}, false, 0)
 		imgui.BeginTabBar("##coprocSourceTabBar")
 
-		for _, fn := range src.FilesNames {
+		for _, fn := range src.Filenames {
 			// auto-select to tab as appropriate
 			tabItemFlg := imgui.TabItemFlagsNone
 			if win.scrollTo > 0 && win.scrollToFile == fn {
 				tabItemFlg = imgui.TabItemFlagsSetSelected
 			}
 
-			if imgui.BeginTabItemV(fn, nil, tabItemFlg) {
+			if imgui.BeginTabItemV(src.Files[fn].ShortFilename, nil, tabItemFlg) {
 				imgui.PushFont(win.img.glsl.fonts.code)
 				lineSpacing := float32(win.img.prefs.codeFontLineSpacing.Get().(int))
 				imgui.PushStyleVarVec2(imgui.StyleVarCellPadding, imgui.Vec2{X: 4, Y: lineSpacing})
@@ -148,29 +148,23 @@ func (win *winCoProcSource) draw() {
 						// show chip icon and also tooltip if mouse is hovered
 						// on selectable
 						imgui.TableNextColumn()
-						if len(ln.Asm) > 0 {
+						if len(ln.Disassembly) > 0 {
 							if win.showAsm {
 								imguiTooltip(func() {
-									imgui.Text(ln.File.Filename)
+									imgui.Text(ln.File.ShortFilename)
 									imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLineNumber)
 									imgui.Text(fmt.Sprintf("Line: %d", ln.LineNumber))
 									imgui.PopStyleColor()
 									imgui.Spacing()
 									imgui.Separator()
 									imgui.Spacing()
-									limit := 0
-									for _, asm := range ln.Asm {
-										imgui.Text(asm.Instruction)
-										limit++
-										if limit > 10 {
-											imgui.Text("...more")
-											break // for loop
-										}
+									for _, asm := range ln.Disassembly {
+										imgui.Text(asm)
 									}
 								}, true)
 							}
 
-							if ln.IllegalAccess {
+							if ln.IllegalCount > 0 {
 								imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceBug)
 								imgui.Text(string(fonts.CoProcBug))
 								imgui.PopStyleColor()
@@ -225,7 +219,7 @@ func (win *winCoProcSource) draw() {
 	}
 }
 
-func (win *winCoProcSource) gotoSource(ln *developer.SrcLine) {
+func (win *winCoProcSource) gotoSource(ln *developer.SourceLine) {
 	win.setOpen(true)
 	win.scrollTo = 10
 	win.scrollToFile = ln.File.Filename

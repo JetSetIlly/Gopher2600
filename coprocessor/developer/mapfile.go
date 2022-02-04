@@ -42,7 +42,7 @@ type mapfile struct {
 const mapFile = "armcode.map"
 const mapFile_older = "custom2.map"
 
-func findMapFile(romDir string) *os.File {
+func findMapFile(pathToROM string) *os.File {
 	// current working directory
 	fl, err := os.Open(mapFile)
 	if err == nil {
@@ -50,31 +50,31 @@ func findMapFile(romDir string) *os.File {
 	}
 
 	// same direcotry as binary
-	fl, err = os.Open(filepath.Join(romDir, mapFile))
+	fl, err = os.Open(filepath.Join(pathToROM, mapFile))
 	if err == nil {
 		return fl
 	}
 
 	// main sub-directory
-	fl, err = os.Open(filepath.Join(romDir, "main", mapFile))
+	fl, err = os.Open(filepath.Join(pathToROM, "main", mapFile))
 	if err == nil {
 		return fl
 	}
 
 	// main/bin sub-directory
-	fl, err = os.Open(filepath.Join(romDir, "main", "bin", mapFile))
+	fl, err = os.Open(filepath.Join(pathToROM, "main", "bin", mapFile))
 	if err == nil {
 		return fl
 	}
 
 	// custom/bin sub-directory. some older DPC+ sources uses this layout
-	fl, err = os.Open(filepath.Join(romDir, "custom", "bin", mapFile_older))
+	fl, err = os.Open(filepath.Join(pathToROM, "custom", "bin", mapFile_older))
 	if err == nil {
 		return fl
 	}
 
 	// jetsetilly source tree
-	fl, err = os.Open(filepath.Join(romDir, "arm", "main.map"))
+	fl, err = os.Open(filepath.Join(pathToROM, "arm", "main.map"))
 	if err == nil {
 		return fl
 	}
@@ -89,11 +89,8 @@ func newMapFile(pathToROM string) (*mapfile, error) {
 		program: make([]entry, 0, 32),
 	}
 
-	// path to ROM without the filename
-	romDir := filepath.Dir(pathToROM)
-
 	// find objdump file and open it
-	fl := findMapFile(romDir)
+	fl := findMapFile(pathToROM)
 	if fl == nil {
 		return nil, curated.Errorf("mapfile: gcc .map file not available (%s)", mapFile)
 	}
@@ -161,13 +158,13 @@ func newMapFile(pathToROM string) (*mapfile, error) {
 	return mf, nil
 }
 
-// findFunctionName returns the function name for the supplied address. returns
+// findFunctionName returns the function name for the supplied pc. returns
 // the empty string if function name cannot be found.
-func (mf *mapfile) findEntry(address uint32) entry {
+func (mf *mapfile) findEntry(pc uint32) entry {
 	re := entry{}
 
 	for _, e := range mf.program {
-		if address < e.address {
+		if pc < e.address {
 			return re
 		}
 		re = e

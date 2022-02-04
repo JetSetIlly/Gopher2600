@@ -20,7 +20,7 @@ type IllegalAccessEntry struct {
 	Event      string
 	PC         uint32
 	AccessAddr uint32
-	SrcLine    *SrcLine
+	SrcLine    *SourceLine
 }
 
 // IllegalAccess records memory accesses by the coprocesser that are "illegal".

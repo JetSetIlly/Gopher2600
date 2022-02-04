@@ -1342,8 +1342,8 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 						dbg.printLine(terminal.StyleError, "no source files found")
 						return
 					}
-					for _, fn := range src.FilesNames {
-						dbg.printLine(terminal.StyleFeedback, fn)
+					for _, fn := range src.Files {
+						dbg.printLine(terminal.StyleFeedback, fn.Filename)
 					}
 				})
 			default:

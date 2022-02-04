@@ -29,8 +29,10 @@ import (
 type Developer struct {
 	cart mapper.CartCoProcBus
 
-	// obj dump for binary (if available)
-	source     *Source
+	// information about the source code to the program. can be nil
+	source *Source
+
+	// lock source
 	sourceLock sync.Mutex
 
 	// illegal accesses already encountered. duplicate accesses will not be logged.
@@ -88,7 +90,13 @@ func (dev *Developer) IllegalAccess(event string, pc uint32, addr uint32) string
 	}
 
 	if dev.source != nil {
-		e.SrcLine = dev.source.findProgramAccess(pc)
+		var err error
+
+		e.SrcLine, err = dev.source.findSourceLine(pc)
+		if err != nil {
+			logger.Logf("developer", "%v", err)
+			return UnknownSourceLine
+		}
 	}
 
 	dev.illegalAccess.entries[accessKey] = e
@@ -98,17 +106,9 @@ func (dev *Developer) IllegalAccess(event string, pc uint32, addr uint32) string
 		return UnknownSourceLine
 	}
 
-	e.SrcLine.IllegalAccess = true
 	e.SrcLine.IllegalCount++
 
-	function := ""
-	if e.SrcLine.Function != "" {
-		function = fmt.Sprintf(": %s()", e.SrcLine.Function)
-	} else {
-		function = UnknownFunction
-	}
-
-	return fmt.Sprintf("%s%s\n%s", e.SrcLine.String(), function, e.SrcLine.Content)
+	return fmt.Sprintf("%s %s\n%s", e.SrcLine.String(), e.SrcLine.Function.Name, e.SrcLine.Content)
 }
 
 // ExecutionProfile implements the CartCoProcDeveloper interface.
@@ -117,8 +117,11 @@ func (dev *Developer) ExecutionProfile(addr map[uint32]float32) {
 	defer dev.sourceLock.Unlock()
 
 	if dev.source != nil {
-		for k, v := range addr {
-			dev.source.execute(k, v)
+		for pc, ct := range addr {
+			err := dev.source.execute(pc, ct)
+			if err != nil {
+				logger.Logf("developer", "%v", err)
+			}
 		}
 
 		sort.Sort(dev.source.ExecutedLines)

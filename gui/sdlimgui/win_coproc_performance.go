@@ -21,7 +21,6 @@ import (
 
 	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/coprocessor/developer"
-	"github.com/jetsetilly/gopher2600/gui/fonts"
 )
 
 // in this case of the coprocessor disassmebly window the actual window title
@@ -114,7 +113,7 @@ func (win *winCoProcPerformance) drawExecutionPerformance(src *developer.Source,
 	src.Resort(byLifetimeCycles)
 
 	const top = 25
-	const numColumns = 6
+	const numColumns = 5
 
 	imgui.Spacing()
 	imgui.BeginTableV("##coprocPerformanceTable", numColumns, imgui.TableFlagsSizingFixedFit, imgui.Vec2{}, 0.0)
@@ -126,16 +125,21 @@ func (win *winCoProcPerformance) drawExecutionPerformance(src *developer.Source,
 	imgui.TableSetupColumnV("Line", imgui.TableColumnFlagsNone, width*0.1, 2)
 	imgui.TableSetupColumnV("Function", imgui.TableColumnFlagsNone, width*0.35, 3)
 	imgui.TableSetupColumnV("Load", imgui.TableColumnFlagsNone, width*0.1, 4)
-	imgui.TableSetupColumnV("", imgui.TableColumnFlagsNone, 0, 5)
 
-	if src == nil {
-		imgui.Text("No source files available")
+	if src == nil || len(src.ExecutedLines.Lines) == 0 {
+		imgui.Text("No performance profile")
+		imgui.EndTable()
 		return
 	}
 
 	imgui.TableHeadersRow()
 
-	for i := 0; i < top; i++ {
+	t := top
+	if len(src.ExecutedLines.Lines) < top {
+		t = len(src.ExecutedLines.Lines)
+	}
+
+	for i := 0; i < t; i++ {
 		imgui.TableNextRow()
 		ln := src.ExecutedLines.Lines[i]
 
@@ -148,7 +152,7 @@ func (win *winCoProcPerformance) drawExecutionPerformance(src *developer.Source,
 		// source on tooltip
 		if win.showSrc {
 			imguiTooltip(func() {
-				imgui.Text(ln.File.Filename)
+				imgui.Text(ln.File.ShortFilename)
 				imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLineNumber)
 				imgui.Text(fmt.Sprintf("Line: %d", ln.LineNumber))
 				imgui.PopStyleColor()
@@ -166,7 +170,7 @@ func (win *winCoProcPerformance) drawExecutionPerformance(src *developer.Source,
 		}
 
 		imgui.TableNextColumn()
-		imgui.Text(ln.File.Filename)
+		imgui.Text(ln.File.ShortFilename)
 
 		imgui.TableNextColumn()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLineNumber)
@@ -174,11 +178,7 @@ func (win *winCoProcPerformance) drawExecutionPerformance(src *developer.Source,
 		imgui.PopStyleColor()
 
 		imgui.TableNextColumn()
-		if ln.Function == "" {
-			imgui.Text(developer.UnknownFunction)
-		} else {
-			imgui.Text(fmt.Sprintf("%s()", ln.Function))
-		}
+		imgui.Text(fmt.Sprintf("%s", ln.Function.Name))
 
 		imgui.TableNextColumn()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLoad)
@@ -192,11 +192,6 @@ func (win *winCoProcPerformance) drawExecutionPerformance(src *developer.Source,
 			}
 		}
 		imgui.PopStyleColor()
-
-		imgui.TableNextColumn()
-		if ln.Inlined {
-			imgui.Text(string(fonts.InlineFunction))
-		}
 	}
 
 	imgui.EndTable()
