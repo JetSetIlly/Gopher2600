@@ -44,7 +44,7 @@ func (dbg *Debugger) buildPrompt() terminal.Prompt {
 	// disassembly entry. starting with the condition of no disassembly at all
 	// decoration indication that entry is unreliable
 	if coprocessor {
-		content.WriteString(fmt.Sprintf("%s (coprocessor)", e.Address))
+		content.WriteString(fmt.Sprintf("$%04x (coprocessor)", dbg.vcs.CPU.PC.Address()))
 	} else if e == nil {
 		content.WriteString(fmt.Sprintf("$%04x", dbg.vcs.CPU.PC.Address()))
 	} else if e.Level == disassembly.EntryLevelUnmappable {

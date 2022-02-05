@@ -321,11 +321,9 @@ func (cart *Cartridge) NumBanks() int {
 // GetBank returns the current bank information for the specified address. See
 // documentation for memorymap.Bank for more information.
 func (cart *Cartridge) GetBank(addr uint16) mapper.BankInfo {
-	if addr&memorymap.OriginCart != memorymap.OriginCart {
-		return mapper.BankInfo{NonCart: true}
-	}
-
-	return cart.mapper.GetBank(addr & memorymap.CartridgeBits)
+	bank := cart.mapper.GetBank(addr & memorymap.CartridgeBits)
+	bank.NonCart = addr&memorymap.OriginCart != memorymap.OriginCart
+	return bank
 }
 
 // Listen for data at the specified address.

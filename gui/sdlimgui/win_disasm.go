@@ -195,19 +195,27 @@ func (win *winDisasm) drawControlBar() {
 			win.filter = filterBank
 		} else {
 			imguiTooltip(func() {
-				imgui.Text("Focus on PC address")
-				imgui.SameLine()
-				imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmAddress)
-				imgui.Text(fmt.Sprintf("$%04x", win.img.lz.CPU.PC.Address()))
-				imgui.PopStyleColor()
+				if currBank.ExecutingCoprocessor {
+					imgui.Text("Focus on 6507 resume address")
+				} else {
+					if currBank.NonCart {
+						imgui.Text("Non-Cartridge execution. Nothing to focus on.")
+					} else {
+						imgui.Text("Focus on PC address")
+						imgui.SameLine()
+						imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmAddress)
+						imgui.Text(fmt.Sprintf("$%04x", win.img.lz.CPU.PC.Address()))
+						imgui.PopStyleColor()
 
-				if win.img.lz.Cart.NumBanks > 1 {
-					imgui.SameLine()
-					imgui.Text("bank")
-					imgui.SameLine()
-					imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmBank)
-					imgui.Text(currBank.String())
-					imgui.PopStyleColor()
+						if win.img.lz.Cart.NumBanks > 1 {
+							imgui.SameLine()
+							imgui.Text("bank")
+							imgui.SameLine()
+							imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmBank)
+							imgui.Text(currBank.String())
+							imgui.PopStyleColor()
+						}
+					}
 				}
 			}, true)
 		}
@@ -287,13 +295,14 @@ func (win *winDisasm) drawOptions() {
 			}
 		}
 
-		// special execution icon
+		// special execution icons
 		if currBank.ExecutingCoprocessor {
 			imgui.SameLineV(0, 15)
 			imgui.AlignTextToFramePadding()
 			imgui.Text(string(fonts.CoProcExecution))
 			win.drawCoProcTooltip()
-		} else if currBank.NonCart {
+		}
+		if currBank.NonCart {
 			imgui.SameLineV(0, 15)
 			imgui.AlignTextToFramePadding()
 			imgui.Text(string(fonts.NonCartExecution))
@@ -324,7 +333,10 @@ func (win *winDisasm) startTable() {
 // drawBank specified by bank argument.
 func (win *winDisasm) drawBank(focusAddr uint16) {
 	currBank := win.img.lz.Cart.CurrBank
-	onBank := win.selectedBank == currBank.Number && !currBank.NonCart
+
+	// part of the onBank condition was to test whether cart currBank.NonCart
+	// was false but I now don't believe this is required
+	onBank := win.selectedBank == currBank.Number
 
 	height := imguiRemainingWinHeight() - win.optionsHeight
 	imgui.BeginChildV(fmt.Sprintf("bank %d", win.selectedBank), imgui.Vec2{X: 0, Y: height}, false, imgui.WindowFlagsAlwaysVerticalScrollbar)
