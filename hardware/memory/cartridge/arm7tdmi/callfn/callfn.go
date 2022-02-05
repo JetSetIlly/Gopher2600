@@ -75,7 +75,10 @@ const (
 func (cf *CallFn) Check(addr uint16) (uint8, bool) {
 	if cf.IsActive() {
 		cf.phantomOnResume = !cf.phantomOnResume
-		return nop, true
+		if cf.phantomOnResume {
+			return nop, true
+		}
+		return 0x00, true
 	}
 
 	switch cf.resumeCount {
