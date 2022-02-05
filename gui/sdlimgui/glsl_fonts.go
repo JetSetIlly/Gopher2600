@@ -23,19 +23,23 @@ import (
 )
 
 type glslFonts struct {
+	fontTexture uint32
+
+	// used for notifications (eg. network access, etc.)
 	largeFontAwesome     imgui.Font
 	largeFontAwesomeSize float32
 
+	// used for rewind/fast-forward state
 	veryLargeFontAwesome     imgui.Font
 	veryLargeFontAwesomeSize float32
 
+	// custom icons for controllers and other peripherals
 	gopher2600Icons     imgui.Font
 	gopher2600IconsSize float32
 
-	hack     imgui.Font
-	hackSize float32
-
-	fontTexture uint32
+	// annotation of diagrams
+	diagram     imgui.Font
+	diagramSize float32
 }
 
 func (fnts *glslFonts) destroy() {
@@ -48,10 +52,10 @@ func (fnts *glslFonts) destroy() {
 
 func newGLSLfonts() (*glslFonts, error) {
 	fnts := &glslFonts{}
-
-	// add default font
-	atlas := imgui.CurrentIO().Fonts()
-	atlas.AddFontDefault()
+	atlas, freetype, defaultFontSize, err := setDefaultFont()
+	if err != nil {
+		return nil, err
+	}
 
 	// config for font loading. merging with default font and adjusting offset
 	// so that the icons align better.
@@ -59,19 +63,23 @@ func newGLSLfonts() (*glslFonts, error) {
 	defer mergeConfig.Delete()
 	mergeConfig.SetMergeMode(true)
 	mergeConfig.SetPixelSnapH(true)
-	mergeConfig.SetGlyphOffsetY(2.0)
+	if freetype {
+		mergeConfig.SetGlyphOffsetY(1.0)
+	} else {
+		mergeConfig.SetGlyphOffsetY(2.0)
+	}
 
 	// limit what glyphs we load
 	var glyphBuilder imgui.GlyphRangesBuilder
 	glyphBuilder.Add(fonts.FontAwesomeMin, fonts.FontAwesomeMax)
 
-	// load font awesome
-	font := atlas.AddFontFromMemoryTTFV(fonts.FontAwesome, 13.0, mergeConfig, glyphBuilder.Build().GlyphRanges)
-	if font == 0 {
-		return nil, curated.Errorf("font: error loading font from memory")
+	// merge font awesome
+	merge := atlas.AddFontFromMemoryTTFV(fonts.FontAwesome, defaultFontSize, mergeConfig, glyphBuilder.Build().GlyphRanges)
+	if merge == 0 {
+		return nil, curated.Errorf("font: error loading font-awesome from memory")
 	}
 
-	// load large icons
+	// load large font awesome
 	largeFontAwesomeConfig := imgui.NewFontConfig()
 	defer largeFontAwesomeConfig.Delete()
 	largeFontAwesomeConfig.SetPixelSnapH(true)
@@ -81,11 +89,11 @@ func newGLSLfonts() (*glslFonts, error) {
 
 	fnts.largeFontAwesomeSize = 22.0
 	fnts.largeFontAwesome = atlas.AddFontFromMemoryTTFV(fonts.FontAwesome, fnts.largeFontAwesomeSize, largeFontAwesomeConfig, largeFontAwesomeBuilder.Build().GlyphRanges)
-	if font == 0 {
-		return nil, curated.Errorf("font: error loading large FA font from memory")
+	if fnts.largeFontAwesome == 0 {
+		return nil, curated.Errorf("font: error loading font-awesome from memory")
 	}
 
-	// load very-large icons
+	// load very-large font awesome
 	veryLargeFontAwesomeConfig := imgui.NewFontConfig()
 	defer veryLargeFontAwesomeConfig.Delete()
 	veryLargeFontAwesomeConfig.SetPixelSnapH(true)
@@ -95,8 +103,8 @@ func newGLSLfonts() (*glslFonts, error) {
 
 	fnts.veryLargeFontAwesomeSize = 44.0
 	fnts.veryLargeFontAwesome = atlas.AddFontFromMemoryTTFV(fonts.FontAwesome, fnts.veryLargeFontAwesomeSize, veryLargeFontAwesomeConfig, veryLargeFontAwesomeBuilder.Build().GlyphRanges)
-	if font == 0 {
-		return nil, curated.Errorf("font: error loading very large FA font from memory")
+	if fnts.veryLargeFontAwesome == 0 {
+		return nil, curated.Errorf("font: error loading font-awesome from memory")
 	}
 
 	// load gopher icons
@@ -110,22 +118,25 @@ func newGLSLfonts() (*glslFonts, error) {
 
 	fnts.gopher2600IconsSize = 60.0
 	fnts.gopher2600Icons = atlas.AddFontFromMemoryTTFV(fonts.Gopher2600Icons, fnts.gopher2600IconsSize, gopher2600IconConfig, gopher2600IconBuilder.Build().GlyphRanges)
-	if font == 0 {
+	if fnts.gopher2600Icons == 0 {
 		return nil, curated.Errorf("font: error loading Gopher2600 font from memory")
 	}
 
-	// load hack font
-	hackConfig := imgui.NewFontConfig()
-	defer hackConfig.Delete()
-	hackConfig.SetPixelSnapH(true)
-	hackConfig.SetGlyphOffsetY(1.0)
+	// load diagram font
+	diagramConfig := imgui.NewFontConfig()
+	defer diagramConfig.Delete()
+	diagramConfig.SetPixelSnapH(true)
 
-	var hackBuilder imgui.GlyphRangesBuilder
-	hackBuilder.Add(fonts.HackMin, fonts.HackMax)
+	var diagramBuilder imgui.GlyphRangesBuilder
+	diagramBuilder.Add(fonts.HackMin, fonts.HackMax)
 
-	fnts.hackSize = 11.0
-	fnts.hack = atlas.AddFontFromMemoryTTFV(fonts.Hack, fnts.hackSize, hackConfig, hackBuilder.Build().GlyphRanges)
-	if font == 0 {
+	if freetype {
+		fnts.diagramSize = 10.0
+	} else {
+		fnts.diagramSize = 11.0
+	}
+	fnts.diagram = atlas.AddFontFromMemoryTTFV(fonts.Hack, fnts.diagramSize, diagramConfig, diagramBuilder.Build().GlyphRanges)
+	if fnts.diagram == 0 {
 		return nil, curated.Errorf("font: error loading hack font from memory")
 	}
 

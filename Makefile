@@ -118,15 +118,15 @@ profile_trace: generate test
 	@$(goBinary) tool trace -http : performance_trace.profile
 
 build_assertions: generate test
-	$(goBinary) build -gcflags $(compileFlags) -tags=assertions
+	$(goBinary) build -gcflags $(compileFlags) -tags="assertions"
 
 # deliberately not having test dependecies for remaining targets
 
 build: generate 
-	$(goBinary) build -gcflags $(compileFlags)
+	$(goBinary) build -gcflags $(compileFlags) -tags="imguifreetype"
 
 build_statsview: generate 
-	$(goBinary) build -gcflags $(compileFlags) -tags="statsview" -o gopher2600_statsview
+	$(goBinary) build -gcflags $(compileFlags) -tags="imguifreetype statsview" -o gopher2600_statsview
 
 check_upx:
 ifeq (, $(shell which upx))
@@ -134,13 +134,13 @@ ifeq (, $(shell which upx))
 endif
 
 release: check_upx generate 
-	$(goBinary) build -gcflags $(compileFlags) -ldflags="-s -w" -tags="release"
+	$(goBinary) build -gcflags $(compileFlags) -ldflags="-s -w" -tags="imguifreetype release"
 	upx -o gopher2600.upx gopher2600
 	mv gopher2600.upx gopher2600_$(shell go env GOHOSTOS)_$(shell go env GOHOSTARCH)
 	rm gopher2600
 
 release_statsview: check_upx generate 
-	$(goBinary) build -gcflags $(compileFlags) -ldflags="-s -w" -tags="release statsview" -o gopher2600_statsview
+	$(goBinary) build -gcflags $(compileFlags) -ldflags="-s -w" -tags="imguifreetype release statsview" -o gopher2600_statsview
 	upx -o gopher2600_statsview.upx gopher2600_statsview
 	mv gopher2600_statsview.upx gopher2600_statsview_$(shell go env GOHOSTOS)_$(shell go env GOHOSTARCH)
 	rm gopher2600_statsview

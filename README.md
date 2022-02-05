@@ -976,6 +976,9 @@ The following projects are used in the `Gopher2600` project:
 * Hack-Regular 
 	* https://github.com/source-foundry/Hack
 	* licensed under the MIT License
+* JetBrainsMono
+	* https://github.com/JetBrains/JetBrainsMono
+	* licensed under the OFL-1.1 License
 
 Bother 6502.ts and Stella were used as reference for the Audio implementation.
 
