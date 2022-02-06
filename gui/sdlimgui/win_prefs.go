@@ -203,8 +203,6 @@ func (win *winPrefs) drawDebugger() {
 		if imgui.CollapsingHeader("Font Sizes") {
 			imgui.Spacing()
 
-			const resetFontFrames = 2
-
 			guiSize := win.img.prefs.guiFont.Get().(float64)
 			if imgui.BeginCombo("GUI", fmt.Sprintf("%.01f", guiSize)) {
 				if imgui.Selectable("12.0") {
@@ -221,6 +219,10 @@ func (win *winPrefs) drawDebugger() {
 				}
 				if imgui.Selectable("15.0") {
 					win.img.prefs.guiFont.Set(15.0)
+					win.img.resetFonts = resetFontFrames
+				}
+				if imgui.Selectable("16.0") {
+					win.img.prefs.guiFont.Set(16.0)
 					win.img.resetFonts = resetFontFrames
 				}
 				imgui.EndCombo()
@@ -256,7 +258,7 @@ func (win *winPrefs) drawDebugger() {
 			imgui.Spacing()
 
 			lineSpacing := int32(win.img.prefs.codeFontLineSpacing.Get().(int))
-			if imgui.SliderInt("Line Spacing", &lineSpacing, 1, 5) {
+			if imgui.SliderInt("Line Spacing", &lineSpacing, 0, 5) {
 				win.img.prefs.codeFontLineSpacing.Set(lineSpacing)
 			}
 		}
@@ -515,6 +517,11 @@ func (win *winPrefs) drawDiskButtons() {
 					logger.Logf("sdlimgui", "could not restore (disasm) preferences: %v", err)
 				}
 			}
+
 		})
+
+		if win.img.glsl.fonts.isFreeType() {
+			win.img.resetFonts = resetFontFrames
+		}
 	}
 }

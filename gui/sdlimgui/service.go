@@ -36,6 +36,7 @@ func (img *SdlImgui) Service() {
 			if err != nil {
 				panic(err)
 			}
+			img.wm.hasInitialised = false
 		}
 		img.resetFonts--
 	}

@@ -46,13 +46,13 @@ func (win *winTIA) drawPersistenceControl() {
 			if win.deepPoking {
 				imgui.Text(fmt.Sprintf("%c Changes will be backtraced if possible and persist as appropriate", fonts.Persist))
 			} else {
-				imgui.Text(fmt.Sprintf("%c Changes will take effect going forward. Changes may not persist", fonts.GoingForward))
+				imgui.Text(fmt.Sprintf("%c Changes will take effect going forward", fonts.GoingForward))
 			}
 			if imgui.IsItemClicked() {
 				win.deepPoking = !win.deepPoking
 			}
 		} else {
-			imgui.Text(fmt.Sprintf("%c Changes will take effect going forward. Changes may not persist", fonts.GoingForward))
+			imgui.Text(fmt.Sprintf("%c Changes will take effect going forward", fonts.GoingForward))
 		}
 	})
 }

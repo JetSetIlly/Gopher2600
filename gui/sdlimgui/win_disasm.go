@@ -92,7 +92,6 @@ func (win *winDisasm) init() {
 	win.widthCycles = imgui.CalcTextSize("2/3 ", true, 0).X
 	win.widthNotes = imgui.CalcTextSize(string(fonts.CPUBug), true, 0).X
 	win.widthSum = win.widthBreak + win.widthAddr + win.widthOperator + win.widthCycles + win.widthNotes
-
 	win.widthGoto = imgui.CalcTextSize(string(fonts.DisasmGotoCurrent), true, 0).X
 }
 

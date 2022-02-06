@@ -81,7 +81,7 @@ func (win *winTIA) draw() {
 	}
 
 	imgui.SetNextWindowPosV(imgui.Vec2{X: 31, Y: 470}, imgui.ConditionFirstUseEver, imgui.Vec2{X: 0, Y: 0})
-	imgui.SetNextWindowSizeV(imgui.Vec2{X: 531, Y: 250}, imgui.ConditionAlways)
+	imgui.SetNextWindowSizeV(imgui.Vec2{X: 535, Y: 260}, imgui.ConditionAlways)
 	imgui.BeginV(win.id(), &win.open, imgui.WindowFlagsNoResize)
 
 	// tab-bar to switch between different "areas" of the TIA
