@@ -55,7 +55,8 @@ func (win *winCPU) init() {
 	// fortunately, we can manually figure out the width of the status register
 	// table quite easily.
 	sty := imgui.CurrentStyle()
-	win.statusWidth = statusRegisterNumColumns*(x+sty.ItemInnerSpacing().X+sty.ItemSpacing().X) + 2*sty.ItemSpacing().X
+	win.statusWidth = statusRegisterNumColumns * (x + sty.ItemInnerSpacing().X + sty.ItemSpacing().X)
+	win.statusWidth += ((statusRegisterNumColumns - 2) * sty.ItemSpacing().X)
 }
 
 func (win *winCPU) id() string {

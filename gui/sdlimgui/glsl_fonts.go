@@ -23,7 +23,9 @@ import (
 )
 
 type glslFonts struct {
-	fontTexture uint32
+	// default font
+	defaultFont     imgui.Font
+	defaultFontSize float32
 
 	// used for notifications (eg. network access, etc.)
 	largeFontAwesome     imgui.Font
@@ -40,6 +42,13 @@ type glslFonts struct {
 	// annotation of diagrams
 	diagram     imgui.Font
 	diagramSize float32
+
+	// source code
+	code     imgui.Font
+	codeSize float32
+
+	// texture used for presentation
+	fontTexture uint32
 }
 
 func (fnts *glslFonts) destroy() {
@@ -50,12 +59,8 @@ func (fnts *glslFonts) destroy() {
 	}
 }
 
-func newGLSLfonts() (*glslFonts, error) {
-	fnts := &glslFonts{}
-	atlas, freetype, defaultFontSize, err := setDefaultFont()
-	if err != nil {
-		return nil, err
-	}
+func (fnts *glslFonts) mergeFontAwesome(size float32, adjust float32) error {
+	atlas := imgui.CurrentIO().Fonts()
 
 	// config for font loading. merging with default font and adjusting offset
 	// so that the icons align better.
@@ -63,92 +68,122 @@ func newGLSLfonts() (*glslFonts, error) {
 	defer mergeConfig.Delete()
 	mergeConfig.SetMergeMode(true)
 	mergeConfig.SetPixelSnapH(true)
-	if freetype {
-		mergeConfig.SetGlyphOffsetY(1.0)
-	} else {
-		mergeConfig.SetGlyphOffsetY(2.0)
-	}
+	mergeConfig.SetGlyphOffsetY(adjust)
 
 	// limit what glyphs we load
 	var glyphBuilder imgui.GlyphRangesBuilder
 	glyphBuilder.Add(fonts.FontAwesomeMin, fonts.FontAwesomeMax)
 
 	// merge font awesome
-	merge := atlas.AddFontFromMemoryTTFV(fonts.FontAwesome, defaultFontSize, mergeConfig, glyphBuilder.Build().GlyphRanges)
+	merge := atlas.AddFontFromMemoryTTFV(fonts.FontAwesome, fnts.defaultFontSize, mergeConfig, glyphBuilder.Build().GlyphRanges)
 	if merge == 0 {
-		return nil, curated.Errorf("font: error loading font-awesome from memory")
+		return curated.Errorf("font: error loading font-awesome from memory")
+	}
+
+	return nil
+}
+
+func (rnd *glsl) setupFonts() error {
+	// only create glslFonts if it doesn't already exist. we'll only load
+	// the fonts that we need to. if nothing has changed then all we've
+	// done is recreate the font texture
+	if rnd.fonts != nil {
+		rnd.fonts.destroy()
+	} else {
+		rnd.fonts = &glslFonts{}
+	}
+
+	atlas := imgui.CurrentIO().Fonts()
+
+	err := rnd.fonts.setDefaultFont(rnd.img.prefs)
+	if err != nil {
+		return err
 	}
 
 	// load large font awesome
-	largeFontAwesomeConfig := imgui.NewFontConfig()
-	defer largeFontAwesomeConfig.Delete()
-	largeFontAwesomeConfig.SetPixelSnapH(true)
+	if rnd.fonts.largeFontAwesome == 0 {
+		largeFontAwesomeConfig := imgui.NewFontConfig()
+		defer largeFontAwesomeConfig.Delete()
+		largeFontAwesomeConfig.SetPixelSnapH(true)
 
-	var largeFontAwesomeBuilder imgui.GlyphRangesBuilder
-	largeFontAwesomeBuilder.Add(fonts.FontAwesomeMin, fonts.FontAwesomeMax)
+		var largeFontAwesomeBuilder imgui.GlyphRangesBuilder
+		largeFontAwesomeBuilder.Add(fonts.FontAwesomeMin, fonts.FontAwesomeMax)
 
-	fnts.largeFontAwesomeSize = 22.0
-	fnts.largeFontAwesome = atlas.AddFontFromMemoryTTFV(fonts.FontAwesome, fnts.largeFontAwesomeSize, largeFontAwesomeConfig, largeFontAwesomeBuilder.Build().GlyphRanges)
-	if fnts.largeFontAwesome == 0 {
-		return nil, curated.Errorf("font: error loading font-awesome from memory")
+		rnd.fonts.largeFontAwesomeSize = 22.0
+		rnd.fonts.largeFontAwesome = atlas.AddFontFromMemoryTTFV(fonts.FontAwesome, rnd.fonts.largeFontAwesomeSize, largeFontAwesomeConfig, largeFontAwesomeBuilder.Build().GlyphRanges)
+		if rnd.fonts.largeFontAwesome == 0 {
+			return curated.Errorf("font: error loading font-awesome from memory")
+		}
 	}
 
 	// load very-large font awesome
-	veryLargeFontAwesomeConfig := imgui.NewFontConfig()
-	defer veryLargeFontAwesomeConfig.Delete()
-	veryLargeFontAwesomeConfig.SetPixelSnapH(true)
+	if rnd.fonts.veryLargeFontAwesome == 0 {
+		veryLargeFontAwesomeConfig := imgui.NewFontConfig()
+		defer veryLargeFontAwesomeConfig.Delete()
+		veryLargeFontAwesomeConfig.SetPixelSnapH(true)
 
-	var veryLargeFontAwesomeBuilder imgui.GlyphRangesBuilder
-	veryLargeFontAwesomeBuilder.Add(fonts.FontAwesomeMin, fonts.FontAwesomeMax)
+		var veryLargeFontAwesomeBuilder imgui.GlyphRangesBuilder
+		veryLargeFontAwesomeBuilder.Add(fonts.FontAwesomeMin, fonts.FontAwesomeMax)
 
-	fnts.veryLargeFontAwesomeSize = 44.0
-	fnts.veryLargeFontAwesome = atlas.AddFontFromMemoryTTFV(fonts.FontAwesome, fnts.veryLargeFontAwesomeSize, veryLargeFontAwesomeConfig, veryLargeFontAwesomeBuilder.Build().GlyphRanges)
-	if fnts.veryLargeFontAwesome == 0 {
-		return nil, curated.Errorf("font: error loading font-awesome from memory")
+		rnd.fonts.veryLargeFontAwesomeSize = 44.0
+		rnd.fonts.veryLargeFontAwesome = atlas.AddFontFromMemoryTTFV(fonts.FontAwesome, rnd.fonts.veryLargeFontAwesomeSize, veryLargeFontAwesomeConfig, veryLargeFontAwesomeBuilder.Build().GlyphRanges)
+		if rnd.fonts.veryLargeFontAwesome == 0 {
+			return curated.Errorf("font: error loading font-awesome from memory")
+		}
 	}
 
 	// load gopher icons
-	gopher2600IconConfig := imgui.NewFontConfig()
-	defer gopher2600IconConfig.Delete()
-	gopher2600IconConfig.SetPixelSnapH(true)
-	gopher2600IconConfig.SetGlyphOffsetY(1.0)
+	if rnd.fonts.gopher2600Icons == 0 {
+		gopher2600IconConfig := imgui.NewFontConfig()
+		defer gopher2600IconConfig.Delete()
+		gopher2600IconConfig.SetPixelSnapH(true)
+		gopher2600IconConfig.SetGlyphOffsetY(1.0)
 
-	var gopher2600IconBuilder imgui.GlyphRangesBuilder
-	gopher2600IconBuilder.Add(fonts.Gopher2600IconMin, fonts.Gopher2600IconMax)
+		var gopher2600IconBuilder imgui.GlyphRangesBuilder
+		gopher2600IconBuilder.Add(fonts.Gopher2600IconMin, fonts.Gopher2600IconMax)
 
-	fnts.gopher2600IconsSize = 60.0
-	fnts.gopher2600Icons = atlas.AddFontFromMemoryTTFV(fonts.Gopher2600Icons, fnts.gopher2600IconsSize, gopher2600IconConfig, gopher2600IconBuilder.Build().GlyphRanges)
-	if fnts.gopher2600Icons == 0 {
-		return nil, curated.Errorf("font: error loading Gopher2600 font from memory")
+		rnd.fonts.gopher2600IconsSize = 60.0
+		rnd.fonts.gopher2600Icons = atlas.AddFontFromMemoryTTFV(fonts.Gopher2600Icons, rnd.fonts.gopher2600IconsSize, gopher2600IconConfig, gopher2600IconBuilder.Build().GlyphRanges)
+		if rnd.fonts.gopher2600Icons == 0 {
+			return curated.Errorf("font: error loading Gopher2600 font from memory")
+		}
 	}
 
 	// load diagram font
-	diagramConfig := imgui.NewFontConfig()
-	defer diagramConfig.Delete()
-	diagramConfig.SetPixelSnapH(true)
+	if rnd.fonts.diagram == 0 {
+		diagramConfig := imgui.NewFontConfig()
+		defer diagramConfig.Delete()
+		diagramConfig.SetPixelSnapH(true)
 
-	var diagramBuilder imgui.GlyphRangesBuilder
-	diagramBuilder.Add(fonts.HackMin, fonts.HackMax)
+		var diagramBuilder imgui.GlyphRangesBuilder
+		diagramBuilder.Add(fonts.HackMin, fonts.HackMax)
 
-	if freetype {
-		fnts.diagramSize = 10.0
-	} else {
-		fnts.diagramSize = 11.0
+		if rnd.fonts.isFreeType() {
+			rnd.fonts.diagramSize = 10.0
+		} else {
+			rnd.fonts.diagramSize = 11.0
+		}
+		rnd.fonts.diagram = atlas.AddFontFromMemoryTTFV(fonts.Hack, rnd.fonts.diagramSize, diagramConfig, diagramBuilder.Build().GlyphRanges)
+		if rnd.fonts.diagram == 0 {
+			return curated.Errorf("font: error loading hack font from memory")
+		}
 	}
-	fnts.diagram = atlas.AddFontFromMemoryTTFV(fonts.Hack, fnts.diagramSize, diagramConfig, diagramBuilder.Build().GlyphRanges)
-	if fnts.diagram == 0 {
-		return nil, curated.Errorf("font: error loading hack font from memory")
+
+	// load source code font
+	err = rnd.fonts.sourceCodeFont(rnd.img.prefs)
+	if err != nil {
+		return curated.Errorf("font: %v", err)
 	}
 
 	// create font texture
 	image := atlas.TextureDataAlpha8()
-	gl.GenTextures(1, &fnts.fontTexture)
-	gl.BindTexture(gl.TEXTURE_2D, fnts.fontTexture)
+	gl.GenTextures(1, &rnd.fonts.fontTexture)
+	gl.BindTexture(gl.TEXTURE_2D, rnd.fonts.fontTexture)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
 	gl.PixelStorei(gl.UNPACK_ROW_LENGTH, 0)
 	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RED, int32(image.Width), int32(image.Height), 0, gl.RED, gl.UNSIGNED_BYTE, image.Pixels)
-	atlas.SetTextureID(imgui.TextureID(fnts.fontTexture))
+	atlas.SetTextureID(imgui.TextureID(rnd.fonts.fontTexture))
 
-	return fnts, nil
+	return nil
 }

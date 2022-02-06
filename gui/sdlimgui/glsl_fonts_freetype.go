@@ -23,11 +23,49 @@ import (
 	"github.com/jetsetilly/gopher2600/gui/fonts"
 )
 
-func setDefaultFont() (imgui.FontAtlas, bool, float32, error) {
+func (fnts *glslFonts) isFreeType() bool {
+	return true
+}
+
+func (fnts *glslFonts) setDefaultFont(prefs *preferences) error {
+	defaultFontSize := float32(prefs.guiFont.Get().(float64))
+	if fnts.defaultFont != 0 && defaultFontSize == fnts.defaultFontSize {
+		return nil
+	}
+
 	atlas := imgui.CurrentIO().Fonts()
 	atlas.SetFontBuilderFlags(imgui.FreeTypeBuilderFlagsForceAutoHint)
 
-	// load jetbrains mono font
+	// load gui font (default)
+	cfg := imgui.NewFontConfig()
+	defer cfg.Delete()
+	cfg.SetPixelSnapH(true)
+	if int(defaultFontSize)%2 == 0.0 {
+		cfg.SetGlyphOffsetY(1.0)
+	}
+
+	var builder imgui.GlyphRangesBuilder
+	builder.Add(fonts.JetBrainsMonoMin, fonts.JetBrainsMonoMax)
+
+	fnts.defaultFontSize = float32(defaultFontSize)
+	fnts.defaultFont = atlas.AddFontFromMemoryTTFV(fonts.JetBrainsMono, fnts.defaultFontSize, cfg, builder.Build().GlyphRanges)
+	if fnts.defaultFont == 0 {
+		return curated.Errorf("font: error loading JetBrainsMono font from memory")
+	}
+
+	fnts.mergeFontAwesome(fnts.defaultFontSize, 1.0)
+
+	return nil
+}
+
+func (fnts *glslFonts) sourceCodeFont(prefs *preferences) error {
+	codeSize := float32(prefs.codeFont.Get().(float64))
+	if fnts.code != 0 && codeSize == fnts.codeSize {
+		return nil
+	}
+
+	atlas := imgui.CurrentIO().Fonts()
+
 	cfg := imgui.NewFontConfig()
 	defer cfg.Delete()
 	cfg.SetPixelSnapH(true)
@@ -35,11 +73,13 @@ func setDefaultFont() (imgui.FontAtlas, bool, float32, error) {
 	var builder imgui.GlyphRangesBuilder
 	builder.Add(fonts.JetBrainsMonoMin, fonts.JetBrainsMonoMax)
 
-	size := float32(14.0)
-	font := atlas.AddFontFromMemoryTTFV(fonts.JetBrainsMono, size, cfg, builder.Build().GlyphRanges)
-	if font == 0 {
-		return atlas, true, size, curated.Errorf("font: error loading jetBrainsMono font from memory")
+	fnts.codeSize = codeSize
+	fnts.code = atlas.AddFontFromMemoryTTFV(fonts.JetBrainsMono, fnts.codeSize, cfg, builder.Build().GlyphRanges)
+	if fnts.code == 0 {
+		return curated.Errorf("font: error loading JetBrainsMono font from memory")
 	}
 
-	return atlas, true, size, nil
+	fnts.mergeFontAwesome(fnts.codeSize, 0.0)
+
+	return nil
 }

@@ -21,8 +21,25 @@ import (
 	"github.com/inkyblackness/imgui-go/v4"
 )
 
-func setDefaultFont() (imgui.FontAtlas, bool, float32, error) {
+func (fnts *glslFonts) isFreeType() bool {
+	return false
+}
+
+func (fnts *glslFonts) setDefaultFont(prefs *preferences) error {
+	// default font has already been set up
+	if fnts.defaultFont != 0 {
+		return nil
+	}
+
 	atlas := imgui.CurrentIO().Fonts()
-	atlas.AddFontDefault()
-	return atlas, false, float32(13.0), nil
+	fnts.defaultFont = atlas.AddFontDefault()
+	fnts.defaultFontSize = 13.0
+	fnts.mergeFontAwesome(fnts.defaultFontSize, 2.0)
+	return nil
+}
+
+func (fnts *glslFonts) sourceCodeFont(prefs *preferences) error {
+	fnts.code = fnts.defaultFont
+	fnts.codeSize = fnts.defaultFontSize
+	return nil
 }

@@ -75,7 +75,7 @@ func (win *winCoProcSource) draw() {
 
 	imgui.SetNextWindowPosV(imgui.Vec2{465, 285}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
 	imgui.SetNextWindowSizeV(imgui.Vec2{551, 526}, imgui.ConditionFirstUseEver)
-	imgui.SetNextWindowSizeConstraints(imgui.Vec2{551, 300}, imgui.Vec2{800, 1000})
+	imgui.SetNextWindowSizeConstraints(imgui.Vec2{551, 300}, imgui.Vec2{1200, 1000})
 
 	title := fmt.Sprintf("%s %s", win.img.lz.Cart.CoProcID, winCoProcSourceID)
 	imgui.BeginV(title, &win.open, imgui.WindowFlagsNone)
@@ -100,6 +100,10 @@ func (win *winCoProcSource) draw() {
 			}
 
 			if imgui.BeginTabItemV(fn, nil, tabItemFlg) {
+				imgui.PushFont(win.img.glsl.fonts.code)
+				lineSpacing := float32(win.img.prefs.codeFontLineSpacing.Get().(int))
+				imgui.PushStyleVarVec2(imgui.StyleVarCellPadding, imgui.Vec2{X: 4, Y: lineSpacing})
+
 				imgui.BeginChildV("##coprocSource", imgui.Vec2{X: 0, Y: imguiRemainingWinHeight()}, false, 0)
 				imgui.BeginTableV("##coprocSourceTable", 5, imgui.TableFlagsSizingFixedFit, imgui.Vec2{}, 0.0)
 
@@ -197,6 +201,10 @@ func (win *winCoProcSource) draw() {
 
 				imgui.EndTable()
 				imgui.EndChild()
+
+				imgui.PopStyleVar()
+				imgui.PopFont()
+
 				imgui.EndTabItem()
 			}
 		}

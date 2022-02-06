@@ -48,6 +48,14 @@ type SdlImgui struct {
 	plt     *platform
 	glsl    *glsl
 
+	// resetFonts value will be reduced to 0 each GUI frame. at value 1 the
+	// fonts will be reset.
+	//
+	// set to 1 to reset immediately and higher values to delay the reset by
+	// that number of frames. higher values are useful in the prefs window to
+	// allow sufficient time to close the font size selector combo box
+	resetFonts int
+
 	// parent emulation. should be set via setEmulation() only
 	emulation emulation.Emulation
 
@@ -185,6 +193,9 @@ func NewSdlImgui(e emulation.Emulation) (*SdlImgui, error) {
 		return nil, curated.Errorf("sdlimgui: %v", err)
 	}
 
+	// reset fonts as soon as possible
+	img.resetFonts = 1
+
 	// container window is open on setEmulationMode()
 
 	return img, nil
@@ -244,6 +255,9 @@ func (img *SdlImgui) draw() {
 	if img.emulation.State() == emulation.EmulatorStart {
 		return
 	}
+
+	imgui.PushFont(img.glsl.fonts.defaultFont)
+	defer imgui.PopFont()
 
 	if img.mode == emulation.ModePlay {
 		img.playScr.draw()

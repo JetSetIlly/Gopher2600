@@ -48,6 +48,11 @@ type preferences struct {
 	plusromNotifications      prefs.Bool
 	superchargerNotifications prefs.Bool
 
+	// fonts
+	guiFont             prefs.Float
+	codeFont            prefs.Float
+	codeFontLineSpacing prefs.Int
+
 	// window preferences are split over two prefs.Disk instances, to allow
 	// geometry to be saved at a different time to the fullscreen preference
 	dskWinGeom       *prefs.Disk
@@ -66,6 +71,9 @@ func newPreferences(img *SdlImgui) (*preferences, error) {
 	p.controllerNotifcations.Set(true)
 	p.plusromNotifications.Set(true)
 	p.superchargerNotifications.Set(true)
+	p.guiFont.Set(13.0)
+	p.codeFont.Set(15.0)
+	p.codeFontLineSpacing.Set(2.0)
 
 	// setup preferences
 	pth, err := resources.JoinPath(prefs.DefaultPrefsFile)
@@ -114,6 +122,21 @@ func newPreferences(img *SdlImgui) (*preferences, error) {
 		return nil, err
 	}
 
+	// fonts (only used when compiled with imguifreetype build tag)
+	err = p.dsk.Add("sdlimgui.fonts.gui", &p.guiFont)
+	if err != nil {
+		return nil, err
+	}
+	err = p.dsk.Add("sdlimgui.fonts.code", &p.codeFont)
+	if err != nil {
+		return nil, err
+	}
+	err = p.dsk.Add("sdlimgui.fonts.codeLineSpacing", &p.codeFontLineSpacing)
+	if err != nil {
+		return nil, err
+	}
+
+	// load off disk
 	err = p.dsk.Load(true)
 	if err != nil {
 		return nil, err

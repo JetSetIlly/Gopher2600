@@ -51,10 +51,7 @@ func newGlsl(img *SdlImgui) (*glsl, error) {
 
 	rnd.setupShaders()
 
-	rnd.fonts, err = newGLSLfonts()
-	if err != nil {
-		return nil, fmt.Errorf("glsl: %v", err)
-	}
+	// dererring font setup until later
 
 	gl.GenBuffers(1, &rnd.vboHandle)
 	gl.GenBuffers(1, &rnd.elementsHandle)

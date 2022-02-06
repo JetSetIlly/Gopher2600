@@ -195,6 +195,72 @@ func (win *winPrefs) drawDebugger() {
 			logger.Logf("sdlimgui", "could not set preference value: %v", err)
 		}
 	}
+
+	// font preferences for when compiled with freetype font rendering
+	if win.img.glsl.fonts.isFreeType() {
+		imgui.Spacing()
+
+		if imgui.CollapsingHeader("Font Sizes") {
+			imgui.Spacing()
+
+			const resetFontFrames = 2
+
+			guiSize := win.img.prefs.guiFont.Get().(float64)
+			if imgui.BeginCombo("GUI", fmt.Sprintf("%.01f", guiSize)) {
+				if imgui.Selectable("12.0") {
+					win.img.prefs.guiFont.Set(12.0)
+					win.img.resetFonts = resetFontFrames
+				}
+				if imgui.Selectable("13.0") {
+					win.img.prefs.guiFont.Set(13.0)
+					win.img.resetFonts = resetFontFrames
+				}
+				if imgui.Selectable("14.0") {
+					win.img.prefs.guiFont.Set(14.0)
+					win.img.resetFonts = resetFontFrames
+				}
+				if imgui.Selectable("15.0") {
+					win.img.prefs.guiFont.Set(15.0)
+					win.img.resetFonts = resetFontFrames
+				}
+				imgui.EndCombo()
+			}
+
+			imgui.Spacing()
+
+			codeSize := win.img.prefs.codeFont.Get().(float64)
+			if imgui.BeginCombo("Code", fmt.Sprintf("%.01f", codeSize)) {
+				if imgui.Selectable("13.0") {
+					win.img.prefs.codeFont.Set(13.0)
+					win.img.resetFonts = resetFontFrames
+				}
+				if imgui.Selectable("14.0") {
+					win.img.prefs.codeFont.Set(14.0)
+					win.img.resetFonts = resetFontFrames
+				}
+				if imgui.Selectable("15.0") {
+					win.img.prefs.codeFont.Set(15.0)
+					win.img.resetFonts = resetFontFrames
+				}
+				if imgui.Selectable("16.0") {
+					win.img.prefs.codeFont.Set(16.0)
+					win.img.resetFonts = resetFontFrames
+				}
+				if imgui.Selectable("17.0") {
+					win.img.prefs.codeFont.Set(17.0)
+					win.img.resetFonts = resetFontFrames
+				}
+				imgui.EndCombo()
+			}
+
+			imgui.Spacing()
+
+			lineSpacing := int32(win.img.prefs.codeFontLineSpacing.Get().(int))
+			if imgui.SliderInt("Line Spacing", &lineSpacing, 1, 5) {
+				win.img.prefs.codeFontLineSpacing.Set(lineSpacing)
+			}
+		}
+	}
 }
 
 func (win *winPrefs) drawRewind() {

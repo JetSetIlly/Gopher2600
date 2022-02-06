@@ -29,6 +29,17 @@ import (
 
 // Service implements GuiCreator interface.
 func (img *SdlImgui) Service() {
+	// handle font reset procedure
+	if img.resetFonts >= 1 {
+		if img.resetFonts == 1 {
+			err := img.glsl.setupFonts()
+			if err != nil {
+				panic(err)
+			}
+		}
+		img.resetFonts--
+	}
+
 	// refresh lazy values
 	switch img.mode {
 	case emulation.ModeDebugger:
@@ -284,6 +295,11 @@ func (img *SdlImgui) Service() {
 			img.mouseX = mx
 			img.mouseY = my
 		}
+	}
+
+	if img.glsl.fonts.defaultFont != 0 {
+		// imgui.PushFont(img.glsl.fonts.defaultFont)
+		// defer imgui.PopFont()
 	}
 
 	// start of a new frame
