@@ -41,10 +41,21 @@ type SourceFunction struct {
 	Name        string
 	LowAddress  []uint32
 	HighAddress []uint32
+
+	// first source line in the function
+	FirstLine *SourceLine
+
+	// the number of cycles this function has consumed during the course of the previous frame
+	FrameCycles float32
+
+	// working value that will be assigned to FrameCycles on the next television.NewFrame()
+	nextFrameCycles float32
 }
 
 type SourceLine struct {
-	File       *SourceFile
+	File     *SourceFile
+	Function *SourceFunction
+
 	LineNumber int
 	Content    string
 
@@ -57,18 +68,11 @@ type SourceLine struct {
 	// the number of times the line has been responsible for an illegal access.
 	IllegalCount int
 
-	// the number of cycles this line has instruction consumed on the
-	// coprocessor during the course of the previous frame
+	// the number of cycles this line has consumed during the course of the previous frame
 	FrameCycles float32
 
 	// working value that will be assigned to FrameCycles on the next television.NewFrame()
 	nextFrameCycles float32
-
-	// the total number of cycles over the lifetime of the program
-	LifetimeCycles float32
-
-	// the function this line of source code relates to
-	Function *SourceFunction
 }
 
 func (ln *SourceLine) String() string {
@@ -93,16 +97,20 @@ type Source struct {
 	Functions     map[string]*SourceFunction
 	FunctionNames []string
 
-	// A list of all the source lines in all the compile units
-	ExecutedLines SortedLines
+	// list of funcions sorted by FrameCycles field
+	SortedFunctions SortedFunctions
 
-	// the number of cycles this line has instruction consumed on the
-	// coprocessor during the course of the previous frame
-	FrameCycles     float32
+	// lines of source code found in the compile units
+	Lines map[string]*SourceLine
+
+	// list of source lines sorted by FrameCycles field
+	SortedLines SortedLines
+
+	// the number of cycles the ARM Program has consumed during the course of the previous frame
+	FrameCycles float32
+
+	// working value that will be assigned to FrameCycles on the next television.NewFrame()
 	nextFrameCycles float32
-
-	// the total number of cycles over the lifetime of the program
-	TotalCycles float32
 }
 
 const elfFile = "armcode.elf"
@@ -155,7 +163,11 @@ func newSource(pathToROM string) (*Source, error) {
 		Filenames:     make([]string, 0, 10),
 		Functions:     make(map[string]*SourceFunction),
 		FunctionNames: make([]string, 0, 10),
-		ExecutedLines: SortedLines{
+		SortedFunctions: SortedFunctions{
+			Functions: make([]*SourceFunction, 0, 100),
+		},
+		Lines: make(map[string]*SourceLine),
+		SortedLines: SortedLines{
 			Lines: make([]*SourceLine, 0, 100),
 		},
 	}
@@ -344,6 +356,12 @@ func newSource(pathToROM string) (*Source, error) {
 		if len(src.Functions) != len(src.FunctionNames) {
 			return nil, curated.Errorf("dwarf: unmatched function definitions")
 		}
+
+		// find first line of function
+		fn.FirstLine, _ = src.findSourceLine(fn.LowAddress[0])
+
+		// add to sorted functions list
+		src.SortedFunctions.Functions = append(src.SortedFunctions.Functions, fn)
 	}
 
 	// disassemble the program(s)
@@ -438,9 +456,11 @@ func newSource(pathToROM string) (*Source, error) {
 					// look up function name
 					prevln.Function = src.findFunction(uint32(entry.Address))
 
-					// append to executed lines. will sort later
 					if prevln.Function.Name != UnknownFunction {
-						src.ExecutedLines.Lines = append(src.ExecutedLines.Lines, prevln)
+						if _, ok := src.Lines[prevln.String()]; !ok {
+							src.SortedLines.Lines = append(src.SortedLines.Lines, prevln)
+							src.Lines[prevln.String()] = prevln
+						}
 					}
 
 					// note line for next entry
@@ -451,12 +471,15 @@ func newSource(pathToROM string) (*Source, error) {
 		}
 	}
 
-	// sort executed lines
-	sort.Sort(src.ExecutedLines)
-
 	// sort list of filenames and functions
 	sort.Strings(src.Filenames)
 	sort.Strings(src.FunctionNames)
+
+	// sort source lines
+	sort.Sort(src.SortedLines)
+
+	// sort function
+	sort.Sort(src.SortedFunctions)
 
 	// log summary
 	logger.Logf("dwarf", "identified %d functions in %d compile units", len(src.Functions), len(src.compileUnits))
@@ -521,11 +544,10 @@ func (src *Source) execute(pc uint32, ct float32) error {
 			return nil
 		}
 
-		src.Files[entry.File.Name].Lines[entry.Line-1].nextFrameCycles += ct
-		src.Files[entry.File.Name].Lines[entry.Line-1].LifetimeCycles += ct
-
+		// increase nextFrameCycles values by count for the program, the line, and the function
 		src.nextFrameCycles += ct
-		src.TotalCycles += ct
+		src.Files[entry.File.Name].Lines[entry.Line-1].nextFrameCycles += ct
+		src.Files[entry.File.Name].Lines[entry.Line-1].Function.nextFrameCycles += ct
 
 		return nil
 	}
@@ -566,32 +588,9 @@ func readSourceFile(filename string, pathToROM string) (*SourceFile, error) {
 	return &fl, nil
 }
 
-// Resort the execution source lines.
-func (src *Source) Resort(byLifetimeCycles bool) {
-	if src.ExecutedLines.byLifetimeCycles == byLifetimeCycles {
-		return
-	}
-
-	src.ExecutedLines.byLifetimeCycles = byLifetimeCycles
-	sort.Sort(src.ExecutedLines)
-}
-
-// SortedLines orders every line of executable source code in the identified
-// source files. Useful for determining the most expensive lines of source code
-// in terms of execution time.
+// SortedLines orders all the source lines in order of computationally expense
 type SortedLines struct {
 	Lines []*SourceLine
-
-	// if true then Lines will be sorted by TotalCycles, otherwise sorted by FrameCycles
-	byLifetimeCycles bool
-}
-
-// SortedBy returns a string describing the sort method
-func (e SortedLines) SortedBy() string {
-	if e.byLifetimeCycles {
-		return "lifetime"
-	}
-	return "previous frame"
 }
 
 // Len implements sort.Interface.
@@ -601,14 +600,30 @@ func (e SortedLines) Len() int {
 
 // Less implements sort.Interface.
 func (e SortedLines) Less(i int, j int) bool {
-	// higher cycle counts come first
-	if e.byLifetimeCycles {
-		return e.Lines[i].LifetimeCycles > e.Lines[j].LifetimeCycles
-	}
 	return e.Lines[i].FrameCycles > e.Lines[j].FrameCycles
 }
 
 // Swap implements sort.Interface.
 func (e SortedLines) Swap(i int, j int) {
 	e.Lines[i], e.Lines[j] = e.Lines[j], e.Lines[i]
+}
+
+// SortedFunctions orders all the source lines in order of computationally expense
+type SortedFunctions struct {
+	Functions []*SourceFunction
+}
+
+// Len implements sort.Interface.
+func (e SortedFunctions) Len() int {
+	return len(e.Functions)
+}
+
+// Less implements sort.Interface.
+func (e SortedFunctions) Less(i int, j int) bool {
+	return e.Functions[i].FrameCycles > e.Functions[j].FrameCycles
+}
+
+// Swap implements sort.Interface.
+func (e SortedFunctions) Swap(i int, j int) {
+	e.Functions[i], e.Functions[j] = e.Functions[j], e.Functions[i]
 }

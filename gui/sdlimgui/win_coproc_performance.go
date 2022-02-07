@@ -87,13 +87,13 @@ func (win *winCoProcPerformance) draw() {
 		imgui.BeginChildV("##coprocPerformanceMain", imgui.Vec2{X: 0, Y: imguiRemainingWinHeight() - win.optionsHeight}, false, 0)
 		imgui.BeginTabBar("##coprocSourceTabBar")
 
-		if imgui.BeginTabItemV("Previous Frame", nil, imgui.TabItemFlagsNone) {
-			win.drawExecutionPerformance(src, false)
+		if imgui.BeginTabItemV("Source Line", nil, imgui.TabItemFlagsNone) {
+			win.drawSourceLines(src)
 			imgui.EndTabItem()
 		}
 
-		if imgui.BeginTabItemV("Lifetime", nil, imgui.TabItemFlagsNone) {
-			win.drawExecutionPerformance(src, true)
+		if imgui.BeginTabItemV("Functions", nil, imgui.TabItemFlagsNone) {
+			win.drawFunctions(src)
 			imgui.EndTabItem()
 		}
 
@@ -109,9 +109,62 @@ func (win *winCoProcPerformance) draw() {
 	})
 }
 
-func (win *winCoProcPerformance) drawExecutionPerformance(src *developer.Source, byLifetimeCycles bool) {
-	src.Resort(byLifetimeCycles)
+func (win *winCoProcPerformance) drawFunctions(src *developer.Source) {
+	const numColumns = 4
 
+	imgui.Spacing()
+	imgui.BeginTableV("##coprocPerformanceTable", numColumns, imgui.TableFlagsSizingFixedFit, imgui.Vec2{}, 0.0)
+
+	// first column is a dummy column so that Selectable (span all columns) works correctly
+	width := imgui.ContentRegionAvail().X
+	imgui.TableSetupColumnV("", imgui.TableColumnFlagsNone, 0, 0)
+	imgui.TableSetupColumnV("File", imgui.TableColumnFlagsNone, width*0.40, 1)
+	imgui.TableSetupColumnV("Function", imgui.TableColumnFlagsNone, width*0.40, 3)
+	imgui.TableSetupColumnV("Load", imgui.TableColumnFlagsNone, width*0.1, 4)
+
+	if src == nil || len(src.SortedLines.Lines) == 0 {
+		imgui.Text("No performance profile")
+		imgui.EndTable()
+		return
+	}
+
+	imgui.TableHeadersRow()
+
+	for _, fn := range src.SortedFunctions.Functions {
+		imgui.TableNextRow()
+
+		imgui.TableNextColumn()
+		imgui.PushStyleColor(imgui.StyleColorHeaderHovered, win.img.cols.CoProcSourceHover)
+		imgui.PushStyleColor(imgui.StyleColorHeaderActive, win.img.cols.CoProcSourceHover)
+		imgui.SelectableV("", false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{0, 0})
+		imgui.PopStyleColorV(2)
+
+		// open source window on click
+		if imgui.IsItemClicked() {
+			srcWin := win.img.wm.windows[winCoProcSourceID].(*winCoProcSource)
+			srcWin.gotoSource(fn.FirstLine)
+		}
+
+		imgui.TableNextColumn()
+		imgui.Text(fn.FirstLine.File.ShortFilename)
+
+		imgui.TableNextColumn()
+		imgui.Text(fmt.Sprintf("%s", fn.Name))
+
+		imgui.TableNextColumn()
+		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLoad)
+		if fn.FrameCycles > 0 && src.FrameCycles > 0 {
+			imgui.Text(fmt.Sprintf("%0.2f%%", fn.FrameCycles/src.FrameCycles*100.0))
+		} else {
+			imgui.Text("-")
+		}
+		imgui.PopStyleColor()
+	}
+
+	imgui.EndTable()
+}
+
+func (win *winCoProcPerformance) drawSourceLines(src *developer.Source) {
 	const top = 25
 	const numColumns = 5
 
@@ -126,7 +179,7 @@ func (win *winCoProcPerformance) drawExecutionPerformance(src *developer.Source,
 	imgui.TableSetupColumnV("Function", imgui.TableColumnFlagsNone, width*0.35, 3)
 	imgui.TableSetupColumnV("Load", imgui.TableColumnFlagsNone, width*0.1, 4)
 
-	if src == nil || len(src.ExecutedLines.Lines) == 0 {
+	if src == nil || len(src.SortedLines.Lines) == 0 {
 		imgui.Text("No performance profile")
 		imgui.EndTable()
 		return
@@ -134,14 +187,15 @@ func (win *winCoProcPerformance) drawExecutionPerformance(src *developer.Source,
 
 	imgui.TableHeadersRow()
 
-	t := top
-	if len(src.ExecutedLines.Lines) < top {
-		t = len(src.ExecutedLines.Lines)
+	// t := top
+	t := len(src.SortedLines.Lines)
+	if len(src.SortedLines.Lines) < top {
+		t = len(src.SortedLines.Lines)
 	}
 
 	for i := 0; i < t; i++ {
 		imgui.TableNextRow()
-		ln := src.ExecutedLines.Lines[i]
+		ln := src.SortedLines.Lines[i]
 
 		imgui.TableNextColumn()
 		imgui.PushStyleColor(imgui.StyleColorHeaderHovered, win.img.cols.CoProcSourceHover)
@@ -182,14 +236,10 @@ func (win *winCoProcPerformance) drawExecutionPerformance(src *developer.Source,
 
 		imgui.TableNextColumn()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLoad)
-		if byLifetimeCycles {
-			if src.TotalCycles > 0 {
-				imgui.Text(fmt.Sprintf("%0.2f%%", ln.LifetimeCycles/src.TotalCycles*100.0))
-			}
+		if ln.FrameCycles > 0 && src.FrameCycles > 0 {
+			imgui.Text(fmt.Sprintf("%0.2f%%", ln.FrameCycles/src.FrameCycles*100.0))
 		} else {
-			if src.FrameCycles > 0 {
-				imgui.Text(fmt.Sprintf("%0.2f%%", ln.FrameCycles/src.FrameCycles*100.0))
-			}
+			imgui.Text("-")
 		}
 		imgui.PopStyleColor()
 	}

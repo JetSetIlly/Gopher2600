@@ -124,7 +124,8 @@ func (dev *Developer) ExecutionProfile(addr map[uint32]float32) {
 			}
 		}
 
-		sort.Sort(dev.source.ExecutedLines)
+		sort.Sort(dev.source.SortedLines)
+		sort.Sort(dev.source.SortedFunctions)
 	}
 }
 
@@ -164,9 +165,14 @@ func (dev *Developer) NewFrame(_ television.FrameInfo) error {
 		return nil
 	}
 
-	for _, s := range dev.source.ExecutedLines.Lines {
-		s.FrameCycles = s.nextFrameCycles
-		s.nextFrameCycles = 0
+	for _, l := range dev.source.SortedLines.Lines {
+		l.FrameCycles = l.nextFrameCycles
+		l.nextFrameCycles = 0
+	}
+
+	for _, f := range dev.source.Functions {
+		f.FrameCycles = f.nextFrameCycles
+		f.nextFrameCycles = 0
 	}
 
 	dev.source.FrameCycles = dev.source.nextFrameCycles

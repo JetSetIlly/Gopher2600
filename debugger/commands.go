@@ -1313,9 +1313,8 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 					return
 				}
 
-				dbg.printLine(terminal.StyleFeedback, fmt.Sprintf("sorted by %s", strings.ToUpper(src.ExecutedLines.SortedBy())))
 				for i := 0; i < top; i++ {
-					l := src.ExecutedLines.Lines[i]
+					l := src.SortedLines.Lines[i]
 					dbg.printLine(terminal.StyleFeedback, fmt.Sprintf("%02d: %s", i, l.String()))
 				}
 			})
