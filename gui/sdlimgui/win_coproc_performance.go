@@ -87,13 +87,20 @@ func (win *winCoProcPerformance) draw() {
 		imgui.BeginChildV("##coprocPerformanceMain", imgui.Vec2{X: 0, Y: imguiRemainingWinHeight() - win.optionsHeight}, false, 0)
 		imgui.BeginTabBar("##coprocSourceTabBar")
 
+		options := false
+
 		if imgui.BeginTabItemV("Source Line", nil, imgui.TabItemFlagsNone) {
+			imgui.BeginChild("##sourcelineScroll")
 			win.drawSourceLines(src)
+			imgui.EndChild()
 			imgui.EndTabItem()
+			options = true
 		}
 
 		if imgui.BeginTabItemV("Functions", nil, imgui.TabItemFlagsNone) {
+			imgui.BeginChild("##functionScroll")
 			win.drawFunctions(src)
+			imgui.EndChild()
 			imgui.EndTabItem()
 		}
 
@@ -104,7 +111,12 @@ func (win *winCoProcPerformance) draw() {
 		win.optionsHeight = imguiMeasureHeight(func() {
 			imgui.Separator()
 			imgui.Spacing()
-			imgui.Checkbox("Show Source in Tooltip", &win.showSrc)
+			if options {
+				imgui.Checkbox("Show Source in Tooltip", &win.showSrc)
+			} else {
+				imgui.AlignTextToFramePadding()
+				imgui.Text("")
+			}
 		})
 	})
 }
@@ -165,7 +177,6 @@ func (win *winCoProcPerformance) drawFunctions(src *developer.Source) {
 }
 
 func (win *winCoProcPerformance) drawSourceLines(src *developer.Source) {
-	const top = 25
 	const numColumns = 5
 
 	imgui.Spacing()
@@ -187,15 +198,8 @@ func (win *winCoProcPerformance) drawSourceLines(src *developer.Source) {
 
 	imgui.TableHeadersRow()
 
-	// t := top
-	t := len(src.SortedLines.Lines)
-	if len(src.SortedLines.Lines) < top {
-		t = len(src.SortedLines.Lines)
-	}
-
-	for i := 0; i < t; i++ {
+	for _, ln := range src.SortedLines.Lines {
 		imgui.TableNextRow()
-		ln := src.SortedLines.Lines[i]
 
 		imgui.TableNextColumn()
 		imgui.PushStyleColor(imgui.StyleColorHeaderHovered, win.img.cols.CoProcSourceHover)

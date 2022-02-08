@@ -137,7 +137,7 @@ func (win *winCoProcIllegalAccess) draw() {
 			imgui.PopStyleColor()
 
 			imgui.TableNextColumn()
-			if lg.SrcLine == nil {
+			if lg.SrcLine != nil {
 				imgui.Text(lg.SrcLine.Function.Name)
 			}
 		}
