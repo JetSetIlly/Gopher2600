@@ -323,12 +323,15 @@ func newSource(pathToROM string) (*Source, error) {
 					logger.Logf("dwarf", "unsupported class (%s) for dwarf.AttrHighpc", fld.Class)
 				}
 			case dwarf.AttrAbstractOrigin:
-				a := abstract[fld.Val.(dwarf.Offset)]
-				for _, fld := range a.Field {
-					switch fld.Attr {
-					case dwarf.AttrName:
-						name = fld.Val.(string)
+				if a, ok := abstract[fld.Val.(dwarf.Offset)]; ok {
+					for _, fld := range a.Field {
+						switch fld.Attr {
+						case dwarf.AttrName:
+							name = fld.Val.(string)
+						}
 					}
+				} else {
+					logger.Logf("dwarf", "abstract function not found for concrete instance\n%#v", c)
 				}
 			}
 		}
