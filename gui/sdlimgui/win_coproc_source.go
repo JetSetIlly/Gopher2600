@@ -39,6 +39,9 @@ type winCoProcSource struct {
 	scrollTo     int
 	scrollToFile string
 	selectedLine int
+
+	selectedFile          *developer.SourceFile
+	selectedFileComboOpen bool
 }
 
 func newWinCoProcSource(img *SdlImgui) (window, error) {
@@ -88,122 +91,143 @@ func (win *winCoProcSource) draw() {
 			return
 		}
 
-		// new child that contains the main scrollable table
-		imgui.BeginChildV("##coprocSourceMain", imgui.Vec2{X: 0, Y: imguiRemainingWinHeight() - win.optionsHeight}, false, 0)
-		imgui.BeginTabBar("##coprocSourceTabBar")
+		if win.scrollTo > 0 && (win.selectedFile == nil || win.scrollToFile != win.selectedFile.Filename) {
+			win.selectedFile = src.Files[win.scrollToFile]
+		} else if win.selectedFile == nil {
+			win.selectedFile = src.Files[src.Filenames[0]]
+		}
 
-		for _, fn := range src.Filenames {
-			// auto-select to tab as appropriate
-			tabItemFlg := imgui.TabItemFlagsNone
-			if win.scrollTo > 0 && win.scrollToFile == fn {
-				tabItemFlg = imgui.TabItemFlagsSetSelected
+		imgui.AlignTextToFramePadding()
+		imgui.Text("Filename")
+		imgui.SameLine()
+		imgui.PushItemWidth(imgui.ContentRegionAvail().X)
+		if imgui.BeginComboV("##selectedFile", win.selectedFile.ShortFilename, imgui.ComboFlagsHeightLargest) {
+			for _, fn := range src.Filenames {
+				if imgui.Selectable(src.Files[fn].ShortFilename) {
+					win.selectedFile = src.Files[fn]
+				}
+
+				// set scroll on the first frame that the combo is open
+				if !win.selectedFileComboOpen && fn != win.selectedFile.Filename {
+					imgui.SetScrollHereY(0.0)
+				}
 			}
 
-			if imgui.BeginTabItemV(src.Files[fn].ShortFilename, nil, tabItemFlg) {
-				imgui.PushFont(win.img.glsl.fonts.code)
-				lineSpacing := float32(win.img.prefs.codeFontLineSpacing.Get().(int))
-				imgui.PushStyleVarVec2(imgui.StyleVarCellPadding, imgui.Vec2{X: 4, Y: lineSpacing})
+			imgui.EndCombo()
 
-				imgui.BeginChildV("##coprocSource", imgui.Vec2{X: 0, Y: imguiRemainingWinHeight()}, false, 0)
-				imgui.BeginTableV("##coprocSourceTable", 5, imgui.TableFlagsSizingFixedFit, imgui.Vec2{}, 0.0)
+			// note that combo is open *after* it has been drawn
+			win.selectedFileComboOpen = true
+		} else {
+			win.selectedFileComboOpen = false
+		}
+		imgui.PopItemWidth()
 
-				// first column is a dummy column so that Selectable (span all columns) works correctly
-				width := imgui.ContentRegionAvail().X
-				imgui.TableSetupColumnV("", imgui.TableColumnFlagsNone, 0, 0)
-				imgui.TableSetupColumnV("Icon", imgui.TableColumnFlagsNone, width*0.04, 1)
-				imgui.TableSetupColumnV("Load", imgui.TableColumnFlagsNone, width*0.07, 2)
-				imgui.TableSetupColumnV("Number", imgui.TableColumnFlagsNone, width*0.04, 3)
-				imgui.TableSetupColumnV("Source", imgui.TableColumnFlagsNone, width*0.85, 4)
+		imgui.Spacing()
+		imgui.Separator()
+		imgui.Spacing()
 
-				var clipper imgui.ListClipper
-				clipper.Begin(len(src.Files[fn].Lines))
-				for clipper.Step() {
-					for i := clipper.DisplayStart; i < clipper.DisplayEnd; i++ {
-						if i >= len(src.Files[fn].Lines) {
-							break
-						}
+		// new child that contains the main scrollable table
+		imgui.BeginChildV("##coprocSourceMain", imgui.Vec2{X: 0, Y: imguiRemainingWinHeight() - win.optionsHeight}, false, 0)
 
-						ln := src.Files[fn].Lines[i]
-						imgui.TableNextRow()
+		imgui.PushFont(win.img.glsl.fonts.code)
+		lineSpacing := float32(win.img.prefs.codeFontLineSpacing.Get().(int))
+		imgui.PushStyleVarVec2(imgui.StyleVarCellPadding, imgui.Vec2{X: 4, Y: lineSpacing})
 
-						// scroll to correct line
-						if win.scrollTo > 0 {
-							y := imgui.FontSize() + imgui.CurrentStyle().ItemInnerSpacing().Y
-							y = float32(win.selectedLine-10) * y
-							imgui.SetScrollY(y)
-						}
+		imgui.BeginChildV("##coprocSource", imgui.Vec2{X: 0, Y: imguiRemainingWinHeight()}, false, 0)
+		imgui.BeginTableV("##coprocSourceTable", 5, imgui.TableFlagsSizingFixedFit, imgui.Vec2{}, 0.0)
 
-						// highlight selected line
-						if ln.LineNumber == win.selectedLine {
-							imgui.TableSetBgColor(imgui.TableBgTargetRowBg0, win.img.cols.CoProcSourceSelected)
-						}
+		// first column is a dummy column so that Selectable (span all columns) works correctly
+		width := imgui.ContentRegionAvail().X
+		imgui.TableSetupColumnV("", imgui.TableColumnFlagsNone, 0, 0)
+		imgui.TableSetupColumnV("Icon", imgui.TableColumnFlagsNone, width*0.04, 1)
+		imgui.TableSetupColumnV("Load", imgui.TableColumnFlagsNone, width*0.07, 2)
+		imgui.TableSetupColumnV("Number", imgui.TableColumnFlagsNone, width*0.04, 3)
+		imgui.TableSetupColumnV("Source", imgui.TableColumnFlagsNone, width*0.85, 4)
 
-						// highlight line mouse is over
-						imgui.TableNextColumn()
-						imgui.PushStyleColor(imgui.StyleColorHeaderHovered, win.img.cols.CoProcSourceHover)
-						imgui.PushStyleColor(imgui.StyleColorHeaderActive, win.img.cols.CoProcSourceHover)
-						imgui.SelectableV("", false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{0, 0})
-						imgui.PopStyleColorV(2)
+		var clipper imgui.ListClipper
+		clipper.Begin(len(win.selectedFile.Lines))
+		for clipper.Step() {
+			for i := clipper.DisplayStart; i < clipper.DisplayEnd; i++ {
+				if i >= len(win.selectedFile.Lines) {
+					break
+				}
 
-						// show chip icon and also tooltip if mouse is hovered
-						// on selectable
-						imgui.TableNextColumn()
-						if len(ln.Disassembly) > 0 {
-							if win.showAsm {
-								imguiTooltip(func() {
-									imgui.Text(ln.File.ShortFilename)
-									imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLineNumber)
-									imgui.Text(fmt.Sprintf("Line: %d", ln.LineNumber))
-									imgui.PopStyleColor()
-									imgui.Spacing()
-									imgui.Separator()
-									imgui.Spacing()
-									for _, asm := range ln.Disassembly {
-										imgui.Text(asm)
-									}
-								}, true)
-							}
+				ln := win.selectedFile.Lines[i]
+				imgui.TableNextRow()
 
-							if ln.IllegalCount > 0 {
-								imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceBug)
-								imgui.Text(string(fonts.CoProcBug))
-								imgui.PopStyleColor()
-							} else {
-								imgui.Text(string(fonts.Chip))
-							}
-						}
+				// scroll to correct line
+				if win.scrollTo > 0 {
+					y := imgui.FontSize() + imgui.CurrentStyle().ItemInnerSpacing().Y
+					y = float32(win.selectedLine-10) * y
+					imgui.SetScrollY(y)
+				}
 
-						// percentage of time taken by this line
-						imgui.TableNextColumn()
-						if ln.FrameCycles > 0 {
-							imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLoad)
-							imgui.Text(fmt.Sprintf("%0.2f%%", ln.FrameCycles/src.FrameCycles*100.0))
+				// highlight selected line
+				if ln.LineNumber == win.selectedLine {
+					imgui.TableSetBgColor(imgui.TableBgTargetRowBg0, win.img.cols.CoProcSourceSelected)
+				}
+
+				// highlight line mouse is over
+				imgui.TableNextColumn()
+				imgui.PushStyleColor(imgui.StyleColorHeaderHovered, win.img.cols.CoProcSourceHover)
+				imgui.PushStyleColor(imgui.StyleColorHeaderActive, win.img.cols.CoProcSourceHover)
+				imgui.SelectableV("", false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{0, 0})
+				imgui.PopStyleColorV(2)
+
+				// show chip icon and also tooltip if mouse is hovered
+				// on selectable
+				imgui.TableNextColumn()
+				if len(ln.Disassembly) > 0 {
+					if win.showAsm {
+						imguiTooltip(func() {
+							imgui.Text(ln.File.ShortFilename)
+							imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLineNumber)
+							imgui.Text(fmt.Sprintf("Line: %d", ln.LineNumber))
 							imgui.PopStyleColor()
-						}
+							imgui.Spacing()
+							imgui.Separator()
+							imgui.Spacing()
+							for _, asm := range ln.Disassembly {
+								imgui.Text(asm)
+							}
+						}, true)
+					}
 
-						// line numbering
-						imgui.TableNextColumn()
-						imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLineNumber)
-						imgui.Text(fmt.Sprintf("%d", ln.LineNumber))
+					if ln.IllegalCount > 0 {
+						imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceBug)
+						imgui.Text(string(fonts.CoProcBug))
 						imgui.PopStyleColor()
-
-						// source line
-						imgui.TableNextColumn()
-						imgui.Text(ln.Content)
+					} else {
+						imgui.Text(string(fonts.Chip))
 					}
 				}
 
-				imgui.EndTable()
-				imgui.EndChild()
+				// percentage of time taken by this line
+				imgui.TableNextColumn()
+				if ln.FrameCycles > 0 {
+					imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLoad)
+					imgui.Text(fmt.Sprintf("%0.2f%%", ln.FrameCycles/src.FrameCycles*100.0))
+					imgui.PopStyleColor()
+				}
 
-				imgui.PopStyleVar()
-				imgui.PopFont()
+				// line numbering
+				imgui.TableNextColumn()
+				imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLineNumber)
+				imgui.Text(fmt.Sprintf("%d", ln.LineNumber))
+				imgui.PopStyleColor()
 
-				imgui.EndTabItem()
+				// source line
+				imgui.TableNextColumn()
+				imgui.Text(ln.Content)
 			}
 		}
 
-		imgui.EndTabBar()
+		imgui.EndTable()
+		imgui.EndChild()
+
+		imgui.PopStyleVar()
+		imgui.PopFont()
+
 		imgui.EndChild()
 
 		// options toolbar at foot of window
