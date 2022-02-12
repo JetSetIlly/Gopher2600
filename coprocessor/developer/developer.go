@@ -118,10 +118,7 @@ func (dev *Developer) ExecutionProfile(addr map[uint32]float32) {
 
 	if dev.source != nil {
 		for pc, ct := range addr {
-			err := dev.source.execute(pc, ct)
-			if err != nil {
-				logger.Logf("developer", "%v", err)
-			}
+			dev.source.execute(pc, ct)
 		}
 
 		sort.Sort(dev.source.SortedLines)
@@ -165,6 +162,10 @@ func (dev *Developer) NewFrame(_ television.FrameInfo) error {
 		return nil
 	}
 
+	// traverse the SortedLines list and update the FrameCyles values
+	//
+	// we prefer this over traversing the Lines list because we may hit a
+	// SourceLine more than once. SortedLines contains unique entries.
 	for _, l := range dev.source.SortedLines.Lines {
 		l.FrameCycles = l.nextFrameCycles
 		l.nextFrameCycles = 0

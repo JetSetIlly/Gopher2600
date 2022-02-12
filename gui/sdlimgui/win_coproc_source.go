@@ -188,7 +188,7 @@ func (win *winCoProcSource) draw() {
 							imgui.Separator()
 							imgui.Spacing()
 							for _, asm := range ln.Disassembly {
-								imgui.Text(asm)
+								imgui.Text(asm.String())
 							}
 						}, true)
 					}

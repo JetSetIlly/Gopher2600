@@ -122,7 +122,7 @@ func (win *winCoProcPerformance) draw() {
 }
 
 func (win *winCoProcPerformance) drawFunctions(src *developer.Source) {
-	const numColumns = 4
+	const numColumns = 5
 
 	imgui.Spacing()
 	imgui.BeginTableV("##coprocPerformanceTable", numColumns, imgui.TableFlagsSizingFixedFit, imgui.Vec2{}, 0.0)
@@ -130,8 +130,9 @@ func (win *winCoProcPerformance) drawFunctions(src *developer.Source) {
 	// first column is a dummy column so that Selectable (span all columns) works correctly
 	width := imgui.ContentRegionAvail().X
 	imgui.TableSetupColumnV("", imgui.TableColumnFlagsNone, 0, 0)
-	imgui.TableSetupColumnV("File", imgui.TableColumnFlagsNone, width*0.40, 1)
-	imgui.TableSetupColumnV("Function", imgui.TableColumnFlagsNone, width*0.40, 3)
+	imgui.TableSetupColumnV("File", imgui.TableColumnFlagsNone, width*0.35, 1)
+	imgui.TableSetupColumnV("Line", imgui.TableColumnFlagsNone, width*0.1, 2)
+	imgui.TableSetupColumnV("Function", imgui.TableColumnFlagsNone, width*0.35, 3)
 	imgui.TableSetupColumnV("Load", imgui.TableColumnFlagsNone, width*0.1, 4)
 
 	if src == nil || len(src.SortedLines.Lines) == 0 {
@@ -154,11 +155,20 @@ func (win *winCoProcPerformance) drawFunctions(src *developer.Source) {
 		// open source window on click
 		if imgui.IsItemClicked() {
 			srcWin := win.img.wm.windows[winCoProcSourceID].(*winCoProcSource)
-			srcWin.gotoSource(fn.FirstLine)
+			srcWin.gotoSource(fn.DeclLine)
 		}
 
 		imgui.TableNextColumn()
-		imgui.Text(fn.FirstLine.File.ShortFilename)
+		if fn.DeclLine != nil {
+			imgui.Text(fn.DeclLine.File.ShortFilename)
+		}
+
+		imgui.TableNextColumn()
+		if fn.DeclLine != nil {
+			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLineNumber)
+			imgui.Text(fmt.Sprintf("%d", fn.DeclLine.LineNumber))
+			imgui.PopStyleColor()
+		}
 
 		imgui.TableNextColumn()
 		imgui.Text(fmt.Sprintf("%s", fn.Name))
