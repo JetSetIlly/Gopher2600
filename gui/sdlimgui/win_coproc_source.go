@@ -239,6 +239,19 @@ func (win *winCoProcSource) draw() {
 		win.optionsHeight = imguiMeasureHeight(func() {
 			imgui.Separator()
 			imgui.Spacing()
+
+			if src.UnsupportedOptimisation != "" {
+				imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.Warning)
+				imgui.AlignTextToFramePadding()
+				imgui.Text(fmt.Sprintf(" %c", fonts.Warning))
+				imgui.PopStyleColor()
+				imguiTooltip(func() {
+					imgui.Text(src.UnsupportedOptimisation)
+					imgui.Text("source code analysis may be misleading")
+				}, true)
+				imgui.SameLineV(0, 20)
+			}
+
 			imgui.Checkbox("Show ASM in Tooltip", &win.showAsm)
 		})
 	})

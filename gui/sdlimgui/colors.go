@@ -44,6 +44,7 @@ type imguiColors struct {
 	False       imgui.Vec4
 	TrueFalse   imgui.Vec4
 	Transparent imgui.Vec4
+	Warning     imgui.Vec4
 
 	// playscreen color
 	PlayWindowBg     imgui.Vec4
@@ -204,6 +205,7 @@ func newColors() *imguiColors {
 		False:       imgui.Vec4{0.6, 0.3, 0.3, 1.0},
 		TrueFalse:   imgui.Vec4{0.6, 0.6, 0.3, 1.0},
 		Transparent: imgui.Vec4{0.0, 0.0, 0.0, 0.0},
+		Warning:     imgui.Vec4{1.0, 0.2, 0.2, 1.0},
 
 		// playscreen color
 		PlayWindowBg:     imgui.Vec4{0.0, 0.0, 0.0, 1.0},

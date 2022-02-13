@@ -99,6 +99,17 @@ type Source struct {
 
 	compileUnits []*dwarf.Entry
 
+	// if any of the compile units were compiled with GCC optimisation then
+	// this string will contain an appropriate message. if string is empty then
+	// the detected optimisation was acceptable (or there is no optimisation or
+	// the compiler is unsupported)
+	//
+	// a GCC optimisation of -Os is okay
+	//
+	// optimisation can cause misleading or confusing information (albeit still
+	// technically correct in terms of performance analysis)
+	UnsupportedOptimisation string
+
 	// disassembled binary
 	Disassembly map[uint64]*SourceDisasm
 
@@ -291,6 +302,27 @@ func NewSource(pathToROM string) (*Source, error) {
 					if _, ok := src.Files[sf.Filename]; !ok {
 						src.Files[sf.Filename] = sf
 						src.Filenames = append(src.Filenames, sf.Filename)
+					}
+				}
+			}
+
+			// check optimisation directive
+			fld := entry.AttrField(dwarf.AttrProducer)
+			if fld != nil {
+				producer := fld.Val.(string)
+				if strings.HasPrefix(producer, "GNU") {
+					idx := strings.Index(producer, " -O")
+					if idx > -1 {
+						idx += 3
+						if idx < len(producer) {
+							switch producer[idx] {
+							case 's':
+							case ' ':
+							default:
+								src.UnsupportedOptimisation = fmt.Sprintf("binary compiled with unsupported optimisation (-O%c)", producer[idx])
+								logger.Logf("dwarf", src.UnsupportedOptimisation)
+							}
+						}
 					}
 				}
 			}

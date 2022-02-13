@@ -64,6 +64,7 @@ const (
 	Filter                 = '\uf0b0'
 	PageFault              = '\uf0fe'
 	Bot                    = '\uf544'
+	Warning                = '\uf071'
 )
 
 // The first and last unicode points used in the application. We use this to

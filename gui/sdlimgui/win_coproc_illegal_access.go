@@ -21,6 +21,7 @@ import (
 
 	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/coprocessor/developer"
+	"github.com/jetsetilly/gopher2600/gui/fonts"
 )
 
 // in this case of the coprocessor disassmebly window the actual window title
@@ -79,11 +80,6 @@ func (win *winCoProcIllegalAccess) draw() {
 
 	// safely iterate over top execution information
 	win.img.dbg.CoProcDev.BorrowIllegalAccess(func(ill *developer.IllegalAccess) {
-		if ill == nil || len(ill.Log) == 0 {
-			imgui.Text("No illegal accesses")
-			return
-		}
-
 		imgui.BeginChildV("##coprocIllegalAccessMain", imgui.Vec2{X: 0, Y: imguiRemainingWinHeight() - win.optionsHeight}, false, 0)
 
 		imgui.Spacing()
@@ -150,6 +146,25 @@ func (win *winCoProcIllegalAccess) draw() {
 			win.optionsHeight = imguiMeasureHeight(func() {
 				imgui.Separator()
 				imgui.Spacing()
+
+				win.img.dbg.CoProcDev.BorrowSource(func(src *developer.Source) {
+					if src == nil {
+						return
+					}
+
+					if src.UnsupportedOptimisation != "" {
+						imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.Warning)
+						imgui.AlignTextToFramePadding()
+						imgui.Text(fmt.Sprintf(" %c", fonts.Warning))
+						imgui.PopStyleColor()
+						imguiTooltip(func() {
+							imgui.Text(src.UnsupportedOptimisation)
+							imgui.Text("illegal access analysis may be misleading")
+						}, true)
+						imgui.SameLineV(0, 20)
+					}
+				})
+
 				imgui.Checkbox("Show Source in Tooltip", &win.showSrc)
 			})
 		} else {

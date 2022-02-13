@@ -21,6 +21,7 @@ import (
 
 	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/coprocessor/developer"
+	"github.com/jetsetilly/gopher2600/gui/fonts"
 )
 
 // in this case of the coprocessor disassmebly window the actual window title
@@ -116,6 +117,19 @@ func (win *winCoProcPerformance) draw() {
 		win.optionsHeight = imguiMeasureHeight(func() {
 			imgui.Separator()
 			imgui.Spacing()
+
+			if src.UnsupportedOptimisation != "" {
+				imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.Warning)
+				imgui.AlignTextToFramePadding()
+				imgui.Text(fmt.Sprintf(" %c", fonts.Warning))
+				imgui.PopStyleColor()
+				imguiTooltip(func() {
+					imgui.Text(src.UnsupportedOptimisation)
+					imgui.Text("performance analysis may be misleading")
+				}, true)
+				imgui.SameLineV(0, 20)
+			}
+
 			if options {
 				imgui.Checkbox("Show Source in Tooltip", &win.showSrc)
 			} else {
