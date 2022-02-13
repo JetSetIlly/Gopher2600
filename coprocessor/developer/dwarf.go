@@ -256,7 +256,7 @@ func NewSource(pathToROM string) (*Source, error) {
 
 	// readSourceFile() will shorten the filepath of a source file using the
 	// pathToROM string. however, symbolic links can confuse this so we expand
-	// all symbolic links in readSourFile() and need to do the same with the
+	// all symbolic links in readSourceFile() and need to do the same with the
 	// pathToROM value
 	var pathToROM_nosymlinks string
 	pathToROM_nosymlinks, err = filepath.EvalSymlinks(pathToROM)
@@ -477,6 +477,8 @@ func NewSource(pathToROM string) (*Source, error) {
 }
 
 func (src *Source) findFunction(addr uint64) *SourceFunction {
+	ret := &SourceFunction{Name: UnknownFunction}
+
 	var lr *dwarf.LineReader
 
 	r := src.dwrf.Reader()
@@ -565,7 +567,7 @@ func (src *Source) findFunction(addr uint64) *SourceFunction {
 
 			filename := lr.Files()[filenum].Name
 			if fn, ok := src.Files[filename]; ok {
-				return &SourceFunction{
+				ret = &SourceFunction{
 					Name:     name,
 					DeclLine: fn.Lines[linenum-1],
 				}
@@ -633,17 +635,22 @@ func (src *Source) findFunction(addr uint64) *SourceFunction {
 			}
 			linenum := fld.Val.(int64)
 
-			filename := lr.Files()[filenum].Name
-			if fn, ok := src.Files[filename]; ok {
-				return &SourceFunction{
-					Name:     name,
-					DeclLine: fn.Lines[linenum-1],
+			files := lr.Files()
+			if int(filenum) < len(files) {
+				f := files[filenum]
+				if f != nil {
+					if fn, ok := src.Files[f.Name]; ok {
+						ret = &SourceFunction{
+							Name:     name,
+							DeclLine: fn.Lines[linenum-1],
+						}
+					}
 				}
 			}
 		}
 	}
 
-	return &SourceFunction{Name: UnknownFunction}
+	return ret
 }
 
 // find source line for program counter. shouldn't be called too often because
