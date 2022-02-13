@@ -85,6 +85,10 @@ func (ln *SourceLine) String() string {
 	return fmt.Sprintf("%s:%d", ln.File.Filename, ln.LineNumber)
 }
 
+// Source is created from available DWARF data that has been found in relation
+// to and ELF file that looks to be related to the specified ROM.
+//
+// It is possible for the arrays/map fields to be empty
 type Source struct {
 	dwrf *dwarf.Data
 
@@ -163,7 +167,14 @@ func findELF(pathToROM string) *elf.File {
 	return nil
 }
 
-func newSource(pathToROM string) (*Source, error) {
+// NewSource is the preferred method of initialisation for the Source type.
+//
+// If no ELF file or valid DWARF data can be found in relation to the pathToROM
+// argument, the function will return nil with an error.
+//
+// Once the ELF and DWARF file has been identified then Source will always be
+// non-nil but with the understanding that the fields may be empty.
+func NewSource(pathToROM string) (*Source, error) {
 	src := &Source{
 		Disassembly:   make(map[uint64]*SourceDisasm),
 		Files:         make(map[string]*SourceFile),
@@ -202,7 +213,7 @@ func newSource(pathToROM string) (*Source, error) {
 				if err == io.EOF {
 					break
 				}
-				return nil, err
+				return nil, curated.Errorf("dwarf: compiled ELF file not found")
 			}
 
 			opcode := elf.ByteOrder.Uint16(b)
@@ -224,7 +235,7 @@ func newSource(pathToROM string) (*Source, error) {
 	// get DWARF information from ELF file
 	src.dwrf, err = elf.DWARF()
 	if err != nil {
-		return nil, curated.Errorf("dwarf: %v", err)
+		return src, curated.Errorf("dwarf: %v", err)
 	}
 
 	// readSourceFile() will shorten the filepath of a source file using the
@@ -262,7 +273,7 @@ func newSource(pathToROM string) (*Source, error) {
 
 			r, err := src.dwrf.LineReader(entry)
 			if err != nil {
-				return nil, err
+				return src, curated.Errorf("dwarf: %v", err)
 			}
 
 			// loop through files in the compilation unit. entry 0 is always nil

@@ -84,6 +84,11 @@ func (win *winCoProcPerformance) draw() {
 			return
 		}
 
+		if len(src.Filenames) == 0 {
+			imgui.Text("No source files available")
+			return
+		}
+
 		imgui.BeginChildV("##coprocPerformanceMain", imgui.Vec2{X: 0, Y: imguiRemainingWinHeight() - win.optionsHeight}, false, 0)
 		imgui.BeginTabBar("##coprocSourceTabBar")
 

@@ -91,6 +91,11 @@ func (win *winCoProcSource) draw() {
 			return
 		}
 
+		if len(src.Filenames) == 0 {
+			imgui.Text("No source files available")
+			return
+		}
+
 		if win.scrollTo > 0 && (win.selectedFile == nil || win.scrollToFile != win.selectedFile.Filename) {
 			win.selectedFile = src.Files[win.scrollToFile]
 		} else if win.selectedFile == nil {

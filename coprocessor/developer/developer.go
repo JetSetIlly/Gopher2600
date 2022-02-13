@@ -58,7 +58,7 @@ func NewDeveloper(pathToROM string, cart mapper.CartCoProcBus) *Developer {
 
 	dev.cart.SetDeveloper(dev)
 
-	dev.source, err = newSource(pathToROM)
+	dev.source, err = NewSource(pathToROM)
 	if err != nil {
 		logger.Logf("developer", err.Error())
 	}
