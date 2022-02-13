@@ -117,10 +117,13 @@ type Source struct {
 	nextFrameCycles float32
 }
 
-const elfFile = "armcode.elf"
-const elfFile_older = "custom2.elf"
-
 func findELF(pathToROM string) *elf.File {
+	const (
+		elfFile            = "armcode.elf"
+		elfFile_older      = "custom2.elf"
+		elfFile_jetsetilly = "main.elf"
+	)
+
 	// current working directory
 	od, err := elf.Open(elfFile)
 	if err == nil {
@@ -152,7 +155,7 @@ func findELF(pathToROM string) *elf.File {
 	}
 
 	// jetsetilly source tree
-	od, err = elf.Open(filepath.Join(pathToROM, "arm", "main.elf"))
+	od, err = elf.Open(filepath.Join(pathToROM, "arm", elfFile_jetsetilly))
 	if err == nil {
 		return od
 	}
@@ -224,6 +227,16 @@ func newSource(pathToROM string) (*Source, error) {
 		return nil, curated.Errorf("dwarf: %v", err)
 	}
 
+	// readSourceFile() will shorten the filepath of a source file using the
+	// pathToROM string. however, symbolic links can confuse this so we expand
+	// all symbolic links in readSourFile() and need to do the same with the
+	// pathToROM value
+	var pathToROM_nosymlinks string
+	pathToROM_nosymlinks, err = filepath.EvalSymlinks(pathToROM)
+	if err != nil {
+		pathToROM_nosymlinks = pathToROM
+	}
+
 	// compile units are made up of many files. the files and filenames are in
 	// the fields below
 	r := src.dwrf.Reader()
@@ -254,7 +267,7 @@ func newSource(pathToROM string) (*Source, error) {
 
 			// loop through files in the compilation unit. entry 0 is always nil
 			for _, f := range r.Files()[1:] {
-				sf, err := readSourceFile(f.Name, pathToROM)
+				sf, err := readSourceFile(f.Name, pathToROM_nosymlinks)
 				if err != nil {
 					logger.Logf("dwarf", "%v", err)
 				} else {
@@ -624,7 +637,7 @@ func (src *Source) execute(addr uint32, ct float32) {
 	}
 }
 
-func readSourceFile(filename string, pathToROM string) (*SourceFile, error) {
+func readSourceFile(filename string, pathToROM_nosymlinks string) (*SourceFile, error) {
 	var err error
 
 	fl := SourceFile{
@@ -647,10 +660,19 @@ func readSourceFile(filename string, pathToROM string) (*SourceFile, error) {
 		})
 	}
 
-	if strings.HasPrefix(filename, pathToROM) {
-		fl.ShortFilename = filename[len(pathToROM)+1:]
+	// evaluate symbolic links for the source filenam. pathToROM_nosymlinks has
+	// already been processed so the comparison later should work in all
+	// instance
+	var filename_nosymlinks string
+	filename_nosymlinks, err = filepath.EvalSymlinks(filename)
+	if err != nil {
+		filename_nosymlinks = filename
+	}
+
+	if strings.HasPrefix(filename_nosymlinks, pathToROM_nosymlinks) {
+		fl.ShortFilename = filename_nosymlinks[len(pathToROM_nosymlinks)+1:]
 	} else {
-		fl.ShortFilename = filename
+		fl.ShortFilename = filename_nosymlinks
 	}
 
 	return &fl, nil
