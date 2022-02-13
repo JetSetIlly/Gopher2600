@@ -30,12 +30,14 @@ import (
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
+// SourceFile is a single source file indentified by the DWARF data.
 type SourceFile struct {
 	Filename      string
 	ShortFilename string
 	Lines         []*SourceLine
 }
 
+// SourceFunction is a single function identified by the DWARF data.
 type SourceFunction struct {
 	Name string
 
@@ -50,6 +52,7 @@ type SourceFunction struct {
 	nextFrameCycles float32
 }
 
+// SourceDisasm is a single disassembled intruction from the ELF binary.
 type SourceDisasm struct {
 	addr   uint32
 	opcode uint16
@@ -60,6 +63,8 @@ func (d *SourceDisasm) String() string {
 	return fmt.Sprintf("%#08x %04x %s", d.addr, d.opcode, d.disasm)
 }
 
+// SourceLine is a single line of source in a source file, identified by the
+// DWARF data and loaded from the actual source file.
 type SourceLine struct {
 	Content string
 
@@ -318,6 +323,7 @@ func NewSource(pathToROM string) (*Source, error) {
 					break // for loop
 				}
 				logger.Logf("dwarf", "%v", err)
+				workingSourceLine = nil
 			}
 
 			// working source line and address. we'll proces these at the next line entry
@@ -368,6 +374,11 @@ func NewSource(pathToROM string) (*Source, error) {
 
 			// find function name and use src.Functions if possible
 			fn := src.findFunction(le.Address)
+			if fn == nil {
+				workingSourceLine = nil
+				continue // for loop
+			}
+
 			if _, ok := src.Functions[fn.Name]; ok {
 				fn = src.Functions[fn.Name]
 			} else {
@@ -433,9 +444,7 @@ func NewSource(pathToROM string) (*Source, error) {
 	return src, nil
 }
 
-func (src *Source) findFunction(address uint64) *SourceFunction {
-	ret := &SourceFunction{Name: UnknownFunction}
-
+func (src *Source) findFunction(addr uint64) *SourceFunction {
 	var lr *dwarf.LineReader
 
 	r := src.dwrf.Reader()
@@ -446,7 +455,7 @@ func (src *Source) findFunction(address uint64) *SourceFunction {
 				break // for loop
 			}
 			logger.Logf("dwarf", err.Error())
-			return ret
+			return nil
 		}
 		if entry == nil {
 			break // for loop
@@ -461,7 +470,7 @@ func (src *Source) findFunction(address uint64) *SourceFunction {
 			lr, err = src.dwrf.LineReader(entry)
 			if err != nil {
 				logger.Logf("dwarf", err.Error())
-				return ret
+				return nil
 			}
 
 		case dwarf.TagInlinedSubroutine:
@@ -481,7 +490,7 @@ func (src *Source) findFunction(address uint64) *SourceFunction {
 
 			match := false
 			for _, r := range rngs {
-				if address >= r[0] && address < r[1] {
+				if addr >= r[0] && addr < r[1] {
 					match = true
 					break
 				}
@@ -499,7 +508,7 @@ func (src *Source) findFunction(address uint64) *SourceFunction {
 					// if we can't find the offset then something has gone
 					// seriously wrong with the DWARF data
 					logger.Logf("dwarf", err.Error())
-					return ret
+					return nil
 				}
 			}
 
@@ -524,7 +533,7 @@ func (src *Source) findFunction(address uint64) *SourceFunction {
 
 			filename := lr.Files()[filenum].Name
 			if fn, ok := src.Files[filename]; ok {
-				ret = &SourceFunction{
+				return &SourceFunction{
 					Name:     name,
 					DeclLine: fn.Lines[linenum-1],
 				}
@@ -557,7 +566,7 @@ func (src *Source) findFunction(address uint64) *SourceFunction {
 				continue // for loop
 			}
 
-			if address < low || address >= high {
+			if addr < low || addr >= high {
 				continue // for loop
 			}
 
@@ -594,7 +603,7 @@ func (src *Source) findFunction(address uint64) *SourceFunction {
 
 			filename := lr.Files()[filenum].Name
 			if fn, ok := src.Files[filename]; ok {
-				ret = &SourceFunction{
+				return &SourceFunction{
 					Name:     name,
 					DeclLine: fn.Lines[linenum-1],
 				}
@@ -602,7 +611,7 @@ func (src *Source) findFunction(address uint64) *SourceFunction {
 		}
 	}
 
-	return ret
+	return &SourceFunction{Name: UnknownFunction}
 }
 
 // find source line for program counter. shouldn't be called too often because
