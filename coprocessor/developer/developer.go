@@ -38,6 +38,8 @@ type Developer struct {
 	// illegal accesses already encountered. duplicate accesses will not be logged.
 	illegalAccess     IllegalAccess
 	illegalAccessLock sync.Mutex
+
+	framesSinceLastUpdate int
 }
 
 // NewDeveloper is the preferred method of initialisation for the Developer type.
@@ -153,11 +155,22 @@ func (dev *Developer) BorrowIllegalAccess(f func(*IllegalAccess)) {
 	f(&dev.illegalAccess)
 }
 
+const maxWaitUpdateTime = 60 // in frames
+
 // NewFrame implements the television.FrameTrigger interface.
-func (dev *Developer) NewFrame(_ television.FrameInfo) error {
+func (dev *Developer) NewFrame(frameInfo television.FrameInfo) error {
 	dev.sourceLock.Lock()
 	defer dev.sourceLock.Unlock()
 
+	// only update FrameCycles if new frame was caused by a VSYNC or we've
+	// waited long enough since the last update
+	dev.framesSinceLastUpdate++
+	if !frameInfo.VSynced || dev.framesSinceLastUpdate > maxWaitUpdateTime {
+		return nil
+	}
+	dev.framesSinceLastUpdate = 0
+
+	// do nothing else if no source is available
 	if dev.source == nil {
 		return nil
 	}
