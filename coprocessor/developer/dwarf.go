@@ -66,12 +66,15 @@ func (d *SourceDisasm) String() string {
 // SourceLine is a single line of source in a source file, identified by the
 // DWARF data and loaded from the actual source file.
 type SourceLine struct {
-	Content string
-
-	Function *SourceFunction
-
+	// the actual file/line of the SourceLine
 	File       *SourceFile
 	LineNumber int
+
+	// the content of the line
+	Content string
+
+	// the function the line of source can be found within
+	Function *SourceFunction
 
 	// the generated assembly for this line. will be empty if line is a comment or otherwise unsused
 	Disassembly []*SourceDisasm
@@ -90,6 +93,13 @@ func (ln *SourceLine) String() string {
 	return fmt.Sprintf("%s:%d", ln.File.Filename, ln.LineNumber)
 }
 
+// compile units are made up of many children. for convenience/speed we keep
+// track of the children as an index rather than a tree.
+type compileUnit struct {
+	unit     *dwarf.Entry
+	children map[dwarf.Offset]*dwarf.Entry
+}
+
 // Source is created from available DWARF data that has been found in relation
 // to and ELF file that looks to be related to the specified ROM.
 //
@@ -97,7 +107,7 @@ func (ln *SourceLine) String() string {
 type Source struct {
 	dwrf *dwarf.Data
 
-	compileUnits []*dwarf.Entry
+	compileUnits []compileUnit
 
 	// if any of the compile units were compiled with GCC optimisation then
 	// this string will contain an appropriate message. if string is empty then
@@ -267,6 +277,10 @@ func NewSource(pathToROM string) (*Source, error) {
 	// compile units are made up of many files. the files and filenames are in
 	// the fields below
 	r := src.dwrf.Reader()
+
+	// most recent compile unit we've seen
+	var unit compileUnit
+
 	for {
 		entry, err := r.Next()
 		if err != nil {
@@ -284,8 +298,13 @@ func NewSource(pathToROM string) (*Source, error) {
 
 		switch entry.Tag {
 		case dwarf.TagCompileUnit:
+			unit = compileUnit{
+				unit:     entry,
+				children: make(map[dwarf.Offset]*dwarf.Entry),
+			}
+
 			// assuming DWARF never has duplicate compile unit entries
-			src.compileUnits = append(src.compileUnits, entry)
+			src.compileUnits = append(src.compileUnits, unit)
 
 			r, err := src.dwrf.LineReader(entry)
 			if err != nil {
@@ -326,13 +345,16 @@ func NewSource(pathToROM string) (*Source, error) {
 					}
 				}
 			}
+
+		default:
+			unit.children[entry.Offset] = entry
 		}
 	}
 
 	// find reference for every meaningful source line and link to disassembly
 	for _, e := range src.compileUnits {
 		// read every line in the compile unit
-		r, err := src.dwrf.LineReader(e)
+		r, err := src.dwrf.LineReader(e.unit)
 		if err != nil {
 			continue // for loop
 		}
@@ -404,32 +426,35 @@ func NewSource(pathToROM string) (*Source, error) {
 				workingSourceLine = nil
 			}
 
-			// find function name and use src.Functions if possible
-			fn := src.findFunction(le.Address)
-			if fn == nil {
-				workingSourceLine = nil
-				continue // for loop
-			}
-
-			if _, ok := src.Functions[fn.Name]; ok {
-				fn = src.Functions[fn.Name]
-			} else {
-				src.Functions[fn.Name] = fn
-				src.FunctionNames = append(src.FunctionNames, fn.Name)
-			}
-
+			// new working source line and working address
 			workingSourceLine = src.Files[le.File.Name].Lines[le.Line-1]
 			workingAddress = le.Address
 
-			// check for valid function
-			if fn.Name == UnknownFunction {
+			// find function name for line entry
+			foundFunc, err := src.findFunction(le.Address)
+			if err != nil {
+				return nil, curated.Errorf("dwarf: %v", err)
+			}
+
+			// if function can't be found then log error and continue
+			if foundFunc.Name == UnknownFunction {
 				logger.Logf("dwarf", "no function for line entry: %s", workingSourceLine.String())
 				workingSourceLine = nil
 				continue // for loop
 			}
 
+			// if function already exists use that function instance.
+			// otherwise, add the function to the map and the list of function
+			// names
+			if _, ok := src.Functions[foundFunc.Name]; ok {
+				foundFunc = src.Functions[foundFunc.Name]
+			} else {
+				src.Functions[foundFunc.Name] = foundFunc
+				src.FunctionNames = append(src.FunctionNames, foundFunc.Name)
+			}
+
 			// associate function with workingSourceLine
-			workingSourceLine.Function = fn
+			workingSourceLine.Function = foundFunc
 		}
 	}
 
@@ -454,8 +479,8 @@ func NewSource(pathToROM string) (*Source, error) {
 	// single SourceLine
 	//
 	// to prevent adding a SourceLine more than once we keep an "observed" map
-	// indexed (and this is important) the pointer address of the SourceLine
-	// and not the address of the binary we've just disassembled
+	// indexed by (and this is important) the pointer address of the SourceLine
+	// and not the execution address
 	observed := make(map[*SourceLine]bool)
 	for _, ln := range src.Lines {
 		if _, ok := observed[ln]; !ok {
@@ -476,10 +501,84 @@ func NewSource(pathToROM string) (*Source, error) {
 	return src, nil
 }
 
-func (src *Source) findFunction(addr uint64) *SourceFunction {
-	ret := &SourceFunction{Name: UnknownFunction}
+// returns function or error. if error is nil then SourceFunction will be valid.
+//
+// if function cannot be found the SourceFunction.Name will be UnknownFunction.
+// test for that rather than nil.
+func (src *Source) findFunction(addr uint64) (*SourceFunction, error) {
+	found := &SourceFunction{Name: UnknownFunction}
 
-	var lr *dwarf.LineReader
+	// resolveAbstract is a helper function that creates a SourceFunction and
+	// assigns it to the ret variable (created above). it is commone to both
+	// Subprogram and InlinedSubroutine tagged entries
+	//
+	// significantly it handles the AbstractOrigin attribute correctly
+	resolveAbstract := func(entry *dwarf.Entry) error {
+		var err error
+
+		// read abstract entry (using a different reader) if appropriate tag is found
+		fld := entry.AttrField(dwarf.AttrAbstractOrigin)
+		if fld != nil {
+			r := src.dwrf.Reader()
+			r.Seek(fld.Val.(dwarf.Offset))
+			entry, err = r.Next()
+			if err != nil {
+				return err
+			}
+		}
+
+		// from here similar to TagSubprogram
+
+		// the list of files for the compile unit. where we get the files
+		// from depends on whether current entry has an abstract origin or
+		// not
+		var files []*dwarf.LineFile
+
+		// check which compile unit the abstract entry is in and
+		// reinitialise the files array
+		for _, u := range src.compileUnits {
+			if _, ok := u.children[entry.Offset]; ok {
+				lr, err := src.dwrf.LineReader(u.unit)
+				if err != nil {
+					return err
+				}
+				files = lr.Files()
+				break
+			}
+		}
+
+		// name of entry
+		fld = entry.AttrField(dwarf.AttrName)
+		if fld == nil {
+			return nil
+		}
+		name := fld.Val.(string)
+
+		// declaration file
+		fld = entry.AttrField(dwarf.AttrDeclFile)
+		if fld == nil {
+			return nil
+		}
+		filenum := fld.Val.(int64)
+
+		// declaration line
+		fld = entry.AttrField(dwarf.AttrDeclLine)
+		if fld == nil {
+			return nil
+		}
+		linenum := fld.Val.(int64)
+
+		// prepare return value
+		filename := files[filenum].Name
+		if fn, ok := src.Files[filename]; ok {
+			found = &SourceFunction{
+				Name:     name,
+				DeclLine: fn.Lines[linenum-1],
+			}
+		}
+
+		return nil
+	}
 
 	r := src.dwrf.Reader()
 	for {
@@ -488,8 +587,7 @@ func (src *Source) findFunction(addr uint64) *SourceFunction {
 			if err == io.EOF {
 				break // for loop
 			}
-			logger.Logf("dwarf", err.Error())
-			return nil
+			return nil, err
 		}
 		if entry == nil {
 			break // for loop
@@ -499,93 +597,89 @@ func (src *Source) findFunction(addr uint64) *SourceFunction {
 		}
 
 		switch entry.Tag {
-		case dwarf.TagCompileUnit:
-			var err error
-			lr, err = src.dwrf.LineReader(entry)
-			if err != nil {
-				logger.Logf("dwarf", err.Error())
-				return nil
-			}
-
 		case dwarf.TagInlinedSubroutine:
-			fld := entry.AttrField(dwarf.AttrRanges)
-			if fld == nil {
-				continue // for loop
-			}
-
-			rngs, err := src.dwrf.Ranges(entry)
-			if err != nil {
-				if err == io.EOF {
-					break // for loop
-				}
-				logger.Logf("dwarf", err.Error())
-				return nil
-			}
-
-			match := false
-			for _, r := range rngs {
-				if addr >= r[0] && addr < r[1] {
-					match = true
-					break
-				}
-			}
-			if !match {
-				continue // for loop
-			}
-
-			fld = entry.AttrField(dwarf.AttrAbstractOrigin)
+			// the address range to match against for inlined subroutines is a
+			// little more involved because these entries can have either a
+			// low/high field or a ranges field
+			//
+			// assumption: if there is a low attribute there should be a high
+			// field and there won't be a ranges field
+			fld := entry.AttrField(dwarf.AttrLowpc)
 			if fld != nil {
-				r := src.dwrf.Reader()
-				r.Seek(fld.Val.(dwarf.Offset))
-				entry, err = r.Next()
+				var low uint64
+				var high uint64
+
+				low = uint64(fld.Val.(uint64))
+
+				// high PC
+				fld = entry.AttrField(dwarf.AttrHighpc)
+				if fld == nil {
+					return nil, curated.Errorf("AttrLowpc without AttrHighpc for InlinedSubroutine: %08x", addr)
+				}
+
+				switch fld.Class {
+				case dwarf.ClassConstant:
+					// dwarf-4
+					high = low + uint64(fld.Val.(int64))
+				case dwarf.ClassAddress:
+					// dwarf-2
+					high = uint64(fld.Val.(uint64))
+				default:
+					return nil, curated.Errorf("AttrLowpc without AttrHighpc for InlinedSubroutine: %08x", addr)
+				}
+
+				if addr < low || addr >= high {
+					continue // for loop
+				}
+			} else {
+				fld = entry.AttrField(dwarf.AttrRanges)
+				if fld == nil {
+					continue // for loop
+				}
+
+				rngs, err := src.dwrf.Ranges(entry)
 				if err != nil {
-					// if we can't find the offset then something has gone
-					// seriously wrong with the DWARF data
-					logger.Logf("dwarf", err.Error())
-					return nil
+					return nil, err
+				}
+
+				match := false
+				for _, r := range rngs {
+					if addr >= r[0] && addr < r[1] {
+						match = true
+						break
+					}
+				}
+				if !match {
+					continue // for loop
 				}
 			}
 
-			// from here similar to TagSubprogram
-			fld = entry.AttrField(dwarf.AttrName)
-			if fld == nil {
-				continue // for loop
-			}
-			name := fld.Val.(string)
-
-			fld = entry.AttrField(dwarf.AttrDeclFile)
-			if fld == nil {
-				continue // for loop
-			}
-			filenum := fld.Val.(int64)
-
-			fld = entry.AttrField(dwarf.AttrDeclLine)
-			if fld == nil {
-				continue // for loop
-			}
-			linenum := fld.Val.(int64)
-
-			filename := lr.Files()[filenum].Name
-			if fn, ok := src.Files[filename]; ok {
-				ret = &SourceFunction{
-					Name:     name,
-					DeclLine: fn.Lines[linenum-1],
-				}
+			err = resolveAbstract(entry)
+			if err != nil {
+				return nil, err
 			}
 
 		case dwarf.TagSubprogram:
+			// check address against low/high fields. compare to
+			// InlinedSubroutines where address range can be given by either
+			// low/high fields OR a Range field. for Subprograms, there is
+			// never a Range field.
+
 			var low uint64
 			var high uint64
 
 			fld := entry.AttrField(dwarf.AttrLowpc)
 			if fld == nil {
+				// it is possible for Subprograms to have no address fields.
+				// the Subprograms are abstract and will be referred to by
+				// either concrete Subprograms or concrete InlinedSubroutines
 				continue // for loop
 			}
 			low = uint64(fld.Val.(uint64))
 
 			fld = entry.AttrField(dwarf.AttrHighpc)
 			if fld == nil {
-				continue // for loop
+				return nil, curated.Errorf("AttrLowpc without AttrHighpc for InlinedSubroutine: %08x", addr)
 			}
 
 			switch fld.Class {
@@ -596,61 +690,21 @@ func (src *Source) findFunction(addr uint64) *SourceFunction {
 				// dwarf-2
 				high = uint64(fld.Val.(uint64))
 			default:
-				logger.Logf("dwarf", "unsupported class (%s) for dwarf.AttrHighpc", fld.Class)
-				continue // for loop
+				return nil, curated.Errorf("AttrLowpc without AttrHighpc for InlinedSubroutine: %08x", addr)
 			}
 
 			if addr < low || addr >= high {
 				continue // for loop
 			}
 
-			fld = entry.AttrField(dwarf.AttrAbstractOrigin)
-			if fld != nil {
-				r := src.dwrf.Reader()
-				r.Seek(fld.Val.(dwarf.Offset))
-				entry, err = r.Next()
-				if err != nil {
-					// if we can't find the offset then something has gone
-					// seriously wrong with the DWARF data
-					panic(err)
-				}
-			}
-
-			// from here similar to TagInlinedSubroutine
-			fld = entry.AttrField(dwarf.AttrName)
-			if fld == nil {
-				continue // for loop
-			}
-			name := fld.Val.(string)
-
-			fld = entry.AttrField(dwarf.AttrDeclFile)
-			if fld == nil {
-				continue // for loop
-			}
-			filenum := fld.Val.(int64)
-
-			fld = entry.AttrField(dwarf.AttrDeclLine)
-			if fld == nil {
-				continue // for loop
-			}
-			linenum := fld.Val.(int64)
-
-			files := lr.Files()
-			if int(filenum) < len(files) {
-				f := files[filenum]
-				if f != nil {
-					if fn, ok := src.Files[f.Name]; ok {
-						ret = &SourceFunction{
-							Name:     name,
-							DeclLine: fn.Lines[linenum-1],
-						}
-					}
-				}
+			err = resolveAbstract(entry)
+			if err != nil {
+				return nil, err
 			}
 		}
 	}
 
-	return ret
+	return found, nil
 }
 
 // find source line for program counter. shouldn't be called too often because
@@ -661,7 +715,7 @@ func (src *Source) findFunction(addr uint64) *SourceFunction {
 // yet.
 func (src *Source) findSourceLine(addr uint32) (*SourceLine, error) {
 	for _, e := range src.compileUnits {
-		r, err := src.dwrf.LineReader(e)
+		r, err := src.dwrf.LineReader(e.unit)
 		if err != nil {
 			return nil, err
 		}
