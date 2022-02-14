@@ -80,6 +80,16 @@ func (win *winCoProcIllegalAccess) draw() {
 
 	// safely iterate over top execution information
 	win.img.dbg.CoProcDev.BorrowIllegalAccess(func(ill *developer.IllegalAccess) {
+		if ill == nil {
+			imgui.Text("No illegal accesses")
+			return
+		}
+
+		if len(ill.Log) == 0 {
+			imgui.Text("No illegal accesses")
+			return
+		}
+
 		imgui.BeginChildV("##coprocIllegalAccessMain", imgui.Vec2{X: 0, Y: imguiRemainingWinHeight() - win.optionsHeight}, false, 0)
 
 		imgui.Spacing()
