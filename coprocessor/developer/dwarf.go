@@ -249,7 +249,7 @@ func NewSource(pathToROM string) (*Source, error) {
 			src.Disassembly[addr] = &SourceDisasm{
 				addr:   uint32(addr),
 				opcode: opcode,
-				disasm: disasm,
+				disasm: disasm.String(),
 			}
 
 			addr += 2
@@ -416,7 +416,7 @@ func NewSource(pathToROM string) (*Source, error) {
 						// instructions has been reached
 						//
 						// TODO: improve detection of end of code block during DWARF parsing
-						if d.disasm[:3] == "BAL" {
+						if len(d.disasm) > 3 && d.disasm[:3] == "BAL" {
 							break // for addr loop
 						}
 					}
