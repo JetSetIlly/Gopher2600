@@ -65,6 +65,8 @@ const (
 	PageFault              = '\uf0fe'
 	Bot                    = '\uf544'
 	Warning                = '\uf071'
+	CoProcCycles           = '\uf021'
+	CoProcLastStart        = '\uf26c'
 )
 
 // The first and last unicode points used in the application. We use this to
