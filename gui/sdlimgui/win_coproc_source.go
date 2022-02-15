@@ -42,6 +42,9 @@ type winCoProcSource struct {
 
 	selectedFile          *developer.SourceFile
 	selectedFileComboOpen bool
+
+	// an instruction to tell the window to draw uncollapsed on the next frame
+	uncollapseNext bool
 }
 
 func newWinCoProcSource(img *SdlImgui) (window, error) {
@@ -80,8 +83,16 @@ func (win *winCoProcSource) draw() {
 	imgui.SetNextWindowSizeV(imgui.Vec2{551, 526}, imgui.ConditionFirstUseEver)
 	imgui.SetNextWindowSizeConstraints(imgui.Vec2{551, 300}, imgui.Vec2{1200, 1000})
 
+	var flgs imgui.WindowFlags
+	if win.uncollapseNext {
+		flgs = imgui.WindowFlagsNoCollapse
+		win.uncollapseNext = false
+	} else {
+		flgs = imgui.WindowFlagsNone
+	}
+
 	title := fmt.Sprintf("%s %s", win.img.lz.Cart.CoProcID, winCoProcSourceID)
-	imgui.BeginV(title, &win.open, imgui.WindowFlagsNone)
+	imgui.BeginV(title, &win.open, flgs)
 	defer imgui.End()
 
 	// safely iterate over source code
@@ -266,4 +277,5 @@ func (win *winCoProcSource) gotoSource(ln *developer.SourceLine) {
 	win.scrollTo = 10
 	win.scrollToFile = ln.File.Filename
 	win.selectedLine = ln.LineNumber
+	win.uncollapseNext = true
 }
