@@ -258,7 +258,7 @@ func (win *winPrefs) drawDebugger() {
 			imgui.Spacing()
 
 			lineSpacing := int32(win.img.prefs.codeFontLineSpacing.Get().(int))
-			if imgui.SliderInt("Line Spacing", &lineSpacing, 0, 5) {
+			if imgui.SliderInt("Line Spacing (code)", &lineSpacing, 0, 5) {
 				win.img.prefs.codeFontLineSpacing.Set(lineSpacing)
 			}
 		}

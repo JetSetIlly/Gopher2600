@@ -131,7 +131,7 @@ func (win *winCoProcIllegalAccess) draw() {
 			// open source window on click
 			if imgui.IsItemClicked() && lg.SrcLine != nil {
 				srcWin := win.img.wm.windows[winCoProcSourceID].(*winCoProcSource)
-				srcWin.gotoSource(lg.SrcLine)
+				srcWin.gotoSourceLine(lg.SrcLine)
 			}
 
 			imgui.TableNextColumn()

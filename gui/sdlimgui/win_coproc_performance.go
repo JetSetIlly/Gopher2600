@@ -174,7 +174,7 @@ func (win *winCoProcPerformance) drawFunctions(src *developer.Source) {
 		// open source window on click
 		if imgui.IsItemClicked() {
 			srcWin := win.img.wm.windows[winCoProcSourceID].(*winCoProcSource)
-			srcWin.gotoSource(fn.DeclLine)
+			srcWin.gotoSourceLine(fn.DeclLine)
 		}
 
 		imgui.TableNextColumn()
@@ -253,7 +253,7 @@ func (win *winCoProcPerformance) drawSourceLines(src *developer.Source) {
 		// open source window on click
 		if imgui.IsItemClicked() {
 			srcWin := win.img.wm.windows[winCoProcSourceID].(*winCoProcSource)
-			srcWin.gotoSource(ln)
+			srcWin.gotoSourceLine(ln)
 		}
 
 		imgui.TableNextColumn()

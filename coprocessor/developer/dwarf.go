@@ -54,13 +54,13 @@ type SourceFunction struct {
 
 // SourceDisasm is a single disassembled intruction from the ELF binary.
 type SourceDisasm struct {
-	addr   uint32
-	opcode uint16
-	disasm string
+	Addr        uint32
+	Opcode      uint16
+	Instruction string
 }
 
 func (d *SourceDisasm) String() string {
-	return fmt.Sprintf("%#08x %04x %s", d.addr, d.opcode, d.disasm)
+	return fmt.Sprintf("%#08x %04x %s", d.Addr, d.Opcode, d.Instruction)
 }
 
 // SourceLine is a single line of source in a source file, identified by the
@@ -247,9 +247,9 @@ func NewSource(pathToROM string) (*Source, error) {
 
 			// put the disassembly entry in the
 			src.Disassembly[addr] = &SourceDisasm{
-				addr:   uint32(addr),
-				opcode: opcode,
-				disasm: disasm.String(),
+				Addr:        uint32(addr),
+				Opcode:      opcode,
+				Instruction: disasm.String(),
 			}
 
 			addr += 2
@@ -416,7 +416,7 @@ func NewSource(pathToROM string) (*Source, error) {
 						// instructions has been reached
 						//
 						// TODO: improve detection of end of code block during DWARF parsing
-						if len(d.disasm) > 3 && d.disasm[:3] == "BAL" {
+						if len(d.Instruction) > 3 && d.Instruction[:3] == "BAL" {
 							break // for addr loop
 						}
 					}

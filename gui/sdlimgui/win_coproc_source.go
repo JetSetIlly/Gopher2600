@@ -36,14 +36,23 @@ type winCoProcSource struct {
 	showAsm       bool
 	optionsHeight float32
 
-	scrollTo     int
 	scrollToFile string
 	selectedLine int
+	scrollTo     bool
 
 	selectedFile          *developer.SourceFile
 	selectedFileComboOpen bool
 
-	// an instruction to tell the window to draw uncollapsed on the next frame
+	// we pay special attention to the collapsed state of this window. this is
+	// because we want the gotoSourceLine() function to uncollapse the window
+	// when selected
+	//
+	// 1. isCollapsed is set on imgui.Begin()
+	// 2. uncollapseNext is set to true on gotoSourceLine()
+	// 3. it is set to false when scrollToCounter reaches zero
+	// 4. imgui.Begin() is called with WindowFlagsNoCollapse if both
+	//       isCollapsed and uncollapseNext are true
+	isCollapsed    bool
 	uncollapseNext bool
 }
 
@@ -84,7 +93,7 @@ func (win *winCoProcSource) draw() {
 	imgui.SetNextWindowSizeConstraints(imgui.Vec2{551, 300}, imgui.Vec2{1200, 1000})
 
 	var flgs imgui.WindowFlags
-	if win.uncollapseNext {
+	if win.uncollapseNext && win.isCollapsed {
 		flgs = imgui.WindowFlagsNoCollapse
 		win.uncollapseNext = false
 	} else {
@@ -92,7 +101,12 @@ func (win *winCoProcSource) draw() {
 	}
 
 	title := fmt.Sprintf("%s %s", win.img.lz.Cart.CoProcID, winCoProcSourceID)
-	imgui.BeginV(title, &win.open, flgs)
+	if !imgui.BeginV(title, &win.open, flgs) {
+		win.isCollapsed = true
+		imgui.End()
+		return
+	}
+	win.isCollapsed = false
 	defer imgui.End()
 
 	// safely iterate over source code
@@ -107,7 +121,7 @@ func (win *winCoProcSource) draw() {
 			return
 		}
 
-		if win.scrollTo > 0 && (win.selectedFile == nil || win.scrollToFile != win.selectedFile.Filename) {
+		if win.scrollTo && (win.selectedFile == nil || win.scrollToFile != win.selectedFile.Filename) {
 			win.selectedFile = src.Files[win.scrollToFile]
 		} else if win.selectedFile == nil {
 			win.selectedFile = src.Files[src.Filenames[0]]
@@ -146,11 +160,13 @@ func (win *winCoProcSource) draw() {
 		imgui.BeginChildV("##coprocSourceMain", imgui.Vec2{X: 0, Y: imguiRemainingWinHeight() - win.optionsHeight}, false, 0)
 
 		imgui.PushFont(win.img.glsl.fonts.code)
-		lineSpacing := float32(win.img.prefs.codeFontLineSpacing.Get().(int))
-		imgui.PushStyleVarVec2(imgui.StyleVarCellPadding, imgui.Vec2{X: 4, Y: lineSpacing})
+		style := imgui.CurrentStyle()
+		rowSize := style.CellPadding()
+		rowSize.Y = float32(win.img.prefs.codeFontLineSpacing.Get().(int))
+		imgui.PushStyleVarVec2(imgui.StyleVarCellPadding, rowSize) // affects table row height
+		imgui.PushStyleVarVec2(imgui.StyleVarItemSpacing, rowSize) // affects selectable height
 
-		imgui.BeginChildV("##coprocSource", imgui.Vec2{X: 0, Y: imguiRemainingWinHeight()}, false, 0)
-		imgui.BeginTableV("##coprocSourceTable", 5, imgui.TableFlagsSizingFixedFit, imgui.Vec2{}, 0.0)
+		imgui.BeginTableV("##coprocSourceTable", 5, imgui.TableFlagsScrollY|imgui.TableFlagsSizingFixedFit, imgui.Vec2{}, 0.0)
 
 		// first column is a dummy column so that Selectable (span all columns) works correctly
 		width := imgui.ContentRegionAvail().X
@@ -171,13 +187,6 @@ func (win *winCoProcSource) draw() {
 				ln := win.selectedFile.Lines[i]
 				imgui.TableNextRow()
 
-				// scroll to correct line
-				if win.scrollTo > 0 {
-					y := imgui.FontSize() + imgui.CurrentStyle().ItemInnerSpacing().Y
-					y = float32(win.selectedLine-10) * y
-					imgui.SetScrollY(y)
-				}
-
 				// highlight selected line
 				if ln.LineNumber == win.selectedLine {
 					imgui.TableSetBgColor(imgui.TableBgTargetRowBg0, win.img.cols.CoProcSourceSelected)
@@ -196,6 +205,13 @@ func (win *winCoProcSource) draw() {
 				if len(ln.Disassembly) > 0 {
 					if win.showAsm {
 						imguiTooltip(func() {
+							// remove cell/item styling for the duration of the tooltip
+							pad := style.CellPadding()
+							item := style.ItemSpacing()
+							imgui.PopStyleVarV(2)
+							defer imgui.PushStyleVarVec2(imgui.StyleVarCellPadding, pad)
+							defer imgui.PushStyleVarVec2(imgui.StyleVarItemSpacing, item)
+
 							imgui.Text(ln.File.ShortFilename)
 							imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLineNumber)
 							imgui.Text(fmt.Sprintf("Line: %d", ln.LineNumber))
@@ -203,9 +219,17 @@ func (win *winCoProcSource) draw() {
 							imgui.Spacing()
 							imgui.Separator()
 							imgui.Spacing()
+							imgui.BeginTable("##disasmTable", 3)
 							for _, asm := range ln.Disassembly {
-								imgui.Text(asm.String())
+								imgui.TableNextRow()
+								imgui.TableNextColumn()
+								imgui.Text(fmt.Sprintf("%#08x", asm.Addr))
+								imgui.TableNextColumn()
+								imgui.Text(fmt.Sprintf("%04x", asm.Opcode))
+								imgui.TableNextColumn()
+								imgui.Text(asm.Instruction)
 							}
+							imgui.EndTable()
 						}, true)
 					}
 
@@ -238,10 +262,16 @@ func (win *winCoProcSource) draw() {
 			}
 		}
 
-		imgui.EndTable()
-		imgui.EndChild()
+		// scroll to correct line
+		if win.scrollTo {
+			imgui.SetScrollY(clipper.ItemsHeight * float32(win.selectedLine-10))
+			win.scrollTo = false
+			win.uncollapseNext = false
+		}
 
-		imgui.PopStyleVar()
+		imgui.EndTable()
+
+		imgui.PopStyleVarV(2)
 		imgui.PopFont()
 
 		imgui.EndChild()
@@ -266,15 +296,11 @@ func (win *winCoProcSource) draw() {
 			imgui.Checkbox("Show ASM in Tooltip", &win.showAsm)
 		})
 	})
-
-	if win.scrollTo > 0 {
-		win.scrollTo--
-	}
 }
 
-func (win *winCoProcSource) gotoSource(ln *developer.SourceLine) {
+func (win *winCoProcSource) gotoSourceLine(ln *developer.SourceLine) {
 	win.setOpen(true)
-	win.scrollTo = 10
+	win.scrollTo = true
 	win.scrollToFile = ln.File.Filename
 	win.selectedLine = ln.LineNumber
 	win.uncollapseNext = true
