@@ -142,7 +142,7 @@ func (img *SdlImgui) Service() {
 			} else if ev.Y < 0 {
 				deltaY--
 			}
-			img.io.AddMouseWheelDelta(deltaX*2, deltaY*2)
+			img.io.AddMouseWheelDelta(deltaX, deltaY)
 
 			if !img.wm.selectROM.open {
 				select {
