@@ -17,6 +17,7 @@ package arm7tdmi
 
 import (
 	"fmt"
+	"strings"
 )
 
 // DisasmEntry implements the CartCoProcDisasmEntry interface.
@@ -156,7 +157,9 @@ func Disassemble(opcode uint16) DisasmEntry {
 		return DisasmEntry{}
 	}
 
-	return f(opcode)
+	e := f(opcode)
+	e.Operator = strings.ToLower(e.Operator)
+	return e
 }
 
 func disasmMoveShiftedRegister(opcode uint16) DisasmEntry {
@@ -172,13 +175,13 @@ func disasmMoveShiftedRegister(opcode uint16) DisasmEntry {
 	switch op {
 	case 0b00:
 		entry.Operator = "LSL"
-		entry.Operand = fmt.Sprintf("R%d, R%d, #%02x ", destReg, srcReg, shift)
+		entry.Operand = fmt.Sprintf("R%d, R%d, #$%02x ", destReg, srcReg, shift)
 	case 0b01:
 		entry.Operator = "LSR"
-		entry.Operand = fmt.Sprintf("R%d, R%d, #%02x ", destReg, srcReg, shift)
+		entry.Operand = fmt.Sprintf("R%d, R%d, #$%02x ", destReg, srcReg, shift)
 	case 0b10:
 		entry.Operator = "ASR"
-		entry.Operand = fmt.Sprintf("R%d, R%d, #%02x ", destReg, srcReg, shift)
+		entry.Operand = fmt.Sprintf("R%d, R%d, #$%02x ", destReg, srcReg, shift)
 	case 0x11:
 		panic("illegal instruction")
 	}
@@ -200,17 +203,17 @@ func disasmAddSubtract(opcode uint16) DisasmEntry {
 	if subtract {
 		entry.Operator = "SUB"
 		if immediate {
-			entry.Operand = fmt.Sprintf("R%d, R%d, #%02x ", destReg, srcReg, imm)
+			entry.Operand = fmt.Sprintf("R%d, R%d, #$%02x ", destReg, srcReg, imm)
 		} else {
-			entry.Operand = fmt.Sprintf("R%d, R%d, R%02x ", destReg, srcReg, imm)
+			entry.Operand = fmt.Sprintf("R%d, R%d, R$%02x ", destReg, srcReg, imm)
 		}
 
 	} else {
 		entry.Operator = "ADD"
 		if immediate {
-			entry.Operand = fmt.Sprintf("R%d, R%d, #%02x ", destReg, srcReg, imm)
+			entry.Operand = fmt.Sprintf("R%d, R%d, #$%02x ", destReg, srcReg, imm)
 		} else {
-			entry.Operand = fmt.Sprintf("R%d, R%d, R%02x ", destReg, srcReg, imm)
+			entry.Operand = fmt.Sprintf("R%d, R%d, R$%02x ", destReg, srcReg, imm)
 		}
 
 	}
@@ -232,16 +235,16 @@ func disasmMovCmpAddSubImm(opcode uint16) DisasmEntry {
 	switch op {
 	case 0b00:
 		entry.Operator = "MOV"
-		entry.Operand = fmt.Sprintf("R%d, #%02x ", destReg, imm)
+		entry.Operand = fmt.Sprintf("R%d, #$%02x ", destReg, imm)
 	case 0b01:
 		entry.Operator = "CMP"
-		entry.Operand = fmt.Sprintf("R%d, #%02x ", destReg, imm)
+		entry.Operand = fmt.Sprintf("R%d, #$%02x ", destReg, imm)
 	case 0b10:
 		entry.Operator = "ADD"
-		entry.Operand = fmt.Sprintf("R%d, #%02x ", destReg, imm)
+		entry.Operand = fmt.Sprintf("R%d, #$%02x ", destReg, imm)
 	case 0b11:
 		entry.Operator = "SUB"
-		entry.Operand = fmt.Sprintf("R%d, #%02x ", destReg, imm)
+		entry.Operand = fmt.Sprintf("R%d, #$%02x ", destReg, imm)
 	}
 
 	return entry
@@ -363,7 +366,7 @@ func disasmPCrelativeLoad(opcode uint16) DisasmEntry {
 	imm := uint32(opcode&0x00ff) << 2
 
 	entry.Operator = "LDR"
-	entry.Operand = fmt.Sprintf("R%d, [PC, #%02x] ", destReg, imm)
+	entry.Operand = fmt.Sprintf("R%d, [PC, #$%02x] ", destReg, imm)
 
 	return entry
 }
@@ -464,13 +467,13 @@ func disasmLoadStoreWithImmOffset(opcode uint16) DisasmEntry {
 	if load {
 		if byteTransfer {
 			entry.Operator = "LDRB"
-			entry.Operand = fmt.Sprintf("R%d, [R%d, #%02x] ", reg, baseReg, offset)
+			entry.Operand = fmt.Sprintf("R%d, [R%d, #$%02x] ", reg, baseReg, offset)
 
 			return entry
 		}
 
 		entry.Operator = "LDR"
-		entry.Operand = fmt.Sprintf("R%d, [R%d, #%02x] ", reg, baseReg, offset)
+		entry.Operand = fmt.Sprintf("R%d, [R%d, #$%02x] ", reg, baseReg, offset)
 
 		return entry
 	}
@@ -478,13 +481,13 @@ func disasmLoadStoreWithImmOffset(opcode uint16) DisasmEntry {
 	// store
 	if byteTransfer {
 		entry.Operator = "STRB"
-		entry.Operand = fmt.Sprintf("R%d, [R%d, #%02x] ", reg, baseReg, offset)
+		entry.Operand = fmt.Sprintf("R%d, [R%d, #$%02x] ", reg, baseReg, offset)
 
 		return entry
 	}
 
 	entry.Operator = "STR"
-	entry.Operand = fmt.Sprintf("R%d, [R%d, #%02x] ", reg, baseReg, offset)
+	entry.Operand = fmt.Sprintf("R%d, [R%d, #$%02x] ", reg, baseReg, offset)
 
 	return entry
 }
@@ -505,13 +508,13 @@ func disasmLoadStoreHalfword(opcode uint16) DisasmEntry {
 
 	if load {
 		entry.Operator = "LDRH"
-		entry.Operand = fmt.Sprintf("R%d, [R%d, #%02x] ", reg, baseReg, offset)
+		entry.Operand = fmt.Sprintf("R%d, [R%d, #$%02x] ", reg, baseReg, offset)
 
 		return entry
 	}
 
 	entry.Operator = "STRH"
-	entry.Operand = fmt.Sprintf("R%d, [R%d, #%02x] ", reg, baseReg, offset)
+	entry.Operand = fmt.Sprintf("R%d, [R%d, #$%02x] ", reg, baseReg, offset)
 
 	return entry
 }
@@ -531,13 +534,13 @@ func disasmSPRelativeLoadStore(opcode uint16) DisasmEntry {
 
 	if load {
 		entry.Operator = "LDR"
-		entry.Operand = fmt.Sprintf("R%d, [SP, #%02x] ", reg, offset)
+		entry.Operand = fmt.Sprintf("R%d, [SP, #$%02x] ", reg, offset)
 
 		return entry
 	}
 
 	entry.Operator = "STR"
-	entry.Operand = fmt.Sprintf("R%d, [SP, #%02x] ", reg, offset)
+	entry.Operand = fmt.Sprintf("R%d, [SP, #$%02x] ", reg, offset)
 
 	return entry
 }
@@ -556,13 +559,13 @@ func disasmLoadAddress(opcode uint16) DisasmEntry {
 
 	if sp {
 		entry.Operator = "ADD"
-		entry.Operand = fmt.Sprintf("R%d, SP, #%02x] ", destReg, offset)
+		entry.Operand = fmt.Sprintf("R%d, SP, #$%02x] ", destReg, offset)
 
 		return entry
 	}
 
 	entry.Operator = "ADD"
-	entry.Operand = fmt.Sprintf("R%d, PC, #%02x] ", destReg, offset)
+	entry.Operand = fmt.Sprintf("R%d, PC, #$%02x] ", destReg, offset)
 
 	return entry
 }
@@ -582,13 +585,13 @@ func disasmAddOffsetToSP(opcode uint16) DisasmEntry {
 
 	if sign {
 		entry.Operator = "ADD"
-		entry.Operand = fmt.Sprintf("SP, #-%d ", imm)
+		entry.Operand = fmt.Sprintf("SP, -#%d ", imm)
 
 		return entry
 	}
 
 	entry.Operator = "ADD"
-	entry.Operand = fmt.Sprintf("SP, #%02x ", imm)
+	entry.Operand = fmt.Sprintf("SP, #$%02x ", imm)
 
 	return entry
 }
@@ -686,7 +689,7 @@ func disasmConditionalBranch(opcode uint16) DisasmEntry {
 	case 0b1111:
 	}
 
-	entry.Operand = fmt.Sprintf("%04x", offset)
+	entry.Operand = fmt.Sprintf("$%04x", offset)
 
 	return entry
 }
@@ -704,7 +707,7 @@ func disasmUnconditionalBranch(opcode uint16) DisasmEntry {
 	offset := uint32(opcode&0x07ff) << 1
 
 	entry.Operator = "BAL"
-	entry.Operand = fmt.Sprintf("%04x ", offset)
+	entry.Operand = fmt.Sprintf("$%04x ", offset)
 
 	return entry
 }
@@ -719,7 +722,7 @@ func disasmLongBranchWithLink(opcode uint16) DisasmEntry {
 
 	if low {
 		entry.Operator = "BL"
-		entry.Operand = fmt.Sprintf("%#08x", offset)
+		entry.Operand = fmt.Sprintf("$%08x", offset)
 
 		return entry
 	}
