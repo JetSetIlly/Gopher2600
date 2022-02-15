@@ -281,6 +281,11 @@ func (img *SdlImgui) isPlaymode() bool {
 //
 // should only be called from gui thread.
 func (img *SdlImgui) setEmulationMode(mode emulation.Mode) error {
+	// release captured mouse before switching emulation modes. if we don't do
+	// this then the capture state will remain if we flip back to the emulation
+	// mode later. at this point the captured mouse can cause confusion
+	img.setCapture(false)
+
 	img.mode = mode
 	img.prefs.loadWindowPreferences()
 
@@ -310,7 +315,6 @@ func (img *SdlImgui) setEmulationMode(mode emulation.Mode) error {
 		if err != nil {
 			return err
 		}
-
 		img.plt.window.Show()
 	}
 
