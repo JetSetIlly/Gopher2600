@@ -67,6 +67,7 @@ const (
 	Warning                = '\uf071'
 	CoProcCycles           = '\uf021'
 	CoProcLastStart        = '\uf26c'
+	MagnifyingGlass        = '\uf002'
 )
 
 // The first and last unicode points used in the application. We use this to

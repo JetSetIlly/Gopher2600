@@ -36,6 +36,9 @@ type winCoProcPerformance struct {
 	open          bool
 	showSrc       bool
 	optionsHeight float32
+
+	// function tab is newly opened/changed
+	functionTabNew bool
 }
 
 func newWinCoProcPerformance(img *SdlImgui) (window, error) {
@@ -75,7 +78,10 @@ func (win *winCoProcPerformance) draw() {
 	imgui.SetNextWindowSizeConstraints(imgui.Vec2{551, 300}, imgui.Vec2{800, 1000})
 
 	title := fmt.Sprintf("%s %s", win.img.lz.Cart.CoProcID, winCoProcPerformanceID)
-	imgui.BeginV(title, &win.open, imgui.WindowFlagsNone)
+	if !imgui.BeginV(title, &win.open, imgui.WindowFlagsNone) {
+		imgui.End()
+		return
+	}
 	defer imgui.End()
 
 	// safely iterate over top execution information
@@ -95,19 +101,31 @@ func (win *winCoProcPerformance) draw() {
 
 		options := false
 
+		if imgui.BeginTabItemV("Functions", nil, imgui.TabItemFlagsNone) {
+			win.drawFunctions(src)
+			imgui.EndTabItem()
+		}
+
 		if imgui.BeginTabItemV("Source Line", nil, imgui.TabItemFlagsNone) {
-			imgui.BeginChild("##sourcelineScroll")
 			win.drawSourceLines(src)
-			imgui.EndChild()
 			imgui.EndTabItem()
 			options = true
 		}
 
-		if imgui.BeginTabItemV("Functions", nil, imgui.TabItemFlagsNone) {
-			imgui.BeginChild("##functionScroll")
-			win.drawFunctions(src)
-			imgui.EndChild()
-			imgui.EndTabItem()
+		if src.HasFunctionFilter() {
+			flgs := imgui.TabItemFlagsNone
+			if win.functionTabNew {
+				flgs = imgui.TabItemFlagsSetSelected
+				win.functionTabNew = false
+			}
+			open := true
+			if imgui.BeginTabItemV(fmt.Sprintf("%c %s", fonts.MagnifyingGlass, src.FunctionFilter), &open, flgs) {
+				win.drawFunctionFilter(src)
+				imgui.EndTabItem()
+			}
+			if !open {
+				src.DropFunctionFilter()
+			}
 		}
 
 		imgui.EndTabBar()
@@ -141,26 +159,43 @@ func (win *winCoProcPerformance) draw() {
 }
 
 func (win *winCoProcPerformance) drawFunctions(src *developer.Source) {
-	const numColumns = 5
-
-	imgui.Spacing()
-	imgui.BeginTableV("##coprocPerformanceTable", numColumns, imgui.TableFlagsSizingFixedFit, imgui.Vec2{}, 0.0)
-
-	// first column is a dummy column so that Selectable (span all columns) works correctly
-	width := imgui.ContentRegionAvail().X
-	imgui.TableSetupColumnV("", imgui.TableColumnFlagsNone, 0, 0)
-	imgui.TableSetupColumnV("File", imgui.TableColumnFlagsNone, width*0.35, 1)
-	imgui.TableSetupColumnV("Line", imgui.TableColumnFlagsNone, width*0.1, 2)
-	imgui.TableSetupColumnV("Function", imgui.TableColumnFlagsNone, width*0.35, 3)
-	imgui.TableSetupColumnV("Load", imgui.TableColumnFlagsNone, width*0.1, 4)
-
-	if src == nil || len(src.SortedLines.Lines) == 0 {
+	if src == nil || len(src.SortedFunctions.Functions) == 0 {
 		imgui.Text("No performance profile")
-		imgui.EndTable()
 		return
 	}
 
+	const numColumns = 6
+
+	imgui.Spacing()
+	flgs := imgui.TableFlagsScrollY
+	flgs |= imgui.TableFlagsSizingFixedFit
+	flgs |= imgui.TableFlagsSortable
+	imgui.BeginTableV("##coprocPerformanceTableFunctions", numColumns, flgs, imgui.Vec2{}, 0.0)
+
+	// first column is a dummy column so that Selectable (span all columns) works correctly
+	width := imgui.ContentRegionAvail().X
+	imgui.TableSetupColumnV("File", imgui.TableColumnFlagsNoSort, width*0.30, 0)
+	imgui.TableSetupColumnV("Start Line", imgui.TableColumnFlagsNoSort, width*0.1, 1)
+	imgui.TableSetupColumnV("Function", imgui.TableColumnFlagsNoSort, width*0.35, 2)
+	imgui.TableSetupColumnV("Load", imgui.TableColumnFlagsNoSortAscending|imgui.TableColumnFlagsDefaultSort, width*0.1, 3)
+	imgui.TableSetupColumnV("Avg", imgui.TableColumnFlagsNoSortAscending, width*0.1, 4)
+	imgui.TableSetupColumnV("", imgui.TableColumnFlagsNoSort, 0, 5)
+
+	imgui.TableSetupScrollFreeze(0, 1)
 	imgui.TableHeadersRow()
+
+	sort := imgui.TableGetSortSpecs()
+	if sort.SpecsDirty() {
+		for _, s := range sort.Specs() {
+			switch s.ColumnUserID {
+			case 3:
+				src.SortedFunctions.SortByFrameCycles(true)
+			case 4:
+				src.SortedFunctions.SortByAverageCycles(true)
+			}
+		}
+		sort.ClearSpecsDirty()
+	}
 
 	for _, fn := range src.SortedFunctions.Functions {
 		imgui.TableNextRow()
@@ -168,18 +203,17 @@ func (win *winCoProcPerformance) drawFunctions(src *developer.Source) {
 		imgui.TableNextColumn()
 		imgui.PushStyleColor(imgui.StyleColorHeaderHovered, win.img.cols.CoProcSourceHover)
 		imgui.PushStyleColor(imgui.StyleColorHeaderActive, win.img.cols.CoProcSourceHover)
-		imgui.SelectableV("", false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{0, 0})
+		if fn.DeclLine != nil {
+			imgui.SelectableV(fn.DeclLine.File.ShortFilename, false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{0, 0})
+		} else {
+			imgui.SelectableV("", false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{0, 0})
+		}
 		imgui.PopStyleColorV(2)
 
 		// open source window on click
 		if imgui.IsItemClicked() {
-			srcWin := win.img.wm.windows[winCoProcSourceID].(*winCoProcSource)
-			srcWin.gotoSourceLine(fn.DeclLine)
-		}
-
-		imgui.TableNextColumn()
-		if fn.DeclLine != nil {
-			imgui.Text(fn.DeclLine.File.ShortFilename)
+			win.functionTabNew = true
+			src.SetFunctionFilter(fn.Name)
 		}
 
 		imgui.TableNextColumn()
@@ -194,8 +228,17 @@ func (win *winCoProcPerformance) drawFunctions(src *developer.Source) {
 
 		imgui.TableNextColumn()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLoad)
-		if fn.FrameCycles > 0 && src.FrameCycles > 0 {
-			imgui.Text(fmt.Sprintf("%0.2f%%", fn.FrameCycles/src.FrameCycles*100.0))
+		if ld, ok := fn.Stats.FrameLoad(src); ok {
+			imgui.Text(fmt.Sprintf("%.02f", ld))
+		} else {
+			imgui.Text("-")
+		}
+		imgui.PopStyleColor()
+
+		imgui.TableNextColumn()
+		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceAvgLoad)
+		if ld, ok := fn.Stats.AverageLoad(src); ok {
+			imgui.Text(fmt.Sprintf("%.02f", ld))
 		} else {
 			imgui.Text("-")
 		}
@@ -206,34 +249,53 @@ func (win *winCoProcPerformance) drawFunctions(src *developer.Source) {
 }
 
 func (win *winCoProcPerformance) drawSourceLines(src *developer.Source) {
-	const numColumns = 5
-
-	imgui.Spacing()
-	imgui.BeginTableV("##coprocPerformanceTable", numColumns, imgui.TableFlagsSizingFixedFit, imgui.Vec2{}, 0.0)
-
-	// first column is a dummy column so that Selectable (span all columns) works correctly
-	width := imgui.ContentRegionAvail().X
-	imgui.TableSetupColumnV("", imgui.TableColumnFlagsNone, 0, 0)
-	imgui.TableSetupColumnV("File", imgui.TableColumnFlagsNone, width*0.35, 1)
-	imgui.TableSetupColumnV("Line", imgui.TableColumnFlagsNone, width*0.1, 2)
-	imgui.TableSetupColumnV("Function", imgui.TableColumnFlagsNone, width*0.35, 3)
-	imgui.TableSetupColumnV("Load", imgui.TableColumnFlagsNone, width*0.1, 4)
-
 	if src == nil || len(src.SortedLines.Lines) == 0 {
 		imgui.Text("No performance profile")
-		imgui.EndTable()
 		return
 	}
 
+	const numColumns = 6
+
+	imgui.Spacing()
+	flgs := imgui.TableFlagsScrollY
+	flgs |= imgui.TableFlagsSizingFixedFit
+	flgs |= imgui.TableFlagsSortable
+	imgui.BeginTableV("##coprocPerformanceTableSourceLines", numColumns, flgs, imgui.Vec2{}, 0.0)
+
+	// first column is a dummy column so that Selectable (span all columns) works correctly
+	width := imgui.ContentRegionAvail().X
+	imgui.TableSetupColumnV("File", imgui.TableColumnFlagsNoSort, width*0.30, 0)
+	imgui.TableSetupColumnV("Line", imgui.TableColumnFlagsNoSort, width*0.1, 1)
+	imgui.TableSetupColumnV("Function", imgui.TableColumnFlagsNoSort, width*0.35, 2)
+	imgui.TableSetupColumnV("Load", imgui.TableColumnFlagsNoSortAscending|imgui.TableColumnFlagsDefaultSort, width*0.1, 3)
+	imgui.TableSetupColumnV("Avg", imgui.TableColumnFlagsNoSortAscending, width*0.1, 4)
+	imgui.TableSetupColumnV("", imgui.TableColumnFlagsNoSort, 0, 5)
+
+	imgui.TableSetupScrollFreeze(0, 1)
 	imgui.TableHeadersRow()
+
+	sort := imgui.TableGetSortSpecs()
+	if sort.SpecsDirty() {
+		for _, s := range sort.Specs() {
+			switch s.ColumnUserID {
+			case 3:
+				src.SortedLines.SortByFrameCycles(true)
+			case 4:
+				src.SortedLines.SortByAverageCycles(true)
+			}
+		}
+		sort.ClearSpecsDirty()
+	}
 
 	for _, ln := range src.SortedLines.Lines {
 		imgui.TableNextRow()
 
 		imgui.TableNextColumn()
+
+		// selectable across entire width of table
 		imgui.PushStyleColor(imgui.StyleColorHeaderHovered, win.img.cols.CoProcSourceHover)
 		imgui.PushStyleColor(imgui.StyleColorHeaderActive, win.img.cols.CoProcSourceHover)
-		imgui.SelectableV("", false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{0, 0})
+		imgui.SelectableV(ln.File.ShortFilename, false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{0, 0})
 		imgui.PopStyleColorV(2)
 
 		// source on tooltip
@@ -257,9 +319,6 @@ func (win *winCoProcPerformance) drawSourceLines(src *developer.Source) {
 		}
 
 		imgui.TableNextColumn()
-		imgui.Text(ln.File.ShortFilename)
-
-		imgui.TableNextColumn()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLineNumber)
 		imgui.Text(fmt.Sprintf("%d", ln.LineNumber))
 		imgui.PopStyleColor()
@@ -269,12 +328,116 @@ func (win *winCoProcPerformance) drawSourceLines(src *developer.Source) {
 
 		imgui.TableNextColumn()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLoad)
-		if ln.FrameCycles > 0 && src.FrameCycles > 0 {
-			imgui.Text(fmt.Sprintf("%0.2f%%", ln.FrameCycles/src.FrameCycles*100.0))
+		if ld, ok := ln.Stats.FrameLoad(src); ok {
+			imgui.Text(fmt.Sprintf("%.02f", ld))
 		} else {
 			imgui.Text("-")
 		}
 		imgui.PopStyleColor()
+
+		imgui.TableNextColumn()
+		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceAvgLoad)
+		if ld, ok := ln.Stats.AverageLoad(src); ok {
+			imgui.Text(fmt.Sprintf("%.02f", ld))
+		} else {
+			imgui.Text("-")
+		}
+		imgui.PopStyleColor()
+
+		imgui.TableNextColumn()
+	}
+
+	imgui.EndTable()
+}
+
+func (win *winCoProcPerformance) drawFunctionFilter(src *developer.Source) {
+	const numColumns = 4
+
+	imgui.Spacing()
+
+	if src == nil || len(src.FunctionFilteredLines.Lines) == 0 {
+		imgui.Text("Function contains no executable lines")
+		return
+	}
+
+	flgs := imgui.TableFlagsScrollY
+	flgs |= imgui.TableFlagsSizingFixedFit
+	flgs |= imgui.TableFlagsSortable
+	imgui.BeginTableV("##coprocPerformanceTableFunctionFilter", numColumns, flgs, imgui.Vec2{}, 0.0)
+
+	// first column is a dummy column so that Selectable (span all columns) works correctly
+	width := imgui.ContentRegionAvail().X
+	imgui.TableSetupColumnV("Source Line", imgui.TableColumnFlagsNoSort, width*0.75, 0)
+	imgui.TableSetupColumnV("Load", imgui.TableColumnFlagsNoSortAscending|imgui.TableColumnFlagsDefaultSort, width*0.1, 1)
+	imgui.TableSetupColumnV("Avg", imgui.TableColumnFlagsNoSortAscending, width*0.1, 2)
+	imgui.TableSetupColumnV("", imgui.TableColumnFlagsNoSort, 0, 3)
+
+	imgui.TableSetupScrollFreeze(0, 1)
+	imgui.TableHeadersRow()
+
+	sort := imgui.TableGetSortSpecs()
+	if sort.SpecsDirty() {
+		for _, s := range sort.Specs() {
+			switch s.ColumnUserID {
+			case 3:
+				src.FunctionFilteredLines.SortByFrameCycles(true)
+			case 4:
+				src.FunctionFilteredLines.SortByAverageCycles(true)
+			}
+		}
+		sort.ClearSpecsDirty()
+	}
+
+	for _, ln := range src.FunctionFilteredLines.Lines {
+		imgui.TableNextRow()
+
+		imgui.TableNextColumn()
+
+		// selectable across entire width of table
+		imgui.PushStyleColor(imgui.StyleColorHeaderHovered, win.img.cols.CoProcSourceHover)
+		imgui.PushStyleColor(imgui.StyleColorHeaderActive, win.img.cols.CoProcSourceHover)
+		imgui.SelectableV(fmt.Sprintf("%s", strings.TrimSpace(ln.Content)), false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{0, 0})
+		imgui.PopStyleColorV(2)
+
+		// source on tooltip
+		if win.showSrc {
+			imguiTooltip(func() {
+				imgui.Text(ln.File.ShortFilename)
+				imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLineNumber)
+				imgui.Text(fmt.Sprintf("Line: %d", ln.LineNumber))
+				imgui.PopStyleColor()
+				imgui.Spacing()
+				imgui.Separator()
+				imgui.Spacing()
+				imgui.Text(strings.TrimSpace(ln.Content))
+			}, true)
+		}
+
+		// open source window on click
+		if imgui.IsItemClicked() {
+			srcWin := win.img.wm.windows[winCoProcSourceID].(*winCoProcSource)
+			srcWin.gotoSourceLine(ln)
+		}
+
+		imgui.TableNextColumn()
+		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLoad)
+		if ld, ok := ln.Stats.FrameLoad(src); ok {
+			imgui.Text(fmt.Sprintf("%.02f", ld))
+		} else {
+			imgui.Text("-")
+		}
+		imgui.PopStyleColor()
+
+		imgui.TableNextColumn()
+		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceAvgLoad)
+		if ld, ok := ln.Stats.AverageLoad(src); ok {
+			imgui.Text(fmt.Sprintf("%.02f", ld))
+		} else {
+			imgui.Text("-")
+		}
+		imgui.PopStyleColor()
+
+		imgui.TableNextColumn()
 	}
 
 	imgui.EndTable()

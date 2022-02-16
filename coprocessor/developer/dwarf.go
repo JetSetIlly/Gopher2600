@@ -44,12 +44,8 @@ type SourceFunction struct {
 	// first source line for each instance of the function
 	DeclLine *SourceLine
 
-	// the number of cycles all intances of this function has consumed during
-	// the course of the previous frame
-	FrameCycles float32
-
-	// working value that will be assigned to FrameCycles on the next television.NewFrame()
-	nextFrameCycles float32
+	// cycle statisics related to the SourceFunction
+	Stats SourceStats
 }
 
 // SourceDisasm is a single disassembled intruction from the ELF binary.
@@ -82,11 +78,8 @@ type SourceLine struct {
 	// the number of times the line has been responsible for an illegal access.
 	IllegalCount int
 
-	// the number of cycles this line has consumed during the course of the previous frame
-	FrameCycles float32
-
-	// working value that will be assigned to FrameCycles on the next television.NewFrame()
-	nextFrameCycles float32
+	// cycle statisics related to the SourceLine
+	Stats SourceStats
 }
 
 func (ln *SourceLine) String() string {
@@ -140,11 +133,12 @@ type Source struct {
 	// list of source lines sorted by FrameCycles field
 	SortedLines SortedLines
 
-	// the number of cycles the ARM Program has consumed during the course of the previous frame
-	FrameCycles float32
+	// sorted lines filtered by function name
+	FunctionFilter        string
+	FunctionFilteredLines SortedLines
 
-	// working value that will be assigned to FrameCycles on the next television.NewFrame()
-	nextFrameCycles float32
+	// cycle statisics related to the Source (in its entirety)
+	Stats SourceStats
 }
 
 func findELF(pathToROM string) *elf.File {
@@ -212,6 +206,10 @@ func NewSource(pathToROM string) (*Source, error) {
 		},
 		Lines: make(map[uint32]*SourceLine),
 		SortedLines: SortedLines{
+			Lines: make([]*SourceLine, 0, 100),
+		},
+		FunctionFilter: "",
+		FunctionFilteredLines: SortedLines{
 			Lines: make([]*SourceLine, 0, 100),
 		},
 	}
@@ -744,9 +742,9 @@ func (src *Source) findSourceLine(addr uint32) (*SourceLine, error) {
 func (src *Source) execute(addr uint32, ct float32) {
 	line, ok := src.Lines[addr]
 	if ok {
-		src.nextFrameCycles += ct
-		line.nextFrameCycles += ct
-		line.Function.nextFrameCycles += ct
+		src.Stats.nextFrameCycles += ct
+		line.Stats.nextFrameCycles += ct
+		line.Function.Stats.nextFrameCycles += ct
 	}
 }
 
@@ -789,44 +787,4 @@ func readSourceFile(filename string, pathToROM_nosymlinks string) (*SourceFile, 
 	}
 
 	return &fl, nil
-}
-
-// SortedLines orders all the source lines in order of computationally expense
-type SortedLines struct {
-	Lines []*SourceLine
-}
-
-// Len implements sort.Interface.
-func (e SortedLines) Len() int {
-	return len(e.Lines)
-}
-
-// Less implements sort.Interface.
-func (e SortedLines) Less(i int, j int) bool {
-	return e.Lines[i].FrameCycles > e.Lines[j].FrameCycles
-}
-
-// Swap implements sort.Interface.
-func (e SortedLines) Swap(i int, j int) {
-	e.Lines[i], e.Lines[j] = e.Lines[j], e.Lines[i]
-}
-
-// SortedFunctions orders all the source lines in order of computationally expense
-type SortedFunctions struct {
-	Functions []*SourceFunction
-}
-
-// Len implements sort.Interface.
-func (e SortedFunctions) Len() int {
-	return len(e.Functions)
-}
-
-// Less implements sort.Interface.
-func (e SortedFunctions) Less(i int, j int) bool {
-	return e.Functions[i].FrameCycles > e.Functions[j].FrameCycles
-}
-
-// Swap implements sort.Interface.
-func (e SortedFunctions) Swap(i int, j int) {
-	e.Functions[i], e.Functions[j] = e.Functions[j], e.Functions[i]
 }

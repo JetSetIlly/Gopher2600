@@ -166,15 +166,18 @@ func (win *winCoProcSource) draw() {
 		imgui.PushStyleVarVec2(imgui.StyleVarCellPadding, rowSize) // affects table row height
 		imgui.PushStyleVarVec2(imgui.StyleVarItemSpacing, rowSize) // affects selectable height
 
-		imgui.BeginTableV("##coprocSourceTable", 5, imgui.TableFlagsScrollY|imgui.TableFlagsSizingFixedFit, imgui.Vec2{}, 0.0)
+		const numColumns = 6
+		flgs := imgui.TableFlagsScrollY
+		flgs |= imgui.TableFlagsSizingFixedFit
+		imgui.BeginTableV("##coprocSourceTable", numColumns, flgs, imgui.Vec2{}, 0.0)
 
 		// first column is a dummy column so that Selectable (span all columns) works correctly
 		width := imgui.ContentRegionAvail().X
 		imgui.TableSetupColumnV("", imgui.TableColumnFlagsNone, 0, 0)
 		imgui.TableSetupColumnV("Icon", imgui.TableColumnFlagsNone, width*0.04, 1)
 		imgui.TableSetupColumnV("Load", imgui.TableColumnFlagsNone, width*0.07, 2)
-		imgui.TableSetupColumnV("Number", imgui.TableColumnFlagsNone, width*0.04, 3)
-		imgui.TableSetupColumnV("Source", imgui.TableColumnFlagsNone, width*0.85, 4)
+		imgui.TableSetupColumnV("Avg", imgui.TableColumnFlagsNone, width*0.07, 3)
+		imgui.TableSetupColumnV("Number", imgui.TableColumnFlagsNone, width*0.04, 4)
 
 		var clipper imgui.ListClipper
 		clipper.Begin(len(win.selectedFile.Lines))
@@ -244,11 +247,23 @@ func (win *winCoProcSource) draw() {
 
 				// percentage of time taken by this line
 				imgui.TableNextColumn()
-				if ln.FrameCycles > 0 {
-					imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLoad)
-					imgui.Text(fmt.Sprintf("%0.2f%%", ln.FrameCycles/src.FrameCycles*100.0))
-					imgui.PopStyleColor()
+				imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLoad)
+				if ld, ok := ln.Stats.FrameLoad(src); ok {
+					imgui.Text(fmt.Sprintf("%.02f", ld))
+				} else if len(ln.Disassembly) > 0 {
+					imgui.Text("-")
 				}
+				imgui.PopStyleColor()
+
+				// percentage of time taken by this line
+				imgui.TableNextColumn()
+				imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceAvgLoad)
+				if ld, ok := ln.Stats.AverageLoad(src); ok {
+					imgui.Text(fmt.Sprintf("%.02f", ld))
+				} else if len(ln.Disassembly) > 0 {
+					imgui.Text("-")
+				}
+				imgui.PopStyleColor()
 
 				// line numbering
 				imgui.TableNextColumn()

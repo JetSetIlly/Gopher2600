@@ -17,7 +17,6 @@ package developer
 
 import (
 	"fmt"
-	"sort"
 	"sync"
 
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
@@ -63,6 +62,11 @@ func NewDeveloper(pathToROM string, cart mapper.CartCoProcBus) *Developer {
 	dev.source, err = NewSource(pathToROM)
 	if err != nil {
 		logger.Logf("developer", err.Error())
+	}
+
+	if dev.source != nil {
+		dev.source.SortedLines.SortByLineAndFunction(false)
+		dev.source.SortedFunctions.SortByFunction(false)
 	}
 
 	return dev
@@ -123,8 +127,8 @@ func (dev *Developer) ExecutionProfile(addr map[uint32]float32) {
 			dev.source.execute(pc, ct)
 		}
 
-		sort.Sort(dev.source.SortedLines)
-		sort.Sort(dev.source.SortedFunctions)
+		dev.source.SortedLines.Sort()
+		dev.source.SortedFunctions.Sort()
 	}
 }
 
@@ -180,17 +184,14 @@ func (dev *Developer) NewFrame(frameInfo television.FrameInfo) error {
 	// we prefer this over traversing the Lines list because we may hit a
 	// SourceLine more than once. SortedLines contains unique entries.
 	for _, l := range dev.source.SortedLines.Lines {
-		l.FrameCycles = l.nextFrameCycles
-		l.nextFrameCycles = 0
+		l.Stats.Update()
 	}
 
 	for _, f := range dev.source.Functions {
-		f.FrameCycles = f.nextFrameCycles
-		f.nextFrameCycles = 0
+		f.Stats.Update()
 	}
 
-	dev.source.FrameCycles = dev.source.nextFrameCycles
-	dev.source.nextFrameCycles = 0
+	dev.source.Stats.Update()
 
 	return nil
 }
