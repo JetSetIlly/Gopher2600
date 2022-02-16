@@ -205,17 +205,15 @@ func disasmAddSubtract(opcode uint16) DisasmEntry {
 		if immediate {
 			entry.Operand = fmt.Sprintf("R%d, R%d, #$%02x ", destReg, srcReg, imm)
 		} else {
-			entry.Operand = fmt.Sprintf("R%d, R%d, R$%02x ", destReg, srcReg, imm)
+			entry.Operand = fmt.Sprintf("R%d, R%d, R%d ", destReg, srcReg, imm)
 		}
-
 	} else {
 		entry.Operator = "ADD"
 		if immediate {
 			entry.Operand = fmt.Sprintf("R%d, R%d, #$%02x ", destReg, srcReg, imm)
 		} else {
-			entry.Operand = fmt.Sprintf("R%d, R%d, R$%02x ", destReg, srcReg, imm)
+			entry.Operand = fmt.Sprintf("R%d, R%d, R%d ", destReg, srcReg, imm)
 		}
-
 	}
 
 	return entry
