@@ -282,6 +282,7 @@ func emulate(emulationMode emulation.Mode, md *modalflag.Modes, sync *mainSync) 
 	log := md.AddBool("log", false, "echo debugging log to stdout")
 	termType := md.AddString("term", "IMGUI", "terminal type to use in debug mode: IMGUI, COLOR, PLAIN")
 	multiload := md.AddInt("multiload", -1, "force multiload byte (supercharger only; 0 to 255)")
+	showFPS := md.AddBool("showfps", false, "show fps in playmode by default")
 
 	// playmode specific arguments
 	var comparisonROM *string
@@ -382,6 +383,10 @@ func emulate(emulationMode emulation.Mode, md *modalflag.Modes, sync *mainSync) 
 			}
 		}
 
+		if *showFPS {
+			scr.SetFeature(gui.ReqShowFPS, true)
+		}
+
 		return scr, term, nil
 	}
 
@@ -399,7 +404,6 @@ func emulate(emulationMode emulation.Mode, md *modalflag.Modes, sync *mainSync) 
 
 	// set up a launch function
 	dbgLaunch := func() error {
-
 		switch emulationMode {
 		case emulation.ModeDebugger:
 			err := dbg.StartInDebugMode(*initScript, md.GetArg(0), *mapping)

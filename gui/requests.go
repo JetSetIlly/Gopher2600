@@ -75,6 +75,9 @@ const (
 	// request for bot features to be enabled. a nil argument will cause the
 	// bot features to be removed
 	ReqBotFeedback FeatureReq = "ReqBotFeedback" // *bots.Feedback
+
+	// show FPS overlay in playmode
+	ReqShowFPS FeatureReq = "ReqShowFPS" // bool
 )
 
 // Sentinal error returned if GUI does no support requested feature.
