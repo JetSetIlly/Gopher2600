@@ -129,6 +129,13 @@ func NewLoader(filename string, mapping string) (Loader, error) {
 		return Loader{}, curated.Errorf("catridgeloader: no filename")
 	}
 
+	// absolute path of filename
+	var err error
+	filename, err = filepath.Abs(filename)
+	if err != nil {
+		return Loader{}, curated.Errorf("catridgeloader: %v", err)
+	}
+
 	mapping = strings.TrimSpace(strings.ToUpper(mapping))
 	if mapping == "" {
 		mapping = "AUTO"
