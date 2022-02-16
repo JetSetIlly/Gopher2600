@@ -166,18 +166,16 @@ func (win *winCoProcSource) draw() {
 		imgui.PushStyleVarVec2(imgui.StyleVarCellPadding, rowSize) // affects table row height
 		imgui.PushStyleVarVec2(imgui.StyleVarItemSpacing, rowSize) // affects selectable height
 
-		const numColumns = 6
+		const numColumns = 5
 		flgs := imgui.TableFlagsScrollY
 		flgs |= imgui.TableFlagsSizingFixedFit
 		imgui.BeginTableV("##coprocSourceTable", numColumns, flgs, imgui.Vec2{}, 0.0)
 
 		// first column is a dummy column so that Selectable (span all columns) works correctly
-		width := imgui.ContentRegionAvail().X
-		imgui.TableSetupColumnV("", imgui.TableColumnFlagsNone, 0, 0)
-		imgui.TableSetupColumnV("Icon", imgui.TableColumnFlagsNone, width*0.04, 1)
-		imgui.TableSetupColumnV("Load", imgui.TableColumnFlagsNone, width*0.07, 2)
-		imgui.TableSetupColumnV("Avg", imgui.TableColumnFlagsNone, width*0.07, 3)
-		imgui.TableSetupColumnV("Number", imgui.TableColumnFlagsNone, width*0.04, 4)
+		imgui.TableSetupColumnV("Icon", imgui.TableColumnFlagsNone, imgui.CalcTextSize("   ", true, 0.0).X, 0)
+		imgui.TableSetupColumnV("Load", imgui.TableColumnFlagsNone, imgui.CalcTextSize("0.00% ", true, 0.0).X, 1)
+		imgui.TableSetupColumnV("Avg", imgui.TableColumnFlagsNone, imgui.CalcTextSize("0.00% ", true, 0.0).X, 2)
+		imgui.TableSetupColumnV("LineNumber", imgui.TableColumnFlagsNone, imgui.CalcTextSize("0000 ", true, 0.0).X, 3)
 
 		var clipper imgui.ListClipper
 		clipper.Begin(len(win.selectedFile.Lines))
@@ -195,17 +193,19 @@ func (win *winCoProcSource) draw() {
 					imgui.TableSetBgColor(imgui.TableBgTargetRowBg0, win.img.cols.CoProcSourceSelected)
 				}
 
-				// highlight line mouse is over
+				// show chip icon and also tooltip if mouse is hovered on selectable
 				imgui.TableNextColumn()
 				imgui.PushStyleColor(imgui.StyleColorHeaderHovered, win.img.cols.CoProcSourceHover)
 				imgui.PushStyleColor(imgui.StyleColorHeaderActive, win.img.cols.CoProcSourceHover)
-				imgui.SelectableV("", false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{0, 0})
-				imgui.PopStyleColorV(2)
-
-				// show chip icon and also tooltip if mouse is hovered
-				// on selectable
-				imgui.TableNextColumn()
 				if len(ln.Disassembly) > 0 {
+					if ln.IllegalCount > 0 {
+						imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceBug)
+						imgui.SelectableV(string(fonts.CoProcBug), false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{0, 0})
+						imgui.PopStyleColor()
+					} else {
+						imgui.SelectableV(string(fonts.Chip), false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{0, 0})
+					}
+
 					if win.showAsm {
 						imguiTooltip(func() {
 							// remove cell/item styling for the duration of the tooltip
@@ -235,15 +235,10 @@ func (win *winCoProcSource) draw() {
 							imgui.EndTable()
 						}, true)
 					}
-
-					if ln.IllegalCount > 0 {
-						imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceBug)
-						imgui.Text(string(fonts.CoProcBug))
-						imgui.PopStyleColor()
-					} else {
-						imgui.Text(string(fonts.Chip))
-					}
+				} else {
+					imgui.SelectableV("", false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{0, 0})
 				}
+				imgui.PopStyleColorV(2)
 
 				// percentage of time taken by this line
 				imgui.TableNextColumn()
@@ -251,7 +246,7 @@ func (win *winCoProcSource) draw() {
 				if ld, ok := ln.Stats.FrameLoad(src); ok {
 					imgui.Text(fmt.Sprintf("%.02f", ld))
 				} else if len(ln.Disassembly) > 0 {
-					imgui.Text("-")
+					imgui.Text(" -")
 				}
 				imgui.PopStyleColor()
 
@@ -261,7 +256,7 @@ func (win *winCoProcSource) draw() {
 				if ld, ok := ln.Stats.AverageLoad(src); ok {
 					imgui.Text(fmt.Sprintf("%.02f", ld))
 				} else if len(ln.Disassembly) > 0 {
-					imgui.Text("-")
+					imgui.Text(" -")
 				}
 				imgui.PopStyleColor()
 
