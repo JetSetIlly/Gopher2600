@@ -180,19 +180,7 @@ func (dev *Developer) NewFrame(frameInfo television.FrameInfo) error {
 		return nil
 	}
 
-	// traverse the SortedLines list and update the FrameCyles values
-	//
-	// we prefer this over traversing the Lines list because we may hit a
-	// SourceLine more than once. SortedLines contains unique entries.
-	for _, l := range dev.source.SortedLines.Lines {
-		l.Stats.Update()
-	}
-
-	for _, f := range dev.source.Functions {
-		f.Stats.Update()
-	}
-
-	dev.source.Stats.Update()
+	dev.source.newFrame()
 
 	return nil
 }

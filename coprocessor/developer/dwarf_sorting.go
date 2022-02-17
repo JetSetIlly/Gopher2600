@@ -19,17 +19,20 @@ import (
 	"sort"
 )
 
+type sortMethods int
+
+const (
+	sortFunction sortMethods = iota
+	sortLine
+	sortLoad
+	sortAverage
+	sortMax
+)
+
 // SortedLines orders all the source lines in order of computational expense
 type SortedLines struct {
-	Lines []*SourceLine
-
-	// 0 = frame cycles (default)
-	// 1 = average cycles
-	// 2 = function name
-	// 3 = line number
-	method int
-
-	// direction of the sort
+	Lines      []*SourceLine
+	method     sortMethods
 	descending bool
 }
 
@@ -39,23 +42,29 @@ func (e SortedLines) Sort() {
 
 func (e *SortedLines) SortByFrameCycles(descending bool) {
 	e.descending = descending
-	e.method = 0
+	e.method = sortLoad
 	sort.Stable(e)
 }
 
 func (e *SortedLines) SortByAverageCycles(descending bool) {
 	e.descending = descending
-	e.method = 1
+	e.method = sortAverage
+	sort.Stable(e)
+}
+
+func (e *SortedLines) SortByMaxCycles(descending bool) {
+	e.descending = descending
+	e.method = sortMax
 	sort.Stable(e)
 }
 
 func (e *SortedLines) SortByLineAndFunction(descending bool) {
 	e.descending = descending
 
-	e.method = 3
+	e.method = sortLine
 	sort.Stable(e)
 
-	e.method = 2
+	e.method = sortFunction
 	sort.Stable(e)
 }
 
@@ -67,27 +76,34 @@ func (e SortedLines) Len() int {
 // Less implements sort.Interface.
 func (e SortedLines) Less(i int, j int) bool {
 	switch e.method {
-	case 1:
-		if e.descending {
-			return e.Lines[i].Stats.AvgCycles > e.Lines[j].Stats.AvgCycles
-		}
-		return e.Lines[i].Stats.AvgCycles < e.Lines[j].Stats.AvgCycles
-	case 2:
+	case sortFunction:
 		if e.descending {
 			return e.Lines[i].Function.Name > e.Lines[j].Function.Name
 		}
 		return e.Lines[i].Function.Name < e.Lines[j].Function.Name
-	case 3:
+	case sortLine:
 		if e.descending {
 			return e.Lines[i].LineNumber > e.Lines[j].LineNumber
 		}
 		return e.Lines[i].LineNumber < e.Lines[j].LineNumber
-	default:
+	case sortLoad:
 		if e.descending {
-			return e.Lines[i].Stats.FrameCycles > e.Lines[j].Stats.FrameCycles
+			return e.Lines[i].Stats.load > e.Lines[j].Stats.load
 		}
-		return e.Lines[i].Stats.FrameCycles < e.Lines[j].Stats.FrameCycles
+		return e.Lines[i].Stats.load < e.Lines[j].Stats.load
+	case sortAverage:
+		if e.descending {
+			return e.Lines[i].Stats.avgLoad > e.Lines[j].Stats.avgLoad
+		}
+		return e.Lines[i].Stats.avgLoad < e.Lines[j].Stats.avgLoad
+	case sortMax:
+		if e.descending {
+			return e.Lines[i].Stats.maxLoad > e.Lines[j].Stats.maxLoad
+		}
+		return e.Lines[i].Stats.maxLoad < e.Lines[j].Stats.maxLoad
 	}
+
+	return false
 }
 
 // Swap implements sort.Interface.
@@ -97,14 +113,8 @@ func (e SortedLines) Swap(i int, j int) {
 
 // SortedFunctions orders all the source lines in order of computationally expense
 type SortedFunctions struct {
-	Functions []*SourceFunction
-
-	// 0 = frame cycles (default)
-	// 1 = average cycles
-	// 2 = function name
-	method int
-
-	// whether the sort should be reversed or not
+	Functions  []*SourceFunction
+	method     sortMethods
 	descending bool
 }
 
@@ -114,19 +124,25 @@ func (e SortedFunctions) Sort() {
 
 func (e *SortedFunctions) SortByFrameCycles(descending bool) {
 	e.descending = descending
-	e.method = 0
+	e.method = sortLoad
 	sort.Stable(e)
 }
 
 func (e *SortedFunctions) SortByAverageCycles(descending bool) {
 	e.descending = descending
-	e.method = 1
+	e.method = sortAverage
+	sort.Stable(e)
+}
+
+func (e *SortedFunctions) SortByMaxCycles(descending bool) {
+	e.descending = descending
+	e.method = sortMax
 	sort.Stable(e)
 }
 
 func (e *SortedFunctions) SortByFunction(descending bool) {
 	e.descending = descending
-	e.method = 2
+	e.method = sortFunction
 	sort.Stable(e)
 }
 
@@ -138,22 +154,29 @@ func (e SortedFunctions) Len() int {
 // Less implements sort.Interface.
 func (e SortedFunctions) Less(i int, j int) bool {
 	switch e.method {
-	case 1:
-		if e.descending {
-			return e.Functions[i].Stats.AvgCycles > e.Functions[j].Stats.AvgCycles
-		}
-		return e.Functions[i].Stats.AvgCycles < e.Functions[j].Stats.AvgCycles
-	case 2:
+	case sortFunction:
 		if e.descending {
 			return e.Functions[i].Name > e.Functions[j].Name
 		}
 		return e.Functions[i].Name < e.Functions[j].Name
-	default:
+	case sortLoad:
 		if e.descending {
-			return e.Functions[i].Stats.FrameCycles > e.Functions[j].Stats.FrameCycles
+			return e.Functions[i].Stats.load > e.Functions[j].Stats.load
 		}
-		return e.Functions[i].Stats.FrameCycles < e.Functions[j].Stats.FrameCycles
+		return e.Functions[i].Stats.load < e.Functions[j].Stats.load
+	case sortAverage:
+		if e.descending {
+			return e.Functions[i].Stats.avgLoad > e.Functions[j].Stats.avgLoad
+		}
+		return e.Functions[i].Stats.avgLoad < e.Functions[j].Stats.avgLoad
+	case sortMax:
+		if e.descending {
+			return e.Functions[i].Stats.maxLoad > e.Functions[j].Stats.maxLoad
+		}
+		return e.Functions[i].Stats.maxLoad < e.Functions[j].Stats.maxLoad
 	}
+
+	return false
 }
 
 // Swap implements sort.Interface.

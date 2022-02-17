@@ -243,7 +243,7 @@ func (win *winCoProcSource) draw() {
 				// percentage of time taken by this line
 				imgui.TableNextColumn()
 				imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLoad)
-				if ld, ok := ln.Stats.FrameLoad(src); ok {
+				if ld, ok := ln.Stats.FrameLoad(); ok {
 					imgui.Text(fmt.Sprintf("%.02f", ld))
 				} else if len(ln.Disassembly) > 0 {
 					imgui.Text(" -")
@@ -253,7 +253,7 @@ func (win *winCoProcSource) draw() {
 				// percentage of time taken by this line
 				imgui.TableNextColumn()
 				imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceAvgLoad)
-				if ld, ok := ln.Stats.AverageLoad(src); ok {
+				if ld, ok := ln.Stats.AverageLoad(); ok {
 					imgui.Text(fmt.Sprintf("%.02f", ld))
 				} else if len(ln.Disassembly) > 0 {
 					imgui.Text(" -")

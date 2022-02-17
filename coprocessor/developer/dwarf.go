@@ -137,8 +137,8 @@ type Source struct {
 	FunctionFilter        string
 	FunctionFilteredLines SortedLines
 
-	// cycle statisics related to the Source (in its entirety)
-	Stats SourceStats
+	// numer of cycles in the entire program represented by the source since the last update
+	cyclesCount float32
 }
 
 func findELF(pathToROM string) *elf.File {
@@ -742,10 +742,26 @@ func (src *Source) findSourceLine(addr uint32) (*SourceLine, error) {
 func (src *Source) execute(addr uint32, ct float32) {
 	line, ok := src.Lines[addr]
 	if ok {
-		src.Stats.nextFrameCycles += ct
-		line.Stats.nextFrameCycles += ct
-		line.Function.Stats.nextFrameCycles += ct
+		src.cyclesCount += ct
+		line.Stats.cyclesCount += ct
+		line.Function.Stats.cyclesCount += ct
 	}
+}
+
+func (src *Source) newFrame() {
+	// traverse the SortedLines list and update the FrameCyles values
+	//
+	// we prefer this over traversing the Lines list because we may hit a
+	// SourceLine more than once. SortedLines contains unique entries.
+	for _, l := range src.SortedLines.Lines {
+		l.Stats.newFrame(src.cyclesCount)
+	}
+
+	for _, f := range src.Functions {
+		f.Stats.newFrame(src.cyclesCount)
+	}
+
+	src.cyclesCount = 0
 }
 
 func readSourceFile(filename string, pathToROM_nosymlinks string) (*SourceFile, error) {

@@ -159,7 +159,7 @@ func (win *winCoProcPerformance) drawFunctions(src *developer.Source) {
 		return
 	}
 
-	const numColumns = 5
+	const numColumns = 6
 
 	flgs := imgui.TableFlagsScrollY
 	flgs |= imgui.TableFlagsSizingStretchProp
@@ -171,11 +171,12 @@ func (win *winCoProcPerformance) drawFunctions(src *developer.Source) {
 
 	// first column is a dummy column so that Selectable (span all columns) works correctly
 	width := imgui.ContentRegionAvail().X
-	imgui.TableSetupColumnV("File", imgui.TableColumnFlagsNoSort, width*0.30, 0)
+	imgui.TableSetupColumnV("File", imgui.TableColumnFlagsNoSort, width*0.275, 0)
 	imgui.TableSetupColumnV("Line", imgui.TableColumnFlagsNoSort, width*0.1, 1)
-	imgui.TableSetupColumnV("Function", imgui.TableColumnFlagsNoSort, width*0.35, 2)
+	imgui.TableSetupColumnV("Function", imgui.TableColumnFlagsNoSort, width*0.325, 2)
 	imgui.TableSetupColumnV("Load", imgui.TableColumnFlagsNoSortAscending|imgui.TableColumnFlagsDefaultSort, width*0.1, 3)
 	imgui.TableSetupColumnV("Avg", imgui.TableColumnFlagsNoSortAscending, width*0.1, 4)
+	imgui.TableSetupColumnV("Max", imgui.TableColumnFlagsNoSortAscending, width*0.1, 5)
 
 	imgui.TableSetupScrollFreeze(0, 1)
 	imgui.TableHeadersRow()
@@ -188,6 +189,8 @@ func (win *winCoProcPerformance) drawFunctions(src *developer.Source) {
 				src.SortedFunctions.SortByFrameCycles(true)
 			case 4:
 				src.SortedFunctions.SortByAverageCycles(true)
+			case 5:
+				src.SortedFunctions.SortByMaxCycles(true)
 			}
 		}
 		sort.ClearSpecsDirty()
@@ -230,7 +233,7 @@ func (win *winCoProcPerformance) drawFunctions(src *developer.Source) {
 
 		imgui.TableNextColumn()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLoad)
-		if ld, ok := fn.Stats.FrameLoad(src); ok {
+		if ld, ok := fn.Stats.FrameLoad(); ok {
 			imgui.Text(fmt.Sprintf("%.02f", ld))
 		} else {
 			imgui.Text("-")
@@ -239,7 +242,16 @@ func (win *winCoProcPerformance) drawFunctions(src *developer.Source) {
 
 		imgui.TableNextColumn()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceAvgLoad)
-		if ld, ok := fn.Stats.AverageLoad(src); ok {
+		if ld, ok := fn.Stats.AverageLoad(); ok {
+			imgui.Text(fmt.Sprintf("%.02f", ld))
+		} else {
+			imgui.Text("-")
+		}
+		imgui.PopStyleColor()
+
+		imgui.TableNextColumn()
+		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceMaxLoad)
+		if ld, ok := fn.Stats.MaximumLoad(); ok {
 			imgui.Text(fmt.Sprintf("%.02f", ld))
 		} else {
 			imgui.Text("-")
@@ -258,7 +270,7 @@ func (win *winCoProcPerformance) drawSourceLines(src *developer.Source) {
 		return
 	}
 
-	const numColumns = 5
+	const numColumns = 6
 
 	flgs := imgui.TableFlagsScrollY
 	flgs |= imgui.TableFlagsSizingStretchProp
@@ -270,11 +282,12 @@ func (win *winCoProcPerformance) drawSourceLines(src *developer.Source) {
 
 	// first column is a dummy column so that Selectable (span all columns) works correctly
 	width := imgui.ContentRegionAvail().X
-	imgui.TableSetupColumnV("File", imgui.TableColumnFlagsNoSort, width*0.30, 0)
+	imgui.TableSetupColumnV("File", imgui.TableColumnFlagsNoSort, width*0.275, 0)
 	imgui.TableSetupColumnV("Line", imgui.TableColumnFlagsNoSort, width*0.1, 1)
-	imgui.TableSetupColumnV("Function", imgui.TableColumnFlagsNoSort, width*0.35, 2)
+	imgui.TableSetupColumnV("Function", imgui.TableColumnFlagsNoSort, width*0.325, 2)
 	imgui.TableSetupColumnV("Load", imgui.TableColumnFlagsNoSortAscending|imgui.TableColumnFlagsDefaultSort, width*0.1, 3)
 	imgui.TableSetupColumnV("Avg", imgui.TableColumnFlagsNoSortAscending, width*0.1, 4)
+	imgui.TableSetupColumnV("Max", imgui.TableColumnFlagsNoSortAscending, width*0.1, 5)
 
 	imgui.TableSetupScrollFreeze(0, 1)
 	imgui.TableHeadersRow()
@@ -287,6 +300,8 @@ func (win *winCoProcPerformance) drawSourceLines(src *developer.Source) {
 				src.SortedLines.SortByFrameCycles(true)
 			case 4:
 				src.SortedLines.SortByAverageCycles(true)
+			case 5:
+				src.SortedLines.SortByMaxCycles(true)
 			}
 		}
 		sort.ClearSpecsDirty()
@@ -324,7 +339,7 @@ func (win *winCoProcPerformance) drawSourceLines(src *developer.Source) {
 
 		imgui.TableNextColumn()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLoad)
-		if ld, ok := ln.Stats.FrameLoad(src); ok {
+		if ld, ok := ln.Stats.FrameLoad(); ok {
 			imgui.Text(fmt.Sprintf("%.02f", ld))
 		} else {
 			imgui.Text("-")
@@ -333,7 +348,16 @@ func (win *winCoProcPerformance) drawSourceLines(src *developer.Source) {
 
 		imgui.TableNextColumn()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceAvgLoad)
-		if ld, ok := ln.Stats.AverageLoad(src); ok {
+		if ld, ok := ln.Stats.AverageLoad(); ok {
+			imgui.Text(fmt.Sprintf("%.02f", ld))
+		} else {
+			imgui.Text("-")
+		}
+		imgui.PopStyleColor()
+
+		imgui.TableNextColumn()
+		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceMaxLoad)
+		if ld, ok := ln.Stats.MaximumLoad(); ok {
 			imgui.Text(fmt.Sprintf("%.02f", ld))
 		} else {
 			imgui.Text("-")
@@ -354,7 +378,7 @@ func (win *winCoProcPerformance) drawFunctionFilter(src *developer.Source) {
 	imgui.Text(fmt.Sprintf("Focusing on lines in %s", src.FunctionFilter))
 	imgui.Spacing()
 
-	const numColumns = 4
+	const numColumns = 5
 
 	flgs := imgui.TableFlagsScrollY
 	flgs |= imgui.TableFlagsSizingStretchProp
@@ -367,9 +391,10 @@ func (win *winCoProcPerformance) drawFunctionFilter(src *developer.Source) {
 	// first column is a dummy column so that Selectable (span all columns) works correctly
 	width := imgui.ContentRegionAvail().X
 	imgui.TableSetupColumnV("Line", imgui.TableColumnFlagsNoSort, width*0.1, 0)
-	imgui.TableSetupColumnV("Source", imgui.TableColumnFlagsNoSort, width*0.65, 1)
+	imgui.TableSetupColumnV("Source", imgui.TableColumnFlagsNoSort, width*0.55, 1)
 	imgui.TableSetupColumnV("Load", imgui.TableColumnFlagsNoSortAscending|imgui.TableColumnFlagsDefaultSort, width*0.1, 2)
 	imgui.TableSetupColumnV("Avg", imgui.TableColumnFlagsNoSortAscending, width*0.1, 3)
+	imgui.TableSetupColumnV("Max", imgui.TableColumnFlagsNoSortAscending, width*0.1, 4)
 
 	imgui.TableSetupScrollFreeze(0, 1)
 	imgui.TableHeadersRow()
@@ -380,10 +405,12 @@ func (win *winCoProcPerformance) drawFunctionFilter(src *developer.Source) {
 
 		for _, s := range sort.Specs() {
 			switch s.ColumnUserID {
-			case 1:
-				src.FunctionFilteredLines.SortByFrameCycles(true)
 			case 2:
+				src.FunctionFilteredLines.SortByFrameCycles(true)
+			case 3:
 				src.FunctionFilteredLines.SortByAverageCycles(true)
+			case 4:
+				src.FunctionFilteredLines.SortByMaxCycles(true)
 			}
 		}
 		sort.ClearSpecsDirty()
@@ -417,7 +444,7 @@ func (win *winCoProcPerformance) drawFunctionFilter(src *developer.Source) {
 
 		imgui.TableNextColumn()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLoad)
-		if ld, ok := ln.Stats.FrameLoad(src); ok {
+		if ld, ok := ln.Stats.FrameLoad(); ok {
 			imgui.Text(fmt.Sprintf("%.02f", ld))
 		} else {
 			imgui.Text("-")
@@ -426,7 +453,16 @@ func (win *winCoProcPerformance) drawFunctionFilter(src *developer.Source) {
 
 		imgui.TableNextColumn()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceAvgLoad)
-		if ld, ok := ln.Stats.AverageLoad(src); ok {
+		if ld, ok := ln.Stats.AverageLoad(); ok {
+			imgui.Text(fmt.Sprintf("%.02f", ld))
+		} else {
+			imgui.Text("-")
+		}
+		imgui.PopStyleColor()
+
+		imgui.TableNextColumn()
+		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceMaxLoad)
+		if ld, ok := ln.Stats.MaximumLoad(); ok {
 			imgui.Text(fmt.Sprintf("%.02f", ld))
 		} else {
 			imgui.Text("-")
