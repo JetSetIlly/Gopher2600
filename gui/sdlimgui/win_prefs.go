@@ -167,21 +167,6 @@ func (win *winPrefs) drawPlaymode() {
 
 func (win *winPrefs) drawDebugger() {
 	imgui.Spacing()
-	usefxxmirror := win.img.dbg.Disasm.Prefs.FxxxMirror.Get().(bool)
-	if imgui.Checkbox("Use Fxxx Mirror", &usefxxmirror) {
-		win.img.dbg.Disasm.Prefs.FxxxMirror.Set(usefxxmirror)
-	}
-
-	usesymbols := win.img.dbg.Disasm.Prefs.Symbols.Get().(bool)
-	if imgui.Checkbox("Use Symbols", &usesymbols) {
-		win.img.dbg.Disasm.Prefs.Symbols.Set(usesymbols)
-
-		// if disassembly has address labels then turning symbols off may alter
-		// the vertical scrolling of the disassembly window.
-		//
-		// set focusOnAddr to true to force preference change to take effect
-		win.img.wm.windows[winDisasmID].(*winDisasm).focusOnAddr = true
-	}
 
 	audioEnabled := win.img.prefs.audioEnabled.Get().(bool)
 	if imgui.Checkbox("Audio Enabled (in debugger)", &audioEnabled) {
@@ -193,6 +178,29 @@ func (win *winPrefs) drawDebugger() {
 		err := win.img.prefs.openOnError.Set(termOnError)
 		if err != nil {
 			logger.Logf("sdlimgui", "could not set preference value: %v", err)
+		}
+	}
+
+	if imgui.CollapsingHeader("6507 Disassembly") {
+		usefxxmirror := win.img.dbg.Disasm.Prefs.FxxxMirror.Get().(bool)
+		if imgui.Checkbox("Use Fxxx Mirror", &usefxxmirror) {
+			win.img.dbg.Disasm.Prefs.FxxxMirror.Set(usefxxmirror)
+		}
+
+		usesymbols := win.img.dbg.Disasm.Prefs.Symbols.Get().(bool)
+		if imgui.Checkbox("Use Symbols", &usesymbols) {
+			win.img.dbg.Disasm.Prefs.Symbols.Set(usesymbols)
+
+			// if disassembly has address labels then turning symbols off may alter
+			// the vertical scrolling of the disassembly window.
+			//
+			// set focusOnAddr to true to force preference change to take effect
+			win.img.wm.windows[winDisasmID].(*winDisasm).focusOnAddr = true
+		}
+
+		colorDisasm := win.img.prefs.colorDisasm.Get().(bool)
+		if imgui.Checkbox("Listing in Colour", &colorDisasm) {
+			win.img.prefs.colorDisasm.Set(colorDisasm)
 		}
 	}
 

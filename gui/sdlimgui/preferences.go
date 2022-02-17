@@ -43,6 +43,10 @@ type preferences struct {
 	openOnError  prefs.Bool
 	audioEnabled prefs.Bool
 
+	// disasm (there are preferences in the disassembly package that the gui
+	// will want to consider)
+	colorDisasm prefs.Bool
+
 	// playmode preferences
 	controllerNotifcations    prefs.Bool
 	plusromNotifications      prefs.Bool
@@ -68,6 +72,7 @@ func newPreferences(img *SdlImgui) (*preferences, error) {
 	// defaults
 	p.openOnError.Set(true)
 	p.audioEnabled.Set(false)
+	p.colorDisasm.Set(true)
 	p.controllerNotifcations.Set(true)
 	p.plusromNotifications.Set(true)
 	p.superchargerNotifications.Set(true)
@@ -93,6 +98,11 @@ func newPreferences(img *SdlImgui) (*preferences, error) {
 	}
 
 	err = p.dsk.Add("sdlimgui.debugger.audioEnabled", &p.audioEnabled)
+	if err != nil {
+		return nil, err
+	}
+
+	err = p.dsk.Add("sdlimgui.debugger.disasm.color", &p.colorDisasm)
 	if err != nil {
 		return nil, err
 	}

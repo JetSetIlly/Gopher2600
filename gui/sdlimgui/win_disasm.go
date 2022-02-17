@@ -50,6 +50,7 @@ type winDisasm struct {
 	// options
 	showDetails bool
 	followCPU   bool
+	usingColor  bool
 
 	// selected bank to display
 	filter       disasmFilter
@@ -87,7 +88,7 @@ func newWinDisasm(img *SdlImgui) (window, error) {
 
 func (win *winDisasm) init() {
 	win.widthBreak = imgui.CalcTextSize("! ", true, 0).X
-	win.widthAddr = imgui.CalcTextSize("$FFFF", true, 0).X
+	win.widthAddr = imgui.CalcTextSize("$FFFF ", true, 0).X
 	win.widthOperator = imgui.CalcTextSize("AND ", true, 0).X
 	win.widthCycles = imgui.CalcTextSize("2/3 ", true, 0).X
 	win.widthNotes = imgui.CalcTextSize(string(fonts.CPUBug), true, 0).X
@@ -284,7 +285,7 @@ func (win *winDisasm) drawOptions() {
 		imgui.Spacing()
 		imgui.Separator()
 		imgui.Spacing()
-		imgui.Checkbox("Show Details in Tooltip", &win.showDetails)
+		imgui.Checkbox("Show Details", &win.showDetails)
 		imgui.SameLineV(0, 15)
 		if imgui.Checkbox("Follow CPU", &win.followCPU) {
 			// goto current PC on option being set to true
@@ -292,6 +293,11 @@ func (win *winDisasm) drawOptions() {
 				win.focusOnAddr = true
 				win.selectedBank = currBank.Number
 			}
+		}
+		imgui.SameLineV(0, 15)
+		win.usingColor = win.img.prefs.colorDisasm.Get().(bool)
+		if imgui.Checkbox("Use Colour", &win.usingColor) {
+			win.img.prefs.colorDisasm.Set(win.usingColor)
 		}
 
 		// special execution icons
@@ -676,39 +682,44 @@ func (win *winDisasm) drawEntry(e *disassembly.Entry, focusAddr uint16, onBank b
 	// breakpoint indicator column. using the same column as the selectable
 	// above (which spans all columns)
 	imgui.SameLine()
-	if hasPCbreak {
+	if win.usingColor {
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmBreakAddress)
+	}
+	if hasPCbreak {
 		imgui.Text(fmt.Sprintf("%c", fonts.Breakpoint))
-		imgui.PopStyleColor()
 	}
 
 	// address column
 	imgui.TableNextColumn()
-	imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmAddress)
+	if win.usingColor {
+		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmAddress)
+	}
 	imgui.Text(e.Address)
-	imgui.PopStyleColor()
 
 	// operator column
 	imgui.TableNextColumn()
-	imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmOperator)
+	if win.usingColor {
+		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmOperator)
+	}
 	imgui.Text(e.Operator)
-	imgui.PopStyleColor()
 
 	// operand column
 	imgui.TableNextColumn()
-	imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmOperand)
+	if win.usingColor {
+		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmOperand)
+	}
 	imgui.Text(e.Operand.String())
-	imgui.PopStyleColor()
 
 	// cycles column
 	imgui.TableNextColumn()
-	imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmCycles)
+	if win.usingColor {
+		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmCycles)
+	}
 	if !e.Result.Final {
 		imgui.Text(string(fonts.CyclingInstruction))
 	} else {
 		imgui.Text(e.Result.Defn.Cycles.Formatted)
 	}
-	imgui.PopStyleColor()
 
 	// notes column
 	imgui.TableNextColumn()
@@ -720,6 +731,11 @@ func (win *winDisasm) drawEntry(e *disassembly.Entry, focusAddr uint16, onBank b
 			imgui.Text(string(fonts.PageFault))
 		}
 		imgui.PopStyleColor()
+	}
+
+	// undo color if necessary
+	if win.usingColor {
+		imgui.PopStyleColorV(5)
 	}
 }
 

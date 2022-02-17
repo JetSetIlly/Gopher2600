@@ -242,7 +242,7 @@ func newColors() *imguiColors {
 		// disassembly other
 		DisasmStep:         imgui.Vec4{1.0, 1.0, 1.0, 0.1},
 		DisasmHover:        imgui.Vec4{0.5, 0.5, 0.5, 0.1},
-		DisasmBreakAddress: imgui.Vec4{0.7, 0.7, 0.7, 1.0},
+		DisasmBreakAddress: imgui.Vec4{0.9, 0.4, 0.4, 1.0},
 
 		// coprocessor source (and related) windows
 		CoProcSourceSelected:       imgui.Vec4{1.0, 1.0, 1.0, 0.1},
