@@ -987,31 +987,31 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 	// actually perform instruction based on operator group
 	switch defn.Operator {
-	case "NOP":
+	case "nop":
 		// does nothing
 
-	case "CLI":
+	case "cli":
 		mc.Status.InterruptDisable = false
 
-	case "SEI":
+	case "sei":
 		mc.Status.InterruptDisable = true
 
-	case "CLC":
+	case "clc":
 		mc.Status.Carry = false
 
-	case "SEC":
+	case "sec":
 		mc.Status.Carry = true
 
-	case "CLD":
+	case "cld":
 		mc.Status.DecimalMode = false
 
-	case "SED":
+	case "sed":
 		mc.Status.DecimalMode = true
 
-	case "CLV":
+	case "clv":
 		mc.Status.Overflow = false
 
-	case "PHA":
+	case "pha":
 		// +1 cycle
 		err = mc.write8Bit(mc.SP.Address(), mc.A.Value(), false)
 		if err != nil {
@@ -1024,7 +1024,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 			return err
 		}
 
-	case "PLA":
+	case "pla":
 		// +1 cycle
 		mc.SP.Add(1, false)
 		mc.LastResult.Cycles++
@@ -1042,7 +1042,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		mc.Status.Zero = mc.A.IsZero()
 		mc.Status.Sign = mc.A.IsNegative()
 
-	case "PHP":
+	case "php":
 		// +1 cycle
 		err = mc.write8Bit(mc.SP.Address(), mc.Status.Value(), false)
 		if err != nil {
@@ -1055,7 +1055,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 			return err
 		}
 
-	case "PLP":
+	case "plp":
 		// +1 cycle
 		mc.SP.Add(1, false)
 		mc.LastResult.Cycles++
@@ -1070,66 +1070,66 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		}
 		mc.Status.FromValue(value)
 
-	case "TXA":
+	case "txa":
 		mc.A.Load(mc.X.Value())
 		mc.Status.Zero = mc.A.IsZero()
 		mc.Status.Sign = mc.A.IsNegative()
 
-	case "TAX":
+	case "tax":
 		mc.X.Load(mc.A.Value())
 		mc.Status.Zero = mc.X.IsZero()
 		mc.Status.Sign = mc.X.IsNegative()
 
-	case "TAY":
+	case "tay":
 		mc.Y.Load(mc.A.Value())
 		mc.Status.Zero = mc.Y.IsZero()
 		mc.Status.Sign = mc.Y.IsNegative()
 
-	case "TYA":
+	case "tya":
 		mc.A.Load(mc.Y.Value())
 		mc.Status.Zero = mc.A.IsZero()
 		mc.Status.Sign = mc.A.IsNegative()
 
-	case "TSX":
+	case "tsx":
 		mc.X.Load(mc.SP.Value())
 		mc.Status.Zero = mc.X.IsZero()
 		mc.Status.Sign = mc.X.IsNegative()
 
-	case "TXS":
+	case "txs":
 		mc.SP.Load(mc.X.Value())
 		// does not affect status register
 
-	case "EOR":
+	case "eor":
 		mc.A.EOR(value)
 		mc.Status.Zero = mc.A.IsZero()
 		mc.Status.Sign = mc.A.IsNegative()
 
-	case "ORA":
+	case "ora":
 		mc.A.ORA(value)
 		mc.Status.Zero = mc.A.IsZero()
 		mc.Status.Sign = mc.A.IsNegative()
 
-	case "AND":
+	case "and":
 		mc.A.AND(value)
 		mc.Status.Zero = mc.A.IsZero()
 		mc.Status.Sign = mc.A.IsNegative()
 
-	case "LDA":
+	case "lda":
 		mc.A.Load(value)
 		mc.Status.Zero = mc.A.IsZero()
 		mc.Status.Sign = mc.A.IsNegative()
 
-	case "LDX":
+	case "ldx":
 		mc.X.Load(value)
 		mc.Status.Zero = mc.X.IsZero()
 		mc.Status.Sign = mc.X.IsNegative()
 
-	case "LDY":
+	case "ldy":
 		mc.Y.Load(value)
 		mc.Status.Zero = mc.Y.IsZero()
 		mc.Status.Sign = mc.Y.IsNegative()
 
-	case "STA":
+	case "sta":
 		// +1 cycle
 		err = mc.write8Bit(address, mc.A.Value(), false)
 		if err != nil {
@@ -1141,7 +1141,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 			return err
 		}
 
-	case "STX":
+	case "stx":
 		// +1 cycle
 		err = mc.write8Bit(address, mc.X.Value(), false)
 		if err != nil {
@@ -1153,7 +1153,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 			return err
 		}
 
-	case "STY":
+	case "sty":
 		// +1 cycle
 		err = mc.write8Bit(address, mc.Y.Value(), false)
 		if err != nil {
@@ -1165,27 +1165,27 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 			return err
 		}
 
-	case "INX":
+	case "inx":
 		mc.X.Add(1, false)
 		mc.Status.Zero = mc.X.IsZero()
 		mc.Status.Sign = mc.X.IsNegative()
 
-	case "INY":
+	case "iny":
 		mc.Y.Add(1, false)
 		mc.Status.Zero = mc.Y.IsZero()
 		mc.Status.Sign = mc.Y.IsNegative()
 
-	case "DEX":
+	case "dex":
 		mc.X.Add(255, false)
 		mc.Status.Zero = mc.X.IsZero()
 		mc.Status.Sign = mc.X.IsNegative()
 
-	case "DEY":
+	case "dey":
 		mc.Y.Add(255, false)
 		mc.Status.Zero = mc.Y.IsZero()
 		mc.Status.Sign = mc.Y.IsNegative()
 
-	case "ASL":
+	case "asl":
 		var r *registers.Register
 		if defn.Effect == instructions.RMW {
 			r = &mc.acc8
@@ -1198,7 +1198,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		mc.Status.Sign = r.IsNegative()
 		value = r.Value()
 
-	case "LSR":
+	case "lsr":
 		var r *registers.Register
 		if defn.Effect == instructions.RMW {
 			r = &mc.acc8
@@ -1211,7 +1211,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		mc.Status.Sign = r.IsNegative()
 		value = r.Value()
 
-	case "ADC":
+	case "adc":
 		if mc.Status.DecimalMode {
 			mc.Status.Carry,
 				mc.Status.Zero,
@@ -1223,7 +1223,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 			mc.Status.Sign = mc.A.IsNegative()
 		}
 
-	case "SBC":
+	case "sbc":
 		if mc.Status.DecimalMode {
 			mc.Status.Carry,
 				mc.Status.Zero,
@@ -1235,7 +1235,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 			mc.Status.Sign = mc.A.IsNegative()
 		}
 
-	case "ROR":
+	case "ror":
 		var r *registers.Register
 		if defn.Effect == instructions.RMW {
 			r = &mc.acc8
@@ -1248,7 +1248,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		mc.Status.Sign = r.IsNegative()
 		value = r.Value()
 
-	case "ROL":
+	case "rol":
 		var r *registers.Register
 		if defn.Effect == instructions.RMW {
 			r = &mc.acc8
@@ -1261,7 +1261,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		mc.Status.Sign = r.IsNegative()
 		value = r.Value()
 
-	case "INC":
+	case "inc":
 		r := mc.acc8
 		r.Load(value)
 		r.Add(1, false)
@@ -1269,7 +1269,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		mc.Status.Sign = r.IsNegative()
 		value = r.Value()
 
-	case "DEC":
+	case "dec":
 		r := mc.acc8
 		r.Load(value)
 		r.Add(255, false)
@@ -1277,7 +1277,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		mc.Status.Sign = r.IsNegative()
 		value = r.Value()
 
-	case "CMP":
+	case "cmp":
 		r := mc.acc8
 		r.Load(mc.A.Value())
 
@@ -1287,21 +1287,21 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		mc.Status.Zero = r.IsZero()
 		mc.Status.Sign = r.IsNegative()
 
-	case "CPX":
+	case "cpx":
 		r := mc.acc8
 		r.Load(mc.X.Value())
 		mc.Status.Carry, _ = r.Subtract(value, true)
 		mc.Status.Zero = r.IsZero()
 		mc.Status.Sign = r.IsNegative()
 
-	case "CPY":
+	case "cpy":
 		r := mc.acc8
 		r.Load(mc.Y.Value())
 		mc.Status.Carry, _ = r.Subtract(value, true)
 		mc.Status.Zero = r.IsZero()
 		mc.Status.Sign = r.IsNegative()
 
-	case "BIT":
+	case "bit":
 		r := mc.acc8
 		r.Load(value)
 		mc.Status.Sign = r.IsNegative()
@@ -1309,60 +1309,60 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		r.AND(mc.A.Value())
 		mc.Status.Zero = r.IsZero()
 
-	case "JMP":
+	case "jmp":
 		if !mc.NoFlowControl {
 			mc.PC.Load(address)
 		}
 
-	case "BCC":
+	case "bcc":
 		err = mc.branch(!mc.Status.Carry, address)
 		if err != nil {
 			return err
 		}
 
-	case "BCS":
+	case "bcs":
 		err = mc.branch(mc.Status.Carry, address)
 		if err != nil {
 			return err
 		}
 
-	case "BEQ":
+	case "beq":
 		err = mc.branch(mc.Status.Zero, address)
 		if err != nil {
 			return err
 		}
 
-	case "BMI":
+	case "bmi":
 		err = mc.branch(mc.Status.Sign, address)
 		if err != nil {
 			return err
 		}
 
-	case "BNE":
+	case "bne":
 		err = mc.branch(!mc.Status.Zero, address)
 		if err != nil {
 			return err
 		}
 
-	case "BPL":
+	case "bpl":
 		err = mc.branch(!mc.Status.Sign, address)
 		if err != nil {
 			return err
 		}
 
-	case "BVC":
+	case "bvc":
 		err = mc.branch(!mc.Status.Overflow, address)
 		if err != nil {
 			return err
 		}
 
-	case "BVS":
+	case "bvs":
 		err = mc.branch(mc.Status.Overflow, address)
 		if err != nil {
 			return err
 		}
 
-	case "JSR":
+	case "jsr":
 		// +1 cycle
 		err = mc.read8BitPC(loNibble)
 		if err != nil {
@@ -1423,7 +1423,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 			mc.PC.Load(address)
 		}
 
-	case "RTS":
+	case "rts":
 		// +1 cycle
 		if !mc.NoFlowControl {
 			mc.SP.Add(1, false)
@@ -1456,7 +1456,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 			return err
 		}
 
-	case "BRK":
+	case "brk":
 		// push PC onto register (same effect as JSR)
 		err := mc.write8Bit(mc.SP.Address(), uint8(mc.PC.Address()>>8), false)
 		if err != nil {
@@ -1511,7 +1511,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 			mc.PC.Load(brkAddress)
 		}
 
-	case "RTI":
+	case "rti":
 		// pull status register (same effect as PLP)
 		if !mc.NoFlowControl {
 			mc.SP.Add(1, false)
@@ -1552,20 +1552,20 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 	// undocumented instructions
 
-	case "nop":
+	case "NOP":
 		// does nothing (2 byte nop)
 
-	case "lax":
+	case "LAX":
 		mc.A.Load(value)
 		mc.Status.Zero = mc.A.IsZero()
 		mc.Status.Sign = mc.A.IsNegative()
 		mc.X.Load(value)
 
-	case "skw":
+	case "SKW":
 		// does nothing (2 byte skip)
 		// differs to dop because the second byte is actually read
 
-	case "dcp":
+	case "DCP":
 		// AND the contents of the A register with value...
 		// decrease value...
 		r := mc.acc8
@@ -1579,7 +1579,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		mc.Status.Zero = r.IsZero()
 		mc.Status.Sign = r.IsNegative()
 
-	case "asr":
+	case "ASR":
 		mc.A.AND(value)
 
 		// ... then LSR the result
@@ -1587,13 +1587,13 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		mc.Status.Zero = mc.A.IsZero()
 		mc.Status.Sign = mc.A.IsNegative()
 
-	case "xaa":
+	case "XAA":
 		mc.A.Load(mc.X.Value())
 		mc.A.AND(value)
 		mc.Status.Zero = mc.A.IsZero()
 		mc.Status.Sign = mc.A.IsNegative()
 
-	case "axs":
+	case "AXS":
 		mc.X.AND(mc.A.Value())
 
 		// axs subtract behaves like CMP as far as carry and overflow flags are
@@ -1603,7 +1603,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		mc.Status.Zero = mc.X.IsZero()
 		mc.Status.Sign = mc.X.IsNegative()
 
-	case "sax":
+	case "SAX":
 		r := mc.acc8
 		r.Load(mc.A.Value())
 		r.AND(mc.X.Value())
@@ -1619,13 +1619,13 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 			return err
 		}
 
-	case "arr":
+	case "ARR":
 		mc.A.AND(value)
 		mc.Status.Carry = mc.A.ROR(mc.Status.Carry)
 		mc.Status.Zero = mc.A.IsZero()
 		mc.Status.Sign = mc.A.IsNegative()
 
-	case "slo":
+	case "SLO":
 		r := mc.acc8
 		r.Load(value)
 		mc.Status.Carry = r.ASL()
@@ -1636,7 +1636,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		mc.Status.Zero = mc.A.IsZero()
 		mc.Status.Sign = mc.A.IsNegative()
 
-	case "rla":
+	case "RLA":
 		r := mc.acc8
 		r.Load(value)
 		mc.Status.Carry = r.ROL(mc.Status.Carry)
@@ -1645,7 +1645,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		mc.Status.Zero = r.IsZero()
 		mc.Status.Sign = r.IsNegative()
 
-	case "isc":
+	case "ISC":
 		r := mc.acc8
 		r.Load(value)
 		r.Add(1, false)
@@ -1654,7 +1654,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		mc.Status.Zero = mc.A.IsZero()
 		mc.Status.Sign = mc.A.IsNegative()
 
-	case "anc":
+	case "ANC":
 		// immediate AND. puts bit 7 into the carry flag (in microcode terms
 		// this is as though ASL had been enacted)
 		mc.A.AND(value)

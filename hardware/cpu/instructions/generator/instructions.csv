@@ -51,200 +51,200 @@
 # !!TODO: maybe the number of cycles can be inferred in a similar way
 
 # no operation
-0xea, NOP, 2, IMPLIED, False
+0xea, nop, 2, IMPLIED, False
 
 # status flags
-0x58, CLI, 2, IMPLIED, False
-0x78, SEI, 2, IMPLIED, False
-0x18, CLC, 2, IMPLIED, False
-0x38, SEC, 2, IMPLIED, False
-0xd8, CLD, 2, IMPLIED, False
-0xf8, SED, 2, IMPLIED, False
-0xb8, CLV, 2, IMPLIED, False
+0x58, cli, 2, IMPLIED, False
+0x78, sei, 2, IMPLIED, False
+0x18, clc, 2, IMPLIED, False
+0x38, sec, 2, IMPLIED, False
+0xd8, cld, 2, IMPLIED, False
+0xf8, sed, 2, IMPLIED, False
+0xb8, clv, 2, IMPLIED, False
 
 # stack
-0x48, PHA, 3, IMPLIED, False, WRITE
-0x68, PLA, 4, IMPLIED, False
-0x08, PHP, 3, IMPLIED, False, WRITE
-0x28, PLP, 4, IMPLIED, False
+0x48, pha, 3, IMPLIED, False, WRITE
+0x68, pla, 4, IMPLIED, False
+0x08, php, 3, IMPLIED, False, WRITE
+0x28, plp, 4, IMPLIED, False
 
 # register transfer
-0x8a, TXA, 2, IMPLIED, False
-0xaa, TAX, 2, IMPLIED, False
-0xa8, TAY, 2, IMPLIED, False
-0x98, TYA, 2, IMPLIED, False
-0xba, TSX, 2, IMPLIED, False
-0x9a, TXS, 2, IMPLIED, False
+0x8a, txa, 2, IMPLIED, False
+0xaa, tax, 2, IMPLIED, False
+0xa8, tay, 2, IMPLIED, False
+0x98, tya, 2, IMPLIED, False
+0xba, tsx, 2, IMPLIED, False
+0x9a, txs, 2, IMPLIED, False
 
 # bitwise operations
-0x49, EOR, 2, IMMEDIATE, False
-0x45, EOR, 3, ZEROPAGE, False
-0x55, EOR, 4, ZEROPAGE_INDEXED_X, False
-0x4d, EOR, 4, ABSOLUTE, False
-0x5d, EOR, 4, ABSOLUTE_INDEXED_X, True
-0x59, EOR, 4, ABSOLUTE_INDEXED_Y, True
-0x41, EOR, 6, INDEXED_INDIRECT, False
-0x51, EOR, 5, INDIRECT_INDEXED, True
+0x49, eor, 2, IMMEDIATE, False
+0x45, eor, 3, ZEROPAGE, False
+0x55, eor, 4, ZEROPAGE_INDEXED_X, False
+0x4d, eor, 4, ABSOLUTE, False
+0x5d, eor, 4, ABSOLUTE_INDEXED_X, True
+0x59, eor, 4, ABSOLUTE_INDEXED_Y, True
+0x41, eor, 6, INDEXED_INDIRECT, False
+0x51, eor, 5, INDIRECT_INDEXED, True
 
-0x09, ORA, 2, IMMEDIATE, False
-0x05, ORA, 3, ZEROPAGE, False
-0x15, ORA, 4, ZEROPAGE_INDEXED_X, False
-0x0d, ORA, 4, ABSOLUTE, False
-0x1d, ORA, 4, ABSOLUTE_INDEXED_X, True
-0x19, ORA, 4, ABSOLUTE_INDEXED_Y, True
-0x01, ORA, 6, INDEXED_INDIRECT, False
-0x11, ORA, 5, INDIRECT_INDEXED, True
+0x09, ora, 2, IMMEDIATE, False
+0x05, ora, 3, ZEROPAGE, False
+0x15, ora, 4, ZEROPAGE_INDEXED_X, False
+0x0d, ora, 4, ABSOLUTE, False
+0x1d, ora, 4, ABSOLUTE_INDEXED_X, True
+0x19, ora, 4, ABSOLUTE_INDEXED_Y, True
+0x01, ora, 6, INDEXED_INDIRECT, False
+0x11, ora, 5, INDIRECT_INDEXED, True
 
-0x29, AND, 2, IMMEDIATE, False
-0x25, AND, 3, ZEROPAGE, False
-0x35, AND, 4, ZEROPAGE_INDEXED_X, False
-0x2d, AND, 4, ABSOLUTE, False
-0x3d, AND, 4, ABSOLUTE_INDEXED_X, True
-0x39, AND, 4, ABSOLUTE_INDEXED_Y, True
-0x21, AND, 6, INDEXED_INDIRECT, False
-0x31, AND, 5, INDIRECT_INDEXED, True
+0x29, and, 2, IMMEDIATE, False
+0x25, and, 3, ZEROPAGE, False
+0x35, and, 4, ZEROPAGE_INDEXED_X, False
+0x2d, and, 4, ABSOLUTE, False
+0x3d, and, 4, ABSOLUTE_INDEXED_X, True
+0x39, and, 4, ABSOLUTE_INDEXED_Y, True
+0x21, and, 6, INDEXED_INDIRECT, False
+0x31, and, 5, INDIRECT_INDEXED, True
 
 # load register
-0xa9, LDA, 2, IMMEDIATE, False
-0xa5, LDA, 3, ZEROPAGE, False
-0xb5, LDA, 4, ZEROPAGE_INDEXED_X, False
-0xad, LDA, 4, ABSOLUTE, False
-0xbd, LDA, 4, ABSOLUTE_INDEXED_X, True
-0xb9, LDA, 4, ABSOLUTE_INDEXED_Y, True
-0xa1, LDA, 6, INDEXED_INDIRECT, False
-0xb1, LDA, 5, INDIRECT_INDEXED, True
+0xa9, lda, 2, IMMEDIATE, False
+0xa5, lda, 3, ZEROPAGE, False
+0xb5, lda, 4, ZEROPAGE_INDEXED_X, False
+0xad, lda, 4, ABSOLUTE, False
+0xbd, lda, 4, ABSOLUTE_INDEXED_X, True
+0xb9, lda, 4, ABSOLUTE_INDEXED_Y, True
+0xa1, lda, 6, INDEXED_INDIRECT, False
+0xb1, lda, 5, INDIRECT_INDEXED, True
 
-0xa2, LDX, 2, IMMEDIATE, False
-0xa6, LDX, 3, ZEROPAGE, False
-0xb6, LDX, 4, ZEROPAGE_INDEXED_Y, False
-0xae, LDX, 4, ABSOLUTE, False
-0xbe, LDX, 4, ABSOLUTE_INDEXED_Y, True
+0xa2, ldx, 2, IMMEDIATE, False
+0xa6, ldx, 3, ZEROPAGE, False
+0xb6, ldx, 4, ZEROPAGE_INDEXED_Y, False
+0xae, ldx, 4, ABSOLUTE, False
+0xbe, ldx, 4, ABSOLUTE_INDEXED_Y, True
 
-0xa0, LDY, 2, IMMEDIATE, False
-0xa4, LDY, 3, ZEROPAGE, False
-0xb4, LDY, 4, ZEROPAGE_INDEXED_X, False
-0xac, LDY, 4, ABSOLUTE, False
-0xbc, LDY, 4, ABSOLUTE_INDEXED_X, True
+0xa0, ldy, 2, IMMEDIATE, False
+0xa4, ldy, 3, ZEROPAGE, False
+0xb4, ldy, 4, ZEROPAGE_INDEXED_X, False
+0xac, ldy, 4, ABSOLUTE, False
+0xbc, ldy, 4, ABSOLUTE_INDEXED_X, True
 
 # register operations
-0xe8, INX, 2, IMPLIED, False
-0xc8, INY, 2, IMPLIED, False
-0xca, DEX, 2, IMPLIED, False
-0x88, DEY, 2, IMPLIED, False
+0xe8, inx, 2, IMPLIED, False
+0xc8, iny, 2, IMPLIED, False
+0xca, dex, 2, IMPLIED, False
+0x88, dey, 2, IMPLIED, False
 
-0x0a, ASL, 2, IMPLIED, False
-0x06, ASL, 5, ZEROPAGE, False, RMW
-0x16, ASL, 6, ZEROPAGE_INDEXED_X, False, RMW
-0x0e, ASL, 6, ABSOLUTE, False, RMW
-0x1e, ASL, 7, ABSOLUTE_INDEXED_X, False, RMW
+0x0a, asl, 2, IMPLIED, False
+0x06, asl, 5, ZEROPAGE, False, RMW
+0x16, asl, 6, ZEROPAGE_INDEXED_X, False, RMW
+0x0e, asl, 6, ABSOLUTE, False, RMW
+0x1e, asl, 7, ABSOLUTE_INDEXED_X, False, RMW
 
-0x4a, LSR, 2, IMPLIED, False
-0x46, LSR, 5, ZEROPAGE, False, RMW
-0x56, LSR, 6, ZEROPAGE_INDEXED_X, False, RMW
-0x4e, LSR, 6, ABSOLUTE, False, RMW
-0x5e, LSR, 7, ABSOLUTE_INDEXED_X, False, RMW
+0x4a, lsr, 2, IMPLIED, False
+0x46, lsr, 5, ZEROPAGE, False, RMW
+0x56, lsr, 6, ZEROPAGE_INDEXED_X, False, RMW
+0x4e, lsr, 6, ABSOLUTE, False, RMW
+0x5e, lsr, 7, ABSOLUTE_INDEXED_X, False, RMW
 
-0x69, ADC, 2, IMMEDIATE, False
-0x65, ADC, 3, ZEROPAGE, False
-0x75, ADC, 4, ZEROPAGE_INDEXED_X, False
-0x6d, ADC, 4, ABSOLUTE, False
-0x7d, ADC, 4, ABSOLUTE_INDEXED_X, True
-0x79, ADC, 4, ABSOLUTE_INDEXED_Y, True
-0x61, ADC, 6, INDEXED_INDIRECT, False
-0x71, ADC, 5, INDIRECT_INDEXED, True
+0x69, adc, 2, IMMEDIATE, False
+0x65, adc, 3, ZEROPAGE, False
+0x75, adc, 4, ZEROPAGE_INDEXED_X, False
+0x6d, adc, 4, ABSOLUTE, False
+0x7d, adc, 4, ABSOLUTE_INDEXED_X, True
+0x79, adc, 4, ABSOLUTE_INDEXED_Y, True
+0x61, adc, 6, INDEXED_INDIRECT, False
+0x71, adc, 5, INDIRECT_INDEXED, True
 
-0xe9, SBC, 2, IMMEDIATE, False
-0xe5, SBC, 3, ZEROPAGE, False
-0xf5, SBC, 4, ZEROPAGE_INDEXED_X, False
-0xed, SBC, 4, ABSOLUTE, False
-0xfd, SBC, 4, ABSOLUTE_INDEXED_X, True
-0xf9, SBC, 4, ABSOLUTE_INDEXED_Y, True
-0xe1, SBC, 6, INDEXED_INDIRECT, False
-0xf1, SBC, 5, INDIRECT_INDEXED, True
+0xe9, sbc, 2, IMMEDIATE, False
+0xe5, sbc, 3, ZEROPAGE, False
+0xf5, sbc, 4, ZEROPAGE_INDEXED_X, False
+0xed, sbc, 4, ABSOLUTE, False
+0xfd, sbc, 4, ABSOLUTE_INDEXED_X, True
+0xf9, sbc, 4, ABSOLUTE_INDEXED_Y, True
+0xe1, sbc, 6, INDEXED_INDIRECT, False
+0xf1, sbc, 5, INDIRECT_INDEXED, True
 
-0x6a, ROR, 2, IMPLIED, False
-0x66, ROR, 5, ZEROPAGE, False, RMW
-0x76, ROR, 6, ZEROPAGE_INDEXED_X, False, RMW
-0x6e, ROR, 6, ABSOLUTE, False, RMW
-0x7e, ROR, 7, ABSOLUTE_INDEXED_X, False, RMW
+0x6a, ror, 2, IMPLIED, False
+0x66, ror, 5, ZEROPAGE, False, RMW
+0x76, ror, 6, ZEROPAGE_INDEXED_X, False, RMW
+0x6e, ror, 6, ABSOLUTE, False, RMW
+0x7e, ror, 7, ABSOLUTE_INDEXED_X, False, RMW
 
-0x2a, ROL, 2, IMPLIED, False
-0x26, ROL, 5, ZEROPAGE, False, RMW
-0x36, ROL, 6, ZEROPAGE_INDEXED_X, False, RMW
-0x2e, ROL, 6, ABSOLUTE, False, RMW
-0x3e, ROL, 7, ABSOLUTE_INDEXED_X, False, RMW
+0x2a, rol, 2, IMPLIED, False
+0x26, rol, 5, ZEROPAGE, False, RMW
+0x36, rol, 6, ZEROPAGE_INDEXED_X, False, RMW
+0x2e, rol, 6, ABSOLUTE, False, RMW
+0x3e, rol, 7, ABSOLUTE_INDEXED_X, False, RMW
 
 # compare instructions
-0xc9, CMP, 2, IMMEDIATE, False
-0xc5, CMP, 3, ZEROPAGE, False
-0xd5, CMP, 4, ZEROPAGE_INDEXED_X, False
-0xcd, CMP, 4, ABSOLUTE, False
-0xdd, CMP, 4, ABSOLUTE_INDEXED_X, True
-0xd9, CMP, 4, ABSOLUTE_INDEXED_Y, True
-0xc1, CMP, 6, INDEXED_INDIRECT, False
-0xd1, CMP, 5, INDIRECT_INDEXED, True
+0xc9, cmp, 2, IMMEDIATE, False
+0xc5, cmp, 3, ZEROPAGE, False
+0xd5, cmp, 4, ZEROPAGE_INDEXED_X, False
+0xcd, cmp, 4, ABSOLUTE, False
+0xdd, cmp, 4, ABSOLUTE_INDEXED_X, True
+0xd9, cmp, 4, ABSOLUTE_INDEXED_Y, True
+0xc1, cmp, 6, INDEXED_INDIRECT, False
+0xd1, cmp, 5, INDIRECT_INDEXED, True
 
-0xe0, CPX, 2, IMMEDIATE, False
-0xe4, CPX, 3, ZEROPAGE, False
-0xec, CPX, 4, ABSOLUTE, False
+0xe0, cpx, 2, IMMEDIATE, False
+0xe4, cpx, 3, ZEROPAGE, False
+0xec, cpx, 4, ABSOLUTE, False
 
-0xc0, CPY, 2, IMMEDIATE, False
-0xc4, CPY, 3, ZEROPAGE, False
-0xcc, CPY, 4, ABSOLUTE, False
+0xc0, cpy, 2, IMMEDIATE, False
+0xc4, cpy, 3, ZEROPAGE, False
+0xcc, cpy, 4, ABSOLUTE, False
 
-0x24, BIT, 3, ZEROPAGE, False
-0x2c, BIT, 4, ABSOLUTE, False
+0x24, bit, 3, ZEROPAGE, False
+0x2c, bit, 4, ABSOLUTE, False
 
 # store register
-0x85, STA, 3, ZEROPAGE, False, WRITE
-0x95, STA, 4, ZEROPAGE_INDEXED_X, False, WRITE
-0x8d, STA, 4, ABSOLUTE, False, WRITE
-0x9d, STA, 5, ABSOLUTE_INDEXED_X, False, WRITE
-0x99, STA, 5, ABSOLUTE_INDEXED_Y, False, WRITE
-0x81, STA, 6, INDEXED_INDIRECT, False, WRITE
-0x91, STA, 6, INDIRECT_INDEXED, False, WRITE
+0x85, sta, 3, ZEROPAGE, False, WRITE
+0x95, sta, 4, ZEROPAGE_INDEXED_X, False, WRITE
+0x8d, sta, 4, ABSOLUTE, False, WRITE
+0x9d, sta, 5, ABSOLUTE_INDEXED_X, False, WRITE
+0x99, sta, 5, ABSOLUTE_INDEXED_Y, False, WRITE
+0x81, sta, 6, INDEXED_INDIRECT, False, WRITE
+0x91, sta, 6, INDIRECT_INDEXED, False, WRITE
 
-0x86, STX, 3, ZEROPAGE, False, WRITE
-0x96, STX, 4, ZEROPAGE_INDEXED_Y, False, WRITE
-0x8e, STX, 4, ABSOLUTE, False, WRITE
+0x86, stx, 3, ZEROPAGE, False, WRITE
+0x96, stx, 4, ZEROPAGE_INDEXED_Y, False, WRITE
+0x8e, stx, 4, ABSOLUTE, False, WRITE
 
-0x84, STY, 3, ZEROPAGE, False, WRITE
-0x94, STY, 4, ZEROPAGE_INDEXED_X, False, WRITE
-0x8c, STY, 4, ABSOLUTE, False, WRITE
+0x84, sty, 3, ZEROPAGE, False, WRITE
+0x94, sty, 4, ZEROPAGE_INDEXED_X, False, WRITE
+0x8c, sty, 4, ABSOLUTE, False, WRITE
 
 # memory instructions
-0xe6, INC, 5, ZEROPAGE, False, RMW
-0xf6, INC, 6, ZEROPAGE_INDEXED_X, False, RMW
-0xee, INC, 6, ABSOLUTE, False, RMW
-0xfe, INC, 7, ABSOLUTE_INDEXED_X, False, RMW
+0xe6, inc, 5, ZEROPAGE, False, RMW
+0xf6, inc, 6, ZEROPAGE_INDEXED_X, False, RMW
+0xee, inc, 6, ABSOLUTE, False, RMW
+0xfe, inc, 7, ABSOLUTE_INDEXED_X, False, RMW
 
-0xc6, DEC, 5, ZEROPAGE, False, RMW
-0xd6, DEC, 6, ZEROPAGE_INDEXED_X, False, RMW
-0xce, DEC, 6, ABSOLUTE, False, RMW
-0xde, DEC, 7, ABSOLUTE_INDEXED_X, False, RMW
+0xc6, dec, 5, ZEROPAGE, False, RMW
+0xd6, dec, 6, ZEROPAGE_INDEXED_X, False, RMW
+0xce, dec, 6, ABSOLUTE, False, RMW
+0xde, dec, 7, ABSOLUTE_INDEXED_X, False, RMW
 
 # flow control
-0x4c, JMP, 3, ABSOLUTE, False, FLOW
-0x6c, JMP, 5, INDIRECT, False, FLOW
+0x4c, jmp, 3, ABSOLUTE, False, FLOW
+0x6c, jmp, 5, INDIRECT, False, FLOW
 
 # flow control (branch instructions) -- machine cycles count column is the fail count
 # ie. when the branch condition isfalse and the PC allowed to advance as normal. if the
 # branch succeeds then the PC is adjusted, taking an additional cycle.
-0x90, BCC, 2, RELATIVE, True, FLOW
-0xb0, BCS, 2, RELATIVE, True, FLOW
-0xf0, BEQ, 2, RELATIVE, True, FLOW
-0x30, BMI, 2, RELATIVE, True, FLOW
-0xd0, BNE, 2, RELATIVE, True, FLOW
-0x10, BPL, 2, RELATIVE, True, FLOW
-0x50, BVC, 2, RELATIVE, True, FLOW
-0x70, BVS, 2, RELATIVE, True, FLOW
+0x90, bcc, 2, RELATIVE, True, FLOW
+0xb0, bcs, 2, RELATIVE, True, FLOW
+0xf0, beq, 2, RELATIVE, True, FLOW
+0x30, bmi, 2, RELATIVE, True, FLOW
+0xd0, bne, 2, RELATIVE, True, FLOW
+0x10, bpl, 2, RELATIVE, True, FLOW
+0x50, bvc, 2, RELATIVE, True, FLOW
+0x70, bvs, 2, RELATIVE, True, FLOW
 
-0x20, JSR, 6, ABSOLUTE, False, SUB-ROUTINE
-0x60, RTS, 6, IMPLIED, False, SUB-ROUTINE
+0x20, jsr, 6, ABSOLUTE, False, SUB-ROUTINE
+0x60, rts, 6, IMPLIED, False, SUB-ROUTINE
 
 # interrupts
-0x00, BRK, 7, IMPLIED, False, INTERRUPT
-0x40, RTI, 6, IMPLIED, False, INTERRUPT
+0x00, brk, 7, IMPLIED, False, INTERRUPT
+0x40, rti, 6, IMPLIED, False, INTERRUPT
 
 # undocumented instructions
 # - by convention, I've decided to user upper-case mnemonics for documented
@@ -253,45 +253,45 @@
 # mnemonic used by the stella emulator (alternatives are commented as
 # appropriate)
 # - nop instructions of all cycle/byte counts are labelled as nop
-0x04, nop, 3, ZEROPAGE, False
-0x80, nop, 2, IMMEDIATE, False
-0x82, nop, 2, IMMEDIATE, False
-0x14, nop, 4, ZEROPAGE_INDEXED_X, False
-0x5a, nop, 2, IMMEDIATE, False
-0x0c, skw, 4, ABSOLUTE, False
-0x1c, skw, 4, ABSOLUTE_INDEXED_X, True
-0x3c, skw, 4, ABSOLUTE_INDEXED_X, True
-0x5c, skw, 4, ABSOLUTE_INDEXED_X, True
-0x7c, skw, 4, ABSOLUTE_INDEXED_X, True
-0xdc, skw, 4, ABSOLUTE_INDEXED_X, True
-0xfc, skw, 4, ABSOLUTE_INDEXED_X, True
-0xa7, lax, 3, ZEROPAGE, False
-0xb3, lax, 5, INDIRECT_INDEXED, True
-0xbf, lax, 4, ABSOLUTE_INDEXED_Y, True
-0xb7, lax, 4, ZEROPAGE_INDEXED_Y, False
-0xaf, lax, 4, ABSOLUTE, False
-0xab, lax, 2, IMMEDIATE, False
-0x8b, xaa, 2, IMMEDIATE, False
+0x04, NOP, 3, ZEROPAGE, False
+0x80, NOP, 2, IMMEDIATE, False
+0x82, NOP, 2, IMMEDIATE, False
+0x14, NOP, 4, ZEROPAGE_INDEXED_X, False
+0x5a, NOP, 2, IMMEDIATE, False
+0x0c, SKW, 4, ABSOLUTE, False
+0x1c, SKW, 4, ABSOLUTE_INDEXED_X, True
+0x3c, SKW, 4, ABSOLUTE_INDEXED_X, True
+0x5c, SKW, 4, ABSOLUTE_INDEXED_X, True
+0x7c, SKW, 4, ABSOLUTE_INDEXED_X, True
+0xdc, SKW, 4, ABSOLUTE_INDEXED_X, True
+0xfc, SKW, 4, ABSOLUTE_INDEXED_X, True
+0xa7, LAX, 3, ZEROPAGE, False
+0xb3, LAX, 5, INDIRECT_INDEXED, True
+0xbf, LAX, 4, ABSOLUTE_INDEXED_Y, True
+0xb7, LAX, 4, ZEROPAGE_INDEXED_Y, False
+0xaf, LAX, 4, ABSOLUTE, False
+0xab, LAX, 2, IMMEDIATE, False
+0x8b, XAA, 2, IMMEDIATE, False
 
-0xc7, dcp, 5, ZEROPAGE, False, RMW				# dcm
-0xd7, dcp, 6, ZEROPAGE_INDEXED_X, False, RMW	# dcm
-0x4b, asr, 2, IMMEDIATE, False					# alr
+0xc7, DCP, 5, ZEROPAGE, False, RMW				# dcm
+0xd7, DCP, 6, ZEROPAGE_INDEXED_X, False, RMW	# dcm
+0x4b, ASR, 2, IMMEDIATE, False					# alr
 
-0x83, sax, 6, INDEXED_INDIRECT, False, WRITE
-0x87, sax, 3, ZEROPAGE, False, WRITE
-0x8f, sax, 4, ABSOLUTE, False, WRITE
-0xcb, axs, 2, IMMEDIATE, False
-0x6b, arr, 2, IMMEDIATE, False
+0x83, SAX, 6, INDEXED_INDIRECT, False, WRITE
+0x87, SAX, 3, ZEROPAGE, False, WRITE
+0x8f, SAX, 4, ABSOLUTE, False, WRITE
+0xcb, AXS, 2, IMMEDIATE, False
+0x6b, ARR, 2, IMMEDIATE, False
 
-0x03, slo, 8, INDEXED_INDIRECT, False, RMW		# aso
-0x07, slo, 5, ZEROPAGE, False, RMW				# aso
-0x1b, slo, 7, ABSOLUTE_INDEXED_Y, False , RMW   # aso
+0x03, SLO, 8, INDEXED_INDIRECT, False, RMW		# aso
+0x07, SLO, 5, ZEROPAGE, False, RMW				# aso
+0x1b, SLO, 7, ABSOLUTE_INDEXED_Y, False , RMW   # aso
 
-0x37, rla, 6, ZEROPAGE_INDEXED_X, False, RMW
-0x3f, rla, 7, ABSOLUTE_INDEXED_X, False, RMW
+0x37, RLA, 6, ZEROPAGE_INDEXED_X, False, RMW
+0x3f, RLA, 7, ABSOLUTE_INDEXED_X, False, RMW
 
-0xe7, isc, 5, ZEROPAGE, False, RMW
-0xff, isc, 7, ABSOLUTE_INDEXED_X, False, RMW
+0xe7, ISC, 5, ZEROPAGE, False, RMW
+0xff, ISC, 7, ABSOLUTE_INDEXED_X, False, RMW
 
-0x2b, anc, 2, IMMEDIATE, False
+0x2b, ANC, 2, IMMEDIATE, False
 
