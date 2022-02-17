@@ -129,6 +129,7 @@ func (dev *Developer) ExecutionProfile(addr map[uint32]float32) {
 
 		dev.source.SortedLines.Sort()
 		dev.source.SortedFunctions.Sort()
+		dev.source.FunctionFilteredLines.Sort()
 	}
 }
 
