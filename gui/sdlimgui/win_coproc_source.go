@@ -54,6 +54,11 @@ type winCoProcSource struct {
 	//       isCollapsed and uncollapseNext are true
 	isCollapsed    bool
 	uncollapseNext bool
+
+	// widths of columns in the disasm table
+	widthIcon  float32
+	widthStats float32
+	widthLine  float32
 }
 
 func newWinCoProcSource(img *SdlImgui) (window, error) {
@@ -65,6 +70,9 @@ func newWinCoProcSource(img *SdlImgui) (window, error) {
 }
 
 func (win *winCoProcSource) init() {
+	win.widthIcon = imgui.CalcTextSize(fmt.Sprintf("%c ", fonts.Chip), true, 0).X
+	win.widthStats = imgui.CalcTextSize("00.0% ", true, 0).X
+	win.widthLine = imgui.CalcTextSize("9999 ", true, 0).X
 }
 
 func (win *winCoProcSource) id() string {
@@ -166,16 +174,16 @@ func (win *winCoProcSource) draw() {
 		imgui.PushStyleVarVec2(imgui.StyleVarCellPadding, rowSize) // affects table row height
 		imgui.PushStyleVarVec2(imgui.StyleVarItemSpacing, rowSize) // affects selectable height
 
-		const numColumns = 5
+		const numColumns = 4
 		flgs := imgui.TableFlagsScrollY
 		flgs |= imgui.TableFlagsSizingFixedFit
+		flgs |= imgui.TableFlagsNoHostExtendX
 		imgui.BeginTableV("##coprocSourceTable", numColumns, flgs, imgui.Vec2{}, 0.0)
 
 		// first column is a dummy column so that Selectable (span all columns) works correctly
-		imgui.TableSetupColumnV("Icon", imgui.TableColumnFlagsNone, imgui.CalcTextSize("   ", true, 0.0).X, 0)
-		imgui.TableSetupColumnV("Load", imgui.TableColumnFlagsNone, imgui.CalcTextSize("0.00% ", true, 0.0).X, 1)
-		imgui.TableSetupColumnV("Avg", imgui.TableColumnFlagsNone, imgui.CalcTextSize("0.00% ", true, 0.0).X, 2)
-		imgui.TableSetupColumnV("LineNumber", imgui.TableColumnFlagsNone, imgui.CalcTextSize("0000 ", true, 0.0).X, 3)
+		imgui.TableSetupColumnV("Icon", imgui.TableColumnFlagsNone, win.widthIcon, 0)
+		imgui.TableSetupColumnV("Load", imgui.TableColumnFlagsNone, win.widthStats, 1)
+		imgui.TableSetupColumnV("LineNumber", imgui.TableColumnFlagsNone, win.widthLine, 2)
 
 		var clipper imgui.ListClipper
 		clipper.Begin(len(win.selectedFile.Lines))
@@ -240,20 +248,9 @@ func (win *winCoProcSource) draw() {
 				}
 				imgui.PopStyleColorV(2)
 
-				// percentage of time taken by this line
 				imgui.TableNextColumn()
 				imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLoad)
 				if ld, ok := ln.Stats.FrameLoad(); ok {
-					imgui.Text(fmt.Sprintf("%.02f", ld))
-				} else if len(ln.Disassembly) > 0 {
-					imgui.Text(" -")
-				}
-				imgui.PopStyleColor()
-
-				// percentage of time taken by this line
-				imgui.TableNextColumn()
-				imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceAvgLoad)
-				if ld, ok := ln.Stats.AverageLoad(); ok {
 					imgui.Text(fmt.Sprintf("%.02f", ld))
 				} else if len(ln.Disassembly) > 0 {
 					imgui.Text(" -")
