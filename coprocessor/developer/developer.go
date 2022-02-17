@@ -18,6 +18,7 @@ package developer
 import (
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/television"
@@ -59,9 +60,12 @@ func NewDeveloper(pathToROM string, cart mapper.CartCoProcBus) *Developer {
 
 	dev.cart.SetDeveloper(dev)
 
+	t := time.Now()
 	dev.source, err = NewSource(pathToROM)
 	if err != nil {
 		logger.Logf("developer", err.Error())
+	} else {
+		logger.Logf("developer", "DWARF loaded in %s", time.Since(t))
 	}
 
 	if dev.source != nil {
