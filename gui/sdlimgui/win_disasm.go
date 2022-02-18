@@ -344,7 +344,7 @@ func (win *winDisasm) drawBank(focusAddr uint16) {
 	onBank := win.selectedBank == currBank.Number
 
 	height := imguiRemainingWinHeight() - win.optionsHeight
-	imgui.BeginChildV(fmt.Sprintf("bank %d", win.selectedBank), imgui.Vec2{X: 0, Y: height}, false, imgui.WindowFlagsAlwaysVerticalScrollbar)
+	imgui.BeginChildV(fmt.Sprintf("##bank %d", win.selectedBank), imgui.Vec2{X: 0, Y: height}, false, imgui.WindowFlagsAlwaysVerticalScrollbar)
 
 	win.img.dbg.Disasm.BorrowDisasm(func(dsmEntries *disassembly.DisasmEntries) {
 		// borrow disasm callback can be called with a nil pointer
@@ -543,6 +543,15 @@ func (win *winDisasm) drawBank(focusAddr uint16) {
 			// be set again if necessary
 			win.focusOnAddr = false
 		}
+
+		// dummy entry at end of table. stops a "bouncing" effect and also
+		// allows the last entry in the disassembly to be seen.
+		//
+		// not a good solution but it works. i'm sure the real cause of the
+		// problem is in somewhere in the ListClipper loop
+		imgui.TableNextRow()
+		imgui.TableNextColumn()
+		imgui.Text("")
 
 		imgui.EndTable()
 	})
