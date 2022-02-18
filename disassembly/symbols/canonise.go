@@ -52,24 +52,33 @@ func (sym *Symbols) canonise(cart *cartridge.Cartridge) {
 		return
 	}
 
-	hb := cart.GetCartHotspots()
-	if hb == nil {
-		return
+	lb := cart.GetCartLabelsBus()
+	if lb != nil {
+		// not mirroring address
+		for addr, symbol := range lb.Labels() {
+			// add label for every cartridge bank
+			for _, l := range sym.label {
+				l.add(SourceCartridge, addr, symbol)
+			}
+		}
 	}
 
-	for k, v := range hb.ReadHotspots() {
-		ma, area := memorymap.MapAddress(k, true)
-		if area != memorymap.Cartridge {
-			logger.Logf("symbols", "%s reporting hotspot (%s) outside of cartridge address space", cart.ID(), v.Symbol)
+	hb := cart.GetCartHotspotsBus()
+	if hb != nil {
+		for k, v := range hb.ReadHotspots() {
+			ma, area := memorymap.MapAddress(k, true)
+			if area != memorymap.Cartridge {
+				logger.Logf("symbols", "%s reporting hotspot (%s) outside of cartridge address space", cart.ID(), v.Symbol)
+			}
+			sym.read.add(SourceCartridge, ma, v.Symbol)
 		}
-		sym.read.add(SourceCartridge, ma, v.Symbol)
-	}
 
-	for k, v := range hb.WriteHotspots() {
-		ma, area := memorymap.MapAddress(k, false)
-		if area != memorymap.Cartridge {
-			logger.Logf("symbols", "%s reporting hotspot (%s) outside of cartridge address space", cart.ID(), v.Symbol)
+		for k, v := range hb.WriteHotspots() {
+			ma, area := memorymap.MapAddress(k, false)
+			if area != memorymap.Cartridge {
+				logger.Logf("symbols", "%s reporting hotspot (%s) outside of cartridge address space", cart.ID(), v.Symbol)
+			}
+			sym.write.add(SourceCartridge, ma, v.Symbol)
 		}
-		sym.write.add(SourceCartridge, ma, v.Symbol)
 	}
 }

@@ -207,6 +207,21 @@ type CartTapeState struct {
 	Data       []float32
 }
 
+// CartLabelsBus will be implemented for cartridge mappers that want to report any
+// special labels for the cartridge type.
+type CartLabelsBus interface {
+	Labels() CartLabels
+}
+
+// CartLabels is returned by CartLabelsBus. Maps addresses to symbols. Address
+// can be any address, not just those in the cartridge.
+//
+// Currently, addresses are specific and should not be mirrored.
+type CartLabels map[uint16]string
+
+// CartLabelsBus and CartHotspotsBus may be combined in the future into a
+// single CartSymbolsBus.
+
 // CartHotspotsBus will be implemented for cartridge mappers that want to report
 // details of any special addresses. We'll call these hotspots for all types of
 // special addresses, not just bank switches.

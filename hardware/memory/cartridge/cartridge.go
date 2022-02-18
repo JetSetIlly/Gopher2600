@@ -414,7 +414,16 @@ func (cart *Cartridge) GetContainer() mapper.CartContainer {
 
 // GetCartHotspots returns interface to hotspots bus or nil if cartridge has no
 // hotspots it wants to report.
-func (cart *Cartridge) GetCartHotspots() mapper.CartHotspotsBus {
+func (cart *Cartridge) GetCartLabelsBus() mapper.CartLabelsBus {
+	if cc, ok := cart.mapper.(mapper.CartLabelsBus); ok {
+		return cc
+	}
+	return nil
+}
+
+// GetCartHotspotsBus returns interface to hotspots bus or nil if cartridge has no
+// hotspots it wants to report.
+func (cart *Cartridge) GetCartHotspotsBus() mapper.CartHotspotsBus {
 	if cc, ok := cart.mapper.(mapper.CartHotspotsBus); ok {
 		return cc
 	}

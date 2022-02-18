@@ -451,6 +451,14 @@ func (cart *cdf) CopyBanks() []mapper.BankContent {
 	return c
 }
 
+// ReadHotspots implements the mapper.CartLabelsBus interface.
+func (cart *cdf) Labels() mapper.CartLabels {
+	return map[uint16]string{
+		0x0000: "FASTJMP1",
+		0x0001: "FASTJMP2",
+	}
+}
+
 // ReadHotspots implements the mapper.CartHotspotsBus interface.
 func (cart *cdf) ReadHotspots() map[uint16]mapper.CartHotspotInfo {
 	return map[uint16]mapper.CartHotspotInfo{
