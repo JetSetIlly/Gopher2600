@@ -626,7 +626,7 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		// implied mode does not use any additional bytes. however, the next
 		// instruction is read but the PC is not incremented
 
-		if defn.Operator == "BRK" {
+		if defn.Operator == "brk" {
 			// BRK is unusual in that it increases the PC by two bytes despite
 			// being an implied addressing instruction
 			// +1 cycle

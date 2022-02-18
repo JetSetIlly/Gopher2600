@@ -91,7 +91,7 @@ func (dsm *Disassembly) bless(mc *cpu.CPU, mem *disasmMemory) error {
 				// HeMan ROM. From bank 7 the following jumps to bank 5.
 				//
 				//	$fa03 JMP $f7e8
-				if e.Result.Defn.Operator == "JMP" || e.Result.Defn.Operator == "JSR" {
+				if e.Result.Defn.Operator == "jmp" || e.Result.Defn.Operator == "jsr" {
 					jmpAddress, area := memorymap.MapAddress(e.Result.InstructionData, true)
 
 					if area == memorymap.Cartridge {
@@ -270,7 +270,7 @@ func (dsm *Disassembly) blessSequence(bank int, addr uint16, commit bool) bool {
 		// end the blessing sequence if we encountered an instruction that breaks
 		// the flow with no possibility of resumption. In practical terms this
 		// means JMP, RTS and Interrupt instructions.
-		if instruction.Operator == "JMP" || instruction.Operator == "RTS" ||
+		if instruction.Operator == "jmp" || instruction.Operator == "rts" ||
 			instruction.Result.Defn.Effect == instructions.Interrupt {
 			return true
 		}
