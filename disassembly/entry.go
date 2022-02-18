@@ -270,6 +270,12 @@ func (op Operand) String() string {
 			} else if e, ok := op.dsm.Sym.GetLabel(op.bank, operand); ok {
 				s = addrModeDecoration(e.Symbol, op.result.Defn.AddressingMode)
 			}
+
+		case instructions.Subroutine:
+			if e, ok := op.dsm.Sym.GetLabel(op.bank, operand); ok {
+				s = e.Symbol
+			}
+
 		case instructions.Read:
 			if e, ok := op.dsm.Sym.GetSymbol(operand, true); ok {
 				s = addrModeDecoration(e.Symbol, op.result.Defn.AddressingMode)
