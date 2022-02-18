@@ -28,7 +28,7 @@ import (
 type AddressInfo struct {
 	Address       uint16
 	MappedAddress uint16
-	AddressLabel  string
+	Symbol        string
 	Area          memorymap.Area
 
 	// addresses and symbols are mapped differently depending on whether
@@ -45,9 +45,30 @@ func (ai AddressInfo) String() string {
 
 	s.WriteString(fmt.Sprintf("%#04x", ai.Address))
 
-	if ai.AddressLabel != "" {
-		s.WriteString(fmt.Sprintf(" (%s)", ai.AddressLabel))
+	if ai.Symbol != "" {
+		s.WriteString(fmt.Sprintf(" (%s)", ai.Symbol))
 	}
+
+	if ai.Address != ai.MappedAddress {
+		s.WriteString(fmt.Sprintf(" [mirror of %#04x]", ai.MappedAddress))
+	}
+
+	s.WriteString(fmt.Sprintf(" (%s)", ai.Area.String()))
+
+	if ai.Peeked {
+		s.WriteString(fmt.Sprintf(" -> %#02x", ai.Data))
+	}
+
+	return s.String()
+}
+
+// StringNoSymbol is the same as String() but it does not print the
+// AddressSymbol field. Useful in some contexts were the symbol is printed in
+// some other way.
+func (ai AddressInfo) StringNoSymbol() string {
+	s := strings.Builder{}
+
+	s.WriteString(fmt.Sprintf("%#04x", ai.Address))
 
 	if ai.Address != ai.MappedAddress {
 		s.WriteString(fmt.Sprintf(" [mirror of %#04x]", ai.MappedAddress))

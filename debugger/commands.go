@@ -31,6 +31,7 @@ import (
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
 	"github.com/jetsetilly/gopher2600/debugger/terminal/commandline"
 	"github.com/jetsetilly/gopher2600/disassembly"
+	"github.com/jetsetilly/gopher2600/disassembly/symbols"
 	"github.com/jetsetilly/gopher2600/emulation"
 	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/registers"
@@ -651,18 +652,29 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 
 		default:
 			symbol := tok
+
+			symSearch := dbg.Disasm.Sym.SearchBySymbol(symbol, symbols.SearchLabel)
+			if symSearch != nil {
+				ai := dbg.dbgmem.MapAddress(symSearch.Address, true)
+				if ai != nil {
+					dbg.printLine(terminal.StyleFeedback, "%s = %s [LABEL]", symbol, ai.StringNoSymbol())
+				} else {
+					symSearch = nil
+				}
+			}
+
 			aiRead := dbg.dbgmem.MapAddress(symbol, true)
 			if aiRead != nil {
-				dbg.printLine(terminal.StyleFeedback, "%s [READ]", aiRead.String())
+				dbg.printLine(terminal.StyleFeedback, "%s = %s [READ]", symbol, aiRead.StringNoSymbol())
 			}
 
 			aiWrite := dbg.dbgmem.MapAddress(symbol, false)
 			if aiWrite != nil {
-				dbg.printLine(terminal.StyleFeedback, "%s [WRITE]", aiWrite.String())
+				dbg.printLine(terminal.StyleFeedback, "%s = %s [WRITE]", symbol, aiWrite.StringNoSymbol())
 			}
 
-			if aiRead == nil && aiWrite == nil {
-				dbg.printLine(terminal.StyleFeedback, "%s not found in read or write symbol tables", symbol)
+			if symSearch == nil && aiRead == nil && aiWrite == nil {
+				dbg.printLine(terminal.StyleFeedback, "%s not found in any symbol table", symbol)
 			}
 		}
 
@@ -943,8 +955,8 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 					s.WriteString(fmt.Sprintf("  %#04x ", ai.Address))
 				}
 				s.WriteString(fmt.Sprintf("in area %s\n", ai.Area.String()))
-				if ai.AddressLabel != "" {
-					s.WriteString(fmt.Sprintf("  labelled as %s\n", ai.AddressLabel))
+				if ai.Symbol != "" {
+					s.WriteString(fmt.Sprintf("  labelled as %s\n", ai.Symbol))
 				}
 			}
 			ai = dbg.dbgmem.MapAddress(address, false)
@@ -957,8 +969,8 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 					s.WriteString(fmt.Sprintf("  %#04x ", ai.Address))
 				}
 				s.WriteString(fmt.Sprintf("in area %s\n", ai.Area.String()))
-				if ai.AddressLabel != "" {
-					s.WriteString(fmt.Sprintf("  labelled as %s\n", ai.AddressLabel))
+				if ai.Symbol != "" {
+					s.WriteString(fmt.Sprintf("  labelled as %s\n", ai.Symbol))
 				}
 			}
 
