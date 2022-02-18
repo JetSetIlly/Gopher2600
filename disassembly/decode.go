@@ -17,6 +17,7 @@ package disassembly
 
 import (
 	"github.com/jetsetilly/gopher2600/curated"
+	"github.com/jetsetilly/gopher2600/disassembly/symbols"
 	"github.com/jetsetilly/gopher2600/hardware/cpu"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/instructions"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
@@ -139,16 +140,12 @@ func (dsm *Disassembly) bless(mc *cpu.CPU, mem *disasmMemory) error {
 		}
 	}
 
-	// remove any labels that have been added to entries that have not been
-	// blessed (these labels were added speculatively).
-	//
-	// this also removes labels that have been added from any symbols file that
-	// pertain to entries that are unblessed. this is inentional because the
-	// symbols.ReadSymbolsFile() function is far too permissive.
+	// remove any auto-labels that have been added to entries that have not
+	// been blessed (these labels were added speculatively).
 	for b := range dsm.disasmEntries.Entries {
 		for i := range dsm.disasmEntries.Entries[b] {
 			if dsm.disasmEntries.Entries[b][i].Level < EntryLevelBlessed {
-				_ = dsm.Sym.RemoveLabel(b, dsm.disasmEntries.Entries[b][i].Result.Address)
+				_ = dsm.Sym.RemoveLabel(b, dsm.disasmEntries.Entries[b][i].Result.Address, symbols.SourceAuto)
 			}
 		}
 	}

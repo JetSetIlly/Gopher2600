@@ -161,11 +161,15 @@ func (sym *Symbols) AddLabelAuto(bank int, addr uint16) bool {
 
 // Remove label from label table. Symbol will be modified so that it is unique
 // in the label table.
-func (sym *Symbols) RemoveLabel(bank int, addr uint16) bool {
+func (sym *Symbols) RemoveLabel(bank int, addr uint16, source SymbolSource) bool {
 	sym.crit.Lock()
 	defer sym.crit.Unlock()
 
 	addr, _ = memorymap.MapAddress(addr, true)
+
+	if sym.label[bank].byAddr[addr].Source != source {
+		return false
+	}
 
 	return sym.label[bank].remove(addr)
 }
