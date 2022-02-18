@@ -141,52 +141,6 @@ type Source struct {
 	cyclesCount float32
 }
 
-func findELF(pathToROM string) *elf.File {
-	const (
-		elfFile            = "armcode.elf"
-		elfFile_older      = "custom2.elf"
-		elfFile_jetsetilly = "main.elf"
-	)
-
-	// current working directory
-	od, err := elf.Open(elfFile)
-	if err == nil {
-		return od
-	}
-
-	// same directory as binary
-	od, err = elf.Open(filepath.Join(pathToROM, elfFile))
-	if err == nil {
-		return od
-	}
-
-	// main sub-directory
-	od, err = elf.Open(filepath.Join(pathToROM, "main", elfFile))
-	if err == nil {
-		return od
-	}
-
-	// main/bin sub-directory
-	od, err = elf.Open(filepath.Join(pathToROM, "main", "bin", elfFile))
-	if err == nil {
-		return od
-	}
-
-	// custom/bin sub-directory. some older DPC+ sources uses this layout
-	od, err = elf.Open(filepath.Join(pathToROM, "custom", "bin", elfFile_older))
-	if err == nil {
-		return od
-	}
-
-	// jetsetilly source tree
-	od, err = elf.Open(filepath.Join(pathToROM, "arm", elfFile_jetsetilly))
-	if err == nil {
-		return od
-	}
-
-	return nil
-}
-
 // NewSource is the preferred method of initialisation for the Source type.
 //
 // If no ELF file or valid DWARF data can be found in relation to the pathToROM
@@ -260,6 +214,11 @@ func NewSource(pathToROM string) (*Source, error) {
 	src.dwrf, err = elf.DWARF()
 	if err != nil {
 		return src, curated.Errorf("dwarf: %v", err)
+	}
+
+	bld, err := newBuild(src.dwrf)
+	if err != nil {
+		return nil, curated.Errorf("dwarf: %v", err)
 	}
 
 	// readSourceFile() will shorten the filepath of a source file using the
@@ -429,13 +388,28 @@ func NewSource(pathToROM string) (*Source, error) {
 			workingAddress = le.Address
 
 			// find function name for line entry
-			foundFunc, err := src.findFunction(le.Address)
+			foundFunc, err := bld.findFunction(le.Address)
 			if err != nil {
 				return nil, curated.Errorf("dwarf: %v", err)
 			}
+			if foundFunc == nil {
+				continue // for loop
+			}
+
+			var srcFunc *SourceFunction
+
+			if f, ok := src.Files[foundFunc.filename]; ok {
+				srcFunc = &SourceFunction{
+					Name:     foundFunc.name,
+					DeclLine: f.Lines[foundFunc.linenum-1],
+				}
+			}
+			if srcFunc == nil {
+				continue // for loop
+			}
 
 			// if function can't be found then log error and continue
-			if foundFunc.Name == UnknownFunction {
+			if srcFunc.Name == UnknownFunction {
 				logger.Logf("dwarf", "no function for line entry: %s", workingSourceLine.String())
 				workingSourceLine = nil
 				continue // for loop
@@ -444,15 +418,15 @@ func NewSource(pathToROM string) (*Source, error) {
 			// if function already exists use that function instance.
 			// otherwise, add the function to the map and the list of function
 			// names
-			if _, ok := src.Functions[foundFunc.Name]; ok {
-				foundFunc = src.Functions[foundFunc.Name]
+			if _, ok := src.Functions[srcFunc.Name]; ok {
+				srcFunc = src.Functions[srcFunc.Name]
 			} else {
-				src.Functions[foundFunc.Name] = foundFunc
-				src.FunctionNames = append(src.FunctionNames, foundFunc.Name)
+				src.Functions[srcFunc.Name] = srcFunc
+				src.FunctionNames = append(src.FunctionNames, srcFunc.Name)
 			}
 
 			// associate function with workingSourceLine
-			workingSourceLine.Function = foundFunc
+			workingSourceLine.Function = srcFunc
 		}
 	}
 
@@ -503,8 +477,13 @@ func NewSource(pathToROM string) (*Source, error) {
 //
 // if function cannot be found the SourceFunction.Name will be UnknownFunction.
 // test for that rather than nil.
+//
+// this function is inherently slow and is only really useful for one shot
+// lookups, very occassionaly. during the preperation of the Source instance
+// the findFunction() in the build type is preferred.
 func (src *Source) findFunction(addr uint64) (*SourceFunction, error) {
 	found := &SourceFunction{Name: UnknownFunction}
+	return found, nil
 
 	// resolveAbstract is a helper function that creates a SourceFunction and
 	// assigns it to the ret variable (created above). it is commone to both
@@ -803,4 +782,50 @@ func readSourceFile(filename string, pathToROM_nosymlinks string) (*SourceFile, 
 	}
 
 	return &fl, nil
+}
+
+func findELF(pathToROM string) *elf.File {
+	const (
+		elfFile            = "armcode.elf"
+		elfFile_older      = "custom2.elf"
+		elfFile_jetsetilly = "main.elf"
+	)
+
+	// current working directory
+	od, err := elf.Open(elfFile)
+	if err == nil {
+		return od
+	}
+
+	// same directory as binary
+	od, err = elf.Open(filepath.Join(pathToROM, elfFile))
+	if err == nil {
+		return od
+	}
+
+	// main sub-directory
+	od, err = elf.Open(filepath.Join(pathToROM, "main", elfFile))
+	if err == nil {
+		return od
+	}
+
+	// main/bin sub-directory
+	od, err = elf.Open(filepath.Join(pathToROM, "main", "bin", elfFile))
+	if err == nil {
+		return od
+	}
+
+	// custom/bin sub-directory. some older DPC+ sources uses this layout
+	od, err = elf.Open(filepath.Join(pathToROM, "custom", "bin", elfFile_older))
+	if err == nil {
+		return od
+	}
+
+	// jetsetilly source tree
+	od, err = elf.Open(filepath.Join(pathToROM, "arm", elfFile_jetsetilly))
+	if err == nil {
+		return od
+	}
+
+	return nil
 }

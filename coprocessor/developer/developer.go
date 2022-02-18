@@ -17,6 +17,7 @@ package developer
 
 import (
 	"fmt"
+	"os"
 	"sync"
 	"time"
 
@@ -59,6 +60,13 @@ func NewDeveloper(pathToROM string, cart mapper.CartCoProcBus) *Developer {
 	}
 
 	dev.cart.SetDeveloper(dev)
+
+	f, err := os.Create("dwarf_loading.profile")
+	if err != nil {
+		logger.Logf("developer", err.Error())
+		return nil
+	}
+	defer f.Close()
 
 	t := time.Now()
 	dev.source, err = NewSource(pathToROM)
