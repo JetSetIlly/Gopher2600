@@ -1205,7 +1205,13 @@ func (arm *ARM) executeHiRegisterOps(opcode uint16) {
 
 		return
 	case 0b10:
-		arm.registers[destReg] = arm.registers[srcReg]
+		// check to see if we're copying the LR to the PC. if we are than adjust
+		// the PC by 2 (as though the prefetch has occurred)
+		if srcReg == rLR && destReg == rPC {
+			arm.registers[destReg] = arm.registers[srcReg] + 2
+		} else {
+			arm.registers[destReg] = arm.registers[srcReg]
+		}
 
 		// status register not changed
 
