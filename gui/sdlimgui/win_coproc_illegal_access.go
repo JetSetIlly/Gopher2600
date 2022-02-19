@@ -92,16 +92,17 @@ func (win *winCoProcIllegalAccess) draw() {
 
 		imgui.BeginChildV("##coprocIllegalAccessMain", imgui.Vec2{X: 0, Y: imguiRemainingWinHeight() - win.optionsHeight}, false, 0)
 
-		imgui.Spacing()
-		imgui.BeginTableV("##coprocIllegalAccessTable", 4, imgui.TableFlagsSizingFixedFit, imgui.Vec2{}, 0.0)
+		const numColumns = 4
+		imgui.BeginTableV("##coprocIllegalAccessTable", numColumns, imgui.TableFlagsSizingFixedFit, imgui.Vec2{}, 0.0)
 
 		// first column is a dummy column so that Selectable (span all columns) works correctly
 		width := imgui.ContentRegionAvail().X
-		imgui.TableSetupColumnV("", imgui.TableColumnFlagsNone, 0, 0)
 		imgui.TableSetupColumnV("Event", imgui.TableColumnFlagsNone, width*0.20, 1)
 		imgui.TableSetupColumnV("Address", imgui.TableColumnFlagsNone, width*0.20, 3)
-		imgui.TableSetupColumnV("Function", imgui.TableColumnFlagsNone, width*0.40, 3)
+		imgui.TableSetupColumnV("Function", imgui.TableColumnFlagsNone, width*0.45, 3)
+		imgui.TableSetupColumnV("Count", imgui.TableColumnFlagsNone, width*0.10, 3)
 
+		imgui.Spacing()
 		imgui.TableHeadersRow()
 
 		for i := 0; i < len(ill.Log); i++ {
@@ -111,7 +112,7 @@ func (win *winCoProcIllegalAccess) draw() {
 			imgui.TableNextColumn()
 			imgui.PushStyleColor(imgui.StyleColorHeaderHovered, win.img.cols.CoProcSourceHover)
 			imgui.PushStyleColor(imgui.StyleColorHeaderActive, win.img.cols.CoProcSourceHover)
-			imgui.SelectableV("", false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{0, 0})
+			imgui.SelectableV(lg.Event, false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{0, 0})
 			imgui.PopStyleColorV(2)
 
 			// source on tooltip
@@ -135,9 +136,6 @@ func (win *winCoProcIllegalAccess) draw() {
 			}
 
 			imgui.TableNextColumn()
-			imgui.Text(lg.Event)
-
-			imgui.TableNextColumn()
 			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcIllegalAccessAddress)
 			imgui.Text(fmt.Sprintf("%#08x", lg.AccessAddr))
 			imgui.PopStyleColor()
@@ -146,6 +144,9 @@ func (win *winCoProcIllegalAccess) draw() {
 			if lg.SrcLine != nil {
 				imgui.Text(lg.SrcLine.Function.Name)
 			}
+
+			imgui.TableNextColumn()
+			imgui.Text(fmt.Sprintf("%d", lg.Count))
 		}
 
 		imgui.EndTable()

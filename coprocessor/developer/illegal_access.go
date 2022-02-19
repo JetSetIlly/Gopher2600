@@ -21,10 +21,16 @@ type IllegalAccessEntry struct {
 	PC         uint32
 	AccessAddr uint32
 	SrcLine    *SourceLine
+	Count      int
 }
 
 // IllegalAccess records memory accesses by the coprocesser that are "illegal".
 type IllegalAccess struct {
-	entries map[string]IllegalAccessEntry
-	Log     []IllegalAccessEntry
+	// entries are keyed by PC/AccessAddr expressed as a 16 character string
+	entries map[string]*IllegalAccessEntry
+
+	// all the accesses in order of the first time they appear. the Count field
+	// in the IllegalAccessEntry can be used to see if that entry was seen more
+	// than once *after* the first appearance
+	Log []*IllegalAccessEntry
 }

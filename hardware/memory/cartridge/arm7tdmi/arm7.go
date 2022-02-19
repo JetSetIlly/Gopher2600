@@ -311,9 +311,10 @@ func (arm *ARM) illegalAccess(event string, addr uint32) {
 		return
 	}
 	log := arm.dev.IllegalAccess(event, arm.executingPC, addr)
-	if log != "" {
-		logger.Logf("ARM7", "%s: %s", event, log)
+	if log == "" {
+		return
 	}
+	logger.Logf("ARM7", "%s: %s", event, log)
 }
 
 func (arm *ARM) read8bit(addr uint32) uint8 {
@@ -1254,6 +1255,11 @@ func (arm *ARM) executeHiRegisterOps(opcode uint16) {
 			// "7.6 Data Operations" in "ARM7TDMI-S Technical Reference Manual r4p3"
 			//  - interrupted
 			return
+		}
+
+		// if the interrupt hasn't been serviced then it is by definition an illegal access
+		if !res.InterruptServiced {
+			arm.illegalAccess("ARM function", arm.registers[rPC]-4)
 		}
 
 		// update execution notes unless disasm level is disasmNone

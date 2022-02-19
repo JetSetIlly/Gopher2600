@@ -75,8 +75,8 @@ type SourceLine struct {
 	// the generated assembly for this line. will be empty if line is a comment or otherwise unsused
 	Disassembly []*SourceDisasm
 
-	// the number of times the line has been responsible for an illegal access.
-	IllegalCount int
+	// whether this source line has been responsible for an illegal access of memory
+	IllegalAccess bool
 
 	// cycle statisics related to the SourceLine
 	Stats SourceStats
@@ -708,6 +708,9 @@ func (src *Source) findSourceLine(addr uint32) (*SourceLine, error) {
 			if err == dwarf.ErrUnknownPC {
 				// not in this compile unit
 				continue // for loop
+			}
+			if err == io.EOF {
+				return nil, nil
 			}
 			return nil, err
 		}

@@ -53,8 +53,8 @@ func NewDeveloper(pathToROM string, cart mapper.CartCoProcBus) *Developer {
 	dev := &Developer{
 		cart: cart,
 		illegalAccess: IllegalAccess{
-			entries: make(map[string]IllegalAccessEntry),
-			Log:     make([]IllegalAccessEntry, 0),
+			entries: make(map[string]*IllegalAccessEntry),
+			Log:     make([]*IllegalAccessEntry, 0),
 		},
 	}
 
@@ -87,36 +87,50 @@ func (dev *Developer) IllegalAccess(event string, pc uint32, addr uint32) string
 	dev.sourceLock.Lock()
 	defer dev.sourceLock.Unlock()
 
+	// get/create illegal access entry
 	accessKey := fmt.Sprintf("%08x%08x", addr, pc)
-	if e, ok := dev.illegalAccess.entries[accessKey]; ok {
-		e.SrcLine.IllegalCount++
+	e, ok := dev.illegalAccess.entries[accessKey]
+	if ok {
+		// we seen the illegal access before - increase count
+		e.Count++
+	} else {
+		e = &IllegalAccessEntry{
+			Event:      event,
+			PC:         pc,
+			AccessAddr: addr,
+			Count:      1,
+		}
+
+		dev.illegalAccess.entries[accessKey] = e
+
+		// we always log illegal accesses even if we don't have any source
+		// information
+		if dev.source != nil {
+			var err error
+
+			e.SrcLine, err = dev.source.findSourceLine(pc)
+			if err != nil {
+				logger.Logf("developer", "%v", err)
+				return ""
+			}
+
+			// inidcate that the source line has been responsble for an illegal access
+			if e.SrcLine != nil {
+				e.SrcLine.IllegalAccess = true
+			}
+		}
+
+		// record access
+		dev.illegalAccess.entries[accessKey] = e
+
+		// update log
+		dev.illegalAccess.Log = append(dev.illegalAccess.Log, e)
+	}
+
+	// no source line information so return empty line
+	if e.SrcLine == nil {
 		return ""
 	}
-
-	e := IllegalAccessEntry{
-		Event:      event,
-		PC:         pc,
-		AccessAddr: addr,
-	}
-
-	if dev.source != nil {
-		var err error
-
-		e.SrcLine, err = dev.source.findSourceLine(pc)
-		if err != nil {
-			logger.Logf("developer", "%v", err)
-			return UnknownSourceLine
-		}
-	}
-
-	dev.illegalAccess.entries[accessKey] = e
-	dev.illegalAccess.Log = append(dev.illegalAccess.Log, e)
-
-	if e.SrcLine == nil {
-		return UnknownSourceLine
-	}
-
-	e.SrcLine.IllegalCount++
 
 	return fmt.Sprintf("%s %s\n%s", e.SrcLine.String(), e.SrcLine.Function.Name, e.SrcLine.Content)
 }

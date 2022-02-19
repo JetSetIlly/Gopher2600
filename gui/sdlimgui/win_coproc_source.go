@@ -40,6 +40,8 @@ type winCoProcSource struct {
 	selectedLine int
 	scrollTo     bool
 
+	firstOpen bool
+
 	selectedFile          *developer.SourceFile
 	selectedFileComboOpen bool
 
@@ -63,8 +65,9 @@ type winCoProcSource struct {
 
 func newWinCoProcSource(img *SdlImgui) (window, error) {
 	win := &winCoProcSource{
-		img:     img,
-		showAsm: true,
+		img:       img,
+		showAsm:   true,
+		firstOpen: true,
 	}
 	return win, nil
 }
@@ -129,6 +132,17 @@ func (win *winCoProcSource) draw() {
 			return
 		}
 
+		if win.firstOpen {
+			// assume source entry point is a function called "main"
+			if m, ok := src.Functions["main"]; ok {
+				win.scrollTo = true
+				win.scrollToFile = m.DeclLine.File.Filename
+				win.selectedLine = m.DeclLine.LineNumber
+			}
+
+			win.firstOpen = false
+		}
+
 		if win.scrollTo && (win.selectedFile == nil || win.scrollToFile != win.selectedFile.Filename) {
 			win.selectedFile = src.Files[win.scrollToFile]
 		} else if win.selectedFile == nil {
@@ -139,14 +153,14 @@ func (win *winCoProcSource) draw() {
 		imgui.Text("Filename")
 		imgui.SameLine()
 		imgui.PushItemWidth(imgui.ContentRegionAvail().X)
-		if imgui.BeginComboV("##selectedFile", win.selectedFile.ShortFilename, imgui.ComboFlagsHeightLargest) {
+		if imgui.BeginComboV("##selectedFile", win.selectedFile.ShortFilename, imgui.ComboFlagsHeightRegular) {
 			for _, fn := range src.Filenames {
 				if imgui.Selectable(src.Files[fn].ShortFilename) {
 					win.selectedFile = src.Files[fn]
 				}
 
 				// set scroll on the first frame that the combo is open
-				if !win.selectedFileComboOpen && fn != win.selectedFile.Filename {
+				if !win.selectedFileComboOpen && fn == win.selectedFile.Filename {
 					imgui.SetScrollHereY(0.0)
 				}
 			}
@@ -206,7 +220,7 @@ func (win *winCoProcSource) draw() {
 				imgui.PushStyleColor(imgui.StyleColorHeaderHovered, win.img.cols.CoProcSourceHover)
 				imgui.PushStyleColor(imgui.StyleColorHeaderActive, win.img.cols.CoProcSourceHover)
 				if len(ln.Disassembly) > 0 {
-					if ln.IllegalCount > 0 {
+					if ln.IllegalAccess {
 						imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceBug)
 						imgui.SelectableV(string(fonts.CoProcBug), false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{0, 0})
 						imgui.PopStyleColor()
@@ -311,4 +325,7 @@ func (win *winCoProcSource) gotoSourceLine(ln *developer.SourceLine) {
 	win.scrollToFile = ln.File.Filename
 	win.selectedLine = ln.LineNumber
 	win.uncollapseNext = true
+
+	// if we haven't opened the window before we don't want the firstOpen procedure to run
+	win.firstOpen = false
 }
