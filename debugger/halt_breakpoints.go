@@ -384,7 +384,18 @@ func (bp *breakpoints) parseCommand(tokens *commandline.Tokens) error {
 	}
 
 	if !resolvedTarget {
-		return curated.Errorf("need a value (%T) to break on (%s)", tgt.value(), tgt.label)
+		// default values
+		switch tgt.value().(type) {
+		case bool:
+			if andBreaks {
+				newBreaks[len(newBreaks)-1].add(&breaker{target: tgt, value: true})
+			} else {
+				newBreaks = append(newBreaks, breaker{target: tgt, value: true})
+			}
+		default:
+			return curated.Errorf("need a value (%T) to break on (%s)", tgt.value(), tgt.label)
+		}
+
 	}
 
 	for _, nb := range newBreaks {
