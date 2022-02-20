@@ -57,7 +57,7 @@ func GetDefinitions() []*Definition {
 		&Definition{OpCode: 0x31, Operator: "and", Bytes: 2, Cycles: Cycles{Value: 5, Formatted: "5"}, AddressingMode: 7, PageSensitive: true, Effect: 0, Undocumented: true},
 		nil,
 		nil,
-		nil,
+		&Definition{OpCode: 0x34, Operator: "NOP", Bytes: 2, Cycles: Cycles{Value: 4, Formatted: "4"}, AddressingMode: 10, PageSensitive: false, Effect: 0, Undocumented: false},
 		&Definition{OpCode: 0x35, Operator: "and", Bytes: 2, Cycles: Cycles{Value: 4, Formatted: "4"}, AddressingMode: 10, PageSensitive: false, Effect: 0, Undocumented: true},
 		&Definition{OpCode: 0x36, Operator: "rol", Bytes: 2, Cycles: Cycles{Value: 6, Formatted: "6"}, AddressingMode: 10, PageSensitive: false, Effect: 2, Undocumented: true},
 		&Definition{OpCode: 0x37, Operator: "RLA", Bytes: 2, Cycles: Cycles{Value: 6, Formatted: "6"}, AddressingMode: 10, PageSensitive: false, Effect: 2, Undocumented: false},
