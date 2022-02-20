@@ -315,6 +315,11 @@ func (cart *dpcPlus) Read(addr uint16, passive bool) (uint8, error) {
 
 // Write implements the mapper.CartMapper interface.
 func (cart *dpcPlus) Write(addr uint16, data uint8, passive bool, poke bool) error {
+	// bank switches can not take place if coprocessor is active
+	if cart.state.callfn.IsActive() {
+		return nil
+	}
+
 	if cart.bankswitch(addr, passive) {
 		return nil
 	}
