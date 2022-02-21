@@ -23,6 +23,7 @@ type sortMethods int
 
 const (
 	sortFunction sortMethods = iota
+	sortFile
 	sortLine
 	sortLoad
 	sortAverage
@@ -40,7 +41,25 @@ func (e SortedLines) Sort() {
 	sort.Stable(e)
 }
 
-func (e *SortedLines) SortByFrameCycles(descending bool) {
+func (e *SortedLines) SortByFile(descending bool) {
+	e.descending = descending
+	e.method = sortFile
+	sort.Stable(e)
+}
+
+func (e *SortedLines) SortByLineNumber(descending bool) {
+	e.descending = descending
+	e.method = sortLine
+	sort.Stable(e)
+}
+
+func (e *SortedLines) SortByFunction(descending bool) {
+	e.descending = descending
+	e.method = sortFunction
+	sort.Stable(e)
+}
+
+func (e *SortedLines) SortByLoad(descending bool) {
 	e.descending = descending
 	e.method = sortLoad
 	sort.Stable(e)
@@ -81,6 +100,11 @@ func (e SortedLines) Less(i int, j int) bool {
 			return e.Lines[i].Function.Name > e.Lines[j].Function.Name
 		}
 		return e.Lines[i].Function.Name < e.Lines[j].Function.Name
+	case sortFile:
+		if e.descending {
+			return e.Lines[i].Function.DeclLine.File.Filename > e.Lines[j].Function.DeclLine.File.Filename
+		}
+		return e.Lines[i].Function.DeclLine.File.Filename < e.Lines[j].Function.DeclLine.File.Filename
 	case sortLine:
 		if e.descending {
 			return e.Lines[i].LineNumber > e.Lines[j].LineNumber
@@ -122,7 +146,19 @@ func (e SortedFunctions) Sort() {
 	sort.Stable(e)
 }
 
-func (e *SortedFunctions) SortByFrameCycles(descending bool) {
+func (e *SortedFunctions) SortByFile(descending bool) {
+	e.descending = descending
+	e.method = sortFile
+	sort.Stable(e)
+}
+
+func (e *SortedFunctions) SortByFunction(descending bool) {
+	e.descending = descending
+	e.method = sortFunction
+	sort.Stable(e)
+}
+
+func (e *SortedFunctions) SortByLoad(descending bool) {
 	e.descending = descending
 	e.method = sortLoad
 	sort.Stable(e)
@@ -140,12 +176,6 @@ func (e *SortedFunctions) SortByMaxCycles(descending bool) {
 	sort.Stable(e)
 }
 
-func (e *SortedFunctions) SortByFunction(descending bool) {
-	e.descending = descending
-	e.method = sortFunction
-	sort.Stable(e)
-}
-
 // Len implements sort.Interface.
 func (e SortedFunctions) Len() int {
 	return len(e.Functions)
@@ -154,6 +184,11 @@ func (e SortedFunctions) Len() int {
 // Less implements sort.Interface.
 func (e SortedFunctions) Less(i int, j int) bool {
 	switch e.method {
+	case sortFile:
+		if e.descending {
+			return e.Functions[i].DeclLine.File.Filename > e.Functions[j].DeclLine.File.Filename
+		}
+		return e.Functions[i].DeclLine.File.Filename < e.Functions[j].DeclLine.File.Filename
 	case sortFunction:
 		if e.descending {
 			return e.Functions[i].Name > e.Functions[j].Name

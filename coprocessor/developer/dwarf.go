@@ -135,8 +135,7 @@ type Source struct {
 	SortedLines SortedLines
 
 	// sorted lines filtered by function name
-	FunctionFilter        string
-	FunctionFilteredLines SortedLines
+	FunctionFilters []FunctionFilter
 
 	// numer of cycles in the entire program represented by the source since the last update
 	cyclesCount float32
@@ -161,10 +160,6 @@ func NewSource(pathToROM string) (*Source, error) {
 		},
 		Lines: make(map[uint32]*SourceLine),
 		SortedLines: SortedLines{
-			Lines: make([]*SourceLine, 0, 100),
-		},
-		FunctionFilter: "",
-		FunctionFilteredLines: SortedLines{
 			Lines: make([]*SourceLine, 0, 100),
 		},
 	}

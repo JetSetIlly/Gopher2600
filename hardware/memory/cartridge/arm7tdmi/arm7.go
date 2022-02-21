@@ -671,7 +671,7 @@ func (arm *ARM) Run(mamcr uint32) (uint32, float32, error) {
 			d, cached = arm.disasmCache[arm.executingPC]
 			if !cached {
 				d = Disassemble(opcode)
-				d.Address = fmt.Sprintf("%#08x", arm.executingPC)
+				d.Address = fmt.Sprintf("%08x", arm.executingPC)
 			}
 
 			d.MAMCR = int(arm.mam.mamcr)

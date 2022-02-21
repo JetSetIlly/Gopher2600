@@ -234,7 +234,7 @@ func (win *winCoProcSource) draw() {
 							for _, asm := range ln.Disassembly {
 								imgui.TableNextRow()
 								imgui.TableNextColumn()
-								imgui.Text(fmt.Sprintf("%#08x", asm.Addr))
+								imgui.Text(fmt.Sprintf("%08x", asm.Addr))
 								imgui.TableNextColumn()
 								imgui.Text(fmt.Sprintf("%04x", asm.Opcode))
 								imgui.TableNextColumn()

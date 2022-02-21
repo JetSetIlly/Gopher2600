@@ -15,32 +15,37 @@
 
 package developer
 
-// SetFunctionFilter to function name. Returns false if filter is empty.
-func (src *Source) SetFunctionFilter(function string) bool {
-	src.FunctionFilter = function
-	src.FunctionFilteredLines.Lines = src.FunctionFilteredLines.Lines[:0]
+type FunctionFilter struct {
+	FunctionName string
+	Lines        SortedLines
+}
 
-	if !src.HasFunctionFilter() {
-		return false
+func (src *Source) AddFunctionFilter(functionName string) {
+	for _, fn := range src.FunctionFilters {
+		if fn.FunctionName == functionName {
+			return
+		}
+	}
+
+	ff := FunctionFilter{
+		FunctionName: functionName,
 	}
 
 	for _, ln := range src.SortedLines.Lines {
-		if ln.Function.Name == src.FunctionFilter {
-			src.FunctionFilteredLines.Lines = append(src.FunctionFilteredLines.Lines, ln)
+		if ln.Function.Name == ff.FunctionName {
+			ff.Lines.Lines = append(ff.Lines.Lines, ln)
 		}
 	}
-	src.FunctionFilteredLines.SortByLineAndFunction(false)
 
-	return len(src.FunctionFilteredLines.Lines) != 0
+	src.FunctionFilters = append(src.FunctionFilters, ff)
 }
 
 // DropFunctionFilter drops the existing filter.
-func (src *Source) DropFunctionFilter() {
-	src.FunctionFilter = ""
-	src.FunctionFilteredLines.Lines = src.FunctionFilteredLines.Lines[:0]
-}
-
-// HasFunctionFilter returns true if filter is set.
-func (src *Source) HasFunctionFilter() bool {
-	return src.FunctionFilter != ""
+func (src *Source) DropFunctionFilter(functionName string) {
+	for i, fn := range src.FunctionFilters {
+		if fn.FunctionName == functionName {
+			src.FunctionFilters = append(src.FunctionFilters[:i], src.FunctionFilters[i+1:]...)
+			return
+		}
+	}
 }
