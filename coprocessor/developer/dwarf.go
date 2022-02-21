@@ -89,8 +89,9 @@ func (ln *SourceLine) String() string {
 // compile units are made up of many children. for convenience/speed we keep
 // track of the children as an index rather than a tree.
 type compileUnit struct {
-	unit     *dwarf.Entry
-	children map[dwarf.Offset]*dwarf.Entry
+	unit                    *dwarf.Entry
+	children                map[dwarf.Offset]*dwarf.Entry
+	unsupportedOptimisation string
 }
 
 // Source is created from available DWARF data that has been found in relation
@@ -100,7 +101,7 @@ type compileUnit struct {
 type Source struct {
 	dwrf *dwarf.Data
 
-	compileUnits []compileUnit
+	compileUnits []*compileUnit
 
 	// if any of the compile units were compiled with GCC optimisation then
 	// this string will contain an appropriate message. if string is empty then
@@ -236,7 +237,7 @@ func NewSource(pathToROM string) (*Source, error) {
 	r := src.dwrf.Reader()
 
 	// most recent compile unit we've seen
-	var unit compileUnit
+	var unit *compileUnit
 
 	for {
 		entry, err := r.Next()
@@ -255,7 +256,7 @@ func NewSource(pathToROM string) (*Source, error) {
 
 		switch entry.Tag {
 		case dwarf.TagCompileUnit:
-			unit = compileUnit{
+			unit = &compileUnit{
 				unit:     entry,
 				children: make(map[dwarf.Offset]*dwarf.Entry),
 			}
@@ -295,8 +296,7 @@ func NewSource(pathToROM string) (*Source, error) {
 							case 's':
 							case ' ':
 							default:
-								src.UnsupportedOptimisation = fmt.Sprintf("binary compiled with unsupported optimisation (-O%c)", producer[idx])
-								logger.Logf("dwarf", src.UnsupportedOptimisation)
+								unit.unsupportedOptimisation = fmt.Sprintf("binary compiled with unsupported optimisation (-O%c)", producer[idx])
 							}
 						}
 					}
@@ -305,6 +305,15 @@ func NewSource(pathToROM string) (*Source, error) {
 
 		default:
 			unit.children[entry.Offset] = entry
+		}
+	}
+
+	// if any of the units have unsupported optimsation then indicate that the
+	// entire source has the same property
+	for _, u := range src.compileUnits {
+		if len(u.children) > 0 && u.unsupportedOptimisation != "" {
+			src.UnsupportedOptimisation = u.unsupportedOptimisation
+			logger.Logf("dwarf", unit.unsupportedOptimisation)
 		}
 	}
 
