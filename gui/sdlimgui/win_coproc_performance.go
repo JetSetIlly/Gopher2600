@@ -38,7 +38,8 @@ type winCoProcPerformance struct {
 	optionsHeight float32
 
 	// function tab is newly opened/changed
-	functionTabDirty bool
+	functionTabDirty  bool
+	functionTabSelect string
 }
 
 func newWinCoProcPerformance(img *SdlImgui) (window, error) {
@@ -112,6 +113,9 @@ func (win *winCoProcPerformance) draw() {
 		for _, ff := range src.FunctionFilters {
 			flgs := imgui.TabItemFlagsNone
 			open := true
+			if ff.FunctionName == win.functionTabSelect {
+				flgs |= imgui.TabItemFlagsSetSelected
+			}
 			if imgui.BeginTabItemV(fmt.Sprintf("%c %s", fonts.MagnifyingGlass, ff.FunctionName), &open, flgs) {
 				win.drawFunctionFilter(ff)
 				imgui.EndTabItem()
@@ -120,6 +124,7 @@ func (win *winCoProcPerformance) draw() {
 				src.DropFunctionFilter(ff.FunctionName)
 			}
 		}
+		win.functionTabSelect = ""
 
 		imgui.EndTabBar()
 		imgui.EndChild()
@@ -217,6 +222,7 @@ func (win *winCoProcPerformance) drawFunctions(src *developer.Source) {
 		if imgui.IsItemClicked() {
 			win.functionTabDirty = true
 			src.AddFunctionFilter(fn.Name)
+			win.functionTabSelect = fn.Name
 		}
 
 		imgui.TableNextColumn()
