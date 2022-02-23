@@ -374,7 +374,7 @@ func (win *winCoProcPerformance) drawSourceLines(src *developer.Source) {
 	imgui.EndTable()
 }
 
-func (win *winCoProcPerformance) drawFunctionFilter(functionFilter developer.FunctionFilter) {
+func (win *winCoProcPerformance) drawFunctionFilter(functionFilter *developer.FunctionFilter) {
 	imgui.Spacing()
 
 	if len(functionFilter.Lines.Lines) == 0 {
@@ -459,8 +459,8 @@ func (win *winCoProcPerformance) drawFunctionFilter(functionFilter developer.Fun
 
 		imgui.TableNextColumn()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceAvgLoad)
-		if ld, ok := ln.Stats.AverageLoad(); ok {
-			imgui.Text(fmt.Sprintf("%.02f", ld))
+		if avg, ok := ln.Stats.AverageLoad(); ok {
+			imgui.Text(fmt.Sprintf("%.02f", avg))
 		} else {
 			imgui.Text("-")
 		}
@@ -468,8 +468,8 @@ func (win *winCoProcPerformance) drawFunctionFilter(functionFilter developer.Fun
 
 		imgui.TableNextColumn()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceMaxLoad)
-		if ld, ok := ln.Stats.MaximumLoad(); ok {
-			imgui.Text(fmt.Sprintf("%.02f", ld))
+		if max, ok := ln.Stats.MaximumLoad(); ok {
+			imgui.Text(fmt.Sprintf("%.02f", max))
 		} else {
 			imgui.Text("-")
 		}

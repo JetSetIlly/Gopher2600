@@ -17,6 +17,7 @@ package developer
 
 type FunctionFilter struct {
 	FunctionName string
+	Function     *SourceFunction
 	Lines        SortedLines
 }
 
@@ -27,8 +28,9 @@ func (src *Source) AddFunctionFilter(functionName string) {
 		}
 	}
 
-	ff := FunctionFilter{
+	ff := &FunctionFilter{
 		FunctionName: functionName,
+		Function:     src.Functions[functionName],
 	}
 
 	for _, ln := range src.SortedLines.Lines {
