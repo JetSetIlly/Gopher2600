@@ -148,10 +148,12 @@ func (win *winCoProcDisasm) drawDisasm(dsm *disassembly.DisasmEntries, lastExecu
 		return
 	}
 
+	const numColumns = 9
+
 	flgs := imgui.TableFlagsNone
 	flgs |= imgui.TableFlagsSizingFixedFit
 	flgs |= imgui.TableFlagsRowBg
-	imgui.BeginTableV("disasmTable", 9, flgs, imgui.Vec2{}, 0)
+	imgui.BeginTableV("disasmTable", numColumns, flgs, imgui.Vec2{}, 0)
 	defer imgui.EndTable()
 
 	// first column is a dummy column so that Selectable (span all columns) works correctly
@@ -159,7 +161,7 @@ func (win *winCoProcDisasm) drawDisasm(dsm *disassembly.DisasmEntries, lastExecu
 	imgui.TableSetupColumnV("", imgui.TableColumnFlagsNone, 0.00, 0)
 	imgui.TableSetupColumnV("MAM", imgui.TableColumnFlagsNone, width*0.025, 1)
 	imgui.TableSetupColumnV("Address", imgui.TableColumnFlagsNone, width*0.15, 2)
-	imgui.TableSetupColumnV("Opertor", imgui.TableColumnFlagsNone, width*0.05, 3)
+	imgui.TableSetupColumnV("Operator", imgui.TableColumnFlagsNone, width*0.05, 3)
 	imgui.TableSetupColumnV("Operands", imgui.TableColumnFlagsNone, width*0.25, 4)
 	imgui.TableSetupColumnV("Branch Trail", imgui.TableColumnFlagsNone, width*0.025, 5)
 	imgui.TableSetupColumnV("MergedIS", imgui.TableColumnFlagsNone, width*0.025, 5)
@@ -219,6 +221,12 @@ func (win *winCoProcDisasm) drawEntry(e arm7tdmi.DisasmEntry) {
 			imgui.SameLine()
 			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmAddress)
 			imgui.Text(e.Address)
+			imgui.PopStyleColor()
+
+			imgui.Text("Opcode:")
+			imgui.SameLine()
+			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmByteCode)
+			imgui.Text(fmt.Sprintf("%04x", e.Opcode))
 			imgui.PopStyleColor()
 
 			imgui.Text("Instruction:")

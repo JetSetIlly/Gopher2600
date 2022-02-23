@@ -27,6 +27,8 @@ type DisasmEntry struct {
 	Operator string
 	Operand  string
 
+	Opcode uint16
+
 	// total cycles for this instruction
 	Cycles int
 
@@ -166,6 +168,7 @@ func disasmMoveShiftedRegister(opcode uint16) DisasmEntry {
 	// format 1 - Move shifted register
 
 	var entry DisasmEntry
+	entry.Opcode = opcode
 
 	op := (opcode & 0x1800) >> 11
 	shift := (opcode & 0x7c0) >> 6
@@ -193,6 +196,7 @@ func disasmAddSubtract(opcode uint16) DisasmEntry {
 	// format 2 - Add/subtract
 
 	var entry DisasmEntry
+	entry.Opcode = opcode
 
 	immediate := opcode&0x0400 == 0x0400
 	subtract := opcode&0x0200 == 0x0200
@@ -225,6 +229,7 @@ func disasmMovCmpAddSubImm(opcode uint16) DisasmEntry {
 	// format 3 - Move/compare/add/subtract immediate
 
 	var entry DisasmEntry
+	entry.Opcode = opcode
 
 	op := (opcode & 0x1800) >> 11
 	destReg := (opcode & 0x0700) >> 8
@@ -253,6 +258,7 @@ func disasmALUoperations(opcode uint16) DisasmEntry {
 	// format 4 - ALU operations
 
 	var entry DisasmEntry
+	entry.Opcode = opcode
 
 	op := (opcode & 0x03c0) >> 6
 	srcReg := (opcode & 0x38) >> 3
@@ -316,6 +322,7 @@ func disasmALUoperations(opcode uint16) DisasmEntry {
 
 func disasmHiRegisterOps(opcode uint16) DisasmEntry {
 	var entry DisasmEntry
+	entry.Opcode = opcode
 
 	// format 5 - Hi register operations/branch exchange
 	op := (opcode & 0x300) >> 8
@@ -358,6 +365,7 @@ func disasmHiRegisterOps(opcode uint16) DisasmEntry {
 
 func disasmPCrelativeLoad(opcode uint16) DisasmEntry {
 	var entry DisasmEntry
+	entry.Opcode = opcode
 
 	// format 6 - PC-relative load
 	destReg := (opcode & 0x0700) >> 8
@@ -373,6 +381,7 @@ func disasmLoadStoreWithRegisterOffset(opcode uint16) DisasmEntry {
 	// format 7 - Load/store with register offset
 
 	var entry DisasmEntry
+	entry.Opcode = opcode
 
 	load := opcode&0x0800 == 0x0800
 	byteTransfer := opcode&0x0400 == 0x0400
@@ -407,6 +416,7 @@ func disasmLoadStoreSignExtendedByteHalford(opcode uint16) DisasmEntry {
 	// format 8 - Load/store sign-extended byte/halfword
 
 	var entry DisasmEntry
+	entry.Opcode = opcode
 
 	hi := opcode&0x0800 == 0x800
 	sign := opcode&0x0400 == 0x400
@@ -448,6 +458,7 @@ func disasmLoadStoreWithImmOffset(opcode uint16) DisasmEntry {
 	// format 9 - Load/store with immediate offset
 
 	var entry DisasmEntry
+	entry.Opcode = opcode
 
 	load := opcode&0x0800 == 0x0800
 	byteTransfer := opcode&0x1000 == 0x1000
@@ -494,6 +505,7 @@ func disasmLoadStoreHalfword(opcode uint16) DisasmEntry {
 	// format 10 - Load/store halfword
 
 	var entry DisasmEntry
+	entry.Opcode = opcode
 
 	load := opcode&0x0800 == 0x0800
 	offset := (opcode & 0x07c0) >> 6
@@ -521,6 +533,7 @@ func disasmSPRelativeLoadStore(opcode uint16) DisasmEntry {
 	// format 11 - SP-relative load/store
 
 	var entry DisasmEntry
+	entry.Opcode = opcode
 
 	load := opcode&0x0800 == 0x0800
 	reg := (opcode & 0x07ff) >> 8
@@ -547,6 +560,7 @@ func disasmLoadAddress(opcode uint16) DisasmEntry {
 	// format 12 - Load address
 
 	var entry DisasmEntry
+	entry.Opcode = opcode
 
 	sp := opcode&0x0800 == 0x800
 	destReg := (opcode & 0x700) >> 8
@@ -572,6 +586,7 @@ func disasmAddOffsetToSP(opcode uint16) DisasmEntry {
 	// format 13 - Add offset to stack pointer
 
 	var entry DisasmEntry
+	entry.Opcode = opcode
 
 	sign := opcode&0x80 == 0x80
 	imm := uint32(opcode & 0x7f)
@@ -598,6 +613,7 @@ func disasmPushPopRegisters(opcode uint16) DisasmEntry {
 	// format 14 - Push/pop registers
 
 	var entry DisasmEntry
+	entry.Opcode = opcode
 
 	load := opcode&0x0800 == 0x0800
 	pclr := opcode&0x0100 == 0x0100
@@ -630,6 +646,7 @@ func disasmMultipleLoadStore(opcode uint16) DisasmEntry {
 	// format 15 - Multiple load/store
 
 	var entry DisasmEntry
+	entry.Opcode = opcode
 
 	load := opcode&0x0800 == 0x0800
 	baseReg := uint32(opcode&0x07ff) >> 8
@@ -649,6 +666,7 @@ func disasmConditionalBranch(opcode uint16) DisasmEntry {
 	// format 16 - Conditional branch
 
 	var entry DisasmEntry
+	entry.Opcode = opcode
 
 	cond := (opcode & 0x0f00) >> 8
 	offset := uint32(opcode & 0x00ff)
@@ -694,13 +712,14 @@ func disasmConditionalBranch(opcode uint16) DisasmEntry {
 
 func disasmSoftwareInterrupt(opcode uint16) DisasmEntry {
 	// format 17 - Software interrupt"
-	return DisasmEntry{}
+	return DisasmEntry{Opcode: opcode}
 }
 
 func disasmUnconditionalBranch(opcode uint16) DisasmEntry {
 	// format 18 - Unconditional branch
 
 	var entry DisasmEntry
+	entry.Opcode = opcode
 
 	offset := uint32(opcode&0x07ff) << 1
 
@@ -714,6 +733,7 @@ func disasmLongBranchWithLink(opcode uint16) DisasmEntry {
 	// format 19 - Long branch with link
 
 	var entry DisasmEntry
+	entry.Opcode = opcode
 
 	low := opcode&0x800 == 0x0800
 	offset := uint32(opcode & 0x07ff)

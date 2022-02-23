@@ -1257,12 +1257,6 @@ func (arm *ARM) executeHiRegisterOps(opcode uint16) {
 			return
 		}
 
-		// if the interrupt hasn't been serviced then it is by definition an illegal access
-		if !res.InterruptServiced {
-			arm.illegalAccess("ARM function", arm.registers[rPC]-4)
-		}
-
-		// update execution notes unless disasm level is disasmNone
 		if res.InterruptEvent != "" {
 			arm.disasmExecutionNotes = fmt.Sprintf("ARM function (%08x) %s", arm.registers[rPC]-4, res.InterruptEvent)
 		} else {
