@@ -75,6 +75,10 @@ type SourceLine struct {
 	// the generated assembly for this line. will be empty if line is a comment or otherwise unsused
 	Disassembly []*SourceDisasm
 
+	// some source lines will interleave their coproc instructions
+	// (disassembly) with other source lines
+	Interleaved bool
+
 	// whether this source line has been responsible for an illegal access of memory
 	IllegalAccess bool
 
@@ -433,6 +437,24 @@ func NewSource(pathToROM string) (*Source, error) {
 			workingSourceLine.Function = srcFunc
 		}
 	}
+
+	// interleaved instructions check
+	disasmCt := 0.0
+	interleaveCt := 0.0
+	for _, ln := range src.Lines {
+		if len(ln.Disassembly) > 0 {
+			disasmCt++
+			addr := ln.Disassembly[0].Addr
+			for _, d := range ln.Disassembly[1:] {
+				if d.Addr > addr+2 {
+					interleaveCt++
+					ln.Interleaved = true
+					break // disasm loop
+				}
+			}
+		}
+	}
+	logger.Logf("dwarf", "%0.2f%% lines have interleaved coprocessor instructions", interleaveCt*100/disasmCt)
 
 	// sanity check of functions list
 	if len(src.Functions) != len(src.FunctionNames) {
