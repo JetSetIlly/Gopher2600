@@ -30,22 +30,19 @@ import (
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
+// compile units are made up of many children. for convenience/speed we keep
+// track of the children as an index rather than a tree.
+type compileUnit struct {
+	unit                    *dwarf.Entry
+	children                map[dwarf.Offset]*dwarf.Entry
+	unsupportedOptimisation string
+}
+
 // SourceFile is a single source file indentified by the DWARF data.
 type SourceFile struct {
 	Filename      string
 	ShortFilename string
 	Lines         []*SourceLine
-}
-
-// SourceFunction is a single function identified by the DWARF data.
-type SourceFunction struct {
-	Name string
-
-	// first source line for each instance of the function
-	DeclLine *SourceLine
-
-	// cycle statisics related to the SourceFunction
-	Stats SourceStats
 }
 
 // SourceDisasm is a single disassembled intruction from the ELF binary.
@@ -82,20 +79,23 @@ type SourceLine struct {
 	// whether this source line has been responsible for an illegal access of memory
 	IllegalAccess bool
 
-	// cycle statisics related to the SourceLine
-	Stats SourceStats
+	// cycle statisics for the line
+	Stats Stats
 }
 
 func (ln *SourceLine) String() string {
 	return fmt.Sprintf("%s:%d", ln.File.Filename, ln.LineNumber)
 }
 
-// compile units are made up of many children. for convenience/speed we keep
-// track of the children as an index rather than a tree.
-type compileUnit struct {
-	unit                    *dwarf.Entry
-	children                map[dwarf.Offset]*dwarf.Entry
-	unsupportedOptimisation string
+// SourceFunction is a single function identified by the DWARF data.
+type SourceFunction struct {
+	Name string
+
+	// first source line for each instance of the function
+	DeclLine *SourceLine
+
+	// cycle statisics for the function
+	Stats Stats
 }
 
 // Source is created from available DWARF data that has been found in relation
@@ -133,7 +133,7 @@ type Source struct {
 	SortedFunctions SortedFunctions
 
 	// lines of source code found in the compile units
-	Lines map[uint32]*SourceLine
+	linesByAddress map[uint32]*SourceLine
 
 	// list of source lines sorted by FrameCycles field
 	SortedLines SortedLines
@@ -143,6 +143,9 @@ type Source struct {
 
 	// numer of cycles in the entire program represented by the source since the last update
 	cyclesCount float32
+
+	// cycle statisics for the entire program
+	Stats Stats
 }
 
 // NewSource is the preferred method of initialisation for the Source type.
@@ -162,7 +165,7 @@ func NewSource(pathToROM string) (*Source, error) {
 		SortedFunctions: SortedFunctions{
 			Functions: make([]*SourceFunction, 0, 100),
 		},
-		Lines: make(map[uint32]*SourceLine),
+		linesByAddress: make(map[uint32]*SourceLine),
 		SortedLines: SortedLines{
 			Lines: make([]*SourceLine, 0, 100),
 		},
@@ -368,7 +371,7 @@ func NewSource(pathToROM string) (*Source, error) {
 						workingSourceLine.Disassembly = append(workingSourceLine.Disassembly, d)
 
 						// associate the address with the workingSourceLine
-						src.Lines[uint32(addr)] = workingSourceLine
+						src.linesByAddress[uint32(addr)] = workingSourceLine
 
 						// special handling of unconditional branch
 						//
@@ -441,7 +444,7 @@ func NewSource(pathToROM string) (*Source, error) {
 	// interleaved instructions check
 	disasmCt := 0.0
 	interleaveCt := 0.0
-	for _, ln := range src.Lines {
+	for _, ln := range src.linesByAddress {
 		if len(ln.Disassembly) > 0 {
 			disasmCt++
 			addr := ln.Disassembly[0].Addr
@@ -480,7 +483,7 @@ func NewSource(pathToROM string) (*Source, error) {
 	// indexed by (and this is important) the pointer address of the SourceLine
 	// and not the execution address
 	observed := make(map[*SourceLine]bool)
-	for _, ln := range src.Lines {
+	for _, ln := range src.linesByAddress {
 		if _, ok := observed[ln]; !ok {
 			observed[ln] = true
 			src.SortedLines.Lines = append(src.SortedLines.Lines, ln)
@@ -748,28 +751,31 @@ func (src *Source) findSourceLine(addr uint32) (*SourceLine, error) {
 }
 
 func (src *Source) execute(addr uint32, ct float32) {
-	line, ok := src.Lines[addr]
+	line, ok := src.linesByAddress[addr]
 	if ok {
-		src.cyclesCount += ct
-		line.Stats.cyclesCount += ct
-		line.Function.Stats.cyclesCount += ct
+		line.Stats.count += ct
+		line.Function.Stats.count += ct
+		src.Stats.count += ct
 	}
 }
 
 func (src *Source) newFrame() {
+	// calling newFrame() on stats in a specific order. first the program, then
+	// the functions and then the source lines.
+
+	src.Stats.newFrame(nil, nil)
+
+	for _, fn := range src.Functions {
+		fn.Stats.newFrame(&src.Stats, nil)
+	}
+
 	// traverse the SortedLines list and update the FrameCyles values
 	//
 	// we prefer this over traversing the Lines list because we may hit a
 	// SourceLine more than once. SortedLines contains unique entries.
-	for _, l := range src.SortedLines.Lines {
-		l.Stats.newFrame(src.cyclesCount)
+	for _, ln := range src.SortedLines.Lines {
+		ln.Stats.newFrame(&src.Stats, &ln.Function.Stats)
 	}
-
-	for _, f := range src.Functions {
-		f.Stats.newFrame(src.cyclesCount)
-	}
-
-	src.cyclesCount = 0
 }
 
 func readSourceFile(filename string, pathToROM_nosymlinks string) (*SourceFile, error) {

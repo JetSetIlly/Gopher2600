@@ -25,12 +25,14 @@ const (
 	sortFunction sortMethods = iota
 	sortFile
 	sortLine
-	sortLoad
-	sortAverage
-	sortMax
+	sortFrameCyclesOverSource
+	sortAverageCyclesOverSource
+	sortMaxCyclesOverSource
+	sortFrameCyclesOverFunction
+	sortAverageCyclesOverFunction
+	sortMaxCyclesOverFunction
 )
 
-// SortedLines orders all the source lines in order of computational expense
 type SortedLines struct {
 	Lines      []*SourceLine
 	method     sortMethods
@@ -59,40 +61,54 @@ func (e *SortedLines) SortByFunction(descending bool) {
 	sort.Stable(e)
 }
 
-func (e *SortedLines) SortByLoad(descending bool) {
+func (e *SortedLines) SortByFrameLoadOverSource(descending bool) {
 	e.descending = descending
-	e.method = sortLoad
+	e.method = sortFrameCyclesOverSource
 	sort.Stable(e)
 }
 
-func (e *SortedLines) SortByAverageCycles(descending bool) {
+func (e *SortedLines) SortByAverageLoadOverSource(descending bool) {
 	e.descending = descending
-	e.method = sortAverage
+	e.method = sortAverageCyclesOverSource
 	sort.Stable(e)
 }
 
-func (e *SortedLines) SortByMaxCycles(descending bool) {
+func (e *SortedLines) SortByMaxLoadOverSource(descending bool) {
 	e.descending = descending
-	e.method = sortMax
+	e.method = sortMaxCyclesOverSource
+	sort.Stable(e)
+}
+
+func (e *SortedLines) SortByFrameLoadOverFunction(descending bool) {
+	e.descending = descending
+	e.method = sortFrameCyclesOverFunction
+	sort.Stable(e)
+}
+
+func (e *SortedLines) SortByAverageLoadOverFunction(descending bool) {
+	e.descending = descending
+	e.method = sortAverageCyclesOverFunction
+	sort.Stable(e)
+}
+
+func (e *SortedLines) SortByMaxLoadOverFunction(descending bool) {
+	e.descending = descending
+	e.method = sortMaxCyclesOverFunction
 	sort.Stable(e)
 }
 
 func (e *SortedLines) SortByLineAndFunction(descending bool) {
 	e.descending = descending
-
 	e.method = sortLine
 	sort.Stable(e)
-
 	e.method = sortFunction
 	sort.Stable(e)
 }
 
-// Len implements sort.Interface.
 func (e SortedLines) Len() int {
 	return len(e.Lines)
 }
 
-// Less implements sort.Interface.
 func (e SortedLines) Less(i int, j int) bool {
 	switch e.method {
 	case sortFunction:
@@ -110,36 +126,51 @@ func (e SortedLines) Less(i int, j int) bool {
 			return e.Lines[i].LineNumber > e.Lines[j].LineNumber
 		}
 		return e.Lines[i].LineNumber < e.Lines[j].LineNumber
-	case sortLoad:
+	case sortFrameCyclesOverSource:
 		if e.descending {
-			return e.Lines[i].Stats.load > e.Lines[j].Stats.load
+			return e.Lines[i].Stats.OverSource.Frame > e.Lines[j].Stats.OverSource.Frame
 		}
-		return e.Lines[i].Stats.load < e.Lines[j].Stats.load
-	case sortAverage:
+		return e.Lines[i].Stats.OverSource.Frame > e.Lines[j].Stats.OverSource.Frame
+	case sortAverageCyclesOverSource:
 		if e.descending {
-			return e.Lines[i].Stats.avgLoad > e.Lines[j].Stats.avgLoad
+			return e.Lines[i].Stats.OverSource.Average > e.Lines[j].Stats.OverSource.Average
 		}
-		return e.Lines[i].Stats.avgLoad < e.Lines[j].Stats.avgLoad
-	case sortMax:
+		return e.Lines[i].Stats.OverSource.Average < e.Lines[j].Stats.OverSource.Average
+	case sortMaxCyclesOverSource:
 		if e.descending {
-			return e.Lines[i].Stats.maxLoad > e.Lines[j].Stats.maxLoad
+			return e.Lines[i].Stats.OverSource.Max > e.Lines[j].Stats.OverSource.Max
 		}
-		return e.Lines[i].Stats.maxLoad < e.Lines[j].Stats.maxLoad
+		return e.Lines[i].Stats.OverSource.Max < e.Lines[j].Stats.OverSource.Max
+	case sortFrameCyclesOverFunction:
+		if e.descending {
+			return e.Lines[i].Stats.OverSource.Frame > e.Lines[j].Stats.OverSource.Frame
+		}
+		return e.Lines[i].Stats.OverSource.Frame > e.Lines[j].Stats.OverSource.Frame
+	case sortAverageCyclesOverFunction:
+		if e.descending {
+			return e.Lines[i].Stats.OverSource.Average > e.Lines[j].Stats.OverSource.Average
+		}
+		return e.Lines[i].Stats.OverSource.Average < e.Lines[j].Stats.OverSource.Average
+	case sortMaxCyclesOverFunction:
+		if e.descending {
+			return e.Lines[i].Stats.OverSource.Max > e.Lines[j].Stats.OverSource.Max
+		}
+		return e.Lines[i].Stats.OverSource.Max < e.Lines[j].Stats.OverSource.Max
 	}
 
 	return false
 }
 
-// Swap implements sort.Interface.
 func (e SortedLines) Swap(i int, j int) {
 	e.Lines[i], e.Lines[j] = e.Lines[j], e.Lines[i]
 }
 
-// SortedFunctions orders all the source lines in order of computationally expense
 type SortedFunctions struct {
 	Functions  []*SourceFunction
 	method     sortMethods
 	descending bool
+
+	functionComparison bool
 }
 
 func (e SortedFunctions) Sort() {
@@ -158,30 +189,28 @@ func (e *SortedFunctions) SortByFunction(descending bool) {
 	sort.Stable(e)
 }
 
-func (e *SortedFunctions) SortByLoad(descending bool) {
+func (e *SortedFunctions) SortByFrameCycles(descending bool) {
 	e.descending = descending
-	e.method = sortLoad
+	e.method = sortFrameCyclesOverSource
 	sort.Stable(e)
 }
 
 func (e *SortedFunctions) SortByAverageCycles(descending bool) {
 	e.descending = descending
-	e.method = sortAverage
+	e.method = sortAverageCyclesOverSource
 	sort.Stable(e)
 }
 
 func (e *SortedFunctions) SortByMaxCycles(descending bool) {
 	e.descending = descending
-	e.method = sortMax
+	e.method = sortMaxCyclesOverSource
 	sort.Stable(e)
 }
 
-// Len implements sort.Interface.
 func (e SortedFunctions) Len() int {
 	return len(e.Functions)
 }
 
-// Less implements sort.Interface.
 func (e SortedFunctions) Less(i int, j int) bool {
 	switch e.method {
 	case sortFile:
@@ -194,27 +223,26 @@ func (e SortedFunctions) Less(i int, j int) bool {
 			return e.Functions[i].Name > e.Functions[j].Name
 		}
 		return e.Functions[i].Name < e.Functions[j].Name
-	case sortLoad:
+	case sortFrameCyclesOverSource:
 		if e.descending {
-			return e.Functions[i].Stats.load > e.Functions[j].Stats.load
+			return e.Functions[i].Stats.OverSource.Frame > e.Functions[j].Stats.OverSource.Frame
 		}
-		return e.Functions[i].Stats.load < e.Functions[j].Stats.load
-	case sortAverage:
+		return e.Functions[i].Stats.OverSource.Frame < e.Functions[j].Stats.OverSource.Frame
+	case sortAverageCyclesOverSource:
 		if e.descending {
-			return e.Functions[i].Stats.avgLoad > e.Functions[j].Stats.avgLoad
+			return e.Functions[i].Stats.OverSource.Average > e.Functions[j].Stats.OverSource.Average
 		}
-		return e.Functions[i].Stats.avgLoad < e.Functions[j].Stats.avgLoad
-	case sortMax:
+		return e.Functions[i].Stats.OverSource.Average < e.Functions[j].Stats.OverSource.Average
+	case sortMaxCyclesOverSource:
 		if e.descending {
-			return e.Functions[i].Stats.maxLoad > e.Functions[j].Stats.maxLoad
+			return e.Functions[i].Stats.OverSource.Max > e.Functions[j].Stats.OverSource.Max
 		}
-		return e.Functions[i].Stats.maxLoad < e.Functions[j].Stats.maxLoad
+		return e.Functions[i].Stats.OverSource.Max < e.Functions[j].Stats.OverSource.Max
 	}
 
 	return false
 }
 
-// Swap implements sort.Interface.
 func (e SortedFunctions) Swap(i int, j int) {
 	e.Functions[i], e.Functions[j] = e.Functions[j], e.Functions[i]
 }

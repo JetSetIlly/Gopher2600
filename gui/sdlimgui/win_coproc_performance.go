@@ -40,6 +40,10 @@ type winCoProcPerformance struct {
 	// function tab is newly opened/changed
 	functionTabDirty  bool
 	functionTabSelect string
+
+	// scale load statistics in function filters to the function level (as
+	// opposed to the program level)
+	functionTabScale bool
 }
 
 func newWinCoProcPerformance(img *SdlImgui) (window, error) {
@@ -110,6 +114,8 @@ func (win *winCoProcPerformance) draw() {
 			imgui.EndTabItem()
 		}
 
+		functionFilterActive := false
+
 		for _, ff := range src.FunctionFilters {
 			flgs := imgui.TabItemFlagsNone
 			open := true
@@ -117,8 +123,9 @@ func (win *winCoProcPerformance) draw() {
 				flgs |= imgui.TabItemFlagsSetSelected
 			}
 			if imgui.BeginTabItemV(fmt.Sprintf("%c %s", fonts.MagnifyingGlass, ff.FunctionName), &open, flgs) {
-				win.drawFunctionFilter(ff)
+				win.drawFunctionFilter(src, ff)
 				imgui.EndTabItem()
+				functionFilterActive = true
 			}
 			if !open {
 				src.DropFunctionFilter(ff.FunctionName)
@@ -147,6 +154,10 @@ func (win *winCoProcPerformance) draw() {
 			}
 
 			imgui.Checkbox("Show Source in Tooltip", &win.showSrc)
+			if functionFilterActive {
+				imgui.SameLineV(0, 20)
+				imgui.Checkbox("Scale Statistics", &win.functionTabScale)
+			}
 		})
 	})
 }
@@ -174,7 +185,7 @@ func (win *winCoProcPerformance) drawFunctions(src *developer.Source) {
 	imgui.TableSetupColumnV("File", imgui.TableColumnFlagsPreferSortDescending, width*0.275, 0)
 	imgui.TableSetupColumnV("Line", imgui.TableColumnFlagsNoSort, width*0.05, 1)
 	imgui.TableSetupColumnV("Function", imgui.TableColumnFlagsPreferSortDescending, width*0.325, 2)
-	imgui.TableSetupColumnV("Load", imgui.TableColumnFlagsNoSortAscending|imgui.TableColumnFlagsDefaultSort, width*0.1, 3)
+	imgui.TableSetupColumnV("Frame", imgui.TableColumnFlagsNoSortAscending|imgui.TableColumnFlagsDefaultSort, width*0.1, 3)
 	imgui.TableSetupColumnV("Avg", imgui.TableColumnFlagsNoSortAscending, width*0.1, 4)
 	imgui.TableSetupColumnV("Max", imgui.TableColumnFlagsNoSortAscending, width*0.1, 5)
 
@@ -190,7 +201,7 @@ func (win *winCoProcPerformance) drawFunctions(src *developer.Source) {
 			case 2:
 				src.SortedFunctions.SortByFunction(s.SortDirection == imgui.SortDirectionAscending)
 			case 3:
-				src.SortedFunctions.SortByLoad(true)
+				src.SortedFunctions.SortByFrameCycles(true)
 			case 4:
 				src.SortedFunctions.SortByAverageCycles(true)
 			case 5:
@@ -218,7 +229,7 @@ func (win *winCoProcPerformance) drawFunctions(src *developer.Source) {
 			win.sourceLineTooltip(fn.DeclLine, false)
 		}
 
-		// open source window on click
+		// open/select function filter on click
 		if imgui.IsItemClicked() {
 			win.functionTabDirty = true
 			src.AddFunctionFilter(fn.Name)
@@ -237,8 +248,8 @@ func (win *winCoProcPerformance) drawFunctions(src *developer.Source) {
 
 		imgui.TableNextColumn()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLoad)
-		if ld, ok := fn.Stats.FrameLoad(); ok {
-			imgui.Text(fmt.Sprintf("%.02f", ld))
+		if fn.Stats.IsValid() {
+			imgui.Text(fmt.Sprintf("%.02f", fn.Stats.OverSource.Frame))
 		} else {
 			imgui.Text("-")
 		}
@@ -246,8 +257,8 @@ func (win *winCoProcPerformance) drawFunctions(src *developer.Source) {
 
 		imgui.TableNextColumn()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceAvgLoad)
-		if ld, ok := fn.Stats.AverageLoad(); ok {
-			imgui.Text(fmt.Sprintf("%.02f", ld))
+		if fn.Stats.IsValid() {
+			imgui.Text(fmt.Sprintf("%.02f", fn.Stats.OverSource.Average))
 		} else {
 			imgui.Text("-")
 		}
@@ -255,8 +266,8 @@ func (win *winCoProcPerformance) drawFunctions(src *developer.Source) {
 
 		imgui.TableNextColumn()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceMaxLoad)
-		if ld, ok := fn.Stats.MaximumLoad(); ok {
-			imgui.Text(fmt.Sprintf("%.02f", ld))
+		if fn.Stats.IsValid() {
+			imgui.Text(fmt.Sprintf("%.02f", fn.Stats.OverSource.Max))
 		} else {
 			imgui.Text("-")
 		}
@@ -289,7 +300,7 @@ func (win *winCoProcPerformance) drawSourceLines(src *developer.Source) {
 	imgui.TableSetupColumnV("Function", imgui.TableColumnFlagsPreferSortDescending, width*0.20, 0)
 	imgui.TableSetupColumnV("Line", imgui.TableColumnFlagsNoSort, width*0.05, 1)
 	imgui.TableSetupColumnV("Content", imgui.TableColumnFlagsNoSort, width*0.35, 2)
-	imgui.TableSetupColumnV("Load", imgui.TableColumnFlagsNoSortAscending|imgui.TableColumnFlagsDefaultSort, width*0.07, 3)
+	imgui.TableSetupColumnV("Frame", imgui.TableColumnFlagsNoSortAscending|imgui.TableColumnFlagsDefaultSort, width*0.07, 3)
 	imgui.TableSetupColumnV("Avg", imgui.TableColumnFlagsNoSortAscending, width*0.07, 4)
 	imgui.TableSetupColumnV("Max", imgui.TableColumnFlagsNoSortAscending, width*0.07, 5)
 
@@ -303,11 +314,11 @@ func (win *winCoProcPerformance) drawSourceLines(src *developer.Source) {
 			case 0:
 				src.SortedLines.SortByFunction(s.SortDirection == imgui.SortDirectionAscending)
 			case 3:
-				src.SortedLines.SortByLoad(true)
+				src.SortedLines.SortByFrameLoadOverSource(true)
 			case 4:
-				src.SortedLines.SortByAverageCycles(true)
+				src.SortedLines.SortByAverageLoadOverSource(true)
 			case 5:
-				src.SortedLines.SortByMaxCycles(true)
+				src.SortedLines.SortByMaxLoadOverSource(true)
 			}
 		}
 		sort.ClearSpecsDirty()
@@ -345,8 +356,8 @@ func (win *winCoProcPerformance) drawSourceLines(src *developer.Source) {
 
 		imgui.TableNextColumn()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLoad)
-		if ld, ok := ln.Stats.FrameLoad(); ok {
-			imgui.Text(fmt.Sprintf("%.02f", ld))
+		if ln.Stats.IsValid() {
+			imgui.Text(fmt.Sprintf("%.02f", ln.Stats.OverSource.Frame))
 		} else {
 			imgui.Text("-")
 		}
@@ -354,8 +365,8 @@ func (win *winCoProcPerformance) drawSourceLines(src *developer.Source) {
 
 		imgui.TableNextColumn()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceAvgLoad)
-		if ld, ok := ln.Stats.AverageLoad(); ok {
-			imgui.Text(fmt.Sprintf("%.02f", ld))
+		if ln.Stats.IsValid() {
+			imgui.Text(fmt.Sprintf("%.02f", ln.Stats.OverSource.Average))
 		} else {
 			imgui.Text("-")
 		}
@@ -363,8 +374,8 @@ func (win *winCoProcPerformance) drawSourceLines(src *developer.Source) {
 
 		imgui.TableNextColumn()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceMaxLoad)
-		if ld, ok := ln.Stats.MaximumLoad(); ok {
-			imgui.Text(fmt.Sprintf("%.02f", ld))
+		if ln.Stats.IsValid() {
+			imgui.Text(fmt.Sprintf("%.02f", ln.Stats.OverSource.Max))
 		} else {
 			imgui.Text("-")
 		}
@@ -374,7 +385,7 @@ func (win *winCoProcPerformance) drawSourceLines(src *developer.Source) {
 	imgui.EndTable()
 }
 
-func (win *winCoProcPerformance) drawFunctionFilter(functionFilter *developer.FunctionFilter) {
+func (win *winCoProcPerformance) drawFunctionFilter(src *developer.Source, functionFilter *developer.FunctionFilter) {
 	imgui.Spacing()
 
 	if len(functionFilter.Lines.Lines) == 0 {
@@ -396,7 +407,7 @@ func (win *winCoProcPerformance) drawFunctionFilter(functionFilter *developer.Fu
 	width := imgui.ContentRegionAvail().X
 	imgui.TableSetupColumnV("Line", imgui.TableColumnFlagsPreferSortDescending, width*0.05, 0)
 	imgui.TableSetupColumnV("Source", imgui.TableColumnFlagsNoSort, width*0.60, 1)
-	imgui.TableSetupColumnV("Load", imgui.TableColumnFlagsNoSortAscending|imgui.TableColumnFlagsDefaultSort, width*0.1, 2)
+	imgui.TableSetupColumnV("Frame", imgui.TableColumnFlagsNoSortAscending|imgui.TableColumnFlagsDefaultSort, width*0.1, 2)
 	imgui.TableSetupColumnV("Avg", imgui.TableColumnFlagsNoSortAscending, width*0.1, 3)
 	imgui.TableSetupColumnV("Max", imgui.TableColumnFlagsNoSortAscending, width*0.1, 4)
 
@@ -412,11 +423,23 @@ func (win *winCoProcPerformance) drawFunctionFilter(functionFilter *developer.Fu
 			case 0:
 				functionFilter.Lines.SortByLineNumber(s.SortDirection == imgui.SortDirectionAscending)
 			case 2:
-				functionFilter.Lines.SortByLoad(true)
+				if win.functionTabScale {
+					functionFilter.Lines.SortByFrameLoadOverFunction(true)
+				} else {
+					functionFilter.Lines.SortByFrameLoadOverSource(true)
+				}
 			case 3:
-				functionFilter.Lines.SortByAverageCycles(true)
+				if win.functionTabScale {
+					functionFilter.Lines.SortByAverageLoadOverFunction(true)
+				} else {
+					functionFilter.Lines.SortByAverageLoadOverSource(true)
+				}
 			case 4:
-				functionFilter.Lines.SortByMaxCycles(true)
+				if win.functionTabScale {
+					functionFilter.Lines.SortByMaxLoadOverFunction(true)
+				} else {
+					functionFilter.Lines.SortByMaxLoadOverSource(true)
+				}
 			}
 		}
 		sort.ClearSpecsDirty()
@@ -450,8 +473,12 @@ func (win *winCoProcPerformance) drawFunctionFilter(functionFilter *developer.Fu
 
 		imgui.TableNextColumn()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLoad)
-		if ld, ok := ln.Stats.FrameLoad(); ok {
-			imgui.Text(fmt.Sprintf("%.02f", ld))
+		if ln.Stats.IsValid() {
+			if win.functionTabScale {
+				imgui.Text(fmt.Sprintf("%.02f", ln.Stats.OverFunction.Frame))
+			} else {
+				imgui.Text(fmt.Sprintf("%.02f", ln.Stats.OverSource.Frame))
+			}
 		} else {
 			imgui.Text("-")
 		}
@@ -459,8 +486,12 @@ func (win *winCoProcPerformance) drawFunctionFilter(functionFilter *developer.Fu
 
 		imgui.TableNextColumn()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceAvgLoad)
-		if avg, ok := ln.Stats.AverageLoad(); ok {
-			imgui.Text(fmt.Sprintf("%.02f", avg))
+		if ln.Stats.IsValid() {
+			if win.functionTabScale {
+				imgui.Text(fmt.Sprintf("%.02f", ln.Stats.OverFunction.Average))
+			} else {
+				imgui.Text(fmt.Sprintf("%.02f", ln.Stats.OverSource.Average))
+			}
 		} else {
 			imgui.Text("-")
 		}
@@ -468,8 +499,12 @@ func (win *winCoProcPerformance) drawFunctionFilter(functionFilter *developer.Fu
 
 		imgui.TableNextColumn()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceMaxLoad)
-		if max, ok := ln.Stats.MaximumLoad(); ok {
-			imgui.Text(fmt.Sprintf("%.02f", max))
+		if ln.Stats.IsValid() {
+			if win.functionTabScale {
+				imgui.Text(fmt.Sprintf("%.02f", ln.Stats.OverFunction.Max))
+			} else {
+				imgui.Text(fmt.Sprintf("%.02f", ln.Stats.OverSource.Max))
+			}
 		} else {
 			imgui.Text("-")
 		}

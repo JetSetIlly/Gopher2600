@@ -15,64 +15,74 @@
 
 package developer
 
-// CycleCounting statistics
-type SourceStats struct {
-	// the number of cycles this entity has consumed during the course of the previous frame
-	load      float32
-	loadValid bool
-
-	// the average load for this entity
-	avgLoad      float32
-	avgLoadValid bool
-
-	// support fields for calculating the average
-	cumulativeLoad float32
-	numSteps       float32
-
-	// the highest load value we've ever seen
-	maxLoad      float32
-	maxLoadValid bool
-
-	// working value that will be assigned to FrameCycles on the next television.NewFrame()
-	cyclesCount float32
+// Load records the frame (or current) load as well as the average and
+// maximum load.
+type Load struct {
+	Frame   float32
+	Average float32
+	Max     float32
 }
 
-func (stats *SourceStats) newFrame(allLoadCycles float32) {
-	if stats.cyclesCount == 0 || allLoadCycles == 0 {
-		stats.load = 0
-		stats.loadValid = false
-	} else {
-		stats.load = stats.cyclesCount / allLoadCycles * 100.0
-		stats.loadValid = true
+// Stats records the cycle count over time and can be used to the frame
+// (or current) load as well as average and maximum load.
+//
+// The actual percentage values are accessed through the OverSource and
+// OverFunction fields. These fields provide the necessary scale by which
+// the load is measured.
+//
+// The validity of the OverSource and OverFunction fields depends on context.
+// For instance, for the SourceFunction type, the corresponding OverFunction
+// field is invalid. For the Source type meanwhile, neither field is valid.
+//
+// For the SourceLine type however, both OverSource and OverFunction can be
+// used to provide a different scaling to the load values.
+type Stats struct {
+	OverSource   Load
+	OverFunction Load
 
-		if stats.load > stats.maxLoad {
-			stats.maxLoad = stats.load
-			stats.maxLoadValid = true
+	cumulativeCount float32
+	numFrames       float32
+	avgCount        float32
+
+	frameCount float32
+	count      float32
+}
+
+// IsValid returns true if the statistics have ever been updated. ie. the
+// source associated with this statistic has ever executed.
+func (stats *Stats) IsValid() bool {
+	return stats.cumulativeCount > 0
+}
+
+// update statistics, using source and function to update the Load values as
+// appropriate.
+func (stats *Stats) newFrame(source *Stats, function *Stats) {
+	stats.cumulativeCount += stats.count
+	stats.numFrames++
+	stats.avgCount = stats.cumulativeCount / stats.numFrames
+
+	stats.frameCount = stats.count
+	stats.count = 0
+
+	if function != nil {
+		frameLoad := stats.frameCount / function.frameCount * 100
+		stats.OverFunction.Frame = frameLoad
+
+		stats.OverFunction.Average = stats.avgCount / function.avgCount * 100
+
+		if frameLoad > stats.OverFunction.Max {
+			stats.OverFunction.Max = frameLoad
 		}
-
-		stats.numSteps++
-		stats.cumulativeLoad += stats.load
-		stats.avgLoad = stats.cumulativeLoad / stats.numSteps
-		stats.avgLoadValid = true
 	}
 
-	stats.cyclesCount = 0
-}
+	if source != nil {
+		frameLoad := stats.frameCount / source.frameCount * 100
+		stats.OverSource.Frame = frameLoad
 
-// FrameLoad returns the load for this entity over the course of the most
-// recent frame. Return false if load cannot be determined.
-func (stats SourceStats) FrameLoad() (float32, bool) {
-	return stats.load, stats.loadValid
-}
+		stats.OverSource.Average = stats.avgCount / source.avgCount * 100
 
-// AverageLoad returns the average load for this entity over the course of the
-// emulation's lifetime. Return false if load cannot be determined.
-func (stats SourceStats) AverageLoad() (float32, bool) {
-	return stats.avgLoad, stats.avgLoadValid
-}
-
-// AverageLoad returns the average load for this entity over the course of the
-// emulation's lifetime. Return false if load cannot be determined.
-func (stats SourceStats) MaximumLoad() (float32, bool) {
-	return stats.maxLoad, stats.maxLoadValid
+		if frameLoad > stats.OverSource.Max {
+			stats.OverSource.Max = frameLoad
+		}
+	}
 }
