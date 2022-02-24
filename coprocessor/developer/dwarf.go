@@ -50,6 +50,8 @@ type SourceDisasm struct {
 	Addr        uint32
 	Opcode      uint16
 	Instruction string
+
+	Line *SourceLine
 }
 
 func (d *SourceDisasm) String() string {
@@ -369,6 +371,9 @@ func NewSource(pathToROM string) (*Source, error) {
 					if d, ok := src.Disassembly[addr]; ok {
 						// add disassembly to the list of instructions for the workingSourceLine
 						workingSourceLine.Disassembly = append(workingSourceLine.Disassembly, d)
+
+						// link diassembly back to source line
+						d.Line = workingSourceLine
 
 						// associate the address with the workingSourceLine
 						src.linesByAddress[uint32(addr)] = workingSourceLine

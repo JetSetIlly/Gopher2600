@@ -30,6 +30,46 @@ import (
 const winCoProcSourceID = "Coprocessor Source"
 const winCoProcSourceMenu = "Source"
 
+// type that can test whether a number is in between (incluside) of the two
+// values in the array
+//
+// the start of the range is index 0 and the end of the range is index 1
+//
+// the inRange() function should be used for inclusion testing and the
+// ordered() function will return the start and end values such that start
+// is always less than or equal to the end value.
+//
+// also handles the developer.DisasmRange
+type lineRange struct {
+	start  int
+	end    int
+	disasm developer.DisasmRange
+}
+
+func (r *lineRange) single(lineNumber int) {
+	r.start = lineNumber
+	r.end = lineNumber
+	r.disasm.Clear()
+}
+
+func (r lineRange) isSingle() bool {
+	return r.start == r.end
+}
+
+func (r lineRange) inRange(l int) bool {
+	if r.end < r.start {
+		return l >= r.end && l <= r.start
+	}
+	return l >= r.start && l <= r.end
+}
+
+func (r lineRange) ordered() (int, int) {
+	if r.start < r.end {
+		return r.start, r.end
+	}
+	return r.end, r.start
+}
+
 type winCoProcSource struct {
 	img           *SdlImgui
 	open          bool
@@ -37,8 +77,10 @@ type winCoProcSource struct {
 	optionsHeight float32
 
 	scrollToFile string
-	selectedLine int
 	scrollTo     bool
+
+	selectedLine lineRange
+	selecting    bool
 
 	firstOpen bool
 
@@ -137,7 +179,7 @@ func (win *winCoProcSource) draw() {
 			if m, ok := src.Functions["main"]; ok {
 				win.scrollTo = true
 				win.scrollToFile = m.DeclLine.File.Filename
-				win.selectedLine = m.DeclLine.LineNumber
+				win.selectedLine.single(m.DeclLine.LineNumber)
 			}
 
 			win.firstOpen = false
@@ -182,10 +224,16 @@ func (win *winCoProcSource) draw() {
 		imgui.BeginChildV("##coprocSourceMain", imgui.Vec2{X: 0, Y: imguiRemainingWinHeight() - win.optionsHeight}, false, 0)
 
 		imgui.PushFont(win.img.glsl.fonts.code)
+		lineSpacing := float32(win.img.prefs.codeFontLineSpacing.Get().(int))
+
+		// push cell padding and item spacing style such that we can have
+		// variable height rows (according to lineSpacing setting) and a
+		// Selectable() that leaves no gaps between the rows
 		style := imgui.CurrentStyle()
 		rowSize := style.CellPadding()
-		rowSize.Y = float32(win.img.prefs.codeFontLineSpacing.Get().(int))
+		rowSize.Y = lineSpacing
 		imgui.PushStyleVarVec2(imgui.StyleVarCellPadding, rowSize) // affects table row height
+		rowSize.Y += lineSpacing
 		imgui.PushStyleVarVec2(imgui.StyleVarItemSpacing, rowSize) // affects selectable height
 
 		const numColumns = 4
@@ -210,8 +258,8 @@ func (win *winCoProcSource) draw() {
 				ln := win.selectedFile.Lines[i]
 				imgui.TableNextRow()
 
-				// highlight selected line
-				if ln.LineNumber == win.selectedLine {
+				// highlight selected line(s)
+				if win.selectedLine.inRange(ln.LineNumber) {
 					imgui.TableSetBgColor(imgui.TableBgTargetRowBg0, win.img.cols.CoProcSourceSelected)
 				}
 
@@ -228,45 +276,109 @@ func (win *winCoProcSource) draw() {
 						imgui.SelectableV(string(fonts.Chip), false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{0, 0})
 					}
 
-					if win.showAsm {
-						imguiTooltip(func() {
-							// remove cell/item styling for the duration of the tooltip
-							pad := style.CellPadding()
-							item := style.ItemSpacing()
-							imgui.PopStyleVarV(2)
-							defer imgui.PushStyleVarVec2(imgui.StyleVarCellPadding, pad)
-							defer imgui.PushStyleVarVec2(imgui.StyleVarItemSpacing, item)
-
-							imgui.Text(ln.File.ShortFilename)
-							imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLineNumber)
-							imgui.Text(fmt.Sprintf("Line: %d", ln.LineNumber))
-							imgui.PopStyleColor()
-							imgui.Spacing()
-							imgui.Separator()
-							imgui.Spacing()
-							imgui.BeginTable("##disasmTable", 3)
-							for _, asm := range ln.Disassembly {
-								imgui.TableNextRow()
-								imgui.TableNextColumn()
-								imgui.Text(fmt.Sprintf("%08x", asm.Addr))
-								imgui.TableNextColumn()
-								imgui.Text(fmt.Sprintf("%04x", asm.Opcode))
-								imgui.TableNextColumn()
-								imgui.Text(asm.Instruction)
-							}
-							imgui.EndTable()
-						}, true)
-					}
 				} else {
 					imgui.SelectableV("", false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{0, 0})
 				}
 				imgui.PopStyleColorV(2)
 
+				// select source lines with mouse click and drag
+				if imgui.IsItemHoveredV(imgui.HoveredFlagsAllowWhenBlockedByActiveItem) {
+
+					// asm tooltip
+					multiline := !win.selectedLine.isSingle() && win.selectedLine.inRange(ln.LineNumber)
+					if win.showAsm {
+						// how we show the asm depends on whether there are
+						// multiple lines selected and whether there is any
+						// diassembly for those lines.
+						//
+						// if only a single line is selected then we simply
+						// check that there is are asm entries for that line
+						//
+						// there is also condition to test whether the
+						// multiline selection is in progress (win.selecting).
+						// this is to prevent a frame's worth of flicker caused
+						// by time difference of the mouse running out of range
+						// of the multiline and the new range being setup (see
+						// IsMouseDragging() below)
+						if (!multiline && len(ln.Disassembly) > 0) ||
+							((multiline || win.selecting) && !win.selectedLine.disasm.IsEmpty()) {
+
+							imguiTooltip(func() {
+								// remove cell/item styling for the duration of the tooltip
+								pad := style.CellPadding()
+								item := style.ItemSpacing()
+								imgui.PopStyleVarV(2)
+								defer imgui.PushStyleVarVec2(imgui.StyleVarCellPadding, pad)
+								defer imgui.PushStyleVarVec2(imgui.StyleVarItemSpacing, item)
+
+								imgui.Text(ln.File.ShortFilename)
+
+								imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLineNumber)
+								if multiline || win.selecting {
+									s, e := win.selectedLine.ordered()
+									imgui.Text(fmt.Sprintf("Lines: %d - %d", s, e))
+								} else {
+									imgui.Text(fmt.Sprintf("Line: %d", ln.LineNumber))
+								}
+								imgui.PopStyleColor()
+
+								imgui.Spacing()
+								imgui.Separator()
+								imgui.Spacing()
+								imgui.BeginTable("##disasmTable", 3)
+
+								// choose which disasm list to use
+								disasm := ln.Disassembly
+								if multiline || win.selecting {
+									disasm = win.selectedLine.disasm.Disasm
+								}
+
+								// draw disassembly, colouring the text according to whether the disassembly entry
+								// is associated with the current line (ie. the one the mouse is over)
+								for _, d := range disasm {
+									if d.Line.LineNumber == ln.LineNumber {
+										imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceDisasm)
+									} else {
+										imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceDisasmFade)
+									}
+
+									imgui.TableNextRow()
+									imgui.TableNextColumn()
+									imgui.Text(fmt.Sprintf("%08x", d.Addr))
+									imgui.TableNextColumn()
+									imgui.Text(fmt.Sprintf("%04x", d.Opcode))
+									imgui.TableNextColumn()
+									imgui.Text(d.Instruction)
+
+									imgui.PopStyleColor()
+								}
+								imgui.EndTable()
+							}, false)
+						}
+					}
+
+					if imgui.IsMouseClicked(0) {
+						win.selectedLine.single(ln.LineNumber)
+						win.selecting = true
+					}
+					if imgui.IsMouseDragging(0, 0.0) && win.selecting {
+						win.selectedLine.end = ln.LineNumber
+						win.selectedLine.disasm.Clear()
+						s, e := win.selectedLine.ordered()
+						for i := s; i <= e; i++ {
+							win.selectedLine.disasm.Add(win.selectedFile.Lines[i-1])
+						}
+					}
+					if imgui.IsMouseReleased(0) {
+						win.selecting = false
+					}
+				}
+
 				imgui.TableNextColumn()
 				imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLoad)
 				if ln.Stats.IsValid() {
 					imgui.Text(fmt.Sprintf("%.02f", ln.Stats.OverSource.Frame))
-				} else {
+				} else if len(ln.Disassembly) > 0 {
 					imgui.Text(" -")
 				}
 				imgui.PopStyleColor()
@@ -285,7 +397,7 @@ func (win *winCoProcSource) draw() {
 
 		// scroll to correct line
 		if win.scrollTo {
-			imgui.SetScrollY(clipper.ItemsHeight * float32(win.selectedLine-10))
+			imgui.SetScrollY(clipper.ItemsHeight * float32(win.selectedLine.start-10))
 			win.scrollTo = false
 			win.uncollapseNext = false
 		}
@@ -323,7 +435,7 @@ func (win *winCoProcSource) gotoSourceLine(ln *developer.SourceLine) {
 	win.setOpen(true)
 	win.scrollTo = true
 	win.scrollToFile = ln.File.Filename
-	win.selectedLine = ln.LineNumber
+	win.selectedLine.single(ln.LineNumber)
 	win.uncollapseNext = true
 
 	// if we haven't opened the window before we don't want the firstOpen procedure to run
