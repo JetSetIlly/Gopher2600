@@ -156,7 +156,9 @@ func (win *winCoProcPerformance) draw() {
 			imgui.Checkbox("Show Source in Tooltip", &win.showSrc)
 			if functionFilterActive {
 				imgui.SameLineV(0, 20)
-				imgui.Checkbox("Scale Statistics", &win.functionTabScale)
+				if imgui.Checkbox("Scale Statistics", &win.functionTabScale) {
+					win.functionTabDirty = true
+				}
 			}
 		})
 	})
