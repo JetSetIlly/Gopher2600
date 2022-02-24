@@ -143,19 +143,19 @@ func (e SortedLines) Less(i int, j int) bool {
 		return e.Lines[i].Stats.OverSource.Max < e.Lines[j].Stats.OverSource.Max
 	case sortFrameCyclesOverFunction:
 		if e.descending {
-			return e.Lines[i].Stats.OverSource.Frame > e.Lines[j].Stats.OverSource.Frame
+			return e.Lines[i].Stats.OverFunction.Frame > e.Lines[j].Stats.OverFunction.Frame
 		}
-		return e.Lines[i].Stats.OverSource.Frame > e.Lines[j].Stats.OverSource.Frame
+		return e.Lines[i].Stats.OverFunction.Frame > e.Lines[j].Stats.OverFunction.Frame
 	case sortAverageCyclesOverFunction:
 		if e.descending {
-			return e.Lines[i].Stats.OverSource.Average > e.Lines[j].Stats.OverSource.Average
+			return e.Lines[i].Stats.OverFunction.Average > e.Lines[j].Stats.OverFunction.Average
 		}
-		return e.Lines[i].Stats.OverSource.Average < e.Lines[j].Stats.OverSource.Average
+		return e.Lines[i].Stats.OverFunction.Average < e.Lines[j].Stats.OverFunction.Average
 	case sortMaxCyclesOverFunction:
 		if e.descending {
-			return e.Lines[i].Stats.OverSource.Max > e.Lines[j].Stats.OverSource.Max
+			return e.Lines[i].Stats.OverFunction.Max > e.Lines[j].Stats.OverFunction.Max
 		}
-		return e.Lines[i].Stats.OverSource.Max < e.Lines[j].Stats.OverSource.Max
+		return e.Lines[i].Stats.OverFunction.Max < e.Lines[j].Stats.OverFunction.Max
 	}
 
 	return false
