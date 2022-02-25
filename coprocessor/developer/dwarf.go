@@ -218,7 +218,7 @@ func NewSource(pathToROM string) (*Source, error) {
 	// get DWARF information from ELF file
 	src.dwrf, err = elf.DWARF()
 	if err != nil {
-		return src, curated.Errorf("dwarf: %v", err)
+		return nil, curated.Errorf("dwarf: %v", err)
 	}
 
 	bld, err := newBuild(src.dwrf)
@@ -270,7 +270,7 @@ func NewSource(pathToROM string) (*Source, error) {
 
 			r, err := src.dwrf.LineReader(entry)
 			if err != nil {
-				return src, curated.Errorf("dwarf: %v", err)
+				return nil, curated.Errorf("dwarf: %v", err)
 			}
 
 			// loop through files in the compilation unit. entry 0 is always nil
@@ -350,10 +350,13 @@ func NewSource(pathToROM string) (*Source, error) {
 				workingSourceLine = nil
 			}
 
-			// working source line and address. we'll proces these at the next line entry
+			// check source matches what is in the DWARF data
 			if src.Files[le.File.Name] == nil {
-				workingSourceLine = nil
-				continue // for loop
+				logger.Logf("dwarf", "file not available for linereader: %s", le.File.Name)
+				continue
+			}
+			if le.Line-1 > len(src.Files[le.File.Name].Lines) {
+				return nil, curated.Errorf("dwarf: current source is unrelated to ELF/DWARF data (1)")
 			}
 
 			// if the entry is the end of a sequence then assign nil to workingSourceLine
@@ -362,35 +365,56 @@ func NewSource(pathToROM string) (*Source, error) {
 				continue // for loop
 			}
 
-			// if workingSourceLine is non-nil then lookup the assembly for each
-			// instruction between the address of workingSourceLine and the address
-			// of the current line entry
+			// if workingSourceLine is valid ...
 			if workingSourceLine != nil {
-				for addr := workingAddress; addr < le.Address; addr += 2 {
-					// look for address in disassembly
-					if d, ok := src.Disassembly[addr]; ok {
-						// add disassembly to the list of instructions for the workingSourceLine
-						workingSourceLine.Disassembly = append(workingSourceLine.Disassembly, d)
 
-						// link diassembly back to source line
-						d.Line = workingSourceLine
+				// ... and there are addresses to process ...
+				if le.Address-workingAddress > 0 {
 
-						// associate the address with the workingSourceLine
-						src.linesByAddress[uint32(addr)] = workingSourceLine
+					// ... then find the function for the working address
+					foundFunc, err := bld.findFunction(workingAddress)
+					if err != nil {
+						return nil, curated.Errorf("dwarf: %v", err)
+					}
 
-						// special handling of unconditional branch
-						//
-						// we sometimes see this at the end of a code block
-						// and is important to check for so that the for
-						// doesn't go wandering into the weeds.
-						//
-						// as far as I can tell there is no other way of
-						// checking to see if the end of block of
-						// instructions has been reached
-						//
-						// TODO: improve detection of end of code block during DWARF parsing
-						if len(d.Instruction) > 3 && d.Instruction[:3] == "BAL" {
-							break // for addr loop
+					if foundFunc == nil {
+						logger.Logf("dwarf", "cannot find function for address: %08x", workingAddress)
+						continue // for loop
+					}
+
+					// check source matches what is in the DWARF data
+					if src.Files[foundFunc.filename] == nil {
+						return nil, curated.Errorf("dwarf: current source is unrelated to ELF/DWARF data (2)")
+					}
+					if int(foundFunc.linenum-1) > len(src.Files[foundFunc.filename].Lines) {
+						return nil, curated.Errorf("dwarf: current source is unrelated to ELF/DWARF data (3)")
+					}
+
+					// associate function with workingSourceLine making sure we
+					// use the existing function if it exists
+					if f, ok := src.Functions[foundFunc.name]; ok {
+						workingSourceLine.Function = f
+					} else {
+						src.Functions[foundFunc.name] = &SourceFunction{
+							Name:     foundFunc.name,
+							DeclLine: src.Files[foundFunc.filename].Lines[foundFunc.linenum-1],
+						}
+						src.FunctionNames = append(src.FunctionNames, foundFunc.name)
+						workingSourceLine.Function = src.Functions[foundFunc.name]
+					}
+
+					// add disassembly to source line and build a linesByAddress map
+					for addr := workingAddress; addr < le.Address; addr += 2 {
+						// look for address in disassembly
+						if d, ok := src.Disassembly[addr]; ok {
+							// add disassembly to the list of instructions for the workingSourceLine
+							workingSourceLine.Disassembly = append(workingSourceLine.Disassembly, d)
+
+							// link diassembly back to source line
+							d.Line = workingSourceLine
+
+							// associate the address with the workingSourceLine
+							src.linesByAddress[uint32(addr)] = workingSourceLine
 						}
 					}
 				}
@@ -399,50 +423,9 @@ func NewSource(pathToROM string) (*Source, error) {
 				workingSourceLine = nil
 			}
 
-			// new working source line and working address
+			// defer current line entry
 			workingSourceLine = src.Files[le.File.Name].Lines[le.Line-1]
 			workingAddress = le.Address
-
-			// find function name for line entry
-			foundFunc, err := bld.findFunction(le.Address)
-			if err != nil {
-				return nil, curated.Errorf("dwarf: %v", err)
-			}
-			if foundFunc == nil {
-				continue // for loop
-			}
-
-			var srcFunc *SourceFunction
-
-			if f, ok := src.Files[foundFunc.filename]; ok {
-				srcFunc = &SourceFunction{
-					Name:     foundFunc.name,
-					DeclLine: f.Lines[foundFunc.linenum-1],
-				}
-			}
-			if srcFunc == nil {
-				continue // for loop
-			}
-
-			// if function can't be found then log error and continue
-			if srcFunc.Name == UnknownFunction {
-				logger.Logf("dwarf", "no function for line entry: %s", workingSourceLine.String())
-				workingSourceLine = nil
-				continue // for loop
-			}
-
-			// if function already exists use that function instance.
-			// otherwise, add the function to the map and the list of function
-			// names
-			if _, ok := src.Functions[srcFunc.Name]; ok {
-				srcFunc = src.Functions[srcFunc.Name]
-			} else {
-				src.Functions[srcFunc.Name] = srcFunc
-				src.FunctionNames = append(src.FunctionNames, srcFunc.Name)
-			}
-
-			// associate function with workingSourceLine
-			workingSourceLine.Function = srcFunc
 		}
 	}
 
