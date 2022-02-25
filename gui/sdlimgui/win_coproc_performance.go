@@ -250,7 +250,7 @@ func (win *winCoProcPerformance) drawFunctions(src *developer.Source) {
 
 		imgui.TableNextColumn()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLoad)
-		if fn.Stats.IsValid() {
+		if fn.Stats.OverSource.FrameValid {
 			imgui.Text(fmt.Sprintf("%.02f", fn.Stats.OverSource.Frame))
 		} else {
 			imgui.Text("-")
@@ -259,7 +259,7 @@ func (win *winCoProcPerformance) drawFunctions(src *developer.Source) {
 
 		imgui.TableNextColumn()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceAvgLoad)
-		if fn.Stats.IsValid() {
+		if fn.Stats.OverSource.AverageValid {
 			imgui.Text(fmt.Sprintf("%.02f", fn.Stats.OverSource.Average))
 		} else {
 			imgui.Text("-")
@@ -268,7 +268,7 @@ func (win *winCoProcPerformance) drawFunctions(src *developer.Source) {
 
 		imgui.TableNextColumn()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceMaxLoad)
-		if fn.Stats.IsValid() {
+		if fn.Stats.OverSource.MaxValid {
 			imgui.Text(fmt.Sprintf("%.02f", fn.Stats.OverSource.Max))
 		} else {
 			imgui.Text("-")
@@ -358,7 +358,7 @@ func (win *winCoProcPerformance) drawSourceLines(src *developer.Source) {
 
 		imgui.TableNextColumn()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLoad)
-		if ln.Stats.IsValid() {
+		if ln.Stats.OverSource.FrameValid {
 			imgui.Text(fmt.Sprintf("%.02f", ln.Stats.OverSource.Frame))
 		} else {
 			imgui.Text("-")
@@ -367,7 +367,7 @@ func (win *winCoProcPerformance) drawSourceLines(src *developer.Source) {
 
 		imgui.TableNextColumn()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceAvgLoad)
-		if ln.Stats.IsValid() {
+		if ln.Stats.OverSource.AverageValid {
 			imgui.Text(fmt.Sprintf("%.02f", ln.Stats.OverSource.Average))
 		} else {
 			imgui.Text("-")
@@ -376,7 +376,7 @@ func (win *winCoProcPerformance) drawSourceLines(src *developer.Source) {
 
 		imgui.TableNextColumn()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceMaxLoad)
-		if ln.Stats.IsValid() {
+		if ln.Stats.OverSource.MaxValid {
 			imgui.Text(fmt.Sprintf("%.02f", ln.Stats.OverSource.Max))
 		} else {
 			imgui.Text("-")
@@ -475,40 +475,52 @@ func (win *winCoProcPerformance) drawFunctionFilter(src *developer.Source, funct
 
 		imgui.TableNextColumn()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLoad)
-		if ln.Stats.IsValid() {
-			if win.functionTabScale {
+		if win.functionTabScale {
+			if ln.Stats.OverFunction.FrameValid {
 				imgui.Text(fmt.Sprintf("%.02f", ln.Stats.OverFunction.Frame))
 			} else {
-				imgui.Text(fmt.Sprintf("%.02f", ln.Stats.OverSource.Frame))
+				imgui.Text("-")
 			}
 		} else {
-			imgui.Text("-")
+			if ln.Stats.OverSource.FrameValid {
+				imgui.Text(fmt.Sprintf("%.02f", ln.Stats.OverSource.Frame))
+			} else {
+				imgui.Text("-")
+			}
 		}
 		imgui.PopStyleColor()
 
 		imgui.TableNextColumn()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceAvgLoad)
-		if ln.Stats.IsValid() {
-			if win.functionTabScale {
+		if win.functionTabScale {
+			if ln.Stats.OverFunction.AverageValid {
 				imgui.Text(fmt.Sprintf("%.02f", ln.Stats.OverFunction.Average))
 			} else {
-				imgui.Text(fmt.Sprintf("%.02f", ln.Stats.OverSource.Average))
+				imgui.Text("-")
 			}
 		} else {
-			imgui.Text("-")
+			if ln.Stats.OverSource.AverageValid {
+				imgui.Text(fmt.Sprintf("%.02f", ln.Stats.OverSource.Average))
+			} else {
+				imgui.Text("-")
+			}
 		}
 		imgui.PopStyleColor()
 
 		imgui.TableNextColumn()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceMaxLoad)
-		if ln.Stats.IsValid() {
-			if win.functionTabScale {
+		if win.functionTabScale {
+			if ln.Stats.OverFunction.MaxValid {
 				imgui.Text(fmt.Sprintf("%.02f", ln.Stats.OverFunction.Max))
 			} else {
-				imgui.Text(fmt.Sprintf("%.02f", ln.Stats.OverSource.Max))
+				imgui.Text("-")
 			}
 		} else {
-			imgui.Text("-")
+			if ln.Stats.OverSource.MaxValid {
+				imgui.Text(fmt.Sprintf("%.02f", ln.Stats.OverSource.Max))
+			} else {
+				imgui.Text("-")
+			}
 		}
 		imgui.PopStyleColor()
 	}

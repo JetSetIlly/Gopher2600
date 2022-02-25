@@ -21,6 +21,10 @@ type Load struct {
 	Frame   float32
 	Average float32
 	Max     float32
+
+	FrameValid   bool
+	AverageValid bool
+	MaxValid     bool
 }
 
 // Stats records the cycle count over time and can be used to the frame
@@ -67,22 +71,28 @@ func (stats *Stats) newFrame(source *Stats, function *Stats) {
 	if function != nil {
 		frameLoad := stats.frameCount / function.frameCount * 100
 		stats.OverFunction.Frame = frameLoad
+		stats.OverFunction.FrameValid = stats.frameCount > 0 && function.frameCount > 0
 
 		stats.OverFunction.Average = stats.avgCount / function.avgCount * 100
+		stats.OverFunction.AverageValid = stats.avgCount > 0 && function.avgCount > 0
 
-		if frameLoad > stats.OverFunction.Max {
+		if stats.OverFunction.FrameValid && frameLoad >= stats.OverFunction.Max {
 			stats.OverFunction.Max = frameLoad
+			stats.OverFunction.MaxValid = stats.OverFunction.MaxValid || stats.OverFunction.FrameValid
 		}
 	}
 
 	if source != nil {
 		frameLoad := stats.frameCount / source.frameCount * 100
 		stats.OverSource.Frame = frameLoad
+		stats.OverSource.FrameValid = stats.frameCount > 0 && source.frameCount > 0
 
 		stats.OverSource.Average = stats.avgCount / source.avgCount * 100
+		stats.OverSource.AverageValid = stats.avgCount > 0 && source.avgCount > 0
 
-		if frameLoad > stats.OverSource.Max {
+		if stats.OverSource.FrameValid && frameLoad >= stats.OverSource.Max {
 			stats.OverSource.Max = frameLoad
+			stats.OverSource.MaxValid = stats.OverSource.MaxValid || stats.OverSource.FrameValid
 		}
 	}
 }
