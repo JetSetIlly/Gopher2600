@@ -17,6 +17,7 @@ package developer
 
 import (
 	"sort"
+	"strings"
 )
 
 type sortMethods int
@@ -113,9 +114,9 @@ func (e SortedLines) Less(i int, j int) bool {
 	switch e.method {
 	case sortFunction:
 		if e.descending {
-			return e.Lines[i].Function.Name > e.Lines[j].Function.Name
+			return strings.ToUpper(e.Lines[i].Function.Name) > strings.ToUpper(e.Lines[j].Function.Name)
 		}
-		return e.Lines[i].Function.Name < e.Lines[j].Function.Name
+		return strings.ToUpper(e.Lines[i].Function.Name) < strings.ToUpper(e.Lines[j].Function.Name)
 	case sortFile:
 		if e.descending {
 			return e.Lines[i].Function.DeclLine.File.Filename > e.Lines[j].Function.DeclLine.File.Filename
@@ -220,9 +221,9 @@ func (e SortedFunctions) Less(i int, j int) bool {
 		return e.Functions[i].DeclLine.File.Filename < e.Functions[j].DeclLine.File.Filename
 	case sortFunction:
 		if e.descending {
-			return e.Functions[i].Name > e.Functions[j].Name
+			return strings.ToUpper(e.Functions[i].Name) > strings.ToUpper(e.Functions[j].Name)
 		}
-		return e.Functions[i].Name < e.Functions[j].Name
+		return strings.ToUpper(e.Functions[i].Name) < strings.ToUpper(e.Functions[j].Name)
 	case sortFrameCyclesOverSource:
 		if e.descending {
 			return e.Functions[i].Stats.OverSource.Frame > e.Functions[j].Stats.OverSource.Frame
