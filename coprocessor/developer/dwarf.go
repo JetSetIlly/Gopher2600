@@ -148,6 +148,16 @@ type Source struct {
 
 	// cycle statisics for the entire program
 	Stats Stats
+
+	// flag to indicate whether the execution profile has changed since it was cleared
+	//
+	// cheap and easy way to prevent sorting too often - rather than sort after
+	// every call to execute(), we can use this flag to sort only when we need
+	// to in the GUI.
+	//
+	// probably not scalable but sufficient for our needs of a single GUI
+	// running and using the statistics for only one reason
+	ExecutionProfileChanged bool
 }
 
 // NewSource is the preferred method of initialisation for the Source type.
@@ -738,7 +748,10 @@ func (src *Source) findSourceLine(addr uint32) (*SourceLine, error) {
 	return nil, nil
 }
 
-func (src *Source) execute(addr uint32, ct float32) {
+func (src *Source) executeProfile(addr uint32, ct float32) {
+	// indicate that execution profile has changed
+	src.ExecutionProfileChanged = true
+
 	line, ok := src.linesByAddress[addr]
 	if ok {
 		line.Stats.count += ct

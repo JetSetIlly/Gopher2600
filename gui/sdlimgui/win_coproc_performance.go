@@ -101,6 +101,16 @@ func (win *winCoProcPerformance) draw() {
 			return
 		}
 
+		// sort statistics if ARM has completed an execution since last GUI frame
+		if src.ExecutionProfileChanged {
+			src.ExecutionProfileChanged = false
+			src.SortedLines.Sort()
+			src.SortedFunctions.Sort()
+			for _, ff := range src.FunctionFilters {
+				ff.Lines.Sort()
+			}
+		}
+
 		imgui.BeginChildV("##coprocPerformanceMain", imgui.Vec2{X: 0, Y: imguiRemainingWinHeight() - win.optionsHeight}, false, 0)
 		imgui.BeginTabBarV("##coprocSourceTabBar", imgui.TabBarFlagsAutoSelectNewTabs)
 

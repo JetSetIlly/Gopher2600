@@ -142,13 +142,7 @@ func (dev *Developer) ExecutionProfile(addr map[uint32]float32) {
 
 	if dev.source != nil {
 		for pc, ct := range addr {
-			dev.source.execute(pc, ct)
-		}
-
-		dev.source.SortedLines.Sort()
-		dev.source.SortedFunctions.Sort()
-		for _, ff := range dev.source.FunctionFilters {
-			ff.Lines.Sort()
+			dev.source.executeProfile(pc, ct)
 		}
 	}
 }
