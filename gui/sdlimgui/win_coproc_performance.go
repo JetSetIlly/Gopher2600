@@ -32,10 +32,12 @@ const winCoProcPerformanceID = "Coprocessor Performance"
 const winCoProcPerformanceMenu = "Performance"
 
 type winCoProcPerformance struct {
-	img           *SdlImgui
-	open          bool
-	showSrc       bool
-	optionsHeight float32
+	img  *SdlImgui
+	open bool
+
+	showSrc           bool
+	hideUnusedEntries bool
+	optionsHeight     float32
 
 	// function tab is newly opened/changed
 	functionTabDirty  bool
@@ -164,8 +166,10 @@ func (win *winCoProcPerformance) draw() {
 			}
 
 			imgui.Checkbox("Show Source in Tooltip", &win.showSrc)
+			imgui.SameLineV(0, 15)
+			imgui.Checkbox("Hide Unexecuted Items", &win.hideUnusedEntries)
 			if functionFilterActive {
-				imgui.SameLineV(0, 20)
+				imgui.SameLineV(0, 15)
 				if imgui.Checkbox("Scale Statistics", &win.functionTabScale) {
 					win.functionTabDirty = true
 				}
@@ -179,6 +183,11 @@ func (win *winCoProcPerformance) drawFunctions(src *developer.Source) {
 
 	if src == nil || len(src.SortedFunctions.Functions) == 0 {
 		imgui.Text("No performance profile")
+		return
+	}
+
+	if win.hideUnusedEntries && !src.Stats.IsValid() {
+		imgui.Text("No functions have been executed yet")
 		return
 	}
 
@@ -224,6 +233,10 @@ func (win *winCoProcPerformance) drawFunctions(src *developer.Source) {
 	}
 
 	for _, fn := range src.SortedFunctions.Functions {
+		if win.hideUnusedEntries && !fn.Stats.IsValid() {
+			continue
+		}
+
 		imgui.TableNextRow()
 
 		imgui.TableNextColumn()
@@ -297,6 +310,11 @@ func (win *winCoProcPerformance) drawSourceLines(src *developer.Source) {
 		return
 	}
 
+	if win.hideUnusedEntries && !src.Stats.IsValid() {
+		imgui.Text("No lines have been executed yet")
+		return
+	}
+
 	const numColumns = 6
 
 	flgs := imgui.TableFlagsScrollY
@@ -337,6 +355,10 @@ func (win *winCoProcPerformance) drawSourceLines(src *developer.Source) {
 	}
 
 	for _, ln := range src.SortedLines.Lines {
+		if win.hideUnusedEntries && !ln.Stats.IsValid() {
+			continue
+		}
+
 		imgui.TableNextRow()
 
 		imgui.TableNextColumn()
@@ -405,6 +427,11 @@ func (win *winCoProcPerformance) drawFunctionFilter(src *developer.Source, funct
 		return
 	}
 
+	if win.hideUnusedEntries && !src.Stats.IsValid() {
+		imgui.Text("This function hasn't been executed yet")
+		return
+	}
+
 	const numColumns = 5
 
 	flgs := imgui.TableFlagsScrollY
@@ -458,6 +485,10 @@ func (win *winCoProcPerformance) drawFunctionFilter(src *developer.Source, funct
 	}
 
 	for _, ln := range functionFilter.Lines.Lines {
+		if win.hideUnusedEntries && !ln.Stats.IsValid() {
+			continue
+		}
+
 		imgui.TableNextRow()
 
 		imgui.TableNextColumn()
