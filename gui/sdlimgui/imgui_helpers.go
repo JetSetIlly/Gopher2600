@@ -253,44 +253,39 @@ func imguiSeparator() {
 func drawByteGrid(data []uint8, cmp []uint8, diffCol imgui.Vec4, base uint16, commit func(uint16, uint8)) {
 	// format string for column headers. the number of digits required depends
 	// on the length of the data slice
-	columnFormat := fmt.Sprintf("%%0%dx- ", len(fmt.Sprintf("%x", len(data)-1))-1)
+	columnFormat := fmt.Sprintf("%%0%dx- ", len(fmt.Sprintf("%x", int(base)+len(data)-1))-1)
 
 	defaultItemInnerSpacing := imgui.CurrentStyle().ItemInnerSpacing()
 	imgui.PushStyleVarVec2(imgui.StyleVarItemSpacing, imgui.Vec2{})
-	imgui.PushItemWidth(imguiTextWidth(2))
-
 	defer imgui.PopStyleVar()
+
+	imgui.PushItemWidth(imguiTextWidth(2))
 	defer imgui.PopItemWidth()
 
-	const gridWidth = 16
+	const numColumns = 16
 
 	// draw headers for each column
-	headerDim := imgui.Vec2{X: imguiTextWidth(4), Y: imgui.CursorPosY()}
-	for i := 0; i < gridWidth; i++ {
-		imgui.SetCursorPos(headerDim)
-		headerDim.X += imguiTextWidth(2)
+	headerPos := imgui.CursorPos()
+	headerPos.X += imguiGetFrameDim(fmt.Sprintf("%x", int(base)+len(data)-1)).X
+	for i := 0; i < numColumns; i++ {
+		imgui.SetCursorPos(headerPos)
+		headerPos.X += imguiTextWidth(2)
 		imgui.AlignTextToFramePadding()
 		imgui.Text(fmt.Sprintf("-%x", i))
 	}
 
 	var clipper imgui.ListClipper
-	clipper.Begin(len(data) / gridWidth)
+	clipper.Begin(len(data) / numColumns)
 
 	for clipper.Step() {
 		for i := clipper.DisplayStart; i < clipper.DisplayEnd; i++ {
-			for j := 0; j < gridWidth; j++ {
-				offset := uint16(i*gridWidth) + uint16(j)
-				addr := base + offset
+			offset := uint16(i * numColumns)
+			addr := base + offset
 
-				// draw column header
-				if j == 0 {
-					imgui.AlignTextToFramePadding()
-					imgui.Text(fmt.Sprintf(columnFormat, addr/16))
-					imgui.SameLine()
-				} else {
-					imgui.SameLine()
-				}
+			imgui.AlignTextToFramePadding()
+			imgui.Text(fmt.Sprintf(columnFormat, addr/16))
 
+			for j := 0; j < numColumns; j++ {
 				// editable byte
 				b := data[offset]
 
@@ -305,6 +300,7 @@ func drawByteGrid(data []uint8, cmp []uint8, diffCol imgui.Vec4, base uint16, co
 				}
 
 				s := fmt.Sprintf("%02x", b)
+				imgui.SameLine()
 				if imguiHexInput(fmt.Sprintf("##%d", addr), 2, &s) {
 					if v, err := strconv.ParseUint(s, 16, 8); err == nil {
 						commit(addr, uint8(v))
@@ -324,6 +320,10 @@ func drawByteGrid(data []uint8, cmp []uint8, diffCol imgui.Vec4, base uint16, co
 				if b != c {
 					imgui.PopStyleColor()
 				}
+
+				// advance offset and addr by one
+				offset++
+				addr++
 			}
 		}
 	}
