@@ -50,6 +50,10 @@ func NewPanel(id plugging.PortID, bus ports.PeripheralBus) ports.Peripheral {
 	return pan
 }
 
+// Unplug implements the Peripheral interface.
+func (pan *Panel) Unplug() {
+}
+
 // Snapshot implements the Peripheral interface.
 func (pan *Panel) Snapshot() ports.Peripheral {
 	n := *pan

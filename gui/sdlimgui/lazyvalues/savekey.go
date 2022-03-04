@@ -41,7 +41,7 @@ type LazySaveKey struct {
 
 	SDA            []float32
 	SCL            []float32
-	State          savekey.MessageState
+	State          savekey.SaveKeyState
 	Dir            savekey.DataDirection
 	Ack            bool
 	Bits           uint8
@@ -90,7 +90,7 @@ func (lz *LazySaveKey) update() {
 		lz.SCL = l
 	}
 
-	lz.State = lz.state.Load().(savekey.MessageState)
+	lz.State = lz.state.Load().(savekey.SaveKeyState)
 	lz.Dir = lz.dir.Load().(savekey.DataDirection)
 	lz.Ack = lz.ack.Load().(bool)
 	lz.Bits = lz.bits.Load().(uint8)

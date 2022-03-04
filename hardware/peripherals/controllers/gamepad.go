@@ -78,6 +78,10 @@ func NewGamepad(port plugging.PortID, bus ports.PeripheralBus) ports.Peripheral 
 	return pad
 }
 
+// Unplug implements the Peripheral interface.
+func (pan *Gamepad) Unplug() {
+}
+
 // Snapshot implements the Peripheral interface.
 func (pad *Gamepad) Snapshot() ports.Peripheral {
 	n := *pad

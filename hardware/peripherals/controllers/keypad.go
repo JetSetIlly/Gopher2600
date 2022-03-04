@@ -57,6 +57,10 @@ func NewKeypad(port plugging.PortID, bus ports.PeripheralBus) ports.Peripheral {
 	return key
 }
 
+// Unplug implements the Peripheral interface.
+func (key *Keypad) Unplug() {
+}
+
 // Snapshot implements the Peripheral interface.
 func (key *Keypad) Snapshot() ports.Peripheral {
 	n := *key

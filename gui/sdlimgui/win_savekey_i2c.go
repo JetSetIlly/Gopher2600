@@ -119,15 +119,15 @@ func (win *winSaveKeyI2C) drawOscilloscope() {
 func (win *winSaveKeyI2C) drawStatus() {
 	imgui.AlignTextToFramePadding()
 	switch win.img.lz.SaveKey.State {
-	case savekey.Stopped:
+	case savekey.SaveKeyStopped:
 		imgui.Text("Stopped")
-	case savekey.Starting:
+	case savekey.SaveKeyStarting:
 		imgui.Text("Starting")
-	case savekey.AddressHi:
+	case savekey.SaveKeyAddressHi:
 		fallthrough
-	case savekey.AddressLo:
+	case savekey.SaveKeyAddressLo:
 		imgui.Text("Getting address")
-	case savekey.Data:
+	case savekey.SaveKeyData:
 		switch win.img.lz.SaveKey.Dir {
 		case savekey.Reading:
 			imgui.Text("Reading")

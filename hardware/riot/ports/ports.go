@@ -122,10 +122,19 @@ func (p *Ports) Plug(port plugging.PortID, c NewPeripheral) error {
 
 	switch port {
 	case plugging.PortPanel:
+		if p.Panel != nil {
+			p.Panel.Unplug()
+		}
 		p.Panel = periph
 	case plugging.PortLeftPlayer:
+		if p.LeftPlayer != nil {
+			p.LeftPlayer.Unplug()
+		}
 		p.LeftPlayer = periph
 	case plugging.PortRightPlayer:
+		if p.RightPlayer != nil {
+			p.RightPlayer.Unplug()
+		}
 		p.RightPlayer = periph
 	default:
 		return fmt.Errorf("can't attach peripheral to port (%v)", port)

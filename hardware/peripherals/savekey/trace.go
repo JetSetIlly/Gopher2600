@@ -53,6 +53,11 @@ func (tr *trace) recent() (from bool, to bool) {
 	return tr.activity[len(tr.activity)-2] > 0, tr.activity[len(tr.activity)-1] > 0
 }
 
+func (tr *trace) changed() bool {
+	from, to := tr.recent()
+	return from != to
+}
+
 func (tr *trace) falling() bool {
 	from, to := tr.recent()
 	return from && !to

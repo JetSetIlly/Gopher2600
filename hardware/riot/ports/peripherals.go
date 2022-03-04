@@ -26,6 +26,9 @@ type Peripheral interface {
 	// String should return information about the state of the peripheral
 	String() string
 
+	// Periperhal is to be removed
+	Unplug()
+
 	// Snapshot the instance of the Peripheral
 	Snapshot() Peripheral
 
