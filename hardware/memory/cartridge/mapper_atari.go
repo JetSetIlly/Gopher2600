@@ -130,10 +130,14 @@ func (cart *atari) Reset() {
 	//	(8k) Hack'Em Hangly Pacman which requires a start bank of 1
 	//	(8k) CongoBongo which requires a start bank of 1
 	//	(16k) Stay Frosty which cannot start in the last bank
-	if len(cart.banks) > 1 {
+	//	(32k) Strat-O-Gems which cannot start in bank 1
+	switch len(cart.banks) {
+	default:
+		cart.state.bank = len(cart.banks) - 1
+	case 4:
 		cart.state.bank = 1
-	} else {
-		cart.state.bank = 0
+	case 2:
+		cart.state.bank = 1
 	}
 }
 
