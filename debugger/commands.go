@@ -37,6 +37,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/cpu/registers"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/plusrom"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
+	"github.com/jetsetilly/gopher2600/hardware/peripherals/atarivox"
 	"github.com/jetsetilly/gopher2600/hardware/peripherals/controllers"
 	"github.com/jetsetilly/gopher2600/hardware/peripherals/savekey"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
@@ -1391,6 +1392,8 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 				err = dbg.vcs.RIOT.Ports.Plug(id, controllers.NewGamepad)
 			case "SAVEKEY":
 				err = dbg.vcs.RIOT.Ports.Plug(id, savekey.NewSaveKey)
+			case "ATARIVOX":
+				err = dbg.vcs.RIOT.Ports.Plug(id, atarivox.NewAtariVox)
 			}
 		}
 

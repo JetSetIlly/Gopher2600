@@ -54,6 +54,8 @@ func (pn *peripheralNotification) set(peripheral plugging.PeripheralID) {
 		pn.icon = fmt.Sprintf("%c", fonts.Savekey)
 	case plugging.PeriphGamepad:
 		pn.icon = fmt.Sprintf("%c", fonts.Gamepad)
+	case plugging.PeriphAtariVox:
+		pn.icon = fmt.Sprintf("%c", fonts.AtariVox)
 	default:
 		pn.icon = ""
 		return

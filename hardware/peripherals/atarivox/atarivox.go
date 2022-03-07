@@ -75,6 +75,16 @@ type AtariVox struct {
 
 // NewAtariVox is the preferred method of initialisation for the AtariVox type.
 func NewAtariVox(port plugging.PortID, bus ports.PeripheralBus) ports.Peripheral {
+	// there's no technical reason why the atarivox can't be attached to the
+	// left player port but to keep things simple (we don't really want
+	// multiple instances of an atarivox engine) we don't allow it
+	//
+	// moreover ROM developers understand that the atarivox is to be plugged
+	// into the right player port and don't support left player port
+	if port != plugging.PortRightPlayer {
+		return nil
+	}
+
 	vox := &AtariVox{
 		port:          port,
 		bus:           bus,
@@ -104,6 +114,7 @@ func NewAtariVox(port plugging.PortID, bus ports.PeripheralBus) ports.Peripheral
 
 // Periperhal is to be removed
 func (vox *AtariVox) Unplug() {
+	vox.SaveKey.Unplug()
 	vox.Engine.Quit()
 }
 
@@ -138,6 +149,7 @@ func (vox *AtariVox) ID() plugging.PeripheralID {
 // reset state of peripheral. this has nothing to do with the reset switch
 // on the VCS panel
 func (vox *AtariVox) Reset() {
+	vox.SaveKey.Reset()
 }
 
 // the active bits in the SWCHA value.

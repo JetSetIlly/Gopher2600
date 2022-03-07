@@ -15,7 +15,20 @@
 
 package peripherals
 
-// Available is the list of peripherals that can feasibly be plugged
-// into the left player port. These are the values that can be returned by the
-// ID() function of the ports.Peripheral implementations in this package.
-var Available = []string{"Stick", "Paddle", "Keypad", "Gamepad", "SaveKey"}
+// AvailableLeftPlayer is the list of peripherals that can feasibly be plugged
+// into the left player port.
+//
+// These are the values that can be returned by the ID() function of the
+// ports.Peripheral implementations in this package.
+//
+// Note that SaveKey and AtariVox can both technically be inserted into the
+// left player but to keep things simple (we don't want multiple savekeys) we
+// don't encourage it.
+var AvailableLeftPlayer = []string{"Stick", "Paddle", "Keypad", "Gamepad"}
+
+// AvailableRightPlayer is the list of peripherals that can feasibly be plugged
+// into the right player port.
+//
+// These are the values that can be returned by the ID() function of the
+// ports.Peripheral implementations in this package.
+var AvailableRightPlayer = []string{"Stick", "Paddle", "Keypad", "Gamepad", "SaveKey", "AtariVox"}

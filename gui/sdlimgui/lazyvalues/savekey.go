@@ -18,6 +18,7 @@ package lazyvalues
 import (
 	"sync/atomic"
 
+	"github.com/jetsetilly/gopher2600/hardware/peripherals/atarivox"
 	"github.com/jetsetilly/gopher2600/hardware/peripherals/savekey"
 )
 
@@ -56,22 +57,33 @@ func newLazySaveKey(val *LazyValues) *LazySaveKey {
 }
 
 func (lz *LazySaveKey) push() {
-	if sk, ok := lz.val.vcs.RIOT.Ports.RightPlayer.(*savekey.SaveKey); ok {
-		lz.saveKeyActive.Store(true)
-		lz.sda.Store(sk.SDA.Copy())
-		lz.scl.Store(sk.SCL.Copy())
-		lz.state.Store(sk.State)
-		lz.dir.Store(sk.Dir)
-		lz.ack.Store(sk.Ack)
-		lz.bits.Store(sk.Bits)
-		lz.bitsCt.Store(sk.BitsCt)
-		lz.address.Store(sk.EEPROM.Address)
-		d, dd := sk.EEPROM.Copy()
-		lz.eepromData.Store(d)
-		lz.eepromDiskData.Store(dd)
-	} else {
-		lz.saveKeyActive.Store(false)
+	// check right player port for savekey. there is no technical reason why
+	// the savekey (or atarivox) can't be inserted into the left player port
+	// but to keep things simple (we don't want multiple savekeys) we don't
+	// encourage it
+	sk, ok := lz.val.vcs.RIOT.Ports.RightPlayer.(*savekey.SaveKey)
+	if !ok {
+		// atari vox has an embedded savekey
+		vox, ok := lz.val.vcs.RIOT.Ports.RightPlayer.(*atarivox.AtariVox)
+		if !ok {
+			lz.saveKeyActive.Store(false)
+			return
+		}
+		sk = vox.SaveKey.(*savekey.SaveKey)
 	}
+
+	lz.saveKeyActive.Store(true)
+	lz.sda.Store(sk.SDA.Copy())
+	lz.scl.Store(sk.SCL.Copy())
+	lz.state.Store(sk.State)
+	lz.dir.Store(sk.Dir)
+	lz.ack.Store(sk.Ack)
+	lz.bits.Store(sk.Bits)
+	lz.bitsCt.Store(sk.BitsCt)
+	lz.address.Store(sk.EEPROM.Address)
+	d, dd := sk.EEPROM.Copy()
+	lz.eepromData.Store(d)
+	lz.eepromDiskData.Store(dd)
 }
 
 func (lz *LazySaveKey) update() {

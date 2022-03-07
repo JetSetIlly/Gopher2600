@@ -109,6 +109,9 @@ func (p *Ports) Plumb(riotMem chipbus.Memory, tiaMem chipbus.Memory) {
 // Plug connects a peripheral to a player port.
 func (p *Ports) Plug(port plugging.PortID, c NewPeripheral) error {
 	periph := c(port, p)
+	if periph == nil {
+		return fmt.Errorf("can't attach peripheral to port (%v)", port)
+	}
 
 	// notify monitor of plug event
 	if p.monitor != nil {

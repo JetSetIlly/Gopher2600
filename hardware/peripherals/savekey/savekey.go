@@ -84,6 +84,16 @@ type SaveKey struct {
 
 // NewSaveKey is the preferred method of initialisation for the SaveKey type.
 func NewSaveKey(port plugging.PortID, bus ports.PeripheralBus) ports.Peripheral {
+	// there's no technical reason why the savekey can't be attached to the
+	// left player port but to keep things simple (write contention on the
+	// savekey file) we don't allow it
+	//
+	// moreover ROM developers understand that the savekey is to be
+	// plugged into the right player port and don't support left player port
+	if port != plugging.PortRightPlayer {
+		return nil
+	}
+
 	sk := &SaveKey{
 		port:   port,
 		bus:    bus,

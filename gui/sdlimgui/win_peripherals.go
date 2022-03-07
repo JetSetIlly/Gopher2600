@@ -42,7 +42,7 @@ func newWinPeripherals(img *SdlImgui) (window, error) {
 }
 
 func (win *winPeripherals) init() {
-	win.controllerComboDim = imguiGetFrameDim("", peripherals.Available...)
+	win.controllerComboDim = imguiGetFrameDim("", peripherals.AvailableRightPlayer...)
 }
 
 func (win *winPeripherals) id() string {
@@ -75,7 +75,7 @@ func (win *winPeripherals) draw() {
 	imgui.Spacing()
 	imgui.Text("Left")
 	imgui.Spacing()
-	win.drawPeripheral(win.img.lz.Peripherals.LeftPlayer)
+	win.drawPeripheral(win.img.lz.Peripherals.LeftPlayer, peripherals.AvailableLeftPlayer)
 	imgui.EndGroup()
 
 	imgui.SameLine()
@@ -83,16 +83,16 @@ func (win *winPeripherals) draw() {
 	imgui.BeginGroup()
 	imgui.Text("Right")
 	imgui.Spacing()
-	win.drawPeripheral(win.img.lz.Peripherals.RightPlayer)
+	win.drawPeripheral(win.img.lz.Peripherals.RightPlayer, peripherals.AvailableRightPlayer)
 	imgui.EndGroup()
 
 	imgui.End()
 }
 
-func (win *winPeripherals) drawPeripheral(p ports.Peripheral) {
+func (win *winPeripherals) drawPeripheral(p ports.Peripheral, periphList []string) {
 	imgui.PushItemWidth(win.controllerComboDim.X)
 	if imgui.BeginComboV(fmt.Sprintf("##%v", p.PortID()), string(p.ID()), imgui.ComboFlagsNoArrowButton) {
-		for _, s := range peripherals.Available {
+		for _, s := range periphList {
 			if imgui.Selectable(s) {
 				termCmd := fmt.Sprintf("PERIPHERAL %s %s", p.PortID(), s)
 				win.img.term.pushCommand(termCmd)
