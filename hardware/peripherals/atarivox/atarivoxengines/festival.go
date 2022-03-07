@@ -42,13 +42,13 @@ type festival struct {
 
 // NewFestival creats a new festival instance and starts a new festival process
 // which we'll communicate with via a stdin pipe.
-func NewFestival() (AtariVoxEngine, error) {
+func NewFestival(executablePath string) (AtariVoxEngine, error) {
 	fest := &festival{
 		quit: make(chan bool),
 		say:  make(chan string),
 	}
 
-	cmd := exec.Command("/usr/bin/festival")
+	cmd := exec.Command(executablePath)
 
 	var err error
 
@@ -62,9 +62,12 @@ func NewFestival() (AtariVoxEngine, error) {
 		return nil, curated.Errorf("festival: %s", err.Error())
 	}
 
-	go func() {
-		cmd.Start()
+	err = cmd.Start()
+	if err != nil {
+		return nil, curated.Errorf("festival: %s", err.Error())
+	}
 
+	go func() {
 		for {
 			select {
 			case <-fest.quit:

@@ -35,13 +35,14 @@ type PeripheralID string
 
 // List of valid PeripheralID values.
 const (
-	PeriphNone    PeripheralID = "None"
-	PeriphPanel   PeripheralID = "Panel"
-	PeriphStick   PeripheralID = "Stick"
-	PeriphGamepad PeripheralID = "Gamepad"
-	PeriphPaddle  PeripheralID = "Paddle"
-	PeriphKeypad  PeripheralID = "Keypad"
-	PeriphSavekey PeripheralID = "Savekey"
+	PeriphNone     PeripheralID = "None"
+	PeriphPanel    PeripheralID = "Panel"
+	PeriphStick    PeripheralID = "Stick"
+	PeriphGamepad  PeripheralID = "Gamepad"
+	PeriphPaddle   PeripheralID = "Paddle"
+	PeriphKeypad   PeripheralID = "Keypad"
+	PeriphSavekey  PeripheralID = "Savekey"
+	PeriphAtariVox PeripheralID = "AtariVox"
 )
 
 // PlugMonitor interface implementations will be notified of newly plugged

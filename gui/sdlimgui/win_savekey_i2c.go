@@ -21,6 +21,7 @@ import (
 
 	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/hardware/peripherals/savekey"
+	"github.com/jetsetilly/gopher2600/hardware/peripherals/savekey/i2c"
 )
 
 const winSaveKeyI2CID = "SaveKey I2C"
@@ -92,7 +93,7 @@ func (win *winSaveKeyI2C) drawOscilloscope() {
 
 	pos := imgui.CursorPos()
 	imgui.PushStyleColor(imgui.StyleColorPlotLines, win.img.cols.SaveKeyOscSCL)
-	imgui.PlotLinesV("", win.img.lz.SaveKey.SCL, 0, "", savekey.TraceLo, savekey.TraceHi,
+	imgui.PlotLinesV("", win.img.lz.SaveKey.SCL, 0, "", i2c.TraceLo, i2c.TraceHi,
 		imgui.Vec2{X: w, Y: imgui.FrameHeight() * 2})
 
 	// reset cursor pos with a slight offset
@@ -104,7 +105,7 @@ func (win *winSaveKeyI2C) drawOscilloscope() {
 
 	// plot lines
 	imgui.PushStyleColor(imgui.StyleColorPlotLines, win.img.cols.SaveKeyOscSDA)
-	imgui.PlotLinesV("", win.img.lz.SaveKey.SDA, 0, "", savekey.TraceLo, savekey.TraceHi,
+	imgui.PlotLinesV("", win.img.lz.SaveKey.SDA, 0, "", i2c.TraceLo, i2c.TraceHi,
 		imgui.Vec2{X: w, Y: imgui.FrameHeight() * 2})
 
 	imgui.PopStyleColorV(4)

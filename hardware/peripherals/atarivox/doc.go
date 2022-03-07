@@ -13,14 +13,10 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-// Package savekey implements the SaveKey external memory card. It contains
-// 32KB of non-volatile memory. Suitable for saving high scores, game settings,
-// etc.
+// Package atarivox implements the atarivox peripheral. It supports output of
+// atarivox voice audio through Festival (if installed). See atarivoxengines
+// package.
 //
-// The SaveKey type implements the ports.Peripheral interface and can be
-// inserted into a VCS port like any other peripheral.
-//
-// SaveKey information taken from "AtariVox Programmer's Guide" (16/11/04) by Alex Herbert
-//
-// allocation list at https://atariage.com/atarivox/atarivox_mem_list.html (13/09/2020).
-package savekey
+// The AtariVox type also embeds the SaveKey peripheral and forwards all data
+// to it as necessary.
+package atarivox

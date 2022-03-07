@@ -13,9 +13,9 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-package savekey
+package i2c
 
-// trace records the state of electrical line, whether it is high or low, and
+// Trace records the state of electrical line, whether it is high or low, and
 // also whether the immediately previous state is also high or low.
 //
 // moving from one state to the other is done with tick(bool) where a boolean
@@ -30,7 +30,7 @@ package savekey
 //  if A.hi() && B.lo2hi() {
 //		E()
 //  }
-type trace struct {
+type Trace struct {
 	activity []float32
 }
 
@@ -39,8 +39,8 @@ const (
 	TraceLo = -1.0
 )
 
-func newTrace() trace {
-	tr := trace{
+func NewTrace() Trace {
+	tr := Trace{
 		activity: make([]float32, 64),
 	}
 	for i := range tr.activity {
@@ -49,36 +49,36 @@ func newTrace() trace {
 	return tr
 }
 
-func (tr *trace) recent() (from bool, to bool) {
+func (tr *Trace) Recent() (from bool, to bool) {
 	return tr.activity[len(tr.activity)-2] > 0, tr.activity[len(tr.activity)-1] > 0
 }
 
-func (tr *trace) changed() bool {
-	from, to := tr.recent()
+func (tr *Trace) Changed() bool {
+	from, to := tr.Recent()
 	return from != to
 }
 
-func (tr *trace) falling() bool {
-	from, to := tr.recent()
+func (tr *Trace) Falling() bool {
+	from, to := tr.Recent()
 	return from && !to
 }
 
-func (tr *trace) rising() bool {
-	from, to := tr.recent()
+func (tr *Trace) Rising() bool {
+	from, to := tr.Recent()
 	return !from && to
 }
 
-func (tr *trace) hi() bool {
-	from, _ := tr.recent()
+func (tr *Trace) Hi() bool {
+	from, _ := tr.Recent()
 	return from
 }
 
-func (tr *trace) lo() bool {
-	from, _ := tr.recent()
+func (tr *Trace) Lo() bool {
+	from, _ := tr.Recent()
 	return !from
 }
 
-func (tr *trace) tick(v bool) {
+func (tr *Trace) Tick(v bool) {
 	if v {
 		tr.activity = append(tr.activity, TraceHi)
 	} else {
@@ -88,7 +88,7 @@ func (tr *trace) tick(v bool) {
 }
 
 // Copy makes a copy of the activity trace.
-func (tr *trace) Copy() []float32 {
+func (tr *Trace) Copy() []float32 {
 	c := make([]float32, len(tr.activity))
 	copy(c, tr.activity)
 	return c

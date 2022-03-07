@@ -13,14 +13,10 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-// Package savekey implements the SaveKey external memory card. It contains
-// 32KB of non-volatile memory. Suitable for saving high scores, game settings,
-// etc.
+// Package i2c facilitates the reading of i2c data for the SaveKey (and
+// AtariVox) peripherals.
 //
-// The SaveKey type implements the ports.Peripheral interface and can be
-// inserted into a VCS port like any other peripheral.
+// information about i2c taken from:
 //
-// SaveKey information taken from "AtariVox Programmer's Guide" (16/11/04) by Alex Herbert
-//
-// allocation list at https://atariage.com/atarivox/atarivox_mem_list.html (13/09/2020).
-package savekey
+// https://learn.sparkfun.com/tutorials/i2c/all (13/09/2020)
+package i2c

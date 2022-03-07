@@ -21,7 +21,7 @@ import (
 
 	"github.com/jetsetilly/gopher2600/hardware/memory/chipbus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
-	"github.com/jetsetilly/gopher2600/hardware/peripherals/savekey/atarivoxengines"
+	"github.com/jetsetilly/gopher2600/hardware/peripherals/savekey/i2c"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
 	"github.com/jetsetilly/gopher2600/logger"
@@ -63,8 +63,8 @@ type SaveKey struct {
 	// from the perspective of the second player (in which port the SaveKey is
 	// usually inserted) pin 2 is the data signal (SDA) and pin 3 is the
 	// clock signal (SCL)
-	SDA trace
-	SCL trace
+	SDA i2c.Trace
+	SCL i2c.Trace
 
 	// incoming data is interpreted depending on the state of the i2c protocol.
 	// we also need to know the direction of data flow at any given time and
@@ -80,9 +80,6 @@ type SaveKey struct {
 
 	// the core of the SaveKey is an EEPROM.
 	EEPROM *EEPROM
-
-	// additonal lines for AtariVox
-	AtariVox AtariVox
 }
 
 // NewSaveKey is the preferred method of initialisation for the SaveKey type.
@@ -90,22 +87,10 @@ func NewSaveKey(port plugging.PortID, bus ports.PeripheralBus) ports.Peripheral 
 	sk := &SaveKey{
 		port:   port,
 		bus:    bus,
-		SDA:    newTrace(),
-		SCL:    newTrace(),
+		SDA:    i2c.NewTrace(),
+		SCL:    i2c.NewTrace(),
 		State:  SaveKeyStopped,
 		EEPROM: newEeprom(),
-		AtariVox: AtariVox{
-			SpeakJetDATA:  newTrace(),
-			SpeakJetREADY: newTrace(),
-			State:         AtariVoxStopped,
-		},
-	}
-
-	var err error
-
-	sk.AtariVox.Engine, err = atarivoxengines.NewFestival()
-	if err != nil {
-		logger.Logf("savekey", err.Error())
 	}
 
 	sk.bus.WriteSWCHx(sk.port, 0xf0)
@@ -116,9 +101,6 @@ func NewSaveKey(port plugging.PortID, bus ports.PeripheralBus) ports.Peripheral 
 
 // Unplug implements the Peripheral interface.
 func (sk *SaveKey) Unplug() {
-	if sk.AtariVox.Engine != nil {
-		sk.AtariVox.Engine.Quit()
-	}
 }
 
 // Snapshot implements the Peripheral interface.
@@ -178,10 +160,8 @@ func (sk *SaveKey) Reset() {
 
 // the active bits in the SWCHA value.
 const (
-	maskSaveKeySDA    = 0b01000000
-	maskSaveKeySCL    = 0b10000000
-	maskSpeakJetDATA  = 0b00010000
-	maskSpeakJetREADY = 0b00100000
+	maskSaveKeySDA = 0b01000000
+	maskSaveKeySCL = 0b10000000
 )
 
 // the bit sequence to indicate read/write data direction.
@@ -252,19 +232,11 @@ func (sk *SaveKey) resetBits() {
 // Step implements the ports.Peripheral interface.
 func (sk *SaveKey) Step() {
 	// update savekey i2c state
-	sk.SDA.tick(sk.swcha&maskSaveKeySDA == maskSaveKeySDA)
-	sk.SCL.tick(sk.swcha&maskSaveKeySCL == maskSaveKeySCL)
-	sk.stepSaveKey()
+	sk.SDA.Tick(sk.swcha&maskSaveKeySDA == maskSaveKeySDA)
+	sk.SCL.Tick(sk.swcha&maskSaveKeySCL == maskSaveKeySCL)
 
-	// update atarivox i2c state
-	sk.AtariVox.SpeakJetDATA.tick(sk.swcha&maskSpeakJetDATA == maskSpeakJetDATA)
-	sk.AtariVox.SpeakJetREADY.tick(sk.swcha&maskSpeakJetREADY == maskSpeakJetREADY)
-	sk.stepAtariVox()
-}
-
-func (sk *SaveKey) stepSaveKey() {
 	// check for stop signal before anything else
-	if sk.State != SaveKeyStopped && sk.SCL.hi() && sk.SDA.rising() {
+	if sk.State != SaveKeyStopped && sk.SCL.Hi() && sk.SDA.Rising() {
 		logger.Log("savekey", "stopped message")
 		sk.State = SaveKeyStopped
 		sk.EEPROM.Write()
@@ -272,13 +244,13 @@ func (sk *SaveKey) stepSaveKey() {
 	}
 
 	// if SCL is not changing to a hi state then we don't need to do anything
-	if !sk.SCL.rising() {
+	if !sk.SCL.Rising() {
 		return
 	}
 
 	// if the VCS is waiting for an ACK then handle that now
 	if sk.Ack {
-		if sk.Dir == Reading && sk.SDA.falling() {
+		if sk.Dir == Reading && sk.SDA.Falling() {
 			sk.bus.WriteSWCHx(sk.port, maskSaveKeySDA)
 			sk.Ack = false
 			return
@@ -291,14 +263,14 @@ func (sk *SaveKey) stepSaveKey() {
 	// interpret i2c state depending on which state we are currently in
 	switch sk.State {
 	case SaveKeyStopped:
-		if sk.SDA.lo() {
+		if sk.SDA.Lo() {
 			logger.Log("savekey", "starting message")
 			sk.resetBits()
 			sk.State = SaveKeyStarting
 		}
 
 	case SaveKeyStarting:
-		if sk.recvBit(sk.SDA.falling()) {
+		if sk.recvBit(sk.SDA.Falling()) {
 			switch sk.Bits {
 			case readSig:
 				logger.Log("savekey", "reading message")
@@ -318,14 +290,14 @@ func (sk *SaveKey) stepSaveKey() {
 		}
 
 	case SaveKeyAddressHi:
-		if sk.recvBit(sk.SDA.falling()) {
+		if sk.recvBit(sk.SDA.Falling()) {
 			sk.EEPROM.Address = uint16(sk.Bits) << 8
 			sk.State = SaveKeyAddressLo
 			sk.Ack = true
 		}
 
 	case SaveKeyAddressLo:
-		if sk.recvBit(sk.SDA.falling()) {
+		if sk.recvBit(sk.SDA.Falling()) {
 			sk.EEPROM.Address |= uint16(sk.Bits)
 			sk.State = SaveKeyData
 			sk.Ack = true
@@ -359,7 +331,7 @@ func (sk *SaveKey) stepSaveKey() {
 			}
 
 		case Writing:
-			if sk.recvBit(sk.SDA.falling()) {
+			if sk.recvBit(sk.SDA.Falling()) {
 				if unicode.IsPrint(rune(sk.Bits)) {
 					logger.Logf("savekey", "written byte %#02x [%c]", sk.Bits, sk.Bits)
 				} else {
