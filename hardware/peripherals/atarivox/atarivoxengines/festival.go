@@ -71,10 +71,13 @@ func NewFestival(executablePath string) (AtariVoxEngine, error) {
 		for {
 			select {
 			case <-fest.quit:
-				command := "(quit)"
-				n, err := fest.stdin.Write([]byte(command))
-				if n != len(command) || err != nil {
-					logger.Logf("festival", "quit command doesn't appear to have succeeded")
+				err = cmd.Process.Kill()
+				if err != nil {
+					logger.Logf("festival", err.Error())
+				}
+				err = cmd.Wait()
+				if err != nil {
+					logger.Logf("festival", err.Error())
 				}
 				return
 			case text := <-fest.say:

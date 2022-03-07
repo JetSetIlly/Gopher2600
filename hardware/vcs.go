@@ -128,6 +128,7 @@ func NewVCS(tv *television.Television, prefs *preferences.Preferences) (*VCS, er
 // End cleans up any resources that may be dangling.
 func (vcs *VCS) End() {
 	vcs.TV.End()
+	vcs.RIOT.Ports.End()
 }
 
 // Plumb the various VCS sub-systems together after a rewind.

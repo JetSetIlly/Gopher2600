@@ -80,6 +80,18 @@ func NewPorts(riotMem chipbus.Memory, tiaMem chipbus.Memory) *Ports {
 	return p
 }
 
+func (p *Ports) End() {
+	if p.LeftPlayer != nil {
+		p.LeftPlayer.Unplug()
+	}
+	if p.RightPlayer != nil {
+		p.RightPlayer.Unplug()
+	}
+	if p.Panel != nil {
+		p.Panel.Unplug()
+	}
+}
+
 // Snapshot returns a copy of the RIOT Ports sub-system in its current state.
 func (p *Ports) Snapshot() *Ports {
 	n := *p
