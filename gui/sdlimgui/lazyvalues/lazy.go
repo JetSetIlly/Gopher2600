@@ -177,6 +177,7 @@ func (val *LazyValues) FastRefresh() {
 		val.refreshDone.Store(false)
 		val.TV.update()
 		val.Tracker.update()
+		val.Cart.fastUpdate()
 	}
 
 	if val.refreshScheduled.Load().(bool) {
@@ -187,6 +188,7 @@ func (val *LazyValues) FastRefresh() {
 	val.dbg.PushRawEvent(func() {
 		val.TV.push()
 		val.Tracker.push()
+		val.Cart.fastPush()
 		val.refreshScheduled.Store(false)
 		val.refreshDone.Store(true)
 	})

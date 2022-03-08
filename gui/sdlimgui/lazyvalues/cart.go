@@ -224,3 +224,20 @@ func (lz *LazyCart) update() {
 		lz.CoProcID, _ = lz.coprocID.Load().(string)
 	}
 }
+
+func (lz *LazyCart) fastPush() {
+	cp := lz.val.vcs.Mem.Cart.GetCoProcBus()
+	if cp != nil {
+		lz.coProcBus.Store(container{v: cp})
+		lz.coprocID.Store(cp.CoProcID())
+	} else {
+		lz.coProcBus.Store(container{v: nil})
+	}
+}
+
+func (lz *LazyCart) fastUpdate() {
+	_, lz.HasCoProcBus = lz.coProcBus.Load().(container).v.(mapper.CartCoProcBus)
+	if lz.HasCoProcBus {
+		lz.CoProcID, _ = lz.coprocID.Load().(string)
+	}
+}
