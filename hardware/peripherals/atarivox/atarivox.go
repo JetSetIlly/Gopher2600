@@ -206,7 +206,7 @@ func (vox *AtariVox) resetBits() {
 func (vox *AtariVox) Step() {
 	vox.SaveKey.Step()
 
-	// update savekey i2c state
+	// update atarivox i2c state
 	vox.SpeakJetDATA.Tick(vox.swcha&maskSpeakJetDATA == maskSpeakJetDATA)
 	vox.SpeakJetREADY.Tick(vox.swcha&maskSpeakJetREADY == maskSpeakJetREADY)
 
@@ -232,6 +232,8 @@ func (vox *AtariVox) Step() {
 		vox.flushCount = 0
 	}
 
+	// limit how often we update the atarivox - the successful 6507 program
+	// will be written such that it fits in with this limitation
 	vox.baudCount++
 	if vox.baudCount < baudCount {
 		return

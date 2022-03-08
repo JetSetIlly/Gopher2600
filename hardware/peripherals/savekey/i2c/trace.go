@@ -15,6 +15,9 @@
 
 package i2c
 
+// length of activity trace
+const activityLength = 64
+
 // Trace records the state of electrical line, whether it is high or low, and
 // also whether the immediately previous state is also high or low.
 //
@@ -31,7 +34,21 @@ package i2c
 //		E()
 //  }
 type Trace struct {
+	// a recent history of the i2c trace. wraps around at activityLength
 	activity []float32
+
+	// ptr is the next activity index to be written to
+	ptr int
+
+	// rather than indexing the activity field and dealing with wrap around, we
+	// record the hi state of the trace as a boolean for the most recent recent
+	// time period and for the period before that (in the 2600 the period is
+	// the speed of the 6507)
+	//
+	// labelled from and to because this is how we think about these values
+	// when checking whether the trace is rising or falling
+	from bool
+	to   bool // most recent time period
 }
 
 const (
@@ -41,7 +58,7 @@ const (
 
 func NewTrace() Trace {
 	tr := Trace{
-		activity: make([]float32, 64),
+		activity: make([]float32, activityLength),
 	}
 	for i := range tr.activity {
 		tr.activity[i] = TraceHi
@@ -49,47 +66,46 @@ func NewTrace() Trace {
 	return tr
 }
 
-func (tr *Trace) Recent() (from bool, to bool) {
-	return tr.activity[len(tr.activity)-2] > 0, tr.activity[len(tr.activity)-1] > 0
-}
-
 func (tr *Trace) Changed() bool {
-	from, to := tr.Recent()
-	return from != to
+	return tr.from != tr.to
 }
 
 func (tr *Trace) Falling() bool {
-	from, to := tr.Recent()
-	return from && !to
+	return tr.from && !tr.to
 }
 
 func (tr *Trace) Rising() bool {
-	from, to := tr.Recent()
-	return !from && to
+	return !tr.from && tr.to
 }
 
 func (tr *Trace) Hi() bool {
-	from, _ := tr.Recent()
-	return from
+	return tr.to
 }
 
 func (tr *Trace) Lo() bool {
-	from, _ := tr.Recent()
-	return !from
+	return !tr.to
 }
 
 func (tr *Trace) Tick(v bool) {
+	tr.from = tr.to
+	tr.to = v
 	if v {
-		tr.activity = append(tr.activity, TraceHi)
+		tr.activity[tr.ptr] = TraceHi
 	} else {
-		tr.activity = append(tr.activity, TraceLo)
+		tr.activity[tr.ptr] = TraceLo
 	}
-	tr.activity = tr.activity[1:]
+	tr.ptr++
+	if tr.ptr >= len(tr.activity) {
+		tr.ptr = 0
+	}
 }
 
 // Copy makes a copy of the activity trace.
 func (tr *Trace) Copy() []float32 {
 	c := make([]float32, len(tr.activity))
-	copy(c, tr.activity)
+
+	copy(c, tr.activity[tr.ptr:])
+	copy(c[len(tr.activity)-tr.ptr:], tr.activity[:tr.ptr])
+
 	return c
 }
