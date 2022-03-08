@@ -75,14 +75,11 @@ func NewFestival(executablePath string) (AtariVoxEngine, error) {
 				if err != nil {
 					logger.Logf("festival", err.Error())
 				}
-				err = cmd.Wait()
-				if err != nil {
-					logger.Logf("festival", err.Error())
-				}
+				_ = cmd.Wait()
 				return
 			case text := <-fest.say:
 				command := fmt.Sprintf("(SayPhones '(%s))", text)
-				logger.Logf("festival", command)
+				logger.Logf("festival", text)
 				fest.stdin.Write([]byte(command))
 			}
 		}
@@ -203,7 +200,7 @@ func (fest *festival) SpeakJet(b uint8) {
 	case 134:
 		fest.phonemes.WriteString("uh ")
 	case 135:
-		fest.phonemes.WriteString("o ") // hot, clock, fox ??
+		fest.phonemes.WriteString("ah ") // hot, clock, fox ??
 	case 136:
 		fest.phonemes.WriteString("aa ")
 	case 137:
@@ -349,7 +346,7 @@ func (fest *festival) Flush() {
 		return
 	}
 
-	logger.Logf("festival", "stream: %v", fest.stream)
+	logger.Logf("festival", "%v", fest.stream)
 	fest.stream = fest.stream[:0]
 
 	fest.say <- fest.phonemes.String()
