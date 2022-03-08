@@ -115,7 +115,9 @@ func NewAtariVox(port plugging.PortID, bus ports.PeripheralBus) ports.Peripheral
 // Periperhal is to be removed
 func (vox *AtariVox) Unplug() {
 	vox.SaveKey.Unplug()
-	vox.Engine.Quit()
+	if vox.Engine != nil {
+		vox.Engine.Quit()
+	}
 }
 
 // Snapshot the instance of the Peripheral
