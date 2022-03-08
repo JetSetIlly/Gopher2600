@@ -18,6 +18,7 @@ package peripherals
 import (
 	"fmt"
 
+	"github.com/jetsetilly/gopher2600/hardware/peripherals/atarivox"
 	"github.com/jetsetilly/gopher2600/hardware/peripherals/controllers"
 	"github.com/jetsetilly/gopher2600/hardware/peripherals/savekey"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
@@ -41,7 +42,12 @@ func Fingerprint(port plugging.PortID, data []byte) ports.NewPeripheral {
 		panic(fmt.Sprintf("cannot fingerprint for port %v", port))
 	}
 
-	// savekey is the most specific peripheral. check that first
+	// atarivox and savekey are the most specific peripheral. because atarivox
+	// includes the functionality of savekey we need to check atarivox first
+	if fingerprintAtariVox(port, data) {
+		return atarivox.NewAtariVox
+	}
+
 	if fingerprintSaveKey(port, data) {
 		return savekey.NewSaveKey
 	}
@@ -120,6 +126,33 @@ func fingerprintSaveKey(port plugging.PortID, data []byte) bool {
 	}
 
 	return matchPattern(patterns, data)
+}
+
+func fingerprintAtariVox(port plugging.PortID, data []byte) bool {
+	if port != plugging.PortRightPlayer {
+		return false
+	}
+
+	patterns := [][]byte{
+		{ // from SPKOUT (speakjet.inc)
+			0xad, 0x80, 0x02, // lda SWCHA
+			0x29, 0x02, // and #SERIAL_RDYMASK
+			0xf0, // beq ...
+		},
+	}
+
+	if matchPattern(patterns, data) {
+		patterns := [][]byte{
+			{ // from SPKOUT (speakjet.inc)
+				0x49, 0xff, // eor #$ff
+				0xf0, // beq ...
+			},
+		}
+
+		return matchPattern(patterns, data)
+	}
+
+	return false
 }
 
 func fingerprintStick(port plugging.PortID, data []byte) bool {
