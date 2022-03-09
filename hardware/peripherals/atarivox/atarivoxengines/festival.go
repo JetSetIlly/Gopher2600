@@ -196,7 +196,7 @@ func (fest *festival) SpeakJet(b uint8) {
 	case 132:
 		fest.phonemes.WriteString("ae ")
 	case 133:
-		fest.phonemes.WriteString("o ") // cotton ??
+		fest.phonemes.WriteString("oy ") // cotton ??
 	case 134:
 		fest.phonemes.WriteString("uh ")
 	case 135:
@@ -238,7 +238,7 @@ func (fest *festival) SpeakJet(b uint8) {
 	case 152:
 		fest.phonemes.WriteString("aa ")
 	case 153:
-		fest.phonemes.WriteString("ao ")
+		fest.phonemes.WriteString("aw ")
 	case 154:
 		fest.phonemes.WriteString("ey ")
 	case 155:
