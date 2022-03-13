@@ -164,23 +164,23 @@ func (arm *ARM) sCycle(bus busAccess, addr uint32) {
 
 	switch arm.mam.mamcr {
 	default:
-		arm.stretchedCycles += clklenFlash
+		arm.stretchedCycles += arm.clklenFlash
 	case 0:
-		arm.stretchedCycles += clklenFlash
+		arm.stretchedCycles += arm.clklenFlash
 	case 1:
 		// for MAM-1, we go to flash memory only if it's a program access (ie. not a data access)
 		if bus.isDataAccess() {
-			arm.stretchedCycles += clklenFlash
+			arm.stretchedCycles += arm.clklenFlash
 		} else if arm.isLatched(S, bus, addr) {
 			arm.stretchedCycles++
 		} else {
-			arm.stretchedCycles += clklenFlash
+			arm.stretchedCycles += arm.clklenFlash
 		}
 	case 2:
 		if arm.isLatched(S, bus, addr) {
 			arm.stretchedCycles++
 		} else {
-			arm.stretchedCycles += clklenFlash
+			arm.stretchedCycles += arm.clklenFlash
 		}
 	}
 }
@@ -234,16 +234,16 @@ func (arm *ARM) nCycle(bus busAccess, addr uint32) {
 
 	switch arm.mam.mamcr {
 	default:
-		arm.stretchedCycles += clklenFlash * float32(mclkFlash)
+		arm.stretchedCycles += arm.clklenFlash * float32(mclkFlash)
 	case 0:
-		arm.stretchedCycles += clklenFlash * float32(mclkFlash)
+		arm.stretchedCycles += arm.clklenFlash * float32(mclkFlash)
 	case 1:
-		arm.stretchedCycles += clklenFlash * float32(mclkFlash)
+		arm.stretchedCycles += arm.clklenFlash * float32(mclkFlash)
 	case 2:
 		if arm.isLatched(N, bus, addr) {
 			arm.stretchedCycles += float32(mclkNonFlash)
 		} else {
-			arm.stretchedCycles += clklenFlash * float32(mclkFlash)
+			arm.stretchedCycles += arm.clklenFlash * float32(mclkFlash)
 		}
 	}
 }
@@ -265,7 +265,7 @@ func (arm *ARM) storeRegisterCycles(addr uint32) {
 // definitely only an estimate.
 func (arm *ARM) armInterruptCycles(i ARMinterruptReturn) {
 	// we'll assume all writes are to flash memory
-	arm.stretchedCycles += float32(i.NumMemAccess) * clklenFlash
+	arm.stretchedCycles += float32(i.NumMemAccess) * arm.clklenFlash
 	arm.stretchedCycles += float32(i.NumAdditionalCycles)
 }
 

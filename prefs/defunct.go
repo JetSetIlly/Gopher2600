@@ -36,7 +36,6 @@ var defunct = []string{
 	"hardware.arm7.flashAccessTime",
 	"hardware.arm7.flashAccessTime1",
 	"hardware.arm7.sramAccessTime",
-	"hardware.arm7.clock",
 	"hardware.arm7.defaultMAM",
 	"tia.revision.hmove.ripplestart",
 	"tia.revision.hmove.rippleend",

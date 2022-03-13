@@ -732,7 +732,7 @@ func (cart *dpcPlus) Step(clock float32) {
 
 	// Step ARM state if the ARM program is NOT running
 	if cart.state.callfn.IsActive() {
-		if !cart.state.callfn.Step(cart.instance.Prefs.ARM.Immediate.Get().(bool), clock) {
+		if !cart.state.callfn.Step(cart.instance.Prefs.ARM.Immediate.Get().(bool), clock, cart.arm.Clk) {
 			cart.arm.Step(clock)
 		}
 	} else {

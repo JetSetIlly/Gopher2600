@@ -17,6 +17,7 @@ package arm7tdmi
 
 import (
 	"fmt"
+	"math"
 	"math/bits"
 	"strings"
 
@@ -34,22 +35,6 @@ const (
 	rPC
 	rCount
 )
-
-// the speed at which the arm is running at and the required stretching for
-// access to flash memory. speed is in MHz. Access latency of Flash memory is
-// 50ns which is 20MHz. Rounding up, this means that the clklen (clk stretching
-// amount) is 4.
-//
-// "The pipelined nature of the ARM7TDMI-S processor bus interface means that
-// there is a distinction between clock cycles and bus cycles. CLKEN can be
-// used to stretch a bus cycle, so that it lasts for many clock cycles. The
-// CLKEN input extends the timing of bus cycles in increments of of complete
-// CLK cycles"
-//
-// Access speed of SRAM is 10ns which is fast enough not to require stretching.
-// MAM also requires no stretching.
-const Clk = float32(70)
-const clklenFlash = float32(4)
 
 // the maximum number of cycles allowed in a single ARM program execution.
 // no idea if this value is sufficient.
@@ -71,6 +56,24 @@ type ARM struct {
 	// ARM registers
 	registers [rCount]uint32
 	status    status
+
+	// the speed at which the arm is running at and the required stretching for
+	// access to flash memory. speed is in MHz. Access latency of Flash memory is
+	// 50ns which is 20MHz. Rounding up, this means that the clklen (clk stretching
+	// amount) is 4.
+	//
+	// "The pipelined nature of the ARM7TDMI-S processor bus interface means that
+	// there is a distinction between clock cycles and bus cycles. CLKEN can be
+	// used to stretch a bus cycle, so that it lasts for many clock cycles. The
+	// CLKEN input extends the timing of bus cycles in increments of of complete
+	// CLK cycles"
+	//
+	// Access speed of SRAM is 10ns which is fast enough not to require stretching.
+	// MAM also requires no stretching.
+	//
+	// updated from prefs on every Run() invocation
+	Clk         float32
+	clklenFlash float32
 
 	// the PC of the instruction being executed
 	executingPC uint32
@@ -194,6 +197,10 @@ func NewARM(mmap memorymodel.Map, prefs *preferences.ARMPreferences, mem SharedM
 		hook:         hook,
 		executionMap: make(map[uint32][]func(_ uint16)),
 		disasmCache:  make(map[uint32]DisasmEntry),
+
+		// updated on every Run(). these are reasonable defaults
+		Clk:         70.0,
+		clklenFlash: 4.0,
 	}
 
 	arm.mam.mmap = mmap
@@ -302,7 +309,7 @@ func (arm *ARM) String() string {
 // when Step() is called and not during the Run() process. This might cause
 // problems in some instances with some ARM programs.
 func (arm *ARM) Step(vcsClock float32) {
-	arm.timer.stepFromVCS(Clk, vcsClock)
+	arm.timer.stepFromVCS(arm.Clk, vcsClock)
 }
 
 func (arm *ARM) illegalAccess(event string, addr uint32) {
@@ -477,6 +484,13 @@ func (arm *ARM) Run(mamcr uint32) (uint32, float32, error) {
 	if err != nil {
 		return arm.mam.mamcr, 0, err
 	}
+
+	// update clock value from preferences
+	arm.Clk = float32(arm.prefs.Clock.Get().(float64))
+
+	// latency in megahertz
+	latencyInMhz := (1 / (arm.prefs.FlashLatency.Get().(float64) / 1000000000)) / 1000000
+	arm.clklenFlash = float32(math.Ceil(float64(arm.Clk) / latencyInMhz))
 
 	// what we send at the end of the execution. not used if not disassembler is set
 	programSummary := DisasmSummary{}

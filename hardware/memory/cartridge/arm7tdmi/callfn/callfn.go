@@ -20,7 +20,6 @@
 package callfn
 
 import (
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm7tdmi"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
@@ -132,7 +131,7 @@ func (cf *CallFn) Start(cycles float32) {
 
 // Step forward one clock. Returns true if the ARM program is running and false
 // otherwise.
-func (cf *CallFn) Step(immediate bool, vcsClock float32) bool {
+func (cf *CallFn) Step(immediate bool, vcsClock float32, armClock float32) bool {
 	if immediate {
 		cf.remainingCycles = 0
 		return false
@@ -140,7 +139,7 @@ func (cf *CallFn) Step(immediate bool, vcsClock float32) bool {
 
 	// number of arm cycles consumed for every VCS cycle. assuming processor
 	// runs at 70Mhz for now.
-	armCycles := float32(arm7tdmi.Clk / vcsClock)
+	armCycles := float32(armClock / vcsClock)
 
 	if cf.remainingCycles <= armCycles {
 		cf.remainingCycles = 0

@@ -33,6 +33,12 @@ type ARMPreferences struct {
 	// NOTE: this may be superceded in the future to allow for more flexibility
 	Model prefs.String
 
+	// speed of processor
+	Clock prefs.Float // Mhz
+
+	// amount of time required to access flash memory
+	FlashLatency prefs.Float // nanoseconds
+
 	// whether the ARM coprocessor (as found in Harmony cartridges) executes
 	// instantly
 	Immediate prefs.Bool
@@ -67,6 +73,14 @@ func newARMprefrences() (*ARMPreferences, error) {
 	if err != nil {
 		return nil, err
 	}
+	err = p.dsk.Add("hardware.arm7.clock", &p.Clock)
+	if err != nil {
+		return nil, err
+	}
+	err = p.dsk.Add("hardware.arm7.flashLatency", &p.FlashLatency)
+	if err != nil {
+		return nil, err
+	}
 	err = p.dsk.Add("hardware.arm7.immediate", &p.Immediate)
 	if err != nil {
 		return nil, err
@@ -91,6 +105,8 @@ func newARMprefrences() (*ARMPreferences, error) {
 func (p *ARMPreferences) SetDefaults() {
 	// initialise random number generator
 	p.Model.Set("AUTO")
+	p.Clock.Set(70.0)
+	p.FlashLatency.Set(50.0)
 	p.Immediate.Set(false)
 	p.MAM.Set(-1)
 	p.AbortOnIllegalMem.Set(false)
