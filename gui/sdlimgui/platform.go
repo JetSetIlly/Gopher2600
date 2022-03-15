@@ -79,12 +79,12 @@ func newPlatform(img *SdlImgui) (*platform, error) {
 
 	glContext, err := plt.window.GLCreateContext()
 	if err != nil {
-		err = plt.destroy()
+		_ = plt.destroy()
 		return nil, fmt.Errorf("sdl: %v", err)
 	}
 	err = plt.window.GLMakeCurrent(glContext)
 	if err != nil {
-		err = plt.destroy()
+		_ = plt.destroy()
 		return nil, fmt.Errorf("sdl: %v", err)
 	}
 
