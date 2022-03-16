@@ -13,26 +13,22 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-package atarivox
+package preferences
 
 import (
 	"github.com/jetsetilly/gopher2600/prefs"
 	"github.com/jetsetilly/gopher2600/resources"
 )
 
-type Preferences struct {
+type AtariVoxPreferences struct {
 	dsk *prefs.Disk
 
 	FestivalBinary prefs.String
 }
 
-func (p *Preferences) String() string {
-	return p.dsk.String()
-}
-
 // NewPreferences is the preferred method of initialisation for the Preferences type.
-func NewPreferences() (*Preferences, error) {
-	p := &Preferences{}
+func newAtariVoxPreferences() (*AtariVoxPreferences, error) {
+	p := &AtariVoxPreferences{}
 	p.SetDefaults()
 
 	pth, err := resources.JoinPath(prefs.DefaultPrefsFile)
@@ -59,16 +55,16 @@ func NewPreferences() (*Preferences, error) {
 }
 
 // SetDefaults reverts all settings to default values.
-func (p *Preferences) SetDefaults() {
+func (p *AtariVoxPreferences) SetDefaults() {
 	p.FestivalBinary.Set("")
 }
 
 // Load disassembly preferences and apply to the current disassembly.
-func (p *Preferences) Load() error {
+func (p *AtariVoxPreferences) Load() error {
 	return p.dsk.Load(false)
 }
 
 // Save current disassembly preferences to disk.
-func (p *Preferences) Save() error {
+func (p *AtariVoxPreferences) Save() error {
 	return p.dsk.Save()
 }

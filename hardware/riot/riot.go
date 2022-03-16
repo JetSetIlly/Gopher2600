@@ -40,7 +40,7 @@ func NewRIOT(instance *instance.Instance, mem chipbus.Memory, tiaMem chipbus.Mem
 		instance: instance,
 		mem:      mem,
 		Timer:    timer.NewTimer(instance, mem),
-		Ports:    ports.NewPorts(mem, tiaMem),
+		Ports:    ports.NewPorts(instance, mem, tiaMem),
 	}
 }
 

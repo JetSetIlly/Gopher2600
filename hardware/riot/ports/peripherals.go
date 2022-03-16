@@ -16,6 +16,7 @@
 package ports
 
 import (
+	"github.com/jetsetilly/gopher2600/hardware/instance"
 	"github.com/jetsetilly/gopher2600/hardware/memory/chipbus"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
 )
@@ -60,7 +61,7 @@ type Peripheral interface {
 
 // NewPeripheral defines the function signature for a creating a new
 // peripheral, suitable for use with AttachPloyer0() and AttachPlayer1().
-type NewPeripheral func(plugging.PortID, PeripheralBus) Peripheral
+type NewPeripheral func(*instance.Instance, plugging.PortID, PeripheralBus) Peripheral
 
 // PeripheralBus defines the memory operations required by peripherals. We keep
 // this bus definition here rather than the Bus package because it is very

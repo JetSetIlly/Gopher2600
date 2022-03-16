@@ -18,6 +18,7 @@ package atarivox
 import (
 	"fmt"
 
+	"github.com/jetsetilly/gopher2600/hardware/instance"
 	"github.com/jetsetilly/gopher2600/hardware/memory/chipbus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
 	"github.com/jetsetilly/gopher2600/hardware/peripherals/atarivox/atarivoxengines"
@@ -40,7 +41,7 @@ const (
 )
 
 type AtariVox struct {
-	Prefs *Preferences
+	instance *instance.Instance
 
 	port plugging.PortID
 	bus  ports.PeripheralBus
@@ -74,7 +75,7 @@ type AtariVox struct {
 }
 
 // NewAtariVox is the preferred method of initialisation for the AtariVox type.
-func NewAtariVox(port plugging.PortID, bus ports.PeripheralBus) ports.Peripheral {
+func NewAtariVox(instance *instance.Instance, port plugging.PortID, bus ports.PeripheralBus) ports.Peripheral {
 	// there's no technical reason why the atarivox can't be attached to the
 	// left player port but to keep things simple (we don't really want
 	// multiple instances of an atarivox engine) we don't allow it
@@ -86,6 +87,7 @@ func NewAtariVox(port plugging.PortID, bus ports.PeripheralBus) ports.Peripheral
 	}
 
 	vox := &AtariVox{
+		instance:      instance,
 		port:          port,
 		bus:           bus,
 		SpeakJetDATA:  i2c.NewTrace(),
@@ -94,12 +96,7 @@ func NewAtariVox(port plugging.PortID, bus ports.PeripheralBus) ports.Peripheral
 
 	var err error
 
-	vox.Prefs, err = NewPreferences()
-	if err != nil {
-		logger.Logf("atarivox", err.Error())
-	}
-
-	vox.Engine, err = atarivoxengines.NewFestival(vox.Prefs.FestivalBinary.Get().(string))
+	vox.Engine, err = atarivoxengines.NewFestival(vox.instance.Prefs.AtariVox.FestivalBinary.Get().(string))
 	if err != nil {
 		logger.Logf("atarivox", err.Error())
 	}
@@ -107,7 +104,7 @@ func NewAtariVox(port plugging.PortID, bus ports.PeripheralBus) ports.Peripheral
 	logger.Logf("atarivox", "attached [%v]", vox.port)
 
 	// attach savekey to same port
-	vox.SaveKey = savekey.NewSaveKey(port, bus)
+	vox.SaveKey = savekey.NewSaveKey(instance, port, bus)
 
 	return vox
 }

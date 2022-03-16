@@ -20,6 +20,7 @@ import (
 	"strconv"
 
 	"github.com/jetsetilly/gopher2600/curated"
+	"github.com/jetsetilly/gopher2600/hardware/instance"
 	"github.com/jetsetilly/gopher2600/hardware/memory/chipbus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
@@ -51,7 +52,7 @@ type Stick struct {
 // NewStick is the preferred method of initialisation for the Stick type
 // Satisifies the ports.NewPeripheral interface and can be used as an argument
 // to ports.AttachPlayer0() and ports.AttachPlayer1().
-func NewStick(port plugging.PortID, bus ports.PeripheralBus) ports.Peripheral {
+func NewStick(instance *instance.Instance, port plugging.PortID, bus ports.PeripheralBus) ports.Peripheral {
 	stk := &Stick{
 		port:   port,
 		bus:    bus,

@@ -42,6 +42,8 @@ type Preferences struct {
 	// preferences used by the TIA package in order to emulate different
 	// revisions of the TIA chip
 	Revision *RevisionPreferences
+
+	AtariVox *AtariVoxPreferences
 }
 
 func (p *Preferences) String() string {
@@ -85,6 +87,11 @@ func NewPreferences() (*Preferences, error) {
 	}
 
 	p.Revision, err = newRevisionPreferences()
+	if err != nil {
+		return nil, err
+	}
+
+	p.AtariVox, err = newAtariVoxPreferences()
 	if err != nil {
 		return nil, err
 	}
