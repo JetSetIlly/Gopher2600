@@ -75,7 +75,7 @@ type AtariVox struct {
 }
 
 // NewAtariVox is the preferred method of initialisation for the AtariVox type.
-func NewAtariVox(instance *instance.Instance, port plugging.PortID, bus ports.PeripheralBus) ports.Peripheral {
+func NewAtariVox(inst *instance.Instance, port plugging.PortID, bus ports.PeripheralBus) ports.Peripheral {
 	// there's no technical reason why the atarivox can't be attached to the
 	// left player port but to keep things simple (we don't really want
 	// multiple instances of an atarivox engine) we don't allow it
@@ -87,7 +87,7 @@ func NewAtariVox(instance *instance.Instance, port plugging.PortID, bus ports.Pe
 	}
 
 	vox := &AtariVox{
-		instance:      instance,
+		instance:      inst,
 		port:          port,
 		bus:           bus,
 		SpeakJetDATA:  i2c.NewTrace(),
@@ -96,15 +96,18 @@ func NewAtariVox(instance *instance.Instance, port plugging.PortID, bus ports.Pe
 
 	var err error
 
-	vox.Engine, err = atarivoxengines.NewFestival(vox.instance.Prefs.AtariVox.FestivalBinary.Get().(string))
-	if err != nil {
-		logger.Logf("atarivox", err.Error())
+	// only start festival engine if this a "Main" emulation instance
+	if vox.instance.Label == instance.Main {
+		vox.Engine, err = atarivoxengines.NewFestival(vox.instance.Prefs.AtariVox.FestivalBinary.Get().(string))
+		if err != nil {
+			logger.Logf("atarivox", err.Error())
+		}
 	}
 
 	logger.Logf("atarivox", "attached [%v]", vox.port)
 
 	// attach savekey to same port
-	vox.SaveKey = savekey.NewSaveKey(instance, port, bus)
+	vox.SaveKey = savekey.NewSaveKey(inst, port, bus)
 
 	return vox
 }
