@@ -56,7 +56,7 @@ func newAtariVoxPreferences() (*AtariVoxPreferences, error) {
 
 // SetDefaults reverts all settings to default values.
 func (p *AtariVoxPreferences) SetDefaults() {
-	p.FestivalBinary.Set("")
+	p.FestivalBinary.Set(p.binary())
 }
 
 // Load disassembly preferences and apply to the current disassembly.
