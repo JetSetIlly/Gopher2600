@@ -434,6 +434,13 @@ prevented from changing the MAM state.
 
 The MAM should almost never be disabled completely.`)
 
+	imgui.Spacing()
+
+	clk := float32(win.img.vcs.Instance.Prefs.ARM.Clock.Get().(float64))
+	if imgui.SliderFloatV("Clock Speed", &clk, 50, 80, "%.0f Mhz", imgui.SliderFlagsNone) {
+		win.img.vcs.Instance.Prefs.ARM.Clock.Set(float64(clk))
+	}
+
 	if immediate {
 		imgui.PopStyleVar()
 		imgui.PopItemFlag()
@@ -450,12 +457,6 @@ will always abort if the access is a PC fetch, even if this option is not set.
 
 Illegal accesses will be logged in all instances.`)
 
-	imgui.Spacing()
-
-	clk := float32(win.img.vcs.Instance.Prefs.ARM.Clock.Get().(float64))
-	if imgui.SliderFloatV("Clock Speed", &clk, 50, 80, "%.0f Mhz", imgui.SliderFlagsNone) {
-		win.img.vcs.Instance.Prefs.ARM.Clock.Set(float64(clk))
-	}
 }
 
 func (win *winPrefs) drawPlusROM() {
