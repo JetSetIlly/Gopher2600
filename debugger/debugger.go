@@ -1216,6 +1216,9 @@ func (dbg *Debugger) parseInput(input string, interactive bool, auto bool) error
 
 // Plugged implements the plugging.PlugMonitor interface.
 func (dbg *Debugger) Plugged(port plugging.PortID, peripheral plugging.PeripheralID) {
+	if dbg.vcs.Mem.Cart.IsEjected() {
+		return
+	}
 	dbg.gui.SetFeature(gui.ReqControllerChange, port, peripheral)
 }
 
