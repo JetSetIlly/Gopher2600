@@ -96,7 +96,7 @@ func NewFestival(executablePath string) (AtariVoxEngine, error) {
 				fest.stdin.Write([]byte(sayphones))
 
 			case command := <-fest.cmd:
-				// logger.Logf("festival", command)
+				// https://www.cstr.ed.ac.uk/projects/festival/manual/festival_34.html#SEC141
 				fest.stdin.Write([]byte(command))
 			}
 		}

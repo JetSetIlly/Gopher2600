@@ -451,8 +451,6 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 				logger.Log("sdlimgui", "dropped keyboard event")
 			}
 		}
-
-		return
 	}
 
 	// remaining keypresses forwarded to imgui io system

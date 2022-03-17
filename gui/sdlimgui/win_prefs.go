@@ -352,6 +352,27 @@ func (win *winPrefs) drawVCS() {
 		win.drawTIARev()
 	}
 
+	imgui.Spacing()
+	if imgui.CollapsingHeader("AtariVox") {
+		imgui.Spacing()
+		imgui.Text("AtariVox output is currently only available")
+		imgui.Text("via the Festival voice synthsizer. The path")
+		imgui.Text("to the binary is specified below:")
+
+		imgui.Spacing()
+		binary := win.img.vcs.Instance.Prefs.AtariVox.FestivalBinary.Get().(string)
+		if imgui.InputTextV("##festivalbinary", &binary, imgui.InputTextFlagsEnterReturnsTrue, nil) {
+			win.img.vcs.Instance.Prefs.AtariVox.FestivalBinary.Set(binary)
+			win.img.vcs.RIOT.Ports.ResetPeripherals()
+		}
+
+		imgui.Spacing()
+		enabled := win.img.vcs.Instance.Prefs.AtariVox.FestivalEnabled.Get().(bool)
+		if imgui.Checkbox("Enable Festival Output", &enabled) {
+			win.img.vcs.Instance.Prefs.AtariVox.FestivalEnabled.Set(enabled)
+			win.img.vcs.RIOT.Ports.ResetPeripherals()
+		}
+	}
 }
 
 func (win *winPrefs) drawARM() {
@@ -467,6 +488,10 @@ func (win *winPrefs) drawDiskButtons() {
 			if err != nil {
 				logger.Logf("sdlimgui", "could not save (arm) preferences: %v", err)
 			}
+			err = win.img.vcs.Instance.Prefs.AtariVox.Save()
+			if err != nil {
+				logger.Logf("sdlimgui", "could not save (atarivox) preferences: %v", err)
+			}
 			err = win.img.vcs.Instance.Prefs.PlusROM.Save()
 			if err != nil {
 				logger.Logf("sdlimgui", "could not save (plusrom) preferences: %v", err)
@@ -511,6 +536,10 @@ func (win *winPrefs) drawDiskButtons() {
 			err = win.img.vcs.Instance.Prefs.ARM.Load()
 			if err != nil {
 				logger.Logf("sdlimgui", "could not restore (arm) preferences: %v", err)
+			}
+			err = win.img.vcs.Instance.Prefs.AtariVox.Load()
+			if err != nil {
+				logger.Logf("sdlimgui", "could not restore (atarivox) preferences: %v", err)
 			}
 			err = win.img.vcs.Instance.Prefs.PlusROM.Load()
 			if err != nil {

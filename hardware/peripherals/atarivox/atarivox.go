@@ -94,16 +94,7 @@ func NewAtariVox(inst *instance.Instance, port plugging.PortID, bus ports.Periph
 		SpeakJetREADY: i2c.NewTrace(),
 	}
 
-	var err error
-
-	// only start festival engine if this a "Main" emulation instance
-	if vox.instance.Label == instance.Main {
-		vox.Engine, err = atarivoxengines.NewFestival(vox.instance.Prefs.AtariVox.FestivalBinary.Get().(string))
-		if err != nil {
-			logger.Logf("atarivox", err.Error())
-		}
-	}
-
+	vox.activateFestival()
 	logger.Logf("atarivox", "attached [%v]", vox.port)
 
 	// attach savekey to same port
@@ -112,11 +103,31 @@ func NewAtariVox(inst *instance.Instance, port plugging.PortID, bus ports.Periph
 	return vox
 }
 
+func (vox *AtariVox) activateFestival() {
+	if vox.Engine != nil {
+		vox.Engine.Quit()
+		vox.Engine = nil
+	}
+
+	// only start festival engine if this a "Main" emulation instance
+	if vox.instance.Label == instance.Main {
+		if vox.instance.Prefs.AtariVox.FestivalEnabled.Get().(bool) {
+			var err error
+
+			vox.Engine, err = atarivoxengines.NewFestival(vox.instance.Prefs.AtariVox.FestivalBinary.Get().(string))
+			if err != nil {
+				logger.Logf("atarivox", err.Error())
+			}
+		}
+	}
+}
+
 // Periperhal is to be removed
 func (vox *AtariVox) Unplug() {
 	vox.SaveKey.Unplug()
 	if vox.Engine != nil {
 		vox.Engine.Quit()
+		vox.Engine = nil
 	}
 }
 
@@ -151,6 +162,7 @@ func (vox *AtariVox) ID() plugging.PeripheralID {
 // reset state of peripheral. this has nothing to do with the reset switch
 // on the VCS panel
 func (vox *AtariVox) Reset() {
+	vox.activateFestival()
 	vox.SaveKey.Reset()
 }
 

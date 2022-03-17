@@ -23,7 +23,8 @@ import (
 type AtariVoxPreferences struct {
 	dsk *prefs.Disk
 
-	FestivalBinary prefs.String
+	FestivalEnabled prefs.Bool
+	FestivalBinary  prefs.String
 }
 
 // NewPreferences is the preferred method of initialisation for the Preferences type.
@@ -37,6 +38,11 @@ func newAtariVoxPreferences() (*AtariVoxPreferences, error) {
 	}
 
 	p.dsk, err = prefs.NewDisk(pth)
+	if err != nil {
+		return nil, err
+	}
+
+	err = p.dsk.Add("peripherals.atarivox.festival.enabled", &p.FestivalEnabled)
 	if err != nil {
 		return nil, err
 	}
@@ -56,6 +62,7 @@ func newAtariVoxPreferences() (*AtariVoxPreferences, error) {
 
 // SetDefaults reverts all settings to default values.
 func (p *AtariVoxPreferences) SetDefaults() {
+	p.FestivalEnabled.Set(true)
 	p.FestivalBinary.Set(p.binary())
 }
 
