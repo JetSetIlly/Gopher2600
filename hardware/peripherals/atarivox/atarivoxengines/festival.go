@@ -118,7 +118,10 @@ func (fest *festival) reset() {
 
 // Quit implements the AtariVoxEngine interface.
 func (fest *festival) Quit() {
-	fest.quit <- true
+	select {
+	case fest.quit <- true:
+	default:
+	}
 }
 
 // SpeakJet implements the AtariVoxEngine interface.

@@ -104,25 +104,27 @@ func NewAtariVox(inst *instance.Instance, port plugging.PortID, bus ports.Periph
 }
 
 func (vox *AtariVox) activateFestival() {
+	// do nothing if the emulation instance is not he main instance
+	if vox.instance.Label != instance.Main {
+		return
+	}
+
 	if vox.Engine != nil {
 		vox.Engine.Quit()
 		vox.Engine = nil
 	}
 
-	// only start festival engine if this a "Main" emulation instance
-	if vox.instance.Label == instance.Main {
-		if vox.instance.Prefs.AtariVox.FestivalEnabled.Get().(bool) {
-			var err error
+	if vox.instance.Prefs.AtariVox.FestivalEnabled.Get().(bool) {
+		var err error
 
-			vox.Engine, err = atarivoxengines.NewFestival(vox.instance.Prefs.AtariVox.FestivalBinary.Get().(string))
-			if err != nil {
-				logger.Logf("atarivox", err.Error())
-			}
+		vox.Engine, err = atarivoxengines.NewFestival(vox.instance.Prefs.AtariVox.FestivalBinary.Get().(string))
+		if err != nil {
+			logger.Logf("atarivox", err.Error())
 		}
 	}
 }
 
-// Periperhal is to be removed
+// Unplug implements the ports.Peripheral interface.
 func (vox *AtariVox) Unplug() {
 	vox.SaveKey.Unplug()
 	if vox.Engine != nil {
@@ -131,39 +133,43 @@ func (vox *AtariVox) Unplug() {
 	}
 }
 
-// Snapshot the instance of the Peripheral
+// Snapshot implements the ports.Peripheral interface.
 func (vox *AtariVox) Snapshot() ports.Peripheral {
 	n := *vox
 	n.SaveKey = vox.SaveKey.Snapshot()
 	return &n
 }
 
-// Plumb a new PeripheralBus into the Peripheral
+// Plumb implements the ports.Peripheral interface.
 func (vox *AtariVox) Plumb(bus ports.PeripheralBus) {
 	vox.bus = bus
 	vox.SaveKey.Plumb(bus)
 }
 
-// String should return information about the state of the peripheral
+// String implements the ports.Peripheral interface.
 func (vox *AtariVox) String() string {
 	return fmt.Sprintf("atarivox: %s", vox.SaveKey.String())
 }
 
-// The port the peripheral is plugged into
+// PortID implements the ports.Peripheral interface.
 func (vox *AtariVox) PortID() plugging.PortID {
 	return vox.port
 }
 
-// The ID of the peripheral being represented
+// ID implements the ports.Peripheral interface.
 func (vox *AtariVox) ID() plugging.PeripheralID {
 	return plugging.PeriphAtariVox
 }
 
-// reset state of peripheral. this has nothing to do with the reset switch
-// on the VCS panel
+// Reset implements the ports.Peripheral interface.
 func (vox *AtariVox) Reset() {
-	vox.activateFestival()
+	// nothing to do for the atarivox but we forward the reset signal to the savekey
 	vox.SaveKey.Reset()
+}
+
+// Restart implements the ports.RestartPeripheral interface.
+func (vox *AtariVox) Restart() {
+	vox.activateFestival()
 }
 
 // the active bits in the SWCHA value.

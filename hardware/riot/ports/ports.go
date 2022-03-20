@@ -182,6 +182,20 @@ func (p *Ports) String() string {
 	return s.String()
 }
 
+// RestartPeripherals calls restart on any attached peripherals that implement
+// that function.
+func (p *Ports) RestartPeripherals() {
+	if r, ok := p.LeftPlayer.(RestartPeripheral); ok {
+		r.Restart()
+	}
+	if r, ok := p.RightPlayer.(RestartPeripheral); ok {
+		r.Restart()
+	}
+	if r, ok := p.Panel.(RestartPeripheral); ok {
+		r.Restart()
+	}
+}
+
 // ResetPeripherals to an initial state.
 func (p *Ports) ResetPeripherals() {
 	if p.LeftPlayer != nil {

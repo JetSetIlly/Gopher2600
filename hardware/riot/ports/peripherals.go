@@ -59,6 +59,16 @@ type Peripheral interface {
 	IsActive() bool
 }
 
+// RestartPeripheral is implemented by peripherals that can significantly
+// change configuration. For example, the AtariVox can make use of an external
+// program which might be changed during the emulation.
+//
+// Restarting is a special event and should not be called too often due to the
+// possible nature of configuration changes.
+type RestartPeripheral interface {
+	Restart()
+}
+
 // NewPeripheral defines the function signature for a creating a new
 // peripheral, suitable for use with AttachPloyer0() and AttachPlayer1().
 type NewPeripheral func(*instance.Instance, plugging.PortID, PeripheralBus) Peripheral

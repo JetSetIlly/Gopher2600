@@ -363,14 +363,14 @@ func (win *winPrefs) drawVCS() {
 		binary := win.img.vcs.Instance.Prefs.AtariVox.FestivalBinary.Get().(string)
 		if imgui.InputTextV("##festivalbinary", &binary, imgui.InputTextFlagsEnterReturnsTrue, nil) {
 			win.img.vcs.Instance.Prefs.AtariVox.FestivalBinary.Set(binary)
-			win.img.vcs.RIOT.Ports.ResetPeripherals()
+			win.img.dbg.PushRawEvent(win.img.vcs.RIOT.Ports.RestartPeripherals)
 		}
 
 		imgui.Spacing()
 		enabled := win.img.vcs.Instance.Prefs.AtariVox.FestivalEnabled.Get().(bool)
 		if imgui.Checkbox("Enable Festival Output", &enabled) {
 			win.img.vcs.Instance.Prefs.AtariVox.FestivalEnabled.Set(enabled)
-			win.img.vcs.RIOT.Ports.ResetPeripherals()
+			win.img.dbg.PushRawEvent(win.img.vcs.RIOT.Ports.RestartPeripherals)
 		}
 	}
 }
