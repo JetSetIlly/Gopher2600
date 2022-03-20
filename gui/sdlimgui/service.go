@@ -329,8 +329,9 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 		if img.isPlaymode() {
 			switch ev.Keysym.Scancode {
 			case sdl.SCANCODE_ESCAPE:
-				// close ROM selector if it's open otherwise quit application
-				if img.wm.selectROM.open {
+				if img.isCaptured() {
+					img.setCapture(false)
+				} else if img.wm.selectROM.open {
 					img.wm.selectROM.setOpen(false)
 				} else {
 					img.quit()
@@ -419,6 +420,35 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 
 		if handled {
 			return
+		}
+	} else if ev.Type == sdl.KEYDOWN {
+
+		// for debugger mode we test for the ESC key press on the down event
+		// and not the up event. this is because imgui widgets react to the ESC
+		// key on the down event and we only want to perform our special ESC
+		// key handling if no widget is active
+		//
+		// if we perform out special handling on the up stroke then the active
+		// widget will be unselected and then the special handling perfomed on
+		// every ESC KEY press. we don't want that. we want the active widget
+		// to be deselected and for the special handling to require a
+		// completely separate key press
+
+		if !img.isPlaymode() {
+			switch ev.Keysym.Scancode {
+			case sdl.SCANCODE_ESCAPE:
+				if !imgui.IsAnyItemActive() {
+					if img.isCaptured() {
+						img.setCapture(false)
+						img.term.pushCommand("HALT")
+						return
+					} else {
+						img.setCapture(true)
+						img.term.pushCommand("RUN")
+						return
+					}
+				}
+			}
 		}
 	}
 
