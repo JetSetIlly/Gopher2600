@@ -436,8 +436,13 @@ func (cart *cdf) Step(clock float32) {
 
 	// Step ARM state if the ARM program is NOT running
 	if cart.state.callfn.IsActive() {
-		if !cart.state.callfn.Step(cart.instance.Prefs.ARM.Immediate.Get().(bool), clock, cart.arm.Clk) {
+		if cart.instance.Prefs.ARM.Immediate.Get().(bool) {
 			cart.arm.Step(clock)
+		} else {
+			timerClock := cart.state.callfn.Step(clock, cart.arm.Clk)
+			if timerClock > 0 {
+				cart.arm.Step(timerClock)
+			}
 		}
 	} else {
 		cart.arm.Step(clock)

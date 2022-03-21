@@ -132,13 +132,14 @@ func (cf *CallFn) Start(cycles float32) {
 // Step forward one clock. Returns true if the ARM program is running and false
 // otherwise.
 //
+// Returns 0 or the adjusted clock speed to be passed to the ARM.Step()
+// function.
+//
 // CallFn.IsActive() should have been checked before calling this function.
-func (cf *CallFn) Step(immediate bool, vcsClock float32, armClock float32) bool {
-	if immediate {
-		cf.remainingCycles = 0
-		return false
-	}
-
+//
+// Also consider whether the function needs to be called at all - the ARM
+// emulation might be in immediate mode
+func (cf *CallFn) Step(vcsClock float32, armClock float32) float32 {
 	// number of arm cycles consumed for every VCS cycle
 	armCycles := float32(armClock / vcsClock)
 
@@ -149,10 +150,11 @@ func (cf *CallFn) Step(immediate bool, vcsClock float32, armClock float32) bool 
 	// number of ARM cycles were not counted if that number was less than the
 	// number possible in a single VCS clock
 	if cf.remainingCycles <= armCycles {
+		remnantClock := float32(int(armClock / (armCycles - cf.remainingCycles)))
 		cf.remainingCycles = 0
-		return true
+		return remnantClock
 	}
 
 	cf.remainingCycles -= armCycles
-	return true
+	return 0
 }
