@@ -131,19 +131,26 @@ func (cf *CallFn) Start(cycles float32) {
 
 // Step forward one clock. Returns true if the ARM program is running and false
 // otherwise.
+//
+// CallFn.IsActive() should have been checked before calling this function.
 func (cf *CallFn) Step(immediate bool, vcsClock float32, armClock float32) bool {
 	if immediate {
 		cf.remainingCycles = 0
 		return false
 	}
 
-	// number of arm cycles consumed for every VCS cycle. assuming processor
-	// runs at 70Mhz for now.
+	// number of arm cycles consumed for every VCS cycle
 	armCycles := float32(armClock / vcsClock)
 
+	// consume whatever the remaining cycles is. returning true because this stil takes
+	// one VCS clock
+	//
+	// for a long time these branch returned false, meaning that the remaining
+	// number of ARM cycles were not counted if that number was less than the
+	// number possible in a single VCS clock
 	if cf.remainingCycles <= armCycles {
 		cf.remainingCycles = 0
-		return false
+		return true
 	}
 
 	cf.remainingCycles -= armCycles
