@@ -1487,7 +1487,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 	case cmdStick:
 		var err error
 
-		stick, _ := tokens.Get()
+		port, _ := tokens.Get()
 		action, _ := tokens.Get()
 
 		var event ports.Event
@@ -1496,43 +1496,42 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		switch strings.ToUpper(action) {
 		case "FIRE":
 			event = ports.Fire
-			value = true
+			value = ports.DataStickTrue
 		case "UP":
 			event = ports.Up
-			value = true
+			value = ports.DataStickTrue
 		case "DOWN":
 			event = ports.Down
-			value = true
+			value = ports.DataStickTrue
 		case "LEFT":
 			event = ports.Left
-			value = true
+			value = ports.DataStickTrue
 		case "RIGHT":
 			event = ports.Right
-			value = true
+			value = ports.DataStickTrue
 
 		case "NOFIRE":
 			event = ports.Fire
-			value = false
+			value = ports.DataStickFalse
 		case "NOUP":
 			event = ports.Up
-			value = false
+			value = ports.DataStickFalse
 		case "NODOWN":
 			event = ports.Down
-			value = false
+			value = ports.DataStickFalse
 		case "NOLEFT":
 			event = ports.Left
-			value = false
+			value = ports.DataStickFalse
 		case "NORIGHT":
 			event = ports.Right
-			value = false
+			value = ports.DataStickFalse
 		}
 
-		n, _ := strconv.Atoi(stick)
-		switch n {
-		case 0:
+		switch port {
+		case "LEFT":
 			inp := ports.InputEvent{Port: plugging.PortLeftPlayer, Ev: event, D: value}
 			_, err = dbg.vcs.Input.HandleInputEvent(inp)
-		case 1:
+		case "RIGHT":
 			inp := ports.InputEvent{Port: plugging.PortRightPlayer, Ev: event, D: value}
 			_, err = dbg.vcs.Input.HandleInputEvent(inp)
 		}
@@ -1544,12 +1543,11 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 	case cmdKeypad:
 		var err error
 
-		pad, _ := tokens.Get()
+		port, _ := tokens.Get()
 		key, _ := tokens.Get()
 
-		n, _ := strconv.Atoi(pad)
-		switch n {
-		case 0:
+		switch port {
+		case "LEFT":
 			if strings.ToUpper(key) == "NONE" {
 				inp := ports.InputEvent{Port: plugging.PortLeftPlayer, Ev: ports.KeypadUp, D: nil}
 				_, err = dbg.vcs.Input.HandleInputEvent(inp)
@@ -1557,7 +1555,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 				inp := ports.InputEvent{Port: plugging.PortLeftPlayer, Ev: ports.KeypadDown, D: rune(key[0])}
 				_, err = dbg.vcs.Input.HandleInputEvent(inp)
 			}
-		case 1:
+		case "RIGHT":
 			if strings.ToUpper(key) == "NONE" {
 				inp := ports.InputEvent{Port: plugging.PortRightPlayer, Ev: ports.KeypadUp, D: nil}
 				_, err = dbg.vcs.Input.HandleInputEvent(inp)
