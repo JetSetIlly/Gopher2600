@@ -114,6 +114,7 @@ func (ref *Reflector) Step(bank mapper.BankInfo) error {
 	// unlike the nullify loop in NewFrame(), this does not have a
 	// corresponding constructin in the television implementation.
 	for i := ref.lastIdx; i < idx-1; i++ {
+		ref.history[i] = ReflectedVideoStep{}
 		ref.renderedHistory[ref.renderedHistoryIdx][i] = ReflectedVideoStep{}
 	}
 
@@ -167,7 +168,8 @@ func (ref *Reflector) NewFrame(_ television.FrameInfo) error {
 	// note that this echoes a similar construct in the television.NewFrame()
 	// function. it's important that this happens here or the results in the
 	// Renderer will not be satisfactory.
-	for i := ref.lastIdx; i < len(ref.renderedHistory); i++ {
+	for i := ref.lastIdx; i < len(ref.history); i++ {
+		ref.history[i] = ReflectedVideoStep{}
 		ref.renderedHistory[ref.renderedHistoryIdx][i] = ReflectedVideoStep{}
 	}
 	ref.lastIdx = 0
