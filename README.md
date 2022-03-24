@@ -372,11 +372,11 @@ you can use the `Scroll Lock` key.
 * `F12` Save [Screenshot](#screenshots)
 * `Scroll Lock` Toggle mouse capture (`F14` on some keyboards)
 * `Pause` Pause/Resume emulation (`F15` on some keyboard)
+* `Tab` Open the ROM selector (`Ctrl Tab` will reload the current ROM)
 
 In playmode only: 
 
 * `F7` FPS Indicator
-* `Tab` Opent the ROM selector
 
 The final hotkey switches between the playmode and the debugger. I'll describe
 this key as the `key below the Escape key`.

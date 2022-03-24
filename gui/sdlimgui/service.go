@@ -340,18 +340,30 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 			case sdl.SCANCODE_F7:
 				img.playScr.fpsOpen = !img.playScr.fpsOpen
 
-			case sdl.SCANCODE_TAB:
-				// only open ROM selector if window has been focused for a
-				// while. see windowFocusedTime declaration for an explanation
-				if time.Since(img.windowFocusedTime) > 500*time.Millisecond {
-					img.wm.selectROM.setOpen(!img.wm.selectROM.open)
-				}
 			default:
 				handled = false
 			}
 		}
 
 		switch ev.Keysym.Scancode {
+		case sdl.SCANCODE_TAB:
+			ctrl := ev.Keysym.Mod&sdl.KMOD_LCTRL == sdl.KMOD_LCTRL || ev.Keysym.Mod&sdl.KMOD_RCTRL == sdl.KMOD_RCTRL
+
+			if ctrl {
+				img.dbg.PushRawEvent(func() {
+					err := img.dbg.InsertCartridge("")
+					if err != nil {
+						logger.Logf("sdlimgui", err.Error())
+					}
+				})
+			} else {
+				// only open ROM selector if window has been focused for a
+				// while. see windowFocusedTime declaration for an explanation
+				if time.Since(img.windowFocusedTime) > 500*time.Millisecond {
+					img.wm.selectROM.setOpen(!img.wm.selectROM.open)
+				}
+			}
+
 		case sdl.SCANCODE_GRAVE:
 			if img.isPlaymode() {
 				img.emulation.SetFeature(emulation.ReqSetMode, emulation.ModeDebugger)

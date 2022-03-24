@@ -71,8 +71,13 @@ func (dbg *Debugger) HasChanged() bool {
 	return v
 }
 
-// InsertCartridge into running emulation.
+// InsertCartridge into running emulation. If filename argument is empty the
+// currently inserted cartridge will be reinserted.
 func (dbg *Debugger) InsertCartridge(filename string) error {
+	if filename == "" {
+		filename = dbg.loader.Filename
+	}
+
 	cartload, err := cartridgeloader.NewLoader(filename, "AUTO")
 	if err != nil {
 		return curated.Errorf("debugger: %v", err)
