@@ -326,6 +326,9 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 	if ev.Type == sdl.KEYUP {
 		handled := true
 
+		shift := ev.Keysym.Mod&sdl.KMOD_LSHIFT == sdl.KMOD_LSHIFT || ev.Keysym.Mod&sdl.KMOD_RSHIFT == sdl.KMOD_RSHIFT
+		ctrl := ev.Keysym.Mod&sdl.KMOD_LCTRL == sdl.KMOD_LCTRL || ev.Keysym.Mod&sdl.KMOD_RCTRL == sdl.KMOD_RCTRL
+
 		if img.isPlaymode() {
 			switch ev.Keysym.Scancode {
 			case sdl.SCANCODE_ESCAPE:
@@ -347,8 +350,6 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 
 		switch ev.Keysym.Scancode {
 		case sdl.SCANCODE_TAB:
-			ctrl := ev.Keysym.Mod&sdl.KMOD_LCTRL == sdl.KMOD_LCTRL || ev.Keysym.Mod&sdl.KMOD_RCTRL == sdl.KMOD_RCTRL
-
 			if ctrl {
 				img.dbg.PushRawEvent(func() {
 					err := img.dbg.InsertCartridge("")
@@ -387,9 +388,6 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 			img.prefs.fullScreen.Set(!img.prefs.fullScreen.Get().(bool))
 
 		case sdl.SCANCODE_F12:
-			shift := ev.Keysym.Mod&sdl.KMOD_LSHIFT == sdl.KMOD_LSHIFT || ev.Keysym.Mod&sdl.KMOD_RSHIFT == sdl.KMOD_RSHIFT
-			ctrl := ev.Keysym.Mod&sdl.KMOD_LCTRL == sdl.KMOD_LCTRL || ev.Keysym.Mod&sdl.KMOD_RCTRL == sdl.KMOD_RCTRL
-
 			if ctrl && !shift {
 				img.glsl.shaders[playscrShaderID].(*playscrShader).scheduleScreenshot(modeTriple)
 			} else if shift && !ctrl {
@@ -424,6 +422,18 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 				} else {
 					img.term.pushCommand("HALT")
 				}
+			}
+
+		case sdl.SCANCODE_R:
+			if ctrl {
+				img.dbg.PushRawEvent(func() {
+					err := img.dbg.InsertCartridge("")
+					if err != nil {
+						logger.Logf("sdlimgui", err.Error())
+					}
+				})
+			} else {
+				handled = false
 			}
 
 		default:
