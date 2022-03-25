@@ -133,13 +133,21 @@ ifeq (, $(shell which upx))
 	$(error "upx not installed")
 endif
 
-release: check_upx generate 
+release: generate 
+	$(goBinary) build -gcflags $(compileFlags) -ldflags="-s -w" -tags="imguifreetype release"
+	mv gopher2600 gopher2600_$(shell go env GOHOSTOS)_$(shell go env GOHOSTARCH)
+
+release_upx: check_upx generate 
 	$(goBinary) build -gcflags $(compileFlags) -ldflags="-s -w" -tags="imguifreetype release"
 	upx -o gopher2600.upx gopher2600
 	mv gopher2600.upx gopher2600_$(shell go env GOHOSTOS)_$(shell go env GOHOSTARCH)
 	rm gopher2600
 
-release_statsview: check_upx generate 
+release_statsview: generate 
+	$(goBinary) build -gcflags $(compileFlags) -ldflags="-s -w" -tags="imguifreetype release statsview" -o gopher2600_statsview
+	mv gopher2600_statsview gopher2600_statsview_$(shell go env GOHOSTOS)_$(shell go env GOHOSTARCH)
+
+release_statsview_upx: check_upx generate 
 	$(goBinary) build -gcflags $(compileFlags) -ldflags="-s -w" -tags="imguifreetype release statsview" -o gopher2600_statsview
 	upx -o gopher2600_statsview.upx gopher2600_statsview
 	mv gopher2600_statsview.upx gopher2600_statsview_$(shell go env GOHOSTOS)_$(shell go env GOHOSTARCH)
