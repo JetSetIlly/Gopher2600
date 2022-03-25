@@ -26,11 +26,12 @@ import (
 type LazyCart struct {
 	val *LazyValues
 
-	id       atomic.Value // string
-	mapping  atomic.Value // string
-	filename atomic.Value // string
-	numBanks atomic.Value // int
-	currBank atomic.Value // int
+	id        atomic.Value // string
+	mapping   atomic.Value // string
+	filename  atomic.Value // string
+	shortname atomic.Value // string
+	numBanks  atomic.Value // int
+	currBank  atomic.Value // int
 
 	staticBus atomic.Value // mapper.CartStaticBus (in container)
 	static    atomic.Value // mapper.CartStatic
@@ -54,11 +55,12 @@ type LazyCart struct {
 	plusROMRecvBuff atomic.Value // []uint8
 	plusROMSendBuff atomic.Value // []uint8
 
-	ID       string
-	Mapping  string
-	Filename string
-	NumBanks int
-	CurrBank mapper.BankInfo
+	ID        string
+	Mapping   string
+	Filename  string
+	Shortname string
+	NumBanks  int
+	CurrBank  mapper.BankInfo
 
 	HasStaticBus bool
 	Static       []mapper.CartStatic
@@ -103,6 +105,7 @@ type container struct {
 func (lz *LazyCart) push() {
 	lz.id.Store(lz.val.vcs.Mem.Cart.ID())
 	lz.filename.Store(lz.val.vcs.Mem.Cart.Filename)
+	lz.shortname.Store(lz.val.vcs.Mem.Cart.ShortName)
 	lz.mapping.Store(lz.val.vcs.Mem.Cart.MappedBanks())
 	lz.numBanks.Store(lz.val.vcs.Mem.Cart.NumBanks())
 	lz.currBank.Store(lz.val.vcs.Mem.Cart.GetBank(lz.val.vcs.CPU.PC.Address()))
@@ -171,6 +174,7 @@ func (lz *LazyCart) update() {
 	lz.ID, _ = lz.id.Load().(string)
 	lz.Mapping, _ = lz.mapping.Load().(string)
 	lz.Filename, _ = lz.filename.Load().(string)
+	lz.Shortname, _ = lz.shortname.Load().(string)
 	lz.NumBanks, _ = lz.numBanks.Load().(int)
 	lz.CurrBank, _ = lz.currBank.Load().(mapper.BankInfo)
 

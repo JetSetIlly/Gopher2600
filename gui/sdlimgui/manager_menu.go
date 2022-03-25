@@ -145,7 +145,7 @@ func (wm *manager) drawMenu() {
 	// cartridge info in menubar
 	wdth := imgui.WindowWidth()
 	wdth -= rightJustText(wdth, string(fonts.Disk), false)
-	wdth -= rightJustText(wdth, wm.img.lz.Cart.Filename, true)
+	wdth -= rightJustText(wdth, wm.img.lz.Cart.Shortname, true)
 	wdth -= rightJustText(wdth, wm.img.lz.Cart.ID, true)
 	wdth -= rightJustText(wdth, wm.img.lz.Cart.Mapping, true)
 
