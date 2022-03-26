@@ -169,7 +169,7 @@ func (win *winControl) drawStep() {
 		imgui.SameLine()
 		imgui.AlignTextToFramePadding()
 		if win.img.lz.Debugger.Quantum == debugger.QuantumClock {
-			imgui.Text("Video Clock")
+			imgui.Text("Colour Clock")
 		} else {
 			imgui.Text("CPU Instruction")
 		}
@@ -253,8 +253,8 @@ func (win *winControl) drawMouseCapture() {
 	imgui.SameLine()
 	if win.img.wm.dbgScr.isCaptured {
 		imgui.AlignTextToFramePadding()
-		imgui.Text("RMB to release mouse")
-	} else if imgui.Button("Capture mouse") {
+		imgui.Text("RMB to release input")
+	} else if imgui.Button("Capture input") {
 		win.img.setCapture(true)
 	}
 }
