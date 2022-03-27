@@ -103,7 +103,6 @@ func (dbg *Debugger) RewindToFrame(fn int, last bool) bool {
 			// set state to emulation.Rewinding as soon as possible (but
 			// remembering that we must do it in the debugger goroutine)
 			dbg.setState(emulation.Rewinding)
-
 			dbg.unwindLoop(doRewind)
 		})
 
@@ -142,7 +141,6 @@ func (dbg *Debugger) GotoCoords(coords coords.TelevisionCoords) bool {
 			// set state to emulation.Rewinding as soon as possible (but
 			// remembering that we must do it in the debugger goroutine)
 			dbg.setState(emulation.Rewinding)
-
 			dbg.unwindLoop(doRewind)
 		})
 

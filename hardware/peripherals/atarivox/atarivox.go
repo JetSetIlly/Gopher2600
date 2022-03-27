@@ -72,6 +72,9 @@ type AtariVox struct {
 
 	// the savekey portion of the AtariVox is the same as a stand alone savekey
 	SaveKey ports.Peripheral
+
+	// the atarivox should not process data when it is disabled
+	disabled bool
 }
 
 // NewAtariVox is the preferred method of initialisation for the AtariVox type.
@@ -172,6 +175,11 @@ func (vox *AtariVox) Restart() {
 	vox.activateFestival()
 }
 
+// Restart implements the ports.DisablePeripheral interface.
+func (vox *AtariVox) Disable(disabled bool) {
+	vox.disabled = disabled
+}
+
 // the active bits in the SWCHA value.
 const (
 	maskSpeakJetDATA  = 0b00010000
@@ -185,6 +193,10 @@ const (
 
 // memory has been updated. peripherals are notified.
 func (vox *AtariVox) Update(data chipbus.ChangedRegister) bool {
+	if vox.disabled {
+		return false
+	}
+
 	vox.SaveKey.Update(data)
 
 	switch data.Register {
@@ -196,6 +208,9 @@ func (vox *AtariVox) Update(data chipbus.ChangedRegister) bool {
 		case plugging.PortRightPlayer:
 			vox.swcha = (data.Value & 0x0f) << 4
 		}
+
+	default:
+		return true
 	}
 
 	return false
@@ -224,6 +239,10 @@ func (vox *AtariVox) resetBits() {
 
 // step is called every CPU clock. important for paddle devices
 func (vox *AtariVox) Step() {
+	if vox.disabled {
+		return
+	}
+
 	vox.SaveKey.Step()
 
 	// update atarivox i2c state
@@ -265,7 +284,7 @@ func (vox *AtariVox) Step() {
 		if vox.SpeakJetDATA.Lo() {
 			vox.State = AtariVoxData
 		} else {
-			logger.Log("savekey", "unexpected start bit of 1. should be 0")
+			logger.Log("atarivox", "unexpected start bit of 1. should be 0")
 			vox.State = AtariVoxStopped
 		}
 	case AtariVoxData:
@@ -277,7 +296,7 @@ func (vox *AtariVox) Step() {
 			vox.State = AtariVoxStopped
 			vox.Engine.SpeakJet(vox.Bits)
 		} else {
-			logger.Log("savekey", "unexpected end bit of 0. should be 1")
+			logger.Log("atarivox", "unexpected end bit of 0. should be 1")
 			vox.State = AtariVoxStopped
 		}
 	}

@@ -69,6 +69,12 @@ type RestartPeripheral interface {
 	Restart()
 }
 
+// DisablePeripheral is implemented by peripherals that can be disabled. This
+// is useful for peripherals that do not act well during rewinding.
+type DisablePeripheral interface {
+	Disable(bool)
+}
+
 // NewPeripheral defines the function signature for a creating a new
 // peripheral, suitable for use with AttachPloyer0() and AttachPlayer1().
 type NewPeripheral func(*instance.Instance, plugging.PortID, PeripheralBus) Peripheral

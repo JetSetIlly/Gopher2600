@@ -183,7 +183,7 @@ func (p *Ports) String() string {
 }
 
 // RestartPeripherals calls restart on any attached peripherals that implement
-// that function.
+// that the RestartPeripheral interface.
 func (p *Ports) RestartPeripherals() {
 	if r, ok := p.LeftPlayer.(RestartPeripheral); ok {
 		r.Restart()
@@ -193,6 +193,20 @@ func (p *Ports) RestartPeripherals() {
 	}
 	if r, ok := p.Panel.(RestartPeripheral); ok {
 		r.Restart()
+	}
+}
+
+// DisabledPeripherals calls restart on any attached peripherals that implement
+// that DisablePeripheral interface.
+func (p *Ports) DisablePeripherals(disabled bool) {
+	if r, ok := p.LeftPlayer.(DisablePeripheral); ok {
+		r.Disable(disabled)
+	}
+	if r, ok := p.RightPlayer.(DisablePeripheral); ok {
+		r.Disable(disabled)
+	}
+	if r, ok := p.Panel.(DisablePeripheral); ok {
+		r.Disable(disabled)
 	}
 }
 

@@ -83,6 +83,13 @@ type State int
 //
 // Values are ordered so that order comparisons are meaningful. For example,
 // Running is "greater than" Stepping, Paused, etc.
+//
+// Note that there is a flaw in this current implementation that means a
+// "catchup" loop which can occur at the end of the Rewinding state, will
+// report as being in the Running (or Stepping and Paused) state, even though
+// we might logically think of it being the Rewinding state. See
+// Debugger.CatchUpLoop() for an example of this and how it affects
+// peripherals.
 const (
 	EmulatorStart State = iota
 	Initialising

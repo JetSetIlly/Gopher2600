@@ -53,6 +53,15 @@ func (dbg *Debugger) CatchUpLoop(tgt coords.TelevisionCoords) error {
 			return !coords.GreaterThanOrEqual(newCoords, tgt)
 		}
 
+		// the catchup loop will cause the emulation to move out of the
+		// rewinding state.
+		//
+		// however, we don't want necessarily want peripherals to be triggered
+		// during the catchup event (it depends on the peripheral). we
+		// therefore disable the peripherals now and then enable them at the
+		// end of the catchupEnd function
+		dbg.vcs.RIOT.Ports.DisablePeripherals(true)
+
 		dbg.catchupEnd = func() {
 			dbg.vcs.TV.SetFPSCap(fpsCap)
 			dbg.catchupContinue = nil
@@ -61,9 +70,10 @@ func (dbg *Debugger) CatchUpLoop(tgt coords.TelevisionCoords) error {
 			dbg.runUntilHalt = false
 			dbg.continueEmulation = dbg.catchupEndAdj
 			dbg.catchupEndAdj = false
-		}
 
-		dbg.PushRawEventReturn(func() {})
+			// make sure peripherals have been reenabled
+			dbg.vcs.RIOT.Ports.DisablePeripherals(false)
+		}
 	}
 
 	return nil

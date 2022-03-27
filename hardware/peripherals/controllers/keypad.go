@@ -236,6 +236,9 @@ func (key *Keypad) Update(data chipbus.ChangedRegister) bool {
 			key.bus.WriteINPTx(key.column[1], 0x80)
 			key.bus.WriteINPTx(key.column[2], 0x80)
 		}
+
+	default:
+		return true
 	}
 
 	return false
