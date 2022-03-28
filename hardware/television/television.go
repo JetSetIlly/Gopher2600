@@ -420,9 +420,13 @@ func (tv *Television) Signal(sig signal.SignalAttributes) error {
 		//
 		// (06/01/21) another example is the Artkaris NTSC version of Lili
 		if tv.state.scanline >= specification.AbsoluteMaxScanlines {
-			err := tv.newFrame(false)
-			if err != nil {
-				return err
+			if tv.state.vsyncCount == 0 {
+				err := tv.newFrame(false)
+				if err != nil {
+					return err
+				}
+			} else {
+				tv.state.scanline = specification.AbsoluteMaxScanlines - 1
 			}
 		} else {
 			// if we're not at end of screen then indicate new scanline
@@ -445,6 +449,7 @@ func (tv *Television) Signal(sig signal.SignalAttributes) error {
 				return err
 			}
 		}
+		tv.state.vsyncCount = 0
 	}
 
 	// we've "faked" the flyback signal above when clock reached
