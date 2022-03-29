@@ -100,7 +100,7 @@ func NewCDF(instance *instance.Instance, pathToROM string, version string, data 
 	}
 
 	// initialise static memory
-	cart.state.static = cart.newCDFstatic(data, cart.version)
+	cart.state.static = cart.newCDFstatic(instance, data, cart.version)
 
 	// initialise ARM processor
 	//
