@@ -33,7 +33,7 @@ func (m AddressingMode) String() string {
 	case ZeroPage:
 		return "ZeroPage"
 	case Indirect:
-		return "Indirec"
+		return "Indirect"
 	case IndexedIndirect:
 		return "IndexedIndirect"
 	case IndirectIndexed:

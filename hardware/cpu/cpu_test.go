@@ -607,8 +607,25 @@ func testBRK(t *testing.T, mc *cpu.CPU, mem *mockMem) {
 	mem.Clear()
 	mc.Reset()
 
-	_ = mem.putInstructions(origin, 0x00, 0x00, 0x00)
-	step(t, mc) // SED
+	_ = mem.putInstructions(origin, 0x69, 0x01, 0x00)
+	step(t, mc) // ADC #$01
+	rtest.EquateRegisters(t, mc.PC, 0x02)
+	rtest.EquateRegisters(t, mc.A, 0x01)
+	step(t, mc) // BRK
+	rtest.EquateRegisters(t, mc.PC, 0x00)
+}
+
+func testKIL(t *testing.T, mc *cpu.CPU, mem *mockMem) {
+	var origin uint16
+	mem.Clear()
+	mc.Reset()
+
+	_ = mem.putInstructions(origin, 0x02, 0x69, 0x01)
+	step(t, mc) // KIL
+	rtest.EquateRegisters(t, mc.PC, 0x01)
+	step(t, mc) // ADC #$01
+	rtest.EquateRegisters(t, mc.PC, 0x01)
+	rtest.EquateRegisters(t, mc.A, 0x00)
 }
 
 func TestCPU(t *testing.T) {
@@ -630,4 +647,5 @@ func TestCPU(t *testing.T) {
 	testSubroutineInstructions(t, mc, mem)
 	testDecimalMode(t, mc, mem)
 	testBRK(t, mc, mem)
+	testKIL(t, mc, mem)
 }

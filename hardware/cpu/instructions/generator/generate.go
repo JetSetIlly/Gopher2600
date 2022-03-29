@@ -205,6 +205,9 @@ func parseCSV() (string, error) {
 		}
 
 		// add new definition to deftable, using opcode as the hash key
+		if _, ok := deftable[newDef.OpCode]; ok {
+			panic(fmt.Sprintf("duplicate opcode: %v", newDef))
+		}
 		deftable[newDef.OpCode] = newDef
 	}
 
@@ -236,9 +239,14 @@ func printSummary(deftable map[uint8]instructions.Definition) {
 
 	// if no missing instructions were found then there is nothing more to do
 	if len(missing) == 0 {
+		fmt.Println("all instruction generated")
 		return
 	}
 	fmt.Printf("cpu instructions generated (%d missing, %02.0f%% defined)\n", len(missing), float32(100*(256-len(missing))/256))
+
+	if len(missing) < 10 {
+		fmt.Printf("missing: %x\n", missing)
+	}
 }
 
 func generate() (rb bool) {

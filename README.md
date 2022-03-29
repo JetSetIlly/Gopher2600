@@ -162,6 +162,10 @@ https://www.randomterrain.com/atari-2600-memories-music-and-sound.html
 The 6507 information was taken from Leventhal's "6502 Assembly Language
 Programming" and the text file "64doc.txt" v1.0, by John West and Marko Makela.
 
+Undocumented 650x instructions and implementation details in "6502/6510/8500/8502 Opcode matrix" 
+
+http://www.oxyron.de/html/opcodes02.html
+
 US Patent Number 4,644,495 was referenced for the implementation of the DPC cartridge format
 (the format used in Pitfall 2)
 

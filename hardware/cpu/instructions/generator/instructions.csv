@@ -253,47 +253,148 @@
 # mnemonic used by the stella emulator (alternatives are commented as
 # appropriate)
 # - nop instructions of all cycle/byte counts are labelled as nop
+#
+#
+# Reference for undocumented instruction
+#
+# "6502/6510/8500/8502 Opcode matrix" © 2002-2012 Graham. Last change on 03.11.2012
+#
+# http://www.oxyron.de/html/opcodes02.html
+
 0x04, NOP, 3, ZEROPAGE, False
+0x0c, NOP, 4, ABSOLUTE, False
+0x14, NOP, 4, ZEROPAGE_INDEXED_X, False
+0x1a, NOP, 2, IMPLIED, False
+0x1c, NOP, 4, ABSOLUTE_INDEXED_X, True
+0x34, NOP, 4, ZEROPAGE_INDEXED_X, False
+0x3a, NOP, 2, IMPLIED, False
+0x3c, NOP, 4, ABSOLUTE_INDEXED_X, True
+0x44, NOP, 3, ZEROPAGE, False
+0x54, NOP, 4, ZEROPAGE_INDEXED_X, False
+0x5a, NOP, 2, IMPLIED, False
+0x5c, NOP, 4, ABSOLUTE_INDEXED_X, True
+0x64, NOP, 3, ZEROPAGE, False
+0x74, NOP, 4, ZEROPAGE_INDEXED_X, False
+0x7a, NOP, 2, IMPLIED, False
+0x7c, NOP, 4, ABSOLUTE_INDEXED_X, True
 0x80, NOP, 2, IMMEDIATE, False
 0x82, NOP, 2, IMMEDIATE, False
-0x14, NOP, 4, ZEROPAGE_INDEXED_X, False
-0x34, NOP, 4, ZEROPAGE_INDEXED_X, False
-0x5a, NOP, 2, IMMEDIATE, False
+0x89, NOP, 2, IMMEDIATE, False
+0xc2, NOP, 2, IMMEDIATE, False
+0xd4, NOP, 4, ZEROPAGE_INDEXED_X, False
+0xda, NOP, 2, IMPLIED, False
+0xdc, NOP, 4, ABSOLUTE_INDEXED_X, True
+0xe2, NOP, 2, IMMEDIATE, False
+0xf4, NOP, 4, ZEROPAGE_INDEXED_X, False
+0xfa, NOP, 2, IMPLIED, False
+0xfc, NOP, 4, ABSOLUTE_INDEXED_X, True
 
-0x0c, SKW, 4, ABSOLUTE, False
-0x1c, SKW, 4, ABSOLUTE_INDEXED_X, True
-0x3c, SKW, 4, ABSOLUTE_INDEXED_X, True
-0x5c, SKW, 4, ABSOLUTE_INDEXED_X, True
-0x7c, SKW, 4, ABSOLUTE_INDEXED_X, True
-0xdc, SKW, 4, ABSOLUTE_INDEXED_X, True
-0xfc, SKW, 4, ABSOLUTE_INDEXED_X, True
-0xa7, LAX, 3, ZEROPAGE, False
-0xb3, LAX, 5, INDIRECT_INDEXED, True
-0xbf, LAX, 4, ABSOLUTE_INDEXED_Y, True
-0xb7, LAX, 4, ZEROPAGE_INDEXED_Y, False
-0xaf, LAX, 4, ABSOLUTE, False
-0xab, LAX, 2, IMMEDIATE, False
+0x03, SLO, 8, INDEXED_INDIRECT, False, RMW		# ASO
+0x07, SLO, 5, ZEROPAGE, False, RMW				# ASO
+0x0f, SLO, 6, ABSOLUTE, False, RMW				# ASO
+0x13, SLO, 8, INDIRECT_INDEXED, False, RMW		# ASO
+0x17, SLO, 6, ZEROPAGE_INDEXED_X, False, RMW    # ASO
+0x1b, SLO, 7, ABSOLUTE_INDEXED_Y, False , RMW   # ASO
+0x1f, SLO, 7, ABSOLUTE_INDEXED_X, False , RMW   # ASO
+
+0x0b, ANC, 2, IMMEDIATE, False
+0x2b, ANC, 2, IMMEDIATE, False
+
+0x23, RLA, 8, INDEXED_INDIRECT, False, RMW
+0x27, RLA, 5, ZEROPAGE, False, RMW
+0x2f, RLA, 6, ABSOLUTE, False, RMW
+0x33, RLA, 8, INDIRECT_INDEXED, False, RMW
+0x37, RLA, 6, ZEROPAGE_INDEXED_X, False, RMW
+0x3b, RLA, 7, ABSOLUTE_INDEXED_Y, False, RMW
+0x3f, RLA, 7, ABSOLUTE_INDEXED_X, False, RMW
+
+0x43, SRE, 8, INDEXED_INDIRECT, False, RMW      # LSE
+0x47, SRE, 5, ZEROPAGE, False, RMW              # LSE
+0x4f, SRE, 6, ABSOLUTE, False, RMW              # LSE
+0x53, SRE, 8, INDIRECT_INDEXED, False, RMW      # LSE
+0x57, SRE, 6, ZEROPAGE_INDEXED_X, False, RMW    # LSE
+0x5b, SRE, 7, ABSOLUTE_INDEXED_Y, False, RMW    # LSE
+0x5f, SRE, 7, ABSOLUTE_INDEXED_X, False, RMW    # LSE
+
+0x4b, ASR, 2, IMMEDIATE, False					# ALR
+
+0x63, RRA, 8, INDEXED_INDIRECT, False, RMW
+0x67, RRA, 5, ZEROPAGE, False, RMW
+0x6f, RRA, 6, ABSOLUTE, False, RMW
+0x73, RRA, 8, INDIRECT_INDEXED, False, RMW
+0x77, RRA, 6, ZEROPAGE_INDEXED_X, False, RMW
+0x7b, RRA, 7, ABSOLUTE_INDEXED_Y, False, RMW
+0x7f, RRA, 7, ABSOLUTE_INDEXED_X, False, RMW
+
+0x6b, ARR, 2, IMMEDIATE, False
+
+# XAA is highly unstable
 0x8b, XAA, 2, IMMEDIATE, False
-
-0xc7, DCP, 5, ZEROPAGE, False, RMW				# dcm
-0xd7, DCP, 6, ZEROPAGE_INDEXED_X, False, RMW	# dcm
-0x4b, ASR, 2, IMMEDIATE, False					# alr
 
 0x83, SAX, 6, INDEXED_INDIRECT, False, WRITE
 0x87, SAX, 3, ZEROPAGE, False, WRITE
 0x8f, SAX, 4, ABSOLUTE, False, WRITE
+0x97, SAX, 4, ZEROPAGE_INDEXED_Y, False, WRITE
+
+## AHX is unstable
+0x93, AHX, 6, INDIRECT_INDEXED, False, WRITE
+0x9f, AHX, 5, ABSOLUTE_INDEXED_Y, False, WRITE
+
+## TAS is unstable
+0x9b, TAS, 5, ABSOLUTE_INDEXED_Y, False, WRITE
+
+## SHY is unstable
+0x9c, SHY, 5, ABSOLUTE_INDEXED_X, False, WRITE
+
+## SHX is unstable
+0x9e, SHX, 5, ABSOLUTE_INDEXED_Y, False, WRITE
+
+# LAX is highly unstable
+0xa3, LAX, 6, INDEXED_INDIRECT, False
+0xa7, LAX, 3, ZEROPAGE, False
+0xab, LAX, 2, IMMEDIATE, False
+0xaf, LAX, 4, ABSOLUTE, False
+0xb3, LAX, 5, INDIRECT_INDEXED, True
+0xb7, LAX, 4, ZEROPAGE_INDEXED_Y, False
+0xbf, LAX, 4, ABSOLUTE_INDEXED_Y, True
+
+0xbb, LAS, 4, ABSOLUTE_INDEXED_Y, True   # LAR
+
+0xc3, DCP, 8, INDEXED_INDIRECT, False, RMW      # DCM
+0xc7, DCP, 5, ZEROPAGE, False, RMW				# DCM
+0xcf, DCP, 6, ABSOLUTE, False, RMW              # DCM
+0xd3, DCP, 8, INDIRECT_INDEXED, False, RMW      # DCM
+0xd7, DCP, 6, ZEROPAGE_INDEXED_X, False, RMW	# DCM
+0xdb, DCP, 7, ABSOLUTE_INDEXED_Y, False, RMW    # DCM
+0xdf, DCP, 7, ABSOLUTE_INDEXED_X, False, RMW    # DCM
+
 0xcb, AXS, 2, IMMEDIATE, False
-0x6b, ARR, 2, IMMEDIATE, False
 
-0x03, SLO, 8, INDEXED_INDIRECT, False, RMW		# aso
-0x07, SLO, 5, ZEROPAGE, False, RMW				# aso
-0x1b, SLO, 7, ABSOLUTE_INDEXED_Y, False , RMW   # aso
+0xe3, ISC, 8, INDEXED_INDIRECT, False, RMW      # ISB
+0xe7, ISC, 5, ZEROPAGE, False, RMW              # ISB
+0xef, ISC, 6, ABSOLUTE, False, RMW              # ISB
+0xf3, ISC, 8, INDIRECT_INDEXED, False, RMW      # ISB
+0xf7, ISC, 6, ZEROPAGE_INDEXED_X, False, RMW    # ISB
+0xfb, ISC, 7, ABSOLUTE_INDEXED_Y, False, RMW    # ISB
+0xff, ISC, 7, ABSOLUTE_INDEXED_X, False, RMW    # ISB
 
-0x37, RLA, 6, ZEROPAGE_INDEXED_X, False, RMW
-0x3f, RLA, 7, ABSOLUTE_INDEXED_X, False, RMW
+# this is just the same as opcode e9 which is a documented instruction
+# I'm not sure why this is considered to be undocumented
+0xeb, SBC, 2, IMMEDIATE, False
 
-0xe7, ISC, 5, ZEROPAGE, False, RMW
-0xff, ISC, 7, ABSOLUTE_INDEXED_X, False, RMW
+# KIL is sometimes called HLT or JAM
+0x02, KIL, 2, IMPLIED, False
+0x12, KIL, 2, IMPLIED, False
+0x22, KIL, 2, IMPLIED, False
+0x32, KIL, 2, IMPLIED, False
+0x42, KIL, 2, IMPLIED, False
+0x52, KIL, 2, IMPLIED, False
+0x62, KIL, 2, IMPLIED, False
+0x72, KIL, 2, IMPLIED, False
+0x92, KIL, 2, IMPLIED, False
+0xb2, KIL, 2, IMPLIED, False
+0xd2, KIL, 2, IMPLIED, False
+0xf2, KIL, 2, IMPLIED, False
 
-0x2b, ANC, 2, IMMEDIATE, False
+
 

@@ -24,6 +24,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/cpu/registers"
 	"github.com/jetsetilly/gopher2600/hardware/instance"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
+	"github.com/jetsetilly/gopher2600/logger"
 )
 
 // CPU implements the 6507 found as found in the Atari 2600. Register logic is
@@ -78,6 +79,9 @@ type CPU struct {
 
 	// Whether the last memory access by the CPU was a phantom access
 	PhantomMemAccess bool
+
+	// the cpu has encounted a KIL instruction. requires a Reset()
+	Killed bool
 }
 
 // NewCPU is the preferred method of initialisation for the CPU structure. Note
@@ -120,6 +124,7 @@ func (mc *CPU) String() string {
 func (mc *CPU) Reset() {
 	mc.LastResult.Reset()
 	mc.Interrupted = true
+	mc.Killed = false
 
 	// checking for instance == nil because it's possible for NewCPU to be
 	// called with a nil instance (test package)
@@ -350,7 +355,8 @@ func (mc *CPU) read8BitPC(effect read8BitPCeffect) error {
 		// look up definition
 		mc.LastResult.Defn = mc.instructions[v]
 
-		// !!TODO: remove this once all opcodes are defined/implemented
+		// even though all opcodes are defined we'll leave this error check in
+		// just in case something goes wrong with the instruction generator
 		if mc.LastResult.Defn == nil {
 			return curated.Errorf(UnimplementedInstruction, v, mc.PC.Address()-1)
 		}
@@ -520,6 +526,11 @@ const (
 // cycleCallback() function is run, thereby allowing the rest of the VCS
 // hardware to operate.
 func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
+	// do nothing is CPU is in KIL state
+	if mc.Killed {
+		return nil
+	}
+
 	// a previous call to ExecuteInstruction() has not yet completed. it is
 	// impossible to begin a new instruction
 	if !mc.LastResult.Final && !mc.Interrupted {
@@ -1223,6 +1234,11 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 			mc.Status.Sign = mc.A.IsNegative()
 		}
 
+	case "SBC":
+		// SBC is an undocumented sbc. not sure why it's undocumented because
+		// it's the same as the regular sbc instruction
+		fallthrough
+
 	case "sbc":
 		if mc.Status.DecimalMode {
 			mc.Status.Carry,
@@ -1661,6 +1677,113 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 		mc.Status.Zero = mc.A.IsZero()
 		mc.Status.Sign = mc.A.IsNegative()
 		mc.Status.Carry = value&0x80 == 0x80
+
+	case "SRE":
+		// untested
+		r := mc.acc8
+		r.Load(value)
+		mc.Status.Carry = r.LSR()
+		value = r.Value()
+		mc.A.EOR(value)
+		mc.Status.Zero = r.IsZero()
+		mc.Status.Sign = r.IsNegative()
+
+	case "RRA":
+		// untested
+		r := mc.acc8
+		r.Load(value)
+		mc.Status.Carry = r.ROR(mc.Status.Carry)
+		value = r.Value()
+		mc.Status.Carry, mc.Status.Overflow = mc.A.Add(value, mc.Status.Carry)
+		mc.Status.Zero = r.IsZero()
+		mc.Status.Sign = r.IsNegative()
+
+	case "AHX":
+		// untested
+		r := mc.acc8
+		r.Load(mc.A.Value())
+		r.AND(mc.X.Value())
+		r.AND(uint8(mc.PC.Address() >> 8))
+
+		// +1 cycle
+		err = mc.write8Bit(address, r.Value(), false)
+		if err != nil {
+			return err
+		}
+		mc.LastResult.Cycles++
+		err = mc.cycleCallback()
+		if err != nil {
+			return err
+		}
+
+	case "TAS":
+		// untested
+		r := mc.acc8
+		r.Load(mc.A.Value())
+		r.AND(mc.X.Value())
+		mc.SP.Load(r.Value())
+
+		// continue working with r and store into address
+		r.AND(uint8(mc.PC.Address() >> 8))
+
+		// +1 cycle
+		err = mc.write8Bit(address, r.Value(), false)
+		if err != nil {
+			return err
+		}
+		mc.LastResult.Cycles++
+		err = mc.cycleCallback()
+		if err != nil {
+			return err
+		}
+
+	case "SHY":
+		// untested
+		r := mc.acc8
+		r.Load(mc.Y.Value())
+		r.AND(uint8(mc.PC.Address() >> 8))
+
+		// +1 cycle
+		err = mc.write8Bit(address, r.Value(), false)
+		if err != nil {
+			return err
+		}
+		mc.LastResult.Cycles++
+		err = mc.cycleCallback()
+		if err != nil {
+			return err
+		}
+
+	case "SHX":
+		// untested
+		r := mc.acc8
+		r.Load(mc.X.Value())
+		r.AND(uint8(mc.PC.Address() >> 8))
+
+		// +1 cycle
+		err = mc.write8Bit(address, r.Value(), false)
+		if err != nil {
+			return err
+		}
+		mc.LastResult.Cycles++
+		err = mc.cycleCallback()
+		if err != nil {
+			return err
+		}
+
+	case "LAS":
+		// untested
+		mc.SP.AND(value)
+		mc.A.Load(mc.SP.Value())
+		mc.X.Load(mc.SP.Value())
+		mc.Status.Zero = mc.SP.IsZero()
+		mc.Status.Sign = mc.SP.IsNegative()
+
+	case "KIL":
+		if !mc.NoFlowControl {
+			mc.Killed = true
+			logger.Logf("CPU", "KIL instruction (%#4x)", mc.PC.Address())
+		}
 
 	default:
 		return curated.Errorf("cpu: unknown operator (%s)", defn.Operator)

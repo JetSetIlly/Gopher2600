@@ -328,9 +328,7 @@ func (dsm *Disassembly) decode(mc *cpu.CPU, mem *disasmMemory) error {
 				// execute instruction at address
 				mc.PC.Load(address)
 				err := mc.ExecuteInstruction(nil)
-
-				// filter out (allow) unimplemented instruction errors
-				if err != nil && !curated.Is(err, cpu.UnimplementedInstruction) {
+				if err != nil {
 					return curated.Errorf("decode: %v", err)
 				}
 
