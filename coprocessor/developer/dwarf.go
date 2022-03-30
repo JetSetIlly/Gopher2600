@@ -68,6 +68,9 @@ type SourceLine struct {
 	// the content of the line
 	Content string
 
+	// the comment in the line. a comment can trail the Content field
+	Comment string
+
 	// the function the line of source can be found within
 	Function *SourceFunction
 
@@ -794,10 +797,21 @@ func readSourceFile(filename string, pathToROM_nosymlinks string) (*SourceFile, 
 
 	// split files into lines
 	for i, s := range strings.Split(string(b), "\n") {
+
+		// separate comment from content
+		content := s
+		comment := ""
+		idx := strings.Index(s, "//")
+		if idx != -1 {
+			content = s[:idx]
+			comment = s[idx:]
+		}
+
 		fl.Lines = append(fl.Lines, &SourceLine{
 			File:       &fl,
 			LineNumber: i + 1,
-			Content:    s,
+			Content:    content,
+			Comment:    comment,
 			Function:   &SourceFunction{Name: UnknownFunction},
 		})
 	}

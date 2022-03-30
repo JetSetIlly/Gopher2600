@@ -100,6 +100,7 @@ type imguiColors struct {
 	CoProcSourceBug            imgui.Vec4
 	CoProcSourceDisasm         imgui.Vec4
 	CoProcSourceDisasmFade     imgui.Vec4
+	CoProcSourceComment        imgui.Vec4
 	CoProcIllegalAccessRead    imgui.Vec4
 	CoProcIllegalAccessWrite   imgui.Vec4
 	CoProcIllegalAccessAddress imgui.Vec4
@@ -267,6 +268,7 @@ func newColors() *imguiColors {
 		CoProcSourceBug:            imgui.Vec4{0.5, 0.5, 0.8, 1.0},
 		CoProcSourceDisasm:         imgui.Vec4{1.0, 1.0, 1.0, 1.0},
 		CoProcSourceDisasmFade:     imgui.Vec4{0.6, 0.6, 0.6, 1.0},
+		CoProcSourceComment:        imgui.Vec4{0.6, 0.6, 0.6, 1.0},
 		CoProcIllegalAccessRead:    imgui.Vec4{0.8, 0.3, 0.8, 1.0},
 		CoProcIllegalAccessWrite:   imgui.Vec4{0.8, 0.5, 0.4, 1.0},
 		CoProcIllegalAccessAddress: imgui.Vec4{0.5, 0.5, 0.8, 1.0},

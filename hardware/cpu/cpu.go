@@ -358,7 +358,7 @@ func (mc *CPU) read8BitPC(effect read8BitPCeffect) error {
 		// even though all opcodes are defined we'll leave this error check in
 		// just in case something goes wrong with the instruction generator
 		if mc.LastResult.Defn == nil {
-			return curated.Errorf(UnimplementedInstruction, v, mc.PC.Address()-1)
+			return curated.Errorf("cpu: unimplemented instruction (%#02x) at (%#04x)", v, mc.PC.Address()-1)
 		}
 
 	case loNibble:
@@ -509,10 +509,9 @@ func nilCycleCallback() error {
 	return nil
 }
 
-// Sentinal errors returned by ExecuteInstruction
+// Sentinal errors returned by ExecuteInstruction.
 const (
-	UnimplementedInstruction = "cpu: unimplemented instruction (%#02x) at (%#04x)"
-	ResetMidInstruction      = "cpu: appears to have been reset mid-instruction"
+	ResetMidInstruction = "cpu: appears to have been reset mid-instruction"
 )
 
 // ExecuteInstruction steps CPU forward one instruction. The basic process when

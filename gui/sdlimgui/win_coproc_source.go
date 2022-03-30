@@ -392,6 +392,10 @@ func (win *winCoProcSource) draw() {
 				// source line
 				imgui.TableNextColumn()
 				imgui.Text(ln.Content)
+				imgui.SameLine()
+				imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceComment)
+				imgui.Text(ln.Comment)
+				imgui.PopStyleColor()
 			}
 		}
 
