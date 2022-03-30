@@ -173,20 +173,34 @@ func imguiToggleButtonVertical(id string, v bool, col imgui.Vec4) bool {
 	return r
 }
 
-// imguiBooleanButton with dimension argument.
-func imguiBooleanButton(cols *imguiColors, state bool, text string, dim imgui.Vec2) bool {
+// when displaying imguiColorButton() or imguiBooleanButton() where the result
+// is discarded, use this value with imgui.PushStyleVarFloat() with style
+// imgui.StyleVarFrameRounding to indicate that the button is "read-only"
+const readOnlyButtonRounding = 5.0
+
+// imguiColourButton adds a button of a single colour.
+func imguiColourButton(col imgui.Vec4, text string, dim imgui.Vec2) bool {
+	imgui.PushStyleColor(imgui.StyleColorButton, col)
+	imgui.PushStyleColor(imgui.StyleColorButtonHovered, col)
+	imgui.PushStyleColor(imgui.StyleColorButtonActive, col)
+	defer imgui.PopStyleColorV(3)
+	return imgui.ButtonV(text, dim)
+}
+
+// imguiBooleanButton adds a button of either one of two colors, depending on
+// the state boolean.
+func imguiBooleanButton(trueCol imgui.Vec4, falseCol imgui.Vec4, state bool, text string, dim imgui.Vec2) bool {
 	if state {
-		imgui.PushStyleColor(imgui.StyleColorButton, cols.True)
-		imgui.PushStyleColor(imgui.StyleColorButtonHovered, cols.True)
-		imgui.PushStyleColor(imgui.StyleColorButtonActive, cols.True)
+		imgui.PushStyleColor(imgui.StyleColorButton, trueCol)
+		imgui.PushStyleColor(imgui.StyleColorButtonHovered, trueCol)
+		imgui.PushStyleColor(imgui.StyleColorButtonActive, trueCol)
 	} else {
-		imgui.PushStyleColor(imgui.StyleColorButton, cols.False)
-		imgui.PushStyleColor(imgui.StyleColorButtonHovered, cols.False)
-		imgui.PushStyleColor(imgui.StyleColorButtonActive, cols.False)
+		imgui.PushStyleColor(imgui.StyleColorButton, falseCol)
+		imgui.PushStyleColor(imgui.StyleColorButtonHovered, falseCol)
+		imgui.PushStyleColor(imgui.StyleColorButtonActive, falseCol)
 	}
-	b := imgui.ButtonV(text, dim)
-	imgui.PopStyleColorV(3)
-	return b
+	defer imgui.PopStyleColorV(3)
+	return imgui.ButtonV(text, dim)
 }
 
 // imguiLabel aligns text with widget borders and positions cursor so next

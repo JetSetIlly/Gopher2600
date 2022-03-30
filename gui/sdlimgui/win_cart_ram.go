@@ -103,11 +103,13 @@ func (win *winCartRAM) draw() {
 
 			// status line
 			win.statusHeight = imguiMeasureHeight(func() {
+				imgui.PushStyleVarFloat(imgui.StyleVarFrameRounding, readOnlyButtonRounding)
 				if a.Mapped {
-					imguiBooleanButton(win.img.cols, true, " mapped ", win.mappedIndicatorDim)
+					imguiColourButton(win.img.cols.True, " mapped ", win.mappedIndicatorDim)
 				} else {
-					imguiBooleanButton(win.img.cols, false, " unmapped ", win.mappedIndicatorDim)
+					imguiColourButton(win.img.cols.False, " unmapped ", win.mappedIndicatorDim)
 				}
+				imgui.PopStyleVar()
 			})
 
 			imgui.EndTabItem()

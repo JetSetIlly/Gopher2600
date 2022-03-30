@@ -70,6 +70,11 @@ type imguiColors struct {
 	ControlHaltHovered imgui.Vec4
 	ControlHaltActive  imgui.Vec4
 
+	// cpu
+	CPURDY    imgui.Vec4
+	CPUNotRDY imgui.Vec4
+	CPUKIL    imgui.Vec4
+
 	// disassembly entry columns
 	DisasmLocation imgui.Vec4
 	DisasmBank     imgui.Vec4
@@ -231,6 +236,11 @@ func newColors() *imguiColors {
 		ControlHalt:        imgui.Vec4{0.6, 0.3, 0.3, 1.0},
 		ControlHaltHovered: imgui.Vec4{0.65, 0.3, 0.3, 1.0},
 		ControlHaltActive:  imgui.Vec4{0.65, 0.3, 0.3, 1.0},
+
+		// cpu window
+		CPURDY:    imgui.Vec4{0.3, 0.6, 0.3, 1.0},
+		CPUNotRDY: imgui.Vec4{0.6, 0.3, 0.3, 1.0},
+		CPUKIL:    imgui.Vec4{0.2, 0.2, 0.2, 1.0},
 
 		// disassembly entry columns
 		DisasmLocation: imgui.Vec4{0.8, 0.8, 0.8, 1.0},

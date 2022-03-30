@@ -122,11 +122,11 @@ func (win *winControl) draw() {
 func (win *winControl) drawRunButton() {
 	runDim := imgui.Vec2{X: imguiRemainingWinWidth(), Y: imgui.FrameHeight()}
 	if win.img.emulation.State() == emulation.Running {
-		if imguiBooleanButton(win.img.cols, false, fmt.Sprintf("%c Halt", fonts.Halt), runDim) {
+		if imguiColourButton(win.img.cols.False, fmt.Sprintf("%c Halt", fonts.Halt), runDim) {
 			win.img.term.pushCommand("HALT")
 		}
 	} else {
-		if imguiBooleanButton(win.img.cols, true, fmt.Sprintf("%c Run", fonts.Run), runDim) {
+		if imguiColourButton(win.img.cols.True, fmt.Sprintf("%c Run", fonts.Run), runDim) {
 			win.img.term.pushCommand("RUN")
 		}
 	}

@@ -18,6 +18,7 @@ package sdlimgui
 import (
 	"fmt"
 
+	"github.com/jetsetilly/gopher2600/gui/fonts"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/registers"
 
 	"github.com/inkyblackness/imgui-go/v4"
@@ -98,8 +99,16 @@ func (win *winCPU) draw() {
 		win.drawRegister(win.img.lz.CPU.X)
 
 		imgui.TableNextRow()
+
 		imgui.TableNextColumn()
-		_ = imguiBooleanButton(win.img.cols, win.img.lz.CPU.RdyFlg, "RDY Flag", fillWidth)
+		imgui.PushStyleVarFloat(imgui.StyleVarFrameRounding, readOnlyButtonRounding)
+		if win.img.lz.CPU.Killed {
+			_ = imguiColourButton(win.img.cols.CPUKIL, fmt.Sprintf("%c Killed", fonts.CPUKilled), fillWidth)
+		} else {
+			_ = imguiBooleanButton(win.img.cols.CPURDY, win.img.cols.CPUNotRDY, win.img.lz.CPU.RdyFlg, "RDY Flag", fillWidth)
+		}
+		imgui.PopStyleVar()
+
 		imgui.TableNextColumn()
 		win.drawRegister(win.img.lz.CPU.Y)
 

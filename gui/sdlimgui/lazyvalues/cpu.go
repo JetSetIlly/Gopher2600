@@ -28,6 +28,7 @@ type LazyCPU struct {
 
 	hasReset   atomic.Value // bool
 	rdy        atomic.Value // bool
+	killed     atomic.Value // bool
 	pc         atomic.Value // registers.ProgramCounter
 	a          atomic.Value // registers.Register
 	x          atomic.Value // registers.Register
@@ -38,6 +39,7 @@ type LazyCPU struct {
 
 	HasReset   bool
 	RdyFlg     bool
+	Killed     bool
 	PC         registers.ProgramCounter
 	A          registers.Register
 	X          registers.Register
@@ -54,6 +56,7 @@ func newLazyCPU(val *LazyValues) *LazyCPU {
 func (lz *LazyCPU) push() {
 	lz.hasReset.Store(lz.val.vcs.CPU.HasReset())
 	lz.rdy.Store(lz.val.vcs.CPU.RdyFlg)
+	lz.killed.Store(lz.val.vcs.CPU.Killed)
 	lz.pc.Store(lz.val.vcs.CPU.PC)
 	lz.a.Store(lz.val.vcs.CPU.A)
 	lz.x.Store(lz.val.vcs.CPU.X)
@@ -66,6 +69,7 @@ func (lz *LazyCPU) push() {
 func (lz *LazyCPU) update() {
 	lz.HasReset, _ = lz.hasReset.Load().(bool)
 	lz.RdyFlg, _ = lz.rdy.Load().(bool)
+	lz.Killed, _ = lz.killed.Load().(bool)
 	lz.PC, _ = lz.pc.Load().(registers.ProgramCounter)
 	lz.A, _ = lz.a.Load().(registers.Register)
 	lz.X, _ = lz.x.Load().(registers.Register)

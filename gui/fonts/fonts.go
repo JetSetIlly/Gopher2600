@@ -54,6 +54,7 @@ const (
 	Camera                 = '\uf030'
 	Chip                   = '\uf2db'
 	Unlocked               = '\uf13e'
+	CPUKilled              = '\uf714'
 	CoProcBug              = '\uf188'
 	ExecutionNotes         = '\uf02b'
 	CPUBug                 = '\uf188'
