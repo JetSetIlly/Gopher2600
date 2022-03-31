@@ -386,7 +386,7 @@ func (win *winCoProcPerformance) drawSourceLines(src *developer.Source) {
 		imgui.PopStyleColor()
 
 		imgui.TableNextColumn()
-		imgui.Text(strings.TrimSpace(ln.Content))
+		imgui.Text(strings.TrimSpace(ln.PlainContent))
 
 		imgui.TableNextColumn()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLoad)
@@ -512,7 +512,7 @@ func (win *winCoProcPerformance) drawFunctionFilter(src *developer.Source, funct
 		}
 
 		imgui.TableNextColumn()
-		imgui.Text(strings.TrimSpace(ln.Content))
+		imgui.Text(strings.TrimSpace(ln.PlainContent))
 
 		imgui.TableNextColumn()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLoad)
@@ -578,7 +578,7 @@ func (win *winCoProcPerformance) sourceLineTooltip(ln *developer.SourceLine, wit
 		imgui.Spacing()
 		imgui.Separator()
 		imgui.Spacing()
-		imgui.Text(strings.TrimSpace(ln.Content))
+		imgui.Text(strings.TrimSpace(ln.PlainContent))
 
 		if withAsm && len(ln.Disassembly) > 0 {
 			imgui.Spacing()

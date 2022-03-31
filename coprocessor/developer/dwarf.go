@@ -65,14 +65,14 @@ type SourceLine struct {
 	File       *SourceFile
 	LineNumber int
 
-	// the content of the line
-	Content string
-
-	// the comment in the line. a comment can trail the Content field
-	Comment string
-
 	// the function the line of source can be found within
 	Function *SourceFunction
+
+	// plain string of line
+	PlainContent string
+
+	// line divided into parts
+	Fragments []SourceLineFragment
 
 	// the generated assembly for this line. will be empty if line is a comment or otherwise unsused
 	Disassembly []*SourceDisasm
@@ -795,25 +795,17 @@ func readSourceFile(filename string, pathToROM_nosymlinks string) (*SourceFile, 
 		return nil, err
 	}
 
-	// split files into lines
+	// split files into lines and parse into fragments
+	var fp fragmentParser
 	for i, s := range strings.Split(string(b), "\n") {
-
-		// separate comment from content
-		content := s
-		comment := ""
-		idx := strings.Index(s, "//")
-		if idx != -1 {
-			content = s[:idx]
-			comment = s[idx:]
+		l := &SourceLine{
+			File:         &fl,
+			LineNumber:   i + 1,
+			Function:     &SourceFunction{Name: UnknownFunction},
+			PlainContent: s,
 		}
-
-		fl.Lines = append(fl.Lines, &SourceLine{
-			File:       &fl,
-			LineNumber: i + 1,
-			Content:    content,
-			Comment:    comment,
-			Function:   &SourceFunction{Name: UnknownFunction},
-		})
+		fl.Lines = append(fl.Lines, l)
+		fp.parseLine(l)
 	}
 
 	// evaluate symbolic links for the source filenam. pathToROM_nosymlinks has

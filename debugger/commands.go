@@ -1340,7 +1340,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 					for _, e := range log.Log {
 						if e.SrcLine != nil {
 							dbg.printLine(terminal.StyleFeedback, e.SrcLine.String())
-							dbg.printLine(terminal.StyleFeedback, e.SrcLine.Content)
+							dbg.printLine(terminal.StyleFeedback, e.SrcLine.PlainContent)
 						} else {
 							dbg.printLine(terminal.StyleFeedback,
 								fmt.Sprintf("%s at address %08x (PC: %08x)", e.Event, e.AccessAddr, e.PC))

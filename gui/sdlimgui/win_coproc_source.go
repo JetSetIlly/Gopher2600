@@ -71,10 +71,11 @@ func (r lineRange) ordered() (int, int) {
 }
 
 type winCoProcSource struct {
-	img           *SdlImgui
-	open          bool
-	showAsm       bool
-	optionsHeight float32
+	img                *SdlImgui
+	open               bool
+	showAsm            bool
+	syntaxHighlighting bool
+	optionsHeight      float32
 
 	scrollToFile string
 	scrollTo     bool
@@ -107,9 +108,10 @@ type winCoProcSource struct {
 
 func newWinCoProcSource(img *SdlImgui) (window, error) {
 	win := &winCoProcSource{
-		img:       img,
-		showAsm:   true,
-		firstOpen: true,
+		img:                img,
+		showAsm:            true,
+		syntaxHighlighting: true,
+		firstOpen:          true,
 	}
 	return win, nil
 }
@@ -391,11 +393,28 @@ func (win *winCoProcSource) draw() {
 
 				// source line
 				imgui.TableNextColumn()
-				imgui.Text(ln.Content)
-				imgui.SameLine()
-				imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceComment)
-				imgui.Text(ln.Comment)
-				imgui.PopStyleColor()
+
+				if win.syntaxHighlighting {
+					for _, fr := range ln.Fragments {
+						switch fr.Type {
+						case developer.FragmentCode:
+							imgui.Text(fr.Content)
+							imgui.SameLineV(0, 0)
+						case developer.FragmentComment:
+							imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceComment)
+							imgui.Text(fr.Content)
+							imgui.PopStyleColor()
+							imgui.SameLineV(0, 0)
+						case developer.FragmentStringLiteral:
+							imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceStringLiteral)
+							imgui.Text(fr.Content)
+							imgui.PopStyleColor()
+							imgui.SameLineV(0, 0)
+						}
+					}
+				} else {
+					imgui.Text(ln.PlainContent)
+				}
 			}
 		}
 
@@ -431,6 +450,8 @@ func (win *winCoProcSource) draw() {
 			}
 
 			imgui.Checkbox("Show ASM in Tooltip", &win.showAsm)
+			imgui.SameLineV(0, 20)
+			imgui.Checkbox("Highlight Comments & String Literals", &win.syntaxHighlighting)
 		})
 	})
 }

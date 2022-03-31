@@ -125,7 +125,7 @@ func (win *winCoProcIllegalAccess) draw() {
 					imgui.Spacing()
 					imgui.Separator()
 					imgui.Spacing()
-					imgui.Text(strings.TrimSpace(lg.SrcLine.Content))
+					imgui.Text(strings.TrimSpace(lg.SrcLine.PlainContent))
 				}, true)
 			}
 

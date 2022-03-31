@@ -132,7 +132,7 @@ func (dev *Developer) IllegalAccess(event string, pc uint32, addr uint32) string
 		return ""
 	}
 
-	return fmt.Sprintf("%s %s\n%s", e.SrcLine.String(), e.SrcLine.Function.Name, e.SrcLine.Content)
+	return fmt.Sprintf("%s %s\n%s", e.SrcLine.String(), e.SrcLine.Function.Name, e.SrcLine.PlainContent)
 }
 
 // ExecutionProfile implements the CartCoProcDeveloper interface.
