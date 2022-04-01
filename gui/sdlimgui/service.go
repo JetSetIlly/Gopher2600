@@ -352,7 +352,7 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 		case sdl.SCANCODE_TAB:
 			if ctrl {
 				img.dbg.PushRawEvent(func() {
-					err := img.dbg.InsertCartridge("")
+					err := img.dbg.ReloadCartridge()
 					if err != nil {
 						logger.Logf("sdlimgui", err.Error())
 					}
