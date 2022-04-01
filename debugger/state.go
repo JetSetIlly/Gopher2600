@@ -71,6 +71,24 @@ func (dbg *Debugger) HasChanged() bool {
 	return v
 }
 
+// ReloadCartridge inserts the current cartridge and states the emulation over
+func (dbg *Debugger) ReloadCartridge() error {
+	spec := dbg.vcs.TV.GetFrameInfo().Spec.ID
+
+	err := dbg.InsertCartridge("")
+	if err != nil {
+		return curated.Errorf("debugger: %v", err)
+	}
+
+	// set spec to what it was before the cartridge insertion
+	err = dbg.vcs.TV.SetSpec(spec)
+	if err != nil {
+		return curated.Errorf("debugger: %v", err)
+	}
+
+	return nil
+}
+
 // InsertCartridge into running emulation. If filename argument is empty the
 // currently inserted cartridge will be reinserted.
 func (dbg *Debugger) InsertCartridge(filename string) error {
@@ -82,12 +100,15 @@ func (dbg *Debugger) InsertCartridge(filename string) error {
 	if err != nil {
 		return curated.Errorf("debugger: %v", err)
 	}
+
 	err = dbg.attachCartridge(cartload)
 	if err != nil {
 		return curated.Errorf("debugger: %v", err)
 	}
+
 	if dbg.forcedROMselection != nil {
 		dbg.forcedROMselection <- true
 	}
+
 	return nil
 }
