@@ -864,7 +864,13 @@ func (dbg *Debugger) reset(newCartridge bool) error {
 //
 // this is the glue that hold the cartridge and disassembly packages together.
 // especially important is the repointing of the symbols table in the instance of dbgmem.
+//
+// if the new cartridge loader has the same filename as the previous loader
+// then reset() is called with a newCartridge argument of false.
 func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) {
+	// is this a new cartridge we're loading. value is used for dbg.reset()
+	newCartridge := dbg.loader == nil || cartload.Filename != dbg.loader.Filename
+
 	// stop optional sub-systems that shouldn't survive a new cartridge insertion
 	dbg.endPlayback()
 	dbg.endRecording()
@@ -1017,7 +1023,7 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) 
 	}
 
 	// make sure everything is reset after disassembly (including breakpoints, etc.)
-	dbg.reset(true)
+	dbg.reset(newCartridge)
 
 	// activate bot if possible
 	feedback, err := dbg.bots.ActivateBot(dbg.vcs.Mem.Cart.Hash)
