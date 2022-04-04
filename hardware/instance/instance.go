@@ -13,11 +13,6 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-// Package instance defines those parts of the emulation that might change from
-// instance to instance of the VCS type, but is not actually the VCS itself.
-//
-// Particularly useful when running more than one instance of the emulation in
-// parallel.
 package instance
 
 import (
@@ -39,20 +34,16 @@ const (
 // different instantiations of the VCS type, but is not actually the VCS
 // itself.
 type Instance struct {
+	// the name of the instance. the name can be used to decide if an action is appropriate
 	Label Label
 
+	// any randomisation required by the emulation should be retreived through
+	// this structure
 	Random *random.Random
 
 	// the prefrences of the running instance. this instance can be shared
 	// with other running instances of the emulation.
 	Prefs *preferences.Preferences
-
-	// for performance purposes revision preferences are treated slightly
-	// different to other preference values. rather than accessing the fields
-	// in Prefs.Revision directly, the TIA emulation should read the fields in
-	// the LiveRevisionPreferences type. these values are updated with the
-	// UpdateRevision() function.
-	Revision preferences.LiveRevisionPreferences
 }
 
 // NewInstance is the preferred method of initialisation for the Instance type.
@@ -88,10 +79,4 @@ func (ins *Instance) Normalise() {
 	ins.Prefs.Revision.SetDefaults()
 	ins.Prefs.ARM.SetDefaults()
 	ins.Prefs.PlusROM.SetDefaults()
-}
-
-// UpdateRevision updates the live revision preference values for the running
-// emulation.
-func (ins *Instance) UpdateRevision() {
-	ins.Revision = ins.Prefs.Revision.Live()
 }

@@ -583,7 +583,7 @@ func (vd *Video) UpdateSpritePixels(data chipbus.ChangedRegister) bool {
 	switch data.Register {
 	case cpubus.GRP0:
 		vd.Player0.setGfxData(data.Value)
-		if vd.tia.instance.Revision.LateVDELGRP0 {
+		if vd.tia.instance.Prefs.Revision.Live.LateVDELGRP0.Load().(bool) {
 			vd.writing.Schedule(1, 0)
 			vd.writingRegister = "GRP0"
 		} else {
@@ -592,7 +592,7 @@ func (vd *Video) UpdateSpritePixels(data chipbus.ChangedRegister) bool {
 
 	case cpubus.GRP1:
 		vd.Player1.setGfxData(data.Value)
-		if vd.tia.instance.Revision.LateVDELGRP1 {
+		if vd.tia.instance.Prefs.Revision.Live.LateVDELGRP1.Load().(bool) {
 			vd.writing.Schedule(1, 0)
 			vd.writingRegister = "GRP1"
 		} else {

@@ -364,7 +364,8 @@ func (r *Rewind) append(s *State) {
 	}
 }
 
-// Plumb state into VCS.
+// Plumb state into VCS. The fromDifferentEmulation indicates that the State
+// has been created by a different VCS instance than the one being plumbed into.
 func Plumb(vcs *hardware.VCS, state *State, fromDifferentEmulation bool) {
 	// tv plumbing works a bit different to other areas because we're only
 	// recording the state of the TV not the entire TV itself.

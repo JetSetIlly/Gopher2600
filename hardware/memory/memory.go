@@ -113,6 +113,9 @@ func (mem *Memory) Snapshot() *Memory {
 }
 
 // Plumb makes sure everything is ship-shape after a rewind event.
+//
+// The fromDifferentEmulation indicates that the State has been created by a
+// different VCS instance than the one being plumbed into.
 func (mem *Memory) Plumb(fromDifferentEmulation bool) {
 	mem.Cart.Plumb(fromDifferentEmulation)
 }

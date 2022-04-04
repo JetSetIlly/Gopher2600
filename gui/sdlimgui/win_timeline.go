@@ -389,12 +389,13 @@ func (win *winTimeline) drawTimeline() {
 							if win.thmbFrame != rewindHoverFrame {
 								win.thmbFrame = rewindHoverFrame
 
-								// Rewind.GetState must be run in the emulation thread. CreateFromState doesn't need to be but
-								// because the thumbnailer runs in its own goroutine there's no real time penalty on the main
-								// emulation even when it is running
-								win.img.dbg.PushRawEvent(func() {
-									win.thmb.CreateFromState(win.img.dbg.Rewind.GetState(rewindHoverFrame), 1)
-								})
+								// slow the rate at which we generate thumbnails
+								if win.img.polling.timelineThumbnailerWait() {
+									win.img.dbg.PushRawEvent(func() {
+										// thumbnailer must be run in the same goroutine as the main emulation
+										win.thmb.SingleFrameFromRewindState(win.img.dbg.Rewind.GetState(rewindHoverFrame))
+									})
+								}
 							}
 
 							imgui.Image(imgui.TextureID(win.thmbTexture), imgui.Vec2{specification.ClksVisible * 3, specification.AbsoluteMaxScanlines}.Times(0.3))

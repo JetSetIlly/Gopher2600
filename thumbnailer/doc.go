@@ -13,8 +13,13 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-// Package thumbnailer can be used to create a single thumbnail or a series of
-// thumbnail images with the CreateFromLoader() or CreateFromState() functions.
+// Package thumbnailer can be used to create either a series of thumbnail
+// images or a single thumbnail image with the CreateFromLoader() and
+// SingleFrameFromRewindState() functions respsectively.
 //
-// Thumbnailers can be created to run synchronously or asynchronously.
+// The CreateFromLodaer() function will run asynchronously and is good for
+// generating just the images from a new emulation.
+//
+// The SingleFrameFromRewindState() function meanwhile, is more limited and is
+// used to generate a single TV frame starting from the supplied rewind state.
 package thumbnailer

@@ -60,12 +60,20 @@ func NewCartridge(instance *instance.Instance) *Cartridge {
 	return cart
 }
 
+// Snapshot creates a copy of the current cartridge.
 func (cart *Cartridge) Snapshot() *Cartridge {
 	n := *cart
 	n.mapper = cart.mapper.Snapshot()
 	return &n
 }
 
+// Plumb makes sure everything is ship-shape after a rewind event.
+//
+// The fromDifferentEmulation indicates that the State has been created by a
+// different VCS instance than the one being plumbed into.
+//
+// See mapper.PlumbFromDifferentEmulation for how this affects mapper
+// implementations.
 func (cart *Cartridge) Plumb(fromDifferentEmulation bool) {
 	if fromDifferentEmulation {
 		if m, ok := cart.mapper.(mapper.PlumbFromDifferentEmulation); ok {

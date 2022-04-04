@@ -23,30 +23,30 @@ import (
 	"github.com/jetsetilly/gopher2600/resources"
 )
 
-// LiveRevisionPrefrences encapsulates the current revision values.
+// LiveRevisionPrefrences encapsulates the current (live) revision values.
+//
+// For performance critical situations these values should be preferred to the
+// prefs.Bool values in RevisionPreferences.
 type LiveRevisionPreferences struct {
 	// The names of the preference fields match the Bug enumerations. These
 	// values are updated automatically when the corresponding Dsk* field is
 	// updated.
-	LateVDELGRP0     bool
-	LateVDELGRP1     bool
-	LateRESPx        bool
-	EarlyScancounter bool
-	LatePFx          bool
-	LateCOLUPF       bool
-	LostMOTCK        bool
-	RESPxHBLANK      bool
+	LateVDELGRP0     atomic.Value // bool
+	LateVDELGRP1     atomic.Value // bool
+	LateRESPx        atomic.Value // bool
+	EarlyScancounter atomic.Value // bool
+	LatePFx          atomic.Value // bool
+	LateCOLUPF       atomic.Value // bool
+	LostMOTCK        atomic.Value // bool
+	RESPxHBLANK      atomic.Value // bool
 }
 
 // RevisionPreferences defines the details of the TIA revisins.
-//
-// For performance critical situations, access these prefence values via the
-// results of the Live() function. This provides a copy of the preferences that
-// are goroutine safe and without performance overhead.
 type RevisionPreferences struct {
 	dsk *prefs.Disk
 
-	live atomic.Value
+	// Prefer live values in performance critical code
+	Live LiveRevisionPreferences
 
 	// Disk copies of preferences
 	LateVDELGRP0     prefs.Bool
@@ -62,55 +62,37 @@ type RevisionPreferences struct {
 func newRevisionPreferences() (*RevisionPreferences, error) {
 	p := &RevisionPreferences{}
 
-	p.live.Store(LiveRevisionPreferences{})
-
 	// register callbacks to update the "live" values from the disk value
 	p.LateVDELGRP0.SetHookPost(func(v prefs.Value) error {
-		live := p.live.Load().(LiveRevisionPreferences)
-		live.LateVDELGRP0 = v.(bool)
-		p.live.Store(live)
+		p.Live.LateVDELGRP0.Store(v.(bool))
 		return nil
 	})
 	p.LateVDELGRP1.SetHookPost(func(v prefs.Value) error {
-		live := p.live.Load().(LiveRevisionPreferences)
-		live.LateVDELGRP1 = v.(bool)
-		p.live.Store(live)
+		p.Live.LateVDELGRP1.Store(v.(bool))
 		return nil
 	})
 	p.LateRESPx.SetHookPost(func(v prefs.Value) error {
-		live := p.live.Load().(LiveRevisionPreferences)
-		live.LateRESPx = v.(bool)
-		p.live.Store(live)
+		p.Live.LateRESPx.Store(v.(bool))
 		return nil
 	})
 	p.EarlyScancounter.SetHookPost(func(v prefs.Value) error {
-		live := p.live.Load().(LiveRevisionPreferences)
-		live.EarlyScancounter = v.(bool)
-		p.live.Store(live)
+		p.Live.EarlyScancounter.Store(v.(bool))
 		return nil
 	})
 	p.LatePFx.SetHookPost(func(v prefs.Value) error {
-		live := p.live.Load().(LiveRevisionPreferences)
-		live.LatePFx = v.(bool)
-		p.live.Store(live)
+		p.Live.LatePFx.Store(v.(bool))
 		return nil
 	})
 	p.LateCOLUPF.SetHookPost(func(v prefs.Value) error {
-		live := p.live.Load().(LiveRevisionPreferences)
-		live.LateCOLUPF = v.(bool)
-		p.live.Store(live)
+		p.Live.LateCOLUPF.Store(v.(bool))
 		return nil
 	})
 	p.LostMOTCK.SetHookPost(func(v prefs.Value) error {
-		live := p.live.Load().(LiveRevisionPreferences)
-		live.LostMOTCK = v.(bool)
-		p.live.Store(live)
+		p.Live.LostMOTCK.Store(v.(bool))
 		return nil
 	})
 	p.RESPxHBLANK.SetHookPost(func(v prefs.Value) error {
-		live := p.live.Load().(LiveRevisionPreferences)
-		live.RESPxHBLANK = v.(bool)
-		p.live.Store(live)
+		p.Live.RESPxHBLANK.Store(v.(bool))
 		return nil
 	})
 
@@ -194,9 +176,4 @@ func (p *RevisionPreferences) Load() error {
 // Save current revision preferences to disk.
 func (p *RevisionPreferences) Save() error {
 	return p.dsk.Save()
-}
-
-// Live returns a copy of the live revision preference values
-func (p *RevisionPreferences) Live() LiveRevisionPreferences {
-	return p.live.Load().(LiveRevisionPreferences)
 }

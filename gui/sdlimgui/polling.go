@@ -44,6 +44,11 @@ const (
 	// the period of inactivity required before the main sleep period drops to
 	// the idlsSleepPeriod value.
 	wakefullnessPeriod = 3000 // 3 seconds
+
+	// the amount of time between thumbnail generation in the timeline. short
+	// enough to feel responsive but long enough to give the mail emulation (if
+	// running) time to update
+	timelineThumbnailerPeriod = 50
 )
 
 type polling struct {
@@ -79,6 +84,8 @@ type polling struct {
 	measureTime           time.Time
 	measuringPulse        *time.Ticker
 	measuredRenderingTime float32
+
+	lastThmbTime time.Time
 }
 
 func newPolling(img *SdlImgui) *polling {
@@ -158,4 +165,13 @@ func (pol *polling) wait() sdl.Event {
 	}
 
 	return ev
+}
+
+// returns true if sufficient time has passed since the last thumbnail generation
+func (pol *polling) timelineThumbnailerWait() bool {
+	if time.Since(pol.lastThmbTime).Milliseconds() > timelineThumbnailerPeriod {
+		pol.lastThmbTime = time.Now()
+		return true
+	}
+	return false
 }

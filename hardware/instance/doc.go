@@ -13,9 +13,6 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-// Package instance defines those parts of the emulation that might change from
-// instance to instance of the VCS type, but is not actually the VCS itself.
-//
-// Particularly useful when running more than one instance of the emulation in
-// parallel.
+// Package instance provides context for parallel instances of the VCS type
+// (defined in hardware package).
 package instance

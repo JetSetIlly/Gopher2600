@@ -68,9 +68,11 @@ type CartMapper interface {
 }
 
 // PlumbFromDifferentEmulation is for mappers that are sensitive to being
-// transferred from one emulation to another. When it is known that a state is
-// being copied from one instance of hardware.VCS to another then this
-// interface should be used if available.
+// transferred from one emulation to another.
+//
+// When state is being plumbed into a different emulation to the one that has
+// been created then this interface should be used when available, instead of
+// the normal Plumb().
 type PlumbFromDifferentEmulation interface {
 	PlumbFromDifferentEmulation()
 }

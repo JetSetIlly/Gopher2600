@@ -132,6 +132,9 @@ func (vcs *VCS) End() {
 }
 
 // Plumb the various VCS sub-systems together after a rewind.
+//
+// The fromDifferentEmulation indicates that the State has been created by a
+// different VCS instance than the one being plumbed into.
 func (vcs *VCS) Plumb(fromDifferentEmulation bool) {
 	vcs.CPU.Plumb(vcs.Mem)
 	vcs.Mem.Plumb(fromDifferentEmulation)
