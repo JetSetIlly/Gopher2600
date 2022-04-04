@@ -1,4 +1,4 @@
-<img align="left" src=".resources/logo.png" width="250" alt="gopher2600 logo"/>
+<img align="left" src="https://github.com/JetSetIlly/Gopher2600-Dev-Docs/blob/master/gopher2600_logo/logo4.png" width="250" alt="gopher2600 logo"/>
 
 # Gopher2600
 
