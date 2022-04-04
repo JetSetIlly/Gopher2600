@@ -41,58 +41,58 @@ The following [screenshots](#screenshots) were taken in playmode with CRT effect
 <table align="center">
 	<tr>
 		<td align="center">
-			<img src=".screenshots/games/pitfall.jpg" height="200" alt="pitfall"/>
+			<img src="https://github.com/JetSetIlly/Gopher2600-Docs/blob/master/screenshots/pitfall.jpg" height="200" alt="pitfall"/>
 		</td>
 		<td align="center">
-			<img src=".screenshots/games/heman.jpg" height="200" alt="he-man"/>
-		</td>
-	</tr>
-	<tr>
-		<td align="center">
-			<img src=".screenshots/games/krull.jpg" height="200" alt="krull"/>
-		</td>
-		<td align="center">
-			<img src=".screenshots/games/ladybug.jpg" height="200" alt="ladybug"/>
+			<img src="https://github.com/JetSetIlly/Gopher2600-Docs/blob/master/screenshots/heman.jpg" height="200" alt="he-man"/>
 		</td>
 	</tr>
 	<tr>
 		<td align="center">
-			<img src=".screenshots/games/thrust.jpg" height="200" alt="thrust"/>
+			<img src="https://github.com/JetSetIlly/Gopher2600-Docs/blob/master/screenshots/krull.jpg" height="200" alt="krull"/>
 		</td>
 		<td align="center">
-			<img src=".screenshots/games/mangoesdown.jpg" height="200" alt="man goes down"/>
-		</td>
-	</tr>
-	<tr>
-		<td align="center">
-			<img src=".screenshots/games/beast.jpg" height="200" alt="soul of the beast"/>
-		</td>
-		<td align="center">
-			<img src=".screenshots/games/chiphead.jpg" height="200" alt="chiphead"/>
+			<img src="https://github.com/JetSetIlly/Gopher2600-Docs/blob/master/screenshots/ladybug.jpg" height="200" alt="ladybug"/>
 		</td>
 	</tr>
 	<tr>
 		<td align="center">
-			<img src=".screenshots/games/genesis.jpg" height="200" alt="egypt genesis"/>
+			<img src="https://github.com/JetSetIlly/Gopher2600-Docs/blob/master/screenshots/thrust.jpg" height="200" alt="thrust"/>
 		</td>
 		<td align="center">
-			<img src=".screenshots/games/draconian.jpg" height="200" alt="draconian"/>
-		</td>
-	</tr>
-	<tr>
-		<td align="center">
-			<img src=".screenshots/games/galagon.jpg" height="200" alt="galagon"/>
-		</td>
-		<td align="center">
-			<img src=".screenshots/games/turbo.jpg" height="200" alt="turbo"/>
+			<img src="https://github.com/JetSetIlly/Gopher2600-Docs/blob/master/screenshots/mangoesdown.jpg" height="200" alt="man goes down"/>
 		</td>
 	</tr>
 	<tr>
 		<td align="center">
-			<img src=".screenshots/games/zookeeper.jpg" height="200" alt="zookeeper"/>
+			<img src="https://github.com/JetSetIlly/Gopher2600-Docs/blob/master/screenshots/beast.jpg" height="200" alt="soul of the beast"/>
 		</td>
 		<td align="center">
-			<img src=".screenshots/games/moviecart.jpg" height="200" alt="moviecart"/>
+			<img src="https://github.com/JetSetIlly/Gopher2600-Docs/blob/master/screenshots/chiphead.jpg" height="200" alt="chiphead"/>
+		</td>
+	</tr>
+	<tr>
+		<td align="center">
+			<img src="https://github.com/JetSetIlly/Gopher2600-Docs/blob/master/screenshots/genesis.jpg" height="200" alt="egypt genesis"/>
+		</td>
+		<td align="center">
+			<img src="https://github.com/JetSetIlly/Gopher2600-Docs/blob/master/screenshots/draconian.jpg" height="200" alt="draconian"/>
+		</td>
+	</tr>
+	<tr>
+		<td align="center">
+			<img src="https://github.com/JetSetIlly/Gopher2600-Docs/blob/master/screenshots/galagon.jpg" height="200" alt="galagon"/>
+		</td>
+		<td align="center">
+			<img src="https://github.com/JetSetIlly/Gopher2600-Docs/blob/master/screenshots/turbo.jpg" height="200" alt="turbo"/>
+		</td>
+	</tr>
+	<tr>
+		<td align="center">
+			<img src="https://github.com/JetSetIlly/Gopher2600-Docs/blob/master/screenshots/zookeeper.jpg" height="200" alt="zookeeper"/>
+		</td>
+		<td align="center">
+			<img src="https://github.com/JetSetIlly/Gopher2600-Docs/blob/master/screenshots/moviecart.jpg" height="200" alt="moviecart"/>
 		</td>
 	</tr>
 </table>
