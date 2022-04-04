@@ -11,20 +11,20 @@ It is an ongoing project and bug reports are welcome.
 
 The key features of the emulator:
 
-* [Support for many of the known cartridge formats](https://github.com/JetSetIlly/Gopher2600/wiki/Supported-Cartridge-Mappers)
-* Emulation of the [ARM7TDMI](https://github.com/JetSetIlly/Gopher2600/wiki/ATM7TDMI-Emulation) as found in the `Harmony` cartridge
-* Network access through [PlusROM](https://github.com/JetSetIlly/Gopher2600/wiki/PlusROM) emulation
-* [AtariVox and SaveKey](https://github.com/JetSetIlly/Gopher2600/wiki/AtariVox-and-SaveKey) support
+* [Support for many of the known cartridge formats](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/Supported-Cartridge-Mappers)
+* Emulation of the [ARM7TDMI](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/ATM7TDMI-Emulation) as found in the `Harmony` cartridge
+* Network access through [PlusROM](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/PlusROM) emulation
+* [AtariVox and SaveKey](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/AtariVox-and-SaveKey) support
 * CRT Effects
 * Accurate audio reproduction (and optional stereo output)
-* Support for common [TIA revisions](https://github.com/JetSetIlly/Gopher2600/wiki/TIA-Revisions)
-* Implementation of [Movie Cart](https://github.com/JetSetIlly/Gopher2600/wiki/Movie-Cart)
-* [Gameplay rewinding](https://github.com/JetSetIlly/Gopher2600/wiki/Rewinding)
+* Support for common [TIA revisions](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/TIA-Revisions)
+* Implementation of [Movie Cart](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/Movie-Cart)
+* [Gameplay rewinding](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/Rewinding)
 * Tracker/Piano Keys visualisation
-* [Gameplay recording and playback](https://github.com/JetSetIlly/Gopher2600/wiki/Recording-Gamplay)
-* Support for (and auto-detection of) the stick, paddle, keypad and also Sega Genesis style [controllers](https://github.com/JetSetIlly/Gopher2600/wiki/Hand-Controllers-and-Front-Panel)
+* [Gameplay recording and playback](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/Recording-Gamplay)
+* Support for (and auto-detection of) the stick, paddle, keypad and also Sega Genesis style [controllers](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/Hand-Controllers-and-Front-Panel)
 
-The graphical [debugger](https://github.com/JetSetIlly/Gopher2600/wiki/Debugger):
+The graphical [debugger](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/Debugger):
 
 * Optional Color Clock level interaction
 * Breakpoints, traps, watches on various CPU, TIA and RIOT targets
@@ -97,12 +97,14 @@ The following [screenshots](#screenshots) were taken in playmode with CRT effect
 	</tr>
 </table>
 
-Games shown: Pitfall; He-Man; Krull; Ladybug; Thrust; Man Goes Down; [Soul of the Beast](https://aeriform.itch.io/beast); Chiphead; Egypt 2600BC by Genesis Project; Draconian; [Galagon](https://champ.games/downloads); [Turbo](https://champ.games/downloads); [Zookeeper](https://champ.games/downloads); [Movie Cart](https://github.com/JetSetIlly/Gopher2600/wiki/Movie-Cart).
+Games shown: Pitfall; He-Man; Krull; Ladybug; Thrust; Man Goes Down; [Soul of the Beast](https://aeriform.itch.io/beast); Chiphead; Egypt 2600BC by Genesis Project; Draconian; [Galagon](https://champ.games/downloads); [Turbo](https://champ.games/downloads); [Zookeeper](https://champ.games/downloads); [Movie Cart](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/Movie-Cart).
 
 
-## Usage
+## Documentation
 
-Usage documentation for the emulator can be found in the [wiki pages](https://github.com/JetSetIlly/Gopher2600/wiki).
+User documentation for the emulator can be found in the [Gopher2600-Docs repository](https://github.com/JetSetIlly/Gopher2600-Docs/).
+
+Development & Maintenance documentation can be found in the [Gopher2600-Dev-Docs repository](https://github.com/JetSetIlly/Gopher2600-Dev-Docs/). Also, source level documentation (for the most recent release) can be found on [go.dev](https://pkg.go.dev/github.com/jetsetilly/gopher2600).
 
 ## Resources used
 
@@ -241,7 +243,7 @@ Some ideas for the fragment shader taken from:
 * https://github.com/mattiasgustavsson/crtview
 
 The Festival Speech Synthsis System is an optional program that can be run
-alongside the emulator for [AtariVox](https://github.com/JetSetIlly/Gopher2600/wiki/AtariVox-and-SaveKey) support
+alongside the emulator for [AtariVox](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/AtariVox-and-SaveKey) support
 
 http://www.festvox.org/docs/manual-2.4.0/festival_toc.html
 
