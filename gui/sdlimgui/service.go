@@ -350,18 +350,25 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 
 		switch ev.Keysym.Scancode {
 		case sdl.SCANCODE_TAB:
-			if ctrl {
-				img.dbg.PushRawEvent(func() {
-					err := img.dbg.ReloadCartridge()
-					if err != nil {
-						logger.Logf("sdlimgui", err.Error())
-					}
-				})
+			if !img.isPlaymode() && imgui.IsAnyItemActive() {
+				// in debugger mode do not handle if an imgui widget is active
+				// (see the sdl.KEYDOWN branch below for opposite condition and
+				// explanation)
+				handled = false
 			} else {
-				// only open ROM selector if window has been focused for a
-				// while. see windowFocusedTime declaration for an explanation
-				if time.Since(img.windowFocusedTime) > 500*time.Millisecond {
-					img.wm.selectROM.setOpen(!img.wm.selectROM.open)
+				if ctrl {
+					img.dbg.PushRawEvent(func() {
+						err := img.dbg.ReloadCartridge()
+						if err != nil {
+							logger.Logf("sdlimgui", err.Error())
+						}
+					})
+				} else {
+					// only open ROM selector if window has been focused for a
+					// while. see windowFocusedTime declaration for an explanation
+					if time.Since(img.windowFocusedTime) > 500*time.Millisecond {
+						img.wm.selectROM.setOpen(!img.wm.selectROM.open)
+					}
 				}
 			}
 
@@ -458,6 +465,18 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 
 		if !img.isPlaymode() {
 			switch ev.Keysym.Scancode {
+			case sdl.SCANCODE_TAB:
+				// in debugger mode do not handle if an imgui widget is not
+				// active (see the sdl.KEYUP branch above for opposite
+				// condition)
+				//
+				// this prevents a KEYDOWN being forwarded to imgui and without
+				// the corresponding KEYUP if the TAB key was consumed becaue
+				// IsAnyItemActive() was true at time of KEYUP. without this
+				// check imgui thinks the TAB key is being held down
+				if !imgui.IsAnyItemActive() {
+					return
+				}
 			case sdl.SCANCODE_ESCAPE:
 				if !imgui.IsAnyItemActive() {
 					if img.isCaptured() {
