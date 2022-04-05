@@ -19,6 +19,7 @@ import (
 	"fmt"
 
 	"github.com/inkyblackness/imgui-go/v4"
+	"github.com/jetsetilly/gopher2600/gui/fonts"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
@@ -71,40 +72,109 @@ func (win *winCartRAM) draw() {
 	comp := win.img.lz.Rewind.Comparison.Mem.Cart.GetRAMbus().GetRAM()
 
 	imgui.SetNextWindowPosV(imgui.Vec2{533, 430}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
-	imgui.SetNextWindowSizeV(imgui.Vec2{469, 262}, imgui.ConditionFirstUseEver)
-	imgui.SetNextWindowSizeConstraints(imgui.Vec2{469, 262}, imgui.Vec2{469, 1000})
+	imgui.SetNextWindowSizeV(imgui.Vec2{469, 271}, imgui.ConditionFirstUseEver)
+	imgui.SetNextWindowSizeConstraints(imgui.Vec2{469, 271}, imgui.Vec2{469, 1000})
 
 	title := fmt.Sprintf("%s %s", win.img.lz.Cart.ID, winCartRAMID)
 	imgui.BeginV(title, &win.open, imgui.WindowFlagsNone)
 
 	imgui.BeginTabBarV("", imgui.TabBarFlagsFittingPolicyScroll)
 	for bank := range win.img.lz.Cart.RAM {
-		a := win.img.lz.Cart.RAM[bank]
-		b := comp[bank]
-		if imgui.BeginTabItem(a.Label) {
+		current := win.img.lz.Cart.RAM[bank]
+		diff := comp[bank]
+		if imgui.BeginTabItem(current.Label) {
 			imgui.BeginChildV("scrollable", imgui.Vec2{X: 0, Y: imguiRemainingWinHeight() - win.statusHeight}, false, 0)
 
 			// show cartridge origin for mapped RAM banks
-			origin := a.Origin
+			origin := current.Origin
 			if win.img.dbg.Disasm.Prefs.FxxxMirror.Get().(bool) {
 				origin = (origin & memorymap.CartridgeBits) | memorymap.OriginCartFxxxMirror
 			}
 
-			bnk := bank
-			drawByteGrid(a.Data, b.Data, win.img.cols.ValueDiff, origin,
-				func(addr uint16, data uint8) {
-					win.img.dbg.PushRawEvent(func() {
-						idx := int(addr - origin)
-						win.img.vcs.Mem.Cart.GetRAMbus().PutRAM(bnk, idx, data)
-					})
-				})
+			// item spacing is altered in drawByteGrid(). note value now so we can set
+			// it for tooltips in after()
+			tooltipSpacing := imgui.CurrentStyle().ItemSpacing()
 
+			// pos is retreived in before() and used in after()
+			var pos imgui.Vec2
+
+			// number of colors to pop in afer()
+			popColor := 0
+
+			before := func(offset uint16) {
+				pos = imgui.CursorScreenPos()
+
+				a := diff.Data[offset]
+				b := current.Data[offset]
+				if a != b {
+					imgui.PushStyleColor(imgui.StyleColorFrameBg, win.img.cols.ValueDiff)
+					popColor++
+				}
+			}
+
+			after := func(offset uint16) {
+				imgui.PopStyleColorV(popColor)
+				popColor = 0
+
+				dl := imgui.WindowDrawList()
+				addr := memorymap.OriginRAM + offset
+				read, okr := win.img.dbg.Disasm.Sym.GetSymbol(addr, true)
+				write, okw := win.img.dbg.Disasm.Sym.GetSymbol(addr, false)
+				if okr || okw {
+					sz := imgui.FontSize() * 0.4
+					pos.X += 1.0
+					pos.Y += 1.0
+					p1 := pos
+					p1.Y += sz
+					p2 := pos
+					p2.X += sz
+					dl.AddTriangleFilled(pos, p1, p2, imgui.PackedColorFromVec4(win.img.cols.ValueSymbol))
+				}
+
+				imgui.PushStyleVarVec2(imgui.StyleVarItemSpacing, tooltipSpacing)
+				defer imgui.PopStyleVar()
+
+				if okr && okw && read.Symbol == write.Symbol {
+					imguiTooltip(func() {
+						imguiColorLabel(read.Symbol, win.img.cols.ValueSymbol)
+					}, true)
+				} else {
+					if okr {
+						imguiTooltip(func() {
+							imguiColorLabel(read.Symbol, win.img.cols.ValueSymbol)
+						}, true)
+					}
+					if okw {
+						imguiTooltip(func() {
+							imguiColorLabel(write.Symbol, win.img.cols.ValueSymbol)
+						}, true)
+					}
+				}
+
+				a := diff.Data[offset]
+				b := current.Data[offset]
+				if a != b {
+					imguiTooltip(func() {
+						imguiColorLabel(fmt.Sprintf("%02x %c %02x", a, fonts.ByteChange, b), win.img.cols.ValueDiff)
+					}, true)
+				}
+			}
+
+			commitBank := bank
+			commit := func(addr uint16, data uint8) {
+				win.img.dbg.PushRawEvent(func() {
+					idx := int(addr - origin)
+					win.img.vcs.Mem.Cart.GetRAMbus().PutRAM(commitBank, idx, data)
+				})
+			}
+
+			drawByteGrid(current.Data, origin, before, after, commit)
 			imgui.EndChild()
 
 			// status line
 			win.statusHeight = imguiMeasureHeight(func() {
 				imgui.PushStyleVarFloat(imgui.StyleVarFrameRounding, readOnlyButtonRounding)
-				if a.Mapped {
+				if current.Mapped {
 					imguiColourButton(win.img.cols.True, " mapped ", win.mappedIndicatorDim)
 				} else {
 					imguiColourButton(win.img.cols.False, " unmapped ", win.mappedIndicatorDim)

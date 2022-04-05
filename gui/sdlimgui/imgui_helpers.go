@@ -265,18 +265,17 @@ func imguiSeparator() {
 	imgui.Spacing()
 }
 
-// draw grid of bytes. useful for memory representation (RAM, etc.)
-func drawByteGrid(data []uint8, cmp []uint8, diffCol imgui.Vec4, base uint16, commit func(uint16, uint8)) {
+// draw grid of bytes with before and after functions in addition to commit function.
+func drawByteGrid(data []uint8, base uint16,
+	before func(offset uint16), after func(offset uint16), commit func(addr uint16, value uint8)) {
+
 	// format string for column headers. the number of digits required depends
 	// on the length of the data slice
 	columnFormat := fmt.Sprintf("%%0%dx- ", len(fmt.Sprintf("%x", int(base)+len(data)-1))-1)
 
-	defaultItemInnerSpacing := imgui.CurrentStyle().ItemInnerSpacing()
-	imgui.PushStyleVarVec2(imgui.StyleVarItemSpacing, imgui.Vec2{})
+	spacing := imgui.Vec2{X: 1.0, Y: 1.0}
+	imgui.PushStyleVarVec2(imgui.StyleVarItemSpacing, spacing)
 	defer imgui.PopStyleVar()
-
-	imgui.PushItemWidth(imguiTextWidth(2))
-	defer imgui.PopItemWidth()
 
 	const numColumns = 16
 
@@ -286,6 +285,7 @@ func drawByteGrid(data []uint8, cmp []uint8, diffCol imgui.Vec4, base uint16, co
 	for i := 0; i < numColumns; i++ {
 		imgui.SetCursorPos(headerPos)
 		headerPos.X += imguiTextWidth(2)
+		headerPos.X += spacing.X
 		imgui.AlignTextToFramePadding()
 		imgui.Text(fmt.Sprintf("-%x", i))
 	}
@@ -302,38 +302,108 @@ func drawByteGrid(data []uint8, cmp []uint8, diffCol imgui.Vec4, base uint16, co
 			imgui.Text(fmt.Sprintf(columnFormat, addr/16))
 
 			for j := 0; j < numColumns; j++ {
+				imgui.SameLine()
+
+				if before != nil {
+					before(offset)
+				}
+
 				// editable byte
 				b := data[offset]
 
-				// compare current RAM value with value in comparison snapshot and use
-				// highlight color if it is different
-				c := b
-				if cmp != nil {
-					c = cmp[offset]
-				}
-				if b != c {
-					imgui.PushStyleColor(imgui.StyleColorFrameBg, diffCol)
-				}
-
 				s := fmt.Sprintf("%02x", b)
-				imgui.SameLine()
 				if imguiHexInput(fmt.Sprintf("##%d", addr), 2, &s) {
 					if v, err := strconv.ParseUint(s, 16, 8); err == nil {
 						commit(addr, uint8(v))
 					}
 				}
 
-				if b != c {
-					imgui.PushStyleVarVec2(imgui.StyleVarItemSpacing, defaultItemInnerSpacing)
-					imguiTooltip(func() {
-						imgui.Text("Byte change")
-						imgui.Text(fmt.Sprintf("%02x is now %02x", c, b))
-					}, true)
-					imgui.PopStyleVar()
+				if after != nil {
+					after(offset)
 				}
 
+				// advance offset and addr by one
+				offset++
+				addr++
+			}
+		}
+	}
+}
+
+// draw grid of bytes with automated diff highlighting and tooltip handling
+//
+// see drawByteGrid() for more flexible alternative.
+func drawByteGridSimple(data []uint8, diff []uint8, diffCol imgui.Vec4, base uint16, commit func(uint16, uint8)) {
+	// format string for column headers. the number of digits required depends
+	// on the length of the data slice
+	columnFormat := fmt.Sprintf("%%0%dx- ", len(fmt.Sprintf("%x", int(base)+len(data)-1))-1)
+
+	tooltipSpacing := imgui.CurrentStyle().ItemSpacing()
+
+	spacing := imgui.Vec2{X: 1.0, Y: 1.0}
+	imgui.PushStyleVarVec2(imgui.StyleVarItemSpacing, spacing)
+	defer imgui.PopStyleVar()
+
+	imgui.PushItemWidth(imguiTextWidth(2))
+	defer imgui.PopItemWidth()
+
+	const numColumns = 16
+
+	// draw headers for each column
+	headerPos := imgui.CursorPos()
+	headerPos.X += imguiGetFrameDim(fmt.Sprintf("%x", int(base)+len(data)-1)).X
+	for i := 0; i < numColumns; i++ {
+		imgui.SetCursorPos(headerPos)
+		headerPos.X += imguiTextWidth(2)
+		headerPos.X += spacing.X
+		imgui.AlignTextToFramePadding()
+		imgui.Text(fmt.Sprintf("-%x", i))
+	}
+
+	var clipper imgui.ListClipper
+	clipper.Begin(len(data) / numColumns)
+
+	for clipper.Step() {
+		for i := clipper.DisplayStart; i < clipper.DisplayEnd; i++ {
+			offset := uint16(i * numColumns)
+			addr := base + offset
+
+			imgui.AlignTextToFramePadding()
+			imgui.Text(fmt.Sprintf(columnFormat, addr/16))
+
+			for j := 0; j < numColumns; j++ {
+				imgui.SameLine()
+
+				// editable byte
+				a := data[offset]
+
+				// compare current RAM value with value in comparison snapshot and use
+				// highlight color if it is different
+				b := a
+				if diff != nil {
+					b = diff[offset]
+				}
+				if a != b {
+					imgui.PushStyleColor(imgui.StyleColorFrameBg, diffCol)
+				}
+
+				s := fmt.Sprintf("%02x", a)
+				if imguiHexInput(fmt.Sprintf("##%d", addr), 2, &s) {
+					if v, err := strconv.ParseUint(s, 16, 8); err == nil {
+						commit(addr, uint8(v))
+					}
+				}
+
+				imgui.PushStyleVarVec2(imgui.StyleVarItemSpacing, tooltipSpacing)
+				if a != b {
+					imguiTooltip(func() {
+						imguiColorLabel(fmt.Sprintf("%02x %c %02x", b, fonts.ByteChange, a), diffCol)
+					}, true)
+				}
+				imgui.PopStyleVar()
+
 				// undo any color changes
-				if b != c {
+				if a != b {
 					imgui.PopStyleColor()
 				}
 

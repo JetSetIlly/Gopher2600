@@ -73,6 +73,7 @@ const (
 	CaretRight             = '\uf0da'
 	TreeOpen               = '\uf0d7'
 	TreeClosed             = '\uf0da'
+	ByteChange             = '\uf30b'
 )
 
 // The first and last unicode points used in the application. We use this to

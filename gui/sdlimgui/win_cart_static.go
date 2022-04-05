@@ -88,7 +88,7 @@ func (win *winCartStatic) draw() {
 					// PushRawEvent() below
 					segname := seg.Name
 
-					drawByteGrid(currData, compData, win.img.cols.ValueDiff, 0,
+					drawByteGridSimple(currData, compData, win.img.cols.ValueDiff, 0,
 						func(addr uint16, data uint8) {
 							win.img.dbg.PushRawEvent(func() {
 								idx := int(addr)

@@ -1817,3 +1817,24 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 
 	return nil
 }
+
+// PredictRTS returns the PC address that would result if RTS was run at the
+// current moment.
+func (mc *CPU) PredictRTS() uint16 {
+	var SP registers.Register
+
+	SP.Load(mc.SP.Value())
+	SP.Add(1, false)
+
+	lo, err := mc.mem.Read(SP.Address())
+	if err != nil {
+		return 0
+	}
+
+	hi, err := mc.mem.Read(SP.Address() + 1)
+	if err != nil {
+		return 0
+	}
+
+	return ((uint16(hi) << 8) | uint16(lo)) + 1
+}

@@ -58,9 +58,10 @@ type imguiColors struct {
 	CapturedScreenTitle  imgui.Vec4
 	CapturedScreenBorder imgui.Vec4
 
-	// color showing that a value is different to the corresponding value at
-	// the comparison point
-	ValueDiff imgui.Vec4
+	// value colors
+	ValueDiff   imgui.Vec4
+	ValueSymbol imgui.Vec4
+	ValueStack  imgui.Vec4
 
 	// control window buttons
 	ControlRun         imgui.Vec4
@@ -234,8 +235,10 @@ func newColors() *imguiColors {
 
 		// deferring CapturedScreenTitle & CapturedScreenBorder
 
-		// comparison
-		ValueDiff: imgui.Vec4{0.3, 0.2, 0.5, 1.0},
+		// value colors
+		ValueDiff:   imgui.Vec4{0.3, 0.2, 0.4, 1.0},
+		ValueSymbol: imgui.Vec4{0.6, 0.6, 0.0, 1.0},
+		ValueStack:  imgui.Vec4{0.5, 0.2, 0.3, 1.0},
 
 		// control window buttons
 		ControlRun:         imgui.Vec4{0.3, 0.6, 0.3, 1.0},
