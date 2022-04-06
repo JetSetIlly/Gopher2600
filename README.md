@@ -34,77 +34,52 @@ The graphical [debugger](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/Debu
 
 Logo is based on [Gopherize.me](https://github.com/matryer/gopherize.me) which itself is based on the work of [Ashley McNamara](https://github.com/ashleymcnamara/gophers) and is [licensed under the Creative Commons](https://github.com/ashleymcnamara/gophers/blob/master/LICENSE).
 
-## Example Screenshots
-
-The following [screenshots](#screenshots) were taken in playmode with CRT effects enabled.
-
-<table align="center">
-	<tr>
-		<td align="center">
-			<img src="https://github.com/JetSetIlly/Gopher2600-Docs/blob/master/screenshots/pitfall.jpg" height="200" alt="pitfall"/>
-		</td>
-		<td align="center">
-			<img src="https://github.com/JetSetIlly/Gopher2600-Docs/blob/master/screenshots/heman.jpg" height="200" alt="he-man"/>
-		</td>
-	</tr>
-	<tr>
-		<td align="center">
-			<img src="https://github.com/JetSetIlly/Gopher2600-Docs/blob/master/screenshots/krull.jpg" height="200" alt="krull"/>
-		</td>
-		<td align="center">
-			<img src="https://github.com/JetSetIlly/Gopher2600-Docs/blob/master/screenshots/ladybug.jpg" height="200" alt="ladybug"/>
-		</td>
-	</tr>
-	<tr>
-		<td align="center">
-			<img src="https://github.com/JetSetIlly/Gopher2600-Docs/blob/master/screenshots/thrust.jpg" height="200" alt="thrust"/>
-		</td>
-		<td align="center">
-			<img src="https://github.com/JetSetIlly/Gopher2600-Docs/blob/master/screenshots/mangoesdown.jpg" height="200" alt="man goes down"/>
-		</td>
-	</tr>
-	<tr>
-		<td align="center">
-			<img src="https://github.com/JetSetIlly/Gopher2600-Docs/blob/master/screenshots/beast.jpg" height="200" alt="soul of the beast"/>
-		</td>
-		<td align="center">
-			<img src="https://github.com/JetSetIlly/Gopher2600-Docs/blob/master/screenshots/chiphead.jpg" height="200" alt="chiphead"/>
-		</td>
-	</tr>
-	<tr>
-		<td align="center">
-			<img src="https://github.com/JetSetIlly/Gopher2600-Docs/blob/master/screenshots/genesis.jpg" height="200" alt="egypt genesis"/>
-		</td>
-		<td align="center">
-			<img src="https://github.com/JetSetIlly/Gopher2600-Docs/blob/master/screenshots/draconian.jpg" height="200" alt="draconian"/>
-		</td>
-	</tr>
-	<tr>
-		<td align="center">
-			<img src="https://github.com/JetSetIlly/Gopher2600-Docs/blob/master/screenshots/galagon.jpg" height="200" alt="galagon"/>
-		</td>
-		<td align="center">
-			<img src="https://github.com/JetSetIlly/Gopher2600-Docs/blob/master/screenshots/turbo.jpg" height="200" alt="turbo"/>
-		</td>
-	</tr>
-	<tr>
-		<td align="center">
-			<img src="https://github.com/JetSetIlly/Gopher2600-Docs/blob/master/screenshots/zookeeper.jpg" height="200" alt="zookeeper"/>
-		</td>
-		<td align="center">
-			<img src="https://github.com/JetSetIlly/Gopher2600-Docs/blob/master/screenshots/moviecart.jpg" height="200" alt="moviecart"/>
-		</td>
-	</tr>
-</table>
-
-Games shown: Pitfall; He-Man; Krull; Ladybug; Thrust; Man Goes Down; [Soul of the Beast](https://aeriform.itch.io/beast); Chiphead; Egypt 2600BC by Genesis Project; Draconian; [Galagon](https://champ.games/downloads); [Turbo](https://champ.games/downloads); [Zookeeper](https://champ.games/downloads); [Movie Cart](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/Movie-Cart).
-
-
 ## Documentation
 
 User documentation for the emulator can be found in the [Gopher2600-Docs repository](https://github.com/JetSetIlly/Gopher2600-Docs/).
 
 Development & Maintenance documentation can be found in the [Gopher2600-Dev-Docs repository](https://github.com/JetSetIlly/Gopher2600-Dev-Docs/). Also, source level documentation (for the most recent release) can be found on [go.dev](https://pkg.go.dev/github.com/jetsetilly/gopher2600).
+
+## Example Screenshots
+
+The following [screenshots](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/Creating-Screenshots) were taken in playmode with CRT effects enabled.
+
+<table align="center">
+	<tr>
+		<td align="center">
+			<img src="https://github.com/JetSetIlly/Gopher2600-Docs/blob/master/screenshots/pitfall.jpg" height="150" alt="pitfall"/>
+		</td>
+		<td align="center">
+			<img src="https://github.com/JetSetIlly/Gopher2600-Docs/blob/master/screenshots/chiphead.jpg" height="150" alt="chiphead"/>
+		</td>
+	</tr>
+	<tr>
+		<td align="center">
+			<img src="https://github.com/JetSetIlly/Gopher2600-Docs/blob/master/screenshots/thrust.jpg" height="150" alt="thrust"/>
+		</td>
+		<td align="center">
+			<img src="https://github.com/JetSetIlly/Gopher2600-Docs/blob/master/screenshots/mangoesdown.jpg" height="150" alt="man goes down"/>
+		</td>
+	</tr>
+	<tr>
+		<td align="center">
+			<img src="https://github.com/JetSetIlly/Gopher2600-Docs/blob/master/screenshots/beast.jpg" height="150" alt="soul of the beast"/>
+		</td>
+		<td align="center">
+			<img src="https://github.com/JetSetIlly/Gopher2600-Docs/blob/master/screenshots/genesis.jpg" height="150" alt="egypt genesis"/>
+		</td>
+	</tr>
+	<tr>
+		<td align="center">
+			<img src="https://github.com/JetSetIlly/Gopher2600-Docs/blob/master/screenshots/draconian.jpg" height="150" alt="draconian"/>
+		</td>
+		<td align="center">
+			<img src="https://github.com/JetSetIlly/Gopher2600-Docs/blob/master/screenshots/zookeeper.jpg" height="150" alt="zookeeper"/>
+		</td>
+	</tr>
+</table>
+
+ROMs shown: Pitfall; [Chiphead](https://www.pouet.net/prod.php?which=68505); Thrust; Man Goes Down; [Soul of the Beast](https://aeriform.itch.io/beast); [Egypt 2600BC](https://www.pouet.net/prod.php?which=72716) ; Draconian; [Zookeeper](https://champ.games/downloads)
 
 ## Resources used
 
