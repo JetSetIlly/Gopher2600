@@ -11,7 +11,7 @@ require (
 	github.com/pkg/term v1.1.0
 	github.com/veandco/go-sdl2 v0.4.8
 	github.com/youpy/go-wav v0.2.0
-	golang.org/x/sys v0.0.0-20200909081042-eff7692f9009
+	golang.org/x/sys v0.0.0-20220405210540-1e041c57c461
 )
 
 require (
