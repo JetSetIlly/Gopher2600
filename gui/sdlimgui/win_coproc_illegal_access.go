@@ -70,7 +70,7 @@ func (win *winCoProcIllegalAccess) draw() {
 		return
 	}
 
-	imgui.SetNextWindowPosV(imgui.Vec2{1051, 89}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
+	imgui.SetNextWindowPosV(imgui.Vec2{982, 77}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
 	imgui.SetNextWindowSizeV(imgui.Vec2{520, 390}, imgui.ConditionFirstUseEver)
 	imgui.SetNextWindowSizeConstraints(imgui.Vec2{400, 300}, imgui.Vec2{551, 1000})
 
