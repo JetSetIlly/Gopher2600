@@ -165,7 +165,9 @@ windows_manifest: check_rscr
 # 	CGO_ENABLED="1" CC="/usr/bin/x86_64-w64-mingw32-gcc" CXX="/usr/bin/x86_64-w64-mingw32-g++" GOOS="windows" GOARCH="amd64" CGO_LDFLAGS="-lmingw32 -lSDL2" CGO_CFLAGS="-D_REENTRANT" go build -tags "release" -gcflags $(compileFlags) -ldflags="-s -w -H=windowsgui" -o gopher2600_windows_amd64.exe .
 
 cross_windows: generate windows_manifest
-	CGO_ENABLED="1" CC="/usr/bin/x86_64-w64-mingw32-gcc" CXX="/usr/bin/x86_64-w64-mingw32-g++" GOOS="windows" GOARCH="amd64" CGO_LDFLAGS="-static -static-libgcc -static-libstdc++ -L/usr/local/x86_64-w64-mingw32/lib" $(goBinary) build -tags "static imguifreetype release" -gcflags $(compileFlags) -ldflags "-s -w -H=windows" -o gopher2600_windows_amd64.exe .
+	CGO_ENABLED="1" CC="/usr/bin/x86_64-w64-mingw32-gcc" CXX="/usr/bin/x86_64-w64-mingw32-g++" GOOS="windows" GOARCH="amd64" CGO_LDFLAGS="-static -static-libgcc -static-libstdc++ -L/usr/local/x86_64-w64-mingw32/lib" $(goBinary) build -tags "static imguifreetype release" -gcflags $(compileFlags) -ldflags "-s -w -H=windowsgui" -o gopher2600_windows_amd64.exe .
+	rm rsrc_windows_amd64.syso
 
 cross_windows_statsview: generate windows_manifest
 	CGO_ENABLED="1" CC="/usr/bin/x86_64-w64-mingw32-gcc" CXX="/usr/bin/x86_64-w64-mingw32-g++" GOOS="windows" GOARCH="amd64" CGO_LDFLAGS="-static -static-libgcc -static-libstdc++" $(goBinary) build -tags "static imguifreetype release statsview" -gcflags $(compileFlags) -ldflags "-s -w -H=windowsgui" -o gopher2600_statsview_windows_amd64.exe .
+	rm rsrc_windows_amd64.syso
