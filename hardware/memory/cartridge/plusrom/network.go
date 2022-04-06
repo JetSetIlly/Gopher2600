@@ -99,14 +99,31 @@ func (n *network) send(data uint8, send bool) {
 
 			// from http://pluscart.firmaplus.de/pico/?PlusROM
 			//
+			// "PlusCarts with firmware versions newer than v2.1.1 are sending a "PlusROM-Info" http header.
+			//
+			// The new "PlusROM-Info" header is discussed/explained in this AtariAge thread:
+			// https://atariage.com/forums/topic/324456-redesign-plusrom-request-http-header"
+			//
+			id := fmt.Sprintf("agent=Gopher2600; ver=0.17.0; id=%s; nick=%s",
+				// whether or not ID and Nick are valid has been handled in the preferences system
+				n.instance.Prefs.PlusROM.ID.String(),
+				n.instance.Prefs.PlusROM.Nick.String(),
+			)
+			req.Header.Set("PlusROM-Info", id)
+			logger.Logf("plusrom [net]", "PlusROM-Info: %s", id)
+
+			// -----------------------------------------------
+			// PlusCart firmware earlier han v2.1.1
+			//
 			// "Emulators should generate a "PlusStore-ID" http-header with
 			// their request, that consists of a nickname given by the user and
 			// a generated uuid (starting with "WE") separated by a space
 			// character."
-			id := fmt.Sprintf("%s WE%s", n.instance.Prefs.PlusROM.Nick.String(), n.instance.Prefs.PlusROM.ID.String())
-			req.Header.Set("PlusStore-ID", id)
-
-			logger.Logf("plusrom [net]", "PlusStore-ID: %s", id)
+			//
+			// id := fmt.Sprintf("%s WE%s", n.instance.Prefs.PlusROM.Nick.String(), n.instance.Prefs.PlusROM.ID.String())
+			// req.Header.Set("PlusStore-ID", id)
+			// logger.Logf("plusrom [net]", "PlusStore-ID: %s", id)
+			// -----------------------------------------------
 
 			// log of complete request
 			if httpLogging {

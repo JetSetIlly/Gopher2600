@@ -48,6 +48,8 @@ var defunct = []string{
 	"crt.unsyncTolerance",
 	"hiscore.authtoken",
 	"hiscore.server",
+
+	"plusrom.id", // replaced with plusrom.id_v2.1.1
 }
 
 // returns true if string is in list of defunct values.

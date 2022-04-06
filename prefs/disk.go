@@ -83,7 +83,7 @@ func NewDisk(path string) (*Disk, error) {
 // these constraints are not met.
 func (dsk *Disk) Add(key string, p pref) error {
 	for _, r := range key {
-		if !(r == '.' || unicode.IsLetter(r) || unicode.IsDigit(r)) {
+		if !(r == '.' || r == '_' || unicode.IsLetter(r) || unicode.IsDigit(r)) {
 			return curated.Errorf("prefs: %v", fmt.Errorf("illegal character [%c] in key string [%s]", r, key))
 		}
 	}
@@ -266,13 +266,12 @@ func load(path string, entries *entryMap, limit bool) (int, error) {
 	return numLoaded, nil
 }
 
-// HasEntry returns false if there is no matching entry on disk and true if
-// there is.
-func (dsk *Disk) HasEntry(key string) (bool, error) {
+// DoesNotHaveEntry returns true if entry is missing from the written disk.
+func (dsk *Disk) DoesNotHaveEntry(entry string) (bool, error) {
 	var e entryMap
 	var s String
 	e = make(entryMap)
-	e[key] = &s
+	e[entry] = &s
 
 	n, err := load(dsk.path, &e, true)
 	if err != nil {

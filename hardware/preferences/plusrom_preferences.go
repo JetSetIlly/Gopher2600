@@ -16,10 +16,13 @@
 package preferences
 
 import (
+	"crypto/md5"
 	"fmt"
 	"math/rand"
+	"unicode"
 
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/plusrom/plusnet"
+	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/prefs"
 	"github.com/jetsetilly/gopher2600/resources"
 )
@@ -53,7 +56,7 @@ func newPlusROMpreferences() (*PlusROMPreferences, error) {
 		return nil, err
 	}
 
-	err = p.dsk.Add("plusrom.id", &p.ID)
+	err = p.dsk.Add("plusrom.id_v2.1.1", &p.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -63,22 +66,58 @@ func newPlusROMpreferences() (*PlusROMPreferences, error) {
 		return nil, err
 	}
 
-	err = p.ID.Set(fmt.Sprintf("%d", rand.Int63()))
+	err = p.ID.Set(p.generateID())
 	if err != nil {
 		return nil, err
 	}
 
-	p.NewInstallation, err = p.dsk.HasEntry("plusrom.nick")
+	p.NewInstallation, err = p.dsk.DoesNotHaveEntry("plusrom.nick")
 	if err != nil {
 		return nil, err
 	}
 
-	err = p.dsk.Load(false)
+	err = p.dsk.Load(true)
 	if err != nil {
 		return p, err
 	}
 
+	if !p.validateID() {
+		logger.Log("plusrom preferences", "existing ID invalid. generating new ID and saving")
+
+		err = p.ID.Set(p.generateID())
+		if err != nil {
+			return nil, err
+		}
+
+		err = p.dsk.Save()
+		if err != nil {
+			return p, err
+		}
+	}
+
 	return p, nil
+}
+
+func (p *PlusROMPreferences) validateID() bool {
+	// check for length
+	if len(p.ID.String()) != plusnet.MaxIDLength {
+		return false
+	}
+
+	// check for invalid characters
+	for _, r := range p.ID.String() {
+		if !((unicode.IsLetter(r) && unicode.IsLower(r)) || unicode.IsDigit(r)) {
+			return false
+		}
+	}
+
+	return true
+}
+
+func (p *PlusROMPreferences) generateID() string {
+	id := fmt.Sprintf("%d", rand.Int63())
+	id = fmt.Sprintf("%x", md5.Sum([]byte(id)))
+	return id
 }
 
 // SetDefaults reverts all settings to default values.

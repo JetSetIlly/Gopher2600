@@ -19,5 +19,5 @@ package plusnet
 // Maximum lengths for PlusNET Nick and PlusNET ID.
 const (
 	MaxNickLength = 10
-	MaxIDLength   = 22
+	MaxIDLength   = 32
 )
