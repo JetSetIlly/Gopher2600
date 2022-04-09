@@ -95,11 +95,16 @@ func (win *winCoProcIllegalAccess) draw() {
 		const numColumns = 4
 		imgui.BeginTableV("##coprocIllegalAccessTable", numColumns, imgui.TableFlagsSizingFixedFit, imgui.Vec2{}, 0.0)
 
-		// first column is a dummy column so that Selectable (span all columns) works correctly
+		// setup columns. the labelling column 2 depends on whether the coprocessor
+		// development instance has source available to it
 		width := imgui.ContentRegionAvail().X
-		imgui.TableSetupColumnV("Event", imgui.TableColumnFlagsNone, width*0.20, 1)
-		imgui.TableSetupColumnV("Address", imgui.TableColumnFlagsNone, width*0.20, 3)
-		imgui.TableSetupColumnV("Function", imgui.TableColumnFlagsNone, width*0.45, 3)
+		imgui.TableSetupColumnV("Event", imgui.TableColumnFlagsNone, width*0.20, 0)
+		imgui.TableSetupColumnV("Address", imgui.TableColumnFlagsNone, width*0.20, 1)
+		if win.img.dbg.CoProcDev.HasSource() {
+			imgui.TableSetupColumnV("Function", imgui.TableColumnFlagsNone, width*0.45, 2)
+		} else {
+			imgui.TableSetupColumnV("PC Address", imgui.TableColumnFlagsNone, width*0.45, 2)
+		}
 		imgui.TableSetupColumnV("Count", imgui.TableColumnFlagsNone, width*0.10, 3)
 
 		imgui.Spacing()
@@ -141,8 +146,16 @@ func (win *winCoProcIllegalAccess) draw() {
 			imgui.PopStyleColor()
 
 			imgui.TableNextColumn()
-			if lg.SrcLine != nil {
-				imgui.Text(lg.SrcLine.Function.Name)
+			if win.img.dbg.CoProcDev.HasSource() {
+				if lg.SrcLine != nil {
+					imgui.Text(lg.SrcLine.Function.Name)
+				} else {
+					// in case function name cannot be found
+					imgui.Text("-")
+				}
+			} else {
+				// show PC address if there is no source available
+				imgui.Text(fmt.Sprintf("%#08x", lg.PC))
 			}
 
 			imgui.TableNextColumn()

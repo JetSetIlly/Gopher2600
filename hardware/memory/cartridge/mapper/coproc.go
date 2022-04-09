@@ -48,6 +48,10 @@ type CartCoProcDeveloper interface {
 	// empty string if no meaningful information could be found
 	IllegalAccess(event string, pc uint32, addr uint32) string
 
+	// address is the same as the null pointer, indicating the address access
+	// is likely to be a null pointer dereference
+	NullAccess(event string, pc uint32, addr uint32) string
+
 	// accumulate cycles for executed addresses
 	ExecutionProfile(addr map[uint32]float32)
 }

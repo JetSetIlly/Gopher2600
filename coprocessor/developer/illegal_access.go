@@ -17,11 +17,12 @@ package developer
 
 // IllegalAccessEntry is a single entry in the illegal access log.
 type IllegalAccessEntry struct {
-	Event      string
-	PC         uint32
-	AccessAddr uint32
-	SrcLine    *SourceLine
-	Count      int
+	Event        string
+	PC           uint32
+	AccessAddr   uint32
+	IsNullAccess bool
+	SrcLine      *SourceLine
+	Count        int
 }
 
 // IllegalAccess records memory accesses by the coprocesser that are "illegal".

@@ -83,7 +83,17 @@ const (
 )
 
 // IllegalAccess implements the CartCoProcDeveloper interface.
+func (dev *Developer) NullAccess(event string, pc uint32, addr uint32) string {
+	return dev.loagAccess(event, pc, addr, true)
+}
+
+// IllegalAccess implements the CartCoProcDeveloper interface.
 func (dev *Developer) IllegalAccess(event string, pc uint32, addr uint32) string {
+	return dev.loagAccess(event, pc, addr, false)
+}
+
+// loagAccess adds an illegal or null access event to the log. includes source code lookup
+func (dev *Developer) loagAccess(event string, pc uint32, addr uint32, isNullAccess bool) string {
 	dev.sourceLock.Lock()
 	defer dev.sourceLock.Unlock()
 
@@ -95,10 +105,11 @@ func (dev *Developer) IllegalAccess(event string, pc uint32, addr uint32) string
 		e.Count++
 	} else {
 		e = &IllegalAccessEntry{
-			Event:      event,
-			PC:         pc,
-			AccessAddr: addr,
-			Count:      1,
+			Event:        event,
+			PC:           pc,
+			AccessAddr:   addr,
+			IsNullAccess: isNullAccess,
+			Count:        1,
 		}
 
 		dev.illegalAccess.entries[accessKey] = e

@@ -324,7 +324,28 @@ func (arm *ARM) illegalAccess(event string, addr uint32) {
 	logger.Logf("ARM7", "%s: %s", event, log)
 }
 
+// nullAccess is a special condition of illegalAccess()
+func (arm *ARM) nullAccess(event string, addr uint32) {
+	logger.Logf("ARM7", "%s: probable null pointer dereference of %08x (PC: %08x)", event, addr, arm.executingPC)
+	if arm.dev == nil {
+		return
+	}
+	log := arm.dev.NullAccess(event, arm.executingPC, addr)
+	if log == "" {
+		return
+	}
+	logger.Logf("ARM7", "%s: %s", event, log)
+}
+
+// accesses below this address are deemed to be probably null accesses. value
+// is arbitrary and was suggested by John Champeau (09/04/2022)
+const nullAccessBoundary = 0x750
+
 func (arm *ARM) read8bit(addr uint32) uint8 {
+	if addr <= nullAccessBoundary {
+		arm.nullAccess("read8bit", addr)
+	}
+
 	var mem *[]uint8
 
 	mem, addr = arm.mem.MapAddress(addr, false)
@@ -346,6 +367,10 @@ func (arm *ARM) read8bit(addr uint32) uint8 {
 }
 
 func (arm *ARM) write8bit(addr uint32, val uint8) {
+	if addr <= nullAccessBoundary {
+		arm.nullAccess("write8bit", addr)
+	}
+
 	var mem *[]uint8
 
 	mem, addr = arm.mem.MapAddress(addr, true)
@@ -367,6 +392,10 @@ func (arm *ARM) write8bit(addr uint32, val uint8) {
 }
 
 func (arm *ARM) read16bit(addr uint32) uint16 {
+	if addr <= nullAccessBoundary {
+		arm.nullAccess("read16bit", addr)
+	}
+
 	// check 16 bit alignment
 	if addr&0x01 != 0x00 {
 		logger.Logf("ARM7", "misaligned 16 bit read (%08x) (PC: %08x)", addr, arm.registers[rPC])
@@ -393,6 +422,10 @@ func (arm *ARM) read16bit(addr uint32) uint16 {
 }
 
 func (arm *ARM) write16bit(addr uint32, val uint16) {
+	if addr <= nullAccessBoundary {
+		arm.nullAccess("write16bit", addr)
+	}
+
 	// check 16 bit alignment
 	if addr&0x01 != 0x00 {
 		logger.Logf("ARM7", "misaligned 16 bit write (%08x) (PC: %08x)", addr, arm.registers[rPC])
@@ -420,6 +453,10 @@ func (arm *ARM) write16bit(addr uint32, val uint16) {
 }
 
 func (arm *ARM) read32bit(addr uint32) uint32 {
+	if addr <= nullAccessBoundary {
+		arm.nullAccess("read32bit", addr)
+	}
+
 	// check 32 bit alignment
 	if addr&0x03 != 0x00 {
 		logger.Logf("ARM7", "misaligned 32 bit read (%08x) (PC: %08x)", addr, arm.registers[rPC])
@@ -446,6 +483,10 @@ func (arm *ARM) read32bit(addr uint32) uint32 {
 }
 
 func (arm *ARM) write32bit(addr uint32, val uint32) {
+	if addr <= nullAccessBoundary {
+		arm.nullAccess("write32bit", addr)
+	}
+
 	// check 32 bit alignment
 	if addr&0x03 != 0x00 {
 		logger.Logf("ARM7", "misaligned 32 bit write (%08x) (PC: %08x)", addr, arm.registers[rPC])
