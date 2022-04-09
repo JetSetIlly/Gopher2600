@@ -116,6 +116,7 @@ var windowDefs = [...]windowDef{
 	{create: newWinDPCregisters, menu: menuEntry{group: menuCart, restrictBus: menuRestrictRegister, restrictMapper: []string{"DPC"}}},
 	{create: newWinDPCplusRegisters, menu: menuEntry{group: menuCart, restrictBus: menuRestrictRegister, restrictMapper: []string{"DPC+"}}},
 	{create: newWinCDFRegisters, menu: menuEntry{group: menuCart, restrictBus: menuRestrictRegister, restrictMapper: []string{"CDF", "CDFJ", "CDF0", "CDF1", "CDFJ+"}}},
+	{create: newWinCDFStreams, menu: menuEntry{group: menuCart, restrictBus: menuRestrictRegister, restrictMapper: []string{"CDF", "CDFJ", "CDF0", "CDF1", "CDFJ+"}}},
 	{create: newWinSuperchargerRegisters, menu: menuEntry{group: menuCart, restrictBus: menuRestrictRegister, restrictMapper: []string{"AR"}}},
 	{create: newWinCartTape, menu: menuEntry{group: menuCart, restrictBus: menuRestrictTape}},
 	{create: newWinCartRAM, menu: menuEntry{group: menuCart, restrictBus: menuRestrictRAM}},

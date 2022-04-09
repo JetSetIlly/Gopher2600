@@ -358,6 +358,9 @@ func (win *winDbgScr) drawSpecCombo() {
 		for _, s := range specification.SpecList {
 			if imgui.Selectable(s) {
 				win.img.term.pushCommand(fmt.Sprintf("TV SPEC %s", s))
+
+				// the CDF streams window uses the TV colours for the display
+				win.img.wm.windows[winCDFStreamsID].(*winCDFStreams).updateStreams()
 			}
 		}
 		imgui.EndCombo()

@@ -31,7 +31,7 @@ func (win *winPrefs) drawCRT() {
 	imgui.PopItemWidth()
 	if pixPerf {
 		imgui.PushItemFlag(imgui.ItemFlagsDisabled, true)
-		imgui.PushStyleVarFloat(imgui.StyleVarAlpha, 0.5)
+		imgui.PushStyleVarFloat(imgui.StyleVarAlpha, disabledAlpha)
 		defer imgui.PopStyleVar()
 		defer imgui.PopItemFlag()
 	}

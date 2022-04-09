@@ -97,7 +97,7 @@ func (win *winDPCplusRegisters) draw() {
 	for i := 0; i < len(r.Fetcher); i++ {
 		f := i
 
-		imguiLabel(fmt.Sprintf("#%d", f))
+		imguiLabel(fmt.Sprintf("%d.", f))
 
 		label := fmt.Sprintf("##d%dlow", i)
 		low := fmt.Sprintf("%02x", r.Fetcher[i].Low)
@@ -154,7 +154,7 @@ func (win *winDPCplusRegisters) draw() {
 	for i := 0; i < len(r.FracFetcher); i++ {
 		f := i
 
-		imguiLabel(fmt.Sprintf("#%d", f))
+		imguiLabel(fmt.Sprintf("%d.", f))
 
 		label := fmt.Sprintf("##f%dlow", i)
 		low := fmt.Sprintf("%02x", r.FracFetcher[i].Low)
@@ -212,7 +212,7 @@ func (win *winDPCplusRegisters) draw() {
 	for i := 0; i < len(r.MusicFetcher); i++ {
 		f := i
 
-		imguiLabel(fmt.Sprintf("#%d", f))
+		imguiLabel(fmt.Sprintf("%d.", f))
 
 		label := fmt.Sprintf("##m%dwaveform", i)
 		waveform := fmt.Sprintf("%08x", r.MusicFetcher[i].Waveform)

@@ -32,6 +32,8 @@ type State struct {
 	// registers refer to the are of static memory that are treated as
 	// "registers" ie. values with specific meaning in the context of the
 	// cartridge mapper.
+	//
+	// the values in the Registers are copies of what appears in memory
 	registers Registers
 
 	// static area of the cartridge. accessible outside of the cartridge

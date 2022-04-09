@@ -84,7 +84,7 @@ func (win *winDPCregisters) draw() {
 	for i := 0; i < len(r.Fetcher); i++ {
 		f := i
 
-		imguiLabel(fmt.Sprintf("#%d", f))
+		imguiLabel(fmt.Sprintf("%d.", f))
 
 		label := fmt.Sprintf("##%dlow", i)
 		low := fmt.Sprintf("%02x", r.Fetcher[i].Low)

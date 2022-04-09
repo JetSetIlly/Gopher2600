@@ -102,6 +102,14 @@ func NewCDF(instance *instance.Instance, pathToROM string, version string, data 
 	// initialise static memory
 	cart.state.static = cart.newCDFstatic(instance, data, cart.version)
 
+	// datastream registers need to reference the incrementShift and
+	// fetcherShift values in the version type. we make a copy of these values
+	// on ROM initialisation
+	for i := range cart.state.registers.Datastream {
+		cart.state.registers.Datastream[i].incrementShift = cart.version.incrementShift
+		cart.state.registers.Datastream[i].fetcherShift = cart.version.fetcherShift
+	}
+
 	// initialise ARM processor
 	//
 	// if bank0 has any ARM code then it will start at offset 0x08. first eight
@@ -343,6 +351,13 @@ func (cart *cdf) Write(addr uint16, data uint8, passive bool, poke bool) error {
 				return curated.Errorf("CDF: %v", err)
 			}
 			cart.state.callfn.Start(cycles)
+
+			// update the Register types after completion of each CALLFN
+			for i := range cart.state.registers.Datastream {
+				cart.state.registers.Datastream[i].Pointer = cart.readDatastreamPointer(i)
+				cart.state.registers.Datastream[i].Increment = cart.readDatastreamIncrement(i)
+				cart.state.registers.Datastream[i].AfterCALLFN = cart.readDatastreamPointer(i)
+			}
 		}
 	}
 
@@ -497,61 +512,6 @@ func (cart *cdf) WriteHotspots() map[uint16]mapper.CartHotspotInfo {
 		0x1ffa: {Symbol: "BANK5", Action: mapper.HotspotBankSwitch},
 		0x1ffb: {Symbol: "BANK6", Action: mapper.HotspotBankSwitch},
 	}
-}
-
-func (cart *cdf) updateDatastreamPointer(pointer int, data uint32) {
-	idx := cart.version.fetcherBase + (uint32(pointer) * 4)
-	cart.state.static.driverRAM[idx] = uint8(data)
-	cart.state.static.driverRAM[idx+1] = uint8(data >> 8)
-	cart.state.static.driverRAM[idx+2] = uint8(data >> 16)
-	cart.state.static.driverRAM[idx+3] = uint8(data >> 24)
-}
-
-func (cart *cdf) readDatastreamPointer(pointer int) uint32 {
-	idx := cart.version.fetcherBase + (uint32(pointer) * 4)
-	return uint32(cart.state.static.driverRAM[idx]) |
-		uint32(cart.state.static.driverRAM[idx+1])<<8 |
-		uint32(cart.state.static.driverRAM[idx+2])<<16 |
-		uint32(cart.state.static.driverRAM[idx+3])<<24
-}
-
-// updateDatastreamIncrement is not used by the CDF mapper itself except as a
-// call from PutRegister(), which is a debugging facility.
-func (cart *cdf) updateDatastreamIncrement(inc int, data uint32) {
-	idx := cart.version.incrementBase + (uint32(inc) * 4)
-	cart.state.static.driverRAM[idx] = uint8(data)
-	cart.state.static.driverRAM[idx+1] = uint8(data >> 8)
-	cart.state.static.driverRAM[idx+2] = uint8(data >> 16)
-	cart.state.static.driverRAM[idx+3] = uint8(data >> 24)
-}
-
-func (cart *cdf) readDatastreamIncrement(inc int) uint32 {
-	idx := cart.version.incrementBase + (uint32(inc) * 4)
-	return uint32(cart.state.static.driverRAM[idx]) |
-		uint32(cart.state.static.driverRAM[idx+1])<<8 |
-		uint32(cart.state.static.driverRAM[idx+2])<<16 |
-		uint32(cart.state.static.driverRAM[idx+3])<<24
-}
-
-func (cart *cdf) readMusicFetcher(mus int) uint32 {
-	// CDFJ+ differences ??
-
-	addr := cart.version.musicBase + (uint32(mus) * 4)
-	return uint32(cart.state.static.driverRAM[addr]) |
-		uint32(cart.state.static.driverRAM[addr+1])<<8 |
-		uint32(cart.state.static.driverRAM[addr+2])<<16 |
-		uint32(cart.state.static.driverRAM[addr+3])<<24
-}
-
-func (cart *cdf) streamData(reg int) uint8 {
-	addr := cart.readDatastreamPointer(reg)
-	inc := cart.readDatastreamIncrement(reg)
-
-	value := cart.state.static.dataRAM[addr>>cart.version.fetcherShift]
-	addr += inc << cart.version.incrementShift
-	cart.updateDatastreamPointer(reg, addr)
-
-	return value
 }
 
 // ARMinterrupt implements the arm7tmdi.CatridgeHook interface.

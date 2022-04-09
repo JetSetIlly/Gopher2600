@@ -77,7 +77,7 @@ func (win *winCDFRegisters) draw() {
 			imgui.SameLine()
 		}
 		f := i
-		imguiLabel(fmt.Sprintf("#%d", f))
+		imguiLabel(fmt.Sprintf("%2d.", f))
 		label := fmt.Sprintf("##%dpointer", i)
 		data := fmt.Sprintf("%08x", r.Datastream[i].Pointer)
 		if imguiHexInput(label, 8, &data) {
@@ -99,7 +99,7 @@ func (win *winCDFRegisters) draw() {
 			imgui.SameLine()
 		}
 		f := i
-		imguiLabel(fmt.Sprintf("#%d", f))
+		imguiLabel(fmt.Sprintf("%2d.", f))
 		label := fmt.Sprintf("##m%dincrement", i)
 		inc := fmt.Sprintf("%08x", r.Datastream[i].Increment)
 		if imguiHexInput(label, 8, &inc) {
@@ -141,7 +141,7 @@ func (win *winCDFRegisters) draw() {
 	for i := 0; i < len(r.MusicFetcher); i++ {
 		f := i
 
-		imguiLabel(fmt.Sprintf("#%d", f))
+		imguiLabel(fmt.Sprintf("%d.", f))
 
 		label := fmt.Sprintf("##m%dwaveform", i)
 		waveform := fmt.Sprintf("%08x", r.MusicFetcher[i].Waveform)
@@ -154,7 +154,7 @@ func (win *winCDFRegisters) draw() {
 		}
 
 		imgui.SameLine()
-		label = fmt.Sprintf("##m%dfeq", i)
+		label = fmt.Sprintf("##m%dfreq", i)
 		freq := fmt.Sprintf("%08x", r.MusicFetcher[i].Freq)
 		imguiLabel("Freq")
 		if imguiHexInput(label, 8, &freq) {

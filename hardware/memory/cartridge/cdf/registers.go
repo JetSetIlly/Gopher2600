@@ -23,24 +23,20 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 )
 
-type musicDataFetcher struct {
-	Waveform uint8
-	Freq     uint32
-	Count    uint32
-}
-
-type datastream struct {
-	Pointer   uint32
-	Increment uint32
-}
+const (
+	NumDatastreams       = 32
+	NumMusicDataFetchers = 3
+)
 
 // Registers implements mappers.Registers.
 type Registers struct {
-	MusicFetcher [3]musicDataFetcher
-	FastFetch    bool
-	SampleMode   bool
+	FastFetch  bool
+	SampleMode bool
 
-	Datastream [8]datastream
+	// the MusicFetcher and Datastream feilds are copies of the data as it
+	// exists in ARM memory
+	MusicFetcher [NumMusicDataFetchers]musicDataFetcher
+	Datastream   [NumDatastreams]datastream
 }
 
 func (r *Registers) initialise() {
@@ -58,11 +54,6 @@ func (r Registers) String() string {
 
 // GetRegisters implements the bus.CartRegistersBus interface.
 func (cart *cdf) GetRegisters() mapper.CartRegisters {
-	for i := range cart.state.registers.Datastream {
-		cart.state.registers.Datastream[i].Pointer = cart.readDatastreamPointer(i)
-		cart.state.registers.Datastream[i].Increment = cart.readDatastreamIncrement(i)
-	}
-
 	return cart.state.registers
 }
 

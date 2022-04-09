@@ -322,7 +322,7 @@ func (win *winPrefs) drawVCS() {
 
 		if !stereo {
 			imgui.PushItemFlag(imgui.ItemFlagsDisabled, true)
-			imgui.PushStyleVarFloat(imgui.StyleVarAlpha, 0.5)
+			imgui.PushStyleVarFloat(imgui.StyleVarAlpha, disabledAlpha)
 		}
 
 		separation := int32(win.img.audio.Prefs.Separation.Get().(int))
@@ -391,7 +391,7 @@ func (win *winPrefs) drawARM() {
 
 	if immediate {
 		imgui.PushItemFlag(imgui.ItemFlagsDisabled, true)
-		imgui.PushStyleVarFloat(imgui.StyleVarAlpha, 0.5)
+		imgui.PushStyleVarFloat(imgui.StyleVarAlpha, disabledAlpha)
 	}
 
 	imgui.Spacing()

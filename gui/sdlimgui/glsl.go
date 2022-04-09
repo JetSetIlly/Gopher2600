@@ -191,7 +191,11 @@ func (rnd *glsl) render() {
 				case rnd.img.wm.windows[winBotID].(*winBot).mouseTexture:
 					shader = rnd.shaders[colorShaderID]
 				default:
-					shader = rnd.shaders[guiShaderID]
+					if rnd.img.wm.windows[winCDFStreamsID].(*winCDFStreams).isStreamTexture(env.srcTextureID) {
+						shader = rnd.shaders[colorShaderID]
+					} else {
+						shader = rnd.shaders[guiShaderID]
+					}
 				}
 
 				env.draw = func() {

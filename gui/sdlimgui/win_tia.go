@@ -28,7 +28,6 @@ type winTIA struct {
 	open bool
 
 	popupPalette *popupPalette
-	strobe       int32
 
 	// the scope at which the editing of TIA value will take place
 	deepPoking bool
@@ -48,7 +47,6 @@ func newWinTIA(img *SdlImgui) (window, error) {
 	win := &winTIA{
 		img:          img,
 		popupPalette: newPopupPalette(img),
-		strobe:       -1,
 	}
 
 	return win, nil

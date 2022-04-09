@@ -381,7 +381,7 @@ func (img *SdlImgui) imguiWindowQuadrant(p imgui.Vec2) imgui.Vec2 {
 func (img *SdlImgui) imguiTVPalette() (string, packedPalette, []imgui.Vec4) {
 	switch img.lz.TV.FrameInfo.Spec.ID {
 	case "PAL":
-		return "PAL", img.cols.packedPalettePAL, img.cols.paletteNTSC
+		return "PAL", img.cols.packedPalettePAL, img.cols.palettePAL
 	case "PAL60":
 		return "PAL60", img.cols.packedPalettePAL, img.cols.palettePAL
 	case "NTSC":
