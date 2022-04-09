@@ -1382,6 +1382,8 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		controller, ok := tokens.Get()
 		if ok {
 			switch strings.ToUpper(controller) {
+			case "AUTO":
+				dbg.vcs.FingerprintPeripheral(id, *dbg.loader)
 			case "STICK":
 				err = dbg.vcs.RIOT.Ports.Plug(id, controllers.NewStick)
 			case "PADDLE":

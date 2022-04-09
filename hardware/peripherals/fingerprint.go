@@ -37,33 +37,38 @@ import (
 // Free Software Foundation, version 2 or any later version.
 //
 // https://github.com/stella-emu/stella/blob/76914ded629db887ef612b1e5c9889220808191a/Copyright.txt
-func Fingerprint(port plugging.PortID, data []byte) ports.NewPeripheral {
+func Fingerprint(port plugging.PortID, data *[]byte) ports.NewPeripheral {
+	// default to joystick if there is not data to fingerprint
+	if data == nil {
+		return controllers.NewStick
+	}
+
 	if port != plugging.PortRightPlayer && port != plugging.PortLeftPlayer {
 		panic(fmt.Sprintf("cannot fingerprint for port %v", port))
 	}
 
 	// atarivox and savekey are the most specific peripheral. because atarivox
 	// includes the functionality of savekey we need to check atarivox first
-	if fingerprintAtariVox(port, data) {
+	if fingerprintAtariVox(port, *data) {
 		return atarivox.NewAtariVox
 	}
 
-	if fingerprintSaveKey(port, data) {
+	if fingerprintSaveKey(port, *data) {
 		return savekey.NewSaveKey
 	}
 
 	// the other peripherals require a process of differentiation. the order is
 	// important.
-	if fingerprintStick(port, data) {
-		if fingerprintKeypad(port, data) {
+	if fingerprintStick(port, *data) {
+		if fingerprintKeypad(port, *data) {
 			return controllers.NewKeypad
 		}
 
-		if fingerprintGamepad(port, data) {
+		if fingerprintGamepad(port, *data) {
 			return controllers.NewGamepad
 		}
 	} else {
-		if fingerprintPaddle(port, data) {
+		if fingerprintPaddle(port, *data) {
 			return controllers.NewPaddle
 		}
 	}

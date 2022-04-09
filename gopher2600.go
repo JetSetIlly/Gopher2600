@@ -276,7 +276,9 @@ func emulate(emulationMode emulation.Mode, md *modalflag.Modes, sync *mainSync) 
 	}
 
 	mapping := md.AddString("mapping", "AUTO", "force use of cartridge mapping")
-	spec := md.AddString("tv", "AUTO", "television specification: NTSC, PAL, PAL60")
+	spec := md.AddString("tv", "AUTO", "television specification: AUTO, NTSC, PAL, PAL60")
+	left := md.AddString("left", "AUTO", "left player port: AUTO, STICK, PADDLE, KEYPAD, GAMEPAD")
+	right := md.AddString("right", "AUTO", "right player port: AUTO, STICK, PADDLE, KEYPAD, GAMEPAD, SAVEKEY, ATARIVOX")
 	fpsCap := md.AddBool("fpscap", true, "cap fps to TV specification")
 	profile := md.AddString("profile", "none", "run performance check with profiling: command separated CPU, MEM, TRACE or ALL")
 	log := md.AddBool("log", false, "echo debugging log to stdout")
@@ -406,13 +408,13 @@ func emulate(emulationMode emulation.Mode, md *modalflag.Modes, sync *mainSync) 
 	dbgLaunch := func() error {
 		switch emulationMode {
 		case emulation.ModeDebugger:
-			err := dbg.StartInDebugMode(*initScript, md.GetArg(0), *mapping)
+			err := dbg.StartInDebugMode(*initScript, md.GetArg(0), *mapping, *left, *right)
 			if err != nil {
 				return err
 			}
 
 		case emulation.ModePlay:
-			err := dbg.StartInPlayMode(md.GetArg(0), *mapping, *record, *comparisonROM, *comparisonPrefs, *patchFile, *wav)
+			err := dbg.StartInPlayMode(md.GetArg(0), *mapping, *left, *right, *record, *comparisonROM, *comparisonPrefs, *patchFile, *wav)
 			if err != nil {
 				return err
 			}

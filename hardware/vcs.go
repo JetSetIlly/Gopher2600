@@ -69,6 +69,16 @@ type VCS struct {
 	// television detects a change in the TV signal it will notify the emulated
 	// console, allowing it to note the new implied clock speed.
 	Clock float32
+
+	// disable peripheral detection for the next cartridge attachment event.
+	// it is reset to false once the insertion has completed
+	//
+	// *** NOTE ***
+	//
+	// this is a temporary field to help facilitate the plugging in of
+	// peripherals on startup. it will be removed when the setup package is
+	// updated and improved
+	DisablePeriphFingerprint bool
 }
 
 // NewVCS creates a new VCS and everything associated with the hardware. It is
@@ -165,14 +175,18 @@ func (vcs *VCS) AttachCartridge(cartload cartridgeloader.Loader) error {
 			return err
 		}
 
-		err = vcs.RIOT.Ports.Plug(plugging.PortLeftPlayer, peripherals.Fingerprint(plugging.PortLeftPlayer, *cartload.Data))
-		if err != nil {
-			return err
-		}
-
-		err = vcs.RIOT.Ports.Plug(plugging.PortRightPlayer, peripherals.Fingerprint(plugging.PortRightPlayer, *cartload.Data))
-		if err != nil {
-			return err
+		// fingerprint new peripherals. peripherals are not changed if option is not set
+		if vcs.DisablePeriphFingerprint {
+			vcs.DisablePeriphFingerprint = false
+		} else {
+			err = vcs.FingerprintPeripheral(plugging.PortLeftPlayer, cartload)
+			if err != nil {
+				return err
+			}
+			err = vcs.FingerprintPeripheral(plugging.PortRightPlayer, cartload)
+			if err != nil {
+				return err
+			}
 		}
 	}
 
@@ -187,6 +201,12 @@ func (vcs *VCS) AttachCartridge(cartload cartridgeloader.Loader) error {
 	}
 
 	return nil
+}
+
+// FingerprintPeripheral inserts the peripheral that is thought to be best
+// suited for the current inserted cartridge.
+func (vcs *VCS) FingerprintPeripheral(id plugging.PortID, cartload cartridgeloader.Loader) error {
+	return vcs.RIOT.Ports.Plug(id, peripherals.Fingerprint(id, cartload.Data))
 }
 
 // Reset emulates the reset switch on the console panel.

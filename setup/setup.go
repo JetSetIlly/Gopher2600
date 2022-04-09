@@ -23,6 +23,10 @@ import (
 	"github.com/jetsetilly/gopher2600/resources"
 )
 
+// *** NOTE ***
+// remove DisablePeriphFingerprint field from VCS type once setup package has
+// been updated to handle peripherals/controllers correctly
+
 // the location of the setupDB file.
 const setupDBFile = "setupDB"
 

@@ -155,7 +155,7 @@ func TestDebugger_withNonExistantInitScript(t *testing.T) {
 
 	go trm.testSequence()
 
-	err = dbg.StartInDebugMode("", "", "")
+	err = dbg.StartInDebugMode("", "", "", "AUTO", "AUTO")
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
@@ -178,7 +178,7 @@ func TestDebugger(t *testing.T) {
 
 	go trm.testSequence()
 
-	err = dbg.StartInDebugMode("", "", "")
+	err = dbg.StartInDebugMode("", "", "", "AUTO", "AUTO")
 	if err != nil {
 		t.Fatalf(err.Error())
 	}

@@ -16,6 +16,7 @@
 package debugger
 
 import (
+	"fmt"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -619,7 +620,7 @@ func (dbg *Debugger) end() {
 }
 
 // StartInDebugMode starts the emulation with the debugger activated.
-func (dbg *Debugger) StartInDebugMode(initScript string, filename string, mapping string) error {
+func (dbg *Debugger) StartInDebugMode(initScript string, filename string, mapping string, left string, right string) error {
 	// set running flag as early as possible
 	dbg.running = true
 
@@ -635,7 +636,15 @@ func (dbg *Debugger) StartInDebugMode(initScript string, filename string, mappin
 		}
 	}
 
+	// disable peripheral fingerprinting on startup
+	dbg.vcs.DisablePeriphFingerprint = true
+
 	err = dbg.attachCartridge(cartload)
+	if err != nil {
+		return curated.Errorf("debugger: %v", err)
+	}
+
+	err = dbg.insertPeripheralsOnStartup(left, right)
 	if err != nil {
 		return curated.Errorf("debugger: %v", err)
 	}
@@ -645,6 +654,7 @@ func (dbg *Debugger) StartInDebugMode(initScript string, filename string, mappin
 		return curated.Errorf("debugger: %v", err)
 	}
 
+	// intialisation script because we're in debugger mode
 	if initScript != "" {
 		scr, err := script.RescribeScript(initScript)
 		if err == nil {
@@ -671,9 +681,24 @@ func (dbg *Debugger) StartInDebugMode(initScript string, filename string, mappin
 	return nil
 }
 
+func (dbg *Debugger) insertPeripheralsOnStartup(left string, right string) error {
+	dbg.term.Silence(true)
+	defer dbg.term.Silence(false)
+
+	err := dbg.parseCommand(fmt.Sprintf("PERIPHERAL LEFT %s", left), false, false)
+	if err != nil {
+		return err
+	}
+	err = dbg.parseCommand(fmt.Sprintf("PERIPHERAL RIGHT %s", right), false, false)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 // StartInPlaymode starts the emulation ready for game-play.
-func (dbg *Debugger) StartInPlayMode(filename string, mapping string, record bool,
-	comparisonROM string, comparisonPrefs string,
+func (dbg *Debugger) StartInPlayMode(filename string, mapping string, left string, right string,
+	record bool, comparisonROM string, comparisonPrefs string,
 	patchFile string, wav bool) error {
 
 	// set running flag as early as possible
@@ -697,7 +722,15 @@ func (dbg *Debugger) StartInPlayMode(filename string, mapping string, record boo
 			return curated.Errorf("debugger: %v", err)
 		}
 
+		// disable peripheral fingerprinting on startup
+		dbg.vcs.DisablePeriphFingerprint = true
+
 		err = dbg.attachCartridge(cartload)
+		if err != nil {
+			return curated.Errorf("debugger: %v", err)
+		}
+
+		err = dbg.insertPeripheralsOnStartup(left, right)
 		if err != nil {
 			return curated.Errorf("debugger: %v", err)
 		}
