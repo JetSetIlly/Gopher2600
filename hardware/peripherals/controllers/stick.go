@@ -67,12 +67,13 @@ func NewStick(instance *instance.Instance, port plugging.PortID, bus ports.Perip
 		stk.buttonInptx = chipbus.INPT5
 	}
 
-	stk.Reset()
 	return stk
 }
 
 // Unplug implements the Peripheral interface.
 func (stk *Stick) Unplug() {
+	stk.bus.WriteSWCHx(stk.port, axisCenter)
+	stk.bus.WriteINPTx(stk.buttonInptx, stickFire)
 }
 
 // Snapshot implements the Peripheral interface.

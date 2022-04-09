@@ -47,11 +47,18 @@ type Gamepad struct {
 
 	second      uint8
 	secondInptx chipbus.Register
+
+	// the gamepad is wired such that INPT0 (or INPT2 for the right player) is
+	// wired to the VCC rail. the register is set to high on creation or reset
+	// and set to low when unplugged.
+	insertedInptx chipbus.Register
 }
 
 const (
 	secondFire   = 0x00
 	secondNoFire = 0x80
+	inserted     = 0x80
+	notInserted  = 0x00
 )
 
 // NewGamepad is the preferred method of initialisation for the Gamepad type
@@ -70,17 +77,22 @@ func NewGamepad(instance *instance.Instance, port plugging.PortID, bus ports.Per
 	case plugging.PortLeftPlayer:
 		pad.buttonInptx = chipbus.INPT4
 		pad.secondInptx = chipbus.INPT1
+		pad.insertedInptx = chipbus.INPT0
 	case plugging.PortRightPlayer:
 		pad.buttonInptx = chipbus.INPT5
 		pad.secondInptx = chipbus.INPT3
+		pad.insertedInptx = chipbus.INPT2
 	}
 
-	pad.Reset()
 	return pad
 }
 
 // Unplug implements the Peripheral interface.
-func (pan *Gamepad) Unplug() {
+func (pad *Gamepad) Unplug() {
+	pad.bus.WriteSWCHx(pad.port, axisCenter)
+	pad.bus.WriteINPTx(pad.buttonInptx, stickFire)
+	pad.bus.WriteINPTx(pad.secondInptx, secondFire)
+	pad.bus.WriteINPTx(pad.insertedInptx, notInserted)
 }
 
 // Snapshot implements the Peripheral interface.
@@ -272,6 +284,7 @@ func (pad *Gamepad) Reset() {
 	pad.bus.WriteSWCHx(pad.port, pad.axis)
 	pad.bus.WriteINPTx(pad.buttonInptx, pad.button)
 	pad.bus.WriteINPTx(pad.secondInptx, pad.second)
+	pad.bus.WriteINPTx(pad.insertedInptx, inserted)
 }
 
 // IsActive implements the ports.Peripheral interface.

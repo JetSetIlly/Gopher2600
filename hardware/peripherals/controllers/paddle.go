@@ -86,6 +86,8 @@ func NewPaddle(instance *instance.Instance, port plugging.PortID, bus ports.Peri
 
 // Unplug implements the Peripheral interface.
 func (pdl *Paddle) Unplug() {
+	pdl.bus.WriteSWCHx(pdl.port, paddleNoFire)
+	pdl.bus.WriteINPTx(pdl.inptx, 0x00) // no charge
 }
 
 // Snapshot implements the Peripheral interface.

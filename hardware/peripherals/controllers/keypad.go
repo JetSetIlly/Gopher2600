@@ -60,6 +60,9 @@ func NewKeypad(instance *instance.Instance, port plugging.PortID, bus ports.Peri
 
 // Unplug implements the Peripheral interface.
 func (key *Keypad) Unplug() {
+	key.bus.WriteINPTx(key.column[0], 0x00)
+	key.bus.WriteINPTx(key.column[1], 0x00)
+	key.bus.WriteINPTx(key.column[2], 0x00)
 }
 
 // Snapshot implements the Peripheral interface.

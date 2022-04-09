@@ -159,6 +159,8 @@ func (p *Ports) Plug(port plugging.PortID, c NewPeripheral) error {
 		return fmt.Errorf("can't attach peripheral to port (%v)", port)
 	}
 
+	periph.Reset()
+
 	return nil
 }
 
