@@ -177,11 +177,12 @@ type CartStaticBus interface {
 	// Update the value at the index of the specified segment. Note that the
 	// index referes to the Data array as returned by GetStatc()
 	PutStatic(segment string, idx uint16, data uint8) error
+
+	// return a 32 bit value from address, reading from a mapper.CartStatic instance
+	Read32bit(static []CartStatic, addr uint32) (uint32, bool)
 }
 
-// CartStatic conceptualises a static data area that is inaccessible through.
-// Of the cartridge types that have static areas some have more than one static
-// area.
+// CartStatic conceptualises a static data area that is inaccessible through the 6507.
 type CartStatic struct {
 	Segment string
 	Data    []uint8

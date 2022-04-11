@@ -63,6 +63,7 @@ type LazyCart struct {
 	CurrBank  mapper.BankInfo
 
 	HasStaticBus bool
+	StaticBus    mapper.CartStaticBus
 	Static       []mapper.CartStatic
 
 	HasRegistersBus bool
@@ -178,7 +179,7 @@ func (lz *LazyCart) update() {
 	lz.NumBanks, _ = lz.numBanks.Load().(int)
 	lz.CurrBank, _ = lz.currBank.Load().(mapper.BankInfo)
 
-	_, lz.HasStaticBus = lz.staticBus.Load().(container).v.(mapper.CartStaticBus)
+	lz.StaticBus, lz.HasStaticBus = lz.staticBus.Load().(container).v.(mapper.CartStaticBus)
 	if lz.HasStaticBus {
 		// a cartridge can implement a static bus but not actually have a
 		// static area. this additional test checks for that

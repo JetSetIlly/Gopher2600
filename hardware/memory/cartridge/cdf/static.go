@@ -210,3 +210,31 @@ func (cart *cdf) PutStatic(segment string, idx uint16, data uint8) error {
 
 	return nil
 }
+
+// Read32bit returns a 32 bit value from address, reading from a mapper.CartStatic instance
+func (cart *cdf) Read32bit(static []mapper.CartStatic, addr uint32) (uint32, bool) {
+	stc := cart.state.static
+
+	var idx int
+
+	if addr >= stc.version.dataOriginRAM && addr <= stc.version.dataMemtopRAM {
+		// data (RAM)
+		idx = 1
+		addr -= stc.version.dataOriginRAM
+	} else if addr >= stc.version.driverOriginRAM && addr <= stc.version.driverMemtopRAM {
+		// driver ARM code (RAM)
+		idx = 0
+		addr -= stc.version.driverOriginRAM
+	} else if addr >= stc.version.variablesOriginRAM && addr <= stc.version.variablesMemtopRAM {
+		// variables (RAM)
+		idx = 2
+		addr -= stc.version.variablesOriginRAM
+	} else {
+		return 0, false
+	}
+
+	return uint32((static[idx].Data)[addr]) |
+		uint32((static[idx].Data)[addr+1])<<8 |
+		uint32((static[idx].Data)[addr+2])<<16 |
+		uint32((static[idx].Data)[addr+3])<<24, true
+}

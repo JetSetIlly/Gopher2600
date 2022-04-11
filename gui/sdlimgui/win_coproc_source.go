@@ -182,6 +182,9 @@ func (win *winCoProcSource) draw() {
 				win.scrollTo = true
 				win.scrollToFile = m.DeclLine.File.Filename
 				win.selectedLine.single(m.DeclLine.LineNumber)
+			} else {
+				imgui.Text("Can't find main() function")
+				return
 			}
 
 			win.firstOpen = false

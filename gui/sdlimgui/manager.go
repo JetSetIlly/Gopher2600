@@ -126,6 +126,7 @@ var windowDefs = [...]windowDef{
 	{create: newWinCoProcDisasm, menu: menuEntry{group: menuCoProc, restrictBus: menuRestrictCoProc, label: winCoProcDisasmMenu}},
 	{create: newWinCoProcIllegalAccess, menu: menuEntry{group: menuCoProc, restrictBus: menuRestrictCoProc, label: winCoProcIllegalAccessMenu}},
 	{create: newWinCoProcPerformance, menu: menuEntry{group: menuCoProc, restrictBus: menuRestrictCoProc, label: winCoProcPerformanceMenu}},
+	{create: newWinCoProcGlobals, menu: menuEntry{group: menuCoProc, restrictBus: menuRestrictCoProc, label: winCoProcGlobalsMenu}},
 	{create: newWinCoProcSource, menu: menuEntry{group: menuCoProc, restrictBus: menuRestrictCoProc, label: winCoProcSourceMenu}},
 
 	// plusrom windows
