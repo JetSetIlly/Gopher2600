@@ -466,10 +466,28 @@ func (p *Ports) PokeField(fld string, v interface{}) {
 }
 
 // the derived value of SWCHA. the value it should be if the RIOT logic has
-// proceeded normally (ie. no poking).
+// proceeded normally (ie. no poking)
+//
+//  SWCHA_W   SWACNT   <input>      SWCHA
+//     0        0         1           1            ^SWCHA_W & ^SWACNT & <input>
+//     0        0         0           0
+//     0        1         1           0
+//     0        1         0           0
+//     1        0         1           1            SWCHA_W & ^SWACNT & <input>
+//     1        0         0           0
+//     1        1         1           1            SWCHA_W & SWACNT & <input>
+//     1        1         0           0
+//
+//  a := p.swcha_w
+//  b := swacnt
+//  c := p.swcha_mux
+//
+//  (^a & ^b & c) | (a & ^b & c) | (a & b & c)
+//  (a & c & (^b|b)) | (^a & ^b & c)
+//  (a & c) | (^a & ^b & c)
 func (p *Ports) deriveSWCHA() uint8 {
 	swacnt := p.riot.ChipRefer(chipbus.SWACNT)
-	return (p.swcha_w & swacnt) | (p.swcha_mux & ^swacnt)
+	return (p.swcha_w & p.swcha_mux) | (^p.swcha_w & ^swacnt & p.swcha_mux)
 }
 
 // the derived value of SWCHB. the value it should be if the RIOT logic has
