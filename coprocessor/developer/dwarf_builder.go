@@ -18,6 +18,7 @@ package developer
 import (
 	"debug/dwarf"
 	"io"
+	"sort"
 
 	"github.com/jetsetilly/gopher2600/curated"
 )
@@ -35,6 +36,8 @@ type build struct {
 
 	subprograms        map[dwarf.Offset]buildEntry
 	inlinedSubroutines map[dwarf.Offset]buildEntry
+	types              map[dwarf.Offset]buildEntry
+	variables          map[dwarf.Offset]buildEntry
 
 	// the order in which we encountered the subprograms and inlined
 	// subroutines is important
@@ -44,9 +47,11 @@ type build struct {
 func newBuild(dwrf *dwarf.Data) (*build, error) {
 	bld := &build{
 		dwrf:               dwrf,
-		order:              make([]dwarf.Offset, 0, 100),
-		inlinedSubroutines: make(map[dwarf.Offset]buildEntry),
 		subprograms:        make(map[dwarf.Offset]buildEntry),
+		inlinedSubroutines: make(map[dwarf.Offset]buildEntry),
+		types:              make(map[dwarf.Offset]buildEntry),
+		variables:          make(map[dwarf.Offset]buildEntry),
+		order:              make([]dwarf.Offset, 0, 100),
 	}
 
 	var compileUnit *dwarf.Entry
@@ -87,6 +92,30 @@ func newBuild(dwrf *dwarf.Data) (*build, error) {
 				return nil, curated.Errorf("found inlined subroutine without compile unit")
 			} else {
 				bld.subprograms[entry.Offset] = buildEntry{
+					compileUnit: compileUnit,
+					entry:       entry,
+				}
+				bld.order = append(bld.order, entry.Offset)
+			}
+
+		case dwarf.TagBaseType:
+			fallthrough
+		case dwarf.TagPointerType:
+			if compileUnit == nil {
+				return nil, curated.Errorf("found inlined subroutine without compile unit")
+			} else {
+				bld.types[entry.Offset] = buildEntry{
+					compileUnit: compileUnit,
+					entry:       entry,
+				}
+				bld.order = append(bld.order, entry.Offset)
+			}
+
+		case dwarf.TagVariable:
+			if compileUnit == nil {
+				return nil, curated.Errorf("found inlined subroutine without compile unit")
+			} else {
+				bld.variables[entry.Offset] = buildEntry{
 					compileUnit: compileUnit,
 					entry:       entry,
 				}
@@ -279,4 +308,98 @@ func (bld *build) findFunction(addr uint64) (*foundFunction, error) {
 	}
 
 	return ret, nil
+}
+
+// buildVariables populates all variable structures in the *Source tree
+func (bld *build) buildVariables(src *Source) error {
+	for _, v := range bld.variables {
+		var varb SourceVariable
+
+		fld := v.entry.AttrField(dwarf.AttrName)
+		if fld == nil {
+			continue // for loop
+		}
+		varb.Name = fld.Val.(string)
+
+		// variable type
+		fld = v.entry.AttrField(dwarf.AttrType)
+		if fld == nil {
+			continue // for loop
+		}
+
+		t, ok := bld.types[dwarf.Offset(fld.Val.(dwarf.Offset))]
+		if !ok {
+			continue // for loop
+		}
+		fld = t.entry.AttrField(dwarf.AttrName)
+		if fld == nil {
+			continue // for loop
+		}
+		varb.Type = fld.Val.(string)
+
+		// variable location in the source
+		fld = v.entry.AttrField(dwarf.AttrDeclFile)
+		if fld == nil {
+			continue // for loop
+		}
+		declFile := fld.Val.(int64)
+
+		fld = v.entry.AttrField(dwarf.AttrDeclLine)
+		if fld == nil {
+			continue // for loop
+		}
+		declLine := fld.Val.(int64)
+
+		lr, err := bld.dwrf.LineReader(v.compileUnit)
+		if err != nil {
+			return err
+		}
+		files := lr.Files()
+
+		file := src.Files[files[declFile].Name]
+		varb.DeclLine = file.Lines[declLine]
+
+		// variable address (location)
+		fld = v.entry.AttrField(dwarf.AttrLocation)
+		if fld == nil {
+			continue // for loop
+		}
+
+		switch fld.Class {
+		case dwarf.ClassLocListPtr:
+			continue // for loop
+		case dwarf.ClassExprLoc:
+			expr := fld.Val.([]uint8)
+			switch expr[0] {
+			case 0x03: // constant address
+				if len(expr) != 5 {
+					continue // for loop
+				}
+				varb.Address = uint64(expr[1])
+				varb.Address |= uint64(expr[2]) << 8
+				varb.Address |= uint64(expr[3]) << 16
+				varb.Address |= uint64(expr[4]) << 24
+
+			default:
+				continue // for loop
+			}
+
+		default:
+			continue // for loop
+		}
+
+		// variables declared on lines without a parent function belong in the
+		// global variable list of the declaration file
+		if varb.DeclLine.Function.Name == UnknownFunction {
+			varb.DeclLine.File.Globals[varb.Name] = &varb
+			varb.DeclLine.File.GlobalNames = append(varb.DeclLine.File.GlobalNames, varb.Name)
+		}
+	}
+
+	// sort strings
+	for i := range src.Files {
+		sort.Strings(src.Files[i].GlobalNames)
+	}
+
+	return nil
 }

@@ -43,6 +43,12 @@ type SourceFile struct {
 	Filename      string
 	ShortFilename string
 	Lines         []*SourceLine
+
+	// global variables in this source file
+	Globals map[string]*SourceVariable
+
+	// sorted list of global variable names
+	GlobalNames []string
 }
 
 // SourceDisasm is a single disassembled intruction from the ELF binary.
@@ -101,6 +107,24 @@ type SourceFunction struct {
 
 	// cycle statisics for the function
 	Stats Stats
+}
+
+// SourceVariable is a single variable identified by the DWARF data.
+type SourceVariable struct {
+	Name string
+
+	// variable type (int, char *, etc.)
+	Type string
+
+	// first source line for each instance of the function
+	DeclLine *SourceLine
+
+	// address in memory of the variable
+	Address uint64
+}
+
+func (varb *SourceVariable) String() string {
+	return fmt.Sprintf("%s %s => %#08x", varb.Type, varb.Name, varb.Address)
 }
 
 // Source is created from available DWARF data that has been found in relation
@@ -491,227 +515,22 @@ func NewSource(pathToROM string) (*Source, error) {
 		}
 	}
 
+	// find variable declarations
+	err = bld.buildVariables(src)
+	if err != nil {
+		return nil, curated.Errorf("dwarf: %v", err)
+	}
+
 	// sort sorted lines
 	sort.Sort(src.SortedLines)
 
 	// sorted functions
 	sort.Sort(src.SortedFunctions)
 
-	// log summary
+	// log function summary
 	logger.Logf("dwarf", "identified %d functions in %d compile units", len(src.Functions), len(src.compileUnits))
 
 	return src, nil
-}
-
-// returns function or error. if error is nil then SourceFunction will be valid.
-//
-// if function cannot be found the SourceFunction.Name will be UnknownFunction.
-// test for that rather than nil.
-//
-// this function is inherently slow and is only really useful for one shot
-// lookups, very occassionaly. during the preperation of the Source instance
-// the findFunction() in the build type is preferred.
-func (src *Source) findFunction(addr uint64) (*SourceFunction, error) {
-	found := &SourceFunction{Name: UnknownFunction}
-	return found, nil
-
-	// resolveAbstract is a helper function that creates a SourceFunction and
-	// assigns it to the ret variable (created above). it is commone to both
-	// Subprogram and InlinedSubroutine tagged entries
-	//
-	// significantly it handles the AbstractOrigin attribute correctly
-	resolveAbstract := func(entry *dwarf.Entry) error {
-		var err error
-
-		// read abstract entry (using a different reader) if appropriate tag is found
-		fld := entry.AttrField(dwarf.AttrAbstractOrigin)
-		if fld != nil {
-			r := src.dwrf.Reader()
-			r.Seek(fld.Val.(dwarf.Offset))
-			entry, err = r.Next()
-			if err != nil {
-				return err
-			}
-		}
-
-		// from here similar to TagSubprogram
-
-		// the list of files for the compile unit. where we get the files
-		// from depends on whether current entry has an abstract origin or
-		// not
-		var files []*dwarf.LineFile
-
-		// check which compile unit the abstract entry is in and
-		// reinitialise the files array
-		for _, u := range src.compileUnits {
-			if _, ok := u.children[entry.Offset]; ok {
-				lr, err := src.dwrf.LineReader(u.unit)
-				if err != nil {
-					return err
-				}
-				files = lr.Files()
-				break
-			}
-		}
-
-		// name of entry
-		fld = entry.AttrField(dwarf.AttrName)
-		if fld == nil {
-			return nil
-		}
-		name := fld.Val.(string)
-
-		// declaration file
-		fld = entry.AttrField(dwarf.AttrDeclFile)
-		if fld == nil {
-			return nil
-		}
-		filenum := fld.Val.(int64)
-
-		// declaration line
-		fld = entry.AttrField(dwarf.AttrDeclLine)
-		if fld == nil {
-			return nil
-		}
-		linenum := fld.Val.(int64)
-
-		// prepare return value
-		filename := files[filenum].Name
-		if fn, ok := src.Files[filename]; ok {
-			found = &SourceFunction{
-				Name:     name,
-				DeclLine: fn.Lines[linenum-1],
-			}
-		}
-
-		return nil
-	}
-
-	r := src.dwrf.Reader()
-	for {
-		entry, err := r.Next()
-		if err != nil {
-			if err == io.EOF {
-				break // for loop
-			}
-			return nil, err
-		}
-		if entry == nil {
-			break // for loop
-		}
-		if entry.Offset == 0 {
-			continue // for loop
-		}
-
-		switch entry.Tag {
-		case dwarf.TagInlinedSubroutine:
-			// the address range to match against for inlined subroutines is a
-			// little more involved because these entries can have either a
-			// low/high field or a ranges field
-			//
-			// assumption: if there is a low attribute there should be a high
-			// field and there won't be a ranges field
-			fld := entry.AttrField(dwarf.AttrLowpc)
-			if fld != nil {
-				var low uint64
-				var high uint64
-
-				low = uint64(fld.Val.(uint64))
-
-				// high PC
-				fld = entry.AttrField(dwarf.AttrHighpc)
-				if fld == nil {
-					return nil, curated.Errorf("AttrLowpc without AttrHighpc for InlinedSubroutine: %08x", addr)
-				}
-
-				switch fld.Class {
-				case dwarf.ClassConstant:
-					// dwarf-4
-					high = low + uint64(fld.Val.(int64))
-				case dwarf.ClassAddress:
-					// dwarf-2
-					high = uint64(fld.Val.(uint64))
-				default:
-					return nil, curated.Errorf("AttrLowpc without AttrHighpc for InlinedSubroutine: %08x", addr)
-				}
-
-				if addr < low || addr >= high {
-					continue // for loop
-				}
-			} else {
-				fld = entry.AttrField(dwarf.AttrRanges)
-				if fld == nil {
-					continue // for loop
-				}
-
-				rngs, err := src.dwrf.Ranges(entry)
-				if err != nil {
-					return nil, err
-				}
-
-				match := false
-				for _, r := range rngs {
-					if addr >= r[0] && addr < r[1] {
-						match = true
-						break
-					}
-				}
-				if !match {
-					continue // for loop
-				}
-			}
-
-			err = resolveAbstract(entry)
-			if err != nil {
-				return nil, err
-			}
-
-		case dwarf.TagSubprogram:
-			// check address against low/high fields. compare to
-			// InlinedSubroutines where address range can be given by either
-			// low/high fields OR a Range field. for Subprograms, there is
-			// never a Range field.
-
-			var low uint64
-			var high uint64
-
-			fld := entry.AttrField(dwarf.AttrLowpc)
-			if fld == nil {
-				// it is possible for Subprograms to have no address fields.
-				// the Subprograms are abstract and will be referred to by
-				// either concrete Subprograms or concrete InlinedSubroutines
-				continue // for loop
-			}
-			low = uint64(fld.Val.(uint64))
-
-			fld = entry.AttrField(dwarf.AttrHighpc)
-			if fld == nil {
-				return nil, curated.Errorf("AttrLowpc without AttrHighpc for InlinedSubroutine: %08x", addr)
-			}
-
-			switch fld.Class {
-			case dwarf.ClassConstant:
-				// dwarf-4
-				high = low + uint64(fld.Val.(int64))
-			case dwarf.ClassAddress:
-				// dwarf-2
-				high = uint64(fld.Val.(uint64))
-			default:
-				return nil, curated.Errorf("AttrLowpc without AttrHighpc for InlinedSubroutine: %08x", addr)
-			}
-
-			if addr < low || addr >= high {
-				continue // for loop
-			}
-
-			err = resolveAbstract(entry)
-			if err != nil {
-				return nil, err
-			}
-		}
-	}
-
-	return found, nil
 }
 
 // find source line for program counter. shouldn't be called too often because
@@ -787,6 +606,7 @@ func readSourceFile(filename string, pathToROM_nosymlinks string) (*SourceFile, 
 
 	fl := SourceFile{
 		Filename: filename,
+		Globals:  make(map[string]*SourceVariable),
 	}
 
 	// read file data
