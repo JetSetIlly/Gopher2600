@@ -492,7 +492,27 @@ func (p *Ports) deriveSWCHA() uint8 {
 
 // the derived value of SWCHB. the value it should be if the RIOT logic has
 // proceeded normally (ie. no poking).
+//
+//  SWCHB_W   SWBCNT   <input>      SWCHB
+//     0        0         1           1            ^SWCHB_W & ^SWBCNT & <input>
+//     0        0         0           0
+//     0        1         1           0
+//     0        1         0           0
+//     1        0         1           1            SWCHB_W & ^SWBCNT & <input>
+//     1        0         0           0
+//     1        1         1           1            SWCHB_W & SWBCNT & <input>
+//     1        1         0           1            SWCHB_W & SWBCNT & ^<input>
+//
+//  (The last entry of the truth table is different to the truth table for SWCHA)
+//
+//  a := p.swchb_w
+//  b := swbcnt
+//  c := p.swchb_raw
+//
+//  (^a & ^b & c) | (a & ^b & c) | (a & b & c) | (a & b & ^c)
+//  (^a & ^b & c) | (a & ^b & c) | (a & b)
+//  (^b & c) | (a & b)
 func (p *Ports) deriveSWCHB() uint8 {
 	swbcnt := p.riot.ChipRefer(chipbus.SWBCNT)
-	return (p.swchb_w & swbcnt) | (p.swchb_raw & ^swbcnt)
+	return (^swbcnt & p.swchb_raw) | (p.swchb_w & swbcnt)
 }
