@@ -43,7 +43,7 @@ type dpc struct {
 
 	// static area of the cartridge. accessible outside of the cartridge
 	// through GetStatic() and PutStatic()
-	static []byte
+	static dpcStatic
 
 	// rewindable state
 	state *dpcState
@@ -73,7 +73,7 @@ func newDPC(instance *instance.Instance, data []byte) (mapper.CartMapper, error)
 
 	// copy some data into the static area of the DPC state structure
 	staticStart := cart.NumBanks() * cart.bankSize
-	cart.static = data[staticStart : staticStart+staticSize]
+	cart.static.data = data[staticStart : staticStart+staticSize]
 
 	return cart, nil
 }
@@ -179,11 +179,11 @@ func (cart *dpc) Read(addr uint16, passive bool) (uint8, error) {
 	} else {
 		if addr >= 0x0008 && addr <= 0x000f {
 			// display data
-			data = cart.static[gfxAddr]
+			data = cart.static.data[gfxAddr]
 		} else if addr >= 0x0010 && addr <= 0x0017 {
 			// display data AND w/flag
 			if cart.state.registers.Fetcher[f].Flag {
-				data = cart.static[gfxAddr]
+				data = cart.static.data[gfxAddr]
 			}
 		} else if addr >= 0x0018 && addr <= 0x001f {
 			// display data AND w/flag, nibbles swapped
@@ -194,12 +194,12 @@ func (cart *dpc) Read(addr uint16, passive bool) (uint8, error) {
 		} else if addr >= 0x0028 && addr <= 0x002f {
 			// display data AND w/flag, ROR
 			if cart.state.registers.Fetcher[f].Flag {
-				data = cart.static[gfxAddr] >> 1
+				data = cart.static.data[gfxAddr] >> 1
 			}
 		} else if addr >= 0x0030 && addr <= 0x0037 {
 			// display data AND w/flag, ROL
 			if cart.state.registers.Fetcher[f].Flag {
-				data = cart.static[gfxAddr] << 1
+				data = cart.static.data[gfxAddr] << 1
 			}
 		} else if addr >= 0x0038 && addr <= 0x003f {
 			// DFx flag
@@ -300,13 +300,13 @@ func (cart *dpc) GetBank(addr uint16) mapper.BankInfo {
 
 // Patch implements the mapper.CartMapper interface.
 func (cart *dpc) Patch(offset int, data uint8) error {
-	if offset >= cart.bankSize*len(cart.banks)+len(cart.static) {
+	if offset >= cart.bankSize*len(cart.banks)+len(cart.static.data) {
 		return curated.Errorf("DPC: %v", fmt.Errorf("patch offset too high (%v)", offset))
 	}
 
 	staticStart := cart.NumBanks() * cart.bankSize
 	if staticStart >= cart.NumBanks()*cart.bankSize {
-		cart.static[offset] = data
+		cart.static.data[offset] = data
 	} else {
 		bank := offset / cart.bankSize
 		offset %= cart.bankSize
@@ -412,31 +412,6 @@ func (cart *dpc) PutRegister(register string, data string) {
 	default:
 		panic(fmt.Sprintf("unrecognised variable [%s]", register))
 	}
-}
-
-// GetStatic implements the mapper.CartRegistersBus interface.
-func (cart *dpc) GetStatic() []mapper.CartStatic {
-	s := make([]mapper.CartStatic, 1)
-	s[0].Segment = "Gfx"
-	s[0].Data = make([]byte, len(cart.static))
-	copy(s[0].Data, cart.static)
-	return s
-}
-
-// PutStatic implements the mapper.CartRegistersBus interface.
-func (cart *dpc) PutStatic(segment string, idx uint16, data uint8) error {
-	switch segment {
-	case "Gfx":
-		if int(idx) >= len(cart.static) {
-			return curated.Errorf("dpc: static: %v", fmt.Errorf("idx too high (%#04x) for %s area", idx, segment))
-		}
-		cart.static[idx] = data
-
-	default:
-		return curated.Errorf("dpc: static: %v", fmt.Errorf("unknown segment (%s)", segment))
-	}
-
-	return nil
 }
 
 // IterateBank implements the mapper.CartMapper interface.
@@ -709,4 +684,59 @@ func newDPCState() *dpcState {
 func (s *dpcState) Snapshot() *dpcState {
 	n := *s
 	return &n
+}
+
+type dpcStatic struct {
+	data []uint8
+}
+
+func (stc *dpcStatic) Segments() []mapper.CartStaticSegment {
+	return []mapper.CartStaticSegment{
+		mapper.CartStaticSegment{
+			Name:   "Graphics",
+			Origin: 0,
+			Memtop: uint32(len(stc.data)),
+		},
+	}
+}
+
+// Reference implements the mapper.CartStatic interface
+func (stc *dpcStatic) Reference(segment string) ([]uint8, bool) {
+	switch segment {
+	case "Graphics":
+		return stc.data, true
+	}
+	return []uint8{}, false
+}
+
+// Read8bit returns a 8 bit value from address
+func (stc *dpcStatic) Read8bit(addr uint32) (uint8, bool) {
+	return 0, false
+}
+
+// Read32bit returns a 16 bit value from address
+func (stc *dpcStatic) Read16bit(addr uint32) (uint16, bool) {
+	return 0, false
+}
+
+// Read32bit returns a 32 bit value from address
+func (stc *dpcStatic) Read32bit(addr uint32) (uint32, bool) {
+	return 0, false
+}
+
+// GetStatic implements the mapper.CartStaticBus interface
+func (cart *dpc) GetStatic() mapper.CartStatic {
+	s := dpcStatic{}
+	s.data = make([]uint8, len(cart.static.data))
+	copy(s.data, cart.static.data)
+	return &s
+}
+
+// PutStatic implements the mapper.CartStaticBus interface
+func (cart *dpc) PutStatic(segment string, idx uint16, data uint8) bool {
+	if int(idx) >= len(cart.static.data) {
+		return false
+	}
+	cart.static.data[idx] = data
+	return true
 }

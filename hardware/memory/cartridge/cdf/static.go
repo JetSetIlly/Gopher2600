@@ -16,9 +16,6 @@
 package cdf
 
 import (
-	"fmt"
-
-	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/instance"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/logger"
@@ -128,113 +125,100 @@ func (stc *Static) MapAddress(addr uint32, write bool) (*[]byte, uint32) {
 	return nil, addr
 }
 
-func (stc *Static) read8bit(addr uint32) uint8 {
+// Segments implements the mapper.CartStatic interface
+func (stc *Static) Segments() []mapper.CartStaticSegment {
+	return []mapper.CartStaticSegment{
+		mapper.CartStaticSegment{
+			Name:   "Driver",
+			Origin: stc.version.driverOriginRAM,
+			Memtop: stc.version.driverMemtopRAM,
+		},
+		mapper.CartStaticSegment{
+			Name:   "Data",
+			Origin: stc.version.dataOriginRAM,
+			Memtop: stc.version.dataMemtopRAM,
+		},
+		mapper.CartStaticSegment{
+			Name:   "Variables",
+			Origin: stc.version.variablesOriginRAM,
+			Memtop: stc.version.variablesMemtopRAM,
+		},
+	}
+}
+
+// Reference implements the mapper.CartStatic interface
+func (stc *Static) Reference(segment string) ([]uint8, bool) {
+	switch segment {
+	case "Driver":
+		return stc.driverRAM, true
+	case "Data":
+		return stc.dataRAM, true
+	case "Variables":
+		return stc.variablesRAM, true
+	}
+	return []uint8{}, false
+}
+
+// Read8bit implements the mapper.CartStatic interface
+func (stc *Static) Read8bit(addr uint32) (uint8, bool) {
 	mem, addr := stc.MapAddress(addr, false)
 	if mem == nil || addr >= uint32(len(*mem)) {
-		return 0
+		return 0, false
 	}
-	return (*mem)[addr]
+	return (*mem)[addr], true
 }
 
-// func (stc *Static) read16bit(addr uint32) uint16 {
-// 	mem, addr := stc.MapAddress(addr, false)
-// 	if mem == nil || addr >= uint32(len(*mem)) {
-// 		return 0
-// 	}
-// 	return uint16((*mem)[addr]) |
-// 		uint16((*mem)[addr+1])<<8
-// }.
-
-// func (stc *Static) read32bit(addr uint32) uint32 {
-// 	mem, addr := stc.MapAddress(addr, false)
-// 	if mem == nil || addr >= uint32(len(*mem)) {
-// 		return 0
-// 	}
-// 	return uint32((*mem)[addr]) |
-// 		uint32((*mem)[addr+1])<<8 |
-// 		uint32((*mem)[addr+2])<<16 |
-// 		uint32((*mem)[addr+3])<<24
-// }.
-
-// GetStatic implements the bus.CartRegistersBus interface.
-func (cart *cdf) GetStatic() []mapper.CartStatic {
-	numSegments := 3
-	if cart.version.submapping == "CDFJ+" {
-		numSegments = 2
+// Read16bit implements the mapper.CartStatic interface
+func (stc *Static) Read16bit(addr uint32) (uint16, bool) {
+	mem, addr := stc.MapAddress(addr, false)
+	if mem == nil || addr >= uint32(len(*mem)) {
+		return 0, false
 	}
-
-	s := make([]mapper.CartStatic, numSegments)
-
-	s[0].Segment = "Driver"
-	s[1].Segment = "Data"
-
-	s[0].Data = make([]byte, len(cart.state.static.driverRAM))
-	s[1].Data = make([]byte, len(cart.state.static.dataRAM))
-
-	copy(s[0].Data, cart.state.static.driverRAM)
-	copy(s[1].Data, cart.state.static.dataRAM)
-
-	if cart.version.submapping != "CDFJ+" {
-		s[2].Segment = "Variables"
-		s[2].Data = make([]byte, len(cart.state.static.variablesRAM))
-		copy(s[2].Data, cart.state.static.variablesRAM)
-	}
-
-	return s
+	return uint16((*mem)[addr]) |
+		uint16((*mem)[addr+1])<<8, true
 }
 
-// StaticWrite implements the bus.CartRegistersBus interface.
-func (cart *cdf) PutStatic(segment string, idx uint16, data uint8) error {
+// Read32bit implements the mapper.CartStatic interface
+func (stc *Static) Read32bit(addr uint32) (uint32, bool) {
+	mem, addr := stc.MapAddress(addr, false)
+	if mem == nil || addr >= uint32(len(*mem)) {
+		return 0, false
+	}
+	return uint32((*mem)[addr]) |
+		uint32((*mem)[addr+1])<<8 |
+		uint32((*mem)[addr+2])<<16 |
+		uint32((*mem)[addr+3])<<24, true
+}
+
+// GetStatic implements the bus.CartStaticBus interface.
+func (cart *cdf) GetStatic() mapper.CartStatic {
+	return cart.state.static.Snapshot()
+}
+
+// StaticWrite implements the bus.CartStaticBus interface.
+func (cart *cdf) PutStatic(segment string, idx uint16, data uint8) bool {
 	switch segment {
 	case "Driver":
 		if int(idx) >= len(cart.state.static.driverRAM) {
-			return curated.Errorf("CDF", fmt.Errorf("index too high (%#04x) for %s area", idx, segment))
+			return false
 		}
 		cart.state.static.driverRAM[idx] = data
 
 	case "Data":
 		if int(idx) >= len(cart.state.static.dataRAM) {
-			return curated.Errorf("CDF", fmt.Errorf("index too high (%#04x) for %s area", idx, segment))
+			return false
 		}
 		cart.state.static.dataRAM[idx] = data
 
 	case "Variables":
 		if int(idx) >= len(cart.state.static.variablesRAM) {
-			return curated.Errorf("CDF", fmt.Errorf("index too high (%#04x) for %s area", idx, segment))
+			return false
 		}
 		cart.state.static.variablesRAM[idx] = data
 
 	default:
-		return curated.Errorf("CDF", fmt.Errorf("unknown segment (%s)", segment))
+		return false
 	}
 
-	return nil
-}
-
-// Read32bit returns a 32 bit value from address, reading from a mapper.CartStatic instance
-func (cart *cdf) Read32bit(static []mapper.CartStatic, addr uint32) (uint32, bool) {
-	stc := cart.state.static
-
-	var idx int
-
-	if addr >= stc.version.dataOriginRAM && addr <= stc.version.dataMemtopRAM {
-		// data (RAM)
-		idx = 1
-		addr -= stc.version.dataOriginRAM
-	} else if addr >= stc.version.driverOriginRAM && addr <= stc.version.driverMemtopRAM {
-		// driver ARM code (RAM)
-		idx = 0
-		addr -= stc.version.driverOriginRAM
-	} else if addr >= stc.version.variablesOriginRAM && addr <= stc.version.variablesMemtopRAM {
-		// variables (RAM)
-		idx = 2
-		addr -= stc.version.variablesOriginRAM
-	} else {
-		return 0, false
-	}
-
-	return uint32((static[idx].Data)[addr]) |
-		uint32((static[idx].Data)[addr+1])<<8 |
-		uint32((static[idx].Data)[addr+2])<<16 |
-		uint32((static[idx].Data)[addr+3])<<24, true
+	return true
 }

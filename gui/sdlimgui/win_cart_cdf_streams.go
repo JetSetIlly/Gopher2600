@@ -112,7 +112,7 @@ func (win *winCDFStreams) updateStreams() {
 		return
 	}
 
-	mem := win.img.lz.Cart.Static[1]
+	mem := win.img.lz.Cart.Static
 
 	// keep track of scanlines
 	scanlines := win.img.lz.TV.FrameInfo.VisibleBottom - win.img.lz.TV.FrameInfo.VisibleTop
@@ -131,7 +131,7 @@ func (win *winCDFStreams) updateStreams() {
 	// draw pixels
 	for i := range r.Datastream {
 		for y := 0; y < win.imageSize.Y; y++ {
-			v := r.Datastream[i].Peek(y, mem.Data)
+			v := r.Datastream[i].Peek(y, mem)
 
 			for x := 0; x < 8; x++ {
 				if y <= scanlines {

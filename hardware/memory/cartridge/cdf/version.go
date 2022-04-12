@@ -150,9 +150,9 @@ func newVersion(memModel string, v string, data []uint8) (version, error) {
 		// data origin unchanged. memtop is changed
 		r.dataMemtopRAM = mmap.SRAMOrigin | 0x00007fff
 
-		// variables concept not used in CDFJ
-		r.variablesOriginRAM = 0x0
-		r.variablesMemtopRAM = 0x0
+		// variables concept not used in CDFJ+
+		ver.variablesOriginRAM = 0x0
+		ver.variablesMemtopRAM = 0x0
 
 		idx = 0x17f4
 		r.entrySR = uint32(data[idx])

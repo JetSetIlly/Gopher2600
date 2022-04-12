@@ -483,23 +483,14 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 			case "STATIC":
 				// !!TODO: poke/peek static cartridge static data areas
 				if bus := dbg.vcs.Mem.Cart.GetStaticBus(); bus != nil {
-					s := &strings.Builder{}
 					static := bus.GetStatic()
 					if static != nil {
-						for b := 0; b < len(static); b++ {
-							s.WriteString(static[b].Segment + "\n")
-							s.WriteString(strings.Repeat("-", len(static[b].Segment)))
-							s.WriteString("\n")
-							s.WriteString(hex.Dump(static[b].Data))
-							s.WriteString("\n\n")
-						}
-
-						dbg.printLine(terminal.StyleInstrument, s.String())
+						dbg.printLine(terminal.StyleFeedback, "cartridge has a static data area")
 					} else {
-						dbg.printLine(terminal.StyleFeedback, "cartridge has no static data areas")
+						dbg.printLine(terminal.StyleFeedback, "cartridge has no static data area")
 					}
 				} else {
-					dbg.printLine(terminal.StyleFeedback, "cartridge has no static data areas")
+					dbg.printLine(terminal.StyleFeedback, "cartridge has no static data area")
 				}
 			case "REGISTERS":
 				// !!TODO: poke/peek cartridge registers

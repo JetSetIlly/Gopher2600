@@ -15,6 +15,8 @@
 
 package cdf
 
+import "github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
+
 type musicDataFetcher struct {
 	Waveform uint8
 	Freq     uint32
@@ -39,15 +41,17 @@ type datastream struct {
 
 // Peek returns the value at the Nth increment of the base pointer. Useful for
 // predicting or peeking at what the Nth value of a stream will be.
-func (ds datastream) Peek(y int, mem []uint8) uint8 {
+func (ds datastream) Peek(y int, mem mapper.CartStatic) uint8 {
+	m := mem.(*Static).dataRAM
+
 	p := ds.AfterCALLFN
 	p += (ds.Increment << ds.incrementShift) * uint32(y)
 
-	if int(p>>ds.fetcherShift) >= len(mem) {
+	if int(p>>ds.fetcherShift) >= len(m) {
 		return 0
 	}
 
-	return mem[p>>ds.fetcherShift]
+	return m[p>>ds.fetcherShift]
 }
 
 func (cart *cdf) readDatastreamPointer(reg int) uint32 {

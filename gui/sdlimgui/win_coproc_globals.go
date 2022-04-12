@@ -181,7 +181,7 @@ func (win *winCoProcGlobals) readMemory(address uint64) string {
 		return "-"
 	}
 
-	v, ok := win.img.lz.Cart.StaticBus.Read32bit(win.img.lz.Cart.Static, uint32(address))
+	v, ok := win.img.lz.Cart.Static.Read32bit(uint32(address))
 	if !ok {
 		return "-"
 	}

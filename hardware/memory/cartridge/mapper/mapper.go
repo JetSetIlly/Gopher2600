@@ -166,26 +166,59 @@ type CartRegisters interface {
 }
 
 // CartStaticBus defines the operations required for a debugger to access the
-// static area of a cartridge.
+// static memory of a cartridge.
 //
-// CartStaticBus differs from the CartRAMbus in that it represents memory that
-// is not accessible by the VCS directly.
+// Static memory is so called because it is inaccessible from the 6507 program.
+// From that point of view the memory is static and can't be changed. It may
+// however be changed by any coprocessor on the cartridge.
+//
+// (Historically, the StaticBus and related types were added to support the DPC
+// mapper type, where the memory indeed never can change. When the later
+// cartridge mappers, DPC+ and CDF, were added the name stuck).
 type CartStaticBus interface {
 	// GetStatic returns a copy of the cartridge's static areas
-	GetStatic() []CartStatic
+	GetStatic() CartStatic
 
-	// Update the value at the index of the specified segment. Note that the
-	// index referes to the Data array as returned by GetStatc()
-	PutStatic(segment string, idx uint16, data uint8) error
+	// Update the value at the index of the specified segment. the segment
+	// argument should come from the Name field of the CartStaticSegment type
+	// returned by CartStatic.Segments()
+	//
+	// The idx field should count from 0 and be no higher than the size of
+	// memory in the segment (the differenc of Memtop and Origin returned in
+	// the CartStaticSegment type).
+	//
+	// Returns false if segment is unknown or idx is out of range.
+	//
+	// PutStatic() will be working on the original data so PutStatic should be run
+	// in the same goroutine as the main emulation.
+	PutStatic(segment string, idx uint16, data uint8) bool
+}
 
-	// return a 32 bit value from address, reading from a mapper.CartStatic instance
-	Read32bit(static []CartStatic, addr uint32) (uint32, bool)
+// CartStaticSegment describes a single region of the underlying CartStatic
+// memory. The Name field can be used to reference the actual memory or to
+// update the underlying memory with CartStaticBus.PutStatic()
+type CartStaticSegment struct {
+	Name   string
+	Origin uint32
+	Memtop uint32
 }
 
 // CartStatic conceptualises a static data area that is inaccessible through the 6507.
-type CartStatic struct {
-	Segment string
-	Data    []uint8
+type CartStatic interface {
+	// returns a list of memory areas in the cartridge's static memory
+	Segments() []CartStaticSegment
+
+	// returns a copy of the data in the named segment. the segment name should
+	// be taken from the Name field of one of the CartStaticSegment instances
+	// returned by the Segments() function
+	Reference(segment string) ([]uint8, bool)
+
+	// read 8, 16 or 32 bit values from the address. the address should be in
+	// the range given in one of the CartStaticSegment returned by the
+	// Segments() function.
+	Read8bit(addr uint32) (uint8, bool)
+	Read16bit(addr uint32) (uint16, bool)
+	Read32bit(addr uint32) (uint32, bool)
 }
 
 // CartTapeBus defines additional debugging functions for cartridge types that use tapes.

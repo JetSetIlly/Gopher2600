@@ -64,7 +64,7 @@ type LazyCart struct {
 
 	HasStaticBus bool
 	StaticBus    mapper.CartStaticBus
-	Static       []mapper.CartStatic
+	Static       mapper.CartStatic
 
 	HasRegistersBus bool
 	Registers       mapper.CartRegisters
@@ -185,7 +185,7 @@ func (lz *LazyCart) update() {
 		// static area. this additional test checks for that
 		//
 		// required for plusrom cartridges
-		lz.Static = lz.static.Load().(container).v.([]mapper.CartStatic)
+		lz.Static = lz.static.Load().(container).v.(mapper.CartStatic)
 		lz.HasStaticBus = lz.Static != nil
 	}
 

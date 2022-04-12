@@ -288,7 +288,7 @@ func (cart *PlusROM) PutRAM(bank int, idx int, data uint8) {
 }
 
 // GetStatic implements the mapper.CartStaticBus interface.
-func (cart *PlusROM) GetStatic() []mapper.CartStatic {
+func (cart *PlusROM) GetStatic() mapper.CartStatic {
 	if sb, ok := cart.state.child.(mapper.CartStaticBus); ok {
 		return sb.GetStatic()
 	}
@@ -296,11 +296,11 @@ func (cart *PlusROM) GetStatic() []mapper.CartStatic {
 }
 
 // PutStatic implements the mapper.CartStaticBus interface.
-func (cart *PlusROM) PutStatic(segment string, idx uint16, data uint8) error {
+func (cart *PlusROM) PutStatic(segment string, idx uint16, data uint8) bool {
 	if sb, ok := cart.state.child.(mapper.CartStaticBus); ok {
 		return sb.PutStatic(segment, idx, data)
 	}
-	return nil
+	return true
 }
 
 // Rewind implements the mapper.CartTapeBus interface.

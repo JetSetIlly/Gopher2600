@@ -242,7 +242,7 @@ func (cart *cdf) Read(addr uint16, passive bool) (uint8, error) {
 				addr += cart.state.registers.MusicFetcher[0].Count >> (cart.version.musicFetcherShift + 1)
 
 				// get sample from memory
-				data = cart.state.static.read8bit(addr)
+				data, _ = cart.state.static.Read8bit(addr)
 
 				// prevent excessive volume
 				if cart.state.registers.MusicFetcher[0].Count&(1<<cart.version.musicFetcherShift) == 0 {
@@ -257,7 +257,8 @@ func (cart *cdf) Read(addr uint16, passive bool) (uint8, error) {
 			for i := range cart.state.registers.MusicFetcher {
 				m := cart.readMusicFetcher(i)
 				m += (cart.state.registers.MusicFetcher[i].Count >> cart.state.registers.MusicFetcher[i].Waveform)
-				data += cart.state.static.read8bit(m)
+				v, _ := cart.state.static.Read8bit(m)
+				data += v
 			}
 
 			return data, nil

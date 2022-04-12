@@ -16,9 +16,6 @@
 package dpcplus
 
 import (
-	"fmt"
-
-	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/logger"
 )
@@ -146,49 +143,100 @@ func (stc *Static) MapAddress(addr uint32, write bool) (*[]byte, uint32) {
 	return nil, addr
 }
 
-// GetStatic implements the bus.CartRegistersBus interface.
-func (cart *dpcPlus) GetStatic() []mapper.CartStatic {
-	s := make([]mapper.CartStatic, 3)
-
-	s[0].Segment = "Driver"
-	s[1].Segment = "Data"
-	s[2].Segment = "Freq"
-
-	s[0].Data = make([]byte, len(cart.state.static.driverRAM))
-	s[1].Data = make([]byte, len(cart.state.static.dataRAM))
-	s[2].Data = make([]byte, len(cart.state.static.freqRAM))
-
-	copy(s[0].Data, cart.state.static.driverRAM)
-	copy(s[1].Data, cart.state.static.dataRAM)
-	copy(s[1].Data, cart.state.static.freqRAM)
-
-	return s
+// Segments implements the mapper.CartStatic interface
+func (stc *Static) Segments() []mapper.CartStaticSegment {
+	return []mapper.CartStaticSegment{
+		mapper.CartStaticSegment{
+			Name:   "Driver",
+			Origin: stc.version.driverOriginRAM,
+			Memtop: stc.version.driverMemtopRAM,
+		},
+		mapper.CartStaticSegment{
+			Name:   "Data",
+			Origin: stc.version.dataOriginRAM,
+			Memtop: stc.version.dataMemtopRAM,
+		},
+		mapper.CartStaticSegment{
+			Name:   "Frequencies",
+			Origin: stc.version.freqOriginRAM,
+			Memtop: stc.version.freqMemtopRAM,
+		},
+	}
 }
 
-// StaticWrite implements the bus.CartRegistersBus interface.
-func (cart *dpcPlus) PutStatic(segment string, idx uint16, data uint8) error {
+// Reference implements the mapper.CartStatic interface
+func (stc *Static) Reference(segment string) ([]uint8, bool) {
+	switch segment {
+	case "Driver":
+		return stc.driverRAM, true
+	case "Data":
+		return stc.dataRAM, true
+	case "Frequencies":
+		return stc.freqRAM, true
+	}
+	return []uint8{}, false
+}
+
+// Read8bit implements the mapper.CartStatic interface
+func (stc *Static) Read8bit(addr uint32) (uint8, bool) {
+	mem, addr := stc.MapAddress(addr, false)
+	if mem == nil || addr >= uint32(len(*mem)) {
+		return 0, false
+	}
+	return (*mem)[addr], true
+}
+
+// Read16bit implements the mapper.CartStatic interface
+func (stc *Static) Read16bit(addr uint32) (uint16, bool) {
+	mem, addr := stc.MapAddress(addr, false)
+	if mem == nil || addr >= uint32(len(*mem)) {
+		return 0, false
+	}
+	return uint16((*mem)[addr]) |
+		uint16((*mem)[addr+1])<<8, true
+}
+
+// Read32bit implements the mapper.CartStatic interface
+func (stc *Static) Read32bit(addr uint32) (uint32, bool) {
+	mem, addr := stc.MapAddress(addr, false)
+	if mem == nil || addr >= uint32(len(*mem)) {
+		return 0, false
+	}
+	return uint32((*mem)[addr]) |
+		uint32((*mem)[addr+1])<<8 |
+		uint32((*mem)[addr+2])<<16 |
+		uint32((*mem)[addr+3])<<24, true
+}
+
+// GetStatic implements the bus.CartStaticBus interface
+func (cart *dpcPlus) GetStatic() mapper.CartStatic {
+	return cart.state.static.Snapshot()
+}
+
+// StaticWrite implements the bus.CartStaticBus interface
+func (cart *dpcPlus) PutStatic(segment string, idx uint16, data uint8) bool {
 	switch segment {
 	case "Driver":
 		if int(idx) >= len(cart.state.static.driverRAM) {
-			return curated.Errorf("CDFJ", fmt.Errorf("index too high (%#04x) for %s area", idx, segment))
+			return false
 		}
 		cart.state.static.driverRAM[idx] = data
 
 	case "Data":
 		if int(idx) >= len(cart.state.static.dataRAM) {
-			return curated.Errorf("DPC+: static: %v", fmt.Errorf("index too high (%#04x) for %s area", idx, segment))
+			return false
 		}
 		cart.state.static.dataRAM[idx] = data
 
 	case "Freq":
 		if int(idx) >= len(cart.state.static.freqRAM) {
-			return curated.Errorf("DPC+: static: %v", fmt.Errorf("index too high (%#04x) for %s area", idx, segment))
+			return false
 		}
 		cart.state.static.freqRAM[idx] = data
 
 	default:
-		return curated.Errorf("DPC+: static: %v", fmt.Errorf("unknown segment (%s)", segment))
+		return false
 	}
 
-	return nil
+	return true
 }
