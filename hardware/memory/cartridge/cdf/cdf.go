@@ -173,6 +173,8 @@ func (cart *cdf) Reset() {
 const (
 	jmpAbsolute  = 0x4c
 	ldaImmediate = 0xa9
+	ldxImmediate = 0xa2
+	ldyImmediate = 0xa0
 )
 
 // Read implements the mapper.CartMapper interface.
@@ -227,12 +229,12 @@ func (cart *cdf) Read(addr uint16, passive bool) (uint8, error) {
 	// a false positive, by definition.
 	cart.state.fastJMP = 0
 
-	if cart.state.registers.FastFetch && cart.state.fastLDA {
-		cart.state.fastLDA = false
+	if cart.state.registers.FastFetch && cart.state.fastLoad {
+		cart.state.fastLoad = false
 
 		// data fetchers
-		if data <= DSCOMM {
-			return cart.streamData(int(data)), nil
+		if data >= cart.version.datastreamOffset && data <= cart.version.datastreamOffset+DSCOMM {
+			return cart.streamData(int(data - cart.version.datastreamOffset)), nil
 		}
 
 		// music fetchers
@@ -270,7 +272,14 @@ func (cart *cdf) Read(addr uint16, passive bool) (uint8, error) {
 	}
 
 	// set lda flag if fast fetch mode is on and data returned is LDA #immediate
-	cart.state.fastLDA = cart.state.registers.FastFetch && data == ldaImmediate
+	switch data {
+	case ldaImmediate:
+		cart.state.fastLoad = cart.state.registers.FastFetch
+	case ldxImmediate:
+		cart.state.fastLoad = cart.state.registers.FastFetch && cart.version.fastLDX
+	case ldyImmediate:
+		cart.state.fastLoad = cart.state.registers.FastFetch && cart.version.fastLDY
+	}
 
 	// set jmp flag if fast fetch mode is on and data returned is JMP absolute
 	if cart.state.registers.FastFetch && data == jmpAbsolute {
@@ -331,7 +340,7 @@ func (cart *cdf) Write(addr uint16, data uint8, passive bool, poke bool) error {
 		cart.state.registers.SampleMode = data&0xf0 != 0xf0
 
 		if !cart.state.registers.FastFetch {
-			cart.state.fastLDA = false
+			cart.state.fastLoad = false
 			cart.state.fastJMP = 0
 		}
 

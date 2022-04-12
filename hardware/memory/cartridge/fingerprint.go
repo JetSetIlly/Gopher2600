@@ -16,6 +16,7 @@
 package cartridge
 
 import (
+	"bytes"
 	"fmt"
 
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
@@ -153,19 +154,21 @@ func fingerprintDPCplus(b []byte) bool {
 	return b[0x20] == 0x1e && b[0x21] == 0xab && b[0x22] == 0xad && b[0x23] == 0x10
 }
 
-func fingerprintCDF(b []byte) (bool, string) {
-	// CDFJ+ fingerprintin taken from Stella's CartridgeCDF:setupVersion()
-	//
-	// CDFJ+ ROMs are at least 64k bytes
-	if len(b) >= 65535 {
-		if b[0x174] == 0x50 && b[0x175] == 0x4c && b[0x176] == 0x55 && b[0x177] == 0x53 {
-			if b[0x178] == 0x43 && b[0x179] == 0x44 && b[0x17a] == 0x46 && b[0x17b] == 0x4a {
-				return true, "CDFJ+"
-			}
-		}
+func fingerprintCDFJplus(b []byte) (bool, string) {
+	// all CDF formats must be 32k or 64k
+	if len(b) != 32768 && len(b) != 65536 {
+		return false, ""
 	}
 
-	// all other CDF formats must be 32k bytes
+	if bytes.Contains(b[:2048], []byte("PLUSCDFJ")) {
+		return true, "CDFJ+"
+	}
+
+	return false, ""
+}
+
+func fingerprintCDF(b []byte) (bool, string) {
+	// all CDF formats must be 32k or 64k
 	if len(b) != 32768 {
 		return false, ""
 	}
@@ -275,6 +278,11 @@ func fingerprint256k(data []byte) func(*instance.Instance, []byte) (mapper.CartM
 
 func (cart *Cartridge) fingerprint(cartload cartridgeloader.Loader) error {
 	var err error
+
+	if ok, version := fingerprintCDFJplus(*cartload.Data); ok {
+		cart.mapper, err = cdf.NewCDF(cart.instance, cart.Filename, version, *cartload.Data)
+		return err
+	}
 
 	if ok, version := fingerprintCDF(*cartload.Data); ok {
 		cart.mapper, err = cdf.NewCDF(cart.instance, cart.Filename, version, *cartload.Data)

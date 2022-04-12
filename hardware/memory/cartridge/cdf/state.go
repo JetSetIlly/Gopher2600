@@ -22,8 +22,8 @@ type State struct {
 	bank int
 
 	// keeps track of LDA and JMP triggers when fast fetch mode is active
-	fastLDA bool
-	fastJMP int
+	fastLoad bool
+	fastJMP  int
 
 	// music fetchers are clocked at a fixed (slower) rate than the reference
 	// to the VCS's clock. see Step() function.
@@ -52,7 +52,7 @@ func newCDFstate() *State {
 
 func (s *State) initialise(bank int) {
 	s.bank = bank
-	s.fastLDA = false
+	s.fastLoad = false
 	s.fastJMP = 0
 	s.beats = 0
 	s.registers.initialise()

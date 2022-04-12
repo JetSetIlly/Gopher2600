@@ -16,6 +16,8 @@
 package cdf
 
 import (
+	"bytes"
+
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm7tdmi/memorymodel"
 )
@@ -72,6 +74,14 @@ type version struct {
 
 	// mam state on thumb program start
 	mamcr uint32
+
+	// fast fetch modes. these are always disabled except for some versions of CDFJ+
+	fastLDX bool
+	fastLDY bool
+
+	// offset by which to adjust the datastream fetcher. this is always zero
+	// except for some versions of CDFJ+
+	datastreamOffset uint8
 }
 
 func newVersion(memModel string, v string, data []uint8) (version, error) {
@@ -85,7 +95,7 @@ func newVersion(memModel string, v string, data []uint8) (version, error) {
 
 	mmap := memorymodel.NewMap(memModel)
 
-	r := version{
+	ver := version{
 		mmap: mmap,
 
 		// addresses (driver is always in the same location)
@@ -104,91 +114,106 @@ func newVersion(memModel string, v string, data []uint8) (version, error) {
 	}
 
 	// entry point into ARM program
-	r.entrySR = mmap.SRAMOrigin | 0x00001fdc
-	r.entryLR = r.customOriginROM
-	r.entryPC = r.entryLR + 8
+	ver.entrySR = mmap.SRAMOrigin | 0x00001fdc
+	ver.entryLR = ver.customOriginROM
+	ver.entryPC = ver.entryLR + 8
 
 	// different version of the CDF mapper have different addresses
 	switch v {
 	case "CDF0":
-		r.submapping = "CDF0"
-		r.fetcherBase = 0x06e0
-		r.incrementBase = 0x0768
-		r.musicBase = 0x07f0
-		r.fastJMPmask = 0xff
-		r.amplitudeRegister = 34
-		r.fetcherShift = 20
-		r.incrementShift = 12
-		r.musicFetcherShift = 20
-		r.fetcherMask = 0xf0000000
-		r.mamcr = 1
+		ver.submapping = "CDF0"
+		ver.fetcherBase = 0x06e0
+		ver.incrementBase = 0x0768
+		ver.musicBase = 0x07f0
+		ver.fastJMPmask = 0xff
+		ver.amplitudeRegister = 34
+		ver.fetcherShift = 20
+		ver.incrementShift = 12
+		ver.musicFetcherShift = 20
+		ver.fetcherMask = 0xf0000000
+		ver.mamcr = 1
 
 	case "CDFJ+":
-		r.submapping = "CDFJ+"
-		r.fetcherBase = 0x0098
-		r.incrementBase = 0x0124
-		r.musicBase = 0x01b0
-		r.fastJMPmask = 0xfe
-		r.amplitudeRegister = 35
-		r.fetcherShift = 16
-		r.incrementShift = 8
-		r.musicFetcherShift = 12
-		r.fetcherMask = 0xff000000
-		r.mamcr = 2
+		ver.submapping = "CDFJ+"
+		ver.fetcherBase = 0x0098
+		ver.incrementBase = 0x0124
+		ver.musicBase = 0x01b0
+		ver.fastJMPmask = 0xfe
+		ver.amplitudeRegister = 35
+		ver.fetcherShift = 16
+		ver.incrementShift = 8
+		ver.musicFetcherShift = 12
+		ver.fetcherMask = 0xff000000
+		ver.mamcr = 2
 
 		idx := 0x17f8
-		r.entryLR = uint32(data[idx])
-		r.entryLR |= uint32(data[idx+1]) << 8
-		r.entryLR |= uint32(data[idx+2]) << 16
-		r.entryLR |= uint32(data[idx+3]) << 24
-		r.entryLR &= 0xfffffffe
-		r.entryPC = r.entryLR
+		ver.entryLR = uint32(data[idx])
+		ver.entryLR |= uint32(data[idx+1]) << 8
+		ver.entryLR |= uint32(data[idx+2]) << 16
+		ver.entryLR |= uint32(data[idx+3]) << 24
+		ver.entryLR &= 0xfffffffe
+		ver.entryPC = ver.entryLR
 
 		// custom oring unchange. memtop is changed
-		r.customMemtopROM = mmap.Flash64kMemtop
+		ver.customMemtopROM = mmap.Flash64kMemtop
 
 		// data origin unchanged. memtop is changed
-		r.dataMemtopRAM = mmap.SRAMOrigin | 0x00007fff
+		ver.dataMemtopRAM = mmap.SRAMOrigin | 0x00007fff
 
 		// variables concept not used in CDFJ+
 		ver.variablesOriginRAM = 0x0
 		ver.variablesMemtopRAM = 0x0
 
 		idx = 0x17f4
-		r.entrySR = uint32(data[idx])
-		r.entrySR |= uint32(data[idx+1]) << 8
-		r.entrySR |= uint32(data[idx+2]) << 16
-		r.entrySR |= uint32(data[idx+3]) << 24
+		ver.entrySR = uint32(data[idx])
+		ver.entrySR |= uint32(data[idx+1]) << 8
+		ver.entrySR |= uint32(data[idx+2]) << 16
+		ver.entrySR |= uint32(data[idx+3]) << 24
+
+		// CDFJ+ additional differences
+
+		// detect fastfetch mode by searching for bytes in the CDFJ driver
+		ver.fastLDX = bytes.Contains(data[:2048], []byte{ldxImmediate, 0x00, 0x52, 0x13})
+		ver.fastLDY = bytes.Contains(data[:2048], []byte{ldyImmediate, 0x00, 0x52, 0x13})
+
+		// bytes.Contains(data[:2048], []byte{ldaImmediate, 0x00, 0x52, 0x13}) {
+
+		offset := bytes.Index(data[:2048], []byte{0x20, 0x42, 0xe2})
+		if offset > 1 {
+			ver.datastreamOffset = data[offset-1]
+		} else {
+			ver.datastreamOffset = 0
+		}
 
 	case "CDFJ":
-		r.submapping = "CDFJ"
-		r.fetcherBase = 0x0098
-		r.incrementBase = 0x0124
-		r.musicBase = 0x01b0
-		r.fastJMPmask = 0xfe
-		r.amplitudeRegister = 35
-		r.fetcherShift = 20
-		r.incrementShift = 12
-		r.musicFetcherShift = 20
-		r.fetcherMask = 0xf0000000
-		r.mamcr = 1
+		ver.submapping = "CDFJ"
+		ver.fetcherBase = 0x0098
+		ver.incrementBase = 0x0124
+		ver.musicBase = 0x01b0
+		ver.fastJMPmask = 0xfe
+		ver.amplitudeRegister = 35
+		ver.fetcherShift = 20
+		ver.incrementShift = 12
+		ver.musicFetcherShift = 20
+		ver.fetcherMask = 0xf0000000
+		ver.mamcr = 1
 
 	case "CDF1":
-		r.submapping = "CDF1"
-		r.fetcherBase = 0x00a0
-		r.incrementBase = 0x0128
-		r.musicBase = 0x01b0
-		r.fastJMPmask = 0xff
-		r.amplitudeRegister = 34
-		r.fetcherShift = 20
-		r.incrementShift = 12
-		r.musicFetcherShift = 20
-		r.fetcherMask = 0xf0000000
-		r.mamcr = 1
+		ver.submapping = "CDF1"
+		ver.fetcherBase = 0x00a0
+		ver.incrementBase = 0x0128
+		ver.musicBase = 0x01b0
+		ver.fastJMPmask = 0xff
+		ver.amplitudeRegister = 34
+		ver.fetcherShift = 20
+		ver.incrementShift = 12
+		ver.musicFetcherShift = 20
+		ver.fetcherMask = 0xf0000000
+		ver.mamcr = 1
 
 	default:
 		return version{}, curated.Errorf("unknown version: %s", v)
 	}
 
-	return r, nil
+	return ver, nil
 }
