@@ -185,8 +185,13 @@ func (lz *LazyCart) update() {
 		// static area. this additional test checks for that
 		//
 		// required for plusrom cartridges
-		lz.Static = lz.static.Load().(container).v.(mapper.CartStatic)
-		lz.HasStaticBus = lz.Static != nil
+		if lz.static.Load().(container).v != nil {
+			lz.HasStaticBus = true
+			lz.Static = lz.static.Load().(container).v.(mapper.CartStatic)
+		} else {
+			lz.HasStaticBus = false
+			lz.Static = nil
+		}
 	}
 
 	_, lz.HasRegistersBus = lz.registersBus.Load().(container).v.(mapper.CartRegistersBus)
