@@ -502,7 +502,7 @@ func (win *winDbgScr) drawReflectionTooltip() {
 		}
 
 		// pixel swatch. using black swatch if pixel is HBLANKed or VBLANKed
-		_, _, pal := win.img.imguiTVPalette()
+		_, _, pal, _ := win.img.imguiTVPalette()
 		px := signal.ColorSignal((ref.Signal & signal.Color) >> signal.ColorShift)
 		if ref.IsHblank || ref.Signal&signal.VBlank == signal.VBlank || px == signal.VideoBlack {
 			imguiColorLabel("No color signal", pal[0])

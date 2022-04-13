@@ -69,6 +69,8 @@ const (
 	CoProcCycles           = '\uf021'
 	CoProcLastStart        = '\uf26c'
 	MagnifyingGlass        = '\uf002'
+	PaintBrush             = '\uf1fc'
+	CaretRight             = '\uf0da'
 )
 
 // The first and last unicode points used in the application. We use this to

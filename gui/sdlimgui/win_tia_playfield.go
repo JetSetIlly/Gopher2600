@@ -158,7 +158,7 @@ func (win *winTIA) drawPlayfield() {
 	imgui.Spacing()
 
 	// tv palette used to draw bit sequences with correct colours
-	_, palette, _ := win.img.imguiTVPalette()
+	_, palette, _, _ := win.img.imguiTVPalette()
 
 	// playfield data
 	imgui.BeginGroup()

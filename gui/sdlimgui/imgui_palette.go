@@ -62,7 +62,7 @@ func (pal *popupPalette) request(target *uint8, callback func()) {
 	pal.swatchSize = imgui.FrameHeight() * 0.75
 	pal.swatchGap = pal.swatchSize * 0.1
 	pal.pos = imgui.MousePos()
-	pal.paletteName, pal.palette, _ = pal.img.imguiTVPalette()
+	pal.paletteName, pal.palette, _, _ = pal.img.imguiTVPalette()
 	pal.cnt = pal.img.imguiWindowQuadrant(pal.pos)
 }
 

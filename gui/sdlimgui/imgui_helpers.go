@@ -17,11 +17,13 @@ package sdlimgui
 
 import (
 	"fmt"
+	"image/color"
 	"strconv"
 	"strings"
 
 	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/gui/fonts"
+	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 )
 
 // return the height of the window from the current cursor position to the end
@@ -378,17 +380,16 @@ func (img *SdlImgui) imguiWindowQuadrant(p imgui.Vec2) imgui.Vec2 {
 }
 
 // use appropriate palette for television spec.
-func (img *SdlImgui) imguiTVPalette() (string, packedPalette, []imgui.Vec4) {
+func (img *SdlImgui) imguiTVPalette() (string, packedPalette, []imgui.Vec4, []color.RGBA) {
 	switch img.lz.TV.FrameInfo.Spec.ID {
 	case "PAL":
-		return "PAL", img.cols.packedPalettePAL, img.cols.palettePAL
+		return "PAL", img.cols.packedPalettePAL, img.cols.palettePAL, specification.PalettePAL
 	case "PAL60":
-		return "PAL60", img.cols.packedPalettePAL, img.cols.palettePAL
+		return "PAL60", img.cols.packedPalettePAL, img.cols.palettePAL, specification.PalettePAL
 	case "NTSC":
-		return "NTSC", img.cols.packedPaletteNTSC, img.cols.paletteNTSC
+		return "NTSC", img.cols.packedPaletteNTSC, img.cols.paletteNTSC, specification.PaletteNTSC
 	}
-
-	return "unknown", img.cols.packedPaletteNTSC, img.cols.paletteNTSC
+	return "unknown", img.cols.packedPaletteNTSC, img.cols.paletteNTSC, specification.PaletteNTSC
 }
 
 // draw swatch. returns true if clicked. a good response to a click event is to
@@ -397,7 +398,7 @@ func (img *SdlImgui) imguiTVPalette() (string, packedPalette, []imgui.Vec4) {
 // size argument should be expressed as a fraction the fraction will be applied
 // to imgui.FontSize() to obtain the radius of the swatch.
 func (img *SdlImgui) imguiSwatch(col uint8, size float32) (clicked bool) {
-	_, pal, _ := img.imguiTVPalette()
+	_, pal, _, _ := img.imguiTVPalette()
 	c := pal[col]
 
 	r := imgui.FontSize() * size
