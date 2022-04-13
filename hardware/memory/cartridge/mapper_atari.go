@@ -127,17 +127,21 @@ func (cart *atari) Reset() {
 	}
 
 	// known start-bank sensitive ROMs:
-	//	(8k) Hack'Em Hangly Pacman which requires a start bank of 1
-	//	(8k) CongoBongo which requires a start bank of 1
-	//	(16k) Stay Frosty which cannot start in the last bank
-	//	(32k) Strat-O-Gems which cannot start in bank 1
-	switch len(cart.banks) {
-	default:
-		cart.state.bank = len(cart.banks) - 1
-	case 4:
+	//	(F8) Hack'Em Hangly Pacman which requires a start bank of 1
+	//	(F8) CongoBongo which requires a start bank of 1
+	//	(F6) Stay Frosty which cannot start in the last bank
+	//	(F4) Strat-O-Gems which cannot start in bank 1
+	switch cart.mappingID {
+	case "2k": // (1 bank)
+		cart.state.bank = 0
+	case "4k": // (1 bank)
+		cart.state.bank = 0
+	case "F8": // 8k (2 banks)
 		cart.state.bank = 1
-	case 2:
+	case "F6": // 16k (4 banks)
 		cart.state.bank = 1
+	case "F4": // 32k (8 banks)
+		cart.state.bank = 0
 	}
 }
 
