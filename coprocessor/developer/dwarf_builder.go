@@ -400,6 +400,9 @@ func (bld *build) buildVariables(src *Source) error {
 		files := lr.Files()
 
 		file := src.Files[files[declFile].Name]
+		if file == nil {
+			return nil, nil
+		}
 		varb.DeclLine = file.Lines[declLine]
 
 		return &varb, nil
