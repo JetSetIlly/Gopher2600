@@ -90,6 +90,17 @@ func (win *winCoProcGlobals) draw() {
 			return
 		}
 
+		thereAreGlobals := false
+		for _, fn := range src.Filenames {
+			if len(src.Files[fn].GlobalNames) > 0 {
+				thereAreGlobals = true
+			}
+		}
+		if !thereAreGlobals {
+			imgui.Text("No global variable in the source")
+			return
+		}
+
 		if win.firstOpen {
 			// assume source entry point is a function called "main"
 			if m, ok := src.Functions["main"]; ok {
@@ -108,6 +119,11 @@ func (win *winCoProcGlobals) draw() {
 		imgui.PushItemWidth(imgui.ContentRegionAvail().X)
 		if imgui.BeginComboV("##selectedFile", win.selectedFile.ShortFilename, imgui.ComboFlagsHeightRegular) {
 			for _, fn := range src.Filenames {
+				// skip files that have no global variables
+				if len(src.Files[fn].GlobalNames) == 0 {
+					continue
+				}
+
 				if imgui.Selectable(src.Files[fn].ShortFilename) {
 					win.selectedFile = src.Files[fn]
 				}
