@@ -109,12 +109,29 @@ type SourceFunction struct {
 	Stats Stats
 }
 
+// SourceVariable is a single type identified by the DWARF data.
+type SourceType struct {
+	Name string
+
+	// size of values of this type (in bytes)
+	Size int
+
+	// format string for displaying values of the type
+	HexFormat string
+	DecFormat string
+	BinFormat string
+
+	// the mask to apply to a value to ensure it is no bigger than the
+	// underlying type
+	Mask uint32
+}
+
 // SourceVariable is a single variable identified by the DWARF data.
 type SourceVariable struct {
 	Name string
 
-	// variable type (int, char *, etc.)
-	Type string
+	// variable type (int, char, etc.)
+	Type SourceType
 
 	// first source line for each instance of the function
 	DeclLine *SourceLine
@@ -124,7 +141,7 @@ type SourceVariable struct {
 }
 
 func (varb *SourceVariable) String() string {
-	return fmt.Sprintf("%s %s => %#08x", varb.Type, varb.Name, varb.Address)
+	return fmt.Sprintf("%s %s => %#08x", varb.Type.Name, varb.Name, varb.Address)
 }
 
 // Source is created from available DWARF data that has been found in relation

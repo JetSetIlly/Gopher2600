@@ -105,9 +105,9 @@ type imguiColors struct {
 	CoProcIllegalAccessRead    imgui.Vec4
 	CoProcIllegalAccessWrite   imgui.Vec4
 	CoProcIllegalAccessAddress imgui.Vec4
-	CoProcVariablesName        imgui.Vec4
 	CoProcVariablesType        imgui.Vec4
 	CoProcVariablesAddress     imgui.Vec4
+	CoProcVariablesNotes       imgui.Vec4
 
 	// coprocessor last execution
 	CoProcMAM0               imgui.Vec4
@@ -277,9 +277,9 @@ func newColors() *imguiColors {
 		CoProcIllegalAccessRead:    imgui.Vec4{0.8, 0.3, 0.8, 1.0},
 		CoProcIllegalAccessWrite:   imgui.Vec4{0.8, 0.5, 0.4, 1.0},
 		CoProcIllegalAccessAddress: imgui.Vec4{0.5, 0.5, 0.8, 1.0},
-		CoProcVariablesName:        imgui.Vec4{0.6, 0.5, 0.7, 1.0},
-		CoProcVariablesType:        imgui.Vec4{0.6, 0.6, 0.8, 1.0},
+		CoProcVariablesType:        imgui.Vec4{0.8, 0.6, 0.8, 1.0},
 		CoProcVariablesAddress:     imgui.Vec4{0.8, 0.4, 0.4, 1.0},
+		CoProcVariablesNotes:       imgui.Vec4{0.8, 0.8, 0.8, 1.0},
 
 		// coprocessor disassembly
 		CoProcMAM0:               imgui.Vec4{0.6, 0.3, 0.3, 1.0},

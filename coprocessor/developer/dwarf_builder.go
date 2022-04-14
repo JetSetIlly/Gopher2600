@@ -338,7 +338,32 @@ func (bld *build) buildVariables(src *Source) error {
 		if fld == nil {
 			return nil, nil
 		}
-		varb.Type = fld.Val.(string)
+		varb.Type.Name = fld.Val.(string)
+
+		fld = t.entry.AttrField(dwarf.AttrByteSize)
+		if fld == nil {
+			return nil, nil
+		}
+		varb.Type.Size = int(fld.Val.(int64))
+
+		// other fields in the SourceType instance depend on the byte size
+		switch varb.Type.Size {
+		case 1:
+			varb.Type.HexFormat = "%02x"
+			varb.Type.DecFormat = "%d"
+			varb.Type.BinFormat = "%08b"
+			varb.Type.Mask = 0xff
+		case 2:
+			varb.Type.HexFormat = "%04x"
+			varb.Type.DecFormat = "%d"
+			varb.Type.BinFormat = "%016b"
+			varb.Type.Mask = 0xffff
+		case 4:
+			varb.Type.HexFormat = "%08x"
+			varb.Type.DecFormat = "%d"
+			varb.Type.BinFormat = "%032b"
+			varb.Type.Mask = 0xffffffff
+		}
 
 		return &varb, nil
 	}

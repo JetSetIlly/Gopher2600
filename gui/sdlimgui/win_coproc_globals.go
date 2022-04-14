@@ -76,130 +76,169 @@ func (win *winCoProcGlobals) draw() {
 	imgui.SetNextWindowSizeConstraints(imgui.Vec2{400, 300}, imgui.Vec2{551, 1000})
 
 	title := fmt.Sprintf("%s %s", win.img.lz.Cart.CoProcID, winCoProcGlobalsID)
-	imgui.BeginV(title, &win.open, imgui.WindowFlagsNone)
-	defer imgui.End()
-
-	win.img.dbg.CoProcDev.BorrowSource(func(src *developer.Source) {
-		if src == nil {
-			imgui.Text("No source files available")
-			return
-		}
-
-		if len(src.Filenames) == 0 {
-			imgui.Text("No source files available")
-			return
-		}
-
-		thereAreGlobals := false
-		for _, fn := range src.Filenames {
-			if len(src.Files[fn].GlobalNames) > 0 {
-				thereAreGlobals = true
-			}
-		}
-		if !thereAreGlobals {
-			imgui.Text("No global variable in the source")
-			return
-		}
-
-		if win.firstOpen {
-			// assume source entry point is a function called "main"
-			if m, ok := src.Functions["main"]; ok {
-				win.selectedFile = m.DeclLine.File
-			} else {
-				imgui.Text("Can't find main() function")
+	if imgui.BeginV(title, &win.open, imgui.WindowFlagsNone) {
+		win.img.dbg.CoProcDev.BorrowSource(func(src *developer.Source) {
+			if src == nil {
+				imgui.Text("No source files available")
 				return
 			}
 
-			win.firstOpen = false
-		}
+			if len(src.Filenames) == 0 {
+				imgui.Text("No source files available")
+				return
+			}
 
-		imgui.AlignTextToFramePadding()
-		imgui.Text("Filename")
-		imgui.SameLine()
-		imgui.PushItemWidth(imgui.ContentRegionAvail().X)
-		if imgui.BeginComboV("##selectedFile", win.selectedFile.ShortFilename, imgui.ComboFlagsHeightRegular) {
+			thereAreGlobals := false
 			for _, fn := range src.Filenames {
-				// skip files that have no global variables
-				if len(src.Files[fn].GlobalNames) == 0 {
-					continue
+				if len(src.Files[fn].GlobalNames) > 0 {
+					thereAreGlobals = true
+				}
+			}
+			if !thereAreGlobals {
+				imgui.Text("No global variable in the source")
+				return
+			}
+
+			if win.firstOpen {
+				// assume source entry point is a function called "main"
+				if m, ok := src.Functions["main"]; ok {
+					win.selectedFile = m.DeclLine.File
+				} else {
+					imgui.Text("Can't find main() function")
+					return
 				}
 
-				if imgui.Selectable(src.Files[fn].ShortFilename) {
-					win.selectedFile = src.Files[fn]
+				win.firstOpen = false
+			}
+
+			imgui.AlignTextToFramePadding()
+			imgui.Text("Filename")
+			imgui.SameLine()
+			imgui.PushItemWidth(imgui.ContentRegionAvail().X)
+			if imgui.BeginComboV("##selectedFile", win.selectedFile.ShortFilename, imgui.ComboFlagsHeightRegular) {
+				for _, fn := range src.Filenames {
+					// skip files that have no global variables
+					if len(src.Files[fn].GlobalNames) == 0 {
+						continue
+					}
+
+					if imgui.Selectable(src.Files[fn].ShortFilename) {
+						win.selectedFile = src.Files[fn]
+					}
+
+					// set scroll on the first frame that the combo is open
+					if !win.selectedFileComboOpen && fn == win.selectedFile.Filename {
+						imgui.SetScrollHereY(0.0)
+					}
 				}
 
-				// set scroll on the first frame that the combo is open
-				if !win.selectedFileComboOpen && fn == win.selectedFile.Filename {
-					imgui.SetScrollHereY(0.0)
+				imgui.EndCombo()
+
+				// note that combo is open *after* it has been drawn
+				win.selectedFileComboOpen = true
+			} else {
+				win.selectedFileComboOpen = false
+			}
+			imgui.PopItemWidth()
+
+			imgui.Spacing()
+
+			// global variable table for the selected file
+
+			const numColumns = 4
+
+			flgs := imgui.TableFlagsScrollY
+			flgs |= imgui.TableFlagsSizingStretchProp
+			flgs |= imgui.TableFlagsNoHostExtendX
+			flgs |= imgui.TableFlagsResizable
+
+			imgui.BeginTableV("##globalsTable", numColumns, flgs, imgui.Vec2{}, 0.0)
+
+			// setup columns. the labelling column 2 depends on whether the coprocessor
+			// development instance has source available to it
+			width := imgui.ContentRegionAvail().X
+			imgui.TableSetupColumnV("Name", imgui.TableColumnFlagsNone, width*0.40, 0)
+			imgui.TableSetupColumnV("Type", imgui.TableColumnFlagsNone, width*0.20, 1)
+			imgui.TableSetupColumnV("Address", imgui.TableColumnFlagsNone, width*0.15, 2)
+			imgui.TableSetupColumnV("Value", imgui.TableColumnFlagsNone, width*0.20, 3)
+
+			imgui.TableSetupScrollFreeze(0, 1)
+			imgui.TableHeadersRow()
+
+			for _, name := range win.selectedFile.GlobalNames {
+				varb := win.selectedFile.Globals[name]
+
+				value, valueOk := win.readMemory(varb.Address)
+				value &= uint32(varb.Type.Mask)
+
+				imgui.TableNextRow()
+
+				imgui.TableNextColumn()
+				imgui.PushStyleColor(imgui.StyleColorHeaderHovered, win.img.cols.CoProcSourceHover)
+				imgui.PushStyleColor(imgui.StyleColorHeaderActive, win.img.cols.CoProcSourceHover)
+				imgui.SelectableV(varb.Name, false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{0, 0})
+				imgui.PopStyleColorV(2)
+
+				if valueOk {
+					imguiTooltip(func() {
+						imgui.Text(varb.Name)
+						imgui.SameLine()
+						imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcVariablesType)
+						imgui.Text(varb.Type.Name)
+						imgui.PopStyleColor()
+
+						imgui.Spacing()
+						imgui.Separator()
+						imgui.Spacing()
+
+						imgui.Text("Hex: ")
+						imgui.SameLine()
+						imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcVariablesNotes)
+						imgui.Text(fmt.Sprintf(varb.Type.HexFormat, value))
+						imgui.PopStyleColor()
+
+						imgui.Text("Dec: ")
+						imgui.SameLine()
+						imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcVariablesNotes)
+						imgui.Text(fmt.Sprintf("%d", value))
+						imgui.PopStyleColor()
+
+						imgui.Text("Bin: ")
+						imgui.SameLine()
+						imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcVariablesNotes)
+						imgui.Text(fmt.Sprintf("%032b", value))
+						imgui.PopStyleColor()
+					}, true)
+				}
+
+				imgui.TableNextColumn()
+				imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcVariablesType)
+				imgui.Text(varb.Type.Name)
+				imgui.PopStyleColor()
+
+				imgui.TableNextColumn()
+				imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcVariablesAddress)
+				imgui.Text(fmt.Sprintf("%08x", varb.Address))
+				imgui.PopStyleColor()
+
+				imgui.TableNextColumn()
+				if valueOk {
+					imgui.Text(fmt.Sprintf(varb.Type.HexFormat, value))
+				} else {
+					imgui.Text("-")
 				}
 			}
 
-			imgui.EndCombo()
+			imgui.EndTable()
+		})
+	}
 
-			// note that combo is open *after* it has been drawn
-			win.selectedFileComboOpen = true
-		} else {
-			win.selectedFileComboOpen = false
-		}
-		imgui.PopItemWidth()
-
-		// global variable table for the selected file
-
-		const numColumns = 4
-
-		flgs := imgui.TableFlagsScrollY
-		flgs |= imgui.TableFlagsSizingStretchProp
-		flgs |= imgui.TableFlagsNoHostExtendX
-		flgs |= imgui.TableFlagsResizable
-
-		imgui.BeginTableV("##globalsTable", numColumns, flgs, imgui.Vec2{}, 0.0)
-
-		// setup columns. the labelling column 2 depends on whether the coprocessor
-		// development instance has source available to it
-		width := imgui.ContentRegionAvail().X
-		imgui.TableSetupColumnV("Name", imgui.TableColumnFlagsNone, width*0.40, 0)
-		imgui.TableSetupColumnV("Type", imgui.TableColumnFlagsNone, width*0.20, 1)
-		imgui.TableSetupColumnV("Address", imgui.TableColumnFlagsNone, width*0.15, 2)
-		imgui.TableSetupColumnV("Value", imgui.TableColumnFlagsNone, width*0.20, 3)
-
-		imgui.Spacing()
-		imgui.TableHeadersRow()
-
-		for _, name := range win.selectedFile.GlobalNames {
-			varb := win.selectedFile.Globals[name]
-
-			imgui.TableNextRow()
-			imgui.TableNextColumn()
-			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcVariablesName)
-			imgui.Text(varb.Name)
-			imgui.PopStyleColor()
-
-			imgui.TableNextColumn()
-			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcVariablesType)
-			imgui.Text(varb.Type)
-			imgui.PopStyleColor()
-
-			imgui.TableNextColumn()
-			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcVariablesAddress)
-			imgui.Text(fmt.Sprintf("%08x", varb.Address))
-			imgui.PopStyleColor()
-
-			imgui.TableNextColumn()
-			imgui.Text(win.readMemory(varb.Address))
-		}
-
-		imgui.EndTable()
-	})
+	imgui.End()
 }
 
-func (win *winCoProcGlobals) readMemory(address uint64) string {
+func (win *winCoProcGlobals) readMemory(address uint64) (uint32, bool) {
 	if !win.img.lz.Cart.HasStaticBus {
-		return "-"
+		return 0, false
 	}
-
-	v, ok := win.img.lz.Cart.Static.Read32bit(uint32(address))
-	if !ok {
-		return "-"
-	}
-	return fmt.Sprintf("%08x", v)
+	return win.img.lz.Cart.Static.Read32bit(uint32(address))
 }
