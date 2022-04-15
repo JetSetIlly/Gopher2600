@@ -245,190 +245,190 @@ func (win *winCoProcSource) draw() {
 		flgs := imgui.TableFlagsScrollY
 		flgs |= imgui.TableFlagsSizingFixedFit
 		flgs |= imgui.TableFlagsNoHostExtendX
-		imgui.BeginTableV("##coprocSourceTable", numColumns, flgs, imgui.Vec2{}, 0.0)
+		if imgui.BeginTableV("##coprocSourceTable", numColumns, flgs, imgui.Vec2{}, 0.0) {
+			// first column is a dummy column so that Selectable (span all columns) works correctly
+			imgui.TableSetupColumnV("Icon", imgui.TableColumnFlagsNone, win.widthIcon, 0)
+			imgui.TableSetupColumnV("Load", imgui.TableColumnFlagsNone, win.widthStats, 1)
+			imgui.TableSetupColumnV("LineNumber", imgui.TableColumnFlagsNone, win.widthLine, 2)
 
-		// first column is a dummy column so that Selectable (span all columns) works correctly
-		imgui.TableSetupColumnV("Icon", imgui.TableColumnFlagsNone, win.widthIcon, 0)
-		imgui.TableSetupColumnV("Load", imgui.TableColumnFlagsNone, win.widthStats, 1)
-		imgui.TableSetupColumnV("LineNumber", imgui.TableColumnFlagsNone, win.widthLine, 2)
-
-		var clipper imgui.ListClipper
-		clipper.Begin(len(win.selectedFile.Lines))
-		for clipper.Step() {
-			for i := clipper.DisplayStart; i < clipper.DisplayEnd; i++ {
-				if i >= len(win.selectedFile.Lines) {
-					break
-				}
-
-				ln := win.selectedFile.Lines[i]
-				imgui.TableNextRow()
-
-				// highlight selected line(s)
-				if win.selectedLine.inRange(ln.LineNumber) {
-					imgui.TableSetBgColor(imgui.TableBgTargetRowBg0, win.img.cols.CoProcSourceSelected)
-				}
-
-				// show chip icon and also tooltip if mouse is hovered on selectable
-				imgui.TableNextColumn()
-				imgui.PushStyleColor(imgui.StyleColorHeaderHovered, win.img.cols.CoProcSourceHover)
-				imgui.PushStyleColor(imgui.StyleColorHeaderActive, win.img.cols.CoProcSourceHover)
-				if len(ln.Disassembly) > 0 {
-					if ln.IllegalAccess {
-						imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceBug)
-						imgui.SelectableV(string(fonts.CoProcBug), false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{0, 0})
-						imgui.PopStyleColor()
-					} else {
-						imgui.SelectableV(string(fonts.Chip), false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{0, 0})
+			var clipper imgui.ListClipper
+			clipper.Begin(len(win.selectedFile.Lines))
+			for clipper.Step() {
+				for i := clipper.DisplayStart; i < clipper.DisplayEnd; i++ {
+					if i >= len(win.selectedFile.Lines) {
+						break
 					}
 
-				} else {
-					imgui.SelectableV("", false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{0, 0})
-				}
-				imgui.PopStyleColorV(2)
+					ln := win.selectedFile.Lines[i]
+					imgui.TableNextRow()
 
-				// select source lines with mouse click and drag
-				if imgui.IsItemHoveredV(imgui.HoveredFlagsAllowWhenBlockedByActiveItem) {
+					// highlight selected line(s)
+					if win.selectedLine.inRange(ln.LineNumber) {
+						imgui.TableSetBgColor(imgui.TableBgTargetRowBg0, win.img.cols.CoProcSourceSelected)
+					}
 
-					// asm tooltip
-					multiline := !win.selectedLine.isSingle() && win.selectedLine.inRange(ln.LineNumber)
-					if win.showAsm {
-						// how we show the asm depends on whether there are
-						// multiple lines selected and whether there is any
-						// diassembly for those lines.
-						//
-						// if only a single line is selected then we simply
-						// check that there is are asm entries for that line
-						//
-						// there is also condition to test whether the
-						// multiline selection is in progress (win.selecting).
-						// this is to prevent a frame's worth of flicker caused
-						// by time difference of the mouse running out of range
-						// of the multiline and the new range being setup (see
-						// IsMouseDragging() below)
-						if (!multiline && len(ln.Disassembly) > 0) ||
-							((multiline || win.selecting) && !win.selectedLine.disasm.IsEmpty()) {
+					// show chip icon and also tooltip if mouse is hovered on selectable
+					imgui.TableNextColumn()
+					imgui.PushStyleColor(imgui.StyleColorHeaderHovered, win.img.cols.CoProcSourceHover)
+					imgui.PushStyleColor(imgui.StyleColorHeaderActive, win.img.cols.CoProcSourceHover)
+					if len(ln.Disassembly) > 0 {
+						if ln.IllegalAccess {
+							imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceBug)
+							imgui.SelectableV(string(fonts.CoProcBug), false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{0, 0})
+							imgui.PopStyleColor()
+						} else {
+							imgui.SelectableV(string(fonts.Chip), false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{0, 0})
+						}
 
-							imguiTooltip(func() {
-								// remove cell/item styling for the duration of the tooltip
-								pad := style.CellPadding()
-								item := style.ItemSpacing()
-								imgui.PopStyleVarV(2)
-								defer imgui.PushStyleVarVec2(imgui.StyleVarCellPadding, pad)
-								defer imgui.PushStyleVarVec2(imgui.StyleVarItemSpacing, item)
+					} else {
+						imgui.SelectableV("", false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{0, 0})
+					}
+					imgui.PopStyleColorV(2)
 
-								imgui.Text(ln.File.ShortFilename)
+					// select source lines with mouse click and drag
+					if imgui.IsItemHoveredV(imgui.HoveredFlagsAllowWhenBlockedByActiveItem) {
 
-								imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLineNumber)
-								if multiline || win.selecting {
-									s, e := win.selectedLine.ordered()
-									imgui.Text(fmt.Sprintf("Lines: %d - %d", s, e))
-								} else {
-									imgui.Text(fmt.Sprintf("Line: %d", ln.LineNumber))
-								}
-								imgui.PopStyleColor()
+						// asm tooltip
+						multiline := !win.selectedLine.isSingle() && win.selectedLine.inRange(ln.LineNumber)
+						if win.showAsm {
+							// how we show the asm depends on whether there are
+							// multiple lines selected and whether there is any
+							// diassembly for those lines.
+							//
+							// if only a single line is selected then we simply
+							// check that there is are asm entries for that line
+							//
+							// there is also condition to test whether the
+							// multiline selection is in progress (win.selecting).
+							// this is to prevent a frame's worth of flicker caused
+							// by time difference of the mouse running out of range
+							// of the multiline and the new range being setup (see
+							// IsMouseDragging() below)
+							if (!multiline && len(ln.Disassembly) > 0) ||
+								((multiline || win.selecting) && !win.selectedLine.disasm.IsEmpty()) {
 
-								imgui.Spacing()
-								imgui.Separator()
-								imgui.Spacing()
-								imgui.BeginTable("##disasmTable", 3)
+								imguiTooltip(func() {
+									// remove cell/item styling for the duration of the tooltip
+									pad := style.CellPadding()
+									item := style.ItemSpacing()
+									imgui.PopStyleVarV(2)
+									defer imgui.PushStyleVarVec2(imgui.StyleVarCellPadding, pad)
+									defer imgui.PushStyleVarVec2(imgui.StyleVarItemSpacing, item)
 
-								// choose which disasm list to use
-								disasm := ln.Disassembly
-								if multiline || win.selecting {
-									disasm = win.selectedLine.disasm.Disasm
-								}
+									imgui.Text(ln.File.ShortFilename)
 
-								// draw disassembly, colouring the text according to whether the disassembly entry
-								// is associated with the current line (ie. the one the mouse is over)
-								for _, d := range disasm {
-									if d.Line.LineNumber == ln.LineNumber {
-										imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceDisasm)
+									imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLineNumber)
+									if multiline || win.selecting {
+										s, e := win.selectedLine.ordered()
+										imgui.Text(fmt.Sprintf("Lines: %d - %d", s, e))
 									} else {
-										imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceDisasmFade)
+										imgui.Text(fmt.Sprintf("Line: %d", ln.LineNumber))
+									}
+									imgui.PopStyleColor()
+
+									imgui.Spacing()
+									imgui.Separator()
+									imgui.Spacing()
+									imgui.BeginTable("##disasmTable", 3)
+
+									// choose which disasm list to use
+									disasm := ln.Disassembly
+									if multiline || win.selecting {
+										disasm = win.selectedLine.disasm.Disasm
 									}
 
-									imgui.TableNextRow()
-									imgui.TableNextColumn()
-									imgui.Text(fmt.Sprintf("%08x", d.Addr))
-									imgui.TableNextColumn()
-									imgui.Text(fmt.Sprintf("%04x", d.Opcode))
-									imgui.TableNextColumn()
-									imgui.Text(d.Instruction)
+									// draw disassembly, colouring the text according to whether the disassembly entry
+									// is associated with the current line (ie. the one the mouse is over)
+									for _, d := range disasm {
+										if d.Line.LineNumber == ln.LineNumber {
+											imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceDisasm)
+										} else {
+											imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceDisasmFade)
+										}
 
-									imgui.PopStyleColor()
-								}
-								imgui.EndTable()
-							}, false)
+										imgui.TableNextRow()
+										imgui.TableNextColumn()
+										imgui.Text(fmt.Sprintf("%08x", d.Addr))
+										imgui.TableNextColumn()
+										imgui.Text(fmt.Sprintf("%04x", d.Opcode))
+										imgui.TableNextColumn()
+										imgui.Text(d.Instruction)
+
+										imgui.PopStyleColor()
+									}
+									imgui.EndTable()
+								}, false)
+							}
+						}
+
+						if imgui.IsMouseClicked(0) {
+							win.selectedLine.single(ln.LineNumber)
+							win.selecting = true
+						}
+						if imgui.IsMouseDragging(0, 0.0) && win.selecting {
+							win.selectedLine.end = ln.LineNumber
+							win.selectedLine.disasm.Clear()
+							s, e := win.selectedLine.ordered()
+							for i := s; i <= e; i++ {
+								win.selectedLine.disasm.Add(win.selectedFile.Lines[i-1])
+							}
+						}
+						if imgui.IsMouseReleased(0) {
+							win.selecting = false
 						}
 					}
 
-					if imgui.IsMouseClicked(0) {
-						win.selectedLine.single(ln.LineNumber)
-						win.selecting = true
+					imgui.TableNextColumn()
+					imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLoad)
+					if ln.Stats.IsValid() {
+						imgui.Text(fmt.Sprintf("%.02f", ln.Stats.OverSource.Frame))
+					} else if len(ln.Disassembly) > 0 {
+						imgui.Text(" -")
 					}
-					if imgui.IsMouseDragging(0, 0.0) && win.selecting {
-						win.selectedLine.end = ln.LineNumber
-						win.selectedLine.disasm.Clear()
-						s, e := win.selectedLine.ordered()
-						for i := s; i <= e; i++ {
-							win.selectedLine.disasm.Add(win.selectedFile.Lines[i-1])
+					imgui.PopStyleColor()
+
+					// line numbering
+					imgui.TableNextColumn()
+					imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLineNumber)
+					imgui.Text(fmt.Sprintf("%d", ln.LineNumber))
+					imgui.PopStyleColor()
+
+					// source line
+					imgui.TableNextColumn()
+
+					if win.syntaxHighlighting {
+						for _, fr := range ln.Fragments {
+							switch fr.Type {
+							case developer.FragmentCode:
+								imgui.Text(fr.Content)
+								imgui.SameLineV(0, 0)
+							case developer.FragmentComment:
+								imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceComment)
+								imgui.Text(fr.Content)
+								imgui.PopStyleColor()
+								imgui.SameLineV(0, 0)
+							case developer.FragmentStringLiteral:
+								imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceStringLiteral)
+								imgui.Text(fr.Content)
+								imgui.PopStyleColor()
+								imgui.SameLineV(0, 0)
+							}
 						}
+					} else {
+						imgui.Text(ln.PlainContent)
 					}
-					if imgui.IsMouseReleased(0) {
-						win.selecting = false
-					}
-				}
-
-				imgui.TableNextColumn()
-				imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLoad)
-				if ln.Stats.IsValid() {
-					imgui.Text(fmt.Sprintf("%.02f", ln.Stats.OverSource.Frame))
-				} else if len(ln.Disassembly) > 0 {
-					imgui.Text(" -")
-				}
-				imgui.PopStyleColor()
-
-				// line numbering
-				imgui.TableNextColumn()
-				imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLineNumber)
-				imgui.Text(fmt.Sprintf("%d", ln.LineNumber))
-				imgui.PopStyleColor()
-
-				// source line
-				imgui.TableNextColumn()
-
-				if win.syntaxHighlighting {
-					for _, fr := range ln.Fragments {
-						switch fr.Type {
-						case developer.FragmentCode:
-							imgui.Text(fr.Content)
-							imgui.SameLineV(0, 0)
-						case developer.FragmentComment:
-							imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceComment)
-							imgui.Text(fr.Content)
-							imgui.PopStyleColor()
-							imgui.SameLineV(0, 0)
-						case developer.FragmentStringLiteral:
-							imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceStringLiteral)
-							imgui.Text(fr.Content)
-							imgui.PopStyleColor()
-							imgui.SameLineV(0, 0)
-						}
-					}
-				} else {
-					imgui.Text(ln.PlainContent)
 				}
 			}
-		}
 
-		// scroll to correct line
-		if win.scrollTo {
-			imgui.SetScrollY(clipper.ItemsHeight * float32(win.selectedLine.start-10))
-			win.scrollTo = false
-			win.uncollapseNext = false
-		}
+			// scroll to correct line
+			if win.scrollTo {
+				imgui.SetScrollY(clipper.ItemsHeight * float32(win.selectedLine.start-10))
+				win.scrollTo = false
+				win.uncollapseNext = false
+			}
 
-		imgui.EndTable()
+			imgui.EndTable()
+		}
 
 		imgui.PopStyleVarV(2)
 		imgui.PopFont()
