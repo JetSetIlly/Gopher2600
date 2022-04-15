@@ -502,8 +502,13 @@ func (bld *build) buildVariables(src *Source) error {
 		// add variable to list of global variables if there is no parent
 		// function to the declaration
 		if varb.DeclLine.Function.Name == UnknownFunction {
+			// list of global variables for the declaration file
 			varb.DeclLine.File.Globals[varb.Name] = varb
 			varb.DeclLine.File.GlobalNames = append(varb.DeclLine.File.GlobalNames, varb.Name)
+
+			// list of global variables for all compile units
+			src.Globals[varb.Name] = varb
+			src.GlobalNames = append(src.GlobalNames, varb.Name)
 		}
 
 		// TODO: non-global variables
@@ -513,6 +518,7 @@ func (bld *build) buildVariables(src *Source) error {
 	for i := range src.Files {
 		sort.Strings(src.Files[i].GlobalNames)
 	}
+	sort.Strings(src.GlobalNames)
 
 	return nil
 }

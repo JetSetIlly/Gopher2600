@@ -37,6 +37,9 @@ type winCoProcGlobals struct {
 
 	selectedFile          *developer.SourceFile
 	selectedFileComboOpen bool
+
+	optionsHeight  float32
+	showAllGlobals bool
 }
 
 func newWinCoProcGlobals(img *SdlImgui) (window, error) {
@@ -111,37 +114,39 @@ func (win *winCoProcGlobals) draw() {
 				win.firstOpen = false
 			}
 
-			imgui.AlignTextToFramePadding()
-			imgui.Text("Filename")
-			imgui.SameLine()
-			imgui.PushItemWidth(imgui.ContentRegionAvail().X)
-			if imgui.BeginComboV("##selectedFile", win.selectedFile.ShortFilename, imgui.ComboFlagsHeightRegular) {
-				for _, fn := range src.Filenames {
-					// skip files that have no global variables
-					if len(src.Files[fn].GlobalNames) == 0 {
-						continue
+			if !win.showAllGlobals {
+				imgui.AlignTextToFramePadding()
+				imgui.Text("Filename")
+				imgui.SameLine()
+				imgui.PushItemWidth(imgui.ContentRegionAvail().X)
+				if imgui.BeginComboV("##selectedFile", win.selectedFile.ShortFilename, imgui.ComboFlagsHeightRegular) {
+					for _, fn := range src.Filenames {
+						// skip files that have no global variables
+						if len(src.Files[fn].GlobalNames) == 0 {
+							continue
+						}
+
+						if imgui.Selectable(src.Files[fn].ShortFilename) {
+							win.selectedFile = src.Files[fn]
+						}
+
+						// set scroll on the first frame that the combo is open
+						if !win.selectedFileComboOpen && fn == win.selectedFile.Filename {
+							imgui.SetScrollHereY(0.0)
+						}
 					}
 
-					if imgui.Selectable(src.Files[fn].ShortFilename) {
-						win.selectedFile = src.Files[fn]
-					}
+					imgui.EndCombo()
 
-					// set scroll on the first frame that the combo is open
-					if !win.selectedFileComboOpen && fn == win.selectedFile.Filename {
-						imgui.SetScrollHereY(0.0)
-					}
+					// note that combo is open *after* it has been drawn
+					win.selectedFileComboOpen = true
+				} else {
+					win.selectedFileComboOpen = false
 				}
+				imgui.PopItemWidth()
 
-				imgui.EndCombo()
-
-				// note that combo is open *after* it has been drawn
-				win.selectedFileComboOpen = true
-			} else {
-				win.selectedFileComboOpen = false
+				imgui.Spacing()
 			}
-			imgui.PopItemWidth()
-
-			imgui.Spacing()
 
 			// global variable table for the selected file
 
@@ -152,7 +157,7 @@ func (win *winCoProcGlobals) draw() {
 			flgs |= imgui.TableFlagsNoHostExtendX
 			flgs |= imgui.TableFlagsResizable
 
-			imgui.BeginTableV("##globalsTable", numColumns, flgs, imgui.Vec2{}, 0.0)
+			imgui.BeginTableV("##globalsTable", numColumns, flgs, imgui.Vec2{Y: imgui.ContentRegionAvail().Y - win.optionsHeight}, 0.0)
 
 			// setup columns. the labelling column 2 depends on whether the coprocessor
 			// development instance has source available to it
@@ -165,8 +170,22 @@ func (win *winCoProcGlobals) draw() {
 			imgui.TableSetupScrollFreeze(0, 1)
 			imgui.TableHeadersRow()
 
-			for _, name := range win.selectedFile.GlobalNames {
-				varb := win.selectedFile.Globals[name]
+			// the global list depends on the state fo the showAllGlobals state
+			var globalList []string
+			if win.showAllGlobals {
+				globalList = src.GlobalNames
+			} else {
+				globalList = win.selectedFile.GlobalNames
+			}
+
+			for _, name := range globalList {
+				// get variable from the correct globals list
+				var varb *developer.SourceVariable
+				if win.showAllGlobals {
+					varb = src.Globals[name]
+				} else {
+					varb = win.selectedFile.Globals[name]
+				}
 
 				value, valueOk := win.readMemory(varb.Address)
 				value &= uint32(varb.Type.Mask)
@@ -206,8 +225,14 @@ func (win *winCoProcGlobals) draw() {
 						imgui.Text("Bin: ")
 						imgui.SameLine()
 						imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcVariablesNotes)
-						imgui.Text(fmt.Sprintf("%032b", value))
+						imgui.Text(fmt.Sprintf(varb.Type.BinFormat, value))
 						imgui.PopStyleColor()
+
+						imgui.Spacing()
+						imgui.Separator()
+						imgui.Spacing()
+
+						imgui.Text(varb.DeclLine.File.ShortFilename)
 					}, true)
 				}
 
@@ -230,6 +255,13 @@ func (win *winCoProcGlobals) draw() {
 			}
 
 			imgui.EndTable()
+
+			win.optionsHeight = imguiMeasureHeight(func() {
+				imgui.Spacing()
+				imgui.Separator()
+				imgui.Spacing()
+				imgui.Checkbox("List all globals (in all files)", &win.showAllGlobals)
+			})
 		})
 	}
 

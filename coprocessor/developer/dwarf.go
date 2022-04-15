@@ -171,12 +171,16 @@ type Source struct {
 	Files     map[string]*SourceFile
 	Filenames []string
 
-	// Functions found in the compile units
+	// functions found in the compile units
 	Functions     map[string]*SourceFunction
 	FunctionNames []string
 
 	// list of funcions sorted by FrameCycles field
 	SortedFunctions SortedFunctions
+
+	// all global variables in ll compile units
+	Globals     map[string]*SourceVariable
+	GlobalNames []string
 
 	// lines of source code found in the compile units
 	linesByAddress map[uint32]*SourceLine
@@ -218,6 +222,8 @@ func NewSource(pathToROM string) (*Source, error) {
 		Filenames:     make([]string, 0, 10),
 		Functions:     make(map[string]*SourceFunction),
 		FunctionNames: make([]string, 0, 10),
+		Globals:       make(map[string]*SourceVariable),
+		GlobalNames:   make([]string, 0, 10),
 		SortedFunctions: SortedFunctions{
 			Functions: make([]*SourceFunction, 0, 100),
 		},
