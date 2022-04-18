@@ -17,9 +17,11 @@ package sdlimgui
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/coprocessor/developer"
+	"github.com/jetsetilly/gopher2600/gui/fonts"
 )
 
 // in this case of the coprocessor disassmebly window the actual window title
@@ -40,12 +42,15 @@ type winCoProcGlobals struct {
 
 	optionsHeight  float32
 	showAllGlobals bool
+
+	openNodes map[string]bool
 }
 
 func newWinCoProcGlobals(img *SdlImgui) (window, error) {
 	win := &winCoProcGlobals{
 		img:       img,
 		firstOpen: true,
+		openNodes: make(map[string]bool),
 	}
 	return win, nil
 }
@@ -76,7 +81,7 @@ func (win *winCoProcGlobals) draw() {
 
 	imgui.SetNextWindowPosV(imgui.Vec2{982, 77}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
 	imgui.SetNextWindowSizeV(imgui.Vec2{520, 390}, imgui.ConditionFirstUseEver)
-	imgui.SetNextWindowSizeConstraints(imgui.Vec2{400, 300}, imgui.Vec2{551, 1000})
+	imgui.SetNextWindowSizeConstraints(imgui.Vec2{400, 300}, imgui.Vec2{700, 1000})
 
 	title := fmt.Sprintf("%s %s", win.img.lz.Cart.CoProcID, winCoProcGlobalsID)
 	if imgui.BeginV(title, &win.open, imgui.WindowFlagsNone) {
@@ -187,71 +192,7 @@ func (win *winCoProcGlobals) draw() {
 					varb = win.selectedFile.Globals[name]
 				}
 
-				value, valueOk := win.readMemory(varb.Address)
-				value &= uint32(varb.Type.Mask)
-
-				imgui.TableNextRow()
-
-				imgui.TableNextColumn()
-				imgui.PushStyleColor(imgui.StyleColorHeaderHovered, win.img.cols.CoProcSourceHover)
-				imgui.PushStyleColor(imgui.StyleColorHeaderActive, win.img.cols.CoProcSourceHover)
-				imgui.SelectableV(varb.Name, false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{0, 0})
-				imgui.PopStyleColorV(2)
-
-				if valueOk {
-					imguiTooltip(func() {
-						imgui.Text(varb.Name)
-						imgui.SameLine()
-						imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcVariablesType)
-						imgui.Text(varb.Type.Name)
-						imgui.PopStyleColor()
-
-						imgui.Spacing()
-						imgui.Separator()
-						imgui.Spacing()
-
-						imgui.Text("Hex: ")
-						imgui.SameLine()
-						imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcVariablesNotes)
-						imgui.Text(fmt.Sprintf(varb.Type.HexFormat, value))
-						imgui.PopStyleColor()
-
-						imgui.Text("Dec: ")
-						imgui.SameLine()
-						imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcVariablesNotes)
-						imgui.Text(fmt.Sprintf("%d", value))
-						imgui.PopStyleColor()
-
-						imgui.Text("Bin: ")
-						imgui.SameLine()
-						imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcVariablesNotes)
-						imgui.Text(fmt.Sprintf(varb.Type.BinFormat, value))
-						imgui.PopStyleColor()
-
-						imgui.Spacing()
-						imgui.Separator()
-						imgui.Spacing()
-
-						imgui.Text(varb.DeclLine.File.ShortFilename)
-					}, true)
-				}
-
-				imgui.TableNextColumn()
-				imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcVariablesType)
-				imgui.Text(varb.Type.Name)
-				imgui.PopStyleColor()
-
-				imgui.TableNextColumn()
-				imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcVariablesAddress)
-				imgui.Text(fmt.Sprintf("%08x", varb.Address))
-				imgui.PopStyleColor()
-
-				imgui.TableNextColumn()
-				if valueOk {
-					imgui.Text(fmt.Sprintf(varb.Type.HexFormat, value))
-				} else {
-					imgui.Text("-")
-				}
+				win.drawVariable(src, varb, 0, 0)
 			}
 
 			imgui.EndTable()
@@ -266,6 +207,152 @@ func (win *winCoProcGlobals) draw() {
 	}
 
 	imgui.End()
+}
+
+func (win *winCoProcGlobals) drawVariable(src *developer.Source,
+	varb *developer.SourceVariable, baseAddress uint64,
+	indentLevel int) {
+
+	address := varb.Address
+	if varb.AddressIsOffset() {
+		// address of variable is an offset of parent address
+		address += baseAddress
+	}
+
+	const IndentDepth = 2
+	name := fmt.Sprintf("%s%s", strings.Repeat(" ", IndentDepth*indentLevel), varb.Name)
+
+	if varb.IsComposite() || varb.IsArray() {
+		imgui.TableNextRow()
+
+		imgui.TableNextColumn()
+		imgui.PushStyleColor(imgui.StyleColorHeaderHovered, win.img.cols.CoProcSourceHover)
+		imgui.PushStyleColor(imgui.StyleColorHeaderActive, win.img.cols.CoProcSourceHover)
+		imgui.SelectableV(name, false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{0, 0})
+		imgui.PopStyleColorV(2)
+
+		imguiTooltip(func() {
+			imgui.Text(varb.Name)
+			imgui.SameLine()
+			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcVariablesType)
+			imgui.Text(varb.Type.Name)
+			imgui.PopStyleColor()
+
+			imgui.Spacing()
+			imgui.Separator()
+			imgui.Spacing()
+
+			imgui.Text(varb.DeclLine.File.ShortFilename)
+			imgui.Text(fmt.Sprintf("Line: %d", varb.DeclLine.LineNumber))
+		}, true)
+
+		if imgui.IsItemClicked() {
+			win.openNodes[varb.Name] = !win.openNodes[varb.Name]
+		}
+
+		imgui.TableNextColumn()
+		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcVariablesType)
+		imgui.Text(varb.Type.Name)
+		imgui.PopStyleColor()
+
+		imgui.TableNextColumn()
+		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcVariablesAddress)
+		imgui.Text(fmt.Sprintf("%08x", address))
+		imgui.PopStyleColor()
+
+		imgui.TableNextColumn()
+		if win.openNodes[varb.Name] {
+			imgui.Text(string(fonts.TreeOpen))
+		} else {
+			imgui.Text(string(fonts.TreeClosed))
+		}
+
+		if win.openNodes[varb.Name] {
+			if varb.IsComposite() {
+				for _, memb := range varb.Type.Members {
+					win.drawVariable(src, memb, address, indentLevel+1)
+				}
+			} else if varb.IsArray() {
+				for i := 0; i <= varb.Type.ElementCount; i++ {
+					elem := &developer.SourceVariable{
+						Name:     fmt.Sprintf("element %d", i),
+						Type:     varb.Type.BaseType,
+						DeclLine: varb.DeclLine,
+						Address:  address + uint64(i*varb.Type.BaseType.Size),
+					}
+					win.drawVariable(src, elem, elem.Address, indentLevel+1)
+				}
+			}
+		}
+
+	} else {
+		value, valueOk := win.readMemory(address)
+		value &= varb.Type.Mask()
+
+		imgui.TableNextRow()
+
+		imgui.TableNextColumn()
+		imgui.PushStyleColor(imgui.StyleColorHeaderHovered, win.img.cols.CoProcSourceHover)
+		imgui.PushStyleColor(imgui.StyleColorHeaderActive, win.img.cols.CoProcSourceHover)
+		imgui.SelectableV(name, false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{0, 0})
+		imgui.PopStyleColorV(2)
+
+		if valueOk {
+			imguiTooltip(func() {
+				imgui.Text(varb.Name)
+				imgui.SameLine()
+				imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcVariablesType)
+				imgui.Text(varb.Type.Name)
+				imgui.PopStyleColor()
+
+				imgui.Spacing()
+				imgui.Separator()
+				imgui.Spacing()
+
+				imgui.Text("Hex: ")
+				imgui.SameLine()
+				imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcVariablesNotes)
+				imgui.Text(fmt.Sprintf(varb.Type.Hex(), value))
+				imgui.PopStyleColor()
+
+				imgui.Text("Dec: ")
+				imgui.SameLine()
+				imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcVariablesNotes)
+				imgui.Text(fmt.Sprintf("%d", value))
+				imgui.PopStyleColor()
+
+				imgui.Text("Bin: ")
+				imgui.SameLine()
+				imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcVariablesNotes)
+				imgui.Text(fmt.Sprintf(varb.Type.Bin(), value))
+				imgui.PopStyleColor()
+
+				imgui.Spacing()
+				imgui.Separator()
+				imgui.Spacing()
+
+				imgui.Text(varb.DeclLine.File.ShortFilename)
+				imgui.Text(fmt.Sprintf("Line: %d", varb.DeclLine.LineNumber))
+			}, true)
+		}
+
+		imgui.TableNextColumn()
+		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcVariablesType)
+		imgui.Text(varb.Type.Name)
+		imgui.PopStyleColor()
+
+		imgui.TableNextColumn()
+		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcVariablesAddress)
+		imgui.Text(fmt.Sprintf("%08x", address))
+		imgui.PopStyleColor()
+
+		imgui.TableNextColumn()
+		if valueOk {
+			imgui.Text(fmt.Sprintf(varb.Type.Hex(), value))
+		} else {
+			imgui.Text("-")
+		}
+	}
 }
 
 func (win *winCoProcGlobals) readMemory(address uint64) (uint32, bool) {

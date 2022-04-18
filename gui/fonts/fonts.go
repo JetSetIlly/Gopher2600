@@ -71,6 +71,8 @@ const (
 	MagnifyingGlass        = '\uf002'
 	PaintBrush             = '\uf1fc'
 	CaretRight             = '\uf0da'
+	TreeOpen               = '\uf0d7'
+	TreeClosed             = '\uf0da'
 )
 
 // The first and last unicode points used in the application. We use this to

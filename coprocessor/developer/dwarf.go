@@ -109,21 +109,66 @@ type SourceFunction struct {
 	Stats Stats
 }
 
-// SourceVariable is a single type identified by the DWARF data.
+// SourceType is a single type identified by the DWARF data. Composite types
+// are differentiated by the existance of member fields.
 type SourceType struct {
 	Name string
 
 	// size of values of this type (in bytes)
 	Size int
 
-	// format string for displaying values of the type
-	HexFormat string
-	DecFormat string
-	BinFormat string
+	// empty if type is not a composite type. see IsComposite() function
+	Members []*SourceVariable
 
-	// the mask to apply to a value to ensure it is no bigger than the
-	// underlying type
-	Mask uint32
+	// number of elements in the type. if count is more than zero then this
+	// type is an array
+	ElementCount int
+
+	// the base type of all the elements in the type
+	BaseType *SourceType
+}
+
+// Hex returns a format string to represent a value as a correctly padded
+// hexadecinal number.
+func (typ *SourceType) Hex() string {
+	// other fields in the SourceType instance depend on the byte size
+	switch typ.Size {
+	case 1:
+		return "%02x"
+	case 2:
+		return "%04x"
+	case 4:
+		return "%08x"
+	}
+	return "%x"
+}
+
+// Bin returns a format string to represent a value as a correctly padded
+// binary number.
+func (typ *SourceType) Bin() string {
+	// other fields in the SourceType instance depend on the byte size
+	switch typ.Size {
+	case 1:
+		return "%08b"
+	case 2:
+		return "%016b"
+	case 4:
+		return "%032b"
+	}
+	return "%b"
+}
+
+// Mask returns the mask value of the correct size for the type.
+func (typ *SourceType) Mask() uint32 {
+	switch typ.Size {
+	case 1:
+		return 0xff
+	case 2:
+		return 0xffff
+	case 4:
+		return 0xffffffff
+	}
+	return 0
 }
 
 // SourceVariable is a single variable identified by the DWARF data.
@@ -131,13 +176,35 @@ type SourceVariable struct {
 	Name string
 
 	// variable type (int, char, etc.)
-	Type SourceType
+	Type *SourceType
 
 	// first source line for each instance of the function
 	DeclLine *SourceLine
 
-	// address in memory of the variable
-	Address uint64
+	// address in memory of the variable. if the variable is a member of
+	// another type then the Address is an offset from the address of the
+	// parent variable
+	Address         uint64
+	addressIsOffset bool
+
+	// the number of elements. a length greater than zero indicates that the
+	// variable is an array
+	Length int
+}
+
+// IsComposite returns true if SourceType represents a composite type.
+func (varb *SourceVariable) IsComposite() bool {
+	return len(varb.Type.Members) > 0
+}
+
+// IsArray returns true if SourceType represents an array type.
+func (varb *SourceVariable) IsArray() bool {
+	return varb.Type.BaseType != nil && varb.Type.ElementCount > 0
+}
+
+// AddressIsOffset returns true if SourceVariable is member of another type
+func (varb *SourceVariable) AddressIsOffset() bool {
+	return varb.addressIsOffset
 }
 
 func (varb *SourceVariable) String() string {
@@ -177,6 +244,9 @@ type Source struct {
 
 	// list of funcions sorted by FrameCycles field
 	SortedFunctions SortedFunctions
+
+	// types used in the source
+	Types map[dwarf.Offset]*SourceType
 
 	// all global variables in ll compile units
 	Globals     map[string]*SourceVariable
@@ -222,6 +292,7 @@ func NewSource(pathToROM string) (*Source, error) {
 		Filenames:     make([]string, 0, 10),
 		Functions:     make(map[string]*SourceFunction),
 		FunctionNames: make([]string, 0, 10),
+		Types:         make(map[dwarf.Offset]*SourceType),
 		Globals:       make(map[string]*SourceVariable),
 		GlobalNames:   make([]string, 0, 10),
 		SortedFunctions: SortedFunctions{
@@ -538,7 +609,13 @@ func NewSource(pathToROM string) (*Source, error) {
 		}
 	}
 
-	// find variable declarations
+	// build types
+	err = bld.buildTypes(src)
+	if err != nil {
+		return nil, curated.Errorf("dwarf: %v", err)
+	}
+
+	// build variables
 	err = bld.buildVariables(src)
 	if err != nil {
 		return nil, curated.Errorf("dwarf: %v", err)

@@ -17,6 +17,7 @@ package developer
 
 import (
 	"debug/dwarf"
+	"fmt"
 	"io"
 	"sort"
 
@@ -29,6 +30,9 @@ import (
 type buildEntry struct {
 	compileUnit *dwarf.Entry
 	entry       *dwarf.Entry
+
+	// additional information. context sensitive according to the entry type
+	information string
 }
 
 type build struct {
@@ -37,6 +41,10 @@ type build struct {
 	subprograms        map[dwarf.Offset]buildEntry
 	inlinedSubroutines map[dwarf.Offset]buildEntry
 	types              map[dwarf.Offset]buildEntry
+	compositeTypes     map[dwarf.Offset]buildEntry
+	compositeMembers   map[dwarf.Offset]buildEntry
+	arrayTypes         map[dwarf.Offset]buildEntry
+	arraySubranges     map[dwarf.Offset]buildEntry
 	variables          map[dwarf.Offset]buildEntry
 
 	// the order in which we encountered the subprograms and inlined
@@ -50,6 +58,10 @@ func newBuild(dwrf *dwarf.Data) (*build, error) {
 		subprograms:        make(map[dwarf.Offset]buildEntry),
 		inlinedSubroutines: make(map[dwarf.Offset]buildEntry),
 		types:              make(map[dwarf.Offset]buildEntry),
+		compositeTypes:     make(map[dwarf.Offset]buildEntry),
+		compositeMembers:   make(map[dwarf.Offset]buildEntry),
+		arrayTypes:         make(map[dwarf.Offset]buildEntry),
+		arraySubranges:     make(map[dwarf.Offset]buildEntry),
 		variables:          make(map[dwarf.Offset]buildEntry),
 		order:              make([]dwarf.Offset, 0, 100),
 	}
@@ -78,7 +90,7 @@ func newBuild(dwrf *dwarf.Data) (*build, error) {
 
 		case dwarf.TagInlinedSubroutine:
 			if compileUnit == nil {
-				return nil, curated.Errorf("found inlined subroutine without compile unit")
+				return nil, curated.Errorf("found inlined subroutine tag without compile unit")
 			} else {
 				bld.inlinedSubroutines[entry.Offset] = buildEntry{
 					compileUnit: compileUnit,
@@ -89,7 +101,7 @@ func newBuild(dwrf *dwarf.Data) (*build, error) {
 
 		case dwarf.TagSubprogram:
 			if compileUnit == nil {
-				return nil, curated.Errorf("found subprogram without compile unit")
+				return nil, curated.Errorf("found subprogram tag without compile unit")
 			} else {
 				bld.subprograms[entry.Offset] = buildEntry{
 					compileUnit: compileUnit,
@@ -102,7 +114,7 @@ func newBuild(dwrf *dwarf.Data) (*build, error) {
 			fallthrough
 		case dwarf.TagPointerType:
 			if compileUnit == nil {
-				return nil, curated.Errorf("found type definition without compile unit")
+				return nil, curated.Errorf("found base/pointer type tag without compile unit")
 			} else {
 				bld.types[entry.Offset] = buildEntry{
 					compileUnit: compileUnit,
@@ -111,9 +123,66 @@ func newBuild(dwrf *dwarf.Data) (*build, error) {
 				bld.order = append(bld.order, entry.Offset)
 			}
 
+		case dwarf.TagUnionType:
+			if compileUnit == nil {
+				return nil, curated.Errorf("found union type tag without compile unit")
+			} else {
+				bld.compositeTypes[entry.Offset] = buildEntry{
+					compileUnit: compileUnit,
+					entry:       entry,
+					information: "union",
+				}
+				bld.order = append(bld.order, entry.Offset)
+			}
+
+		case dwarf.TagStructType:
+			if compileUnit == nil {
+				return nil, curated.Errorf("found struct type tag without compile unit")
+			} else {
+				bld.compositeTypes[entry.Offset] = buildEntry{
+					compileUnit: compileUnit,
+					entry:       entry,
+					information: "struct",
+				}
+				bld.order = append(bld.order, entry.Offset)
+			}
+
+		case dwarf.TagMember:
+			if compileUnit == nil {
+				return nil, curated.Errorf("found member tag without compile unit")
+			} else {
+				bld.compositeMembers[entry.Offset] = buildEntry{
+					compileUnit: compileUnit,
+					entry:       entry,
+				}
+				bld.order = append(bld.order, entry.Offset)
+			}
+
+		case dwarf.TagArrayType:
+			if compileUnit == nil {
+				return nil, curated.Errorf("found array type tag without compile unit")
+			} else {
+				bld.arrayTypes[entry.Offset] = buildEntry{
+					compileUnit: compileUnit,
+					entry:       entry,
+				}
+				bld.order = append(bld.order, entry.Offset)
+			}
+
+		case dwarf.TagSubrangeType:
+			if compileUnit == nil {
+				return nil, curated.Errorf("found subrange type tag without compile unit")
+			} else {
+				bld.arraySubranges[entry.Offset] = buildEntry{
+					compileUnit: compileUnit,
+					entry:       entry,
+				}
+				bld.order = append(bld.order, entry.Offset)
+			}
+
 		case dwarf.TagVariable:
 			if compileUnit == nil {
-				return nil, curated.Errorf("found variable without compile unit")
+				return nil, curated.Errorf("found variable tag without compile unit")
 			} else {
 				bld.variables[entry.Offset] = buildEntry{
 					compileUnit: compileUnit,
@@ -125,6 +194,322 @@ func newBuild(dwrf *dwarf.Data) (*build, error) {
 	}
 
 	return bld, nil
+}
+
+// buildTypes creates the types necessary to build variable information. in
+// parituclar allocation of members to the "parent" composite type
+func (bld *build) buildTypes(src *Source) error {
+	for _, v := range bld.types {
+		var typ SourceType
+
+		fld := v.entry.AttrField(dwarf.AttrName)
+		if fld == nil {
+			continue
+		}
+		typ.Name = fld.Val.(string)
+
+		fld = v.entry.AttrField(dwarf.AttrByteSize)
+		if fld == nil {
+			continue
+		}
+		typ.Size = int(fld.Val.(int64))
+
+		src.Types[v.entry.Offset] = &typ
+	}
+
+	for _, v := range bld.compositeTypes {
+		var typ SourceType
+
+		fld := v.entry.AttrField(dwarf.AttrName)
+		if fld == nil {
+			continue
+		}
+		name := fld.Val.(string)
+
+		fld = v.entry.AttrField(dwarf.AttrByteSize)
+		if fld == nil {
+			continue
+		}
+		typ.Size = int(fld.Val.(int64))
+
+		src.Types[v.entry.Offset] = &typ
+
+		// the name we store in the type is annotated with the composite
+		// category.
+		//
+		// this may be language sensitive but we're assuming the use of C for now
+		typ.Name = fmt.Sprintf("%s %s", v.information, name)
+	}
+
+	// allocate members to composite types
+	var composite *SourceType
+	for _, off := range bld.order {
+		if v, ok := bld.compositeTypes[off]; ok {
+			composite = src.Types[v.entry.Offset]
+		} else if v, ok := bld.compositeMembers[off]; ok {
+			if composite == nil {
+				// found a member without first finding a composite type. this
+				// shouldn't happen
+				continue
+			}
+
+			memb, err := bld.resolveDeclaration(v, src)
+			if err != nil {
+				return err
+			}
+			if memb == nil {
+				continue
+			}
+
+			memb.addressIsOffset = true
+
+			fld := v.entry.AttrField(dwarf.AttrDataMemberLoc)
+			if fld == nil {
+				continue
+			}
+			switch fld.Class {
+			case dwarf.ClassAddress:
+				fallthrough
+			case dwarf.ClassConstant:
+				memb.Address = uint64(fld.Val.(int64))
+			default:
+				continue
+			}
+
+			composite.Members = append(composite.Members, memb)
+		} else {
+			composite = nil
+		}
+	}
+
+	// build array types
+	var arrayBaseType *SourceType
+	var baseTypeOffset dwarf.Offset
+	for _, off := range bld.order {
+		if v, ok := bld.arrayTypes[off]; ok {
+			var err error
+			arrayBaseType, err = bld.resolveType(v, src)
+			if err != nil {
+				return err
+			}
+			baseTypeOffset = v.entry.Offset
+		} else if v, ok := bld.arraySubranges[off]; ok {
+			if arrayBaseType == nil {
+				// found a subrange without first finding an array type. this
+				// shouldn't happen
+				continue
+			}
+
+			fld := v.entry.AttrField(dwarf.AttrUpperBound)
+			if fld == nil {
+				continue
+			}
+			num := fld.Val.(int64)
+
+			src.Types[baseTypeOffset] = &SourceType{
+				Name:         fmt.Sprintf("%s array [%d]", arrayBaseType.Name, num),
+				Size:         arrayBaseType.Size * int(num),
+				BaseType:     arrayBaseType,
+				ElementCount: int(num),
+			}
+		} else {
+			arrayBaseType = nil
+		}
+	}
+
+	return nil
+}
+
+func (bld *build) resolveType(v buildEntry, src *Source) (*SourceType, error) {
+	fld := v.entry.AttrField(dwarf.AttrType)
+	if fld == nil {
+		return nil, nil
+	}
+
+	typ, ok := src.Types[fld.Val.(dwarf.Offset)]
+	if !ok {
+		return nil, nil
+	}
+
+	return typ, nil
+}
+
+func (bld *build) resolveDeclaration(v buildEntry, src *Source) (*SourceVariable, error) {
+	resolveSpec := func(v buildEntry) (*SourceVariable, error) {
+		var varb SourceVariable
+
+		// variable name
+		fld := v.entry.AttrField(dwarf.AttrName)
+		if fld == nil {
+			return nil, nil
+		}
+		varb.Name = fld.Val.(string)
+
+		// variable type
+		var err error
+		varb.Type, err = bld.resolveType(v, src)
+		if err != nil {
+			return nil, err
+		}
+		if varb.Type == nil {
+			return nil, nil
+		}
+
+		return &varb, nil
+	}
+
+	var varb SourceVariable
+
+	// check for specification field. if it is present we resolve the
+	// specification using with the DWARF entry indicated by the field.
+	// otherwise we resolve using the current entry
+	fld := v.entry.AttrField(dwarf.AttrSpecification)
+	if fld != nil {
+		var ok bool
+
+		spec, ok := bld.variables[fld.Val.(dwarf.Offset)]
+		if !ok {
+			return nil, nil
+		}
+
+		s, err := resolveSpec(spec)
+		if err != nil {
+			return nil, err
+		}
+		if s == nil {
+			return nil, nil
+		}
+		varb.Name = s.Name
+		varb.Type = s.Type
+	} else {
+		s, err := resolveSpec(v)
+		if err != nil {
+			return nil, err
+		}
+		if s == nil {
+			return nil, nil
+		}
+		varb.Name = s.Name
+		varb.Type = s.Type
+	}
+
+	// variable location in the source
+	fld = v.entry.AttrField(dwarf.AttrDeclFile)
+	if fld == nil {
+		return nil, nil
+	}
+	declFile := fld.Val.(int64)
+
+	fld = v.entry.AttrField(dwarf.AttrDeclLine)
+	if fld == nil {
+		return nil, nil
+	}
+	declLine := fld.Val.(int64)
+
+	lr, err := bld.dwrf.LineReader(v.compileUnit)
+	if err != nil {
+		return nil, err
+	}
+	files := lr.Files()
+
+	file := src.Files[files[declFile].Name]
+	if file == nil {
+		return nil, nil
+	}
+	varb.DeclLine = file.Lines[declLine-1]
+
+	return &varb, nil
+}
+
+// buildVariables populates variables map in the *Source tree
+func (bld *build) buildVariables(src *Source) error {
+	for _, v := range bld.variables {
+		// as a starting point we're interested in variable entries that have
+		// the location attribute
+		var address uint64
+
+		fld := v.entry.AttrField(dwarf.AttrLocation)
+		if fld == nil {
+			continue // for loop
+		}
+
+		switch fld.Class {
+		case dwarf.ClassLocListPtr:
+			continue // for loop
+		case dwarf.ClassExprLoc:
+			expr := fld.Val.([]uint8)
+			switch expr[0] {
+			case 0x03: // constant address
+				if len(expr) != 5 {
+					continue // for loop
+				}
+				address = uint64(expr[1])
+				address |= uint64(expr[2]) << 8
+				address |= uint64(expr[3]) << 16
+				address |= uint64(expr[4]) << 24
+			default:
+				continue // for loop
+			}
+
+		default:
+			continue // for loop
+		}
+
+		var varb *SourceVariable
+		var err error
+
+		// check for abstract origin field. if it is present we resolve the
+		// declartion using with the DWARF entry indicated by the field. otherwise
+		// we resolve using the current entry
+		fld = v.entry.AttrField(dwarf.AttrAbstractOrigin)
+		if fld != nil {
+			abstract, ok := bld.variables[fld.Val.(dwarf.Offset)]
+			if !ok {
+				return curated.Errorf("found concrete variable without abstract: %08x", varb.Address)
+			}
+
+			varb, err = bld.resolveDeclaration(abstract, src)
+			if err != nil {
+				return err
+			}
+		} else {
+			varb, err = bld.resolveDeclaration(v, src)
+			if err != nil {
+				return err
+			}
+		}
+
+		// nothing found when resolving the declaration
+		if varb == nil {
+			continue // for loop
+		}
+
+		// add address found in the location attribute to the SourceVariable
+		// returned by the resolve() function
+		varb.Address = address
+
+		// add variable to list of global variables if there is no parent
+		// function to the declaration
+		if varb.DeclLine.Function.Name == UnknownFunction {
+			// list of global variables for the declaration file
+			varb.DeclLine.File.Globals[varb.Name] = varb
+			varb.DeclLine.File.GlobalNames = append(varb.DeclLine.File.GlobalNames, varb.Name)
+
+			// list of global variables for all compile units
+			src.Globals[varb.Name] = varb
+			src.GlobalNames = append(src.GlobalNames, varb.Name)
+		}
+
+		// TODO: non-global variables
+	}
+
+	// sort strings
+	for i := range src.Files {
+		sort.Strings(src.Files[i].GlobalNames)
+	}
+	sort.Strings(src.GlobalNames)
+
+	return nil
 }
 
 type foundFunction struct {
@@ -308,217 +693,4 @@ func (bld *build) findFunction(addr uint64) (*foundFunction, error) {
 	}
 
 	return ret, nil
-}
-
-// buildVariables populates all variable structures in the *Source tree
-func (bld *build) buildVariables(src *Source) error {
-	// resolves the name and type of the variable
-	resolveSpec := func(v buildEntry) (*SourceVariable, error) {
-		var varb SourceVariable
-
-		// variable name
-		fld := v.entry.AttrField(dwarf.AttrName)
-		if fld == nil {
-			return nil, nil
-		}
-		varb.Name = fld.Val.(string)
-
-		// variable type
-		fld = v.entry.AttrField(dwarf.AttrType)
-		if fld == nil {
-			return nil, nil
-		}
-
-		t, ok := bld.types[dwarf.Offset(fld.Val.(dwarf.Offset))]
-		if !ok {
-			return nil, nil
-		}
-
-		fld = t.entry.AttrField(dwarf.AttrName)
-		if fld == nil {
-			return nil, nil
-		}
-		varb.Type.Name = fld.Val.(string)
-
-		fld = t.entry.AttrField(dwarf.AttrByteSize)
-		if fld == nil {
-			return nil, nil
-		}
-		varb.Type.Size = int(fld.Val.(int64))
-
-		// other fields in the SourceType instance depend on the byte size
-		switch varb.Type.Size {
-		case 1:
-			varb.Type.HexFormat = "%02x"
-			varb.Type.DecFormat = "%d"
-			varb.Type.BinFormat = "%08b"
-			varb.Type.Mask = 0xff
-		case 2:
-			varb.Type.HexFormat = "%04x"
-			varb.Type.DecFormat = "%d"
-			varb.Type.BinFormat = "%016b"
-			varb.Type.Mask = 0xffff
-		case 4:
-			varb.Type.HexFormat = "%08x"
-			varb.Type.DecFormat = "%d"
-			varb.Type.BinFormat = "%032b"
-			varb.Type.Mask = 0xffffffff
-		}
-
-		return &varb, nil
-	}
-
-	// resolves the file and line of the variable declaration, also calls the resolveSpec() function
-	resolveDecl := func(v buildEntry) (*SourceVariable, error) {
-		var varb SourceVariable
-
-		// check for specification field. if it is present we resolve the
-		// specification using with the DWARF entry indicated by the field.
-		// otherwise we resolve using the current entry
-		fld := v.entry.AttrField(dwarf.AttrSpecification)
-		if fld != nil {
-			var ok bool
-
-			spec, ok := bld.variables[fld.Val.(dwarf.Offset)]
-			if !ok {
-				return nil, nil
-			}
-
-			s, err := resolveSpec(spec)
-			if err != nil {
-				return nil, err
-			}
-			if s == nil {
-				return nil, nil
-			}
-			varb.Name = s.Name
-			varb.Type = s.Type
-		} else {
-			s, err := resolveSpec(v)
-			if err != nil {
-				return nil, err
-			}
-			if s == nil {
-				return nil, nil
-			}
-			varb.Name = s.Name
-			varb.Type = s.Type
-		}
-
-		// variable location in the source
-		fld = v.entry.AttrField(dwarf.AttrDeclFile)
-		if fld == nil {
-			return nil, nil
-		}
-		declFile := fld.Val.(int64)
-
-		fld = v.entry.AttrField(dwarf.AttrDeclLine)
-		if fld == nil {
-			return nil, nil
-		}
-		declLine := fld.Val.(int64)
-
-		lr, err := bld.dwrf.LineReader(v.compileUnit)
-		if err != nil {
-			return nil, err
-		}
-		files := lr.Files()
-
-		file := src.Files[files[declFile].Name]
-		if file == nil {
-			return nil, nil
-		}
-		varb.DeclLine = file.Lines[declLine]
-
-		return &varb, nil
-	}
-
-	for _, v := range bld.variables {
-		// as a starting point we're interested in variable entries that have
-		// the location attribute
-		var address uint64
-
-		fld := v.entry.AttrField(dwarf.AttrLocation)
-		if fld == nil {
-			continue // for loop
-		}
-
-		switch fld.Class {
-		case dwarf.ClassLocListPtr:
-			continue // for loop
-		case dwarf.ClassExprLoc:
-			expr := fld.Val.([]uint8)
-			switch expr[0] {
-			case 0x03: // constant address
-				if len(expr) != 5 {
-					continue // for loop
-				}
-				address = uint64(expr[1])
-				address |= uint64(expr[2]) << 8
-				address |= uint64(expr[3]) << 16
-				address |= uint64(expr[4]) << 24
-
-			default:
-				continue // for loop
-			}
-
-		default:
-			continue // for loop
-		}
-
-		var varb *SourceVariable
-		var err error
-
-		// check for abstract origin field. if it is present we resolve the
-		// declartion using with the DWARF entry indicated by the field. otherwise
-		// we resolve using the current entry
-		fld = v.entry.AttrField(dwarf.AttrAbstractOrigin)
-		if fld != nil {
-			abstract, ok := bld.variables[fld.Val.(dwarf.Offset)]
-			if !ok {
-				return curated.Errorf("found concrete variable without abstract: %08x", varb.Address)
-			}
-
-			varb, err = resolveDecl(abstract)
-			if err != nil {
-				return err
-			}
-		} else {
-			varb, err = resolveDecl(v)
-			if err != nil {
-				return err
-			}
-		}
-
-		// nothing found when resolving the declaration
-		if varb == nil {
-			continue // for loop
-		}
-
-		// add address found in the location attribute to the SourceVariable
-		// returned by the resolve() function
-		varb.Address = address
-
-		// add variable to list of global variables if there is no parent
-		// function to the declaration
-		if varb.DeclLine.Function.Name == UnknownFunction {
-			// list of global variables for the declaration file
-			varb.DeclLine.File.Globals[varb.Name] = varb
-			varb.DeclLine.File.GlobalNames = append(varb.DeclLine.File.GlobalNames, varb.Name)
-
-			// list of global variables for all compile units
-			src.Globals[varb.Name] = varb
-			src.GlobalNames = append(src.GlobalNames, varb.Name)
-		}
-
-		// TODO: non-global variables
-	}
-
-	// sort strings
-	for i := range src.Files {
-		sort.Strings(src.Files[i].GlobalNames)
-	}
-	sort.Strings(src.GlobalNames)
-
-	return nil
 }
