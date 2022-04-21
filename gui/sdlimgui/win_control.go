@@ -253,8 +253,19 @@ func (win *winControl) drawMouseCapture() {
 	imgui.SameLine()
 	if win.img.wm.dbgScr.isCaptured {
 		imgui.AlignTextToFramePadding()
-		imgui.Text("RMB to release input")
-	} else if imgui.Button("Capture input") {
-		win.img.setCapture(true)
+		label := "RMB to release input"
+		if win.img.emulation.State() == emulation.Running {
+			label = "RMB to halt & release input"
+		}
+		imgui.Text(label)
+	} else {
+		label := "Capture input & run"
+		if win.img.emulation.State() == emulation.Running {
+			label = "Capture input & continue"
+		}
+		if imgui.Button(label) {
+			win.img.setCapture(true)
+			win.img.term.pushCommand("RUN")
+		}
 	}
 }

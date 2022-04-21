@@ -98,6 +98,9 @@ func (img *SdlImgui) Service() {
 				if ev.Type == sdl.MOUSEBUTTONUP {
 					if img.isCaptured() {
 						img.setCapture(false)
+						if !img.isPlaymode() {
+							img.term.pushCommand("HALT")
+						}
 					} else if img.isPlaymode() {
 						img.setCapture(true)
 					}
