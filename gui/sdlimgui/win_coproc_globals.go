@@ -246,8 +246,10 @@ func (win *winCoProcGlobals) drawVariable(src *developer.Source,
 			imgui.Text(fmt.Sprintf("Line: %d", varb.DeclLine.LineNumber))
 		}, true)
 
+		nodeID := fmt.Sprintf("%s_%x", varb.Name, baseAddress+varb.Address)
+
 		if imgui.IsItemClicked() {
-			win.openNodes[varb.Name] = !win.openNodes[varb.Name]
+			win.openNodes[nodeID] = !win.openNodes[nodeID]
 		}
 
 		imgui.TableNextColumn()
@@ -261,13 +263,13 @@ func (win *winCoProcGlobals) drawVariable(src *developer.Source,
 		imgui.PopStyleColor()
 
 		imgui.TableNextColumn()
-		if win.openNodes[varb.Name] {
+		if win.openNodes[nodeID] {
 			imgui.Text(string(fonts.TreeOpen))
 		} else {
 			imgui.Text(string(fonts.TreeClosed))
 		}
 
-		if win.openNodes[varb.Name] {
+		if win.openNodes[nodeID] {
 			if varb.IsComposite() {
 				for _, memb := range varb.Type.Members {
 					win.drawVariable(src, memb, address, indentLevel+1)
