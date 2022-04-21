@@ -40,12 +40,15 @@ type build struct {
 
 	subprograms        map[dwarf.Offset]buildEntry
 	inlinedSubroutines map[dwarf.Offset]buildEntry
-	types              map[dwarf.Offset]buildEntry
-	compositeTypes     map[dwarf.Offset]buildEntry
-	compositeMembers   map[dwarf.Offset]buildEntry
-	arrayTypes         map[dwarf.Offset]buildEntry
-	arraySubranges     map[dwarf.Offset]buildEntry
-	variables          map[dwarf.Offset]buildEntry
+	baseTypes          map[dwarf.Offset]buildEntry
+
+	typedefs         map[dwarf.Offset]buildEntry
+	compositeTypes   map[dwarf.Offset]buildEntry
+	compositeMembers map[dwarf.Offset]buildEntry
+	arrayTypes       map[dwarf.Offset]buildEntry
+	arraySubranges   map[dwarf.Offset]buildEntry
+
+	variables map[dwarf.Offset]buildEntry
 
 	// the order in which we encountered the subprograms and inlined
 	// subroutines is important
@@ -57,7 +60,8 @@ func newBuild(dwrf *dwarf.Data) (*build, error) {
 		dwrf:               dwrf,
 		subprograms:        make(map[dwarf.Offset]buildEntry),
 		inlinedSubroutines: make(map[dwarf.Offset]buildEntry),
-		types:              make(map[dwarf.Offset]buildEntry),
+		baseTypes:          make(map[dwarf.Offset]buildEntry),
+		typedefs:           make(map[dwarf.Offset]buildEntry),
 		compositeTypes:     make(map[dwarf.Offset]buildEntry),
 		compositeMembers:   make(map[dwarf.Offset]buildEntry),
 		arrayTypes:         make(map[dwarf.Offset]buildEntry),
@@ -110,13 +114,22 @@ func newBuild(dwrf *dwarf.Data) (*build, error) {
 				bld.order = append(bld.order, entry.Offset)
 			}
 
-		case dwarf.TagBaseType:
-			fallthrough
-		case dwarf.TagPointerType:
+		case dwarf.TagTypedef:
 			if compileUnit == nil {
 				return nil, curated.Errorf("found base/pointer type tag without compile unit")
 			} else {
-				bld.types[entry.Offset] = buildEntry{
+				bld.typedefs[entry.Offset] = buildEntry{
+					compileUnit: compileUnit,
+					entry:       entry,
+				}
+				bld.order = append(bld.order, entry.Offset)
+			}
+
+		case dwarf.TagBaseType:
+			if compileUnit == nil {
+				return nil, curated.Errorf("found base/pointer type tag without compile unit")
+			} else {
+				bld.baseTypes[entry.Offset] = buildEntry{
 					compileUnit: compileUnit,
 					entry:       entry,
 				}
@@ -199,7 +212,37 @@ func newBuild(dwrf *dwarf.Data) (*build, error) {
 // buildTypes creates the types necessary to build variable information. in
 // parituclar allocation of members to the "parent" composite type
 func (bld *build) buildTypes(src *Source) error {
-	for _, v := range bld.types {
+	resolveTypeDefs := func() error {
+		for _, v := range bld.typedefs {
+			baseType, err := bld.resolveType(v, src)
+			if err != nil {
+				return err
+			}
+			if baseType == nil {
+				continue
+			}
+
+			// make a copy of the named type
+			typ := func(btyp *SourceType) *SourceType {
+				typ := *btyp
+				return &typ
+			}(baseType)
+
+			// override the name field
+			fld := v.entry.AttrField(dwarf.AttrName)
+			if fld == nil {
+				continue
+			}
+			typ.Name = fld.Val.(string)
+
+			src.Types[v.entry.Offset] = typ
+		}
+
+		return nil
+	}
+
+	// basic types first because everything else is built on basic types
+	for _, v := range bld.baseTypes {
 		var typ SourceType
 
 		fld := v.entry.AttrField(dwarf.AttrName)
@@ -217,113 +260,149 @@ func (bld *build) buildTypes(src *Source) error {
 		src.Types[v.entry.Offset] = &typ
 	}
 
-	for _, v := range bld.compositeTypes {
-		var typ SourceType
-
-		fld := v.entry.AttrField(dwarf.AttrName)
-		if fld == nil {
-			continue
-		}
-		name := fld.Val.(string)
-
-		fld = v.entry.AttrField(dwarf.AttrByteSize)
-		if fld == nil {
-			continue
-		}
-		typ.Size = int(fld.Val.(int64))
-
-		src.Types[v.entry.Offset] = &typ
-
-		// the name we store in the type is annotated with the composite
-		// category.
-		//
-		// this may be language sensitive but we're assuming the use of C for now
-		typ.Name = fmt.Sprintf("%s %s", v.information, name)
+	// typedefs of basic types
+	err := resolveTypeDefs()
+	if err != nil {
+		return err
 	}
 
-	// allocate members to composite types
-	var composite *SourceType
-	for _, off := range bld.order {
-		if v, ok := bld.compositeTypes[off]; ok {
-			composite = src.Types[v.entry.Offset]
-		} else if v, ok := bld.compositeMembers[off]; ok {
-			if composite == nil {
-				// found a member without first finding a composite type. this
-				// shouldn't happen
-				continue
+	// two passes over composite and array types
+	for pass := 0; pass < 2; pass++ {
+		// resolve composite types
+		for _, v := range bld.compositeTypes {
+			var typ SourceType
+			var name string
+
+			fld := v.entry.AttrField(dwarf.AttrName)
+			if fld == nil {
+				// allow anonymous structures. we sometimes see this when
+				// structs are defined with typedef
+				name = fmt.Sprintf("%x", v.entry.Offset)
+			} else {
+				name = fld.Val.(string)
 			}
 
-			memb, err := bld.resolveDeclaration(v, src)
-			if err != nil {
-				return err
-			}
-			if memb == nil {
-				continue
-			}
-
-			memb.addressIsOffset = true
-
-			fld := v.entry.AttrField(dwarf.AttrDataMemberLoc)
+			fld = v.entry.AttrField(dwarf.AttrByteSize)
 			if fld == nil {
 				continue
 			}
-			switch fld.Class {
-			case dwarf.ClassConstant:
-				memb.Address = uint64(fld.Val.(int64))
-			case dwarf.ClassExprLoc:
-				var ok bool
-				if memb.Address, ok = bld.decodeLocationExpression(fld.Val.([]uint8)); !ok {
-					continue // for loop
+			typ.Size = int(fld.Val.(int64))
+
+			src.Types[v.entry.Offset] = &typ
+
+			// the name we store in the type is annotated with the composite
+			// category.
+			//
+			// this may be language sensitive but we're assuming the use of C for now
+			typ.Name = fmt.Sprintf("%s %s", v.information, name)
+		}
+
+		// allocate members to composite types
+		var composite *SourceType
+		for _, off := range bld.order {
+			if v, ok := bld.compositeTypes[off]; ok {
+				composite = src.Types[v.entry.Offset]
+			} else if v, ok := bld.compositeMembers[off]; ok {
+				if composite == nil {
+					// found a member without first finding a composite type. this
+					// shouldn't happen
+					continue
 				}
-			default:
-				continue
-			}
 
-			composite.Members = append(composite.Members, memb)
-		} else {
-			composite = nil
+				if v.entry.Offset == 0x274 {
+				}
+
+				// members are basically like variables but with special address
+				// handling
+				memb, err := bld.resolveVariableDeclaration(v, src)
+				if err != nil {
+					return err
+				}
+				if memb == nil {
+					continue
+				}
+
+				// addresses of member variables are offsets from the "parent composite" type
+				memb.addressIsOffset = true
+
+				// look for data member location field. if it's not present
+				// then it doesn't matter, the member address will be kept at
+				// zero and will still be considered an offset address. absence
+				// of the data member location field is the case with union
+				// types
+				fld := v.entry.AttrField(dwarf.AttrDataMemberLoc)
+				if fld != nil {
+					switch fld.Class {
+					case dwarf.ClassConstant:
+						memb.Address = uint64(fld.Val.(int64))
+					case dwarf.ClassExprLoc:
+						var ok bool
+						if memb.Address, ok = bld.decodeLocationExpression(fld.Val.([]uint8)); !ok {
+							continue // for loop
+						}
+					default:
+						continue
+					}
+				}
+
+				composite.Members = append(composite.Members, memb)
+			} else {
+				composite = nil
+			}
 		}
-	}
 
-	// remove any composites that have no members
-	for off := range bld.compositeTypes {
-		if src.Types[off] != nil && len(src.Types[off].Members) == 0 {
-			delete(src.Types, off)
+		// remove any composites that have no members
+		for off := range bld.compositeTypes {
+			if src.Types[off] != nil && len(src.Types[off].Members) == 0 {
+				delete(src.Types, off)
+			}
 		}
-	}
 
-	// build array types
-	var arrayBaseType *SourceType
-	var baseTypeOffset dwarf.Offset
-	for _, off := range bld.order {
-		if v, ok := bld.arrayTypes[off]; ok {
-			var err error
-			arrayBaseType, err = bld.resolveType(v, src)
-			if err != nil {
-				return err
-			}
-			baseTypeOffset = v.entry.Offset
-		} else if v, ok := bld.arraySubranges[off]; ok {
-			if arrayBaseType == nil {
-				// found a subrange without first finding an array type. this
-				// shouldn't happen
-				continue
-			}
+		// typedefs of composite types
+		err = resolveTypeDefs()
+		if err != nil {
+			return err
+		}
 
-			fld := v.entry.AttrField(dwarf.AttrUpperBound)
-			if fld == nil {
-				continue
-			}
-			num := fld.Val.(int64) + 1
+		// build array types
+		var arrayBaseType *SourceType
+		var baseTypeOffset dwarf.Offset
+		for _, off := range bld.order {
+			if v, ok := bld.arrayTypes[off]; ok {
+				var err error
+				arrayBaseType, err = bld.resolveType(v, src)
+				if err != nil {
+					return err
+				}
+				baseTypeOffset = v.entry.Offset
+			} else if v, ok := bld.arraySubranges[off]; ok {
+				if arrayBaseType == nil {
+					// found a subrange without first finding an array type. this
+					// shouldn't happen
+					continue
+				}
 
-			src.Types[baseTypeOffset] = &SourceType{
-				Name:         fmt.Sprintf("%s array [%d]", arrayBaseType.Name, num),
-				Size:         arrayBaseType.Size * int(num),
-				BaseType:     arrayBaseType,
-				ElementCount: int(num),
+				fld := v.entry.AttrField(dwarf.AttrUpperBound)
+				if fld == nil {
+					continue
+				}
+				num := fld.Val.(int64) + 1
+
+				src.Types[baseTypeOffset] = &SourceType{
+					Name:         fmt.Sprintf("%s array [%d]", arrayBaseType.Name, num),
+					Size:         arrayBaseType.Size * int(num),
+					BaseType:     arrayBaseType,
+					ElementCount: int(num),
+				}
+			} else {
+				arrayBaseType = nil
 			}
-		} else {
-			arrayBaseType = nil
+		}
+
+		// typedefs of array types
+		err = resolveTypeDefs()
+		if err != nil {
+			return err
 		}
 	}
 
@@ -344,7 +423,7 @@ func (bld *build) resolveType(v buildEntry, src *Source) (*SourceType, error) {
 	return typ, nil
 }
 
-func (bld *build) resolveDeclaration(v buildEntry, src *Source) (*SourceVariable, error) {
+func (bld *build) resolveVariableDeclaration(v buildEntry, src *Source) (*SourceVariable, error) {
 	resolveSpec := func(v buildEntry) (*SourceVariable, error) {
 		var varb SourceVariable
 
@@ -469,12 +548,12 @@ func (bld *build) buildVariables(src *Source) error {
 				return curated.Errorf("found concrete variable without abstract: %08x", varb.Address)
 			}
 
-			varb, err = bld.resolveDeclaration(abstract, src)
+			varb, err = bld.resolveVariableDeclaration(abstract, src)
 			if err != nil {
 				return err
 			}
 		} else {
-			varb, err = bld.resolveDeclaration(v, src)
+			varb, err = bld.resolveVariableDeclaration(v, src)
 			if err != nil {
 				return err
 			}
@@ -696,19 +775,9 @@ func (bld *build) findFunction(addr uint64) (*foundFunction, error) {
 	return ret, nil
 }
 
-func (bld *build) decodeULEB128(encoded []uint8) uint64 {
-	var result uint64
-	var shift uint64
-	for _, v := range encoded {
-		result |= (uint64(v & 0x7f)) << shift
-		if v&0x80 == 0x00 {
-			break
-		}
-		shift += 7
-	}
-	return result
-}
-
+// decode DWARF data of ClassExprLoc
+//
+// returns zero and false if expression cannot be handled
 func (bld *build) decodeLocationExpression(expr []uint8) (uint64, bool) {
 	// expression location operators reference. "DWARF Debugging Information
 	// Format Version 4", page 17, section 2.5.1.1
@@ -727,4 +796,18 @@ func (bld *build) decodeLocationExpression(expr []uint8) (uint64, bool) {
 		return bld.decodeULEB128(expr[1:]), true
 	}
 	return 0, false
+}
+
+// some ClassExprLoc operands are expressed as unsigned LEB128 values
+func (bld *build) decodeULEB128(encoded []uint8) uint64 {
+	var result uint64
+	var shift uint64
+	for _, v := range encoded {
+		result |= (uint64(v & 0x7f)) << shift
+		if v&0x80 == 0x00 {
+			break
+		}
+		shift += 7
+	}
+	return result
 }
