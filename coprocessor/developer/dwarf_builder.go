@@ -389,7 +389,7 @@ func (bld *build) buildTypes(src *Source) error {
 				num := fld.Val.(int64) + 1
 
 				src.Types[baseTypeOffset] = &SourceType{
-					Name:         fmt.Sprintf("%s array [%d]", arrayBaseType.Name, num),
+					Name:         fmt.Sprintf("%s [%d]", arrayBaseType.Name, num),
 					Size:         arrayBaseType.Size * int(num),
 					BaseType:     arrayBaseType,
 					ElementCount: int(num),
@@ -530,8 +530,15 @@ func (bld *build) buildVariables(src *Source) error {
 			if address, ok = bld.decodeLocationExpression(fld.Val.([]uint8)); !ok {
 				continue // for loop
 			}
-
 		default:
+			continue // for loop
+		}
+
+		// if address is zero after resolution than we should discard it. not
+		// sure why we get nil addresses like this but it seems to happen if a
+		// global is defined but never accessed. so maybe something to do with
+		// optimisation
+		if address == 0 {
 			continue // for loop
 		}
 
@@ -587,8 +594,6 @@ func (bld *build) buildVariables(src *Source) error {
 	for i := range src.Files {
 		sort.Sort(src.Files[i].GlobalNames)
 	}
-
-	sort.Sort(src.GlobalNames)
 
 	return nil
 }
