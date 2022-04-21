@@ -273,9 +273,9 @@ func (win *winCoProcGlobals) drawVariable(src *developer.Source,
 					win.drawVariable(src, memb, address, indentLevel+1)
 				}
 			} else if varb.IsArray() {
-				for i := 0; i <= varb.Type.ElementCount; i++ {
+				for i := 0; i < varb.Type.ElementCount; i++ {
 					elem := &developer.SourceVariable{
-						Name:     fmt.Sprintf("element %d", i),
+						Name:     fmt.Sprintf("%s[%d]", varb.Name, i),
 						Type:     varb.Type.BaseType,
 						DeclLine: varb.DeclLine,
 						Address:  address + uint64(i*varb.Type.BaseType.Size),
