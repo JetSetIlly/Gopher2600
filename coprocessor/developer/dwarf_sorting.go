@@ -247,3 +247,17 @@ func (e SortedFunctions) Less(i int, j int) bool {
 func (e SortedFunctions) Swap(i int, j int) {
 	e.Functions[i], e.Functions[j] = e.Functions[j], e.Functions[i]
 }
+
+type sortedVariableNames []string
+
+func (v sortedVariableNames) Len() int {
+	return len(v)
+}
+
+func (v sortedVariableNames) Less(i int, j int) bool {
+	return strings.ToUpper(v[i]) < strings.ToUpper(v[j])
+}
+
+func (v sortedVariableNames) Swap(i int, j int) {
+	v[i], v[j] = v[j], v[i]
+}

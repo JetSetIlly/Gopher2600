@@ -48,7 +48,7 @@ type SourceFile struct {
 	Globals map[string]*SourceVariable
 
 	// sorted list of global variable names
-	GlobalNames []string
+	GlobalNames sortedVariableNames
 }
 
 // SourceDisasm is a single disassembled intruction from the ELF binary.
@@ -250,7 +250,7 @@ type Source struct {
 
 	// all global variables in ll compile units
 	Globals     map[string]*SourceVariable
-	GlobalNames []string
+	GlobalNames sortedVariableNames
 
 	// lines of source code found in the compile units
 	linesByAddress map[uint32]*SourceLine

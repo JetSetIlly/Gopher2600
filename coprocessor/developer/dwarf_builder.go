@@ -585,9 +585,10 @@ func (bld *build) buildVariables(src *Source) error {
 
 	// sort strings
 	for i := range src.Files {
-		sort.Strings(src.Files[i].GlobalNames)
+		sort.Sort(src.Files[i].GlobalNames)
 	}
-	sort.Strings(src.GlobalNames)
+
+	sort.Sort(src.GlobalNames)
 
 	return nil
 }
