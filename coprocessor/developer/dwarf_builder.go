@@ -268,10 +268,13 @@ func (bld *build) buildTypes(src *Source) error {
 				continue
 			}
 			switch fld.Class {
-			case dwarf.ClassAddress:
-				fallthrough
 			case dwarf.ClassConstant:
 				memb.Address = uint64(fld.Val.(int64))
+			case dwarf.ClassExprLoc:
+				var ok bool
+				if memb.Address, ok = bld.decodeLocationExpression(fld.Val.([]uint8)); !ok {
+					continue // for loop
+				}
 			default:
 				continue
 			}
@@ -279,6 +282,13 @@ func (bld *build) buildTypes(src *Source) error {
 			composite.Members = append(composite.Members, memb)
 		} else {
 			composite = nil
+		}
+	}
+
+	// remove any composites that have no members
+	for off := range bld.compositeTypes {
+		if src.Types[off] != nil && len(src.Types[off].Members) == 0 {
+			delete(src.Types, off)
 		}
 	}
 
@@ -307,7 +317,7 @@ func (bld *build) buildTypes(src *Source) error {
 			num := fld.Val.(int64) + 1
 
 			src.Types[baseTypeOffset] = &SourceType{
-				Name:         fmt.Sprintf("%s array[%d]", arrayBaseType.Name, num),
+				Name:         fmt.Sprintf("%s array [%d]", arrayBaseType.Name, num),
 				Size:         arrayBaseType.Size * int(num),
 				BaseType:     arrayBaseType,
 				ElementCount: int(num),
@@ -437,17 +447,8 @@ func (bld *build) buildVariables(src *Source) error {
 		case dwarf.ClassLocListPtr:
 			continue // for loop
 		case dwarf.ClassExprLoc:
-			expr := fld.Val.([]uint8)
-			switch expr[0] {
-			case 0x03: // constant address
-				if len(expr) != 5 {
-					continue // for loop
-				}
-				address = uint64(expr[1])
-				address |= uint64(expr[2]) << 8
-				address |= uint64(expr[3]) << 16
-				address |= uint64(expr[4]) << 24
-			default:
+			var ok bool
+			if address, ok = bld.decodeLocationExpression(fld.Val.([]uint8)); !ok {
 				continue // for loop
 			}
 
@@ -693,4 +694,37 @@ func (bld *build) findFunction(addr uint64) (*foundFunction, error) {
 	}
 
 	return ret, nil
+}
+
+func (bld *build) decodeULEB128(encoded []uint8) uint64 {
+	var result uint64
+	var shift uint64
+	for _, v := range encoded {
+		result |= (uint64(v & 0x7f)) << shift
+		if v&0x80 == 0x00 {
+			break
+		}
+		shift += 7
+	}
+	return result
+}
+
+func (bld *build) decodeLocationExpression(expr []uint8) (uint64, bool) {
+	// expression location operators reference. "DWARF Debugging Information
+	// Format Version 4", page 17, section 2.5.1.1
+
+	switch expr[0] {
+	case 0x03: // constant address
+		if len(expr) != 5 {
+			return 0, false
+		}
+		address := uint64(expr[1])
+		address |= uint64(expr[2]) << 8
+		address |= uint64(expr[3]) << 16
+		address |= uint64(expr[4]) << 24
+		return address, true
+	case 0x23: // uleb128 to be added to previous value on the stack
+		return bld.decodeULEB128(expr[1:]), true
+	}
+	return 0, false
 }
