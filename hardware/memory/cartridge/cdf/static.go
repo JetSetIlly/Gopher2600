@@ -42,15 +42,15 @@ func (cart *cdf) newCDFstatic(instance *instance.Instance, cartData []byte, r ve
 	stc.driverROM = cartData[:driverSize]
 
 	// custom ARM program begins immediately after the ARM driver
-	stc.customROM = cartData[r.customOriginROM-stc.version.mmap.FlashOrigin:]
+	stc.customROM = cartData[stc.version.customOriginROM-stc.version.mmap.FlashOrigin:]
 
 	// driver RAM is the same as driver ROM initially
 	stc.driverRAM = make([]byte, driverSize)
 	copy(stc.driverRAM, stc.driverROM)
 
 	// there is nothing in cartData to copy into the other RAM areas
-	stc.dataRAM = make([]byte, r.dataMemtopRAM-r.dataOriginRAM+1)
-	stc.variablesRAM = make([]byte, r.variablesMemtopRAM-r.variablesOriginRAM+1)
+	stc.dataRAM = make([]byte, stc.version.dataMemtopRAM-stc.version.dataOriginRAM+1)
+	stc.variablesRAM = make([]byte, stc.version.variablesMemtopRAM-stc.version.variablesOriginRAM+1)
 
 	if instance.Prefs.RandomState.Get().(bool) {
 		for i := range stc.dataRAM {
@@ -65,8 +65,11 @@ func (cart *cdf) newCDFstatic(instance *instance.Instance, cartData []byte, r ve
 }
 
 func (stc *Static) HotLoad(cartData []byte) {
+	// ARM driver
 	stc.driverROM = cartData[:driverSize]
-	stc.customROM = cartData[driverSize:]
+
+	// custom ARM program
+	stc.customROM = cartData[stc.version.customOriginROM-stc.version.mmap.FlashOrigin:]
 }
 
 // ResetVectors implements the arm7tdmi.SharedMemory interface.

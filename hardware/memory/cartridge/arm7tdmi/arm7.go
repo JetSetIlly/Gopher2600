@@ -241,6 +241,13 @@ func (arm *ARM) Plumb(mem SharedMemory, hook CartridgeHook) {
 	arm.hook = hook
 }
 
+// ClearCaches should be used very rarely. It empties the instruction and
+// disassembly caches.
+func (arm *ARM) ClearCaches() {
+	arm.executionMap = make(map[uint32][]func(_ uint16))
+	arm.disasmCache = make(map[uint32]DisasmEntry)
+}
+
 func (arm *ARM) reset() error {
 	arm.status.reset()
 	for i := range arm.registers {

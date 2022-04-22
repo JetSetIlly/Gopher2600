@@ -1200,17 +1200,27 @@ func (dbg *Debugger) hotload() (e error) {
 	if err != nil {
 		return err
 	}
-	dbg.loader = &cartload
 
 	err = dbg.vcs.Mem.Cart.HotLoad(cartload)
 	if err != nil {
 		return err
 	}
 
+	dbg.loader = &cartload
+
 	// disassemble newly attached cartridge
 	err = dbg.Disasm.FromMemory()
 	if err != nil {
 		return err
+	}
+
+	dbg.vcs.TV.RemoveFrameTrigger(dbg.CoProcDev)
+
+	coproc := dbg.vcs.Mem.Cart.GetCoProcBus()
+	dbg.CoProcDisasm = coprocDisasm.NewDisassembly(dbg.vcs.TV, coproc)
+	dbg.CoProcDev = coprocDev.NewDeveloper(filepath.Dir(cartload.Filename), coproc)
+	if dbg.CoProcDev != nil {
+		dbg.vcs.TV.AddFrameTrigger(dbg.CoProcDev)
 	}
 
 	return nil

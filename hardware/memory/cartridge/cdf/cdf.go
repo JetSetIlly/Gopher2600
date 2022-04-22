@@ -114,7 +114,7 @@ func NewCDF(instance *instance.Instance, pathToROM string, version string, data 
 	//
 	// if bank0 has any ARM code then it will start at offset 0x08. first eight
 	// bytes are the ARM header
-	cart.arm = arm7tdmi.NewARM(cart.version.mmap, cart.instance.Prefs.ARM, cart.state.static, cart, pathToROM)
+	cart.arm = arm7tdmi.NewARM(cart.version.mmap, cart.instance.Prefs.ARM, cart.state.static, cart, cart.pathToROM)
 
 	return cart, nil
 }
@@ -630,6 +630,9 @@ func (cart *cdf) HotLoad(data []byte) error {
 	}
 
 	cart.state.static.HotLoad(data)
+
+	cart.arm.Plumb(cart.state.static, cart)
+	cart.arm.ClearCaches()
 
 	return nil
 }
