@@ -811,7 +811,7 @@ func (ps *PlayerSprite) triggerMissileReset() bool {
 
 	switch *ps.ScanCounter.sizeAndCopies {
 	case 0x05:
-		return ps.ScanCounter.Pixel == 3 && ps.ScanCounter.count == 0
+		return ps.ScanCounter.Pixel == 4 && ps.ScanCounter.count == 1
 	case 0x07:
 		return ps.ScanCounter.Pixel == 5 && ps.ScanCounter.count == 3
 	}
