@@ -92,6 +92,11 @@ func (img *SdlImgui) Service() {
 			case sdl.BUTTON_LEFT:
 				button = userinput.MouseButtonLeft
 
+			case sdl.BUTTON_MIDDLE:
+				if img.isCaptured() {
+					img.setCapture(false)
+				}
+
 			case sdl.BUTTON_RIGHT:
 				button = userinput.MouseButtonRight
 
