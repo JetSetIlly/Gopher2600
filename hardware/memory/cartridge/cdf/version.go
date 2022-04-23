@@ -68,7 +68,7 @@ type version struct {
 	variablesMemtopRAM uint32
 
 	// entry point into ARM program
-	entrySR uint32
+	entrySP uint32
 	entryLR uint32
 	entryPC uint32
 
@@ -114,7 +114,7 @@ func newVersion(memModel string, v string, data []uint8) (version, error) {
 	}
 
 	// entry point into ARM program
-	ver.entrySR = mmap.SRAMOrigin | 0x00001fdc
+	ver.entrySP = mmap.SRAMOrigin | 0x00001fdc
 	ver.entryLR = ver.customOriginROM
 	ver.entryPC = ver.entryLR + 8
 
@@ -165,10 +165,10 @@ func newVersion(memModel string, v string, data []uint8) (version, error) {
 		ver.variablesMemtopRAM = 0x0
 
 		idx = 0x17f4
-		ver.entrySR = uint32(data[idx])
-		ver.entrySR |= uint32(data[idx+1]) << 8
-		ver.entrySR |= uint32(data[idx+2]) << 16
-		ver.entrySR |= uint32(data[idx+3]) << 24
+		ver.entrySP = uint32(data[idx])
+		ver.entrySP |= uint32(data[idx+1]) << 8
+		ver.entrySP |= uint32(data[idx+2]) << 16
+		ver.entrySP |= uint32(data[idx+3]) << 24
 
 		// CDFJ+ additional differences
 

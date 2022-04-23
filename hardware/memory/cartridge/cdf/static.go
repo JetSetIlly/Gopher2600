@@ -74,7 +74,7 @@ func (stc *Static) HotLoad(cartData []byte) {
 
 // ResetVectors implements the arm7tdmi.SharedMemory interface.
 func (stc *Static) ResetVectors() (uint32, uint32, uint32) {
-	return stc.version.entrySR, stc.version.entryLR, stc.version.entryPC
+	return stc.version.entrySP, stc.version.entryLR, stc.version.entryPC
 }
 
 func (stc *Static) Snapshot() *Static {
