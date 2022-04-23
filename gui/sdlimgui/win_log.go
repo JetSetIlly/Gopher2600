@@ -17,14 +17,16 @@ package sdlimgui
 
 import (
 	"github.com/inkyblackness/imgui-go/v4"
+	"github.com/jetsetilly/gopher2600/emulation"
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
 const winLogID = "Log"
 
 type winLog struct {
-	img  *SdlImgui
-	open bool
+	img            *SdlImgui
+	open           bool
+	scrollToBottom bool
 }
 
 func newWinLog(img *SdlImgui) (window, error) {
@@ -48,6 +50,7 @@ func (win *winLog) isOpen() bool {
 
 func (win *winLog) setOpen(open bool) {
 	win.open = open
+	win.scrollToBottom = true
 }
 
 func (win *winLog) draw() {
@@ -69,6 +72,12 @@ func (win *winLog) draw() {
 			for i := clipper.DisplayStart; i < clipper.DisplayEnd; i++ {
 				imgui.Text(log[i].String())
 			}
+		}
+
+		// very simple conditions to scroll to the bottom
+		if win.scrollToBottom || win.img.emulation.State() == emulation.Running {
+			win.scrollToBottom = false
+			imgui.SetScrollHereY(0.0)
 		}
 	})
 
