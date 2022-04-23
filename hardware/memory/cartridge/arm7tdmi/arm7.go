@@ -106,6 +106,10 @@ type ARM struct {
 	// the start of every arm.Run()
 	abortOnIllegalMem bool
 
+	// whether to foce an error on illegal memory access. set from ARM.prefs at
+	// the start of every arm.Run()
+	abortOnStackCollision bool
+
 	// collection of functionMap instances. indexed by programMemoryOffset to
 	// retrieve a functionMap
 	//
@@ -579,6 +583,7 @@ func (arm *ARM) Run(mamcr uint32) (uint32, float32, error) {
 
 	// how to handle illegal memory access
 	arm.abortOnIllegalMem = arm.prefs.AbortOnIllegalMem.Get().(bool)
+	arm.abortOnStackCollision = arm.prefs.AbortOnStackCollision.Get().(bool)
 
 	// fill pipeline
 	arm.registers[rPC] += 2
@@ -630,6 +635,10 @@ func (arm *ARM) Run(mamcr uint32) (uint32, float32, error) {
 		if !arm.immediateMode {
 			expectedPC = arm.registers[rPC]
 		}
+
+		// not stack pointer. we'll use this to check if stack pointer has
+		// collided with variables memory
+		stackPointerBeforeExecution := arm.registers[rSP]
 
 		// run from functionMap if possible
 		formatFunc := arm.functionMap[memIdx]
@@ -783,6 +792,18 @@ func (arm *ARM) Run(mamcr uint32) (uint32, float32, error) {
 			if arm.cyclesTotal >= CycleLimit {
 				logger.Logf("ARM7", "reached cycle limit of %d. ending execution early", CycleLimit)
 				break
+			}
+		}
+
+		// check stack pointer before iterating loop again
+		if arm.dev != nil && stackPointerBeforeExecution != arm.registers[rSP] {
+			if arm.dev.CheckStackCollision(arm.registers[rSP]) {
+				if arm.abortOnStackCollision {
+					logger.Logf("ARM7", "stackpointer is too low (%08x). aborting thumb program early", arm.registers[rSP])
+					break
+				} else {
+					logger.Logf("ARM7", "stackpointer is too low (%08x)", arm.registers[rSP])
+				}
 			}
 		}
 	}

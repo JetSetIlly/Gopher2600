@@ -54,6 +54,10 @@ type CartCoProcDeveloper interface {
 
 	// accumulate cycles for executed addresses
 	ExecutionProfile(addr map[uint32]float32)
+
+	// returns true if stackpointer has overlapped the highest address occupied
+	// by a variable in the program
+	CheckStackCollision(sp uint32) bool
 }
 
 // CartCoProcBus is implemented by cartridge mappers that have a coprocessor that

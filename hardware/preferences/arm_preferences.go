@@ -51,6 +51,10 @@ type ARMPreferences struct {
 	// for example: reading from Flash memory above the 32k memtop (for 32k
 	// ROMs)
 	AbortOnIllegalMem prefs.Bool
+
+	// abort Thumb program if stack pointer collides with memory occupied by
+	// program variables
+	AbortOnStackCollision prefs.Bool
 }
 
 func (p *ARMPreferences) String() string {
@@ -90,6 +94,10 @@ func newARMprefrences() (*ARMPreferences, error) {
 		return nil, err
 	}
 	err = p.dsk.Add("hardware.arm7.abortOnIllegalMem", &p.AbortOnIllegalMem)
+	if err != nil {
+		return nil, err
+	}
+	err = p.dsk.Add("hardware.arm7.abortOnStackCollision", &p.AbortOnStackCollision)
 	if err != nil {
 		return nil, err
 	}

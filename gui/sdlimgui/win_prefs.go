@@ -177,6 +177,7 @@ func (win *winPrefs) drawDebugger() {
 	}
 
 	if imgui.CollapsingHeader("6507 Disassembly") {
+		imgui.Spacing()
 		usefxxmirror := win.img.dbg.Disasm.Prefs.FxxxMirror.Get().(bool)
 		if imgui.Checkbox("Use Fxxx Mirror", &usefxxmirror) {
 			win.img.dbg.Disasm.Prefs.FxxxMirror.Set(usefxxmirror)
@@ -448,14 +449,29 @@ The MAM should almost never be disabled completely.`)
 
 	imgui.Spacing()
 
-	abortOnIllegalMem := win.img.vcs.Instance.Prefs.ARM.AbortOnIllegalMem.Get().(bool)
-	if imgui.Checkbox("Abort on Illegal Memory Access", &abortOnIllegalMem) {
-		win.img.vcs.Instance.Prefs.ARM.AbortOnIllegalMem.Set(abortOnIllegalMem)
-	}
-	imguiTooltipSimple(`Abort thumb program on access to illegal memory. Note that the program
+	if imgui.CollapsingHeader("Abort Conditions") {
+		imgui.Spacing()
+
+		abortOnIllegalMem := win.img.vcs.Instance.Prefs.ARM.AbortOnIllegalMem.Get().(bool)
+		if imgui.Checkbox("Illegal Memory Access", &abortOnIllegalMem) {
+			win.img.vcs.Instance.Prefs.ARM.AbortOnIllegalMem.Set(abortOnIllegalMem)
+		}
+		imguiTooltipSimple(`Abort thumb program on access to illegal memory. Note that the program
 will always abort if the access is a PC fetch, even if this option is not set.
 
-Illegal accesses will be logged in all instances.`)
+Illegal accesses will be logged even if program does not abort.`)
+
+		abortOnStackCollision := win.img.vcs.Instance.Prefs.ARM.AbortOnStackCollision.Get().(bool)
+		if imgui.Checkbox("Stack Collision", &abortOnStackCollision) {
+			win.img.vcs.Instance.Prefs.ARM.AbortOnStackCollision.Set(abortOnStackCollision)
+		}
+		imguiTooltipSimple(`Abort thumb program if stack pointer overlaps the highest address
+occupied by a variable in the program.
+
+Only available when DWARF data is available for the program.
+
+Stack collisions will be logged even if program does not abort.`)
+	}
 
 }
 

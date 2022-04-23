@@ -575,6 +575,12 @@ func (bld *build) buildVariables(src *Source) error {
 		// returned by the resolve() function
 		varb.Address = address
 
+		// determine highest address occupied by any variable in the program
+		hiAddress := varb.Address + uint64(varb.Type.Size)
+		if hiAddress > src.VariableAddressMemtop {
+			src.VariableAddressMemtop = hiAddress
+		}
+
 		// add variable to list of global variables if there is no parent
 		// function to the declaration
 		if varb.DeclLine.Function.Name == UnknownFunction {

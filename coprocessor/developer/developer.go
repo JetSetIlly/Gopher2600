@@ -92,6 +92,11 @@ func (dev *Developer) IllegalAccess(event string, pc uint32, addr uint32) string
 	return dev.loagAccess(event, pc, addr, false)
 }
 
+// CheckStackCollision implements the CartCoProcDeveloper interface.
+func (dev *Developer) CheckStackCollision(sp uint32) bool {
+	return sp <= uint32(dev.source.VariableAddressMemtop)
+}
+
 // loagAccess adds an illegal or null access event to the log. includes source code lookup
 func (dev *Developer) loagAccess(event string, pc uint32, addr uint32, isNullAccess bool) string {
 	dev.sourceLock.Lock()

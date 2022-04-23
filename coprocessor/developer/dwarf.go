@@ -248,8 +248,12 @@ type Source struct {
 	Globals     map[string]*SourceVariable
 	GlobalNames sortedVariableNames
 
+	// the highest address of any variable (not just global variables, any
+	// variable)
+	VariableAddressMemtop uint64
+
 	// lines of source code found in the compile units
-	linesByAddress map[uint32]*SourceLine
+	linesByAddress map[uint64]*SourceLine
 
 	// list of source lines sorted by FrameCycles field
 	SortedLines SortedLines
@@ -294,7 +298,7 @@ func NewSource(pathToROM string) (*Source, error) {
 		SortedFunctions: SortedFunctions{
 			Functions: make([]*SourceFunction, 0, 100),
 		},
-		linesByAddress: make(map[uint32]*SourceLine),
+		linesByAddress: make(map[uint64]*SourceLine),
 		SortedLines: SortedLines{
 			Lines: make([]*SourceLine, 0, 100),
 		},
@@ -541,7 +545,7 @@ func NewSource(pathToROM string) (*Source, error) {
 							d.Line = workingSourceLine
 
 							// associate the address with the workingSourceLine
-							src.linesByAddress[uint32(addr)] = workingSourceLine
+							src.linesByAddress[addr] = workingSourceLine
 						}
 					}
 				}
@@ -572,7 +576,6 @@ func NewSource(pathToROM string) (*Source, error) {
 			}
 		}
 	}
-	logger.Logf("dwarf", "%0.2f%% lines have interleaved coprocessor instructions", interleaveCt*100/disasmCt)
 
 	// sanity check of functions list
 	if len(src.Functions) != len(src.FunctionNames) {
@@ -623,8 +626,9 @@ func NewSource(pathToROM string) (*Source, error) {
 	// sorted functions
 	sort.Sort(src.SortedFunctions)
 
-	// log function summary
+	// log summary
 	logger.Logf("dwarf", "identified %d functions in %d compile units", len(src.Functions), len(src.compileUnits))
+	logger.Logf("dwarf", "highest memory address occupied by a variable (%08x)", src.VariableAddressMemtop)
 
 	return src, nil
 }
@@ -670,7 +674,7 @@ func (src *Source) executeProfile(addr uint32, ct float32) {
 	// indicate that execution profile has changed
 	src.ExecutionProfileChanged = true
 
-	line, ok := src.linesByAddress[addr]
+	line, ok := src.linesByAddress[uint64(addr)]
 	if ok {
 		line.Stats.count += ct
 		line.Function.Stats.count += ct
