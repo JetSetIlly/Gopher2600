@@ -238,6 +238,10 @@ func (win *winCoProcGlobals) drawVariable(src *developer.Source,
 			imgui.Text(varb.Type.Name)
 			imgui.PopStyleColor()
 
+			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcVariablesTypeSize)
+			imgui.Text(fmt.Sprintf("%d bytes", varb.Type.Size))
+			imgui.PopStyleColor()
+
 			imgui.Spacing()
 			imgui.Separator()
 			imgui.Spacing()
@@ -305,6 +309,10 @@ func (win *winCoProcGlobals) drawVariable(src *developer.Source,
 				imgui.SameLine()
 				imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcVariablesType)
 				imgui.Text(varb.Type.Name)
+				imgui.PopStyleColor()
+
+				imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcVariablesTypeSize)
+				imgui.Text(fmt.Sprintf("%d bytes", varb.Type.Size))
 				imgui.PopStyleColor()
 
 				imgui.Spacing()

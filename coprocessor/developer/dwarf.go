@@ -186,10 +186,6 @@ type SourceVariable struct {
 	// parent variable
 	Address         uint64
 	addressIsOffset bool
-
-	// the number of elements. a length greater than zero indicates that the
-	// variable is an array
-	Length int
 }
 
 // IsComposite returns true if SourceType represents a composite type.
