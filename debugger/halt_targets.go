@@ -213,7 +213,11 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (*target, error) {
 							if !dbg.vcs.CPU.LastResult.Final || dbg.vcs.CPU.LastResult.Defn == nil {
 								return ""
 							}
-							return dbg.vcs.CPU.LastResult.Defn.Operator
+
+							// for simplicity we treat strings as uppercase in
+							// the breakpoint/trap list. we should therefore
+							// convert the return string to uppercase
+							return strings.ToUpper(dbg.vcs.CPU.LastResult.Defn.Operator)
 						},
 						instructionBoundary: true,
 					}
