@@ -138,6 +138,15 @@ type ARM struct {
 	// interface to an option development package
 	dev mapper.CartCoProcDeveloper
 
+	// top of variable memory for stack pointer collision testing
+	// * only valid if dev is not nil
+	variableMemtop uint32
+
+	// once the stack has been found to have collided with memory then all
+	// memory accesses are deemed suspect and illegal accesses are no longer
+	// logged
+	stackHasCollided bool
+
 	// \/\/\/ the following fields relate to cycle counting. there's a possible
 	// optimisation whereby we don't do any cycle counting at all (or minimise
 	// it at least) if the emulation is running in immediate mode
@@ -359,8 +368,8 @@ func (arm *ARM) nullAccess(event string, addr uint32) {
 const nullAccessBoundary = 0x750
 
 func (arm *ARM) read8bit(addr uint32) uint8 {
-	if addr <= nullAccessBoundary {
-		arm.nullAccess("read8bit", addr)
+	if !arm.stackHasCollided && addr <= nullAccessBoundary {
+		arm.nullAccess("Read 8bit", addr)
 	}
 
 	var mem *[]uint8
@@ -374,8 +383,12 @@ func (arm *ARM) read8bit(addr uint32) uint8 {
 		if v, ok := arm.mam.read(addr); ok {
 			return uint8(v)
 		}
+
 		arm.memoryError = arm.abortOnIllegalMem
-		arm.illegalAccess("read8bit", addr)
+
+		if !arm.stackHasCollided {
+			arm.illegalAccess("Read 8bit", addr)
+		}
 
 		return 0
 	}
@@ -384,8 +397,8 @@ func (arm *ARM) read8bit(addr uint32) uint8 {
 }
 
 func (arm *ARM) write8bit(addr uint32, val uint8) {
-	if addr <= nullAccessBoundary {
-		arm.nullAccess("write8bit", addr)
+	if !arm.stackHasCollided && addr <= nullAccessBoundary {
+		arm.nullAccess("Write 8bit", addr)
 	}
 
 	var mem *[]uint8
@@ -399,8 +412,12 @@ func (arm *ARM) write8bit(addr uint32, val uint8) {
 		if ok := arm.mam.write(addr, uint32(val)); ok {
 			return
 		}
+
 		arm.memoryError = arm.abortOnIllegalMem
-		arm.illegalAccess("write8bit", addr)
+
+		if !arm.stackHasCollided {
+			arm.illegalAccess("Write 8bit", addr)
+		}
 
 		return
 	}
@@ -409,8 +426,8 @@ func (arm *ARM) write8bit(addr uint32, val uint8) {
 }
 
 func (arm *ARM) read16bit(addr uint32) uint16 {
-	if addr <= nullAccessBoundary {
-		arm.nullAccess("read16bit", addr)
+	if !arm.stackHasCollided && addr <= nullAccessBoundary {
+		arm.nullAccess("Read 16bit", addr)
 	}
 
 	// check 16 bit alignment
@@ -429,8 +446,12 @@ func (arm *ARM) read16bit(addr uint32) uint16 {
 		if v, ok := arm.mam.read(addr); ok {
 			return uint16(v)
 		}
+
 		arm.memoryError = arm.abortOnIllegalMem
-		arm.illegalAccess("read16bit", addr)
+
+		if !arm.stackHasCollided {
+			arm.illegalAccess("Read 16bit", addr)
+		}
 
 		return 0
 	}
@@ -439,8 +460,8 @@ func (arm *ARM) read16bit(addr uint32) uint16 {
 }
 
 func (arm *ARM) write16bit(addr uint32, val uint16) {
-	if addr <= nullAccessBoundary {
-		arm.nullAccess("write16bit", addr)
+	if !arm.stackHasCollided && addr <= nullAccessBoundary {
+		arm.nullAccess("Write 16bit", addr)
 	}
 
 	// check 16 bit alignment
@@ -459,8 +480,12 @@ func (arm *ARM) write16bit(addr uint32, val uint16) {
 		if ok := arm.mam.write(addr, uint32(val)); ok {
 			return
 		}
+
 		arm.memoryError = arm.abortOnIllegalMem
-		arm.illegalAccess("write16bit", addr)
+
+		if !arm.stackHasCollided {
+			arm.illegalAccess("Write 16bit", addr)
+		}
 
 		return
 	}
@@ -470,8 +495,8 @@ func (arm *ARM) write16bit(addr uint32, val uint16) {
 }
 
 func (arm *ARM) read32bit(addr uint32) uint32 {
-	if addr <= nullAccessBoundary {
-		arm.nullAccess("read32bit", addr)
+	if !arm.stackHasCollided && addr <= nullAccessBoundary {
+		arm.nullAccess("Read 32bit", addr)
 	}
 
 	// check 32 bit alignment
@@ -490,8 +515,12 @@ func (arm *ARM) read32bit(addr uint32) uint32 {
 		if v, ok := arm.mam.read(addr); ok {
 			return v
 		}
+
 		arm.memoryError = arm.abortOnIllegalMem
-		arm.illegalAccess("read32bit", addr)
+
+		if !arm.stackHasCollided {
+			arm.illegalAccess("Read 32bit", addr)
+		}
 
 		return 0
 	}
@@ -500,8 +529,8 @@ func (arm *ARM) read32bit(addr uint32) uint32 {
 }
 
 func (arm *ARM) write32bit(addr uint32, val uint32) {
-	if addr <= nullAccessBoundary {
-		arm.nullAccess("write32bit", addr)
+	if !arm.stackHasCollided && addr <= nullAccessBoundary {
+		arm.nullAccess("Write 32bit", addr)
 	}
 
 	// check 32 bit alignment
@@ -520,8 +549,12 @@ func (arm *ARM) write32bit(addr uint32, val uint32) {
 		if ok := arm.mam.write(addr, val); ok {
 			return
 		}
+
 		arm.memoryError = arm.abortOnIllegalMem
-		arm.illegalAccess("write32bit", addr)
+
+		if !arm.stackHasCollided {
+			arm.illegalAccess("Write 32bit", addr)
+		}
 
 		return
 	}
@@ -584,6 +617,11 @@ func (arm *ARM) Run(mamcr uint32) (uint32, float32, error) {
 	// how to handle illegal memory access
 	arm.abortOnIllegalMem = arm.prefs.AbortOnIllegalMem.Get().(bool)
 	arm.abortOnStackCollision = arm.prefs.AbortOnStackCollision.Get().(bool)
+
+	// update variableMemtop - probably hasn't changed but you never know
+	if arm.dev != nil {
+		arm.variableMemtop = arm.dev.VariableMemtop()
+	}
 
 	// fill pipeline
 	arm.registers[rPC] += 2
@@ -797,13 +835,23 @@ func (arm *ARM) Run(mamcr uint32) (uint32, float32, error) {
 
 		// check stack pointer before iterating loop again
 		if arm.dev != nil && stackPointerBeforeExecution != arm.registers[rSP] {
-			if arm.dev.CheckStackCollision(arm.registers[rSP]) {
-				if arm.abortOnStackCollision {
-					logger.Logf("ARM7", "stackpointer is too low (%08x). aborting thumb program early", arm.registers[rSP])
-					break
-				} else {
-					logger.Logf("ARM7", "stackpointer is too low (%08x)", arm.registers[rSP])
+			if !arm.stackHasCollided && arm.registers[rSP] <= arm.variableMemtop {
+				event := "Stack"
+				logger.Logf("ARM7", "%s: collision with program memory (%08x)", event, arm.registers[rSP])
+
+				log := arm.dev.StackCollision(arm.executingPC, arm.registers[rSP])
+				if log != "" {
+					logger.Logf("ARM7", "%s: %s", event, log)
 				}
+
+				if arm.abortOnStackCollision {
+					logger.Logf("ARM7", "aborting thumb program early")
+					break
+				}
+
+				// set stackHasCollided flag. this means that memory accesses
+				// will no longer be checked for legality
+				arm.stackHasCollided = true
 			}
 		}
 	}

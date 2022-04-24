@@ -52,12 +52,16 @@ type CartCoProcDeveloper interface {
 	// is likely to be a null pointer dereference
 	NullAccess(event string, pc uint32, addr uint32) string
 
+	// stack has collided with variable memtop
+	StackCollision(pc uint32, sp uint32) string
+
 	// accumulate cycles for executed addresses
 	ExecutionProfile(addr map[uint32]float32)
 
-	// returns true if stackpointer has overlapped the highest address occupied
-	// by a variable in the program
-	CheckStackCollision(sp uint32) bool
+	// returns the highest address utilised by program memory. the coprocessor
+	// uses this value to detect stack collisions. should return zero if no
+	// variables information is available
+	VariableMemtop() uint32
 }
 
 // CartCoProcBus is implemented by cartridge mappers that have a coprocessor that

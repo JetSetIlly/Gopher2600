@@ -577,8 +577,8 @@ func (bld *build) buildVariables(src *Source) error {
 
 		// determine highest address occupied by any variable in the program
 		hiAddress := varb.Address + uint64(varb.Type.Size)
-		if hiAddress > src.VariableAddressMemtop {
-			src.VariableAddressMemtop = hiAddress
+		if hiAddress > src.VariableMemtop {
+			src.VariableMemtop = hiAddress
 		}
 
 		// add variable to list of global variables if there is no parent

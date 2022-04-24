@@ -153,18 +153,6 @@ func (win *winCoProcPerformance) draw() {
 			imgui.Separator()
 			imgui.Spacing()
 
-			if src.UnsupportedOptimisation != "" {
-				imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.Warning)
-				imgui.AlignTextToFramePadding()
-				imgui.Text(fmt.Sprintf(" %c", fonts.Warning))
-				imgui.PopStyleColor()
-				imguiTooltip(func() {
-					imgui.Text(src.UnsupportedOptimisation)
-					imgui.Text("performance analysis may be misleading")
-				}, true)
-				imgui.SameLineV(0, 20)
-			}
-
 			imgui.Checkbox("Show Source in Tooltip", &win.showSrc)
 			imgui.SameLineV(0, 15)
 			imgui.Checkbox("Hide Unexecuted Items", &win.hideUnusedEntries)

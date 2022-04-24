@@ -250,7 +250,7 @@ type Source struct {
 
 	// the highest address of any variable (not just global variables, any
 	// variable)
-	VariableAddressMemtop uint64
+	VariableMemtop uint64
 
 	// lines of source code found in the compile units
 	linesByAddress map[uint64]*SourceLine
@@ -628,7 +628,7 @@ func NewSource(pathToROM string) (*Source, error) {
 
 	// log summary
 	logger.Logf("dwarf", "identified %d functions in %d compile units", len(src.Functions), len(src.compileUnits))
-	logger.Logf("dwarf", "highest memory address occupied by a variable (%08x)", src.VariableAddressMemtop)
+	logger.Logf("dwarf", "highest memory address occupied by a variable (%08x)", src.VariableMemtop)
 
 	return src, nil
 }

@@ -17,21 +17,32 @@ package developer
 
 // IllegalAccessEntry is a single entry in the illegal access log.
 type IllegalAccessEntry struct {
-	Event        string
-	PC           uint32
-	AccessAddr   uint32
+	Event      string
+	PC         uint32
+	AccessAddr uint32
+
+	SrcLine *SourceLine
+	Count   int
+
+	// whether access address was reported as being a "null access". when this
+	// is true the illegal access is very likely because of a null pointer
+	// dereference
 	IsNullAccess bool
-	SrcLine      *SourceLine
-	Count        int
 }
 
 // IllegalAccess records memory accesses by the coprocesser that are "illegal".
 type IllegalAccess struct {
-	// entries are keyed by PC/AccessAddr expressed as a 16 character string
+	// entries are keyed by concatanation of PC and AccessAddr expressed as a
+	// 16 character string
 	entries map[string]*IllegalAccessEntry
 
 	// all the accesses in order of the first time they appear. the Count field
 	// in the IllegalAccessEntry can be used to see if that entry was seen more
 	// than once *after* the first appearance
 	Log []*IllegalAccessEntry
+
+	// is true once a stack collision has been detected. once a stack collision
+	// has occured then subsequent illegal accesses cannot be trusted and will
+	// likely not be logged
+	HasStackCollision bool
 }

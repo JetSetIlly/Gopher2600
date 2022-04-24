@@ -78,6 +78,9 @@ func (win *winCoProcIllegalAccess) draw() {
 	imgui.BeginV(title, &win.open, imgui.WindowFlagsNone)
 	defer imgui.End()
 
+	// hasStackCollision to decide whether to issue warning in footer
+	hasStackCollision := false
+
 	// safely iterate over top execution information
 	win.img.dbg.CoProcDev.BorrowIllegalAccess(func(ill *developer.IllegalAccess) {
 		if ill == nil {
@@ -90,22 +93,28 @@ func (win *winCoProcIllegalAccess) draw() {
 			return
 		}
 
-		imgui.BeginChildV("##coprocIllegalAccessMain", imgui.Vec2{X: 0, Y: imguiRemainingWinHeight() - win.optionsHeight}, false, 0)
+		// note HasStackCollision for later comparison
+		hasStackCollision = ill.HasStackCollision
 
-		const numColumns = 4
-		imgui.BeginTableV("##coprocIllegalAccessTable", numColumns, imgui.TableFlagsSizingFixedFit, imgui.Vec2{}, 0.0)
+		const numColumns = 3
+
+		flgs := imgui.TableFlagsScrollY
+		flgs |= imgui.TableFlagsSizingStretchProp
+		flgs |= imgui.TableFlagsNoHostExtendX
+		flgs |= imgui.TableFlagsResizable
+
+		imgui.BeginTableV("##coprocIllegalAccessTable", numColumns, flgs, imgui.Vec2{X: 0, Y: imguiRemainingWinHeight() - win.optionsHeight}, 0.0)
 
 		// setup columns. the labelling column 2 depends on whether the coprocessor
 		// development instance has source available to it
 		width := imgui.ContentRegionAvail().X
-		imgui.TableSetupColumnV("Event", imgui.TableColumnFlagsNone, width*0.20, 0)
+		imgui.TableSetupColumnV("Event", imgui.TableColumnFlagsNone, width*0.30, 0)
 		imgui.TableSetupColumnV("Address", imgui.TableColumnFlagsNone, width*0.20, 1)
 		if win.img.dbg.CoProcDev.HasSource() {
 			imgui.TableSetupColumnV("Function", imgui.TableColumnFlagsNone, width*0.45, 2)
 		} else {
 			imgui.TableSetupColumnV("PC Address", imgui.TableColumnFlagsNone, width*0.45, 2)
 		}
-		imgui.TableSetupColumnV("Count", imgui.TableColumnFlagsNone, width*0.10, 3)
 
 		imgui.Spacing()
 		imgui.TableHeadersRow()
@@ -120,10 +129,34 @@ func (win *winCoProcIllegalAccess) draw() {
 			imgui.SelectableV(lg.Event, false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{0, 0})
 			imgui.PopStyleColorV(2)
 
+			// basic tooltip
+			imguiTooltip(func() {
+				imgui.Text("Executing PC:")
+				imgui.SameLine()
+				imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcIllegalAccessAddressPC)
+				imgui.Text(fmt.Sprintf("%#08x", lg.PC))
+				imgui.PopStyleColor()
+
+				if lg.IsNullAccess {
+					imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcIllegalAccessNotes)
+					imgui.Text("likely null pointer dereference")
+					imgui.PopStyleColor()
+				}
+
+				imgui.Text("Frequency:")
+				imgui.SameLine()
+				imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcIllegalAccessFrequency)
+				imgui.Text(fmt.Sprintf("%d", lg.Count))
+				imgui.PopStyleColor()
+			}, true)
+
 			// source on tooltip
 			if win.showSrc && lg.SrcLine != nil {
 				imguiTooltip(func() {
-					imgui.Text(lg.SrcLine.File.Filename)
+					imgui.Spacing()
+					imgui.Separator()
+					imgui.Spacing()
+					imgui.Text(lg.SrcLine.File.ShortFilename)
 					imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLineNumber)
 					imgui.Text(fmt.Sprintf("Line: %d", lg.SrcLine.LineNumber))
 					imgui.PopStyleColor()
@@ -157,42 +190,42 @@ func (win *winCoProcIllegalAccess) draw() {
 				// show PC address if there is no source available
 				imgui.Text(fmt.Sprintf("%#08x", lg.PC))
 			}
-
-			imgui.TableNextColumn()
-			imgui.Text(fmt.Sprintf("%d", lg.Count))
 		}
 
 		imgui.EndTable()
-		imgui.EndChild()
 
-		if win.img.dbg.CoProcDev.HasSource() {
-			// options toolbar at foot of window
-			win.optionsHeight = imguiMeasureHeight(func() {
-				imgui.Separator()
-				imgui.Spacing()
+		// options toolbar at foot of window
+		win.optionsHeight = imguiMeasureHeight(func() {
+			imgui.Separator()
+			imgui.Spacing()
 
+			if win.img.dbg.CoProcDev.HasSource() {
 				win.img.dbg.CoProcDev.BorrowSource(func(src *developer.Source) {
 					if src == nil {
 						return
 					}
-
-					if src.UnsupportedOptimisation != "" {
-						imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.Warning)
-						imgui.AlignTextToFramePadding()
-						imgui.Text(fmt.Sprintf(" %c", fonts.Warning))
-						imgui.PopStyleColor()
-						imguiTooltip(func() {
-							imgui.Text(src.UnsupportedOptimisation)
-							imgui.Text("illegal access analysis may be misleading")
-						}, true)
-						imgui.SameLineV(0, 20)
-					}
 				})
 
 				imgui.Checkbox("Show Source in Tooltip", &win.showSrc)
-			})
-		} else {
-			win.optionsHeight = 0.0
-		}
+			} else {
+				imgui.Text("no source available")
+			}
+
+			if hasStackCollision {
+				imgui.SameLineV(0, 20)
+				imgui.BeginGroup()
+				imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.Warning)
+				imgui.AlignTextToFramePadding()
+				imgui.Text(fmt.Sprintf(" %c", fonts.Warning))
+				imgui.PopStyleColor()
+				imgui.EndGroup()
+				imgui.SameLine()
+				imgui.Text("Stack collision detected")
+				imguiTooltip(func() {
+					imgui.Text("Memory access is unreliable after a stack collision. Illegal")
+					imgui.Text("accesses are no longer being logged.")
+				}, true)
+			}
+		})
 	})
 }

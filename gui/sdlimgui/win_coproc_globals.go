@@ -162,7 +162,7 @@ func (win *winCoProcGlobals) draw() {
 			flgs |= imgui.TableFlagsNoHostExtendX
 			flgs |= imgui.TableFlagsResizable
 
-			imgui.BeginTableV("##globalsTable", numColumns, flgs, imgui.Vec2{Y: imgui.ContentRegionAvail().Y - win.optionsHeight}, 0.0)
+			imgui.BeginTableV("##globalsTable", numColumns, flgs, imgui.Vec2{Y: imguiRemainingWinHeight() - win.optionsHeight}, 0.0)
 
 			// setup columns. the labelling column 2 depends on whether the coprocessor
 			// development instance has source available to it

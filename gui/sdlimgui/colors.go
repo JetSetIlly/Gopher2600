@@ -92,24 +92,25 @@ type imguiColors struct {
 	DisasmBreakAddress imgui.Vec4
 
 	// coprocessor source (and related) windows
-	CoProcSourceSelected       imgui.Vec4
-	CoProcSourceHover          imgui.Vec4
-	CoProcSourceLineNumber     imgui.Vec4
-	CoProcSourceLoad           imgui.Vec4
-	CoProcSourceAvgLoad        imgui.Vec4
-	CoProcSourceMaxLoad        imgui.Vec4
-	CoProcSourceBug            imgui.Vec4
-	CoProcSourceDisasm         imgui.Vec4
-	CoProcSourceDisasmFade     imgui.Vec4
-	CoProcSourceComment        imgui.Vec4
-	CoProcSourceStringLiteral  imgui.Vec4
-	CoProcIllegalAccessRead    imgui.Vec4
-	CoProcIllegalAccessWrite   imgui.Vec4
-	CoProcIllegalAccessAddress imgui.Vec4
-	CoProcVariablesType        imgui.Vec4
-	CoProcVariablesTypeSize    imgui.Vec4
-	CoProcVariablesAddress     imgui.Vec4
-	CoProcVariablesNotes       imgui.Vec4
+	CoProcSourceSelected         imgui.Vec4
+	CoProcSourceHover            imgui.Vec4
+	CoProcSourceLineNumber       imgui.Vec4
+	CoProcSourceLoad             imgui.Vec4
+	CoProcSourceAvgLoad          imgui.Vec4
+	CoProcSourceMaxLoad          imgui.Vec4
+	CoProcSourceBug              imgui.Vec4
+	CoProcSourceDisasm           imgui.Vec4
+	CoProcSourceDisasmFade       imgui.Vec4
+	CoProcSourceComment          imgui.Vec4
+	CoProcSourceStringLiteral    imgui.Vec4
+	CoProcIllegalAccessAddressPC imgui.Vec4
+	CoProcIllegalAccessAddress   imgui.Vec4
+	CoProcIllegalAccessFrequency imgui.Vec4
+	CoProcIllegalAccessNotes     imgui.Vec4
+	CoProcVariablesType          imgui.Vec4
+	CoProcVariablesTypeSize      imgui.Vec4
+	CoProcVariablesAddress       imgui.Vec4
+	CoProcVariablesNotes         imgui.Vec4
 
 	// coprocessor last execution
 	CoProcMAM0               imgui.Vec4
@@ -270,24 +271,25 @@ func newColors() *imguiColors {
 		DisasmBreakAddress: imgui.Vec4{0.9, 0.4, 0.4, 1.0},
 
 		// coprocessor source (and related) windows
-		CoProcSourceSelected:       imgui.Vec4{1.0, 1.0, 1.0, 0.1},
-		CoProcSourceHover:          imgui.Vec4{0.5, 0.5, 0.5, 0.1},
-		CoProcSourceLineNumber:     imgui.Vec4{0.5, 0.8, 0.3, 1.0},
-		CoProcSourceLoad:           imgui.Vec4{0.9, 0.5, 0.5, 1.0},
-		CoProcSourceAvgLoad:        imgui.Vec4{0.6, 0.6, 0.9, 1.0},
-		CoProcSourceMaxLoad:        imgui.Vec4{0.6, 0.9, 0.9, 1.0},
-		CoProcSourceBug:            imgui.Vec4{0.5, 0.5, 0.8, 1.0},
-		CoProcSourceDisasm:         imgui.Vec4{1.0, 1.0, 1.0, 1.0},
-		CoProcSourceDisasmFade:     imgui.Vec4{0.6, 0.6, 0.6, 1.0},
-		CoProcSourceComment:        imgui.Vec4{0.4, 0.4, 0.6, 1.0},
-		CoProcSourceStringLiteral:  imgui.Vec4{0.4, 0.6, 0.6, 1.0},
-		CoProcIllegalAccessRead:    imgui.Vec4{0.8, 0.3, 0.8, 1.0},
-		CoProcIllegalAccessWrite:   imgui.Vec4{0.8, 0.5, 0.4, 1.0},
-		CoProcIllegalAccessAddress: imgui.Vec4{0.5, 0.5, 0.8, 1.0},
-		CoProcVariablesType:        imgui.Vec4{0.8, 0.6, 0.8, 1.0},
-		CoProcVariablesTypeSize:    imgui.Vec4{0.8, 0.6, 0.6, 1.0},
-		CoProcVariablesAddress:     imgui.Vec4{0.8, 0.4, 0.4, 1.0},
-		CoProcVariablesNotes:       imgui.Vec4{0.8, 0.8, 0.8, 1.0},
+		CoProcSourceSelected:         imgui.Vec4{1.0, 1.0, 1.0, 0.1},
+		CoProcSourceHover:            imgui.Vec4{0.5, 0.5, 0.5, 0.1},
+		CoProcSourceLineNumber:       imgui.Vec4{0.5, 0.8, 0.3, 1.0},
+		CoProcSourceLoad:             imgui.Vec4{0.9, 0.5, 0.5, 1.0},
+		CoProcSourceAvgLoad:          imgui.Vec4{0.6, 0.6, 0.9, 1.0},
+		CoProcSourceMaxLoad:          imgui.Vec4{0.6, 0.9, 0.9, 1.0},
+		CoProcSourceBug:              imgui.Vec4{0.5, 0.5, 0.8, 1.0},
+		CoProcSourceDisasm:           imgui.Vec4{1.0, 1.0, 1.0, 1.0},
+		CoProcSourceDisasmFade:       imgui.Vec4{0.6, 0.6, 0.6, 1.0},
+		CoProcSourceComment:          imgui.Vec4{0.4, 0.4, 0.6, 1.0},
+		CoProcSourceStringLiteral:    imgui.Vec4{0.4, 0.6, 0.6, 1.0},
+		CoProcIllegalAccessAddressPC: imgui.Vec4{0.8, 0.4, 0.4, 1.0},
+		CoProcIllegalAccessAddress:   imgui.Vec4{0.5, 0.5, 0.8, 1.0},
+		CoProcIllegalAccessFrequency: imgui.Vec4{0.7, 0.7, 0.7, 1.0},
+		CoProcIllegalAccessNotes:     imgui.Vec4{0.7, 0.7, 0.7, 1.0},
+		CoProcVariablesType:          imgui.Vec4{0.8, 0.6, 0.8, 1.0},
+		CoProcVariablesTypeSize:      imgui.Vec4{0.8, 0.6, 0.6, 1.0},
+		CoProcVariablesAddress:       imgui.Vec4{0.8, 0.4, 0.4, 1.0},
+		CoProcVariablesNotes:         imgui.Vec4{0.8, 0.8, 0.8, 1.0},
 
 		// coprocessor disassembly
 		CoProcMAM0:               imgui.Vec4{0.6, 0.3, 0.3, 1.0},
