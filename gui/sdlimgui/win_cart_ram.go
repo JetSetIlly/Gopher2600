@@ -72,8 +72,8 @@ func (win *winCartRAM) draw() {
 	comp := win.img.lz.Rewind.Comparison.Mem.Cart.GetRAMbus().GetRAM()
 
 	imgui.SetNextWindowPosV(imgui.Vec2{533, 430}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
-	imgui.SetNextWindowSizeV(imgui.Vec2{469, 271}, imgui.ConditionFirstUseEver)
-	imgui.SetNextWindowSizeConstraints(imgui.Vec2{469, 271}, imgui.Vec2{469, 1000})
+	imgui.SetNextWindowSizeV(imgui.Vec2{478, 271}, imgui.ConditionFirstUseEver)
+	imgui.SetNextWindowSizeConstraints(imgui.Vec2{478, 271}, imgui.Vec2{529, 1000})
 
 	title := fmt.Sprintf("%s %s", win.img.lz.Cart.ID, winCartRAMID)
 	imgui.BeginV(title, &win.open, imgui.WindowFlagsNone)
@@ -83,7 +83,7 @@ func (win *winCartRAM) draw() {
 		current := win.img.lz.Cart.RAM[bank]
 		diff := comp[bank]
 		if imgui.BeginTabItem(current.Label) {
-			imgui.BeginChildV("scrollable", imgui.Vec2{X: 0, Y: imguiRemainingWinHeight() - win.statusHeight}, false, 0)
+			imgui.BeginChildV("cartram", imgui.Vec2{X: 0, Y: imguiRemainingWinHeight() - win.statusHeight}, false, 0)
 
 			// show cartridge origin for mapped RAM banks
 			origin := current.Origin
@@ -117,7 +117,7 @@ func (win *winCartRAM) draw() {
 				popColor = 0
 
 				dl := imgui.WindowDrawList()
-				addr := memorymap.OriginRAM + offset
+				addr := memorymap.OriginCart + offset
 				read, okr := win.img.dbg.Disasm.Sym.GetSymbol(addr, true)
 				write, okw := win.img.dbg.Disasm.Sym.GetSymbol(addr, false)
 				if okr || okw {
@@ -168,7 +168,7 @@ func (win *winCartRAM) draw() {
 				})
 			}
 
-			drawByteGrid(current.Data, origin, before, after, commit)
+			drawByteGrid("cartRamByteGrid", current.Data, origin, before, after, commit)
 			imgui.EndChild()
 
 			// status line

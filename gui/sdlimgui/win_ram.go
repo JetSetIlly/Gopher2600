@@ -154,7 +154,7 @@ func (win *winRAM) draw() {
 		})
 	}
 
-	drawByteGrid(win.img.lz.RAM.RAM, memorymap.OriginRAM, before, after, commit)
+	drawByteGrid("ramByteGrid", win.img.lz.RAM.RAM, memorymap.OriginRAM, before, after, commit)
 
 	imgui.End()
 }

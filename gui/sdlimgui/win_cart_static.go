@@ -59,8 +59,8 @@ func (win *winCartStatic) draw() {
 	}
 
 	imgui.SetNextWindowPosV(imgui.Vec2{117, 248}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
-	imgui.SetNextWindowSizeV(imgui.Vec2{473, 552}, imgui.ConditionFirstUseEver)
-	imgui.SetNextWindowSizeConstraints(imgui.Vec2{473, 300}, imgui.Vec2{473, 1000})
+	imgui.SetNextWindowSizeV(imgui.Vec2{468, 552}, imgui.ConditionFirstUseEver)
+	imgui.SetNextWindowSizeConstraints(imgui.Vec2{468, 271}, imgui.Vec2{529, 1000})
 
 	title := fmt.Sprintf("%s %s", win.img.lz.Cart.ID, winCartStaticID)
 	imgui.BeginV(title, &win.open, imgui.WindowFlagsNone)
@@ -77,7 +77,7 @@ func (win *winCartStatic) draw() {
 		}
 
 		if imgui.BeginTabItemV(seg.Name, nil, 0) {
-			imgui.BeginChildV("scrollable", imgui.Vec2{X: 0, Y: imguiRemainingWinHeight()}, false, 0)
+			imgui.BeginChildV("cartstatic", imgui.Vec2{X: 0, Y: imguiRemainingWinHeight()}, false, 0)
 
 			currData, ok := win.img.lz.Cart.Static.Reference(seg.Name)
 
@@ -88,7 +88,7 @@ func (win *winCartStatic) draw() {
 					// PushRawEvent() below
 					segname := seg.Name
 
-					drawByteGridSimple(currData, compData, win.img.cols.ValueDiff, 0,
+					drawByteGridSimple("cartStaticByteGrid", currData, compData, win.img.cols.ValueDiff, 0,
 						func(addr uint16, data uint8) {
 							win.img.dbg.PushRawEvent(func() {
 								idx := int(addr)

@@ -61,12 +61,14 @@ func (win *winSaveKeyEEPROM) draw() {
 	}
 
 	imgui.SetNextWindowPosV(imgui.Vec2{469, 285}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
-	imgui.SetNextWindowSizeV(imgui.Vec2{394, 356}, imgui.ConditionFirstUseEver)
+	imgui.SetNextWindowSizeV(imgui.Vec2{478, 356}, imgui.ConditionFirstUseEver)
+	imgui.SetNextWindowSizeConstraints(imgui.Vec2{478, 271}, imgui.Vec2{529, 1000})
+
 	imgui.BeginV(win.id(), &win.open, imgui.WindowFlagsNone)
 
 	imgui.BeginChildV("eepromData", imgui.Vec2{X: 0, Y: imguiRemainingWinHeight() - win.statusHeight}, false, 0)
 
-	drawByteGridSimple(win.img.lz.SaveKey.EEPROMdata, win.img.lz.SaveKey.EEPROMdiskData, win.img.cols.ValueDiff, 0x00,
+	drawByteGridSimple("eepromByteGrid", win.img.lz.SaveKey.EEPROMdata, win.img.lz.SaveKey.EEPROMdiskData, win.img.cols.ValueDiff, 0x00,
 		func(addr uint16, data uint8) {
 			win.img.dbg.PushRawEvent(func() {
 				if sk, ok := win.img.vcs.RIOT.Ports.RightPlayer.(*savekey.SaveKey); ok {
