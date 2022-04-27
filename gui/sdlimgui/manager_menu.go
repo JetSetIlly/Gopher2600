@@ -218,11 +218,11 @@ func (wm *manager) drawMenuEntry(m menuEntry) {
 	}
 
 	// the window that the menu entry refers to
-	w := wm.windows[m.windowID]
+	w := wm.debuggerWindows[m.windowID]
 
 	// menu entry label. we'll decorate this with an "window open" indicator
 	label := m.label
-	if w.isOpen() {
+	if w.debuggerIsOpen() {
 		// checkmark is unicode middle dot - code 00b7
 		label = fmt.Sprintf("· %s", label)
 	} else {
@@ -231,10 +231,10 @@ func (wm *manager) drawMenuEntry(m menuEntry) {
 
 	// window menu entries are toggleable
 	if imgui.Selectable(label) {
-		if w.isOpen() {
-			w.setOpen(false)
+		if w.debuggerIsOpen() {
+			w.debuggerSetOpen(false)
 		} else {
-			w.setOpen(true)
+			w.debuggerSetOpen(true)
 		}
 	}
 }

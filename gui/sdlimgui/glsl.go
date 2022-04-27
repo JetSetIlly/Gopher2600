@@ -178,7 +178,7 @@ func (rnd *glsl) render() {
 					shader = rnd.shaders[overlayShaderID]
 				case rnd.img.playScr.screenTexture:
 					shader = rnd.shaders[playscrShaderID]
-				case rnd.img.wm.selectROM.thmbTexture:
+				case rnd.img.wm.windows[winSelectROMID].(*winSelectROM).thmbTexture:
 					shader = rnd.shaders[colorShaderID]
 				case rnd.img.wm.timeline.thmbTexture:
 					shader = rnd.shaders[colorShaderID]

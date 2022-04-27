@@ -30,8 +30,9 @@ import (
 const winControlID = "Control"
 
 type winControl struct {
-	img  *SdlImgui
-	open bool
+	debuggerWin
+
+	img *SdlImgui
 
 	repeatID     string
 	repeatTime   time.Time
@@ -50,14 +51,6 @@ func (win *winControl) init() {
 
 func (win *winControl) id() string {
 	return winControlID
-}
-
-func (win *winControl) isOpen() bool {
-	return win.open
-}
-
-func (win *winControl) setOpen(open bool) {
-	win.open = open
 }
 
 func (win *winControl) repeatButton(id string, f func()) {
@@ -91,14 +84,21 @@ func (win *winControl) repeatButtonV(id string, f func(), fill imgui.Vec2) {
 	}
 }
 
-func (win *winControl) draw() {
-	if !win.open {
+func (win *winControl) debuggerDraw() {
+	if !win.debuggerOpen {
 		return
 	}
 
 	imgui.SetNextWindowPosV(imgui.Vec2{699, 45}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
-	imgui.BeginV(win.id(), &win.open, imgui.WindowFlagsAlwaysAutoResize)
 
+	if imgui.BeginV(win.debuggerID(win.id()), &win.debuggerOpen, imgui.WindowFlagsAlwaysAutoResize) {
+		win.draw()
+	}
+
+	imgui.End()
+}
+
+func (win *winControl) draw() {
 	// running
 	win.drawRunButton()
 
@@ -115,8 +115,6 @@ func (win *winControl) draw() {
 	imguiSeparator()
 	imgui.Spacing()
 	win.drawMouseCapture()
-
-	imgui.End()
 }
 
 func (win *winControl) drawRunButton() {

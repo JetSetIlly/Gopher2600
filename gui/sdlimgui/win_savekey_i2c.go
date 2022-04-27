@@ -28,8 +28,9 @@ const winSaveKeyI2CID = "SaveKey I2C"
 const winSaveKeyI2CMenu = "I2C"
 
 type winSaveKeyI2C struct {
-	img  *SdlImgui
-	open bool
+	debuggerWin
+
+	img *SdlImgui
 }
 
 func newWinSaveKeyI2C(img *SdlImgui) (window, error) {
@@ -47,16 +48,8 @@ func (win *winSaveKeyI2C) id() string {
 	return winSaveKeyI2CID
 }
 
-func (win *winSaveKeyI2C) isOpen() bool {
-	return win.open
-}
-
-func (win *winSaveKeyI2C) setOpen(open bool) {
-	win.open = open
-}
-
-func (win *winSaveKeyI2C) draw() {
-	if !win.open {
+func (win *winSaveKeyI2C) debuggerDraw() {
+	if !win.debuggerOpen {
 		return
 	}
 
@@ -65,8 +58,14 @@ func (win *winSaveKeyI2C) draw() {
 	}
 
 	imgui.SetNextWindowPosV(imgui.Vec2{633, 358}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
-	imgui.BeginV(win.id(), &win.open, imgui.WindowFlagsAlwaysAutoResize)
+	if imgui.BeginV(win.debuggerID(win.id()), &win.debuggerOpen, imgui.WindowFlagsAlwaysAutoResize) {
+		win.draw()
+	}
 
+	imgui.End()
+}
+
+func (win *winSaveKeyI2C) draw() {
 	win.drawStatus()
 
 	imguiSeparator()
@@ -81,8 +80,6 @@ func (win *winSaveKeyI2C) draw() {
 	imgui.Spacing()
 
 	win.drawOscilloscope()
-
-	imgui.End()
 }
 
 func (win *winSaveKeyI2C) drawOscilloscope() {

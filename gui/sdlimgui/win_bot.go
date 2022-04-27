@@ -32,8 +32,9 @@ import (
 const winBotID = "Bot"
 
 type winBot struct {
-	img  *SdlImgui
-	open bool
+	playmodeWin
+
+	img *SdlImgui
 
 	// the location at which the preview image is being drawn
 	screenOrigin imgui.Vec2
@@ -91,10 +92,6 @@ func (win winBot) id() string {
 	return winBotID
 }
 
-func (win *winBot) isOpen() bool {
-	return win.open
-}
-
 // start bot session will effectively end a bot session if feedback channels are nil
 func (win *winBot) startBotSession(feedback *bots.Feedback) {
 	win.feedback = feedback
@@ -114,16 +111,7 @@ func (win *winBot) startBotSession(feedback *bots.Feedback) {
 	win.diagnostics = win.diagnostics[:]
 }
 
-// do not open if no bot is defined
-func (win *winBot) setOpen(open bool) {
-	if win.feedback == nil {
-		win.open = false
-		return
-	}
-	win.open = open
-}
-
-func (win *winBot) draw() {
+func (win *winBot) playmodeDraw() {
 	// no bot feedback instance
 	if win.feedback == nil {
 		return
@@ -159,7 +147,7 @@ func (win *winBot) draw() {
 		}
 	}
 
-	if !win.open {
+	if !win.playmodeOpen {
 		return
 	}
 
@@ -167,37 +155,42 @@ func (win *winBot) draw() {
 	imgui.SetNextWindowSizeV(imgui.Vec2{500, 525}, imgui.ConditionFirstUseEver)
 	imgui.SetNextWindowSizeConstraints(imgui.Vec2{500, 500}, imgui.Vec2{750, 800})
 
-	if imgui.BeginV(win.id(), &win.open, imgui.WindowFlagsNone) {
-		// add padding around screen image
-		padding := imgui.Vec2{X: (imgui.ContentRegionAvail().X - botImageWidth) / 2, Y: 0}
-		imgui.SetCursorPos(imgui.CursorPos().Plus(padding))
+	if imgui.BeginV(win.playmodeID(win.id()), &win.playmodeOpen, imgui.WindowFlagsNone) {
+		win.draw()
+	}
 
-		win.screenOrigin = imgui.CursorScreenPos()
-		imgui.Image(imgui.TextureID(win.obsTexture), imgui.Vec2{botImageWidth, botImageHeight})
-		imgui.SetCursorScreenPos(win.screenOrigin)
-		win.drawMouseLayer()
+	imgui.End()
+}
 
-		if imgui.BeginChildV("##log", imgui.Vec2{}, true, imgui.WindowFlagsAlwaysAutoResize) {
-			var clipper imgui.ListClipper
-			clipper.Begin(len(win.diagnostics))
-			for clipper.Step() {
-				for i := clipper.DisplayStart; i < clipper.DisplayEnd; i++ {
-					imgui.Text(win.diagnostics[i].Group)
-					for _, s := range strings.Split(win.diagnostics[i].Diagnostic, "\n") {
-						imgui.SameLine()
-						imgui.Text(s)
-					}
+func (win *winBot) draw() {
+	// add padding around screen image
+	padding := imgui.Vec2{X: (imgui.ContentRegionAvail().X - botImageWidth) / 2, Y: 0}
+	imgui.SetCursorPos(imgui.CursorPos().Plus(padding))
+
+	win.screenOrigin = imgui.CursorScreenPos()
+	imgui.Image(imgui.TextureID(win.obsTexture), imgui.Vec2{botImageWidth, botImageHeight})
+	imgui.SetCursorScreenPos(win.screenOrigin)
+	win.drawMouseLayer()
+
+	if imgui.BeginChildV("##log", imgui.Vec2{}, true, imgui.WindowFlagsAlwaysAutoResize) {
+		var clipper imgui.ListClipper
+		clipper.Begin(len(win.diagnostics))
+		for clipper.Step() {
+			for i := clipper.DisplayStart; i < clipper.DisplayEnd; i++ {
+				imgui.Text(win.diagnostics[i].Group)
+				for _, s := range strings.Split(win.diagnostics[i].Diagnostic, "\n") {
+					imgui.SameLine()
+					imgui.Text(s)
 				}
 			}
-
-			if win.dirty {
-				imgui.SetScrollHereY(0.0)
-				win.dirty = false
-			}
-			imgui.EndChild()
 		}
+
+		if win.dirty {
+			imgui.SetScrollHereY(0.0)
+			win.dirty = false
+		}
+		imgui.EndChild()
 	}
-	imgui.End()
 }
 
 func (win *winBot) drawMouseLayer() {

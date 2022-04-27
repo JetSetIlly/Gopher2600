@@ -26,8 +26,8 @@ import (
 const winTimerID = "Timer"
 
 type winTimer struct {
-	img  *SdlImgui
-	open bool
+	debuggerWin
+	img *SdlImgui
 }
 
 func newWinTimer(img *SdlImgui) (window, error) {
@@ -47,22 +47,20 @@ func (win *winTimer) id() string {
 	return winTimerID
 }
 
-func (win *winTimer) isOpen() bool {
-	return win.open
-}
-
-func (win *winTimer) setOpen(open bool) {
-	win.open = open
-}
-
-func (win *winTimer) draw() {
-	if !win.open {
+func (win *winTimer) debuggerDraw() {
+	if !win.debuggerOpen {
 		return
 	}
 
 	imgui.SetNextWindowPosV(imgui.Vec2{825, 617}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
-	imgui.BeginV(win.id(), &win.open, imgui.WindowFlagsAlwaysAutoResize)
+	if imgui.BeginV(win.debuggerID(win.id()), &win.debuggerOpen, imgui.WindowFlagsAlwaysAutoResize) {
+		win.draw()
+	}
 
+	imgui.End()
+}
+
+func (win *winTimer) draw() {
 	if imgui.BeginComboV("##divider", win.img.lz.Timer.Divider.String(), imgui.ComboFlagsNone) {
 		for _, s := range dividerList {
 			if imgui.Selectable(s) {
@@ -112,6 +110,4 @@ func (win *winTimer) draw() {
 				win.img.vcs.RIOT.Timer.PokeField("timint", v)
 			})
 		})
-
-	imgui.End()
 }

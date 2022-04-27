@@ -33,8 +33,9 @@ const winCoProcDisasmID = "Coprocessor Disassembly"
 const winCoProcDisasmMenu = "Disassembly"
 
 type winCoProcDisasm struct {
-	img  *SdlImgui
-	open bool
+	debuggerWin
+
+	img *SdlImgui
 
 	summaryHeight float32
 
@@ -56,16 +57,8 @@ func (win *winCoProcDisasm) id() string {
 	return winCoProcDisasmID
 }
 
-func (win *winCoProcDisasm) isOpen() bool {
-	return win.open
-}
-
-func (win *winCoProcDisasm) setOpen(open bool) {
-	win.open = open
-}
-
-func (win *winCoProcDisasm) draw() {
-	if !win.open {
+func (win *winCoProcDisasm) debuggerDraw() {
+	if !win.debuggerOpen {
 		return
 	}
 
@@ -78,9 +71,14 @@ func (win *winCoProcDisasm) draw() {
 	imgui.SetNextWindowSizeConstraints(imgui.Vec2{551, 300}, imgui.Vec2{800, 1000})
 
 	title := fmt.Sprintf("%s %s", win.img.lz.Cart.CoProcID, winCoProcDisasmID)
-	imgui.BeginV(title, &win.open, imgui.WindowFlagsNone)
-	defer imgui.End()
+	if imgui.BeginV(win.debuggerID(title), &win.debuggerOpen, imgui.WindowFlagsNone) {
+		win.draw()
+	}
 
+	imgui.End()
+}
+
+func (win *winCoProcDisasm) draw() {
 	height := imguiRemainingWinHeight() - win.optionsHeight
 	isEnabled := win.img.dbg.CoProcDisasm.IsEnabled()
 

@@ -26,8 +26,8 @@ import (
 const winRAMID = "RAM"
 
 type winRAM struct {
-	img  *SdlImgui
-	open bool
+	debuggerWin
+	img *SdlImgui
 }
 
 func newWinRAM(img *SdlImgui) (window, error) {
@@ -42,22 +42,20 @@ func (win *winRAM) id() string {
 	return winRAMID
 }
 
-func (win *winRAM) isOpen() bool {
-	return win.open
-}
-
-func (win *winRAM) setOpen(open bool) {
-	win.open = open
-}
-
-func (win *winRAM) draw() {
-	if !win.open {
+func (win *winRAM) debuggerDraw() {
+	if !win.debuggerOpen {
 		return
 	}
 
 	imgui.SetNextWindowPosV(imgui.Vec2{1081, 607}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
-	imgui.BeginV(win.id(), &win.open, imgui.WindowFlagsAlwaysAutoResize)
+	if imgui.BeginV(win.debuggerID(win.id()), &win.debuggerOpen, imgui.WindowFlagsAlwaysAutoResize) {
+		win.draw()
+	}
 
+	imgui.End()
+}
+
+func (win *winRAM) draw() {
 	var diff []uint8
 	if win.img.lz.Rewind.Comparison != nil {
 		diff = win.img.lz.Rewind.Comparison.Mem.RAM.RAM
@@ -155,6 +153,4 @@ func (win *winRAM) draw() {
 	}
 
 	drawByteGrid("ramByteGrid", win.img.lz.RAM.RAM, memorymap.OriginRAM, before, after, commit)
-
-	imgui.End()
 }

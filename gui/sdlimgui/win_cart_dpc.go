@@ -25,8 +25,9 @@ import (
 const winDPCregistersID = "DPC Registers"
 
 type winDPCregisters struct {
-	img  *SdlImgui
-	open bool
+	debuggerWin
+
+	img *SdlImgui
 }
 
 func newWinDPCregisters(img *SdlImgui) (window, error) {
@@ -44,27 +45,27 @@ func (win *winDPCregisters) id() string {
 	return winDPCregistersID
 }
 
-func (win *winDPCregisters) isOpen() bool {
-	return win.open
-}
-
-func (win *winDPCregisters) setOpen(open bool) {
-	win.open = open
-}
-
-func (win *winDPCregisters) draw() {
-	if !win.open {
+func (win *winDPCregisters) debuggerDraw() {
+	if !win.debuggerOpen {
 		return
 	}
 
 	// do not open window if there is no valid cartridge debug bus available
-	r, ok := win.img.lz.Cart.Registers.(cartridge.DPCregisters)
+	_, ok := win.img.lz.Cart.Registers.(cartridge.DPCregisters)
 	if !win.img.lz.Cart.HasRegistersBus || !ok {
 		return
 	}
 
 	imgui.SetNextWindowPosV(imgui.Vec2{255, 153}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
-	imgui.BeginV(win.id(), &win.open, imgui.WindowFlagsAlwaysAutoResize)
+	if imgui.BeginV(win.debuggerID(win.id()), &win.debuggerOpen, imgui.WindowFlagsAlwaysAutoResize) {
+		win.draw()
+	}
+
+	imgui.End()
+}
+
+func (win *winDPCregisters) draw() {
+	r := win.img.lz.Cart.Registers.(cartridge.DPCregisters)
 
 	// random number generator value
 	rng := fmt.Sprintf("%02x", r.RNG)
@@ -141,6 +142,4 @@ func (win *winDPCregisters) draw() {
 			}
 		}
 	}
-
-	imgui.End()
 }

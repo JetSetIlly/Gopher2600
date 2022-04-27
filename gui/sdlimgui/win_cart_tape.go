@@ -25,8 +25,9 @@ import (
 const winCartTapeID = "Cassette Tape"
 
 type winCartTape struct {
-	img  *SdlImgui
-	open bool
+	debuggerWin
+
+	img *SdlImgui
 }
 
 func newWinCartTape(img *SdlImgui) (window, error) {
@@ -44,16 +45,8 @@ func (win *winCartTape) id() string {
 	return winCartTapeID
 }
 
-func (win *winCartTape) isOpen() bool {
-	return win.open
-}
-
-func (win *winCartTape) setOpen(open bool) {
-	win.open = open
-}
-
-func (win *winCartTape) draw() {
-	if !win.open {
+func (win *winCartTape) debuggerDraw() {
+	if !win.debuggerOpen {
 		return
 	}
 
@@ -63,9 +56,14 @@ func (win *winCartTape) draw() {
 
 	imgui.SetNextWindowPosV(imgui.Vec2{539, 168}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
 
-	title := fmt.Sprintf("%s %s", win.img.lz.Cart.ID, winCartTapeID)
-	imgui.BeginV(title, &win.open, imgui.WindowFlagsAlwaysAutoResize)
+	if imgui.BeginV(win.debuggerID(win.id()), &win.debuggerOpen, imgui.WindowFlagsAlwaysAutoResize) {
+		win.draw()
+	}
 
+	imgui.End()
+}
+
+func (win *winCartTape) draw() {
 	// counter information
 	imguiLabel("Counter")
 	counter := fmt.Sprintf("%8d", win.img.lz.Cart.TapeState.Counter)
@@ -115,6 +113,4 @@ func (win *winCartTape) draw() {
 			win.img.vcs.Mem.Cart.GetTapeBus().Rewind()
 		})
 	}
-
-	imgui.End()
 }

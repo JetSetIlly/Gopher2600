@@ -34,8 +34,9 @@ const winTermID = "Terminal"
 const outputMaxSize = 512
 
 type winTerm struct {
-	img  *SdlImgui
-	open bool
+	debuggerWin
+
+	img *SdlImgui
 
 	term *term
 
@@ -72,15 +73,7 @@ func (win *winTerm) id() string {
 	return winTermID
 }
 
-func (win *winTerm) isOpen() bool {
-	return win.open
-}
-
-func (win *winTerm) setOpen(open bool) {
-	win.open = open
-}
-
-func (win *winTerm) draw() {
+func (win *winTerm) debuggerDraw() {
 	done := false
 	for !done {
 		// check for channel activity before we do anything
@@ -97,7 +90,7 @@ func (win *winTerm) draw() {
 			}
 
 			if win.img.prefs.openOnError.Get().(bool) && t.style == terminal.StyleError {
-				win.setOpen(true)
+				win.debuggerSetOpen(true)
 			}
 
 			win.moreOutput = true
@@ -107,7 +100,7 @@ func (win *winTerm) draw() {
 	}
 
 	// window open check must happen *after* channel polling
-	if !win.open {
+	if !win.debuggerOpen {
 		return
 	}
 
@@ -116,7 +109,7 @@ func (win *winTerm) draw() {
 
 	imgui.PushStyleColor(imgui.StyleColorWindowBg, win.img.cols.TermBackground)
 	imgui.PushStyleVarVec2(imgui.StyleVarFramePadding, imgui.Vec2{2, 2})
-	imgui.BeginV(win.id(), &win.open, imgui.WindowFlagsNone)
+	imgui.BeginV(win.debuggerID(win.id()), &win.debuggerOpen, imgui.WindowFlagsNone)
 	imgui.PopStyleVar()
 	imgui.PopStyleColor()
 

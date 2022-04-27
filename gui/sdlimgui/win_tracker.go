@@ -28,8 +28,10 @@ import (
 const winTrackerID = "Audio Tracker"
 
 type winTracker struct {
-	img  *SdlImgui
-	open bool
+	playmodeWin
+	debuggerWin
+
+	img *SdlImgui
 
 	contextMenu coords.TelevisionCoords
 
@@ -60,18 +62,8 @@ func (win *winTracker) id() string {
 	return winTrackerID
 }
 
-func (win *winTracker) isOpen() bool {
-	return win.open
-}
-
-func (win *winTracker) setOpen(open bool) {
-	win.open = open
-}
-
-const trackerContextMenuID = "trackerContextMenu"
-
-func (win *winTracker) draw() {
-	if !win.open {
+func (win *winTracker) playmodeDraw() {
+	if !win.playmodeIsOpen() {
 		return
 	}
 
@@ -79,9 +71,32 @@ func (win *winTracker) draw() {
 	imgui.SetNextWindowSizeV(imgui.Vec2{658, 469}, imgui.ConditionFirstUseEver)
 	imgui.SetNextWindowSizeConstraints(imgui.Vec2{-1, 200}, imgui.Vec2{-1, 1000})
 
-	imgui.BeginV(win.id(), &win.open, imgui.WindowFlagsNone)
-	defer imgui.End()
+	if imgui.BeginV(win.playmodeID(win.id()), &win.playmodeOpen, imgui.WindowFlagsNone) {
+		win.draw()
+	}
 
+	imgui.End()
+}
+
+const trackerContextMenuID = "trackerContextMenu"
+
+func (win *winTracker) debuggerDraw() {
+	if !win.debuggerIsOpen() {
+		return
+	}
+
+	imgui.SetNextWindowPosV(imgui.Vec2{494, 274}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
+	imgui.SetNextWindowSizeV(imgui.Vec2{658, 469}, imgui.ConditionFirstUseEver)
+	imgui.SetNextWindowSizeConstraints(imgui.Vec2{-1, 200}, imgui.Vec2{-1, 1000})
+
+	if imgui.BeginV(win.debuggerID(win.id()), &win.debuggerOpen, imgui.WindowFlagsNone) {
+		win.draw()
+	}
+
+	imgui.End()
+}
+
+func (win *winTracker) draw() {
 	imgui.PushStyleColor(imgui.StyleColorHeaderHovered, win.img.cols.DisasmHover)
 	imgui.PushStyleColor(imgui.StyleColorHeaderActive, win.img.cols.DisasmHover)
 	defer imgui.PopStyleColorV(2)

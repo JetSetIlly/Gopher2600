@@ -32,8 +32,9 @@ const winCoProcGlobalsID = "Coprocessor Global Variables"
 const winCoProcGlobalsMenu = "Globals"
 
 type winCoProcGlobals struct {
-	img  *SdlImgui
-	open bool
+	debuggerWin
+
+	img *SdlImgui
 
 	firstOpen bool
 
@@ -62,16 +63,8 @@ func (win *winCoProcGlobals) id() string {
 	return winCoProcGlobalsID
 }
 
-func (win *winCoProcGlobals) isOpen() bool {
-	return win.open
-}
-
-func (win *winCoProcGlobals) setOpen(open bool) {
-	win.open = open
-}
-
-func (win *winCoProcGlobals) draw() {
-	if !win.open {
+func (win *winCoProcGlobals) debuggerDraw() {
+	if !win.debuggerOpen {
 		return
 	}
 
@@ -84,129 +77,133 @@ func (win *winCoProcGlobals) draw() {
 	imgui.SetNextWindowSizeConstraints(imgui.Vec2{400, 300}, imgui.Vec2{700, 1000})
 
 	title := fmt.Sprintf("%s %s", win.img.lz.Cart.CoProcID, winCoProcGlobalsID)
-	if imgui.BeginV(title, &win.open, imgui.WindowFlagsNone) {
-		win.img.dbg.CoProcDev.BorrowSource(func(src *developer.Source) {
-			if src == nil {
-				imgui.Text("No source files available")
-				return
-			}
-
-			if len(src.Filenames) == 0 {
-				imgui.Text("No source files available")
-				return
-			}
-
-			thereAreGlobals := false
-			for _, fn := range src.Filenames {
-				if len(src.Files[fn].GlobalNames) > 0 {
-					thereAreGlobals = true
-				}
-			}
-			if !thereAreGlobals {
-				imgui.Text("No global variable in the source")
-				return
-			}
-
-			if win.firstOpen {
-				// assume source entry point is a function called "main"
-				if m, ok := src.Functions["main"]; ok {
-					win.selectedFile = m.DeclLine.File
-				} else {
-					imgui.Text("Can't find main() function")
-					return
-				}
-
-				win.firstOpen = false
-			}
-
-			if !win.showAllGlobals {
-				imgui.AlignTextToFramePadding()
-				imgui.Text("Filename")
-				imgui.SameLine()
-				imgui.PushItemWidth(imgui.ContentRegionAvail().X)
-				if imgui.BeginComboV("##selectedFile", win.selectedFile.ShortFilename, imgui.ComboFlagsHeightRegular) {
-					for _, fn := range src.Filenames {
-						// skip files that have no global variables
-						if len(src.Files[fn].GlobalNames) == 0 {
-							continue
-						}
-
-						if imgui.Selectable(src.Files[fn].ShortFilename) {
-							win.selectedFile = src.Files[fn]
-						}
-
-						// set scroll on the first frame that the combo is open
-						if !win.selectedFileComboOpen && fn == win.selectedFile.Filename {
-							imgui.SetScrollHereY(0.0)
-						}
-					}
-
-					imgui.EndCombo()
-
-					// note that combo is open *after* it has been drawn
-					win.selectedFileComboOpen = true
-				} else {
-					win.selectedFileComboOpen = false
-				}
-				imgui.PopItemWidth()
-
-				imgui.Spacing()
-			}
-
-			// global variable table for the selected file
-
-			const numColumns = 4
-
-			flgs := imgui.TableFlagsScrollY
-			flgs |= imgui.TableFlagsSizingStretchProp
-			flgs |= imgui.TableFlagsNoHostExtendX
-			flgs |= imgui.TableFlagsResizable
-
-			imgui.BeginTableV("##globalsTable", numColumns, flgs, imgui.Vec2{Y: imguiRemainingWinHeight() - win.optionsHeight}, 0.0)
-
-			// setup columns. the labelling column 2 depends on whether the coprocessor
-			// development instance has source available to it
-			width := imgui.ContentRegionAvail().X
-			imgui.TableSetupColumnV("Name", imgui.TableColumnFlagsNone, width*0.40, 0)
-			imgui.TableSetupColumnV("Type", imgui.TableColumnFlagsNone, width*0.20, 1)
-			imgui.TableSetupColumnV("Address", imgui.TableColumnFlagsNone, width*0.15, 2)
-			imgui.TableSetupColumnV("Value", imgui.TableColumnFlagsNone, width*0.20, 3)
-
-			imgui.TableSetupScrollFreeze(0, 1)
-			imgui.TableHeadersRow()
-
-			// the global list depends on the state fo the showAllGlobals state
-			var globalList []string
-			if win.showAllGlobals {
-				globalList = src.GlobalNames
-			} else {
-				globalList = win.selectedFile.GlobalNames
-			}
-
-			for _, name := range globalList {
-				// get variable from the correct globals list
-				var varb *developer.SourceVariable
-				if win.showAllGlobals {
-					varb = src.Globals[name]
-				} else {
-					varb = win.selectedFile.Globals[name]
-				}
-
-				win.drawVariable(src, varb, 0, 0)
-			}
-
-			imgui.EndTable()
-
-			win.optionsHeight = imguiMeasureHeight(func() {
-				imgui.Spacing()
-				imgui.Separator()
-				imgui.Spacing()
-				imgui.Checkbox("List all globals (in all files)", &win.showAllGlobals)
-			})
-		})
+	if imgui.BeginV(win.debuggerID(title), &win.debuggerOpen, imgui.WindowFlagsNone) {
+		win.draw()
 	}
 
 	imgui.End()
+}
+
+func (win *winCoProcGlobals) draw() {
+	win.img.dbg.CoProcDev.BorrowSource(func(src *developer.Source) {
+		if src == nil {
+			imgui.Text("No source files available")
+			return
+		}
+
+		if len(src.Filenames) == 0 {
+			imgui.Text("No source files available")
+			return
+		}
+
+		thereAreGlobals := false
+		for _, fn := range src.Filenames {
+			if len(src.Files[fn].GlobalNames) > 0 {
+				thereAreGlobals = true
+			}
+		}
+		if !thereAreGlobals {
+			imgui.Text("No global variable in the source")
+			return
+		}
+
+		if win.firstOpen {
+			// assume source entry point is a function called "main"
+			if m, ok := src.Functions["main"]; ok {
+				win.selectedFile = m.DeclLine.File
+			} else {
+				imgui.Text("Can't find main() function")
+				return
+			}
+
+			win.firstOpen = false
+		}
+
+		if !win.showAllGlobals {
+			imgui.AlignTextToFramePadding()
+			imgui.Text("Filename")
+			imgui.SameLine()
+			imgui.PushItemWidth(imgui.ContentRegionAvail().X)
+			if imgui.BeginComboV("##selectedFile", win.selectedFile.ShortFilename, imgui.ComboFlagsHeightRegular) {
+				for _, fn := range src.Filenames {
+					// skip files that have no global variables
+					if len(src.Files[fn].GlobalNames) == 0 {
+						continue
+					}
+
+					if imgui.Selectable(src.Files[fn].ShortFilename) {
+						win.selectedFile = src.Files[fn]
+					}
+
+					// set scroll on the first frame that the combo is open
+					if !win.selectedFileComboOpen && fn == win.selectedFile.Filename {
+						imgui.SetScrollHereY(0.0)
+					}
+				}
+
+				imgui.EndCombo()
+
+				// note that combo is open *after* it has been drawn
+				win.selectedFileComboOpen = true
+			} else {
+				win.selectedFileComboOpen = false
+			}
+			imgui.PopItemWidth()
+
+			imgui.Spacing()
+		}
+
+		// global variable table for the selected file
+
+		const numColumns = 4
+
+		flgs := imgui.TableFlagsScrollY
+		flgs |= imgui.TableFlagsSizingStretchProp
+		flgs |= imgui.TableFlagsNoHostExtendX
+		flgs |= imgui.TableFlagsResizable
+
+		imgui.BeginTableV("##globalsTable", numColumns, flgs, imgui.Vec2{Y: imguiRemainingWinHeight() - win.optionsHeight}, 0.0)
+
+		// setup columns. the labelling column 2 depends on whether the coprocessor
+		// development instance has source available to it
+		width := imgui.ContentRegionAvail().X
+		imgui.TableSetupColumnV("Name", imgui.TableColumnFlagsNone, width*0.40, 0)
+		imgui.TableSetupColumnV("Type", imgui.TableColumnFlagsNone, width*0.20, 1)
+		imgui.TableSetupColumnV("Address", imgui.TableColumnFlagsNone, width*0.15, 2)
+		imgui.TableSetupColumnV("Value", imgui.TableColumnFlagsNone, width*0.20, 3)
+
+		imgui.TableSetupScrollFreeze(0, 1)
+		imgui.TableHeadersRow()
+
+		// the global list depends on the state fo the showAllGlobals state
+		var globalList []string
+		if win.showAllGlobals {
+			globalList = src.GlobalNames
+		} else {
+			globalList = win.selectedFile.GlobalNames
+		}
+
+		for _, name := range globalList {
+			// get variable from the correct globals list
+			var varb *developer.SourceVariable
+			if win.showAllGlobals {
+				varb = src.Globals[name]
+			} else {
+				varb = win.selectedFile.Globals[name]
+			}
+
+			win.drawVariable(src, varb, 0, 0)
+		}
+
+		imgui.EndTable()
+
+		win.optionsHeight = imguiMeasureHeight(func() {
+			imgui.Spacing()
+			imgui.Separator()
+			imgui.Spacing()
+			imgui.Checkbox("List all globals (in all files)", &win.showAllGlobals)
+		})
+	})
 }
 
 func (win *winCoProcGlobals) drawVariable(src *developer.Source,

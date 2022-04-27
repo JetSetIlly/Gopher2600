@@ -24,8 +24,9 @@ import (
 const winCollisionsID = "Collisions"
 
 type winCollisions struct {
-	img  *SdlImgui
-	open bool
+	debuggerWin
+
+	img *SdlImgui
 }
 
 func newWinCollisions(img *SdlImgui) (window, error) {
@@ -43,23 +44,20 @@ func (win *winCollisions) id() string {
 	return winCollisionsID
 }
 
-func (win *winCollisions) isOpen() bool {
-	return win.open
-}
-
-func (win *winCollisions) setOpen(open bool) {
-	win.open = open
-}
-
-func (win *winCollisions) draw() {
-	if !win.open {
+func (win *winCollisions) debuggerDraw() {
+	if !win.debuggerOpen {
 		return
 	}
 
 	imgui.SetNextWindowPosV(imgui.Vec2{530, 455}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
-	imgui.BeginV(win.id(), &win.open, imgui.WindowFlagsAlwaysAutoResize)
-	defer imgui.End()
+	if imgui.BeginV(win.debuggerID(win.id()), &win.debuggerOpen, imgui.WindowFlagsAlwaysAutoResize) {
+		win.draw()
+	}
 
+	imgui.End()
+}
+
+func (win *winCollisions) draw() {
 	imguiLabel("CXM0P ")
 	drawRegister("##CXM0P", win.img.lz.Collisions.CXM0P, vcs.TIADrivenPins, win.img.cols.collisionBit,
 		func(v uint8) {

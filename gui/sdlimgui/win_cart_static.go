@@ -24,8 +24,9 @@ import (
 const winCartStaticID = "Static Areas"
 
 type winCartStatic struct {
-	img  *SdlImgui
-	open bool
+	debuggerWin
+
+	img *SdlImgui
 }
 
 func newWinCartStatic(img *SdlImgui) (window, error) {
@@ -41,16 +42,8 @@ func (win *winCartStatic) id() string {
 	return winCartStaticID
 }
 
-func (win *winCartStatic) isOpen() bool {
-	return win.open
-}
-
-func (win *winCartStatic) setOpen(open bool) {
-	win.open = open
-}
-
-func (win *winCartStatic) draw() {
-	if !win.open {
+func (win *winCartStatic) debuggerDraw() {
+	if !win.debuggerOpen {
 		return
 	}
 
@@ -63,8 +56,14 @@ func (win *winCartStatic) draw() {
 	imgui.SetNextWindowSizeConstraints(imgui.Vec2{468, 271}, imgui.Vec2{529, 1000})
 
 	title := fmt.Sprintf("%s %s", win.img.lz.Cart.ID, winCartStaticID)
-	imgui.BeginV(title, &win.open, imgui.WindowFlagsNone)
+	if imgui.BeginV(win.debuggerID(title), &win.debuggerOpen, imgui.WindowFlagsNone) {
+		win.draw()
+	}
 
+	imgui.End()
+}
+
+func (win *winCartStatic) draw() {
 	// get comparison data. assuming that there is such a thing and that it's
 	// safe to get StaticData from.
 	compStatic := win.img.lz.Rewind.Comparison.Mem.Cart.GetStaticBus().GetStatic()
@@ -104,6 +103,4 @@ func (win *winCartStatic) draw() {
 		}
 	}
 	imgui.EndTabBar()
-
-	imgui.End()
 }

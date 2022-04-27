@@ -40,8 +40,9 @@ type datastreamDragAndDrop struct {
 }
 
 type winCDFStreams struct {
-	img  *SdlImgui
-	open bool
+	debuggerWin
+
+	img *SdlImgui
 
 	streamPixels   [cdf.NumDatastreams]*image.RGBA
 	streamTextures [cdf.NumDatastreams]uint32
@@ -115,14 +116,6 @@ func (win *winCDFStreams) id() string {
 	return winCDFStreamsID
 }
 
-func (win *winCDFStreams) isOpen() bool {
-	return win.open
-}
-
-func (win *winCDFStreams) setOpen(open bool) {
-	win.open = open
-}
-
 func (win *winCDFStreams) updateStreams() {
 	// do not open window if there is no valid cartridge debug bus available
 	r, ok := win.img.lz.Cart.Registers.(cdf.Registers)
@@ -190,8 +183,8 @@ func (win *winCDFStreams) refreshTextures() {
 	}
 }
 
-func (win *winCDFStreams) draw() {
-	if !win.open {
+func (win *winCDFStreams) debuggerDraw() {
+	if !win.debuggerOpen {
 		return
 	}
 
@@ -200,273 +193,279 @@ func (win *winCDFStreams) draw() {
 	}
 
 	// do not open window if there is no valid cartridge debug bus available
-	r, ok := win.img.lz.Cart.Registers.(cdf.Registers)
+	_, ok := win.img.lz.Cart.Registers.(cdf.Registers)
 	if !win.img.lz.Cart.HasRegistersBus || !ok {
 		return
 	}
-	mem := win.img.lz.Cart.Static
 
 	imgui.SetNextWindowPosV(imgui.Vec2{100, 100}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
 	imgui.SetNextWindowSizeV(imgui.Vec2{920, 554}, imgui.ConditionFirstUseEver)
 	imgui.SetNextWindowSizeConstraints(imgui.Vec2{551, 300}, imgui.Vec2{920, 554})
 
-	if imgui.BeginV(win.id(), &win.open, imgui.WindowFlagsHorizontalScrollbar) {
-		if imgui.BeginChildV("##stream", imgui.Vec2{Y: imguiRemainingWinHeight() - win.optionsHeight}, false, imgui.WindowFlagsNone) {
-			win.updateStreams()
-
-			// disable preview color. it will be turned on if drag and drop is being used this frame.
-			win.colouriser.active = false
-
-			for i := 0; i < len(win.streamTextures); i++ {
-				imgui.BeginGroup()
-
-				// styling for datastream buttons )including the image button)
-				imgui.PushStyleColor(imgui.StyleColorButton, win.img.cols.Transparent)
-				imgui.PushStyleColor(imgui.StyleColorButtonActive, win.img.cols.Transparent)
-				imgui.PushStyleColor(imgui.StyleColorButtonHovered, win.img.cols.Transparent)
-				imgui.PushStyleColor(imgui.StyleColorDragDropTarget, win.img.cols.Transparent)
-				imgui.PushStyleVarVec2(imgui.StyleVarFramePadding, imgui.Vec2{})
-
-				// using button for labelling
-				imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DataStreamNumLabel)
-				imgui.ButtonV(fmt.Sprintf("%02d", i), imgui.Vec2{X: float32(win.pixelsSize.X) * (win.scaling + 1)})
-				imgui.PopStyleColor()
-
-				// position of ImageButton() we'll use this to measure the position of
-				// the mouse in relation to the top/left of the button
-				pos := imgui.CursorScreenPos()
-
-				// Have to use ImageButton() rather than Image() because we want to use
-				// drag and drop
-				imgui.ImageButton(imgui.TextureID(win.streamTextures[i]), imgui.Vec2{
-					X: float32(win.pixelsSize.X) * (win.scaling + 1),
-					Y: float32(win.pixelsSize.Y) * win.scaling,
-				})
-
-				if imgui.IsItemHovered() {
-					// quickly repeat previous drag and drop with a double click
-					if imgui.IsMouseDoubleClicked(0) {
-						win.colourSource[i] = win.colouriser.previousSrc
-						win.updateStreams()
-					}
-
-					// clear assignment of color datastream
-					if imgui.IsMouseClicked(1) {
-						win.colourSource[i] = -1
-						win.updateStreams()
-					}
-				}
-
-				// the name of the drag and drop rendezvous
-				const dragDropName = "DATASTREAM"
-
-				// data stream image can be dragged. the drag image is a paintbrush
-				imgui.PushStyleVarFloat(imgui.StyleVarPopupBorderSize, 0.0)
-				imgui.PushStyleColor(imgui.StyleColorPopupBg, win.img.cols.Transparent)
-				if imgui.BeginDragDropSource(imgui.DragDropFlagsNone) {
-					imgui.SetDragDropPayload(dragDropName, []byte{byte(i)}, imgui.ConditionAlways)
-					imgui.PushFont(win.img.glsl.fonts.largeFontAwesome)
-					imgui.Text(string(fonts.PaintBrush))
-					imgui.PopFont()
-					imgui.EndDragDropSource()
-
-					// drag and drop is active
-					win.colouriser.active = true
-					win.colouriser.src = i
-				}
-				imgui.PopStyleColor()
-				imgui.PopStyleVar()
-
-				// each datastream image can also be dropped onto
-				if imgui.BeginDragDropTarget() {
-					// drag and drop is hovering over a legitimate target
-					payload := imgui.AcceptDragDropPayload(dragDropName, imgui.DragDropFlagsAcceptPeekOnly)
-					if payload != nil {
-						// drag and drop is active. note that we may see the drop
-						// target before we see the drop source, so setting active here
-						// is required
-						win.colouriser.active = true
-						win.colouriser.tgt = i
-						win.updateStreams()
-					}
-
-					// drag and drop has ended on a legitimate target
-					payload = imgui.AcceptDragDropPayload(dragDropName, imgui.DragDropFlagsNone)
-					if payload != nil {
-						win.colourSource[i] = int(payload[0])
-						win.colouriser.previousSrc = win.colouriser.src
-						win.updateStreams()
-					}
-					imgui.EndDragDropTarget()
-				}
-
-				imgui.PopStyleVar()
-				imgui.PopStyleColorV(4)
-
-				imguiTooltip(func() {
-					imgui.Text("Datastream ")
-					imgui.SameLine()
-					imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmLocation)
-					imgui.Text(fmt.Sprintf("%d", i))
-					imgui.PopStyleColor()
-
-					imgui.Spacing()
-					imgui.Separator()
-					imgui.Spacing()
-
-					imgui.Text("Pointer:")
-					imgui.SameLine()
-					imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmAddress)
-					imgui.Text(fmt.Sprintf("%08x", r.Datastream[i].AfterCALLFN))
-					imgui.PopStyleColor()
-
-					imgui.Text("Increment:")
-					imgui.SameLine()
-					imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmAddress)
-					imgui.Text(fmt.Sprintf("%08x", r.Datastream[i].Increment))
-					imgui.PopStyleColor()
-
-					// mouse position is used to decide which values in the stream
-					// to peek/show
-					p := imgui.MousePos()
-					p = p.Minus(pos)
-
-					const numOfAdditionalPeeks = 3
-
-					y := int(p.Y / win.scaling)
-					yTop := y - numOfAdditionalPeeks
-					if yTop < 0 {
-						yTop = 0
-					}
-					yBot := y + numOfAdditionalPeeks
-					if yBot >= int(win.scanlines) {
-						yBot = int(win.scanlines)
-					}
-
-					// test if mouse position intersects with the active part of
-					// the texture
-					if y >= 0 && y < int(win.scanlines) {
-						imgui.Spacing()
-						imgui.Separator()
-						imgui.Spacing()
-
-						// list of values
-						imgui.BeginGroup()
-						imgui.PushStyleVarFloat(imgui.StyleVarAlpha, 0.5)
-						for yy := yTop; yy < y; yy++ {
-							v := r.Datastream[i].Peek(yy, mem)
-							imgui.Text(fmt.Sprintf("%03d %c %02x", yy, fonts.CaretRight, v))
-						}
-						imgui.PopStyleVar()
-
-						v := r.Datastream[i].Peek(y, mem)
-						imgui.Text(fmt.Sprintf("%03d %c %02x", y, fonts.CaretRight, v))
-
-						imgui.PushStyleVarFloat(imgui.StyleVarAlpha, 0.5)
-						for yy := y + 1; yy <= yBot; yy++ {
-							v := r.Datastream[i].Peek(yy, mem)
-							imgui.Text(fmt.Sprintf("%03d %c %02x", yy, fonts.CaretRight, v))
-						}
-						imgui.PopStyleVar()
-						imgui.EndGroup()
-
-						// detail texture
-						imgui.SameLineV(0, 20)
-
-						// small offset to help center the detail with the "list of
-						// values" above
-						p := imgui.CursorScreenPos()
-						p.Y += imgui.CurrentStyle().FramePadding().Y
-						imgui.SetCursorScreenPos(p)
-
-						imgui.BeginGroup()
-
-						// crop the pixels from the underlying stream texture
-						detailCrop := image.Rect(0, y-numOfAdditionalPeeks, win.pixelsSize.X, y+numOfAdditionalPeeks+1)
-						detailPixels := win.streamPixels[i].SubImage(detailCrop).(*image.RGBA)
-						sz := detailPixels.Bounds().Size()
-
-						gl.BindTexture(gl.TEXTURE_2D, win.detailTexture)
-						gl.TexImage2D(gl.TEXTURE_2D, 0,
-							gl.RGBA, int32(sz.X), int32(sz.Y), 0,
-							gl.RGBA, gl.UNSIGNED_BYTE,
-							gl.Ptr(detailPixels.Pix))
-
-						// height of image matches the height of the "list of
-						// values" above
-						h := imgui.FontSize() + (imgui.CurrentStyle().FramePadding().Y)
-						imgui.Image(imgui.TextureID(win.detailTexture), imgui.Vec2{
-							X: float32(sz.X) * h * 1.25,
-							Y: float32(sz.Y) * h,
-						})
-
-						imgui.EndGroup()
-					}
-
-					if win.colourSource[i] != -1 {
-						imgui.Spacing()
-						imgui.Separator()
-						imgui.Spacing()
-						imgui.Text(fmt.Sprintf("%c from datastream %d", fonts.PaintBrush, win.colourSource[i]))
-					}
-
-				}, true)
-
-				imgui.EndGroup()
-				imgui.SameLine()
-			}
-
-			imgui.EndChild()
-		}
-
-		win.optionsHeight = imguiMeasureHeight(func() {
-			imgui.Spacing()
-			imgui.Spacing()
-
-			imguiLabel("Stream length")
-			if win.trackScreen {
-				imgui.PushItemFlag(imgui.ItemFlagsDisabled, true)
-				imgui.PushStyleVarFloat(imgui.StyleVarAlpha, disabledAlpha)
-			}
-			imgui.PushItemWidth(200)
-			imgui.SliderInt("##streamlength", &win.scanlines, 100, specification.AbsoluteMaxScanlines)
-			imgui.PopItemWidth()
-			if win.trackScreen {
-				imgui.PopItemFlag()
-				imgui.PopStyleVar()
-			}
-
-			imgui.SameLineV(0, 20)
-			imgui.Checkbox("Track Screen Size", &win.trackScreen)
-
-			// clear colours button is sometimes disabled
-			imgui.SameLineV(0, 20)
-			enableClearColours := false
-			for _, v := range win.colourSource {
-				if v != -1 {
-					enableClearColours = true
-					break
-				}
-			}
-			if !enableClearColours {
-				imgui.PushItemFlag(imgui.ItemFlagsDisabled, true)
-				imgui.PushStyleVarFloat(imgui.StyleVarAlpha, disabledAlpha)
-			}
-			if imgui.Button("Clear Colours") {
-				win.clearColourStreaming()
-			}
-			if !enableClearColours {
-				imgui.PopStyleVar()
-				imgui.PopItemFlag()
-			}
-		})
+	if imgui.BeginV(win.debuggerID(win.id()), &win.debuggerOpen, imgui.WindowFlagsHorizontalScrollbar) {
+		win.draw()
 	}
 
 	imgui.End()
 }
 
+func (win *winCDFStreams) draw() {
+	r := win.img.lz.Cart.Registers.(cdf.Registers)
+	mem := win.img.lz.Cart.Static
+
+	if imgui.BeginChildV("##stream", imgui.Vec2{Y: imguiRemainingWinHeight() - win.optionsHeight}, false, imgui.WindowFlagsNone) {
+		win.updateStreams()
+
+		// disable preview color. it will be turned on if drag and drop is being used this frame.
+		win.colouriser.active = false
+
+		for i := 0; i < len(win.streamTextures); i++ {
+			imgui.BeginGroup()
+
+			// styling for datastream buttons )including the image button)
+			imgui.PushStyleColor(imgui.StyleColorButton, win.img.cols.Transparent)
+			imgui.PushStyleColor(imgui.StyleColorButtonActive, win.img.cols.Transparent)
+			imgui.PushStyleColor(imgui.StyleColorButtonHovered, win.img.cols.Transparent)
+			imgui.PushStyleColor(imgui.StyleColorDragDropTarget, win.img.cols.Transparent)
+			imgui.PushStyleVarVec2(imgui.StyleVarFramePadding, imgui.Vec2{})
+
+			// using button for labelling
+			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DataStreamNumLabel)
+			imgui.ButtonV(fmt.Sprintf("%02d", i), imgui.Vec2{X: float32(win.pixelsSize.X) * (win.scaling + 1)})
+			imgui.PopStyleColor()
+
+			// position of ImageButton() we'll use this to measure the position of
+			// the mouse in relation to the top/left of the button
+			pos := imgui.CursorScreenPos()
+
+			// Have to use ImageButton() rather than Image() because we want to use
+			// drag and drop
+			imgui.ImageButton(imgui.TextureID(win.streamTextures[i]), imgui.Vec2{
+				X: float32(win.pixelsSize.X) * (win.scaling + 1),
+				Y: float32(win.pixelsSize.Y) * win.scaling,
+			})
+
+			if imgui.IsItemHovered() {
+				// quickly repeat previous drag and drop with a double click
+				if imgui.IsMouseDoubleClicked(0) {
+					win.colourSource[i] = win.colouriser.previousSrc
+					win.updateStreams()
+				}
+
+				// clear assignment of color datastream
+				if imgui.IsMouseClicked(1) {
+					win.colourSource[i] = -1
+					win.updateStreams()
+				}
+			}
+
+			// the name of the drag and drop rendezvous
+			const dragDropName = "DATASTREAM"
+
+			// data stream image can be dragged. the drag image is a paintbrush
+			imgui.PushStyleVarFloat(imgui.StyleVarPopupBorderSize, 0.0)
+			imgui.PushStyleColor(imgui.StyleColorPopupBg, win.img.cols.Transparent)
+			if imgui.BeginDragDropSource(imgui.DragDropFlagsNone) {
+				imgui.SetDragDropPayload(dragDropName, []byte{byte(i)}, imgui.ConditionAlways)
+				imgui.PushFont(win.img.glsl.fonts.largeFontAwesome)
+				imgui.Text(string(fonts.PaintBrush))
+				imgui.PopFont()
+				imgui.EndDragDropSource()
+
+				// drag and drop is active
+				win.colouriser.active = true
+				win.colouriser.src = i
+			}
+			imgui.PopStyleColor()
+			imgui.PopStyleVar()
+
+			// each datastream image can also be dropped onto
+			if imgui.BeginDragDropTarget() {
+				// drag and drop is hovering over a legitimate target
+				payload := imgui.AcceptDragDropPayload(dragDropName, imgui.DragDropFlagsAcceptPeekOnly)
+				if payload != nil {
+					// drag and drop is active. note that we may see the drop
+					// target before we see the drop source, so setting active here
+					// is required
+					win.colouriser.active = true
+					win.colouriser.tgt = i
+					win.updateStreams()
+				}
+
+				// drag and drop has ended on a legitimate target
+				payload = imgui.AcceptDragDropPayload(dragDropName, imgui.DragDropFlagsNone)
+				if payload != nil {
+					win.colourSource[i] = int(payload[0])
+					win.colouriser.previousSrc = win.colouriser.src
+					win.updateStreams()
+				}
+				imgui.EndDragDropTarget()
+			}
+
+			imgui.PopStyleVar()
+			imgui.PopStyleColorV(4)
+
+			imguiTooltip(func() {
+				imgui.Text("Datastream ")
+				imgui.SameLine()
+				imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmLocation)
+				imgui.Text(fmt.Sprintf("%d", i))
+				imgui.PopStyleColor()
+
+				imgui.Spacing()
+				imgui.Separator()
+				imgui.Spacing()
+
+				imgui.Text("Pointer:")
+				imgui.SameLine()
+				imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmAddress)
+				imgui.Text(fmt.Sprintf("%08x", r.Datastream[i].AfterCALLFN))
+				imgui.PopStyleColor()
+
+				imgui.Text("Increment:")
+				imgui.SameLine()
+				imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmAddress)
+				imgui.Text(fmt.Sprintf("%08x", r.Datastream[i].Increment))
+				imgui.PopStyleColor()
+
+				// mouse position is used to decide which values in the stream
+				// to peek/show
+				p := imgui.MousePos()
+				p = p.Minus(pos)
+
+				const numOfAdditionalPeeks = 3
+
+				y := int(p.Y / win.scaling)
+				yTop := y - numOfAdditionalPeeks
+				if yTop < 0 {
+					yTop = 0
+				}
+				yBot := y + numOfAdditionalPeeks
+				if yBot >= int(win.scanlines) {
+					yBot = int(win.scanlines)
+				}
+
+				// test if mouse position intersects with the active part of
+				// the texture
+				if y >= 0 && y < int(win.scanlines) {
+					imgui.Spacing()
+					imgui.Separator()
+					imgui.Spacing()
+
+					// list of values
+					imgui.BeginGroup()
+					imgui.PushStyleVarFloat(imgui.StyleVarAlpha, 0.5)
+					for yy := yTop; yy < y; yy++ {
+						v := r.Datastream[i].Peek(yy, mem)
+						imgui.Text(fmt.Sprintf("%03d %c %02x", yy, fonts.CaretRight, v))
+					}
+					imgui.PopStyleVar()
+
+					v := r.Datastream[i].Peek(y, mem)
+					imgui.Text(fmt.Sprintf("%03d %c %02x", y, fonts.CaretRight, v))
+
+					imgui.PushStyleVarFloat(imgui.StyleVarAlpha, 0.5)
+					for yy := y + 1; yy <= yBot; yy++ {
+						v := r.Datastream[i].Peek(yy, mem)
+						imgui.Text(fmt.Sprintf("%03d %c %02x", yy, fonts.CaretRight, v))
+					}
+					imgui.PopStyleVar()
+					imgui.EndGroup()
+
+					// detail texture
+					imgui.SameLineV(0, 20)
+
+					// small offset to help center the detail with the "list of
+					// values" above
+					p := imgui.CursorScreenPos()
+					p.Y += imgui.CurrentStyle().FramePadding().Y
+					imgui.SetCursorScreenPos(p)
+
+					imgui.BeginGroup()
+
+					// crop the pixels from the underlying stream texture
+					detailCrop := image.Rect(0, y-numOfAdditionalPeeks, win.pixelsSize.X, y+numOfAdditionalPeeks+1)
+					detailPixels := win.streamPixels[i].SubImage(detailCrop).(*image.RGBA)
+					sz := detailPixels.Bounds().Size()
+
+					gl.BindTexture(gl.TEXTURE_2D, win.detailTexture)
+					gl.TexImage2D(gl.TEXTURE_2D, 0,
+						gl.RGBA, int32(sz.X), int32(sz.Y), 0,
+						gl.RGBA, gl.UNSIGNED_BYTE,
+						gl.Ptr(detailPixels.Pix))
+
+					// height of image matches the height of the "list of
+					// values" above
+					h := imgui.FontSize() + (imgui.CurrentStyle().FramePadding().Y)
+					imgui.Image(imgui.TextureID(win.detailTexture), imgui.Vec2{
+						X: float32(sz.X) * h * 1.25,
+						Y: float32(sz.Y) * h,
+					})
+
+					imgui.EndGroup()
+				}
+
+				if win.colourSource[i] != -1 {
+					imgui.Spacing()
+					imgui.Separator()
+					imgui.Spacing()
+					imgui.Text(fmt.Sprintf("%c from datastream %d", fonts.PaintBrush, win.colourSource[i]))
+				}
+
+			}, true)
+
+			imgui.EndGroup()
+			imgui.SameLine()
+		}
+
+		imgui.EndChild()
+	}
+
+	win.optionsHeight = imguiMeasureHeight(func() {
+		imgui.Spacing()
+		imgui.Spacing()
+
+		imguiLabel("Stream length")
+		if win.trackScreen {
+			imgui.PushItemFlag(imgui.ItemFlagsDisabled, true)
+			imgui.PushStyleVarFloat(imgui.StyleVarAlpha, disabledAlpha)
+		}
+		imgui.PushItemWidth(200)
+		imgui.SliderInt("##streamlength", &win.scanlines, 100, specification.AbsoluteMaxScanlines)
+		imgui.PopItemWidth()
+		if win.trackScreen {
+			imgui.PopItemFlag()
+			imgui.PopStyleVar()
+		}
+
+		imgui.SameLineV(0, 20)
+		imgui.Checkbox("Track Screen Size", &win.trackScreen)
+
+		// clear colours button is sometimes disabled
+		imgui.SameLineV(0, 20)
+		enableClearColours := false
+		for _, v := range win.colourSource {
+			if v != -1 {
+				enableClearColours = true
+				break
+			}
+		}
+		if !enableClearColours {
+			imgui.PushItemFlag(imgui.ItemFlagsDisabled, true)
+			imgui.PushStyleVarFloat(imgui.StyleVarAlpha, disabledAlpha)
+		}
+		if imgui.Button("Clear Colours") {
+			win.clearColourStreaming()
+		}
+		if !enableClearColours {
+			imgui.PopStyleVar()
+			imgui.PopItemFlag()
+		}
+	})
+}
+
 func (win *winCDFStreams) isStreamTexture(id uint32) bool {
-	if !win.open {
+	if !win.debuggerOpen {
 		return false
 	}
 

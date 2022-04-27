@@ -28,8 +28,9 @@ import (
 const winTimelineID = "Timeline"
 
 type winTimeline struct {
-	img  *SdlImgui
-	open bool
+	debuggerWin
+
+	img *SdlImgui
 
 	// whether the rewind "slider" is active
 	rewindingActive bool
@@ -68,15 +69,7 @@ func (win *winTimeline) id() string {
 	return winTimelineID
 }
 
-func (win *winTimeline) isOpen() bool {
-	return win.open
-}
-
-func (win *winTimeline) setOpen(open bool) {
-	win.open = open
-}
-
-func (win *winTimeline) draw() {
+func (win *winTimeline) debuggerDraw() {
 	// receive new thumbnail data and copy to texture
 	select {
 	case img := <-win.thmb.Render:
@@ -93,7 +86,7 @@ func (win *winTimeline) draw() {
 	default:
 	}
 
-	if !win.open {
+	if !win.debuggerOpen {
 		return
 	}
 
@@ -102,12 +95,13 @@ func (win *winTimeline) draw() {
 
 	imgui.SetNextWindowPosV(imgui.Vec2{39, 722}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
 
-	imgui.BeginV(win.id(), &win.open, imgui.WindowFlagsAlwaysAutoResize)
-	defer imgui.End()
+	if imgui.BeginV(win.debuggerID(win.id()), &win.debuggerOpen, imgui.WindowFlagsAlwaysAutoResize) {
+		win.drawTimeline()
+		imguiSeparator()
+		win.drawKey()
+	}
 
-	win.drawTimeline()
-	imguiSeparator()
-	win.drawKey()
+	imgui.End()
 }
 
 const (

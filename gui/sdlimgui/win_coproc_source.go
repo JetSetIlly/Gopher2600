@@ -71,7 +71,10 @@ func (r lineRange) ordered() (int, int) {
 }
 
 type winCoProcSource struct {
-	img                *SdlImgui
+	debuggerWin
+
+	img *SdlImgui
+
 	open               bool
 	showAsm            bool
 	syntaxHighlighting bool
@@ -126,16 +129,8 @@ func (win *winCoProcSource) id() string {
 	return winCoProcSourceID
 }
 
-func (win *winCoProcSource) isOpen() bool {
-	return win.open
-}
-
-func (win *winCoProcSource) setOpen(open bool) {
-	win.open = open
-}
-
-func (win *winCoProcSource) draw() {
-	if !win.open {
+func (win *winCoProcSource) debuggerDraw() {
+	if !win.debuggerOpen {
 		return
 	}
 
@@ -156,14 +151,17 @@ func (win *winCoProcSource) draw() {
 	}
 
 	title := fmt.Sprintf("%s %s", win.img.lz.Cart.CoProcID, winCoProcSourceID)
-	if !imgui.BeginV(title, &win.open, flgs) {
+	if imgui.BeginV(win.debuggerID(title), &win.debuggerOpen, flgs) {
+		win.isCollapsed = false
+		win.draw()
+	} else {
 		win.isCollapsed = true
-		imgui.End()
-		return
 	}
-	win.isCollapsed = false
-	defer imgui.End()
 
+	imgui.End()
+}
+
+func (win *winCoProcSource) draw() {
 	// safely iterate over source code
 	win.img.dbg.CoProcDev.BorrowSource(func(src *developer.Source) {
 		if src == nil {
@@ -448,7 +446,7 @@ func (win *winCoProcSource) draw() {
 }
 
 func (win *winCoProcSource) gotoSourceLine(ln *developer.SourceLine) {
-	win.setOpen(true)
+	win.debuggerSetOpen(true)
 	win.scrollTo = true
 	win.scrollToFile = ln.File.Filename
 	win.selectedLine.single(ln.LineNumber)

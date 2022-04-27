@@ -37,8 +37,9 @@ const (
 )
 
 type winDisasm struct {
-	img  *SdlImgui
-	open bool
+	debuggerWin
+
+	img *SdlImgui
 
 	// more recently seen emulation state
 	lastSeenState emulation.State
@@ -100,16 +101,8 @@ func (win *winDisasm) id() string {
 	return winDisasmID
 }
 
-func (win *winDisasm) isOpen() bool {
-	return win.open
-}
-
-func (win *winDisasm) setOpen(open bool) {
-	win.open = open
-}
-
-func (win *winDisasm) draw() {
-	if !win.open {
+func (win *winDisasm) debuggerDraw() {
+	if !win.debuggerOpen {
 		return
 	}
 
@@ -117,9 +110,14 @@ func (win *winDisasm) draw() {
 	imgui.SetNextWindowSizeV(imgui.Vec2{500, 552}, imgui.ConditionFirstUseEver)
 	imgui.SetNextWindowSizeConstraints(imgui.Vec2{400, 300}, imgui.Vec2{500, 1000})
 
-	imgui.BeginV(win.id(), &win.open, imgui.WindowFlagsNone)
-	defer imgui.End()
+	if imgui.BeginV(win.debuggerID(win.id()), &win.debuggerOpen, imgui.WindowFlagsNone) {
+		win.draw()
+	}
 
+	imgui.End()
+}
+
+func (win *winDisasm) draw() {
 	if imgui.IsWindowCollapsed() {
 		return
 	}

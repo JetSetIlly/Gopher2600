@@ -19,21 +19,6 @@ import (
 	"github.com/inkyblackness/imgui-go/v4"
 )
 
-// the window type represents all the windows used in the sdlimgui.
-type window interface {
-	// initialisation function. by the first call to manager.draw()
-	init()
-
-	// id should return a unique identifier for the window. note that the
-	// window title and any menu entry do not have to have the same value as
-	// the id() but it can.
-	id() string
-
-	draw()
-	isOpen() bool
-	setOpen(bool)
-}
-
 // manager handles windows and menus in the system.
 type manager struct {
 	img *SdlImgui
@@ -41,9 +26,13 @@ type manager struct {
 	// has the window manager gone through the initialisation process
 	hasInitialised bool
 
-	// the collection of managed windows in the system, indexed by window title
-	windows     map[string]window
-	windowStack []window
+	windows map[string]window
+
+	// playmode windows
+	playmodeWindows map[string]playmodeWindow
+
+	// debugger debuggerWindows
+	debuggerWindows map[string]debuggerWindow
 
 	// windows can be open and closed through the menu bar
 	menu map[menuGroup][]menuEntry
@@ -55,9 +44,8 @@ type manager struct {
 	//		window[title].(*windowType)
 	//
 	// the following fields are provided for convenience.
-	dbgScr    *winDbgScr
-	selectROM *winSelectROM
-	timeline  *winTimeline
+	dbgScr   *winDbgScr
+	timeline *winTimeline
 
 	// the position of the screen on the current display. the SDL function
 	// Window.GetPosition() is unsuitable for use in conjunction with imgui
@@ -147,9 +135,11 @@ var windowDefs = [...]windowDef{
 
 func newManager(img *SdlImgui) (*manager, error) {
 	wm := &manager{
-		img:     img,
-		windows: make(map[string]window),
-		menu:    make(map[menuGroup][]menuEntry),
+		img:             img,
+		windows:         make(map[string]window),
+		playmodeWindows: make(map[string]playmodeWindow),
+		debuggerWindows: make(map[string]debuggerWindow),
+		menu:            make(map[menuGroup][]menuEntry),
 	}
 
 	// create all window instances and add to specified menu
@@ -158,48 +148,46 @@ func newManager(img *SdlImgui) (*manager, error) {
 		if err != nil {
 			return nil, err
 		}
+
 		wm.windows[w.id()] = w
 
-		// open window if requested
-		w.setOpen(def.open)
-
-		// if menu label has not been specified use the window definition
-		if def.menu.label == "" {
-			def.menu.label = w.id()
+		if pw, ok := w.(playmodeWindow); ok {
+			wm.playmodeWindows[pw.id()] = pw
 		}
 
-		// window name
-		if def.menu.windowID == "" {
-			def.menu.windowID = w.id()
-		}
+		if dw, ok := w.(debuggerWindow); ok {
+			wm.debuggerWindows[w.id()] = dw
 
-		// add menu entry
-		wm.menu[def.menu.group] = append(wm.menu[def.menu.group], def.menu)
+			// open window if requested
+			dw.debuggerSetOpen(def.open)
+
+			// if menu label has not been specified use the window definition
+			if def.menu.label == "" {
+				def.menu.label = dw.id()
+			}
+
+			// window name
+			if def.menu.windowID == "" {
+				def.menu.windowID = dw.id()
+			}
+
+			// add menu entry
+			wm.menu[def.menu.group] = append(wm.menu[def.menu.group], def.menu)
+		}
 	}
 
 	// get references to specific windows that need to be referenced elsewhere in the system
-	wm.dbgScr = wm.windows[winDbgScrID].(*winDbgScr)
-	wm.selectROM = wm.windows[winSelectROMID].(*winSelectROM)
-	wm.timeline = wm.windows[winTimelineID].(*winTimeline)
+	wm.dbgScr = wm.debuggerWindows[winDbgScrID].(*winDbgScr)
+	wm.timeline = wm.debuggerWindows[winTimelineID].(*winTimeline)
 
 	return wm, nil
 }
-
-// list of windows that can be opened in playmode in addition to the debugger.
-var playmodeWindows = [...]string{
-	winPrefsID,
-	winSelectROMID,
-	winTrackerID,
-	winComparisonID,
-	winBotID,
-}
-
 func (wm *manager) draw() {
 	// there's no good place to call the managedWindow.init() function except
 	// here when we know everything else has been initialised
 	if !wm.hasInitialised {
-		for w := range wm.windows {
-			wm.windows[w].init()
+		for w := range wm.debuggerWindows {
+			wm.debuggerWindows[w].init()
 		}
 		wm.hasInitialised = true
 	}
@@ -207,8 +195,8 @@ func (wm *manager) draw() {
 	// playmode draws the screen and other windows that have been listed
 	// as being safe to draw in playmode
 	if wm.img.isPlaymode() {
-		for _, s := range playmodeWindows {
-			wm.windows[s].draw()
+		for _, w := range wm.playmodeWindows {
+			w.playmodeDraw()
 		}
 		return
 	}
@@ -225,7 +213,7 @@ func (wm *manager) draw() {
 	wm.drawMenu()
 
 	// draw windows
-	for w := range wm.windows {
-		wm.windows[w].draw()
+	for _, w := range wm.debuggerWindows {
+		w.debuggerDraw()
 	}
 }

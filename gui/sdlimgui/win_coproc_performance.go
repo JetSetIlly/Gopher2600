@@ -32,8 +32,9 @@ const winCoProcPerformanceID = "Coprocessor Performance"
 const winCoProcPerformanceMenu = "Performance"
 
 type winCoProcPerformance struct {
-	img  *SdlImgui
-	open bool
+	debuggerWin
+
+	img *SdlImgui
 
 	showSrc           bool
 	hideUnusedEntries bool
@@ -63,16 +64,8 @@ func (win *winCoProcPerformance) id() string {
 	return winCoProcPerformanceID
 }
 
-func (win *winCoProcPerformance) isOpen() bool {
-	return win.open
-}
-
-func (win *winCoProcPerformance) setOpen(open bool) {
-	win.open = open
-}
-
-func (win *winCoProcPerformance) draw() {
-	if !win.open {
+func (win *winCoProcPerformance) debuggerDraw() {
+	if !win.debuggerOpen {
 		return
 	}
 
@@ -85,12 +78,14 @@ func (win *winCoProcPerformance) draw() {
 	imgui.SetNextWindowSizeConstraints(imgui.Vec2{551, 300}, imgui.Vec2{800, 1000})
 
 	title := fmt.Sprintf("%s %s", win.img.lz.Cart.CoProcID, winCoProcPerformanceID)
-	if !imgui.BeginV(title, &win.open, imgui.WindowFlagsNone) {
-		imgui.End()
-		return
+	if imgui.BeginV(win.debuggerID(title), &win.debuggerOpen, imgui.WindowFlagsNone) {
+		win.draw()
 	}
-	defer imgui.End()
 
+	imgui.End()
+}
+
+func (win *winCoProcPerformance) draw() {
 	// safely iterate over top execution information
 	win.img.dbg.CoProcDev.BorrowSource(func(src *developer.Source) {
 		if src == nil {
@@ -364,7 +359,7 @@ func (win *winCoProcPerformance) drawSourceLines(src *developer.Source) {
 
 		// open source window on click
 		if imgui.IsItemClicked() {
-			srcWin := win.img.wm.windows[winCoProcSourceID].(*winCoProcSource)
+			srcWin := win.img.wm.debuggerWindows[winCoProcSourceID].(*winCoProcSource)
 			srcWin.gotoSourceLine(ln)
 		}
 
@@ -495,7 +490,7 @@ func (win *winCoProcPerformance) drawFunctionFilter(src *developer.Source, funct
 
 		// open source window on click
 		if imgui.IsItemClicked() {
-			srcWin := win.img.wm.windows[winCoProcSourceID].(*winCoProcSource)
+			srcWin := win.img.wm.debuggerWindows[winCoProcSourceID].(*winCoProcSource)
 			srcWin.gotoSourceLine(ln)
 		}
 

@@ -32,8 +32,10 @@ const winCoProcIllegalAccessID = "Coprocessor Illegal Accesses"
 const winCoProcIllegalAccessMenu = "Illegal Accesses"
 
 type winCoProcIllegalAccess struct {
-	img           *SdlImgui
-	open          bool
+	debuggerWin
+
+	img *SdlImgui
+
 	showSrc       bool
 	optionsHeight float32
 }
@@ -53,16 +55,8 @@ func (win *winCoProcIllegalAccess) id() string {
 	return winCoProcIllegalAccessID
 }
 
-func (win *winCoProcIllegalAccess) isOpen() bool {
-	return win.open
-}
-
-func (win *winCoProcIllegalAccess) setOpen(open bool) {
-	win.open = open
-}
-
-func (win *winCoProcIllegalAccess) draw() {
-	if !win.open {
+func (win *winCoProcIllegalAccess) debuggerDraw() {
+	if !win.debuggerOpen {
 		return
 	}
 
@@ -75,9 +69,14 @@ func (win *winCoProcIllegalAccess) draw() {
 	imgui.SetNextWindowSizeConstraints(imgui.Vec2{400, 300}, imgui.Vec2{551, 1000})
 
 	title := fmt.Sprintf("%s %s", win.img.lz.Cart.CoProcID, winCoProcIllegalAccessID)
-	imgui.BeginV(title, &win.open, imgui.WindowFlagsNone)
-	defer imgui.End()
+	if imgui.BeginV(win.debuggerID(title), &win.debuggerOpen, imgui.WindowFlagsNone) {
+		win.draw()
+	}
 
+	imgui.End()
+}
+
+func (win *winCoProcIllegalAccess) draw() {
 	// hasStackCollision to decide whether to issue warning in footer
 	hasStackCollision := false
 
@@ -169,7 +168,7 @@ func (win *winCoProcIllegalAccess) draw() {
 
 			// open source window on click
 			if imgui.IsItemClicked() && lg.SrcLine != nil {
-				srcWin := win.img.wm.windows[winCoProcSourceID].(*winCoProcSource)
+				srcWin := win.img.wm.debuggerWindows[winCoProcSourceID].(*winCoProcSource)
 				srcWin.gotoSourceLine(lg.SrcLine)
 			}
 

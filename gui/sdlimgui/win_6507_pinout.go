@@ -27,8 +27,9 @@ import (
 const win6507PinoutID = "6507 Pinout"
 
 type win6507Pinout struct {
-	img  *SdlImgui
-	open bool
+	debuggerWin
+
+	img *SdlImgui
 
 	busInfoHeight float32
 
@@ -84,16 +85,8 @@ func (win *win6507Pinout) id() string {
 	return win6507PinoutID
 }
 
-func (win *win6507Pinout) isOpen() bool {
-	return win.open
-}
-
-func (win *win6507Pinout) setOpen(open bool) {
-	win.open = open
-}
-
-func (win *win6507Pinout) draw() {
-	if !win.open {
+func (win *win6507Pinout) debuggerDraw() {
+	if !win.debuggerOpen {
 		return
 	}
 
@@ -101,9 +94,14 @@ func (win *win6507Pinout) draw() {
 	imgui.SetNextWindowSizeV(imgui.Vec2{326, 338}, imgui.ConditionFirstUseEver)
 	imgui.SetNextWindowSizeConstraints(imgui.Vec2{326, 338}, imgui.Vec2{529, 593})
 
-	imgui.BeginV(win.id(), &win.open, imgui.WindowFlagsNone)
-	defer imgui.End()
+	if imgui.BeginV(win.debuggerID(win.id()), &win.debuggerOpen, imgui.WindowFlagsNone) {
+		win.draw()
+	}
 
+	imgui.End()
+}
+
+func (win *win6507Pinout) draw() {
 	avail := imgui.ContentRegionAvail()
 	avail.Y -= win.busInfoHeight
 	p := imgui.CursorScreenPos()

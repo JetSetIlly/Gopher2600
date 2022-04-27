@@ -24,8 +24,9 @@ import (
 const winTIAID = "TIA"
 
 type winTIA struct {
-	img  *SdlImgui
-	open bool
+	debuggerWin
+
+	img *SdlImgui
 
 	popupPalette *popupPalette
 
@@ -64,24 +65,22 @@ func (win *winTIA) id() string {
 	return winTIAID
 }
 
-func (win *winTIA) isOpen() bool {
-	return win.open
-}
-
-func (win *winTIA) setOpen(open bool) {
-	win.open = open
-}
-
 // draw is called by service loop.
-func (win *winTIA) draw() {
-	if !win.open {
+func (win *winTIA) debuggerDraw() {
+	if !win.debuggerOpen {
 		return
 	}
 
 	imgui.SetNextWindowPosV(imgui.Vec2{X: 31, Y: 470}, imgui.ConditionFirstUseEver, imgui.Vec2{X: 0, Y: 0})
 	imgui.SetNextWindowSizeV(imgui.Vec2{X: 535, Y: 260}, imgui.ConditionAlways)
-	imgui.BeginV(win.id(), &win.open, imgui.WindowFlagsNoResize)
+	if imgui.BeginV(win.debuggerID(win.id()), &win.debuggerOpen, imgui.WindowFlagsNoResize) {
+		win.draw()
+	}
 
+	imgui.End()
+}
+
+func (win *winTIA) draw() {
 	// tab-bar to switch between different "areas" of the TIA
 	imgui.BeginTabBar("")
 	if imgui.BeginTabItem("Playfield") {
@@ -111,8 +110,6 @@ func (win *winTIA) draw() {
 	imgui.EndTabBar()
 
 	win.drawPersistenceControl()
-
-	imgui.End()
 
 	win.popupPalette.draw()
 }

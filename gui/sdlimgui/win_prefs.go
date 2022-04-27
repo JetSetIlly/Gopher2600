@@ -26,8 +26,10 @@ import (
 const winPrefsID = "Preferences"
 
 type winPrefs struct {
-	img  *SdlImgui
-	open bool
+	playmodeWin
+	debuggerWin
+
+	img *SdlImgui
 }
 
 func newWinPrefs(img *SdlImgui) (window, error) {
@@ -44,13 +46,31 @@ func (win *winPrefs) init() {
 func (win *winPrefs) id() string {
 	return winPrefsID
 }
+func (win *winPrefs) playmodeDraw() {
+	if !win.playmodeOpen {
+		return
+	}
 
-func (win *winPrefs) isOpen() bool {
-	return win.open
+	imgui.SetNextWindowPosV(imgui.Vec2{100, 40}, imgui.ConditionAppearing, imgui.Vec2{0, 0})
+	if imgui.BeginV(win.playmodeID(win.id()), &win.playmodeOpen, imgui.WindowFlagsNoSavedSettings|imgui.WindowFlagsAlwaysAutoResize) {
+		win.draw()
+	}
+
+	imgui.End()
 }
 
-func (win *winPrefs) setOpen(open bool) {
-	win.open = open
+func (win *winPrefs) debuggerDraw() {
+	if !win.debuggerOpen {
+		return
+	}
+
+	imgui.SetNextWindowPosV(imgui.Vec2{29, 61}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
+
+	if imgui.BeginV(win.debuggerID(win.id()), &win.debuggerOpen, imgui.WindowFlagsAlwaysAutoResize) {
+		win.draw()
+	}
+
+	imgui.End()
 }
 
 // the sub draw() functions may return a setDefaultPrefs instance. if an
@@ -61,20 +81,8 @@ type setDefaultPrefs interface {
 }
 
 func (win *winPrefs) draw() {
-	if !win.open {
-		return
-	}
-
 	var setDef setDefaultPrefs
 	var setDefLabel = ""
-
-	if win.img.isPlaymode() {
-		imgui.SetNextWindowPosV(imgui.Vec2{100, 40}, imgui.ConditionAppearing, imgui.Vec2{0, 0})
-		imgui.BeginV(win.id(), &win.open, imgui.WindowFlagsNoSavedSettings|imgui.WindowFlagsAlwaysAutoResize)
-	} else {
-		imgui.SetNextWindowPosV(imgui.Vec2{29, 61}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
-		imgui.BeginV(win.id(), &win.open, imgui.WindowFlagsAlwaysAutoResize)
-	}
 
 	// tab-bar to switch between different "areas" of the TIA
 	imgui.BeginTabBar("")
@@ -91,33 +99,33 @@ func (win *winPrefs) draw() {
 	}
 
 	if imgui.BeginTabItem("Playmode") {
-		win.drawPlaymode()
+		win.drawPlaymodeTab()
 		imgui.EndTabItem()
 	}
 
 	if win.img.mode == emulation.ModeDebugger {
 		if imgui.BeginTabItem("Debugger") {
-			win.drawDebugger()
+			win.drawDebuggerTab()
 			imgui.EndTabItem()
 		}
 	}
 
 	if imgui.BeginTabItem("Rewind") {
-		win.drawRewind()
+		win.drawRewindTab()
 		imgui.EndTabItem()
 		setDef = win.img.dbg.Rewind.Prefs
 		setDefLabel = "Rewind"
 	}
 
 	if imgui.BeginTabItem("ARM") {
-		win.drawARM()
+		win.drawARMTab()
 		imgui.EndTabItem()
 		setDef = win.img.vcs.Instance.Prefs.ARM
 		setDefLabel = "ARM"
 	}
 
 	if imgui.BeginTabItem("PlusROM") {
-		win.drawPlusROM()
+		win.drawPlusROMTab()
 		imgui.EndTabItem()
 	}
 
@@ -135,11 +143,9 @@ func (win *winPrefs) draw() {
 			win.img.dbg.PushRawEvent(setDef.SetDefaults)
 		}
 	}
-
-	imgui.End()
 }
 
-func (win *winPrefs) drawPlaymode() {
+func (win *winPrefs) drawPlaymodeTab() {
 	imgui.Spacing()
 	imgui.Text("Notifications")
 	imgui.Spacing()
@@ -160,7 +166,7 @@ func (win *winPrefs) drawPlaymode() {
 	}
 }
 
-func (win *winPrefs) drawDebugger() {
+func (win *winPrefs) drawDebuggerTab() {
 	imgui.Spacing()
 
 	audioEnabled := win.img.prefs.audioEnabled.Get().(bool)
@@ -191,7 +197,7 @@ func (win *winPrefs) drawDebugger() {
 			// the vertical scrolling of the disassembly window.
 			//
 			// set focusOnAddr to true to force preference change to take effect
-			win.img.wm.windows[winDisasmID].(*winDisasm).focusOnAddr = true
+			win.img.wm.debuggerWindows[winDisasmID].(*winDisasm).focusOnAddr = true
 		}
 
 		colorDisasm := win.img.prefs.colorDisasm.Get().(bool)
@@ -269,7 +275,7 @@ func (win *winPrefs) drawDebugger() {
 	}
 }
 
-func (win *winPrefs) drawRewind() {
+func (win *winPrefs) drawRewindTab() {
 	imgui.Spacing()
 
 	rewindMaxEntries := int32(win.img.dbg.Rewind.Prefs.MaxEntries.Get().(int))
@@ -376,7 +382,7 @@ func (win *winPrefs) drawVCS() {
 	}
 }
 
-func (win *winPrefs) drawARM() {
+func (win *winPrefs) drawARMTab() {
 	imgui.Spacing()
 
 	if !win.img.lz.Cart.HasCoProcBus {
@@ -475,7 +481,7 @@ Stack collisions will be logged even if program does not abort.`)
 
 }
 
-func (win *winPrefs) drawPlusROM() {
+func (win *winPrefs) drawPlusROMTab() {
 	imgui.Spacing()
 
 	if !win.img.lz.Cart.IsPlusROM {

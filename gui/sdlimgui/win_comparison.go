@@ -26,8 +26,9 @@ import (
 const winComparisonID = "Comparison"
 
 type winComparison struct {
-	img  *SdlImgui
-	open bool
+	playmodeWin
+
+	img *SdlImgui
 
 	cmpTexture  uint32
 	diffTexture uint32
@@ -62,18 +63,10 @@ func (win winComparison) id() string {
 	return winComparisonID
 }
 
-func (win *winComparison) isOpen() bool {
-	return win.open
-}
+func (win *winComparison) playmodeSetOpen(open bool) {
+	win.playmodeWin.playmodeSetOpen(open)
 
-func (win *winComparison) setOpen(open bool) {
-	if win.render == nil {
-		return
-	}
-
-	win.open = open
-
-	if win.open {
+	if win.playmodeOpen {
 		// clear texture
 		gl.BindTexture(gl.TEXTURE_2D, win.cmpTexture)
 		gl.TexImage2D(gl.TEXTURE_2D, 0,
@@ -89,7 +82,7 @@ func (win *winComparison) setOpen(open bool) {
 	}
 }
 
-func (win *winComparison) draw() {
+func (win *winComparison) playmodeDraw() {
 	// receive new thumbnail data and copy to texture
 	select {
 	case img := <-win.render:
@@ -122,15 +115,20 @@ func (win *winComparison) draw() {
 	default:
 	}
 
-	if !win.open {
+	if !win.playmodeOpen {
 		return
 	}
 
 	imgui.SetNextWindowPosV(imgui.Vec2{75, 75}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
 
-	if imgui.BeginV(win.id(), &win.open, imgui.WindowFlagsAlwaysAutoResize) {
-		imgui.Image(imgui.TextureID(win.cmpTexture), imgui.Vec2{specification.ClksVisible * 3, specification.AbsoluteMaxScanlines})
-		imgui.Image(imgui.TextureID(win.diffTexture), imgui.Vec2{specification.ClksVisible * 3, specification.AbsoluteMaxScanlines})
-		imgui.End()
+	if imgui.BeginV(win.playmodeID(win.id()), &win.playmodeOpen, imgui.WindowFlagsAlwaysAutoResize) {
+		win.draw()
 	}
+
+	imgui.End()
+}
+
+func (win *winComparison) draw() {
+	imgui.Image(imgui.TextureID(win.cmpTexture), imgui.Vec2{specification.ClksVisible * 3, specification.AbsoluteMaxScanlines})
+	imgui.Image(imgui.TextureID(win.diffTexture), imgui.Vec2{specification.ClksVisible * 3, specification.AbsoluteMaxScanlines})
 }

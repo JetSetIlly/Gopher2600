@@ -36,8 +36,9 @@ type oscilloscopeData struct {
 }
 
 type winOscilloscope struct {
-	img  *SdlImgui
-	open bool
+	debuggerWin
+
+	img *SdlImgui
 
 	monoBuffer    []float32
 	stereoLBuffer []float32
@@ -73,23 +74,20 @@ func (win *winOscilloscope) id() string {
 	return winOscilloscopeID
 }
 
-func (win *winOscilloscope) isOpen() bool {
-	return win.open
-}
-
-func (win *winOscilloscope) setOpen(open bool) {
-	win.open = open
-}
-
-func (win *winOscilloscope) draw() {
-	if !win.open {
+func (win *winOscilloscope) debuggerDraw() {
+	if !win.debuggerOpen {
 		return
 	}
 
 	imgui.SetNextWindowPosV(imgui.Vec2{586, 519}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
-	imgui.BeginV(win.id(), &win.open, imgui.WindowFlagsAlwaysAutoResize)
-	defer imgui.End()
+	if imgui.BeginV(win.debuggerID(win.id()), &win.debuggerOpen, imgui.WindowFlagsAlwaysAutoResize) {
+		win.draw()
+	}
 
+	imgui.End()
+}
+
+func (win *winOscilloscope) draw() {
 	imgui.PushStyleColor(imgui.StyleColorFrameBg, win.img.cols.AudioOscBg)
 	imgui.PushStyleColor(imgui.StyleColorPlotLines, win.img.cols.AudioOscLine)
 	defer imgui.PopStyleColorV(2)

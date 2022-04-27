@@ -25,8 +25,9 @@ import (
 const winSuperchargerRegistersID = "AR Registers"
 
 type winSuperchargerRegisters struct {
-	img  *SdlImgui
-	open bool
+	debuggerWin
+
+	img *SdlImgui
 
 	width float32
 }
@@ -46,27 +47,27 @@ func (win *winSuperchargerRegisters) id() string {
 	return winSuperchargerRegistersID
 }
 
-func (win *winSuperchargerRegisters) isOpen() bool {
-	return win.open
-}
-
-func (win *winSuperchargerRegisters) setOpen(open bool) {
-	win.open = open
-}
-
-func (win *winSuperchargerRegisters) draw() {
-	if !win.open {
+func (win *winSuperchargerRegisters) debuggerDraw() {
+	if !win.debuggerOpen {
 		return
 	}
 
 	// do not open window if there is no valid cartridge debug bus available
-	r, ok := win.img.lz.Cart.Registers.(supercharger.Registers)
+	_, ok := win.img.lz.Cart.Registers.(supercharger.Registers)
 	if !win.img.lz.Cart.HasRegistersBus || !ok {
 		return
 	}
 
 	imgui.SetNextWindowPosV(imgui.Vec2{203, 134}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
-	imgui.BeginV(win.id(), &win.open, imgui.WindowFlagsAlwaysAutoResize)
+	if imgui.BeginV(win.debuggerID(win.id()), &win.debuggerOpen, imgui.WindowFlagsAlwaysAutoResize) {
+		win.draw()
+	}
+
+	imgui.End()
+}
+
+func (win *winSuperchargerRegisters) draw() {
+	r := win.img.lz.Cart.Registers.(supercharger.Registers)
 
 	val := fmt.Sprintf("%02x", r.Value)
 	imguiLabel("Value")
@@ -157,6 +158,4 @@ func (win *winSuperchargerRegisters) draw() {
 	if imgui.SelectableV("  RAM 2   RAM 3##bank7", banking == 7, 0, imgui.Vec2{0, 0}) {
 		setBanking(7)
 	}
-
-	imgui.End()
 }

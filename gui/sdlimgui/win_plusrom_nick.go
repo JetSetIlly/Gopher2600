@@ -25,8 +25,9 @@ const winPlusROMNickID = "PlusROM Nick"
 const winPlusROMNickMenu = "Nick"
 
 type winPlusROMNick struct {
-	img  *SdlImgui
-	open bool
+	debuggerWin
+
+	img *SdlImgui
 }
 
 func newWinPlusROMNick(img *SdlImgui) (window, error) {
@@ -44,16 +45,8 @@ func (win *winPlusROMNick) id() string {
 	return winPlusROMNickID
 }
 
-func (win *winPlusROMNick) isOpen() bool {
-	return win.open
-}
-
-func (win *winPlusROMNick) setOpen(open bool) {
-	win.open = open
-}
-
-func (win *winPlusROMNick) draw() {
-	if !win.open {
+func (win *winPlusROMNick) debuggerDraw() {
+	if !win.debuggerOpen {
 		return
 	}
 
@@ -62,8 +55,14 @@ func (win *winPlusROMNick) draw() {
 	}
 
 	imgui.SetNextWindowPosV(imgui.Vec2{659, 35}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
-	imgui.BeginV(win.id(), &win.open, imgui.WindowFlagsAlwaysAutoResize)
+	if imgui.BeginV(win.debuggerID(win.id()), &win.debuggerOpen, imgui.WindowFlagsAlwaysAutoResize) {
+		win.draw()
+	}
 
+	imgui.End()
+}
+
+func (win *winPlusROMNick) draw() {
 	// if drawPlusROMNick has returned true then save the change to disk immediately
 	if drawPlusROMNick(win.img) {
 		err := win.img.vcs.Instance.Prefs.PlusROM.Save()
@@ -71,8 +70,6 @@ func (win *winPlusROMNick) draw() {
 			logger.Logf("sdlimgui", "could not save preferences: %v", err)
 		}
 	}
-
-	imgui.End()
 }
 
 // draws nick text input and ID information. used by PlusROM Nick window and

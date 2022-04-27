@@ -308,12 +308,6 @@ func (img *SdlImgui) setEmulationMode(mode emulation.Mode) error {
 		img.screen.clearTextureRenderers()
 		img.screen.addTextureRenderer(img.wm.dbgScr)
 
-		// close selectROM window when switching to debugger mode. the window
-		// may be open in playmode on start and the user immediately switches
-		// to the debugger. it just seems better that the debugger starts
-		// without the window being open
-		img.wm.selectROM.setOpen(false)
-
 		err := img.prefs.load()
 		if err != nil {
 			return err

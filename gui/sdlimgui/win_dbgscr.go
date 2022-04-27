@@ -33,8 +33,9 @@ import (
 const winDbgScrID = "TV Screen"
 
 type winDbgScr struct {
-	img  *SdlImgui
-	open bool
+	debuggerWin
+
+	img *SdlImgui
 
 	// reference to screen data
 	scr *screen
@@ -134,18 +135,10 @@ func (win *winDbgScr) id() string {
 	return winDbgScrID
 }
 
-func (win *winDbgScr) isOpen() bool {
-	return win.open
-}
-
-func (win *winDbgScr) setOpen(open bool) {
-	win.open = open
-}
-
 const breakMenuPopupID = "dbgScreenBreakMenu"
 
-func (win *winDbgScr) draw() {
-	if !win.open {
+func (win *winDbgScr) debuggerDraw() {
+	if !win.debuggerOpen {
 		return
 	}
 
@@ -170,8 +163,14 @@ func (win *winDbgScr) draw() {
 	imgui.SetNextWindowSizeV(imgui.Vec2{637, 431}, imgui.ConditionFirstUseEver)
 
 	// we don't want to ever show scrollbars
-	imgui.BeginV(win.id(), &win.open, imgui.WindowFlagsNoScrollbar)
+	if imgui.BeginV(win.debuggerID(win.id()), &win.debuggerOpen, imgui.WindowFlagsNoScrollbar) {
+		win.draw()
+	}
 
+	imgui.End()
+}
+
+func (win *winDbgScr) draw() {
 	// note size of remaining window and content area
 	win.screenRegion = imgui.ContentRegionAvail()
 	win.screenRegion.Y -= win.toolbarHeight
@@ -348,8 +347,6 @@ func (win *winDbgScr) draw() {
 			win.drawOverlayColorKey()
 		}
 	})
-
-	imgui.End()
 }
 
 func (win *winDbgScr) drawSpecCombo() {
@@ -360,7 +357,7 @@ func (win *winDbgScr) drawSpecCombo() {
 				win.img.term.pushCommand(fmt.Sprintf("TV SPEC %s", s))
 
 				// the CDF streams window uses the TV colours for the display
-				win.img.wm.windows[winCDFStreamsID].(*winCDFStreams).updateStreams()
+				win.img.wm.debuggerWindows[winCDFStreamsID].(*winCDFStreams).updateStreams()
 			}
 		}
 		imgui.EndCombo()

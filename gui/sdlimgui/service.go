@@ -152,7 +152,7 @@ func (img *SdlImgui) Service() {
 			}
 			img.io.AddMouseWheelDelta(deltaX/4, deltaY/4)
 
-			if !img.wm.selectROM.open {
+			if img.mode != emulation.ModePlay || !img.wm.playmodeWindows[winSelectROMID].playmodeIsOpen() {
 				select {
 				case img.userinput <- userinput.EventMouseWheel{Delta: deltaY}:
 				default:
@@ -342,8 +342,8 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 			case sdl.SCANCODE_ESCAPE:
 				if img.isCaptured() {
 					img.setCapture(false)
-				} else if img.wm.selectROM.open {
-					img.wm.selectROM.setOpen(false)
+				} else if img.wm.playmodeWindows[winSelectROMID].playmodeIsOpen() {
+					img.wm.playmodeWindows[winSelectROMID].playmodeSetOpen(false)
 				} else {
 					img.quit()
 				}
@@ -375,7 +375,13 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 					// only open ROM selector if window has been focused for a
 					// while. see windowFocusedTime declaration for an explanation
 					if time.Since(img.windowFocusedTime) > 500*time.Millisecond {
-						img.wm.selectROM.setOpen(!img.wm.selectROM.open)
+						if img.isPlaymode() {
+							w := img.wm.playmodeWindows[winSelectROMID]
+							w.playmodeSetOpen(!w.playmodeIsOpen())
+						} else {
+							w := img.wm.debuggerWindows[winSelectROMID]
+							w.debuggerSetOpen(!w.debuggerIsOpen())
+						}
 					}
 				}
 			}
@@ -388,16 +394,26 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 			}
 
 		case sdl.SCANCODE_F8:
-			w := img.wm.windows[winBotID]
-			w.setOpen(!w.isOpen())
+			w := img.wm.playmodeWindows[winBotID]
+			w.playmodeSetOpen(!w.playmodeIsOpen())
 
 		case sdl.SCANCODE_F9:
-			w := img.wm.windows[winTrackerID]
-			w.setOpen(!w.isOpen())
+			if img.isPlaymode() {
+				w := img.wm.playmodeWindows[winTrackerID]
+				w.playmodeSetOpen(!w.playmodeIsOpen())
+			} else {
+				w := img.wm.debuggerWindows[winTrackerID]
+				w.debuggerSetOpen(!w.debuggerIsOpen())
+			}
 
 		case sdl.SCANCODE_F10:
-			w := img.wm.windows[winPrefsID]
-			w.setOpen(!w.isOpen())
+			if img.isPlaymode() {
+				w := img.wm.playmodeWindows[winPrefsID]
+				w.playmodeSetOpen(!w.playmodeIsOpen())
+			} else {
+				w := img.wm.debuggerWindows[winPrefsID]
+				w.debuggerSetOpen(!w.debuggerIsOpen())
+			}
 
 		case sdl.SCANCODE_F11:
 			img.prefs.fullScreen.Set(!img.prefs.fullScreen.Get().(bool))

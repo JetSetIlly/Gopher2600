@@ -77,7 +77,7 @@ func (img *SdlImgui) serviceSetFeature(request featureRequest) {
 			if img.isPlaymode() {
 				err = curated.Errorf("visibility not supported in playmode")
 			} else {
-				img.wm.dbgScr.setOpen(request.args[0].(bool))
+				img.wm.dbgScr.debuggerSetOpen(request.args[0].(bool))
 			}
 		}
 
@@ -121,7 +121,11 @@ func (img *SdlImgui) serviceSetFeature(request featureRequest) {
 	case gui.ReqROMSelector:
 		err = argLen(request.args, 0)
 		if err == nil {
-			img.wm.windows[winSelectROMID].setOpen(true)
+			if img.isPlaymode() {
+				img.wm.playmodeWindows[winSelectROMID].playmodeSetOpen(true)
+			} else {
+				img.wm.debuggerWindows[winSelectROMID].debuggerSetOpen(true)
+			}
 		}
 
 	case gui.ReqComparison:
@@ -129,21 +133,21 @@ func (img *SdlImgui) serviceSetFeature(request featureRequest) {
 		if err == nil {
 			open := false
 			if request.args[0] != nil {
-				img.wm.windows[winComparisonID].(*winComparison).render = request.args[0].(chan *image.RGBA)
+				img.wm.playmodeWindows[winComparisonID].(*winComparison).render = request.args[0].(chan *image.RGBA)
 				open = true
 			}
 			if request.args[1] != nil {
-				img.wm.windows[winComparisonID].(*winComparison).diffRender = request.args[1].(chan *image.RGBA)
+				img.wm.playmodeWindows[winComparisonID].(*winComparison).diffRender = request.args[1].(chan *image.RGBA)
 				open = true
 			}
-			img.wm.windows[winComparisonID].(*winComparison).setOpen(open)
+			img.wm.playmodeWindows[winComparisonID].(*winComparison).playmodeSetOpen(open)
 		}
 
 	case gui.ReqBotFeedback:
 		err = argLen(request.args, 1)
 		if err == nil {
 			f := request.args[0].(*bots.Feedback)
-			img.wm.windows[winBotID].(*winBot).startBotSession(f)
+			img.wm.playmodeWindows[winBotID].(*winBot).startBotSession(f)
 		}
 
 	case gui.ReqShowFPS:

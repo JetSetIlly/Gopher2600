@@ -25,8 +25,9 @@ import (
 const winCDFRegistersID = "CDF Registers"
 
 type winCDFRegisters struct {
-	img  *SdlImgui
-	open bool
+	debuggerWin
+
+	img *SdlImgui
 }
 
 func newWinCDFRegisters(img *SdlImgui) (window, error) {
@@ -44,27 +45,27 @@ func (win *winCDFRegisters) id() string {
 	return winCDFRegistersID
 }
 
-func (win *winCDFRegisters) isOpen() bool {
-	return win.open
-}
-
-func (win *winCDFRegisters) setOpen(open bool) {
-	win.open = open
-}
-
-func (win *winCDFRegisters) draw() {
-	if !win.open {
+func (win *winCDFRegisters) debuggerDraw() {
+	if !win.debuggerOpen {
 		return
 	}
 
 	// do not open window if there is no valid cartridge debug bus available
-	r, ok := win.img.lz.Cart.Registers.(cdf.Registers)
+	_, ok := win.img.lz.Cart.Registers.(cdf.Registers)
 	if !win.img.lz.Cart.HasRegistersBus || !ok {
 		return
 	}
 
 	imgui.SetNextWindowPosV(imgui.Vec2{610, 303}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
-	imgui.BeginV(win.id(), &win.open, imgui.WindowFlagsAlwaysAutoResize)
+	if imgui.BeginV(win.debuggerID(win.id()), &win.debuggerOpen, imgui.WindowFlagsAlwaysAutoResize) {
+		win.draw()
+	}
+
+	imgui.End()
+}
+
+func (win *winCDFRegisters) draw() {
+	r := win.img.lz.Cart.Registers.(cdf.Registers)
 
 	imgui.Text("Datastream")
 	imgui.Spacing()
@@ -175,6 +176,4 @@ func (win *winCDFRegisters) draw() {
 			})
 		}
 	}
-
-	imgui.End()
 }

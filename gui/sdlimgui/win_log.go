@@ -24,8 +24,10 @@ import (
 const winLogID = "Log"
 
 type winLog struct {
-	img            *SdlImgui
-	open           bool
+	debuggerWin
+
+	img *SdlImgui
+
 	scrollToBottom bool
 }
 
@@ -44,17 +46,8 @@ func (win *winLog) id() string {
 	return winLogID
 }
 
-func (win *winLog) isOpen() bool {
-	return win.open
-}
-
-func (win *winLog) setOpen(open bool) {
-	win.open = open
-	win.scrollToBottom = true
-}
-
-func (win *winLog) draw() {
-	if !win.open {
+func (win *winLog) debuggerDraw() {
+	if !win.debuggerOpen {
 		return
 	}
 
@@ -62,7 +55,14 @@ func (win *winLog) draw() {
 	imgui.SetNextWindowSizeV(imgui.Vec2{570, 335}, imgui.ConditionFirstUseEver)
 
 	imgui.PushStyleColor(imgui.StyleColorWindowBg, win.img.cols.LogBackground)
-	imgui.BeginV(win.id(), &win.open, imgui.WindowFlagsNone)
+	if imgui.BeginV(win.debuggerID(win.id()), &win.debuggerOpen, imgui.WindowFlagsNone) {
+		win.draw()
+	}
+
+	imgui.End()
+}
+
+func (win *winLog) draw() {
 	imgui.PopStyleColor()
 
 	logger.BorrowLog(func(log []logger.Entry) {
@@ -80,6 +80,4 @@ func (win *winLog) draw() {
 			imgui.SetScrollHereY(0.0)
 		}
 	})
-
-	imgui.End()
 }

@@ -18,6 +18,7 @@ package sdlimgui
 import (
 	"bufio"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/jetsetilly/gopher2600/curated"
@@ -60,8 +61,8 @@ func (wm *manager) saveManagerState() (rerr error) {
 		return curated.Errorf("manager state: %v", "incorrect number of characters written to file")
 	}
 
-	for key, def := range wm.windows {
-		s := fmt.Sprintf("%s%s%v\n", key, prefs.KeySep, def.isOpen())
+	for key, def := range wm.debuggerWindows {
+		s := fmt.Sprintf("%s%s%v\n", key, prefs.KeySep, def.debuggerIsOpen())
 		n, err := fmt.Fprint(f, s)
 		if err != nil {
 			return curated.Errorf("manager state: %v", err)
@@ -87,6 +88,10 @@ func (wm *manager) loadManagerState() (rerr error) {
 	// open an existing state file
 	f, err := fs.Open(pth)
 	if err != nil {
+		switch err.(type) {
+		case *os.PathError:
+			return nil
+		}
 		return curated.Errorf("manager state: %v", err)
 	}
 	defer func() {
@@ -118,7 +123,9 @@ func (wm *manager) loadManagerState() (rerr error) {
 		// open/close window according to the state file
 		k := spt[0]
 		v := spt[1]
-		wm.windows[k].setOpen(strings.ToUpper(v) == "TRUE")
+		if w, ok := wm.debuggerWindows[k]; ok {
+			w.debuggerSetOpen(strings.ToUpper(v) == "TRUE")
+		}
 	}
 
 	return nil

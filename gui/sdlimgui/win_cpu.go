@@ -27,8 +27,9 @@ import (
 const winCPUID = "CPU"
 
 type winCPU struct {
-	img  *SdlImgui
-	open bool
+	debuggerWin
+
+	img *SdlImgui
 
 	// width of status register. we use this to set the width of the window.
 	statusWidth float32
@@ -64,23 +65,21 @@ func (win *winCPU) id() string {
 	return winCPUID
 }
 
-func (win *winCPU) isOpen() bool {
-	return win.open
-}
-
-func (win *winCPU) setOpen(open bool) {
-	win.open = open
-}
-
-func (win *winCPU) draw() {
-	if !win.open {
+func (win *winCPU) debuggerDraw() {
+	if !win.debuggerOpen {
 		return
 	}
 
 	imgui.SetNextWindowPosV(imgui.Vec2{836, 315}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
 	imgui.SetNextWindowSizeV(imgui.Vec2{win.statusWidth, -1}, imgui.ConditionNone)
-	imgui.BeginV(win.id(), &win.open, imgui.WindowFlagsNone)
+	if imgui.BeginV(win.debuggerID(win.id()), &win.debuggerOpen, imgui.WindowFlagsNone) {
+		win.draw()
+	}
 
+	imgui.End()
+}
+
+func (win *winCPU) draw() {
 	fillWidth := imgui.Vec2{X: -1, Y: imgui.FrameHeight()}
 
 	if imgui.BeginTable("cpuLayout", 2) {
@@ -211,8 +210,6 @@ func (win *winCPU) draw() {
 		imgui.Text("")
 		imgui.PopStyleColor()
 	}
-
-	imgui.End()
 }
 
 func (win *winCPU) drawRegister(reg registers.Generic) {

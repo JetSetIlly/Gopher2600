@@ -26,8 +26,9 @@ import (
 const winPeripheralsID = "Peripherals"
 
 type winPeripherals struct {
-	img  *SdlImgui
-	open bool
+	debuggerWin
+
+	img *SdlImgui
 
 	// required dimensions for controller dropdown
 	controllerComboDim imgui.Vec2
@@ -49,16 +50,8 @@ func (win *winPeripherals) id() string {
 	return winPeripheralsID
 }
 
-func (win *winPeripherals) isOpen() bool {
-	return win.open
-}
-
-func (win *winPeripherals) setOpen(open bool) {
-	win.open = open
-}
-
-func (win *winPeripherals) draw() {
-	if !win.open {
+func (win *winPeripherals) debuggerDraw() {
+	if !win.debuggerOpen {
 		return
 	}
 
@@ -69,8 +62,14 @@ func (win *winPeripherals) draw() {
 	}
 
 	imgui.SetNextWindowPosV(imgui.Vec2{858, 503}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
-	imgui.BeginV(win.id(), &win.open, imgui.WindowFlagsAlwaysAutoResize)
+	if imgui.BeginV(win.debuggerID(win.id()), &win.debuggerOpen, imgui.WindowFlagsAlwaysAutoResize) {
+		win.draw()
+	}
 
+	imgui.End()
+}
+
+func (win *winPeripherals) draw() {
 	imgui.BeginGroup()
 	imgui.Spacing()
 	imgui.Text("Left")
@@ -85,8 +84,6 @@ func (win *winPeripherals) draw() {
 	imgui.Spacing()
 	win.drawPeripheral(win.img.lz.Peripherals.RightPlayer, peripherals.AvailableRightPlayer)
 	imgui.EndGroup()
-
-	imgui.End()
 }
 
 func (win *winPeripherals) drawPeripheral(p ports.Peripheral, periphList []string) {

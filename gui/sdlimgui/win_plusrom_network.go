@@ -27,8 +27,9 @@ const winPlusROMNetworkID = "PlusROM Network"
 const winPlusROMNetworkMenu = "Network"
 
 type winPlusROMNetwork struct {
-	img  *SdlImgui
-	open bool
+	debuggerWin
+
+	img *SdlImgui
 }
 
 func newWinPlusROMNetwork(img *SdlImgui) (window, error) {
@@ -46,16 +47,8 @@ func (win *winPlusROMNetwork) id() string {
 	return winPlusROMNetworkID
 }
 
-func (win *winPlusROMNetwork) isOpen() bool {
-	return win.open
-}
-
-func (win *winPlusROMNetwork) setOpen(open bool) {
-	win.open = open
-}
-
-func (win *winPlusROMNetwork) draw() {
-	if !win.open {
+func (win *winPlusROMNetwork) debuggerDraw() {
+	if !win.debuggerOpen {
 		return
 	}
 
@@ -64,8 +57,14 @@ func (win *winPlusROMNetwork) draw() {
 	}
 
 	imgui.SetNextWindowPosV(imgui.Vec2{659, 35}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
-	imgui.BeginV(win.id(), &win.open, imgui.WindowFlagsAlwaysAutoResize)
+	if imgui.BeginV(win.debuggerID(win.id()), &win.debuggerOpen, imgui.WindowFlagsAlwaysAutoResize) {
+		win.draw()
+	}
 
+	imgui.End()
+}
+
+func (win *winPlusROMNetwork) draw() {
 	host := win.img.lz.Cart.PlusROMAddrInfo.Host
 	path := win.img.lz.Cart.PlusROMAddrInfo.Path
 
@@ -140,6 +139,4 @@ func (win *winPlusROMNetwork) draw() {
 			imgui.Text("more")
 		}
 	}
-
-	imgui.End()
 }

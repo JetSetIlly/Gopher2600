@@ -26,8 +26,9 @@ import (
 const winCartRAMID = "Cartridge RAM"
 
 type winCartRAM struct {
-	img  *SdlImgui
-	open bool
+	debuggerWin
+
+	img *SdlImgui
 
 	// height of status line at bottom of frame. valid after first frame of a
 	// tab (although it should be same for each tab)
@@ -50,16 +51,8 @@ func (win *winCartRAM) id() string {
 	return winCartRAMID
 }
 
-func (win *winCartRAM) isOpen() bool {
-	return win.open
-}
-
-func (win *winCartRAM) setOpen(open bool) {
-	win.open = open
-}
-
-func (win *winCartRAM) draw() {
-	if !win.open {
+func (win *winCartRAM) debuggerDraw() {
+	if !win.debuggerOpen {
 		return
 	}
 
@@ -67,16 +60,22 @@ func (win *winCartRAM) draw() {
 		return
 	}
 
-	// get comparison data. assuming that there is such a thing and that it's
-	// safe to get StaticData from.
-	comp := win.img.lz.Rewind.Comparison.Mem.Cart.GetRAMbus().GetRAM()
-
 	imgui.SetNextWindowPosV(imgui.Vec2{533, 430}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
 	imgui.SetNextWindowSizeV(imgui.Vec2{478, 271}, imgui.ConditionFirstUseEver)
 	imgui.SetNextWindowSizeConstraints(imgui.Vec2{478, 271}, imgui.Vec2{529, 1000})
 
-	title := fmt.Sprintf("%s %s", win.img.lz.Cart.ID, winCartRAMID)
-	imgui.BeginV(title, &win.open, imgui.WindowFlagsNone)
+	title := fmt.Sprintf("%s %s", win.img.lz.Cart.ID, win.id())
+	if imgui.BeginV(win.debuggerID(title), &win.debuggerOpen, imgui.WindowFlagsNone) {
+		win.draw()
+	}
+
+	imgui.End()
+}
+
+func (win *winCartRAM) draw() {
+	// get comparison data. assuming that there is such a thing and that it's
+	// safe to get StaticData from.
+	comp := win.img.lz.Rewind.Comparison.Mem.Cart.GetRAMbus().GetRAM()
 
 	imgui.BeginTabBarV("", imgui.TabBarFlagsFittingPolicyScroll)
 	for bank := range win.img.lz.Cart.RAM {
@@ -186,6 +185,4 @@ func (win *winCartRAM) draw() {
 		}
 	}
 	imgui.EndTabBar()
-
-	imgui.End()
 }

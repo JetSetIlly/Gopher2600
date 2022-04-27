@@ -27,8 +27,9 @@ import (
 const winPortsID = "Ports"
 
 type winPorts struct {
-	img  *SdlImgui
-	open bool
+	debuggerWin
+
+	img *SdlImgui
 }
 
 func newWinPorts(img *SdlImgui) (window, error) {
@@ -46,27 +47,21 @@ func (win *winPorts) id() string {
 	return winPortsID
 }
 
-func (win *winPorts) isOpen() bool {
-	return win.open
-}
-
-func (win *winPorts) setOpen(open bool) {
-	win.open = open
-}
-
-func (win *winPorts) draw() {
-	if !win.open {
+func (win *winPorts) debuggerDraw() {
+	if !win.debuggerOpen {
 		return
 	}
 
 	imgui.SetNextWindowPosV(imgui.Vec2{462, 121}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
 
-	if !imgui.BeginV(win.id(), &win.open, imgui.WindowFlagsAlwaysAutoResize) {
-		imgui.End()
-		return
+	if imgui.BeginV(win.debuggerID(win.id()), &win.debuggerOpen, imgui.WindowFlagsAlwaysAutoResize) {
+		win.draw()
 	}
-	defer imgui.End()
 
+	imgui.End()
+}
+
+func (win *winPorts) draw() {
 	if imgui.BeginTableV("riotSWCHx", 6, imgui.TableFlagsNone, imgui.Vec2{}, 0) {
 		// CPU written SWCHx values
 		imgui.TableNextRow()
