@@ -42,7 +42,8 @@ type manager struct {
 	hasInitialised bool
 
 	// the collection of managed windows in the system, indexed by window title
-	windows map[string]window
+	windows     map[string]window
+	windowStack []window
 
 	// windows can be open and closed through the menu bar
 	menu map[menuGroup][]menuEntry
@@ -76,14 +77,16 @@ type windowDef struct {
 	// the window creation function
 	create func(*SdlImgui) (window, error)
 
-	// whether the window should be opened in an open or closed state
-	open bool
-
 	// menu entry the window will be associated with. the label and windowID
 	// fields can be left blank. if it is the window.id() value will be used.
 	//
 	// the restrictBus and restrictMapper fields are optional.
 	menu menuEntry
+
+	// whether the window should be opened in an open or closed state. this is
+	// the default state and will be overridden if loadManagerState() is called
+	// and a previously saved state can be found
+	open bool
 }
 
 // list of windows to add to the window manager.
@@ -142,15 +145,6 @@ var windowDefs = [...]windowDef{
 	{create: newWinBot, menu: menuEntry{group: menuNone}, open: false},
 }
 
-// list of windows that can be opened in playmode in addition to the debugger.
-var playmodeWindows = [...]string{
-	winPrefsID,
-	winSelectROMID,
-	winTrackerID,
-	winComparisonID,
-	winBotID,
-}
-
 func newManager(img *SdlImgui) (*manager, error) {
 	wm := &manager{
 		img:     img,
@@ -189,6 +183,15 @@ func newManager(img *SdlImgui) (*manager, error) {
 	wm.timeline = wm.windows[winTimelineID].(*winTimeline)
 
 	return wm, nil
+}
+
+// list of windows that can be opened in playmode in addition to the debugger.
+var playmodeWindows = [...]string{
+	winPrefsID,
+	winSelectROMID,
+	winTrackerID,
+	winComparisonID,
+	winBotID,
 }
 
 func (wm *manager) draw() {

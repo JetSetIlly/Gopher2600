@@ -170,6 +170,11 @@ func NewSdlImgui(e emulation.Emulation) (*SdlImgui, error) {
 		return nil, curated.Errorf("sdlimgui: %v", err)
 	}
 
+	err = img.wm.loadManagerState()
+	if err != nil {
+		return nil, curated.Errorf("sdlimgui: %v", err)
+	}
+
 	// initialise new polling type
 	img.polling = newPolling(img)
 
@@ -215,6 +220,12 @@ func (img *SdlImgui) Destroy(output io.Writer) {
 	if err != nil {
 		output.Write([]byte(err.Error()))
 	}
+
+	err = img.wm.saveManagerState()
+	if err != nil {
+		output.Write([]byte(err.Error()))
+	}
+
 	img.glsl.destroy()
 
 	err = img.plt.destroy()
