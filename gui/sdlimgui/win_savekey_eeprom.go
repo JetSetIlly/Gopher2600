@@ -17,6 +17,7 @@ package sdlimgui
 
 import (
 	"github.com/inkyblackness/imgui-go/v4"
+	"github.com/jetsetilly/gopher2600/hardware/peripherals/atarivox"
 	"github.com/jetsetilly/gopher2600/hardware/peripherals/savekey"
 )
 
@@ -71,7 +72,15 @@ func (win *winSaveKeyEEPROM) draw() {
 	drawByteGridSimple("eepromByteGrid", win.img.lz.SaveKey.EEPROMdata, win.img.lz.SaveKey.EEPROMdiskData, win.img.cols.ValueDiff, 0x00,
 		func(addr uint16, data uint8) {
 			win.img.dbg.PushRawEvent(func() {
-				if sk, ok := win.img.vcs.RIOT.Ports.RightPlayer.(*savekey.SaveKey); ok {
+				var sk *savekey.SaveKey
+
+				if av, ok := win.img.vcs.RIOT.Ports.RightPlayer.(*atarivox.AtariVox); ok {
+					sk = av.SaveKey.(*savekey.SaveKey)
+				} else {
+					sk = win.img.vcs.RIOT.Ports.RightPlayer.(*savekey.SaveKey)
+				}
+
+				if sk != nil {
 					sk.EEPROM.Poke(addr, data)
 				}
 			})
@@ -85,7 +94,15 @@ func (win *winSaveKeyEEPROM) draw() {
 
 		if imgui.Button("Save to disk") {
 			win.img.dbg.PushRawEvent(func() {
-				if sk, ok := win.img.vcs.RIOT.Ports.RightPlayer.(*savekey.SaveKey); ok {
+				var sk *savekey.SaveKey
+
+				if av, ok := win.img.vcs.RIOT.Ports.RightPlayer.(*atarivox.AtariVox); ok {
+					sk = av.SaveKey.(*savekey.SaveKey)
+				} else {
+					sk = win.img.vcs.RIOT.Ports.RightPlayer.(*savekey.SaveKey)
+				}
+
+				if sk != nil {
 					sk.EEPROM.Write()
 				}
 			})
