@@ -636,9 +636,6 @@ func (dbg *Debugger) StartInDebugMode(initScript string, filename string, mappin
 		}
 	}
 
-	// disable peripheral fingerprinting on startup
-	dbg.vcs.DisablePeriphFingerprint = true
-
 	err = dbg.attachCartridge(cartload)
 	if err != nil {
 		return curated.Errorf("debugger: %v", err)
@@ -721,9 +718,6 @@ func (dbg *Debugger) StartInPlayMode(filename string, mapping string, left strin
 		if !curated.Is(err, recorder.NotAPlaybackFile) {
 			return curated.Errorf("debugger: %v", err)
 		}
-
-		// disable peripheral fingerprinting on startup
-		dbg.vcs.DisablePeriphFingerprint = true
 
 		err = dbg.attachCartridge(cartload)
 		if err != nil {
