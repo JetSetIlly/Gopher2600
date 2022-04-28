@@ -118,9 +118,10 @@ func (win *winSelectROM) setOpen(open bool) {
 			gl.Ptr([]uint8{0}))
 
 		return
-	} else {
-		win.thmb.EndCreation()
 	}
+
+	// end thumbnail emulation
+	win.thmb.EndCreation()
 }
 
 func (win *winSelectROM) playmodeSetOpen(open bool) {
@@ -330,6 +331,7 @@ func (win *winSelectROM) draw() {
 		imgui.Spacing()
 
 		if imgui.Button("Cancel") {
+			// close rom selected in both the debugger and playmode
 			win.debuggerSetOpen(false)
 			win.playmodeSetOpen(false)
 		}
@@ -372,7 +374,10 @@ func (win *winSelectROM) insertCartridge() {
 			logger.Logf("sdlimgui", err.Error())
 		}
 	})
+
+	// close rom selected in both the debugger and playmode
 	win.debuggerSetOpen(false)
+	win.playmodeSetOpen(false)
 
 	// tell thumbnailer to stop emulating
 	win.thmb.EndCreation()

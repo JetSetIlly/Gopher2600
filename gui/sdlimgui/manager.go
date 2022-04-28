@@ -17,6 +17,7 @@ package sdlimgui
 
 import (
 	"github.com/inkyblackness/imgui-go/v4"
+	"github.com/jetsetilly/gopher2600/emulation"
 )
 
 // manager handles windows and menus in the system.
@@ -33,6 +34,7 @@ type manager struct {
 
 	// debugger debuggerWindows
 	debuggerWindows map[string]debuggerWindow
+	debuggerStack   []string
 
 	// windows can be open and closed through the menu bar
 	menu map[menuGroup][]menuEntry
@@ -71,10 +73,10 @@ type windowDef struct {
 	// the restrictBus and restrictMapper fields are optional.
 	menu menuEntry
 
-	// whether the window should be opened in an open or closed state. this is
+	// whether the window should be opened in an defaultOpen or closed state. this is
 	// the default state and will be overridden if loadManagerState() is called
 	// and a previously saved state can be found
-	open bool
+	defaultOpen bool
 }
 
 // list of windows to add to the window manager.
@@ -87,21 +89,21 @@ var windowDefs = [...]windowDef{
 
 	// windows that appear in the "vcs" menu
 	{create: newWinCollisions, menu: menuEntry{group: menuVCS}},
-	{create: newWinControl, menu: menuEntry{group: menuVCS}, open: true},
-	{create: newWinCPU, menu: menuEntry{group: menuVCS}, open: true},
-	{create: newWinDisasm, menu: menuEntry{group: menuVCS}, open: true},
-	{create: newWinDbgScr, menu: menuEntry{group: menuVCS}, open: true},
-	{create: newWinRAM, menu: menuEntry{group: menuVCS}, open: true},
+	{create: newWinControl, menu: menuEntry{group: menuVCS}, defaultOpen: true},
+	{create: newWinCPU, menu: menuEntry{group: menuVCS}, defaultOpen: true},
+	{create: newWinDisasm, menu: menuEntry{group: menuVCS}, defaultOpen: true},
+	{create: newWinDbgScr, menu: menuEntry{group: menuVCS}, defaultOpen: true},
+	{create: newWinRAM, menu: menuEntry{group: menuVCS}, defaultOpen: true},
 	{create: newWinPeripherals, menu: menuEntry{group: menuVCS}},
 	{create: newWinPorts, menu: menuEntry{group: menuVCS}},
-	{create: newWinTIA, menu: menuEntry{group: menuVCS}, open: true},
-	{create: newWinTimer, menu: menuEntry{group: menuVCS}, open: true},
+	{create: newWinTIA, menu: menuEntry{group: menuVCS}, defaultOpen: true},
+	{create: newWinTimer, menu: menuEntry{group: menuVCS}, defaultOpen: true},
 
 	// windows that appear in the "tools" menu
-	{create: newWinOscilloscope, menu: menuEntry{group: menuTools}, open: true},
-	{create: newWinTracker, menu: menuEntry{group: menuTools}, open: false},
-	{create: newWinTimeline, menu: menuEntry{group: menuTools}, open: true},
-	{create: newWin6507Pinout, menu: menuEntry{group: menuTools}, open: false},
+	{create: newWinOscilloscope, menu: menuEntry{group: menuTools}, defaultOpen: true},
+	{create: newWinTracker, menu: menuEntry{group: menuTools}, defaultOpen: false},
+	{create: newWinTimeline, menu: menuEntry{group: menuTools}, defaultOpen: true},
+	{create: newWin6507Pinout, menu: menuEntry{group: menuTools}, defaultOpen: false},
 
 	// windows that appear in cartridge specific menu
 	{create: newWinDPCregisters, menu: menuEntry{group: menuCart, restrictBus: menuRestrictRegister, restrictMapper: []string{"DPC"}}},
@@ -129,8 +131,8 @@ var windowDefs = [...]windowDef{
 	{create: newWinSaveKeyEEPROM, menu: menuEntry{group: menuSaveKey, label: winSaveKeyEEPROMMenu}},
 
 	// windows that do not have a menu entry (windows for playmode only)
-	{create: newWinComparison, menu: menuEntry{group: menuNone}, open: false},
-	{create: newWinBot, menu: menuEntry{group: menuNone}, open: false},
+	{create: newWinComparison, menu: menuEntry{group: menuNone}, defaultOpen: false},
+	{create: newWinBot, menu: menuEntry{group: menuNone}, defaultOpen: false},
 }
 
 func newManager(img *SdlImgui) (*manager, error) {
@@ -158,8 +160,8 @@ func newManager(img *SdlImgui) (*manager, error) {
 		if dw, ok := w.(debuggerWindow); ok {
 			wm.debuggerWindows[w.id()] = dw
 
-			// open window if requested
-			dw.debuggerSetOpen(def.open)
+			// default window state
+			dw.debuggerSetOpen(def.defaultOpen)
 
 			// if menu label has not been specified use the window definition
 			if def.menu.label == "" {
@@ -182,6 +184,7 @@ func newManager(img *SdlImgui) (*manager, error) {
 
 	return wm, nil
 }
+
 func (wm *manager) draw() {
 	// there's no good place to call the managedWindow.init() function except
 	// here when we know everything else has been initialised
@@ -192,28 +195,28 @@ func (wm *manager) draw() {
 		wm.hasInitialised = true
 	}
 
-	// playmode draws the screen and other windows that have been listed
-	// as being safe to draw in playmode
-	if wm.img.isPlaymode() {
+	switch wm.img.mode {
+	case emulation.ModePlay:
+		// playmode draws the screen and other windows that have been listed
+		// as being safe to draw in playmode
 		for _, w := range wm.playmodeWindows {
 			w.playmodeDraw()
 		}
-		return
-	}
+	case emulation.ModeDebugger:
+		// see commentary for screenPos in windowManager declaration
+		wm.screenPos = imgui.WindowPos()
 
-	// see commentary for screenPos in windowManager declaration
-	wm.screenPos = imgui.WindowPos()
+		// no debugger is ready yet so return immediately
+		if wm.img.dbg == nil {
+			return
+		}
 
-	// no debugger is ready yet so return immediately
-	if wm.img.dbg == nil {
-		return
-	}
+		// draw menu
+		wm.drawMenu()
 
-	// draw menu
-	wm.drawMenu()
-
-	// draw windows
-	for _, w := range wm.debuggerWindows {
-		w.debuggerDraw()
+		// draw windows
+		for _, w := range wm.debuggerWindows {
+			w.debuggerDraw()
+		}
 	}
 }

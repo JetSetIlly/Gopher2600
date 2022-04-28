@@ -375,13 +375,7 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 					// only open ROM selector if window has been focused for a
 					// while. see windowFocusedTime declaration for an explanation
 					if time.Since(img.windowFocusedTime) > 500*time.Millisecond {
-						if img.isPlaymode() {
-							w := img.wm.playmodeWindows[winSelectROMID]
-							w.playmodeSetOpen(!w.playmodeIsOpen())
-						} else {
-							w := img.wm.debuggerWindows[winSelectROMID]
-							w.debuggerSetOpen(!w.debuggerIsOpen())
-						}
+						img.wm.toggleOpen(winSelectROMID)
 					}
 				}
 			}
@@ -398,22 +392,10 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 			w.playmodeSetOpen(!w.playmodeIsOpen())
 
 		case sdl.SCANCODE_F9:
-			if img.isPlaymode() {
-				w := img.wm.playmodeWindows[winTrackerID]
-				w.playmodeSetOpen(!w.playmodeIsOpen())
-			} else {
-				w := img.wm.debuggerWindows[winTrackerID]
-				w.debuggerSetOpen(!w.debuggerIsOpen())
-			}
+			img.wm.toggleOpen(winTrackerID)
 
 		case sdl.SCANCODE_F10:
-			if img.isPlaymode() {
-				w := img.wm.playmodeWindows[winPrefsID]
-				w.playmodeSetOpen(!w.playmodeIsOpen())
-			} else {
-				w := img.wm.debuggerWindows[winPrefsID]
-				w.debuggerSetOpen(!w.debuggerIsOpen())
-			}
+			img.wm.toggleOpen(winPrefsID)
 
 		case sdl.SCANCODE_F11:
 			img.prefs.fullScreen.Set(!img.prefs.fullScreen.Get().(bool))

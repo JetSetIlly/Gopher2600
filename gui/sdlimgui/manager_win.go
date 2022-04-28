@@ -55,17 +55,6 @@ func (w *debuggerWin) debuggerSetOpen(open bool) {
 	w.debuggerOpen = open
 }
 
-// the window type represents all the windows used in the sdlimgui.
-type window interface {
-	// initialisation function. by the first call to manager.draw()
-	init()
-
-	// id should return a unique identifier for the window. note that the
-	// window title and any menu entry do not have to have the same value as
-	// the id() but it can.
-	id() string
-}
-
 type playmodeWindow interface {
 	window
 	playmodeDraw()
@@ -78,4 +67,36 @@ type debuggerWindow interface {
 	debuggerDraw()
 	debuggerIsOpen() bool
 	debuggerSetOpen(bool)
+}
+
+// the window type represents all the windows used in the sdlimgui.
+type window interface {
+	// initialisation function. by the first call to manager.draw()
+	init()
+
+	// id should return a unique identifier for the window. note that the
+	// window title and any menu entry do not have to have the same value as
+	// the id() but it can.
+	id() string
+}
+
+// toggles a window open according to emulation state
+func (wm *manager) toggleOpen(winID string) bool {
+	if wm.img.isPlaymode() {
+		w, ok := wm.playmodeWindows[winID]
+		if !ok {
+			return false
+		}
+		w.playmodeSetOpen(!w.playmodeIsOpen())
+		return w.playmodeIsOpen()
+	} else {
+		w, ok := wm.debuggerWindows[winID]
+		if !ok {
+			return false
+		}
+		w.debuggerSetOpen(!w.debuggerIsOpen())
+		return w.debuggerIsOpen()
+	}
+
+	return false
 }

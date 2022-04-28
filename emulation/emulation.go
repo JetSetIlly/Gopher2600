@@ -63,6 +63,17 @@ type Emulation interface {
 // features.
 type Mode int
 
+func (m Mode) String() string {
+	switch m {
+	case ModeDebugger:
+		return "Debugger"
+	case ModePlay:
+		return "Playmode"
+	}
+
+	return ""
+}
+
 // List of defined modes.
 const (
 	ModeNone Mode = iota

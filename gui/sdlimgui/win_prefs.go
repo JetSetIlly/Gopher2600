@@ -51,8 +51,8 @@ func (win *winPrefs) playmodeDraw() {
 		return
 	}
 
-	imgui.SetNextWindowPosV(imgui.Vec2{100, 40}, imgui.ConditionAppearing, imgui.Vec2{0, 0})
-	if imgui.BeginV(win.playmodeID(win.id()), &win.playmodeOpen, imgui.WindowFlagsNoSavedSettings|imgui.WindowFlagsAlwaysAutoResize) {
+	imgui.SetNextWindowPosV(imgui.Vec2{100, 40}, imgui.ConditionFirstUseEver, imgui.Vec2{0, 0})
+	if imgui.BeginV(win.playmodeID(win.id()), &win.playmodeOpen, imgui.WindowFlagsAlwaysAutoResize) {
 		win.draw()
 	}
 
