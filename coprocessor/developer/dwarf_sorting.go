@@ -248,16 +248,51 @@ func (e SortedFunctions) Swap(i int, j int) {
 	e.Functions[i], e.Functions[j] = e.Functions[j], e.Functions[i]
 }
 
-type sortedVariableNames []string
+type SortedVariableMethod int
 
-func (v sortedVariableNames) Len() int {
-	return len(v)
+const (
+	SortVariableByName SortedVariableMethod = iota
+	SortVariableByAddress
+)
+
+type SortedVariables struct {
+	Variables  []*SourceVariable
+	Method     SortedVariableMethod
+	Descending bool
 }
 
-func (v sortedVariableNames) Less(i int, j int) bool {
-	return strings.ToUpper(v[i]) < strings.ToUpper(v[j])
+func (e *SortedVariables) SortByName(descending bool) {
+	e.Descending = descending
+	e.Method = SortVariableByName
+	sort.Stable(e)
 }
 
-func (v sortedVariableNames) Swap(i int, j int) {
-	v[i], v[j] = v[j], v[i]
+func (e *SortedVariables) SortByAddress(descending bool) {
+	e.Descending = descending
+	e.Method = SortVariableByAddress
+	sort.Stable(e)
+}
+
+func (v SortedVariables) Len() int {
+	return len(v.Variables)
+}
+
+func (v SortedVariables) Less(i int, j int) bool {
+	switch v.Method {
+	case SortVariableByName:
+		if v.Descending {
+			return strings.ToUpper(v.Variables[i].Name) > strings.ToUpper(v.Variables[j].Name)
+		}
+		return strings.ToUpper(v.Variables[i].Name) < strings.ToUpper(v.Variables[j].Name)
+	case SortVariableByAddress:
+		if v.Descending {
+			return v.Variables[i].Address > v.Variables[j].Address
+		}
+		return v.Variables[i].Address < v.Variables[j].Address
+	}
+	return false
+}
+
+func (v SortedVariables) Swap(i int, j int) {
+	v.Variables[i], v.Variables[j] = v.Variables[j], v.Variables[i]
 }

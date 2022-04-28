@@ -44,11 +44,8 @@ type SourceFile struct {
 	ShortFilename string
 	Lines         []*SourceLine
 
-	// global variables in this source file
-	Globals map[string]*SourceVariable
-
-	// sorted list of global variable names
-	GlobalNames sortedVariableNames
+	// the source file has at least one global variable if HasGlobals is true
+	HasGlobals bool
 }
 
 // SourceDisasm is a single disassembled intruction from the ELF binary.
@@ -245,8 +242,8 @@ type Source struct {
 	Types map[dwarf.Offset]*SourceType
 
 	// all global variables in ll compile units
-	Globals     map[string]*SourceVariable
-	GlobalNames sortedVariableNames
+	Globals       map[string]*SourceVariable
+	SortedGlobals SortedVariables
 
 	// the highest address of any variable (not just global variables, any
 	// variable)
@@ -294,7 +291,9 @@ func NewSource(pathToROM string) (*Source, error) {
 		FunctionNames: make([]string, 0, 10),
 		Types:         make(map[dwarf.Offset]*SourceType),
 		Globals:       make(map[string]*SourceVariable),
-		GlobalNames:   make([]string, 0, 10),
+		SortedGlobals: SortedVariables{
+			Variables: make([]*SourceVariable, 0, 100),
+		},
 		SortedFunctions: SortedFunctions{
 			Functions: make([]*SourceFunction, 0, 100),
 		},
@@ -626,6 +625,9 @@ func NewSource(pathToROM string) (*Source, error) {
 	// sorted functions
 	sort.Sort(src.SortedFunctions)
 
+	// sorted functions
+	sort.Sort(src.SortedGlobals)
+
 	// log summary
 	logger.Logf("dwarf", "identified %d functions in %d compile units", len(src.Functions), len(src.compileUnits))
 	logger.Logf("dwarf", "highest memory address occupied by a variable (%08x)", src.VariableMemtop)
@@ -706,7 +708,6 @@ func readSourceFile(filename string, pathToROM_nosymlinks string) (*SourceFile, 
 
 	fl := SourceFile{
 		Filename: filename,
-		Globals:  make(map[string]*SourceVariable),
 	}
 
 	// read file data

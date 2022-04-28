@@ -19,7 +19,6 @@ import (
 	"debug/dwarf"
 	"fmt"
 	"io"
-	"sort"
 
 	"github.com/jetsetilly/gopher2600/curated"
 )
@@ -584,21 +583,15 @@ func (bld *build) buildVariables(src *Source) error {
 		// add variable to list of global variables if there is no parent
 		// function to the declaration
 		if varb.DeclLine.Function.Name == UnknownFunction {
-			// list of global variables for the declaration file
-			varb.DeclLine.File.Globals[varb.Name] = varb
-			varb.DeclLine.File.GlobalNames = append(varb.DeclLine.File.GlobalNames, varb.Name)
-
 			// list of global variables for all compile units
 			src.Globals[varb.Name] = varb
-			src.GlobalNames = append(src.GlobalNames, varb.Name)
+			src.SortedGlobals.Variables = append(src.SortedGlobals.Variables, varb)
+
+			// note that the file has at least one global variables
+			varb.DeclLine.File.HasGlobals = true
 		}
 
 		// TODO: non-global variables
-	}
-
-	// sort strings
-	for i := range src.Files {
-		sort.Sort(src.Files[i].GlobalNames)
 	}
 
 	return nil

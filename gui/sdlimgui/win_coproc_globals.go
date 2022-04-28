@@ -96,13 +96,7 @@ func (win *winCoProcGlobals) draw() {
 			return
 		}
 
-		thereAreGlobals := false
-		for _, fn := range src.Filenames {
-			if len(src.Files[fn].GlobalNames) > 0 {
-				thereAreGlobals = true
-			}
-		}
-		if !thereAreGlobals {
+		if src.SortedGlobals.Len() == 0 {
 			imgui.Text("No global variable in the source")
 			return
 		}
@@ -127,7 +121,7 @@ func (win *winCoProcGlobals) draw() {
 			if imgui.BeginComboV("##selectedFile", win.selectedFile.ShortFilename, imgui.ComboFlagsHeightRegular) {
 				for _, fn := range src.Filenames {
 					// skip files that have no global variables
-					if len(src.Files[fn].GlobalNames) == 0 {
+					if !src.Files[fn].HasGlobals {
 						continue
 					}
 
@@ -159,6 +153,7 @@ func (win *winCoProcGlobals) draw() {
 
 		flgs := imgui.TableFlagsScrollY
 		flgs |= imgui.TableFlagsSizingStretchProp
+		flgs |= imgui.TableFlagsSortable
 		flgs |= imgui.TableFlagsNoHostExtendX
 		flgs |= imgui.TableFlagsResizable
 
@@ -167,32 +162,31 @@ func (win *winCoProcGlobals) draw() {
 		// setup columns. the labelling column 2 depends on whether the coprocessor
 		// development instance has source available to it
 		width := imgui.ContentRegionAvail().X
-		imgui.TableSetupColumnV("Name", imgui.TableColumnFlagsNone, width*0.40, 0)
-		imgui.TableSetupColumnV("Type", imgui.TableColumnFlagsNone, width*0.20, 1)
-		imgui.TableSetupColumnV("Address", imgui.TableColumnFlagsNone, width*0.15, 2)
-		imgui.TableSetupColumnV("Value", imgui.TableColumnFlagsNone, width*0.20, 3)
+		imgui.TableSetupColumnV("Name", imgui.TableColumnFlagsPreferSortDescending|imgui.TableColumnFlagsDefaultSort, width*0.40, 0)
+		imgui.TableSetupColumnV("Type", imgui.TableColumnFlagsNoSort, width*0.20, 1)
+		imgui.TableSetupColumnV("Address", imgui.TableColumnFlagsPreferSortDescending, width*0.15, 2)
+		imgui.TableSetupColumnV("Value", imgui.TableColumnFlagsNoSort, width*0.20, 3)
 
 		imgui.TableSetupScrollFreeze(0, 1)
 		imgui.TableHeadersRow()
 
-		// the global list depends on the state fo the showAllGlobals state
-		var globalList []string
-		if win.showAllGlobals {
-			globalList = src.GlobalNames
-		} else {
-			globalList = win.selectedFile.GlobalNames
+		for _, varb := range src.SortedGlobals.Variables {
+			if win.showAllGlobals || varb.DeclLine.File.Filename == win.selectedFile.Filename {
+				win.drawVariable(src, varb, 0, 0)
+			}
 		}
 
-		for _, name := range globalList {
-			// get variable from the correct globals list
-			var varb *developer.SourceVariable
-			if win.showAllGlobals {
-				varb = src.Globals[name]
-			} else {
-				varb = win.selectedFile.Globals[name]
+		sort := imgui.TableGetSortSpecs()
+		if sort.SpecsDirty() {
+			for _, s := range sort.Specs() {
+				switch s.ColumnUserID {
+				case 0:
+					src.SortedGlobals.SortByName(s.SortDirection == imgui.SortDirectionAscending)
+				case 2:
+					src.SortedGlobals.SortByAddress(s.SortDirection == imgui.SortDirectionAscending)
+				}
 			}
-
-			win.drawVariable(src, varb, 0, 0)
+			sort.ClearSpecsDirty()
 		}
 
 		imgui.EndTable()
