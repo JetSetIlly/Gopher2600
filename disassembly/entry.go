@@ -107,6 +107,10 @@ func (e *Entry) updateExecutionEntry(result execution.Result) {
 // will always be the case.
 func (e *Entry) Cycles() string {
 	if e.Level < EntryLevelExecuted {
+		// the Defn field may be unassigned
+		if e.Result.Defn == nil {
+			return "-"
+		}
 		return e.Result.Defn.Cycles.Formatted
 	}
 
