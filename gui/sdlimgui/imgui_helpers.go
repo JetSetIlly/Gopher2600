@@ -266,12 +266,24 @@ func imguiSeparator() {
 }
 
 // draw grid of bytes with before and after functions in addition to commit function.
-func drawByteGrid(id string, data []uint8, origin uint16,
-	before func(offset uint16), after func(offset uint16), commit func(addr uint16, value uint8)) {
+func drawByteGrid(id string, data []uint8, origin uint32,
+	before func(offset uint32), after func(offset uint32), commit func(addr uint32, value uint8)) {
 
-	// format string for column headers. the number of digits required depends
-	// on the length of the data slice
-	columnFormat := fmt.Sprintf("%%0%dx- ", len(fmt.Sprintf("%x", int(origin)+len(data)-1))-1)
+	// the origin and memtop as a string
+	originString := fmt.Sprintf("%08x", origin)
+	memtopString := fmt.Sprintf("%08x", origin+uint32(len(data)-1))
+
+	// find first non-matching digit of origin and memtop strings
+	columnCrop := 0
+	for i := 0; i < len(originString); i++ {
+		if originString[i] != memtopString[i] {
+			columnCrop = i
+			break // for loop
+		}
+	}
+
+	// the width of the row heading column
+	rowHeadingWidth := len(originString) - columnCrop
 
 	spacing := imgui.Vec2{X: 0.5, Y: 0.5}
 	imgui.PushStyleVarVec2(imgui.StyleVarCellPadding, spacing)
@@ -280,17 +292,13 @@ func drawByteGrid(id string, data []uint8, origin uint16,
 	const numColumns = 16
 
 	flgs := imgui.TableFlagsSizingFixedFit
+	flgs |= imgui.TableFlagsScrollY
+
 	if imgui.BeginTableV(id, numColumns+1, flgs, imgui.Vec2{}, 0.0) {
-		// sample digits used to decide width of row header
-		var sampleDigits int
-		if int(origin) < len(data) {
-			sampleDigits = len(data) - int(origin) - 1
-		} else {
-			sampleDigits = int(origin) - len(data) - 1
-		}
+		imgui.TableSetupScrollFreeze(0, 1)
 
 		// set up columns
-		width := imguiGetFrameDim(fmt.Sprintf("%x", sampleDigits)).X
+		width := imguiTextWidth(rowHeadingWidth)
 		imgui.TableSetupColumnV(fmt.Sprintf("%p_column0", data), imgui.TableColumnFlagsNone, width, 0)
 		width = imguiTextWidth(2)
 		for i := 1; i < numColumns+1; i++ {
@@ -324,14 +332,14 @@ func drawByteGrid(id string, data []uint8, origin uint16,
 
 		for clipper.Step() {
 			for i := clipper.DisplayStart; i < clipper.DisplayEnd; i++ {
-				offset := uint16(i * numColumns)
+				offset := uint32(i * numColumns)
 				addr := origin + offset
 
 				imgui.TableNextRow()
 				imgui.TableNextColumn()
 
 				imgui.AlignTextToFramePadding()
-				imgui.Text(fmt.Sprintf(columnFormat, addr/16))
+				imgui.Text(fmt.Sprintf("%08x-", addr/16)[columnCrop+1:])
 
 				for j := 0; j < numColumns; j++ {
 					imgui.TableNextColumn()
@@ -368,10 +376,22 @@ func drawByteGrid(id string, data []uint8, origin uint16,
 // draw grid of bytes with automated diff highlighting and tooltip handling
 //
 // see drawByteGrid() for more flexible alternative.
-func drawByteGridSimple(id string, data []uint8, diff []uint8, diffCol imgui.Vec4, origin uint16, commit func(uint16, uint8)) {
-	// format string for column headers. the number of digits required depends
-	// on the length of the data slice
-	columnFormat := fmt.Sprintf("%%0%dx- ", len(fmt.Sprintf("%x", int(origin)+len(data)-1))-1)
+func drawByteGridSimple(id string, data []uint8, diff []uint8, diffCol imgui.Vec4, origin uint32, commit func(uint32, uint8)) {
+	// the origin and memtop as a string
+	originString := fmt.Sprintf("%08x", origin)
+	memtopString := fmt.Sprintf("%08x", origin+uint32(len(data)-1))
+
+	// find first non-matching digit of origin and memtop strings
+	columnCrop := 0
+	for i := 0; i < len(originString); i++ {
+		if originString[i] != memtopString[i] {
+			columnCrop = i
+			break // for loop
+		}
+	}
+
+	// the width of the row heading column
+	rowHeadingWidth := len(originString) - columnCrop
 
 	spacing := imgui.Vec2{X: 0.5, Y: 0.5}
 	imgui.PushStyleVarVec2(imgui.StyleVarCellPadding, spacing)
@@ -380,17 +400,13 @@ func drawByteGridSimple(id string, data []uint8, diff []uint8, diffCol imgui.Vec
 	const numColumns = 16
 
 	flgs := imgui.TableFlagsSizingFixedFit
+	flgs |= imgui.TableFlagsScrollY
+
 	if imgui.BeginTableV(id, numColumns+1, flgs, imgui.Vec2{}, 0.0) {
-		// sample digits used to decide width of row header
-		var sampleDigits int
-		if int(origin) < len(data) {
-			sampleDigits = len(data) - int(origin) - 1
-		} else {
-			sampleDigits = int(origin) - len(data) - 1
-		}
+		imgui.TableSetupScrollFreeze(0, 1)
 
 		// set up columns
-		width := imguiGetFrameDim(fmt.Sprintf("%x", sampleDigits)).X
+		width := imguiTextWidth(rowHeadingWidth)
 		imgui.TableSetupColumnV(fmt.Sprintf("%p_column0", data), imgui.TableColumnFlagsNone, width, 0)
 		width = imguiTextWidth(2)
 		for i := 1; i < numColumns+1; i++ {
@@ -424,14 +440,14 @@ func drawByteGridSimple(id string, data []uint8, diff []uint8, diffCol imgui.Vec
 
 		for clipper.Step() {
 			for i := clipper.DisplayStart; i < clipper.DisplayEnd; i++ {
-				offset := uint16(i * numColumns)
+				offset := uint32(i * numColumns)
 				addr := origin + offset
 
 				imgui.TableNextRow()
 				imgui.TableNextColumn()
 
 				imgui.AlignTextToFramePadding()
-				imgui.Text(fmt.Sprintf(columnFormat, addr/16))
+				imgui.Text(fmt.Sprintf("%08x-", addr/16)[columnCrop+1:])
 
 				for j := 0; j < numColumns; j++ {
 					imgui.TableNextColumn()

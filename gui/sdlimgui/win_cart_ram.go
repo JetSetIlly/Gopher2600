@@ -100,7 +100,7 @@ func (win *winCartRAM) draw() {
 			// number of colors to pop in afer()
 			popColor := 0
 
-			before := func(offset uint16) {
+			before := func(offset uint32) {
 				pos = imgui.CursorScreenPos()
 
 				a := diff.Data[offset]
@@ -111,12 +111,15 @@ func (win *winCartRAM) draw() {
 				}
 			}
 
-			after := func(offset uint16) {
+			after := func(offset uint32) {
 				imgui.PopStyleColorV(popColor)
 				popColor = 0
 
 				dl := imgui.WindowDrawList()
-				addr := memorymap.OriginCart + offset
+
+				// offset is based on original values of type uint16 so the type conversion is safe
+				addr := memorymap.OriginCart + uint16(offset)
+
 				read, okr := win.img.dbg.Disasm.Sym.GetSymbol(addr, true)
 				write, okw := win.img.dbg.Disasm.Sym.GetSymbol(addr, false)
 				if okr || okw {
@@ -160,14 +163,15 @@ func (win *winCartRAM) draw() {
 			}
 
 			commitBank := bank
-			commit := func(addr uint16, data uint8) {
+			commit := func(addr uint32, data uint8) {
 				win.img.dbg.PushRawEvent(func() {
-					idx := int(addr - origin)
+					// addr is based on original values of type uint16 so the type conversion is safe
+					idx := int(uint16(addr) - origin)
 					win.img.vcs.Mem.Cart.GetRAMbus().PutRAM(commitBank, idx, data)
 				})
 			}
 
-			drawByteGrid("cartRamByteGrid", current.Data, origin, before, after, commit)
+			drawByteGrid("cartRamByteGrid", current.Data, uint32(origin), before, after, commit)
 			imgui.EndChild()
 
 			// status line

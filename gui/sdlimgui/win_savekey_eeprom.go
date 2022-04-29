@@ -69,7 +69,7 @@ func (win *winSaveKeyEEPROM) draw() {
 	imgui.BeginChildV("eepromData", imgui.Vec2{X: 0, Y: imguiRemainingWinHeight() - win.statusHeight}, false, 0)
 
 	drawByteGridSimple("eepromByteGrid", win.img.lz.SaveKey.EEPROMdata, win.img.lz.SaveKey.EEPROMdiskData, win.img.cols.ValueDiff, 0x00,
-		func(addr uint16, data uint8) {
+		func(addr uint32, data uint8) {
 			win.img.dbg.PushRawEvent(func() {
 				var sk *savekey.SaveKey
 
@@ -80,7 +80,8 @@ func (win *winSaveKeyEEPROM) draw() {
 				}
 
 				if sk != nil {
-					sk.EEPROM.Poke(addr, data)
+					// eeprom space is maximum of uint16 so the type conversion is safe
+					sk.EEPROM.Poke(uint16(addr), data)
 				}
 			})
 		})

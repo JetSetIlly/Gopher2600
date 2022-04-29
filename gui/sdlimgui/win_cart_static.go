@@ -76,6 +76,22 @@ func (win *winCartStatic) draw() {
 		}
 
 		if imgui.BeginTabItemV(seg.Name, nil, 0) {
+			imgui.Spacing()
+			imgui.Text("Origin:")
+			imgui.SameLine()
+			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcVariablesAddress)
+			imgui.Text(fmt.Sprintf("%08x", seg.Origin))
+			imgui.PopStyleColor()
+			imgui.SameLineV(0, 20)
+			imgui.Text("Memtop:")
+			imgui.SameLine()
+			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcVariablesAddress)
+			imgui.Text(fmt.Sprintf("%08x", seg.Memtop))
+			imgui.PopStyleColor()
+
+			imgui.Spacing()
+			imgui.Spacing()
+
 			imgui.BeginChildV("cartstatic", imgui.Vec2{X: 0, Y: imguiRemainingWinHeight()}, false, 0)
 
 			currData, ok := win.img.lz.Cart.Static.Reference(seg.Name)
@@ -87,8 +103,8 @@ func (win *winCartStatic) draw() {
 					// PushRawEvent() below
 					segname := seg.Name
 
-					drawByteGridSimple("cartStaticByteGrid", currData, compData, win.img.cols.ValueDiff, 0,
-						func(addr uint16, data uint8) {
+					drawByteGridSimple("cartStaticByteGrid", currData, compData, win.img.cols.ValueDiff, seg.Origin,
+						func(addr uint32, data uint8) {
 							win.img.dbg.PushRawEvent(func() {
 								idx := int(addr)
 								win.img.vcs.Mem.Cart.GetStaticBus().PutStatic(segname, uint16(idx), data)

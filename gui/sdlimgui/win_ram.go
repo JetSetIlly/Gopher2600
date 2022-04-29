@@ -73,7 +73,7 @@ func (win *winRAM) draw() {
 	// number of colors to pop in afer()
 	popColor := 0
 
-	before := func(offset uint16) {
+	before := func(offset uint32) {
 		pos = imgui.CursorScreenPos()
 
 		a := diff[offset]
@@ -83,18 +83,22 @@ func (win *winRAM) draw() {
 			popColor++
 		}
 
-		if uint16(win.img.lz.CPU.SP.Value())-memorymap.OriginRAM < offset {
+		// offset is based on original values of type uint16 so the type conversion is safe
+		if uint16(win.img.lz.CPU.SP.Value())-memorymap.OriginRAM < uint16(offset) {
 			imgui.PushStyleColor(imgui.StyleColorFrameBg, win.img.cols.ValueStack)
 			popColor++
 		}
 	}
 
-	after := func(offset uint16) {
+	after := func(offset uint32) {
 		imgui.PopStyleColorV(popColor)
 		popColor = 0
 
 		dl := imgui.WindowDrawList()
-		addr := memorymap.OriginRAM + offset
+
+		// offset is based on original values of type uint16 so the type conversion is safe
+		addr := memorymap.OriginRAM + uint16(offset)
+
 		read, okr := win.img.dbg.Disasm.Sym.GetSymbol(addr, true)
 		write, okw := win.img.dbg.Disasm.Sym.GetSymbol(addr, false)
 		if okr || okw {
@@ -137,7 +141,9 @@ func (win *winRAM) draw() {
 		}
 
 		sp := win.img.lz.CPU.SP.Address()
-		if sp-memorymap.OriginRAM < offset {
+
+		// offset is based on original values of type uint16 so the type conversion is safe
+		if sp-memorymap.OriginRAM < uint16(offset) {
 			imguiTooltip(func() {
 				imguiColorLabel("in stack", win.img.cols.ValueStack)
 				imgui.Spacing()
@@ -146,11 +152,12 @@ func (win *winRAM) draw() {
 		}
 	}
 
-	commit := func(addr uint16, data uint8) {
+	commit := func(addr uint32, data uint8) {
 		win.img.dbg.PushRawEvent(func() {
-			win.img.vcs.Mem.Write(addr, data)
+			// addr is based on original values of type uint16 so the type conversion is safe
+			win.img.vcs.Mem.Write(uint16(addr), data)
 		})
 	}
 
-	drawByteGrid("ramByteGrid", win.img.lz.RAM.RAM, memorymap.OriginRAM, before, after, commit)
+	drawByteGrid("ramByteGrid", win.img.lz.RAM.RAM, uint32(memorymap.OriginRAM), before, after, commit)
 }
