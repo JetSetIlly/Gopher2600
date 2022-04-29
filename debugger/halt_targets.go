@@ -21,6 +21,7 @@ import (
 
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/debugger/terminal/commandline"
+	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
 // targetValue represents the underlying value of the target. for example in
@@ -146,11 +147,13 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (*target, error) {
 				instructionBoundary: true,
 			}
 
-		case "PCZERO":
+		case "NONEXE":
 			trg = &target{
-				label: "PCZERO",
+				label: "NONEXE",
 				value: func() targetValue {
-					return bool(dbg.vcs.CPU.PC.Address() == 0)
+					pc := dbg.vcs.CPU.PC.Address()
+					_, area := memorymap.MapAddress(pc, true)
+					return area == memorymap.RIOT || area == memorymap.TIA
 				},
 				format:              "%v",
 				instructionBoundary: true,
