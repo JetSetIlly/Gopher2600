@@ -127,48 +127,54 @@ func (win *winCartStatic) draw() {
 						imgui.PopStyleColorV(popColor)
 						popColor = 0
 
-						win.img.dbg.CoProcDev.BorrowSource(func(src *developer.Source) {
-							// offset is based on original values of type uint16 so the type conversion is safe
-							addr := seg.Origin + offset
+						if win.img.dbg.CoProcDev != nil {
+							win.img.dbg.CoProcDev.BorrowSource(func(src *developer.Source) {
+								if src == nil {
+									return
+								}
 
-							imguiTooltip(func() {
-								imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcVariablesAddress)
-								imgui.Text(fmt.Sprintf("%08x", seg.Origin+offset))
-								imgui.PopStyleColor()
-							}, true)
-
-							dl := imgui.WindowDrawList()
-							if _, ok := src.GlobalsByAddress[uint64(addr)]; ok {
-								sz := imgui.FontSize() * 0.4
-								pos.X += 1.0
-								pos.Y += 1.0
-								p1 := pos
-								p1.Y += sz
-								p2 := pos
-								p2.X += sz
-								dl.AddTriangleFilled(pos, p1, p2, imgui.PackedColorFromVec4(win.img.cols.ValueSymbol))
+								// offset is based on original values of type uint16 so the type conversion is safe
+								addr := seg.Origin + offset
 
 								imguiTooltip(func() {
-									if v, ok := src.GlobalsByAddress[uint64(addr)]; ok {
-										imguiColorLabel(func() {
-											imgui.Text(v.Name)
-											imgui.SameLine()
-											imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcVariablesType)
-											imgui.Text(v.Type.Name)
-											imgui.PopStyleColor()
-										}, win.img.cols.ValueSymbol)
+									imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcVariablesAddress)
+									imgui.Text(fmt.Sprintf("%08x", seg.Origin+offset))
+									imgui.PopStyleColor()
+								}, true)
+
+								dl := imgui.WindowDrawList()
+								if _, ok := src.GlobalsByAddress[uint64(addr)]; ok {
+									sz := imgui.FontSize() * 0.4
+									pos.X += 1.0
+									pos.Y += 1.0
+									p1 := pos
+									p1.Y += sz
+									p2 := pos
+									p2.X += sz
+									dl.AddTriangleFilled(pos, p1, p2, imgui.PackedColorFromVec4(win.img.cols.ValueSymbol))
+
+									imguiTooltip(func() {
+										if v, ok := src.GlobalsByAddress[uint64(addr)]; ok {
+											imguiColorLabel(func() {
+												imgui.Text(v.Name)
+												imgui.SameLine()
+												imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcVariablesType)
+												imgui.Text(v.Type.Name)
+												imgui.PopStyleColor()
+											}, win.img.cols.ValueSymbol)
+										}
+									}, true)
+								}
+
+								imguiTooltip(func() {
+									a := currData[offset]
+									b := compData[offset]
+									if a != b {
+										imguiColorLabelSimple(fmt.Sprintf("%02x %c %02x", b, fonts.ByteChange, a), win.img.cols.ValueDiff)
 									}
 								}, true)
-							}
-
-							imguiTooltip(func() {
-								a := currData[offset]
-								b := compData[offset]
-								if a != b {
-									imguiColorLabelSimple(fmt.Sprintf("%02x %c %02x", b, fonts.ByteChange, a), win.img.cols.ValueDiff)
-								}
-							}, true)
-						})
+							})
+						}
 					}
 
 					commit := func(addr uint32, data uint8) {
