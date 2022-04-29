@@ -132,8 +132,8 @@ func (win *winRAM) draw() {
 			}
 		}
 
-		a := diff[addr^memorymap.OriginRAM]
-		b := win.img.lz.RAM.RAM[addr^memorymap.OriginRAM]
+		a := diff[offset]
+		b := win.img.lz.RAM.RAM[offset]
 		if a != b {
 			imguiTooltip(func() {
 				imguiColorLabel(fmt.Sprintf("%02x %c %02x", a, fonts.ByteChange, b), win.img.cols.ValueDiff)

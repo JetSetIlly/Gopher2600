@@ -19,6 +19,7 @@ import (
 	"fmt"
 
 	"github.com/inkyblackness/imgui-go/v4"
+	"github.com/jetsetilly/gopher2600/gui/fonts"
 )
 
 const winCartStaticID = "Static Areas"
@@ -103,13 +104,47 @@ func (win *winCartStatic) draw() {
 					// PushRawEvent() below
 					segname := seg.Name
 
-					drawByteGridSimple("cartStaticByteGrid", currData, compData, win.img.cols.ValueDiff, seg.Origin,
-						func(addr uint32, data uint8) {
-							win.img.dbg.PushRawEvent(func() {
-								idx := int(addr)
-								win.img.vcs.Mem.Cart.GetStaticBus().PutStatic(segname, uint16(idx), data)
-							})
+					// number of colors to pop in afer()
+					popColor := 0
+
+					before := func(offset uint32) {
+						// difference colour
+						a := currData[offset]
+						b := compData[offset]
+						if a != b {
+							imgui.PushStyleColor(imgui.StyleColorFrameBg, win.img.cols.ValueDiff)
+							popColor++
+						}
+					}
+
+					after := func(offset uint32) {
+						imgui.PopStyleColorV(popColor)
+						popColor = 0
+
+						imguiTooltip(func() {
+							imgui.Text("Address:")
+							imgui.SameLine()
+							imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcVariablesAddress)
+							imgui.Text(fmt.Sprintf("%08x", seg.Origin+offset))
+							imgui.PopStyleColor()
+
+							a := currData[offset]
+							b := compData[offset]
+							if a != b {
+								imgui.Spacing()
+								imguiColorLabel(fmt.Sprintf("%02x %c %02x", b, fonts.ByteChange, a), win.img.cols.ValueDiff)
+							}
+						}, true)
+					}
+
+					commit := func(addr uint32, data uint8) {
+						win.img.dbg.PushRawEvent(func() {
+							idx := int(addr)
+							win.img.vcs.Mem.Cart.GetStaticBus().PutStatic(segname, uint16(idx), data)
 						})
+					}
+
+					drawByteGrid("cartStaticByteGrid", currData, seg.Origin, before, after, commit)
 				}
 			}
 
