@@ -269,15 +269,15 @@ func (cart *mnetwork) bankswitch(addr uint16, passive bool) bool {
 			cart.state.ram256byteIdx = 3
 		}
 
+		// the bank switching addresses assume that the cartridge size is 16k.
+		// however, there are 8k versions of some cartridges. we can support those
+		// by making sure the bankswitch never goes beyond the last bank
+		//
+		// tested with 8k version of Bump 'n' Jump
+		cart.state.bank %= cart.NumBanks()
+
 		return true
 	}
-
-	// the bank switching addresses assume that the cartridge size is 16k.
-	// however, there are 8k versions of some cartridges. we can support those
-	// by making sure the bankswitch never goes beyond the last bank
-	//
-	// tested with 8k version of Bump 'n' Jump
-	cart.state.bank %= cart.NumBanks()
 
 	return false
 }
