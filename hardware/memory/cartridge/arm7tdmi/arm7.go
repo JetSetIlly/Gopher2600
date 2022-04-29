@@ -219,7 +219,7 @@ func NewARM(mmap memorymodel.Map, prefs *preferences.ARMPreferences, mem SharedM
 	arm.mam.mmap = mmap
 	arm.timer.mmap = mmap
 
-	err := arm.reset(true)
+	err := arm.reset()
 	if err != nil {
 		logger.Logf("ARM7", "reset: %s", err.Error())
 	}
@@ -261,18 +261,14 @@ func (arm *ARM) ClearCaches() {
 }
 
 // reset of stack pointer should only happen on ARM instantiation
-func (arm *ARM) reset(includeStackPointer bool) error {
+func (arm *ARM) reset() error {
 	arm.status.reset()
 
 	for i := 0; i < rSP; i++ {
 		arm.registers[i] = 0x00000000
 	}
 
-	if includeStackPointer {
-		arm.registers[rSP], arm.registers[rLR], arm.registers[rPC] = arm.mem.ResetVectors()
-	} else {
-		_, arm.registers[rLR], arm.registers[rPC] = arm.mem.ResetVectors()
-	}
+	arm.registers[rSP], arm.registers[rLR], arm.registers[rPC] = arm.mem.ResetVectors()
 
 	// reset execution flags
 	arm.continueExecution = true
@@ -571,7 +567,7 @@ func (arm *ARM) write32bit(addr uint32, val uint32) {
 //
 // Returns the MAMCR state, the number of ARM cycles consumed and any errors.
 func (arm *ARM) Run(mamcr uint32) (uint32, float32, error) {
-	err := arm.reset(false)
+	err := arm.reset()
 	if err != nil {
 		return arm.mam.mamcr, 0, err
 	}
