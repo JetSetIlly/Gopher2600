@@ -474,7 +474,7 @@ func drawByteGridSimple(id string, data []uint8, diff []uint8, diffCol imgui.Vec
 
 					if a != b {
 						imguiTooltip(func() {
-							imguiColorLabel(fmt.Sprintf("%02x %c %02x", b, fonts.ByteChange, a), diffCol)
+							imguiColorLabelSimple(fmt.Sprintf("%02x %c %02x", b, fonts.ByteChange, a), diffCol)
 						}, true)
 					}
 
@@ -494,15 +494,28 @@ func drawByteGridSimple(id string, data []uint8, diff []uint8, diffCol imgui.Vec
 	}
 }
 
-// imguiColorLabel displays a coloured icon (fonts.ColorSwatch) with a label.
+// imguiColorLabelSimple displays a coloured icon (fonts.ColorSwatch) with a label.
 // useful for generating color keys.
-func imguiColorLabel(label string, col imgui.Vec4) {
+func imguiColorLabelSimple(label string, col imgui.Vec4) {
 	imgui.BeginGroup()
 	imgui.PushStyleColor(imgui.StyleColorText, col)
 	imgui.Text(string(fonts.ColorSwatch))
 	imgui.PopStyleColor()
 	imgui.SameLine()
 	imgui.Text(label)
+	imgui.EndGroup()
+}
+
+// imguiColorLabel displays a coloured icon (fonts.ColorSwatch) with a label.
+// unlike imguiColorLabelSimple(), the label is produced by the supplied
+// function.
+func imguiColorLabel(f func(), col imgui.Vec4) {
+	imgui.BeginGroup()
+	imgui.PushStyleColor(imgui.StyleColorText, col)
+	imgui.Text(string(fonts.ColorSwatch))
+	imgui.PopStyleColor()
+	imgui.SameLine()
+	f()
 	imgui.EndGroup()
 }
 

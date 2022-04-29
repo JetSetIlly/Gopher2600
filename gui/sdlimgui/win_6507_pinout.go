@@ -256,7 +256,7 @@ func (win *win6507Pinout) draw() {
 
 				imgui.TableNextRow()
 				imgui.TableNextColumn()
-				imguiColorLabel("Address", win.addressBus)
+				imguiColorLabelSimple("Address", win.addressBus)
 
 				imgui.TableNextColumn()
 				imgui.PushStyleColor(imgui.StyleColorText, win.addressBus)
@@ -272,7 +272,7 @@ func (win *win6507Pinout) draw() {
 
 				imgui.TableNextRow()
 				imgui.TableNextColumn()
-				imguiColorLabel("Data", win.dataBus)
+				imguiColorLabelSimple("Data", win.dataBus)
 
 				imgui.TableNextColumn()
 				if win.img.lz.Mem.LastAccessMask != 0xff {

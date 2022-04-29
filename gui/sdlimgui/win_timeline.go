@@ -114,19 +114,19 @@ const (
 )
 
 func (win *winTimeline) drawKey() {
-	imguiColorLabel("Scanlines", win.img.cols.TimelineScanlines)
+	imguiColorLabelSimple("Scanlines", win.img.cols.TimelineScanlines)
 	imgui.SameLine()
-	imguiColorLabel("WSYNC", win.img.cols.TimelineWSYNC)
+	imguiColorLabelSimple("WSYNC", win.img.cols.TimelineWSYNC)
 	imgui.SameLine()
 	if win.img.lz.Cart.HasCoProcBus {
-		imguiColorLabel(win.img.lz.Cart.CoProcID, win.img.cols.TimelineCoProc)
+		imguiColorLabelSimple(win.img.lz.Cart.CoProcID, win.img.cols.TimelineCoProc)
 		imgui.SameLine()
 	}
-	imguiColorLabel("Left Player", win.img.cols.TimelineLeftPlayer)
+	imguiColorLabelSimple("Left Player", win.img.cols.TimelineLeftPlayer)
 	imgui.SameLine()
-	imguiColorLabel("Rewind", win.img.cols.TimelineRewindRange)
+	imguiColorLabelSimple("Rewind", win.img.cols.TimelineRewindRange)
 	imgui.SameLine()
-	imguiColorLabel("Comparison", win.img.cols.TimelineCmpPointer)
+	imguiColorLabelSimple("Comparison", win.img.cols.TimelineCmpPointer)
 }
 
 func (win *winTimeline) drawRewindSummary() {

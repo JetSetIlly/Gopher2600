@@ -242,8 +242,9 @@ type Source struct {
 	Types map[dwarf.Offset]*SourceType
 
 	// all global variables in ll compile units
-	Globals       map[string]*SourceVariable
-	SortedGlobals SortedVariables
+	Globals          map[string]*SourceVariable
+	GlobalsByAddress map[uint64]*SourceVariable
+	SortedGlobals    SortedVariables
 
 	// the highest address of any variable (not just global variables, any
 	// variable)
@@ -284,13 +285,14 @@ type Source struct {
 // non-nil but with the understanding that the fields may be empty.
 func NewSource(pathToROM string) (*Source, error) {
 	src := &Source{
-		Disassembly:   make(map[uint64]*SourceDisasm),
-		Files:         make(map[string]*SourceFile),
-		Filenames:     make([]string, 0, 10),
-		Functions:     make(map[string]*SourceFunction),
-		FunctionNames: make([]string, 0, 10),
-		Types:         make(map[dwarf.Offset]*SourceType),
-		Globals:       make(map[string]*SourceVariable),
+		Disassembly:      make(map[uint64]*SourceDisasm),
+		Files:            make(map[string]*SourceFile),
+		Filenames:        make([]string, 0, 10),
+		Functions:        make(map[string]*SourceFunction),
+		FunctionNames:    make([]string, 0, 10),
+		Types:            make(map[dwarf.Offset]*SourceType),
+		Globals:          make(map[string]*SourceVariable),
+		GlobalsByAddress: make(map[uint64]*SourceVariable),
 		SortedGlobals: SortedVariables{
 			Variables: make([]*SourceVariable, 0, 100),
 		},

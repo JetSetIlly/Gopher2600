@@ -109,9 +109,9 @@ func (win *winSaveKeyI2C) drawOscilloscope() {
 
 	// key to oscilloscope
 	imgui.Spacing()
-	imguiColorLabel("SCL", win.img.cols.SaveKeyOscSCL)
+	imguiColorLabelSimple("SCL", win.img.cols.SaveKeyOscSCL)
 	imgui.SameLine()
-	imguiColorLabel("SDA", win.img.cols.SaveKeyOscSDA)
+	imguiColorLabelSimple("SDA", win.img.cols.SaveKeyOscSDA)
 }
 
 func (win *winSaveKeyI2C) drawStatus() {

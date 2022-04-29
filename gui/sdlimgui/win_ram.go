@@ -63,10 +63,6 @@ func (win *winRAM) draw() {
 		diff = win.img.lz.RAM.RAM
 	}
 
-	// item spacing is altered in drawByteGrid(). note value now so we can set
-	// it for tooltips in after()
-	tooltipSpacing := imgui.CurrentStyle().ItemSpacing()
-
 	// pos is retreived in before() and used in after()
 	var pos imgui.Vec2
 
@@ -94,11 +90,10 @@ func (win *winRAM) draw() {
 		imgui.PopStyleColorV(popColor)
 		popColor = 0
 
-		dl := imgui.WindowDrawList()
-
 		// offset is based on original values of type uint16 so the type conversion is safe
 		addr := memorymap.OriginRAM + uint16(offset)
 
+		dl := imgui.WindowDrawList()
 		read, okr := win.img.dbg.Disasm.Sym.GetSymbol(addr, true)
 		write, okw := win.img.dbg.Disasm.Sym.GetSymbol(addr, false)
 		if okr || okw {
@@ -112,22 +107,19 @@ func (win *winRAM) draw() {
 			dl.AddTriangleFilled(pos, p1, p2, imgui.PackedColorFromVec4(win.img.cols.ValueSymbol))
 		}
 
-		imgui.PushStyleVarVec2(imgui.StyleVarItemSpacing, tooltipSpacing)
-		defer imgui.PopStyleVar()
-
 		if okr && okw && read.Symbol == write.Symbol {
 			imguiTooltip(func() {
-				imguiColorLabel(read.Symbol, win.img.cols.ValueSymbol)
+				imguiColorLabelSimple(read.Symbol, win.img.cols.ValueSymbol)
 			}, true)
 		} else {
 			if okr {
 				imguiTooltip(func() {
-					imguiColorLabel(read.Symbol, win.img.cols.ValueSymbol)
+					imguiColorLabelSimple(read.Symbol, win.img.cols.ValueSymbol)
 				}, true)
 			}
 			if okw {
 				imguiTooltip(func() {
-					imguiColorLabel(write.Symbol, win.img.cols.ValueSymbol)
+					imguiColorLabelSimple(write.Symbol, win.img.cols.ValueSymbol)
 				}, true)
 			}
 		}
@@ -136,7 +128,7 @@ func (win *winRAM) draw() {
 		b := win.img.lz.RAM.RAM[offset]
 		if a != b {
 			imguiTooltip(func() {
-				imguiColorLabel(fmt.Sprintf("%02x %c %02x", a, fonts.ByteChange, b), win.img.cols.ValueDiff)
+				imguiColorLabelSimple(fmt.Sprintf("%02x %c %02x", a, fonts.ByteChange, b), win.img.cols.ValueDiff)
 			}, true)
 		}
 
@@ -145,7 +137,7 @@ func (win *winRAM) draw() {
 		// offset is based on original values of type uint16 so the type conversion is safe
 		if sp-memorymap.OriginRAM < uint16(offset) {
 			imguiTooltip(func() {
-				imguiColorLabel("in stack", win.img.cols.ValueStack)
+				imguiColorLabelSimple("in stack", win.img.cols.ValueStack)
 				imgui.Spacing()
 				imgui.Text(fmt.Sprintf("PC address in event of RTS: %04x", win.img.lz.CPU.RTSPrediction))
 			}, true)

@@ -90,10 +90,6 @@ func (win *winCartRAM) draw() {
 				origin = (origin & memorymap.CartridgeBits) | memorymap.OriginCartFxxxMirror
 			}
 
-			// item spacing is altered in drawByteGrid(). note value now so we can set
-			// it for tooltips in after()
-			tooltipSpacing := imgui.CurrentStyle().ItemSpacing()
-
 			// pos is retreived in before() and used in after()
 			var pos imgui.Vec2
 
@@ -133,22 +129,19 @@ func (win *winCartRAM) draw() {
 					dl.AddTriangleFilled(pos, p1, p2, imgui.PackedColorFromVec4(win.img.cols.ValueSymbol))
 				}
 
-				imgui.PushStyleVarVec2(imgui.StyleVarItemSpacing, tooltipSpacing)
-				defer imgui.PopStyleVar()
-
 				if okr && okw && read.Symbol == write.Symbol {
 					imguiTooltip(func() {
-						imguiColorLabel(read.Symbol, win.img.cols.ValueSymbol)
+						imguiColorLabelSimple(read.Symbol, win.img.cols.ValueSymbol)
 					}, true)
 				} else {
 					if okr {
 						imguiTooltip(func() {
-							imguiColorLabel(read.Symbol, win.img.cols.ValueSymbol)
+							imguiColorLabelSimple(read.Symbol, win.img.cols.ValueSymbol)
 						}, true)
 					}
 					if okw {
 						imguiTooltip(func() {
-							imguiColorLabel(write.Symbol, win.img.cols.ValueSymbol)
+							imguiColorLabelSimple(write.Symbol, win.img.cols.ValueSymbol)
 						}, true)
 					}
 				}
@@ -157,7 +150,7 @@ func (win *winCartRAM) draw() {
 				b := current.Data[offset]
 				if a != b {
 					imguiTooltip(func() {
-						imguiColorLabel(fmt.Sprintf("%02x %c %02x", a, fonts.ByteChange, b), win.img.cols.ValueDiff)
+						imguiColorLabelSimple(fmt.Sprintf("%02x %c %02x", a, fonts.ByteChange, b), win.img.cols.ValueDiff)
 					}, true)
 				}
 			}

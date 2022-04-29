@@ -430,30 +430,30 @@ func (win *winDbgScr) drawOverlayColorKey() {
 	switch win.img.screen.crit.overlay {
 	case reflection.OverlayLabels[reflection.OverlayWSYNC]:
 		imgui.SameLineV(0, 20)
-		imguiColorLabel("WSYNC", win.img.cols.reflectionColors[reflection.WSYNC])
+		imguiColorLabelSimple("WSYNC", win.img.cols.reflectionColors[reflection.WSYNC])
 	case reflection.OverlayLabels[reflection.OverlayCollision]:
 		imgui.SameLineV(0, 20)
-		imguiColorLabel("Collision", win.img.cols.reflectionColors[reflection.Collision])
+		imguiColorLabelSimple("Collision", win.img.cols.reflectionColors[reflection.Collision])
 		imgui.SameLineV(0, 15)
-		imguiColorLabel("CXCLR", win.img.cols.reflectionColors[reflection.CXCLR])
+		imguiColorLabelSimple("CXCLR", win.img.cols.reflectionColors[reflection.CXCLR])
 	case reflection.OverlayLabels[reflection.OverlayHMOVE]:
 		imgui.SameLineV(0, 20)
-		imguiColorLabel("Delay", win.img.cols.reflectionColors[reflection.HMOVEdelay])
+		imguiColorLabelSimple("Delay", win.img.cols.reflectionColors[reflection.HMOVEdelay])
 		imgui.SameLineV(0, 15)
-		imguiColorLabel("Ripple", win.img.cols.reflectionColors[reflection.HMOVEripple])
+		imguiColorLabelSimple("Ripple", win.img.cols.reflectionColors[reflection.HMOVEripple])
 		imgui.SameLineV(0, 15)
-		imguiColorLabel("Latch", win.img.cols.reflectionColors[reflection.HMOVElatched])
+		imguiColorLabelSimple("Latch", win.img.cols.reflectionColors[reflection.HMOVElatched])
 	case reflection.OverlayLabels[reflection.OverlayRSYNC]:
 		imgui.SameLineV(0, 20)
-		imguiColorLabel("Align", win.img.cols.reflectionColors[reflection.RSYNCalign])
+		imguiColorLabelSimple("Align", win.img.cols.reflectionColors[reflection.RSYNCalign])
 		imgui.SameLineV(0, 15)
-		imguiColorLabel("Reset", win.img.cols.reflectionColors[reflection.RSYNCreset])
+		imguiColorLabelSimple("Reset", win.img.cols.reflectionColors[reflection.RSYNCreset])
 	case reflection.OverlayLabels[reflection.OverlayCoproc]:
 		imgui.SameLineV(0, 20)
 
 		// display text includes coprocessor ID
 		key := fmt.Sprintf("%s Active", win.img.lz.Cart.CoProcID)
-		imguiColorLabel(key, win.img.cols.reflectionColors[reflection.CoprocessorActive])
+		imguiColorLabelSimple(key, win.img.cols.reflectionColors[reflection.CoprocessorActive])
 	}
 }
 
@@ -502,11 +502,11 @@ func (win *winDbgScr) drawReflectionTooltip() {
 		_, _, pal, _ := win.img.imguiTVPalette()
 		px := signal.ColorSignal((ref.Signal & signal.Color) >> signal.ColorShift)
 		if ref.IsHblank || ref.Signal&signal.VBlank == signal.VBlank || px == signal.VideoBlack {
-			imguiColorLabel("No color signal", pal[0])
+			imguiColorLabelSimple("No color signal", pal[0])
 		} else {
 			// not using GetColor() function. arguably we should but we've
 			// protected the array access with the VideoBlack test above.
-			imguiColorLabel(ref.VideoElement.String(), pal[px])
+			imguiColorLabelSimple(ref.VideoElement.String(), pal[px])
 		}
 
 		imgui.Spacing()

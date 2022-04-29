@@ -585,6 +585,7 @@ func (bld *build) buildVariables(src *Source) error {
 		if varb.DeclLine.Function.Name == UnknownFunction {
 			// list of global variables for all compile units
 			src.Globals[varb.Name] = varb
+			src.GlobalsByAddress[varb.Address] = varb
 			src.SortedGlobals.Variables = append(src.SortedGlobals.Variables, varb)
 
 			// note that the file has at least one global variables

@@ -249,22 +249,22 @@ func (win *winCoProcDisasm) drawEntry(e arm7tdmi.DisasmEntry) {
 
 			switch e.MAMCR {
 			case 0:
-				imguiColorLabel("MAM-0", win.img.cols.CoProcMAM0)
+				imguiColorLabelSimple("MAM-0", win.img.cols.CoProcMAM0)
 			case 1:
-				imguiColorLabel("MAM-1", win.img.cols.CoProcMAM1)
+				imguiColorLabelSimple("MAM-1", win.img.cols.CoProcMAM1)
 			case 2:
-				imguiColorLabel("MAM-2", win.img.cols.CoProcMAM2)
+				imguiColorLabelSimple("MAM-2", win.img.cols.CoProcMAM2)
 			}
 
 			switch e.BranchTrail {
 			case arm7tdmi.BranchTrailUsed:
-				imguiColorLabel("Branch Trail Used", win.img.cols.CoProcBranchTrailUsed)
+				imguiColorLabelSimple("Branch Trail Used", win.img.cols.CoProcBranchTrailUsed)
 			case arm7tdmi.BranchTrailFlushed:
-				imguiColorLabel("Branch Trail Flushed", win.img.cols.CoProcBranchTrailFlushed)
+				imguiColorLabelSimple("Branch Trail Flushed", win.img.cols.CoProcBranchTrailFlushed)
 			}
 
 			if e.MergedIS {
-				imguiColorLabel("Merged I/S Cycle", win.img.cols.CoProcMergedIS)
+				imguiColorLabelSimple("Merged I/S Cycle", win.img.cols.CoProcMergedIS)
 			}
 
 			if e.ExecutionNotes != "" {
@@ -277,11 +277,11 @@ func (win *winCoProcDisasm) drawEntry(e arm7tdmi.DisasmEntry) {
 	imgui.TableNextColumn()
 	switch e.MAMCR {
 	case 0:
-		imguiColorLabel("", win.img.cols.CoProcMAM0)
+		imguiColorLabelSimple("", win.img.cols.CoProcMAM0)
 	case 1:
-		imguiColorLabel("", win.img.cols.CoProcMAM1)
+		imguiColorLabelSimple("", win.img.cols.CoProcMAM1)
 	case 2:
-		imguiColorLabel("", win.img.cols.CoProcMAM2)
+		imguiColorLabelSimple("", win.img.cols.CoProcMAM2)
 	}
 
 	imgui.TableNextColumn()
@@ -303,14 +303,14 @@ func (win *winCoProcDisasm) drawEntry(e arm7tdmi.DisasmEntry) {
 	imgui.TableNextColumn()
 	switch e.BranchTrail {
 	case arm7tdmi.BranchTrailUsed:
-		imguiColorLabel("", win.img.cols.CoProcBranchTrailUsed)
+		imguiColorLabelSimple("", win.img.cols.CoProcBranchTrailUsed)
 	case arm7tdmi.BranchTrailFlushed:
-		imguiColorLabel("", win.img.cols.CoProcBranchTrailFlushed)
+		imguiColorLabelSimple("", win.img.cols.CoProcBranchTrailFlushed)
 	}
 
 	imgui.TableNextColumn()
 	if e.MergedIS {
-		imguiColorLabel("", win.img.cols.CoProcMergedIS)
+		imguiColorLabelSimple("", win.img.cols.CoProcMergedIS)
 	}
 
 	// cycle sequence
