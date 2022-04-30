@@ -22,12 +22,14 @@ import (
 
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/television"
+	"github.com/jetsetilly/gopher2600/hardware/television/coords"
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
 // Developer implements the CartCoProcDeveloper interface.
 type Developer struct {
 	cart mapper.CartCoProcBus
+	tv   TV
 
 	// information about the source code to the program. can be nil
 	source *Source
@@ -40,10 +42,36 @@ type Developer struct {
 	illegalAccessLock sync.Mutex
 
 	framesSinceLastUpdate int
+
+	// which 2600 kernel the most recent execution was in
+	mostRecentKernel InKernel
+
+	// indicates the period of time between calls to ExecutionStart() and
+	// ExecutionProfile()
+	currentlyExecuting bool
+}
+
+// InKernel indicates the 2600 kernel that is associated with a source function
+// or source line.
+type InKernel int
+
+// List of InKernel values.
+const (
+	InKernelNever InKernel = 0x00
+	InScreen      InKernel = 0x01
+	InVBLANK      InKernel = 0x02
+	InOverscan    InKernel = 0x04
+	InROMSetup    InKernel = 0x08
+)
+
+// TV is the interface from the developer type to the television implementation.
+type TV interface {
+	GetFrameInfo() television.FrameInfo
+	GetCoords() coords.TelevisionCoords
 }
 
 // NewDeveloper is the preferred method of initialisation for the Developer type.
-func NewDeveloper(pathToROM string, cart mapper.CartCoProcBus) *Developer {
+func NewDeveloper(pathToROM string, cart mapper.CartCoProcBus, tv TV) *Developer {
 	if cart == nil {
 		return nil
 	}
@@ -52,6 +80,7 @@ func NewDeveloper(pathToROM string, cart mapper.CartCoProcBus) *Developer {
 
 	dev := &Developer{
 		cart: cart,
+		tv:   tv,
 		illegalAccess: IllegalAccess{
 			entries: make(map[string]*IllegalAccessEntry),
 			Log:     make([]*IllegalAccessEntry, 0),
@@ -160,6 +189,29 @@ func (dev *Developer) logAccess(event string, pc uint32, addr uint32, isNullAcce
 	return fmt.Sprintf("%s %s\n%s", e.SrcLine.String(), e.SrcLine.Function.Name, e.SrcLine.PlainContent)
 }
 
+// ExecutionStart implements the CartCoProcDeveloper interface.
+func (dev *Developer) ExecutionStart() {
+	dev.sourceLock.Lock()
+	defer dev.sourceLock.Unlock()
+
+	dev.currentlyExecuting = true
+
+	frameInfo := dev.tv.GetFrameInfo()
+	coords := dev.tv.GetCoords()
+
+	if frameInfo.Stable {
+		if coords.Scanline <= frameInfo.VisibleTop {
+			dev.mostRecentKernel = InVBLANK
+		} else if coords.Scanline >= frameInfo.VisibleTop {
+			dev.mostRecentKernel = InOverscan
+		} else {
+			dev.mostRecentKernel = InScreen
+		}
+	} else {
+		dev.mostRecentKernel = InROMSetup
+	}
+}
+
 // ExecutionProfile implements the CartCoProcDeveloper interface.
 func (dev *Developer) ExecutionProfile(addr map[uint32]float32) {
 	dev.sourceLock.Lock()
@@ -167,9 +219,11 @@ func (dev *Developer) ExecutionProfile(addr map[uint32]float32) {
 
 	if dev.source != nil {
 		for pc, ct := range addr {
-			dev.source.executeProfile(pc, ct)
+			dev.source.executionProfile(pc, ct, dev.mostRecentKernel)
 		}
 	}
+
+	dev.currentlyExecuting = false
 }
 
 // HasSource returns true if source information has been found.

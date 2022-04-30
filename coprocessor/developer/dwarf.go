@@ -89,6 +89,9 @@ type SourceLine struct {
 
 	// cycle statisics for the line
 	Stats Stats
+
+	// which 2600 kernel does this line correspond
+	Kernel InKernel
 }
 
 func (ln *SourceLine) String() string {
@@ -104,6 +107,9 @@ type SourceFunction struct {
 
 	// cycle statisics for the function
 	Stats Stats
+
+	// which 2600 kernel does this line correspond to
+	Kernel InKernel
 }
 
 // SourceType is a single type identified by the DWARF data. Composite types
@@ -674,7 +680,7 @@ func (src *Source) findSourceLine(addr uint32) (*SourceLine, error) {
 	return nil, nil
 }
 
-func (src *Source) executeProfile(addr uint32, ct float32) {
+func (src *Source) executionProfile(addr uint32, ct float32, kernel InKernel) {
 	// indicate that execution profile has changed
 	src.ExecutionProfileChanged = true
 
@@ -683,6 +689,10 @@ func (src *Source) executeProfile(addr uint32, ct float32) {
 		line.Stats.count += ct
 		line.Function.Stats.count += ct
 		src.Stats.count += ct
+
+		line.Kernel |= kernel
+		line.Function.Kernel |= kernel
+		line.Function.DeclLine.Kernel |= kernel
 	}
 }
 

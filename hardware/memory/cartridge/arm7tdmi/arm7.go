@@ -572,6 +572,12 @@ func (arm *ARM) Run(mamcr uint32) (uint32, float32, error) {
 		return arm.mam.mamcr, 0, err
 	}
 
+	// indicate start and end of program execution
+	if arm.dev != nil {
+		arm.dev.ExecutionStart()
+		defer arm.dev.ExecutionProfile(arm.executedAddresses)
+	}
+
 	// update clock value from preferences
 	arm.Clk = float32(arm.prefs.Clock.Get().(float64))
 
@@ -862,11 +868,6 @@ func (arm *ARM) Run(mamcr uint32) (uint32, float32, error) {
 	// update disassembly
 	if arm.disasm != nil {
 		arm.disasm.End(programSummary)
-	}
-
-	// update developer
-	if arm.dev != nil {
-		arm.dev.ExecutionProfile(arm.executedAddresses)
 	}
 
 	if arm.executionError != nil {

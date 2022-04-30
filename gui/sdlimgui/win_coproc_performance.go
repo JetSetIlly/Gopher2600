@@ -174,7 +174,7 @@ func (win *winCoProcPerformance) drawFunctions(src *developer.Source) {
 		return
 	}
 
-	const numColumns = 6
+	const numColumns = 7
 
 	flgs := imgui.TableFlagsScrollY
 	flgs |= imgui.TableFlagsSizingStretchProp
@@ -192,6 +192,7 @@ func (win *winCoProcPerformance) drawFunctions(src *developer.Source) {
 	imgui.TableSetupColumnV("Frame", imgui.TableColumnFlagsNoSortAscending|imgui.TableColumnFlagsDefaultSort, width*0.1, 3)
 	imgui.TableSetupColumnV("Avg", imgui.TableColumnFlagsNoSortAscending, width*0.1, 4)
 	imgui.TableSetupColumnV("Max", imgui.TableColumnFlagsNoSortAscending, width*0.1, 5)
+	imgui.TableSetupColumnV("Kern", imgui.TableColumnFlagsNoSort, width*0.05, 6)
 
 	imgui.TableSetupScrollFreeze(0, 1)
 	imgui.TableHeadersRow()
@@ -280,6 +281,24 @@ func (win *winCoProcPerformance) drawFunctions(src *developer.Source) {
 			imgui.Text("-")
 		}
 		imgui.PopStyleColor()
+
+		imgui.TableNextColumn()
+		if fn.Kernel == developer.InROMSetup {
+			imgui.Text("R")
+		} else {
+			if fn.Kernel&developer.InVBLANK == developer.InVBLANK {
+				imgui.Text("V")
+				imgui.SameLineV(0, 3)
+			}
+			if fn.Kernel&developer.InScreen == developer.InScreen {
+				imgui.Text("S")
+				imgui.SameLineV(0, 3)
+			}
+			if fn.Kernel&developer.InOverscan == developer.InOverscan {
+				imgui.Text("O")
+				imgui.SameLineV(0, 3)
+			}
+		}
 	}
 
 	imgui.EndTable()
@@ -298,7 +317,7 @@ func (win *winCoProcPerformance) drawSourceLines(src *developer.Source) {
 		return
 	}
 
-	const numColumns = 6
+	const numColumns = 7
 
 	flgs := imgui.TableFlagsScrollY
 	flgs |= imgui.TableFlagsSizingStretchProp
@@ -316,6 +335,7 @@ func (win *winCoProcPerformance) drawSourceLines(src *developer.Source) {
 	imgui.TableSetupColumnV("Frame", imgui.TableColumnFlagsNoSortAscending|imgui.TableColumnFlagsDefaultSort, width*0.07, 3)
 	imgui.TableSetupColumnV("Avg", imgui.TableColumnFlagsNoSortAscending, width*0.07, 4)
 	imgui.TableSetupColumnV("Max", imgui.TableColumnFlagsNoSortAscending, width*0.07, 5)
+	imgui.TableSetupColumnV("Kern", imgui.TableColumnFlagsNoSort, width*0.05, 6)
 
 	imgui.TableSetupScrollFreeze(0, 1)
 	imgui.TableHeadersRow()
@@ -397,6 +417,24 @@ func (win *winCoProcPerformance) drawSourceLines(src *developer.Source) {
 			imgui.Text("-")
 		}
 		imgui.PopStyleColor()
+
+		imgui.TableNextColumn()
+		if ln.Kernel == developer.InROMSetup {
+			imgui.Text("R")
+		} else {
+			if ln.Kernel&developer.InVBLANK == developer.InVBLANK {
+				imgui.Text("V")
+				imgui.SameLineV(0, 3)
+			}
+			if ln.Kernel&developer.InScreen == developer.InScreen {
+				imgui.Text("S")
+				imgui.SameLineV(0, 3)
+			}
+			if ln.Kernel&developer.InOverscan == developer.InOverscan {
+				imgui.Text("O")
+				imgui.SameLineV(0, 3)
+			}
+		}
 	}
 
 	imgui.EndTable()
@@ -415,7 +453,7 @@ func (win *winCoProcPerformance) drawFunctionFilter(src *developer.Source, funct
 		return
 	}
 
-	const numColumns = 5
+	const numColumns = 6
 
 	flgs := imgui.TableFlagsScrollY
 	flgs |= imgui.TableFlagsSizingStretchProp
@@ -432,6 +470,7 @@ func (win *winCoProcPerformance) drawFunctionFilter(src *developer.Source, funct
 	imgui.TableSetupColumnV("Frame", imgui.TableColumnFlagsNoSortAscending|imgui.TableColumnFlagsDefaultSort, width*0.1, 2)
 	imgui.TableSetupColumnV("Avg", imgui.TableColumnFlagsNoSortAscending, width*0.1, 3)
 	imgui.TableSetupColumnV("Max", imgui.TableColumnFlagsNoSortAscending, width*0.1, 4)
+	imgui.TableSetupColumnV("Kern", imgui.TableColumnFlagsNoSort, width*0.05, 6)
 
 	imgui.TableSetupScrollFreeze(0, 1)
 	imgui.TableHeadersRow()
@@ -547,6 +586,24 @@ func (win *winCoProcPerformance) drawFunctionFilter(src *developer.Source, funct
 			}
 		}
 		imgui.PopStyleColor()
+
+		imgui.TableNextColumn()
+		if ln.Kernel == developer.InROMSetup {
+			imgui.Text("R")
+		} else {
+			if ln.Kernel&developer.InVBLANK == developer.InVBLANK {
+				imgui.Text("V")
+				imgui.SameLineV(0, 3)
+			}
+			if ln.Kernel&developer.InScreen == developer.InScreen {
+				imgui.Text("S")
+				imgui.SameLineV(0, 3)
+			}
+			if ln.Kernel&developer.InOverscan == developer.InOverscan {
+				imgui.Text("O")
+				imgui.SameLineV(0, 3)
+			}
+		}
 	}
 
 	imgui.EndTable()
@@ -579,5 +636,27 @@ func (win *winCoProcPerformance) sourceLineTooltip(ln *developer.SourceLine, wit
 			}
 			imgui.EndTable()
 		}
+
+		if ln.Kernel != developer.InKernelNever {
+			imgui.Spacing()
+			imgui.Separator()
+			imgui.Spacing()
+
+			imgui.Text("Executed in: ")
+			if ln.Kernel == developer.InROMSetup {
+				imgui.Text("   ROM Setup only")
+			} else {
+				if ln.Kernel&developer.InVBLANK == developer.InVBLANK {
+					imgui.Text("   VBLANK")
+				}
+				if ln.Kernel&developer.InScreen == developer.InScreen {
+					imgui.Text("   Visible Screen")
+				}
+				if ln.Kernel&developer.InOverscan == developer.InOverscan {
+					imgui.Text("   Overscan")
+				}
+			}
+		}
+
 	}, true)
 }

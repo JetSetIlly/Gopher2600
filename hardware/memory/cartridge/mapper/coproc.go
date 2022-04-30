@@ -55,6 +55,9 @@ type CartCoProcDeveloper interface {
 	// stack has collided with variable memtop
 	StackCollision(pc uint32, sp uint32) string
 
+	// notifify developer
+	ExecutionStart()
+
 	// accumulate cycles for executed addresses
 	ExecutionProfile(addr map[uint32]float32)
 
