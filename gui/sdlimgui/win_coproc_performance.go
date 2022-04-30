@@ -157,6 +157,11 @@ func (win *winCoProcPerformance) draw() {
 					win.functionTabDirty = true
 				}
 			}
+
+			imgui.SameLineV(0, 25)
+			if imgui.Button("Reset Statistics") {
+				src.ResetStatistics()
+			}
 		})
 	})
 }

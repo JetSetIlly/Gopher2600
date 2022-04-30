@@ -27,6 +27,15 @@ type Load struct {
 	MaxValid     bool
 }
 
+func (ld *Load) reset() {
+	ld.Frame = 0.0
+	ld.Average = 0.0
+	ld.Max = 0.0
+	ld.FrameValid = false
+	ld.AverageValid = false
+	ld.MaxValid = false
+}
+
 // Stats records the cycle count over time and can be used to the frame
 // (or current) load as well as average and maximum load.
 //
@@ -95,4 +104,14 @@ func (stats *Stats) newFrame(source *Stats, function *Stats) {
 			stats.OverSource.MaxValid = stats.OverSource.MaxValid || stats.OverSource.FrameValid
 		}
 	}
+}
+
+func (stats *Stats) reset() {
+	stats.OverSource.reset()
+	stats.OverFunction.reset()
+	stats.cumulativeCount = 0.0
+	stats.numFrames = 0.0
+	stats.avgCount = 0.0
+	stats.frameCount = 0.0
+	stats.count = 0.0
 }

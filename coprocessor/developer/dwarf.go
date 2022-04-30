@@ -804,3 +804,16 @@ func findELF(pathToROM string) *elf.File {
 
 	return nil
 }
+
+// ResetStatistics resets all performance statistics.
+func (src *Source) ResetStatistics() {
+	for i := range src.Functions {
+		src.Functions[i].Kernel = InKernelNever
+		src.Functions[i].Stats.reset()
+	}
+	for i := range src.linesByAddress {
+		src.linesByAddress[i].Kernel = InKernelNever
+		src.linesByAddress[i].Stats.reset()
+	}
+	src.Stats.reset()
+}
