@@ -167,6 +167,7 @@ func (win *winDbgScr) debuggerDraw() {
 		win.draw()
 	}
 
+	win.debuggerGeom.update()
 	imgui.End()
 }
 

@@ -63,6 +63,7 @@ func (win *winSuperchargerRegisters) debuggerDraw() {
 		win.draw()
 	}
 
+	win.debuggerGeom.update()
 	imgui.End()
 }
 

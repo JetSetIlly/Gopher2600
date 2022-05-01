@@ -114,6 +114,7 @@ func (win *winDisasm) debuggerDraw() {
 		win.draw()
 	}
 
+	win.debuggerGeom.update()
 	imgui.End()
 }
 

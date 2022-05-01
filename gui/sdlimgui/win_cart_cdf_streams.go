@@ -206,6 +206,7 @@ func (win *winCDFStreams) debuggerDraw() {
 		win.draw()
 	}
 
+	win.debuggerGeom.update()
 	imgui.End()
 }
 

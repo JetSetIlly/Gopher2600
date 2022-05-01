@@ -158,6 +158,7 @@ func (win *winCoProcSource) debuggerDraw() {
 		win.isCollapsed = true
 	}
 
+	win.debuggerGeom.update()
 	imgui.End()
 }
 

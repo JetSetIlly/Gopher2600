@@ -61,6 +61,7 @@ func (win *winCDFRegisters) debuggerDraw() {
 		win.draw()
 	}
 
+	win.debuggerGeom.update()
 	imgui.End()
 }
 

@@ -437,6 +437,13 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 				}
 			}
 
+		case sdl.SCANCODE_A:
+			if ctrl {
+				img.wm.arrangeBySize = 1
+			} else {
+				handled = false
+			}
+
 		case sdl.SCANCODE_R:
 			if ctrl {
 				img.dbg.PushRawEvent(func() {

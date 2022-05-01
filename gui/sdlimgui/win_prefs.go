@@ -56,6 +56,7 @@ func (win *winPrefs) playmodeDraw() {
 		win.draw()
 	}
 
+	win.playmodeWin.playmodeGeom.update()
 	imgui.End()
 }
 
@@ -70,6 +71,7 @@ func (win *winPrefs) debuggerDraw() {
 		win.draw()
 	}
 
+	win.debuggerWin.debuggerGeom.update()
 	imgui.End()
 }
 

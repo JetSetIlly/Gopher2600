@@ -54,6 +54,7 @@ func (win *winCollisions) debuggerDraw() {
 		win.draw()
 	}
 
+	win.debuggerGeom.update()
 	imgui.End()
 }
 

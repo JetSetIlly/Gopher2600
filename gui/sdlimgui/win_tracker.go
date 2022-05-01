@@ -75,6 +75,7 @@ func (win *winTracker) playmodeDraw() {
 		win.draw()
 	}
 
+	win.playmodeWin.playmodeGeom.update()
 	imgui.End()
 }
 
@@ -93,6 +94,7 @@ func (win *winTracker) debuggerDraw() {
 		win.draw()
 	}
 
+	win.debuggerWin.debuggerGeom.update()
 	imgui.End()
 }
 

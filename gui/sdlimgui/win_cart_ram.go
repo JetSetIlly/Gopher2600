@@ -69,6 +69,7 @@ func (win *winCartRAM) debuggerDraw() {
 		win.draw()
 	}
 
+	win.debuggerGeom.update()
 	imgui.End()
 }
 

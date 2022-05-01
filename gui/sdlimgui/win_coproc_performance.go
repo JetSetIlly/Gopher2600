@@ -82,6 +82,7 @@ func (win *winCoProcPerformance) debuggerDraw() {
 		win.draw()
 	}
 
+	win.debuggerGeom.update()
 	imgui.End()
 }
 

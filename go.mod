@@ -1,6 +1,6 @@
 module github.com/jetsetilly/gopher2600
 
-go 1.17
+go 1.18
 
 require (
 	github.com/bradleyjkemp/memviz v0.2.3

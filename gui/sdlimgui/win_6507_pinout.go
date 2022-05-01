@@ -98,6 +98,7 @@ func (win *win6507Pinout) debuggerDraw() {
 		win.draw()
 	}
 
+	win.debuggerGeom.update()
 	imgui.End()
 }
 

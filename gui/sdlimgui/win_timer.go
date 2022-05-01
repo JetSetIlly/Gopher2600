@@ -57,6 +57,7 @@ func (win *winTimer) debuggerDraw() {
 		win.draw()
 	}
 
+	win.debuggerGeom.update()
 	imgui.End()
 }
 

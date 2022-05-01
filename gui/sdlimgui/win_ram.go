@@ -52,6 +52,7 @@ func (win *winRAM) debuggerDraw() {
 		win.draw()
 	}
 
+	win.debuggerGeom.update()
 	imgui.End()
 }
 

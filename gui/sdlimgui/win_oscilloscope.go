@@ -84,6 +84,7 @@ func (win *winOscilloscope) debuggerDraw() {
 		win.draw()
 	}
 
+	win.debuggerGeom.update()
 	imgui.End()
 }
 

@@ -60,6 +60,7 @@ func (win *winCartTape) debuggerDraw() {
 		win.draw()
 	}
 
+	win.debuggerGeom.update()
 	imgui.End()
 }
 

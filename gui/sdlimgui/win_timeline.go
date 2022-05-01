@@ -101,6 +101,7 @@ func (win *winTimeline) debuggerDraw() {
 		win.drawKey()
 	}
 
+	win.debuggerGeom.update()
 	imgui.End()
 }
 

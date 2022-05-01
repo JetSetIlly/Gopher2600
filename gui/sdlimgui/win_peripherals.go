@@ -66,6 +66,7 @@ func (win *winPeripherals) debuggerDraw() {
 		win.draw()
 	}
 
+	win.debuggerGeom.update()
 	imgui.End()
 }
 

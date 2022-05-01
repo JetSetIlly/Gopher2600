@@ -81,6 +81,7 @@ func (win *winCoProcGlobals) debuggerDraw() {
 		win.draw()
 	}
 
+	win.debuggerGeom.update()
 	imgui.End()
 }
 

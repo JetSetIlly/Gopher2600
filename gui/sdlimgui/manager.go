@@ -16,6 +16,8 @@
 package sdlimgui
 
 import (
+	"sort"
+
 	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/emulation"
 )
@@ -34,7 +36,13 @@ type manager struct {
 
 	// debugger debuggerWindows
 	debuggerWindows map[string]debuggerWindow
-	debuggerStack   []string
+
+	// draw windows in order of size (smallest at the front) on the next draw()
+	//
+	// using int because we sometimes need to hold the arrangeBySize "signal"
+	// in order for it to take effect. in most situations a value of 1 will be
+	// sufficient for the arrangement to take place
+	arrangeBySize int
 
 	// windows can be open and closed through the menu bar
 	menu map[menuGroup][]menuEntry
@@ -215,8 +223,40 @@ func (wm *manager) draw() {
 		wm.drawMenu()
 
 		// draw windows
-		for _, w := range wm.debuggerWindows {
-			w.debuggerDraw()
+		if wm.arrangeBySize > 0 {
+			wm.arrangeBySize--
+
+			// sort windows in order of size smallest at the front
+			l := make([]debuggerWindow, 0, len(wm.debuggerWindows))
+			for _, w := range wm.debuggerWindows {
+				l = append(l, w)
+			}
+
+			sort.Slice(l, func(i int, j int) bool {
+				gi := l[i].debuggerGeometry().windowSize
+				gj := l[j].debuggerGeometry().windowSize
+				return gi.X*gi.Y > gj.X*gj.X
+			})
+
+			// drawing every window with window focus set will cause an ugly
+			// colour flash in the title bars. push the inactive color to the
+			// active color
+			sty := imgui.CurrentStyle()
+			imgui.PushStyleColor(imgui.StyleColorTitleBgActive, sty.Color(imgui.StyleColorTitleBg))
+
+			// draw in order of size
+			for _, w := range l {
+				imgui.SetNextWindowFocus()
+				w.debuggerDraw()
+			}
+
+			// undo early style push
+			imgui.PopStyleColor()
+
+		} else {
+			for _, w := range wm.debuggerWindows {
+				w.debuggerDraw()
+			}
 		}
 	}
 }

@@ -231,6 +231,7 @@ func (win *winTerm) debuggerDraw() {
 		imgui.PopItemWidth()
 	})
 
+	win.debuggerGeom.update()
 	imgui.End()
 }
 

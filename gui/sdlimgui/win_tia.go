@@ -77,6 +77,7 @@ func (win *winTIA) debuggerDraw() {
 		win.draw()
 	}
 
+	win.debuggerGeom.update()
 	imgui.End()
 }
 

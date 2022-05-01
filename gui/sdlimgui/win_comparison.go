@@ -125,6 +125,7 @@ func (win *winComparison) playmodeDraw() {
 		win.draw()
 	}
 
+	win.playmodeGeom.update()
 	imgui.End()
 }
 

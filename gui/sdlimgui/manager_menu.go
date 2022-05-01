@@ -80,9 +80,16 @@ func (wm *manager) drawMenu() {
 
 		imguiSeparator()
 
+		if imgui.Selectable("  Arrange Windows") {
+			wm.arrangeBySize = 1
+		}
+
+		imguiSeparator()
+
 		if imgui.Selectable("  Quit") {
 			wm.img.term.pushCommand("QUIT")
 		}
+
 		imgui.EndMenu()
 	}
 

@@ -62,6 +62,7 @@ func (win *winSaveKeyI2C) debuggerDraw() {
 		win.draw()
 	}
 
+	win.debuggerGeom.update()
 	imgui.End()
 }
 

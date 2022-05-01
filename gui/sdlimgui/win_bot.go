@@ -159,6 +159,7 @@ func (win *winBot) playmodeDraw() {
 		win.draw()
 	}
 
+	win.playmodeGeom.update()
 	imgui.End()
 }
 

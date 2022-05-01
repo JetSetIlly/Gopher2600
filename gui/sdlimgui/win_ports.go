@@ -58,6 +58,7 @@ func (win *winPorts) debuggerDraw() {
 		win.draw()
 	}
 
+	win.debuggerGeom.update()
 	imgui.End()
 }
 

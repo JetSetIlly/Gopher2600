@@ -15,13 +15,55 @@
 
 package sdlimgui
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/inkyblackness/imgui-go/v4"
+)
+
+// the window type represents all the windows used in the sdlimgui.
+type window interface {
+	// initialisation function. by the first call to manager.draw()
+	init()
+
+	// id should return a unique identifier for the window. note that the
+	// window title and any menu entry do not have to have the same value as
+	// the id() but it can.
+	id() string
+}
+
+type windowGeometry interface {
+	pos() imgui.Vec2
+	size() imgui.Vec2
+}
+
+// size and position of the window. is embedded in playmodeWin and debuggerWin
+// interfaces. for window type that implent interfaces then windowGeom
+// method calls will need to disambiguate which geometry to use
+type windowGeom struct {
+	windowPos  imgui.Vec2
+	windowSize imgui.Vec2
+}
+
+func (g *windowGeom) update() {
+	g.windowPos = imgui.WindowPos()
+	g.windowSize = imgui.WindowSize()
+}
+
+func (g windowGeom) pos() imgui.Vec2 {
+	return g.windowPos
+}
+
+func (g windowGeom) size() imgui.Vec2 {
+	return g.windowSize
+}
 
 // playmodeWin is a partial implementation of the playmodeWindow interface. it
 // does not implement playmodeDraw or the any of the plain window interface.
 type playmodeWin struct {
 	playmodeWindow
 	playmodeOpen bool
+	playmodeGeom windowGeom
 }
 
 func (w playmodeWin) playmodeID(id string) string {
@@ -36,11 +78,16 @@ func (w *playmodeWin) playmodeSetOpen(open bool) {
 	w.playmodeOpen = open
 }
 
+func (w *playmodeWin) playmodeGeometry() windowGeom {
+	return w.playmodeGeom
+}
+
 // debuggerWin is a partial implementation of the debuggerWindow interface. it
 // does not implement debuggerDraw or the any of the plain window interface.
 type debuggerWin struct {
 	debuggerWindow
 	debuggerOpen bool
+	debuggerGeom windowGeom
 }
 
 func (w debuggerWin) debuggerID(id string) string {
@@ -55,11 +102,16 @@ func (w *debuggerWin) debuggerSetOpen(open bool) {
 	w.debuggerOpen = open
 }
 
+func (w *debuggerWin) debuggerGeometry() windowGeom {
+	return w.debuggerGeom
+}
+
 type playmodeWindow interface {
 	window
 	playmodeDraw()
 	playmodeIsOpen() bool
 	playmodeSetOpen(bool)
+	playmodeGeometry() windowGeom
 }
 
 type debuggerWindow interface {
@@ -67,17 +119,7 @@ type debuggerWindow interface {
 	debuggerDraw()
 	debuggerIsOpen() bool
 	debuggerSetOpen(bool)
-}
-
-// the window type represents all the windows used in the sdlimgui.
-type window interface {
-	// initialisation function. by the first call to manager.draw()
-	init()
-
-	// id should return a unique identifier for the window. note that the
-	// window title and any menu entry do not have to have the same value as
-	// the id() but it can.
-	id() string
+	debuggerGeometry() windowGeom
 }
 
 // toggles a window open according to emulation state

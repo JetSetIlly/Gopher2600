@@ -73,6 +73,7 @@ func (win *winCoProcIllegalAccess) debuggerDraw() {
 		win.draw()
 	}
 
+	win.debuggerGeom.update()
 	imgui.End()
 }
 

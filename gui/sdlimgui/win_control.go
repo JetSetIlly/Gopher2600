@@ -95,6 +95,7 @@ func (win *winControl) debuggerDraw() {
 		win.draw()
 	}
 
+	win.debuggerGeom.update()
 	imgui.End()
 }
 

@@ -75,6 +75,7 @@ func (win *winCoProcDisasm) debuggerDraw() {
 		win.draw()
 	}
 
+	win.debuggerGeom.update()
 	imgui.End()
 }
 

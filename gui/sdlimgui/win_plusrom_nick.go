@@ -59,6 +59,7 @@ func (win *winPlusROMNick) debuggerDraw() {
 		win.draw()
 	}
 
+	win.debuggerGeom.update()
 	imgui.End()
 }
 

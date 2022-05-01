@@ -155,5 +155,8 @@ func (wm *manager) loadManagerState() (rerr error) {
 		}
 	}
 
+	// hold arrangeBySize signal for 5 frames
+	wm.arrangeBySize = 5
+
 	return nil
 }

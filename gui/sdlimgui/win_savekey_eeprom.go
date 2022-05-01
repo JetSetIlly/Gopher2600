@@ -62,6 +62,7 @@ func (win *winSaveKeyEEPROM) debuggerDraw() {
 		win.draw()
 	}
 
+	win.debuggerGeom.update()
 	imgui.End()
 }
 

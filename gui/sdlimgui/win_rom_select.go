@@ -151,6 +151,7 @@ func (win *winSelectROM) playmodeDraw() {
 		win.draw()
 	}
 
+	win.playmodeWin.playmodeGeom.update()
 	imgui.End()
 }
 
@@ -181,6 +182,7 @@ func (win *winSelectROM) debuggerDraw() {
 		win.draw()
 	}
 
+	win.debuggerWin.debuggerGeom.update()
 	imgui.End()
 }
 

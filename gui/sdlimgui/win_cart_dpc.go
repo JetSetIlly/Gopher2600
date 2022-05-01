@@ -61,6 +61,7 @@ func (win *winDPCregisters) debuggerDraw() {
 		win.draw()
 	}
 
+	win.debuggerGeom.update()
 	imgui.End()
 }
 
