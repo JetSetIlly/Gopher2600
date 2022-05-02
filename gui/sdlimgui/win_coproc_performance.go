@@ -36,9 +36,12 @@ type winCoProcPerformance struct {
 
 	img *SdlImgui
 
-	showSrc           bool
-	hideUnusedEntries bool
-	optionsHeight     float32
+	showSrc             bool
+	kernelFocus         developer.InKernel
+	kernelFocusPreview  string
+	kernelFocusComboDim imgui.Vec2
+	hideUnusedEntries   bool
+	optionsHeight       float32
 
 	// function tab is newly opened/changed
 	functionTabDirty  bool
@@ -51,13 +54,15 @@ type winCoProcPerformance struct {
 
 func newWinCoProcPerformance(img *SdlImgui) (window, error) {
 	win := &winCoProcPerformance{
-		img:     img,
-		showSrc: true,
+		img:                img,
+		showSrc:            true,
+		kernelFocusPreview: "All",
 	}
 	return win, nil
 }
 
 func (win *winCoProcPerformance) init() {
+	win.kernelFocusComboDim = imguiGetFrameDim("", developer.AvailableInKernelOptions...)
 }
 
 func (win *winCoProcPerformance) id() string {
@@ -149,15 +154,43 @@ func (win *winCoProcPerformance) draw() {
 			imgui.Separator()
 			imgui.Spacing()
 
-			imgui.Checkbox("Show Source in Tooltip", &win.showSrc)
-			imgui.SameLineV(0, 15)
-			imgui.Checkbox("Hide Unexecuted Items", &win.hideUnusedEntries)
+			imguiLabel("Kernel Focus")
+			imgui.PushItemWidth(win.kernelFocusComboDim.X + imgui.FrameHeight())
+			if imgui.BeginCombo("##kernelFocus", win.kernelFocusPreview) {
+				if imgui.Selectable("All") {
+					win.kernelFocusPreview = "All"
+					win.kernelFocus = developer.InKernelAll
+				}
+				if imgui.Selectable("VBLANK") {
+					win.kernelFocusPreview = "VBLANK"
+					win.kernelFocus = developer.InVBLANK
+				}
+				if imgui.Selectable("Screen") {
+					win.kernelFocusPreview = "Screen"
+					win.kernelFocus = developer.InScreen
+				}
+				if imgui.Selectable("Overscan") {
+					win.kernelFocusPreview = "Overscan"
+					win.kernelFocus = developer.InOverscan
+				}
+				imgui.EndCombo()
+			}
+
+			if win.kernelFocus == developer.InKernelAll {
+				imgui.SameLineV(0, 15)
+				imgui.Checkbox("Hide Unexecuted Items", &win.hideUnusedEntries)
+			}
+
 			if functionFilterActive {
 				imgui.SameLineV(0, 15)
-				if imgui.Checkbox("Scale Statistics", &win.functionTabScale) {
+				if imgui.Checkbox("Scale Statistics To Function", &win.functionTabScale) {
 					win.functionTabDirty = true
 				}
 			}
+
+			imgui.Spacing()
+			imgui.Checkbox("Show Source in Tooltip", &win.showSrc)
+			imgui.SameLineV(0, 15)
 
 			imgui.SameLineV(0, 25)
 			if imgui.Button("Reset Statistics") {
@@ -175,9 +208,26 @@ func (win *winCoProcPerformance) drawFunctions(src *developer.Source) {
 		return
 	}
 
-	if win.hideUnusedEntries && !src.Stats.IsValid() {
-		imgui.Text("No functions have been executed yet")
-		return
+	if win.kernelFocus&developer.InVBLANK == developer.InVBLANK {
+		if !src.StatsVBLANK.IsValid() {
+			imgui.Text("No functions have been executed during VBLANK yet")
+			return
+		}
+	} else if win.kernelFocus&developer.InScreen == developer.InScreen {
+		if !src.StatsScreen.IsValid() {
+			imgui.Text("No functions have been executed during the visible screen yet")
+			return
+		}
+	} else if win.kernelFocus&developer.InOverscan == developer.InOverscan {
+		if !src.StatsOverscan.IsValid() {
+			imgui.Text("No functions have been executed during Overscan yet")
+			return
+		}
+	} else {
+		if win.hideUnusedEntries && !src.Stats.IsValid() {
+			imgui.Text("No functions have been executed yet")
+			return
+		}
 	}
 
 	const numColumns = 7
@@ -187,6 +237,7 @@ func (win *winCoProcPerformance) drawFunctions(src *developer.Source) {
 	flgs |= imgui.TableFlagsSortable
 	flgs |= imgui.TableFlagsNoHostExtendX
 	flgs |= imgui.TableFlagsResizable
+	flgs |= imgui.TableFlagsHideable
 
 	imgui.BeginTableV("##coprocPerformanceTableFunctions", numColumns, flgs, imgui.Vec2{}, 0.0)
 
@@ -194,11 +245,11 @@ func (win *winCoProcPerformance) drawFunctions(src *developer.Source) {
 	width := imgui.ContentRegionAvail().X
 	imgui.TableSetupColumnV("File", imgui.TableColumnFlagsPreferSortDescending, width*0.275, 0)
 	imgui.TableSetupColumnV("Line", imgui.TableColumnFlagsNoSort, width*0.05, 1)
-	imgui.TableSetupColumnV("Function", imgui.TableColumnFlagsPreferSortDescending, width*0.325, 2)
+	imgui.TableSetupColumnV("Function", imgui.TableColumnFlagsPreferSortDescending, width*0.320, 2)
 	imgui.TableSetupColumnV("Frame", imgui.TableColumnFlagsNoSortAscending|imgui.TableColumnFlagsDefaultSort, width*0.1, 3)
 	imgui.TableSetupColumnV("Avg", imgui.TableColumnFlagsNoSortAscending, width*0.1, 4)
 	imgui.TableSetupColumnV("Max", imgui.TableColumnFlagsNoSortAscending, width*0.1, 5)
-	imgui.TableSetupColumnV("Kern", imgui.TableColumnFlagsNoSort, width*0.05, 6)
+	imgui.TableSetupColumnV(string(fonts.CoProcKernel), imgui.TableColumnFlagsNoSort, width*0.05, 6)
 
 	imgui.TableSetupScrollFreeze(0, 1)
 	imgui.TableHeadersRow()
@@ -223,8 +274,24 @@ func (win *winCoProcPerformance) drawFunctions(src *developer.Source) {
 	}
 
 	for _, fn := range src.SortedFunctions.Functions {
+		if fn.Kernel&win.kernelFocus != win.kernelFocus {
+			continue
+		}
+
 		if win.hideUnusedEntries && !fn.Stats.IsValid() {
 			continue
+		}
+
+		// select which stats to focus on
+		var stats developer.Stats
+		if win.kernelFocus&developer.InVBLANK == developer.InVBLANK {
+			stats = fn.StatsVBLANK
+		} else if win.kernelFocus&developer.InScreen == developer.InScreen {
+			stats = fn.StatsScreen
+		} else if win.kernelFocus&developer.InOverscan == developer.InOverscan {
+			stats = fn.StatsOverscan
+		} else {
+			stats = fn.Stats
 		}
 
 		imgui.TableNextRow()
@@ -263,8 +330,8 @@ func (win *winCoProcPerformance) drawFunctions(src *developer.Source) {
 
 		imgui.TableNextColumn()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLoad)
-		if fn.Stats.OverSource.FrameValid {
-			imgui.Text(fmt.Sprintf("%.02f", fn.Stats.OverSource.Frame))
+		if stats.OverSource.FrameValid {
+			imgui.Text(fmt.Sprintf("%.02f", stats.OverSource.Frame))
 		} else {
 			imgui.Text("-")
 		}
@@ -272,8 +339,8 @@ func (win *winCoProcPerformance) drawFunctions(src *developer.Source) {
 
 		imgui.TableNextColumn()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceAvgLoad)
-		if fn.Stats.OverSource.AverageValid {
-			imgui.Text(fmt.Sprintf("%.02f", fn.Stats.OverSource.Average))
+		if stats.OverSource.AverageValid {
+			imgui.Text(fmt.Sprintf("%.02f", stats.OverSource.Average))
 		} else {
 			imgui.Text("-")
 		}
@@ -281,8 +348,8 @@ func (win *winCoProcPerformance) drawFunctions(src *developer.Source) {
 
 		imgui.TableNextColumn()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceMaxLoad)
-		if fn.Stats.OverSource.MaxValid {
-			imgui.Text(fmt.Sprintf("%.02f", fn.Stats.OverSource.Max))
+		if stats.OverSource.MaxValid {
+			imgui.Text(fmt.Sprintf("%.02f", stats.OverSource.Max))
 		} else {
 			imgui.Text("-")
 		}
@@ -294,15 +361,15 @@ func (win *winCoProcPerformance) drawFunctions(src *developer.Source) {
 		} else {
 			if fn.Kernel&developer.InVBLANK == developer.InVBLANK {
 				imgui.Text("V")
-				imgui.SameLineV(0, 3)
+				imgui.SameLineV(0, 1)
 			}
 			if fn.Kernel&developer.InScreen == developer.InScreen {
 				imgui.Text("S")
-				imgui.SameLineV(0, 3)
+				imgui.SameLineV(0, 1)
 			}
 			if fn.Kernel&developer.InOverscan == developer.InOverscan {
 				imgui.Text("O")
-				imgui.SameLineV(0, 3)
+				imgui.SameLineV(0, 1)
 			}
 		}
 	}
@@ -318,9 +385,26 @@ func (win *winCoProcPerformance) drawSourceLines(src *developer.Source) {
 		return
 	}
 
-	if win.hideUnusedEntries && !src.Stats.IsValid() {
-		imgui.Text("No lines have been executed yet")
-		return
+	if win.kernelFocus&developer.InVBLANK == developer.InVBLANK {
+		if !src.StatsVBLANK.IsValid() {
+			imgui.Text("No lines have been executed during VBLANK yet")
+			return
+		}
+	} else if win.kernelFocus&developer.InScreen == developer.InScreen {
+		if !src.StatsScreen.IsValid() {
+			imgui.Text("No lines have been executed during the visible screen yet")
+			return
+		}
+	} else if win.kernelFocus&developer.InOverscan == developer.InOverscan {
+		if !src.StatsOverscan.IsValid() {
+			imgui.Text("No lines have been executed during Overscan yet")
+			return
+		}
+	} else {
+		if win.hideUnusedEntries && !src.Stats.IsValid() {
+			imgui.Text("No lines have been executed yet")
+			return
+		}
 	}
 
 	const numColumns = 7
@@ -330,6 +414,7 @@ func (win *winCoProcPerformance) drawSourceLines(src *developer.Source) {
 	flgs |= imgui.TableFlagsSortable
 	flgs |= imgui.TableFlagsNoHostExtendX
 	flgs |= imgui.TableFlagsResizable
+	flgs |= imgui.TableFlagsHideable
 
 	imgui.BeginTableV("##coprocPerformanceTableSourceLines", numColumns, flgs, imgui.Vec2{}, 0.0)
 
@@ -337,11 +422,11 @@ func (win *winCoProcPerformance) drawSourceLines(src *developer.Source) {
 	width := imgui.ContentRegionAvail().X
 	imgui.TableSetupColumnV("Function", imgui.TableColumnFlagsPreferSortDescending, width*0.20, 0)
 	imgui.TableSetupColumnV("Line", imgui.TableColumnFlagsNoSort, width*0.05, 1)
-	imgui.TableSetupColumnV("Content", imgui.TableColumnFlagsNoSort, width*0.35, 2)
+	imgui.TableSetupColumnV("Content", imgui.TableColumnFlagsNoSort, width*0.30, 2)
 	imgui.TableSetupColumnV("Frame", imgui.TableColumnFlagsNoSortAscending|imgui.TableColumnFlagsDefaultSort, width*0.07, 3)
 	imgui.TableSetupColumnV("Avg", imgui.TableColumnFlagsNoSortAscending, width*0.07, 4)
 	imgui.TableSetupColumnV("Max", imgui.TableColumnFlagsNoSortAscending, width*0.07, 5)
-	imgui.TableSetupColumnV("Kern", imgui.TableColumnFlagsNoSort, width*0.05, 6)
+	imgui.TableSetupColumnV(string(fonts.CoProcKernel), imgui.TableColumnFlagsNoSort, width*0.05, 6)
 
 	imgui.TableSetupScrollFreeze(0, 1)
 	imgui.TableHeadersRow()
@@ -364,8 +449,24 @@ func (win *winCoProcPerformance) drawSourceLines(src *developer.Source) {
 	}
 
 	for _, ln := range src.SortedLines.Lines {
+		if ln.Kernel&win.kernelFocus != win.kernelFocus {
+			continue
+		}
+
 		if win.hideUnusedEntries && !ln.Stats.IsValid() {
 			continue
+		}
+
+		// select which stats to focus on
+		var stats developer.Stats
+		if win.kernelFocus&developer.InVBLANK == developer.InVBLANK {
+			stats = ln.StatsVBLANK
+		} else if win.kernelFocus&developer.InScreen == developer.InScreen {
+			stats = ln.StatsScreen
+		} else if win.kernelFocus&developer.InOverscan == developer.InOverscan {
+			stats = ln.StatsOverscan
+		} else {
+			stats = ln.Stats
 		}
 
 		imgui.TableNextRow()
@@ -399,8 +500,8 @@ func (win *winCoProcPerformance) drawSourceLines(src *developer.Source) {
 
 		imgui.TableNextColumn()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLoad)
-		if ln.Stats.OverSource.FrameValid {
-			imgui.Text(fmt.Sprintf("%.02f", ln.Stats.OverSource.Frame))
+		if stats.OverSource.FrameValid {
+			imgui.Text(fmt.Sprintf("%.02f", stats.OverSource.Frame))
 		} else {
 			imgui.Text("-")
 		}
@@ -408,8 +509,8 @@ func (win *winCoProcPerformance) drawSourceLines(src *developer.Source) {
 
 		imgui.TableNextColumn()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceAvgLoad)
-		if ln.Stats.OverSource.AverageValid {
-			imgui.Text(fmt.Sprintf("%.02f", ln.Stats.OverSource.Average))
+		if stats.OverSource.AverageValid {
+			imgui.Text(fmt.Sprintf("%.02f", stats.OverSource.Average))
 		} else {
 			imgui.Text("-")
 		}
@@ -417,8 +518,8 @@ func (win *winCoProcPerformance) drawSourceLines(src *developer.Source) {
 
 		imgui.TableNextColumn()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceMaxLoad)
-		if ln.Stats.OverSource.MaxValid {
-			imgui.Text(fmt.Sprintf("%.02f", ln.Stats.OverSource.Max))
+		if stats.OverSource.MaxValid {
+			imgui.Text(fmt.Sprintf("%.02f", stats.OverSource.Max))
 		} else {
 			imgui.Text("-")
 		}
@@ -430,15 +531,15 @@ func (win *winCoProcPerformance) drawSourceLines(src *developer.Source) {
 		} else {
 			if ln.Kernel&developer.InVBLANK == developer.InVBLANK {
 				imgui.Text("V")
-				imgui.SameLineV(0, 3)
+				imgui.SameLineV(0, 1)
 			}
 			if ln.Kernel&developer.InScreen == developer.InScreen {
 				imgui.Text("S")
-				imgui.SameLineV(0, 3)
+				imgui.SameLineV(0, 1)
 			}
 			if ln.Kernel&developer.InOverscan == developer.InOverscan {
 				imgui.Text("O")
-				imgui.SameLineV(0, 3)
+				imgui.SameLineV(0, 1)
 			}
 		}
 	}
@@ -454,9 +555,29 @@ func (win *winCoProcPerformance) drawFunctionFilter(src *developer.Source, funct
 		return
 	}
 
-	if win.hideUnusedEntries && !src.Stats.IsValid() {
-		imgui.Text("This function hasn't been executed yet")
-		return
+	// validity check is done on function filter stats - drawFunctions() and
+	// drawSourceLines() equivalents of this block perform the validity check
+	// on the source level statistics
+	if win.kernelFocus&developer.InVBLANK == developer.InVBLANK {
+		if !functionFilter.Function.StatsVBLANK.IsValid() {
+			imgui.Text("This function has not been executed during VBLANK yet")
+			return
+		}
+	} else if win.kernelFocus&developer.InScreen == developer.InScreen {
+		if !functionFilter.Function.StatsScreen.IsValid() {
+			imgui.Text("This function has not been executed during the visible screen yet")
+			return
+		}
+	} else if win.kernelFocus&developer.InOverscan == developer.InOverscan {
+		if !functionFilter.Function.StatsOverscan.IsValid() {
+			imgui.Text("This function has not been executed during Overscan yet")
+			return
+		}
+	} else {
+		if win.hideUnusedEntries && !src.Stats.IsValid() {
+			imgui.Text("Ths function has not been executed yet")
+			return
+		}
 	}
 
 	const numColumns = 6
@@ -466,17 +587,18 @@ func (win *winCoProcPerformance) drawFunctionFilter(src *developer.Source, funct
 	flgs |= imgui.TableFlagsSortable
 	flgs |= imgui.TableFlagsNoHostExtendX
 	flgs |= imgui.TableFlagsResizable
+	flgs |= imgui.TableFlagsHideable
 
 	imgui.BeginTableV("##coprocPerformanceTableFunctionFilter", numColumns, flgs, imgui.Vec2{}, 0.0)
 
 	// first column is a dummy column so that Selectable (span all columns) works correctly
 	width := imgui.ContentRegionAvail().X
 	imgui.TableSetupColumnV("Line", imgui.TableColumnFlagsPreferSortDescending, width*0.05, 0)
-	imgui.TableSetupColumnV("Source", imgui.TableColumnFlagsNoSort, width*0.60, 1)
+	imgui.TableSetupColumnV("Source", imgui.TableColumnFlagsNoSort, width*0.55, 1)
 	imgui.TableSetupColumnV("Frame", imgui.TableColumnFlagsNoSortAscending|imgui.TableColumnFlagsDefaultSort, width*0.1, 2)
 	imgui.TableSetupColumnV("Avg", imgui.TableColumnFlagsNoSortAscending, width*0.1, 3)
 	imgui.TableSetupColumnV("Max", imgui.TableColumnFlagsNoSortAscending, width*0.1, 4)
-	imgui.TableSetupColumnV("Kern", imgui.TableColumnFlagsNoSort, width*0.05, 6)
+	imgui.TableSetupColumnV(string(fonts.CoProcKernel), imgui.TableColumnFlagsNoSort, width*0.05, 6)
 
 	imgui.TableSetupScrollFreeze(0, 1)
 	imgui.TableHeadersRow()
@@ -513,8 +635,24 @@ func (win *winCoProcPerformance) drawFunctionFilter(src *developer.Source, funct
 	}
 
 	for _, ln := range functionFilter.Lines.Lines {
+		if ln.Kernel&win.kernelFocus != win.kernelFocus {
+			continue
+		}
+
 		if win.hideUnusedEntries && !ln.Stats.IsValid() {
 			continue
+		}
+
+		// select which stats to focus on
+		var stats developer.Stats
+		if win.kernelFocus&developer.InVBLANK == developer.InVBLANK {
+			stats = ln.StatsVBLANK
+		} else if win.kernelFocus&developer.InScreen == developer.InScreen {
+			stats = ln.StatsScreen
+		} else if win.kernelFocus&developer.InOverscan == developer.InOverscan {
+			stats = ln.StatsOverscan
+		} else {
+			stats = ln.Stats
 		}
 
 		imgui.TableNextRow()
@@ -545,14 +683,14 @@ func (win *winCoProcPerformance) drawFunctionFilter(src *developer.Source, funct
 		imgui.TableNextColumn()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLoad)
 		if win.functionTabScale {
-			if ln.Stats.OverFunction.FrameValid {
-				imgui.Text(fmt.Sprintf("%.02f", ln.Stats.OverFunction.Frame))
+			if stats.OverFunction.FrameValid {
+				imgui.Text(fmt.Sprintf("%.02f", stats.OverFunction.Frame))
 			} else {
 				imgui.Text("-")
 			}
 		} else {
-			if ln.Stats.OverSource.FrameValid {
-				imgui.Text(fmt.Sprintf("%.02f", ln.Stats.OverSource.Frame))
+			if stats.OverSource.FrameValid {
+				imgui.Text(fmt.Sprintf("%.02f", stats.OverSource.Frame))
 			} else {
 				imgui.Text("-")
 			}
@@ -562,14 +700,14 @@ func (win *winCoProcPerformance) drawFunctionFilter(src *developer.Source, funct
 		imgui.TableNextColumn()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceAvgLoad)
 		if win.functionTabScale {
-			if ln.Stats.OverFunction.AverageValid {
-				imgui.Text(fmt.Sprintf("%.02f", ln.Stats.OverFunction.Average))
+			if stats.OverFunction.AverageValid {
+				imgui.Text(fmt.Sprintf("%.02f", stats.OverFunction.Average))
 			} else {
 				imgui.Text("-")
 			}
 		} else {
-			if ln.Stats.OverSource.AverageValid {
-				imgui.Text(fmt.Sprintf("%.02f", ln.Stats.OverSource.Average))
+			if stats.OverSource.AverageValid {
+				imgui.Text(fmt.Sprintf("%.02f", stats.OverSource.Average))
 			} else {
 				imgui.Text("-")
 			}
@@ -579,14 +717,14 @@ func (win *winCoProcPerformance) drawFunctionFilter(src *developer.Source, funct
 		imgui.TableNextColumn()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceMaxLoad)
 		if win.functionTabScale {
-			if ln.Stats.OverFunction.MaxValid {
-				imgui.Text(fmt.Sprintf("%.02f", ln.Stats.OverFunction.Max))
+			if stats.OverFunction.MaxValid {
+				imgui.Text(fmt.Sprintf("%.02f", stats.OverFunction.Max))
 			} else {
 				imgui.Text("-")
 			}
 		} else {
-			if ln.Stats.OverSource.MaxValid {
-				imgui.Text(fmt.Sprintf("%.02f", ln.Stats.OverSource.Max))
+			if stats.OverSource.MaxValid {
+				imgui.Text(fmt.Sprintf("%.02f", stats.OverSource.Max))
 			} else {
 				imgui.Text("-")
 			}
@@ -599,15 +737,15 @@ func (win *winCoProcPerformance) drawFunctionFilter(src *developer.Source, funct
 		} else {
 			if ln.Kernel&developer.InVBLANK == developer.InVBLANK {
 				imgui.Text("V")
-				imgui.SameLineV(0, 3)
+				imgui.SameLineV(0, 1)
 			}
 			if ln.Kernel&developer.InScreen == developer.InScreen {
 				imgui.Text("S")
-				imgui.SameLineV(0, 3)
+				imgui.SameLineV(0, 1)
 			}
 			if ln.Kernel&developer.InOverscan == developer.InOverscan {
 				imgui.Text("O")
-				imgui.SameLineV(0, 3)
+				imgui.SameLineV(0, 1)
 			}
 		}
 	}
@@ -643,7 +781,7 @@ func (win *winCoProcPerformance) sourceLineTooltip(ln *developer.SourceLine, wit
 			imgui.EndTable()
 		}
 
-		if ln.Kernel != developer.InKernelNever {
+		if ln.Kernel != developer.InKernelAll {
 			imgui.Spacing()
 			imgui.Separator()
 			imgui.Spacing()

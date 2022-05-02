@@ -90,7 +90,13 @@ type SourceLine struct {
 	// cycle statisics for the line
 	Stats Stats
 
-	// which 2600 kernel does this line correspond
+	// kernel specific cycle statistics for the line. accumulated only once TV is stable
+	StatsVBLANK   Stats
+	StatsScreen   Stats
+	StatsOverscan Stats
+	StatsROMSetup Stats
+
+	// which 2600 kernel has this line executed in
 	Kernel InKernel
 }
 
@@ -108,7 +114,13 @@ type SourceFunction struct {
 	// cycle statisics for the function
 	Stats Stats
 
-	// which 2600 kernel does this line correspond to
+	// kernel specific cycle statistics for the function. accumulated only once TV is stable
+	StatsVBLANK   Stats
+	StatsScreen   Stats
+	StatsOverscan Stats
+	StatsROMSetup Stats
+
+	// which 2600 kernel has this function executed in
 	Kernel InKernel
 }
 
@@ -270,6 +282,12 @@ type Source struct {
 
 	// cycle statisics for the entire program
 	Stats Stats
+
+	// kernel specific cycle statistics for the program. accumulated only once TV is stable
+	StatsVBLANK   Stats
+	StatsScreen   Stats
+	StatsOverscan Stats
+	StatsROMSetup Stats
 
 	// flag to indicate whether the execution profile has changed since it was cleared
 	//
@@ -693,6 +711,25 @@ func (src *Source) executionProfile(addr uint32, ct float32, kernel InKernel) {
 		line.Kernel |= kernel
 		line.Function.Kernel |= kernel
 		line.Function.DeclLine.Kernel |= kernel
+
+		switch kernel {
+		case InVBLANK:
+			line.StatsVBLANK.count += ct
+			line.Function.StatsVBLANK.count += ct
+			src.StatsVBLANK.count += ct
+		case InScreen:
+			line.StatsScreen.count += ct
+			line.Function.StatsScreen.count += ct
+			src.StatsScreen.count += ct
+		case InOverscan:
+			line.StatsOverscan.count += ct
+			line.Function.StatsOverscan.count += ct
+			src.StatsOverscan.count += ct
+		case InROMSetup:
+			line.StatsROMSetup.count += ct
+			line.Function.StatsROMSetup.count += ct
+			src.StatsROMSetup.count += ct
+		}
 	}
 }
 
@@ -701,9 +738,17 @@ func (src *Source) newFrame() {
 	// the functions and then the source lines.
 
 	src.Stats.newFrame(nil, nil)
+	src.StatsVBLANK.newFrame(nil, nil)
+	src.StatsScreen.newFrame(nil, nil)
+	src.StatsOverscan.newFrame(nil, nil)
+	src.StatsROMSetup.newFrame(nil, nil)
 
 	for _, fn := range src.Functions {
 		fn.Stats.newFrame(&src.Stats, nil)
+		fn.StatsVBLANK.newFrame(&src.StatsVBLANK, nil)
+		fn.StatsScreen.newFrame(&src.StatsScreen, nil)
+		fn.StatsOverscan.newFrame(&src.StatsOverscan, nil)
+		fn.StatsROMSetup.newFrame(&src.StatsROMSetup, nil)
 	}
 
 	// traverse the SortedLines list and update the FrameCyles values
@@ -712,6 +757,10 @@ func (src *Source) newFrame() {
 	// SourceLine more than once. SortedLines contains unique entries.
 	for _, ln := range src.SortedLines.Lines {
 		ln.Stats.newFrame(&src.Stats, &ln.Function.Stats)
+		ln.StatsVBLANK.newFrame(&src.StatsVBLANK, &ln.Function.StatsVBLANK)
+		ln.StatsScreen.newFrame(&src.StatsScreen, &ln.Function.StatsScreen)
+		ln.StatsOverscan.newFrame(&src.StatsOverscan, &ln.Function.StatsOverscan)
+		ln.StatsROMSetup.newFrame(&src.StatsROMSetup, &ln.Function.StatsROMSetup)
 	}
 }
 
@@ -808,12 +857,24 @@ func findELF(pathToROM string) *elf.File {
 // ResetStatistics resets all performance statistics.
 func (src *Source) ResetStatistics() {
 	for i := range src.Functions {
-		src.Functions[i].Kernel = InKernelNever
+		src.Functions[i].Kernel = InKernelAll
 		src.Functions[i].Stats.reset()
+		src.Functions[i].StatsVBLANK.reset()
+		src.Functions[i].StatsScreen.reset()
+		src.Functions[i].StatsOverscan.reset()
+		src.Functions[i].StatsROMSetup.reset()
 	}
 	for i := range src.linesByAddress {
-		src.linesByAddress[i].Kernel = InKernelNever
+		src.linesByAddress[i].Kernel = InKernelAll
 		src.linesByAddress[i].Stats.reset()
+		src.linesByAddress[i].StatsVBLANK.reset()
+		src.linesByAddress[i].StatsScreen.reset()
+		src.linesByAddress[i].StatsOverscan.reset()
+		src.linesByAddress[i].StatsROMSetup.reset()
 	}
 	src.Stats.reset()
+	src.StatsVBLANK.reset()
+	src.StatsScreen.reset()
+	src.StatsOverscan.reset()
+	src.StatsROMSetup.reset()
 }

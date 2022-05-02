@@ -55,13 +55,16 @@ type Developer struct {
 // or source line.
 type InKernel int
 
+// List of InKernelValues as strings
+var AvailableInKernelOptions = []string{"All", "VBLANK", "Screen", "Overscan", "ROM Setup"}
+
 // List of InKernel values.
 const (
-	InKernelNever InKernel = 0x00
-	InScreen      InKernel = 0x01
-	InVBLANK      InKernel = 0x02
-	InOverscan    InKernel = 0x04
-	InROMSetup    InKernel = 0x08
+	InKernelAll InKernel = 0x00
+	InScreen    InKernel = 0x01
+	InVBLANK    InKernel = 0x02
+	InOverscan  InKernel = 0x04
+	InROMSetup  InKernel = 0x08
 )
 
 // TV is the interface from the developer type to the television implementation.
@@ -197,9 +200,9 @@ func (dev *Developer) ExecutionStart() {
 	dev.currentlyExecuting = true
 
 	frameInfo := dev.tv.GetFrameInfo()
-	coords := dev.tv.GetCoords()
 
 	if frameInfo.Stable {
+		coords := dev.tv.GetCoords()
 		if coords.Scanline <= frameInfo.VisibleTop {
 			dev.mostRecentKernel = InVBLANK
 		} else if coords.Scanline >= frameInfo.VisibleTop {

@@ -68,6 +68,7 @@ const (
 	Warning                = '\uf071'
 	CoProcCycles           = '\uf021'
 	CoProcLastStart        = '\uf26c'
+	CoProcKernel           = '\uf5fd' // layers
 	MagnifyingGlass        = '\uf002'
 	PaintBrush             = '\uf1fc'
 	CaretRight             = '\uf0da'
