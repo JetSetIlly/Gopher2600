@@ -38,10 +38,15 @@ type SortedLines struct {
 	Lines      []*SourceLine
 	method     sortMethods
 	descending bool
+	kernel     InKernel
 }
 
 func (e SortedLines) Sort() {
 	sort.Stable(e)
+}
+
+func (e *SortedLines) SortKernel(kernel InKernel) {
+	e.kernel = kernel
 }
 
 func (e *SortedLines) SortByFile(descending bool) {
@@ -111,6 +116,24 @@ func (e SortedLines) Len() int {
 }
 
 func (e SortedLines) Less(i int, j int) bool {
+	var iStats Stats
+	var jStats Stats
+
+	switch e.kernel {
+	case InVBLANK:
+		iStats = e.Lines[i].StatsVBLANK
+		jStats = e.Lines[j].StatsVBLANK
+	case InScreen:
+		iStats = e.Lines[i].StatsScreen
+		jStats = e.Lines[j].StatsScreen
+	case InOverscan:
+		iStats = e.Lines[i].StatsOverscan
+		jStats = e.Lines[j].StatsOverscan
+	default:
+		iStats = e.Lines[i].Stats
+		jStats = e.Lines[j].Stats
+	}
+
 	switch e.method {
 	case sortFunction:
 		if e.descending {
@@ -129,34 +152,34 @@ func (e SortedLines) Less(i int, j int) bool {
 		return e.Lines[i].LineNumber < e.Lines[j].LineNumber
 	case sortFrameCyclesOverSource:
 		if e.descending {
-			return e.Lines[i].Stats.OverSource.Frame > e.Lines[j].Stats.OverSource.Frame
+			return iStats.OverSource.Frame > jStats.OverSource.Frame
 		}
-		return e.Lines[i].Stats.OverSource.Frame > e.Lines[j].Stats.OverSource.Frame
+		return iStats.OverSource.Frame > jStats.OverSource.Frame
 	case sortAverageCyclesOverSource:
 		if e.descending {
-			return e.Lines[i].Stats.OverSource.Average > e.Lines[j].Stats.OverSource.Average
+			return iStats.OverSource.Average > jStats.OverSource.Average
 		}
-		return e.Lines[i].Stats.OverSource.Average < e.Lines[j].Stats.OverSource.Average
+		return iStats.OverSource.Average < jStats.OverSource.Average
 	case sortMaxCyclesOverSource:
 		if e.descending {
-			return e.Lines[i].Stats.OverSource.Max > e.Lines[j].Stats.OverSource.Max
+			return iStats.OverSource.Max > jStats.OverSource.Max
 		}
-		return e.Lines[i].Stats.OverSource.Max < e.Lines[j].Stats.OverSource.Max
+		return iStats.OverSource.Max < jStats.OverSource.Max
 	case sortFrameCyclesOverFunction:
 		if e.descending {
-			return e.Lines[i].Stats.OverFunction.Frame > e.Lines[j].Stats.OverFunction.Frame
+			return iStats.OverFunction.Frame > jStats.OverFunction.Frame
 		}
-		return e.Lines[i].Stats.OverFunction.Frame > e.Lines[j].Stats.OverFunction.Frame
+		return iStats.OverFunction.Frame > jStats.OverFunction.Frame
 	case sortAverageCyclesOverFunction:
 		if e.descending {
-			return e.Lines[i].Stats.OverFunction.Average > e.Lines[j].Stats.OverFunction.Average
+			return iStats.OverFunction.Average > jStats.OverFunction.Average
 		}
-		return e.Lines[i].Stats.OverFunction.Average < e.Lines[j].Stats.OverFunction.Average
+		return iStats.OverFunction.Average < jStats.OverFunction.Average
 	case sortMaxCyclesOverFunction:
 		if e.descending {
-			return e.Lines[i].Stats.OverFunction.Max > e.Lines[j].Stats.OverFunction.Max
+			return iStats.OverFunction.Max > jStats.OverFunction.Max
 		}
-		return e.Lines[i].Stats.OverFunction.Max < e.Lines[j].Stats.OverFunction.Max
+		return iStats.OverFunction.Max < jStats.OverFunction.Max
 	}
 
 	return false
@@ -170,12 +193,17 @@ type SortedFunctions struct {
 	Functions  []*SourceFunction
 	method     sortMethods
 	descending bool
+	kernel     InKernel
 
 	functionComparison bool
 }
 
 func (e SortedFunctions) Sort() {
 	sort.Stable(e)
+}
+
+func (e *SortedFunctions) SortKernel(kernel InKernel) {
+	e.kernel = kernel
 }
 
 func (e *SortedFunctions) SortByFile(descending bool) {
@@ -213,6 +241,24 @@ func (e SortedFunctions) Len() int {
 }
 
 func (e SortedFunctions) Less(i int, j int) bool {
+	var iStats Stats
+	var jStats Stats
+
+	switch e.kernel {
+	case InVBLANK:
+		iStats = e.Functions[i].StatsVBLANK
+		jStats = e.Functions[j].StatsVBLANK
+	case InScreen:
+		iStats = e.Functions[i].StatsScreen
+		jStats = e.Functions[j].StatsScreen
+	case InOverscan:
+		iStats = e.Functions[i].StatsOverscan
+		jStats = e.Functions[j].StatsOverscan
+	default:
+		iStats = e.Functions[i].Stats
+		jStats = e.Functions[j].Stats
+	}
+
 	switch e.method {
 	case sortFile:
 		if e.descending {
@@ -226,19 +272,19 @@ func (e SortedFunctions) Less(i int, j int) bool {
 		return strings.ToUpper(e.Functions[i].Name) < strings.ToUpper(e.Functions[j].Name)
 	case sortFrameCyclesOverSource:
 		if e.descending {
-			return e.Functions[i].Stats.OverSource.Frame > e.Functions[j].Stats.OverSource.Frame
+			return iStats.OverSource.Frame > jStats.OverSource.Frame
 		}
-		return e.Functions[i].Stats.OverSource.Frame < e.Functions[j].Stats.OverSource.Frame
+		return iStats.OverSource.Frame < jStats.OverSource.Frame
 	case sortAverageCyclesOverSource:
 		if e.descending {
-			return e.Functions[i].Stats.OverSource.Average > e.Functions[j].Stats.OverSource.Average
+			return iStats.OverSource.Average > jStats.OverSource.Average
 		}
-		return e.Functions[i].Stats.OverSource.Average < e.Functions[j].Stats.OverSource.Average
+		return iStats.OverSource.Average < jStats.OverSource.Average
 	case sortMaxCyclesOverSource:
 		if e.descending {
-			return e.Functions[i].Stats.OverSource.Max > e.Functions[j].Stats.OverSource.Max
+			return iStats.OverSource.Max > jStats.OverSource.Max
 		}
-		return e.Functions[i].Stats.OverSource.Max < e.Functions[j].Stats.OverSource.Max
+		return iStats.OverSource.Max < jStats.OverSource.Max
 	}
 
 	return false

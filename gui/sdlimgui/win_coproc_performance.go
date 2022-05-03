@@ -40,6 +40,7 @@ type winCoProcPerformance struct {
 	kernelFocus         developer.InKernel
 	kernelFocusPreview  string
 	kernelFocusComboDim imgui.Vec2
+	kernelFocusDirty    bool
 	hideUnusedEntries   bool
 	optionsHeight       float32
 
@@ -160,18 +161,22 @@ func (win *winCoProcPerformance) draw() {
 				if imgui.Selectable("All") {
 					win.kernelFocusPreview = "All"
 					win.kernelFocus = developer.InKernelAll
+					win.kernelFocusDirty = true
 				}
 				if imgui.Selectable("VBLANK") {
 					win.kernelFocusPreview = "VBLANK"
 					win.kernelFocus = developer.InVBLANK
+					win.kernelFocusDirty = true
 				}
 				if imgui.Selectable("Screen") {
 					win.kernelFocusPreview = "Screen"
 					win.kernelFocus = developer.InScreen
+					win.kernelFocusDirty = true
 				}
 				if imgui.Selectable("Overscan") {
 					win.kernelFocusPreview = "Overscan"
 					win.kernelFocus = developer.InOverscan
+					win.kernelFocusDirty = true
 				}
 				imgui.EndCombo()
 			}
@@ -255,7 +260,11 @@ func (win *winCoProcPerformance) drawFunctions(src *developer.Source) {
 	imgui.TableHeadersRow()
 
 	sort := imgui.TableGetSortSpecs()
-	if sort.SpecsDirty() {
+	if sort.SpecsDirty() || win.kernelFocusDirty {
+		//  always set which kernel to sort by
+		win.kernelFocusDirty = false
+		src.SortedFunctions.SortKernel(win.kernelFocus)
+
 		for _, s := range sort.Specs() {
 			switch s.ColumnUserID {
 			case 0:
@@ -432,7 +441,11 @@ func (win *winCoProcPerformance) drawSourceLines(src *developer.Source) {
 	imgui.TableHeadersRow()
 
 	sort := imgui.TableGetSortSpecs()
-	if sort.SpecsDirty() {
+	if sort.SpecsDirty() || win.kernelFocusDirty {
+		//  always set which kernel to sort by
+		win.kernelFocusDirty = false
+		src.SortedFunctions.SortKernel(win.kernelFocus)
+
 		for _, s := range sort.Specs() {
 			switch s.ColumnUserID {
 			case 0:
@@ -605,7 +618,9 @@ func (win *winCoProcPerformance) drawFunctionFilter(src *developer.Source, funct
 
 	sort := imgui.TableGetSortSpecs()
 	if sort.SpecsDirty() || win.functionTabDirty {
-		win.functionTabDirty = false
+		//  always set which kernel to sort by
+		win.kernelFocusDirty = false
+		src.SortedFunctions.SortKernel(win.kernelFocus)
 
 		for _, s := range sort.Specs() {
 			switch s.ColumnUserID {
