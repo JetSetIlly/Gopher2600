@@ -35,6 +35,9 @@ type Load struct {
 }
 
 func (ld *Load) reset() {
+	ld.FrameCount = 0.0
+	ld.AverageCount = 0.0
+	ld.MaxCount = 0.0
 	ld.Frame = 0.0
 	ld.Average = 0.0
 	ld.Max = 0.0
@@ -84,9 +87,13 @@ func (stats *Stats) IsValid() bool {
 // update statistics, using source and function to update the Load values as
 // appropriate.
 func (stats *Stats) newFrame(source *Stats, function *Stats) {
-	stats.cumulativeCount += stats.count
 	stats.numFrames++
-	stats.avgCount = stats.cumulativeCount / stats.numFrames
+	if stats.numFrames > 1 {
+		if stats.count > 0 {
+			stats.cumulativeCount += stats.count
+			stats.avgCount = stats.cumulativeCount / (stats.numFrames - 1)
+		}
+	}
 
 	stats.frameCount = stats.count
 	stats.count = 0
@@ -148,4 +155,5 @@ func (stats *Stats) reset() {
 	stats.avgCount = 0.0
 	stats.frameCount = 0.0
 	stats.count = 0.0
+	stats.numFrames = 0
 }
