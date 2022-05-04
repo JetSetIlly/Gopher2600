@@ -115,14 +115,13 @@ func (win *winCoProcPerformance) draw() {
 			return
 		}
 
-		// sort statistics if ARM has completed an execution since last GUI frame
+		// ExecutionProfileChanged is used to decide whether to sort
+		// statistics. make sure we set it to false by the end of the draw()
+		// function
 		if src.ExecutionProfileChanged {
-			src.ExecutionProfileChanged = false
-			src.SortedLines.Sort()
-			src.SortedFunctions.Sort()
-			for _, ff := range src.FunctionFilters {
-				ff.Lines.Sort()
-			}
+			defer func() {
+				src.ExecutionProfileChanged = false
+			}()
 		}
 
 		imgui.BeginChildV("##coprocPerformanceMain", imgui.Vec2{X: 0, Y: imguiRemainingWinHeight() - win.optionsHeight}, false, 0)
@@ -269,7 +268,7 @@ func (win *winCoProcPerformance) drawFunctions(src *developer.Source) {
 	imgui.TableHeadersRow()
 
 	sort := imgui.TableGetSortSpecs()
-	if sort.SpecsDirty() || win.kernelFocusDirty {
+	if src.ExecutionProfileChanged || sort.SpecsDirty() || win.kernelFocusDirty {
 		//  always set which kernel to sort by
 		win.kernelFocusDirty = false
 		src.SortedFunctions.SetKernel(win.kernelFocus)
@@ -460,7 +459,7 @@ func (win *winCoProcPerformance) drawSourceLines(src *developer.Source) {
 	imgui.TableHeadersRow()
 
 	sort := imgui.TableGetSortSpecs()
-	if sort.SpecsDirty() || win.kernelFocusDirty {
+	if src.ExecutionProfileChanged || sort.SpecsDirty() || win.kernelFocusDirty {
 		//  always set which kernel to sort by
 		win.kernelFocusDirty = false
 		src.SortedFunctions.SetKernel(win.kernelFocus)
@@ -646,7 +645,7 @@ func (win *winCoProcPerformance) drawFunctionFilter(src *developer.Source, funct
 	imgui.TableHeadersRow()
 
 	sort := imgui.TableGetSortSpecs()
-	if sort.SpecsDirty() || win.functionTabDirty {
+	if src.ExecutionProfileChanged || sort.SpecsDirty() || win.functionTabDirty {
 		//  always set which kernel to sort by
 		win.kernelFocusDirty = false
 		src.SortedFunctions.SetKernel(win.kernelFocus)

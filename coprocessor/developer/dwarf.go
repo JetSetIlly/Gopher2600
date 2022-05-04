@@ -327,6 +327,7 @@ func NewSource(pathToROM string) (*Source, error) {
 		SortedLines: SortedLines{
 			Lines: make([]*SourceLine, 0, 100),
 		},
+		ExecutionProfileChanged: true,
 	}
 
 	// open ELF file
