@@ -36,28 +36,39 @@ type winCoProcPerformance struct {
 
 	img *SdlImgui
 
-	showSrc             bool
+	// source shown in tooltip
+	showSrc bool
+
+	// which kernel to focus on
 	kernelFocus         developer.InKernel
-	kernelFocusPreview  string
 	kernelFocusComboDim imgui.Vec2
 	kernelFocusDirty    bool
-	hideUnusedEntries   bool
-	optionsHeight       float32
 
-	// function tab is newly opened/changed
-	functionTabDirty  bool
-	functionTabSelect string
+	// whether to present performance figures as raw counts or as percentages
+	showPercentageLoad bool
+
+	// whether to included unexecuted entries (functions or lines) in the list
+	hideUnusedEntries bool
 
 	// scale load statistics in function filters to the function level (as
 	// opposed to the program level)
 	functionTabScale bool
+
+	// height of all options
+	optionsHeight float32
+
+	// function tab is newly opened/changed. this means that the stats should
+	// be resorted
+	functionTabDirty  bool
+	functionTabSelect string
 }
 
 func newWinCoProcPerformance(img *SdlImgui) (window, error) {
 	win := &winCoProcPerformance{
-		img:                img,
-		showSrc:            true,
-		kernelFocusPreview: "All",
+		img:                 img,
+		showSrcAsmInTooltip: true,
+		showPercentageLoad:  true,
+		kernelFocus:         developer.InKernelAll,
 	}
 	return win, nil
 }
@@ -157,29 +168,28 @@ func (win *winCoProcPerformance) draw() {
 
 			imguiLabel("Kernel Focus")
 			imgui.PushItemWidth(win.kernelFocusComboDim.X + imgui.FrameHeight())
-			if imgui.BeginCombo("##kernelFocus", win.kernelFocusPreview) {
+			if imgui.BeginCombo("##kernelFocus", win.kernelFocus.String()) {
 				if imgui.Selectable("All") {
-					win.kernelFocusPreview = "All"
 					win.kernelFocus = developer.InKernelAll
 					win.kernelFocusDirty = true
 				}
 				if imgui.Selectable("VBLANK") {
-					win.kernelFocusPreview = "VBLANK"
 					win.kernelFocus = developer.InVBLANK
 					win.kernelFocusDirty = true
 				}
 				if imgui.Selectable("Screen") {
-					win.kernelFocusPreview = "Screen"
 					win.kernelFocus = developer.InScreen
 					win.kernelFocusDirty = true
 				}
 				if imgui.Selectable("Overscan") {
-					win.kernelFocusPreview = "Overscan"
 					win.kernelFocus = developer.InOverscan
 					win.kernelFocusDirty = true
 				}
 				imgui.EndCombo()
 			}
+
+			imgui.SameLineV(0, 15)
+			imgui.Checkbox("Show Load as %", &win.showPercentageLoad)
 
 			if win.kernelFocus == developer.InKernelAll {
 				imgui.SameLineV(0, 15)
@@ -263,7 +273,7 @@ func (win *winCoProcPerformance) drawFunctions(src *developer.Source) {
 	if sort.SpecsDirty() || win.kernelFocusDirty {
 		//  always set which kernel to sort by
 		win.kernelFocusDirty = false
-		src.SortedFunctions.SortKernel(win.kernelFocus)
+		src.SortedFunctions.SetKernel(win.kernelFocus)
 
 		for _, s := range sort.Specs() {
 			switch s.ColumnUserID {
@@ -340,7 +350,11 @@ func (win *winCoProcPerformance) drawFunctions(src *developer.Source) {
 		imgui.TableNextColumn()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLoad)
 		if stats.OverSource.FrameValid {
-			imgui.Text(fmt.Sprintf("%.02f", stats.OverSource.Frame))
+			if win.showPercentageLoad {
+				imgui.Text(fmt.Sprintf("%.02f", stats.OverSource.Frame))
+			} else {
+				imgui.Text(fmt.Sprintf("%.0f", stats.OverSource.FrameCount))
+			}
 		} else {
 			imgui.Text("-")
 		}
@@ -349,7 +363,11 @@ func (win *winCoProcPerformance) drawFunctions(src *developer.Source) {
 		imgui.TableNextColumn()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceAvgLoad)
 		if stats.OverSource.AverageValid {
-			imgui.Text(fmt.Sprintf("%.02f", stats.OverSource.Average))
+			if win.showPercentageLoad {
+				imgui.Text(fmt.Sprintf("%.02f", stats.OverSource.Average))
+			} else {
+				imgui.Text(fmt.Sprintf("%.0f", stats.OverSource.AverageCount))
+			}
 		} else {
 			imgui.Text("-")
 		}
@@ -358,7 +376,11 @@ func (win *winCoProcPerformance) drawFunctions(src *developer.Source) {
 		imgui.TableNextColumn()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceMaxLoad)
 		if stats.OverSource.MaxValid {
-			imgui.Text(fmt.Sprintf("%.02f", stats.OverSource.Max))
+			if win.showPercentageLoad {
+				imgui.Text(fmt.Sprintf("%.02f", stats.OverSource.Max))
+			} else {
+				imgui.Text(fmt.Sprintf("%.0f", stats.OverSource.MaxCount))
+			}
 		} else {
 			imgui.Text("-")
 		}
@@ -444,7 +466,7 @@ func (win *winCoProcPerformance) drawSourceLines(src *developer.Source) {
 	if sort.SpecsDirty() || win.kernelFocusDirty {
 		//  always set which kernel to sort by
 		win.kernelFocusDirty = false
-		src.SortedFunctions.SortKernel(win.kernelFocus)
+		src.SortedFunctions.SetKernel(win.kernelFocus)
 
 		for _, s := range sort.Specs() {
 			switch s.ColumnUserID {
@@ -514,7 +536,11 @@ func (win *winCoProcPerformance) drawSourceLines(src *developer.Source) {
 		imgui.TableNextColumn()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLoad)
 		if stats.OverSource.FrameValid {
-			imgui.Text(fmt.Sprintf("%.02f", stats.OverSource.Frame))
+			if win.showPercentageLoad {
+				imgui.Text(fmt.Sprintf("%.02f", stats.OverSource.Frame))
+			} else {
+				imgui.Text(fmt.Sprintf("%.0f", stats.OverSource.FrameCount))
+			}
 		} else {
 			imgui.Text("-")
 		}
@@ -523,7 +549,11 @@ func (win *winCoProcPerformance) drawSourceLines(src *developer.Source) {
 		imgui.TableNextColumn()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceAvgLoad)
 		if stats.OverSource.AverageValid {
-			imgui.Text(fmt.Sprintf("%.02f", stats.OverSource.Average))
+			if win.showPercentageLoad {
+				imgui.Text(fmt.Sprintf("%.02f", stats.OverSource.Average))
+			} else {
+				imgui.Text(fmt.Sprintf("%.0f", stats.OverSource.AverageCount))
+			}
 		} else {
 			imgui.Text("-")
 		}
@@ -532,7 +562,11 @@ func (win *winCoProcPerformance) drawSourceLines(src *developer.Source) {
 		imgui.TableNextColumn()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceMaxLoad)
 		if stats.OverSource.MaxValid {
-			imgui.Text(fmt.Sprintf("%.02f", stats.OverSource.Max))
+			if win.showPercentageLoad {
+				imgui.Text(fmt.Sprintf("%.02f", stats.OverSource.Max))
+			} else {
+				imgui.Text(fmt.Sprintf("%.0f", stats.OverSource.AverageCount))
+			}
 		} else {
 			imgui.Text("-")
 		}
@@ -620,7 +654,7 @@ func (win *winCoProcPerformance) drawFunctionFilter(src *developer.Source, funct
 	if sort.SpecsDirty() || win.functionTabDirty {
 		//  always set which kernel to sort by
 		win.kernelFocusDirty = false
-		src.SortedFunctions.SortKernel(win.kernelFocus)
+		src.SortedFunctions.SetKernel(win.kernelFocus)
 
 		for _, s := range sort.Specs() {
 			switch s.ColumnUserID {
@@ -699,13 +733,21 @@ func (win *winCoProcPerformance) drawFunctionFilter(src *developer.Source, funct
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLoad)
 		if win.functionTabScale {
 			if stats.OverFunction.FrameValid {
-				imgui.Text(fmt.Sprintf("%.02f", stats.OverFunction.Frame))
+				if win.showPercentageLoad {
+					imgui.Text(fmt.Sprintf("%.02f", stats.OverFunction.Frame))
+				} else {
+					imgui.Text(fmt.Sprintf("%.0f", stats.OverFunction.FrameCount))
+				}
 			} else {
 				imgui.Text("-")
 			}
 		} else {
 			if stats.OverSource.FrameValid {
-				imgui.Text(fmt.Sprintf("%.02f", stats.OverSource.Frame))
+				if win.showPercentageLoad {
+					imgui.Text(fmt.Sprintf("%.02f", stats.OverSource.Frame))
+				} else {
+					imgui.Text(fmt.Sprintf("%.0f", stats.OverSource.FrameCount))
+				}
 			} else {
 				imgui.Text("-")
 			}
@@ -716,13 +758,21 @@ func (win *winCoProcPerformance) drawFunctionFilter(src *developer.Source, funct
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceAvgLoad)
 		if win.functionTabScale {
 			if stats.OverFunction.AverageValid {
-				imgui.Text(fmt.Sprintf("%.02f", stats.OverFunction.Average))
+				if win.showPercentageLoad {
+					imgui.Text(fmt.Sprintf("%.02f", stats.OverFunction.Average))
+				} else {
+					imgui.Text(fmt.Sprintf("%.0f", stats.OverFunction.AverageCount))
+				}
 			} else {
 				imgui.Text("-")
 			}
 		} else {
 			if stats.OverSource.AverageValid {
-				imgui.Text(fmt.Sprintf("%.02f", stats.OverSource.Average))
+				if win.showPercentageLoad {
+					imgui.Text(fmt.Sprintf("%.02f", stats.OverSource.Average))
+				} else {
+					imgui.Text(fmt.Sprintf("%.0f", stats.OverSource.AverageCount))
+				}
 			} else {
 				imgui.Text("-")
 			}
@@ -733,13 +783,21 @@ func (win *winCoProcPerformance) drawFunctionFilter(src *developer.Source, funct
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceMaxLoad)
 		if win.functionTabScale {
 			if stats.OverFunction.MaxValid {
-				imgui.Text(fmt.Sprintf("%.02f", stats.OverFunction.Max))
+				if win.showPercentageLoad {
+					imgui.Text(fmt.Sprintf("%.02f", stats.OverFunction.Max))
+				} else {
+					imgui.Text(fmt.Sprintf("%.0f", stats.OverFunction.MaxCount))
+				}
 			} else {
 				imgui.Text("-")
 			}
 		} else {
 			if stats.OverSource.MaxValid {
-				imgui.Text(fmt.Sprintf("%.02f", stats.OverSource.Max))
+				if win.showPercentageLoad {
+					imgui.Text(fmt.Sprintf("%.02f", stats.OverSource.Max))
+				} else {
+					imgui.Text(fmt.Sprintf("%.0f", stats.OverSource.MaxCount))
+				}
 			} else {
 				imgui.Text("-")
 			}

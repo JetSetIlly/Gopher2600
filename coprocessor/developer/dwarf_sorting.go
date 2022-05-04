@@ -45,7 +45,7 @@ func (e SortedLines) Sort() {
 	sort.Stable(e)
 }
 
-func (e *SortedLines) SortKernel(kernel InKernel) {
+func (e *SortedLines) SetKernel(kernel InKernel) {
 	e.kernel = kernel
 }
 
@@ -202,7 +202,7 @@ func (e SortedFunctions) Sort() {
 	sort.Stable(e)
 }
 
-func (e *SortedFunctions) SortKernel(kernel InKernel) {
+func (e *SortedFunctions) SetKernel(kernel InKernel) {
 	e.kernel = kernel
 }
 

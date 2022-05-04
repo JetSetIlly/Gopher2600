@@ -18,10 +18,17 @@ package developer
 // Load records the frame (or current) load as well as the average and
 // maximum load.
 type Load struct {
+	// cycle count
+	FrameCount   float32
+	AverageCount float32
+	MaxCount     float32
+
+	// cycle count expressed as a percentage
 	Frame   float32
 	Average float32
 	Max     float32
 
+	// whether the corresponding values are valid
 	FrameValid   bool
 	AverageValid bool
 	MaxValid     bool
@@ -53,12 +60,19 @@ type Stats struct {
 	OverSource   Load
 	OverFunction Load
 
-	cumulativeCount float32
-	numFrames       float32
-	avgCount        float32
+	// cycle count this frame
+	count float32
 
+	// cycle count over all frames
+	cumulativeCount float32
+
+	// number of frames seen
+	numFrames float32
+
+	// frame and average count form the basis of the frame, average and max
+	// counts (and percentages) in the Load type
 	frameCount float32
-	count      float32
+	avgCount   float32
 }
 
 // IsValid returns true if the statistics have ever been updated. ie. the
@@ -79,30 +93,50 @@ func (stats *Stats) newFrame(source *Stats, function *Stats) {
 
 	if function != nil {
 		frameLoad := stats.frameCount / function.frameCount * 100
+
+		stats.OverFunction.FrameCount = stats.frameCount
 		stats.OverFunction.Frame = frameLoad
+
+		stats.OverFunction.AverageCount = stats.avgCount
+		stats.OverFunction.Average = stats.avgCount / function.avgCount * 100
+
 		stats.OverFunction.FrameValid = stats.frameCount > 0 && function.frameCount > 0
 
-		stats.OverFunction.Average = stats.avgCount / function.avgCount * 100
-		stats.OverFunction.AverageValid = stats.avgCount > 0 && function.avgCount > 0
-
-		if stats.OverFunction.FrameValid && frameLoad >= stats.OverFunction.Max {
-			stats.OverFunction.Max = frameLoad
-			stats.OverFunction.MaxValid = stats.OverFunction.MaxValid || stats.OverFunction.FrameValid
+		if stats.OverFunction.FrameValid {
+			if stats.frameCount >= stats.OverFunction.MaxCount {
+				stats.OverFunction.MaxCount = stats.frameCount
+			}
+			if frameLoad >= stats.OverFunction.Max {
+				stats.OverFunction.Max = frameLoad
+			}
 		}
+
+		stats.OverFunction.AverageValid = stats.avgCount > 0 && function.avgCount > 0
+		stats.OverFunction.MaxValid = stats.OverFunction.MaxValid || stats.OverFunction.FrameValid
 	}
 
 	if source != nil {
 		frameLoad := stats.frameCount / source.frameCount * 100
+
+		stats.OverSource.FrameCount = stats.frameCount
 		stats.OverSource.Frame = frameLoad
+
+		stats.OverSource.AverageCount = stats.avgCount
+		stats.OverSource.Average = stats.avgCount / source.avgCount * 100
+
 		stats.OverSource.FrameValid = stats.frameCount > 0 && source.frameCount > 0
 
-		stats.OverSource.Average = stats.avgCount / source.avgCount * 100
-		stats.OverSource.AverageValid = stats.avgCount > 0 && source.avgCount > 0
-
-		if stats.OverSource.FrameValid && frameLoad >= stats.OverSource.Max {
-			stats.OverSource.Max = frameLoad
-			stats.OverSource.MaxValid = stats.OverSource.MaxValid || stats.OverSource.FrameValid
+		if stats.OverSource.FrameValid {
+			if stats.frameCount >= stats.OverSource.MaxCount {
+				stats.OverSource.MaxCount = stats.frameCount
+			}
+			if frameLoad >= stats.OverSource.Max {
+				stats.OverSource.Max = frameLoad
+			}
 		}
+
+		stats.OverSource.AverageValid = stats.avgCount > 0 && source.avgCount > 0
+		stats.OverSource.MaxValid = stats.OverSource.MaxValid || stats.OverSource.FrameValid
 	}
 }
 

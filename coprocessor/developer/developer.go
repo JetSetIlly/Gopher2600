@@ -55,6 +55,21 @@ type Developer struct {
 // or source line.
 type InKernel int
 
+func (k InKernel) String() string {
+	switch k {
+	case InScreen:
+		return "Screen"
+	case InVBLANK:
+		return "VBLANK"
+	case InOverscan:
+		return "Overscan"
+	case InROMSetup:
+		return "ROM Setup"
+	}
+
+	return "All"
+}
+
 // List of InKernelValues as strings
 var AvailableInKernelOptions = []string{"All", "VBLANK", "Screen", "Overscan", "ROM Setup"}
 
