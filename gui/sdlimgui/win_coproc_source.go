@@ -17,6 +17,7 @@ package sdlimgui
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/coprocessor/developer"
@@ -76,7 +77,7 @@ type winCoProcSource struct {
 	img *SdlImgui
 
 	open               bool
-	showAsm            bool
+	showAsmInTooltip   bool
 	syntaxHighlighting bool
 	optionsHeight      float32
 
@@ -112,7 +113,7 @@ type winCoProcSource struct {
 func newWinCoProcSource(img *SdlImgui) (window, error) {
 	win := &winCoProcSource{
 		img:                img,
-		showAsm:            true,
+		showAsmInTooltip:   true,
 		syntaxHighlighting: true,
 		firstOpen:          true,
 	}
@@ -289,7 +290,7 @@ func (win *winCoProcSource) draw() {
 
 						// asm tooltip
 						multiline := !win.selectedLine.isSingle() && win.selectedLine.inRange(ln.LineNumber)
-						if win.showAsm {
+						if win.showAsmInTooltip {
 							// how we show the asm depends on whether there are
 							// multiple lines selected and whether there is any
 							// diassembly for those lines.
@@ -305,6 +306,8 @@ func (win *winCoProcSource) draw() {
 							// IsMouseDragging() below)
 							if (!multiline && len(ln.Disassembly) > 0) ||
 								((multiline || win.selecting) && !win.selectedLine.disasm.IsEmpty()) {
+
+								imgui.PopFont()
 
 								imguiTooltip(func() {
 									// remove cell/item styling for the duration of the tooltip
@@ -328,7 +331,7 @@ func (win *winCoProcSource) draw() {
 									imgui.Spacing()
 									imgui.Separator()
 									imgui.Spacing()
-									imgui.BeginTable("##disasmTable", 3)
+									imgui.BeginTable("##disasmTable", 2)
 
 									// choose which disasm list to use
 									disasm := ln.Disassembly
@@ -339,24 +342,30 @@ func (win *winCoProcSource) draw() {
 									// draw disassembly, colouring the text according to whether the disassembly entry
 									// is associated with the current line (ie. the one the mouse is over)
 									for _, d := range disasm {
+										imgui.TableNextRow()
+
+										imgui.TableNextColumn()
+										if d.Line.LineNumber == ln.LineNumber {
+											imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceDisasmAddr)
+										} else {
+											imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceDisasmAddrFade)
+										}
+										imgui.Text(fmt.Sprintf("%08x", d.Addr))
+										imgui.PopStyleColor()
+
+										imgui.TableNextColumn()
 										if d.Line.LineNumber == ln.LineNumber {
 											imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceDisasm)
 										} else {
 											imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceDisasmFade)
 										}
-
-										imgui.TableNextRow()
-										imgui.TableNextColumn()
-										imgui.Text(fmt.Sprintf("%08x", d.Addr))
-										imgui.TableNextColumn()
-										imgui.Text(fmt.Sprintf("%04x", d.Opcode))
-										imgui.TableNextColumn()
 										imgui.Text(d.Instruction)
-
 										imgui.PopStyleColor()
 									}
 									imgui.EndTable()
 								}, false)
+
+								imgui.PushFont(win.img.glsl.fonts.code)
 							}
 						}
 
@@ -396,23 +405,7 @@ func (win *winCoProcSource) draw() {
 					imgui.TableNextColumn()
 
 					if win.syntaxHighlighting {
-						for _, fr := range ln.Fragments {
-							switch fr.Type {
-							case developer.FragmentCode:
-								imgui.Text(fr.Content)
-								imgui.SameLineV(0, 0)
-							case developer.FragmentComment:
-								imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceComment)
-								imgui.Text(fr.Content)
-								imgui.PopStyleColor()
-								imgui.SameLineV(0, 0)
-							case developer.FragmentStringLiteral:
-								imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceStringLiteral)
-								imgui.Text(fr.Content)
-								imgui.PopStyleColor()
-								imgui.SameLineV(0, 0)
-							}
-						}
+						displaySourceFragments(ln, win.img.cols, false)
 					} else {
 						imgui.Text(ln.PlainContent)
 					}
@@ -439,11 +432,45 @@ func (win *winCoProcSource) draw() {
 			imgui.Separator()
 			imgui.Spacing()
 
-			imgui.Checkbox("Show ASM in Tooltip", &win.showAsm)
+			imgui.Checkbox("Show ASM in Tooltip", &win.showAsmInTooltip)
 			imgui.SameLineV(0, 20)
 			imgui.Checkbox("Highlight Comments & String Literals", &win.syntaxHighlighting)
 		})
 	})
+}
+
+// display source fragments with syntax highlighting.
+//
+// tight removes excess spaces between fragments
+func displaySourceFragments(ln *developer.SourceLine, cols *imguiColors, tight bool) {
+	for _, fr := range ln.Fragments {
+		s := fr.Content
+		if tight {
+			s = strings.TrimSpace(s)
+		}
+
+		switch fr.Type {
+		case developer.FragmentCode:
+			imgui.Text(s)
+		case developer.FragmentComment:
+			imgui.PushStyleColor(imgui.StyleColorText, cols.CoProcSourceComment)
+			imgui.Text(s)
+			imgui.PopStyleColor()
+		case developer.FragmentStringLiteral:
+			imgui.PushStyleColor(imgui.StyleColorText, cols.CoProcSourceStringLiteral)
+			imgui.Text(s)
+			imgui.PopStyleColor()
+		}
+
+		if tight {
+			imgui.SameLine()
+		} else {
+			imgui.SameLineV(0, 0)
+		}
+	}
+
+	// undo last call to SameLine() with a call to Spacing()
+	imgui.Spacing()
 }
 
 func (win *winCoProcSource) gotoSourceLine(ln *developer.SourceLine) {

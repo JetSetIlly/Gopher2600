@@ -17,7 +17,6 @@ package sdlimgui
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/coprocessor/developer"
@@ -37,7 +36,7 @@ type winCoProcPerformance struct {
 	img *SdlImgui
 
 	// source shown in tooltip
-	showSrc bool
+	showSrcAsmInTooltip bool
 
 	// which kernel to focus on
 	kernelFocus         developer.InKernel
@@ -204,7 +203,7 @@ func (win *winCoProcPerformance) draw() {
 			}
 
 			imgui.Spacing()
-			imgui.Checkbox("Show Source in Tooltip", &win.showSrc)
+			imgui.Checkbox("Show Source in Tooltip", &win.showSrcAsmInTooltip)
 			imgui.SameLineV(0, 15)
 
 			imgui.SameLineV(0, 25)
@@ -325,10 +324,8 @@ func (win *winCoProcPerformance) drawFunctions(src *developer.Source) {
 		}
 		imgui.PopStyleColorV(2)
 
-		// source on tooltip
-		if win.showSrc {
-			win.sourceLineTooltip(fn.DeclLine, false)
-		}
+		// tooltip
+		win.tooltip(fn.Stats.OverSource, fn.DeclLine, false)
 
 		// open/select function filter on click
 		if imgui.IsItemClicked() {
@@ -514,10 +511,8 @@ func (win *winCoProcPerformance) drawSourceLines(src *developer.Source) {
 		imgui.SelectableV(ln.Function.Name, false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{0, 0})
 		imgui.PopStyleColorV(2)
 
-		// source on tooltip
-		if win.showSrc {
-			win.sourceLineTooltip(ln, true)
-		}
+		// tooltip
+		win.tooltip(ln.Stats.OverSource, ln, true)
 
 		// open source window on click
 		if imgui.IsItemClicked() {
@@ -531,7 +526,7 @@ func (win *winCoProcPerformance) drawSourceLines(src *developer.Source) {
 		imgui.PopStyleColor()
 
 		imgui.TableNextColumn()
-		imgui.Text(strings.TrimSpace(ln.PlainContent))
+		displaySourceFragments(ln, win.img.cols, true)
 
 		imgui.TableNextColumn()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLoad)
@@ -716,8 +711,10 @@ func (win *winCoProcPerformance) drawFunctionFilter(src *developer.Source, funct
 		imgui.PopStyleColorV(3)
 
 		// source on tooltip
-		if win.showSrc {
-			win.sourceLineTooltip(ln, true)
+		if win.functionTabScale {
+			win.tooltip(ln.Stats.OverFunction, ln, true)
+		} else {
+			win.tooltip(ln.Stats.OverSource, ln, true)
 		}
 
 		// open source window on click
@@ -727,7 +724,7 @@ func (win *winCoProcPerformance) drawFunctionFilter(src *developer.Source, funct
 		}
 
 		imgui.TableNextColumn()
-		imgui.Text(strings.TrimSpace(ln.PlainContent))
+		displaySourceFragments(ln, win.img.cols, true)
 
 		imgui.TableNextColumn()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLoad)
@@ -826,32 +823,19 @@ func (win *winCoProcPerformance) drawFunctionFilter(src *developer.Source, funct
 	imgui.EndTable()
 }
 
-func (win *winCoProcPerformance) sourceLineTooltip(ln *developer.SourceLine, withAsm bool) {
+func (win *winCoProcPerformance) tooltip(load developer.Load, ln *developer.SourceLine, withAsm bool) {
+
 	imguiTooltip(func() {
 		imgui.Text(ln.File.ShortFilename)
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLineNumber)
 		imgui.Text(fmt.Sprintf("Line: %d", ln.LineNumber))
 		imgui.PopStyleColor()
-		imgui.Spacing()
-		imgui.Separator()
-		imgui.Spacing()
-		imgui.Text(strings.TrimSpace(ln.PlainContent))
 
-		if withAsm && len(ln.Disassembly) > 0 {
+		if win.showSrcAsmInTooltip {
 			imgui.Spacing()
 			imgui.Separator()
 			imgui.Spacing()
-			imgui.BeginTable("##disasmTable", 3)
-			for _, asm := range ln.Disassembly {
-				imgui.TableNextRow()
-				imgui.TableNextColumn()
-				imgui.Text(fmt.Sprintf("%08x", asm.Addr))
-				imgui.TableNextColumn()
-				imgui.Text(fmt.Sprintf("%04x", asm.Opcode))
-				imgui.TableNextColumn()
-				imgui.Text(asm.Instruction)
-			}
-			imgui.EndTable()
+			displaySourceFragments(ln, win.img.cols, true)
 		}
 
 		if ln.Kernel != developer.InKernelAll {
@@ -873,6 +857,25 @@ func (win *winCoProcPerformance) sourceLineTooltip(ln *developer.SourceLine, wit
 					imgui.Text("   Overscan")
 				}
 			}
+		}
+
+		if win.showSrcAsmInTooltip && withAsm && len(ln.Disassembly) > 0 {
+			imgui.Spacing()
+			imgui.Separator()
+			imgui.Spacing()
+			imgui.BeginTable("##disasmTable", 2)
+			for _, asm := range ln.Disassembly {
+				imgui.TableNextRow()
+
+				imgui.TableNextColumn()
+				imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmAddress)
+				imgui.Text(fmt.Sprintf("%08x", asm.Addr))
+				imgui.PopStyleColor()
+
+				imgui.TableNextColumn()
+				imgui.Text(asm.Instruction)
+			}
+			imgui.EndTable()
 		}
 
 	}, true)

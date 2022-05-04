@@ -17,7 +17,6 @@ package sdlimgui
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/coprocessor/developer"
@@ -36,14 +35,14 @@ type winCoProcIllegalAccess struct {
 
 	img *SdlImgui
 
-	showSrc       bool
-	optionsHeight float32
+	showSrcInTooltip bool
+	optionsHeight    float32
 }
 
 func newWinCoProcIllegalAccess(img *SdlImgui) (window, error) {
 	win := &winCoProcIllegalAccess{
-		img:     img,
-		showSrc: true,
+		img:              img,
+		showSrcInTooltip: true,
 	}
 	return win, nil
 }
@@ -129,12 +128,28 @@ func (win *winCoProcIllegalAccess) draw() {
 			imgui.SelectableV(lg.Event, false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{0, 0})
 			imgui.PopStyleColorV(2)
 
-			// basic tooltip
+			// source on tooltip
 			imguiTooltip(func() {
+				if win.showSrcInTooltip && lg.SrcLine != nil {
+					imgui.Text(lg.SrcLine.File.ShortFilename)
+					imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLineNumber)
+					imgui.Text(fmt.Sprintf("Line: %d", lg.SrcLine.LineNumber))
+					imgui.PopStyleColor()
+
+					imgui.Spacing()
+					imgui.Separator()
+					imgui.Spacing()
+					displaySourceFragments(lg.SrcLine, win.img.cols, true)
+
+					imgui.Spacing()
+					imgui.Separator()
+					imgui.Spacing()
+				}
+
 				imgui.Text("Executing PC:")
 				imgui.SameLine()
-				imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcIllegalAccessAddressPC)
-				imgui.Text(fmt.Sprintf("%#08x", lg.PC))
+				imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcIllegalAccessAddress)
+				imgui.Text(fmt.Sprintf("%08x", lg.PC))
 				imgui.PopStyleColor()
 
 				if lg.IsNullAccess {
@@ -150,23 +165,6 @@ func (win *winCoProcIllegalAccess) draw() {
 				imgui.PopStyleColor()
 			}, true)
 
-			// source on tooltip
-			if win.showSrc && lg.SrcLine != nil {
-				imguiTooltip(func() {
-					imgui.Spacing()
-					imgui.Separator()
-					imgui.Spacing()
-					imgui.Text(lg.SrcLine.File.ShortFilename)
-					imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLineNumber)
-					imgui.Text(fmt.Sprintf("Line: %d", lg.SrcLine.LineNumber))
-					imgui.PopStyleColor()
-					imgui.Spacing()
-					imgui.Separator()
-					imgui.Spacing()
-					imgui.Text(strings.TrimSpace(lg.SrcLine.PlainContent))
-				}, true)
-			}
-
 			// open source window on click
 			if imgui.IsItemClicked() && lg.SrcLine != nil {
 				srcWin := win.img.wm.debuggerWindows[winCoProcSourceID].(*winCoProcSource)
@@ -175,7 +173,7 @@ func (win *winCoProcIllegalAccess) draw() {
 
 			imgui.TableNextColumn()
 			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcIllegalAccessAddress)
-			imgui.Text(fmt.Sprintf("%#08x", lg.AccessAddr))
+			imgui.Text(fmt.Sprintf("%08x", lg.AccessAddr))
 			imgui.PopStyleColor()
 
 			imgui.TableNextColumn()
@@ -206,7 +204,7 @@ func (win *winCoProcIllegalAccess) draw() {
 					}
 				})
 
-				imgui.Checkbox("Show Source in Tooltip", &win.showSrc)
+				imgui.Checkbox("Show Source in Tooltip", &win.showSrcInTooltip)
 			} else {
 				imgui.Text("no source available")
 			}
