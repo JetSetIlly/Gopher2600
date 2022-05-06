@@ -621,6 +621,20 @@ func (win *winCoProcPerformance) drawFunctionFilter(src *developer.Source, funct
 		}
 	}
 
+	// function summary in relation to the program
+	switch win.kernelFocus {
+	case developer.InVBLANK:
+		imgui.Text(fmt.Sprintf("Function accounted for %.02f%% of ARM time in the VBLANK last frame", functionFilter.Function.StatsVBLANK.OverSource.Frame))
+	case developer.InScreen:
+		imgui.Text(fmt.Sprintf("Function accounted for %.02f%% of ARM time in the Visible Screen last frame", functionFilter.Function.StatsScreen.OverSource.Frame))
+	case developer.InOverscan:
+		imgui.Text(fmt.Sprintf("Function accounted for %.02f%% of ARM time in the Overscan last frame", functionFilter.Function.StatsOverscan.OverSource.Frame))
+	default:
+		imgui.Text(fmt.Sprintf("Function accounted for %.02f%% of ARM time last frame", functionFilter.Function.Stats.OverSource.Frame))
+	}
+	imgui.Spacing()
+
+	// table of function lines
 	const numColumns = 6
 
 	flgs := imgui.TableFlagsScrollY
