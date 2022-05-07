@@ -277,9 +277,6 @@ type Source struct {
 	// sorted lines filtered by function name
 	FunctionFilters []*FunctionFilter
 
-	// numer of cycles in the entire program represented by the source since the last update
-	cyclesCount float32
-
 	// cycle statisics for the entire program
 	Stats Stats
 

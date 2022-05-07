@@ -75,6 +75,7 @@ const (
 	TreeOpen               = '\uf0d7'
 	TreeClosed             = '\uf0da'
 	ByteChange             = '\uf30b'
+	Trash                  = '\uf1f8'
 )
 
 // The first and last unicode points used in the application. We use this to

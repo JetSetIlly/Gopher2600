@@ -80,3 +80,10 @@ func (info *FrameInfo) reset() {
 func (info FrameInfo) IsAtariSafe() bool {
 	return info.VisibleTop == info.Spec.AtariSafeVisibleTop && info.VisibleBottom == info.Spec.AtariSafeVisibleBottom
 }
+
+// TotalClocks returns the total number of clocks required to generate the
+// frame. The value returned assumes scanlines are complete - which may not be
+// the case.
+func (info FrameInfo) TotalClocks() int {
+	return info.TotalScanlines * specification.ClksScanline
+}

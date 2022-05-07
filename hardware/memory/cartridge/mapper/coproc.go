@@ -55,16 +55,20 @@ type CartCoProcDeveloper interface {
 	// stack has collided with variable memtop
 	StackCollision(pc uint32, sp uint32) string
 
-	// notifify developer
-	ExecutionStart()
-
-	// accumulate cycles for executed addresses
-	ExecutionProfile(addr map[uint32]float32)
-
 	// returns the highest address utilised by program memory. the coprocessor
 	// uses this value to detect stack collisions. should return zero if no
 	// variables information is available
 	VariableMemtop() uint32
+
+	// execution of the coprocessor has started
+	ExecutionStart()
+
+	// accumulate cycles for executed addresses. profile is a map of
+	// instruction addresses and the number of cycles they have consumed
+	ExecutionProfile(profile map[uint32]float32)
+
+	// execution of the coprocessor has ended
+	ExecutionEnd()
 }
 
 // CartCoProcBus is implemented by cartridge mappers that have a coprocessor that

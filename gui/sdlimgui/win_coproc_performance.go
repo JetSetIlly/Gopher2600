@@ -44,7 +44,7 @@ type winCoProcPerformance struct {
 	kernelFocusDirty    bool
 
 	// whether to present performance figures as raw counts or as percentages
-	showPercentageLoad bool
+	percentileFigures bool
 
 	// whether to included unexecuted entries (functions or lines) in the list
 	hideUnusedEntries bool
@@ -66,8 +66,8 @@ func newWinCoProcPerformance(img *SdlImgui) (window, error) {
 	win := &winCoProcPerformance{
 		img:                 img,
 		showSrcAsmInTooltip: true,
-		showPercentageLoad:  true,
 		kernelFocus:         developer.InKernelAll,
+		percentileFigures:   true,
 	}
 	return win, nil
 }
@@ -137,8 +137,6 @@ func (win *winCoProcPerformance) draw() {
 			imgui.EndTabItem()
 		}
 
-		functionFilterActive := false
-
 		for _, ff := range src.FunctionFilters {
 			flgs := imgui.TabItemFlagsNone
 			open := true
@@ -148,7 +146,6 @@ func (win *winCoProcPerformance) draw() {
 			if imgui.BeginTabItemV(fmt.Sprintf("%c %s", fonts.MagnifyingGlass, ff.FunctionName), &open, flgs) {
 				win.drawFunctionFilter(src, ff)
 				imgui.EndTabItem()
-				functionFilterActive = true
 			}
 			if !open {
 				src.DropFunctionFilter(ff.FunctionName)
@@ -161,6 +158,7 @@ func (win *winCoProcPerformance) draw() {
 
 		// options toolbar at foot of window
 		win.optionsHeight = imguiMeasureHeight(func() {
+			imgui.Spacing()
 			imgui.Separator()
 			imgui.Spacing()
 
@@ -187,28 +185,113 @@ func (win *winCoProcPerformance) draw() {
 			}
 
 			imgui.SameLineV(0, 15)
-			imgui.Checkbox("Show Load as %", &win.showPercentageLoad)
+			imgui.Checkbox("Percentile Figures", &win.percentileFigures)
 
-			if win.kernelFocus == developer.InKernelAll {
-				imgui.SameLineV(0, 15)
-				imgui.Checkbox("Hide Unexecuted Items", &win.hideUnusedEntries)
-			}
+			imgui.SameLineV(0, 15)
+			imgui.Checkbox("Hide Unexecuted Items", &win.hideUnusedEntries)
 
-			if functionFilterActive {
-				imgui.SameLineV(0, 15)
-				if imgui.Checkbox("Scale Statistics To Function", &win.functionTabScale) {
-					win.functionTabDirty = true
-				}
+			// scale statistics to function is in drawFunctionFilter()
+			imgui.Spacing()
+			imgui.Checkbox("Show Source in Tooltip", &win.showSrcAsmInTooltip)
+
+			// reset statistics. frame statistics deferred until later when the
+			// FrameStats have been borrowed
+			imgui.SameLineV(0, 15)
+			resetFrameStats := false
+			if imgui.Button(fmt.Sprintf("%c Reset Statistics", fonts.Trash)) {
+				src.ResetStatistics()
+				resetFrameStats = true
 			}
 
 			imgui.Spacing()
-			imgui.Checkbox("Show Source in Tooltip", &win.showSrcAsmInTooltip)
-			imgui.SameLineV(0, 15)
+			imgui.Separator()
+			imgui.Spacing()
 
-			imgui.SameLineV(0, 25)
-			if imgui.Button("Reset Statistics") {
-				src.ResetStatistics()
-			}
+			win.img.dbg.CoProcDev.BorrowFrameStats(func(framestats *developer.FrameStats) {
+				// deferred reset of frame stats
+				if resetFrameStats {
+					framestats.Reset()
+				}
+
+				imgui.Text("Summary relative to ")
+				imgui.SameLineV(0, 0)
+
+				var val, avg, max float32
+				var seg developer.FrameSegmentStats
+
+				switch win.kernelFocus {
+				default:
+					seg = framestats.Frame
+					imgui.Text("TV Frame:")
+				case developer.InVBLANK:
+					seg = framestats.VBLANK
+					imgui.Text("VBLANK period:")
+				case developer.InScreen:
+					seg = framestats.Screen
+					imgui.Text("visible TV screen:")
+				case developer.InOverscan:
+					seg = framestats.Overscan
+					imgui.Text("Overscan period:")
+				}
+				imgui.SameLine()
+
+				if !seg.HasRun() {
+					imgui.Text(fmt.Sprintf("%s has not run yet in this kernel", win.img.lz.Cart.CoProcID))
+				} else {
+					if !win.percentileFigures {
+						val = seg.ClocksCount
+						avg = seg.AverageCount
+						max = seg.MaxCount
+
+						imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLoad)
+						imgui.Text(fmt.Sprintf("%.0f ", val))
+						imgui.PopStyleColor()
+
+						imgui.SameLineV(0, 0)
+						imgui.Text("colour clocks (avg ")
+						imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceAvgLoad)
+						imgui.SameLineV(0, 0)
+						imgui.Text(fmt.Sprintf("%.0f", avg))
+						imgui.PopStyleColor()
+
+						imgui.SameLineV(0, 0)
+						imgui.Text(" max ")
+						imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceMaxLoad)
+						imgui.SameLineV(0, 0)
+						imgui.Text(fmt.Sprintf("%.0f", max))
+						imgui.PopStyleColor()
+
+						imgui.SameLineV(0, 0)
+						imgui.Text(")")
+					} else {
+						val = seg.Clocks
+						avg = seg.Average
+						max = seg.Max
+
+						imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLoad)
+						imgui.Text(fmt.Sprintf("%.02f%% ", val))
+						imgui.PopStyleColor()
+
+						imgui.SameLineV(0, 0)
+						imgui.Text("(avg ")
+						imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceAvgLoad)
+						imgui.SameLineV(0, 0)
+						imgui.Text(fmt.Sprintf("%.02f%%", avg))
+						imgui.PopStyleColor()
+
+						imgui.SameLineV(0, 0)
+						imgui.Text(" max ")
+						imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceMaxLoad)
+						imgui.SameLineV(0, 0)
+						imgui.Text(fmt.Sprintf("%.02f%%", max))
+						imgui.PopStyleColor()
+
+						imgui.SameLineV(0, 0)
+						imgui.Text(")")
+					}
+				}
+			})
+
 		})
 	})
 }
@@ -346,7 +429,7 @@ func (win *winCoProcPerformance) drawFunctions(src *developer.Source) {
 		imgui.TableNextColumn()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLoad)
 		if stats.OverSource.FrameValid {
-			if win.showPercentageLoad {
+			if win.percentileFigures {
 				imgui.Text(fmt.Sprintf("%.02f", stats.OverSource.Frame))
 			} else {
 				imgui.Text(fmt.Sprintf("%.0f", stats.OverSource.FrameCount))
@@ -359,7 +442,7 @@ func (win *winCoProcPerformance) drawFunctions(src *developer.Source) {
 		imgui.TableNextColumn()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceAvgLoad)
 		if stats.OverSource.AverageValid {
-			if win.showPercentageLoad {
+			if win.percentileFigures {
 				imgui.Text(fmt.Sprintf("%.02f", stats.OverSource.Average))
 			} else {
 				imgui.Text(fmt.Sprintf("%.0f", stats.OverSource.AverageCount))
@@ -372,7 +455,7 @@ func (win *winCoProcPerformance) drawFunctions(src *developer.Source) {
 		imgui.TableNextColumn()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceMaxLoad)
 		if stats.OverSource.MaxValid {
-			if win.showPercentageLoad {
+			if win.percentileFigures {
 				imgui.Text(fmt.Sprintf("%.02f", stats.OverSource.Max))
 			} else {
 				imgui.Text(fmt.Sprintf("%.0f", stats.OverSource.MaxCount))
@@ -530,7 +613,7 @@ func (win *winCoProcPerformance) drawSourceLines(src *developer.Source) {
 		imgui.TableNextColumn()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLoad)
 		if stats.OverSource.FrameValid {
-			if win.showPercentageLoad {
+			if win.percentileFigures {
 				imgui.Text(fmt.Sprintf("%.02f", stats.OverSource.Frame))
 			} else {
 				imgui.Text(fmt.Sprintf("%.0f", stats.OverSource.FrameCount))
@@ -543,7 +626,7 @@ func (win *winCoProcPerformance) drawSourceLines(src *developer.Source) {
 		imgui.TableNextColumn()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceAvgLoad)
 		if stats.OverSource.AverageValid {
-			if win.showPercentageLoad {
+			if win.percentileFigures {
 				imgui.Text(fmt.Sprintf("%.02f", stats.OverSource.Average))
 			} else {
 				imgui.Text(fmt.Sprintf("%.0f", stats.OverSource.AverageCount))
@@ -556,7 +639,7 @@ func (win *winCoProcPerformance) drawSourceLines(src *developer.Source) {
 		imgui.TableNextColumn()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceMaxLoad)
 		if stats.OverSource.MaxValid {
-			if win.showPercentageLoad {
+			if win.percentileFigures {
 				imgui.Text(fmt.Sprintf("%.02f", stats.OverSource.Max))
 			} else {
 				imgui.Text(fmt.Sprintf("%.0f", stats.OverSource.AverageCount))
@@ -622,6 +705,7 @@ func (win *winCoProcPerformance) drawFunctionFilter(src *developer.Source, funct
 	}
 
 	// function summary in relation to the program
+	imgui.AlignTextToFramePadding()
 	switch win.kernelFocus {
 	case developer.InVBLANK:
 		imgui.Text(fmt.Sprintf("Function accounted for %.02f%% of ARM time in the VBLANK last frame", functionFilter.Function.StatsVBLANK.OverSource.Frame))
@@ -632,6 +716,15 @@ func (win *winCoProcPerformance) drawFunctionFilter(src *developer.Source, funct
 	default:
 		imgui.Text(fmt.Sprintf("Function accounted for %.02f%% of ARM time last frame", functionFilter.Function.Stats.OverSource.Frame))
 	}
+
+	imgui.SameLineV(0, 15)
+	if imgui.Checkbox("Scale Statistics", &win.functionTabScale) {
+		win.functionTabDirty = true
+	}
+	imguiTooltipSimple(`When selected the % values in the table are
+scaled so they are relative to the function rather
+thean to the program as a whole.`)
+
 	imgui.Spacing()
 
 	// table of function lines
@@ -743,7 +836,7 @@ func (win *winCoProcPerformance) drawFunctionFilter(src *developer.Source, funct
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLoad)
 		if win.functionTabScale {
 			if stats.OverFunction.FrameValid {
-				if win.showPercentageLoad {
+				if win.percentileFigures {
 					imgui.Text(fmt.Sprintf("%.02f", stats.OverFunction.Frame))
 				} else {
 					imgui.Text(fmt.Sprintf("%.0f", stats.OverFunction.FrameCount))
@@ -753,7 +846,7 @@ func (win *winCoProcPerformance) drawFunctionFilter(src *developer.Source, funct
 			}
 		} else {
 			if stats.OverSource.FrameValid {
-				if win.showPercentageLoad {
+				if win.percentileFigures {
 					imgui.Text(fmt.Sprintf("%.02f", stats.OverSource.Frame))
 				} else {
 					imgui.Text(fmt.Sprintf("%.0f", stats.OverSource.FrameCount))
@@ -768,7 +861,7 @@ func (win *winCoProcPerformance) drawFunctionFilter(src *developer.Source, funct
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceAvgLoad)
 		if win.functionTabScale {
 			if stats.OverFunction.AverageValid {
-				if win.showPercentageLoad {
+				if win.percentileFigures {
 					imgui.Text(fmt.Sprintf("%.02f", stats.OverFunction.Average))
 				} else {
 					imgui.Text(fmt.Sprintf("%.0f", stats.OverFunction.AverageCount))
@@ -778,7 +871,7 @@ func (win *winCoProcPerformance) drawFunctionFilter(src *developer.Source, funct
 			}
 		} else {
 			if stats.OverSource.AverageValid {
-				if win.showPercentageLoad {
+				if win.percentileFigures {
 					imgui.Text(fmt.Sprintf("%.02f", stats.OverSource.Average))
 				} else {
 					imgui.Text(fmt.Sprintf("%.0f", stats.OverSource.AverageCount))
@@ -793,7 +886,7 @@ func (win *winCoProcPerformance) drawFunctionFilter(src *developer.Source, funct
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceMaxLoad)
 		if win.functionTabScale {
 			if stats.OverFunction.MaxValid {
-				if win.showPercentageLoad {
+				if win.percentileFigures {
 					imgui.Text(fmt.Sprintf("%.02f", stats.OverFunction.Max))
 				} else {
 					imgui.Text(fmt.Sprintf("%.0f", stats.OverFunction.MaxCount))
@@ -803,7 +896,7 @@ func (win *winCoProcPerformance) drawFunctionFilter(src *developer.Source, funct
 			}
 		} else {
 			if stats.OverSource.MaxValid {
-				if win.showPercentageLoad {
+				if win.percentileFigures {
 					imgui.Text(fmt.Sprintf("%.02f", stats.OverSource.Max))
 				} else {
 					imgui.Text(fmt.Sprintf("%.0f", stats.OverSource.MaxCount))

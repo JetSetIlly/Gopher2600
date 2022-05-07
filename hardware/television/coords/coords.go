@@ -24,7 +24,11 @@
 // many other sub-systems.
 package coords
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/jetsetilly/gopher2600/hardware/television/specification"
+)
 
 // TelevisionCoords represents the state of the TV at any moment in time. It
 // can be used when all three values need to be stored or passed around.
@@ -57,4 +61,40 @@ func GreaterThanOrEqual(A, B TelevisionCoords) bool {
 // is greater than to B.
 func GreaterThan(A, B TelevisionCoords) bool {
 	return A.Frame > B.Frame || (A.Frame == B.Frame && A.Scanline > B.Scanline) || (A.Frame == B.Frame && A.Scanline == B.Scanline && A.Clock > B.Clock)
+}
+
+// Diff returns the difference between the B and A instances. The
+// scanlinesPerFrame value is the number of scanlines in a typical frame for
+// the ROM, implying that for best results, the television image should be
+// stable.
+func Diff(A, B TelevisionCoords, scanlinesPerFrame int) TelevisionCoords {
+	C := TelevisionCoords{
+		Frame:    A.Frame - B.Frame,
+		Scanline: A.Scanline - B.Scanline,
+		Clock:    A.Clock - B.Clock,
+	}
+
+	if C.Clock < specification.ClksHBlank {
+		C.Scanline--
+		C.Clock += specification.ClksScanline
+	}
+
+	if C.Scanline < 0 {
+		C.Frame--
+		C.Scanline += scanlinesPerFrame
+	}
+
+	if C.Frame < 0 {
+		C.Frame = 0
+		C.Scanline = 0
+		C.Clock -= specification.ClksScanline
+	}
+
+	return C
+}
+
+// Sum the the number of clocks in the television coordinates.
+func Sum(A TelevisionCoords, scanlinesPerFrame int) int {
+	numPerFrame := scanlinesPerFrame * specification.ClksScanline
+	return (A.Frame * numPerFrame) + (A.Scanline * specification.ClksScanline) + A.Clock
 }

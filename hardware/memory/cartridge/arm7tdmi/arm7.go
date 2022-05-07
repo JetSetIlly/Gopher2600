@@ -572,9 +572,8 @@ func (arm *ARM) Run(mamcr uint32) (uint32, float32, error) {
 		return arm.mam.mamcr, 0, err
 	}
 
-	// indicate start and end of program execution
+	// profile executed addresses at end of function
 	if arm.dev != nil {
-		arm.dev.ExecutionStart()
 		defer arm.dev.ExecutionProfile(arm.executedAddresses)
 	}
 

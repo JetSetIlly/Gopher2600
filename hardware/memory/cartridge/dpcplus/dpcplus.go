@@ -35,6 +35,7 @@ import (
 // https://atariage.com/forums/blogs/entry/11811-dpcarm-part-6-dpc-cartridge-layout/
 type dpcPlus struct {
 	instance *instance.Instance
+	dev      mapper.CartCoProcDeveloper
 
 	pathToROM string
 	mappingID string
@@ -123,6 +124,7 @@ func (cart *dpcPlus) SetDisassembler(disasm mapper.CartCoProcDisassembler) {
 
 // SetDeveloper implements the mapper.CartCoProcBus interface.
 func (cart *dpcPlus) SetDeveloper(dev mapper.CartCoProcDeveloper) {
+	cart.dev = dev
 	cart.arm.SetDeveloper(dev)
 }
 
@@ -506,6 +508,9 @@ func (cart *dpcPlus) Write(addr uint16, data uint8, passive bool, poke bool) err
 				return curated.Errorf("DPC+: %v", err)
 			}
 			cart.state.callfn.Start(cycles)
+			if cart.dev != nil {
+				cart.dev.ExecutionStart()
+			}
 
 			if cart.instance.Prefs.ARM.MAM.Get().(int) == preferences.MAMDriver {
 				cart.state.mamcr = mamcr
@@ -738,6 +743,9 @@ func (cart *dpcPlus) Step(clock float32) {
 			timerClock := cart.state.callfn.Step(clock, cart.arm.Clk)
 			if timerClock > 0 {
 				cart.arm.Step(timerClock)
+			}
+			if cart.dev != nil && !cart.state.callfn.IsActive() {
+				cart.dev.ExecutionEnd()
 			}
 		}
 	} else {

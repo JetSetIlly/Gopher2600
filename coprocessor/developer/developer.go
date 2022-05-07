@@ -32,9 +32,7 @@ type Developer struct {
 	tv   TV
 
 	// information about the source code to the program. can be nil
-	source *Source
-
-	// lock source
+	source     *Source
 	sourceLock sync.Mutex
 
 	// illegal accesses already encountered. duplicate accesses will not be logged.
@@ -46,9 +44,13 @@ type Developer struct {
 	// which 2600 kernel the most recent execution was in
 	mostRecentKernel InKernel
 
-	// indicates the period of time between calls to ExecutionStart() and
-	// ExecutionProfile()
-	currentlyExecuting bool
+	// the television coordinates at the start of the most recent execution
+	mostRecentFrameInfo television.FrameInfo
+	mostRecentCoords    coords.TelevisionCoords
+
+	// stats accumulated during the frame
+	frameStats     FrameStats
+	frameStatsLock sync.Mutex
 }
 
 // InKernel indicates the 2600 kernel that is associated with a source function
@@ -209,18 +211,13 @@ func (dev *Developer) logAccess(event string, pc uint32, addr uint32, isNullAcce
 
 // ExecutionStart implements the CartCoProcDeveloper interface.
 func (dev *Developer) ExecutionStart() {
-	dev.sourceLock.Lock()
-	defer dev.sourceLock.Unlock()
+	dev.mostRecentFrameInfo = dev.tv.GetFrameInfo()
 
-	dev.currentlyExecuting = true
-
-	frameInfo := dev.tv.GetFrameInfo()
-
-	if frameInfo.Stable {
-		coords := dev.tv.GetCoords()
-		if coords.Scanline <= frameInfo.VisibleTop {
+	if dev.mostRecentFrameInfo.Stable {
+		dev.mostRecentCoords = dev.tv.GetCoords()
+		if dev.mostRecentCoords.Scanline <= dev.mostRecentFrameInfo.VisibleTop {
 			dev.mostRecentKernel = InVBLANK
-		} else if coords.Scanline >= frameInfo.VisibleTop {
+		} else if dev.mostRecentCoords.Scanline >= dev.mostRecentFrameInfo.VisibleTop {
 			dev.mostRecentKernel = InOverscan
 		} else {
 			dev.mostRecentKernel = InScreen
@@ -240,8 +237,29 @@ func (dev *Developer) ExecutionProfile(addr map[uint32]float32) {
 			dev.source.executionProfile(pc, ct, dev.mostRecentKernel)
 		}
 	}
+}
 
-	dev.currentlyExecuting = false
+// ExecutionEnd implements the CartCoProcDeveloper interface.
+func (dev *Developer) ExecutionEnd() {
+	if dev.source == nil {
+		return
+	}
+
+	if !dev.mostRecentFrameInfo.Stable {
+		return
+	}
+
+	diff := coords.Diff(dev.tv.GetCoords(), dev.mostRecentCoords, dev.mostRecentFrameInfo.TotalScanlines)
+	clocks := coords.Sum(diff, dev.mostRecentFrameInfo.TotalScanlines)
+
+	if dev.mostRecentKernel == InROMSetup {
+		return
+	}
+
+	dev.frameStatsLock.Lock()
+	defer dev.frameStatsLock.Unlock()
+
+	dev.frameStats.accumulate(clocks, dev.mostRecentKernel)
 }
 
 // HasSource returns true if source information has been found.
@@ -271,10 +289,25 @@ func (dev *Developer) BorrowIllegalAccess(f func(*IllegalAccess)) {
 	f(&dev.illegalAccess)
 }
 
+// BorrowFrameStats will lock the frame statistics for the duration of the
+// supplied function, which will be executed with the developer's frame
+// statistics argument.
+func (dev *Developer) BorrowFrameStats(f func(*FrameStats)) {
+	dev.frameStatsLock.Lock()
+	defer dev.frameStatsLock.Unlock()
+	f(&dev.frameStats)
+}
+
 const maxWaitUpdateTime = 60 // in frames
 
 // NewFrame implements the television.FrameTrigger interface.
 func (dev *Developer) NewFrame(frameInfo television.FrameInfo) error {
+	dev.newFrame_source(frameInfo)
+	dev.newFrame_frameStats(frameInfo)
+	return nil
+}
+
+func (dev *Developer) newFrame_source(frameInfo television.FrameInfo) {
 	dev.sourceLock.Lock()
 	defer dev.sourceLock.Unlock()
 
@@ -282,16 +315,23 @@ func (dev *Developer) NewFrame(frameInfo television.FrameInfo) error {
 	// waited long enough since the last update
 	dev.framesSinceLastUpdate++
 	if !frameInfo.VSynced || dev.framesSinceLastUpdate > maxWaitUpdateTime {
-		return nil
+		return
 	}
 	dev.framesSinceLastUpdate = 0
 
 	// do nothing else if no source is available
 	if dev.source == nil {
-		return nil
+		return
 	}
 
 	dev.source.newFrame()
+}
 
-	return nil
+func (dev *Developer) newFrame_frameStats(frameInfo television.FrameInfo) {
+	if dev.mostRecentKernel == InROMSetup {
+		return
+	}
+	dev.frameStatsLock.Lock()
+	defer dev.frameStatsLock.Unlock()
+	dev.frameStats.newFrame(frameInfo)
 }
