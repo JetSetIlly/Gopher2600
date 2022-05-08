@@ -143,10 +143,11 @@ func (win *playScr) draw() {
 				imgui.WindowFlagsNoBringToFrontOnFocus)
 
 			imgui.Text(fmt.Sprintf("Emulation: %s", win.fps))
-			if win.img.polling.measuredRenderingTime == 0.0 {
+			fr := imgui.CurrentIO().Framerate()
+			if fr == 0.0 {
 				imgui.Text("Rendering: waiting")
 			} else {
-				imgui.Text(fmt.Sprintf("Rendering: %03.2f fps", win.img.polling.measuredRenderingTime))
+				imgui.Text(fmt.Sprintf("Rendering: %03.2f fps", fr))
 			}
 
 			imguiSeparator()

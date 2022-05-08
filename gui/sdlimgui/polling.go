@@ -79,23 +79,16 @@ type polling struct {
 	awake     bool
 	lastEvent time.Time
 
-	// measure rendering performance
-	measureCt             int
-	measureTime           time.Time
-	measuringPulse        *time.Ticker
-	measuredRenderingTime float32
-
 	lastThmbTime time.Time
 }
 
 func newPolling(img *SdlImgui) *polling {
 	pol := &polling{
-		img:            img,
-		service:        make(chan func(), 1),
-		serviceErr:     make(chan error, 1),
-		featureSet:     make(chan featureRequest, 1),
-		featureSetErr:  make(chan error, 1),
-		measuringPulse: time.NewTicker(time.Second),
+		img:           img,
+		service:       make(chan func(), 1),
+		serviceErr:    make(chan error, 1),
+		featureSet:    make(chan featureRequest, 1),
+		featureSetErr: make(chan error, 1),
 	}
 
 	return pol
@@ -110,18 +103,6 @@ func (pol *polling) alert() {
 // wait for an SDL event or for a timeout. the timeout duration depends on the
 // state of the emulation and receent user input.
 func (pol *polling) wait() sdl.Event {
-	// measure rendering performance
-	pol.measureCt++
-	select {
-	case <-pol.measuringPulse.C:
-		t := time.Now()
-
-		pol.measuredRenderingTime = float32(pol.measureCt) / float32(t.Sub(pol.measureTime).Seconds())
-		pol.measureTime = t
-		pol.measureCt = 0
-	default:
-	}
-
 	select {
 	case f := <-pol.service:
 		f()
