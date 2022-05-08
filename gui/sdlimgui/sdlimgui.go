@@ -221,6 +221,9 @@ func NewSdlImgui(e emulation.Emulation) (*SdlImgui, error) {
 		return nil
 	})
 
+	// set event filter for SDL see comment for serviceWindowEvent()
+	sdl.AddEventWatchFunc(img.serviceWindowEvent, nil)
+
 	// reset fonts as soon as possible
 	img.resetFonts = 1
 

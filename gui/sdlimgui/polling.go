@@ -49,6 +49,9 @@ const (
 	// enough to feel responsive but long enough to give the mail emulation (if
 	// running) time to update
 	timelineThumbnailerPeriod = 50
+
+	// the amount of time between interface renders caused by window resizing
+	resizePeriod = 5
 )
 
 type polling struct {
@@ -79,7 +82,8 @@ type polling struct {
 	awake     bool
 	lastEvent time.Time
 
-	lastThmbTime time.Time
+	lastThmbTime   time.Time
+	lastResizeTime time.Time
 }
 
 func newPolling(img *SdlImgui) *polling {
@@ -149,9 +153,19 @@ func (pol *polling) wait() sdl.Event {
 }
 
 // returns true if sufficient time has passed since the last thumbnail generation
-func (pol *polling) timelineThumbnailerWait() bool {
+func (pol *polling) throttleTimelineThumbnailer() bool {
 	if time.Since(pol.lastThmbTime).Milliseconds() > timelineThumbnailerPeriod {
 		pol.lastThmbTime = time.Now()
+		return true
+	}
+	return false
+}
+
+// returns true if sufficient time has passed since the last window resize event
+func (pol *polling) throttleResize() bool {
+	if time.Since(pol.lastResizeTime).Milliseconds() > resizePeriod {
+		pol.lastResizeTime = time.Now()
+		pol.lastEvent = pol.lastResizeTime
 		return true
 	}
 	return false

@@ -63,18 +63,7 @@ func (img *SdlImgui) Service() {
 		case *sdl.QuitEvent:
 			img.quit()
 
-		case *sdl.WindowEvent:
-			switch ev.Event {
-			case sdl.WINDOWEVENT_FOCUS_GAINED:
-				// the time when the window gained focus see windowFocusedTime
-				// declaration for an explanation
-				img.windowFocusedTime = time.Now()
-			}
-
-			img.screen.crit.section.Lock()
-			img.playScr.setScaling()
-			img.polling.alert()
-			img.screen.crit.section.Unlock()
+		// case *sdl.WindowEvent handled by event filter (see comment in serviceWindowEvent()
 
 		case *sdl.TextInputEvent:
 			if img.hasModal || !img.isCaptured() {
@@ -311,6 +300,10 @@ func (img *SdlImgui) Service() {
 		// defer imgui.PopFont()
 	}
 
+	img.renderFrame()
+}
+
+func (img *SdlImgui) renderFrame() {
 	// start of a new frame
 	img.plt.newFrame()
 	imgui.NewFrame()
@@ -557,4 +550,37 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 		img.io.KeyRelease(int(ev.Keysym.Scancode))
 		img.updateKeyModifier()
 	}
+}
+
+// serviceWindowEvent implements the sdl.EventFilter interface
+//
+// we handle sdl.WindowEvent events in the event filter because there is a bug
+// in MacOS/OpenGL which means windows are not refreshed during a window
+// resize, only when the resize is finished. this results in poor visual
+// feedback
+//
+// bug described here with suggested fix:
+//
+// https://stackoverflow.com/questions/34967628/sdl2-window-turns-black-on-resize
+func (img *SdlImgui) serviceWindowEvent(ev sdl.Event, userdata interface{}) bool {
+	switch ev := ev.(type) {
+	case *sdl.WindowEvent:
+		switch ev.Event {
+		case sdl.WINDOWEVENT_FOCUS_GAINED:
+			// the time when the window gained focus see windowFocusedTime
+			// declaration for an explanation
+			img.windowFocusedTime = time.Now()
+
+		case sdl.WINDOWEVENT_SIZE_CHANGED:
+			if img.polling.throttleResize() {
+				img.screen.crit.section.Lock()
+				img.playScr.setScaling()
+				img.screen.crit.section.Unlock()
+				img.renderFrame()
+			}
+		}
+
+		return false
+	}
+	return true
 }
