@@ -128,6 +128,8 @@ v6.0" file (sometimes named bankswitch_sizes.txt)
 The "Stella Programmer's Guide" by Steve Wright is of course a key document,
 used frequently throughout development.
 
+Colour values for NTSC and PAL television signals taken from https://www.qotile.net/minidig/docs/tia_color.html
+
 The TIA Audio implementation is based almost entirely on the work of Chris Brenner.
 
 https://atariage.com/forums/topic/249865-tia-sounding-off-in-the-digital-domain/
