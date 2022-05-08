@@ -213,7 +213,7 @@ func (win *winCoProcPerformance) draw() {
 					framestats.Reset()
 				}
 
-				imgui.Text("Summary relative to ")
+				imgui.Text(fmt.Sprintf("Total %s time relative to ", win.img.lz.Cart.CoProcID))
 				imgui.SameLineV(0, 0)
 
 				var val, avg, max float32
@@ -236,7 +236,7 @@ func (win *winCoProcPerformance) draw() {
 				imgui.SameLine()
 
 				if !seg.HasRun() {
-					imgui.Text(fmt.Sprintf("%s has not run yet in this kernel", win.img.lz.Cart.CoProcID))
+					imgui.Text("no figures yet")
 				} else {
 					if !win.percentileFigures {
 						val = seg.ClocksCount
