@@ -52,6 +52,8 @@ type Preferences struct {
 
 	SyncSpeedScanlines prefs.Int
 	SyncPowerOn        prefs.Bool
+
+	IntegerScaling prefs.Bool
 }
 
 func (p *Preferences) String() string {
@@ -84,6 +86,7 @@ const (
 	pixelPerfectFade   = 0.4
 	syncSpeedScanlines = 65
 	syncPowerOn        = true
+	integerScaling     = false
 )
 
 // NewPreferences is the preferred method of initialisation for the Preferences type.
@@ -201,6 +204,10 @@ func NewPreferences() (*Preferences, error) {
 	if err != nil {
 		return nil, err
 	}
+	err = p.dsk.Add("crt.integerScaling", &p.IntegerScaling)
+	if err != nil {
+		return nil, err
+	}
 
 	err = p.dsk.Load(true)
 	if err != nil {
@@ -237,6 +244,7 @@ func (p *Preferences) SetDefaults() {
 	p.PixelPerfectFade.Set(pixelPerfectFade)
 	p.SyncSpeedScanlines.Set(syncSpeedScanlines)
 	p.SyncPowerOn.Set(syncPowerOn)
+	p.IntegerScaling.Set(integerScaling)
 }
 
 // Load disassembly preferences and apply to the current disassembly.

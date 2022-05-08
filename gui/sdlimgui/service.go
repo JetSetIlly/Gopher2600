@@ -324,6 +324,17 @@ func (img *SdlImgui) Service() {
 	img.screen.render()
 	img.glsl.render()
 	img.plt.postRender()
+
+	// process any functions that should only be done after rendering
+	done := false
+	for !done {
+		select {
+		case f := <-img.postRenderFunctions:
+			f()
+		default:
+			done = true
+		}
+	}
 }
 
 func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {

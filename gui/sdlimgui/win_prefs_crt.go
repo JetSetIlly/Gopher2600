@@ -383,6 +383,12 @@ func (win *winPrefs) drawPixelPerfect() bool {
 		win.img.crtPrefs.Enabled.Set(!b)
 	}
 
+	imgui.SameLineV(0, 25)
+	s := win.img.crtPrefs.IntegerScaling.Get().(bool)
+	if imgui.Checkbox("Pixel Perfect Scaling##pixelpefectscaling", &s) {
+		win.img.crtPrefs.IntegerScaling.Set(s)
+	}
+
 	var label string
 
 	f := float32(win.img.crtPrefs.PixelPerfectFade.Get().(float64))

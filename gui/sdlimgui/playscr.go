@@ -240,7 +240,9 @@ func (win *playScr) setScaling() {
 	}
 
 	// limit scaling to whole integers
-	scaling = float32(int(scaling))
+	if win.img.crtPrefs == nil || win.img.crtPrefs.IntegerScaling.Get().(bool) {
+		scaling = float32(int(scaling))
+	}
 
 	win.imagePosMin = imgui.Vec2{
 		X: float32(int((screenRegion.X - (adjW * scaling)) / 2)),
@@ -255,6 +257,4 @@ func (win *playScr) setScaling() {
 
 	// get visibleScanlines while we're in critical section
 	win.visibleScanlines = win.scr.crit.frameInfo.VisibleBottom - win.scr.crit.frameInfo.VisibleTop
-
-	gl.BindTexture(gl.TEXTURE_2D, win.screenTexture)
 }

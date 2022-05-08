@@ -29,6 +29,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/logger"
+	"github.com/jetsetilly/gopher2600/prefs"
 	"github.com/jetsetilly/gopher2600/reflection"
 	"github.com/jetsetilly/gopher2600/resources"
 	"github.com/jetsetilly/gopher2600/userinput"
@@ -119,6 +120,8 @@ type SdlImgui struct {
 
 	// a request for the PlusROM first installation procedure has been received
 	plusROMFirstInstallation bool
+
+	postRenderFunctions chan func()
 }
 
 // NewSdlImgui is the preferred method of initialisation for type SdlImgui
@@ -126,8 +129,9 @@ type SdlImgui struct {
 // MUST ONLY be called from the gui thread.
 func NewSdlImgui(e emulation.Emulation) (*SdlImgui, error) {
 	img := &SdlImgui{
-		context: imgui.CreateContext(nil),
-		io:      imgui.CurrentIO(),
+		context:             imgui.CreateContext(nil),
+		io:                  imgui.CurrentIO(),
+		postRenderFunctions: make(chan func(), 100),
 	}
 
 	img.emulation = e
@@ -203,6 +207,19 @@ func NewSdlImgui(e emulation.Emulation) (*SdlImgui, error) {
 	if err != nil {
 		return nil, curated.Errorf("sdlimgui: %v", err)
 	}
+
+	// set scaling when IntegerScaling prefs value is changed
+	img.crtPrefs.IntegerScaling.SetHookPost(func(v prefs.Value) error {
+		select {
+		case img.postRenderFunctions <- func() {
+			img.screen.crit.section.Lock()
+			img.playScr.setScaling()
+			img.screen.crit.section.Unlock()
+		}:
+		default:
+		}
+		return nil
+	})
 
 	// reset fonts as soon as possible
 	img.resetFonts = 1
