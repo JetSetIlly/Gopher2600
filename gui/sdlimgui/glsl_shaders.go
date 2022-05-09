@@ -375,3 +375,36 @@ func (sh *blendShader) setAttributesArgs(env shaderEnvironment, modulate float32
 	gl.BindTexture(gl.TEXTURE_2D, newFrame)
 	gl.Uniform1i(sh.newFrame, 1)
 }
+
+type scalingShader struct {
+	shader
+	scaledWidth     int32
+	scaledHeight    int32
+	unscaledWidth   int32
+	unscaledHeight  int32
+	unscaledTexture int32
+}
+
+func newScalingShader() shaderProgram {
+	sh := &scalingShader{}
+	sh.createProgram(string(shaders.YFlipVertexShader), string(shaders.ScalingShader))
+	sh.unscaledWidth = gl.GetUniformLocation(sh.handle, gl.Str("UnscaledWidth"+"\x00"))
+	sh.unscaledHeight = gl.GetUniformLocation(sh.handle, gl.Str("UnscaledHeight"+"\x00"))
+	sh.scaledWidth = gl.GetUniformLocation(sh.handle, gl.Str("ScaledWidth"+"\x00"))
+	sh.scaledHeight = gl.GetUniformLocation(sh.handle, gl.Str("ScaledHeight"+"\x00"))
+	sh.unscaledTexture = gl.GetUniformLocation(sh.handle, gl.Str("UnscaledTexture"+"\x00"))
+	return sh
+}
+
+// nolint: unparam
+func (sh *scalingShader) setAttributesArgs(env shaderEnvironment, win *playScr) {
+	sh.shader.setAttributes(env)
+	gl.Uniform1f(sh.unscaledWidth, win.unscaledWidth)
+	gl.Uniform1f(sh.unscaledHeight, win.unscaledHeight)
+	gl.Uniform1f(sh.scaledWidth, win.scaledWidth)
+	gl.Uniform1f(sh.scaledHeight, win.scaledHeight)
+
+	gl.ActiveTexture(gl.TEXTURE1)
+	gl.BindTexture(gl.TEXTURE_2D, win.unscaledTexture)
+	gl.Uniform1i(sh.unscaledTexture, 1)
+}

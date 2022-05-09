@@ -22,6 +22,7 @@ import (
 type crtSequencer struct {
 	seq                   *framebuffer.Sequence
 	img                   *SdlImgui
+	scalingShader         shaderProgram
 	phosphorShader        shaderProgram
 	blackCorrectionShader shaderProgram
 	blurShader            shaderProgram
@@ -36,7 +37,8 @@ type crtSequencer struct {
 func newCRTSequencer(img *SdlImgui) *crtSequencer {
 	sh := &crtSequencer{
 		img:                   img,
-		seq:                   framebuffer.NewSequence(4),
+		seq:                   framebuffer.NewSequence(5),
+		scalingShader:         newScalingShader(),
 		phosphorShader:        newPhosphorShader(img),
 		blackCorrectionShader: newBlackCorrectionShader(),
 		blurShader:            newBlurShader(),
@@ -52,6 +54,7 @@ func newCRTSequencer(img *SdlImgui) *crtSequencer {
 
 func (sh *crtSequencer) destroy() {
 	sh.seq.Destroy()
+	sh.scalingShader.destroy()
 	sh.phosphorShader.destroy()
 	sh.blackCorrectionShader.destroy()
 	sh.blurShader.destroy()
@@ -102,6 +105,12 @@ func (sh *crtSequencer) process(env shaderEnvironment, moreProcessing bool, numS
 	if sh.seq.Setup(env.width, env.height) {
 		phosphorPasses = 3
 	}
+
+	// scale image
+	env.srcTextureID = sh.seq.Process(processedSrc, func() {
+		sh.scalingShader.(*scalingShader).setAttributesArgs(env, sh.img.playScr)
+		env.draw()
+	})
 
 	// apply ghosting filter to texture. this is useful for the zookeeper brick effect
 	if enabled && sh.img.crtPrefs.Ghosting.Get().(bool) {
