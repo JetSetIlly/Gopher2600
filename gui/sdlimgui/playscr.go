@@ -36,10 +36,13 @@ type playScr struct {
 	// (re)create textures on next render()
 	createTextures bool
 
-	// textures
-	screenTexture   uint32
-	emptyPixels     []uint8
+	// textures. scaledTexture is the presentation texture. unscaledTexture is
+	// the unscaled pixels from screen that are passed through the scaling shader
+	scaledTexture   uint32
 	unscaledTexture uint32
+
+	// the pixels we use to clear scaledTexture with
+	emptyScaledPixels []uint8
 
 	// the tv screen has captured mouse input
 	isCaptured bool
@@ -86,8 +89,8 @@ func newPlayScr(img *SdlImgui) *playScr {
 	}
 
 	// set texture, creation of textures will be done after every call to resize()
-	gl.GenTextures(1, &win.screenTexture)
-	gl.BindTexture(gl.TEXTURE_2D, win.screenTexture)
+	gl.GenTextures(1, &win.scaledTexture)
+	gl.BindTexture(gl.TEXTURE_2D, win.scaledTexture)
 
 	// mag and min changed in setScaling() according to whether we want pixel
 	// perfect rendering
@@ -122,7 +125,7 @@ func (win *playScr) draw() {
 	defer win.img.screen.crit.section.Unlock()
 
 	dl := imgui.BackgroundDrawList()
-	dl.AddImage(imgui.TextureID(win.screenTexture), win.imagePosMin, win.imagePosMax)
+	dl.AddImage(imgui.TextureID(win.scaledTexture), win.imagePosMin, win.imagePosMax)
 
 	win.peripheralLeft.draw(win)
 	win.peripheralRight.draw(win)
@@ -209,14 +212,14 @@ func (win *playScr) render() {
 		// (re)create textures
 
 		// empty pixels for screen texture
-		win.emptyPixels = make([]uint8, int(win.scaledWidth)*int(win.scaledHeight)*4)
+		win.emptyScaledPixels = make([]uint8, int(win.scaledWidth)*int(win.scaledHeight)*4)
 
 		// screen texture
-		gl.BindTexture(gl.TEXTURE_2D, win.screenTexture)
+		gl.BindTexture(gl.TEXTURE_2D, win.scaledTexture)
 		gl.TexImage2D(gl.TEXTURE_2D, 0,
 			gl.RGBA, int32(pixels.Bounds().Size().X), int32(pixels.Bounds().Size().Y), 0,
 			gl.RGBA, gl.UNSIGNED_BYTE,
-			gl.Ptr(win.emptyPixels))
+			gl.Ptr(win.emptyScaledPixels))
 
 		// unscaled screen texture
 		gl.BindTexture(gl.TEXTURE_2D, win.unscaledTexture)
@@ -231,11 +234,11 @@ func (win *playScr) render() {
 		// is "unstable"
 
 		// screen texture
-		gl.BindTexture(gl.TEXTURE_2D, win.screenTexture)
+		gl.BindTexture(gl.TEXTURE_2D, win.scaledTexture)
 		gl.TexSubImage2D(gl.TEXTURE_2D, 0,
 			0, 0, int32(pixels.Bounds().Size().X), int32(pixels.Bounds().Size().Y),
 			gl.RGBA, gl.UNSIGNED_BYTE,
-			gl.Ptr(win.emptyPixels))
+			gl.Ptr(win.emptyScaledPixels))
 
 		// unscaled screen texture
 		gl.BindTexture(gl.TEXTURE_2D, win.unscaledTexture)
@@ -295,4 +298,14 @@ func (win *playScr) setScaling() {
 
 	// get visibleScanlines while we're in critical section
 	win.visibleScanlines = win.scr.crit.frameInfo.VisibleBottom - win.scr.crit.frameInfo.VisibleTop
+}
+
+// unscaledTextureSpec implements the scalingImage specification
+func (win *playScr) unscaledTextureSpec() (uint32, float32, float32) {
+	return win.unscaledTexture, win.unscaledWidth, win.unscaledHeight
+}
+
+// unscaledTextureSpec implements the scalingImage specification
+func (win *playScr) scaledTextureSpec() (uint32, float32, float32) {
+	return win.scaledTexture, win.scaledWidth, win.scaledHeight
 }

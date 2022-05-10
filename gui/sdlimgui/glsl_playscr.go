@@ -66,5 +66,6 @@ func (sh *playscrShader) setAttributes(env shaderEnvironment) {
 	)
 
 	sh.screenshot.process(env)
-	sh.crt.process(env, false, sh.img.playScr.visibleScanlines, specification.ClksVisible)
+	effectEnabled := sh.img.crtPrefs.Enabled.Get().(bool)
+	sh.crt.process(env, false, effectEnabled, sh.img.playScr.visibleScanlines, specification.ClksVisible, sh.img.playScr)
 }

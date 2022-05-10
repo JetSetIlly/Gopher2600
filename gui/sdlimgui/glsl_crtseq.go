@@ -20,8 +20,8 @@ import (
 )
 
 type crtSequencer struct {
-	seq                   *framebuffer.Sequence
 	img                   *SdlImgui
+	seq                   *framebuffer.Sequence
 	scalingShader         shaderProgram
 	phosphorShader        shaderProgram
 	blackCorrectionShader shaderProgram
@@ -71,7 +71,14 @@ func (sh *crtSequencer) destroy() {
 //
 // returns the last textureID drawn to as part of the process(). the texture
 // returned depends on the value of moreProcessing.
-func (sh *crtSequencer) process(env shaderEnvironment, moreProcessing bool, numScanlines int, numClocks int) uint32 {
+//
+// if effectsEnabled is turned off then phosphor accumulation and scaling still
+// occurs but crt effects are not applied.
+func (sh *crtSequencer) process(env shaderEnvironment,
+	moreProcessing bool, effectsEnabled bool,
+	numScanlines int, numClocks int,
+	scalingImage scalingImage) uint32 {
+
 	const (
 		// an accumulation of consecutive frames producing a phosphor effect
 		phosphor = iota
@@ -94,9 +101,6 @@ func (sh *crtSequencer) process(env shaderEnvironment, moreProcessing bool, numS
 	// we'll be chaining many shaders together so use internal projection
 	env.useInternalProj = true
 
-	// whether crt effects are enabled
-	enabled := sh.img.crtPrefs.Enabled.Get().(bool)
-
 	// phosphor draw
 	phosphorPasses := 1
 
@@ -107,13 +111,15 @@ func (sh *crtSequencer) process(env shaderEnvironment, moreProcessing bool, numS
 	}
 
 	// scale image
-	env.srcTextureID = sh.seq.Process(processedSrc, func() {
-		sh.scalingShader.(*scalingShader).setAttributesArgs(env, sh.img.playScr)
-		env.draw()
-	})
+	if scalingImage != nil {
+		env.srcTextureID = sh.seq.Process(processedSrc, func() {
+			sh.scalingShader.(*scalingShader).setAttributesArgs(env, scalingImage)
+			env.draw()
+		})
+	}
 
 	// apply ghosting filter to texture. this is useful for the zookeeper brick effect
-	if enabled && sh.img.crtPrefs.Ghosting.Get().(bool) {
+	if effectsEnabled && sh.img.crtPrefs.Ghosting.Get().(bool) {
 		env.srcTextureID = sh.seq.Process(processedSrc, func() {
 			sh.ghostingShader.(*ghostingShader).setAttributesArgs(env, float32(sh.img.crtPrefs.GhostingAmount.Get().(float64)))
 			env.draw()
@@ -122,7 +128,7 @@ func (sh *crtSequencer) process(env shaderEnvironment, moreProcessing bool, numS
 	src := env.srcTextureID
 
 	for i := 0; i < phosphorPasses; i++ {
-		if enabled {
+		if effectsEnabled {
 			if sh.img.crtPrefs.Phosphor.Get().(bool) {
 				// use blur shader to add bloom to previous phosphor
 				env.srcTextureID = sh.seq.Process(phosphor, func() {
@@ -150,7 +156,7 @@ func (sh *crtSequencer) process(env shaderEnvironment, moreProcessing bool, numS
 		}
 	}
 
-	if enabled {
+	if effectsEnabled {
 		// video-black correction
 		env.srcTextureID = sh.seq.Process(working, func() {
 			sh.blackCorrectionShader.(*blackCorrectionShader).setAttributesArgs(env, float32(sh.img.crtPrefs.BlackLevel.Get().(float64)))

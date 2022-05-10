@@ -396,15 +396,23 @@ func newScalingShader() shaderProgram {
 	return sh
 }
 
+type scalingImage interface {
+	unscaledTextureSpec() (uint32, float32, float32)
+	scaledTextureSpec() (uint32, float32, float32)
+}
+
 // nolint: unparam
-func (sh *scalingShader) setAttributesArgs(env shaderEnvironment, win *playScr) {
+func (sh *scalingShader) setAttributesArgs(env shaderEnvironment, scalingImage scalingImage) {
+	ut, uw, uh := scalingImage.unscaledTextureSpec()
+	_, w, h := scalingImage.scaledTextureSpec()
+
 	sh.shader.setAttributes(env)
-	gl.Uniform1f(sh.unscaledWidth, win.unscaledWidth)
-	gl.Uniform1f(sh.unscaledHeight, win.unscaledHeight)
-	gl.Uniform1f(sh.scaledWidth, win.scaledWidth)
-	gl.Uniform1f(sh.scaledHeight, win.scaledHeight)
+	gl.Uniform1f(sh.unscaledWidth, uw)
+	gl.Uniform1f(sh.unscaledHeight, uh)
+	gl.Uniform1f(sh.scaledWidth, w)
+	gl.Uniform1f(sh.scaledHeight, h)
 
 	gl.ActiveTexture(gl.TEXTURE1)
-	gl.BindTexture(gl.TEXTURE_2D, win.unscaledTexture)
+	gl.BindTexture(gl.TEXTURE_2D, ut)
 	gl.Uniform1i(sh.unscaledTexture, 1)
 }

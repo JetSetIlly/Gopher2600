@@ -26,7 +26,6 @@ type dbgScreenShader struct {
 	shader
 
 	img *SdlImgui
-
 	crt *crtSequencer
 
 	showCursor             int32 // uniform
@@ -121,14 +120,14 @@ func (sh *dbgScreenShader) setAttributes(env shaderEnvironment) {
 		// something for the future.
 		env.srcTextureID = sh.img.wm.dbgScr.normalTexture
 
-		env.srcTextureID = sh.crt.process(env, true, sh.img.wm.dbgScr.numScanlines, specification.ClksVisible)
+		env.srcTextureID = sh.crt.process(env, true, true, sh.img.wm.dbgScr.numScanlines, specification.ClksVisible, sh.img.wm.dbgScr)
 	} else {
 		// if crtPreview is disabled we still go through the crt process. we do
 		// this so that the phosphor is kept up to date, which is important
 		// for the moment the crtPreview is enabled.
 		//
 		// we don't do anything with the result of the process in this instance
-		_ = sh.crt.process(env, false, sh.img.wm.dbgScr.numScanlines, specification.ClksVisible)
+		env.srcTextureID = sh.crt.process(env, true, false, sh.img.wm.dbgScr.numScanlines, specification.ClksVisible, sh.img.wm.dbgScr)
 	}
 
 	sh.shader.setAttributes(env)
