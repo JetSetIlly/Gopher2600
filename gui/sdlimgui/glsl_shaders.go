@@ -383,6 +383,7 @@ type scalingShader struct {
 	unscaledWidth   int32
 	unscaledHeight  int32
 	unscaledTexture int32
+	integerScaling  int32
 }
 
 func newScalingShader() shaderProgram {
@@ -393,6 +394,7 @@ func newScalingShader() shaderProgram {
 	sh.scaledWidth = gl.GetUniformLocation(sh.handle, gl.Str("ScaledWidth"+"\x00"))
 	sh.scaledHeight = gl.GetUniformLocation(sh.handle, gl.Str("ScaledHeight"+"\x00"))
 	sh.unscaledTexture = gl.GetUniformLocation(sh.handle, gl.Str("UnscaledTexture"+"\x00"))
+	sh.integerScaling = gl.GetUniformLocation(sh.handle, gl.Str("IntegerScaling"+"\x00"))
 	return sh
 }
 
@@ -402,7 +404,7 @@ type scalingImage interface {
 }
 
 // nolint: unparam
-func (sh *scalingShader) setAttributesArgs(env shaderEnvironment, scalingImage scalingImage) {
+func (sh *scalingShader) setAttributesArgs(env shaderEnvironment, scalingImage scalingImage, integerScaling bool) {
 	ut, uw, uh := scalingImage.unscaledTextureSpec()
 	_, w, h := scalingImage.scaledTextureSpec()
 
@@ -411,6 +413,12 @@ func (sh *scalingShader) setAttributesArgs(env shaderEnvironment, scalingImage s
 	gl.Uniform1f(sh.unscaledHeight, uh)
 	gl.Uniform1f(sh.scaledWidth, w)
 	gl.Uniform1f(sh.scaledHeight, h)
+
+	if integerScaling {
+		gl.Uniform1i(sh.integerScaling, 1)
+	} else {
+		gl.Uniform1i(sh.integerScaling, 0)
+	}
 
 	gl.ActiveTexture(gl.TEXTURE1)
 	gl.BindTexture(gl.TEXTURE_2D, ut)

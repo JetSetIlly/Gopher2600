@@ -74,8 +74,10 @@ func (sh *crtSequencer) destroy() {
 //
 // if effectsEnabled is turned off then phosphor accumulation and scaling still
 // occurs but crt effects are not applied.
+//
+// integerScaling instructs the scaling shader not to perform any smoothing
 func (sh *crtSequencer) process(env shaderEnvironment,
-	moreProcessing bool, effectsEnabled bool,
+	moreProcessing bool, effectsEnabled bool, integerScaling bool,
 	numScanlines int, numClocks int,
 	scalingImage scalingImage) uint32 {
 
@@ -113,7 +115,7 @@ func (sh *crtSequencer) process(env shaderEnvironment,
 	// scale image
 	if scalingImage != nil {
 		env.srcTextureID = sh.seq.Process(processedSrc, func() {
-			sh.scalingShader.(*scalingShader).setAttributesArgs(env, scalingImage)
+			sh.scalingShader.(*scalingShader).setAttributesArgs(env, scalingImage, integerScaling)
 			env.draw()
 		})
 	}

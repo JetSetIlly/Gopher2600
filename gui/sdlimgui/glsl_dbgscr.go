@@ -120,14 +120,19 @@ func (sh *dbgScreenShader) setAttributes(env shaderEnvironment) {
 		// something for the future.
 		env.srcTextureID = sh.img.wm.dbgScr.normalTexture
 
-		env.srcTextureID = sh.crt.process(env, true, true, sh.img.wm.dbgScr.numScanlines, specification.ClksVisible, sh.img.wm.dbgScr)
+		env.srcTextureID = sh.crt.process(env, true, true, false, sh.img.wm.dbgScr.numScanlines, specification.ClksVisible, sh.img.wm.dbgScr)
 	} else {
 		// if crtPreview is disabled we still go through the crt process. we do
-		// this so that the phosphor is kept up to date, which is important
-		// for the moment the crtPreview is enabled.
+		// this for two reasons.
 		//
-		// we don't do anything with the result of the process in this instance
-		env.srcTextureID = sh.crt.process(env, true, false, sh.img.wm.dbgScr.numScanlines, specification.ClksVisible, sh.img.wm.dbgScr)
+		// 1) to scale the image to the correct size
+		//
+		// 2) the phosphor is kept up to date, which is important for the
+		// moment the crtPreview is enabled.
+		//
+		// note that we specify integer scaling for the non-CRT preview image,
+		// this is so that the overlay is aligned properly with the TV image
+		env.srcTextureID = sh.crt.process(env, true, false, true, sh.img.wm.dbgScr.numScanlines, specification.ClksVisible, sh.img.wm.dbgScr)
 	}
 
 	sh.shader.setAttributes(env)

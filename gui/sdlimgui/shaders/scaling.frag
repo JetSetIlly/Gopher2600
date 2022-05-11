@@ -6,6 +6,7 @@ uniform float UnscaledWidth;
 uniform float UnscaledHeight;
 uniform sampler2D Texture;
 uniform sampler2D UnscaledTexture;
+uniform int IntegerScaling;
 in vec2 Frag_UV;
 in vec4 Frag_Color;
 out vec4 Out_Color;
@@ -14,6 +15,10 @@ void main()
 {
 	Out_Color = Frag_Color * texture(Texture, Frag_UV.st);
     Out_Color = mix(Out_Color, texture(UnscaledTexture, Frag_UV.st), 1.0);
+
+	if (IntegerScaling == 1) {
+		return;
+	}
 
     Out_Color = mix(Out_Color, texture(UnscaledTexture, Frag_UV.st-vec2(0.0, 0.00025)), 0.75);
     Out_Color = mix(Out_Color, texture(UnscaledTexture, Frag_UV.st-vec2(0.0, 0.0005)), 0.75);
