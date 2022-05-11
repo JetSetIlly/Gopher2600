@@ -35,6 +35,7 @@ type screenshotSequencer struct {
 	seq *framebuffer.Sequence
 	img *SdlImgui
 
+	scalingShader         shaderProgram
 	phosphorShader        shaderProgram
 	blackCorrectionShader shaderProgram
 	blurShader            shaderProgram
@@ -55,6 +56,7 @@ func newscreenshotSequencer(img *SdlImgui) *screenshotSequencer {
 	sh := &screenshotSequencer{
 		img:                   img,
 		seq:                   framebuffer.NewSequence(6),
+		scalingShader:         newScalingShader(),
 		phosphorShader:        newPhosphorShader(img),
 		blackCorrectionShader: newBlackCorrectionShader(),
 		blurShader:            newBlurShader(),
@@ -68,6 +70,7 @@ func newscreenshotSequencer(img *SdlImgui) *screenshotSequencer {
 
 func (sh *screenshotSequencer) destroy() {
 	sh.seq.Destroy()
+	sh.scalingShader.destroy()
 	sh.phosphorShader.destroy()
 	sh.blackCorrectionShader.destroy()
 	sh.blurShader.destroy()
@@ -101,7 +104,7 @@ func (sh *screenshotSequencer) startProcess(mode screenshotMode) {
 	}
 }
 
-func (sh *screenshotSequencer) process(env shaderEnvironment) {
+func (sh *screenshotSequencer) process(env shaderEnvironment, scalingImage scalingImage) {
 	const (
 		// an accumulation of consecutive frames producing a phosphor effect
 		phosphor = iota
@@ -127,6 +130,14 @@ func (sh *screenshotSequencer) process(env shaderEnvironment) {
 	_ = sh.seq.Setup(env.width, env.height)
 
 	env.useInternalProj = true
+
+	// scale image
+	if scalingImage != nil {
+		env.srcTextureID = sh.seq.Process(processedSrc, func() {
+			sh.scalingShader.(*scalingShader).setAttributesArgs(env, scalingImage, false)
+			env.draw()
+		})
+	}
 
 	// apply ghosting filter to texture. this is useful for the zookeeper brick effect
 	if sh.crtProcessing && sh.img.crtPrefs.Ghosting.Get().(bool) {
