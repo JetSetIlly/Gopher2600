@@ -73,8 +73,16 @@ type AtariVox struct {
 	// the savekey portion of the AtariVox is the same as a stand alone savekey
 	SaveKey ports.Peripheral
 
-	// the atarivox should not process data when it is disabled
+	// the atarivox should not process data when it is disabled (see comment
+	// for mute below)
 	disabled bool
+
+	// the atarivox should not process data when it is muted. slightly
+	// different flag to disabled because they are set via different code
+	// paths. muted is intended to follow the wider audio mute settings. the
+	// disabled flag meanwhile is independent of muting and allows AtariVox to
+	// be turned off even when emulation wide audio is not muted.
+	muted bool
 }
 
 // NewAtariVox is the preferred method of initialisation for the AtariVox type.
@@ -180,6 +188,11 @@ func (vox *AtariVox) Disable(disabled bool) {
 	vox.disabled = disabled
 }
 
+// Restart implements the ports.MutePeripheral interface.
+func (vox *AtariVox) Mute(muted bool) {
+	vox.muted = muted
+}
+
 // the active bits in the SWCHA value.
 const (
 	maskSpeakJetDATA  = 0b00010000
@@ -193,7 +206,7 @@ const (
 
 // memory has been updated. peripherals are notified.
 func (vox *AtariVox) Update(data chipbus.ChangedRegister) bool {
-	if vox.disabled {
+	if vox.disabled || vox.muted {
 		return false
 	}
 
@@ -239,7 +252,7 @@ func (vox *AtariVox) resetBits() {
 
 // step is called every CPU clock. important for paddle devices
 func (vox *AtariVox) Step() {
-	if vox.disabled {
+	if vox.disabled || vox.muted {
 		return
 	}
 

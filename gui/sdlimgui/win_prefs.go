@@ -20,6 +20,7 @@ import (
 
 	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/emulation"
+	"github.com/jetsetilly/gopher2600/gui/fonts"
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
@@ -167,18 +168,18 @@ func (win *winPrefs) drawPlaymodeTab() {
 		win.img.prefs.superchargerNotifications.Set(superchargerNotifications)
 	}
 
-	audioEnabled := win.img.prefs.audioEnabledPlaymode.Get().(bool)
-	if imgui.Checkbox("Audio Enabled", &audioEnabled) {
-		win.img.prefs.audioEnabledPlaymode.Set(audioEnabled)
+	audioMute := win.img.prefs.audioMutePlaymode.Get().(bool)
+	if imgui.Checkbox("Audio Mute", &audioMute) {
+		win.img.prefs.audioMutePlaymode.Set(audioMute)
 	}
 }
 
 func (win *winPrefs) drawDebuggerTab() {
 	imgui.Spacing()
 
-	audioEnabled := win.img.prefs.audioEnabledDebugger.Get().(bool)
-	if imgui.Checkbox("Audio Enabled (in debugger)", &audioEnabled) {
-		win.img.prefs.audioEnabledDebugger.Set(audioEnabled)
+	audioMute := win.img.prefs.audioMuteDebugger.Get().(bool)
+	if imgui.Checkbox("Audio Muted (in debugger)", &audioMute) {
+		win.img.prefs.audioMuteDebugger.Set(audioMute)
 	}
 
 	termOnError := win.img.prefs.openOnError.Get().(bool)
@@ -331,18 +332,18 @@ func (win *winPrefs) drawVCS() {
 	if imgui.CollapsingHeaderV("Audio", imgui.TreeNodeFlagsNone) {
 		// enable options
 		imgui.AlignTextToFramePadding()
-		imgui.Text("Enabled")
+		imgui.Text("Muted")
 		imgui.SameLineV(0, 15)
 
-		audioEnabledPlaymode := win.img.prefs.audioEnabledPlaymode.Get().(bool)
+		audioEnabledPlaymode := win.img.prefs.audioMutePlaymode.Get().(bool)
 		if imgui.Checkbox("Playmode", &audioEnabledPlaymode) {
-			win.img.prefs.audioEnabledPlaymode.Set(audioEnabledPlaymode)
+			win.img.prefs.audioMutePlaymode.Set(audioEnabledPlaymode)
 		}
 
 		imgui.SameLineV(0, 15)
-		audioEnabledDebugger := win.img.prefs.audioEnabledDebugger.Get().(bool)
+		audioEnabledDebugger := win.img.prefs.audioMuteDebugger.Get().(bool)
 		if imgui.Checkbox("Debugger", &audioEnabledDebugger) {
-			win.img.prefs.audioEnabledDebugger.Set(audioEnabledDebugger)
+			win.img.prefs.audioMuteDebugger.Set(audioEnabledDebugger)
 		}
 
 		// stereo options
@@ -402,6 +403,26 @@ func (win *winPrefs) drawVCS() {
 		if imgui.Checkbox("Enable Festival Output", &enabled) {
 			win.img.vcs.Instance.Prefs.AtariVox.FestivalEnabled.Set(enabled)
 			win.img.dbg.PushRawEvent(win.img.vcs.RIOT.Ports.RestartPeripherals)
+		}
+
+		var warning bool
+
+		switch win.img.mode {
+		case emulation.ModePlay:
+			warning = win.img.prefs.audioMutePlaymode.Get().(bool)
+		case emulation.ModeDebugger:
+			warning = win.img.prefs.audioMuteDebugger.Get().(bool)
+		}
+
+		if warning && enabled {
+			imgui.SameLine()
+			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.Warning)
+			imgui.AlignTextToFramePadding()
+			imgui.Text(fmt.Sprintf(" %c", fonts.Warning))
+			imgui.PopStyleColor()
+			imguiTooltipSimple(`Emulation audio is currently muted. There will
+be no AtariVox output even though the engine is
+currently enabled.`)
 		}
 	}
 }

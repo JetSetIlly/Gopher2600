@@ -348,12 +348,15 @@ func (img *SdlImgui) setEmulationMode(mode emulation.Mode) error {
 
 func (img *SdlImgui) toggleAudioMute() {
 	if img.isPlaymode() {
-		m := img.prefs.audioEnabledPlaymode.Get().(bool)
-		img.prefs.audioEnabledPlaymode.Set(!m)
+		m := img.prefs.audioMutePlaymode.Get().(bool)
+		img.prefs.audioMutePlaymode.Set(m)
 	} else {
-		m := img.prefs.audioEnabledDebugger.Get().(bool)
-		img.prefs.audioEnabledDebugger.Set(!m)
+		m := img.prefs.audioMuteDebugger.Get().(bool)
+		img.prefs.audioMuteDebugger.Set(m)
 	}
+
+	// the act of setting the prefs value means that setAudioMute() is called
+	// indirectly, so there's no need to call it here
 }
 
 func (img *SdlImgui) setAudioMute() {
@@ -364,11 +367,15 @@ func (img *SdlImgui) setAudioMute() {
 		return
 	}
 
+	var mute bool
+
 	if img.isPlaymode() {
-		img.audio.Mute(!img.prefs.audioEnabledPlaymode.Get().(bool))
+		mute = img.prefs.audioMutePlaymode.Get().(bool)
 	} else {
-		img.audio.Mute(!img.prefs.audioEnabledDebugger.Get().(bool))
+		mute = img.prefs.audioMuteDebugger.Get().(bool)
 	}
+
+	img.audio.Mute(mute)
 }
 
 // has mouse been grabbed. only called from gui thread.

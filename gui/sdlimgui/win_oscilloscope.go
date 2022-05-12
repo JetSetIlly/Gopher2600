@@ -139,13 +139,14 @@ func (win *winOscilloscope) drawTVLabel(label string) {
 	imgui.Text(fmt.Sprintf("TV Output (%s)", label))
 	imgui.SameLine()
 
-	enabled := win.img.prefs.audioEnabledDebugger.Get().(bool)
-
 	var output string
-	if enabled {
-		output = fmt.Sprintf("%c", fonts.AudioEnabled)
+
+	audioMute := win.img.prefs.audioMuteDebugger.Get().(bool)
+
+	if audioMute {
+		output = fmt.Sprintf("%c muted", fonts.AudioMute)
 	} else {
-		output = fmt.Sprintf("%c muted", fonts.AudioDisabled)
+		output = fmt.Sprintf("%c", fonts.AudioUnmute)
 	}
 
 	imgui.PushStyleColor(imgui.StyleColorButton, win.img.cols.Transparent)
@@ -154,7 +155,7 @@ func (win *winOscilloscope) drawTVLabel(label string) {
 	defer imgui.PopStyleColorV(3)
 
 	if imgui.Button(output) {
-		win.img.prefs.audioEnabledDebugger.Set(!enabled)
+		win.img.prefs.audioMuteDebugger.Set(!audioMute)
 	}
 }
 

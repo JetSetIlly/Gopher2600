@@ -18,6 +18,7 @@ import (
 	"fmt"
 
 	"github.com/jetsetilly/gopher2600/emulation"
+	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
 	"github.com/jetsetilly/gopher2600/prefs"
 	"github.com/jetsetilly/gopher2600/resources"
 )
@@ -40,8 +41,8 @@ type preferences struct {
 	dsk *prefs.Disk
 
 	// debugger preferences
-	openOnError          prefs.Bool
-	audioEnabledDebugger prefs.Bool
+	openOnError       prefs.Bool
+	audioMuteDebugger prefs.Bool
 
 	// disasm (there are preferences in the disassembly package that the gui
 	// will want to consider)
@@ -51,7 +52,7 @@ type preferences struct {
 	controllerNotifcations    prefs.Bool
 	plusromNotifications      prefs.Bool
 	superchargerNotifications prefs.Bool
-	audioEnabledPlaymode      prefs.Bool
+	audioMutePlaymode         prefs.Bool
 
 	// fonts
 	guiFont             prefs.Float
@@ -72,12 +73,12 @@ func newPreferences(img *SdlImgui) (*preferences, error) {
 
 	// defaults
 	p.openOnError.Set(true)
-	p.audioEnabledDebugger.Set(false)
+	p.audioMuteDebugger.Set(true)
 	p.colorDisasm.Set(true)
 	p.controllerNotifcations.Set(true)
 	p.plusromNotifications.Set(true)
 	p.superchargerNotifications.Set(true)
-	p.audioEnabledPlaymode.Set(true)
+	p.audioMutePlaymode.Set(false)
 	p.guiFont.Set(13.0)
 	p.codeFont.Set(15.0)
 	p.codeFontLineSpacing.Set(2.0)
@@ -99,7 +100,7 @@ func newPreferences(img *SdlImgui) (*preferences, error) {
 		return nil, err
 	}
 
-	err = p.dsk.Add("sdlimgui.debugger.audioEnabled", &p.audioEnabledDebugger)
+	err = p.dsk.Add("sdlimgui.debugger.audioMute", &p.audioMuteDebugger)
 	if err != nil {
 		return nil, err
 	}
@@ -109,8 +110,17 @@ func newPreferences(img *SdlImgui) (*preferences, error) {
 		return nil, err
 	}
 
-	p.audioEnabledDebugger.SetHookPost(func(enabled prefs.Value) error {
+	p.audioMuteDebugger.SetHookPost(func(muted prefs.Value) error {
 		p.img.setAudioMute()
+
+		// mute peripherals too
+		if r, ok := img.vcs.RIOT.Ports.LeftPlayer.(ports.MutePeripheral); ok {
+			r.Mute(muted.(bool))
+		}
+		if r, ok := img.vcs.RIOT.Ports.RightPlayer.(ports.MutePeripheral); ok {
+			r.Mute(muted.(bool))
+		}
+
 		return nil
 	})
 
@@ -130,13 +140,22 @@ func newPreferences(img *SdlImgui) (*preferences, error) {
 		return nil, err
 	}
 
-	err = p.dsk.Add("sdlimgui.playmode.audioEnabled", &p.audioEnabledPlaymode)
+	err = p.dsk.Add("sdlimgui.playmode.audioMute", &p.audioMutePlaymode)
 	if err != nil {
 		return nil, err
 	}
 
-	p.audioEnabledPlaymode.SetHookPost(func(enabled prefs.Value) error {
+	p.audioMutePlaymode.SetHookPost(func(muted prefs.Value) error {
 		p.img.setAudioMute()
+
+		// mute peripherals too
+		if r, ok := img.vcs.RIOT.Ports.LeftPlayer.(ports.MutePeripheral); ok {
+			r.Mute(muted.(bool))
+		}
+		if r, ok := img.vcs.RIOT.Ports.RightPlayer.(ports.MutePeripheral); ok {
+			r.Mute(muted.(bool))
+		}
+
 		return nil
 	})
 
