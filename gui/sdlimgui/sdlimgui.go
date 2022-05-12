@@ -229,6 +229,12 @@ func NewSdlImgui(e emulation.Emulation) (*SdlImgui, error) {
 
 	// container window is open on setEmulationMode()
 
+	// load preferences
+	err = img.prefs.load()
+	if err != nil {
+		return nil, err
+	}
+
 	return img, nil
 }
 
@@ -327,26 +333,42 @@ func (img *SdlImgui) setEmulationMode(mode emulation.Mode) error {
 	case emulation.ModeDebugger:
 		img.screen.clearTextureRenderers()
 		img.screen.addTextureRenderer(img.wm.dbgScr)
-
-		err := img.prefs.load()
-		if err != nil {
-			return err
-		}
-
 		img.plt.window.Show()
 
 	case emulation.ModePlay:
 		img.screen.clearTextureRenderers()
 		img.screen.addTextureRenderer(img.playScr)
-
-		err := img.prefs.load()
-		if err != nil {
-			return err
-		}
 		img.plt.window.Show()
 	}
 
+	img.setAudioMute()
+
 	return nil
+}
+
+func (img *SdlImgui) toggleAudioMute() {
+	if img.isPlaymode() {
+		m := img.prefs.audioEnabledPlaymode.Get().(bool)
+		img.prefs.audioEnabledPlaymode.Set(!m)
+	} else {
+		m := img.prefs.audioEnabledDebugger.Get().(bool)
+		img.prefs.audioEnabledDebugger.Set(!m)
+	}
+}
+
+func (img *SdlImgui) setAudioMute() {
+	// if there is no prefs instance then return without error. this can happen
+	// when the prefs are being loaded from disk for the first time and the
+	// prefs instance hasn't been returned
+	if img.prefs == nil {
+		return
+	}
+
+	if img.isPlaymode() {
+		img.audio.Mute(!img.prefs.audioEnabledPlaymode.Get().(bool))
+	} else {
+		img.audio.Mute(!img.prefs.audioEnabledDebugger.Get().(bool))
+	}
 }
 
 // has mouse been grabbed. only called from gui thread.

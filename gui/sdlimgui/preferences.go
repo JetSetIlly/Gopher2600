@@ -40,8 +40,8 @@ type preferences struct {
 	dsk *prefs.Disk
 
 	// debugger preferences
-	openOnError  prefs.Bool
-	audioEnabled prefs.Bool
+	openOnError          prefs.Bool
+	audioEnabledDebugger prefs.Bool
 
 	// disasm (there are preferences in the disassembly package that the gui
 	// will want to consider)
@@ -51,6 +51,7 @@ type preferences struct {
 	controllerNotifcations    prefs.Bool
 	plusromNotifications      prefs.Bool
 	superchargerNotifications prefs.Bool
+	audioEnabledPlaymode      prefs.Bool
 
 	// fonts
 	guiFont             prefs.Float
@@ -71,11 +72,12 @@ func newPreferences(img *SdlImgui) (*preferences, error) {
 
 	// defaults
 	p.openOnError.Set(true)
-	p.audioEnabled.Set(false)
+	p.audioEnabledDebugger.Set(false)
 	p.colorDisasm.Set(true)
 	p.controllerNotifcations.Set(true)
 	p.plusromNotifications.Set(true)
 	p.superchargerNotifications.Set(true)
+	p.audioEnabledPlaymode.Set(true)
 	p.guiFont.Set(13.0)
 	p.codeFont.Set(15.0)
 	p.codeFontLineSpacing.Set(2.0)
@@ -97,7 +99,7 @@ func newPreferences(img *SdlImgui) (*preferences, error) {
 		return nil, err
 	}
 
-	err = p.dsk.Add("sdlimgui.debugger.audioEnabled", &p.audioEnabled)
+	err = p.dsk.Add("sdlimgui.debugger.audioEnabled", &p.audioEnabledDebugger)
 	if err != nil {
 		return nil, err
 	}
@@ -107,12 +109,8 @@ func newPreferences(img *SdlImgui) (*preferences, error) {
 		return nil, err
 	}
 
-	p.audioEnabled.SetHookPost(func(enabled prefs.Value) error {
-		if img.isPlaymode() {
-			p.img.audio.Mute(false)
-		} else {
-			p.img.audio.Mute(!enabled.(bool))
-		}
+	p.audioEnabledDebugger.SetHookPost(func(enabled prefs.Value) error {
+		p.img.setAudioMute()
 		return nil
 	})
 
@@ -131,6 +129,16 @@ func newPreferences(img *SdlImgui) (*preferences, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	err = p.dsk.Add("sdlimgui.playmode.audioEnabled", &p.audioEnabledPlaymode)
+	if err != nil {
+		return nil, err
+	}
+
+	p.audioEnabledPlaymode.SetHookPost(func(enabled prefs.Value) error {
+		p.img.setAudioMute()
+		return nil
+	})
 
 	// fonts (only used when compiled with imguifreetype build tag)
 	err = p.dsk.Add("sdlimgui.fonts.gui", &p.guiFont)

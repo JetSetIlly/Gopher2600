@@ -460,6 +460,13 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 				handled = false
 			}
 
+		case sdl.SCANCODE_M:
+			if ctrl {
+				img.toggleAudioMute()
+			} else {
+				handled = false
+			}
+
 		default:
 			handled = false
 		}

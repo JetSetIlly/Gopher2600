@@ -139,7 +139,7 @@ func (win *winOscilloscope) drawTVLabel(label string) {
 	imgui.Text(fmt.Sprintf("TV Output (%s)", label))
 	imgui.SameLine()
 
-	enabled := win.img.prefs.audioEnabled.Get().(bool)
+	enabled := win.img.prefs.audioEnabledDebugger.Get().(bool)
 
 	var output string
 	if enabled {
@@ -154,7 +154,7 @@ func (win *winOscilloscope) drawTVLabel(label string) {
 	defer imgui.PopStyleColorV(3)
 
 	if imgui.Button(output) {
-		win.img.prefs.audioEnabled.Set(!enabled)
+		win.img.prefs.audioEnabledDebugger.Set(!enabled)
 	}
 }
 

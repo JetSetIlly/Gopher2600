@@ -201,6 +201,8 @@ func (aud *Audio) Reset() {
 
 // Mute silences the audio device.
 func (aud *Audio) Mute(muted bool) {
-	sdl.ClearQueuedAudio(aud.id)
+	if !muted {
+		sdl.ClearQueuedAudio(aud.id)
+	}
 	sdl.PauseAudioDevice(aud.id, muted)
 }

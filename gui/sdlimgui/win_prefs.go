@@ -166,14 +166,19 @@ func (win *winPrefs) drawPlaymodeTab() {
 	if imgui.Checkbox("Supercharger Tape Motion", &superchargerNotifications) {
 		win.img.prefs.superchargerNotifications.Set(superchargerNotifications)
 	}
+
+	audioEnabled := win.img.prefs.audioEnabledPlaymode.Get().(bool)
+	if imgui.Checkbox("Audio Enabled", &audioEnabled) {
+		win.img.prefs.audioEnabledPlaymode.Set(audioEnabled)
+	}
 }
 
 func (win *winPrefs) drawDebuggerTab() {
 	imgui.Spacing()
 
-	audioEnabled := win.img.prefs.audioEnabled.Get().(bool)
+	audioEnabled := win.img.prefs.audioEnabledDebugger.Get().(bool)
 	if imgui.Checkbox("Audio Enabled (in debugger)", &audioEnabled) {
-		win.img.prefs.audioEnabled.Set(audioEnabled)
+		win.img.prefs.audioEnabledDebugger.Set(audioEnabled)
 	}
 
 	termOnError := win.img.prefs.openOnError.Get().(bool)
@@ -324,6 +329,23 @@ func (win *winPrefs) drawVCS() {
 
 	imgui.Spacing()
 	if imgui.CollapsingHeaderV("Audio", imgui.TreeNodeFlagsNone) {
+		// enable options
+		imgui.AlignTextToFramePadding()
+		imgui.Text("Enabled")
+		imgui.SameLineV(0, 15)
+
+		audioEnabledPlaymode := win.img.prefs.audioEnabledPlaymode.Get().(bool)
+		if imgui.Checkbox("Playmode", &audioEnabledPlaymode) {
+			win.img.prefs.audioEnabledPlaymode.Set(audioEnabledPlaymode)
+		}
+
+		imgui.SameLineV(0, 15)
+		audioEnabledDebugger := win.img.prefs.audioEnabledDebugger.Get().(bool)
+		if imgui.Checkbox("Debugger", &audioEnabledDebugger) {
+			win.img.prefs.audioEnabledDebugger.Set(audioEnabledDebugger)
+		}
+
+		// stereo options
 		stereo := win.img.audio.Prefs.Stereo.Get().(bool)
 		if imgui.Checkbox("Stereo Sound", &stereo) {
 			win.img.audio.Prefs.Stereo.Set(stereo)
