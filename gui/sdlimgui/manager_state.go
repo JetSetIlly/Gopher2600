@@ -65,7 +65,18 @@ func (wm *manager) saveManagerState() (rerr error) {
 		return curated.Errorf("manager state: %v", "incorrect number of characters written to file")
 	}
 
+	// walk through debugger and playmode window lists and save state of each
+	//
+	// the state of the "ROM select" window is never saved. currently, this is
+	// the only window which is specially handled
+
 	for key, win := range wm.debuggerWindows {
+		// do not save select ROM window. having the ROM window open on
+		// debugger start is confusing
+		if key == winSelectROMID {
+			continue
+		}
+
 		s := fmt.Sprintf("%s%s%s%s%v\n", emulation.ModeDebugger.String(), prefs.KeySep, key, prefs.KeySep, win.debuggerIsOpen())
 		n, err := fmt.Fprint(f, s)
 		if err != nil {
@@ -77,6 +88,12 @@ func (wm *manager) saveManagerState() (rerr error) {
 	}
 
 	for key, win := range wm.playmodeWindows {
+		// do not save select ROM window. handling of this window is more
+		// delicate that other playmode windows
+		if key == winSelectROMID {
+			continue
+		}
+
 		s := fmt.Sprintf("%s%s%s%s%v\n", emulation.ModePlay.String(), prefs.KeySep, key, prefs.KeySep, win.playmodeIsOpen())
 		n, err := fmt.Fprint(f, s)
 		if err != nil {

@@ -161,10 +161,14 @@ func newManager(img *SdlImgui) (*manager, error) {
 
 		wm.windows[w.id()] = w
 
+		// all windows that implement the playmodeWindow interface will be
+		// added to the list of playmode windows
 		if pw, ok := w.(playmodeWindow); ok {
 			wm.playmodeWindows[pw.id()] = pw
 		}
 
+		// all windows that implement the debuggerWindow interface will be
+		// added to the list of debugger windows
 		if dw, ok := w.(debuggerWindow); ok {
 			wm.debuggerWindows[w.id()] = dw
 
