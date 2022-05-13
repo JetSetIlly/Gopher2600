@@ -242,7 +242,12 @@ func NewSdlImgui(e emulation.Emulation) (*SdlImgui, error) {
 //
 // MUST ONLY be called from the gui thread.
 func (img *SdlImgui) Destroy(output io.Writer) {
-	err := img.audio.EndMixing()
+	err := img.prefs.saveOnExitDsk.Save()
+	if err != nil {
+		output.Write([]byte(err.Error()))
+	}
+
+	err = img.audio.EndMixing()
 	if err != nil {
 		output.Write([]byte(err.Error()))
 	}
@@ -349,10 +354,10 @@ func (img *SdlImgui) setEmulationMode(mode emulation.Mode) error {
 func (img *SdlImgui) toggleAudioMute() {
 	if img.isPlaymode() {
 		m := img.prefs.audioMutePlaymode.Get().(bool)
-		img.prefs.audioMutePlaymode.Set(m)
+		img.prefs.audioMutePlaymode.Set(!m)
 	} else {
 		m := img.prefs.audioMuteDebugger.Get().(bool)
-		img.prefs.audioMuteDebugger.Set(m)
+		img.prefs.audioMuteDebugger.Set(!m)
 	}
 
 	// the act of setting the prefs value means that setAudioMute() is called

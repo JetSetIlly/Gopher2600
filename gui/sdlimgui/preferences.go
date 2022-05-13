@@ -66,6 +66,9 @@ type preferences struct {
 
 	// full screen preference
 	fullScreen prefs.Bool
+
+	// prefs that will be saved automatically on program exit
+	saveOnExitDsk *prefs.Disk
 }
 
 func newPreferences(img *SdlImgui) (*preferences, error) {
@@ -89,23 +92,63 @@ func newPreferences(img *SdlImgui) (*preferences, error) {
 		return nil, err
 	}
 
+	// main disk preferences
 	p.dsk, err = prefs.NewDisk(pth)
 	if err != nil {
 		return nil, err
 	}
 
-	// debugger
+	// disk preferences that will be saved on program exit
+	p.saveOnExitDsk, err = prefs.NewDisk(pth)
+	if err != nil {
+		return nil, err
+	}
+
 	err = p.dsk.Add("sdlimgui.debugger.terminalOnError", &p.openOnError)
 	if err != nil {
 		return nil, err
 	}
 
-	err = p.dsk.Add("sdlimgui.debugger.audioMute", &p.audioMuteDebugger)
+	err = p.dsk.Add("sdlimgui.debugger.disasm.color", &p.colorDisasm)
 	if err != nil {
 		return nil, err
 	}
 
-	err = p.dsk.Add("sdlimgui.debugger.disasm.color", &p.colorDisasm)
+	err = p.dsk.Add("sdlimgui.playmode.controllerNotifcations", &p.controllerNotifcations)
+	if err != nil {
+		return nil, err
+	}
+
+	err = p.dsk.Add("sdlimgui.playmode.plusromNotifcations", &p.plusromNotifications)
+	if err != nil {
+		return nil, err
+	}
+
+	err = p.dsk.Add("sdlimgui.playmode.superchargerNotifications", &p.superchargerNotifications)
+	if err != nil {
+		return nil, err
+	}
+
+	// fonts (only used when compiled with imguifreetype build tag)
+	err = p.dsk.Add("sdlimgui.fonts.gui", &p.guiFont)
+	if err != nil {
+		return nil, err
+	}
+	err = p.dsk.Add("sdlimgui.fonts.code", &p.codeFont)
+	if err != nil {
+		return nil, err
+	}
+	err = p.dsk.Add("sdlimgui.fonts.codeLineSpacing", &p.codeFontLineSpacing)
+	if err != nil {
+		return nil, err
+	}
+
+	// audio mute options
+	err = p.dsk.Add("sdlimgui.debugger.audioMute", &p.audioMuteDebugger)
+	if err != nil {
+		return nil, err
+	}
+	err = p.saveOnExitDsk.Add("sdlimgui.debugger.audioMute", &p.audioMuteDebugger)
 	if err != nil {
 		return nil, err
 	}
@@ -124,23 +167,11 @@ func newPreferences(img *SdlImgui) (*preferences, error) {
 		return nil
 	})
 
-	// playmode
-	err = p.dsk.Add("sdlimgui.playmode.controllerNotifcations", &p.controllerNotifcations)
-	if err != nil {
-		return nil, err
-	}
-
-	err = p.dsk.Add("sdlimgui.playmode.plusromNotifcations", &p.plusromNotifications)
-	if err != nil {
-		return nil, err
-	}
-
-	err = p.dsk.Add("sdlimgui.playmode.superchargerNotifications", &p.superchargerNotifications)
-	if err != nil {
-		return nil, err
-	}
-
 	err = p.dsk.Add("sdlimgui.playmode.audioMute", &p.audioMutePlaymode)
+	if err != nil {
+		return nil, err
+	}
+	err = p.saveOnExitDsk.Add("sdlimgui.playmode.audioMute", &p.audioMutePlaymode)
 	if err != nil {
 		return nil, err
 	}
@@ -159,21 +190,7 @@ func newPreferences(img *SdlImgui) (*preferences, error) {
 		return nil
 	})
 
-	// fonts (only used when compiled with imguifreetype build tag)
-	err = p.dsk.Add("sdlimgui.fonts.gui", &p.guiFont)
-	if err != nil {
-		return nil, err
-	}
-	err = p.dsk.Add("sdlimgui.fonts.code", &p.codeFont)
-	if err != nil {
-		return nil, err
-	}
-	err = p.dsk.Add("sdlimgui.fonts.codeLineSpacing", &p.codeFontLineSpacing)
-	if err != nil {
-		return nil, err
-	}
-
-	// load off disk
+	// load all preferences off disk
 	err = p.dsk.Load(true)
 	if err != nil {
 		return nil, err

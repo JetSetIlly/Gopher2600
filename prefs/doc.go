@@ -42,6 +42,16 @@
 // program in the normal way. Changes can be committed to disk wit the
 // Disk.Save() function and restoried with Disk.Load().
 //
+//Prefs valus and Multiple Disk Instances
+//
+// A prefs values can be added to more than one disk intance at once. Moreover,
+// more than disk instance can point to the same file on disk.
+//
+// This is useful when only wanting to save a subset of prefs values. The
+// values that are to be saved can be allocated to a limited disk object and be
+// saved. Values that exist on the physical disk but which are missing from the
+// limited disk object will be preserved.
+//
 //Concurrency
 //
 // Generally, it is safe to access a prefs value from any goroutine. However,
