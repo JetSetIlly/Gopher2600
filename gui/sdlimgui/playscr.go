@@ -61,8 +61,7 @@ type playScr struct {
 	// number of scanlines in current image. taken from screen but is crit section safe
 	visibleScanlines int
 
-	// fps
-	fpsOpen  bool
+	// fps overlay
 	fpsPulse *time.Ticker
 	fps      string
 	hz       string
@@ -140,8 +139,13 @@ func (win *playScr) draw() {
 	}
 }
 
+func (win *playScr) toggleFPS() {
+	fps := win.img.prefs.fpsOverlay.Get().(bool)
+	win.img.prefs.fpsOverlay.Set(!fps)
+}
+
 func (win *playScr) drawFPS() bool {
-	if !win.fpsOpen {
+	if !win.img.prefs.fpsOverlay.Get().(bool) {
 		return false
 	}
 
@@ -163,7 +167,8 @@ func (win *playScr) drawFPS() bool {
 	imgui.PushStyleColor(imgui.StyleColorWindowBg, win.img.cols.Transparent)
 	imgui.PushStyleColor(imgui.StyleColorBorder, win.img.cols.Transparent)
 
-	imgui.BeginV("##playscrfps", &win.fpsOpen, imgui.WindowFlagsAlwaysAutoResize|
+	fpsOpen := true
+	imgui.BeginV("##playscrfps", &fpsOpen, imgui.WindowFlagsAlwaysAutoResize|
 		imgui.WindowFlagsNoScrollbar|imgui.WindowFlagsNoTitleBar|
 		imgui.WindowFlagsNoDecoration|imgui.WindowFlagsNoSavedSettings|
 		imgui.WindowFlagsNoBringToFrontOnFocus)

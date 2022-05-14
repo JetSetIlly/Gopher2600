@@ -104,7 +104,8 @@ func (pn *peripheralNotification) draw(win *playScr) {
 	imgui.PushStyleColor(imgui.StyleColorWindowBg, win.img.cols.Transparent)
 	imgui.PushStyleColor(imgui.StyleColorBorder, win.img.cols.Transparent)
 
-	imgui.BeginV(id, &win.fpsOpen, imgui.WindowFlagsAlwaysAutoResize|
+	periphOpen := true
+	imgui.BeginV(id, &periphOpen, imgui.WindowFlagsAlwaysAutoResize|
 		imgui.WindowFlagsNoScrollbar|imgui.WindowFlagsNoTitleBar|
 		imgui.WindowFlagsNoDecoration|imgui.WindowFlagsNoSavedSettings)
 

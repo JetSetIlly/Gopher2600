@@ -353,7 +353,7 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 				}
 
 			case sdl.SCANCODE_F7:
-				img.playScr.fpsOpen = !img.playScr.fpsOpen
+				img.playScr.toggleFPS()
 
 			default:
 				handled = false

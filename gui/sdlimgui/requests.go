@@ -151,7 +151,7 @@ func (img *SdlImgui) serviceSetFeature(request featureRequest) {
 		}
 
 	case gui.ReqShowFPS:
-		img.playScr.fpsOpen = !img.playScr.fpsOpen
+		img.playScr.toggleFPS()
 
 	default:
 		err = curated.Errorf(gui.UnsupportedGuiFeature, request.request)

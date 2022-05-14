@@ -50,6 +50,7 @@ type preferences struct {
 
 	// playmode preferences
 	audioMutePlaymode prefs.Bool
+	fpsOverlay        prefs.Bool
 
 	// playmode notifications
 	controllerNotifcations    prefs.Bool
@@ -81,11 +82,12 @@ func newPreferences(img *SdlImgui) (*preferences, error) {
 	p.terminalOnError.Set(true)
 	p.audioMuteDebugger.Set(true)
 	p.colorDisasm.Set(true)
+	p.fpsOverlay.Set(false)
+	p.audioMutePlaymode.Set(false)
 	p.controllerNotifcations.Set(true)
 	p.plusromNotifications.Set(true)
 	p.superchargerNotifications.Set(true)
 	p.audioMuteNotification.Set(true)
-	p.audioMutePlaymode.Set(false)
 	p.guiFont.Set(13.0)
 	p.codeFont.Set(15.0)
 	p.codeFontLineSpacing.Set(2.0)
@@ -118,6 +120,18 @@ func newPreferences(img *SdlImgui) (*preferences, error) {
 		return nil, err
 	}
 
+	// debugger audio mute options later
+
+	// playmode options
+	err = p.dsk.Add("sdlimgui.playmode.fpsOverlay", &p.fpsOverlay)
+	if err != nil {
+		return nil, err
+	}
+	err = p.saveOnExitDsk.Add("sdlimgui.playmode.fpsOverlay", &p.fpsOverlay)
+	if err != nil {
+		return nil, err
+	}
+
 	err = p.dsk.Add("sdlimgui.playmode.controllerNotifcations", &p.controllerNotifcations)
 	if err != nil {
 		return nil, err
@@ -137,6 +151,8 @@ func newPreferences(img *SdlImgui) (*preferences, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// playmode audio mute options later
 
 	// fonts (only used when compiled with imguifreetype build tag)
 	err = p.dsk.Add("sdlimgui.fonts.gui", &p.guiFont)
