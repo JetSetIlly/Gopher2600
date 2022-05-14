@@ -126,4 +126,6 @@ const (
 	EventRewindAtStart
 	EventRewindAtEnd
 	EventScreenshot
+	EventMute
+	EventUnmute
 )

@@ -41,7 +41,7 @@ type preferences struct {
 	dsk *prefs.Disk
 
 	// debugger preferences
-	openOnError       prefs.Bool
+	terminalOnError   prefs.Bool
 	audioMuteDebugger prefs.Bool
 
 	// disasm (there are preferences in the disassembly package that the gui
@@ -49,10 +49,13 @@ type preferences struct {
 	colorDisasm prefs.Bool
 
 	// playmode preferences
+	audioMutePlaymode prefs.Bool
+
+	// playmode notifications
 	controllerNotifcations    prefs.Bool
 	plusromNotifications      prefs.Bool
 	superchargerNotifications prefs.Bool
-	audioMutePlaymode         prefs.Bool
+	audioMuteNotification     prefs.Bool
 
 	// fonts
 	guiFont             prefs.Float
@@ -75,12 +78,13 @@ func newPreferences(img *SdlImgui) (*preferences, error) {
 	p := &preferences{img: img}
 
 	// defaults
-	p.openOnError.Set(true)
+	p.terminalOnError.Set(true)
 	p.audioMuteDebugger.Set(true)
 	p.colorDisasm.Set(true)
 	p.controllerNotifcations.Set(true)
 	p.plusromNotifications.Set(true)
 	p.superchargerNotifications.Set(true)
+	p.audioMuteNotification.Set(true)
 	p.audioMutePlaymode.Set(false)
 	p.guiFont.Set(13.0)
 	p.codeFont.Set(15.0)
@@ -104,7 +108,7 @@ func newPreferences(img *SdlImgui) (*preferences, error) {
 		return nil, err
 	}
 
-	err = p.dsk.Add("sdlimgui.debugger.terminalOnError", &p.openOnError)
+	err = p.dsk.Add("sdlimgui.debugger.terminalOnError", &p.terminalOnError)
 	if err != nil {
 		return nil, err
 	}
@@ -125,6 +129,11 @@ func newPreferences(img *SdlImgui) (*preferences, error) {
 	}
 
 	err = p.dsk.Add("sdlimgui.playmode.superchargerNotifications", &p.superchargerNotifications)
+	if err != nil {
+		return nil, err
+	}
+
+	err = p.dsk.Add("sdlimgui.playmode.audioMuteNotification", &p.audioMuteNotification)
 	if err != nil {
 		return nil, err
 	}

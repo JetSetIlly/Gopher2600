@@ -168,9 +168,9 @@ func (win *winPrefs) drawPlaymodeTab() {
 		win.img.prefs.superchargerNotifications.Set(superchargerNotifications)
 	}
 
-	audioMute := win.img.prefs.audioMutePlaymode.Get().(bool)
-	if imgui.Checkbox("Audio Mute", &audioMute) {
-		win.img.prefs.audioMutePlaymode.Set(audioMute)
+	audioMuteNotification := win.img.prefs.audioMuteNotification.Get().(bool)
+	if imgui.Checkbox("Audio Mute Indicator", &audioMuteNotification) {
+		win.img.prefs.audioMuteNotification.Set(audioMuteNotification)
 	}
 }
 
@@ -182,9 +182,9 @@ func (win *winPrefs) drawDebuggerTab() {
 		win.img.prefs.audioMuteDebugger.Set(audioMute)
 	}
 
-	termOnError := win.img.prefs.openOnError.Get().(bool)
+	termOnError := win.img.prefs.terminalOnError.Get().(bool)
 	if imgui.Checkbox("Open Terminal on Error", &termOnError) {
-		err := win.img.prefs.openOnError.Set(termOnError)
+		err := win.img.prefs.terminalOnError.Set(termOnError)
 		if err != nil {
 			logger.Logf("sdlimgui", "could not set preference value: %v", err)
 		}

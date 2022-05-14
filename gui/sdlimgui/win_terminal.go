@@ -89,7 +89,7 @@ func (win *winTerm) debuggerDraw() {
 				win.output = append(win.output, t)
 			}
 
-			if win.img.prefs.openOnError.Get().(bool) && t.style == terminal.StyleError {
+			if win.img.prefs.terminalOnError.Get().(bool) && t.style == terminal.StyleError {
 				win.debuggerSetOpen(true)
 			}
 

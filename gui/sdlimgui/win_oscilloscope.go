@@ -144,9 +144,9 @@ func (win *winOscilloscope) drawTVLabel(label string) {
 	audioMute := win.img.prefs.audioMuteDebugger.Get().(bool)
 
 	if audioMute {
-		output = fmt.Sprintf("%c muted", fonts.AudioMute)
+		output = string(fonts.AudioMute)
 	} else {
-		output = fmt.Sprintf("%c", fonts.AudioUnmute)
+		output = string(fonts.AudioUnmute)
 	}
 
 	imgui.PushStyleColor(imgui.StyleColorButton, win.img.cols.Transparent)

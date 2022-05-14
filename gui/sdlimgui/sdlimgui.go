@@ -376,6 +376,12 @@ func (img *SdlImgui) setAudioMute() {
 
 	if img.isPlaymode() {
 		mute = img.prefs.audioMutePlaymode.Get().(bool)
+
+		if mute {
+			img.playScr.emulationEvent.set(emulation.EventMute)
+		} else {
+			img.playScr.emulationEvent.set(emulation.EventUnmute)
+		}
 	} else {
 		mute = img.prefs.audioMuteDebugger.Get().(bool)
 	}

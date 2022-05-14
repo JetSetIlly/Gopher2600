@@ -121,18 +121,27 @@ type emulationEventNotification struct {
 	open         bool
 	currentEvent emulation.Event
 	frames       int
+
+	// audio mute is handled differently to other events. we want the icon for
+	// mute to always be shown unless another icon event has been received
+	// since. when the previous event expires we want to reassign EventMute to
+	// currentEvent
+	mute bool
 }
 
 func (ee *emulationEventNotification) set(event emulation.Event) {
 	ee.currentEvent = event
 	ee.open = true
+	ee.frames = notificationDurationEvent
 	switch event {
 	case emulation.EventRun:
 		ee.frames = notificationDurationEventRun
 	case emulation.EventScreenshot:
 		ee.frames = notificationDurationScreenshot
-	default:
-		ee.frames = notificationDurationEvent
+	case emulation.EventMute:
+		ee.mute = true
+	case emulation.EventUnmute:
+		ee.mute = false
 	}
 }
 
@@ -149,29 +158,42 @@ func (ee *emulationEventNotification) tick() {
 			ee.currentEvent = emulation.EventPause
 		}
 
+		// special handling of open when current event is EventPause or if mute
+		// is enabled
 		if ee.currentEvent != emulation.EventPause {
-			ee.open = false
+			if ee.mute {
+				ee.open = true
+				ee.currentEvent = emulation.EventMute
+			} else {
+				ee.open = false
+			}
 		}
 	}
 }
 
-func (ee *emulationEventNotification) draw(win *playScr) {
+func (ee *emulationEventNotification) draw(win *playScr, hosted bool) {
 	if !ee.open {
 		return
 	}
 
 	ee.tick()
 
-	imgui.SetNextWindowPos(imgui.Vec2{X: 10, Y: 10})
-	imgui.PushStyleColor(imgui.StyleColorWindowBg, win.img.cols.Transparent)
-	imgui.PushStyleColor(imgui.StyleColorBorder, win.img.cols.Transparent)
+	if !hosted {
+		imgui.SetNextWindowPos(imgui.Vec2{X: 10, Y: 10})
+		imgui.PushStyleColor(imgui.StyleColorWindowBg, win.img.cols.Transparent)
+		imgui.PushStyleColor(imgui.StyleColorBorder, win.img.cols.Transparent)
+		defer imgui.PopStyleColorV(2)
 
-	imgui.BeginV("##cartridgeevent", &ee.open, imgui.WindowFlagsAlwaysAutoResize|
-		imgui.WindowFlagsNoScrollbar|imgui.WindowFlagsNoTitleBar|
-		imgui.WindowFlagsNoDecoration|imgui.WindowFlagsNoSavedSettings|
-		imgui.WindowFlagsNoBringToFrontOnFocus)
+		imgui.BeginV("##cartridgeevent", &ee.open, imgui.WindowFlagsAlwaysAutoResize|
+			imgui.WindowFlagsNoScrollbar|imgui.WindowFlagsNoTitleBar|
+			imgui.WindowFlagsNoDecoration|imgui.WindowFlagsNoSavedSettings|
+			imgui.WindowFlagsNoBringToFrontOnFocus)
+		defer imgui.End()
 
-	imgui.PushFont(win.img.glsl.fonts.veryLargeFontAwesome)
+		imgui.PushFont(win.img.glsl.fonts.veryLargeFontAwesome)
+		defer imgui.PopFont()
+	}
+
 	switch ee.currentEvent {
 	case emulation.EventInitialising:
 		imgui.Text("")
@@ -189,11 +211,11 @@ func (ee *emulationEventNotification) draw(win *playScr) {
 		imgui.Text(string(fonts.EmulationRewindAtEnd))
 	case emulation.EventScreenshot:
 		imgui.Text(string(fonts.Camera))
+	case emulation.EventMute:
+		if hosted || win.img.prefs.audioMuteNotification.Get().(bool) {
+			imgui.Text(string(fonts.AudioMute))
+		}
 	}
-	imgui.PopFont()
-
-	imgui.PopStyleColorV(2)
-	imgui.End()
 }
 
 // cartridgeEventNotification is used to draw an indicator on the screen for cartridge
