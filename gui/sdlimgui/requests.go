@@ -150,9 +150,6 @@ func (img *SdlImgui) serviceSetFeature(request featureRequest) {
 			img.wm.playmodeWindows[winBotID].(*winBot).startBotSession(f)
 		}
 
-	case gui.ReqShowFPS:
-		img.playScr.toggleFPS()
-
 	default:
 		err = curated.Errorf(gui.UnsupportedGuiFeature, request.request)
 	}
