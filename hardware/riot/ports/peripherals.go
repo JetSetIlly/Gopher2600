@@ -75,13 +75,6 @@ type DisablePeripheral interface {
 	Disable(bool)
 }
 
-// MutePeripheral is implemented by peripherals that produce audio independent
-// of the emulators sound output. This is useful for implementations that call
-// on third-party applications/processes to produce output.
-type MutePeripheral interface {
-	Mute(bool)
-}
-
 // NewPeripheral defines the function signature for a creating a new
 // peripheral, suitable for use with AttachPloyer0() and AttachPlayer1().
 type NewPeripheral func(*instance.Instance, plugging.PortID, PeripheralBus) Peripheral

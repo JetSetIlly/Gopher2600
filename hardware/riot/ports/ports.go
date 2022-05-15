@@ -71,6 +71,10 @@ type Ports struct {
 	// peripheral (the panel) before SWBCNT has been applied to it
 	swchb_w   uint8
 	swchb_raw uint8
+
+	// state of peripheral audio output. applies to peripherals that implement
+	// ports.mutePeripheral interface
+	peripheralsMuted bool
 }
 
 // NewPorts is the preferred method of initialisation of the Ports type.
@@ -161,6 +165,9 @@ func (p *Ports) Plug(port plugging.PortID, c NewPeripheral) error {
 
 	periph.Reset()
 
+	// make sure any new audio producing peripherals are aware of the mute state
+	p.MutePeripherals(p.peripheralsMuted)
+
 	return nil
 }
 
@@ -182,6 +189,26 @@ func (p *Ports) String() string {
 		s.WriteString("[SWCHB has been poked] ")
 	}
 	return s.String()
+}
+
+// mutePeripheral is implemented by peripherals that produce audio independent
+// of the emulators sound output. This is useful for implementations that call
+// on third-party applications/processes to produce output.
+//
+// used exclusively by the MutePeripherals() function
+type mutePeripheral interface {
+	Mute(bool)
+}
+
+// MutePeripherals sets the mute state of peripherals that implement the mutePeripheral interface.
+func (p *Ports) MutePeripherals(muted bool) {
+	if r, ok := p.LeftPlayer.(mutePeripheral); ok {
+		r.Mute(muted)
+	}
+	if r, ok := p.RightPlayer.(mutePeripheral); ok {
+		r.Mute(muted)
+	}
+	p.peripheralsMuted = muted
 }
 
 // RestartPeripherals calls restart on any attached peripherals that implement

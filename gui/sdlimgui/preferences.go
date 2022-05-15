@@ -18,7 +18,6 @@ import (
 	"fmt"
 
 	"github.com/jetsetilly/gopher2600/emulation"
-	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
 	"github.com/jetsetilly/gopher2600/prefs"
 	"github.com/jetsetilly/gopher2600/resources"
 )
@@ -180,15 +179,7 @@ func newPreferences(img *SdlImgui) (*preferences, error) {
 
 	p.audioMuteDebugger.SetHookPost(func(muted prefs.Value) error {
 		p.img.setAudioMute()
-
-		// mute peripherals too
-		if r, ok := img.vcs.RIOT.Ports.LeftPlayer.(ports.MutePeripheral); ok {
-			r.Mute(muted.(bool))
-		}
-		if r, ok := img.vcs.RIOT.Ports.RightPlayer.(ports.MutePeripheral); ok {
-			r.Mute(muted.(bool))
-		}
-
+		img.vcs.RIOT.Ports.MutePeripherals(muted.(bool))
 		return nil
 	})
 
@@ -203,15 +194,7 @@ func newPreferences(img *SdlImgui) (*preferences, error) {
 
 	p.audioMutePlaymode.SetHookPost(func(muted prefs.Value) error {
 		p.img.setAudioMute()
-
-		// mute peripherals too
-		if r, ok := img.vcs.RIOT.Ports.LeftPlayer.(ports.MutePeripheral); ok {
-			r.Mute(muted.(bool))
-		}
-		if r, ok := img.vcs.RIOT.Ports.RightPlayer.(ports.MutePeripheral); ok {
-			r.Mute(muted.(bool))
-		}
-
+		img.vcs.RIOT.Ports.MutePeripherals(muted.(bool))
 		return nil
 	})
 
