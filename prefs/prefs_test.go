@@ -234,14 +234,14 @@ func TestGeneric(t *testing.T) {
 	var w, h int
 
 	v := prefs.NewGeneric(
-		func(s string) error {
-			_, err := fmt.Sscanf(s, "%d,%d", &w, &h)
+		func(s prefs.Value) error {
+			_, err := fmt.Sscanf(s.(string), "%d,%d", &w, &h)
 			if err != nil {
 				return err
 			}
 			return nil
 		},
-		func() string {
+		func() prefs.Value {
 			return fmt.Sprintf("%d,%d", w, h)
 		},
 	)

@@ -19,7 +19,7 @@
 // interested in for a given task. Loading and saving a preference will ignore
 // and preserve values that haven't been added to the "Disk" type.
 //
-// The Disk type is the key resource in the package. First, create new Disk
+// The Disk type is the key resource in the package. First, create new a Disk
 // instance with NewDisk(), specifying the location of the preferences file
 // (using resources.ResourcePath() as necessary).
 //
@@ -27,20 +27,19 @@
 //	prf := prefs.NewDisk(fn)
 //
 // Preference value can then be added with the Add() function, specifying the
-// "key" value. For clarity, the key value should be similar to the name of the
+// "key" value. For clarity the key value should be similar to the name of the
 // variable as used in the calling code, although this isn't required (note the
 // restrictions on the key value in the documtation for the Add() function).
 //
 //	prf.Add("auto", &auto)
 //
 // Values that are added to the Disk type must use one of the preference types
-// defined in this package. Currently, there are Bool, String and Int types.
-// There is also a Generic type, that allows the Set() and Get() functions to
-// be defined as appropriate
+// defined in this package. Currently, there are Bool, String and Int types and
+// also a Generic type (unreleated to Go "generics").
 //
 // Once added to the disk object, preference values can be changed in the
-// program in the normal way. Changes can be committed to disk wit the
-// Disk.Save() function and restoried with Disk.Load().
+// program in the normal way. Changes can be committed to disk with the
+// Disk.Save() function and restored with Disk.Load().
 //
 //Prefs valus and Multiple Disk Instances
 //

@@ -77,10 +77,10 @@ func NewDisk(path string) (*Disk, error) {
 	return dsk, nil
 }
 
-// Add preference value to list of values to store/load from Disk. The id is
-// used to identify the preference value on disk and should only consist of
-// alphabetic characters or the period character. The program will panic if
-// these constraints are not met.
+// Add preference value to list of values to store/load from Disk. The key
+// value is used to identify the preference value on disk and should only
+// consist of alphabetic characters or the period character. The program will
+// panic if these constraints are not met.
 func (dsk *Disk) Add(key string, p pref) error {
 	for _, r := range key {
 		if !(r == '.' || r == '_' || unicode.IsLetter(r) || unicode.IsDigit(r)) {

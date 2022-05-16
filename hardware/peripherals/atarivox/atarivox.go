@@ -188,7 +188,11 @@ func (vox *AtariVox) Disable(disabled bool) {
 	vox.disabled = disabled
 }
 
-// Restart implements the ports.MutePeripheral interface.
+// Mute silences atarivox output for the duration muted is true.
+//
+// This implements a private mutePeripheral interface in the ports package. It
+// should not be called directly except via the Mute() function in the Ports
+// implementation.
 func (vox *AtariVox) Mute(muted bool) {
 	vox.muted = muted
 }

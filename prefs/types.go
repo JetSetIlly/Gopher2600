@@ -402,16 +402,14 @@ func (p *Float) SetHookPost(f func(value Value) error) {
 // function. It is also slower than other prefs types because it must protect
 // potential critical sections with a mutex (other types can use an atomic
 // value).
-//
-// if get returns "" then the most recent value sent to set() will be used.
 type Generic struct {
 	pref
 	crit sync.Mutex
-	set  func(string) error
-	get  func() string
+	set  func(Value) error
+	get  func() Value
 
 	// the last value sent to set() function
-	mostRecentSetValue string
+	mostRecentSetValue Value
 }
 
 // GenericGetValueUndefined is a special return value for the get() function
@@ -420,7 +418,7 @@ type Generic struct {
 const GenericGetValueUndefined = "GenericGetValueUndefined"
 
 // NewGeneric is the preferred method of initialisation for the Generic type.
-func NewGeneric(set func(string) error, get func() string) *Generic {
+func NewGeneric(set func(Value) error, get func() Value) *Generic {
 	return &Generic{
 		set: set,
 		get: get,
@@ -428,7 +426,7 @@ func NewGeneric(set func(string) error, get func() string) *Generic {
 }
 
 func (p *Generic) String() string {
-	return p.Get().(string)
+	return fmt.Sprintf("%v", p.Get())
 }
 
 // Set triggers the set value procedure for the generic type.

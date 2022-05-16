@@ -39,6 +39,9 @@ type preferences struct {
 	// sdlimgui preferences on disk
 	dsk *prefs.Disk
 
+	// prefs that will be saved automatically on program exit
+	saveOnExitDsk *prefs.Disk
+
 	// debugger preferences
 	terminalOnError   prefs.Bool
 	audioMuteDebugger prefs.Bool
@@ -67,11 +70,8 @@ type preferences struct {
 	dskWinGeom       *prefs.Disk
 	dskWinFullScreen *prefs.Disk
 
-	// full screen preference
+	// full screen preference. will be set according to the current emulation mode
 	fullScreen prefs.Bool
-
-	// prefs that will be saved automatically on program exit
-	saveOnExitDsk *prefs.Disk
 }
 
 func newPreferences(img *SdlImgui) (*preferences, error) {
@@ -122,11 +122,12 @@ func newPreferences(img *SdlImgui) (*preferences, error) {
 	// debugger audio mute options later
 
 	// playmode options
-	err = p.dsk.Add("sdlimgui.playmode.fpsOverlay", &p.fpsOverlay)
+	key := "sdlimgui.playmode.fpsOverlay"
+	err = p.dsk.Add(key, &p.fpsOverlay)
 	if err != nil {
 		return nil, err
 	}
-	err = p.saveOnExitDsk.Add("sdlimgui.playmode.fpsOverlay", &p.fpsOverlay)
+	err = p.saveOnExitDsk.Add(key, &p.fpsOverlay)
 	if err != nil {
 		return nil, err
 	}
@@ -168,11 +169,12 @@ func newPreferences(img *SdlImgui) (*preferences, error) {
 	}
 
 	// audio mute options
-	err = p.dsk.Add("sdlimgui.debugger.audioMute", &p.audioMuteDebugger)
+	key = "sdlimgui.debugger.audioMute"
+	err = p.dsk.Add(key, &p.audioMuteDebugger)
 	if err != nil {
 		return nil, err
 	}
-	err = p.saveOnExitDsk.Add("sdlimgui.debugger.audioMute", &p.audioMuteDebugger)
+	err = p.saveOnExitDsk.Add(key, &p.audioMuteDebugger)
 	if err != nil {
 		return nil, err
 	}
@@ -183,11 +185,12 @@ func newPreferences(img *SdlImgui) (*preferences, error) {
 		return nil
 	})
 
-	err = p.dsk.Add("sdlimgui.playmode.audioMute", &p.audioMutePlaymode)
+	key = "sdlimgui.playmode.audioMute"
+	err = p.dsk.Add(key, &p.audioMutePlaymode)
 	if err != nil {
 		return nil, err
 	}
-	err = p.saveOnExitDsk.Add("sdlimgui.playmode.audioMute", &p.audioMutePlaymode)
+	err = p.saveOnExitDsk.Add(key, &p.audioMutePlaymode)
 	if err != nil {
 		return nil, err
 	}
@@ -288,10 +291,10 @@ func (p *preferences) loadWindowPreferences() error {
 	}
 
 	err = p.dskWinGeom.Add(fmt.Sprintf("%s.windowGeometry", group), prefs.NewGeneric(
-		func(s string) error {
+		func(s prefs.Value) error {
 			var w, h int32
 			var x, y int32
-			_, err := fmt.Sscanf(s, "%d, %d, %d, %d", &x, &y, &w, &h)
+			_, err := fmt.Sscanf(s.(string), "%d, %d, %d, %d", &x, &y, &w, &h)
 			if err != nil {
 				return err
 			}
@@ -304,7 +307,7 @@ func (p *preferences) loadWindowPreferences() error {
 
 			return nil
 		},
-		func() string {
+		func() prefs.Value {
 			// if emulation is not running full screen, return the window
 			// geometry...
 			if !p.fullScreen.Get().(bool) {
