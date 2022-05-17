@@ -257,12 +257,14 @@ func (img *SdlImgui) Destroy(output io.Writer) {
 		output.Write([]byte(err.Error()))
 	}
 
-	img.glsl.destroy()
-
 	err = img.plt.destroy()
 	if err != nil {
 		output.Write([]byte(err.Error()))
 	}
+
+	// destroying glsl after platform or we'll get a panic when window is
+	// opened in full screen
+	img.glsl.destroy()
 
 	img.context.Destroy()
 }
