@@ -173,7 +173,7 @@ func (win *winCoProcGlobals) draw() {
 
 		for _, varb := range src.SortedGlobals.Variables {
 			if win.showAllGlobals || varb.DeclLine.File.Filename == win.selectedFile.Filename {
-				win.drawVariable(src, varb, 0, 0)
+				win.drawVariable(src, varb, 0, 0, false)
 			}
 		}
 
@@ -201,9 +201,56 @@ func (win *winCoProcGlobals) draw() {
 	})
 }
 
+func (win *winCoProcGlobals) drawVariableTooltip(varb *developer.SourceVariable, value uint32) {
+	imguiTooltip(func() {
+		imgui.Text(varb.Name)
+		imgui.SameLine()
+		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcVariablesType)
+		imgui.Text(varb.Type.Name)
+		imgui.PopStyleColor()
+
+		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcVariablesTypeSize)
+		imgui.Text(fmt.Sprintf("%d bytes", varb.Type.Size))
+		imgui.PopStyleColor()
+
+		if !(varb.IsArray() || varb.IsComposite()) {
+			imgui.Spacing()
+			imgui.Separator()
+			imgui.Spacing()
+
+			imgui.Text("Hex: ")
+			imgui.SameLine()
+			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcVariablesNotes)
+			imgui.Text(fmt.Sprintf(varb.Type.Hex(), value))
+			imgui.PopStyleColor()
+
+			imgui.Text("Dec: ")
+			imgui.SameLine()
+			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcVariablesNotes)
+			imgui.Text(fmt.Sprintf("%d", value))
+			imgui.PopStyleColor()
+
+			imgui.Text("Bin: ")
+			imgui.SameLine()
+			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcVariablesNotes)
+			imgui.Text(fmt.Sprintf(varb.Type.Bin(), value))
+			imgui.PopStyleColor()
+		}
+
+		imgui.Spacing()
+		imgui.Separator()
+		imgui.Spacing()
+
+		imgui.Text(varb.DeclLine.File.ShortFilename)
+		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLineNumber)
+		imgui.Text(fmt.Sprintf("Line: %d", varb.DeclLine.LineNumber))
+		imgui.PopStyleColor()
+	}, true)
+}
+
 func (win *winCoProcGlobals) drawVariable(src *developer.Source,
 	varb *developer.SourceVariable, baseAddress uint64,
-	indentLevel int) {
+	indentLevel int, unnamed bool) {
 
 	address := varb.Address
 	if varb.AddressIsOffset() {
@@ -212,37 +259,26 @@ func (win *winCoProcGlobals) drawVariable(src *developer.Source,
 	}
 
 	const IndentDepth = 2
-	name := fmt.Sprintf("%s%s", strings.Repeat(" ", IndentDepth*indentLevel), varb.Name)
+
+	var name string
+	if unnamed {
+		name = fmt.Sprintf("%s%s", strings.Repeat(" ", IndentDepth*indentLevel), string(fonts.Pointer))
+	} else {
+		name = fmt.Sprintf("%s%s", strings.Repeat(" ", IndentDepth*indentLevel), varb.Name)
+	}
+
+	imgui.TableNextRow()
+
+	imgui.TableNextColumn()
+	imgui.PushStyleColor(imgui.StyleColorHeaderHovered, win.img.cols.CoProcSourceHover)
+	imgui.PushStyleColor(imgui.StyleColorHeaderActive, win.img.cols.CoProcSourceHover)
+	imgui.SelectableV(name, false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{0, 0})
+	imgui.PopStyleColorV(2)
 
 	if varb.IsComposite() || varb.IsArray() {
-		imgui.TableNextRow()
+		nodeID := fmt.Sprintf("%d_%s_%x_%x", indentLevel, varb.Name, baseAddress, address)
 
-		imgui.TableNextColumn()
-		imgui.PushStyleColor(imgui.StyleColorHeaderHovered, win.img.cols.CoProcSourceHover)
-		imgui.PushStyleColor(imgui.StyleColorHeaderActive, win.img.cols.CoProcSourceHover)
-		imgui.SelectableV(name, false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{0, 0})
-		imgui.PopStyleColorV(2)
-
-		imguiTooltip(func() {
-			imgui.Text(varb.Name)
-			imgui.SameLine()
-			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcVariablesType)
-			imgui.Text(varb.Type.Name)
-			imgui.PopStyleColor()
-
-			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcVariablesTypeSize)
-			imgui.Text(fmt.Sprintf("%d bytes", varb.Type.Size))
-			imgui.PopStyleColor()
-
-			imgui.Spacing()
-			imgui.Separator()
-			imgui.Spacing()
-
-			imgui.Text(varb.DeclLine.File.ShortFilename)
-			imgui.Text(fmt.Sprintf("Line: %d", varb.DeclLine.LineNumber))
-		}, true)
-
-		nodeID := fmt.Sprintf("%s_%x", varb.Name, baseAddress+varb.Address)
+		win.drawVariableTooltip(varb, 0)
 
 		if imgui.IsItemClicked() {
 			win.openNodes[nodeID] = !win.openNodes[nodeID]
@@ -268,74 +304,95 @@ func (win *winCoProcGlobals) drawVariable(src *developer.Source,
 		if win.openNodes[nodeID] {
 			if varb.IsComposite() {
 				for _, memb := range varb.Type.Members {
-					win.drawVariable(src, memb, address, indentLevel+1)
+					win.drawVariable(src, memb, address, indentLevel+1, false)
 				}
 			} else if varb.IsArray() {
 				for i := 0; i < varb.Type.ElementCount; i++ {
 					elem := &developer.SourceVariable{
 						Name:     fmt.Sprintf("%s[%d]", varb.Name, i),
-						Type:     varb.Type.BaseType,
+						Type:     varb.Type.ElementType,
 						DeclLine: varb.DeclLine,
-						Address:  address + uint64(i*varb.Type.BaseType.Size),
+						Address:  address + uint64(i*varb.Type.ElementType.Size),
 					}
-					win.drawVariable(src, elem, elem.Address, indentLevel+1)
+					win.drawVariable(src, elem, elem.Address, indentLevel+1, false)
 				}
 			}
 		}
+	} else if varb.IsPointer() {
+		nodeID := fmt.Sprintf("%d_%s_%x_%x", indentLevel, varb.Name, baseAddress, address)
 
+		if imgui.IsItemClicked() {
+			win.openNodes[nodeID] = !win.openNodes[nodeID]
+		}
+
+		value, valueOk := win.readMemory(address)
+		value &= varb.Type.Mask()
+
+		if valueOk {
+			win.drawVariableTooltip(varb, value)
+		}
+
+		imgui.TableNextColumn()
+		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcVariablesType)
+		imgui.Text(varb.Type.Name)
+		imgui.PopStyleColor()
+
+		imgui.TableNextColumn()
+		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcVariablesAddress)
+		imgui.Text(fmt.Sprintf("%08x", address))
+		imgui.PopStyleColor()
+
+		imgui.TableNextColumn()
+
+		dereference := false
+		if win.openNodes[nodeID] {
+			imgui.Text(string(fonts.TreeOpen))
+			imgui.SameLine()
+			dereference = true
+		} else {
+			imgui.Text(string(fonts.TreeClosed))
+			imgui.SameLine()
+		}
+
+		if valueOk {
+			imgui.Text(fmt.Sprintf("*%s", fmt.Sprintf(varb.Type.Hex(), value)))
+		} else {
+			imgui.Text("-")
+		}
+
+		if dereference {
+			if varb.Type.PointerType.IsArray() || varb.Type.PointerType.IsComposite() {
+				if d, ok := src.GlobalsByAddress[uint64(value)]; ok {
+					win.drawVariable(src, d, address, indentLevel+1, true)
+				} else {
+					imgui.TableNextRow()
+					imgui.TableNextColumn()
+					imgui.Text(strings.Repeat(" ", IndentDepth*indentLevel))
+
+					imgui.SameLine()
+					imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.Warning)
+					imgui.Text(fmt.Sprintf(" %c", fonts.Warning))
+					imgui.PopStyleColor()
+
+					imgui.SameLine()
+					imgui.Text("invalid dereference")
+				}
+			} else {
+				deref := &developer.SourceVariable{
+					Name:     varb.Name,
+					Type:     varb.Type.PointerType,
+					DeclLine: varb.DeclLine,
+					Address:  uint64(value),
+				}
+				win.drawVariable(src, deref, deref.Address, indentLevel+1, true)
+			}
+		}
 	} else {
 		value, valueOk := win.readMemory(address)
 		value &= varb.Type.Mask()
 
-		imgui.TableNextRow()
-
-		imgui.TableNextColumn()
-		imgui.PushStyleColor(imgui.StyleColorHeaderHovered, win.img.cols.CoProcSourceHover)
-		imgui.PushStyleColor(imgui.StyleColorHeaderActive, win.img.cols.CoProcSourceHover)
-		imgui.SelectableV(name, false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{0, 0})
-		imgui.PopStyleColorV(2)
-
 		if valueOk {
-			imguiTooltip(func() {
-				imgui.Text(varb.Name)
-				imgui.SameLine()
-				imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcVariablesType)
-				imgui.Text(varb.Type.Name)
-				imgui.PopStyleColor()
-
-				imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcVariablesTypeSize)
-				imgui.Text(fmt.Sprintf("%d bytes", varb.Type.Size))
-				imgui.PopStyleColor()
-
-				imgui.Spacing()
-				imgui.Separator()
-				imgui.Spacing()
-
-				imgui.Text("Hex: ")
-				imgui.SameLine()
-				imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcVariablesNotes)
-				imgui.Text(fmt.Sprintf(varb.Type.Hex(), value))
-				imgui.PopStyleColor()
-
-				imgui.Text("Dec: ")
-				imgui.SameLine()
-				imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcVariablesNotes)
-				imgui.Text(fmt.Sprintf("%d", value))
-				imgui.PopStyleColor()
-
-				imgui.Text("Bin: ")
-				imgui.SameLine()
-				imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcVariablesNotes)
-				imgui.Text(fmt.Sprintf(varb.Type.Bin(), value))
-				imgui.PopStyleColor()
-
-				imgui.Spacing()
-				imgui.Separator()
-				imgui.Spacing()
-
-				imgui.Text(varb.DeclLine.File.ShortFilename)
-				imgui.Text(fmt.Sprintf("Line: %d", varb.DeclLine.LineNumber))
-			}, true)
+			win.drawVariableTooltip(varb, value)
 		}
 
 		imgui.TableNextColumn()

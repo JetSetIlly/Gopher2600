@@ -48,6 +48,7 @@ type build struct {
 	arraySubranges   map[dwarf.Offset]buildEntry
 
 	variables map[dwarf.Offset]buildEntry
+	pointers  map[dwarf.Offset]buildEntry
 
 	// the order in which we encountered the subprograms and inlined
 	// subroutines is important
@@ -66,6 +67,7 @@ func newBuild(dwrf *dwarf.Data) (*build, error) {
 		arrayTypes:         make(map[dwarf.Offset]buildEntry),
 		arraySubranges:     make(map[dwarf.Offset]buildEntry),
 		variables:          make(map[dwarf.Offset]buildEntry),
+		pointers:           make(map[dwarf.Offset]buildEntry),
 		order:              make([]dwarf.Offset, 0, 100),
 	}
 
@@ -202,6 +204,17 @@ func newBuild(dwrf *dwarf.Data) (*build, error) {
 				}
 				bld.order = append(bld.order, entry.Offset)
 			}
+
+		case dwarf.TagPointerType:
+			if compileUnit == nil {
+				return nil, curated.Errorf("found pointer type tag without compile unit")
+			} else {
+				bld.pointers[entry.Offset] = buildEntry{
+					compileUnit: compileUnit,
+					entry:       entry,
+				}
+				bld.order = append(bld.order, entry.Offset)
+			}
 		}
 	}
 
@@ -267,6 +280,32 @@ func (bld *build) buildTypes(src *Source) error {
 
 	// two passes over composite and array types
 	for pass := 0; pass < 2; pass++ {
+		// pointer types
+		for _, v := range bld.pointers {
+			var typ SourceType
+
+			typ.PointerType, err = bld.resolveType(v, src)
+			if typ.PointerType == nil {
+				continue
+			}
+
+			typ.Name = fmt.Sprintf("*%s", typ.PointerType.Name)
+
+			fld := v.entry.AttrField(dwarf.AttrByteSize)
+			if fld == nil {
+				continue
+			}
+			typ.Size = int(fld.Val.(int64))
+
+			src.Types[v.entry.Offset] = &typ
+		}
+
+		// typedefs of pointer types
+		err = resolveTypeDefs()
+		if err != nil {
+			return err
+		}
+
 		// resolve composite types
 		for _, v := range bld.compositeTypes {
 			var typ SourceType
@@ -390,7 +429,7 @@ func (bld *build) buildTypes(src *Source) error {
 				src.Types[baseTypeOffset] = &SourceType{
 					Name:         fmt.Sprintf("%s [%d]", arrayBaseType.Name, num),
 					Size:         arrayBaseType.Size * int(num),
-					BaseType:     arrayBaseType,
+					ElementType:  arrayBaseType,
 					ElementCount: int(num),
 				}
 			} else {

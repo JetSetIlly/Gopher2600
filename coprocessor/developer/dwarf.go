@@ -129,18 +129,37 @@ type SourceFunction struct {
 type SourceType struct {
 	Name string
 
+	// the base type of pointer types. will be nil if type is not a pointer type
+	PointerType *SourceType
+
 	// size of values of this type (in bytes)
 	Size int
 
-	// empty if type is not a composite type. see IsComposite() function
+	// empty if type is not a composite type. see SourceVariable.IsComposite()
+	// function
 	Members []*SourceVariable
 
 	// number of elements in the type. if count is more than zero then this
-	// type is an array
+	// type is an array. see SourceVariable.IsArry() function
 	ElementCount int
 
 	// the base type of all the elements in the type
-	BaseType *SourceType
+	ElementType *SourceType
+}
+
+// IsComposite returns true if SourceType is a composite type.
+func (typ *SourceType) IsComposite() bool {
+	return len(typ.Members) > 0
+}
+
+// IsArray returns true if SourceType is an array type.
+func (typ *SourceType) IsArray() bool {
+	return typ.ElementType != nil && typ.ElementCount > 0
+}
+
+// IsPointer returns true if SourceType is a pointer type.
+func (typ *SourceType) IsPointer() bool {
+	return typ.PointerType != nil
 }
 
 // Hex returns a format string to represent a value as a correctly padded
@@ -203,14 +222,19 @@ type SourceVariable struct {
 	addressIsOffset bool
 }
 
-// IsComposite returns true if SourceType represents a composite type.
+// IsComposite returns true if SourceVariable is of a composite type.
 func (varb *SourceVariable) IsComposite() bool {
-	return len(varb.Type.Members) > 0
+	return varb.Type.IsComposite()
 }
 
-// IsArray returns true if SourceType represents an array type.
+// IsArray returns true if SourceVariables of an array type.
 func (varb *SourceVariable) IsArray() bool {
-	return varb.Type.BaseType != nil && varb.Type.ElementCount > 0
+	return varb.Type.IsArray()
+}
+
+// IsPointer returns true if SourceVariables is a pointer type.
+func (varb *SourceVariable) IsPointer() bool {
+	return varb.Type.IsPointer()
 }
 
 // AddressIsOffset returns true if SourceVariable is member of another type
@@ -259,7 +283,7 @@ type Source struct {
 	// types used in the source
 	Types map[dwarf.Offset]*SourceType
 
-	// all global variables in ll compile units
+	// all global variables in all compile units
 	Globals          map[string]*SourceVariable
 	GlobalsByAddress map[uint64]*SourceVariable
 	SortedGlobals    SortedVariables
