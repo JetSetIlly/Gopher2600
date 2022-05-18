@@ -181,7 +181,6 @@ func newPreferences(img *SdlImgui) (*preferences, error) {
 
 	p.audioMuteDebugger.SetHookPost(func(muted prefs.Value) error {
 		p.img.setAudioMute()
-		img.vcs.RIOT.Ports.MutePeripherals(muted.(bool))
 		return nil
 	})
 
@@ -197,7 +196,6 @@ func newPreferences(img *SdlImgui) (*preferences, error) {
 
 	p.audioMutePlaymode.SetHookPost(func(muted prefs.Value) error {
 		p.img.setAudioMute()
-		img.vcs.RIOT.Ports.MutePeripherals(muted.(bool))
 		return nil
 	})
 

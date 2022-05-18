@@ -378,14 +378,15 @@ func (img *SdlImgui) setAudioMute() {
 
 	if img.isPlaymode() {
 		mute = img.prefs.audioMutePlaymode.Get().(bool)
-
 		if mute {
 			img.playScr.emulationEvent.set(emulation.EventMute)
 		} else {
 			img.playScr.emulationEvent.set(emulation.EventUnmute)
 		}
+		img.vcs.RIOT.Ports.MutePeripherals(mute)
 	} else {
 		mute = img.prefs.audioMuteDebugger.Get().(bool)
+		img.vcs.RIOT.Ports.MutePeripherals(mute)
 	}
 
 	img.audio.Mute(mute)
