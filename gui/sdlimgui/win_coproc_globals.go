@@ -171,9 +171,9 @@ func (win *winCoProcGlobals) draw() {
 		imgui.TableSetupScrollFreeze(0, 1)
 		imgui.TableHeadersRow()
 
-		for _, varb := range src.SortedGlobals.Variables {
+		for i, varb := range src.SortedGlobals.Variables {
 			if win.showAllGlobals || varb.DeclLine.File.Filename == win.selectedFile.Filename {
-				win.drawVariable(src, varb, 0, 0, false)
+				win.drawVariable(src, varb, 0, 0, false, fmt.Sprint(i))
 			}
 		}
 
@@ -250,7 +250,7 @@ func (win *winCoProcGlobals) drawVariableTooltip(varb *developer.SourceVariable,
 
 func (win *winCoProcGlobals) drawVariable(src *developer.Source,
 	varb *developer.SourceVariable, baseAddress uint64,
-	indentLevel int, unnamed bool) {
+	indentLevel int, unnamed bool, nodeID string) {
 
 	address := varb.Address
 	if varb.AddressIsOffset() {
@@ -276,8 +276,6 @@ func (win *winCoProcGlobals) drawVariable(src *developer.Source,
 	imgui.PopStyleColorV(2)
 
 	if varb.IsComposite() || varb.IsArray() {
-		nodeID := fmt.Sprintf("%d_%s_%x_%x", indentLevel, varb.Name, baseAddress, address)
-
 		win.drawVariableTooltip(varb, 0)
 
 		if imgui.IsItemClicked() {
@@ -303,8 +301,8 @@ func (win *winCoProcGlobals) drawVariable(src *developer.Source,
 
 		if win.openNodes[nodeID] {
 			if varb.IsComposite() {
-				for _, memb := range varb.Type.Members {
-					win.drawVariable(src, memb, address, indentLevel+1, false)
+				for i, memb := range varb.Type.Members {
+					win.drawVariable(src, memb, address, indentLevel+1, false, fmt.Sprint(nodeID, i))
 				}
 			} else if varb.IsArray() {
 				for i := 0; i < varb.Type.ElementCount; i++ {
@@ -314,13 +312,11 @@ func (win *winCoProcGlobals) drawVariable(src *developer.Source,
 						DeclLine: varb.DeclLine,
 						Address:  address + uint64(i*varb.Type.ElementType.Size),
 					}
-					win.drawVariable(src, elem, elem.Address, indentLevel+1, false)
+					win.drawVariable(src, elem, elem.Address, indentLevel+1, false, fmt.Sprint(nodeID, i))
 				}
 			}
 		}
 	} else if varb.IsPointer() {
-		nodeID := fmt.Sprintf("%d_%s_%x_%x", indentLevel, varb.Name, baseAddress, address)
-
 		if imgui.IsItemClicked() {
 			win.openNodes[nodeID] = !win.openNodes[nodeID]
 		}
@@ -361,31 +357,13 @@ func (win *winCoProcGlobals) drawVariable(src *developer.Source,
 		}
 
 		if dereference {
-			if varb.Type.PointerType.IsArray() || varb.Type.PointerType.IsComposite() {
-				if d, ok := src.GlobalsByAddress[uint64(value)]; ok {
-					win.drawVariable(src, d, address, indentLevel+1, true)
-				} else {
-					imgui.TableNextRow()
-					imgui.TableNextColumn()
-					imgui.Text(strings.Repeat(" ", IndentDepth*indentLevel))
-
-					imgui.SameLine()
-					imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.Warning)
-					imgui.Text(fmt.Sprintf(" %c", fonts.Warning))
-					imgui.PopStyleColor()
-
-					imgui.SameLine()
-					imgui.Text("invalid dereference")
-				}
-			} else {
-				deref := &developer.SourceVariable{
-					Name:     varb.Name,
-					Type:     varb.Type.PointerType,
-					DeclLine: varb.DeclLine,
-					Address:  uint64(value),
-				}
-				win.drawVariable(src, deref, deref.Address, indentLevel+1, true)
+			deref := &developer.SourceVariable{
+				Name:     varb.Name,
+				Type:     varb.Type.PointerType,
+				DeclLine: varb.DeclLine,
+				Address:  uint64(value),
 			}
+			win.drawVariable(src, deref, deref.Address, indentLevel+1, true, fmt.Sprint(nodeID, 1))
 		}
 	} else {
 		value, valueOk := win.readMemory(address)
