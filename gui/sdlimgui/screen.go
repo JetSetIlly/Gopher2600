@@ -584,7 +584,25 @@ func (scr *screen) copyPixelsPlaymode() {
 	}
 
 	// copy pixels from render buffer to the live copy.
-	copy(scr.crit.pixels.Pix, scr.crit.bufferPixels[scr.crit.renderIdx].Pix)
+	//
+	// if emulation is paused we alternate which set of pixels we copy.
+	// currently, we assume that the display kernel is two frames.
+	//
+	// this assumption works well in most instances but will sometimes cause
+	// poor results for one frame kernels (depending on the ROM and what is
+	// happening on the screen at the time of the pause ) and will be
+	// sub-optimal for three frame kernels in almost all cases.
+	if scr.img.emulation.State() == emulation.Paused {
+		activePause := scr.img.prefs.activePause.Get().(bool)
+		if scr.crit.pauseFrame || !activePause {
+			copy(scr.crit.pixels.Pix, scr.crit.bufferPixels[scr.crit.renderIdx].Pix)
+		} else {
+			copy(scr.crit.pixels.Pix, scr.crit.bufferPixels[scr.crit.prevRenderIdx].Pix)
+		}
+		scr.crit.pauseFrame = !scr.crit.pauseFrame
+	} else {
+		copy(scr.crit.pixels.Pix, scr.crit.bufferPixels[scr.crit.renderIdx].Pix)
+	}
 
 	// let the emulator thread know it's okay to continue as soon as possible
 	//

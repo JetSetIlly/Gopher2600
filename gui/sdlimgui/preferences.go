@@ -53,6 +53,7 @@ type preferences struct {
 	// playmode preferences
 	audioMutePlaymode prefs.Bool
 	fpsOverlay        prefs.Bool
+	activePause       prefs.Bool
 
 	// playmode notifications
 	controllerNotifcations    prefs.Bool
@@ -82,6 +83,7 @@ func newPreferences(img *SdlImgui) (*preferences, error) {
 	p.audioMuteDebugger.Set(true)
 	p.colorDisasm.Set(true)
 	p.fpsOverlay.Set(false)
+	p.activePause.Set(false)
 	p.audioMutePlaymode.Set(false)
 	p.controllerNotifcations.Set(true)
 	p.plusromNotifications.Set(true)
@@ -128,6 +130,11 @@ func newPreferences(img *SdlImgui) (*preferences, error) {
 		return nil, err
 	}
 	err = p.saveOnExitDsk.Add(key, &p.fpsOverlay)
+	if err != nil {
+		return nil, err
+	}
+
+	err = p.dsk.Add("sdlimgui.playmode.activePause", &p.activePause)
 	if err != nil {
 		return nil, err
 	}

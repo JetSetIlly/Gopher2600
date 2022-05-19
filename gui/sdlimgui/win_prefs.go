@@ -150,6 +150,16 @@ func (win *winPrefs) draw() {
 
 func (win *winPrefs) drawPlaymodeTab() {
 	imgui.Spacing()
+
+	activePause := win.img.prefs.activePause.Get().(bool)
+	if imgui.Checkbox("'Active' Pause Screen", &activePause) {
+		win.img.prefs.activePause.Set(activePause)
+	}
+	imguiTooltipSimple(`An 'active' pause screen is one that tries to present
+an television image that is sympathetic to the display kernel
+of the ROM.`)
+
+	imgui.Spacing()
 	imgui.Text("Notifications")
 	imgui.Spacing()
 
