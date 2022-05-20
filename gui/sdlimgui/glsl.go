@@ -170,7 +170,7 @@ func (rnd *glsl) render() {
 				var shader shaderProgram
 
 				switch env.srcTextureID {
-				case rnd.img.wm.dbgScr.normalTexture:
+				case rnd.img.wm.dbgScr.displayTexture:
 					shader = rnd.shaders[dbgscrShaderID]
 				case rnd.img.wm.dbgScr.elementsTexture:
 					shader = rnd.shaders[dbgscrShaderID]

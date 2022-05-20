@@ -44,10 +44,10 @@ type winDbgScr struct {
 	createTextures bool
 
 	// textures
-	normalTexture   uint32
+	displayTexture  uint32
 	elementsTexture uint32
 	overlayTexture  uint32
-	unscaledTexture uint32
+	screenTexture   uint32
 
 	// the pixels we use to clear normalTexture with
 	emptyScaledPixels []uint8
@@ -114,13 +114,8 @@ func newWinDbgScr(img *SdlImgui) (window, error) {
 	}
 
 	// set texture, creation of textures will be done after every call to resize()
-	gl.GenTextures(1, &win.normalTexture)
-	gl.BindTexture(gl.TEXTURE_2D, win.normalTexture)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
-
-	gl.GenTextures(1, &win.elementsTexture)
-	gl.BindTexture(gl.TEXTURE_2D, win.elementsTexture)
+	gl.GenTextures(1, &win.displayTexture)
+	gl.BindTexture(gl.TEXTURE_2D, win.displayTexture)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
 
@@ -129,8 +124,15 @@ func newWinDbgScr(img *SdlImgui) (window, error) {
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
 
-	gl.GenTextures(1, &win.unscaledTexture)
-	gl.BindTexture(gl.TEXTURE_2D, win.unscaledTexture)
+	gl.GenTextures(1, &win.screenTexture)
+	gl.BindTexture(gl.TEXTURE_2D, win.screenTexture)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.MIRRORED_REPEAT)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.MIRRORED_REPEAT)
+
+	gl.GenTextures(1, &win.elementsTexture)
+	gl.BindTexture(gl.TEXTURE_2D, win.elementsTexture)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.MIRRORED_REPEAT)
@@ -230,20 +232,10 @@ func (win *winDbgScr) draw() {
 	imgui.PushStyleColor(imgui.StyleColorButtonHovered, win.img.cols.Transparent)
 	imgui.PushStyleVarVec2(imgui.StyleVarFramePadding, imgui.Vec2{0.0, 0.0})
 
-	imageHovered := false
+	imgui.ImageButton(imgui.TextureID(win.displayTexture), imgui.Vec2{win.scaledWidth, win.scaledHeight})
+	imageHovered := imgui.IsItemHovered()
 
-	if win.crtPreview {
-		imgui.ImageButton(imgui.TextureID(win.normalTexture), imgui.Vec2{win.scaledWidth, win.scaledHeight})
-		imageHovered = imgui.IsItemHovered()
-	} else {
-		// choose which texture to use depending on whether elements is selected
-		if win.elements {
-			imgui.ImageButton(imgui.TextureID(win.elementsTexture), imgui.Vec2{win.scaledWidth, win.scaledHeight})
-		} else {
-			imgui.ImageButton(imgui.TextureID(win.normalTexture), imgui.Vec2{win.scaledWidth, win.scaledHeight})
-		}
-		imageHovered = imgui.IsItemHovered()
-
+	if !win.crtPreview {
 		// overlay texture on top of screen texture
 		imgui.SetCursorScreenPos(win.screenOrigin)
 		imgui.ImageButton(imgui.TextureID(win.overlayTexture), imgui.Vec2{win.scaledWidth, win.scaledHeight})
@@ -656,17 +648,11 @@ func (win *winDbgScr) render() {
 		// empty pixels for screen texture
 		win.emptyScaledPixels = make([]uint8, int(win.scaledWidth)*int(win.scaledHeight)*4)
 
-		gl.BindTexture(gl.TEXTURE_2D, win.normalTexture)
+		gl.BindTexture(gl.TEXTURE_2D, win.displayTexture)
 		gl.TexImage2D(gl.TEXTURE_2D, 0,
 			gl.RGBA, int32(pixels.Bounds().Size().X), int32(pixels.Bounds().Size().Y), 0,
 			gl.RGBA, gl.UNSIGNED_BYTE,
 			gl.Ptr(win.emptyScaledPixels))
-
-		gl.BindTexture(gl.TEXTURE_2D, win.elementsTexture)
-		gl.TexImage2D(gl.TEXTURE_2D, 0,
-			gl.RGBA, int32(elements.Bounds().Size().X), int32(elements.Bounds().Size().Y), 0,
-			gl.RGBA, gl.UNSIGNED_BYTE,
-			gl.Ptr(elements.Pix))
 
 		gl.BindTexture(gl.TEXTURE_2D, win.overlayTexture)
 		gl.TexImage2D(gl.TEXTURE_2D, 0,
@@ -675,25 +661,25 @@ func (win *winDbgScr) render() {
 			gl.Ptr(overlay.Pix))
 
 		// unscaled screen texture
-		gl.BindTexture(gl.TEXTURE_2D, win.unscaledTexture)
+		gl.BindTexture(gl.TEXTURE_2D, win.screenTexture)
 		gl.TexImage2D(gl.TEXTURE_2D, 0,
 			gl.RGBA, int32(pixels.Bounds().Size().X), int32(pixels.Bounds().Size().Y), 0,
 			gl.RGBA, gl.UNSIGNED_BYTE,
 			gl.Ptr(pixels.Pix))
 
+		gl.BindTexture(gl.TEXTURE_2D, win.elementsTexture)
+		gl.TexImage2D(gl.TEXTURE_2D, 0,
+			gl.RGBA, int32(elements.Bounds().Size().X), int32(elements.Bounds().Size().Y), 0,
+			gl.RGBA, gl.UNSIGNED_BYTE,
+			gl.Ptr(elements.Pix))
+
 		win.createTextures = false
 	} else {
-		gl.BindTexture(gl.TEXTURE_2D, win.normalTexture)
+		gl.BindTexture(gl.TEXTURE_2D, win.displayTexture)
 		gl.TexSubImage2D(gl.TEXTURE_2D, 0,
 			0, 0, int32(pixels.Bounds().Size().X), int32(pixels.Bounds().Size().Y),
 			gl.RGBA, gl.UNSIGNED_BYTE,
 			gl.Ptr(win.emptyScaledPixels))
-
-		gl.BindTexture(gl.TEXTURE_2D, win.elementsTexture)
-		gl.TexSubImage2D(gl.TEXTURE_2D, 0,
-			0, 0, int32(elements.Bounds().Size().X), int32(elements.Bounds().Size().Y),
-			gl.RGBA, gl.UNSIGNED_BYTE,
-			gl.Ptr(elements.Pix))
 
 		gl.BindTexture(gl.TEXTURE_2D, win.overlayTexture)
 		gl.TexSubImage2D(gl.TEXTURE_2D, 0,
@@ -702,11 +688,17 @@ func (win *winDbgScr) render() {
 			gl.Ptr(overlay.Pix))
 
 		// unscaled screen texture
-		gl.BindTexture(gl.TEXTURE_2D, win.unscaledTexture)
+		gl.BindTexture(gl.TEXTURE_2D, win.screenTexture)
 		gl.TexSubImage2D(gl.TEXTURE_2D, 0,
 			0, 0, int32(pixels.Bounds().Size().X), int32(pixels.Bounds().Size().Y),
 			gl.RGBA, gl.UNSIGNED_BYTE,
 			gl.Ptr(pixels.Pix))
+
+		gl.BindTexture(gl.TEXTURE_2D, win.elementsTexture)
+		gl.TexSubImage2D(gl.TEXTURE_2D, 0,
+			0, 0, int32(elements.Bounds().Size().X), int32(elements.Bounds().Size().Y),
+			gl.RGBA, gl.UNSIGNED_BYTE,
+			gl.Ptr(elements.Pix))
 	}
 }
 
@@ -760,10 +752,13 @@ func (win *winDbgScr) setScaling() {
 
 // unscaledTextureSpec implements the scalingImage specification
 func (win *winDbgScr) unscaledTextureSpec() (uint32, float32, float32) {
-	return win.unscaledTexture, win.unscaledWidth, win.unscaledHeight
+	if win.elements && !win.crtPreview {
+		return win.elementsTexture, win.unscaledWidth, win.unscaledHeight
+	}
+	return win.screenTexture, win.unscaledWidth, win.unscaledHeight
 }
 
 // unscaledTextureSpec implements the scalingImage specification
 func (win *winDbgScr) scaledTextureSpec() (uint32, float32, float32) {
-	return win.normalTexture, win.scaledWidth, win.scaledHeight
+	return win.displayTexture, win.scaledWidth, win.scaledHeight
 }

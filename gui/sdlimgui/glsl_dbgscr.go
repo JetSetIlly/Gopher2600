@@ -118,7 +118,7 @@ func (sh *dbgScreenShader) setAttributes(env shaderEnvironment) {
 		//
 		// both alternative solutions seem baroque for a single use case. maybe
 		// something for the future.
-		env.srcTextureID = sh.img.wm.dbgScr.normalTexture
+		env.srcTextureID = sh.img.wm.dbgScr.displayTexture
 
 		env.srcTextureID = sh.crt.process(env, true, true, false, sh.img.wm.dbgScr.numScanlines, specification.ClksVisible, sh.img.wm.dbgScr)
 	} else {
