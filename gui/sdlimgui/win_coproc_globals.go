@@ -203,49 +203,95 @@ func (win *winCoProcGlobals) draw() {
 
 func (win *winCoProcGlobals) drawVariableTooltip(varb *developer.SourceVariable, value uint32) {
 	imguiTooltip(func() {
-		imgui.Text(varb.Name)
-		imgui.SameLine()
-		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcVariablesType)
-		imgui.Text(varb.Type.Name)
-		imgui.PopStyleColor()
+		drawVariableTooltip(varb, value, win.img.cols)
+	}, true)
+}
 
-		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcVariablesTypeSize)
-		imgui.Text(fmt.Sprintf("%d bytes", varb.Type.Size))
-		imgui.PopStyleColor()
+func drawVariableTooltip(varb *developer.SourceVariable, value uint32, cols *imguiColors) {
+	imgui.PushStyleColor(imgui.StyleColorText, cols.CoProcVariablesAddress)
+	imgui.Text(fmt.Sprintf("%08x", varb.Address))
+	imgui.PopStyleColor()
 
-		if !(varb.IsArray() || varb.IsComposite()) {
-			imgui.Spacing()
-			imgui.Separator()
-			imgui.Spacing()
+	imgui.Text(varb.Name)
+	imgui.SameLine()
+	imgui.PushStyleColor(imgui.StyleColorText, cols.CoProcVariablesType)
+	imgui.Text(varb.Type.Name)
+	imgui.PopStyleColor()
 
-			imgui.Text("Hex: ")
-			imgui.SameLine()
-			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcVariablesNotes)
-			imgui.Text(fmt.Sprintf(varb.Type.Hex(), value))
-			imgui.PopStyleColor()
+	imgui.PushStyleColor(imgui.StyleColorText, cols.CoProcVariablesTypeSize)
+	imgui.Text(fmt.Sprintf("%d bytes", varb.Type.Size))
+	imgui.PopStyleColor()
 
-			imgui.Text("Dec: ")
-			imgui.SameLine()
-			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcVariablesNotes)
-			imgui.Text(fmt.Sprintf("%d", value))
-			imgui.PopStyleColor()
-
-			imgui.Text("Bin: ")
-			imgui.SameLine()
-			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcVariablesNotes)
-			imgui.Text(fmt.Sprintf(varb.Type.Bin(), value))
-			imgui.PopStyleColor()
-		}
-
+	if varb.IsArray() {
+		imgui.Spacing()
+		imgui.Separator()
+		imgui.Spacing()
+		imgui.Text(fmt.Sprintf("is an array of %d elements", varb.Type.ElementCount))
+	} else if varb.IsComposite() {
+		imgui.Spacing()
+		imgui.Separator()
+		imgui.Spacing()
+		imgui.Text(fmt.Sprintf("is a struct of %d members", len(varb.Type.Members)))
+	} else {
 		imgui.Spacing()
 		imgui.Separator()
 		imgui.Spacing()
 
-		imgui.Text(varb.DeclLine.File.ShortFilename)
-		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLineNumber)
-		imgui.Text(fmt.Sprintf("Line: %d", varb.DeclLine.LineNumber))
-		imgui.PopStyleColor()
-	}, true)
+		if imgui.BeginTableV("##variablevalues", 2, imgui.TableFlagsNone, imgui.Vec2{}, 0.0) {
+			imgui.TableNextRow()
+			imgui.TableNextColumn()
+			imgui.Text("Dec: ")
+			imgui.TableNextColumn()
+			imgui.PushStyleColor(imgui.StyleColorText, cols.CoProcVariablesNotes)
+			imgui.Text(fmt.Sprintf("%d", value))
+			imgui.PopStyleColor()
+
+			imgui.TableNextRow()
+			imgui.TableNextColumn()
+			imgui.Text("Hex: ")
+			imgui.TableNextColumn()
+			imgui.PushStyleColor(imgui.StyleColorText, cols.CoProcVariablesNotes)
+			hex := fmt.Sprintf(varb.Type.Hex(), value)
+			imgui.Text(hex[:2])
+
+			for i := 1; i < len(hex)/2; i++ {
+				imgui.SameLine()
+				s := i * 2
+				imgui.Text(fmt.Sprintf("%s", hex[s:s+2]))
+			}
+
+			imgui.PopStyleColor()
+
+			// binary information is a little more complex to draw. we split
+			// the binary value into bytes and display vertically
+			imgui.TableNextRow()
+			imgui.TableNextColumn()
+			imgui.Text("Bin: ")
+
+			imgui.TableNextColumn()
+			imgui.PushStyleColor(imgui.StyleColorText, cols.CoProcVariablesNotes)
+			bin := fmt.Sprintf(varb.Type.Bin(), value)
+			imgui.Text(bin[:8])
+
+			for i := 1; i < len(bin)/8; i++ {
+				s := i * 8
+				imgui.Text(bin[s : s+8])
+			}
+
+			imgui.PopStyleColor()
+		}
+
+		imgui.EndTable()
+	}
+
+	imgui.Spacing()
+	imgui.Separator()
+	imgui.Spacing()
+
+	imgui.Text(varb.DeclLine.File.ShortFilename)
+	imgui.PushStyleColor(imgui.StyleColorText, cols.CoProcSourceLineNumber)
+	imgui.Text(fmt.Sprintf("Line: %d", varb.DeclLine.LineNumber))
+	imgui.PopStyleColor()
 }
 
 func (win *winCoProcGlobals) drawVariable(src *developer.Source,

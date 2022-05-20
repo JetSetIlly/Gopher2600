@@ -71,6 +71,12 @@ func (win *winCartStatic) draw() {
 	// safe to get StaticData from.
 	compStatic := win.img.lz.Rewind.Comparison.Mem.Cart.GetStaticBus().GetStatic()
 
+	// make a note of cell padding value. this changes for the duration of
+	// drawByteGrid() but we want the default value for when we call
+	// drawVariableTooltip(). there is a table in that tooltip which will be
+	// affected by the CellPadding value
+	cellPadding := imgui.CurrentStyle().CellPadding()
+
 	imgui.BeginTabBar("")
 	for _, seg := range win.img.lz.Cart.Static.Segments() {
 		// skip any segments that are empty for whatever reason
@@ -97,7 +103,8 @@ func (win *winCartStatic) draw() {
 
 			imgui.BeginChildV("cartstatic", imgui.Vec2{X: 0, Y: imguiRemainingWinHeight()}, false, 0)
 
-			currData, ok := win.img.lz.Cart.Static.Reference(seg.Name)
+			currStatic := win.img.lz.Cart.Static
+			currData, ok := currStatic.Reference(seg.Name)
 
 			if ok {
 				compData, ok := compStatic.Reference(seg.Name)
@@ -137,14 +144,8 @@ func (win *winCartStatic) draw() {
 								// offset is based on original values of type uint16 so the type conversion is safe
 								addr := seg.Origin + offset
 
-								imguiTooltip(func() {
-									imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcVariablesAddress)
-									imgui.Text(fmt.Sprintf("%08x", seg.Origin+offset))
-									imgui.PopStyleColor()
-								}, true)
-
 								dl := imgui.WindowDrawList()
-								if _, ok := src.GlobalsByAddress[uint64(addr)]; ok {
+								if varb, ok := src.GlobalsByAddress[uint64(addr)]; ok {
 									sz := imgui.FontSize() * 0.4
 									pos.X += 1.0
 									pos.Y += 1.0
@@ -155,25 +156,59 @@ func (win *winCartStatic) draw() {
 									dl.AddTriangleFilled(pos, p1, p2, imgui.PackedColorFromVec4(win.img.cols.ValueSymbol))
 
 									imguiTooltip(func() {
-										if v, ok := src.GlobalsByAddress[uint64(addr)]; ok {
-											imguiColorLabel(func() {
-												imgui.Text(v.Name)
-												imgui.SameLine()
-												imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcVariablesType)
-												imgui.Text(v.Type.Name)
-												imgui.PopStyleColor()
-											}, win.img.cols.ValueSymbol)
+										var value uint32
+										currValue := "??"
+										compValue := "??"
+
+										switch varb.Type.Size {
+										case 4:
+											if d, ok := currStatic.Read32bit(addr); ok {
+												value = uint32(d)
+												currValue = fmt.Sprintf("%08x", d)
+											}
+											if d, ok := compStatic.Read32bit(addr); ok {
+												compValue = fmt.Sprintf("%08x", d)
+											}
+										case 2:
+											if d, ok := currStatic.Read16bit(addr); ok {
+												value = uint32(d)
+												currValue = fmt.Sprintf("%04x", d)
+											}
+											if d, ok := compStatic.Read16bit(addr); ok {
+												compValue = fmt.Sprintf("%04x", d)
+											}
+										default:
+											if d, ok := currStatic.Read8bit(addr); ok {
+												value = uint32(d)
+												currValue = fmt.Sprintf("%02x", d)
+											}
+											if d, ok := compStatic.Read8bit(addr); ok {
+												compValue = fmt.Sprintf("%02x", d)
+											}
+										}
+
+										// wrap drawVariableTooltip() in a cellpadding style. see comment for
+										// cellPadding declartion above
+										imgui.PushStyleVarVec2(imgui.StyleVarCellPadding, cellPadding)
+										drawVariableTooltip(varb, value, win.img.cols)
+										imgui.PopStyleVar()
+
+										if currValue != compValue {
+											imgui.Spacing()
+											imgui.Separator()
+											imgui.Spacing()
+											imguiColorLabelSimple(fmt.Sprintf("%s %c %s", compValue, fonts.ByteChange, currValue), win.img.cols.ValueDiff)
 										}
 									}, true)
-								}
-
-								imguiTooltip(func() {
-									a := currData[offset]
-									b := compData[offset]
+								} else {
+									a := compData[offset]
+									b := currData[offset]
 									if a != b {
-										imguiColorLabelSimple(fmt.Sprintf("%02x %c %02x", b, fonts.ByteChange, a), win.img.cols.ValueDiff)
+										imguiTooltip(func() {
+											imguiColorLabelSimple(fmt.Sprintf("%02x %c %02x", a, fonts.ByteChange, b), win.img.cols.ValueDiff)
+										}, true)
 									}
-								}, true)
+								}
 							})
 						}
 					}
