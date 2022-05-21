@@ -36,6 +36,10 @@ func (win *winPrefs) drawCRT() {
 		defer imgui.PopItemFlag()
 	}
 
+	// there is deliberately no option for IntegerScaling in the GUI. the
+	// option exists in the prefs file but we're not exposing the option to the
+	// end user
+
 	imgui.Spacing()
 	imgui.Separator()
 	imgui.Spacing()
@@ -383,12 +387,18 @@ func (win *winPrefs) drawPixelPerfect() bool {
 		win.img.crtPrefs.Enabled.Set(!b)
 	}
 
-	// there is deliberately no option for IntegerScaling in the GUI
+	if win.img.crtPrefs.Enabled.Get().(bool) {
+		imgui.PushItemFlag(imgui.ItemFlagsDisabled, true)
+		imgui.PushStyleVarFloat(imgui.StyleVarAlpha, disabledAlpha)
+		defer imgui.PopStyleVar()
+		defer imgui.PopItemFlag()
+	}
 
-	var label string
+	imgui.SameLineV(0, 25)
 
 	f := float32(win.img.crtPrefs.PixelPerfectFade.Get().(float64))
 
+	var label string
 	if f > 0.7 {
 		label = "extreme fade"
 	} else if f >= 0.4 {
@@ -399,9 +409,15 @@ func (win *winPrefs) drawPixelPerfect() bool {
 		label = "no fade"
 	}
 
+	imgui.PushItemWidth(imguiRemainingWinWidth() * 0.75)
 	if imgui.SliderFloatV("##pixelperfectfade", &f, 0.0, 0.9, label, 1.0) {
 		win.img.crtPrefs.PixelPerfectFade.Set(f)
 	}
+	imgui.PopItemWidth()
+
+	imguiTooltipSimple(`The fade slider controls how quickly pixels fade to
+black. It is similar to the phosphor option that is
+available when 'Pixel Perfect' mode is disabled.`)
 
 	return b
 }
