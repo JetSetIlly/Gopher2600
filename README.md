@@ -4,7 +4,10 @@
 
 Gopher2600 is an emulator for the Atari 2600 written in the Go language.
 
-The accuracy of the emulation is very high and there are no known outstanding problems with the 6507, TIA and RIOT chip emulation.
+The accuracy of the emulation is very high and there are no known outstanding
+problems with the 6507, TIA and RIOT chip emulation. Emulation of the ARM chip
+is limited to the Thumb subset of instructions but it does include reasonably
+accurate cycle counting and performance monitoring.
 
 It is an ongoing project and bug reports are welcome.
 <br clear="left">
@@ -31,18 +34,19 @@ The graphical [debugger](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/Debu
 * Specialist windows for specific cartridge types (eg. supercharger tape)
 * Terminal interface (headless operation optional)
 * Script recording and playback
+* ARM peformance monitoring
 
 Logo is based on [Gopherize.me](https://github.com/matryer/gopherize.me) which itself is based on the work of [Ashley McNamara](https://github.com/ashleymcnamara/gophers) and is [licensed under the Creative Commons](https://github.com/ashleymcnamara/gophers/blob/master/LICENSE).
 
 ## Documentation
 
-User documentation for the emulator can be found in the [Gopher2600-Docs repository](https://github.com/JetSetIlly/Gopher2600-Docs/).
+User documentation for the emulator can be found in the [Gopher2600-Docs repository](https://github.com/JetSetIlly/Gopher2600-Docs/) and in particular the [live wiki](https://github.com/JetSetIlly/Gopher2600-Docs/wiki).
 
 Development & Maintenance documentation can be found in the [Gopher2600-Dev-Docs repository](https://github.com/JetSetIlly/Gopher2600-Dev-Docs/). Also, source level documentation (for the most recent release) can be found on [go.dev](https://pkg.go.dev/github.com/jetsetilly/gopher2600).
 
 ## Example Screenshots
 
-The following [screenshots](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/Creating-Screenshots) were taken in playmode with CRT effects enabled.
+The following [screenshots](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/Creating-Screenshots) were taken in `playmode` with CRT effects enabled.
 
 <table align="center">
 	<tr>
@@ -83,11 +87,12 @@ ROMs shown: Pitfall; [Chiphead](https://www.pouet.net/prod.php?which=68505); Thr
 
 ## Resources used
 
-The Stella project (https://stella-emu.github.io/) was used as a reference for
-video output. In the absence of VCS hardware (which I don't have) Stella was
-the only option I had for checking video accuracy.
+The Stella project (https://stella-emu.github.io/) was used as a visual
+reference for video output. In the absence of VCS hardware (which I didn't have
+during initial TIA development) Stella was the only option I had for checking
+video accuracy.
 
-In addition, Stella was used as reference 
+In addition, Stella was used as reference in the following areas:
 
 * During the development of the CDF cartridge formats. These recent formats don't
 seem to be documented anywhere accept in the Stella source.
@@ -101,6 +106,8 @@ a comment in the fingerprint.go file says I did.
 * The EF cartridge format.
 
 * Fingerprint patterns for automated controller/peripheral selection.
+
+In all these instances, primary sources of information could not be found.
 
 Many notes and clues from the AtariAge message boards. Most significantly the
 following threads proved very useful indeed:
@@ -116,7 +123,7 @@ And from and old mailing list:
 * "Games that do bad things to HMOVE..." https://www.biglist.com/lists/stella/archives/199804/msg00198.html
 
 These mailing lists and forums have supplied me with many useful test ROMs. I
-will package these up and distribute them sometime in the future (assuming I
+aim to package these up and distribute them sometime in the future (assuming I
 can get the required permissions).
 
 Extensive references have been made to Andrew Towers' "Atari 2600 TIA Hardware
@@ -180,6 +187,13 @@ Specific information about UXP ARM7TDMI-S
 
 https://www.nxp.com/docs/en/user-guide/UM10161.pdf
 
+In relation to ARM development, information about the DWARF format is being
+taken from the DWARF2 and DWARF4 standards
+
+https://dwarfstd.org/doc/dwarf-2.0.0.pdf
+
+https://dwarfstd.org/doc/DWARF4.pdf
+
 ## Other Software / Libraries
 
 The following projects are used in the `Gopher2600` project:
@@ -229,5 +243,5 @@ http://www.festvox.org/docs/manual-2.4.0/festival_toc.html
 At various times during the development of this project, the following people
 have provided advice and encouragement: Andrew Rice, David Kelly. And those
 from AtariAge who have provided testing, advice and most importantly,
-encouragement: Al Nafuur; Andrew Davie; Rob Bairos; MrSQL; Thomas Jenztsch;
-DirtyHairy; Spiceware; ZeroPageHomebrew; Karl G; alex_79. Thank-you.
+encouragement (alphabetically): alex_79; Al Nafuur; Andrew Davie; DirtyHairy;
+John Champeau; MrSQL; Rob Bairos; Spiceware; Thomas Jenztsch; ZeroPageHomebrew
