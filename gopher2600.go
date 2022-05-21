@@ -282,7 +282,6 @@ func emulate(emulationMode emulation.Mode, md *modalflag.Modes, sync *mainSync) 
 	fpsCap := md.AddBool("fpscap", true, "cap fps to TV specification")
 	profile := md.AddString("profile", "none", "run performance check with profiling: command separated CPU, MEM, TRACE or ALL")
 	log := md.AddBool("log", false, "echo debugging log to stdout")
-	termType := md.AddString("term", "IMGUI", "terminal type to use in debug mode: IMGUI, COLOR, PLAIN")
 	multiload := md.AddInt("multiload", -1, "force multiload byte (supercharger only; 0 to 255)")
 
 	// playmode specific arguments
@@ -301,8 +300,14 @@ func emulate(emulationMode emulation.Mode, md *modalflag.Modes, sync *mainSync) 
 
 	// debugger specific arguments
 	var initScript *string
+	var termType *string
 	if emulationMode == emulation.ModeDebugger {
 		initScript = md.AddString("initscript", defInitScript, "script to run on debugger start")
+		termType = md.AddString("term", "IMGUI", "terminal type to use in debug mode: IMGUI, COLOR, PLAIN")
+	} else {
+		// non debugger emulation is always of type IMGUI
+		tt := "IMGUI"
+		termType = &tt
 	}
 
 	// statsview if available
