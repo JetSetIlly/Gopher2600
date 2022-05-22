@@ -28,6 +28,7 @@ import (
 // functions as "debugging" functions, that is operations outside of the normal
 // operation of the machine.
 type DebugBus interface {
+	cpubus.Memory
 	Peek(address uint16) (uint8, error)
 	Poke(address uint16, value uint8) error
 }
@@ -150,7 +151,7 @@ func (mem *Memory) read(address uint16) (uint8, error) {
 	area := mem.GetArea(ar)
 
 	// read data from area
-	data, err := area.(cpubus.Memory).Read(ma)
+	data, err := area.Read(ma)
 
 	// TIA addresses do not drive all the pins on the data bus, leaving
 	// some bits of the previous value on the data bus in the result.
