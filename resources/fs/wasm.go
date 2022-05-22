@@ -54,3 +54,8 @@ func Open(pth string) (*File, error) {
 func Create(pth string) (*File, error) {
 	return &File{}, nil
 }
+
+// Abs is an abstraction of filepath.Abs().
+func Abs(pth string) (string, error) {
+	return pth, nil
+}

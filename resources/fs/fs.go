@@ -18,7 +18,10 @@
 
 package fs
 
-import "os"
+import (
+	"os"
+	"path/filepath"
+)
 
 // MkdirAll is an abstraction of os.MkdirAll().
 func MkdirAll(pth string, perm os.FileMode) error {
@@ -62,4 +65,9 @@ func Create(pth string) (*File, error) {
 	f := &File{}
 	f.f, err = os.Create(pth)
 	return f, err
+}
+
+// Abs is an abstraction of filepath.Abs().
+func Abs(pth string) (string, error) {
+	return filepath.Abs(pth)
 }

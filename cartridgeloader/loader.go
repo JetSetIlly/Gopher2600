@@ -29,6 +29,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 	"github.com/jetsetilly/gopher2600/logger"
+	"github.com/jetsetilly/gopher2600/resources/fs"
 )
 
 // Loader is used to specify the cartridge to use when Attach()ing to
@@ -131,7 +132,7 @@ func NewLoader(filename string, mapping string) (Loader, error) {
 
 	// absolute path of filename
 	var err error
-	filename, err = filepath.Abs(filename)
+	filename, err = fs.Abs(filename)
 	if err != nil {
 		return Loader{}, curated.Errorf("catridgeloader: %v", err)
 	}
