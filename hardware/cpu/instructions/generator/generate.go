@@ -105,7 +105,7 @@ func parseCSV() (string, error) {
 		newDef.OpCode = uint8(n)
 
 		// field: operator
-		newDef.Operator = rec[1]
+		newDef.Operator = descToOperator(rec[1])
 
 		// deferring cycles field until later
 
@@ -191,7 +191,7 @@ func parseCSV() (string, error) {
 		}
 
 		// field: undocumented
-		newDef.Undocumented = unicode.IsLower(rune(newDef.Operator[0]))
+		newDef.Undocumented = unicode.IsLower(rune(rec[1][0]))
 
 		// field: cycles
 		newDef.Cycles.Value, err = strconv.Atoi(rec[2])
@@ -299,4 +299,165 @@ func main() {
 	if !generate() {
 		os.Exit(10)
 	}
+}
+
+func descToOperator(operator string) instructions.Operator {
+	switch operator {
+	case "nop":
+		return instructions.Nop
+	case "adc":
+		return instructions.Adc
+	case "AHX":
+		return instructions.AHX
+	case "ANC":
+		return instructions.ANC
+	case "and":
+		return instructions.And
+	case "ARR":
+		return instructions.ARR
+	case "asl":
+		return instructions.Asl
+	case "ASR":
+		return instructions.ASR
+	case "AXS":
+		return instructions.AXS
+	case "bcc":
+		return instructions.Bcc
+	case "bcs":
+		return instructions.Bcs
+	case "beq":
+		return instructions.Beq
+	case "bit":
+		return instructions.Bit
+	case "bmi":
+		return instructions.Bmi
+	case "bne":
+		return instructions.Bne
+	case "bpl":
+		return instructions.Bpl
+	case "brk":
+		return instructions.Brk
+	case "bvc":
+		return instructions.Bvc
+	case "bvs":
+		return instructions.Bvs
+	case "clc":
+		return instructions.Clc
+	case "cld":
+		return instructions.Cld
+	case "cli":
+		return instructions.Cli
+	case "clv":
+		return instructions.Clv
+	case "cmp":
+		return instructions.Cmp
+	case "cpx":
+		return instructions.Cpx
+	case "cpy":
+		return instructions.Cpy
+	case "DCP":
+		return instructions.DCP
+	case "dec":
+		return instructions.Dec
+	case "dex":
+		return instructions.Dex
+	case "dey":
+		return instructions.Dey
+	case "eor":
+		return instructions.Eor
+	case "inc":
+		return instructions.Inc
+	case "inx":
+		return instructions.Inx
+	case "iny":
+		return instructions.Iny
+	case "ISC":
+		return instructions.ISC
+	case "jmp":
+		return instructions.Jmp
+	case "jsr":
+		return instructions.Jsr
+	case "KIL":
+		return instructions.KIL
+	case "LAS":
+		return instructions.LAS
+	case "LAX":
+		return instructions.LAX
+	case "lda":
+		return instructions.Lda
+	case "ldx":
+		return instructions.Ldx
+	case "ldy":
+		return instructions.Ldy
+	case "lsr":
+		return instructions.Lsr
+	case "NOP":
+		return instructions.NOP
+	case "ora":
+		return instructions.Ora
+	case "pha":
+		return instructions.Pha
+	case "php":
+		return instructions.Php
+	case "pla":
+		return instructions.Pla
+	case "plp":
+		return instructions.Plp
+	case "RLA":
+		return instructions.RLA
+	case "rol":
+		return instructions.Rol
+	case "ror":
+		return instructions.Ror
+	case "RRA":
+		return instructions.RRA
+	case "rti":
+		return instructions.Rti
+	case "rts":
+		return instructions.Rts
+	case "SAX":
+		return instructions.SAX
+	case "sbc":
+		return instructions.Sbc
+	case "SBC":
+		return instructions.SBC
+	case "sec":
+		return instructions.Sec
+	case "sed":
+		return instructions.Sed
+	case "sei":
+		return instructions.Sei
+	case "SHX":
+		return instructions.SHX
+	case "SHY":
+		return instructions.SHY
+	case "SLO":
+		return instructions.SLO
+	case "SRE":
+		return instructions.SRE
+	case "sta":
+		return instructions.Sta
+	case "stx":
+		return instructions.Stx
+	case "sty":
+		return instructions.Sty
+	case "TAS":
+		return instructions.TAS
+	case "tax":
+		return instructions.Tax
+	case "tay":
+		return instructions.Tay
+	case "tsx":
+		return instructions.Tsx
+	case "txa":
+		return instructions.Txa
+	case "txs":
+		return instructions.Txs
+	case "tya":
+		return instructions.Tya
+	case "XAA":
+		return instructions.XAA
+	}
+
+	panic(fmt.Sprintf("unrecognised operator %s", operator))
 }

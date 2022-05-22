@@ -91,7 +91,7 @@ func (dsm *Disassembly) bless(mc *cpu.CPU, mem *disasmMemory) error {
 				// HeMan ROM. From bank 7 the following jumps to bank 5.
 				//
 				//	$fa03 JMP $f7e8
-				if e.Result.Defn.Operator == "jmp" || e.Result.Defn.Operator == "jsr" {
+				if e.Result.Defn.Operator == instructions.Jmp || e.Result.Defn.Operator == instructions.Jsr {
 					jmpAddress, area := memorymap.MapAddress(e.Result.InstructionData, true)
 
 					if area == memorymap.Cartridge {
@@ -220,15 +220,6 @@ func (dsm *Disassembly) blessSequence(bank int, addr uint16, commit bool) bool {
 			// this is okay and expected so return true to indicate that the
 			// blessing should continue
 			return true
-		}
-
-		// if operator is unknown than end the sequence.
-		operator := instruction.Result.Defn.Operator
-		if operator == "??" {
-			if hasCommitted {
-				logger.Logf("disassembly", "blessSequence has blessed an instruction in a false sequence. discovered at bank %d: %s", bank, instruction.String())
-			}
-			return false
 		}
 
 		next := a + uint16(instruction.Result.ByteCount)

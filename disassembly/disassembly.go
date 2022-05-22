@@ -343,8 +343,8 @@ func (dsm *Disassembly) FormatResult(bank mapper.BankInfo, result execution.Resu
 	// address of instruction
 	e.Address = fmt.Sprintf("$%04x", result.Address)
 
-	// operator is just a string anyway
-	e.Operator = result.Defn.Operator
+	// operator of instruction
+	e.Operator = result.Defn.Operator.String()
 
 	// bytecode and operand string is assembled depending on the number of
 	// expected bytes (result.Defn.Bytes) and the number of bytes read so far
