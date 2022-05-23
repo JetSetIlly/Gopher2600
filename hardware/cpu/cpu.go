@@ -504,8 +504,9 @@ func (mc *CPU) branch(flag bool, address uint16) error {
 	return nil
 }
 
-// used when ExecuteInstruction() is called with a nil function.
-func nilCycleCallback() error {
+// NilCycleCallback can be provided as an argument to ExecuteInstruction().
+// It's a convenienct do-nothing function.
+func NilCycleCallback() error {
 	return nil
 }
 
@@ -524,6 +525,9 @@ const (
 // All instructions take at least 2 cycle. After each cycle, the
 // cycleCallback() function is run, thereby allowing the rest of the VCS
 // hardware to operate.
+//
+// The cycleCallback arugment should *never* be nil. Use the NilCycleCallback()
+// function in this package if you want a nil effect.
 func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 	// do nothing is CPU is in KIL state
 	if mc.Killed {
@@ -539,29 +543,17 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 	// reset Interrupted flag
 	mc.Interrupted = false
 
-	// update cycle callback
-	if cycleCallback == nil {
-		mc.cycleCallback = nilCycleCallback
-	} else {
-		mc.cycleCallback = cycleCallback
-	}
-
 	// do nothing and return nothing if ready flag is false
 	if !mc.RdyFlg {
-		if mc.cycleCallback != nil {
-			return mc.cycleCallback()
-		}
-		return nil
+		return cycleCallback()
 	}
+
+	// update cycle callback
+	mc.cycleCallback = cycleCallback
 
 	// prepare new round of results
 	mc.LastResult.Reset()
 	mc.LastResult.Address = mc.PC.Address()
-
-	// register end cycle callback
-	defer func() {
-		mc.cycleCallback = nil
-	}()
 
 	var err error
 

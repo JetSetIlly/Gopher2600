@@ -83,7 +83,7 @@ func (mem *mockMem) Write(address uint16, data uint8) error {
 
 func step(t *testing.T, mc *cpu.CPU) {
 	t.Helper()
-	err := mc.ExecuteInstruction(nil)
+	err := mc.ExecuteInstruction(cpu.NilCycleCallback)
 	if err != nil {
 		fmt.Println(mc.LastResult.Defn)
 		t.Fatal(err)
