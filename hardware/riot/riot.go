@@ -22,6 +22,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/chipbus"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
 	"github.com/jetsetilly/gopher2600/hardware/riot/timer"
+	"github.com/jetsetilly/gopher2600/logger"
 )
 
 // RIOT represents the PIA 6532 found in the VCS.
@@ -67,11 +68,14 @@ func (riot *RIOT) String() string {
 
 // Step moves the state of the RIOT forward one CPU cycle.
 func (riot *RIOT) Step() {
-	ok, data := riot.mem.ChipHasChanged()
-	if ok {
-		ok = riot.Timer.Update(data)
-		if ok {
-			_ = riot.Ports.Update(data)
+	update, data := riot.mem.ChipHasChanged()
+	if update {
+		update = riot.Timer.Update(data)
+		if update {
+			update = riot.Ports.Update(data)
+			if update {
+				logger.Logf("riot", "memory altered to no affect (%04x=%02x)", data.Address, data.Value)
+			}
 		}
 	}
 

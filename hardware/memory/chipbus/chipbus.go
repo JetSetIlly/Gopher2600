@@ -20,12 +20,18 @@ import "github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
 // ChangedRegister packages together the name of the chip register that has been
 // changed by the CPU along with the new value.
 type ChangedRegister struct {
-	// registers are changed via the CPU bus and so the name is a
-	// cpubus.Register and not a chipbus.Register
-	Register cpubus.Register
+	// the address of the register
+	Address uint16
 
 	// the data value written to the chip register
 	Value uint8
+
+	// registers are changed via the CPU bus and so the name is a
+	// cpubus.Register and not a chipbus.Register
+	//
+	// of the register is not named then the change is non-effective. the
+	// RIOT/TIA implementation should log such an event
+	Register cpubus.Register
 }
 
 // Memory defines the operations for the memory system when accessed from the

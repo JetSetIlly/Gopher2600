@@ -32,6 +32,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/tia/phaseclock"
 	"github.com/jetsetilly/gopher2600/hardware/tia/polycounter"
 	"github.com/jetsetilly/gopher2600/hardware/tia/video"
+	"github.com/jetsetilly/gopher2600/logger"
 )
 
 // TV defines the television functions required by the TIA type.
@@ -595,7 +596,10 @@ func (tia *TIA) Step() error {
 					if update {
 						// update playfield color register (depending on TIA revision)
 						if tia.instance.Prefs.Revision.Live.LateCOLUPF.Load().(bool) {
-							_ = tia.Video.UpdatePlayfieldColor(data)
+							update = tia.Video.UpdatePlayfieldColor(data)
+							if update {
+								logger.Logf("tia", "memory altered to no affect (%04x=%02x)", data.Address, data.Value)
+							}
 						}
 					}
 				}

@@ -168,7 +168,7 @@ func (mem *TIAMemory) Poke(address uint16, value uint8) error {
 func (mem *TIAMemory) ChipHasChanged() (bool, chipbus.ChangedRegister) {
 	if mem.writeSignal {
 		mem.writeSignal = false
-		return true, chipbus.ChangedRegister{Register: cpubus.Write[mem.writeAddress], Value: mem.writeData}
+		return true, chipbus.ChangedRegister{Address: mem.writeAddress, Value: mem.writeData, Register: cpubus.Write[mem.writeAddress]}
 	}
 
 	return false, chipbus.ChangedRegister{}
@@ -215,12 +215,7 @@ func (mem *TIAMemory) Write(address uint16, data uint8) error {
 	// 	panic(fmt.Sprintf("unserviced write to TIA memory (%#04x)", mem.writeAddress))
 	// }
 
-	// do not allow writes to memory that do not have symbol name
-	if _, ok := cpubus.TIAWriteSymbols[address]; !ok {
-		return curated.Errorf(cpubus.AddressError, address)
-	}
-
-	// signal the chips that their chip memory has been written to
+	// signal that chip memory has been changed. see ChipHasChanged() function
 	mem.writeAddress = address
 	mem.writeSignal = true
 	mem.writeData = data
