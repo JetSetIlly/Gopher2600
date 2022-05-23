@@ -107,26 +107,25 @@ func (au *Audio) Step() bool {
 		au.channel1.registersChanged = false
 	}
 
-	defer func() {
-		au.clock228++
-		if au.clock228 >= 228 {
-			au.clock228 = 0
-		}
-	}()
+	au.clock228++
+	if au.clock228 >= 228 {
+		au.clock228 = 0
+		return false
+	}
 
 	switch au.clock228 {
-	case 9:
+	case 10:
 		au.channel0.phase0()
 		au.channel1.phase0()
 		return false
-	case 81:
+	case 82:
 		au.channel0.phase0()
 		au.channel1.phase0()
 		return false
-	case 37:
+	case 38:
 		au.channel0.phase1()
 		au.channel1.phase1()
-	case 149:
+	case 150:
 		au.channel0.phase1()
 		au.channel1.phase1()
 	default:
