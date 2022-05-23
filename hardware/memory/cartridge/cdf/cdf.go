@@ -375,14 +375,17 @@ func (cart *cdf) Write(addr uint16, data uint8, passive bool, poke bool) error {
 				cart.state.registers.Datastream[i].AfterCALLFN = cart.readDatastreamPointer(i)
 			}
 		}
+
+	default:
+		if poke {
+			cart.banks[cart.state.bank][addr] = data
+			return nil
+		}
+
+		return curated.Errorf("CDF: %v", curated.Errorf(cpubus.AddressError, addr))
 	}
 
-	if poke {
-		cart.banks[cart.state.bank][addr] = data
-		return nil
-	}
-
-	return curated.Errorf("CDF: %v", curated.Errorf(cpubus.AddressError, addr))
+	return nil
 }
 
 // bankswitch on hotspot access.

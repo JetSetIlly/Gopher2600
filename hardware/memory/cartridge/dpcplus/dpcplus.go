@@ -654,14 +654,17 @@ func (cart *dpcPlus) Write(addr uint16, data uint8, passive bool, poke bool) err
 		dataAddr &= 0x0fff
 		cart.state.static.dataRAM[dataAddr] = data
 		cart.state.registers.Fetcher[f].inc()
+
+	default:
+		if poke {
+			cart.banks[cart.state.bank][addr] = data
+			return nil
+		}
+
+		return curated.Errorf("DPC+: %v", curated.Errorf(cpubus.AddressError, addr))
 	}
 
-	if poke {
-		cart.banks[cart.state.bank][addr] = data
-		return nil
-	}
-
-	return curated.Errorf("DPC+: %v", curated.Errorf(cpubus.AddressError, addr))
+	return nil
 }
 
 // bankswitch on hotspot access.

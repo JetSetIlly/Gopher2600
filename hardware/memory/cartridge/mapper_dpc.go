@@ -260,16 +260,16 @@ func (cart *dpc) Write(addr uint16, data uint8, passive bool, poke bool) error {
 	} else if addr >= 0x0070 && addr <= 0x0077 {
 		// reset random number generator
 		cart.state.registers.RNG = 0xff
+	} else {
+		if poke {
+			cart.banks[cart.state.bank][addr] = data
+			return nil
+		}
+
+		return curated.Errorf("DPC: %v", curated.Errorf(cpubus.AddressError, addr))
 	}
 
-	// other addresses are not write registers and are ignored
-
-	if poke {
-		cart.banks[cart.state.bank][addr] = data
-		return nil
-	}
-
-	return curated.Errorf("DPC: %v", curated.Errorf(cpubus.AddressError, addr))
+	return nil
 }
 
 // bank switch on hotspot access.

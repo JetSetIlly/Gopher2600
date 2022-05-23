@@ -125,6 +125,10 @@ func (cart *parkerBros) Read(addr uint16, passive bool) (uint8, error) {
 
 // Write implements the mapper.CartMapper interface.
 func (cart *parkerBros) Write(addr uint16, data uint8, passive bool, poke bool) error {
+	if cart.bankswitch(addr, passive) {
+		return nil
+	}
+
 	if poke {
 		if addr >= 0x0000 && addr <= 0x03ff {
 			cart.banks[cart.state.segment[0]][addr&0x3ff] = data
@@ -135,18 +139,17 @@ func (cart *parkerBros) Write(addr uint16, data uint8, passive bool, poke bool) 
 		} else if addr >= 0x0c00 && addr <= 0x0fff {
 			cart.banks[cart.state.segment[3]][addr&0x3ff] = data
 		}
+		return nil
 	}
-
-	cart.bankswitch(addr, passive)
 
 	return curated.Errorf("E0: %v", curated.Errorf(cpubus.AddressError, addr))
 }
 
-// bankswitch on hotspot access.
-func (cart *parkerBros) bankswitch(addr uint16, passive bool) {
+// bankswitch on hotspot access. returns false if address wasn't recognised
+func (cart *parkerBros) bankswitch(addr uint16, passive bool) bool {
 	if addr >= 0xfe0 && addr <= 0xff7 {
 		if passive {
-			return
+			return true
 		}
 
 		switch addr {
@@ -204,7 +207,11 @@ func (cart *parkerBros) bankswitch(addr uint16, passive bool) {
 		case 0x0ff7:
 			cart.state.segment[2] = 7
 		}
+
+		return true
 	}
+
+	return false
 }
 
 // NumBanks implements the mapper.CartMapper interface.
