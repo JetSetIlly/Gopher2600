@@ -238,8 +238,8 @@ func (vd *Video) Tick() {
 	if !(*vd.tia.hblank) || vd.tia.hmove.Clk {
 		p0 := vd.Player0.tick()
 		p1 := vd.Player1.tick()
-		m0 := vd.Missile0.tick(vd.Player0.triggerMissileReset())
-		m1 := vd.Missile1.tick(vd.Player1.triggerMissileReset())
+		m0 := vd.Missile0.tick(vd.Player0.triggerMissileReset)
+		m1 := vd.Missile1.tick(vd.Player1.triggerMissileReset)
 		bl := vd.Ball.tick()
 
 		// note that there is no Playfield.tick() function. ticking of

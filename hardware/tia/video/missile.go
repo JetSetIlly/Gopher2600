@@ -222,7 +222,7 @@ func (ms *MissileSprite) rsync(adjustment int) {
 }
 
 // returns true if pixel has changed.
-func (ms *MissileSprite) tick(resetToPlayer bool) bool {
+func (ms *MissileSprite) tick(resetToPlayer func() bool) bool {
 	if *ms.tia.hblank {
 		// early return if nothing to do
 		if !ms.tia.hmove.Clk {
@@ -256,7 +256,7 @@ func (ms *MissileSprite) tick(resetToPlayer bool) bool {
 	// incorrect results. we can see this (occasionally) in Supercharger
 	// Frogger - the top row of trucks will sometimes extend by a pixel as they
 	// drive off screen.
-	if ms.ResetToPlayer && resetToPlayer {
+	if ms.ResetToPlayer && resetToPlayer() {
 		ms.position = polycounter.ResetValue
 		ms.pclk = phaseclock.ResetValue
 
