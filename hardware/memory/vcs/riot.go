@@ -16,8 +16,6 @@
 package vcs
 
 import (
-	"fmt"
-
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/instance"
 	"github.com/jetsetilly/gopher2600/hardware/memory/chipbus"
@@ -140,9 +138,14 @@ func (mem *RIOTMemory) Read(address uint16) (uint8, error) {
 func (mem *RIOTMemory) Write(address uint16, data uint8) error {
 	// check that the last write to this memory mem has been serviced. this
 	// shouldn't ever happen.
-	if mem.writeSignal {
-		panic(fmt.Sprintf("unserviced write to RIOT memory (%#04x)", mem.writeAddress))
-	}
+	//
+	// NOTE: this is a protection against an imcomplete RIOT implementation. it
+	// is complete and this code path has never run to my knowledge. removing
+	// for performance reasons (23/05/2022)
+	//
+	// if mem.writeSignal {
+	// 	panic(fmt.Sprintf("unserviced write to RIOT memory (%#04x)", mem.writeAddress))
+	// }
 
 	// do not allow writes to memory that do not have symbol name
 	if _, ok := cpubus.RIOTWriteSymbols[address]; !ok {

@@ -174,9 +174,9 @@ var TIAWriteSymbols = map[uint16]Register{
 	0x27: VDELBL,
 	0x28: RESMP0,
 	0x29: RESMP1,
-	0x2A: HMOVE,
-	0x2B: HMCLR,
-	0x2C: CXCLR,
+	0x2a: HMOVE,
+	0x2b: HMCLR,
+	0x2c: CXCLR,
 }
 
 // RIOTWriteSymbols indexes all RIOT write symbols by normalised address.

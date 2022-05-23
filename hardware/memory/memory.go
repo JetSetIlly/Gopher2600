@@ -250,7 +250,7 @@ func (mem *Memory) Write(address uint16, data uint8) error {
 	mem.LastCPUWrite = true
 	mem.LastCPUData = data
 
-	return area.(cpubus.Memory).Write(ma, data)
+	return area.Write(ma, data)
 }
 
 // Peek implements the DebugBus interface.
