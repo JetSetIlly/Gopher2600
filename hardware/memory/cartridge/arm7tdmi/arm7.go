@@ -1372,8 +1372,10 @@ func (arm *ARM) executeHiRegisterOps(opcode uint16) {
 		if thumbMode {
 			arm.registers[rPC] = newPC
 
-			arm.disasmExecutionNotes = "branch exchange to thumb code"
-			arm.disasmUpdateNotes = true
+			if arm.disasm != nil {
+				arm.disasmExecutionNotes = "branch exchange to thumb code"
+				arm.disasmUpdateNotes = true
+			}
 
 			// "7.6 Data Operations" in "ARM7TDMI-S Technical Reference Manual r4p3"
 			// - fillPipeline() will be called if necessary
@@ -1390,12 +1392,14 @@ func (arm *ARM) executeHiRegisterOps(opcode uint16) {
 			return
 		}
 
-		if res.InterruptEvent != "" {
-			arm.disasmExecutionNotes = fmt.Sprintf("ARM function (%08x) %s", arm.registers[rPC]-4, res.InterruptEvent)
-		} else {
-			arm.disasmExecutionNotes = fmt.Sprintf("ARM function (%08x)", arm.registers[rPC]-4)
+		if arm.disasm != nil {
+			if res.InterruptEvent != "" {
+				arm.disasmExecutionNotes = fmt.Sprintf("ARM function (%08x) %s", arm.registers[rPC]-4, res.InterruptEvent)
+			} else {
+				arm.disasmExecutionNotes = fmt.Sprintf("ARM function (%08x)", arm.registers[rPC]-4)
+			}
+			arm.disasmUpdateNotes = true
 		}
-		arm.disasmUpdateNotes = true
 
 		// if ARMinterrupt returns false this indicates that the
 		// function at the quoted program counter is not recognised and
@@ -2044,11 +2048,13 @@ func (arm *ARM) executeConditionalBranch(opcode uint16) {
 		arm.registers[rPC] = newPC
 	}
 
-	arm.disasmUpdateNotes = true
-	if b {
-		arm.disasmExecutionNotes = "branched"
-	} else {
-		arm.disasmExecutionNotes = "next"
+	if arm.disasm != nil {
+		if b {
+			arm.disasmExecutionNotes = "branched"
+		} else {
+			arm.disasmExecutionNotes = "next"
+		}
+		arm.disasmUpdateNotes = true
 	}
 }
 
