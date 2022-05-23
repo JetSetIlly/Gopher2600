@@ -56,6 +56,8 @@ type screen struct {
 	gotoCoordsY int
 }
 
+const numBufferPixels = 5
+
 // for clarity, variables accessed in the critical section are encapsulated in
 // their own subtype.
 type screenCrit struct {
@@ -87,14 +89,18 @@ type screenCrit struct {
 	// - the smaller the buffer the more the emulation will have to wait the
 	//		screen to catch up (see emuWait and emuWaitAck channels)
 	// - a five frame buffer seems good. ten frames can feel laggy
-	bufferPixels [5]*image.RGBA
+	bufferPixels [numBufferPixels]*image.RGBA
 
 	// the number of scanlines represented in the bufferPixels. this is set
 	// during a resize operation and used to affect screen roll visualisation
-	bufferHeight int
+	bufferPixelsHeight int
+
+	// the length of the buffer pixels array. saves calling len() multiple
+	// times needlessly
+	bufferPixelsLen int
 
 	// count of how many of the bufferPixel entries have been used. reset to
-	// len(bufferPixels) when emulation is paused and reduced every time a new
+	// numBufferPixels when emulation is paused and reduced every time a new
 	// bufferPixel position is used.
 	//
 	// it is used to prevent the renderIdx using a buffer that hasn't been used
@@ -160,14 +166,17 @@ func newScreen(img *SdlImgui) *screen {
 	scr.crit.monitorSync = true
 
 	// allocate memory for pixel buffers etc.
-	scr.crit.bufferHeight = specification.AbsoluteMaxScanlines
-	scr.crit.pixels = image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, scr.crit.bufferHeight))
-	scr.crit.elementPixels = image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, scr.crit.bufferHeight))
-	scr.crit.overlayPixels = image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, scr.crit.bufferHeight))
+	scr.crit.bufferPixelsHeight = specification.AbsoluteMaxScanlines
+	scr.crit.pixels = image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, scr.crit.bufferPixelsHeight))
+	scr.crit.elementPixels = image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, scr.crit.bufferPixelsHeight))
+	scr.crit.overlayPixels = image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, scr.crit.bufferPixelsHeight))
 
 	for i := range scr.crit.bufferPixels {
-		scr.crit.bufferPixels[i] = image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, scr.crit.bufferHeight))
+		scr.crit.bufferPixels[i] = image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, scr.crit.bufferPixelsHeight))
 	}
+
+	// note length of bufferPixels
+	scr.crit.bufferPixelsLen = len(scr.crit.bufferPixels[0].Pix)
 
 	// allocate reflection
 	scr.crit.reflection = make([]reflection.ReflectedVideoStep, specification.AbsoluteMaxClks)
@@ -335,8 +344,8 @@ func (scr *screen) NewFrame(frameInfo television.FrameInfo) error {
 
 					if diff > scr.img.crtPrefs.SyncSpeedScanlines.Get().(int) {
 						scr.crit.screenrollScanline += rollAmount
-						if scr.crit.screenrollScanline >= scr.crit.bufferHeight {
-							scr.crit.screenrollScanline -= scr.crit.bufferHeight
+						if scr.crit.screenrollScanline >= scr.crit.bufferPixelsHeight {
+							scr.crit.screenrollScanline -= scr.crit.bufferPixelsHeight
 						}
 					} else {
 						scr.recoverFromScreenRoll()
@@ -353,14 +362,14 @@ func (scr *screen) NewFrame(frameInfo television.FrameInfo) error {
 		case emulation.Paused:
 			scr.crit.renderIdx = scr.crit.plotIdx
 			scr.crit.prevRenderIdx = scr.crit.plotIdx
-			scr.crit.bufferUsed = len(scr.crit.bufferPixels)
+			scr.crit.bufferUsed = numBufferPixels
 		case emulation.Running:
 			if scr.crit.bufferUsed > 0 {
 				scr.crit.bufferUsed--
 			}
 
 			scr.crit.plotIdx++
-			if scr.crit.plotIdx >= len(scr.crit.bufferPixels) {
+			if scr.crit.plotIdx >= numBufferPixels {
 				scr.crit.plotIdx = 0
 			}
 
@@ -408,7 +417,7 @@ func (scr *screen) SetPixels(sig []signal.SignalAttributes, last int) error {
 		//
 		// this can happen when screen is rolling and offset started off at a
 		// value greater than zero
-		if offset >= len(scr.crit.bufferPixels[scr.crit.plotIdx].Pix) {
+		if offset >= scr.crit.bufferPixelsLen {
 			offset = 0
 		}
 
@@ -569,7 +578,7 @@ func (scr *screen) copyPixelsPlaymode() {
 		prev := scr.crit.prevRenderIdx
 		scr.crit.prevRenderIdx = scr.crit.renderIdx
 		scr.crit.renderIdx++
-		if scr.crit.renderIdx >= len(scr.crit.bufferPixels) {
+		if scr.crit.renderIdx >= numBufferPixels {
 			scr.crit.renderIdx = 0
 		}
 
