@@ -61,26 +61,33 @@ func (vcs *VCS) Step(videoCycleCallback func() error) error {
 			return err
 		}
 
-		if err := vcs.TIA.Step(false); err != nil {
+		if err := vcs.TIA.QuickStep(); err != nil {
 			return err
 		}
 		if err := videoCycleCallback(); err != nil {
 			return err
 		}
-		if err := vcs.TIA.Step(false); err != nil {
+		if err := vcs.TIA.QuickStep(); err != nil {
 			return err
 		}
 		if err := videoCycleCallback(); err != nil {
 			return err
 		}
-		if err := vcs.TIA.Step(true); err != nil {
-			return err
+		if vcs.CPU.RdyFlg {
+			if err := vcs.TIA.Step(); err != nil {
+				return err
+			}
+			vcs.RIOT.Step()
+		} else {
+			if err := vcs.TIA.QuickStep(); err != nil {
+				return err
+			}
+			vcs.RIOT.QuickStep()
 		}
 		if err := videoCycleCallback(); err != nil {
 			return err
 		}
 
-		vcs.RIOT.Step()
 		vcs.Mem.Cart.Step(vcs.Clock)
 
 		return nil

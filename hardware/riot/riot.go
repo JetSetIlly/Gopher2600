@@ -65,8 +65,7 @@ func (riot *RIOT) String() string {
 	return s.String()
 }
 
-// Step moves the state of the RIOT forward one video cycle. Does not include
-// the stepping of the RIOT Ports. See StepPorts().
+// Step moves the state of the RIOT forward one CPU cycle.
 func (riot *RIOT) Step() {
 	ok, data := riot.mem.ChipHasChanged()
 	if ok {
@@ -84,5 +83,14 @@ func (riot *RIOT) Step() {
 	// updated every cycle and the paddle discharge would have to be altered.
 	//
 	// !!TODO: conditional calling of Ports.Step()
+	riot.Ports.Step()
+}
+
+// Step moves the state of the RIOT forward one CPU cycle. Does not check to
+// see if the state of RIOT memory has changed.
+func (riot *RIOT) QuickStep() {
+	riot.Timer.Step()
+
+	// see comment above about riot.Ports.Step()
 	riot.Ports.Step()
 }
