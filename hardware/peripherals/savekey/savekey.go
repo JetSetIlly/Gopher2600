@@ -81,9 +81,6 @@ type SaveKey struct {
 
 	// the core of the SaveKey is an EEPROM.
 	EEPROM *EEPROM
-
-	// the atarivox should not process data when it is disabled
-	disabled bool
 }
 
 // NewSaveKey is the preferred method of initialisation for the SaveKey type.
@@ -172,11 +169,6 @@ func (sk *SaveKey) ID() plugging.PeripheralID {
 func (sk *SaveKey) Reset() {
 }
 
-// Restart implements the ports.DisablePeripheral interface.
-func (sk *SaveKey) Disable(disabled bool) {
-	sk.disabled = disabled
-}
-
 // the active bits in the SWCHA value.
 const (
 	maskSaveKeySDA = 0b01000000
@@ -191,10 +183,6 @@ const (
 
 // Update implements the ports.Peripheral interface.
 func (sk *SaveKey) Update(data chipbus.ChangedRegister) bool {
-	if sk.disabled {
-		return false
-	}
-
 	switch data.Register {
 	case cpubus.SWCHA:
 		// mask and shift SWCHA value to the normlised value
@@ -257,10 +245,6 @@ func (sk *SaveKey) resetBits() {
 
 // Step implements the ports.Peripheral interface.
 func (sk *SaveKey) Step() {
-	if sk.disabled {
-		return
-	}
-
 	// update savekey i2c state
 	sk.SDA.Tick(sk.swcha&maskSaveKeySDA == maskSaveKeySDA)
 	sk.SCL.Tick(sk.swcha&maskSaveKeySCL == maskSaveKeySCL)

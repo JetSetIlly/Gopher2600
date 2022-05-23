@@ -210,10 +210,6 @@ const (
 
 // memory has been updated. peripherals are notified.
 func (vox *AtariVox) Update(data chipbus.ChangedRegister) bool {
-	if vox.disabled || vox.muted {
-		return false
-	}
-
 	vox.SaveKey.Update(data)
 
 	switch data.Register {
@@ -256,10 +252,6 @@ func (vox *AtariVox) resetBits() {
 
 // step is called every CPU clock. important for paddle devices
 func (vox *AtariVox) Step() {
-	if vox.disabled || vox.muted {
-		return
-	}
-
 	vox.SaveKey.Step()
 
 	// update atarivox i2c state
@@ -311,7 +303,9 @@ func (vox *AtariVox) Step() {
 	case AtariVoxEnding:
 		if vox.SpeakJetDATA.Hi() {
 			vox.State = AtariVoxStopped
-			vox.Engine.SpeakJet(vox.Bits)
+			if !(vox.disabled || vox.muted) {
+				vox.Engine.SpeakJet(vox.Bits)
+			}
 		} else {
 			logger.Log("atarivox", "unexpected end bit of 0. should be 1")
 			vox.State = AtariVoxStopped
