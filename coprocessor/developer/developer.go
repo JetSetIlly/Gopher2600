@@ -107,8 +107,6 @@ func NewDeveloper(pathToROM string, cart mapper.CartCoProcBus, tv TV) *Developer
 		},
 	}
 
-	dev.cart.SetDeveloper(dev)
-
 	t := time.Now()
 	dev.source, err = NewSource(pathToROM)
 	if err != nil {
@@ -120,6 +118,7 @@ func NewDeveloper(pathToROM string, cart mapper.CartCoProcBus, tv TV) *Developer
 	if dev.source != nil {
 		dev.source.SortedLines.SortByLineAndFunction(false)
 		dev.source.SortedFunctions.SortByFunction(false)
+		dev.cart.SetDeveloper(dev)
 	}
 
 	return dev
@@ -227,7 +226,7 @@ func (dev *Developer) ExecutionStart() {
 	}
 }
 
-// ExecutionProfile implements the CartCoProcDeveloper interface.
+// xecutionProfile implements the CartCoProcDeveloper interface.
 func (dev *Developer) ExecutionProfile(addr map[uint32]float32) {
 	dev.sourceLock.Lock()
 	defer dev.sourceLock.Unlock()
