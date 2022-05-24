@@ -644,7 +644,7 @@ func (arm *ARM) Run(mamcr uint32) (uint32, float32, error) {
 
 		// check program counter
 		memIdx := arm.executingPC - arm.programMemoryOffset
-		if memIdx+1 >= uint32(arm.programMemoryLen) {
+		if memIdx < 0 || memIdx+1 >= uint32(arm.programMemoryLen) {
 			// program counter is out-of-range so find program memory again
 			// (using the PC value)
 			err = arm.findProgramMemory()
@@ -656,7 +656,7 @@ func (arm *ARM) Run(mamcr uint32) (uint32, float32, error) {
 
 			// if it's still out-of-range then give up with an error
 			memIdx = arm.executingPC - arm.programMemoryOffset
-			if memIdx+1 >= uint32(arm.programMemoryLen) {
+			if memIdx < 0 || memIdx+1 >= uint32(arm.programMemoryLen) {
 				// can't find memory so we say the ARM program has finished inadvertently
 				logger.Logf("ARM7", "PC out of range (%#08x). aborting thumb program early", arm.executingPC)
 				break // for loop
@@ -675,18 +675,13 @@ func (arm *ARM) Run(mamcr uint32) (uint32, float32, error) {
 			expectedPC = arm.registers[rPC]
 		}
 
-		// not stack pointer. we'll use this to check if stack pointer has
+		// note stack pointer. we'll use this to check if stack pointer has
 		// collided with variables memory
 		stackPointerBeforeExecution := arm.registers[rSP]
 
 		// run from functionMap if possible
-		formatFunc := arm.functionMap[memIdx]
-		if formatFunc != nil {
-			formatFunc(opcode)
-		} else {
-			// make a reference of the opcode function
-			var f func(opcode uint16)
-
+		f := arm.functionMap[memIdx]
+		if f == nil {
 			// working backwards up the table in Figure 5-1 of the ARM7TDMI Data Sheet.
 			if opcode&0xf000 == 0xf000 {
 				// format 19 - Long branch with link
@@ -751,8 +746,8 @@ func (arm *ARM) Run(mamcr uint32) (uint32, float32, error) {
 
 			// store function reference in functionMap and run for the first time
 			arm.functionMap[memIdx] = f
-			f(opcode)
 		}
+		f(opcode)
 
 		if !arm.immediateMode {
 			// add additional cycles required to fill pipeline before next iteration
