@@ -67,13 +67,6 @@ type limiter struct {
 	//
 	// is not set if setRate() is called directly
 	matchRefreshRateDelay int
-
-	// realtime audio should not be allowed if actual speed of the emulation is
-	// too low or too high
-	//
-	// this is good for machines that just run too slow (realtime audio might
-	// sound odd) but it's also good for the debugger I think
-	realtimeAudio bool
 }
 
 func (lmtr *limiter) init(tv *Television) {
@@ -160,10 +153,6 @@ func (lmtr *limiter) measureActual() {
 		// reset time and count ready for next measurement
 		lmtr.measureTime = t
 		lmtr.measureCt = 0
-
-		// check whether realtimeAudio should be allowed
-		refresh := lmtr.refreshRate.Load().(float32)
-		lmtr.realtimeAudio = actual >= refresh*0.95 && actual <= refresh*1.05
 
 	default:
 	}

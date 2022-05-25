@@ -516,14 +516,10 @@ func (tv *Television) newScanline() error {
 	// check for realtime mixing requirements. if it is required then
 	// immediately push the audio data from the previous frame to the mixer
 	if tv.realtimeMixer != nil && tv.emulationState == emulation.Running && tv.state.frameInfo.Stable {
-		if tv.lmtr.realtimeAudio && tv.realtimeMixer.MoreAudio() {
-			// send the signals for the equivalent scanlines of the previous frame
-			i := tv.prevSignalLastIdx - (tv.state.frameInfo.TotalScanlines-tv.state.scanline)*specification.ClksScanline
-			if i > 0 {
-				err := tv.realtimeMixer.SetAudio(tv.prevSignals[:tv.prevSignalLastIdx])
-				if err != nil {
-					return err
-				}
+		if tv.realtimeMixer.MoreAudio() {
+			err := tv.realtimeMixer.SetAudio(tv.prevSignals[:tv.prevSignalLastIdx])
+			if err != nil {
+				return err
 			}
 		}
 	}
