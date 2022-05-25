@@ -8,7 +8,8 @@ compileFlags = '-c 3 -B -wb=false'
 # profilingRom = "roms/starpath/02 - Communist Mutants From Space (Ntsc).mp3"
 # profilingRom = "roms/The Official Frogger.bin"
 # profilingRom = roms/Homebrew/CDF/gorfarc_20201231_demo1_NTSC.bin
-profilingRom = roms/Pitfall.bin
+profilingRom = roms/Homebrew/CDF/zookeeper_20200308_demo2_NTSC.bin
+# profilingRom = roms/Pitfall.bin
 # profilingRom = 
 
 .PHONY: all clean tidy generate check_lint lint lint_fix check_glsl glsl_validate check_pandoc readme_spell test race race_debug profile profile_cpu profile_cpu_play profile_cpu_debug profile_mem_play profile_mem_debug profile_trace build_assertions build check_upx release release_statsview chec_rswc windows_manifest cross_windows cross_windows_development cross_windows_statsview cross_windows_dynamic

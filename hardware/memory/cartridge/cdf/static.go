@@ -92,6 +92,16 @@ func (stc *Static) Snapshot() *Static {
 func (stc *Static) MapAddress(addr uint32, write bool) (*[]byte, uint32) {
 	// tests arranged in order of most likely to be used
 
+	// data (RAM)
+	if addr >= stc.version.dataOriginRAM && addr <= stc.version.dataMemtopRAM {
+		return &stc.dataRAM, addr - stc.version.dataOriginRAM
+	}
+
+	// variables (RAM)
+	if addr >= stc.version.variablesOriginRAM && addr <= stc.version.variablesMemtopRAM {
+		return &stc.variablesRAM, addr - stc.version.variablesOriginRAM
+	}
+
 	// custom ARM code (ROM)
 	if addr >= stc.version.customOriginROM && addr <= stc.version.customMemtopROM {
 		if write {
@@ -101,6 +111,11 @@ func (stc *Static) MapAddress(addr uint32, write bool) (*[]byte, uint32) {
 		return &stc.customROM, addr - stc.version.customOriginROM
 	}
 
+	// driver ARM code (RAM)
+	if addr >= stc.version.driverOriginRAM && addr <= stc.version.driverMemtopRAM {
+		return &stc.driverRAM, addr - stc.version.driverOriginRAM
+	}
+
 	// driver ARM code (ROM)
 	if addr >= stc.version.driverOriginROM && addr <= stc.version.driverMemtopROM {
 		if write {
@@ -108,21 +123,6 @@ func (stc *Static) MapAddress(addr uint32, write bool) (*[]byte, uint32) {
 			return nil, addr
 		}
 		return &stc.driverROM, addr - stc.version.driverOriginROM
-	}
-
-	// data (RAM)
-	if addr >= stc.version.dataOriginRAM && addr <= stc.version.dataMemtopRAM {
-		return &stc.dataRAM, addr - stc.version.dataOriginRAM
-	}
-
-	// driver ARM code (RAM)
-	if addr >= stc.version.driverOriginRAM && addr <= stc.version.driverMemtopRAM {
-		return &stc.driverRAM, addr - stc.version.driverOriginRAM
-	}
-
-	// variables (RAM)
-	if addr >= stc.version.variablesOriginRAM && addr <= stc.version.variablesMemtopRAM {
-		return &stc.variablesRAM, addr - stc.version.variablesOriginRAM
 	}
 
 	return nil, addr
