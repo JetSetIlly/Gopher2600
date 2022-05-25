@@ -250,17 +250,21 @@ func (vox *AtariVox) resetBits() {
 	vox.BitsCt = 0
 }
 
-// step is called every CPU clock. important for paddle devices
+// Step is called every CPU clock.
 func (vox *AtariVox) Step() {
 	vox.SaveKey.Step()
+
+	// limit how often we update the atarivox - the successful 6507 program
+	// will be written such that it fits in with this limitation
+	vox.baudCount++
+	if vox.baudCount < baudCount {
+		return
+	}
+	vox.baudCount = 0
 
 	// update atarivox i2c state
 	vox.SpeakJetDATA.Tick(vox.swcha&maskSpeakJetDATA == maskSpeakJetDATA)
 	vox.SpeakJetREADY.Tick(vox.swcha&maskSpeakJetREADY == maskSpeakJetREADY)
-
-	if vox.Engine == nil {
-		return
-	}
 
 	switch vox.State {
 	case AtariVoxStopped:
@@ -268,7 +272,9 @@ func (vox *AtariVox) Step() {
 			if vox.flushCount < flushCount {
 				vox.flushCount++
 				if vox.flushCount >= flushCount {
-					vox.Engine.Flush()
+					if vox.Engine != nil {
+						vox.Engine.Flush()
+					}
 				}
 			}
 			return
@@ -279,14 +285,6 @@ func (vox *AtariVox) Step() {
 		vox.baudCount = 0
 		vox.flushCount = 0
 	}
-
-	// limit how often we update the atarivox - the successful 6507 program
-	// will be written such that it fits in with this limitation
-	vox.baudCount++
-	if vox.baudCount < baudCount {
-		return
-	}
-	vox.baudCount = 0
 
 	switch vox.State {
 	case AtariVoxStarting:
@@ -303,7 +301,7 @@ func (vox *AtariVox) Step() {
 	case AtariVoxEnding:
 		if vox.SpeakJetDATA.Hi() {
 			vox.State = AtariVoxStopped
-			if !(vox.disabled || vox.muted) {
+			if vox.Engine != nil && !(vox.disabled || vox.muted) {
 				vox.Engine.SpeakJet(vox.Bits)
 			}
 		} else {
