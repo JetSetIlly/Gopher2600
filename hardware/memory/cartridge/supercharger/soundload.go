@@ -112,6 +112,10 @@ func newSoundLoad(cart *Supercharger, loader cartridgeloader.Loader) (tape, erro
 		int(317.0/timePerSample), int(340.0/timePerSample), int(2450.0/timePerSample)))
 
 	// calculate tape regulator speed. 1190000 is the frequency at which step() is called (1.19MHz)
+	//
+	// TODO: for non-NTSC machine the frequency step is called will be
+	// different but it doesn't appear to have any effect on loading success so
+	// we won't complicate the code by allowing the regulator to change
 	tap.regulator = int(math.Round(1190000.0 / tap.pcm.sampleRate))
 	logger.Logf(soundloadLogTag, "tape regulator: %d", tap.regulator)
 
