@@ -21,17 +21,15 @@ import (
 	"path/filepath"
 	"strings"
 
-	// "github.com/go-audio/audio"
-	// "github.com/go-audio/wav".
+	"github.com/go-audio/wav"
 
 	"github.com/hajimehoshi/go-mp3"
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
-	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
 type pcmData struct {
-	totalTime  float64
+	totalTime  float64 // in seconds
 	sampleRate float64
 
 	// data is mono data (taken from the left channel in the case of stero
@@ -46,24 +44,47 @@ func getPCM(cl cartridgeloader.Loader) (pcmData, error) {
 
 	switch strings.ToLower(filepath.Ext(cl.Filename)) {
 	case ".wav":
-		return pcmData{}, curated.Errorf("wav files not currently supported (%s)", cl.Filename)
+		dec := wav.NewDecoder(cl.StreamedData)
+		if dec == nil {
+			return p, fmt.Errorf("wav: error decoding")
+		}
+
+		if !dec.IsValidFile() {
+			return p, fmt.Errorf("wav: not a valid wav file")
+		}
+
+		logger.Log(soundloadLogTag, "loading from wav file")
+
+		// load all data at once
+		buf, err := dec.FullPCMBuffer()
+		if err != nil {
+			return p, fmt.Errorf("soundload: wav: %v", err)
+		}
+		floatBuf := buf.AsFloat32Buffer()
+
+		// copy first channel only of data stream
+		p.data = make([]float32, 0, len(floatBuf.Data)/int(dec.NumChans))
+		for i := 0; i < len(floatBuf.Data); i += int(dec.NumChans) {
+			p.data = append(p.data, floatBuf.Data[i])
+		}
+
+		// sample rate
+		p.sampleRate = float64(dec.SampleRate)
+
+		// total time of recording in seconds
+		dur, err := dec.Duration()
+		if err != nil {
+			return p, fmt.Errorf("wav: %v", err)
+		}
+		p.totalTime = dur.Seconds()
 
 	case ".mp3":
 		dec, err := mp3.NewDecoder(cl.StreamedData)
 		if err != nil {
-			return p, fmt.Errorf("soundload: mp3: %v", err)
+			return p, fmt.Errorf("mp3: %v", err)
 		}
 
 		logger.Log(soundloadLogTag, "loading from mp3 file")
-
-		// according to the go-mp3 docs:
-		//
-		// "The stream is always formatted as 16bit (little endian) 2 channels even if
-		// the source is single channel MP3. Thus, a sample always consists of 4
-		// bytes.".
-		p.sampleRate = float64(dec.SampleRate())
-
-		logger.Log(soundloadLogTag, "using left channel only")
 
 		err = nil
 		chunk := make([]byte, 4096)
@@ -71,7 +92,7 @@ func getPCM(cl cartridgeloader.Loader) (pcmData, error) {
 			var chunkLen int
 			chunkLen, err = dec.Read(chunk)
 			if err != nil && err != io.EOF {
-				return p, fmt.Errorf("soundload: mp3: %v", err)
+				return p, fmt.Errorf("mp3: %v", err)
 			}
 
 			// index increment of 4 because:
@@ -92,9 +113,17 @@ func getPCM(cl cartridgeloader.Loader) (pcmData, error) {
 				p.data = append(p.data, float32(f))
 			}
 		}
-	}
 
-	p.totalTime = float64(len(p.data)) / p.sampleRate
+		// according to the go-mp3 docs:
+		//
+		// "The stream is always formatted as 16bit (little endian) 2 channels even if
+		// the source is single channel MP3. Thus, a sample always consists of 4
+		// bytes.".
+		p.sampleRate = float64(dec.SampleRate())
+
+		// total time of recording in seconds
+		p.totalTime = float64(len(p.data)) / p.sampleRate
+	}
 
 	logger.Logf(soundloadLogTag, "sample rate: %0.2fHz", p.sampleRate)
 	logger.Logf(soundloadLogTag, "total time: %.02fs", p.totalTime)

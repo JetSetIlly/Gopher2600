@@ -204,6 +204,7 @@ The following projects are used in the `Gopher2600` project:
 * https://github.com/go-gl/gl
 * https://github.com/hajimehoshi/go-mp3
 * https://github.com/pkg/term
+* https://github.com/go-audio/wav
 
 * FontAwesome
 	* https://fontawesome.com/
