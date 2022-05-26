@@ -288,11 +288,13 @@ func emulate(emulationMode emulation.Mode, md *modalflag.Modes, sync *mainSync) 
 	var comparisonPrefs *string
 	var record *bool
 	var patchFile *string
+	var wav *bool
 	if emulationMode == emulation.ModePlay {
 		comparisonROM = md.AddString("comparisonROM", "", "ROM to run in parallel for comparison")
 		comparisonPrefs = md.AddString("comparisonPrefs", "", "preferences for comparison emulation")
 		record = md.AddBool("record", false, "record user input to a file")
 		patchFile = md.AddString("patch", "", "patch to apply to main emulation (not playback files)")
+		wav = md.AddBool("wav", false, "record audio to wav file")
 	}
 
 	// debugger specific arguments
@@ -401,7 +403,7 @@ func emulate(emulationMode emulation.Mode, md *modalflag.Modes, sync *mainSync) 
 			}
 
 		case emulation.ModePlay:
-			err := dbg.StartInPlayMode(md.GetArg(0), *mapping, *left, *right, *record, *comparisonROM, *comparisonPrefs, *patchFile)
+			err := dbg.StartInPlayMode(md.GetArg(0), *mapping, *left, *right, *record, *comparisonROM, *comparisonPrefs, *patchFile, *wav)
 			if err != nil {
 				return err
 			}
