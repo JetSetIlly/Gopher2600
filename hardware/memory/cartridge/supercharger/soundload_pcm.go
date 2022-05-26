@@ -18,7 +18,6 @@ package supercharger
 import (
 	"fmt"
 	"io"
-	"math"
 	"path/filepath"
 	"strings"
 
@@ -27,8 +26,8 @@ import (
 
 	"github.com/hajimehoshi/go-mp3"
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
+	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/logger"
-	"github.com/youpy/go-wav"
 )
 
 type pcmData struct {
@@ -47,42 +46,7 @@ func getPCM(cl cartridgeloader.Loader) (pcmData, error) {
 
 	switch strings.ToLower(filepath.Ext(cl.Filename)) {
 	case ".wav":
-		dec := wav.NewReader(cl.StreamedData)
-
-		format, err := dec.Format()
-		if err != nil {
-			return p, fmt.Errorf("soundload: wav file: %v", err)
-		}
-
-		logger.Log(soundloadLogTag, "loading from wav file")
-
-		p.sampleRate = float64(format.SampleRate)
-
-		// adjust zero value for unsigned data. with wav data we can assume
-		// that a bit-depth of 8 or less is unsigned. bottom of page 60:
-		//
-		// http://www-mmsp.ece.mcgill.ca/Documents/AudioFormats/WAVE/Docs/riffmci.pdf
-		//
-		// data for higher bit-depths is signed and we do not need to do make
-		// any adjustments
-		adjust := 0
-		if format.BitsPerSample == 8 {
-			adjust = int(math.Pow(2.0, float64(format.BitsPerSample)/2))
-		}
-
-		logger.Log(soundloadLogTag, "using left channel only")
-
-		err = nil
-		for err != io.EOF {
-			var samples []wav.Sample
-			samples, err = dec.ReadSamples()
-			if err != nil && err != io.EOF {
-				return p, fmt.Errorf("soundload: wav: %v", err)
-			}
-			for _, s := range samples {
-				p.data = append(p.data, float32(s.Values[0]-adjust))
-			}
-		}
+		return pcmData{}, curated.Errorf("wav files not currently supported (%s)", cl.Filename)
 
 	case ".mp3":
 		dec, err := mp3.NewDecoder(cl.StreamedData)

@@ -41,7 +41,6 @@ import (
 	"github.com/jetsetilly/gopher2600/recorder"
 	"github.com/jetsetilly/gopher2600/regression"
 	"github.com/jetsetilly/gopher2600/resources"
-	"github.com/jetsetilly/gopher2600/statsview"
 )
 
 // communication between the main goroutine and the launch goroutine.
@@ -289,13 +288,11 @@ func emulate(emulationMode emulation.Mode, md *modalflag.Modes, sync *mainSync) 
 	var comparisonPrefs *string
 	var record *bool
 	var patchFile *string
-	var wav *bool
 	if emulationMode == emulation.ModePlay {
 		comparisonROM = md.AddString("comparisonROM", "", "ROM to run in parallel for comparison")
 		comparisonPrefs = md.AddString("comparisonPrefs", "", "preferences for comparison emulation")
 		record = md.AddBool("record", false, "record user input to a file")
 		patchFile = md.AddString("patch", "", "patch to apply to main emulation (not playback files)")
-		wav = md.AddBool("wav", false, "record audio to wav file")
 	}
 
 	// debugger specific arguments
@@ -308,12 +305,6 @@ func emulate(emulationMode emulation.Mode, md *modalflag.Modes, sync *mainSync) 
 		// non debugger emulation is always of type IMGUI
 		tt := "IMGUI"
 		termType = &tt
-	}
-
-	// statsview if available
-	var stats *bool
-	if statsview.Available() {
-		stats = md.AddBool("statsview", false, fmt.Sprintf("run stats server (%s)", statsview.Address))
 	}
 
 	// parse arguments
@@ -332,10 +323,6 @@ func emulate(emulationMode emulation.Mode, md *modalflag.Modes, sync *mainSync) 
 		logger.SetEcho(logger.NewColorizer(os.Stdout))
 	} else {
 		logger.SetEcho(nil)
-	}
-
-	if stats != nil && *stats {
-		statsview.Launch(os.Stdout)
 	}
 
 	// turn off fallback ctrl-c handling. this so that the debugger can handle
@@ -414,7 +401,7 @@ func emulate(emulationMode emulation.Mode, md *modalflag.Modes, sync *mainSync) 
 			}
 
 		case emulation.ModePlay:
-			err := dbg.StartInPlayMode(md.GetArg(0), *mapping, *left, *right, *record, *comparisonROM, *comparisonPrefs, *patchFile, *wav)
+			err := dbg.StartInPlayMode(md.GetArg(0), *mapping, *left, *right, *record, *comparisonROM, *comparisonPrefs, *patchFile)
 			if err != nil {
 				return err
 			}

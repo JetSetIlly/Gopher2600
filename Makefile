@@ -12,7 +12,7 @@ profilingRom = roms/Homebrew/CDF/zookeeper_20200308_demo2_NTSC.bin
 # profilingRom = roms/Pitfall.bin
 # profilingRom = 
 
-.PHONY: all clean tidy generate check_lint lint lint_fix check_glsl glsl_validate check_pandoc readme_spell test race race_debug profile profile_cpu profile_cpu_play profile_cpu_debug profile_mem_play profile_mem_debug profile_trace build_assertions build check_upx release release_statsview chec_rswc windows_manifest cross_windows cross_windows_development cross_windows_statsview cross_windows_dynamic
+.PHONY: all clean tidy generate check_lint lint lint_fix check_glsl glsl_validate check_pandoc readme_spell test race race_debug profile profile_cpu profile_cpu_play profile_cpu_debug profile_mem_play profile_mem_debug profile_trace build_assertions build check_upx release chec_rswc windows_manifest cross_windows cross_windows_development cross_windows_dynamic
 
 goBinary = go
 # goBinary = ~/Go/dev_github/go/bin/go
@@ -126,9 +126,6 @@ build_assertions: generate test
 build: generate 
 	$(goBinary) build -gcflags $(compileFlags) -tags="imguifreetype"
 
-build_statsview: generate 
-	$(goBinary) build -gcflags $(compileFlags) -tags="imguifreetype statsview" -o gopher2600_statsview
-
 check_upx:
 ifeq (, $(shell which upx))
 	$(error "upx not installed")
@@ -144,16 +141,6 @@ release_upx: check_upx generate
 	mv gopher2600.upx gopher2600_$(shell go env GOHOSTOS)_$(shell go env GOHOSTARCH)
 	rm gopher2600
 
-release_statsview: generate 
-	$(goBinary) build -gcflags $(compileFlags) -ldflags="-s -w" -tags="imguifreetype release statsview" -o gopher2600_statsview
-	mv gopher2600_statsview gopher2600_statsview_$(shell go env GOHOSTOS)_$(shell go env GOHOSTARCH)
-
-release_statsview_upx: check_upx generate 
-	$(goBinary) build -gcflags $(compileFlags) -ldflags="-s -w" -tags="imguifreetype release statsview" -o gopher2600_statsview
-	upx -o gopher2600_statsview.upx gopher2600_statsview
-	mv gopher2600_statsview.upx gopher2600_statsview_$(shell go env GOHOSTOS)_$(shell go env GOHOSTARCH)
-	rm gopher2600_statsview
-
 check_rscr:
 ifeq (, $(shell which rsrc))
 	$(error "rsrc not installed. https://github.com/akavel/rsrc")
@@ -168,10 +155,6 @@ cross_windows: generate windows_manifest
 
 cross_windows_development: generate windows_manifest
 	CGO_ENABLED="1" CC="/usr/bin/x86_64-w64-mingw32-gcc" CXX="/usr/bin/x86_64-w64-mingw32-g++" GOOS="windows" GOARCH="amd64" CGO_LDFLAGS="-static -static-libgcc -static-libstdc++ -L/usr/local/x86_64-w64-mingw32/lib" $(goBinary) build -tags "static imguifreetype release" -gcflags $(compileFlags) -ldflags "-s -w -H=windowsgui" -o gopher2600_windows_amd64_$(shell git rev-parse --short HEAD).exe .
-	rm rsrc_windows_amd64.syso
-
-cross_windows_statsview: generate windows_manifest
-	CGO_ENABLED="1" CC="/usr/bin/x86_64-w64-mingw32-gcc" CXX="/usr/bin/x86_64-w64-mingw32-g++" GOOS="windows" GOARCH="amd64" CGO_LDFLAGS="-static -static-libgcc -static-libstdc++" $(goBinary) build -tags "static imguifreetype release statsview" -gcflags $(compileFlags) -ldflags "-s -w -H=windowsgui" -o gopher2600_statsview_windows_amd64.exe .
 	rm rsrc_windows_amd64.syso
 
 # cross_windows_dynamic: generate windows_manifest

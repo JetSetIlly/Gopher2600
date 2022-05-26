@@ -57,7 +57,6 @@ import (
 	"github.com/jetsetilly/gopher2600/setup"
 	"github.com/jetsetilly/gopher2600/tracker"
 	"github.com/jetsetilly/gopher2600/userinput"
-	"github.com/jetsetilly/gopher2600/wavwriter"
 )
 
 // Debugger is the basic debugging frontend for the emulation. In order to be
@@ -696,7 +695,7 @@ func (dbg *Debugger) insertPeripheralsOnStartup(left string, right string) error
 // StartInPlaymode starts the emulation ready for game-play.
 func (dbg *Debugger) StartInPlayMode(filename string, mapping string, left string, right string,
 	record bool, comparisonROM string, comparisonPrefs string,
-	patchFile string, wav bool) error {
+	patchFile string) error {
 
 	// set running flag as early as possible
 	dbg.running = true
@@ -736,16 +735,6 @@ func (dbg *Debugger) StartInPlayMode(filename string, mapping string, left strin
 			if err != nil {
 				return curated.Errorf("debugger: %v", err)
 			}
-		}
-
-		// record wav file
-		if wav {
-			fn := unique.Filename("audio", cartload.ShortName())
-			ww, err := wavwriter.NewWavWriter(fn)
-			if err != nil {
-				return curated.Errorf("debugger: %v", err)
-			}
-			dbg.vcs.TV.AddAudioMixer(ww)
 		}
 
 		// record gameplay

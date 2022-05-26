@@ -202,8 +202,6 @@ The following projects are used in the `Gopher2600` project:
 * https://github.com/inkyblackness/imgui-go
 * https://github.com/veandco/go-sdl2
 * https://github.com/go-gl/gl
-* https://github.com/go-audio/audio
-* https://github.com/go-audio/wav
 * https://github.com/hajimehoshi/go-mp3
 * https://github.com/pkg/term
 
@@ -218,14 +216,6 @@ The following projects are used in the `Gopher2600` project:
 	* licensed under the OFL-1.1 License
 
 Bother 6502.ts and Stella were used as reference for the Audio implementation.
-
-Statsview provided by:
-
-* https://github.com/go-echarts/statsview
-
-For testing instrumentation:
-
-* https://github.com/bradleyjkemp/memviz
 
 Some ideas for the fragment shader taken from:
 

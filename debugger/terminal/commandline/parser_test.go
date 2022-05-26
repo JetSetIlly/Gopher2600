@@ -16,11 +16,9 @@
 package commandline_test
 
 import (
-	"os"
 	"strings"
 	"testing"
 
-	"github.com/bradleyjkemp/memviz"
 	"github.com/jetsetilly/gopher2600/debugger/terminal/commandline"
 	"github.com/jetsetilly/gopher2600/test"
 )
@@ -320,18 +318,6 @@ func TestParser_optional(t *testing.T) {
 	if err != nil {
 		t.Errorf("does not parse: %s", err)
 	}
-
-	f, err := os.Create("memviz.dot")
-	if err != nil {
-		t.Fatalf(err.Error())
-	}
-	defer func() {
-		err = f.Close()
-		if err != nil {
-			t.Fatalf(err.Error())
-		}
-	}()
-	memviz.Map(f, cmds)
 
 	if test.ExpectedSuccess(t, err) {
 		expectEquivalency(t, cmds)
