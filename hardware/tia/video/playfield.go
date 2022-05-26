@@ -94,6 +94,9 @@ type Playfield struct {
 
 	// which color we're using bassed on colorLatch (saves checking every time)
 	color uint8
+
+	// the state of colorLatch on the previous color clock
+	prevColorLatch bool
 }
 
 func newPlayfield(tia tia) *Playfield {
@@ -174,12 +177,9 @@ func (pf *Playfield) String() string {
 	return s.String()
 }
 
-// there is no tick() function because the playfield is closely intertwined
-// with the HSYNC ticker. therefore ticking of the playfield is implicit.
+func (pf *Playfield) tick() bool {
+	pf.prevColorLatch = pf.colorLatch
 
-// returns whether the foreground is active and the color to be used
-// (foreground or background).
-func (pf *Playfield) pixel() {
 	if *pf.tia.pclk == phaseclock.RisingPhi2 {
 		// RSYNC can monkey with the current hsync value unexpectedly and
 		// because of this we need an extra effort to make sure we're in the
@@ -211,7 +211,7 @@ func (pf *Playfield) pixel() {
 		case RegionOffScreen:
 			pf.colorLatch = false
 			pf.color = pf.BackgroundColor
-			return
+			return pf.colorLatch != pf.prevColorLatch
 		case RegionLeft:
 			pf.Idx = int(*pf.tia.hsync) - 17
 		case RegionRight:
@@ -231,6 +231,8 @@ func (pf *Playfield) pixel() {
 	} else {
 		pf.color = pf.BackgroundColor
 	}
+
+	return pf.colorLatch != pf.prevColorLatch
 }
 
 // called whenever playfield bits change or the screen region changes.

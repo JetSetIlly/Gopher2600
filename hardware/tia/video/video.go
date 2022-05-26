@@ -89,10 +89,12 @@ type Video struct {
 	// for details
 	LastElement Element
 
-	// keeping track of whether any sprite element has changed since last call
-	// to Pixel(). we use this for some small optimisations
-	spriteHasChanged    bool
-	lastPlayfieldActive bool
+	// keep track of whether any tia element has changed since last colour clock
+	//
+	// how frequently we reset tiaHasChanged to true is the key to optimisation
+	// of the TIA. extreme care should be taken when making a decisions
+	// relating to this variable
+	tiaHasChanged bool
 
 	// color of Video output
 	PixelColor uint8
@@ -100,7 +102,7 @@ type Video struct {
 	// some register writes require a small latching delay. they never overlap
 	// so one event is sufficient
 	writing         delay.Event
-	writingRegister string
+	writingRegister cpubus.Register
 }
 
 // tia is a convenient packaging of TIA state that is required by the playfield/sprites.
@@ -199,23 +201,23 @@ func (vd *Video) RSYNC(adjustment int) {
 func (vd *Video) Tick() {
 	if v, ok := vd.writing.Tick(); ok {
 		switch vd.writingRegister {
-		case "PF0":
+		case cpubus.PF0:
 			vd.Playfield.setPF0(v)
-		case "PF1":
+		case cpubus.PF1:
 			vd.Playfield.setPF1(v)
-		case "PF2":
+		case cpubus.PF2:
 			vd.Playfield.setPF2(v)
-		case "HMP0":
+		case cpubus.HMP0:
 			vd.Player0.setHmoveValue(v)
-		case "HMP1":
+		case cpubus.HMP1:
 			vd.Player1.setHmoveValue(v)
-		case "HMM0":
+		case cpubus.HMM0:
 			vd.Missile0.setHmoveValue(v)
-		case "HMM1":
+		case cpubus.HMM1:
 			vd.Missile1.setHmoveValue(v)
-		case "HMBL":
+		case cpubus.HMBL:
 			vd.Ball.setHmoveValue(v)
-		case "HMCLR":
+		case cpubus.HMCLR:
 			vd.Player0.clearHmoveValue()
 			vd.Player1.clearHmoveValue()
 			vd.Missile0.clearHmoveValue()
@@ -225,9 +227,9 @@ func (vd *Video) Tick() {
 		// these registers will only ever be pushed onto the writing queue if
 		// the TIA revisison is set accordingly. normally, GRP0 and GRP1 are
 		// set without delay.
-		case "GRP0":
+		case cpubus.GRP0:
 			vd.Player1.setOldGfxData()
-		case "GRP1":
+		case cpubus.GRP1:
 			vd.Player0.setOldGfxData()
 			vd.Ball.setEnableDelay()
 		}
@@ -236,16 +238,12 @@ func (vd *Video) Tick() {
 	// we only need to check for sprite activity if HBLANK is off or HMOVE
 	// clock is active
 	if !(*vd.tia.hblank) || vd.tia.hmove.Clk {
-		p0 := vd.Player0.tick()
-		p1 := vd.Player1.tick()
-		m0 := vd.Missile0.tick(vd.Player0.triggerMissileReset)
-		m1 := vd.Missile1.tick(vd.Player1.triggerMissileReset)
-		bl := vd.Ball.tick()
-
-		// note that there is no Playfield.tick() function. ticking of
-		// playfield happens in conjunction with the main TIA tick.
-
-		vd.spriteHasChanged = vd.spriteHasChanged || p0 || p1 || m0 || m1 || bl
+		vd.tiaHasChanged = vd.Playfield.tick() || vd.tiaHasChanged
+		vd.tiaHasChanged = vd.Player0.tick() || vd.tiaHasChanged
+		vd.tiaHasChanged = vd.Player1.tick() || vd.tiaHasChanged
+		vd.tiaHasChanged = vd.Missile0.tick(vd.Player0.triggerMissileReset) || vd.tiaHasChanged
+		vd.tiaHasChanged = vd.Missile1.tick(vd.Player1.triggerMissileReset) || vd.tiaHasChanged
+		vd.tiaHasChanged = vd.Ball.tick() || vd.tiaHasChanged
 	}
 }
 
@@ -262,31 +260,28 @@ func (vd *Video) PrepareSpritesForHMOVE() {
 // collision registers. It will default to returning the background color if no
 // sprite or playfield pixel is present.
 func (vd *Video) Pixel() {
-	vd.Playfield.pixel()
-
-	// optimisation: if nothing has changed since last pixel then return early
-	// with the color of the previous pixel.
-	optReusePixel := !vd.spriteHasChanged && (vd.Playfield.colorLatch == vd.lastPlayfieldActive)
-	if optReusePixel {
-		vd.spriteHasChanged = false
+	// if nothing has changed since last pixel then return early and leave the
+	// Video.PixelColor at the same value
+	if !vd.tiaHasChanged {
+		vd.tiaHasChanged = false
 		return
 	}
-	vd.spriteHasChanged = false
-	vd.lastPlayfieldActive = vd.Playfield.colorLatch
+	vd.tiaHasChanged = false
 
+	// update pixel information of sprites. the pixel of the playfield is an
+	// implicit result of he tick() function
 	vd.Player0.pixel()
 	vd.Player1.pixel()
 	vd.Missile0.pixel()
 	vd.Missile1.pixel()
 	vd.Ball.pixel()
 
-	// optimisation: only check for collisions if at least one sprite thinks it
-	// might be worth doing
-	collisionCheck := vd.Player0.pixelCollision || vd.Player1.pixelCollision ||
+	// only check for collisions if at least one sprite thinks it might be
+	// worth doing
+	if vd.Player0.pixelCollision || vd.Player1.pixelCollision ||
 		vd.Missile0.pixelCollision || vd.Missile1.pixelCollision ||
-		vd.Ball.pixelCollision
+		vd.Ball.pixelCollision {
 
-	if collisionCheck {
 		vd.Collisions.tick(vd.Player0.pixelCollision, vd.Player1.pixelCollision,
 			vd.Missile0.pixelCollision, vd.Missile1.pixelCollision,
 			vd.Ball.pixelCollision, vd.Playfield.colorLatch)
@@ -424,13 +419,13 @@ func (vd *Video) UpdatePlayfield(data chipbus.ChangedRegister) bool {
 	// to write new playfield data
 	switch data.Register {
 	case cpubus.PF0:
-		vd.writingRegister = "PF0"
+		vd.writingRegister = data.Register
 		vd.writing.Schedule(2, data.Value)
 	case cpubus.PF1:
-		vd.writingRegister = "PF1"
+		vd.writingRegister = data.Register
 		vd.writing.Schedule(2, data.Value)
 	case cpubus.PF2:
-		vd.writingRegister = "PF2"
+		vd.writingRegister = data.Register
 		vd.writing.Schedule(2, data.Value)
 	default:
 		return true
@@ -476,29 +471,29 @@ func (vd *Video) UpdateSpriteHMOVE(data chipbus.ChangedRegister) bool {
 	// the only common value that satisfies all test cases is 1, which equates
 	// to a delay of two cycles
 	case cpubus.HMP0:
-		vd.writingRegister = "HMP0"
+		vd.writingRegister = data.Register
 		vd.writing.Schedule(1, data.Value&HMxxMask)
 	case cpubus.HMP1:
-		vd.writingRegister = "HMP1"
+		vd.writingRegister = data.Register
 		vd.writing.Schedule(1, data.Value&HMxxMask)
 	case cpubus.HMM0:
-		vd.writingRegister = "HMM0"
+		vd.writingRegister = data.Register
 		vd.writing.Schedule(1, data.Value&HMxxMask)
 	case cpubus.HMM1:
-		vd.writingRegister = "HMM1"
+		vd.writingRegister = data.Register
 		vd.writing.Schedule(1, data.Value&HMxxMask)
 	case cpubus.HMBL:
-		vd.writingRegister = "HMBL"
+		vd.writingRegister = data.Register
 		vd.writing.Schedule(1, data.Value&HMxxMask)
 	case cpubus.HMCLR:
-		vd.writingRegister = "HMCLR"
+		vd.writingRegister = data.Register
 		vd.writing.Schedule(1, 0)
 
 	default:
 		return true
 	}
 
-	vd.spriteHasChanged = true
+	vd.tiaHasChanged = true
 	return false
 }
 
@@ -520,13 +515,12 @@ func (vd *Video) UpdateSpritePositioning(data chipbus.ChangedRegister) bool {
 	case cpubus.RESBL:
 		vd.Ball.resetPosition()
 	case cpubus.VDELBL:
-		vd.spriteHasChanged = true
 		vd.Ball.setVerticalDelay(data.Value&0x01 == 0x01)
 	default:
 		return true
 	}
 
-	vd.spriteHasChanged = true
+	vd.tiaHasChanged = true
 	return false
 }
 
@@ -549,6 +543,7 @@ func (vd *Video) UpdateColor(data chipbus.ChangedRegister) bool {
 		return true
 	}
 
+	vd.tiaHasChanged = true
 	return false
 }
 
@@ -569,6 +564,7 @@ func (vd *Video) UpdatePlayfieldColor(data chipbus.ChangedRegister) bool {
 		return true
 	}
 
+	vd.tiaHasChanged = true
 	return false
 }
 
@@ -585,7 +581,7 @@ func (vd *Video) UpdateSpritePixels(data chipbus.ChangedRegister) bool {
 		vd.Player0.setGfxData(data.Value)
 		if vd.tia.instance.Prefs.Revision.Live.LateVDELGRP0.Load().(bool) {
 			vd.writing.Schedule(1, 0)
-			vd.writingRegister = "GRP0"
+			vd.writingRegister = data.Register
 		} else {
 			vd.Player1.setOldGfxData()
 		}
@@ -594,7 +590,7 @@ func (vd *Video) UpdateSpritePixels(data chipbus.ChangedRegister) bool {
 		vd.Player1.setGfxData(data.Value)
 		if vd.tia.instance.Prefs.Revision.Live.LateVDELGRP1.Load().(bool) {
 			vd.writing.Schedule(1, 0)
-			vd.writingRegister = "GRP1"
+			vd.writingRegister = data.Register
 		} else {
 			vd.Player0.setOldGfxData()
 			vd.Ball.setEnableDelay()
@@ -610,7 +606,7 @@ func (vd *Video) UpdateSpritePixels(data chipbus.ChangedRegister) bool {
 		return true
 	}
 
-	vd.spriteHasChanged = true
+	vd.tiaHasChanged = true
 	return false
 }
 
@@ -648,7 +644,7 @@ func (vd *Video) UpdateSpriteVariations(data chipbus.ChangedRegister) bool {
 		return true
 	}
 
-	vd.spriteHasChanged = true
+	vd.tiaHasChanged = true
 	return false
 }
 
@@ -675,7 +671,7 @@ func (vd *Video) UpdateCTRLPF() {
 
 	vd.Playfield.Ctrlpf = ctrlpf
 	vd.Ball.Ctrlpf = ctrlpf
-	vd.spriteHasChanged = true
+	vd.tiaHasChanged = true
 }
 
 // UpdateNUSIZ should be called whenever the player/missile size/copies
@@ -714,5 +710,5 @@ func (vd *Video) UpdateNUSIZ(num int, fromMissile bool) {
 		vd.Player1.Nusiz = nusiz
 		vd.Missile1.Nusiz = nusiz
 	}
-	vd.spriteHasChanged = true
+	vd.tiaHasChanged = true
 }
