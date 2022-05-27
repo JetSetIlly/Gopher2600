@@ -93,20 +93,26 @@ func (au *Audio) RSYNC() {
 	au.clock228 = 0
 }
 
+// UpdateTracker changes the state of the attached tracker. Should be called
+// whenever any of the audio registers have changed.
+func (au *Audio) UpdateTracker() {
+	if au.tracker == nil {
+		return
+	}
+
+	// it's impossible for both channels to have changed in a single video cycle
+	if au.channel0.registersChanged {
+		au.tracker.Tick(0, au.channel0.registers)
+	} else if au.channel1.registersChanged {
+		au.tracker.Tick(1, au.channel1.registers)
+	}
+	au.channel0.registersChanged = false
+	au.channel1.registersChanged = false
+}
+
 // Step the audio on one TIA clock. The step will be filtered to produce a
 // 30Khz clock.
 func (au *Audio) Step() bool {
-	if au.tracker != nil {
-		// it's impossible for both channels to have changed in a single video cycle
-		if au.channel0.registersChanged {
-			au.tracker.Tick(0, au.channel0.registers)
-		} else if au.channel1.registersChanged {
-			au.tracker.Tick(1, au.channel1.registers)
-		}
-		au.channel0.registersChanged = false
-		au.channel1.registersChanged = false
-	}
-
 	au.clock228++
 	if au.clock228 >= 228 {
 		au.clock228 = 0

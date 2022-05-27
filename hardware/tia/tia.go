@@ -590,8 +590,9 @@ func (tia *TIA) Step(reg chipbus.ChangedRegister) error {
 
 				if update {
 					update = tia.Audio.ReadMemRegisters(reg)
-
-					if update {
+					if !update {
+						tia.Audio.UpdateTracker()
+					} else {
 						// update playfield color register (depending on TIA revision)
 						if tia.instance.Prefs.Revision.Live.LateCOLUPF.Load().(bool) {
 							update = tia.Video.UpdatePlayfieldColor(reg)
