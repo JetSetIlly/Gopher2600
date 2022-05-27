@@ -181,9 +181,15 @@ func (pf *Playfield) tick() bool {
 	pf.prevColorLatch = pf.colorLatch
 
 	if *pf.tia.pclk == phaseclock.RisingPhi2 {
-		// RSYNC can monkey with the current hsync value unexpectedly and
-		// because of this we need an extra effort to make sure we're in the
-		// correct screen region.
+		// this switch statement is based on the "Horizontal Sync Counter"
+		// table in TIA_HW_Notes.txt. for convenience we're not using a
+		// colorclock (tia) delay but simply looking for the hsync.Count 4
+		// cycles beyond the trigger point described in the TIA_HW_Notes.txt
+		// document.  we believe this has the same effect.
+		//
+		// further, RSYNC can monkey with the current hsync value unexpectedly
+		// and because of this we need an extra effort to make sure we're in
+		// the correct screen region.
 		switch *pf.tia.hsync {
 		case 0:
 			// start of scanline
@@ -202,11 +208,6 @@ func (pf *Playfield) tick() bool {
 			pf.latchRegionData()
 		}
 
-		// this switch statement is based on the "Horizontal Sync Counter"
-		// table in TIA_HW_Notes.txt. for convenience we're not using a
-		// colorclock (tia) delay but simply looking for the hsync.Count 4
-		// cycles beyond the trigger point described in the TIA_HW_Notes.txt
-		// document.  we believe this has the same effect.
 		switch pf.Region {
 		case RegionOffScreen:
 			pf.colorLatch = false
@@ -218,10 +219,15 @@ func (pf *Playfield) tick() bool {
 			pf.Idx = int(*pf.tia.hsync) - 37
 		}
 
-		// pixel returns the color of the playfield at the current time.
-		// returns (false, 0) if no pixel is to be seen; and (true, col) if there is
-		if pf.Idx >= 0 && pf.Region != RegionOffScreen {
+		// if region is RegionOffScreen then we've returned already
+
+		if pf.Idx >= 0 {
 			pf.colorLatch = (*pf.Data)[pf.Idx]
+		}
+	} else {
+		// do nothing if we're in the off screen region
+		if pf.Region == RegionOffScreen {
+			return false
 		}
 	}
 

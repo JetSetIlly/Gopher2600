@@ -235,10 +235,12 @@ func (vd *Video) Tick() {
 		}
 	}
 
+	// playfield mush tick every time regardless of hblank or hmove state
+	vd.tiaHasChanged = vd.Playfield.tick() || vd.tiaHasChanged
+
 	// we only need to check for sprite activity if HBLANK is off or HMOVE
 	// clock is active
 	if !(*vd.tia.hblank) || vd.tia.hmove.Clk {
-		vd.tiaHasChanged = vd.Playfield.tick() || vd.tiaHasChanged
 		vd.tiaHasChanged = vd.Player0.tick() || vd.tiaHasChanged
 		vd.tiaHasChanged = vd.Player1.tick() || vd.tiaHasChanged
 		vd.tiaHasChanged = vd.Missile0.tick(vd.Player0.triggerMissileReset) || vd.tiaHasChanged
@@ -269,7 +271,7 @@ func (vd *Video) Pixel() {
 	vd.tiaHasChanged = false
 
 	// update pixel information of sprites. the pixel of the playfield is an
-	// implicit result of he tick() function
+	// implicit result of the tick() function
 	vd.Player0.pixel()
 	vd.Player1.pixel()
 	vd.Missile0.pixel()
