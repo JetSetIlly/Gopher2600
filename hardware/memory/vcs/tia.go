@@ -110,9 +110,9 @@ type TIAMemory struct {
 	// way we might expect. instead we note the address that has been written
 	// to, and a boolean true to indicate that a write has been performed by
 	// the CPU
+	writeSignal  bool
 	writeAddress uint16
 	writeData    uint8
-	writeSignal  bool
 }
 
 // NewTIAMemory is the preferred method of initialisation for the TIA memory chip.
@@ -165,13 +165,13 @@ func (mem *TIAMemory) Poke(address uint16, value uint8) error {
 }
 
 // ChipRead is an implementation of memory.ChipBus.
-func (mem *TIAMemory) ChipHasChanged() (bool, chipbus.ChangedRegister) {
+func (mem *TIAMemory) ChipHasChanged() (chipbus.ChangedRegister, bool) {
 	if mem.writeSignal {
 		mem.writeSignal = false
-		return true, chipbus.ChangedRegister{Address: mem.writeAddress, Value: mem.writeData, Register: cpubus.Write[mem.writeAddress]}
+		return chipbus.ChangedRegister{Address: mem.writeAddress, Value: mem.writeData, Register: cpubus.Write[mem.writeAddress]}, true
 	}
 
-	return false, chipbus.ChangedRegister{}
+	return chipbus.ChangedRegister{}, false
 }
 
 // ChipWrite is an implementation of memory.ChipBus

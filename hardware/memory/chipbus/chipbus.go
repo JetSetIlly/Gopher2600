@@ -39,7 +39,7 @@ type ChangedRegister struct {
 type Memory interface {
 	// ChipHasChanged checks to see if the chip's memory area has been written to. if
 	// it has the function returns true and an instance of ChipData
-	ChipHasChanged() (bool, ChangedRegister)
+	ChipHasChanged() (ChangedRegister, bool)
 
 	// ChipWrite writes the data to the chip memory
 	ChipWrite(reg Register, data uint8)

@@ -67,15 +67,12 @@ func (riot *RIOT) String() string {
 }
 
 // Step moves the state of the RIOT forward one CPU cycle.
-func (riot *RIOT) Step() {
-	update, data := riot.mem.ChipHasChanged()
+func (riot *RIOT) Step(reg chipbus.ChangedRegister) {
+	update := riot.Timer.Update(reg)
 	if update {
-		update = riot.Timer.Update(data)
+		update = riot.Ports.Update(reg)
 		if update {
-			update = riot.Ports.Update(data)
-			if update {
-				logger.Logf("riot", "memory altered to no affect (%04x=%02x)", data.Address, data.Value)
-			}
+			logger.Logf("riot", "memory altered to no affect (%04x=%02x)", reg.Address, reg.Value)
 		}
 	}
 

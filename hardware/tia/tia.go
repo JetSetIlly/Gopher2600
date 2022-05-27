@@ -370,17 +370,15 @@ func (tia *TIA) resolveDelayedEvents() {
 // TIA memory has changed then the changes will propogate at the correct time.
 // If the state of TIA memory has not changed then execution will be diverted
 // to QuickStep().
-func (tia *TIA) Step() error {
-	// check for change of memory state
-	update, data := tia.mem.ChipHasChanged()
+func (tia *TIA) Step(reg chipbus.ChangedRegister) error {
+	// make alterations to video state and playfield
+	update := tia.Update(reg)
 
-	// state hasn't changed so divert execution to QuickStep()
+	// if update has happened we can jump to QuickStep() for the remainder of
+	// the Step() process
 	if !update {
 		return tia.QuickStep()
 	}
-
-	// make alterations to video state and playfield
-	update = tia.Update(data)
 
 	// update debugging information
 	tia.videoCycles++
@@ -524,22 +522,22 @@ func (tia *TIA) Step() error {
 		// HSYNC tick and see how the ball sprite is rendered incorrectly in
 		// Keystone Kapers (this is because the ball is reset on the very last
 		// pixel and before HBLANK etc. are in the state they need to be)
-		update = tia.Video.UpdateSpritePositioning(data)
+		update = tia.Video.UpdateSpritePositioning(reg)
 
 		// update color registers
 		if update {
-			update = tia.Video.UpdateColor(data)
+			update = tia.Video.UpdateColor(reg)
 
 			// update playfield color register (depending on TIA revision)
 			if update {
 				if !tia.instance.Prefs.Revision.Live.LateCOLUPF.Load().(bool) {
-					update = tia.Video.UpdatePlayfieldColor(data)
+					update = tia.Video.UpdatePlayfieldColor(reg)
 				}
 
 				if update {
 					// update playfield bits (depending on TIA revisions)
 					if !tia.instance.Prefs.Revision.Live.LatePFx.Load().(bool) {
-						update = tia.Video.UpdatePlayfield(data)
+						update = tia.Video.UpdatePlayfield(reg)
 					}
 				}
 			}
@@ -554,7 +552,7 @@ func (tia *TIA) Step() error {
 	// update playfield bits (depending on TIA revisions)
 	if update {
 		if tia.instance.Prefs.Revision.Live.LatePFx.Load().(bool) {
-			update = tia.Video.UpdatePlayfield(data)
+			update = tia.Video.UpdatePlayfield(reg)
 		}
 	}
 
@@ -582,23 +580,23 @@ func (tia *TIA) Step() error {
 
 	// late memory resolution
 	if update {
-		update = tia.Video.UpdateSpriteHMOVE(data)
+		update = tia.Video.UpdateSpriteHMOVE(reg)
 
 		if update {
-			update = tia.Video.UpdateSpriteVariations(data)
+			update = tia.Video.UpdateSpriteVariations(reg)
 
 			if update {
-				update = tia.Video.UpdateSpritePixels(data)
+				update = tia.Video.UpdateSpritePixels(reg)
 
 				if update {
-					update = tia.Audio.ReadMemRegisters(data)
+					update = tia.Audio.ReadMemRegisters(reg)
 
 					if update {
 						// update playfield color register (depending on TIA revision)
 						if tia.instance.Prefs.Revision.Live.LateCOLUPF.Load().(bool) {
-							update = tia.Video.UpdatePlayfieldColor(data)
+							update = tia.Video.UpdatePlayfieldColor(reg)
 							if update {
-								logger.Logf("tia", "memory altered to no affect (%04x=%02x)", data.Address, data.Value)
+								logger.Logf("tia", "memory altered to no affect (%04x=%02x)", reg.Address, reg.Value)
 							}
 						}
 					}

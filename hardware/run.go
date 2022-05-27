@@ -57,20 +57,24 @@ func (vcs *VCS) Run(continueCheck func() (emulation.State, error)) error {
 		if err := vcs.TIA.QuickStep(); err != nil {
 			return err
 		}
+
 		if err := vcs.TIA.QuickStep(); err != nil {
 			return err
 		}
-		if vcs.CPU.RdyFlg {
-			if err := vcs.TIA.Step(); err != nil {
+
+		if reg, ok := vcs.Mem.TIA.ChipHasChanged(); ok {
+			if err := vcs.TIA.Step(reg); err != nil {
 				return err
 			}
-			vcs.RIOT.Step()
+		} else if err := vcs.TIA.QuickStep(); err != nil {
+			return err
+		}
+		if reg, ok := vcs.Mem.RIOT.ChipHasChanged(); ok {
+			vcs.RIOT.Step(reg)
 		} else {
-			if err := vcs.TIA.QuickStep(); err != nil {
-				return err
-			}
 			vcs.RIOT.QuickStep()
 		}
+
 		vcs.Mem.Cart.Step(vcs.Clock)
 
 		return nil
