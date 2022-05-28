@@ -104,12 +104,24 @@ type TIA struct {
 	// never overlap so one delay.Event instance is sufficient. the
 	// futureHsyncEvent field is used to differentiate.
 	futureHsync      delay.Event
-	futureHsyncEvent string
+	futureHsyncEvent hsyncEvent
 
 	// whether there are any delay.Events outstanding. if pendingEvents is zero
 	// then we don't need to call resolveDelayedEvents()
 	pendingEvents int
 }
+
+// a hsyncEvent is one that is triggered by the hsync polycounter
+type hsyncEvent int
+
+// list of valid hsyncEvent values
+const (
+	hsyncEventSHB hsyncEvent = iota
+	hsyncEventRHS
+	hsyncEventRCB
+	hsyncEventRHB
+	hsyncEventLRHB
+)
 
 // Label returns an identifying label for the TIA.
 func (tia *TIA) Label() string {
@@ -350,17 +362,17 @@ func (tia *TIA) resolveDelayedEvents() {
 	if _, ok := tia.futureHsync.Tick(); ok {
 		tia.pendingEvents--
 		switch tia.futureHsyncEvent {
-		case "SHB":
+		case hsyncEventSHB:
 			tia.newScanline()
-		case "RHS":
+		case hsyncEventRHS:
 			tia.sig &= ^signal.HSync
 			tia.sig &= ^signal.CBurst
 			tia.sig |= signal.CBurst
-		case "RCB":
+		case hsyncEventRCB:
 			tia.sig &= ^signal.CBurst
-		case "RHB":
+		case hsyncEventRHB:
 			tia.Hblank = false
-		case "LRHB":
+		case hsyncEventLRHB:
 			tia.Hblank = false
 		}
 	}
@@ -448,7 +460,7 @@ func (tia *TIA) Step(reg chipbus.ChangedRegister) error {
 			// allow a new scanline event to occur naturally only when an RSYNC
 			// has not been scheduled
 			if !tia.futureRsyncAlign.IsActive() {
-				tia.futureHsyncEvent = "SHB"
+				tia.futureHsyncEvent = hsyncEventSHB
 				tia.futureHsync.Schedule(hsyncDelay, 0)
 				tia.pendingEvents++
 			}
@@ -464,13 +476,13 @@ func (tia *TIA) Step(reg chipbus.ChangedRegister) error {
 
 		case 8: // [RHS]
 			// reset HSYNC
-			tia.futureHsyncEvent = "RHS"
+			tia.futureHsyncEvent = hsyncEventRHS
 			tia.futureHsync.Schedule(hsyncDelay, 0)
 			tia.pendingEvents++
 
 		case 12: // [RCB]
 			// reset color burst
-			tia.futureHsyncEvent = "RCB"
+			tia.futureHsyncEvent = hsyncEventRCB
 			tia.futureHsync.Schedule(hsyncDelay, 0)
 			tia.pendingEvents++
 
@@ -494,7 +506,7 @@ func (tia *TIA) Step(reg chipbus.ChangedRegister) error {
 		case 16: // [RHB]
 			// early HBLANK off if hmoveLatch is false
 			if !tia.Hmove.Latch {
-				tia.futureHsyncEvent = "RHB"
+				tia.futureHsyncEvent = hsyncEventRHB
 				tia.futureHsync.Schedule(hsyncDelay, 0)
 				tia.pendingEvents++
 			}
@@ -504,7 +516,7 @@ func (tia *TIA) Step(reg chipbus.ChangedRegister) error {
 		case 18: // [LRHB]
 			// late HBLANK off if hmoveLatch is true
 			if tia.Hmove.Latch {
-				tia.futureHsyncEvent = "LRHB"
+				tia.futureHsyncEvent = hsyncEventLRHB
 				tia.futureHsync.Schedule(hsyncDelay, 0)
 				tia.pendingEvents++
 			}
@@ -698,7 +710,7 @@ func (tia *TIA) QuickStep() error {
 			// allow a new scanline event to occur naturally only when an RSYNC
 			// has not been scheduled
 			if !tia.futureRsyncAlign.IsActive() {
-				tia.futureHsyncEvent = "SHB"
+				tia.futureHsyncEvent = hsyncEventSHB
 				tia.futureHsync.Schedule(hsyncDelay, 0)
 				tia.pendingEvents++
 			}
@@ -714,13 +726,13 @@ func (tia *TIA) QuickStep() error {
 
 		case 8: // [RHS]
 			// reset HSYNC
-			tia.futureHsyncEvent = "RHS"
+			tia.futureHsyncEvent = hsyncEventRHS
 			tia.futureHsync.Schedule(hsyncDelay, 0)
 			tia.pendingEvents++
 
 		case 12: // [RCB]
 			// reset color burst
-			tia.futureHsyncEvent = "RCB"
+			tia.futureHsyncEvent = hsyncEventRCB
 			tia.futureHsync.Schedule(hsyncDelay, 0)
 			tia.pendingEvents++
 
@@ -744,7 +756,7 @@ func (tia *TIA) QuickStep() error {
 		case 16: // [RHB]
 			// early HBLANK off if hmoveLatch is false
 			if !tia.Hmove.Latch {
-				tia.futureHsyncEvent = "RHB"
+				tia.futureHsyncEvent = hsyncEventRHB
 				tia.futureHsync.Schedule(hsyncDelay, 0)
 				tia.pendingEvents++
 			}
@@ -754,7 +766,7 @@ func (tia *TIA) QuickStep() error {
 		case 18: // [LRHB]
 			// late HBLANK off if hmoveLatch is true
 			if tia.Hmove.Latch {
-				tia.futureHsyncEvent = "LRHB"
+				tia.futureHsyncEvent = hsyncEventLRHB
 				tia.futureHsync.Schedule(hsyncDelay, 0)
 				tia.pendingEvents++
 			}
