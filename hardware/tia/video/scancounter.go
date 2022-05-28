@@ -86,7 +86,7 @@ func (sc *scanCounter) tick() {
 	}
 
 	// tick pixels differently depending on whether this is the primary copy or
-	// a secondary opy. this is all a bit magical for my liking but it
+	// a secondary copy. this is all a bit magical for my liking but it
 	// works and there's some sense to it at least.
 	//
 	// for the primary copy, we delay the use of the live nusiz value until the

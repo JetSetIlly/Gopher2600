@@ -50,6 +50,8 @@ var MissileSizes = []string{
 type MissileSprite struct {
 	tia tia
 
+	resetToPlayer func() bool
+
 	// ^^^ references to other parts of the VCS ^^^
 
 	position  polycounter.Polycounter
@@ -64,6 +66,7 @@ type MissileSprite struct {
 	HmovedPixel int
 
 	// note whether the last tick was as a result of a HMOVE stuffing tick
+	// which left MoreHMOVE in a true state
 	lastTickFromHmove bool
 
 	// ^^^ the above are common to all sprite types ^^^
@@ -92,10 +95,11 @@ type MissileSprite struct {
 	pixelCollision bool
 }
 
-func newMissileSprite(label string, tia tia) *MissileSprite {
+func newMissileSprite(label string, tia tia, resetToPlayer func() bool) *MissileSprite {
 	ms := &MissileSprite{
-		tia:   tia,
-		label: label,
+		tia:           tia,
+		resetToPlayer: resetToPlayer,
+		label:         label,
 	}
 
 	ms.Enclockifier.size = &ms.Size
@@ -221,42 +225,52 @@ func (ms *MissileSprite) rsync(adjustment int) {
 	}
 }
 
-// returns true if pixel has changed.
-func (ms *MissileSprite) tick(resetToPlayer func() bool) bool {
-	if *ms.tia.hblank {
-		// early return if nothing to do
-		if !ms.tia.hmove.Clk {
-			return false
-		}
-
-		// check to see if there is more movement required for this sprite
-		ms.MoreHMOVE = ms.MoreHMOVE && compareHMOVE(ms.tia.hmove.Ripple, ms.Hmove)
-		if !ms.MoreHMOVE {
-			return false
-		}
-
-		// update hmoved pixel value & adjust for screen boundary
-		ms.HmovedPixel--
-		if ms.HmovedPixel < 0 {
-			ms.HmovedPixel += specification.ClksVisible
-		}
-	} else if ms.tia.hmove.Clk {
-		// check to see if there is more movement required for this sprite
-		ms.MoreHMOVE = ms.MoreHMOVE && compareHMOVE(ms.tia.hmove.Ripple, ms.Hmove)
-
-		// cancel motion clock if necessary
-		if ms.MoreHMOVE && ms.tia.instance.Prefs.Revision.Live.LostMOTCK.Load().(bool) {
-			return false
-		}
+func (ms *MissileSprite) tickHBLANK() bool {
+	// early return if nothing to do
+	if !ms.tia.hmove.Clk {
+		return false
 	}
 
+	// check to see if there is more movement required for this sprite
+	ms.MoreHMOVE = ms.MoreHMOVE && compareHMOVE(ms.tia.hmove.Ripple, ms.Hmove)
+	if !ms.MoreHMOVE {
+		return false
+	}
+
+	// update hmoved pixel value & adjust for screen boundary
+	ms.HmovedPixel--
+	if ms.HmovedPixel < 0 {
+		ms.HmovedPixel += specification.ClksVisible
+	}
+
+	ms.lastTickFromHmove = ms.MoreHMOVE
+
+	return ms.tick()
+}
+
+func (ms *MissileSprite) tickHMOVE() bool {
+	// check to see if there is more movement required for this sprite
+	ms.MoreHMOVE = ms.MoreHMOVE && compareHMOVE(ms.tia.hmove.Ripple, ms.Hmove)
+
+	// cancel motion clock if necessary
+	if ms.MoreHMOVE && ms.tia.instance.Prefs.Revision.Live.LostMOTCK.Load().(bool) {
+		return false
+	}
+
+	ms.lastTickFromHmove = ms.MoreHMOVE
+
+	return ms.tick()
+}
+
+// returns true if pixel has changed.
+func (ms *MissileSprite) tick() bool {
 	// reset-to-player placement note: we don't do the missile-to-player reset
 	// unless we're hmoving or ticking. if we place this block before the
 	// "early return if nothing to do" block above, then it will produce
 	// incorrect results. we can see this (occasionally) in Supercharger
 	// Frogger - the top row of trucks will sometimes extend by a pixel as they
 	// drive off screen.
-	if ms.ResetToPlayer && resetToPlayer() {
+	if ms.ResetToPlayer && ms.resetToPlayer() {
 		ms.position = polycounter.ResetValue
 		ms.pclk = phaseclock.ResetValue
 
@@ -264,10 +278,6 @@ func (ms *MissileSprite) tick(resetToPlayer func() bool) bool {
 		ms.ResetPixel = ms.tia.tv.GetCoords().Clock
 		ms.HmovedPixel = ms.ResetPixel
 	}
-
-	// note whether this is an additional hmove tick. see pixel() function
-	// below for explanation
-	ms.lastTickFromHmove = ms.tia.hmove.Clk && ms.MoreHMOVE
 
 	ms.pclk++
 	if ms.pclk >= phaseclock.NumStates {
@@ -455,6 +465,9 @@ func (ms *MissileSprite) pixel() {
 	ms.pixelOn = !ms.ResetToPlayer && !earlyEnd && (ms.Enclockifier.Active || earlyStart)
 
 	ms.pixelCollision = ms.pixelOn || (*ms.tia.hblank && ms.Enabled && ms.futureStart.AboutToEnd())
+
+	// reset lastTickFromHmove flag
+	ms.lastTickFromHmove = false
 }
 
 func (ms *MissileSprite) setEnable(enable bool) {

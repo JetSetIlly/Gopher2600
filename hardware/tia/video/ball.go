@@ -60,6 +60,7 @@ type BallSprite struct {
 	HmovedPixel int
 
 	// note whether the last tick was as a result of a HMOVE stuffing tick
+	// which left MoreHMOVE in a true state
 	lastTickFromHmove bool
 
 	// ^^^ the above are common to all sprite types ^^^
@@ -196,40 +197,46 @@ func (bs *BallSprite) rsync(adjustment int) {
 	}
 }
 
-// returns true if pixel has changed.
-func (bs *BallSprite) tick() bool {
-	if *bs.tia.hblank {
-		// early return if nothing to do
-		if !bs.tia.hmove.Clk {
-			return false
-		}
-
-		// check to see if there is more movement required for this sprite
-		bs.MoreHMOVE = bs.MoreHMOVE && compareHMOVE(bs.tia.hmove.Ripple, bs.Hmove)
-		if !bs.MoreHMOVE {
-			return false
-		}
-
-		// update hmoved pixel value & adjust for screen boundary
-		bs.HmovedPixel--
-		if bs.HmovedPixel < 0 {
-			bs.HmovedPixel += specification.ClksVisible
-		}
-	} else if bs.tia.hmove.Clk {
-		// check to see if there is more movement required for this sprite
-		bs.MoreHMOVE = bs.MoreHMOVE && compareHMOVE(bs.tia.hmove.Ripple, bs.Hmove)
-
-		// cancel motion clock if necessary
-		if bs.MoreHMOVE && bs.tia.instance.Prefs.Revision.Live.LostMOTCK.Load().(bool) {
-			return false
-		}
+func (bs *BallSprite) tickHBLANK() bool {
+	// early return if nothing to do
+	if !bs.tia.hmove.Clk {
+		return false
 	}
 
-	bs.lastHmoveCt = bs.tia.hmove.Ripple
+	// check to see if there is more movement required for this sprite
+	bs.MoreHMOVE = bs.MoreHMOVE && compareHMOVE(bs.tia.hmove.Ripple, bs.Hmove)
+	if !bs.MoreHMOVE {
+		return false
+	}
 
-	// note whether this text is additional hmove tick. see pixel() function
-	// in missile sprite for details
-	bs.lastTickFromHmove = bs.tia.hmove.Clk && bs.MoreHMOVE
+	// update hmoved pixel value & adjust for screen boundary
+	bs.HmovedPixel--
+	if bs.HmovedPixel < 0 {
+		bs.HmovedPixel += specification.ClksVisible
+	}
+
+	bs.lastTickFromHmove = bs.MoreHMOVE
+
+	return bs.tick()
+}
+
+func (bs *BallSprite) tickHMOVE() bool {
+	// check to see if there is more movement required for this sprite
+	bs.MoreHMOVE = bs.MoreHMOVE && compareHMOVE(bs.tia.hmove.Ripple, bs.Hmove)
+
+	// cancel motion clock if necessary
+	if bs.MoreHMOVE && bs.tia.instance.Prefs.Revision.Live.LostMOTCK.Load().(bool) {
+		return false
+	}
+
+	bs.lastTickFromHmove = bs.MoreHMOVE
+
+	return bs.tick()
+}
+
+// returns true if pixel has changed.
+func (bs *BallSprite) tick() bool {
+	bs.lastHmoveCt = bs.tia.hmove.Ripple
 
 	bs.pclk++
 	if bs.pclk >= phaseclock.NumStates {
@@ -410,6 +417,9 @@ func (bs *BallSprite) pixel() {
 	}
 
 	bs.pixelCollision = bs.pixelOn || (*bs.tia.hblank && bs.Enabled && bs.futureStart.AboutToEnd())
+
+	// reset lastTickFromHmove flag
+	bs.lastTickFromHmove = false
 }
 
 // the delayed enable bit is set when the gfx register for player 1 is updated.

@@ -139,16 +139,19 @@ func NewVideo(instance *instance.Instance, mem chipbus.Memory, tv TV, pclk *phas
 		hmove:    hmove,
 	}
 
-	return &Video{
+	vd := Video{
 		tia:        tia,
 		Collisions: newCollisions(mem),
 		Playfield:  newPlayfield(tia),
 		Player0:    newPlayerSprite("Player 0", tia),
 		Player1:    newPlayerSprite("Player 1", tia),
-		Missile0:   newMissileSprite("Missile 0", tia),
-		Missile1:   newMissileSprite("Missile 1", tia),
 		Ball:       newBallSprite("Ball", tia),
 	}
+
+	vd.Missile0 = newMissileSprite("Missile 0", tia, vd.Player0.triggerMissileReset)
+	vd.Missile1 = newMissileSprite("Missile 1", tia, vd.Player1.triggerMissileReset)
+
+	return &vd
 }
 
 // Snapshot creates a copy of the Video sub-system in its current state.
@@ -236,16 +239,59 @@ func (vd *Video) Tick() {
 	}
 
 	// playfield mush tick every time regardless of hblank or hmove state
-	vd.tiaHasChanged = vd.Playfield.tick() || vd.tiaHasChanged
+	if vd.Playfield.tick() {
+		vd.tiaHasChanged = true
+	}
 
-	// we only need to check for sprite activity if HBLANK is off or HMOVE
-	// clock is active
-	if !(*vd.tia.hblank) || vd.tia.hmove.Clk {
-		vd.tiaHasChanged = vd.Player0.tick() || vd.tiaHasChanged
-		vd.tiaHasChanged = vd.Player1.tick() || vd.tiaHasChanged
-		vd.tiaHasChanged = vd.Missile0.tick(vd.Player0.triggerMissileReset) || vd.tiaHasChanged
-		vd.tiaHasChanged = vd.Missile1.tick(vd.Player1.triggerMissileReset) || vd.tiaHasChanged
-		vd.tiaHasChanged = vd.Ball.tick() || vd.tiaHasChanged
+	// ticking of sprites can be more selective
+	if *vd.tia.hblank {
+		if vd.Player0.tickHBLANK() {
+			vd.tiaHasChanged = true
+		}
+		if vd.Player1.tickHBLANK() {
+			vd.tiaHasChanged = true
+		}
+		if vd.Missile0.tickHBLANK() {
+			vd.tiaHasChanged = true
+		}
+		if vd.Missile1.tickHBLANK() {
+			vd.tiaHasChanged = true
+		}
+		if vd.Ball.tickHBLANK() {
+			vd.tiaHasChanged = true
+		}
+	} else if vd.tia.hmove.Clk {
+		if vd.Player0.tickHMOVE() {
+			vd.tiaHasChanged = true
+		}
+		if vd.Player1.tickHMOVE() {
+			vd.tiaHasChanged = true
+		}
+		if vd.Missile0.tickHMOVE() {
+			vd.tiaHasChanged = true
+		}
+		if vd.Missile1.tickHMOVE() {
+			vd.tiaHasChanged = true
+		}
+		if vd.Ball.tickHMOVE() {
+			vd.tiaHasChanged = true
+		}
+	} else {
+		if vd.Player0.tick() {
+			vd.tiaHasChanged = true
+		}
+		if vd.Player1.tick() {
+			vd.tiaHasChanged = true
+		}
+		if vd.Missile0.tick() {
+			vd.tiaHasChanged = true
+		}
+		if vd.Missile1.tick() {
+			vd.tiaHasChanged = true
+		}
+		if vd.Ball.tick() {
+			vd.tiaHasChanged = true
+		}
 	}
 }
 

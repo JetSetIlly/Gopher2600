@@ -285,35 +285,41 @@ func (ps *PlayerSprite) rsync(adjustment int) {
 	}
 }
 
-// returns true if pixel has changed.
-func (ps *PlayerSprite) tick() bool {
-	if *ps.tia.hblank {
-		// early return if nothing to do
-		if !ps.tia.hmove.Clk {
-			return false
-		}
-
-		// check to see if there is more movement required for this sprite
-		ps.MoreHMOVE = ps.MoreHMOVE && compareHMOVE(ps.tia.hmove.Ripple, ps.Hmove)
-		if !ps.MoreHMOVE {
-			return false
-		}
-
-		// update hmoved pixel value & adjust for screen boundary
-		ps.HmovedPixel--
-		if ps.HmovedPixel < 0 {
-			ps.HmovedPixel += specification.ClksVisible
-		}
-	} else if ps.tia.hmove.Clk {
-		// check to see if there is more movement required for this sprite
-		ps.MoreHMOVE = ps.MoreHMOVE && compareHMOVE(ps.tia.hmove.Ripple, ps.Hmove)
-
-		// cancel motion clock if necessary
-		if ps.MoreHMOVE && ps.tia.instance.Prefs.Revision.Live.LostMOTCK.Load().(bool) {
-			return false
-		}
+func (ps *PlayerSprite) tickHBLANK() bool {
+	// early return if nothing to do
+	if !ps.tia.hmove.Clk {
+		return false
 	}
 
+	// check to see if there is more movement required for this sprite
+	ps.MoreHMOVE = ps.MoreHMOVE && compareHMOVE(ps.tia.hmove.Ripple, ps.Hmove)
+	if !ps.MoreHMOVE {
+		return false
+	}
+
+	// update hmoved pixel value & adjust for screen boundary
+	ps.HmovedPixel--
+	if ps.HmovedPixel < 0 {
+		ps.HmovedPixel += specification.ClksVisible
+	}
+
+	return ps.tick()
+}
+
+func (ps *PlayerSprite) tickHMOVE() bool {
+	// check to see if there is more movement required for this sprite
+	ps.MoreHMOVE = ps.MoreHMOVE && compareHMOVE(ps.tia.hmove.Ripple, ps.Hmove)
+
+	// cancel motion clock if necessary
+	if ps.MoreHMOVE && ps.tia.instance.Prefs.Revision.Live.LostMOTCK.Load().(bool) {
+		return false
+	}
+
+	return ps.tick()
+}
+
+// returns true if pixel has changed.
+func (ps *PlayerSprite) tick() bool {
 	// tick graphics scan counter during visible screen and during HMOVE.
 	// from TIA_HW_Notes.txt:
 	//
@@ -809,7 +815,7 @@ func (ps *PlayerSprite) triggerMissileReset() bool {
 		return false
 	}
 
-	switch *ps.ScanCounter.sizeAndCopies {
+	switch ps.SizeAndCopies {
 	case 0x05:
 		return ps.ScanCounter.Pixel == 4 && ps.ScanCounter.count == 1
 	case 0x07:
