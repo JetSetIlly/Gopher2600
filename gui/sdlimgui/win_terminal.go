@@ -53,14 +53,17 @@ type winTerm struct {
 
 	// preferences
 	wrap bool
+
+	focusOnInput bool
 }
 
 func newWinTerm(img *SdlImgui) (window, error) {
 	win := &winTerm{
-		img:        img,
-		term:       img.term,
-		historyIdx: -1,
-		wrap:       true,
+		img:          img,
+		term:         img.term,
+		historyIdx:   -1,
+		wrap:         true,
+		focusOnInput: true,
 	}
 
 	return win, nil
@@ -113,16 +116,9 @@ func (win *winTerm) debuggerDraw() {
 	imgui.PopStyleVar()
 	imgui.PopStyleColor()
 
-	// make a note if scrollback has been clicked or is active. we'll use this
-	// to help focus the keyboard for the command line.
-	//
-	// the OR condition is so that the focus isn't lost after a drag event
-	// (damned weird if you ask me)
-	var scrollbackActive bool
-
 	height := imguiRemainingWinHeight() - win.inputLineHeight
 	if imgui.BeginChildV("scrollback", imgui.Vec2{X: 0, Y: height}, false, 0) {
-		scrollbackActive = imgui.IsItemActive() || (imgui.IsWindowHovered() && imgui.IsMouseReleased(0))
+		win.focusOnInput = win.focusOnInput || imgui.IsItemActive() || (imgui.IsWindowHovered() && imgui.IsMouseReleased(0))
 
 		// only draw elements that will be visible
 		var clipper imgui.ListClipper
@@ -155,13 +151,6 @@ func (win *winTerm) debuggerDraw() {
 			win.saveOutput()
 		}
 		imgui.EndPopup()
-	}
-
-	// this construct says focus the next InputText() box if
-	//  - the terminal window is focused
-	//  - AND if nothing else has been activated since last frame
-	if (imgui.IsWindowFocused() && !imgui.IsAnyItemActive()) || scrollbackActive {
-		imgui.SetKeyboardFocusHere()
 	}
 
 	// measure command line
@@ -206,9 +195,15 @@ func (win *winTerm) debuggerDraw() {
 		// command line to be the width of the window
 		imgui.PushItemWidth(-1)
 
+		// keyboard focus on InputText widge
+		if win.focusOnInput {
+			imgui.SetKeyboardFocusHere()
+			win.focusOnInput = false
+		}
+
 		if imgui.InputTextV("", &win.input,
 			imgui.InputTextFlagsEnterReturnsTrue|imgui.InputTextFlagsCallbackCompletion|
-				imgui.InputTextFlagsCallbackHistory, win.tabCompleteAndHistory) {
+				imgui.InputTextFlagsCallbackHistory|imgui.InputTextFlagsAlwaysInsertMode, win.tabCompleteAndHistory) {
 
 			win.input = strings.TrimSpace(win.input)
 
@@ -226,6 +221,11 @@ func (win *winTerm) debuggerDraw() {
 			}
 
 			win.input = ""
+
+			// pressing enter unfocuses the InpuText() widget. we get around this by
+			// setting focusOnInput to true, meaning that we can continue our typing
+			// operation.
+			win.focusOnInput = true
 		}
 
 		imgui.PopItemWidth()
