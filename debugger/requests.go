@@ -59,7 +59,7 @@ func (dbg *Debugger) SetFeature(request emulation.FeatureReq, args ...emulation.
 			return curated.Errorf("debugger: %v", err)
 		}
 
-		dbg.PushRawEventReturn(func() {
+		dbg.PushRawEventImmediate(func() {
 			err := dbg.setMode(args[0].(emulation.Mode))
 			if err != nil {
 				logger.Logf("debugger", err.Error())

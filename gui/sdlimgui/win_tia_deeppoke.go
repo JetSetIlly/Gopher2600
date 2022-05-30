@@ -23,7 +23,7 @@ import (
 )
 
 // master control for enabling deeppoke capability.
-const allowDeepPoke = false
+const allowDeepPoke = true
 
 // update will run deepPoke() or current() function depending on state of
 // liveScope.

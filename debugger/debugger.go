@@ -1277,9 +1277,9 @@ func (dbg *Debugger) PushRawEvent(f func()) {
 	}
 }
 
-// PushRawEventReturn is the same as PushRawEvent but handlers will return to the
+// PushRawEventImmediate is the same as PushRawEvent but handlers will return to the
 // input loop for immediate action.
-func (dbg *Debugger) PushRawEventReturn(f func()) {
+func (dbg *Debugger) PushRawEventImmediate(f func()) {
 	select {
 	case dbg.events.RawEventsReturn <- f:
 	default:
