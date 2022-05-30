@@ -6,7 +6,7 @@ Gopher2600 is an emulator for the Atari 2600 written in the Go language.
 
 The accuracy of the emulation is very high and there are no known outstanding
 problems with the 6507, TIA and RIOT chip emulation. Emulation of the ARM chip
-is limited to the Thumb subset of instructions but it does include reasonably
+is currently limited to the Thumb subset of instructions but it does include
 accurate cycle counting and performance monitoring.
 
 It is an ongoing project and bug reports are welcome.
@@ -14,7 +14,7 @@ It is an ongoing project and bug reports are welcome.
 
 The key features of the emulator:
 
-* [Support for many of the known cartridge formats](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/Supported-Cartridge-Mappers)
+* [Support for many of the known cartridge formats](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/Supported-Cartridge-Mappers) including the [Supercharger](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/Supercharger)
 * Emulation of the [ARM7TDMI](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/ATM7TDMI-Emulation) as found in the `Harmony` cartridge
 * Network access through [PlusROM](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/PlusROM) emulation
 * [AtariVox and SaveKey](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/AtariVox-and-SaveKey) support
@@ -89,8 +89,8 @@ ROMs shown: Pitfall; [Chiphead](https://www.pouet.net/prod.php?which=68505); Thr
 
 The Stella project (https://stella-emu.github.io/) was used as a visual
 reference for video output. In the absence of VCS hardware (which I didn't have
-during initial TIA development) Stella was the only option I had for checking
-video accuracy.
+during initial TIA development) Stella was a good alternative for checking
+the accuracy of video output.
 
 In addition, Stella was used as reference in the following areas:
 
