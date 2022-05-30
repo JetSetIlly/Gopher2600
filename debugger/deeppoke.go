@@ -98,7 +98,7 @@ func (dbg *Debugger) doDeepPoke(resumeState *rewind.State, addr uint16, value ui
 		// the new value at the correct point rather than from the resume
 		// state.
 		pokeHook := func(s *rewind.State) error {
-			return deepPoke(s.Mem, poking.addr, newValue, valueMask)
+			return deepPoke(s.Mem, poking, newValue, valueMask)
 		}
 
 		// run from found poking.state to the "current state" in the real emulation
@@ -110,7 +110,7 @@ func (dbg *Debugger) doDeepPoke(resumeState *rewind.State, addr uint16, value ui
 		// if we're not poking RAM then we poke the state that we found
 		// immediately. this is particulatly important for cartridges with
 		// multiple banks because we need to poke the bank we found.
-		err := deepPoke(poking.state.Mem, poking.addr, newValue, valueMask)
+		err := deepPoke(poking.state.Mem, poking, newValue, valueMask)
 		if err != nil {
 			return err
 		}
@@ -137,9 +137,6 @@ func (dbg *Debugger) searchDeepPoke(searchState *rewind.State, searchAddr uint16
 
 	const maxSearchDepth = 10
 
-	// fmt.Println("----")
-	// fmt.Printf("searching for %02x write to %04x (mask=%02x)\n", value, searchAddr, valueMask)
-
 	// trace memory write as far back as we can
 	for depth := 0; depth < maxSearchDepth; depth++ {
 		searchState, err = dbg.Rewind.SearchMemoryWrite(searchState, searchAddr, value, valueMask)
@@ -149,8 +146,6 @@ func (dbg *Debugger) searchDeepPoke(searchState *rewind.State, searchAddr uint16
 		if searchState == nil {
 			return poking, nil
 		}
-
-		// fmt.Println("(mem)", searchState.CPU.LastResult.String())
 
 		// writes to memory always use a register as the source of the write
 		var reg rune
@@ -181,7 +176,6 @@ func (dbg *Debugger) searchDeepPoke(searchState *rewind.State, searchAddr uint16
 			ma, area := memorymap.MapAddress(searchState.CPU.LastResult.Address, false)
 			switch area {
 			case memorymap.Cartridge:
-				// fmt.Println("(reg)", searchState.CPU.LastResult.String())
 				pc := registers.NewProgramCounter(ma)
 				pc.Add(1)
 				poking.addr = pc.Address()
@@ -195,7 +189,6 @@ func (dbg *Debugger) searchDeepPoke(searchState *rewind.State, searchAddr uint16
 			ma, area := memorymap.MapAddress(searchState.CPU.LastResult.InstructionData, false)
 			switch area {
 			case memorymap.Cartridge:
-				// fmt.Println("(reg)", searchState.CPU.LastResult.String(), searchState.CPU.X.Value())
 				pc := registers.NewProgramCounter(ma)
 				pc.Add(searchState.CPU.X.Address())
 				poking.addr = pc.Address()
@@ -203,7 +196,6 @@ func (dbg *Debugger) searchDeepPoke(searchState *rewind.State, searchAddr uint16
 				poking.area = area
 				return poking, nil
 			case memorymap.RAM:
-				// fmt.Println("(reg)", searchState.CPU.LastResult.String(), searchState.CPU.X.Value())
 				pc := registers.NewProgramCounter(ma)
 				pc.Add(searchState.CPU.X.Address())
 				poking.addr = pc.Address()
@@ -216,7 +208,6 @@ func (dbg *Debugger) searchDeepPoke(searchState *rewind.State, searchAddr uint16
 			ma, area := memorymap.MapAddress(searchState.CPU.LastResult.InstructionData, false)
 			switch area {
 			case memorymap.Cartridge:
-				// fmt.Println("(reg)", searchState.CPU.LastResult.String(), searchState.CPU.Y.Value())
 				pc := registers.NewProgramCounter(ma)
 				pc.Add(searchState.CPU.Y.Address())
 				poking.addr = pc.Address()
@@ -224,7 +215,6 @@ func (dbg *Debugger) searchDeepPoke(searchState *rewind.State, searchAddr uint16
 				poking.area = area
 				return poking, nil
 			case memorymap.RAM:
-				// fmt.Println("(reg)", searchState.CPU.LastResult.String(), searchState.CPU.Y.Value())
 				pc := registers.NewProgramCounter(ma)
 				pc.Add(searchState.CPU.Y.Address())
 				poking.addr = pc.Address()
@@ -237,7 +227,6 @@ func (dbg *Debugger) searchDeepPoke(searchState *rewind.State, searchAddr uint16
 			ma, area := memorymap.MapAddress(searchState.CPU.LastResult.InstructionData, false)
 			switch area {
 			case memorymap.RAM:
-				// fmt.Println("(reg)", searchState.CPU.LastResult.String())
 				poking.addr = ma
 				poking.state = searchState
 				poking.area = area
@@ -251,7 +240,6 @@ func (dbg *Debugger) searchDeepPoke(searchState *rewind.State, searchAddr uint16
 			ma, area := memorymap.MapAddress(searchState.CPU.LastResult.InstructionData, false)
 			switch area {
 			case memorymap.RAM:
-				// fmt.Println("(reg)", searchState.CPU.LastResult.String(), searchState.CPU.X.Value())
 				pc := registers.NewProgramCounter(ma)
 				pc.Add(searchState.CPU.X.Address())
 				poking.addr = pc.Address()
@@ -267,7 +255,6 @@ func (dbg *Debugger) searchDeepPoke(searchState *rewind.State, searchAddr uint16
 			ma, area := memorymap.MapAddress(searchState.CPU.LastResult.InstructionData, false)
 			switch area {
 			case memorymap.RAM:
-				// fmt.Println("(reg)", searchState.CPU.LastResult.String(), searchState.CPU.Y.Value())
 				pc := registers.NewProgramCounter(ma)
 				pc.Add(searchState.CPU.Y.Address())
 				poking.addr = pc.Address()
@@ -279,6 +266,36 @@ func (dbg *Debugger) searchDeepPoke(searchState *rewind.State, searchAddr uint16
 			default:
 				return deepPoking{}, curated.Errorf("not deeppoking through non-RAM space (%s)", area)
 			}
+		case instructions.IndirectIndexed:
+			pc := registers.NewProgramCounter(searchState.CPU.LastResult.InstructionData)
+			lo, err := searchState.Mem.Read(pc.Address())
+			if err != nil {
+				return deepPoking{}, err
+			}
+			pc.Add(1)
+			hi, err := searchState.Mem.Read(pc.Address())
+			if err != nil {
+				return deepPoking{}, err
+			}
+			pc.Load((uint16(hi) << 8) | uint16(lo))
+			pc.Add(searchState.CPU.Y.Address())
+
+			ma, area := memorymap.MapAddress(pc.Address(), false)
+			switch area {
+			case memorymap.Cartridge:
+				poking.addr = ma
+				poking.state = searchState
+				poking.area = area
+				return poking, nil
+			case memorymap.RAM:
+				poking.addr = ma
+				poking.state = searchState
+				poking.area = area
+			default:
+				return deepPoking{}, curated.Errorf("not deeppoking through non-RAM/Cartridge space (%s)", area)
+			}
+
+			fallthrough
 		default:
 			return deepPoking{}, curated.Errorf("unsupported addressing mode (%s)", searchState.CPU.LastResult.String())
 		}
@@ -288,12 +305,12 @@ func (dbg *Debugger) searchDeepPoke(searchState *rewind.State, searchAddr uint16
 }
 
 // deepPoke changes the bits at the address according the value of valueMask.
-func deepPoke(mem *memory.Memory, addr uint16, value uint8, valueMask uint8) error {
-	v, err := mem.Peek(addr)
+func deepPoke(mem *memory.Memory, poke deepPoking, value uint8, valueMask uint8) error {
+	v, err := mem.Peek(poke.addr)
 	if err != nil {
 		return err
 	}
 	v = (v & (valueMask ^ 0xff)) | (value & valueMask)
-	logger.Log("deeppoke", fmt.Sprintf("changing %04x to %02x\n", addr, value))
-	return mem.Poke(addr, v)
+	logger.Log("deeppoke", fmt.Sprintf("changing %#04x (%s) to %#02x", poke.addr, poke.area, value))
+	return mem.Poke(poke.addr, v)
 }

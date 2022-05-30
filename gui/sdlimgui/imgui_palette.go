@@ -19,6 +19,7 @@ import (
 	"fmt"
 
 	"github.com/inkyblackness/imgui-go/v4"
+	"github.com/jetsetilly/gopher2600/gui/fonts"
 )
 
 type popupState int
@@ -35,11 +36,6 @@ type popupPalette struct {
 	target   *uint8
 	callback func()
 
-	// we set sizing information at time of request. it may be too early to do
-	// this on popupPalette creation
-	swatchSize float32
-	swatchGap  float32
-
 	// similarly, the palette to use will be decided at request time
 	palette     packedPalette
 	paletteName string
@@ -49,65 +45,107 @@ type popupPalette struct {
 }
 
 func newPopupPalette(img *SdlImgui) *popupPalette {
-	pal := &popupPalette{
+	pop := &popupPalette{
 		img: img,
 	}
-	return pal
+	return pop
 }
 
-func (pal *popupPalette) request(target *uint8, callback func()) {
-	pal.state = popupRequested
-	pal.target = target
-	pal.callback = callback
-	pal.swatchSize = imgui.FrameHeight() * 0.75
-	pal.swatchGap = pal.swatchSize * 0.1
-	pal.pos = imgui.MousePos()
-	pal.paletteName, pal.palette, _, _ = pal.img.imguiTVPalette()
-	pal.cnt = pal.img.imguiWindowQuadrant(pal.pos)
+func (pop *popupPalette) request(target *uint8, callback func()) {
+	pop.state = popupRequested
+	pop.target = target
+	pop.callback = callback
+	pop.pos = imgui.MousePos()
+	pop.paletteName, pop.palette, _, _ = pop.img.imguiTVPalette()
+	pop.cnt = pop.img.imguiWindowQuadrant(pop.pos)
 }
 
-func (pal *popupPalette) draw() {
-	if pal.state == popupClosed {
+func (pop *popupPalette) draw() {
+	if pop.state == popupClosed {
 		return
 	}
 
 	// we need to filter out the remnants of the click that caused this popup
 	// window to open. if we're still in the popupRequested state then move to
 	// the popupActive state when the mouse button has been released
-	if pal.state == popupRequested {
+	if pop.state == popupRequested {
 		if imgui.IsMouseReleased(0) {
-			pal.state = popupActive
+			pop.state = popupActive
 		}
 		return
 	}
 
-	imgui.SetNextWindowPosV(pal.pos, 0, pal.cnt)
+	imgui.SetNextWindowPosV(pop.pos, 0, pop.cnt)
 	imgui.BeginV("Palette", nil, imgui.WindowFlagsNoDecoration|imgui.WindowFlagsNoMove|imgui.WindowFlagsAlwaysAutoResize|imgui.WindowFlagsNoSavedSettings)
 
 	// close window if mouse clicked outside of window
 	if !imgui.IsWindowHovered() && imgui.IsMouseClicked(0) {
-		pal.state = popupClosed
+		pop.state = popupClosed
 	}
 
 	// information bar
 	imgui.Text("Current: ")
 	imgui.SameLine()
-	imgui.Text(pal.paletteName)
+	imgui.Text(pop.paletteName)
 	imgui.SameLine()
-	imgui.Text(fmt.Sprintf("%02x", *pal.target))
+	imgui.Text(fmt.Sprintf("%02x", *pop.target))
 	imgui.SameLine()
-	imgui.Text(fmt.Sprintf("#%06x", pal.palette[*pal.target]&0x00ffffff))
+	imgui.Text(fmt.Sprintf("#%06x", pop.palette[*pop.target]&0x00ffffff))
 
 	imgui.Spacing()
 
+	palette := newPalette(pop.img)
+	if selection, ok := palette.draw(int(*pop.target)); ok {
+		*pop.target = uint8(selection)
+		pop.callback()
+		pop.state = popupClosed
+	}
+
+	imgui.End()
+}
+
+type palette struct {
+	img *SdlImgui
+
+	// we set sizing information at time of request. it may be too early to do
+	// this on popupPalette creation
+	swatchSize float32
+	swatchGap  float32
+}
+
+func newPalette(img *SdlImgui) *palette {
+	pal := &palette{
+		img: img,
+	}
+
+	pal.swatchSize = imgui.FrameHeight() * 0.75
+	pal.swatchGap = pal.swatchSize * 0.1
+
+	return pal
+}
+
+const paletteDragDropName = "PALETTE"
+
+func (pal *palette) draw(selection int) (int, bool) {
+	_, packed, _, _ := pal.img.imguiTVPalette()
+	val := -1
+
 	// step through all colours in palette
-	for i := 0; i < len(pal.palette); i++ {
-		if pal.colRect(uint8(i)) {
-			*pal.target = uint8(i)
-			if pal.callback != nil {
-				pal.callback()
+	for i := 0; i < len(packed); i++ {
+		if pal.colRect(i, packed[i], selection == i) {
+			val = i
+
+			imgui.PushStyleVarFloat(imgui.StyleVarPopupBorderSize, 0.0)
+			imgui.PushStyleColor(imgui.StyleColorPopupBg, pal.img.cols.Transparent)
+			if imgui.BeginDragDropSource(imgui.DragDropFlagsNone) {
+				imgui.SetDragDropPayload(paletteDragDropName, []byte{byte(i)}, imgui.ConditionAlways)
+				imgui.PushFont(pal.img.glsl.fonts.largeFontAwesome)
+				imgui.Text(string(fonts.PaintRoller))
+				imgui.PopFont()
+				imgui.EndDragDropSource()
 			}
-			pal.state = popupClosed
+			imgui.PopStyleColor()
+			imgui.PopStyleVar()
 		}
 
 		// start a new row every 16 swatches
@@ -119,12 +157,10 @@ func (pal *popupPalette) draw() {
 		}
 	}
 
-	imgui.End()
+	return val, val != -1
 }
 
-func (pal *popupPalette) colRect(col uint8) bool {
-	c := pal.palette[col]
-
+func (pal *palette) colRect(idx int, col imgui.PackedColor, selected bool) bool {
 	// position & dimensions of playfield bit
 	a := imgui.CursorScreenPos()
 	b := a
@@ -140,15 +176,20 @@ func (pal *popupPalette) colRect(col uint8) bool {
 	// tooltip
 	if hover {
 		imguiTooltip(func() {
-			imgui.Text(fmt.Sprintf("%02x", col))
+			imgui.Text(fmt.Sprintf("%02x", idx))
 			imgui.SameLine()
-			imgui.Text(fmt.Sprintf("#%06x", c&0x00ffffff))
+			imgui.Text(fmt.Sprintf("#%06x", col&0x00ffffff))
 		}, false)
 	}
 
 	// show rectangle with color
 	dl := imgui.WindowDrawList()
-	dl.AddRectFilled(a, b, c)
+	if selected {
+		c := a.Plus(b).Times(0.5)
+		dl.AddCircleFilled(c, pal.swatchSize*0.5, col)
+	} else {
+		dl.AddRectFilled(a, b, col)
+	}
 
 	// set up cursor for next widget
 	a.X += pal.swatchSize + pal.swatchGap

@@ -77,6 +77,8 @@ const (
 	ByteChange             = '\uf30b'
 	Trash                  = '\uf1f8'
 	Pointer                = '\uf30b'
+	PaintRoller            = '\uf5aa'
+	Pencil                 = '\uf303'
 )
 
 // The first and last unicode points used in the application. We use this to

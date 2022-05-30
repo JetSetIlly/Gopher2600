@@ -41,8 +41,8 @@ const (
 	ElementMissile1
 )
 
-func (e *Element) String() string {
-	switch *e {
+func (e Element) String() string {
+	switch e {
 	case ElementBackground:
 		return "Background"
 	case ElementBall:

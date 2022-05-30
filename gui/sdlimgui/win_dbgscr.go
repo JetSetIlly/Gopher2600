@@ -60,19 +60,7 @@ type winDbgScr struct {
 	isCaptured bool
 
 	// imgui coords of mouse
-	mousePos imgui.Vec2
-
-	// scaled mouse coordinates. top-left corner is zero for uncropped screens.
-	// cropped screens are adjusted as required
-	//
-	// use these values to index the reflection array, for example
-	mouseX int
-	mouseY int
-
-	// mouse position adjusted so that clock and scanline represent the
-	// underlying screen (taking cropped setting into account)
-	mouseClock    int
-	mouseScanline int
+	mouse dbgScrMouse
 
 	// height of tool bar at bottom of window. valid after first frame.
 	toolbarHeight float32
@@ -103,14 +91,25 @@ type winDbgScr struct {
 	// crtPreview option is special. it overrides the other options in the dbgScr to
 	// show an uncropped CRT preview in the dbgscr window.
 	crtPreview bool
+
+	// simple mechanism  to prevent the screen from being updated. used in the
+	// paint functions to prevent the updating of the machine state from being
+	// shown
+	//
+	// noRender should not be set directly. use noRenderSet channel (wrapped in
+	// a select/default block). this is because noRender may be set in a
+	// non-GUI goroutine
+	noRender    bool
+	noRenderSet chan bool
 }
 
 func newWinDbgScr(img *SdlImgui) (window, error) {
 	win := &winDbgScr{
-		img:        img,
-		scr:        img.screen,
-		crtPreview: false,
-		cropped:    true,
+		img:         img,
+		scr:         img.screen,
+		crtPreview:  false,
+		cropped:     true,
+		noRenderSet: make(chan bool),
 	}
 
 	// set texture, creation of textures will be done after every call to resize()
@@ -203,24 +202,7 @@ func (win *winDbgScr) draw() {
 
 	// get mouse position if breakmenu is not open
 	if !imgui.IsPopupOpen(breakMenuPopupID) {
-		win.mousePos = imgui.MousePos().Minus(win.screenOrigin)
-
-		// scaled mouse position coordinates
-		win.mouseX = int(win.mousePos.X / win.xscaling)
-		win.mouseY = int(win.mousePos.Y / win.yscaling)
-
-		// corresponding clock and scanline values for scaled mouse coordinates
-		win.mouseClock = win.mouseX
-		win.mouseScanline = win.mouseY
-
-		// adjust depending on whether screen is cropped (or in CRT Preview)
-		if win.cropped || win.crtPreview {
-			win.mouseX += specification.ClksHBlank
-			win.mouseY += win.scr.crit.frameInfo.VisibleTop
-			win.mouseScanline += win.scr.crit.frameInfo.VisibleTop
-		} else {
-			win.mouseClock -= specification.ClksHBlank
-		}
+		win.mouse = win.mouseCoords()
 	}
 
 	// push style info for screen and overlay ImageButton(). we're using
@@ -233,6 +215,7 @@ func (win *winDbgScr) draw() {
 	imgui.PushStyleVarVec2(imgui.StyleVarFramePadding, imgui.Vec2{0.0, 0.0})
 
 	imgui.ImageButton(imgui.TextureID(win.displayTexture), imgui.Vec2{win.scaledWidth, win.scaledHeight})
+	win.paintTarget()
 	imageHovered := imgui.IsItemHovered()
 
 	if !win.crtPreview {
@@ -251,14 +234,14 @@ func (win *winDbgScr) draw() {
 		if imgui.BeginPopup(breakMenuPopupID) {
 			imgui.Text("Break on TV Coords")
 			imguiSeparator()
-			if imgui.Selectable(fmt.Sprintf("Scanline %d", win.mouseScanline)) {
-				win.img.term.pushCommand(fmt.Sprintf("BREAK SL %d", win.mouseScanline))
+			if imgui.Selectable(fmt.Sprintf("Scanline %d", win.mouse.scanline)) {
+				win.img.term.pushCommand(fmt.Sprintf("BREAK SL %d", win.mouse.scanline))
 			}
-			if imgui.Selectable(fmt.Sprintf("Clock %d", win.mouseClock)) {
-				win.img.term.pushCommand(fmt.Sprintf("BREAK CL %d", win.mouseClock))
+			if imgui.Selectable(fmt.Sprintf("Clock %d", win.mouse.clock)) {
+				win.img.term.pushCommand(fmt.Sprintf("BREAK CL %d", win.mouse.clock))
 			}
-			if imgui.Selectable(fmt.Sprintf("Scanline %d & Clock %d", win.mouseScanline, win.mouseClock)) {
-				win.img.term.pushCommand(fmt.Sprintf("BREAK SL %d & CL %d", win.mouseScanline, win.mouseClock))
+			if imgui.Selectable(fmt.Sprintf("Scanline %d & Clock %d", win.mouse.scanline, win.mouse.clock)) {
+				win.img.term.pushCommand(fmt.Sprintf("BREAK SL %d & CL %d", win.mouse.scanline, win.mouse.clock))
 			}
 			imgui.EndPopup()
 		}
@@ -277,8 +260,8 @@ func (win *winDbgScr) draw() {
 			if imgui.IsMouseDown(0) {
 				coords := coords.TelevisionCoords{
 					Frame:    win.img.lz.TV.Coords.Frame,
-					Scanline: win.mouseScanline,
-					Clock:    win.mouseClock,
+					Scanline: win.mouse.scanline,
+					Clock:    win.mouse.clock,
 				}
 
 				// if mouse is off the end of the screen then adjust the
@@ -294,9 +277,9 @@ func (win *winDbgScr) draw() {
 				}
 
 				// match against the actual mouse scanline not the adjusted scanline
-				if win.img.screen.gotoCoordsX != win.mouseClock || win.img.screen.gotoCoordsY != win.img.wm.dbgScr.mouseScanline {
-					win.img.screen.gotoCoordsX = win.mouseClock
-					win.img.screen.gotoCoordsY = win.img.wm.dbgScr.mouseScanline
+				if win.img.screen.gotoCoordsX != win.mouse.clock || win.img.screen.gotoCoordsY != win.img.wm.dbgScr.mouse.scanline {
+					win.img.screen.gotoCoordsX = win.mouse.clock
+					win.img.screen.gotoCoordsY = win.img.wm.dbgScr.mouse.scanline
 					win.img.dbg.GotoCoords(coords)
 				}
 			}
@@ -465,28 +448,17 @@ func (win *winDbgScr) drawOverlayColorKey() {
 
 // called from within a win.scr.crit.section Lock().
 func (win *winDbgScr) drawReflectionTooltip() {
-	if win.isCaptured {
-		return
-	}
-
-	// outside bounds of window
-	if win.mousePos.X < 0.0 || win.mousePos.Y < 0.0 {
-		return
-	}
-
-	mouseOffset := win.mouseX + win.mouseY*specification.ClksScanline
-
-	if mouseOffset < 0 || mouseOffset > len(win.scr.crit.reflection) {
+	if win.isCaptured || !win.mouse.valid {
 		return
 	}
 
 	// get reflection information
-	ref := win.scr.crit.reflection[mouseOffset]
+	ref := win.scr.crit.reflection[win.mouse.offset]
 
 	// draw tooltip
 	imguiTooltip(func() {
-		imgui.Text(fmt.Sprintf("Scanline: %d", win.mouseScanline))
-		imgui.Text(fmt.Sprintf("Clock: %d", win.mouseClock))
+		imgui.Text(fmt.Sprintf("Scanline: %d", win.mouse.scanline))
+		imgui.Text(fmt.Sprintf("Clock: %d", win.mouse.clock))
 
 		e := win.img.dbg.Disasm.FormatResult(ref.Bank, ref.CPU, disassembly.EntryLevelBlessed)
 		if e.Address == "" {
@@ -497,8 +469,8 @@ func (win *winDbgScr) drawReflectionTooltip() {
 
 		// if mouse is over a pixel from the previous frame then show nothing except a note
 		if win.img.emulation.State() == emulation.Paused {
-			if win.mouseScanline > win.img.screen.crit.lastScanline ||
-				(win.mouseScanline == win.img.screen.crit.lastScanline && win.mouseClock > win.img.screen.crit.lastClock) {
+			if win.mouse.scanline > win.img.screen.crit.lastScanline ||
+				(win.mouse.scanline == win.img.screen.crit.lastScanline && win.mouse.clock > win.img.screen.crit.lastClock) {
 				imgui.Text("From previous frame")
 				imguiSeparator()
 			}
@@ -627,6 +599,17 @@ func (win *winDbgScr) resize() {
 // render is called by service loop (via screen.render()). must be inside
 // screen critical section.
 func (win *winDbgScr) render() {
+	if win.noRender {
+		select {
+		case win.noRender = <-win.noRenderSet:
+			if win.noRender {
+				return
+			}
+		default:
+			return
+		}
+	}
+
 	var pixels *image.RGBA
 	var elements *image.RGBA
 	var overlay *image.RGBA

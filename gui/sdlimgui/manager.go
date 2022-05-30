@@ -112,6 +112,7 @@ var windowDefs = [...]windowDef{
 	{create: newWinTracker, menu: menuEntry{group: menuTools}, defaultOpen: false},
 	{create: newWinTimeline, menu: menuEntry{group: menuTools}, defaultOpen: true},
 	{create: newWin6507Pinout, menu: menuEntry{group: menuTools}, defaultOpen: false},
+	{create: newWinPaint, menu: menuEntry{group: menuTools}, defaultOpen: false},
 
 	// windows that appear in cartridge specific menu
 	{create: newWinDPCregisters, menu: menuEntry{group: menuCart, restrictBus: menuRestrictRegister, restrictMapper: []string{"DPC"}}},
