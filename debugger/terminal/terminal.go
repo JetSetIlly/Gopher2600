@@ -75,9 +75,9 @@ type ReadEvents struct {
 	// errors are not returned by RawEvents so errors should be logged
 	RawEvents chan func()
 
-	// RawEventsReturn is the same as RawEvnts but handlers must return control
+	// RawEventsImmediate is the same as RawEvnts but handlers must return control
 	// to the debugger inputloop after the function has run
-	RawEventsReturn chan func()
+	RawEventsImmediate chan func()
 }
 
 // Output defines the operations required by an interface that allows output.

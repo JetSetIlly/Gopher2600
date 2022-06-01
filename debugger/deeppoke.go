@@ -28,42 +28,26 @@ import (
 	"github.com/jetsetilly/gopher2600/rewind"
 )
 
-// IsDeepPoking returns true if a deep poke search is in progress.
-func (dbg *Debugger) IsDeepPoking() bool {
-	return len(dbg.deepPoking) > 0
-}
-
 // PushDeepPoke schedules a deep poke search for the specificed value in the
 // address, replacing it with newValue if found. The valueMask will be applied
 // to the value for matching and for setting the newValue - unset bits in the
 // mask will preserve the corresponding bits in the found value.
 func (dbg *Debugger) PushDeepPoke(addr uint16, value uint8, newValue uint8, valueMask uint8) bool {
-	// try pushing to the deepPoking channel.
-	//
-	// if we cannot then that means a deeppoke search is currently taking place and we
-	// return false to indicate that the request has not taken place yet.
-	select {
-	case dbg.deepPoking <- true:
-	default:
-		logger.Logf("deeppoke", "delaying poke of %04x", addr)
-		return false
-	}
+	return dbg.PushDeepPokeDone(addr, value, newValue, valueMask, nil)
+}
 
+func (dbg *Debugger) PushDeepPokeDone(addr uint16, value uint8, newValue uint8, valueMask uint8, done func()) bool {
 	// get current state to use as the resume state after the deeppoke and rewind recovery
-	resumeState := dbg.Rewind.GetCurrentState()
+	searchState := dbg.Rewind.GetCurrentState()
 
 	doDeepPoke := func() error {
-		err := dbg.doDeepPoke(resumeState, addr, value, newValue, valueMask)
+		err := dbg.doDeepPoke(searchState, addr, value, newValue, valueMask)
 		if err != nil {
 			logger.Logf("deeppoke", "%v", err)
 		}
-
-		// unblock deepPoking channel
-		select {
-		case <-dbg.deepPoking:
-		default:
+		if done != nil {
+			done()
 		}
-
 		return nil
 	}
 
@@ -82,8 +66,8 @@ type deepPoking struct {
 	area  memorymap.Area
 }
 
-func (dbg *Debugger) doDeepPoke(resumeState *rewind.State, addr uint16, value uint8, newValue uint8, valueMask uint8) error {
-	poking, err := dbg.searchDeepPoke(resumeState, addr, value, valueMask)
+func (dbg *Debugger) doDeepPoke(searchState *rewind.State, addr uint16, value uint8, newValue uint8, valueMask uint8) error {
+	poking, err := dbg.searchDeepPoke(searchState, addr, value, valueMask)
 	if err != nil {
 		return err
 	}
@@ -102,7 +86,7 @@ func (dbg *Debugger) doDeepPoke(resumeState *rewind.State, addr uint16, value ui
 		}
 
 		// run from found poking.state to the "current state" in the real emulation
-		err = dbg.Rewind.RunPoke(poking.state, resumeState, pokeHook)
+		err = dbg.Rewind.RunPoke(poking.state, searchState, pokeHook)
 		if err != nil {
 			return err
 		}
@@ -116,7 +100,7 @@ func (dbg *Debugger) doDeepPoke(resumeState *rewind.State, addr uint16, value ui
 		}
 
 		// run from found poking.state to the "current state" in the real emulation
-		err = dbg.Rewind.RunPoke(poking.state, resumeState, nil)
+		err = dbg.Rewind.RunPoke(poking.state, searchState, nil)
 		if err != nil {
 			return err
 		}

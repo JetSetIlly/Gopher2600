@@ -43,7 +43,7 @@ func (dbg *Debugger) readEventsHandler() error {
 		case ev := <-dbg.events.RawEvents:
 			ev()
 
-		case ev := <-dbg.events.RawEventsReturn:
+		case ev := <-dbg.events.RawEventsImmediate:
 			ev()
 			return nil
 

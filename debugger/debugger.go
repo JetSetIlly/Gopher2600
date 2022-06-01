@@ -191,8 +191,7 @@ type Debugger struct {
 	scriptScribe script.Scribe
 
 	// the Rewind system stores and restores machine state
-	Rewind     *rewind.Rewind
-	deepPoking chan bool
+	Rewind *rewind.Rewind
 
 	// the amount we rewind by is dependent on how fast the mouse wheel is
 	// moving or for how long the keyboard (or gamepad bumpers) have been
@@ -361,11 +360,11 @@ func NewDebugger(create CreateUserInterface, spec string, fpsCap bool, multiload
 	// the channel queue should be pretty lengthy to prevent dropped events
 	// (see PushRawEvent() function).
 	dbg.events = &terminal.ReadEvents{
-		UserInput:        make(chan userinput.Event, 10),
-		UserInputHandler: dbg.userInputHandler,
-		IntEvents:        make(chan os.Signal, 1),
-		RawEvents:        make(chan func(), 32),
-		RawEventsReturn:  make(chan func(), 32),
+		UserInput:          make(chan userinput.Event, 10),
+		UserInputHandler:   dbg.userInputHandler,
+		IntEvents:          make(chan os.Signal, 1),
+		RawEvents:          make(chan func(), 1024),
+		RawEventsImmediate: make(chan func(), 1024),
 	}
 
 	// connect Interrupt signal to dbg.events.intChan
@@ -388,7 +387,6 @@ func NewDebugger(create CreateUserInterface, spec string, fpsCap bool, multiload
 	if err != nil {
 		return nil, curated.Errorf("debugger: %v", err)
 	}
-	dbg.deepPoking = make(chan bool, 1)
 
 	// add reflection system to the GUI
 	dbg.ref = reflection.NewReflector(dbg.vcs)
@@ -1281,7 +1279,7 @@ func (dbg *Debugger) PushRawEvent(f func()) {
 // input loop for immediate action.
 func (dbg *Debugger) PushRawEventImmediate(f func()) {
 	select {
-	case dbg.events.RawEventsReturn <- f:
+	case dbg.events.RawEventsImmediate <- f:
 	default:
 		logger.Log("debugger", "dropped raw event push (to return channel)")
 	}

@@ -91,25 +91,14 @@ type winDbgScr struct {
 	// crtPreview option is special. it overrides the other options in the dbgScr to
 	// show an uncropped CRT preview in the dbgscr window.
 	crtPreview bool
-
-	// simple mechanism  to prevent the screen from being updated. used in the
-	// paint functions to prevent the updating of the machine state from being
-	// shown
-	//
-	// noRender should not be set directly. use noRenderSet channel (wrapped in
-	// a select/default block). this is because noRender may be set in a
-	// non-GUI goroutine
-	noRender    bool
-	noRenderSet chan bool
 }
 
 func newWinDbgScr(img *SdlImgui) (window, error) {
 	win := &winDbgScr{
-		img:         img,
-		scr:         img.screen,
-		crtPreview:  false,
-		cropped:     true,
-		noRenderSet: make(chan bool),
+		img:        img,
+		scr:        img.screen,
+		crtPreview: false,
+		cropped:    true,
 	}
 
 	// set texture, creation of textures will be done after every call to resize()
@@ -214,8 +203,11 @@ func (win *winDbgScr) draw() {
 	imgui.PushStyleColor(imgui.StyleColorButtonHovered, win.img.cols.Transparent)
 	imgui.PushStyleVarVec2(imgui.StyleVarFramePadding, imgui.Vec2{0.0, 0.0})
 
+	imgui.PushStyleColor(imgui.StyleColorDragDropTarget, win.img.cols.Transparent)
 	imgui.ImageButton(imgui.TextureID(win.displayTexture), imgui.Vec2{win.scaledWidth, win.scaledHeight})
-	win.paintTarget()
+	win.paintDragAndDrop()
+	imgui.PopStyleColor()
+
 	imageHovered := imgui.IsItemHovered()
 
 	if !win.crtPreview {
@@ -599,17 +591,6 @@ func (win *winDbgScr) resize() {
 // render is called by service loop (via screen.render()). must be inside
 // screen critical section.
 func (win *winDbgScr) render() {
-	if win.noRender {
-		select {
-		case win.noRender = <-win.noRenderSet:
-			if win.noRender {
-				return
-			}
-		default:
-			return
-		}
-	}
-
 	var pixels *image.RGBA
 	var elements *image.RGBA
 	var overlay *image.RGBA

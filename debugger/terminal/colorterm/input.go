@@ -113,7 +113,7 @@ func (ct *ColorTerminal) TermRead(input []byte, prompt terminal.Prompt, events *
 		case ev := <-events.RawEvents:
 			ev()
 
-		case ev := <-events.RawEventsReturn:
+		case ev := <-events.RawEventsImmediate:
 			ev()
 			return 0, nil
 

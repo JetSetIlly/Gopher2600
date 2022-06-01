@@ -18,67 +18,147 @@ package sdlimgui
 import (
 	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
+	"github.com/jetsetilly/gopher2600/hardware/television/coords"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
+	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 	"github.com/jetsetilly/gopher2600/hardware/tia/video"
 	"github.com/jetsetilly/gopher2600/logger"
+	"github.com/jetsetilly/gopher2600/reflection"
 )
 
-func (win *winDbgScr) paintTarget() {
+func (win *winDbgScr) paintDragAndDrop() {
 	// each datastream image can also be dropped onto
 	if imgui.BeginDragDropTarget() {
 		// drag and drop has ended on a legitimate target
 		payload := imgui.AcceptDragDropPayload(painDragDrop, imgui.DragDropFlagsNone)
 		if payload != nil {
-			colour := payload[0]
-
 			mouse := win.mouseCoords()
 			if mouse.valid {
-				resumeCoords := win.img.lz.TV.Coords
-				resumeCoords.Scanline = mouse.scanline
-				resumeCoords.Clock = mouse.clock
-				paintCoords := resumeCoords
-				paintCoords.Frame -= 1
+				ref := win.scr.crit.reflection[mouse.offset]
 
-				select {
-				case win.noRenderSet <- true:
-				default:
+				ff := floodFill{
+					win:  win,
+					from: uint8((ref.Signal&signal.Color)>>signal.ColorShift) & 0xfe,
+					to:   payload[0] & 0xfe,
 				}
-				win.img.dbg.GotoCoords(paintCoords)
 
-				win.img.dbg.PushRawEventImmediate(func() {
-					ref := win.scr.crit.reflection[mouse.offset]
-					logger.Logf("paint", "filling %s at %s", ref.VideoElement.String(), paintCoords)
-					switch ref.VideoElement {
-					case video.ElementBackground:
-						px := uint8((ref.Signal & signal.Color) >> signal.ColorShift)
-						win.img.dbg.PushDeepPoke(cpubus.WriteAddress[cpubus.COLUBK], px, colour, 0xfe)
-					case video.ElementPlayfield:
-						fallthrough
-					case video.ElementBall:
-						px := uint8((ref.Signal & signal.Color) >> signal.ColorShift)
-						win.img.dbg.PushDeepPoke(cpubus.WriteAddress[cpubus.COLUPF], px, colour, 0xfe)
-					case video.ElementPlayer0:
-						fallthrough
-					case video.ElementMissile0:
-						px := uint8((ref.Signal & signal.Color) >> signal.ColorShift)
-						win.img.dbg.PushDeepPoke(cpubus.WriteAddress[cpubus.COLUP0], px, colour, 0xfe)
-					case video.ElementPlayer1:
-						fallthrough
-					case video.ElementMissile1:
-						px := uint8((ref.Signal & signal.Color) >> signal.ColorShift)
-						win.img.dbg.PushDeepPoke(cpubus.WriteAddress[cpubus.COLUP1], px, colour, 0xfe)
-					}
-				})
+				if ff.from != ff.to {
+					ff.startingReflection = make([]reflection.ReflectedVideoStep, len(win.scr.crit.reflection))
+					copy(ff.startingReflection, win.scr.crit.reflection)
 
-				win.img.dbg.PushRawEventImmediate(func() {
-					win.img.dbg.GotoCoords(resumeCoords)
-					select {
-					case win.noRenderSet <- false:
-					default:
-					}
-				})
+					target := floodFillTarget{}
+					target.coord = win.img.lz.TV.Coords
+					target.coord.Clock = mouse.clock
+					target.coord.Scanline = mouse.scanline
+					target.offset = mouse.offset
+					ff.build(target)
+
+					logger.Logf("paint", "flood fill starting at %s", target.coord)
+					ff.resolve(0)
+				}
 			}
 		}
 		imgui.EndDragDropTarget()
 	}
+}
+
+type floodFillTarget struct {
+	coord  coords.TelevisionCoords
+	offset int
+}
+
+type floodFill struct {
+	win *winDbgScr
+
+	startingReflection []reflection.ReflectedVideoStep
+	targets            []floodFillTarget
+
+	from uint8
+	to   uint8
+}
+
+func (ff *floodFill) build(target floodFillTarget) {
+	ref := ff.startingReflection[target.offset]
+	if ref.Signal&signal.VBlank == signal.VBlank {
+		return
+	}
+
+	px := uint8((ref.Signal&signal.Color)>>signal.ColorShift) & 0xfe
+	if px != ff.from {
+		return
+	}
+
+	ff.targets = append(ff.targets, target)
+	ref.Signal &= ^signal.Color
+	ref.Signal |= signal.SignalAttributes(ff.to) << signal.ColorShift
+	ff.startingReflection[target.offset] = ref
+
+	// down
+	down := target
+	down.offset += specification.ClksScanline
+	down.coord.Scanline++
+	if down.coord.Scanline <= ff.win.img.lz.TV.FrameInfo.TotalScanlines {
+		ff.build(down)
+	}
+
+	// up
+	up := target
+	up.offset -= specification.ClksScanline
+	up.coord.Scanline--
+	if up.coord.Scanline >= 0 {
+		ff.build(up)
+	}
+
+	// left
+	left := target
+	left.offset--
+	left.coord.Clock--
+	if left.coord.Clock >= 0 {
+		ff.build(left)
+	}
+
+	// right
+	right := target
+	right.offset++
+	right.coord.Clock++
+	if right.coord.Clock <= specification.ClksScanline {
+		ff.build(right)
+	}
+}
+
+func (ff *floodFill) resolve(offsetIdx int) {
+	if offsetIdx >= len(ff.targets) {
+		return
+	}
+
+	target := ff.targets[offsetIdx]
+	ref := ff.win.scr.crit.reflection[target.offset]
+	px := uint8((ref.Signal&signal.Color)>>signal.ColorShift) & 0xfe
+	if px != ff.from {
+		ff.resolve(offsetIdx + 1)
+		return
+	}
+
+	ff.win.img.dbg.PushRawEventImmediate(func() {
+		ff.win.img.dbg.GotoCoords(target.coord)
+
+		ff.win.img.dbg.PushRawEventImmediate(func() {
+			switch ref.VideoElement {
+			case video.ElementBackground:
+				ff.win.img.dbg.PushDeepPokeDone(cpubus.WriteAddress[cpubus.COLUBK], px, ff.to, 0xfe, func() { ff.resolve(offsetIdx + 1) })
+			case video.ElementPlayfield:
+				fallthrough
+			case video.ElementBall:
+				ff.win.img.dbg.PushDeepPokeDone(cpubus.WriteAddress[cpubus.COLUPF], px, ff.to, 0xfe, func() { ff.resolve(offsetIdx + 1) })
+			case video.ElementPlayer0:
+				fallthrough
+			case video.ElementMissile0:
+				ff.win.img.dbg.PushDeepPokeDone(cpubus.WriteAddress[cpubus.COLUP0], px, ff.to, 0xfe, func() { ff.resolve(offsetIdx + 1) })
+			case video.ElementPlayer1:
+				fallthrough
+			case video.ElementMissile1:
+				ff.win.img.dbg.PushDeepPokeDone(cpubus.WriteAddress[cpubus.COLUP1], px, ff.to, 0xfe, func() { ff.resolve(offsetIdx + 1) })
+			}
+		})
+	})
 }

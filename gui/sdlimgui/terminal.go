@@ -128,7 +128,7 @@ func (trm *term) TermRead(buffer []byte, prompt terminal.Prompt, events *termina
 		case ev := <-events.RawEvents:
 			ev()
 
-		case ev := <-events.RawEventsReturn:
+		case ev := <-events.RawEventsImmediate:
 			ev()
 			return 0, nil
 

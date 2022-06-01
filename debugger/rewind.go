@@ -132,6 +132,7 @@ func (dbg *Debugger) GotoCoords(coords coords.TelevisionCoords) bool {
 			if err != nil {
 				return curated.Errorf("push goto coords: %v", err)
 			}
+
 			return nil
 		}
 
