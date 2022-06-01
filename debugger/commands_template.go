@@ -92,7 +92,7 @@ var commandTemplate = []string{
 	cmdGoto + " [%<clock>N] (%<scanline>N) (%<frame>N)",
 
 	cmdInsert + " %<cartridge>F",
-	cmdCartridge + " (PATH|NAME|MAPPER|CONTAINER|MAPPEDBANKS|HASH|STATIC|REGISTERS|RAM|HOTLOAD)",
+	cmdCartridge + " (PATH|NAME|MAPPER|CONTAINER|MAPPEDBANKS|HASH|STATIC|REGISTERS|RAM|HOTLOAD|DUMP)",
 	cmdPatch + " %<patch file>S",
 	cmdDisasm + " (BYTECODE|REDUX)",
 	cmdGrep + " (OPERATOR|OPERAND) %<search>S",

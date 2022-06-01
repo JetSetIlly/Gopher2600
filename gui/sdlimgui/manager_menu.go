@@ -78,6 +78,15 @@ func (wm *manager) drawMenu() {
 			wm.drawMenuEntry(m)
 		}
 
+		// if imgui.Selectable("  Save ROM") {
+		// 	wm.img.dbg.PushRawEvent(func() {
+		// 		_, err := wm.img.dbg.VCS().(*hardware.VCS).Mem.Cart.ROMDump()
+		// 		if err != nil {
+		// 			logger.Log("save rom", err.Error())
+		// 		}
+		// 	})
+		// }
+
 		imguiSeparator()
 
 		if imgui.Selectable("  Arrange Windows") {

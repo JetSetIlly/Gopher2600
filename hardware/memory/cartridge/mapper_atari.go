@@ -17,12 +17,14 @@ package cartridge
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/instance"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
+	"github.com/jetsetilly/gopher2600/logger"
 )
 
 // from bankswitch_sizes.txt:
@@ -104,6 +106,29 @@ func hasEmptyArea(d []uint8) bool {
 		}
 	}
 	return true
+}
+
+// ROMDump implements the mapper.CartROMDump interface.
+func (cart *atari) ROMDump(filename string) error {
+	f, err := os.Create(filename)
+	if err != nil {
+		return curated.Errorf("atari: %v", err)
+	}
+	defer func() {
+		err := f.Close()
+		if err != nil {
+			logger.Logf("atari", err.Error())
+		}
+	}()
+
+	for _, b := range cart.banks {
+		_, err := f.Write(b)
+		if err != nil {
+			return curated.Errorf("atari: %v", err)
+		}
+	}
+
+	return nil
 }
 
 // MappedBanks implements the mapper.CartMapper interface.

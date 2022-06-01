@@ -23,32 +23,47 @@ import (
 
 // Filename creates a filename that (assuming a functioning clock) should not
 // collide with any existing file. Note that the function does not test for
-// this.
+// existing files.
 //
 // Format of returned string is:
 //
 //     filetype_cartname_YYYYMMDD_HHMMSS
 //
-// Where cartname is the string returned by cartload.ShortName(). If there is
-// no cartridge name the returned string will be of the format:
+// Where cartname is the string returned by cartload.ShortName(). If the
+// cartname argument is empty the returned string will be of the format:
 //
 //     filetype_YYYYMMDD_HHMMSS
 //
 // The filetype argument is simply another way of identifying the file
 // uniquely. For example, if saving a screenshot the filetype might simply be
 // "screenshot" or "photo".
-func Filename(filetype string, cartName string) string {
+//
+// If the filetype argument is empty the returned string will be of the format:
+//
+//   cartname_YYYYMMDD_HHMMSS
+//
+// If both filetype and cartname arguments are empty then the returned string
+// will be the timestamp only.
+//
+// Note that there is no provision for adding a file extension. If you need one
+// you must append that manually.
+func Filename(filetype string, cartname string) string {
 	n := time.Now()
 	timestamp := fmt.Sprintf("%04d%02d%02d_%02d%02d%02d", n.Year(), n.Month(), n.Day(), n.Hour(), n.Minute(), n.Second())
 
-	var fn string
+	filetype = strings.TrimSpace(filetype)
+	cartname = strings.TrimSpace(cartname)
 
-	c := strings.TrimSpace(cartName)
-	if len(c) > 0 {
-		fn = fmt.Sprintf("%s_%s_%s", filetype, c, timestamp)
-	} else {
-		fn = fmt.Sprintf("%s_%s", filetype, timestamp)
+	s := strings.Builder{}
+	if len(filetype) > 0 {
+		s.WriteString(filetype)
+		s.WriteString("_")
 	}
+	if len(cartname) > 0 {
+		s.WriteString(cartname)
+		s.WriteString("_")
+	}
+	s.WriteString(timestamp)
 
-	return fn
+	return s.String()
 }

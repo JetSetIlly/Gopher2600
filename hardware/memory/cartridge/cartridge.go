@@ -30,6 +30,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/supercharger"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 	"github.com/jetsetilly/gopher2600/logger"
+	"github.com/jetsetilly/gopher2600/resources/unique"
 )
 
 // Cartridge defines the information and operations for a VCS cartridge.
@@ -374,7 +375,7 @@ func (cart *Cartridge) HotLoad(cartload cartridgeloader.Loader) error {
 		return nil
 	}
 
-	return curated.Errorf("cartridge does not support hotloading")
+	return curated.Errorf("cartridge: %s does not support hotloading", cart.mapper.ID())
 }
 
 // GetRegistersBus returns interface to the registers of the cartridge or nil
@@ -462,4 +463,13 @@ func (cart *Cartridge) RewindBoundary() bool {
 		return rb.RewindBoundary()
 	}
 	return false
+}
+
+// ROMDump implements the mapper.CartROMDump interface.
+func (cart *Cartridge) ROMDump() (string, error) {
+	romdump := fmt.Sprintf("%s.bin", unique.Filename("", cart.ShortName))
+	if rb, ok := cart.mapper.(mapper.CartROMDump); ok {
+		return romdump, rb.ROMDump(romdump)
+	}
+	return "", curated.Errorf("cartridge: %s does not support ROM dumping", cart.mapper.ID())
 }

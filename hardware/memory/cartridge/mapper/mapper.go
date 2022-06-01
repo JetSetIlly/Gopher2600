@@ -311,3 +311,8 @@ type CartRewindBoundary interface {
 type CartHotLoader interface {
 	HotLoad([]byte) error
 }
+
+// CartROMDump is implemented by cartridge mappers that can save themselves to disk.
+type CartROMDump interface {
+	ROMDump(filename string) error
+}

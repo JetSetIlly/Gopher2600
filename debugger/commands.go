@@ -530,6 +530,14 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 				} else {
 					dbg.printLine(terminal.StyleFeedback, "hotload successful")
 				}
+
+			case "DUMP":
+				romdump, err := dbg.vcs.Mem.Cart.ROMDump()
+				if err != nil {
+					dbg.printLine(terminal.StyleFeedback, err.Error())
+				} else {
+					dbg.printLine(terminal.StyleFeedback, fmt.Sprintf("rom dumped to %s", romdump))
+				}
 			}
 		} else {
 			dbg.printLine(terminal.StyleInstrument, dbg.vcs.Mem.Cart.String())
