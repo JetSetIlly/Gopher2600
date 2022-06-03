@@ -187,6 +187,14 @@ Specific information about UXP ARM7TDMI-S
 
 https://www.nxp.com/docs/en/user-guide/UM10161.pdf
 
+Thumb-2 information in the ARM Architecture Reference Manual Thumb-2 Supplement
+
+https://documentation-service.arm.com/static/5f1066ca0daa596235e7e90a
+
+and the "ARMv7-M Architecture Reference Manual" can be found at:
+
+https://documentation-service.arm.com/static/606dc36485368c4c2b1bf62f
+
 In relation to ARM development, information about the DWARF format is being
 taken from the DWARF2 and DWARF4 standards
 

@@ -16,12 +16,14 @@
 package dpcplus
 
 import (
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm/memorymodel"
 )
 
 // there is only one version of DPC+ currently but this method of specifying
 // addresses mirrors how we do it in the CDF type.
 type version struct {
+	arch arm.Architecture
 	mmap memorymodel.Map
 
 	driverOriginROM uint32
@@ -44,17 +46,21 @@ type version struct {
 }
 
 func newVersion(memModel string, data []uint8) version {
+	var arch arm.Architecture
+	var mmap memorymodel.Map
+
 	if memModel == "AUTO" {
 		if data[0xc4b]&0x20 == 0x20 && data[0xc4f]&0x20 == 0x20 {
-			memModel = memorymodel.PlusCart
+			arch = arm.ARMv7_M
+			mmap = memorymodel.NewMap(memorymodel.PlusCart)
 		} else {
-			memModel = memorymodel.Harmony
+			arch = arm.ARM7TDMI
+			mmap = memorymodel.NewMap(memorymodel.Harmony)
 		}
 	}
 
-	mmap := memorymodel.NewMap(memModel)
-
 	return version{
+		arch:            arch,
 		mmap:            mmap,
 		driverOriginROM: mmap.FlashOrigin,
 		driverMemtopROM: mmap.FlashOrigin | 0x00000bff,

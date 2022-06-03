@@ -19,11 +19,13 @@ import (
 	"bytes"
 
 	"github.com/jetsetilly/gopher2600/curated"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm/memorymodel"
 )
 
 // versions contains the information that can differ between CDF versions.
 type version struct {
+	arch arm.Architecture
 	mmap memorymodel.Map
 
 	// mappingID depends on the version
@@ -85,17 +87,21 @@ type version struct {
 }
 
 func newVersion(memModel string, v string, data []uint8) (version, error) {
+	var arch arm.Architecture
+	var mmap memorymodel.Map
+
 	if memModel == "AUTO" {
 		if data[0x863]&0x20 == 0x20 && data[0x867]&0x20 == 0x20 {
-			memModel = memorymodel.PlusCart
+			arch = arm.ARMv7_M
+			mmap = memorymodel.NewMap(memorymodel.PlusCart)
 		} else {
-			memModel = memorymodel.Harmony
+			arch = arm.ARM7TDMI
+			mmap = memorymodel.NewMap(memorymodel.Harmony)
 		}
 	}
 
-	mmap := memorymodel.NewMap(memModel)
-
 	ver := version{
+		arch: arch,
 		mmap: mmap,
 
 		// addresses (driver is always in the same location)
