@@ -13,7 +13,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-// Package arm7tdmi imlplements the ARM7TDMI instruction set as defined in the
+// Package arm imlplements the ARM7TDMI instruction set as defined in the
 // ARM7TDMI Instruction Set Reference:
 //
 // http://www.ecs.csun.edu/~smirzaei/docs/ece425/arm7tdmi_instruction_set_reference.pdf
@@ -47,4 +47,4 @@
 // some versions of the Harmony cartridge.
 //
 // https://www.nxp.com/docs/en/errata/ES_LPC2103.pdf
-package arm7tdmi
+package arm

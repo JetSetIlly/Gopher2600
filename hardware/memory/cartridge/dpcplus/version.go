@@ -16,7 +16,7 @@
 package dpcplus
 
 import (
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm7tdmi/memorymodel"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm/memorymodel"
 )
 
 // there is only one version of DPC+ currently but this method of specifying

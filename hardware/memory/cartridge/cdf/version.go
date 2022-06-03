@@ -19,7 +19,7 @@ import (
 	"bytes"
 
 	"github.com/jetsetilly/gopher2600/curated"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm7tdmi/memorymodel"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm/memorymodel"
 )
 
 // versions contains the information that can differ between CDF versions.

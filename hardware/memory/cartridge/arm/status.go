@@ -13,11 +13,11 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-package arm7tdmi
+package arm
 
 import "strings"
 
-// the arm7tdmi has a 32 bit status register but we only need the CSPR bits
+// the arm has a 32 bit status register but we only need the CSPR bits
 // currently.
 type status struct {
 	// CPSR (current program status register) bits

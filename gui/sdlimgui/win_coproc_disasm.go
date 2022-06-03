@@ -22,7 +22,7 @@ import (
 	"github.com/jetsetilly/gopher2600/coprocessor/disassembly"
 	"github.com/jetsetilly/gopher2600/emulation"
 	"github.com/jetsetilly/gopher2600/gui/fonts"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm7tdmi"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm"
 )
 
 // in this case of the coprocessor disassmebly window the actual window title
@@ -124,7 +124,7 @@ func (win *winCoProcDisasm) draw() {
 
 			// total cycles including tooltip
 			if isEnabled && win.optionsLastExecution {
-				if summary, ok := dsm.LastExecutionSummary.(arm7tdmi.DisasmSummary); ok {
+				if summary, ok := dsm.LastExecutionSummary.(arm.DisasmSummary); ok {
 					imgui.SameLineV(0, 40)
 					imgui.Text(fmt.Sprintf("%c Total Cycles % 8d", fonts.CoProcCycles, summary.I+summary.N+summary.S))
 					imguiTooltip(func() {
@@ -184,7 +184,7 @@ func (win *winCoProcDisasm) drawDisasm(dsm *disassembly.DisasmEntries, lastExecu
 					break
 				}
 				e := dsm.LastExecution[i]
-				win.drawEntry(e.(arm7tdmi.DisasmEntry))
+				win.drawEntry(e.(arm.DisasmEntry))
 			}
 		}
 	} else {
@@ -197,14 +197,14 @@ func (win *winCoProcDisasm) drawDisasm(dsm *disassembly.DisasmEntries, lastExecu
 				}
 				k := dsm.Keys[i]
 				e := dsm.Entries[k]
-				win.drawEntry(e.(arm7tdmi.DisasmEntry))
+				win.drawEntry(e.(arm.DisasmEntry))
 			}
 		}
 	}
 
 }
 
-func (win *winCoProcDisasm) drawEntry(e arm7tdmi.DisasmEntry) {
+func (win *winCoProcDisasm) drawEntry(e arm.DisasmEntry) {
 	imgui.TableNextRow()
 
 	// highlight line mouse is over
@@ -258,9 +258,9 @@ func (win *winCoProcDisasm) drawEntry(e arm7tdmi.DisasmEntry) {
 			}
 
 			switch e.BranchTrail {
-			case arm7tdmi.BranchTrailUsed:
+			case arm.BranchTrailUsed:
 				imguiColorLabelSimple("Branch Trail Used", win.img.cols.CoProcBranchTrailUsed)
-			case arm7tdmi.BranchTrailFlushed:
+			case arm.BranchTrailFlushed:
 				imguiColorLabelSimple("Branch Trail Flushed", win.img.cols.CoProcBranchTrailFlushed)
 			}
 
@@ -303,9 +303,9 @@ func (win *winCoProcDisasm) drawEntry(e arm7tdmi.DisasmEntry) {
 	// branch trail and merged IS indicator
 	imgui.TableNextColumn()
 	switch e.BranchTrail {
-	case arm7tdmi.BranchTrailUsed:
+	case arm.BranchTrailUsed:
 		imguiColorLabelSimple("", win.img.cols.CoProcBranchTrailUsed)
-	case arm7tdmi.BranchTrailFlushed:
+	case arm.BranchTrailFlushed:
 		imguiColorLabelSimple("", win.img.cols.CoProcBranchTrailFlushed)
 	}
 

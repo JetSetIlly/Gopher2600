@@ -20,7 +20,7 @@ import (
 
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/instance"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm7tdmi"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
@@ -35,7 +35,7 @@ type cdf struct {
 	mappingID string
 
 	// additional CPU - used by some ROMs
-	arm *arm7tdmi.ARM
+	arm *arm.ARM
 
 	// cdf comes in several different versions
 	version version
@@ -115,7 +115,7 @@ func NewCDF(instance *instance.Instance, pathToROM string, version string, data 
 	//
 	// if bank0 has any ARM code then it will start at offset 0x08. first eight
 	// bytes are the ARM header
-	cart.arm = arm7tdmi.NewARM(cart.version.mmap, cart.instance.Prefs.ARM, cart.state.static, cart, cart.pathToROM)
+	cart.arm = arm.NewARM(cart.version.mmap, cart.instance.Prefs.ARM, cart.state.static, cart, cart.pathToROM)
 
 	return cart, nil
 }
@@ -160,7 +160,7 @@ func (cart *cdf) Plumb() {
 
 // Plumb implements the mapper.CartMapper interface.
 func (cart *cdf) PlumbFromDifferentEmulation() {
-	cart.arm = arm7tdmi.NewARM(cart.version.mmap, cart.instance.Prefs.ARM, cart.state.static, cart, cart.pathToROM)
+	cart.arm = arm.NewARM(cart.version.mmap, cart.instance.Prefs.ARM, cart.state.static, cart, cart.pathToROM)
 }
 
 // Reset implements the mapper.CartMapper interface.
@@ -537,8 +537,8 @@ func (cart *cdf) WriteHotspots() map[uint16]mapper.CartHotspotInfo {
 }
 
 // ARMinterrupt implements the arm7tmdi.CatridgeHook interface.
-func (cart *cdf) ARMinterrupt(addr uint32, val1 uint32, val2 uint32) (arm7tdmi.ARMinterruptReturn, error) {
-	var r arm7tdmi.ARMinterruptReturn
+func (cart *cdf) ARMinterrupt(addr uint32, val1 uint32, val2 uint32) (arm.ARMinterruptReturn, error) {
+	var r arm.ARMinterruptReturn
 
 	if cart.version.submapping == "CDF0" {
 		switch addr {

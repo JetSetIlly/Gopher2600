@@ -16,7 +16,7 @@
 package dpcplus
 
 import (
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm7tdmi/callfn"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm/callfn"
 	"github.com/jetsetilly/gopher2600/random"
 )
 
@@ -43,7 +43,7 @@ type State struct {
 	// the callfn process is stateful
 	callfn callfn.CallFn
 
-	// the MAM mode to use when called arm7tdmi.Run(). Run() returns the value
+	// the MAM mode to use when called arm.Run(). Run() returns the value
 	// the thumb code leaves it in so this can carry over between program
 	// executions
 	mamcr uint32
@@ -55,7 +55,7 @@ func newDPCPlusState() *State {
 	return s
 }
 
-// the ideal MAMCR value given to the arm7tdmi.Run() command.
+// the ideal MAMCR value given to the arm.Run() command.
 const dpcPlusMAMCR = 2
 
 func (s *State) initialise(rand *random.Random, bank int) {

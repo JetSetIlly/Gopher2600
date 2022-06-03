@@ -26,7 +26,7 @@ import (
 	"strings"
 
 	"github.com/jetsetilly/gopher2600/curated"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm7tdmi"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm"
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
@@ -381,7 +381,7 @@ func NewSource(pathToROM string) (*Source, error) {
 			}
 
 			opcode := elf.ByteOrder.Uint16(b)
-			disasm := arm7tdmi.Disassemble(opcode)
+			disasm := arm.Disassemble(opcode)
 
 			// put the disassembly entry in the
 			src.Disassembly[addr] = &SourceDisasm{

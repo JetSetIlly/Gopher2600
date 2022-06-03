@@ -13,12 +13,12 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-package arm7tdmi
+package arm
 
 import (
 	"fmt"
 
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm7tdmi/memorymodel"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm/memorymodel"
 )
 
 type timer struct {
