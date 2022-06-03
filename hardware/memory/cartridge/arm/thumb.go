@@ -26,67 +26,67 @@ func (arm *ARM) decodeThumb(opcode uint16) func(uint16) {
 	// working backwards up the table in Figure 5-1 of the ARM7TDMI Data Sheet.
 	if opcode&0xf000 == 0xf000 {
 		// format 19 - Long branch with link
-		return arm.executeLongBranchWithLink
+		return arm.thumbLongBranchWithLink
 	} else if opcode&0xf000 == 0xe000 {
 		// format 18 - Unconditional branch
-		return arm.executeUnconditionalBranch
+		return arm.thumbUnconditionalBranch
 	} else if opcode&0xff00 == 0xdf00 {
 		// format 17 - Software interrupt"
-		return arm.executeSoftwareInterrupt
+		return arm.thumbSoftwareInterrupt
 	} else if opcode&0xf000 == 0xd000 {
 		// format 16 - Conditional branch
-		return arm.executeConditionalBranch
+		return arm.thumbConditionalBranch
 	} else if opcode&0xf000 == 0xc000 {
 		// format 15 - Multiple load/store
-		return arm.executeMultipleLoadStore
+		return arm.thumbMultipleLoadStore
 	} else if opcode&0xf600 == 0xb400 {
 		// format 14 - Push/pop registers
-		return arm.executePushPopRegisters
+		return arm.thumbPushPopRegisters
 	} else if opcode&0xff00 == 0xb000 {
 		// format 13 - Add offset to stack pointer
-		return arm.executeAddOffsetToSP
+		return arm.thumbAddOffsetToSP
 	} else if opcode&0xf000 == 0xa000 {
 		// format 12 - Load address
-		return arm.executeLoadAddress
+		return arm.thumbLoadAddress
 	} else if opcode&0xf000 == 0x9000 {
 		// format 11 - SP-relative load/store
-		return arm.executeSPRelativeLoadStore
+		return arm.thumbSPRelativeLoadStore
 	} else if opcode&0xf000 == 0x8000 {
 		// format 10 - Load/store halfword
-		return arm.executeLoadStoreHalfword
+		return arm.thumbLoadStoreHalfword
 	} else if opcode&0xe000 == 0x6000 {
 		// format 9 - Load/store with immediate offset
-		return arm.executeLoadStoreWithImmOffset
+		return arm.thumbLoadStoreWithImmOffset
 	} else if opcode&0xf200 == 0x5200 {
 		// format 8 - Load/store sign-extended byte/halfword
-		return arm.executeLoadStoreSignExtendedByteHalford
+		return arm.thumbLoadStoreSignExtendedByteHalford
 	} else if opcode&0xf200 == 0x5000 {
 		// format 7 - Load/store with register offset
-		return arm.executeLoadStoreWithRegisterOffset
+		return arm.thumbLoadStoreWithRegisterOffset
 	} else if opcode&0xf800 == 0x4800 {
 		// format 6 - PC-relative load
-		return arm.executePCrelativeLoad
+		return arm.thumbPCrelativeLoad
 	} else if opcode&0xfc00 == 0x4400 {
 		// format 5 - Hi register operations/branch exchange
-		return arm.executeHiRegisterOps
+		return arm.thumbHiRegisterOps
 	} else if opcode&0xfc00 == 0x4000 {
 		// format 4 - ALU operations
-		return arm.executeALUoperations
+		return arm.thumbALUoperations
 	} else if opcode&0xe000 == 0x2000 {
 		// format 3 - Move/compare/add/subtract immediate
-		return arm.executeMovCmpAddSubImm
+		return arm.thumbMovCmpAddSubImm
 	} else if opcode&0xf800 == 0x1800 {
 		// format 2 - Add/subtract
-		return arm.executeAddSubtract
+		return arm.thumbAddSubtract
 	} else if opcode&0xe000 == 0x0000 {
 		// format 1 - Move shifted register
-		return arm.executeMoveShiftedRegister
+		return arm.thumbMoveShiftedRegister
 	}
 
-	panic("undecoded thumb instruction")
+	panic(fmt.Sprintf("undecoded thumb instruction (%04x)", opcode))
 }
 
-func (arm *ARM) executeMoveShiftedRegister(opcode uint16) {
+func (arm *ARM) thumbMoveShiftedRegister(opcode uint16) {
 	// format 1 - Move shifted register
 	op := (opcode & 0x1800) >> 11
 	shift := (opcode & 0x7c0) >> 6
@@ -159,7 +159,7 @@ func (arm *ARM) executeMoveShiftedRegister(opcode uint16) {
 		}
 
 	case 0x11:
-		panic("illegal instruction")
+		panic(fmt.Sprintf("illegal (move shifted register) thumb operation (%04b)", op))
 	}
 
 	arm.status.isZero(arm.registers[destReg])
@@ -175,7 +175,7 @@ func (arm *ARM) executeMoveShiftedRegister(opcode uint16) {
 	}
 }
 
-func (arm *ARM) executeAddSubtract(opcode uint16) {
+func (arm *ARM) thumbAddSubtract(opcode uint16) {
 	// format 2 - Add/subtract
 	immediate := opcode&0x0400 == 0x0400
 	subtract := opcode&0x0200 == 0x0200
@@ -208,7 +208,7 @@ func (arm *ARM) executeAddSubtract(opcode uint16) {
 
 // "The instructions in this group perform operations between a Lo register and
 // an 8-bit immediate value".
-func (arm *ARM) executeMovCmpAddSubImm(opcode uint16) {
+func (arm *ARM) thumbMovCmpAddSubImm(opcode uint16) {
 	// format 3 - Move/compare/add/subtract immediate
 	op := (opcode & 0x1800) >> 11
 	destReg := (opcode & 0x0700) >> 8
@@ -244,7 +244,7 @@ func (arm *ARM) executeMovCmpAddSubImm(opcode uint16) {
 }
 
 // "The following instructions perform ALU operations on a Lo register pair".
-func (arm *ARM) executeALUoperations(opcode uint16) {
+func (arm *ARM) thumbALUoperations(opcode uint16) {
 	// format 4 - ALU operations
 	op := (opcode & 0x03c0) >> 6
 	srcReg := (opcode & 0x38) >> 3
@@ -459,7 +459,7 @@ func (arm *ARM) executeALUoperations(opcode uint16) {
 		arm.status.isZero(arm.registers[destReg])
 		arm.status.isNegative(arm.registers[destReg])
 	default:
-		panic(fmt.Sprintf("unimplemented ALU operation (%04b)", op))
+		panic(fmt.Sprintf("unimplemented (ALU) thumb operation (%04b)", op))
 	}
 
 	// page 7-11 in "ARM7TDMI-S Technical Reference Manual r4p3"
@@ -507,7 +507,7 @@ func (arm *ARM) executeALUoperations(opcode uint16) {
 	}
 }
 
-func (arm *ARM) executeHiRegisterOps(opcode uint16) {
+func (arm *ARM) thumbHiRegisterOps(opcode uint16) {
 	// format 5 - Hi register operations/branch exchange
 	op := (opcode & 0x300) >> 8
 	hi1 := opcode&0x80 == 0x80
@@ -641,7 +641,7 @@ func (arm *ARM) executeHiRegisterOps(opcode uint16) {
 	}
 }
 
-func (arm *ARM) executePCrelativeLoad(opcode uint16) {
+func (arm *ARM) thumbPCrelativeLoad(opcode uint16) {
 	// format 6 - PC-relative load
 	destReg := (opcode & 0x0700) >> 8
 	imm := uint32(opcode&0x00ff) << 2
@@ -660,7 +660,7 @@ func (arm *ARM) executePCrelativeLoad(opcode uint16) {
 	arm.Icycle()
 }
 
-func (arm *ARM) executeLoadStoreWithRegisterOffset(opcode uint16) {
+func (arm *ARM) thumbLoadStoreWithRegisterOffset(opcode uint16) {
 	// format 7 - Load/store with register offset
 	load := opcode&0x0800 == 0x0800
 	byteTransfer := opcode&0x0400 == 0x0400
@@ -707,7 +707,7 @@ func (arm *ARM) executeLoadStoreWithRegisterOffset(opcode uint16) {
 	arm.storeRegisterCycles(addr)
 }
 
-func (arm *ARM) executeLoadStoreSignExtendedByteHalford(opcode uint16) {
+func (arm *ARM) thumbLoadStoreSignExtendedByteHalford(opcode uint16) {
 	// format 8 - Load/store sign-extended byte/halfword
 	hi := opcode&0x0800 == 0x800
 	sign := opcode&0x0400 == 0x400
@@ -767,7 +767,7 @@ func (arm *ARM) executeLoadStoreSignExtendedByteHalford(opcode uint16) {
 	arm.storeRegisterCycles(addr)
 }
 
-func (arm *ARM) executeLoadStoreWithImmOffset(opcode uint16) {
+func (arm *ARM) thumbLoadStoreWithImmOffset(opcode uint16) {
 	// format 9 - Load/store with immediate offset
 	load := opcode&0x0800 == 0x0800
 	byteTransfer := opcode&0x1000 == 0x1000
@@ -824,7 +824,7 @@ func (arm *ARM) executeLoadStoreWithImmOffset(opcode uint16) {
 	arm.storeRegisterCycles(addr)
 }
 
-func (arm *ARM) executeLoadStoreHalfword(opcode uint16) {
+func (arm *ARM) thumbLoadStoreHalfword(opcode uint16) {
 	// format 10 - Load/store halfword
 	load := opcode&0x0800 == 0x0800
 	offset := (opcode & 0x07c0) >> 6
@@ -855,7 +855,7 @@ func (arm *ARM) executeLoadStoreHalfword(opcode uint16) {
 	arm.storeRegisterCycles(addr)
 }
 
-func (arm *ARM) executeSPRelativeLoadStore(opcode uint16) {
+func (arm *ARM) thumbSPRelativeLoadStore(opcode uint16) {
 	// format 11 - SP-relative load/store
 	load := opcode&0x0800 == 0x0800
 	reg := (opcode & 0x07ff) >> 8
@@ -885,7 +885,7 @@ func (arm *ARM) executeSPRelativeLoadStore(opcode uint16) {
 	arm.storeRegisterCycles(addr)
 }
 
-func (arm *ARM) executeLoadAddress(opcode uint16) {
+func (arm *ARM) thumbLoadAddress(opcode uint16) {
 	// format 12 - Load address
 	sp := opcode&0x0800 == 0x800
 	destReg := (opcode & 0x700) >> 8
@@ -909,7 +909,7 @@ func (arm *ARM) executeLoadAddress(opcode uint16) {
 	// - fillPipeline() will be called if necessary
 }
 
-func (arm *ARM) executeAddOffsetToSP(opcode uint16) {
+func (arm *ARM) thumbAddOffsetToSP(opcode uint16) {
 	// format 13 - Add offset to stack pointer
 	sign := opcode&0x80 == 0x80
 	imm := uint32(opcode & 0x7f)
@@ -936,7 +936,7 @@ func (arm *ARM) executeAddOffsetToSP(opcode uint16) {
 	// - no additional cycles
 }
 
-func (arm *ARM) executePushPopRegisters(opcode uint16) {
+func (arm *ARM) thumbPushPopRegisters(opcode uint16) {
 	// format 14 - Push/pop registers
 
 	// the ARM pushes registers in descending order and pops in ascending
@@ -1093,7 +1093,7 @@ func (arm *ARM) executePushPopRegisters(opcode uint16) {
 	arm.registers[rSP] -= c
 }
 
-func (arm *ARM) executeMultipleLoadStore(opcode uint16) {
+func (arm *ARM) thumbMultipleLoadStore(opcode uint16) {
 	// format 15 - Multiple load/store
 	load := opcode&0x0800 == 0x0800
 	baseReg := uint32(opcode&0x07ff) >> 8
@@ -1178,7 +1178,7 @@ func (arm *ARM) executeMultipleLoadStore(opcode uint16) {
 	arm.registers[baseReg] = addr
 }
 
-func (arm *ARM) executeConditionalBranch(opcode uint16) {
+func (arm *ARM) thumbConditionalBranch(opcode uint16) {
 	// format 16 - Conditional branch
 	cond := (opcode & 0x0f00) >> 8
 	offset := uint32(opcode & 0x00ff)
@@ -1268,12 +1268,12 @@ func (arm *ARM) executeConditionalBranch(opcode uint16) {
 	}
 }
 
-func (arm *ARM) executeSoftwareInterrupt(opcode uint16) {
+func (arm *ARM) thumbSoftwareInterrupt(opcode uint16) {
 	// format 17 - Software interrupt"
-	panic("Software interrupt")
+	panic(fmt.Sprintf("unimplemented (software interrupt) thumb instruction (%04x)", opcode))
 }
 
-func (arm *ARM) executeUnconditionalBranch(opcode uint16) {
+func (arm *ARM) thumbUnconditionalBranch(opcode uint16) {
 	// format 18 - Unconditional branch
 	offset := uint32(opcode&0x07ff) << 1
 
@@ -1290,7 +1290,7 @@ func (arm *ARM) executeUnconditionalBranch(opcode uint16) {
 	// - fillPipeline() will be called if necessary
 }
 
-func (arm *ARM) executeLongBranchWithLink(opcode uint16) {
+func (arm *ARM) thumbLongBranchWithLink(opcode uint16) {
 	// format 19 - Long branch with link
 	low := opcode&0x800 == 0x0800
 	offset := uint32(opcode & 0x07ff)
