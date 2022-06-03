@@ -19,14 +19,13 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
 	"github.com/jetsetilly/gopher2600/hardware/tia/video"
 
 	"github.com/inkyblackness/imgui-go/v4"
 )
 
 func (win *winTIA) drawPlayfield() {
-	imgui.BeginChildV("##playfield", imgui.Vec2{X: 0, Y: imguiRemainingWinHeight() - win.scopeHeight}, false, 0)
+	imgui.BeginChildV("##playfield", imgui.Vec2{X: 0, Y: imguiRemainingWinHeight() - win.footerHeight}, false, 0)
 	defer imgui.EndChild()
 
 	lz := win.img.lz.Playfield
@@ -43,14 +42,10 @@ func (win *winTIA) drawPlayfield() {
 	fgCol := lz.ForegroundColor
 	if win.img.imguiSwatch(fgCol, 0.75) {
 		win.popupPalette.request(&fgCol, func() {
-			win.update(
-				func() {
-					win.img.dbg.PushDeepPoke(cpubus.WriteAddress[cpubus.COLUPF], pf.ForegroundColor, fgCol, 0xfe)
-				},
-				func() {
-					pf.ForegroundColor = fgCol
-					bs.Color = fgCol
-				})
+			win.img.dbg.PushRawEvent(func() {
+				pf.ForegroundColor = fgCol
+				bs.Color = fgCol
+			})
 		})
 	}
 
@@ -59,13 +54,9 @@ func (win *winTIA) drawPlayfield() {
 	bgCol := lz.BackgroundColor
 	if win.img.imguiSwatch(bgCol, 0.75) {
 		win.popupPalette.request(&bgCol, func() {
-			win.update(
-				func() {
-					win.img.dbg.PushDeepPoke(cpubus.WriteAddress[cpubus.COLUBK], pf.BackgroundColor, bgCol, 0xfe)
-				},
-				func() {
-					pf.BackgroundColor = bgCol
-				})
+			win.img.dbg.PushRawEvent(func() {
+				pf.BackgroundColor = bgCol
+			})
 		})
 	}
 	imgui.EndGroup()
@@ -78,61 +69,25 @@ func (win *winTIA) drawPlayfield() {
 	imguiLabel("Reflected")
 	ref := lz.Reflected
 	if imgui.Checkbox("##reflected", &ref) {
-		win.update(
-			func() {
-				var o uint8
-				if pf.Reflected {
-					o = video.CTRLPFReflectedMask
-				}
-				var n uint8
-				if ref {
-					n = video.CTRLPFReflectedMask
-				}
-				win.img.dbg.PushDeepPoke(cpubus.WriteAddress[cpubus.CTRLPF], o, n, video.CTRLPFReflectedMask)
-			},
-			func() {
-				pf.Reflected = ref
-			})
+		win.img.dbg.PushRawEvent(func() {
+			pf.Reflected = ref
+		})
 	}
 	imgui.SameLine()
 	imguiLabel("Scoremode")
 	sm := lz.Scoremode
 	if imgui.Checkbox("##scoremode", &sm) {
-		win.update(
-			func() {
-				var o uint8
-				if pf.Scoremode {
-					o = video.CTRLPFScoremodeMask
-				}
-				var n uint8
-				if sm {
-					n = video.CTRLPFScoremodeMask
-				}
-				win.img.dbg.PushDeepPoke(cpubus.WriteAddress[cpubus.CTRLPF], o, n, video.CTRLPFScoremodeMask)
-			},
-			func() {
-				pf.Scoremode = sm
-			})
+		win.img.dbg.PushRawEvent(func() {
+			pf.Scoremode = sm
+		})
 	}
 	imgui.SameLine()
 	imguiLabel("Priority")
 	pri := lz.Priority
 	if imgui.Checkbox("##priority", &pri) {
-		win.update(
-			func() {
-				var o uint8
-				if pf.Priority {
-					o = video.CTRLPFPriorityMask
-				}
-				var n uint8
-				if pri {
-					n = video.CTRLPFPriorityMask
-				}
-				win.img.dbg.PushDeepPoke(cpubus.WriteAddress[cpubus.CTRLPF], o, n, video.CTRLPFPriorityMask)
-			},
-			func() {
-				pf.Priority = pri
-			})
+		win.img.dbg.PushRawEvent(func() {
+			pf.Priority = pri
+		})
 	}
 
 	imgui.SameLine()
@@ -141,15 +96,11 @@ func (win *winTIA) drawPlayfield() {
 	ctrlpf := fmt.Sprintf("%02x", lz.Ctrlpf)
 	if imguiHexInput("##ctrlpf", 2, &ctrlpf) {
 		if v, err := strconv.ParseUint(ctrlpf, 16, 8); err == nil {
-			win.update(
-				func() {
-					win.img.dbg.PushDeepPoke(cpubus.WriteAddress[cpubus.CTRLPF], pf.Ctrlpf, uint8(v), 0xff)
-				},
-				func() {
-					// update ball copy of CTRLPF too in addition to the playfield copy
-					pf.SetCTRLPF(uint8(v))
-					bs.SetCTRLPF(uint8(v))
-				})
+			win.img.dbg.PushRawEvent(func() {
+				// update ball copy of CTRLPF too in addition to the playfield copy
+				pf.SetCTRLPF(uint8(v))
+				bs.SetCTRLPF(uint8(v))
+			})
 		}
 	}
 	imgui.EndGroup()
@@ -176,13 +127,9 @@ func (win *winTIA) drawPlayfield() {
 		}
 		if seq.rectFill(palette[col]) {
 			pf0d ^= 0x80 >> i
-			win.update(
-				func() {
-					win.img.dbg.PushDeepPoke(cpubus.WriteAddress[cpubus.PF0], pf.PF0, pf0d, 0xff)
-				},
-				func() {
-					pf.SetPF0(pf0d)
-				})
+			win.img.dbg.PushRawEvent(func() {
+				pf.SetPF0(pf0d)
+			})
 		}
 		seq.sameLine()
 	}
@@ -203,13 +150,9 @@ func (win *winTIA) drawPlayfield() {
 		}
 		if seq.rectFill(palette[col]) {
 			pf1d ^= 0x80 >> i
-			win.update(
-				func() {
-					win.img.dbg.PushDeepPoke(cpubus.WriteAddress[cpubus.PF1], pf.PF1, pf1d, 0xff)
-				},
-				func() {
-					pf.SetPF1(pf1d)
-				})
+			win.img.dbg.PushRawEvent(func() {
+				pf.SetPF1(pf1d)
+			})
 		}
 		seq.sameLine()
 	}
@@ -230,13 +173,9 @@ func (win *winTIA) drawPlayfield() {
 		}
 		if seq.rectFill(palette[col]) {
 			pf2d ^= 0x80 >> i
-			win.update(
-				func() {
-					win.img.dbg.PushDeepPoke(cpubus.WriteAddress[cpubus.PF2], pf.PF2, pf2d, 0xff)
-				},
-				func() {
-					pf.SetPF2(pf2d)
-				})
+			win.img.dbg.PushRawEvent(func() {
+				pf.SetPF2(pf2d)
+			})
 		}
 		seq.sameLine()
 	}

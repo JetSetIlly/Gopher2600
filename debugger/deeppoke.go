@@ -32,11 +32,7 @@ import (
 // address, replacing it with newValue if found. The valueMask will be applied
 // to the value for matching and for setting the newValue - unset bits in the
 // mask will preserve the corresponding bits in the found value.
-func (dbg *Debugger) PushDeepPoke(addr uint16, value uint8, newValue uint8, valueMask uint8) bool {
-	return dbg.PushDeepPokeDone(addr, value, newValue, valueMask, nil)
-}
-
-func (dbg *Debugger) PushDeepPokeDone(addr uint16, value uint8, newValue uint8, valueMask uint8, done func()) bool {
+func (dbg *Debugger) PushDeepPoke(addr uint16, value uint8, newValue uint8, valueMask uint8, done func()) bool {
 	// get current state to use as the resume state after the deeppoke and rewind recovery
 	searchState := dbg.Rewind.GetCurrentState()
 

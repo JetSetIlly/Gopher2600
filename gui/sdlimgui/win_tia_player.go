@@ -20,14 +20,13 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
 	"github.com/jetsetilly/gopher2600/hardware/tia/video"
 
 	"github.com/inkyblackness/imgui-go/v4"
 )
 
 func (win *winTIA) drawPlayer(num int) {
-	imgui.BeginChildV(fmt.Sprintf("##player%d", num), imgui.Vec2{X: 0, Y: imguiRemainingWinHeight() - win.scopeHeight}, false, 0)
+	imgui.BeginChildV(fmt.Sprintf("##player%d", num), imgui.Vec2{X: 0, Y: imguiRemainingWinHeight() - win.footerHeight}, false, 0)
 	defer imgui.EndChild()
 
 	// get drawlist for window. we use this to draw index pointer and position indicator
@@ -60,30 +59,9 @@ func (win *winTIA) drawPlayer(num int) {
 	imguiLabel("Reflected")
 	ref := lz.Reflected
 	if imgui.Checkbox("##reflected", &ref) {
-		win.update(
-			func() {
-				var o uint8
-				if ps.Reflected {
-					o = video.REFPxMask
-				}
-				var n uint8
-				if ref {
-					n = video.REFPxMask
-				}
-				var reg cpubus.Register
-				switch num {
-				case 0:
-					reg = cpubus.REFP0
-				case 1:
-					reg = cpubus.REFP1
-				default:
-					panic("unexecpted player number")
-				}
-				win.img.dbg.PushDeepPoke(cpubus.WriteAddress[reg], o, n, video.REFPxMask)
-			},
-			func() {
-				ps.Reflected = ref
-			})
+		win.img.dbg.PushRawEvent(func() {
+			ps.Reflected = ref
+		})
 	}
 
 	imgui.SameLine()

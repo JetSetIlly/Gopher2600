@@ -16,6 +16,9 @@
 package sdlimgui
 
 import (
+	"fmt"
+
+	"github.com/jetsetilly/gopher2600/gui/fonts"
 	"github.com/jetsetilly/gopher2600/hardware/tia/video"
 
 	"github.com/inkyblackness/imgui-go/v4"
@@ -40,8 +43,8 @@ type winTIA struct {
 	missileSizeComboDim         imgui.Vec2
 	missileCopiesComboDim       imgui.Vec2
 
-	// scope selection height
-	scopeHeight float32
+	// footer that appear below each tab page
+	footerHeight float32
 }
 
 func newWinTIA(img *SdlImgui) (window, error) {
@@ -110,7 +113,12 @@ func (win *winTIA) draw() {
 	}
 	imgui.EndTabBar()
 
-	win.drawPersistenceControl()
+	win.footerHeight = imguiMeasureHeight(func() {
+		imgui.Spacing()
+		imgui.Separator()
+		imgui.Spacing()
+		imgui.Text(fmt.Sprintf("%c Changes take effect going forward and will likely not persist", fonts.GoingForward))
+	})
 
 	win.popupPalette.draw()
 }

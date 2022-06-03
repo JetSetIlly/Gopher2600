@@ -145,19 +145,19 @@ func (ff *floodFill) resolve(offsetIdx int) {
 		ff.win.img.dbg.PushRawEventImmediate(func() {
 			switch ref.VideoElement {
 			case video.ElementBackground:
-				ff.win.img.dbg.PushDeepPokeDone(cpubus.WriteAddress[cpubus.COLUBK], px, ff.to, 0xfe, func() { ff.resolve(offsetIdx + 1) })
+				ff.win.img.dbg.PushDeepPoke(cpubus.WriteAddress[cpubus.COLUBK], px, ff.to, 0xfe, func() { ff.resolve(offsetIdx + 1) })
 			case video.ElementPlayfield:
 				fallthrough
 			case video.ElementBall:
-				ff.win.img.dbg.PushDeepPokeDone(cpubus.WriteAddress[cpubus.COLUPF], px, ff.to, 0xfe, func() { ff.resolve(offsetIdx + 1) })
+				ff.win.img.dbg.PushDeepPoke(cpubus.WriteAddress[cpubus.COLUPF], px, ff.to, 0xfe, func() { ff.resolve(offsetIdx + 1) })
 			case video.ElementPlayer0:
 				fallthrough
 			case video.ElementMissile0:
-				ff.win.img.dbg.PushDeepPokeDone(cpubus.WriteAddress[cpubus.COLUP0], px, ff.to, 0xfe, func() { ff.resolve(offsetIdx + 1) })
+				ff.win.img.dbg.PushDeepPoke(cpubus.WriteAddress[cpubus.COLUP0], px, ff.to, 0xfe, func() { ff.resolve(offsetIdx + 1) })
 			case video.ElementPlayer1:
 				fallthrough
 			case video.ElementMissile1:
-				ff.win.img.dbg.PushDeepPokeDone(cpubus.WriteAddress[cpubus.COLUP1], px, ff.to, 0xfe, func() { ff.resolve(offsetIdx + 1) })
+				ff.win.img.dbg.PushDeepPoke(cpubus.WriteAddress[cpubus.COLUP1], px, ff.to, 0xfe, func() { ff.resolve(offsetIdx + 1) })
 			}
 		})
 	})

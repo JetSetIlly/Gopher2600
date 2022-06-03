@@ -26,7 +26,7 @@ import (
 )
 
 func (win *winTIA) drawBall() {
-	imgui.BeginChildV("##ball", imgui.Vec2{X: 0, Y: imguiRemainingWinHeight() - win.scopeHeight}, false, 0)
+	imgui.BeginChildV("##ball", imgui.Vec2{X: 0, Y: imguiRemainingWinHeight() - win.footerHeight}, false, 0)
 	defer imgui.EndChild()
 
 	lz := win.img.lz.Ball
