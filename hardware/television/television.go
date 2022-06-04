@@ -24,7 +24,6 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/television/coords"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
-	"github.com/jetsetilly/gopher2600/logger"
 )
 
 // the number of synced frames where we can expect things to be in flux.
@@ -175,8 +174,8 @@ type Television struct {
 	emulationState emulation.State
 }
 
-// NewReference creates a new instance of the reference television type,
-// satisfying the Television interface.
+// NewTelevision creates a new instance of the television type, satisfying the
+// Television interface.
 func NewTelevision(spec string) (*Television, error) {
 	tv := &Television{
 		reqSpecID:   strings.ToUpper(spec),
@@ -194,8 +193,6 @@ func NewTelevision(spec string) (*Television, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	logger.Logf("television", "using %s specification", tv.state.frameInfo.Spec.ID)
 
 	// empty list of renderers
 	tv.renderers = make([]PixelRenderer, 0)
@@ -237,8 +234,6 @@ func (tv *Television) Reset(keepFrameNum bool) error {
 	} else {
 		tv.SetSpec(tv.state.frameInfo.Spec.ID)
 	}
-
-	logger.Logf("television", "using %s specification", tv.state.frameInfo.Spec.ID)
 
 	for _, m := range tv.mixers {
 		m.Reset()
@@ -554,12 +549,10 @@ func (tv *Television) newFrame(fromVsync bool) error {
 			fallthrough
 		case specification.SpecNTSC.ID:
 			if tv.state.auto && tv.state.scanline > specification.PALTrigger {
-				logger.Logf("television", "auto switching to PAL")
 				_ = tv.SetSpec("PAL")
 			}
 		case specification.SpecPAL.ID:
 			if tv.state.auto && tv.state.scanline <= specification.PALTrigger {
-				logger.Logf("television", "auto switching to NTSC")
 				_ = tv.SetSpec("NTSC")
 			}
 		}
@@ -731,7 +724,7 @@ func (tv *Television) SetSpec(spec string) error {
 
 // SetEmulationState is called by emulation whenever state changes. How we
 // handle incoming signals depends on the current state.
-func (tv *Television) SetEmulationState(state emulation.State) {
+func (tv *Television) SetEmulationState(state emulation.State) error {
 	prev := tv.emulationState
 	tv.emulationState = state
 
@@ -750,9 +743,11 @@ func (tv *Television) SetEmulationState(state emulation.State) {
 	case emulation.Paused:
 		err := tv.renderSignals()
 		if err != nil {
-			logger.Logf("television", "%v", err)
+			return err
 		}
 	}
+
+	return nil
 }
 
 // SetFPSCap whether the emulation should wait for FPS limiter. Returns the

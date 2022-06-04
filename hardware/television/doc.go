@@ -74,4 +74,10 @@
 //
 // None of the functions in the Television type are safe to be called from
 // goroutines other than the one the type was created in.
+//
+// Logging
+//
+// The television does no logging. This is because the television can be used
+// ephemerally and logging would be noisy. Callers of television package
+// functions should decide whether it is appropriate to log.
 package television

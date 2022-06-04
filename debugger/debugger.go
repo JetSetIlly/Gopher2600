@@ -477,7 +477,10 @@ func (dbg *Debugger) setStateQuiet(state emulation.State, quiet bool) {
 		// might not be true in all future cases.
 	}
 
-	dbg.vcs.TV.SetEmulationState(state)
+	err := dbg.vcs.TV.SetEmulationState(state)
+	if err != nil {
+		logger.Log("debugger", err.Error())
+	}
 	if dbg.ref != nil {
 		dbg.ref.SetEmulationState(state)
 	}
