@@ -80,3 +80,59 @@ func (sr *status) setCarry(a, b, c uint32) {
 	d = (d >> 31) + (a >> 31) + (b >> 31)
 	sr.carry = d&0x02 == 0x02
 }
+
+// conditional execution information from "A7.3 Conditional execution" in "ARMv7-M"
+func (sr *status) conditionalExecution(cond uint16) bool {
+	b := false
+
+	switch cond {
+	case 0b0000:
+		// equal
+		b = sr.zero
+	case 0b0001:
+		// not equal
+		b = !sr.zero
+	case 0b0010:
+		// carry set
+		b = sr.carry
+	case 0b0011:
+		// carry clear
+		b = !sr.carry
+	case 0b0100:
+		// minus
+		b = sr.negative
+	case 0b0101:
+		// plus
+		b = !sr.negative
+	case 0b0110:
+		// overflow
+		b = sr.overflow
+	case 0b0111:
+		// no overflow
+		b = !sr.overflow
+	case 0b1000:
+		// unsigned higer C==1 and Z==0
+		b = sr.carry && !sr.zero
+	case 0b1001:
+		// unsigned lower C==0 and Z==1
+		b = !sr.carry || sr.zero
+	case 0b1010:
+		// signed greater than N==V
+		b = sr.negative == sr.overflow
+	case 0b1011:
+		// signed less than N!=V
+		b = sr.negative != sr.overflow
+	case 0b1100:
+		// signed greater than Z==0 and N==V
+		b = !sr.zero && sr.negative == sr.overflow
+	case 0b1101:
+		// signed less than or qual Z==1 or N!=V
+		b = sr.zero || sr.negative != sr.overflow
+	case 0b1110:
+		b = true
+	case 0b1111:
+		panic("unpredictable condition")
+	}
+
+	return b
+}

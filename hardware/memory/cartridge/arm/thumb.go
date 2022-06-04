@@ -1183,57 +1183,7 @@ func (arm *ARM) thumbConditionalBranch(opcode uint16) {
 	cond := (opcode & 0x0f00) >> 8
 	offset := uint32(opcode & 0x00ff)
 
-	b := false
-
-	switch cond {
-	case 0b0000:
-		// BEQ
-		b = arm.status.zero
-	case 0b0001:
-		// BNE
-		b = !arm.status.zero
-	case 0b0010:
-		// BCS
-		b = arm.status.carry
-	case 0b0011:
-		// BCC
-		b = !arm.status.carry
-	case 0b0100:
-		// BMI
-		b = arm.status.negative
-	case 0b0101:
-		// BPL
-		b = !arm.status.negative
-	case 0b0110:
-		// BVS
-		b = arm.status.overflow
-	case 0b0111:
-		// BVC
-		b = !arm.status.overflow
-	case 0b1000:
-		// BHI
-		b = arm.status.carry && !arm.status.zero
-	case 0b1001:
-		// BLS
-		b = !arm.status.carry || arm.status.zero
-	case 0b1010:
-		// BGE
-		b = (arm.status.negative && arm.status.overflow) || (!arm.status.negative && !arm.status.overflow)
-	case 0b1011:
-		// BLT
-		b = (arm.status.negative && !arm.status.overflow) || (!arm.status.negative && arm.status.overflow)
-	case 0b1100:
-		// BGT
-		b = !arm.status.zero && ((arm.status.negative && arm.status.overflow) || (!arm.status.negative && !arm.status.overflow))
-	case 0b1101:
-		// BLE
-		b = arm.status.zero || ((arm.status.negative && !arm.status.overflow) || (!arm.status.negative && arm.status.overflow))
-	case 0b1110:
-		// undefined branch
-		b = true
-	case 0b1111:
-		b = false
-	}
+	b := arm.status.conditionalExecution(cond)
 
 	// offset is a nine-bit two's complement value
 	offset <<= 1
