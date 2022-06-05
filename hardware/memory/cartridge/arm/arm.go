@@ -209,6 +209,11 @@ type ARM struct {
 
 	// addresses of instructions that have been executed
 	executedAddresses map[uint32]float32
+
+	// 32 bit thumb2 function
+	function32bit         bool
+	function32bitFunction func(uint16)
+	function32bitOpcode   uint16
 }
 
 // NewARM is the preferred method of initialisation for the ARM type.
@@ -690,15 +695,25 @@ func (arm *ARM) Run(mamcr uint32) (uint32, float32, error) {
 		stackPointerBeforeExecution := arm.registers[rSP]
 
 		// run from functionMap if possible
-		f := arm.functionMap[memIdx]
 		switch arm.arch {
 		case ARM7TDMI:
+			f := arm.functionMap[memIdx]
 			if f == nil {
 				f = arm.decodeThumb(opcode)
 				arm.functionMap[memIdx] = f
 			}
 			f(opcode)
 		case ARMv7_M:
+			var f func(uint16)
+
+			// check to see if there is a 32bit instruction that needs executing
+			if arm.function32bit {
+				arm.function32bit = false
+				f = arm.function32bitFunction
+			} else {
+				f = arm.functionMap[memIdx]
+			}
+
 			if f == nil {
 				f = arm.decodeThumb2(opcode)
 				arm.functionMap[memIdx] = f
