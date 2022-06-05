@@ -246,10 +246,11 @@ func disasmALUoperations(opcode uint16) DisasmEntry {
 }
 
 func disasmHiRegisterOps(opcode uint16) DisasmEntry {
+	// format 5 - Hi register operations/branch exchange
+
 	var entry DisasmEntry
 	entry.Opcode = opcode
 
-	// format 5 - Hi register operations/branch exchange
 	op := (opcode & 0x300) >> 8
 	hi1 := opcode&0x80 == 0x80
 	hi2 := opcode&0x40 == 0x40

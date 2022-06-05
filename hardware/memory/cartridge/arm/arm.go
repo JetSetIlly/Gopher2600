@@ -691,20 +691,47 @@ func (arm *ARM) Run(mamcr uint32) (uint32, float32, error) {
 
 		// run from functionMap if possible
 		f := arm.functionMap[memIdx]
-		if f == nil {
-			switch arm.arch {
-			case ARM7TDMI:
-				// store function reference in functionMap and run for the first time
+		switch arm.arch {
+		case ARM7TDMI:
+			if f == nil {
 				f = arm.decodeThumb(opcode)
-			case ARMv7_M:
-				// store function reference in functionMap and run for the first time
-				f = arm.decodeThumb2(opcode)
-			default:
-				panic("unsupported ARM architecture")
+				arm.functionMap[memIdx] = f
 			}
-			arm.functionMap[memIdx] = f
+			f(opcode)
+		case ARMv7_M:
+			if f == nil {
+				f = arm.decodeThumb2(opcode)
+				arm.functionMap[memIdx] = f
+			}
+
+			// conditional execution of instructions
+			if arm.status.itMask != 0b0000 {
+				r := arm.status.condition(arm.status.itCond)
+
+				if r {
+					f(opcode)
+				} else {
+					// "A7.3.2: Conditional execution of undefined instructions
+					//
+					// If an undefined instruction fails a condition check in Armv7-M, the instruction
+					// behaves as a NOP and does not cause an exception"
+					//
+					// page A7-179 of the "ARMv7-M Architecture Reference Manual"
+				}
+
+				// update LSB of IT condition by copying the MSB of the IT mask
+				arm.status.itCond &= 0b1110
+				arm.status.itCond |= (arm.status.itMask >> 3)
+
+				// shift IT mask
+				arm.status.itMask = (arm.status.itMask << 1) & 0b1111
+			} else {
+				f(opcode)
+			}
+
+		default:
+			panic("unsupported ARM architecture")
 		}
-		f(opcode)
 
 		if !arm.immediateMode {
 			// add additional cycles required to fill pipeline before next iteration

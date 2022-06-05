@@ -18,7 +18,8 @@
 //
 // https://documentation-service.arm.com/static/5f1066ca0daa596235e7e90a
 //
-// And the "ARMv7-M Architecture Reference Manual" can be found at:
+// And the "ARMv7-M Architecture Reference Manual" (or "ARMv7-M" for brevity)
+// can be found at:
 //
 // https://documentation-service.arm.com/static/606dc36485368c4c2b1bf62f
 
@@ -129,7 +130,7 @@ func (arm *ARM) decodeThumb2Miscellaneous(opcode uint16) func(uint16) {
 		if opcode&0xff0f == 0xff00 {
 			// nop-compatible hints
 		} else {
-			// if-then instructions
+			return arm.thumb2IfThen
 		}
 	} else {
 		if opcode&0xff00 == 0xbe00 {
@@ -160,4 +161,26 @@ func (arm *ARM) decodeThumb2Miscellaneous(opcode uint16) func(uint16) {
 	}
 
 	panic(fmt.Sprintf("undecoded 16-bit (miscellaneous) thumb-2 instruction (%04x)", opcode))
+}
+
+func (arm *ARM) thumb2IfThen(opcode uint16) {
+	if arm.status.itMask != 0b0000 {
+		panic("unpredictable IT instruction - already in an IT block")
+	}
+
+	arm.status.itMask = uint8(opcode & 0x000f)
+	arm.status.itCond = uint8((opcode & 0x0f00) >> 8)
+
+	// switch table similar to the one in thumbConditionalBranch()
+	switch arm.status.itCond {
+	case 0b1110:
+		// any (al)
+		if !(arm.status.itMask == 0x1 || arm.status.itMask == 0x2 || arm.status.itMask == 0x4 || arm.status.itMask == 0x8) {
+			// it is not valid to specify an "else" for the "al" condition
+			// because it is not possible to negate
+			panic("unpredictable IT instruction - else for 'al' condition ")
+		}
+	case 0b1111:
+		panic("unpredictable IT instruction - first condition data is 1111")
+	}
 }

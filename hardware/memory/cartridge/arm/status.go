@@ -25,6 +25,17 @@ type status struct {
 	zero     bool
 	overflow bool
 	carry    bool
+
+	// mask and firstcond bits of most recent IT instruction. rather than
+	// maintaining a single itState value, the condition and mask are split
+	// into two. this is for clarity and performance (checking itMask to see if
+	// we're in an IT block is a simple comparison to zero)
+	//
+	// instruction is in an IT block when itMask != 0b0000
+	//
+	// updating of itCond is done in the main Run() function
+	itCond uint8
+	itMask uint8
 }
 
 func (sr *status) String() string {
@@ -67,7 +78,7 @@ func (sr *status) isZero(a uint32) {
 	sr.zero = a == 0x00
 }
 
-func (sr *status) setOverflow(a, b, c uint32) {
+func (sr *status) isOverflow(a, b, c uint32) {
 	d := (a & 0x7fffffff) + (b & 0x7fffffff) + c
 	d >>= 31
 	e := (d & 0x01) + ((a >> 31) & 0x01) + ((b >> 31) & 0x01)
@@ -75,14 +86,18 @@ func (sr *status) setOverflow(a, b, c uint32) {
 	sr.overflow = (d^e)&0x01 == 0x01
 }
 
-func (sr *status) setCarry(a, b, c uint32) {
+func (sr *status) isCarry(a, b, c uint32) {
 	d := (a & 0x7fffffff) + (b & 0x7fffffff) + c
 	d = (d >> 31) + (a >> 31) + (b >> 31)
 	sr.carry = d&0x02 == 0x02
 }
 
+func (sr *status) setCarry(a bool) {
+	sr.carry = a
+}
+
 // conditional execution information from "A7.3 Conditional execution" in "ARMv7-M"
-func (sr *status) conditionalExecution(cond uint16) bool {
+func (sr *status) condition(cond uint8) bool {
 	b := false
 
 	switch cond {
