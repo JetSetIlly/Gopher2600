@@ -111,8 +111,8 @@ func (arm *ARM) thumbMoveShiftedRegister(opcode uint16) {
 			arm.registers[destReg] = src
 		} else {
 			m := uint32(0x01) << (32 - shift)
-			if arm.status.itMask == 0b0000 {
-				arm.status.setCarry(src&m == m)
+			if arm.Status.itMask == 0b0000 {
+				arm.Status.setCarry(src&m == m)
 			}
 			arm.registers[destReg] = arm.registers[srcReg] << shift
 		}
@@ -125,14 +125,14 @@ func (arm *ARM) thumbMoveShiftedRegister(opcode uint16) {
 		//		Rd = Rm Logical_Shift_Right immed_5
 
 		if shift == 0 {
-			if arm.status.itMask == 0b0000 {
-				arm.status.setCarry(src&0x80000000 == 0x80000000)
+			if arm.Status.itMask == 0b0000 {
+				arm.Status.setCarry(src&0x80000000 == 0x80000000)
 			}
 			arm.registers[destReg] = 0x00
 		} else {
 			m := uint32(0x01) << (shift - 1)
-			if arm.status.itMask == 0b0000 {
-				arm.status.setCarry(src&m == m)
+			if arm.Status.itMask == 0b0000 {
+				arm.Status.setCarry(src&m == m)
 			}
 			arm.registers[destReg] = src >> shift
 		}
@@ -148,18 +148,18 @@ func (arm *ARM) thumbMoveShiftedRegister(opcode uint16) {
 		//		Rd = Rm Arithmetic_Shift_Right immed_5
 
 		if shift == 0 {
-			if arm.status.itMask == 0b0000 {
-				arm.status.setCarry(src&0x80000000 == 0x80000000)
+			if arm.Status.itMask == 0b0000 {
+				arm.Status.setCarry(src&0x80000000 == 0x80000000)
 			}
-			if arm.status.carry {
+			if arm.Status.carry {
 				arm.registers[destReg] = 0xffffffff
 			} else {
 				arm.registers[destReg] = 0x00000000
 			}
 		} else { // shift > 0
 			m := uint32(0x01) << (shift - 1)
-			if arm.status.itMask == 0b0000 {
-				arm.status.setCarry(src&m == m)
+			if arm.Status.itMask == 0b0000 {
+				arm.Status.setCarry(src&m == m)
 			}
 			a := src >> shift
 			if src&0x80000000 == 0x80000000 {
@@ -172,9 +172,9 @@ func (arm *ARM) thumbMoveShiftedRegister(opcode uint16) {
 		panic(fmt.Sprintf("illegal (move shifted register) thumb operation (%04b)", op))
 	}
 
-	if arm.status.itMask == 0b0000 {
-		arm.status.isZero(arm.registers[destReg])
-		arm.status.isNegative(arm.registers[destReg])
+	if arm.Status.itMask == 0b0000 {
+		arm.Status.isZero(arm.registers[destReg])
+		arm.Status.isNegative(arm.registers[destReg])
 	}
 
 	if destReg == rPC {
@@ -202,22 +202,22 @@ func (arm *ARM) thumbAddSubtract(opcode uint16) {
 	}
 
 	if subtract {
-		if arm.status.itMask == 0b0000 {
-			arm.status.isCarry(arm.registers[srcReg], ^val, 1)
-			arm.status.isOverflow(arm.registers[srcReg], ^val, 1)
+		if arm.Status.itMask == 0b0000 {
+			arm.Status.isCarry(arm.registers[srcReg], ^val, 1)
+			arm.Status.isOverflow(arm.registers[srcReg], ^val, 1)
 		}
 		arm.registers[destReg] = arm.registers[srcReg] - val
 	} else {
-		if arm.status.itMask == 0b0000 {
-			arm.status.isCarry(arm.registers[srcReg], val, 0)
-			arm.status.isOverflow(arm.registers[srcReg], val, 0)
+		if arm.Status.itMask == 0b0000 {
+			arm.Status.isCarry(arm.registers[srcReg], val, 0)
+			arm.Status.isOverflow(arm.registers[srcReg], val, 0)
 		}
 		arm.registers[destReg] = arm.registers[srcReg] + val
 	}
 
-	if arm.status.itMask == 0b0000 {
-		arm.status.isZero(arm.registers[destReg])
-		arm.status.isNegative(arm.registers[destReg])
+	if arm.Status.itMask == 0b0000 {
+		arm.Status.isZero(arm.registers[destReg])
+		arm.Status.isNegative(arm.registers[destReg])
 	}
 
 	// "7.6 Data Operations" in "ARM7TDMI-S Technical Reference Manual r4p3"
@@ -235,36 +235,36 @@ func (arm *ARM) thumbMovCmpAddSubImm(opcode uint16) {
 	switch op {
 	case 0b00:
 		arm.registers[destReg] = imm
-		if arm.status.itMask == 0b0000 {
-			arm.status.isZero(arm.registers[destReg])
-			arm.status.isNegative(arm.registers[destReg])
+		if arm.Status.itMask == 0b0000 {
+			arm.Status.isZero(arm.registers[destReg])
+			arm.Status.isNegative(arm.registers[destReg])
 		}
 	case 0b01:
 		// status will be set when in IT block
-		arm.status.isCarry(arm.registers[destReg], ^imm, 1)
-		arm.status.isOverflow(arm.registers[destReg], ^imm, 1)
+		arm.Status.isCarry(arm.registers[destReg], ^imm, 1)
+		arm.Status.isOverflow(arm.registers[destReg], ^imm, 1)
 		cmp := arm.registers[destReg] - imm
-		arm.status.isNegative(cmp)
-		arm.status.isZero(cmp)
+		arm.Status.isNegative(cmp)
+		arm.Status.isZero(cmp)
 	case 0b10:
-		if arm.status.itMask == 0b0000 {
-			arm.status.isCarry(arm.registers[destReg], imm, 0)
-			arm.status.isOverflow(arm.registers[destReg], imm, 0)
+		if arm.Status.itMask == 0b0000 {
+			arm.Status.isCarry(arm.registers[destReg], imm, 0)
+			arm.Status.isOverflow(arm.registers[destReg], imm, 0)
 		}
 		arm.registers[destReg] += imm
-		if arm.status.itMask == 0b0000 {
-			arm.status.isZero(arm.registers[destReg])
-			arm.status.isNegative(arm.registers[destReg])
+		if arm.Status.itMask == 0b0000 {
+			arm.Status.isZero(arm.registers[destReg])
+			arm.Status.isNegative(arm.registers[destReg])
 		}
 	case 0b11:
-		if arm.status.itMask == 0b0000 {
-			arm.status.isCarry(arm.registers[destReg], ^imm, 1)
-			arm.status.isOverflow(arm.registers[destReg], ^imm, 1)
+		if arm.Status.itMask == 0b0000 {
+			arm.Status.isCarry(arm.registers[destReg], ^imm, 1)
+			arm.Status.isOverflow(arm.registers[destReg], ^imm, 1)
 		}
 		arm.registers[destReg] -= imm
-		if arm.status.itMask == 0b0000 {
-			arm.status.isZero(arm.registers[destReg])
-			arm.status.isNegative(arm.registers[destReg])
+		if arm.Status.itMask == 0b0000 {
+			arm.Status.isZero(arm.registers[destReg])
+			arm.Status.isNegative(arm.registers[destReg])
 		}
 	}
 
@@ -286,15 +286,15 @@ func (arm *ARM) thumbALUoperations(opcode uint16) {
 	switch op {
 	case 0b0000:
 		arm.registers[destReg] &= arm.registers[srcReg]
-		if arm.status.itMask == 0b0000 {
-			arm.status.isZero(arm.registers[destReg])
-			arm.status.isNegative(arm.registers[destReg])
+		if arm.Status.itMask == 0b0000 {
+			arm.Status.isZero(arm.registers[destReg])
+			arm.Status.isNegative(arm.registers[destReg])
 		}
 	case 0b0001:
 		arm.registers[destReg] ^= arm.registers[srcReg]
-		if arm.status.itMask == 0b0000 {
-			arm.status.isZero(arm.registers[destReg])
-			arm.status.isNegative(arm.registers[destReg])
+		if arm.Status.itMask == 0b0000 {
+			arm.Status.isZero(arm.registers[destReg])
+			arm.Status.isNegative(arm.registers[destReg])
 		}
 	case 0b0010:
 		shift = arm.registers[srcReg]
@@ -317,25 +317,25 @@ func (arm *ARM) thumbALUoperations(opcode uint16) {
 
 		if shift > 0 && shift < 32 {
 			m := uint32(0x01) << (32 - shift)
-			if arm.status.itMask == 0b0000 {
-				arm.status.setCarry(arm.registers[destReg]&m == m)
+			if arm.Status.itMask == 0b0000 {
+				arm.Status.setCarry(arm.registers[destReg]&m == m)
 			}
 			arm.registers[destReg] <<= shift
 		} else if shift == 32 {
-			if arm.status.itMask == 0b0000 {
-				arm.status.setCarry(arm.registers[destReg]&0x01 == 0x01)
+			if arm.Status.itMask == 0b0000 {
+				arm.Status.setCarry(arm.registers[destReg]&0x01 == 0x01)
 			}
 			arm.registers[destReg] = 0x00
 		} else if shift > 32 {
-			if arm.status.itMask == 0b0000 {
-				arm.status.setCarry(false)
+			if arm.Status.itMask == 0b0000 {
+				arm.Status.setCarry(false)
 			}
 			arm.registers[destReg] = 0x00
 		}
 
-		if arm.status.itMask == 0b0000 {
-			arm.status.isZero(arm.registers[destReg])
-			arm.status.isNegative(arm.registers[destReg])
+		if arm.Status.itMask == 0b0000 {
+			arm.Status.isZero(arm.registers[destReg])
+			arm.Status.isNegative(arm.registers[destReg])
 		}
 	case 0b0011:
 		shift = arm.registers[srcReg]
@@ -358,25 +358,25 @@ func (arm *ARM) thumbALUoperations(opcode uint16) {
 
 		if shift > 0 && shift < 32 {
 			m := uint32(0x01) << (shift - 1)
-			if arm.status.itMask == 0b0000 {
-				arm.status.setCarry(arm.registers[destReg]&m == m)
+			if arm.Status.itMask == 0b0000 {
+				arm.Status.setCarry(arm.registers[destReg]&m == m)
 			}
 			arm.registers[destReg] >>= shift
 		} else if shift == 32 {
-			if arm.status.itMask == 0b0000 {
-				arm.status.setCarry(arm.registers[destReg]&0x80000000 == 0x80000000)
+			if arm.Status.itMask == 0b0000 {
+				arm.Status.setCarry(arm.registers[destReg]&0x80000000 == 0x80000000)
 			}
 			arm.registers[destReg] = 0x00
 		} else if shift > 32 {
-			if arm.status.itMask == 0b0000 {
-				arm.status.setCarry(false)
+			if arm.Status.itMask == 0b0000 {
+				arm.Status.setCarry(false)
 			}
 			arm.registers[destReg] = 0x00
 		}
 
-		if arm.status.itMask == 0b0000 {
-			arm.status.isZero(arm.registers[destReg])
-			arm.status.isNegative(arm.registers[destReg])
+		if arm.Status.itMask == 0b0000 {
+			arm.Status.isZero(arm.registers[destReg])
+			arm.Status.isNegative(arm.registers[destReg])
 		}
 	case 0b0100:
 		shift = arm.registers[srcReg]
@@ -399,8 +399,8 @@ func (arm *ARM) thumbALUoperations(opcode uint16) {
 		if shift > 0 && shift < 32 {
 			src := arm.registers[destReg]
 			m := uint32(0x01) << (shift - 1)
-			if arm.status.itMask == 0b0000 {
-				arm.status.setCarry(src&m == m)
+			if arm.Status.itMask == 0b0000 {
+				arm.Status.setCarry(src&m == m)
 			}
 			a := src >> shift
 			if src&0x80000000 == 0x80000000 {
@@ -408,56 +408,56 @@ func (arm *ARM) thumbALUoperations(opcode uint16) {
 			}
 			arm.registers[destReg] = a
 		} else if shift >= 32 {
-			if arm.status.itMask == 0b0000 {
-				arm.status.setCarry(arm.registers[destReg]&0x80000000 == 0x80000000)
+			if arm.Status.itMask == 0b0000 {
+				arm.Status.setCarry(arm.registers[destReg]&0x80000000 == 0x80000000)
 			}
-			if !arm.status.carry {
+			if !arm.Status.carry {
 				arm.registers[destReg] = 0x00
 			} else {
 				arm.registers[destReg] = 0xffffffff
 			}
 		}
-		if arm.status.itMask == 0b0000 {
-			arm.status.isZero(arm.registers[destReg])
-			arm.status.isNegative(arm.registers[destReg])
+		if arm.Status.itMask == 0b0000 {
+			arm.Status.isZero(arm.registers[destReg])
+			arm.Status.isNegative(arm.registers[destReg])
 		}
 	case 0b0101:
-		if arm.status.carry {
-			if arm.status.itMask == 0b0000 {
-				arm.status.isCarry(arm.registers[destReg], arm.registers[srcReg], 1)
-				arm.status.isOverflow(arm.registers[destReg], arm.registers[srcReg], 1)
+		if arm.Status.carry {
+			if arm.Status.itMask == 0b0000 {
+				arm.Status.isCarry(arm.registers[destReg], arm.registers[srcReg], 1)
+				arm.Status.isOverflow(arm.registers[destReg], arm.registers[srcReg], 1)
 			}
 			arm.registers[destReg] += arm.registers[srcReg]
 			arm.registers[destReg]++
 		} else {
-			if arm.status.itMask == 0b0000 {
-				arm.status.isCarry(arm.registers[destReg], arm.registers[srcReg], 0)
-				arm.status.isOverflow(arm.registers[destReg], arm.registers[srcReg], 0)
+			if arm.Status.itMask == 0b0000 {
+				arm.Status.isCarry(arm.registers[destReg], arm.registers[srcReg], 0)
+				arm.Status.isOverflow(arm.registers[destReg], arm.registers[srcReg], 0)
 			}
 			arm.registers[destReg] += arm.registers[srcReg]
 		}
-		if arm.status.itMask == 0b0000 {
-			arm.status.isZero(arm.registers[destReg])
-			arm.status.isNegative(arm.registers[destReg])
+		if arm.Status.itMask == 0b0000 {
+			arm.Status.isZero(arm.registers[destReg])
+			arm.Status.isNegative(arm.registers[destReg])
 		}
 	case 0b0110:
-		if !arm.status.carry {
-			if arm.status.itMask == 0b0000 {
-				arm.status.isCarry(arm.registers[destReg], ^arm.registers[srcReg], 0)
-				arm.status.isOverflow(arm.registers[destReg], ^arm.registers[srcReg], 0)
+		if !arm.Status.carry {
+			if arm.Status.itMask == 0b0000 {
+				arm.Status.isCarry(arm.registers[destReg], ^arm.registers[srcReg], 0)
+				arm.Status.isOverflow(arm.registers[destReg], ^arm.registers[srcReg], 0)
 			}
 			arm.registers[destReg] -= arm.registers[srcReg]
 			arm.registers[destReg]--
 		} else {
-			if arm.status.itMask == 0b0000 {
-				arm.status.isCarry(arm.registers[destReg], ^arm.registers[srcReg], 1)
-				arm.status.isOverflow(arm.registers[destReg], ^arm.registers[srcReg], 1)
+			if arm.Status.itMask == 0b0000 {
+				arm.Status.isCarry(arm.registers[destReg], ^arm.registers[srcReg], 1)
+				arm.Status.isOverflow(arm.registers[destReg], ^arm.registers[srcReg], 1)
 			}
 			arm.registers[destReg] -= arm.registers[srcReg]
 		}
-		if arm.status.itMask == 0b0000 {
-			arm.status.isZero(arm.registers[destReg])
-			arm.status.isNegative(arm.registers[destReg])
+		if arm.Status.itMask == 0b0000 {
+			arm.Status.isZero(arm.registers[destReg])
+			arm.Status.isNegative(arm.registers[destReg])
 		}
 	case 0b0111:
 		shift = arm.registers[srcReg]
@@ -477,74 +477,74 @@ func (arm *ARM) thumbALUoperations(opcode uint16) {
 		if shift&0xff == 0 {
 			// unaffected
 		} else if shift&0x1f == 0 {
-			if arm.status.itMask == 0b0000 {
-				arm.status.setCarry(arm.registers[destReg]&0x80000000 == 0x80000000)
+			if arm.Status.itMask == 0b0000 {
+				arm.Status.setCarry(arm.registers[destReg]&0x80000000 == 0x80000000)
 			}
 		} else {
 			m := uint32(0x01) << (shift - 1)
-			if arm.status.itMask == 0b0000 {
-				arm.status.setCarry(arm.registers[destReg]&m == m)
+			if arm.Status.itMask == 0b0000 {
+				arm.Status.setCarry(arm.registers[destReg]&m == m)
 			}
 			arm.registers[destReg] = bits.RotateLeft32(arm.registers[destReg], -int(shift))
 		}
-		if arm.status.itMask == 0b0000 {
-			arm.status.isZero(arm.registers[destReg])
-			arm.status.isNegative(arm.registers[destReg])
+		if arm.Status.itMask == 0b0000 {
+			arm.Status.isZero(arm.registers[destReg])
+			arm.Status.isNegative(arm.registers[destReg])
 		}
 	case 0b1000:
 		w := arm.registers[destReg] & arm.registers[srcReg]
 		// status will be set when in IT block
-		arm.status.isZero(w)
-		arm.status.isNegative(w)
+		arm.Status.isZero(w)
+		arm.Status.isNegative(w)
 	case 0b1001:
-		if arm.status.itMask == 0b0000 {
-			arm.status.isCarry(0, ^arm.registers[srcReg], 1)
-			arm.status.isOverflow(0, ^arm.registers[srcReg], 1)
+		if arm.Status.itMask == 0b0000 {
+			arm.Status.isCarry(0, ^arm.registers[srcReg], 1)
+			arm.Status.isOverflow(0, ^arm.registers[srcReg], 1)
 		}
 		arm.registers[destReg] = -arm.registers[srcReg]
-		if arm.status.itMask == 0b0000 {
-			arm.status.isZero(arm.registers[destReg])
-			arm.status.isNegative(arm.registers[destReg])
+		if arm.Status.itMask == 0b0000 {
+			arm.Status.isZero(arm.registers[destReg])
+			arm.Status.isNegative(arm.registers[destReg])
 		}
 	case 0b1010:
 		// status will be set when in IT block
-		arm.status.isCarry(arm.registers[destReg], ^arm.registers[srcReg], 1)
-		arm.status.isOverflow(arm.registers[destReg], ^arm.registers[srcReg], 1)
+		arm.Status.isCarry(arm.registers[destReg], ^arm.registers[srcReg], 1)
+		arm.Status.isOverflow(arm.registers[destReg], ^arm.registers[srcReg], 1)
 		cmp := arm.registers[destReg] - arm.registers[srcReg]
-		arm.status.isZero(cmp)
-		arm.status.isNegative(cmp)
+		arm.Status.isZero(cmp)
+		arm.Status.isNegative(cmp)
 	case 0b1011:
 		// status will be set when in IT block
-		arm.status.isCarry(arm.registers[destReg], arm.registers[srcReg], 0)
-		arm.status.isOverflow(arm.registers[destReg], arm.registers[srcReg], 0)
+		arm.Status.isCarry(arm.registers[destReg], arm.registers[srcReg], 0)
+		arm.Status.isOverflow(arm.registers[destReg], arm.registers[srcReg], 0)
 		cmp := arm.registers[destReg] + arm.registers[srcReg]
-		arm.status.isZero(cmp)
-		arm.status.isNegative(cmp)
+		arm.Status.isZero(cmp)
+		arm.Status.isNegative(cmp)
 	case 0b1100:
 		arm.registers[destReg] |= arm.registers[srcReg]
-		if arm.status.itMask == 0b0000 {
-			arm.status.isZero(arm.registers[destReg])
-			arm.status.isNegative(arm.registers[destReg])
+		if arm.Status.itMask == 0b0000 {
+			arm.Status.isZero(arm.registers[destReg])
+			arm.Status.isNegative(arm.registers[destReg])
 		}
 	case 0b1101:
 		mul = true
 		mulOperand = arm.registers[srcReg]
 		arm.registers[destReg] *= arm.registers[srcReg]
-		if arm.status.itMask == 0b0000 {
-			arm.status.isZero(arm.registers[destReg])
-			arm.status.isNegative(arm.registers[destReg])
+		if arm.Status.itMask == 0b0000 {
+			arm.Status.isZero(arm.registers[destReg])
+			arm.Status.isNegative(arm.registers[destReg])
 		}
 	case 0b1110:
 		arm.registers[destReg] &= ^arm.registers[srcReg]
-		if arm.status.itMask == 0b0000 {
-			arm.status.isZero(arm.registers[destReg])
-			arm.status.isNegative(arm.registers[destReg])
+		if arm.Status.itMask == 0b0000 {
+			arm.Status.isZero(arm.registers[destReg])
+			arm.Status.isNegative(arm.registers[destReg])
 		}
 	case 0b1111:
 		arm.registers[destReg] = ^arm.registers[srcReg]
-		if arm.status.itMask == 0b0000 {
-			arm.status.isZero(arm.registers[destReg])
-			arm.status.isNegative(arm.registers[destReg])
+		if arm.Status.itMask == 0b0000 {
+			arm.Status.isZero(arm.registers[destReg])
+			arm.Status.isNegative(arm.registers[destReg])
 		}
 	default:
 		panic(fmt.Sprintf("unimplemented (ALU) thumb operation (%04b)", op))
@@ -630,11 +630,11 @@ func (arm *ARM) thumbHiRegisterOps(opcode uint16) {
 		// V Flag = OverflowFrom(Rn - Rm)
 
 		// status will be set when in IT block
-		arm.status.isCarry(arm.registers[destReg], ^arm.registers[srcReg], 1)
-		arm.status.isOverflow(arm.registers[destReg], ^arm.registers[srcReg], 1)
+		arm.Status.isCarry(arm.registers[destReg], ^arm.registers[srcReg], 1)
+		arm.Status.isOverflow(arm.registers[destReg], ^arm.registers[srcReg], 1)
 		cmp := arm.registers[destReg] - arm.registers[srcReg]
-		arm.status.isZero(cmp)
-		arm.status.isNegative(cmp)
+		arm.Status.isZero(cmp)
+		arm.Status.isNegative(cmp)
 
 		return
 	case 0b10:
@@ -1272,7 +1272,7 @@ func (arm *ARM) thumbConditionalBranch(opcode uint16) {
 	cond := uint8((opcode & 0x0f00) >> 8)
 	offset := uint32(opcode & 0x00ff)
 
-	b := arm.status.condition(cond)
+	b := arm.Status.condition(cond)
 
 	// offset is a nine-bit two's complement value
 	offset <<= 1

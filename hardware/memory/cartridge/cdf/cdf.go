@@ -536,7 +536,7 @@ func (cart *cdf) WriteHotspots() map[uint16]mapper.CartHotspotInfo {
 	}
 }
 
-// ARMinterrupt implements the arm7tmdi.CatridgeHook interface.
+// ARMinterrupt implements the arm.CatridgeHook interface.
 func (cart *cdf) ARMinterrupt(addr uint32, val1 uint32, val2 uint32) (arm.ARMinterruptReturn, error) {
 	var r arm.ARMinterruptReturn
 

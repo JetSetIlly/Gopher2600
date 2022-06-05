@@ -164,18 +164,18 @@ func (arm *ARM) decodeThumb2Miscellaneous(opcode uint16) func(uint16) {
 }
 
 func (arm *ARM) thumb2IfThen(opcode uint16) {
-	if arm.status.itMask != 0b0000 {
+	if arm.Status.itMask != 0b0000 {
 		panic("unpredictable IT instruction - already in an IT block")
 	}
 
-	arm.status.itMask = uint8(opcode & 0x000f)
-	arm.status.itCond = uint8((opcode & 0x0f00) >> 8)
+	arm.Status.itMask = uint8(opcode & 0x000f)
+	arm.Status.itCond = uint8((opcode & 0x00f0) >> 4)
 
 	// switch table similar to the one in thumbConditionalBranch()
-	switch arm.status.itCond {
+	switch arm.Status.itCond {
 	case 0b1110:
 		// any (al)
-		if !(arm.status.itMask == 0x1 || arm.status.itMask == 0x2 || arm.status.itMask == 0x4 || arm.status.itMask == 0x8) {
+		if !(arm.Status.itMask == 0x1 || arm.Status.itMask == 0x2 || arm.Status.itMask == 0x4 || arm.Status.itMask == 0x8) {
 			// it is not valid to specify an "else" for the "al" condition
 			// because it is not possible to negate
 			panic("unpredictable IT instruction - else for 'al' condition ")

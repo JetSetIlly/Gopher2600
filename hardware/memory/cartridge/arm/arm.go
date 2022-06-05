@@ -65,7 +65,7 @@ type ARM struct {
 
 	// ARM registers
 	registers [rCount]uint32
-	status    status
+	Status    status
 
 	// the speed at which the arm is running at and the required stretching for
 	// access to flash memory. speed is in MHz. Access latency of Flash memory is
@@ -272,7 +272,7 @@ func (arm *ARM) ClearCaches() {
 
 // reset of stack pointer should only happen on ARM instantiation
 func (arm *ARM) reset() error {
-	arm.status.reset()
+	arm.Status.reset()
 
 	for i := 0; i < rSP; i++ {
 		arm.registers[i] = 0x00000000
@@ -705,8 +705,8 @@ func (arm *ARM) Run(mamcr uint32) (uint32, float32, error) {
 			}
 
 			// conditional execution of instructions
-			if arm.status.itMask != 0b0000 {
-				r := arm.status.condition(arm.status.itCond)
+			if arm.Status.itMask != 0b0000 {
+				r := arm.Status.condition(arm.Status.itCond)
 
 				if r {
 					f(opcode)
@@ -720,11 +720,11 @@ func (arm *ARM) Run(mamcr uint32) (uint32, float32, error) {
 				}
 
 				// update LSB of IT condition by copying the MSB of the IT mask
-				arm.status.itCond &= 0b1110
-				arm.status.itCond |= (arm.status.itMask >> 3)
+				arm.Status.itCond &= 0b1110
+				arm.Status.itCond |= (arm.Status.itMask >> 3)
 
 				// shift IT mask
-				arm.status.itMask = (arm.status.itMask << 1) & 0b1111
+				arm.Status.itMask = (arm.Status.itMask << 1) & 0b1111
 			} else {
 				f(opcode)
 			}

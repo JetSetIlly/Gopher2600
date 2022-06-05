@@ -15,7 +15,9 @@
 
 package arm
 
-import "strings"
+import (
+	"strings"
+)
 
 // the arm has a 32 bit status register but we only need the CSPR bits
 // currently.
