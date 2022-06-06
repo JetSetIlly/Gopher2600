@@ -1117,6 +1117,31 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 			addr++
 		}
 
+	case cmdSwap:
+		// get address token
+		a, _ := tokens.Get()
+		b, _ := tokens.Get()
+
+		ai, err := dbg.dbgmem.Peek(a)
+		if err != nil {
+			dbg.printLine(terminal.StyleError, "%s", err)
+		} else {
+			bi, err := dbg.dbgmem.Peek(b)
+			if err != nil {
+				dbg.printLine(terminal.StyleError, "%s", err)
+			} else {
+				if _, err := dbg.dbgmem.Poke(ai.MappedAddress, bi.Data); err != nil {
+					dbg.printLine(terminal.StyleError, "%s", err)
+				} else {
+					if _, err := dbg.dbgmem.Poke(bi.MappedAddress, ai.Data); err != nil {
+						dbg.printLine(terminal.StyleError, "%s", err)
+					} else {
+						// redisassemble
+					}
+				}
+			}
+		}
+
 	case cmdRAM:
 		dbg.printLine(terminal.StyleInstrument, dbg.vcs.Mem.RAM.String())
 

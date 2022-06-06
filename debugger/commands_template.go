@@ -42,6 +42,7 @@ const (
 	cmdCPU       = "CPU"
 	cmdPeek      = "PEEK"
 	cmdPoke      = "POKE"
+	cmdSwap      = "SWAP"
 	cmdRAM       = "RAM"
 	cmdTIA       = "TIA"
 	cmdRIOT      = "RIOT"
@@ -104,6 +105,7 @@ var commandTemplate = []string{
 	cmdCPU + " (STATUS ([SET|UNSET|TOGGLE] [S|O|B|D|I|Z|C])|(SET [PC|A|X|Y|SP] [%<register value>S]))",
 	cmdPeek + " [%<address>S] {%<addresses>S}",
 	cmdPoke + " %<address>S [%<value>N] {%<values>N}",
+	cmdSwap + " %<address>S %<address>S",
 	cmdRAM,
 	cmdTIA + " (HMOVE)",
 	cmdRIOT + " (PORTS|TIMER)",

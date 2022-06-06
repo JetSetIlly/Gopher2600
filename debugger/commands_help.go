@@ -151,6 +151,8 @@ or numerically.`,
 	cmdPoke: `Modify an individual memory address. Addresses can be specified symbolically
 or numerically. Mulptiple data values will be poked into consecutive addresses.`,
 
+	cmdSwap: `Swap the bytes between two addresses.`,
+
 	cmdRAM: `Display the current contents of RAM. The optional CART argument will display any
 additional RAM in the cartridge.`,
 
