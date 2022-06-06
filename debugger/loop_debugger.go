@@ -178,7 +178,10 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, isVideoStep bool) error 
 				if curated.Has(err, terminal.UserInterrupt) {
 					dbg.handleInterrupt(inputter)
 				} else {
-					dbg.printLine(terminal.StyleError, "%s", err)
+					// don't print UserQuit error to terminal
+					if !curated.Is(err, terminal.UserQuit) {
+						dbg.printLine(terminal.StyleError, "%s", err)
+					}
 				}
 			}
 
