@@ -22,11 +22,28 @@ import (
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/instance"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/ace"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/cdf"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/dpcplus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/supercharger"
 )
+
+func fingerprintAce(b []byte) (bool, string) {
+	if len(b) < 144 {
+		return false, ""
+	}
+
+	if bytes.Contains(b[:144], []byte("ACE-2600")) {
+		return true, "ACE-2600"
+	}
+
+	if bytes.Contains(b[:144], []byte("ACE-PC00")) {
+		return true, "ACE-PC00"
+	}
+
+	return false, ""
+}
 
 func fingerprint3e(b []byte) bool {
 	// 3E cart bankswitching is triggered by storing the bank number in address
@@ -278,6 +295,11 @@ func fingerprint256k(data []byte) func(*instance.Instance, []byte) (mapper.CartM
 
 func (cart *Cartridge) fingerprint(cartload cartridgeloader.Loader) error {
 	var err error
+
+	if ok, version := fingerprintAce(*cartload.Data); ok {
+		cart.mapper, err = ace.NewAce(cart.instance, cart.Filename, version, *cartload.Data)
+		return err
+	}
 
 	if ok, version := fingerprintCDFJplus(*cartload.Data); ok {
 		cart.mapper, err = cdf.NewCDF(cart.instance, cart.Filename, version, *cartload.Data)

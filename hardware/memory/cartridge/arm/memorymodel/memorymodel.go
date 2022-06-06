@@ -27,6 +27,7 @@ type Map struct {
 	FlashOrigin       uint32
 	Flash32kMemtop    uint32
 	Flash64kMemtop    uint32
+	FlashMaxMemtop    uint32
 	SRAMOrigin        uint32
 	PeripheralsOrigin uint32
 	PeripheralsMemtop uint32
@@ -61,6 +62,7 @@ func NewMap(model string) Map {
 		mmap.FlashOrigin = uint32(0x00000000)
 		mmap.Flash32kMemtop = uint32(0x00007fff)
 		mmap.Flash64kMemtop = uint32(0x000fffff)
+		mmap.FlashMaxMemtop = uint32(0x0fffffff)
 		mmap.SRAMOrigin = uint32(0x40000000)
 		mmap.PeripheralsOrigin = uint32(0xe0000000)
 		mmap.PeripheralsMemtop = uint32(0xffffffff)
@@ -76,6 +78,7 @@ func NewMap(model string) Map {
 		mmap.FlashOrigin = uint32(0x20000000)
 		mmap.Flash32kMemtop = uint32(0x20007fff)
 		mmap.Flash64kMemtop = uint32(0x200fffff)
+		mmap.FlashMaxMemtop = uint32(0x2fffffff)
 		mmap.SRAMOrigin = uint32(0x10000000)
 		mmap.PeripheralsOrigin = uint32(0xe0000000)
 		mmap.PeripheralsMemtop = uint32(0xffffffff)
