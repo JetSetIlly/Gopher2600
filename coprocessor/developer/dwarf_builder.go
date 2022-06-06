@@ -49,6 +49,7 @@ type build struct {
 
 	variables map[dwarf.Offset]buildEntry
 	pointers  map[dwarf.Offset]buildEntry
+	consts    map[dwarf.Offset]buildEntry
 
 	// the order in which we encountered the subprograms and inlined
 	// subroutines is important
@@ -68,6 +69,7 @@ func newBuild(dwrf *dwarf.Data) (*build, error) {
 		arraySubranges:     make(map[dwarf.Offset]buildEntry),
 		variables:          make(map[dwarf.Offset]buildEntry),
 		pointers:           make(map[dwarf.Offset]buildEntry),
+		consts:             make(map[dwarf.Offset]buildEntry),
 		order:              make([]dwarf.Offset, 0, 100),
 	}
 
@@ -215,6 +217,17 @@ func newBuild(dwrf *dwarf.Data) (*build, error) {
 				}
 				bld.order = append(bld.order, entry.Offset)
 			}
+
+		case dwarf.TagConstType:
+			if compileUnit == nil {
+				return nil, curated.Errorf("found const type tag without compile unit")
+			} else {
+				bld.consts[entry.Offset] = buildEntry{
+					compileUnit: compileUnit,
+					entry:       entry,
+				}
+				bld.order = append(bld.order, entry.Offset)
+			}
 		}
 	}
 
@@ -278,18 +291,21 @@ func (bld *build) buildTypes(src *Source) error {
 		return err
 	}
 
-	// two passes over composite and array types
+	// two passes over pointer types, const types, and composite types
 	for pass := 0; pass < 2; pass++ {
 		// pointer types
 		for _, v := range bld.pointers {
 			var typ SourceType
 
 			typ.PointerType, err = bld.resolveType(v, src)
+			if err != nil {
+				return err
+			}
 			if typ.PointerType == nil {
 				continue
 			}
 
-			typ.Name = fmt.Sprintf("*%s", typ.PointerType.Name)
+			typ.Name = fmt.Sprintf("%s *", typ.PointerType.Name)
 
 			fld := v.entry.AttrField(dwarf.AttrByteSize)
 			if fld == nil {
@@ -427,7 +443,7 @@ func (bld *build) buildTypes(src *Source) error {
 				num := fld.Val.(int64) + 1
 
 				src.Types[baseTypeOffset] = &SourceType{
-					Name:         fmt.Sprintf("%s [%d]", arrayBaseType.Name, num),
+					Name:         fmt.Sprintf("[%d] %s", num, arrayBaseType.Name),
 					Size:         arrayBaseType.Size * int(num),
 					ElementType:  arrayBaseType,
 					ElementCount: int(num),
@@ -438,6 +454,28 @@ func (bld *build) buildTypes(src *Source) error {
 		}
 
 		// typedefs of array types
+		err = resolveTypeDefs()
+		if err != nil {
+			return err
+		}
+
+		// const types
+		for _, v := range bld.consts {
+			baseType, err := bld.resolveType(v, src)
+			if err != nil {
+				return err
+			}
+			if baseType == nil {
+				continue
+			}
+
+			typ := *baseType
+			typ.Name = fmt.Sprintf("const %s", baseType.Name)
+
+			src.Types[v.entry.Offset] = &typ
+		}
+
+		// typedefs of const types
 		err = resolveTypeDefs()
 		if err != nil {
 			return err
