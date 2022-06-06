@@ -202,8 +202,8 @@ func (win *winTerm) debuggerDraw() {
 		}
 
 		if imgui.InputTextV("", &win.input,
-			imgui.InputTextFlagsEnterReturnsTrue|imgui.InputTextFlagsCallbackCompletion|
-				imgui.InputTextFlagsCallbackHistory|imgui.InputTextFlagsAlwaysInsertMode, win.tabCompleteAndHistory) {
+			imgui.InputTextFlagsEnterReturnsTrue|imgui.InputTextFlagsCallbackCompletion|imgui.InputTextFlagsCallbackHistory,
+			win.tabCompleteAndHistory) {
 
 			win.input = strings.TrimSpace(win.input)
 
