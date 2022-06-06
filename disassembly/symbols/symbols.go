@@ -121,9 +121,16 @@ func (sym *Symbols) GetSymbol(addr uint16, read bool) (Entry, bool) {
 	addr, _ = memorymap.MapAddress(addr, read)
 
 	if read {
+		// if sym.read == nil {
+		// 	return Entry{}, false
+		// }
+
 		return sym.read.get(addr)
 	}
 
+	// if sym.write == nil {
+	// 	return Entry{}, false
+	// }
 	return sym.write.get(addr)
 }
 

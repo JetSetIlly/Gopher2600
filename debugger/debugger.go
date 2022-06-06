@@ -1040,7 +1040,7 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) 
 
 	err = dbg.Disasm.FromMemory()
 	if err != nil {
-		return err
+		logger.Logf("debugger", err.Error())
 	}
 
 	coproc := dbg.vcs.Mem.Cart.GetCoProcBus()

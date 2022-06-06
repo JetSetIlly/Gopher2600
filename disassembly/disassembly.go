@@ -181,16 +181,14 @@ func (dsm *Disassembly) FromMemory() error {
 
 	// disassemble cartridge binary
 	err = dsm.disassemble(mc, mem)
-	if err != nil {
-		return curated.Errorf("disassembly: %v", err)
+	if err == nil {
+		// disassembly has finished with no problems
+		dsm.crit.Lock()
+		dsm.validDisassembly = true
+		dsm.crit.Unlock()
 	}
 
-	// disassembly has finished with no problems
-	dsm.crit.Lock()
-	dsm.validDisassembly = true
-	dsm.crit.Unlock()
-
-	return nil
+	return err
 }
 
 // GetEntryByAddress returns the disassembly entry at the specified

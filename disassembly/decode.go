@@ -29,20 +29,18 @@ import (
 func (dsm *Disassembly) disassemble(mc *cpu.CPU, mem *disasmMemory) error {
 	// basic decoding pass
 	err := dsm.decode(mc, mem)
-	if err != nil {
-		return err
+	if err == nil {
+		// bless those entries which we're reasonably sure are real instructions
+		err = dsm.bless(mc, mem)
+		if err != nil {
+			return err
+		}
+
+		// convert addresses to preferred mirror
+		dsm.setCartMirror()
 	}
 
-	// bless those entries which we're reasonably sure are real instructions
-	err = dsm.bless(mc, mem)
-	if err != nil {
-		return err
-	}
-
-	// convert addresses to preferred mirror
-	dsm.setCartMirror()
-
-	return nil
+	return err
 }
 
 func (dsm *Disassembly) bless(mc *cpu.CPU, mem *disasmMemory) error {
