@@ -470,6 +470,7 @@ func (bld *build) buildTypes(src *Source) error {
 			}
 
 			typ := *baseType
+			typ.Constant = true
 			typ.Name = fmt.Sprintf("const %s", baseType.Name)
 
 			src.Types[v.entry.Offset] = &typ
@@ -646,6 +647,19 @@ func (bld *build) buildVariables(src *Source) error {
 		if varb == nil {
 			continue // for loop
 		}
+
+		// do not inclue variables of constant type
+		if varb.Type.Constant {
+			continue // for loop
+		}
+
+		// do not include variables of array type where the elements are of
+		// constant type
+		if varb.Type.ElementType != nil && varb.Type.Constant {
+			continue // for loop
+		}
+
+		// pointers to constant type are fine
 
 		// add address found in the location attribute to the SourceVariable
 		// returned by the resolve() function

@@ -129,6 +129,9 @@ type SourceFunction struct {
 type SourceType struct {
 	Name string
 
+	// is a constant type
+	Constant bool
+
 	// the base type of pointer types. will be nil if type is not a pointer type
 	PointerType *SourceType
 
