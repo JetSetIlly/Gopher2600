@@ -1111,22 +1111,38 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		ai, err := dbg.dbgmem.Peek(a)
 		if err != nil {
 			dbg.printLine(terminal.StyleError, "%s", err)
-		} else {
-			bi, err := dbg.dbgmem.Peek(b)
-			if err != nil {
-				dbg.printLine(terminal.StyleError, "%s", err)
-			} else {
-				if _, err := dbg.dbgmem.Poke(ai.MappedAddress, bi.Data); err != nil {
-					dbg.printLine(terminal.StyleError, "%s", err)
-				} else {
-					if _, err := dbg.dbgmem.Poke(bi.MappedAddress, ai.Data); err != nil {
-						dbg.printLine(terminal.StyleError, "%s", err)
-					} else {
-						// redisassemble
-					}
-				}
-			}
+			return nil
 		}
+
+		bi, err := dbg.dbgmem.Peek(b)
+		if err != nil {
+			dbg.printLine(terminal.StyleError, "%s", err)
+			return nil
+		}
+
+		if _, err := dbg.dbgmem.Poke(ai.MappedAddress, bi.Data); err != nil {
+			dbg.printLine(terminal.StyleError, "%s", err)
+			return nil
+		}
+
+		if _, err := dbg.dbgmem.Poke(bi.MappedAddress, ai.Data); err != nil {
+			dbg.printLine(terminal.StyleError, "%s", err)
+			return nil
+		}
+
+		aj, err := dbg.dbgmem.Peek(ai.Address)
+		if err != nil {
+			dbg.printLine(terminal.StyleError, "%s", err)
+			return nil
+		}
+
+		bj, err := dbg.dbgmem.Peek(bi.Address)
+		if err != nil {
+			dbg.printLine(terminal.StyleError, "%s", err)
+			return nil
+		}
+
+		dbg.printLine(terminal.StyleFeedback, fmt.Sprintf("%04x: %02x->%02x and %04x: %02x->%02x", ai.Address, ai.Data, aj.Data, bi.Address, bi.Data, bj.Data))
 
 	case cmdRAM:
 		dbg.printLine(terminal.StyleInstrument, dbg.vcs.Mem.RAM.String())
