@@ -39,9 +39,9 @@ func (mem *testMemory) ResetVectors() (uint32, uint32, uint32) {
 	return 0x3ff, 0x0, 0x0
 }
 
-func (mem *testMemory) BX(offset int) {
-	mem.data[offset+1] = 0b01000111
-	mem.data[offset] = 0b00000000
+func (mem *testMemory) SoftwareInterrupt(offset int) {
+	mem.data[offset+1] = 0xbe
+	mem.data[offset] = 0x00
 }
 
 type hook struct{}

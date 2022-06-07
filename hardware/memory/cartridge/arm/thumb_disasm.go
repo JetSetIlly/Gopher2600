@@ -280,6 +280,7 @@ func disasmHiRegisterOps(opcode uint16) DisasmEntry {
 		entry.Operator = "MOV"
 		entry.Operand = fmt.Sprintf("%s%d, %s%d ", destLabel, destReg, srcLabel, srcReg)
 	case 0b11:
+		// TODO: called BLX in ARMv7-M architecture
 		entry.Operator = "BX"
 		entry.Operand = fmt.Sprintf("%s%d ", srcLabel, srcReg)
 

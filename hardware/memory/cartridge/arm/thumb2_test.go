@@ -31,7 +31,7 @@ func TestIT(t *testing.T) {
 	mem.data[1] = 0b00100000
 	mem.data[0] = 0b11111110
 
-	mem.BX(2)
+	mem.SoftwareInterrupt(2)
 	arm.Run(0)
 	test.Equate(t, arm.String(), `R0 : 000000fe		R1 : 00000000		R2 : 00000000		R3 : 00000000
 R4 : 00000000		R5 : 00000000		R6 : 00000000		R7 : 00000000
@@ -54,7 +54,7 @@ R12: 00000000		R13: 000003ff		R14: 00000000		R15: 00000006`)
 	mem.data[5] = 0b00100000
 	mem.data[4] = 0b11110000
 
-	mem.BX(6)
+	mem.SoftwareInterrupt(6)
 	arm.Run(0)
 	test.Equate(t, arm.String(), `R0 : 000000f0		R1 : 00000000		R2 : 00000000		R3 : 00000000
 R4 : 00000000		R5 : 00000000		R6 : 00000000		R7 : 00000000
@@ -104,7 +104,7 @@ R12: 00000000		R13: 000003ff		R14: 00000000		R15: 0000000a`)
 	mem.data[7] = 0b00100000
 	mem.data[6] = 0b00000000
 
-	mem.BX(8)
+	mem.SoftwareInterrupt(8)
 	arm.Run(0)
 	test.Equate(t, arm.String(), `R0 : 00000000		R1 : 00000000		R2 : 00000000		R3 : 00000000
 R4 : 00000000		R5 : 00000000		R6 : 00000000		R7 : 00000000

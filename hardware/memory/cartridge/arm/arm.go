@@ -708,9 +708,11 @@ func (arm *ARM) Run(mamcr uint32) (uint32, float32, error) {
 
 			// check to see if there is a 32bit instruction that needs executing
 			if arm.function32bit {
+				// fmt.Printf("%04x %04x :: 32bit thumb-2\n", arm.function32bitOpcode, opcode)
 				arm.function32bit = false
 				f = arm.function32bitFunction
 			} else {
+				// fmt.Printf("%04x :: %s\n", opcode, thumbDisassemble(opcode))
 				f = arm.functionMap[memIdx]
 			}
 

@@ -25,7 +25,9 @@
 
 package arm
 
-import "fmt"
+import (
+	"fmt"
+)
 
 func (arm *ARM) decodeThumb2(opcode uint16) func(uint16) {
 	// condition tree built from the table in Figure 3-1 of the "Thumb-2 Supplement"
@@ -35,23 +37,20 @@ func (arm *ARM) decodeThumb2(opcode uint16) func(uint16) {
 	// name of that group is different in the table in the "Thumb-2 Supplement"
 	// then the name is given on the next line
 	//
-	// note that format 2 and format 5 have been divided into two entries in
-	// the Thumb-2 table
-	//
-	// format 13 and 14 have been combined into one "miscellaneous" entry in
-	// the Thumb-2 table
-	//
 	// where possible the thumb*() instruction is used. this is because the
 	// function is well tested already
+	//
+	// note that format 2 and format 5 have been divided into two entries in
+	// the Thumb-2 table. we don't do that here.
+	//
+	// format 13 and 14 have been combined into one "miscellaneous" entry in
+	// the Thumb-2 table. we do the same here and call the miscellanous
+	// function. from there the original thumb*() function is called as
+	// appropriate
 
 	if opcode&0xf800 == 0xe800 || opcode&0xf000 == 0xf000 {
 		// 32 bit instructions
-		f := arm.decodeThumb2Upper32bit(opcode)
-		return func(o uint16) {
-			arm.function32bit = true
-			arm.function32bitFunction = f
-			arm.function32bitOpcode = o
-		}
+		return arm.decodeThumb2Upper32bit(opcode)
 	} else {
 		if opcode&0xf000 == 0xe000 {
 			// ** format 18 Unconditional branch
@@ -125,50 +124,6 @@ func (arm *ARM) decodeThumb2(opcode uint16) func(uint16) {
 	panic(fmt.Sprintf("undecoded 16-bit thumb-2 instruction (%04x)", opcode))
 }
 
-func (arm *ARM) decodeThumb2Upper32bit(opcode uint16) func(uint16) {
-	if opcode&0xef00 == 0xef00 {
-		// coprocessor
-		panic("coprocessor")
-	} else if opcode&0xf800 == 0xf000 {
-		// branches, miscellaneous control
-		return arm.thumb2LongBranchWithLink
-	} else if opcode&0xfe40 == 0xe800 {
-		// load and store multiple, RFE and SRS
-		panic("load and store multiple, RFE and SRS")
-	} else if opcode&0xfe40 == 0xe840 {
-		// load and store double and exclusive and table branch
-		panic("load and store double and exclusive and table branch")
-	} else if opcode&0xfe00 == 0xf800 {
-		// load and store single data item, memory hints
-		panic("load and store single data item, memory hints")
-	} else if opcode&0xee00 == 0xea00 {
-		// data processing, no immediate operand
-		panic("data processing, no immediate operand")
-	} else if opcode&0xf800 == 0xf000 {
-		// data processing: immediate, including bitfield and saturate
-		panic("data processing: immediate, including bitfield and saturate")
-	}
-
-	panic(fmt.Sprintf("undecoded 32-bit thumb-2 instruction (upper half-word) (%04x)", opcode))
-}
-
-func (arm *ARM) thumb2LongBranchWithLink(opcode uint16) {
-	// details in "A7.7.18 BL" of "ARMv7-M"
-
-	arm.registers[rLR] = (arm.registers[rPC]-2)&0xfffffffe | 0x00000001
-
-	s := uint32((arm.function32bitOpcode & 0x400) >> 10)
-	j1 := uint32((opcode & 0x2000) >> 13)
-	j2 := uint32((opcode & 0x800) >> 11)
-	i1 := (^(j1 ^ s)) & 0x01
-	i2 := (^(j2 ^ s)) & 0x01
-	imm10 := uint32(arm.function32bitOpcode & 0x3ff)
-	imm11 := uint32(opcode & 0x7ff)
-	imm32 := (i1 << 23) | (i2 << 22) | (imm10 << 12) | (imm11 << 1)
-	imm32 = imm32 | (s << 24) | (s << 25) | (s << 26) | (s << 27) | (s << 28) | (s << 29) | (s << 30) | (s << 31)
-	arm.registers[rPC] += imm32
-}
-
 func (arm *ARM) decodeThumb2Miscellaneous(opcode uint16) func(uint16) {
 	// condition tree built from the table in Figure 3-2 of the "Thumb-2 Supplement"
 	//
@@ -183,6 +138,9 @@ func (arm *ARM) decodeThumb2Miscellaneous(opcode uint16) func(uint16) {
 	} else {
 		if opcode&0xff00 == 0xbe00 {
 			// software breakpoint
+			return func(_ uint16) {
+				arm.continueExecution = false
+			}
 		} else if opcode&0xff00 == 0xba00 {
 			// reverse bytes
 		} else if opcode&0xffe8 == 0xb668 {
@@ -199,8 +157,10 @@ func (arm *ARM) decodeThumb2Miscellaneous(opcode uint16) func(uint16) {
 			return arm.thumbPushPopRegisters
 		} else if opcode&0xf500 == 0xb100 {
 			// compare and branch on (non-)zero
+			return arm.thumb2CompareAndBranchOnNonZero
 		} else if opcode&0xff00 == 0xb200 {
 			// sign/zero extend
+			return arm.thumb2SignZeroExtend
 		} else if opcode&0xff00 == 0xb000 {
 			// ** format 13 Add offset to stack pointer
 			// adjust stack pointer
@@ -231,4 +191,41 @@ func (arm *ARM) thumb2IfThen(opcode uint16) {
 	case 0b1111:
 		panic("unpredictable IT instruction - first condition data is 1111")
 	}
+}
+
+func (arm *ARM) thumb2CompareAndBranchOnNonZero(opcode uint16) {
+	nonZero := opcode&0x0800 == 0x0800
+	Rn := opcode & 0x0007
+	i := (opcode & 0x0200) >> 9
+	imm5 := (opcode & 0x00f8) >> 3
+
+	if nonZero != (arm.registers[Rn] == 0) {
+		imm32 := (imm5 << 1) | (i << 6)
+		arm.registers[rPC] += uint32(imm32)
+	}
+}
+
+func (arm *ARM) thumb2SignZeroExtend(opcode uint16) {
+	op := (opcode & 0xc0) >> 6
+	Rm := (opcode & 0x38) >> 3
+	Rd := opcode & 0x07
+
+	switch op {
+	case 0b00:
+		// signed extend halfword SXTH
+		panic(0)
+	case 0b01:
+		// signed extend byte SXTB
+		panic(1)
+	case 0b10:
+		// unsigned extend halfword
+		// "4.6.226 UXTH" in "Thumb-2 Supplement"
+		arm.registers[Rd] = arm.registers[Rm] & 0x0000ffff
+	case 0b11:
+		// unsigned extend byte UXTB
+		panic(3)
+	default:
+		panic("undhandled sign/zero extend instruction")
+	}
+
 }

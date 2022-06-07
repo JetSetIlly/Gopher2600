@@ -653,23 +653,11 @@ func (arm *ARM) thumbHiRegisterOps(opcode uint16) {
 
 		return
 	case 0b11:
-		thumbMode := arm.registers[srcReg]&0x01 == 0x01
-
-		var newPC uint32
-
-		// "ARM7TDMI Data Sheet" page 5-15:
-		//
-		// "If R15 is used as an operand, the value will be the address of the instruction + 4 with
-		// bit 0 cleared. Executing a BX PC in THUMB state from a non-word aligned address
-		// will result in unpredictable execution."
-		if srcReg == rPC {
-			newPC = arm.registers[rPC] + 2
-		} else {
-			newPC = (arm.registers[srcReg] & 0x7ffffffe) + 2
-		}
-
-		if thumbMode {
-			arm.registers[rPC] = newPC
+		switch arm.arch {
+		case ARMv7_M:
+			// "A7.7.19 BLX (register)" in "ARMv7-M"
+			arm.registers[rLR] = (arm.registers[rPC]-2)&0xfffffffe | 0x00000001
+			arm.registers[rPC] += arm.registers[srcReg]
 
 			if arm.disasm != nil {
 				arm.disasmExecutionNotes = "branch exchange to thumb code"
@@ -679,54 +667,82 @@ func (arm *ARM) thumbHiRegisterOps(opcode uint16) {
 			// "7.6 Data Operations" in "ARM7TDMI-S Technical Reference Manual r4p3"
 			// - fillPipeline() will be called if necessary
 			return
-		}
+		case ARM7TDMI:
+			thumbMode := arm.registers[srcReg]&0x01 == 0x01
 
-		// switch to ARM mode. emulate function call.
-		res, err := arm.hook.ARMinterrupt(arm.registers[rPC]-4, arm.registers[2], arm.registers[3])
-		if err != nil {
-			arm.continueExecution = false
-			arm.executionError = err
-			// "7.6 Data Operations" in "ARM7TDMI-S Technical Reference Manual r4p3"
-			//  - interrupted
-			return
-		}
+			var newPC uint32
 
-		if arm.disasm != nil {
-			if res.InterruptEvent != "" {
-				arm.disasmExecutionNotes = fmt.Sprintf("ARM function (%08x) %s", arm.registers[rPC]-4, res.InterruptEvent)
+			// "ARM7TDMI Data Sheet" page 5-15:
+			//
+			// "If R15 is used as an operand, the value will be the address of the instruction + 4 with
+			// bit 0 cleared. Executing a BX PC in THUMB state from a non-word aligned address
+			// will result in unpredictable execution."
+			if srcReg == rPC {
+				newPC = arm.registers[rPC] + 2
 			} else {
-				arm.disasmExecutionNotes = fmt.Sprintf("ARM function (%08x)", arm.registers[rPC]-4)
+				newPC = (arm.registers[srcReg] & 0x7ffffffe) + 2
 			}
-			arm.disasmUpdateNotes = true
-		}
 
-		// if ARMinterrupt returns false this indicates that the
-		// function at the quoted program counter is not recognised and
-		// has nothing to do with the cartridge mapping. at this point
-		// we can assume that the main() function call is done and we
-		// can return to the VCS emulation.
-		if !res.InterruptServiced {
-			arm.continueExecution = false
+			if thumbMode {
+				arm.registers[rPC] = newPC
+
+				if arm.disasm != nil {
+					arm.disasmExecutionNotes = "branch exchange to thumb code"
+					arm.disasmUpdateNotes = true
+				}
+
+				// "7.6 Data Operations" in "ARM7TDMI-S Technical Reference Manual r4p3"
+				// - fillPipeline() will be called if necessary
+				return
+			}
+
+			// switch to ARM mode. emulate function call.
+			res, err := arm.hook.ARMinterrupt(arm.registers[rPC]-4, arm.registers[2], arm.registers[3])
+			if err != nil {
+				arm.continueExecution = false
+				arm.executionError = err
+				// "7.6 Data Operations" in "ARM7TDMI-S Technical Reference Manual r4p3"
+				//  - interrupted
+				return
+			}
+
+			if arm.disasm != nil {
+				if res.InterruptEvent != "" {
+					arm.disasmExecutionNotes = fmt.Sprintf("ARM function (%08x) %s", arm.registers[rPC]-4, res.InterruptEvent)
+				} else {
+					arm.disasmExecutionNotes = fmt.Sprintf("ARM function (%08x)", arm.registers[rPC]-4)
+				}
+				arm.disasmUpdateNotes = true
+			}
+
+			// if ARMinterrupt returns false this indicates that the
+			// function at the quoted program counter is not recognised and
+			// has nothing to do with the cartridge mapping. at this point
+			// we can assume that the main() function call is done and we
+			// can return to the VCS emulation.
+			if !res.InterruptServiced {
+				arm.continueExecution = false
+				// "7.6 Data Operations" in "ARM7TDMI-S Technical Reference Manual r4p3"
+				//  - interrupted
+				return
+			}
+
+			// ARM function updates the ARM registers
+			if res.SaveResult {
+				arm.registers[res.SaveRegister] = res.SaveValue
+			}
+
+			// the end of the emulated function will have an operation that
+			// switches back to thumb mode, and copies the link register to the
+			// program counter. we need to emulate that too.
+			arm.registers[rPC] = arm.registers[rLR] + 2
+
+			// add cycles used by the ARM program
+			arm.armInterruptCycles(res)
+
 			// "7.6 Data Operations" in "ARM7TDMI-S Technical Reference Manual r4p3"
-			//  - interrupted
-			return
+			// - fillPipeline() will be called if necessary
 		}
-
-		// ARM function updates the ARM registers
-		if res.SaveResult {
-			arm.registers[res.SaveRegister] = res.SaveValue
-		}
-
-		// the end of the emulated function will have an operation that
-		// switches back to thumb mode, and copies the link register to the
-		// program counter. we need to emulate that too.
-		arm.registers[rPC] = arm.registers[rLR] + 2
-
-		// add cycles used by the ARM program
-		arm.armInterruptCycles(res)
-
-		// "7.6 Data Operations" in "ARM7TDMI-S Technical Reference Manual r4p3"
-		// - fillPipeline() will be called if necessary
 	}
 }
 
