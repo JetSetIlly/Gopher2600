@@ -94,7 +94,7 @@ var commandTemplate = []string{
 	cmdInsert + " %<cartridge>F",
 	cmdCartridge + " (PATH|NAME|MAPPER|CONTAINER|MAPPEDBANKS|HASH|STATIC|REGISTERS|RAM|HOTLOAD)",
 	cmdPatch + " %<patch file>S",
-	cmdDisasm + " (BYTECODE) (%<bank>N|%<address>N)",
+	cmdDisasm + " (BYTECODE|REDUX)",
 	cmdGrep + " (OPERATOR|OPERAND) %<search>S",
 	cmdSymbol + " [LIST (LABELS|READ|WRITE)|%<symbol>S]",
 	cmdOnHalt + " (OFF|ON|%<command>S {%<commands>S})",

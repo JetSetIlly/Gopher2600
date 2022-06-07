@@ -551,24 +551,20 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 
 	case cmdDisasm:
 		bytecode := false
-		v := -1
 
 		arg, ok := tokens.Get()
 		if ok {
 			switch arg {
+			case "REDUX":
+				err := dbg.Disasm.FromMemory()
+				if err != nil {
+					dbg.printLine(terminal.StyleFeedback, err.Error())
+				}
+				return nil
 			case "BYTECODE":
 				bytecode = true
-			default:
-				n, err := strconv.ParseInt(arg, 0, 32)
-				if err != nil {
-					dbg.printLine(terminal.StyleError, fmt.Sprintf("can't disassemble %v", arg))
-					return nil
-				}
-				v = int(n)
 			}
 		}
-
-		var err error
 
 		attr := disassembly.ColumnAttr{
 			ByteCode: bytecode,
@@ -576,20 +572,10 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 			Cycles:   true,
 		}
 
-		s := &strings.Builder{}
-
-		if v == -1 {
-			err = dbg.Disasm.Write(s, attr)
-		} else if v >= int(memorymap.OriginCart) {
-			err = dbg.Disasm.WriteAddr(s, disassembly.ColumnAttr{Cycles: true}, uint16(v))
-		} else if v < dbg.vcs.Mem.Cart.NumBanks() {
-			err = dbg.Disasm.WriteBank(s, attr, v)
-		} else {
-			dbg.printLine(terminal.StyleError, fmt.Sprintf("no bank %d in cartridge", v))
-		}
-
+		s := strings.Builder{}
+		err := dbg.Disasm.Write(&s, attr)
 		if err != nil {
-			return err
+			dbg.printLine(terminal.StyleFeedback, err.Error())
 		}
 
 		dbg.printLine(terminal.StyleFeedback, s.String())
