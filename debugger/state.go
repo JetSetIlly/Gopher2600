@@ -40,6 +40,10 @@ func (dbg *Debugger) GetQuantum() Quantum {
 // GetLiveDisasmEntry returns the formatted disasembly entry of the last CPU
 // execution and the bank information.
 func (dbg *Debugger) GetLiveDisasmEntry() disassembly.Entry {
+	if dbg.liveDisasmEntry == nil {
+		return disassembly.Entry{}
+	}
+
 	return *dbg.liveDisasmEntry
 }
 
