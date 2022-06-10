@@ -78,7 +78,7 @@ func (arm *ARM) thumb2BranchesORDataProcessing(opcode uint16) {
 }
 
 func (arm *ARM) thumb2DataProcessing(opcode uint16) {
-	if arm.function32bitOpcode&0xf200 == 0xf000 {
+	if arm.function32bitOpcode&0xfa00 == 0xf000 {
 		// "Data processing instructions with modified 12-bit immediate" page 3-14 of "Thumb-2 Supplement"
 
 		i := (arm.function32bitOpcode & 0x0400) >> 10
@@ -90,7 +90,9 @@ func (arm *ARM) thumb2DataProcessing(opcode uint16) {
 
 		switch op {
 		case 0b0000:
+			panic("unimplemented 'data processing instructions with modified 12-bit immediate'")
 		case 0b0001:
+			panic("unimplemented 'data processing instructions with modified 12-bit immediate'")
 		case 0b0010:
 			// "4.6.91 ORR (immediate)" of "Thumb-2 Supplement"
 			imm3 := (opcode & 0x7000) >> 12
@@ -108,25 +110,164 @@ func (arm *ARM) thumb2DataProcessing(opcode uint16) {
 			return
 
 		case 0b0011:
+			panic("unimplemented 'data processing instructions with modified 12-bit immediate'")
 		case 0b0100:
+			panic("unimplemented 'data processing instructions with modified 12-bit immediate'")
 		case 0b0101:
+			panic("unimplemented 'data processing instructions with modified 12-bit immediate'")
 		case 0b0110:
+			panic("unimplemented 'data processing instructions with modified 12-bit immediate'")
 		case 0b0111:
+			panic("unimplemented 'data processing instructions with modified 12-bit immediate'")
 		case 0b1000:
+			if arm.function32bitOpcode&0x100 == 0x100 {
+				// "4.6.3 ADD (immediate)" of "Thumb-2 Supplement"
+				// T3 encoding
+				i := (arm.function32bitOpcode & 0x0400) >> 10
+				setFlags := (arm.function32bitOpcode & 0x0010) == 0x0010
+				Rn := arm.function32bitOpcode & 0x000f
+				imm3 := (opcode & 0x7000) >> 12
+				Rd := (opcode & 0x0f00) >> 8
+				imm8 := opcode & 0x00ff
+				imm12 := (i << 11) | (imm3 << 8) | imm8
+				imm32, _ := ThumbExpandImm_C(uint32(imm12), arm.Status.carry)
+
+				src := arm.registers[Rn]
+				arm.registers[Rd] = src + imm32
+
+				if setFlags {
+					arm.Status.isNegative(arm.registers[Rn])
+					arm.Status.isZero(arm.registers[Rn])
+					if arm.Status.carry {
+						arm.Status.isCarry(src, imm32, 0)
+						arm.Status.isOverflow(src, imm32, 0)
+					} else {
+						arm.Status.isCarry(src, imm32, 1)
+						arm.Status.isOverflow(src, imm32, 1)
+					}
+				}
+			} else {
+				// "4.6.3 ADD (immediate)" of "Thumb-2 Supplement"
+				// T4 encoding
+				panic("unimplemented 'ADD (immediate)' T4 encoding")
+			}
+
 		case 0b1001:
+			panic("unimplemented 'data processing instructions with modified 12-bit immediate'")
 		case 0b1010:
+			panic("unimplemented 'data processing instructions with modified 12-bit immediate'")
 		case 0b1011:
+			panic("unimplemented 'data processing instructions with modified 12-bit immediate'")
 		case 0b1100:
+			panic("unimplemented 'data processing instructions with modified 12-bit immediate'")
 		case 0b1101:
+			panic("unimplemented 'data processing instructions with modified 12-bit immediate'")
 		case 0b1110:
+			panic("unimplemented 'data processing instructions with modified 12-bit immediate'")
 		case 0b1111:
 		}
+	} else if arm.function32bitOpcode&0xfb40 == 0xf200 {
+		panic("unimplemented 'add, subtract, plain 12bit immediate'")
+	} else if arm.function32bitOpcode&0xfb40 == 0xf240 {
+		panic("unimplemented 'move plin 16bit immediate'")
+	} else if arm.function32bitOpcode&0xfb20 == 0xf300 {
+		op := (arm.function32bitOpcode & 0xe0) >> 5
+		switch op {
+		case 0b000:
+			panic("unimplemented 'data processing instructions, bitfield and saturate'")
+		case 0b001:
+			panic("unimplemented 'data processing instructions, bitfield and saturate'")
+		case 0b010:
+			panic("unimplemented 'data processing instructions, bitfield and saturate'")
+		case 0b011:
+			panic("unimplemented 'data processing instructions, bitfield and saturate'")
+		case 0b100:
+			panic("unimplemented 'data processing instructions, bitfield and saturate'")
+		case 0b101:
+			panic("unimplemented 'data processing instructions, bitfield and saturate'")
+		case 0b110:
+			// "4.6.197 UBFX" of "Thumb-2 Supplement"
+			Rn := arm.function32bitOpcode & 0x000f
+			Rd := (opcode & 0x0f00) >> 8
+			imm3 := (opcode & 0x7000) >> 12
+			imm2 := (opcode & 0x00c0) >> 6
+			widthm1 := opcode & 0x001f
+
+			lsbit := (imm3 << 2) | imm2
+			msbit := lsbit + widthm1
+			if msbit <= 31 {
+				v := arm.registers[Rn]
+				w := v >> lsbit
+				v = w << lsbit
+				x := v << (31 - msbit)
+				v = x >> (31 - msbit)
+				arm.registers[Rd] = v
+			}
+		case 0b111:
+			panic("unimplemented 'data processing instructions, bitfield and saturate'")
+		}
 	} else {
-		panic("unimplemented data processing operation")
+		panic("reserved 32bit Thumb-2 data processsing instruction")
 	}
 }
 
 func (arm *ARM) thumb2LoadStoreSingle(opcode uint16) {
+	// "3.3.3 Load and store single data item, and memory hints" of "Thumb-2 Supplement"
+
+	if arm.function32bitOpcode&0xfe1f == 0xf81f {
+		panic("umimplemented PC +/- imm12")
+	} else if arm.function32bitOpcode&0xfe80 == 0xf880 {
+		size := (arm.function32bitOpcode & 0x0060) >> 5
+		load := arm.function32bitOpcode&0x0010 == 0x0010
+		Rn := arm.function32bitOpcode & 0x000f
+		Rt := (opcode & 0xf000) >> 12
+		imm12 := opcode & 0x0fff
+
+		switch size {
+		case 0b00:
+			// "A7.7.46 LDRB (immediate)" of "ARMv7-M"
+			// T2 encoding
+			//
+			// "A7.7.163 STRB (immediate)" of "ARMv7-M
+			// T2 encoding
+
+			addr := arm.registers[Rn] + uint32(imm12)
+			if load {
+				if Rt == rPC {
+					panic("PC cannot be a destination register for this instruction")
+				}
+				arm.registers[Rt] = uint32(arm.read8bit(addr))
+			} else {
+				if Rt == rPC || Rt == rSP {
+					panic("PC/SP cannot be a destination register for this instruction")
+				}
+				arm.write8bit(addr, uint8(arm.registers[Rt]))
+			}
+			return
+
+		case 0b01:
+		case 0b10:
+		}
+
+		panic(fmt.Sprintf("unhandled size (%02b) for 'load and store single data item, and memory hints'", size))
+	} else {
+		// size := (arm.function32bitOpcode & 0x0060) >> 5
+
+		if (opcode & 0x0f00) == 0x0c00 {
+			panic("umimplemented Rn -imm8")
+		} else if (opcode & 0x0f00) == 0x0e00 {
+			panic("umimplemented Rn +imm8, user privilege")
+		} else if (opcode & 0x0d00) == 0x0900 {
+			panic("umimplemented Rn post-indexed by +/- imm8")
+		} else if (opcode & 0x0d00) == 0x0d00 {
+			panic("umimplemented Rn pre-indexes by +/- imm8")
+		}
+	}
+
+	panic("reserved bit pattern in 'load and store single data item, and memory hints'")
+}
+
+func (arm *ARM) thumb2LoadStoreSingle_(opcode uint16) {
 	// "3.3.3 Load and store single data item, and memory hints" of "Thumb-2 Supplement"
 	//
 	// the equivalent tables in "ARMv7-M" are more plentiful but ulimately, include the
@@ -150,7 +291,7 @@ func (arm *ARM) thumb2LoadStoreSingle(opcode uint16) {
 		panic("load and store single: unimplemented: PC +/- imm12")
 	} else if arm.function32bitOpcode&0x0080 == 0x0080 {
 		// "A7.7.43 LDR (immediate)" of "ARMv7-M"
-		// Encoding T3
+		// T3 Encoding
 
 		// Rn +/- imm12
 

@@ -51,6 +51,15 @@ const (
 	ARMv7_M  Architecture = "ARMv7-M"
 )
 
+const (
+	// accesses below this address are deemed to be probably null accesses. value
+	// is arbitrary and was suggested by John Champeau (09/04/2022)
+	nullAccessBoundaryARM7TDMI = 0x751
+
+	// writing to GPIO "addresses" is allowed
+	nullAccessBoundaryARMv7_m = 0x00
+)
+
 // ARM implements the ARM7TDMI-S LPC2103 processor.
 type ARM struct {
 	prefs *preferences.ARMPreferences
@@ -58,6 +67,9 @@ type ARM struct {
 	mmap  memorymodel.Map
 	mem   SharedMemory
 	hook  CartridgeHook
+
+	// nullAccessBoundary differs depending on the architecture
+	nullAccessBoundary uint32
 
 	// execution flags. set to false and/or error when Run() function should end
 	continueExecution bool
@@ -145,6 +157,9 @@ type ARM struct {
 	disasmExecutionNotes string
 	disasmUpdateNotes    bool
 
+	// the summary of the most recent disassembly
+	disasmSummary DisasmSummary
+
 	// interface to an option development package
 	dev mapper.CartCoProcDeveloper
 
@@ -214,6 +229,10 @@ type ARM struct {
 	function32bit         bool
 	function32bitFunction func(uint16)
 	function32bitOpcode   uint16
+
+	// address watches - apply to 32bit reads only
+	readWatches      []uint32
+	ReadWatchTrigger bool
 }
 
 // NewARM is the preferred method of initialisation for the ARM type.
@@ -232,13 +251,20 @@ func NewARM(arch Architecture, mmap memorymodel.Map, prefs *preferences.ARMPrefe
 		clklenFlash: 4.0,
 	}
 
+	switch arm.arch {
+	case ARM7TDMI:
+		arm.nullAccessBoundary = nullAccessBoundaryARM7TDMI
+	case ARMv7_M:
+		arm.nullAccessBoundary = nullAccessBoundaryARMv7_m
+	default:
+		panic("unhandled ARM architecture: cannot set nullAccessBoundary")
+	}
+
 	arm.mam.mmap = mmap
 	arm.timer.mmap = mmap
 
-	err := arm.reset()
-	if err != nil {
-		logger.Logf("ARM7", "reset: %s", err.Error())
-	}
+	arm.reset()
+
 	return arm
 }
 
@@ -275,8 +301,8 @@ func (arm *ARM) ClearCaches() {
 	arm.disasmCache = make(map[uint32]DisasmEntry)
 }
 
-// reset of stack pointer should only happen on ARM instantiation
-func (arm *ARM) reset() error {
+// reset ARM registers.
+func (arm *ARM) reset() {
 	arm.Status.reset()
 
 	for i := 0; i < rSP; i++ {
@@ -284,14 +310,18 @@ func (arm *ARM) reset() error {
 	}
 
 	arm.registers[rSP], arm.registers[rLR], arm.registers[rPC] = arm.mem.ResetVectors()
+}
+
+// resetExecution is differnt to ARM in that it does not reset the state of the
+// ARM processor itself.
+func (arm *ARM) resetExecution() error {
+	// reset cycles count
+	arm.cyclesTotal = 0
+	arm.prefetchCycle = S
 
 	// reset execution flags
 	arm.continueExecution = true
 	arm.executionError = nil
-
-	// reset cycles count
-	arm.cyclesTotal = 0
-	arm.prefetchCycle = S
 
 	// reset disasm notes/flags
 	arm.disasmExecutionNotes = ""
@@ -374,12 +404,8 @@ func (arm *ARM) nullAccess(event string, addr uint32) {
 	logger.Logf("ARM7", "%s: %s", event, log)
 }
 
-// accesses below this address are deemed to be probably null accesses. value
-// is arbitrary and was suggested by John Champeau (09/04/2022)
-const nullAccessBoundary = 0x750
-
 func (arm *ARM) read8bit(addr uint32) uint8 {
-	if !arm.stackHasCollided && addr <= nullAccessBoundary {
+	if !arm.stackHasCollided && addr < arm.nullAccessBoundary {
 		arm.nullAccess("Read 8bit", addr)
 	}
 
@@ -408,7 +434,7 @@ func (arm *ARM) read8bit(addr uint32) uint8 {
 }
 
 func (arm *ARM) write8bit(addr uint32, val uint8) {
-	if !arm.stackHasCollided && addr <= nullAccessBoundary {
+	if !arm.stackHasCollided && addr < arm.nullAccessBoundary {
 		arm.nullAccess("Write 8bit", addr)
 	}
 
@@ -437,7 +463,7 @@ func (arm *ARM) write8bit(addr uint32, val uint8) {
 }
 
 func (arm *ARM) read16bit(addr uint32) uint16 {
-	if !arm.stackHasCollided && addr <= nullAccessBoundary {
+	if !arm.stackHasCollided && addr < arm.nullAccessBoundary {
 		arm.nullAccess("Read 16bit", addr)
 	}
 
@@ -471,7 +497,7 @@ func (arm *ARM) read16bit(addr uint32) uint16 {
 }
 
 func (arm *ARM) write16bit(addr uint32, val uint16) {
-	if !arm.stackHasCollided && addr <= nullAccessBoundary {
+	if !arm.stackHasCollided && addr < arm.nullAccessBoundary {
 		arm.nullAccess("Write 16bit", addr)
 	}
 
@@ -506,7 +532,7 @@ func (arm *ARM) write16bit(addr uint32, val uint16) {
 }
 
 func (arm *ARM) read32bit(addr uint32) uint32 {
-	if !arm.stackHasCollided && addr <= nullAccessBoundary {
+	if !arm.stackHasCollided && addr < arm.nullAccessBoundary {
 		arm.nullAccess("Read 32bit", addr)
 	}
 
@@ -536,11 +562,19 @@ func (arm *ARM) read32bit(addr uint32) uint32 {
 		return 0
 	}
 
+	// check watches
+	for _, v := range arm.readWatches {
+		if v == addr {
+			arm.ReadWatchTrigger = true
+			break
+		}
+	}
+
 	return uint32((*mem)[addr]) | (uint32((*mem)[addr+1]) << 8) | (uint32((*mem)[addr+2]) << 16) | uint32((*mem)[addr+3])<<24
 }
 
 func (arm *ARM) write32bit(addr uint32, val uint32) {
-	if !arm.stackHasCollided && addr <= nullAccessBoundary {
+	if !arm.stackHasCollided && addr < arm.nullAccessBoundary {
 		arm.nullAccess("Write 32bit", addr)
 	}
 
@@ -582,7 +616,9 @@ func (arm *ARM) write32bit(addr uint32, val uint32) {
 //
 // Returns the MAMCR state, the number of ARM cycles consumed and any errors.
 func (arm *ARM) Run(mamcr uint32) (uint32, float32, error) {
-	err := arm.reset()
+	arm.reset()
+
+	err := arm.resetExecution()
 	if err != nil {
 		return arm.mam.mamcr, 0, err
 	}
@@ -598,9 +634,6 @@ func (arm *ARM) Run(mamcr uint32) (uint32, float32, error) {
 	// latency in megahertz
 	latencyInMhz := (1 / (arm.prefs.FlashLatency.Get().(float64) / 1000000000)) / 1000000
 	arm.clklenFlash = float32(math.Ceil(float64(arm.Clk) / latencyInMhz))
-
-	// what we send at the end of the execution. not used if not disassembler is set
-	programSummary := DisasmSummary{}
 
 	// set mamcr on startup
 	arm.mam.pref = arm.prefs.MAM.Get().(int)
@@ -618,7 +651,7 @@ func (arm *ARM) Run(mamcr uint32) (uint32, float32, error) {
 		arm.Icycle = arm.iCycleStub
 		arm.Scycle = arm.sCycleStub
 		arm.Ncycle = arm.nCycleStub
-		programSummary.ImmediateMode = true
+		arm.disasmSummary.ImmediateMode = true
 	} else {
 		arm.Icycle = arm.iCycle
 		arm.Scycle = arm.sCycle
@@ -641,6 +674,27 @@ func (arm *ARM) Run(mamcr uint32) (uint32, float32, error) {
 
 	// fill pipeline
 	arm.registers[rPC] += 2
+
+	return arm.run()
+}
+
+func (arm *ARM) AddReadWatch(addr uint32) {
+	arm.readWatches = append(arm.readWatches, addr)
+}
+
+func (arm *ARM) Continue() (uint32, float32, error) {
+	err := arm.resetExecution()
+	if err != nil {
+		return arm.mam.mamcr, 0, err
+	}
+
+	arm.ReadWatchTrigger = false
+
+	return arm.run()
+}
+
+func (arm *ARM) run() (uint32, float32, error) {
+	var err error
 
 	// use to detect branches and whether to fill the pipeline (unused if
 	// arm.immediateMode is true)
@@ -708,11 +762,9 @@ func (arm *ARM) Run(mamcr uint32) (uint32, float32, error) {
 
 			// check to see if there is a 32bit instruction that needs executing
 			if arm.function32bit {
-				// fmt.Printf("%04x %04x :: 32bit thumb-2\n", arm.function32bitOpcode, opcode)
 				arm.function32bit = false
 				f = arm.function32bitFunction
 			} else {
-				// fmt.Printf("%04x :: %s\n", opcode, thumbDisassemble(opcode))
 				f = arm.functionMap[memIdx]
 			}
 
@@ -805,7 +857,7 @@ func (arm *ARM) Run(mamcr uint32) (uint32, float32, error) {
 			arm.disasmUpdateNotes = false
 
 			// update program cycles
-			programSummary.add(arm.cycleOrder)
+			arm.disasmSummary.add(arm.cycleOrder)
 
 			// we always send the instruction to the disasm interface
 			arm.disasm.Step(d)
@@ -851,6 +903,11 @@ func (arm *ARM) Run(mamcr uint32) (uint32, float32, error) {
 				arm.stackHasCollided = true
 			}
 		}
+
+		// abort if a watch has been triggered
+		if arm.ReadWatchTrigger {
+			break
+		}
 	}
 
 	// indicate that program abort was because of illegal memory access
@@ -862,7 +919,8 @@ func (arm *ARM) Run(mamcr uint32) (uint32, float32, error) {
 
 	// update disassembly
 	if arm.disasm != nil {
-		arm.disasm.End(programSummary)
+		arm.disasm.End(arm.disasmSummary)
+		arm.disasmSummary = DisasmSummary{}
 	}
 
 	if arm.executionError != nil {

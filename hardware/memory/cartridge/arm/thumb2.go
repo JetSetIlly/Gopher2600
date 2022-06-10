@@ -220,6 +220,7 @@ func (arm *ARM) thumb2SignZeroExtend(opcode uint16) {
 	case 0b10:
 		// unsigned extend halfword
 		// "4.6.226 UXTH" in "Thumb-2 Supplement"
+		// T1 Encoding
 		arm.registers[Rd] = arm.registers[Rm] & 0x0000ffff
 	case 0b11:
 		// unsigned extend byte UXTB

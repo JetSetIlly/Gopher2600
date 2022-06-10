@@ -27,15 +27,14 @@ import (
 
 type aceMemory struct {
 	model memorymodel.Map
-	flash []byte
 	sram  []byte
+	flash []byte
 
 	resetSP uint32
 	resetLR uint32
 	resetPC uint32
 
-	gpioREAD  uint32
-	gpioWRITE uint32
+	gpio []byte
 }
 
 const (
@@ -45,6 +44,13 @@ const (
 	aceHeaderROMSize       = 28
 	aceHeaderROMChecksum   = 32
 	aceHeaderEntryPoint    = 36
+	startOfRom             = 40
+)
+
+const (
+	GPIO_ADDR_IN  = 0x10
+	GPIO_DATA_OUT = 0x14
+	GPIO_MEMTOP   = 0xff
 )
 
 func newAceMemory(version string, data []byte) (*aceMemory, error) {
@@ -68,8 +74,11 @@ func newAceMemory(version string, data []byte) (*aceMemory, error) {
 	mem.resetPC += mem.model.FlashOrigin
 
 	mem.sram = make([]byte, mem.resetSP-mem.model.SRAMOrigin)
-	mem.flash = make([]byte, mem.model.FlashMaxMemtop-mem.model.FlashOrigin)
-	copy(mem.flash[mem.resetPC-mem.model.FlashOrigin-0x1028:], data)
+	mem.flash = make([]byte, len(data))
+	copy(mem.flash, data)
+
+	mem.gpio = make([]byte, GPIO_MEMTOP)
+	mem.gpio[GPIO_DATA_OUT] = 0xea
 
 	return mem, nil
 }
@@ -81,11 +90,17 @@ func (mem *aceMemory) Snapshot() *aceMemory {
 
 // MapAddress implements the arm.SharedMemory interface.
 func (mem *aceMemory) MapAddress(addr uint32, write bool) (*[]byte, uint32) {
-	if addr >= mem.model.FlashOrigin && addr <= mem.model.FlashMaxMemtop {
+	if addr < GPIO_MEMTOP {
+		return &mem.gpio, addr
+	}
+	if addr >= mem.model.FlashOrigin && addr <= mem.model.FlashOrigin+uint32(len(mem.flash)) {
 		return &mem.flash, addr - mem.model.FlashOrigin
 	}
+	if addr >= mem.resetPC && addr <= mem.resetPC+uint32(len(mem.flash)) {
+		return &mem.flash, addr - mem.resetPC + 0x1028
+	}
 	if addr >= mem.model.SRAMOrigin && addr <= mem.resetSP {
-		return &mem.flash, addr - mem.model.SRAMOrigin
+		return &mem.sram, addr - mem.model.SRAMOrigin
 	}
 	return nil, 0
 }
@@ -119,6 +134,7 @@ func NewAce(instance *instance.Instance, pathToROM string, version string, data 
 	}
 
 	cart.arm = arm.NewARM(arm.ARMv7_M, cart.mem.model, cart.instance.Prefs.ARM, cart.mem, cart, cart.pathToROM)
+	cart.arm.AddReadWatch(GPIO_ADDR_IN)
 	cart.arm.Run(0)
 
 	return cart, nil
@@ -151,9 +167,12 @@ func (cart *Ace) Reset() {
 }
 
 // Read implements the mapper.CartMapper interface.
-func (cart *Ace) Read(_ uint16, _ bool) (uint8, error) {
-	// return NOP. this is almost certainly not correct but it's good enough for now
-	return 0xea, nil
+func (cart *Ace) Read(addr uint16, passive bool) (uint8, error) {
+	if passive {
+		cart.Listen(0x1000|addr, 0x00)
+	}
+
+	return cart.mem.gpio[GPIO_DATA_OUT], nil
 }
 
 // Write implements the mapper.CartMapper interface.
@@ -178,6 +197,12 @@ func (cart *Ace) Patch(_ int, _ uint8) error {
 
 // Listen implements the mapper.CartMapper interface.
 func (cart *Ace) Listen(addr uint16, _ uint8) {
+	cart.mem.gpio[GPIO_ADDR_IN] = uint8(addr)
+	cart.mem.gpio[GPIO_ADDR_IN+1] = uint8(addr >> 8)
+	cart.arm.Continue()
+	cart.arm.Continue()
+	cart.arm.Continue()
+	cart.arm.Continue()
 }
 
 // Step implements the mapper.CartMapper interface.

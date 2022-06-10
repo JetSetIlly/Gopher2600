@@ -147,28 +147,6 @@ func (mem *Memory) GetArea(area memorymap.Area) DebugBus {
 
 // read maps an address to the normalised for all memory areas.
 func (mem *Memory) read(address uint16) (uint8, error) {
-	ma, ar := memorymap.MapAddress(address, true)
-	area := mem.GetArea(ar)
-
-	// read data from area
-	data, err := area.Read(ma)
-
-	// TIA addresses do not drive all the pins on the data bus, leaving
-	// some bits of the previous value on the data bus in the result.
-	//
-	// see commentary for TIADriverPins for extensive explanation
-	if ar == memorymap.TIA {
-		mem.LastCPUDrivenPins = vcs.TIADrivenPins
-		data &= vcs.TIADrivenPins
-		if mem.instance != nil && mem.instance.Prefs.RandomPins.Get().(bool) {
-			data |= uint8(mem.instance.Random.Rewindable(0xff)) & ^vcs.TIADrivenPins
-		} else {
-			data |= mem.LastCPUData & ^vcs.TIADrivenPins
-		}
-	} else {
-		mem.LastCPUDrivenPins = 0xff
-	}
-
 	// the address bus value is the literal address masked to the 13 bits
 	// available to the 6507
 	addressBus := address & memorymap.Memtop
@@ -203,6 +181,28 @@ func (mem *Memory) read(address uint16) (uint8, error) {
 		// Harmony           |  mem.DataBus | 0b01000000
 		//
 		mem.Cart.Listen(mem.AddressBus, mem.DataBus)
+	}
+
+	ma, ar := memorymap.MapAddress(address, true)
+	area := mem.GetArea(ar)
+
+	// read data from area
+	data, err := area.Read(ma)
+
+	// TIA addresses do not drive all the pins on the data bus, leaving
+	// some bits of the previous value on the data bus in the result.
+	//
+	// see commentary for TIADriverPins for extensive explanation
+	if ar == memorymap.TIA {
+		mem.LastCPUDrivenPins = vcs.TIADrivenPins
+		data &= vcs.TIADrivenPins
+		if mem.instance != nil && mem.instance.Prefs.RandomPins.Get().(bool) {
+			data |= uint8(mem.instance.Random.Rewindable(0xff)) & ^vcs.TIADrivenPins
+		} else {
+			data |= mem.LastCPUData & ^vcs.TIADrivenPins
+		}
+	} else {
+		mem.LastCPUDrivenPins = 0xff
 	}
 
 	// update data bus

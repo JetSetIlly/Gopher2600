@@ -18,7 +18,7 @@
 package arm
 
 func ThumbExpandImm_C(imm12 uint32, carry bool) (uint32, bool) {
-	// Page A5-140 or "ARMv7-M"
+	// "A5.3.2 Modified immediate constants in Thumb instructions" of "ARMv7-M"
 	//
 	// (bits(32), bit) ThumbExpandImm_C(bits(12) imm12, bit carry_in)
 	//		if imm12<11:10> == ‘00’ then
@@ -46,24 +46,24 @@ func ThumbExpandImm_C(imm12 uint32, carry bool) (uint32, bool) {
 		case 0b00:
 			return imm12 & 0xff, carry
 		case 0b01:
-			if imm12&0xff == 0 {
+			if imm12&0xff == 0x00 {
 				panic("unpredicatable zero expansion")
 			}
 			return ((imm12 & 0xff) << 16) | (imm12 & 0xff), carry
 		case 0b10:
-			if imm12&0xff == 0 {
+			if imm12&0xff == 0x00 {
 				panic("unpredicatable zero expansion")
 			}
 			return ((imm12 & 0xff) << 24) | ((imm12 & 0xff) << 8), carry
 		case 0b11:
-			if imm12&0xff == 0 {
+			if imm12&0xff == 0x00 {
 				panic("unpredicatable zero expansion")
 			}
 			return ((imm12 & 0xff) << 24) | ((imm12 & 0xff) << 16) | ((imm12 & 0xff) << 8) | (imm12 & 0xff), carry
 		}
 	}
 
-	unrotatedValue := (0b1 << 7) | (imm12 & 0x7f)
+	unrotatedValue := (0x01 << 7) | (imm12 & 0x7f)
 	return ROR_C(unrotatedValue, (imm12&0xf80)>>7)
 }
 
@@ -80,10 +80,10 @@ func ROR_C(imm32 uint32, shift uint32) (uint32, bool) {
 	// this is specifically a 32 bit function so N is 32
 
 	if shift == 0 {
-		return imm32, false
+		panic("ROR_C shift value of zero")
 	}
 
 	m := shift % 32
-	result := (imm32 << m) | (imm32 >> (32 - m))
+	result := (imm32 >> m) | (imm32 << (32 - m))
 	return result, result&0x80000000 == 0x80000000
 }
