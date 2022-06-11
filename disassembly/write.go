@@ -16,7 +16,6 @@
 package disassembly
 
 import (
-	"fmt"
 	"io"
 
 	"github.com/jetsetilly/gopher2600/curated"
@@ -24,13 +23,19 @@ import (
 
 // Write the entire disassembly to io.Writer.
 func (dsm *Disassembly) Write(output io.Writer, attr ColumnAttr) error {
+	ct := 0
 	for b := range dsm.disasmEntries.Entries {
 		for _, e := range dsm.disasmEntries.Entries[b] {
-			if e.Level >= EntryLevelBlessed {
+			if e != nil && e.Level >= EntryLevelBlessed {
+				ct++
 				output.Write([]byte(e.StringColumnated(attr)))
 				output.Write([]byte("\n"))
 			}
 		}
+	}
+
+	if ct == 0 {
+		return curated.Errorf("no entries in the disassembly")
 	}
 
 	return nil
@@ -42,11 +47,17 @@ func (dsm *Disassembly) WriteBank(output io.Writer, attr ColumnAttr, bank int) e
 		return nil
 	}
 
+	ct := 0
 	for _, e := range dsm.disasmEntries.Entries[bank] {
-		if e.Level >= EntryLevelBlessed {
+		if e != nil && e.Level >= EntryLevelBlessed {
+			ct++
 			output.Write([]byte(e.StringColumnated(attr)))
 			output.Write([]byte("\n"))
 		}
+	}
+
+	if ct == 0 {
+		return curated.Errorf("no entries in the disassembly for bank %d", bank)
 	}
 
 	return nil
@@ -58,7 +69,7 @@ func (dsm *Disassembly) WriteAddr(output io.Writer, attr ColumnAttr, addr uint16
 	if e != nil && e.Level >= EntryLevelBlessed {
 		output.Write([]byte(e.StringColumnated(attr)))
 	} else {
-		return curated.Errorf(fmt.Sprintf("no blessed disassembly at $%04x", addr))
+		return curated.Errorf("no blessed disassembly at $%04x", addr)
 	}
 	return nil
 }

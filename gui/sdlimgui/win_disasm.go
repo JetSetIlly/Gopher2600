@@ -346,8 +346,9 @@ func (win *winDisasm) drawBank(focusAddr uint16) {
 	imgui.BeginChildV(fmt.Sprintf("##bank %d", win.selectedBank), imgui.Vec2{X: 0, Y: height}, false, imgui.WindowFlagsAlwaysVerticalScrollbar)
 
 	win.img.dbg.Disasm.BorrowDisasm(func(dsmEntries *disassembly.DisasmEntries) {
-		// borrow disasm callback can be called with a nil pointer
+		// disassembly is not valid and so dsmEntires is nil
 		if dsmEntries == nil {
+			imgui.Text("No disassembly available")
 			return
 		}
 
@@ -405,6 +406,9 @@ func (win *winDisasm) drawBank(focusAddr uint16) {
 		switch win.filter {
 		case filterBank:
 			iterateFilter = func(e *disassembly.Entry) bool {
+				if e == nil {
+					return false
+				}
 				return e.Level >= disassembly.EntryLevelBlessed && iterateBank == win.selectedBank
 			}
 			iterateReset = func() {
@@ -416,6 +420,9 @@ func (win *winDisasm) drawBank(focusAddr uint16) {
 				return iterateIdx < len(dsmEntries.Entries[iterateBank])
 			}
 			iterateDraw = func(e *disassembly.Entry) {
+				if e == nil {
+					return
+				}
 				win.drawLabel(e, iterateBank)
 				win.drawEntry(e, focusAddr, onBank, iterateBank)
 				if currBank.ExecutingCoprocessor && onBank && e.Result.Address&memorymap.CartridgeBits == focusAddr {
@@ -436,8 +443,6 @@ func (win *winDisasm) drawBank(focusAddr uint16) {
 		if dsmEntries == nil {
 			return
 		}
-
-		win.startTable()
 
 		// number of blessed entries in disasm. being careful to include labels in the count
 		ct := 0
@@ -464,6 +469,14 @@ func (win *winDisasm) drawBank(focusAddr uint16) {
 			}
 			e = dsmEntries.Entries[iterateBank][iterateIdx]
 		}
+
+		// no entries in disassembly. display message and exit borrow early
+		if ct == 0 {
+			imgui.Text("Disassembly not available")
+			return
+		}
+
+		win.startTable()
 
 		// wrap list clipper in anonymous function call. convenient to just
 		// return from the function from inside a nested loop
@@ -723,9 +736,27 @@ func (win *winDisasm) drawEntry(e *disassembly.Entry, focusAddr uint16, onBank b
 	if win.usingColor {
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmCycles)
 	}
-	if !e.Result.Final {
-		imgui.Text(string(fonts.CyclingInstruction))
-	} else {
+
+	// test to see if cycling instructions icon should be displayed
+	//
+	// 1) not the final result in the CPU
+	// 2) the CPU has not been reset
+	// 3) the coprocessor is not being executed
+	// 4) the entry to be displayed is the same as the one in the CPU bank
+	//		and address
+	//
+	cyclingIcon := false
+	if !win.img.lz.CPU.LastResult.Final && !win.img.lz.CPU.HasReset && !win.img.lz.Cart.CurrBank.ExecutingCoprocessor {
+		exeAddress := win.img.lz.CPU.LastResult.Address & memorymap.CartridgeBits
+		entryAddress := e.Result.Address & memorymap.CartridgeBits
+		if exeAddress == entryAddress && win.img.lz.Cart.CurrBank.Number == bank {
+			imgui.Text(string(fonts.CyclingInstruction))
+			cyclingIcon = true
+		}
+	}
+
+	// display cycles count if cycyling instruction has not been displayed
+	if !cyclingIcon {
 		imgui.Text(e.Result.Defn.Cycles.Formatted)
 	}
 

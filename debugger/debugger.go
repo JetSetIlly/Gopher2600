@@ -128,6 +128,17 @@ type Debugger struct {
 
 	// the live disassembly entry. updated every CPU step or on halt (which may
 	// be mid instruction)
+	//
+	// we use this so that we can display the instruction as it exists in the
+	// CPU at any given time, which means we can see the partially decoded
+	// instruction and easily keep track of how many cycles an instruction has
+	// taken so far.
+	//
+	// for CPU quantum the liveDisasmEntry will be the full entry that is in
+	// the disassembly
+	//
+	// for both quantums we update liveDisasmEntry with the ExecutedEntry()
+	// function in the disassembly package
 	liveDisasmEntry *disassembly.Entry
 
 	// the live bank information. updated every CPU step or on halt (which may

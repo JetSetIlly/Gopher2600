@@ -49,9 +49,6 @@ type Disassembly struct {
 	// emulation goroutine
 	disasmEntries DisasmEntries
 
-	// will be true if disasmEntries contains valid entries
-	validDisassembly bool
-
 	// critical sectioning to protect disasmEntries
 	crit sync.Mutex
 }
@@ -134,9 +131,6 @@ func (dsm *Disassembly) FromMemory() error {
 	// we have to be careful to manually unlock before returning an error.
 	dsm.crit.Lock()
 
-	// invalidate disassembly before continuing
-	dsm.validDisassembly = false
-
 	// create new memory
 	copiedBanks, err := dsm.vcs.Mem.Cart.CopyBanks()
 	if err != nil {
@@ -180,15 +174,7 @@ func (dsm *Disassembly) FromMemory() error {
 	// end of critical section
 
 	// disassemble cartridge binary
-	err = dsm.disassemble(mc, mem)
-	if err == nil {
-		// disassembly has finished with no problems
-		dsm.crit.Lock()
-		dsm.validDisassembly = true
-		dsm.crit.Unlock()
-	}
-
-	return err
+	return dsm.disassemble(mc, mem)
 }
 
 // GetEntryByAddress returns the disassembly entry at the specified
@@ -224,6 +210,11 @@ func (dsm *Disassembly) GetEntryByAddress(address uint16) (*Entry, bool) {
 // saying that there has been a "late decoding" - this suggests a flaw in the
 // decoding process.
 func (dsm *Disassembly) ExecutedEntry(bank mapper.BankInfo, result execution.Result, checkNextAddr bool, nextAddr uint16) *Entry {
+	// format if this is not the final cycle of the instruction
+	if !result.Final {
+		return dsm.FormatResult(bank, result, EntryLevelExecuted)
+	}
+
 	// if co-processor is executing then whatever has been executed by the 6507
 	// will not relate to the permanent disassembly. format the result and
 	// return
@@ -271,7 +262,10 @@ func (dsm *Disassembly) ExecutedEntry(bank mapper.BankInfo, result execution.Res
 		//
 		// (a) there's a bug/flaw in the decode procedure
 		// (b) the program has taken an unpredictable path
-		dsm.disasmEntries.Entries[bank.Number][idx] = dsm.FormatResult(bank, result, EntryLevelExecuted)
+		// (c) the cartridge data wasn't available at the time of disassembly
+		//		- which can happen with ACE roms and other modern cartridge types
+		e = dsm.FormatResult(bank, result, EntryLevelExecuted)
+		dsm.disasmEntries.Entries[bank.Number][idx] = e
 
 		// log late decoding
 		logger.Logf("disassembly", "late decoding of %s", dsm.disasmEntries.Entries[bank.Number][idx])
@@ -423,11 +417,6 @@ func (dsm *Disassembly) FormatResult(bank mapper.BankInfo, result execution.Resu
 func (dsm *Disassembly) BorrowDisasm(f func(*DisasmEntries)) {
 	dsm.crit.Lock()
 	defer dsm.crit.Unlock()
-
-	if !dsm.validDisassembly {
-		f(nil)
-		return
-	}
 
 	f(&dsm.disasmEntries)
 }
