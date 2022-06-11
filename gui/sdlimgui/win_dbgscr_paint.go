@@ -131,15 +131,14 @@ func (ff *floodFill) resolve(offsetIdx int) {
 		return
 	}
 
-	target := ff.targets[offsetIdx]
-	ref := ff.win.scr.crit.reflection[target.offset]
-	px := uint8((ref.Signal&signal.Color)>>signal.ColorShift) & 0xfe
-	if px != ff.from {
-		ff.resolve(offsetIdx + 1)
-		return
-	}
-
 	ff.win.img.dbg.PushRawEventImmediate(func() {
+		target := ff.targets[offsetIdx]
+		ref := ff.win.scr.crit.reflection[target.offset]
+		px := uint8((ref.Signal&signal.Color)>>signal.ColorShift) & 0xfe
+		if px != ff.from {
+			ff.resolve(offsetIdx + 1)
+			return
+		}
 		ff.win.img.dbg.GotoCoords(target.coord)
 
 		ff.win.img.dbg.PushRawEventImmediate(func() {
