@@ -36,6 +36,7 @@ type CartridgeHook interface {
 	ARMinterrupt(addr uint32, val1 uint32, val2 uint32) (ARMinterruptReturn, error)
 }
 
+// ARMInterruptReturn is the return value of the ARMinterrupt type.
 type ARMinterruptReturn struct {
 	InterruptEvent      string
 	SaveResult          bool

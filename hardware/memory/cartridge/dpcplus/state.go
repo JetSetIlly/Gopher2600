@@ -42,11 +42,6 @@ type State struct {
 
 	// the callfn process is stateful
 	callfn callfn.CallFn
-
-	// the MAM mode to use when called arm.Run(). Run() returns the value
-	// the thumb code leaves it in so this can carry over between program
-	// executions
-	mamcr uint32
 }
 
 func newDPCPlusState() *State {
@@ -55,18 +50,12 @@ func newDPCPlusState() *State {
 	return s
 }
 
-// the ideal MAMCR value given to the arm.Run() command.
-const dpcPlusMAMCR = 2
-
 func (s *State) initialise(rand *random.Random, bank int) {
 	s.registers.reset(rand)
 	s.bank = bank
 	s.lda = false
 	s.beats = 0
 	s.parameters = []uint8{}
-
-	// on reset the DPC+ driver is in mode 2
-	s.mamcr = dpcPlusMAMCR
 }
 
 func (s *State) Snapshot() *State {

@@ -68,16 +68,29 @@ type ARM struct {
 	mem   SharedMemory
 	hook  CartridgeHook
 
+	// ARM registers
+	registers [rCount]uint32
+	Status    status
+
+	// "peripherals" connected to the variety of ARM7TDMI-S used in the Harmony
+	// cartridge.
+	timer timer
+	mam   mam
+
+	// whether to foce an error on illegal memory access. set from ARM.prefs at
+	// the start of every arm.Run()
+	abortOnIllegalMem bool
+
+	// whether to foce an error on illegal memory access. set from ARM.prefs at
+	// the start of every arm.Run()
+	abortOnStackCollision bool
+
 	// nullAccessBoundary differs depending on the architecture
 	nullAccessBoundary uint32
 
 	// execution flags. set to false and/or error when Run() function should end
 	continueExecution bool
 	executionError    error
-
-	// ARM registers
-	registers [rCount]uint32
-	Status    status
 
 	// the speed at which the arm is running at and the required stretching for
 	// access to flash memory. speed is in MHz. Access latency of Flash memory is
@@ -100,11 +113,6 @@ type ARM struct {
 	// the PC of the instruction being executed
 	executingPC uint32
 
-	// "peripherals" connected to the variety of ARM7TDMI-S used in the Harmony
-	// cartridge.
-	timer timer
-	mam   mam
-
 	// the area the PC covers. once assigned we'll assume that the program
 	// never reads outside this area. the value is assigned on reset()
 	programMemory *[]uint8
@@ -123,14 +131,6 @@ type ARM struct {
 	//
 	// note: it is only set to true if abortOnIllegalMem is true
 	memoryError bool
-
-	// whether to foce an error on illegal memory access. set from ARM.prefs at
-	// the start of every arm.Run()
-	abortOnIllegalMem bool
-
-	// whether to foce an error on illegal memory access. set from ARM.prefs at
-	// the start of every arm.Run()
-	abortOnStackCollision bool
 
 	// collection of functionMap instances. indexed by programMemoryOffset to
 	// retrieve a functionMap
@@ -188,7 +188,7 @@ type ARM struct {
 	// total number of cycles for the entire program
 	cyclesTotal float32
 
-	// \/\/\/ the following are reset at the end of each Run() iteration \/\/\/
+	// \/\/\/ the following are reset at the end of each execution iteration \/\/\/
 
 	// whether cycle count or not. set from ARM.prefs at the start of every arm.Run()
 	//
@@ -231,12 +231,14 @@ type ARM struct {
 	function32bitOpcode   uint16
 
 	// address watches - apply to 32bit reads only
-	readWatches      []uint32
-	ReadWatchTrigger bool
+	readWatches []uint32
+
+	// whether the previous execution stopped because of a yield
+	yield bool
 }
 
 // NewARM is the preferred method of initialisation for the ARM type.
-func NewARM(arch Architecture, mmap memorymodel.Map, prefs *preferences.ARMPreferences, mem SharedMemory, hook CartridgeHook, pathToROM string) *ARM {
+func NewARM(arch Architecture, mamcr MAMCR, mmap memorymodel.Map, prefs *preferences.ARMPreferences, mem SharedMemory, hook CartridgeHook, pathToROM string) *ARM {
 	arm := &ARM{
 		arch:         arch,
 		prefs:        prefs,
@@ -250,6 +252,9 @@ func NewARM(arch Architecture, mmap memorymodel.Map, prefs *preferences.ARMPrefe
 		Clk:         70.0,
 		clklenFlash: 4.0,
 	}
+
+	// the mamcr to use as a preference
+	arm.mam.preferredMAMCR = mamcr
 
 	switch arm.arch {
 	case ARM7TDMI:
@@ -312,9 +317,52 @@ func (arm *ARM) reset() {
 	arm.registers[rSP], arm.registers[rLR], arm.registers[rPC] = arm.mem.ResetVectors()
 }
 
+// AddReadWatch adds an address to the list of addresses that will cause a
+// yield on a 32bit data read (not opcode reads).
+func (arm *ARM) AddReadWatch(addr uint32) {
+	arm.readWatches = append(arm.readWatches, addr)
+}
+
 // resetExecution is differnt to ARM in that it does not reset the state of the
-// ARM processor itself.
+// ARM processor itself only the state related to the current execution (cycles
+// consumed etc.)
 func (arm *ARM) resetExecution() error {
+	// update clock value from preferences
+	arm.Clk = float32(arm.prefs.Clock.Get().(float64))
+
+	// latency in megahertz
+	latencyInMhz := (1 / (arm.prefs.FlashLatency.Get().(float64) / 1000000000)) / 1000000
+	arm.clklenFlash = float32(math.Ceil(float64(arm.Clk) / latencyInMhz))
+
+	// set mamcr on startup
+	arm.mam.pref = arm.prefs.MAM.Get().(int)
+	if arm.mam.pref == preferences.MAMDriver {
+		arm.mam.setPreferredMamcr()
+		arm.mam.mamtim = 4.0
+	} else {
+		arm.mam.setMAMCR(MAMCR(arm.mam.pref))
+		arm.mam.mamtim = 4.0
+	}
+
+	// set cycle counting functions
+	arm.immediateMode = arm.prefs.Immediate.Get().(bool)
+	if arm.immediateMode {
+		arm.Icycle = arm.iCycleStub
+		arm.Scycle = arm.sCycleStub
+		arm.Ncycle = arm.nCycleStub
+		arm.disasmSummary.ImmediateMode = true
+	} else {
+		arm.Icycle = arm.iCycle
+		arm.Scycle = arm.sCycle
+		arm.Ncycle = arm.nCycle
+	}
+
+	// how to handle illegal memory access
+	arm.abortOnIllegalMem = arm.prefs.AbortOnIllegalMem.Get().(bool)
+	arm.abortOnStackCollision = arm.prefs.AbortOnStackCollision.Get().(bool)
+
+	// /\/\/\ updating of prefs /\/\/\
+
 	// reset cycles count
 	arm.cyclesTotal = 0
 	arm.prefetchCycle = S
@@ -322,6 +370,7 @@ func (arm *ARM) resetExecution() error {
 	// reset execution flags
 	arm.continueExecution = true
 	arm.executionError = nil
+	arm.yield = false
 
 	// reset disasm notes/flags
 	arm.disasmExecutionNotes = ""
@@ -379,321 +428,58 @@ func (arm *ARM) Step(vcsClock float32) {
 	arm.timer.stepFromVCS(arm.Clk, vcsClock)
 }
 
-func (arm *ARM) illegalAccess(event string, addr uint32) {
-	logger.Logf("ARM7", "%s: unrecognised address %08x (PC: %08x)", event, addr, arm.executingPC)
-	if arm.dev == nil {
-		return
-	}
-	log := arm.dev.IllegalAccess(event, arm.executingPC, addr)
-	if log == "" {
-		return
-	}
-	logger.Logf("ARM7", "%s: %s", event, log)
-}
-
-// nullAccess is a special condition of illegalAccess()
-func (arm *ARM) nullAccess(event string, addr uint32) {
-	logger.Logf("ARM7", "%s: probable null pointer dereference of %08x (PC: %08x)", event, addr, arm.executingPC)
-	if arm.dev == nil {
-		return
-	}
-	log := arm.dev.NullAccess(event, arm.executingPC, addr)
-	if log == "" {
-		return
-	}
-	logger.Logf("ARM7", "%s: %s", event, log)
-}
-
-func (arm *ARM) read8bit(addr uint32) uint8 {
-	if !arm.stackHasCollided && addr < arm.nullAccessBoundary {
-		arm.nullAccess("Read 8bit", addr)
-	}
-
-	var mem *[]uint8
-
-	mem, addr = arm.mem.MapAddress(addr, false)
-	if mem == nil {
-		if v, ok, comment := arm.timer.read(addr); ok {
-			arm.disasmExecutionNotes = comment
-			return uint8(v)
-		}
-		if v, ok := arm.mam.read(addr); ok {
-			return uint8(v)
-		}
-
-		arm.memoryError = arm.abortOnIllegalMem
-
-		if !arm.stackHasCollided {
-			arm.illegalAccess("Read 8bit", addr)
-		}
-
-		return 0
-	}
-
-	return (*mem)[addr]
-}
-
-func (arm *ARM) write8bit(addr uint32, val uint8) {
-	if !arm.stackHasCollided && addr < arm.nullAccessBoundary {
-		arm.nullAccess("Write 8bit", addr)
-	}
-
-	var mem *[]uint8
-
-	mem, addr = arm.mem.MapAddress(addr, true)
-	if mem == nil {
-		if ok, comment := arm.timer.write(addr, uint32(val)); ok {
-			arm.disasmExecutionNotes = comment
-			return
-		}
-		if ok := arm.mam.write(addr, uint32(val)); ok {
-			return
-		}
-
-		arm.memoryError = arm.abortOnIllegalMem
-
-		if !arm.stackHasCollided {
-			arm.illegalAccess("Write 8bit", addr)
-		}
-
-		return
-	}
-
-	(*mem)[addr] = val
-}
-
-func (arm *ARM) read16bit(addr uint32) uint16 {
-	if !arm.stackHasCollided && addr < arm.nullAccessBoundary {
-		arm.nullAccess("Read 16bit", addr)
-	}
-
-	// check 16 bit alignment
-	if addr&0x01 != 0x00 {
-		logger.Logf("ARM7", "misaligned 16 bit read (%08x) (PC: %08x)", addr, arm.registers[rPC])
-	}
-
-	var mem *[]uint8
-
-	mem, addr = arm.mem.MapAddress(addr, false)
-	if mem == nil {
-		if v, ok, comment := arm.timer.read(addr); ok {
-			arm.disasmExecutionNotes = comment
-			return uint16(v)
-		}
-		if v, ok := arm.mam.read(addr); ok {
-			return uint16(v)
-		}
-
-		arm.memoryError = arm.abortOnIllegalMem
-
-		if !arm.stackHasCollided {
-			arm.illegalAccess("Read 16bit", addr)
-		}
-
-		return 0
-	}
-
-	return uint16((*mem)[addr]) | (uint16((*mem)[addr+1]) << 8)
-}
-
-func (arm *ARM) write16bit(addr uint32, val uint16) {
-	if !arm.stackHasCollided && addr < arm.nullAccessBoundary {
-		arm.nullAccess("Write 16bit", addr)
-	}
-
-	// check 16 bit alignment
-	if addr&0x01 != 0x00 {
-		logger.Logf("ARM7", "misaligned 16 bit write (%08x) (PC: %08x)", addr, arm.registers[rPC])
-	}
-
-	var mem *[]uint8
-
-	mem, addr = arm.mem.MapAddress(addr, true)
-	if mem == nil {
-		if ok, comment := arm.timer.write(addr, uint32(val)); ok {
-			arm.disasmExecutionNotes = comment
-			return
-		}
-		if ok := arm.mam.write(addr, uint32(val)); ok {
-			return
-		}
-
-		arm.memoryError = arm.abortOnIllegalMem
-
-		if !arm.stackHasCollided {
-			arm.illegalAccess("Write 16bit", addr)
-		}
-
-		return
-	}
-
-	(*mem)[addr] = uint8(val)
-	(*mem)[addr+1] = uint8(val >> 8)
-}
-
-func (arm *ARM) read32bit(addr uint32) uint32 {
-	if !arm.stackHasCollided && addr < arm.nullAccessBoundary {
-		arm.nullAccess("Read 32bit", addr)
-	}
-
-	// check 32 bit alignment
-	if addr&0x03 != 0x00 {
-		logger.Logf("ARM7", "misaligned 32 bit read (%08x) (PC: %08x)", addr, arm.registers[rPC])
-	}
-
-	var mem *[]uint8
-
-	mem, addr = arm.mem.MapAddress(addr, false)
-	if mem == nil {
-		if v, ok, comment := arm.timer.read(addr); ok {
-			arm.disasmExecutionNotes = comment
-			return v
-		}
-		if v, ok := arm.mam.read(addr); ok {
-			return v
-		}
-
-		arm.memoryError = arm.abortOnIllegalMem
-
-		if !arm.stackHasCollided {
-			arm.illegalAccess("Read 32bit", addr)
-		}
-
-		return 0
-	}
-
-	// check watches
-	for _, v := range arm.readWatches {
-		if v == addr {
-			arm.ReadWatchTrigger = true
-			break
-		}
-	}
-
-	return uint32((*mem)[addr]) | (uint32((*mem)[addr+1]) << 8) | (uint32((*mem)[addr+2]) << 16) | uint32((*mem)[addr+3])<<24
-}
-
-func (arm *ARM) write32bit(addr uint32, val uint32) {
-	if !arm.stackHasCollided && addr < arm.nullAccessBoundary {
-		arm.nullAccess("Write 32bit", addr)
-	}
-
-	// check 32 bit alignment
-	if addr&0x03 != 0x00 {
-		logger.Logf("ARM7", "misaligned 32 bit write (%08x) (PC: %08x)", addr, arm.registers[rPC])
-	}
-
-	var mem *[]uint8
-
-	mem, addr = arm.mem.MapAddress(addr, true)
-	if mem == nil {
-		if ok, comment := arm.timer.write(addr, val); ok {
-			arm.disasmExecutionNotes = comment
-			return
-		}
-		if ok := arm.mam.write(addr, val); ok {
-			return
-		}
-
-		arm.memoryError = arm.abortOnIllegalMem
-
-		if !arm.stackHasCollided {
-			arm.illegalAccess("Write 32bit", addr)
-		}
-
-		return
-	}
-
-	(*mem)[addr] = uint8(val)
-	(*mem)[addr+1] = uint8(val >> 8)
-	(*mem)[addr+2] = uint8(val >> 16)
-	(*mem)[addr+3] = uint8(val >> 24)
-}
-
 // Run will continue until the ARM program encounters a switch from THUMB mode
-// to ARM mode. Note that currently, this means the ARM program may run
-// forever.
+// to ARM mode. Execution will halt under the following conditions
 //
-// Returns the MAMCR state, the number of ARM cycles consumed and any errors.
-func (arm *ARM) Run(mamcr uint32) (uint32, float32, error) {
+// 1) The number of cycles for the entire program is too great
+// 2) A yield condition has been met (eg. a watch address has been triggered)
+// 3) Execution mode has changed from Thumb to ARM (ARM7TDMI architecture only)
+//
+// Returns the number of ARM cycles consumed and any errors.
+func (arm *ARM) Run() (float32, error) {
 	arm.reset()
 
+	// must happen after reset()
 	err := arm.resetExecution()
 	if err != nil {
-		return arm.mam.mamcr, 0, err
+		return 0, err
 	}
 
-	// profile executed addresses at end of function
-	if arm.dev != nil {
-		defer arm.dev.ExecutionProfile(arm.executedAddresses)
-	}
-
-	// update clock value from preferences
-	arm.Clk = float32(arm.prefs.Clock.Get().(float64))
-
-	// latency in megahertz
-	latencyInMhz := (1 / (arm.prefs.FlashLatency.Get().(float64) / 1000000000)) / 1000000
-	arm.clklenFlash = float32(math.Ceil(float64(arm.Clk) / latencyInMhz))
-
-	// set mamcr on startup
-	arm.mam.pref = arm.prefs.MAM.Get().(int)
-	if arm.mam.pref == preferences.MAMDriver {
-		arm.mam.setMAMCR(mamcr)
-		arm.mam.mamtim = 4.0
-	} else {
-		arm.mam.setMAMCR(uint32(arm.mam.pref))
-		arm.mam.mamtim = 4.0
-	}
-
-	// set cycle counting functions
-	arm.immediateMode = arm.prefs.Immediate.Get().(bool)
-	if arm.immediateMode {
-		arm.Icycle = arm.iCycleStub
-		arm.Scycle = arm.sCycleStub
-		arm.Ncycle = arm.nCycleStub
-		arm.disasmSummary.ImmediateMode = true
-	} else {
-		arm.Icycle = arm.iCycle
-		arm.Scycle = arm.sCycle
-		arm.Ncycle = arm.nCycle
-	}
-
-	// start of program execution
-	if arm.disasm != nil {
-		arm.disasm.Start()
-	}
-
-	// how to handle illegal memory access
-	arm.abortOnIllegalMem = arm.prefs.AbortOnIllegalMem.Get().(bool)
-	arm.abortOnStackCollision = arm.prefs.AbortOnStackCollision.Get().(bool)
-
-	// update variableMemtop - probably hasn't changed but you never know
-	if arm.dev != nil {
-		arm.variableMemtop = arm.dev.VariableMemtop()
-	}
-
-	// fill pipeline
+	// fill pipeline must happen after resetExecution()
 	arm.registers[rPC] += 2
 
 	return arm.run()
 }
 
-func (arm *ARM) AddReadWatch(addr uint32) {
-	arm.readWatches = append(arm.readWatches, addr)
-}
-
-func (arm *ARM) Continue() (uint32, float32, error) {
+// Continue execution from a previously yielded execution. ARM program is
+// unpredictable if it was not initially started with a call to Run().
+//
+// Returns the number of ARM cycles consumed and any errors.
+func (arm *ARM) Continue() (float32, error) {
 	err := arm.resetExecution()
 	if err != nil {
-		return arm.mam.mamcr, 0, err
+		return 0, err
 	}
-
-	arm.ReadWatchTrigger = false
 
 	return arm.run()
 }
 
-func (arm *ARM) run() (uint32, float32, error) {
+func (arm *ARM) run() (float32, error) {
+	if arm.dev != nil {
+		// update variableMemtop - probably hasn't changed but you never know
+		arm.variableMemtop = arm.dev.VariableMemtop()
+		// profile executed addresses at end of function
+		defer arm.dev.ExecutionProfile(arm.executedAddresses)
+	}
+
+	if arm.disasm != nil {
+		// start of program execution
+		arm.disasmSummary = DisasmSummary{}
+		arm.disasm.Start()
+
+		defer arm.disasm.End(arm.disasmSummary)
+	}
+
 	var err error
 
 	// use to detect branches and whether to fill the pipeline (unused if
@@ -905,7 +691,7 @@ func (arm *ARM) run() (uint32, float32, error) {
 		}
 
 		// abort if a watch has been triggered
-		if arm.ReadWatchTrigger {
+		if arm.yield {
 			break
 		}
 	}
@@ -917,15 +703,9 @@ func (arm *ARM) run() (uint32, float32, error) {
 
 	// end of program execution
 
-	// update disassembly
-	if arm.disasm != nil {
-		arm.disasm.End(arm.disasmSummary)
-		arm.disasmSummary = DisasmSummary{}
-	}
-
 	if arm.executionError != nil {
-		return arm.mam.mamcr, 0, curated.Errorf("ARM7: %v", arm.executionError)
+		return 0, curated.Errorf("ARM7: %v", arm.executionError)
 	}
 
-	return arm.mam.mamcr, arm.cyclesTotal, nil
+	return arm.cyclesTotal, nil
 }

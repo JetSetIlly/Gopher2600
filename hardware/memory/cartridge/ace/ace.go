@@ -133,9 +133,9 @@ func NewAce(instance *instance.Instance, pathToROM string, version string, data 
 		return nil, err
 	}
 
-	cart.arm = arm.NewARM(arm.ARMv7_M, cart.mem.model, cart.instance.Prefs.ARM, cart.mem, cart, cart.pathToROM)
+	cart.arm = arm.NewARM(arm.ARMv7_M, arm.MAMfull, cart.mem.model, cart.instance.Prefs.ARM, cart.mem, cart, cart.pathToROM)
 	cart.arm.AddReadWatch(GPIO_ADDR_IN)
-	cart.arm.Run(0)
+	cart.arm.Run()
 
 	return cart, nil
 }

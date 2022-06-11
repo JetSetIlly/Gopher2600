@@ -24,7 +24,6 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
-	"github.com/jetsetilly/gopher2600/hardware/preferences"
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
@@ -102,7 +101,7 @@ func NewDPCplus(instance *instance.Instance, pathToROM string, data []byte) (map
 	//
 	// if bank0 has any ARM code then it will start at offset 0x08. first eight
 	// bytes are the ARM header
-	cart.arm = arm.NewARM(cart.version.arch, cart.version.mmap, instance.Prefs.ARM, cart.state.static, cart, pathToROM)
+	cart.arm = arm.NewARM(cart.version.arch, cart.version.mamcr, cart.version.mmap, instance.Prefs.ARM, cart.state.static, cart, pathToROM)
 
 	return cart, nil
 }
@@ -147,7 +146,7 @@ func (cart *dpcPlus) Plumb() {
 
 // Plumb implements the mapper.CartMapper interface.
 func (cart *dpcPlus) PlumbFromDifferentEmulation() {
-	cart.arm = arm.NewARM(cart.version.arch, cart.version.mmap, cart.instance.Prefs.ARM, cart.state.static, cart, cart.pathToROM)
+	cart.arm = arm.NewARM(cart.version.arch, arm.MAMfull, cart.version.mmap, cart.instance.Prefs.ARM, cart.state.static, cart, cart.pathToROM)
 }
 
 // Reset implements the mapper.CartMapper interface.
@@ -503,22 +502,13 @@ func (cart *dpcPlus) Write(addr uint16, data uint8, passive bool, poke bool) err
 		case 254:
 			fallthrough
 		case 255:
-			mamcr, cycles, err := cart.arm.Run(cart.state.mamcr)
+			cycles, err := cart.arm.Run()
 			if err != nil {
 				return curated.Errorf("DPC+: %v", err)
 			}
 			cart.state.callfn.Start(cycles)
 			if cart.dev != nil {
 				cart.dev.ExecutionStart()
-			}
-
-			if cart.instance.Prefs.ARM.MAM.Get().(int) == preferences.MAMDriver {
-				cart.state.mamcr = mamcr
-				if cart.state.mamcr != dpcPlusMAMCR {
-					logger.Logf("DPC+", "thumb program has left MAM in mode %d", cart.state.mamcr)
-				}
-			} else {
-				cart.state.mamcr = dpcPlusMAMCR
 			}
 		}
 

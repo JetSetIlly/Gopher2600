@@ -115,7 +115,7 @@ func NewCDF(instance *instance.Instance, pathToROM string, version string, data 
 	//
 	// if bank0 has any ARM code then it will start at offset 0x08. first eight
 	// bytes are the ARM header
-	cart.arm = arm.NewARM(cart.version.arch, cart.version.mmap, cart.instance.Prefs.ARM, cart.state.static, cart, cart.pathToROM)
+	cart.arm = arm.NewARM(cart.version.arch, cart.version.mamcr, cart.version.mmap, cart.instance.Prefs.ARM, cart.state.static, cart, cart.pathToROM)
 
 	return cart, nil
 }
@@ -160,7 +160,7 @@ func (cart *cdf) Plumb() {
 
 // Plumb implements the mapper.CartMapper interface.
 func (cart *cdf) PlumbFromDifferentEmulation() {
-	cart.arm = arm.NewARM(cart.version.arch, cart.version.mmap, cart.instance.Prefs.ARM, cart.state.static, cart, cart.pathToROM)
+	cart.arm = arm.NewARM(cart.version.arch, cart.version.mamcr, cart.version.mmap, cart.instance.Prefs.ARM, cart.state.static, cart, cart.pathToROM)
 }
 
 // Reset implements the mapper.CartMapper interface.
@@ -362,7 +362,7 @@ func (cart *cdf) Write(addr uint16, data uint8, passive bool, poke bool) error {
 
 			// we don't care about the state of the MAM returned by Run()
 			// because the CDF* driver handles the change itself
-			_, cycles, err := cart.arm.Run(cart.version.mamcr)
+			cycles, err := cart.arm.Run()
 			if err != nil {
 				return curated.Errorf("CDF: %v", err)
 			}

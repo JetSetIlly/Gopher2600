@@ -21,13 +21,25 @@ import (
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
+type MAMCR uint32
+
+const (
+	MAMdisabled MAMCR = iota
+	MAMpartial
+	MAMfull
+)
+
 // memory addressing module. not fully implemented.
 type mam struct {
 	mmap memorymodel.Map
 
 	// valid values for mamcr are 0, 1 or 2 are valid. we can think of these
 	// respectively, as "disable", "partial" and "full"
-	mamcr uint32
+	mamcr MAMCR
+
+	// the mamcr value preferred by the "driver" of the arm chip (eg. CDFJ+ may
+	// use a stricter MAM mode)
+	preferredMAMCR MAMCR
 
 	// NOTE: not used yet
 	mamtim uint32
@@ -53,7 +65,7 @@ func (m *mam) write(addr uint32, val uint32) bool {
 	switch addr {
 	case m.mmap.MAMCR:
 		if m.pref == preferences.MAMDriver {
-			m.setMAMCR(val)
+			m.setMAMCR(MAMCR(val))
 		}
 	case m.mmap.MAMTIM:
 		if m.pref == preferences.MAMDriver {
@@ -75,7 +87,7 @@ func (m *mam) read(addr uint32) (uint32, bool) {
 
 	switch addr {
 	case m.mmap.MAMCR:
-		val = m.mamcr
+		val = uint32(m.mamcr)
 	case m.mmap.MAMTIM:
 		val = m.mamtim
 	default:
@@ -85,9 +97,13 @@ func (m *mam) read(addr uint32) (uint32, bool) {
 	return val, true
 }
 
-func (m *mam) setMAMCR(val uint32) {
+func (m *mam) setMAMCR(val MAMCR) {
 	m.mamcr = val
 	if m.mamcr > 2 {
 		logger.Logf("ARM7", "setting MAMCR to a value greater than 2 (%#08x)", m.mamcr)
 	}
+}
+
+func (m *mam) setPreferredMamcr() {
+	m.mamcr = m.preferredMAMCR
 }

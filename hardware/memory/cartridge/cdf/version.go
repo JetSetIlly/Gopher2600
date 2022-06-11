@@ -75,7 +75,7 @@ type version struct {
 	entryPC uint32
 
 	// mam state on thumb program start
-	mamcr uint32
+	mamcr arm.MAMCR
 
 	// fast fetch modes. these are always disabled except for some versions of CDFJ+
 	fastLDX bool

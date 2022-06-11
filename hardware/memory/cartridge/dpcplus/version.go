@@ -26,6 +26,8 @@ type version struct {
 	arch arm.Architecture
 	mmap memorymodel.Map
 
+	mamcr arm.MAMCR
+
 	driverOriginROM uint32
 	driverMemtopROM uint32
 	customOriginROM uint32
@@ -62,6 +64,7 @@ func newVersion(memModel string, data []uint8) version {
 	return version{
 		arch:            arch,
 		mmap:            mmap,
+		mamcr:           arm.MAMfull,
 		driverOriginROM: mmap.FlashOrigin,
 		driverMemtopROM: mmap.FlashOrigin | 0x00000bff,
 		customOriginROM: mmap.FlashOrigin | 0x00000c00,
