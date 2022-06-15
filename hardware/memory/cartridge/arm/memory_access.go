@@ -15,7 +15,9 @@
 
 package arm
 
-import "github.com/jetsetilly/gopher2600/logger"
+import (
+	"github.com/jetsetilly/gopher2600/logger"
+)
 
 func (arm *ARM) illegalAccess(event string, addr uint32) {
 	logger.Logf("ARM7", "%s: unrecognised address %08x (PC: %08x)", event, addr, arm.executingPC)
@@ -179,6 +181,14 @@ func (arm *ARM) read32bit(addr uint32) uint32 {
 		logger.Logf("ARM7", "misaligned 32 bit read (%08x) (PC: %08x)", addr, arm.registers[rPC])
 	}
 
+	// check watches before adjusting address
+	for _, v := range arm.readWatches {
+		if v == addr {
+			arm.yield = true
+			break
+		}
+	}
+
 	var mem *[]uint8
 
 	mem, addr = arm.mem.MapAddress(addr, false)
@@ -198,14 +208,6 @@ func (arm *ARM) read32bit(addr uint32) uint32 {
 		}
 
 		return 0
-	}
-
-	// check watches
-	for _, v := range arm.readWatches {
-		if v == addr {
-			arm.yield = true
-			break
-		}
 	}
 
 	return uint32((*mem)[addr]) | (uint32((*mem)[addr+1]) << 8) | (uint32((*mem)[addr+2]) << 16) | uint32((*mem)[addr+3])<<24

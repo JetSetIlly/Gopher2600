@@ -98,6 +98,10 @@ func (sr *status) setCarry(a bool) {
 	sr.carry = a
 }
 
+func (sr *status) setOverflow(a bool) {
+	sr.overflow = a
+}
+
 // conditional execution information from "A7.3 Conditional execution" in "ARMv7-M"
 func (sr *status) condition(cond uint8) bool {
 	b := false

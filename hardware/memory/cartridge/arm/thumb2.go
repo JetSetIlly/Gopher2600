@@ -27,6 +27,8 @@ package arm
 
 import (
 	"fmt"
+
+	"github.com/jetsetilly/gopher2600/logger"
 )
 
 func (arm *ARM) decodeThumb2(opcode uint16) func(uint16) {
@@ -146,7 +148,7 @@ func (arm *ARM) decodeThumb2Miscellaneous(opcode uint16) func(uint16) {
 		} else if opcode&0xffe8 == 0xb668 {
 			panic(fmt.Sprintf("unpredictable 16-bit (miscellaneous) thumb-2 instruction (%04x)", opcode))
 		} else if opcode&0xffe8 == 0xb660 {
-			// change processor state
+			return arm.thumb2ChangeProcessorState
 		} else if opcode&0xfff0 == 0xb650 {
 			// set endianness
 		} else if opcode&0xfff0 == 0xb640 {
@@ -171,6 +173,10 @@ func (arm *ARM) decodeThumb2Miscellaneous(opcode uint16) func(uint16) {
 	panic(fmt.Sprintf("undecoded 16-bit (miscellaneous) thumb-2 instruction (%04x)", opcode))
 }
 
+func (arm *ARM) thumb2ChangeProcessorState(opcode uint16) {
+	logger.Logf("ARM7", "CPSID instruction does nothing")
+}
+
 func (arm *ARM) thumb2IfThen(opcode uint16) {
 	if arm.Status.itMask != 0b0000 {
 		panic("unpredictable IT instruction - already in an IT block")
@@ -191,6 +197,8 @@ func (arm *ARM) thumb2IfThen(opcode uint16) {
 	case 0b1111:
 		panic("unpredictable IT instruction - first condition data is 1111")
 	}
+
+	arm.fudge_thumb2Disassemble = "IT"
 }
 
 func (arm *ARM) thumb2CompareAndBranchOnNonZero(opcode uint16) {
@@ -202,6 +210,12 @@ func (arm *ARM) thumb2CompareAndBranchOnNonZero(opcode uint16) {
 	if nonZero != (arm.registers[Rn] == 0) {
 		imm32 := (imm5 << 1) | (i << 6)
 		arm.registers[rPC] += uint32(imm32)
+	}
+
+	if nonZero {
+		arm.fudge_thumb2Disassemble = "CBNZ"
+	} else {
+		arm.fudge_thumb2Disassemble = "CBZ"
 	}
 }
 
@@ -222,6 +236,7 @@ func (arm *ARM) thumb2SignZeroExtend(opcode uint16) {
 		// "4.6.226 UXTH" in "Thumb-2 Supplement"
 		// T1 Encoding
 		arm.registers[Rd] = arm.registers[Rm] & 0x0000ffff
+		arm.fudge_thumb2Disassemble = "UXTH"
 	case 0b11:
 		// unsigned extend byte UXTB
 		panic(3)

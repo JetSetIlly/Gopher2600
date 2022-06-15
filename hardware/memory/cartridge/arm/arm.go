@@ -29,7 +29,11 @@ import (
 
 // register names.
 const (
-	rSP = 13 + iota
+	rSB = 9 + iota // static base
+	rSL            // stack limit
+	rFP            // frame pointer
+	rIP            // intra-procedure-call scratch register
+	rSP
 	rLR
 	rPC
 	rCount
@@ -39,7 +43,11 @@ const (
 // no idea if this value is sufficient.
 //
 // 03/02/2022 - raised to accomodate CDFJBoulderDash development
-const CycleLimit = 1000000
+const cycleLimit = 1000000
+
+// the maximum number of instructions to execute. like cycleLimit but for when
+// running in immediate mode
+const instructionsLimit = cycleLimit / 3
 
 // Architecture defines the features of the ARM core.
 type Architecture string
@@ -225,10 +233,14 @@ type ARM struct {
 	// addresses of instructions that have been executed
 	executedAddresses map[uint32]float32
 
-	// 32 bit thumb2 function
+	// control of 32bit thumb-2 function decoding
 	function32bit         bool
 	function32bitFunction func(uint16)
 	function32bitOpcode   uint16
+
+	// disassembly of 32bit thumb-2
+	// * temporary construct until thumb2Disassemble() is written
+	fudge_thumb2Disassemble string
 
 	// address watches - apply to 32bit reads only
 	readWatches []uint32
@@ -486,8 +498,12 @@ func (arm *ARM) run() (float32, error) {
 	// arm.immediateMode is true)
 	var expectedPC uint32
 
+	// number of iterations. only used when in immediate mode
+	var iterations int
+
 	// loop through instructions until we reach an exit condition
 	for arm.continueExecution && !arm.memoryError {
+
 		// program counter to execute:
 		//
 		// from "7.6 Data Operations" in "ARM7TDMI-S Technical Reference Manual r4p1", page 1-2
@@ -662,8 +678,16 @@ func (arm *ARM) run() (float32, error) {
 			arm.cycleOrder.reset()
 
 			// limit the number of cycles used by the ARM program
-			if arm.cyclesTotal >= CycleLimit {
-				logger.Logf("ARM7", "reached cycle limit of %d. ending execution early", CycleLimit)
+			if arm.cyclesTotal >= cycleLimit {
+				logger.Logf("ARM7", "reached cycle limit of %d. ending execution early", cycleLimit)
+				panic(1)
+				break
+			}
+		} else {
+			iterations++
+			if iterations > instructionsLimit {
+				logger.Logf("ARM7", "reached instructions limit of %d. ending execution early", instructionsLimit)
+				panic(2)
 				break
 			}
 		}

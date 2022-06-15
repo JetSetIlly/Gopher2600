@@ -655,12 +655,24 @@ func (arm *ARM) thumbHiRegisterOps(opcode uint16) {
 	case 0b11:
 		switch arm.arch {
 		case ARMv7_M:
-			// "A7.7.19 BLX (register)" in "ARMv7-M"
-			arm.registers[rLR] = (arm.registers[rPC]-2)&0xfffffffe | 0x00000001
-			arm.registers[rPC] += arm.registers[srcReg]
+			// register to use is expressed slightly differently
+			Rm := (opcode & 0x78) >> 3
+
+			if opcode&0x0080 == 0x0080 {
+				// "A7.7.19 BLX (register)" in "ARMv7-M"
+				target := arm.registers[Rm]
+				nextPC := arm.registers[rPC] - 2
+				arm.registers[rLR] = nextPC | 0x01
+				if target&0x01 == 0x00 {
+					panic("cannot switch to ARM mode in the ARMv7-M architecture")
+				}
+				arm.registers[rPC] = target & 0xfffffffe
+			} else {
+				// "A7.7.20 BX " in "ARMv7-M"
+				arm.registers[rPC] = arm.registers[Rm] + 1
+			}
 
 			if arm.disasm != nil {
-				arm.disasmExecutionNotes = "branch exchange to thumb code"
 				arm.disasmUpdateNotes = true
 			}
 

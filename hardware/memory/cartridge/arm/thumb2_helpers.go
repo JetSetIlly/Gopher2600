@@ -87,3 +87,13 @@ func ROR_C(imm32 uint32, shift uint32) (uint32, bool) {
 	result := (imm32 >> m) | (imm32 << (32 - m))
 	return result, result&0x80000000 == 0x80000000
 }
+
+// returns result, carry, overflow
+func AddWithCarry(a uint32, b uint32, c uint32) (uint32, bool, bool) {
+	usum := a + b + c
+	ssum := int32(a) + int32(b) + int32(c)
+	result := usum & 0x7fffffff
+	carry := result == usum
+	overflow := int32(result) == ssum
+	return result, carry, overflow
+}
