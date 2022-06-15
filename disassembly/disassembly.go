@@ -266,9 +266,6 @@ func (dsm *Disassembly) ExecutedEntry(bank mapper.BankInfo, result execution.Res
 		//		- which can happen with ACE roms and other modern cartridge types
 		e = dsm.FormatResult(bank, result, EntryLevelExecuted)
 		dsm.disasmEntries.Entries[bank.Number][idx] = e
-
-		// log late decoding
-		logger.Logf("disassembly", "late decoding of %s", dsm.disasmEntries.Entries[bank.Number][idx])
 	} else {
 		// check for opcode reliability. if it's different then return the actual
 		// result and not the one in the entries list.
