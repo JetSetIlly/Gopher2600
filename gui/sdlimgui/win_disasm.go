@@ -431,10 +431,16 @@ func (win *winDisasm) drawBank(focusAddr uint16) {
 			}
 		case filterCPUBug:
 			iterateFilter = func(e *disassembly.Entry) bool {
+				if e == nil {
+					return false
+				}
 				return e.Level >= disassembly.EntryLevelExecuted && e.Result.CPUBug != ""
 			}
 		case filterPageFault:
 			iterateFilter = func(e *disassembly.Entry) bool {
+				if e == nil {
+					return false
+				}
 				return e.Level >= disassembly.EntryLevelExecuted && e.Result.PageFault
 			}
 		}
