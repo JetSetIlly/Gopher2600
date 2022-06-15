@@ -53,7 +53,11 @@ func (arm *ARM) decodeThumb2Upper32bit(opcode uint16) func(uint16) {
 		}
 	} else if opcode&0xfe40 == 0xe840 {
 		// load and store double and exclusive and table branch
-		panic("load and store double and exclusive and table branch")
+		return func(_ uint16) {
+			arm.function32bit = true
+			arm.function32bitFunction = arm.thumb2LoadStoreDoubleEtc
+			arm.function32bitOpcode = opcode
+		}
 	} else if opcode&0xfe00 == 0xf800 {
 		// load and store single data item, memory hints
 		return func(_ uint16) {
@@ -63,15 +67,101 @@ func (arm *ARM) decodeThumb2Upper32bit(opcode uint16) func(uint16) {
 		}
 	} else if opcode&0xee00 == 0xea00 {
 		// data processing, no immediate operand
-		panic("data processing, no immediate operand")
+		return func(_ uint16) {
+			arm.function32bit = true
+			arm.function32bitFunction = arm.thumb2DataProcessingNoImmediate
+			arm.function32bitOpcode = opcode
+		}
 	}
 
 	panic(fmt.Sprintf("undecoded 32-bit thumb-2 instruction (upper half-word) (%04x)", opcode))
 }
 
+func (arm *ARM) thumb2DataProcessingNoImmediate(opcode uint16) {
+	// "3.3.2 Data processing instructions, non-immediate" of "Thumb-2 Supplement"
+
+	Rn := arm.function32bitOpcode & 0x000f
+	Rm := opcode & 0x000f
+
+	if arm.function32bitOpcode&0xf800 == 0xe800 {
+		panic("unhandled data processing instructions, non immediate")
+	} else if arm.function32bitOpcode&0xff00 == 0xfb00 {
+		if arm.function32bitOpcode&0xff80 == 0xfb00 {
+			panic("unhandled data processing instructions, non immediate (32bit multiplies)")
+		} else {
+			// "64-bit multiply, multiply-accumulate, and divide instructions"
+			// page 3-25 of "Thumb-2 Supplement"
+
+			op := (arm.function32bitOpcode & 0x0070) >> 4
+			RdLo := (opcode & 0xf000) >> 12
+			RdHi := (opcode & 0x0f00) >> 8
+			op2 := (opcode & 0x00f0) >> 4
+
+			if op == 0b010 && op2 == 0b000 {
+				// "4.6.207 UMULL" of "Thumb-2 Supplement"
+				result := uint64(arm.registers[Rn]) * uint64(arm.registers[Rm])
+				arm.registers[RdHi] = uint32((result & 0xffffffff00000000) >> 32)
+				arm.registers[RdLo] = uint32(result & 0x00000000ffffffff)
+			} else {
+				panic("unhandled data processing instructions, non immediate (64bit multiplies")
+			}
+		}
+	} else {
+		panic("unhandled data processing instructions, non immediate")
+	}
+}
+
+func (arm *ARM) thumb2LoadStoreDoubleEtc(opcode uint16) {
+	// "3.3.4 Load/store double and exclusive, and table branch" of "Thumb-2 Supplement"
+
+	p := (arm.function32bitOpcode & 0x0100) == 0x0100
+	u := (arm.function32bitOpcode & 0x0080) == 0x0080
+	w := (arm.function32bitOpcode & 0x0020) == 0x0020
+	l := (arm.function32bitOpcode & 0x0010) == 0x0010
+
+	Rn := arm.function32bitOpcode & 0x000f
+	Rt := (opcode & 0xf000) >> 12
+	Rt2 := (opcode & 0x0f00) >> 8
+	imm8 := opcode & 0x00ff
+	imm32 := imm8 << 2
+
+	if p || w {
+		addr := arm.registers[Rn]
+		if p {
+			if u {
+				addr += uint32(imm32)
+			} else {
+				addr -= uint32(imm32)
+			}
+		}
+
+		if l {
+			// "A7.7.50 LDRD (immediate)" of "ARMv7-M"
+			arm.fudge_thumb2Disassemble = "LDRD (immediate)"
+
+			arm.registers[Rt] = arm.read32bit(addr)
+			arm.registers[Rt2] = arm.read32bit(addr + 4)
+		} else {
+			// "A7.7.166 STRD (immediate)" of "ARMv7-M"
+			arm.fudge_thumb2Disassemble = "STRD (immediate)"
+
+			arm.write32bit(addr, arm.registers[Rt])
+			arm.write32bit(addr+4, arm.registers[Rt])
+		}
+
+		if w {
+			arm.registers[Rn] = addr
+		}
+
+		return
+	}
+
+	panic("unhandled load and store double and exclusive and table branch")
+}
+
 func (arm *ARM) thumb2BranchesORDataProcessing(opcode uint16) {
 	if opcode&0x8000 == 0x8000 {
-		arm.thumb2LongBranchWithLink(opcode)
+		arm.thumb2BranchesMiscControl(opcode)
 	} else {
 		arm.thumb2DataProcessing(opcode)
 	}
@@ -251,15 +341,22 @@ func (arm *ARM) thumb2DataProcessing(opcode uint16) {
 func (arm *ARM) thumb2LoadStoreSingle(opcode uint16) {
 	// "3.3.3 Load and store single data item, and memory hints" of "Thumb-2 Supplement"
 
+	// Addressing mode discussed in "A4.6.5 Addressing modes" of "ARMv7-M"
+
 	size := (arm.function32bitOpcode & 0x0060) >> 5
 	s := arm.function32bitOpcode&0x0100 == 0x0100
 	l := arm.function32bitOpcode&0x0010 == 0x0010
 	Rn := arm.function32bitOpcode & 0x000f
 	Rt := (opcode & 0xf000) >> 12
-	imm12 := opcode & 0x0fff
 
 	if s {
 		panic("unhandled sign extend for 'load and store single data item, and memory hints'")
+	}
+
+	if l {
+		arm.fudge_thumb2Disassemble = "LDR"
+	} else {
+		arm.fudge_thumb2Disassemble = "STR"
 	}
 
 	if arm.function32bitOpcode&0xfe1f == 0xf81f {
@@ -267,6 +364,7 @@ func (arm *ARM) thumb2LoadStoreSingle(opcode uint16) {
 		// further depends on size and L bit
 
 		u := arm.function32bitOpcode&0x0080 == 0x0080
+		imm12 := opcode & 0x0fff
 		addr := arm.registers[Rn]
 		if u {
 			addr += uint32(imm12)
@@ -278,42 +376,18 @@ func (arm *ARM) thumb2LoadStoreSingle(opcode uint16) {
 		switch size {
 		case 0b00:
 			if l {
-				// "A7.7.46 LDRB (immediate)" of "ARMv7-M"
-				// T2 encoding
-				arm.fudge_thumb2Disassemble = "LDRB (immediate - pc relative)"
-
-				if Rt == rPC {
-					panic("PC cannot be a destination register for this instruction")
-				}
 				arm.registers[Rt] = uint32(arm.read8bit(addr))
 			} else {
-				// "A7.7.163 STRB (immediate)" of "ARMv7-M
-				// T2 encoding
-				arm.fudge_thumb2Disassemble = "STRB (immediate - pc relative)"
-
-				if Rt == rPC || Rt == rSP {
-					panic("PC/SP cannot be a destination register for this instruction")
-				}
 				arm.write8bit(addr, uint8(arm.registers[Rt]))
 			}
-			return
-
-		case 0b01:
 		case 0b10:
 			if l {
-				// "A7.7.55 LDRH (immediate)" of "ARMv7-M"
-				// T2 encoding
-				arm.fudge_thumb2Disassemble = "LDRH (immediate - pc relative)"
-
 				arm.registers[Rt] = uint32(arm.read16bit(addr))
 			} else {
-				// "A7.7.170 STRH (immediate)" of "ARMv7-M"
-				// T2 encoding
-				arm.fudge_thumb2Disassemble = "STRH (immediate - pc relative)"
-
 				arm.write16bit(addr, uint16(arm.registers[Rt]))
 			}
-			return
+		default:
+			panic(fmt.Sprintf("unhandled size (%02b) for 'PC +/- imm12'", size))
 		}
 	} else if arm.function32bitOpcode&0xfe80 == 0xf880 {
 		// Rn + imm12 (format 2 in the table)
@@ -321,147 +395,105 @@ func (arm *ARM) thumb2LoadStoreSingle(opcode uint16) {
 
 		// U is always up for this format meaning that we add the index to
 		// the base address
+		imm12 := opcode & 0x0fff
 		addr := arm.registers[Rn] + uint32(imm12)
 
 		switch size {
 		case 0b00:
 			if l {
-				// "A7.7.46 LDRB (immediate)" of "ARMv7-M"
-				// T2 encoding
-				arm.fudge_thumb2Disassemble = "LDRB (immediate)"
-
-				if Rt == rPC {
-					panic("PC cannot be a destination register for this instruction")
-				}
 				arm.registers[Rt] = uint32(arm.read8bit(addr))
 			} else {
-				// "A7.7.163 STRB (immediate)" of "ARMv7-M
-				// T2 encoding
-				arm.fudge_thumb2Disassemble = "STRB (immediate)"
-
-				if Rt == rPC || Rt == rSP {
-					panic("PC/SP cannot be a destination register for this instruction")
-				}
 				arm.write8bit(addr, uint8(arm.registers[Rt]))
 			}
-			return
-
-		case 0b01:
 		case 0b10:
 			if l {
-				// "A7.7.55 LDRH (immediate)" of "ARMv7-M"
-				// T2 encoding
-				arm.fudge_thumb2Disassemble = "LDRH (immediate)"
-
 				arm.registers[Rt] = uint32(arm.read16bit(addr))
 			} else {
-				// "A7.7.170 STRH (immediate)" of "ARMv7-M"
-				// T2 encoding
-				arm.fudge_thumb2Disassemble = "STRH (immediate)"
-
 				arm.write16bit(addr, uint16(arm.registers[Rt]))
 			}
-			return
+		default:
+			panic(fmt.Sprintf("unhandled size (%02b) for 'Rn + imm12'", size))
 		}
 
-		panic(fmt.Sprintf("unhandled size (%02b) for 'load and store single data item, and memory hints'", size))
-	} else {
-		// size := (arm.function32bitOpcode & 0x0060) >> 5
+	} else if (opcode & 0x0f00) == 0x0c00 {
+		// Rn -imm8 (format 3 in the table)
+		// imm8 := opcode & 0x00ff
+		panic("umimplemented Rn -imm8")
 
-		if (opcode & 0x0f00) == 0x0c00 {
-			panic("umimplemented Rn -imm8")
-		} else if (opcode & 0x0f00) == 0x0e00 {
-			panic("umimplemented Rn +imm8, user privilege")
-		} else if (opcode & 0x0d00) == 0x0900 {
-			panic("umimplemented Rn post-indexed by +/- imm8")
-		} else if (opcode & 0x0d00) == 0x0d00 {
-			panic("umimplemented Rn pre-indexes by +/- imm8")
+	} else if (opcode & 0x0f00) == 0x0e00 {
+		// Rn +imm8, user privilege (format 4 in the table)
+		// imm8 := opcode & 0x00ff
+		panic("umimplemented Rn +imm8, user privilege")
+
+	} else if (opcode & 0x0d00) == 0x0900 {
+		// Rn post-index by +/- imm8 (format 5 in the table)
+		imm8 := opcode & 0x00ff
+		addr := arm.registers[Rn]
+
+		switch size {
+		case 0b00:
+			if l {
+				arm.registers[Rt] = uint32(arm.read8bit(addr))
+			} else {
+				arm.write8bit(addr, uint8(arm.registers[Rt]))
+			}
+		case 0b10:
+			if l {
+				arm.registers[Rt] = uint32(arm.read16bit(addr))
+			} else {
+				arm.write16bit(addr, uint16(arm.registers[Rt]))
+			}
+		default:
+			panic(fmt.Sprintf("unhandled size (%02b) for 'Rn + imm12'", size))
 		}
-	}
 
-	panic("reserved bit pattern in 'load and store single data item, and memory hints'")
-}
+		arm.registers[Rn] = addr + uint32(imm8)
 
-func (arm *ARM) thumb2LoadStoreSingle_(opcode uint16) {
-	// "3.3.3 Load and store single data item, and memory hints" of "Thumb-2 Supplement"
-	//
-	// the equivalent tables in "ARMv7-M" are more plentiful but ulimately, include the
-	// same information. The "Thumb-2 Supplement" was used.
+	} else if (opcode & 0x0d00) == 0x0d00 {
+		// Rn pre-indexed by +/- imm8 (format 6 in the table)
+		imm8 := opcode & 0x00ff
+		addr := arm.registers[Rn] + uint32(imm8)
 
-	// load (1) or store (0)
-	l := (arm.function32bitOpcode & 0x0010) >> 4
+		switch size {
+		case 0b00:
+			if l {
+				arm.registers[Rt] = uint32(arm.read8bit(addr))
+			} else {
+				arm.write8bit(addr, uint8(arm.registers[Rt]))
+			}
+		case 0b10:
+			if l {
+				arm.registers[Rt] = uint32(arm.read16bit(addr))
+			} else {
+				arm.write16bit(addr, uint16(arm.registers[Rt]))
+			}
+		default:
+			panic(fmt.Sprintf("unhandled size (%02b) for 'Rn + imm12'", size))
+		}
 
-	// sign-extended (1) or zero extended (0)
-	// s := (arm.function32bitOpcode & 0x0100) >> 8
+		arm.registers[Rn] = addr
 
-	// size of transfer
-	size := (arm.function32bitOpcode & 0x0060) >> 5
+	} else if (opcode & 0x0fc0) == 0x0000 {
+		// Rn + shifted register (format 7 in the table)
+		shift := (opcode & 0x0030) >> 4
+		Rm := opcode & 0x0007
 
-	if arm.function32bitOpcode&0x001f == 0x001f {
-		// PC +/- imm12
+		addr := arm.registers[Rm] << shift
 
-		// indexing upwards (1) or downwards (0)
-		// u := (arm.function32bitOpcode & 0x0080) >> 7
-
-		panic("load and store single: unimplemented: PC +/- imm12")
-	} else if arm.function32bitOpcode&0x0080 == 0x0080 {
-		// "A7.7.43 LDR (immediate)" of "ARMv7-M"
-		// T3 Encoding
-
-		// Rn +/- imm12
-
-		// Rn cannot be 15. if it was it would be "PC +/- imm 12" version of
-		// the instruction
-		Rn := arm.function32bitOpcode & 0x000f
-		Rt := (opcode & 0xf000) >> 12
-		Imm32 := uint32(opcode & 0x0fff)
-
-		// if Rt is PC and we're in IT block but this isn't the last
-		// instruction in the block then the results are unpredictable
-
-		if l == 1 {
-			// load
+		if l {
 			switch size {
 			case 0b00:
-				panic("load and store single: unimplemented: Rn +/- imm12: load (size 00)")
-			case 0b01:
-				panic("load and store single: unimplemented: Rn +/- imm12: load (size 01)")
-			case 0b10:
-				// "A7.7.43 LDR (immediate)" of "ARMv7-M"
-				arm.fudge_thumb2Disassemble = "LDR (immediate)"
-
-				addr := arm.registers[Rn] + Imm32
-				data := arm.read32bit(addr)
-				arm.registers[Rt] = data
-
-			case 0b11:
-				panic("load and store single: unimplemented: Rn +/- imm12: load (size 11)")
+				arm.registers[Rt] = uint32(arm.read8bit(addr))
+			default:
+				panic(fmt.Sprintf("unhandled size (%02b) for 'Rn + shifted register' (load)", size))
 			}
 		} else {
-			// store
-			panic("load and store single: unimplemented: Rn +/- imm12: store")
+			panic("unhandled save 'Rn + shifted register'")
 		}
-	} else {
-		if opcode&0x0f00 == 0xc00 {
-			// Rn -imm8
-			panic("load and store single: unimplemented: Rn -imm8")
-		} else if opcode&0x0f00 == 0x0e00 {
-			// Rn + imm8, user privilege
-			panic("load and store single: unimplemented: Rn + imm8, user privilege")
-		} else if opcode&0x0d00 == 0x0900 {
-			// Rn post-indexed by += imm8
-			panic("load and store single: unimplemented: Rn post-indexed by += imm8")
-		} else if opcode&0x0d00 == 0x0d00 {
-			// Rn pre-indexed by += imm8
-			panic("load and store single: unimplemented: Rn pre-indexed by += imm8")
-		} else if opcode&0x0fc0 == 0x0000 {
-			// Rn + shifted reister
-			panic("load and store single: unimplemented: Rn + shifted reister")
-		} else {
-			panic("reserved operation in 'load and store single'")
-		}
-	}
 
+	} else {
+		panic("unhandled bit pattern in 'load and store single data item, and memory hints'")
+	}
 }
 
 func (arm *ARM) thumb2LoadStoreMultiple(opcode uint16) {
@@ -546,8 +578,54 @@ func (arm *ARM) thumb2LoadStoreMultiple(opcode uint16) {
 	}
 }
 
+func (arm *ARM) thumb2BranchesMiscControl(opcode uint16) {
+	// "A5.3.4 Branches and miscellaneous control" of "ARMv7-M"
+	//
+	// and
+	//
+	// "3.3.6 Branches, miscellaneous control instructions" of "Thumb-2 Supplement"
+
+	op := (arm.function32bitOpcode & 0x7f0) >> 4
+
+	if opcode&0xd000 == 0xd000 {
+		arm.thumb2LongBranchWithLink(opcode)
+	} else if opcode&0xd000 == 0x9000 {
+		panic("unhandled branches, miscellaneous control instructions (branch)")
+	} else if opcode&0xd000 == 0xa000 {
+		panic("reserved branches, miscellaneous control instructions")
+	} else if op&0x7e == 0x3e {
+		panic("unhandled branches, miscellaneous control instructions (move from special register)")
+	} else if op&0x7f == 0x3b {
+		panic("unhandled branches, miscellaneous control instructions (misc control)")
+	} else if op&0x7f == 0x3a {
+		panic("unhandled branches, miscellaneous control instructions (hint instructions)")
+	} else if op&0x7e == 0x38 {
+		panic("unhandled branches, miscellaneous control instructions (move to special register)")
+	} else {
+		// "A7.7.12 B" (conditional branching) of "ARMv7-M"
+		// T3 encoding
+		arm.fudge_thumb2Disassemble = "B"
+
+		s := (arm.function32bitOpcode & 0x0400) >> 10
+		cond := (arm.function32bitOpcode & 0x03c0) >> 6
+		imm6 := arm.function32bitOpcode & 0x003f
+		j1 := (opcode & 0x2000) >> 13
+		j2 := (opcode & 0x0800) >> 11
+		imm11 := opcode & 0x07ff
+		imm32 := uint32((s << 20) | (j2 << 19) | (j1 << 18) | (imm6 << 12) | (imm11 << 1))
+		if s == 0x01 {
+			imm32 |= 0xfff00000
+		}
+
+		if arm.Status.condition(uint8(cond)) {
+			arm.registers[rPC] += imm32
+		}
+	}
+}
+
 func (arm *ARM) thumb2LongBranchWithLink(opcode uint16) {
 	// details in "A7.7.18 BL" of "ARMv7-M"
+	arm.fudge_thumb2Disassemble = "BL"
 
 	arm.registers[rLR] = (arm.registers[rPC]-2)&0xfffffffe | 0x00000001
 
@@ -561,6 +639,4 @@ func (arm *ARM) thumb2LongBranchWithLink(opcode uint16) {
 	imm32 := (i1 << 23) | (i2 << 22) | (imm10 << 12) | (imm11 << 1)
 	imm32 = imm32 | (s << 24) | (s << 25) | (s << 26) | (s << 27) | (s << 28) | (s << 29) | (s << 30) | (s << 31)
 	arm.registers[rPC] += imm32
-
-	arm.fudge_thumb2Disassemble = "BL"
 }
