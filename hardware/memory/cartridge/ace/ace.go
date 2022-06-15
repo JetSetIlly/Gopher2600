@@ -23,18 +23,38 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm/memorymodel"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
+	"github.com/jetsetilly/gopher2600/logger"
 )
 
 type aceMemory struct {
-	model memorymodel.Map
-	sram  []byte
-	flash []byte
-
+	model   memorymodel.Map
 	resetSP uint32
 	resetLR uint32
 	resetPC uint32
 
-	gpio []byte
+	armProgram []byte
+	armOrigin  uint32
+	armMemtop  uint32
+
+	vcsProgram []byte
+	vcsOrigin  uint32
+	vcsMemtop  uint32
+
+	gpioIn       []byte
+	gpioInOrigin uint32
+	gpioInMemtop uint32
+
+	gpioOut       []byte
+	gpioOutOrigin uint32
+	gpioOutMemtop uint32
+
+	virtualArgs       []byte
+	virtualArgsOrigin uint32
+	virtualArgsMemtop uint32
+
+	sram       []byte
+	sramOrigin uint32
+	sramMemtop uint32
 }
 
 const (
@@ -44,7 +64,7 @@ const (
 	aceHeaderROMSize       = 28
 	aceHeaderROMChecksum   = 32
 	aceHeaderEntryPoint    = 36
-	startOfRom             = 40
+	aceStartOfRom          = 40
 )
 
 const (
@@ -65,20 +85,114 @@ func newAceMemory(version string, data []byte) (*aceMemory, error) {
 		return nil, curated.Errorf("ACE: unrecognised version (%s)", version)
 	}
 
-	mem.resetSP = mem.model.SRAMOrigin | 0x00001fdc
-	mem.resetLR = mem.model.FlashOrigin
-	mem.resetPC = (uint32(data[aceHeaderEntryPoint])) |
+	romSize := (uint32(data[aceHeaderROMSize])) |
+		(uint32(data[aceHeaderROMSize+1]) << 8) |
+		(uint32(data[aceHeaderROMSize+2]) << 16) |
+		(uint32(data[aceHeaderROMSize+3]) << 24)
+
+	// ignoring checksum
+
+	entryPoint := (uint32(data[aceHeaderEntryPoint])) |
 		(uint32(data[aceHeaderEntryPoint+1]) << 8) |
 		(uint32(data[aceHeaderEntryPoint+2]) << 16) |
 		(uint32(data[aceHeaderEntryPoint+3]) << 24)
-	mem.resetPC += mem.model.FlashOrigin
 
+	mem.resetSP = mem.model.SRAMOrigin | 0x00001fdc
+	mem.resetLR = mem.model.FlashOrigin
+	mem.resetPC = mem.model.FlashOrigin + entryPoint
+
+	// offset into the data array for start of ARM program. not entirely sure
+	// of the significance of the jumpVector value or what it refers to
+	const jumpVector = 0x08020201
+	dataOffset := mem.resetPC - jumpVector - mem.model.FlashOrigin
+
+	// align reset PC value (maybe this should be done in the ARM package once
+	// the value has been received - on second thoughts, no we shouldn't do
+	// this because we need to know the true value of resetPC in MapAddress()
+	// below)
+	mem.resetPC &= 0xfffffffe
+
+	mem.vcsProgram = make([]byte, len(data))
+	copy(mem.vcsProgram, data)
+	mem.vcsOrigin = 0x21000000
+	mem.vcsMemtop = mem.vcsOrigin + uint32(len(mem.vcsProgram))
+
+	mem.armProgram = make([]byte, romSize)
+	copy(mem.armProgram, data[dataOffset:])
+	mem.armOrigin = mem.resetPC
+	mem.armMemtop = mem.armOrigin + uint32(len(mem.armProgram))
+
+	// define the Thumb-2 bytecode fo a function whose only purpose is to jump
+	// back to where it came from bytecode is for instruction "BX LR" with a
+	// "true" value in R0
+	nullFunction := []byte{
+		0x00,       // for alignment
+		0x01, 0x20, // MOV R1, #1 (the function returns true)
+		0x70, 0x47, // BX LR
+	}
+
+	// not sure why we need the +3 but the incorrect address is loaded by the
+	// BLX function. I think it must be due to how the ARM pipeline and
+	// alignment works but I'm not sure
+	nullFunctionAddress := mem.resetPC + uint32(len(mem.armProgram)) + 4
+
+	// append function to end of flash
+	mem.armProgram = append(mem.armProgram, nullFunction...)
+
+	// set virtual arguments. values and information in the PlusCart firmware
+	// source:
+	//
+	// atari-2600-pluscart-master/source/STM32firmware/PlusCart/Src
+
+	startOfRomInFlash := mem.model.FlashOrigin + 0x01000000
+
+	mem.virtualArgs = make([]byte, aceStartOfRom)
+	mem.virtualArgs[0] = uint8(startOfRomInFlash)
+	mem.virtualArgs[1] = uint8(startOfRomInFlash >> 8)
+	mem.virtualArgs[2] = uint8(startOfRomInFlash >> 16)
+	mem.virtualArgs[3] = uint8(startOfRomInFlash >> 24)
+	mem.virtualArgs[4] = uint8(mem.model.SRAMOrigin)
+	mem.virtualArgs[5] = uint8(mem.model.SRAMOrigin >> 8)
+	mem.virtualArgs[6] = uint8(mem.model.SRAMOrigin >> 16)
+	mem.virtualArgs[7] = uint8(mem.model.SRAMOrigin >> 24)
+
+	// addresses of func_reboot_into_cartridge() and emulate_firmware_cartridge()
+	// for our purposes, the function needs only to jump back to the link address
+	mem.virtualArgs[8] = uint8(nullFunctionAddress)
+	mem.virtualArgs[9] = uint8(nullFunctionAddress >> 8)
+	mem.virtualArgs[10] = uint8(nullFunctionAddress >> 16)
+	mem.virtualArgs[11] = uint8(nullFunctionAddress >> 24)
+	mem.virtualArgs[12] = uint8(nullFunctionAddress)
+	mem.virtualArgs[13] = uint8(nullFunctionAddress >> 8)
+	mem.virtualArgs[14] = uint8(nullFunctionAddress >> 16)
+	mem.virtualArgs[15] = uint8(nullFunctionAddress >> 24)
+
+	// not setting system clock or version arguments
+	copy(mem.virtualArgs[16:20], []byte{0x00, 0x00, 0x00, 0x01})
+	copy(mem.virtualArgs[20:24], []byte{0x00, 0x00, 0x00, 0x02})
+	copy(mem.virtualArgs[24:28], []byte{0x00, 0x00, 0x00, 0x03})
+
+	// list termination value
+	copy(mem.virtualArgs[28:32], []byte{0x00, 0x26, 0xe4, 0xac})
+
+	mem.virtualArgsOrigin = mem.model.FlashOrigin
+	mem.virtualArgsMemtop = mem.virtualArgsOrigin + uint32(len(mem.virtualArgs))
+
+	// GPIO pins
+	mem.gpioIn = make([]byte, GPIO_MEMTOP)
+	mem.gpioIn[GPIO_DATA_OUT] = 0xea
+	mem.gpioInOrigin = 0x40020c00
+	mem.gpioInMemtop = mem.gpioInOrigin | GPIO_MEMTOP
+
+	mem.gpioOut = make([]byte, GPIO_MEMTOP)
+	mem.gpioOut[GPIO_DATA_OUT] = 0xea
+	mem.gpioOutOrigin = 0x40020800
+	mem.gpioOutMemtop = mem.gpioOutOrigin | GPIO_MEMTOP
+
+	// SRAM creation
 	mem.sram = make([]byte, mem.resetSP-mem.model.SRAMOrigin)
-	mem.flash = make([]byte, len(data))
-	copy(mem.flash, data)
-
-	mem.gpio = make([]byte, GPIO_MEMTOP)
-	mem.gpio[GPIO_DATA_OUT] = 0xea
+	mem.sramOrigin = mem.model.SRAMOrigin
+	mem.sramMemtop = mem.sramOrigin + uint32(len(mem.sram))
 
 	return mem, nil
 }
@@ -90,18 +204,25 @@ func (mem *aceMemory) Snapshot() *aceMemory {
 
 // MapAddress implements the arm.SharedMemory interface.
 func (mem *aceMemory) MapAddress(addr uint32, write bool) (*[]byte, uint32) {
-	if addr < GPIO_MEMTOP {
-		return &mem.gpio, addr
+	if addr >= mem.gpioInOrigin && addr <= mem.gpioInMemtop {
+		return &mem.gpioIn, addr - mem.gpioInOrigin
 	}
-	if addr >= mem.model.FlashOrigin && addr <= mem.model.FlashOrigin+uint32(len(mem.flash)) {
-		return &mem.flash, addr - mem.model.FlashOrigin
+	if addr >= mem.gpioOutOrigin && addr <= mem.gpioOutMemtop {
+		return &mem.gpioOut, addr - mem.gpioOutOrigin
 	}
-	if addr >= mem.resetPC && addr <= mem.resetPC+uint32(len(mem.flash)) {
-		return &mem.flash, addr - mem.resetPC + 0x1028
+	if addr >= mem.virtualArgsOrigin && addr <= mem.virtualArgsMemtop {
+		return &mem.virtualArgs, addr - mem.model.FlashOrigin
 	}
-	if addr >= mem.model.SRAMOrigin && addr <= mem.resetSP {
+	if addr >= mem.armOrigin && addr <= mem.armMemtop {
+		return &mem.armProgram, addr - mem.resetPC
+	}
+	if addr >= mem.vcsOrigin && addr <= mem.vcsMemtop {
+		return &mem.vcsProgram, addr - mem.vcsOrigin
+	}
+	if addr >= mem.sramOrigin && addr <= mem.sramMemtop {
 		return &mem.sram, addr - mem.model.SRAMOrigin
 	}
+
 	return nil, 0
 }
 
@@ -134,7 +255,14 @@ func NewAce(instance *instance.Instance, pathToROM string, version string, data 
 	}
 
 	cart.arm = arm.NewARM(arm.ARMv7_M, arm.MAMfull, cart.mem.model, cart.instance.Prefs.ARM, cart.mem, cart, cart.pathToROM)
-	cart.arm.AddReadWatch(GPIO_ADDR_IN)
+	cart.arm.AddReadWatch(cart.mem.gpioInOrigin | GPIO_ADDR_IN)
+
+	logger.Logf("ACE", "vcs program: %08x to %08x", cart.mem.vcsOrigin, cart.mem.vcsMemtop)
+	logger.Logf("ACE", "arm program: %08x to %08x", cart.mem.armOrigin, cart.mem.armMemtop)
+	logger.Logf("ACE", "GPIO IN: %08x to %08x", cart.mem.gpioInOrigin, cart.mem.gpioInMemtop)
+	logger.Logf("ACE", "GPIO OUT: %08x to %08x", cart.mem.gpioOutOrigin, cart.mem.gpioOutMemtop)
+	logger.Logf("ACE", "virtual args: %08x to %08x", cart.mem.virtualArgsOrigin, cart.mem.virtualArgsMemtop)
+
 	cart.arm.Run()
 
 	return cart, nil
@@ -171,8 +299,7 @@ func (cart *Ace) Read(addr uint16, passive bool) (uint8, error) {
 	if passive {
 		cart.Listen(0x1000|addr, 0x00)
 	}
-
-	return cart.mem.gpio[GPIO_DATA_OUT], nil
+	return cart.mem.gpioOut[GPIO_DATA_OUT], nil
 }
 
 // Write implements the mapper.CartMapper interface.
@@ -197,8 +324,8 @@ func (cart *Ace) Patch(_ int, _ uint8) error {
 
 // Listen implements the mapper.CartMapper interface.
 func (cart *Ace) Listen(addr uint16, _ uint8) {
-	cart.mem.gpio[GPIO_ADDR_IN] = uint8(addr)
-	cart.mem.gpio[GPIO_ADDR_IN+1] = uint8(addr >> 8)
+	cart.mem.gpioIn[GPIO_ADDR_IN] = uint8(addr)
+	cart.mem.gpioIn[GPIO_ADDR_IN+1] = uint8(addr >> 8)
 	cart.arm.Continue()
 	cart.arm.Continue()
 	cart.arm.Continue()
