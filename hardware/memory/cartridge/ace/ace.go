@@ -36,7 +36,7 @@ type aceMemory struct {
 	armOrigin  uint32
 	armMemtop  uint32
 
-	vcsProgram []byte
+	vcsProgram []byte // including virtual arguments
 	vcsOrigin  uint32
 	vcsMemtop  uint32
 
@@ -47,10 +47,6 @@ type aceMemory struct {
 	gpioOut       []byte
 	gpioOutOrigin uint32
 	gpioOutMemtop uint32
-
-	virtualArgs       []byte
-	virtualArgsOrigin uint32
-	virtualArgsMemtop uint32
 
 	sram       []byte
 	sramOrigin uint32
@@ -64,7 +60,7 @@ const (
 	aceHeaderROMSize       = 28
 	aceHeaderROMChecksum   = 32
 	aceHeaderEntryPoint    = 36
-	aceStartOfRom          = 40
+	aceStartOfVCSProgram   = 40
 )
 
 const (
@@ -97,7 +93,7 @@ func newAceMemory(version string, data []byte) (*aceMemory, error) {
 		(uint32(data[aceHeaderEntryPoint+2]) << 16) |
 		(uint32(data[aceHeaderEntryPoint+3]) << 24)
 
-	mem.resetSP = mem.model.SRAMOrigin | 0x00001fdc
+	mem.resetSP = mem.model.SRAMOrigin | 0x0000ffdc
 	mem.resetLR = mem.model.FlashOrigin
 	mem.resetPC = mem.model.FlashOrigin + entryPoint
 
@@ -112,11 +108,13 @@ func newAceMemory(version string, data []byte) (*aceMemory, error) {
 	// below)
 	mem.resetPC &= 0xfffffffe
 
+	// copy vcs program, leaving room for virtual arguments
 	mem.vcsProgram = make([]byte, len(data))
-	copy(mem.vcsProgram, data)
-	mem.vcsOrigin = 0x21000000
+	copy(mem.vcsProgram[aceStartOfVCSProgram:], data)
+	mem.vcsOrigin = mem.model.FlashOrigin
 	mem.vcsMemtop = mem.vcsOrigin + uint32(len(mem.vcsProgram))
 
+	// copy arm program
 	mem.armProgram = make([]byte, romSize)
 	copy(mem.armProgram, data[dataOffset:])
 	mem.armOrigin = mem.resetPC
@@ -144,39 +142,34 @@ func newAceMemory(version string, data []byte) (*aceMemory, error) {
 	//
 	// atari-2600-pluscart-master/source/STM32firmware/PlusCart/Src
 
-	startOfRomInFlash := mem.model.FlashOrigin + 0x01000000
-
-	mem.virtualArgs = make([]byte, aceStartOfRom)
-	mem.virtualArgs[0] = uint8(startOfRomInFlash)
-	mem.virtualArgs[1] = uint8(startOfRomInFlash >> 8)
-	mem.virtualArgs[2] = uint8(startOfRomInFlash >> 16)
-	mem.virtualArgs[3] = uint8(startOfRomInFlash >> 24)
-	mem.virtualArgs[4] = uint8(mem.model.SRAMOrigin)
-	mem.virtualArgs[5] = uint8(mem.model.SRAMOrigin >> 8)
-	mem.virtualArgs[6] = uint8(mem.model.SRAMOrigin >> 16)
-	mem.virtualArgs[7] = uint8(mem.model.SRAMOrigin >> 24)
+	startOfVCSProgram := mem.vcsOrigin + aceStartOfVCSProgram
+	mem.vcsProgram[0] = uint8(startOfVCSProgram)
+	mem.vcsProgram[1] = uint8(startOfVCSProgram >> 8)
+	mem.vcsProgram[2] = uint8(startOfVCSProgram >> 16)
+	mem.vcsProgram[3] = uint8(startOfVCSProgram >> 24)
+	mem.vcsProgram[4] = uint8(mem.model.SRAMOrigin)
+	mem.vcsProgram[5] = uint8(mem.model.SRAMOrigin >> 8)
+	mem.vcsProgram[6] = uint8(mem.model.SRAMOrigin >> 16)
+	mem.vcsProgram[7] = uint8(mem.model.SRAMOrigin >> 24)
 
 	// addresses of func_reboot_into_cartridge() and emulate_firmware_cartridge()
 	// for our purposes, the function needs only to jump back to the link address
-	mem.virtualArgs[8] = uint8(nullFunctionAddress)
-	mem.virtualArgs[9] = uint8(nullFunctionAddress >> 8)
-	mem.virtualArgs[10] = uint8(nullFunctionAddress >> 16)
-	mem.virtualArgs[11] = uint8(nullFunctionAddress >> 24)
-	mem.virtualArgs[12] = uint8(nullFunctionAddress)
-	mem.virtualArgs[13] = uint8(nullFunctionAddress >> 8)
-	mem.virtualArgs[14] = uint8(nullFunctionAddress >> 16)
-	mem.virtualArgs[15] = uint8(nullFunctionAddress >> 24)
+	mem.vcsProgram[8] = uint8(nullFunctionAddress)
+	mem.vcsProgram[9] = uint8(nullFunctionAddress >> 8)
+	mem.vcsProgram[10] = uint8(nullFunctionAddress >> 16)
+	mem.vcsProgram[11] = uint8(nullFunctionAddress >> 24)
+	mem.vcsProgram[12] = uint8(nullFunctionAddress)
+	mem.vcsProgram[13] = uint8(nullFunctionAddress >> 8)
+	mem.vcsProgram[14] = uint8(nullFunctionAddress >> 16)
+	mem.vcsProgram[15] = uint8(nullFunctionAddress >> 24)
 
 	// not setting system clock or version arguments
-	copy(mem.virtualArgs[16:20], []byte{0x00, 0x00, 0x00, 0x01})
-	copy(mem.virtualArgs[20:24], []byte{0x00, 0x00, 0x00, 0x02})
-	copy(mem.virtualArgs[24:28], []byte{0x00, 0x00, 0x00, 0x03})
+	copy(mem.vcsProgram[16:20], []byte{0x00, 0x00, 0x00, 0x01})
+	copy(mem.vcsProgram[20:24], []byte{0x00, 0x00, 0x00, 0x02})
+	copy(mem.vcsProgram[24:28], []byte{0x00, 0x00, 0x00, 0x03})
 
 	// list termination value
-	copy(mem.virtualArgs[28:32], []byte{0x00, 0x26, 0xe4, 0xac})
-
-	mem.virtualArgsOrigin = mem.model.FlashOrigin
-	mem.virtualArgsMemtop = mem.virtualArgsOrigin + uint32(len(mem.virtualArgs))
+	copy(mem.vcsProgram[28:32], []byte{0x00, 0x26, 0xe4, 0xac})
 
 	// GPIO pins
 	mem.gpioIn = make([]byte, GPIO_MEMTOP)
@@ -209,9 +202,6 @@ func (mem *aceMemory) MapAddress(addr uint32, write bool) (*[]byte, uint32) {
 	}
 	if addr >= mem.gpioOutOrigin && addr <= mem.gpioOutMemtop {
 		return &mem.gpioOut, addr - mem.gpioOutOrigin
-	}
-	if addr >= mem.virtualArgsOrigin && addr <= mem.virtualArgsMemtop {
-		return &mem.virtualArgs, addr - mem.model.FlashOrigin
 	}
 	if addr >= mem.armOrigin && addr <= mem.armMemtop {
 		return &mem.armProgram, addr - mem.resetPC
@@ -261,7 +251,6 @@ func NewAce(instance *instance.Instance, pathToROM string, version string, data 
 	logger.Logf("ACE", "arm program: %08x to %08x", cart.mem.armOrigin, cart.mem.armMemtop)
 	logger.Logf("ACE", "GPIO IN: %08x to %08x", cart.mem.gpioInOrigin, cart.mem.gpioInMemtop)
 	logger.Logf("ACE", "GPIO OUT: %08x to %08x", cart.mem.gpioOutOrigin, cart.mem.gpioOutMemtop)
-	logger.Logf("ACE", "virtual args: %08x to %08x", cart.mem.virtualArgsOrigin, cart.mem.virtualArgsMemtop)
 
 	cart.arm.Run()
 
