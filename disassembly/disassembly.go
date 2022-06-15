@@ -30,7 +30,6 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 	"github.com/jetsetilly/gopher2600/hardware/television"
-	"github.com/jetsetilly/gopher2600/logger"
 )
 
 // Disassembly represents the annotated disassembly of a 6507 binary.
@@ -289,9 +288,7 @@ func (dsm *Disassembly) ExecutedEntry(bank mapper.BankInfo, result execution.Res
 	if checkNextAddr {
 		bank = dsm.vcs.Mem.Cart.GetBank(nextAddr)
 		ne := dsm.disasmEntries.Entries[bank.Number][nextAddr&memorymap.CartridgeBits]
-		if ne == nil {
-			logger.Logf("disassembly", "undecoded cartridge location (%#04x)", nextAddr)
-		} else if ne.Level < EntryLevelBlessed {
+		if ne != nil && ne.Level < EntryLevelBlessed {
 			ne.Level = EntryLevelBlessed
 		}
 	}
