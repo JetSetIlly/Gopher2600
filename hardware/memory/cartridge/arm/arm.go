@@ -563,58 +563,75 @@ func (arm *ARM) run() (float32, error) {
 		case ARMv7_M:
 			var f func(uint16)
 
+			// 32bit thumb-2 function control
+			resolveFunction32bit := arm.function32bit
+			newFunction32bit := arm.is32BitThumb2(opcode) && !resolveFunction32bit
+
 			// check to see if there is a 32bit instruction that needs executing
 			if arm.function32bit {
 				arm.function32bit = false
 				f = arm.function32bitFunction
 			} else {
 				f = arm.functionMap[memIdx]
-			}
-
-			if f == nil {
-				f = arm.decodeThumb2(opcode)
-				arm.functionMap[memIdx] = f
-			}
-
-			// conditional execution of instructions
-			if arm.Status.itMask != 0b0000 {
-				r := arm.Status.condition(arm.Status.itCond)
-
-				if r {
-					f(opcode)
-				} else {
-					// "A7.3.2: Conditional execution of undefined instructions
-					//
-					// If an undefined instruction fails a condition check in Armv7-M, the instruction
-					// behaves as a NOP and does not cause an exception"
-					//
-					// page A7-179 of the "ARMv7-M Architecture Reference Manual"
+				if f == nil {
+					f = arm.decodeThumb2(opcode)
+					arm.functionMap[memIdx] = f
 				}
-
-				// update LSB of IT condition by copying the MSB of the IT mask
-				arm.Status.itCond &= 0b1110
-				arm.Status.itCond |= (arm.Status.itMask >> 3)
-
-				// shift IT mask
-				arm.Status.itMask = (arm.Status.itMask << 1) & 0b1111
-			} else {
-				f(opcode)
 			}
 
-			// if arm.fudge_thumb2disassemble32bit != "" {
+			// whether instruction was prevented from executing by IT block
+			itBlockNoExecute := false
+
+			// new 32bit functions always execute
+			if newFunction32bit {
+				f(opcode)
+			} else {
+				// if the opcode indicates that this is a 32bit thumb instruction
+				// then we need to resolve that regardless of any IT block
+				// conditional execution of instructions
+				if arm.Status.itMask != 0b0000 {
+					r := arm.Status.condition(arm.Status.itCond)
+
+					if r {
+						f(opcode)
+					} else {
+						// "A7.3.2: Conditional execution of undefined instructions
+						//
+						// If an undefined instruction fails a condition check in Armv7-M, the instruction
+						// behaves as a NOP and does not cause an exception"
+						//
+						// page A7-179 of the "ARMv7-M Architecture Reference Manual"
+						itBlockNoExecute = true
+					}
+
+					// update IT conditions only if the opcode is not a 32bit opcode
+					// update LSB of IT condition by copying the MSB of the IT mask
+					arm.Status.itCond &= 0b1110
+					arm.Status.itCond |= (arm.Status.itMask >> 3)
+
+					// shift IT mask
+					arm.Status.itMask = (arm.Status.itMask << 1) & 0b1111
+				} else {
+					f(opcode)
+				}
+			}
+
+			if itBlockNoExecute {
+				// fmt.Print("*** ")
+			}
+			// if resolveFunction32bit {
 			// 	fmt.Printf("%04x %04x :: %s\n", arm.function32bitOpcode, opcode, arm.fudge_thumb2disassemble32bit)
 			// 	arm.fudge_thumb2disassemble32bit = ""
 			// 	fmt.Println(arm.String())
 			// 	fmt.Println(arm.Status.String())
 			// 	fmt.Println("====================")
-			// } else if arm.fudge_thumb2disassemble16bit != "" {
-			// 	fmt.Printf("%04x :: %s\n", opcode, arm.fudge_thumb2disassemble16bit)
-			// 	arm.fudge_thumb2disassemble16bit = ""
-			// 	fmt.Println(arm.String())
-			// 	fmt.Println(arm.Status.String())
-			// 	fmt.Println("====================")
-			// } else if !arm.function32bit {
-			// 	fmt.Printf("%04x :: %s\n", opcode, thumbDisassemble(opcode).String())
+			// } else if !newFunction32bit {
+			// 	if arm.fudge_thumb2disassemble16bit != "" {
+			// 		fmt.Printf("%04x :: %s\n", opcode, arm.fudge_thumb2disassemble16bit)
+			// 		arm.fudge_thumb2disassemble16bit = ""
+			// 	} else {
+			// 		fmt.Printf("%04x :: %s\n", opcode, thumbDisassemble(opcode).String())
+			// 	}
 			// 	fmt.Println(arm.String())
 			// 	fmt.Println(arm.Status.String())
 			// 	fmt.Println("====================")
