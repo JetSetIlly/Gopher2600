@@ -240,7 +240,8 @@ type ARM struct {
 
 	// disassembly of 32bit thumb-2
 	// * temporary construct until thumb2Disassemble() is written
-	fudge_thumb2Disassemble string
+	fudge_thumb2disassemble32bit string
+	fudge_thumb2disassemble16bit string
 
 	// address watches - apply to 32bit reads only
 	readWatches []uint32
@@ -599,6 +600,25 @@ func (arm *ARM) run() (float32, error) {
 			} else {
 				f(opcode)
 			}
+
+			// if arm.fudge_thumb2disassemble32bit != "" {
+			// 	fmt.Printf("%04x %04x :: %s\n", arm.function32bitOpcode, opcode, arm.fudge_thumb2disassemble32bit)
+			// 	arm.fudge_thumb2disassemble32bit = ""
+			// 	fmt.Println(arm.String())
+			// 	fmt.Println(arm.Status.String())
+			// 	fmt.Println("====================")
+			// } else if arm.fudge_thumb2disassemble16bit != "" {
+			// 	fmt.Printf("%04x :: %s\n", opcode, arm.fudge_thumb2disassemble16bit)
+			// 	arm.fudge_thumb2disassemble16bit = ""
+			// 	fmt.Println(arm.String())
+			// 	fmt.Println(arm.Status.String())
+			// 	fmt.Println("====================")
+			// } else if !arm.function32bit {
+			// 	fmt.Printf("%04x :: %s\n", opcode, thumbDisassemble(opcode).String())
+			// 	fmt.Println(arm.String())
+			// 	fmt.Println(arm.Status.String())
+			// 	fmt.Println("====================")
+			// }
 
 		default:
 			panic("unsupported ARM architecture")

@@ -198,7 +198,7 @@ func (arm *ARM) thumb2IfThen(opcode uint16) {
 		panic("unpredictable IT instruction - first condition data is 1111")
 	}
 
-	arm.fudge_thumb2Disassemble = "IT"
+	arm.fudge_thumb2disassemble16bit = "IT"
 }
 
 func (arm *ARM) thumb2CompareAndBranchOnNonZero(opcode uint16) {
@@ -213,9 +213,9 @@ func (arm *ARM) thumb2CompareAndBranchOnNonZero(opcode uint16) {
 	}
 
 	if nonZero {
-		arm.fudge_thumb2Disassemble = "CBNZ"
+		arm.fudge_thumb2disassemble16bit = "CBNZ"
 	} else {
-		arm.fudge_thumb2Disassemble = "CBZ"
+		arm.fudge_thumb2disassemble16bit = "CBZ"
 	}
 }
 
@@ -236,7 +236,7 @@ func (arm *ARM) thumb2SignZeroExtend(opcode uint16) {
 		// "4.6.226 UXTH" in "Thumb-2 Supplement"
 		// T1 Encoding
 		arm.registers[Rd] = arm.registers[Rm] & 0x0000ffff
-		arm.fudge_thumb2Disassemble = "UXTH"
+		arm.fudge_thumb2disassemble16bit = "UXTH"
 	case 0b11:
 		// unsigned extend byte UXTB
 		panic(3)

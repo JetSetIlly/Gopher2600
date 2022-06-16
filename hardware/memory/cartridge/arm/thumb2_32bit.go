@@ -137,13 +137,13 @@ func (arm *ARM) thumb2LoadStoreDoubleEtc(opcode uint16) {
 
 		if l {
 			// "A7.7.50 LDRD (immediate)" of "ARMv7-M"
-			arm.fudge_thumb2Disassemble = "LDRD (immediate)"
+			arm.fudge_thumb2disassemble32bit = "LDRD (immediate)"
 
 			arm.registers[Rt] = arm.read32bit(addr)
 			arm.registers[Rt2] = arm.read32bit(addr + 4)
 		} else {
 			// "A7.7.166 STRD (immediate)" of "ARMv7-M"
-			arm.fudge_thumb2Disassemble = "STRD (immediate)"
+			arm.fudge_thumb2disassemble32bit = "STRD (immediate)"
 
 			arm.write32bit(addr, arm.registers[Rt])
 			arm.write32bit(addr+4, arm.registers[Rt])
@@ -189,7 +189,7 @@ func (arm *ARM) thumb2DataProcessing(opcode uint16) {
 		case 0b0000:
 			if Rd == 0b1111 {
 				// "A7.7.188 TST (immediate)" of "ARMv7-M"
-				arm.fudge_thumb2Disassemble = "TST"
+				arm.fudge_thumb2disassemble32bit = "TST"
 
 				result := arm.registers[Rn] & imm32
 				if setFlags {
@@ -199,7 +199,7 @@ func (arm *ARM) thumb2DataProcessing(opcode uint16) {
 				}
 			} else {
 				// "A7.7.8 AND (immediate)" of "ARMv7-M"
-				arm.fudge_thumb2Disassemble = "AND"
+				arm.fudge_thumb2disassemble32bit = "AND"
 
 				arm.registers[Rd] = arm.registers[Rn] & imm32
 				if setFlags {
@@ -212,7 +212,7 @@ func (arm *ARM) thumb2DataProcessing(opcode uint16) {
 			if Rn == 0xf {
 				// "4.6.76 MOV (immediate)" of "Thumb-2 Supplement"
 				// T2 encoding
-				arm.fudge_thumb2Disassemble = "MOV (immediate)"
+				arm.fudge_thumb2disassemble32bit = "MOV (immediate)"
 
 				if Rn != 0x000f {
 					panic("Rn register must be 0b1111 for MOV immediate")
@@ -242,7 +242,7 @@ func (arm *ARM) thumb2DataProcessing(opcode uint16) {
 			if arm.function32bitOpcode&0x100 == 0x100 {
 				// "4.6.3 ADD (immediate)" of "Thumb-2 Supplement"
 				// T3 encoding
-				arm.fudge_thumb2Disassemble = "ADD (immediate)"
+				arm.fudge_thumb2disassemble32bit = "ADD (immediate)"
 
 				if Rn == 0x000f {
 					panic("Rn register cannot be 0b1111 for ADD immediate")
@@ -297,7 +297,7 @@ func (arm *ARM) thumb2DataProcessing(opcode uint16) {
 			switch op {
 			case 0b0110:
 				// // "4.6.197 UBFX" of "Thumb-2 Supplement"
-				arm.fudge_thumb2Disassemble = "UBFX"
+				arm.fudge_thumb2disassemble32bit = "UBFX"
 
 				Rn := arm.function32bitOpcode & 0x000f
 				imm3 := (opcode & 0x7000) >> 12
@@ -321,7 +321,7 @@ func (arm *ARM) thumb2DataProcessing(opcode uint16) {
 		} else if arm.function32bitOpcode&0xf240 == 0xf240 {
 			// "A7.7.76 MOV (immediate)" of "ARMv7-M"
 			// T3 encoding
-			arm.fudge_thumb2Disassemble = "MOV"
+			arm.fudge_thumb2disassemble32bit = "MOV"
 
 			i := (arm.function32bitOpcode & 0x0400) >> 10
 			imm4 := arm.function32bitOpcode & 0x000f
@@ -354,9 +354,9 @@ func (arm *ARM) thumb2LoadStoreSingle(opcode uint16) {
 	}
 
 	if l {
-		arm.fudge_thumb2Disassemble = "LDR"
+		arm.fudge_thumb2disassemble32bit = "LDR"
 	} else {
-		arm.fudge_thumb2Disassemble = "STR"
+		arm.fudge_thumb2disassemble32bit = "STR"
 	}
 
 	if arm.function32bitOpcode&0xfe1f == 0xf81f {
@@ -515,7 +515,7 @@ func (arm *ARM) thumb2LoadStoreMultiple(opcode uint16) {
 			switch WRn {
 			case 0b11101:
 				// "A7.7.99 POP" of "ARMv7-M"
-				arm.fudge_thumb2Disassemble = "POP (ldmia)"
+				arm.fudge_thumb2disassemble32bit = "POP (ldmia)"
 
 				regList := opcode & 0xdfff
 				addr := arm.registers[rSP]
@@ -550,7 +550,7 @@ func (arm *ARM) thumb2LoadStoreMultiple(opcode uint16) {
 			switch WRn {
 			case 0b11101:
 				// "A7.7.101 PUSH" of "ARMv7-M"
-				arm.fudge_thumb2Disassemble = "PUSH (stmdb)"
+				arm.fudge_thumb2disassemble32bit = "PUSH (stmdb)"
 
 				regList := opcode & 0x5fff
 				c := (uint32(bits.OnesCount16(regList))) * 4
@@ -604,7 +604,7 @@ func (arm *ARM) thumb2BranchesMiscControl(opcode uint16) {
 	} else {
 		// "A7.7.12 B" (conditional branching) of "ARMv7-M"
 		// T3 encoding
-		arm.fudge_thumb2Disassemble = "B"
+		arm.fudge_thumb2disassemble32bit = "B"
 
 		s := (arm.function32bitOpcode & 0x0400) >> 10
 		cond := (arm.function32bitOpcode & 0x03c0) >> 6
@@ -625,7 +625,7 @@ func (arm *ARM) thumb2BranchesMiscControl(opcode uint16) {
 
 func (arm *ARM) thumb2LongBranchWithLink(opcode uint16) {
 	// details in "A7.7.18 BL" of "ARMv7-M"
-	arm.fudge_thumb2Disassemble = "BL"
+	arm.fudge_thumb2disassemble32bit = "BL"
 
 	arm.registers[rLR] = (arm.registers[rPC]-2)&0xfffffffe | 0x00000001
 
