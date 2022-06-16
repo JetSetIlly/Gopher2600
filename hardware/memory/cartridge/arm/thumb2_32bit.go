@@ -82,32 +82,212 @@ func (arm *ARM) thumb2DataProcessingNoImmediate(opcode uint16) {
 
 	Rn := arm.function32bitOpcode & 0x000f
 	Rm := opcode & 0x000f
+	Rd := (opcode & 0x0f00) >> 8
 
-	if arm.function32bitOpcode&0xf800 == 0xe800 {
-		panic("unhandled data processing instructions, non immediate")
-	} else if arm.function32bitOpcode&0xff00 == 0xfb00 {
+	if arm.function32bitOpcode&0xff00 == 0xfb00 {
 		if arm.function32bitOpcode&0xff80 == 0xfb00 {
-			panic("unhandled data processing instructions, non immediate (32bit multiplies)")
+			op := (arm.function32bitOpcode & 0x0070) >> 4
+			Ra := (opcode & 0xf000) >> 12
+			op2 := (opcode & 0x00f0) >> 4
+
+			if op == 0b000 && op2 == 0b0001 {
+				// "4.6.75 MLS" of "Thumb-2 Supplement"
+				arm.fudge_thumb2disassemble32bit = "MLS"
+
+				arm.registers[Rd] = uint32(int32(arm.registers[Ra]) - int32(arm.registers[Rn])*int32(arm.registers[Rm]))
+			} else {
+				panic(fmt.Sprintf("unhandled data processing instructions, non immediate (32bit multiplies) (%03b/%04b)", op, op2))
+			}
 		} else {
 			// "64-bit multiply, multiply-accumulate, and divide instructions"
 			// page 3-25 of "Thumb-2 Supplement"
 
 			op := (arm.function32bitOpcode & 0x0070) >> 4
 			RdLo := (opcode & 0xf000) >> 12
-			RdHi := (opcode & 0x0f00) >> 8
+			RdHi := Rd
 			op2 := (opcode & 0x00f0) >> 4
 
-			if op == 0b010 && op2 == 0b000 {
+			if op == 0b010 && op2 == 0b0000 {
 				// "4.6.207 UMULL" of "Thumb-2 Supplement"
+				arm.fudge_thumb2disassemble32bit = "UMULL"
+
 				result := uint64(arm.registers[Rn]) * uint64(arm.registers[Rm])
 				arm.registers[RdHi] = uint32((result & 0xffffffff00000000) >> 32)
 				arm.registers[RdLo] = uint32(result & 0x00000000ffffffff)
+			} else if op == 0b011 && op2 == 0b1111 {
+				// "4.6.198 UDIV" of "Thumb-2 Supplement"
+				arm.fudge_thumb2disassemble32bit = "UDIV"
+
+				// don't allow divide by zero
+				if arm.registers[Rm] != 0 {
+					arm.registers[Rd] = arm.registers[Rn] / arm.registers[Rm]
+				} else {
+					arm.registers[Rd] = 0
+				}
 			} else {
-				panic("unhandled data processing instructions, non immediate (64bit multiplies")
+				panic(fmt.Sprintf("unhandled data processing instructions, non immediate (64bit multiplies) (%03b/%04b)", op, op2))
 			}
 		}
+	} else if arm.function32bitOpcode&0xff80 == 0xfa00 {
+		if opcode&0x0080 == 0x0080 {
+			op := (arm.function32bitOpcode & 0x0070) >> 4
+			// sbz := opcode&0x0040 == 0x0040
+			rot := (opcode & 0x0030) >> 4
+
+			switch op {
+			case 0b101:
+				// "4.6.224 UXTB" of "Thumb-2 Supplement"
+				arm.fudge_thumb2disassemble32bit = "UXTB"
+
+				v, _ := ROR_C(arm.registers[Rm], uint32(rot)<<3)
+				arm.registers[Rd] = v & 0x00ff
+			default:
+				panic(fmt.Sprintf("unhandled data processing instructions, non immediate (sign or zero extension with opt addition) (%03b)", op))
+			}
+		} else {
+			panic("unhandled data processing instructions, non immediate (reg controlled shift)")
+		}
+	} else if arm.function32bitOpcode&0xff80 == 0xfa80 {
+		if opcode&0x0080 == 0x0080 {
+			panic("unhandled data processing instructions, non immediate (other 3 reg data processing)")
+		} else {
+			panic("unhandled data processing instructions, non immediate (SIMD add or subtract)")
+		}
+	} else if arm.function32bitOpcode&0xfe00 == 0xea00 {
+		// "Data processing instructions with constant shift"
+		// page 3-18 of "Thumb-2 Supplement"
+
+		op := (arm.function32bitOpcode & 0x01e0) >> 5
+		s := arm.function32bitOpcode&0x0010 == 0x0010
+		// sbz := (opcode & 0x8000) >> 15
+		imm3 := (opcode & 0x7000) >> 12
+		// Rd := (opcode & 0x0f00) >> 8
+		imm2 := (opcode & 0x00c0) >> 6
+		typ := (opcode & 0x0030) >> 4
+		imm5 := (imm3 << 2) | imm2
+
+		switch op {
+		case 0b0000:
+			if Rd == rPC && s {
+				panic("TST")
+			} else {
+				// "4.6.9 AND (register)" of "Thumb-2 Supplement"
+				arm.fudge_thumb2disassemble32bit = "AND"
+
+				switch typ {
+				case 0b00:
+					carry := arm.registers[Rm]&0x80000000 == 0x80000000
+					shifted := arm.registers[Rm] << imm5
+					arm.registers[Rd] = arm.registers[Rn] & shifted
+					if s {
+						arm.Status.isNegative(arm.registers[Rd])
+						arm.Status.isZero(arm.registers[Rd])
+						arm.Status.setCarry(carry)
+					}
+				default:
+					panic(fmt.Sprintf("unhandled data processing instructions, non immediate (data processing, constant shift) (%04b) (%02b)", op, typ))
+				}
+			}
+
+		case 0b0010:
+			// "Move, and immediate shift instructions"
+			// page 3-19 of "Thumb-2 Supplement"
+
+			if Rn == rPC {
+				switch typ {
+				case 0b00:
+					if imm5 == 0b00000 {
+						panic("move")
+					} else {
+						// "4.6.68 LSL (immediate)" of "Thumb-2 Supplement"
+						// T2 encoding
+						arm.fudge_thumb2disassemble32bit = "LSL"
+
+						carry := arm.registers[Rm]&0x80000000 == 0x80000000
+						arm.registers[Rd] = arm.registers[Rm] << imm5
+						if s {
+							arm.Status.isNegative(arm.registers[Rd])
+							arm.Status.isZero(arm.registers[Rd])
+							arm.Status.setCarry(carry)
+						}
+					}
+				default:
+					panic(fmt.Sprintf("unhandled data processing instructions, non immediate (data processing, constant shift) (%04b) (%02b)", op, typ))
+				}
+			} else {
+				panic("ORR")
+			}
+
+		case 0b1101:
+			if Rd == rPC {
+				// "4.6.30 CMP (register)" of "Thumb-2 Supplement"
+				// T3 encoding
+				arm.fudge_thumb2disassemble32bit = "CMP"
+
+				switch typ {
+				case 0b00:
+					// with logical left shift
+					shifted := arm.registers[Rm] << imm5
+					result, carry, overflow := AddWithCarry(arm.registers[Rn], ^shifted, 1)
+					if s {
+						arm.Status.isNegative(result)
+						arm.Status.isZero(result)
+						arm.Status.setCarry(carry)
+						arm.Status.setOverflow(overflow)
+					}
+				case 0b01:
+					// with logical right shift
+					shifted := arm.registers[Rm] >> imm5
+					result, carry, overflow := AddWithCarry(arm.registers[Rn], ^shifted, 1)
+					if s {
+						arm.Status.isNegative(result)
+						arm.Status.isZero(result)
+						arm.Status.setCarry(carry)
+						arm.Status.setOverflow(overflow)
+					}
+				default:
+					panic(fmt.Sprintf("unhandled data processing instructions, non immediate (data processing, constant shift) (%04b) (%02b) CMP", op, typ))
+				}
+
+			} else {
+				// "4.6.177 SUB (register)" of "Thumb-2 Supplement"
+				// T2 encoding
+				arm.fudge_thumb2disassemble32bit = "SUB"
+
+				switch typ {
+				case 0b00:
+					// with logical left shift
+					shifted := arm.registers[Rm] << imm5
+					result, carry, overflow := AddWithCarry(arm.registers[Rn], ^shifted, 1)
+					arm.registers[Rd] = result
+					if s {
+						arm.Status.isNegative(arm.registers[Rd])
+						arm.Status.isZero(arm.registers[Rd])
+						arm.Status.setCarry(carry)
+						arm.Status.setOverflow(overflow)
+					}
+				case 0b01:
+					// with logical right shift
+					shifted := arm.registers[Rm] >> imm5
+					result, carry, overflow := AddWithCarry(arm.registers[Rn], ^shifted, 1)
+					arm.registers[Rd] = result
+					if s {
+						arm.Status.isNegative(arm.registers[Rd])
+						arm.Status.isZero(arm.registers[Rd])
+						arm.Status.setCarry(carry)
+						arm.Status.setOverflow(overflow)
+					}
+				default:
+					panic(fmt.Sprintf("unhandled data processing instructions, non immediate (data processing, constant shift) (%04b) (%02b) SUB", op, typ))
+				}
+			}
+
+		default:
+			panic(fmt.Sprintf("unhandled data processing instructions, non immediate (data processing, constant shift) (%04b)", op))
+		}
+
 	} else {
-		panic("unhandled data processing instructions, non immediate")
+		panic("reserved data processing instructions, non immediate")
 	}
 }
 
@@ -126,6 +306,7 @@ func (arm *ARM) thumb2LoadStoreDoubleEtc(opcode uint16) {
 	imm32 := imm8 << 2
 
 	if p || w {
+		// "Load and Store Double"
 		addr := arm.registers[Rn]
 		if p {
 			if u {
@@ -153,10 +334,26 @@ func (arm *ARM) thumb2LoadStoreDoubleEtc(opcode uint16) {
 			arm.registers[Rn] = addr
 		}
 
-		return
-	}
+	} else if arm.function32bitOpcode&0x0080 == 0x0080 {
+		// "Load and Store Exclusive Byte Halfword, Doubleword, and Table Branch"
 
-	panic("unhandled load and store double and exclusive and table branch")
+		op := (opcode & 0x00f0) >> 4
+
+		switch op {
+		case 0b0000:
+			// "4.6.188 TBB" of "Thumb-2 Supplement"
+			arm.fudge_thumb2disassemble32bit = "TBB"
+
+			Rm := opcode & 0x000f
+			halfwords := arm.read8bit(arm.registers[Rn] + arm.registers[Rm])
+			arm.registers[rPC] += uint32(halfwords) << 1
+		default:
+			panic(fmt.Sprintf("unhandled load and store double and exclusive and table branch (load and store exclusive byte etc.) (%04b)", op))
+		}
+	} else {
+		// "Load and Store Exclusive"
+		panic("unhandled load and store double and exclusive and table branch (load and store exclusive)")
+	}
 }
 
 func (arm *ARM) thumb2BranchesORDataProcessing(opcode uint16) {
@@ -171,7 +368,7 @@ func (arm *ARM) thumb2DataProcessing(opcode uint16) {
 	// "A5.3.1 Data processing (modified immediate)" of "ARMv7-M"
 
 	if arm.function32bitOpcode&0xf200 == 0xf000 {
-		// Data processing, modified 12-bit immediate
+		// Data processing, modified 12bit immediate
 
 		i := (arm.function32bitOpcode & 0x0400) >> 10
 		op := (arm.function32bitOpcode & 0x01e0) >> 5
@@ -214,18 +411,6 @@ func (arm *ARM) thumb2DataProcessing(opcode uint16) {
 				// T2 encoding
 				arm.fudge_thumb2disassemble32bit = "MOV (immediate)"
 
-				if Rn != 0x000f {
-					panic("Rn register must be 0b1111 for MOV immediate")
-				}
-
-				if Rd == rSP || Rd == rPC {
-					panic(fmt.Sprintf("MOV using %d register and will be unpredictable", Rd))
-				}
-
-				imm3 := (opcode & 0x7000) >> 12
-				imm8 := opcode & 0x00ff
-				imm12 := (i << 11) | (imm3 << 8) | imm8
-				imm32, carry := ThumbExpandImm_C(uint32(imm12), arm.Status.carry)
 				arm.registers[Rd] = imm32
 
 				if setFlags {
@@ -233,9 +418,17 @@ func (arm *ARM) thumb2DataProcessing(opcode uint16) {
 					arm.Status.isZero(arm.registers[Rn])
 					arm.Status.setCarry(carry)
 				}
-
 			} else {
-				panic(fmt.Sprintf("unimplemented 'data processing instructions with modified 12-bit immediate' (%04b)", op))
+				// "A7.7.91 ORR (immediate)" of "ARMv7-M"
+				arm.fudge_thumb2disassemble32bit = "ORR (immediate)"
+
+				arm.registers[Rd] = arm.registers[Rn] | imm32
+
+				if setFlags {
+					arm.Status.isNegative(arm.registers[Rn])
+					arm.Status.isZero(arm.registers[Rn])
+					arm.Status.setCarry(carry)
+				}
 			}
 
 		case 0b1000:
@@ -272,6 +465,8 @@ func (arm *ARM) thumb2DataProcessing(opcode uint16) {
 			if Rd == 0b1111 {
 				// CMP
 				// "4.6.29 CMP (immediate)" of "Thumb-2 Supplement"
+				arm.fudge_thumb2disassemble32bit = "CMP (immediate)"
+
 				result, carry, overflow := AddWithCarry(arm.registers[Rn], ^imm32, 1)
 				arm.Status.isNegative(result)
 				arm.Status.isZero(result)
@@ -283,8 +478,7 @@ func (arm *ARM) thumb2DataProcessing(opcode uint16) {
 			}
 
 		default:
-			fmt.Printf("%04x %04x\n", arm.function32bitOpcode, opcode)
-			panic(fmt.Sprintf("unimplemented 'data processing instructions with modified 12-bit immediate' (%04b)", op))
+			panic(fmt.Sprintf("unimplemented 'data processing instructions with modified 12bit immediate' (%04b)", op))
 		}
 	} else {
 		if arm.function32bitOpcode&0xf300 == 0xf300 {
@@ -349,43 +543,43 @@ func (arm *ARM) thumb2LoadStoreSingle(opcode uint16) {
 	Rn := arm.function32bitOpcode & 0x000f
 	Rt := (opcode & 0xf000) >> 12
 
+	if Rt == rPC {
+		panic("PLD and PLI not thought about yet")
+	}
+
 	if s {
 		panic("unhandled sign extend for 'load and store single data item, and memory hints'")
 	}
 
-	if l {
-		arm.fudge_thumb2disassemble32bit = "LDR"
-	} else {
-		arm.fudge_thumb2disassemble32bit = "STR"
-	}
-
 	if arm.function32bitOpcode&0xfe1f == 0xf81f {
 		// PC +/ imm12 (format 1 in the table)
-		// further depends on size and L bit
+		// further depends on size. l is always true
 
 		u := arm.function32bitOpcode&0x0080 == 0x0080
 		imm12 := opcode & 0x0fff
-		addr := arm.registers[Rn]
+		addr := arm.registers[Rn] & 0xfffffffc
 		if u {
 			addr += uint32(imm12)
 		} else {
 			addr -= uint32(imm12)
 		}
-		addr &= 0xfffffffe
 
 		switch size {
 		case 0b00:
-			if l {
-				arm.registers[Rt] = uint32(arm.read8bit(addr))
-			} else {
-				arm.write8bit(addr, uint8(arm.registers[Rt]))
+			arm.fudge_thumb2disassemble32bit = "LDRB (literal PC relative)"
+			arm.registers[Rt] = uint32(arm.read8bit(addr))
+			if s && arm.registers[Rt]&0x80 == 0x80 {
+				arm.registers[Rt] |= 0xffffff00
+			}
+		case 0b01:
+			arm.fudge_thumb2disassemble32bit = "LDRH (literal PC relative)"
+			arm.registers[Rt] = uint32(arm.read16bit(addr))
+			if s && arm.registers[Rt]&0x8000 == 0x8000 {
+				arm.registers[Rt] |= 0xffff0000
 			}
 		case 0b10:
-			if l {
-				arm.registers[Rt] = uint32(arm.read16bit(addr))
-			} else {
-				arm.write16bit(addr, uint16(arm.registers[Rt]))
-			}
+			arm.fudge_thumb2disassemble32bit = "LDR (literal PC relative)"
+			arm.registers[Rt] = arm.read32bit(addr)
 		default:
 			panic(fmt.Sprintf("unhandled size (%02b) for 'PC +/- imm12'", size))
 		}
@@ -401,15 +595,33 @@ func (arm *ARM) thumb2LoadStoreSingle(opcode uint16) {
 		switch size {
 		case 0b00:
 			if l {
+				arm.fudge_thumb2disassemble32bit = "LDR(1)"
 				arm.registers[Rt] = uint32(arm.read8bit(addr))
+				if s && arm.registers[Rt]&0x80 == 0x80 {
+					arm.registers[Rt] |= 0xffffff00
+				}
 			} else {
+				arm.fudge_thumb2disassemble32bit = "STR"
 				arm.write8bit(addr, uint8(arm.registers[Rt]))
+			}
+		case 0b01:
+			if l {
+				arm.fudge_thumb2disassemble32bit = "LDR(2)"
+				arm.registers[Rt] = uint32(arm.read16bit(addr))
+				if s && arm.registers[Rt]&0x8000 == 0x8000 {
+					arm.registers[Rt] |= 0xffff0000
+				}
+			} else {
+				arm.fudge_thumb2disassemble32bit = "STR"
+				arm.write16bit(addr, uint16(arm.registers[Rt]))
 			}
 		case 0b10:
 			if l {
-				arm.registers[Rt] = uint32(arm.read16bit(addr))
+				arm.fudge_thumb2disassemble32bit = "LDR(3)"
+				arm.registers[Rt] = arm.read32bit(addr)
 			} else {
-				arm.write16bit(addr, uint16(arm.registers[Rt]))
+				arm.fudge_thumb2disassemble32bit = "STR"
+				arm.write32bit(addr, arm.registers[Rt])
 			}
 		default:
 			panic(fmt.Sprintf("unhandled size (%02b) for 'Rn + imm12'", size))
@@ -433,14 +645,24 @@ func (arm *ARM) thumb2LoadStoreSingle(opcode uint16) {
 		switch size {
 		case 0b00:
 			if l {
+				arm.fudge_thumb2disassemble32bit = "LDR(4)"
 				arm.registers[Rt] = uint32(arm.read8bit(addr))
+				if s && arm.registers[Rt]&0x80 == 0x80 {
+					arm.registers[Rt] |= 0xffffff00
+				}
 			} else {
+				arm.fudge_thumb2disassemble32bit = "STR"
 				arm.write8bit(addr, uint8(arm.registers[Rt]))
 			}
-		case 0b10:
+		case 0b01:
 			if l {
+				arm.fudge_thumb2disassemble32bit = "LDR(5)"
 				arm.registers[Rt] = uint32(arm.read16bit(addr))
+				if s && arm.registers[Rt]&0x8000 == 0x8000 {
+					arm.registers[Rt] |= 0xffff0000
+				}
 			} else {
+				arm.fudge_thumb2disassemble32bit = "STR"
 				arm.write16bit(addr, uint16(arm.registers[Rt]))
 			}
 		default:
@@ -457,14 +679,24 @@ func (arm *ARM) thumb2LoadStoreSingle(opcode uint16) {
 		switch size {
 		case 0b00:
 			if l {
+				arm.fudge_thumb2disassemble32bit = "LDR(6)"
 				arm.registers[Rt] = uint32(arm.read8bit(addr))
+				if s && arm.registers[Rt]&0x80 == 0x80 {
+					arm.registers[Rt] |= 0xffffff00
+				}
 			} else {
+				arm.fudge_thumb2disassemble32bit = "STR"
 				arm.write8bit(addr, uint8(arm.registers[Rt]))
 			}
-		case 0b10:
+		case 0b01:
 			if l {
+				arm.fudge_thumb2disassemble32bit = "LDR(7)"
 				arm.registers[Rt] = uint32(arm.read16bit(addr))
+				if s && arm.registers[Rt]&0x8000 == 0x8000 {
+					arm.registers[Rt] |= 0xffff0000
+				}
 			} else {
+				arm.fudge_thumb2disassemble32bit = "STR"
 				arm.write16bit(addr, uint16(arm.registers[Rt]))
 			}
 		default:
@@ -478,11 +710,14 @@ func (arm *ARM) thumb2LoadStoreSingle(opcode uint16) {
 		shift := (opcode & 0x0030) >> 4
 		Rm := opcode & 0x0007
 
-		addr := arm.registers[Rm] << shift
+		addr := arm.registers[Rn] + (arm.registers[Rm] << shift)
 
 		if l {
 			switch size {
 			case 0b00:
+				// "A7.7.48 LDRB (register)" of "Thumb-2 Supplement"
+				arm.fudge_thumb2disassemble32bit = "LDRB"
+
 				arm.registers[Rt] = uint32(arm.read8bit(addr))
 			default:
 				panic(fmt.Sprintf("unhandled size (%02b) for 'Rn + shifted register' (load)", size))

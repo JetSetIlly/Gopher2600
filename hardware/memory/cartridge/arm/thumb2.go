@@ -239,13 +239,18 @@ func (arm *ARM) thumb2SignZeroExtend(opcode uint16) {
 		// unsigned extend halfword
 		// "4.6.226 UXTH" in "Thumb-2 Supplement"
 		// T1 Encoding
-		arm.registers[Rd] = arm.registers[Rm] & 0x0000ffff
 		arm.fudge_thumb2disassemble16bit = "UXTH"
+
+		arm.registers[Rd] = arm.registers[Rm] & 0x0000ffff
 	case 0b11:
 		// unsigned extend byte UXTB
-		panic(3)
+		// "4.6.224 UXTB" in "Thumb-2 Supplement"
+		// T1 Encoding
+		arm.fudge_thumb2disassemble16bit = "UXTB"
+
+		rotated, _ := ROR_C(arm.registers[Rm], 0)
+		arm.registers[Rd] = rotated & 0x000000ff
 	default:
 		panic("undhandled sign/zero extend instruction")
 	}
-
 }

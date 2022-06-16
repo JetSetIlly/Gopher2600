@@ -79,10 +79,6 @@ func ROR_C(imm32 uint32, shift uint32) (uint32, bool) {
 
 	// this is specifically a 32 bit function so N is 32
 
-	if shift == 0 {
-		panic("ROR_C shift value of zero")
-	}
-
 	m := shift % 32
 	result := (imm32 >> m) | (imm32 << (32 - m))
 	return result, result&0x80000000 == 0x80000000
