@@ -88,7 +88,7 @@ func (arm *ARM) thumb2DataProcessingNonImmediate(opcode uint16) {
 		// "Data processing instructions with constant shift"
 		// page 3-18 of "Thumb-2 Supplement"
 		op := (arm.function32bitOpcode & 0x01e0) >> 5
-		s := arm.function32bitOpcode&0x0010 == 0x0010
+		setFlags := arm.function32bitOpcode&0x0010 == 0x0010
 		// sbz := (opcode & 0x8000) >> 15
 		imm3 := (opcode & 0x7000) >> 12
 		// Rd := (opcode & 0x0f00) >> 8
@@ -98,7 +98,7 @@ func (arm *ARM) thumb2DataProcessingNonImmediate(opcode uint16) {
 
 		switch op {
 		case 0b0000:
-			if Rd == rPC && s {
+			if Rd == rPC && setFlags {
 				panic("TST")
 			} else {
 				// "4.6.9 AND (register)" of "Thumb-2 Supplement"
@@ -109,13 +109,31 @@ func (arm *ARM) thumb2DataProcessingNonImmediate(opcode uint16) {
 					carry := arm.registers[Rm]&0x80000000 == 0x80000000
 					shifted := arm.registers[Rm] << imm5
 					arm.registers[Rd] = arm.registers[Rn] & shifted
-					if s {
+					if setFlags {
 						arm.Status.isNegative(arm.registers[Rd])
 						arm.Status.isZero(arm.registers[Rd])
 						arm.Status.setCarry(carry)
+						// overflow unchanged
 					}
 				default:
 					panic(fmt.Sprintf("unhandled data processing instructions, non immediate (data processing, constant shift) (%04b) (%02b)", op, typ))
+				}
+			}
+
+		case 0b0001:
+			// "4.6.16 BIC (register)" of "Thumb-2 Supplement"
+			arm.fudge_thumb2disassemble32bit = "BIC"
+			switch typ {
+			case 0b00:
+			default:
+				carry := arm.registers[Rm]&0x80000000 == 0x80000000
+				shifted := arm.registers[Rm] << imm5
+				arm.registers[Rd] = arm.registers[Rn] & ^shifted
+				if setFlags {
+					arm.Status.isNegative(arm.registers[Rd])
+					arm.Status.isZero(arm.registers[Rd])
+					arm.Status.setCarry(carry)
+					// overflow unchanged
 				}
 			}
 
@@ -135,10 +153,11 @@ func (arm *ARM) thumb2DataProcessingNonImmediate(opcode uint16) {
 
 						carry := arm.registers[Rm]&0x80000000 == 0x80000000
 						arm.registers[Rd] = arm.registers[Rm] << imm5
-						if s {
+						if setFlags {
 							arm.Status.isNegative(arm.registers[Rd])
 							arm.Status.isZero(arm.registers[Rd])
 							arm.Status.setCarry(carry)
+							// overflow unchanged
 						}
 					}
 				case 0b01:
@@ -148,10 +167,11 @@ func (arm *ARM) thumb2DataProcessingNonImmediate(opcode uint16) {
 
 					carry := arm.registers[Rm]&0x80000000 == 0x80000000
 					arm.registers[Rd] = arm.registers[Rm] >> imm5
-					if s {
+					if setFlags {
 						arm.Status.isNegative(arm.registers[Rd])
 						arm.Status.isZero(arm.registers[Rd])
 						arm.Status.setCarry(carry)
+						// overflow unchanged
 					}
 				default:
 					panic(fmt.Sprintf("unhandled data processing instructions, non immediate (data processing, constant shift) (%04b) (%02b)", op, typ))
@@ -171,7 +191,7 @@ func (arm *ARM) thumb2DataProcessingNonImmediate(opcode uint16) {
 					// with logical left shift
 					shifted := arm.registers[Rm] << imm5
 					result, carry, overflow := AddWithCarry(arm.registers[Rn], ^shifted, 1)
-					if s {
+					if setFlags {
 						arm.Status.isNegative(result)
 						arm.Status.isZero(result)
 						arm.Status.setCarry(carry)
@@ -181,7 +201,7 @@ func (arm *ARM) thumb2DataProcessingNonImmediate(opcode uint16) {
 					// with logical right shift
 					shifted := arm.registers[Rm] >> imm5
 					result, carry, overflow := AddWithCarry(arm.registers[Rn], ^shifted, 1)
-					if s {
+					if setFlags {
 						arm.Status.isNegative(result)
 						arm.Status.isZero(result)
 						arm.Status.setCarry(carry)
@@ -202,7 +222,7 @@ func (arm *ARM) thumb2DataProcessingNonImmediate(opcode uint16) {
 					shifted := arm.registers[Rm] << imm5
 					result, carry, overflow := AddWithCarry(arm.registers[Rn], ^shifted, 1)
 					arm.registers[Rd] = result
-					if s {
+					if setFlags {
 						arm.Status.isNegative(arm.registers[Rd])
 						arm.Status.isZero(arm.registers[Rd])
 						arm.Status.setCarry(carry)
@@ -213,7 +233,7 @@ func (arm *ARM) thumb2DataProcessingNonImmediate(opcode uint16) {
 					shifted := arm.registers[Rm] >> imm5
 					result, carry, overflow := AddWithCarry(arm.registers[Rn], ^shifted, 1)
 					arm.registers[Rd] = result
-					if s {
+					if setFlags {
 						arm.Status.isNegative(arm.registers[Rd])
 						arm.Status.isZero(arm.registers[Rd])
 						arm.Status.setCarry(carry)
@@ -251,6 +271,7 @@ func (arm *ARM) thumb2DataProcessingNonImmediate(opcode uint16) {
 					arm.Status.isNegative(arm.registers[Rd])
 					arm.Status.isZero(arm.registers[Rd])
 					arm.Status.setCarry(carry)
+					// overflow unchanged
 				}
 			default:
 				panic(fmt.Sprintf("unhandled data processing instructions, non immediate (reg controlled shift) (%02b)", op))
@@ -454,6 +475,7 @@ func (arm *ARM) thumb2DataProcessing(opcode uint16) {
 					arm.Status.isNegative(result)
 					arm.Status.isZero(result)
 					arm.Status.setCarry(carry)
+					// overflow unchanged
 				}
 			} else {
 				// "4.6.8 AND (immediate)" of "Thumb-2 Supplement"
@@ -464,6 +486,7 @@ func (arm *ARM) thumb2DataProcessing(opcode uint16) {
 					arm.Status.isNegative(arm.registers[Rd])
 					arm.Status.isZero(arm.registers[Rd])
 					arm.Status.setCarry(carry)
+					// overflow unchanged
 				}
 			}
 		case 0b0010:
@@ -478,6 +501,7 @@ func (arm *ARM) thumb2DataProcessing(opcode uint16) {
 					arm.Status.isNegative(arm.registers[Rn])
 					arm.Status.isZero(arm.registers[Rn])
 					arm.Status.setCarry(carry)
+					// overflow unchanged
 				}
 			} else {
 				// "4.6.91 ORR (immediate)" of "Thumb-2 Supplement"
@@ -489,6 +513,7 @@ func (arm *ARM) thumb2DataProcessing(opcode uint16) {
 					arm.Status.isNegative(arm.registers[Rn])
 					arm.Status.isZero(arm.registers[Rn])
 					arm.Status.setCarry(carry)
+					// overflow unchanged
 				}
 			}
 
@@ -501,6 +526,7 @@ func (arm *ARM) thumb2DataProcessing(opcode uint16) {
 				arm.Status.isNegative(arm.registers[Rd])
 				arm.Status.isZero(arm.registers[Rd])
 				arm.Status.setCarry(carry)
+				// overflow unchanged
 			}
 
 		case 0b1000:
@@ -553,8 +579,21 @@ func (arm *ARM) thumb2DataProcessing(opcode uint16) {
 				if setFlags {
 					arm.Status.isNegative(result)
 					arm.Status.setCarry(carry)
-					// curiously ths SUB instruction does not set zero of overflow flags
+					// overflow unchanged
 				}
+			}
+
+		case 0b1110:
+			// "4.6.118 RSB (immediate)" of "Thumb-2 Supplement"
+			arm.fudge_thumb2disassemble32bit = "RSB"
+
+			result, carry, overflow := AddWithCarry(^arm.registers[Rn], imm32, 1)
+			arm.registers[Rd] = result
+			if setFlags {
+				arm.Status.isNegative(arm.registers[Rd])
+				arm.Status.isZero(arm.registers[Rd])
+				arm.Status.setCarry(carry)
+				arm.Status.setOverflow(overflow)
 			}
 
 		default:
@@ -605,13 +644,9 @@ func (arm *ARM) thumb2DataProcessing(opcode uint16) {
 
 			lsbit := (imm3 << 2) | imm2
 			msbit := lsbit + widthm1
+			width := widthm1 + 1
 			if msbit <= 31 {
-				v := arm.registers[Rn]
-				w := v >> lsbit
-				v = w << lsbit
-				x := v << (31 - msbit)
-				v = x >> (31 - msbit)
-				arm.registers[Rd] = v
+				arm.registers[Rd] = (arm.registers[Rn] >> uint32(lsbit)) & ((1 << width) - 1)
 			}
 		default:
 			panic(fmt.Sprintf("unimplemented 'bitfield operation' (%03b)", op))
@@ -903,40 +938,26 @@ func (arm *ARM) thumb2LoadStoreMultiple(opcode uint16) {
 }
 
 func (arm *ARM) thumb2BranchesMiscControl(opcode uint16) {
-	// "A5.3.4 Branches and miscellaneous control" of "ARMv7-M"
-	//
-	// and
-	//
 	// "3.3.6 Branches, miscellaneous control instructions" of "Thumb-2 Supplement"
-
-	op := (arm.function32bitOpcode & 0x7f0) >> 4
 
 	if opcode&0xd000 == 0xd000 {
 		arm.thumb2LongBranchWithLink(opcode)
-	} else if opcode&0xd000 == 0x9000 {
-		panic("unhandled branches, miscellaneous control instructions (branch)")
-	} else if opcode&0xd000 == 0xa000 {
-		panic("reserved branches, miscellaneous control instructions")
-	} else if op&0x7e == 0x3e {
-		panic("unhandled branches, miscellaneous control instructions (move from special register)")
-	} else if op&0x7f == 0x3b {
-		panic("unhandled branches, miscellaneous control instructions (misc control)")
-	} else if op&0x7f == 0x3a {
-		panic("unhandled branches, miscellaneous control instructions (hint instructions)")
-	} else if op&0x7e == 0x38 {
-		panic("unhandled branches, miscellaneous control instructions (move to special register)")
-	} else {
-		// "A7.7.12 B" (conditional branching) of "ARMv7-M"
+	} else if opcode&0xd000 == 0x8000 {
+		// "4.6.12 B" of "Thumb-2 Supplement"
 		// T3 encoding
-		arm.fudge_thumb2disassemble32bit = "B"
+		arm.fudge_thumb2disassemble32bit = "B (cond)"
 
-		s := (arm.function32bitOpcode & 0x0400) >> 10
+		// make sure we're working with 32bit immediate numbers so that we don't
+		// drop bits when shifting
+		s := uint32((arm.function32bitOpcode & 0x0400) >> 10)
 		cond := (arm.function32bitOpcode & 0x03c0) >> 6
-		imm6 := arm.function32bitOpcode & 0x003f
-		j1 := (opcode & 0x2000) >> 13
-		j2 := (opcode & 0x0800) >> 11
-		imm11 := opcode & 0x07ff
-		imm32 := uint32((s << 20) | (j2 << 19) | (j1 << 18) | (imm6 << 12) | (imm11 << 1))
+		imm6 := uint32(arm.function32bitOpcode & 0x003f)
+		j1 := uint32((opcode & 0x2000) >> 13)
+		j2 := uint32((opcode & 0x0800) >> 11)
+		imm11 := uint32(opcode & 0x07ff)
+
+		imm32 := (s << 20) | (j2 << 19) | (j1 << 18) | (imm6 << 12) | (imm11 << 1)
+
 		if s == 0x01 {
 			imm32 |= 0xfff00000
 		}
@@ -944,6 +965,8 @@ func (arm *ARM) thumb2BranchesMiscControl(opcode uint16) {
 		if arm.Status.condition(uint8(cond)) {
 			arm.registers[rPC] += imm32
 		}
+	} else {
+		panic("unimplemented branches, miscellaneous control instructions")
 	}
 }
 
@@ -953,6 +976,8 @@ func (arm *ARM) thumb2LongBranchWithLink(opcode uint16) {
 
 	arm.registers[rLR] = (arm.registers[rPC]-2)&0xfffffffe | 0x00000001
 
+	// make sure we're working with 32bit immediate numbers so that we don't
+	// drop bits when shifting
 	s := uint32((arm.function32bitOpcode & 0x400) >> 10)
 	j1 := uint32((opcode & 0x2000) >> 13)
 	j2 := uint32((opcode & 0x800) >> 11)
