@@ -69,7 +69,7 @@ func (arm *ARM) decodeThumb2Upper32bit(opcode uint16) func(uint16) {
 		// data processing, no immediate operand
 		return func(_ uint16) {
 			arm.function32bit = true
-			arm.function32bitFunction = arm.thumb2DataProcessingNoImmediate
+			arm.function32bitFunction = arm.thumb2DataProcessingNonImmediate
 			arm.function32bitOpcode = opcode
 		}
 	}
@@ -77,111 +77,16 @@ func (arm *ARM) decodeThumb2Upper32bit(opcode uint16) func(uint16) {
 	panic(fmt.Sprintf("undecoded 32-bit thumb-2 instruction (upper half-word) (%04x)", opcode))
 }
 
-func (arm *ARM) thumb2DataProcessingNoImmediate(opcode uint16) {
+func (arm *ARM) thumb2DataProcessingNonImmediate(opcode uint16) {
 	// "3.3.2 Data processing instructions, non-immediate" of "Thumb-2 Supplement"
 
 	Rn := arm.function32bitOpcode & 0x000f
 	Rm := opcode & 0x000f
 	Rd := (opcode & 0x0f00) >> 8
 
-	if arm.function32bitOpcode&0xff00 == 0xfb00 {
-		if arm.function32bitOpcode&0xff80 == 0xfb00 {
-			op := (arm.function32bitOpcode & 0x0070) >> 4
-			Ra := (opcode & 0xf000) >> 12
-			op2 := (opcode & 0x00f0) >> 4
-
-			if op == 0b000 && op2 == 0b0001 {
-				// "4.6.75 MLS" of "Thumb-2 Supplement"
-				arm.fudge_thumb2disassemble32bit = "MLS"
-
-				arm.registers[Rd] = uint32(int32(arm.registers[Ra]) - int32(arm.registers[Rn])*int32(arm.registers[Rm]))
-			} else {
-				panic(fmt.Sprintf("unhandled data processing instructions, non immediate (32bit multiplies) (%03b/%04b)", op, op2))
-			}
-		} else {
-			// "64-bit multiply, multiply-accumulate, and divide instructions"
-			// page 3-25 of "Thumb-2 Supplement"
-
-			op := (arm.function32bitOpcode & 0x0070) >> 4
-			RdLo := (opcode & 0xf000) >> 12
-			RdHi := Rd
-			op2 := (opcode & 0x00f0) >> 4
-
-			if op == 0b010 && op2 == 0b0000 {
-				// "4.6.207 UMULL" of "Thumb-2 Supplement"
-				arm.fudge_thumb2disassemble32bit = "UMULL"
-
-				result := uint64(arm.registers[Rn]) * uint64(arm.registers[Rm])
-				arm.registers[RdHi] = uint32((result & 0xffffffff00000000) >> 32)
-				arm.registers[RdLo] = uint32(result & 0x00000000ffffffff)
-			} else if op == 0b011 && op2 == 0b1111 {
-				// "4.6.198 UDIV" of "Thumb-2 Supplement"
-				arm.fudge_thumb2disassemble32bit = "UDIV"
-
-				// don't allow divide by zero
-				if arm.registers[Rm] != 0 {
-					arm.registers[Rd] = arm.registers[Rn] / arm.registers[Rm]
-				} else {
-					arm.registers[Rd] = 0
-				}
-			} else {
-				panic(fmt.Sprintf("unhandled data processing instructions, non immediate (64bit multiplies) (%03b/%04b)", op, op2))
-			}
-		}
-	} else if arm.function32bitOpcode&0xff80 == 0xfa00 {
-		// "Signed and unsigned extend instructions with optional addition"
-		// page 3-20 of "Thumb-2 Supplement"
-
-		if opcode&0x0080 == 0x0080 {
-			op := (arm.function32bitOpcode & 0x0070) >> 4
-			// sbz := opcode&0x0040 == 0x0040
-			rot := (opcode & 0x0030) >> 4
-
-			switch op {
-			case 0b001:
-				if Rn == rPC {
-					// "4.6.226 UXTH" of "Thumb-2 Supplement"
-					arm.fudge_thumb2disassemble32bit = "UXTH"
-
-					v, _ := ROR_C(arm.registers[Rm], uint32(rot)<<3)
-					arm.registers[Rd] = v & 0x0000ffff
-				} else {
-					// "4.6.223 UXTAH" of "Thumb-2 Supplement"
-					arm.fudge_thumb2disassemble32bit = "UXTAH"
-
-					v, _ := ROR_C(arm.registers[Rm], uint32(rot)<<3)
-					arm.registers[Rd] = arm.registers[Rn] + (v & 0x0000ffff)
-				}
-			case 0b101:
-				if Rn == rPC {
-					// "4.6.224 UXTB" of "Thumb-2 Supplement"
-					arm.fudge_thumb2disassemble32bit = "UXTB"
-
-					v, _ := ROR_C(arm.registers[Rm], uint32(rot)<<3)
-					arm.registers[Rd] = v & 0x000000ff
-				} else {
-					// "4.6.221 UXTAB" of "Thumb-2 Supplement"
-					arm.fudge_thumb2disassemble32bit = "UXTAB"
-
-					v, _ := ROR_C(arm.registers[Rm], uint32(rot)<<3)
-					arm.registers[Rd] = arm.registers[Rn] + (v & 0x000000ff)
-				}
-			default:
-				panic(fmt.Sprintf("unhandled data processing instructions, non immediate (sign or zero extension with opt addition) (%03b)", op))
-			}
-		} else {
-			panic("unhandled data processing instructions, non immediate (reg controlled shift)")
-		}
-	} else if arm.function32bitOpcode&0xff80 == 0xfa80 {
-		if opcode&0x0080 == 0x0080 {
-			panic("unhandled data processing instructions, non immediate (other 3 reg data processing)")
-		} else {
-			panic("unhandled data processing instructions, non immediate (SIMD add or subtract)")
-		}
-	} else if arm.function32bitOpcode&0xfe00 == 0xea00 {
+	if arm.function32bitOpcode&0xfe00 == 0xea00 {
 		// "Data processing instructions with constant shift"
 		// page 3-18 of "Thumb-2 Supplement"
-
 		op := (arm.function32bitOpcode & 0x01e0) >> 5
 		s := arm.function32bitOpcode&0x0010 == 0x0010
 		// sbz := (opcode & 0x8000) >> 15
@@ -322,9 +227,104 @@ func (arm *ARM) thumb2DataProcessingNoImmediate(opcode uint16) {
 		default:
 			panic(fmt.Sprintf("unhandled data processing instructions, non immediate (data processing, constant shift) (%04b)", op))
 		}
+	} else if arm.function32bitOpcode&0xff80 == 0xfa00 {
+		if opcode&0x0080 == 0x0000 {
+			// "Register-controlled shift instructions"
+			// page 3-19 of "Thumb-2 Supplement"
+			panic("unhandled data processing instructions, non immediate (reg controlled shift)")
+		} else {
+			// "Signed and unsigned extend instructions with optional addition"
+			// page 3-20 of "Thumb-2 Supplement"
+			op := (arm.function32bitOpcode & 0x0070) >> 4
+			// sbz := opcode&0x0040 == 0x0040
+			rot := (opcode & 0x0030) >> 4
 
+			switch op {
+			case 0b001:
+				if Rn == rPC {
+					// "4.6.226 UXTH" of "Thumb-2 Supplement"
+					arm.fudge_thumb2disassemble32bit = "UXTH"
+
+					v, _ := ROR_C(arm.registers[Rm], uint32(rot)<<3)
+					arm.registers[Rd] = v & 0x0000ffff
+				} else {
+					// "4.6.223 UXTAH" of "Thumb-2 Supplement"
+					arm.fudge_thumb2disassemble32bit = "UXTAH"
+
+					v, _ := ROR_C(arm.registers[Rm], uint32(rot)<<3)
+					arm.registers[Rd] = arm.registers[Rn] + (v & 0x0000ffff)
+				}
+			case 0b101:
+				if Rn == rPC {
+					// "4.6.224 UXTB" of "Thumb-2 Supplement"
+					arm.fudge_thumb2disassemble32bit = "UXTB"
+
+					v, _ := ROR_C(arm.registers[Rm], uint32(rot)<<3)
+					arm.registers[Rd] = v & 0x000000ff
+				} else {
+					// "4.6.221 UXTAB" of "Thumb-2 Supplement"
+					arm.fudge_thumb2disassemble32bit = "UXTAB"
+
+					v, _ := ROR_C(arm.registers[Rm], uint32(rot)<<3)
+					arm.registers[Rd] = arm.registers[Rn] + (v & 0x000000ff)
+				}
+			default:
+				panic(fmt.Sprintf("unhandled data processing instructions, non immediate (sign or zero extension with opt addition) (%03b)", op))
+			}
+		}
+	} else if arm.function32bitOpcode&0xff80 == 0xfa80 {
+		if opcode&0x0080 == 0x0000 {
+			// "SIMD add and subtract"
+			// page 3-21 of "Thumb-2 Supplement"
+		} else {
+			// "Other three-register data processing instructions"
+			// page 3-23 of "Thumb-2 Supplement"
+		}
+	} else if arm.function32bitOpcode&0xff80 == 0xfb00 {
+		// "32-bit multiplies and sum of absolute differences, with or without accumulate"
+		// page 3-24 of "Thumb-2 Supplement"
+		op := (arm.function32bitOpcode & 0x0070) >> 4
+		Ra := (opcode & 0xf000) >> 12
+		op2 := (opcode & 0x00f0) >> 4
+
+		if op == 0b000 && op2 == 0b0001 {
+			// "4.6.75 MLS" of "Thumb-2 Supplement"
+			arm.fudge_thumb2disassemble32bit = "MLS"
+
+			arm.registers[Rd] = uint32(int32(arm.registers[Ra]) - int32(arm.registers[Rn])*int32(arm.registers[Rm]))
+		} else {
+			panic(fmt.Sprintf("unhandled data processing instructions, non immediate (32bit multiplies) (%03b/%04b)", op, op2))
+		}
+	} else if arm.function32bitOpcode&0xff80 == 0xfb80 {
+		// "64-bit multiply, multiply-accumulate, and divide instructions"
+		// page 3-25 of "Thumb-2 Supplement"
+		op := (arm.function32bitOpcode & 0x0070) >> 4
+		RdLo := (opcode & 0xf000) >> 12
+		RdHi := Rd
+		op2 := (opcode & 0x00f0) >> 4
+
+		if op == 0b010 && op2 == 0b0000 {
+			// "4.6.207 UMULL" of "Thumb-2 Supplement"
+			arm.fudge_thumb2disassemble32bit = "UMULL"
+
+			result := uint64(arm.registers[Rn]) * uint64(arm.registers[Rm])
+			arm.registers[RdHi] = uint32((result & 0xffffffff00000000) >> 32)
+			arm.registers[RdLo] = uint32(result & 0x00000000ffffffff)
+		} else if op == 0b011 && op2 == 0b1111 {
+			// "4.6.198 UDIV" of "Thumb-2 Supplement"
+			arm.fudge_thumb2disassemble32bit = "UDIV"
+
+			// don't allow divide by zero
+			if arm.registers[Rm] != 0 {
+				arm.registers[Rd] = arm.registers[Rn] / arm.registers[Rm]
+			} else {
+				arm.registers[Rd] = 0
+			}
+		} else {
+			panic(fmt.Sprintf("unhandled data processing instructions, non immediate (64bit multiplies) (%03b/%04b)", op, op2))
+		}
 	} else {
-		panic("reserved data processing instructions, non immediate")
+		panic("reserved data processing instructions, non-immediate")
 	}
 }
 
