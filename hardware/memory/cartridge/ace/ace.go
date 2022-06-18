@@ -23,6 +23,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm/memorymodel"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
+	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
@@ -40,13 +41,13 @@ type aceMemory struct {
 	vcsOrigin  uint32
 	vcsMemtop  uint32
 
-	gpioIn       []byte
-	gpioInOrigin uint32
-	gpioInMemtop uint32
+	gpioA       []byte
+	gpioAOrigin uint32
+	gpioAMemtop uint32
 
-	gpioOut       []byte
-	gpioOutOrigin uint32
-	gpioOutMemtop uint32
+	gpioB       []byte
+	gpioBOrigin uint32
+	gpioBMemtop uint32
 
 	sram       []byte
 	sramOrigin uint32
@@ -64,9 +65,10 @@ const (
 )
 
 const (
-	GPIO_ADDR_IN  = 0x10
-	GPIO_DATA_OUT = 0x14
-	GPIO_MEMTOP   = 0xff
+	toArm_address  = 0x10 // gpioA
+	toArm_data     = 0x10 // gpioB
+	fromArm_Opcode = 0x14 // gpioB
+	gpio_memtop    = 0x18
 )
 
 func newAceMemory(version string, data []byte) (*aceMemory, error) {
@@ -172,15 +174,16 @@ func newAceMemory(version string, data []byte) (*aceMemory, error) {
 	copy(mem.vcsProgram[28:32], []byte{0x00, 0x26, 0xe4, 0xac})
 
 	// GPIO pins
-	mem.gpioIn = make([]byte, GPIO_MEMTOP)
-	mem.gpioIn[GPIO_DATA_OUT] = 0xea
-	mem.gpioInOrigin = 0x40020c00
-	mem.gpioInMemtop = mem.gpioInOrigin | GPIO_MEMTOP
+	mem.gpioA = make([]byte, gpio_memtop)
+	mem.gpioAOrigin = 0x40020c00
+	mem.gpioAMemtop = mem.gpioAOrigin | gpio_memtop
 
-	mem.gpioOut = make([]byte, GPIO_MEMTOP)
-	mem.gpioOut[GPIO_DATA_OUT] = 0xea
-	mem.gpioOutOrigin = 0x40020800
-	mem.gpioOutMemtop = mem.gpioOutOrigin | GPIO_MEMTOP
+	mem.gpioB = make([]byte, gpio_memtop)
+	mem.gpioBOrigin = 0x40020800
+	mem.gpioBMemtop = mem.gpioBOrigin | gpio_memtop
+
+	// default NOP instruction for opcode
+	mem.gpioB[fromArm_Opcode] = 0xea
 
 	// SRAM creation
 	mem.sram = make([]byte, mem.resetSP-mem.model.SRAMOrigin)
@@ -197,11 +200,11 @@ func (mem *aceMemory) Snapshot() *aceMemory {
 
 // MapAddress implements the arm.SharedMemory interface.
 func (mem *aceMemory) MapAddress(addr uint32, write bool) (*[]byte, uint32) {
-	if addr >= mem.gpioInOrigin && addr <= mem.gpioInMemtop {
-		return &mem.gpioIn, addr - mem.gpioInOrigin
+	if addr >= mem.gpioAOrigin && addr <= mem.gpioAMemtop {
+		return &mem.gpioA, addr - mem.gpioAOrigin
 	}
-	if addr >= mem.gpioOutOrigin && addr <= mem.gpioOutMemtop {
-		return &mem.gpioOut, addr - mem.gpioOutOrigin
+	if addr >= mem.gpioBOrigin && addr <= mem.gpioBMemtop {
+		return &mem.gpioB, addr - mem.gpioBOrigin
 	}
 	if addr >= mem.armOrigin && addr <= mem.armMemtop {
 		return &mem.armProgram, addr - mem.resetPC
@@ -245,12 +248,12 @@ func NewAce(instance *instance.Instance, pathToROM string, version string, data 
 	}
 
 	cart.arm = arm.NewARM(arm.ARMv7_M, arm.MAMfull, cart.mem.model, cart.instance.Prefs.ARM, cart.mem, cart, cart.pathToROM)
-	cart.arm.AddReadWatch(cart.mem.gpioInOrigin | GPIO_ADDR_IN)
+	cart.arm.AddReadWatch(cart.mem.gpioAOrigin | toArm_address)
 
 	logger.Logf("ACE", "vcs program: %08x to %08x", cart.mem.vcsOrigin, cart.mem.vcsMemtop)
 	logger.Logf("ACE", "arm program: %08x to %08x", cart.mem.armOrigin, cart.mem.armMemtop)
-	logger.Logf("ACE", "GPIO IN: %08x to %08x", cart.mem.gpioInOrigin, cart.mem.gpioInMemtop)
-	logger.Logf("ACE", "GPIO OUT: %08x to %08x", cart.mem.gpioOutOrigin, cart.mem.gpioOutMemtop)
+	logger.Logf("ACE", "GPIO IN: %08x to %08x", cart.mem.gpioAOrigin, cart.mem.gpioAMemtop)
+	logger.Logf("ACE", "GPIO OUT: %08x to %08x", cart.mem.gpioBOrigin, cart.mem.gpioBMemtop)
 
 	cart.arm.Run()
 
@@ -286,13 +289,17 @@ func (cart *Ace) Reset() {
 // Read implements the mapper.CartMapper interface.
 func (cart *Ace) Read(addr uint16, passive bool) (uint8, error) {
 	if passive {
-		cart.Listen(0x1000|addr, 0x00)
+		cart.Listen(addr|memorymap.OriginCart, 0x00)
 	}
-	return cart.mem.gpioOut[GPIO_DATA_OUT], nil
+	return cart.mem.gpioB[fromArm_Opcode], nil
 }
 
 // Write implements the mapper.CartMapper interface.
-func (cart *Ace) Write(_ uint16, _ uint8, _, _ bool) error {
+func (cart *Ace) Write(addr uint16, data uint8, passive bool, poke bool) error {
+	if passive || poke {
+		return nil
+	}
+
 	return nil
 }
 
@@ -312,9 +319,10 @@ func (cart *Ace) Patch(_ int, _ uint8) error {
 }
 
 // Listen implements the mapper.CartMapper interface.
-func (cart *Ace) Listen(addr uint16, _ uint8) {
-	cart.mem.gpioIn[GPIO_ADDR_IN] = uint8(addr)
-	cart.mem.gpioIn[GPIO_ADDR_IN+1] = uint8(addr >> 8)
+func (cart *Ace) Listen(addr uint16, data uint8) {
+	cart.mem.gpioA[toArm_address] = uint8(addr)
+	cart.mem.gpioA[toArm_address+1] = uint8(addr >> 8)
+	cart.mem.gpioB[toArm_data] = data
 	cart.arm.Continue()
 	cart.arm.Continue()
 	cart.arm.Continue()
