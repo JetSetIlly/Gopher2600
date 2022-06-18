@@ -16,6 +16,7 @@
 package arm
 
 import (
+	"fmt"
 	"strings"
 )
 
@@ -62,6 +63,9 @@ func (sr *status) String() string {
 	} else {
 		s.WriteRune('c')
 	}
+
+	s.WriteString(fmt.Sprintf("   itMask: %04b", sr.itMask))
+
 	return s.String()
 }
 
