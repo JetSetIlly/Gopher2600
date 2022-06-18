@@ -231,7 +231,30 @@ func (arm *ARM) thumb2DataProcessingNonImmediate(opcode uint16) {
 		if opcode&0x0080 == 0x0000 {
 			// "Register-controlled shift instructions"
 			// page 3-19 of "Thumb-2 Supplement"
-			panic("unhandled data processing instructions, non immediate (reg controlled shift)")
+			op := (arm.function32bitOpcode & 0x0060) >> 5
+			// s := (arm.function32bitOpcode & 0x0010) == 0x0010
+			switch op {
+			case 0b10:
+				// "4.6.10 ASR (immediate)" of "Thumb-2 Supplement"
+				arm.fudge_thumb2disassemble32bit = "ASR"
+
+				imm3 := (opcode & 0x7000) >> 12
+				imm2 := (opcode & 0x00c0) >> 6
+				imm5 := (imm3 << 2) | imm2
+				s := arm.function32bitOpcode&0x0010 == 0x0010
+				carry := arm.registers[Rm]&0x0001 == 0x0001
+				arm.registers[Rd] = arm.registers[Rm] >> imm5
+				if arm.Status.carry {
+					arm.registers[Rd] |= 0x80000000
+				}
+				if s {
+					arm.Status.isNegative(arm.registers[Rd])
+					arm.Status.isZero(arm.registers[Rd])
+					arm.Status.setCarry(carry)
+				}
+			default:
+				panic(fmt.Sprintf("unhandled data processing instructions, non immediate (reg controlled shift) (%02b)", op))
+			}
 		} else {
 			// "Signed and unsigned extend instructions with optional addition"
 			// page 3-20 of "Thumb-2 Supplement"
@@ -467,6 +490,17 @@ func (arm *ARM) thumb2DataProcessing(opcode uint16) {
 					arm.Status.isZero(arm.registers[Rn])
 					arm.Status.setCarry(carry)
 				}
+			}
+
+		case 0b0100:
+			// "4.6.36 EOR (immediate)" of "Thumb-2 Supplement"
+			arm.fudge_thumb2disassemble32bit = "EOR (immediate)"
+
+			arm.registers[Rd] = arm.registers[Rn] ^ imm32
+			if setFlags {
+				arm.Status.isNegative(arm.registers[Rd])
+				arm.Status.isZero(arm.registers[Rd])
+				arm.Status.setCarry(carry)
 			}
 
 		case 0b1000:
