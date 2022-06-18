@@ -404,7 +404,7 @@ func (arm *ARM) thumb2BranchesORDataProcessing(opcode uint16) {
 func (arm *ARM) thumb2DataProcessing(opcode uint16) {
 	// "3.3.1 Data processing instructions: immediate, including bitfield and saturate" of "Thumb-2 Supplement"
 
-	if arm.function32bitOpcode&0xf200 == 0xf000 {
+	if arm.function32bitOpcode&0xfa00 == 0xf000 {
 		// "Data processing instructions with modified 12-bit immediate"
 		// page 3-14 of "Thumb-2 Supplement"
 
@@ -526,40 +526,18 @@ func (arm *ARM) thumb2DataProcessing(opcode uint16) {
 		default:
 			panic(fmt.Sprintf("unimplemented 'data processing instructions with modified 12bit immediate' (%04b)", op))
 		}
-	} else {
-		if arm.function32bitOpcode&0xf300 == 0xf300 {
-			if arm.function32bitOpcode&0xf320 == 0xf320 {
-				panic("reserved data processing instruction")
-			}
+	} else if arm.function32bitOpcode&0xfb40 == 0xf200 {
+		// "Data processing instructions with plain 12-bit immediate"
+		// page 3-15 of "Thumb-2 Supplement"
+	} else if arm.function32bitOpcode&0xfb40 == 0xf240 {
+		// "Data processing instructions with plain 16-bit immediate"
+		// page 3-15 of "Thumb-2 Supplement"
 
-			// bitfield operations
-			op := (arm.function32bitOpcode & 0x00e0) >> 5
-			switch op {
-			case 0b0110:
-				// // "4.6.197 UBFX" of "Thumb-2 Supplement"
-				arm.fudge_thumb2disassemble32bit = "UBFX"
+		op := (arm.function32bitOpcode & 0x0080) >> 7
+		op2 := (arm.function32bitOpcode & 0x0030) >> 4
 
-				Rn := arm.function32bitOpcode & 0x000f
-				imm3 := (opcode & 0x7000) >> 12
-				Rd := (opcode & 0x0f00) >> 8
-				imm2 := (opcode & 0x00c0) >> 6
-				widthm1 := opcode & 0x001f
-
-				lsbit := (imm3 << 2) | imm2
-				msbit := lsbit + widthm1
-				if msbit <= 31 {
-					v := arm.registers[Rn]
-					w := v >> lsbit
-					v = w << lsbit
-					x := v << (31 - msbit)
-					v = x >> (31 - msbit)
-					arm.registers[Rd] = v
-				}
-			default:
-				panic(fmt.Sprintf("unimplemented 'bitfield operation' (%03b)", op))
-			}
-		} else if arm.function32bitOpcode&0xf240 == 0xf240 {
-			// "A7.7.76 MOV (immediate)" of "ARMv7-M"
+		if op == 0b0 && op2 == 0b00 {
+			// "4.6.76 MOV (immediate)" of "Thumb-2 Supplement"
 			// T3 encoding
 			arm.fudge_thumb2disassemble32bit = "MOV"
 
@@ -571,10 +549,41 @@ func (arm *ARM) thumb2DataProcessing(opcode uint16) {
 
 			imm32 := uint32((imm4 << 12) | (i << 11) | (imm3 << 8) | imm8)
 			arm.registers[Rd] = imm32
-
 		} else {
-			panic("(2) unimplemented data processing instruction")
+			panic("unimplemented MOVT")
 		}
+
+	} else if arm.function32bitOpcode&0xfb10 == 0xf300 {
+		// "Data processing instructions, bitfield and saturate"
+		// page 3-16 of "Thumb-2 Supplement"
+
+		op := (arm.function32bitOpcode & 0x00e0) >> 5
+		switch op {
+		case 0b0110:
+			// "4.6.197 UBFX" of "Thumb-2 Supplement"
+			arm.fudge_thumb2disassemble32bit = "UBFX"
+
+			Rn := arm.function32bitOpcode & 0x000f
+			imm3 := (opcode & 0x7000) >> 12
+			Rd := (opcode & 0x0f00) >> 8
+			imm2 := (opcode & 0x00c0) >> 6
+			widthm1 := opcode & 0x001f
+
+			lsbit := (imm3 << 2) | imm2
+			msbit := lsbit + widthm1
+			if msbit <= 31 {
+				v := arm.registers[Rn]
+				w := v >> lsbit
+				v = w << lsbit
+				x := v << (31 - msbit)
+				v = x >> (31 - msbit)
+				arm.registers[Rd] = v
+			}
+		default:
+			panic(fmt.Sprintf("unimplemented 'bitfield operation' (%03b)", op))
+		}
+	} else {
+		panic("reserved data processing instructions: immediate, including bitfield and saturate")
 	}
 }
 
