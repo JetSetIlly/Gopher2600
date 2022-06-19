@@ -242,6 +242,7 @@ type ARM struct {
 	// * temporary construct until thumb2Disassemble() is written
 	fudge_thumb2disassemble32bit string
 	fudge_thumb2disassemble16bit string
+	fudge_thumb2disassemblePrint bool
 
 	// address watches - apply to 32bit reads only
 	readWatches []uint32
@@ -616,25 +617,38 @@ func (arm *ARM) run() (float32, error) {
 				}
 			}
 
-			if itBlockNoExecute {
-				// fmt.Print("*** ")
+			if arm.fudge_thumb2disassemblePrint {
+				if itBlockNoExecute {
+					fmt.Print("*** ")
+				}
+				if resolveFunction32bit {
+					fmt.Printf("%04x %04x :: %s\n", arm.function32bitOpcode, opcode, arm.fudge_thumb2disassemble32bit)
+					arm.fudge_thumb2disassemble32bit = ""
+					arm.fudge_thumb2disassemble16bit = ""
+					fmt.Println(arm.String())
+					fmt.Println(arm.Status.String())
+					fmt.Println("====================")
+				} else if !newFunction32bit {
+					if arm.fudge_thumb2disassemble16bit != "" {
+						fmt.Printf("%04x :: %s\n", opcode, arm.fudge_thumb2disassemble16bit)
+						arm.fudge_thumb2disassemble16bit = ""
+					} else {
+						fmt.Printf("%04x :: %s\n", opcode, thumbDisassemble(opcode).String())
+					}
+					fmt.Println(arm.String())
+					fmt.Println(arm.Status.String())
+					fmt.Println("====================")
+				}
 			}
-			// if resolveFunction32bit {
-			// 	fmt.Printf("%04x %04x :: %s\n", arm.function32bitOpcode, opcode, arm.fudge_thumb2disassemble32bit)
-			// 	arm.fudge_thumb2disassemble32bit = ""
-			// 	fmt.Println(arm.String())
-			// 	fmt.Println(arm.Status.String())
-			// 	fmt.Println("====================")
-			// } else if !newFunction32bit {
-			// 	if arm.fudge_thumb2disassemble16bit != "" {
-			// 		fmt.Printf("%04x :: %s\n", opcode, arm.fudge_thumb2disassemble16bit)
-			// 		arm.fudge_thumb2disassemble16bit = ""
-			// 	} else {
-			// 		fmt.Printf("%04x :: %s\n", opcode, thumbDisassemble(opcode).String())
+
+			// if arm.function32bitOpcode == 0xf3c3 && opcode == 0x05c2 {
+			// 	fmt.Println(`\/\/\/\/`)
+			// 	arm.fudge_thumb2disassemblePrint = true
+			// } else if opcode == 0x690a {
+			// 	if arm.fudge_thumb2disassemblePrint {
+			// 		fmt.Println(`/\/\/\/\`)
 			// 	}
-			// 	fmt.Println(arm.String())
-			// 	fmt.Println(arm.Status.String())
-			// 	fmt.Println("====================")
+			// 	arm.fudge_thumb2disassemblePrint = false
 			// }
 
 		default:
