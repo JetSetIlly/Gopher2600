@@ -180,6 +180,36 @@ func (arm *ARM) thumb2DataProcessingNonImmediate(opcode uint16) {
 				panic("ORR")
 			}
 
+		case 0b0100:
+			// "4.6.37 EOR (register)" of "Thumb-2 Supplement
+			// T2 encoding
+			arm.fudge_thumb2disassemble32bit = "EOR"
+
+			switch typ {
+			case 0b00:
+				// with logical left shift
+				carry := arm.registers[Rm]&0x80000000 == 0x80000000
+				arm.registers[Rd] = arm.registers[Rn] ^ (arm.registers[Rm] << imm5)
+				if setFlags {
+					arm.Status.isNegative(arm.registers[Rd])
+					arm.Status.isZero(arm.registers[Rd])
+					arm.Status.setCarry(carry)
+					// overflow unchanged
+				}
+			case 0b01:
+				// with logical right shift
+				carry := arm.registers[Rm]&0x80000000 == 0x80000000
+				arm.registers[Rd] = arm.registers[Rn] ^ (arm.registers[Rm] >> imm5)
+				if setFlags {
+					arm.Status.isNegative(arm.registers[Rd])
+					arm.Status.isZero(arm.registers[Rd])
+					arm.Status.setCarry(carry)
+					// overflow unchanged
+				}
+			default:
+				panic(fmt.Sprintf("unhandled data processing instructions, non immediate (data processing, constant shift) (%04b) (%02b)", op, typ))
+			}
+
 		case 0b1101:
 			if Rd == rPC {
 				// "4.6.30 CMP (register)" of "Thumb-2 Supplement"
@@ -426,7 +456,11 @@ func (arm *ARM) thumb2LoadStoreDoubleEtc(opcode uint16) {
 			arm.fudge_thumb2disassemble32bit = "TBB"
 
 			Rm := opcode & 0x000f
-			halfwords := arm.read8bit(arm.registers[Rn] + arm.registers[Rm])
+			idx := arm.registers[Rn] + arm.registers[Rm]
+			if Rn == rPC || Rm == rPC {
+				idx -= 2
+			}
+			halfwords := arm.read8bit(idx)
 			arm.registers[rPC] += uint32(halfwords) << 1
 		default:
 			panic(fmt.Sprintf("unhandled load and store double and exclusive and table branch (load and store exclusive byte etc.) (%04b)", op))

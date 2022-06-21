@@ -113,45 +113,59 @@ func (sr *status) condition(cond uint8) bool {
 	switch cond {
 	case 0b0000:
 		// equal
+		// BEQ
 		b = sr.zero
 	case 0b0001:
 		// not equal
+		// BNE
 		b = !sr.zero
 	case 0b0010:
 		// carry set
+		// BCS
 		b = sr.carry
 	case 0b0011:
 		// carry clear
+		// BCC
 		b = !sr.carry
 	case 0b0100:
 		// minus
+		// BMI
 		b = sr.negative
 	case 0b0101:
 		// plus
+		// BPL
 		b = !sr.negative
 	case 0b0110:
 		// overflow
+		// BVS
 		b = sr.overflow
 	case 0b0111:
 		// no overflow
+		// BVC
 		b = !sr.overflow
 	case 0b1000:
 		// unsigned higer C==1 and Z==0
+		// BHI
 		b = sr.carry && !sr.zero
 	case 0b1001:
 		// unsigned lower C==0 and Z==1
+		// BLS
 		b = !sr.carry || sr.zero
 	case 0b1010:
 		// signed greater than N==V
+		// BGE
 		b = sr.negative == sr.overflow
 	case 0b1011:
 		// signed less than N!=V
+		// BLT
 		b = sr.negative != sr.overflow
 	case 0b1100:
 		// signed greater than Z==0 and N==V
+		// BGT
 		b = !sr.zero && sr.negative == sr.overflow
 	case 0b1101:
 		// signed less than or qual Z==1 or N!=V
+		// BLE
 		b = sr.zero || sr.negative != sr.overflow
 	case 0b1110:
 		b = true
