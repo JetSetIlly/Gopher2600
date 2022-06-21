@@ -65,6 +65,7 @@ const (
 )
 
 const (
+	gpio_mode      = 0x00 // gpioB
 	toArm_address  = 0x10 // gpioA
 	toArm_data     = 0x10 // gpioB
 	fromArm_Opcode = 0x14 // gpioB
@@ -320,9 +321,20 @@ func (cart *Ace) Patch(_ int, _ uint8) error {
 
 // Listen implements the mapper.CartMapper interface.
 func (cart *Ace) Listen(addr uint16, data uint8) {
+
+	// from dpc example:
+	// reading of addresses is
+	//		ldr	r2, [r1, #16] (opcode 690a)
+	// r1 contains 0x40020c00 which is an address in gpioA
+	//
+	// reading of data is
+	//		ldr.w	r0, [lr, #16] (opcode f8de 0010)
+	// lr contains 0x40020800 which is an address in gpioB
+
 	cart.mem.gpioA[toArm_address] = uint8(addr)
 	cart.mem.gpioA[toArm_address+1] = uint8(addr >> 8)
 	cart.mem.gpioB[toArm_data] = data
+	cart.arm.Continue()
 	cart.arm.Continue()
 	cart.arm.Continue()
 	cart.arm.Continue()
