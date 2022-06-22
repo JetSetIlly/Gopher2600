@@ -22,7 +22,7 @@ import (
 	"math/bits"
 )
 
-func (arm *ARM) decodeThumb2Upper32bit(opcode uint16) func(uint16) {
+func (arm *ARM) decode32bitThumb2(opcode uint16) func(uint16) {
 	// Two tables for top level decoding of 32bit Thumb-2 instructions.
 	//
 	// "3.3 Instruction encoding for 32-bit Thumb instructions" of "Thumb-2 Supplement"
@@ -39,39 +39,19 @@ func (arm *ARM) decodeThumb2Upper32bit(opcode uint16) func(uint16) {
 		// branches, miscellaneous control
 		//  OR
 		// data processing: immediate, including bitfield and saturate
-		return func(_ uint16) {
-			arm.function32bit = true
-			arm.function32bitFunction = arm.thumb2BranchesORDataProcessing
-			arm.function32bitOpcode = opcode
-		}
+		return arm.thumb2BranchesORDataProcessing
 	} else if opcode&0xfe40 == 0xe800 {
 		// load and store multiple, RFE and SRS
-		return func(_ uint16) {
-			arm.function32bit = true
-			arm.function32bitFunction = arm.thumb2LoadStoreMultiple
-			arm.function32bitOpcode = opcode
-		}
+		return arm.thumb2LoadStoreMultiple
 	} else if opcode&0xfe40 == 0xe840 {
 		// load and store double and exclusive and table branch
-		return func(_ uint16) {
-			arm.function32bit = true
-			arm.function32bitFunction = arm.thumb2LoadStoreDoubleEtc
-			arm.function32bitOpcode = opcode
-		}
+		return arm.thumb2LoadStoreDoubleEtc
 	} else if opcode&0xfe00 == 0xf800 {
 		// load and store single data item, memory hints
-		return func(_ uint16) {
-			arm.function32bit = true
-			arm.function32bitFunction = arm.thumb2LoadStoreSingle
-			arm.function32bitOpcode = opcode
-		}
+		return arm.thumb2LoadStoreSingle
 	} else if opcode&0xee00 == 0xea00 {
 		// data processing, no immediate operand
-		return func(_ uint16) {
-			arm.function32bit = true
-			arm.function32bitFunction = arm.thumb2DataProcessingNonImmediate
-			arm.function32bitOpcode = opcode
-		}
+		return arm.thumb2DataProcessingNonImmediate
 	}
 
 	panic(fmt.Sprintf("undecoded 32-bit thumb-2 instruction (upper half-word) (%04x)", opcode))
