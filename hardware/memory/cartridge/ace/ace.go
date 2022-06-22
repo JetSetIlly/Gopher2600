@@ -24,6 +24,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm/memorymodel"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
+	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
@@ -353,4 +354,10 @@ func (cart *Ace) CopyBanks() []mapper.BankContent {
 // implements arm.CartridgeHook interface.
 func (cart *Ace) ARMinterrupt(addr uint32, val1 uint32, val2 uint32) (arm.ARMinterruptReturn, error) {
 	return arm.ARMinterruptReturn{}, nil
+}
+
+// NewFrame implements the protocol.NewFrame interface.
+func (cart *Ace) NewFrame(_ television.FrameInfo) error {
+	cart.arm.UpdatePrefs()
+	return nil
 }

@@ -283,6 +283,7 @@ func NewARM(arch Architecture, mamcr MAMCR, mmap memorymodel.Map, prefs *prefere
 	arm.timer.mmap = mmap
 
 	arm.reset()
+	arm.UpdatePrefs()
 
 	return arm
 }
@@ -337,10 +338,9 @@ func (arm *ARM) AddReadWatch(addr uint32) {
 	arm.readWatches = append(arm.readWatches, addr)
 }
 
-// resetExecution is differnt to ARM in that it does not reset the state of the
-// ARM processor itself only the state related to the current execution (cycles
-// consumed etc.)
-func (arm *ARM) resetExecution() error {
+// UpdatePrefs should be called periodically to ensure that the current
+// preference values are being used in the ARM emulation.
+func (arm *ARM) UpdatePrefs() {
 	// update clock value from preferences
 	arm.Clk = float32(arm.prefs.Clock.Get().(float64))
 
@@ -374,9 +374,12 @@ func (arm *ARM) resetExecution() error {
 	// how to handle illegal memory access
 	arm.abortOnIllegalMem = arm.prefs.AbortOnIllegalMem.Get().(bool)
 	arm.abortOnStackCollision = arm.prefs.AbortOnStackCollision.Get().(bool)
+}
 
-	// /\/\/\ updating of prefs /\/\/\
-
+// resetExecution is differnt to ARM in that it does not reset the state of the
+// ARM processor itself only the state related to the current execution (cycles
+// consumed etc.)
+func (arm *ARM) resetExecution() error {
 	// reset cycles count
 	arm.cyclesTotal = 0
 	arm.prefetchCycle = S

@@ -24,6 +24,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
+	"github.com/jetsetilly/gopher2600/hardware/television"
 )
 
 // cdf implements the mapper.CartMapper interface.
@@ -646,5 +647,11 @@ func (cart *cdf) HotLoad(data []byte) error {
 	cart.arm.Plumb(cart.state.static, cart)
 	cart.arm.ClearCaches()
 
+	return nil
+}
+
+// NewFrame implements the protocol.NewFrame interface.
+func (cart *cdf) NewFrame(_ television.FrameInfo) error {
+	cart.arm.UpdatePrefs()
 	return nil
 }
