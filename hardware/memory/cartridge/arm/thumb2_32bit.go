@@ -22,6 +22,10 @@ import (
 	"math/bits"
 )
 
+func (arm *ARM) is32BitThumb2(opcode uint16) bool {
+	return opcode&0xf800 == 0xe800 || opcode&0xf000 == 0xf000
+}
+
 func (arm *ARM) decode32bitThumb2(opcode uint16) func(uint16) {
 	// Two tables for top level decoding of 32bit Thumb-2 instructions.
 	//
@@ -32,9 +36,9 @@ func (arm *ARM) decode32bitThumb2(opcode uint16) func(uint16) {
 	// Both with different emphasis but the table in the "Thumb-2 Supplement"
 	// was used.
 
-	if opcode&0xef00 == 0xef00 {
+	if opcode&0xec00 == 0xec00 {
 		// coprocessor
-		panic("coprocessor")
+		return arm.thumb2Coprocessor
 	} else if opcode&0xf800 == 0xf000 {
 		// branches, miscellaneous control
 		//  OR
@@ -54,7 +58,7 @@ func (arm *ARM) decode32bitThumb2(opcode uint16) func(uint16) {
 		return arm.thumb2DataProcessingNonImmediate
 	}
 
-	panic(fmt.Sprintf("undecoded 32-bit thumb-2 instruction (upper half-word) (%04x)", opcode))
+	panic(fmt.Sprintf("undecoded 32-bit thumb-2 instruction (%04x)", opcode))
 }
 
 func (arm *ARM) thumb2DataProcessingNonImmediate(opcode uint16) {

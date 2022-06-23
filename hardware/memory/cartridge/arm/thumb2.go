@@ -31,10 +31,6 @@ import (
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
-func (arm *ARM) is32BitThumb2(opcode uint16) bool {
-	return opcode&0xf800 == 0xe800 || opcode&0xf000 == 0xf000
-}
-
 func (arm *ARM) decodeThumb2(opcode uint16) func(uint16) {
 	// condition tree built from the table in Figure 3-1 of the "Thumb-2 Supplement"
 	//
