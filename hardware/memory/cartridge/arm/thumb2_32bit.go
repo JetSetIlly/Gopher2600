@@ -507,6 +507,7 @@ func (arm *ARM) thumb2DataProcessing(opcode uint16) {
 					// overflow unchanged
 				}
 			}
+
 		case 0b0010:
 			if Rn == 0xf {
 				// "4.6.76 MOV (immediate)" of "Thumb-2 Supplement"
@@ -514,10 +515,9 @@ func (arm *ARM) thumb2DataProcessing(opcode uint16) {
 				arm.fudge_thumb2disassemble32bit = "MOV (immediate)"
 
 				arm.registers[Rd] = imm32
-
 				if setFlags {
-					arm.Status.isNegative(arm.registers[Rn])
-					arm.Status.isZero(arm.registers[Rn])
+					arm.Status.isNegative(arm.registers[Rd])
+					arm.Status.isZero(arm.registers[Rd])
 					arm.Status.setCarry(carry)
 					// overflow unchanged
 				}
@@ -526,13 +526,39 @@ func (arm *ARM) thumb2DataProcessing(opcode uint16) {
 				arm.fudge_thumb2disassemble32bit = "ORR (immediate)"
 
 				arm.registers[Rd] = arm.registers[Rn] | imm32
-
 				if setFlags {
-					arm.Status.isNegative(arm.registers[Rn])
-					arm.Status.isZero(arm.registers[Rn])
+					arm.Status.isNegative(arm.registers[Rd])
+					arm.Status.isZero(arm.registers[Rd])
 					arm.Status.setCarry(carry)
 					// overflow unchanged
 				}
+			}
+
+		case 0b0011:
+			if Rn == 0b1111 {
+				// "4.6.85 MVN (immediate)" of "Thumb-2 Supplement"
+				arm.fudge_thumb2disassemble32bit = "MVN (immediate)"
+
+				arm.registers[Rd] = ^imm32
+				if setFlags {
+					arm.Status.isNegative(arm.registers[Rd])
+					arm.Status.isZero(arm.registers[Rd])
+					arm.Status.setCarry(carry)
+					// overflow unchanged
+				}
+			} else {
+				// "4.6.89 ORN (immediate)" of "Thumb-2 Supplement"
+				arm.fudge_thumb2disassemble32bit = "ORN (immediate)"
+
+				arm.registers[Rd] = arm.registers[Rn] | ^imm32
+				if setFlags {
+					arm.Status.isNegative(arm.registers[Rd])
+					arm.Status.isZero(arm.registers[Rd])
+					arm.Status.setCarry(carry)
+					// overflow unchanged
+				}
+
+				panic("ORN")
 			}
 
 		case 0b0100:
