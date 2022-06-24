@@ -218,7 +218,7 @@ func (mem *aceMemory) MapAddress(addr uint32, write bool) (*[]byte, uint32) {
 		return &mem.sram, addr - mem.model.SRAMOrigin
 	}
 
-	return nil, 0
+	return nil, addr
 }
 
 // ResetVectors implements the arm.SharedMemory interface.
