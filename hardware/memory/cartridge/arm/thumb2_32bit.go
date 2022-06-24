@@ -727,6 +727,9 @@ func (arm *ARM) thumb2LoadStoreSingle(opcode uint16) {
 		}
 	} else if arm.function32bitOpcode&0xfe80 == 0xf880 {
 		// Rn + imm12 (format 2 in the table)
+		//
+		// immediate offset
+		//
 		// further depends on size and L bit
 
 		// U is always up for this format meaning that we add the index to
@@ -737,29 +740,33 @@ func (arm *ARM) thumb2LoadStoreSingle(opcode uint16) {
 		switch size {
 		case 0b00:
 			if l {
-				arm.fudge_thumb2disassemble32bit = "LDR(1)"
 				arm.registers[Rt] = uint32(arm.read8bit(addr))
 				if s && arm.registers[Rt]&0x80 == 0x80 {
+					arm.fudge_thumb2disassemble32bit = "LDRSB"
 					arm.registers[Rt] |= 0xffffff00
+				} else {
+					arm.fudge_thumb2disassemble32bit = "LDRB"
 				}
 			} else {
-				arm.fudge_thumb2disassemble32bit = "STR"
+				arm.fudge_thumb2disassemble32bit = "STRB"
 				arm.write8bit(addr, uint8(arm.registers[Rt]))
 			}
 		case 0b01:
 			if l {
-				arm.fudge_thumb2disassemble32bit = "LDR(2)"
 				arm.registers[Rt] = uint32(arm.read16bit(addr))
 				if s && arm.registers[Rt]&0x8000 == 0x8000 {
+					arm.fudge_thumb2disassemble32bit = "LDRSH"
 					arm.registers[Rt] |= 0xffff0000
+				} else {
+					arm.fudge_thumb2disassemble32bit = "LDRH"
 				}
 			} else {
-				arm.fudge_thumb2disassemble32bit = "STR"
+				arm.fudge_thumb2disassemble32bit = "STRH"
 				arm.write16bit(addr, uint16(arm.registers[Rt]))
 			}
 		case 0b10:
 			if l {
-				arm.fudge_thumb2disassemble32bit = "LDR(3)"
+				arm.fudge_thumb2disassemble32bit = "LDR"
 				arm.registers[Rt] = arm.read32bit(addr)
 			} else {
 				arm.fudge_thumb2disassemble32bit = "STR"
@@ -770,14 +777,58 @@ func (arm *ARM) thumb2LoadStoreSingle(opcode uint16) {
 		}
 
 	} else if (opcode & 0x0f00) == 0x0c00 {
-		// Rn -imm8 (format 3 in the table)
-		// imm8 := opcode & 0x00ff
-		panic("umimplemented Rn -imm8")
+		// Rn - imm8 (format 3 in the table)
+		//
+		// negative immediate offset
+		//
+		// further depends on size and L bit
+
+		imm8 := opcode & 0x00ff
+		addr := arm.registers[Rn] - uint32(imm8)
+
+		switch size {
+		case 0b00:
+			if l {
+				arm.registers[Rt] = uint32(arm.read8bit(addr))
+				if s && arm.registers[Rt]&0x80 == 0x80 {
+					arm.fudge_thumb2disassemble32bit = "LDRSB"
+					arm.registers[Rt] |= 0xffffff00
+				} else {
+					arm.fudge_thumb2disassemble32bit = "LDRB"
+				}
+			} else {
+				arm.fudge_thumb2disassemble32bit = "STRB"
+				arm.write8bit(addr, uint8(arm.registers[Rt]))
+			}
+		case 0b01:
+			if l {
+				arm.registers[Rt] = uint32(arm.read16bit(addr))
+				if s && arm.registers[Rt]&0x8000 == 0x8000 {
+					arm.fudge_thumb2disassemble32bit = "LDRSH"
+					arm.registers[Rt] |= 0xffff0000
+				} else {
+					arm.fudge_thumb2disassemble32bit = "LDRH"
+				}
+			} else {
+				arm.fudge_thumb2disassemble32bit = "STRH"
+				arm.write16bit(addr, uint16(arm.registers[Rt]))
+			}
+		case 0b10:
+			if l {
+				arm.fudge_thumb2disassemble32bit = "LDR"
+				arm.registers[Rt] = arm.read32bit(addr)
+			} else {
+				arm.fudge_thumb2disassemble32bit = "STR"
+				arm.write32bit(addr, arm.registers[Rt])
+			}
+		default:
+			panic(fmt.Sprintf("unhandled size (%02b) for 'Rn - imm8'", size))
+		}
 
 	} else if (opcode & 0x0f00) == 0x0e00 {
 		// Rn +imm8, user privilege (format 4 in the table)
 		// imm8 := opcode & 0x00ff
-		panic("umimplemented Rn +imm8, user privilege")
+		panic("unimplemented Rn + imm8, user privilege")
 
 	} else if (opcode & 0x0d00) == 0x0900 {
 		// Rn post-index by +/- imm8 (format 5 in the table)
