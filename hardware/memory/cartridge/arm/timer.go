@@ -62,12 +62,6 @@ func (t *timer) write(addr uint32, val uint32) (bool, string) {
 	case t.mmap.TIMERvalue:
 		t.counter = float32(val)
 		comment = fmt.Sprintf("timer = %d", val)
-	case t.mmap.TIMERprescale:
-		// not implemented yet
-	case t.mmap.TIMERprescaleMax:
-		// not implemented yet
-	case t.mmap.APBDIV:
-		// not implemented yet
 	default:
 		return false, comment
 	}
@@ -85,12 +79,6 @@ func (t *timer) read(addr uint32) (uint32, bool, string) {
 	case t.mmap.TIMERvalue:
 		val = uint32(t.counter)
 		comment = fmt.Sprintf("timer read = %d", val)
-	case t.mmap.TIMERprescale:
-		// not implemented yet
-	case t.mmap.TIMERprescaleMax:
-		// not implemented yet
-	case t.mmap.APBDIV:
-		// not implemented yet
 	default:
 		return 0, false, comment
 	}

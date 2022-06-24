@@ -261,7 +261,7 @@ func NewARM(arch Architecture, mamcr MAMCR, mmap memorymodel.Map, prefs *prefere
 		executionMap: make(map[uint32][]func(_ uint16)),
 		disasmCache:  make(map[uint32]DisasmEntry),
 
-		// updated on every Run(). these are reasonable defaults
+		// updated on every UpdatePrefs(). these are reasonable defaults
 		Clk:         70.0,
 		clklenFlash: 4.0,
 	}

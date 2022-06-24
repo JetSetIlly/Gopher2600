@@ -33,13 +33,10 @@ type Map struct {
 	PeripheralsMemtop uint32
 
 	// specific registers addresses
-	TIMERcontrol     uint32
-	TIMERvalue       uint32
-	TIMERprescale    uint32
-	TIMERprescaleMax uint32
-	APBDIV           uint32
-	MAMCR            uint32
-	MAMTIM           uint32
+	TIMERcontrol uint32
+	TIMERvalue   uint32
+	MAMCR        uint32
+	MAMTIM       uint32
 }
 
 const (
@@ -68,9 +65,6 @@ func NewMap(model string) Map {
 		mmap.PeripheralsMemtop = uint32(0xffffffff)
 		mmap.TIMERcontrol = mmap.PeripheralsOrigin | 0x00008004
 		mmap.TIMERvalue = mmap.PeripheralsOrigin | 0x00008008
-		mmap.TIMERprescale = mmap.PeripheralsOrigin | 0x00008010
-		mmap.TIMERprescaleMax = mmap.PeripheralsOrigin | 0x0000800C
-		mmap.APBDIV = mmap.PeripheralsOrigin | 0x001fc100
 		mmap.MAMCR = mmap.PeripheralsOrigin | 0x001fc000
 		mmap.MAMTIM = mmap.PeripheralsOrigin | 0x001fc004
 
@@ -82,6 +76,8 @@ func NewMap(model string) Map {
 		mmap.SRAMOrigin = uint32(0x10000000)
 		mmap.PeripheralsOrigin = uint32(0xe0000000)
 		mmap.PeripheralsMemtop = uint32(0xffffffff)
+		mmap.TIMERcontrol = mmap.PeripheralsOrigin | 0x0000e014
+		mmap.TIMERvalue = mmap.PeripheralsOrigin | 0x0000e018
 	}
 
 	logger.Logf("ARM Mem Model", "using %s", mmap.Model)

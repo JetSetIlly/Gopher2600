@@ -350,7 +350,8 @@ func (cart *Ace) Listen(addr uint16, data uint8) {
 }
 
 // Step implements the mapper.CartMapper interface.
-func (cart *Ace) Step(_ float32) {
+func (cart *Ace) Step(clock float32) {
+	cart.arm.Step(clock)
 }
 
 // IterateBank implements the mapper.CartMapper interface.
