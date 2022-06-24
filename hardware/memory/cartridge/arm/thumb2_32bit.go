@@ -885,18 +885,21 @@ func (arm *ARM) thumb2LoadStoreMultiple(opcode uint16) {
 	WRn := Rn | (w << 4)
 
 	switch op {
-	case 0b00:
-		panic("load and store multiple: illegal op (0b00)")
 	case 0b01:
 		if l == 0x1 {
 			switch WRn {
 			case 0b11101:
+				// "4.6.98 POP" of "Thumb-2 Supplement"
+				//		and
 				// "A7.7.99 POP" of "ARMv7-M"
+				//
+				// Pop multiple registers from the stack
 				arm.fudge_thumb2disassemble32bit = "POP (ldmia)"
 
 				regList := opcode & 0xdfff
+				c := uint32(bits.OnesCount16(regList) * 4)
 				addr := arm.registers[rSP]
-				arm.registers[rSP] += uint32(bits.OnesCount16(regList) * 4)
+				arm.registers[rSP] += c
 
 				// read each register in turn (from lower to highest)
 				for i := 0; i <= 14; i++ {
@@ -915,18 +918,113 @@ func (arm *ARM) thumb2LoadStoreMultiple(opcode uint16) {
 					arm.registers[rPC] = arm.read32bit(addr)
 				}
 			default:
-				panic(fmt.Sprintf("load and store multiple: unimplemented op (%02b) l (%01b)", op, l))
+				// "4.6.42 LDMIA / LDMFD" of "Thumb-2 Supplement"
+				//		and
+				// "A7.7.41 LDM, LDMIA, LDMFD" of "ARVv7-M"
+				//
+				// T2 encoding
+				//
+				// Load multiple (increment after, full descending)
+				arm.fudge_thumb2disassemble32bit = "LDMIA/LDMFD"
+
+				regList := opcode & 0xdfff
+				c := uint32(bits.OnesCount16(regList) * 4)
+				addr := arm.registers[Rn]
+
+				for i := 0; i <= 14; i++ {
+					// shift single-bit mask
+					m := uint16(0x01 << i)
+
+					// read register if indicated by regList
+					if regList&m == m {
+						arm.registers[i] = arm.read32bit(addr)
+						addr += 4
+					}
+				}
+
+				// write PC
+				if regList&0x8000 == 0x8000 {
+					arm.registers[rPC] = arm.read32bit(addr)
+				}
+
+				// update register if W bit is set
+				if w == 0x01 {
+					arm.registers[Rn] += c
+				}
 			}
 		} else {
-			panic(fmt.Sprintf("load and store multiple: unimplemented op (%02b) l (%01b)", op, l))
+			// "4.6.161 STMIA / STMEA" of "Thumb-2 Supplement"
+			//		and
+			// "A7.7.159 STM, STMIA, STMEA" of "ARMv7-M"
+			//
+			// T2 encoding
+			//
+			// Store multiple (increment after, empty ascending)
+			arm.fudge_thumb2disassemble32bit = "STMIA/STMEA"
+
+			regList := opcode & 0x5fff
+			c := uint32(bits.OnesCount16(regList) * 4)
+			addr := arm.registers[Rn]
+
+			for i := 0; i <= 14; i++ {
+				// shift single-bit mask
+				m := uint16(0x01 << i)
+
+				// write register if indicated by regList
+				if regList&m == m {
+					// there is a branch in the pseudocode that applies to T1
+					// encoding only. ommitted here
+					arm.write32bit(addr, arm.registers[i])
+					addr += 4
+				}
+			}
+
+			// update register if W bit is set
+			if w == 0x01 {
+				arm.registers[Rn] += c
+			}
 		}
 	case 0b10:
 		if l == 0x1 {
-			panic(fmt.Sprintf("load and store multiple: unimplemented op (%02b) l (%01b)", op, l))
+			// "4.6.41 LDMDB / LDMEA" of "Thumb-2 Supplement"
+			//		and
+			// "A7.7.42 LDMDB, LDMEA" of "ARMv7-M"
+			//
+			// Load multiple (decrement before, empty ascending)
+			arm.fudge_thumb2disassemble32bit = "LDMDB/LDMEA"
+
+			regList := opcode & 0xdfff
+			c := uint32(bits.OnesCount16(regList) * 4)
+			addr := arm.registers[Rn] - c
+
+			// read each register in turn (from lower to highest)
+			for i := 0; i <= 14; i++ {
+				// shift single-bit mask
+				m := uint16(0x01 << i)
+
+				// read register if indicated by regList
+				if regList&m == m {
+					arm.registers[i] = arm.read32bit(addr)
+					addr += 4
+				}
+			}
+
+			// write PC
+			if regList&0x8000 == 0x8000 {
+				arm.registers[rPC] = arm.read32bit(addr)
+			}
+
+			if w == 0x01 {
+				arm.registers[Rn] -= c
+			}
 		} else {
 			switch WRn {
 			case 0b11101:
+				// "4.6.99 PUSH" of "Thumb-2 Supplement"
+				//		and
 				// "A7.7.101 PUSH" of "ARMv7-M"
+				//
+				// Push multiple registers to the stack
 				arm.fudge_thumb2disassemble32bit = "PUSH (stmdb)"
 
 				regList := opcode & 0x5fff
@@ -947,11 +1045,36 @@ func (arm *ARM) thumb2LoadStoreMultiple(opcode uint16) {
 
 				arm.registers[rSP] -= c
 			default:
-				panic(fmt.Sprintf("load and store multiple: unimplemented op (%02b) l (%01b)", op, l))
+				// "4.6.160 STMDB / STMFD" of "Thumb-2 Supplement"
+				//		and
+				// "A7.7.160 STMDB, STMFD" of "ARMv7-M
+				//
+				// Store multiple (decrement before, full descending)
+				arm.fudge_thumb2disassemble32bit = "STMDB/STMFD"
+
+				regList := opcode & 0x5fff
+				c := (uint32(bits.OnesCount16(regList))) * 4
+				addr := arm.registers[Rn] - c
+
+				// store each register in turn (from lowest to highest)
+				for i := 0; i <= 14; i++ {
+					// shift single-bit mask
+					m := uint16(0x01 << i)
+
+					// write register if indicated by regList
+					if regList&m == m {
+						arm.write32bit(addr, arm.registers[i])
+						addr += 4
+					}
+				}
+
+				if w == 0x01 {
+					arm.registers[Rn] -= c
+				}
 			}
 		}
-	case 0b11:
-		panic("load and store multiple: illegal op (11)")
+	default:
+		panic(fmt.Sprintf("load and store multiple: illegal op (%02b)", op))
 	}
 }
 
