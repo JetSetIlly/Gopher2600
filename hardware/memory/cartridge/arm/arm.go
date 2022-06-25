@@ -375,32 +375,6 @@ func (arm *ARM) UpdatePrefs() {
 	arm.abortOnStackCollision = arm.prefs.AbortOnStackCollision.Get().(bool)
 }
 
-// resetExecution is differnt to ARM in that it does not reset the state of the
-// ARM processor itself only the state related to the current execution (cycles
-// consumed etc.)
-func (arm *ARM) resetExecution() error {
-	// reset cycles count
-	arm.cyclesTotal = 0
-	arm.prefetchCycle = S
-
-	// reset execution flags
-	arm.continueExecution = true
-	arm.executionError = nil
-	arm.yield = false
-
-	// reset disasm notes/flags
-	arm.disasmExecutionNotes = ""
-	arm.disasmUpdateNotes = false
-
-	arm.memoryError = false
-
-	if arm.dev != nil {
-		arm.executedAddresses = make(map[uint32]float32)
-	}
-
-	return arm.findProgramMemory()
-}
-
 // find program memory using current program counter value.
 func (arm *ARM) findProgramMemory() error {
 	arm.programMemory, arm.programMemoryOffset = arm.mem.MapAddress(arm.registers[rPC], false)
@@ -444,40 +418,60 @@ func (arm *ARM) Step(vcsClock float32) {
 	arm.timer.stepFromVCS(arm.Clk, vcsClock)
 }
 
-// Run will continue until the ARM program encounters a switch from THUMB mode
-// to ARM mode. Execution will halt under the following conditions
+// Run will execute an ARM program until one of the following conditions has
+// ben met:
 //
 // 1) The number of cycles for the entire program is too great
-// 2) A yield condition has been met (eg. a watch address has been triggered)
+// 2) A yield condition has been met (eg. a watch address has been triggered or
+//    a breakpoint has been encountered)
 // 3) Execution mode has changed from Thumb to ARM (ARM7TDMI architecture only)
 //
 // Returns the number of ARM cycles consumed and any errors.
 func (arm *ARM) Run() (float32, error) {
-	arm.reset()
+	if !arm.yield {
+		arm.reset()
+	}
 
-	// must happen after reset()
-	err := arm.resetExecution()
-	if err != nil {
-		return 0, err
+	// reset cycles count
+	arm.cyclesTotal = 0
+	arm.prefetchCycle = S
+
+	// reset execution flags
+	arm.continueExecution = true
+	arm.executionError = nil
+	arm.memoryError = false
+
+	// reset disasm notes/flags
+	if arm.disasm != nil {
+		arm.disasmExecutionNotes = ""
+		arm.disasmUpdateNotes = false
+	}
+
+	// easier to simply remake executed addresses information
+	if arm.dev != nil && !arm.yield {
+		arm.executedAddresses = make(map[uint32]float32)
 	}
 
 	// fill pipeline must happen after resetExecution()
-	arm.registers[rPC] += 2
+	if !arm.yield {
+		err := arm.findProgramMemory()
+		if err != nil {
+			return 0, err
+		}
+
+		arm.registers[rPC] += 2
+	}
+
+	// reset yield flag
+	arm.yield = false
 
 	return arm.run()
 }
 
-// Continue execution from a previously yielded execution. ARM program is
-// unpredictable if it was not initially started with a call to Run().
-//
-// Returns the number of ARM cycles consumed and any errors.
-func (arm *ARM) Continue() (float32, error) {
-	err := arm.resetExecution()
-	if err != nil {
-		return 0, err
-	}
-
-	return arm.run()
+// HasYielded returns true if execution has not run to completion. If result is
+// true then the program will continue from where it left off.
+func (arm *ARM) HasYielded() bool {
+	return arm.yield
 }
 
 func (arm *ARM) run() (float32, error) {
