@@ -60,6 +60,9 @@ type CartCoProcDeveloper interface {
 	// variables information is available
 	VariableMemtop() uint32
 
+	// checks if address has a breakpoint assigned to it
+	CheckBreakpoint(addr uint32) bool
+
 	// execution of the coprocessor has started
 	ExecutionStart()
 

@@ -322,6 +322,9 @@ type Source struct {
 	// probably not scalable but sufficient for our needs of a single GUI
 	// running and using the statistics for only one reason
 	ExecutionProfileChanged bool
+
+	// list of breakpoints on ARM program
+	Breakpoints map[uint32]bool
 }
 
 // NewSource is the preferred method of initialisation for the Source type.
@@ -352,6 +355,7 @@ func NewSource(pathToROM string) (*Source, error) {
 			Lines: make([]*SourceLine, 0, 100),
 		},
 		ExecutionProfileChanged: true,
+		Breakpoints:             make(map[uint32]bool),
 	}
 
 	// open ELF file
@@ -902,4 +906,33 @@ func (src *Source) ResetStatistics() {
 	src.StatsScreen.reset()
 	src.StatsOverscan.reset()
 	src.StatsROMSetup.reset()
+}
+
+// AddBreakpoint adds an address to the list of addresses that will be checked
+// each PC iteration.
+func (src *Source) AddBreakpoint(addr uint32) {
+	src.Breakpoints[addr] = true
+}
+
+// AddBreakpoint removes an address from the list of breakpoint addresses.
+func (src *Source) RemoveBreakpoint(addr uint32) {
+	delete(src.Breakpoints, addr)
+}
+
+// ToggleBreakpoint adds or removes a breakpoint depending on whether the
+// breakpoint already exists.
+func (src *Source) ToggleBreakpoint(addr uint32) {
+	if src.CheckBreakpoint(addr) {
+		src.RemoveBreakpoint(addr)
+	} else {
+		src.AddBreakpoint(addr)
+	}
+}
+
+// CheckBreakpoint compares an address to the list of breakpoints.
+func (src *Source) CheckBreakpoint(addr uint32) bool {
+	if _, ok := src.Breakpoints[addr]; ok {
+		return true
+	}
+	return false
 }

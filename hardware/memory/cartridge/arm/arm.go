@@ -769,6 +769,14 @@ func (arm *ARM) run() (float32, error) {
 		if arm.yield {
 			break
 		}
+
+		// check breakpoints
+		if arm.dev != nil {
+			if arm.dev.CheckBreakpoint(arm.registers[rPC]) {
+				arm.yield = true
+				break
+			}
+		}
 	}
 
 	// indicate that program abort was because of illegal memory access

@@ -154,6 +154,14 @@ func (dev *Developer) VariableMemtop() uint32 {
 	return uint32(dev.source.VariableMemtop)
 }
 
+// CheckBreakpoint implements the CartCoProcDeveloper interface.
+func (dev *Developer) CheckBreakpoint(addr uint32) bool {
+	if dev.source == nil {
+		return false
+	}
+	return dev.source.CheckBreakpoint(addr)
+}
+
 // logAccess adds an illegal or null access event to the log. includes source code lookup
 func (dev *Developer) logAccess(event string, pc uint32, addr uint32, isNullAccess bool) string {
 	dev.sourceLock.Lock()

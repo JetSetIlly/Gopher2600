@@ -272,12 +272,22 @@ func (win *winCoProcSource) draw() {
 					imgui.PushStyleColor(imgui.StyleColorHeaderHovered, win.img.cols.CoProcSourceHover)
 					imgui.PushStyleColor(imgui.StyleColorHeaderActive, win.img.cols.CoProcSourceHover)
 					if len(ln.Disassembly) > 0 {
-						if ln.IllegalAccess {
+						addr := ln.Disassembly[0].Addr
+						if src.CheckBreakpoint(addr) {
+							imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmBreakAddress)
+							imgui.SelectableV(string(fonts.Breakpoint), false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{0, 0})
+							imgui.PopStyleColor()
+						} else if ln.IllegalAccess {
 							imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceBug)
 							imgui.SelectableV(string(fonts.CoProcBug), false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{0, 0})
 							imgui.PopStyleColor()
 						} else {
 							imgui.SelectableV(string(fonts.Chip), false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{0, 0})
+						}
+
+						// allow breakpoint toggling only for executable lines of source
+						if imgui.IsItemHovered() && imgui.IsMouseDoubleClicked(0) {
+							src.ToggleBreakpoint(addr)
 						}
 
 					} else {
@@ -320,7 +330,7 @@ func (win *winCoProcSource) draw() {
 									imgui.Text(ln.File.ShortFilename)
 
 									imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLineNumber)
-									if multiline || win.selecting {
+									if (multiline || win.selecting) && !win.selectedLine.isSingle() {
 										s, e := win.selectedLine.ordered()
 										imgui.Text(fmt.Sprintf("Lines: %d - %d", s, e))
 									} else {

@@ -647,7 +647,7 @@ func (win *winDisasm) drawEntry(e *disassembly.Entry, focusAddr uint16, onBank b
 	imgui.SelectableV("", false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{0, 0})
 
 	// single click on the address entry toggles a PC breakpoint
-	if imgui.IsItemClicked() {
+	if imgui.IsItemHovered() && imgui.IsMouseDoubleClicked(0) {
 		win.toggleBreak(e)
 	}
 
