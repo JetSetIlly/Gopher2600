@@ -25,9 +25,18 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/ace"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/cdf"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/dpcplus"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/elf"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/supercharger"
 )
+
+func fingerprintElf(b []byte) bool {
+	if bytes.HasPrefix(b, []byte{0x7f, 'E', 'L', 'F'}) {
+		return true
+	}
+
+	return false
+}
 
 func fingerprintAce(b []byte) (bool, string) {
 	if len(b) < 144 {
@@ -295,6 +304,11 @@ func fingerprint256k(data []byte) func(*instance.Instance, []byte) (mapper.CartM
 
 func (cart *Cartridge) fingerprint(cartload cartridgeloader.Loader) error {
 	var err error
+
+	if ok := fingerprintElf(*cartload.Data); ok {
+		cart.mapper, err = elf.NewElf(cart.instance, cart.Filename)
+		return err
+	}
 
 	if ok, version := fingerprintAce(*cartload.Data); ok {
 		cart.mapper, err = ace.NewAce(cart.instance, cart.Filename, version, *cartload.Data)
