@@ -267,7 +267,7 @@ func NewARM(arch Architecture, mamcr MAMCR, mmap memorymodel.Map, prefs *prefere
 		executionMap: make(map[uint32][]func(_ uint16)),
 		disasmCache:  make(map[uint32]DisasmEntry),
 
-		// updated on every UpdatePrefs(). these are reasonable defaults
+		// updated on every updatePrefs(). these are reasonable defaults
 		Clk:         70.0,
 		clklenFlash: 4.0,
 	}
@@ -288,7 +288,7 @@ func NewARM(arch Architecture, mamcr MAMCR, mmap memorymodel.Map, prefs *prefere
 	arm.timer.mmap = mmap
 
 	arm.reset()
-	arm.UpdatePrefs()
+	arm.updatePrefs()
 
 	return arm
 }
@@ -345,9 +345,9 @@ func (arm *ARM) AddReadWatch(addr uint32) {
 	arm.readWatches = append(arm.readWatches, addr)
 }
 
-// UpdatePrefs should be called periodically to ensure that the current
+// updatePrefs should be called periodically to ensure that the current
 // preference values are being used in the ARM emulation.
-func (arm *ARM) UpdatePrefs() {
+func (arm *ARM) updatePrefs() {
 	// update clock value from preferences
 	arm.Clk = float32(arm.prefs.Clock.Get().(float64))
 
@@ -492,6 +492,8 @@ func (arm *ARM) BreakpointsDisable(disable bool) {
 }
 
 func (arm *ARM) run() (float32, error) {
+	arm.updatePrefs()
+
 	if arm.dev != nil {
 		// update variableMemtop - probably hasn't changed but you never know
 		arm.variableMemtop = arm.dev.VariableMemtop()

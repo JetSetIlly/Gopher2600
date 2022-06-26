@@ -337,12 +337,6 @@ func NewDebugger(create CreateUserInterface, spec string, fpsCap bool, multiload
 		return nil, curated.Errorf("debugger: %v", err)
 	}
 
-	// attach cartridge subsystem to television NewFrame() trigger. this
-	// trigger will exist for the duration of the emulation and the NewFrame()
-	// trigger will be called for every cartridge type - the cartridge
-	// subsystem wil filter accordingly
-	tv.AddFrameTrigger(dbg.vcs.Mem.Cart)
-
 	// create userinput/controllers handler
 	dbg.controllers = userinput.NewControllers()
 	dbg.controllers.AddInputHandler(dbg.vcs.Input)

@@ -24,7 +24,6 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
-	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
@@ -910,12 +909,6 @@ func (cart *dpcPlus) WriteHotspots() map[uint16]mapper.CartHotspotInfo {
 // ARMinterrupt implements the arm7tmdi.CatridgeHook interface.
 func (cart *dpcPlus) ARMinterrupt(addr uint32, val1 uint32, val2 uint32) (arm.ARMinterruptReturn, error) {
 	return arm.ARMinterruptReturn{}, nil
-}
-
-// NewFrame implements the protocol.NewFrame interface.
-func (cart *dpcPlus) NewFrame(_ television.FrameInfo) error {
-	cart.arm.UpdatePrefs()
-	return nil
 }
 
 // BreakpointHasTriggered implements the mapper.CartBreapoints interface.

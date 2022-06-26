@@ -29,7 +29,6 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/plusrom"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/supercharger"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
-	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/resources/unique"
 )
@@ -473,19 +472,6 @@ func (cart *Cartridge) ROMDump() (string, error) {
 		return romdump, rb.ROMDump(romdump)
 	}
 	return "", curated.Errorf("cartridge: %s does not support ROM dumping", cart.mapper.ID())
-}
-
-// NewFrame implements the television.NewFrame interface.
-//
-// Note that there is no GetFrameTriggerInterface() or any similar function
-// here. This simplifies the code for attaching and detaching cartridges and
-// without any perfomance penalties. In other words, this function is always
-// called by the television instance on the event of a new frame.
-func (cart *Cartridge) NewFrame(fi television.FrameInfo) error {
-	if t, ok := cart.mapper.(television.FrameTrigger); ok {
-		return t.NewFrame(fi)
-	}
-	return nil
 }
 
 // BreakpointHasTriggered implements the mapper.CartBreakpoints interface.
