@@ -182,7 +182,7 @@ const (
 
 // Read implements the mapper.CartMapper interface.
 func (cart *cdf) Read(addr uint16, passive bool) (uint8, error) {
-	if b, ok := cart.state.callfn.Check(addr); ok {
+	if b, ok := cart.state.callfn.Check(addr, cart.arm.BreakpointHasTriggered()); ok {
 		return b, nil
 	}
 
@@ -361,19 +361,9 @@ func (cart *cdf) Write(addr uint16, data uint8, passive bool, poke bool) error {
 				cart.dev.ExecutionStart()
 			}
 
-			// we don't care about the state of the MAM returned by Run()
-			// because the CDF* driver handles the change itself
-			cycles, err := cart.arm.Run()
+			err := cart.runArm()
 			if err != nil {
-				return curated.Errorf("CDF: %v", err)
-			}
-			cart.state.callfn.Start(cycles)
-
-			// update the Register types after completion of each CALLFN
-			for i := range cart.state.registers.Datastream {
-				cart.state.registers.Datastream[i].Pointer = cart.readDatastreamPointer(i)
-				cart.state.registers.Datastream[i].Increment = cart.readDatastreamIncrement(i)
-				cart.state.registers.Datastream[i].AfterCALLFN = cart.readDatastreamPointer(i)
+				return err
 			}
 		}
 
@@ -653,5 +643,40 @@ func (cart *cdf) HotLoad(data []byte) error {
 // NewFrame implements the protocol.NewFrame interface.
 func (cart *cdf) NewFrame(_ television.FrameInfo) error {
 	cart.arm.UpdatePrefs()
+	return nil
+}
+
+// BreakpointHasTriggered implements the mapper.CartBreapoints interface.
+func (cart *cdf) BreakpointHasTriggered() bool {
+	return !cart.state.callfn.IsActive() && cart.arm.BreakpointHasTriggered()
+}
+
+// ResumeAfterBreakpoint implements the mapper.CartBreapoints interface.
+func (cart *cdf) ResumeAfterBreakpoint() error {
+	if cart.BreakpointHasTriggered() {
+		return cart.runArm()
+	}
+	return nil
+}
+
+// BreakpointsDisable implements the mapper.CartBreapoints interface.
+func (cart *cdf) BreakpointsDisable(disable bool) {
+	cart.arm.BreakpointsDisable(disable)
+}
+
+func (cart *cdf) runArm() error {
+	cycles, err := cart.arm.Run()
+	if err != nil {
+		return curated.Errorf("CDF: %v", err)
+	}
+	cart.state.callfn.Start(cycles)
+
+	// update the Register types after completion of each CALLFN
+	for i := range cart.state.registers.Datastream {
+		cart.state.registers.Datastream[i].Pointer = cart.readDatastreamPointer(i)
+		cart.state.registers.Datastream[i].Increment = cart.readDatastreamIncrement(i)
+		cart.state.registers.Datastream[i].AfterCALLFN = cart.readDatastreamPointer(i)
+	}
+
 	return nil
 }

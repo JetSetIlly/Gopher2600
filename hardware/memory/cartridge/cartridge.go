@@ -487,3 +487,26 @@ func (cart *Cartridge) NewFrame(fi television.FrameInfo) error {
 	}
 	return nil
 }
+
+// BreakpointHasTriggered implements the mapper.CartBreakpoints interface.
+func (cart *Cartridge) BreakpointHasTriggered() bool {
+	if bp, ok := cart.mapper.(mapper.CartBreakpoints); ok {
+		return bp.BreakpointHasTriggered()
+	}
+	return false
+}
+
+// ResumeAfterBreakpoint implements the mapper.CartBreakpoints interface.
+func (cart *Cartridge) ResumeAfterBreakpoint() error {
+	if bp, ok := cart.mapper.(mapper.CartBreakpoints); ok {
+		return bp.ResumeAfterBreakpoint()
+	}
+	return nil
+}
+
+// BreakpointsDisable implements the mapper.CartBreakpoints interface.
+func (cart *Cartridge) BreakpointsDisable(disable bool) {
+	if bp, ok := cart.mapper.(mapper.CartBreakpoints); ok {
+		bp.BreakpointsDisable(disable)
+	}
+}

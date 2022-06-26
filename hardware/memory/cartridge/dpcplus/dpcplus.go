@@ -157,7 +157,7 @@ func (cart *dpcPlus) Reset() {
 
 // Read implements the mapper.CartMapper interface.
 func (cart *dpcPlus) Read(addr uint16, passive bool) (uint8, error) {
-	if b, ok := cart.state.callfn.Check(addr); ok {
+	if b, ok := cart.state.callfn.Check(addr, cart.arm.BreakpointHasTriggered()); ok {
 		return b, nil
 	}
 
@@ -503,13 +503,9 @@ func (cart *dpcPlus) Write(addr uint16, data uint8, passive bool, poke bool) err
 		case 254:
 			fallthrough
 		case 255:
-			cycles, err := cart.arm.Run()
+			err := cart.runArm()
 			if err != nil {
-				return curated.Errorf("DPC+: %v", err)
-			}
-			cart.state.callfn.Start(cycles)
-			if cart.dev != nil {
-				cart.dev.ExecutionStart()
+				return err
 			}
 		}
 
@@ -919,5 +915,35 @@ func (cart *dpcPlus) ARMinterrupt(addr uint32, val1 uint32, val2 uint32) (arm.AR
 // NewFrame implements the protocol.NewFrame interface.
 func (cart *dpcPlus) NewFrame(_ television.FrameInfo) error {
 	cart.arm.UpdatePrefs()
+	return nil
+}
+
+// BreakpointHasTriggered implements the mapper.CartBreapoints interface.
+func (cart *dpcPlus) BreakpointHasTriggered() bool {
+	return !cart.state.callfn.IsActive() && cart.arm.BreakpointHasTriggered()
+}
+
+// ResumeAfterBreakpoint implements the mapper.CartBreapoints interface.
+func (cart *dpcPlus) ResumeAfterBreakpoint() error {
+	if cart.arm.BreakpointHasTriggered() {
+		return cart.runArm()
+	}
+	return nil
+}
+
+// BreakpointsDisable implements the mapper.CartBreapoints interface.
+func (cart *dpcPlus) BreakpointsDisable(disable bool) {
+	cart.arm.BreakpointsDisable(disable)
+}
+
+func (cart *dpcPlus) runArm() error {
+	cycles, err := cart.arm.Run()
+	if err != nil {
+		return curated.Errorf("DPC+: %v", err)
+	}
+	cart.state.callfn.Start(cycles)
+	if cart.dev != nil {
+		cart.dev.ExecutionStart()
+	}
 	return nil
 }

@@ -28,7 +28,7 @@ type haltCoordination struct {
 	dbg *Debugger
 
 	// has a halt condition been met since halt has been reset(). once halt
-	// has been set to true it will remain set until explicitely set to fale
+	// has been set to true it will remain set until explicitely set to false
 	// (via reset())
 	halt bool
 
@@ -75,6 +75,11 @@ func (h *haltCoordination) reset() {
 
 // check for a halt condition and set the halt flag if found.
 func (h *haltCoordination) check() {
+	if h.dbg.vcs.Mem.Cart.BreakpointHasTriggered() {
+		h.halt = true
+		return
+	}
+
 	// we don't check for regular break/trap/wathes if there are volatileTraps in place
 	if h.volatileTraps.isEmpty() && h.volatileBreakpoints.isEmpty() {
 		breakMessage := h.breakpoints.check()

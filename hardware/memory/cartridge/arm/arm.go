@@ -248,6 +248,12 @@ type ARM struct {
 
 	// whether the previous execution stopped because of a yield
 	yield bool
+
+	// whether the previous execution stopped because of a breakpoint
+	breakpoint bool
+
+	// disabled breakpoint checking
+	breakpointsDisabled bool
 }
 
 // NewARM is the preferred method of initialisation for the ARM type.
@@ -329,6 +335,8 @@ func (arm *ARM) reset() {
 	}
 
 	arm.registers[rSP], arm.registers[rLR], arm.registers[rPC] = arm.mem.ResetVectors()
+
+	arm.prefetchCycle = S
 }
 
 // AddReadWatch adds an address to the list of addresses that will cause a
@@ -428,13 +436,15 @@ func (arm *ARM) Step(vcsClock float32) {
 //
 // Returns the number of ARM cycles consumed and any errors.
 func (arm *ARM) Run() (float32, error) {
-	if !arm.yield {
+	if !arm.yield && !arm.breakpoint {
 		arm.reset()
 	}
 
 	// reset cycles count
 	arm.cyclesTotal = 0
-	arm.prefetchCycle = S
+
+	// arm.prefectchCycle reset in reset() function. we don't want to change
+	// the value if we're resuming from a yield
 
 	// reset execution flags
 	arm.continueExecution = true
@@ -448,12 +458,12 @@ func (arm *ARM) Run() (float32, error) {
 	}
 
 	// easier to simply remake executed addresses information
-	if arm.dev != nil && !arm.yield {
+	if arm.dev != nil && !arm.yield && !arm.breakpoint {
 		arm.executedAddresses = make(map[uint32]float32)
 	}
 
 	// fill pipeline must happen after resetExecution()
-	if !arm.yield {
+	if !arm.yield && !arm.breakpoint {
 		err := arm.findProgramMemory()
 		if err != nil {
 			return 0, err
@@ -464,14 +474,21 @@ func (arm *ARM) Run() (float32, error) {
 
 	// reset yield flag
 	arm.yield = false
+	arm.breakpoint = false
 
 	return arm.run()
 }
 
-// HasYielded returns true if execution has not run to completion. If result is
-// true then the program will continue from where it left off.
-func (arm *ARM) HasYielded() bool {
-	return arm.yield
+// BreakpointHasTriggered returns true if execution has not run to completion
+// because of a breakpoint.
+func (arm *ARM) BreakpointHasTriggered() bool {
+	return arm.breakpoint
+}
+
+// BreakpointsDisable turns of breakpoint checking for the duration that
+// disable is true.
+func (arm *ARM) BreakpointsDisable(disable bool) {
+	arm.breakpointsDisabled = disable
 }
 
 func (arm *ARM) run() (float32, error) {
@@ -501,7 +518,6 @@ func (arm *ARM) run() (float32, error) {
 
 	// loop through instructions until we reach an exit condition
 	for arm.continueExecution && !arm.memoryError {
-
 		// program counter to execute:
 		//
 		// from "7.6 Data Operations" in "ARM7TDMI-S Technical Reference Manual r4p1", page 1-2
@@ -771,9 +787,9 @@ func (arm *ARM) run() (float32, error) {
 		}
 
 		// check breakpoints
-		if arm.dev != nil {
+		if arm.dev != nil && !arm.breakpointsDisabled {
 			if arm.dev.CheckBreakpoint(arm.registers[rPC]) {
-				arm.yield = true
+				arm.breakpoint = true
 				break
 			}
 		}

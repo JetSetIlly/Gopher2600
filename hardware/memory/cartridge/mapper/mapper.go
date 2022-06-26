@@ -316,3 +316,12 @@ type CartHotLoader interface {
 type CartROMDump interface {
 	ROMDump(filename string) error
 }
+
+// CartBreakpoints is implemented by cartridge mappers that can halt
+// mid-operation due to a breakpoint. For these cartridges, debugging loops
+// need to understand when this happened.
+type CartBreakpoints interface {
+	BreakpointHasTriggered() bool
+	ResumeAfterBreakpoint() error
+	BreakpointsDisable(bool)
+}

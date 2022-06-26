@@ -486,12 +486,15 @@ func (dbg *Debugger) setState(state emulation.State) {
 // always be "noisy"
 func (dbg *Debugger) setStateQuiet(state emulation.State, quiet bool) {
 	if state == emulation.Rewinding {
+		dbg.vcs.Mem.Cart.BreakpointsDisable(true)
 		dbg.endPlayback()
 		dbg.endRecording()
 		dbg.endComparison()
 
 		// it is thought that bots are okay to enter the rewinding state. this
 		// might not be true in all future cases.
+	} else {
+		dbg.vcs.Mem.Cart.BreakpointsDisable(false)
 	}
 
 	err := dbg.vcs.TV.SetEmulationState(state)

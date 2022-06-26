@@ -392,6 +392,12 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, isVideoStep bool) error 
 				return nil
 			}
 
+			// attempt to resume cartridge after a breakpoint
+			err = dbg.vcs.Mem.Cart.ResumeAfterBreakpoint()
+			if err != nil {
+				return err
+			}
+
 			err = dbg.step(inputter, false)
 			if err != nil {
 				return err
@@ -594,7 +600,7 @@ func (dbg *Debugger) handleInterrupt(inputter terminal.Input) {
 		return
 	}
 
-	// if the emulation is currentl running then stop emulation
+	// if the emulation is currently running then stop emulation
 	if dbg.runUntilHalt {
 		dbg.runUntilHalt = false
 		dbg.continueEmulation = false
