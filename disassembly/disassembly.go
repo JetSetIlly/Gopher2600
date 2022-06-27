@@ -182,15 +182,15 @@ func (dsm *Disassembly) FromMemory() error {
 //
 // also returns whether cartridge is currently working from another source
 // meaning that the disassembly entry might not be reliable.
-func (dsm *Disassembly) GetEntryByAddress(address uint16) (*Entry, bool) {
+func (dsm *Disassembly) GetEntryByAddress(address uint16) *Entry {
 	bank := dsm.vcs.Mem.Cart.GetBank(address)
 
 	if bank.NonCart {
 		// !!TODO: attempt to decode instructions not in cartridge
-		return nil, bank.ExecutingCoprocessor
+		return nil
 	}
 
-	return dsm.disasmEntries.Entries[bank.Number][address&memorymap.CartridgeBits], bank.ExecutingCoprocessor
+	return dsm.disasmEntries.Entries[bank.Number][address&memorymap.CartridgeBits]
 }
 
 // ExecutedEntry should be called after execution of a CPU instruction. In many

@@ -214,7 +214,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 			case "OVER":
 				// if next expected opcode is JSR then add a volatile breakpoint to the
 				// return address
-				e, _ := dbg.Disasm.GetEntryByAddress(dbg.vcs.CPU.PC.Address())
+				e := dbg.Disasm.GetEntryByAddress(dbg.vcs.CPU.PC.Address())
 				if e.Operator == "jsr" {
 					brk := commandline.TokeniseInput(fmt.Sprintf("%#4x", dbg.vcs.CPU.PC.Address()+3))
 					dbg.halting.volatileBreakpoints.parseCommand(brk)

@@ -26,36 +26,37 @@ import (
 func (dbg *Debugger) buildPrompt() terminal.Prompt {
 	content := strings.Builder{}
 
-	var e *disassembly.Entry
-	var coprocessor bool
-
-	// decide which address value to use
-	if dbg.vcs.CPU.LastResult.Final || dbg.vcs.CPU.HasReset() {
-		e, coprocessor = dbg.Disasm.GetEntryByAddress(dbg.vcs.CPU.PC.Address())
-	} else {
-		// if we're in the middle of an instruction then use the addresss in
-		// lastResult. in these instances we want the prompt to report the
-		// instruction that the CPU is working on, not the next one to be
-		// stepped into.
-		e = dbg.liveDisasmEntry
-	}
-
-	// build prompt based on how confident we are of the contents of the
-	// disassembly entry. starting with the condition of no disassembly at all
-	// decoration indication that entry is unreliable
-	if coprocessor {
+	if dbg.vcs.Mem.Cart.IsExecuting() {
 		content.WriteString(fmt.Sprintf("$%04x (coprocessor)", dbg.vcs.CPU.PC.Address()))
-	} else if e == nil {
-		content.WriteString(fmt.Sprintf("$%04x", dbg.vcs.CPU.PC.Address()))
-	} else if e.Level == disassembly.EntryLevelUnmappable {
-		content.WriteString(e.Address)
 	} else {
-		// this is the ideal path. the address is in the disassembly and we've
-		// decoded it already
-		content.WriteString(fmt.Sprintf("%s %s", e.Address, e.Operator))
+		var e *disassembly.Entry
 
-		if e.Operand.String() != "" {
-			content.WriteString(fmt.Sprintf(" %s", e.Operand))
+		// decide which address value to use
+		if dbg.vcs.CPU.LastResult.Final || dbg.vcs.CPU.HasReset() {
+			e = dbg.Disasm.GetEntryByAddress(dbg.vcs.CPU.PC.Address())
+		} else {
+			// if we're in the middle of an instruction then use the addresss in
+			// lastResult. in these instances we want the prompt to report the
+			// instruction that the CPU is working on, not the next one to be
+			// stepped into.
+			e = dbg.liveDisasmEntry
+		}
+
+		// build prompt based on how confident we are of the contents of the
+		// disassembly entry. starting with the condition of no disassembly at all
+		// decoration indication that entry is unreliable
+		if e == nil {
+			content.WriteString(fmt.Sprintf("$%04x", dbg.vcs.CPU.PC.Address()))
+		} else if e.Level == disassembly.EntryLevelUnmappable {
+			content.WriteString(e.Address)
+		} else {
+			// this is the ideal path. the address is in the disassembly and we've
+			// decoded it already
+			content.WriteString(fmt.Sprintf("%s %s", e.Address, e.Operator))
+
+			if e.Operand.String() != "" {
+				content.WriteString(fmt.Sprintf(" %s", e.Operand))
+			}
 		}
 	}
 

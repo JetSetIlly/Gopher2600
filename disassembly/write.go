@@ -65,7 +65,7 @@ func (dsm *Disassembly) WriteBank(output io.Writer, attr ColumnAttr, bank int) e
 
 // WriteAddr writes the disassembly of the specified address to the io.Writer.
 func (dsm *Disassembly) WriteAddr(output io.Writer, attr ColumnAttr, addr uint16) error {
-	e, _ := dsm.GetEntryByAddress(addr)
+	e := dsm.GetEntryByAddress(addr)
 	if e != nil && e.Level >= EntryLevelBlessed {
 		output.Write([]byte(e.StringColumnated(attr)))
 	} else {
