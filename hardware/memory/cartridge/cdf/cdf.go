@@ -639,20 +639,25 @@ func (cart *cdf) HotLoad(data []byte) error {
 	return nil
 }
 
-// BreakpointHasTriggered implements the mapper.CartBreapoints interface.
-func (cart *cdf) BreakpointHasTriggered() bool {
-	return !cart.state.callfn.IsActive() && cart.arm.BreakpointHasTriggered()
+// CoProcIsActive implements the mapper.CartCoprocExecution interface.
+func (cart *cdf) CoProcIsActive() bool {
+	return cart.state.callfn.IsActive()
 }
 
-// ResumeAfterBreakpoint implements the mapper.CartBreapoints interface.
+// BreakpointHasTriggered implements the mapper.CartCoprocExecution interface.
+func (cart *cdf) BreakpointHasTriggered() bool {
+	return cart.arm.BreakpointHasTriggered()
+}
+
+// ResumeAfterBreakpoint implements the mapper.CartCoprocExecution interface.
 func (cart *cdf) ResumeAfterBreakpoint() error {
-	if cart.BreakpointHasTriggered() {
+	if cart.arm.BreakpointHasTriggered() {
 		return cart.runArm()
 	}
 	return nil
 }
 
-// BreakpointsDisable implements the mapper.CartBreapoints interface.
+// BreakpointsDisable implements the mapper.CartCoprocExecution interface.
 func (cart *cdf) BreakpointsDisable(disable bool) {
 	cart.arm.BreakpointsDisable(disable)
 }

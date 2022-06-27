@@ -317,10 +317,14 @@ type CartROMDump interface {
 	ROMDump(filename string) error
 }
 
-// CartBreakpoints is implemented by cartridge mappers that can halt
-// mid-operation due to a breakpoint. For these cartridges, debugging loops
-// need to understand when this happened.
-type CartBreakpoints interface {
+// CartCoProcExecution is implemented by cartridge mappers that have a
+// coprocessor. These coprocessors require careful monitoring so that they
+// interact with the main emulation correctly.
+//
+// For example, these coprocessors can halt mid-operation due to a breakpoint
+// and the debugging loop need to understand when this happened.
+type CartCoProcExecution interface {
+	CoProcIsActive() bool
 	BreakpointHasTriggered() bool
 	ResumeAfterBreakpoint() error
 	BreakpointsDisable(bool)

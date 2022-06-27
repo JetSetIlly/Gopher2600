@@ -476,7 +476,7 @@ func (cart *Cartridge) ROMDump() (string, error) {
 
 // BreakpointHasTriggered implements the mapper.CartBreakpoints interface.
 func (cart *Cartridge) BreakpointHasTriggered() bool {
-	if bp, ok := cart.mapper.(mapper.CartBreakpoints); ok {
+	if bp, ok := cart.mapper.(mapper.CartCoProcExecution); ok {
 		return bp.BreakpointHasTriggered()
 	}
 	return false
@@ -484,7 +484,7 @@ func (cart *Cartridge) BreakpointHasTriggered() bool {
 
 // ResumeAfterBreakpoint implements the mapper.CartBreakpoints interface.
 func (cart *Cartridge) ResumeAfterBreakpoint() error {
-	if bp, ok := cart.mapper.(mapper.CartBreakpoints); ok {
+	if bp, ok := cart.mapper.(mapper.CartCoProcExecution); ok {
 		return bp.ResumeAfterBreakpoint()
 	}
 	return nil
@@ -492,7 +492,15 @@ func (cart *Cartridge) ResumeAfterBreakpoint() error {
 
 // BreakpointsDisable implements the mapper.CartBreakpoints interface.
 func (cart *Cartridge) BreakpointsDisable(disable bool) {
-	if bp, ok := cart.mapper.(mapper.CartBreakpoints); ok {
+	if bp, ok := cart.mapper.(mapper.CartCoProcExecution); ok {
 		bp.BreakpointsDisable(disable)
 	}
+}
+
+// IsExecuting implements the mapper.CartBreakpoints interface.
+func (cart *Cartridge) CoProcIsActive() bool {
+	if bp, ok := cart.mapper.(mapper.CartCoProcExecution); ok {
+		return bp.CoProcIsActive()
+	}
+	return false
 }

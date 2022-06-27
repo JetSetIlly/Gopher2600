@@ -26,7 +26,7 @@ import (
 func (dbg *Debugger) buildPrompt() terminal.Prompt {
 	content := strings.Builder{}
 
-	if dbg.vcs.Mem.Cart.IsExecuting() {
+	if dbg.vcs.Mem.Cart.CoProcIsActive() {
 		content.WriteString(fmt.Sprintf("$%04x (coprocessor)", dbg.vcs.CPU.PC.Address()))
 	} else {
 		var e *disassembly.Entry

@@ -911,12 +911,17 @@ func (cart *dpcPlus) ARMinterrupt(addr uint32, val1 uint32, val2 uint32) (arm.AR
 	return arm.ARMinterruptReturn{}, nil
 }
 
-// BreakpointHasTriggered implements the mapper.CartBreapoints interface.
-func (cart *dpcPlus) BreakpointHasTriggered() bool {
-	return !cart.state.callfn.IsActive() && cart.arm.BreakpointHasTriggered()
+// CoProcIsActive implements the mapper.CartCoprocExecution interface.
+func (cart *dpcPlus) CoProcIsActive() bool {
+	return cart.state.callfn.IsActive()
 }
 
-// ResumeAfterBreakpoint implements the mapper.CartBreapoints interface.
+// BreakpointHasTriggered implements the mapper.CartCoprocExecution interface.
+func (cart *dpcPlus) BreakpointHasTriggered() bool {
+	return cart.arm.BreakpointHasTriggered()
+}
+
+// ResumeAfterBreakpoint implements the mapper.CartCoprocExecution interface.
 func (cart *dpcPlus) ResumeAfterBreakpoint() error {
 	if cart.arm.BreakpointHasTriggered() {
 		return cart.runArm()
@@ -924,7 +929,7 @@ func (cart *dpcPlus) ResumeAfterBreakpoint() error {
 	return nil
 }
 
-// BreakpointsDisable implements the mapper.CartBreapoints interface.
+// BreakpointsDisable implements the mapper.CartCoprocExecution interface.
 func (cart *dpcPlus) BreakpointsDisable(disable bool) {
 	cart.arm.BreakpointsDisable(disable)
 }

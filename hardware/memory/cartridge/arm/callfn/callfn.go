@@ -113,7 +113,8 @@ func (cf *CallFn) Check(addr uint16, noResume bool) (uint8, bool) {
 	return 0, false
 }
 
-// Start the CallFn process.
+// Start cycles to the account for. Is safe to call if callfn is already
+// active.
 func (cf *CallFn) Start(cycles float32) {
 	// if the number of cycles is zero then the ARM program didn't take any
 	// time at all and there is no need to account for the phantom reads.
@@ -122,16 +123,21 @@ func (cf *CallFn) Start(cycles float32) {
 		return
 	}
 
+	// if remaining cycles is zero then this is a new execution
+	if cf.remainingCycles == 0 {
+		cf.resumeCount = 3
+		cf.phantomOnResume = false
+	}
+
+	// accumulate the new cycles
+	cf.remainingCycles += cycles
+
 	// we are no longer capping the number of cycles executed here. this is now
 	// done entirely within in the arm7tdmi package.
 	//
 	// capping cycles here meant that the ARM program ran to completion, which
 	// is not correct because that means the ARM memory is updated as though the
 	// cap did not exist.
-
-	cf.remainingCycles = cycles
-	cf.resumeCount = 3
-	cf.phantomOnResume = false
 }
 
 // Step forward one clock. Returns true if the ARM program is running and false
@@ -145,7 +151,7 @@ func (cf *CallFn) Start(cycles float32) {
 // Also consider whether the function needs to be called at all - the ARM
 // emulation might be in immediate mode
 func (cf *CallFn) Step(vcsClock float32, armClock float32) float32 {
-	// number of arm cycles consumed for every VCS cycle
+	// number of arm cycles consumed for every colour clock
 	armCycles := float32(armClock / vcsClock)
 
 	// consume whatever the remaining cycles is. returning true because this stil takes
@@ -161,5 +167,6 @@ func (cf *CallFn) Step(vcsClock float32, armClock float32) float32 {
 	}
 
 	cf.remainingCycles -= armCycles
+
 	return 0
 }
