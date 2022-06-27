@@ -126,6 +126,11 @@ func newWinDbgScr(img *SdlImgui) (window, error) {
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.MIRRORED_REPEAT)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.MIRRORED_REPEAT)
 
+	// call setScaling() now so that render() has something to work with - even
+	// though setScaling() is called every draw if the window is open it will
+	// leave render() nothing to work with if it isn't open on startup
+	win.setScaling()
+
 	return win, nil
 }
 
