@@ -456,7 +456,7 @@ func (scr *screen) Reflect(ref []reflection.ReflectedVideoStep) error {
 	scr.crit.section.Lock()
 	defer scr.crit.section.Unlock()
 
-	scr.crit.reflection = ref
+	copy(scr.crit.reflection, ref)
 	scr.plotOverlay()
 
 	return nil

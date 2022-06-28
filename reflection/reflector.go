@@ -28,23 +28,11 @@ import (
 
 // Reflector should be run (with the Check() function) every video cycle.
 type Reflector struct {
-	vcs      *hardware.VCS
-	renderer Renderer
+	vcs            *hardware.VCS
+	renderer       Renderer
+	emulationState emulation.State
 
 	history []ReflectedVideoStep
-
-	// history of gathered reflections that we send to the Renderer.
-	//
-	// prevent a race error with the GUI thread. see historyIdx field.
-	renderedHistory [2][]ReflectedVideoStep
-
-	// which history we're using. we change this every time we call render() so
-	// that the ReflectedVideoStep instances are never in a critical section
-	// with the GUI thread.
-	renderedHistoryIdx int
-
-	// state of emulation
-	emulationState emulation.State
 
 	// the index of the most recent signal returned by television.GetLastSignal()
 	lastIdx int
@@ -65,8 +53,25 @@ func (ref *Reflector) AddRenderer(renderer Renderer) {
 // Clear existing reflected information.
 func (ref *Reflector) Clear() {
 	ref.history = make([]ReflectedVideoStep, specification.AbsoluteMaxClks)
-	for i := range ref.renderedHistory {
-		ref.renderedHistory[i] = make([]ReflectedVideoStep, specification.AbsoluteMaxClks)
+}
+
+// SetEmulationState is called by emulation whenever state changes. How we
+// handle reflections depends on the current state.
+func (ref *Reflector) SetEmulationState(state emulation.State) {
+	prev := ref.emulationState
+	ref.emulationState = state
+
+	switch prev {
+	case emulation.Rewinding:
+		ref.render()
+	}
+
+	switch state {
+	case emulation.Paused:
+		err := ref.render()
+		if err != nil {
+			logger.Logf("reflection", "%v", err)
+		}
 	}
 }
 
@@ -108,16 +113,11 @@ func (ref *Reflector) Step(bank mapper.BankInfo) error {
 	h[0].RSYNCalign, h[0].RSYNCreset = ref.vcs.TIA.RSYNCstate()
 
 	// nullify entries at the head of the array that do not have a
-	// corresponding signal. this works because signals returned by
-	// GetLastSignal should be linear.
-	//
-	// unlike the nullify loop in NewFrame(), this does not have a
-	// corresponding constructin in the television implementation.
+	// corresponding signal. we do this because the first index of a signal
+	// after a NewFrame might be different that the previous frame
 	for i := ref.lastIdx; i < idx-1; i++ {
 		ref.history[i] = ReflectedVideoStep{}
-		ref.renderedHistory[ref.renderedHistoryIdx][i] = ReflectedVideoStep{}
 	}
-
 	ref.lastIdx = idx
 
 	return nil
@@ -127,38 +127,13 @@ func (ref *Reflector) Step(bank mapper.BankInfo) error {
 func (ref *Reflector) render() error {
 	if ref.emulationState != emulation.Rewinding {
 		if ref.renderer != nil {
-			copy(ref.renderedHistory[ref.renderedHistoryIdx], ref.history)
-			if err := ref.renderer.Reflect(ref.renderedHistory[ref.renderedHistoryIdx]); err != nil {
+			if err := ref.renderer.Reflect(ref.history); err != nil {
 				return curated.Errorf("reflection: %v", err)
-			}
-			ref.renderedHistoryIdx++
-			if ref.renderedHistoryIdx >= len(ref.renderedHistory) {
-				ref.renderedHistoryIdx = 0
 			}
 		}
 	}
 
 	return nil
-}
-
-// SetEmulationState is called by emulation whenever state changes. How we
-// handle reflections depends on the current state.
-func (ref *Reflector) SetEmulationState(state emulation.State) {
-	prev := ref.emulationState
-	ref.emulationState = state
-
-	switch prev {
-	case emulation.Rewinding:
-		ref.render()
-	}
-
-	switch state {
-	case emulation.Paused:
-		err := ref.render()
-		if err != nil {
-			logger.Logf("reflection", "%v", err)
-		}
-	}
 }
 
 // NewFrame implements the television.FrameTrigger interface.
@@ -170,11 +145,8 @@ func (ref *Reflector) NewFrame(_ television.FrameInfo) error {
 	// Renderer will not be satisfactory.
 	for i := ref.lastIdx; i < len(ref.history); i++ {
 		ref.history[i] = ReflectedVideoStep{}
-		ref.renderedHistory[ref.renderedHistoryIdx][i] = ReflectedVideoStep{}
 	}
 	ref.lastIdx = 0
 
-	// if new state is not paused then render history - the pause state is
-	// handled in the Step() function
 	return ref.render()
 }

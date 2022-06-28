@@ -31,9 +31,8 @@ type Renderer interface {
 	// by PixelRenderer.SetPixels(). That is, the first entry always
 	// corresponds to the top-left pixel.
 	//
-	// It's important that implementations forget about and do not reference
-	// any previous arrays as otherwise this will cause race errors with the
-	// reflection package (which is probably running in a different thread).
+	// The array should be copied on reception (see note in the
+	// ReflectedVideoStep type).
 	Reflect(ref []ReflectedVideoStep) error
 }
 
@@ -64,6 +63,13 @@ type ReflectedVideoStep struct {
 	IsHblank          bool
 	RSYNCalign        bool
 	RSYNCreset        bool
+
+	// All the fields in this struct are copy()able. An array of this type
+	// therefore should also be copyable and safe to use in other goroutines.
+	//
+	// The only pointer is in execution.Result, which points to a CPU
+	// instruction defintion. the definition never changes however so this is
+	// also safe.
 }
 
 // Hmove groups the HMOVE reflection information. It's too complex a property
