@@ -1,54 +1,12 @@
-#version 150
-
-uniform int ShowCursor;  
-uniform vec2 ScreenDim;
-uniform float ScalingX;
-uniform float ScalingY;
-uniform float LastX; 
-uniform float LastY;
-uniform float Hblank;
-uniform float OverlayAlpha;
-uniform float LastNewFrameAtScanline;
-
-uniform int IsCropped; 
-
-// the top abd bottom scanlines to show. in the case of IsCropped then these
-// values will be used to draw the screen guides
-uniform float VisibleTop;
-uniform float VisibleBottom;
-
-// the number of scanlines in the uncropped display
-uniform float ScanlinesTotal;
-
 uniform sampler2D Texture;
-
 in vec2 Frag_UV;
 in vec4 Frag_Color;
 out vec4 Out_Color;
 
-bool isNearEqual(float x, float y, float epsilon)
-{
-	return abs(x - y) <= epsilon;
-}
-
 void main()
 {
+	prepareDbgScr();
 	Out_Color = Frag_Color * texture(Texture, Frag_UV.st);
-
-	// value of one pixel
-	float pixelX = 1.0 / ScreenDim.x;
-	float pixelY = 1.0 / ScreenDim.y;
-
-	// the size of one texel (used for painting and cursor positioning)
-	float texelX = pixelX * ScalingX;
-	float texelY = pixelY * ScalingY;
-
-	// adjusted last x/y coordinates. lastY depends on IsCropped
-	float lastX = pixelX * LastX;
-	float lastY = pixelY * LastY;
-
-	// bottom screen boundary. depends on IsCropped
-	float visibleBottom;
 
 	if (IsCropped == 1) {
 		visibleBottom = (VisibleBottom - VisibleTop) / ScreenDim.y;
@@ -163,26 +121,10 @@ void main()
 			}
 		}
 
-		// painting effect draws pixels with faded alpha if lastX and lastY
-		// are less than rendering Frag_UV.
-		//
-		// as a special case, we ignore the first scanline and do not fade the
-		// previous image on a brand new frame. note that we're using the
-		// unadjusted LastY value for this
+		// painting effect but if the emulation is still on the first line of
+		// the TV frame
 		if (LastY > 0) {
-			if (Frag_UV.y > lastY+texelY || (isNearEqual(Frag_UV.y, lastY+texelY, texelY) && Frag_UV.x > lastX+texelX)) {
-				// only affect pixels with an active alpha channel
-				if (Out_Color.a != 0.0) {
-					// wash out color and mix with original pixel. this will
-					// preseve the anti-aliased curved CRT effect if it's
-					// present. the more naive "Out_Color.a = 0.5;" will cause
-					// and ugly edge to the screen.
-					vec4 c = Out_Color;
-					c.a = 0.0;
-					Out_Color = mix(Out_Color, c, 0.5);
-				}
-				return;
-			}
+			Out_Color = paintingEffect(Frag_UV, Out_Color);
 		}
 	}
 }

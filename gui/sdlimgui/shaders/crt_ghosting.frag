@@ -1,5 +1,3 @@
-#version 150
-
 uniform sampler2D Texture;
 uniform vec2 ScreenDim;
 uniform float Amount;

@@ -63,7 +63,7 @@ func (rnd *glsl) setupShaders() {
 	rnd.shaders[guiShaderID] = newGUIShader()
 	rnd.shaders[colorShaderID] = newColorShader(false)
 	rnd.shaders[dbgscrShaderID] = newDbgScrShader(rnd.img)
-	rnd.shaders[overlayShaderID] = newOverlayShader(rnd.img)
+	rnd.shaders[overlayShaderID] = newDbgScrOverlayShader(rnd.img)
 	rnd.shaders[playscrShaderID] = newPlayscrShader(rnd.img)
 }
 

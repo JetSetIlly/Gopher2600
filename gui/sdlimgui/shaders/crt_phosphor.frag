@@ -1,5 +1,3 @@
-#version 150
-
 uniform sampler2D Texture;
 uniform sampler2D NewFrame;
 uniform float Latency;

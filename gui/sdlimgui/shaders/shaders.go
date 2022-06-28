@@ -32,8 +32,11 @@ var ColorShader []byte
 //go:embed "dbgscr.frag"
 var DbgScrShader []byte
 
-//go:embed "overlay.frag"
-var OverlayShader []byte
+//go:embed "dbgscr_overlay.frag"
+var DbgScrOverlayShader []byte
+
+//go:embed "dbgscr_helpers.frag"
+var DbgScrHelpersShader []byte
 
 //go:embed "scaling.frag"
 var ScalingShader []byte

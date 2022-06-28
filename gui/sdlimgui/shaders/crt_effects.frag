@@ -1,5 +1,3 @@
-#version 150
-
 // majority of ideas taken from Mattias Gustavsson's crt-view. much of the
 // implementation details are also from here.
 //

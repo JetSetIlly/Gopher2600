@@ -1,5 +1,3 @@
-#version 150
-
 uniform float ScaledWidth;
 uniform float ScaledHeight;
 uniform float UnscaledWidth;

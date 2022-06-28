@@ -24,6 +24,9 @@ import (
 	"github.com/jetsetilly/gopher2600/gui/sdlimgui/shaders"
 )
 
+// version string to attach to all shaders
+const fragVersion = "#version 150\n\n"
+
 type shaderProgram interface {
 	destroy()
 	setAttributes(shaderEnvironment)
@@ -103,7 +106,7 @@ func (sh *shader) setAttributes(env shaderEnvironment) {
 }
 
 // compile and link shader programs.
-func (sh *shader) createProgram(vertProgram string, fragProgram string) {
+func (sh *shader) createProgram(vertProgram string, fragProgram ...string) {
 	sh.destroy()
 
 	sh.handle = gl.CreateProgram()
@@ -111,16 +114,23 @@ func (sh *shader) createProgram(vertProgram string, fragProgram string) {
 	vertHandle := gl.CreateShader(gl.VERTEX_SHADER)
 	fragHandle := gl.CreateShader(gl.FRAGMENT_SHADER)
 
-	glShaderSource := func(handle uint32, source string) {
-		csource, free := gl.Strs(source + "\x00")
+	glShaderSource := func(handle uint32, source ...string) {
+		b := strings.Builder{}
+		b.WriteString(fragVersion)
+		for _, s := range source {
+			b.WriteString(s)
+		}
+		b.WriteRune('\x00')
+
+		src, free := gl.Strs(b.String())
 		defer free()
 
-		gl.ShaderSource(handle, 1, csource, nil)
+		gl.ShaderSource(handle, 1, src, nil)
 	}
 
 	// vertex and fragment glsl source defined in shaders.go (a generated file)
 	glShaderSource(vertHandle, vertProgram)
-	glShaderSource(fragHandle, fragProgram)
+	glShaderSource(fragHandle, fragProgram...)
 
 	gl.CompileShader(vertHandle)
 	if log := sh.getShaderCompileError(vertHandle); log != "" {
@@ -423,4 +433,14 @@ func (sh *scalingShader) setAttributesArgs(env shaderEnvironment, scalingImage s
 	gl.ActiveTexture(gl.TEXTURE1)
 	gl.BindTexture(gl.TEXTURE_2D, ut)
 	gl.Uniform1i(sh.unscaledTexture, 1)
+}
+
+type guiShader struct {
+	shader
+}
+
+func newGUIShader() shaderProgram {
+	sh := &guiShader{}
+	sh.createProgram(string(shaders.StraightVertexShader), string(shaders.GUIShader))
+	return sh
 }

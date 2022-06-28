@@ -1,5 +1,3 @@
-#version 150
-
 uniform sampler2D Texture;
 uniform vec2 Blur;
 in vec2 Frag_UV;

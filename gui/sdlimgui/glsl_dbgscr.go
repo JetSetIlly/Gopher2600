@@ -22,12 +22,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 )
 
-type dbgScreenShader struct {
-	shader
-
-	img *SdlImgui
-	crt *crtSequencer
-
+type dbgScrHelper struct {
 	showCursor             int32 // uniform
 	isCropped              int32 // uniform
 	screenDim              int32 // uniform
@@ -38,45 +33,103 @@ type dbgScreenShader struct {
 	hblank                 int32 // uniform
 	visibleTop             int32 // uniform
 	visibleBottom          int32 // uniform
-	overlayAlpha           int32 // uniform
 	lastNewFrameAtScanline int32 // uniform
 }
 
+func (attr *dbgScrHelper) get(sh shader) {
+	attr.isCropped = gl.GetUniformLocation(sh.handle, gl.Str("IsCropped"+"\x00"))
+	attr.showCursor = gl.GetUniformLocation(sh.handle, gl.Str("ShowCursor"+"\x00"))
+	attr.screenDim = gl.GetUniformLocation(sh.handle, gl.Str("ScreenDim"+"\x00"))
+	attr.scalingX = gl.GetUniformLocation(sh.handle, gl.Str("ScalingX"+"\x00"))
+	attr.scalingY = gl.GetUniformLocation(sh.handle, gl.Str("ScalingY"+"\x00"))
+	attr.lastX = gl.GetUniformLocation(sh.handle, gl.Str("LastX"+"\x00"))
+	attr.lastY = gl.GetUniformLocation(sh.handle, gl.Str("LastY"+"\x00"))
+	attr.hblank = gl.GetUniformLocation(sh.handle, gl.Str("Hblank"+"\x00"))
+	attr.lastNewFrameAtScanline = gl.GetUniformLocation(sh.handle, gl.Str("LastNewFrameAtScanline"+"\x00"))
+	attr.visibleTop = gl.GetUniformLocation(sh.handle, gl.Str("VisibleTop"+"\x00"))
+	attr.visibleBottom = gl.GetUniformLocation(sh.handle, gl.Str("VisibleBottom"+"\x00"))
+}
+
+func (attr *dbgScrHelper) set(img *SdlImgui) {
+	// dimensions of screen
+	width := img.wm.dbgScr.scaledWidth
+	height := img.wm.dbgScr.scaledHeight
+
+	// scaling of screen
+	yscaling := img.wm.dbgScr.yscaling
+	xscaling := img.wm.dbgScr.xscaling
+
+	// critical section
+	img.screen.crit.section.Lock()
+
+	gl.Uniform1f(attr.scalingX, img.wm.dbgScr.xscaling)
+	gl.Uniform1f(attr.scalingY, img.wm.dbgScr.yscaling)
+	gl.Uniform2f(attr.screenDim, width, height)
+
+	// cursor is the coordinates of the *most recent* pixel to be drawn
+	cursorX := img.screen.crit.lastClock
+	cursorY := img.screen.crit.lastScanline
+
+	// if crt preview is enabled then force cropping
+	if img.wm.dbgScr.cropped || img.wm.dbgScr.crtPreview {
+		gl.Uniform1f(attr.lastX, float32(cursorX-specification.ClksHBlank)*xscaling)
+		gl.Uniform1i(attr.isCropped, boolToInt32(true))
+	} else {
+		gl.Uniform1f(attr.lastX, float32(cursorX)*xscaling)
+		gl.Uniform1i(attr.isCropped, boolToInt32(false))
+	}
+	gl.Uniform1f(attr.lastY, float32(cursorY)*yscaling)
+
+	// screen geometry
+	gl.Uniform1f(attr.hblank, (specification.ClksHBlank)*xscaling)
+	gl.Uniform1f(attr.visibleTop, float32(img.screen.crit.frameInfo.VisibleTop)*yscaling)
+	gl.Uniform1f(attr.visibleBottom, float32(img.screen.crit.frameInfo.VisibleBottom)*yscaling)
+	gl.Uniform1f(attr.lastNewFrameAtScanline, float32(img.screen.crit.frameInfo.TotalScanlines)*yscaling)
+
+	img.screen.crit.section.Unlock()
+	// end of critical section
+
+	// show cursor
+	switch img.emulation.State() {
+	case emulation.Paused:
+		gl.Uniform1i(attr.showCursor, 1)
+	case emulation.Running:
+		gl.Uniform1i(attr.showCursor, 0)
+	case emulation.Stepping:
+		gl.Uniform1i(attr.showCursor, 1)
+	case emulation.Rewinding:
+		gl.Uniform1i(attr.showCursor, 1)
+	}
+}
+
+type dbgScrShader struct {
+	shader
+	dbgScrHelper
+
+	img *SdlImgui
+	crt *crtSequencer
+}
+
 func newDbgScrShader(img *SdlImgui) shaderProgram {
-	sh := &dbgScreenShader{
+	sh := &dbgScrShader{
 		img: img,
 	}
 
 	sh.crt = newCRTSequencer(img)
 
-	sh.createProgram(string(shaders.StraightVertexShader), string(shaders.DbgScrShader))
-
-	sh.showCursor = gl.GetUniformLocation(sh.handle, gl.Str("ShowCursor"+"\x00"))
-	sh.isCropped = gl.GetUniformLocation(sh.handle, gl.Str("IsCropped"+"\x00"))
-	sh.screenDim = gl.GetUniformLocation(sh.handle, gl.Str("ScreenDim"+"\x00"))
-	sh.scalingX = gl.GetUniformLocation(sh.handle, gl.Str("ScalingX"+"\x00"))
-	sh.scalingY = gl.GetUniformLocation(sh.handle, gl.Str("ScalingY"+"\x00"))
-	sh.lastX = gl.GetUniformLocation(sh.handle, gl.Str("LastX"+"\x00"))
-	sh.lastY = gl.GetUniformLocation(sh.handle, gl.Str("LastY"+"\x00"))
-	sh.hblank = gl.GetUniformLocation(sh.handle, gl.Str("Hblank"+"\x00"))
-	sh.visibleTop = gl.GetUniformLocation(sh.handle, gl.Str("VisibleTop"+"\x00"))
-	sh.visibleBottom = gl.GetUniformLocation(sh.handle, gl.Str("VisibleBottom"+"\x00"))
-	sh.overlayAlpha = gl.GetUniformLocation(sh.handle, gl.Str("OverlayAlpha"+"\x00"))
-
-	sh.lastNewFrameAtScanline = gl.GetUniformLocation(sh.handle, gl.Str("LastNewFrameAtScanline"+"\x00"))
+	sh.createProgram(string(shaders.StraightVertexShader), string(shaders.DbgScrHelpersShader), string(shaders.DbgScrShader))
+	sh.dbgScrHelper.get(sh.shader)
 
 	return sh
 }
 
-func (sh *dbgScreenShader) destroy() {
+func (sh *dbgScrShader) destroy() {
 	sh.crt.destroy()
 }
 
-func (sh *dbgScreenShader) setAttributes(env shaderEnvironment) {
-	width := sh.img.wm.dbgScr.scaledWidth
-	height := sh.img.wm.dbgScr.scaledHeight
-	env.width = int32(width)
-	env.height = int32(height)
+func (sh *dbgScrShader) setAttributes(env shaderEnvironment) {
+	env.width = int32(sh.img.wm.dbgScr.scaledWidth)
+	env.height = int32(sh.img.wm.dbgScr.scaledHeight)
 
 	ox := int32(sh.img.wm.dbgScr.screenOrigin.X)
 	oy := int32(sh.img.wm.dbgScr.screenOrigin.Y)
@@ -84,8 +137,8 @@ func (sh *dbgScreenShader) setAttributes(env shaderEnvironment) {
 	gl.Scissor(-ox, -oy, env.width+ox, env.height+oy)
 
 	env.internalProj = [4][4]float32{
-		{2.0 / (width + float32(ox)), 0.0, 0.0, 0.0},
-		{0.0, -2.0 / (height + float32(oy)), 0.0, 0.0},
+		{2.0 / (sh.img.wm.dbgScr.scaledWidth + sh.img.wm.dbgScr.screenOrigin.X), 0.0, 0.0, 0.0},
+		{0.0, -2.0 / (sh.img.wm.dbgScr.scaledHeight + sh.img.wm.dbgScr.screenOrigin.Y), 0.0, 0.0},
 		{0.0, 0.0, -1.0, 0.0},
 		{-1.0, 1.0, 0.0, 1.0},
 	}
@@ -136,80 +189,28 @@ func (sh *dbgScreenShader) setAttributes(env shaderEnvironment) {
 	}
 
 	sh.shader.setAttributes(env)
-
-	// scaling of screen
-	yscaling := sh.img.wm.dbgScr.yscaling
-	xscaling := sh.img.wm.dbgScr.xscaling
-
-	// critical section
-	sh.img.screen.crit.section.Lock()
-
-	gl.Uniform1f(sh.scalingX, sh.img.wm.dbgScr.xscaling)
-	gl.Uniform1f(sh.scalingY, sh.img.wm.dbgScr.yscaling)
-	gl.Uniform2f(sh.screenDim, width, height)
-
-	// cursor is the coordinates of the *most recent* pixel to be drawn
-	cursorX := sh.img.screen.crit.lastClock
-	cursorY := sh.img.screen.crit.lastScanline
-
-	// if crt preview is enabled then force cropping
-	if sh.img.wm.dbgScr.cropped || sh.img.wm.dbgScr.crtPreview {
-		gl.Uniform1f(sh.lastX, float32(cursorX-specification.ClksHBlank)*xscaling)
-		gl.Uniform1i(sh.isCropped, boolToInt32(true))
-	} else {
-		gl.Uniform1f(sh.lastX, float32(cursorX)*xscaling)
-		gl.Uniform1i(sh.isCropped, boolToInt32(false))
-	}
-	gl.Uniform1f(sh.lastY, float32(cursorY)*yscaling)
-
-	// screen geometry
-	gl.Uniform1f(sh.hblank, (specification.ClksHBlank)*xscaling)
-	gl.Uniform1f(sh.visibleTop, float32(sh.img.screen.crit.frameInfo.VisibleTop)*yscaling)
-	gl.Uniform1f(sh.visibleBottom, float32(sh.img.screen.crit.frameInfo.VisibleBottom)*yscaling)
-	gl.Uniform1f(sh.lastNewFrameAtScanline, float32(sh.img.screen.crit.frameInfo.TotalScanlines)*yscaling)
-
-	sh.img.screen.crit.section.Unlock()
-	// end of critical section
-
-	// show cursor
-	switch sh.img.emulation.State() {
-	case emulation.Paused:
-		gl.Uniform1i(sh.showCursor, 1)
-	case emulation.Running:
-		gl.Uniform1i(sh.showCursor, 0)
-	case emulation.Stepping:
-		gl.Uniform1i(sh.showCursor, 1)
-	case emulation.Rewinding:
-		gl.Uniform1i(sh.showCursor, 1)
-	}
+	sh.dbgScrHelper.set(sh.img)
 }
 
-type overlayShader struct {
+type dbgScrOverlayShader struct {
 	shader
-	img   *SdlImgui
-	alpha int32 // uniform
+	dbgScrHelper
+
+	img *SdlImgui
 }
 
-func newOverlayShader(img *SdlImgui) shaderProgram {
-	sh := &overlayShader{
+func newDbgScrOverlayShader(img *SdlImgui) shaderProgram {
+	sh := &dbgScrOverlayShader{
 		img: img,
 	}
-	sh.createProgram(string(shaders.StraightVertexShader), string(shaders.OverlayShader))
-	sh.alpha = gl.GetUniformLocation(sh.handle, gl.Str("Alpha"+"\x00"))
+
+	sh.createProgram(string(shaders.StraightVertexShader), string(shaders.DbgScrHelpersShader), string(shaders.DbgScrOverlayShader))
+	sh.dbgScrHelper.get(sh.shader)
+
 	return sh
 }
 
-func (sh *overlayShader) setAttributes(env shaderEnvironment) {
+func (sh *dbgScrOverlayShader) setAttributes(env shaderEnvironment) {
 	sh.shader.setAttributes(env)
-	gl.Uniform1f(sh.alpha, 0.75)
-}
-
-type guiShader struct {
-	shader
-}
-
-func newGUIShader() shaderProgram {
-	sh := &guiShader{}
-	sh.createProgram(string(shaders.StraightVertexShader), string(shaders.GUIShader))
-	return sh
+	sh.dbgScrHelper.set(sh.img)
 }
