@@ -27,6 +27,10 @@ import (
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
+type yieldARM interface {
+	Yield()
+}
+
 type aceMemory struct {
 	model   memorymodel.Map
 	resetSP uint32
@@ -52,6 +56,8 @@ type aceMemory struct {
 	sram       []byte
 	sramOrigin uint32
 	sramMemtop uint32
+
+	arm yieldARM
 }
 
 const (
@@ -202,6 +208,9 @@ func (mem *aceMemory) Snapshot() *aceMemory {
 // MapAddress implements the arm.SharedMemory interface.
 func (mem *aceMemory) MapAddress(addr uint32, write bool) (*[]byte, uint32) {
 	if addr >= mem.gpioAOrigin && addr <= mem.gpioAMemtop {
+		if !write && addr == mem.gpioAOrigin|toArm_address {
+			mem.arm.Yield()
+		}
 		return &mem.gpioA, addr - mem.gpioAOrigin
 	}
 	if addr >= mem.gpioBOrigin && addr <= mem.gpioBMemtop {
@@ -249,7 +258,7 @@ func NewAce(instance *instance.Instance, pathToROM string, version string, data 
 	}
 
 	cart.arm = arm.NewARM(arm.ARMv7_M, arm.MAMfull, cart.mem.model, cart.instance.Prefs.ARM, cart.mem, cart, cart.pathToROM)
-	cart.arm.AddReadWatch(cart.mem.gpioAOrigin | toArm_address)
+	cart.mem.arm = cart.arm
 
 	logger.Logf("ACE", "vcs program: %08x to %08x", cart.mem.vcsOrigin, cart.mem.vcsMemtop)
 	logger.Logf("ACE", "arm program: %08x to %08x", cart.mem.armOrigin, cart.mem.armMemtop)

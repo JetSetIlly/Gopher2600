@@ -243,9 +243,6 @@ type ARM struct {
 	fudge_thumb2disassemble16bit string
 	fudge_thumb2disassemblePrint bool
 
-	// address watches - apply to 32bit reads only
-	readWatches []uint32
-
 	// whether the previous execution stopped because of a yield
 	yield bool
 
@@ -337,12 +334,6 @@ func (arm *ARM) reset() {
 	arm.registers[rSP], arm.registers[rLR], arm.registers[rPC] = arm.mem.ResetVectors()
 
 	arm.prefetchCycle = S
-}
-
-// AddReadWatch adds an address to the list of addresses that will cause a
-// yield on a 32bit data read (not opcode reads).
-func (arm *ARM) AddReadWatch(addr uint32) {
-	arm.readWatches = append(arm.readWatches, addr)
 }
 
 // updatePrefs should be called periodically to ensure that the current
@@ -477,6 +468,12 @@ func (arm *ARM) Run() (float32, error) {
 	arm.breakpoint = false
 
 	return arm.run()
+}
+
+// Yield indicates that the arm execution should cease after the next/current
+// instruction has been executed.
+func (arm *ARM) Yield() {
+	arm.yield = true
 }
 
 // BreakpointHasTriggered returns true if execution has not run to completion

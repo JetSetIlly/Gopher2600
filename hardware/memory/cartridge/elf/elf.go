@@ -292,7 +292,6 @@ func NewElf(instance *instance.Instance, pathToROM string) (mapper.CartMapper, e
 	}
 
 	cart.arm = arm.NewARM(arm.ARMv7_M, arm.MAMfull, cart.mem.model, cart.instance.Prefs.ARM, cart.mem, cart, cart.pathToROM)
-	cart.arm.AddReadWatch(cart.mem.gpioAOrigin | toArm_address)
 
 	logger.Logf("ELF", "vcs program: %08x to %08x", cart.mem.vcsOrigin, cart.mem.vcsMemtop)
 	logger.Logf("ELF", "arm program: %08x to %08x", cart.mem.armOrigin, cart.mem.armMemtop)
