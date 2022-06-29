@@ -36,7 +36,7 @@ const (
 	rSP
 	rLR
 	rPC
-	rCount
+	NumRegisters
 )
 
 // the maximum number of cycles allowed in a single ARM program execution.
@@ -77,7 +77,7 @@ type ARM struct {
 	hook  CartridgeHook
 
 	// ARM registers
-	registers [rCount]uint32
+	registers [NumRegisters]uint32
 	Status    status
 
 	// "peripherals" connected to the variety of ARM7TDMI-S used in the Harmony
@@ -476,6 +476,11 @@ func (arm *ARM) Yield() {
 	arm.yield = true
 }
 
+// Registers returns a copy of the current values in the ARM registers
+func (arm *ARM) Registers() [NumRegisters]uint32 {
+	return arm.registers
+}
+
 // BreakpointHasTriggered returns true if execution has not run to completion
 // because of a breakpoint.
 func (arm *ARM) BreakpointHasTriggered() bool {
@@ -640,7 +645,7 @@ func (arm *ARM) run() (float32, error) {
 			}
 
 			// if arm.function32bitOpcode == 0xf084 && opcode == 0x0280 {
-			// 	arm.fudge_thumb2disassemblePrint = true
+			// arm.fudge_thumb2disassemblePrint = true
 			// }
 
 			if arm.fudge_thumb2disassemblePrint {
@@ -746,14 +751,14 @@ func (arm *ARM) run() (float32, error) {
 			// limit the number of cycles used by the ARM program
 			if arm.cyclesTotal >= cycleLimit {
 				logger.Logf("ARM7", "reached cycle limit of %d. ending execution early", cycleLimit)
-				panic(1)
+				panic("cycle limit")
 				break
 			}
 		} else {
 			iterations++
 			if iterations > instructionsLimit {
 				logger.Logf("ARM7", "reached instructions limit of %d. ending execution early", instructionsLimit)
-				panic(2)
+				panic("instruction limit")
 				break
 			}
 		}

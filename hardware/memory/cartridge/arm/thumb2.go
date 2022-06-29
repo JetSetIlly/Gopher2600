@@ -225,12 +225,6 @@ func (arm *ARM) thumb2SignZeroExtend(opcode uint16) {
 	Rd := opcode & 0x07
 
 	switch op {
-	case 0b00:
-		// signed extend halfword SXTH
-		panic(0)
-	case 0b01:
-		// signed extend byte SXTB
-		panic(1)
 	case 0b10:
 		// unsigned extend halfword
 		// "4.6.226 UXTH" in "Thumb-2 Supplement"
