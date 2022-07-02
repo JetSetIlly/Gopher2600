@@ -118,8 +118,17 @@ type ARM struct {
 	Clk         float32
 	clklenFlash float32
 
-	// the PC of the instruction being executed
-	executingPC uint32
+	// the PC of the opcode being processed and the PC of the instruction being
+	// executed
+	//
+	// when this emulation was Thumb (16bit only) there was no distiniction
+	// between these two concepts and there was only executingPC. with 32bit
+	// instructions we need to know about both
+	//
+	// executingPC will be equal to instructionPC in the case of 16bit
+	// instructions but will be different in the case of 32bit instructions
+	executingPC   uint32
+	instructionPC uint32
 
 	// the area the PC covers. once assigned we'll assume that the program
 	// never reads outside this area. the value is assigned on reset()
@@ -571,6 +580,7 @@ func (arm *ARM) run() (float32, error) {
 		// run from functionMap if possible
 		switch arm.arch {
 		case ARM7TDMI:
+			arm.instructionPC = arm.executingPC
 			f := arm.functionMap[memIdx]
 			if f == nil {
 				f = arm.decodeThumb(opcode)
@@ -594,6 +604,10 @@ func (arm *ARM) run() (float32, error) {
 					arm.functionMap[memIdx] = f
 				}
 			} else {
+				// the opcode is either a 16bit instruction or the first
+				// halfword for a 32bit instruction
+				arm.instructionPC = arm.executingPC
+
 				if arm.is32BitThumb2(opcode) {
 					arm.function32bit = true
 					arm.function32bitOpcode = opcode
@@ -653,15 +667,15 @@ func (arm *ARM) run() (float32, error) {
 					fmt.Print("*** ")
 				}
 				if fudge_resolving32bitInstruction {
-					fmt.Printf("%04x %04x :: %s\n", arm.function32bitOpcode, opcode, arm.fudge_thumb2disassemble32bit)
+					fmt.Printf("%08x %04x %04x :: %s\n", arm.instructionPC, arm.function32bitOpcode, opcode, arm.fudge_thumb2disassemble32bit)
 					fmt.Println(arm.String())
 					fmt.Println(arm.Status.String())
 					fmt.Println("====================")
 				} else if !arm.function32bit {
 					if arm.fudge_thumb2disassemble16bit != "" {
-						fmt.Printf("%04x :: %s\n", opcode, arm.fudge_thumb2disassemble16bit)
+						fmt.Printf("%08x %04x :: %s\n", arm.instructionPC, opcode, arm.fudge_thumb2disassemble16bit)
 					} else {
-						fmt.Printf("%04x :: %s\n", opcode, thumbDisassemble(opcode).String())
+						fmt.Printf("%08x %04x :: %s\n", arm.instructionPC, opcode, thumbDisassemble(opcode).String())
 					}
 					fmt.Println(arm.String())
 					fmt.Println(arm.Status.String())
@@ -706,10 +720,10 @@ func (arm *ARM) run() (float32, error) {
 			var cached bool
 			var d DisasmEntry
 
-			d, cached = arm.disasmCache[arm.executingPC]
+			d, cached = arm.disasmCache[arm.instructionPC]
 			if !cached {
 				d = Disassemble(opcode)
-				d.Address = fmt.Sprintf("%08x", arm.executingPC)
+				d.Address = fmt.Sprintf("%08x", arm.instructionPC)
 			}
 
 			d.MAMCR = int(arm.mam.mamcr)
@@ -723,7 +737,7 @@ func (arm *ARM) run() (float32, error) {
 
 			// update cache if necessary
 			if !cached || arm.disasmUpdateNotes {
-				arm.disasmCache[arm.executingPC] = d
+				arm.disasmCache[arm.instructionPC] = d
 			}
 
 			arm.disasmExecutionNotes = ""
@@ -738,7 +752,7 @@ func (arm *ARM) run() (float32, error) {
 
 		// accumulate execution counts
 		if arm.dev != nil {
-			arm.executedAddresses[arm.executingPC] += arm.stretchedCycles
+			arm.executedAddresses[arm.instructionPC] += arm.stretchedCycles
 		}
 
 		// reset cycle information
