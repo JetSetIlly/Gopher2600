@@ -90,7 +90,8 @@ func (arm *ARM) thumb2DataProcessingNonImmediate(opcode uint16) {
 
 				switch typ {
 				case 0b00:
-					carry := arm.registers[Rm]&0x80000000 == 0x80000000
+					m := arm.registers[Rm] << (imm5 - 1)
+					carry := arm.registers[Rm]&m == m
 					shifted := arm.registers[Rm] << imm5
 					arm.registers[Rd] = arm.registers[Rn] & shifted
 					if setFlags {
@@ -110,7 +111,8 @@ func (arm *ARM) thumb2DataProcessingNonImmediate(opcode uint16) {
 			switch typ {
 			case 0b00:
 			default:
-				carry := arm.registers[Rm]&0x80000000 == 0x80000000
+				m := arm.registers[Rm] << (imm5 - 1)
+				carry := arm.registers[Rm]&m == m
 				shifted := arm.registers[Rm] << imm5
 				arm.registers[Rd] = arm.registers[Rn] & ^shifted
 				if setFlags {
@@ -135,7 +137,9 @@ func (arm *ARM) thumb2DataProcessingNonImmediate(opcode uint16) {
 						// T2 encoding
 						arm.fudge_thumb2disassemble32bit = "LSL"
 
-						carry := arm.registers[Rm]&0x80000000 == 0x80000000
+						m := arm.registers[Rm] << (imm5 - 1)
+						carry := arm.registers[Rm]&m == m
+
 						arm.registers[Rd] = arm.registers[Rm] << imm5
 						if setFlags {
 							arm.Status.isNegative(arm.registers[Rd])
@@ -149,7 +153,9 @@ func (arm *ARM) thumb2DataProcessingNonImmediate(opcode uint16) {
 					// T2 encoding
 					arm.fudge_thumb2disassemble32bit = "LSR"
 
-					carry := arm.registers[Rm]&0x80000000 == 0x80000000
+					m := arm.registers[Rm] >> (imm5 - 1)
+					carry := arm.registers[Rm]&m == m
+
 					arm.registers[Rd] = arm.registers[Rm] >> imm5
 					if setFlags {
 						arm.Status.isNegative(arm.registers[Rd])
@@ -172,7 +178,8 @@ func (arm *ARM) thumb2DataProcessingNonImmediate(opcode uint16) {
 			switch typ {
 			case 0b00:
 				// with logical left shift
-				carry := arm.registers[Rm]&0x80000000 == 0x80000000
+				m := arm.registers[Rm] << (imm5 - 1)
+				carry := arm.registers[Rm]&m == m
 				arm.registers[Rd] = arm.registers[Rn] ^ (arm.registers[Rm] << imm5)
 				if setFlags {
 					arm.Status.isNegative(arm.registers[Rd])
@@ -182,7 +189,8 @@ func (arm *ARM) thumb2DataProcessingNonImmediate(opcode uint16) {
 				}
 			case 0b01:
 				// with logical right shift
-				carry := arm.registers[Rm]&0x80000000 == 0x80000000
+				m := arm.registers[Rm] >> (imm5 - 1)
+				carry := arm.registers[Rm]&m == m
 				arm.registers[Rd] = arm.registers[Rn] ^ (arm.registers[Rm] >> imm5)
 				if setFlags {
 					arm.Status.isNegative(arm.registers[Rd])
@@ -215,9 +223,9 @@ func (arm *ARM) thumb2DataProcessingNonImmediate(opcode uint16) {
 					}
 				case 0b10:
 					// with arithmetic right shift
-					c := (arm.registers[Rm] & 0x80000000) >> 31
+					signExtend := (arm.registers[Rm] & 0x80000000) >> 31
 					shifted := arm.registers[Rm] >> imm5
-					if c == 0x01 {
+					if signExtend == 0x01 {
 						shifted |= ^uint32(0) << (32 - imm5)
 					}
 					result, carry, overflow := AddWithCarry(arm.registers[Rn], shifted, 0)
@@ -324,28 +332,56 @@ func (arm *ARM) thumb2DataProcessingNonImmediate(opcode uint16) {
 		if opcode&0x0080 == 0x0000 {
 			// "Register-controlled shift instructions"
 			// page 3-19 of "Thumb-2 Supplement"
-			op := (arm.function32bitOpcode & 0x0060) >> 5
-			// s := (arm.function32bitOpcode & 0x0010) == 0x0010
-			switch op {
-			case 0b10:
-				// "4.6.10 ASR (immediate)" of "Thumb-2 Supplement"
-				arm.fudge_thumb2disassemble32bit = "ASR"
 
-				imm3 := (opcode & 0x7000) >> 12
-				imm2 := (opcode & 0x00c0) >> 6
-				imm5 := (imm3 << 2) | imm2
-				s := arm.function32bitOpcode&0x0010 == 0x0010
-				carry := arm.registers[Rm]&0x0001 == 0x0001
-				arm.registers[Rd] = arm.registers[Rm] >> imm5
-				if arm.Status.carry {
-					arm.registers[Rd] |= 0x80000000
-				}
-				if s {
+			op := (arm.function32bitOpcode & 0x0060) >> 5
+			setFlags := (arm.function32bitOpcode & 0x0010) == 0x0010
+			shift := arm.registers[Rm] & 0x000f
+			// op2 := (opcode & 0x0070) >> 4
+
+			switch op {
+			case 0b01:
+				// "4.6.71 LSR (register)" of "Thumb-2 Supplement"
+				arm.fudge_thumb2disassemble32bit = "LSR"
+
+				// whether to set carry bit
+				m := arm.registers[Rm] >> (shift - 1)
+				carry := arm.registers[Rm]&m == m
+
+				// perform actual shift
+				arm.registers[Rd] = arm.registers[Rm] >> shift
+
+				if setFlags {
 					arm.Status.isNegative(arm.registers[Rd])
 					arm.Status.isZero(arm.registers[Rd])
 					arm.Status.setCarry(carry)
 					// overflow unchanged
 				}
+			case 0b10:
+				// "4.6.11 ASR (register)" of "Thumb-2 Supplement"
+				arm.fudge_thumb2disassemble32bit = "ASR"
+
+				// whether to set carry bit
+				m := arm.registers[Rm] >> (shift - 1)
+				carry := arm.registers[Rm]&m == m
+
+				// extend sign, check for bit
+				signExtend := (arm.registers[Rm] & 0x80000000) >> 31
+
+				// perform actual shift
+				arm.registers[Rd] = arm.registers[Rm] >> shift
+
+				// perform sign extension
+				if signExtend == 0x01 {
+					arm.registers[Rd] |= ^uint32(0) << (32 - shift)
+				}
+
+				if setFlags {
+					arm.Status.isNegative(arm.registers[Rd])
+					arm.Status.isZero(arm.registers[Rd])
+					arm.Status.setCarry(carry)
+					// overflow unchanged
+				}
+
 			default:
 				panic(fmt.Sprintf("unhandled data processing instructions, non immediate (reg controlled shift) (%02b)", op))
 			}
@@ -696,6 +732,7 @@ func (arm *ARM) thumb2DataProcessing(opcode uint16) {
 				arm.registers[Rd] = result
 				if setFlags {
 					arm.Status.isNegative(result)
+					arm.Status.isZero(result)
 					arm.Status.setCarry(carry)
 					// overflow unchanged
 				}
@@ -818,7 +855,10 @@ func (arm *ARM) thumb2LoadStoreSingle(opcode uint16) {
 
 		u := arm.function32bitOpcode&0x0080 == 0x0080
 		imm12 := opcode & 0x0fff
-		addr := arm.registers[Rn] & 0xfffffffc
+
+		// Rn is always the PC for this instruction class
+		addr := (arm.registers[rPC] - 2) & 0xfffffffc
+
 		if u {
 			addr += uint32(imm12)
 		} else {
