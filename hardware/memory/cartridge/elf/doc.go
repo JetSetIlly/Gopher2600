@@ -14,4 +14,10 @@
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
 // Package ace implements the ELF cartridge mapper.
+//
+// ARM ELF/relocation information in the legacy ARM development suite.
+// Convenient copy of relevant document (using the ARM document numbering as
+// reference in the comments - "SWS ESPC 0003 A-08")
+//
+// https://developer.arm.com/documentation/dui0067/d/Chddidgj
 package elf

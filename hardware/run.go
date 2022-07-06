@@ -69,6 +69,7 @@ func (vcs *VCS) Run(continueCheck func() (emulation.State, error)) error {
 		} else if err := vcs.TIA.QuickStep(); err != nil {
 			return err
 		}
+
 		if reg, ok := vcs.Mem.RIOT.ChipHasChanged(); ok {
 			vcs.RIOT.Step(reg)
 		} else {

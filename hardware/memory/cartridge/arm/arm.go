@@ -490,6 +490,11 @@ func (arm *ARM) Registers() [NumRegisters]uint32 {
 	return arm.registers
 }
 
+// SetRegisters sets the live register values to those supplied
+func (arm *ARM) SetRegisters(registers [NumRegisters]uint32) {
+	arm.registers = registers
+}
+
 // BreakpointHasTriggered returns true if execution has not run to completion
 // because of a breakpoint.
 func (arm *ARM) BreakpointHasTriggered() bool {

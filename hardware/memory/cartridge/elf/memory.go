@@ -27,6 +27,7 @@ import (
 type yieldARM interface {
 	Yield()
 	Registers() [arm.NumRegisters]uint32
+	SetRegisters([arm.NumRegisters]uint32)
 }
 
 type elfMemory struct {
@@ -35,25 +36,25 @@ type elfMemory struct {
 	resetLR uint32
 	resetPC uint32
 
-	armProgram []byte
-	armOrigin  uint32
-	armMemtop  uint32
+	gpio gpio
 
-	vcsProgram []byte // including virtual arguments
-	vcsOrigin  uint32
-	vcsMemtop  uint32
+	textSection       []byte
+	textSectionOrigin uint32
+	textSectionMemtop uint32
 
-	gpioA       []byte
-	gpioAOrigin uint32
-	gpioAMemtop uint32
+	dataSection       []byte
+	dataSectionOrigin uint32
+	dataSectionMemtop uint32
 
-	gpioB       []byte
-	gpioBOrigin uint32
-	gpioBMemtop uint32
+	rodataSectionPresent bool
+	rodataSection        []byte
+	rodataSectionOrigin  uint32
+	rodataSectionMemtop  uint32
 
-	gpioLookup       []byte
-	gpioLookupOrigin uint32
-	gpioLookupMemtop uint32
+	bssSectionPresent bool
+	bssSection        []byte
+	bssSectionOrigin  uint32
+	bssSectionMemtop  uint32
 
 	sram       []byte
 	sramOrigin uint32
@@ -69,120 +70,106 @@ type elfMemory struct {
 	strongarm strongarm
 }
 
-const (
-	gpio_mode      = 0x00 // gpioB
-	toArm_address  = 0x10 // gpioA
-	toArm_data     = 0x10 // gpioB
-	fromArm_Opcode = 0x14 // gpioB
-	gpio_memtop    = 0x18
-)
-
 func newElfMemory(f *elf.File) (*elfMemory, error) {
-	mem := &elfMemory{}
+	mem := &elfMemory{
+		gpio: newGPIO(),
+	}
 
 	// always using PlusCart model for now
 	mem.model = memorymodel.NewMap(memorymodel.PlusCart)
 
-	mem.resetSP = mem.model.SRAMOrigin | 0x0000ffdc
-	mem.resetLR = mem.model.FlashOrigin
-	const jumpVector = 0x08020000
-	mem.resetPC = mem.model.FlashOrigin + jumpVector
+	var err error
 
-	// align reset PC value (maybe this should be done in the ARM package once
-	// the value has been received - on second thoughts, no we shouldn't do
-	// this because we need to know the true value of resetPC in MapAddress()
-	// below)
-	mem.resetPC &= 0xfffffffe
-
-	// load elf sections
-	textSection := f.Section(".text")
-	if textSection == nil {
+	// .text section
+	section := f.Section(".text")
+	if section == nil {
 		return nil, curated.Errorf("ELF: could not fine .text")
 	}
-	if textSection.Flags&elf.SHF_ALLOC != elf.SHF_ALLOC {
+	if section.Flags&elf.SHF_ALLOC != elf.SHF_ALLOC {
 		return nil, curated.Errorf("ELF: .text section is not relocatable")
 	}
-	if textSection.Flags&elf.SHF_EXECINSTR != elf.SHF_EXECINSTR {
+	if section.Flags&elf.SHF_EXECINSTR != elf.SHF_EXECINSTR {
 		return nil, curated.Errorf("ELF: .text section is not executable")
 	}
+	mem.textSection, err = section.Data()
+	if err != nil {
+		return nil, curated.Errorf("ELF: %v", err)
+	}
+	// for simplicitity place the .text section well away from the data section
+	mem.textSectionOrigin = mem.model.FlashOrigin + 0x08000000
+	mem.textSectionMemtop = mem.textSectionOrigin + uint32(len(mem.textSection))
 
-	dataSection := f.Section(".data")
-	if dataSection == nil {
+	origin := mem.model.FlashOrigin
+	memtop := origin
+
+	// .data section
+	section = f.Section(".data")
+	if section == nil {
 		return nil, curated.Errorf("ELF: could not fine .data")
 	}
-	if dataSection.Flags&elf.SHF_ALLOC != elf.SHF_ALLOC {
+	if section.Flags&elf.SHF_ALLOC != elf.SHF_ALLOC {
 		return nil, curated.Errorf("ELF: .data section is not relocatable")
 	}
-
-	reltextSection := f.Section(".rel.text")
-	if reltextSection == nil {
-		return nil, curated.Errorf("ELF: could not fine .rel.text")
-	}
-	if reltextSection.Type != elf.SHT_REL {
-		return nil, curated.Errorf("ELF: .rel.text is not type SHT_REL")
-	}
-
-	// copy vcs program to our emulated memory
-	vcsProg, err := dataSection.Data()
+	mem.dataSection, err = section.Data()
 	if err != nil {
 		return nil, curated.Errorf("ELF: %v", err)
 	}
-	mem.vcsProgram = make([]byte, len(vcsProg))
-	copy(mem.vcsProgram, vcsProg)
-	mem.vcsOrigin = mem.model.FlashOrigin
-	mem.vcsMemtop = mem.vcsOrigin + uint32(len(mem.vcsProgram))
+	mem.dataSectionOrigin = origin
+	memtop = origin + uint32(len(mem.dataSection))
+	mem.dataSectionMemtop = memtop
+	origin = memtop + 1
 
-	// copy arm program to our emulated memory
-	armProg, err := textSection.Data()
-	if err != nil {
-		return nil, curated.Errorf("ELF: %v", err)
+	// .rodata section
+	section = f.Section(".rodata")
+	if section != nil {
+		if section.Flags&elf.SHF_ALLOC != elf.SHF_ALLOC {
+			return nil, curated.Errorf("ELF: .data section is not relocatable")
+		}
+		mem.rodataSectionPresent = true
+		mem.rodataSection, err = section.Data()
+		if err != nil {
+			return nil, curated.Errorf("ELF: %v", err)
+		}
+		mem.rodataSectionOrigin = origin
+		memtop = origin + uint32(len(mem.rodataSection))
+		mem.rodataSectionMemtop = memtop
+		origin = memtop + 1
 	}
-	mem.armProgram = make([]byte, len(armProg))
-	copy(mem.armProgram, armProg)
-	mem.armOrigin = mem.resetPC
-	mem.armMemtop = mem.armOrigin + uint32(len(mem.armProgram))
 
-	// GPIO pins
-	mem.gpioA = make([]byte, gpio_memtop)
-	mem.gpioAOrigin = 0x40020c00
-	mem.gpioAMemtop = mem.gpioAOrigin | gpio_memtop
+	// .bss section
+	section = f.Section(".bss")
+	if section != nil {
+		if section.Flags&elf.SHF_ALLOC != elf.SHF_ALLOC {
+			return nil, curated.Errorf("ELF: .bss section is not relocatable")
+		}
+		mem.bssSectionPresent = true
+		mem.bssSection, err = section.Data()
+		if err != nil {
+			return nil, curated.Errorf("ELF: %v", err)
+		}
+		mem.bssSectionOrigin = origin
+		memtop = origin + uint32(len(mem.bssSection))
+		mem.bssSectionMemtop = memtop
+		origin = memtop + 1
 
-	mem.gpioB = make([]byte, gpio_memtop)
-	mem.gpioBOrigin = 0x40020800
-	mem.gpioBMemtop = mem.gpioBOrigin | gpio_memtop
-
-	mem.gpioLookup = make([]byte, gpio_memtop)
-	mem.gpioLookupOrigin = 0x40020400
-	mem.gpioLookupMemtop = mem.gpioLookupOrigin | gpio_memtop
-	offset := toArm_address
-	val := mem.gpioAOrigin | toArm_address
-	mem.gpioLookup[offset] = uint8(val)
-	mem.gpioLookup[offset+1] = uint8(val >> 8)
-	mem.gpioLookup[offset+2] = uint8(val >> 16)
-	mem.gpioLookup[offset+3] = uint8(val >> 24)
-	offset = fromArm_Opcode
-	val = mem.gpioBOrigin | fromArm_Opcode
-	mem.gpioLookup[offset] = uint8(val)
-	mem.gpioLookup[offset+1] = uint8(val >> 8)
-	mem.gpioLookup[offset+2] = uint8(val >> 16)
-	mem.gpioLookup[offset+3] = uint8(val >> 24)
-
-	// default NOP instruction for opcode
-	mem.gpioB[fromArm_Opcode] = 0xea
-
-	// SRAM creation
-	mem.sram = make([]byte, mem.resetSP-mem.model.SRAMOrigin)
-	mem.sramOrigin = mem.model.SRAMOrigin
-	mem.sramMemtop = mem.sramOrigin + uint32(len(mem.sram))
+	}
 
 	// strongARM functions are added when the relocation information suggests
 	// that it is required
 	mem.strongArmFunctions = make(map[uint32]strongArmFunction)
-	mem.strongArmOrigin = mem.armMemtop
+	mem.strongArmOrigin = mem.textSectionMemtop
 	mem.strongArmMemtop = mem.strongArmOrigin
 
-	// relocate arm program (for emulated memory)
-	relocation, err := reltextSection.Data()
+	// relocate text section
+	section = f.Section(".rel.text")
+	if section == nil {
+		return nil, curated.Errorf("ELF: could not fine .rel.text")
+	}
+	if section.Type != elf.SHT_REL {
+		return nil, curated.Errorf("ELF: .rel.text is not type SHT_REL")
+	}
+
+	relocation, err := section.Data()
 	if err != nil {
 		return nil, curated.Errorf("ELF: %v", err)
 	}
@@ -191,59 +178,192 @@ func newElfMemory(f *elf.File) (*elfMemory, error) {
 		return nil, curated.Errorf("ELF: %v", err)
 	}
 
-	write := func(offset uint32, val uint32) {
-		mem.armProgram[offset] = uint8(val)
-		mem.armProgram[offset+1] = uint8(val >> 8)
-		mem.armProgram[offset+2] = uint8(val >> 16)
-		mem.armProgram[offset+3] = uint8(val >> 24)
-	}
-
 	for i := 0; i < len(relocation); i += 8 {
+		var v uint32
+
 		offset := uint32(relocation[i]) | uint32(relocation[i+1])<<8 | uint32(relocation[i+2])<<16 | uint32(relocation[i+3])<<24
 		relType := relocation[i+4]
+
 		symbolIdx := uint32(relocation[i+5]) | uint32(relocation[i+6])<<8 | uint32(relocation[i+7])<<16
-		symbolIdx--
+		s := symbols[symbolIdx-1]
 
 		switch elf.R_ARM(relType) {
 		case elf.R_ARM_ABS32:
-			n := symbols[symbolIdx].Name
-			switch n {
-			case "_binary_4k_rom_bin_start":
-				v := mem.vcsOrigin
-				write(offset, v)
-				logger.Logf("ELF", "%08x %s => %08x", offset, n, v)
-			case "_binary_4k_rom_bin_size":
-				v := uint32(len(mem.vcsProgram))
-				write(offset, v)
-				logger.Logf("ELF", "%08x %s => %08x", offset, n, v)
-			case "_binary_4k_rom_bin_end":
-				v := uint32(mem.vcsOrigin + uint32(len(mem.vcsProgram)))
-				write(offset, v)
-				logger.Logf("ELF", "%08x %s => %08x", offset, n, v)
+			switch s.Name {
+			// GPIO pins
 			case "ADDR_IDR":
-				v := uint32(mem.gpioLookupOrigin | toArm_address)
-				write(offset, v)
-				logger.Logf("ELF", "%08x %s => %08x", offset, n, v)
+				v = uint32(mem.gpio.lookupOrigin | toArm_address)
 			case "DATA_ODR":
-				v := uint32(mem.gpioLookupOrigin | fromArm_Opcode)
-				write(offset, v)
-				logger.Logf("ELF", "%08x %s => %08x", offset, n, v)
+				v = uint32(mem.gpio.lookupOrigin | fromArm_Opcode)
 			case "DATA_MODER":
-				v := uint32(mem.gpioBOrigin | gpio_mode)
-				write(offset, v)
-				logger.Logf("ELF", "%08x %s => %08x", offset, n, v)
+				v = uint32(mem.gpio.BOrigin | gpio_mode)
 
-			// strongArm functions
+			// strongARM functions
+			case "vcsWrite3":
+				v = mem.relocateStrongArmFunction(mem.vcsWrite3)
+			case "vcsJmp3":
+				v = mem.relocateStrongArmFunction(mem.vcsJmp3)
+			case "vcsLda2":
+				v = mem.relocateStrongArmFunction(mem.vcsLda2)
+			case "vcsSta3":
+				v = mem.relocateStrongArmFunction(mem.vcsSta3)
+			case "SnoopDataBus":
+				v = mem.relocateStrongArmFunction(mem.snoopDataBus)
+			case "vcsRead4":
+				v = mem.relocateStrongArmFunction(mem.vcsRead4)
+			case "vcsStartOverblank":
+				v = mem.relocateStrongArmFunction(mem.vcsStartOverblank)
+			case "vcsEndOverblank":
+				v = mem.relocateStrongArmFunction(mem.vcsEndOverblank)
+			case "vcsLdaForBusStuff2":
+				v = mem.relocateStrongArmFunction(mem.vcsLdaForBusStuff2)
+			case "vcsLdxForBusStuff2":
+				v = mem.relocateStrongArmFunction(mem.vcsLdxForBusStuff2)
+			case "vcsLdyForBusStuff2":
+				v = mem.relocateStrongArmFunction(mem.vcsLdyForBusStuff2)
+			case "vcsWrite5":
+				v = mem.relocateStrongArmFunction(mem.vcsWrite5)
+			case "vcsLdx2":
+				v = mem.relocateStrongArmFunction(mem.vcsLdx2)
+			case "vcsLdy2":
+				v = mem.relocateStrongArmFunction(mem.vcsLdy2)
+			case "vcsSta4":
+				v = mem.relocateStrongArmFunction(mem.vcsSta4)
+			case "vcsStx3":
+				v = mem.relocateStrongArmFunction(mem.vcsStx3)
+			case "vcsStx4":
+				v = mem.relocateStrongArmFunction(mem.vcsStx4)
+			case "vcsSty3":
+				v = mem.relocateStrongArmFunction(mem.vcsSty3)
+			case "vcsSty4":
+				v = mem.relocateStrongArmFunction(mem.vcsSty4)
+			case "vcsTxs2":
+				v = mem.relocateStrongArmFunction(mem.vcsTxs2)
 			case "vcsJsr6":
-				write(offset, mem.relocateStrongArmFunction(mem.vcsJsr6))
+				v = mem.relocateStrongArmFunction(mem.vcsJsr6)
+			case "vcsNop2":
+				v = mem.relocateStrongArmFunction(mem.vcsNop2)
+			case "vcsNop2n":
+				v = mem.relocateStrongArmFunction(mem.vcsNop2n)
+			case "vcsCopyOverblankToRiotRam":
+				v = mem.relocateStrongArmFunction(mem.vcsCopyOverblankToRiotRam)
+			case "memset":
+				v = mem.relocateStrongArmFunction(mem.memset)
 
 			default:
-				return nil, curated.Errorf("ELF: unrelocated symbol (%s)", n)
+				switch f.Sections[s.Section].Name {
+				case ".text":
+					v = mem.textSectionOrigin
+				case ".data":
+					v = mem.dataSectionOrigin
+				case ".rodata":
+					v = mem.rodataSectionOrigin
+				case ".bss":
+					v = mem.bssSectionOrigin
+				default:
+					return nil, curated.Errorf("ELF: undefined symbol (%s)", s.Name)
+				}
+
+				v += uint32(s.Value)
 			}
+
+			// commit write
+			mem.textSection[offset] = uint8(v)
+			mem.textSection[offset+1] = uint8(v >> 8)
+			mem.textSection[offset+2] = uint8(v >> 16)
+			mem.textSection[offset+3] = uint8(v >> 24)
+
+			// what we log depends on the info field. for info of type 0x03
+			// (lower nibble) then the relocation is of a entire section.
+			// in this case the symbol will not have a name so we use the
+			// section name instead
+			if s.Info&0x03 == 0x03 {
+				logger.Logf("ELF", "relocate %s => %08x", f.Sections[s.Section].Name, v)
+			} else {
+				logger.Logf("ELF", "relocate %s => %08x", s.Name, v)
+			}
+
+		case elf.R_ARM_THM_PC22:
+			// this value is labelled R_ARM_THM_CALL in objdump output
+			//
+			// "R_ARM_THM_PC22 Bits 0-10 encode the 11 most significant bits of
+			// the branch offset, bits 0-10 of the next instruction word the 11
+			// least significant bits. The unit is 2-byte Thumb instructions."
+			// page 32 of "SWS ESPC 0003 A-08"
+
+			switch f.Sections[s.Section].Name {
+			case ".text":
+				v = mem.textSectionOrigin
+			case ".data":
+				v = mem.dataSectionOrigin
+			case ".rodata":
+				v = mem.rodataSectionOrigin
+			case ".bss":
+				v = mem.bssSectionOrigin
+			default:
+				return nil, curated.Errorf("ELF: undefined symbol (%s)", s.Name)
+			}
+
+			v += uint32(s.Value)
+			v &= 0xfffffffe
+			v -= (mem.textSectionOrigin + offset + 4)
+
+			imm11 := (v >> 1) & 0x7ff
+			imm10 := (v >> 12) & 0x3ff
+			t1 := (v >> 22) & 0x01
+			t2 := (v >> 23) & 0x01
+			s := (v >> 24) & 0x01
+			j1 := uint32(0)
+			j2 := uint32(0)
+			if t1 == 0x01 {
+				j1 = s ^ 0x00
+			} else {
+				j1 = s ^ 0x01
+			}
+			if t2 == 0x01 {
+				j2 = s ^ 0x00
+			} else {
+				j2 = s ^ 0x01
+			}
+
+			op1 := uint16(0xf000 | (s << 10) | imm10)
+			op2 := uint16(0xd000 | (j1 << 13) | (j2 << 11) | imm11)
+
+			mem.textSection[offset] = uint8(op1)
+			mem.textSection[offset+1] = uint8(op1 >> 8)
+			mem.textSection[offset+2] = uint8(op2)
+			mem.textSection[offset+3] = uint8(op2 >> 8)
+
 		default:
-			return nil, curated.Errorf("ELF: unhandled ARM relocation type")
+			return nil, curated.Errorf("ELF: unhandled ARM relocation type (%v)", relType)
 		}
 	}
+
+	// find entry point and use it to set the resetPC value. the Entry field in
+	// the elf.File structure is no good for our purposes
+	for _, s := range symbols {
+		if s.Name == "main" || s.Name == "elf_main" {
+			mem.resetPC = mem.textSectionOrigin + uint32(s.Value)
+			break // for loop
+		}
+	}
+
+	// make sure resetPC value is aligned correctly
+	mem.resetPC &= 0xfffffffe
+
+	// intialise stack pointer and link register. these values have no
+	// reasoning behind them but they work in most cases
+	//
+	// the link register should really link to a program that will indicate the
+	// program has ended. if we were emulating the real Uno/PlusCart firmware,
+	// the link register would point to the resume address in the firmware
+	mem.resetSP = mem.model.SRAMOrigin | 0x0000ffdc
+	mem.resetLR = mem.model.FlashOrigin
+
+	// SRAM creation
+	mem.sram = make([]byte, mem.resetSP-mem.model.SRAMOrigin)
+	mem.sramOrigin = mem.model.SRAMOrigin
+	mem.sramMemtop = mem.sramOrigin + uint32(len(mem.sram))
 
 	return mem, nil
 }
@@ -271,32 +391,36 @@ func (mem *elfMemory) Snapshot() *elfMemory {
 
 // MapAddress implements the arm.SharedMemory interface.
 func (mem *elfMemory) MapAddress(addr uint32, write bool) (*[]byte, uint32) {
-	if addr >= mem.gpioAOrigin && addr <= mem.gpioAMemtop {
-		if !write && addr == mem.gpioAOrigin|toArm_address {
+	if addr >= mem.gpio.AOrigin && addr <= mem.gpio.AMemtop {
+		if !write && addr == mem.gpio.AOrigin|toArm_address {
 			mem.arm.Yield()
 		}
-		return &mem.gpioA, addr - mem.gpioAOrigin
+		return &mem.gpio.A, addr - mem.gpio.AOrigin
 	}
-	if addr >= mem.gpioBOrigin && addr <= mem.gpioBMemtop {
-		return &mem.gpioB, addr - mem.gpioBOrigin
+	if addr >= mem.gpio.BOrigin && addr <= mem.gpio.BMemtop {
+		return &mem.gpio.B, addr - mem.gpio.BOrigin
 	}
-	if addr >= mem.gpioLookupOrigin && addr <= mem.gpioLookupMemtop {
-		return &mem.gpioLookup, addr - mem.gpioLookupOrigin
+	if addr >= mem.gpio.lookupOrigin && addr <= mem.gpio.lookupMemtop {
+		return &mem.gpio.lookup, addr - mem.gpio.lookupOrigin
 	}
-	if addr >= mem.armOrigin && addr <= mem.armMemtop {
-		return &mem.armProgram, addr - mem.resetPC
+	if addr >= mem.textSectionOrigin && addr <= mem.textSectionMemtop {
+		return &mem.textSection, addr - mem.textSectionOrigin
 	}
-	if addr >= mem.vcsOrigin && addr <= mem.vcsMemtop {
-		return &mem.vcsProgram, addr - mem.vcsOrigin
+	if addr >= mem.dataSectionOrigin && addr <= mem.dataSectionMemtop {
+		return &mem.dataSection, addr - mem.dataSectionOrigin
+	}
+	if mem.rodataSectionPresent && addr >= mem.rodataSectionOrigin && addr <= mem.rodataSectionMemtop {
+		return &mem.rodataSection, addr - mem.rodataSectionOrigin
+	}
+	if mem.bssSectionPresent && addr >= mem.bssSectionOrigin && addr <= mem.bssSectionMemtop {
+		return &mem.bssSection, addr - mem.bssSectionOrigin
 	}
 	if addr >= mem.sramOrigin && addr <= mem.sramMemtop {
 		return &mem.sram, addr - mem.sramOrigin
 	}
 	if addr >= mem.strongArmOrigin && addr <= mem.strongArmMemtop {
 		if f, ok := mem.strongArmFunctions[addr+1]; ok {
-			mem.strongarm.function = f
-			mem.strongarm.state = 0
-			mem.strongarm.registers = mem.arm.Registers()
+			mem.setNextFunction(f)
 			mem.arm.Yield()
 		}
 		return &mem.strongArmProgram, addr - mem.strongArmOrigin

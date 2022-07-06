@@ -72,12 +72,12 @@ func NewElf(instance *instance.Instance, pathToROM string) (mapper.CartMapper, e
 	cart.arm = arm.NewARM(arm.ARMv7_M, arm.MAMfull, cart.mem.model, cart.instance.Prefs.ARM, cart.mem, cart, cart.pathToROM)
 	cart.mem.arm = cart.arm
 
-	logger.Logf("ELF", "vcs program: %08x to %08x", cart.mem.vcsOrigin, cart.mem.vcsMemtop)
-	logger.Logf("ELF", "arm program: %08x to %08x", cart.mem.armOrigin, cart.mem.armMemtop)
-	logger.Logf("ELF", "GPIO IN: %08x to %08x", cart.mem.gpioAOrigin, cart.mem.gpioAMemtop)
-	logger.Logf("ELF", "GPIO OUT: %08x to %08x", cart.mem.gpioBOrigin, cart.mem.gpioBMemtop)
+	logger.Logf("ELF", ".text program: %08x to %08x", cart.mem.textSectionOrigin, cart.mem.textSectionMemtop)
+	logger.Logf("ELF", ".data section: %08x to %08x", cart.mem.dataSectionOrigin, cart.mem.dataSectionMemtop)
+	logger.Logf("ELF", "GPIO IN: %08x to %08x", cart.mem.gpio.AOrigin, cart.mem.gpio.AMemtop)
+	logger.Logf("ELF", "GPIO OUT: %08x to %08x", cart.mem.gpio.BOrigin, cart.mem.gpio.BMemtop)
 
-	cart.arm.Run()
+	cart.mem.setNextFunction(cart.mem.vcsLibInit)
 
 	return cart, nil
 }
@@ -113,7 +113,7 @@ func (cart *Elf) Read(addr uint16, passive bool) (uint8, error) {
 	if passive {
 		cart.Listen(addr|memorymap.OriginCart, 0x00)
 	}
-	return cart.mem.gpioB[fromArm_Opcode], nil
+	return cart.mem.gpio.B[fromArm_Opcode], nil
 }
 
 // Write implements the mapper.CartMapper interface.
@@ -140,23 +140,55 @@ func (cart *Elf) Patch(_ int, _ uint8) error {
 	return curated.Errorf("ELF: patching unsupported")
 }
 
+// try to run strongarm function. returns success.
+func (cart *Elf) runStrongarm(addr uint16, data uint8) bool {
+	if cart.mem.strongarm.function != nil {
+		cart.mem.gpio.B[toArm_data] = data
+		cart.mem.gpio.A[toArm_address] = uint8(addr)
+		cart.mem.gpio.A[toArm_address+1] = uint8(addr >> 8)
+		cart.mem.strongarm.function()
+
+		if cart.mem.strongarm.function == nil && cart.mem.strongarm.snooped {
+			cart.arm.Run()
+			if cart.mem.strongarm.function != nil {
+				cart.mem.strongarm.function()
+			}
+		}
+
+		return true
+	}
+	return false
+}
+
 // Listen implements the mapper.CartMapper interface.
 func (cart *Elf) Listen(addr uint16, data uint8) {
-	if cart.mem.strongarm.function != nil {
-		cart.mem.strongarm.function()
+	if cart.runStrongarm(addr, data) {
 		return
 	}
 
 	// set data first and continue once. this seems to be necessary to allow
 	// the PlusROM exit rountine to work correctly
-	cart.mem.gpioB[toArm_data] = data
-	cart.arm.Run()
+	cart.mem.gpio.B[toArm_data] = data
 
-	// set address and continue x4
-	cart.mem.gpioA[toArm_address] = uint8(addr)
-	cart.mem.gpioA[toArm_address+1] = uint8(addr >> 8)
 	cart.arm.Run()
+	if cart.runStrongarm(addr, data) {
+		return
+	}
+
+	// set address and continue
+	cart.mem.gpio.A[toArm_address] = uint8(addr)
+	cart.mem.gpio.A[toArm_address+1] = uint8(addr >> 8)
+
 	cart.arm.Run()
+	if cart.runStrongarm(addr, data) {
+		return
+	}
+
+	cart.arm.Run()
+	if cart.runStrongarm(addr, data) {
+		return
+	}
+
 	cart.arm.Run()
 
 	// we must understand that the above synchronisation is almost certainly
