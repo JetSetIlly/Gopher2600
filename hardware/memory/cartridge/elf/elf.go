@@ -72,12 +72,14 @@ func NewElf(instance *instance.Instance, pathToROM string) (mapper.CartMapper, e
 	cart.arm = arm.NewARM(arm.ARMv7_M, arm.MAMfull, cart.mem.model, cart.instance.Prefs.ARM, cart.mem, cart, cart.pathToROM)
 	cart.mem.arm = cart.arm
 
-	logger.Logf("ELF", ".text program: %08x to %08x", cart.mem.textSectionOrigin, cart.mem.textSectionMemtop)
-	logger.Logf("ELF", ".data section: %08x to %08x", cart.mem.dataSectionOrigin, cart.mem.dataSectionMemtop)
+	logger.Logf("ELF", ".text program: %08x to %08x (%d)", cart.mem.textSectionOrigin, cart.mem.textSectionMemtop, cart.mem.textSectionMemtop-cart.mem.textSectionOrigin)
+	logger.Logf("ELF", ".data section: %08x to %08x (%d)", cart.mem.dataSectionOrigin, cart.mem.dataSectionMemtop, cart.mem.dataSectionMemtop-cart.mem.dataSectionOrigin)
+	logger.Logf("ELF", ".rodata section: %08x to %08x (%d)", cart.mem.rodataSectionOrigin, cart.mem.rodataSectionMemtop, cart.mem.rodataSectionMemtop-cart.mem.rodataSectionOrigin)
+	logger.Logf("ELF", ".bss section: %08x to %08x (%d)", cart.mem.bssSectionOrigin, cart.mem.bssSectionMemtop, cart.mem.bssSectionMemtop-cart.mem.bssSectionOrigin)
 	logger.Logf("ELF", "GPIO IN: %08x to %08x", cart.mem.gpio.AOrigin, cart.mem.gpio.AMemtop)
 	logger.Logf("ELF", "GPIO OUT: %08x to %08x", cart.mem.gpio.BOrigin, cart.mem.gpio.BMemtop)
 
-	cart.mem.setNextFunction(cart.mem.vcsLibInit)
+	cart.mem.setStrongArmFunction(cart.mem.vcsLibInit)
 
 	return cart, nil
 }
@@ -148,7 +150,7 @@ func (cart *Elf) runStrongarm(addr uint16, data uint8) bool {
 		cart.mem.gpio.A[toArm_address+1] = uint8(addr >> 8)
 		cart.mem.strongarm.function()
 
-		if cart.mem.strongarm.function == nil && cart.mem.strongarm.snooped {
+		if cart.mem.strongarm.function == nil {
 			cart.arm.Run()
 			if cart.mem.strongarm.function != nil {
 				cart.mem.strongarm.function()

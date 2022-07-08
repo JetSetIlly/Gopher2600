@@ -20,13 +20,26 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
-type strongarm struct {
+// signature of a strongarm function
+type strongArmFunction func()
+
+// state of the strongarm emulation. not all ELF binaries make uses of the
+// strongarm functions, in those instances strongArmState will be unused
+type strongArmState struct {
 	function  strongArmFunction
-	snooped   bool
 	state     int
 	registers [arm.NumRegisters]uint32
 
+	// the expected next 6507 address to be working with
 	nextRomAddress uint16
+
+	// the vcsCopyOverblankToRiotRam() function is a loop. we need to keep
+	// track of the loop counter and sub-state in addition to the normal state
+	// value
+	//
+	// the mechanism can be used for other looping functions
+	counter  int
+	subState int
 }
 
 // strongARM functions need to return to the main program with a branch exchange
@@ -35,20 +48,17 @@ var strongArmStub = []byte{
 	0x00, 0x00,
 }
 
-type strongArmFunction func()
-
-// setNextFunction initialises the next function to run. It takes a copy of the
+// setStrongArmFunction initialises the next function to run. It takes a copy of the
 // ARM registers at that point of initialisation
-func (mem *elfMemory) setNextFunction(f strongArmFunction) {
+func (mem *elfMemory) setStrongArmFunction(f strongArmFunction) {
 	mem.strongarm.function = f
-	mem.strongarm.snooped = false
 	mem.strongarm.state = 0
 	mem.strongarm.registers = mem.arm.Registers()
 }
 
 // a strongArmFunction should always end with a call to endFunctio() no matter
 // how many execution states it has.
-func (mem *elfMemory) endFunction() {
+func (mem *elfMemory) endStrongArmFunction() {
 	mem.strongarm.function = nil
 }
 
@@ -105,7 +115,7 @@ func (mem *elfMemory) vcsJmp3() {
 		}
 	case 2:
 		if mem.injectRomByte(0x10) {
-			mem.endFunction()
+			mem.endStrongArmFunction()
 			mem.setNextRomAddress(0x1000)
 		}
 	}
@@ -121,7 +131,7 @@ func (mem *elfMemory) vcsLda2() {
 		}
 	case 1:
 		if mem.injectRomByte(data) {
-			mem.endFunction()
+			mem.endStrongArmFunction()
 		}
 	}
 }
@@ -140,7 +150,7 @@ func (mem *elfMemory) vcsSta3() {
 		}
 	case 2:
 		if mem.yieldDataBus(uint16(zp)) {
-			mem.endFunction()
+			mem.endStrongArmFunction()
 		}
 	}
 }
@@ -156,10 +166,12 @@ func (mem *elfMemory) snoopDataBus() {
 		if addrIn == mem.strongarm.nextRomAddress {
 			mem.strongarm.registers[0] = uint32(mem.gpio.B[toArm_data])
 			mem.arm.SetRegisters(mem.strongarm.registers)
-			mem.strongarm.snooped = true
-			mem.endFunction()
+			mem.endStrongArmFunction()
 		}
 	}
+
+	// note that this implementation of snoopDataBus is missing the "give
+	// peripheral time to respond" loop that we see in the real vcsLib
 }
 
 // uint8_t vcsRead4(uint16_t address)
@@ -178,7 +190,8 @@ func (mem *elfMemory) vcsRead4() {
 		}
 	case 2:
 		if mem.injectRomByte(uint8(address >> 8)) {
-			mem.setNextFunction(mem.snoopDataBus)
+			mem.setStrongArmFunction(mem.snoopDataBus)
+			mem.strongarm.function()
 		}
 	}
 }
@@ -231,7 +244,7 @@ func (mem *elfMemory) vcsWrite5() {
 		}
 	case 4:
 		if mem.yieldDataBus(uint16(zp)) {
-			mem.endFunction()
+			mem.endStrongArmFunction()
 		}
 	}
 }
@@ -294,7 +307,7 @@ func (mem *elfMemory) vcsJsr6() {
 			mem.gpio.A[toArm_address+2] = uint8(mem.strongarm.registers[0] >> 16)
 			mem.gpio.A[toArm_address+3] = uint8(mem.strongarm.registers[0] >> 24)
 
-			mem.endFunction()
+			mem.endStrongArmFunction()
 		}
 	}
 }
@@ -304,7 +317,7 @@ func (mem *elfMemory) vcsNop2() {
 	switch mem.strongarm.state {
 	case 0:
 		if mem.injectRomByte(0xea) {
-			mem.endFunction()
+			mem.endStrongArmFunction()
 		}
 	}
 }
@@ -315,7 +328,7 @@ func (mem *elfMemory) vcsNop2n() {
 	case 0:
 		if mem.injectRomByte(0xea) {
 			mem.strongarm.nextRomAddress += uint16(mem.strongarm.registers[0]) - 1
-			mem.endFunction()
+			mem.endStrongArmFunction()
 		}
 	}
 }
@@ -356,7 +369,40 @@ var overblank []byte = []byte{
 
 // void vcsCopyOverblankToRiotRam()
 func (mem *elfMemory) vcsCopyOverblankToRiotRam() {
-	panic("vcsCopyOverblankToRiotRam")
+	switch mem.strongarm.state {
+	case 0:
+		if mem.strongarm.counter >= len(overblank) {
+			mem.endStrongArmFunction()
+			return
+		}
+		mem.strongarm.state++
+		mem.strongarm.subState = 0
+		fallthrough
+	case 1:
+		switch mem.strongarm.subState {
+		case 0:
+			if mem.injectRomByte(0xa9) {
+				mem.strongarm.subState++
+			}
+		case 1:
+			if mem.injectRomByte(overblank[mem.strongarm.counter]) {
+				mem.strongarm.subState++
+			}
+		case 2:
+			if mem.injectRomByte(0x85) {
+				mem.strongarm.subState++
+			}
+		case 3:
+			if mem.injectRomByte(uint8(0x80 + mem.strongarm.counter)) {
+				mem.strongarm.subState++
+			}
+		case 4:
+			if mem.yieldDataBus(uint16(0x80 + mem.strongarm.counter)) {
+				mem.strongarm.counter++
+				mem.strongarm.state = 0
+			}
+		}
+	}
 }
 
 func (mem *elfMemory) vcsLibInit() {
@@ -367,7 +413,7 @@ func (mem *elfMemory) vcsLibInit() {
 	case 3:
 		mem.gpio.B[fromArm_Opcode] = 0x10
 		mem.setNextRomAddress(0x1000)
-		mem.endFunction()
+		mem.endStrongArmFunction()
 	default:
 		mem.strongarm.state++
 	}

@@ -67,7 +67,7 @@ type elfMemory struct {
 	strongArmFunctions map[uint32]strongArmFunction
 
 	arm       yieldARM
-	strongarm strongarm
+	strongarm strongArmState
 }
 
 func newElfMemory(f *elf.File) (*elfMemory, error) {
@@ -419,7 +419,7 @@ func (mem *elfMemory) MapAddress(addr uint32, write bool) (*[]byte, uint32) {
 	}
 	if addr >= mem.strongArmOrigin && addr <= mem.strongArmMemtop {
 		if f, ok := mem.strongArmFunctions[addr+1]; ok {
-			mem.setNextFunction(f)
+			mem.setStrongArmFunction(f)
 			mem.arm.Yield()
 		}
 		return &mem.strongArmProgram, addr - mem.strongArmOrigin
