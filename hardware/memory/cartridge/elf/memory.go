@@ -248,6 +248,14 @@ func newElfMemory(f *elf.File) (*elfMemory, error) {
 				v = mem.relocateStrongArmFunction(mem.vcsCopyOverblankToRiotRam)
 			case "memset":
 				v = mem.relocateStrongArmFunction(mem.memset)
+			case "memcpy":
+				v = mem.relocateStrongArmFunction(mem.memcpy)
+
+			// strongARM tables
+			case "ReverseByte":
+				v = mem.relocateStrongArmTable(reverseByteTable)
+			case "ColorLookup":
+				v = mem.relocateStrongArmTable(ntscColorTable)
 
 			default:
 				switch f.Sections[s.Section].Name {
@@ -365,6 +373,19 @@ func newElfMemory(f *elf.File) (*elfMemory, error) {
 	mem.sramMemtop = mem.sramOrigin + uint32(len(mem.sram))
 
 	return mem, nil
+}
+
+func (mem *elfMemory) relocateStrongArmTable(table strongarmTable) uint32 {
+	// address of table in memory
+	addr := mem.strongArmMemtop
+
+	// add null function to end of strongArmProgram array
+	mem.strongArmProgram = append(mem.strongArmProgram, table...)
+
+	// update memtop of strongArm program
+	mem.strongArmMemtop += uint32(len(table))
+
+	return addr
 }
 
 func (mem *elfMemory) relocateStrongArmFunction(f strongArmFunction) uint32 {

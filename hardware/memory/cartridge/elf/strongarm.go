@@ -56,14 +56,31 @@ func (mem *elfMemory) setStrongArmFunction(f strongArmFunction) {
 	mem.strongarm.registers = mem.arm.Registers()
 }
 
-// a strongArmFunction should always end with a call to endFunctio() no matter
+// a strongArmFunction should always end with a call to endFunction() no matter
 // how many execution states it has.
 func (mem *elfMemory) endStrongArmFunction() {
 	mem.strongarm.function = nil
 }
 
+// memset works like you might expect but should only be called directly from
+// the ARM emulation (and not from anothr function called by the ARM
+// emulation). this is because this memset() function ends with a call to
+// mem.endStrongArmFunction() which will kill the parent function too
 func (mem *elfMemory) memset() {
-	panic("memset")
+	addr := mem.strongarm.registers[0]
+	m, o := mem.MapAddress(addr, true)
+
+	v := mem.strongarm.registers[1]
+	l := mem.strongarm.registers[2]
+	for i := uint32(0); i < l; i++ {
+		(*m)[o+i] = byte(v)
+	}
+
+	mem.endStrongArmFunction()
+}
+
+func (mem *elfMemory) memcpy() {
+	panic("memcpy")
 }
 
 func (mem *elfMemory) setNextRomAddress(addr uint16) {
@@ -198,12 +215,40 @@ func (mem *elfMemory) vcsRead4() {
 
 // void vcsStartOverblank()
 func (mem *elfMemory) vcsStartOverblank() {
-	panic("vcsStartOverblank")
+	switch mem.strongarm.state {
+	case 0:
+		if mem.injectRomByte(0x4c) {
+			mem.strongarm.state++
+		}
+	case 1:
+		if mem.injectRomByte(0x80) {
+			mem.strongarm.state++
+		}
+	case 2:
+		if mem.injectRomByte(0x00) {
+			mem.strongarm.state++
+		}
+	case 3:
+		if mem.yieldDataBus(uint16(0x0080)) {
+			mem.endStrongArmFunction()
+		}
+	}
 }
 
 // void vcsEndOverblank()
 func (mem *elfMemory) vcsEndOverblank() {
-	panic("vcsEndOverblank")
+	switch mem.strongarm.state {
+	case 0:
+		mem.setNextRomAddress(0x1fff)
+		if mem.injectRomByte(0x00) {
+			mem.strongarm.state++
+		}
+	case 1:
+		if mem.yieldDataBus(uint16(0x00ac)) {
+			mem.setNextRomAddress(0x1000)
+			mem.endStrongArmFunction()
+		}
+	}
 }
 
 // void vcsLdaForBusStuff2()
@@ -331,40 +376,6 @@ func (mem *elfMemory) vcsNop2n() {
 			mem.endStrongArmFunction()
 		}
 	}
-}
-
-var overblank []byte = []byte{
-	0xa0, 0x00, // ldy #0
-	0xa5, 0xe0, // lda $e0
-	// OverblankLoop:
-	0x85, 0x02, // sta WSYNC
-	0x85, 0x2d, // sta AUDV0 (currently using $2d instead to disable audio until fully implemented
-	0x98,       // tya
-	0x18,       // clc
-	0x6a,       // ror
-	0xaa,       // tax
-	0xb5, 0xe0, // lda $e0,x
-	0x90, 0x04, // bcc
-	0x4a,       // lsr
-	0x4a,       // lsr
-	0x4a,       // lsr
-	0x4a,       // lsr
-	0xc8,       // iny
-	0xc0, 0x1d, // cpy #$1d
-	0xd0, 0x04, // bne
-	0xa2, 0x02, // ldx #2
-	0x86, 0x00, // stx VSYNC
-	0xc0, 0x20, // cpy #$20
-	0xd0, 0x04, // bne SkipClearVSync
-	0xa2, 0x00, // ldx #0
-	0x86, 0x00, // stx VSYNC
-	// SkipClearVSync:
-	0xc0, 0x3f, // cpy #$3f
-	0xd0, 0xdb, // bne OverblankLoop
-	// WaitForCart:
-	0xae, 0xff, 0xff, // ldx $ffff
-	0xd0, 0xfb, // bne WaitForCart
-	0x4c, 0x00, 0x10, // jmp $1000
 }
 
 // void vcsCopyOverblankToRiotRam()
