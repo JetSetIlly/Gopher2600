@@ -95,10 +95,10 @@ func newElfMemory(f *elf.File) (*elfMemory, error) {
 	if err != nil {
 		return nil, curated.Errorf("ELF: %v", err)
 	}
-	// for simplicitity place the .text section well away from the data section
 	mem.textSectionOrigin = mem.model.FlashOrigin + 0x08000000
 	mem.textSectionMemtop = mem.textSectionOrigin + uint32(len(mem.textSection))
 
+	// remaining sections start at flashorigin and are consecutive
 	origin := mem.model.FlashOrigin
 	memtop := origin
 
@@ -117,7 +117,7 @@ func newElfMemory(f *elf.File) (*elfMemory, error) {
 	mem.dataSectionOrigin = origin
 	memtop = origin + uint32(len(mem.dataSection))
 	mem.dataSectionMemtop = memtop
-	origin = memtop + 1
+	origin = (memtop + 4) & 0xfffffffc
 
 	// .rodata section
 	section = f.Section(".rodata")
@@ -133,7 +133,7 @@ func newElfMemory(f *elf.File) (*elfMemory, error) {
 		mem.rodataSectionOrigin = origin
 		memtop = origin + uint32(len(mem.rodataSection))
 		mem.rodataSectionMemtop = memtop
-		origin = memtop + 1
+		origin = (memtop + 4) & 0xfffffffc
 	}
 
 	// .bss section
@@ -150,8 +150,7 @@ func newElfMemory(f *elf.File) (*elfMemory, error) {
 		mem.bssSectionOrigin = origin
 		memtop = origin + uint32(len(mem.bssSection))
 		mem.bssSectionMemtop = memtop
-		origin = memtop + 1
-
+		origin = (memtop + 4) & 0xfffffffc
 	}
 
 	// strongARM functions are added when the relocation information suggests
