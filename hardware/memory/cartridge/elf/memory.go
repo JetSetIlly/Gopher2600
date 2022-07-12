@@ -66,6 +66,14 @@ type elfMemory struct {
 	strongArmMemtop    uint32
 	strongArmFunctions map[uint32]strongArmFunction
 
+	// will be set to true if the vcsWrite3() function is used
+	usesBusStuffing bool
+
+	// whether bus stuff is active at the current moment and the data to stuff
+	busStuff     bool
+	busStuffData uint8
+
+	// strongarm data and a small interface to the ARM
 	arm       yieldARM
 	strongarm strongArmState
 }
@@ -200,6 +208,7 @@ func newElfMemory(f *elf.File) (*elfMemory, error) {
 			// strongARM functions
 			case "vcsWrite3":
 				v = mem.relocateStrongArmFunction(mem.vcsWrite3)
+				mem.usesBusStuffing = true
 			case "vcsJmp3":
 				v = mem.relocateStrongArmFunction(mem.vcsJmp3)
 			case "vcsLda2":

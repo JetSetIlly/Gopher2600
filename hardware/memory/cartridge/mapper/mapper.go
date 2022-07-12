@@ -329,3 +329,9 @@ type CartCoProcExecution interface {
 	ResumeAfterBreakpoint() error
 	BreakpointsDisable(bool)
 }
+
+// CartBusStuff is implemented by cartridge mappers than can arbitrarily drive
+// the pins on the data bus during a write.
+type CartBusStuff interface {
+	BusStuff() (uint8, bool)
+}

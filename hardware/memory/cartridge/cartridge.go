@@ -504,3 +504,11 @@ func (cart *Cartridge) CoProcIsActive() bool {
 	}
 	return false
 }
+
+// BusStuff implements the mapper.CartBusStuff interface.
+func (cart *Cartridge) BusStuff() (uint8, bool) {
+	if bus, ok := cart.mapper.(mapper.CartBusStuff); ok {
+		return bus.BusStuff()
+	}
+	return 0, false
+}

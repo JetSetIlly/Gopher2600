@@ -79,7 +79,8 @@ func NewElf(instance *instance.Instance, pathToROM string) (mapper.CartMapper, e
 	logger.Logf("ELF", "GPIO IN: %08x to %08x", cart.mem.gpio.AOrigin, cart.mem.gpio.AMemtop)
 	logger.Logf("ELF", "GPIO OUT: %08x to %08x", cart.mem.gpio.BOrigin, cart.mem.gpio.BMemtop)
 
-	cart.mem.setStrongArmFunction(cart.mem.vcsLibInit)
+	cart.mem.busStuffingInit()
+	cart.mem.setStrongArmFunction(cart.mem.emulationInit)
 
 	return cart, nil
 }
@@ -144,16 +145,16 @@ func (cart *Elf) Patch(_ int, _ uint8) error {
 
 // try to run strongarm function. returns success.
 func (cart *Elf) runStrongarm(addr uint16, data uint8) bool {
-	if cart.mem.strongarm.function != nil {
+	if cart.mem.strongarm.running.function != nil {
 		cart.mem.gpio.B[toArm_data] = data
 		cart.mem.gpio.A[toArm_address] = uint8(addr)
 		cart.mem.gpio.A[toArm_address+1] = uint8(addr >> 8)
-		cart.mem.strongarm.function()
+		cart.mem.strongarm.running.function()
 
-		if cart.mem.strongarm.function == nil {
+		if cart.mem.strongarm.running.function == nil {
 			cart.arm.Run()
-			if cart.mem.strongarm.function != nil {
-				cart.mem.strongarm.function()
+			if cart.mem.strongarm.running.function != nil {
+				cart.mem.strongarm.running.function()
 			}
 		}
 
@@ -211,4 +212,9 @@ func (cart *Elf) CopyBanks() []mapper.BankContent {
 // implements arm.CartridgeHook interface.
 func (cart *Elf) ARMinterrupt(addr uint32, val1 uint32, val2 uint32) (arm.ARMinterruptReturn, error) {
 	return arm.ARMinterruptReturn{}, nil
+}
+
+// BusStuff implements the mapper.CartBusStuff interface.
+func (cart *Elf) BusStuff() (uint8, bool) {
+	return cart.mem.busStuffData, cart.mem.busStuff
 }
