@@ -274,6 +274,13 @@ func newElfMemory(f *elf.File) (*elfMemory, error) {
 				v += uint32(s.Value)
 			}
 
+			// add placeholder value to relocation address
+			w := uint32(mem.textSection[offset])
+			w |= uint32(mem.textSection[offset+1]) << 8
+			w |= uint32(mem.textSection[offset+2]) << 16
+			w |= uint32(mem.textSection[offset+3]) << 24
+			v += w
+
 			// commit write
 			mem.textSection[offset] = uint8(v)
 			mem.textSection[offset+1] = uint8(v >> 8)
@@ -285,9 +292,9 @@ func newElfMemory(f *elf.File) (*elfMemory, error) {
 			// in this case the symbol will not have a name so we use the
 			// section name instead
 			if s.Info&0x03 == 0x03 {
-				logger.Logf("ELF", "relocate %s => %08x", f.Sections[s.Section].Name, v)
+				logger.Logf("ELF", "relocate %s (%08x) => %08x", f.Sections[s.Section].Name, mem.textSectionOrigin+offset, v)
 			} else {
-				logger.Logf("ELF", "relocate %s => %08x", s.Name, v)
+				logger.Logf("ELF", "relocate %s (%08x) => %08x", s.Name, mem.textSectionOrigin+offset, v)
 			}
 
 		case elf.R_ARM_THM_PC22:
