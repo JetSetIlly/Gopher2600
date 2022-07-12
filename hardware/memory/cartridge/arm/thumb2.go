@@ -202,14 +202,16 @@ func (arm *ARM) thumb2IfThen(opcode uint16) {
 }
 
 func (arm *ARM) thumb2CompareAndBranchOnNonZero(opcode uint16) {
+	// "4.6.22 CBNZ" of "Thumb-2 Supplement"
+
 	nonZero := opcode&0x0800 == 0x0800
 	Rn := opcode & 0x0007
 	i := (opcode & 0x0200) >> 9
 	imm5 := (opcode & 0x00f8) >> 3
 
-	if nonZero != (arm.registers[Rn] == 0) {
+	if nonZero && arm.registers[Rn] != 0 || !nonZero && arm.registers[Rn] == 0 {
 		imm32 := (imm5 << 1) | (i << 6)
-		arm.registers[rPC] += uint32(imm32)
+		arm.registers[rPC] += uint32(imm32) + 2
 	}
 
 	if nonZero {

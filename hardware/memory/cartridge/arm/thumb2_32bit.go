@@ -75,7 +75,6 @@ func (arm *ARM) thumb2DataProcessingNonImmediate(opcode uint16) {
 		setFlags := arm.function32bitOpcode&0x0010 == 0x0010
 		// sbz := (opcode & 0x8000) >> 15
 		imm3 := (opcode & 0x7000) >> 12
-		// Rd := (opcode & 0x0f00) >> 8
 		imm2 := (opcode & 0x00c0) >> 6
 		typ := (opcode & 0x0030) >> 4
 		imm5 := (imm3 << 2) | imm2
@@ -131,11 +130,11 @@ func (arm *ARM) thumb2DataProcessingNonImmediate(opcode uint16) {
 				switch typ {
 				case 0b00:
 					if imm5 == 0b00000 {
-						panic("move")
+						panic("move (register)")
 					} else {
 						// "4.6.68 LSL (immediate)" of "Thumb-2 Supplement"
 						// T2 encoding
-						arm.fudge_thumb2disassemble32bit = "LSL"
+						arm.fudge_thumb2disassemble32bit = "LSL (immediate)"
 
 						m := arm.registers[Rm] << (imm5 - 1)
 						carry := arm.registers[Rm]&m == m
@@ -151,12 +150,38 @@ func (arm *ARM) thumb2DataProcessingNonImmediate(opcode uint16) {
 				case 0b01:
 					// "4.6.70 LSR (immediate)" of "Thumb-2 Supplement"
 					// T2 encoding
-					arm.fudge_thumb2disassemble32bit = "LSR"
+					arm.fudge_thumb2disassemble32bit = "LSR (immediate)"
 
 					m := arm.registers[Rm] >> (imm5 - 1)
 					carry := arm.registers[Rm]&m == m
 
 					arm.registers[Rd] = arm.registers[Rm] >> imm5
+					if setFlags {
+						arm.Status.isNegative(arm.registers[Rd])
+						arm.Status.isZero(arm.registers[Rd])
+						arm.Status.setCarry(carry)
+						// overflow unchanged
+					}
+				case 0b10:
+					// "4.6.10 ASR (immediate)" of "Thumb-2 Supplement"
+					// T2 encoding
+					arm.fudge_thumb2disassemble32bit = "ASR (immediate)"
+
+					// whether to set carry bit
+					m := arm.registers[Rm] >> (imm5 - 1)
+					carry := arm.registers[Rm]&m == m
+
+					// extend sign, check for bit
+					signExtend := (arm.registers[Rm] & 0x80000000) >> 31
+
+					// perform actual shift
+					arm.registers[Rd] = arm.registers[Rm] >> imm5
+
+					// perform sign extension
+					if signExtend == 0x01 {
+						arm.registers[Rd] |= ^uint32(0) << (32 - imm5)
+					}
+
 					if setFlags {
 						arm.Status.isNegative(arm.registers[Rd])
 						arm.Status.isZero(arm.registers[Rd])
@@ -208,13 +233,14 @@ func (arm *ARM) thumb2DataProcessingNonImmediate(opcode uint16) {
 				panic(fmt.Sprintf("unhandled data processing instructions, non immediate (data processing, constant shift) (%04b) (%02b) CMP", op, typ))
 			} else {
 				// "4.6.4 ADD (register)"
-				arm.fudge_thumb2disassemble32bit = "ADD"
+				arm.fudge_thumb2disassemble32bit = "ADD (register)"
 
 				switch typ {
 				case 0b00:
 					// with logical left shift
 					shifted := arm.registers[Rm] << imm5
 					result, carry, overflow := AddWithCarry(arm.registers[Rn], shifted, 0)
+					arm.registers[Rd] = result
 					if setFlags {
 						arm.Status.isNegative(result)
 						arm.Status.isZero(result)
@@ -229,6 +255,7 @@ func (arm *ARM) thumb2DataProcessingNonImmediate(opcode uint16) {
 						shifted |= ^uint32(0) << (32 - imm5)
 					}
 					result, carry, overflow := AddWithCarry(arm.registers[Rn], shifted, 0)
+					arm.registers[Rd] = result
 					if setFlags {
 						arm.Status.isNegative(result)
 						arm.Status.isZero(result)
@@ -305,9 +332,9 @@ func (arm *ARM) thumb2DataProcessingNonImmediate(opcode uint16) {
 			}
 
 		case 0b1110:
-			// "4.6.119 RSB (register)" of "Thumb-2 Supplement"
+			// "4.6.118 RSB (register)" of "Thumb-2 Supplement"
 			// T1 encoding
-			arm.fudge_thumb2disassemble32bit = "RSB"
+			arm.fudge_thumb2disassemble32bit = "RSB (register)"
 
 			switch typ {
 			case 0b00:
@@ -341,7 +368,7 @@ func (arm *ARM) thumb2DataProcessingNonImmediate(opcode uint16) {
 			switch op {
 			case 0b01:
 				// "4.6.71 LSR (register)" of "Thumb-2 Supplement"
-				arm.fudge_thumb2disassemble32bit = "LSR"
+				arm.fudge_thumb2disassemble32bit = "LSR (register)"
 
 				// whether to set carry bit
 				m := arm.registers[Rm] >> (shift - 1)
@@ -358,7 +385,7 @@ func (arm *ARM) thumb2DataProcessingNonImmediate(opcode uint16) {
 				}
 			case 0b10:
 				// "4.6.11 ASR (register)" of "Thumb-2 Supplement"
-				arm.fudge_thumb2disassemble32bit = "ASR"
+				arm.fudge_thumb2disassemble32bit = "ASR (register)"
 
 				// whether to set carry bit
 				m := arm.registers[Rm] >> (shift - 1)
@@ -389,7 +416,6 @@ func (arm *ARM) thumb2DataProcessingNonImmediate(opcode uint16) {
 			// "Signed and unsigned extend instructions with optional addition"
 			// page 3-20 of "Thumb-2 Supplement"
 			op := (arm.function32bitOpcode & 0x0070) >> 4
-			// sbz := opcode&0x0040 == 0x0040
 			rot := (opcode & 0x0030) >> 4
 
 			switch op {
@@ -693,19 +719,14 @@ func (arm *ARM) thumb2DataProcessing(opcode uint16) {
 					panic("Rn register cannot be 0b1111 for ADD immediate")
 				}
 
-				src := arm.registers[Rn]
-				arm.registers[Rd] = src + imm32
+				result, carry, overflow := AddWithCarry(arm.registers[Rn], imm32, 0)
+				arm.registers[Rd] = result
 
 				if setFlags {
-					arm.Status.isNegative(arm.registers[Rn])
-					arm.Status.isZero(arm.registers[Rn])
-					if arm.Status.carry {
-						arm.Status.isCarry(src, imm32, 0)
-						arm.Status.isOverflow(src, imm32, 0)
-					} else {
-						arm.Status.isCarry(src, imm32, 1)
-						arm.Status.isOverflow(src, imm32, 1)
-					}
+					arm.Status.isNegative(result)
+					arm.Status.isZero(result)
+					arm.Status.setCarry(carry)
+					arm.Status.setOverflow(overflow)
 				}
 			} else {
 				// "4.6.3 ADD (immediate)" of "Thumb-2 Supplement"
@@ -740,7 +761,7 @@ func (arm *ARM) thumb2DataProcessing(opcode uint16) {
 
 		case 0b1110:
 			// "4.6.118 RSB (immediate)" of "Thumb-2 Supplement"
-			arm.fudge_thumb2disassemble32bit = "RSB"
+			arm.fudge_thumb2disassemble32bit = "RSB (immediate)"
 
 			result, carry, overflow := AddWithCarry(^arm.registers[Rn], imm32, 1)
 			arm.registers[Rd] = result
@@ -985,74 +1006,88 @@ func (arm *ARM) thumb2LoadStoreSingle(opcode uint16) {
 		}
 
 	} else if (opcode & 0x0f00) == 0x0e00 {
-		// Rn +imm8, user privilege (format 4 in the table)
+		// Rn + imm8, user privilege (format 4 in the table)
 		// imm8 := opcode & 0x00ff
 		panic("unimplemented Rn + imm8, user privilege")
 
 	} else if (opcode & 0x0d00) == 0x0900 {
 		// Rn post-index by +/- imm8 (format 5 in the table)
 		imm8 := opcode & 0x00ff
+		u := (opcode & 0x0200) == 0x0200
+
 		addr := arm.registers[Rn]
 
 		switch size {
 		case 0b00:
 			if l {
-				arm.fudge_thumb2disassemble32bit = "LDR(4)"
+				arm.fudge_thumb2disassemble32bit = "LDRB (post-index)"
 				arm.registers[Rt] = uint32(arm.read8bit(addr))
 				if s && arm.registers[Rt]&0x80 == 0x80 {
 					arm.registers[Rt] |= 0xffffff00
 				}
 			} else {
-				arm.fudge_thumb2disassemble32bit = "STR"
+				arm.fudge_thumb2disassemble32bit = "STRB (post-index)"
 				arm.write8bit(addr, uint8(arm.registers[Rt]))
 			}
 		case 0b01:
 			if l {
-				arm.fudge_thumb2disassemble32bit = "LDR(5)"
+				arm.fudge_thumb2disassemble32bit = "LDRH (post-index)"
 				arm.registers[Rt] = uint32(arm.read16bit(addr))
 				if s && arm.registers[Rt]&0x8000 == 0x8000 {
 					arm.registers[Rt] |= 0xffff0000
 				}
 			} else {
-				arm.fudge_thumb2disassemble32bit = "STR"
+				arm.fudge_thumb2disassemble32bit = "STRH (post-index)"
 				arm.write16bit(addr, uint16(arm.registers[Rt]))
 			}
 		default:
-			panic(fmt.Sprintf("unhandled size (%02b) for 'Rn + imm12'", size))
+			panic(fmt.Sprintf("unhandled size (%02b) for 'Rn post-index +/- imm8'", size))
 		}
 
-		arm.registers[Rn] = addr + uint32(imm8)
+		if u {
+			addr += uint32(imm8)
+		} else {
+			addr -= uint32(imm8)
+		}
+		arm.registers[Rn] = addr
 
 	} else if (opcode & 0x0d00) == 0x0d00 {
 		// Rn pre-indexed by +/- imm8 (format 6 in the table)
 		imm8 := opcode & 0x00ff
-		addr := arm.registers[Rn] + uint32(imm8)
+		u := (opcode & 0x0200) == 0x0200
+
+		addr := arm.registers[Rn]
+		if u {
+			addr += uint32(imm8)
+		} else {
+			addr -= uint32(imm8)
+		}
 
 		switch size {
 		case 0b00:
 			if l {
-				arm.fudge_thumb2disassemble32bit = "LDR(6)"
+				arm.fudge_thumb2disassemble32bit = "LDRB (pre-index)"
 				arm.registers[Rt] = uint32(arm.read8bit(addr))
 				if s && arm.registers[Rt]&0x80 == 0x80 {
 					arm.registers[Rt] |= 0xffffff00
 				}
 			} else {
-				arm.fudge_thumb2disassemble32bit = "STR"
+				arm.fudge_thumb2disassemble32bit = "STRB (pre-index)"
 				arm.write8bit(addr, uint8(arm.registers[Rt]))
 			}
 		case 0b01:
 			if l {
-				arm.fudge_thumb2disassemble32bit = "LDR(7)"
+				arm.fudge_thumb2disassemble32bit = "LDRH (pre-index)"
 				arm.registers[Rt] = uint32(arm.read16bit(addr))
 				if s && arm.registers[Rt]&0x8000 == 0x8000 {
 					arm.registers[Rt] |= 0xffff0000
 				}
 			} else {
-				arm.fudge_thumb2disassemble32bit = "STR"
+				arm.fudge_thumb2disassemble32bit = "STRH (pre-index)"
 				arm.write16bit(addr, uint16(arm.registers[Rt]))
 			}
 		default:
-			panic(fmt.Sprintf("unhandled size (%02b) for 'Rn + imm12'", size))
+			panic(fmt.Sprintf("unhandled size (%02b) for 'Rn +/- imm8'", size))
 		}
 
 		arm.registers[Rn] = addr
@@ -1128,7 +1163,7 @@ func (arm *ARM) thumb2LoadStoreMultiple(opcode uint16) {
 
 				// write PC
 				if regList&0x8000 == 0x8000 {
-					arm.registers[rPC] = arm.read32bit(addr)
+					arm.registers[rPC] = (arm.read32bit(addr) + 2) & 0xfffffffe
 				}
 			default:
 				// "4.6.42 LDMIA / LDMFD" of "Thumb-2 Supplement"

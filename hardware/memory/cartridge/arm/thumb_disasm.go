@@ -496,13 +496,13 @@ func disasmLoadAddress(opcode uint16) DisasmEntry {
 
 	if sp {
 		entry.Operator = "ADD"
-		entry.Operand = fmt.Sprintf("R%d, SP, #$%02x] ", destReg, offset)
+		entry.Operand = fmt.Sprintf("R%d, [SP, #$%02x] ", destReg, offset)
 
 		return entry
 	}
 
 	entry.Operator = "ADD"
-	entry.Operand = fmt.Sprintf("R%d, PC, #$%02x] ", destReg, offset)
+	entry.Operand = fmt.Sprintf("R%d, [PC, #$%02x] ", destReg, offset)
 
 	return entry
 }
