@@ -355,6 +355,7 @@ func (win *winCoProcPerformance) drawFunctions(src *developer.Source) {
 		//  always set which kernel to sort by
 		win.kernelFocusDirty = false
 		src.SortedFunctions.SetKernel(win.kernelFocus)
+		src.SortedFunctions.UseRawCyclesCounts(!win.percentileFigures)
 
 		for _, s := range sort.Specs() {
 			switch s.ColumnUserID {
@@ -546,6 +547,7 @@ func (win *winCoProcPerformance) drawSourceLines(src *developer.Source) {
 		//  always set which kernel to sort by
 		win.kernelFocusDirty = false
 		src.SortedFunctions.SetKernel(win.kernelFocus)
+		src.SortedFunctions.UseRawCyclesCounts(!win.percentileFigures)
 
 		for _, s := range sort.Specs() {
 			switch s.ColumnUserID {
@@ -756,6 +758,7 @@ thean to the program as a whole.`)
 		//  always set which kernel to sort by
 		win.kernelFocusDirty = false
 		src.SortedFunctions.SetKernel(win.kernelFocus)
+		src.SortedFunctions.UseRawCyclesCounts(!win.percentileFigures)
 
 		for _, s := range sort.Specs() {
 			switch s.ColumnUserID {
