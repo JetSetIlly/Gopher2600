@@ -164,7 +164,7 @@ func (e SortedLines) Less(i int, j int) bool {
 				if e.descending {
 					return iStats.OverSource.FrameCount > jStats.OverSource.FrameCount
 				}
-				return iStats.OverSource.FrameCount > jStats.OverSource.FrameCount
+				return iStats.OverSource.FrameCount < jStats.OverSource.FrameCount
 			case sortAverageCyclesOverSource:
 				if e.descending {
 					return iStats.OverSource.AverageCount > jStats.OverSource.AverageCount
@@ -179,7 +179,7 @@ func (e SortedLines) Less(i int, j int) bool {
 				if e.descending {
 					return iStats.OverFunction.FrameCount > jStats.OverFunction.FrameCount
 				}
-				return iStats.OverFunction.FrameCount > jStats.OverFunction.FrameCount
+				return iStats.OverFunction.FrameCount < jStats.OverFunction.FrameCount
 			case sortAverageCyclesOverFunction:
 				if e.descending {
 					return iStats.OverFunction.AverageCount > jStats.OverFunction.AverageCount
@@ -197,7 +197,7 @@ func (e SortedLines) Less(i int, j int) bool {
 				if e.descending {
 					return iStats.OverSource.Frame > jStats.OverSource.Frame
 				}
-				return iStats.OverSource.Frame > jStats.OverSource.Frame
+				return iStats.OverSource.Frame < jStats.OverSource.Frame
 			case sortAverageCyclesOverSource:
 				if e.descending {
 					return iStats.OverSource.Average > jStats.OverSource.Average
@@ -212,7 +212,7 @@ func (e SortedLines) Less(i int, j int) bool {
 				if e.descending {
 					return iStats.OverFunction.Frame > jStats.OverFunction.Frame
 				}
-				return iStats.OverFunction.Frame > jStats.OverFunction.Frame
+				return iStats.OverFunction.Frame < jStats.OverFunction.Frame
 			case sortAverageCyclesOverFunction:
 				if e.descending {
 					return iStats.OverFunction.Average > jStats.OverFunction.Average

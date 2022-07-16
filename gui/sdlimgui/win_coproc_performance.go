@@ -41,10 +41,13 @@ type winCoProcPerformance struct {
 	// which kernel to focus on
 	kernelFocus         developer.InKernel
 	kernelFocusComboDim imgui.Vec2
-	kernelFocusDirty    bool
 
 	// whether to present performance figures as raw counts or as percentages
 	percentileFigures bool
+
+	// whether the sort criteria as specified in the window has changed (ie.
+	// kernelFocus of percentileFigures widgets has been altered)
+	windowSortSpecDirty bool
 
 	// whether to included unexecuted entries (functions or lines) in the list
 	hideUnusedEntries bool
@@ -167,25 +170,27 @@ func (win *winCoProcPerformance) draw() {
 			if imgui.BeginCombo("##kernelFocus", win.kernelFocus.String()) {
 				if imgui.Selectable("All") {
 					win.kernelFocus = developer.InKernelAll
-					win.kernelFocusDirty = true
+					win.windowSortSpecDirty = true
 				}
 				if imgui.Selectable("VBLANK") {
 					win.kernelFocus = developer.InVBLANK
-					win.kernelFocusDirty = true
+					win.windowSortSpecDirty = true
 				}
 				if imgui.Selectable("Screen") {
 					win.kernelFocus = developer.InScreen
-					win.kernelFocusDirty = true
+					win.windowSortSpecDirty = true
 				}
 				if imgui.Selectable("Overscan") {
 					win.kernelFocus = developer.InOverscan
-					win.kernelFocusDirty = true
+					win.windowSortSpecDirty = true
 				}
 				imgui.EndCombo()
 			}
 
 			imgui.SameLineV(0, 15)
-			imgui.Checkbox("Percentile Figures", &win.percentileFigures)
+			if imgui.Checkbox("Percentile Figures", &win.percentileFigures) {
+				win.windowSortSpecDirty = true
+			}
 
 			imgui.SameLineV(0, 15)
 			imgui.Checkbox("Hide Unexecuted Items", &win.hideUnusedEntries)
@@ -351,11 +356,13 @@ func (win *winCoProcPerformance) drawFunctions(src *developer.Source) {
 	imgui.TableHeadersRow()
 
 	sort := imgui.TableGetSortSpecs()
-	if src.ExecutionProfileChanged || sort.SpecsDirty() || win.kernelFocusDirty {
+	if src.ExecutionProfileChanged || sort.SpecsDirty() || win.windowSortSpecDirty {
 		//  always set which kernel to sort by
-		win.kernelFocusDirty = false
+		win.windowSortSpecDirty = false
 		src.SortedFunctions.SetKernel(win.kernelFocus)
 		src.SortedFunctions.UseRawCyclesCounts(!win.percentileFigures)
+		src.SortedLines.SetKernel(win.kernelFocus)
+		src.SortedLines.UseRawCyclesCounts(!win.percentileFigures)
 
 		for _, s := range sort.Specs() {
 			switch s.ColumnUserID {
@@ -543,11 +550,13 @@ func (win *winCoProcPerformance) drawSourceLines(src *developer.Source) {
 	imgui.TableHeadersRow()
 
 	sort := imgui.TableGetSortSpecs()
-	if src.ExecutionProfileChanged || sort.SpecsDirty() || win.kernelFocusDirty {
+	if src.ExecutionProfileChanged || sort.SpecsDirty() || win.windowSortSpecDirty {
 		//  always set which kernel to sort by
-		win.kernelFocusDirty = false
+		win.windowSortSpecDirty = false
 		src.SortedFunctions.SetKernel(win.kernelFocus)
 		src.SortedFunctions.UseRawCyclesCounts(!win.percentileFigures)
+		src.SortedLines.SetKernel(win.kernelFocus)
+		src.SortedLines.UseRawCyclesCounts(!win.percentileFigures)
 
 		for _, s := range sort.Specs() {
 			switch s.ColumnUserID {
@@ -644,7 +653,7 @@ func (win *winCoProcPerformance) drawSourceLines(src *developer.Source) {
 			if win.percentileFigures {
 				imgui.Text(fmt.Sprintf("%.02f", stats.OverSource.Max))
 			} else {
-				imgui.Text(fmt.Sprintf("%.0f", stats.OverSource.AverageCount))
+				imgui.Text(fmt.Sprintf("%.0f", stats.OverSource.MaxCount))
 			}
 		} else {
 			imgui.Text("-")
@@ -756,9 +765,11 @@ thean to the program as a whole.`)
 	sort := imgui.TableGetSortSpecs()
 	if src.ExecutionProfileChanged || sort.SpecsDirty() || win.functionTabDirty {
 		//  always set which kernel to sort by
-		win.kernelFocusDirty = false
+		win.windowSortSpecDirty = false
 		src.SortedFunctions.SetKernel(win.kernelFocus)
 		src.SortedFunctions.UseRawCyclesCounts(!win.percentileFigures)
+		src.SortedLines.SetKernel(win.kernelFocus)
+		src.SortedLines.UseRawCyclesCounts(!win.percentileFigures)
 
 		for _, s := range sort.Specs() {
 			switch s.ColumnUserID {

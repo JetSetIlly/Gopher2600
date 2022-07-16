@@ -280,7 +280,7 @@ type Source struct {
 	Functions     map[string]*SourceFunction
 	FunctionNames []string
 
-	// list of funcions sorted by FrameCycles field
+	// sorted list of every function in all compile unit
 	SortedFunctions SortedFunctions
 
 	// types used in the source
@@ -298,7 +298,7 @@ type Source struct {
 	// lines of source code found in the compile units
 	linesByAddress map[uint64]*SourceLine
 
-	// list of source lines sorted by FrameCycles field
+	// sorted list of every source line in all compile units
 	SortedLines SortedLines
 
 	// sorted lines filtered by function name
