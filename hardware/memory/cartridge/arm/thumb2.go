@@ -127,7 +127,8 @@ func (arm *ARM) decodeThumb2(opcode uint16) func(uint16) {
 }
 
 func (arm *ARM) decodeThumb2Miscellaneous(opcode uint16) func(uint16) {
-	// condition tree built from the table in Figure 3-2 of the "Thumb-2 Supplement"
+	// "3.2.1 Miscellaneous Instructions" of "Thumb-2 Supplement"
+	// condition tree built from the table in Figure 3-2
 	//
 	// thumb instruction format 13 and format 14 can be found in this tree
 
@@ -203,6 +204,10 @@ func (arm *ARM) thumb2IfThen(opcode uint16) {
 
 func (arm *ARM) thumb2CompareAndBranchOnNonZero(opcode uint16) {
 	// "4.6.22 CBNZ" of "Thumb-2 Supplement"
+	//
+	// and
+	//
+	// "4.6.23 CBZ" of "Thumb-2 Supplement"
 
 	nonZero := opcode&0x0800 == 0x0800
 	Rn := opcode & 0x0007
@@ -227,6 +232,12 @@ func (arm *ARM) thumb2SignZeroExtend(opcode uint16) {
 	Rd := opcode & 0x07
 
 	switch op {
+	case 0b01:
+		// "4.6.185 SXTB" in "Thumb-2 Supplement"
+		arm.registers[Rd] = arm.registers[Rm]
+		if arm.registers[Rd]&0x80 == 0x80 {
+			arm.registers[Rd] &= 0xffffff00
+		}
 	case 0b10:
 		// unsigned extend halfword
 		// "4.6.226 UXTH" in "Thumb-2 Supplement"
@@ -243,6 +254,6 @@ func (arm *ARM) thumb2SignZeroExtend(opcode uint16) {
 		rotated, _ := ROR_C(arm.registers[Rm], 0)
 		arm.registers[Rd] = rotated & 0x000000ff
 	default:
-		panic("undhandled sign/zero extend instruction")
+		panic(fmt.Sprintf("unhandled sign/zero extend instruction (op %02b)", op))
 	}
 }

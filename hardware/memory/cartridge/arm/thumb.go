@@ -669,7 +669,11 @@ func (arm *ARM) thumbHiRegisterOps(opcode uint16) {
 				arm.registers[rPC] = target & 0xfffffffe
 			} else {
 				// "A7.7.20 BX " in "ARMv7-M"
-				arm.registers[rPC] = arm.registers[Rm] + 1
+				target := arm.registers[Rm]
+				if target&0x01 == 0x00 {
+					panic("cannot switch to ARM mode in the ARMv7-M architecture")
+				}
+				arm.registers[rPC] = (target + 2) & 0xfffffffe
 			}
 
 			if arm.disasm != nil {

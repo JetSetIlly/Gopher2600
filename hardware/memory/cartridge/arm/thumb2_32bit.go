@@ -326,13 +326,28 @@ func (arm *ARM) thumb2DataProcessingNonImmediate(opcode uint16) {
 						arm.Status.setCarry(carry)
 						arm.Status.setOverflow(overflow)
 					}
+				case 0b10:
+					// with arithmetic right shift
+					signExtend := (arm.registers[Rm] & 0x80000000) >> 31
+					shifted := arm.registers[Rm] >> imm5
+					if signExtend == 0x01 {
+						shifted |= ^uint32(0) << (32 - imm5)
+					}
+					result, carry, overflow := AddWithCarry(arm.registers[Rn], ^shifted, 1)
+					arm.registers[Rd] = result
+					if setFlags {
+						arm.Status.isNegative(result)
+						arm.Status.isZero(result)
+						arm.Status.setCarry(carry)
+						arm.Status.setOverflow(overflow)
+					}
 				default:
 					panic(fmt.Sprintf("unhandled data processing instructions, non immediate (data processing, constant shift) (%04b) (%02b) SUB", op, typ))
 				}
 			}
 
 		case 0b1110:
-			// "4.6.118 RSB (register)" of "Thumb-2 Supplement"
+			// "4.6.119 RSB (register)" of "Thumb-2 Supplement"
 			// T1 encoding
 			arm.fudge_thumb2disassemble32bit = "RSB (register)"
 
@@ -362,8 +377,7 @@ func (arm *ARM) thumb2DataProcessingNonImmediate(opcode uint16) {
 
 			op := (arm.function32bitOpcode & 0x0060) >> 5
 			setFlags := (arm.function32bitOpcode & 0x0010) == 0x0010
-			shift := arm.registers[Rm] & 0x000f
-			// op2 := (opcode & 0x0070) >> 4
+			shift := arm.registers[Rm] & 0x00ff
 
 			switch op {
 			case 0b01:
@@ -371,11 +385,11 @@ func (arm *ARM) thumb2DataProcessingNonImmediate(opcode uint16) {
 				arm.fudge_thumb2disassemble32bit = "LSR (register)"
 
 				// whether to set carry bit
-				m := arm.registers[Rm] >> (shift - 1)
-				carry := arm.registers[Rm]&m == m
+				m := arm.registers[Rn] >> (shift - 1)
+				carry := arm.registers[Rn]&m == m
 
 				// perform actual shift
-				arm.registers[Rd] = arm.registers[Rm] >> shift
+				arm.registers[Rd] = arm.registers[Rn] >> shift
 
 				if setFlags {
 					arm.Status.isNegative(arm.registers[Rd])
@@ -388,14 +402,14 @@ func (arm *ARM) thumb2DataProcessingNonImmediate(opcode uint16) {
 				arm.fudge_thumb2disassemble32bit = "ASR (register)"
 
 				// whether to set carry bit
-				m := arm.registers[Rm] >> (shift - 1)
-				carry := arm.registers[Rm]&m == m
+				m := arm.registers[Rn] >> (shift - 1)
+				carry := arm.registers[Rn]&m == m
 
 				// extend sign, check for bit
-				signExtend := (arm.registers[Rm] & 0x80000000) >> 31
+				signExtend := (arm.registers[Rn] & 0x80000000) >> 31
 
 				// perform actual shift
-				arm.registers[Rd] = arm.registers[Rm] >> shift
+				arm.registers[Rd] = arm.registers[Rn] >> shift
 
 				// perform sign extension
 				if signExtend == 0x01 {
@@ -467,14 +481,17 @@ func (arm *ARM) thumb2DataProcessingNonImmediate(opcode uint16) {
 		op2 := (opcode & 0x00f0) >> 4
 
 		if op == 0b000 && op2 == 0b0000 {
-			// "4.6.74 MLA" of "Thumb-2 Supplement"
-			arm.fudge_thumb2disassemble32bit = "MLA"
-
-			arm.registers[Rd] = uint32(int32(arm.registers[Ra]) + int32(arm.registers[Rn])*int32(arm.registers[Rm]))
+			if Ra == rPC {
+				// "4.6.84 MUL" of "Thumb-2 Supplement"
+				arm.fudge_thumb2disassemble32bit = "MUL"
+				arm.registers[Rd] = uint32(uint64(arm.registers[Rn]) * uint64(arm.registers[Rm]))
+			} else {
+				// "4.6.74 MLA" of "Thumb-2 Supplement"
+				panic("unhandled data processing instruction (MLA)")
+			}
 		} else if op == 0b000 && op2 == 0b0001 {
 			// "4.6.75 MLS" of "Thumb-2 Supplement"
 			arm.fudge_thumb2disassemble32bit = "MLS"
-
 			arm.registers[Rd] = uint32(int32(arm.registers[Ra]) - int32(arm.registers[Rn])*int32(arm.registers[Rm]))
 		} else {
 			panic(fmt.Sprintf("unhandled data processing instructions, non immediate (32bit multiplies) (%03b/%04b)", op, op2))
@@ -483,17 +500,18 @@ func (arm *ARM) thumb2DataProcessingNonImmediate(opcode uint16) {
 		// "64-bit multiply, multiply-accumulate, and divide instructions"
 		// page 3-25 of "Thumb-2 Supplement"
 		op := (arm.function32bitOpcode & 0x0070) >> 4
-		RdLo := (opcode & 0xf000) >> 12
-		RdHi := Rd
 		op2 := (opcode & 0x00f0) >> 4
 
 		if op == 0b010 && op2 == 0b0000 {
 			// "4.6.207 UMULL" of "Thumb-2 Supplement"
 			arm.fudge_thumb2disassemble32bit = "UMULL"
 
+			RdLo := (opcode & 0xf000) >> 12
+			RdHi := Rd
+
 			result := uint64(arm.registers[Rn]) * uint64(arm.registers[Rm])
-			arm.registers[RdHi] = uint32((result & 0xffffffff00000000) >> 32)
-			arm.registers[RdLo] = uint32(result & 0x00000000ffffffff)
+			arm.registers[RdHi] = uint32(result >> 32)
+			arm.registers[RdLo] = uint32(result)
 		} else if op == 0b011 && op2 == 0b1111 {
 			// "4.6.198 UDIV" of "Thumb-2 Supplement"
 			arm.fudge_thumb2disassemble32bit = "UDIV"
@@ -547,22 +565,22 @@ func (arm *ARM) thumb2LoadStoreDoubleEtc(opcode uint16) {
 			}
 		}
 
+		if w {
+			arm.registers[Rn] = addr
+		}
+
 		if l {
-			// "A7.7.50 LDRD (immediate)" of "ARMv7-M"
+			// "4.6.50 LDRD (immediate)" of "Thumb-2 Supplement"
 			arm.fudge_thumb2disassemble32bit = "LDRD (immediate)"
 
 			arm.registers[Rt] = arm.read32bit(addr)
 			arm.registers[Rt2] = arm.read32bit(addr + 4)
 		} else {
-			// "A7.7.166 STRD (immediate)" of "ARMv7-M"
+			// "4.6.167 STRD (immediate)" of "Thumb-2 Supplement"
 			arm.fudge_thumb2disassemble32bit = "STRD (immediate)"
 
 			arm.write32bit(addr, arm.registers[Rt])
-			arm.write32bit(addr+4, arm.registers[Rt])
-		}
-
-		if w {
-			arm.registers[Rn] = addr
+			arm.write32bit(addr+4, arm.registers[Rt2])
 		}
 
 	} else if arm.function32bitOpcode&0x0080 == 0x0080 {
@@ -778,6 +796,7 @@ func (arm *ARM) thumb2DataProcessing(opcode uint16) {
 	} else if arm.function32bitOpcode&0xfb40 == 0xf200 {
 		// "Data processing instructions with plain 12-bit immediate"
 		// page 3-15 of "Thumb-2 Supplement"
+		panic("unimplemented 'data processing instructions with plain 12bit immediate'")
 	} else if arm.function32bitOpcode&0xfb40 == 0xf240 {
 		// "Data processing instructions with plain 16-bit immediate"
 		// page 3-15 of "Thumb-2 Supplement"
@@ -864,10 +883,6 @@ func (arm *ARM) thumb2LoadStoreSingle(opcode uint16) {
 
 	if Rt == rPC {
 		panic("PLD and PLI not thought about yet")
-	}
-
-	if s {
-		panic("unhandled sign extend for 'load and store single data item, and memory hints'")
 	}
 
 	if arm.function32bitOpcode&0xfe1f == 0xf81f {
