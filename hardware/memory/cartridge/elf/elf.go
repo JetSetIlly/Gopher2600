@@ -25,7 +25,6 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
-	"github.com/jetsetilly/gopher2600/logger"
 )
 
 // Elf implements the mapper.CartMapper interface.
@@ -72,15 +71,16 @@ func NewElf(instance *instance.Instance, pathToROM string) (mapper.CartMapper, e
 	cart.arm = arm.NewARM(arm.ARMv7_M, arm.MAMfull, cart.mem.model, cart.instance.Prefs.ARM, cart.mem, cart, cart.pathToROM)
 	cart.mem.arm = cart.arm
 
-	logger.Logf("ELF", ".text program: %08x to %08x (%d)", cart.mem.textSectionOrigin, cart.mem.textSectionMemtop, cart.mem.textSectionMemtop-cart.mem.textSectionOrigin)
-	logger.Logf("ELF", ".data section: %08x to %08x (%d)", cart.mem.dataSectionOrigin, cart.mem.dataSectionMemtop, cart.mem.dataSectionMemtop-cart.mem.dataSectionOrigin)
-	logger.Logf("ELF", ".rodata section: %08x to %08x (%d)", cart.mem.rodataSectionOrigin, cart.mem.rodataSectionMemtop, cart.mem.rodataSectionMemtop-cart.mem.rodataSectionOrigin)
-	logger.Logf("ELF", ".bss section: %08x to %08x (%d)", cart.mem.bssSectionOrigin, cart.mem.bssSectionMemtop, cart.mem.bssSectionMemtop-cart.mem.bssSectionOrigin)
-	logger.Logf("ELF", "GPIO IN: %08x to %08x", cart.mem.gpio.AOrigin, cart.mem.gpio.AMemtop)
-	logger.Logf("ELF", "GPIO OUT: %08x to %08x", cart.mem.gpio.BOrigin, cart.mem.gpio.BMemtop)
-
 	cart.mem.busStuffingInit()
 	cart.mem.setStrongArmFunction(cart.mem.emulationInit)
+
+	// set arguments for initial execution of ARM program
+	cart.mem.args[argAddrSystemType-argOrigin] = argSystemType_NTSC
+	cart.mem.args[argAddrClockHz-argOrigin] = 0xef
+	cart.mem.args[argAddrClockHz-argOrigin+1] = 0xbe
+	cart.mem.args[argAddrClockHz-argOrigin+2] = 0xad
+	cart.mem.args[argAddrClockHz-argOrigin+3] = 0xde
+	cart.arm.SetInitialRegisters(argOrigin)
 
 	return cart, nil
 }

@@ -426,6 +426,35 @@ func (arm *ARM) Step(vcsClock float32) {
 	arm.timer.stepFromVCS(arm.Clk, vcsClock)
 }
 
+// SetInitialRegisters is intended to be called after creation but before the
+// first call to Run().
+//
+// The optional arguments are used to initialise the registers in order
+// starting with R0.
+//
+// Note that you don't need to use this to set the initial values for SP, LR or
+// PC. Those registers are initialised via the ResetVectors() function of the
+// SharedMemory interface. The function will return with an error if those
+// registers are attempted to be initialised.
+func (arm *ARM) SetInitialRegisters(args ...uint32) error {
+	if len(args) >= rSP {
+		return curated.Errorf("ARM7: trying to set registers SP, LR or PC")
+	}
+
+	for i := range args {
+		arm.registers[i] = args[i]
+	}
+
+	// fill the pipeline before yielding. this ensures that the PC is
+	// correct on the first call to Run()
+	arm.registers[rPC] += 2
+
+	// continue in a yielded state
+	arm.yield = true
+
+	return nil
+}
+
 // Run will execute an ARM program until one of the following conditions has
 // ben met:
 //

@@ -17,6 +17,7 @@ package elf
 
 import (
 	"debug/elf"
+	"fmt"
 
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm"
@@ -30,32 +31,26 @@ type yieldARM interface {
 	SetRegisters([arm.NumRegisters]uint32)
 }
 
+type elfSection struct {
+	name   string
+	data   []byte
+	origin uint32
+	memtop uint32
+}
+
 type elfMemory struct {
 	model   memorymodel.Map
 	resetSP uint32
 	resetLR uint32
 	resetPC uint32
 
+	// input/output pins
 	gpio gpio
 
-	textSection       []byte
-	textSectionOrigin uint32
-	textSectionMemtop uint32
+	// the different sections of the loaded ELF binary
+	sections map[string]elfSection
 
-	dataSection       []byte
-	dataSectionOrigin uint32
-	dataSectionMemtop uint32
-
-	rodataSectionPresent bool
-	rodataSection        []byte
-	rodataSectionOrigin  uint32
-	rodataSectionMemtop  uint32
-
-	bssSectionPresent bool
-	bssSection        []byte
-	bssSectionOrigin  uint32
-	bssSectionMemtop  uint32
-
+	// RAM memory for the ARM
 	sram       []byte
 	sramOrigin uint32
 	sramMemtop uint32
@@ -76,289 +71,308 @@ type elfMemory struct {
 	// strongarm data and a small interface to the ARM
 	arm       yieldARM
 	strongarm strongArmState
+
+	// args is a special memory area that is used for the arguments passed to
+	// the main function on startup
+	args []byte
 }
 
 func newElfMemory(f *elf.File) (*elfMemory, error) {
 	mem := &elfMemory{
-		gpio: newGPIO(),
+		gpio:     newGPIO(),
+		sections: make(map[string]elfSection),
+		args:     make([]byte, argMemtop-argOrigin),
 	}
 
 	// always using PlusCart model for now
 	mem.model = memorymodel.NewMap(memorymodel.PlusCart)
 
-	var err error
-
-	// .text section
-	section := f.Section(".text")
-	if section == nil {
-		return nil, curated.Errorf("ELF: could not fine .text")
-	}
-	if section.Flags&elf.SHF_ALLOC != elf.SHF_ALLOC {
-		return nil, curated.Errorf("ELF: .text section is not relocatable")
-	}
-	if section.Flags&elf.SHF_EXECINSTR != elf.SHF_EXECINSTR {
-		return nil, curated.Errorf("ELF: .text section is not executable")
-	}
-	mem.textSection, err = section.Data()
-	if err != nil {
-		return nil, curated.Errorf("ELF: %v", err)
-	}
-	mem.textSectionOrigin = mem.model.FlashOrigin + 0x08000000
-	mem.textSectionMemtop = mem.textSectionOrigin + uint32(len(mem.textSection))
-
-	// remaining sections start at flashorigin and are consecutive
+	// load sections
 	origin := mem.model.FlashOrigin
-	memtop := origin
+	for _, sec := range f.Sections {
+		// ignore relocation sections for now
+		switch sec.Type {
+		case elf.SHT_REL:
+			continue
 
-	// .data section
-	section = f.Section(".data")
-	if section == nil {
-		return nil, curated.Errorf("ELF: could not fine .data")
-	}
-	if section.Flags&elf.SHF_ALLOC != elf.SHF_ALLOC {
-		return nil, curated.Errorf("ELF: .data section is not relocatable")
-	}
-	mem.dataSection, err = section.Data()
-	if err != nil {
-		return nil, curated.Errorf("ELF: %v", err)
-	}
-	mem.dataSectionOrigin = origin
-	memtop = origin + uint32(len(mem.dataSection))
-	mem.dataSectionMemtop = memtop
-	origin = (memtop + 4) & 0xfffffffc
+		case elf.SHT_INIT_ARRAY:
+			fallthrough
+		case elf.SHT_NOBITS:
+			fallthrough
+		case elf.SHT_PROGBITS:
+			section := elfSection{
+				name: sec.Name,
+			}
 
-	// .rodata section
-	section = f.Section(".rodata")
-	if section != nil {
-		if section.Flags&elf.SHF_ALLOC != elf.SHF_ALLOC {
-			return nil, curated.Errorf("ELF: .data section is not relocatable")
-		}
-		mem.rodataSectionPresent = true
-		mem.rodataSection, err = section.Data()
-		if err != nil {
-			return nil, curated.Errorf("ELF: %v", err)
-		}
-		mem.rodataSectionOrigin = origin
-		memtop = origin + uint32(len(mem.rodataSection))
-		mem.rodataSectionMemtop = memtop
-		origin = (memtop + 4) & 0xfffffffc
-	}
+			var err error
 
-	// .bss section
-	section = f.Section(".bss")
-	if section != nil {
-		if section.Flags&elf.SHF_ALLOC != elf.SHF_ALLOC {
-			return nil, curated.Errorf("ELF: .bss section is not relocatable")
+			section.data, err = sec.Data()
+			if err != nil {
+				return nil, curated.Errorf("ELF: %v", err)
+			}
+
+			// ignore empty sections
+			if len(section.data) == 0 {
+				continue
+			}
+
+			section.origin = origin
+			section.memtop = section.origin + uint32(len(section.data))
+			origin = (section.memtop + 4) & 0xfffffffc
+
+			// extend data section so that it is continuous with the following section
+			gap := origin - section.memtop - 1
+			if gap > 0 {
+				extend := make([]byte, gap)
+				section.data = append(section.data, extend...)
+				section.memtop += gap
+			}
+
+			mem.sections[section.name] = section
+
+			logger.Logf("ELF", "%s: %08x to %08x (%d)", section.name, section.origin, section.memtop, len(section.data))
+
+		default:
+			logger.Logf("ELF", "ignoring section %s (%s)", sec.Name, sec.Type)
 		}
-		mem.bssSectionPresent = true
-		mem.bssSection, err = section.Data()
-		if err != nil {
-			return nil, curated.Errorf("ELF: %v", err)
-		}
-		mem.bssSectionOrigin = origin
-		memtop = origin + uint32(len(mem.bssSection))
-		mem.bssSectionMemtop = memtop
-		origin = (memtop + 4) & 0xfffffffc
 	}
 
-	// strongARM functions are added when the relocation information suggests
-	// that it is required
+	// strongArm functions are added during relocation
 	mem.strongArmFunctions = make(map[uint32]strongArmFunction)
-	mem.strongArmOrigin = mem.textSectionMemtop
-	mem.strongArmMemtop = mem.strongArmOrigin
+	mem.strongArmOrigin = origin
+	mem.strongArmMemtop = origin
 
-	// relocate text section
-	section = f.Section(".rel.text")
-	if section == nil {
-		return nil, curated.Errorf("ELF: could not fine .rel.text")
-	}
-	if section.Type != elf.SHT_REL {
-		return nil, curated.Errorf("ELF: .rel.text is not type SHT_REL")
-	}
-
-	relocation, err := section.Data()
-	if err != nil {
-		return nil, curated.Errorf("ELF: %v", err)
-	}
+	// symbols used during relocation
 	symbols, err := f.Symbols()
 	if err != nil {
 		return nil, curated.Errorf("ELF: %v", err)
 	}
 
-	for i := 0; i < len(relocation); i += 8 {
-		var v uint32
+	// relocate all sections
+	for _, relsec := range f.Sections {
+		// ignore non-relocation sections for now
+		if relsec.Type != elf.SHT_REL {
+			continue
+		}
 
-		offset := uint32(relocation[i]) | uint32(relocation[i+1])<<8 | uint32(relocation[i+2])<<16 | uint32(relocation[i+3])<<24
-		relType := relocation[i+4]
+		// section being relocated. we should really be using the link field of the elf.Section for this
+		var secBeingRelocated elfSection
+		if s, ok := mem.sections[relsec.Name[4:]]; !ok {
+			return nil, curated.Errorf("ELF: could not find section corresponding to %s", relsec.Name)
+		} else {
+			secBeingRelocated = s
+		}
 
-		symbolIdx := uint32(relocation[i+5]) | uint32(relocation[i+6])<<8 | uint32(relocation[i+7])<<16
-		s := symbols[symbolIdx-1]
+		// reloation data. we walk this manually and extract the relocation
+		// entry "by hand". there is no explicit entry type in the Go library
+		// (for some reason)
+		relsecData, err := relsec.Data()
+		if err != nil {
+			return nil, curated.Errorf("ELF: %v", err)
+		}
 
-		switch elf.R_ARM(relType) {
-		case elf.R_ARM_ABS32:
-			switch s.Name {
-			// GPIO pins
-			case "ADDR_IDR":
-				v = uint32(mem.gpio.lookupOrigin | toArm_address)
-			case "DATA_ODR":
-				v = uint32(mem.gpio.lookupOrigin | fromArm_Opcode)
-			case "DATA_MODER":
-				v = uint32(mem.gpio.BOrigin | gpio_mode)
+		// every relocation entry
+		for i := 0; i < len(relsecData); i += 8 {
+			var v uint32
 
-			// strongARM functions
-			case "vcsWrite3":
-				v = mem.relocateStrongArmFunction(mem.vcsWrite3)
-				mem.usesBusStuffing = true
-			case "vcsJmp3":
-				v = mem.relocateStrongArmFunction(mem.vcsJmp3)
-			case "vcsLda2":
-				v = mem.relocateStrongArmFunction(mem.vcsLda2)
-			case "vcsSta3":
-				v = mem.relocateStrongArmFunction(mem.vcsSta3)
-			case "SnoopDataBus":
-				v = mem.relocateStrongArmFunction(mem.snoopDataBus)
-			case "vcsRead4":
-				v = mem.relocateStrongArmFunction(mem.vcsRead4)
-			case "vcsStartOverblank":
-				v = mem.relocateStrongArmFunction(mem.vcsStartOverblank)
-			case "vcsEndOverblank":
-				v = mem.relocateStrongArmFunction(mem.vcsEndOverblank)
-			case "vcsLdaForBusStuff2":
-				v = mem.relocateStrongArmFunction(mem.vcsLdaForBusStuff2)
-			case "vcsLdxForBusStuff2":
-				v = mem.relocateStrongArmFunction(mem.vcsLdxForBusStuff2)
-			case "vcsLdyForBusStuff2":
-				v = mem.relocateStrongArmFunction(mem.vcsLdyForBusStuff2)
-			case "vcsWrite5":
-				v = mem.relocateStrongArmFunction(mem.vcsWrite5)
-			case "vcsLdx2":
-				v = mem.relocateStrongArmFunction(mem.vcsLdx2)
-			case "vcsLdy2":
-				v = mem.relocateStrongArmFunction(mem.vcsLdy2)
-			case "vcsSta4":
-				v = mem.relocateStrongArmFunction(mem.vcsSta4)
-			case "vcsStx3":
-				v = mem.relocateStrongArmFunction(mem.vcsStx3)
-			case "vcsStx4":
-				v = mem.relocateStrongArmFunction(mem.vcsStx4)
-			case "vcsSty3":
-				v = mem.relocateStrongArmFunction(mem.vcsSty3)
-			case "vcsSty4":
-				v = mem.relocateStrongArmFunction(mem.vcsSty4)
-			case "vcsTxs2":
-				v = mem.relocateStrongArmFunction(mem.vcsTxs2)
-			case "vcsJsr6":
-				v = mem.relocateStrongArmFunction(mem.vcsJsr6)
-			case "vcsNop2":
-				v = mem.relocateStrongArmFunction(mem.vcsNop2)
-			case "vcsNop2n":
-				v = mem.relocateStrongArmFunction(mem.vcsNop2n)
-			case "vcsCopyOverblankToRiotRam":
-				v = mem.relocateStrongArmFunction(mem.vcsCopyOverblankToRiotRam)
-			case "memset":
-				v = mem.relocateStrongArmFunction(mem.memset)
-			case "memcpy":
-				v = mem.relocateStrongArmFunction(mem.memcpy)
+			// the relocation entry fields
+			offset := uint32(relsecData[i]) | uint32(relsecData[i+1])<<8 | uint32(relsecData[i+2])<<16 | uint32(relsecData[i+3])<<24
+			info := uint32(relsecData[i+4]) | uint32(relsecData[i+5])<<8 | uint32(relsecData[i+6])<<16 | uint32(relsecData[i+7])<<24
 
-			// strongARM tables
-			case "ReverseByte":
-				v = mem.relocateStrongArmTable(reverseByteTable)
-			case "ColorLookup":
-				v = mem.relocateStrongArmTable(ntscColorTable)
+			// symbol is encoded in the info value
+			symbolIdx := info >> 8
+			sym := symbols[symbolIdx-1]
 
-			default:
-				switch f.Sections[s.Section].Name {
-				case ".text":
-					v = mem.textSectionOrigin
-				case ".data":
-					v = mem.dataSectionOrigin
-				case ".rodata":
-					v = mem.rodataSectionOrigin
-				case ".bss":
-					v = mem.bssSectionOrigin
+			// reltype is encoded in the info value
+			relType := info & 0xff
+
+			switch elf.R_ARM(relType) {
+			case elf.R_ARM_TARGET1:
+				fallthrough
+			case elf.R_ARM_ABS32:
+				switch sym.Name {
+				// GPIO pins
+				case "ADDR_IDR":
+					v = uint32(mem.gpio.lookupOrigin | toArm_address)
+				case "DATA_ODR":
+					v = uint32(mem.gpio.lookupOrigin | fromArm_Opcode)
+				case "DATA_MODER":
+					v = uint32(mem.gpio.BOrigin | gpio_mode)
+
+				// strongARM functions
+				case "vcsWrite3":
+					v = mem.relocateStrongArmFunction(mem.vcsWrite3)
+					mem.usesBusStuffing = true
+				case "vcsJmp3":
+					v = mem.relocateStrongArmFunction(mem.vcsJmp3)
+				case "vcsLda2":
+					v = mem.relocateStrongArmFunction(mem.vcsLda2)
+				case "vcsSta3":
+					v = mem.relocateStrongArmFunction(mem.vcsSta3)
+				case "SnoopDataBus":
+					v = mem.relocateStrongArmFunction(mem.snoopDataBus)
+				case "vcsRead4":
+					v = mem.relocateStrongArmFunction(mem.vcsRead4)
+				case "vcsStartOverblank":
+					v = mem.relocateStrongArmFunction(mem.vcsStartOverblank)
+				case "vcsEndOverblank":
+					v = mem.relocateStrongArmFunction(mem.vcsEndOverblank)
+				case "vcsLdaForBusStuff2":
+					v = mem.relocateStrongArmFunction(mem.vcsLdaForBusStuff2)
+				case "vcsLdxForBusStuff2":
+					v = mem.relocateStrongArmFunction(mem.vcsLdxForBusStuff2)
+				case "vcsLdyForBusStuff2":
+					v = mem.relocateStrongArmFunction(mem.vcsLdyForBusStuff2)
+				case "vcsWrite5":
+					v = mem.relocateStrongArmFunction(mem.vcsWrite5)
+				case "vcsLdx2":
+					v = mem.relocateStrongArmFunction(mem.vcsLdx2)
+				case "vcsLdy2":
+					v = mem.relocateStrongArmFunction(mem.vcsLdy2)
+				case "vcsSta4":
+					v = mem.relocateStrongArmFunction(mem.vcsSta4)
+				case "vcsStx3":
+					v = mem.relocateStrongArmFunction(mem.vcsStx3)
+				case "vcsStx4":
+					v = mem.relocateStrongArmFunction(mem.vcsStx4)
+				case "vcsSty3":
+					v = mem.relocateStrongArmFunction(mem.vcsSty3)
+				case "vcsSty4":
+					v = mem.relocateStrongArmFunction(mem.vcsSty4)
+				case "vcsTxs2":
+					v = mem.relocateStrongArmFunction(mem.vcsTxs2)
+				case "vcsJsr6":
+					v = mem.relocateStrongArmFunction(mem.vcsJsr6)
+				case "vcsNop2":
+					v = mem.relocateStrongArmFunction(mem.vcsNop2)
+				case "vcsNop2n":
+					v = mem.relocateStrongArmFunction(mem.vcsNop2n)
+				case "vcsCopyOverblankToRiotRam":
+					v = mem.relocateStrongArmFunction(mem.vcsCopyOverblankToRiotRam)
+
+				// C library functions that are often not linked but required
+				case "memset":
+					v = mem.relocateStrongArmFunction(mem.memset)
+				case "memcpy":
+					v = mem.relocateStrongArmFunction(mem.memcpy)
+				case "__aeabi_idiv":
+					// sometimes linked when building for ARMv6-M target
+					v = mem.relocateStrongArmFunction(mem.__aeabi_idiv)
+
+				// strongARM tables
+				case "ReverseByte":
+					v = mem.relocateStrongArmTable(reverseByteTable)
+				case "ColorLookup":
+					v = mem.relocateStrongArmTable(ntscColorTable)
+
 				default:
-					return nil, curated.Errorf("ELF: undefined symbol (%s)", s.Name)
+					if sym.Section == elf.SHN_UNDEF {
+						return nil, curated.Errorf("ELF: %s is undefined", sym.Name)
+					}
+
+					n := f.Sections[sym.Section].Name
+					if p, ok := mem.sections[n]; !ok {
+						return nil, curated.Errorf("ELF: can not find section (%s) while relocation %s", p.name, sym.Name)
+					} else {
+						v = p.origin
+					}
+					v += uint32(sym.Value)
 				}
 
-				v += uint32(s.Value)
-			}
+				// add placeholder value to relocation address
+				addend := uint32(secBeingRelocated.data[offset])
+				addend |= uint32(secBeingRelocated.data[offset+1]) << 8
+				addend |= uint32(secBeingRelocated.data[offset+2]) << 16
+				addend |= uint32(secBeingRelocated.data[offset+3]) << 24
+				v += addend
 
-			// add placeholder value to relocation address
-			w := uint32(mem.textSection[offset])
-			w |= uint32(mem.textSection[offset+1]) << 8
-			w |= uint32(mem.textSection[offset+2]) << 16
-			w |= uint32(mem.textSection[offset+3]) << 24
-			v += w
+				// check address is recognised
+				mappedData, mappedOffset := mem.MapAddress(v, false)
+				if mappedData == nil {
+					return nil, curated.Errorf("ELF: illegal relocation address (%08x) for %s", v, sym.Name)
+				}
 
-			// commit write
-			mem.textSection[offset] = uint8(v)
-			mem.textSection[offset+1] = uint8(v >> 8)
-			mem.textSection[offset+2] = uint8(v >> 16)
-			mem.textSection[offset+3] = uint8(v >> 24)
+				// peep hole data (for logging output)
+				const peepHoleLen = 10
+				var mappedDataPeepHole string
+				if len(*mappedData) > int(mappedOffset+peepHoleLen) {
+					mappedDataPeepHole = fmt.Sprintf("[% 02x...]", (*mappedData)[mappedOffset:mappedOffset+peepHoleLen])
+				}
 
-			// what we log depends on the info field. for info of type 0x03
-			// (lower nibble) then the relocation is of a entire section.
-			// in this case the symbol will not have a name so we use the
-			// section name instead
-			if s.Info&0x03 == 0x03 {
-				logger.Logf("ELF", "relocate %s (%08x) => %08x", f.Sections[s.Section].Name, mem.textSectionOrigin+offset, v)
-			} else {
-				logger.Logf("ELF", "relocate %s (%08x) => %08x", s.Name, mem.textSectionOrigin+offset, v)
-			}
+				// commit write
+				secBeingRelocated.data[offset] = uint8(v)
+				secBeingRelocated.data[offset+1] = uint8(v >> 8)
+				secBeingRelocated.data[offset+2] = uint8(v >> 16)
+				secBeingRelocated.data[offset+3] = uint8(v >> 24)
 
-		case elf.R_ARM_THM_PC22:
-			// this value is labelled R_ARM_THM_CALL in objdump output
-			//
-			// "R_ARM_THM_PC22 Bits 0-10 encode the 11 most significant bits of
-			// the branch offset, bits 0-10 of the next instruction word the 11
-			// least significant bits. The unit is 2-byte Thumb instructions."
-			// page 32 of "SWS ESPC 0003 A-08"
+				// what we log depends on the info field. for info of type 0x03
+				// (lower nibble) then the relocation is of a entire section.
+				// in this case the symbol will not have a name so we use the
+				// section name instead
+				if relsec.Info&0x03 == 0x03 {
+					logger.Logf("ELF", "relocate %s (%08x) => %08x %s", f.Sections[sym.Section].Name, secBeingRelocated.origin+offset, v, mappedDataPeepHole)
+				} else {
+					n := sym.Name
+					if n == "" {
+						n = "(unnamed)"
+					}
+					logger.Logf("ELF", "relocate %s (%08x) => %08x %s", n, secBeingRelocated.origin+offset, v, mappedDataPeepHole)
+				}
 
-			switch f.Sections[s.Section].Name {
-			case ".text":
-				v = mem.textSectionOrigin
-			case ".data":
-				v = mem.dataSectionOrigin
-			case ".rodata":
-				v = mem.rodataSectionOrigin
-			case ".bss":
-				v = mem.bssSectionOrigin
+			case elf.R_ARM_THM_PC22:
+				// this value is labelled R_ARM_THM_CALL in objdump output
+				//
+				// "R_ARM_THM_PC22 Bits 0-10 encode the 11 most significant bits of
+				// the branch offset, bits 0-10 of the next instruction word the 11
+				// least significant bits. The unit is 2-byte Thumb instructions."
+				// page 32 of "SWS ESPC 0003 A-08"
+
+				if sym.Section == elf.SHN_UNDEF {
+					return nil, curated.Errorf("ELF: %s is undefined", sym.Name)
+				}
+
+				n := f.Sections[sym.Section].Name
+				if p, ok := mem.sections[n]; !ok {
+					return nil, curated.Errorf("ELF: can not find section (%s)", p.name)
+				} else {
+					v = p.origin
+				}
+				v += uint32(sym.Value)
+				v &= 0xfffffffe
+				v -= (secBeingRelocated.origin + offset + 4)
+
+				imm11 := (v >> 1) & 0x7ff
+				imm10 := (v >> 12) & 0x3ff
+				t1 := (v >> 22) & 0x01
+				t2 := (v >> 23) & 0x01
+				s := (v >> 24) & 0x01
+				j1 := uint32(0)
+				j2 := uint32(0)
+				if t1 == 0x01 {
+					j1 = s ^ 0x00
+				} else {
+					j1 = s ^ 0x01
+				}
+				if t2 == 0x01 {
+					j2 = s ^ 0x00
+				} else {
+					j2 = s ^ 0x01
+				}
+
+				lo := uint16(0xf000 | (s << 10) | imm10)
+				hi := uint16(0xd000 | (j1 << 13) | (j2 << 11) | imm11)
+				opcode := uint32(lo) | (uint32(hi) << 16)
+
+				secBeingRelocated.data[offset] = uint8(opcode)
+				secBeingRelocated.data[offset+1] = uint8(opcode >> 8)
+				secBeingRelocated.data[offset+2] = uint8(opcode >> 16)
+				secBeingRelocated.data[offset+3] = uint8(opcode >> 24)
+
+				logger.Logf("ELF", "relocate %s (%08x) => %08x", n, secBeingRelocated.origin+offset, opcode)
+
 			default:
-				return nil, curated.Errorf("ELF: undefined symbol (%s)", s.Name)
+				return nil, curated.Errorf("ELF: unhandled ARM relocation type (%v)", relType)
 			}
-
-			v += uint32(s.Value)
-			v &= 0xfffffffe
-			v -= (mem.textSectionOrigin + offset + 4)
-
-			imm11 := (v >> 1) & 0x7ff
-			imm10 := (v >> 12) & 0x3ff
-			t1 := (v >> 22) & 0x01
-			t2 := (v >> 23) & 0x01
-			s := (v >> 24) & 0x01
-			j1 := uint32(0)
-			j2 := uint32(0)
-			if t1 == 0x01 {
-				j1 = s ^ 0x00
-			} else {
-				j1 = s ^ 0x01
-			}
-			if t2 == 0x01 {
-				j2 = s ^ 0x00
-			} else {
-				j2 = s ^ 0x01
-			}
-
-			op1 := uint16(0xf000 | (s << 10) | imm10)
-			op2 := uint16(0xd000 | (j1 << 13) | (j2 << 11) | imm11)
-
-			mem.textSection[offset] = uint8(op1)
-			mem.textSection[offset+1] = uint8(op1 >> 8)
-			mem.textSection[offset+2] = uint8(op2)
-			mem.textSection[offset+3] = uint8(op2 >> 8)
-
-		default:
-			return nil, curated.Errorf("ELF: unhandled ARM relocation type (%v)", relType)
 		}
 	}
 
@@ -366,7 +380,7 @@ func newElfMemory(f *elf.File) (*elfMemory, error) {
 	// the elf.File structure is no good for our purposes
 	for _, s := range symbols {
 		if s.Name == "main" || s.Name == "elf_main" {
-			mem.resetPC = mem.textSectionOrigin + uint32(s.Value)
+			mem.resetPC = mem.sections[".text"].origin + uint32(s.Value)
 			break // for loop
 		}
 	}
@@ -439,18 +453,13 @@ func (mem *elfMemory) MapAddress(addr uint32, write bool) (*[]byte, uint32) {
 	if addr >= mem.gpio.lookupOrigin && addr <= mem.gpio.lookupMemtop {
 		return &mem.gpio.lookup, addr - mem.gpio.lookupOrigin
 	}
-	if addr >= mem.textSectionOrigin && addr <= mem.textSectionMemtop {
-		return &mem.textSection, addr - mem.textSectionOrigin
+
+	for _, s := range mem.sections {
+		if addr >= s.origin && addr <= s.memtop {
+			return &s.data, addr - s.origin
+		}
 	}
-	if addr >= mem.dataSectionOrigin && addr <= mem.dataSectionMemtop {
-		return &mem.dataSection, addr - mem.dataSectionOrigin
-	}
-	if mem.rodataSectionPresent && addr >= mem.rodataSectionOrigin && addr <= mem.rodataSectionMemtop {
-		return &mem.rodataSection, addr - mem.rodataSectionOrigin
-	}
-	if mem.bssSectionPresent && addr >= mem.bssSectionOrigin && addr <= mem.bssSectionMemtop {
-		return &mem.bssSection, addr - mem.bssSectionOrigin
-	}
+
 	if addr >= mem.sramOrigin && addr <= mem.sramMemtop {
 		return &mem.sram, addr - mem.sramOrigin
 	}
@@ -460,6 +469,11 @@ func (mem *elfMemory) MapAddress(addr uint32, write bool) (*[]byte, uint32) {
 			mem.arm.Yield()
 		}
 		return &mem.strongArmProgram, addr - mem.strongArmOrigin
+	}
+
+	// check argument memory last
+	if addr >= argOrigin && addr <= argMemtop {
+		return &mem.args, addr - argOrigin
 	}
 
 	return nil, addr

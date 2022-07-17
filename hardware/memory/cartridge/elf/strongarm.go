@@ -102,38 +102,6 @@ func (mem *elfMemory) pushStrongArmFunction(f strongArmFunction, args ...uint32)
 	mem.setStrongArmFunction(f, args...)
 }
 
-// memset works like you might expect but should only be called directly from
-// the ARM emulation (and not from anothr function called by the ARM
-// emulation). this is because this memset() function ends with a call to
-// mem.endStrongArmFunction() which will kill the parent function too
-func (mem *elfMemory) memset() {
-	addr := mem.strongarm.running.registers[0]
-	m, o := mem.MapAddress(addr, true)
-
-	v := mem.strongarm.running.registers[1]
-	l := mem.strongarm.running.registers[2]
-	for i := uint32(0); i < l; i++ {
-		(*m)[o+i] = byte(v)
-	}
-
-	mem.endStrongArmFunction()
-}
-
-func (mem *elfMemory) memcpy() {
-	addr := mem.strongarm.running.registers[0]
-	m, o := mem.MapAddress(addr, true)
-
-	addrB := mem.strongarm.running.registers[1]
-	mB, oB := mem.MapAddress(addrB, true)
-
-	l := mem.strongarm.running.registers[2]
-	for i := uint32(0); i < l; i++ {
-		(*m)[o+i] = (*mB)[oB+i]
-	}
-
-	mem.endStrongArmFunction()
-}
-
 func (mem *elfMemory) setNextRomAddress(addr uint16) {
 	mem.strongarm.nextRomAddress = addr & memorymap.Memtop
 }
