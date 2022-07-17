@@ -120,7 +120,18 @@ func (mem *elfMemory) memset() {
 }
 
 func (mem *elfMemory) memcpy() {
-	panic("memcpy")
+	addr := mem.strongarm.running.registers[0]
+	m, o := mem.MapAddress(addr, true)
+
+	addrB := mem.strongarm.running.registers[1]
+	mB, oB := mem.MapAddress(addrB, true)
+
+	l := mem.strongarm.running.registers[2]
+	for i := uint32(0); i < l; i++ {
+		(*m)[o+i] = (*mB)[oB+i]
+	}
+
+	mem.endStrongArmFunction()
 }
 
 func (mem *elfMemory) setNextRomAddress(addr uint16) {
