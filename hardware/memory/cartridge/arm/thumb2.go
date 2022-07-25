@@ -234,9 +234,11 @@ func (arm *ARM) thumb2SignZeroExtend(opcode uint16) {
 	switch op {
 	case 0b01:
 		// "4.6.185 SXTB" in "Thumb-2 Supplement"
+		arm.fudge_thumb2disassemble16bit = "SXTB"
+
 		arm.registers[Rd] = arm.registers[Rm]
 		if arm.registers[Rd]&0x80 == 0x80 {
-			arm.registers[Rd] &= 0xffffff00
+			arm.registers[Rd] |= 0xffffff00
 		}
 	case 0b10:
 		// unsigned extend halfword
@@ -251,8 +253,7 @@ func (arm *ARM) thumb2SignZeroExtend(opcode uint16) {
 		// T1 Encoding
 		arm.fudge_thumb2disassemble16bit = "UXTB"
 
-		rotated, _ := ROR_C(arm.registers[Rm], 0)
-		arm.registers[Rd] = rotated & 0x000000ff
+		arm.registers[Rd] = arm.registers[Rm] & 0x000000ff
 	default:
 		panic(fmt.Sprintf("unhandled sign/zero extend instruction (op %02b)", op))
 	}

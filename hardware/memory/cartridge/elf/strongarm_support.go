@@ -49,5 +49,11 @@ func (mem *elfMemory) memcpy() {
 // incomplete implementation. it should perform divide by zero checking but
 // for now just return immediately
 func (mem *elfMemory) __aeabi_idiv() {
+	if mem.strongarm.running.registers[1] == 0 {
+		mem.strongarm.running.registers[0] = 0
+	} else {
+		mem.strongarm.running.registers[0] = uint32(int32(mem.strongarm.running.registers[0]) / int32(mem.strongarm.running.registers[1]))
+	}
+	mem.arm.SetRegisters(mem.strongarm.running.registers)
 	mem.endStrongArmFunction()
 }

@@ -301,7 +301,7 @@ func (arm *ARM) thumb2DataProcessingNonImmediate(opcode uint16) {
 			} else {
 				// "4.6.177 SUB (register)" of "Thumb-2 Supplement"
 				// T2 encoding
-				arm.fudge_thumb2disassemble32bit = "SUB"
+				arm.fudge_thumb2disassemble32bit = "SUB (register)"
 
 				switch typ {
 				case 0b00:
@@ -763,17 +763,17 @@ func (arm *ARM) thumb2DataProcessing(opcode uint16) {
 				arm.Status.setCarry(carry)
 				arm.Status.setOverflow(overflow)
 			} else {
-				// "A7.7.174 SUB (immediate)" of "ARMv7-M"
+				// "4.6.176 SUB (immediate)" of "Thumb-2 Supplement"
 				// T3 encoding
 				arm.fudge_thumb2disassemble32bit = "SUB (immediate)"
 
-				result, carry, _ := AddWithCarry(arm.registers[Rn], ^imm32, 1)
+				result, carry, overflow := AddWithCarry(arm.registers[Rn], ^imm32, 1)
 				arm.registers[Rd] = result
 				if setFlags {
 					arm.Status.isNegative(result)
 					arm.Status.isZero(result)
 					arm.Status.setCarry(carry)
-					// overflow unchanged
+					arm.Status.setOverflow(overflow)
 				}
 			}
 

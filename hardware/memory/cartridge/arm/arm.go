@@ -665,8 +665,7 @@ func (arm *ARM) run() (float32, error) {
 			// new 32bit functions always execute
 			// if the opcode indicates that this is a 32bit thumb instruction
 			// then we need to resolve that regardless of any IT block
-			// conditional execution of instructions
-			if arm.Status.itMask != 0b0000 {
+			if arm.Status.itMask != 0b0000 && !arm.function32bit {
 				r := arm.Status.condition(arm.Status.itCond)
 
 				if r {
