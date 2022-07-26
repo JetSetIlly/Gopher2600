@@ -18,8 +18,12 @@
 //
 // https://documentation-service.arm.com/static/5f1066ca0daa596235e7e90a
 //
-// And the "ARMv7-M Architecture Reference Manual" (or "ARMv7-M" for brevity)
-// can be found at:
+// Where the Thumb-2 Supplement is not clear the the "ARMv7-M Architecture
+// Reference Manual" (or "ARMv7-M" for brevity) was referenced. For example, in
+// the list of load and store functions in Table 3.3.3 of the Thumb-2
+// Supplement, it is not clear which form of the instructions is required.
+//
+// The "ARMv7-M Architecture Reference Manual" document can be found at:
 //
 // https://documentation-service.arm.com/static/606dc36485368c4c2b1bf62f
 
@@ -133,8 +137,8 @@ func (arm *ARM) decodeThumb2Miscellaneous(opcode uint16) func(uint16) {
 	// thumb instruction format 13 and format 14 can be found in this tree
 
 	if opcode&0xff00 == 0xbf00 {
-		if opcode&0xff0f == 0xff00 {
-			// nop-compatible hints
+		if opcode&0xff0f == 0xbf00 {
+			return arm.thumb2MemoryHints
 		} else {
 			return arm.thumb2IfThen
 		}
@@ -176,6 +180,25 @@ func (arm *ARM) decodeThumb2Miscellaneous(opcode uint16) func(uint16) {
 
 func (arm *ARM) thumb2ChangeProcessorState(opcode uint16) {
 	logger.Logf("ARM7", "CPSID instruction does nothing")
+}
+
+func (arm *ARM) thumb2MemoryHints(opcode uint16) {
+	hint := (opcode & 0x00f0) >> 4
+
+	switch hint {
+	case 0b000:
+		arm.fudge_thumb2disassemble16bit = "NOP"
+	case 0b001:
+		panic("unimplemented YIELD instruction")
+	case 0b010:
+		panic("unimplemented WFE instruction")
+	case 0b011:
+		panic("unimplemented WFI instruction")
+	case 0b100:
+		panic("unimplemented SEV instruction")
+	default:
+		panic(fmt.Sprintf("undecoded 16bit (memory hint) thumb-2 instruction (%04x)", opcode))
+	}
 }
 
 func (arm *ARM) thumb2IfThen(opcode uint16) {

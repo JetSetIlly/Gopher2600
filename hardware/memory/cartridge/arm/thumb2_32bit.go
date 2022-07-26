@@ -109,7 +109,7 @@ func (arm *ARM) thumb2DataProcessingNonImmediate(opcode uint16) {
 			arm.fudge_thumb2disassemble32bit = "BIC"
 			switch typ {
 			case 0b00:
-			default:
+				// logical shift left
 				m := arm.registers[Rm] << (imm5 - 1)
 				carry := arm.registers[Rm]&m == m
 				shifted := arm.registers[Rm] << imm5
@@ -120,6 +120,35 @@ func (arm *ARM) thumb2DataProcessingNonImmediate(opcode uint16) {
 					arm.Status.setCarry(carry)
 					// overflow unchanged
 				}
+			case 0b10:
+				// arithmetic shift right
+
+				// whether to set carry bit
+				m := arm.registers[Rm] >> (imm5 - 1)
+				carry := arm.registers[Rm]&m == m
+
+				// extend sign, check for bit
+				signExtend := (arm.registers[Rm] & 0x80000000) >> 31
+
+				// perform actual shift
+				shifted := arm.registers[Rm] >> imm5
+
+				// perform sign extension
+				if signExtend == 0x01 {
+					shifted |= ^uint32(0) << (32 - imm5)
+				}
+
+				// perform bit clear
+				arm.registers[Rd] = arm.registers[Rn] & ^shifted
+
+				if setFlags {
+					arm.Status.isNegative(arm.registers[Rd])
+					arm.Status.isZero(arm.registers[Rd])
+					arm.Status.setCarry(carry)
+					// overflow unchanged
+				}
+			default:
+				panic(fmt.Sprintf("unhandled shift type (%02b) for BIC instruction ", typ))
 			}
 
 		case 0b0010:
@@ -483,8 +512,12 @@ func (arm *ARM) thumb2DataProcessingNonImmediate(opcode uint16) {
 		if op == 0b000 && op2 == 0b0000 {
 			if Ra == rPC {
 				// "4.6.84 MUL" of "Thumb-2 Supplement"
+				// T2 encoding
 				arm.fudge_thumb2disassemble32bit = "MUL"
-				arm.registers[Rd] = uint32(uint64(arm.registers[Rn]) * uint64(arm.registers[Rm]))
+
+				// multiplication can be done on signed or unsigned value with
+				// not change in functionality
+				arm.registers[Rd] = arm.registers[Rn] * arm.registers[Rm]
 			} else {
 				// "4.6.74 MLA" of "Thumb-2 Supplement"
 				panic("unhandled data processing instruction (MLA)")
@@ -517,20 +550,27 @@ func (arm *ARM) thumb2DataProcessingNonImmediate(opcode uint16) {
 			arm.fudge_thumb2disassemble32bit = "UDIV"
 
 			// don't allow divide by zero
-			if arm.registers[Rm] != 0 {
-				arm.registers[Rd] = arm.registers[Rn] / arm.registers[Rm]
-			} else {
+			if arm.registers[Rm] == 0 {
 				arm.registers[Rd] = 0
+			} else {
+				arm.registers[Rd] = arm.registers[Rn] / arm.registers[Rm]
 			}
 		} else if op == 0b001 && op2 == 0b1111 {
 			// "4.6.126 SDIV" of "Thumb-2 Supplement"
 			arm.fudge_thumb2disassemble32bit = "SDIV"
 
-			// don't allow divide by zero
-			if arm.registers[Rm] != 0 {
-				arm.registers[Rd] = uint32(int32(arm.registers[Rn]) / int32(arm.registers[Rm]))
-			} else {
+			if arm.registers[Rm] == 0 {
+				// don't allow divide by zero
 				arm.registers[Rd] = 0
+			} else if arm.registers[Rn] == 0x80000000 && arm.registers[Rm] == 0xffffffff {
+				// "Overflow: If the signed integer division 0x80000000 / 0xFFFFFFFF is performed,
+				// the pseudo-code produces the intermediate integer result +2 31 , which
+				// overflows the 32-bit signed integer range. No indication of this overflow case
+				// is produced, and the 32-bit result written to R[d] is required to be the bottom
+				// 32 bits of the binary representation of +2 31 . So the result of the"
+				arm.registers[Rd] = 0x80000000
+			} else {
+				arm.registers[Rd] = uint32(int32(arm.registers[Rn]) / int32(arm.registers[Rm]))
 			}
 		} else {
 			panic(fmt.Sprintf("unhandled data processing instructions, non immediate (64bit multiplies) (%03b/%04b)", op, op2))
@@ -557,16 +597,14 @@ func (arm *ARM) thumb2LoadStoreDoubleEtc(opcode uint16) {
 	if p || w {
 		// "Load and Store Double"
 		addr := arm.registers[Rn]
+
 		if p {
+			// pre-index addressing
 			if u {
 				addr += uint32(imm32)
 			} else {
 				addr -= uint32(imm32)
 			}
-		}
-
-		if w {
-			arm.registers[Rn] = addr
 		}
 
 		if l {
@@ -581,6 +619,19 @@ func (arm *ARM) thumb2LoadStoreDoubleEtc(opcode uint16) {
 
 			arm.write32bit(addr, arm.registers[Rt])
 			arm.write32bit(addr+4, arm.registers[Rt2])
+		}
+
+		if !p {
+			// post-index addressing
+			if u {
+				addr += uint32(imm32)
+			} else {
+				addr -= uint32(imm32)
+			}
+		}
+
+		if w {
+			arm.registers[Rn] = addr
 		}
 
 	} else if arm.function32bitOpcode&0x0080 == 0x0080 {
@@ -634,6 +685,10 @@ func (arm *ARM) thumb2DataProcessing(opcode uint16) {
 		Rd := (opcode & 0x0f00) >> 8
 		imm8 := opcode & 0x00ff
 		imm12 := (i << 11) | (imm3 << 8) | imm8
+
+		// some of the instructions in this group (ADD, CMP, etc.) are not
+		// interested in the output carry from the ThumbExandImm_c() function.
+		// in those cases, the carry flag is obtained by other mean
 		imm32, carry := ThumbExpandImm_C(uint32(imm12), arm.Status.carry)
 
 		switch op {
@@ -895,6 +950,7 @@ func (arm *ARM) thumb2LoadStoreSingle(opcode uint16) {
 		// Rn is always the PC for this instruction class
 		addr := (arm.registers[rPC] - 2) & 0xfffffffc
 
+		// all addresses are pre-indexed and there is no write-back
 		if u {
 			addr += uint32(imm12)
 		} else {
@@ -903,18 +959,29 @@ func (arm *ARM) thumb2LoadStoreSingle(opcode uint16) {
 
 		switch size {
 		case 0b00:
+			// "4.6.47 LDRB (literal)" of "Thumb-2 Supplement"
 			arm.fudge_thumb2disassemble32bit = "LDRB (literal PC relative)"
 			arm.registers[Rt] = uint32(arm.read8bit(addr))
-			if s && arm.registers[Rt]&0x80 == 0x80 {
-				arm.registers[Rt] |= 0xffffff00
+			if s {
+				// "4.6.60 LDRSB (literal)" of "Thumb-2 Supplement"
+				arm.fudge_thumb2disassemble32bit = "LDRSB (literal PC relative)"
+				if arm.registers[Rt]&0x80 == 0x80 {
+					arm.registers[Rt] |= 0xffffff00
+				}
 			}
 		case 0b01:
+			// "4.6.56 LDRH (literal)" of "Thumb-2 Supplement"
 			arm.fudge_thumb2disassemble32bit = "LDRH (literal PC relative)"
 			arm.registers[Rt] = uint32(arm.read16bit(addr))
-			if s && arm.registers[Rt]&0x8000 == 0x8000 {
-				arm.registers[Rt] |= 0xffff0000
+			if s {
+				// "4.6.64 LDRSH (literal)" of "Thumb-2 Supplement"
+				arm.fudge_thumb2disassemble32bit = "LDRSH (literal PC relative)"
+				if arm.registers[Rt]&0x8000 == 0x8000 {
+					arm.registers[Rt] |= 0xffff0000
+				}
 			}
 		case 0b10:
+			// "4.6.44 LDR (literal)" of "Thumb-2 Supplement"
 			arm.fudge_thumb2disassemble32bit = "LDR (literal PC relative)"
 			arm.registers[Rt] = arm.read32bit(addr)
 		default:
@@ -930,41 +997,53 @@ func (arm *ARM) thumb2LoadStoreSingle(opcode uint16) {
 		// U is always up for this format meaning that we add the index to
 		// the base address
 		imm12 := opcode & 0x0fff
+
+		// all addresses are pre-indexed and there is no write-back
 		addr := arm.registers[Rn] + uint32(imm12)
 
 		switch size {
 		case 0b00:
 			if l {
+				// "4.6.46 LDRB (immediate)" of "Thumb-2 Supplement"
+				arm.fudge_thumb2disassemble32bit = "LDRB (immediate offset)"
 				arm.registers[Rt] = uint32(arm.read8bit(addr))
-				if s && arm.registers[Rt]&0x80 == 0x80 {
-					arm.fudge_thumb2disassemble32bit = "LDRSB"
-					arm.registers[Rt] |= 0xffffff00
-				} else {
-					arm.fudge_thumb2disassemble32bit = "LDRB"
+				if s {
+					// "4.6.59 LDRSB (immediate)" of "Thumb-2 Supplement"
+					arm.fudge_thumb2disassemble32bit = "LDRSB (immediate offset)"
+					if arm.registers[Rt]&0x80 == 0x80 {
+						arm.registers[Rt] |= 0xffffff00
+					}
 				}
 			} else {
-				arm.fudge_thumb2disassemble32bit = "STRB"
+				// "4.6.164 STRB (immediate)" of "Thumb-2 Supplement"
+				arm.fudge_thumb2disassemble32bit = "STRB (immediate offset)"
 				arm.write8bit(addr, uint8(arm.registers[Rt]))
 			}
 		case 0b01:
 			if l {
+				// "4.6.55 LDRH (immediate)" of "Thumb-2 Supplement"
+				arm.fudge_thumb2disassemble32bit = "LDRH (immediate offset)"
 				arm.registers[Rt] = uint32(arm.read16bit(addr))
-				if s && arm.registers[Rt]&0x8000 == 0x8000 {
-					arm.fudge_thumb2disassemble32bit = "LDRSH"
-					arm.registers[Rt] |= 0xffff0000
-				} else {
-					arm.fudge_thumb2disassemble32bit = "LDRH"
+				if s {
+					// "4.6.63 LDRSH (immediate)" of "Thumb-2 Supplement"
+					arm.fudge_thumb2disassemble32bit = "LDRSH (immediate offset)"
+					if arm.registers[Rt]&0x8000 == 0x8000 {
+						arm.registers[Rt] |= 0xffff0000
+					}
 				}
 			} else {
-				arm.fudge_thumb2disassemble32bit = "STRH"
+				// "4.6.172 STRH (immediate)" of "Thumb-2 Supplement"
+				arm.fudge_thumb2disassemble32bit = "STRH (immediate offset)"
 				arm.write16bit(addr, uint16(arm.registers[Rt]))
 			}
 		case 0b10:
 			if l {
-				arm.fudge_thumb2disassemble32bit = "LDR"
+				// "4.6.43 LDR (immediate)" of "Thumb-2 Supplement"
+				arm.fudge_thumb2disassemble32bit = "LDR (immediate offset)"
 				arm.registers[Rt] = arm.read32bit(addr)
 			} else {
-				arm.fudge_thumb2disassemble32bit = "STR"
+				// "4.6.162 STR (immediate)" of "Thumb-2 Supplement"
+				arm.fudge_thumb2disassemble32bit = "STR (immediate offset)"
 				arm.write32bit(addr, arm.registers[Rt])
 			}
 		default:
@@ -979,41 +1058,53 @@ func (arm *ARM) thumb2LoadStoreSingle(opcode uint16) {
 		// further depends on size and L bit
 
 		imm8 := opcode & 0x00ff
+
+		// all addresses are pre-indexed and there is no write-back
 		addr := arm.registers[Rn] - uint32(imm8)
 
 		switch size {
 		case 0b00:
 			if l {
+				// "4.6.46 LDRB (immediate)" of "Thumb-2 Supplement"
+				arm.fudge_thumb2disassemble32bit = "LDRB (immediate negative offset)"
 				arm.registers[Rt] = uint32(arm.read8bit(addr))
-				if s && arm.registers[Rt]&0x80 == 0x80 {
-					arm.fudge_thumb2disassemble32bit = "LDRSB"
-					arm.registers[Rt] |= 0xffffff00
-				} else {
-					arm.fudge_thumb2disassemble32bit = "LDRB"
+				if s {
+					// "4.6.59 LDRSB (immediate)" of "Thumb-2 Supplement"
+					arm.fudge_thumb2disassemble32bit = "LDRSB (immediate negative offset)"
+					if arm.registers[Rt]&0x80 == 0x80 {
+						arm.registers[Rt] |= 0xffffff00
+					}
 				}
 			} else {
-				arm.fudge_thumb2disassemble32bit = "STRB"
+				// "4.6.164 STRB (immediate)" of "Thumb-2 Supplement"
+				arm.fudge_thumb2disassemble32bit = "STRB (immediate negative offset)"
 				arm.write8bit(addr, uint8(arm.registers[Rt]))
 			}
 		case 0b01:
 			if l {
+				// "4.6.55 LDRH (immediate)" of "Thumb-2 Supplement"
+				arm.fudge_thumb2disassemble32bit = "LDRH (immediate negative offset)"
 				arm.registers[Rt] = uint32(arm.read16bit(addr))
-				if s && arm.registers[Rt]&0x8000 == 0x8000 {
-					arm.fudge_thumb2disassemble32bit = "LDRSH"
-					arm.registers[Rt] |= 0xffff0000
-				} else {
-					arm.fudge_thumb2disassemble32bit = "LDRH"
+				if s {
+					// "4.6.63 LDRSH (immediate)" of "Thumb-2 Supplement"
+					arm.fudge_thumb2disassemble32bit = "LDRSH (immediate negative offset)"
+					if arm.registers[Rt]&0x8000 == 0x8000 {
+						arm.registers[Rt] |= 0xffff0000
+					}
 				}
 			} else {
-				arm.fudge_thumb2disassemble32bit = "STRH"
+				// "4.6.172 STRH (immediate)" of "Thumb-2 Supplement"
+				arm.fudge_thumb2disassemble32bit = "STRH (immediate negative offset)"
 				arm.write16bit(addr, uint16(arm.registers[Rt]))
 			}
 		case 0b10:
 			if l {
-				arm.fudge_thumb2disassemble32bit = "LDR"
+				// "4.6.43 LDR (immediate)" of "Thumb-2 Supplement"
+				arm.fudge_thumb2disassemble32bit = "LDR (immediate negative offset)"
 				arm.registers[Rt] = arm.read32bit(addr)
 			} else {
-				arm.fudge_thumb2disassemble32bit = "STR"
+				// "4.6.162 STR (immediate)" of "Thumb-2 Supplement"
+				arm.fudge_thumb2disassemble32bit = "STR (immediate negative offset)"
 				arm.write32bit(addr, arm.registers[Rt])
 			}
 		default:
@@ -1030,40 +1121,56 @@ func (arm *ARM) thumb2LoadStoreSingle(opcode uint16) {
 		imm8 := opcode & 0x00ff
 		u := (opcode & 0x0200) == 0x0200
 
+		// all addresses are post-indexed and there is write-back
 		addr := arm.registers[Rn]
 
 		switch size {
 		case 0b00:
 			if l {
-				arm.fudge_thumb2disassemble32bit = "LDRB (post-index)"
+				// "4.6.46 LDRB (immediate)" of "Thumb-2 Supplement"
+				arm.fudge_thumb2disassemble32bit = "LDRB (immediate post-index)"
 				arm.registers[Rt] = uint32(arm.read8bit(addr))
-				if s && arm.registers[Rt]&0x80 == 0x80 {
-					arm.registers[Rt] |= 0xffffff00
+				if s {
+					// "4.6.59 LDRSB (immediate)" of "Thumb-2 Supplement"
+					arm.fudge_thumb2disassemble32bit = "LDRSB (immediate post-index)"
+					if arm.registers[Rt]&0x80 == 0x80 {
+						arm.registers[Rt] |= 0xffffff00
+					}
 				}
 			} else {
-				arm.fudge_thumb2disassemble32bit = "STRB (post-index)"
+				// "4.6.164 STRB (immediate)" of "Thumb-2 Supplement"
+				arm.fudge_thumb2disassemble32bit = "STRB (immediate post-index)"
 				arm.write8bit(addr, uint8(arm.registers[Rt]))
 			}
 		case 0b01:
 			if l {
-				arm.fudge_thumb2disassemble32bit = "LDRH (post-index)"
+				// "4.6.55 LDRH (immediate)" of "Thumb-2 Supplement"
+				arm.fudge_thumb2disassemble32bit = "LDRH (immediate post-index)"
 				arm.registers[Rt] = uint32(arm.read16bit(addr))
-				if s && arm.registers[Rt]&0x8000 == 0x8000 {
-					arm.registers[Rt] |= 0xffff0000
+				if s {
+					// "4.6.63 LDRSH (immediate)" of "Thumb-2 Supplement"
+					arm.fudge_thumb2disassemble32bit = "LDRSH (immediate post-index)"
+					if arm.registers[Rt]&0x8000 == 0x8000 {
+						arm.registers[Rt] |= 0xffff0000
+					}
 				}
 			} else {
-				arm.fudge_thumb2disassemble32bit = "STRH (post-index)"
+				// "4.6.172 STRH (immediate)" of "Thumb-2 Supplement"
+				arm.fudge_thumb2disassemble32bit = "STRH (immediate post-index)"
 				arm.write16bit(addr, uint16(arm.registers[Rt]))
 			}
 		default:
 			panic(fmt.Sprintf("unhandled size (%02b) for 'Rn post-index +/- imm8'", size))
 		}
 
+		// post-index
 		if u {
 			addr += uint32(imm8)
 		} else {
 			addr -= uint32(imm8)
 		}
+
+		// write-back
 		arm.registers[Rn] = addr
 
 	} else if (opcode & 0x0d00) == 0x0d00 {
@@ -1071,6 +1178,7 @@ func (arm *ARM) thumb2LoadStoreSingle(opcode uint16) {
 		imm8 := opcode & 0x00ff
 		u := (opcode & 0x0200) == 0x0200
 
+		// all addresses are pre-indexed and there is write-back
 		addr := arm.registers[Rn]
 		if u {
 			addr += uint32(imm8)
@@ -1081,30 +1189,43 @@ func (arm *ARM) thumb2LoadStoreSingle(opcode uint16) {
 		switch size {
 		case 0b00:
 			if l {
-				arm.fudge_thumb2disassemble32bit = "LDRB (pre-index)"
+				// "4.6.46 LDRB (immediate)" of "Thumb-2 Supplement"
+				arm.fudge_thumb2disassemble32bit = "LDRB (immediate pre-index)"
 				arm.registers[Rt] = uint32(arm.read8bit(addr))
-				if s && arm.registers[Rt]&0x80 == 0x80 {
-					arm.registers[Rt] |= 0xffffff00
+				if s {
+					// "4.6.59 LDRSB (immediate)" of "Thumb-2 Supplement"
+					arm.fudge_thumb2disassemble32bit = "LDRSB (immediate pre-index)"
+					if arm.registers[Rt]&0x80 == 0x80 {
+						arm.registers[Rt] |= 0xffffff00
+					}
 				}
 			} else {
-				arm.fudge_thumb2disassemble32bit = "STRB (pre-index)"
+				// "4.6.164 STRB (immediate)" of "Thumb-2 Supplement"
+				arm.fudge_thumb2disassemble32bit = "STRB (immediate pre-index)"
 				arm.write8bit(addr, uint8(arm.registers[Rt]))
 			}
 		case 0b01:
 			if l {
-				arm.fudge_thumb2disassemble32bit = "LDRH (pre-index)"
+				// "4.6.55 LDRH (immediate)" of "Thumb-2 Supplement"
+				arm.fudge_thumb2disassemble32bit = "LDRH (immediate pre-index)"
 				arm.registers[Rt] = uint32(arm.read16bit(addr))
-				if s && arm.registers[Rt]&0x8000 == 0x8000 {
-					arm.registers[Rt] |= 0xffff0000
+				if s {
+					// "4.6.63 LDRSH (immediate)" of "Thumb-2 Supplement"
+					arm.fudge_thumb2disassemble32bit = "LDRSH (immediate pre-index)"
+					if arm.registers[Rt]&0x8000 == 0x8000 {
+						arm.registers[Rt] |= 0xffff0000
+					}
 				}
 			} else {
-				arm.fudge_thumb2disassemble32bit = "STRH (pre-index)"
+				// "4.6.172 STRH (immediate)" of "Thumb-2 Supplement"
+				arm.fudge_thumb2disassemble32bit = "STRH (immediate pre-index)"
 				arm.write16bit(addr, uint16(arm.registers[Rt]))
 			}
 		default:
 			panic(fmt.Sprintf("unhandled size (%02b) for 'Rn +/- imm8'", size))
 		}
 
+		// write-back
 		arm.registers[Rn] = addr
 
 	} else if (opcode & 0x0fc0) == 0x0000 {
@@ -1112,17 +1233,25 @@ func (arm *ARM) thumb2LoadStoreSingle(opcode uint16) {
 		shift := (opcode & 0x0030) >> 4
 		Rm := opcode & 0x0007
 
+		// all addresses are pre-indexed by a shifted register and there is no write-back
 		addr := arm.registers[Rn] + (arm.registers[Rm] << shift)
 
 		if l {
 			switch size {
 			case 0b00:
 				// "4.6.48 LDRB (register)" of "Thumb-2 Supplement"
-				arm.fudge_thumb2disassemble32bit = "LDRB"
+				arm.fudge_thumb2disassemble32bit = "LDRB (register shifted)"
 				arm.registers[Rt] = uint32(arm.read8bit(addr))
+				if s {
+					// "4.6.61 LDRSB (register)" of "Thumb-2 Supplement"
+					arm.fudge_thumb2disassemble32bit = "LDRSB (register shifted)"
+					if arm.registers[Rt]&0x8000 == 0x8000 {
+						arm.registers[Rt] |= 0xffff0000
+					}
+				}
 			case 0b10:
 				// "4.6.45 LDR (register)" of "Thumb-2 Supplement"
-				arm.fudge_thumb2disassemble32bit = "LDR"
+				arm.fudge_thumb2disassemble32bit = "LDR (register shifted)"
 				arm.registers[Rt] = arm.read32bit(addr)
 			default:
 				panic(fmt.Sprintf("unhandled size (%02b) for 'Rn + shifted register' (load)", size))
@@ -1142,20 +1271,23 @@ func (arm *ARM) thumb2LoadStoreMultiple(opcode uint16) {
 	// "A5.3.5 Load Multiple and Store Multiple" of "ARMv7-M"
 
 	op := (arm.function32bitOpcode & 0x0180) >> 7
-	l := (arm.function32bitOpcode & 0x0010) >> 4
-	w := (arm.function32bitOpcode & 0x0020) >> 5
+	l := (arm.function32bitOpcode & 0x0010) == 0x0010
+	w := (arm.function32bitOpcode & 0x0020) == 0x0020
 	Rn := arm.function32bitOpcode & 0x000f
-	WRn := Rn | (w << 4)
+
+	WRn := Rn
+	if w {
+		WRn |= 0x0010
+	}
 
 	switch op {
 	case 0b01:
-		if l == 0x1 {
+		if l {
 			switch WRn {
 			case 0b11101:
 				// "4.6.98 POP" of "Thumb-2 Supplement"
-				//		and
-				// "A7.7.99 POP" of "ARMv7-M"
-				//
+				// T2 encoding
+
 				// Pop multiple registers from the stack
 				arm.fudge_thumb2disassemble32bit = "POP (ldmia)"
 
@@ -1182,11 +1314,8 @@ func (arm *ARM) thumb2LoadStoreMultiple(opcode uint16) {
 				}
 			default:
 				// "4.6.42 LDMIA / LDMFD" of "Thumb-2 Supplement"
-				//		and
-				// "A7.7.41 LDM, LDMIA, LDMFD" of "ARVv7-M"
-				//
 				// T2 encoding
-				//
+
 				// Load multiple (increment after, full descending)
 				arm.fudge_thumb2disassemble32bit = "LDMIA/LDMFD"
 
@@ -1194,12 +1323,20 @@ func (arm *ARM) thumb2LoadStoreMultiple(opcode uint16) {
 				c := uint32(bits.OnesCount16(regList) * 4)
 				addr := arm.registers[Rn]
 
+				// update register if W bit is set
+				if w {
+					arm.registers[Rn] += c
+				}
+
 				for i := 0; i <= 14; i++ {
 					// shift single-bit mask
 					m := uint16(0x01 << i)
 
 					// read register if indicated by regList
 					if regList&m == m {
+						if i == int(Rn) {
+							panic("LDMIA/LDMFD writeback register is being loaded")
+						}
 						arm.registers[i] = arm.read32bit(addr)
 						addr += 4
 					}
@@ -1210,18 +1347,11 @@ func (arm *ARM) thumb2LoadStoreMultiple(opcode uint16) {
 					arm.registers[rPC] = arm.read32bit(addr)
 				}
 
-				// update register if W bit is set
-				if w == 0x01 {
-					arm.registers[Rn] += c
-				}
 			}
 		} else {
 			// "4.6.161 STMIA / STMEA" of "Thumb-2 Supplement"
-			//		and
-			// "A7.7.159 STM, STMIA, STMEA" of "ARMv7-M"
-			//
 			// T2 encoding
-			//
+
 			// Store multiple (increment after, empty ascending)
 			arm.fudge_thumb2disassemble32bit = "STMIA/STMEA"
 
@@ -1229,12 +1359,21 @@ func (arm *ARM) thumb2LoadStoreMultiple(opcode uint16) {
 			c := uint32(bits.OnesCount16(regList) * 4)
 			addr := arm.registers[Rn]
 
+			// update register if W bit is set
+			if w {
+				arm.registers[Rn] += c
+			}
+
 			for i := 0; i <= 14; i++ {
 				// shift single-bit mask
 				m := uint16(0x01 << i)
 
 				// write register if indicated by regList
 				if regList&m == m {
+					if i == int(Rn) {
+						panic("STMIA/STMEA writeback register is being stored")
+					}
+
 					// there is a branch in the pseudocode that applies to T1
 					// encoding only. ommitted here
 					arm.write32bit(addr, arm.registers[i])
@@ -1242,23 +1381,22 @@ func (arm *ARM) thumb2LoadStoreMultiple(opcode uint16) {
 				}
 			}
 
-			// update register if W bit is set
-			if w == 0x01 {
-				arm.registers[Rn] += c
-			}
 		}
 	case 0b10:
-		if l == 0x1 {
+		if l {
 			// "4.6.41 LDMDB / LDMEA" of "Thumb-2 Supplement"
-			//		and
-			// "A7.7.42 LDMDB, LDMEA" of "ARMv7-M"
-			//
+
 			// Load multiple (decrement before, empty ascending)
 			arm.fudge_thumb2disassemble32bit = "LDMDB/LDMEA"
 
 			regList := opcode & 0xdfff
 			c := uint32(bits.OnesCount16(regList) * 4)
 			addr := arm.registers[Rn] - c
+
+			// update register if W bit is set
+			if w {
+				arm.registers[Rn] -= c
+			}
 
 			// read each register in turn (from lower to highest)
 			for i := 0; i <= 14; i++ {
@@ -1267,6 +1405,9 @@ func (arm *ARM) thumb2LoadStoreMultiple(opcode uint16) {
 
 				// read register if indicated by regList
 				if regList&m == m {
+					if i == int(Rn) {
+						panic("LDMDB/LDMEA writeback register is being loaded")
+					}
 					arm.registers[i] = arm.read32bit(addr)
 					addr += 4
 				}
@@ -1277,16 +1418,12 @@ func (arm *ARM) thumb2LoadStoreMultiple(opcode uint16) {
 				arm.registers[rPC] = arm.read32bit(addr)
 			}
 
-			if w == 0x01 {
-				arm.registers[Rn] -= c
-			}
 		} else {
 			switch WRn {
 			case 0b11101:
 				// "4.6.99 PUSH" of "Thumb-2 Supplement"
-				//		and
-				// "A7.7.101 PUSH" of "ARMv7-M"
-				//
+				// T2 encoding
+
 				// Push multiple registers to the stack
 				arm.fudge_thumb2disassemble32bit = "PUSH (stmdb)"
 
@@ -1309,15 +1446,18 @@ func (arm *ARM) thumb2LoadStoreMultiple(opcode uint16) {
 				arm.registers[rSP] -= c
 			default:
 				// "4.6.160 STMDB / STMFD" of "Thumb-2 Supplement"
-				//		and
-				// "A7.7.160 STMDB, STMFD" of "ARMv7-M
-				//
+
 				// Store multiple (decrement before, full descending)
 				arm.fudge_thumb2disassemble32bit = "STMDB/STMFD"
 
 				regList := opcode & 0x5fff
 				c := (uint32(bits.OnesCount16(regList))) * 4
 				addr := arm.registers[Rn] - c
+
+				// update register if W bit is set
+				if w {
+					arm.registers[Rn] -= c
+				}
 
 				// store each register in turn (from lowest to highest)
 				for i := 0; i <= 14; i++ {
@@ -1326,13 +1466,12 @@ func (arm *ARM) thumb2LoadStoreMultiple(opcode uint16) {
 
 					// write register if indicated by regList
 					if regList&m == m {
+						if i == int(Rn) {
+							panic("STMDB/STMDF writeback register is being stored")
+						}
 						arm.write32bit(addr, arm.registers[i])
 						addr += 4
 					}
-				}
-
-				if w == 0x01 {
-					arm.registers[Rn] -= c
 				}
 			}
 		}

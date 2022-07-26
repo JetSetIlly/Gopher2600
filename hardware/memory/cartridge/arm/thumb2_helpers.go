@@ -86,10 +86,10 @@ func ROR_C(imm32 uint32, shift uint32) (uint32, bool) {
 
 // returns result, carry, overflow
 func AddWithCarry(a uint32, b uint32, c uint32) (uint32, bool, bool) {
-	usum := a + b + c
-	ssum := int32(a) + int32(b) + int32(c)
-	result := usum & 0x7fffffff
-	carry := result == usum
-	overflow := int32(result) == ssum
+	usum := uint64(a) + uint64(b) + uint64(c)
+	ssum := int64(a) + int64(b) + int64(c)
+	result := uint32(usum)
+	carry := uint64(result) != usum
+	overflow := int64(result) != ssum
 	return result, carry, overflow
 }
