@@ -86,10 +86,32 @@ func ROR_C(imm32 uint32, shift uint32) (uint32, bool) {
 
 // returns result, carry, overflow
 func AddWithCarry(a uint32, b uint32, c uint32) (uint32, bool, bool) {
-	usum := uint64(a) + uint64(b) + uint64(c)
-	ssum := int64(a) + int64(b) + int64(c)
-	result := uint32(usum)
-	carry := uint64(result) != usum
-	overflow := int64(result) != ssum
-	return result, carry, overflow
+	// the implementation code below is taken from the the isOverflow() and
+	// isCarry() functions used by the plain 16bit Thumb functions.
+	//
+	// the following code is more like the pseudo-code found in the ARMv7-M
+	// references:
+	//
+	// usum := uint64(a) + uint64(b) + uint64(c)
+	// ssum := int32(a) + int32(b) + int32(c)
+	// result := uint32(usum)
+	// carry := uint64(result) != usum
+	// overflow := int32(result) != ssum
+	// return result, carry, overflow
+	//
+	// I prefer the actual implementation code below because there is less type
+	// manipulation, which I think is clearer. None-the-less the reference code
+	// above will work equally well
+
+	d := (a & 0x7fffffff) + (b & 0x7fffffff) + c
+	d = (d >> 31) + (a >> 31) + (b >> 31)
+	carry := d&0x02 == 0x02
+
+	d = (a & 0x7fffffff) + (b & 0x7fffffff) + c
+	d >>= 31
+	e := (d & 0x01) + ((a >> 31) & 0x01) + ((b >> 31) & 0x01)
+	e >>= 1
+	overflow := (d^e)&0x01 == 0x01
+
+	return a + b + c, carry, overflow
 }

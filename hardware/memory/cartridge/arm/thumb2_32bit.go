@@ -89,7 +89,8 @@ func (arm *ARM) thumb2DataProcessingNonImmediate(opcode uint16) {
 
 				switch typ {
 				case 0b00:
-					m := arm.registers[Rm] << (imm5 - 1)
+					// with logical left shift
+					m := uint32(0x01) << (32 - imm5)
 					carry := arm.registers[Rm]&m == m
 					shifted := arm.registers[Rm] << imm5
 					arm.registers[Rd] = arm.registers[Rn] & shifted
@@ -109,8 +110,8 @@ func (arm *ARM) thumb2DataProcessingNonImmediate(opcode uint16) {
 			arm.fudge_thumb2disassemble32bit = "BIC"
 			switch typ {
 			case 0b00:
-				// logical shift left
-				m := arm.registers[Rm] << (imm5 - 1)
+				// with logical left shift
+				m := uint32(0x01) << (32 - imm5)
 				carry := arm.registers[Rm]&m == m
 				shifted := arm.registers[Rm] << imm5
 				arm.registers[Rd] = arm.registers[Rn] & ^shifted
@@ -121,24 +122,16 @@ func (arm *ARM) thumb2DataProcessingNonImmediate(opcode uint16) {
 					// overflow unchanged
 				}
 			case 0b10:
-				// arithmetic shift right
-
-				// whether to set carry bit
-				m := arm.registers[Rm] >> (imm5 - 1)
+				// with arithmetic right shift
+				m := uint32(0x01) << (imm5 - 1)
 				carry := arm.registers[Rm]&m == m
 
-				// extend sign, check for bit
 				signExtend := (arm.registers[Rm] & 0x80000000) >> 31
-
-				// perform actual shift
 				shifted := arm.registers[Rm] >> imm5
-
-				// perform sign extension
 				if signExtend == 0x01 {
 					shifted |= ^uint32(0) << (32 - imm5)
 				}
 
-				// perform bit clear
 				arm.registers[Rd] = arm.registers[Rn] & ^shifted
 
 				if setFlags {
@@ -165,7 +158,7 @@ func (arm *ARM) thumb2DataProcessingNonImmediate(opcode uint16) {
 						// T2 encoding
 						arm.fudge_thumb2disassemble32bit = "LSL (immediate)"
 
-						m := arm.registers[Rm] << (imm5 - 1)
+						m := uint32(0x01) << (32 - imm5)
 						carry := arm.registers[Rm]&m == m
 
 						arm.registers[Rd] = arm.registers[Rm] << imm5
@@ -181,7 +174,7 @@ func (arm *ARM) thumb2DataProcessingNonImmediate(opcode uint16) {
 					// T2 encoding
 					arm.fudge_thumb2disassemble32bit = "LSR (immediate)"
 
-					m := arm.registers[Rm] >> (imm5 - 1)
+					m := uint32(0x01) << (imm5 - 1)
 					carry := arm.registers[Rm]&m == m
 
 					arm.registers[Rd] = arm.registers[Rm] >> imm5
@@ -197,7 +190,7 @@ func (arm *ARM) thumb2DataProcessingNonImmediate(opcode uint16) {
 					arm.fudge_thumb2disassemble32bit = "ASR (immediate)"
 
 					// whether to set carry bit
-					m := arm.registers[Rm] >> (imm5 - 1)
+					m := uint32(0x01) << (imm5 - 1)
 					carry := arm.registers[Rm]&m == m
 
 					// extend sign, check for bit
@@ -232,7 +225,7 @@ func (arm *ARM) thumb2DataProcessingNonImmediate(opcode uint16) {
 			switch typ {
 			case 0b00:
 				// with logical left shift
-				m := arm.registers[Rm] << (imm5 - 1)
+				m := uint32(0x01) << (32 - imm5)
 				carry := arm.registers[Rm]&m == m
 				arm.registers[Rd] = arm.registers[Rn] ^ (arm.registers[Rm] << imm5)
 				if setFlags {
@@ -243,7 +236,7 @@ func (arm *ARM) thumb2DataProcessingNonImmediate(opcode uint16) {
 				}
 			case 0b01:
 				// with logical right shift
-				m := arm.registers[Rm] >> (imm5 - 1)
+				m := uint32(0x01) << (imm5 - 1)
 				carry := arm.registers[Rm]&m == m
 				arm.registers[Rd] = arm.registers[Rn] ^ (arm.registers[Rm] >> imm5)
 				if setFlags {
@@ -414,7 +407,7 @@ func (arm *ARM) thumb2DataProcessingNonImmediate(opcode uint16) {
 				arm.fudge_thumb2disassemble32bit = "LSR (register)"
 
 				// whether to set carry bit
-				m := arm.registers[Rn] >> (shift - 1)
+				m := uint32(0x01) << (shift - 1)
 				carry := arm.registers[Rn]&m == m
 
 				// perform actual shift
@@ -431,7 +424,7 @@ func (arm *ARM) thumb2DataProcessingNonImmediate(opcode uint16) {
 				arm.fudge_thumb2disassemble32bit = "ASR (register)"
 
 				// whether to set carry bit
-				m := arm.registers[Rn] >> (shift - 1)
+				m := uint32(0x01) << (shift - 1)
 				carry := arm.registers[Rn]&m == m
 
 				// extend sign, check for bit
