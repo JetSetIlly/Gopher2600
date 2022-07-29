@@ -366,27 +366,109 @@ func (mem *elfMemory) vcsLdy2() {
 
 // void vcsSta4(uint8_t ZP)
 func (mem *elfMemory) vcsSta4() {
-	panic("vcsSta4")
+	zp := uint8(mem.strongarm.running.registers[0])
+	switch mem.strongarm.running.state {
+	case 0:
+		if mem.injectRomByte(0x8D) {
+			mem.strongarm.running.state++
+		}
+	case 1:
+		if mem.injectRomByte(zp) {
+			mem.strongarm.running.state++
+		}
+	case 2:
+		if mem.injectRomByte(0) {
+			mem.strongarm.running.state++
+		}
+	case 3:
+		if mem.yieldDataBus(uint16(zp)) {
+			mem.endStrongArmFunction()
+		}
+	}
 }
 
 // void vcsStx3(uint8_t ZP)
 func (mem *elfMemory) vcsStx3() {
-	panic("vcsStx3")
+	zp := uint8(mem.strongarm.running.registers[0])
+	switch mem.strongarm.running.state {
+	case 0:
+		if mem.injectRomByte(0x86) {
+			mem.strongarm.running.state++
+		}
+	case 1:
+		if mem.injectRomByte(zp) {
+			mem.strongarm.running.state++
+		}
+	case 2:
+		if mem.yieldDataBus(uint16(zp)) {
+			mem.endStrongArmFunction()
+		}
+	}
 }
 
 // void vcsStx4(uint8_t ZP)
 func (mem *elfMemory) vcsStx4() {
-	panic("vcsStx4")
+	zp := uint8(mem.strongarm.running.registers[0])
+	switch mem.strongarm.running.state {
+	case 0:
+		if mem.injectRomByte(0x8E) {
+			mem.strongarm.running.state++
+		}
+	case 1:
+		if mem.injectRomByte(zp) {
+			mem.strongarm.running.state++
+		}
+	case 2:
+		if mem.injectRomByte(0) {
+			mem.strongarm.running.state++
+		}
+	case 3:
+		if mem.yieldDataBus(uint16(zp)) {
+			mem.endStrongArmFunction()
+		}
+	}
 }
 
 // void vcsSty3(uint8_t ZP)
 func (mem *elfMemory) vcsSty3() {
-	panic("vcsSty3")
+	zp := uint8(mem.strongarm.running.registers[0])
+	switch mem.strongarm.running.state {
+	case 0:
+		if mem.injectRomByte(0x84) {
+			mem.strongarm.running.state++
+		}
+	case 1:
+		if mem.injectRomByte(zp) {
+			mem.strongarm.running.state++
+		}
+	case 2:
+		if mem.yieldDataBus(uint16(zp)) {
+			mem.endStrongArmFunction()
+		}
+	}
 }
 
 // void vcsSty4(uint8_t ZP)
 func (mem *elfMemory) vcsSty4() {
-	panic("vcsSty4")
+	zp := uint8(mem.strongarm.running.registers[0])
+	switch mem.strongarm.running.state {
+	case 0:
+		if mem.injectRomByte(0x8C) {
+			mem.strongarm.running.state++
+		}
+	case 1:
+		if mem.injectRomByte(zp) {
+			mem.strongarm.running.state++
+		}
+	case 2:
+		if mem.injectRomByte(0) {
+			mem.strongarm.running.state++
+		}
+	case 3:
+		if mem.yieldDataBus(uint16(zp)) {
+			mem.endStrongArmFunction()
+		}
+	}
 }
 
 // void vcsTxs2()
