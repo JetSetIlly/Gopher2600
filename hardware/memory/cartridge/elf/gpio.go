@@ -37,7 +37,19 @@ type gpio struct {
 	lookupMemtop uint32
 }
 
-func newGPIO() gpio {
+// Snapshot implements the mapper.CartMapper interface.
+func (g *gpio) Snapshot() *gpio {
+	n := *g
+	n.A = make([]byte, gpio_memtop)
+	n.B = make([]byte, gpio_memtop)
+	n.lookup = make([]byte, gpio_memtop)
+	copy(n.A, g.A)
+	copy(n.B, g.B)
+	copy(n.lookup, g.lookup)
+	return &n
+}
+
+func newGPIO() *gpio {
 	g := gpio{
 		A:       make([]byte, gpio_memtop),
 		AOrigin: 0x0000100,
@@ -69,5 +81,5 @@ func newGPIO() gpio {
 	// default NOP instruction for opcode
 	g.B[fromArm_Opcode] = 0xea
 
-	return g
+	return &g
 }

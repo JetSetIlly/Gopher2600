@@ -38,6 +38,14 @@ type elfSection struct {
 	memtop uint32
 }
 
+// Snapshot implements the mapper.CartMapper interface.
+func (s *elfSection) Snapshot() *elfSection {
+	n := *s
+	n.data = make([]byte, len(s.data))
+	copy(n.data, s.data)
+	return &n
+}
+
 type elfMemory struct {
 	model   memorymodel.Map
 	resetSP uint32
@@ -45,10 +53,10 @@ type elfMemory struct {
 	resetPC uint32
 
 	// input/output pins
-	gpio gpio
+	gpio *gpio
 
 	// the different sections of the loaded ELF binary
-	sections map[string]elfSection
+	sections map[string]*elfSection
 
 	// RAM memory for the ARM
 	sram       []byte
@@ -80,7 +88,7 @@ type elfMemory struct {
 func newElfMemory(f *elf.File) (*elfMemory, error) {
 	mem := &elfMemory{
 		gpio:     newGPIO(),
-		sections: make(map[string]elfSection),
+		sections: make(map[string]*elfSection),
 		args:     make([]byte, argMemtop-argOrigin),
 	}
 
@@ -100,7 +108,7 @@ func newElfMemory(f *elf.File) (*elfMemory, error) {
 		case elf.SHT_NOBITS:
 			fallthrough
 		case elf.SHT_PROGBITS:
-			section := elfSection{
+			section := &elfSection{
 				name: sec.Name,
 			}
 
@@ -156,7 +164,7 @@ func newElfMemory(f *elf.File) (*elfMemory, error) {
 		}
 
 		// section being relocated. we should really be using the link field of the elf.Section for this
-		var secBeingRelocated elfSection
+		var secBeingRelocated *elfSection
 		if s, ok := mem.sections[relsec.Name[4:]]; !ok {
 			return nil, curated.Errorf("ELF: could not find section corresponding to %s", relsec.Name)
 		} else {
@@ -201,63 +209,63 @@ func newElfMemory(f *elf.File) (*elfMemory, error) {
 
 				// strongARM functions
 				case "vcsWrite3":
-					v = mem.relocateStrongArmFunction(mem.vcsWrite3)
+					v = mem.relocateStrongArmFunction(vcsWrite3)
 					mem.usesBusStuffing = true
 				case "vcsJmp3":
-					v = mem.relocateStrongArmFunction(mem.vcsJmp3)
+					v = mem.relocateStrongArmFunction(vcsJmp3)
 				case "vcsLda2":
-					v = mem.relocateStrongArmFunction(mem.vcsLda2)
+					v = mem.relocateStrongArmFunction(vcsLda2)
 				case "vcsSta3":
-					v = mem.relocateStrongArmFunction(mem.vcsSta3)
+					v = mem.relocateStrongArmFunction(vcsSta3)
 				case "SnoopDataBus":
-					v = mem.relocateStrongArmFunction(mem.snoopDataBus)
+					v = mem.relocateStrongArmFunction(snoopDataBus)
 				case "vcsRead4":
-					v = mem.relocateStrongArmFunction(mem.vcsRead4)
+					v = mem.relocateStrongArmFunction(vcsRead4)
 				case "vcsStartOverblank":
-					v = mem.relocateStrongArmFunction(mem.vcsStartOverblank)
+					v = mem.relocateStrongArmFunction(vcsStartOverblank)
 				case "vcsEndOverblank":
-					v = mem.relocateStrongArmFunction(mem.vcsEndOverblank)
+					v = mem.relocateStrongArmFunction(vcsEndOverblank)
 				case "vcsLdaForBusStuff2":
-					v = mem.relocateStrongArmFunction(mem.vcsLdaForBusStuff2)
+					v = mem.relocateStrongArmFunction(vcsLdaForBusStuff2)
 				case "vcsLdxForBusStuff2":
-					v = mem.relocateStrongArmFunction(mem.vcsLdxForBusStuff2)
+					v = mem.relocateStrongArmFunction(vcsLdxForBusStuff2)
 				case "vcsLdyForBusStuff2":
-					v = mem.relocateStrongArmFunction(mem.vcsLdyForBusStuff2)
+					v = mem.relocateStrongArmFunction(vcsLdyForBusStuff2)
 				case "vcsWrite5":
-					v = mem.relocateStrongArmFunction(mem.vcsWrite5)
+					v = mem.relocateStrongArmFunction(vcsWrite5)
 				case "vcsLdx2":
-					v = mem.relocateStrongArmFunction(mem.vcsLdx2)
+					v = mem.relocateStrongArmFunction(vcsLdx2)
 				case "vcsLdy2":
-					v = mem.relocateStrongArmFunction(mem.vcsLdy2)
+					v = mem.relocateStrongArmFunction(vcsLdy2)
 				case "vcsSta4":
-					v = mem.relocateStrongArmFunction(mem.vcsSta4)
+					v = mem.relocateStrongArmFunction(vcsSta4)
 				case "vcsStx3":
-					v = mem.relocateStrongArmFunction(mem.vcsStx3)
+					v = mem.relocateStrongArmFunction(vcsStx3)
 				case "vcsStx4":
-					v = mem.relocateStrongArmFunction(mem.vcsStx4)
+					v = mem.relocateStrongArmFunction(vcsStx4)
 				case "vcsSty3":
-					v = mem.relocateStrongArmFunction(mem.vcsSty3)
+					v = mem.relocateStrongArmFunction(vcsSty3)
 				case "vcsSty4":
-					v = mem.relocateStrongArmFunction(mem.vcsSty4)
+					v = mem.relocateStrongArmFunction(vcsSty4)
 				case "vcsTxs2":
-					v = mem.relocateStrongArmFunction(mem.vcsTxs2)
+					v = mem.relocateStrongArmFunction(vcsTxs2)
 				case "vcsJsr6":
-					v = mem.relocateStrongArmFunction(mem.vcsJsr6)
+					v = mem.relocateStrongArmFunction(vcsJsr6)
 				case "vcsNop2":
-					v = mem.relocateStrongArmFunction(mem.vcsNop2)
+					v = mem.relocateStrongArmFunction(vcsNop2)
 				case "vcsNop2n":
-					v = mem.relocateStrongArmFunction(mem.vcsNop2n)
+					v = mem.relocateStrongArmFunction(vcsNop2n)
 				case "vcsCopyOverblankToRiotRam":
-					v = mem.relocateStrongArmFunction(mem.vcsCopyOverblankToRiotRam)
+					v = mem.relocateStrongArmFunction(vcsCopyOverblankToRiotRam)
 
 				// C library functions that are often not linked but required
 				case "memset":
-					v = mem.relocateStrongArmFunction(mem.memset)
+					v = mem.relocateStrongArmFunction(memset)
 				case "memcpy":
-					v = mem.relocateStrongArmFunction(mem.memcpy)
+					v = mem.relocateStrongArmFunction(memcpy)
 				case "__aeabi_idiv":
 					// sometimes linked when building for ARMv6-M target
-					v = mem.relocateStrongArmFunction(mem.__aeabi_idiv)
+					v = mem.relocateStrongArmFunction(__aeabi_idiv)
 
 				// strongARM tables
 				case "ReverseByte":
@@ -434,9 +442,40 @@ func (mem *elfMemory) relocateStrongArmFunction(f strongArmFunction) uint32 {
 	return addr
 }
 
+// Snapshot implements the mapper.CartMapper interface.
 func (mem *elfMemory) Snapshot() *elfMemory {
 	m := *mem
+
+	m.gpio = mem.gpio.Snapshot()
+
+	m.sections = make(map[string]*elfSection)
+	for k := range mem.sections {
+		m.sections[k] = mem.sections[k].Snapshot()
+	}
+
+	m.sram = make([]byte, len(mem.sram))
+	copy(m.sram, mem.sram)
+
+	m.strongArmProgram = make([]byte, len(mem.strongArmProgram))
+	copy(m.strongArmProgram, mem.strongArmProgram)
+
+	m.strongArmFunctions = make(map[uint32]strongArmFunction)
+	for k := range mem.strongArmFunctions {
+		m.strongArmFunctions[k] = mem.strongArmFunctions[k]
+	}
+
+	// not sure we need to copy args because they shouldn't change after the
+	// initial setup of the ARM - the setup will never run again even if the
+	// rewind reaches the very beginning of the history
+	m.args = make([]byte, len(mem.args))
+	copy(m.args, mem.args)
+
 	return &m
+}
+
+// Plumb implements the mapper.CartMapper interface.
+func (mem *elfMemory) Plumb(arm yieldARM) {
+	mem.arm = arm
 }
 
 // MapAddress implements the arm.SharedMemory interface.

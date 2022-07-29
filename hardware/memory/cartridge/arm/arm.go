@@ -318,11 +318,33 @@ func (arm *ARM) SetDeveloper(dev mapper.CartCoProcDeveloper) {
 	arm.dev = dev
 }
 
+// Snapshort makes a copy of the ARM. The copied instance will not be usable
+// until after a suitable call to Plumb().
+func (arm *ARM) Snapshot() *ARM {
+	a := *arm
+	return &a
+}
+
 // Plumb should be used to update the shared memory reference.
 // Useful when used in conjunction with the rewind system.
 func (arm *ARM) Plumb(mem SharedMemory, hook CartridgeHook) {
 	arm.mem = mem
 	arm.hook = hook
+
+	// clear execution map because the pointers will be pointing to the old
+	// instance of the ARM. we don't need to clear the disasmCache
+	//
+	// this must be done before the call to findProgramMemory below
+	arm.executionMap = make(map[uint32][]func(_ uint16))
+
+	// find program memory which might have changed location along with the new
+	// ARM instance
+	//
+	// more importantly the functionMap will be reset as part of this process
+	err := arm.findProgramMemory()
+	if err != nil {
+		panic(err)
+	}
 }
 
 // ClearCaches should be used very rarely. It empties the instruction and
@@ -834,6 +856,9 @@ func (arm *ARM) run() (float32, error) {
 
 		// abort if a watch has been triggered
 		if arm.yield {
+			if arm.function32bit {
+				panic("attempted to yield during 32bit instruction decoding")
+			}
 			break
 		}
 

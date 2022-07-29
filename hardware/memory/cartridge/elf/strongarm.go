@@ -20,8 +20,10 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
-// signature of a strongarm function
-type strongArmFunction func()
+// signature of a strongarm function. a pointer to an instance of elfMemory is
+// passed as an argument, rather than the function being a memory of elfMemory.
+// this makes the Plumb() function far simpler.
+type strongArmFunction func(*elfMemory)
 
 type strongArmFunctionState struct {
 	function  strongArmFunction
@@ -59,6 +61,524 @@ type strongArmState struct {
 var strongArmStub = []byte{
 	0x70, 0x47, // BX LR
 	0x00, 0x00,
+}
+
+func (mem *elfMemory) setNextRomAddress(addr uint16) {
+	mem.strongarm.nextRomAddress = addr & memorymap.Memtop
+}
+
+func (mem *elfMemory) injectRomByte(v uint8) bool {
+	addrIn := uint16(mem.gpio.A[toArm_address])
+	addrIn |= uint16(mem.gpio.A[toArm_address+1]) << 8
+	addrIn &= memorymap.Memtop
+
+	if addrIn != mem.strongarm.nextRomAddress {
+		return false
+	}
+
+	mem.gpio.B[fromArm_Opcode] = v
+	mem.strongarm.nextRomAddress++
+
+	return true
+}
+
+func (mem *elfMemory) yieldDataBus(addr uint16) bool {
+	addrIn := uint16(mem.gpio.A[toArm_address])
+	addrIn |= uint16(mem.gpio.A[toArm_address+1]) << 8
+	addrIn &= memorymap.Memtop
+
+	if addrIn != addr {
+		return false
+	}
+
+	return true
+}
+
+// void vcsWrite3(uint8_t ZP, uint8_t data)
+func vcsWrite3(mem *elfMemory) {
+	zp := uint8(mem.strongarm.running.registers[0])
+	data := uint8(mem.strongarm.running.registers[1])
+	switch mem.strongarm.running.state {
+	case 0:
+		if mem.injectRomByte(mem.strongarm.opcodeLookup[data]) {
+			mem.strongarm.running.state++
+		}
+	case 1:
+		mem.busStuff = true
+		mem.busStuffData = data
+		if mem.injectRomByte(zp) {
+			mem.strongarm.running.state++
+		}
+	case 2:
+		if mem.yieldDataBus(uint16(zp)) {
+			mem.busStuff = false
+			mem.endStrongArmFunction()
+		}
+	}
+}
+
+// void vcsJmp3()
+func vcsJmp3(mem *elfMemory) {
+	switch mem.strongarm.running.state {
+	case 0:
+		if mem.injectRomByte(0x4c) {
+			mem.strongarm.running.state++
+		}
+	case 1:
+		if mem.injectRomByte(0x00) {
+			mem.strongarm.running.state++
+		}
+	case 2:
+		if mem.injectRomByte(0x10) {
+			mem.endStrongArmFunction()
+			mem.setNextRomAddress(0x1000)
+		}
+	}
+}
+
+// void vcsLda2(uint8_t data)
+func vcsLda2(mem *elfMemory) {
+	data := uint8(mem.strongarm.running.registers[0])
+	switch mem.strongarm.running.state {
+	case 0:
+		if mem.injectRomByte(0xa9) {
+			mem.strongarm.running.state++
+		}
+	case 1:
+		if mem.injectRomByte(data) {
+			mem.endStrongArmFunction()
+		}
+	}
+}
+
+// void vcsSta3(uint8_t ZP)
+func vcsSta3(mem *elfMemory) {
+	zp := uint8(mem.strongarm.running.registers[0])
+	switch mem.strongarm.running.state {
+	case 0:
+		if mem.injectRomByte(0x85) {
+			mem.strongarm.running.state++
+		}
+	case 1:
+		if mem.injectRomByte(zp) {
+			mem.strongarm.running.state++
+		}
+	case 2:
+		if mem.yieldDataBus(uint16(zp)) {
+			mem.endStrongArmFunction()
+		}
+	}
+}
+
+// uint8_t snoopDataBus(uint16_t address)
+func snoopDataBus(mem *elfMemory) {
+	addrIn := uint16(mem.gpio.A[toArm_address])
+	addrIn |= uint16(mem.gpio.A[toArm_address+1]) << 8
+	addrIn &= memorymap.Memtop
+
+	switch mem.strongarm.running.state {
+	case 0:
+		if addrIn == mem.strongarm.nextRomAddress {
+			mem.strongarm.running.registers[0] = uint32(mem.gpio.B[toArm_data])
+			mem.arm.SetRegisters(mem.strongarm.running.registers)
+			mem.endStrongArmFunction()
+		}
+	}
+
+	// note that this implementation of snoopDataBus is missing the "give
+	// peripheral time to respond" loop that we see in the real vcsLib
+}
+
+// uint8_t vcsRead4(uint16_t address)
+func vcsRead4(mem *elfMemory) {
+	address := uint16(mem.strongarm.running.registers[0])
+	address &= memorymap.Memtop
+
+	switch mem.strongarm.running.state {
+	case 0:
+		if mem.injectRomByte(0xad) {
+			mem.strongarm.running.state++
+		}
+	case 1:
+		if mem.injectRomByte(uint8(address)) {
+			mem.strongarm.running.state++
+		}
+	case 2:
+		if mem.injectRomByte(uint8(address >> 8)) {
+			mem.setStrongArmFunction(snoopDataBus)
+			mem.strongarm.running.function(mem)
+		}
+	}
+}
+
+// void vcsStartOverblank()
+func vcsStartOverblank(mem *elfMemory) {
+	switch mem.strongarm.running.state {
+	case 0:
+		if mem.injectRomByte(0x4c) {
+			mem.strongarm.running.state++
+		}
+	case 1:
+		if mem.injectRomByte(0x80) {
+			mem.strongarm.running.state++
+		}
+	case 2:
+		if mem.injectRomByte(0x00) {
+			mem.strongarm.running.state++
+		}
+	case 3:
+		if mem.yieldDataBus(uint16(0x0080)) {
+			mem.endStrongArmFunction()
+		}
+	}
+}
+
+// void vcsEndOverblank()
+func vcsEndOverblank(mem *elfMemory) {
+	switch mem.strongarm.running.state {
+	case 0:
+		mem.setNextRomAddress(0x1fff)
+		if mem.injectRomByte(0x00) {
+			mem.strongarm.running.state++
+		}
+	case 1:
+		if mem.yieldDataBus(uint16(0x00ac)) {
+			mem.setNextRomAddress(0x1000)
+			mem.endStrongArmFunction()
+		}
+	}
+}
+
+// void vcsLdaForBusStuff2()
+func vcsLdaForBusStuff2(mem *elfMemory) {
+	mem.setStrongArmFunction(vcsLda2, 0xff)
+	mem.strongarm.running.function(mem)
+}
+
+// void vcsLdxForBusStuff2()
+func vcsLdxForBusStuff2(mem *elfMemory) {
+	mem.setStrongArmFunction(vcsLdx2, 0xff)
+	mem.strongarm.running.function(mem)
+}
+
+// void vcsLdyForBusStuff2()
+func vcsLdyForBusStuff2(mem *elfMemory) {
+	mem.setStrongArmFunction(vcsLdy2, 0xff)
+	mem.strongarm.running.function(mem)
+}
+
+// void vcsWrite5(uint8_t ZP, uint8_t data)
+func vcsWrite5(mem *elfMemory) {
+	zp := uint8(mem.strongarm.running.registers[0])
+	data := uint8(mem.strongarm.running.registers[1])
+	switch mem.strongarm.running.state {
+	case 0:
+		if mem.injectRomByte(0xa9) {
+			mem.strongarm.running.state++
+		}
+	case 1:
+		if mem.injectRomByte(data) {
+			mem.strongarm.running.state++
+		}
+	case 2:
+		if mem.injectRomByte(0x85) {
+			mem.strongarm.running.state++
+		}
+	case 3:
+		if mem.injectRomByte(zp) {
+			mem.strongarm.running.state++
+		}
+	case 4:
+		if mem.yieldDataBus(uint16(zp)) {
+			mem.endStrongArmFunction()
+		}
+	}
+}
+
+// void vcsLdx2(uint8_t data)
+func vcsLdx2(mem *elfMemory) {
+	data := uint8(mem.strongarm.running.registers[0])
+	switch mem.strongarm.running.state {
+	case 0:
+		if mem.injectRomByte(0xa2) {
+			mem.strongarm.running.state++
+		}
+	case 1:
+		if mem.injectRomByte(data) {
+			mem.endStrongArmFunction()
+		}
+	}
+}
+
+// void vcsLdy2(uint8_t data)
+func vcsLdy2(mem *elfMemory) {
+	data := uint8(mem.strongarm.running.registers[0])
+	switch mem.strongarm.running.state {
+	case 0:
+		if mem.injectRomByte(0xa0) {
+			mem.strongarm.running.state++
+		}
+	case 1:
+		if mem.injectRomByte(data) {
+			mem.endStrongArmFunction()
+		}
+	}
+}
+
+// void vcsSta4(uint8_t ZP)
+func vcsSta4(mem *elfMemory) {
+	zp := uint8(mem.strongarm.running.registers[0])
+	switch mem.strongarm.running.state {
+	case 0:
+		if mem.injectRomByte(0x8d) {
+			mem.strongarm.running.state++
+		}
+	case 1:
+		if mem.injectRomByte(zp) {
+			mem.strongarm.running.state++
+		}
+	case 2:
+		if mem.injectRomByte(0) {
+			mem.strongarm.running.state++
+		}
+	case 3:
+		if mem.yieldDataBus(uint16(zp)) {
+			mem.endStrongArmFunction()
+		}
+	}
+}
+
+// void vcsStx3(uint8_t ZP)
+func vcsStx3(mem *elfMemory) {
+	zp := uint8(mem.strongarm.running.registers[0])
+	switch mem.strongarm.running.state {
+	case 0:
+		if mem.injectRomByte(0x86) {
+			mem.strongarm.running.state++
+		}
+	case 1:
+		if mem.injectRomByte(zp) {
+			mem.strongarm.running.state++
+		}
+	case 2:
+		if mem.yieldDataBus(uint16(zp)) {
+			mem.endStrongArmFunction()
+		}
+	}
+}
+
+// void vcsStx4(uint8_t ZP)
+func vcsStx4(mem *elfMemory) {
+	zp := uint8(mem.strongarm.running.registers[0])
+	switch mem.strongarm.running.state {
+	case 0:
+		if mem.injectRomByte(0x8e) {
+			mem.strongarm.running.state++
+		}
+	case 1:
+		if mem.injectRomByte(zp) {
+			mem.strongarm.running.state++
+		}
+	case 2:
+		if mem.injectRomByte(0) {
+			mem.strongarm.running.state++
+		}
+	case 3:
+		if mem.yieldDataBus(uint16(zp)) {
+			mem.endStrongArmFunction()
+		}
+	}
+}
+
+// void vcsSty3(uint8_t ZP)
+func vcsSty3(mem *elfMemory) {
+	zp := uint8(mem.strongarm.running.registers[0])
+	switch mem.strongarm.running.state {
+	case 0:
+		if mem.injectRomByte(0x84) {
+			mem.strongarm.running.state++
+		}
+	case 1:
+		if mem.injectRomByte(zp) {
+			mem.strongarm.running.state++
+		}
+	case 2:
+		if mem.yieldDataBus(uint16(zp)) {
+			mem.endStrongArmFunction()
+		}
+	}
+}
+
+// void vcsSty4(uint8_t ZP)
+func vcsSty4(mem *elfMemory) {
+	zp := uint8(mem.strongarm.running.registers[0])
+	switch mem.strongarm.running.state {
+	case 0:
+		if mem.injectRomByte(0x8c) {
+			mem.strongarm.running.state++
+		}
+	case 1:
+		if mem.injectRomByte(zp) {
+			mem.strongarm.running.state++
+		}
+	case 2:
+		if mem.injectRomByte(0) {
+			mem.strongarm.running.state++
+		}
+	case 3:
+		if mem.yieldDataBus(uint16(zp)) {
+			mem.endStrongArmFunction()
+		}
+	}
+}
+
+// void vcsTxs2()
+func vcsTxs2(mem *elfMemory) {
+	panic("vcsTxs2")
+}
+
+// void vcsJsr6(uint16_t target)
+func vcsJsr6(mem *elfMemory) {
+	switch mem.strongarm.running.state {
+	case 0:
+		if mem.injectRomByte(0x20) {
+			mem.strongarm.running.state++
+		}
+	case 1:
+		if mem.injectRomByte(uint8(mem.strongarm.running.registers[0])) {
+			mem.strongarm.running.state++
+		}
+	case 2:
+		if mem.injectRomByte(uint8(mem.strongarm.running.registers[0] >> 8)) {
+			mem.gpio.A[toArm_address] = uint8(mem.strongarm.running.registers[0])
+			mem.gpio.A[toArm_address+1] = uint8(mem.strongarm.running.registers[0] >> 8)
+			mem.gpio.A[toArm_address+2] = uint8(mem.strongarm.running.registers[0] >> 16)
+			mem.gpio.A[toArm_address+3] = uint8(mem.strongarm.running.registers[0] >> 24)
+
+			mem.endStrongArmFunction()
+		}
+	}
+}
+
+// void vcsNop2()
+func vcsNop2(mem *elfMemory) {
+	switch mem.strongarm.running.state {
+	case 0:
+		if mem.injectRomByte(0xea) {
+			mem.endStrongArmFunction()
+		}
+	}
+}
+
+// void vcsNop2n(uint16_t n)
+func vcsNop2n(mem *elfMemory) {
+	switch mem.strongarm.running.state {
+	case 0:
+		if mem.injectRomByte(0xea) {
+			mem.strongarm.nextRomAddress += uint16(mem.strongarm.running.registers[0]) - 1
+			mem.endStrongArmFunction()
+		}
+	}
+}
+
+// void vcsCopyOverblankToRiotRam()
+func vcsCopyOverblankToRiotRam(mem *elfMemory) {
+	switch mem.strongarm.running.state {
+	case 0:
+		if mem.strongarm.running.counter >= len(overblank) {
+			mem.endStrongArmFunction()
+			return
+		}
+		mem.strongarm.running.state++
+		mem.strongarm.running.subCounter = 0
+		fallthrough
+	case 1:
+		switch mem.strongarm.running.subCounter {
+		case 0:
+			if mem.injectRomByte(0xa9) {
+				mem.strongarm.running.subCounter++
+			}
+		case 1:
+			if mem.injectRomByte(overblank[mem.strongarm.running.counter]) {
+				mem.strongarm.running.subCounter++
+			}
+		case 2:
+			if mem.injectRomByte(0x85) {
+				mem.strongarm.running.subCounter++
+			}
+		case 3:
+			if mem.injectRomByte(uint8(0x80 + mem.strongarm.running.counter)) {
+				mem.strongarm.running.subCounter++
+			}
+		case 4:
+			if mem.yieldDataBus(uint16(0x80 + mem.strongarm.running.counter)) {
+				mem.strongarm.running.counter++
+				mem.strongarm.running.state = 0
+			}
+		}
+	}
+}
+
+func vcsEmulationInit(mem *elfMemory) {
+	switch mem.strongarm.running.state {
+	case 0:
+		mem.gpio.B[fromArm_Opcode] = 0x00
+		mem.strongarm.running.state++
+	case 1:
+		mem.strongarm.running.state++
+	case 2:
+		mem.strongarm.running.state++
+	case 3:
+		mem.gpio.B[fromArm_Opcode] = 0x10
+		mem.setNextRomAddress(0x1000)
+		mem.endStrongArmFunction()
+	}
+}
+
+func (str *strongArmState) updateLookupTables() {
+	for i := 0; i < 256; i++ {
+		if uint8(i)&str.correctionMaskHi == str.correctionMaskHi {
+			if uint8(i)&str.correctionMaskLo == str.correctionMaskLo {
+				str.opcodeLookup[i] = 0x84
+			} else {
+				str.opcodeLookup[i] = 0x86
+			}
+		} else {
+			if uint8(i)&str.correctionMaskLo == str.correctionMaskLo {
+				str.opcodeLookup[i] = 0x85
+			} else {
+				str.opcodeLookup[i] = 0x87
+			}
+		}
+
+		mode := uint8(i) ^ str.lowMask
+
+		// never drive the bits that get corrected by opcodes above
+		mode &= ^str.correctionMaskLo
+		mode &= ^str.correctionMaskHi
+
+		str.modeLookup[i] = ((mode & 0x80) << 7) |
+			((mode & 0x40) << 6) |
+			((mode & 0x20) << 5) |
+			((mode & 0x10) << 4) |
+			((mode & 0x08) << 3) |
+			((mode & 0x04) << 2) |
+			((mode & 0x02) << 1) |
+			(mode & 0x01)
+	}
+}
+
+// initialise state rady for bus stuffing. we know bus stuffing is used if the
+// vcsWrite3() function has been detected (during relocation).
+func (mem *elfMemory) busStuffingInit() {
+	if !mem.usesBusStuffing {
+		return
+	}
+
+	mem.strongarm.lowMask = 0xff
+	mem.strongarm.correctionMaskHi = 0x00
+	mem.strongarm.correctionMaskLo = 0x00
+	mem.strongarm.updateLookupTables()
 }
 
 // setStrongArmFunction initialises the next function to run. it takes a copy
@@ -100,520 +620,4 @@ func (mem *elfMemory) pushStrongArmFunction(f strongArmFunction, args ...uint32)
 
 	mem.strongarm.pushed = mem.strongarm.running
 	mem.setStrongArmFunction(f, args...)
-}
-
-func (mem *elfMemory) setNextRomAddress(addr uint16) {
-	mem.strongarm.nextRomAddress = addr & memorymap.Memtop
-}
-
-func (mem *elfMemory) injectRomByte(v uint8) bool {
-	addrIn := uint16(mem.gpio.A[toArm_address])
-	addrIn |= uint16(mem.gpio.A[toArm_address+1]) << 8
-	addrIn &= memorymap.Memtop
-
-	if addrIn != mem.strongarm.nextRomAddress {
-		return false
-	}
-
-	mem.gpio.B[fromArm_Opcode] = v
-	mem.strongarm.nextRomAddress++
-
-	return true
-}
-
-func (mem *elfMemory) yieldDataBus(addr uint16) bool {
-	addrIn := uint16(mem.gpio.A[toArm_address])
-	addrIn |= uint16(mem.gpio.A[toArm_address+1]) << 8
-	addrIn &= memorymap.Memtop
-
-	if addrIn != addr {
-		return false
-	}
-
-	return true
-}
-
-// void vcsWrite3(uint8_t ZP, uint8_t data)
-func (mem *elfMemory) vcsWrite3() {
-	zp := uint8(mem.strongarm.running.registers[0])
-	data := uint8(mem.strongarm.running.registers[1])
-	switch mem.strongarm.running.state {
-	case 0:
-		if mem.injectRomByte(mem.strongarm.opcodeLookup[data]) {
-			mem.strongarm.running.state++
-		}
-	case 1:
-		mem.busStuff = true
-		mem.busStuffData = data
-		if mem.injectRomByte(zp) {
-			mem.strongarm.running.state++
-		}
-	case 2:
-		if mem.yieldDataBus(uint16(zp)) {
-			mem.busStuff = false
-			mem.endStrongArmFunction()
-		}
-	}
-}
-
-// void vcsJmp3()
-func (mem *elfMemory) vcsJmp3() {
-	switch mem.strongarm.running.state {
-	case 0:
-		if mem.injectRomByte(0x4c) {
-			mem.strongarm.running.state++
-		}
-	case 1:
-		if mem.injectRomByte(0x00) {
-			mem.strongarm.running.state++
-		}
-	case 2:
-		if mem.injectRomByte(0x10) {
-			mem.endStrongArmFunction()
-			mem.setNextRomAddress(0x1000)
-		}
-	}
-}
-
-// void vcsLda2(uint8_t data)
-func (mem *elfMemory) vcsLda2() {
-	data := uint8(mem.strongarm.running.registers[0])
-	switch mem.strongarm.running.state {
-	case 0:
-		if mem.injectRomByte(0xa9) {
-			mem.strongarm.running.state++
-		}
-	case 1:
-		if mem.injectRomByte(data) {
-			mem.endStrongArmFunction()
-		}
-	}
-}
-
-// void vcsSta3(uint8_t ZP)
-func (mem *elfMemory) vcsSta3() {
-	zp := uint8(mem.strongarm.running.registers[0])
-	switch mem.strongarm.running.state {
-	case 0:
-		if mem.injectRomByte(0x85) {
-			mem.strongarm.running.state++
-		}
-	case 1:
-		if mem.injectRomByte(zp) {
-			mem.strongarm.running.state++
-		}
-	case 2:
-		if mem.yieldDataBus(uint16(zp)) {
-			mem.endStrongArmFunction()
-		}
-	}
-}
-
-// uint8_t snoopDataBus(uint16_t address)
-func (mem *elfMemory) snoopDataBus() {
-	addrIn := uint16(mem.gpio.A[toArm_address])
-	addrIn |= uint16(mem.gpio.A[toArm_address+1]) << 8
-	addrIn &= memorymap.Memtop
-
-	switch mem.strongarm.running.state {
-	case 0:
-		if addrIn == mem.strongarm.nextRomAddress {
-			mem.strongarm.running.registers[0] = uint32(mem.gpio.B[toArm_data])
-			mem.arm.SetRegisters(mem.strongarm.running.registers)
-			mem.endStrongArmFunction()
-		}
-	}
-
-	// note that this implementation of snoopDataBus is missing the "give
-	// peripheral time to respond" loop that we see in the real vcsLib
-}
-
-// uint8_t vcsRead4(uint16_t address)
-func (mem *elfMemory) vcsRead4() {
-	address := uint16(mem.strongarm.running.registers[0])
-	address &= memorymap.Memtop
-
-	switch mem.strongarm.running.state {
-	case 0:
-		if mem.injectRomByte(0xad) {
-			mem.strongarm.running.state++
-		}
-	case 1:
-		if mem.injectRomByte(uint8(address)) {
-			mem.strongarm.running.state++
-		}
-	case 2:
-		if mem.injectRomByte(uint8(address >> 8)) {
-			mem.setStrongArmFunction(mem.snoopDataBus)
-			mem.strongarm.running.function()
-		}
-	}
-}
-
-// void vcsStartOverblank()
-func (mem *elfMemory) vcsStartOverblank() {
-	switch mem.strongarm.running.state {
-	case 0:
-		if mem.injectRomByte(0x4c) {
-			mem.strongarm.running.state++
-		}
-	case 1:
-		if mem.injectRomByte(0x80) {
-			mem.strongarm.running.state++
-		}
-	case 2:
-		if mem.injectRomByte(0x00) {
-			mem.strongarm.running.state++
-		}
-	case 3:
-		if mem.yieldDataBus(uint16(0x0080)) {
-			mem.endStrongArmFunction()
-		}
-	}
-}
-
-// void vcsEndOverblank()
-func (mem *elfMemory) vcsEndOverblank() {
-	switch mem.strongarm.running.state {
-	case 0:
-		mem.setNextRomAddress(0x1fff)
-		if mem.injectRomByte(0x00) {
-			mem.strongarm.running.state++
-		}
-	case 1:
-		if mem.yieldDataBus(uint16(0x00ac)) {
-			mem.setNextRomAddress(0x1000)
-			mem.endStrongArmFunction()
-		}
-	}
-}
-
-// void vcsLdaForBusStuff2()
-func (mem *elfMemory) vcsLdaForBusStuff2() {
-	mem.setStrongArmFunction(mem.vcsLda2, 0xff)
-	mem.strongarm.running.function()
-}
-
-// void vcsLdxForBusStuff2()
-func (mem *elfMemory) vcsLdxForBusStuff2() {
-	mem.setStrongArmFunction(mem.vcsLdx2, 0xff)
-	mem.strongarm.running.function()
-}
-
-// void vcsLdyForBusStuff2()
-func (mem *elfMemory) vcsLdyForBusStuff2() {
-	mem.setStrongArmFunction(mem.vcsLdy2, 0xff)
-	mem.strongarm.running.function()
-}
-
-// void vcsWrite5(uint8_t ZP, uint8_t data)
-func (mem *elfMemory) vcsWrite5() {
-	zp := uint8(mem.strongarm.running.registers[0])
-	data := uint8(mem.strongarm.running.registers[1])
-	switch mem.strongarm.running.state {
-	case 0:
-		if mem.injectRomByte(0xa9) {
-			mem.strongarm.running.state++
-		}
-	case 1:
-		if mem.injectRomByte(data) {
-			mem.strongarm.running.state++
-		}
-	case 2:
-		if mem.injectRomByte(0x85) {
-			mem.strongarm.running.state++
-		}
-	case 3:
-		if mem.injectRomByte(zp) {
-			mem.strongarm.running.state++
-		}
-	case 4:
-		if mem.yieldDataBus(uint16(zp)) {
-			mem.endStrongArmFunction()
-		}
-	}
-}
-
-// void vcsLdx2(uint8_t data)
-func (mem *elfMemory) vcsLdx2() {
-	data := uint8(mem.strongarm.running.registers[0])
-	switch mem.strongarm.running.state {
-	case 0:
-		if mem.injectRomByte(0xa2) {
-			mem.strongarm.running.state++
-		}
-	case 1:
-		if mem.injectRomByte(data) {
-			mem.endStrongArmFunction()
-		}
-	}
-}
-
-// void vcsLdy2(uint8_t data)
-func (mem *elfMemory) vcsLdy2() {
-	data := uint8(mem.strongarm.running.registers[0])
-	switch mem.strongarm.running.state {
-	case 0:
-		if mem.injectRomByte(0xa0) {
-			mem.strongarm.running.state++
-		}
-	case 1:
-		if mem.injectRomByte(data) {
-			mem.endStrongArmFunction()
-		}
-	}
-}
-
-// void vcsSta4(uint8_t ZP)
-func (mem *elfMemory) vcsSta4() {
-	zp := uint8(mem.strongarm.running.registers[0])
-	switch mem.strongarm.running.state {
-	case 0:
-		if mem.injectRomByte(0x8D) {
-			mem.strongarm.running.state++
-		}
-	case 1:
-		if mem.injectRomByte(zp) {
-			mem.strongarm.running.state++
-		}
-	case 2:
-		if mem.injectRomByte(0) {
-			mem.strongarm.running.state++
-		}
-	case 3:
-		if mem.yieldDataBus(uint16(zp)) {
-			mem.endStrongArmFunction()
-		}
-	}
-}
-
-// void vcsStx3(uint8_t ZP)
-func (mem *elfMemory) vcsStx3() {
-	zp := uint8(mem.strongarm.running.registers[0])
-	switch mem.strongarm.running.state {
-	case 0:
-		if mem.injectRomByte(0x86) {
-			mem.strongarm.running.state++
-		}
-	case 1:
-		if mem.injectRomByte(zp) {
-			mem.strongarm.running.state++
-		}
-	case 2:
-		if mem.yieldDataBus(uint16(zp)) {
-			mem.endStrongArmFunction()
-		}
-	}
-}
-
-// void vcsStx4(uint8_t ZP)
-func (mem *elfMemory) vcsStx4() {
-	zp := uint8(mem.strongarm.running.registers[0])
-	switch mem.strongarm.running.state {
-	case 0:
-		if mem.injectRomByte(0x8E) {
-			mem.strongarm.running.state++
-		}
-	case 1:
-		if mem.injectRomByte(zp) {
-			mem.strongarm.running.state++
-		}
-	case 2:
-		if mem.injectRomByte(0) {
-			mem.strongarm.running.state++
-		}
-	case 3:
-		if mem.yieldDataBus(uint16(zp)) {
-			mem.endStrongArmFunction()
-		}
-	}
-}
-
-// void vcsSty3(uint8_t ZP)
-func (mem *elfMemory) vcsSty3() {
-	zp := uint8(mem.strongarm.running.registers[0])
-	switch mem.strongarm.running.state {
-	case 0:
-		if mem.injectRomByte(0x84) {
-			mem.strongarm.running.state++
-		}
-	case 1:
-		if mem.injectRomByte(zp) {
-			mem.strongarm.running.state++
-		}
-	case 2:
-		if mem.yieldDataBus(uint16(zp)) {
-			mem.endStrongArmFunction()
-		}
-	}
-}
-
-// void vcsSty4(uint8_t ZP)
-func (mem *elfMemory) vcsSty4() {
-	zp := uint8(mem.strongarm.running.registers[0])
-	switch mem.strongarm.running.state {
-	case 0:
-		if mem.injectRomByte(0x8C) {
-			mem.strongarm.running.state++
-		}
-	case 1:
-		if mem.injectRomByte(zp) {
-			mem.strongarm.running.state++
-		}
-	case 2:
-		if mem.injectRomByte(0) {
-			mem.strongarm.running.state++
-		}
-	case 3:
-		if mem.yieldDataBus(uint16(zp)) {
-			mem.endStrongArmFunction()
-		}
-	}
-}
-
-// void vcsTxs2()
-func (mem *elfMemory) vcsTxs2() {
-	panic("vcsTxs2")
-}
-
-// void vcsJsr6(uint16_t target)
-func (mem *elfMemory) vcsJsr6() {
-	switch mem.strongarm.running.state {
-	case 0:
-		if mem.injectRomByte(0x20) {
-			mem.strongarm.running.state++
-		}
-	case 1:
-		if mem.injectRomByte(uint8(mem.strongarm.running.registers[0])) {
-			mem.strongarm.running.state++
-		}
-	case 2:
-		if mem.injectRomByte(uint8(mem.strongarm.running.registers[0] >> 8)) {
-			mem.gpio.A[toArm_address] = uint8(mem.strongarm.running.registers[0])
-			mem.gpio.A[toArm_address+1] = uint8(mem.strongarm.running.registers[0] >> 8)
-			mem.gpio.A[toArm_address+2] = uint8(mem.strongarm.running.registers[0] >> 16)
-			mem.gpio.A[toArm_address+3] = uint8(mem.strongarm.running.registers[0] >> 24)
-
-			mem.endStrongArmFunction()
-		}
-	}
-}
-
-// void vcsNop2()
-func (mem *elfMemory) vcsNop2() {
-	switch mem.strongarm.running.state {
-	case 0:
-		if mem.injectRomByte(0xea) {
-			mem.endStrongArmFunction()
-		}
-	}
-}
-
-// void vcsNop2n(uint16_t n)
-func (mem *elfMemory) vcsNop2n() {
-	switch mem.strongarm.running.state {
-	case 0:
-		if mem.injectRomByte(0xea) {
-			mem.strongarm.nextRomAddress += uint16(mem.strongarm.running.registers[0]) - 1
-			mem.endStrongArmFunction()
-		}
-	}
-}
-
-// void vcsCopyOverblankToRiotRam()
-func (mem *elfMemory) vcsCopyOverblankToRiotRam() {
-	switch mem.strongarm.running.state {
-	case 0:
-		if mem.strongarm.running.counter >= len(overblank) {
-			mem.endStrongArmFunction()
-			return
-		}
-		mem.strongarm.running.state++
-		mem.strongarm.running.subCounter = 0
-		fallthrough
-	case 1:
-		switch mem.strongarm.running.subCounter {
-		case 0:
-			if mem.injectRomByte(0xa9) {
-				mem.strongarm.running.subCounter++
-			}
-		case 1:
-			if mem.injectRomByte(overblank[mem.strongarm.running.counter]) {
-				mem.strongarm.running.subCounter++
-			}
-		case 2:
-			if mem.injectRomByte(0x85) {
-				mem.strongarm.running.subCounter++
-			}
-		case 3:
-			if mem.injectRomByte(uint8(0x80 + mem.strongarm.running.counter)) {
-				mem.strongarm.running.subCounter++
-			}
-		case 4:
-			if mem.yieldDataBus(uint16(0x80 + mem.strongarm.running.counter)) {
-				mem.strongarm.running.counter++
-				mem.strongarm.running.state = 0
-			}
-		}
-	}
-}
-
-func (mem *elfMemory) emulationInit() {
-	switch mem.strongarm.running.state {
-	case 0:
-		mem.gpio.B[fromArm_Opcode] = 0x00
-		mem.strongarm.running.state++
-	case 1:
-		mem.strongarm.running.state++
-	case 2:
-		mem.strongarm.running.state++
-	case 3:
-		mem.gpio.B[fromArm_Opcode] = 0x10
-		mem.setNextRomAddress(0x1000)
-		mem.endStrongArmFunction()
-	}
-}
-
-func (mem *elfMemory) busStuffingInit() {
-	if !mem.usesBusStuffing {
-		return
-	}
-
-	mem.strongarm.lowMask = 0xff
-	mem.strongarm.correctionMaskHi = 0x00
-	mem.strongarm.correctionMaskLo = 0x00
-	mem.strongarm.updateLookupTables()
-}
-
-func (str *strongArmState) updateLookupTables() {
-	for i := 0; i < 256; i++ {
-		if uint8(i)&str.correctionMaskHi == str.correctionMaskHi {
-			if uint8(i)&str.correctionMaskLo == str.correctionMaskLo {
-				str.opcodeLookup[i] = 0x84
-			} else {
-				str.opcodeLookup[i] = 0x86
-			}
-		} else {
-			if uint8(i)&str.correctionMaskLo == str.correctionMaskLo {
-				str.opcodeLookup[i] = 0x85
-			} else {
-				str.opcodeLookup[i] = 0x87
-			}
-		}
-
-		mode := uint8(i) ^ str.lowMask
-
-		// never drive the bits that get corrected by opcodes above
-		mode &= ^str.correctionMaskLo
-		mode &= ^str.correctionMaskHi
-
-		str.modeLookup[i] = ((mode & 0x80) << 7) |
-			((mode & 0x40) << 6) |
-			((mode & 0x20) << 5) |
-			((mode & 0x10) << 4) |
-			((mode & 0x08) << 3) |
-			((mode & 0x04) << 2) |
-			((mode & 0x02) << 1) |
-			(mode & 0x01)
-	}
 }

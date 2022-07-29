@@ -69,10 +69,10 @@ func NewElf(instance *instance.Instance, pathToROM string) (mapper.CartMapper, e
 	}
 
 	cart.arm = arm.NewARM(arm.ARMv7_M, arm.MAMfull, cart.mem.model, cart.instance.Prefs.ARM, cart.mem, cart, cart.pathToROM)
-	cart.mem.arm = cart.arm
+	cart.mem.Plumb(cart.arm)
 
 	cart.mem.busStuffingInit()
-	cart.mem.setStrongArmFunction(cart.mem.emulationInit)
+	cart.mem.setStrongArmFunction(vcsEmulationInit)
 
 	// set arguments for initial execution of ARM program
 	cart.mem.args[argAddrSystemType-argOrigin] = argSystemType_NTSC
@@ -98,12 +98,14 @@ func (cart *Elf) ID() string {
 // Snapshot implements the mapper.CartMapper interface.
 func (cart *Elf) Snapshot() mapper.CartMapper {
 	n := *cart
+	n.arm = cart.arm.Snapshot()
 	n.mem = cart.mem.Snapshot()
 	return &n
 }
 
 // Plumb implements the mapper.CartMapper interface.
 func (cart *Elf) Plumb() {
+	cart.mem.Plumb(cart.arm)
 	cart.arm.Plumb(cart.mem, cart)
 }
 
@@ -149,12 +151,12 @@ func (cart *Elf) runStrongarm(addr uint16, data uint8) bool {
 		cart.mem.gpio.B[toArm_data] = data
 		cart.mem.gpio.A[toArm_address] = uint8(addr)
 		cart.mem.gpio.A[toArm_address+1] = uint8(addr >> 8)
-		cart.mem.strongarm.running.function()
+		cart.mem.strongarm.running.function(cart.mem)
 
 		if cart.mem.strongarm.running.function == nil {
 			cart.arm.Run()
 			if cart.mem.strongarm.running.function != nil {
-				cart.mem.strongarm.running.function()
+				cart.mem.strongarm.running.function(cart.mem)
 			}
 		}
 

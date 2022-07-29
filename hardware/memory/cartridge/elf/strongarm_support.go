@@ -19,7 +19,7 @@ package elf
 // these function to work except that they all end with a call to
 // endStrongArmFunction()
 
-func (mem *elfMemory) memset() {
+func memset(mem *elfMemory) {
 	addr := mem.strongarm.running.registers[0]
 	m, o := mem.MapAddress(addr, true)
 
@@ -32,7 +32,7 @@ func (mem *elfMemory) memset() {
 	mem.endStrongArmFunction()
 }
 
-func (mem *elfMemory) memcpy() {
+func memcpy(mem *elfMemory) {
 	addr := mem.strongarm.running.registers[0]
 	m, o := mem.MapAddress(addr, true)
 
@@ -48,7 +48,7 @@ func (mem *elfMemory) memcpy() {
 
 // incomplete implementation. it should perform divide by zero checking but
 // for now just return immediately
-func (mem *elfMemory) __aeabi_idiv() {
+func __aeabi_idiv(mem *elfMemory) {
 	if mem.strongarm.running.registers[1] == 0 {
 		mem.strongarm.running.registers[0] = 0
 	} else {
