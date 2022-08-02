@@ -452,13 +452,17 @@ func (arm *ARM) Step(vcsClock float32) {
 // first call to Run().
 //
 // The optional arguments are used to initialise the registers in order
-// starting with R0.
+// starting with R0. The remaining options will be set to their default values
+// (SP, LR and PC set according to the ResetVectors() via the SharedMemory
+// interface).
 //
 // Note that you don't need to use this to set the initial values for SP, LR or
 // PC. Those registers are initialised via the ResetVectors() function of the
 // SharedMemory interface. The function will return with an error if those
 // registers are attempted to be initialised.
 func (arm *ARM) SetInitialRegisters(args ...uint32) error {
+	arm.reset()
+
 	if len(args) >= rSP {
 		return curated.Errorf("ARM7: trying to set registers SP, LR or PC")
 	}

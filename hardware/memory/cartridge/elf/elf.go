@@ -24,6 +24,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/instance"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
@@ -72,15 +73,8 @@ func NewElf(instance *instance.Instance, pathToROM string) (mapper.CartMapper, e
 	cart.mem.Plumb(cart.arm)
 
 	cart.mem.busStuffingInit()
-	cart.mem.setStrongArmFunction(vcsEmulationInit)
 
-	// set arguments for initial execution of ARM program
-	cart.mem.args[argAddrSystemType-argOrigin] = argSystemType_NTSC
-	cart.mem.args[argAddrClockHz-argOrigin] = 0xef
-	cart.mem.args[argAddrClockHz-argOrigin+1] = 0xbe
-	cart.mem.args[argAddrClockHz-argOrigin+2] = 0xad
-	cart.mem.args[argAddrClockHz-argOrigin+3] = 0xde
-	cart.arm.SetInitialRegisters(argOrigin)
+	// defer reset until the VCS tries to read the cpubus.Reset address
 
 	return cart, nil
 }
@@ -111,6 +105,20 @@ func (cart *Elf) Plumb() {
 
 // Reset implements the mapper.CartMapper interface.
 func (cart *Elf) Reset() {
+}
+
+// reset is distinct from Reset(). this reset function is implied by the
+// reading of the cpubus.Reset address.
+func (cart *Elf) reset() {
+	cart.mem.setStrongArmFunction(vcsEmulationInit)
+
+	// set arguments for initial execution of ARM program
+	cart.mem.args[argAddrSystemType-argOrigin] = argSystemType_NTSC
+	cart.mem.args[argAddrClockHz-argOrigin] = 0xef
+	cart.mem.args[argAddrClockHz-argOrigin+1] = 0xbe
+	cart.mem.args[argAddrClockHz-argOrigin+2] = 0xad
+	cart.mem.args[argAddrClockHz-argOrigin+3] = 0xde
+	cart.arm.SetInitialRegisters(argOrigin)
 }
 
 // Read implements the mapper.CartMapper interface.
@@ -167,6 +175,11 @@ func (cart *Elf) runStrongarm(addr uint16, data uint8) bool {
 
 // Listen implements the mapper.CartMapper interface.
 func (cart *Elf) Listen(addr uint16, data uint8) {
+	// if address is the reset address then trigger the reset procedure
+	if (addr&memorymap.CartridgeBits)|memorymap.OriginCart == cpubus.Reset {
+		cart.reset()
+	}
+
 	if cart.runStrongarm(addr, data) {
 		return
 	}

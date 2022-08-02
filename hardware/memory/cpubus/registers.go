@@ -17,12 +17,11 @@ package cpubus
 
 import "github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 
-// Reset is the address where the reset address is stored
-// - used by VCS.Reset() and Disassembly module.
-const Reset = uint16(0xfffc)
+// Reset is the address where the reset address is stored.
+const Reset = uint16(0x1ffc)
 
 // IRQ is the address where the interrupt address is stored.
-const IRQ = uint16(0xfffe)
+const IRQ = uint16(0x1ffe)
 
 // Register represents a named address in RIOT/TIA memory.
 type Register string

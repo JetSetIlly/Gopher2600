@@ -519,16 +519,15 @@ func vcsCopyOverblankToRiotRam(mem *elfMemory) {
 	}
 }
 
+// sequence for initialisation triggered by the accessing of the cpubus.Reset
+// address. the sequence is very strict so there is no need for coordination
+// with setNextAddress() or injectRomByte()
 func vcsEmulationInit(mem *elfMemory) {
 	switch mem.strongarm.running.state {
 	case 0:
 		mem.gpio.B[fromArm_Opcode] = 0x00
 		mem.strongarm.running.state++
 	case 1:
-		mem.strongarm.running.state++
-	case 2:
-		mem.strongarm.running.state++
-	case 3:
 		mem.gpio.B[fromArm_Opcode] = 0x10
 		mem.setNextRomAddress(0x1000)
 		mem.endStrongArmFunction()
