@@ -16,7 +16,6 @@
 package television
 
 import (
-	"fmt"
 	"sync/atomic"
 	"time"
 )
@@ -44,9 +43,9 @@ type limiter struct {
 
 	// pulse that performs the limiting. the duration of the ticker will be set
 	// when the frame rate changes.
-	//
-	// some kernels will fluctuate wildly between
-	pulse *time.Ticker
+	pulseCt      int
+	pulseCtLimit int
+	pulse        *time.Ticker
 
 	// measurement
 	measureCt      int
@@ -76,9 +75,9 @@ func (lmtr *limiter) init(tv *Television) {
 	lmtr.matchRefreshRate.Store(true)
 	lmtr.requested.Store(float32(0))
 	lmtr.actual.Store(float32(0))
-	lmtr.measureTime = time.Now()
 	lmtr.pulse = time.NewTicker(time.Millisecond * 10)
-	lmtr.measuringPulse = time.NewTicker(time.Second)
+	lmtr.measureTime = time.Now()
+	lmtr.measuringPulse = time.NewTicker(time.Millisecond * 900)
 }
 
 func (lmtr *limiter) setRefreshRate(refreshRate float32) {
@@ -109,9 +108,10 @@ func (lmtr *limiter) setRate(fps float32) {
 	lmtr.requested.Store(fps)
 
 	// set scale and duration to wait according to requested FPS rate
-	rate := float32(1000000.0) / fps
-	dur, _ := time.ParseDuration(fmt.Sprintf("%fus", rate))
-	lmtr.pulse.Reset(dur)
+	lmtr.pulseCt = 0
+	lmtr.pulseCtLimit = 1 + int(fps/20)
+	lmtr.pulse.Stop()
+	lmtr.pulse.Reset(time.Duration(1000000000 / fps * float32(lmtr.pulseCtLimit)))
 
 	// restart acutal FPS rate measurement values
 	lmtr.measureCt = 0
@@ -121,8 +121,13 @@ func (lmtr *limiter) setRate(fps float32) {
 // checkFrame should be called every frame.
 func (lmtr *limiter) checkFrame() {
 	lmtr.measureCt++
+
 	if lmtr.active {
-		<-lmtr.pulse.C
+		lmtr.pulseCt++
+		if lmtr.pulseCt >= lmtr.pulseCtLimit {
+			lmtr.pulseCt = 0
+			<-lmtr.pulse.C
+		}
 	}
 
 	// check to see if rate is to change
@@ -146,14 +151,12 @@ func (lmtr *limiter) measureActual() {
 	select {
 	case <-lmtr.measuringPulse.C:
 		t := time.Now()
-
-		actual := float32(lmtr.measureCt) / float32(t.Sub(lmtr.measureTime).Seconds())
-		lmtr.actual.Store(actual)
+		m := float32(lmtr.measureCt) / float32(t.Sub(lmtr.measureTime).Seconds())
+		lmtr.actual.Store(m)
 
 		// reset time and count ready for next measurement
 		lmtr.measureTime = t
 		lmtr.measureCt = 0
-
 	default:
 	}
 }
