@@ -291,6 +291,7 @@ func emulate(emulationMode emulation.Mode, md *modalflag.Modes, sync *mainSync) 
 		opts.ComparisonROM = md.AddString("comparisonROM", "", "ROM to run in parallel for comparison")
 		opts.ComparisonPrefs = md.AddString("comparisonPrefs", "", "preferences for comparison emulation")
 		opts.Record = md.AddBool("record", false, "record user input to a file")
+		opts.PlaybackCheckROM = md.AddBool("playbackCheckROM", true, "whether to check ROM hash on playback")
 		opts.PatchFile = md.AddString("patch", "", "patch to apply to main emulation (not playback files)")
 		opts.Wav = md.AddBool("wav", false, "record audio to wav file")
 	}

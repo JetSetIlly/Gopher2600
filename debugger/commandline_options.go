@@ -30,11 +30,12 @@ type CommandLineOptions struct {
 	Profile   *string
 
 	// playmode only
-	ComparisonROM   *string
-	ComparisonPrefs *string
-	Record          *bool
-	PatchFile       *string
-	Wav             *bool
+	ComparisonROM    *string
+	ComparisonPrefs  *string
+	Record           *bool
+	PlaybackCheckROM *bool
+	PatchFile        *string
+	Wav              *bool
 
 	// debugger only
 	InitScript *string

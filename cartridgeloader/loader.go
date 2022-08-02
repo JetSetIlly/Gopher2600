@@ -58,6 +58,9 @@ type Loader struct {
 	//
 	// in the case of sound data (IsSoundData is true) then the hash is of the
 	// original binary file not he decoded PCM data
+	//
+	// the value of Hash will be checked on a call to Loader.Load(). if the
+	// string is empty then that check passes.
 	Hash string
 
 	// does the Data field consist of sound (PCM) data
@@ -402,15 +405,11 @@ func (cl *Loader) Load() error {
 		}
 	}
 
-	// generate hash
+	// generate hash and check for consistency
 	hash := fmt.Sprintf("%x", sha1.Sum(*cl.Data))
-
-	// check for hash consistency
 	if cl.Hash != "" && cl.Hash != hash {
 		return curated.Errorf("cartridgeloader: %v", "unexpected hash value")
 	}
-
-	// not generated hash
 	cl.Hash = hash
 
 	return nil

@@ -1118,7 +1118,7 @@ func (dbg *Debugger) endRecording() {
 }
 
 func (dbg *Debugger) startPlayback(filename string) error {
-	plb, err := recorder.NewPlayback(filename)
+	plb, err := recorder.NewPlayback(filename, *dbg.opts.PlaybackCheckROM)
 	if err != nil {
 		return err
 	}

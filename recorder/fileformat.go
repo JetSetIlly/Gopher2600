@@ -104,7 +104,7 @@ func (rec *Recorder) writeHeader() error {
 	return nil
 }
 
-func (plb *Playback) readHeader(lines []string) error {
+func (plb *Playback) readHeader(lines []string, checkROM bool) error {
 	if lines[lineMagicString] != magicString {
 		return curated.Errorf("playback: not a valid transcript (%s)", plb.transcript)
 	}
@@ -117,7 +117,10 @@ func (plb *Playback) readHeader(lines []string) error {
 		return curated.Errorf("playback: %v", err)
 	}
 
-	plb.CartLoad.Hash = lines[lineCartHash]
+	if checkROM {
+		plb.CartLoad.Hash = lines[lineCartHash]
+	}
+
 	plb.TVSpec = lines[lineTVSpec]
 
 	return nil

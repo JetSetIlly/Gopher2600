@@ -105,7 +105,7 @@ func (reg PlaybackRegression) CleanUp() error {
 func (reg *PlaybackRegression) regress(newRegression bool, output io.Writer, msg string) (_ bool, _ string, rerr error) {
 	output.Write([]byte(msg))
 
-	plb, err := recorder.NewPlayback(reg.Script)
+	plb, err := recorder.NewPlayback(reg.Script, true)
 	if err != nil {
 		return false, "", curated.Errorf("playback: %v", err)
 	}

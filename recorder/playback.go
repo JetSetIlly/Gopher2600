@@ -77,7 +77,9 @@ func (plb Playback) EndFrame() (bool, error) {
 //
 // The returned playback must be attached to the VCS input system (with
 // AttachToVCSInput() function) for it it to be useful.
-func NewPlayback(transcript string) (*Playback, error) {
+//
+// The integrityCheck flag should be true in most instances.
+func NewPlayback(transcript string, checkROM bool) (*Playback, error) {
 	var err error
 
 	plb := &Playback{
@@ -102,7 +104,7 @@ func NewPlayback(transcript string) (*Playback, error) {
 	lines := strings.Split(string(buffer), "\n")
 
 	// read header and perform validation checks
-	err = plb.readHeader(lines)
+	err = plb.readHeader(lines, checkROM)
 	if err != nil {
 		return nil, err
 	}
