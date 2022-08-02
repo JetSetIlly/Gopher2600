@@ -250,7 +250,6 @@ type ARM struct {
 	// * temporary construct until thumb2Disassemble() is written
 	fudge_thumb2disassemble32bit string
 	fudge_thumb2disassemble16bit string
-	fudge_thumb2disassemblePrint bool
 
 	// whether the previous execution stopped because of a yield
 	yield bool
@@ -717,11 +716,13 @@ func (arm *ARM) run() (float32, error) {
 				f(opcode)
 			}
 
-			// if arm.function32bitOpcode == 0xf084 && opcode == 0x0280 {
-			// arm.fudge_thumb2disassemblePrint = true
-			// }
-
-			if arm.fudge_thumb2disassemblePrint {
+			// when the block condition below is true, a lot of debugging data
+			// will be printed to stdout. a good way of keeping this under
+			// control is to pipe the output to tail before redirecting to a
+			// file. For example:
+			//
+			// ./gopher2600 rom.bin | tail -c 10M > out
+			if false {
 				if fudge_notExecuted {
 					fmt.Print("*** ")
 				}
