@@ -274,39 +274,35 @@ func emulate(emulationMode emulation.Mode, md *modalflag.Modes, sync *mainSync) 
 		return err
 	}
 
-	mapping := md.AddString("mapping", "AUTO", "force use of cartridge mapping")
-	spec := md.AddString("tv", "AUTO", "television specification: AUTO, NTSC, PAL, PAL60")
-	left := md.AddString("left", "AUTO", "left player port: AUTO, STICK, PADDLE, KEYPAD, GAMEPAD")
-	right := md.AddString("right", "AUTO", "right player port: AUTO, STICK, PADDLE, KEYPAD, GAMEPAD, SAVEKEY, ATARIVOX")
-	fpsCap := md.AddBool("fpscap", true, "cap fps to TV specification")
-	profile := md.AddString("profile", "none", "run performance check with profiling: command separated CPU, MEM, TRACE or ALL")
-	log := md.AddBool("log", false, "echo debugging log to stdout")
-	multiload := md.AddInt("multiload", -1, "force multiload byte (supercharger only; 0 to 255)")
+	var opts debugger.CommandLineOptions
+
+	// common to both modes
+	opts.Log = md.AddBool("log", false, "echo debugging log to stdout")
+	opts.Spec = md.AddString("tv", "AUTO", "television specification: AUTO, NTSC, PAL, PAL60")
+	opts.FpsCap = md.AddBool("fpscap", true, "cap fps to TV specification")
+	opts.Multiload = md.AddInt("multiload", -1, "force multiload byte (supercharger only; 0 to 255)")
+	opts.Mapping = md.AddString("mapping", "AUTO", "force use of cartridge mapping")
+	opts.Left = md.AddString("left", "AUTO", "left player port: AUTO, STICK, PADDLE, KEYPAD, GAMEPAD")
+	opts.Right = md.AddString("right", "AUTO", "right player port: AUTO, STICK, PADDLE, KEYPAD, GAMEPAD, SAVEKEY, ATARIVOX")
+	opts.Profile = md.AddString("profile", "none", "run performance check with profiling: command separated CPU, MEM, TRACE or ALL")
 
 	// playmode specific arguments
-	var comparisonROM *string
-	var comparisonPrefs *string
-	var record *bool
-	var patchFile *string
-	var wav *bool
 	if emulationMode == emulation.ModePlay {
-		comparisonROM = md.AddString("comparisonROM", "", "ROM to run in parallel for comparison")
-		comparisonPrefs = md.AddString("comparisonPrefs", "", "preferences for comparison emulation")
-		record = md.AddBool("record", false, "record user input to a file")
-		patchFile = md.AddString("patch", "", "patch to apply to main emulation (not playback files)")
-		wav = md.AddBool("wav", false, "record audio to wav file")
+		opts.ComparisonROM = md.AddString("comparisonROM", "", "ROM to run in parallel for comparison")
+		opts.ComparisonPrefs = md.AddString("comparisonPrefs", "", "preferences for comparison emulation")
+		opts.Record = md.AddBool("record", false, "record user input to a file")
+		opts.PatchFile = md.AddString("patch", "", "patch to apply to main emulation (not playback files)")
+		opts.Wav = md.AddBool("wav", false, "record audio to wav file")
 	}
 
 	// debugger specific arguments
-	var initScript *string
-	var termType *string
 	if emulationMode == emulation.ModeDebugger {
-		initScript = md.AddString("initscript", defInitScript, "script to run on debugger start")
-		termType = md.AddString("term", "IMGUI", "terminal type to use in debug mode: IMGUI, COLOR, PLAIN")
+		opts.InitScript = md.AddString("initscript", defInitScript, "script to run on debugger start")
+		opts.TermType = md.AddString("term", "IMGUI", "terminal type to use in debug mode: IMGUI, COLOR, PLAIN")
 	} else {
 		// non debugger emulation is always of type IMGUI
 		tt := "IMGUI"
-		termType = &tt
+		opts.TermType = &tt
 	}
 
 	// parse arguments
@@ -321,7 +317,7 @@ func emulate(emulationMode emulation.Mode, md *modalflag.Modes, sync *mainSync) 
 	}
 
 	// set debugging log echo
-	if *log {
+	if *opts.Log {
 		logger.SetEcho(logger.NewColorizer(os.Stdout))
 	} else {
 		logger.SetEcho(nil)
@@ -340,7 +336,7 @@ func emulate(emulationMode emulation.Mode, md *modalflag.Modes, sync *mainSync) 
 		var scr gui.GUI
 
 		// create gui
-		if *termType == "IMGUI" {
+		if *opts.TermType == "IMGUI" {
 			sync.state <- stateRequest{req: reqCreateGUI,
 				args: guiCreate(func() (guiControl, error) {
 					return sdlimgui.NewSdlImgui(e)
@@ -367,9 +363,9 @@ func emulate(emulationMode emulation.Mode, md *modalflag.Modes, sync *mainSync) 
 		// if the GUI does not supply a terminal then use a color or plain terminal
 		// as a fallback
 		if term == nil {
-			switch strings.ToUpper(*termType) {
+			switch strings.ToUpper(*opts.TermType) {
 			default:
-				fmt.Printf("! unknown terminal type (%s) defaulting to plain\n", *termType)
+				fmt.Printf("! unknown terminal type (%s) defaulting to plain\n", *opts.TermType)
 				fallthrough
 			case "PLAIN":
 				term = &plainterm.PlainTerminal{}
@@ -382,13 +378,13 @@ func emulate(emulationMode emulation.Mode, md *modalflag.Modes, sync *mainSync) 
 	}
 
 	// prepare new debugger instance
-	dbg, err := debugger.NewDebugger(create, *spec, *fpsCap, *multiload)
+	dbg, err := debugger.NewDebugger(create, opts)
 	if err != nil {
 		return err
 	}
 
 	// check for profiling options
-	prf, err := performance.ParseProfileString(*profile)
+	prf, err := performance.ParseProfileString(*opts.Profile)
 	if err != nil {
 		return err
 	}
@@ -397,13 +393,13 @@ func emulate(emulationMode emulation.Mode, md *modalflag.Modes, sync *mainSync) 
 	dbgLaunch := func() error {
 		switch emulationMode {
 		case emulation.ModeDebugger:
-			err := dbg.StartInDebugMode(*initScript, md.GetArg(0), *mapping, *left, *right)
+			err := dbg.StartInDebugMode(md.GetArg(0))
 			if err != nil {
 				return err
 			}
 
 		case emulation.ModePlay:
-			err := dbg.StartInPlayMode(md.GetArg(0), *mapping, *left, *right, *record, *comparisonROM, *comparisonPrefs, *patchFile, *wav)
+			err := dbg.StartInPlayMode(md.GetArg(0))
 			if err != nil {
 				return err
 			}

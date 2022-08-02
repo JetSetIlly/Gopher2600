@@ -66,6 +66,9 @@ import (
 // example, disassembly on a cartridge change (which can happen at any time)
 // updates the Disasm field, it does not reinitialise it.
 type Debugger struct {
+	// arguments from the command line
+	opts CommandLineOptions
+
 	// current mode of the emulation. use setMode() to set the value
 	mode atomic.Value // emulation.Mode
 
@@ -298,8 +301,11 @@ type CreateUserInterface func(emulation.Emulation) (gui.GUI, terminal.Terminal, 
 //
 // It should be followed up with a call to AddUserInterface() and call the
 // Start() method to actually begin the emulation.
-func NewDebugger(create CreateUserInterface, spec string, fpsCap bool, multiload int) (*Debugger, error) {
+func NewDebugger(create CreateUserInterface, opts CommandLineOptions) (*Debugger, error) {
 	dbg := &Debugger{
+		// copy of the arguments
+		opts: opts,
+
 		// by definition the state of debugger has changed during startup
 		hasChanged: true,
 
@@ -307,7 +313,7 @@ func NewDebugger(create CreateUserInterface, spec string, fpsCap bool, multiload
 		eventCheckPulse: time.NewTicker(50 * time.Millisecond),
 
 		// supercharger multiload byte
-		multiload: multiload,
+		multiload: *opts.Multiload,
 	}
 
 	// emulator is starting in the "none" mode (the advangatge of this is that
@@ -326,7 +332,7 @@ func NewDebugger(create CreateUserInterface, spec string, fpsCap bool, multiload
 
 	// creat a new television. this will be used during the initialisation of
 	// the VCS and not referred to directly again
-	tv, err := television.NewTelevision(spec)
+	tv, err := television.NewTelevision(*opts.Spec)
 	if err != nil {
 		return nil, curated.Errorf("debugger: %v", err)
 	}
@@ -421,8 +427,8 @@ func NewDebugger(create CreateUserInterface, spec string, fpsCap bool, multiload
 	dbg.vcs.RIOT.Ports.AttachPlugMonitor(dbg)
 
 	// set fps cap
-	dbg.vcs.TV.SetFPSCap(fpsCap)
-	dbg.gui.SetFeature(gui.ReqMonitorSync, fpsCap)
+	dbg.vcs.TV.SetFPSCap(*opts.FpsCap)
+	dbg.gui.SetFeature(gui.ReqMonitorSync, *opts.FpsCap)
 
 	// initialise terminal
 	err = dbg.term.Initialise()
@@ -635,7 +641,7 @@ func (dbg *Debugger) end() {
 }
 
 // StartInDebugMode starts the emulation with the debugger activated.
-func (dbg *Debugger) StartInDebugMode(initScript string, filename string, mapping string, left string, right string) error {
+func (dbg *Debugger) StartInDebugMode(filename string) error {
 	// set running flag as early as possible
 	dbg.running = true
 
@@ -645,7 +651,7 @@ func (dbg *Debugger) StartInDebugMode(initScript string, filename string, mappin
 	if filename == "" {
 		cartload = cartridgeloader.Loader{}
 	} else {
-		cartload, err = cartridgeloader.NewLoader(filename, mapping)
+		cartload, err = cartridgeloader.NewLoader(filename, *dbg.opts.Mapping)
 		if err != nil {
 			return curated.Errorf("debugger: %v", err)
 		}
@@ -656,7 +662,7 @@ func (dbg *Debugger) StartInDebugMode(initScript string, filename string, mappin
 		return curated.Errorf("debugger: %v", err)
 	}
 
-	err = dbg.insertPeripheralsOnStartup(left, right)
+	err = dbg.insertPeripheralsOnStartup(*dbg.opts.Left, *dbg.opts.Right)
 	if err != nil {
 		return curated.Errorf("debugger: %v", err)
 	}
@@ -667,8 +673,8 @@ func (dbg *Debugger) StartInDebugMode(initScript string, filename string, mappin
 	}
 
 	// intialisation script because we're in debugger mode
-	if initScript != "" {
-		scr, err := script.RescribeScript(initScript)
+	if *dbg.opts.InitScript != "" {
+		scr, err := script.RescribeScript(*dbg.opts.InitScript)
 		if err == nil {
 			dbg.term.Silence(true)
 			err = dbg.inputLoop(scr, false)
@@ -709,10 +715,7 @@ func (dbg *Debugger) insertPeripheralsOnStartup(left string, right string) error
 }
 
 // StartInPlaymode starts the emulation ready for game-play.
-func (dbg *Debugger) StartInPlayMode(filename string, mapping string, left string, right string,
-	record bool, comparisonROM string, comparisonPrefs string,
-	patchFile string, wav bool) error {
-
+func (dbg *Debugger) StartInPlayMode(filename string) error {
 	// set running flag as early as possible
 	dbg.running = true
 
@@ -722,7 +725,7 @@ func (dbg *Debugger) StartInPlayMode(filename string, mapping string, left strin
 	if filename == "" {
 		cartload = cartridgeloader.Loader{}
 	} else {
-		cartload, err = cartridgeloader.NewLoader(filename, mapping)
+		cartload, err = cartridgeloader.NewLoader(filename, *dbg.opts.Mapping)
 		if err != nil {
 			return curated.Errorf("debugger: %v", err)
 		}
@@ -739,22 +742,22 @@ func (dbg *Debugger) StartInPlayMode(filename string, mapping string, left strin
 			return curated.Errorf("debugger: %v", err)
 		}
 
-		err = dbg.insertPeripheralsOnStartup(left, right)
+		err = dbg.insertPeripheralsOnStartup(*dbg.opts.Left, *dbg.opts.Right)
 		if err != nil {
 			return curated.Errorf("debugger: %v", err)
 		}
 
 		// apply patch if requested. note that this will be in addition to any
 		// patches applied during setup.AttachCartridge
-		if patchFile != "" {
-			_, err := patch.CartridgeMemory(dbg.vcs.Mem.Cart, patchFile)
+		if *dbg.opts.PatchFile != "" {
+			_, err := patch.CartridgeMemory(dbg.vcs.Mem.Cart, *dbg.opts.PatchFile)
 			if err != nil {
 				return curated.Errorf("debugger: %v", err)
 			}
 		}
 
 		// record wav file
-		if wav {
+		if *dbg.opts.Wav {
 			fn := unique.Filename("audio", cartload.ShortName())
 			ww, err := wavwriter.NewWavWriter(fn)
 			if err != nil {
@@ -764,18 +767,18 @@ func (dbg *Debugger) StartInPlayMode(filename string, mapping string, left strin
 		}
 
 		// record gameplay
-		if record {
+		if *dbg.opts.Record {
 			dbg.startRecording(cartload.ShortName())
 		}
 	} else {
-		if record {
+		if *dbg.opts.Record {
 			return curated.Errorf("debugger: cannot make a new recording using a playback file")
 		}
 
 		dbg.startPlayback(filename)
 	}
 
-	err = dbg.startComparison(comparisonROM, comparisonPrefs)
+	err = dbg.startComparison(*dbg.opts.ComparisonROM, *dbg.opts.ComparisonPrefs)
 	if err != nil {
 		return curated.Errorf("debugger: %v", err)
 	}
