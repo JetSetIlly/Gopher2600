@@ -56,8 +56,6 @@ type screen struct {
 	gotoCoordsY int
 }
 
-const numBufferPixels = 5
-
 // for clarity, variables accessed in the critical section are encapsulated in
 // their own subtype.
 type screenCrit struct {
@@ -70,6 +68,9 @@ type screenCrit struct {
 
 	// whether or not to sync with monitor refresh rate
 	monitorSync bool
+
+	// whether monitorSync is "similar" to emulated TV's refresh rate
+	monitorSyncInRange bool
 
 	// the number of consecutive frames where a screenroll might have happened.
 	// once it reaches a threshold then screenroll begins
@@ -89,15 +90,11 @@ type screenCrit struct {
 	// - the smaller the buffer the more the emulation will have to wait the
 	//		screen to catch up (see emuWait and emuWaitAck channels)
 	// - a five frame buffer seems good. ten frames can feel laggy
-	bufferPixels [numBufferPixels]*image.RGBA
+	bufferPixels []*image.RGBA
 
-	// the number of scanlines represented in the bufferPixels. this is set
-	// during a resize operation and used to affect screen roll visualisation
-	bufferPixelsHeight int
-
-	// the length of the buffer pixels array. saves calling len() multiple
-	// times needlessly
-	bufferPixelsLen int
+	// the length of each pixel buffer in the bufferPixels array. saves calling
+	// len() multiple times needlessly
+	bufferPixelsCount int
 
 	// count of how many of the bufferPixel entries have been used. reset to
 	// numBufferPixels when emulation is paused and reduced every time a new
@@ -166,17 +163,11 @@ func newScreen(img *SdlImgui) *screen {
 	scr.crit.monitorSync = true
 
 	// allocate memory for pixel buffers etc.
-	scr.crit.bufferPixelsHeight = specification.AbsoluteMaxScanlines
-	scr.crit.pixels = image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, scr.crit.bufferPixelsHeight))
-	scr.crit.elementPixels = image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, scr.crit.bufferPixelsHeight))
-	scr.crit.overlayPixels = image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, scr.crit.bufferPixelsHeight))
+	scr.allocateBufferPixelsForTV(60)
 
-	for i := range scr.crit.bufferPixels {
-		scr.crit.bufferPixels[i] = image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, scr.crit.bufferPixelsHeight))
-	}
-
-	// note length of bufferPixels
-	scr.crit.bufferPixelsLen = len(scr.crit.bufferPixels[0].Pix)
+	scr.crit.pixels = image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, specification.AbsoluteMaxScanlines))
+	scr.crit.elementPixels = image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, specification.AbsoluteMaxScanlines))
+	scr.crit.overlayPixels = image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, specification.AbsoluteMaxScanlines))
 
 	// allocate reflection
 	scr.crit.reflection = make([]reflection.ReflectedVideoStep, specification.AbsoluteMaxClks)
@@ -188,6 +179,35 @@ func newScreen(img *SdlImgui) *screen {
 	scr.Reset()
 
 	return scr
+}
+
+// allocateBufferPixelsForTV decides on the buffering and syncing policy of the
+// screen based on the reported TV refresh rate.
+func (scr *screen) allocateBufferPixelsForTV(tvRefreshRate float32) {
+	var l int
+
+	// check whether to apply monitorsync and decide on the length of the pixel buffer
+	if float32(scr.img.plt.mode.RefreshRate)*1.01 >= tvRefreshRate {
+		scr.crit.monitorSyncInRange = true
+		l = 5
+	} else {
+		scr.crit.monitorSyncInRange = false
+		l = 1
+	}
+
+	scr.crit.bufferPixels = make([]*image.RGBA, l)
+	for i := range scr.crit.bufferPixels {
+		scr.crit.bufferPixels[i] = image.NewRGBA(image.Rect(0, 0, specification.ClksScanline, specification.AbsoluteMaxScanlines))
+	}
+
+	// note length of bufferPixels
+	scr.crit.bufferPixelsCount = len(scr.crit.bufferPixels[0].Pix)
+
+	// reset indexes
+	scr.crit.bufferUsed = 0
+	scr.crit.plotIdx = 0
+	scr.crit.renderIdx = 0
+	scr.crit.prevRenderIdx = 0
 }
 
 // Reset implements the television.PixelRenderer interface. Note that Reset
@@ -204,6 +224,7 @@ func (scr *screen) Reset() {
 	scr.clearPixels()
 	scr.crit.plotIdx = 0
 	scr.crit.renderIdx = 0
+	scr.crit.prevRenderIdx = 0
 }
 
 // clear all pixel information including reflection data.
@@ -255,6 +276,8 @@ func (scr *screen) clearPixels() {
 func (scr *screen) resize(frameInfo television.FrameInfo) {
 	scr.crit.section.Lock()
 	defer scr.crit.section.Unlock()
+
+	scr.allocateBufferPixelsForTV(frameInfo.RefreshRate)
 
 	// do nothing if resize values are the same as previously
 	if scr.crit.frameInfo.Spec.ID == frameInfo.Spec.ID &&
@@ -344,8 +367,8 @@ func (scr *screen) NewFrame(frameInfo television.FrameInfo) error {
 
 					if diff > scr.img.crtPrefs.SyncSpeedScanlines.Get().(int) {
 						scr.crit.screenrollScanline += rollAmount
-						if scr.crit.screenrollScanline >= scr.crit.bufferPixelsHeight {
-							scr.crit.screenrollScanline -= scr.crit.bufferPixelsHeight
+						if scr.crit.screenrollScanline >= specification.AbsoluteMaxScanlines {
+							scr.crit.screenrollScanline -= specification.AbsoluteMaxScanlines
 						}
 					} else {
 						scr.recoverFromScreenRoll()
@@ -362,19 +385,19 @@ func (scr *screen) NewFrame(frameInfo television.FrameInfo) error {
 		case emulation.Paused:
 			scr.crit.renderIdx = scr.crit.plotIdx
 			scr.crit.prevRenderIdx = scr.crit.plotIdx
-			scr.crit.bufferUsed = numBufferPixels
+			scr.crit.bufferUsed = len(scr.crit.bufferPixels)
 		case emulation.Running:
 			if scr.crit.bufferUsed > 0 {
 				scr.crit.bufferUsed--
 			}
 
 			scr.crit.plotIdx++
-			if scr.crit.plotIdx >= numBufferPixels {
+			if scr.crit.plotIdx >= len(scr.crit.bufferPixels) {
 				scr.crit.plotIdx = 0
 			}
 
 			// if plot index has crashed into the render index then
-			if scr.crit.plotIdx == scr.crit.renderIdx && scr.crit.monitorSync {
+			if scr.crit.plotIdx == scr.crit.renderIdx && scr.crit.monitorSync && scr.crit.monitorSyncInRange {
 				// ** screen update not keeping up with emulation **
 
 				// we must unlock the critical section or the gui thread will not
@@ -417,7 +440,7 @@ func (scr *screen) SetPixels(sig []signal.SignalAttributes, last int) error {
 		//
 		// this can happen when screen is rolling and offset started off at a
 		// value greater than zero
-		if offset >= scr.crit.bufferPixelsLen {
+		if offset >= scr.crit.bufferPixelsCount {
 			offset = 0
 		}
 
@@ -573,12 +596,12 @@ func (scr *screen) copyPixelsPlaymode() {
 	scr.crit.section.Lock()
 	defer scr.crit.section.Unlock()
 
-	if scr.crit.monitorSync && scr.crit.bufferUsed == 0 {
+	if scr.crit.bufferUsed == 0 && scr.crit.monitorSync && scr.crit.monitorSyncInRange {
 		// advance render index
 		prev := scr.crit.prevRenderIdx
 		scr.crit.prevRenderIdx = scr.crit.renderIdx
 		scr.crit.renderIdx++
-		if scr.crit.renderIdx >= numBufferPixels {
+		if scr.crit.renderIdx >= len(scr.crit.bufferPixels) {
 			scr.crit.renderIdx = 0
 		}
 
@@ -589,6 +612,13 @@ func (scr *screen) copyPixelsPlaymode() {
 			// undo frame advancement
 			scr.crit.renderIdx = scr.crit.prevRenderIdx
 			scr.crit.prevRenderIdx = prev
+		}
+
+		// let the emulator thread know it's okay to continue as soon as possible
+		select {
+		case <-scr.emuWait:
+			scr.emuWaitAck <- true
+		default:
 		}
 	}
 
@@ -611,15 +641,5 @@ func (scr *screen) copyPixelsPlaymode() {
 		scr.crit.pauseFrame = !scr.crit.pauseFrame
 	} else {
 		copy(scr.crit.pixels.Pix, scr.crit.bufferPixels[scr.crit.renderIdx].Pix)
-	}
-
-	// let the emulator thread know it's okay to continue as soon as possible
-	//
-	// this is only ever the case if monitorSync is true but there's no
-	// performance harm in allowing the select block to run in all instances
-	select {
-	case <-scr.emuWait:
-		scr.emuWaitAck <- true
-	default:
 	}
 }
