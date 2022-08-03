@@ -77,6 +77,7 @@ const (
 	ByteChange             = '\uf30b'
 	Trash                  = '\uf1f8'
 	Pointer                = '\uf30b'
+	NoVSYNC                = '\uf188'
 )
 
 // The first and last unicode points used in the application. We use this to

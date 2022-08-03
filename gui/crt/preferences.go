@@ -50,8 +50,8 @@ type Preferences struct {
 
 	PixelPerfectFade prefs.Float
 
-	SyncSpeedScanlines prefs.Int
-	SyncPowerOn        prefs.Bool
+	SyncSpeed   prefs.Int
+	SyncPowerOn prefs.Bool
 
 	IntegerScaling prefs.Bool
 }
@@ -84,7 +84,7 @@ const (
 	sharpness          = 0.55
 	blackLevel         = 0.06
 	pixelPerfectFade   = 0.4
-	syncSpeedScanlines = 65
+	syncSpeed          = 2
 	syncPowerOn        = true
 	integerScaling     = false
 )
@@ -196,7 +196,7 @@ func NewPreferences() (*Preferences, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = p.dsk.Add("crt.syncSpeedScanlines", &p.SyncSpeedScanlines)
+	err = p.dsk.Add("crt.syncSpeed", &p.SyncSpeed)
 	if err != nil {
 		return nil, err
 	}
@@ -242,7 +242,7 @@ func (p *Preferences) SetDefaults() {
 	p.Sharpness.Set(sharpness)
 	p.BlackLevel.Set(blackLevel)
 	p.PixelPerfectFade.Set(pixelPerfectFade)
-	p.SyncSpeedScanlines.Set(syncSpeedScanlines)
+	p.SyncSpeed.Set(syncSpeed)
 	p.SyncPowerOn.Set(syncPowerOn)
 	p.IntegerScaling.Set(integerScaling)
 }

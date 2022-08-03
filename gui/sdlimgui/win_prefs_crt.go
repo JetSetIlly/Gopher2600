@@ -19,7 +19,6 @@ import (
 	"fmt"
 
 	"github.com/inkyblackness/imgui-go/v4"
-	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 )
 
 func (win *winPrefs) drawCRT() {
@@ -425,16 +424,16 @@ available when 'Pixel Perfect' mode is disabled.`)
 func (win *winPrefs) drawSyncSpeed() {
 	imgui.Text("Synchronisation Speed")
 
-	t := int32(win.img.crtPrefs.SyncSpeedScanlines.Get().(int))
+	t := int32(win.img.crtPrefs.SyncSpeed.Get().(int))
 	var label string
 	if t == 0 {
-		label = "no tolerance"
+		label = "sync immediately"
 	} else {
-		label = fmt.Sprintf("%d scanlines", t)
+		label = fmt.Sprintf("%d frames", t)
 	}
 
-	if imgui.SliderIntV("##syncSpeed", &t, 0, specification.AbsoluteMaxScanlines, label, 1.0) {
-		win.img.crtPrefs.SyncSpeedScanlines.Set(t)
+	if imgui.SliderIntV("##syncSpeed", &t, 0, 10, label, 1.0) {
+		win.img.crtPrefs.SyncSpeed.Set(t)
 	}
 }
 

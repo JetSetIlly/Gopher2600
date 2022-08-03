@@ -48,6 +48,7 @@ var defunct = []string{
 	"sdlimgui.debugger.windowPos",
 	"sdlimgui.debugger.audioEnabled",
 	"crt.unsyncTolerance",
+	"crt.syncSpeedScanlines",
 	"hiscore.authtoken",
 	"hiscore.server",
 

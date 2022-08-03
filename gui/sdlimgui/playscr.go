@@ -21,6 +21,7 @@ import (
 
 	"github.com/go-gl/gl/v3.2-core/gl"
 	"github.com/inkyblackness/imgui-go/v4"
+	"github.com/jetsetilly/gopher2600/gui/fonts"
 )
 
 // note that values from the lazy package will not be updated in the service
@@ -153,11 +154,7 @@ func (win *playScr) drawFPS() bool {
 	select {
 	case <-win.fpsPulse.C:
 		fps, hz := win.img.tv.GetActualFPS()
-		if win.scr.crit.frameInfo.VSynced {
-			win.fps = fmt.Sprintf("%03.2f fps", fps)
-		} else {
-			win.fps = "unsynced"
-		}
+		win.fps = fmt.Sprintf("%03.2f fps", fps)
 		win.hz = fmt.Sprintf("%03.2fhz", hz)
 	default:
 	}
@@ -186,15 +183,20 @@ func (win *playScr) drawFPS() bool {
 	imgui.Text(fmt.Sprintf("%.1fx scaling", win.yscaling))
 	imgui.Text(fmt.Sprintf("%d total scanlines", win.scr.crit.frameInfo.TotalScanlines))
 
-	if win.img.screen.crit.frameInfo.IsAtariSafe() {
-		imgui.Text("atari safe")
-	}
-
 	imguiSeparator()
 
 	imgui.Text(win.img.screen.crit.frameInfo.Spec.ID)
 	imgui.SameLine()
 	imgui.Text(win.hz)
+	if !win.scr.crit.frameInfo.VSynced {
+		imgui.SameLine()
+		imgui.Text(string(fonts.NoVSYNC))
+	}
+
+	// if win.img.screen.crit.frameInfo.IsAtariSafe() {
+	// 	imguiSeparator()
+	// 	imgui.Text("atari safe")
+	// }
 
 	imgui.PopStyleColorV(2)
 
