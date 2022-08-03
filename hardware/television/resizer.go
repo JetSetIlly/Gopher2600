@@ -142,7 +142,7 @@ func (sr *resizer) examine(tv *Television, sig signal.SignalAttributes) {
 
 	// some ROMs never set VBLANK. for these cases we also record the extent of
 	// non-black pixels. these values are using in the commit() function in the
-	// event that framsHasVblank is false.
+	// event that frameHasVBlank is false.
 	if tv.state.clock > specification.ClksHBlank && sig&signal.VBlank != signal.VBlank && sig&signal.Color != 0 {
 		if tv.state.scanline < sr.blackTop && tv.state.scanline >= tv.state.frameInfo.Spec.NewSafeVisibleTop {
 			sr.blackTop = tv.state.scanline

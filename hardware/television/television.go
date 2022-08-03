@@ -556,14 +556,6 @@ func (tv *Television) newFrame(fromVsync bool) error {
 				_ = tv.SetSpec("NTSC")
 			}
 		}
-	} else {
-		// there has been no SetSpec() so we should update refresh rate
-		// normally if necessary
-		if tv.state.scanline != tv.state.frameInfo.TotalScanlines {
-			tv.state.frameInfo.TotalScanlines = tv.state.scanline
-			tv.state.frameInfo.RefreshRate = 15734.26 / float32(tv.state.frameInfo.TotalScanlines)
-			tv.lmtr.setRefreshRate(tv.state.frameInfo.RefreshRate)
-		}
 	}
 
 	// update frame number
@@ -576,6 +568,15 @@ func (tv *Television) newFrame(fromVsync bool) error {
 	err := tv.state.resizer.commit(tv)
 	if err != nil {
 		return err
+	}
+
+	// record total scanlines and refresh rate if changed. note that this is
+	// independent of the resizer.commit() call above. total scanline / refresh
+	// rate can change without it being a resize
+	if tv.state.frameInfo.TotalScanlines != tv.state.scanline {
+		tv.state.frameInfo.TotalScanlines = tv.state.scanline
+		tv.state.frameInfo.RefreshRate = 15734.26 / float32(tv.state.scanline)
+		tv.lmtr.setRefreshRate(tv.state.frameInfo.RefreshRate)
 	}
 
 	// prepare for next frame
@@ -780,7 +781,7 @@ func (tv *Television) GetReqFPS() float32 {
 //
 // IS goroutine safe.
 func (tv *Television) GetActualFPS() (float32, float32) {
-	return tv.lmtr.actual.Load().(float32), tv.state.frameInfo.RefreshRate
+	return tv.lmtr.actual.Load().(float32), tv.lmtr.refreshRate.Load().(float32)
 }
 
 // GetReqSpecID returns the specification that was requested on creation.

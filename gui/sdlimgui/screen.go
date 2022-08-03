@@ -72,15 +72,13 @@ type screenCrit struct {
 	// whether monitorSync is "similar" to emulated TV's refresh rate
 	monitorSyncInRange bool
 
-	// the number of consecutive frames where a screenroll might have happened.
-	// once it reaches a threshold then screenroll begins
-	// * playmode only
-	screenrollCt int
-
 	// the scanline currenty used to emulate a screenroll effect. if the value
 	// is zero then no screenroll is currently taking place
 	// * playmode only
 	screenrollScanline int
+
+	// the number of consecutive vsyncs seen
+	vsyncCount int
 
 	// the pixels array is used in the presentation texture of the play and debug screen.
 	pixels *image.RGBA
@@ -322,16 +320,6 @@ func (scr *screen) Resize(frameInfo television.FrameInfo) error {
 	return <-scr.img.polling.serviceErr
 }
 
-func (scr *screen) recoverFromScreenRoll() {
-	scr.crit.screenrollCt = 0
-
-	// recovery required
-	if scr.crit.screenrollScanline > 0 {
-		scr.crit.screenrollScanline *= 8
-		scr.crit.screenrollScanline /= 10
-	}
-}
-
 // NewFrame implements the television.PixelRenderer interface
 //
 // MUST NOT be called from the gui thread.
@@ -344,39 +332,30 @@ func (scr *screen) NewFrame(frameInfo television.FrameInfo) error {
 	if scr.img.isPlaymode() {
 		// check screen rolling if crtprefs are enabled
 		if scr.img.crtPrefs.Enabled.Get().(bool) {
-			if frameInfo.RefreshRate == scr.crit.frameInfo.RefreshRate && frameInfo.VSynced {
-				scr.recoverFromScreenRoll()
-			} else {
+			syncSpeed := scr.img.crtPrefs.SyncSpeed.Get().(int)
+
+			if !frameInfo.VSynced {
+				scr.crit.vsyncCount = 0
+			} else if scr.crit.vsyncCount <= syncSpeed {
+				scr.crit.vsyncCount++
+			}
+
+			// while we are waiting for VSYNC to settle down apply the screen roll
+			if scr.crit.vsyncCount < syncSpeed {
 				// without the stable check, the screen can roll during startup
 				// of many ROMs. Pitfall for example will do this.
 				syncPowerOn := scr.img.crtPrefs.SyncPowerOn.Get().(bool)
 				if syncPowerOn || (!syncPowerOn && scr.crit.frameInfo.Stable) {
-					// the amount to adjust the screenrollScanline value by. we
-					// rolling by a fixed amount but an alternative might be to use
-					// the scr.crit.lastY value. however that value can change and
-					// cause the roll to look "ugly"
-					//
-					// using a fixed amout is artificial but it looks better in
-					// more situations
-					const rollAmount = 100
-
-					diff := frameInfo.TotalScanlines - scr.crit.frameInfo.TotalScanlines
-					if diff < 0 {
-						diff -= 1
-					}
-
-					if diff > scr.img.crtPrefs.SyncSpeedScanlines.Get().(int) {
-						scr.crit.screenrollScanline += rollAmount
-						if scr.crit.screenrollScanline >= specification.AbsoluteMaxScanlines {
-							scr.crit.screenrollScanline -= specification.AbsoluteMaxScanlines
-						}
-					} else {
-						scr.recoverFromScreenRoll()
+					scr.crit.screenrollScanline += 50
+					if scr.crit.screenrollScanline > specification.AbsoluteMaxScanlines {
+						scr.crit.screenrollScanline -= specification.AbsoluteMaxScanlines
 					}
 				}
+			} else if scr.crit.screenrollScanline > 0 {
+				// recover from screen roll
+				scr.crit.screenrollScanline *= 80
+				scr.crit.screenrollScanline /= 100
 			}
-		} else {
-			scr.crit.screenrollScanline = 0
 		}
 
 		switch scr.img.emulation.State() {
