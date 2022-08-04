@@ -17,11 +17,14 @@ package sdlimgui
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/coprocessor/developer"
 	"github.com/jetsetilly/gopher2600/gui/fonts"
+	"github.com/jetsetilly/gopher2600/logger"
+	"github.com/jetsetilly/gopher2600/resources/unique"
 )
 
 // in this case of the coprocessor disassmebly window the actual window title
@@ -197,6 +200,10 @@ func (win *winCoProcGlobals) draw() {
 			imgui.Separator()
 			imgui.Spacing()
 			imgui.Checkbox("List all globals (in all files)", &win.showAllGlobals)
+			imgui.SameLineV(0, 20)
+			if imgui.Button(fmt.Sprintf("%c Save to CSV", fonts.Disk)) {
+				win.saveToCSV(src)
+			}
 		})
 	})
 }
@@ -443,4 +450,121 @@ func (win *winCoProcGlobals) readMemory(address uint64) (uint32, bool) {
 		return 0, false
 	}
 	return win.img.lz.Cart.Static.Read32bit(uint32(address))
+}
+
+// save all variables in the curent view to a CSV file in the working
+// directory. filename will be of the form:
+//
+// globals_<cart name>_<timestamp>.csv
+//
+// all entries in the current view are saved, including closed nodes.
+func (win *winCoProcGlobals) saveToCSV(src *developer.Source) {
+
+	// open unique file
+	fn := unique.Filename("globals", win.img.lz.Cart.Shortname)
+	fn = fmt.Sprintf("%s.csv", fn)
+	f, err := os.Create(fn)
+	if err != nil {
+		logger.Logf("sdlimgui", "could not save globals CSV: %v", err)
+		return
+	}
+	defer func() {
+		err := f.Close()
+		if err != nil {
+			logger.Logf("sdlimgui", "error saving globals CSV: %v", err)
+		}
+	}()
+
+	// name of parent
+	parentName := func(parent, name string) string {
+		if parent == "" {
+			return name
+		}
+		return fmt.Sprintf("%s->%s", parent, name)
+	}
+
+	// write string to CSV file
+	writeEntry := func(s string) {
+		f.WriteString(s)
+		f.WriteString("\n")
+	}
+
+	// the builEntry function is recursive and will is very similar in
+	// structure to the drawVariable() function above
+	var buildEntry func(*developer.SourceVariable, uint64, string)
+	buildEntry = func(varb *developer.SourceVariable, baseAddress uint64, parent string) {
+		if win.showAllGlobals || varb.DeclLine.File.Filename == win.selectedFile.Filename {
+			s := strings.Builder{}
+
+			address := varb.Address
+			if varb.AddressIsOffset() {
+				// address of variable is an offset of parent address
+				address += baseAddress
+			}
+
+			if varb.IsComposite() {
+				for _, memb := range varb.Type.Members {
+					buildEntry(memb, address, parentName(parent, varb.Name))
+				}
+			} else if varb.IsArray() {
+				for i := 0; i < varb.Type.ElementCount; i++ {
+					elem := &developer.SourceVariable{
+						Name:     fmt.Sprintf("%s[%d]", varb.Name, i),
+						Type:     varb.Type.ElementType,
+						DeclLine: varb.DeclLine,
+						Address:  address + uint64(i*varb.Type.ElementType.Size),
+					}
+					buildEntry(elem, elem.Address, parent)
+				}
+			} else if varb.IsPointer() {
+				value, valueOk := win.readMemory(address)
+				value &= varb.Type.Mask()
+
+				s.WriteString(fmt.Sprintf("%s,", parent))
+				s.WriteString(fmt.Sprintf("%s,", varb.Name))
+				s.WriteString(fmt.Sprintf("%s,", varb.Type.Name))
+				s.WriteString(fmt.Sprintf("%08x,", address))
+				if valueOk {
+					s.WriteString("*")
+					s.WriteString(fmt.Sprintf(varb.Type.Hex(), value))
+					s.WriteString(",")
+				} else {
+					s.WriteString("-,")
+				}
+				writeEntry(s.String())
+
+				deref := &developer.SourceVariable{
+					Name:     varb.Name,
+					Type:     varb.Type.PointerType,
+					DeclLine: varb.DeclLine,
+					Address:  uint64(value),
+				}
+
+				buildEntry(deref, deref.Address, parentName(parent, varb.Name))
+			} else {
+				value, valueOk := win.readMemory(address)
+				value &= varb.Type.Mask()
+
+				s.WriteString(fmt.Sprintf("%s,", parent))
+				s.WriteString(fmt.Sprintf("%s,", varb.Name))
+				s.WriteString(fmt.Sprintf("%s,", varb.Type.Name))
+				s.WriteString(fmt.Sprintf("%08x,", address))
+
+				if valueOk {
+					s.WriteString(fmt.Sprintf(varb.Type.Hex(), value))
+					s.WriteString(",")
+				}
+
+				writeEntry(s.String())
+			}
+		}
+	}
+
+	// write header to CSV file
+	writeEntry("Parent, Name, Type, Address, Value")
+
+	// process every variable in the current view
+	for _, varb := range src.SortedGlobals.Variables {
+		buildEntry(varb, 0, "")
+	}
 }
