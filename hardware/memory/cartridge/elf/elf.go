@@ -168,6 +168,17 @@ func (cart *Elf) runStrongarm(addr uint16, data uint8) bool {
 			}
 		}
 
+		// if the most recently run strongarm function has instructed the ARM
+		// emulation to resume immediately then we loop until we encounter one
+		// which wants to yield to the VCS
+		for cart.mem.resumeARMimmediately {
+			cart.mem.resumeARMimmediately = false
+			cart.arm.Run()
+			if cart.mem.strongarm.running.function != nil {
+				cart.mem.strongarm.running.function(cart.mem)
+			}
+		}
+
 		return true
 	}
 	return false

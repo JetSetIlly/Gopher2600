@@ -69,6 +69,18 @@ type elfMemory struct {
 	strongArmMemtop    uint32
 	strongArmFunctions map[uint32]strongArmFunction
 
+	// whether the ARM should resume immediately after a yield, without
+	// returning control to the VCS
+	//
+	// the map correlates the ARM address of the function (same as the
+	// strongArmFunctions map) to whether or not the above is true.
+	strongArmResumeImmediately map[uint32]bool
+
+	// whether the current strong arm function expects the ARM to resume
+	// immediately after execution. valid only for use in the
+	// elf.runStrongarm() function
+	resumeARMimmediately bool
+
 	// will be set to true if the vcsWrite3() function is used
 	usesBusStuffing bool
 
@@ -150,6 +162,8 @@ func newElfMemory(f *elf.File) (*elfMemory, error) {
 	mem.strongArmOrigin = origin
 	mem.strongArmMemtop = origin
 
+	mem.strongArmResumeImmediately = make(map[uint32]bool)
+
 	// symbols used during relocation
 	symbols, err := f.Symbols()
 	if err != nil {
@@ -209,63 +223,63 @@ func newElfMemory(f *elf.File) (*elfMemory, error) {
 
 				// strongARM functions
 				case "vcsWrite3":
-					v = mem.relocateStrongArmFunction(vcsWrite3)
+					v = mem.relocateStrongArmFunction(vcsWrite3, false)
 					mem.usesBusStuffing = true
 				case "vcsJmp3":
-					v = mem.relocateStrongArmFunction(vcsJmp3)
+					v = mem.relocateStrongArmFunction(vcsJmp3, false)
 				case "vcsLda2":
-					v = mem.relocateStrongArmFunction(vcsLda2)
+					v = mem.relocateStrongArmFunction(vcsLda2, false)
 				case "vcsSta3":
-					v = mem.relocateStrongArmFunction(vcsSta3)
+					v = mem.relocateStrongArmFunction(vcsSta3, false)
 				case "SnoopDataBus":
-					v = mem.relocateStrongArmFunction(snoopDataBus)
+					v = mem.relocateStrongArmFunction(snoopDataBus, false)
 				case "vcsRead4":
-					v = mem.relocateStrongArmFunction(vcsRead4)
+					v = mem.relocateStrongArmFunction(vcsRead4, false)
 				case "vcsStartOverblank":
-					v = mem.relocateStrongArmFunction(vcsStartOverblank)
+					v = mem.relocateStrongArmFunction(vcsStartOverblank, false)
 				case "vcsEndOverblank":
-					v = mem.relocateStrongArmFunction(vcsEndOverblank)
+					v = mem.relocateStrongArmFunction(vcsEndOverblank, false)
 				case "vcsLdaForBusStuff2":
-					v = mem.relocateStrongArmFunction(vcsLdaForBusStuff2)
+					v = mem.relocateStrongArmFunction(vcsLdaForBusStuff2, false)
 				case "vcsLdxForBusStuff2":
-					v = mem.relocateStrongArmFunction(vcsLdxForBusStuff2)
+					v = mem.relocateStrongArmFunction(vcsLdxForBusStuff2, false)
 				case "vcsLdyForBusStuff2":
-					v = mem.relocateStrongArmFunction(vcsLdyForBusStuff2)
+					v = mem.relocateStrongArmFunction(vcsLdyForBusStuff2, false)
 				case "vcsWrite5":
-					v = mem.relocateStrongArmFunction(vcsWrite5)
+					v = mem.relocateStrongArmFunction(vcsWrite5, false)
 				case "vcsLdx2":
-					v = mem.relocateStrongArmFunction(vcsLdx2)
+					v = mem.relocateStrongArmFunction(vcsLdx2, false)
 				case "vcsLdy2":
-					v = mem.relocateStrongArmFunction(vcsLdy2)
+					v = mem.relocateStrongArmFunction(vcsLdy2, false)
 				case "vcsSta4":
-					v = mem.relocateStrongArmFunction(vcsSta4)
+					v = mem.relocateStrongArmFunction(vcsSta4, false)
 				case "vcsStx3":
-					v = mem.relocateStrongArmFunction(vcsStx3)
+					v = mem.relocateStrongArmFunction(vcsStx3, false)
 				case "vcsStx4":
-					v = mem.relocateStrongArmFunction(vcsStx4)
+					v = mem.relocateStrongArmFunction(vcsStx4, false)
 				case "vcsSty3":
-					v = mem.relocateStrongArmFunction(vcsSty3)
+					v = mem.relocateStrongArmFunction(vcsSty3, false)
 				case "vcsSty4":
-					v = mem.relocateStrongArmFunction(vcsSty4)
+					v = mem.relocateStrongArmFunction(vcsSty4, false)
 				case "vcsTxs2":
-					v = mem.relocateStrongArmFunction(vcsTxs2)
+					v = mem.relocateStrongArmFunction(vcsTxs2, false)
 				case "vcsJsr6":
-					v = mem.relocateStrongArmFunction(vcsJsr6)
+					v = mem.relocateStrongArmFunction(vcsJsr6, false)
 				case "vcsNop2":
-					v = mem.relocateStrongArmFunction(vcsNop2)
+					v = mem.relocateStrongArmFunction(vcsNop2, false)
 				case "vcsNop2n":
-					v = mem.relocateStrongArmFunction(vcsNop2n)
+					v = mem.relocateStrongArmFunction(vcsNop2n, false)
 				case "vcsCopyOverblankToRiotRam":
-					v = mem.relocateStrongArmFunction(vcsCopyOverblankToRiotRam)
+					v = mem.relocateStrongArmFunction(vcsCopyOverblankToRiotRam, false)
 
 				// C library functions that are often not linked but required
 				case "memset":
-					v = mem.relocateStrongArmFunction(memset)
+					v = mem.relocateStrongArmFunction(memset, true)
 				case "memcpy":
-					v = mem.relocateStrongArmFunction(memcpy)
+					v = mem.relocateStrongArmFunction(memcpy, true)
 				case "__aeabi_idiv":
 					// sometimes linked when building for ARMv6-M target
-					v = mem.relocateStrongArmFunction(__aeabi_idiv)
+					v = mem.relocateStrongArmFunction(__aeabi_idiv, true)
 
 				// strongARM tables
 				case "ReverseByte":
@@ -426,7 +440,7 @@ func (mem *elfMemory) relocateStrongArmTable(table strongarmTable) uint32 {
 	return addr
 }
 
-func (mem *elfMemory) relocateStrongArmFunction(f strongArmFunction) uint32 {
+func (mem *elfMemory) relocateStrongArmFunction(f strongArmFunction, support bool) uint32 {
 	// address of new function in memory
 	addr := mem.strongArmMemtop + 3
 
@@ -438,6 +452,10 @@ func (mem *elfMemory) relocateStrongArmFunction(f strongArmFunction) uint32 {
 
 	// update memtop of strongArm program
 	mem.strongArmMemtop += uint32(len(strongArmStub))
+
+	// note whether this function expects the ARM emulation to resume
+	// immediately
+	mem.strongArmResumeImmediately[addr] = support
 
 	return addr
 }
@@ -506,6 +524,8 @@ func (mem *elfMemory) MapAddress(addr uint32, write bool) (*[]byte, uint32) {
 		if f, ok := mem.strongArmFunctions[addr+1]; ok {
 			mem.setStrongArmFunction(f)
 			mem.arm.Yield()
+
+			mem.resumeARMimmediately = mem.strongArmResumeImmediately[addr+1]
 		}
 		return &mem.strongArmProgram, addr - mem.strongArmOrigin
 	}
