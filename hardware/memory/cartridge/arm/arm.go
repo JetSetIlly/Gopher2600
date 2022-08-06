@@ -600,8 +600,8 @@ func (arm *ARM) run() (float32, error) {
 		arm.executingPC = arm.registers[rPC] - 2
 
 		// check program counter
-		memIdx := arm.executingPC - arm.programMemoryOffset
-		if memIdx < 0 || memIdx+1 >= uint32(arm.programMemoryLen) {
+		memIdx := int(arm.executingPC) - int(arm.programMemoryOffset)
+		if memIdx < 0 || memIdx+1 >= arm.programMemoryLen {
 			// program counter is out-of-range so find program memory again
 			// (using the PC value)
 			err = arm.findProgramMemory()
@@ -612,8 +612,8 @@ func (arm *ARM) run() (float32, error) {
 			}
 
 			// if it's still out-of-range then give up with an error
-			memIdx = arm.executingPC - arm.programMemoryOffset
-			if memIdx < 0 || memIdx+1 >= uint32(arm.programMemoryLen) {
+			memIdx = int(arm.executingPC) - int(arm.programMemoryOffset)
+			if memIdx < 0 || memIdx+1 >= arm.programMemoryLen {
 				// can't find memory so we say the ARM program has finished inadvertently
 				logger.Logf("ARM7", "PC out of range (%#08x). aborting thumb program early", arm.executingPC)
 				break // for loop
