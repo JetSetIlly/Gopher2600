@@ -403,7 +403,7 @@ func NewSource(pathToROM string) (*Source, error) {
 	// get DWARF information from ELF file
 	src.dwrf, err = elf.DWARF()
 	if err != nil {
-		return nil, curated.Errorf("dwarf: %v", err)
+		return nil, curated.Errorf("dwarf: no DWARF data in ELF file")
 	}
 
 	bld, err := newBuild(src.dwrf)
