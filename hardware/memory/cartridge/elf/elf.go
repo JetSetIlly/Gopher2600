@@ -16,6 +16,7 @@
 package elf
 
 import (
+	"debug/dwarf"
 	"debug/elf"
 	"encoding/binary"
 	"fmt"
@@ -26,15 +27,22 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
+	"github.com/jetsetilly/gopher2600/logger"
 )
 
 // Elf implements the mapper.CartMapper interface.
 type Elf struct {
-	instance  *instance.Instance
+	instance *instance.Instance
+	dev      mapper.CartCoProcDeveloper
+
 	version   string
 	pathToROM string
-	arm       *arm.ARM
-	mem       *elfMemory
+
+	arm *arm.ARM
+	mem *elfMemory
+
+	// the relocated dwarf data
+	dwarf *dwarf.Data
 }
 
 // NewElf is the preferred method of initialisation for the Elf type.
@@ -75,6 +83,11 @@ func NewElf(instance *instance.Instance, pathToROM string) (mapper.CartMapper, e
 	cart.mem.busStuffingInit()
 
 	// defer reset until the VCS tries to read the cpubus.Reset address
+
+	cart.dwarf, err = f.DWARF()
+	if err != nil {
+		logger.Logf("ELF", "error retrieving DWARF data: %s", err.Error())
+	}
 
 	return cart, nil
 }
@@ -243,4 +256,33 @@ func (cart *Elf) ARMinterrupt(addr uint32, val1 uint32, val2 uint32) (arm.ARMint
 // BusStuff implements the mapper.CartBusStuff interface.
 func (cart *Elf) BusStuff() (uint8, bool) {
 	return cart.mem.busStuffData, cart.mem.busStuff
+}
+
+// CoProcID implements the mapper.CartCoProcBus interface.
+func (cart *Elf) CoProcID() string {
+	return cart.arm.CoProcID()
+}
+
+// SetDisassembler implements the mapper.CartCoProcBus interface.
+func (cart *Elf) SetDisassembler(disasm mapper.CartCoProcDisassembler) {
+	cart.arm.SetDisassembler(disasm)
+}
+
+// SetDeveloper implements the mapper.CartCoProcBus interface.
+func (cart *Elf) SetDeveloper(dev mapper.CartCoProcDeveloper) {
+	cart.dev = dev
+	cart.arm.SetDeveloper(dev)
+}
+
+// DWARF implements the mapper.CartDebugging interface.
+func (cart *Elf) DWARF() *dwarf.Data {
+	return cart.dwarf
+}
+
+// ELFSection implements the mapper.CartDebugging interface.
+func (cart *Elf) ELFSection(name string) (uint32, bool) {
+	if sec, ok := cart.mem.sections[name]; ok {
+		return sec.origin, true
+	}
+	return 0, false
 }

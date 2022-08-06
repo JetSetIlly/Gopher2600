@@ -16,6 +16,7 @@
 package dpcplus
 
 import (
+	"debug/dwarf"
 	"fmt"
 
 	"github.com/jetsetilly/gopher2600/curated"
@@ -944,4 +945,14 @@ func (cart *dpcPlus) runArm() error {
 		cart.dev.ExecutionStart()
 	}
 	return nil
+}
+
+// DWARF implements the mapper.CartDebugging interface.
+func (cart *dpcPlus) DWARF() *dwarf.Data {
+	return nil
+}
+
+// ELFSection implements the mapper.CartDebugging interface.
+func (cart *dpcPlus) ELFSection(name string) (uint32, bool) {
+	return 0, false
 }

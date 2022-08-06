@@ -18,6 +18,7 @@ package elf
 import (
 	"debug/elf"
 	"fmt"
+	"strings"
 
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm"
@@ -97,7 +98,7 @@ type elfMemory struct {
 	args []byte
 }
 
-func newElfMemory(f *elf.File) (*elfMemory, error) {
+func newElfMemory(ef *elf.File) (*elfMemory, error) {
 	mem := &elfMemory{
 		gpio:     newGPIO(),
 		sections: make(map[string]*elfSection),
@@ -109,7 +110,12 @@ func newElfMemory(f *elf.File) (*elfMemory, error) {
 
 	// load sections
 	origin := mem.model.FlashOrigin
-	for _, sec := range f.Sections {
+	for _, sec := range ef.Sections {
+		// ignore debug sections
+		if strings.Contains(sec.Name, ".debug") {
+			continue
+		}
+
 		// ignore relocation sections for now
 		switch sec.Type {
 		case elf.SHT_REL:
@@ -140,7 +146,7 @@ func newElfMemory(f *elf.File) (*elfMemory, error) {
 			section.memtop = section.origin + uint32(len(section.data))
 			origin = (section.memtop + 4) & 0xfffffffc
 
-			// extend data section so that it is continuous with the following section
+			// extend memtop so that it is continuous with the following section
 			gap := origin - section.memtop - 1
 			if gap > 0 {
 				extend := make([]byte, gap)
@@ -162,22 +168,30 @@ func newElfMemory(f *elf.File) (*elfMemory, error) {
 	mem.strongArmOrigin = origin
 	mem.strongArmMemtop = origin
 
+	// equivalent map to strongArmFunctions which records whether the function
+	// yields to the VCS or expects the ARM to resume immediately on function
+	// end
 	mem.strongArmResumeImmediately = make(map[uint32]bool)
 
 	// symbols used during relocation
-	symbols, err := f.Symbols()
+	symbols, err := ef.Symbols()
 	if err != nil {
 		return nil, curated.Errorf("ELF: %v", err)
 	}
 
 	// relocate all sections
-	for _, relsec := range f.Sections {
+	for _, relsec := range ef.Sections {
 		// ignore non-relocation sections for now
 		if relsec.Type != elf.SHT_REL {
 			continue
 		}
 
-		// section being relocated. we should really be using the link field of the elf.Section for this
+		// ignore debug sections
+		if strings.Contains(relsec.Name, ".debug") {
+			continue
+		}
+
+		// section being relocated
 		var secBeingRelocated *elfSection
 		if s, ok := mem.sections[relsec.Name[4:]]; !ok {
 			return nil, curated.Errorf("ELF: could not find section corresponding to %s", relsec.Name)
@@ -185,8 +199,19 @@ func newElfMemory(f *elf.File) (*elfMemory, error) {
 			secBeingRelocated = s
 		}
 
-		// reloation data. we walk this manually and extract the relocation
-		// entry "by hand". there is no explicit entry type in the Go library
+		// I'm not sure how to handle .debug_macro. it seems to be very
+		// different to other sections. problems I've seen so far (1) relocated
+		// value will be out of range according to the MapAddress check (2) the
+		// offset value can go beyond the end of the .debug_macro data slice
+		if secBeingRelocated.name == ".debug_macro" {
+			logger.Logf("ELF", "not relocating %s", secBeingRelocated.name)
+			continue
+		} else {
+			logger.Logf("ELF", "relocating %s", secBeingRelocated.name)
+		}
+
+		// reloation data. we walk over the data and extract the relocation
+		// entry manually. there is no explicit entry type in the Go library
 		// (for some reason)
 		relsecData, err := relsec.Data()
 		if err != nil {
@@ -198,8 +223,8 @@ func newElfMemory(f *elf.File) (*elfMemory, error) {
 			var v uint32
 
 			// the relocation entry fields
-			offset := uint32(relsecData[i]) | uint32(relsecData[i+1])<<8 | uint32(relsecData[i+2])<<16 | uint32(relsecData[i+3])<<24
-			info := uint32(relsecData[i+4]) | uint32(relsecData[i+5])<<8 | uint32(relsecData[i+6])<<16 | uint32(relsecData[i+7])<<24
+			offset := ef.ByteOrder.Uint32(relsecData[i : i+4])
+			info := ef.ByteOrder.Uint32(relsecData[i+4 : i+8])
 
 			// symbol is encoded in the info value
 			symbolIdx := info >> 8
@@ -292,7 +317,7 @@ func newElfMemory(f *elf.File) (*elfMemory, error) {
 						return nil, curated.Errorf("ELF: %s is undefined", sym.Name)
 					}
 
-					n := f.Sections[sym.Section].Name
+					n := ef.Sections[sym.Section].Name
 					if p, ok := mem.sections[n]; !ok {
 						return nil, curated.Errorf("ELF: can not find section (%s) while relocation %s", p.name, sym.Name)
 					} else {
@@ -302,16 +327,14 @@ func newElfMemory(f *elf.File) (*elfMemory, error) {
 				}
 
 				// add placeholder value to relocation address
-				addend := uint32(secBeingRelocated.data[offset])
-				addend |= uint32(secBeingRelocated.data[offset+1]) << 8
-				addend |= uint32(secBeingRelocated.data[offset+2]) << 16
-				addend |= uint32(secBeingRelocated.data[offset+3]) << 24
+				addend := ef.ByteOrder.Uint32(secBeingRelocated.data[offset : offset+4])
 				v += addend
 
 				// check address is recognised
 				mappedData, mappedOffset := mem.MapAddress(v, false)
 				if mappedData == nil {
-					return nil, curated.Errorf("ELF: illegal relocation address (%08x) for %s", v, sym.Name)
+					continue
+					// return nil, curated.Errorf("ELF: illegal relocation address (%08x) for %s", v, sym.Name)
 				}
 
 				// peep hole data (for logging output)
@@ -322,23 +345,20 @@ func newElfMemory(f *elf.File) (*elfMemory, error) {
 				}
 
 				// commit write
-				secBeingRelocated.data[offset] = uint8(v)
-				secBeingRelocated.data[offset+1] = uint8(v >> 8)
-				secBeingRelocated.data[offset+2] = uint8(v >> 16)
-				secBeingRelocated.data[offset+3] = uint8(v >> 24)
+				ef.ByteOrder.PutUint32(secBeingRelocated.data[offset:offset+4], v)
 
 				// what we log depends on the info field. for info of type 0x03
 				// (lower nibble) then the relocation is of a entire section.
 				// in this case the symbol will not have a name so we use the
 				// section name instead
 				if relsec.Info&0x03 == 0x03 {
-					logger.Logf("ELF", "relocate %s (%08x) => %08x %s", f.Sections[sym.Section].Name, secBeingRelocated.origin+offset, v, mappedDataPeepHole)
+					logger.Logf("ELF", "relocate %s %08x => %08x %s", ef.Sections[sym.Section].Name, secBeingRelocated.origin+offset, v, mappedDataPeepHole)
 				} else {
-					n := sym.Name
-					if n == "" {
-						n = "(unnamed)"
+					n := ""
+					if sym.Name != "" {
+						n = fmt.Sprintf(" %s", sym.Name)
 					}
-					logger.Logf("ELF", "relocate %s (%08x) => %08x %s", n, secBeingRelocated.origin+offset, v, mappedDataPeepHole)
+					logger.Logf("ELF", "relocate%s %08x => %08x %s", n, secBeingRelocated.origin+offset, v, mappedDataPeepHole)
 				}
 
 			case elf.R_ARM_THM_PC22:
@@ -353,7 +373,7 @@ func newElfMemory(f *elf.File) (*elfMemory, error) {
 					return nil, curated.Errorf("ELF: %s is undefined", sym.Name)
 				}
 
-				n := f.Sections[sym.Section].Name
+				n := ef.Sections[sym.Section].Name
 				if p, ok := mem.sections[n]; !ok {
 					return nil, curated.Errorf("ELF: can not find section (%s)", p.name)
 				} else {
@@ -385,10 +405,8 @@ func newElfMemory(f *elf.File) (*elfMemory, error) {
 				hi := uint16(0xd000 | (j1 << 13) | (j2 << 11) | imm11)
 				opcode := uint32(lo) | (uint32(hi) << 16)
 
-				secBeingRelocated.data[offset] = uint8(opcode)
-				secBeingRelocated.data[offset+1] = uint8(opcode >> 8)
-				secBeingRelocated.data[offset+2] = uint8(opcode >> 16)
-				secBeingRelocated.data[offset+3] = uint8(opcode >> 24)
+				// commit write
+				ef.ByteOrder.PutUint32(secBeingRelocated.data[offset:offset+4], opcode)
 
 				logger.Logf("ELF", "relocate %s (%08x) => %08x", n, secBeingRelocated.origin+offset, opcode)
 

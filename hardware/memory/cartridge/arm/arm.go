@@ -512,7 +512,7 @@ func (arm *ARM) Run() (float32, error) {
 	}
 
 	// easier to simply remake executed addresses information
-	if arm.dev != nil && !arm.yield && !arm.breakpoint {
+	if arm.dev != nil {
 		arm.executedAddresses = make(map[uint32]float32)
 	}
 

@@ -91,7 +91,7 @@ type TV interface {
 }
 
 // NewDeveloper is the preferred method of initialisation for the Developer type.
-func NewDeveloper(pathToROM string, cart mapper.CartCoProcBus, tv TV) *Developer {
+func NewDeveloper(romFile string, cart mapper.CartCoProcBus, tv TV) *Developer {
 	if cart == nil {
 		return nil
 	}
@@ -108,7 +108,7 @@ func NewDeveloper(pathToROM string, cart mapper.CartCoProcBus, tv TV) *Developer
 	}
 
 	t := time.Now()
-	dev.source, err = NewSource(pathToROM)
+	dev.source, err = NewSource(romFile, cart)
 	if err != nil {
 		logger.Logf("developer", err.Error())
 	} else {
@@ -234,7 +234,7 @@ func (dev *Developer) ExecutionStart() {
 	}
 }
 
-// xecutionProfile implements the CartCoProcDeveloper interface.
+// ExecutionProfile implements the CartCoProcDeveloper interface.
 func (dev *Developer) ExecutionProfile(addr map[uint32]float32) {
 	dev.sourceLock.Lock()
 	defer dev.sourceLock.Unlock()

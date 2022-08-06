@@ -15,7 +15,46 @@
 
 package mapper
 
-import "fmt"
+import (
+	"debug/dwarf"
+	"fmt"
+)
+
+// CartCoProcBus is implemented by cartridge mappers that have a coprocessor that
+// functions independently from the VCS.
+type CartCoProcBus interface {
+	CoProcID() string
+	SetDisassembler(CartCoProcDisassembler)
+	SetDeveloper(CartCoProcDeveloper)
+
+	// returns any DWARF data for the cartridge. not all cartridges that
+	// implement the CartCoProcBus interface will be able to meaningfully
+	// return any data but none-the-less would benefit from DWARF debugging
+	// information. in those instances, the DWARF data must be retreived
+	// elsewhere
+	DWARF() *dwarf.Data
+
+	// returns the offset of the named ELF section and whether the named
+	// section exists. not all cartridges that implement this interface will be
+	// able to meaningfully answer this function call
+	ELFSection(string) (uint32, bool)
+}
+
+// CartCoProcExecution is implemented by cartridge mappers that have a
+// coprocessor. These coprocessors require careful monitoring so that they
+// interact with the main emulation correctly.
+//
+// For example, these coprocessors can halt mid-operation due to a breakpoint
+// and the debugging loop need to understand when this happened.
+//
+// TODO: this interface should be folded into the CartCoProcBus interface.
+// there's no need to differentiate the two
+type CartCoProcExecution interface {
+	CoProcIsActive() bool
+	BreakpointHasTriggered() bool
+	ResumeAfterBreakpoint() error
+	BreakpointsDisable(bool)
+}
 
 // CartCoProcDisasmEntry represents a single decoded instruction by the coprocessor.
 type CartCoProcDisasmEntry interface {
@@ -72,14 +111,6 @@ type CartCoProcDeveloper interface {
 
 	// execution of the coprocessor has ended
 	ExecutionEnd()
-}
-
-// CartCoProcBus is implemented by cartridge mappers that have a coprocessor that
-// functions independently from the VCS.
-type CartCoProcBus interface {
-	CoProcID() string
-	SetDisassembler(CartCoProcDisassembler)
-	SetDeveloper(CartCoProcDeveloper)
 }
 
 // CartCoProcDisassemblerStdout is a minimial implementation of the CartCoProcDisassembler

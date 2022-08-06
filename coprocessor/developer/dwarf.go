@@ -27,6 +27,7 @@ import (
 
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
@@ -254,8 +255,11 @@ func (varb *SourceVariable) String() string {
 //
 // It is possible for the arrays/map fields to be empty
 type Source struct {
+	// raw dwarf data. after NewSource() this data is only needed by the
+	// findSourceLine() function
 	dwrf *dwarf.Data
 
+	// every compile unit in the dwarf data
 	compileUnits []*compileUnit
 
 	// if any of the compile units were compiled with GCC optimisation then
@@ -329,12 +333,12 @@ type Source struct {
 
 // NewSource is the preferred method of initialisation for the Source type.
 //
-// If no ELF file or valid DWARF data can be found in relation to the pathToROM
-// argument, the function will return nil with an error.
+// If no ELF file or valid DWARF data can be found in relation to the ROM file
+// the function will return nil with an error.
 //
 // Once the ELF and DWARF file has been identified then Source will always be
 // non-nil but with the understanding that the fields may be empty.
-func NewSource(pathToROM string) (*Source, error) {
+func NewSource(romFile string, cart mapper.CartCoProcBus) (*Source, error) {
 	src := &Source{
 		Disassembly:      make(map[uint64]*SourceDisasm),
 		Files:            make(map[string]*SourceFile),
@@ -359,17 +363,56 @@ func NewSource(pathToROM string) (*Source, error) {
 	}
 
 	// open ELF file
-	elf := findELF(pathToROM)
-	if elf == nil {
+	ef := findELF(romFile)
+	if ef == nil {
 		return nil, curated.Errorf("dwarf: compiled ELF file not found")
 	}
-	defer elf.Close()
+	defer ef.Close()
+
+	// origin of the executable ELF section. will be zero if ELF file is not
+	// reloctable
+	//
+	// the executableSectionFound flag is to prevent accepting relocatable
+	// files with multiple executable sections - I don't know how to handle
+	// that because we need at most one executableOrigin value when completing
+	// the relocation of DWARF sections
+	//
+	// NOTE: this is likely to change once I understand DWARF relocation better
+	var executableOrigin uint64
+	var executableSectionFound bool
 
 	// disassemble every word in the ELF file
-	for _, p := range elf.Progs {
-		o := p.Open()
+	//
+	// we could traverse of the Progs array of the file here but some ELF files
+	// that we want to support do not have any program headers. we get the same
+	// effect by traversing the Sections array and ignoring any section not of
+	// the correct type/flags
+	for _, sec := range ef.Sections {
+		if sec.Type != elf.SHT_PROGBITS {
+			continue
+		}
 
-		addr := p.ProgHeader.Vaddr
+		// ignore sections that do not have executable instructions
+		if sec.Flags&elf.SHF_EXECINSTR != elf.SHF_EXECINSTR {
+			continue
+		}
+
+		// if file is relocatble then then get executable origin address (see
+		// comment for executableOrigin type above)
+		if ef.Type&elf.ET_REL == elf.ET_REL {
+			if executableSectionFound {
+				return nil, curated.Errorf("dwarf: can't handle multiple executable sections")
+			}
+			executableSectionFound = true
+
+			if o, ok := cart.ELFSection(sec.Name); ok {
+				executableOrigin = uint64(o)
+			}
+		}
+
+		addr := sec.Addr + executableOrigin
+
+		o := sec.Open()
 
 		b := make([]byte, 2)
 		for {
@@ -384,7 +427,7 @@ func NewSource(pathToROM string) (*Source, error) {
 				return nil, curated.Errorf("dwarf: compiled ELF file not found")
 			}
 
-			opcode := elf.ByteOrder.Uint16(b)
+			opcode := ef.ByteOrder.Uint16(b)
 			disasm := arm.Disassemble(opcode)
 
 			// put the disassembly entry in the
@@ -400,16 +443,22 @@ func NewSource(pathToROM string) (*Source, error) {
 
 	var err error
 
-	// get DWARF information from ELF file
-	src.dwrf, err = elf.DWARF()
-	if err != nil {
-		return nil, curated.Errorf("dwarf: no DWARF data in ELF file")
+	// if no DWARF data has been supplied to the function then get it from the ELF file
+	src.dwrf = cart.DWARF()
+	if src.dwrf == nil {
+		src.dwrf, err = ef.DWARF()
+		if err != nil {
+			return nil, curated.Errorf("dwarf: no DWARF data in ELF file")
+		}
 	}
 
 	bld, err := newBuild(src.dwrf)
 	if err != nil {
 		return nil, curated.Errorf("dwarf: %v", err)
 	}
+
+	// the path component of the romFile
+	pathToROM := filepath.Dir(romFile)
 
 	// readSourceFile() will shorten the filepath of a source file using the
 	// pathToROM string. however, symbolic links can confuse this so we expand
@@ -523,6 +572,9 @@ func NewSource(pathToROM string) (*Source, error) {
 		var workingSourceLine *SourceLine
 		var workingAddress uint64
 
+		// origin of relocated section
+		workingAddress = executableOrigin
+
 		for {
 			var le dwarf.LineEntry
 
@@ -550,14 +602,15 @@ func NewSource(pathToROM string) (*Source, error) {
 				continue // for loop
 			}
 
+			relocatedAddress := le.Address + executableOrigin
+
 			// if workingSourceLine is valid ...
 			if workingSourceLine != nil {
-
 				// ... and there are addresses to process ...
-				if le.Address-workingAddress > 0 {
+				if relocatedAddress-workingAddress > 0 {
 
 					// ... then find the function for the working address
-					foundFunc, err := bld.findFunction(workingAddress)
+					foundFunc, err := bld.findFunction(workingAddress - executableOrigin)
 					if err != nil {
 						return nil, curated.Errorf("dwarf: %v", err)
 					}
@@ -589,7 +642,7 @@ func NewSource(pathToROM string) (*Source, error) {
 					}
 
 					// add disassembly to source line and build a linesByAddress map
-					for addr := workingAddress; addr < le.Address; addr += 2 {
+					for addr := workingAddress; addr < relocatedAddress; addr += 2 {
 						// look for address in disassembly
 						if d, ok := src.Disassembly[addr]; ok {
 							// add disassembly to the list of instructions for the workingSourceLine
@@ -610,7 +663,7 @@ func NewSource(pathToROM string) (*Source, error) {
 
 			// defer current line entry
 			workingSourceLine = src.Files[le.File.Name].Lines[le.Line-1]
-			workingAddress = le.Address
+			workingAddress = relocatedAddress
 		}
 	}
 
@@ -837,7 +890,17 @@ func readSourceFile(filename string, pathToROM_nosymlinks string) (*SourceFile, 
 	return &fl, nil
 }
 
-func findELF(pathToROM string) *elf.File {
+func findELF(romFile string) *elf.File {
+	// try the ROM file itself. it might be an ELF file
+	ef, err := elf.Open(romFile)
+	if err == nil {
+		return ef
+	}
+
+	// the file is not an ELF file so the remainder of the function will work
+	// with the path component of the ROM file only
+	pathToROM := filepath.Dir(romFile)
+
 	const (
 		elfFile            = "armcode.elf"
 		elfFile_older      = "custom2.elf"
@@ -845,39 +908,39 @@ func findELF(pathToROM string) *elf.File {
 	)
 
 	// current working directory
-	od, err := elf.Open(elfFile)
+	ef, err = elf.Open(elfFile)
 	if err == nil {
-		return od
+		return ef
 	}
 
 	// same directory as binary
-	od, err = elf.Open(filepath.Join(pathToROM, elfFile))
+	ef, err = elf.Open(filepath.Join(pathToROM, elfFile))
 	if err == nil {
-		return od
+		return ef
 	}
 
 	// main sub-directory
-	od, err = elf.Open(filepath.Join(pathToROM, "main", elfFile))
+	ef, err = elf.Open(filepath.Join(pathToROM, "main", elfFile))
 	if err == nil {
-		return od
+		return ef
 	}
 
 	// main/bin sub-directory
-	od, err = elf.Open(filepath.Join(pathToROM, "main", "bin", elfFile))
+	ef, err = elf.Open(filepath.Join(pathToROM, "main", "bin", elfFile))
 	if err == nil {
-		return od
+		return ef
 	}
 
 	// custom/bin sub-directory. some older DPC+ sources uses this layout
-	od, err = elf.Open(filepath.Join(pathToROM, "custom", "bin", elfFile_older))
+	ef, err = elf.Open(filepath.Join(pathToROM, "custom", "bin", elfFile_older))
 	if err == nil {
-		return od
+		return ef
 	}
 
 	// jetsetilly source tree
-	od, err = elf.Open(filepath.Join(pathToROM, "arm", elfFile_jetsetilly))
+	ef, err = elf.Open(filepath.Join(pathToROM, "arm", elfFile_jetsetilly))
 	if err == nil {
-		return od
+		return ef
 	}
 
 	return nil
