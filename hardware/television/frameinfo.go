@@ -28,12 +28,29 @@ type FrameInfo struct {
 
 	FrameNum int
 
+	// the top and bottom scanlines that are to be present visually to the
+	// player. this is generally related to the state of VBLANK but the
+	// relationship is not as simple as it might seem
+	//
+	// consumers of FrameInfo should use these values rather than deriving that
+	// information from VBLANK
 	VisibleTop    int
 	VisibleBottom int
 
+	// the number of scanlines considered to be in the frame. the number of
+	// scanlines that are actually in the frame may actually be less or more.
+	// this can happen when a the refresh rate is changing, for example.
+	//
+	// note therefore, that the refresh rate can change but the reported number
+	// of total scanlines not changing at the same time. the practical
+	// consequence of this is that it is possible for there to be more
+	// scanlines in the signals slice sent to the PixelRenderer via the
+	// SetPixels() function
 	TotalScanlines int
 
-	// the refresh rate. calculated from the TotalScanlines value
+	// the refresh rate. this value is derived from the number of scanlines in
+	// the frame but note that that may not be equal to the TotalScanlines
+	// field
 	RefreshRate float32
 
 	// a VSynced frame is one which was generated from a valid VSYNC/VBLANK
@@ -41,9 +58,9 @@ type FrameInfo struct {
 	// to change.
 	VSynced bool
 
-	// Stable is true once the television frame has been consistent for N frames
-	// after reset. This is useful for pixel renderers so that they don't show
-	// the loose frames that often occur after VCS reset.
+	// Stable is true once the television frame has been consistent for N
+	// frames after reset. This is useful for pixel renderers that don't want
+	// to show the loose frames that often occur after VCS hard-reset.
 	//
 	// once Stable is true then the Specification will not change (except
 	// manually). This is important for ROMs that allow the VCS to run without

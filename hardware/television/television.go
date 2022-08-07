@@ -573,6 +573,16 @@ func (tv *Television) newFrame(fromVsync bool) error {
 	// record total scanlines and refresh rate if changed. note that this is
 	// independent of the resizer.commit() call above. total scanline / refresh
 	// rate can change without it being a resize
+	//
+	// this is important to do and failure to set the refresh reate correctly
+	// is most noticeable in the Supercharger tape loading process. During tape
+	// loading a steady sine wave is produced and no VSYNC is issued. This
+	// means that the refresh rate is reduced to 50.27Hz
+	//
+	// the disadvantage of disassociating screen size (by which we mean the
+	// period between VSYNCs) from the refresh rate is that debugging
+	// information may be misleading. but that's really not a problem we should
+	// be directly addressing in the television package
 	if tv.state.frameInfo.TotalScanlines != tv.state.scanline {
 		tv.state.frameInfo.TotalScanlines = tv.state.scanline
 		tv.state.frameInfo.RefreshRate = 15734.26 / float32(tv.state.scanline)
