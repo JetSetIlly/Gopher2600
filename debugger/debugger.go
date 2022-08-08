@@ -1035,14 +1035,18 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) 
 		// an error has occurred so attach the ejected cartridge
 		//
 		// !TODO: a special error cartridge to make it more obvious what has happened
-		err = setup.AttachCartridge(dbg.vcs, cartridgeloader.Loader{})
-		if err != nil {
+		if err := setup.AttachCartridge(dbg.vcs, cartridgeloader.Loader{}); err != nil {
 			return err
 		}
 	}
 
 	// check for cartridge ejection. if the NoEject option is set then return error
 	if *dbg.opts.NoEject && dbg.vcs.Mem.Cart.IsEjected() {
+		// if there is an error left over from the AttachCartridge() call
+		// above, return that rather than "cartridge ejected"
+		if err != nil {
+			return err
+		}
 		return curated.Errorf("cartridge ejected")
 	}
 
