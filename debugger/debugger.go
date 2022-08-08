@@ -1032,8 +1032,6 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) 
 	// reset of vcs is implied with attach cartridge
 	err := setup.AttachCartridge(dbg.vcs, cartload)
 	if err != nil && !curated.Has(err, cartridge.Ejected) {
-		logger.Log("attach", err.Error())
-
 		// an error has occurred so attach the ejected cartridge
 		//
 		// !TODO: a special error cartridge to make it more obvious what has happened
@@ -1041,6 +1039,11 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) 
 		if err != nil {
 			return err
 		}
+	}
+
+	// check for cartridge ejection. if the NoEject option is set then return error
+	if *dbg.opts.NoEject && dbg.vcs.Mem.Cart.IsEjected() {
+		return curated.Errorf("cartridge ejected")
 	}
 
 	// clear existing reflection and counter data

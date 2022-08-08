@@ -160,6 +160,7 @@ func commandLineOptionsStub() debugger.CommandLineOptions {
 		Wav:             &b,
 		InitScript:      &s,
 		TermType:        &s,
+		NoEject:         &b,
 	}
 }
 

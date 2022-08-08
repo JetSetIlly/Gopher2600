@@ -294,6 +294,7 @@ func emulate(emulationMode emulation.Mode, md *modalflag.Modes, sync *mainSync) 
 		opts.PlaybackCheckROM = md.AddBool("playbackCheckROM", true, "whether to check ROM hash on playback")
 		opts.PatchFile = md.AddString("patch", "", "patch to apply to main emulation (not playback files)")
 		opts.Wav = md.AddBool("wav", false, "record audio to wav file")
+		opts.NoEject = md.AddBool("noeject", false, "a cartridge must be attached at all times. emulator will quit if not")
 	}
 
 	// debugger specific arguments

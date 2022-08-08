@@ -36,6 +36,7 @@ type CommandLineOptions struct {
 	PlaybackCheckROM *bool
 	PatchFile        *string
 	Wav              *bool
+	NoEject          *bool
 
 	// debugger only
 	InitScript *string
