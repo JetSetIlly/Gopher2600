@@ -95,11 +95,6 @@ type Debugger struct {
 	// sure Close() is called on end
 	loader *cartridgeloader.Loader
 
-	// supercharger multiload byte to force on mapper.EventSuperchargerLoadStarted
-	//
-	// a value of -1 means a value will not be forced.
-	multiload int
-
 	// gameplay recorder/playback
 	recorder *recorder.Recorder
 	playback *recorder.Playback
@@ -311,9 +306,6 @@ func NewDebugger(create CreateUserInterface, opts CommandLineOptions) (*Debugger
 
 		// the ticker to indicate whether we should check for events in the inputLoop
 		eventCheckPulse: time.NewTicker(50 * time.Millisecond),
-
-		// supercharger multiload byte
-		multiload: *opts.Multiload,
 	}
 
 	// emulator is starting in the "none" mode (the advangatge of this is that
@@ -953,9 +945,9 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) 
 		if _, ok := cart.(*supercharger.Supercharger); ok {
 			switch event {
 			case mapper.EventSuperchargerLoadStarted:
-				if dbg.multiload >= 0 {
-					logger.Logf("debugger", "forcing supercharger multiload (%#02x)", uint8(dbg.multiload))
-					dbg.vcs.Mem.Poke(supercharger.MutliloadByteAddress, uint8(dbg.multiload))
+				if *dbg.opts.Multiload >= 0 {
+					logger.Logf("debugger", "forcing supercharger multiload (%#02x)", uint8(*dbg.opts.Multiload))
+					dbg.vcs.Mem.Poke(supercharger.MutliloadByteAddress, uint8(*dbg.opts.Multiload))
 				}
 
 			case mapper.EventSuperchargerFastloadEnded:

@@ -58,6 +58,8 @@ type FastLoad struct {
 // calls this function to complete the supercharger fastload process.
 type FastLoaded func(*cpu.CPU, *vcs.RAM, *timer.Timer) error
 
+const fastLoadBlockSize = 8448
+
 // newFastLoad is the preferred method of initialisation for the FastLoad type.
 func newFastLoad(cart *Supercharger, loader cartridgeloader.Loader) (tape, error) {
 	tap := &FastLoad{
@@ -65,10 +67,10 @@ func newFastLoad(cart *Supercharger, loader cartridgeloader.Loader) (tape, error
 		data: *loader.Data,
 	}
 
-	if len(tap.data)%8448 != 0 {
+	if len(tap.data)%fastLoadBlockSize != 0 {
 		return nil, fmt.Errorf("fastload: %v", "wrong number of bytes in cartridge data")
 	}
-	tap.numLoads = len(tap.data) / 8448
+	tap.numLoads = len(tap.data) / fastLoadBlockSize
 
 	return tap, nil
 }
@@ -82,11 +84,16 @@ func (tap *FastLoad) snapshot() tape {
 
 // load implements the tape interface.
 func (tap *FastLoad) load() (uint8, error) {
+	// length check on tape data
+	if len(tap.data) < fastLoadBlockSize {
+		return 0, curated.Errorf("supercharger: fastload: not a supercharger binary")
+	}
+
 	// get data for the next multiload
-	offset := tap.loadCt * 8448
-	data := tap.data[offset : offset+8448]
+	offset := tap.loadCt * fastLoadBlockSize
+	data := tap.data[offset : offset+fastLoadBlockSize]
 	tap.loadCt++
-	if tap.loadCt*8448 >= len(tap.data) {
+	if tap.loadCt*fastLoadBlockSize >= len(tap.data) {
 		tap.loadCt = 0
 		logger.Log("supercharger: fastload", "rewind")
 	}
@@ -142,8 +149,8 @@ func (tap *FastLoad) load() (uint8, error) {
 			if tap.loadCt == tap.lastLoadCt {
 				logger.Logf("supercharger: fastload", "cannot find requested multiload (%d) loading mutliload 00", m)
 				tap.loadCt = 0
-				offset := tap.loadCt * 8448
-				data = tap.data[offset : offset+8448]
+				offset := tap.loadCt * fastLoadBlockSize
+				data = tap.data[offset : offset+fastLoadBlockSize]
 				tap.loadCt++
 			} else {
 				return nil
