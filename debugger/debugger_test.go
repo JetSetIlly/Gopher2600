@@ -138,32 +138,6 @@ func (trm *mockTerm) testSequence() {
 	trm.testWatches()
 }
 
-// creates a minimal CommandLineOptions instance. arguments of the same type
-// share the same underlying value so it's not suitable for actual use
-func commandLineOptionsStub() debugger.CommandLineOptions {
-	var b bool
-	var s string
-	var i int
-	return debugger.CommandLineOptions{
-		Log:             &b,
-		Spec:            &s,
-		FpsCap:          &b,
-		Multiload:       &i,
-		Mapping:         &s,
-		Left:            &s,
-		Right:           &s,
-		Profile:         &s,
-		ComparisonROM:   &s,
-		ComparisonPrefs: &s,
-		Record:          &b,
-		PatchFile:       &s,
-		Wav:             &b,
-		InitScript:      &s,
-		TermType:        &s,
-		NoEject:         &b,
-	}
-}
-
 func TestDebugger_withNonExistantInitScript(t *testing.T) {
 	prefs.DisableSaving = true
 
@@ -174,7 +148,7 @@ func TestDebugger_withNonExistantInitScript(t *testing.T) {
 		return &mockGUI{}, trm, nil
 	}
 
-	dbg, err := debugger.NewDebugger(create, commandLineOptionsStub())
+	dbg, err := debugger.NewDebugger(create, debugger.NewCommandLineOptions())
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
@@ -197,7 +171,7 @@ func TestDebugger(t *testing.T) {
 		return &mockGUI{}, trm, nil
 	}
 
-	dbg, err := debugger.NewDebugger(create, commandLineOptionsStub())
+	dbg, err := debugger.NewDebugger(create, debugger.NewCommandLineOptions())
 	if err != nil {
 		t.Fatalf(err.Error())
 	}

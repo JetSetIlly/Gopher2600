@@ -274,7 +274,7 @@ func emulate(emulationMode emulation.Mode, md *modalflag.Modes, sync *mainSync) 
 		return err
 	}
 
-	var opts debugger.CommandLineOptions
+	opts := debugger.NewCommandLineOptions()
 
 	// common to both modes
 	opts.Log = md.AddBool("log", false, "echo debugging log to stdout")
