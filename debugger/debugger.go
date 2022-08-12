@@ -288,7 +288,9 @@ type Debugger struct {
 	catchupEndAdj bool
 }
 
-// CreateUserInterface is used to initialise the user interface used by the emulation.
+// CreateUserInterface is used to initialise the user interface used by the
+// emulation. It returns an instance of both the GUI and Terminal interfaces
+// in the repsective packages.
 type CreateUserInterface func(emulation.Emulation) (gui.GUI, terminal.Terminal, error)
 
 // NewDebugger creates and initialises everything required for a new debugging
@@ -296,7 +298,7 @@ type CreateUserInterface func(emulation.Emulation) (gui.GUI, terminal.Terminal, 
 //
 // It should be followed up with a call to AddUserInterface() and call the
 // Start() method to actually begin the emulation.
-func NewDebugger(create CreateUserInterface, opts CommandLineOptions) (*Debugger, error) {
+func NewDebugger(opts CommandLineOptions, create CreateUserInterface) (*Debugger, error) {
 	dbg := &Debugger{
 		// copy of the arguments
 		opts: opts,

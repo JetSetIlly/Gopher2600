@@ -110,11 +110,11 @@ func main() {
 	// stateRequest
 	exitVal := 0
 
-	// #ctrlc default handler. can be turned off with reqNoIntSig request
+	// ctrlc default handler. can be turned off with reqNoIntSig request
 	intChan := make(chan os.Signal, 1)
 	signal.Notify(intChan, os.Interrupt)
 
-	// launch program as a go routine. further communication is  through
+	// launch program as a go routine. further communication is through
 	// the mainSync instance
 	go launch(sync)
 
@@ -130,7 +130,7 @@ func main() {
 	//  1. interrupt signals
 	//  2. new gui creation functions
 	//  3. state requests
-	//  3. anything in the Service() function of the most recently created GUI
+	//  4. (default) anything in the Service() function of the most recently created GUI
 	//
 	done := false
 	var gui guiControl
@@ -194,7 +194,7 @@ func main() {
 
 		default:
 			// if an instance of gui.Events has been sent to us via sync.events
-			// then call Service()
+			// then call Service(). otherwise, sleep for a very short period
 			if gui != nil {
 				gui.Service()
 			} else {
@@ -227,7 +227,6 @@ func launch(sync *mainSync) {
 
 	case modalflag.ParseError:
 		fmt.Printf("* error: %v\n", err)
-		// 10
 		sync.state <- stateRequest{req: reqQuit, args: 10}
 		return
 	}
@@ -253,7 +252,7 @@ func launch(sync *mainSync) {
 	}
 
 	if err != nil {
-		// swallow power off error messages
+		// swallow power off error messages. send quit signal with return value of 20 instead
 		if !curated.Has(err, ports.PowerOff) {
 			fmt.Printf("* error in %s mode: %s\n", md.String(), err)
 			sync.state <- stateRequest{req: reqQuit, args: 20}
@@ -266,17 +265,28 @@ func launch(sync *mainSync) {
 
 const defaultInitScript = "debuggerInit"
 
+// emulate is the main emulation launch function, shared by play and debug
+// modes. the other modes initialise and run the emulation differently.
 func emulate(emulationMode emulation.Mode, md *modalflag.Modes, sync *mainSync) error {
+	// start new commandline mode. to this we'll add the command line arguments
+	// that are specific to the emulation mode (it's unfortunate that mode is
+	// used to describe two separate concepts but they really have nothing to
+	// do with one another).
 	md.NewMode()
 
+	// prepare the path to the initialisation script used by the debugger. we
+	// can name the file in the defaultInitScript const declaration but the
+	// construction of the path is platform sensitive so we must do it here
 	defInitScript, err := resources.JoinPath(defaultInitScript)
 	if err != nil {
 		return err
 	}
 
+	// new CommandLineOptions instance. this type collates the individual
+	// options that can be set by the command line
 	opts := debugger.NewCommandLineOptions()
 
-	// common to both modes
+	// arguments common to both play and debugging modes
 	opts.Log = md.AddBool("log", false, "echo debugging log to stdout")
 	opts.Spec = md.AddString("tv", "AUTO", "television specification: AUTO, NTSC, PAL, PAL60")
 	opts.FpsCap = md.AddString("fpscap", "TV", "cap FPS: TV, MONITOR, NONE")
@@ -313,12 +323,15 @@ func emulate(emulationMode emulation.Mode, md *modalflag.Modes, sync *mainSync) 
 		return err
 	}
 
-	// check remaining arguments
+	// check remaining arguments. if there are any outstanding arguments to
+	// process then the user has made a mistake
 	if len(md.RemainingArgs()) > 1 {
 		return fmt.Errorf("too many arguments for %s mode", md)
 	}
 
-	// set debugging log echo
+	// turn logging on by setting the echo function. events are still logged
+	// and available via the debugger but will not be "echoed" to the terminal,
+	// unless this option is on
 	if *opts.Log {
 		logger.SetEcho(logger.NewColorizer(os.Stdout))
 	} else {
@@ -332,12 +345,14 @@ func emulate(emulationMode emulation.Mode, md *modalflag.Modes, sync *mainSync) 
 	// turning the emulation's interrupt handler off
 	sync.state <- stateRequest{req: reqNoIntSig}
 
-	// GUI create function
-	create := func(e emulation.Emulation) (gui.GUI, terminal.Terminal, error) {
+	// prepare new debugger, supplying a debugger.CreateUserInterface function.
+	// this function will be called by NewDebugger() and in turn will send a
+	// GUI create message to the main goroutine
+	dbg, err := debugger.NewDebugger(opts, func(e emulation.Emulation) (gui.GUI, terminal.Terminal, error) {
 		var term terminal.Terminal
 		var scr gui.GUI
 
-		// create gui
+		// create GUI as appropriate
 		if *opts.TermType == "IMGUI" {
 			sync.state <- stateRequest{req: reqCreateGUI,
 				args: guiCreate(func() (guiControl, error) {
@@ -359,6 +374,7 @@ func emulate(emulationMode emulation.Mode, md *modalflag.Modes, sync *mainSync) 
 				term = b.GetTerminal()
 			}
 		} else {
+			// no GUI specified so we use a stub
 			scr = gui.Stub{}
 		}
 
@@ -377,21 +393,13 @@ func emulate(emulationMode emulation.Mode, md *modalflag.Modes, sync *mainSync) 
 		}
 
 		return scr, term, nil
-	}
-
-	// prepare new debugger instance
-	dbg, err := debugger.NewDebugger(create, opts)
+	})
 	if err != nil {
 		return err
 	}
 
-	// check for profiling options
-	prf, err := performance.ParseProfileString(*opts.Profile)
-	if err != nil {
-		return err
-	}
-
-	// set up a launch function
+	// set up a launch function. this function is called either directly or via
+	// a call to performance.RunProfiler()
 	dbgLaunch := func() error {
 		switch emulationMode {
 		case emulation.ModeDebugger:
@@ -408,6 +416,13 @@ func emulate(emulationMode emulation.Mode, md *modalflag.Modes, sync *mainSync) 
 		}
 
 		return nil
+	}
+
+	// check for profiling option and either run the launch function (prepared
+	// above) via the performance.RunProfiler() function or directly
+	prf, err := performance.ParseProfileString(*opts.Profile)
+	if err != nil {
+		return err
 	}
 
 	if prf == performance.ProfileNone {
