@@ -338,7 +338,7 @@ type Source struct {
 //
 // Once the ELF and DWARF file has been identified then Source will always be
 // non-nil but with the understanding that the fields may be empty.
-func NewSource(romFile string, cart mapper.CartCoProcBus) (*Source, error) {
+func NewSource(romFile string, cart mapper.CartCoProc) (*Source, error) {
 	src := &Source{
 		Disassembly:      make(map[uint64]*SourceDisasm),
 		Files:            make(map[string]*SourceFile),

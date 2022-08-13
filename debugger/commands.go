@@ -1324,7 +1324,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		}
 
 	case cmdCoProc:
-		coproc := dbg.vcs.Mem.Cart.GetCoProcBus()
+		coproc := dbg.vcs.Mem.Cart.GetCoProc()
 		if coproc == nil {
 			dbg.printLine(terminal.StyleError, "cartridge does not have a coprocessor")
 			return nil

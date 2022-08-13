@@ -45,7 +45,7 @@ type LazyCart struct {
 	tapeBus   atomic.Value // mapper.CartTapeBus (in continer)
 	tapeState atomic.Value // mapper.CartTapeState (in container)
 
-	coProcBus atomic.Value // mapper.CartCoProcBus (in container)
+	coProcBus atomic.Value // mapper.CartCoProc (in container)
 	coprocID  atomic.Value // string
 
 	plusROM         atomic.Value // plusrom.PlusROM (in container)
@@ -162,7 +162,7 @@ func (lz *LazyCart) push() {
 		lz.plusROM.Store(container{v: nil})
 	}
 
-	cp := lz.val.vcs.Mem.Cart.GetCoProcBus()
+	cp := lz.val.vcs.Mem.Cart.GetCoProc()
 	if cp != nil {
 		lz.coProcBus.Store(container{v: cp})
 		lz.coprocID.Store(cp.CoProcID())
@@ -229,14 +229,14 @@ func (lz *LazyCart) update() {
 		lz.PlusROMSendBuff, _ = lz.plusROMSendBuff.Load().([]uint8)
 	}
 
-	_, lz.HasCoProcBus = lz.coProcBus.Load().(container).v.(mapper.CartCoProcBus)
+	_, lz.HasCoProcBus = lz.coProcBus.Load().(container).v.(mapper.CartCoProc)
 	if lz.HasCoProcBus {
 		lz.CoProcID, _ = lz.coprocID.Load().(string)
 	}
 }
 
 func (lz *LazyCart) fastPush() {
-	cp := lz.val.vcs.Mem.Cart.GetCoProcBus()
+	cp := lz.val.vcs.Mem.Cart.GetCoProc()
 	if cp != nil {
 		lz.coProcBus.Store(container{v: cp})
 		lz.coprocID.Store(cp.CoProcID())
@@ -246,7 +246,7 @@ func (lz *LazyCart) fastPush() {
 }
 
 func (lz *LazyCart) fastUpdate() {
-	_, lz.HasCoProcBus = lz.coProcBus.Load().(container).v.(mapper.CartCoProcBus)
+	_, lz.HasCoProcBus = lz.coProcBus.Load().(container).v.(mapper.CartCoProc)
 	if lz.HasCoProcBus {
 		lz.CoProcID, _ = lz.coprocID.Load().(string)
 	}

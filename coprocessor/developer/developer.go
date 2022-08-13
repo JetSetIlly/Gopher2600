@@ -28,7 +28,7 @@ import (
 
 // Developer implements the CartCoProcDeveloper interface.
 type Developer struct {
-	cart mapper.CartCoProcBus
+	cart mapper.CartCoProc
 	tv   TV
 
 	// information about the source code to the program. can be nil
@@ -91,7 +91,7 @@ type TV interface {
 }
 
 // NewDeveloper is the preferred method of initialisation for the Developer type.
-func NewDeveloper(romFile string, cart mapper.CartCoProcBus, tv TV) *Developer {
+func NewDeveloper(romFile string, cart mapper.CartCoProc, tv TV) *Developer {
 	if cart == nil {
 		return nil
 	}

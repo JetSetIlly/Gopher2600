@@ -126,17 +126,17 @@ func (cart *cdf) MappedBanks() string {
 	return fmt.Sprintf("Bank: %d", cart.state.bank)
 }
 
-// CoProcID implements the mapper.CartCoProcBus interface.
+// CoProcID implements the mapper.CartCoProc interface.
 func (cart *cdf) CoProcID() string {
 	return cart.arm.CoProcID()
 }
 
-// SetDisassembler implements the mapper.CartCoProcBus interface.
+// SetDisassembler implements the mapper.CartCoProc interface.
 func (cart *cdf) SetDisassembler(disasm mapper.CartCoProcDisassembler) {
 	cart.arm.SetDisassembler(disasm)
 }
 
-// SetDeveloper implements the mapper.CartCoProcBus interface.
+// SetDeveloper implements the mapper.CartCoProc interface.
 func (cart *cdf) SetDeveloper(dev mapper.CartCoProcDeveloper) {
 	cart.dev = dev
 	cart.arm.SetDeveloper(dev)
@@ -640,17 +640,17 @@ func (cart *cdf) HotLoad(data []byte) error {
 	return nil
 }
 
-// CoProcIsActive implements the mapper.CartCoprocExecution interface.
+// CoProcIsActive implements the mapper.CartCoProc interface.
 func (cart *cdf) CoProcIsActive() bool {
 	return cart.state.callfn.IsActive()
 }
 
-// BreakpointHasTriggered implements the mapper.CartCoprocExecution interface.
+// BreakpointHasTriggered implements the mapper.CartCoProc interface.
 func (cart *cdf) BreakpointHasTriggered() bool {
 	return cart.arm.BreakpointHasTriggered()
 }
 
-// ResumeAfterBreakpoint implements the mapper.CartCoprocExecution interface.
+// ResumeAfterBreakpoint implements the mapper.CartCoProc interface.
 func (cart *cdf) ResumeAfterBreakpoint() error {
 	if cart.arm.BreakpointHasTriggered() {
 		return cart.runArm()
@@ -658,7 +658,7 @@ func (cart *cdf) ResumeAfterBreakpoint() error {
 	return nil
 }
 
-// BreakpointsDisable implements the mapper.CartCoprocExecution interface.
+// BreakpointsDisable implements the mapper.CartCoProc interface.
 func (cart *cdf) BreakpointsDisable(disable bool) {
 	cart.arm.BreakpointsDisable(disable)
 }

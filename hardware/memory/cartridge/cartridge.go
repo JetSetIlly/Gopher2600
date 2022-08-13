@@ -439,9 +439,10 @@ func (cart *Cartridge) GetCartHotspotsBus() mapper.CartHotspotsBus {
 	return nil
 }
 
-// GetCoProcBus returns interface to coprocessor bus.
-func (cart *Cartridge) GetCoProcBus() mapper.CartCoProcBus {
-	if cpd, ok := cart.mapper.(mapper.CartCoProcBus); ok {
+// GetCoProc returns interface to the coprocessor interface or nil if no
+// coprocessor is available on the cartridge.
+func (cart *Cartridge) GetCoProc() mapper.CartCoProc {
+	if cpd, ok := cart.mapper.(mapper.CartCoProc); ok {
 		return cpd
 	}
 	return nil
@@ -474,32 +475,32 @@ func (cart *Cartridge) ROMDump() (string, error) {
 	return "", curated.Errorf("cartridge: %s does not support ROM dumping", cart.mapper.ID())
 }
 
-// BreakpointHasTriggered implements the mapper.CartBreakpoints interface.
+// BreakpointHasTriggered implements the mapper.CartCoProc interface.
 func (cart *Cartridge) BreakpointHasTriggered() bool {
-	if bp, ok := cart.mapper.(mapper.CartCoProcExecution); ok {
+	if bp, ok := cart.mapper.(mapper.CartCoProc); ok {
 		return bp.BreakpointHasTriggered()
 	}
 	return false
 }
 
-// ResumeAfterBreakpoint implements the mapper.CartBreakpoints interface.
+// ResumeAfterBreakpoint implements the mapper.CartCoProc interface.
 func (cart *Cartridge) ResumeAfterBreakpoint() error {
-	if bp, ok := cart.mapper.(mapper.CartCoProcExecution); ok {
+	if bp, ok := cart.mapper.(mapper.CartCoProc); ok {
 		return bp.ResumeAfterBreakpoint()
 	}
 	return nil
 }
 
-// BreakpointsDisable implements the mapper.CartBreakpoints interface.
+// BreakpointsDisable implements the mapper.CartCoProc interface.
 func (cart *Cartridge) BreakpointsDisable(disable bool) {
-	if bp, ok := cart.mapper.(mapper.CartCoProcExecution); ok {
+	if bp, ok := cart.mapper.(mapper.CartCoProc); ok {
 		bp.BreakpointsDisable(disable)
 	}
 }
 
-// IsExecuting implements the mapper.CartBreakpoints interface.
+// IsExecuting implements the mapper.CartCoProc interface.
 func (cart *Cartridge) CoProcIsActive() bool {
-	if bp, ok := cart.mapper.(mapper.CartCoProcExecution); ok {
+	if bp, ok := cart.mapper.(mapper.CartCoProc); ok {
 		return bp.CoProcIsActive()
 	}
 	return false

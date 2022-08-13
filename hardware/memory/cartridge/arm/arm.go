@@ -298,21 +298,21 @@ func NewARM(arch Architecture, mamcr MAMCR, mmap memorymodel.Map, prefs *prefere
 	return arm
 }
 
-// CoProcID implements the mapper.CartCoProcBus interface.
+// CoProcID implements the mapper.CartCoProc interface.
 //
 // CoProcID is the ID returned by the ARM type. This const value can be used
-// for comparison purposes to check if a mapper.CartCoProcBus instance is of
+// for comparison purposes to check if a mapper.CartCoProc instance is of
 // the ARM type.
 func (arm *ARM) CoProcID() string {
 	return string(arm.arch)
 }
 
-// SetDisassembler implements the mapper.CartCoProcBus interface.
+// SetDisassembler implements the mapper.CartCoProc interface.
 func (arm *ARM) SetDisassembler(disasm mapper.CartCoProcDisassembler) {
 	arm.disasm = disasm
 }
 
-// SetDeveloper implements the mapper.CartCoProcBus interface.
+// SetDeveloper implements the mapper.CartCoProc interface.
 func (arm *ARM) SetDeveloper(dev mapper.CartCoProcDeveloper) {
 	arm.dev = dev
 }

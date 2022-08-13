@@ -34,7 +34,7 @@ type Disassembly struct {
 	crit sync.Mutex
 
 	tv   TV
-	cart mapper.CartCoProcBus
+	cart mapper.CartCoProc
 
 	disasm DisasmEntries
 }
@@ -55,7 +55,7 @@ type DisasmEntries struct {
 
 // NewDisassembly returns a new Coprocessor instance if cartridge implements the
 // coprocessor bus.
-func NewDisassembly(tv TV, cart mapper.CartCoProcBus) *Disassembly {
+func NewDisassembly(tv TV, cart mapper.CartCoProc) *Disassembly {
 	if cart == nil {
 		return nil
 	}

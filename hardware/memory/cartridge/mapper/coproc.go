@@ -20,15 +20,25 @@ import (
 	"fmt"
 )
 
-// CartCoProcBus is implemented by cartridge mappers that have a coprocessor that
+// CartCoProc is implemented by cartridge mappers that have a coprocessor that
 // functions independently from the VCS.
-type CartCoProcBus interface {
+type CartCoProc interface {
 	CoProcID() string
+
+	// set disassembler and developer hooks
 	SetDisassembler(CartCoProcDisassembler)
 	SetDeveloper(CartCoProcDeveloper)
 
+	// whether coprocessor is active
+	CoProcIsActive() bool
+
+	// breakpoint control of coprocessor
+	BreakpointHasTriggered() bool
+	ResumeAfterBreakpoint() error
+	BreakpointsDisable(bool)
+
 	// returns any DWARF data for the cartridge. not all cartridges that
-	// implement the CartCoProcBus interface will be able to meaningfully
+	// implement the CartCoProc interface will be able to meaningfully
 	// return any data but none-the-less would benefit from DWARF debugging
 	// information. in those instances, the DWARF data must be retreived
 	// elsewhere
@@ -40,47 +50,10 @@ type CartCoProcBus interface {
 	ELFSection(string) (uint32, bool)
 }
 
-// CartCoProcExecution is implemented by cartridge mappers that have a
-// coprocessor. These coprocessors require careful monitoring so that they
-// interact with the main emulation correctly.
-//
-// For example, these coprocessors can halt mid-operation due to a breakpoint
-// and the debugging loop need to understand when this happened.
-//
-// TODO: this interface should be folded into the CartCoProcBus interface.
-// there's no need to differentiate the two
-type CartCoProcExecution interface {
-	CoProcIsActive() bool
-	BreakpointHasTriggered() bool
-	ResumeAfterBreakpoint() error
-	BreakpointsDisable(bool)
-}
+// the following interfaces are implemented by the coprocessor itself, rather
+// than any cartridge that uses the coprocessor.
 
-// CartCoProcDisasmEntry represents a single decoded instruction by the coprocessor.
-type CartCoProcDisasmEntry interface {
-	Key() string
-	CSV() string
-}
-
-// CartCoProcDisasmSummary represents a summary of a coprocessor execution.
-type CartCoProcDisasmSummary interface {
-	String() string
-}
-
-// CartCoProcDisassembler defines the functions that must be defined for a
-// disassembler to be attached to a coprocessor.
-type CartCoProcDisassembler interface {
-	// Start is called at the beginning of coprocessor program execution.
-	Start()
-
-	// Step called after every instruction in the coprocessor program.
-	Step(CartCoProcDisasmEntry)
-
-	// End is called when coprocessor program has finished.
-	End(CartCoProcDisasmSummary)
-}
-
-// CartCoProcDeveloper is used by the coprocessor to provide functions
+// CartCoProcDeveloper is implemented by a coprocessor to provide functions
 // available to developers when the source code is available.
 type CartCoProcDeveloper interface {
 	// addr accessed illegally by instruction at pc address. should return the
@@ -111,6 +84,30 @@ type CartCoProcDeveloper interface {
 
 	// execution of the coprocessor has ended
 	ExecutionEnd()
+}
+
+// CartCoProcDisasmSummary represents a summary of a coprocessor execution.
+type CartCoProcDisasmSummary interface {
+	String() string
+}
+
+// CartCoProcDisasmEntry represents a single decoded instruction by the coprocessor.
+type CartCoProcDisasmEntry interface {
+	Key() string
+	CSV() string
+}
+
+// CartCoProcDisassembler defines the functions that must be defined for a
+// disassembler to be attached to a coprocessor.
+type CartCoProcDisassembler interface {
+	// Start is called at the beginning of coprocessor program execution.
+	Start()
+
+	// Step called after every instruction in the coprocessor program.
+	Step(CartCoProcDisasmEntry)
+
+	// End is called when coprocessor program has finished.
+	End(CartCoProcDisasmSummary)
 }
 
 // CartCoProcDisassemblerStdout is a minimial implementation of the CartCoProcDisassembler

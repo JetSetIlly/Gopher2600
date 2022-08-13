@@ -258,31 +258,51 @@ func (cart *Elf) BusStuff() (uint8, bool) {
 	return cart.mem.busStuffData, cart.mem.busStuff
 }
 
-// CoProcID implements the mapper.CartCoProcBus interface.
+// CoProcID implements the mapper.CartCoProc interface.
 func (cart *Elf) CoProcID() string {
 	return cart.arm.CoProcID()
 }
 
-// SetDisassembler implements the mapper.CartCoProcBus interface.
+// SetDisassembler implements the mapper.CartCoProc interface.
 func (cart *Elf) SetDisassembler(disasm mapper.CartCoProcDisassembler) {
 	cart.arm.SetDisassembler(disasm)
 }
 
-// SetDeveloper implements the mapper.CartCoProcBus interface.
+// SetDeveloper implements the mapper.CartCoProc interface.
 func (cart *Elf) SetDeveloper(dev mapper.CartCoProcDeveloper) {
 	cart.dev = dev
 	cart.arm.SetDeveloper(dev)
 }
 
-// DWARF implements the mapper.CartDebugging interface.
+// DWARF implements the mapper.CartCoProc interface.
 func (cart *Elf) DWARF() *dwarf.Data {
 	return cart.dwarf
 }
 
-// ELFSection implements the mapper.CartDebugging interface.
+// ELFSection implements the mapper.CartCoProc interface.
 func (cart *Elf) ELFSection(name string) (uint32, bool) {
 	if sec, ok := cart.mem.sections[name]; ok {
 		return sec.origin, true
 	}
 	return 0, false
+}
+
+// CoProcIsActive implements the mapper.CartCoProc interface.
+func (cart *Elf) CoProcIsActive() bool {
+	return true
+}
+
+// BreakpointHasTriggered implements the mapper.CartCoProc interface.
+func (cart *Elf) BreakpointHasTriggered() bool {
+	return false
+}
+
+// ResumeAfterBreakpoint implements the mapper.CartCoProc interface.
+func (cart *Elf) ResumeAfterBreakpoint() error {
+	return nil
+}
+
+// BreakpointsDisable implements the mapper.CartCoProc interface.
+func (cart *Elf) BreakpointsDisable(disable bool) {
+	cart.arm.BreakpointsDisable(disable)
 }
