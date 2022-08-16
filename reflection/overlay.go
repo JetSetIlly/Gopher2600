@@ -33,7 +33,13 @@ const (
 	HMOVElatched
 	RSYNCalign
 	RSYNCreset
-	CoprocessorActive
+
+	// for graphical purposes we only distinguish between active and inactive
+	// coprocessor states. the underlying states as defined in the mapper
+	// package (mapper.CoProcState) are used to decided whether the coproc is
+	// active or inactive
+	CoProcInactive
+	CoProcActive
 )
 
 // Overlay is used to define the list of possible overlays that can be used to

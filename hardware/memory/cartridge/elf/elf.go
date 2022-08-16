@@ -43,6 +43,11 @@ type Elf struct {
 
 	// the relocated dwarf data
 	dwarf *dwarf.Data
+
+	// parallelARM is true whenever the address bus is not a cartridge address (ie.
+	// a TIA or RIOT address). this means that the arm is running unhindered
+	// and will not have yielded for that colour clock
+	parallelARM bool
 }
 
 // NewElf is the preferred method of initialisation for the Elf type.
@@ -166,6 +171,10 @@ func (cart *Elf) Patch(_ int, _ uint8) error {
 	return curated.Errorf("ELF: patching unsupported")
 }
 
+func (cart *Elf) runARM() {
+	cart.arm.Run()
+}
+
 // try to run strongarm function. returns success.
 func (cart *Elf) runStrongarm(addr uint16, data uint8) bool {
 	if cart.mem.strongarm.running.function != nil {
@@ -175,7 +184,7 @@ func (cart *Elf) runStrongarm(addr uint16, data uint8) bool {
 		cart.mem.strongarm.running.function(cart.mem)
 
 		if cart.mem.strongarm.running.function == nil {
-			cart.arm.Run()
+			cart.runARM()
 			if cart.mem.strongarm.running.function != nil {
 				cart.mem.strongarm.running.function(cart.mem)
 			}
@@ -186,7 +195,7 @@ func (cart *Elf) runStrongarm(addr uint16, data uint8) bool {
 		// which wants to yield to the VCS
 		for cart.mem.resumeARMimmediately {
 			cart.mem.resumeARMimmediately = false
-			cart.arm.Run()
+			cart.runARM()
 			if cart.mem.strongarm.running.function != nil {
 				cart.mem.strongarm.running.function(cart.mem)
 			}
@@ -199,6 +208,25 @@ func (cart *Elf) runStrongarm(addr uint16, data uint8) bool {
 
 // Listen implements the mapper.CartMapper interface.
 func (cart *Elf) Listen(addr uint16, data uint8) {
+	// if memory access is not a cartridge address (ie. a TIA or RIOT address)
+	// then the ARM is running in parallel (ie. no synchronisation)
+	parallelARM := (addr&memorymap.OriginCart != memorymap.OriginCart)
+
+	// call ExecutionStart() or ExecutionEnd() in the developer interface, as
+	// appropriate for the change of state
+	if parallelARM {
+		if !cart.parallelARM && cart.dev != nil {
+			cart.dev.ExecutionStart()
+		}
+	} else {
+		if cart.parallelARM && cart.dev != nil {
+			cart.dev.ExecutionEnd()
+		}
+	}
+
+	// record parallelARM flag
+	cart.parallelARM = parallelARM
+
 	// if address is the reset address then trigger the reset procedure
 	if (addr&memorymap.CartridgeBits)|memorymap.OriginCart == cpubus.Reset {
 		cart.reset()
@@ -212,7 +240,7 @@ func (cart *Elf) Listen(addr uint16, data uint8) {
 	// the PlusROM exit rountine to work correctly
 	cart.mem.gpio.B[toArm_data] = data
 
-	cart.arm.Run()
+	cart.runARM()
 	if cart.runStrongarm(addr, data) {
 		return
 	}
@@ -221,17 +249,17 @@ func (cart *Elf) Listen(addr uint16, data uint8) {
 	cart.mem.gpio.A[toArm_address] = uint8(addr)
 	cart.mem.gpio.A[toArm_address+1] = uint8(addr >> 8)
 
-	cart.arm.Run()
+	cart.runARM()
 	if cart.runStrongarm(addr, data) {
 		return
 	}
 
-	cart.arm.Run()
+	cart.runARM()
 	if cart.runStrongarm(addr, data) {
 		return
 	}
 
-	cart.arm.Run()
+	cart.runARM()
 
 	// we must understand that the above synchronisation is almost certainly
 	// "wrong" in the general sense. it works for the examples seen so far but
@@ -287,9 +315,12 @@ func (cart *Elf) ELFSection(name string) (uint32, bool) {
 	return 0, false
 }
 
-// CoProcIsActive implements the mapper.CartCoProc interface.
-func (cart *Elf) CoProcIsActive() bool {
-	return true
+// CoProcState implements the mapper.CartCoProc interface.
+func (cart *Elf) CoProcState() mapper.CoProcState {
+	if cart.parallelARM {
+		return mapper.CoProcParallel
+	}
+	return mapper.CoProcStrongARMFeed
 }
 
 // BreakpointHasTriggered implements the mapper.CartCoProc interface.

@@ -640,9 +640,12 @@ func (cart *cdf) HotLoad(data []byte) error {
 	return nil
 }
 
-// CoProcIsActive implements the mapper.CartCoProc interface.
-func (cart *cdf) CoProcIsActive() bool {
-	return cart.state.callfn.IsActive()
+// CoProcState implements the mapper.CartCoProc interface.
+func (cart *cdf) CoProcState() mapper.CoProcState {
+	if cart.state.callfn.IsActive() {
+		return mapper.CoProcNOPFeed
+	}
+	return mapper.CoProcIdle
 }
 
 // BreakpointHasTriggered implements the mapper.CartCoProc interface.
@@ -680,12 +683,12 @@ func (cart *cdf) runArm() error {
 	return nil
 }
 
-// DWARF implements the mapper.CartDebugging interface.
+// DWARF implements the mapper.CartCoProc interface.
 func (cart *cdf) DWARF() *dwarf.Data {
 	return nil
 }
 
-// ELFSection implements the mapper.CartDebugging interface.
+// ELFSection implements the mapper.CartCoProc interface.
 func (cart *cdf) ELFSection(name string) (uint32, bool) {
 	return 0, false
 }

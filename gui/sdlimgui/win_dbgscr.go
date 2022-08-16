@@ -23,6 +23,7 @@ import (
 	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/disassembly"
 	"github.com/jetsetilly/gopher2600/emulation"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/vcs"
 	"github.com/jetsetilly/gopher2600/hardware/television/coords"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
@@ -436,10 +437,8 @@ func (win *winDbgScr) drawOverlayColorKey() {
 		imguiColorLabelSimple("Reset", win.img.cols.reflectionColors[reflection.RSYNCreset])
 	case reflection.OverlayLabels[reflection.OverlayCoproc]:
 		imgui.SameLineV(0, 20)
-
-		// display text includes coprocessor ID
-		key := fmt.Sprintf("%s Active", win.img.lz.Cart.CoProcID)
-		imguiColorLabelSimple(key, win.img.cols.reflectionColors[reflection.CoprocessorActive])
+		key := fmt.Sprintf("parallel %s", win.img.lz.Cart.CoProcID)
+		imguiColorLabelSimple(key, win.img.cols.reflectionColors[reflection.CoProcActive])
 	}
 }
 
@@ -573,10 +572,15 @@ func (win *winDbgScr) drawReflectionTooltip() {
 			// no RSYNC specific hover information
 		case reflection.OverlayLabels[reflection.OverlayCoproc]:
 			imguiSeparator()
-			if ref.CoprocessorActive {
-				imgui.Text(fmt.Sprintf("%s is working", win.img.lz.Cart.CoProcID))
-			} else {
-				imgui.Text("6507 program is running")
+			switch ref.CoProcState {
+			case mapper.CoProcIdle:
+				imgui.Text(fmt.Sprintf("%s is idle", win.img.lz.Cart.CoProcID))
+			case mapper.CoProcNOPFeed:
+				imgui.Text(fmt.Sprintf("%s is feeding NOPs", win.img.lz.Cart.CoProcID))
+			case mapper.CoProcStrongARMFeed:
+				imgui.Text(fmt.Sprintf("%s feeding 6507", win.img.lz.Cart.CoProcID))
+			case mapper.CoProcParallel:
+				imgui.Text(fmt.Sprintf("%s and 6507 running in parallel", win.img.lz.Cart.CoProcID))
 			}
 		}
 	}, false)

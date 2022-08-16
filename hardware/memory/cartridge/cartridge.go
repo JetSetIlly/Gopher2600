@@ -498,12 +498,12 @@ func (cart *Cartridge) BreakpointsDisable(disable bool) {
 	}
 }
 
-// IsExecuting implements the mapper.CartCoProc interface.
-func (cart *Cartridge) CoProcIsActive() bool {
+// CoProcState implements the mapper.CartCoProc interface.
+func (cart *Cartridge) CoProcState() mapper.CoProcState {
 	if bp, ok := cart.mapper.(mapper.CartCoProc); ok {
-		return bp.CoProcIsActive()
+		return bp.CoProcState()
 	}
-	return false
+	return mapper.CoProcIdle
 }
 
 // BusStuff implements the mapper.CartBusStuff interface.

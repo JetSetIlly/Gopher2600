@@ -20,6 +20,39 @@ import (
 	"fmt"
 )
 
+// CoProcState is used to describe the state of the coprocessor. We can think
+// of these values as descriptions of the synchronisation state between the
+// coprocessor and the VCS.
+type CoProcState int
+
+// List of valid CoProcState values. A mapper will probably not employ all of
+// these states depending on the synchronisation strategy.
+//
+// In reality the state will alternate between Idle-and-NOPFeed and
+// StronARMFeed-and-Parallel.
+//
+// Other synchronisation strategies may need the addition of additional states
+// or a different mechanism altogether.
+const (
+	// the idle state means that the coprocessor is not interacting with the
+	// VCS at that moment. the coprocessor might be running but it is waiting
+	// to be instructed by the VCS program
+	CoProcIdle CoProcState = iota
+
+	// a NOP feed describes the state where a cartridge mapper is waiting for
+	// the coprocessor to finish processing. in the meantime, the cartridge is
+	// feeding NOP instructions to the VCS
+	CoProcNOPFeed
+
+	// a StrongARM feed describes the state where the coprocessor has yielded
+	// to the VCS in order for the next instruction to be read by the 6507
+	CoProcStrongARMFeed
+
+	// parallel execution describes the state where the coprocessor is running
+	// without immediate concern with VCS synchronisation
+	CoProcParallel
+)
+
 // CartCoProc is implemented by cartridge mappers that have a coprocessor that
 // functions independently from the VCS.
 type CartCoProc interface {
@@ -29,8 +62,8 @@ type CartCoProc interface {
 	SetDisassembler(CartCoProcDisassembler)
 	SetDeveloper(CartCoProcDeveloper)
 
-	// whether coprocessor is active
-	CoProcIsActive() bool
+	// the state of the coprocessor
+	CoProcState() CoProcState
 
 	// breakpoint control of coprocessor
 	BreakpointHasTriggered() bool

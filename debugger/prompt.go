@@ -21,14 +21,25 @@ import (
 
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
 	"github.com/jetsetilly/gopher2600/disassembly"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 )
 
 func (dbg *Debugger) buildPrompt() terminal.Prompt {
 	content := strings.Builder{}
 
-	if dbg.vcs.Mem.Cart.CoProcIsActive() {
-		content.WriteString(fmt.Sprintf("$%04x (coprocessor)", dbg.vcs.CPU.PC.Address()))
-	} else {
+	// to keep things simple for now, only the idle coprocessor state will
+	// result in a detailed 6507 prompt. the other states are better served
+	// (for now) by a descriptive prompt without any disassembly
+	//
+	// TODO: better prompts for non-idle coprocessor states
+	switch dbg.vcs.Mem.Cart.CoProcState() {
+	case mapper.CoProcNOPFeed:
+		content.WriteString(fmt.Sprintf("$%04x (NOP feed)", dbg.vcs.CPU.PC.Address()))
+	case mapper.CoProcStrongARMFeed:
+		content.WriteString(fmt.Sprintf("$%04x (StrongARM feed)", dbg.vcs.CPU.PC.Address()))
+	case mapper.CoProcParallel:
+		content.WriteString(fmt.Sprintf("$%04x (parallel)", dbg.vcs.CPU.PC.Address()))
+	case mapper.CoProcIdle:
 		var e *disassembly.Entry
 
 		// decide which address value to use
@@ -44,7 +55,6 @@ func (dbg *Debugger) buildPrompt() terminal.Prompt {
 
 		// build prompt based on how confident we are of the contents of the
 		// disassembly entry. starting with the condition of no disassembly at all
-		// decoration indication that entry is unreliable
 		if e == nil {
 			content.WriteString(fmt.Sprintf("$%04x", dbg.vcs.CPU.PC.Address()))
 		} else if e.Level == disassembly.EntryLevelUnmappable {

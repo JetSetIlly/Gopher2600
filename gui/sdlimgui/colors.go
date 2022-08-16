@@ -384,7 +384,7 @@ func newColors() *imguiColors {
 	cols.TimerBit = imgui.CurrentStyle().Color(imgui.StyleColorButton)
 	cols.SaveKeyBit = imgui.CurrentStyle().Color(imgui.StyleColorButton)
 	cols.TimelineWSYNC = cols.reflectionColors[reflection.WSYNC]
-	cols.TimelineCoProc = cols.reflectionColors[reflection.CoprocessorActive]
+	cols.TimelineCoProc = cols.reflectionColors[reflection.CoProcActive]
 
 	// colors that are used in context where an imgui.PackedColor is required
 	cols.tiaPointer = imgui.PackedColorFromVec4(cols.TIApointer)
@@ -443,15 +443,17 @@ func newColors() *imguiColors {
 
 // reflectionColors lists the colors to be used for the reflection overlay.
 var reflectionColors = []color.RGBA{
-	reflection.WSYNC:             {R: 50, G: 50, B: 255, A: 255},
-	reflection.Collision:         {R: 255, G: 25, B: 25, A: 255},
-	reflection.CXCLR:             {R: 255, G: 25, B: 255, A: 255},
-	reflection.HMOVEdelay:        {R: 150, G: 50, B: 50, A: 255},
-	reflection.HMOVEripple:       {R: 50, G: 150, B: 50, A: 255},
-	reflection.HMOVElatched:      {R: 50, G: 50, B: 150, A: 255},
-	reflection.RSYNCalign:        {R: 50, G: 50, B: 200, A: 255},
-	reflection.RSYNCreset:        {R: 50, G: 200, B: 200, A: 255},
-	reflection.CoprocessorActive: {R: 200, G: 50, B: 200, A: 255},
+	reflection.WSYNC:        {R: 50, G: 50, B: 255, A: 255},
+	reflection.Collision:    {R: 255, G: 25, B: 25, A: 255},
+	reflection.CXCLR:        {R: 255, G: 25, B: 255, A: 255},
+	reflection.HMOVEdelay:   {R: 150, G: 50, B: 50, A: 255},
+	reflection.HMOVEripple:  {R: 50, G: 150, B: 50, A: 255},
+	reflection.HMOVElatched: {R: 50, G: 50, B: 150, A: 255},
+	reflection.RSYNCalign:   {R: 50, G: 50, B: 200, A: 255},
+	reflection.RSYNCreset:   {R: 50, G: 200, B: 200, A: 255},
+
+	reflection.CoProcInactive: {R: 0, G: 0, B: 0, A: 0},
+	reflection.CoProcActive:   {R: 200, G: 50, B: 200, A: 255},
 }
 
 // altColors lists the colors to be used when displaying TIA video in a

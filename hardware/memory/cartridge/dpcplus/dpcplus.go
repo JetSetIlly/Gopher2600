@@ -912,9 +912,12 @@ func (cart *dpcPlus) ARMinterrupt(addr uint32, val1 uint32, val2 uint32) (arm.AR
 	return arm.ARMinterruptReturn{}, nil
 }
 
-// CoProcIsActive implements the mapper.CartCoprocExecution interface.
-func (cart *dpcPlus) CoProcIsActive() bool {
-	return cart.state.callfn.IsActive()
+// CoProcState implements the mapper.CartCoProc interface.
+func (cart *dpcPlus) CoProcState() mapper.CoProcState {
+	if cart.state.callfn.IsActive() {
+		return mapper.CoProcNOPFeed
+	}
+	return mapper.CoProcIdle
 }
 
 // BreakpointHasTriggered implements the mapper.CartCoprocExecution interface.
