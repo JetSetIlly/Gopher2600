@@ -671,6 +671,9 @@ func (cart *cdf) runArm() error {
 	if err != nil {
 		return curated.Errorf("CDF: %v", err)
 	}
+
+	cart.arm.SubmitExecutionProfile()
+
 	cart.state.callfn.Start(cycles)
 
 	// update the Register types after completion of each CALLFN

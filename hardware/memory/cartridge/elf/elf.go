@@ -173,6 +173,7 @@ func (cart *Elf) Patch(_ int, _ uint8) error {
 
 func (cart *Elf) runARM() {
 	cart.arm.Run()
+	cart.arm.SubmitExecutionProfile()
 }
 
 // try to run strongarm function. returns success.

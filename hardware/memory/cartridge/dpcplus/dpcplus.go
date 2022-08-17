@@ -943,6 +943,9 @@ func (cart *dpcPlus) runArm() error {
 	if err != nil {
 		return curated.Errorf("DPC+: %v", err)
 	}
+
+	cart.arm.SubmitExecutionProfile()
+
 	cart.state.callfn.Start(cycles)
 	if cart.dev != nil {
 		cart.dev.ExecutionStart()

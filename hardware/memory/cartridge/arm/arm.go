@@ -315,6 +315,7 @@ func (arm *ARM) SetDisassembler(disasm mapper.CartCoProcDisassembler) {
 // SetDeveloper implements the mapper.CartCoProc interface.
 func (arm *ARM) SetDeveloper(dev mapper.CartCoProcDeveloper) {
 	arm.dev = dev
+	arm.clearExecutionProfile()
 }
 
 // Snapshort makes a copy of the ARM. The copied instance will not be usable
@@ -480,6 +481,23 @@ func (arm *ARM) SetInitialRegisters(args ...uint32) error {
 	return nil
 }
 
+// clearExecutionProfile removes any existing cycle counts from the list of
+// executable address seen so far.
+func (arm *ARM) clearExecutionProfile() {
+	// easier to simply remake executed addresses information
+	if arm.dev != nil {
+		arm.executedAddresses = make(map[uint32]float32)
+	}
+}
+
+// SubmitExecutionProfile to the mapper.CartCoProcDeveloper interface.
+func (arm *ARM) SubmitExecutionProfile() {
+	if arm.dev != nil {
+		arm.dev.ExecutionProfile(arm.executedAddresses)
+	}
+	arm.clearExecutionProfile()
+}
+
 // Run will execute an ARM program until one of the following conditions has
 // ben met:
 //
@@ -509,11 +527,6 @@ func (arm *ARM) Run() (float32, error) {
 	if arm.disasm != nil {
 		arm.disasmExecutionNotes = ""
 		arm.disasmUpdateNotes = false
-	}
-
-	// easier to simply remake executed addresses information
-	if arm.dev != nil {
-		arm.executedAddresses = make(map[uint32]float32)
 	}
 
 	// fill pipeline must happen after resetExecution()
@@ -567,8 +580,6 @@ func (arm *ARM) run() (float32, error) {
 	if arm.dev != nil {
 		// update variableMemtop - probably hasn't changed but you never know
 		arm.variableMemtop = arm.dev.VariableMemtop()
-		// profile executed addresses at end of function
-		defer arm.dev.ExecutionProfile(arm.executedAddresses)
 	}
 
 	if arm.disasm != nil {
