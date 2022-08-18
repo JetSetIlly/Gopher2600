@@ -25,28 +25,30 @@ type Preferences struct {
 
 	Enabled prefs.Bool
 
-	Curve        prefs.Bool
-	Mask         prefs.Bool
-	Scanlines    prefs.Bool
-	Interference prefs.Bool
-	Noise        prefs.Bool
-	Fringing     prefs.Bool
-	Ghosting     prefs.Bool
-	Phosphor     prefs.Bool
+	Curve          prefs.Bool
+	RoundedCorners prefs.Bool
+	Mask           prefs.Bool
+	Scanlines      prefs.Bool
+	Interference   prefs.Bool
+	Noise          prefs.Bool
+	Fringing       prefs.Bool
+	Ghosting       prefs.Bool
+	Phosphor       prefs.Bool
 
-	CurveAmount        prefs.Float
-	MaskIntensity      prefs.Float
-	MaskFine           prefs.Float
-	ScanlinesIntensity prefs.Float
-	ScanlinesFine      prefs.Float
-	InterferenceLevel  prefs.Float
-	NoiseLevel         prefs.Float
-	FringingAmount     prefs.Float
-	GhostingAmount     prefs.Float
-	PhosphorLatency    prefs.Float
-	PhosphorBloom      prefs.Float
-	Sharpness          prefs.Float
-	BlackLevel         prefs.Float
+	CurveAmount          prefs.Float
+	RoundedCornersAmount prefs.Float
+	MaskIntensity        prefs.Float
+	MaskFine             prefs.Float
+	ScanlinesIntensity   prefs.Float
+	ScanlinesFine        prefs.Float
+	InterferenceLevel    prefs.Float
+	NoiseLevel           prefs.Float
+	FringingAmount       prefs.Float
+	GhostingAmount       prefs.Float
+	PhosphorLatency      prefs.Float
+	PhosphorBloom        prefs.Float
+	Sharpness            prefs.Float
+	BlackLevel           prefs.Float
 
 	PixelPerfectFade prefs.Float
 
@@ -61,32 +63,34 @@ func (p *Preferences) String() string {
 }
 
 const (
-	enabled            = true
-	curve              = true
-	mask               = true
-	scanlines          = true
-	interference       = true
-	noise              = true
-	fringing           = true
-	ghosting           = true
-	phosphor           = true
-	curveAmount        = 0.5
-	maskIntensity      = 0.07
-	maskFine           = 2.9
-	scanlinesIntensity = 0.08
-	scanlinesFine      = 1.80
-	interferenceLevel  = 0.15
-	noiseLevel         = 0.19
-	fringingAmount     = 0.15
-	ghostingAmount     = 2.9
-	phosphorLatency    = 0.5
-	phosphorBloom      = 1.0
-	sharpness          = 0.55
-	blackLevel         = 0.06
-	pixelPerfectFade   = 0.4
-	syncSpeed          = 2
-	syncPowerOn        = true
-	integerScaling     = false
+	enabled              = true
+	curve                = true
+	roundedCorners       = false
+	mask                 = true
+	scanlines            = true
+	interference         = true
+	noise                = true
+	fringing             = true
+	ghosting             = true
+	phosphor             = true
+	curveAmount          = 0.5
+	roundedCornersAmount = 0.04
+	maskIntensity        = 0.07
+	maskFine             = 2.9
+	scanlinesIntensity   = 0.08
+	scanlinesFine        = 1.80
+	interferenceLevel    = 0.15
+	noiseLevel           = 0.19
+	fringingAmount       = 0.15
+	ghostingAmount       = 2.9
+	phosphorLatency      = 0.5
+	phosphorBloom        = 1.0
+	sharpness            = 0.55
+	blackLevel           = 0.06
+	pixelPerfectFade     = 0.4
+	syncSpeed            = 2
+	syncPowerOn          = true
+	integerScaling       = false
 )
 
 // NewPreferences is the preferred method of initialisation for the Preferences type.
@@ -109,6 +113,10 @@ func NewPreferences() (*Preferences, error) {
 		return nil, err
 	}
 	err = p.dsk.Add("crt.curve", &p.Curve)
+	if err != nil {
+		return nil, err
+	}
+	err = p.dsk.Add("crt.roundedCorners", &p.RoundedCorners)
 	if err != nil {
 		return nil, err
 	}
@@ -141,6 +149,10 @@ func NewPreferences() (*Preferences, error) {
 		return nil, err
 	}
 	err = p.dsk.Add("crt.curveAmount", &p.CurveAmount)
+	if err != nil {
+		return nil, err
+	}
+	err = p.dsk.Add("crt.roundedCornersAmount", &p.RoundedCornersAmount)
 	if err != nil {
 		return nil, err
 	}
@@ -221,6 +233,7 @@ func NewPreferences() (*Preferences, error) {
 func (p *Preferences) SetDefaults() {
 	p.Enabled.Set(enabled)
 	p.Curve.Set(curve)
+	p.RoundedCorners.Set(roundedCorners)
 	p.Mask.Set(mask)
 	p.Scanlines.Set(scanlines)
 	p.Interference.Set(interference)
@@ -229,6 +242,7 @@ func (p *Preferences) SetDefaults() {
 	p.Ghosting.Set(ghosting)
 	p.Phosphor.Set(phosphor)
 	p.CurveAmount.Set(curveAmount)
+	p.RoundedCornersAmount.Set(roundedCornersAmount)
 	p.MaskIntensity.Set(maskIntensity)
 	p.MaskFine.Set(maskFine)
 	p.ScanlinesIntensity.Set(scanlinesIntensity)

@@ -17,12 +17,14 @@ uniform vec2 ScreenDim;
 uniform int NumScanlines;
 uniform int NumClocks;
 uniform int Curve;
+uniform int RoundedCorners;
 uniform int ShadowMask;
 uniform int Scanlines;
 uniform int Interference;
 uniform int Noise;
 uniform int Fringing;
 uniform float CurveAmount;
+uniform float RoundedCornersAmount;
 uniform float MaskIntensity;
 uniform float MaskFine;
 uniform float ScanlinesIntensity;
@@ -108,6 +110,17 @@ void main() {
 
 	// basic color
 	Crt_Color = Frag_Color * texture(Texture, uv.st);
+
+	// rounded corners
+	if (RoundedCorners == 1) {
+		float margin = RoundedCornersAmount / 2.6666;
+		vec2 bl = smoothstep(vec2(-margin), vec2(RoundedCornersAmount), uv.st);
+		vec2 tr = smoothstep(vec2(-margin), vec2(RoundedCornersAmount), 1.0-uv.st);
+		float pct = bl.x * bl.y * tr.x * tr.y;
+		if (pct <= 0.2) {
+			Crt_Color *= vec4(pct);
+		}
+	}
 
 	// using y axis to determine scaling.
 	float scaling = float(ScreenDim.y) / float(NumScanlines);
