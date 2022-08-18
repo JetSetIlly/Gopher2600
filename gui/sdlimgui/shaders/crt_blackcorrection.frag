@@ -10,5 +10,8 @@ out vec4 Out_Color;
 void main()
 {
 	Out_Color = texture(Texture, Frag_UV);
-	Out_Color.rgb = clamp(Out_Color.rgb, vec3(BlackLevel), Out_Color.rgb);
+
+	// scale black level by +5% (done so that existing default values in
+	// people's preferences will be increased)
+	Out_Color.rgb = clamp(Out_Color.rgb, vec3(BlackLevel*1.05), Out_Color.rgb);
 }

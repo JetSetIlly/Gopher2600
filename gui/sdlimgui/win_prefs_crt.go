@@ -76,6 +76,8 @@ func (win *winPrefs) drawCRT() {
 		win.drawSharpness()
 		imgui.Spacing()
 		win.drawBlackLevel()
+		imgui.Spacing()
+		win.drawRoundedCorners()
 		imgui.PopItemWidth()
 
 		imgui.EndTable()
@@ -377,6 +379,31 @@ func (win *winPrefs) drawBlackLevel() {
 
 	if imgui.SliderFloatV("##blacklevel", &f, 0.00, 0.10, label, 1.0) {
 		win.img.crtPrefs.BlackLevel.Set(f)
+	}
+}
+
+func (win *winPrefs) drawRoundedCorners() {
+	b := win.img.crtPrefs.RoundedCorners.Get().(bool)
+	if imgui.Checkbox("Rounded Corners##roundedcorners", &b) {
+		win.img.crtPrefs.RoundedCorners.Set(b)
+	}
+
+	f := float32(win.img.crtPrefs.RoundedCornersAmount.Get().(float64))
+
+	var label string
+
+	if f >= 0.07 {
+		label = "extremely round"
+	} else if f >= 0.05 {
+		label = "very round"
+	} else if f >= 0.03 {
+		label = "quite rounded"
+	} else {
+		label = "hardly round at all"
+	}
+
+	if imgui.SliderFloatV("##roundedcornersamount", &f, 0.02, 0.09, label, 1.0) {
+		win.img.crtPrefs.RoundedCornersAmount.Set(f)
 	}
 }
 

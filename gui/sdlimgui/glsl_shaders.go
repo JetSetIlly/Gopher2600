@@ -186,24 +186,26 @@ type effectsShader struct {
 
 	img *SdlImgui
 
-	screenDim          int32
-	numScanlines       int32
-	numClocks          int32
-	curve              int32
-	shadowMask         int32
-	scanlines          int32
-	interference       int32
-	noise              int32
-	fringing           int32
-	curveAmount        int32
-	maskIntensity      int32
-	maskFine           int32
-	scanlinesIntensity int32
-	scanlinesFine      int32
-	interferenceLevel  int32
-	noiseLevel         int32
-	fringingAmount     int32
-	time               int32
+	screenDim            int32
+	numScanlines         int32
+	numClocks            int32
+	curve                int32
+	roundedCorners       int32
+	shadowMask           int32
+	scanlines            int32
+	interference         int32
+	noise                int32
+	fringing             int32
+	curveAmount          int32
+	roundedCornersAmount int32
+	maskIntensity        int32
+	maskFine             int32
+	scanlinesIntensity   int32
+	scanlinesFine        int32
+	interferenceLevel    int32
+	noiseLevel           int32
+	fringingAmount       int32
+	time                 int32
 }
 
 func newEffectsShader(img *SdlImgui, yflip bool) shaderProgram {
@@ -220,12 +222,14 @@ func newEffectsShader(img *SdlImgui, yflip bool) shaderProgram {
 	sh.numScanlines = gl.GetUniformLocation(sh.handle, gl.Str("NumScanlines"+"\x00"))
 	sh.numClocks = gl.GetUniformLocation(sh.handle, gl.Str("NumClocks"+"\x00"))
 	sh.curve = gl.GetUniformLocation(sh.handle, gl.Str("Curve"+"\x00"))
+	sh.roundedCorners = gl.GetUniformLocation(sh.handle, gl.Str("RoundedCorners"+"\x00"))
 	sh.shadowMask = gl.GetUniformLocation(sh.handle, gl.Str("ShadowMask"+"\x00"))
 	sh.scanlines = gl.GetUniformLocation(sh.handle, gl.Str("Scanlines"+"\x00"))
 	sh.interference = gl.GetUniformLocation(sh.handle, gl.Str("Interference"+"\x00"))
 	sh.noise = gl.GetUniformLocation(sh.handle, gl.Str("Noise"+"\x00"))
 	sh.fringing = gl.GetUniformLocation(sh.handle, gl.Str("Fringing"+"\x00"))
 	sh.curveAmount = gl.GetUniformLocation(sh.handle, gl.Str("CurveAmount"+"\x00"))
+	sh.roundedCornersAmount = gl.GetUniformLocation(sh.handle, gl.Str("RoundedCornersAmount"+"\x00"))
 	sh.maskIntensity = gl.GetUniformLocation(sh.handle, gl.Str("MaskIntensity"+"\x00"))
 	sh.maskFine = gl.GetUniformLocation(sh.handle, gl.Str("MaskFine"+"\x00"))
 	sh.scanlinesIntensity = gl.GetUniformLocation(sh.handle, gl.Str("ScanlinesIntensity"+"\x00"))
@@ -247,12 +251,14 @@ func (sh *effectsShader) setAttributesArgs(env shaderEnvironment, numScanlines i
 	gl.Uniform1i(sh.numScanlines, int32(numScanlines))
 	gl.Uniform1i(sh.numClocks, int32(numClocks))
 	gl.Uniform1i(sh.curve, boolToInt32(sh.img.crtPrefs.Curve.Get().(bool)))
+	gl.Uniform1i(sh.roundedCorners, boolToInt32(sh.img.crtPrefs.RoundedCorners.Get().(bool)))
 	gl.Uniform1i(sh.shadowMask, boolToInt32(sh.img.crtPrefs.Mask.Get().(bool)))
 	gl.Uniform1i(sh.scanlines, boolToInt32(sh.img.crtPrefs.Scanlines.Get().(bool)))
 	gl.Uniform1i(sh.interference, boolToInt32(interference))
 	gl.Uniform1i(sh.noise, boolToInt32(noise))
 	gl.Uniform1i(sh.fringing, boolToInt32(sh.img.crtPrefs.Fringing.Get().(bool)))
 	gl.Uniform1f(sh.curveAmount, float32(sh.img.crtPrefs.CurveAmount.Get().(float64)))
+	gl.Uniform1f(sh.roundedCornersAmount, float32(sh.img.crtPrefs.RoundedCornersAmount.Get().(float64)))
 	gl.Uniform1f(sh.maskIntensity, float32(sh.img.crtPrefs.MaskIntensity.Get().(float64)))
 	gl.Uniform1f(sh.maskFine, float32(sh.img.crtPrefs.MaskFine.Get().(float64)))
 	gl.Uniform1f(sh.scanlinesIntensity, float32(sh.img.crtPrefs.ScanlinesIntensity.Get().(float64)))
