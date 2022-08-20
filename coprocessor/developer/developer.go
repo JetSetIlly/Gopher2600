@@ -216,7 +216,7 @@ func (dev *Developer) ExecutionStart() {
 		dev.mostRecentCoords = dev.tv.GetCoords()
 		if dev.mostRecentCoords.Scanline <= dev.mostRecentFrameInfo.VisibleTop {
 			dev.mostRecentKernel = InVBLANK
-		} else if dev.mostRecentCoords.Scanline >= dev.mostRecentFrameInfo.VisibleTop {
+		} else if dev.mostRecentCoords.Scanline >= dev.mostRecentFrameInfo.VisibleBottom {
 			dev.mostRecentKernel = InOverscan
 		} else {
 			dev.mostRecentKernel = InScreen
