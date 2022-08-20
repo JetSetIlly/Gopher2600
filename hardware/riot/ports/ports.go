@@ -110,7 +110,7 @@ func (p *Ports) Snapshot() *Ports {
 }
 
 // Plumb new ChipBusses into the Ports sub-system. Depending on context it
-// might be advidable for ResetPeripherals() to be called after plumbing has
+// might be advisable for ResetPeripherals() to be called after plumbing has
 // succeeded.
 func (p *Ports) Plumb(riotMem chipbus.Memory, tiaMem chipbus.Memory) {
 	p.riot = riotMem

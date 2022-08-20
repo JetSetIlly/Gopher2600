@@ -281,6 +281,9 @@ func (pad *Gamepad) Step() {
 
 // Reset implements the ports.Peripheral interface.
 func (pad *Gamepad) Reset() {
+	pad.axis = axisCenter
+	pad.button = stickNoFire
+	pad.second = secondNoFire
 	pad.bus.WriteSWCHx(pad.port, pad.axis)
 	pad.bus.WriteINPTx(pad.buttonInptx, pad.button)
 	pad.bus.WriteINPTx(pad.secondInptx, pad.second)
