@@ -115,8 +115,9 @@ func (ms *MissileSprite) Snapshot() *MissileSprite {
 }
 
 // Plumb changes into missile sprite.
-func (ms *MissileSprite) Plumb(tia tia) {
+func (ms *MissileSprite) Plumb(tia tia, resetToPlayer func() bool) {
 	ms.tia = tia
+	ms.resetToPlayer = resetToPlayer
 	ms.Enclockifier.size = &ms.Size
 }
 

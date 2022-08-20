@@ -184,8 +184,8 @@ func (vd *Video) Plumb(instance *instance.Instance, mem chipbus.Memory, tv TV, p
 	vd.Playfield.Plumb(vd.tia)
 	vd.Player0.Plumb(vd.tia)
 	vd.Player1.Plumb(vd.tia)
-	vd.Missile0.Plumb(vd.tia)
-	vd.Missile1.Plumb(vd.tia)
+	vd.Missile0.Plumb(vd.tia, vd.Player0.triggerMissileReset)
+	vd.Missile1.Plumb(vd.tia, vd.Player1.triggerMissileReset)
 	vd.Ball.Plumb(vd.tia)
 }
 
