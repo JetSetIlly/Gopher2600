@@ -358,37 +358,39 @@ func (scr *screen) NewFrame(frameInfo television.FrameInfo) error {
 			}
 		}
 
-		switch scr.img.emulation.State() {
-		case emulation.Rewinding:
-			fallthrough
-		case emulation.Paused:
-			scr.crit.renderIdx = scr.crit.plotIdx
-			scr.crit.prevRenderIdx = scr.crit.plotIdx
-			scr.crit.bufferUsed = len(scr.crit.bufferPixels)
-		case emulation.Running:
-			if scr.crit.bufferUsed > 0 {
-				scr.crit.bufferUsed--
-			}
+		if scr.crit.monitorSync && scr.crit.monitorSyncInRange {
+			switch scr.img.emulation.State() {
+			case emulation.Rewinding:
+				fallthrough
+			case emulation.Paused:
+				scr.crit.renderIdx = scr.crit.plotIdx
+				scr.crit.prevRenderIdx = scr.crit.plotIdx
+				scr.crit.bufferUsed = len(scr.crit.bufferPixels)
+			case emulation.Running:
+				if scr.crit.bufferUsed > 0 {
+					scr.crit.bufferUsed--
+				}
 
-			scr.crit.plotIdx++
-			if scr.crit.plotIdx >= len(scr.crit.bufferPixels) {
-				scr.crit.plotIdx = 0
-			}
+				scr.crit.plotIdx++
+				if scr.crit.plotIdx >= len(scr.crit.bufferPixels) {
+					scr.crit.plotIdx = 0
+				}
 
-			// if plot index has crashed into the render index then
-			if scr.crit.plotIdx == scr.crit.renderIdx && scr.crit.monitorSync && scr.crit.monitorSyncInRange {
-				// ** screen update not keeping up with emulation **
+				// if plot index has crashed into the render index then
+				if scr.crit.plotIdx == scr.crit.renderIdx {
+					// ** screen update not keeping up with emulation **
 
-				// we must unlock the critical section or the gui thread will not
-				// be able to process the channel
-				scr.crit.frameInfo = frameInfo
-				scr.crit.section.Unlock()
+					// we must unlock the critical section or the gui thread will not
+					// be able to process the channel
+					scr.crit.frameInfo = frameInfo
+					scr.crit.section.Unlock()
 
-				// pause emulation until screen has caught up
-				scr.emuWait <- true
-				<-scr.emuWaitAck
+					// pause emulation until screen has caught up
+					scr.emuWait <- true
+					<-scr.emuWaitAck
 
-				return nil
+					return nil
+				}
 			}
 		}
 	}
@@ -575,6 +577,8 @@ func (scr *screen) copyPixelsPlaymode() {
 	scr.crit.section.Lock()
 	defer scr.crit.section.Unlock()
 
+	// the bufferUsed check is important for correct operation of the rewinding
+	// state. without it, the screen will jump after a rewind event
 	if scr.crit.bufferUsed == 0 && scr.crit.monitorSync && scr.crit.monitorSyncInRange {
 		// advance render index
 		prev := scr.crit.prevRenderIdx
