@@ -1,13 +1,8 @@
 compileFlags = '-c 3 -B -wb=false'
 
-# profilingRom = roms/Homebrew/hs_2600.bin
-# profilingRom = roms/Homebrew/CDF/galaga_dmo_v2_NTSC.bin
-# profilingRom = roms/Homebrew/DPC+ARM/ZaxxonHDDemo_150927_NTSC.bin
 # profilingRom = roms/Rsboxing.bin
-# profilingRom = "test_roms/plusrom/sokoboo Plus.bin"
 # profilingRom = "roms/starpath/02 - Communist Mutants From Space (Ntsc).mp3"
 # profilingRom = "roms/The Official Frogger.bin"
-# profilingRom = roms/Homebrew/CDF/gorfarc_20201231_demo1_NTSC.bin
 # profilingRom = roms/Homebrew/CDF/zookeeper_20200308_demo2_NTSC.bin
 # profilingRom = roms/Pitfall.bin
 profilingRom = test_roms/ELF/raycaster/raycaster.bin
@@ -15,8 +10,6 @@ profilingRom = test_roms/ELF/raycaster/raycaster.bin
 .PHONY: all clean tidy generate check_lint lint lint_fix check_glsl glsl_validate check_pandoc readme_spell test race race_debug profile profile_cpu profile_cpu_play profile_cpu_debug profile_mem_play profile_mem_debug profile_trace build_assertions build check_upx release chec_rswc windows_manifest cross_windows cross_windows_development cross_windows_dynamic
 
 goBinary = go
-# goBinary = ~/Go/dev_github/go/bin/go
-# goBinary = gotip
 
 all:
 	@echo "use release target to build release binary"
@@ -64,10 +57,9 @@ endif
 readme_spell: check_pandoc
 	@pandoc README.md -t plain | aspell -a | cut -d ' ' -f 2 | awk 'length($0)>1' | sort | uniq
 
-
 test:
 # testing with shuffle on is good but it's only available in go 1.17 onwards
-ifeq ($(shell $(goBinary) version | grep -q 1.17 ; echo $$?), 0)
+ifeq ($(shell $(goBinary) version | awk '{print($$3 >= "go1.17.0")}'), 1)
 	$(goBinary) test -shuffle on ./...
 else
 	$(goBinary) test ./...
@@ -123,23 +115,23 @@ build_assertions: generate test
 
 # deliberately not having test dependecies for remaining targets
 
-build: generate 
-	$(goBinary) build -gcflags $(compileFlags) -tags="imguifreetype"
-
-check_upx:
-ifeq (, $(shell which upx))
-	$(error "upx not installed")
+# whether or not we build with freetype font rendering depends on the platform.
+# for now freetype doesn't seem to work on MacOS with an M2 CPU
+#
+# we should really use the go env variable GOOS AND GOARCH for this
+fontrendering:
+ifneq ($(shell $(goBinary) version | grep -q "darwin/arm64"; echo $$?), 0)
+fontrendering=imguifreetype
 endif
 
-release: generate 
-	$(goBinary) build -gcflags $(compileFlags) -ldflags="-s -w" -tags="imguifreetype release"
+build: fontrendering generate 
+	$(goBinary) build -gcflags $(compileFlags) -tags="$(fontrendering)"
+
+release: fontrendering generate 
+	$(goBinary) build -gcflags $(compileFlags) -ldflags="-s -w" -tags="$(fontrendering) release"
 	mv gopher2600 gopher2600_$(shell go env GOHOSTOS)_$(shell go env GOHOSTARCH)
 
-release_upx: check_upx generate 
-	$(goBinary) build -gcflags $(compileFlags) -ldflags="-s -w" -tags="imguifreetype release"
-	upx -o gopher2600.upx gopher2600
-	mv gopher2600.upx gopher2600_$(shell go env GOHOSTOS)_$(shell go env GOHOSTARCH)
-	rm gopher2600
+## windows cross compilation (tested when cross compiling from Linux)
 
 check_rscr:
 ifeq (, $(shell which rsrc))
