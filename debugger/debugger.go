@@ -477,6 +477,22 @@ func (dbg *Debugger) setStateQuiet(state emulation.State, quiet bool) {
 
 		// it is thought that bots are okay to enter the rewinding state. this
 		// might not be true in all future cases.
+		// coprocessor statistics can be misleading if they're collated during
+		// the rewind state. note that they are enabled when entering another
+		// state and also at the beginning of catch-up
+		if dbg.CoProcDev != nil {
+			dbg.CoProcDev.Disable(true)
+		}
+	} else {
+
+		// enable coprocessor statistics and other developer features when not
+		// in the rewind state
+		//
+		// note that in the event that a catch-up loop is run, the dev features
+		// will already have been enabled
+		if dbg.CoProcDev != nil {
+			dbg.CoProcDev.Disable(false)
+		}
 	}
 
 	dbg.vcs.TV.SetEmulationState(state)

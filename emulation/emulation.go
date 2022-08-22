@@ -95,12 +95,13 @@ type State int
 // Values are ordered so that order comparisons are meaningful. For example,
 // Running is "greater than" Stepping, Paused, etc.
 //
-// Note that there is a flaw in this current implementation that means a
-// "catchup" loop which can occur at the end of the Rewinding state, will
-// report as being in the Running (or Stepping and Paused) state, even though
-// we might logically think of it being the Rewinding state. See
-// Debugger.CatchUpLoop() for an example of this and how it affects
-// peripherals.
+// * There is a sub-state of the rewinding state that we can think of as the
+// "catch-up" state. This occurs in the brief transition period between
+// Rewinding and the Running or Pausing state.
+//
+// Currently, we handle this state in the CartUpLoop() function of the debugger
+// package. There is a good argument to be made for having the catch-up state
+// as a distinct State listed below.
 const (
 	EmulatorStart State = iota
 	Initialising
