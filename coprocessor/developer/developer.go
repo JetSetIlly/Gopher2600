@@ -31,6 +31,9 @@ type Developer struct {
 	cart mapper.CartCoProc
 	tv   TV
 
+	// only respond on the CartCoProcDeveloper interface when enabled
+	disabled bool
+
 	// information about the source code to the program. can be nil
 	source     *Source
 	sourceLock sync.Mutex
@@ -130,24 +133,41 @@ const (
 	UnknownSourceLine = "<unknown source line>"
 )
 
+// Enable or disable the CartCoProcDeveloper interface.
+func (dev *Developer) Disable(disable bool) {
+	dev.disabled = disable
+}
+
 // IllegalAccess implements the CartCoProcDeveloper interface.
 func (dev *Developer) NullAccess(event string, pc uint32, addr uint32) string {
+	if dev.disabled {
+		return ""
+	}
 	return dev.logAccess(event, pc, addr, true)
 }
 
 // IllegalAccess implements the CartCoProcDeveloper interface.
 func (dev *Developer) IllegalAccess(event string, pc uint32, addr uint32) string {
+	if dev.disabled {
+		return ""
+	}
 	return dev.logAccess(event, pc, addr, false)
 }
 
 // IllegalAccess implements the CartCoProcDeveloper interface.
 func (dev *Developer) StackCollision(pc uint32, addr uint32) string {
+	if dev.disabled {
+		return ""
+	}
 	dev.illegalAccess.HasStackCollision = true
 	return dev.logAccess("Stack Collision", pc, addr, false)
 }
 
 // VariableMemtop implements the CartCoProcDeveloper interface.
 func (dev *Developer) VariableMemtop() uint32 {
+	if dev.disabled {
+		return 0
+	}
 	if dev.source == nil {
 		return 0
 	}
@@ -156,6 +176,9 @@ func (dev *Developer) VariableMemtop() uint32 {
 
 // CheckBreakpoint implements the CartCoProcDeveloper interface.
 func (dev *Developer) CheckBreakpoint(addr uint32) bool {
+	if dev.disabled {
+		return false
+	}
 	if dev.source == nil {
 		return false
 	}
@@ -218,6 +241,10 @@ func (dev *Developer) logAccess(event string, pc uint32, addr uint32, isNullAcce
 
 // ExecutionStart implements the CartCoProcDeveloper interface.
 func (dev *Developer) ExecutionStart() {
+	if dev.disabled {
+		return
+	}
+
 	dev.mostRecentFrameInfo = dev.tv.GetFrameInfo()
 
 	if dev.mostRecentFrameInfo.Stable {
@@ -236,6 +263,10 @@ func (dev *Developer) ExecutionStart() {
 
 // ExecutionProfile implements the CartCoProcDeveloper interface.
 func (dev *Developer) ExecutionProfile(addr map[uint32]float32) {
+	if dev.disabled {
+		return
+	}
+
 	dev.sourceLock.Lock()
 	defer dev.sourceLock.Unlock()
 
@@ -248,6 +279,10 @@ func (dev *Developer) ExecutionProfile(addr map[uint32]float32) {
 
 // ExecutionEnd implements the CartCoProcDeveloper interface.
 func (dev *Developer) ExecutionEnd() {
+	if dev.disabled {
+		return
+	}
+
 	if dev.source == nil {
 		return
 	}
