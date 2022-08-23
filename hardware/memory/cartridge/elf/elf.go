@@ -33,7 +33,6 @@ import (
 // Elf implements the mapper.CartMapper interface.
 type Elf struct {
 	instance *instance.Instance
-	dev      mapper.CartCoProcDeveloper
 
 	version   string
 	pathToROM string
@@ -173,7 +172,6 @@ func (cart *Elf) Patch(_ int, _ uint8) error {
 
 func (cart *Elf) runARM() {
 	cart.arm.Run()
-	cart.arm.SubmitExecutionProfile()
 }
 
 // try to run strongarm function. returns success.
@@ -211,22 +209,7 @@ func (cart *Elf) runStrongarm(addr uint16, data uint8) bool {
 func (cart *Elf) Listen(addr uint16, data uint8) {
 	// if memory access is not a cartridge address (ie. a TIA or RIOT address)
 	// then the ARM is running in parallel (ie. no synchronisation)
-	parallelARM := (addr&memorymap.OriginCart != memorymap.OriginCart)
-
-	// call ExecutionStart() or ExecutionEnd() in the developer interface, as
-	// appropriate for the change of state
-	if parallelARM {
-		if !cart.parallelARM && cart.dev != nil {
-			cart.dev.ExecutionStart()
-		}
-	} else {
-		if cart.parallelARM && cart.dev != nil {
-			cart.dev.ExecutionEnd()
-		}
-	}
-
-	// record parallelARM flag
-	cart.parallelARM = parallelARM
+	cart.parallelARM = (addr&memorymap.OriginCart != memorymap.OriginCart)
 
 	// if address is the reset address then trigger the reset procedure
 	if (addr&memorymap.CartridgeBits)|memorymap.OriginCart == cpubus.Reset {
@@ -299,7 +282,6 @@ func (cart *Elf) SetDisassembler(disasm mapper.CartCoProcDisassembler) {
 
 // SetDeveloper implements the mapper.CartCoProc interface.
 func (cart *Elf) SetDeveloper(dev mapper.CartCoProcDeveloper) {
-	cart.dev = dev
 	cart.arm.SetDeveloper(dev)
 }
 

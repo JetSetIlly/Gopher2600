@@ -38,7 +38,7 @@ type SortedLines struct {
 	Lines      []*SourceLine
 	method     sortMethods
 	descending bool
-	kernel     InKernel
+	kernel     KernelVCS
 
 	// sort by raw cycle counts, rather than percentages
 	rawCycleCounts bool
@@ -48,7 +48,7 @@ func (e SortedLines) Sort() {
 	sort.Stable(e)
 }
 
-func (e *SortedLines) SetKernel(kernel InKernel) {
+func (e *SortedLines) SetKernel(kernel KernelVCS) {
 	e.kernel = kernel
 }
 
@@ -127,13 +127,13 @@ func (e SortedLines) Less(i int, j int) bool {
 	var jStats Stats
 
 	switch e.kernel {
-	case InVBLANK:
+	case KernelVBLANK:
 		iStats = e.Lines[i].StatsVBLANK
 		jStats = e.Lines[j].StatsVBLANK
-	case InScreen:
+	case KernelScreen:
 		iStats = e.Lines[i].StatsScreen
 		jStats = e.Lines[j].StatsScreen
-	case InOverscan:
+	case KernelOverscan:
 		iStats = e.Lines[i].StatsOverscan
 		jStats = e.Lines[j].StatsOverscan
 	default:
@@ -238,7 +238,7 @@ type SortedFunctions struct {
 	Functions  []*SourceFunction
 	method     sortMethods
 	descending bool
-	kernel     InKernel
+	kernel     KernelVCS
 
 	functionComparison bool
 
@@ -250,7 +250,7 @@ func (e SortedFunctions) Sort() {
 	sort.Stable(e)
 }
 
-func (e *SortedFunctions) SetKernel(kernel InKernel) {
+func (e *SortedFunctions) SetKernel(kernel KernelVCS) {
 	e.kernel = kernel
 }
 
@@ -297,13 +297,13 @@ func (e SortedFunctions) Less(i int, j int) bool {
 	var jStats Stats
 
 	switch e.kernel {
-	case InVBLANK:
+	case KernelVBLANK:
 		iStats = e.Functions[i].StatsVBLANK
 		jStats = e.Functions[j].StatsVBLANK
-	case InScreen:
+	case KernelScreen:
 		iStats = e.Functions[i].StatsScreen
 		jStats = e.Functions[j].StatsScreen
-	case InOverscan:
+	case KernelOverscan:
 		iStats = e.Functions[i].StatsOverscan
 		jStats = e.Functions[j].StatsOverscan
 	default:

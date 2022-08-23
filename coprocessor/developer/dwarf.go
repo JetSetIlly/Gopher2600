@@ -98,7 +98,7 @@ type SourceLine struct {
 	StatsROMSetup Stats
 
 	// which 2600 kernel has this line executed in
-	Kernel InKernel
+	Kernel KernelVCS
 }
 
 func (ln *SourceLine) String() string {
@@ -122,7 +122,7 @@ type SourceFunction struct {
 	StatsROMSetup Stats
 
 	// which 2600 kernel has this function executed in
-	Kernel InKernel
+	Kernel KernelVCS
 }
 
 // SourceType is a single type identified by the DWARF data. Composite types
@@ -780,7 +780,7 @@ func (src *Source) findSourceLine(addr uint32) (*SourceLine, error) {
 	return nil, nil
 }
 
-func (src *Source) executionProfile(addr uint32, ct float32, kernel InKernel) {
+func (src *Source) executionProfile(addr uint32, ct float32, kernel KernelVCS) {
 	// indicate that execution profile has changed
 	src.ExecutionProfileChanged = true
 
@@ -795,19 +795,19 @@ func (src *Source) executionProfile(addr uint32, ct float32, kernel InKernel) {
 		line.Function.DeclLine.Kernel |= kernel
 
 		switch kernel {
-		case InVBLANK:
+		case KernelVBLANK:
 			line.StatsVBLANK.count += ct
 			line.Function.StatsVBLANK.count += ct
 			src.StatsVBLANK.count += ct
-		case InScreen:
+		case KernelScreen:
 			line.StatsScreen.count += ct
 			line.Function.StatsScreen.count += ct
 			src.StatsScreen.count += ct
-		case InOverscan:
+		case KernelOverscan:
 			line.StatsOverscan.count += ct
 			line.Function.StatsOverscan.count += ct
 			src.StatsOverscan.count += ct
-		case InROMSetup:
+		case KernelUnstable:
 			line.StatsROMSetup.count += ct
 			line.Function.StatsROMSetup.count += ct
 			src.StatsROMSetup.count += ct
@@ -949,7 +949,7 @@ func findELF(romFile string) *elf.File {
 // ResetStatistics resets all performance statistics.
 func (src *Source) ResetStatistics() {
 	for i := range src.Functions {
-		src.Functions[i].Kernel = InKernelAll
+		src.Functions[i].Kernel = KernelAny
 		src.Functions[i].Stats.reset()
 		src.Functions[i].StatsVBLANK.reset()
 		src.Functions[i].StatsScreen.reset()
@@ -957,7 +957,7 @@ func (src *Source) ResetStatistics() {
 		src.Functions[i].StatsROMSetup.reset()
 	}
 	for i := range src.linesByAddress {
-		src.linesByAddress[i].Kernel = InKernelAll
+		src.linesByAddress[i].Kernel = KernelAny
 		src.linesByAddress[i].Stats.reset()
 		src.linesByAddress[i].StatsVBLANK.reset()
 		src.linesByAddress[i].StatsScreen.reset()

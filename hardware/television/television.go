@@ -127,6 +127,9 @@ type Television struct {
 	// list of FrameTrigger implementations to consult
 	frameTriggers []FrameTrigger
 
+	// list of ScanlineTrigger implementations to consult
+	scanlineTriggers []ScanlineTrigger
+
 	// list of audio mixers to consult
 	mixers []AudioMixer
 
@@ -315,6 +318,28 @@ func (tv *Television) RemoveFrameTrigger(f FrameTrigger) {
 		if tv.frameTriggers[i] == f {
 			tv.frameTriggers[i] = tv.frameTriggers[len(tv.frameTriggers)-1]
 			tv.frameTriggers = tv.frameTriggers[:len(tv.frameTriggers)-1]
+			return
+		}
+	}
+}
+
+// AddScanlineTrigger adds an implementation of ScanlineTrigger.
+func (tv *Television) AddScanlineTrigger(f ScanlineTrigger) {
+	for i := range tv.scanlineTriggers {
+		if tv.scanlineTriggers[i] == f {
+			return
+		}
+	}
+	tv.scanlineTriggers = append(tv.scanlineTriggers, f)
+}
+
+// RemoveScanlineTrigger removes a single ScanlineTrigger implementation from the
+// list of triggers. Order is not maintained.
+func (tv *Television) RemoveScanlineTrigger(f ScanlineTrigger) {
+	for i := range tv.scanlineTriggers {
+		if tv.scanlineTriggers[i] == f {
+			tv.scanlineTriggers[i] = tv.scanlineTriggers[len(tv.scanlineTriggers)-1]
+			tv.scanlineTriggers = tv.scanlineTriggers[:len(tv.scanlineTriggers)-1]
 			return
 		}
 	}
@@ -516,6 +541,14 @@ func (tv *Television) newScanline() error {
 			if err != nil {
 				return err
 			}
+		}
+	}
+
+	// process all ScanlineTriggers
+	for _, r := range tv.scanlineTriggers {
+		err := r.NewScanline(tv.state.frameInfo)
+		if err != nil {
+			return err
 		}
 	}
 

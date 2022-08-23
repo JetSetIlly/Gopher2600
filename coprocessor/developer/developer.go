@@ -44,48 +44,19 @@ type Developer struct {
 
 	framesSinceLastUpdate int
 
-	// which 2600 kernel the most recent execution was in
-	mostRecentKernel InKernel
+	// raw cycle counts of executed addresses
+	profiledAddresses map[uint32]float32
 
-	// the television coordinates at the start of the most recent execution
-	mostRecentFrameInfo television.FrameInfo
-	mostRecentCoords    coords.TelevisionCoords
+	// the VCS kernel the last set of profiling addresses were allocated to
+	profilingKernel KernelVCS
+
+	// the television coordinates at the moment of last profile processing
+	profilingCoords coords.TelevisionCoords
 
 	// stats accumulated during the frame
 	frameStats     FrameStats
 	frameStatsLock sync.Mutex
 }
-
-// InKernel indicates the 2600 kernel that is associated with a source function
-// or source line.
-type InKernel int
-
-func (k InKernel) String() string {
-	switch k {
-	case InScreen:
-		return "Screen"
-	case InVBLANK:
-		return "VBLANK"
-	case InOverscan:
-		return "Overscan"
-	case InROMSetup:
-		return "ROM Setup"
-	}
-
-	return "All"
-}
-
-// List of InKernelValues as strings
-var AvailableInKernelOptions = []string{"All", "VBLANK", "Screen", "Overscan", "ROM Setup"}
-
-// List of InKernel values.
-const (
-	InKernelAll InKernel = 0x00
-	InScreen    InKernel = 0x01
-	InVBLANK    InKernel = 0x02
-	InOverscan  InKernel = 0x04
-	InROMSetup  InKernel = 0x08
-)
 
 // TV is the interface from the developer type to the television implementation.
 type TV interface {
@@ -108,6 +79,8 @@ func NewDeveloper(romFile string, cart mapper.CartCoProc, tv TV) *Developer {
 			entries: make(map[string]*IllegalAccessEntry),
 			Log:     make([]*IllegalAccessEntry, 0),
 		},
+		profiledAddresses: make(map[uint32]float32),
+		profilingKernel:   KernelUnstable,
 	}
 
 	t := time.Now()
@@ -239,71 +212,6 @@ func (dev *Developer) logAccess(event string, pc uint32, addr uint32, isNullAcce
 	return fmt.Sprintf("%s %s\n%s", e.SrcLine.String(), e.SrcLine.Function.Name, e.SrcLine.PlainContent)
 }
 
-// ExecutionStart implements the CartCoProcDeveloper interface.
-func (dev *Developer) ExecutionStart() {
-	if dev.disabled {
-		return
-	}
-
-	dev.mostRecentFrameInfo = dev.tv.GetFrameInfo()
-
-	if dev.mostRecentFrameInfo.Stable {
-		dev.mostRecentCoords = dev.tv.GetCoords()
-		if dev.mostRecentCoords.Scanline <= dev.mostRecentFrameInfo.VisibleTop {
-			dev.mostRecentKernel = InVBLANK
-		} else if dev.mostRecentCoords.Scanline >= dev.mostRecentFrameInfo.VisibleBottom {
-			dev.mostRecentKernel = InOverscan
-		} else {
-			dev.mostRecentKernel = InScreen
-		}
-	} else {
-		dev.mostRecentKernel = InROMSetup
-	}
-}
-
-// ExecutionProfile implements the CartCoProcDeveloper interface.
-func (dev *Developer) ExecutionProfile(addr map[uint32]float32) {
-	if dev.disabled {
-		return
-	}
-
-	dev.sourceLock.Lock()
-	defer dev.sourceLock.Unlock()
-
-	if dev.source != nil {
-		for pc, ct := range addr {
-			dev.source.executionProfile(pc, ct, dev.mostRecentKernel)
-		}
-	}
-}
-
-// ExecutionEnd implements the CartCoProcDeveloper interface.
-func (dev *Developer) ExecutionEnd() {
-	if dev.disabled {
-		return
-	}
-
-	if dev.source == nil {
-		return
-	}
-
-	if !dev.mostRecentFrameInfo.Stable {
-		return
-	}
-
-	diff := coords.Diff(dev.tv.GetCoords(), dev.mostRecentCoords, dev.mostRecentFrameInfo.TotalScanlines)
-	clocks := coords.Sum(diff, dev.mostRecentFrameInfo.TotalScanlines)
-
-	if dev.mostRecentKernel == InROMSetup {
-		return
-	}
-
-	dev.frameStatsLock.Lock()
-	defer dev.frameStatsLock.Unlock()
-
-	dev.frameStats.accumulate(clocks, dev.mostRecentKernel)
-}
-
 // HasSource returns true if source information has been found.
 func (dev *Developer) HasSource() bool {
 	dev.sourceLock.Lock()
@@ -370,10 +278,16 @@ func (dev *Developer) newFrame_source(frameInfo television.FrameInfo) {
 }
 
 func (dev *Developer) newFrame_frameStats(frameInfo television.FrameInfo) {
-	if dev.mostRecentKernel == InROMSetup {
+	if dev.profilingKernel == KernelUnstable {
 		return
 	}
 	dev.frameStatsLock.Lock()
 	defer dev.frameStatsLock.Unlock()
 	dev.frameStats.newFrame(frameInfo)
+}
+
+// NewScanline implements the television.ScanlineTrigger interface.
+func (dev *Developer) NewScanline(frameInfo television.FrameInfo) error {
+	dev.profileProcess(frameInfo)
+	return nil
 }

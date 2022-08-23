@@ -91,14 +91,14 @@ type FrameStats struct {
 }
 
 // accumulate() should not be called for InKernel value of InROMSetup
-func (stats *FrameStats) accumulate(clocks int, kernel InKernel) {
+func (stats *FrameStats) accumulate(clocks int, kernel KernelVCS) {
 	stats.Frame.accumulate(clocks)
 	switch kernel {
-	case InVBLANK:
+	case KernelVBLANK:
 		stats.VBLANK.accumulate(clocks)
-	case InScreen:
+	case KernelScreen:
 		stats.Screen.accumulate(clocks)
-	case InOverscan:
+	case KernelOverscan:
 		stats.Overscan.accumulate(clocks)
 	default:
 	}

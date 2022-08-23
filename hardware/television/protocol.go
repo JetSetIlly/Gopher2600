@@ -116,8 +116,13 @@ type PauseTrigger interface {
 // FrameTrigger implementations listen for NewFrame events. FrameTrigger is a
 // subset of PixelRenderer.
 type FrameTrigger interface {
-	// See NewFrame() comment for PixelRenderer interface.
 	NewFrame(FrameInfo) error
+}
+
+// ScanlineTrigger implementations listen for NewScanline events. It is a
+// subset of PixelRenderer
+type ScanlineTrigger interface {
+	NewScanline(FrameInfo) error
 }
 
 // AudioMixer implementations work with sound; most probably playing it. An

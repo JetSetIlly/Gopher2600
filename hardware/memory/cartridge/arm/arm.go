@@ -239,8 +239,8 @@ type ARM struct {
 	Scycle func(bus busAccess, addr uint32)
 	Ncycle func(bus busAccess, addr uint32)
 
-	// addresses of instructions that have been executed
-	executedAddresses map[uint32]float32
+	// raw cycle counts of executed addresses
+	profiledAddresses map[uint32]float32
 
 	// control of 32bit thumb-2 function decoding.
 	function32bit       bool
@@ -315,7 +315,6 @@ func (arm *ARM) SetDisassembler(disasm mapper.CartCoProcDisassembler) {
 // SetDeveloper implements the mapper.CartCoProc interface.
 func (arm *ARM) SetDeveloper(dev mapper.CartCoProcDeveloper) {
 	arm.dev = dev
-	arm.clearExecutionProfile()
 }
 
 // Snapshort makes a copy of the ARM. The copied instance will not be usable
@@ -481,23 +480,6 @@ func (arm *ARM) SetInitialRegisters(args ...uint32) error {
 	return nil
 }
 
-// clearExecutionProfile removes any existing cycle counts from the list of
-// executable address seen so far.
-func (arm *ARM) clearExecutionProfile() {
-	// easier to simply remake executed addresses information
-	if arm.dev != nil {
-		arm.executedAddresses = make(map[uint32]float32)
-	}
-}
-
-// SubmitExecutionProfile to the mapper.CartCoProcDeveloper interface.
-func (arm *ARM) SubmitExecutionProfile() {
-	if arm.dev != nil {
-		arm.dev.ExecutionProfile(arm.executedAddresses)
-	}
-	arm.clearExecutionProfile()
-}
-
 // Run will execute an ARM program until one of the following conditions has
 // ben met:
 //
@@ -580,6 +562,7 @@ func (arm *ARM) run() (float32, error) {
 	if arm.dev != nil {
 		// update variableMemtop - probably hasn't changed but you never know
 		arm.variableMemtop = arm.dev.VariableMemtop()
+		arm.profiledAddresses = arm.dev.Profiling()
 	}
 
 	if arm.disasm != nil {
@@ -821,9 +804,9 @@ func (arm *ARM) run() (float32, error) {
 			arm.disasm.Step(d)
 		}
 
-		// accumulate execution counts
+		// accumulate cycle counts for profiling
 		if arm.dev != nil {
-			arm.executedAddresses[arm.instructionPC] += arm.stretchedCycles
+			arm.profiledAddresses[arm.instructionPC] += arm.stretchedCycles
 		}
 
 		// reset cycle information

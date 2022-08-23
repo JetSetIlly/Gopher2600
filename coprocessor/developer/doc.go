@@ -14,11 +14,8 @@
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
 // Package developer offers additional functionality to the developer of ROMs
-// that use a coprocessor. For instance, it handles the loading of .map and
-// .obj files if they have been generated during the compilation of the 2600
-// ROM. The .map and .obj files are used to provide source code level
-// information during execution.
+// that use a coprocessor. It uses available DWARF data for a binary in order
+// to provide the developer performance profiling and variable information.
 //
-// Objdump type is a very basic parser for obj files as produced by "objdump
-// -S" on the base elf file that is used to create a cartridge binary
+// The functionality of this package will be greatly expanded in the future.
 package developer

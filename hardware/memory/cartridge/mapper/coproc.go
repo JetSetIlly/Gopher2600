@@ -108,15 +108,8 @@ type CartCoProcDeveloper interface {
 	// checks if address has a breakpoint assigned to it
 	CheckBreakpoint(addr uint32) bool
 
-	// execution of the coprocessor has started
-	ExecutionStart()
-
-	// accumulate cycles for executed addresses. profile is a map of
-	// instruction addresses and the number of cycles they have consumed
-	ExecutionProfile(profile map[uint32]float32)
-
-	// execution of the coprocessor has ended
-	ExecutionEnd()
+	// returns a map that can be used to count cycles for each PC address
+	Profiling() map[uint32]float32
 }
 
 // CartCoProcDisasmSummary represents a summary of a coprocessor execution.

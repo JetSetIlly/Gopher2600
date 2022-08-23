@@ -30,7 +30,6 @@ import (
 // cdf implements the mapper.CartMapper interface.
 type cdf struct {
 	instance *instance.Instance
-	dev      mapper.CartCoProcDeveloper
 
 	pathToROM string
 	mappingID string
@@ -138,7 +137,6 @@ func (cart *cdf) SetDisassembler(disasm mapper.CartCoProcDisassembler) {
 
 // SetDeveloper implements the mapper.CartCoProc interface.
 func (cart *cdf) SetDeveloper(dev mapper.CartCoProcDeveloper) {
-	cart.dev = dev
 	cart.arm.SetDeveloper(dev)
 }
 
@@ -357,10 +355,6 @@ func (cart *cdf) Write(addr uint16, data uint8, passive bool, poke bool) error {
 			// generate interrupt to update AUDV0 while running ARM code
 			fallthrough
 		case 0xff:
-			if cart.dev != nil {
-				cart.dev.ExecutionStart()
-			}
-
 			err := cart.runArm()
 			if err != nil {
 				return err
@@ -467,9 +461,6 @@ func (cart *cdf) Step(clock float32) {
 			timerClock := cart.state.callfn.Step(clock, cart.arm.Clk)
 			if timerClock > 0 {
 				cart.arm.Step(timerClock)
-			}
-			if cart.dev != nil && !cart.state.callfn.IsActive() {
-				cart.dev.ExecutionEnd()
 			}
 		}
 	} else {
@@ -671,8 +662,6 @@ func (cart *cdf) runArm() error {
 	if err != nil {
 		return curated.Errorf("CDF: %v", err)
 	}
-
-	cart.arm.SubmitExecutionProfile()
 
 	cart.state.callfn.Start(cycles)
 
