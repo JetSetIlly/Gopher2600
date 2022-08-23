@@ -17,7 +17,6 @@ package developer
 
 import (
 	"github.com/jetsetilly/gopher2600/hardware/television"
-	"github.com/jetsetilly/gopher2600/hardware/television/coords"
 )
 
 // Profiling implements the CartCoProcDeveloper interface.
@@ -69,16 +68,6 @@ func (dev *Developer) profileProcess(frameInfo television.FrameInfo) {
 				dev.source.executionProfile(pc, ct, dev.profilingKernel)
 				dev.profiledAddresses[pc] = 0
 			}
-		}
-
-		// ignoring execution during the setup "kernel"
-		if dev.profilingKernel != KernelUnstable {
-			diff := coords.Diff(newCoords, dev.profilingCoords, frameInfo.TotalScanlines)
-			clocks := coords.Sum(diff, frameInfo.TotalScanlines)
-
-			dev.frameStatsLock.Lock()
-			dev.frameStats.accumulate(clocks, dev.profilingKernel)
-			dev.frameStatsLock.Unlock()
 		}
 	}
 

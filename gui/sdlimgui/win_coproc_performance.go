@@ -21,6 +21,8 @@ import (
 	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/coprocessor/developer"
 	"github.com/jetsetilly/gopher2600/gui/fonts"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
+	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 )
 
 // in this case of the coprocessor disassmebly window the actual window title
@@ -168,19 +170,19 @@ func (win *winCoProcPerformance) draw() {
 			imguiLabel("Kernel Focus")
 			imgui.PushItemWidth(win.kernelFocusComboDim.X + imgui.FrameHeight())
 			if imgui.BeginCombo("##kernelFocus", win.kernelFocus.String()) {
-				if imgui.Selectable("Any") {
+				if imgui.Selectable(developer.KernelAny.String()) {
 					win.kernelFocus = developer.KernelAny
 					win.windowSortSpecDirty = true
 				}
-				if imgui.Selectable("VBLANK") {
+				if imgui.Selectable(developer.KernelVBLANK.String()) {
 					win.kernelFocus = developer.KernelVBLANK
 					win.windowSortSpecDirty = true
 				}
-				if imgui.Selectable("Screen") {
+				if imgui.Selectable(developer.KernelScreen.String()) {
 					win.kernelFocus = developer.KernelScreen
 					win.windowSortSpecDirty = true
 				}
-				if imgui.Selectable("Overscan") {
+				if imgui.Selectable(developer.KernelOverscan.String()) {
 					win.kernelFocus = developer.KernelOverscan
 					win.windowSortSpecDirty = true
 				}
@@ -199,106 +201,77 @@ func (win *winCoProcPerformance) draw() {
 			imgui.Spacing()
 			imgui.Checkbox("Show Source in Tooltip", &win.showSrcAsmInTooltip)
 
-			// reset statistics. frame statistics deferred until later when the
-			// FrameStats have been borrowed
+			// reset statistics
 			imgui.SameLineV(0, 15)
-			resetFrameStats := false
 			if imgui.Button(fmt.Sprintf("%c Reset Statistics", fonts.Trash)) {
 				src.ResetStatistics()
-				resetFrameStats = true
 			}
 
 			imgui.Spacing()
 			imgui.Separator()
 			imgui.Spacing()
 
-			win.img.dbg.CoProcDev.BorrowFrameStats(func(framestats *developer.FrameStats) {
-				// deferred reset of frame stats
-				if resetFrameStats {
-					framestats.Reset()
-				}
-
-				imgui.Text(fmt.Sprintf("Total %s time relative to ", win.img.lz.Cart.CoProcID))
-				imgui.SameLineV(0, 0)
-
-				var val, avg, max float32
-				var seg developer.FrameSegmentStats
-
-				switch win.kernelFocus {
-				default:
-					seg = framestats.Frame
-					imgui.Text("TV Frame:")
-				case developer.KernelVBLANK:
-					seg = framestats.VBLANK
-					imgui.Text("VBLANK period:")
-				case developer.KernelScreen:
-					seg = framestats.Screen
-					imgui.Text("visible TV screen:")
-				case developer.KernelOverscan:
-					seg = framestats.Overscan
-					imgui.Text("Overscan period:")
-				}
-				imgui.SameLine()
-
-				if !seg.HasRun() {
-					imgui.Text("no figures yet")
-				} else {
-					if !win.percentileFigures {
-						val = seg.ClocksCount
-						avg = seg.AverageCount
-						max = seg.MaxCount
-
-						imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLoad)
-						imgui.Text(fmt.Sprintf("%.0f ", val))
-						imgui.PopStyleColor()
-
-						imgui.SameLineV(0, 0)
-						imgui.Text("colour clocks (avg ")
-						imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceAvgLoad)
-						imgui.SameLineV(0, 0)
-						imgui.Text(fmt.Sprintf("%.0f", avg))
-						imgui.PopStyleColor()
-
-						imgui.SameLineV(0, 0)
-						imgui.Text(" max ")
-						imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceMaxLoad)
-						imgui.SameLineV(0, 0)
-						imgui.Text(fmt.Sprintf("%.0f", max))
-						imgui.PopStyleColor()
-
-						imgui.SameLineV(0, 0)
-						imgui.Text(")")
-					} else {
-						val = seg.Clocks
-						avg = seg.Average
-						max = seg.Max
-
-						imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLoad)
-						imgui.Text(fmt.Sprintf("%.02f%% ", val))
-						imgui.PopStyleColor()
-
-						imgui.SameLineV(0, 0)
-						imgui.Text("(avg ")
-						imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceAvgLoad)
-						imgui.SameLineV(0, 0)
-						imgui.Text(fmt.Sprintf("%.02f%%", avg))
-						imgui.PopStyleColor()
-
-						imgui.SameLineV(0, 0)
-						imgui.Text(" max ")
-						imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceMaxLoad)
-						imgui.SameLineV(0, 0)
-						imgui.Text(fmt.Sprintf("%.02f%%", max))
-						imgui.PopStyleColor()
-
-						imgui.SameLineV(0, 0)
-						imgui.Text(")")
-					}
-				}
-			})
-
+			win.drawFrameStats()
 		})
 	})
+}
+
+func (win *winCoProcPerformance) drawFrameStats() {
+	accumulate := func(s mapper.CoProcState) int {
+		switch s {
+		case mapper.CoProcIdle:
+		case mapper.CoProcNOPFeed:
+			return 1
+		case mapper.CoProcStrongARMFeed:
+		case mapper.CoProcParallel:
+			return 1
+		}
+		return 0
+	}
+
+	// frame statistics are taken from reflection information
+	var clockCount float32
+	var kernel string
+
+	win.img.screen.crit.section.Lock()
+	for i, r := range win.img.screen.crit.reflection {
+		sl := i / specification.ClksScanline
+
+		switch win.kernelFocus {
+		case developer.KernelAny:
+			clockCount += float32(accumulate(r.CoProcState))
+			kernel = "TV Frame"
+		case developer.KernelScreen:
+			if sl > win.img.screen.crit.frameInfo.VisibleTop && sl < win.img.screen.crit.frameInfo.VisibleBottom {
+				clockCount += float32(accumulate(r.CoProcState))
+			}
+			kernel = "Screen"
+		case developer.KernelVBLANK:
+			if sl < win.img.screen.crit.frameInfo.VisibleTop {
+				clockCount += float32(accumulate(r.CoProcState))
+			}
+			kernel = "VBLANK"
+		case developer.KernelOverscan:
+			if sl > win.img.screen.crit.frameInfo.VisibleBottom {
+				clockCount += float32(accumulate(r.CoProcState))
+			}
+			kernel = "Overscan"
+		}
+	}
+
+	if clockCount > 0 {
+		imgui.Text(fmt.Sprintf("%s activity in most recent %s:", win.img.lz.Cart.CoProcID, kernel))
+		imgui.SameLine()
+		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLoad)
+		imgui.Text(fmt.Sprintf("%.02f%%", clockCount/float32(win.img.screen.crit.frameInfo.TotalClocks())*100))
+		imgui.PopStyleColor()
+	} else if win.kernelFocus == developer.KernelAny {
+		imgui.Text(fmt.Sprintf("No %s activity in the most recent frame", win.img.lz.Cart.CoProcID))
+	} else {
+		imgui.Text(fmt.Sprintf("No %s activity in the %s kernel", win.img.lz.Cart.CoProcID, kernel))
+	}
+
+	win.img.screen.crit.section.Unlock()
 }
 
 func (win *winCoProcPerformance) drawFunctions(src *developer.Source) {

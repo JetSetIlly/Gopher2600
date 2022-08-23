@@ -52,10 +52,6 @@ type Developer struct {
 
 	// the television coordinates at the moment of last profile processing
 	profilingCoords coords.TelevisionCoords
-
-	// stats accumulated during the frame
-	frameStats     FrameStats
-	frameStatsLock sync.Mutex
 }
 
 // TV is the interface from the developer type to the television implementation.
@@ -239,25 +235,10 @@ func (dev *Developer) BorrowIllegalAccess(f func(*IllegalAccess)) {
 	f(&dev.illegalAccess)
 }
 
-// BorrowFrameStats will lock the frame statistics for the duration of the
-// supplied function, which will be executed with the developer's frame
-// statistics argument.
-func (dev *Developer) BorrowFrameStats(f func(*FrameStats)) {
-	dev.frameStatsLock.Lock()
-	defer dev.frameStatsLock.Unlock()
-	f(&dev.frameStats)
-}
-
 const maxWaitUpdateTime = 60 // in frames
 
 // NewFrame implements the television.FrameTrigger interface.
 func (dev *Developer) NewFrame(frameInfo television.FrameInfo) error {
-	dev.newFrame_source(frameInfo)
-	dev.newFrame_frameStats(frameInfo)
-	return nil
-}
-
-func (dev *Developer) newFrame_source(frameInfo television.FrameInfo) {
 	dev.sourceLock.Lock()
 	defer dev.sourceLock.Unlock()
 
@@ -265,25 +246,18 @@ func (dev *Developer) newFrame_source(frameInfo television.FrameInfo) {
 	// waited long enough since the last update
 	dev.framesSinceLastUpdate++
 	if !frameInfo.VSynced || dev.framesSinceLastUpdate > maxWaitUpdateTime {
-		return
+		return nil
 	}
 	dev.framesSinceLastUpdate = 0
 
 	// do nothing else if no source is available
 	if dev.source == nil {
-		return
+		return nil
 	}
 
 	dev.source.newFrame()
-}
 
-func (dev *Developer) newFrame_frameStats(frameInfo television.FrameInfo) {
-	if dev.profilingKernel == KernelUnstable {
-		return
-	}
-	dev.frameStatsLock.Lock()
-	defer dev.frameStatsLock.Unlock()
-	dev.frameStats.newFrame(frameInfo)
+	return nil
 }
 
 // NewScanline implements the television.ScanlineTrigger interface.
