@@ -259,7 +259,7 @@ func (win *winCoProcPerformance) drawFrameStats() {
 		case developer.KernelAny:
 			clockCount += float32(accumulate(r.CoProcState))
 		case developer.KernelScreen:
-			if sl > win.img.screen.crit.frameInfo.VisibleTop && sl < win.img.screen.crit.frameInfo.VisibleBottom {
+			if sl >= win.img.screen.crit.frameInfo.VisibleTop && sl <= win.img.screen.crit.frameInfo.VisibleBottom {
 				clockCount += float32(accumulate(r.CoProcState))
 			}
 		case developer.KernelVBLANK:

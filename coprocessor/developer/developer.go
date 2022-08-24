@@ -46,12 +46,6 @@ type Developer struct {
 
 	// raw cycle counts of executed addresses
 	profiledAddresses map[uint32]float32
-
-	// the VCS kernel the last set of profiling addresses were allocated to
-	profilingKernel KernelVCS
-
-	// the television coordinates at the moment of last profile processing
-	profilingCoords coords.TelevisionCoords
 }
 
 // TV is the interface from the developer type to the television implementation.
@@ -76,7 +70,6 @@ func NewDeveloper(romFile string, cart mapper.CartCoProc, tv TV) *Developer {
 			Log:     make([]*IllegalAccessEntry, 0),
 		},
 		profiledAddresses: make(map[uint32]float32),
-		profilingKernel:   KernelUnstable,
 	}
 
 	t := time.Now()
@@ -262,6 +255,9 @@ func (dev *Developer) NewFrame(frameInfo television.FrameInfo) error {
 
 // NewScanline implements the television.ScanlineTrigger interface.
 func (dev *Developer) NewScanline(frameInfo television.FrameInfo) error {
+	if dev.disabled || dev.source == nil {
+		return nil
+	}
 	dev.profileProcess(frameInfo)
 	return nil
 }
