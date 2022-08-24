@@ -20,6 +20,8 @@ uniform int NumScanlines;
 uniform int NumClocks;
 uniform int Curve;
 uniform int RoundedCorners;
+uniform int Bevel;
+uniform int Shine;
 uniform int ShadowMask;
 uniform int Scanlines;
 uniform int Interference;
@@ -108,21 +110,18 @@ void main() {
 		uv = mix(curve(uv), uv, m);
 	}
 
+	// bevel (if in use) should bend the same as the screen
+	vec2 uv_bevel = uv;
+
+	// reduce size of main display if bevel is active
+	if (Bevel == 1) {
+		uv = (uv - 0.5) * 1.1 + 0.5;
+	}
+
 	// after this point every UV reference is to the curved UV
 
 	// basic color
 	Crt_Color = Frag_Color * texture(Texture, uv.st);
-
-	// rounded corners
-	if (RoundedCorners == 1) {
-		float margin = RoundedCornersAmount / 2.6666;
-		vec2 bl = smoothstep(vec2(-margin), vec2(RoundedCornersAmount), uv.st);
-		vec2 tr = smoothstep(vec2(-margin), vec2(RoundedCornersAmount), 1.0-uv.st);
-		float pct = bl.x * bl.y * tr.x * tr.y;
-		if (pct <= 0.2) {
-			Crt_Color *= vec4(pct);
-		}
-	}
 
 	// using y axis to determine scaling.
 	float scaling = float(ScreenDim.y) / float(NumScanlines);
@@ -212,10 +211,42 @@ void main() {
 	Crt_Color.b += texture(Texture, vec2(uv.x+(1.8*ab.x), uv.y+(1.8*ab.y))).b;
 	Crt_Color.rgb *= 0.50;
 
+	// shine affect
+	if (Shine == 1) {
+		vec2 uv_shine = (uv - 0.5) * 1.2 + 0.5;
+		float shine = (1.0-uv_shine.s)*(1.0-uv_shine.t);
+		Crt_Color = mix(Crt_Color, vec4(1.0), shine*0.05);
+	}
+
 	// vignette effect
 	if (Curve == 1) {
 		float vignette = 10*uv.x*uv.y*(1.0-uv.x)*(1.0-uv.y);
-		Crt_Color.rgb *= pow(vignette, 0.10) * 1.3;
+		Crt_Color.rgb *= pow(vignette, 0.12) * 1.1;
+	}
+
+	// rounded corners
+	if (RoundedCorners == 1) {
+		float margin = RoundedCornersAmount / 4.0;
+		vec2 bl = smoothstep(vec2(-margin), vec2(RoundedCornersAmount)*1.1, uv.st);
+		vec2 tr = smoothstep(vec2(-margin), vec2(RoundedCornersAmount)*1.1, 1.0-uv.st);
+		float pct = bl.x * bl.y * tr.x * tr.y;
+		if (pct < 0.1) {
+			Crt_Color = vec4(pct);
+		}
+	}
+
+	// bevel
+	if (Bevel == 1) {
+		float bevelAmount = 0.0167;
+		if (RoundedCorners == 1) {
+			bevelAmount = RoundedCornersAmount / 1.2;
+		}
+		vec2 bl = smoothstep(vec2(-bevelAmount), vec2(bevelAmount), uv_bevel.st);
+		vec2 tr = smoothstep(vec2(-bevelAmount), vec2(bevelAmount), 1.0-uv_bevel.st);
+		float pct = bl.x * bl.y * tr.x * tr.y;
+		if (pct < 0.9) {
+			Crt_Color = vec4(0.5, 0.5, 0.5, 1.0) * (1.0-pct);
+		}
 	}
 
 	// finalise color

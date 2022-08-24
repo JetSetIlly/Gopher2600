@@ -1,5 +1,4 @@
 // This file is part of Gopher2600.
-//
 // Gopher2600 is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
@@ -77,7 +76,7 @@ func (win *winPrefs) drawCRT() {
 		imgui.Spacing()
 		win.drawBlackLevel()
 		imgui.Spacing()
-		win.drawRoundedCorners()
+		win.drawRoundedCornersBevelAndShine()
 		imgui.PopItemWidth()
 
 		imgui.EndTable()
@@ -382,7 +381,7 @@ func (win *winPrefs) drawBlackLevel() {
 	}
 }
 
-func (win *winPrefs) drawRoundedCorners() {
+func (win *winPrefs) drawRoundedCornersBevelAndShine() {
 	b := win.img.crtPrefs.RoundedCorners.Get().(bool)
 	if imgui.Checkbox("Rounded Corners##roundedcorners", &b) {
 		win.img.crtPrefs.RoundedCorners.Set(b)
@@ -404,6 +403,17 @@ func (win *winPrefs) drawRoundedCorners() {
 
 	if imgui.SliderFloatV("##roundedcornersamount", &f, 0.02, 0.09, label, 1.0) {
 		win.img.crtPrefs.RoundedCornersAmount.Set(f)
+	}
+
+	b = win.img.crtPrefs.Bevel.Get().(bool)
+	if imgui.Checkbox("Bevel##bevel", &b) {
+		win.img.crtPrefs.Bevel.Set(b)
+	}
+	imgui.SameLine()
+
+	b = win.img.crtPrefs.Shine.Get().(bool)
+	if imgui.Checkbox("Shine##shine", &b) {
+		win.img.crtPrefs.Shine.Set(b)
 	}
 }
 
