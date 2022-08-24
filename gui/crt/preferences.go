@@ -27,6 +27,8 @@ type Preferences struct {
 
 	Curve          prefs.Bool
 	RoundedCorners prefs.Bool
+	Bevel          prefs.Bool
+	Shine          prefs.Bool
 	Mask           prefs.Bool
 	Scanlines      prefs.Bool
 	Interference   prefs.Bool
@@ -66,6 +68,8 @@ const (
 	enabled              = true
 	curve                = true
 	roundedCorners       = false
+	bevel                = false
+	shine                = false
 	mask                 = true
 	scanlines            = true
 	interference         = true
@@ -117,6 +121,14 @@ func NewPreferences() (*Preferences, error) {
 		return nil, err
 	}
 	err = p.dsk.Add("crt.roundedCorners", &p.RoundedCorners)
+	if err != nil {
+		return nil, err
+	}
+	err = p.dsk.Add("crt.bevel", &p.Bevel)
+	if err != nil {
+		return nil, err
+	}
+	err = p.dsk.Add("crt.shine", &p.Shine)
 	if err != nil {
 		return nil, err
 	}
@@ -234,6 +246,8 @@ func (p *Preferences) SetDefaults() {
 	p.Enabled.Set(enabled)
 	p.Curve.Set(curve)
 	p.RoundedCorners.Set(roundedCorners)
+	p.Bevel.Set(bevel)
+	p.Shine.Set(shine)
 	p.Mask.Set(mask)
 	p.Scanlines.Set(scanlines)
 	p.Interference.Set(interference)

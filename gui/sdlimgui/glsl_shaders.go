@@ -201,6 +201,8 @@ type effectsShader struct {
 	numClocks            int32
 	curve                int32
 	roundedCorners       int32
+	bevel                int32
+	shine                int32
 	shadowMask           int32
 	scanlines            int32
 	interference         int32
@@ -233,6 +235,8 @@ func newEffectsShader(img *SdlImgui, yflip bool) shaderProgram {
 	sh.numClocks = gl.GetUniformLocation(sh.handle, gl.Str("NumClocks"+"\x00"))
 	sh.curve = gl.GetUniformLocation(sh.handle, gl.Str("Curve"+"\x00"))
 	sh.roundedCorners = gl.GetUniformLocation(sh.handle, gl.Str("RoundedCorners"+"\x00"))
+	sh.bevel = gl.GetUniformLocation(sh.handle, gl.Str("Bevel"+"\x00"))
+	sh.shine = gl.GetUniformLocation(sh.handle, gl.Str("Shine"+"\x00"))
 	sh.shadowMask = gl.GetUniformLocation(sh.handle, gl.Str("ShadowMask"+"\x00"))
 	sh.scanlines = gl.GetUniformLocation(sh.handle, gl.Str("Scanlines"+"\x00"))
 	sh.interference = gl.GetUniformLocation(sh.handle, gl.Str("Interference"+"\x00"))
@@ -262,6 +266,8 @@ func (sh *effectsShader) setAttributesArgs(env shaderEnvironment, numScanlines i
 	gl.Uniform1i(sh.numClocks, int32(numClocks))
 	gl.Uniform1i(sh.curve, boolToInt32(sh.img.crtPrefs.Curve.Get().(bool)))
 	gl.Uniform1i(sh.roundedCorners, boolToInt32(sh.img.crtPrefs.RoundedCorners.Get().(bool)))
+	gl.Uniform1i(sh.bevel, boolToInt32(sh.img.crtPrefs.Bevel.Get().(bool)))
+	gl.Uniform1i(sh.shine, boolToInt32(sh.img.crtPrefs.Shine.Get().(bool)))
 	gl.Uniform1i(sh.shadowMask, boolToInt32(sh.img.crtPrefs.Mask.Get().(bool)))
 	gl.Uniform1i(sh.scanlines, boolToInt32(sh.img.crtPrefs.Scanlines.Get().(bool)))
 	gl.Uniform1i(sh.interference, boolToInt32(interference))
