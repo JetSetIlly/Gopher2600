@@ -104,3 +104,18 @@ func (info FrameInfo) IsAtariSafe() bool {
 func (info FrameInfo) TotalClocks() int {
 	return info.TotalScanlines * specification.ClksScanline
 }
+
+// VBLANKClocks returns the number of clocks in the VBLANK portion of the frame.
+func (info FrameInfo) VBLANKClocks() int {
+	return info.VisibleTop * specification.ClksScanline
+}
+
+// ScreenClocks returns the number of clocks in the visible portion of the frame.
+func (info FrameInfo) ScreenClocks() int {
+	return (info.VisibleBottom - info.VisibleTop) * specification.ClksScanline
+}
+
+// OverscanClocks returns the number of clocks in the Overscan portion of the frame.
+func (info FrameInfo) OverscanClocks() int {
+	return (info.TotalScanlines - info.VisibleBottom) * specification.ClksScanline
+}

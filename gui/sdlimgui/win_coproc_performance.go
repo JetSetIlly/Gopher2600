@@ -229,9 +229,27 @@ func (win *winCoProcPerformance) drawFrameStats() {
 		return 0
 	}
 
+	// decide which kernel we're using
+	var kernel string
+	var kernelClocks float32
+
+	switch win.kernelFocus {
+	case developer.KernelAny:
+		kernelClocks = float32(win.img.screen.crit.frameInfo.TotalClocks())
+		kernel = "TV Frame"
+	case developer.KernelScreen:
+		kernelClocks = float32(win.img.screen.crit.frameInfo.ScreenClocks())
+		kernel = "Screen"
+	case developer.KernelVBLANK:
+		kernelClocks = float32(win.img.screen.crit.frameInfo.VBLANKClocks())
+		kernel = "VBLANK"
+	case developer.KernelOverscan:
+		kernelClocks = float32(win.img.screen.crit.frameInfo.OverscanClocks())
+		kernel = "Overscan"
+	}
+
 	// frame statistics are taken from reflection information
 	var clockCount float32
-	var kernel string
 
 	win.img.screen.crit.section.Lock()
 	for i, r := range win.img.screen.crit.reflection {
@@ -240,22 +258,18 @@ func (win *winCoProcPerformance) drawFrameStats() {
 		switch win.kernelFocus {
 		case developer.KernelAny:
 			clockCount += float32(accumulate(r.CoProcState))
-			kernel = "TV Frame"
 		case developer.KernelScreen:
 			if sl > win.img.screen.crit.frameInfo.VisibleTop && sl < win.img.screen.crit.frameInfo.VisibleBottom {
 				clockCount += float32(accumulate(r.CoProcState))
 			}
-			kernel = "Screen"
 		case developer.KernelVBLANK:
 			if sl < win.img.screen.crit.frameInfo.VisibleTop {
 				clockCount += float32(accumulate(r.CoProcState))
 			}
-			kernel = "VBLANK"
 		case developer.KernelOverscan:
 			if sl > win.img.screen.crit.frameInfo.VisibleBottom {
 				clockCount += float32(accumulate(r.CoProcState))
 			}
-			kernel = "Overscan"
 		}
 	}
 
@@ -263,7 +277,7 @@ func (win *winCoProcPerformance) drawFrameStats() {
 		imgui.Text(fmt.Sprintf("%s activity in most recent %s:", win.img.lz.Cart.CoProcID, kernel))
 		imgui.SameLine()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLoad)
-		imgui.Text(fmt.Sprintf("%.02f%%", clockCount/float32(win.img.screen.crit.frameInfo.TotalClocks())*100))
+		imgui.Text(fmt.Sprintf("%.02f%%", clockCount/kernelClocks*100))
 		imgui.PopStyleColor()
 	} else if win.kernelFocus == developer.KernelAny {
 		imgui.Text(fmt.Sprintf("No %s activity in the most recent frame", win.img.lz.Cart.CoProcID))
