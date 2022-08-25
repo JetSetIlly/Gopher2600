@@ -307,8 +307,18 @@ func (p *preferences) loadWindowPreferences() error {
 			// set size before position. if we don't then switching from a
 			// larger window to a smaller window will not be positioned
 			// correctly.
+			//
+			// wrapping the resizing and repositioning in a Hide()/Show() pair.
+			// without this the resizing is ineffective in some situations
+			// related to whether the window has been "maximised" - distinct
+			// from fullscreen mode
+			//
+			// (bug seen in X11 with the cinnamon desktop. might no be present
+			// in other environments)
+			p.img.plt.window.Hide()
 			p.img.plt.window.SetSize(w, h)
 			p.img.plt.window.SetPosition(x, y)
+			p.img.plt.window.Show()
 
 			return nil
 		},
