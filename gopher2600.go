@@ -512,7 +512,7 @@ func perform(md *modalflag.Modes, sync *mainSync) error {
 
 	mapping := md.AddString("mapping", "AUTO", "force use of cartridge mapping")
 	spec := md.AddString("tv", "AUTO", "television specification: NTSC, PAL, PAL60")
-	fpsCap := md.AddBool("fpscap", true, "cap FPS to specification")
+	uncapped := md.AddBool("uncapped", true, "run perfomance with no FPS cap")
 	duration := md.AddString("duration", "5s", "run duration (note: there is a 2s overhead)")
 	profile := md.AddString("profile", "NONE", "run performance check with profiling: command separated CPU, MEM, TRACE or ALL")
 	log := md.AddBool("log", false, "echo debugging log to stdout")
@@ -546,7 +546,7 @@ func perform(md *modalflag.Modes, sync *mainSync) error {
 		}
 
 		// run performance check
-		err = performance.Check(md.Output, p, cartload, *spec, *fpsCap, *duration)
+		err = performance.Check(md.Output, p, cartload, *spec, *uncapped, *duration)
 		if err != nil {
 			return err
 		}
