@@ -37,7 +37,7 @@ const timedOut = "timed out"
 // Emulation will run of specificed duration and will create a cpu, memory
 // profile, a trace (or a combination of those) as defined by the Profile
 // argument.
-func Check(output io.Writer, profile Profile, cartload cartridgeloader.Loader, spec string, fpsCap bool, duration string) error {
+func Check(output io.Writer, profile Profile, cartload cartridgeloader.Loader, spec string, uncapped bool, duration string) error {
 	var err error
 
 	tv, err := television.NewTelevision(spec)
@@ -46,8 +46,8 @@ func Check(output io.Writer, profile Profile, cartload cartridgeloader.Loader, s
 	}
 	defer tv.End()
 
-	// fpscap for tv (see below for monitor sync option)
-	tv.SetFPSCap(fpsCap)
+	// set fps cap on television
+	tv.SetFPSCap(!uncapped)
 
 	// create vcs
 	vcs, err := hardware.NewVCS(tv, nil)
