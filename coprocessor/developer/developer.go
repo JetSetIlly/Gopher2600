@@ -130,9 +130,14 @@ func (dev *Developer) VariableMemtop() uint32 {
 	if dev.disabled {
 		return 0
 	}
+
+	dev.sourceLock.Lock()
+	defer dev.sourceLock.Unlock()
+
 	if dev.source == nil {
 		return 0
 	}
+
 	return uint32(dev.source.VariableMemtop)
 }
 
@@ -141,9 +146,14 @@ func (dev *Developer) CheckBreakpoint(addr uint32) bool {
 	if dev.disabled {
 		return false
 	}
+
+	dev.sourceLock.Lock()
+	defer dev.sourceLock.Unlock()
+
 	if dev.source == nil {
 		return false
 	}
+
 	return dev.source.CheckBreakpoint(addr)
 }
 
