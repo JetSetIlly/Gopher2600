@@ -17,7 +17,7 @@ package hardware
 
 import (
 	"github.com/jetsetilly/gopher2600/curated"
-	"github.com/jetsetilly/gopher2600/emulation"
+	"github.com/jetsetilly/gopher2600/debugger/govern"
 )
 
 // While the continueCheck() function only runs at the end of a CPU instruction
@@ -32,19 +32,19 @@ import (
 //		if performanceFilter >= hardware.PerfomrmanceBrake {
 //			performanceFilter = 0
 //			if end_condition == true {
-//				return emulation.Ending, nill
+//				return govern.Ending, nill
 //			}
 //		}
-//		return emulation.Running, nill
+//		return govern.Running, nill
 //
 const PerformanceBrake = 100
 
 // Run sets the emulation running as quickly as possible. continuteCheck()
 // should return false when an external event (eg. a GUI event) indicates that
 // the emulation should stop.
-func (vcs *VCS) Run(continueCheck func() (emulation.State, error)) error {
+func (vcs *VCS) Run(continueCheck func() (govern.State, error)) error {
 	if continueCheck == nil {
-		continueCheck = func() (emulation.State, error) { return emulation.Running, nil }
+		continueCheck = func() (govern.State, error) { return govern.Running, nil }
 	}
 
 	// see the equivalient videoCycle() in the VCS.Step() function for an
@@ -83,16 +83,16 @@ func (vcs *VCS) Run(continueCheck func() (emulation.State, error)) error {
 
 	var err error
 
-	state := emulation.Running
+	state := govern.Running
 
-	for state != emulation.Ending {
+	for state != govern.Ending {
 		switch state {
-		case emulation.Running:
+		case govern.Running:
 			err := vcs.CPU.ExecuteInstruction(videoCycle)
 			if err != nil {
 				return err
 			}
-		case emulation.Paused:
+		case govern.Paused:
 		default:
 			return curated.Errorf("vcs: unsupported emulation state (%d) in Run() function", state)
 		}
@@ -109,16 +109,16 @@ func (vcs *VCS) Run(continueCheck func() (emulation.State, error)) error {
 // RunForFrameCount sets emulator running for the specified number of frames.
 // Useful for FPS and regression tests. Not used by the debugger because traps
 // (and volatile traps) are more flexible.
-func (vcs *VCS) RunForFrameCount(numFrames int, continueCheck func(frame int) (emulation.State, error)) error {
+func (vcs *VCS) RunForFrameCount(numFrames int, continueCheck func(frame int) (govern.State, error)) error {
 	if continueCheck == nil {
-		continueCheck = func(frame int) (emulation.State, error) { return emulation.Running, nil }
+		continueCheck = func(frame int) (govern.State, error) { return govern.Running, nil }
 	}
 
 	frameNum := vcs.TV.GetCoords().Frame
 	targetFrame := frameNum + numFrames
 
-	state := emulation.Running
-	for frameNum != targetFrame && state != emulation.Ending {
+	state := govern.Running
+	for frameNum != targetFrame && state != govern.Ending {
 		err := vcs.Step(nil)
 		if err != nil {
 			return err

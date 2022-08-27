@@ -19,7 +19,6 @@ import (
 	"sync/atomic"
 
 	"github.com/jetsetilly/gopher2600/debugger"
-	"github.com/jetsetilly/gopher2600/emulation"
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/television"
 )
@@ -28,12 +27,9 @@ import (
 // thread to the emulation. Use these values rather than directly accessing
 // those exposed by the emulation.
 type LazyValues struct {
-	emulation emulation.Emulation
-
-	// vcs and dbg are taken from the emulation supplied to SetEmulation()
+	dbg *debugger.Debugger
 	tv  *television.Television
 	vcs *hardware.VCS
-	dbg *debugger.Debugger
 
 	// pointers to these instances. non-pointer instances trigger the race
 	// detector for some reason.
@@ -67,16 +63,12 @@ type LazyValues struct {
 }
 
 // NewLazyValues is the preferred method of initialisation for the Values type.
-func NewLazyValues(e emulation.Emulation) *LazyValues {
+func NewLazyValues(dbg *debugger.Debugger) *LazyValues {
 	val := &LazyValues{}
 
-	val.emulation = e
-	val.tv = e.TV().(*television.Television)
-	val.vcs = e.VCS().(*hardware.VCS)
-	switch dbg := e.Debugger().(type) {
-	case *debugger.Debugger:
-		val.dbg = dbg
-	}
+	val.dbg = dbg
+	val.tv = val.dbg.TV()
+	val.vcs = val.dbg.VCS()
 
 	val.Debugger = newLazyDebugger(val)
 	val.CPU = newLazyCPU(val)
@@ -107,7 +99,7 @@ func NewLazyValues(e emulation.Emulation) *LazyValues {
 
 // Refresh lazy values.
 func (val *LazyValues) Refresh() {
-	if val.emulation == nil {
+	if val.dbg == nil {
 		return
 	}
 
@@ -169,7 +161,7 @@ func (val *LazyValues) Refresh() {
 
 // FastRefresh lazy values. Updates only the values that are needed in playmode.
 func (val *LazyValues) FastRefresh() {
-	if val.emulation == nil {
+	if val.dbg == nil {
 		return
 	}
 

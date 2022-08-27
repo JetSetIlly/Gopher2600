@@ -24,7 +24,7 @@ import (
 
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/curated"
-	"github.com/jetsetilly/gopher2600/emulation"
+	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/instance"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
@@ -207,14 +207,14 @@ func (cmp *Comparison) CreateFromLoader(cartload cartridgeloader.Loader) error {
 			return
 		}
 
-		err = cmp.VCS.Run(func() (emulation.State, error) {
+		err = cmp.VCS.Run(func() (govern.State, error) {
 			select {
 			case <-cmp.emulationQuit:
-				return emulation.Ending, nil
+				return govern.Ending, nil
 			default:
 			}
 
-			return emulation.Running, nil
+			return govern.Running, nil
 		})
 		if err != nil {
 			cmp.driver.quit <- err

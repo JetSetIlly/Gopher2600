@@ -19,7 +19,7 @@ import (
 	"fmt"
 
 	"github.com/inkyblackness/imgui-go/v4"
-	"github.com/jetsetilly/gopher2600/emulation"
+	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/gui/fonts"
 	"github.com/jetsetilly/gopher2600/logger"
 )
@@ -106,7 +106,7 @@ func (win *winPrefs) draw() {
 		imgui.EndTabItem()
 	}
 
-	if win.img.mode == emulation.ModeDebugger {
+	if win.img.mode == govern.ModeDebugger {
 		if imgui.BeginTabItem("Debugger") {
 			win.drawDebuggerTab()
 			imgui.EndTabItem()
@@ -418,9 +418,9 @@ func (win *winPrefs) drawVCS() {
 		var warning bool
 
 		switch win.img.mode {
-		case emulation.ModePlay:
+		case govern.ModePlay:
 			warning = win.img.prefs.audioMutePlaymode.Get().(bool)
-		case emulation.ModeDebugger:
+		case govern.ModeDebugger:
 			warning = win.img.prefs.audioMuteDebugger.Get().(bool)
 		}
 
@@ -587,7 +587,7 @@ func (win *winPrefs) drawDiskButtons() {
 				logger.Logf("sdlimgui", "could not save (rewind) preferences: %v", err)
 			}
 
-			if win.img.mode == emulation.ModeDebugger {
+			if win.img.mode == govern.ModeDebugger {
 				err = win.img.dbg.Disasm.Prefs.Save()
 				if err != nil {
 					logger.Logf("sdlimgui", "could not save (disasm) preferences: %v", err)
@@ -636,7 +636,7 @@ func (win *winPrefs) drawDiskButtons() {
 				logger.Logf("sdlimgui", "could not restore (rewind) preferences: %v", err)
 			}
 
-			if win.img.mode == emulation.ModeDebugger {
+			if win.img.mode == govern.ModeDebugger {
 				err = win.img.dbg.Disasm.Prefs.Load()
 				if err != nil {
 					logger.Logf("sdlimgui", "could not restore (disasm) preferences: %v", err)

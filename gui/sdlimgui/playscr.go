@@ -88,7 +88,7 @@ func newPlayScr(img *SdlImgui) *playScr {
 			rightAlign: true,
 		},
 		emulationEvent: emulationEventNotification{
-			emulation: img.emulation,
+			emulation: img.dbg,
 		},
 	}
 

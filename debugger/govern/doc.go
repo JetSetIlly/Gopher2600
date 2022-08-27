@@ -13,14 +13,11 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-// Package emulation is an abstraction of the various modes Gopher2600 can
-// operate in, principally play-mode and the debugger.
+// Package govern defines the types that define the current condition of the
+// emulation. The three conditions are Mode, State and Event.
 //
-// It is useful when linking packages/types that require a *passive* knowledge
-// of the emulation. For example, a GUI might want to know what the current
-// state of the emulation is.
-//
-// Some package types might still need an active knowledge of the emulation
-// however. In which case, simply relying on the Emulation interface is
-// probably not enough.
-package emulation
+// Also defined is the method of requesting a state change from the GUI. Most
+// often state change comes from the emulation but in some intances it is
+// necessary to instruct the emulation to change mode or state - for example,
+// from the GUI as a result of the a user request.
+package govern

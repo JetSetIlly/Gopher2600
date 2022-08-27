@@ -20,7 +20,7 @@ import (
 	"strings"
 
 	"github.com/jetsetilly/gopher2600/curated"
-	"github.com/jetsetilly/gopher2600/emulation"
+	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/hardware/television/coords"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
@@ -174,7 +174,7 @@ type Television struct {
 	prevSignalFirst   int
 
 	// state of emulation
-	emulationState emulation.State
+	emulationState govern.State
 }
 
 // NewTelevision creates a new instance of the television type, satisfying the
@@ -535,7 +535,7 @@ func (tv *Television) newScanline() error {
 
 	// check for realtime mixing requirements. if it is required then
 	// immediately push the audio data from the previous frame to the mixer
-	if tv.realtimeMixer != nil && tv.emulationState == emulation.Running && tv.state.frameInfo.Stable {
+	if tv.realtimeMixer != nil && tv.emulationState == govern.Running && tv.state.frameInfo.Stable {
 		if tv.realtimeMixer.MoreAudio() {
 			err := tv.realtimeMixer.SetAudio(tv.prevSignals[:tv.prevSignalLastIdx])
 			if err != nil {
@@ -669,7 +669,7 @@ func (tv *Television) newFrame(fromVsync bool) error {
 // renderers and audio mixers.
 func (tv *Television) renderSignals() error {
 	// do not render pixels if emulation is in the rewinding state
-	if tv.emulationState != emulation.Rewinding {
+	if tv.emulationState != govern.Rewinding {
 		for _, r := range tv.renderers {
 			err := r.SetPixels(tv.signals, tv.currentSignalIdx)
 			if err != nil {
@@ -768,23 +768,23 @@ func (tv *Television) SetSpec(spec string) error {
 
 // SetEmulationState is called by emulation whenever state changes. How we
 // handle incoming signals depends on the current state.
-func (tv *Television) SetEmulationState(state emulation.State) error {
+func (tv *Television) SetEmulationState(state govern.State) error {
 	prev := tv.emulationState
 	tv.emulationState = state
 
 	switch prev {
-	case emulation.Paused:
+	case govern.Paused:
 		// start off the unpaused state by measuring the current framerate.
 		// this "clears" the ticker channel and means the feedback from
 		// GetActualFPS() is less misleading
 		tv.lmtr.measureActual()
 
-	case emulation.Rewinding:
+	case govern.Rewinding:
 		tv.renderSignals()
 	}
 
 	switch state {
-	case emulation.Paused:
+	case govern.Paused:
 		err := tv.renderSignals()
 		if err != nil {
 			return err

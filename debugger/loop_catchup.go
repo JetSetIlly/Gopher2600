@@ -16,7 +16,7 @@
 package debugger
 
 import (
-	"github.com/jetsetilly/gopher2600/emulation"
+	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/hardware/television/coords"
 )
 
@@ -26,25 +26,25 @@ import (
 // required for catchupLoop().
 func (dbg *Debugger) CatchUpLoop(tgt coords.TelevisionCoords) error {
 	switch dbg.Mode() {
-	case emulation.ModePlay:
+	case govern.ModePlay:
 		fpscap := dbg.vcs.TV.SetFPSCap(false)
 		defer dbg.vcs.TV.SetFPSCap(fpscap)
 
-		dbg.vcs.Run(func() (emulation.State, error) {
+		dbg.vcs.Run(func() (govern.State, error) {
 			dbg.userInputHandler_catchUpLoop()
 
 			coords := dbg.vcs.TV.GetCoords()
 			if coords.Frame >= tgt.Frame {
-				return emulation.Ending, nil
+				return govern.Ending, nil
 			}
-			return emulation.Running, nil
+			return govern.Running, nil
 		})
 
-	case emulation.ModeDebugger:
+	case govern.ModeDebugger:
 		// turn off TV's fps frame limiter
 		fpsCap := dbg.vcs.TV.SetFPSCap(false)
 
-		// we've already set emulation state to emulation.Rewinding
+		// we've already set emulation state to govern.Rewinding
 
 		dbg.catchupContinue = func() bool {
 			newCoords := dbg.vcs.TV.GetCoords()
@@ -69,7 +69,7 @@ func (dbg *Debugger) CatchUpLoop(tgt coords.TelevisionCoords) error {
 			dbg.vcs.TV.SetFPSCap(fpsCap)
 			dbg.catchupContinue = nil
 			dbg.catchupEnd = nil
-			dbg.setState(emulation.Paused)
+			dbg.setState(govern.Paused)
 			dbg.runUntilHalt = false
 			dbg.continueEmulation = dbg.catchupEndAdj
 			dbg.catchupEndAdj = false

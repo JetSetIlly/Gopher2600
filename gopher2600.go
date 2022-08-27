@@ -27,11 +27,11 @@ import (
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/debugger"
+	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
 	"github.com/jetsetilly/gopher2600/debugger/terminal/colorterm"
 	"github.com/jetsetilly/gopher2600/debugger/terminal/plainterm"
 	"github.com/jetsetilly/gopher2600/disassembly"
-	"github.com/jetsetilly/gopher2600/emulation"
 	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/gui/sdlimgui"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
@@ -236,10 +236,10 @@ func launch(sync *mainSync) {
 		fallthrough
 
 	case "PLAY":
-		err = emulate(emulation.ModePlay, md, sync)
+		err = emulate(govern.ModePlay, md, sync)
 
 	case "DEBUG":
-		err = emulate(emulation.ModeDebugger, md, sync)
+		err = emulate(govern.ModeDebugger, md, sync)
 
 	case "DISASM":
 		err = disasm(md)
@@ -267,7 +267,7 @@ const defaultInitScript = "debuggerInit"
 
 // emulate is the main emulation launch function, shared by play and debug
 // modes. the other modes initialise and run the emulation differently.
-func emulate(emulationMode emulation.Mode, md *modalflag.Modes, sync *mainSync) error {
+func emulate(emulationMode govern.Mode, md *modalflag.Modes, sync *mainSync) error {
 	// start new commandline mode. to this we'll add the command line arguments
 	// that are specific to the emulation mode (it's unfortunate that mode is
 	// used to describe two separate concepts but they really have nothing to
@@ -297,7 +297,7 @@ func emulate(emulationMode emulation.Mode, md *modalflag.Modes, sync *mainSync) 
 	opts.Profile = md.AddString("profile", "none", "run performance check with profiling: command separated CPU, MEM, TRACE or ALL")
 
 	// playmode specific arguments
-	if emulationMode == emulation.ModePlay {
+	if emulationMode == govern.ModePlay {
 		opts.ComparisonROM = md.AddString("comparisonROM", "", "ROM to run in parallel for comparison")
 		opts.ComparisonPrefs = md.AddString("comparisonPrefs", "", "preferences for comparison emulation")
 		opts.Record = md.AddBool("record", false, "record user input to a file")
@@ -308,7 +308,7 @@ func emulate(emulationMode emulation.Mode, md *modalflag.Modes, sync *mainSync) 
 	}
 
 	// debugger specific arguments
-	if emulationMode == emulation.ModeDebugger {
+	if emulationMode == govern.ModeDebugger {
 		opts.InitScript = md.AddString("initscript", defInitScript, "script to run on debugger start")
 		opts.TermType = md.AddString("term", "IMGUI", "terminal type to use in debug mode: IMGUI, COLOR, PLAIN")
 	} else {
@@ -348,7 +348,7 @@ func emulate(emulationMode emulation.Mode, md *modalflag.Modes, sync *mainSync) 
 	// prepare new debugger, supplying a debugger.CreateUserInterface function.
 	// this function will be called by NewDebugger() and in turn will send a
 	// GUI create message to the main goroutine
-	dbg, err := debugger.NewDebugger(opts, func(e emulation.Emulation) (gui.GUI, terminal.Terminal, error) {
+	dbg, err := debugger.NewDebugger(opts, func(e *debugger.Debugger) (gui.GUI, terminal.Terminal, error) {
 		var term terminal.Terminal
 		var scr gui.GUI
 
@@ -402,13 +402,13 @@ func emulate(emulationMode emulation.Mode, md *modalflag.Modes, sync *mainSync) 
 	// a call to performance.RunProfiler()
 	dbgLaunch := func() error {
 		switch emulationMode {
-		case emulation.ModeDebugger:
+		case govern.ModeDebugger:
 			err := dbg.StartInDebugMode(md.GetArg(0))
 			if err != nil {
 				return err
 			}
 
-		case emulation.ModePlay:
+		case govern.ModePlay:
 			err := dbg.StartInPlayMode(md.GetArg(0))
 			if err != nil {
 				return err
@@ -435,9 +435,9 @@ func emulate(emulationMode emulation.Mode, md *modalflag.Modes, sync *mainSync) 
 		// filename argument for RunProfiler
 		s := ""
 		switch emulationMode {
-		case emulation.ModeDebugger:
+		case govern.ModeDebugger:
 			s = "debugger"
-		case emulation.ModePlay:
+		case govern.ModePlay:
 			s = "play"
 		}
 

@@ -19,9 +19,9 @@ import (
 	"io"
 
 	"github.com/jetsetilly/gopher2600/curated"
+	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/debugger/script"
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
-	"github.com/jetsetilly/gopher2600/emulation"
 	"github.com/jetsetilly/gopher2600/hardware/cpu"
 	"github.com/jetsetilly/gopher2600/logger"
 )
@@ -35,7 +35,7 @@ import (
 // function is being called.
 //
 // note that the debugger state is not changed by this function. it is up to
-// the caller of the function to set emulation.State appropriately.
+// the caller of the function to set govern.State appropriately.
 func (dbg *Debugger) unwindLoop(onRestart func() error) {
 	dbg.unwindLoopRestart = onRestart
 }
@@ -65,7 +65,7 @@ func (dbg *Debugger) catchupLoop(inputter terminal.Input) error {
 			if !dbg.vcs.CPU.LastResult.Final {
 				// if we're in the rewinding state then a new rewind event has
 				// started and we must return immediately so that it can continue
-				if dbg.State() == emulation.Rewinding {
+				if dbg.State() == govern.Rewinding {
 					return nil
 				}
 
@@ -140,7 +140,7 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, isVideoStep bool) error 
 	var err error
 
 	for dbg.running {
-		if dbg.Mode() != emulation.ModeDebugger {
+		if dbg.Mode() != govern.ModeDebugger {
 			return nil
 		}
 
@@ -186,7 +186,7 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, isVideoStep bool) error 
 			}
 
 			// emulation has been put into a different mode. exit loop immediately
-			if dbg.Mode() != emulation.ModeDebugger {
+			if dbg.Mode() != govern.ModeDebugger {
 				return nil
 			}
 
@@ -278,7 +278,7 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, isVideoStep bool) error 
 			}
 
 			// set pause emulation state
-			dbg.setState(emulation.Paused)
+			dbg.setState(govern.Paused)
 
 			// take note of current machine state if the emulation was in a running
 			// state and is halting just now
@@ -324,7 +324,7 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, isVideoStep bool) error 
 			}
 
 			// emulation has been put into a different mode. exit loop immediately
-			if dbg.Mode() != emulation.ModeDebugger {
+			if dbg.Mode() != govern.ModeDebugger {
 				return nil
 			}
 
@@ -351,10 +351,10 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, isVideoStep bool) error 
 				// stepping.
 				if dbg.halting.volatileTraps.isEmpty() {
 					if inputter.IsInteractive() {
-						dbg.setState(emulation.Running)
+						dbg.setState(govern.Running)
 					}
 				} else {
-					dbg.setState(emulation.Stepping)
+					dbg.setState(govern.Stepping)
 				}
 
 				// update comparison point before execution continues
@@ -362,7 +362,7 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, isVideoStep bool) error 
 					dbg.Rewind.SetComparison()
 				}
 			} else if inputter.IsInteractive() {
-				dbg.setState(emulation.Stepping)
+				dbg.setState(govern.Stepping)
 			}
 		}
 

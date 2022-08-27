@@ -20,7 +20,7 @@ import (
 	"strings"
 
 	"github.com/jetsetilly/gopher2600/curated"
-	"github.com/jetsetilly/gopher2600/emulation"
+	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/cpu"
 	"github.com/jetsetilly/gopher2600/hardware/memory"
@@ -31,6 +31,13 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/tia"
 	"github.com/jetsetilly/gopher2600/logger"
 )
+
+// Emulation defines as much of the emulation we require access to.
+type Emulation interface {
+	Mode() govern.Mode
+	State() govern.State
+	VCS() *hardware.VCS
+}
 
 // Runner provides the rewind package the opportunity to run the emulation.
 type Runner interface {
@@ -106,7 +113,7 @@ const overhead = 2
 
 // Rewind contains a history of machine states for the emulation.
 type Rewind struct {
-	emulation emulation.Emulation
+	emulation Emulation
 	vcs       *hardware.VCS
 	runner    Runner
 
@@ -145,10 +152,10 @@ type Rewind struct {
 }
 
 // NewRewind is the preferred method of initialisation for the Rewind type.
-func NewRewind(emulation emulation.Emulation, runner Runner) (*Rewind, error) {
+func NewRewind(emulation Emulation, runner Runner) (*Rewind, error) {
 	r := &Rewind{
 		emulation: emulation,
-		vcs:       emulation.VCS().(*hardware.VCS),
+		vcs:       emulation.VCS(),
 		runner:    runner,
 	}
 
@@ -443,7 +450,7 @@ type findResults struct {
 // the one that is requested.
 func (r *Rewind) findFrameIndex(frame int) findResults {
 	searchFrame := frame - 1
-	if r.emulation.Mode() == emulation.ModeDebugger {
+	if r.emulation.Mode() == govern.ModeDebugger {
 		searchFrame--
 	}
 

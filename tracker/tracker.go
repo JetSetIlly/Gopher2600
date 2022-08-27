@@ -16,11 +16,17 @@
 package tracker
 
 import (
-	"github.com/jetsetilly/gopher2600/emulation"
+	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/hardware/television/coords"
 	"github.com/jetsetilly/gopher2600/hardware/tia/audio"
 )
+
+// Emulation defines as much of the emulation we require access to.
+type Emulation interface {
+	State() govern.State
+	TV() *television.Television
+}
 
 type Entry struct {
 	Coords    coords.TelevisionCoords
@@ -35,7 +41,7 @@ type Entry struct {
 // Tracker implements the audio.Tracker interface and keeps a history of the
 // audio registers over time.
 type Tracker struct {
-	emulation emulation.Emulation
+	emulation Emulation
 
 	entries []Entry
 
@@ -49,7 +55,7 @@ type Tracker struct {
 const maxTrackerEntries = 1024
 
 // NewTracker is the preferred method of initialisation for the Tracker type.
-func NewTracker(emulation emulation.Emulation) *Tracker {
+func NewTracker(emulation Emulation) *Tracker {
 	return &Tracker{
 		emulation: emulation,
 		entries:   make([]Entry, 0, maxTrackerEntries),
@@ -63,7 +69,7 @@ func (tr *Tracker) Reset() {
 
 // Tick implements the audio.Tracker interface
 func (tr *Tracker) Tick(channel int, reg audio.Registers) {
-	if tr.emulation.State() == emulation.Rewinding {
+	if tr.emulation.State() == govern.Rewinding {
 		return
 	}
 
@@ -71,7 +77,7 @@ func (tr *Tracker) Tick(channel int, reg audio.Registers) {
 	tr.prevRegister[channel] = reg
 
 	if changed {
-		tv := tr.emulation.TV().(*television.Television)
+		tv := tr.emulation.TV()
 
 		e := Entry{
 			Coords:      tv.GetCoords(),

@@ -19,7 +19,7 @@ import (
 	"fmt"
 
 	"github.com/jetsetilly/gopher2600/curated"
-	"github.com/jetsetilly/gopher2600/emulation"
+	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/instructions"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/registers"
 	"github.com/jetsetilly/gopher2600/hardware/memory"
@@ -48,7 +48,7 @@ func (dbg *Debugger) PushDeepPoke(addr uint16, value uint8, newValue uint8, valu
 	}
 
 	dbg.PushRawEventImmediate(func() {
-		dbg.setStateQuiet(emulation.Rewinding, true)
+		dbg.setStateQuiet(govern.Rewinding, true)
 		dbg.unwindLoop(doDeepPoke)
 	})
 

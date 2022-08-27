@@ -18,7 +18,7 @@ package sdlimgui
 import (
 	"time"
 
-	"github.com/jetsetilly/gopher2600/emulation"
+	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
 	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/userinput"
@@ -43,9 +43,9 @@ func (img *SdlImgui) Service() {
 
 	// refresh lazy values
 	switch img.mode {
-	case emulation.ModeDebugger:
+	case govern.ModeDebugger:
 		img.lz.Refresh()
-	case emulation.ModePlay:
+	case govern.ModePlay:
 		img.lz.FastRefresh()
 	}
 
@@ -141,7 +141,7 @@ func (img *SdlImgui) Service() {
 			}
 			img.io.AddMouseWheelDelta(deltaX/4, deltaY/4)
 
-			if img.mode != emulation.ModePlay || !img.wm.playmodeWindows[winSelectROMID].playmodeIsOpen() {
+			if img.mode != govern.ModePlay || !img.wm.playmodeWindows[winSelectROMID].playmodeIsOpen() {
 				select {
 				case img.userinput <- userinput.EventMouseWheel{Delta: deltaY}:
 				default:
@@ -386,9 +386,9 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 
 		case sdl.SCANCODE_GRAVE:
 			if img.isPlaymode() {
-				img.emulation.SetFeature(emulation.ReqSetMode, emulation.ModeDebugger)
+				img.dbg.SetFeature(govern.ReqSetMode, govern.ModeDebugger)
 			} else {
-				img.emulation.SetFeature(emulation.ReqSetMode, emulation.ModePlay)
+				img.dbg.SetFeature(govern.ReqSetMode, govern.ModePlay)
 			}
 
 		case sdl.SCANCODE_F8:
@@ -413,7 +413,7 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 				img.glsl.shaders[playscrShaderID].(*playscrShader).scheduleScreenshot(modeSingle)
 			}
 
-			img.playScr.emulationEvent.set(emulation.EventScreenshot)
+			img.playScr.emulationEvent.set(govern.EventScreenshot)
 
 		case sdl.SCANCODE_F14:
 			fallthrough
@@ -425,16 +425,16 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 		case sdl.SCANCODE_PAUSE:
 			if img.isPlaymode() {
 				var err error
-				if img.emulation.State() == emulation.Paused {
-					err = img.emulation.SetFeature(emulation.ReqSetPause, false)
+				if img.dbg.State() == govern.Paused {
+					err = img.dbg.SetFeature(govern.ReqSetPause, false)
 				} else {
-					err = img.emulation.SetFeature(emulation.ReqSetPause, true)
+					err = img.dbg.SetFeature(govern.ReqSetPause, true)
 				}
 				if err != nil {
 					logger.Logf("sdlimgui", err.Error())
 				}
 			} else {
-				if img.emulation.State() == emulation.Paused {
+				if img.dbg.State() == govern.Paused {
 					img.term.pushCommand("RUN")
 				} else {
 					img.term.pushCommand("HALT")

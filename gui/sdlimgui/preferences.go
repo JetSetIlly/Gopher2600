@@ -17,7 +17,7 @@ package sdlimgui
 import (
 	"fmt"
 
-	"github.com/jetsetilly/gopher2600/emulation"
+	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/prefs"
 	"github.com/jetsetilly/gopher2600/resources"
 )
@@ -236,11 +236,11 @@ func (p *preferences) loadWindowPreferences() error {
 	var group string
 
 	switch p.img.mode {
-	case emulation.ModeNone:
+	case govern.ModeNone:
 		p.img.plt.window.Hide()
-	case emulation.ModeDebugger:
+	case govern.ModeDebugger:
 		group = "sdlimgui.debugger"
-	case emulation.ModePlay:
+	case govern.ModePlay:
 		group = "sdlimgui.playmode"
 	default:
 		panic(fmt.Sprintf("cannot set window mode for unsupported emulation mode (%v)", p.img.mode))

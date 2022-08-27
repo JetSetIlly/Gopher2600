@@ -13,54 +13,10 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-package emulation
+package govern
 
-import (
-	"github.com/jetsetilly/gopher2600/userinput"
-)
-
-// TV is a minimal abstraction of the TV hardware. Exists mainly to avoid a
-// circular import to the hardware package.
-//
-// The only likely implementation of this interface is the
-// television.Television type.
-type TV interface {
-}
-
-// VCS is a minimal abstraction of the VCS hardware. Exists mainly to avoid a
-// circular import to the hardware package.
-//
-// The only likely implementation of this interface is the hardware.VCS type.
-type VCS interface {
-}
-
-// VCS is a minimal abstraction of the Gopher2600 debugger. Exists mainly to
-// avoid a circular import to the debugger package.
-//
-// The only likely implementation of this interface is the debugger.Debugger
-// type.
-type Debugger interface {
-}
-
-// Emulation defines the public functions required for a GUI implementation
-// (and possibly other things) to interface with the underlying emulator.
-type Emulation interface {
-	TV() TV
-	VCS() VCS
-	Debugger() Debugger
-	UserInput() chan userinput.Event
-
-	// Send a request to set an emulation feature
-	SetFeature(request FeatureReq, args ...FeatureReqData) error
-
-	// Immediate request for the state and mode of the emulation
-	State() State
-	Mode() Mode
-}
-
-// Mode inidicates the broad features of the emulation. For example, Debugger
-// indicates that the emulation is capable or is willing to handle debugging
-// features.
+// Mode inidicates the broad features of the emulation. Currently defined to be
+// debugger and play.
 type Mode int
 
 func (m Mode) String() string {
@@ -112,9 +68,9 @@ const (
 	Ending
 )
 
-// Event describes an event that might occur in the emulation which is outside
-// of the scope of the VCS. For example, when the emulation is paused an
-// EventPause can be sent to the GUI (see FeatureReq type in the gui package).
+// Event is something that happens to change the state of the emulation. For
+// example, the user presses the pause while playing  game. This will cause the
+// GUI to send an EventPause event to the emulation.
 type Event int
 
 // List of defined events.
@@ -129,4 +85,31 @@ const (
 	EventScreenshot
 	EventMute
 	EventUnmute
+)
+
+// FeatureReq is used to request the setting of an emulation attribute
+// eg. a pause request from the GUI
+type FeatureReq string
+
+// FeatureReqData represents the information associated with a FeatureReq. See
+// commentary for the defined FeatureReq values for the underlying type.
+type FeatureReqData interface{}
+
+// List of valid feature requests. argument must be of the type specified or
+// else the interface{} type conversion will fail and the application will
+// probably crash.
+//
+// Note that, like the name suggests, these are requests, they may or may not
+// be satisfied depending on other conditions in the GUI.
+const (
+	// notify gui of the underlying emulation mode.
+	ReqSetPause FeatureReq = "ReqSetPause" // bool
+
+	// change emulation mode
+	ReqSetMode FeatureReq = "ReqSetMode" // emulation.Mode
+)
+
+// Sentinal error returned if emulation does no support requested feature.
+const (
+	UnsupportedEmulationFeature = "unsupported emulation feature: %v"
 )

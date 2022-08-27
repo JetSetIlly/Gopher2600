@@ -20,7 +20,7 @@ import (
 	"image/color"
 	"sync"
 
-	"github.com/jetsetilly/gopher2600/emulation"
+	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
@@ -360,14 +360,14 @@ func (scr *screen) NewFrame(frameInfo television.FrameInfo) error {
 		}
 
 		if scr.crit.monitorSync && scr.crit.monitorSyncInRange {
-			switch scr.img.emulation.State() {
-			case emulation.Rewinding:
+			switch scr.img.dbg.State() {
+			case govern.Rewinding:
 				fallthrough
-			case emulation.Paused:
+			case govern.Paused:
 				scr.crit.renderIdx = scr.crit.plotIdx
 				scr.crit.prevRenderIdx = scr.crit.plotIdx
 				scr.crit.bufferUsed = len(scr.crit.bufferPixels)
-			case emulation.Running:
+			case govern.Running:
 				if scr.crit.bufferUsed > 0 {
 					scr.crit.bufferUsed--
 				}
@@ -622,7 +622,7 @@ func (scr *screen) copyPixelsPlaymode() {
 	// poor results for one frame kernels (depending on the ROM and what is
 	// happening on the screen at the time of the pause ) and will be
 	// sub-optimal for three frame kernels in almost all cases.
-	if scr.img.emulation.State() == emulation.Paused {
+	if scr.img.dbg.State() == govern.Paused {
 		activePause := scr.img.prefs.activePause.Get().(bool)
 		if scr.crit.pauseFrame || !activePause {
 			copy(scr.crit.pixels.Pix, scr.crit.bufferPixels[scr.crit.renderIdx].Pix)

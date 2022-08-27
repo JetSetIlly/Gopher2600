@@ -17,7 +17,7 @@ package rewind
 
 import (
 	"github.com/jetsetilly/gopher2600/curated"
-	"github.com/jetsetilly/gopher2600/emulation"
+	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 )
@@ -160,7 +160,7 @@ func (r *Rewind) GetTimeline() Timeline {
 
 func (r *Rewind) addTimelineEntry(frameInfo television.FrameInfo) {
 	// do not alter the timeline information if we're in the rewinding state
-	if r.emulation.State() == emulation.Rewinding {
+	if r.emulation.State() == govern.Rewinding {
 		return
 	}
 

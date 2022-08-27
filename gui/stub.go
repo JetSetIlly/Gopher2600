@@ -15,6 +15,7 @@
 
 package gui
 
+// Stub is a type of convenience that implements the GUI interface.
 type Stub struct{}
 
 // SetFeature implements the GUI interface.

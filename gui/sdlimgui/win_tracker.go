@@ -19,7 +19,7 @@ import (
 	"fmt"
 
 	"github.com/inkyblackness/imgui-go/v4"
-	"github.com/jetsetilly/gopher2600/emulation"
+	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/gui/fonts"
 	"github.com/jetsetilly/gopher2600/hardware/television/coords"
 	"github.com/jetsetilly/gopher2600/tracker"
@@ -265,7 +265,7 @@ func (win *winTracker) draw() {
 
 		imgui.EndTable()
 
-		if win.img.emulation.State() == emulation.Running {
+		if win.img.dbg.State() == govern.Running {
 			imgui.SetScrollHereY(1.0)
 		}
 	}

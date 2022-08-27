@@ -17,8 +17,8 @@ package debugger
 
 import (
 	"github.com/jetsetilly/gopher2600/curated"
+	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
-	"github.com/jetsetilly/gopher2600/emulation"
 	"github.com/jetsetilly/gopher2600/userinput"
 )
 
@@ -45,7 +45,7 @@ func (dbg *Debugger) userInputHandler(ev userinput.Event) error {
 
 	// mode specific special input (not passed to the VCS as controller input)
 	switch dbg.Mode() {
-	case emulation.ModePlay:
+	case govern.ModePlay:
 		switch ev := ev.(type) {
 		case userinput.EventMouseWheel:
 			amount := int(ev.Delta) + dbg.rewindMouseWheelAccumulation
@@ -73,7 +73,7 @@ func (dbg *Debugger) userInputHandler(ev userinput.Event) error {
 				}
 			} else {
 				dbg.rewindKeyboardAccumulation = 0
-				if dbg.State() != emulation.Running {
+				if dbg.State() != govern.Running {
 					return nil
 				}
 			}
@@ -93,7 +93,7 @@ func (dbg *Debugger) userInputHandler(ev userinput.Event) error {
 				}
 			} else {
 				dbg.rewindKeyboardAccumulation = 0
-				if dbg.State() != emulation.Running {
+				if dbg.State() != govern.Running {
 					return nil
 				}
 			}
@@ -106,18 +106,18 @@ func (dbg *Debugger) userInputHandler(ev userinput.Event) error {
 		if ev.Down {
 			switch ev.Button {
 			case userinput.GamepadButtonBack:
-				if dbg.State() != emulation.Paused {
-					dbg.SetFeature(emulation.ReqSetPause, true)
+				if dbg.State() != govern.Paused {
+					dbg.SetFeature(govern.ReqSetPause, true)
 				} else {
-					dbg.SetFeature(emulation.ReqSetPause, false)
+					dbg.SetFeature(govern.ReqSetPause, false)
 				}
 				return nil
 			case userinput.GamepadButtonGuide:
 				switch dbg.Mode() {
-				case emulation.ModePlay:
-					dbg.SetFeature(emulation.ReqSetMode, emulation.ModeDebugger)
-				case emulation.ModeDebugger:
-					dbg.SetFeature(emulation.ReqSetMode, emulation.ModePlay)
+				case govern.ModePlay:
+					dbg.SetFeature(govern.ReqSetMode, govern.ModeDebugger)
+				case govern.ModeDebugger:
+					dbg.SetFeature(govern.ReqSetMode, govern.ModePlay)
 				}
 			}
 		}
@@ -133,8 +133,8 @@ func (dbg *Debugger) userInputHandler(ev userinput.Event) error {
 	// direction). unpause if the emulation is currently paused
 	//
 	// * we're only allowing this for playmode
-	if dbg.Mode() == emulation.ModePlay && dbg.State() == emulation.Paused && handled {
-		dbg.SetFeature(emulation.ReqSetPause, false)
+	if dbg.Mode() == govern.ModePlay && dbg.State() == govern.Paused && handled {
+		dbg.SetFeature(govern.ReqSetPause, false)
 	}
 
 	return nil

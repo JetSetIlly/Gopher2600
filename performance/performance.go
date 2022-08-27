@@ -22,11 +22,10 @@ import (
 
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/curated"
-	"github.com/jetsetilly/gopher2600/emulation"
+	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/setup"
-	"github.com/jetsetilly/gopher2600/userinput"
 )
 
 // sentinal error returned by Run() loop.
@@ -100,7 +99,7 @@ func Check(output io.Writer, profile Profile, cartload cartridgeloader.Loader, s
 		performanceBrake := 0
 
 		// run until specified time elapses
-		err = vcs.Run(func() (emulation.State, error) {
+		err = vcs.Run(func() (govern.State, error) {
 			for {
 				performanceBrake++
 				if performanceBrake >= hardware.PerformanceBrake {
@@ -112,7 +111,7 @@ func Check(output io.Writer, profile Profile, cartload cartridgeloader.Loader, s
 						// period has finished, return false to cause vcs.Run() to
 						// return
 						if v {
-							return emulation.Ending, curated.Errorf(timedOut)
+							return govern.Ending, curated.Errorf(timedOut)
 						}
 
 						// timerChan has returned false which indicates that the
@@ -121,11 +120,11 @@ func Check(output io.Writer, profile Profile, cartload cartridgeloader.Loader, s
 						// frame.
 						startFrame = tv.GetCoords().Frame
 					default:
-						return emulation.Running, nil
+						return govern.Running, nil
 					}
 				}
 
-				return emulation.Running, nil
+				return govern.Running, nil
 			}
 		})
 		return err
@@ -147,39 +146,4 @@ func Check(output io.Writer, profile Profile, cartload cartridgeloader.Loader, s
 	output.Write([]byte(fmt.Sprintf("%.2f fps (%d frames in %.2f seconds) %.1f%%\n", fps, numFrames, dur.Seconds(), accuracy)))
 
 	return nil
-}
-
-// stubEmulation is handed to the GUI through ReqSetEmulation. Provides the
-// minimum implementation for the Emulation interface.
-type stubEmulation struct {
-	vcs emulation.VCS
-	tv  emulation.TV
-}
-
-func (e *stubEmulation) TV() emulation.TV {
-	return e.tv
-}
-
-func (e *stubEmulation) VCS() emulation.VCS {
-	return e.vcs
-}
-
-func (e *stubEmulation) Debugger() emulation.Debugger {
-	return nil
-}
-
-func (e *stubEmulation) UserInput() chan userinput.Event {
-	return nil
-}
-
-func (e *stubEmulation) SetFeature(request emulation.FeatureReq, args ...emulation.FeatureReqData) error {
-	return nil
-}
-
-func (e *stubEmulation) State() emulation.State {
-	return emulation.Running
-}
-
-func (e *stubEmulation) Mode() emulation.Mode {
-	return emulation.ModePlay
 }

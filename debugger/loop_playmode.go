@@ -17,8 +17,8 @@ package debugger
 
 import (
 	"github.com/jetsetilly/gopher2600/curated"
+	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
-	"github.com/jetsetilly/gopher2600/emulation"
 	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/userinput"
@@ -65,7 +65,7 @@ func (dbg *Debugger) playLoop() error {
 	dbg.liveBankInfo = dbg.vcs.Mem.Cart.GetBank(dbg.vcs.CPU.PC.Address())
 
 	// run and handle events
-	return dbg.vcs.Run(func() (emulation.State, error) {
+	return dbg.vcs.Run(func() (govern.State, error) {
 		// update counters. because of the way LastResult works we need to make
 		// sure we only use it in the event that the CPU RdyFlag is set
 		//
@@ -93,12 +93,12 @@ func (dbg *Debugger) playLoop() error {
 		if dbg.halting.halt {
 			// set debugging mode. halting messages will be preserved and
 			// shown when entering debugging mode
-			dbg.setMode(emulation.ModeDebugger)
-			return emulation.Ending, nil
+			dbg.setMode(govern.ModeDebugger)
+			return govern.Ending, nil
 		}
 
-		if dbg.Mode() != emulation.ModePlay {
-			return emulation.Ending, nil
+		if dbg.Mode() != govern.ModePlay {
+			return govern.Ending, nil
 		}
 
 		// return without checking interface unless we exceed the
@@ -113,12 +113,12 @@ func (dbg *Debugger) playLoop() error {
 		case <-dbg.eventCheckPulse.C:
 			err := dbg.readEventsHandler()
 			if err != nil {
-				return emulation.Ending, err
+				return govern.Ending, err
 			}
 		default:
 		}
 
-		if dbg.state.Load().(emulation.State) == emulation.Running {
+		if dbg.state.Load().(govern.State) == govern.Running {
 			dbg.Rewind.RecordState()
 		}
 

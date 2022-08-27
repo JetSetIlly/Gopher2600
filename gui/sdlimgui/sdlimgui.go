@@ -21,8 +21,8 @@ import (
 
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/debugger"
+	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
-	"github.com/jetsetilly/gopher2600/emulation"
 	"github.com/jetsetilly/gopher2600/gui/crt"
 	"github.com/jetsetilly/gopher2600/gui/sdlaudio"
 	"github.com/jetsetilly/gopher2600/gui/sdlimgui/lazyvalues"
@@ -63,16 +63,13 @@ type SdlImgui struct {
 	// allow sufficient time to close the font size selector combo box
 	resetFonts int
 
-	// parent emulation. should be set via setEmulation() only
-	emulation emulation.Emulation
-
 	// the current mode of the underlying
-	mode emulation.Mode
+	mode govern.Mode
 
 	// taken from the emulation field and assigned in the setEmulation() function
+	dbg       *debugger.Debugger
 	tv        *television.Television
 	vcs       *hardware.VCS
-	dbg       *debugger.Debugger
 	userinput chan userinput.Event
 
 	// lazy value system allows safe access to the debugger/emulation from the
@@ -127,21 +124,17 @@ type SdlImgui struct {
 // NewSdlImgui is the preferred method of initialisation for type SdlImgui
 //
 // MUST ONLY be called from the gui thread.
-func NewSdlImgui(e emulation.Emulation) (*SdlImgui, error) {
+func NewSdlImgui(dbg *debugger.Debugger) (*SdlImgui, error) {
 	img := &SdlImgui{
 		context:             imgui.CreateContext(nil),
 		io:                  imgui.CurrentIO(),
 		postRenderFunctions: make(chan func(), 100),
 	}
 
-	img.emulation = e
-	img.tv = e.TV().(*television.Television)
-	img.vcs = e.VCS().(*hardware.VCS)
-	switch dbg := e.Debugger().(type) {
-	case *debugger.Debugger:
-		img.dbg = dbg
-	}
-	img.userinput = e.UserInput()
+	img.dbg = dbg
+	img.tv = img.dbg.TV()
+	img.vcs = img.dbg.VCS()
+	img.userinput = img.dbg.UserInput()
 
 	// path to dear imgui ini file
 	iniPath, err := resources.JoinPath(imguiIniFile)
@@ -163,7 +156,7 @@ func NewSdlImgui(e emulation.Emulation) (*SdlImgui, error) {
 		return nil, curated.Errorf("sdlimgui: %v", err)
 	}
 
-	img.lz = lazyvalues.NewLazyValues(img.emulation)
+	img.lz = lazyvalues.NewLazyValues(img.dbg)
 	img.screen = newScreen(img)
 	img.term = newTerm()
 
@@ -298,18 +291,18 @@ func (img *SdlImgui) end() {
 
 // draw gui. called from service loop.
 func (img *SdlImgui) draw() {
-	if img.mode == emulation.ModeNone {
+	if img.mode == govern.ModeNone {
 		return
 	}
 
-	if img.emulation.State() == emulation.EmulatorStart {
+	if img.dbg.State() == govern.EmulatorStart {
 		return
 	}
 
 	imgui.PushFont(img.glsl.fonts.defaultFont)
 	defer imgui.PopFont()
 
-	if img.mode == emulation.ModePlay {
+	if img.mode == govern.ModePlay {
 		img.playScr.draw()
 	}
 
@@ -320,14 +313,14 @@ func (img *SdlImgui) draw() {
 // is the gui in playmode or not. thread safe. called from emulation thread
 // and gui thread.
 func (img *SdlImgui) isPlaymode() bool {
-	return img.mode == emulation.ModePlay
+	return img.mode == govern.ModePlay
 }
 
 // set emulation and handle the changeover gracefully. this includes the saving
 // and loading of preference groups.
 //
 // should only be called from gui thread.
-func (img *SdlImgui) setEmulationMode(mode emulation.Mode) error {
+func (img *SdlImgui) setEmulationMode(mode govern.Mode) error {
 	// release captured mouse before switching emulation modes. if we don't do
 	// this then the capture state will remain if we flip back to the emulation
 	// mode later. at this point the captured mouse can cause confusion
@@ -337,12 +330,12 @@ func (img *SdlImgui) setEmulationMode(mode emulation.Mode) error {
 	img.prefs.loadWindowPreferences()
 
 	switch mode {
-	case emulation.ModeDebugger:
+	case govern.ModeDebugger:
 		img.screen.clearTextureRenderers()
 		img.screen.addTextureRenderer(img.wm.dbgScr)
 		img.plt.window.Show()
 
-	case emulation.ModePlay:
+	case govern.ModePlay:
 		img.screen.clearTextureRenderers()
 		img.screen.addTextureRenderer(img.playScr)
 		img.plt.window.Show()
@@ -379,9 +372,9 @@ func (img *SdlImgui) setAudioMute() {
 	if img.isPlaymode() {
 		mute = img.prefs.audioMutePlaymode.Get().(bool)
 		if mute {
-			img.playScr.emulationEvent.set(emulation.EventMute)
+			img.playScr.emulationEvent.set(govern.EventMute)
 		} else {
-			img.playScr.emulationEvent.set(emulation.EventUnmute)
+			img.playScr.emulationEvent.set(govern.EventUnmute)
 		}
 		img.vcs.RIOT.Ports.MutePeripherals(mute)
 	} else {

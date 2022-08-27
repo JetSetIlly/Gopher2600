@@ -19,7 +19,7 @@ import (
 	"sort"
 
 	"github.com/inkyblackness/imgui-go/v4"
-	"github.com/jetsetilly/gopher2600/emulation"
+	"github.com/jetsetilly/gopher2600/debugger/govern"
 )
 
 // manager handles windows and menus in the system.
@@ -209,13 +209,13 @@ func (wm *manager) draw() {
 	}
 
 	switch wm.img.mode {
-	case emulation.ModePlay:
+	case govern.ModePlay:
 		// playmode draws the screen and other windows that have been listed
 		// as being safe to draw in playmode
 		for _, w := range wm.playmodeWindows {
 			w.playmodeDraw()
 		}
-	case emulation.ModeDebugger:
+	case govern.ModeDebugger:
 		// see commentary for screenPos in windowManager declaration
 		wm.screenPos = imgui.WindowPos()
 

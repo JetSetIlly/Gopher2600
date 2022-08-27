@@ -21,8 +21,8 @@ import (
 
 	"github.com/go-gl/gl/v3.2-core/gl"
 	"github.com/inkyblackness/imgui-go/v4"
+	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/disassembly"
-	"github.com/jetsetilly/gopher2600/emulation"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/vcs"
 	"github.com/jetsetilly/gopher2600/hardware/television/coords"
@@ -254,7 +254,7 @@ func (win *winDbgScr) draw() {
 	if imgui.IsWindowFocused() && imageHovered {
 		// mouse click will cause the rewind goto coords to run only when the
 		// emulation is paused
-		if win.img.emulation.State() == emulation.Paused {
+		if win.img.dbg.State() == govern.Paused {
 			if imgui.IsMouseDown(0) {
 				coords := coords.TelevisionCoords{
 					Frame:    win.img.lz.TV.Coords.Frame,
@@ -464,7 +464,7 @@ func (win *winDbgScr) drawReflectionTooltip() {
 		imguiSeparator()
 
 		// if mouse is over a pixel from the previous frame then show nothing except a note
-		if win.img.emulation.State() == emulation.Paused {
+		if win.img.dbg.State() == govern.Paused {
 			if win.mouse.scanline > win.img.screen.crit.lastScanline ||
 				(win.mouse.scanline == win.img.screen.crit.lastScanline && win.mouse.clock > win.img.screen.crit.lastClock) {
 				imgui.Text("From previous frame")

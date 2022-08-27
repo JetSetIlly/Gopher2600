@@ -17,7 +17,7 @@ package reflection
 
 import (
 	"github.com/jetsetilly/gopher2600/curated"
-	"github.com/jetsetilly/gopher2600/emulation"
+	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/television"
@@ -30,7 +30,7 @@ import (
 type Reflector struct {
 	vcs            *hardware.VCS
 	renderer       Renderer
-	emulationState emulation.State
+	emulationState govern.State
 
 	history []ReflectedVideoStep
 
@@ -57,17 +57,17 @@ func (ref *Reflector) Clear() {
 
 // SetEmulationState is called by emulation whenever state changes. How we
 // handle reflections depends on the current state.
-func (ref *Reflector) SetEmulationState(state emulation.State) {
+func (ref *Reflector) SetEmulationState(state govern.State) {
 	prev := ref.emulationState
 	ref.emulationState = state
 
 	switch prev {
-	case emulation.Rewinding:
+	case govern.Rewinding:
 		ref.render()
 	}
 
 	switch state {
-	case emulation.Paused:
+	case govern.Paused:
 		err := ref.render()
 		if err != nil {
 			logger.Logf("reflection", "%v", err)
@@ -125,7 +125,7 @@ func (ref *Reflector) Step(bank mapper.BankInfo) error {
 
 // push history to reflection renderer
 func (ref *Reflector) render() error {
-	if ref.emulationState != emulation.Rewinding {
+	if ref.emulationState != govern.Rewinding {
 		if ref.renderer != nil {
 			if err := ref.renderer.Reflect(ref.history); err != nil {
 				return curated.Errorf("reflection: %v", err)

@@ -20,7 +20,7 @@ import (
 
 	"github.com/jetsetilly/gopher2600/bots"
 	"github.com/jetsetilly/gopher2600/curated"
-	"github.com/jetsetilly/gopher2600/emulation"
+	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
@@ -54,7 +54,7 @@ func (img *SdlImgui) serviceSetFeature(request featureRequest) {
 	case gui.ReqSetEmulationMode:
 		err = argLen(request.args, 1)
 		if err == nil {
-			img.setEmulationMode(request.args[0].(emulation.Mode))
+			img.setEmulationMode(request.args[0].(govern.Mode))
 		}
 
 	case gui.ReqEnd:
@@ -106,7 +106,7 @@ func (img *SdlImgui) serviceSetFeature(request featureRequest) {
 		if img.isPlaymode() {
 			err = argLen(request.args, 1)
 			if err == nil {
-				img.playScr.emulationEvent.set(request.args[0].(emulation.Event))
+				img.playScr.emulationEvent.set(request.args[0].(govern.Event))
 			}
 		}
 

@@ -22,7 +22,6 @@ import (
 
 	"github.com/jetsetilly/gopher2600/debugger"
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
-	"github.com/jetsetilly/gopher2600/emulation"
 	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/prefs"
 )
@@ -143,7 +142,7 @@ func TestDebugger_withNonExistantInitScript(t *testing.T) {
 
 	var trm *mockTerm
 
-	create := func(e emulation.Emulation) (gui.GUI, terminal.Terminal, error) {
+	create := func(dbg *debugger.Debugger) (gui.GUI, terminal.Terminal, error) {
 		trm = newMockTerm(t)
 		return &mockGUI{}, trm, nil
 	}
@@ -166,7 +165,7 @@ func TestDebugger(t *testing.T) {
 
 	var trm *mockTerm
 
-	create := func(e emulation.Emulation) (gui.GUI, terminal.Terminal, error) {
+	create := func(dbg *debugger.Debugger) (gui.GUI, terminal.Terminal, error) {
 		trm = newMockTerm(t)
 		return &mockGUI{}, trm, nil
 	}

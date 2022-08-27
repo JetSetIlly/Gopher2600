@@ -26,7 +26,7 @@ import (
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/database"
-	"github.com/jetsetilly/gopher2600/emulation"
+	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/logger"
@@ -160,7 +160,7 @@ func (reg *LogRegression) regress(newRegression bool, output io.Writer, msg stri
 	logOutput := &strings.Builder{}
 
 	// run emulation
-	err = vcs.RunForFrameCount(reg.NumFrames, func(frame int) (emulation.State, error) {
+	err = vcs.RunForFrameCount(reg.NumFrames, func(frame int) (govern.State, error) {
 		// display progress meter every 1 second
 		select {
 		case <-tck.C:
@@ -170,7 +170,7 @@ func (reg *LogRegression) regress(newRegression bool, output io.Writer, msg stri
 
 		logger.WriteRecent(logOutput)
 
-		return emulation.Running, nil
+		return govern.Running, nil
 	})
 
 	if err != nil {

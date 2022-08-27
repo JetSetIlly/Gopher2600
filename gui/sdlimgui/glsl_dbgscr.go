@@ -17,7 +17,7 @@ package sdlimgui
 
 import (
 	"github.com/go-gl/gl/v3.2-core/gl"
-	"github.com/jetsetilly/gopher2600/emulation"
+	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/gui/sdlimgui/shaders"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 )
@@ -90,14 +90,14 @@ func (attr *dbgScrHelper) set(img *SdlImgui) {
 	// end of critical section
 
 	// show cursor
-	switch img.emulation.State() {
-	case emulation.Paused:
+	switch img.dbg.State() {
+	case govern.Paused:
 		gl.Uniform1i(attr.showCursor, 1)
-	case emulation.Running:
+	case govern.Running:
 		gl.Uniform1i(attr.showCursor, 0)
-	case emulation.Stepping:
+	case govern.Stepping:
 		gl.Uniform1i(attr.showCursor, 1)
-	case emulation.Rewinding:
+	case govern.Rewinding:
 		gl.Uniform1i(attr.showCursor, 1)
 	}
 }

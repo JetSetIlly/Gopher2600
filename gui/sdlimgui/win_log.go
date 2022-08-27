@@ -17,7 +17,7 @@ package sdlimgui
 
 import (
 	"github.com/inkyblackness/imgui-go/v4"
-	"github.com/jetsetilly/gopher2600/emulation"
+	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
@@ -76,7 +76,7 @@ func (win *winLog) draw() {
 		}
 
 		// very simple conditions to scroll to the bottom
-		if win.scrollToBottom || win.img.emulation.State() == emulation.Running {
+		if win.scrollToBottom || win.img.dbg.State() == govern.Running {
 			win.scrollToBottom = false
 			imgui.SetScrollHereY(0.0)
 		}

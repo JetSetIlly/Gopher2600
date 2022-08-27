@@ -21,7 +21,7 @@ import (
 	"time"
 
 	"github.com/jetsetilly/gopher2600/debugger"
-	"github.com/jetsetilly/gopher2600/emulation"
+	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/gui/fonts"
 
 	"github.com/inkyblackness/imgui-go/v4"
@@ -120,7 +120,7 @@ func (win *winControl) draw() {
 
 func (win *winControl) drawRunButton() {
 	runDim := imgui.Vec2{X: imguiRemainingWinWidth(), Y: imgui.FrameHeight()}
-	if win.img.emulation.State() == emulation.Running {
+	if win.img.dbg.State() == govern.Running {
 		if imguiColourButton(win.img.cols.False, fmt.Sprintf("%c Halt", fonts.Halt), runDim) {
 			win.img.term.pushCommand("HALT")
 		}
@@ -229,7 +229,7 @@ func (win *winControl) drawFPS() {
 	}
 
 	imgui.Spacing()
-	if win.img.emulation.State() == emulation.Running {
+	if win.img.dbg.State() == govern.Running {
 		if win.img.lz.TV.ActualFPS <= win.img.lz.TV.ReqFPS*0.95 {
 			imgui.Text("running below requested FPS")
 		} else if win.img.lz.TV.ActualFPS > win.img.lz.TV.ReqFPS*1.05 {
@@ -253,13 +253,13 @@ func (win *winControl) drawMouseCapture() {
 	if win.img.wm.dbgScr.isCaptured {
 		imgui.AlignTextToFramePadding()
 		label := "RMB to release input"
-		if win.img.emulation.State() == emulation.Running {
+		if win.img.dbg.State() == govern.Running {
 			label = "RMB to halt & release input"
 		}
 		imgui.Text(label)
 	} else {
 		label := "Capture input & run"
-		if win.img.emulation.State() == emulation.Running {
+		if win.img.dbg.State() == govern.Running {
 			label = "Capture input & continue"
 		}
 		if imgui.Button(label) {

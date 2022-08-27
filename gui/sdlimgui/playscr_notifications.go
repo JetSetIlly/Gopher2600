@@ -19,7 +19,8 @@ import (
 	"fmt"
 
 	"github.com/inkyblackness/imgui-go/v4"
-	"github.com/jetsetilly/gopher2600/emulation"
+	"github.com/jetsetilly/gopher2600/debugger"
+	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/gui/fonts"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
@@ -118,9 +119,9 @@ func (pn *peripheralNotification) draw(win *playScr) {
 // emulationEventNotification is used to draw an indicator on the screen for
 // events defined in the emulation package.
 type emulationEventNotification struct {
-	emulation    emulation.Emulation
+	emulation    *debugger.Debugger
 	open         bool
-	currentEvent emulation.Event
+	currentEvent govern.Event
 	frames       int
 
 	// audio mute is handled differently to other events. we want the icon for
@@ -130,18 +131,18 @@ type emulationEventNotification struct {
 	mute bool
 }
 
-func (ee *emulationEventNotification) set(event emulation.Event) {
+func (ee *emulationEventNotification) set(event govern.Event) {
 	ee.currentEvent = event
 	ee.open = true
 	ee.frames = notificationDurationEvent
 	switch event {
-	case emulation.EventRun:
+	case govern.EventRun:
 		ee.frames = notificationDurationEventRun
-	case emulation.EventScreenshot:
+	case govern.EventScreenshot:
 		ee.frames = notificationDurationScreenshot
-	case emulation.EventMute:
+	case govern.EventMute:
 		ee.mute = true
-	case emulation.EventUnmute:
+	case govern.EventUnmute:
 		ee.mute = false
 	}
 }
@@ -155,16 +156,16 @@ func (ee *emulationEventNotification) tick() {
 
 	if ee.frames == 0 {
 		// if emulation is paused then force the current event to EventPause
-		if ee.emulation.State() == emulation.Paused {
-			ee.currentEvent = emulation.EventPause
+		if ee.emulation.State() == govern.Paused {
+			ee.currentEvent = govern.EventPause
 		}
 
 		// special handling of open when current event is EventPause or if mute
 		// is enabled
-		if ee.currentEvent != emulation.EventPause {
+		if ee.currentEvent != govern.EventPause {
 			if ee.mute {
 				ee.open = true
-				ee.currentEvent = emulation.EventMute
+				ee.currentEvent = govern.EventMute
 			} else {
 				ee.open = false
 			}
@@ -196,23 +197,23 @@ func (ee *emulationEventNotification) draw(win *playScr, hosted bool) {
 	}
 
 	switch ee.currentEvent {
-	case emulation.EventInitialising:
+	case govern.EventInitialising:
 		imgui.Text("")
-	case emulation.EventPause:
+	case govern.EventPause:
 		imgui.Text(string(fonts.EmulationPause))
-	case emulation.EventRun:
+	case govern.EventRun:
 		imgui.Text(string(fonts.EmulationRun))
-	case emulation.EventRewindBack:
+	case govern.EventRewindBack:
 		imgui.Text(string(fonts.EmulationRewindBack))
-	case emulation.EventRewindFoward:
+	case govern.EventRewindFoward:
 		imgui.Text(string(fonts.EmulationRewindForward))
-	case emulation.EventRewindAtStart:
+	case govern.EventRewindAtStart:
 		imgui.Text(string(fonts.EmulationRewindAtStart))
-	case emulation.EventRewindAtEnd:
+	case govern.EventRewindAtEnd:
 		imgui.Text(string(fonts.EmulationRewindAtEnd))
-	case emulation.EventScreenshot:
+	case govern.EventScreenshot:
 		imgui.Text(string(fonts.Camera))
-	case emulation.EventMute:
+	case govern.EventMute:
 		if hosted || win.img.prefs.audioMuteNotification.Get().(bool) {
 			imgui.Text(string(fonts.AudioMute))
 		}

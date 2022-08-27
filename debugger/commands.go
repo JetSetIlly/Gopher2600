@@ -27,12 +27,12 @@ import (
 	"github.com/jetsetilly/gopher2600/coprocessor/developer"
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/debugger/dbgmem"
+	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/debugger/script"
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
 	"github.com/jetsetilly/gopher2600/debugger/terminal/commandline"
 	"github.com/jetsetilly/gopher2600/disassembly"
 	"github.com/jetsetilly/gopher2600/disassembly/symbols"
-	"github.com/jetsetilly/gopher2600/emulation"
 	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/registers"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/plusrom"
@@ -266,7 +266,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 				coords = dbg.vcs.TV.AdjCoords(adj, adjAmount)
 			}
 
-			dbg.setState(emulation.Rewinding)
+			dbg.setState(govern.Rewinding)
 			dbg.unwindLoop(func() error {
 				// update catchupQuantum before starting rewind process
 				dbg.catchupQuantum = dbg.stepQuantum
@@ -380,13 +380,13 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 			dbg.runUntilHalt = false
 
 			if arg == "LAST" {
-				dbg.setState(emulation.Rewinding)
+				dbg.setState(govern.Rewinding)
 				dbg.unwindLoop(dbg.Rewind.GotoLast)
 			} else if arg == "SUMMARY" {
 				dbg.printLine(terminal.StyleInstrument, dbg.Rewind.String())
 			} else {
 				frame, _ := strconv.Atoi(arg)
-				dbg.setState(emulation.Rewinding)
+				dbg.setState(govern.Rewinding)
 				dbg.unwindLoop(func() error {
 					err := dbg.Rewind.GotoFrame(frame)
 					if err != nil {
@@ -411,7 +411,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 			}
 		}
 
-		dbg.setState(emulation.Rewinding)
+		dbg.setState(govern.Rewinding)
 		dbg.unwindLoop(func() error {
 			err := dbg.Rewind.GotoCoords(coords)
 			if err != nil {

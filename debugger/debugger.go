@@ -30,11 +30,11 @@ import (
 	coprocDisasm "github.com/jetsetilly/gopher2600/coprocessor/disassembly"
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/debugger/dbgmem"
+	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/debugger/script"
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
 	"github.com/jetsetilly/gopher2600/debugger/terminal/commandline"
 	"github.com/jetsetilly/gopher2600/disassembly"
-	"github.com/jetsetilly/gopher2600/emulation"
 	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/execution"
@@ -290,7 +290,7 @@ type Debugger struct {
 // CreateUserInterface is used to initialise the user interface used by the
 // emulation. It returns an instance of both the GUI and Terminal interfaces
 // in the repsective packages.
-type CreateUserInterface func(emulation.Emulation) (gui.GUI, terminal.Terminal, error)
+type CreateUserInterface func(*Debugger) (gui.GUI, terminal.Terminal, error)
 
 // NewDebugger creates and initialises everything required for a new debugging
 // session.
@@ -312,8 +312,8 @@ func NewDebugger(opts CommandLineOptions, create CreateUserInterface) (*Debugger
 	// emulator is starting in the "none" mode (the advangatge of this is that
 	// we get to set the underlying type of the atomic.Value early before
 	// anyone has a change to call State() or Mode() from another thread)
-	dbg.state.Store(emulation.EmulatorStart)
-	dbg.mode.Store(emulation.ModeNone)
+	dbg.state.Store(govern.EmulatorStart)
+	dbg.mode.Store(govern.ModeNone)
 
 	var err error
 
@@ -449,17 +449,17 @@ func NewDebugger(opts CommandLineOptions, create CreateUserInterface) (*Debugger
 }
 
 // VCS implements the emulation.Emulation interface.
-func (dbg *Debugger) VCS() emulation.VCS {
+func (dbg *Debugger) VCS() *hardware.VCS {
 	return dbg.vcs
 }
 
 // TV implements the emulation.Emulation interface.
-func (dbg *Debugger) TV() emulation.TV {
+func (dbg *Debugger) TV() *television.Television {
 	return dbg.vcs.TV
 }
 
 // Debugger implements the emulation.Emulation interface.
-func (dbg *Debugger) Debugger() emulation.Debugger {
+func (dbg *Debugger) Debugger() *Debugger {
 	return dbg
 }
 
@@ -469,13 +469,13 @@ func (dbg *Debugger) UserInput() chan userinput.Event {
 }
 
 // State implements the emulation.Emulation interface.
-func (dbg *Debugger) State() emulation.State {
-	return dbg.state.Load().(emulation.State)
+func (dbg *Debugger) State() govern.State {
+	return dbg.state.Load().(govern.State)
 }
 
 // Mode implements the emulation.Emulation interface.
-func (dbg *Debugger) Mode() emulation.Mode {
-	return dbg.mode.Load().(emulation.Mode)
+func (dbg *Debugger) Mode() govern.Mode {
+	return dbg.mode.Load().(govern.Mode)
 }
 
 // set the emulation state
@@ -484,7 +484,7 @@ func (dbg *Debugger) Mode() emulation.Mode {
 // debugger.SetFeature(ReqSetPause) even from within the debugger package
 // (SetFeature() puts the request on the RawEvent Queue meaning it will be
 // inserted in the input loop correctly)
-func (dbg *Debugger) setState(state emulation.State) {
+func (dbg *Debugger) setState(state govern.State) {
 	dbg.setStateQuiet(state, false)
 }
 
@@ -493,8 +493,8 @@ func (dbg *Debugger) setState(state emulation.State) {
 //
 // * see setState() comment, although debugger.SetFeature(ReqSetPause) will
 // always be "noisy"
-func (dbg *Debugger) setStateQuiet(state emulation.State, quiet bool) {
-	if state == emulation.Rewinding {
+func (dbg *Debugger) setStateQuiet(state govern.State, quiet bool) {
+	if state == govern.Rewinding {
 		dbg.vcs.Mem.Cart.BreakpointsDisable(true)
 		dbg.endPlayback()
 		dbg.endRecording()
@@ -533,15 +533,15 @@ func (dbg *Debugger) setStateQuiet(state emulation.State, quiet bool) {
 	prevState := dbg.State()
 	dbg.state.Store(state)
 
-	if !quiet && dbg.Mode() == emulation.ModePlay {
+	if !quiet && dbg.Mode() == govern.ModePlay {
 		switch state {
-		case emulation.Initialising:
-			dbg.gui.SetFeature(gui.ReqEmulationEvent, emulation.EventInitialising)
-		case emulation.Paused:
-			dbg.gui.SetFeature(gui.ReqEmulationEvent, emulation.EventPause)
-		case emulation.Running:
-			if prevState > emulation.Initialising {
-				dbg.gui.SetFeature(gui.ReqEmulationEvent, emulation.EventRun)
+		case govern.Initialising:
+			dbg.gui.SetFeature(gui.ReqEmulationEvent, govern.EventInitialising)
+		case govern.Paused:
+			dbg.gui.SetFeature(gui.ReqEmulationEvent, govern.EventPause)
+		case govern.Running:
+			if prevState > govern.Initialising {
+				dbg.gui.SetFeature(gui.ReqEmulationEvent, govern.EventRun)
 			}
 		}
 	}
@@ -552,7 +552,7 @@ func (dbg *Debugger) setStateQuiet(state emulation.State, quiet bool) {
 // * consider using debugger.SetFeature(ReqSetMode) even from within the
 // debugger package (SetFeature() puts the request on the RawEvent Queue
 // meaning it will be inserted in the input loop correctly)
-func (dbg *Debugger) setMode(mode emulation.Mode) error {
+func (dbg *Debugger) setMode(mode govern.Mode) error {
 	if dbg.Mode() == mode {
 		return nil
 	}
@@ -566,8 +566,8 @@ func (dbg *Debugger) setMode(mode emulation.Mode) error {
 	// however, because the user has asked to switch to playmode we should
 	// cause the debugger mode to run until the halting condition is matched
 	// (which we know will occur in the almost immediate future)
-	if mode == emulation.ModePlay && !dbg.halting.allowPlaymode() {
-		if dbg.Mode() == emulation.ModeDebugger {
+	if mode == govern.ModePlay && !dbg.halting.allowPlaymode() {
+		if dbg.Mode() == govern.ModeDebugger {
 			dbg.runUntilHalt = true
 			dbg.continueEmulation = true
 		}
@@ -601,26 +601,26 @@ func (dbg *Debugger) setMode(mode emulation.Mode) error {
 	// screen.go)
 
 	switch dbg.Mode() {
-	case emulation.ModePlay:
+	case govern.ModePlay:
 		dbg.vcs.TV.AddFrameTrigger(dbg.Rewind)
 		dbg.vcs.TV.AddFrameTrigger(dbg.counter)
 
 		// simple detection of whether cartridge is ejected when switching to
 		// playmode. if it is ejected then open ROM selected.
-		if dbg.Mode() == emulation.ModePlay && dbg.vcs.Mem.Cart.IsEjected() {
+		if dbg.Mode() == govern.ModePlay && dbg.vcs.Mem.Cart.IsEjected() {
 			err = dbg.forceROMSelector()
 			if err != nil {
 				return curated.Errorf("debugger: %v", err)
 			}
 		} else {
-			dbg.setState(emulation.Running)
+			dbg.setState(govern.Running)
 		}
 
-	case emulation.ModeDebugger:
+	case govern.ModeDebugger:
 		dbg.vcs.TV.AddFrameTrigger(dbg.Rewind)
 		dbg.vcs.TV.AddFrameTrigger(dbg.ref)
 		dbg.vcs.TV.AddFrameTrigger(dbg.counter)
-		dbg.setState(emulation.Paused)
+		dbg.setState(govern.Paused)
 
 		// debugger needs knowledge about previous frames (via the reflector)
 		// if we're moving from playmode. also we want to make sure we end on
@@ -630,7 +630,7 @@ func (dbg *Debugger) setMode(mode emulation.Mode) error {
 		// catchupEndAdj we will always enter the debugger on the last cycle of
 		// an instruction. although correct in terms of coordinates, is
 		// confusing.
-		if prevMode == emulation.ModePlay {
+		if prevMode == govern.ModePlay {
 			dbg.catchupEndAdj = true
 			dbg.RerunLastNFrames(2)
 		}
@@ -692,7 +692,7 @@ func (dbg *Debugger) StartInDebugMode(filename string) error {
 		return curated.Errorf("debugger: %v", err)
 	}
 
-	err = dbg.setMode(emulation.ModeDebugger)
+	err = dbg.setMode(govern.ModeDebugger)
 	if err != nil {
 		return curated.Errorf("debugger: %v", err)
 	}
@@ -808,7 +808,7 @@ func (dbg *Debugger) StartInPlayMode(filename string) error {
 		return curated.Errorf("debugger: %v", err)
 	}
 
-	err = dbg.setMode(emulation.ModePlay)
+	err = dbg.setMode(govern.ModePlay)
 	if err != nil {
 		return curated.Errorf("debugger: %v", err)
 	}
@@ -842,7 +842,7 @@ func (dbg *Debugger) run() error {
 	// inputloop will continue until debugger is to be terminated
 	for dbg.running {
 		switch dbg.Mode() {
-		case emulation.ModePlay:
+		case govern.ModePlay:
 			err := dbg.playLoop()
 			if err != nil {
 				// if we ever encounter a cartridge ejected error in playmode
@@ -856,14 +856,14 @@ func (dbg *Debugger) run() error {
 					return curated.Errorf("debugger: %v", err)
 				}
 			}
-		case emulation.ModeDebugger:
+		case govern.ModeDebugger:
 			switch dbg.State() {
-			case emulation.Running:
+			case govern.Running:
 				dbg.runUntilHalt = true
 				dbg.continueEmulation = true
-			case emulation.Paused:
+			case govern.Paused:
 				dbg.haltImmediately = true
-			case emulation.Rewinding:
+			case govern.Rewinding:
 			default:
 				return curated.Errorf("emulation state not supported on *start* of debugging loop: %s", dbg.State())
 			}
@@ -880,7 +880,7 @@ func (dbg *Debugger) run() error {
 					return curated.Errorf("debugger: %v", err)
 				}
 				dbg.unwindLoopRestart = nil
-			} else if dbg.State() == emulation.Ending {
+			} else if dbg.State() == govern.Ending {
 				dbg.running = false
 			}
 		default:
@@ -948,19 +948,19 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) 
 	dbg.bots.Quit()
 
 	// attching a cartridge implies the initialise state
-	dbg.setState(emulation.Initialising)
+	dbg.setState(govern.Initialising)
 
 	// set state after initialisation according to the emulation mode
 	defer func() {
 		switch dbg.Mode() {
-		case emulation.ModeDebugger:
+		case govern.ModeDebugger:
 			if dbg.runUntilHalt && e == nil {
-				dbg.setState(emulation.Running)
+				dbg.setState(govern.Running)
 			} else {
-				dbg.setState(emulation.Paused)
+				dbg.setState(govern.Paused)
 			}
-		case emulation.ModePlay:
-			dbg.setState(emulation.Running)
+		case govern.ModePlay:
+			dbg.setState(govern.Running)
 		}
 	}()
 
@@ -1224,12 +1224,12 @@ func (dbg *Debugger) endComparison() {
 
 func (dbg *Debugger) hotload() (e error) {
 	// tell GUI that we're in the initialistion phase
-	dbg.setState(emulation.Initialising)
+	dbg.setState(govern.Initialising)
 	defer func() {
 		if dbg.runUntilHalt && e == nil {
-			dbg.setState(emulation.Running)
+			dbg.setState(govern.Running)
 		} else {
-			dbg.gui.SetFeature(gui.ReqEmulationEvent, emulation.EventPause)
+			dbg.gui.SetFeature(gui.ReqEmulationEvent, govern.EventPause)
 		}
 	}()
 

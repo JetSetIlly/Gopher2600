@@ -22,7 +22,7 @@ import (
 	"fmt"
 
 	"github.com/jetsetilly/gopher2600/curated"
-	"github.com/jetsetilly/gopher2600/emulation"
+	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/hardware/television/coords"
 )
@@ -34,30 +34,30 @@ func (dbg *Debugger) RewindByAmount(amount int) bool {
 	default:
 		panic(fmt.Sprintf("Rewind: unsupported mode (%v)", dbg.Mode()))
 
-	case emulation.ModePlay:
+	case govern.ModePlay:
 		coords := dbg.vcs.TV.GetCoords()
 		tl := dbg.Rewind.GetTimeline()
 
 		if amount < 0 && coords.Frame-1 <= tl.AvailableStart {
-			dbg.setStateQuiet(emulation.Paused, true)
-			dbg.gui.SetFeature(gui.ReqEmulationEvent, emulation.EventRewindAtStart)
+			dbg.setStateQuiet(govern.Paused, true)
+			dbg.gui.SetFeature(gui.ReqEmulationEvent, govern.EventRewindAtStart)
 			return false
 		}
 
 		if amount > 0 && coords.Frame+1 >= tl.AvailableEnd {
-			dbg.setStateQuiet(emulation.Paused, true)
-			dbg.gui.SetFeature(gui.ReqEmulationEvent, emulation.EventRewindAtEnd)
+			dbg.setStateQuiet(govern.Paused, true)
+			dbg.gui.SetFeature(gui.ReqEmulationEvent, govern.EventRewindAtEnd)
 			return false
 		}
 
-		dbg.setStateQuiet(emulation.Rewinding, true)
+		dbg.setStateQuiet(govern.Rewinding, true)
 		dbg.Rewind.GotoFrame(coords.Frame + amount)
-		dbg.setStateQuiet(emulation.Paused, true)
+		dbg.setStateQuiet(govern.Paused, true)
 
 		if amount < 0 {
-			dbg.gui.SetFeature(gui.ReqEmulationEvent, emulation.EventRewindBack)
+			dbg.gui.SetFeature(gui.ReqEmulationEvent, govern.EventRewindBack)
 		} else {
-			dbg.gui.SetFeature(gui.ReqEmulationEvent, emulation.EventRewindFoward)
+			dbg.gui.SetFeature(gui.ReqEmulationEvent, govern.EventRewindFoward)
 		}
 
 		return true
@@ -72,8 +72,8 @@ func (dbg *Debugger) RewindToFrame(fn int, last bool) bool {
 	default:
 		panic(fmt.Sprintf("RewindToFrame: unsupported mode (%v)", dbg.Mode()))
 
-	case emulation.ModeDebugger:
-		if dbg.State() == emulation.Rewinding {
+	case govern.ModeDebugger:
+		if dbg.State() == govern.Rewinding {
 			return false
 		}
 
@@ -100,9 +100,9 @@ func (dbg *Debugger) RewindToFrame(fn int, last bool) bool {
 		// how we push the doRewind() function depends on what kind of inputloop we
 		// are currently in
 		dbg.PushRawEventImmediate(func() {
-			// set state to emulation.Rewinding as soon as possible (but
+			// set state to govern.Rewinding as soon as possible (but
 			// remembering that we must do it in the debugger goroutine)
-			dbg.setState(emulation.Rewinding)
+			dbg.setState(govern.Rewinding)
 			dbg.unwindLoop(doRewind)
 		})
 
@@ -118,8 +118,8 @@ func (dbg *Debugger) GotoCoords(coords coords.TelevisionCoords) bool {
 	default:
 		panic(fmt.Sprintf("GotoCoords: unsupported mode (%v)", dbg.Mode()))
 
-	case emulation.ModeDebugger:
-		if dbg.State() == emulation.Rewinding {
+	case govern.ModeDebugger:
+		if dbg.State() == govern.Rewinding {
 			return false
 		}
 
@@ -139,9 +139,9 @@ func (dbg *Debugger) GotoCoords(coords coords.TelevisionCoords) bool {
 		// how we push the doRewind() function depends on what kind of inputloop we
 		// are currently in
 		dbg.PushRawEventImmediate(func() {
-			// set state to emulation.Rewinding as soon as possible (but
+			// set state to govern.Rewinding as soon as possible (but
 			// remembering that we must do it in the debugger goroutine)
-			dbg.setState(emulation.Rewinding)
+			dbg.setState(govern.Rewinding)
 			dbg.unwindLoop(doRewind)
 		})
 
@@ -157,8 +157,8 @@ func (dbg *Debugger) RerunLastNFrames(frames int) bool {
 	default:
 		panic(fmt.Sprintf("RerunLastNFrames: unsupported mode (%v)", dbg.Mode()))
 
-	case emulation.ModeDebugger:
-		if dbg.State() == emulation.Rewinding {
+	case govern.ModeDebugger:
+		if dbg.State() == govern.Rewinding {
 			return false
 		}
 
@@ -194,9 +194,9 @@ func (dbg *Debugger) RerunLastNFrames(frames int) bool {
 			// upate catchupQuantum before starting rewind process
 			dbg.catchupQuantum = QuantumClock
 
-			// set state to emulation.Rewinding as soon as possible (but
+			// set state to govern.Rewinding as soon as possible (but
 			// remembering that we must do it in the debugger goroutine)
-			dbg.setState(emulation.Rewinding)
+			dbg.setState(govern.Rewinding)
 			dbg.unwindLoop(doRewind)
 		})
 

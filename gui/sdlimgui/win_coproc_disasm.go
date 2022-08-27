@@ -20,7 +20,7 @@ import (
 
 	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/coprocessor/disassembly"
-	"github.com/jetsetilly/gopher2600/emulation"
+	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/gui/fonts"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm"
 )
@@ -114,7 +114,7 @@ func (win *winCoProcDisasm) draw() {
 			if imgui.Checkbox("Disassembly Enabled", &isEnabled) {
 				win.img.dbg.PushRawEvent(func() {
 					win.img.dbg.CoProcDisasm.Enable(isEnabled)
-					if win.img.emulation.State() != emulation.Running {
+					if win.img.dbg.State() != govern.Running {
 						// rerun the last two frames in order to gather as much disasm
 						// information as possible.
 						win.img.dbg.RerunLastNFrames(2)

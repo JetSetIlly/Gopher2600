@@ -18,8 +18,8 @@ package sdlimgui
 import (
 	"fmt"
 
+	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/disassembly"
-	"github.com/jetsetilly/gopher2600/emulation"
 	"github.com/jetsetilly/gopher2600/gui/fonts"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 
@@ -42,7 +42,7 @@ type winDisasm struct {
 	img *SdlImgui
 
 	// more recently seen emulation state
-	lastSeenState emulation.State
+	lastSeenState govern.State
 	lastSeenPC    uint16
 
 	// height of options line at bottom of window. valid after first frame
@@ -130,10 +130,10 @@ func (win *winDisasm) draw() {
 	// followCPU is set; or the PC has changed (this is because the state
 	// change might be missed)
 	//
-	// using the lazy emulation.State value rather than the live state - the
+	// using the lazy govern.State value rather than the live state - the
 	// live state can cause synchronisation problems meaning focus is lost
 	if win.followCPU {
-		if (win.img.lz.Debugger.State == emulation.Paused && win.lastSeenState != emulation.Paused) ||
+		if (win.img.lz.Debugger.State == govern.Paused && win.lastSeenState != govern.Paused) ||
 			win.img.lz.CPU.PC.Address() != win.lastSeenPC {
 
 			win.focusOnAddr = true

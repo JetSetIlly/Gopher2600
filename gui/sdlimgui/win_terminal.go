@@ -20,8 +20,8 @@ import (
 	"os"
 	"strings"
 
+	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/debugger/terminal"
-	"github.com/jetsetilly/gopher2600/emulation"
 	"github.com/jetsetilly/gopher2600/gui/fonts"
 	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/resources/unique"
@@ -175,7 +175,7 @@ func (win *winTerm) debuggerDraw() {
 		// the prompt in the terminal should show the disassembly for the
 		// instruction the PC is *currently* on. in other words, the
 		// disassembly for the inesturction to be executed *next*
-		if win.img.emulation.State() == emulation.Running {
+		if win.img.dbg.State() == govern.Running {
 			res := win.img.lz.Debugger.LiveDisasmEntry
 			imgui.Text(res.String())
 			if !win.img.lz.Debugger.LiveDisasmEntry.Result.Final {

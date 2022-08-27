@@ -20,7 +20,7 @@ import (
 	"math"
 
 	"github.com/inkyblackness/imgui-go/v4"
-	"github.com/jetsetilly/gopher2600/emulation"
+	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/gui/fonts"
 )
 
@@ -172,7 +172,7 @@ func (wm *manager) drawMenu() {
 		wdth -= rightJustText(wdth, fmt.Sprintf("%.2fHz", wm.img.lz.TV.Hz), true)
 	}
 
-	if wm.img.emulation.State() == emulation.Running {
+	if wm.img.dbg.State() == govern.Running {
 		if wm.img.lz.TV.ReqFPS < 1.0 {
 			wdth -= rightJustText(wdth, "< 1 fps", true)
 		} else if math.IsInf(float64(wm.img.lz.TV.ActualFPS), 0) {

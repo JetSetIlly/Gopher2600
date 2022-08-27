@@ -22,7 +22,7 @@ import (
 	"strings"
 
 	"github.com/jetsetilly/gopher2600/curated"
-	"github.com/jetsetilly/gopher2600/emulation"
+	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/prefs"
 	"github.com/jetsetilly/gopher2600/resources"
 	"github.com/jetsetilly/gopher2600/resources/fs"
@@ -77,7 +77,7 @@ func (wm *manager) saveManagerState() (rerr error) {
 			continue
 		}
 
-		s := fmt.Sprintf("%s%s%s%s%v\n", emulation.ModeDebugger.String(), prefs.KeySep, key, prefs.KeySep, win.debuggerIsOpen())
+		s := fmt.Sprintf("%s%s%s%s%v\n", govern.ModeDebugger.String(), prefs.KeySep, key, prefs.KeySep, win.debuggerIsOpen())
 		n, err := fmt.Fprint(f, s)
 		if err != nil {
 			return curated.Errorf("manager state: %v", err)
@@ -94,7 +94,7 @@ func (wm *manager) saveManagerState() (rerr error) {
 			continue
 		}
 
-		s := fmt.Sprintf("%s%s%s%s%v\n", emulation.ModePlay.String(), prefs.KeySep, key, prefs.KeySep, win.playmodeIsOpen())
+		s := fmt.Sprintf("%s%s%s%s%v\n", govern.ModePlay.String(), prefs.KeySep, key, prefs.KeySep, win.playmodeIsOpen())
 		n, err := fmt.Fprint(f, s)
 		if err != nil {
 			return curated.Errorf("manager state: %v", err)
@@ -159,13 +159,13 @@ func (wm *manager) loadManagerState() (rerr error) {
 		k := spt[1]
 		v := spt[2]
 
-		if m == emulation.ModeDebugger.String() {
+		if m == govern.ModeDebugger.String() {
 			if w, ok := wm.debuggerWindows[k]; ok {
 				w.debuggerSetOpen(strings.ToUpper(v) == "TRUE")
 			}
 		}
 
-		if m == emulation.ModePlay.String() {
+		if m == govern.ModePlay.String() {
 			if w, ok := wm.playmodeWindows[k]; ok {
 				w.playmodeSetOpen(strings.ToUpper(v) == "TRUE")
 			}

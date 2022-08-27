@@ -25,8 +25,8 @@ import (
 
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/database"
+	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/digest"
-	"github.com/jetsetilly/gopher2600/emulation"
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports"
 	"github.com/jetsetilly/gopher2600/hardware/television"
@@ -150,13 +150,13 @@ func (reg *PlaybackRegression) regress(newRegression bool, output io.Writer, msg
 	tck := time.NewTicker(dur)
 
 	// run emulation
-	err = vcs.Run(func() (emulation.State, error) {
+	err = vcs.Run(func() (govern.State, error) {
 		hasEnded, err := plb.EndFrame()
 		if err != nil {
-			return emulation.Ending, curated.Errorf("playback: %v", err)
+			return govern.Ending, curated.Errorf("playback: %v", err)
 		}
 		if hasEnded {
-			return emulation.Ending, curated.Errorf("playback: ended unexpectedly")
+			return govern.Ending, curated.Errorf("playback: ended unexpectedly")
 		}
 
 		// display progress meter every 1 second
@@ -165,7 +165,7 @@ func (reg *PlaybackRegression) regress(newRegression bool, output io.Writer, msg
 			output.Write([]byte(fmt.Sprintf("\r%s [%s]", msg, plb)))
 		default:
 		}
-		return emulation.Running, nil
+		return govern.Running, nil
 	})
 
 	if err != nil {

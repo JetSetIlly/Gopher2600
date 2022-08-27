@@ -24,7 +24,7 @@ import (
 
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/curated"
-	"github.com/jetsetilly/gopher2600/emulation"
+	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/instance"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
@@ -193,17 +193,17 @@ func (thmb *Thumbnailer) CreateFromLoader(cartload cartridgeloader.Loader, numFr
 
 		tgtFrame := thmb.vcs.TV.GetCoords().Frame + numFrames
 
-		err = thmb.vcs.Run(func() (emulation.State, error) {
+		err = thmb.vcs.Run(func() (govern.State, error) {
 			select {
 			case <-thmb.emulationQuit:
-				return emulation.Ending, nil
+				return govern.Ending, nil
 			default:
 			}
 
 			if numFrames != UndefinedNumFrames && thmb.vcs.TV.GetCoords().Frame >= tgtFrame {
-				return emulation.Ending, nil
+				return govern.Ending, nil
 			}
-			return emulation.Running, nil
+			return govern.Running, nil
 		})
 		if err != nil {
 			logger.Logf("thumbnailer", err.Error())
@@ -235,17 +235,17 @@ func (thmb *Thumbnailer) SingleFrameFromRewindState(state *rewind.State) {
 	// run until target frame has been generated
 	tgtFrame := thmb.vcs.TV.GetCoords().Frame + 1
 
-	err := thmb.vcs.Run(func() (emulation.State, error) {
+	err := thmb.vcs.Run(func() (govern.State, error) {
 		select {
 		case <-thmb.emulationQuit:
-			return emulation.Ending, nil
+			return govern.Ending, nil
 		default:
 		}
 
 		if thmb.vcs.TV.GetCoords().Frame >= tgtFrame {
-			return emulation.Ending, nil
+			return govern.Ending, nil
 		}
-		return emulation.Running, nil
+		return govern.Running, nil
 	})
 
 	if err != nil {
