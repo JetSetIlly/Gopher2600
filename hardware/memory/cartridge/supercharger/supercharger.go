@@ -24,6 +24,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/instance"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
+	"github.com/jetsetilly/gopher2600/notifications"
 )
 
 // supercharger has 6k of RAM in total.
@@ -52,7 +53,7 @@ type Supercharger struct {
 	bankSize int
 	bios     []uint8
 
-	vcsHook cartridgeloader.VCSHook
+	notificationHook notifications.NotificationHook
 
 	// rewindable state
 	state *state
@@ -62,11 +63,11 @@ type Supercharger struct {
 // Supercharger type.
 func NewSupercharger(instance *instance.Instance, cartload cartridgeloader.Loader) (mapper.CartMapper, error) {
 	cart := &Supercharger{
-		instance:  instance,
-		mappingID: "AR",
-		bankSize:  2048,
-		state:     newState(),
-		vcsHook:   cartload.VCSHook,
+		instance:         instance,
+		mappingID:        "AR",
+		bankSize:         2048,
+		state:            newState(),
+		notificationHook: cartload.NotificationHook,
 	}
 
 	var err error
@@ -147,7 +148,7 @@ func (cart *Supercharger) Read(addr uint16, passive bool) (uint8, error) {
 		// sustained until the BIOS is "touched" as described below
 		if !cart.state.isLoading {
 			cart.state.isLoading = true
-			cart.vcsHook(cart, mapper.EventSuperchargerLoadStarted)
+			cart.notificationHook(cart, notifications.NotifySuperchargerLoadStarted)
 		}
 
 		// call load() whenever address is touched, although do not allow
@@ -183,15 +184,15 @@ func (cart *Supercharger) Read(addr uint16, passive bool) (uint8, error) {
 
 	if bios {
 		if cart.state.registers.ROMpower {
-			// trigger vcsHook() function whenever BIOS address $fa1a
+			// trigger notificationHook() function whenever BIOS address $fa1a
 			// (specifically) is touched. note that this method means that the
-			// vcsHook() function will be called whatever the context the
+			// notificationHook() function will be called whatever the context the
 			// address is read and not just when the PC is at the address.
 			if addr == 0x0a1a {
 				// end tape is loading state
 				cart.state.isLoading = false
 
-				err := cart.vcsHook(cart, mapper.EventSuperchargerSoundloadEnded)
+				err := cart.notificationHook(cart, notifications.NotifySuperchargerSoundloadEnded)
 				if err != nil {
 					return 0, curated.Errorf("supercharger: %v", err)
 				}

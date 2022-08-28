@@ -22,8 +22,8 @@ import (
 	"github.com/jetsetilly/gopher2600/debugger"
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/gui/fonts"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
+	"github.com/jetsetilly/gopher2600/notifications"
 )
 
 const (
@@ -121,7 +121,7 @@ func (pn *peripheralNotification) draw(win *playScr) {
 type emulationEventNotification struct {
 	emulation    *debugger.Debugger
 	open         bool
-	currentEvent govern.Event
+	currentEvent notifications.Notify
 	frames       int
 
 	// audio mute is handled differently to other events. we want the icon for
@@ -131,18 +131,18 @@ type emulationEventNotification struct {
 	mute bool
 }
 
-func (ee *emulationEventNotification) set(event govern.Event) {
+func (ee *emulationEventNotification) set(event notifications.Notify) {
 	ee.currentEvent = event
 	ee.open = true
 	ee.frames = notificationDurationEvent
 	switch event {
-	case govern.EventRun:
+	case notifications.NotifyRun:
 		ee.frames = notificationDurationEventRun
-	case govern.EventScreenshot:
+	case notifications.NotifyScreenshot:
 		ee.frames = notificationDurationScreenshot
-	case govern.EventMute:
+	case notifications.NotifyMute:
 		ee.mute = true
-	case govern.EventUnmute:
+	case notifications.NotifyUnmute:
 		ee.mute = false
 	}
 }
@@ -157,15 +157,15 @@ func (ee *emulationEventNotification) tick() {
 	if ee.frames == 0 {
 		// if emulation is paused then force the current event to EventPause
 		if ee.emulation.State() == govern.Paused {
-			ee.currentEvent = govern.EventPause
+			ee.currentEvent = notifications.NotifyPause
 		}
 
 		// special handling of open when current event is EventPause or if mute
 		// is enabled
-		if ee.currentEvent != govern.EventPause {
+		if ee.currentEvent != notifications.NotifyPause {
 			if ee.mute {
 				ee.open = true
-				ee.currentEvent = govern.EventMute
+				ee.currentEvent = notifications.NotifyMute
 			} else {
 				ee.open = false
 			}
@@ -197,23 +197,23 @@ func (ee *emulationEventNotification) draw(win *playScr, hosted bool) {
 	}
 
 	switch ee.currentEvent {
-	case govern.EventInitialising:
+	case notifications.NotifyInitialising:
 		imgui.Text("")
-	case govern.EventPause:
+	case notifications.NotifyPause:
 		imgui.Text(string(fonts.EmulationPause))
-	case govern.EventRun:
+	case notifications.NotifyRun:
 		imgui.Text(string(fonts.EmulationRun))
-	case govern.EventRewindBack:
+	case notifications.NotifyRewindBack:
 		imgui.Text(string(fonts.EmulationRewindBack))
-	case govern.EventRewindFoward:
+	case notifications.NotifyRewindFoward:
 		imgui.Text(string(fonts.EmulationRewindForward))
-	case govern.EventRewindAtStart:
+	case notifications.NotifyRewindAtStart:
 		imgui.Text(string(fonts.EmulationRewindAtStart))
-	case govern.EventRewindAtEnd:
+	case notifications.NotifyRewindAtEnd:
 		imgui.Text(string(fonts.EmulationRewindAtEnd))
-	case govern.EventScreenshot:
+	case notifications.NotifyScreenshot:
 		imgui.Text(string(fonts.Camera))
-	case govern.EventMute:
+	case notifications.NotifyMute:
 		if hosted || win.img.prefs.audioMuteNotification.Get().(bool) {
 			imgui.Text(string(fonts.AudioMute))
 		}
@@ -223,21 +223,21 @@ func (ee *emulationEventNotification) draw(win *playScr, hosted bool) {
 // cartridgeEventNotification is used to draw an indicator on the screen for cartridge
 // events defined in the mapper package.
 type cartridgeEventNotification struct {
-	open         bool
-	currentEvent mapper.Event
-	frames       int
+	open   bool
+	notice notifications.Notify
+	frames int
 }
 
-func (ce *cartridgeEventNotification) set(event mapper.Event) {
-	ce.currentEvent = event
-	switch ce.currentEvent {
-	case mapper.EventSuperchargerSoundloadStarted:
+func (ce *cartridgeEventNotification) set(event notifications.Notify) {
+	ce.notice = event
+	switch ce.notice {
+	case notifications.NotifySuperchargerSoundloadStarted:
 		ce.open = true
-	case mapper.EventSuperchargerSoundloadEnded:
+	case notifications.NotifySuperchargerSoundloadEnded:
 		ce.frames = notificationDurationCartridge
-	case mapper.EventSuperchargerSoundloadRewind:
+	case notifications.NotifySuperchargerSoundloadRewind:
 		ce.frames = notificationDurationCartridge
-	case mapper.EventPlusROMNetwork:
+	case notifications.NotifyPlusROMNetwork:
 		ce.open = true
 		ce.frames = notificationDurationCartridge
 	}
@@ -251,12 +251,12 @@ func (ce *cartridgeEventNotification) tick() {
 	ce.frames--
 
 	if ce.frames == 0 {
-		switch ce.currentEvent {
-		case mapper.EventSuperchargerSoundloadEnded:
+		switch ce.notice {
+		case notifications.NotifySuperchargerSoundloadEnded:
 			ce.open = false
-		case mapper.EventSuperchargerSoundloadRewind:
-			ce.currentEvent = mapper.EventSuperchargerSoundloadStarted
-		case mapper.EventPlusROMNetwork:
+		case notifications.NotifySuperchargerSoundloadRewind:
+			ce.notice = notifications.NotifySuperchargerSoundloadStarted
+		case notifications.NotifyPlusROMNetwork:
 			ce.open = false
 		}
 	}
@@ -277,20 +277,20 @@ func (ce *cartridgeEventNotification) draw(win *playScr) {
 	plusrom := false
 	supercharger := false
 
-	switch win.cartridgeEvent.currentEvent {
-	case mapper.EventSuperchargerSoundloadStarted:
+	switch win.cartridgeNotice.notice {
+	case notifications.NotifySuperchargerSoundloadStarted:
 		supercharger = true
 		icon = fmt.Sprintf("%c", fonts.Tape)
 		subIcon = fmt.Sprintf("%c", fonts.TapePlay)
-	case mapper.EventSuperchargerSoundloadEnded:
+	case notifications.NotifySuperchargerSoundloadEnded:
 		supercharger = true
 		icon = fmt.Sprintf("%c", fonts.Tape)
 		subIcon = fmt.Sprintf("%c", fonts.TapeStop)
-	case mapper.EventSuperchargerSoundloadRewind:
+	case notifications.NotifySuperchargerSoundloadRewind:
 		supercharger = true
 		icon = fmt.Sprintf("%c", fonts.Tape)
 		subIcon = fmt.Sprintf("%c", fonts.TapeRewind)
-	case mapper.EventPlusROMNetwork:
+	case notifications.NotifyPlusROMNetwork:
 		plusrom = true
 		icon = fmt.Sprintf("%c", fonts.Wifi)
 	default:

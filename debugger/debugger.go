@@ -46,6 +46,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/hardware/television/coords"
 	"github.com/jetsetilly/gopher2600/logger"
+	"github.com/jetsetilly/gopher2600/notifications"
 	"github.com/jetsetilly/gopher2600/patch"
 	"github.com/jetsetilly/gopher2600/prefs"
 	"github.com/jetsetilly/gopher2600/recorder"
@@ -536,12 +537,12 @@ func (dbg *Debugger) setStateQuiet(state govern.State, quiet bool) {
 	if !quiet && dbg.Mode() == govern.ModePlay {
 		switch state {
 		case govern.Initialising:
-			dbg.gui.SetFeature(gui.ReqEmulationEvent, govern.EventInitialising)
+			dbg.gui.SetFeature(gui.ReqEmulationNotice, notifications.NotifyInitialising)
 		case govern.Paused:
-			dbg.gui.SetFeature(gui.ReqEmulationEvent, govern.EventPause)
+			dbg.gui.SetFeature(gui.ReqEmulationNotice, notifications.NotifyPause)
 		case govern.Running:
 			if prevState > govern.Initialising {
-				dbg.gui.SetFeature(gui.ReqEmulationEvent, govern.EventRun)
+				dbg.gui.SetFeature(gui.ReqEmulationNotice, notifications.NotifyRun)
 			}
 		}
 	}
@@ -973,17 +974,17 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) 
 	}
 	dbg.loader = &cartload
 
-	// set VCSHook for specific cartridge formats
-	cartload.VCSHook = func(cart mapper.CartMapper, event mapper.Event, args ...interface{}) error {
+	// set NotificationHook for specific cartridge formats
+	cartload.NotificationHook = func(cart mapper.CartMapper, event notifications.Notify, args ...interface{}) error {
 		if _, ok := cart.(*supercharger.Supercharger); ok {
 			switch event {
-			case mapper.EventSuperchargerLoadStarted:
+			case notifications.NotifySuperchargerLoadStarted:
 				if *dbg.opts.Multiload >= 0 {
 					logger.Logf("debugger", "forcing supercharger multiload (%#02x)", uint8(*dbg.opts.Multiload))
 					dbg.vcs.Mem.Poke(supercharger.MutliloadByteAddress, uint8(*dbg.opts.Multiload))
 				}
 
-			case mapper.EventSuperchargerFastloadEnded:
+			case notifications.NotifySuperchargerFastloadEnded:
 				// the supercharger ROM will eventually start execution from the PC
 				// address given in the supercharger file
 
@@ -1011,13 +1012,13 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) 
 				if err != nil {
 					return err
 				}
-			case mapper.EventSuperchargerSoundloadStarted:
-				err := dbg.gui.SetFeature(gui.ReqCartridgeEvent, mapper.EventSuperchargerSoundloadStarted)
+			case notifications.NotifySuperchargerSoundloadStarted:
+				err := dbg.gui.SetFeature(gui.ReqCartridgeNotice, notifications.NotifySuperchargerSoundloadStarted)
 				if err != nil {
 					return err
 				}
-			case mapper.EventSuperchargerSoundloadEnded:
-				err := dbg.gui.SetFeature(gui.ReqCartridgeEvent, mapper.EventSuperchargerSoundloadEnded)
+			case notifications.NotifySuperchargerSoundloadEnded:
+				err := dbg.gui.SetFeature(gui.ReqCartridgeNotice, notifications.NotifySuperchargerSoundloadEnded)
 				if err != nil {
 					return err
 				}
@@ -1031,8 +1032,8 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) 
 				}
 
 				return dbg.vcs.TV.Reset(true)
-			case mapper.EventSuperchargerSoundloadRewind:
-				err := dbg.gui.SetFeature(gui.ReqCartridgeEvent, mapper.EventSuperchargerSoundloadRewind)
+			case notifications.NotifySuperchargerSoundloadRewind:
+				err := dbg.gui.SetFeature(gui.ReqCartridgeNotice, notifications.NotifySuperchargerSoundloadRewind)
 				if err != nil {
 					return err
 				}
@@ -1041,17 +1042,17 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) 
 			}
 		} else if _, ok := cart.(*plusrom.PlusROM); ok {
 			switch event {
-			case mapper.EventPlusROMInserted:
+			case notifications.NotifyPlusROMInserted:
 				if dbg.vcs.Instance.Prefs.PlusROM.NewInstallation {
-					err := dbg.gui.SetFeature(gui.ReqPlusROMFirstInstallation)
+					err := dbg.gui.SetFeature(gui.ReqCartridgeNotice, notifications.NotifyPlusROMNewInstallation)
 					if err != nil {
 						if !curated.Is(err, gui.UnsupportedGuiFeature) {
 							return curated.Errorf("debugger: %v", err)
 						}
 					}
 				}
-			case mapper.EventPlusROMNetwork:
-				err := dbg.gui.SetFeature(gui.ReqCartridgeEvent, mapper.EventPlusROMNetwork)
+			case notifications.NotifyPlusROMNetwork:
+				err := dbg.gui.SetFeature(gui.ReqCartridgeNotice, notifications.NotifyPlusROMNetwork)
 				if err != nil {
 					return err
 				}
@@ -1229,7 +1230,7 @@ func (dbg *Debugger) hotload() (e error) {
 		if dbg.runUntilHalt && e == nil {
 			dbg.setState(govern.Running)
 		} else {
-			dbg.gui.SetFeature(gui.ReqEmulationEvent, govern.EventPause)
+			dbg.gui.SetFeature(gui.ReqEmulationNotice, notifications.NotifyPause)
 		}
 	}()
 
@@ -1314,7 +1315,7 @@ func (dbg *Debugger) Plugged(port plugging.PortID, peripheral plugging.Periphera
 	if dbg.vcs.Mem.Cart.IsEjected() {
 		return
 	}
-	dbg.gui.SetFeature(gui.ReqControllerChange, port, peripheral)
+	dbg.gui.SetFeature(gui.ReqPeripheralChange, port, peripheral)
 }
 
 // PushRawEvent onto the event queue.

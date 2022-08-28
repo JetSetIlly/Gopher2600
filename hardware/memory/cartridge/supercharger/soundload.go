@@ -22,6 +22,7 @@ import (
 	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/logger"
+	"github.com/jetsetilly/gopher2600/notifications"
 )
 
 // Brief explanation of how the "tape" works:
@@ -140,7 +141,7 @@ func (tap *SoundLoad) load() (uint8, error) {
 			tap.playDelay++
 			return 0x00, nil
 		}
-		tap.cart.vcsHook(tap.cart, mapper.EventSuperchargerSoundloadStarted)
+		tap.cart.notificationHook(tap.cart, notifications.NotifySuperchargerSoundloadStarted)
 		tap.playing = true
 		tap.playDelay = 0
 		logger.Log(soundloadLogTag, "tape playing")
@@ -185,7 +186,7 @@ func (tap *SoundLoad) step() {
 // Rewind implements the mapper.CartTapeBus interface.
 func (tap *SoundLoad) Rewind() {
 	// rewinding happens instantaneously
-	tap.cart.vcsHook(tap.cart, mapper.EventSuperchargerSoundloadRewind)
+	tap.cart.notificationHook(tap.cart, notifications.NotifySuperchargerSoundloadRewind)
 	tap.idx = 0
 	logger.Log(soundloadLogTag, "tape rewound")
 	tap.stepLimiter = 0

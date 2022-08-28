@@ -25,6 +25,7 @@ import (
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/hardware/television/coords"
+	"github.com/jetsetilly/gopher2600/notifications"
 )
 
 // RewindByAmount moves forwards or backwards by specified frames. Negative
@@ -40,13 +41,13 @@ func (dbg *Debugger) RewindByAmount(amount int) bool {
 
 		if amount < 0 && coords.Frame-1 <= tl.AvailableStart {
 			dbg.setStateQuiet(govern.Paused, true)
-			dbg.gui.SetFeature(gui.ReqEmulationEvent, govern.EventRewindAtStart)
+			dbg.gui.SetFeature(gui.ReqEmulationNotice, notifications.NotifyRewindAtStart)
 			return false
 		}
 
 		if amount > 0 && coords.Frame+1 >= tl.AvailableEnd {
 			dbg.setStateQuiet(govern.Paused, true)
-			dbg.gui.SetFeature(gui.ReqEmulationEvent, govern.EventRewindAtEnd)
+			dbg.gui.SetFeature(gui.ReqEmulationNotice, notifications.NotifyRewindAtEnd)
 			return false
 		}
 
@@ -55,9 +56,9 @@ func (dbg *Debugger) RewindByAmount(amount int) bool {
 		dbg.setStateQuiet(govern.Paused, true)
 
 		if amount < 0 {
-			dbg.gui.SetFeature(gui.ReqEmulationEvent, govern.EventRewindBack)
+			dbg.gui.SetFeature(gui.ReqEmulationNotice, notifications.NotifyRewindBack)
 		} else {
-			dbg.gui.SetFeature(gui.ReqEmulationEvent, govern.EventRewindFoward)
+			dbg.gui.SetFeature(gui.ReqEmulationNotice, notifications.NotifyRewindFoward)
 		}
 
 		return true

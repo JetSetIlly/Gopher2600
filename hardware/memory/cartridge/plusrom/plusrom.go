@@ -18,11 +18,11 @@ package plusrom
 import (
 	"strings"
 
-	"github.com/jetsetilly/gopher2600/cartridgeloader"
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/instance"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/logger"
+	"github.com/jetsetilly/gopher2600/notifications"
 )
 
 // Sentinal error indicating a specific problem with the attempt to load the
@@ -33,7 +33,7 @@ const NotAPlusROM = "not a plus rom: %s"
 type PlusROM struct {
 	instance *instance.Instance
 
-	vcsHook cartridgeloader.VCSHook
+	notificationHook notifications.NotificationHook
 
 	net   *network
 	state *state
@@ -59,9 +59,9 @@ func (s *state) Plumb() {
 	s.child.Plumb()
 }
 
-func NewPlusROM(instance *instance.Instance, child mapper.CartMapper, vcsHook cartridgeloader.VCSHook) (mapper.CartMapper, error) {
+func NewPlusROM(instance *instance.Instance, child mapper.CartMapper, notificationHook notifications.NotificationHook) (mapper.CartMapper, error) {
 	cart := &PlusROM{instance: instance}
-	cart.vcsHook = vcsHook
+	cart.notificationHook = notificationHook
 	cart.state = &state{}
 	cart.state.child = child
 
@@ -136,9 +136,9 @@ func NewPlusROM(instance *instance.Instance, child mapper.CartMapper, vcsHook ca
 	// log success
 	logger.Logf("plusrom", "will connect to %s", cart.net.ai.String())
 
-	// call vcsHook function if one is available
-	if cart.vcsHook != nil {
-		err := cart.vcsHook(cart, mapper.EventPlusROMInserted)
+	// call notificationHook function if one is available
+	if cart.notificationHook != nil {
+		err := cart.notificationHook(cart, notifications.NotifyPlusROMInserted)
 		if err != nil {
 			return nil, curated.Errorf("plusrom %v:", err)
 		}
@@ -206,7 +206,7 @@ func (cart *PlusROM) Write(addr uint16, data uint8, active bool, poke bool) erro
 		// 1FF0 is for writing a byte to the send buffer (max 256 bytes)
 		cart.rewindBoundary = true
 		cart.net.send(data, false)
-		err := cart.vcsHook(cart, mapper.EventPlusROMNetwork)
+		err := cart.notificationHook(cart, notifications.NotifyPlusROMNetwork)
 		if err != nil {
 			return curated.Errorf("plusrom %v:", err)
 		}
@@ -217,7 +217,7 @@ func (cart *PlusROM) Write(addr uint16, data uint8, active bool, poke bool) erro
 		// to the back end API
 		cart.rewindBoundary = true
 		cart.net.send(data, true)
-		err := cart.vcsHook(cart, mapper.EventPlusROMNetwork)
+		err := cart.notificationHook(cart, notifications.NotifyPlusROMNetwork)
 		if err != nil {
 			return curated.Errorf("plusrom %v:", err)
 		}

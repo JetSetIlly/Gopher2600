@@ -29,6 +29,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 	"github.com/jetsetilly/gopher2600/logger"
+	"github.com/jetsetilly/gopher2600/notifications"
 	"github.com/jetsetilly/gopher2600/resources/fs"
 )
 
@@ -95,18 +96,8 @@ type Loader struct {
 	//
 	// if the cartridge mapper needs to communicate more information then the
 	// action string should be used
-	VCSHook VCSHook
+	NotificationHook notifications.NotificationHook
 }
-
-// VCSHook function signature. Used for direct communication between a
-// cartridge mapper and the core emulation. Not often used but necessary for
-// (currently):
-//
-//		. Supercharger (tape start/end, fastload)
-//		. PlusROM (new installation)
-//
-// The emulation must understand how to interpret the event.
-type VCSHook func(cart mapper.CartMapper, event mapper.Event, args ...interface{}) error
 
 // NewLoader is the preferred method of initialisation for the Loader type.
 //
@@ -149,7 +140,7 @@ func NewLoader(filename string, mapping string) (Loader, error) {
 		Filename:         filename,
 		Mapping:          mapping,
 		RequestedMapping: mapping,
-		VCSHook: func(cart mapper.CartMapper, event mapper.Event, args ...interface{}) error {
+		NotificationHook: func(cart mapper.CartMapper, notice notifications.Notify, args ...interface{}) error {
 			return nil
 		},
 	}
@@ -282,7 +273,7 @@ func NewLoaderFromEmbed(name string, data []byte, mapping string) (Loader, error
 		Data:             &data,
 		embedded:         true,
 		Hash:             fmt.Sprintf("%x", sha1.Sum(data)),
-		VCSHook: func(cart mapper.CartMapper, event mapper.Event, args ...interface{}) error {
+		NotificationHook: func(cart mapper.CartMapper, notice notifications.Notify, args ...interface{}) error {
 			return nil
 		},
 	}, nil

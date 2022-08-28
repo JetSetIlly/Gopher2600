@@ -71,11 +71,11 @@ type playScr struct {
 	peripheralLeft  peripheralNotification
 	peripheralRight peripheralNotification
 
-	// emulation events notifications
-	emulationEvent emulationEventNotification
+	// emulation notifications
+	emulationNotice emulationEventNotification
 
-	// cartridge events notifications
-	cartridgeEvent cartridgeEventNotification
+	// cartridge notifications
+	cartridgeNotice cartridgeEventNotification
 }
 
 func newPlayScr(img *SdlImgui) *playScr {
@@ -87,7 +87,7 @@ func newPlayScr(img *SdlImgui) *playScr {
 		peripheralRight: peripheralNotification{
 			rightAlign: true,
 		},
-		emulationEvent: emulationEventNotification{
+		emulationNotice: emulationEventNotification{
 			emulation: img.dbg,
 		},
 	}
@@ -133,10 +133,10 @@ func (win *playScr) draw() {
 
 	win.peripheralLeft.draw(win)
 	win.peripheralRight.draw(win)
-	win.cartridgeEvent.draw(win)
+	win.cartridgeNotice.draw(win)
 
 	if !win.drawFPS() {
-		win.emulationEvent.draw(win, false)
+		win.emulationNotice.draw(win, false)
 	}
 }
 
@@ -207,7 +207,7 @@ func (win *playScr) drawFPS() bool {
 	imgui.PopStyleColorV(2)
 
 	imgui.Spacing()
-	win.emulationEvent.draw(win, true)
+	win.emulationNotice.draw(win, true)
 
 	imgui.End()
 

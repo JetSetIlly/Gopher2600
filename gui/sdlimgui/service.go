@@ -21,6 +21,7 @@ import (
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
 	"github.com/jetsetilly/gopher2600/logger"
+	"github.com/jetsetilly/gopher2600/notifications"
 	"github.com/jetsetilly/gopher2600/userinput"
 
 	"github.com/inkyblackness/imgui-go/v4"
@@ -413,7 +414,7 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 				img.glsl.shaders[playscrShaderID].(*playscrShader).scheduleScreenshot(modeSingle)
 			}
 
-			img.playScr.emulationEvent.set(govern.EventScreenshot)
+			img.playScr.emulationNotice.set(notifications.NotifyScreenshot)
 
 		case sdl.SCANCODE_F14:
 			fallthrough

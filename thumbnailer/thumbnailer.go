@@ -34,6 +34,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 	"github.com/jetsetilly/gopher2600/logger"
+	"github.com/jetsetilly/gopher2600/notifications"
 	"github.com/jetsetilly/gopher2600/rewind"
 )
 
@@ -147,10 +148,10 @@ func (thmb *Thumbnailer) CreateFromLoader(cartload cartridgeloader.Loader, numFr
 	thmb.wait()
 
 	// loading hook support required for supercharger
-	cartload.VCSHook = func(cart mapper.CartMapper, event mapper.Event, args ...interface{}) error {
+	cartload.NotificationHook = func(cart mapper.CartMapper, event notifications.Notify, args ...interface{}) error {
 		if _, ok := cart.(*supercharger.Supercharger); ok {
 			switch event {
-			case mapper.EventSuperchargerFastloadEnded:
+			case notifications.NotifySuperchargerFastloadEnded:
 				// the supercharger ROM will eventually start execution from the PC
 				// address given in the supercharger file
 
@@ -168,7 +169,7 @@ func (thmb *Thumbnailer) CreateFromLoader(cartload cartridgeloader.Loader, numFr
 				if err != nil {
 					return err
 				}
-			case mapper.EventSuperchargerSoundloadEnded:
+			case notifications.NotifySuperchargerSoundloadEnded:
 				return thmb.vcs.TV.Reset(true)
 			}
 		}

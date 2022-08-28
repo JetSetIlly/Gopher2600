@@ -29,6 +29,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware"
 	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/logger"
+	"github.com/jetsetilly/gopher2600/notifications"
 	"github.com/jetsetilly/gopher2600/prefs"
 	"github.com/jetsetilly/gopher2600/reflection"
 	"github.com/jetsetilly/gopher2600/resources"
@@ -372,9 +373,9 @@ func (img *SdlImgui) setAudioMute() {
 	if img.isPlaymode() {
 		mute = img.prefs.audioMutePlaymode.Get().(bool)
 		if mute {
-			img.playScr.emulationEvent.set(govern.EventMute)
+			img.playScr.emulationNotice.set(notifications.NotifyMute)
 		} else {
-			img.playScr.emulationEvent.set(govern.EventUnmute)
+			img.playScr.emulationNotice.set(notifications.NotifyUnmute)
 		}
 		img.vcs.RIOT.Ports.MutePeripherals(mute)
 	} else {

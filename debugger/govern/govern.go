@@ -15,7 +15,7 @@
 
 package govern
 
-// Mode inidicates the broad features of the emulation. Currently defined to be
+// Mode inidicates the broad condition of the emulation. Currently defined to be
 // debugger and play.
 type Mode int
 
@@ -66,25 +66,6 @@ const (
 	Rewinding
 	Running
 	Ending
-)
-
-// Event is something that happens to change the state of the emulation. For
-// example, the user presses the pause while playing  game. This will cause the
-// GUI to send an EventPause event to the emulation.
-type Event int
-
-// List of defined events.
-const (
-	EventInitialising Event = iota
-	EventPause
-	EventRun
-	EventRewindBack
-	EventRewindFoward
-	EventRewindAtStart
-	EventRewindAtEnd
-	EventScreenshot
-	EventMute
-	EventUnmute
 )
 
 // FeatureReq is used to request the setting of an emulation attribute

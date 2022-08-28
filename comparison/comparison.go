@@ -33,6 +33,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/hardware/television/signal"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
+	"github.com/jetsetilly/gopher2600/notifications"
 )
 
 // Comparison type runs a parallel emulation with the intention of comparing
@@ -146,10 +147,10 @@ func (cmp *Comparison) CreateFromLoader(cartload cartridgeloader.Loader) error {
 	}
 
 	// loading hook support required for supercharger
-	cartload.VCSHook = func(cart mapper.CartMapper, event mapper.Event, args ...interface{}) error {
+	cartload.NotificationHook = func(cart mapper.CartMapper, event notifications.Notify, args ...interface{}) error {
 		if _, ok := cart.(*supercharger.Supercharger); ok {
 			switch event {
-			case mapper.EventSuperchargerFastloadEnded:
+			case notifications.NotifySuperchargerFastloadEnded:
 				// the supercharger ROM will eventually start execution from the PC
 				// address given in the supercharger file
 
@@ -167,7 +168,7 @@ func (cmp *Comparison) CreateFromLoader(cartload cartridgeloader.Loader) error {
 				if err != nil {
 					return err
 				}
-			case mapper.EventSuperchargerSoundloadEnded:
+			case notifications.NotifySuperchargerSoundloadEnded:
 				return cmp.VCS.TV.Reset(true)
 			}
 		}

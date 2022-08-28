@@ -14,10 +14,5 @@
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
 // Package govern defines the types that define the current condition of the
-// emulation. The three conditions are Mode, State and Event.
-//
-// Also defined is the method of requesting a state change from the GUI. Most
-// often state change comes from the emulation but in some intances it is
-// necessary to instruct the emulation to change mode or state - for example,
-// from the GUI as a result of the a user request.
+// emulation.
 package govern

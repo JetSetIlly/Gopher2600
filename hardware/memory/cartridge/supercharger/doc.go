@@ -21,8 +21,7 @@
 // MP3 files) or from a "fastload" file.
 //
 // Tape loading "events" are handled through the cartridgeloader packages
-// VCSHook mechanism. See the mapper.Event type for list of Supercharger
-// events.
+// NotificationHook mechanism. See the notification.Notify type.
 //
 // When loading from a sound file, Supercharger events can be ignored if so
 // desired but for fastload files, the emulator needs to help the Supercharger
