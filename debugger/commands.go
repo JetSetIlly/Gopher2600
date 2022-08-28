@@ -33,7 +33,6 @@ import (
 	"github.com/jetsetilly/gopher2600/debugger/terminal/commandline"
 	"github.com/jetsetilly/gopher2600/disassembly"
 	"github.com/jetsetilly/gopher2600/disassembly/symbols"
-	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/registers"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/plusrom"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
@@ -1256,26 +1255,6 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 
 	case cmdPlayfield:
 		dbg.printLine(terminal.StyleInstrument, dbg.vcs.TIA.Video.Playfield.String())
-
-	case cmdDisplay:
-		var err error
-
-		action, _ := tokens.Get()
-		action = strings.ToUpper(action)
-		switch action {
-		case "ON":
-			err = dbg.gui.SetFeature(gui.ReqSetVisibility, true)
-
-		case "OFF":
-			err = dbg.gui.SetFeature(gui.ReqSetVisibility, false)
-		}
-
-		if err != nil {
-			if curated.Is(err, gui.UnsupportedGuiFeature) {
-				return curated.Errorf("display does not support feature %s", action)
-			}
-			return err
-		}
 
 	case cmdPlusROM:
 		plusrom, ok := dbg.vcs.Mem.Cart.GetContainer().(*plusrom.PlusROM)

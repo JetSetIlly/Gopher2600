@@ -52,7 +52,6 @@ const (
 	cmdMissile   = "MISSILE"
 	cmdBall      = "BALL"
 	cmdPlayfield = "PLAYFIELD"
-	cmdDisplay   = "DISPLAY"
 
 	cmdPlusROM = "PLUSROM"
 	cmdCoProc  = "COPROC"
@@ -115,7 +114,6 @@ var commandTemplate = []string{
 	cmdMissile + " (0|1)",
 	cmdBall,
 	cmdPlayfield,
-	cmdDisplay + " [ON|OFF]",
 
 	// peripherals (components that might not be present)
 	cmdPlusROM + " (NICK [%<name>S]|ID [%<id>S]|HOST [%<host>S]|PATH [%<path>S])",

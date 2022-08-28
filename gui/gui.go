@@ -48,10 +48,6 @@ const (
 	// idea to have it set.
 	ReqMonitorSync FeatureReq = "ReqMonitorSync" // bool
 
-	// whether the gui is visible or not. results in an error if requested in
-	// playmode.
-	ReqSetVisibility FeatureReq = "ReqSetVisibility" // bool
-
 	// put gui output into full-screen mode (ie. no window border and content
 	// the size of the monitor).
 	ReqFullScreen FeatureReq = "ReqFullScreen" // bool

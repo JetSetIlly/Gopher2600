@@ -71,16 +71,6 @@ func (img *SdlImgui) serviceSetFeature(request featureRequest) {
 			img.screen.crit.section.Unlock()
 		}
 
-	case gui.ReqSetVisibility:
-		err = argLen(request.args, 1)
-		if err == nil {
-			if img.isPlaymode() {
-				err = curated.Errorf("visibility not supported in playmode")
-			} else {
-				img.wm.dbgScr.debuggerSetOpen(request.args[0].(bool))
-			}
-		}
-
 	case gui.ReqFullScreen:
 		err = argLen(request.args, 1)
 		if err == nil {
