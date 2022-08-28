@@ -25,6 +25,7 @@ import (
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/hardware/television/coords"
+	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/notifications"
 )
 
@@ -41,13 +42,19 @@ func (dbg *Debugger) RewindByAmount(amount int) bool {
 
 		if amount < 0 && coords.Frame-1 <= tl.AvailableStart {
 			dbg.setStateQuiet(govern.Paused, true)
-			dbg.gui.SetFeature(gui.ReqEmulationNotice, notifications.NotifyRewindAtStart)
+			err := dbg.gui.SetFeature(gui.ReqEmulationNotice, notifications.NotifyRewindAtStart)
+			if err != nil {
+				logger.Log("debugger", err.Error())
+			}
 			return false
 		}
 
 		if amount > 0 && coords.Frame+1 >= tl.AvailableEnd {
 			dbg.setStateQuiet(govern.Paused, true)
-			dbg.gui.SetFeature(gui.ReqEmulationNotice, notifications.NotifyRewindAtEnd)
+			err := dbg.gui.SetFeature(gui.ReqEmulationNotice, notifications.NotifyRewindAtEnd)
+			if err != nil {
+				logger.Log("debugger", err.Error())
+			}
 			return false
 		}
 
@@ -55,10 +62,14 @@ func (dbg *Debugger) RewindByAmount(amount int) bool {
 		dbg.Rewind.GotoFrame(coords.Frame + amount)
 		dbg.setStateQuiet(govern.Paused, true)
 
+		var err error
 		if amount < 0 {
-			dbg.gui.SetFeature(gui.ReqEmulationNotice, notifications.NotifyRewindBack)
+			err = dbg.gui.SetFeature(gui.ReqEmulationNotice, notifications.NotifyRewindBack)
 		} else {
-			dbg.gui.SetFeature(gui.ReqEmulationNotice, notifications.NotifyRewindFoward)
+			err = dbg.gui.SetFeature(gui.ReqEmulationNotice, notifications.NotifyRewindFoward)
+		}
+		if err != nil {
+			logger.Log("debugger", err.Error())
 		}
 
 		return true

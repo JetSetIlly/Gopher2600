@@ -73,8 +73,3 @@ const (
 	// bot features to be removed.
 	ReqBotFeedback FeatureReq = "ReqBotFeedback" // *bots.Feedback
 )
-
-// Sentinal error returned if GUI does no support requested feature.
-const (
-	UnsupportedGuiFeature = "unsupported gui feature: %v"
-)

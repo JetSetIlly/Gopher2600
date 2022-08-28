@@ -145,7 +145,7 @@ func (img *SdlImgui) serviceSetFeature(request featureRequest) {
 		}
 
 	default:
-		err = curated.Errorf(gui.UnsupportedGuiFeature, request.request)
+		err = curated.Errorf("sdlimgui: unsupport feature request (%s)", request.request)
 	}
 
 	if err == nil {

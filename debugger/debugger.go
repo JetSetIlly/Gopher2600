@@ -426,15 +426,24 @@ func NewDebugger(opts CommandLineOptions, create CreateUserInterface) (*Debugger
 		fallthrough
 	case "TV":
 		dbg.vcs.TV.SetFPSCap(true)
-		dbg.gui.SetFeature(gui.ReqMonitorSync, true)
+		err := dbg.gui.SetFeature(gui.ReqMonitorSync, true)
+		if err != nil {
+			return nil, curated.Errorf("debugger: %v", err)
+		}
 		logger.Log("debugger", "capping FPS to emulated TV")
 	case "MONITOR":
 		dbg.vcs.TV.SetFPSCap(false)
-		dbg.gui.SetFeature(gui.ReqMonitorSync, true)
+		err := dbg.gui.SetFeature(gui.ReqMonitorSync, true)
+		if err != nil {
+			return nil, curated.Errorf("debugger: %v", err)
+		}
 		logger.Log("debugger", "capping FPS to monitor refresh rate")
 	case "NONE":
 		dbg.vcs.TV.SetFPSCap(false)
-		dbg.gui.SetFeature(gui.ReqMonitorSync, false)
+		err := dbg.gui.SetFeature(gui.ReqMonitorSync, false)
+		if err != nil {
+			return nil, curated.Errorf("debugger: %v", err)
+		}
 		logger.Log("debugger", "not capping FPS")
 	default:
 		return nil, curated.Errorf("debugger: unknown fpscap value (%s)", *opts.FpsCap)
@@ -480,20 +489,12 @@ func (dbg *Debugger) Mode() govern.Mode {
 }
 
 // set the emulation state
-//
-// * if the state is the Paused or Running state consider using
-// debugger.SetFeature(ReqSetPause) even from within the debugger package
-// (SetFeature() puts the request on the RawEvent Queue meaning it will be
-// inserted in the input loop correctly)
 func (dbg *Debugger) setState(state govern.State) {
 	dbg.setStateQuiet(state, false)
 }
 
 // same as setState but with quiet argument, to indicate that EmulationEvent
 // should not be issued to the gui.
-//
-// * see setState() comment, although debugger.SetFeature(ReqSetPause) will
-// always be "noisy"
 func (dbg *Debugger) setStateQuiet(state govern.State, quiet bool) {
 	if state == govern.Rewinding {
 		dbg.vcs.Mem.Cart.BreakpointsDisable(true)
@@ -537,22 +538,27 @@ func (dbg *Debugger) setStateQuiet(state govern.State, quiet bool) {
 	if !quiet && dbg.Mode() == govern.ModePlay {
 		switch state {
 		case govern.Initialising:
-			dbg.gui.SetFeature(gui.ReqEmulationNotice, notifications.NotifyInitialising)
+			err := dbg.gui.SetFeature(gui.ReqEmulationNotice, notifications.NotifyInitialising)
+			if err != nil {
+				logger.Log("debugger", err.Error())
+			}
 		case govern.Paused:
-			dbg.gui.SetFeature(gui.ReqEmulationNotice, notifications.NotifyPause)
+			err := dbg.gui.SetFeature(gui.ReqEmulationNotice, notifications.NotifyPause)
+			if err != nil {
+				logger.Log("debugger", err.Error())
+			}
 		case govern.Running:
 			if prevState > govern.Initialising {
-				dbg.gui.SetFeature(gui.ReqEmulationNotice, notifications.NotifyRun)
+				err := dbg.gui.SetFeature(gui.ReqEmulationNotice, notifications.NotifyRun)
+				if err != nil {
+					logger.Log("debugger", err.Error())
+				}
 			}
 		}
 	}
 }
 
 // set the emulation mode
-//
-// * consider using debugger.SetFeature(ReqSetMode) even from within the
-// debugger package (SetFeature() puts the request on the RawEvent Queue
-// meaning it will be inserted in the input loop correctly)
 func (dbg *Debugger) setMode(mode govern.Mode) error {
 	if dbg.Mode() == mode {
 		return nil
@@ -1046,9 +1052,7 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) 
 				if dbg.vcs.Instance.Prefs.PlusROM.NewInstallation {
 					err := dbg.gui.SetFeature(gui.ReqCartridgeNotice, notifications.NotifyPlusROMNewInstallation)
 					if err != nil {
-						if !curated.Is(err, gui.UnsupportedGuiFeature) {
-							return curated.Errorf("debugger: %v", err)
-						}
+						return curated.Errorf(err.Error())
 					}
 				}
 			case notifications.NotifyPlusROMNetwork:
@@ -1113,7 +1117,7 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) 
 	// always ReqBotFeedback. if feedback is nil then the bot features will be disbaled
 	err = dbg.gui.SetFeature(gui.ReqBotFeedback, feedback)
 	if err != nil {
-		return curated.Errorf("debugger: %v", err)
+		return err
 	}
 
 	// record the most filename as the most recent ROM loaded if appropriate
@@ -1195,7 +1199,10 @@ func (dbg *Debugger) startComparison(comparisonROM string, comparisonPrefs strin
 	if err != nil {
 		return err
 	}
-	dbg.gui.SetFeature(gui.ReqComparison, dbg.comparison.Render, dbg.comparison.DiffRender)
+	err = dbg.gui.SetFeature(gui.ReqComparison, dbg.comparison.Render, dbg.comparison.DiffRender)
+	if err != nil {
+		return err
+	}
 
 	cartload, err := cartridgeloader.NewLoader(comparisonROM, "AUTO")
 	if err != nil {
@@ -1220,7 +1227,10 @@ func (dbg *Debugger) endComparison() {
 
 	dbg.comparison.Quit()
 	dbg.comparison = nil
-	dbg.gui.SetFeature(gui.ReqComparison, nil, nil)
+	err := dbg.gui.SetFeature(gui.ReqComparison, nil, nil)
+	if err != nil {
+		logger.Logf("debugger", err.Error())
+	}
 }
 
 func (dbg *Debugger) hotload() (e error) {
@@ -1230,7 +1240,10 @@ func (dbg *Debugger) hotload() (e error) {
 		if dbg.runUntilHalt && e == nil {
 			dbg.setState(govern.Running)
 		} else {
-			dbg.gui.SetFeature(gui.ReqEmulationNotice, notifications.NotifyPause)
+			err := dbg.gui.SetFeature(gui.ReqEmulationNotice, notifications.NotifyPause)
+			if err != nil {
+				logger.Log("debugger", err.Error())
+			}
 		}
 	}()
 
@@ -1315,7 +1328,10 @@ func (dbg *Debugger) Plugged(port plugging.PortID, peripheral plugging.Periphera
 	if dbg.vcs.Mem.Cart.IsEjected() {
 		return
 	}
-	dbg.gui.SetFeature(gui.ReqPeripheralChange, port, peripheral)
+	err := dbg.gui.SetFeature(gui.ReqPeripheralChange, port, peripheral)
+	if err != nil {
+		logger.Log("debugger", err.Error())
+	}
 }
 
 // PushRawEvent onto the event queue.
