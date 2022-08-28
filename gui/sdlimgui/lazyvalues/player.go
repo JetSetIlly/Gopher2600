@@ -40,8 +40,7 @@ type LazyPlayer struct {
 	gfxDataOld    atomic.Value // uint8
 
 	// P is a pointer to the "live" data in the other thread. Do not access
-	// the fields in this struct directly. It can be used in PushRawEvent()
-	// call
+	// the fields in this struct directly. It can be used in a PushFunction()
 	Ps *video.PlayerSprite
 
 	ResetPixel    int

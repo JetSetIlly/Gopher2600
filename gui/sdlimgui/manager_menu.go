@@ -79,7 +79,7 @@ func (wm *manager) drawMenu() {
 		}
 
 		// if imgui.Selectable("  Save ROM") {
-		// 	wm.img.dbg.PushRawEvent(func() {
+		// 	wm.img.dbg.PushFunction(func() {
 		// 		_, err := wm.img.dbg.VCS().(*hardware.VCS).Mem.Cart.ROMDump()
 		// 		if err != nil {
 		// 			logger.Log("save rom", err.Error())

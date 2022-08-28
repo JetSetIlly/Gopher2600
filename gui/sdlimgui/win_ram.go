@@ -146,7 +146,7 @@ func (win *winRAM) draw() {
 	}
 
 	commit := func(addr uint32, data uint8) {
-		win.img.dbg.PushRawEvent(func() {
+		win.img.dbg.PushFunction(func() {
 			// addr is based on original values of type uint16 so the type conversion is safe
 			win.img.vcs.Mem.Write(uint16(addr), data)
 		})

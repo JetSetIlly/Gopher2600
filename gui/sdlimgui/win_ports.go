@@ -75,7 +75,7 @@ func (win *winPorts) draw() {
 		imgui.TableNextColumn()
 		drawRegister("##SWCHA_W", win.img.lz.Ports.SWCHA_W, 0xff, win.img.cols.portsBit,
 			func(v uint8) {
-				win.img.dbg.PushRawEvent(func() {
+				win.img.dbg.PushFunction(func() {
 					win.img.vcs.RIOT.Ports.PokeField("swcha_w", v)
 				})
 			})
@@ -89,7 +89,7 @@ func (win *winPorts) draw() {
 		imgui.TableNextColumn()
 		drawRegister("##SWCHB_W", win.img.lz.Ports.SWCHB_W, 0xff, win.img.cols.portsBit,
 			func(v uint8) {
-				win.img.dbg.PushRawEvent(func() {
+				win.img.dbg.PushFunction(func() {
 					win.img.vcs.RIOT.Ports.PokeField("swchb_w", v)
 				})
 			})
@@ -103,7 +103,7 @@ func (win *winPorts) draw() {
 		imgui.TableNextColumn()
 		drawRegister("##SWACNT", win.img.lz.Ports.SWACNT, 0xff, win.img.cols.portsBit,
 			func(v uint8) {
-				win.img.dbg.PushRawEvent(func() {
+				win.img.dbg.PushFunction(func() {
 					win.img.vcs.RIOT.Ports.PokeField("swacnt", v)
 				})
 			})
@@ -115,7 +115,7 @@ func (win *winPorts) draw() {
 		imgui.TableNextColumn()
 		drawRegister("##SWBCNT", win.img.lz.Ports.SWBCNT, 0xff, win.img.cols.portsBit,
 			func(v uint8) {
-				win.img.dbg.PushRawEvent(func() {
+				win.img.dbg.PushFunction(func() {
 					win.img.vcs.RIOT.Ports.PokeField("swbcnt", v)
 				})
 			})
@@ -133,7 +133,7 @@ func (win *winPorts) draw() {
 		imgui.TableNextColumn()
 		drawRegister("##SWCHA_R", win.img.lz.Ports.SWCHA, 0xff, win.img.cols.portsBit,
 			func(v uint8) {
-				win.img.dbg.PushRawEvent(func() {
+				win.img.dbg.PushFunction(func() {
 					win.img.vcs.RIOT.Ports.PokeField("swcha", v)
 				})
 			})
@@ -149,7 +149,7 @@ func (win *winPorts) draw() {
 		imgui.TableNextColumn()
 		drawRegister("##SWCHB_R", win.img.lz.Ports.SWCHB, 0xff, win.img.cols.portsBit,
 			func(v uint8) {
-				win.img.dbg.PushRawEvent(func() {
+				win.img.dbg.PushFunction(func() {
 					win.img.vcs.RIOT.Ports.PokeField("swchb", v)
 				})
 			})
@@ -169,7 +169,7 @@ func (win *winPorts) draw() {
 		imgui.TableNextColumn()
 		drawRegister("##INPT0", win.img.lz.Ports.INPT0, vcs.TIADrivenPins, win.img.cols.portsBit,
 			func(v uint8) {
-				win.img.dbg.PushRawEvent(func() {
+				win.img.dbg.PushFunction(func() {
 					err := win.img.vcs.Mem.Poke(cpubus.ReadAddress[cpubus.INPT0], v)
 					if err != nil {
 						panic(err)
@@ -184,7 +184,7 @@ func (win *winPorts) draw() {
 		imgui.TableNextColumn()
 		drawRegister("##INPT1", win.img.lz.Ports.INPT1, vcs.TIADrivenPins, win.img.cols.portsBit,
 			func(v uint8) {
-				win.img.dbg.PushRawEvent(func() {
+				win.img.dbg.PushFunction(func() {
 					err := win.img.vcs.Mem.Poke(cpubus.ReadAddress[cpubus.INPT1], v)
 					if err != nil {
 						panic(err)
@@ -201,7 +201,7 @@ func (win *winPorts) draw() {
 		imgui.TableNextColumn()
 		drawRegister("##INPT2", win.img.lz.Ports.INPT2, vcs.TIADrivenPins, win.img.cols.portsBit,
 			func(v uint8) {
-				win.img.dbg.PushRawEvent(func() {
+				win.img.dbg.PushFunction(func() {
 					err := win.img.vcs.Mem.Poke(cpubus.ReadAddress[cpubus.INPT2], v)
 					if err != nil {
 						panic(err)
@@ -216,7 +216,7 @@ func (win *winPorts) draw() {
 		imgui.TableNextColumn()
 		drawRegister("##INPT3", win.img.lz.Ports.INPT3, vcs.TIADrivenPins, win.img.cols.portsBit,
 			func(v uint8) {
-				win.img.dbg.PushRawEvent(func() {
+				win.img.dbg.PushFunction(func() {
 					err := win.img.vcs.Mem.Poke(cpubus.ReadAddress[cpubus.INPT3], v)
 					if err != nil {
 						panic(err)
@@ -233,7 +233,7 @@ func (win *winPorts) draw() {
 		imgui.TableNextColumn()
 		drawRegister("##INPT4", win.img.lz.Ports.INPT4, vcs.TIADrivenPins, win.img.cols.portsBit,
 			func(v uint8) {
-				win.img.dbg.PushRawEvent(func() {
+				win.img.dbg.PushFunction(func() {
 					err := win.img.vcs.Mem.Poke(cpubus.ReadAddress[cpubus.INPT4], v)
 					if err != nil {
 						panic(err)
@@ -248,7 +248,7 @@ func (win *winPorts) draw() {
 		imgui.TableNextColumn()
 		drawRegister("##INPT5", win.img.lz.Ports.INPT5, vcs.TIADrivenPins, win.img.cols.portsBit,
 			func(v uint8) {
-				win.img.dbg.PushRawEvent(func() {
+				win.img.dbg.PushFunction(func() {
 					err := win.img.vcs.Mem.Poke(cpubus.ReadAddress[cpubus.INPT5], v)
 					if err != nil {
 						panic(err)

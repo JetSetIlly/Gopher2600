@@ -61,7 +61,7 @@ func (win *winControl) repeatButtonV(id string, f func(), fill imgui.Vec2) {
 	imgui.ButtonV(id, fill)
 	if imgui.IsItemActive() {
 		if id != win.repeatID {
-			win.img.dbg.PushRawEvent(func() {
+			win.img.dbg.PushFunction(func() {
 				v := win.img.vcs.TV.SetFPSCap(false)
 				win.repeatFPSCap.Store(v)
 			})
@@ -77,7 +77,7 @@ func (win *winControl) repeatButtonV(id string, f func(), fill imgui.Vec2) {
 		}
 	} else if imgui.IsItemDeactivated() {
 		win.repeatID = ""
-		win.img.dbg.PushRawEvent(func() {
+		win.img.dbg.PushFunction(func() {
 			v := win.repeatFPSCap.Load().(bool)
 			win.img.vcs.TV.SetFPSCap(v)
 		})
@@ -220,12 +220,12 @@ func (win *winControl) drawFPS() {
 	// fps slider
 	fps := win.img.lz.TV.ReqFPS
 	if imgui.SliderFloatV("##fps", &fps, 1, 100, "%.0f fps", imgui.SliderFlagsNone) {
-		win.img.dbg.PushRawEvent(func() { win.img.vcs.TV.SetFPS(fps) })
+		win.img.dbg.PushFunction(func() { win.img.vcs.TV.SetFPS(fps) })
 	}
 
 	// reset to specification rate on right mouse click
 	if imgui.IsItemHoveredV(imgui.HoveredFlagsAllowWhenDisabled) && imgui.IsMouseDown(1) {
-		win.img.dbg.PushRawEvent(func() { win.img.vcs.TV.SetFPS(-1) })
+		win.img.dbg.PushFunction(func() { win.img.vcs.TV.SetFPS(-1) })
 	}
 
 	imgui.Spacing()

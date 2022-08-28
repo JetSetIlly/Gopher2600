@@ -41,8 +41,7 @@ type LazyPlayfield struct {
 	rightData       atomic.Value // []bool
 
 	// Pf is a pointer to the "live" data in the other thread. Do not access
-	// the fields in this struct directly. It can be used in PushRawEvent()
-	// call
+	// the fields in this struct directly. It can be used in a PushFuncion()
 	Pf *video.Playfield
 
 	Ctrlpf          uint8

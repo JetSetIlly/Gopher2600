@@ -125,10 +125,10 @@ func (trm *term) TermRead(buffer []byte, prompt terminal.Prompt, events *termina
 		case <-events.IntEvents:
 			return 0, curated.Errorf(terminal.UserInterrupt)
 
-		case ev := <-events.RawEvents:
+		case ev := <-events.PushedFunctions:
 			ev()
 
-		case ev := <-events.RawEventsImmediate:
+		case ev := <-events.PushedFunctionsImmediate:
 			ev()
 			return 0, nil
 

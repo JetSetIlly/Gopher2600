@@ -648,7 +648,7 @@ func (win *winDisasm) drawEntry(e *disassembly.Entry, focusAddr uint16, onBank b
 
 	// single click on the address entry toggles a PC breakpoint
 	if imgui.IsItemHovered() && imgui.IsMouseDoubleClicked(0) {
-		win.toggleBreak(e)
+		win.img.dbg.PushTogglePCBreak(e)
 	}
 
 	// tooltip on hover and context menu on right mouse button
@@ -782,9 +782,4 @@ func (win *winDisasm) drawEntry(e *disassembly.Entry, focusAddr uint16, onBank b
 	if win.usingColor {
 		imgui.PopStyleColorV(5)
 	}
-}
-
-func (win *winDisasm) toggleBreak(e *disassembly.Entry) {
-	f := e // copy of pushed disasm entry
-	win.img.dbg.PushRawEvent(func() { win.img.dbg.TogglePCBreak(f) })
 }

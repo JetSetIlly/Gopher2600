@@ -70,14 +70,14 @@ type ReadEvents struct {
 	// interrupt signals from the operating system
 	IntEvents chan os.Signal
 
-	// RawEvents allows functions to be pushed into the debugger goroutine
+	// PushedFunctions allows functions to be pushed into the debugger goroutine
 	//
-	// errors are not returned by RawEvents so errors should be logged
-	RawEvents chan func()
+	// errors are not returned by PushedFunctions so errors should be logged
+	PushedFunctions chan func()
 
-	// RawEventsImmediate is the same as RawEvnts but handlers must return control
-	// to the debugger inputloop after the function has run
-	RawEventsImmediate chan func()
+	// PushedFunctionsImmediate is the same as PushedFunctions but handlers
+	// must return control to the input loop after the function has run
+	PushedFunctionsImmediate chan func()
 }
 
 // Output defines the operations required by an interface that allows output.

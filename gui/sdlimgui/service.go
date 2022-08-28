@@ -370,7 +370,7 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 				handled = false
 			} else {
 				if ctrl {
-					img.dbg.PushRawEvent(func() {
+					img.dbg.PushFunction(func() {
 						err := img.dbg.ReloadCartridge()
 						if err != nil {
 							logger.Logf("sdlimgui", err.Error())
@@ -387,9 +387,9 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 
 		case sdl.SCANCODE_GRAVE:
 			if img.isPlaymode() {
-				img.dbg.SetFeature(govern.ReqSetMode, govern.ModeDebugger)
+				img.dbg.PushSetMode(govern.ModeDebugger)
 			} else {
-				img.dbg.SetFeature(govern.ReqSetMode, govern.ModePlay)
+				img.dbg.PushSetMode(govern.ModePlay)
 			}
 
 		case sdl.SCANCODE_F8:
@@ -425,14 +425,10 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 			fallthrough
 		case sdl.SCANCODE_PAUSE:
 			if img.isPlaymode() {
-				var err error
 				if img.dbg.State() == govern.Paused {
-					err = img.dbg.SetFeature(govern.ReqSetPause, false)
+					img.dbg.PushSetPause(false)
 				} else {
-					err = img.dbg.SetFeature(govern.ReqSetPause, true)
-				}
-				if err != nil {
-					logger.Logf("sdlimgui", err.Error())
+					img.dbg.PushSetPause(true)
 				}
 			} else {
 				if img.dbg.State() == govern.Paused {
@@ -451,7 +447,7 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 
 		case sdl.SCANCODE_R:
 			if ctrl {
-				img.dbg.PushRawEvent(func() {
+				img.dbg.PushFunction(func() {
 					err := img.dbg.ReloadCartridge()
 					if err != nil {
 						logger.Logf("sdlimgui", err.Error())

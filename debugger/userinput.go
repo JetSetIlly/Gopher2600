@@ -107,17 +107,17 @@ func (dbg *Debugger) userInputHandler(ev userinput.Event) error {
 			switch ev.Button {
 			case userinput.GamepadButtonBack:
 				if dbg.State() != govern.Paused {
-					dbg.SetFeature(govern.ReqSetPause, true)
+					dbg.PushSetPause(true)
 				} else {
-					dbg.SetFeature(govern.ReqSetPause, false)
+					dbg.PushSetPause(false)
 				}
 				return nil
 			case userinput.GamepadButtonGuide:
 				switch dbg.Mode() {
 				case govern.ModePlay:
-					dbg.SetFeature(govern.ReqSetMode, govern.ModeDebugger)
+					dbg.PushSetMode(govern.ModeDebugger)
 				case govern.ModeDebugger:
-					dbg.SetFeature(govern.ReqSetMode, govern.ModePlay)
+					dbg.PushSetMode(govern.ModePlay)
 				}
 			}
 		}
@@ -134,7 +134,7 @@ func (dbg *Debugger) userInputHandler(ev userinput.Event) error {
 	//
 	// * we're only allowing this for playmode
 	if dbg.Mode() == govern.ModePlay && dbg.State() == govern.Paused && handled {
-		dbg.SetFeature(govern.ReqSetPause, false)
+		dbg.PushSetPause(false)
 	}
 
 	return nil

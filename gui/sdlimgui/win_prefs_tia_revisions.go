@@ -52,7 +52,7 @@ func (win *winPrefs) drawLateGRPx() {
 	imgui.Spacing()
 	a := win.img.vcs.Instance.Prefs.Revision.LateVDELGRP0.Get().(bool)
 	if imgui.Checkbox("GRP0", &a) {
-		win.img.dbg.PushRawEvent(func() {
+		win.img.dbg.PushFunction(func() {
 			win.img.vcs.Instance.Prefs.Revision.LateVDELGRP0.Set(a)
 		})
 	}
@@ -60,7 +60,7 @@ func (win *winPrefs) drawLateGRPx() {
 
 	b := win.img.vcs.Instance.Prefs.Revision.LateVDELGRP1.Get().(bool)
 	if imgui.Checkbox("GRP1", &b) {
-		win.img.dbg.PushRawEvent(func() {
+		win.img.dbg.PushFunction(func() {
 			win.img.vcs.Instance.Prefs.Revision.LateVDELGRP1.Set(b)
 		})
 	}
@@ -73,7 +73,7 @@ func (win *winPrefs) drawRESPxUnderHMOVE() {
 	imgui.Spacing()
 	a := win.img.vcs.Instance.Prefs.Revision.LateRESPx.Get().(bool)
 	if imgui.Checkbox("Late RESPx", &a) {
-		win.img.dbg.PushRawEvent(func() {
+		win.img.dbg.PushFunction(func() {
 			win.img.vcs.Instance.Prefs.Revision.LateRESPx.Set(a)
 		})
 	}
@@ -81,7 +81,7 @@ func (win *winPrefs) drawRESPxUnderHMOVE() {
 
 	b := win.img.vcs.Instance.Prefs.Revision.EarlyScancounter.Get().(bool)
 	if imgui.Checkbox("Early Scancounter", &b) {
-		win.img.dbg.PushRawEvent(func() {
+		win.img.dbg.PushFunction(func() {
 			win.img.vcs.Instance.Prefs.Revision.EarlyScancounter.Set(b)
 		})
 	}
@@ -94,7 +94,7 @@ func (win *winPrefs) drawLatePlayfield() {
 	imgui.Spacing()
 	a := win.img.vcs.Instance.Prefs.Revision.LatePFx.Get().(bool)
 	if imgui.Checkbox("PFx", &a) {
-		win.img.dbg.PushRawEvent(func() {
+		win.img.dbg.PushFunction(func() {
 			win.img.vcs.Instance.Prefs.Revision.LatePFx.Set(a)
 		})
 	}
@@ -102,7 +102,7 @@ func (win *winPrefs) drawLatePlayfield() {
 
 	b := win.img.vcs.Instance.Prefs.Revision.LateCOLUPF.Get().(bool)
 	if imgui.Checkbox("COLUPF", &b) {
-		win.img.dbg.PushRawEvent(func() {
+		win.img.dbg.PushFunction(func() {
 			win.img.vcs.Instance.Prefs.Revision.LateCOLUPF.Set(b)
 		})
 	}
@@ -115,7 +115,7 @@ func (win *winPrefs) drawLostMOTCK() {
 	imgui.Spacing()
 	a := win.img.vcs.Instance.Prefs.Revision.LostMOTCK.Get().(bool)
 	if imgui.Checkbox("Players/Missiles/Ball", &a) {
-		win.img.dbg.PushRawEvent(func() {
+		win.img.dbg.PushFunction(func() {
 			win.img.vcs.Instance.Prefs.Revision.LostMOTCK.Set(a)
 		})
 	}
@@ -128,7 +128,7 @@ func (win *winPrefs) drawLateRESPx() {
 	imgui.Spacing()
 	a := win.img.vcs.Instance.Prefs.Revision.RESPxHBLANK.Get().(bool)
 	if imgui.Checkbox("HBLANK threshold", &a) {
-		win.img.dbg.PushRawEvent(func() {
+		win.img.dbg.PushFunction(func() {
 			win.img.vcs.Instance.Prefs.Revision.RESPxHBLANK.Set(a)
 		})
 	}

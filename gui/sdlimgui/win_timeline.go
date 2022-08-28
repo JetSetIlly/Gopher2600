@@ -386,7 +386,7 @@ func (win *winTimeline) drawTimeline() {
 
 								// slow the rate at which we generate thumbnails
 								if win.img.polling.throttleTimelineThumbnailer() {
-									win.img.dbg.PushRawEvent(func() {
+									win.img.dbg.PushFunction(func() {
 										// thumbnailer must be run in the same goroutine as the main emulation
 										win.thmb.SingleFrameFromRewindState(win.img.dbg.Rewind.GetState(rewindHoverFrame))
 									})

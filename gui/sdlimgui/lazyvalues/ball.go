@@ -38,8 +38,7 @@ type LazyBall struct {
 	moreHmove     atomic.Value // bool
 
 	// Bs is a pointer to the "live" data in the other thread. Do not access
-	// the fields in this struct directly. It can be used in PushRawEvent()
-	// call
+	// the fields in this struct directly. It can be used in a PushFunction()
 	Bs *video.BallSprite
 
 	ResetPixel    int

@@ -71,7 +71,7 @@ func (win *winSaveKeyEEPROM) draw() {
 
 	drawByteGridSimple("eepromByteGrid", win.img.lz.SaveKey.EEPROMdata, win.img.lz.SaveKey.EEPROMdiskData, win.img.cols.ValueDiff, 0x00,
 		func(addr uint32, data uint8) {
-			win.img.dbg.PushRawEvent(func() {
+			win.img.dbg.PushFunction(func() {
 				var sk *savekey.SaveKey
 
 				if av, ok := win.img.vcs.RIOT.Ports.RightPlayer.(*atarivox.AtariVox); ok {
@@ -94,7 +94,7 @@ func (win *winSaveKeyEEPROM) draw() {
 		imgui.Spacing()
 
 		if imgui.Button("Save to disk") {
-			win.img.dbg.PushRawEvent(func() {
+			win.img.dbg.PushFunction(func() {
 				var sk *savekey.SaveKey
 
 				if av, ok := win.img.vcs.RIOT.Ports.RightPlayer.(*atarivox.AtariVox); ok {

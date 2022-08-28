@@ -59,5 +59,5 @@
 // Interaction with the debugger for both user and programs that use the
 // debugger, is through the Terminal interface (see terminal package). Where
 // this is not possible, functions have been provided. For interaction from
-// other goroutines, the PushRawEvent() function should be used.
+// other goroutines, PushFunction() should be used.
 package debugger

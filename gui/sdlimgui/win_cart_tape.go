@@ -69,7 +69,7 @@ func (win *winCartTape) draw() {
 	imguiLabel("Counter")
 	counter := fmt.Sprintf("%8d", win.img.lz.Cart.TapeState.Counter)
 	if imguiDecimalInput("##counter", 8, &counter) {
-		win.img.dbg.PushRawEvent(func() {
+		win.img.dbg.PushFunction(func() {
 			c, err := strconv.ParseInt(counter, 10, 64)
 			if err == nil {
 				win.img.vcs.Mem.Cart.GetTapeBus().SetTapeCounter(int(c))
@@ -102,7 +102,7 @@ func (win *winCartTape) draw() {
 	// tape slider
 	c := int32(win.img.lz.Cart.TapeState.Counter)
 	if imgui.SliderIntV("##counterslider", &c, 0, int32(win.img.lz.Cart.TapeState.MaxCounter), "", imgui.SliderFlagsNone) {
-		win.img.dbg.PushRawEvent(func() {
+		win.img.dbg.PushFunction(func() {
 			win.img.vcs.Mem.Cart.GetTapeBus().SetTapeCounter(int(c))
 		})
 	}
@@ -110,7 +110,7 @@ func (win *winCartTape) draw() {
 	// rewind button
 	imgui.SameLine()
 	if imgui.Button("Rewind") {
-		win.img.dbg.PushRawEvent(func() {
+		win.img.dbg.PushFunction(func() {
 			win.img.vcs.Mem.Cart.GetTapeBus().Rewind()
 		})
 	}

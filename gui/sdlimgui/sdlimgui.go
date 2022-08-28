@@ -119,6 +119,7 @@ type SdlImgui struct {
 	// a request for the PlusROM first installation procedure has been received
 	plusROMFirstInstallation bool
 
+	// functions that should only be run after gui rendering
 	postRenderFunctions chan func()
 }
 

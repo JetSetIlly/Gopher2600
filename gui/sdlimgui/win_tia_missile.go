@@ -45,24 +45,24 @@ func (win *winTIA) drawMissile(missile int) {
 	col := lz.Color
 	if win.img.imguiSwatch(col, 0.75) {
 		win.popupPalette.request(&col, func() {
-			win.img.dbg.PushRawEvent(func() { ms.Color = col })
+			win.img.dbg.PushFunction(func() { ms.Color = col })
 
 			// update player color too
-			win.img.dbg.PushRawEvent(func() { ps.Color = col })
+			win.img.dbg.PushFunction(func() { ps.Color = col })
 		})
 	}
 
 	imguiLabel("Reset-to-Player")
 	r2p := lz.ResetToPlayer
 	if imgui.Checkbox("##resettoplayer", &r2p) {
-		win.img.dbg.PushRawEvent(func() { ms.ResetToPlayer = r2p })
+		win.img.dbg.PushFunction(func() { ms.ResetToPlayer = r2p })
 	}
 
 	imgui.SameLine()
 	imguiLabel("Enabled")
 	enb := lz.Enabled
 	if imgui.Checkbox("##enabled", &enb) {
-		win.img.dbg.PushRawEvent(func() { ms.Enabled = enb })
+		win.img.dbg.PushFunction(func() { ms.Enabled = enb })
 	}
 	imgui.EndGroup()
 
@@ -76,7 +76,7 @@ func (win *winTIA) drawMissile(missile int) {
 	hmove := fmt.Sprintf("%01x", lz.Hmove)
 	if imguiHexInput("##hmove", 1, &hmove) {
 		if v, err := strconv.ParseUint(hmove, 16, 8); err == nil {
-			win.img.dbg.PushRawEvent(func() { ms.Hmove = uint8(v) })
+			win.img.dbg.PushFunction(func() { ms.Hmove = uint8(v) })
 		}
 	}
 
@@ -84,7 +84,7 @@ func (win *winTIA) drawMissile(missile int) {
 	imgui.PushItemWidth(win.hmoveSliderWidth)
 	hmoveSlider := int32(lz.Hmove) - 8
 	if imgui.SliderIntV("##hmoveslider", &hmoveSlider, -8, 7, "%d", imgui.SliderFlagsNone) {
-		win.img.dbg.PushRawEvent(func() { ms.Hmove = uint8(hmoveSlider + 8) })
+		win.img.dbg.PushFunction(func() { ms.Hmove = uint8(hmoveSlider + 8) })
 	}
 	imgui.PopItemWidth()
 	imgui.EndGroup()
@@ -99,7 +99,7 @@ func (win *winTIA) drawMissile(missile int) {
 		for k := range video.MissileCopies {
 			if imgui.Selectable(video.MissileCopies[k]) {
 				v := uint8(k) // being careful about scope
-				win.img.dbg.PushRawEvent(func() {
+				win.img.dbg.PushFunction(func() {
 					ms.Copies = v
 					win.img.vcs.TIA.Video.UpdateNUSIZ(missile, true)
 				})
@@ -116,7 +116,7 @@ func (win *winTIA) drawMissile(missile int) {
 		for k := range video.MissileSizes {
 			if imgui.Selectable(video.MissileSizes[k]) {
 				v := uint8(k) // being careful about scope
-				win.img.dbg.PushRawEvent(func() {
+				win.img.dbg.PushFunction(func() {
 					ms.Size = v
 					win.img.vcs.TIA.Video.UpdateNUSIZ(missile, true)
 				})
@@ -132,7 +132,7 @@ func (win *winTIA) drawMissile(missile int) {
 	nusiz := fmt.Sprintf("%02x", lz.Nusiz)
 	if imguiHexInput("##nusiz", 2, &nusiz) {
 		if v, err := strconv.ParseUint(nusiz, 16, 8); err == nil {
-			win.img.dbg.PushRawEvent(func() {
+			win.img.dbg.PushFunction(func() {
 				ms.SetNUSIZ(uint8(v))
 
 				// update player NUSIZ too

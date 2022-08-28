@@ -49,17 +49,17 @@ func (win *winTIA) drawPlayer(num int) {
 	col := lz.Color
 	if win.img.imguiSwatch(col, 0.75) {
 		win.popupPalette.request(&col, func() {
-			win.img.dbg.PushRawEvent(func() { ps.Color = col })
+			win.img.dbg.PushFunction(func() { ps.Color = col })
 
 			// update missile color too
-			win.img.dbg.PushRawEvent(func() { ms.Color = col })
+			win.img.dbg.PushFunction(func() { ms.Color = col })
 		})
 	}
 
 	imguiLabel("Reflected")
 	ref := lz.Reflected
 	if imgui.Checkbox("##reflected", &ref) {
-		win.img.dbg.PushRawEvent(func() {
+		win.img.dbg.PushFunction(func() {
 			ps.Reflected = ref
 		})
 	}
@@ -70,7 +70,7 @@ func (win *winTIA) drawPlayer(num int) {
 	if imgui.Checkbox("##vertdelay", &vd) {
 		// vertical delay affects which gfx register to use. set vertical delay
 		// using the SetVerticalDelay function
-		win.img.dbg.PushRawEvent(func() { ps.SetVerticalDelay(vd) })
+		win.img.dbg.PushFunction(func() { ps.SetVerticalDelay(vd) })
 	}
 
 	imgui.Spacing()
@@ -82,7 +82,7 @@ func (win *winTIA) drawPlayer(num int) {
 	hmove := fmt.Sprintf("%01x", lz.Hmove)
 	if imguiHexInput("##hmove", 1, &hmove) {
 		if v, err := strconv.ParseUint(hmove, 16, 8); err == nil {
-			win.img.dbg.PushRawEvent(func() { ps.Hmove = uint8(v) })
+			win.img.dbg.PushFunction(func() { ps.Hmove = uint8(v) })
 		}
 	}
 
@@ -91,7 +91,7 @@ func (win *winTIA) drawPlayer(num int) {
 	imgui.PushItemWidth(win.hmoveSliderWidth)
 	hmoveSlider := int32(lz.Hmove) - 8
 	if imgui.SliderIntV("##hmoveslider", &hmoveSlider, -8, 7, "%d", imgui.SliderFlagsNone) {
-		win.img.dbg.PushRawEvent(func() { ps.Hmove = uint8(hmoveSlider + 8) })
+		win.img.dbg.PushFunction(func() { ps.Hmove = uint8(hmoveSlider + 8) })
 	}
 	imgui.PopItemWidth()
 
@@ -115,7 +115,7 @@ func (win *winTIA) drawPlayer(num int) {
 		}
 		if ngfxSeq.rectFill(palette[col]) {
 			od ^= 0x80 >> i
-			win.img.dbg.PushRawEvent(func() { ps.GfxDataNew = od })
+			win.img.dbg.PushFunction(func() { ps.GfxDataNew = od })
 		}
 		ngfxSeq.sameLine()
 
@@ -139,7 +139,7 @@ func (win *winTIA) drawPlayer(num int) {
 		}
 		if ogfxSeq.rectFill(palette[col]) {
 			nd ^= 0x80 >> i
-			win.img.dbg.PushRawEvent(func() { ps.GfxDataOld = nd })
+			win.img.dbg.PushFunction(func() { ps.GfxDataOld = nd })
 		}
 		ogfxSeq.sameLine()
 
@@ -179,7 +179,7 @@ func (win *winTIA) drawPlayer(num int) {
 		for k := range video.PlayerSizes {
 			if imgui.Selectable(video.PlayerSizes[k]) {
 				v := uint8(k) // being careful about scope
-				win.img.dbg.PushRawEvent(func() {
+				win.img.dbg.PushFunction(func() {
 					ps.SizeAndCopies = v
 					win.img.vcs.TIA.Video.UpdateNUSIZ(num, false)
 				})
@@ -196,7 +196,7 @@ func (win *winTIA) drawPlayer(num int) {
 	nusiz := fmt.Sprintf("%02x", lz.Nusiz)
 	if imguiHexInput("##nusiz", 2, &nusiz) {
 		if v, err := strconv.ParseUint(nusiz, 16, 8); err == nil {
-			win.img.dbg.PushRawEvent(func() {
+			win.img.dbg.PushFunction(func() {
 				ps.SetNUSIZ(uint8(v))
 
 				// update missile NUSIZ too

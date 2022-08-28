@@ -101,7 +101,7 @@ func (win *winPlusROMNetwork) draw() {
 			if imguiHexInput(fmt.Sprintf("##send%d", i), 2, &b) {
 				j := i // copy of current index
 				if v, err := strconv.ParseUint(b, 16, 8); err == nil {
-					win.img.dbg.PushRawEvent(func() {
+					win.img.dbg.PushFunction(func() {
 						win.img.vcs.Mem.Cart.GetContainer().(*plusrom.PlusROM).SetSendBuffer(j, uint8(v))
 					})
 				}
@@ -129,7 +129,7 @@ func (win *winPlusROMNetwork) draw() {
 			if imguiHexInput(fmt.Sprintf("##recv%d", i), 2, &b) {
 				j := i // copy of current index
 				if v, err := strconv.ParseUint(b, 16, 8); err == nil {
-					win.img.dbg.PushRawEvent(func() {
+					win.img.dbg.PushFunction(func() {
 						win.img.vcs.Mem.Cart.GetContainer().(*plusrom.PlusROM).SetRecvBuffer(j, uint8(v))
 					})
 				}

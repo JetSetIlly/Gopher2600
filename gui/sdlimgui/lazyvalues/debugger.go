@@ -35,7 +35,7 @@ type LazyDebugger struct {
 
 	Quantum         debugger.Quantum
 	LiveDisasmEntry disassembly.Entry
-	Breakpoints     debugger.BreakpointsQuery
+	Breakpoints     debugger.LazyBreakpointsQuery
 	HasChanged      bool
 
 	// the govern.State below is taken at the same time as the reset of the
@@ -52,15 +52,15 @@ func newLazyDebugger(val *LazyValues) *LazyDebugger {
 }
 
 func (lz *LazyDebugger) push() {
-	lz.quantum.Store(lz.val.dbg.GetQuantum())
-	lz.liveDisasmEntry.Store(lz.val.dbg.GetLiveDisasmEntry())
-	lz.breakpoints.Store(lz.val.dbg.QueryBreakpoints())
+	lz.quantum.Store(lz.val.dbg.LazyGetQuantum())
+	lz.liveDisasmEntry.Store(lz.val.dbg.LazyGetLiveDisasmEntry())
+	lz.breakpoints.Store(lz.val.dbg.LazyQueryBreakpoints())
 
 	// because the push() and update() pair don't interlock exactly, the
 	// hasChanged field must be latched. unlatching is performed in the
 	// update() function
 	if !lz.hasChanged.Load().(bool) {
-		lz.hasChanged.Store(lz.val.dbg.HasChanged())
+		lz.hasChanged.Store(lz.val.dbg.LazyHasChanged())
 	}
 
 	lz.state.Store(lz.val.dbg.State())
@@ -73,7 +73,7 @@ func (lz *LazyDebugger) update() {
 		lz.LiveDisasmEntry = lz.liveDisasmEntry.Load().(disassembly.Entry)
 	}
 
-	lz.Breakpoints, _ = lz.breakpoints.Load().(debugger.BreakpointsQuery)
+	lz.Breakpoints, _ = lz.breakpoints.Load().(debugger.LazyBreakpointsQuery)
 
 	// load current hasChanged value and unlatch (see push() function)
 	lz.HasChanged = lz.hasChanged.Load().(bool)

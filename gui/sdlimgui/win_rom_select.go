@@ -370,7 +370,7 @@ func (win *winSelectROM) insertCartridge() {
 		return
 	}
 
-	win.img.dbg.PushRawEvent(func() {
+	win.img.dbg.PushFunction(func() {
 		err := win.img.dbg.InsertCartridge(win.selectedFile)
 		if err != nil {
 			logger.Logf("sdlimgui", err.Error())

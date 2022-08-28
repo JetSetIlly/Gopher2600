@@ -367,15 +367,15 @@ func NewDebugger(opts CommandLineOptions, create CreateUserInterface) (*Debugger
 	// traces
 	dbg.traces = newTraces(dbg)
 
-	// make synchronisation channels. RawEvents are pushed thick and fast and
-	// the channel queue should be pretty lengthy to prevent dropped events
-	// (see PushRawEvent() function).
+	// make synchronisation channels. PushedFunctions can be pushed thick and
+	// fast and the channel queue should be pretty lengthy to prevent dropped
+	// events (see PushFunction()).
 	dbg.events = &terminal.ReadEvents{
-		UserInput:          make(chan userinput.Event, 10),
-		UserInputHandler:   dbg.userInputHandler,
-		IntEvents:          make(chan os.Signal, 1),
-		RawEvents:          make(chan func(), 1024),
-		RawEventsImmediate: make(chan func(), 1024),
+		UserInput:                make(chan userinput.Event, 10),
+		UserInputHandler:         dbg.userInputHandler,
+		IntEvents:                make(chan os.Signal, 1),
+		PushedFunctions:          make(chan func(), 1024),
+		PushedFunctionsImmediate: make(chan func(), 1024),
 	}
 
 	// connect Interrupt signal to dbg.events.intChan
@@ -1334,24 +1334,44 @@ func (dbg *Debugger) Plugged(port plugging.PortID, peripheral plugging.Periphera
 	}
 }
 
-// PushRawEvent onto the event queue.
-//
-// Used to ensure that the events are inserted into the emulation loop
-// correctly.
-func (dbg *Debugger) PushRawEvent(f func()) {
-	select {
-	case dbg.events.RawEvents <- f:
-	default:
-		logger.Log("debugger", "dropped raw event push")
+// ReloadCartridge inserts the current cartridge and states the emulation over
+func (dbg *Debugger) ReloadCartridge() error {
+	spec := dbg.vcs.TV.GetFrameInfo().Spec.ID
+
+	err := dbg.InsertCartridge("")
+	if err != nil {
+		return curated.Errorf("debugger: %v", err)
 	}
+
+	// set spec to what it was before the cartridge insertion
+	err = dbg.vcs.TV.SetSpec(spec)
+	if err != nil {
+		return curated.Errorf("debugger: %v", err)
+	}
+
+	return nil
 }
 
-// PushRawEventImmediate is the same as PushRawEvent but handlers will return to the
-// input loop for immediate action.
-func (dbg *Debugger) PushRawEventImmediate(f func()) {
-	select {
-	case dbg.events.RawEventsImmediate <- f:
-	default:
-		logger.Log("debugger", "dropped raw event push (to return channel)")
+// InsertCartridge into running emulation. If filename argument is empty the
+// currently inserted cartridge will be reinserted.
+func (dbg *Debugger) InsertCartridge(filename string) error {
+	if filename == "" {
+		filename = dbg.loader.Filename
 	}
+
+	cartload, err := cartridgeloader.NewLoader(filename, "AUTO")
+	if err != nil {
+		return curated.Errorf("debugger: %v", err)
+	}
+
+	err = dbg.attachCartridge(cartload)
+	if err != nil {
+		return curated.Errorf("debugger: %v", err)
+	}
+
+	if dbg.forcedROMselection != nil {
+		dbg.forcedROMselection <- true
+	}
+
+	return nil
 }

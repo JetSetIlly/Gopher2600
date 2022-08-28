@@ -47,7 +47,7 @@ func (dbg *Debugger) PushDeepPoke(addr uint16, value uint8, newValue uint8, valu
 		return nil
 	}
 
-	dbg.PushRawEventImmediate(func() {
+	dbg.PushFunctionImmediate(func() {
 		dbg.setStateQuiet(govern.Rewinding, true)
 		dbg.unwindLoop(doDeepPoke)
 	})

@@ -109,8 +109,7 @@ func (win *winCartStatic) draw() {
 			if ok {
 				compData, ok := compStatic.Reference(seg.Name)
 				if ok {
-					// take copy of seg.Name because we'll be accessing it in a
-					// PushRawEvent() below
+					// take copy of seg.Name because we'll be accessing it in a PushFunction() below
 					segname := seg.Name
 
 					// pos is retreived in before() and used in after()
@@ -214,7 +213,7 @@ func (win *winCartStatic) draw() {
 					}
 
 					commit := func(addr uint32, data uint8) {
-						win.img.dbg.PushRawEvent(func() {
+						win.img.dbg.PushFunction(func() {
 							idx := int(addr)
 							win.img.vcs.Mem.Cart.GetStaticBus().PutStatic(segname, uint16(idx), data)
 						})

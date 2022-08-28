@@ -143,7 +143,7 @@ func (win *winPrefs) draw() {
 		if imgui.Button(fmt.Sprintf("Set %s Defaults", setDefLabel)) {
 			// some preferences are sensitive to the goroutine SetDefaults() is
 			// called within
-			win.img.dbg.PushRawEvent(setDef.SetDefaults)
+			win.img.dbg.PushFunction(setDef.SetDefaults)
 		}
 	}
 }
@@ -298,7 +298,7 @@ func (win *winPrefs) drawRewindTab() {
 
 	rewindMaxEntries := int32(win.img.dbg.Rewind.Prefs.MaxEntries.Get().(int))
 	if imgui.SliderIntV("Max Entries##maxentries", &rewindMaxEntries, 10, 500, fmt.Sprintf("%d", rewindMaxEntries), imgui.SliderFlagsNone) {
-		win.img.dbg.PushRawEvent(func() {
+		win.img.dbg.PushFunction(func() {
 			win.img.dbg.Rewind.Prefs.MaxEntries.Set(rewindMaxEntries)
 		})
 	}
@@ -312,7 +312,7 @@ func (win *winPrefs) drawRewindTab() {
 
 	rewindFreq := int32(win.img.dbg.Rewind.Prefs.Freq.Get().(int))
 	if imgui.SliderIntV("Frequency##freq", &rewindFreq, 1, 5, fmt.Sprintf("%d", rewindFreq), imgui.SliderFlagsNone) {
-		win.img.dbg.PushRawEvent(func() {
+		win.img.dbg.PushFunction(func() {
 			win.img.dbg.Rewind.Prefs.Freq.Set(rewindFreq)
 		})
 	}
@@ -405,14 +405,14 @@ func (win *winPrefs) drawVCS() {
 		binary := win.img.vcs.Instance.Prefs.AtariVox.FestivalBinary.Get().(string)
 		if imgui.InputTextV("##festivalbinary", &binary, imgui.InputTextFlagsEnterReturnsTrue, nil) {
 			win.img.vcs.Instance.Prefs.AtariVox.FestivalBinary.Set(binary)
-			win.img.dbg.PushRawEvent(win.img.vcs.RIOT.Ports.RestartPeripherals)
+			win.img.dbg.PushFunction(win.img.vcs.RIOT.Ports.RestartPeripherals)
 		}
 
 		imgui.Spacing()
 		enabled := win.img.vcs.Instance.Prefs.AtariVox.FestivalEnabled.Get().(bool)
 		if imgui.Checkbox("Enable Festival Output", &enabled) {
 			win.img.vcs.Instance.Prefs.AtariVox.FestivalEnabled.Set(enabled)
-			win.img.dbg.PushRawEvent(win.img.vcs.RIOT.Ports.RestartPeripherals)
+			win.img.dbg.PushFunction(win.img.vcs.RIOT.Ports.RestartPeripherals)
 		}
 
 		var warning bool
@@ -549,7 +549,7 @@ func (win *winPrefs) drawPlusROMTab() {
 
 func (win *winPrefs) drawDiskButtons() {
 	if imgui.Button("Save All") {
-		win.img.dbg.PushRawEvent(func() {
+		win.img.dbg.PushFunction(func() {
 			err := win.img.prefs.save()
 			if err != nil {
 				logger.Logf("sdlimgui", "could not save (imgui debugger) preferences: %v", err)
@@ -598,7 +598,7 @@ func (win *winPrefs) drawDiskButtons() {
 
 	imgui.SameLine()
 	if imgui.Button("Restore All") {
-		win.img.dbg.PushRawEvent(func() {
+		win.img.dbg.PushFunction(func() {
 			err := win.img.prefs.load()
 			if err != nil {
 				logger.Logf("sdlimgui", "could not restore (imgui debugger) preferences: %v", err)

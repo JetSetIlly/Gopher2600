@@ -78,7 +78,7 @@ func (win *winTimer) draw() {
 				default:
 					panic("unknown timer divider")
 				}
-				win.img.dbg.PushRawEvent(func() {
+				win.img.dbg.PushFunction(func() {
 					win.img.vcs.RIOT.Timer.PokeField("divider", div)
 				})
 			}
@@ -91,7 +91,7 @@ func (win *winTimer) draw() {
 	imguiLabel("INTIM")
 	if imguiHexInput("##intim", 2, &intim) {
 		if v, err := strconv.ParseUint(intim, 16, 8); err == nil {
-			win.img.dbg.PushRawEvent(func() { win.img.vcs.RIOT.Timer.PokeField("intim", uint8(v)) })
+			win.img.dbg.PushFunction(func() { win.img.vcs.RIOT.Timer.PokeField("intim", uint8(v)) })
 		}
 	}
 
@@ -100,14 +100,14 @@ func (win *winTimer) draw() {
 	imguiLabel("Ticks")
 	if imguiHexInput("##remaining", 4, &remaining) {
 		if v, err := strconv.ParseUint(remaining, 16, 16); err == nil {
-			win.img.dbg.PushRawEvent(func() { win.img.vcs.RIOT.Timer.PokeField("ticksRemaining", int(v)) })
+			win.img.dbg.PushFunction(func() { win.img.vcs.RIOT.Timer.PokeField("ticksRemaining", int(v)) })
 		}
 	}
 
 	imguiLabel("TIMINT")
 	drawRegister("##TIMINT", win.img.lz.Timer.TIMINT, timer.MaskTIMINT, win.img.cols.timerBit,
 		func(v uint8) {
-			win.img.dbg.PushRawEvent(func() {
+			win.img.dbg.PushFunction(func() {
 				win.img.vcs.RIOT.Timer.PokeField("timint", v)
 			})
 		})

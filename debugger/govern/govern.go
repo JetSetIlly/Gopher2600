@@ -67,30 +67,3 @@ const (
 	Running
 	Ending
 )
-
-// FeatureReq is used to request the setting of an emulation attribute
-// eg. a pause request from the GUI
-type FeatureReq string
-
-// FeatureReqData represents the information associated with a FeatureReq. See
-// commentary for the defined FeatureReq values for the underlying type.
-type FeatureReqData interface{}
-
-// List of valid feature requests. argument must be of the type specified or
-// else the interface{} type conversion will fail and the application will
-// probably crash.
-//
-// Note that, like the name suggests, these are requests, they may or may not
-// be satisfied depending on other conditions in the GUI.
-const (
-	// notify gui of the underlying emulation mode.
-	ReqSetPause FeatureReq = "ReqSetPause" // bool
-
-	// change emulation mode
-	ReqSetMode FeatureReq = "ReqSetMode" // emulation.Mode
-)
-
-// Sentinal error returned if emulation does no support requested feature.
-const (
-	UnsupportedEmulationFeature = "unsupported emulation feature: %v"
-)

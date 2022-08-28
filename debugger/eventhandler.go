@@ -40,10 +40,10 @@ func (dbg *Debugger) readEventsHandler() error {
 				return err
 			}
 
-		case ev := <-dbg.events.RawEvents:
+		case ev := <-dbg.events.PushedFunctions:
 			ev()
 
-		case ev := <-dbg.events.RawEventsImmediate:
+		case ev := <-dbg.events.PushedFunctionsImmediate:
 			ev()
 			return nil
 

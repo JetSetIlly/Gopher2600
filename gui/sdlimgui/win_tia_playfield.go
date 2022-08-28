@@ -42,7 +42,7 @@ func (win *winTIA) drawPlayfield() {
 	fgCol := lz.ForegroundColor
 	if win.img.imguiSwatch(fgCol, 0.75) {
 		win.popupPalette.request(&fgCol, func() {
-			win.img.dbg.PushRawEvent(func() {
+			win.img.dbg.PushFunction(func() {
 				pf.ForegroundColor = fgCol
 				bs.Color = fgCol
 			})
@@ -54,7 +54,7 @@ func (win *winTIA) drawPlayfield() {
 	bgCol := lz.BackgroundColor
 	if win.img.imguiSwatch(bgCol, 0.75) {
 		win.popupPalette.request(&bgCol, func() {
-			win.img.dbg.PushRawEvent(func() {
+			win.img.dbg.PushFunction(func() {
 				pf.BackgroundColor = bgCol
 			})
 		})
@@ -69,7 +69,7 @@ func (win *winTIA) drawPlayfield() {
 	imguiLabel("Reflected")
 	ref := lz.Reflected
 	if imgui.Checkbox("##reflected", &ref) {
-		win.img.dbg.PushRawEvent(func() {
+		win.img.dbg.PushFunction(func() {
 			pf.Reflected = ref
 		})
 	}
@@ -77,7 +77,7 @@ func (win *winTIA) drawPlayfield() {
 	imguiLabel("Scoremode")
 	sm := lz.Scoremode
 	if imgui.Checkbox("##scoremode", &sm) {
-		win.img.dbg.PushRawEvent(func() {
+		win.img.dbg.PushFunction(func() {
 			pf.Scoremode = sm
 		})
 	}
@@ -85,7 +85,7 @@ func (win *winTIA) drawPlayfield() {
 	imguiLabel("Priority")
 	pri := lz.Priority
 	if imgui.Checkbox("##priority", &pri) {
-		win.img.dbg.PushRawEvent(func() {
+		win.img.dbg.PushFunction(func() {
 			pf.Priority = pri
 		})
 	}
@@ -96,7 +96,7 @@ func (win *winTIA) drawPlayfield() {
 	ctrlpf := fmt.Sprintf("%02x", lz.Ctrlpf)
 	if imguiHexInput("##ctrlpf", 2, &ctrlpf) {
 		if v, err := strconv.ParseUint(ctrlpf, 16, 8); err == nil {
-			win.img.dbg.PushRawEvent(func() {
+			win.img.dbg.PushFunction(func() {
 				// update ball copy of CTRLPF too in addition to the playfield copy
 				pf.SetCTRLPF(uint8(v))
 				bs.SetCTRLPF(uint8(v))
@@ -127,7 +127,7 @@ func (win *winTIA) drawPlayfield() {
 		}
 		if seq.rectFill(palette[col]) {
 			pf0d ^= 0x80 >> i
-			win.img.dbg.PushRawEvent(func() {
+			win.img.dbg.PushFunction(func() {
 				pf.SetPF0(pf0d)
 			})
 		}
@@ -150,7 +150,7 @@ func (win *winTIA) drawPlayfield() {
 		}
 		if seq.rectFill(palette[col]) {
 			pf1d ^= 0x80 >> i
-			win.img.dbg.PushRawEvent(func() {
+			win.img.dbg.PushFunction(func() {
 				pf.SetPF1(pf1d)
 			})
 		}
@@ -173,7 +173,7 @@ func (win *winTIA) drawPlayfield() {
 		}
 		if seq.rectFill(palette[col]) {
 			pf2d ^= 0x80 >> i
-			win.img.dbg.PushRawEvent(func() {
+			win.img.dbg.PushFunction(func() {
 				pf.SetPF2(pf2d)
 			})
 		}

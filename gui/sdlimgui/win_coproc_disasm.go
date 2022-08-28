@@ -112,7 +112,7 @@ func (win *winCoProcDisasm) draw() {
 
 			// options
 			if imgui.Checkbox("Disassembly Enabled", &isEnabled) {
-				win.img.dbg.PushRawEvent(func() {
+				win.img.dbg.PushFunction(func() {
 					win.img.dbg.CoProcDisasm.Enable(isEnabled)
 					if win.img.dbg.State() != govern.Running {
 						// rerun the last two frames in order to gather as much disasm

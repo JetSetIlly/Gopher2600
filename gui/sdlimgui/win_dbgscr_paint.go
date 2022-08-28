@@ -131,7 +131,7 @@ func (ff *floodFill) resolve(offsetIdx int) {
 		return
 	}
 
-	ff.win.img.dbg.PushRawEventImmediate(func() {
+	ff.win.img.dbg.PushFunctionImmediate(func() {
 		target := ff.targets[offsetIdx]
 		ref := ff.win.scr.crit.reflection[target.offset]
 		px := uint8((ref.Signal&signal.Color)>>signal.ColorShift) & 0xfe
@@ -141,7 +141,7 @@ func (ff *floodFill) resolve(offsetIdx int) {
 		}
 		ff.win.img.dbg.GotoCoords(target.coord)
 
-		ff.win.img.dbg.PushRawEventImmediate(func() {
+		ff.win.img.dbg.PushFunctionImmediate(func() {
 			switch ref.VideoElement {
 			case video.ElementBackground:
 				ff.win.img.dbg.PushDeepPoke(cpubus.WriteAddress[cpubus.COLUBK], px, ff.to, 0xfe, func() { ff.resolve(offsetIdx + 1) })

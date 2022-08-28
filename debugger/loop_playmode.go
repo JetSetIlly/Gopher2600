@@ -41,9 +41,9 @@ func (dbg *Debugger) playLoop() error {
 			select {
 			case <-dbg.events.IntEvents:
 				return curated.Errorf(terminal.UserInterrupt)
-			case ev := <-dbg.events.RawEvents:
+			case ev := <-dbg.events.PushedFunctions:
 				ev()
-			case ev := <-dbg.events.RawEventsImmediate:
+			case ev := <-dbg.events.PushedFunctionsImmediate:
 				ev()
 				return nil
 			case ev := <-dbg.events.UserInput:

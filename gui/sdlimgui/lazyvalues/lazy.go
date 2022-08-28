@@ -133,7 +133,7 @@ func (val *LazyValues) Refresh() {
 	}
 	val.refreshScheduled.Store(true)
 
-	val.dbg.PushRawEvent(func() {
+	val.dbg.PushFunction(func() {
 		val.Debugger.push()
 		val.CPU.push()
 		val.Mem.push()
@@ -177,7 +177,7 @@ func (val *LazyValues) FastRefresh() {
 	}
 	val.refreshScheduled.Store(true)
 
-	val.dbg.PushRawEvent(func() {
+	val.dbg.PushFunction(func() {
 		val.TV.push()
 		val.Tracker.push()
 		val.Cart.fastPush()

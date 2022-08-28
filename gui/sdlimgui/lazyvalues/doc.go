@@ -24,7 +24,7 @@
 // the television packages should be used in the normal way.
 //
 // For writing data back to the emulation thread the terminal interface can be
-// used for many things. Alternatively the debugger.PushRawEvent() function can
+// used for many things. Alternatively the debugger.PushFunction() function can
 // be used. There is currently no way of pushing events onto the emulator
 // unless the debugging loop is in use.
 //
@@ -39,7 +39,7 @@
 //
 // Writing the playfield values is done thought debugger's "raw event" system:
 //
-//	lazyval.Dbg.PushRawEvent(func() {
+//	lazyval.Dbg.PushFunction(func() {
 //		lazyval.VCS.TIA.Video.Playfield.ForegroundColor = col
 //	})
 //
@@ -70,7 +70,7 @@
 // type in the lazyvalues system, at the same time as requesting new values.
 //
 //	func Refresh() {                        .------------------.
-//		debugger.PushRawEvent()   ----->	| CPU.push()       |
+//		debugger.PushFunction()   ----->	| CPU.push()       |
 //											| RAM.push()       |
 //      CPU.update()						| Playfield.push() |
 //		RAM.update()						|   .              |
