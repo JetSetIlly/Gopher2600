@@ -208,11 +208,14 @@ type effectsShader struct {
 	noiseLevel           int32
 	fringingAmount       int32
 	time                 int32
+
+	allowBevel bool
 }
 
-func newEffectsShader(img *SdlImgui, yflip bool) shaderProgram {
+func newEffectsShader(img *SdlImgui, yflip bool, allowBevel bool) shaderProgram {
 	sh := &effectsShader{
-		img: img,
+		img:        img,
+		allowBevel: allowBevel,
 	}
 	if yflip {
 		sh.createProgram(string(shaders.YFlipVertexShader), string(shaders.CRTEffectsFragShader))
@@ -256,7 +259,7 @@ func (sh *effectsShader) setAttributesArgs(env shaderEnvironment, numScanlines i
 	gl.Uniform1i(sh.numClocks, int32(numClocks))
 	gl.Uniform1i(sh.curve, boolToInt32(sh.img.crtPrefs.Curve.Get().(bool)))
 	gl.Uniform1i(sh.roundedCorners, boolToInt32(sh.img.crtPrefs.RoundedCorners.Get().(bool)))
-	gl.Uniform1i(sh.bevel, boolToInt32(sh.img.crtPrefs.Bevel.Get().(bool)))
+	gl.Uniform1i(sh.bevel, boolToInt32(sh.allowBevel && sh.img.crtPrefs.Bevel.Get().(bool)))
 	gl.Uniform1i(sh.shine, boolToInt32(sh.img.crtPrefs.Shine.Get().(bool)))
 	gl.Uniform1i(sh.shadowMask, boolToInt32(sh.img.crtPrefs.Mask.Get().(bool)))
 	gl.Uniform1i(sh.scanlines, boolToInt32(sh.img.crtPrefs.Scanlines.Get().(bool)))
