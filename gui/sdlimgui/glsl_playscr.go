@@ -29,7 +29,7 @@ type playscrShader struct {
 func newPlayscrShader(img *SdlImgui) shaderProgram {
 	sh := &playscrShader{
 		img:        img,
-		crt:        newCRTSequencer(img),
+		crt:        newCRTSequencer(img, true),
 		screenshot: newscreenshotSequencer(img),
 	}
 	return sh

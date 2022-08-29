@@ -62,7 +62,7 @@ func newscreenshotSequencer(img *SdlImgui) *screenshotSequencer {
 		blurShader:            newBlurShader(),
 		ghostingShader:        newGhostingShader(img),
 		blendShader:           newBlendShader(),
-		effectsShaderFlipped:  newEffectsShader(img, true),
+		effectsShaderFlipped:  newEffectsShader(img, true, false),
 		colorShaderFlipped:    newColorShader(true),
 	}
 	return sh

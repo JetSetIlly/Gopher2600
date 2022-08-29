@@ -34,7 +34,7 @@ type crtSequencer struct {
 	colorShaderFlipped    shaderProgram
 }
 
-func newCRTSequencer(img *SdlImgui) *crtSequencer {
+func newCRTSequencer(img *SdlImgui, allowBevel bool) *crtSequencer {
 	sh := &crtSequencer{
 		img:                   img,
 		seq:                   framebuffer.NewSequence(5),
@@ -44,9 +44,9 @@ func newCRTSequencer(img *SdlImgui) *crtSequencer {
 		blurShader:            newBlurShader(),
 		ghostingShader:        newGhostingShader(img),
 		blendShader:           newBlendShader(),
-		effectsShader:         newEffectsShader(img, false),
+		effectsShader:         newEffectsShader(img, false, allowBevel),
 		colorShader:           newColorShader(false),
-		effectsShaderFlipped:  newEffectsShader(img, true),
+		effectsShaderFlipped:  newEffectsShader(img, true, allowBevel),
 		colorShaderFlipped:    newColorShader(true),
 	}
 	return sh

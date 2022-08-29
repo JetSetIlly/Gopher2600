@@ -114,9 +114,7 @@ func newDbgScrShader(img *SdlImgui) shaderProgram {
 	sh := &dbgScrShader{
 		img: img,
 	}
-
-	sh.crt = newCRTSequencer(img)
-
+	sh.crt = newCRTSequencer(img, false)
 	sh.createProgram(string(shaders.StraightVertexShader), string(shaders.DbgScrHelpersShader), string(shaders.DbgScrShader))
 	sh.dbgScrHelper.get(sh.shader)
 
