@@ -180,6 +180,12 @@ func (win *playScr) drawFPS() bool {
 
 	imguiSeparator()
 
+	if win.img.lz.Cart.HasCoProcBus {
+		clk := float32(win.img.vcs.Instance.Prefs.ARM.Clock.Get().(float64))
+		imgui.Text(fmt.Sprintf("%s Clock: %.0f Mhz", win.img.lz.Cart.CoProcID, clk))
+		imguiSeparator()
+	}
+
 	imgui.Text(fmt.Sprintf("%.1fx scaling", win.yscaling))
 	imgui.Text(fmt.Sprintf("%d total scanlines", win.scr.crit.frameInfo.TotalScanlines))
 
