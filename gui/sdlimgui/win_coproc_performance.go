@@ -332,7 +332,7 @@ func (win *winCoProcPerformance) drawFunctions(src *developer.Source) {
 	// first column is a dummy column so that Selectable (span all columns) works correctly
 	width := imgui.ContentRegionAvail().X
 	imgui.TableSetupColumnV("File", imgui.TableColumnFlagsPreferSortDescending, width*0.275, 0)
-	imgui.TableSetupColumnV("Line", imgui.TableColumnFlagsNoSort, width*0.05, 1)
+	imgui.TableSetupColumnV("Lines", imgui.TableColumnFlagsNoSort, width*0.05, 1)
 	imgui.TableSetupColumnV("Function", imgui.TableColumnFlagsPreferSortDescending, width*0.320, 2)
 	imgui.TableSetupColumnV("Frame", imgui.TableColumnFlagsNoSortAscending|imgui.TableColumnFlagsDefaultSort, width*0.1, 3)
 	imgui.TableSetupColumnV("Avg", imgui.TableColumnFlagsNoSortAscending, width*0.1, 4)
@@ -402,21 +402,27 @@ func (win *winCoProcPerformance) drawFunctions(src *developer.Source) {
 		imgui.PopStyleColorV(2)
 
 		// tooltip
-		win.tooltip(fn.Stats.OverSource, fn.DeclLine, false)
+		if fn.Name != developer.NoSourceID {
+			win.tooltip(fn.Stats.OverSource, fn.DeclLine, false)
+		} else {
+			win.tooltipNoSourceCode()
+		}
 
 		// open/select function filter on click
-		if imgui.IsItemClicked() {
+		if imgui.IsItemClicked() && fn.Name != developer.NoSourceID {
 			win.functionTabDirty = true
 			src.AddFunctionFilter(fn.Name)
 			win.functionTabSelect = fn.Name
 		}
 
 		imgui.TableNextColumn()
-		if fn.DeclLine != nil {
-			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLineNumber)
+		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLineNumber)
+		if fn.DeclLine != nil && fn.Name != developer.NoSourceID {
 			imgui.Text(fmt.Sprintf("%d", fn.DeclLine.LineNumber))
-			imgui.PopStyleColor()
+		} else {
+			imgui.Text("-")
 		}
+		imgui.PopStyleColor()
 
 		imgui.TableNextColumn()
 		imgui.Text(fmt.Sprintf("%s", fn.Name))
@@ -592,17 +598,25 @@ func (win *winCoProcPerformance) drawSourceLines(src *developer.Source) {
 		imgui.PopStyleColorV(2)
 
 		// tooltip
-		win.tooltip(ln.Stats.OverSource, ln, true)
+		if ln.Function.Name != developer.NoSourceID {
+			win.tooltip(ln.Stats.OverSource, ln, true)
+		} else {
+			win.tooltipNoSourceCode()
+		}
 
 		// open source window on click
-		if imgui.IsItemClicked() {
+		if imgui.IsItemClicked() && ln.Function.Name != developer.NoSourceID {
 			srcWin := win.img.wm.debuggerWindows[winCoProcSourceID].(*winCoProcSource)
 			srcWin.gotoSourceLine(ln)
 		}
 
 		imgui.TableNextColumn()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLineNumber)
-		imgui.Text(fmt.Sprintf("%d", ln.LineNumber))
+		if ln.Function.Name != developer.NoSourceID {
+			imgui.Text(fmt.Sprintf("%d", ln.LineNumber))
+		} else {
+			imgui.Text("-")
+		}
 		imgui.PopStyleColor()
 
 		imgui.TableNextColumn()
@@ -818,14 +832,18 @@ thean to the program as a whole.`)
 		imgui.PopStyleColorV(3)
 
 		// source on tooltip
-		if win.functionTabScale {
-			win.tooltip(ln.Stats.OverFunction, ln, true)
+		if ln.Function.Name != developer.NoSourceID {
+			if win.functionTabScale {
+				win.tooltip(ln.Stats.OverFunction, ln, true)
+			} else {
+				win.tooltip(ln.Stats.OverSource, ln, true)
+			}
 		} else {
-			win.tooltip(ln.Stats.OverSource, ln, true)
+			win.tooltipNoSourceCode()
 		}
 
 		// open source window on click
-		if imgui.IsItemClicked() {
+		if imgui.IsItemClicked() && ln.Function.Name != developer.NoSourceID {
 			srcWin := win.img.wm.debuggerWindows[winCoProcSourceID].(*winCoProcSource)
 			srcWin.gotoSourceLine(ln)
 		}
@@ -930,8 +948,11 @@ thean to the program as a whole.`)
 	imgui.EndTable()
 }
 
-func (win *winCoProcPerformance) tooltip(load developer.Load, ln *developer.SourceLine, withAsm bool) {
+func (win *winCoProcPerformance) tooltipNoSourceCode() {
+	imguiTooltipSimple("Execution of code without underlying source code")
+}
 
+func (win *winCoProcPerformance) tooltip(load developer.Load, ln *developer.SourceLine, withAsm bool) {
 	imguiTooltip(func() {
 		imgui.Text(ln.File.ShortFilename)
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLineNumber)

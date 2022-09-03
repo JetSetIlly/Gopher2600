@@ -302,13 +302,16 @@ type Source struct {
 	// lines of source code found in the compile units
 	linesByAddress map[uint64]*SourceLine
 
+	// fake source line used when no source code is available for address
+	noSourceLine *SourceLine
+
 	// sorted list of every source line in all compile units
 	SortedLines SortedLines
 
 	// sorted lines filtered by function name
 	FunctionFilters []*FunctionFilter
 
-	// cycle statisics for the entire program
+	// cycle statistics for the entire program
 	Stats Stats
 
 	// kernel specific cycle statistics for the program. accumulated only once TV is stable
@@ -727,6 +730,9 @@ func NewSource(romFile string, cart mapper.CartCoProc) (*Source, error) {
 		return nil, curated.Errorf("dwarf: %v", err)
 	}
 
+	// no source represents execution that has no known underlying source code
+	src.addNoSourceSupport()
+
 	// sort sorted lines
 	sort.Sort(src.SortedLines)
 
@@ -741,6 +747,30 @@ func NewSource(romFile string, cart mapper.CartCoProc) (*Source, error) {
 	logger.Logf("dwarf", "highest memory address occupied by a variable (%08x)", src.VariableMemtop)
 
 	return src, nil
+}
+
+const NoSourceID = "-"
+
+func (src *Source) addNoSourceSupport() {
+	// add noSource support
+	noSourceFile := &SourceFile{
+		Filename:      NoSourceID,
+		ShortFilename: NoSourceID,
+	}
+	noSourceFunc := &SourceFunction{
+		Name: NoSourceID,
+	}
+	src.noSourceLine = &SourceLine{
+		File:     noSourceFile,
+		Function: noSourceFunc,
+	}
+	noSourceFunc.DeclLine = src.noSourceLine
+	src.noSourceLine.PlainContent = NoSourceID
+	src.noSourceLine.Fragments = append(src.noSourceLine.Fragments, SourceLineFragment{Type: FragmentCode, Content: NoSourceID})
+	src.SortedLines.Lines = append(src.SortedLines.Lines, src.noSourceLine)
+	src.SortedFunctions.Functions = append(src.SortedFunctions.Functions, src.noSourceLine.Function)
+	src.Files[NoSourceID] = noSourceFile
+	src.Functions[NoSourceID] = noSourceFunc
 }
 
 // find source line for program counter. shouldn't be called too often because
@@ -785,33 +815,36 @@ func (src *Source) executionProfile(addr uint32, ct float32, kernel KernelVCS) {
 	src.ExecutionProfileChanged = true
 
 	line, ok := src.linesByAddress[uint64(addr)]
-	if ok {
-		line.Stats.count += ct
-		line.Function.Stats.count += ct
-		src.Stats.count += ct
+	if !ok {
+		line = src.noSourceLine
+		src.linesByAddress[uint64(addr)] = line
+	}
 
-		line.Kernel |= kernel
-		line.Function.Kernel |= kernel
-		line.Function.DeclLine.Kernel |= kernel
+	line.Stats.count += ct
+	line.Function.Stats.count += ct
+	src.Stats.count += ct
 
-		switch kernel {
-		case KernelVBLANK:
-			line.StatsVBLANK.count += ct
-			line.Function.StatsVBLANK.count += ct
-			src.StatsVBLANK.count += ct
-		case KernelScreen:
-			line.StatsScreen.count += ct
-			line.Function.StatsScreen.count += ct
-			src.StatsScreen.count += ct
-		case KernelOverscan:
-			line.StatsOverscan.count += ct
-			line.Function.StatsOverscan.count += ct
-			src.StatsOverscan.count += ct
-		case KernelUnstable:
-			line.StatsROMSetup.count += ct
-			line.Function.StatsROMSetup.count += ct
-			src.StatsROMSetup.count += ct
-		}
+	line.Kernel |= kernel
+	line.Function.Kernel |= kernel
+	line.Function.DeclLine.Kernel |= kernel
+
+	switch kernel {
+	case KernelVBLANK:
+		line.StatsVBLANK.count += ct
+		line.Function.StatsVBLANK.count += ct
+		src.StatsVBLANK.count += ct
+	case KernelScreen:
+		line.StatsScreen.count += ct
+		line.Function.StatsScreen.count += ct
+		src.StatsScreen.count += ct
+	case KernelOverscan:
+		line.StatsOverscan.count += ct
+		line.Function.StatsOverscan.count += ct
+		src.StatsOverscan.count += ct
+	case KernelUnstable:
+		line.StatsROMSetup.count += ct
+		line.Function.StatsROMSetup.count += ct
+		src.StatsROMSetup.count += ct
 	}
 }
 
