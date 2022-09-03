@@ -229,6 +229,9 @@ func (win *winCoProcPerformance) drawFrameStats() {
 		return 0
 	}
 
+	win.img.screen.crit.section.Lock()
+	defer win.img.screen.crit.section.Unlock()
+
 	// decide which kernel we're using
 	var kernel string
 	var kernelClocks float32
@@ -251,7 +254,6 @@ func (win *winCoProcPerformance) drawFrameStats() {
 	// frame statistics are taken from reflection information
 	var clockCount float32
 
-	win.img.screen.crit.section.Lock()
 	for i, r := range win.img.screen.crit.reflection {
 		sl := i / specification.ClksScanline
 
@@ -284,8 +286,6 @@ func (win *winCoProcPerformance) drawFrameStats() {
 	} else {
 		imgui.Text(fmt.Sprintf("No %s activity in the %s kernel", win.img.lz.Cart.CoProcID, kernel))
 	}
-
-	win.img.screen.crit.section.Unlock()
 }
 
 func (win *winCoProcPerformance) drawFunctions(src *developer.Source) {
