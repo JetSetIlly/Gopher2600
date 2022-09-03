@@ -110,6 +110,9 @@ type CartCoProcDeveloper interface {
 
 	// returns a map that can be used to count cycles for each PC address
 	Profiling() map[uint32]float32
+
+	// instructs developer implementation to accumulate profiling data
+	EndProfiling()
 }
 
 // CartCoProcDisasmSummary represents a summary of a coprocessor execution.

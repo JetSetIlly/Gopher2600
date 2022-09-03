@@ -46,6 +46,9 @@ type Developer struct {
 
 	// raw cycle counts of executed addresses
 	profiledAddresses map[uint32]float32
+
+	// frame info from the last NewFrame()
+	frameInfo television.FrameInfo
 }
 
 // TV is the interface from the developer type to the television implementation.
@@ -259,15 +262,19 @@ func (dev *Developer) NewFrame(frameInfo television.FrameInfo) error {
 	}
 
 	dev.source.newFrame()
+	dev.frameInfo = frameInfo
 
 	return nil
 }
 
-// NewScanline implements the television.ScanlineTrigger interface.
-func (dev *Developer) NewScanline(frameInfo television.FrameInfo) error {
+// EndProfiling is called when the coprocessor has ended or yielded execution.
+func (dev *Developer) EndProfiling() {
 	if dev.disabled || dev.source == nil {
-		return nil
+		return
 	}
-	dev.profileProcess(frameInfo)
-	return nil
+
+	dev.sourceLock.Lock()
+	defer dev.sourceLock.Unlock()
+
+	dev.profileProcess()
 }

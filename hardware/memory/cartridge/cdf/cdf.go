@@ -30,6 +30,7 @@ import (
 // cdf implements the mapper.CartMapper interface.
 type cdf struct {
 	instance *instance.Instance
+	dev      mapper.CartCoProcDeveloper
 
 	pathToROM string
 	mappingID string
@@ -137,6 +138,7 @@ func (cart *cdf) SetDisassembler(disasm mapper.CartCoProcDisassembler) {
 
 // SetDeveloper implements the mapper.CartCoProc interface.
 func (cart *cdf) SetDeveloper(dev mapper.CartCoProcDeveloper) {
+	cart.dev = dev
 	cart.arm.SetDeveloper(dev)
 }
 
@@ -462,6 +464,10 @@ func (cart *cdf) Step(clock float32) {
 			if timerClock > 0 {
 				cart.arm.Step(timerClock)
 			}
+		}
+
+		if cart.dev != nil && !cart.state.callfn.IsActive() {
+			cart.dev.EndProfiling()
 		}
 	} else {
 		cart.arm.Step(clock)

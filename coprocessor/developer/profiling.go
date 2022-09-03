@@ -15,20 +15,13 @@
 
 package developer
 
-import (
-	"github.com/jetsetilly/gopher2600/hardware/television"
-)
-
 // Profiling implements the CartCoProcDeveloper interface.
 func (dev *Developer) Profiling() map[uint32]float32 {
 	return dev.profiledAddresses
 }
 
 // process cycle counts for (non-zero) addresses in dev.profiledAddresses
-func (dev *Developer) profileProcess(frameInfo television.FrameInfo) {
-	dev.sourceLock.Lock()
-	defer dev.sourceLock.Unlock()
-
+func (dev *Developer) profileProcess() {
 	accumulate := func(k KernelVCS) {
 		for pc, ct := range dev.profiledAddresses {
 			if ct > 0 {
@@ -39,14 +32,14 @@ func (dev *Developer) profileProcess(frameInfo television.FrameInfo) {
 	}
 
 	// checking to see if kernel has changed
-	if frameInfo.Stable {
+	if dev.frameInfo.Stable {
 		c := dev.tv.GetCoords()
 
-		if c.Scanline == frameInfo.VisibleTop-1 {
+		if c.Scanline <= dev.frameInfo.VisibleTop-1 {
 			accumulate(KernelVBLANK)
-		} else if c.Scanline == frameInfo.VisibleBottom {
+		} else if c.Scanline <= dev.frameInfo.VisibleBottom {
 			accumulate(KernelScreen)
-		} else if c.Scanline >= frameInfo.TotalScanlines {
+		} else {
 			accumulate(KernelOverscan)
 		}
 	} else {

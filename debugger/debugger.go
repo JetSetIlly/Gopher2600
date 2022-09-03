@@ -1102,7 +1102,6 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) 
 	dbg.CoProcDev = coprocDev.NewDeveloper(cartload.Filename, coproc, dbg.vcs.TV)
 	if dbg.CoProcDev != nil {
 		dbg.vcs.TV.AddFrameTrigger(dbg.CoProcDev)
-		dbg.vcs.TV.AddScanlineTrigger(dbg.CoProcDev)
 	}
 
 	// make sure everything is reset after disassembly (including breakpoints, etc.)
@@ -1274,7 +1273,6 @@ func (dbg *Debugger) hotload() (e error) {
 	}
 
 	dbg.vcs.TV.RemoveFrameTrigger(dbg.CoProcDev)
-	dbg.vcs.TV.RemoveScanlineTrigger(dbg.CoProcDev)
 
 	coproc := dbg.vcs.Mem.Cart.GetCoProc()
 	dbg.CoProcDisasm = coprocDisasm.NewDisassembly(dbg.vcs.TV, coproc)
