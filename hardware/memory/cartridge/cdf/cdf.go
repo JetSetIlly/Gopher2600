@@ -457,7 +457,7 @@ func (cart *cdf) Step(clock float32) {
 
 	// Step ARM state if the ARM program is NOT running
 	if cart.state.callfn.IsActive() {
-		if cart.instance.Prefs.ARM.Immediate.Get().(bool) {
+		if cart.state.immediateMode {
 			cart.arm.Step(clock)
 		} else {
 			timerClock := cart.state.callfn.Step(clock, cart.arm.Clk)
@@ -664,6 +664,8 @@ func (cart *cdf) BreakpointsDisable(disable bool) {
 }
 
 func (cart *cdf) runArm() error {
+	cart.state.immediateMode = cart.instance.Prefs.ARM.Immediate.Get().(bool)
+
 	cycles, err := cart.arm.Run()
 	if err != nil {
 		return curated.Errorf("CDF: %v", err)
