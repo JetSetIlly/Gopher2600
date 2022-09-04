@@ -570,7 +570,12 @@ func (arm *ARM) run() (float32, error) {
 		arm.disasmSummary = DisasmSummary{}
 		arm.disasm.Start()
 
-		defer arm.disasm.End(arm.disasmSummary)
+		// we must wrap the call to disasm.End in a function because defer
+		// needs to be invoked. this has the unintended side-effect of using
+		// the state of arm.disasSummary as it exists now
+		defer func() {
+			arm.disasm.End(arm.disasmSummary)
+		}()
 	}
 
 	var err error

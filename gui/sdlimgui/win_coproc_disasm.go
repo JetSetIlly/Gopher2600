@@ -215,64 +215,7 @@ func (win *winCoProcDisasm) drawEntry(e arm.DisasmEntry) {
 	imgui.PopStyleColorV(2)
 
 	if imgui.IsItemHovered() && e.Operator != "" {
-		imguiTooltip(func() {
-			imgui.Text("Address:")
-			imgui.SameLine()
-			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmAddress)
-			imgui.Text(e.Address)
-			imgui.PopStyleColor()
-
-			imgui.Text("Opcode:")
-			imgui.SameLine()
-			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmByteCode)
-			imgui.Text(fmt.Sprintf("%04x", e.Opcode))
-			imgui.PopStyleColor()
-
-			imgui.Text("Instruction:")
-			imgui.SameLine()
-			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmOperator)
-			imgui.Text(e.Operator)
-			imgui.PopStyleColor()
-			imgui.SameLine()
-			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmOperand)
-			imgui.Text(e.Operand)
-			imgui.PopStyleColor()
-
-			imgui.Text("Cycles:")
-			imgui.SameLine()
-			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmCycles)
-			imgui.Text(fmt.Sprintf("%d", e.Cycles))
-			imgui.PopStyleColor()
-
-			imgui.Spacing()
-			imgui.Separator()
-			imgui.Spacing()
-
-			switch e.MAMCR {
-			case 0:
-				imguiColorLabelSimple("MAM-0", win.img.cols.CoProcMAM0)
-			case 1:
-				imguiColorLabelSimple("MAM-1", win.img.cols.CoProcMAM1)
-			case 2:
-				imguiColorLabelSimple("MAM-2", win.img.cols.CoProcMAM2)
-			}
-
-			switch e.BranchTrail {
-			case arm.BranchTrailUsed:
-				imguiColorLabelSimple("Branch Trail Used", win.img.cols.CoProcBranchTrailUsed)
-			case arm.BranchTrailFlushed:
-				imguiColorLabelSimple("Branch Trail Flushed", win.img.cols.CoProcBranchTrailFlushed)
-			}
-
-			if e.MergedIS {
-				imguiColorLabelSimple("Merged I/S Cycle", win.img.cols.CoProcMergedIS)
-			}
-
-			if e.ExecutionNotes != "" {
-				imgui.SameLineV(0, 20)
-				imgui.Text(fmt.Sprintf("%c %s", fonts.ExecutionNotes, e.ExecutionNotes))
-			}
-		}, false)
+		win.drawEntryTooltip(e)
 	}
 
 	imgui.TableNextColumn()
@@ -327,4 +270,65 @@ func (win *winCoProcDisasm) drawEntry(e arm.DisasmEntry) {
 	} else {
 		imgui.Text("??")
 	}
+}
+
+func (win *winCoProcDisasm) drawEntryTooltip(e arm.DisasmEntry) {
+	imguiTooltip(func() {
+		imgui.Text("Address:")
+		imgui.SameLine()
+		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmAddress)
+		imgui.Text(e.Address)
+		imgui.PopStyleColor()
+
+		imgui.Text("Opcode:")
+		imgui.SameLine()
+		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmByteCode)
+		imgui.Text(fmt.Sprintf("%04x", e.Opcode))
+		imgui.PopStyleColor()
+
+		imgui.Text("Instruction:")
+		imgui.SameLine()
+		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmOperator)
+		imgui.Text(e.Operator)
+		imgui.PopStyleColor()
+		imgui.SameLine()
+		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmOperand)
+		imgui.Text(e.Operand)
+		imgui.PopStyleColor()
+
+		imgui.Text("Cycles:")
+		imgui.SameLine()
+		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmCycles)
+		imgui.Text(fmt.Sprintf("%d", e.Cycles))
+		imgui.PopStyleColor()
+
+		imgui.Spacing()
+		imgui.Separator()
+		imgui.Spacing()
+
+		switch e.MAMCR {
+		case 0:
+			imguiColorLabelSimple("MAM-0", win.img.cols.CoProcMAM0)
+		case 1:
+			imguiColorLabelSimple("MAM-1", win.img.cols.CoProcMAM1)
+		case 2:
+			imguiColorLabelSimple("MAM-2", win.img.cols.CoProcMAM2)
+		}
+
+		switch e.BranchTrail {
+		case arm.BranchTrailUsed:
+			imguiColorLabelSimple("Branch Trail Used", win.img.cols.CoProcBranchTrailUsed)
+		case arm.BranchTrailFlushed:
+			imguiColorLabelSimple("Branch Trail Flushed", win.img.cols.CoProcBranchTrailFlushed)
+		}
+
+		if e.MergedIS {
+			imguiColorLabelSimple("Merged I/S Cycle", win.img.cols.CoProcMergedIS)
+		}
+
+		if e.ExecutionNotes != "" {
+			imgui.SameLineV(0, 20)
+			imgui.Text(fmt.Sprintf("%c %s", fonts.ExecutionNotes, e.ExecutionNotes))
+		}
+	}, false)
 }
