@@ -21,12 +21,17 @@ import (
 
 // DisasmEntry implements the CartCoProcDisasmEntry interface.
 type DisasmEntry struct {
+	// the address value. the formatted value is in the Address field
+	Addr uint32
+
+	// the opcode for the instruction
+	Opcode uint16
+
+	// formated strings based for use by disassemblies
 	Location string
 	Address  string
 	Operator string
 	Operand  string
-
-	Opcode uint16
 
 	// total cycles for this instruction
 	Cycles int
@@ -34,11 +39,15 @@ type DisasmEntry struct {
 	// basic notes about the last execution of the entry
 	ExecutionNotes string
 
-	// details
+	// cycle details
 	MAMCR          int
 	BranchTrail    BranchTrail
 	MergedIS       bool
 	CyclesSequence string
+
+	// whether this entry was executed in immediate mode. if this field is true
+	// then the Cycles and "cycle details" fields will be zero
+	ImmediateMode bool
 }
 
 // Key implements the CartCoProcDisasmEntry interface.
@@ -64,8 +73,7 @@ func (e DisasmEntry) String() string {
 
 // DisasmSummary implements the CartCoProcDisasmSummary interface.
 type DisasmSummary struct {
-	// whether this particular execution was run in immediate mode (ie. no
-	// cycle counting)
+	// whether this particular execution was run in immediate mode (ie. no cycle counting)
 	ImmediateMode bool
 
 	// count of N, I and S cycles. will be zero if ImmediateMode is true.

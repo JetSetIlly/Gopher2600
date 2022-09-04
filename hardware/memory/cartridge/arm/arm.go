@@ -397,6 +397,7 @@ func (arm *ARM) updatePrefs() {
 		arm.Icycle = arm.iCycle
 		arm.Scycle = arm.sCycle
 		arm.Ncycle = arm.nCycle
+		arm.disasmSummary.ImmediateMode = false
 	}
 
 	// how to handle illegal memory access
@@ -567,7 +568,9 @@ func (arm *ARM) run() (float32, error) {
 
 	if arm.disasm != nil {
 		// start of program execution
-		arm.disasmSummary = DisasmSummary{}
+		arm.disasmSummary.I = 0
+		arm.disasmSummary.N = 0
+		arm.disasmSummary.S = 0
 		arm.disasm.Start()
 
 		// we must wrap the call to disasm.End in a function because defer
@@ -783,16 +786,23 @@ func (arm *ARM) run() (float32, error) {
 			if !cached {
 				d = Disassemble(opcode)
 				d.Address = fmt.Sprintf("%08x", arm.instructionPC)
+				d.Addr = arm.instructionPC
 			}
 
+			// update cycle information
+			d.Cycles = arm.cycleOrder.len()
+
+			// execution note
+			d.ExecutionNotes = arm.disasmExecutionNotes
+
+			// cycle details
 			d.MAMCR = int(arm.mam.mamcr)
 			d.BranchTrail = arm.branchTrail
 			d.MergedIS = arm.mergedIS
 			d.CyclesSequence = arm.cycleOrder.String()
-			d.ExecutionNotes = arm.disasmExecutionNotes
 
-			// update cycle information
-			d.Cycles = arm.cycleOrder.len()
+			// note immediate mode
+			d.ImmediateMode = arm.disasmSummary.ImmediateMode
 
 			// update cache if necessary
 			if !cached || arm.disasmUpdateNotes {

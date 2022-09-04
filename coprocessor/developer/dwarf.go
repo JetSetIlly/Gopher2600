@@ -49,7 +49,9 @@ type SourceFile struct {
 	HasGlobals bool
 }
 
-// SourceDisasm is a single disassembled intruction from the ELF binary.
+// SourceDisasm is a single disassembled intruction from the ELF binary. Not to
+// be confused with the coprocessor.disassembly package. SourceDisasm instances
+// are intended to be used by static disasemblers.
 type SourceDisasm struct {
 	Addr        uint32
 	Opcode      uint16
@@ -749,6 +751,9 @@ func NewSource(romFile string, cart mapper.CartCoProc) (*Source, error) {
 	return src, nil
 }
 
+// NoSourceID is used to indicate that the SourceFile, SourceFunction or
+// SourceLine has no underlying source code and is just a placeholder for
+// executed instructions with no source.
 const NoSourceID = "-"
 
 func (src *Source) addNoSourceSupport() {
@@ -1031,4 +1036,10 @@ func (src *Source) CheckBreakpoint(addr uint32) bool {
 		return true
 	}
 	return false
+}
+
+// FindSourceLine returns line entry for the address. Returns nil if the
+// address has no source line.
+func (src *Source) FindSourceLine(addr uint32) *SourceLine {
+	return src.linesByAddress[uint64(addr)]
 }

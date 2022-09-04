@@ -17,5 +17,6 @@
 // in compatible ROM.
 //
 // Should not be confused with the disassembly package in the project root,
-// which handles disassembly of the 6507 program.
+// which handles disassembly of the 6507 program. Also not to be confused with
+// the SourceDisasm type in the coprocessor.developer package.
 package disassembly

@@ -484,6 +484,10 @@ func displaySourceFragments(ln *developer.SourceLine, cols *imguiColors, tight b
 }
 
 func (win *winCoProcSource) gotoSourceLine(ln *developer.SourceLine) {
+	if ln.File.Filename == developer.NoSourceID {
+		return
+	}
+
 	win.debuggerSetOpen(true)
 	win.scrollTo = true
 	win.scrollToFile = ln.File.Filename

@@ -19,6 +19,7 @@ import (
 	"fmt"
 
 	"github.com/inkyblackness/imgui-go/v4"
+	"github.com/jetsetilly/gopher2600/coprocessor/developer"
 	"github.com/jetsetilly/gopher2600/coprocessor/disassembly"
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/gui/fonts"
@@ -72,7 +73,13 @@ func (win *winCoProcDisasm) debuggerDraw() {
 
 	title := fmt.Sprintf("%s %s", win.img.lz.Cart.CoProcID, winCoProcDisasmID)
 	if imgui.BeginV(win.debuggerID(title), &win.debuggerOpen, imgui.WindowFlagsNone) {
-		win.draw()
+		// only support specific ARM architectures
+		arch := arm.Architecture(win.img.lz.Cart.CoProcID)
+		if arch == arm.ARM7TDMI || arch == arm.ARMv7_M {
+			win.draw()
+		} else {
+			imgui.Text(fmt.Sprintf("%s is an unsupported architecture", arch))
+		}
 	}
 
 	win.debuggerGeom.update()
@@ -126,12 +133,19 @@ func (win *winCoProcDisasm) draw() {
 			if isEnabled && win.optionsLastExecution {
 				if summary, ok := dsm.LastExecutionSummary.(arm.DisasmSummary); ok {
 					imgui.SameLineV(0, 40)
-					imgui.Text(fmt.Sprintf("%c Total Cycles % 8d", fonts.CoProcCycles, summary.I+summary.N+summary.S))
-					imguiTooltip(func() {
-						imgui.Text(fmt.Sprintf("N cycles: % 8d", summary.N))
-						imgui.Text(fmt.Sprintf("I cycles: % 8d", summary.I))
-						imgui.Text(fmt.Sprintf("S cycles: % 8d", summary.S))
-					}, true)
+					imgui.Text(string(fonts.CoProcCycles))
+					if summary.ImmediateMode {
+						imgui.SameLineV(0, 10)
+						imgui.Text("Executed in Immediate Mode")
+					} else {
+						imgui.SameLineV(0, 10)
+						imgui.Text(fmt.Sprintf("Total Cycles % 8d", summary.I+summary.N+summary.S))
+						imguiTooltip(func() {
+							imgui.Text(fmt.Sprintf("N cycles: % 8d", summary.N))
+							imgui.Text(fmt.Sprintf("I cycles: % 8d", summary.I))
+							imgui.Text(fmt.Sprintf("S cycles: % 8d", summary.S))
+						}, true)
+					}
 				}
 			}
 		})
@@ -175,36 +189,42 @@ func (win *winCoProcDisasm) drawDisasm(dsm *disassembly.DisasmEntries, lastExecu
 
 	var clipper imgui.ListClipper
 
-	if lastExecution {
-		clipper.Begin(len(dsm.LastExecution))
-		for clipper.Step() {
-			for i := clipper.DisplayStart; i < clipper.DisplayEnd; i++ {
-				if i >= len(dsm.LastExecution) {
-					imgui.Text("")
-					break
+	win.img.dbg.CoProcDev.BorrowSource(func(src *developer.Source) {
+		if lastExecution {
+			clipper.Begin(len(dsm.LastExecution))
+			for clipper.Step() {
+				for i := clipper.DisplayStart; i < clipper.DisplayEnd; i++ {
+					if i >= len(dsm.LastExecution) {
+						imgui.Text("")
+						break
+					}
+					e := dsm.LastExecution[i]
+					win.drawEntry(src, e.(arm.DisasmEntry))
 				}
-				e := dsm.LastExecution[i]
-				win.drawEntry(e.(arm.DisasmEntry))
+			}
+		} else {
+			clipper.Begin(len(dsm.Entries))
+			for clipper.Step() {
+				for i := clipper.DisplayStart; i < clipper.DisplayEnd; i++ {
+					if i >= len(dsm.Keys) {
+						imgui.Text("")
+						break
+					}
+					k := dsm.Keys[i]
+					e := dsm.Entries[k]
+					win.drawEntry(src, e.(arm.DisasmEntry))
+				}
 			}
 		}
-	} else {
-		clipper.Begin(len(dsm.Entries))
-		for clipper.Step() {
-			for i := clipper.DisplayStart; i < clipper.DisplayEnd; i++ {
-				if i >= len(dsm.Keys) {
-					imgui.Text("")
-					break
-				}
-				k := dsm.Keys[i]
-				e := dsm.Entries[k]
-				win.drawEntry(e.(arm.DisasmEntry))
-			}
-		}
-	}
-
+	})
 }
 
-func (win *winCoProcDisasm) drawEntry(e arm.DisasmEntry) {
+func (win *winCoProcDisasm) drawEntry(src *developer.Source, e arm.DisasmEntry) {
+	var ln *developer.SourceLine
+	if src != nil {
+		ln = src.FindSourceLine(e.Addr)
+	}
+
 	imgui.TableNextRow()
 
 	// highlight line mouse is over
@@ -214,8 +234,14 @@ func (win *winCoProcDisasm) drawEntry(e arm.DisasmEntry) {
 	imgui.SelectableV("", false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{0, 0})
 	imgui.PopStyleColorV(2)
 
+	// open source window if there is underlying source for this instruction
+	if imgui.IsItemClicked() && ln != nil {
+		srcWin := win.img.wm.debuggerWindows[winCoProcSourceID].(*winCoProcSource)
+		srcWin.gotoSourceLine(ln)
+	}
+
 	if imgui.IsItemHovered() && e.Operator != "" {
-		win.drawEntryTooltip(e)
+		win.drawEntryTooltip(e, ln)
 	}
 
 	imgui.TableNextColumn()
@@ -268,11 +294,11 @@ func (win *winCoProcDisasm) drawEntry(e arm.DisasmEntry) {
 		imgui.Text(fmt.Sprintf("%d", e.Cycles))
 		imgui.PopStyleColor()
 	} else {
-		imgui.Text("??")
+		imgui.Text("")
 	}
 }
 
-func (win *winCoProcDisasm) drawEntryTooltip(e arm.DisasmEntry) {
+func (win *winCoProcDisasm) drawEntryTooltip(e arm.DisasmEntry, ln *developer.SourceLine) {
 	imguiTooltip(func() {
 		imgui.Text("Address:")
 		imgui.SameLine()
@@ -299,7 +325,11 @@ func (win *winCoProcDisasm) drawEntryTooltip(e arm.DisasmEntry) {
 		imgui.Text("Cycles:")
 		imgui.SameLine()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmCycles)
-		imgui.Text(fmt.Sprintf("%d", e.Cycles))
+		if e.ImmediateMode {
+			imgui.Text("Immediate Mode")
+		} else {
+			imgui.Text(fmt.Sprintf("%d", e.Cycles))
+		}
 		imgui.PopStyleColor()
 
 		imgui.Spacing()
@@ -329,6 +359,21 @@ func (win *winCoProcDisasm) drawEntryTooltip(e arm.DisasmEntry) {
 		if e.ExecutionNotes != "" {
 			imgui.SameLineV(0, 20)
 			imgui.Text(fmt.Sprintf("%c %s", fonts.ExecutionNotes, e.ExecutionNotes))
+		}
+
+		if ln != nil {
+			imgui.Spacing()
+			imgui.Separator()
+			imgui.Spacing()
+
+			if ln.File.Filename == developer.NoSourceID {
+				imgui.Text("No sourcecode available")
+			} else {
+				imgui.Text(ln.File.ShortFilename)
+				imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLineNumber)
+				imgui.Text(fmt.Sprintf("Line: %d", ln.LineNumber))
+				imgui.PopStyleColor()
+			}
 		}
 	}, false)
 }
