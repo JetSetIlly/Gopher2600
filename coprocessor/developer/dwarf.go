@@ -601,19 +601,12 @@ func NewSource(romFile string, cart mapper.CartCoProc) (*Source, error) {
 				return nil, curated.Errorf("dwarf: current source is unrelated to ELF/DWARF data (1)")
 			}
 
-			// if the entry is the end of a sequence then assign nil to workingSourceLine
-			if le.EndSequence {
-				workingSourceLine = nil
-				continue // for loop
-			}
-
 			relocatedAddress := le.Address + executableOrigin
 
 			// if workingSourceLine is valid ...
 			if workingSourceLine != nil {
 				// ... and there are addresses to process ...
 				if relocatedAddress-workingAddress > 0 {
-
 					// ... then find the function for the working address
 					foundFunc, err := bld.findFunction(workingAddress - executableOrigin)
 					if err != nil {
@@ -662,8 +655,11 @@ func NewSource(romFile string, cart mapper.CartCoProc) (*Source, error) {
 					}
 				}
 
-				// we've done with working source line
-				workingSourceLine = nil
+				// if the entry is the end of a sequence then assign nil to workingSourceLine
+				if le.EndSequence {
+					workingSourceLine = nil
+					continue // for loop
+				}
 			}
 
 			// defer current line entry
