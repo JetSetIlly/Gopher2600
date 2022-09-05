@@ -15,18 +15,90 @@
 
 package developer
 
-// Profiling implements the CartCoProcDeveloper interface.
-func (dev *Developer) Profiling() map[uint32]float32 {
-	return dev.profiledAddresses
+import (
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
+)
+
+// CallStack maintains information about function calls and the order in which
+// they happen.
+type CallStack struct {
+	// call stack of running program
+	functions []*SourceFunction
+
+	// call stack ptr points to the last entry that was filled
+	ptr int
+
+	// whether the call stack has remained sane during profiling
+	Unreliable bool
+}
+
+// Profiling implements the mapper.CartCoProcDeveloper interface.
+func (dev *Developer) Profiling() *mapper.CartCoProcProfiler {
+	return &dev.profiler
+}
+
+// StartProfiling implements the mapper.CartCoProcDeveloper interface.
+func (dev *Developer) StartProfiling() {
+	if dev.disabled || dev.source == nil {
+		return
+	}
+
+	dev.sourceLock.Lock()
+	defer dev.sourceLock.Unlock()
+
+	if dev.source.CallStack.ptr > 1 {
+		dev.source.CallStack.Unreliable = true
+	}
+
+	dev.source.CallStack.functions = dev.source.CallStack.functions[:0]
+	dev.source.CallStack.functions = append(dev.source.CallStack.functions, dev.source.noSourceLine.Function)
+	dev.source.CallStack.ptr = 0
+}
+
+// ProcessProfiling implements the mapper.CartCoProcDeveloper interface.
+func (dev *Developer) ProcessProfiling() {
+	if dev.disabled || dev.source == nil {
+		return
+	}
+
+	dev.sourceLock.Lock()
+	defer dev.sourceLock.Unlock()
+
+	dev.profileProcess()
 }
 
 // process cycle counts for (non-zero) addresses in dev.profiledAddresses
 func (dev *Developer) profileProcess() {
 	accumulate := func(k KernelVCS) {
-		for pc, ct := range dev.profiledAddresses {
-			if ct > 0 {
-				dev.source.executionProfile(pc, ct, k)
-				dev.profiledAddresses[pc] = 0
+		for _, p := range dev.profiler.Entries {
+			// line of executed instruction.every instruction should have an
+			// associated line/function. if it does not then we use the
+			// noSourceLine instance as a placeholder
+			ln, ok := dev.source.linesByAddress[uint64(p.Addr)]
+			if !ok {
+				ln = dev.source.noSourceLine
+				dev.source.linesByAddress[uint64(p.Addr)] = ln
+			}
+
+			// the underlying function for the line
+			fn := ln.Function
+
+			// if function has changed then either add an entry or remove an
+			// entry depending on whether the function has been seen recently.
+			if fn != dev.source.CallStack.functions[dev.source.CallStack.ptr] {
+				if dev.source.CallStack.ptr > 0 && fn != dev.source.CallStack.functions[dev.source.CallStack.ptr-1] {
+					dev.source.CallStack.ptr--
+				} else {
+					dev.source.CallStack.functions = append(dev.source.CallStack.functions, fn)
+					dev.source.CallStack.ptr++
+				}
+			}
+
+			// accumulate for the current function
+			dev.source.executionProfile(ln, p.Cycles, k)
+
+			// accumulate ancestor functions too
+			for i := dev.source.CallStack.ptr - 1; i >= 0; i-- {
 			}
 		}
 	}
@@ -45,6 +117,9 @@ func (dev *Developer) profileProcess() {
 	} else {
 		accumulate(KernelUnstable)
 	}
+
+	// empty array
+	dev.profiler.Entries = dev.profiler.Entries[:0]
 }
 
 // KernelVCS indicates the 2600 kernel that is associated with a source function
@@ -79,3 +154,35 @@ func (k KernelVCS) String() string {
 
 // List of KernelVCS values as strings
 var AvailableInKernelOptions = []string{"Any", "VBLANK", "Screen", "Overscan", "ROM Setup"}
+
+func (src *Source) executionProfile(ln *SourceLine, ct float32, kernel KernelVCS) {
+	// indicate that execution profile has changed
+	src.ExecutionProfileChanged = true
+
+	ln.Stats.count += ct
+	ln.Function.Stats.count += ct
+	src.Stats.count += ct
+
+	ln.Kernel |= kernel
+	ln.Function.Kernel |= kernel
+	ln.Function.DeclLine.Kernel |= kernel
+
+	switch kernel {
+	case KernelVBLANK:
+		ln.StatsVBLANK.count += ct
+		ln.Function.StatsVBLANK.count += ct
+		src.StatsVBLANK.count += ct
+	case KernelScreen:
+		ln.StatsScreen.count += ct
+		ln.Function.StatsScreen.count += ct
+		src.StatsScreen.count += ct
+	case KernelOverscan:
+		ln.StatsOverscan.count += ct
+		ln.Function.StatsOverscan.count += ct
+		src.StatsOverscan.count += ct
+	case KernelUnstable:
+		ln.StatsROMSetup.count += ct
+		ln.Function.StatsROMSetup.count += ct
+		src.StatsROMSetup.count += ct
+	}
+}

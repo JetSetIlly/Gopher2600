@@ -239,8 +239,8 @@ type ARM struct {
 	Scycle func(bus busAccess, addr uint32)
 	Ncycle func(bus busAccess, addr uint32)
 
-	// raw cycle counts of executed addresses
-	profiledAddresses map[uint32]float32
+	// profiler for executed instructions. measures cycles counts
+	profiler *mapper.CartCoProcProfiler
 
 	// control of 32bit thumb-2 function decoding.
 	function32bit       bool
@@ -563,7 +563,7 @@ func (arm *ARM) run() (float32, error) {
 	if arm.dev != nil {
 		// update variableMemtop - probably hasn't changed but you never know
 		arm.variableMemtop = arm.dev.VariableMemtop()
-		arm.profiledAddresses = arm.dev.Profiling()
+		arm.profiler = arm.dev.Profiling()
 	}
 
 	if arm.disasm != nil {
@@ -821,7 +821,10 @@ func (arm *ARM) run() (float32, error) {
 
 		// accumulate cycle counts for profiling
 		if arm.dev != nil {
-			arm.profiledAddresses[arm.instructionPC] += arm.stretchedCycles
+			arm.profiler.Entries = append(arm.profiler.Entries, mapper.CartCoProcProfileEntry{
+				Addr:   arm.instructionPC,
+				Cycles: arm.stretchedCycles,
+			})
 		}
 
 		// reset cycle information

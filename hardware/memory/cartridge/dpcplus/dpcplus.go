@@ -503,6 +503,9 @@ func (cart *dpcPlus) Write(addr uint16, data uint8, passive bool, poke bool) err
 		case 254:
 			fallthrough
 		case 255:
+			if cart.dev != nil {
+				cart.dev.StartProfiling()
+			}
 			err := cart.runArm()
 			if err != nil {
 				return err
@@ -737,7 +740,7 @@ func (cart *dpcPlus) Step(clock float32) {
 		}
 
 		if cart.dev != nil && !cart.state.callfn.IsActive() {
-			cart.dev.EndProfiling()
+			cart.dev.ProcessProfiling()
 		}
 	} else {
 		cart.arm.Step(clock)

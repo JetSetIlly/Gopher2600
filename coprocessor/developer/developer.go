@@ -44,8 +44,8 @@ type Developer struct {
 
 	framesSinceLastUpdate int
 
-	// raw cycle counts of executed addresses
-	profiledAddresses map[uint32]float32
+	// profiler instance. measures cycles counts for executed address
+	profiler mapper.CartCoProcProfiler
 
 	// frame info from the last NewFrame()
 	frameInfo television.FrameInfo
@@ -72,7 +72,9 @@ func NewDeveloper(romFile string, cart mapper.CartCoProc, tv TV) *Developer {
 			entries: make(map[string]*IllegalAccessEntry),
 			Log:     make([]*IllegalAccessEntry, 0),
 		},
-		profiledAddresses: make(map[uint32]float32),
+		profiler: mapper.CartCoProcProfiler{
+			Entries: make([]mapper.CartCoProcProfileEntry, 0, 1000),
+		},
 	}
 
 	t := time.Now()
@@ -144,7 +146,7 @@ func (dev *Developer) VariableMemtop() uint32 {
 	return uint32(dev.source.VariableMemtop)
 }
 
-// CheckBreakpoint implements the CartCoProcDeveloper interface.
+// CheckBreakpoint implements the mapper.CartCoProcDeveloper interface.
 func (dev *Developer) CheckBreakpoint(addr uint32) bool {
 	if dev.disabled {
 		return false
@@ -265,16 +267,4 @@ func (dev *Developer) NewFrame(frameInfo television.FrameInfo) error {
 	dev.frameInfo = frameInfo
 
 	return nil
-}
-
-// EndProfiling is called when the coprocessor has ended or yielded execution.
-func (dev *Developer) EndProfiling() {
-	if dev.disabled || dev.source == nil {
-		return
-	}
-
-	dev.sourceLock.Lock()
-	defer dev.sourceLock.Unlock()
-
-	dev.profileProcess()
 }

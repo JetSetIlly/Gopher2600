@@ -111,7 +111,9 @@ func (ln *SourceLine) String() string {
 type SourceFunction struct {
 	Name string
 
-	// first source line for each instance of the function
+	// first source line for each instance of the function. note that the first
+	// line of a function may not have any code directly associated with it.
+	// the Disassembly and Stats fields therefore should not be relied upon.
 	DeclLine *SourceLine
 
 	// cycle statisics for the function
@@ -334,6 +336,9 @@ type Source struct {
 
 	// list of breakpoints on ARM program
 	Breakpoints map[uint32]bool
+
+	// call stack of running program
+	CallStack CallStack
 }
 
 // NewSource is the preferred method of initialisation for the Source type.
@@ -766,6 +771,7 @@ func (src *Source) addNoSourceSupport() {
 		Function: noSourceFunc,
 	}
 	noSourceFunc.DeclLine = src.noSourceLine
+	src.noSourceLine.Disassembly = append(src.noSourceLine.Disassembly, &SourceDisasm{})
 	src.noSourceLine.PlainContent = NoSourceID
 	src.noSourceLine.Fragments = append(src.noSourceLine.Fragments, SourceLineFragment{Type: FragmentCode, Content: NoSourceID})
 	src.SortedLines.Lines = append(src.SortedLines.Lines, src.noSourceLine)
@@ -809,44 +815,6 @@ func (src *Source) findSourceLine(addr uint32) (*SourceLine, error) {
 	}
 
 	return nil, nil
-}
-
-func (src *Source) executionProfile(addr uint32, ct float32, kernel KernelVCS) {
-	// indicate that execution profile has changed
-	src.ExecutionProfileChanged = true
-
-	line, ok := src.linesByAddress[uint64(addr)]
-	if !ok {
-		line = src.noSourceLine
-		src.linesByAddress[uint64(addr)] = line
-	}
-
-	line.Stats.count += ct
-	line.Function.Stats.count += ct
-	src.Stats.count += ct
-
-	line.Kernel |= kernel
-	line.Function.Kernel |= kernel
-	line.Function.DeclLine.Kernel |= kernel
-
-	switch kernel {
-	case KernelVBLANK:
-		line.StatsVBLANK.count += ct
-		line.Function.StatsVBLANK.count += ct
-		src.StatsVBLANK.count += ct
-	case KernelScreen:
-		line.StatsScreen.count += ct
-		line.Function.StatsScreen.count += ct
-		src.StatsScreen.count += ct
-	case KernelOverscan:
-		line.StatsOverscan.count += ct
-		line.Function.StatsOverscan.count += ct
-		src.StatsOverscan.count += ct
-	case KernelUnstable:
-		line.StatsROMSetup.count += ct
-		line.Function.StatsROMSetup.count += ct
-		src.StatsROMSetup.count += ct
-	}
 }
 
 func (src *Source) newFrame() {
@@ -900,7 +868,7 @@ func readSourceFile(filename string, pathToROM_nosymlinks string) (*SourceFile, 
 			File:         &fl,
 			LineNumber:   i + 1,
 			Function:     &SourceFunction{Name: UnknownFunction},
-			PlainContent: s,
+			PlainContent: strings.TrimSpace(s),
 		}
 		fl.Lines = append(fl.Lines, l)
 		fp.parseLine(l)

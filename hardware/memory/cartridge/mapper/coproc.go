@@ -83,6 +83,15 @@ type CartCoProc interface {
 	ELFSection(string) (uint32, bool)
 }
 
+type CartCoProcProfileEntry struct {
+	Addr   uint32
+	Cycles float32
+}
+
+type CartCoProcProfiler struct {
+	Entries []CartCoProcProfileEntry
+}
+
 // the following interfaces are implemented by the coprocessor itself, rather
 // than any cartridge that uses the coprocessor.
 
@@ -109,10 +118,15 @@ type CartCoProcDeveloper interface {
 	CheckBreakpoint(addr uint32) bool
 
 	// returns a map that can be used to count cycles for each PC address
-	Profiling() map[uint32]float32
+	Profiling() *CartCoProcProfiler
 
-	// instructs developer implementation to accumulate profiling data
-	EndProfiling()
+	// notifies developer that the start of a new profiling session is about to begin
+	StartProfiling()
+
+	// instructs developer implementation to accumulate profiling data. there
+	// can be many calls to profiling profiling for every call to start
+	// profiling
+	ProcessProfiling()
 }
 
 // CartCoProcDisasmSummary represents a summary of a coprocessor execution.

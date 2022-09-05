@@ -67,7 +67,7 @@ type Stats struct {
 	count float32
 
 	// cycle count over all frames
-	cumulativeCount float32
+	allFrameCount float32
 
 	// number of frames seen
 	numFrames float32
@@ -81,7 +81,7 @@ type Stats struct {
 // IsValid returns true if the statistics have ever been updated. ie. the
 // source associated with this statistic has ever executed.
 func (stats *Stats) IsValid() bool {
-	return stats.cumulativeCount > 0
+	return stats.allFrameCount > 0
 }
 
 // update statistics, using source and function to update the Load values as
@@ -90,8 +90,8 @@ func (stats *Stats) newFrame(source *Stats, function *Stats) {
 	stats.numFrames++
 	if stats.numFrames > 1 {
 		if stats.count > 0 {
-			stats.cumulativeCount += stats.count
-			stats.avgCount = stats.cumulativeCount / (stats.numFrames - 1)
+			stats.allFrameCount += stats.count
+			stats.avgCount = stats.allFrameCount / (stats.numFrames - 1)
 		}
 	}
 
@@ -150,7 +150,7 @@ func (stats *Stats) newFrame(source *Stats, function *Stats) {
 func (stats *Stats) reset() {
 	stats.OverSource.reset()
 	stats.OverFunction.reset()
-	stats.cumulativeCount = 0.0
+	stats.allFrameCount = 0.0
 	stats.numFrames = 0.0
 	stats.avgCount = 0.0
 	stats.frameCount = 0.0

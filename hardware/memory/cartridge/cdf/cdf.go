@@ -357,6 +357,9 @@ func (cart *cdf) Write(addr uint16, data uint8, passive bool, poke bool) error {
 			// generate interrupt to update AUDV0 while running ARM code
 			fallthrough
 		case 0xff:
+			if cart.dev != nil {
+				cart.dev.StartProfiling()
+			}
 			err := cart.runArm()
 			if err != nil {
 				return err
@@ -467,7 +470,7 @@ func (cart *cdf) Step(clock float32) {
 		}
 
 		if cart.dev != nil && !cart.state.callfn.IsActive() {
-			cart.dev.EndProfiling()
+			cart.dev.ProcessProfiling()
 		}
 	} else {
 		cart.arm.Step(clock)
