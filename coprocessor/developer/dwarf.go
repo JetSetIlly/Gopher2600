@@ -107,7 +107,20 @@ func (ln *SourceLine) String() string {
 	return fmt.Sprintf("%s:%d", ln.File.Filename, ln.LineNumber)
 }
 
-// SourceFunction is a single function identified by the DWARF data.
+// IsStub returns true if thre is no DWARF data for this function.
+func (ln *SourceLine) IsStub() bool {
+	// field File will be nil for stub line entries
+	return ln.File == nil
+
+	// other properties of a stub line entry will be an empty PlainContent,
+	// Fragments and Disassembly fields
+}
+
+// SourceFunction is a single function identified by the DWARF data or by the
+// ELF symbol table in the case of no DWARF information being available for the
+// function.
+//
+// Use NoSource() to detect if function has no DWARF information.
 type SourceFunction struct {
 	Name string
 
@@ -127,6 +140,12 @@ type SourceFunction struct {
 
 	// which 2600 kernel has this function executed in
 	Kernel KernelVCS
+}
+
+// IsStub returns true if thre is no DWARF data for this function.
+func (fn *SourceFunction) IsStub() bool {
+	// field DeclLine will be nil for stub function entries
+	return fn.DeclLine == nil
 }
 
 // SourceType is a single type identified by the DWARF data. Composite types
@@ -259,6 +278,8 @@ func (varb *SourceVariable) String() string {
 //
 // It is possible for the arrays/map fields to be empty
 type Source struct {
+	syms []elf.Symbol
+
 	// raw dwarf data. after NewSource() this data is only needed by the
 	// findSourceLine() function
 	dwrf *dwarf.Data
@@ -288,6 +309,11 @@ type Source struct {
 	Functions     map[string]*SourceFunction
 	FunctionNames []string
 
+	// special purpose line used to collate instructions in entry function in
+	// one place. the actual entry function is in the Functions map as normal,
+	// under the name given in "const entryFunction"
+	entryLine *SourceLine
+
 	// sorted list of every function in all compile unit
 	SortedFunctions SortedFunctions
 
@@ -303,11 +329,15 @@ type Source struct {
 	// variable)
 	VariableMemtop uint64
 
-	// lines of source code found in the compile units
+	// lines of source code found in the compile units. this is a sparse
+	// coverage of the total address space: for functions that are covered by
+	// DWARF data then lines exists only for DWARF line entries. for functions
+	// that are know about only through ELF symbols, every address in the
+	// function range has a SourceLine entry - see addStubEntries()
+	//
+	// on the occasions when an instruction at an address is encountered that
+	// we've not seen before, a stub entry is added as required
 	linesByAddress map[uint64]*SourceLine
-
-	// fake source line used when no source code is available for address
-	noSourceLine *SourceLine
 
 	// sorted list of every source line in all compile units
 	SortedLines SortedLines
@@ -372,12 +402,20 @@ func NewSource(romFile string, cart mapper.CartCoProc) (*Source, error) {
 		Breakpoints:             make(map[uint32]bool),
 	}
 
+	var err error
+
 	// open ELF file
 	ef := findELF(romFile)
 	if ef == nil {
 		return nil, curated.Errorf("dwarf: compiled ELF file not found")
 	}
 	defer ef.Close()
+
+	// all the symbols in the ELF file
+	src.syms, err = ef.Symbols()
+	if err != nil {
+		return nil, curated.Errorf("dwarf: %s", err.Error())
+	}
 
 	// origin of the executable ELF section. will be zero if ELF file is not
 	// reloctable
@@ -407,7 +445,7 @@ func NewSource(romFile string, cart mapper.CartCoProc) (*Source, error) {
 			continue
 		}
 
-		// if file is relocatble then then get executable origin address (see
+		// if file is relocatable then get executable origin address (see
 		// comment for executableOrigin type above)
 		if ef.Type&elf.ET_REL == elf.ET_REL {
 			if executableSectionFound {
@@ -450,8 +488,6 @@ func NewSource(romFile string, cart mapper.CartCoProc) (*Source, error) {
 			addr += 2
 		}
 	}
-
-	var err error
 
 	// if no DWARF data has been supplied to the function then get it from the ELF file
 	src.dwrf = cart.DWARF()
@@ -636,10 +672,11 @@ func NewSource(romFile string, cart mapper.CartCoProc) (*Source, error) {
 					if f, ok := src.Functions[foundFunc.name]; ok {
 						workingSourceLine.Function = f
 					} else {
-						src.Functions[foundFunc.name] = &SourceFunction{
+						fn := &SourceFunction{
 							Name:     foundFunc.name,
 							DeclLine: src.Files[foundFunc.filename].Lines[foundFunc.linenum-1],
 						}
+						src.Functions[foundFunc.name] = fn
 						src.FunctionNames = append(src.FunctionNames, foundFunc.name)
 						workingSourceLine.Function = src.Functions[foundFunc.name]
 					}
@@ -690,6 +727,9 @@ func NewSource(romFile string, cart mapper.CartCoProc) (*Source, error) {
 		}
 	}
 
+	// add stub functions to list of functions
+	src.addStubEntries()
+
 	// sanity check of functions list
 	if len(src.Functions) != len(src.FunctionNames) {
 		return nil, curated.Errorf("dwarf: unmatched function definitions")
@@ -733,9 +773,6 @@ func NewSource(romFile string, cart mapper.CartCoProc) (*Source, error) {
 		return nil, curated.Errorf("dwarf: %v", err)
 	}
 
-	// no source represents execution that has no known underlying source code
-	src.addNoSourceSupport()
-
 	// sort sorted lines
 	sort.Sort(src.SortedLines)
 
@@ -752,32 +789,98 @@ func NewSource(romFile string, cart mapper.CartCoProc) (*Source, error) {
 	return src, nil
 }
 
-// NoSourceID is used to indicate that the SourceFile, SourceFunction or
-// SourceLine has no underlying source code and is just a placeholder for
-// executed instructions with no source.
-const NoSourceID = "-"
+// name of entry function into the program. any executed address that is no
+// recognised (see linesByFunction) will assume to be in this group
+const entryFunction = "<entry>"
 
-func (src *Source) addNoSourceSupport() {
-	// add noSource support
-	noSourceFile := &SourceFile{
-		Filename:      NoSourceID,
-		ShortFilename: NoSourceID,
+// add function stubs for functions without DWARF data. also adds stub line
+// entries for all addresses in the stub function
+func (src *Source) addStubEntries() {
+	type fn struct {
+		name   string
+		origin uint64
+		memtop uint64
 	}
-	noSourceFunc := &SourceFunction{
-		Name: NoSourceID,
+
+	var fns []fn
+
+	// the functions from the symbol table
+	for _, s := range src.syms {
+		typ := s.Info & 0x0f
+		if typ == 0x02 {
+			// align address
+			// TODO: this is a bit of ARM specific knowledge that should be removed
+			a := uint64(s.Value & 0xfffffffe)
+			fns = append(fns, fn{
+				name:   s.Name,
+				origin: a,
+				memtop: a + uint64(s.Size),
+			})
+		}
 	}
-	src.noSourceLine = &SourceLine{
-		File:     noSourceFile,
-		Function: noSourceFunc,
+
+	// proces all functions, skipping any that we already know about from the
+	// DWARF data
+	for _, fn := range fns {
+		if _, ok := src.Functions[fn.name]; !ok {
+			// the DeclLine field must definitely be nil for a stubFn function
+			stubFn := &SourceFunction{
+				Name:     fn.name,
+				DeclLine: nil,
+			}
+
+			// add stub function to list of functions but not if the function
+			// covers an area that has already been seen
+			addFunction := true
+
+			// check that no instructions in the address range have been seen
+			// before
+			for a := fn.origin; a <= fn.memtop; a++ {
+				if _, ok := src.linesByAddress[a]; ok {
+					// this address has been seen, indicate that the function
+					// should not be added
+					addFunction = false
+					break
+				}
+			}
+
+			// proceed to add function
+			if addFunction {
+				// each address in the stub function shares the same stub line
+				stubLn := &SourceLine{
+					Function: stubFn,
+				}
+
+				// process all addresses in range of origin and memtop, skipping
+				// any addresses that we already know about from the DWARF data
+				for a := fn.origin; a <= fn.memtop; a++ {
+					if _, ok := src.linesByAddress[a]; !ok {
+						src.linesByAddress[a] = stubLn
+					} else {
+						addFunction = false
+						break
+					}
+				}
+
+				src.Functions[stubFn.Name] = stubFn
+				src.FunctionNames = append(src.FunctionNames, stubFn.Name)
+			} else {
+				logger.Logf("dwarf", "dropping stub function %s", stubFn.Name)
+			}
+		}
 	}
-	noSourceFunc.DeclLine = src.noSourceLine
-	src.noSourceLine.Disassembly = append(src.noSourceLine.Disassembly, &SourceDisasm{})
-	src.noSourceLine.PlainContent = NoSourceID
-	src.noSourceLine.Fragments = append(src.noSourceLine.Fragments, SourceLineFragment{Type: FragmentCode, Content: NoSourceID})
-	src.SortedLines.Lines = append(src.SortedLines.Lines, src.noSourceLine)
-	src.SortedFunctions.Functions = append(src.SortedFunctions.Functions, src.noSourceLine.Function)
-	src.Files[NoSourceID] = noSourceFile
-	src.Functions[NoSourceID] = noSourceFunc
+
+	// add entry function
+	entryFn := &SourceFunction{
+		Name:     entryFunction,
+		DeclLine: nil,
+	}
+	src.Functions[entryFunction] = entryFn
+	src.FunctionNames = append(src.FunctionNames, entryFunction)
+	src.entryLine = &SourceLine{
+		Function: entryFn,
+	}
+	src.linesByAddress[0] = src.entryLine
 }
 
 // find source line for program counter. shouldn't be called too often because

@@ -51,6 +51,10 @@ type winCoProcPerformance struct {
 	// kernelFocus of percentileFigures widgets has been altered)
 	windowSortSpecDirty bool
 
+	// the currently selected tab. used to dirty the sort flag when a new tab
+	// is selected
+	tabSelected string
+
 	// whether to included unexecuted entries (functions or lines) in the list
 	hideUnusedEntries bool
 
@@ -63,7 +67,6 @@ type winCoProcPerformance struct {
 
 	// function tab is newly opened/changed. this means that the stats should
 	// be resorted
-	functionTabDirty  bool
 	functionTabSelect string
 }
 
@@ -132,12 +135,22 @@ func (win *winCoProcPerformance) draw() {
 		imgui.BeginChildV("##coprocPerformanceMain", imgui.Vec2{X: 0, Y: imguiRemainingWinHeight() - win.optionsHeight}, false, 0)
 		imgui.BeginTabBarV("##coprocSourceTabBar", imgui.TabBarFlagsAutoSelectNewTabs)
 
-		if imgui.BeginTabItemV("Functions", nil, imgui.TabItemFlagsNone) {
+		tabName := "Functions"
+		if imgui.BeginTabItemV(tabName, nil, imgui.TabItemFlagsNone) {
+			if win.tabSelected != tabName {
+				win.tabSelected = tabName
+				win.windowSortSpecDirty = true
+			}
 			win.drawFunctions(src)
 			imgui.EndTabItem()
 		}
 
-		if imgui.BeginTabItemV("Source Line", nil, imgui.TabItemFlagsNone) {
+		tabName = "Source Lines"
+		if imgui.BeginTabItemV(tabName, nil, imgui.TabItemFlagsNone) {
+			if win.tabSelected != tabName {
+				win.tabSelected = tabName
+				win.windowSortSpecDirty = true
+			}
 			win.drawSourceLines(src)
 			imgui.EndTabItem()
 		}
@@ -148,10 +161,17 @@ func (win *winCoProcPerformance) draw() {
 			if ff.FunctionName == win.functionTabSelect {
 				flgs |= imgui.TabItemFlagsSetSelected
 			}
-			if imgui.BeginTabItemV(fmt.Sprintf("%c %s", fonts.MagnifyingGlass, ff.FunctionName), &open, flgs) {
+
+			tabName = fmt.Sprintf("%c %s", fonts.MagnifyingGlass, ff.FunctionName)
+			if imgui.BeginTabItemV(tabName, &open, flgs) {
+				if win.tabSelected != tabName {
+					win.tabSelected = tabName
+					win.windowSortSpecDirty = true
+				}
 				win.drawFunctionFilter(src, ff)
 				imgui.EndTabItem()
 			}
+
 			if !open {
 				src.DropFunctionFilter(ff.FunctionName)
 			}
@@ -342,15 +362,7 @@ func (win *winCoProcPerformance) drawFunctions(src *developer.Source) {
 	imgui.TableSetupScrollFreeze(0, 1)
 	imgui.TableHeadersRow()
 
-	sort := imgui.TableGetSortSpecs()
-	if src.ExecutionProfileChanged || sort.SpecsDirty() || win.windowSortSpecDirty {
-		//  always set which kernel to sort by
-		win.windowSortSpecDirty = false
-		src.SortedFunctions.SetKernel(win.kernelFocus)
-		src.SortedFunctions.UseRawCyclesCounts(!win.percentileFigures)
-		src.SortedLines.SetKernel(win.kernelFocus)
-		src.SortedLines.UseRawCyclesCounts(!win.percentileFigures)
-
+	win.sort(src, func(sort imgui.TableSortSpecs) {
 		for _, s := range sort.Specs() {
 			switch s.ColumnUserID {
 			case 0:
@@ -366,7 +378,7 @@ func (win *winCoProcPerformance) drawFunctions(src *developer.Source) {
 			}
 		}
 		sort.ClearSpecsDirty()
-	}
+	})
 
 	for _, fn := range src.SortedFunctions.Functions {
 		if fn.Kernel&win.kernelFocus != win.kernelFocus {
@@ -376,6 +388,10 @@ func (win *winCoProcPerformance) drawFunctions(src *developer.Source) {
 		if win.hideUnusedEntries && !fn.Stats.IsValid() {
 			continue
 		}
+
+		// is the function is a stub or not. some facilities are not available
+		// without source
+		isStub := fn.IsStub()
 
 		// select which stats to focus on
 		var stats developer.Stats
@@ -394,33 +410,33 @@ func (win *winCoProcPerformance) drawFunctions(src *developer.Source) {
 		imgui.TableNextColumn()
 		imgui.PushStyleColor(imgui.StyleColorHeaderHovered, win.img.cols.CoProcSourceHover)
 		imgui.PushStyleColor(imgui.StyleColorHeaderActive, win.img.cols.CoProcSourceHover)
-		if fn.DeclLine != nil {
-			imgui.SelectableV(fn.DeclLine.File.ShortFilename, false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{0, 0})
+		if isStub {
+			imgui.SelectableV("-", false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{0, 0})
 		} else {
-			imgui.SelectableV("", false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{0, 0})
+			imgui.SelectableV(fn.DeclLine.File.ShortFilename, false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{0, 0})
 		}
 		imgui.PopStyleColorV(2)
 
 		// tooltip
-		if fn.Name != developer.NoSourceID {
-			win.tooltip(fn.Stats.OverSource, fn.DeclLine, false)
+		if isStub {
+			imguiTooltipSimple("Function has no underlying source code")
 		} else {
-			win.tooltipNoSourceCode()
+			win.tooltip(fn.Stats.OverSource, fn.DeclLine, false)
 		}
 
 		// open/select function filter on click
-		if imgui.IsItemClicked() && fn.Name != developer.NoSourceID {
-			win.functionTabDirty = true
+		if imgui.IsItemClicked() && !isStub {
+			win.windowSortSpecDirty = true
 			src.AddFunctionFilter(fn.Name)
 			win.functionTabSelect = fn.Name
 		}
 
 		imgui.TableNextColumn()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLineNumber)
-		if fn.DeclLine != nil && fn.Name != developer.NoSourceID {
-			imgui.Text(fmt.Sprintf("%d", fn.DeclLine.LineNumber))
-		} else {
+		if isStub {
 			imgui.Text("-")
+		} else {
+			imgui.Text(fmt.Sprintf("%d", fn.DeclLine.LineNumber))
 		}
 		imgui.PopStyleColor()
 
@@ -542,15 +558,7 @@ func (win *winCoProcPerformance) drawSourceLines(src *developer.Source) {
 	imgui.TableSetupScrollFreeze(0, 1)
 	imgui.TableHeadersRow()
 
-	sort := imgui.TableGetSortSpecs()
-	if src.ExecutionProfileChanged || sort.SpecsDirty() || win.windowSortSpecDirty {
-		//  always set which kernel to sort by
-		win.windowSortSpecDirty = false
-		src.SortedFunctions.SetKernel(win.kernelFocus)
-		src.SortedFunctions.UseRawCyclesCounts(!win.percentileFigures)
-		src.SortedLines.SetKernel(win.kernelFocus)
-		src.SortedLines.UseRawCyclesCounts(!win.percentileFigures)
-
+	win.sort(src, func(sort imgui.TableSortSpecs) {
 		for _, s := range sort.Specs() {
 			switch s.ColumnUserID {
 			case 0:
@@ -564,7 +572,7 @@ func (win *winCoProcPerformance) drawSourceLines(src *developer.Source) {
 			}
 		}
 		sort.ClearSpecsDirty()
-	}
+	})
 
 	for _, ln := range src.SortedLines.Lines {
 		if ln.Kernel&win.kernelFocus != win.kernelFocus {
@@ -574,6 +582,10 @@ func (win *winCoProcPerformance) drawSourceLines(src *developer.Source) {
 		if win.hideUnusedEntries && !ln.Stats.IsValid() {
 			continue
 		}
+
+		// is the line is a stub or not. some facilities are not available
+		// without source
+		isStub := ln.IsStub()
 
 		// select which stats to focus on
 		var stats developer.Stats
@@ -598,24 +610,24 @@ func (win *winCoProcPerformance) drawSourceLines(src *developer.Source) {
 		imgui.PopStyleColorV(2)
 
 		// tooltip
-		if ln.Function.Name != developer.NoSourceID {
-			win.tooltip(ln.Stats.OverSource, ln, true)
+		if isStub {
+			imguiTooltipSimple(fmt.Sprintf("This entry represent all lines of code in %s", ln.Function.Name))
 		} else {
-			win.tooltipNoSourceCode()
+			win.tooltip(ln.Stats.OverSource, ln, true)
 		}
 
 		// open source window on click
-		if imgui.IsItemClicked() && ln.Function.Name != developer.NoSourceID {
+		if !isStub && imgui.IsItemClicked() {
 			srcWin := win.img.wm.debuggerWindows[winCoProcSourceID].(*winCoProcSource)
 			srcWin.gotoSourceLine(ln)
 		}
 
 		imgui.TableNextColumn()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLineNumber)
-		if ln.Function.Name != developer.NoSourceID {
-			imgui.Text(fmt.Sprintf("%d", ln.LineNumber))
-		} else {
+		if isStub {
 			imgui.Text("-")
+		} else {
+			imgui.Text(fmt.Sprintf("%d", ln.LineNumber))
 		}
 		imgui.PopStyleColor()
 
@@ -731,7 +743,7 @@ func (win *winCoProcPerformance) drawFunctionFilter(src *developer.Source, funct
 
 	imgui.SameLineV(0, 15)
 	if imgui.Checkbox("Scale Statistics", &win.functionTabScale) {
-		win.functionTabDirty = true
+		win.windowSortSpecDirty = true
 	}
 	imguiTooltipSimple(`When selected the % values in the table are
 scaled so they are relative to the function rather
@@ -763,15 +775,7 @@ thean to the program as a whole.`)
 	imgui.TableSetupScrollFreeze(0, 1)
 	imgui.TableHeadersRow()
 
-	sort := imgui.TableGetSortSpecs()
-	if src.ExecutionProfileChanged || sort.SpecsDirty() || win.functionTabDirty {
-		//  always set which kernel to sort by
-		win.windowSortSpecDirty = false
-		src.SortedFunctions.SetKernel(win.kernelFocus)
-		src.SortedFunctions.UseRawCyclesCounts(!win.percentileFigures)
-		src.SortedLines.SetKernel(win.kernelFocus)
-		src.SortedLines.UseRawCyclesCounts(!win.percentileFigures)
-
+	win.sort(src, func(sort imgui.TableSortSpecs) {
 		for _, s := range sort.Specs() {
 			switch s.ColumnUserID {
 			case 0:
@@ -796,8 +800,7 @@ thean to the program as a whole.`)
 				}
 			}
 		}
-		sort.ClearSpecsDirty()
-	}
+	})
 
 	for _, ln := range functionFilter.Lines.Lines {
 		if ln.Kernel&win.kernelFocus != win.kernelFocus {
@@ -805,6 +808,10 @@ thean to the program as a whole.`)
 		}
 
 		if win.hideUnusedEntries && !ln.Stats.IsValid() {
+			continue
+		}
+
+		if ln.IsStub() {
 			continue
 		}
 
@@ -832,18 +839,14 @@ thean to the program as a whole.`)
 		imgui.PopStyleColorV(3)
 
 		// source on tooltip
-		if ln.Function.Name != developer.NoSourceID {
-			if win.functionTabScale {
-				win.tooltip(ln.Stats.OverFunction, ln, true)
-			} else {
-				win.tooltip(ln.Stats.OverSource, ln, true)
-			}
+		if win.functionTabScale {
+			win.tooltip(ln.Stats.OverFunction, ln, true)
 		} else {
-			win.tooltipNoSourceCode()
+			win.tooltip(ln.Stats.OverSource, ln, true)
 		}
 
 		// open source window on click
-		if imgui.IsItemClicked() && ln.Function.Name != developer.NoSourceID {
+		if imgui.IsItemClicked() {
 			srcWin := win.img.wm.debuggerWindows[winCoProcSourceID].(*winCoProcSource)
 			srcWin.gotoSourceLine(ln)
 		}
@@ -948,10 +951,6 @@ thean to the program as a whole.`)
 	imgui.EndTable()
 }
 
-func (win *winCoProcPerformance) tooltipNoSourceCode() {
-	imguiTooltipSimple("Execution of code without underlying source code")
-}
-
 func (win *winCoProcPerformance) tooltip(load developer.Load, ln *developer.SourceLine, withAsm bool) {
 	imguiTooltip(func() {
 		imgui.Text(ln.File.ShortFilename)
@@ -1007,4 +1006,19 @@ func (win *winCoProcPerformance) tooltip(load developer.Load, ln *developer.Sour
 		}
 
 	}, true)
+}
+
+// helpfunction to sort profiling data according to current spec
+func (win *winCoProcPerformance) sort(src *developer.Source, f func(imgui.TableSortSpecs)) {
+	sort := imgui.TableGetSortSpecs()
+	if src.ExecutionProfileChanged || sort.SpecsDirty() || win.windowSortSpecDirty {
+		//  always set which kernel to sort by
+		win.windowSortSpecDirty = false
+		src.SortedFunctions.SetKernel(win.kernelFocus)
+		src.SortedFunctions.UseRawCyclesCounts(!win.percentileFigures)
+		src.SortedLines.SetKernel(win.kernelFocus)
+		src.SortedLines.UseRawCyclesCounts(!win.percentileFigures)
+		f(sort)
+		sort.ClearSpecsDirty()
+	}
 }

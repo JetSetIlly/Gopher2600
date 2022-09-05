@@ -16,6 +16,8 @@
 package developer
 
 import (
+	"strings"
+
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 )
 
@@ -24,12 +26,21 @@ import (
 type CallStack struct {
 	// call stack of running program
 	functions []*SourceFunction
+}
 
-	// call stack ptr points to the last entry that was filled
-	ptr int
+func (cs *CallStack) String() string {
+	l := len(cs.functions)
+	if l == 0 {
+		return ""
+	}
 
-	// whether the call stack has remained sane during profiling
-	Unreliable bool
+	var b strings.Builder
+	b.WriteString(cs.functions[0].Name)
+	for i := 1; i < l; i++ {
+		b.WriteString(" -> ")
+		b.WriteString(cs.functions[i].Name)
+	}
+	return b.String()
 }
 
 // Profiling implements the mapper.CartCoProcDeveloper interface.
@@ -46,13 +57,10 @@ func (dev *Developer) StartProfiling() {
 	dev.sourceLock.Lock()
 	defer dev.sourceLock.Unlock()
 
-	if dev.source.CallStack.ptr > 1 {
-		dev.source.CallStack.Unreliable = true
-	}
-
 	dev.source.CallStack.functions = dev.source.CallStack.functions[:0]
-	dev.source.CallStack.functions = append(dev.source.CallStack.functions, dev.source.noSourceLine.Function)
-	dev.source.CallStack.ptr = 0
+
+	// first entry in the callstack is always the entry function
+	dev.source.CallStack.functions = append(dev.source.CallStack.functions, dev.source.Functions[entryFunction])
 }
 
 // ProcessProfiling implements the mapper.CartCoProcDeveloper interface.
@@ -71,35 +79,41 @@ func (dev *Developer) ProcessProfiling() {
 func (dev *Developer) profileProcess() {
 	accumulate := func(k KernelVCS) {
 		for _, p := range dev.profiler.Entries {
-			// line of executed instruction.every instruction should have an
-			// associated line/function. if it does not then we use the
-			// noSourceLine instance as a placeholder
+			l := len(dev.source.CallStack.functions)
+			lastFn := dev.source.CallStack.functions[l-1]
+
+			// line of executed instruction. every instruction should have an
+			// associated line/function. if it does not then we assume it is in
+			// the entry function
 			ln, ok := dev.source.linesByAddress[uint64(p.Addr)]
 			if !ok {
-				ln = dev.source.noSourceLine
+				ln = dev.source.entryLine
 				dev.source.linesByAddress[uint64(p.Addr)] = ln
 			}
 
-			// the underlying function for the line
-			fn := ln.Function
+			// if function has changed
+			if ln.Function != lastFn {
+				popped := false
 
-			// if function has changed then either add an entry or remove an
-			// entry depending on whether the function has been seen recently.
-			if fn != dev.source.CallStack.functions[dev.source.CallStack.ptr] {
-				if dev.source.CallStack.ptr > 0 && fn != dev.source.CallStack.functions[dev.source.CallStack.ptr-1] {
-					dev.source.CallStack.ptr--
-				} else {
-					dev.source.CallStack.functions = append(dev.source.CallStack.functions, fn)
-					dev.source.CallStack.ptr++
+				// try to pop
+				for i := 1; i < l; i++ {
+					if ln.Function == dev.source.CallStack.functions[l-i] {
+						dev.source.CallStack.functions = dev.source.CallStack.functions[:l-i+1]
+						popped = true
+						break // for loop
+					}
+				}
+
+				// push function on to callstack if we haven't popped
+				if !popped {
+					dev.source.CallStack.functions = append(dev.source.CallStack.functions, ln.Function)
 				}
 			}
 
-			// accumulate for the current function
+			// accumulate counts for line (and the line's function)
 			dev.source.executionProfile(ln, p.Cycles, k)
 
 			// accumulate ancestor functions too
-			for i := dev.source.CallStack.ptr - 1; i >= 0; i-- {
-			}
 		}
 	}
 
@@ -165,7 +179,9 @@ func (src *Source) executionProfile(ln *SourceLine, ct float32, kernel KernelVCS
 
 	ln.Kernel |= kernel
 	ln.Function.Kernel |= kernel
-	ln.Function.DeclLine.Kernel |= kernel
+	if ln.Function.DeclLine != nil {
+		ln.Function.DeclLine.Kernel |= kernel
+	}
 
 	switch kernel {
 	case KernelVBLANK:

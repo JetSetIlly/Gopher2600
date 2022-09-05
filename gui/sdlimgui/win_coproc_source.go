@@ -484,7 +484,7 @@ func displaySourceFragments(ln *developer.SourceLine, cols *imguiColors, tight b
 }
 
 func (win *winCoProcSource) gotoSourceLine(ln *developer.SourceLine) {
-	if ln.File.Filename == developer.NoSourceID {
+	if ln.File == nil {
 		return
 	}
 
