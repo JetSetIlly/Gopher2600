@@ -398,8 +398,8 @@ func (win *winCoProcSource) draw() {
 
 					imgui.TableNextColumn()
 					imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLoad)
-					if ln.Stats.IsValid() {
-						imgui.Text(fmt.Sprintf("%.02f", ln.Stats.OverSource.Frame))
+					if ln.Stats.Overall.IsValid() {
+						imgui.Text(fmt.Sprintf("%.02f", ln.Stats.Overall.OverSource.Frame))
 					} else if len(ln.Disassembly) > 0 {
 						imgui.Text(" -")
 					}

@@ -46,6 +46,18 @@ func (ld *Load) reset() {
 	ld.MaxValid = false
 }
 
+// StatsGroup collates the Stats instance for all kernel views of the program.
+type StatsGroup struct {
+	// cycle statistics for the entire program
+	Overall Stats
+
+	// kernel specific cycle statistics for the program. accumulated only once TV is stable
+	VBLANK   Stats
+	Screen   Stats
+	Overscan Stats
+	ROMSetup Stats
+}
+
 // Stats records the cycle count over time and can be used to the frame
 // (or current) load as well as average and maximum load.
 //
@@ -86,7 +98,7 @@ func (stats *Stats) IsValid() bool {
 
 // update statistics, using source and function to update the Load values as
 // appropriate.
-func (stats *Stats) newFrame(source *Stats, function *Stats) {
+func (stats *Stats) newFrame(src *Stats, function *Stats) {
 	stats.numFrames++
 	if stats.numFrames > 1 {
 		if stats.count > 0 {
@@ -122,16 +134,16 @@ func (stats *Stats) newFrame(source *Stats, function *Stats) {
 		stats.OverFunction.MaxValid = stats.OverFunction.MaxValid || stats.OverFunction.FrameValid
 	}
 
-	if source != nil {
-		frameLoad := stats.frameCount / source.frameCount * 100
+	if src != nil {
+		frameLoad := stats.frameCount / src.frameCount * 100
 
 		stats.OverSource.FrameCount = stats.frameCount
 		stats.OverSource.Frame = frameLoad
 
 		stats.OverSource.AverageCount = stats.avgCount
-		stats.OverSource.Average = stats.avgCount / source.avgCount * 100
+		stats.OverSource.Average = stats.avgCount / src.avgCount * 100
 
-		stats.OverSource.FrameValid = stats.frameCount > 0 && source.frameCount > 0
+		stats.OverSource.FrameValid = stats.frameCount > 0 && src.frameCount > 0
 
 		if stats.OverSource.FrameValid {
 			if stats.frameCount >= stats.OverSource.MaxCount {
@@ -142,7 +154,7 @@ func (stats *Stats) newFrame(source *Stats, function *Stats) {
 			}
 		}
 
-		stats.OverSource.AverageValid = stats.avgCount > 0 && source.avgCount > 0
+		stats.OverSource.AverageValid = stats.avgCount > 0 && src.avgCount > 0
 		stats.OverSource.MaxValid = stats.OverSource.MaxValid || stats.OverSource.FrameValid
 	}
 }

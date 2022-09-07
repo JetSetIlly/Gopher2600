@@ -96,7 +96,7 @@ func (dev *Developer) profileProcess() {
 				popped := false
 
 				// try to pop
-				for i := 1; i < l; i++ {
+				for i := 1; i <= l; i++ {
 					if ln.Function == dev.source.CallStack.functions[l-i] {
 						dev.source.CallStack.functions = dev.source.CallStack.functions[:l-i+1]
 						popped = true
@@ -114,6 +114,9 @@ func (dev *Developer) profileProcess() {
 			dev.source.executionProfile(ln, p.Cycles, k)
 
 			// accumulate ancestor functions too
+			for _, fn := range dev.source.CallStack.functions {
+				dev.source.executionProfileCumulative(fn, p.Cycles, k)
+			}
 		}
 	}
 
@@ -173,32 +176,52 @@ func (src *Source) executionProfile(ln *SourceLine, ct float32, kernel KernelVCS
 	// indicate that execution profile has changed
 	src.ExecutionProfileChanged = true
 
-	ln.Stats.count += ct
-	ln.Function.Stats.count += ct
-	src.Stats.count += ct
+	fn := ln.Function
+
+	ln.Stats.Overall.count += ct
+	fn.FlatStats.Overall.count += ct
+	src.Stats.Overall.count += ct
 
 	ln.Kernel |= kernel
-	ln.Function.Kernel |= kernel
-	if ln.Function.DeclLine != nil {
-		ln.Function.DeclLine.Kernel |= kernel
+	fn.Kernel |= kernel
+	if fn.DeclLine != nil {
+		fn.DeclLine.Kernel |= kernel
 	}
 
 	switch kernel {
 	case KernelVBLANK:
-		ln.StatsVBLANK.count += ct
-		ln.Function.StatsVBLANK.count += ct
-		src.StatsVBLANK.count += ct
+		ln.Stats.VBLANK.count += ct
+		fn.FlatStats.VBLANK.count += ct
+		src.Stats.VBLANK.count += ct
 	case KernelScreen:
-		ln.StatsScreen.count += ct
-		ln.Function.StatsScreen.count += ct
-		src.StatsScreen.count += ct
+		ln.Stats.Screen.count += ct
+		fn.FlatStats.Screen.count += ct
+		src.Stats.Screen.count += ct
 	case KernelOverscan:
-		ln.StatsOverscan.count += ct
-		ln.Function.StatsOverscan.count += ct
-		src.StatsOverscan.count += ct
+		ln.Stats.Overscan.count += ct
+		fn.FlatStats.Overscan.count += ct
+		src.Stats.Overscan.count += ct
 	case KernelUnstable:
-		ln.StatsROMSetup.count += ct
-		ln.Function.StatsROMSetup.count += ct
-		src.StatsROMSetup.count += ct
+		ln.Stats.ROMSetup.count += ct
+		fn.FlatStats.ROMSetup.count += ct
+		src.Stats.ROMSetup.count += ct
+	}
+}
+
+func (src *Source) executionProfileCumulative(fn *SourceFunction, ct float32, kernel KernelVCS) {
+	// indicate that execution profile has changed
+	src.ExecutionProfileChanged = true
+
+	fn.CumulativeStats.Overall.count += ct
+
+	switch kernel {
+	case KernelVBLANK:
+		fn.CumulativeStats.VBLANK.count += ct
+	case KernelScreen:
+		fn.CumulativeStats.Screen.count += ct
+	case KernelOverscan:
+		fn.CumulativeStats.Overscan.count += ct
+	case KernelUnstable:
+		fn.CumulativeStats.ROMSetup.count += ct
 	}
 }

@@ -128,17 +128,17 @@ func (e SortedLines) Less(i int, j int) bool {
 
 	switch e.kernel {
 	case KernelVBLANK:
-		iStats = e.Lines[i].StatsVBLANK
-		jStats = e.Lines[j].StatsVBLANK
+		iStats = e.Lines[i].Stats.VBLANK
+		jStats = e.Lines[j].Stats.VBLANK
 	case KernelScreen:
-		iStats = e.Lines[i].StatsScreen
-		jStats = e.Lines[j].StatsScreen
+		iStats = e.Lines[i].Stats.Screen
+		jStats = e.Lines[j].Stats.Screen
 	case KernelOverscan:
-		iStats = e.Lines[i].StatsOverscan
-		jStats = e.Lines[j].StatsOverscan
+		iStats = e.Lines[i].Stats.Overscan
+		jStats = e.Lines[j].Stats.Overscan
 	default:
-		iStats = e.Lines[i].Stats
-		jStats = e.Lines[j].Stats
+		iStats = e.Lines[i].Stats.Overall
+		jStats = e.Lines[j].Stats.Overall
 	}
 
 	switch e.method {
@@ -239,6 +239,7 @@ type SortedFunctions struct {
 	method     sortMethods
 	descending bool
 	kernel     KernelVCS
+	cumulative bool
 
 	functionComparison bool
 
@@ -252,6 +253,10 @@ func (e SortedFunctions) Sort() {
 
 func (e *SortedFunctions) SetKernel(kernel KernelVCS) {
 	e.kernel = kernel
+}
+
+func (e *SortedFunctions) SetCumulative(set bool) {
+	e.cumulative = set
 }
 
 func (e *SortedFunctions) UseRawCyclesCounts(use bool) {
@@ -298,17 +303,37 @@ func (e SortedFunctions) Less(i int, j int) bool {
 
 	switch e.kernel {
 	case KernelVBLANK:
-		iStats = e.Functions[i].StatsVBLANK
-		jStats = e.Functions[j].StatsVBLANK
+		if e.cumulative {
+			iStats = e.Functions[i].CumulativeStats.VBLANK
+			jStats = e.Functions[j].CumulativeStats.VBLANK
+		} else {
+			iStats = e.Functions[i].FlatStats.VBLANK
+			jStats = e.Functions[j].FlatStats.VBLANK
+		}
 	case KernelScreen:
-		iStats = e.Functions[i].StatsScreen
-		jStats = e.Functions[j].StatsScreen
+		if e.cumulative {
+			iStats = e.Functions[i].CumulativeStats.Screen
+			jStats = e.Functions[j].CumulativeStats.Screen
+		} else {
+			iStats = e.Functions[i].FlatStats.Screen
+			jStats = e.Functions[j].FlatStats.Screen
+		}
 	case KernelOverscan:
-		iStats = e.Functions[i].StatsOverscan
-		jStats = e.Functions[j].StatsOverscan
+		if e.cumulative {
+			iStats = e.Functions[i].CumulativeStats.Overscan
+			jStats = e.Functions[j].CumulativeStats.Overscan
+		} else {
+			iStats = e.Functions[i].FlatStats.Overscan
+			jStats = e.Functions[j].FlatStats.Overscan
+		}
 	default:
-		iStats = e.Functions[i].Stats
-		jStats = e.Functions[j].Stats
+		if e.cumulative {
+			iStats = e.Functions[i].CumulativeStats.Overall
+			jStats = e.Functions[j].CumulativeStats.Overall
+		} else {
+			iStats = e.Functions[i].FlatStats.Overall
+			jStats = e.Functions[j].FlatStats.Overall
+		}
 	}
 
 	switch e.method {

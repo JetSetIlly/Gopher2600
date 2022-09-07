@@ -90,14 +90,8 @@ type SourceLine struct {
 	// whether this source line has been responsible for an illegal access of memory
 	IllegalAccess bool
 
-	// cycle statisics for the line
-	Stats Stats
-
-	// kernel specific cycle statistics for the line. accumulated only once TV is stable
-	StatsVBLANK   Stats
-	StatsScreen   Stats
-	StatsOverscan Stats
-	StatsROMSetup Stats
+	// statistics for the line
+	Stats StatsGroup
 
 	// which 2600 kernel has this line executed in
 	Kernel KernelVCS
@@ -129,14 +123,9 @@ type SourceFunction struct {
 	// the Disassembly and Stats fields therefore should not be relied upon.
 	DeclLine *SourceLine
 
-	// cycle statisics for the function
-	Stats Stats
-
-	// kernel specific cycle statistics for the function. accumulated only once TV is stable
-	StatsVBLANK   Stats
-	StatsScreen   Stats
-	StatsOverscan Stats
-	StatsROMSetup Stats
+	// stats for the function
+	FlatStats       StatsGroup
+	CumulativeStats StatsGroup
 
 	// which 2600 kernel has this function executed in
 	Kernel KernelVCS
@@ -345,14 +334,8 @@ type Source struct {
 	// sorted lines filtered by function name
 	FunctionFilters []*FunctionFilter
 
-	// cycle statistics for the entire program
-	Stats Stats
-
-	// kernel specific cycle statistics for the program. accumulated only once TV is stable
-	StatsVBLANK   Stats
-	StatsScreen   Stats
-	StatsOverscan Stats
-	StatsROMSetup Stats
+	// statistics for the entire program
+	Stats StatsGroup
 
 	// flag to indicate whether the execution profile has changed since it was cleared
 	//
@@ -924,18 +907,24 @@ func (src *Source) newFrame() {
 	// calling newFrame() on stats in a specific order. first the program, then
 	// the functions and then the source lines.
 
-	src.Stats.newFrame(nil, nil)
-	src.StatsVBLANK.newFrame(nil, nil)
-	src.StatsScreen.newFrame(nil, nil)
-	src.StatsOverscan.newFrame(nil, nil)
-	src.StatsROMSetup.newFrame(nil, nil)
+	src.Stats.Overall.newFrame(nil, nil)
+	src.Stats.VBLANK.newFrame(nil, nil)
+	src.Stats.Screen.newFrame(nil, nil)
+	src.Stats.Overscan.newFrame(nil, nil)
+	src.Stats.ROMSetup.newFrame(nil, nil)
 
 	for _, fn := range src.Functions {
-		fn.Stats.newFrame(&src.Stats, nil)
-		fn.StatsVBLANK.newFrame(&src.StatsVBLANK, nil)
-		fn.StatsScreen.newFrame(&src.StatsScreen, nil)
-		fn.StatsOverscan.newFrame(&src.StatsOverscan, nil)
-		fn.StatsROMSetup.newFrame(&src.StatsROMSetup, nil)
+		fn.FlatStats.Overall.newFrame(&src.Stats.Overall, nil)
+		fn.FlatStats.VBLANK.newFrame(&src.Stats.VBLANK, nil)
+		fn.FlatStats.Screen.newFrame(&src.Stats.Screen, nil)
+		fn.FlatStats.Overscan.newFrame(&src.Stats.Overscan, nil)
+		fn.FlatStats.ROMSetup.newFrame(&src.Stats.ROMSetup, nil)
+
+		fn.CumulativeStats.Overall.newFrame(&src.Stats.Overall, nil)
+		fn.CumulativeStats.VBLANK.newFrame(&src.Stats.VBLANK, nil)
+		fn.CumulativeStats.Screen.newFrame(&src.Stats.Screen, nil)
+		fn.CumulativeStats.Overscan.newFrame(&src.Stats.Overscan, nil)
+		fn.CumulativeStats.ROMSetup.newFrame(&src.Stats.ROMSetup, nil)
 	}
 
 	// traverse the SortedLines list and update the FrameCyles values
@@ -943,11 +932,11 @@ func (src *Source) newFrame() {
 	// we prefer this over traversing the Lines list because we may hit a
 	// SourceLine more than once. SortedLines contains unique entries.
 	for _, ln := range src.SortedLines.Lines {
-		ln.Stats.newFrame(&src.Stats, &ln.Function.Stats)
-		ln.StatsVBLANK.newFrame(&src.StatsVBLANK, &ln.Function.StatsVBLANK)
-		ln.StatsScreen.newFrame(&src.StatsScreen, &ln.Function.StatsScreen)
-		ln.StatsOverscan.newFrame(&src.StatsOverscan, &ln.Function.StatsOverscan)
-		ln.StatsROMSetup.newFrame(&src.StatsROMSetup, &ln.Function.StatsROMSetup)
+		ln.Stats.Overall.newFrame(&src.Stats.Overall, &ln.Function.FlatStats.Overall)
+		ln.Stats.VBLANK.newFrame(&src.Stats.VBLANK, &ln.Function.FlatStats.VBLANK)
+		ln.Stats.Screen.newFrame(&src.Stats.Screen, &ln.Function.FlatStats.Screen)
+		ln.Stats.Overscan.newFrame(&src.Stats.Overscan, &ln.Function.FlatStats.Overscan)
+		ln.Stats.ROMSetup.newFrame(&src.Stats.ROMSetup, &ln.Function.FlatStats.ROMSetup)
 	}
 }
 
@@ -1055,25 +1044,25 @@ func findELF(romFile string) *elf.File {
 func (src *Source) ResetStatistics() {
 	for i := range src.Functions {
 		src.Functions[i].Kernel = KernelAny
-		src.Functions[i].Stats.reset()
-		src.Functions[i].StatsVBLANK.reset()
-		src.Functions[i].StatsScreen.reset()
-		src.Functions[i].StatsOverscan.reset()
-		src.Functions[i].StatsROMSetup.reset()
+		src.Functions[i].FlatStats.Overall.reset()
+		src.Functions[i].FlatStats.VBLANK.reset()
+		src.Functions[i].FlatStats.Screen.reset()
+		src.Functions[i].FlatStats.Overscan.reset()
+		src.Functions[i].FlatStats.ROMSetup.reset()
 	}
 	for i := range src.linesByAddress {
 		src.linesByAddress[i].Kernel = KernelAny
-		src.linesByAddress[i].Stats.reset()
-		src.linesByAddress[i].StatsVBLANK.reset()
-		src.linesByAddress[i].StatsScreen.reset()
-		src.linesByAddress[i].StatsOverscan.reset()
-		src.linesByAddress[i].StatsROMSetup.reset()
+		src.linesByAddress[i].Stats.Overall.reset()
+		src.linesByAddress[i].Stats.VBLANK.reset()
+		src.linesByAddress[i].Stats.Screen.reset()
+		src.linesByAddress[i].Stats.Overscan.reset()
+		src.linesByAddress[i].Stats.ROMSetup.reset()
 	}
-	src.Stats.reset()
-	src.StatsVBLANK.reset()
-	src.StatsScreen.reset()
-	src.StatsOverscan.reset()
-	src.StatsROMSetup.reset()
+	src.Stats.Overall.reset()
+	src.Stats.VBLANK.reset()
+	src.Stats.Screen.reset()
+	src.Stats.Overscan.reset()
+	src.Stats.ROMSetup.reset()
 }
 
 // AddBreakpoint adds an address to the list of addresses that will be checked

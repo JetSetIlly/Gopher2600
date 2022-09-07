@@ -47,6 +47,9 @@ type winCoProcPerformance struct {
 	// whether to present performance figures as raw counts or as percentages
 	percentileFigures bool
 
+	// for the function tab, show cumulative values rather than flat values
+	cumulative bool
+
 	// whether the sort criteria as specified in the window has changed (ie.
 	// kernelFocus of percentileFigures widgets has been altered)
 	windowSortSpecDirty bool
@@ -135,20 +138,20 @@ func (win *winCoProcPerformance) draw() {
 		imgui.BeginChildV("##coprocPerformanceMain", imgui.Vec2{X: 0, Y: imguiRemainingWinHeight() - win.optionsHeight}, false, 0)
 		imgui.BeginTabBarV("##coprocSourceTabBar", imgui.TabBarFlagsAutoSelectNewTabs)
 
-		tabName := "Functions"
-		if imgui.BeginTabItemV(tabName, nil, imgui.TabItemFlagsNone) {
-			if win.tabSelected != tabName {
-				win.tabSelected = tabName
+		functionTab := "Functions"
+		if imgui.BeginTabItemV(functionTab, nil, imgui.TabItemFlagsNone) {
+			if win.tabSelected != functionTab {
+				win.tabSelected = functionTab
 				win.windowSortSpecDirty = true
 			}
 			win.drawFunctions(src)
 			imgui.EndTabItem()
 		}
 
-		tabName = "Source Lines"
-		if imgui.BeginTabItemV(tabName, nil, imgui.TabItemFlagsNone) {
-			if win.tabSelected != tabName {
-				win.tabSelected = tabName
+		sourceLineTab := "Source Lines"
+		if imgui.BeginTabItemV(sourceLineTab, nil, imgui.TabItemFlagsNone) {
+			if win.tabSelected != sourceLineTab {
+				win.tabSelected = sourceLineTab
 				win.windowSortSpecDirty = true
 			}
 			win.drawSourceLines(src)
@@ -162,10 +165,10 @@ func (win *winCoProcPerformance) draw() {
 				flgs |= imgui.TabItemFlagsSetSelected
 			}
 
-			tabName = fmt.Sprintf("%c %s", fonts.MagnifyingGlass, ff.FunctionName)
-			if imgui.BeginTabItemV(tabName, &open, flgs) {
-				if win.tabSelected != tabName {
-					win.tabSelected = tabName
+			funcFilterTab := fmt.Sprintf("%c %s", fonts.MagnifyingGlass, ff.FunctionName)
+			if imgui.BeginTabItemV(funcFilterTab, &open, flgs) {
+				if win.tabSelected != funcFilterTab {
+					win.tabSelected = funcFilterTab
 					win.windowSortSpecDirty = true
 				}
 				win.drawFunctionFilter(src, ff)
@@ -216,6 +219,13 @@ func (win *winCoProcPerformance) draw() {
 
 			imgui.SameLineV(0, 15)
 			imgui.Checkbox("Hide Unexecuted Items", &win.hideUnusedEntries)
+
+			if win.tabSelected == functionTab {
+				imgui.SameLineV(0, 15)
+				if imgui.Checkbox("Cumulative Figures", &win.cumulative) {
+					win.windowSortSpecDirty = true
+				}
+			}
 
 			// scale statistics to function is in drawFunctionFilter()
 			imgui.Spacing()
@@ -317,22 +327,22 @@ func (win *winCoProcPerformance) drawFunctions(src *developer.Source) {
 	}
 
 	if win.kernelFocus&developer.KernelVBLANK == developer.KernelVBLANK {
-		if !src.StatsVBLANK.IsValid() {
+		if !src.Stats.VBLANK.IsValid() {
 			imgui.Text("No functions have been executed during VBLANK yet")
 			return
 		}
 	} else if win.kernelFocus&developer.KernelScreen == developer.KernelScreen {
-		if !src.StatsScreen.IsValid() {
+		if !src.Stats.Screen.IsValid() {
 			imgui.Text("No functions have been executed during the visible screen yet")
 			return
 		}
 	} else if win.kernelFocus&developer.KernelOverscan == developer.KernelOverscan {
-		if !src.StatsOverscan.IsValid() {
+		if !src.Stats.Overscan.IsValid() {
 			imgui.Text("No functions have been executed during Overscan yet")
 			return
 		}
 	} else {
-		if win.hideUnusedEntries && !src.Stats.IsValid() {
+		if win.hideUnusedEntries && !src.Stats.Overall.IsValid() {
 			imgui.Text("No functions have been executed yet")
 			return
 		}
@@ -385,7 +395,9 @@ func (win *winCoProcPerformance) drawFunctions(src *developer.Source) {
 			continue
 		}
 
-		if win.hideUnusedEntries && !fn.Stats.IsValid() {
+		// using flat stats even if cumulative option is set - it amounts to
+		// the same thing in this case
+		if win.hideUnusedEntries && !fn.FlatStats.Overall.IsValid() {
 			continue
 		}
 
@@ -394,15 +406,22 @@ func (win *winCoProcPerformance) drawFunctions(src *developer.Source) {
 		isStub := fn.IsStub()
 
 		// select which stats to focus on
+		var statsGroup developer.StatsGroup
+		if win.cumulative {
+			statsGroup = fn.CumulativeStats
+		} else {
+			statsGroup = fn.FlatStats
+		}
+
 		var stats developer.Stats
 		if win.kernelFocus&developer.KernelVBLANK == developer.KernelVBLANK {
-			stats = fn.StatsVBLANK
+			stats = statsGroup.VBLANK
 		} else if win.kernelFocus&developer.KernelScreen == developer.KernelScreen {
-			stats = fn.StatsScreen
+			stats = statsGroup.Screen
 		} else if win.kernelFocus&developer.KernelOverscan == developer.KernelOverscan {
-			stats = fn.StatsOverscan
+			stats = statsGroup.Overscan
 		} else {
-			stats = fn.Stats
+			stats = statsGroup.Overall
 		}
 
 		imgui.TableNextRow()
@@ -421,7 +440,7 @@ func (win *winCoProcPerformance) drawFunctions(src *developer.Source) {
 		if isStub {
 			imguiTooltipSimple("Function has no underlying source code")
 		} else {
-			win.tooltip(fn.Stats.OverSource, fn.DeclLine, false)
+			win.tooltip(fn.FlatStats.Overall.OverSource, fn.DeclLine, false)
 		}
 
 		// open/select function filter on click
@@ -513,22 +532,22 @@ func (win *winCoProcPerformance) drawSourceLines(src *developer.Source) {
 	}
 
 	if win.kernelFocus&developer.KernelVBLANK == developer.KernelVBLANK {
-		if !src.StatsVBLANK.IsValid() {
+		if !src.Stats.VBLANK.IsValid() {
 			imgui.Text("No lines have been executed during VBLANK yet")
 			return
 		}
 	} else if win.kernelFocus&developer.KernelScreen == developer.KernelScreen {
-		if !src.StatsScreen.IsValid() {
+		if !src.Stats.Screen.IsValid() {
 			imgui.Text("No lines have been executed during the visible screen yet")
 			return
 		}
 	} else if win.kernelFocus&developer.KernelOverscan == developer.KernelOverscan {
-		if !src.StatsOverscan.IsValid() {
+		if !src.Stats.Overscan.IsValid() {
 			imgui.Text("No lines have been executed during Overscan yet")
 			return
 		}
 	} else {
-		if win.hideUnusedEntries && !src.Stats.IsValid() {
+		if win.hideUnusedEntries && !src.Stats.Overall.IsValid() {
 			imgui.Text("No lines have been executed yet")
 			return
 		}
@@ -579,7 +598,7 @@ func (win *winCoProcPerformance) drawSourceLines(src *developer.Source) {
 			continue
 		}
 
-		if win.hideUnusedEntries && !ln.Stats.IsValid() {
+		if win.hideUnusedEntries && !ln.Stats.Overall.IsValid() {
 			continue
 		}
 
@@ -590,13 +609,13 @@ func (win *winCoProcPerformance) drawSourceLines(src *developer.Source) {
 		// select which stats to focus on
 		var stats developer.Stats
 		if win.kernelFocus&developer.KernelVBLANK == developer.KernelVBLANK {
-			stats = ln.StatsVBLANK
+			stats = ln.Stats.VBLANK
 		} else if win.kernelFocus&developer.KernelScreen == developer.KernelScreen {
-			stats = ln.StatsScreen
+			stats = ln.Stats.Screen
 		} else if win.kernelFocus&developer.KernelOverscan == developer.KernelOverscan {
-			stats = ln.StatsOverscan
+			stats = ln.Stats.Overscan
 		} else {
-			stats = ln.Stats
+			stats = ln.Stats.Overall
 		}
 
 		imgui.TableNextRow()
@@ -613,7 +632,7 @@ func (win *winCoProcPerformance) drawSourceLines(src *developer.Source) {
 		if isStub {
 			imguiTooltipSimple(fmt.Sprintf("This entry represent all lines of code in %s", ln.Function.Name))
 		} else {
-			win.tooltip(ln.Stats.OverSource, ln, true)
+			win.tooltip(ln.Stats.Overall.OverSource, ln, true)
 		}
 
 		// open source window on click
@@ -707,22 +726,22 @@ func (win *winCoProcPerformance) drawFunctionFilter(src *developer.Source, funct
 	// drawSourceLines() equivalents of this block perform the validity check
 	// on the source level statistics
 	if win.kernelFocus&developer.KernelVBLANK == developer.KernelVBLANK {
-		if !functionFilter.Function.StatsVBLANK.IsValid() {
+		if !functionFilter.Function.FlatStats.VBLANK.IsValid() {
 			imgui.Text("This function has not been executed during VBLANK yet")
 			return
 		}
 	} else if win.kernelFocus&developer.KernelScreen == developer.KernelScreen {
-		if !functionFilter.Function.StatsScreen.IsValid() {
+		if !functionFilter.Function.FlatStats.Screen.IsValid() {
 			imgui.Text("This function has not been executed during the visible screen yet")
 			return
 		}
 	} else if win.kernelFocus&developer.KernelOverscan == developer.KernelOverscan {
-		if !functionFilter.Function.StatsOverscan.IsValid() {
+		if !functionFilter.Function.FlatStats.Overscan.IsValid() {
 			imgui.Text("This function has not been executed during Overscan yet")
 			return
 		}
 	} else {
-		if win.hideUnusedEntries && !src.Stats.IsValid() {
+		if win.hideUnusedEntries && !src.Stats.Overall.IsValid() {
 			imgui.Text("Ths function has not been executed yet")
 			return
 		}
@@ -732,13 +751,13 @@ func (win *winCoProcPerformance) drawFunctionFilter(src *developer.Source, funct
 	imgui.AlignTextToFramePadding()
 	switch win.kernelFocus {
 	case developer.KernelVBLANK:
-		imgui.Text(fmt.Sprintf("Function accounted for %.02f%% of ARM time in the VBLANK last frame", functionFilter.Function.StatsVBLANK.OverSource.Frame))
+		imgui.Text(fmt.Sprintf("Function accounted for %.02f%% of ARM time in the VBLANK last frame", functionFilter.Function.FlatStats.VBLANK.OverSource.Frame))
 	case developer.KernelScreen:
-		imgui.Text(fmt.Sprintf("Function accounted for %.02f%% of ARM time in the Visible Screen last frame", functionFilter.Function.StatsScreen.OverSource.Frame))
+		imgui.Text(fmt.Sprintf("Function accounted for %.02f%% of ARM time in the Visible Screen last frame", functionFilter.Function.FlatStats.Screen.OverSource.Frame))
 	case developer.KernelOverscan:
-		imgui.Text(fmt.Sprintf("Function accounted for %.02f%% of ARM time in the Overscan last frame", functionFilter.Function.StatsOverscan.OverSource.Frame))
+		imgui.Text(fmt.Sprintf("Function accounted for %.02f%% of ARM time in the Overscan last frame", functionFilter.Function.FlatStats.Overscan.OverSource.Frame))
 	default:
-		imgui.Text(fmt.Sprintf("Function accounted for %.02f%% of ARM time last frame", functionFilter.Function.Stats.OverSource.Frame))
+		imgui.Text(fmt.Sprintf("Function accounted for %.02f%% of ARM time last frame", functionFilter.Function.FlatStats.Overall.OverSource.Frame))
 	}
 
 	imgui.SameLineV(0, 15)
@@ -807,7 +826,7 @@ thean to the program as a whole.`)
 			continue
 		}
 
-		if win.hideUnusedEntries && !ln.Stats.IsValid() {
+		if win.hideUnusedEntries && !ln.Stats.Overall.IsValid() {
 			continue
 		}
 
@@ -818,13 +837,13 @@ thean to the program as a whole.`)
 		// select which stats to focus on
 		var stats developer.Stats
 		if win.kernelFocus&developer.KernelVBLANK == developer.KernelVBLANK {
-			stats = ln.StatsVBLANK
+			stats = ln.Stats.VBLANK
 		} else if win.kernelFocus&developer.KernelScreen == developer.KernelScreen {
-			stats = ln.StatsScreen
+			stats = ln.Stats.Screen
 		} else if win.kernelFocus&developer.KernelOverscan == developer.KernelOverscan {
-			stats = ln.StatsOverscan
+			stats = ln.Stats.Overscan
 		} else {
-			stats = ln.Stats
+			stats = ln.Stats.Overall
 		}
 
 		imgui.TableNextRow()
@@ -840,9 +859,9 @@ thean to the program as a whole.`)
 
 		// source on tooltip
 		if win.functionTabScale {
-			win.tooltip(ln.Stats.OverFunction, ln, true)
+			win.tooltip(ln.Stats.Overall.OverFunction, ln, true)
 		} else {
-			win.tooltip(ln.Stats.OverSource, ln, true)
+			win.tooltip(ln.Stats.Overall.OverSource, ln, true)
 		}
 
 		// open source window on click
@@ -1016,6 +1035,7 @@ func (win *winCoProcPerformance) sort(src *developer.Source, f func(imgui.TableS
 		win.windowSortSpecDirty = false
 		src.SortedFunctions.SetKernel(win.kernelFocus)
 		src.SortedFunctions.UseRawCyclesCounts(!win.percentileFigures)
+		src.SortedFunctions.SetCumulative(win.cumulative)
 		src.SortedLines.SetKernel(win.kernelFocus)
 		src.SortedLines.UseRawCyclesCounts(!win.percentileFigures)
 		f(sort)
