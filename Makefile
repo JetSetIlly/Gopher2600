@@ -77,7 +77,7 @@ profile:
 profile_cpu: generate test
 	@$(goBinary) build -gcflags $(compileFlags)
 	@echo "performance mode running for 20s"
-	@./gopher2600 performance --profile=cpu --fpscap=false --duration=20s $(profilingRom)
+	@./gopher2600 performance --profile=cpu --duration=20s $(profilingRom)
 	@$(goBinary) tool pprof -http : ./gopher2600 performance_cpu.profile
 
 profile_cpu_play: generate test
@@ -107,7 +107,7 @@ profile_mem_debug : generate test
 profile_trace: generate test
 	@$(goBinary) build -gcflags $(compileFlags)
 	@echo "performance mode running for 20s"
-	@./gopher2600 performance --profile=trace --fpscap=false --duration=20s $(profilingRom)
+	@./gopher2600 performance --profile=trace --duration=20s $(profilingRom)
 	@$(goBinary) tool trace -http : performance_trace.profile
 
 build_assertions: generate test
