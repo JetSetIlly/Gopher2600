@@ -20,6 +20,12 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/riot/ports/plugging"
 )
 
+// small deadzone for the triggers
+const TriggerDeadzone = 10
+
+// quite a large deadzone for the thumbstick
+const StickDeadzone = 10000
+
 // Controllers keeps track of hardware userinput options.
 type Controllers struct {
 	inputHandlers []HandleInput
@@ -342,26 +348,23 @@ func (c *Controllers) gamepadThumbstick(ev EventGamepadThumbstick) (bool, error)
 		return false, nil
 	}
 
-	// quite a large deadzone for the thumbstick
-	const deadzone = 10000
-
-	if ev.Horiz > deadzone {
-		if ev.Vert > deadzone {
+	if ev.Horiz > StickDeadzone {
+		if ev.Vert > StickDeadzone {
 			return c.handleEvents(ev.ID, ports.RightDown, ports.DataStickSet)
-		} else if ev.Vert < -deadzone {
+		} else if ev.Vert < -StickDeadzone {
 			return c.handleEvents(ev.ID, ports.RightUp, ports.DataStickSet)
 		}
 		return c.handleEvents(ev.ID, ports.Right, ports.DataStickSet)
-	} else if ev.Horiz < -deadzone {
-		if ev.Vert > deadzone {
+	} else if ev.Horiz < -StickDeadzone {
+		if ev.Vert > StickDeadzone {
 			return c.handleEvents(ev.ID, ports.LeftDown, ports.DataStickSet)
-		} else if ev.Vert < -deadzone {
+		} else if ev.Vert < -StickDeadzone {
 			return c.handleEvents(ev.ID, ports.LeftUp, ports.DataStickSet)
 		}
 		return c.handleEvents(ev.ID, ports.Left, ports.DataStickSet)
-	} else if ev.Vert > deadzone {
+	} else if ev.Vert > StickDeadzone {
 		return c.handleEvents(ev.ID, ports.Down, ports.DataStickSet)
-	} else if ev.Vert < -deadzone {
+	} else if ev.Vert < -StickDeadzone {
 		return c.handleEvents(ev.ID, ports.Up, ports.DataStickSet)
 	}
 
@@ -380,9 +383,6 @@ func (c *Controllers) gamepadTriggers(ev EventGamepadTrigger) (bool, error) {
 		return false, nil
 	}
 
-	// small deadzone for the triggers
-	const deadzone = 10
-
 	const min = 0.0
 	const max = 65535.0
 	const mid = 32768.0
@@ -394,7 +394,7 @@ func (c *Controllers) gamepadTriggers(ev EventGamepadTrigger) (bool, error) {
 	case GamepadTriggerLeft:
 
 		// check deadzone
-		if n >= -deadzone && n <= deadzone {
+		if n >= -TriggerDeadzone && n <= TriggerDeadzone {
 			c.trigger = GamepadTriggerNone
 			n = min
 		} else {
@@ -409,7 +409,7 @@ func (c *Controllers) gamepadTriggers(ev EventGamepadTrigger) (bool, error) {
 		}
 	case GamepadTriggerRight:
 		// check deadzone
-		if n >= -deadzone && n <= deadzone {
+		if n >= -TriggerDeadzone && n <= TriggerDeadzone {
 			c.trigger = GamepadTriggerNone
 			n = min
 		} else {

@@ -72,9 +72,15 @@ func (img *SdlImgui) Service() {
 			}
 
 		case *sdl.KeyboardEvent:
+			img.smartHideCursor(true)
 			img.serviceKeyboard(ev)
 
+		case *sdl.MouseMotionEvent:
+			img.smartHideCursor(false)
+
 		case *sdl.MouseButtonEvent:
+			img.smartHideCursor(false)
+
 			// the button event to send
 			var button userinput.MouseButton
 
@@ -151,6 +157,8 @@ func (img *SdlImgui) Service() {
 			}
 
 		case *sdl.JoyButtonEvent:
+			img.smartHideCursor(true)
+
 			button := userinput.GamepadButtonNone
 			switch ev.Button {
 			case 0:
@@ -182,6 +190,8 @@ func (img *SdlImgui) Service() {
 			}
 
 		case *sdl.JoyHatEvent:
+			img.smartHideCursor(true)
+
 			dir := userinput.DPadNone
 			switch ev.Value {
 			case sdl.HAT_CENTERED:
@@ -217,6 +227,14 @@ func (img *SdlImgui) Service() {
 
 		case *sdl.JoyAxisEvent:
 			pad := sdl.GameControllerFromInstanceID(ev.Which)
+
+			if pad.Axis(0) > userinput.StickDeadzone || pad.Axis(0) < -userinput.StickDeadzone ||
+				pad.Axis(1) > userinput.StickDeadzone || pad.Axis(1) < -userinput.StickDeadzone ||
+				pad.Axis(3) > userinput.StickDeadzone || pad.Axis(3) < -userinput.StickDeadzone ||
+				pad.Axis(4) > userinput.StickDeadzone || pad.Axis(4) < -userinput.StickDeadzone {
+				img.smartHideCursor(true)
+			}
+
 			switch ev.Axis {
 			case 0:
 				fallthrough

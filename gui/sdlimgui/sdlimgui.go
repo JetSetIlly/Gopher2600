@@ -409,14 +409,26 @@ func (img *SdlImgui) setCapture(set bool) {
 	}
 
 	img.plt.window.SetGrab(set)
+	img.hideCursor(set)
+}
 
-	if set {
-		_, err = sdl.ShowCursor(sdl.DISABLE)
+// smartly hide cursor based on playmode and capture state. only called from
+// gui thread
+func (img *SdlImgui) smartHideCursor(set bool) {
+	if img.isPlaymode() && !img.isCaptured() {
+		img.hideCursor(set)
+	}
+}
+
+// hide mouse cursor. only called from gui thread
+func (img *SdlImgui) hideCursor(hide bool) {
+	if hide {
+		_, err := sdl.ShowCursor(sdl.DISABLE)
 		if err != nil {
 			logger.Log("sdlimgui", err.Error())
 		}
 	} else {
-		_, err = sdl.ShowCursor(sdl.ENABLE)
+		_, err := sdl.ShowCursor(sdl.ENABLE)
 		if err != nil {
 			logger.Log("sdlimgui", err.Error())
 		}
