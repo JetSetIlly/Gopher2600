@@ -1048,7 +1048,12 @@ func (src *Source) ResetStatistics() {
 		src.Functions[i].FlatStats.VBLANK.reset()
 		src.Functions[i].FlatStats.Screen.reset()
 		src.Functions[i].FlatStats.Overscan.reset()
-		src.Functions[i].FlatStats.ROMSetup.reset()
+		src.Functions[i].CumulativeStats.ROMSetup.reset()
+		src.Functions[i].CumulativeStats.Overall.reset()
+		src.Functions[i].CumulativeStats.VBLANK.reset()
+		src.Functions[i].CumulativeStats.Screen.reset()
+		src.Functions[i].CumulativeStats.Overscan.reset()
+		src.Functions[i].CumulativeStats.ROMSetup.reset()
 	}
 	for i := range src.linesByAddress {
 		src.linesByAddress[i].Kernel = KernelAny
