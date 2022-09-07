@@ -345,6 +345,14 @@ func (img *SdlImgui) setEmulationMode(mode govern.Mode) error {
 
 	img.setAudioMute()
 
+	// small delay before calling smartHideCursor(). this is because SDL will
+	// detect a mouse motion on startup or when the window changes between
+	// emulation modes. rather than dealing with thresholds in the event
+	// handler, it's easy and cleaner to set a short delay
+	time.AfterFunc(250*time.Millisecond, func() {
+		img.smartHideCursor(true)
+	})
+
 	return nil
 }
 
