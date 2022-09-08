@@ -96,10 +96,21 @@ func (dev *Developer) profileProcess() {
 				popped := false
 
 				// try to pop
-				for i := 1; i <= l; i++ {
+				var i int
+				for i = 1; i <= l; i++ {
 					if ln.Function == dev.source.CallStack.functions[l-i] {
+						chop := dev.source.CallStack.functions[l-i+1:]
 						dev.source.CallStack.functions = dev.source.CallStack.functions[:l-i+1]
 						popped = true
+
+						// flag functions which look like they are part of an
+						// optimised call stack
+						if len(chop) > 1 {
+							for _, f := range chop {
+								f.OptimisedCallStack = true
+							}
+						}
+
 						break // for loop
 					}
 				}

@@ -306,6 +306,17 @@ func (win *winCoProcPerformance) draw() {
 			imgui.Separator()
 			imgui.Spacing()
 
+			if src.Optimised {
+				imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.Warning)
+				imgui.Text(string(fonts.Warning))
+				imgui.PopStyleColor()
+
+				imguiTooltipSimple(`Source compiled with optimisation. Some figures may
+be misleading`)
+
+				imgui.SameLineV(0, 15)
+			}
+
 			win.drawFrameStats()
 		})
 	})
@@ -501,11 +512,27 @@ func (win *winCoProcPerformance) drawFunctions(src *developer.Source) {
 		}
 		imgui.PopStyleColorV(2)
 
+		// whether to show the optimisation warning for a function
+		optimisedWarning := win.cumulative && fn.OptimisedCallStack
+
 		// tooltip
 		if isStub {
 			imguiTooltipSimple("Function has no underlying source code")
 		} else {
 			win.tooltip(fn.FlatStats.Overall.OverSource, fn.DeclLine, false)
+		}
+		if optimisedWarning {
+			imguiTooltip(func() {
+				imgui.Spacing()
+				imgui.Separator()
+				imgui.Spacing()
+				imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.Warning)
+				imgui.Text(string(fonts.Warning))
+				imgui.PopStyleColor()
+				imgui.SameLineV(0, 5)
+				imgui.Text("This function has been called as part of a call stack that could")
+				imgui.Text("not be discerned accurately. The figures will be inaccurate.")
+			}, true)
 		}
 
 		// open/select function filter on click
@@ -525,7 +552,16 @@ func (win *winCoProcPerformance) drawFunctions(src *developer.Source) {
 		imgui.PopStyleColor()
 
 		imgui.TableNextColumn()
-		imgui.Text(fmt.Sprintf("%s", fn.Name))
+
+		if optimisedWarning {
+			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.Warning)
+			imgui.Text(string(fonts.Warning))
+			imgui.PopStyleColor()
+			imgui.SameLineV(0, 5)
+			imgui.Text(fn.Name)
+		} else {
+			imgui.Text(fn.Name)
+		}
 
 		imgui.TableNextColumn()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLoad)

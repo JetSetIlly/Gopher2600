@@ -34,9 +34,8 @@ import (
 // compile units are made up of many children. for convenience/speed we keep
 // track of the children as an index rather than a tree.
 type compileUnit struct {
-	unit                    *dwarf.Entry
-	children                map[dwarf.Offset]*dwarf.Entry
-	unsupportedOptimisation string
+	unit     *dwarf.Entry
+	children map[dwarf.Offset]*dwarf.Entry
 }
 
 // Source is created from available DWARF data that has been found in relation
@@ -50,19 +49,11 @@ type Source struct {
 	// findSourceLine() function
 	dwrf *dwarf.Data
 
+	// source is compiled with optimisation
+	Optimised bool
+
 	// every compile unit in the dwarf data
 	compileUnits []*compileUnit
-
-	// if any of the compile units were compiled with GCC optimisation then
-	// this string will contain an appropriate message. if string is empty then
-	// the detected optimisation was acceptable (or there is no optimisation or
-	// the compiler is unsupported)
-	//
-	// a GCC optimisation of -Os is okay
-	//
-	// optimisation can cause misleading or confusing information (albeit still
-	// technically correct in terms of performance analysis)
-	UnsupportedOptimisation string
 
 	// disassembled binary
 	Disassembly map[uint64]*SourceDisasm
@@ -334,15 +325,7 @@ func NewSource(romFile string, cart mapper.CartCoProc) (*Source, error) {
 				if strings.HasPrefix(producer, "GNU") {
 					idx := strings.Index(producer, " -O")
 					if idx > -1 {
-						idx += 3
-						if idx < len(producer) {
-							switch producer[idx] {
-							case 's':
-							case ' ':
-							default:
-								unit.unsupportedOptimisation = fmt.Sprintf("binary compiled with unsupported optimisation (-O%c)", producer[idx])
-							}
-						}
+						src.Optimised = true
 					}
 				}
 			}
@@ -352,13 +335,9 @@ func NewSource(romFile string, cart mapper.CartCoProc) (*Source, error) {
 		}
 	}
 
-	// if any of the units have unsupported optimsation then indicate that the
-	// entire source has the same property
-	for _, u := range src.compileUnits {
-		if len(u.children) > 0 && u.unsupportedOptimisation != "" {
-			src.UnsupportedOptimisation = u.unsupportedOptimisation
-			logger.Logf("dwarf", unit.unsupportedOptimisation)
-		}
+	// log optimisation message as appropriate
+	if src.Optimised {
+		logger.Logf("dwarf", "source compiled with optimisation")
 	}
 
 	// find reference for every meaningful source line and link to disassembly
@@ -831,6 +810,7 @@ func (src *Source) ResetStatistics() {
 		src.Functions[i].CumulativeStats.Screen.reset()
 		src.Functions[i].CumulativeStats.Overscan.reset()
 		src.Functions[i].CumulativeStats.ROMSetup.reset()
+		src.Functions[i].OptimisedCallStack = false
 	}
 	for i := range src.linesByAddress {
 		src.linesByAddress[i].Kernel = KernelAny

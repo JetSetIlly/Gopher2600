@@ -107,6 +107,9 @@ type SourceFunction struct {
 
 	// which 2600 kernel has this function executed in
 	Kernel KernelVCS
+
+	// whether the call stack involving this function is likely inaccurate
+	OptimisedCallStack bool
 }
 
 // IsStub returns true if thre is no DWARF data for this function.
