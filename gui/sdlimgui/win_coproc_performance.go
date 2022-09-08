@@ -17,11 +17,14 @@ package sdlimgui
 
 import (
 	"fmt"
+	"sync/atomic"
 
 	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/coprocessor/developer"
+	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/gui/fonts"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
+	"github.com/jetsetilly/gopher2600/hardware/television"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
 )
 
@@ -71,6 +74,39 @@ type winCoProcPerformance struct {
 	// function tab is newly opened/changed. this means that the stats should
 	// be resorted
 	functionTabSelect string
+
+	// FrameTrigger interface used to synchronise reset event with the TV
+	tv coProcPerformanceTV
+}
+
+// coProcePerformanceTV is used to synchronise the "Reset Statistics" button
+// with the television.
+type coProcPerformanceTV struct {
+	img      *SdlImgui
+	schedule atomic.Value
+}
+
+func (tv *coProcPerformanceTV) initialise(img *SdlImgui) {
+	// initialise TV Frame Trigger
+	tv.img = img
+	tv.schedule.Store(false)
+	tv.img.dbg.PushFunction(func() {
+		tv.img.dbg.TV().AddFrameTrigger(tv)
+	})
+}
+
+func (tv *coProcPerformanceTV) scheduleReset(set bool) {
+	tv.schedule.Store(set)
+}
+
+// NewFrame implements the television.FrameTrigger interface.
+func (tv *coProcPerformanceTV) NewFrame(_ television.FrameInfo) error {
+	// this code is running in the emulator goroutine and NOT the GUI goroutine
+	if tv.schedule.Load().(bool) {
+		tv.schedule.Store(false)
+		tv.img.dbg.CoProcDev.ResetStatistics()
+	}
+	return nil
 }
 
 func newWinCoProcPerformance(img *SdlImgui) (window, error) {
@@ -80,6 +116,9 @@ func newWinCoProcPerformance(img *SdlImgui) (window, error) {
 		kernelFocus:         developer.KernelAny,
 		percentileFigures:   true,
 	}
+
+	win.tv.initialise(img)
+
 	return win, nil
 }
 
@@ -232,9 +271,35 @@ func (win *winCoProcPerformance) draw() {
 			imgui.Checkbox("Show Source in Tooltip", &win.showSrcAsmInTooltip)
 
 			// reset statistics
-			imgui.SameLineV(0, 15)
-			if imgui.Button(fmt.Sprintf("%c Reset Statistics", fonts.Trash)) {
-				src.ResetStatistics()
+			if win.img.dbg.State() == govern.Paused {
+				imgui.SameLineV(0, 15)
+				if win.tv.schedule.Load().(bool) {
+					if imgui.Button(fmt.Sprintf("%c Reset Now", fonts.Trash)) {
+						win.tv.scheduleReset(false)
+						src.ResetStatistics()
+					}
+
+					imgui.SameLineV(0, 15)
+					imgui.BeginGroup()
+					imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.Cancel)
+					imgui.Text(string(fonts.Cancel))
+					imgui.PopStyleColor()
+					imgui.SameLineV(0, 5)
+					imgui.Text("Statistics will be reset for the next TV frame")
+					imgui.EndGroup()
+					if imgui.IsItemClicked() {
+						win.tv.scheduleReset(false)
+					}
+				} else {
+					if imgui.Button(fmt.Sprintf("%c Reset Statistics", fonts.Trash)) {
+						win.tv.scheduleReset(true)
+					}
+				}
+			} else {
+				imgui.SameLineV(0, 15)
+				if imgui.Button(fmt.Sprintf("%c Reset Statistics", fonts.Trash)) {
+					win.tv.scheduleReset(true)
+				}
 			}
 
 			imgui.Spacing()

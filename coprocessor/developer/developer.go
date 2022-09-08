@@ -268,3 +268,13 @@ func (dev *Developer) NewFrame(frameInfo television.FrameInfo) error {
 
 	return nil
 }
+
+// ResetStatistics resets all performance statistics. This differs from the
+// function in the Source type in that it acquires and releases the source
+// critical section.
+func (dev *Developer) ResetStatistics() {
+	dev.sourceLock.Lock()
+	defer dev.sourceLock.Unlock()
+
+	dev.source.ResetStatistics()
+}

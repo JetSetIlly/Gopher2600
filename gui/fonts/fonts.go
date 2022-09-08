@@ -80,6 +80,7 @@ const (
 	PaintRoller            = '\uf5aa'
 	Pencil                 = '\uf303'
 	NoVSYNC                = '\uf188'
+	Cancel                 = '\uf057'
 )
 
 // The first and last unicode points used in the application. We use this to
