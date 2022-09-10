@@ -33,6 +33,7 @@ import (
 // Elf implements the mapper.CartMapper interface.
 type Elf struct {
 	instance *instance.Instance
+	dev      mapper.CartCoProcDeveloper
 
 	version   string
 	pathToROM string
@@ -171,6 +172,10 @@ func (cart *Elf) Patch(_ int, _ uint8) error {
 }
 
 func (cart *Elf) runARM() {
+	if cart.dev != nil {
+		cart.dev.StartProfiling()
+		defer cart.dev.ProcessProfiling()
+	}
 	cart.arm.Run()
 }
 
@@ -282,6 +287,7 @@ func (cart *Elf) SetDisassembler(disasm mapper.CartCoProcDisassembler) {
 
 // SetDeveloper implements the mapper.CartCoProc interface.
 func (cart *Elf) SetDeveloper(dev mapper.CartCoProcDeveloper) {
+	cart.dev = dev
 	cart.arm.SetDeveloper(dev)
 }
 
