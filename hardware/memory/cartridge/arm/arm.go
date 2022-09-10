@@ -286,7 +286,7 @@ func NewARM(arch Architecture, mamcr MAMCR, mmap memorymodel.Map, prefs *prefere
 	case ARMv7_M:
 		arm.nullAccessBoundary = nullAccessBoundaryARMv7_m
 	default:
-		panic("unhandled ARM architecture: cannot set nullAccessBoundary")
+		panic(fmt.Sprintf("unhandled ARM architecture: cannot set %s", arm.arch))
 	}
 
 	arm.mam.mmap = mmap

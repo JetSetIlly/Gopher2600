@@ -17,6 +17,7 @@ package cdf
 
 import (
 	"bytes"
+	"fmt"
 
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm"
@@ -90,7 +91,8 @@ func newVersion(memModel string, v string, data []uint8) (version, error) {
 	var arch arm.Architecture
 	var mmap memorymodel.Map
 
-	if memModel == "AUTO" {
+	switch memModel {
+	case "AUTO":
 		if data[0x863]&0x20 == 0x20 && data[0x867]&0x20 == 0x20 {
 			arch = arm.ARMv7_M
 			mmap = memorymodel.NewMap(memorymodel.PlusCart)
@@ -98,6 +100,29 @@ func newVersion(memModel string, v string, data []uint8) (version, error) {
 			arch = arm.ARM7TDMI
 			mmap = memorymodel.NewMap(memorymodel.Harmony)
 		}
+
+	case "LPC2000":
+		// older preference value. deprecated.
+		fallthrough
+	case "ARM7TDMI":
+		// old value used to indicate ARM7TDMI architecture. easiest to support
+		// it here in this manner
+		arch = arm.ARM7TDMI
+		mmap = memorymodel.NewMap(memorymodel.Harmony)
+
+	case "STM32F407VGT6":
+		// older preference value. deprecated.
+		fallthrough
+	case "ARMv7_M":
+		// old value used to indicate ARM7TDMI architecture. easiest to support
+		// it here in this manner
+		arch = arm.ARM7TDMI
+		mmap = memorymodel.NewMap(memorymodel.Harmony)
+	}
+
+	// check architecture has been assigned
+	if arch == "" {
+		return version{}, fmt.Errorf("unsupported ARM architecture: %s", memModel)
 	}
 
 	ver := version{

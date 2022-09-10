@@ -73,8 +73,13 @@ func NewDPCplus(instance *instance.Instance, pathToROM string, data []byte) (map
 		state:     newDPCPlusState(),
 	}
 
+	var err error
+
 	// create addresses
-	cart.version = newVersion(instance.Prefs.ARM.Model.Get().(string), data)
+	cart.version, err = newVersion(instance.Prefs.ARM.Model.Get().(string), data)
+	if err != nil {
+		return nil, curated.Errorf("DPC+: %s", err.Error())
+	}
 
 	// amount of data used for cartridges
 	bankLen := len(data) - dataSize - driverSize - freqSize

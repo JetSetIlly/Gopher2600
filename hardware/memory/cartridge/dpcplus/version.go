@@ -16,6 +16,8 @@
 package dpcplus
 
 import (
+	"fmt"
+
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm/memorymodel"
 )
@@ -47,11 +49,12 @@ type version struct {
 	stackOriginRAM uint32
 }
 
-func newVersion(memModel string, data []uint8) version {
+func newVersion(memModel string, data []uint8) (version, error) {
 	var arch arm.Architecture
 	var mmap memorymodel.Map
 
-	if memModel == "AUTO" {
+	switch memModel {
+	case "AUTO":
 		if data[0xc4b]&0x20 == 0x20 && data[0xc4f]&0x20 == 0x20 {
 			arch = arm.ARMv7_M
 			mmap = memorymodel.NewMap(memorymodel.PlusCart)
@@ -59,6 +62,29 @@ func newVersion(memModel string, data []uint8) version {
 			arch = arm.ARM7TDMI
 			mmap = memorymodel.NewMap(memorymodel.Harmony)
 		}
+
+	case "LPC2000":
+		// older preference value. deprecated.
+		fallthrough
+	case "ARM7TDMI":
+		// old value used to indicate ARM7TDMI architecture. easiest to support
+		// it here in this manner
+		arch = arm.ARM7TDMI
+		mmap = memorymodel.NewMap(memorymodel.Harmony)
+
+	case "STM32F407VGT6":
+		// older preference value. deprecated.
+		fallthrough
+	case "ARMv7_M":
+		// old value used to indicate ARM7TDMI architecture. easiest to support
+		// it here in this manner
+		arch = arm.ARM7TDMI
+		mmap = memorymodel.NewMap(memorymodel.Harmony)
+	}
+
+	// check architecture has been assigned
+	if arch == "" {
+		return version{}, fmt.Errorf("unsupported ARM architecture: %s", memModel)
 	}
 
 	return version{
@@ -82,5 +108,5 @@ func newVersion(memModel string, data []uint8) version {
 
 		// stack should be within the range of the RAM copy of the frequency tables.
 		stackOriginRAM: mmap.SRAMOrigin | 0x00001fdc,
-	}
+	}, nil
 }
