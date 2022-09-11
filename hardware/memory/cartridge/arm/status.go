@@ -20,9 +20,9 @@ import (
 	"strings"
 )
 
-// the arm has a 32 bit status register but we only need the CSPR bits
+// the arm has a 32 bit Status register but we only need the CSPR bits
 // currently.
-type status struct {
+type Status struct {
 	// CPSR (current program status register) bits
 	negative bool
 	zero     bool
@@ -41,7 +41,7 @@ type status struct {
 	itMask uint8
 }
 
-func (sr *status) String() string {
+func (sr Status) String() string {
 	s := strings.Builder{}
 	if sr.negative {
 		s.WriteRune('N')
@@ -69,22 +69,22 @@ func (sr *status) String() string {
 	return s.String()
 }
 
-func (sr *status) reset() {
+func (sr *Status) reset() {
 	sr.negative = false
 	sr.zero = false
 	sr.overflow = false
 	sr.carry = false
 }
 
-func (sr *status) isNegative(a uint32) {
+func (sr *Status) isNegative(a uint32) {
 	sr.negative = a&0x80000000 == 0x80000000
 }
 
-func (sr *status) isZero(a uint32) {
+func (sr *Status) isZero(a uint32) {
 	sr.zero = a == 0x00
 }
 
-func (sr *status) isOverflow(a, b, c uint32) {
+func (sr *Status) isOverflow(a, b, c uint32) {
 	d := (a & 0x7fffffff) + (b & 0x7fffffff) + c
 	d >>= 31
 	e := (d & 0x01) + ((a >> 31) & 0x01) + ((b >> 31) & 0x01)
@@ -92,22 +92,22 @@ func (sr *status) isOverflow(a, b, c uint32) {
 	sr.overflow = (d^e)&0x01 == 0x01
 }
 
-func (sr *status) isCarry(a, b, c uint32) {
+func (sr *Status) isCarry(a, b, c uint32) {
 	d := (a & 0x7fffffff) + (b & 0x7fffffff) + c
 	d = (d >> 31) + (a >> 31) + (b >> 31)
 	sr.carry = d&0x02 == 0x02
 }
 
-func (sr *status) setCarry(a bool) {
+func (sr *Status) setCarry(a bool) {
 	sr.carry = a
 }
 
-func (sr *status) setOverflow(a bool) {
+func (sr *Status) setOverflow(a bool) {
 	sr.overflow = a
 }
 
 // conditional execution information from "A7.3 Conditional execution" in "ARMv7-M"
-func (sr *status) condition(cond uint8) bool {
+func (sr *Status) condition(cond uint8) bool {
 	b := false
 
 	switch cond {

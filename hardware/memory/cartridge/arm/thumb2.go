@@ -187,7 +187,7 @@ func (arm *ARM) thumb2MemoryHints(opcode uint16) {
 
 	switch hint {
 	case 0b000:
-		arm.fudge_thumb2disassemble16bit = "NOP"
+		arm.state.fudge_thumb2disassemble16bit = "NOP"
 	case 0b001:
 		panic("unimplemented YIELD instruction")
 	case 0b010:
@@ -202,18 +202,18 @@ func (arm *ARM) thumb2MemoryHints(opcode uint16) {
 }
 
 func (arm *ARM) thumb2IfThen(opcode uint16) {
-	if arm.Status.itMask != 0b0000 {
+	if arm.state.status.itMask != 0b0000 {
 		panic("unpredictable IT instruction - already in an IT block")
 	}
 
-	arm.Status.itMask = uint8(opcode & 0x000f)
-	arm.Status.itCond = uint8((opcode & 0x00f0) >> 4)
+	arm.state.status.itMask = uint8(opcode & 0x000f)
+	arm.state.status.itCond = uint8((opcode & 0x00f0) >> 4)
 
 	// switch table similar to the one in thumbConditionalBranch()
-	switch arm.Status.itCond {
+	switch arm.state.status.itCond {
 	case 0b1110:
 		// any (al)
-		if !(arm.Status.itMask == 0x1 || arm.Status.itMask == 0x2 || arm.Status.itMask == 0x4 || arm.Status.itMask == 0x8) {
+		if !(arm.state.status.itMask == 0x1 || arm.state.status.itMask == 0x2 || arm.state.status.itMask == 0x4 || arm.state.status.itMask == 0x8) {
 			// it is not valid to specify an "else" for the "al" condition
 			// because it is not possible to negate
 			panic("unpredictable IT instruction - else for 'al' condition ")
@@ -222,7 +222,7 @@ func (arm *ARM) thumb2IfThen(opcode uint16) {
 		panic("unpredictable IT instruction - first condition data is 1111")
 	}
 
-	arm.fudge_thumb2disassemble16bit = "IT"
+	arm.state.fudge_thumb2disassemble16bit = "IT"
 }
 
 func (arm *ARM) thumb2CompareAndBranchOnNonZero(opcode uint16) {
@@ -237,15 +237,15 @@ func (arm *ARM) thumb2CompareAndBranchOnNonZero(opcode uint16) {
 	i := (opcode & 0x0200) >> 9
 	imm5 := (opcode & 0x00f8) >> 3
 
-	if nonZero && arm.registers[Rn] != 0 || !nonZero && arm.registers[Rn] == 0 {
+	if nonZero && arm.state.registers[Rn] != 0 || !nonZero && arm.state.registers[Rn] == 0 {
 		imm32 := (imm5 << 1) | (i << 6)
-		arm.registers[rPC] += uint32(imm32) + 2
+		arm.state.registers[rPC] += uint32(imm32) + 2
 	}
 
 	if nonZero {
-		arm.fudge_thumb2disassemble16bit = "CBNZ"
+		arm.state.fudge_thumb2disassemble16bit = "CBNZ"
 	} else {
-		arm.fudge_thumb2disassemble16bit = "CBZ"
+		arm.state.fudge_thumb2disassemble16bit = "CBZ"
 	}
 }
 
@@ -257,26 +257,26 @@ func (arm *ARM) thumb2SignZeroExtend(opcode uint16) {
 	switch op {
 	case 0b01:
 		// "4.6.185 SXTB" in "Thumb-2 Supplement"
-		arm.fudge_thumb2disassemble16bit = "SXTB"
+		arm.state.fudge_thumb2disassemble16bit = "SXTB"
 
-		arm.registers[Rd] = arm.registers[Rm]
-		if arm.registers[Rd]&0x80 == 0x80 {
-			arm.registers[Rd] |= 0xffffff00
+		arm.state.registers[Rd] = arm.state.registers[Rm]
+		if arm.state.registers[Rd]&0x80 == 0x80 {
+			arm.state.registers[Rd] |= 0xffffff00
 		}
 	case 0b10:
 		// unsigned extend halfword
 		// "4.6.226 UXTH" in "Thumb-2 Supplement"
 		// T1 Encoding
-		arm.fudge_thumb2disassemble16bit = "UXTH"
+		arm.state.fudge_thumb2disassemble16bit = "UXTH"
 
-		arm.registers[Rd] = arm.registers[Rm] & 0x0000ffff
+		arm.state.registers[Rd] = arm.state.registers[Rm] & 0x0000ffff
 	case 0b11:
 		// unsigned extend byte UXTB
 		// "4.6.224 UXTB" in "Thumb-2 Supplement"
 		// T1 Encoding
-		arm.fudge_thumb2disassemble16bit = "UXTB"
+		arm.state.fudge_thumb2disassemble16bit = "UXTB"
 
-		arm.registers[Rd] = arm.registers[Rm] & 0x000000ff
+		arm.state.registers[Rd] = arm.state.registers[Rm] & 0x000000ff
 	default:
 		panic(fmt.Sprintf("unhandled sign/zero extend instruction (op %02b)", op))
 	}

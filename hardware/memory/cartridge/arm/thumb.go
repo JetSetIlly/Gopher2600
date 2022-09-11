@@ -96,7 +96,7 @@ func (arm *ARM) thumbMoveShiftedRegister(opcode uint16) {
 	// in this class of operation the src register may also be the dest
 	// register so we need to make a note of the value before it is
 	// overwrittten
-	src := arm.registers[srcReg]
+	src := arm.state.registers[srcReg]
 
 	switch op {
 	case 0b00:
@@ -108,13 +108,13 @@ func (arm *ARM) thumbMoveShiftedRegister(opcode uint16) {
 		//	Rd = Rm Logical_Shift_Left immed_5
 
 		if shift == 0 {
-			arm.registers[destReg] = src
+			arm.state.registers[destReg] = src
 		} else {
 			m := uint32(0x01) << (32 - shift)
-			if arm.Status.itMask == 0b0000 {
-				arm.Status.setCarry(src&m == m)
+			if arm.state.status.itMask == 0b0000 {
+				arm.state.status.setCarry(src&m == m)
 			}
-			arm.registers[destReg] = arm.registers[srcReg] << shift
+			arm.state.registers[destReg] = arm.state.registers[srcReg] << shift
 		}
 	case 0b01:
 		// if immed_5 == 0
@@ -125,16 +125,16 @@ func (arm *ARM) thumbMoveShiftedRegister(opcode uint16) {
 		//		Rd = Rm Logical_Shift_Right immed_5
 
 		if shift == 0 {
-			if arm.Status.itMask == 0b0000 {
-				arm.Status.setCarry(src&0x80000000 == 0x80000000)
+			if arm.state.status.itMask == 0b0000 {
+				arm.state.status.setCarry(src&0x80000000 == 0x80000000)
 			}
-			arm.registers[destReg] = 0x00
+			arm.state.registers[destReg] = 0x00
 		} else {
 			m := uint32(0x01) << (shift - 1)
-			if arm.Status.itMask == 0b0000 {
-				arm.Status.setCarry(src&m == m)
+			if arm.state.status.itMask == 0b0000 {
+				arm.state.status.setCarry(src&m == m)
 			}
-			arm.registers[destReg] = src >> shift
+			arm.state.registers[destReg] = src >> shift
 		}
 	case 0b10:
 		// if immed_5 == 0
@@ -148,33 +148,33 @@ func (arm *ARM) thumbMoveShiftedRegister(opcode uint16) {
 		//		Rd = Rm Arithmetic_Shift_Right immed_5
 
 		if shift == 0 {
-			if arm.Status.itMask == 0b0000 {
-				arm.Status.setCarry(src&0x80000000 == 0x80000000)
+			if arm.state.status.itMask == 0b0000 {
+				arm.state.status.setCarry(src&0x80000000 == 0x80000000)
 			}
-			if arm.Status.carry {
-				arm.registers[destReg] = 0xffffffff
+			if arm.state.status.carry {
+				arm.state.registers[destReg] = 0xffffffff
 			} else {
-				arm.registers[destReg] = 0x00000000
+				arm.state.registers[destReg] = 0x00000000
 			}
 		} else { // shift > 0
 			m := uint32(0x01) << (shift - 1)
-			if arm.Status.itMask == 0b0000 {
-				arm.Status.setCarry(src&m == m)
+			if arm.state.status.itMask == 0b0000 {
+				arm.state.status.setCarry(src&m == m)
 			}
 			a := src >> shift
 			if src&0x80000000 == 0x80000000 {
 				a |= (0xffffffff << (32 - shift))
 			}
-			arm.registers[destReg] = a
+			arm.state.registers[destReg] = a
 		}
 
 	case 0x11:
 		panic(fmt.Sprintf("illegal (move shifted register) thumb operation (%04b)", op))
 	}
 
-	if arm.Status.itMask == 0b0000 {
-		arm.Status.isZero(arm.registers[destReg])
-		arm.Status.isNegative(arm.registers[destReg])
+	if arm.state.status.itMask == 0b0000 {
+		arm.state.status.isZero(arm.state.registers[destReg])
+		arm.state.status.isNegative(arm.state.registers[destReg])
 	}
 
 	if destReg == rPC {
@@ -198,26 +198,26 @@ func (arm *ARM) thumbAddSubtract(opcode uint16) {
 	// value to work with is either an immediate value or is in a register
 	val := imm
 	if !immediate {
-		val = arm.registers[imm]
+		val = arm.state.registers[imm]
 	}
 
 	if subtract {
-		if arm.Status.itMask == 0b0000 {
-			arm.Status.isCarry(arm.registers[srcReg], ^val, 1)
-			arm.Status.isOverflow(arm.registers[srcReg], ^val, 1)
+		if arm.state.status.itMask == 0b0000 {
+			arm.state.status.isCarry(arm.state.registers[srcReg], ^val, 1)
+			arm.state.status.isOverflow(arm.state.registers[srcReg], ^val, 1)
 		}
-		arm.registers[destReg] = arm.registers[srcReg] - val
+		arm.state.registers[destReg] = arm.state.registers[srcReg] - val
 	} else {
-		if arm.Status.itMask == 0b0000 {
-			arm.Status.isCarry(arm.registers[srcReg], val, 0)
-			arm.Status.isOverflow(arm.registers[srcReg], val, 0)
+		if arm.state.status.itMask == 0b0000 {
+			arm.state.status.isCarry(arm.state.registers[srcReg], val, 0)
+			arm.state.status.isOverflow(arm.state.registers[srcReg], val, 0)
 		}
-		arm.registers[destReg] = arm.registers[srcReg] + val
+		arm.state.registers[destReg] = arm.state.registers[srcReg] + val
 	}
 
-	if arm.Status.itMask == 0b0000 {
-		arm.Status.isZero(arm.registers[destReg])
-		arm.Status.isNegative(arm.registers[destReg])
+	if arm.state.status.itMask == 0b0000 {
+		arm.state.status.isZero(arm.state.registers[destReg])
+		arm.state.status.isNegative(arm.state.registers[destReg])
 	}
 
 	// "7.6 Data Operations" in "ARM7TDMI-S Technical Reference Manual r4p3"
@@ -234,37 +234,37 @@ func (arm *ARM) thumbMovCmpAddSubImm(opcode uint16) {
 
 	switch op {
 	case 0b00:
-		arm.registers[destReg] = imm
-		if arm.Status.itMask == 0b0000 {
-			arm.Status.isZero(arm.registers[destReg])
-			arm.Status.isNegative(arm.registers[destReg])
+		arm.state.registers[destReg] = imm
+		if arm.state.status.itMask == 0b0000 {
+			arm.state.status.isZero(arm.state.registers[destReg])
+			arm.state.status.isNegative(arm.state.registers[destReg])
 		}
 	case 0b01:
 		// status will be set when in IT block
-		arm.Status.isCarry(arm.registers[destReg], ^imm, 1)
-		arm.Status.isOverflow(arm.registers[destReg], ^imm, 1)
-		cmp := arm.registers[destReg] - imm
-		arm.Status.isNegative(cmp)
-		arm.Status.isZero(cmp)
+		arm.state.status.isCarry(arm.state.registers[destReg], ^imm, 1)
+		arm.state.status.isOverflow(arm.state.registers[destReg], ^imm, 1)
+		cmp := arm.state.registers[destReg] - imm
+		arm.state.status.isNegative(cmp)
+		arm.state.status.isZero(cmp)
 	case 0b10:
-		if arm.Status.itMask == 0b0000 {
-			arm.Status.isCarry(arm.registers[destReg], imm, 0)
-			arm.Status.isOverflow(arm.registers[destReg], imm, 0)
+		if arm.state.status.itMask == 0b0000 {
+			arm.state.status.isCarry(arm.state.registers[destReg], imm, 0)
+			arm.state.status.isOverflow(arm.state.registers[destReg], imm, 0)
 		}
-		arm.registers[destReg] += imm
-		if arm.Status.itMask == 0b0000 {
-			arm.Status.isZero(arm.registers[destReg])
-			arm.Status.isNegative(arm.registers[destReg])
+		arm.state.registers[destReg] += imm
+		if arm.state.status.itMask == 0b0000 {
+			arm.state.status.isZero(arm.state.registers[destReg])
+			arm.state.status.isNegative(arm.state.registers[destReg])
 		}
 	case 0b11:
-		if arm.Status.itMask == 0b0000 {
-			arm.Status.isCarry(arm.registers[destReg], ^imm, 1)
-			arm.Status.isOverflow(arm.registers[destReg], ^imm, 1)
+		if arm.state.status.itMask == 0b0000 {
+			arm.state.status.isCarry(arm.state.registers[destReg], ^imm, 1)
+			arm.state.status.isOverflow(arm.state.registers[destReg], ^imm, 1)
 		}
-		arm.registers[destReg] -= imm
-		if arm.Status.itMask == 0b0000 {
-			arm.Status.isZero(arm.registers[destReg])
-			arm.Status.isNegative(arm.registers[destReg])
+		arm.state.registers[destReg] -= imm
+		if arm.state.status.itMask == 0b0000 {
+			arm.state.status.isZero(arm.state.registers[destReg])
+			arm.state.status.isNegative(arm.state.registers[destReg])
 		}
 	}
 
@@ -285,19 +285,19 @@ func (arm *ARM) thumbALUoperations(opcode uint16) {
 
 	switch op {
 	case 0b0000:
-		arm.registers[destReg] &= arm.registers[srcReg]
-		if arm.Status.itMask == 0b0000 {
-			arm.Status.isZero(arm.registers[destReg])
-			arm.Status.isNegative(arm.registers[destReg])
+		arm.state.registers[destReg] &= arm.state.registers[srcReg]
+		if arm.state.status.itMask == 0b0000 {
+			arm.state.status.isZero(arm.state.registers[destReg])
+			arm.state.status.isNegative(arm.state.registers[destReg])
 		}
 	case 0b0001:
-		arm.registers[destReg] ^= arm.registers[srcReg]
-		if arm.Status.itMask == 0b0000 {
-			arm.Status.isZero(arm.registers[destReg])
-			arm.Status.isNegative(arm.registers[destReg])
+		arm.state.registers[destReg] ^= arm.state.registers[srcReg]
+		if arm.state.status.itMask == 0b0000 {
+			arm.state.status.isZero(arm.state.registers[destReg])
+			arm.state.status.isNegative(arm.state.registers[destReg])
 		}
 	case 0b0010:
-		shift = arm.registers[srcReg]
+		shift = arm.state.registers[srcReg]
 
 		// if Rs[7:0] == 0
 		//		C Flag = unaffected
@@ -317,28 +317,28 @@ func (arm *ARM) thumbALUoperations(opcode uint16) {
 
 		if shift > 0 && shift < 32 {
 			m := uint32(0x01) << (32 - shift)
-			if arm.Status.itMask == 0b0000 {
-				arm.Status.setCarry(arm.registers[destReg]&m == m)
+			if arm.state.status.itMask == 0b0000 {
+				arm.state.status.setCarry(arm.state.registers[destReg]&m == m)
 			}
-			arm.registers[destReg] <<= shift
+			arm.state.registers[destReg] <<= shift
 		} else if shift == 32 {
-			if arm.Status.itMask == 0b0000 {
-				arm.Status.setCarry(arm.registers[destReg]&0x01 == 0x01)
+			if arm.state.status.itMask == 0b0000 {
+				arm.state.status.setCarry(arm.state.registers[destReg]&0x01 == 0x01)
 			}
-			arm.registers[destReg] = 0x00
+			arm.state.registers[destReg] = 0x00
 		} else if shift > 32 {
-			if arm.Status.itMask == 0b0000 {
-				arm.Status.setCarry(false)
+			if arm.state.status.itMask == 0b0000 {
+				arm.state.status.setCarry(false)
 			}
-			arm.registers[destReg] = 0x00
+			arm.state.registers[destReg] = 0x00
 		}
 
-		if arm.Status.itMask == 0b0000 {
-			arm.Status.isZero(arm.registers[destReg])
-			arm.Status.isNegative(arm.registers[destReg])
+		if arm.state.status.itMask == 0b0000 {
+			arm.state.status.isZero(arm.state.registers[destReg])
+			arm.state.status.isNegative(arm.state.registers[destReg])
 		}
 	case 0b0011:
-		shift = arm.registers[srcReg]
+		shift = arm.state.registers[srcReg]
 
 		// if Rs[7:0] == 0 then
 		//		C Flag = unaffected
@@ -358,28 +358,28 @@ func (arm *ARM) thumbALUoperations(opcode uint16) {
 
 		if shift > 0 && shift < 32 {
 			m := uint32(0x01) << (shift - 1)
-			if arm.Status.itMask == 0b0000 {
-				arm.Status.setCarry(arm.registers[destReg]&m == m)
+			if arm.state.status.itMask == 0b0000 {
+				arm.state.status.setCarry(arm.state.registers[destReg]&m == m)
 			}
-			arm.registers[destReg] >>= shift
+			arm.state.registers[destReg] >>= shift
 		} else if shift == 32 {
-			if arm.Status.itMask == 0b0000 {
-				arm.Status.setCarry(arm.registers[destReg]&0x80000000 == 0x80000000)
+			if arm.state.status.itMask == 0b0000 {
+				arm.state.status.setCarry(arm.state.registers[destReg]&0x80000000 == 0x80000000)
 			}
-			arm.registers[destReg] = 0x00
+			arm.state.registers[destReg] = 0x00
 		} else if shift > 32 {
-			if arm.Status.itMask == 0b0000 {
-				arm.Status.setCarry(false)
+			if arm.state.status.itMask == 0b0000 {
+				arm.state.status.setCarry(false)
 			}
-			arm.registers[destReg] = 0x00
+			arm.state.registers[destReg] = 0x00
 		}
 
-		if arm.Status.itMask == 0b0000 {
-			arm.Status.isZero(arm.registers[destReg])
-			arm.Status.isNegative(arm.registers[destReg])
+		if arm.state.status.itMask == 0b0000 {
+			arm.state.status.isZero(arm.state.registers[destReg])
+			arm.state.status.isNegative(arm.state.registers[destReg])
 		}
 	case 0b0100:
-		shift = arm.registers[srcReg]
+		shift = arm.state.registers[srcReg]
 
 		// if Rs[7:0] == 0 then
 		//		C Flag = unaffected
@@ -397,70 +397,70 @@ func (arm *ARM) thumbALUoperations(opcode uint16) {
 		// Z Flag = if Rd == 0 then 1 else 0
 		// V Flag = unaffected
 		if shift > 0 && shift < 32 {
-			src := arm.registers[destReg]
+			src := arm.state.registers[destReg]
 			m := uint32(0x01) << (shift - 1)
-			if arm.Status.itMask == 0b0000 {
-				arm.Status.setCarry(src&m == m)
+			if arm.state.status.itMask == 0b0000 {
+				arm.state.status.setCarry(src&m == m)
 			}
 			a := src >> shift
 			if src&0x80000000 == 0x80000000 {
 				a |= (0xffffffff << (32 - shift))
 			}
-			arm.registers[destReg] = a
+			arm.state.registers[destReg] = a
 		} else if shift >= 32 {
-			if arm.Status.itMask == 0b0000 {
-				arm.Status.setCarry(arm.registers[destReg]&0x80000000 == 0x80000000)
+			if arm.state.status.itMask == 0b0000 {
+				arm.state.status.setCarry(arm.state.registers[destReg]&0x80000000 == 0x80000000)
 			}
-			if !arm.Status.carry {
-				arm.registers[destReg] = 0x00
+			if !arm.state.status.carry {
+				arm.state.registers[destReg] = 0x00
 			} else {
-				arm.registers[destReg] = 0xffffffff
+				arm.state.registers[destReg] = 0xffffffff
 			}
 		}
-		if arm.Status.itMask == 0b0000 {
-			arm.Status.isZero(arm.registers[destReg])
-			arm.Status.isNegative(arm.registers[destReg])
+		if arm.state.status.itMask == 0b0000 {
+			arm.state.status.isZero(arm.state.registers[destReg])
+			arm.state.status.isNegative(arm.state.registers[destReg])
 		}
 	case 0b0101:
-		if arm.Status.carry {
-			if arm.Status.itMask == 0b0000 {
-				arm.Status.isCarry(arm.registers[destReg], arm.registers[srcReg], 1)
-				arm.Status.isOverflow(arm.registers[destReg], arm.registers[srcReg], 1)
+		if arm.state.status.carry {
+			if arm.state.status.itMask == 0b0000 {
+				arm.state.status.isCarry(arm.state.registers[destReg], arm.state.registers[srcReg], 1)
+				arm.state.status.isOverflow(arm.state.registers[destReg], arm.state.registers[srcReg], 1)
 			}
-			arm.registers[destReg] += arm.registers[srcReg]
-			arm.registers[destReg]++
+			arm.state.registers[destReg] += arm.state.registers[srcReg]
+			arm.state.registers[destReg]++
 		} else {
-			if arm.Status.itMask == 0b0000 {
-				arm.Status.isCarry(arm.registers[destReg], arm.registers[srcReg], 0)
-				arm.Status.isOverflow(arm.registers[destReg], arm.registers[srcReg], 0)
+			if arm.state.status.itMask == 0b0000 {
+				arm.state.status.isCarry(arm.state.registers[destReg], arm.state.registers[srcReg], 0)
+				arm.state.status.isOverflow(arm.state.registers[destReg], arm.state.registers[srcReg], 0)
 			}
-			arm.registers[destReg] += arm.registers[srcReg]
+			arm.state.registers[destReg] += arm.state.registers[srcReg]
 		}
-		if arm.Status.itMask == 0b0000 {
-			arm.Status.isZero(arm.registers[destReg])
-			arm.Status.isNegative(arm.registers[destReg])
+		if arm.state.status.itMask == 0b0000 {
+			arm.state.status.isZero(arm.state.registers[destReg])
+			arm.state.status.isNegative(arm.state.registers[destReg])
 		}
 	case 0b0110:
-		if !arm.Status.carry {
-			if arm.Status.itMask == 0b0000 {
-				arm.Status.isCarry(arm.registers[destReg], ^arm.registers[srcReg], 0)
-				arm.Status.isOverflow(arm.registers[destReg], ^arm.registers[srcReg], 0)
+		if !arm.state.status.carry {
+			if arm.state.status.itMask == 0b0000 {
+				arm.state.status.isCarry(arm.state.registers[destReg], ^arm.state.registers[srcReg], 0)
+				arm.state.status.isOverflow(arm.state.registers[destReg], ^arm.state.registers[srcReg], 0)
 			}
-			arm.registers[destReg] -= arm.registers[srcReg]
-			arm.registers[destReg]--
+			arm.state.registers[destReg] -= arm.state.registers[srcReg]
+			arm.state.registers[destReg]--
 		} else {
-			if arm.Status.itMask == 0b0000 {
-				arm.Status.isCarry(arm.registers[destReg], ^arm.registers[srcReg], 1)
-				arm.Status.isOverflow(arm.registers[destReg], ^arm.registers[srcReg], 1)
+			if arm.state.status.itMask == 0b0000 {
+				arm.state.status.isCarry(arm.state.registers[destReg], ^arm.state.registers[srcReg], 1)
+				arm.state.status.isOverflow(arm.state.registers[destReg], ^arm.state.registers[srcReg], 1)
 			}
-			arm.registers[destReg] -= arm.registers[srcReg]
+			arm.state.registers[destReg] -= arm.state.registers[srcReg]
 		}
-		if arm.Status.itMask == 0b0000 {
-			arm.Status.isZero(arm.registers[destReg])
-			arm.Status.isNegative(arm.registers[destReg])
+		if arm.state.status.itMask == 0b0000 {
+			arm.state.status.isZero(arm.state.registers[destReg])
+			arm.state.status.isNegative(arm.state.registers[destReg])
 		}
 	case 0b0111:
-		shift = arm.registers[srcReg]
+		shift = arm.state.registers[srcReg]
 
 		// if Rs[7:0] == 0 then
 		//		C Flag = unaffected
@@ -477,74 +477,74 @@ func (arm *ARM) thumbALUoperations(opcode uint16) {
 		if shift&0xff == 0 {
 			// unaffected
 		} else if shift&0x1f == 0 {
-			if arm.Status.itMask == 0b0000 {
-				arm.Status.setCarry(arm.registers[destReg]&0x80000000 == 0x80000000)
+			if arm.state.status.itMask == 0b0000 {
+				arm.state.status.setCarry(arm.state.registers[destReg]&0x80000000 == 0x80000000)
 			}
 		} else {
 			m := uint32(0x01) << (shift - 1)
-			if arm.Status.itMask == 0b0000 {
-				arm.Status.setCarry(arm.registers[destReg]&m == m)
+			if arm.state.status.itMask == 0b0000 {
+				arm.state.status.setCarry(arm.state.registers[destReg]&m == m)
 			}
-			arm.registers[destReg] = bits.RotateLeft32(arm.registers[destReg], -int(shift))
+			arm.state.registers[destReg] = bits.RotateLeft32(arm.state.registers[destReg], -int(shift))
 		}
-		if arm.Status.itMask == 0b0000 {
-			arm.Status.isZero(arm.registers[destReg])
-			arm.Status.isNegative(arm.registers[destReg])
+		if arm.state.status.itMask == 0b0000 {
+			arm.state.status.isZero(arm.state.registers[destReg])
+			arm.state.status.isNegative(arm.state.registers[destReg])
 		}
 	case 0b1000:
-		w := arm.registers[destReg] & arm.registers[srcReg]
+		w := arm.state.registers[destReg] & arm.state.registers[srcReg]
 		// status will be set when in IT block
-		arm.Status.isZero(w)
-		arm.Status.isNegative(w)
+		arm.state.status.isZero(w)
+		arm.state.status.isNegative(w)
 	case 0b1001:
-		if arm.Status.itMask == 0b0000 {
-			arm.Status.isCarry(0, ^arm.registers[srcReg], 1)
-			arm.Status.isOverflow(0, ^arm.registers[srcReg], 1)
+		if arm.state.status.itMask == 0b0000 {
+			arm.state.status.isCarry(0, ^arm.state.registers[srcReg], 1)
+			arm.state.status.isOverflow(0, ^arm.state.registers[srcReg], 1)
 		}
-		arm.registers[destReg] = -arm.registers[srcReg]
-		if arm.Status.itMask == 0b0000 {
-			arm.Status.isZero(arm.registers[destReg])
-			arm.Status.isNegative(arm.registers[destReg])
+		arm.state.registers[destReg] = -arm.state.registers[srcReg]
+		if arm.state.status.itMask == 0b0000 {
+			arm.state.status.isZero(arm.state.registers[destReg])
+			arm.state.status.isNegative(arm.state.registers[destReg])
 		}
 	case 0b1010:
 		// status will be set when in IT block
-		arm.Status.isCarry(arm.registers[destReg], ^arm.registers[srcReg], 1)
-		arm.Status.isOverflow(arm.registers[destReg], ^arm.registers[srcReg], 1)
-		cmp := arm.registers[destReg] - arm.registers[srcReg]
-		arm.Status.isZero(cmp)
-		arm.Status.isNegative(cmp)
+		arm.state.status.isCarry(arm.state.registers[destReg], ^arm.state.registers[srcReg], 1)
+		arm.state.status.isOverflow(arm.state.registers[destReg], ^arm.state.registers[srcReg], 1)
+		cmp := arm.state.registers[destReg] - arm.state.registers[srcReg]
+		arm.state.status.isZero(cmp)
+		arm.state.status.isNegative(cmp)
 	case 0b1011:
 		// status will be set when in IT block
-		arm.Status.isCarry(arm.registers[destReg], arm.registers[srcReg], 0)
-		arm.Status.isOverflow(arm.registers[destReg], arm.registers[srcReg], 0)
-		cmp := arm.registers[destReg] + arm.registers[srcReg]
-		arm.Status.isZero(cmp)
-		arm.Status.isNegative(cmp)
+		arm.state.status.isCarry(arm.state.registers[destReg], arm.state.registers[srcReg], 0)
+		arm.state.status.isOverflow(arm.state.registers[destReg], arm.state.registers[srcReg], 0)
+		cmp := arm.state.registers[destReg] + arm.state.registers[srcReg]
+		arm.state.status.isZero(cmp)
+		arm.state.status.isNegative(cmp)
 	case 0b1100:
-		arm.registers[destReg] |= arm.registers[srcReg]
-		if arm.Status.itMask == 0b0000 {
-			arm.Status.isZero(arm.registers[destReg])
-			arm.Status.isNegative(arm.registers[destReg])
+		arm.state.registers[destReg] |= arm.state.registers[srcReg]
+		if arm.state.status.itMask == 0b0000 {
+			arm.state.status.isZero(arm.state.registers[destReg])
+			arm.state.status.isNegative(arm.state.registers[destReg])
 		}
 	case 0b1101:
 		mul = true
-		mulOperand = arm.registers[srcReg]
-		arm.registers[destReg] *= arm.registers[srcReg]
-		if arm.Status.itMask == 0b0000 {
-			arm.Status.isZero(arm.registers[destReg])
-			arm.Status.isNegative(arm.registers[destReg])
+		mulOperand = arm.state.registers[srcReg]
+		arm.state.registers[destReg] *= arm.state.registers[srcReg]
+		if arm.state.status.itMask == 0b0000 {
+			arm.state.status.isZero(arm.state.registers[destReg])
+			arm.state.status.isNegative(arm.state.registers[destReg])
 		}
 	case 0b1110:
-		arm.registers[destReg] &= ^arm.registers[srcReg]
-		if arm.Status.itMask == 0b0000 {
-			arm.Status.isZero(arm.registers[destReg])
-			arm.Status.isNegative(arm.registers[destReg])
+		arm.state.registers[destReg] &= ^arm.state.registers[srcReg]
+		if arm.state.status.itMask == 0b0000 {
+			arm.state.status.isZero(arm.state.registers[destReg])
+			arm.state.status.isNegative(arm.state.registers[destReg])
 		}
 	case 0b1111:
-		arm.registers[destReg] = ^arm.registers[srcReg]
-		if arm.Status.itMask == 0b0000 {
-			arm.Status.isZero(arm.registers[destReg])
-			arm.Status.isNegative(arm.registers[destReg])
+		arm.state.registers[destReg] = ^arm.state.registers[srcReg]
+		if arm.state.status.itMask == 0b0000 {
+			arm.state.status.isZero(arm.state.registers[destReg])
+			arm.state.status.isNegative(arm.state.registers[destReg])
 		}
 	default:
 		panic(fmt.Sprintf("unimplemented (ALU) thumb operation (%04b)", op))
@@ -614,7 +614,7 @@ func (arm *ARM) thumbHiRegisterOps(opcode uint16) {
 	switch op {
 	case 0b00:
 		// not two's complement
-		arm.registers[destReg] += arm.registers[srcReg]
+		arm.state.registers[destReg] += arm.state.registers[srcReg]
 
 		// status register not changed
 
@@ -630,20 +630,20 @@ func (arm *ARM) thumbHiRegisterOps(opcode uint16) {
 		// V Flag = OverflowFrom(Rn - Rm)
 
 		// status will be set when in IT block
-		arm.Status.isCarry(arm.registers[destReg], ^arm.registers[srcReg], 1)
-		arm.Status.isOverflow(arm.registers[destReg], ^arm.registers[srcReg], 1)
-		cmp := arm.registers[destReg] - arm.registers[srcReg]
-		arm.Status.isZero(cmp)
-		arm.Status.isNegative(cmp)
+		arm.state.status.isCarry(arm.state.registers[destReg], ^arm.state.registers[srcReg], 1)
+		arm.state.status.isOverflow(arm.state.registers[destReg], ^arm.state.registers[srcReg], 1)
+		cmp := arm.state.registers[destReg] - arm.state.registers[srcReg]
+		arm.state.status.isZero(cmp)
+		arm.state.status.isNegative(cmp)
 
 		return
 	case 0b10:
 		// check to see if we're copying the LR to the PC. if we are than adjust
 		// the PC by 2 (as though the prefetch has occurred)
 		if srcReg == rLR && destReg == rPC {
-			arm.registers[destReg] = arm.registers[srcReg] + 2
+			arm.state.registers[destReg] = arm.state.registers[srcReg] + 2
 		} else {
-			arm.registers[destReg] = arm.registers[srcReg]
+			arm.state.registers[destReg] = arm.state.registers[srcReg]
 		}
 
 		// status register not changed
@@ -660,20 +660,20 @@ func (arm *ARM) thumbHiRegisterOps(opcode uint16) {
 
 			if opcode&0x0080 == 0x0080 {
 				// "A7.7.19 BLX (register)" in "ARMv7-M"
-				target := arm.registers[Rm]
-				nextPC := arm.registers[rPC] - 2
-				arm.registers[rLR] = nextPC | 0x01
+				target := arm.state.registers[Rm]
+				nextPC := arm.state.registers[rPC] - 2
+				arm.state.registers[rLR] = nextPC | 0x01
 				if target&0x01 == 0x00 {
 					panic("cannot switch to ARM mode in the ARMv7-M architecture")
 				}
-				arm.registers[rPC] = target & 0xfffffffe
+				arm.state.registers[rPC] = target & 0xfffffffe
 			} else {
 				// "A7.7.20 BX " in "ARMv7-M"
-				target := arm.registers[Rm]
+				target := arm.state.registers[Rm]
 				if target&0x01 == 0x00 {
 					panic("cannot switch to ARM mode in the ARMv7-M architecture")
 				}
-				arm.registers[rPC] = (target + 2) & 0xfffffffe
+				arm.state.registers[rPC] = (target + 2) & 0xfffffffe
 			}
 
 			if arm.disasm != nil {
@@ -684,7 +684,7 @@ func (arm *ARM) thumbHiRegisterOps(opcode uint16) {
 			// - fillPipeline() will be called if necessary
 			return
 		case ARM7TDMI:
-			thumbMode := arm.registers[srcReg]&0x01 == 0x01
+			thumbMode := arm.state.registers[srcReg]&0x01 == 0x01
 
 			var newPC uint32
 
@@ -694,13 +694,13 @@ func (arm *ARM) thumbHiRegisterOps(opcode uint16) {
 			// bit 0 cleared. Executing a BX PC in THUMB state from a non-word aligned address
 			// will result in unpredictable execution."
 			if srcReg == rPC {
-				newPC = arm.registers[rPC] + 2
+				newPC = arm.state.registers[rPC] + 2
 			} else {
-				newPC = (arm.registers[srcReg] & 0x7ffffffe) + 2
+				newPC = (arm.state.registers[srcReg] & 0x7ffffffe) + 2
 			}
 
 			if thumbMode {
-				arm.registers[rPC] = newPC
+				arm.state.registers[rPC] = newPC
 
 				if arm.disasm != nil {
 					arm.disasmExecutionNotes = "branch exchange to thumb code"
@@ -713,7 +713,7 @@ func (arm *ARM) thumbHiRegisterOps(opcode uint16) {
 			}
 
 			// switch to ARM mode. emulate function call.
-			res, err := arm.hook.ARMinterrupt(arm.registers[rPC]-4, arm.registers[2], arm.registers[3])
+			res, err := arm.hook.ARMinterrupt(arm.state.registers[rPC]-4, arm.state.registers[2], arm.state.registers[3])
 			if err != nil {
 				arm.continueExecution = false
 				arm.executionError = err
@@ -724,9 +724,9 @@ func (arm *ARM) thumbHiRegisterOps(opcode uint16) {
 
 			if arm.disasm != nil {
 				if res.InterruptEvent != "" {
-					arm.disasmExecutionNotes = fmt.Sprintf("ARM function (%08x) %s", arm.registers[rPC]-4, res.InterruptEvent)
+					arm.disasmExecutionNotes = fmt.Sprintf("ARM function (%08x) %s", arm.state.registers[rPC]-4, res.InterruptEvent)
 				} else {
-					arm.disasmExecutionNotes = fmt.Sprintf("ARM function (%08x)", arm.registers[rPC]-4)
+					arm.disasmExecutionNotes = fmt.Sprintf("ARM function (%08x)", arm.state.registers[rPC]-4)
 				}
 				arm.disasmUpdateNotes = true
 			}
@@ -745,13 +745,13 @@ func (arm *ARM) thumbHiRegisterOps(opcode uint16) {
 
 			// ARM function updates the ARM registers
 			if res.SaveResult {
-				arm.registers[res.SaveRegister] = res.SaveValue
+				arm.state.registers[res.SaveRegister] = res.SaveValue
 			}
 
 			// the end of the emulated function will have an operation that
 			// switches back to thumb mode, and copies the link register to the
 			// program counter. we need to emulate that too.
-			arm.registers[rPC] = arm.registers[rLR] + 2
+			arm.state.registers[rPC] = arm.state.registers[rLR] + 2
 
 			// add cycles used by the ARM program
 			arm.armInterruptCycles(res)
@@ -769,11 +769,11 @@ func (arm *ARM) thumbPCrelativeLoad(opcode uint16) {
 
 	// "Bit 1 of the PC value is forced to zero for the purpose of this
 	// calculation, so the address is always word-aligned."
-	pc := arm.registers[rPC] & 0xfffffffc
+	pc := arm.state.registers[rPC] & 0xfffffffc
 
 	// immediate value is not two's complement (surprisingly)
 	addr := pc + imm
-	arm.registers[destReg] = arm.read32bit(addr)
+	arm.state.registers[destReg] = arm.read32bit(addr)
 
 	// "7.8 Load Register" in "ARM7TDMI-S Technical Reference Manual r4p3"
 	// - fillPipeline() will be called if necessary
@@ -789,11 +789,11 @@ func (arm *ARM) thumbLoadStoreWithRegisterOffset(opcode uint16) {
 	baseReg := (opcode & 0x0038) >> 3
 	reg := opcode & 0x0007
 
-	addr := arm.registers[baseReg] + arm.registers[offsetReg]
+	addr := arm.state.registers[baseReg] + arm.state.registers[offsetReg]
 
 	if load {
 		if byteTransfer {
-			arm.registers[reg] = uint32(arm.read8bit(addr))
+			arm.state.registers[reg] = uint32(arm.read8bit(addr))
 
 			// "7.8 Load Register" in "ARM7TDMI-S Technical Reference Manual r4p3"
 			// - fillPipeline() will be called if necessary
@@ -803,7 +803,7 @@ func (arm *ARM) thumbLoadStoreWithRegisterOffset(opcode uint16) {
 			return
 		}
 
-		arm.registers[reg] = arm.read32bit(addr)
+		arm.state.registers[reg] = arm.read32bit(addr)
 
 		// "7.8 Load Register" in "ARM7TDMI-S Technical Reference Manual r4p3"
 		// - fillPipeline() will be called if necessary
@@ -814,7 +814,7 @@ func (arm *ARM) thumbLoadStoreWithRegisterOffset(opcode uint16) {
 	}
 
 	if byteTransfer {
-		arm.write8bit(addr, uint8(arm.registers[reg]))
+		arm.write8bit(addr, uint8(arm.state.registers[reg]))
 
 		// "7.9 Store Register" in "ARM7TDMI-S Technical Reference Manual r4p3"
 		arm.storeRegisterCycles(addr)
@@ -822,7 +822,7 @@ func (arm *ARM) thumbLoadStoreWithRegisterOffset(opcode uint16) {
 		return
 	}
 
-	arm.write32bit(addr, arm.registers[reg])
+	arm.write32bit(addr, arm.state.registers[reg])
 
 	// "7.9 Store Register" in "ARM7TDMI-S Technical Reference Manual r4p3"
 	arm.storeRegisterCycles(addr)
@@ -836,16 +836,16 @@ func (arm *ARM) thumbLoadStoreSignExtendedByteHalford(opcode uint16) {
 	baseReg := (opcode & 0x0038) >> 3
 	reg := opcode & 0x0007
 
-	addr := arm.registers[baseReg] + arm.registers[offsetReg]
+	addr := arm.state.registers[baseReg] + arm.state.registers[offsetReg]
 
 	if sign {
 		if hi {
 			// load sign-extended halfword
-			arm.registers[reg] = uint32(arm.read16bit(addr))
+			arm.state.registers[reg] = uint32(arm.read16bit(addr))
 
 			// masking after cycle accumulation
-			if arm.registers[reg]&0x8000 == 0x8000 {
-				arm.registers[reg] |= 0xffff0000
+			if arm.state.registers[reg]&0x8000 == 0x8000 {
+				arm.state.registers[reg] |= 0xffff0000
 			}
 
 			// "7.8 Load Register" in "ARM7TDMI-S Technical Reference Manual r4p3"
@@ -856,9 +856,9 @@ func (arm *ARM) thumbLoadStoreSignExtendedByteHalford(opcode uint16) {
 			return
 		}
 		// load sign-extended byte
-		arm.registers[reg] = uint32(arm.read8bit(addr))
-		if arm.registers[reg]&0x0080 == 0x0080 {
-			arm.registers[reg] |= 0xffffff00
+		arm.state.registers[reg] = uint32(arm.read8bit(addr))
+		if arm.state.registers[reg]&0x0080 == 0x0080 {
+			arm.state.registers[reg] |= 0xffffff00
 		}
 
 		// "7.8 Load Register" in "ARM7TDMI-S Technical Reference Manual r4p3"
@@ -871,7 +871,7 @@ func (arm *ARM) thumbLoadStoreSignExtendedByteHalford(opcode uint16) {
 
 	if hi {
 		// load halfword
-		arm.registers[reg] = uint32(arm.read16bit(addr))
+		arm.state.registers[reg] = uint32(arm.read16bit(addr))
 
 		// "7.8 Load Register" in "ARM7TDMI-S Technical Reference Manual r4p3"
 		// - fillPipeline() will be called if necessary
@@ -882,7 +882,7 @@ func (arm *ARM) thumbLoadStoreSignExtendedByteHalford(opcode uint16) {
 	}
 
 	// store halfword
-	arm.write16bit(addr, uint16(arm.registers[reg]))
+	arm.write16bit(addr, uint16(arm.state.registers[reg]))
 
 	// "7.9 Store Register" in "ARM7TDMI-S Technical Reference Manual r4p3"
 	arm.storeRegisterCycles(addr)
@@ -905,11 +905,11 @@ func (arm *ARM) thumbLoadStoreWithImmOffset(opcode uint16) {
 	}
 
 	// the actual address we'll be loading from (or storing to)
-	addr := arm.registers[baseReg] + uint32(offset)
+	addr := arm.state.registers[baseReg] + uint32(offset)
 
 	if load {
 		if byteTransfer {
-			arm.registers[reg] = uint32(arm.read8bit(addr))
+			arm.state.registers[reg] = uint32(arm.read8bit(addr))
 
 			// "7.8 Load Register" in "ARM7TDMI-S Technical Reference Manual r4p3"
 			// - fillPipeline() will be called if necessary
@@ -919,7 +919,7 @@ func (arm *ARM) thumbLoadStoreWithImmOffset(opcode uint16) {
 			return
 		}
 
-		arm.registers[reg] = arm.read32bit(addr)
+		arm.state.registers[reg] = arm.read32bit(addr)
 
 		// "7.8 Load Register" in "ARM7TDMI-S Technical Reference Manual r4p3"
 		// - fillPipeline() will be called if necessary
@@ -931,7 +931,7 @@ func (arm *ARM) thumbLoadStoreWithImmOffset(opcode uint16) {
 
 	// store
 	if byteTransfer {
-		arm.write8bit(addr, uint8(arm.registers[reg]))
+		arm.write8bit(addr, uint8(arm.state.registers[reg]))
 
 		// "7.9 Store Register" in "ARM7TDMI-S Technical Reference Manual r4p3"
 		arm.storeRegisterCycles(addr)
@@ -939,7 +939,7 @@ func (arm *ARM) thumbLoadStoreWithImmOffset(opcode uint16) {
 		return
 	}
 
-	arm.write32bit(addr, arm.registers[reg])
+	arm.write32bit(addr, arm.state.registers[reg])
 
 	// "7.9 Store Register" in "ARM7TDMI-S Technical Reference Manual r4p3"
 	arm.storeRegisterCycles(addr)
@@ -957,10 +957,10 @@ func (arm *ARM) thumbLoadStoreHalfword(opcode uint16) {
 	offset <<= 1
 
 	// the actual address we'll be loading from (or storing to)
-	addr := arm.registers[baseReg] + uint32(offset)
+	addr := arm.state.registers[baseReg] + uint32(offset)
 
 	if load {
-		arm.registers[reg] = uint32(arm.read16bit(addr))
+		arm.state.registers[reg] = uint32(arm.read16bit(addr))
 
 		// "7.8 Load Register" in "ARM7TDMI-S Technical Reference Manual r4p3"
 		// - fillPipeline() will be called if necessary
@@ -970,7 +970,7 @@ func (arm *ARM) thumbLoadStoreHalfword(opcode uint16) {
 		return
 	}
 
-	arm.write16bit(addr, uint16(arm.registers[reg]))
+	arm.write16bit(addr, uint16(arm.state.registers[reg]))
 
 	// "7.9 Store Register" in "ARM7TDMI-S Technical Reference Manual r4p3"
 	arm.storeRegisterCycles(addr)
@@ -987,10 +987,10 @@ func (arm *ARM) thumbSPRelativeLoadStore(opcode uint16) {
 	offset <<= 2
 
 	// the actual address we'll be loading from (or storing to)
-	addr := arm.registers[rSP] + offset
+	addr := arm.state.registers[rSP] + offset
 
 	if load {
-		arm.registers[reg] = arm.read32bit(addr)
+		arm.state.registers[reg] = arm.read32bit(addr)
 
 		// "7.8 Load Register" in "ARM7TDMI-S Technical Reference Manual r4p3"
 		// - fillPipeline() will be called if necessary
@@ -1000,7 +1000,7 @@ func (arm *ARM) thumbSPRelativeLoadStore(opcode uint16) {
 		return
 	}
 
-	arm.write32bit(addr, arm.registers[reg])
+	arm.write32bit(addr, arm.state.registers[reg])
 
 	// "7.9 Store Register" in "ARM7TDMI-S Technical Reference Manual r4p3"
 	arm.storeRegisterCycles(addr)
@@ -1016,7 +1016,7 @@ func (arm *ARM) thumbLoadAddress(opcode uint16) {
 	offset <<= 2
 
 	if sp {
-		arm.registers[destReg] = arm.registers[rSP] + uint32(offset)
+		arm.state.registers[destReg] = arm.state.registers[rSP] + uint32(offset)
 
 		// "7.6 Data Operations" in "ARM7TDMI-S Technical Reference Manual r4p3"
 		// - fillPipeline() will be called if necessary
@@ -1024,7 +1024,7 @@ func (arm *ARM) thumbLoadAddress(opcode uint16) {
 		return
 	}
 
-	arm.registers[destReg] = arm.registers[rPC] + uint32(offset)
+	arm.state.registers[destReg] = arm.state.registers[rPC] + uint32(offset)
 
 	// "7.6 Data Operations" in "ARM7TDMI-S Technical Reference Manual r4p3"
 	// - fillPipeline() will be called if necessary
@@ -1041,7 +1041,7 @@ func (arm *ARM) thumbAddOffsetToSP(opcode uint16) {
 	imm <<= 2
 
 	if sign {
-		arm.registers[rSP] -= imm
+		arm.state.registers[rSP] -= imm
 
 		// "7.6 Data Operations" in "ARM7TDMI-S Technical Reference Manual r4p3"
 		// - no additional cycles
@@ -1049,7 +1049,7 @@ func (arm *ARM) thumbAddOffsetToSP(opcode uint16) {
 		return
 	}
 
-	arm.registers[rSP] += imm
+	arm.state.registers[rSP] += imm
 
 	// status register not changed
 
@@ -1085,7 +1085,7 @@ func (arm *ARM) thumbPushPopRegisters(opcode uint16) {
 		// SP = end_address
 
 		// start at stack pointer at work upwards
-		addr := arm.registers[rSP]
+		addr := arm.state.registers[rSP]
 
 		// read each register in turn (from lower to highest)
 		numMatches := 0
@@ -1106,7 +1106,7 @@ func (arm *ARM) thumbPushPopRegisters(opcode uint16) {
 					arm.Scycle(dataRead, addr)
 				}
 
-				arm.registers[i] = arm.read32bit(addr)
+				arm.state.registers[i] = arm.read32bit(addr)
 				addr += 4
 			}
 		}
@@ -1128,7 +1128,7 @@ func (arm *ARM) thumbPushPopRegisters(opcode uint16) {
 			v := arm.read32bit(addr) & 0xfffffffe
 
 			// adjust popped LR value before assigning to the PC
-			arm.registers[rPC] = v + 2
+			arm.state.registers[rPC] = v + 2
 			addr += 4
 		}
 
@@ -1136,7 +1136,7 @@ func (arm *ARM) thumbPushPopRegisters(opcode uint16) {
 		arm.Icycle()
 
 		// leave stackpointer at final address
-		arm.registers[rSP] = addr
+		arm.state.registers[rSP] = addr
 
 		return
 	}
@@ -1167,7 +1167,7 @@ func (arm *ARM) thumbPushPopRegisters(opcode uint16) {
 
 	// push occurs from the new low stack address upwards to the current stack
 	// address (before the pushes)
-	addr := arm.registers[rSP] - c
+	addr := arm.state.registers[rSP] - c
 
 	// write each register in turn (from lower to highest)
 	numMatches := 0
@@ -1189,7 +1189,7 @@ func (arm *ARM) thumbPushPopRegisters(opcode uint16) {
 				arm.Scycle(dataWrite, addr)
 			}
 
-			arm.write32bit(addr, arm.registers[i])
+			arm.write32bit(addr, arm.state.registers[i])
 			addr += 4
 		}
 	}
@@ -1198,7 +1198,7 @@ func (arm *ARM) thumbPushPopRegisters(opcode uint16) {
 	if pclr {
 		numMatches++
 
-		lr := arm.registers[rLR]
+		lr := arm.state.registers[rLR]
 		arm.write32bit(addr, lr)
 
 		// "7.11 Store Multiple Registers" in "ARM7TDMI-S Technical Reference Manual r4p3"
@@ -1211,7 +1211,7 @@ func (arm *ARM) thumbPushPopRegisters(opcode uint16) {
 
 	// update stack pointer. note that this is the address we started the push
 	// sequence from above. this is correct.
-	arm.registers[rSP] -= c
+	arm.state.registers[rSP] -= c
 }
 
 func (arm *ARM) thumbMultipleLoadStore(opcode uint16) {
@@ -1222,7 +1222,7 @@ func (arm *ARM) thumbMultipleLoadStore(opcode uint16) {
 
 	// load/store the registers in the list starting at address
 	// in the base register
-	addr := arm.registers[baseReg]
+	addr := arm.state.registers[baseReg]
 
 	// all ARM references say that the base register is updated as a result of
 	// the multi-load. what isn't clear is what happens if the base register is
@@ -1256,7 +1256,7 @@ func (arm *ARM) thumbMultipleLoadStore(opcode uint16) {
 					arm.Scycle(dataWrite, addr)
 				}
 
-				arm.registers[i] = arm.read32bit(addr)
+				arm.state.registers[i] = arm.read32bit(addr)
 				addr += 4
 			}
 		}
@@ -1266,7 +1266,7 @@ func (arm *ARM) thumbMultipleLoadStore(opcode uint16) {
 
 		// no updating of base register if base register was part of the regList
 		if updateBaseReg {
-			arm.registers[baseReg] = addr
+			arm.state.registers[baseReg] = addr
 		}
 
 		return
@@ -1290,13 +1290,13 @@ func (arm *ARM) thumbMultipleLoadStore(opcode uint16) {
 				arm.Scycle(dataWrite, addr)
 			}
 
-			arm.write32bit(addr, arm.registers[i])
+			arm.write32bit(addr, arm.state.registers[i])
 			addr += 4
 		}
 	}
 
 	// write back the new base address
-	arm.registers[baseReg] = addr
+	arm.state.registers[baseReg] = addr
 }
 
 func (arm *ARM) thumbConditionalBranch(opcode uint16) {
@@ -1304,7 +1304,7 @@ func (arm *ARM) thumbConditionalBranch(opcode uint16) {
 	cond := uint8((opcode & 0x0f00) >> 8)
 	offset := uint32(opcode & 0x00ff)
 
-	b := arm.Status.condition(cond)
+	b := arm.state.status.condition(cond)
 
 	// offset is a nine-bit two's complement value
 	offset <<= 1
@@ -1317,16 +1317,16 @@ func (arm *ARM) thumbConditionalBranch(opcode uint16) {
 		// two's complement before subtraction
 		offset ^= 0x1ff
 		offset++
-		newPC = arm.registers[rPC] - offset + 1
+		newPC = arm.state.registers[rPC] - offset + 1
 	} else {
-		newPC = arm.registers[rPC] + offset + 1
+		newPC = arm.state.registers[rPC] + offset + 1
 	}
 
 	// do branch
 	if b {
 		// "7.3 Branch ..." in "ARM7TDMI-S Technical Reference Manual r4p3"
 		// - fillPipeline() will be called if necessary
-		arm.registers[rPC] = newPC
+		arm.state.registers[rPC] = newPC
 	}
 
 	if arm.disasm != nil {
@@ -1352,9 +1352,9 @@ func (arm *ARM) thumbUnconditionalBranch(opcode uint16) {
 		// two's complement before subtraction
 		offset ^= 0xfff
 		offset++
-		arm.registers[rPC] -= offset - 2
+		arm.state.registers[rPC] -= offset - 2
 	} else {
-		arm.registers[rPC] += offset + 2
+		arm.state.registers[rPC] += offset + 2
 	}
 
 	// "7.3 Branch ..." in "ARM7TDMI-S Technical Reference Manual r4p3"
@@ -1372,9 +1372,9 @@ func (arm *ARM) thumbLongBranchWithLink(opcode uint16) {
 		// second instruction
 
 		offset <<= 1
-		pc := arm.registers[rPC]
-		arm.registers[rPC] = arm.registers[rLR] + offset
-		arm.registers[rLR] = pc - 1
+		pc := arm.state.registers[rPC]
+		arm.state.registers[rPC] = arm.state.registers[rLR] + offset
+		arm.state.registers[rLR] = pc - 1
 
 		// "7.4 Thumb Branch With Link" in "ARM7TDMI-S Technical Reference Manual r4p3"
 		// -- no additional cycles for second instruction in BL
@@ -1391,9 +1391,9 @@ func (arm *ARM) thumbLongBranchWithLink(opcode uint16) {
 		// two's complement before subtraction
 		offset ^= 0x7fffff
 		offset++
-		arm.registers[rLR] = arm.registers[rPC] - offset + 2
+		arm.state.registers[rLR] = arm.state.registers[rPC] - offset + 2
 	} else {
-		arm.registers[rLR] = arm.registers[rPC] + offset + 2
+		arm.state.registers[rLR] = arm.state.registers[rPC] + offset + 2
 	}
 
 	// "7.4 Thumb Branch With Link" in "ARM7TDMI-S Technical Reference Manual r4p3"

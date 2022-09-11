@@ -92,34 +92,34 @@ func (arm *ARM) isLatched(cycle cycleType, bus busAccess, addr uint32) bool {
 
 	switch bus {
 	case prefetch:
-		if latch == arm.mam.prefectchLatch {
+		if latch == arm.state.mam.prefectchLatch {
 			return true
 		}
 
-		arm.mam.prefectchLatch = latch
+		arm.state.mam.prefectchLatch = latch
 
 		// we'll assume MAMTIM is set adequately
-		if cycle == S && !arm.mam.prefectchAborted {
+		if cycle == S && !arm.state.mam.prefectchAborted {
 			return true
 		}
 
 	case branch:
-		if latch == arm.mam.branchLatch {
-			arm.branchTrail = BranchTrailUsed
+		if latch == arm.state.mam.branchLatch {
+			arm.state.branchTrail = BranchTrailUsed
 			return true
 		}
-		arm.mam.branchLatch = latch
-		arm.branchTrail = BranchTrailFlushed
+		arm.state.mam.branchLatch = latch
+		arm.state.branchTrail = BranchTrailFlushed
 
 	case dataRead:
-		if latch == arm.mam.dataLatch {
+		if latch == arm.state.mam.dataLatch {
 			return true
 		}
-		arm.mam.dataLatch = latch
+		arm.state.mam.dataLatch = latch
 
 	case dataWrite:
 		// invalidate data latch
-		arm.mam.dataLatch = 0x0
+		arm.state.mam.dataLatch = 0x0
 	}
 
 	return false
@@ -127,15 +127,15 @@ func (arm *ARM) isLatched(cycle cycleType, bus busAccess, addr uint32) bool {
 
 func (arm *ARM) iCycle() {
 	if arm.disasm != nil {
-		arm.cycleOrder.add(I)
+		arm.state.cycleOrder.add(I)
 	}
-	arm.stretchedCycles++
-	arm.lastCycle = I
-	arm.mam.prefectchAborted = false
+	arm.state.stretchedCycles++
+	arm.state.lastCycle = I
+	arm.state.mam.prefectchAborted = false
 }
 
 func (arm *ARM) sCycle(bus busAccess, addr uint32) {
-	arm.mam.prefectchAborted = bus.isDataAccess()
+	arm.state.mam.prefectchAborted = bus.isDataAccess()
 
 	// "Merged I-S cycles
 	// Where possible, the ARM7TDMI-S processor performs an optimization on the bus to
@@ -147,46 +147,46 @@ func (arm *ARM) sCycle(bus busAccess, addr uint32) {
 	// the memory access. This is shown in Figure 3-5 on page 3-9."
 	//
 	// page 3-8 of the "ARM7TDMI-S Technical Reference Manual r4p3"
-	if arm.lastCycle == I {
-		arm.stretchedCycles--
-		arm.mergedIS = true
+	if arm.state.lastCycle == I {
+		arm.state.stretchedCycles--
+		arm.state.mergedIS = true
 	}
 
 	if arm.disasm != nil {
-		arm.cycleOrder.add(S)
+		arm.state.cycleOrder.add(S)
 	}
-	arm.lastCycle = S
+	arm.state.lastCycle = S
 
 	if !arm.mmap.IsFlash(addr) {
-		arm.stretchedCycles++
+		arm.state.stretchedCycles++
 		return
 	}
 
-	switch arm.mam.mamcr {
+	switch arm.state.mam.mamcr {
 	default:
-		arm.stretchedCycles += arm.clklenFlash
+		arm.state.stretchedCycles += arm.clklenFlash
 	case 0:
-		arm.stretchedCycles += arm.clklenFlash
+		arm.state.stretchedCycles += arm.clklenFlash
 	case 1:
 		// for MAM-1, we go to flash memory only if it's a program access (ie. not a data access)
 		if bus.isDataAccess() {
-			arm.stretchedCycles += arm.clklenFlash
+			arm.state.stretchedCycles += arm.clklenFlash
 		} else if arm.isLatched(S, bus, addr) {
-			arm.stretchedCycles++
+			arm.state.stretchedCycles++
 		} else {
-			arm.stretchedCycles += arm.clklenFlash
+			arm.state.stretchedCycles += arm.clklenFlash
 		}
 	case 2:
 		if arm.isLatched(S, bus, addr) {
-			arm.stretchedCycles++
+			arm.state.stretchedCycles++
 		} else {
-			arm.stretchedCycles += arm.clklenFlash
+			arm.state.stretchedCycles += arm.clklenFlash
 		}
 	}
 }
 
 func (arm *ARM) nCycle(bus busAccess, addr uint32) {
-	arm.mam.prefectchAborted = bus.isDataAccess()
+	arm.state.mam.prefectchAborted = bus.isDataAccess()
 
 	// "3.3.1 Nonsequential cycles" in "ARM7TDMI-S Technical Reference Manual r4p3"
 	//
@@ -204,7 +204,7 @@ func (arm *ARM) nCycle(bus busAccess, addr uint32) {
 	// If you are designing a memory controller for the ARM7TDMI-S processor, and your
 	// memory system is unable to cope with this case, you must use the CLKEN signal to
 	// extend the bus cycle to allow sufficient cycles for the memory system."
-	if arm.lastCycle == N {
+	if arm.state.lastCycle == N {
 		mclkFlash = 1.3
 		mclkNonFlash = 1.8
 	}
@@ -223,50 +223,50 @@ func (arm *ARM) nCycle(bus busAccess, addr uint32) {
 	// suggests the modulation can be fractional.
 
 	if arm.disasm != nil {
-		arm.cycleOrder.add(N)
+		arm.state.cycleOrder.add(N)
 	}
-	arm.lastCycle = N
+	arm.state.lastCycle = N
 
 	if !arm.mmap.IsFlash(addr) {
-		arm.stretchedCycles += float32(mclkNonFlash)
+		arm.state.stretchedCycles += float32(mclkNonFlash)
 		return
 	}
 
-	switch arm.mam.mamcr {
+	switch arm.state.mam.mamcr {
 	default:
-		arm.stretchedCycles += arm.clklenFlash * float32(mclkFlash)
+		arm.state.stretchedCycles += arm.clklenFlash * float32(mclkFlash)
 	case 0:
-		arm.stretchedCycles += arm.clklenFlash * float32(mclkFlash)
+		arm.state.stretchedCycles += arm.clklenFlash * float32(mclkFlash)
 	case 1:
-		arm.stretchedCycles += arm.clklenFlash * float32(mclkFlash)
+		arm.state.stretchedCycles += arm.clklenFlash * float32(mclkFlash)
 	case 2:
 		if arm.isLatched(N, bus, addr) {
-			arm.stretchedCycles += float32(mclkNonFlash)
+			arm.state.stretchedCycles += float32(mclkNonFlash)
 		} else {
-			arm.stretchedCycles += arm.clklenFlash * float32(mclkFlash)
+			arm.state.stretchedCycles += arm.clklenFlash * float32(mclkFlash)
 		}
 	}
 }
 
 // called whenever PC changes unexpectedly (by a branch instruction for example).
 func (arm *ARM) fillPipeline() {
-	arm.Ncycle(branch, arm.registers[rPC])
-	arm.Scycle(prefetch, arm.registers[rPC]+2)
+	arm.Ncycle(branch, arm.state.registers[rPC])
+	arm.Scycle(prefetch, arm.state.registers[rPC]+2)
 }
 
 // the cycle profile for store register type instructions is funky enough to
 // need a specialist function.
 func (arm *ARM) storeRegisterCycles(addr uint32) {
 	arm.Ncycle(dataWrite, addr)
-	arm.prefetchCycle = N
+	arm.state.prefetchCycle = N
 }
 
 // add cycles accumulated during an BX to ARM code instruction. this is
 // definitely only an estimate.
 func (arm *ARM) armInterruptCycles(i ARMinterruptReturn) {
 	// we'll assume all writes are to flash memory
-	arm.stretchedCycles += float32(i.NumMemAccess) * arm.clklenFlash
-	arm.stretchedCycles += float32(i.NumAdditionalCycles)
+	arm.state.stretchedCycles += float32(i.NumMemAccess) * arm.clklenFlash
+	arm.state.stretchedCycles += float32(i.NumAdditionalCycles)
 }
 
 // stub function for when the execution doesn't require cycle counting

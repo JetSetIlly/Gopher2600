@@ -20,11 +20,11 @@ import (
 )
 
 func (arm *ARM) illegalAccess(event string, addr uint32) {
-	logger.Logf("ARM7", "%s: unrecognised address %08x (PC: %08x)", event, addr, arm.executingPC)
+	logger.Logf("ARM7", "%s: unrecognised address %08x (PC: %08x)", event, addr, arm.state.executingPC)
 	if arm.dev == nil {
 		return
 	}
-	log := arm.dev.IllegalAccess(event, arm.executingPC, addr)
+	log := arm.dev.IllegalAccess(event, arm.state.executingPC, addr)
 	if log == "" {
 		return
 	}
@@ -33,11 +33,11 @@ func (arm *ARM) illegalAccess(event string, addr uint32) {
 
 // nullAccess is a special condition of illegalAccess()
 func (arm *ARM) nullAccess(event string, addr uint32) {
-	logger.Logf("ARM7", "%s: probable null pointer dereference of %08x (PC: %08x)", event, addr, arm.executingPC)
+	logger.Logf("ARM7", "%s: probable null pointer dereference of %08x (PC: %08x)", event, addr, arm.state.executingPC)
 	if arm.dev == nil {
 		return
 	}
-	log := arm.dev.NullAccess(event, arm.executingPC, addr)
+	log := arm.dev.NullAccess(event, arm.state.executingPC, addr)
 	if log == "" {
 		return
 	}
@@ -53,11 +53,11 @@ func (arm *ARM) read8bit(addr uint32) uint8 {
 
 	mem, addr = arm.mem.MapAddress(addr, false)
 	if mem == nil {
-		if v, ok, comment := arm.timer.read(addr); ok {
+		if v, ok, comment := arm.state.timer.read(addr); ok {
 			arm.disasmExecutionNotes = comment
 			return uint8(v)
 		}
-		if v, ok := arm.mam.read(addr); ok {
+		if v, ok := arm.state.mam.read(addr); ok {
 			return uint8(v)
 		}
 
@@ -82,11 +82,11 @@ func (arm *ARM) write8bit(addr uint32, val uint8) {
 
 	mem, addr = arm.mem.MapAddress(addr, true)
 	if mem == nil {
-		if ok, comment := arm.timer.write(addr, uint32(val)); ok {
+		if ok, comment := arm.state.timer.write(addr, uint32(val)); ok {
 			arm.disasmExecutionNotes = comment
 			return
 		}
-		if ok := arm.mam.write(addr, uint32(val)); ok {
+		if ok := arm.state.mam.write(addr, uint32(val)); ok {
 			return
 		}
 
@@ -109,18 +109,18 @@ func (arm *ARM) read16bit(addr uint32) uint16 {
 
 	// check 16 bit alignment
 	if addr&0x01 != 0x00 {
-		logger.Logf("ARM7", "misaligned 16 bit read (%08x) (PC: %08x)", addr, arm.registers[rPC])
+		logger.Logf("ARM7", "misaligned 16 bit read (%08x) (PC: %08x)", addr, arm.state.registers[rPC])
 	}
 
 	var mem *[]uint8
 
 	mem, addr = arm.mem.MapAddress(addr, false)
 	if mem == nil {
-		if v, ok, comment := arm.timer.read(addr); ok {
+		if v, ok, comment := arm.state.timer.read(addr); ok {
 			arm.disasmExecutionNotes = comment
 			return uint16(v)
 		}
-		if v, ok := arm.mam.read(addr); ok {
+		if v, ok := arm.state.mam.read(addr); ok {
 			return uint16(v)
 		}
 
@@ -143,18 +143,18 @@ func (arm *ARM) write16bit(addr uint32, val uint16) {
 
 	// check 16 bit alignment
 	if addr&0x01 != 0x00 {
-		logger.Logf("ARM7", "misaligned 16 bit write (%08x) (PC: %08x)", addr, arm.registers[rPC])
+		logger.Logf("ARM7", "misaligned 16 bit write (%08x) (PC: %08x)", addr, arm.state.registers[rPC])
 	}
 
 	var mem *[]uint8
 
 	mem, addr = arm.mem.MapAddress(addr, true)
 	if mem == nil {
-		if ok, comment := arm.timer.write(addr, uint32(val)); ok {
+		if ok, comment := arm.state.timer.write(addr, uint32(val)); ok {
 			arm.disasmExecutionNotes = comment
 			return
 		}
-		if ok := arm.mam.write(addr, uint32(val)); ok {
+		if ok := arm.state.mam.write(addr, uint32(val)); ok {
 			return
 		}
 
@@ -178,18 +178,18 @@ func (arm *ARM) read32bit(addr uint32) uint32 {
 
 	// check 32 bit alignment
 	if addr&0x03 != 0x00 {
-		logger.Logf("ARM7", "misaligned 32 bit read (%08x) (PC: %08x)", addr, arm.registers[rPC])
+		logger.Logf("ARM7", "misaligned 32 bit read (%08x) (PC: %08x)", addr, arm.state.registers[rPC])
 	}
 
 	var mem *[]uint8
 
 	mem, addr = arm.mem.MapAddress(addr, false)
 	if mem == nil {
-		if v, ok, comment := arm.timer.read(addr); ok {
+		if v, ok, comment := arm.state.timer.read(addr); ok {
 			arm.disasmExecutionNotes = comment
 			return v
 		}
-		if v, ok := arm.mam.read(addr); ok {
+		if v, ok := arm.state.mam.read(addr); ok {
 			return v
 		}
 
@@ -212,18 +212,18 @@ func (arm *ARM) write32bit(addr uint32, val uint32) {
 
 	// check 32 bit alignment
 	if addr&0x03 != 0x00 {
-		logger.Logf("ARM7", "misaligned 32 bit write (%08x) (PC: %08x)", addr, arm.registers[rPC])
+		logger.Logf("ARM7", "misaligned 32 bit write (%08x) (PC: %08x)", addr, arm.state.registers[rPC])
 	}
 
 	var mem *[]uint8
 
 	mem, addr = arm.mem.MapAddress(addr, true)
 	if mem == nil {
-		if ok, comment := arm.timer.write(addr, val); ok {
+		if ok, comment := arm.state.timer.write(addr, val); ok {
 			arm.disasmExecutionNotes = comment
 			return
 		}
-		if ok := arm.mam.write(addr, val); ok {
+		if ok := arm.state.mam.write(addr, val); ok {
 			return
 		}
 

@@ -68,6 +68,86 @@ const (
 	nullAccessBoundaryARMv7_m = 0x00
 )
 
+type ARMState struct {
+	// ARM registers
+	registers [NumRegisters]uint32
+	status    Status
+
+	// "peripherals" connected to the variety of ARM7TDMI-S used in the Harmony
+	// cartridge.
+	timer timer
+	mam   mam
+
+	// the PC of the opcode being processed and the PC of the instruction being
+	// executed
+	//
+	// when this emulation was Thumb (16bit only) there was no distiniction
+	// between these two concepts and there was only executingPC. with 32bit
+	// instructions we need to know about both
+	//
+	// executingPC will be equal to instructionPC in the case of 16bit
+	// instructions but will be different in the case of 32bit instructions
+	executingPC   uint32
+	instructionPC uint32
+
+	// the area the PC covers. once assigned we'll assume that the program
+	// never reads outside this area. the value is assigned on reset()
+	programMemory *[]uint8
+
+	// length of program memory. in truth this is probably a constant but we
+	// don't really know that for sure
+	programMemoryLen int
+
+	// the amount to adjust the memory address by so that it can be used to
+	// index the programMemory array
+	programMemoryOffset uint32
+
+	// functionMap records the function that implements the instruction group for each
+	// opcode in program memory. must be reset every time programMemory is reassigned
+	//
+	// note that when executing from RAM (which isn't normal) it's possible for
+	// code to be modified (ie. self-modifying code). in that case functionMap
+	// may be unreliable.
+	functionMap []func(_ uint16)
+
+	// cycle counting
+
+	// the last cycle to be triggered, used to decide whether to merge I-S cycles
+	lastCycle cycleType
+
+	// the type of cycle next prefetch (the main PC increment in the Run()
+	// loop) should be. either N or S type. never I type.
+	prefetchCycle cycleType
+
+	// total number of cycles for the entire program
+	cyclesTotal float32
+
+	// number of cycles with CLKLEN modulation applied
+	stretchedCycles float32
+
+	// record the order in which cycles happen for a single instruction
+	// - required for disasm only
+	cycleOrder cycleOrder
+
+	// whether a branch has used the branch trail latches or not
+	// - required for disasm only
+	branchTrail BranchTrail
+
+	// whether an I cycle that is followed by an S cycle has been merged
+	// - required for disasm only
+	mergedIS bool
+
+	// 32bit instructions
+
+	function32bit       bool
+	function32bitOpcode uint16
+
+	// disassembly of 32bit thumb-2
+	// * temporary construct until thumb2Disassemble() is written
+	fudge_thumb2disassemble32bit string
+	fudge_thumb2disassemble16bit string
+}
+
 // ARM implements the ARM7TDMI-S LPC2103 processor.
 type ARM struct {
 	prefs *preferences.ARMPreferences
@@ -76,14 +156,7 @@ type ARM struct {
 	mem   SharedMemory
 	hook  CartridgeHook
 
-	// ARM registers
-	registers [NumRegisters]uint32
-	Status    status
-
-	// "peripherals" connected to the variety of ARM7TDMI-S used in the Harmony
-	// cartridge.
-	timer timer
-	mam   mam
+	state *ARMState
 
 	// whether to foce an error on illegal memory access. set from ARM.prefs at
 	// the start of every arm.Run()
@@ -118,30 +191,6 @@ type ARM struct {
 	Clk         float32
 	clklenFlash float32
 
-	// the PC of the opcode being processed and the PC of the instruction being
-	// executed
-	//
-	// when this emulation was Thumb (16bit only) there was no distiniction
-	// between these two concepts and there was only executingPC. with 32bit
-	// instructions we need to know about both
-	//
-	// executingPC will be equal to instructionPC in the case of 16bit
-	// instructions but will be different in the case of 32bit instructions
-	executingPC   uint32
-	instructionPC uint32
-
-	// the area the PC covers. once assigned we'll assume that the program
-	// never reads outside this area. the value is assigned on reset()
-	programMemory *[]uint8
-
-	// length of program memory. in truth this is probably a constant but we
-	// don't really know that for sure
-	programMemoryLen int
-
-	// the amount to adjust the memory address by so that it can be used to
-	// index the programMemory array
-	programMemoryOffset uint32
-
 	// is set to true when an access to memory using a read/write function used
 	// an unrecognised address. when this happens, the address is logged and
 	// the Thumb program aborted (ie returns early)
@@ -155,14 +204,6 @@ type ARM struct {
 	// allocated in NewArm() and added to in findProgramMemory() if an entry
 	// does not exist
 	executionMap map[uint32][]func(_ uint16)
-
-	// functionMap records the function that implements the instruction group for each
-	// opcode in program memory. must be reset every time programMemory is reassigned
-	//
-	// note that when executing from RAM (which isn't normal) it's possible for
-	// code to be modified (ie. self-modifying code). in that case functionMap
-	// may be unreliable.
-	functionMap []func(_ uint16)
 
 	// interface to an optional disassembler
 	disasm mapper.CartCoProcDisassembler
@@ -189,24 +230,6 @@ type ARM struct {
 	// logged
 	stackHasCollided bool
 
-	// \/\/\/ the following fields relate to cycle counting. there's a possible
-	// optimisation whereby we don't do any cycle counting at all (or minimise
-	// it at least) if the emulation is running in immediate mode
-	//
-	// !TODO: optimisation for ARM immediate mode
-
-	// the last cycle to be triggered, used to decide whether to merge I-S cycles
-	lastCycle cycleType
-
-	// the type of cycle next prefetch (the main PC increment in the Run()
-	// loop) should be. either N or S type. never I type.
-	prefetchCycle cycleType
-
-	// total number of cycles for the entire program
-	cyclesTotal float32
-
-	// \/\/\/ the following are reset at the end of each execution iteration \/\/\/
-
 	// whether cycle count or not. set from ARM.prefs at the start of every arm.Run()
 	//
 	// used to cut out code that is required only for cycle counting. See
@@ -214,21 +237,6 @@ type ARM struct {
 	// forego checking the immediateMode flag each time and have preset a stub
 	// function if required
 	immediateMode bool
-
-	// number of cycles with CLKLEN modulation applied
-	stretchedCycles float32
-
-	// record the order in which cycles happen for a single instruction
-	// - required for disasm only
-	cycleOrder cycleOrder
-
-	// whether a branch has used the branch trail latches or not
-	// - required for disasm only
-	branchTrail BranchTrail
-
-	// whether an I cycle that is followed by an S cycle has been merged
-	// - required for disasm only
-	mergedIS bool
 
 	// rather than call the cycle counting functions directly, we assign the
 	// functions to these fields. in this way, we can use stubs when executing
@@ -241,15 +249,6 @@ type ARM struct {
 
 	// profiler for executed instructions. measures cycles counts
 	profiler *mapper.CartCoProcProfiler
-
-	// control of 32bit thumb-2 function decoding.
-	function32bit       bool
-	function32bitOpcode uint16
-
-	// disassembly of 32bit thumb-2
-	// * temporary construct until thumb2Disassemble() is written
-	fudge_thumb2disassemble32bit string
-	fudge_thumb2disassemble16bit string
 
 	// whether the previous execution stopped because of a yield
 	yield bool
@@ -275,10 +274,12 @@ func NewARM(arch Architecture, mamcr MAMCR, mmap memorymodel.Map, prefs *prefere
 		// updated on every updatePrefs(). these are reasonable defaults
 		Clk:         70.0,
 		clklenFlash: 4.0,
+
+		state: &ARMState{},
 	}
 
 	// the mamcr to use as a preference
-	arm.mam.preferredMAMCR = mamcr
+	arm.state.mam.preferredMAMCR = mamcr
 
 	switch arm.arch {
 	case ARM7TDMI:
@@ -289,8 +290,8 @@ func NewARM(arch Architecture, mamcr MAMCR, mmap memorymodel.Map, prefs *prefere
 		panic(fmt.Sprintf("unhandled ARM architecture: cannot set %s", arm.arch))
 	}
 
-	arm.mam.mmap = mmap
-	arm.timer.mmap = mmap
+	arm.state.mam.mmap = mmap
+	arm.state.timer.mmap = mmap
 
 	arm.reset()
 	arm.updatePrefs()
@@ -355,15 +356,15 @@ func (arm *ARM) ClearCaches() {
 
 // reset ARM registers.
 func (arm *ARM) reset() {
-	arm.Status.reset()
+	arm.state.status.reset()
 
 	for i := 0; i < rSP; i++ {
-		arm.registers[i] = 0x00000000
+		arm.state.registers[i] = 0x00000000
 	}
 
-	arm.registers[rSP], arm.registers[rLR], arm.registers[rPC] = arm.mem.ResetVectors()
+	arm.state.registers[rSP], arm.state.registers[rLR], arm.state.registers[rPC] = arm.mem.ResetVectors()
 
-	arm.prefetchCycle = S
+	arm.state.prefetchCycle = S
 }
 
 // updatePrefs should be called periodically to ensure that the current
@@ -377,13 +378,13 @@ func (arm *ARM) updatePrefs() {
 	arm.clklenFlash = float32(math.Ceil(float64(arm.Clk) / latencyInMhz))
 
 	// set mamcr on startup
-	arm.mam.pref = arm.prefs.MAM.Get().(int)
-	if arm.mam.pref == preferences.MAMDriver {
-		arm.mam.setPreferredMamcr()
-		arm.mam.mamtim = 4.0
+	arm.state.mam.pref = arm.prefs.MAM.Get().(int)
+	if arm.state.mam.pref == preferences.MAMDriver {
+		arm.state.mam.setPreferredMamcr()
+		arm.state.mam.mamtim = 4.0
 	} else {
-		arm.mam.setMAMCR(MAMCR(arm.mam.pref))
-		arm.mam.mamtim = 4.0
+		arm.state.mam.setMAMCR(MAMCR(arm.state.mam.pref))
+		arm.state.mam.mamtim = 4.0
 	}
 
 	// set cycle counting functions
@@ -407,28 +408,28 @@ func (arm *ARM) updatePrefs() {
 
 // find program memory using current program counter value.
 func (arm *ARM) findProgramMemory() error {
-	arm.programMemory, arm.programMemoryOffset = arm.mem.MapAddress(arm.registers[rPC], false)
-	if arm.programMemory == nil {
+	arm.state.programMemory, arm.state.programMemoryOffset = arm.mem.MapAddress(arm.state.registers[rPC], false)
+	if arm.state.programMemory == nil {
 		return curated.Errorf("ARM7: cannot find program memory")
 	}
 
-	arm.programMemoryOffset = arm.registers[rPC] - arm.programMemoryOffset
+	arm.state.programMemoryOffset = arm.state.registers[rPC] - arm.state.programMemoryOffset
 
-	if m, ok := arm.executionMap[arm.programMemoryOffset]; ok {
-		arm.functionMap = m
+	if m, ok := arm.executionMap[arm.state.programMemoryOffset]; ok {
+		arm.state.functionMap = m
 	} else {
-		arm.executionMap[arm.programMemoryOffset] = make([]func(_ uint16), len(*arm.programMemory))
-		arm.functionMap = arm.executionMap[arm.programMemoryOffset]
+		arm.executionMap[arm.state.programMemoryOffset] = make([]func(_ uint16), len(*arm.state.programMemory))
+		arm.state.functionMap = arm.executionMap[arm.state.programMemoryOffset]
 	}
 
-	arm.programMemoryLen = len(*arm.programMemory)
+	arm.state.programMemoryLen = len(*arm.state.programMemory)
 
 	return nil
 }
 
 func (arm *ARM) String() string {
 	s := strings.Builder{}
-	for i, r := range arm.registers {
+	for i, r := range arm.state.registers {
 		if i > 0 {
 			if i%4 == 0 {
 				s.WriteString("\n")
@@ -445,7 +446,7 @@ func (arm *ARM) String() string {
 // when Step() is called and not during the Run() process. This might cause
 // problems in some instances with some ARM programs.
 func (arm *ARM) Step(vcsClock float32) {
-	arm.timer.stepFromVCS(arm.Clk, vcsClock)
+	arm.state.timer.stepFromVCS(arm.Clk, vcsClock)
 }
 
 // SetInitialRegisters is intended to be called after creation but before the
@@ -468,12 +469,12 @@ func (arm *ARM) SetInitialRegisters(args ...uint32) error {
 	}
 
 	for i := range args {
-		arm.registers[i] = args[i]
+		arm.state.registers[i] = args[i]
 	}
 
 	// fill the pipeline before yielding. this ensures that the PC is
 	// correct on the first call to Run()
-	arm.registers[rPC] += 2
+	arm.state.registers[rPC] += 2
 
 	// continue in a yielded state
 	arm.yield = true
@@ -496,9 +497,9 @@ func (arm *ARM) Run() (float32, error) {
 	}
 
 	// reset cycles count
-	arm.cyclesTotal = 0
+	arm.state.cyclesTotal = 0
 
-	// arm.prefectchCycle reset in reset() function. we don't want to change
+	// arm.staten.prefetchCycle reset in reset() function. we don't want to change
 	// the value if we're resuming from a yield
 
 	// reset execution flags
@@ -519,7 +520,7 @@ func (arm *ARM) Run() (float32, error) {
 			return 0, err
 		}
 
-		arm.registers[rPC] += 2
+		arm.state.registers[rPC] += 2
 	}
 
 	// reset yield flag
@@ -537,12 +538,17 @@ func (arm *ARM) Yield() {
 
 // Registers returns a copy of the current values in the ARM registers
 func (arm *ARM) Registers() [NumRegisters]uint32 {
-	return arm.registers
+	return arm.state.registers
+}
+
+// Status returns a copy of the current status register.
+func (arm *ARM) Status() Status {
+	return arm.state.status
 }
 
 // SetRegisters sets the live register values to those supplied
 func (arm *ARM) SetRegisters(registers [NumRegisters]uint32) {
-	arm.registers = registers
+	arm.state.registers = registers
 }
 
 // BreakpointHasTriggered returns true if execution has not run to completion
@@ -599,53 +605,53 @@ func (arm *ARM) run() (float32, error) {
 		// "The program counter points to the instruction being fetched rather than to the instruction
 		// being executed. This is important because it means that the Program Counter (PC)
 		// value used in an executing instruction is always two instructions ahead of the address."
-		arm.executingPC = arm.registers[rPC] - 2
+		arm.state.executingPC = arm.state.registers[rPC] - 2
 
 		// check program counter
-		memIdx := int(arm.executingPC) - int(arm.programMemoryOffset)
-		if memIdx < 0 || memIdx+1 >= arm.programMemoryLen {
+		memIdx := int(arm.state.executingPC) - int(arm.state.programMemoryOffset)
+		if memIdx < 0 || memIdx+1 >= arm.state.programMemoryLen {
 			// program counter is out-of-range so find program memory again
 			// (using the PC value)
 			err = arm.findProgramMemory()
 			if err != nil {
 				// can't find memory so we say the ARM program has finished inadvertently
-				logger.Logf("ARM7", "PC out of range (%#08x). aborting thumb program early", arm.executingPC)
+				logger.Logf("ARM7", "PC out of range (%#08x). aborting thumb program early", arm.state.executingPC)
 				break // for loop
 			}
 
 			// if it's still out-of-range then give up with an error
-			memIdx = int(arm.executingPC) - int(arm.programMemoryOffset)
-			if memIdx < 0 || memIdx+1 >= arm.programMemoryLen {
+			memIdx = int(arm.state.executingPC) - int(arm.state.programMemoryOffset)
+			if memIdx < 0 || memIdx+1 >= arm.state.programMemoryLen {
 				// can't find memory so we say the ARM program has finished inadvertently
-				logger.Logf("ARM7", "PC out of range (%#08x). aborting thumb program early", arm.executingPC)
+				logger.Logf("ARM7", "PC out of range (%#08x). aborting thumb program early", arm.state.executingPC)
 				break // for loop
 			}
 		}
 
 		// opcode for executed instruction
-		opcode := uint16((*arm.programMemory)[memIdx]) | (uint16((*arm.programMemory)[memIdx+1]) << 8)
+		opcode := uint16((*arm.state.programMemory)[memIdx]) | (uint16((*arm.state.programMemory)[memIdx+1]) << 8)
 
 		// bump PC counter for prefetch. actual prefetch is done after execution
-		arm.registers[rPC] += 2
+		arm.state.registers[rPC] += 2
 
 		// the expected PC at the end of the execution. if the PC register
 		// does not match fillPipeline() is called
 		if !arm.immediateMode {
-			expectedPC = arm.registers[rPC]
+			expectedPC = arm.state.registers[rPC]
 		}
 
 		// note stack pointer. we'll use this to check if stack pointer has
 		// collided with variables memory
-		stackPointerBeforeExecution := arm.registers[rSP]
+		stackPointerBeforeExecution := arm.state.registers[rSP]
 
 		// run from functionMap if possible
 		switch arm.arch {
 		case ARM7TDMI:
-			arm.instructionPC = arm.executingPC
-			f := arm.functionMap[memIdx]
+			arm.state.instructionPC = arm.state.executingPC
+			f := arm.state.functionMap[memIdx]
 			if f == nil {
 				f = arm.decodeThumb(opcode)
-				arm.functionMap[memIdx] = f
+				arm.state.functionMap[memIdx] = f
 			}
 			f(opcode)
 		case ARMv7_M:
@@ -654,33 +660,33 @@ func (arm *ARM) run() (float32, error) {
 			// taking a note of whether this is a resolution of a 32bit
 			// instruction. we use this later during the fudge_ disassembly
 			// printing
-			fudge_resolving32bitInstruction := arm.function32bit
+			fudge_resolving32bitInstruction := arm.state.function32bit
 
 			// process a 32 bit or 16 bit instruction as appropriate
-			if arm.function32bit {
-				arm.function32bit = false
-				f = arm.functionMap[memIdx]
+			if arm.state.function32bit {
+				arm.state.function32bit = false
+				f = arm.state.functionMap[memIdx]
 				if f == nil {
-					f = arm.decode32bitThumb2(arm.function32bitOpcode)
-					arm.functionMap[memIdx] = f
+					f = arm.decode32bitThumb2(arm.state.function32bitOpcode)
+					arm.state.functionMap[memIdx] = f
 				}
 			} else {
 				// the opcode is either a 16bit instruction or the first
 				// halfword for a 32bit instruction
-				arm.instructionPC = arm.executingPC
+				arm.state.instructionPC = arm.state.executingPC
 
 				if arm.is32BitThumb2(opcode) {
-					arm.function32bit = true
-					arm.function32bitOpcode = opcode
+					arm.state.function32bit = true
+					arm.state.function32bitOpcode = opcode
 
 					// we need something for the emulation to run. this is a
 					// clearer alternative to having a flag
 					f = func(_ uint16) {}
 				} else {
-					f = arm.functionMap[memIdx]
+					f = arm.state.functionMap[memIdx]
 					if f == nil {
 						f = arm.decodeThumb2(opcode)
-						arm.functionMap[memIdx] = f
+						arm.state.functionMap[memIdx] = f
 					}
 				}
 			}
@@ -692,8 +698,8 @@ func (arm *ARM) run() (float32, error) {
 			// new 32bit functions always execute
 			// if the opcode indicates that this is a 32bit thumb instruction
 			// then we need to resolve that regardless of any IT block
-			if arm.Status.itMask != 0b0000 && !arm.function32bit {
-				r := arm.Status.condition(arm.Status.itCond)
+			if arm.state.status.itMask != 0b0000 && !arm.state.function32bit {
+				r := arm.state.status.condition(arm.state.status.itCond)
 
 				if r {
 					f(opcode)
@@ -709,11 +715,11 @@ func (arm *ARM) run() (float32, error) {
 
 				// update IT conditions only if the opcode is not a 32bit opcode
 				// update LSB of IT condition by copying the MSB of the IT mask
-				arm.Status.itCond &= 0b1110
-				arm.Status.itCond |= (arm.Status.itMask >> 3)
+				arm.state.status.itCond &= 0b1110
+				arm.state.status.itCond |= (arm.state.status.itMask >> 3)
 
 				// shift IT mask
-				arm.Status.itMask = (arm.Status.itMask << 1) & 0b1111
+				arm.state.status.itMask = (arm.state.status.itMask << 1) & 0b1111
 			} else {
 				f(opcode)
 			}
@@ -729,23 +735,23 @@ func (arm *ARM) run() (float32, error) {
 					fmt.Print("*** ")
 				}
 				if fudge_resolving32bitInstruction {
-					fmt.Printf("%08x %04x %04x :: %s\n", arm.instructionPC, arm.function32bitOpcode, opcode, arm.fudge_thumb2disassemble32bit)
+					fmt.Printf("%08x %04x %04x :: %s\n", arm.state.instructionPC, arm.state.function32bitOpcode, opcode, arm.state.fudge_thumb2disassemble32bit)
 					fmt.Println(arm.String())
-					fmt.Println(arm.Status.String())
+					fmt.Println(arm.state.status.String())
 					fmt.Println("====================")
-				} else if !arm.function32bit {
-					if arm.fudge_thumb2disassemble16bit != "" {
-						fmt.Printf("%08x %04x :: %s\n", arm.instructionPC, opcode, arm.fudge_thumb2disassemble16bit)
+				} else if !arm.state.function32bit {
+					if arm.state.fudge_thumb2disassemble16bit != "" {
+						fmt.Printf("%08x %04x :: %s\n", arm.state.instructionPC, opcode, arm.state.fudge_thumb2disassemble16bit)
 					} else {
-						fmt.Printf("%08x %04x :: %s\n", arm.instructionPC, opcode, thumbDisassemble(opcode).String())
+						fmt.Printf("%08x %04x :: %s\n", arm.state.instructionPC, opcode, thumbDisassemble(opcode).String())
 					}
 					fmt.Println(arm.String())
-					fmt.Println(arm.Status.String())
+					fmt.Println(arm.state.status.String())
 					fmt.Println("====================")
 				}
 			}
-			arm.fudge_thumb2disassemble32bit = ""
-			arm.fudge_thumb2disassemble16bit = ""
+			arm.state.fudge_thumb2disassemble32bit = ""
+			arm.state.fudge_thumb2disassemble16bit = ""
 
 		default:
 			panic("unsupported ARM architecture")
@@ -753,28 +759,28 @@ func (arm *ARM) run() (float32, error) {
 
 		if !arm.immediateMode {
 			// add additional cycles required to fill pipeline before next iteration
-			if expectedPC != arm.registers[rPC] {
+			if expectedPC != arm.state.registers[rPC] {
 				arm.fillPipeline()
 			}
 
 			// prefetch cycle for next instruction is associated with and counts
 			// towards the total of the current instruction. most prefetch cycles
 			// are S cycles but store instructions require an N cycle
-			if arm.prefetchCycle == N {
-				arm.Ncycle(prefetch, arm.registers[rPC])
+			if arm.state.prefetchCycle == N {
+				arm.Ncycle(prefetch, arm.state.registers[rPC])
 			} else {
-				arm.Scycle(prefetch, arm.registers[rPC])
+				arm.Scycle(prefetch, arm.state.registers[rPC])
 			}
 
 			// default to an S cycle for prefetch unless an instruction explicitly
 			// says otherwise
-			arm.prefetchCycle = S
+			arm.state.prefetchCycle = S
 
 			// increases total number of program cycles by the stretched cycles for this instruction
-			arm.cyclesTotal += arm.stretchedCycles
+			arm.state.cyclesTotal += arm.state.stretchedCycles
 
 			// update timer. assuming an APB divider value of one.
-			arm.timer.step(arm.stretchedCycles)
+			arm.state.timer.step(arm.state.stretchedCycles)
 		}
 
 		// send disasm information to disassembler
@@ -782,38 +788,38 @@ func (arm *ARM) run() (float32, error) {
 			var cached bool
 			var d DisasmEntry
 
-			d, cached = arm.disasmCache[arm.instructionPC]
+			d, cached = arm.disasmCache[arm.state.instructionPC]
 			if !cached {
 				d = Disassemble(opcode)
-				d.Address = fmt.Sprintf("%08x", arm.instructionPC)
-				d.Addr = arm.instructionPC
+				d.Address = fmt.Sprintf("%08x", arm.state.instructionPC)
+				d.Addr = arm.state.instructionPC
 			}
 
 			// update cycle information
-			d.Cycles = arm.cycleOrder.len()
+			d.Cycles = arm.state.cycleOrder.len()
 
 			// execution note
 			d.ExecutionNotes = arm.disasmExecutionNotes
 
 			// cycle details
-			d.MAMCR = int(arm.mam.mamcr)
-			d.BranchTrail = arm.branchTrail
-			d.MergedIS = arm.mergedIS
-			d.CyclesSequence = arm.cycleOrder.String()
+			d.MAMCR = int(arm.state.mam.mamcr)
+			d.BranchTrail = arm.state.branchTrail
+			d.MergedIS = arm.state.mergedIS
+			d.CyclesSequence = arm.state.cycleOrder.String()
 
 			// note immediate mode
 			d.ImmediateMode = arm.disasmSummary.ImmediateMode
 
 			// update cache if necessary
 			if !cached || arm.disasmUpdateNotes {
-				arm.disasmCache[arm.instructionPC] = d
+				arm.disasmCache[arm.state.instructionPC] = d
 			}
 
 			arm.disasmExecutionNotes = ""
 			arm.disasmUpdateNotes = false
 
 			// update program cycles
-			arm.disasmSummary.add(arm.cycleOrder)
+			arm.disasmSummary.add(arm.state.cycleOrder)
 
 			// we always send the instruction to the disasm interface
 			arm.disasm.Step(d)
@@ -822,20 +828,20 @@ func (arm *ARM) run() (float32, error) {
 		// accumulate cycle counts for profiling
 		if arm.dev != nil {
 			arm.profiler.Entries = append(arm.profiler.Entries, mapper.CartCoProcProfileEntry{
-				Addr:   arm.instructionPC,
-				Cycles: arm.stretchedCycles,
+				Addr:   arm.state.instructionPC,
+				Cycles: arm.state.stretchedCycles,
 			})
 		}
 
 		// reset cycle information
 		if !arm.immediateMode {
-			arm.branchTrail = BranchTrailNotUsed
-			arm.mergedIS = false
-			arm.stretchedCycles = 0
-			arm.cycleOrder.reset()
+			arm.state.branchTrail = BranchTrailNotUsed
+			arm.state.mergedIS = false
+			arm.state.stretchedCycles = 0
+			arm.state.cycleOrder.reset()
 
 			// limit the number of cycles used by the ARM program
-			if arm.cyclesTotal >= cycleLimit {
+			if arm.state.cyclesTotal >= cycleLimit {
 				logger.Logf("ARM7", "reached cycle limit of %d. ending execution early", cycleLimit)
 				panic("cycle limit")
 				break
@@ -850,12 +856,12 @@ func (arm *ARM) run() (float32, error) {
 		}
 
 		// check stack pointer before iterating loop again
-		if arm.dev != nil && stackPointerBeforeExecution != arm.registers[rSP] {
-			if !arm.stackHasCollided && arm.registers[rSP] <= arm.variableMemtop {
+		if arm.dev != nil && stackPointerBeforeExecution != arm.state.registers[rSP] {
+			if !arm.stackHasCollided && arm.state.registers[rSP] <= arm.variableMemtop {
 				event := "Stack"
-				logger.Logf("ARM7", "%s: collision with program memory (%08x)", event, arm.registers[rSP])
+				logger.Logf("ARM7", "%s: collision with program memory (%08x)", event, arm.state.registers[rSP])
 
-				log := arm.dev.StackCollision(arm.executingPC, arm.registers[rSP])
+				log := arm.dev.StackCollision(arm.state.executingPC, arm.state.registers[rSP])
 				if log != "" {
 					logger.Logf("ARM7", "%s: %s", event, log)
 				}
@@ -873,7 +879,7 @@ func (arm *ARM) run() (float32, error) {
 
 		// abort if a watch has been triggered
 		if arm.yield {
-			if arm.function32bit {
+			if arm.state.function32bit {
 				panic("attempted to yield during 32bit instruction decoding")
 			}
 			break
@@ -881,7 +887,7 @@ func (arm *ARM) run() (float32, error) {
 
 		// check breakpoints
 		if arm.dev != nil && !arm.breakpointsDisabled {
-			if arm.dev.CheckBreakpoint(arm.registers[rPC]) {
+			if arm.dev.CheckBreakpoint(arm.state.registers[rPC]) {
 				arm.breakpoint = true
 				break
 			}
@@ -899,5 +905,5 @@ func (arm *ARM) run() (float32, error) {
 		return 0, curated.Errorf("ARM7: %v", arm.executionError)
 	}
 
-	return arm.cyclesTotal, nil
+	return arm.state.cyclesTotal, nil
 }

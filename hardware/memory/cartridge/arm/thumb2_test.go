@@ -37,7 +37,7 @@ func TestIT(t *testing.T) {
 R4 : 00000000		R5 : 00000000		R6 : 00000000		R7 : 00000000
 R8 : 00000000		R9 : 00000000		R10: 00000000		R11: 00000000
 R12: 00000000		R13: 000003ff		R14: 00000000		R15: 00000006`)
-	test.Equate(t, arm.Status.String(), "nzvc   itMask: 0000")
+	test.Equate(t, arm.Status().String(), "nzvc   itMask: 0000")
 
 	// --- second run
 	arm.ClearCaches()
@@ -60,7 +60,7 @@ R12: 00000000		R13: 000003ff		R14: 00000000		R15: 00000006`)
 R4 : 00000000		R5 : 00000000		R6 : 00000000		R7 : 00000000
 R8 : 00000000		R9 : 00000000		R10: 00000000		R11: 00000000
 R12: 00000000		R13: 000003ff		R14: 00000000		R15: 0000000a`)
-	test.Equate(t, arm.Status.String(), "nzvc   itMask: 0000")
+	test.Equate(t, arm.Status().String(), "nzvc   itMask: 0000")
 
 	// --- third run
 	arm.ClearCaches()
@@ -81,7 +81,7 @@ R12: 00000000		R13: 000003ff		R14: 00000000		R15: 0000000a`)
 R4 : 00000000		R5 : 00000000		R6 : 00000000		R7 : 00000000
 R8 : 00000000		R9 : 00000000		R10: 00000000		R11: 00000000
 R12: 00000000		R13: 000003ff		R14: 00000000		R15: 0000000a`)
-	test.Equate(t, arm.Status.String(), "nzvc   itMask: 0000")
+	test.Equate(t, arm.Status().String(), "nzvc   itMask: 0000")
 
 	// --- fourth run
 	arm.ClearCaches()
@@ -113,5 +113,5 @@ R12: 00000000		R13: 000003ff		R14: 00000000		R15: 0000000c`)
 
 	// a MOV of zero would mean the status flag being updated, however because
 	// we're in a IT block the status flags are not updated
-	test.Equate(t, arm.Status.String(), "nzvc   itMask: 0000")
+	test.Equate(t, arm.Status().String(), "nzvc   itMask: 0000")
 }
