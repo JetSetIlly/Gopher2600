@@ -289,7 +289,7 @@ func (cart *Ace) Snapshot() mapper.CartMapper {
 
 // Plumb implements the mapper.CartMapper interface.
 func (cart *Ace) Plumb() {
-	cart.arm.Plumb(cart.mem, cart)
+	cart.arm.Plumb(nil, cart.mem, cart)
 }
 
 // Reset implements the mapper.CartMapper interface.

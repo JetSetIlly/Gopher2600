@@ -156,7 +156,7 @@ func (cart *cdf) Snapshot() mapper.CartMapper {
 
 // Plumb implements the mapper.CartMapper interface.
 func (cart *cdf) Plumb() {
-	cart.arm.Plumb(cart.state.static, cart)
+	cart.arm.Plumb(nil, cart.state.static, cart)
 }
 
 // Plumb implements the mapper.CartMapper interface.
@@ -634,7 +634,7 @@ func (cart *cdf) HotLoad(data []byte) error {
 
 	cart.state.static.HotLoad(data)
 
-	cart.arm.Plumb(cart.state.static, cart)
+	cart.arm.Plumb(nil, cart.state.static, cart)
 	cart.arm.ClearCaches()
 
 	return nil

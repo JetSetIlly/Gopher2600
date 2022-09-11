@@ -320,14 +320,22 @@ func (arm *ARM) SetDeveloper(dev mapper.CartCoProcDeveloper) {
 
 // Snapshort makes a copy of the ARM. The copied instance will not be usable
 // until after a suitable call to Plumb().
-func (arm *ARM) Snapshot() *ARM {
-	a := *arm
+func (arm *ARM) Snapshot() *ARMState {
+	a := *arm.state
 	return &a
 }
 
 // Plumb should be used to update the shared memory reference.
 // Useful when used in conjunction with the rewind system.
-func (arm *ARM) Plumb(mem SharedMemory, hook CartridgeHook) {
+//
+// The ARMState argument can be nil as a special case. If it is nil then the
+// existing state does not change. For some cartridge mappers this is
+// acceptable and more convenient.
+func (arm *ARM) Plumb(state *ARMState, mem SharedMemory, hook CartridgeHook) {
+	if state != nil {
+		arm.state = state
+	}
+
 	arm.mem = mem
 	arm.hook = hook
 

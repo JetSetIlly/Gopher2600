@@ -48,6 +48,10 @@ type Elf struct {
 	// a TIA or RIOT address). this means that the arm is running unhindered
 	// and will not have yielded for that colour clock
 	parallelARM bool
+
+	// armState is a copy of the ARM's state at the moment of the most recent
+	// Snapshot. it's used only suring a Plumb() operation
+	armState *arm.ARMState
 }
 
 // NewElf is the preferred method of initialisation for the Elf type.
@@ -110,7 +114,7 @@ func (cart *Elf) ID() string {
 // Snapshot implements the mapper.CartMapper interface.
 func (cart *Elf) Snapshot() mapper.CartMapper {
 	n := *cart
-	n.arm = cart.arm.Snapshot()
+	n.armState = cart.arm.Snapshot()
 	n.mem = cart.mem.Snapshot()
 	return &n
 }
@@ -118,7 +122,7 @@ func (cart *Elf) Snapshot() mapper.CartMapper {
 // Plumb implements the mapper.CartMapper interface.
 func (cart *Elf) Plumb() {
 	cart.mem.Plumb(cart.arm)
-	cart.arm.Plumb(cart.mem, cart)
+	cart.arm.Plumb(cart.armState, cart.mem, cart)
 }
 
 // Reset implements the mapper.CartMapper interface.
