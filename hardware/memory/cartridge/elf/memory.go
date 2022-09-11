@@ -319,7 +319,7 @@ func newElfMemory(ef *elf.File) (*elfMemory, error) {
 
 					n := ef.Sections[sym.Section].Name
 					if p, ok := mem.sections[n]; !ok {
-						return nil, curated.Errorf("ELF: can not find section (%s) while relocation %s", p.name, sym.Name)
+						return nil, curated.Errorf("ELF: can not find section (%s) while relocating %s", n, sym.Name)
 					} else {
 						v = p.origin
 					}
@@ -375,7 +375,7 @@ func newElfMemory(ef *elf.File) (*elfMemory, error) {
 
 				n := ef.Sections[sym.Section].Name
 				if p, ok := mem.sections[n]; !ok {
-					return nil, curated.Errorf("ELF: can not find section (%s)", p.name)
+					return nil, curated.Errorf("ELF: can not find section (%s)", n)
 				} else {
 					v = p.origin
 				}

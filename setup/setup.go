@@ -66,7 +66,9 @@ func initDBSession(db *database.Session) error {
 func AttachCartridge(vcs *hardware.VCS, cartload cartridgeloader.Loader) error {
 	err := vcs.AttachCartridge(cartload)
 	if err != nil {
-		return curated.Errorf("setup: %v", err)
+		// not adding the "setup" prefix for this. the setup package has not
+		// added any value yet and it would just be noise
+		return err
 	}
 
 	dbPth, err := resources.JoinPath(setupDBFile)
