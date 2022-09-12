@@ -513,7 +513,10 @@ func (arm *ARM) thumb2DataProcessingNonImmediate(opcode uint16) {
 				arm.state.registers[Rd] = arm.state.registers[Rn] * arm.state.registers[Rm]
 			} else {
 				// "4.6.74 MLA" of "Thumb-2 Supplement"
-				panic("unhandled data processing instruction (MLA)")
+				arm.state.fudge_thumb2disassemble32bit = "MLA"
+				result := int(arm.state.registers[Rn]) * int(arm.state.registers[Rm])
+				result += int(arm.state.registers[Ra])
+				arm.state.registers[Rd] = uint32(result)
 			}
 		} else if op == 0b000 && op2 == 0b0001 {
 			// "4.6.75 MLS" of "Thumb-2 Supplement"
@@ -668,14 +671,14 @@ func (arm *ARM) thumb2DataProcessing(opcode uint16) {
 		// "Data processing instructions with modified 12-bit immediate"
 		// page 3-14 of "Thumb-2 Supplement"
 
-		i := (arm.state.function32bitOpcode & 0x0400) >> 10
 		op := (arm.state.function32bitOpcode & 0x01e0) >> 5
 		setFlags := (arm.state.function32bitOpcode & 0x0010) == 0x0010
 
 		Rn := arm.state.function32bitOpcode & 0x000f
-
-		imm3 := (opcode & 0x7000) >> 12
 		Rd := (opcode & 0x0f00) >> 8
+
+		i := (arm.state.function32bitOpcode & 0x0400) >> 10
+		imm3 := (opcode & 0x7000) >> 12
 		imm8 := opcode & 0x00ff
 		imm12 := (i << 11) | (imm3 << 8) | imm8
 
@@ -844,7 +847,49 @@ func (arm *ARM) thumb2DataProcessing(opcode uint16) {
 	} else if arm.state.function32bitOpcode&0xfb40 == 0xf200 {
 		// "Data processing instructions with plain 12-bit immediate"
 		// page 3-15 of "Thumb-2 Supplement"
-		panic("unimplemented 'data processing instructions with plain 12bit immediate'")
+
+		op := (arm.state.function32bitOpcode & 0x0080) >> 7
+		op2 := (arm.state.function32bitOpcode & 0x0030) >> 4
+
+		Rn := arm.state.function32bitOpcode & 0x000f
+		Rd := (opcode & 0x0f00) >> 8
+
+		i := (arm.state.function32bitOpcode & 0x0400) >> 10
+		imm3 := (opcode & 0x7000) >> 12
+		imm8 := opcode & 0x00ff
+		imm12 := (i << 11) | (imm3 << 8) | imm8
+		imm32 := uint32(imm12)
+
+		// status register doesn't change with these instructions
+
+		switch op {
+		case 0b0:
+			switch op2 {
+			case 0b00:
+				// "4.6.3 ADD (immediate) " of "Thumb-2 Supplement"
+				// T4 encoding (wide addition)
+				arm.state.fudge_thumb2disassemble32bit = "ADDW"
+
+				result, _, _ := AddWithCarry(arm.state.registers[Rn], imm32, 0)
+				arm.state.registers[Rd] = result
+
+			default:
+				panic(fmt.Sprintf("unimplemented 'data processing instructions with plain 12bit immediate (op=%01b op2=%02b)'", op, op2))
+			}
+		case 0b1:
+			switch op2 {
+			case 0b10:
+				// "4.6.176 SUB (immediate)" of "Thumb-2 Supplement"
+				// T4 encoding (immediate)
+				arm.state.fudge_thumb2disassemble32bit = "SUBW"
+
+				result, _, _ := AddWithCarry(arm.state.registers[Rn], ^imm32, 1)
+				arm.state.registers[Rd] = result
+			default:
+				panic(fmt.Sprintf("unimplemented 'data processing instructions with plain 12bit immediate (op=%01b op2=%02b)'", op, op2))
+			}
+		}
+
 	} else if arm.state.function32bitOpcode&0xfb40 == 0xf240 {
 		// "Data processing instructions with plain 16-bit immediate"
 		// page 3-15 of "Thumb-2 Supplement"
@@ -865,8 +910,10 @@ func (arm *ARM) thumb2DataProcessing(opcode uint16) {
 
 			imm32 := uint32((imm4 << 12) | (i << 11) | (imm3 << 8) | imm8)
 			arm.state.registers[Rd] = imm32
-		} else {
+		} else if op == 0b1 && op2 == 0b00 {
 			panic("unimplemented MOVT")
+		} else {
+			panic(fmt.Sprintf("unimplemented 'data processing instructions with plain 16bit immediate (op=%01b op2=%02b)'", op, op2))
 		}
 
 	} else if arm.state.function32bitOpcode&0xfb10 == 0xf300 {
