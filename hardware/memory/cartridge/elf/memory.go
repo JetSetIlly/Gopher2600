@@ -319,7 +319,9 @@ func newElfMemory(ef *elf.File) (*elfMemory, error) {
 
 					n := ef.Sections[sym.Section].Name
 					if p, ok := mem.sections[n]; !ok {
-						return nil, curated.Errorf("ELF: can not find section (%s) while relocating %s", n, sym.Name)
+						// ignore unknown sections
+						logger.Logf("ELF", "can not find section (%s) while relocating %s", n, sym.Name)
+						continue // for loop
 					} else {
 						v = p.origin
 					}
