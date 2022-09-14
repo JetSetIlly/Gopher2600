@@ -647,6 +647,17 @@ func (arm *ARM) thumb2LoadStoreDoubleEtc(opcode uint16) {
 			}
 			halfwords := arm.read8bit(idx)
 			arm.state.registers[rPC] += uint32(halfwords) << 1
+		case 0b0001:
+			// "4.6.189 TBH" of "Thumb-2 Supplement"
+			arm.state.fudge_thumb2disassemble32bit = "TBH"
+
+			Rm := opcode & 0x000f
+			idx := arm.state.registers[Rn] + (arm.state.registers[Rm] << 1)
+			if Rn == rPC || Rm == rPC {
+				idx -= 2
+			}
+			halfwords := arm.read16bit(idx)
+			arm.state.registers[rPC] += uint32(halfwords) << 1
 		default:
 			panic(fmt.Sprintf("unhandled load and store double and exclusive and table branch (load and store exclusive byte etc.) (%04b)", op))
 		}
@@ -669,7 +680,7 @@ func (arm *ARM) thumb2DataProcessing(opcode uint16) {
 
 	if arm.state.function32bitOpcode&0xfa00 == 0xf000 {
 		// "Data processing instructions with modified 12-bit immediate"
-		// page 3-14 of "Thumb-2 Supplement"
+		// page 3-14 of "Thumb-2 Supplement" (part of section 3.3.1)
 
 		op := (arm.state.function32bitOpcode & 0x01e0) >> 5
 		setFlags := (arm.state.function32bitOpcode & 0x0010) == 0x0010
@@ -846,7 +857,7 @@ func (arm *ARM) thumb2DataProcessing(opcode uint16) {
 		}
 	} else if arm.state.function32bitOpcode&0xfb40 == 0xf200 {
 		// "Data processing instructions with plain 12-bit immediate"
-		// page 3-15 of "Thumb-2 Supplement"
+		// page 3-15 of "Thumb-2 Supplement" (part of section 3.3.1)
 
 		op := (arm.state.function32bitOpcode & 0x0080) >> 7
 		op2 := (arm.state.function32bitOpcode & 0x0030) >> 4
@@ -892,7 +903,7 @@ func (arm *ARM) thumb2DataProcessing(opcode uint16) {
 
 	} else if arm.state.function32bitOpcode&0xfb40 == 0xf240 {
 		// "Data processing instructions with plain 16-bit immediate"
-		// page 3-15 of "Thumb-2 Supplement"
+		// page 3-15 of "Thumb-2 Supplement" (part of section 3.3.1)
 
 		op := (arm.state.function32bitOpcode & 0x0080) >> 7
 		op2 := (arm.state.function32bitOpcode & 0x0030) >> 4
@@ -918,7 +929,7 @@ func (arm *ARM) thumb2DataProcessing(opcode uint16) {
 
 	} else if arm.state.function32bitOpcode&0xfb10 == 0xf300 {
 		// "Data processing instructions, bitfield and saturate"
-		// page 3-16 of "Thumb-2 Supplement"
+		// page 3-16 of "Thumb-2 Supplement" (part of section 3.3.1)
 
 		op := (arm.state.function32bitOpcode & 0x00e0) >> 5
 		switch op {
@@ -1285,6 +1296,17 @@ func (arm *ARM) thumb2LoadStoreSingle(opcode uint16) {
 				if s {
 					// "4.6.61 LDRSB (register)" of "Thumb-2 Supplement"
 					arm.state.fudge_thumb2disassemble32bit = "LDRSB (register shifted)"
+					if arm.state.registers[Rt]&0x80 == 0x80 {
+						arm.state.registers[Rt] |= 0xffffff00
+					}
+				}
+			case 0b01:
+				// "4.6.57 LDRH (register)" of "Thumb-2 Supplement"
+				arm.state.fudge_thumb2disassemble32bit = "LDRH (register shifted)"
+				arm.state.registers[Rt] = uint32(arm.read16bit(addr))
+				if s {
+					// "4.6.65 LDRSH (register)" of "Thumb-2 Supplement"
+					arm.state.fudge_thumb2disassemble32bit = "LDRSH (register shifted)"
 					if arm.state.registers[Rt]&0x8000 == 0x8000 {
 						arm.state.registers[Rt] |= 0xffff0000
 					}
@@ -1297,7 +1319,25 @@ func (arm *ARM) thumb2LoadStoreSingle(opcode uint16) {
 				panic(fmt.Sprintf("unhandled size (%02b) for 'Rn + shifted register' (load)", size))
 			}
 		} else {
-			panic("unhandled save 'Rn + shifted register'")
+			switch size {
+			case 0b00:
+				// "4.6.165 STRB (register)" of "Thumb-2 Supplement"
+				// T2 encoding
+				arm.state.fudge_thumb2disassemble32bit = "STRB (register shifted)"
+				arm.write8bit(addr, uint8(arm.state.registers[Rt]))
+			case 0b01:
+				// "4.6.173 STRH (register)" of "Thumb-2 Supplement"
+				// T2 encoding
+				arm.state.fudge_thumb2disassemble32bit = "STRH (register shifted)"
+				arm.write16bit(addr, uint16(arm.state.registers[Rt]))
+			case 0b10:
+				// "4.6.163 STR (register)" of "Thumb-2 Supplement"
+				// T2 encoding
+				arm.state.fudge_thumb2disassemble32bit = "STR (register shifted)"
+				arm.write32bit(addr, arm.state.registers[Rt])
+			default:
+				panic(fmt.Sprintf("unhandled size (%02b) for 'Rn + shifted register' (save)", size))
+			}
 		}
 
 	} else {
