@@ -669,7 +669,7 @@ func (arm *ARM) thumb2LoadStoreDoubleEtc(opcode uint16) {
 
 func (arm *ARM) thumb2BranchesORDataProcessing(opcode uint16) {
 	if opcode&0x8000 == 0x8000 {
-		arm.thumb2BranchesMiscControl(opcode)
+		arm.thumb2BranchesORMiscControl(opcode)
 	} else {
 		arm.thumb2DataProcessing(opcode)
 	}
@@ -1560,14 +1560,44 @@ func (arm *ARM) thumb2LoadStoreMultiple(opcode uint16) {
 	}
 }
 
-func (arm *ARM) thumb2BranchesMiscControl(opcode uint16) {
+func (arm *ARM) thumb2BranchesORMiscControl(opcode uint16) {
 	// "3.3.6 Branches, miscellaneous control instructions" of "Thumb-2 Supplement"
 
-	if opcode&0xd000 == 0xd000 {
-		arm.thumb2LongBranchWithLink(opcode)
-	} else if opcode&0xd000 == 0x8000 {
+	if arm.state.function32bitOpcode&0xffe0 == 0xf3e0 {
+		panic("move to register from status")
+	} else if arm.state.function32bitOpcode&0xfff0 == 0xf3d0 {
+		panic("exception return")
+	} else if arm.state.function32bitOpcode&0xfff0 == 0xf3c0 {
+		panic("branch, change to java")
+	} else if arm.state.function32bitOpcode&0xfff0 == 0xf3b0 {
+		panic("special control operations")
+	} else if arm.state.function32bitOpcode&0xfff0 == 0xf3a0 {
+		imodM := (opcode & 0x0700) >> 8
+		if imodM == 0b000 {
+			panic("NOP, hints")
+		} else {
+			panic("change processor state")
+		}
+	} else if arm.state.function32bitOpcode&0xffe0 == 0xf380 {
+		panic("move to status from register")
+	} else if arm.state.function32bitOpcode&0xf800 == 0xf000 {
+		arm.thumb2Branches(opcode)
+	} else {
+		panic(fmt.Sprintf("unimplemented branches, miscellaneous control instructions"))
+	}
+}
+
+func (arm *ARM) thumb2Branches(opcode uint16) {
+	// "3.3.6 Branches, miscellaneous control instructions" of "Thumb-2 Supplement"
+	//
+	// branches are in the top half of the table and are differentiated by the
+	// second half of the instruction (ie. the opcode argument to this
+	// function)
+
+	if opcode&0xd000 == 0x8000 {
 		// "4.6.12 B" of "Thumb-2 Supplement"
 		// T3 encoding
+		// Conditional Branch
 		arm.state.fudge_thumb2disassemble32bit = "B (cond)"
 
 		// make sure we're working with 32bit immediate numbers so that we don't
@@ -1588,27 +1618,66 @@ func (arm *ARM) thumb2BranchesMiscControl(opcode uint16) {
 		if arm.state.status.condition(uint8(cond)) {
 			arm.state.registers[rPC] += imm32
 		}
+
+	} else if opcode&0xd000 == 0xc000 {
+		if opcode&0x01 == 0x01 {
+			panic("reserved branch instruction")
+		}
+		panic("branch with link, chage to ARM")
+
+	} else if opcode&0xd000 == 0xd000 {
+		// "4.6.18 BL, BLX (immediate)" of "Thumb-2 Supplment"
+		// T1 encoding
+		// Long Branch With link
+		arm.state.fudge_thumb2disassemble32bit = "BL"
+
+		// record PC in link register
+		arm.state.registers[rLR] = (arm.state.registers[rPC]-2)&0xfffffffe | 0x00000001
+
+		// make sure we're working with 32bit immediate numbers so that we don't
+		// drop bits when shifting
+		s := uint32((arm.state.function32bitOpcode & 0x400) >> 10)
+		j1 := uint32((opcode & 0x2000) >> 13)
+		j2 := uint32((opcode & 0x800) >> 11)
+		i1 := (^(j1 ^ s)) & 0x01
+		i2 := (^(j2 ^ s)) & 0x01
+		imm10 := uint32(arm.state.function32bitOpcode & 0x3ff)
+		imm11 := uint32(opcode & 0x7ff)
+
+		// immediate 32bit value is sign extended
+		imm32 := (s << 24) | (i1 << 23) | (i2 << 22) | (imm10 << 12) | (imm11 << 1)
+		if s == 0x01 {
+			imm32 |= 0xff000000
+		}
+
+		// adjust PC
+		arm.state.registers[rPC] += imm32
+
+	} else if opcode&0xd000 == 0x9000 {
+		// "4.6.12 B" of "Thumb-2 Supplement"
+		// T4 encoding
+		arm.state.fudge_thumb2disassemble32bit = "B (non-cond)"
+
+		// make sure we're working with 32bit immediate numbers so that we don't
+		// drop bits when shifting
+		s := uint32((arm.state.function32bitOpcode & 0x400) >> 10)
+		j1 := uint32((opcode & 0x2000) >> 13)
+		j2 := uint32((opcode & 0x800) >> 11)
+		i1 := (^(j1 ^ s)) & 0x01
+		i2 := (^(j2 ^ s)) & 0x01
+		imm10 := uint32(arm.state.function32bitOpcode & 0x3ff)
+		imm11 := uint32(opcode & 0x7ff)
+
+		// immediate 32bit value is sign extended
+		imm32 := (s << 24) | (i1 << 23) | (i2 << 22) | (imm10 << 12) | (imm11 << 1)
+		if s == 0x01 {
+			imm32 |= 0xff000000
+		}
+
+		// adjust PC
+		arm.state.registers[rPC] += imm32
+
 	} else {
-		panic("unimplemented branches, miscellaneous control instructions")
+		panic(fmt.Sprintf("unimplemented branches, miscellaneous control instructions"))
 	}
-}
-
-func (arm *ARM) thumb2LongBranchWithLink(opcode uint16) {
-	// details in "A7.7.18 BL" of "ARMv7-M"
-	arm.state.fudge_thumb2disassemble32bit = "BL"
-
-	arm.state.registers[rLR] = (arm.state.registers[rPC]-2)&0xfffffffe | 0x00000001
-
-	// make sure we're working with 32bit immediate numbers so that we don't
-	// drop bits when shifting
-	s := uint32((arm.state.function32bitOpcode & 0x400) >> 10)
-	j1 := uint32((opcode & 0x2000) >> 13)
-	j2 := uint32((opcode & 0x800) >> 11)
-	i1 := (^(j1 ^ s)) & 0x01
-	i2 := (^(j2 ^ s)) & 0x01
-	imm10 := uint32(arm.state.function32bitOpcode & 0x3ff)
-	imm11 := uint32(opcode & 0x7ff)
-	imm32 := (i1 << 23) | (i2 << 22) | (imm10 << 12) | (imm11 << 1)
-	imm32 = imm32 | (s << 24) | (s << 25) | (s << 26) | (s << 27) | (s << 28) | (s << 29) | (s << 30) | (s << 31)
-	arm.state.registers[rPC] += imm32
 }
