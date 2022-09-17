@@ -1272,6 +1272,16 @@ func (arm *ARM) thumb2LoadStoreSingle(opcode uint16) {
 				arm.state.fudge_thumb2disassemble32bit = "STRH (immediate pre-index)"
 				arm.write16bit(addr, uint16(arm.state.registers[Rt]))
 			}
+		case 0b10:
+			if l {
+				// "4.6.43 LDR (immediate)" of "Thumb-2 Supplement"
+				arm.state.fudge_thumb2disassemble32bit = "LDR (immediate offset)"
+				arm.state.registers[Rt] = arm.read32bit(addr)
+			} else {
+				// "4.6.162 STR (immediate)" of "Thumb-2 Supplement"
+				arm.state.fudge_thumb2disassemble32bit = "STR (immediate offset)"
+				arm.write32bit(addr, arm.state.registers[Rt])
+			}
 		default:
 			panic(fmt.Sprintf("unhandled size (%02b) for 'Rn +/- imm8'", size))
 		}
