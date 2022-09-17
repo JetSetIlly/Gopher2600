@@ -42,8 +42,9 @@ const (
 // the maximum number of cycles allowed in a single ARM program execution.
 // no idea if this value is sufficient.
 //
-// 03/02/2022 - raised to accomodate CDFJBoulderDash development
-const cycleLimit = 1000000
+// 03/02/2022 - raised to 1000000 to accomodate CDFJBoulderDash development
+// 17/09/2022 - raised to 1500000 for marcoj's RPG game
+const cycleLimit = 1500000
 
 // the maximum number of instructions to execute. like cycleLimit but for when
 // running in immediate mode

@@ -17,6 +17,8 @@
 
 package arm
 
+import "fmt"
+
 func (arm *ARM) thumb2Coprocessor(opcode uint16) {
 	// the normal method for dividing the opcode for a thumb instruction is not
 	// used for the coprocesor group of instructions.
@@ -56,11 +58,86 @@ func (arm *ARM) thumb2Coprocessor(opcode uint16) {
 	// memory in a different byte order from ARM instructions. See Instruction
 	// alignment and byte ordering on page 2-13 for details.
 
-	// op := (opcode & 0x0010) >> 4
-	// op1 := (arm.state.function32bitOpcode & 0x03f0) >> 4
-	// coproc := (opcode & 0xf00) >> 8
-	// fmt.Printf("coproc: %04b op: %01b op1: %06b\n", coproc, op, op1)
+	// only supporting the FPU for now. the remainder of this function
+	// concentrates on the following text:
+	//
+	// "Chapter A6 The Floating-point Instruction Set Encoding" of "ARMv7-M"
+	coproc := (opcode & 0xf00) >> 8
 
-	// temporary disasm tag
-	arm.state.fudge_thumb2disassemble32bit = "coproc"
+	// the coproc value for the FPU is either 1010 or 1011. panic for any other value
+	if coproc&0b1110 != 0b1010 {
+		fmt.Printf("%16b %16b\n", arm.state.function32bitOpcode, opcode)
+		fmt.Printf("%04x %04x\n", arm.state.function32bitOpcode, opcode)
+		panic(fmt.Sprintf("unsupported coproc (%04b)", coproc))
+	}
+
+	// T bit
+	// T := (arm.state.function32bitOpcode & 0x1000) >> 12
+
+	if arm.state.function32bitOpcode&0x0fe0 == 0x0c44 {
+		// "A6.7 64-bit transfers between Arm core and extension registers" of "ARMv7-M"
+		panic("unimplemented FPU 64bit transfer instruction")
+	} else if arm.state.function32bitOpcode&0x0f00 == 0x0e00 && opcode&0x0010 == 0x0010 {
+		// "A6.6 32-bit transfer between ARM core and extension registers" of "ARM-v7-M"
+		L := (arm.state.function32bitOpcode & 0x0010) >> 4
+		A := (arm.state.function32bitOpcode & 0x00e0) >> 5
+		// C := (opcode & 0x100) >> 8
+
+		if A == 0b111 {
+			panic("unimplemented 32-bit transfer between ARM core and extension registers")
+		} else {
+			// "A7.7.243 VMOV (between Arm core register and single-precision register)" of "ARMv7-M"
+			arm.state.fudge_thumb2disassemble32bit = "VMOV"
+
+			// Vn := arm.state.function32bitOpcode & 0x000f
+			Rt := (opcode & 0xf000) >> 12
+			// N := (opcode && 0x0080) >> 7
+			// Sn := (Vn << 1) | N
+
+			// L is labelled op in the actual instruction defintion
+			if L == 0b1 {
+				// this should be copying the Sn "scalar" register to the
+				// ARM register. for now we'll just copy a zero value
+				arm.state.registers[Rt] = 0
+			} else {
+				// this should be copying the Rt ARM register to the Sn
+				// "scalar" register. for now we'll do nothing
+			}
+		}
+
+	} else if arm.state.function32bitOpcode&0x0f00 == 0x0e00 && opcode&0x0010 != 0x0010 {
+		// "A6.4 Floating-point data-processing instructions" of "ARMv7-M"
+
+		// assume everything will just result in zero values for now
+	} else if arm.state.function32bitOpcode&0x0c00 == 0x0c00 {
+		// "A6.5 Extension register load or store instructions" of "ARMv7-M"
+		opcode := (arm.state.function32bitOpcode & 0x01f0) >> 4
+		Rn := arm.state.function32bitOpcode & 0x000f
+
+		switch opcode & 0b11011 {
+		case 0b10010:
+			switch Rn {
+			case 0b1101:
+				arm.state.fudge_thumb2disassemble32bit = "VPUSH"
+			default:
+				panic("unimplemented FPU register load/save instruction (VSTM)")
+			}
+		case 0b10001:
+			fallthrough
+		case 0b11001:
+			arm.state.fudge_thumb2disassemble32bit = "VLDR"
+		case 0b01011:
+			switch Rn {
+			case 0b1101:
+				panic("unimplemented FPU register load/save instruction (VPOP)")
+			default:
+				arm.state.fudge_thumb2disassemble32bit = "VLDM"
+			}
+		default:
+			panic("unimplemented FPU register load/save instruction")
+		}
+	} else {
+		panic("undecoded FPU instruction")
+	}
+
 }
