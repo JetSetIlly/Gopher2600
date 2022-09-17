@@ -90,10 +90,36 @@ func (arm *ARM) thumb2DataProcessingNonImmediate(opcode uint16) {
 				switch typ {
 				case 0b00:
 					// with logical left shift
+
+					// carry bit
 					m := uint32(0x01) << (32 - imm5)
 					carry := arm.state.registers[Rm]&m == m
+
+					// perform shift
 					shifted := arm.state.registers[Rm] << imm5
+
+					// perform AND
 					arm.state.registers[Rd] = arm.state.registers[Rn] & shifted
+
+					if setFlags {
+						arm.state.status.isNegative(arm.state.registers[Rd])
+						arm.state.status.isZero(arm.state.registers[Rd])
+						arm.state.status.setCarry(carry)
+						// overflow unchanged
+					}
+				case 0b01:
+					// with logical right shift
+
+					// carry bit
+					m := uint32(0x01) << (imm5 - 1)
+					carry := arm.state.registers[Rm]&m == m
+
+					// perform shift
+					shifted := (arm.state.registers[Rm] >> imm5)
+
+					// perform AND
+					arm.state.registers[Rd] = arm.state.registers[Rn] & shifted
+
 					if setFlags {
 						arm.state.status.isNegative(arm.state.registers[Rd])
 						arm.state.status.isZero(arm.state.registers[Rd])
@@ -111,10 +137,17 @@ func (arm *ARM) thumb2DataProcessingNonImmediate(opcode uint16) {
 			switch typ {
 			case 0b00:
 				// with logical left shift
+
+				// carry bit
 				m := uint32(0x01) << (32 - imm5)
 				carry := arm.state.registers[Rm]&m == m
+
+				// perform shift
 				shifted := arm.state.registers[Rm] << imm5
+
+				// perform bit clear
 				arm.state.registers[Rd] = arm.state.registers[Rn] & ^shifted
+
 				if setFlags {
 					arm.state.status.isNegative(arm.state.registers[Rd])
 					arm.state.status.isZero(arm.state.registers[Rd])
@@ -123,15 +156,19 @@ func (arm *ARM) thumb2DataProcessingNonImmediate(opcode uint16) {
 				}
 			case 0b10:
 				// with arithmetic right shift
+
+				// carry bit
 				m := uint32(0x01) << (imm5 - 1)
 				carry := arm.state.registers[Rm]&m == m
 
+				// perform shift (with sign extension)
 				signExtend := (arm.state.registers[Rm] & 0x80000000) >> 31
 				shifted := arm.state.registers[Rm] >> imm5
 				if signExtend == 0x01 {
 					shifted |= ^uint32(0) << (32 - imm5)
 				}
 
+				// perform bit clear
 				arm.state.registers[Rd] = arm.state.registers[Rn] & ^shifted
 
 				if setFlags {
@@ -152,7 +189,21 @@ func (arm *ARM) thumb2DataProcessingNonImmediate(opcode uint16) {
 				switch typ {
 				case 0b00:
 					if imm5 == 0b00000 {
-						panic("move (register)")
+						// "4.6.77 MOV (register)" of "Thumb-2 Supplement"
+						// T3 encoding
+						arm.state.fudge_thumb2disassemble32bit = "MOV (register)"
+						arm.state.registers[Rd] = arm.state.registers[Rm]
+						if setFlags {
+							arm.state.status.isNegative(arm.state.registers[Rd])
+							arm.state.status.isZero(arm.state.registers[Rd])
+
+							// carry unchanged. there is a mistake in the
+							// Thumb-2 Supplement but it is clear from the
+							// ARMv7-M that carry is not affected by this
+							// instruction
+
+							// overflow unchanged
+						}
 					} else {
 						// "4.6.68 LSL (immediate)" of "Thumb-2 Supplement"
 						// T2 encoding
@@ -214,39 +265,76 @@ func (arm *ARM) thumb2DataProcessingNonImmediate(opcode uint16) {
 					panic(fmt.Sprintf("unhandled data processing instructions, non immediate (data processing, constant shift) (%04b) (%02b)", op, typ))
 				}
 			} else {
-				panic("ORR")
+				// "4.6.92 ORR (register)" of "Thumb-2 Supplement"
+				arm.state.fudge_thumb2disassemble32bit = "ORR (register)"
+
+				var carry bool
+				var result uint32
+
+				switch typ {
+				case 0b00:
+					// with logical left shift
+					m := uint32(0x01) << (32 - imm5)
+					carry = arm.state.registers[Rm]&m == m
+					result = arm.state.registers[Rn] | (arm.state.registers[Rm] << imm5)
+				case 0b01:
+					// with logical right shift
+					m := uint32(0x01) << (imm5 - 1)
+					carry = arm.state.registers[Rm]&m == m
+					result = arm.state.registers[Rn] | (arm.state.registers[Rm] >> imm5)
+				default:
+					panic(fmt.Sprintf("unhandled data processing instructions, non immediate (data processing, constant shift) (%04b) (%02b)", op, typ))
+				}
+
+				if setFlags {
+					arm.state.status.isNegative(result)
+					arm.state.status.isZero(result)
+					arm.state.status.setCarry(carry)
+					// overflow unchanged
+				}
 			}
 
 		case 0b0100:
+			// two very similar instructions for this opcode
+			//
+			// "4.6.191 TEQ (register)" of "Thumb-2 Supplement"
+			// T1 encoding
+			//
+			// and
+			//
 			// "4.6.37 EOR (register)" of "Thumb-2 Supplement
 			// T2 encoding
-			arm.state.fudge_thumb2disassemble32bit = "EOR"
+
+			var carry bool
+			var result uint32
 
 			switch typ {
 			case 0b00:
 				// with logical left shift
 				m := uint32(0x01) << (32 - imm5)
-				carry := arm.state.registers[Rm]&m == m
-				arm.state.registers[Rd] = arm.state.registers[Rn] ^ (arm.state.registers[Rm] << imm5)
-				if setFlags {
-					arm.state.status.isNegative(arm.state.registers[Rd])
-					arm.state.status.isZero(arm.state.registers[Rd])
-					arm.state.status.setCarry(carry)
-					// overflow unchanged
-				}
+				carry = arm.state.registers[Rm]&m == m
+				result = arm.state.registers[Rn] ^ (arm.state.registers[Rm] << imm5)
 			case 0b01:
 				// with logical right shift
 				m := uint32(0x01) << (imm5 - 1)
-				carry := arm.state.registers[Rm]&m == m
-				arm.state.registers[Rd] = arm.state.registers[Rn] ^ (arm.state.registers[Rm] >> imm5)
-				if setFlags {
-					arm.state.status.isNegative(arm.state.registers[Rd])
-					arm.state.status.isZero(arm.state.registers[Rd])
-					arm.state.status.setCarry(carry)
-					// overflow unchanged
-				}
+				carry = arm.state.registers[Rm]&m == m
+				result = arm.state.registers[Rn] ^ (arm.state.registers[Rm] >> imm5)
 			default:
 				panic(fmt.Sprintf("unhandled data processing instructions, non immediate (data processing, constant shift) (%04b) (%02b)", op, typ))
+			}
+
+			if Rd == rPC && setFlags {
+				arm.state.fudge_thumb2disassemble32bit = "TEQ (register)"
+			} else {
+				arm.state.fudge_thumb2disassemble32bit = "EOR (register)"
+				arm.state.registers[Rd] = result
+			}
+
+			if setFlags {
+				arm.state.status.isNegative(result)
+				arm.state.status.isZero(result)
+				arm.state.status.setCarry(carry)
+				// overflow unchanged
 			}
 
 		case 0b1000:
@@ -287,6 +375,34 @@ func (arm *ARM) thumb2DataProcessingNonImmediate(opcode uint16) {
 				default:
 					panic(fmt.Sprintf("unhandled data processing instructions, non immediate (data processing, constant shift) (%04b) (%02b) ADD", op, typ))
 				}
+			}
+
+		case 0b1010:
+			// "4.6.2 ADC (register)" of "Thumb-2 Supplement")
+			// T2 encoding
+			arm.state.fudge_thumb2disassemble32bit = "ADC (register)"
+
+			switch typ {
+			case 0b00:
+				// with logical left shift
+				shifted := arm.state.registers[Rm] << imm5
+
+				// carry value taken from carry bit in status register
+				var c uint32
+				if arm.state.status.carry {
+					c = 1
+				}
+
+				result, carry, overflow := AddWithCarry(arm.state.registers[Rn], ^shifted, c)
+				arm.state.registers[Rd] = result
+				if setFlags {
+					arm.state.status.isNegative(result)
+					arm.state.status.isZero(result)
+					arm.state.status.setCarry(carry)
+					arm.state.status.setOverflow(overflow)
+				}
+			default:
+				panic(fmt.Sprintf("unhandled data processing instructions, non immediate (data processing, constant shift) (%04b) (%02b) ADC", op, typ))
 			}
 
 		case 0b1101:
@@ -402,6 +518,24 @@ func (arm *ARM) thumb2DataProcessingNonImmediate(opcode uint16) {
 			shift := arm.state.registers[Rm] & 0x00ff
 
 			switch op {
+			case 0b00:
+				// "4.6.69 LSL (register)" of "Thumb-2 Supplement"
+				arm.state.fudge_thumb2disassemble32bit = "LSL (register)"
+
+				// whether to set carry bit
+				m := uint32(0x01) << (32 - shift)
+				carry := arm.state.registers[Rm]&m == m
+
+				// perform actual shift
+				arm.state.registers[Rd] = arm.state.registers[Rm] << shift
+
+				if setFlags {
+					arm.state.status.isNegative(arm.state.registers[Rd])
+					arm.state.status.isZero(arm.state.registers[Rd])
+					arm.state.status.setCarry(carry)
+					// overflow unchanged
+				}
+
 			case 0b01:
 				// "4.6.71 LSR (register)" of "Thumb-2 Supplement"
 				arm.state.fudge_thumb2disassemble32bit = "LSR (register)"
@@ -700,9 +834,9 @@ func (arm *ARM) thumb2DataProcessing(opcode uint16) {
 
 		switch op {
 		case 0b0000:
-			if Rd == 0b1111 {
+			if Rd == 0b1111 && setFlags {
 				// "4.6.192 TST (immediate)" of "Thumb-2 Supplement"
-				arm.state.fudge_thumb2disassemble32bit = "TST"
+				arm.state.fudge_thumb2disassemble32bit = "TST (immediate)"
 
 				result := arm.state.registers[Rn] & imm32
 				if setFlags {
@@ -713,7 +847,7 @@ func (arm *ARM) thumb2DataProcessing(opcode uint16) {
 				}
 			} else {
 				// "4.6.8 AND (immediate)" of "Thumb-2 Supplement"
-				arm.state.fudge_thumb2disassemble32bit = "AND"
+				arm.state.fudge_thumb2disassemble32bit = "AND (immediate)"
 
 				arm.state.registers[Rd] = arm.state.registers[Rn] & imm32
 				if setFlags {
@@ -722,6 +856,18 @@ func (arm *ARM) thumb2DataProcessing(opcode uint16) {
 					arm.state.status.setCarry(carry)
 					// overflow unchanged
 				}
+			}
+
+		case 0b0001:
+			// "4.6.15 BIC (immediate)" of "Thumb-2 Supplement"
+			// T1 encoding
+			arm.state.fudge_thumb2disassemble32bit = "BIC (immediate)"
+			arm.state.registers[Rd] = arm.state.registers[Rn] & ^imm32
+			if setFlags {
+				arm.state.status.isNegative(arm.state.registers[Rd])
+				arm.state.status.isZero(arm.state.registers[Rd])
+				arm.state.status.setCarry(carry)
+				// overflow unchanged
 			}
 
 		case 0b0010:
@@ -778,13 +924,20 @@ func (arm *ARM) thumb2DataProcessing(opcode uint16) {
 			}
 
 		case 0b0100:
-			// "4.6.36 EOR (immediate)" of "Thumb-2 Supplement"
-			arm.state.fudge_thumb2disassemble32bit = "EOR (immediate)"
+			result := arm.state.registers[Rn] ^ imm32
 
-			arm.state.registers[Rd] = arm.state.registers[Rn] ^ imm32
+			if Rd == 0b1111 && setFlags {
+				// "4.6.190 TEQ (immediate)" of "Thumb-2 Supplement"
+				arm.state.fudge_thumb2disassemble32bit = "TEQ (immediate)"
+			} else {
+				// "4.6.36 EOR (immediate)" of "Thumb-2 Supplement"
+				arm.state.fudge_thumb2disassemble32bit = "EOR (immediate)"
+				arm.state.registers[Rd] = result
+			}
+
 			if setFlags {
-				arm.state.status.isNegative(arm.state.registers[Rd])
-				arm.state.status.isZero(arm.state.registers[Rd])
+				arm.state.status.isNegative(result)
+				arm.state.status.isZero(result)
 				arm.state.status.setCarry(carry)
 				// overflow unchanged
 			}
