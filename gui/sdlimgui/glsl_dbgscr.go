@@ -114,7 +114,7 @@ func newDbgScrShader(img *SdlImgui) shaderProgram {
 	sh := &dbgScrShader{
 		img: img,
 	}
-	sh.crt = newCRTSequencer(img, false)
+	sh.crt = newCRTSequencer(img)
 	sh.createProgram(string(shaders.StraightVertexShader), string(shaders.DbgScrHelpersShader), string(shaders.DbgScrShader))
 	sh.dbgScrHelper.get(sh.shader)
 
@@ -171,7 +171,13 @@ func (sh *dbgScrShader) setAttributes(env shaderEnvironment) {
 		// something for the future.
 		env.srcTextureID = sh.img.wm.dbgScr.displayTexture
 
-		env.srcTextureID = sh.crt.process(env, true, true, false, sh.img.wm.dbgScr.numScanlines, specification.ClksVisible, sh.img.wm.dbgScr)
+		prefs := newCrtSeqPrefs(sh.img.crtPrefs)
+		prefs.Enabled = true
+		prefs.Bevel = false
+
+		env.srcTextureID = sh.crt.process(env, true, false,
+			sh.img.wm.dbgScr.numScanlines, specification.ClksVisible,
+			sh.img.wm.dbgScr, prefs)
 	} else {
 		// if crtPreview is disabled we still go through the crt process. we do
 		// this for two reasons.
@@ -183,7 +189,13 @@ func (sh *dbgScrShader) setAttributes(env shaderEnvironment) {
 		//
 		// note that we specify integer scaling for the non-CRT preview image,
 		// this is so that the overlay is aligned properly with the TV image
-		env.srcTextureID = sh.crt.process(env, true, false, true, sh.img.wm.dbgScr.numScanlines, specification.ClksVisible, sh.img.wm.dbgScr)
+
+		prefs := newCrtSeqPrefs(sh.img.crtPrefs)
+		prefs.Enabled = false
+
+		env.srcTextureID = sh.crt.process(env, true, true,
+			sh.img.wm.dbgScr.numScanlines, specification.ClksVisible,
+			sh.img.wm.dbgScr, prefs)
 	}
 
 	sh.shader.setAttributes(env)

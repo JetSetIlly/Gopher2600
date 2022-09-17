@@ -100,14 +100,17 @@ func (seq *Sequence) bind(idxTexture int) uint32 {
 }
 
 // Clear texture. Black pixels.
-func (seq *Sequence) Clear(idxTexture int) uint32 {
+func (seq *Sequence) Clear(idxTexture int) {
+	if len(seq.emptyPixels) == 0 {
+		return
+	}
+
 	id := seq.bind(idxTexture)
 	gl.BindTexture(gl.TEXTURE_2D, id)
 	gl.TexImage2D(gl.TEXTURE_2D, 0,
 		gl.RGBA, seq.width, seq.height, 0,
 		gl.RGBA, gl.UNSIGNED_BYTE,
 		gl.Ptr(seq.emptyPixels))
-	return id
 }
 
 // Process assigns the texture related to idxTexture to the framebuffer and runs

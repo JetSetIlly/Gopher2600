@@ -17,255 +17,143 @@ package sdlimgui
 
 import (
 	"fmt"
+	"image"
+	"image/jpeg"
+	"os"
 
-	"github.com/jetsetilly/gopher2600/gui/sdlimgui/framebuffer"
+	"github.com/go-gl/gl/v3.2-core/gl"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
+	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/resources/unique"
 )
 
 type screenshotMode int
 
 const (
-	modeSingle screenshotMode = iota
-	modeDouble
-	modeTriple
+	modeShort screenshotMode = iota
+	modeLong
+	modeVeryLong
 )
 
 type screenshotSequencer struct {
-	seq *framebuffer.Sequence
 	img *SdlImgui
+	crt *crtSequencer
 
-	scalingShader         shaderProgram
-	phosphorShader        shaderProgram
-	blackCorrectionShader shaderProgram
-	blurShader            shaderProgram
-	ghostingShader        shaderProgram
-	blendShader           shaderProgram
-	effectsShaderFlipped  shaderProgram
-	colorShaderFlipped    shaderProgram
+	mode       screenshotMode
+	exposureCt int
 
-	mode screenshotMode
-
-	exposureLength int
-	exposureCt     int
-	crtProcessing  bool
-	baseFilename   string
+	prefs        crtSeqPrefs
+	baseFilename string
 }
 
 func newscreenshotSequencer(img *SdlImgui) *screenshotSequencer {
 	sh := &screenshotSequencer{
-		img:                   img,
-		seq:                   framebuffer.NewSequence(6),
-		scalingShader:         newScalingShader(),
-		phosphorShader:        newPhosphorShader(img),
-		blackCorrectionShader: newBlackCorrectionShader(),
-		blurShader:            newBlurShader(),
-		ghostingShader:        newGhostingShader(img),
-		blendShader:           newBlendShader(),
-		effectsShaderFlipped:  newEffectsShader(img, true, false),
-		colorShaderFlipped:    newColorShader(true),
+		img: img,
+		crt: newCRTSequencer(img),
 	}
 	return sh
 }
 
 func (sh *screenshotSequencer) destroy() {
-	sh.seq.Destroy()
-	sh.scalingShader.destroy()
-	sh.phosphorShader.destroy()
-	sh.blackCorrectionShader.destroy()
-	sh.blurShader.destroy()
-	sh.ghostingShader.destroy()
-	sh.blendShader.destroy()
-	sh.effectsShaderFlipped.destroy()
-	sh.colorShaderFlipped.destroy()
+	sh.crt.destroy()
 }
 
 func (sh *screenshotSequencer) startProcess(mode screenshotMode) {
 	sh.mode = mode
 
-	// give the process() function some time to accumulate a suitable phosphor
-	// texture etc.
-	sh.exposureCt = -3
+	// the tag to indicate exposure time in the filename
+	var exposureTag string
+
+	// change the crt prefers as appropriate
+	sh.prefs = newCrtSeqPrefs(sh.img.crtPrefs)
 
 	switch sh.mode {
-	case modeSingle:
-		sh.exposureLength = 1
-	case modeDouble:
-		sh.exposureLength = 5
-	case modeTriple:
-		sh.exposureLength = 5
+	case modeShort:
+		exposureTag = "short"
+		sh.exposureCt = 3
+	case modeLong:
+		exposureTag = "long"
+		sh.exposureCt = 4
+		sh.prefs.PhosphorLatency *= 1.25
+		sh.prefs.PhosphorBloom *= 1.1
+		sh.prefs.PixelPerfectFade *= 1.25
+	case modeVeryLong:
+		exposureTag = "verylong"
+		sh.exposureCt = 5
+		sh.prefs.PhosphorLatency *= 1.5
+		sh.prefs.PhosphorBloom *= 1.2
+		sh.prefs.PixelPerfectFade *= 1.5
 	}
 
-	sh.crtProcessing = sh.img.crtPrefs.Enabled.Get().(bool)
-	if sh.crtProcessing {
-		sh.baseFilename = unique.Filename("crt", sh.img.vcs.Mem.Cart.ShortName)
-	} else {
-		sh.baseFilename = unique.Filename("pix", sh.img.vcs.Mem.Cart.ShortName)
+	// make sure values have not got too large
+	if sh.prefs.PhosphorLatency > 1.0 {
+		sh.prefs.PhosphorLatency = 1.0
 	}
+	if sh.prefs.PhosphorBloom > 1.0 {
+		sh.prefs.PhosphorBloom = 1.0
+	}
+	if sh.prefs.PixelPerfectFade > 1.0 {
+		sh.prefs.PixelPerfectFade = 1.0
+	}
+
+	if sh.img.crtPrefs.Enabled.Get().(bool) {
+		sh.baseFilename = unique.Filename(fmt.Sprintf("crt_%s", exposureTag), sh.img.vcs.Mem.Cart.ShortName)
+	} else {
+		sh.baseFilename = unique.Filename(fmt.Sprintf("pix_%s", exposureTag), sh.img.vcs.Mem.Cart.ShortName)
+	}
+	sh.baseFilename = fmt.Sprintf("%s.jpg", sh.baseFilename)
+
+	sh.crt.flushPhosphor()
 }
 
 func (sh *screenshotSequencer) process(env shaderEnvironment, scalingImage scalingImage) {
-	const (
-		// an accumulation of consecutive frames producing a phosphor effect
-		phosphor = iota
-
-		// storage for the initial processing step (ghosting filter)
-		processedSrc
-
-		// the working screenshot texture
-		working
-
-		// the final screenshot image
-		final
-
-		// start of raw pixels from previous frames
-		prev
-	)
-
-	// nothing to do
-	if sh.exposureCt >= sh.exposureLength {
+	if sh.exposureCt <= 0 {
 		return
 	}
 
-	_ = sh.seq.Setup(env.width, env.height)
+	textureID := sh.crt.process(env, true, false,
+		sh.img.playScr.visibleScanlines, specification.ClksVisible,
+		sh.img.playScr, sh.prefs)
 
-	env.useInternalProj = true
+	sh.exposureCt--
+	if sh.exposureCt == 0 {
+		sh.SaveJPEG(textureID, sh.baseFilename, sh.img.playScr)
+	}
+}
 
-	// scale image
-	if scalingImage != nil {
-		env.srcTextureID = sh.seq.Process(processedSrc, func() {
-			sh.scalingShader.(*scalingShader).setAttributesArgs(env, scalingImage, false)
-			env.draw()
-		})
+// SavesJPEG writes the texture to the specified path.
+func (sh *screenshotSequencer) SaveJPEG(textureID uint32, path string, scalingImage scalingImage) {
+	_, width, height := scalingImage.scaledTextureSpec()
+	img := image.NewRGBA(image.Rect(0, 0, int(width), int(height)))
+	if img == nil {
+		logger.Log("screenshot", "save failed: cannot allocate image data")
 	}
 
-	// apply ghosting filter to texture. this is useful for the zookeeper brick effect
-	if sh.crtProcessing && sh.img.crtPrefs.Ghosting.Get().(bool) {
-		env.srcTextureID = sh.seq.Process(processedSrc, func() {
-			sh.ghostingShader.(*ghostingShader).setAttributesArgs(env, float32(sh.img.crtPrefs.GhostingAmount.Get().(float64)))
-			env.draw()
-		})
-	}
-	src := env.srcTextureID
+	gl.BindTexture(gl.TEXTURE_2D, textureID)
+	gl.FramebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, textureID, 0)
+	gl.ReadPixels(0, 0, int32(width), int32(height), gl.RGBA, gl.UNSIGNED_BYTE, gl.Ptr(img.Pix))
 
-	if sh.crtProcessing {
-		// use blur shader to add bloom to previous phosphor
-		env.srcTextureID = sh.seq.Process(phosphor, func() {
-			env.srcTextureID = sh.seq.Texture(phosphor)
-			phosphorBloom := sh.img.crtPrefs.PhosphorBloom.Get().(float64)
-			sh.blurShader.(*blurShader).setAttributesArgs(env, float32(phosphorBloom))
-			env.draw()
-		})
-
-		// add new frame to phosphor buffer
-		env.srcTextureID = sh.seq.Process(phosphor, func() {
-			phosphorLatency := sh.img.crtPrefs.PhosphorLatency.Get().(float64)
-			sh.phosphorShader.(*phosphorShader).setAttributesArgs(env, float32(phosphorLatency), src)
-			env.draw()
-		})
-
-		// video black correction
-		if sh.img.crtPrefs.Curve.Get().(bool) {
-			env.srcTextureID = sh.seq.Process(working, func() {
-				sh.blackCorrectionShader.(*blackCorrectionShader).setAttributes(env)
-				env.draw()
-			})
-		}
-	} else {
-		// add new frame to phosphor buffer (using phosphor buffer for pixel perfect fade)
-		env.srcTextureID = sh.seq.Process(phosphor, func() {
-			env.srcTextureID = sh.seq.Texture(phosphor)
-			fade := sh.img.crtPrefs.PixelPerfectFade.Get().(float64)
-			sh.phosphorShader.(*phosphorShader).setAttributesArgs(env, float32(fade), src)
-			env.draw()
-		})
-	}
-
-	// filename for saved file
-	var filename string
-
-	switch sh.mode {
-	case modeSingle:
-		sh.exposureCt++
-		filename = fmt.Sprintf("%s.jpg", sh.baseFilename)
-
-	case modeDouble:
-		// blend current phosphor with current and previous frames
-		env.srcTextureID = sh.seq.Process(working, func() {
-			t := sh.seq.Texture(prev + (sh.exposureCt % 2))
-			sh.blendShader.(*blendShader).setAttributesArgs(env, 1.0, 1.0, t)
-			env.draw()
-		})
-
-		sh.exposureCt++
-
-		filename = fmt.Sprintf("%s_double_%d.jpg", sh.baseFilename, sh.exposureCt)
-
-	case modeTriple:
-		sh.exposureCt++
-
-		// blend two previous frames to create long exposure
-		t := sh.seq.Texture(prev)
-		env.srcTextureID = sh.seq.Process(working, func() {
-			sh.blendShader.(*blendShader).setAttributesArgs(env, 1.0, 1.0, t)
-			env.draw()
-		})
-		t = sh.seq.Texture(prev + 1)
-		env.srcTextureID = sh.seq.Process(working, func() {
-			sh.blendShader.(*blendShader).setAttributesArgs(env, 1.0, 1.0, t)
-			env.draw()
-		})
-
-		// set filename
-		filename = fmt.Sprintf("%s_triple_%d.jpg", sh.baseFilename, sh.exposureCt)
-	}
-
-	// blend current frame
-	env.srcTextureID = sh.seq.Process(working, func() {
-		sh.blendShader.(*blendShader).setAttributesArgs(env, 1.0, 1.0, src)
-		env.draw()
-	})
-
-	if sh.crtProcessing {
-		// blur result of blended frames a little more
-		env.srcTextureID = sh.seq.Process(working, func() {
-			sh.blurShader.(*blurShader).setAttributesArgs(env, float32(sh.img.crtPrefs.Sharpness.Get().(float64)))
-			env.draw()
-		})
-
-		// create final screenshot
-		env.srcTextureID = sh.seq.Process(final, func() {
-			numScanlines := sh.img.wm.dbgScr.numScanlines
-			numClocks := specification.ClksVisible
-			sh.effectsShaderFlipped.(*effectsShader).setAttributesArgs(env, numScanlines, numClocks, false, false)
-			env.draw()
-		})
-	} else {
-		// create final screenshot
-		env.srcTextureID = sh.seq.Process(final, func() {
-			sh.colorShaderFlipped.setAttributes(env)
-			env.draw()
-		})
-	}
-
-	// save final texture if exposure count is one or more
-	if sh.exposureCt >= 1 {
-		sh.seq.SaveJPEG(final, filename, "screenshot")
-	}
-
-	// create copy of raw frame. we've bumped the frames counter already but
-	// that's okay because it simplfies the prev modulo addition next frame for
-	// double exposure
-	if sh.exposureCt <= sh.exposureLength {
-		d := sh.exposureCt % 2
-		if d < 0 {
-			d *= -1
+	go func() {
+		f, err := os.Create(path)
+		if err != nil {
+			logger.Logf("screenshot", "save failed: %v", err.Error())
+			return
 		}
 
-		_ = sh.seq.Process(prev+d, func() {
-			env.srcTextureID = src
-			sh.colorShaderFlipped.setAttributes(env)
-			env.draw()
-		})
-	}
+		err = jpeg.Encode(f, img, &jpeg.Options{Quality: 100})
+		if err != nil {
+			logger.Logf("screenshot", "save failed: %v", err.Error())
+			_ = f.Close()
+			return
+		}
+
+		err = f.Close()
+		if err != nil {
+			logger.Logf("screenshot", "save failed: %v", err.Error())
+			return
+		}
+
+		// indicate success
+		logger.Logf("screenshot", "saved: %s", path)
+	}()
 }

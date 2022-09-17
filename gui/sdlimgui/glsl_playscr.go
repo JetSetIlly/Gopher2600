@@ -29,7 +29,7 @@ type playscrShader struct {
 func newPlayscrShader(img *SdlImgui) shaderProgram {
 	sh := &playscrShader{
 		img:        img,
-		crt:        newCRTSequencer(img, true),
+		crt:        newCRTSequencer(img),
 		screenshot: newscreenshotSequencer(img),
 	}
 	return sh
@@ -66,6 +66,8 @@ func (sh *playscrShader) setAttributes(env shaderEnvironment) {
 	)
 
 	sh.screenshot.process(env, sh.img.playScr)
-	effectEnabled := sh.img.crtPrefs.Enabled.Get().(bool)
-	sh.crt.process(env, false, effectEnabled, false, sh.img.playScr.visibleScanlines, specification.ClksVisible, sh.img.playScr)
+
+	sh.crt.process(env, false, false,
+		sh.img.playScr.visibleScanlines, specification.ClksVisible,
+		sh.img.playScr, newCrtSeqPrefs(sh.img.crtPrefs))
 }

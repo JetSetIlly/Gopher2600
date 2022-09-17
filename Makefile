@@ -6,6 +6,7 @@ compileFlags = '-c 3 -B -wb=false'
 profilingRom = roms/Homebrew/CDF/zookeeper_20200308_demo2_NTSC.bin
 # profilingRom = roms/Pitfall.bin
 # profilingRom = test_roms/ELF/raycaster/raycaster.bin
+profilingRom = /home/steve/Desktop/2600_dev/davie/Boulder-Dash-CDFJ-NG/CDFJBoulderDash.bin
 
 .PHONY: all clean tidy generate check_glsl glsl_validate check_pandoc readme_spell test race race_debug profile profile_cpu profile_cpu_play profile_cpu_debug profile_mem_play profile_mem_debug profile_trace build_assertions build release windows_manifest cross_windows cross_windows_development cross_winconsole_development cross_windows_dynamic
 
