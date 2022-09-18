@@ -102,14 +102,16 @@ func (arm *ARM) write8bit(addr uint32, val uint8) {
 	(*mem)[addr] = val
 }
 
-func (arm *ARM) read16bit(addr uint32) uint16 {
+func (arm *ARM) read16bit(addr uint32, requiresAlignment bool) uint16 {
 	if !arm.stackHasCollided && addr < arm.nullAccessBoundary {
 		arm.nullAccess("Read 16bit", addr)
 	}
 
 	// check 16 bit alignment
-	if addr&0x01 != 0x00 {
+	misaligned := addr&0x01 != 0x00
+	if misaligned && (requiresAlignment || arm.state.unalignTrap) {
 		logger.Logf("ARM7", "misaligned 16 bit read (%08x) (PC: %08x)", addr, arm.state.registers[rPC])
+		return 0
 	}
 
 	var mem *[]uint8
@@ -136,14 +138,16 @@ func (arm *ARM) read16bit(addr uint32) uint16 {
 	return uint16((*mem)[addr]) | (uint16((*mem)[addr+1]) << 8)
 }
 
-func (arm *ARM) write16bit(addr uint32, val uint16) {
+func (arm *ARM) write16bit(addr uint32, val uint16, requiresAlignment bool) {
 	if !arm.stackHasCollided && addr < arm.nullAccessBoundary {
 		arm.nullAccess("Write 16bit", addr)
 	}
 
 	// check 16 bit alignment
-	if addr&0x01 != 0x00 {
+	misaligned := addr&0x01 != 0x00
+	if misaligned && (requiresAlignment || arm.state.unalignTrap) {
 		logger.Logf("ARM7", "misaligned 16 bit write (%08x) (PC: %08x)", addr, arm.state.registers[rPC])
+		return
 	}
 
 	var mem *[]uint8
@@ -171,14 +175,16 @@ func (arm *ARM) write16bit(addr uint32, val uint16) {
 	(*mem)[addr+1] = uint8(val >> 8)
 }
 
-func (arm *ARM) read32bit(addr uint32) uint32 {
+func (arm *ARM) read32bit(addr uint32, requiresAlignment bool) uint32 {
 	if !arm.stackHasCollided && addr < arm.nullAccessBoundary {
 		arm.nullAccess("Read 32bit", addr)
 	}
 
 	// check 32 bit alignment
-	if addr&0x03 != 0x00 {
+	misaligned := addr&0x03 != 0x00
+	if misaligned && (requiresAlignment || arm.state.unalignTrap) {
 		logger.Logf("ARM7", "misaligned 32 bit read (%08x) (PC: %08x)", addr, arm.state.registers[rPC])
+		return 0
 	}
 
 	var mem *[]uint8
@@ -205,14 +211,16 @@ func (arm *ARM) read32bit(addr uint32) uint32 {
 	return uint32((*mem)[addr]) | (uint32((*mem)[addr+1]) << 8) | (uint32((*mem)[addr+2]) << 16) | uint32((*mem)[addr+3])<<24
 }
 
-func (arm *ARM) write32bit(addr uint32, val uint32) {
+func (arm *ARM) write32bit(addr uint32, val uint32, requiresAlignment bool) {
 	if !arm.stackHasCollided && addr < arm.nullAccessBoundary {
 		arm.nullAccess("Write 32bit", addr)
 	}
 
 	// check 32 bit alignment
-	if addr&0x03 != 0x00 {
+	misaligned := addr&0x03 != 0x00
+	if misaligned && (requiresAlignment || arm.state.unalignTrap) {
 		logger.Logf("ARM7", "misaligned 32 bit write (%08x) (PC: %08x)", addr, arm.state.registers[rPC])
+		return
 	}
 
 	var mem *[]uint8

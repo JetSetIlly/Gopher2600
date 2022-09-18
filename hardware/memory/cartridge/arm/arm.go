@@ -74,6 +74,9 @@ type ARMState struct {
 	registers [NumRegisters]uint32
 	status    Status
 
+	// CCR register. currently we're only need the CCR register for memory alignment
+	unalignTrap bool
+
 	// "peripherals" connected to the variety of ARM7TDMI-S used in the Harmony
 	// cartridge.
 	timer timer
@@ -285,8 +288,10 @@ func NewARM(arch Architecture, mamcr MAMCR, mmap memorymodel.Map, prefs *prefere
 	switch arm.arch {
 	case ARM7TDMI:
 		arm.nullAccessBoundary = nullAccessBoundaryARM7TDMI
+		arm.state.unalignTrap = true
 	case ARMv7_M:
 		arm.nullAccessBoundary = nullAccessBoundaryARMv7_m
+		arm.state.unalignTrap = false
 	default:
 		panic(fmt.Sprintf("unhandled ARM architecture: cannot set %s", arm.arch))
 	}

@@ -773,7 +773,7 @@ func (arm *ARM) thumbPCrelativeLoad(opcode uint16) {
 
 	// immediate value is not two's complement (surprisingly)
 	addr := pc + imm
-	arm.state.registers[destReg] = arm.read32bit(addr)
+	arm.state.registers[destReg] = arm.read32bit(addr, true)
 
 	// "7.8 Load Register" in "ARM7TDMI-S Technical Reference Manual r4p3"
 	// - fillPipeline() will be called if necessary
@@ -803,7 +803,7 @@ func (arm *ARM) thumbLoadStoreWithRegisterOffset(opcode uint16) {
 			return
 		}
 
-		arm.state.registers[reg] = arm.read32bit(addr)
+		arm.state.registers[reg] = arm.read32bit(addr, true)
 
 		// "7.8 Load Register" in "ARM7TDMI-S Technical Reference Manual r4p3"
 		// - fillPipeline() will be called if necessary
@@ -822,7 +822,7 @@ func (arm *ARM) thumbLoadStoreWithRegisterOffset(opcode uint16) {
 		return
 	}
 
-	arm.write32bit(addr, arm.state.registers[reg])
+	arm.write32bit(addr, arm.state.registers[reg], true)
 
 	// "7.9 Store Register" in "ARM7TDMI-S Technical Reference Manual r4p3"
 	arm.storeRegisterCycles(addr)
@@ -841,7 +841,7 @@ func (arm *ARM) thumbLoadStoreSignExtendedByteHalford(opcode uint16) {
 	if sign {
 		if hi {
 			// load sign-extended halfword
-			arm.state.registers[reg] = uint32(arm.read16bit(addr))
+			arm.state.registers[reg] = uint32(arm.read16bit(addr, true))
 
 			// masking after cycle accumulation
 			if arm.state.registers[reg]&0x8000 == 0x8000 {
@@ -871,7 +871,7 @@ func (arm *ARM) thumbLoadStoreSignExtendedByteHalford(opcode uint16) {
 
 	if hi {
 		// load halfword
-		arm.state.registers[reg] = uint32(arm.read16bit(addr))
+		arm.state.registers[reg] = uint32(arm.read16bit(addr, true))
 
 		// "7.8 Load Register" in "ARM7TDMI-S Technical Reference Manual r4p3"
 		// - fillPipeline() will be called if necessary
@@ -882,7 +882,7 @@ func (arm *ARM) thumbLoadStoreSignExtendedByteHalford(opcode uint16) {
 	}
 
 	// store halfword
-	arm.write16bit(addr, uint16(arm.state.registers[reg]))
+	arm.write16bit(addr, uint16(arm.state.registers[reg]), true)
 
 	// "7.9 Store Register" in "ARM7TDMI-S Technical Reference Manual r4p3"
 	arm.storeRegisterCycles(addr)
@@ -919,7 +919,7 @@ func (arm *ARM) thumbLoadStoreWithImmOffset(opcode uint16) {
 			return
 		}
 
-		arm.state.registers[reg] = arm.read32bit(addr)
+		arm.state.registers[reg] = arm.read32bit(addr, true)
 
 		// "7.8 Load Register" in "ARM7TDMI-S Technical Reference Manual r4p3"
 		// - fillPipeline() will be called if necessary
@@ -939,7 +939,7 @@ func (arm *ARM) thumbLoadStoreWithImmOffset(opcode uint16) {
 		return
 	}
 
-	arm.write32bit(addr, arm.state.registers[reg])
+	arm.write32bit(addr, arm.state.registers[reg], true)
 
 	// "7.9 Store Register" in "ARM7TDMI-S Technical Reference Manual r4p3"
 	arm.storeRegisterCycles(addr)
@@ -960,7 +960,7 @@ func (arm *ARM) thumbLoadStoreHalfword(opcode uint16) {
 	addr := arm.state.registers[baseReg] + uint32(offset)
 
 	if load {
-		arm.state.registers[reg] = uint32(arm.read16bit(addr))
+		arm.state.registers[reg] = uint32(arm.read16bit(addr, true))
 
 		// "7.8 Load Register" in "ARM7TDMI-S Technical Reference Manual r4p3"
 		// - fillPipeline() will be called if necessary
@@ -970,7 +970,7 @@ func (arm *ARM) thumbLoadStoreHalfword(opcode uint16) {
 		return
 	}
 
-	arm.write16bit(addr, uint16(arm.state.registers[reg]))
+	arm.write16bit(addr, uint16(arm.state.registers[reg]), true)
 
 	// "7.9 Store Register" in "ARM7TDMI-S Technical Reference Manual r4p3"
 	arm.storeRegisterCycles(addr)
@@ -990,7 +990,7 @@ func (arm *ARM) thumbSPRelativeLoadStore(opcode uint16) {
 	addr := arm.state.registers[rSP] + offset
 
 	if load {
-		arm.state.registers[reg] = arm.read32bit(addr)
+		arm.state.registers[reg] = arm.read32bit(addr, true)
 
 		// "7.8 Load Register" in "ARM7TDMI-S Technical Reference Manual r4p3"
 		// - fillPipeline() will be called if necessary
@@ -1000,7 +1000,7 @@ func (arm *ARM) thumbSPRelativeLoadStore(opcode uint16) {
 		return
 	}
 
-	arm.write32bit(addr, arm.state.registers[reg])
+	arm.write32bit(addr, arm.state.registers[reg], true)
 
 	// "7.9 Store Register" in "ARM7TDMI-S Technical Reference Manual r4p3"
 	arm.storeRegisterCycles(addr)
@@ -1106,7 +1106,7 @@ func (arm *ARM) thumbPushPopRegisters(opcode uint16) {
 					arm.Scycle(dataRead, addr)
 				}
 
-				arm.state.registers[i] = arm.read32bit(addr)
+				arm.state.registers[i] = arm.read32bit(addr, true)
 				addr += 4
 			}
 		}
@@ -1125,7 +1125,7 @@ func (arm *ARM) thumbPushPopRegisters(opcode uint16) {
 			}
 
 			// chop the odd bit off the new PC value
-			v := arm.read32bit(addr) & 0xfffffffe
+			v := arm.read32bit(addr, true) & 0xfffffffe
 
 			// adjust popped LR value before assigning to the PC
 			arm.state.registers[rPC] = v + 2
@@ -1189,7 +1189,7 @@ func (arm *ARM) thumbPushPopRegisters(opcode uint16) {
 				arm.Scycle(dataWrite, addr)
 			}
 
-			arm.write32bit(addr, arm.state.registers[i])
+			arm.write32bit(addr, arm.state.registers[i], true)
 			addr += 4
 		}
 	}
@@ -1199,7 +1199,7 @@ func (arm *ARM) thumbPushPopRegisters(opcode uint16) {
 		numMatches++
 
 		lr := arm.state.registers[rLR]
-		arm.write32bit(addr, lr)
+		arm.write32bit(addr, lr, true)
 
 		// "7.11 Store Multiple Registers" in "ARM7TDMI-S Technical Reference Manual r4p3"
 		if numMatches == 1 {
@@ -1256,7 +1256,7 @@ func (arm *ARM) thumbMultipleLoadStore(opcode uint16) {
 					arm.Scycle(dataWrite, addr)
 				}
 
-				arm.state.registers[i] = arm.read32bit(addr)
+				arm.state.registers[i] = arm.read32bit(addr, true)
 				addr += 4
 			}
 		}
@@ -1290,7 +1290,7 @@ func (arm *ARM) thumbMultipleLoadStore(opcode uint16) {
 				arm.Scycle(dataWrite, addr)
 			}
 
-			arm.write32bit(addr, arm.state.registers[i])
+			arm.write32bit(addr, arm.state.registers[i], true)
 			addr += 4
 		}
 	}
