@@ -1026,6 +1026,9 @@ func (arm *ARM) thumbLoadAddress(opcode uint16) {
 
 	arm.state.registers[destReg] = arm.state.registers[rPC] + uint32(offset)
 
+	// align program counter value
+	arm.state.registers[destReg] &= 0xfffffffc
+
 	// "7.6 Data Operations" in "ARM7TDMI-S Technical Reference Manual r4p3"
 	// - fillPipeline() will be called if necessary
 }
