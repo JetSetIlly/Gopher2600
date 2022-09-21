@@ -229,7 +229,17 @@ func (tmr *Timer) Step() {
 			//
 			// "To clear PA7 interrupt flag, simply read the Interrupt Flag
 			// Register"
-			tmr.pa7 = false
+
+			// update PA7 bit and TIMINT value if necessary. writing the TIMINT
+			// value is necessary because the PA7 bit has changed.
+			//
+			// a previous version of the emulator didn't do this meaning that
+			// the PA7 bit in the register was updated only once the timer had
+			// expired (see below).
+			if tmr.pa7 {
+				tmr.pa7 = false
+				tmr.mem.ChipWrite(chipbus.TIMINT, tmr.timintValue())
+			}
 		}
 	}
 
