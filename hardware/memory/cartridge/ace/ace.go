@@ -76,7 +76,7 @@ func (cart *Ace) ID() string {
 // Snapshot implements the mapper.CartMapper interface.
 func (cart *Ace) Snapshot() mapper.CartMapper {
 	n := *cart
-	n.mem = cart.mem.Snapshot()
+	// n.mem = cart.mem.Snapshot()
 	return &n
 }
 
@@ -148,6 +148,11 @@ func (cart *Ace) Listen(addr uint16, data uint8) {
 	// we must understand that the above synchronisation is almost certainly
 	// "wrong" in the general sense. it works for the examples seen so far but
 	// that means nothing
+
+	// general bus stuff detection
+	busStuffAddr := uint16(cart.mem.gpioB[0x10]) | uint16(cart.mem.gpioB[0x11]<<8)
+	cart.mem.busStuff = cart.mem.gpioB[gpio_mode] == 0x55 && busStuffAddr == addr
+	cart.mem.busStuffData = cart.mem.gpioB[0x14]
 }
 
 // Step implements the mapper.CartMapper interface.
@@ -163,4 +168,9 @@ func (cart *Ace) CopyBanks() []mapper.BankContent {
 // implements arm.CartridgeHook interface.
 func (cart *Ace) ARMinterrupt(addr uint32, val1 uint32, val2 uint32) (arm.ARMinterruptReturn, error) {
 	return arm.ARMinterruptReturn{}, nil
+}
+
+// BusStuff implements the mapper.CartBusStuff interface.
+func (cart *Ace) BusStuff() (uint8, bool) {
+	return cart.mem.busStuffData, cart.mem.busStuff
 }

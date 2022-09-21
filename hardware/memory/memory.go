@@ -194,15 +194,21 @@ func (mem *Memory) read(address uint16) (uint8, error) {
 	//
 	// see commentary for TIADriverPins for extensive explanation
 	if ar == memorymap.TIA {
-		mem.LastCPUDrivenPins = vcs.TIADrivenPins
 		data &= vcs.TIADrivenPins
 		if mem.instance != nil && mem.instance.Prefs.RandomPins.Get().(bool) {
 			data |= uint8(mem.instance.Random.Rewindable(0xff)) & ^vcs.TIADrivenPins
 		} else {
 			data |= mem.LastCPUData & ^vcs.TIADrivenPins
 		}
+
+		mem.LastCPUDrivenPins = vcs.TIADrivenPins
 	} else {
 		mem.LastCPUDrivenPins = 0xff
+	}
+
+	// drive pins from cartridge
+	if stuff, ok := mem.Cart.BusStuff(); ok {
+		data = (stuff & ^mem.LastCPUDrivenPins) | (data & mem.LastCPUDrivenPins)
 	}
 
 	// update data bus

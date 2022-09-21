@@ -47,7 +47,7 @@ const (
 // all handled by the MapAddress() function.
 //
 // Implementations of the different memory areas may need to drag the address
-// down into the the range of an array. This can be done by with elegantly with
+// down further into the the range of the memory array. This is best done with
 // (address^origin) rather than subtraction.
 const (
 	OriginTIA      = uint16(0x0000)
