@@ -139,8 +139,10 @@ func (win *winRAM) draw() {
 		if sp-memorymap.OriginRAM < uint16(offset) {
 			imguiTooltip(func() {
 				imguiColorLabelSimple("in stack", win.img.cols.ValueStack)
-				imgui.Spacing()
-				imgui.Text(fmt.Sprintf("PC address in event of RTS: %04x", win.img.lz.CPU.RTSPrediction))
+				if win.img.lz.CPU.RTSPredictionValid {
+					imgui.Spacing()
+					imgui.Text(fmt.Sprintf("PC address in event of RTS: %04x", win.img.lz.CPU.RTSPrediction))
+				}
 			}, true)
 		}
 	}
