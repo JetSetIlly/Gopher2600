@@ -943,28 +943,76 @@ func (arm *ARM) thumb2DataProcessing(opcode uint16) {
 			}
 
 		case 0b1000:
-			if arm.state.function32bitOpcode&0x100 == 0x100 {
-				// "4.6.3 ADD (immediate)" of "Thumb-2 Supplement"
-				// T3 encoding
-				arm.state.fudge_thumb2disassemble32bit = "ADD (immediate)"
-
-				if Rn == 0x000f {
-					panic("Rn register cannot be 0b1111 for ADD immediate")
-				}
+			if Rd == 0b1111 {
+				// "4.6.27 CMN (immediate)" of "Thumb-2 Supplement"
+				// T1 encoding
+				arm.state.fudge_thumb2disassemble32bit = "CMN (immediate)"
 
 				result, carry, overflow := AddWithCarry(arm.state.registers[Rn], imm32, 0)
-				arm.state.registers[Rd] = result
-
-				if setFlags {
-					arm.state.status.isNegative(result)
-					arm.state.status.isZero(result)
-					arm.state.status.setCarry(carry)
-					arm.state.status.setOverflow(overflow)
-				}
+				arm.state.status.isNegative(result)
+				arm.state.status.isZero(result)
+				arm.state.status.setCarry(carry)
+				arm.state.status.setOverflow(overflow)
 			} else {
-				// "4.6.3 ADD (immediate)" of "Thumb-2 Supplement"
-				// T4 encoding
-				panic("unimplemented 'ADD (immediate)' T4 encoding")
+				if arm.state.function32bitOpcode&0x100 == 0x100 {
+					// "4.6.3 ADD (immediate)" of "Thumb-2 Supplement"
+					// T3 encoding
+					arm.state.fudge_thumb2disassemble32bit = "ADD (immediate)"
+
+					result, carry, overflow := AddWithCarry(arm.state.registers[Rn], imm32, 0)
+					arm.state.registers[Rd] = result
+
+					if setFlags {
+						arm.state.status.isNegative(result)
+						arm.state.status.isZero(result)
+						arm.state.status.setCarry(carry)
+						arm.state.status.setOverflow(overflow)
+					}
+				} else {
+					// "4.6.3 ADD (immediate)" of "Thumb-2 Supplement"
+					// T4 encoding
+					panic("unimplemented 'ADD (immediate)' T4 encoding")
+				}
+			}
+
+		case 0b1010:
+			// "4.6.1 ADC (immediate)" of "Thumb-2 Supplement"
+			// T1 encoding
+			arm.state.fudge_thumb2disassemble32bit = "ADC (immediate)"
+
+			var c uint32
+			if arm.state.status.carry {
+				c = 1
+			}
+
+			result, carry, overflow := AddWithCarry(arm.state.registers[Rn], imm32, c)
+			arm.state.registers[Rd] = result
+
+			if setFlags {
+				arm.state.status.isNegative(result)
+				arm.state.status.isZero(result)
+				arm.state.status.setCarry(carry)
+				arm.state.status.setOverflow(overflow)
+			}
+
+		case 0b1011:
+			// "4.6.123 SBC (immediate)" of "Thumb-2 Supplement"
+			// T1 encoding
+			arm.state.fudge_thumb2disassemble32bit = "SBC (immediate)"
+
+			var c uint32
+			if arm.state.status.carry {
+				c = 1
+			}
+
+			result, carry, overflow := AddWithCarry(arm.state.registers[Rn], ^imm32, c)
+			arm.state.registers[Rd] = result
+
+			if setFlags {
+				arm.state.status.isNegative(result)
+				arm.state.status.isZero(result)
+				arm.state.status.setCarry(carry)
+				arm.state.status.setOverflow(overflow)
 			}
 
 		case 0b1101:
@@ -1304,6 +1352,7 @@ func (arm *ARM) thumb2LoadStoreSingle(opcode uint16) {
 		case 0b10:
 			if l {
 				// "4.6.43 LDR (immediate)" of "Thumb-2 Supplement"
+				// T4 encoding
 				arm.state.fudge_thumb2disassemble32bit = "LDR (immediate negative offset)"
 				arm.state.registers[Rt] = arm.read32bit(addr, false)
 			} else {
