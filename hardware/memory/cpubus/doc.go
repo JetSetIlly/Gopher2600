@@ -14,7 +14,7 @@
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
 // Package cpubus defines the operations, addresses and symbols that are
-// required by the CPU when writing to memory.
+// required by the CPU when reading/writing to memory.
 //
 // Another way to think of this is: the operations, etc. that are required to
 // interface with the VCS memory from the perspective of the CPU.

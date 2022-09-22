@@ -37,19 +37,21 @@ type LazyCPU struct {
 	statusReg  atomic.Value // registers.StatusRegister
 	lastResult atomic.Value // execution.Result
 
-	rtsPrediction atomic.Value // uint16
+	rtsPrediction      atomic.Value // uint16
+	rtsPredictionValid atomic.Value // bool
 
-	HasReset      bool
-	RdyFlg        bool
-	Killed        bool
-	PC            registers.ProgramCounter
-	A             registers.Register
-	X             registers.Register
-	Y             registers.Register
-	SP            registers.Register
-	StatusReg     registers.StatusRegister
-	LastResult    execution.Result
-	RTSPrediction uint16
+	HasReset           bool
+	RdyFlg             bool
+	Killed             bool
+	PC                 registers.ProgramCounter
+	A                  registers.Register
+	X                  registers.Register
+	Y                  registers.Register
+	SP                 registers.Register
+	StatusReg          registers.StatusRegister
+	LastResult         execution.Result
+	RTSPrediction      uint16
+	RTSPredictionValid bool
 }
 
 func newLazyCPU(val *LazyValues) *LazyCPU {
@@ -67,7 +69,9 @@ func (lz *LazyCPU) push() {
 	lz.sp.Store(lz.val.vcs.CPU.SP)
 	lz.statusReg.Store(lz.val.vcs.CPU.Status)
 	lz.lastResult.Store(lz.val.vcs.CPU.LastResult)
-	lz.rtsPrediction.Store(lz.val.vcs.CPU.PredictRTS())
+	v, ok := lz.val.vcs.CPU.PredictRTS()
+	lz.rtsPrediction.Store(v)
+	lz.rtsPredictionValid.Store(ok)
 }
 
 func (lz *LazyCPU) update() {
@@ -82,4 +86,5 @@ func (lz *LazyCPU) update() {
 	lz.StatusReg, _ = lz.statusReg.Load().(registers.StatusRegister)
 	lz.LastResult, _ = lz.lastResult.Load().(execution.Result)
 	lz.RTSPrediction, _ = lz.rtsPrediction.Load().(uint16)
+	lz.RTSPredictionValid, _ = lz.rtsPredictionValid.Load().(bool)
 }

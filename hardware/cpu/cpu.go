@@ -1793,23 +1793,33 @@ func (mc *CPU) ExecuteInstruction(cycleCallback func() error) error {
 	return nil
 }
 
+// adhoc interface exposing the Peek() function to the CPU
+type predictRTS interface {
+	Peek(address uint16) (uint8, error)
+}
+
 // PredictRTS returns the PC address that would result if RTS was run at the
 // current moment.
-func (mc *CPU) PredictRTS() uint16 {
+func (mc *CPU) PredictRTS() (uint16, bool) {
+	predict, ok := mc.mem.(predictRTS)
+	if !ok {
+		return 0, false
+	}
+
 	var SP registers.Register
 
 	SP.Load(mc.SP.Value())
 	SP.Add(1, false)
 
-	lo, err := mc.mem.Read(SP.Address())
+	lo, err := predict.Peek(SP.Address())
 	if err != nil {
-		return 0
+		return 0, false
 	}
 
-	hi, err := mc.mem.Read(SP.Address() + 1)
+	hi, err := predict.Peek(SP.Address() + 1)
 	if err != nil {
-		return 0
+		return 0, false
 	}
 
-	return ((uint16(hi) << 8) | uint16(lo)) + 1
+	return ((uint16(hi) << 8) | uint16(lo)) + 1, true
 }
