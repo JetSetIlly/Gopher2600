@@ -149,7 +149,7 @@ func (arm *ARM) decodeThumb2Miscellaneous(opcode uint16) func(uint16) {
 				arm.continueExecution = false
 			}
 		} else if opcode&0xff00 == 0xba00 {
-			// reverse bytes
+			return arm.thumb2ReverseBytes
 		} else if opcode&0xffe8 == 0xb668 {
 			panic(fmt.Sprintf("unpredictable 16-bit (miscellaneous) thumb-2 instruction (%04x)", opcode))
 		} else if opcode&0xffe8 == 0xb660 {
@@ -178,6 +178,24 @@ func (arm *ARM) decodeThumb2Miscellaneous(opcode uint16) func(uint16) {
 	panic(fmt.Sprintf("undecoded 16-bit (miscellaneous) thumb-2 instruction (%04x)", opcode))
 }
 
+func (arm *ARM) thumb2ReverseBytes(opcode uint16) {
+	opc := (opcode & 0x00c0) >> 6
+	Rn := (opcode & 0x0038) >> 3
+	Rd := opcode & 0x0007
+
+	switch opc {
+	case 0b01:
+		// "4.6.112 REV16" of "Thumb-2 Supplement"
+		arm.state.fudge_thumb2disassemble16bit = "REV16"
+
+		v := arm.state.registers[Rn]
+		r := ((v & 0x00ff0000) << 8) | ((v & 0xff000000) >> 8) | ((v & 0x000000ff) << 8) | ((v & 0x0000ff00) >> 8)
+		arm.state.registers[Rd] = r
+	default:
+		panic(fmt.Sprintf("unimplemented thumb2 reverse byte instruction (%02b)", opc))
+	}
+}
+
 func (arm *ARM) thumb2ChangeProcessorState(opcode uint16) {
 	logger.Logf("ARM7", "CPSID instruction does nothing")
 }
@@ -197,7 +215,7 @@ func (arm *ARM) thumb2MemoryHints(opcode uint16) {
 	case 0b100:
 		panic("unimplemented SEV instruction")
 	default:
-		panic(fmt.Sprintf("undecoded 16bit (memory hint) thumb-2 instruction (%04x)", opcode))
+		panic(fmt.Sprintf("undecoded 16bit (memory hint) thumb-2 instruction (%03b)", hint))
 	}
 }
 
