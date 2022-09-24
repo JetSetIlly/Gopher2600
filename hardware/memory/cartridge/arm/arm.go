@@ -82,6 +82,9 @@ type ARMState struct {
 	timer timer
 	mam   mam
 
+	// *incomplete* support for TIM2 peripheral in ARMv7-M architecture
+	tim2cnt int
+
 	// the PC of the opcode being processed and the PC of the instruction being
 	// executed
 	//

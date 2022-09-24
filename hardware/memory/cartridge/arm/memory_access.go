@@ -53,6 +53,12 @@ func (arm *ARM) read8bit(addr uint32) uint8 {
 
 	mem, addr = arm.mem.MapAddress(addr, false)
 	if mem == nil {
+		// temporary match for TIM2 value read
+		if arm.arch == ARMv7_M && addr == 0x40000024 {
+			arm.state.tim2cnt++
+			return uint8(arm.state.tim2cnt)
+		}
+
 		if v, ok, comment := arm.state.timer.read(addr); ok {
 			arm.disasmExecutionNotes = comment
 			return uint8(v)
@@ -118,6 +124,12 @@ func (arm *ARM) read16bit(addr uint32, requiresAlignment bool) uint16 {
 
 	mem, addr = arm.mem.MapAddress(addr, false)
 	if mem == nil {
+		// temporary match for TIM2 value read
+		if arm.arch == ARMv7_M && addr == 0x40000024 {
+			arm.state.tim2cnt++
+			return uint16(arm.state.tim2cnt)
+		}
+
 		if v, ok, comment := arm.state.timer.read(addr); ok {
 			arm.disasmExecutionNotes = comment
 			return uint16(v)
@@ -191,6 +203,12 @@ func (arm *ARM) read32bit(addr uint32, requiresAlignment bool) uint32 {
 
 	mem, addr = arm.mem.MapAddress(addr, false)
 	if mem == nil {
+		// temporary match for TIM2 value read
+		if arm.arch == ARMv7_M && addr == 0x40000024 {
+			arm.state.tim2cnt++
+			return uint32(arm.state.tim2cnt)
+		}
+
 		if v, ok, comment := arm.state.timer.read(addr); ok {
 			arm.disasmExecutionNotes = comment
 			return v
