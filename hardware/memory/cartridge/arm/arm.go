@@ -150,6 +150,7 @@ type ARMState struct {
 	// * temporary construct until thumb2Disassemble() is written
 	fudge_thumb2disassemble32bit string
 	fudge_thumb2disassemble16bit string
+	fudge_disassembling          bool
 }
 
 // ARM implements the ARM7TDMI-S LPC2103 processor.
@@ -738,13 +739,24 @@ func (arm *ARM) run() (float32, error) {
 				f(opcode)
 			}
 
+			// if arm.state.fudge_disassembling {
+			// 	arm.state.fudge_disassembling = opcode != 0x4a7e
+			// 	if !arm.state.fudge_disassembling {
+			// 		fmt.Println("---------------------\n\n")
+			// 	}
+			// } else {
+			// 	arm.state.fudge_disassembling = arm.state.function32bitOpcode == 0xf858 && opcode == 0x3c5c
+			// }
+
+			// arm.state.fudge_disassembling = true
+
 			// when the block condition below is true, a lot of debugging data
 			// will be printed to stdout. a good way of keeping this under
 			// control is to pipe the output to tail before redirecting to a
 			// file. For example:
 			//
 			// ./gopher2600 rom.bin | tail -c 10M > out
-			if false {
+			if arm.state.fudge_disassembling {
 				if fudge_notExecuted {
 					fmt.Print("*** ")
 				}
@@ -764,6 +776,7 @@ func (arm *ARM) run() (float32, error) {
 					fmt.Println("====================")
 				}
 			}
+
 			arm.state.fudge_thumb2disassemble32bit = ""
 			arm.state.fudge_thumb2disassemble16bit = ""
 
