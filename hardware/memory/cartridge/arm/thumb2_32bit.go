@@ -1224,7 +1224,7 @@ func (arm *ARM) thumb2LoadStoreSingle(opcode uint16) {
 	} else if (opcode & 0x0fc0) == 0x0000 {
 		// Rn + shifted register (format 7 in the table)
 		shift := (opcode & 0x0030) >> 4
-		Rm := opcode & 0x0007
+		Rm := opcode & 0x000f
 
 		// all addresses are pre-indexed by a shifted register and there is no write-back
 		addr := arm.state.registers[Rn] + (arm.state.registers[Rm] << shift)
