@@ -269,7 +269,7 @@ type ARM struct {
 }
 
 // NewARM is the preferred method of initialisation for the ARM type.
-func NewARM(arch Architecture, mamcr MAMCR, mmap memorymodel.Map, prefs *preferences.ARMPreferences, mem SharedMemory, hook CartridgeHook, pathToROM string) *ARM {
+func NewARM(arch Architecture, mamcr MAMCR, mmap memorymodel.Map, prefs *preferences.ARMPreferences, mem SharedMemory, hook CartridgeHook) *ARM {
 	arm := &ARM{
 		arch:         arch,
 		prefs:        prefs,

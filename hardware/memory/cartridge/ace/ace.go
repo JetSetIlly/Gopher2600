@@ -28,19 +28,17 @@ import (
 
 // Ace implements the mapper.CartMapper interface.
 type Ace struct {
-	instance  *instance.Instance
-	version   string
-	pathToROM string
-	arm       *arm.ARM
-	mem       *aceMemory
+	instance *instance.Instance
+	version  string
+	arm      *arm.ARM
+	mem      *aceMemory
 }
 
 // NewAce is the preferred method of initialisation for the Ace type.
-func NewAce(instance *instance.Instance, pathToROM string, version string, data []byte) (mapper.CartMapper, error) {
+func NewAce(instance *instance.Instance, version string, data []byte) (mapper.CartMapper, error) {
 	cart := &Ace{
-		instance:  instance,
-		version:   version,
-		pathToROM: pathToROM,
+		instance: instance,
+		version:  version,
 	}
 
 	var err error
@@ -49,7 +47,7 @@ func NewAce(instance *instance.Instance, pathToROM string, version string, data 
 		return nil, err
 	}
 
-	cart.arm = arm.NewARM(arm.ARMv7_M, arm.MAMfull, cart.mem.model, cart.instance.Prefs.ARM, cart.mem, cart, cart.pathToROM)
+	cart.arm = arm.NewARM(arm.ARMv7_M, arm.MAMfull, cart.mem.model, cart.instance.Prefs.ARM, cart.mem, cart)
 	cart.mem.arm = cart.arm
 
 	logger.Logf("ACE", "vcs program: %08x to %08x", cart.mem.vcsOrigin, cart.mem.vcsMemtop)

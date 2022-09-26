@@ -66,5 +66,5 @@ func prepareTestARM() (*arm.ARM, *testMemory) {
 
 	testMem := prepareTestMemory(memModel.PeripheralsMemtop)
 	hook := &hook{}
-	return arm.NewARM(arm.ARMv7_M, arm.MAMdisabled, memModel, prefs, testMem, hook, "test"), testMem
+	return arm.NewARM(arm.ARMv7_M, arm.MAMdisabled, memModel, prefs, testMem, hook), testMem
 }

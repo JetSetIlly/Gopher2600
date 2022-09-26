@@ -29,10 +29,8 @@ import (
 
 // cdf implements the mapper.CartMapper interface.
 type cdf struct {
-	instance *instance.Instance
-	dev      mapper.CartCoProcDeveloper
-
-	pathToROM string
+	instance  *instance.Instance
+	dev       mapper.CartCoProcDeveloper
 	mappingID string
 
 	// additional CPU - used by some ROMs
@@ -72,10 +70,9 @@ const (
 )
 
 // NewCDF is the preferred method of initialisation for the CDF type.
-func NewCDF(instance *instance.Instance, pathToROM string, version string, data []byte) (mapper.CartMapper, error) {
+func NewCDF(instance *instance.Instance, version string, data []byte) (mapper.CartMapper, error) {
 	cart := &cdf{
 		instance:  instance,
-		pathToROM: pathToROM,
 		mappingID: "CDF",
 		bankSize:  4096,
 		state:     newCDFstate(),
@@ -116,7 +113,7 @@ func NewCDF(instance *instance.Instance, pathToROM string, version string, data 
 	//
 	// if bank0 has any ARM code then it will start at offset 0x08. first eight
 	// bytes are the ARM header
-	cart.arm = arm.NewARM(cart.version.arch, cart.version.mamcr, cart.version.mmap, cart.instance.Prefs.ARM, cart.state.static, cart, cart.pathToROM)
+	cart.arm = arm.NewARM(cart.version.arch, cart.version.mamcr, cart.version.mmap, cart.instance.Prefs.ARM, cart.state.static, cart)
 
 	return cart, nil
 }
@@ -161,7 +158,7 @@ func (cart *cdf) Plumb() {
 
 // Plumb implements the mapper.CartMapper interface.
 func (cart *cdf) PlumbFromDifferentEmulation() {
-	cart.arm = arm.NewARM(cart.version.arch, cart.version.mamcr, cart.version.mmap, cart.instance.Prefs.ARM, cart.state.static, cart, cart.pathToROM)
+	cart.arm = arm.NewARM(cart.version.arch, cart.version.mamcr, cart.version.mmap, cart.instance.Prefs.ARM, cart.state.static, cart)
 }
 
 // Reset implements the mapper.CartMapper interface.

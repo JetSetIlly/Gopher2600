@@ -311,22 +311,22 @@ func (cart *Cartridge) fingerprint(cartload cartridgeloader.Loader) error {
 	}
 
 	if ok, version := fingerprintAce(*cartload.Data); ok {
-		cart.mapper, err = ace.NewAce(cart.instance, cart.Filename, version, *cartload.Data)
+		cart.mapper, err = ace.NewAce(cart.instance, version, *cartload.Data)
 		return err
 	}
 
 	if ok, version := fingerprintCDFJplus(*cartload.Data); ok {
-		cart.mapper, err = cdf.NewCDF(cart.instance, cart.Filename, version, *cartload.Data)
+		cart.mapper, err = cdf.NewCDF(cart.instance, version, *cartload.Data)
 		return err
 	}
 
 	if ok, version := fingerprintCDF(*cartload.Data); ok {
-		cart.mapper, err = cdf.NewCDF(cart.instance, cart.Filename, version, *cartload.Data)
+		cart.mapper, err = cdf.NewCDF(cart.instance, version, *cartload.Data)
 		return err
 	}
 
 	if fingerprintDPCplus(*cartload.Data) {
-		cart.mapper, err = dpcplus.NewDPCplus(cart.instance, cart.Filename, *cartload.Data)
+		cart.mapper, err = dpcplus.NewDPCplus(cart.instance, *cartload.Data)
 		return err
 	}
 

@@ -86,7 +86,7 @@ func NewElf(instance *instance.Instance, pathToROM string) (mapper.CartMapper, e
 		return nil, err
 	}
 
-	cart.arm = arm.NewARM(arm.ARMv7_M, arm.MAMfull, cart.mem.model, cart.instance.Prefs.ARM, cart.mem, cart, cart.pathToROM)
+	cart.arm = arm.NewARM(arm.ARMv7_M, arm.MAMfull, cart.mem.model, cart.instance.Prefs.ARM, cart.mem, cart)
 	cart.mem.Plumb(cart.arm)
 
 	cart.mem.busStuffingInit()

@@ -34,10 +34,8 @@ import (
 //
 // https://atariage.com/forums/blogs/entry/11811-dpcarm-part-6-dpc-cartridge-layout/
 type dpcPlus struct {
-	instance *instance.Instance
-	dev      mapper.CartCoProcDeveloper
-
-	pathToROM string
+	instance  *instance.Instance
+	dev       mapper.CartCoProcDeveloper
 	mappingID string
 
 	// additional CPU - used by some ROMs
@@ -64,10 +62,9 @@ const (
 )
 
 // NewDPCplus is the preferred method of initialisation for the dpcPlus type.
-func NewDPCplus(instance *instance.Instance, pathToROM string, data []byte) (mapper.CartMapper, error) {
+func NewDPCplus(instance *instance.Instance, data []byte) (mapper.CartMapper, error) {
 	cart := &dpcPlus{
 		instance:  instance,
-		pathToROM: pathToROM,
 		mappingID: "DPC+",
 		bankSize:  4096,
 		state:     newDPCPlusState(),
@@ -107,7 +104,7 @@ func NewDPCplus(instance *instance.Instance, pathToROM string, data []byte) (map
 	//
 	// if bank0 has any ARM code then it will start at offset 0x08. first eight
 	// bytes are the ARM header
-	cart.arm = arm.NewARM(cart.version.arch, cart.version.mamcr, cart.version.mmap, instance.Prefs.ARM, cart.state.static, cart, pathToROM)
+	cart.arm = arm.NewARM(cart.version.arch, cart.version.mamcr, cart.version.mmap, instance.Prefs.ARM, cart.state.static, cart)
 
 	return cart, nil
 }
@@ -152,7 +149,7 @@ func (cart *dpcPlus) Plumb() {
 
 // Plumb implements the mapper.CartMapper interface.
 func (cart *dpcPlus) PlumbFromDifferentEmulation() {
-	cart.arm = arm.NewARM(cart.version.arch, arm.MAMfull, cart.version.mmap, cart.instance.Prefs.ARM, cart.state.static, cart, cart.pathToROM)
+	cart.arm = arm.NewARM(cart.version.arch, arm.MAMfull, cart.version.mmap, cart.instance.Prefs.ARM, cart.state.static, cart)
 }
 
 // Reset implements the mapper.CartMapper interface.
