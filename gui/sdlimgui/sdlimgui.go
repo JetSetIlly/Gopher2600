@@ -336,11 +336,13 @@ func (img *SdlImgui) setEmulationMode(mode govern.Mode) error {
 		img.screen.clearTextureRenderers()
 		img.screen.addTextureRenderer(img.wm.dbgScr)
 		img.plt.window.Show()
+		img.plt.window.Raise()
 
 	case govern.ModePlay:
 		img.screen.clearTextureRenderers()
 		img.screen.addTextureRenderer(img.playScr)
 		img.plt.window.Show()
+		img.plt.window.Raise()
 	}
 
 	img.setAudioMute()
