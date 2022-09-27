@@ -114,15 +114,39 @@ func (cart *Elf) ID() string {
 // Snapshot implements the mapper.CartMapper interface.
 func (cart *Elf) Snapshot() mapper.CartMapper {
 	n := *cart
-	n.armState = cart.arm.Snapshot()
+
+	// taking a snapshot of ARM state via the ARM itself can cause havoc if
+	// this instance of the cart is not current (because the ARM pointer itself
+	// may be stale or pointing to another emulation)
+	if cart.armState == nil {
+		n.armState = cart.arm.Snapshot()
+	} else {
+		n.armState = cart.armState.Snapshot()
+	}
+
 	n.mem = cart.mem.Snapshot()
 	return &n
 }
 
 // Plumb implements the mapper.CartMapper interface.
-func (cart *Elf) Plumb() {
+func (cart *Elf) PlumbFromDifferentEmulation() {
+	if cart.armState == nil {
+		panic("cannot plumb this ELF instance because the ARM state is nil")
+	}
+	cart.arm = arm.NewARM(arm.ARMv7_M, arm.MAMfull, cart.mem.model, cart.instance.Prefs.ARM, cart.mem, cart)
 	cart.mem.Plumb(cart.arm)
 	cart.arm.Plumb(cart.armState, cart.mem, cart)
+	cart.armState = nil
+}
+
+// Plumb implements the mapper.CartMapper interface.
+func (cart *Elf) Plumb() {
+	if cart.armState == nil {
+		panic("cannot plumb this ELF instance because the ARM state is nil")
+	}
+	cart.mem.Plumb(cart.arm)
+	cart.arm.Plumb(cart.armState, cart.mem, cart)
+	cart.armState = nil
 }
 
 // Reset implements the mapper.CartMapper interface.

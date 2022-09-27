@@ -154,6 +154,17 @@ type ARMState struct {
 	fudge_thumb2disassemble32bit string
 	fudge_thumb2disassemble16bit string
 	fudge_disassembling          bool
+
+	// whether the previous execution stopped because of a yield or a
+	// breakpoint.
+	breakpoint bool
+	yield      bool
+}
+
+// Snapshort makes a copy of the ARMState.
+func (s *ARMState) Snapshot() *ARMState {
+	n := *s
+	return &n
 }
 
 // ARM implements the ARM7TDMI-S LPC2103 processor.
@@ -258,12 +269,6 @@ type ARM struct {
 	// profiler for executed instructions. measures cycles counts
 	profiler *mapper.CartCoProcProfiler
 
-	// whether the previous execution stopped because of a yield
-	yield bool
-
-	// whether the previous execution stopped because of a breakpoint
-	breakpoint bool
-
 	// disabled breakpoint checking
 	breakpointsDisabled bool
 }
@@ -328,11 +333,9 @@ func (arm *ARM) SetDeveloper(dev mapper.CartCoProcDeveloper) {
 	arm.dev = dev
 }
 
-// Snapshort makes a copy of the ARM. The copied instance will not be usable
-// until after a suitable call to Plumb().
+// Snapshort makes a copy of the ARM state.
 func (arm *ARM) Snapshot() *ARMState {
-	a := *arm.state
-	return &a
+	return arm.state.Snapshot()
 }
 
 // Plumb should be used to update the shared memory reference.
@@ -349,11 +352,8 @@ func (arm *ARM) Plumb(state *ARMState, mem SharedMemory, hook CartridgeHook) {
 	arm.mem = mem
 	arm.hook = hook
 
-	// clear execution map because the pointers will be pointing to the old
-	// instance of the ARM. we don't need to clear the disasmCache
-	//
-	// this must be done before the call to findProgramMemory below
-	arm.executionMap = make(map[uint32][]func(_ uint16))
+	// always clear caches on a plumb event
+	arm.ClearCaches()
 
 	// find program memory which might have changed location along with the new
 	// ARM instance
@@ -495,7 +495,7 @@ func (arm *ARM) SetInitialRegisters(args ...uint32) error {
 	arm.state.registers[rPC] += 2
 
 	// continue in a yielded state
-	arm.yield = true
+	arm.state.yield = true
 
 	return nil
 }
@@ -510,7 +510,7 @@ func (arm *ARM) SetInitialRegisters(args ...uint32) error {
 //
 // Returns the number of ARM cycles consumed and any errors.
 func (arm *ARM) Run() (float32, error) {
-	if !arm.yield && !arm.breakpoint {
+	if !arm.state.yield && !arm.state.breakpoint {
 		arm.reset()
 	}
 
@@ -532,7 +532,7 @@ func (arm *ARM) Run() (float32, error) {
 	}
 
 	// fill pipeline must happen after resetExecution()
-	if !arm.yield && !arm.breakpoint {
+	if !arm.state.yield && !arm.state.breakpoint {
 		err := arm.findProgramMemory()
 		if err != nil {
 			return 0, err
@@ -542,8 +542,8 @@ func (arm *ARM) Run() (float32, error) {
 	}
 
 	// reset yield flag
-	arm.yield = false
-	arm.breakpoint = false
+	arm.state.yield = false
+	arm.state.breakpoint = false
 
 	return arm.run()
 }
@@ -551,7 +551,7 @@ func (arm *ARM) Run() (float32, error) {
 // Yield indicates that the arm execution should cease after the next/current
 // instruction has been executed.
 func (arm *ARM) Yield() {
-	arm.yield = true
+	arm.state.yield = true
 }
 
 // Registers returns a copy of the current values in the ARM registers
@@ -572,7 +572,7 @@ func (arm *ARM) SetRegisters(registers [NumRegisters]uint32) {
 // BreakpointHasTriggered returns true if execution has not run to completion
 // because of a breakpoint.
 func (arm *ARM) BreakpointHasTriggered() bool {
-	return arm.breakpoint
+	return arm.state.breakpoint
 }
 
 // BreakpointsDisable turns of breakpoint checking for the duration that
@@ -908,7 +908,7 @@ func (arm *ARM) run() (float32, error) {
 		}
 
 		// abort if a watch has been triggered
-		if arm.yield {
+		if arm.state.yield {
 			if arm.state.function32bit {
 				panic("attempted to yield during 32bit instruction decoding")
 			}
@@ -918,7 +918,7 @@ func (arm *ARM) run() (float32, error) {
 		// check breakpoints
 		if arm.dev != nil && !arm.breakpointsDisabled {
 			if arm.dev.CheckBreakpoint(arm.state.registers[rPC]) {
-				arm.breakpoint = true
+				arm.state.breakpoint = true
 				break
 			}
 		}
