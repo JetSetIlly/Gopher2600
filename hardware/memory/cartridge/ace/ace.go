@@ -32,6 +32,10 @@ type Ace struct {
 	version  string
 	arm      *arm.ARM
 	mem      *aceMemory
+
+	// armState is a copy of the ARM's state at the moment of the most recent
+	// Snapshot. it's used only suring a Plumb() operation
+	armState *arm.ARMState
 }
 
 // NewAce is the preferred method of initialisation for the Ace type.
@@ -48,7 +52,7 @@ func NewAce(instance *instance.Instance, version string, data []byte) (mapper.Ca
 	}
 
 	cart.arm = arm.NewARM(arm.ARMv7_M, arm.MAMfull, cart.mem.model, cart.instance.Prefs.ARM, cart.mem, cart)
-	cart.mem.arm = cart.arm
+	cart.mem.Plumb(cart.arm)
 
 	logger.Logf("ACE", "vcs program: %08x to %08x", cart.mem.vcsOrigin, cart.mem.vcsMemtop)
 	logger.Logf("ACE", "arm program: %08x to %08x", cart.mem.armOrigin, cart.mem.armMemtop)
@@ -74,13 +78,39 @@ func (cart *Ace) ID() string {
 // Snapshot implements the mapper.CartMapper interface.
 func (cart *Ace) Snapshot() mapper.CartMapper {
 	n := *cart
-	// n.mem = cart.mem.Snapshot()
+
+	// taking a snapshot of ARM state via the ARM itself can cause havoc if
+	// this instance of the cart is not current (because the ARM pointer itself
+	// may be stale or pointing to another emulation)
+	if cart.armState == nil {
+		n.armState = cart.arm.Snapshot()
+	} else {
+		n.armState = cart.armState.Snapshot()
+	}
+
+	n.mem = cart.mem.Snapshot()
 	return &n
 }
 
 // Plumb implements the mapper.CartMapper interface.
+func (cart *Ace) PlumbFromDifferentEmulation() {
+	if cart.armState == nil {
+		panic("cannot plumb this ACE instance because the ARM state is nil")
+	}
+	cart.arm = arm.NewARM(arm.ARMv7_M, arm.MAMfull, cart.mem.model, cart.instance.Prefs.ARM, cart.mem, cart)
+	cart.mem.Plumb(cart.arm)
+	cart.arm.Plumb(cart.armState, cart.mem, cart)
+	cart.armState = nil
+}
+
+// Plumb implements the mapper.CartMapper interface.
 func (cart *Ace) Plumb() {
-	cart.arm.Plumb(nil, cart.mem, cart)
+	if cart.armState == nil {
+		panic("cannot plumb this ELF instance because the ARM state is nil")
+	}
+	cart.mem.Plumb(cart.arm)
+	cart.arm.Plumb(cart.armState, cart.mem, cart)
+	cart.armState = nil
 }
 
 // Reset implements the mapper.CartMapper interface.

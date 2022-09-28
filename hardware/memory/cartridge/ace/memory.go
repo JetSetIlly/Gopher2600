@@ -124,7 +124,7 @@ func newAceMemory(version string, data []byte) (*aceMemory, error) {
 	mem.armOrigin = mem.resetPC
 	mem.armMemtop = mem.armOrigin + uint32(len(mem.armProgram))
 
-	// define the Thumb-2 bytecode fo a function whose only purpose is to jump
+	// define the Thumb-2 bytecode for a function whose only purpose is to jump
 	// back to where it came from bytecode is for instruction "BX LR" with a
 	// "true" value in R0
 	nullFunction := []byte{
@@ -221,7 +221,24 @@ func newAceMemory(version string, data []byte) (*aceMemory, error) {
 
 func (mem *aceMemory) Snapshot() *aceMemory {
 	m := *mem
+	m.armProgram = make([]byte, len(mem.armProgram))
+	copy(m.armProgram, mem.armProgram)
+	m.vcsProgram = make([]byte, len(mem.vcsProgram))
+	copy(m.vcsProgram, mem.vcsProgram)
+	m.gpioA = make([]byte, len(mem.gpioA))
+	copy(m.gpioA, mem.gpioA)
+	m.gpioB = make([]byte, len(mem.gpioB))
+	copy(m.gpioB, mem.gpioB)
+	m.flash = make([]byte, len(mem.flash))
+	copy(m.flash, mem.flash)
+	m.sram = make([]byte, len(mem.sram))
+	copy(m.sram, mem.sram)
 	return &m
+}
+
+// Plumb implements the mapper.CartMapper interface.
+func (mem *aceMemory) Plumb(arm yieldARM) {
+	mem.arm = arm
 }
 
 // MapAddress implements the arm.SharedMemory interface.
