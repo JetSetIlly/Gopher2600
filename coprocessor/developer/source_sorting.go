@@ -338,6 +338,11 @@ func (e SortedFunctions) Less(i int, j int) bool {
 
 	switch e.method {
 	case sortFile:
+		// some functions don't have a declaration line
+		if e.Functions[i].DeclLine == nil || e.Functions[j].DeclLine == nil {
+			return true
+		}
+
 		if e.descending {
 			return e.Functions[i].DeclLine.File.Filename > e.Functions[j].DeclLine.File.Filename
 		}
