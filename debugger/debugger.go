@@ -1111,7 +1111,7 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) 
 
 	coproc := dbg.vcs.Mem.Cart.GetCoProc()
 	dbg.CoProcDisasm = coprocDisasm.NewDisassembly(dbg.vcs.TV, coproc)
-	dbg.CoProcDev = coprocDev.NewDeveloper(cartload.Filename, coproc, dbg.vcs.TV)
+	dbg.CoProcDev = coprocDev.NewDeveloper(cartload.Filename, coproc, dbg.vcs.TV, *dbg.opts.ELF)
 	if dbg.CoProcDev != nil {
 		dbg.vcs.TV.AddFrameTrigger(dbg.CoProcDev)
 	}
@@ -1288,7 +1288,7 @@ func (dbg *Debugger) hotload() (e error) {
 
 	coproc := dbg.vcs.Mem.Cart.GetCoProc()
 	dbg.CoProcDisasm = coprocDisasm.NewDisassembly(dbg.vcs.TV, coproc)
-	dbg.CoProcDev = coprocDev.NewDeveloper(cartload.Filename, coproc, dbg.vcs.TV)
+	dbg.CoProcDev = coprocDev.NewDeveloper(cartload.Filename, coproc, dbg.vcs.TV, *dbg.opts.ELF)
 	if dbg.CoProcDev != nil {
 		dbg.vcs.TV.AddFrameTrigger(dbg.CoProcDev)
 	}

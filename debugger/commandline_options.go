@@ -32,6 +32,7 @@ type CommandLineOptions struct {
 	Left      *string
 	Right     *string
 	Profile   *string
+	ELF       *string
 
 	// playmode only
 	ComparisonROM    *string
@@ -67,6 +68,7 @@ func NewCommandLineOptions() CommandLineOptions {
 		Left:            &s,
 		Right:           &s,
 		Profile:         &s,
+		ELF:             &s,
 		ComparisonROM:   &s,
 		ComparisonPrefs: &s,
 		Record:          &b,

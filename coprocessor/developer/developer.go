@@ -58,7 +58,7 @@ type TV interface {
 }
 
 // NewDeveloper is the preferred method of initialisation for the Developer type.
-func NewDeveloper(romFile string, cart mapper.CartCoProc, tv TV) *Developer {
+func NewDeveloper(romFile string, cart mapper.CartCoProc, tv TV, elfFile string) *Developer {
 	if cart == nil {
 		return nil
 	}
@@ -78,7 +78,7 @@ func NewDeveloper(romFile string, cart mapper.CartCoProc, tv TV) *Developer {
 	}
 
 	t := time.Now()
-	dev.source, err = NewSource(romFile, cart)
+	dev.source, err = NewSource(romFile, cart, elfFile)
 	if err != nil {
 		logger.Logf("developer", err.Error())
 	} else {

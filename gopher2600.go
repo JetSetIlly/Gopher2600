@@ -295,6 +295,7 @@ func emulate(emulationMode govern.Mode, md *modalflag.Modes, sync *mainSync) err
 	opts.Left = md.AddString("left", "AUTO", "left player port: AUTO, STICK, PADDLE, KEYPAD, GAMEPAD")
 	opts.Right = md.AddString("right", "AUTO", "right player port: AUTO, STICK, PADDLE, KEYPAD, GAMEPAD, SAVEKEY, ATARIVOX")
 	opts.Profile = md.AddString("profile", "none", "run performance check with profiling: command separated CPU, MEM, TRACE or ALL")
+	opts.ELF = md.AddString("elf", "", "path to corresponding ELF file for binary. only valid for some coprocessor supporting ROMs.")
 
 	// playmode specific arguments
 	if emulationMode == govern.ModePlay {
