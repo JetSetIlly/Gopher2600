@@ -16,6 +16,7 @@
 package ace
 
 import (
+	"debug/dwarf"
 	"fmt"
 
 	"github.com/jetsetilly/gopher2600/curated"
@@ -29,9 +30,16 @@ import (
 // Ace implements the mapper.CartMapper interface.
 type Ace struct {
 	instance *instance.Instance
-	version  string
-	arm      *arm.ARM
-	mem      *aceMemory
+	dev      mapper.CartCoProcDeveloper
+
+	version string
+	arm     *arm.ARM
+	mem     *aceMemory
+
+	// parallelARM is true whenever the address bus is not a cartridge address (ie.
+	// a TIA or RIOT address). this means that the arm is running unhindered
+	// and will not have yielded for that colour clock
+	parallelARM bool
 
 	// armState is a copy of the ARM's state at the moment of the most recent
 	// Snapshot. it's used only suring a Plumb() operation
@@ -113,6 +121,10 @@ func (cart *Ace) Plumb() {
 
 // Reset implements the mapper.CartMapper interface.
 func (cart *Ace) Reset() {
+	if cart.dev != nil {
+		cart.dev.StartProfiling()
+		defer cart.dev.ProcessProfiling()
+	}
 	cart.arm.Run()
 }
 
@@ -150,6 +162,11 @@ func (cart *Ace) Patch(_ int, _ uint8) error {
 
 // Listen implements the mapper.CartMapper interface.
 func (cart *Ace) Listen(addr uint16, data uint8) {
+	if cart.dev != nil {
+		cart.dev.StartProfiling()
+		defer cart.dev.ProcessProfiling()
+	}
+
 	// from dpc example:
 	// reading of addresses is
 	//		ldr	r2, [r1, #16] (opcode 690a)
@@ -200,4 +217,53 @@ func (cart *Ace) ARMinterrupt(addr uint32, val1 uint32, val2 uint32) (arm.ARMint
 // BusStuff implements the mapper.CartBusStuff interface.
 func (cart *Ace) BusStuff() (uint8, bool) {
 	return cart.mem.busStuffData, cart.mem.busStuff
+}
+
+// CoProcID implements the mapper.CartCoProc interface.
+func (cart *Ace) CoProcID() string {
+	return cart.arm.CoProcID()
+}
+
+// SetDisassembler implements the mapper.CartCoProc interface.
+func (cart *Ace) SetDisassembler(disasm mapper.CartCoProcDisassembler) {
+	cart.arm.SetDisassembler(disasm)
+}
+
+// SetDeveloper implements the mapper.CartCoProc interface.
+func (cart *Ace) SetDeveloper(dev mapper.CartCoProcDeveloper) {
+	cart.dev = dev
+	cart.arm.SetDeveloper(dev)
+}
+
+// DWARF implements the mapper.CartCoProc interface.
+func (cart *Ace) DWARF() *dwarf.Data {
+	return nil
+}
+
+// ELFSection implements the mapper.CartCoProc interface.
+func (cart *Ace) ELFSection(name string) (uint32, bool) {
+	return 0, false
+}
+
+// CoProcState implements the mapper.CartCoProc interface.
+func (cart *Ace) CoProcState() mapper.CoProcState {
+	if cart.parallelARM {
+		return mapper.CoProcParallel
+	}
+	return mapper.CoProcStrongARMFeed
+}
+
+// BreakpointHasTriggered implements the mapper.CartCoProc interface.
+func (cart *Ace) BreakpointHasTriggered() bool {
+	return false
+}
+
+// ResumeAfterBreakpoint implements the mapper.CartCoProc interface.
+func (cart *Ace) ResumeAfterBreakpoint() error {
+	return nil
+}
+
+// BreakpointsDisable implements the mapper.CartCoProc interface.
+func (cart *Ace) BreakpointsDisable(disable bool) {
+	cart.arm.BreakpointsDisable(disable)
 }
