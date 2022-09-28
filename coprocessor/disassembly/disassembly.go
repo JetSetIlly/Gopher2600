@@ -87,7 +87,9 @@ func (dsm *Disassembly) Inhibit(inhibit bool) {
 		dsm.cart.SetDisassembler(nil)
 		dsm.disasm.LastExecution = dsm.disasm.LastExecution[:0]
 	} else {
-		dsm.cart.SetDisassembler(dsm)
+		if dsm.disasm.Enabled {
+			dsm.cart.SetDisassembler(dsm)
+		}
 	}
 }
 
