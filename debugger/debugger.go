@@ -511,6 +511,12 @@ func (dbg *Debugger) setStateQuiet(state govern.State, quiet bool) {
 		if dbg.CoProcDev != nil {
 			dbg.CoProcDev.Disable(true)
 		}
+
+		// coprocessor disassembly is an inherently slow operation particuarly
+		// for StrongARM type ROMs
+		if dbg.CoProcDisasm != nil {
+			dbg.CoProcDisasm.Inhibit(true)
+		}
 	} else {
 		dbg.vcs.Mem.Cart.BreakpointsDisable(false)
 
@@ -521,6 +527,11 @@ func (dbg *Debugger) setStateQuiet(state govern.State, quiet bool) {
 		// will already have been enabled
 		if dbg.CoProcDev != nil {
 			dbg.CoProcDev.Disable(false)
+		}
+
+		// uninhibit coprocessor disassembly
+		if dbg.CoProcDisasm != nil {
+			dbg.CoProcDisasm.Inhibit(false)
 		}
 	}
 

@@ -76,6 +76,21 @@ func NewDisassembly(tv TV, cart mapper.CartCoProc) *Disassembly {
 	return dsm
 }
 
+// Inhibit should be used to temporarily disable disassembly functionality.
+// IsEnabled() will still return true as appropriate regardless of inhibit
+// state.
+func (dsm *Disassembly) Inhibit(inhibit bool) {
+	dsm.crit.Lock()
+	defer dsm.crit.Unlock()
+
+	if inhibit {
+		dsm.cart.SetDisassembler(nil)
+		dsm.disasm.LastExecution = dsm.disasm.LastExecution[:0]
+	} else {
+		dsm.cart.SetDisassembler(dsm)
+	}
+}
+
 // IsEnabled returns true if coprocessor disassembly is currently active.
 func (dsm *Disassembly) IsEnabled() bool {
 	dsm.crit.Lock()
@@ -91,6 +106,7 @@ func (dsm *Disassembly) Enable(enable bool) {
 	defer dsm.crit.Unlock()
 
 	dsm.disasm.Enabled = enable
+
 	if dsm.disasm.Enabled {
 		dsm.cart.SetDisassembler(dsm)
 	} else {

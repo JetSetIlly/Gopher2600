@@ -65,6 +65,9 @@ func (dbg *Debugger) CatchUpLoop(tgt coords.TelevisionCoords) error {
 			dbg.CoProcDev.Disable(false)
 		}
 
+		// we are *not* uninhibiting coprocessor disassembly. the performance
+		// loss is still too great to do so
+
 		dbg.catchupEnd = func() {
 			dbg.vcs.TV.SetFPSCap(fpsCap)
 			dbg.catchupContinue = nil

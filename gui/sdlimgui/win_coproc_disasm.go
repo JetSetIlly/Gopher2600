@@ -101,7 +101,12 @@ func (win *winCoProcDisasm) draw() {
 				}
 				if imgui.BeginTabItem("Last Execution") {
 					win.optionsLastExecution = true
-					win.drawDisasm(dsm, true)
+					if len(dsm.LastExecution) > 0 {
+						win.drawDisasm(dsm, true)
+					} else {
+						imgui.Spacing()
+						imgui.Text("No recent disassembly available.")
+					}
 					imgui.EndTabItem()
 				}
 				imgui.EndTabBar()
@@ -138,13 +143,18 @@ func (win *winCoProcDisasm) draw() {
 						imgui.SameLineV(0, 10)
 						imgui.Text("Executed in Immediate Mode")
 					} else {
-						imgui.SameLineV(0, 10)
-						imgui.Text(fmt.Sprintf("Total Cycles % 8d", summary.I+summary.N+summary.S))
-						imguiTooltip(func() {
-							imgui.Text(fmt.Sprintf("N cycles: % 8d", summary.N))
-							imgui.Text(fmt.Sprintf("I cycles: % 8d", summary.I))
-							imgui.Text(fmt.Sprintf("S cycles: % 8d", summary.S))
-						}, true)
+						if len(dsm.LastExecution) > 0 {
+							imgui.SameLineV(0, 10)
+							imgui.Text(fmt.Sprintf("Total Cycles % 8d", summary.I+summary.N+summary.S))
+							imguiTooltip(func() {
+								imgui.Text(fmt.Sprintf("N cycles: % 8d", summary.N))
+								imgui.Text(fmt.Sprintf("I cycles: % 8d", summary.I))
+								imgui.Text(fmt.Sprintf("S cycles: % 8d", summary.S))
+							}, true)
+						} else {
+							imgui.SameLineV(0, 10)
+							imgui.Text("Recent execution unavailable")
+						}
 					}
 				}
 			}
@@ -191,6 +201,7 @@ func (win *winCoProcDisasm) drawDisasm(dsm *disassembly.DisasmEntries, lastExecu
 
 	win.img.dbg.CoProcDev.BorrowSource(func(src *developer.Source) {
 		if lastExecution {
+			imgui.Text("State of execution has recently changed. Last execution details currently unavailable.")
 			clipper.Begin(len(dsm.LastExecution))
 			for clipper.Step() {
 				for i := clipper.DisplayStart; i < clipper.DisplayEnd; i++ {
