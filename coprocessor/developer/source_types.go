@@ -31,15 +31,29 @@ type SourceFile struct {
 // be confused with the coprocessor.disassembly package. SourceDisasm instances
 // are intended to be used by static disasemblers.
 type SourceDisasm struct {
-	Addr        uint32
-	Opcode      uint16
+	Addr uint32
+
+	is32Bit bool
+	opcode  uint32
+
 	Instruction string
 
 	Line *SourceLine
 }
 
+// Opcode returns a string formatted opcode appropriate for the bit length.
+func (d *SourceDisasm) Opcode() string {
+	if d.is32Bit {
+		return fmt.Sprintf("%04x %04x", uint16(d.opcode>>16), uint16(d.opcode))
+	}
+	return fmt.Sprintf("%04x", d.opcode)
+}
+
 func (d *SourceDisasm) String() string {
-	return fmt.Sprintf("%#08x %04x %s", d.Addr, d.Opcode, d.Instruction)
+	if d.is32Bit {
+		return fmt.Sprintf("%#08x %04x %04x %s", d.Addr, uint16(d.opcode>>16), uint16(d.opcode), d.Instruction)
+	}
+	return fmt.Sprintf("%#08x %04x %s", d.Addr, uint16(d.opcode), d.Instruction)
 }
 
 // SourceLine is a single line of source in a source file, identified by the

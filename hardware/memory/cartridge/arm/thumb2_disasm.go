@@ -14,3 +14,10 @@
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
 package arm
+
+func thumb2Disassemble(opcode uint16) (DisasmEntry, bool) {
+	if opcode&0xf800 == 0xe800 || opcode&0xf000 == 0xf000 {
+		return DisasmEntry{}, true
+	}
+	return thumbDisassemble(opcode), false
+}

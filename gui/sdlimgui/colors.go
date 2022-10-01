@@ -100,6 +100,8 @@ type imguiColors struct {
 	CoProcSourceAvgLoad          imgui.Vec4
 	CoProcSourceMaxLoad          imgui.Vec4
 	CoProcSourceBug              imgui.Vec4
+	CoProcSourceDisasmOpcode     imgui.Vec4
+	CoProcSourceDisasmOpcodeFade imgui.Vec4
 	CoProcSourceDisasmAddr       imgui.Vec4
 	CoProcSourceDisasmAddrFade   imgui.Vec4
 	CoProcSourceDisasm           imgui.Vec4
@@ -281,6 +283,8 @@ func newColors() *imguiColors {
 		CoProcSourceAvgLoad:          imgui.Vec4{0.6, 0.6, 0.9, 1.0},
 		CoProcSourceMaxLoad:          imgui.Vec4{0.6, 0.9, 0.9, 1.0},
 		CoProcSourceBug:              imgui.Vec4{0.5, 0.5, 0.8, 1.0},
+		CoProcSourceDisasmOpcode:     imgui.Vec4{0.5, 0.5, 0.6, 1.0},
+		CoProcSourceDisasmOpcodeFade: imgui.Vec4{0.3, 0.3, 0.3, 1.0},
 		CoProcSourceDisasmAddr:       imgui.Vec4{0.8, 0.8, 0.8, 1.0},
 		CoProcSourceDisasmAddrFade:   imgui.Vec4{0.5, 0.5, 0.5, 1.0},
 		CoProcSourceDisasm:           imgui.Vec4{1.0, 1.0, 1.0, 1.0},

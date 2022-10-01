@@ -1110,17 +1110,22 @@ func (win *winCoProcPerformance) tooltip(load developer.Load, ln *developer.Sour
 			imgui.Spacing()
 			imgui.Separator()
 			imgui.Spacing()
-			imgui.BeginTable("##disasmTable", 2)
-			for _, asm := range ln.Disassembly {
+			imgui.BeginTable("##disasmTable", 3)
+			for _, d := range ln.Disassembly {
 				imgui.TableNextRow()
 
 				imgui.TableNextColumn()
 				imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmAddress)
-				imgui.Text(fmt.Sprintf("%08x", asm.Addr))
+				imgui.Text(fmt.Sprintf("%08x", d.Addr))
 				imgui.PopStyleColor()
 
 				imgui.TableNextColumn()
-				imgui.Text(asm.Instruction)
+				imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceDisasmOpcode)
+				imgui.Text(d.Opcode())
+				imgui.PopStyleColor()
+
+				imgui.TableNextColumn()
+				imgui.Text(d.Instruction)
 			}
 			imgui.EndTable()
 		}

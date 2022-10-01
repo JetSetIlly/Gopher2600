@@ -341,7 +341,7 @@ func (win *winCoProcSource) draw() {
 									imgui.Spacing()
 									imgui.Separator()
 									imgui.Spacing()
-									imgui.BeginTable("##disasmTable", 2)
+									imgui.BeginTable("##disasmTable", 3)
 
 									// choose which disasm list to use
 									disasm := ln.Disassembly
@@ -361,6 +361,15 @@ func (win *winCoProcSource) draw() {
 											imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceDisasmAddrFade)
 										}
 										imgui.Text(fmt.Sprintf("%08x", d.Addr))
+										imgui.PopStyleColor()
+
+										imgui.TableNextColumn()
+										if d.Line.LineNumber == ln.LineNumber {
+											imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceDisasmOpcode)
+										} else {
+											imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceDisasmOpcodeFade)
+										}
+										imgui.Text(d.Opcode())
 										imgui.PopStyleColor()
 
 										imgui.TableNextColumn()
@@ -396,11 +405,13 @@ func (win *winCoProcSource) draw() {
 						}
 					}
 
+					// performance statistics
 					imgui.TableNextColumn()
 					imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLoad)
 					if ln.Stats.Overall.IsValid() {
-						imgui.Text(fmt.Sprintf("%.02f", ln.Stats.Overall.OverSource.Frame))
+						imgui.Text(fmt.Sprintf("%.02f", ln.Stats.Overall.OverFunction.Frame))
 					} else if len(ln.Disassembly) > 0 {
+						// line has never been executed
 						imgui.Text(" -")
 					}
 					imgui.PopStyleColor()

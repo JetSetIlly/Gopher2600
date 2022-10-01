@@ -100,8 +100,8 @@ func (s *DisasmSummary) add(c cycleOrder) {
 	}
 }
 
-// Disassemble a single opcode. The assumption being that this is a Thumb
-// encoded instruction.
-func Disassemble(opcode uint16) DisasmEntry {
-	return thumbDisassemble(opcode)
+// Disassemble a single opcode. The assumption being that this is a 16bit Thumb
+// instruction. If it's a 32bit instruction then false is returned
+func Disassemble(opcode uint16) (DisasmEntry, bool) {
+	return thumb2Disassemble(opcode)
 }

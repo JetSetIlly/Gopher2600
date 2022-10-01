@@ -820,7 +820,7 @@ func (arm *ARM) run() (float32, error) {
 
 			d, cached = arm.disasmCache[arm.state.instructionPC]
 			if !cached {
-				d = Disassemble(opcode)
+				d, _ = Disassemble(opcode)
 				d.Address = fmt.Sprintf("%08x", arm.state.instructionPC)
 				d.Addr = arm.state.instructionPC
 			}

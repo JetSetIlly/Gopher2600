@@ -222,6 +222,11 @@ func NewSource(romFile string, cart mapper.CartCoProc, elfFile string) (*Source,
 		o := sec.Open()
 
 		b := make([]byte, 2)
+
+		// 32bit instruction handling (see comment below)
+		var is32Bit bool
+		var addr32Bit uint64
+
 		for {
 			n, err := o.Read(b)
 			if n != 2 {
@@ -235,13 +240,28 @@ func NewSource(romFile string, cart mapper.CartCoProc, elfFile string) (*Source,
 			}
 
 			opcode := ef.ByteOrder.Uint16(b)
-			disasm := arm.Disassemble(opcode)
 
-			// put the disassembly entry in the
-			src.Disassembly[addr] = &SourceDisasm{
-				Addr:        uint32(addr),
-				Opcode:      opcode,
-				Instruction: disasm.String(),
+			// handle 32bit instructions by queueing up reads
+			//
+			// this should eventually be replaced with a more flexible
+			// arm.Disassemble() function and arm.DisasmEntry type
+			if is32Bit {
+				is32Bit = false
+				src.Disassembly[addr32Bit].opcode <<= 16
+				src.Disassembly[addr32Bit].opcode |= uint32(opcode)
+				src.Disassembly[addr32Bit].Instruction = "-"
+			} else {
+				var disasm arm.DisasmEntry
+				disasm, is32Bit = arm.Disassemble(opcode)
+				addr32Bit = addr
+
+				// create the disassembly entry
+				src.Disassembly[addr] = &SourceDisasm{
+					Addr:        uint32(addr),
+					is32Bit:     is32Bit,
+					opcode:      uint32(opcode),
+					Instruction: disasm.String(),
+				}
 			}
 
 			addr += 2
@@ -282,6 +302,7 @@ func NewSource(romFile string, cart mapper.CartCoProc, elfFile string) (*Source,
 	// most recent compile unit we've seen
 	var unit *compileUnit
 
+	// loop through file and collate compile units
 	for {
 		entry, err := r.Next()
 		if err != nil {
