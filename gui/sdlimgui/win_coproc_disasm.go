@@ -96,7 +96,12 @@ func (win *winCoProcDisasm) draw() {
 				imgui.BeginTabBar("##coprocDisasmTabBar")
 				if imgui.BeginTabItem("Disassembly") {
 					win.optionsLastExecution = false
-					win.drawDisasm(dsm, false)
+					if len(dsm.Entries) > 0 {
+						win.drawDisasm(dsm, false)
+					} else {
+						imgui.Spacing()
+						imgui.Text("No disassembly available")
+					}
 					imgui.EndTabItem()
 				}
 				if imgui.BeginTabItem("Last Execution") {
@@ -105,7 +110,7 @@ func (win *winCoProcDisasm) draw() {
 						win.drawDisasm(dsm, true)
 					} else {
 						imgui.Spacing()
-						imgui.Text("No recent disassembly available.")
+						imgui.Text("No recent disassembly available")
 					}
 					imgui.EndTabItem()
 				}
