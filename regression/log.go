@@ -147,7 +147,7 @@ func (reg *LogRegression) regress(newRegression bool, output io.Writer, msg stri
 	// default the hardware preferences
 	vcs.Instance.Normalise()
 
-	err = setup.AttachCartridge(vcs, reg.CartLoad)
+	err = setup.AttachCartridge(vcs, reg.CartLoad, true)
 	if err != nil {
 		return false, "", curated.Errorf("log: %v", err)
 	}

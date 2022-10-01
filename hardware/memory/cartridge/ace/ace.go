@@ -60,8 +60,6 @@ func NewAce(instance *instance.Instance, version string, data []byte) (mapper.Ca
 	logger.Logf("ACE", "GPIO IN: %08x to %08x", cart.mem.gpioAOrigin, cart.mem.gpioAMemtop)
 	logger.Logf("ACE", "GPIO OUT: %08x to %08x", cart.mem.gpioBOrigin, cart.mem.gpioBMemtop)
 
-	cart.arm.Run()
-
 	return cart, nil
 }
 
@@ -115,6 +113,7 @@ func (cart *Ace) Plumb() {
 
 // Reset implements the mapper.CartMapper interface.
 func (cart *Ace) Reset() {
+	cart.arm.Run()
 }
 
 // Read implements the mapper.CartMapper interface.

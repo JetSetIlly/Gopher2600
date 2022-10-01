@@ -182,7 +182,7 @@ func (cmp *Comparison) CreateFromLoader(cartload cartridgeloader.Loader) error {
 		}()
 
 		// not using setup system to attach cartridge. maybe we should?
-		err := cmp.VCS.AttachCartridge(cartload)
+		err := cmp.VCS.AttachCartridge(cartload, true)
 		if err != nil {
 			cmp.driver.quit <- err
 			return

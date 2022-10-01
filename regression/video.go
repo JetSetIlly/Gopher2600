@@ -205,7 +205,7 @@ func (reg *VideoRegression) regress(newRegression bool, output io.Writer, msg st
 	// default the hardware preferences
 	vcs.Instance.Normalise()
 
-	err = setup.AttachCartridge(vcs, reg.CartLoad)
+	err = setup.AttachCartridge(vcs, reg.CartLoad, true)
 	if err != nil {
 		return false, "", curated.Errorf("video: %v", err)
 	}

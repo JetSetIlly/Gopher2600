@@ -182,7 +182,7 @@ func (thmb *Thumbnailer) CreateFromLoader(cartload cartridgeloader.Loader, numFr
 			thmb.isEmulating.Store(false)
 		}()
 
-		err := thmb.vcs.AttachCartridge(cartload)
+		err := thmb.vcs.AttachCartridge(cartload, true)
 		if err != nil {
 			logger.Logf("thumbnailer", err.Error())
 			return

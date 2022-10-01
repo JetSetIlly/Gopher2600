@@ -55,7 +55,7 @@ func Check(output io.Writer, profile Profile, cartload cartridgeloader.Loader, s
 	}
 
 	// attach cartridge to the vcs
-	err = setup.AttachCartridge(vcs, cartload)
+	err = setup.AttachCartridge(vcs, cartload, true)
 	if err != nil {
 		return curated.Errorf("performance: %v", err)
 	}

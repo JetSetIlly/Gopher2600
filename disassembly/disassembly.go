@@ -94,7 +94,7 @@ func FromCartridge(cartload cartridgeloader.Loader) (*Disassembly, error) {
 		return nil, curated.Errorf("disassembly: %v", err)
 	}
 
-	err = vcs.AttachCartridge(cartload)
+	err = vcs.AttachCartridge(cartload, true)
 	if err != nil {
 		return nil, curated.Errorf("disassembly: %v", err)
 	}

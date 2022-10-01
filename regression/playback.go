@@ -140,7 +140,7 @@ func (reg *PlaybackRegression) regress(newRegression bool, output io.Writer, msg
 	// not using setup.AttachCartridge. if the playback was recorded with setup
 	// changes the events will have been copied into the playback script and
 	// will be applied that way
-	err = vcs.AttachCartridge(plb.CartLoad)
+	err = vcs.AttachCartridge(plb.CartLoad, true)
 	if err != nil {
 		return false, "", curated.Errorf("playback: %v", err)
 	}

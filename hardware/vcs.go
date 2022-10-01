@@ -151,7 +151,14 @@ func (vcs *VCS) Plumb(fromDifferentEmulation bool) {
 
 // AttachCartridge to this VCS. While this function can be called directly it
 // is advised that the setup package be used in most circumstances.
-func (vcs *VCS) AttachCartridge(cartload cartridgeloader.Loader) error {
+//
+// The emulated VCS is *not* reset after AttachCartridge() unless the reset
+// argument is true.
+//
+// Note that the emulation should always be reset before emulation commences
+// but some applications might need to prepare the emulation further before
+// that happens.
+func (vcs *VCS) AttachCartridge(cartload cartridgeloader.Loader, reset bool) error {
 	err := vcs.TV.SetSpecConditional(cartload.Spec)
 	if err != nil {
 		return err
@@ -176,14 +183,11 @@ func (vcs *VCS) AttachCartridge(cartload cartridgeloader.Loader) error {
 		}
 	}
 
-	// resetting after cartridge attachment because the cartridge needs a reset
-	// too. we could "correct" this my mandating every cartridge mapper goes
-	// through the reset procedure on initialisation, but this feels safer
-	// somehow.
-
-	err = vcs.Reset()
-	if err != nil {
-		return err
+	if reset {
+		err = vcs.Reset()
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
