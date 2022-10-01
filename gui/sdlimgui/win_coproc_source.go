@@ -17,11 +17,14 @@ package sdlimgui
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/coprocessor/developer"
 	"github.com/jetsetilly/gopher2600/gui/fonts"
+	"github.com/jetsetilly/gopher2600/logger"
+	"github.com/jetsetilly/gopher2600/resources/unique"
 )
 
 // in this case of the coprocessor disassmebly window the actual window title
@@ -456,6 +459,10 @@ func (win *winCoProcSource) draw() {
 			imgui.Checkbox("Show ASM in Tooltip", &win.showAsmInTooltip)
 			imgui.SameLineV(0, 20)
 			imgui.Checkbox("Highlight Comments & String Literals", &win.syntaxHighlighting)
+			imgui.SameLineV(0, 20)
+			if imgui.Button(fmt.Sprintf("%c Save to CSV", fonts.Disk)) {
+				win.saveToCSV(src)
+			}
 		})
 	})
 }
@@ -507,4 +514,45 @@ func (win *winCoProcSource) gotoSourceLine(ln *developer.SourceLine) {
 
 	// if we haven't opened the window before we don't want the firstOpen procedure to run
 	win.firstOpen = false
+}
+
+func (win *winCoProcSource) saveToCSV(src *developer.Source) {
+	// open unique file
+	fn := unique.Filename("source", win.img.lz.Cart.Shortname)
+	fn = fmt.Sprintf("%s.csv", fn)
+	f, err := os.Create(fn)
+	if err != nil {
+		logger.Logf("sdlimgui", "could not save source CSV: %v", err)
+		return
+	}
+	defer func() {
+		err := f.Close()
+		if err != nil {
+			logger.Logf("sdlimgui", "error saving source CSV: %v", err)
+		}
+	}()
+
+	// write string to CSV file
+	writeEntry := func(s string) {
+		f.WriteString(s)
+		f.WriteString("\n")
+	}
+
+	for _, ln := range win.selectedFile.Lines {
+		s := strings.Builder{}
+		if ln.Stats.Overall.IsValid() {
+			s.WriteString(fmt.Sprintf("%.02f", ln.Stats.Overall.OverFunction.Frame))
+		} else if len(ln.Disassembly) > 0 {
+			// line has never been executed
+			s.WriteString(" -")
+		}
+		s.WriteRune(',')
+
+		// replace comma with "Arabic Decimal Separator" in source code. This
+		// is so that the command doesn't interfere with the CSV format
+		const arabicDecimalSeparator = '\u066b'
+		s.WriteString(strings.ReplaceAll(ln.PlainContent, ",", string(arabicDecimalSeparator)))
+
+		writeEntry(s.String())
+	}
 }
