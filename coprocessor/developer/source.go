@@ -188,6 +188,8 @@ func NewSource(romFile string, cart mapper.CartCoProc, elfFile string) (*Source,
 	var executableOrigin uint64
 	var executableSectionFound bool
 
+	executableOrigin = 0x28021200
+
 	// disassemble every word in the ELF file
 	//
 	// we could traverse of the Progs array of the file here but some ELF files
