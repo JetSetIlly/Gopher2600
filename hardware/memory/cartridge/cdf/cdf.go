@@ -474,7 +474,7 @@ func (cart *cdf) Step(clock float32) {
 	}
 }
 
-// IterateBank implements the mapper.CartMapper interface.
+// CopyBanks implements the mapper.CartMapper interface.
 func (cart *cdf) CopyBanks() []mapper.BankContent {
 	c := make([]mapper.BankContent, len(cart.banks))
 	for b := 0; b < len(cart.banks); b++ {
@@ -486,7 +486,7 @@ func (cart *cdf) CopyBanks() []mapper.BankContent {
 	return c
 }
 
-// ReadHotspots implements the mapper.CartLabelsBus interface.
+// Labels implements the mapper.CartLabelsBus interface.
 func (cart *cdf) Labels() mapper.CartLabels {
 	return map[uint16]string{
 		0x0000: "FASTJMP1",
