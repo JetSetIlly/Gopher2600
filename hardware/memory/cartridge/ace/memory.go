@@ -107,16 +107,14 @@ func newAceMemory(version string, data []byte) (*aceMemory, error) {
 	mem.resetLR = mem.model.FlashOrigin
 	mem.resetPC = mem.model.FlashOrigin + entryPoint
 
+	// align reset PC value. this needs to be done now in order for the
+	// dataOffset calculation to be correct
+	mem.resetPC &= 0xfffffffe
+
 	// offset into the data array for start of ARM program. not entirely sure
 	// of the significance of the jumpVector value or what it refers to
-	const jumpVector = 0x08020201
+	const jumpVector = 0x08020200
 	dataOffset := mem.resetPC - jumpVector - mem.model.FlashOrigin
-
-	// align reset PC value (maybe this should be done in the ARM package once
-	// the value has been received - on second thoughts, no we shouldn't do
-	// this because we need to know the true value of resetPC in MapAddress()
-	// below)
-	mem.resetPC &= 0xfffffffe
 
 	// copy arm program
 	mem.armProgram = make([]byte, romSize)
