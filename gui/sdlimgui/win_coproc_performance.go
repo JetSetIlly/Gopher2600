@@ -403,22 +403,22 @@ func (win *winCoProcPerformance) drawFunctions(src *developer.Source) {
 	}
 
 	if win.kernelFocus&developer.KernelVBLANK == developer.KernelVBLANK {
-		if !src.Stats.VBLANK.IsValid() {
+		if !src.Stats.VBLANK.HasExecuted() {
 			imgui.Text("No functions have been executed during VBLANK yet")
 			return
 		}
 	} else if win.kernelFocus&developer.KernelScreen == developer.KernelScreen {
-		if !src.Stats.Screen.IsValid() {
+		if !src.Stats.Screen.HasExecuted() {
 			imgui.Text("No functions have been executed during the visible screen yet")
 			return
 		}
 	} else if win.kernelFocus&developer.KernelOverscan == developer.KernelOverscan {
-		if !src.Stats.Overscan.IsValid() {
+		if !src.Stats.Overscan.HasExecuted() {
 			imgui.Text("No functions have been executed during Overscan yet")
 			return
 		}
 	} else {
-		if win.hideUnusedEntries && !src.Stats.Overall.IsValid() {
+		if win.hideUnusedEntries && !src.Stats.Overall.HasExecuted() {
 			imgui.Text("No functions have been executed yet")
 			return
 		}
@@ -473,7 +473,7 @@ func (win *winCoProcPerformance) drawFunctions(src *developer.Source) {
 
 		// using flat stats even if cumulative option is set - it amounts to
 		// the same thing in this case
-		if win.hideUnusedEntries && !fn.FlatStats.Overall.IsValid() {
+		if win.hideUnusedEntries && !fn.FlatStats.Overall.HasExecuted() {
 			continue
 		}
 
@@ -633,22 +633,22 @@ func (win *winCoProcPerformance) drawSourceLines(src *developer.Source) {
 	}
 
 	if win.kernelFocus&developer.KernelVBLANK == developer.KernelVBLANK {
-		if !src.Stats.VBLANK.IsValid() {
+		if !src.Stats.VBLANK.HasExecuted() {
 			imgui.Text("No lines have been executed during VBLANK yet")
 			return
 		}
 	} else if win.kernelFocus&developer.KernelScreen == developer.KernelScreen {
-		if !src.Stats.Screen.IsValid() {
+		if !src.Stats.Screen.HasExecuted() {
 			imgui.Text("No lines have been executed during the visible screen yet")
 			return
 		}
 	} else if win.kernelFocus&developer.KernelOverscan == developer.KernelOverscan {
-		if !src.Stats.Overscan.IsValid() {
+		if !src.Stats.Overscan.HasExecuted() {
 			imgui.Text("No lines have been executed during Overscan yet")
 			return
 		}
 	} else {
-		if win.hideUnusedEntries && !src.Stats.Overall.IsValid() {
+		if win.hideUnusedEntries && !src.Stats.Overall.HasExecuted() {
 			imgui.Text("No lines have been executed yet")
 			return
 		}
@@ -699,7 +699,7 @@ func (win *winCoProcPerformance) drawSourceLines(src *developer.Source) {
 			continue
 		}
 
-		if win.hideUnusedEntries && !ln.Stats.Overall.IsValid() {
+		if win.hideUnusedEntries && !ln.Stats.Overall.HasExecuted() {
 			continue
 		}
 
@@ -827,22 +827,22 @@ func (win *winCoProcPerformance) drawFunctionFilter(src *developer.Source, funct
 	// drawSourceLines() equivalents of this block perform the validity check
 	// on the source level statistics
 	if win.kernelFocus&developer.KernelVBLANK == developer.KernelVBLANK {
-		if !functionFilter.Function.FlatStats.VBLANK.IsValid() {
+		if !functionFilter.Function.FlatStats.VBLANK.HasExecuted() {
 			imgui.Text("This function has not been executed during VBLANK yet")
 			return
 		}
 	} else if win.kernelFocus&developer.KernelScreen == developer.KernelScreen {
-		if !functionFilter.Function.FlatStats.Screen.IsValid() {
+		if !functionFilter.Function.FlatStats.Screen.HasExecuted() {
 			imgui.Text("This function has not been executed during the visible screen yet")
 			return
 		}
 	} else if win.kernelFocus&developer.KernelOverscan == developer.KernelOverscan {
-		if !functionFilter.Function.FlatStats.Overscan.IsValid() {
+		if !functionFilter.Function.FlatStats.Overscan.HasExecuted() {
 			imgui.Text("This function has not been executed during Overscan yet")
 			return
 		}
 	} else {
-		if win.hideUnusedEntries && !src.Stats.Overall.IsValid() {
+		if win.hideUnusedEntries && !src.Stats.Overall.HasExecuted() {
 			imgui.Text("Ths function has not been executed yet")
 			return
 		}
@@ -927,7 +927,7 @@ thean to the program as a whole.`)
 			continue
 		}
 
-		if win.hideUnusedEntries && !ln.Stats.Overall.IsValid() {
+		if win.hideUnusedEntries && !ln.Stats.Overall.HasExecuted() {
 			continue
 		}
 

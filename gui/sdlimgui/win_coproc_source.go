@@ -411,8 +411,20 @@ func (win *winCoProcSource) draw() {
 					// performance statistics
 					imgui.TableNextColumn()
 					imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLoad)
-					if ln.Stats.Overall.IsValid() {
-						imgui.Text(fmt.Sprintf("%.02f", ln.Stats.Overall.OverFunction.Frame))
+					if ln.Stats.Overall.HasExecuted() {
+						if ln.Stats.Overall.OverSource.FrameValid {
+							imgui.Text(fmt.Sprintf("%.02f", ln.Stats.Overall.OverSource.Frame))
+						} else if ln.Stats.Overall.OverSource.AverageValid {
+							imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceAvgLoad)
+							imgui.Text(fmt.Sprintf("%.02f", ln.Stats.Overall.OverSource.Average))
+							imgui.PopStyleColor()
+						} else if ln.Stats.Overall.OverSource.MaxValid {
+							imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceMaxLoad)
+							imgui.Text(fmt.Sprintf("%.02f", ln.Stats.Overall.OverSource.Max))
+							imgui.PopStyleColor()
+						} else {
+							imgui.Text(" -")
+						}
 					} else if len(ln.Disassembly) > 0 {
 						// line has never been executed
 						imgui.Text(" -")
@@ -540,10 +552,13 @@ func (win *winCoProcSource) saveToCSV(src *developer.Source) {
 
 	for _, ln := range win.selectedFile.Lines {
 		s := strings.Builder{}
-		if ln.Stats.Overall.IsValid() {
-			s.WriteString(fmt.Sprintf("%.02f", ln.Stats.Overall.OverFunction.Frame))
-		} else if len(ln.Disassembly) > 0 {
-			// line has never been executed
+		if ln.Stats.Overall.OverSource.FrameValid {
+			s.WriteString(fmt.Sprintf("%.02f", ln.Stats.Overall.OverSource.Frame))
+		} else if ln.Stats.Overall.OverSource.AverageValid {
+			s.WriteString(fmt.Sprintf("%.02f", ln.Stats.Overall.OverSource.Average))
+		} else if ln.Stats.Overall.OverSource.MaxValid {
+			s.WriteString(fmt.Sprintf("%.02f", ln.Stats.Overall.OverSource.Max))
+		} else {
 			s.WriteString(" -")
 		}
 		s.WriteRune(',')

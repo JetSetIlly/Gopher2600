@@ -90,9 +90,12 @@ type Stats struct {
 	avgCount   float32
 }
 
-// IsValid returns true if the statistics have ever been updated. ie. the
+// HasExecuted returns true if the statistics have ever been updated. ie. the
 // source associated with this statistic has ever executed.
-func (stats *Stats) IsValid() bool {
+//
+// Not to be confused with the FrameValid, AverageValid and MaxValid fields of
+// the Load type.
+func (stats *Stats) HasExecuted() bool {
 	return stats.allFrameCount > 0
 }
 
