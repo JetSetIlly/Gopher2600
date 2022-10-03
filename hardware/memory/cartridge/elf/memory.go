@@ -477,7 +477,7 @@ func (mem *elfMemory) relocateStrongArmFunction(f strongArmFunction, support boo
 	// immediately
 	mem.strongArmResumeImmediately[addr] = support
 
-	return addr
+	return addr - 2
 }
 
 // Snapshot implements the mapper.CartMapper interface.
