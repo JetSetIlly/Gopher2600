@@ -265,6 +265,8 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 	case "F4SC":
 		cart.mapper, err = newAtari32k(cart.instance, *cartload.Data)
 		trySuperchip = true
+	case "CV":
+		cart.mapper, err = newCommaVid(cart.instance, *cartload.Data)
 	case "FA":
 		cart.mapper, err = newCBS(cart.instance, *cartload.Data)
 	case "FE":

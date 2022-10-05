@@ -188,6 +188,8 @@ func NewLoader(filename string, mapping string) (Loader, error) {
 			fallthrough
 		case ".F4SC":
 			fallthrough
+		case ".CV":
+			fallthrough
 		case ".FA":
 			fallthrough
 		case ".FE":
