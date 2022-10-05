@@ -183,8 +183,8 @@ func (cart *cbs) Patch(offset int, data uint8) error {
 // Listen implements the mapper.CartMapper interface.
 func (cart *cbs) Listen(addr uint16, data uint8) {
 	// Sometimes, cartridge addresses can be accessed inadvertently. in most
-	// instances, there are no consequences but in the case of the Superchip,
-	// the write addresses can be accessed and the RAM data changed. we handle
+	// instances, there are no consequences but in the case of CBS RAM, the
+	// write addresses can be accessed and the RAM data changed. we handle
 	// that here.
 	//
 	// https://atariage.com/forums/topic/329888-indexed-read-page-crossing-and-sc-ram/
@@ -253,8 +253,7 @@ type cbsState struct {
 	// identifies the currently selected bank
 	bank int
 
-	// some atari ROMs support aditional RAM. this is sometimes referred to as
-	// the superchip. ram is only added when it is detected
+	// CBS cartridges had internal RAM very similar to the Atari Superchip
 	ram []uint8
 }
 
