@@ -574,3 +574,9 @@ func (mem *elfMemory) MapAddress(addr uint32, write bool) (*[]byte, uint32) {
 func (mem *elfMemory) ResetVectors() (uint32, uint32, uint32) {
 	return mem.resetSP, mem.resetLR, mem.resetPC
 }
+
+// IsExecutable implements the arm.SharedMemory interface.
+func (mem *elfMemory) IsExecutable(addr uint32) bool {
+	// TODO: check executable flag for address
+	return true
+}

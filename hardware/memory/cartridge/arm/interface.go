@@ -25,6 +25,9 @@ type SharedMemory interface {
 	// Return reset addreses for the Stack Pointer register; the Link Register;
 	// and Program Counter
 	ResetVectors() (uint32, uint32, uint32)
+
+	// Return true is address contains executable instructions.
+	IsExecutable(addr uint32) bool
 }
 
 // CartridgeHook allows the parent cartridge mapping to emulate ARM code in a

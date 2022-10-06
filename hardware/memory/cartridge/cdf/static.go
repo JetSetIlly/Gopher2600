@@ -77,6 +77,11 @@ func (stc *Static) ResetVectors() (uint32, uint32, uint32) {
 	return stc.version.entrySP, stc.version.entryLR, stc.version.entryPC
 }
 
+// IsExecutable implements the arm.SharedMemory interface.
+func (mem *Static) IsExecutable(addr uint32) bool {
+	return true
+}
+
 func (stc *Static) Snapshot() *Static {
 	n := *stc
 	n.driverRAM = make([]byte, len(stc.driverRAM))

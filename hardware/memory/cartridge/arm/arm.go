@@ -428,7 +428,10 @@ func (arm *ARM) updatePrefs() {
 func (arm *ARM) findProgramMemory() error {
 	arm.state.programMemory, arm.state.programMemoryOffset = arm.mem.MapAddress(arm.state.registers[rPC], false)
 	if arm.state.programMemory == nil {
-		return curated.Errorf("ARM7: cannot find program memory")
+		return curated.Errorf("ARM7: can't find program memory (PC %08x)", arm.state.registers[rPC])
+	}
+	if !arm.mem.IsExecutable(arm.state.registers[rPC]) {
+		return curated.Errorf("ARM7: program memory is not executable (PC %08x)", arm.state.registers[rPC])
 	}
 
 	arm.state.programMemoryOffset = arm.state.registers[rPC] - arm.state.programMemoryOffset
@@ -633,7 +636,7 @@ func (arm *ARM) run() (float32, error) {
 			err = arm.findProgramMemory()
 			if err != nil {
 				// can't find memory so we say the ARM program has finished inadvertently
-				logger.Logf("ARM7", "PC out of range (%#08x). aborting thumb program early", arm.state.executingPC)
+				logger.Logf("ARM7", "aborting thumb program early: %s", err.Error())
 				break // for loop
 			}
 
@@ -641,7 +644,7 @@ func (arm *ARM) run() (float32, error) {
 			memIdx = int(arm.state.executingPC) - int(arm.state.programMemoryOffset)
 			if memIdx < 0 || memIdx+1 >= arm.state.programMemoryLen {
 				// can't find memory so we say the ARM program has finished inadvertently
-				logger.Logf("ARM7", "PC out of range (%#08x). aborting thumb program early", arm.state.executingPC)
+				logger.Logf("ARM7", "aborting thumb program early: %s", err.Error())
 				break // for loop
 			}
 		}

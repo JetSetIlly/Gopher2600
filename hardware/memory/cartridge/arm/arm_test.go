@@ -39,6 +39,10 @@ func (mem *testMemory) ResetVectors() (uint32, uint32, uint32) {
 	return 0x3ff, 0x0, 0x0
 }
 
+func (mem *testMemory) IsExecutable(addr uint32) bool {
+	return true
+}
+
 func (mem *testMemory) SoftwareInterrupt(offset int) {
 	mem.data[offset+1] = 0xbe
 	mem.data[offset] = 0x00
