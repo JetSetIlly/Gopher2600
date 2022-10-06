@@ -133,10 +133,7 @@ func newAceMemory(version string, data []byte) (*aceMemory, error) {
 		0x70, 0x47, // BX LR
 	}
 
-	// not sure why we need the +3 but the incorrect address is loaded by the
-	// BLX function. I think it must be due to how the ARM pipeline and
-	// alignment works but I'm not sure
-	nullFunctionAddress := mem.resetPC + uint32(len(mem.armProgram)) + 4
+	nullFunctionAddress := mem.resetPC + uint32(len(mem.armProgram)) + 2
 
 	// append function to end of flash
 	mem.armProgram = append(mem.armProgram, nullFunction...)
