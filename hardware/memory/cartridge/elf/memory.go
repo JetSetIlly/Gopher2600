@@ -33,10 +33,12 @@ type yieldARM interface {
 }
 
 type elfSection struct {
-	name   string
-	data   []byte
-	origin uint32
-	memtop uint32
+	name       string
+	data       []byte
+	origin     uint32
+	memtop     uint32
+	readOnly   bool
+	executable bool
 }
 
 // Snapshot implements the mapper.CartMapper interface.
@@ -116,9 +118,9 @@ func newElfMemory(ef *elf.File) (*elfMemory, error) {
 			continue
 		}
 
-		// ignore relocation sections for now
 		switch sec.Type {
 		case elf.SHT_REL:
+			// ignore relocation sections for now
 			continue
 
 		case elf.SHT_INIT_ARRAY:
@@ -127,7 +129,9 @@ func newElfMemory(ef *elf.File) (*elfMemory, error) {
 			fallthrough
 		case elf.SHT_PROGBITS:
 			section := &elfSection{
-				name: sec.Name,
+				name:       sec.Name,
+				readOnly:   sec.Flags&elf.SHF_WRITE != elf.SHF_WRITE,
+				executable: sec.Flags&elf.SHF_EXECINSTR == elf.SHF_EXECINSTR,
 			}
 
 			var err error
@@ -157,7 +161,12 @@ func newElfMemory(ef *elf.File) (*elfMemory, error) {
 			mem.sections[section.name] = section
 
 			logger.Logf("ELF", "%s: %08x to %08x (%d)", section.name, section.origin, section.memtop, len(section.data))
-
+			if section.readOnly {
+				logger.Logf("ELF", "%s: is readonly", section.name)
+			}
+			if section.executable {
+				logger.Logf("ELF", "%s: is executable", section.name)
+			}
 		default:
 			logger.Logf("ELF", "ignoring section %s (%s)", sec.Name, sec.Type)
 		}
@@ -210,7 +219,7 @@ func newElfMemory(ef *elf.File) (*elfMemory, error) {
 			logger.Logf("ELF", "relocating %s", secBeingRelocated.name)
 		}
 
-		// reloation data. we walk over the data and extract the relocation
+		// relocation data. we walk over the data and extract the relocation
 		// entry manually. there is no explicit entry type in the Go library
 		// (for some reason)
 		relsecData, err := relsec.Data()
@@ -533,6 +542,9 @@ func (mem *elfMemory) MapAddress(addr uint32, write bool) (*[]byte, uint32) {
 
 	for _, s := range mem.sections {
 		if addr >= s.origin && addr <= s.memtop {
+			if write && s.readOnly {
+				return nil, addr
+			}
 			return &s.data, addr - s.origin
 		}
 	}

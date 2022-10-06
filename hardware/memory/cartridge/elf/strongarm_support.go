@@ -20,28 +20,28 @@ package elf
 // endStrongArmFunction()
 
 func memset(mem *elfMemory) {
-	addr := mem.strongarm.running.registers[0]
-	m, o := mem.MapAddress(addr, true)
+	set, origin := mem.MapAddress(mem.strongarm.running.registers[0], true)
 
-	v := mem.strongarm.running.registers[1]
-	l := mem.strongarm.running.registers[2]
-	for i := uint32(0); i < l; i++ {
-		(*m)[o+i] = byte(v)
+	if set != nil {
+		v := mem.strongarm.running.registers[1]
+		l := mem.strongarm.running.registers[2]
+		for i := uint32(0); i < l; i++ {
+			(*set)[origin+i] = byte(v)
+		}
 	}
 
 	mem.endStrongArmFunction()
 }
 
 func memcpy(mem *elfMemory) {
-	addr := mem.strongarm.running.registers[0]
-	m, o := mem.MapAddress(addr, true)
+	to, toOrigin := mem.MapAddress(mem.strongarm.running.registers[0], true)
+	from, fromOrigin := mem.MapAddress(mem.strongarm.running.registers[1], false)
 
-	addrB := mem.strongarm.running.registers[1]
-	mB, oB := mem.MapAddress(addrB, true)
-
-	l := mem.strongarm.running.registers[2]
-	for i := uint32(0); i < l; i++ {
-		(*m)[o+i] = (*mB)[oB+i]
+	if to != nil && from != nil {
+		l := mem.strongarm.running.registers[2]
+		for i := uint32(0); i < l; i++ {
+			(*to)[toOrigin+i] = (*from)[fromOrigin+i]
+		}
 	}
 
 	mem.endStrongArmFunction()
