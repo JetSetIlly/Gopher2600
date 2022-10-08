@@ -30,8 +30,10 @@ import (
 
 // dpc implements the mapper.CartMapper interface.
 //
-// column, line number & figure references to US patent 4,644,495 are used to
-// support coding decisions.
+// column, line number & figure references to US patent 4,644,495 and are used
+// to support coding decisions:
+//
+// https://patents.google.com/patent/US4485457A/en
 type dpc struct {
 	instance *instance.Instance
 

@@ -153,7 +153,10 @@ Undocumented 650x instructions and implementation details in "6502/6510/8500/850
 http://www.oxyron.de/html/opcodes02.html
 
 US Patent Number 4,644,495 was referenced for the implementation of the DPC cartridge format
-(the format used in Pitfall 2)
+(the format used in Pitfall 2) https://patents.google.com/patent/US4644495/en
+
+US patent 4,485,457A was used to help emplement the CBS cartridge format
+https://patents.google.com/patent/US4485457A/en
 
 DPC+ format implemented according to notes provided by Spiceware https://atariage.com/forums/topic/163495-harmony-dpc-programming
 and
