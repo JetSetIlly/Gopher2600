@@ -38,7 +38,7 @@ func (dsm *Disassembly) Grep(output io.Writer, scope GrepScope, search string, c
 
 	for b := range dsm.disasmEntries.Entries {
 		for _, e := range dsm.disasmEntries.Entries[b] {
-			if e.Level >= EntryLevelBlessed {
+			if e != nil && e.Level >= EntryLevelBlessed {
 				var s, m string
 
 				// limit scope of grep to the correct Instruction field
