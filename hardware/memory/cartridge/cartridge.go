@@ -343,10 +343,15 @@ func (cart *Cartridge) GetBank(addr uint16) mapper.BankInfo {
 // know when to put data on the data bus. If it's not "on" then the cartridge
 // does nothing.
 //
-// However, the option is there to "listen" on the address bus. Notably the
-// tigervision (3F) mapping listens for address 0x003f, which is in the TIA
-// address space. When this address is triggered, the tigervision cartridge
-// will use whatever is on the data bus to switch banks.
+// However, regardless of the chip-select line, the address and data buses can
+// be monitored for activity.
+//
+// Notably the tigervision (3F) mapper monitors and waits for address 0x003f,
+// which is in the TIA address space. When this address is triggered, the
+// tigervision cartridge will use whatever is on the data bus to switch banks.
+//
+// Similarly, the CBS (FA) mapper will switch banks on cartridge addresses 1ff8
+// to 1ffa (and mirrors) but only if the data bus has the low bit set to one.
 func (cart *Cartridge) Listen(addr uint16, data uint8) {
 	cart.mapper.Listen(addr, data)
 }

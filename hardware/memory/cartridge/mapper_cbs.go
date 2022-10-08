@@ -37,7 +37,13 @@ import (
 //
 // cartridges:
 //	- Omega Race
-//	- Gorf
+//	- Mountain King
+//	- Tunnel Runner
+//	- Noice (scene demo)
+//
+// US patent 4,485,457A describes the format in detail:
+//
+// https://patents.google.com/patent/US4485457A/en
 type cbs struct {
 	instance *instance.Instance
 
@@ -114,17 +120,11 @@ func (cart *cbs) Read(addr uint16, passive bool) (uint8, error) {
 		return cart.state.ram[addr-0x100], nil
 	}
 
-	cart.bankswitch(addr, passive)
-
 	return cart.banks[cart.state.bank][addr], nil
 }
 
 // Write implements the mapper.CartMapper interface.
 func (cart *cbs) Write(addr uint16, data uint8, passive bool, poke bool) error {
-	if cart.bankswitch(addr, passive) {
-		return nil
-	}
-
 	if addr <= 0x00ff {
 		cart.state.ram[addr] = data
 		return nil
@@ -139,21 +139,41 @@ func (cart *cbs) Write(addr uint16, data uint8, passive bool, poke bool) error {
 }
 
 // bankswitch on hotspot access.
-func (cart *cbs) bankswitch(addr uint16, passive bool) bool {
-	if addr >= 0x0ff8 && addr <= 0xffa {
-		if passive {
-			return true
-		}
+func (cart *cbs) bankswitch(addr uint16, data uint8) bool {
+	// bank switching happens only if the data bus low bit is set to one.
+	// From the patent:
+	//
+	// "Address lines A0 through A12, and data lines A0 through A7 are
+	// connected to page select decode logic 82, the page select decode
+	// logic 82 being responsive to the combination of a particular address
+	// and predetermined data information. In the present embodiment, the
+	// logic is responsive to the data line D0 being in a high state (i.e.,
+	// the signal on data line D0 is a binary "1") and the other data lines
+	// inactive."
+
+	// the data bus condition is required in hardware, according to the patent,
+	// but it's not strictly required in emulation. this is because the
+	// emulation doesn't have the same limitation as the hardware in this
+	// respect.
+	//
+	// none-the-less the condition is replicated here to protect against the
+	// theoretical instance of someone developing a new CBS ROM and
+	// inadvertently accepting a bankswitch event that couldn't happen in
+	// hardware.
+
+	if data&0x01 == 0x01 {
 		if addr == 0x0ff8 {
 			cart.state.bank = 0
 		} else if addr == 0x0ff9 {
 			cart.state.bank = 1
 		} else if addr == 0x0ffa {
 			cart.state.bank = 2
+		} else {
+			return false
 		}
-		return true
 	}
-	return false
+
+	return true
 }
 
 // NumBanks implements the mapper.CartMapper interface.
@@ -198,6 +218,9 @@ func (cart *cbs) Listen(addr uint16, data uint8) {
 			}
 		}
 	}
+
+	// check for bankswitching conditions
+	cart.bankswitch(addr, data)
 }
 
 // Step implements the mapper.CartMapper interface.
