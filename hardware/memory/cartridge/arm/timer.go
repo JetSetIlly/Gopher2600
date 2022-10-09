@@ -40,6 +40,7 @@ func (t *timer) stepFromVCS(armClock float32, vcsClock float32) {
 	t.counter += armClock / vcsClock
 }
 
+// stepping of timer assumes an APB divider value of one.
 func (t *timer) step(cycles float32) {
 	if !t.active {
 		return

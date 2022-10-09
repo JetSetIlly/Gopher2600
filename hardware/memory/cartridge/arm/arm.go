@@ -48,7 +48,7 @@ const cycleLimit = 1500000
 
 // the maximum number of instructions to execute. like cycleLimit but for when
 // running in immediate mode
-const instructionsLimit = cycleLimit / 3
+const instructionsLimit = 1300000
 
 // Architecture defines the features of the ARM core.
 type Architecture string
@@ -82,8 +82,11 @@ type ARMState struct {
 	timer timer
 	mam   mam
 
-	// *incomplete* support for TIM2 peripheral in ARMv7-M architecture
-	tim2cnt int
+	// "peripherals" connected to the ARMv7-M. for simplicity these these are
+	// currently attached and ticked for both ARM architectures. if it turns
+	// out that this has an impact performance we can handle separatation
+	// according to architecture then
+	timer2 timer2
 
 	// the PC of the opcode being processed and the PC of the instruction being
 	// executed
@@ -308,6 +311,7 @@ func NewARM(arch Architecture, mamcr MAMCR, mmap memorymodel.Map, prefs *prefere
 	arm.state.mam.mmap = mmap
 	arm.state.timer.mmap = mmap
 
+	arm.state.timer2.reset()
 	arm.reset()
 	arm.updatePrefs()
 
@@ -468,6 +472,7 @@ func (arm *ARM) String() string {
 // problems in some instances with some ARM programs.
 func (arm *ARM) Step(vcsClock float32) {
 	arm.state.timer.stepFromVCS(arm.Clk, vcsClock)
+	arm.state.timer2.stepFromVCS(arm.Clk, vcsClock)
 }
 
 // SetInitialRegisters is intended to be called after creation but before the
@@ -756,6 +761,14 @@ func (arm *ARM) run() (float32, error) {
 
 			// arm.state.fudge_disassembling = true
 
+			// if arm.state.executingPC == 0x28022b36 {
+			// 	fmt.Printf("opcode=%04x R2=%08x\n", opcode, arm.state.registers[2])
+			// }
+
+			// if arm.state.function32bitOpcode == 0xf893 && opcode == 0x1040 {
+			// 	panic(1)
+			// }
+
 			// when the block condition below is true, a lot of debugging data
 			// will be printed to stdout. a good way of keeping this under
 			// control is to pipe the output to tail before redirecting to a
@@ -812,8 +825,9 @@ func (arm *ARM) run() (float32, error) {
 			// increases total number of program cycles by the stretched cycles for this instruction
 			arm.state.cyclesTotal += arm.state.stretchedCycles
 
-			// update timer. assuming an APB divider value of one.
+			// update timer
 			arm.state.timer.step(arm.state.stretchedCycles)
+			arm.state.timer2.step(arm.state.stretchedCycles)
 		}
 
 		// send disasm information to disassembler

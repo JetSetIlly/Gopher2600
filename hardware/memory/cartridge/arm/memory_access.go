@@ -53,12 +53,10 @@ func (arm *ARM) read8bit(addr uint32) uint8 {
 
 	mem, addr = arm.mem.MapAddress(addr, false)
 	if mem == nil {
-		// temporary match for TIM2 value read
-		if arm.arch == ARMv7_M && addr == 0x40000024 {
-			arm.state.tim2cnt++
-			return uint8(arm.state.tim2cnt)
+		if v, ok, comment := arm.state.timer2.read(addr); ok {
+			arm.disasmExecutionNotes = comment
+			return uint8(v)
 		}
-
 		if v, ok, comment := arm.state.timer.read(addr); ok {
 			arm.disasmExecutionNotes = comment
 			return uint8(v)
@@ -88,6 +86,8 @@ func (arm *ARM) write8bit(addr uint32, val uint8) {
 
 	mem, addr = arm.mem.MapAddress(addr, true)
 	if mem == nil {
+		// timer2 cannot be written with 8bit access
+
 		if ok, comment := arm.state.timer.write(addr, uint32(val)); ok {
 			arm.disasmExecutionNotes = comment
 			return
@@ -124,12 +124,10 @@ func (arm *ARM) read16bit(addr uint32, requiresAlignment bool) uint16 {
 
 	mem, addr = arm.mem.MapAddress(addr, false)
 	if mem == nil {
-		// temporary match for TIM2 value read
-		if arm.arch == ARMv7_M && addr == 0x40000024 {
-			arm.state.tim2cnt++
-			return uint16(arm.state.tim2cnt)
+		if v, ok, comment := arm.state.timer2.read(addr); ok {
+			arm.disasmExecutionNotes = comment
+			return uint16(v)
 		}
-
 		if v, ok, comment := arm.state.timer.read(addr); ok {
 			arm.disasmExecutionNotes = comment
 			return uint16(v)
@@ -166,6 +164,10 @@ func (arm *ARM) write16bit(addr uint32, val uint16, requiresAlignment bool) {
 
 	mem, addr = arm.mem.MapAddress(addr, true)
 	if mem == nil {
+		if ok, comment := arm.state.timer2.write(addr, uint32(val)); ok {
+			arm.disasmExecutionNotes = comment
+			return
+		}
 		if ok, comment := arm.state.timer.write(addr, uint32(val)); ok {
 			arm.disasmExecutionNotes = comment
 			return
@@ -203,12 +205,10 @@ func (arm *ARM) read32bit(addr uint32, requiresAlignment bool) uint32 {
 
 	mem, addr = arm.mem.MapAddress(addr, false)
 	if mem == nil {
-		// temporary match for TIM2 value read
-		if arm.arch == ARMv7_M && addr == 0x40000024 {
-			arm.state.tim2cnt++
-			return uint32(arm.state.tim2cnt)
+		if v, ok, comment := arm.state.timer2.read(addr); ok {
+			arm.disasmExecutionNotes = comment
+			return v
 		}
-
 		if v, ok, comment := arm.state.timer.read(addr); ok {
 			arm.disasmExecutionNotes = comment
 			return v
@@ -245,6 +245,10 @@ func (arm *ARM) write32bit(addr uint32, val uint32, requiresAlignment bool) {
 
 	mem, addr = arm.mem.MapAddress(addr, true)
 	if mem == nil {
+		if ok, comment := arm.state.timer2.write(addr, val); ok {
+			arm.disasmExecutionNotes = comment
+			return
+		}
 		if ok, comment := arm.state.timer.write(addr, val); ok {
 			arm.disasmExecutionNotes = comment
 			return

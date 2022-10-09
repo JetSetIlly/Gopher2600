@@ -198,6 +198,11 @@ and the "ARMv7-M Architecture Reference Manual" can be found at:
 
 https://documentation-service.arm.com/static/606dc36485368c4c2b1bf62f
 
+Specific information about the STM32F407 used in the UnoCart and PlustCart can
+be found at:
+
+https://www.st.com/resource/en/reference_manual/dm00031020-stm32f405-415-stm32f407-417-stm32f427-437-and-stm32f429-439-advanced-arm-based-32-bit-mcus-stmicroelectronics.pdf
+
 In relation to ARM development, information about the DWARF format is being
 taken from the DWARF2 and DWARF4 standards
 
