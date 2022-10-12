@@ -18,6 +18,7 @@ package ace
 import (
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm/memorymodel"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 )
 
 type yieldARM interface {
@@ -270,5 +271,99 @@ func (mem *aceMemory) ResetVectors() (uint32, uint32, uint32) {
 
 // IsExecutable implements the arm.SharedMemory interface.
 func (mem *aceMemory) IsExecutable(addr uint32) bool {
+	return true
+}
+
+// returns a list of memory areas in the cartridge's static memory
+func (a *aceMemory) Segments() []mapper.CartStaticSegment {
+	return []mapper.CartStaticSegment{
+		mapper.CartStaticSegment{
+			Name:   "Flash",
+			Origin: a.flashOrigin,
+			Memtop: a.flashMemtop,
+		},
+		mapper.CartStaticSegment{
+			Name:   "SRAM",
+			Origin: a.sramOrigin,
+			Memtop: a.sramMemtop,
+		},
+		mapper.CartStaticSegment{
+			Name:   "ARM Program",
+			Origin: a.armOrigin,
+			Memtop: a.armMemtop,
+		},
+		mapper.CartStaticSegment{
+			Name:   "VCS Program",
+			Origin: a.vcsOrigin,
+			Memtop: a.vcsMemtop,
+		},
+	}
+}
+
+// returns a copy of the data in the named segment. the segment name should
+// be taken from the Name field of one of the CartStaticSegment instances
+// returned by the Segments() function
+func (a *aceMemory) Reference(segment string) ([]uint8, bool) {
+	switch segment {
+	case "Flash":
+		return a.flash, true
+	case "SRAM":
+		return a.sram, true
+	case "ARM Program":
+		return a.armProgram, true
+	case "VCS Program":
+		return a.vcsProgram, true
+	}
+	return []uint8{}, false
+}
+
+// read 8, 16 or 32 bit values from the address. the address should be in
+// the range given in one of the CartStaticSegment returned by the
+// Segments() function.
+func (a *aceMemory) Read8bit(addr uint32) (uint8, bool) {
+	mem, addr := a.MapAddress(addr, false)
+	if mem == nil || addr >= uint32(len(*mem)) {
+		return 0, false
+	}
+	return (*mem)[addr], true
+}
+
+func (a *aceMemory) Read16bit(addr uint32) (uint16, bool) {
+	mem, addr := a.MapAddress(addr, false)
+	if mem == nil || addr >= uint32(len(*mem)) {
+		return 0, false
+	}
+	return uint16((*mem)[addr]) |
+		uint16((*mem)[addr+1])<<8, true
+}
+
+func (a *aceMemory) Read32bit(addr uint32) (uint32, bool) {
+	mem, addr := a.MapAddress(addr, false)
+	if mem == nil || addr >= uint32(len(*mem)) {
+		return 0, false
+	}
+	return uint32((*mem)[addr]) |
+		uint32((*mem)[addr+1])<<8 |
+		uint32((*mem)[addr+2])<<16 |
+		uint32((*mem)[addr+3])<<24, true
+}
+
+// GetStatic implements the bus.CartStaticBus interface.
+func (cart *Ace) GetStatic() mapper.CartStatic {
+	return cart.mem.Snapshot()
+}
+
+// StaticWrite implements the bus.CartStaticBus interface.
+func (cart *Ace) PutStatic(segment string, idx uint16, data uint8) bool {
+	mem, ok := cart.mem.Reference(segment)
+	if !ok {
+		return false
+	}
+
+	if int(idx) >= len(mem) {
+		return false
+	}
+	mem[idx] = data
+
 	return true
 }
