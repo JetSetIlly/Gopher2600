@@ -286,6 +286,8 @@ func (arm *ARM) thumb2DataProcessingNonImmediate(opcode uint16) {
 					panic(fmt.Sprintf("unhandled data processing instructions, non immediate (data processing, constant shift) (%04b) (%02b)", op, typ))
 				}
 
+				arm.state.registers[Rd] = result
+
 				if setFlags {
 					arm.state.status.isNegative(result)
 					arm.state.status.isZero(result)
@@ -524,10 +526,10 @@ func (arm *ARM) thumb2DataProcessingNonImmediate(opcode uint16) {
 
 				// whether to set carry bit
 				m := uint32(0x01) << (32 - shift)
-				carry := arm.state.registers[Rm]&m == m
+				carry := arm.state.registers[Rn]&m == m
 
 				// perform actual shift
-				arm.state.registers[Rd] = arm.state.registers[Rm] << shift
+				arm.state.registers[Rd] = arm.state.registers[Rn] << shift
 
 				if setFlags {
 					arm.state.status.isNegative(arm.state.registers[Rd])
