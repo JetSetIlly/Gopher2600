@@ -656,6 +656,30 @@ func (arm *ARM) thumb2DataProcessingNonImmediate(opcode uint16) {
 			// "4.6.75 MLS" of "Thumb-2 Supplement"
 			arm.state.fudge_thumb2disassemble32bit = "MLS"
 			arm.state.registers[Rd] = uint32(int32(arm.state.registers[Ra]) - int32(arm.state.registers[Rn])*int32(arm.state.registers[Rm]))
+		} else if op == 0b001 && op2 == 0b0000 {
+			if Ra == 0b1111 {
+				// "4.6.149 SMULBB, SMULBT, SMULTB, SMULTT" of "Thumb-2 Supplement"
+				nHigh := opcode&0x0020 == 0x0020
+				mHigh := opcode&0x0010 == 0x0010
+
+				var operand1 uint16
+				if nHigh {
+					operand1 = uint16(arm.state.registers[Rn] >> 16)
+				} else {
+					operand1 = uint16(arm.state.registers[Rn])
+				}
+
+				var operand2 uint16
+				if mHigh {
+					operand2 = uint16(arm.state.registers[Rm] >> 16)
+				} else {
+					operand2 = uint16(arm.state.registers[Rm])
+				}
+
+				arm.state.registers[Rd] = uint32(int32(operand1) * int32(operand2))
+			} else {
+				panic(fmt.Sprintf("unhandled data processing instructions, non immediate (32bit multiplies) (%03b/%04b) Ra=%04b", op, op2, Ra))
+			}
 		} else {
 			panic(fmt.Sprintf("unhandled data processing instructions, non immediate (32bit multiplies) (%03b/%04b)", op, op2))
 		}
