@@ -761,12 +761,22 @@ func (arm *ARM) run() (float32, error) {
 
 			// arm.state.fudge_disassembling = true
 
-			// if arm.state.executingPC == 0x28022b36 {
-			// 	fmt.Printf("opcode=%04x R2=%08x\n", opcode, arm.state.registers[2])
+			// uzlib decompressing map data into memory
+			// if arm.state.executingPC == 0x280236ce {
+			// 	arm.state.fudge_disassembling = true
+			// 	defer func() {
+			// 		fmt.Println("---------------")
+			// 		arm.state.fudge_disassembling = false
+			// 	}()
 			// }
 
-			// if arm.state.function32bitOpcode == 0xf893 && opcode == 0x1040 {
-			// 	panic(1)
+			// decompressing script into memory
+			// if arm.state.executingPC == 0x28024dcc {
+			// 	arm.state.fudge_disassembling = true
+			// 	defer func() {
+			// 		fmt.Println("---------------")
+			// 		arm.state.fudge_disassembling = false
+			// 	}()
 			// }
 
 			// when the block condition below is true, a lot of debugging data
