@@ -16,7 +16,6 @@
 package cdf
 
 import (
-	"debug/dwarf"
 	"fmt"
 
 	"github.com/jetsetilly/gopher2600/curated"
@@ -681,14 +680,4 @@ func (cart *cdf) runArm() error {
 	}
 
 	return nil
-}
-
-// DWARF implements the mapper.CartCoProc interface.
-func (cart *cdf) DWARF() *dwarf.Data {
-	return nil
-}
-
-// ELFSection implements the mapper.CartCoProc interface.
-func (cart *cdf) ELFSection(name string) (uint32, bool) {
-	return 0, false
 }

@@ -16,7 +16,6 @@
 package ace
 
 import (
-	"debug/dwarf"
 	"fmt"
 
 	"github.com/jetsetilly/gopher2600/curated"
@@ -239,14 +238,9 @@ func (cart *Ace) SetDeveloper(dev mapper.CartCoProcDeveloper) {
 	cart.arm.SetDeveloper(dev)
 }
 
-// DWARF implements the mapper.CartCoProc interface.
-func (cart *Ace) DWARF() *dwarf.Data {
-	return nil
-}
-
-// ELFSection implements the mapper.CartCoProc interface.
-func (cart *Ace) ELFSection(name string) (uint32, bool) {
-	return 0, false
+// ExecutableOrigin implements the mapper.CartCoProcNonRelocatable interface.
+func (cart *Ace) ExecutableOrigin() uint32 {
+	return 0x28020200
 }
 
 // CoProcState implements the mapper.CartCoProc interface.

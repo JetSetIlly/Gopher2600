@@ -188,7 +188,10 @@ func NewSource(romFile string, cart mapper.CartCoProc, elfFile string) (*Source,
 	var executableOrigin uint64
 	var executableSectionFound bool
 
-	executableOrigin = 0x28021200
+	// get executable origin for non-relocatable cartridges
+	if _, ok := cart.(mapper.CartCoProcNonRelocatable); ok {
+		executableOrigin = 0x28021200
+	}
 
 	// disassemble every word in the ELF file
 	//
@@ -214,8 +217,11 @@ func NewSource(romFile string, cart mapper.CartCoProc, elfFile string) (*Source,
 			}
 			executableSectionFound = true
 
-			if o, ok := cart.ELFSection(sec.Name); ok {
-				executableOrigin = uint64(o)
+			// get executable origin for relocatable ROMs
+			if c, ok := cart.(mapper.CartCoProcDWARF); ok {
+				if o, ok := c.ELFSection(sec.Name); ok {
+					executableOrigin = uint64(o)
+				}
 			}
 		}
 
@@ -270,8 +276,12 @@ func NewSource(romFile string, cart mapper.CartCoProc, elfFile string) (*Source,
 		}
 	}
 
-	// if no DWARF data has been supplied to the function then get it from the ELF file
-	src.dwrf = cart.DWARF()
+	// load DWARF data from the mapper if possible
+	if c, ok := cart.(mapper.CartCoProcDWARF); ok {
+		src.dwrf = c.DWARF()
+	}
+
+	// if no DWARF data is available from the mapper itself get it from the ELF file
 	if src.dwrf == nil {
 		src.dwrf, err = ef.DWARF()
 		if err != nil {

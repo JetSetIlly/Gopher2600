@@ -69,7 +69,11 @@ type CartCoProc interface {
 	BreakpointHasTriggered() bool
 	ResumeAfterBreakpoint() error
 	BreakpointsDisable(bool)
+}
 
+// CartCoProcDWARF is implemented by cartridge mappers that want to supply
+// their won ELF/DWARF information.
+type CartCoProcDWARF interface {
 	// returns any DWARF data for the cartridge. not all cartridges that
 	// implement the CartCoProc interface will be able to meaningfully
 	// return any data but none-the-less would benefit from DWARF debugging
@@ -81,6 +85,12 @@ type CartCoProc interface {
 	// section exists. not all cartridges that implement this interface will be
 	// able to meaningfully answer this function call
 	ELFSection(string) (uint32, bool)
+}
+
+// CartCoProcNonRelocatable is implemented by cartridge mappers that are loaded
+// into a specific memory address.
+type CartCoProcNonRelocatable interface {
+	ExecutableOrigin() uint32
 }
 
 type CartCoProcProfileEntry struct {

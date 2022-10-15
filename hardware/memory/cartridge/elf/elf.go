@@ -319,12 +319,12 @@ func (cart *Elf) SetDeveloper(dev mapper.CartCoProcDeveloper) {
 	cart.arm.SetDeveloper(dev)
 }
 
-// DWARF implements the mapper.CartCoProc interface.
+// DWARF implements the mapper.CartCoProcDWARF interface.
 func (cart *Elf) DWARF() *dwarf.Data {
 	return cart.dwarf
 }
 
-// ELFSection implements the mapper.CartCoProc interface.
+// ELFSection implements the mapper.CartCoProcDWARF interface.
 func (cart *Elf) ELFSection(name string) (uint32, bool) {
 	if sec, ok := cart.mem.sections[name]; ok {
 		return sec.origin, true
