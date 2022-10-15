@@ -182,12 +182,15 @@ func (win *winCoProcSource) draw() {
 		if win.firstOpen {
 			// assume source entry point is a function called "main"
 			if m, ok := src.Functions["main"]; ok {
-				win.scrollTo = true
 				win.scrollToFile = m.DeclLine.File.Filename
 				win.selectedLine.single(m.DeclLine.LineNumber)
+				win.scrollTo = true
 			} else {
-				imgui.Text("Can't find main() function")
-				return
+				// if main does not exists then open at the first file in the list
+				if len(src.Filenames) > 0 {
+					win.scrollToFile = src.Filenames[0]
+					win.selectedLine.single(0)
+				}
 			}
 
 			win.firstOpen = false
