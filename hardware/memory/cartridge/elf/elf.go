@@ -103,7 +103,7 @@ func NewElf(instance *instance.Instance, pathToROM string) (mapper.CartMapper, e
 
 // MappedBanks implements the mapper.CartMapper interface.
 func (cart *Elf) MappedBanks() string {
-	return fmt.Sprintf("Bank: none")
+	return fmt.Sprintf("Bank: 0")
 }
 
 // ID implements the mapper.CartMapper interface.

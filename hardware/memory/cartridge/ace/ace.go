@@ -72,7 +72,7 @@ func NewAce(instance *instance.Instance, version string, data []byte) (mapper.Ca
 
 // MappedBanks implements the mapper.CartMapper interface.
 func (cart *Ace) MappedBanks() string {
-	return fmt.Sprintf("Bank: none")
+	return fmt.Sprintf("Bank: 0")
 }
 
 // ID implements the mapper.CartMapper interface.
