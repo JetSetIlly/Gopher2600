@@ -162,6 +162,10 @@ func (cart *Ace) Patch(_ int, _ uint8) error {
 
 // Listen implements the mapper.CartMapper interface.
 func (cart *Ace) Listen(addr uint16, data uint8) {
+	// if memory access is not a cartridge address (ie. a TIA or RIOT address)
+	// then the ARM is running in parallel (ie. no synchronisation)
+	cart.parallelARM = (addr&memorymap.OriginCart != memorymap.OriginCart)
+
 	if cart.dev != nil {
 		cart.dev.StartProfiling()
 		defer cart.dev.ProcessProfiling()
