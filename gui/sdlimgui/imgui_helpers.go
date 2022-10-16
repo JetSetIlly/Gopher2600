@@ -295,6 +295,11 @@ func drawByteGrid(id string, data []uint8, origin uint32,
 	flgs |= imgui.TableFlagsScrollY
 
 	if imgui.BeginTableV(id, numColumns+1, flgs, imgui.Vec2{}, 0.0) {
+
+		// in some situations we will return early from the drawByteGrid()
+		// function so we want to make sure that EndTable() is called
+		defer imgui.EndTable()
+
 		imgui.TableSetupScrollFreeze(0, 1)
 
 		// set up columns
@@ -328,7 +333,13 @@ func drawByteGrid(id string, data []uint8, origin uint32,
 		imgui.TableNextRow()
 
 		var clipper imgui.ListClipper
-		clipper.Begin(len(data) / numColumns)
+
+		// we want to include rows that are only partially filled. we do this
+		// by adding 15 and then forcing the low bits to zero
+		l := len(data) + 15
+		l &= ^(0xf)
+
+		clipper.Begin(l / numColumns)
 
 		for clipper.Step() {
 			for i := clipper.DisplayStart; i < clipper.DisplayEnd; i++ {
@@ -342,6 +353,13 @@ func drawByteGrid(id string, data []uint8, origin uint32,
 				imgui.Text(fmt.Sprintf("%08x-", addr/16)[columnCrop+1:])
 
 				for j := 0; j < numColumns; j++ {
+					// check that offset hasn't gone beyond the end of data.
+					// return early if we have. this will intentionally draw
+					// partially drawn rows
+					if offset >= uint32(len(data)) {
+						return
+					}
+
 					imgui.TableNextColumn()
 
 					if before != nil {
@@ -368,8 +386,6 @@ func drawByteGrid(id string, data []uint8, origin uint32,
 				}
 			}
 		}
-
-		imgui.EndTable()
 	}
 }
 
