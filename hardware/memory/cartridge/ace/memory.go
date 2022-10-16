@@ -121,7 +121,7 @@ func newAceMemory(version string, data []byte) (*aceMemory, error) {
 	mem.armProgram = make([]byte, romSize)
 	copy(mem.armProgram, data[dataOffset:])
 	mem.armOrigin = mem.resetPC
-	mem.armMemtop = mem.armOrigin + uint32(len(mem.armProgram))
+	mem.armMemtop = mem.armOrigin + uint32(len(mem.armProgram)) - 1
 
 	// define the Thumb-2 bytecode for a function whose only purpose is to jump
 	// back to where it came from bytecode is for instruction "BX LR" with a
@@ -136,23 +136,24 @@ func newAceMemory(version string, data []byte) (*aceMemory, error) {
 
 	// append function to end of flash
 	mem.armProgram = append(mem.armProgram, nullFunction...)
+	mem.armMemtop += uint32(len(nullFunction))
 
 	// flash creation
 	flashSize := 0x18000 // 96k
 	mem.flash = make([]byte, flashSize)
 	mem.flashOrigin = mem.model.FlashOrigin
-	mem.flashMemtop = mem.flashOrigin + uint32(len(mem.flash))
+	mem.flashMemtop = mem.flashOrigin + uint32(len(mem.flash)) - 1
 
-	// copy vcs program, leaving room for virtual arguments
+	// copy vcs program
 	mem.vcsProgram = make([]byte, len(data))
 	copy(mem.vcsProgram, data)
-	mem.vcsOrigin = mem.flashMemtop + 0x00000004
-	mem.vcsMemtop = mem.vcsOrigin + uint32(len(mem.vcsProgram))
+	mem.vcsOrigin = mem.flashMemtop + 1
+	mem.vcsMemtop = mem.vcsOrigin + uint32(len(mem.vcsProgram)) - 1
 
 	// SRAM creation
-	mem.sram = make([]byte, mem.resetSP-mem.model.SRAMOrigin)
+	mem.sram = make([]byte, mem.resetSP-mem.model.SRAMOrigin+1)
 	mem.sramOrigin = mem.model.SRAMOrigin
-	mem.sramMemtop = mem.sramOrigin + uint32(len(mem.sram))
+	mem.sramMemtop = mem.sramOrigin + uint32(len(mem.sram)) - 1
 
 	// set virtual argument. detailed information in the PlusCart firmware
 	// source:
