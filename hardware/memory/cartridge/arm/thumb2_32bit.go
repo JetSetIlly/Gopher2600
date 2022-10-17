@@ -409,6 +409,16 @@ func (arm *ARM) thumb2DataProcessingNonImmediate(opcode uint16) {
 						arm.state.status.setCarry(carry)
 						arm.state.status.setOverflow(overflow)
 					}
+				case 0b01:
+					// with logical right shift
+					shifted := arm.state.registers[Rm] >> imm5
+					result, carry, overflow := AddWithCarry(arm.state.registers[Rn], shifted, 0)
+					if setFlags {
+						arm.state.status.isNegative(result)
+						arm.state.status.isZero(result)
+						arm.state.status.setCarry(carry)
+						arm.state.status.setOverflow(overflow)
+					}
 				case 0b10:
 					// with arithmetic right shift
 					signExtend := (arm.state.registers[Rm] & 0x80000000) >> 31
