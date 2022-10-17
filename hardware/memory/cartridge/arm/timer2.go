@@ -208,6 +208,7 @@ func (t *timer2) write(addr uint32, val uint32) (bool, string) {
 	default:
 		return false, ""
 	}
+
 	return true, ""
 }
 

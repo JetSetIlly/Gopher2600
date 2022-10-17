@@ -213,6 +213,9 @@ func (arm *ARM) read32bit(addr uint32, requiresAlignment bool) uint32 {
 			arm.disasmExecutionNotes = comment
 			return v
 		}
+		if v, ok := arm.state.rng.read(addr); ok {
+			return v
+		}
 		if v, ok := arm.state.mam.read(addr); ok {
 			return v
 		}

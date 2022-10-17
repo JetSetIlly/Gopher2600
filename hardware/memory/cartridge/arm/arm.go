@@ -92,6 +92,7 @@ type ARMState struct {
 	// out that this has an impact performance we can handle separatation
 	// according to architecture then
 	timer2 timer2
+	rng    rng
 
 	// the PC of the opcode being processed and the PC of the instruction being
 	// executed
@@ -316,7 +317,10 @@ func NewARM(arch Architecture, mamcr MAMCR, mmap memorymodel.Map, prefs *prefere
 	arm.state.mam.mmap = mmap
 	arm.state.timer.mmap = mmap
 
+	// reset peripherals. deliberately not calling them as part of arm.reset()
 	arm.state.timer2.reset()
+	arm.state.rng.reset()
+
 	arm.reset()
 	arm.updatePrefs()
 
