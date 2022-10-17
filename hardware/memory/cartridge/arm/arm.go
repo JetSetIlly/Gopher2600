@@ -46,6 +46,11 @@ const (
 // 17/09/2022 - raised to 1500000 for marcoj's RPG game
 const cycleLimit = 1500000
 
+// when the cycle limit is reached we run the emulation for a little while
+// longer but with fudge_debugging turned on. this allow us to debug what
+// instructions are causing the infinite loop (which it most probably will be)
+const raisedCycleLimit = cycleLimit + 1000
+
 // the maximum number of instructions to execute. like cycleLimit but for when
 // running in immediate mode
 const instructionsLimit = 1300000
@@ -684,7 +689,7 @@ func (arm *ARM) run() (float32, error) {
 			var f func(uint16)
 
 			// taking a note of whether this is a resolution of a 32bit
-			// instruction. we use this later during the fudge_ disassembly
+			// instruction. we use this later during the fudge_disassembling
 			// printing
 			fudge_resolving32bitInstruction := arm.state.function32bit
 
@@ -899,9 +904,12 @@ func (arm *ARM) run() (float32, error) {
 
 			// limit the number of cycles used by the ARM program
 			if arm.state.cyclesTotal >= cycleLimit {
-				logger.Logf("ARM7", "reached cycle limit of %d. ending execution early", cycleLimit)
-				panic("cycle limit")
-				break
+				if arm.state.cyclesTotal >= raisedCycleLimit {
+					logger.Logf("ARM7", "reached cycle limit of %d. ending execution early", cycleLimit)
+					panic("cycle limit")
+					break
+				}
+				arm.state.fudge_disassembling = true
 			}
 		} else {
 			iterations++
