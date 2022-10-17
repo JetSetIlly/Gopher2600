@@ -454,6 +454,7 @@ func NewSource(romFile string, cart mapper.CartCoProc, elfFile string) (*Source,
 					} else {
 						fn := &SourceFunction{
 							Name:     foundFunc.name,
+							Address:  [2]uint64{workingAddress, relocatedAddress - 1},
 							DeclLine: src.Files[foundFunc.filename].Lines[foundFunc.linenum-1],
 						}
 						src.Functions[foundFunc.name] = fn
@@ -566,6 +567,11 @@ func NewSource(romFile string, cart mapper.CartCoProc, elfFile string) (*Source,
 	logger.Logf("dwarf", "identified %d functions in %d compile units", len(src.Functions), len(src.compileUnits))
 	logger.Logf("dwarf", "highest memory address occupied by a variable (%08x)", src.VariableMemtop)
 
+	for _, fn := range src.FunctionNames {
+		f := src.Functions[fn]
+		logger.Logf("dwarf", "%s %#08x -> %#08x\n", f.Name, f.Address[0], f.Address[1])
+	}
+
 	return src, nil
 }
 
@@ -606,6 +612,7 @@ func (src *Source) addStubEntries() {
 			// the DeclLine field must definitely be nil for a stubFn function
 			stubFn := &SourceFunction{
 				Name:     fn.name,
+				Address:  [2]uint64{fn.origin, fn.memtop},
 				DeclLine: nil,
 			}
 

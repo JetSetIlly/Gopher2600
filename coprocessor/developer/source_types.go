@@ -110,6 +110,9 @@ func (ln *SourceLine) IsStub() bool {
 type SourceFunction struct {
 	Name string
 
+	// range of addresses in which function resides
+	Address [2]uint64
+
 	// first source line for each instance of the function. note that the first
 	// line of a function may not have any code directly associated with it.
 	// the Disassembly and Stats fields therefore should not be relied upon.
