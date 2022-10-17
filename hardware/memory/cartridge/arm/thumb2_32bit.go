@@ -296,8 +296,58 @@ func (arm *ARM) thumb2DataProcessingNonImmediate(opcode uint16) {
 				}
 			}
 
+		case 0b0011:
+			// two very similar instructions for this op
+			//
+			// "4.6.86 MVN (register)" of "Thumb-2 Supplement"
+			// T2 encoding
+			//
+			// and
+			//
+			// "4.6.90 ORN (register)" of "Thumb-2 Supplement"
+			// T1 encoding
+
+			if Rn == rPC {
+				var carry bool
+				var result uint32
+
+				switch typ {
+				case 0b00:
+					// with logical left shift
+					m := uint32(0x01) << (32 - imm5)
+					carry = arm.state.registers[Rm]&m == m
+					result = (arm.state.registers[Rm] << imm5)
+				case 0b01:
+					// with logical right shift
+					m := uint32(0x01) << (imm5 - 1)
+					carry = arm.state.registers[Rm]&m == m
+					result = (arm.state.registers[Rm] >> imm5)
+				case 0b10:
+					// with arithmetic right shift
+					signExtend := (arm.state.registers[Rm] & 0x80000000) >> 31
+					result = arm.state.registers[Rm] >> imm5
+					if signExtend == 0x01 {
+						result |= ^uint32(0) << (32 - imm5)
+					}
+				default:
+					panic(fmt.Sprintf("unhandled data processing instructions, non immediate (data processing, constant shift) (%04b) (%02b)", op, typ))
+				}
+
+				result = ^result
+				arm.state.registers[Rd] = result
+
+				if setFlags {
+					arm.state.status.isNegative(result)
+					arm.state.status.isZero(result)
+					arm.state.status.setCarry(carry)
+					// overflow unchanged
+				}
+			} else {
+				panic("ORN (register)")
+			}
+
 		case 0b0100:
-			// two very similar instructions for this opcode
+			// two very similar instructions for this op
 			//
 			// "4.6.191 TEQ (register)" of "Thumb-2 Supplement"
 			// T1 encoding
@@ -342,7 +392,7 @@ func (arm *ARM) thumb2DataProcessingNonImmediate(opcode uint16) {
 		case 0b1000:
 			if Rd == rPC {
 				// "4.6.28 CMN (register)"
-				panic(fmt.Sprintf("unhandled data processing instructions, non immediate (data processing, constant shift) (%04b) (%02b) CMP", op, typ))
+				panic(fmt.Sprintf("unhandled data processing instructions, non immediate (data processing, constant shift) (%04b) (%02b) CMN", op, typ))
 			} else {
 				// "4.6.4 ADD (register)"
 				arm.state.fudge_thumb2disassemble32bit = "ADD (register)"
@@ -865,12 +915,10 @@ func (arm *ARM) thumb2DataProcessing(opcode uint16) {
 				arm.state.fudge_thumb2disassemble32bit = "TST (immediate)"
 
 				result := arm.state.registers[Rn] & imm32
-				if setFlags {
-					arm.state.status.isNegative(result)
-					arm.state.status.isZero(result)
-					arm.state.status.setCarry(carry)
-					// overflow unchanged
-				}
+				arm.state.status.isNegative(result)
+				arm.state.status.isZero(result)
+				arm.state.status.setCarry(carry)
+				// overflow unchanged
 			} else {
 				// "4.6.8 AND (immediate)" of "Thumb-2 Supplement"
 				arm.state.fudge_thumb2disassemble32bit = "AND (immediate)"
@@ -1160,7 +1208,7 @@ func (arm *ARM) thumb2DataProcessing(opcode uint16) {
 
 		op := (arm.state.function32bitOpcode & 0x00e0) >> 5
 		switch op {
-		case 0b0010:
+		case 0b010:
 			// "4.6.125 SBFX" of "Thumb-2 Supplement"
 			arm.state.fudge_thumb2disassemble32bit = "SBFX"
 
@@ -1179,7 +1227,36 @@ func (arm *ARM) thumb2DataProcessing(opcode uint16) {
 					arm.state.registers[Rd] = arm.state.registers[Rd] | ^((1 << width) - 1)
 				}
 			}
-		case 0b0110:
+		case 0b011:
+			// "4.6.14 BFI" of "Thumb-2 Supplement"
+			arm.state.fudge_thumb2disassemble32bit = "BFI"
+
+			Rn := arm.state.function32bitOpcode & 0x000f
+			imm3 := (opcode & 0x7000) >> 12
+			Rd := (opcode & 0x0f00) >> 8
+			imm2 := (opcode & 0x00c0) >> 6
+			msbit := opcode & 0x001f // labelled msb in the instruction specification
+
+			lsbit := (imm3 << 2) | imm2
+			width := msbit - lsbit + 1
+
+			if msbit >= lsbit {
+				var mask uint32
+				var v uint32
+
+				// remove bits from destination register
+				mask = ^(((1 << msbit) - 1) << lsbit)
+				arm.state.registers[Rd] = arm.state.registers[Rd] & mask
+
+				// insert bits from source register
+				mask = ((1 << width) - 1) << 1
+				v = arm.state.registers[Rn] & mask
+				arm.state.registers[Rd] = arm.state.registers[Rd] | (v << lsbit)
+			} else {
+				// unpredictable behaviour
+			}
+
+		case 0b110:
 			// "4.6.197 UBFX" of "Thumb-2 Supplement"
 			arm.state.fudge_thumb2disassemble32bit = "UBFX"
 
@@ -1196,7 +1273,7 @@ func (arm *ARM) thumb2DataProcessing(opcode uint16) {
 				arm.state.registers[Rd] = (arm.state.registers[Rn] >> uint32(lsbit)) & ((1 << width) - 1)
 			}
 		default:
-			panic(fmt.Sprintf("unimplemented 'bitfield operation' (%04b)", op))
+			panic(fmt.Sprintf("unimplemented 'bitfield operation' (%03b)", op))
 		}
 	} else {
 		panic("reserved data processing instructions: immediate, including bitfield and saturate")
@@ -1214,8 +1291,13 @@ func (arm *ARM) thumb2LoadStoreSingle(opcode uint16) {
 	Rn := arm.state.function32bitOpcode & 0x000f
 	Rt := (opcode & 0xf000) >> 12
 
-	if Rt == rPC {
-		panic("PLD and PLI not thought about yet")
+	// memmory hints are unimplemented. they occur for load instructions
+	// whenever the target register is a PC and the size is 8bit or 16bit
+	if Rt == rPC && l && (size == 0b00 || size == 0b01) {
+		// panic for now. when we come to implement hints properly, we need to
+		// further consider the size, sign extension and also the format group
+		// the instruction appears in
+		panic("unimplemented memory hint")
 	}
 
 	if arm.state.function32bitOpcode&0xfe1f == 0xf81f {
@@ -1437,6 +1519,20 @@ func (arm *ARM) thumb2LoadStoreSingle(opcode uint16) {
 				// "4.6.172 STRH (immediate)" of "Thumb-2 Supplement"
 				arm.state.fudge_thumb2disassemble32bit = "STRH (immediate post-index)"
 				arm.write16bit(addr, uint16(arm.state.registers[Rt]), false)
+			}
+		case 0b10:
+			if l {
+				// "4.6.43 LDR (immediate)" of "Thumb-2 Supplement"
+				arm.state.fudge_thumb2disassemble32bit = "LDR (immediate post-index)"
+				if Rt == rPC {
+					arm.state.registers[Rt] = arm.read32bit(addr, false) + 1
+				} else {
+					arm.state.registers[Rt] = arm.read32bit(addr, false)
+				}
+			} else {
+				// "4.6.162 STR (immediate)" of "Thumb-2 Supplement"
+				arm.state.fudge_thumb2disassemble32bit = "STR (immediate post-index)"
+				arm.write32bit(addr, arm.state.registers[Rt], false)
 			}
 		default:
 			panic(fmt.Sprintf("unhandled size (%02b) for 'Rn post-index +/- imm8'", size))

@@ -184,6 +184,11 @@ func (arm *ARM) thumb2ReverseBytes(opcode uint16) {
 	Rd := opcode & 0x0007
 
 	switch opc {
+	case 0b00:
+		// "4.6.111 REV" of "Thumb-2 Supplement"
+		v := arm.state.registers[Rn]
+		r := ((v & 0x000000ff) << 24) | ((v & 0x0000ff00) << 8) | ((v & 0x00ff0000) >> 8) | ((v & 0xff000000) >> 24)
+		arm.state.registers[Rd] = r
 	case 0b01:
 		// "4.6.112 REV16" of "Thumb-2 Supplement"
 		arm.state.fudge_thumb2disassemble16bit = "REV16"
