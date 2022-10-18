@@ -108,6 +108,10 @@ func (dsm *Disassembly) setCartMirror() {
 
 	for b := range dsm.disasmEntries.Entries {
 		for _, e := range dsm.disasmEntries.Entries[b] {
+			if e == nil {
+				continue
+			}
+
 			// mask off bits that indicate the cartridge/segment origin and reset
 			// them with the chosen origin
 			a := e.Result.Address&memorymap.CartridgeBits | dsm.Prefs.mirrorOrigin
