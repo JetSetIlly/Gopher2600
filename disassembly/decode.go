@@ -143,7 +143,7 @@ func (dsm *Disassembly) bless(mc *cpu.CPU, mem *disasmMemory) error {
 	for b := range dsm.disasmEntries.Entries {
 		for i := range dsm.disasmEntries.Entries[b] {
 			if dsm.disasmEntries.Entries[b][i].Level < EntryLevelBlessed {
-				_ = dsm.Sym.RemoveLabel(b, dsm.disasmEntries.Entries[b][i].Result.Address, symbols.SourceAuto)
+				_ = dsm.Sym.RemoveLabel(symbols.SourceAuto, b, dsm.disasmEntries.Entries[b][i].Result.Address)
 			}
 		}
 	}
@@ -252,7 +252,6 @@ func (dsm *Disassembly) blessSequence(bank int, addr uint16, commit bool) bool {
 		// promote the entry
 		if commit {
 			hasCommitted = true
-
 			instruction.Level = EntryLevelBlessed
 		}
 

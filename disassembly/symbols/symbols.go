@@ -118,19 +118,21 @@ func (sym *Symbols) GetSymbol(addr uint16, read bool) (Entry, bool) {
 	sym.crit.Lock()
 	defer sym.crit.Unlock()
 
-	addr, _ = memorymap.MapAddress(addr, read)
+	// we first try to get the symbol with a mapped address. if the resulting
+	// symbol is of SourceSystem then the result is fine, otherwise we try
+	// again with the unmapped address
+	ma, _ := memorymap.MapAddress(addr, read)
 
 	if read {
-		// if sym.read == nil {
-		// 	return Entry{}, false
-		// }
-
+		if e, ok := sym.read.get(ma); !ok || e.Source == SourceSystem {
+			return e, ok
+		}
 		return sym.read.get(addr)
 	}
 
-	// if sym.write == nil {
-	// 	return Entry{}, false
-	// }
+	if e, ok := sym.write.get(ma); !ok || e.Source == SourceSystem {
+		return e, ok
+	}
 	return sym.write.get(addr)
 }
 
@@ -168,7 +170,7 @@ func (sym *Symbols) AddLabelAuto(bank int, addr uint16) bool {
 
 // Remove label from label table. Symbol will be modified so that it is unique
 // in the label table.
-func (sym *Symbols) RemoveLabel(bank int, addr uint16, source SymbolSource) bool {
+func (sym *Symbols) RemoveLabel(source SymbolSource, bank int, addr uint16) bool {
 	sym.crit.Lock()
 	defer sym.crit.Unlock()
 
@@ -203,7 +205,9 @@ func (sym *Symbols) AddSymbol(source SymbolSource, addr uint16, symbol string, r
 	sym.crit.Lock()
 	defer sym.crit.Unlock()
 
-	addr, _ = memorymap.MapAddress(addr, true)
+	if source == SourceSystem {
+		addr, _ = memorymap.MapAddress(addr, true)
+	}
 
 	if read {
 		return sym.read.add(source, addr, symbol)
@@ -215,11 +219,13 @@ func (sym *Symbols) AddSymbol(source SymbolSource, addr uint16, symbol string, r
 // RemoveSymbol from read/write table.
 //
 // The read argument selects the table: true -> read table, false -> write table.
-func (sym *Symbols) RemoveSymbol(addr uint16, read bool) bool {
+func (sym *Symbols) RemoveSymbol(source SymbolSource, addr uint16, read bool) bool {
 	sym.crit.Lock()
 	defer sym.crit.Unlock()
 
-	addr, _ = memorymap.MapAddress(addr, true)
+	if source == SourceSystem {
+		addr, _ = memorymap.MapAddress(addr, true)
+	}
 
 	if read {
 		return sym.read.remove(addr)
@@ -236,7 +242,9 @@ func (sym *Symbols) UpdateSymbol(source SymbolSource, addr uint16, oldLabel stri
 	sym.crit.Lock()
 	defer sym.crit.Unlock()
 
-	addr, _ = memorymap.MapAddress(addr, true)
+	if source == SourceSystem {
+		addr, _ = memorymap.MapAddress(addr, true)
+	}
 
 	if read {
 		return sym.read.update(source, addr, oldLabel, newLabel)

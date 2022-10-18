@@ -105,6 +105,13 @@ func (sym *Symbols) fromDasm(cart *cartridge.Cartridge) error {
 		symbol := p[0]
 		ma, area := memorymap.MapAddress(uint16(address), true)
 
+		// remove leading digits if they are present. these digits have
+		// been added by DASM for the symbols file
+		sp := strings.SplitN(symbol, ".", 2)
+		if len(sp) == 2 {
+			symbol = symbol[len(sp[0]):]
+		}
+
 		if area == memorymap.Cartridge {
 			// adding label for address in every bank for now
 			// !!TODO: more selecting adding of label from symbols file
@@ -115,10 +122,8 @@ func (sym *Symbols) fromDasm(cart *cartridge.Cartridge) error {
 			// (non-label) symbols are both a read and write symbol. compare to
 			// canonical vcs symbols which are specific to a read or write
 			// context
-			sym.read.add(SourceDASM, ma, symbol)
-
-			ma, _ = memorymap.MapAddress(uint16(address), false)
-			sym.write.add(SourceDASM, ma, symbol)
+			sym.read.add(SourceDASM, uint16(address), symbol)
+			sym.write.add(SourceDASM, uint16(address), symbol)
 		}
 	}
 
