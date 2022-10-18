@@ -197,9 +197,9 @@ func (cart *Ace) Listen(addr uint16, data uint8) {
 	// that means nothing
 
 	// general bus stuff detection
-	busStuffAddr := uint16(cart.mem.gpioB[0x10]) | uint16(cart.mem.gpioB[0x11]<<8)
+	busStuffAddr := uint16(cart.mem.gpioB[fromArm_Address]) | uint16(cart.mem.gpioB[fromArm_Address]<<8)
 	cart.mem.busStuff = cart.mem.gpioB[gpio_mode] == 0x55 && busStuffAddr == addr
-	cart.mem.busStuffData = cart.mem.gpioB[0x14]
+	cart.mem.busStuffData = cart.mem.gpioB[fromArm_Opcode]
 }
 
 // Step implements the mapper.CartMapper interface.

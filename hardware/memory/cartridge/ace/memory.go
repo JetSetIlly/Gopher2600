@@ -73,11 +73,12 @@ const (
 )
 
 const (
-	gpio_mode      = 0x00 // gpioB
-	toArm_address  = 0x10 // gpioA
-	toArm_data     = 0x10 // gpioB
-	fromArm_Opcode = 0x14 // gpioB
-	gpio_memtop    = 0x18
+	gpio_mode       = 0x00 // gpioB
+	toArm_address   = 0x10 // gpioA
+	toArm_data      = 0x10 // gpioB
+	fromArm_Address = 0x10
+	fromArm_Opcode  = 0x14 // gpioB
+	gpio_memtop     = 0x18
 )
 
 func newAceMemory(version string, data []byte) (*aceMemory, error) {
