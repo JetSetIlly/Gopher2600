@@ -28,7 +28,7 @@ func TestDefaultSymbols(t *testing.T) {
 	var sym symbols.Symbols
 
 	cart := cartridge.NewCartridge(nil)
-	err := sym.ReadSymbolsFile(cart)
+	err := sym.ReadDASMSymbolsFile(cart)
 	if err != nil {
 		t.Errorf("unexpected error (%s)", err)
 	}
@@ -50,7 +50,7 @@ func TestFlappySymbols(t *testing.T) {
 	cart := cartridge.NewCartridge(nil)
 	cart.Filename = "testdata/flappy.bin"
 
-	err := sym.ReadSymbolsFile(cart)
+	err := sym.ReadDASMSymbolsFile(cart)
 	if err != nil {
 		t.Errorf("unexpected error (%s)", err)
 	}

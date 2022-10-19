@@ -84,12 +84,14 @@ func (sym *Symbols) SearchBySymbol(symbol string, table SearchTable) *SearchResu
 	return nil
 }
 
-// SearchByAddress returns the symbol for specified address. Address will be
-// normalised before search.
+// SearchByAddress returns the symbol for specified address. Address is
+// normalised before search as appropriate for the search table.
 func (sym *Symbols) SearchByAddress(addr uint16, table SearchTable) *SearchResults {
 	switch table {
 	case SearchLabel:
+		// label symbol table contains normalised/mapped addresses
 		addr, _ = memorymap.MapAddress(addr, true)
+
 		for _, l := range sym.label {
 			if s, ok := l.byAddr[addr]; ok {
 				return &SearchResults{
@@ -100,7 +102,6 @@ func (sym *Symbols) SearchByAddress(addr uint16, table SearchTable) *SearchResul
 			}
 		}
 	case SearchRead:
-		addr, _ = memorymap.MapAddress(addr, true)
 		if s, ok := sym.read.byAddr[addr]; ok {
 			return &SearchResults{
 				Table:   SearchRead,
@@ -109,7 +110,6 @@ func (sym *Symbols) SearchByAddress(addr uint16, table SearchTable) *SearchResul
 			}
 		}
 	case SearchWrite:
-		addr, _ = memorymap.MapAddress(addr, false)
 		if s, ok := sym.write.byAddr[addr]; ok {
 			return &SearchResults{
 				Table:   SearchWrite,

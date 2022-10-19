@@ -61,24 +61,3 @@ func (ai AddressInfo) String() string {
 
 	return s.String()
 }
-
-// StringNoSymbol is the same as String() but it does not print the
-// AddressSymbol field. Useful in some contexts were the symbol is printed in
-// some other way.
-func (ai AddressInfo) StringNoSymbol() string {
-	s := strings.Builder{}
-
-	s.WriteString(fmt.Sprintf("%#04x", ai.Address))
-
-	if ai.Address != ai.MappedAddress {
-		s.WriteString(fmt.Sprintf(" [mirror of %#04x]", ai.MappedAddress))
-	}
-
-	s.WriteString(fmt.Sprintf(" (%s)", ai.Area.String()))
-
-	if ai.Peeked {
-		s.WriteString(fmt.Sprintf(" -> %#02x", ai.Data))
-	}
-
-	return s.String()
-}

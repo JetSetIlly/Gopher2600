@@ -150,10 +150,16 @@ about the address will be displayed.`,
 contents of the CPU registers.`,
 
 	cmdPeek: `Inspect memory addresses for content. Addresses can be specified by symbolically
-or numerically.`,
+or numerically.
+
+Peek does not result in a change to the address or data busses.
+`,
 
 	cmdPoke: `Modify an individual memory address. Addresses can be specified symbolically
-or numerically. Mulptiple data values will be poked into consecutive addresses.`,
+or numerically. Mulptiple data values will be poked into consecutive addresses.
+
+Poke does not result in a change to the address or data busses.
+`,
 
 	cmdSwap: `Swap the bytes between two addresses.`,
 

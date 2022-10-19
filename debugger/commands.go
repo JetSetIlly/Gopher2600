@@ -642,7 +642,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 			if symSearch != nil {
 				ai := dbg.dbgmem.MapAddress(symSearch.Address, true)
 				if ai != nil {
-					dbg.printLine(terminal.StyleFeedback, "%s = %s [LABEL]", symbol, ai.StringNoSymbol())
+					dbg.printLine(terminal.StyleFeedback, "%s [LABEL]", ai.String())
 				} else {
 					symSearch = nil
 				}
@@ -650,12 +650,12 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 
 			aiRead := dbg.dbgmem.MapAddress(symbol, true)
 			if aiRead != nil {
-				dbg.printLine(terminal.StyleFeedback, "%s = %s [READ]", symbol, aiRead.StringNoSymbol())
+				dbg.printLine(terminal.StyleFeedback, "%s [READ]", aiRead.String())
 			}
 
 			aiWrite := dbg.dbgmem.MapAddress(symbol, false)
 			if aiWrite != nil {
-				dbg.printLine(terminal.StyleFeedback, "%s = %s [WRITE]", symbol, aiWrite.StringNoSymbol())
+				dbg.printLine(terminal.StyleFeedback, "%s [WRITE]", aiWrite.String())
 			}
 
 			if symSearch == nil && aiRead == nil && aiWrite == nil {

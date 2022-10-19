@@ -106,7 +106,7 @@ func FromCartridge(cartload cartridgeloader.Loader) (*Disassembly, error) {
 
 	// ignore errors caused by loading of symbols table - we always get a
 	// standard symbols table even in the event of an error
-	err = dsm.Sym.ReadSymbolsFile(vcs.Mem.Cart)
+	err = dsm.Sym.ReadDASMSymbolsFile(vcs.Mem.Cart)
 	if err != nil {
 		return nil, curated.Errorf("disassembly: %v", err)
 	}
@@ -146,7 +146,7 @@ func (dsm *Disassembly) FromMemory() error {
 	}
 
 	// read symbols file
-	err = dsm.Sym.ReadSymbolsFile(dsm.vcs.Mem.Cart)
+	err = dsm.Sym.ReadDASMSymbolsFile(dsm.vcs.Mem.Cart)
 	if err != nil {
 		dsm.crit.Unlock()
 		return err
