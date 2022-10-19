@@ -138,6 +138,35 @@ func (dsm *Disassembly) bless(mc *cpu.CPU, mem *disasmMemory) error {
 		}
 	}
 
+	// correct DASM symbols. DASM sometimes records that a label is at a
+	// location adjacent to were it should be. I've only ever seen it such the
+	// label is one address after where it should be but other variations may
+	// exists
+	//
+	// the loop below works by:
+	// 1) looking for an automatically labelled address (AUTO) that has been blessed
+	// 2) if the address following that label has a DASM symbol then
+	// 3) remove the AUTO label
+	// and
+	// 4) move the DASM label to the previously labelled with the AUTO label
+	for b := range dsm.disasmEntries.Entries {
+		for i := range dsm.disasmEntries.Entries[b] {
+			if dsm.disasmEntries.Entries[b][i].Level >= EntryLevelBlessed {
+				addr := dsm.disasmEntries.Entries[b][i].Result.Address
+				if sym, ok := dsm.Sym.GetLabel(b, addr); ok && sym.Source == symbols.SourceAuto {
+					if i < len(dsm.disasmEntries.Entries[b]) {
+						postAddr := dsm.disasmEntries.Entries[b][i+1].Result.Address
+						if postSym, ok := dsm.Sym.GetLabel(b, postAddr); ok && postSym.Source == symbols.SourceDASM {
+							_ = dsm.Sym.RemoveLabel(symbols.SourceAuto, b, addr)
+							_ = dsm.Sym.RemoveLabel(symbols.SourceDASM, b, postAddr)
+							dsm.Sym.AddLabel(symbols.SourceDASM, b, addr, postSym.Symbol)
+						}
+					}
+				}
+			}
+		}
+	}
+
 	// remove any auto-labels that have been added to entries that have not
 	// been blessed (these labels were added speculatively).
 	for b := range dsm.disasmEntries.Entries {
