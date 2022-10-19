@@ -640,7 +640,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 
 			symSearch := dbg.Disasm.Sym.SearchBySymbol(symbol, symbols.SearchLabel)
 			if symSearch != nil {
-				ai := dbg.dbgmem.MapAddress(symSearch.Address, true)
+				ai := dbg.dbgmem.GetAddressInfo(symSearch.Address, true)
 				if ai != nil {
 					dbg.printLine(terminal.StyleFeedback, "%s [LABEL]", ai.String())
 				} else {
@@ -648,12 +648,12 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 				}
 			}
 
-			aiRead := dbg.dbgmem.MapAddress(symbol, true)
+			aiRead := dbg.dbgmem.GetAddressInfo(symbol, true)
 			if aiRead != nil {
 				dbg.printLine(terminal.StyleFeedback, "%s [READ]", aiRead.String())
 			}
 
-			aiWrite := dbg.dbgmem.MapAddress(symbol, false)
+			aiWrite := dbg.dbgmem.GetAddressInfo(symbol, false)
 			if aiWrite != nil {
 				dbg.printLine(terminal.StyleFeedback, "%s [WRITE]", aiWrite.String())
 			}
@@ -930,7 +930,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 
 			s := strings.Builder{}
 
-			ai := dbg.dbgmem.MapAddress(address, true)
+			ai := dbg.dbgmem.GetAddressInfo(address, true)
 			if ai != nil {
 				hasMapped = true
 				s.WriteString("Read:\n")
@@ -944,7 +944,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 					s.WriteString(fmt.Sprintf("  labelled as %s\n", ai.Symbol))
 				}
 			}
-			ai = dbg.dbgmem.MapAddress(address, false)
+			ai = dbg.dbgmem.GetAddressInfo(address, false)
 			if ai != nil {
 				hasMapped = true
 				s.WriteString("Write:\n")
@@ -1080,7 +1080,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		//
 		// see comment in DbgMem.Poke() for why we treat the address as a
 		// "read" address
-		ai := dbg.dbgmem.MapAddress(a, true)
+		ai := dbg.dbgmem.GetAddressInfo(a, true)
 		if ai == nil {
 			dbg.printLine(terminal.StyleError, fmt.Sprintf(dbgmem.PokeError, a))
 			return nil

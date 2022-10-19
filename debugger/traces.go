@@ -166,9 +166,9 @@ func (trc *traces) parseCommand(tokens *commandline.Tokens) error {
 
 	// convert address
 	var ai *dbgmem.AddressInfo
-	ai = trc.dbg.dbgmem.MapAddress(a, true)
+	ai = trc.dbg.dbgmem.GetAddressInfo(a, true)
 	if ai == nil {
-		ai = trc.dbg.dbgmem.MapAddress(a, false)
+		ai = trc.dbg.dbgmem.GetAddressInfo(a, false)
 		if ai == nil {
 			return curated.Errorf("invalid trace address (%s) expecting 16-bit address or symbol", a)
 		}

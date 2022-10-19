@@ -35,7 +35,7 @@ type AddressInfo struct {
 	// address is to be used for reading or writing
 	Read bool
 
-	// the data at the address. if peeked is false then data mays not be valid
+	// the data at the address. if peeked is false then data may not be valid
 	Peeked bool
 	Data   uint8
 }

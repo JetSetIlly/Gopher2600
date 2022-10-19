@@ -90,7 +90,7 @@ func parseTarget(dbg *Debugger, tokens *commandline.Tokens) (*target, error) {
 
 					// for breakpoints it is important that the breakpoint
 					// value be normalised through MapAddress() too
-					ai := dbg.dbgmem.MapAddress(dbg.vcs.CPU.PC.Address(), true)
+					ai := dbg.dbgmem.GetAddressInfo(dbg.vcs.CPU.PC.Address(), true)
 					return int(ai.MappedAddress)
 				},
 				format:              "%#04x",

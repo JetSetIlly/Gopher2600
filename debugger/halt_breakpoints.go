@@ -324,7 +324,7 @@ func (bp *breakpoints) parseCommand(tokens *commandline.Tokens) error {
 			// special handling for some targets
 			switch tgt.label {
 			case "PC":
-				ai := bp.dbg.dbgmem.MapAddress(uint16(val.(int)), true)
+				ai := bp.dbg.dbgmem.GetAddressInfo(uint16(val.(int)), true)
 				val = int(ai.MappedAddress)
 
 				// unusual case but if PC break is not in cartridge area we
@@ -437,7 +437,7 @@ func (bp *breakpoints) checkBreaker(nb breaker) int {
 
 // HasPCBreak returns true ifan address/bank has a PC breakpoint associated with it.
 func (bp breakpoints) HasPCBreak(addr uint16, bank int) (bool, int) {
-	ai := bp.dbg.dbgmem.MapAddress(addr, true)
+	ai := bp.dbg.dbgmem.GetAddressInfo(addr, true)
 
 	check := breaker{
 		target: bp.checkPcBreak,
@@ -488,7 +488,7 @@ func (bp *breakpoints) togglePCBreak(e *disassembly.Entry) {
 	}
 
 	// no equivalent breakpoint existed so add one
-	ai := bp.dbg.dbgmem.MapAddress(e.Result.Address, true)
+	ai := bp.dbg.dbgmem.GetAddressInfo(e.Result.Address, true)
 	nb := breaker{
 		target: bp.checkPcBreak,
 

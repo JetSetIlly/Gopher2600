@@ -33,8 +33,8 @@ type DbgMem struct {
 	Sym *symbols.Symbols
 }
 
-// MapAddress allows addressing by symbols in addition to numerically.
-func (dbgmem DbgMem) MapAddress(address interface{}, read bool) *AddressInfo {
+// GetAddressInfo allows addressing by symbols in addition to numerically.
+func (dbgmem DbgMem) GetAddressInfo(address interface{}, read bool) *AddressInfo {
 	ai := &AddressInfo{Read: read}
 
 	var searchTable symbols.SearchTable
@@ -106,7 +106,7 @@ const (
 // Peek returns the contents of the memory address, without triggering any side
 // effects. The supplied address can be numeric of symbolic.
 func (dbgmem DbgMem) Peek(address interface{}) (*AddressInfo, error) {
-	ai := dbgmem.MapAddress(address, true)
+	ai := dbgmem.GetAddressInfo(address, true)
 	if ai == nil {
 		return nil, curated.Errorf(PeekError, address)
 	}
@@ -137,7 +137,7 @@ func (dbgmem DbgMem) Poke(address interface{}, data uint8) (*AddressInfo, error)
 	// on the surface this doesn't appear to be correct but on further thought
 	// it is obviously true - we are in fact changing the value that is
 	// subsequently read by the CPU, so that means poking to a read address
-	ai := dbgmem.MapAddress(address, true)
+	ai := dbgmem.GetAddressInfo(address, true)
 	if ai == nil {
 		return nil, curated.Errorf(PokeError, address)
 	}

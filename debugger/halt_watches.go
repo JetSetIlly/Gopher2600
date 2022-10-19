@@ -206,9 +206,9 @@ func (wtc *watches) parseCommand(tokens *commandline.Tokens) error {
 	var ai *dbgmem.AddressInfo
 
 	if read {
-		ai = wtc.dbg.dbgmem.MapAddress(a, true)
+		ai = wtc.dbg.dbgmem.GetAddressInfo(a, true)
 	} else {
-		ai = wtc.dbg.dbgmem.MapAddress(a, false)
+		ai = wtc.dbg.dbgmem.GetAddressInfo(a, false)
 	}
 
 	// mapping of the address was unsuccessful
