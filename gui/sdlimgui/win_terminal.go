@@ -31,7 +31,7 @@ import (
 
 const winTermID = "Terminal"
 
-const outputMaxSize = 512
+const outputMaxSize = 4096
 
 type winTerm struct {
 	debuggerWin
