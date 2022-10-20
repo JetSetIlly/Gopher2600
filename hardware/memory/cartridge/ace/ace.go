@@ -132,7 +132,7 @@ func (cart *Ace) Read(addr uint16, passive bool) (uint8, error) {
 	if passive {
 		cart.Listen(addr|memorymap.OriginCart, 0x00)
 	}
-	return cart.mem.gpioB[fromArm_Opcode], nil
+	return cart.mem.gpioB[fromArm_data], nil
 }
 
 // Write implements the mapper.CartMapper interface.
@@ -195,11 +195,6 @@ func (cart *Ace) Listen(addr uint16, data uint8) {
 	// we must understand that the above synchronisation is almost certainly
 	// "wrong" in the general sense. it works for the examples seen so far but
 	// that means nothing
-
-	// general bus stuff detection
-	busStuffAddr := uint16(cart.mem.gpioB[fromArm_Address]) | uint16(cart.mem.gpioB[fromArm_Address]<<8)
-	cart.mem.busStuff = cart.mem.gpioB[gpio_mode] == 0x55 && busStuffAddr == addr
-	cart.mem.busStuffData = cart.mem.gpioB[fromArm_Opcode]
 }
 
 // Step implements the mapper.CartMapper interface.
@@ -219,7 +214,12 @@ func (cart *Ace) ARMinterrupt(addr uint32, val1 uint32, val2 uint32) (arm.ARMint
 
 // BusStuff implements the mapper.CartBusStuff interface.
 func (cart *Ace) BusStuff() (uint8, bool) {
-	return cart.mem.busStuffData, cart.mem.busStuff
+	if cart.mem.gpioB[gpio_mode] == 0x55 && cart.mem.gpioB[gpio_mode+1] == 0x55 {
+		cart.mem.gpioB[gpio_mode] = 0x00
+		cart.mem.gpioB[gpio_mode+1] = 0x00
+		return cart.mem.gpioB[fromArm_data], true
+	}
+	return 0, false
 }
 
 // CoProcID implements the mapper.CartCoProc interface.

@@ -56,10 +56,6 @@ type aceMemory struct {
 	sramMemtop uint32
 
 	arm yieldARM
-
-	// whether bus stuff is active at the current moment and the data to stuff
-	busStuff     bool
-	busStuffData uint8
 }
 
 const (
@@ -73,12 +69,11 @@ const (
 )
 
 const (
-	gpio_mode       = 0x00 // gpioB
-	toArm_address   = 0x10 // gpioA
-	toArm_data      = 0x10 // gpioB
-	fromArm_Address = 0x10
-	fromArm_Opcode  = 0x14 // gpioB
-	gpio_memtop     = 0x18
+	gpio_mode     = 0x00 // gpioB
+	toArm_address = 0x10 // gpioA
+	toArm_data    = 0x10 // gpioB
+	fromArm_data  = 0x14 // gpioB
+	gpio_memtop   = 0x18
 )
 
 func newAceMemory(version string, data []byte) (*aceMemory, error) {
@@ -212,7 +207,7 @@ func newAceMemory(version string, data []byte) (*aceMemory, error) {
 	mem.gpioBMemtop = mem.gpioBOrigin | gpio_memtop
 
 	// default NOP instruction for opcode
-	mem.gpioB[fromArm_Opcode] = 0xea
+	mem.gpioB[fromArm_data] = 0xea
 
 	return mem, nil
 }
