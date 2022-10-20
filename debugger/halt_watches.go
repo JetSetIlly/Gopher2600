@@ -117,34 +117,30 @@ func (wtc *watches) check() string {
 	checkString := strings.Builder{}
 
 	for _, w := range wtc.watches {
-		var accessAddress uint16
-		var watchAddress uint16
-
-		// pick which addresses to comare depending on whether watch is strict
+		// pick which addresses to compare depending on whether watch is strict
 		if w.strict {
-			accessAddress = wtc.dbg.vcs.Mem.LastCPUAddressLiteral
-			watchAddress = w.ai.Address
+			if wtc.dbg.vcs.Mem.LastCPUAddressLiteral != w.ai.Address {
+				continue
+			}
 		} else {
-			accessAddress = wtc.dbg.vcs.Mem.LastCPUAddressMapped
-			watchAddress = w.ai.MappedAddress
-		}
-
-		// continue loop if we're not matching last address accessed
-		if watchAddress != accessAddress {
-			continue
+			if wtc.dbg.vcs.Mem.LastCPUAddressMapped != w.ai.MappedAddress {
+				continue
+			}
 		}
 
 		if w.matchValue && w.value != wtc.dbg.vcs.Mem.LastCPUData {
 			continue
 		}
 
+		lai := wtc.dbg.dbgmem.GetAddressInfo(wtc.dbg.vcs.Mem.LastCPUAddressLiteral, !wtc.dbg.vcs.Mem.LastCPUWrite)
+
 		if w.ai.Read {
 			if !wtc.dbg.vcs.Mem.LastCPUWrite {
-				checkString.WriteString(fmt.Sprintf("watch at %s (read value %#02x)\n", w, wtc.dbg.vcs.Mem.LastCPUData))
+				checkString.WriteString(fmt.Sprintf("watch at %s (read value %#02x)\n", lai, wtc.dbg.vcs.Mem.LastCPUData))
 			}
 		} else {
 			if wtc.dbg.vcs.Mem.LastCPUWrite {
-				checkString.WriteString(fmt.Sprintf("watch at %s (written value %#02x)\n", w, wtc.dbg.vcs.Mem.LastCPUData))
+				checkString.WriteString(fmt.Sprintf("watch at %s (written value %#02x)\n", lai, wtc.dbg.vcs.Mem.LastCPUData))
 			}
 		}
 	}

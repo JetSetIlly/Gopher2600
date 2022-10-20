@@ -101,29 +101,25 @@ func (trc *traces) check() string {
 	s := strings.Builder{}
 
 	for _, t := range trc.traces {
-		var accessAddress uint16
-		var traceAddress uint16
-
-		// pick which addresses to comare depending on whether watch is strict
+		// pick which addresses to compare depending on whether watch is strict
 		if t.strict {
-			accessAddress = trc.dbg.vcs.Mem.LastCPUAddressLiteral
-			traceAddress = t.ai.Address
+			if trc.dbg.vcs.Mem.LastCPUAddressLiteral != t.ai.Address {
+				continue
+			}
 		} else {
-			accessAddress = trc.dbg.vcs.Mem.LastCPUAddressMapped
-			traceAddress = t.ai.MappedAddress
+			if trc.dbg.vcs.Mem.LastCPUAddressMapped != t.ai.MappedAddress {
+				continue
+			}
 		}
 
-		if traceAddress != accessAddress {
-			continue
-		}
+		lai := trc.dbg.dbgmem.GetAddressInfo(trc.dbg.vcs.Mem.LastCPUAddressLiteral, !trc.dbg.vcs.Mem.LastCPUWrite)
 
 		if trc.dbg.vcs.Mem.LastCPUWrite {
-			s.WriteString(fmt.Sprintf("write %#02x to ", trc.dbg.vcs.Mem.LastCPUData))
+			s.WriteString(fmt.Sprintf("write %#02x to %s ", trc.dbg.vcs.Mem.LastCPUData, lai))
 		} else {
-			s.WriteString(fmt.Sprintf("read %#02x from ", trc.dbg.vcs.Mem.LastCPUData))
+			s.WriteString(fmt.Sprintf("read %#02x from %s ", trc.dbg.vcs.Mem.LastCPUData, lai))
 		}
 
-		s.WriteString(t.String())
 		break // for loop
 	}
 
