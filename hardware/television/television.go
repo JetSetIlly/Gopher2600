@@ -72,9 +72,11 @@ type State struct {
 	// record of signal attributes from the last call to Signal()
 	lastSignal signal.SignalAttributes
 
-	// vsyncCount records the number of consecutive clocks the VSYNC signal
-	// has been sustained. we use this to help correctly implement vsync.
-	vsyncCount int
+	// vsync control
+	vsyncActive       bool
+	vsyncStartOnClock int
+	vsyncScanlines    int
+	vsyncClocks       int
 
 	// frame resizer
 	resizer resizer
@@ -223,7 +225,10 @@ func (tv *Television) Reset(keepFrameNum bool) error {
 	tv.state.clock = 0
 	tv.state.scanline = 0
 	tv.state.stableFrames = 0
-	tv.state.vsyncCount = 0
+	tv.state.vsyncActive = false
+	tv.state.vsyncStartOnClock = 0
+	tv.state.vsyncScanlines = 0
+	tv.state.vsyncClocks = 0
 	tv.state.lastSignal = signal.NoSignal
 
 	for i := range tv.signals {
@@ -420,7 +425,18 @@ func (tv *Television) Signal(sig signal.SignalAttributes) error {
 		//
 		// (06/01/21) another example is the Artkaris NTSC version of Lili
 		if tv.state.scanline >= specification.AbsoluteMaxScanlines {
-			if tv.state.vsyncCount == 0 {
+			// (20/10/22) I'm no longer sure if this test for an active vsync
+			// is necessary. it might be better / more accurate if the test is
+			// removed and the screen allowed to flyback regardless of the
+			// VSYNC state
+			//
+			// however, without testing I'm no longer sure what the effect of
+			// that be. in particular how the results appear in the debugging
+			// screen and specically, how it affects the debugging screen's
+			// onion skinning
+			//
+			// I'll leave it in place for now until further testing can be done
+			if !tv.state.vsyncActive {
 				err := tv.newFrame(false)
 				if err != nil {
 					return err
@@ -437,19 +453,43 @@ func (tv *Television) Signal(sig signal.SignalAttributes) error {
 		}
 	}
 
-	// check vsync signal at the time of the flyback
-	if sig&signal.VSync == signal.VSync && tv.state.lastSignal&signal.VSync != signal.VSync {
-		tv.state.vsyncCount = 0
-	} else if sig&signal.VSync == signal.VSync && tv.state.lastSignal&signal.VSync == signal.VSync {
-		tv.state.vsyncCount++
-	} else if sig&signal.VSync != signal.VSync && tv.state.lastSignal&signal.VSync == signal.VSync {
-		if tv.state.vsyncCount > 10 {
-			err := tv.newFrame(true)
-			if err != nil {
-				return err
-			}
+	// count VSYNC clocks and scanlines
+	if tv.state.vsyncActive {
+		if tv.state.clock == tv.state.vsyncStartOnClock {
+			tv.state.vsyncScanlines++
 		}
-		tv.state.vsyncCount = 0
+		tv.state.vsyncClocks++
+	}
+
+	// check for change of VSYNC signal
+	if sig&signal.VSync != tv.state.lastSignal&signal.VSync {
+		if sig&signal.VSync == signal.VSync {
+			// VSYNC has started
+			tv.state.vsyncActive = true
+			tv.state.vsyncScanlines = 0
+			tv.state.vsyncStartOnClock = tv.state.clock
+		} else {
+			// VSYNC has ended but we don't want to trigger a new frame unless
+			// the VSYNC signal has been present for a minimum number of
+			// clocks
+			//
+			// there's no real empirical reason for the value used here except
+			// that it seems right in practice. it certainly doesn't seem to
+			// cause any harm.
+			//
+			// it's worth noting that without this minimum threshold the
+			// smoothscrolling demos (mentioned below) don't work as expected.
+			// so maybe there's a subtle interaction with RSYNC here that's
+			// worth exploring
+			if tv.state.vsyncClocks > 10 {
+				err := tv.newFrame(true)
+				if err != nil {
+					return err
+				}
+			}
+			tv.state.vsyncActive = false
+		}
+		tv.state.vsyncClocks = 0
 	}
 
 	// we've "faked" the flyback signal above when clock reached
@@ -569,7 +609,8 @@ func (tv *Television) newFrame(fromVsync bool) error {
 	tv.state.frameInfo.FrameNum = tv.state.frameNum
 
 	// note whether newFrame() was the result of a valid VSYNC or a "natural" flyback
-	tv.state.frameInfo.VSynced = fromVsync
+	tv.state.frameInfo.VSync = fromVsync
+	tv.state.frameInfo.VSyncScanlines = tv.state.vsyncScanlines
 
 	// commit any resizing that maybe pending
 	err := tv.state.resizer.commit(tv)

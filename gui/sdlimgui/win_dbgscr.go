@@ -384,7 +384,7 @@ func (win *winDbgScr) drawCoordsLine() {
 	imgui.Text(win.img.lz.TV.LastSignal.String())
 
 	// unsynced indicator
-	if !win.scr.crit.frameInfo.VSynced {
+	if !win.scr.crit.frameInfo.VSync {
 		imgui.SameLineV(0, 20)
 		imgui.Text("UNSYNCED")
 	}

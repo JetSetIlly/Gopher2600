@@ -334,7 +334,7 @@ func (scr *screen) NewFrame(frameInfo television.FrameInfo) error {
 		if scr.img.crtPrefs.Enabled.Get().(bool) {
 			syncSpeed := scr.img.crtPrefs.SyncSpeed.Get().(int)
 
-			if !frameInfo.VSynced {
+			if !frameInfo.VSync || frameInfo.VSyncScanlines < scr.img.crtPrefs.SyncSensitivity.Get().(int) {
 				scr.crit.vsyncCount = 0
 			} else if scr.crit.vsyncCount <= syncSpeed {
 				scr.crit.vsyncCount++

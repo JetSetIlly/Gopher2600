@@ -86,11 +86,14 @@ func (win *winPrefs) drawCRT() {
 	imgui.Separator()
 	imgui.Spacing()
 
-	imgui.PushItemWidth(-1)
-	win.drawSyncSpeed()
-	imgui.Spacing()
-	win.drawSyncPowerOn()
-	imgui.PopItemWidth()
+	if imgui.CollapsingHeader("VSYNC") {
+		imgui.Spacing()
+		win.drawSyncSpeed()
+		imgui.SameLineV(0, 15)
+		win.drawSyncSensitivity()
+		imgui.Spacing()
+		win.drawSyncPowerOn()
+	}
 }
 
 func (win *winPrefs) drawCurve() {
@@ -459,7 +462,9 @@ available when 'Pixel Perfect' mode is disabled.`)
 }
 
 func (win *winPrefs) drawSyncSpeed() {
-	imgui.Text("Synchronisation Speed")
+	imgui.AlignTextToFramePadding()
+	imgui.Text("Speed")
+	imgui.SameLine()
 
 	t := int32(win.img.crtPrefs.SyncSpeed.Get().(int))
 	var label string
@@ -472,11 +477,42 @@ func (win *winPrefs) drawSyncSpeed() {
 	if imgui.SliderIntV("##syncSpeed", &t, 0, 10, label, 1.0) {
 		win.img.crtPrefs.SyncSpeed.Set(t)
 	}
+	imguiTooltipSimple(`The number of consecutive frames with
+a valid VSYNC signal for the screen to be
+considered stable.
+
+When the screen is not stable, the screen
+will visibly 'roll'.`)
+}
+
+func (win *winPrefs) drawSyncSensitivity() {
+	imgui.AlignTextToFramePadding()
+	imgui.Text("Sensitivity")
+	imgui.SameLine()
+
+	t := int32(win.img.crtPrefs.SyncSensitivity.Get().(int))
+	var label string
+	if t == 1 {
+		label = fmt.Sprintf("%d scanline", t)
+	} else {
+		label = fmt.Sprintf("%d scanlines", t)
+	}
+
+	if imgui.SliderIntV("##syncSensitivity", &t, 0, 4, label, 1.0) {
+		win.img.crtPrefs.SyncSensitivity.Set(t)
+	}
+
+	imguiTooltipSimple(`The number of complete scanlines of VSYNC
+for the VSYNC signal to be considered valid.
+
+Atari recommended a value 3 to ensure maximum
+compatibility.`)
 }
 
 func (win *winPrefs) drawSyncPowerOn() {
 	b := win.img.crtPrefs.SyncPowerOn.Get().(bool)
-	if imgui.Checkbox("Syncronise On Power##poweron", &b) {
+	if imgui.Checkbox("Syncronise On Powern##poweron", &b) {
 		win.img.crtPrefs.SyncPowerOn.Set(b)
 	}
+	imguiTooltipSimple(`Whether the emulated TV visibly synchronises when powered on.`)
 }

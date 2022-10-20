@@ -36,10 +36,14 @@ type FrameInfo struct {
 	// the refresh rate. calculated from the TotalScanlines value
 	RefreshRate float32
 
-	// a VSynced frame is one which was generated from a valid VSYNC/VBLANK
+	// a VSync frame is one which was generated from a valid VSYNC/VBLANK
 	// sequence and which hasn't cause the update frequency of the television
 	// to change.
-	VSynced bool
+	VSync bool
+
+	// the number of scanlines in the VSync. value is not meaningful if VSync
+	// is false
+	VSyncScanlines int
 
 	// Stable is true once the television frame has been consistent for N frames
 	// after reset. This is useful for pixel renderers so that they don't show
@@ -71,7 +75,7 @@ func (info *FrameInfo) reset() {
 	info.VisibleBottom = info.Spec.AtariSafeVisibleBottom
 	info.TotalScanlines = info.Spec.ScanlinesTotal
 	info.RefreshRate = info.Spec.RefreshRate
-	info.VSynced = false
+	info.VSync = false
 	info.Stable = false
 }
 

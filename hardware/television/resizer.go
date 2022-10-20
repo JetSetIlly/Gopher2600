@@ -108,7 +108,7 @@ func (sr *resizer) examine(tv *Television, sig signal.SignalAttributes) {
 	// the best example of this is Andrew Davie's chess which simply does
 	// not care about frames during the computer's thinking time - we don't
 	// want to resize during these frames.
-	if !tv.state.frameInfo.VSynced {
+	if !tv.state.frameInfo.VSync {
 		// reset any pending changes on an unsynced frame
 		sr.pendingCt = 0
 		sr.pendingTop = sr.vblankTop
