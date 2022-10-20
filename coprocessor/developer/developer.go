@@ -253,7 +253,7 @@ func (dev *Developer) NewFrame(frameInfo television.FrameInfo) error {
 	// only update FrameCycles if new frame was caused by a VSYNC or we've
 	// waited long enough since the last update
 	dev.framesSinceLastUpdate++
-	if !frameInfo.VSynced || dev.framesSinceLastUpdate > maxWaitUpdateTime {
+	if !frameInfo.VSync || dev.framesSinceLastUpdate > maxWaitUpdateTime {
 		return nil
 	}
 	dev.framesSinceLastUpdate = 0

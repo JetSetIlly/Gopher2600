@@ -194,7 +194,7 @@ func (win *playScr) drawFPS() bool {
 	imgui.Text(win.img.screen.crit.frameInfo.Spec.ID)
 	imgui.SameLine()
 	imgui.Text(win.hz)
-	if !win.scr.crit.frameInfo.VSynced {
+	if !win.scr.crit.frameInfo.VSync {
 		imgui.SameLine()
 		imgui.Text(string(fonts.NoVSYNC))
 	}
