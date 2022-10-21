@@ -33,11 +33,12 @@ type timer2 struct {
 	status     uint16
 
 	// extracted control register flags
-	active              bool // CEN
-	downcounting        bool // DIR
-	updateEventDisabled bool // UDIS
-	updateRequestSource bool // URS - not a flag but only two options for the "source"
-	autoReloadBuffered  bool // ARPE
+	active              bool    // CEN
+	downcounting        bool    // DIR
+	updateEventDisabled bool    // UDIS
+	updateRequestSource bool    // URS - not a flag but only two options for the "source"
+	autoReloadBuffered  bool    // ARPE
+	clockDivision       float32 // CKD
 
 	// the autoreload shadow register is updated from the autoreload register
 	// when:
@@ -69,14 +70,22 @@ func (t *timer2) setControlRegister(val uint32) {
 	t.downcounting = val&0x0010 == 0x0010
 	t.autoReloadBuffered = val&0x0040 == 0x0040
 
+	switch (val & 0x300) >> 8 {
+	case 0b00:
+		t.clockDivision = 1.0
+	case 0b01:
+		t.clockDivision = 2.0
+	case 0b10:
+		t.clockDivision = 4.0
+	case 0b11:
+		panic("ARM TIM2_CR1: CLK bits of 11 (reserved bit pattern)")
+	}
+
 	if val&0x0060 != 0x0000 {
 		panic("ARM TIM2_CR1: only CMS bits of 00 (edge-aligned mode) supported")
 	}
 	if val&0x0008 != 0x0000 {
 		panic("ARM TIM2_CR1: only OMP bit of 0 supported")
-	}
-	if val&0x0300 != 0x0000 {
-		panic("ARM TIM2_CR1: only CKD bits of 000 (no clock division) is supported")
 	}
 	if val&0xfc00 != 0x0000 {
 		panic("ARM TIM2_CR1: reserved bits are not zero")
@@ -97,6 +106,9 @@ func (t *timer2) step(cycles float32) {
 		return
 	}
 
+	// adjust for clock division value
+	cycles /= t.clockDivision
+
 	// accumulate remaining fractions of previous step and note the new
 	// remaining fractions value
 	cycles += t.fractionalCounter
@@ -105,11 +117,9 @@ func (t *timer2) step(cycles float32) {
 	// number of counter ticks required
 	t.prescalerCounter += uint16(cycles)
 
-	counterTicks := 0
-	for t.prescalerCounter > t.prescalarShadow {
-		counterTicks++
-		t.prescalerCounter -= t.prescalarShadow
-	}
+	// adjust prescaler and number of ticks to accumulate counter by
+	counterTicks := t.prescalerCounter / t.prescalarShadow
+	t.prescalerCounter = t.prescalerCounter % t.prescalarShadow
 
 	if counterTicks == 0 {
 		return
