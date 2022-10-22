@@ -549,7 +549,7 @@ func NewSource(romFile string, cart mapper.CartCoProc, elfFile string) (*Source,
 	}
 
 	// build variables
-	err = bld.buildVariables(src)
+	err = bld.buildVariables(src, executableOrigin)
 	if err != nil {
 		return nil, curated.Errorf("dwarf: %v", err)
 	}

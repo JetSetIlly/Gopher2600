@@ -588,7 +588,7 @@ func (bld *build) resolveVariableDeclaration(v buildEntry, src *Source) (*Source
 }
 
 // buildVariables populates variables map in the *Source tree
-func (bld *build) buildVariables(src *Source) error {
+func (bld *build) buildVariables(src *Source, origin uint64) error {
 	for _, v := range bld.variables {
 		// as a starting point we're interested in variable entries that have
 		// the location attribute
@@ -618,6 +618,8 @@ func (bld *build) buildVariables(src *Source) error {
 		if address == 0 {
 			continue // for loop
 		}
+
+		address += origin
 
 		var varb *SourceVariable
 		var err error
