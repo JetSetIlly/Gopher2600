@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"math"
 	"strings"
+	"time"
 
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm/memorymodel"
@@ -184,7 +185,13 @@ type ARM struct {
 	mem   SharedMemory
 	hook  CartridgeHook
 
+	// state of the ARM. saveable and restorable
 	state *ARMState
+
+	// updating the preferences every time run() is executed can be slow
+	// (because the preferences need to be synchronised between tasks). the
+	// prefsPulse ticker slows the rate at which updatePrefs() is called
+	prefsPulse *time.Ticker
 
 	// whether to foce an error on illegal memory access. set from ARM.prefs at
 	// the start of every arm.Run()
@@ -300,6 +307,9 @@ func NewARM(arch Architecture, mamcr MAMCR, mmap memorymodel.Map, prefs *prefere
 		state: &ARMState{},
 	}
 
+	// slow prefs update by 100ms
+	arm.prefsPulse = time.NewTicker(time.Millisecond * 100)
+
 	// the mamcr to use as a preference
 	arm.state.mam.preferredMAMCR = mamcr
 
@@ -399,7 +409,8 @@ func (arm *ARM) reset() {
 }
 
 // updatePrefs should be called periodically to ensure that the current
-// preference values are being used in the ARM emulation.
+// preference values are being used in the ARM emulation. see also the
+// prefsPulse ticker
 func (arm *ARM) updatePrefs() {
 	// update clock value from preferences
 	arm.Clk = float32(arm.prefs.Clock.Get().(float64))
@@ -599,7 +610,11 @@ func (arm *ARM) BreakpointsDisable(disable bool) {
 }
 
 func (arm *ARM) run() (float32, error) {
-	arm.updatePrefs()
+	select {
+	case <-arm.prefsPulse.C:
+		arm.updatePrefs()
+	default:
+	}
 
 	if arm.dev != nil {
 		// update variableMemtop - probably hasn't changed but you never know
