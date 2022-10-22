@@ -110,8 +110,13 @@ func (win *winCoProcGlobals) draw() {
 			if m, ok := src.Functions["main"]; ok {
 				win.selectedFile = m.DeclLine.File
 			} else {
-				imgui.Text("Can't find main() function")
-				return
+				// if main does not exists then open at the first file in the list
+				for _, fn := range src.Filenames {
+					if src.Files[fn].HasGlobals {
+						win.selectedFile = src.Files[fn]
+						break // for loop
+					}
+				}
 			}
 
 			win.firstOpen = false
