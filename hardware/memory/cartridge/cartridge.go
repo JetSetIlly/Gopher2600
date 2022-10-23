@@ -46,6 +46,14 @@ type Cartridge struct {
 	// the specific cartridge data, mapped appropriately to the memory
 	// interfaces
 	mapper mapper.CartMapper
+
+	// the CartBusStuff and CartCoProc interface are accessed a lot if
+	// available. rather than performing type assertions too frequently we do
+	// it in the Attach() function and the Plumb() function
+	hasBusStuff bool
+	busStuff    mapper.CartBusStuff
+	hasCoProc   bool
+	coproc      mapper.CartCoProc
 }
 
 // Sentinal error returned if operation is on the ejected cartridge type.
@@ -83,6 +91,8 @@ func (cart *Cartridge) Plumb(fromDifferentEmulation bool) {
 		}
 	}
 	cart.mapper.Plumb()
+	cart.busStuff, cart.hasBusStuff = cart.mapper.(mapper.CartBusStuff)
+	cart.coproc, cart.hasCoProc = cart.mapper.(mapper.CartCoProc)
 }
 
 // Reset volative contents of Cartridge.
@@ -191,6 +201,10 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 		if cart.mapper == nil {
 			return
 		}
+
+		// get busstuff and coproc interfaces
+		cart.busStuff, cart.hasBusStuff = cart.mapper.(mapper.CartBusStuff)
+		cart.coproc, cart.hasCoProc = cart.mapper.(mapper.CartCoProc)
 
 		if _, ok := cart.mapper.(*ejected); !ok {
 			logger.Logf("cartridge", "inserted %s", cart.mapper.ID())
@@ -449,8 +463,8 @@ func (cart *Cartridge) GetCartHotspotsBus() mapper.CartHotspotsBus {
 // GetCoProc returns interface to the coprocessor interface or nil if no
 // coprocessor is available on the cartridge.
 func (cart *Cartridge) GetCoProc() mapper.CartCoProc {
-	if cpd, ok := cart.mapper.(mapper.CartCoProc); ok {
-		return cpd
+	if cart.hasCoProc {
+		return cart.coproc
 	}
 	return nil
 }
@@ -484,39 +498,39 @@ func (cart *Cartridge) ROMDump() (string, error) {
 
 // BreakpointHasTriggered implements the mapper.CartCoProc interface.
 func (cart *Cartridge) BreakpointHasTriggered() bool {
-	if bp, ok := cart.mapper.(mapper.CartCoProc); ok {
-		return bp.BreakpointHasTriggered()
+	if cart.hasCoProc {
+		return cart.coproc.BreakpointHasTriggered()
 	}
 	return false
 }
 
 // ResumeAfterBreakpoint implements the mapper.CartCoProc interface.
 func (cart *Cartridge) ResumeAfterBreakpoint() error {
-	if bp, ok := cart.mapper.(mapper.CartCoProc); ok {
-		return bp.ResumeAfterBreakpoint()
+	if cart.hasCoProc {
+		return cart.coproc.ResumeAfterBreakpoint()
 	}
 	return nil
 }
 
 // BreakpointsDisable implements the mapper.CartCoProc interface.
 func (cart *Cartridge) BreakpointsDisable(disable bool) {
-	if bp, ok := cart.mapper.(mapper.CartCoProc); ok {
-		bp.BreakpointsDisable(disable)
+	if cart.hasCoProc {
+		cart.coproc.BreakpointsDisable(disable)
 	}
 }
 
 // CoProcState implements the mapper.CartCoProc interface.
 func (cart *Cartridge) CoProcState() mapper.CoProcState {
-	if bp, ok := cart.mapper.(mapper.CartCoProc); ok {
-		return bp.CoProcState()
+	if cart.hasCoProc {
+		return cart.coproc.CoProcState()
 	}
 	return mapper.CoProcIdle
 }
 
 // BusStuff implements the mapper.CartBusStuff interface.
 func (cart *Cartridge) BusStuff() (uint8, bool) {
-	if bus, ok := cart.mapper.(mapper.CartBusStuff); ok {
-		return bus.BusStuff()
+	if cart.hasBusStuff {
+		return cart.busStuff.BusStuff()
 	}
 	return 0, false
 }

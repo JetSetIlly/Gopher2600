@@ -3,9 +3,9 @@ compileFlags = '-c 3 -B -wb=false'
 # profilingRom = roms/Rsboxing.bin
 # profilingRom = "roms/starpath/02 - Communist Mutants From Space (Ntsc).mp3"
 # profilingRom = "roms/The Official Frogger.bin"
-# profilingRom = roms/Homebrew/CDF/zookeeper_20200308_demo2_NTSC.bin
+profilingRom = roms/Homebrew/CDF/zookeeper_20200308_demo2_NTSC.bin
 # profilingRom = roms/Pitfall.bin
-profilingRom = test_roms/ELF/raycaster/raycaster.bin
+# profilingRom = test_roms/ELF/raycaster/raycaster.bin
 
 .PHONY: all clean tidy generate check_lint lint lint_fix check_glsl glsl_validate check_pandoc readme_spell test race race_debug profile profile_cpu profile_cpu_play profile_cpu_debug profile_mem_play profile_mem_debug profile_trace build_assertions build check_upx release chec_rswc windows_manifest cross_windows cross_windows_development cross_windows_dynamic
 
