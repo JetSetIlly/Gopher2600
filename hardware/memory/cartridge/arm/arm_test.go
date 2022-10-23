@@ -59,16 +59,14 @@ func prepareTestARM() (*arm.ARM, *testMemory) {
 	prefs := &preferences.ARMPreferences{}
 
 	memModel := memorymodel.Map{
-		Model:             "test",
-		FlashOrigin:       0,
-		Flash32kMemtop:    511,
-		Flash64kMemtop:    511,
-		SRAMOrigin:        512,
-		PeripheralsOrigin: 1000,
-		PeripheralsMemtop: 1023,
+		Model:          "test",
+		FlashOrigin:    0,
+		Flash32kMemtop: 511,
+		Flash64kMemtop: 511,
+		SRAMOrigin:     512,
 	}
 
-	testMem := prepareTestMemory(memModel.PeripheralsMemtop)
+	testMem := prepareTestMemory(memModel.SRAMOrigin + 100)
 	hook := &hook{}
 	return arm.NewARM(arm.ARMv7_M, arm.MAMdisabled, memModel, prefs, testMem, hook), testMem
 }

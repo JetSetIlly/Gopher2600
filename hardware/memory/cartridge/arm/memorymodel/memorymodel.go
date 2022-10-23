@@ -24,19 +24,37 @@ import (
 type Map struct {
 	Model string
 
-	FlashOrigin       uint32
-	Flash32kMemtop    uint32
-	Flash64kMemtop    uint32
-	FlashMaxMemtop    uint32
-	SRAMOrigin        uint32
-	PeripheralsOrigin uint32
-	PeripheralsMemtop uint32
+	FlashOrigin    uint32
+	Flash32kMemtop uint32
+	Flash64kMemtop uint32
+	FlashMaxMemtop uint32
+	SRAMOrigin     uint32
 
-	// specific registers addresses
+	// peripherals
+
+	// MAM
+	HasMAM bool
+	MAMCR  uint32
+	MAMTIM uint32
+
+	HasTIMER     bool
 	TIMERcontrol uint32
 	TIMERvalue   uint32
-	MAMCR        uint32
-	MAMTIM       uint32
+
+	HasTIM2 bool
+	TIM2CR1 uint32
+	TIM2EGR uint32
+	TIM2CNT uint32
+	TIM2PSC uint32
+	TIM2ARR uint32
+
+	HasRNG bool
+	RNGCR  uint32
+	RNGSR  uint32
+	RNGDR  uint32
+
+	// the divisor to apply to the main clock when ticking the timers
+	ClkDiv float32
 }
 
 const (
@@ -56,28 +74,41 @@ func NewMap(model string) Map {
 		fallthrough
 
 	case Harmony:
-		mmap.FlashOrigin = uint32(0x00000000)
-		mmap.Flash32kMemtop = uint32(0x00007fff)
-		mmap.Flash64kMemtop = uint32(0x000fffff)
-		mmap.FlashMaxMemtop = uint32(0x0fffffff)
-		mmap.SRAMOrigin = uint32(0x40000000)
-		mmap.PeripheralsOrigin = uint32(0xe0000000)
-		mmap.PeripheralsMemtop = uint32(0xffffffff)
-		mmap.TIMERcontrol = mmap.PeripheralsOrigin | 0x00008004
-		mmap.TIMERvalue = mmap.PeripheralsOrigin | 0x00008008
-		mmap.MAMCR = mmap.PeripheralsOrigin | 0x001fc000
-		mmap.MAMTIM = mmap.PeripheralsOrigin | 0x001fc004
+		mmap.FlashOrigin = 0x00000000
+		mmap.Flash32kMemtop = 0x00007fff
+		mmap.Flash64kMemtop = 0x000fffff
+		mmap.FlashMaxMemtop = 0x0fffffff
+		mmap.SRAMOrigin = 0x40000000
+
+		mmap.MAMCR = 0x001fc000
+		mmap.MAMTIM = 0x001fc004
+
+		mmap.HasTIMER = true
+		mmap.TIMERcontrol = 0xe0008004
+		mmap.TIMERvalue = 0xe0008008
+
+		mmap.ClkDiv = 1.0
 
 	case PlusCart:
-		mmap.FlashOrigin = uint32(0x20000000)
-		mmap.Flash32kMemtop = uint32(0x20007fff)
-		mmap.Flash64kMemtop = uint32(0x200fffff)
-		mmap.FlashMaxMemtop = uint32(0x2fffffff)
-		mmap.SRAMOrigin = uint32(0x10000000)
-		mmap.PeripheralsOrigin = uint32(0xe0000000)
-		mmap.PeripheralsMemtop = uint32(0xffffffff)
-		mmap.TIMERcontrol = mmap.PeripheralsOrigin | 0x0000e014
-		mmap.TIMERvalue = mmap.PeripheralsOrigin | 0x0000e018
+		mmap.FlashOrigin = 0x20000000
+		mmap.Flash32kMemtop = 0x20007fff
+		mmap.Flash64kMemtop = 0x200fffff
+		mmap.FlashMaxMemtop = 0x2fffffff
+		mmap.SRAMOrigin = 0x10000000
+
+		mmap.HasTIM2 = true
+		mmap.TIM2CR1 = 0x40000000
+		mmap.TIM2EGR = 0x40000014
+		mmap.TIM2CNT = 0x40000024
+		mmap.TIM2PSC = 0x40000028
+		mmap.TIM2ARR = 0x4000002c
+
+		mmap.HasRNG = true
+		mmap.RNGCR = 0x50060800
+		mmap.RNGSR = 0x50060804
+		mmap.RNGDR = 0x50060808
+
+		mmap.ClkDiv = 0.5
 	}
 
 	logger.Logf("ARM Mem Model", "using %s", mmap.Model)

@@ -53,16 +53,11 @@ func (arm *ARM) read8bit(addr uint32) uint8 {
 
 	mem, addr = arm.mem.MapAddress(addr, false)
 	if mem == nil {
-		if v, ok, comment := arm.state.timer2.read(addr); ok {
-			arm.disasmExecutionNotes = comment
-			return uint8(v)
-		}
-		if v, ok, comment := arm.state.timer.read(addr); ok {
-			arm.disasmExecutionNotes = comment
-			return uint8(v)
-		}
-		if v, ok := arm.state.mam.read(addr); ok {
-			return uint8(v)
+		for _, p := range arm.state.peripheralsMemory {
+			if v, ok, comment := p.Read(addr); ok {
+				arm.disasmExecutionNotes = comment
+				return uint8(v)
+			}
 		}
 
 		arm.memoryError = arm.abortOnIllegalMem
@@ -86,14 +81,11 @@ func (arm *ARM) write8bit(addr uint32, val uint8) {
 
 	mem, addr = arm.mem.MapAddress(addr, true)
 	if mem == nil {
-		// timer2 cannot be written with 8bit access
-
-		if ok, comment := arm.state.timer.write(addr, uint32(val)); ok {
-			arm.disasmExecutionNotes = comment
-			return
-		}
-		if ok := arm.state.mam.write(addr, uint32(val)); ok {
-			return
+		for _, p := range arm.state.peripheralsMemory {
+			if ok, comment := p.Write(addr, uint32(val)); ok {
+				arm.disasmExecutionNotes = comment
+				return
+			}
 		}
 
 		arm.memoryError = arm.abortOnIllegalMem
@@ -124,16 +116,11 @@ func (arm *ARM) read16bit(addr uint32, requiresAlignment bool) uint16 {
 
 	mem, addr = arm.mem.MapAddress(addr, false)
 	if mem == nil {
-		if v, ok, comment := arm.state.timer2.read(addr); ok {
-			arm.disasmExecutionNotes = comment
-			return uint16(v)
-		}
-		if v, ok, comment := arm.state.timer.read(addr); ok {
-			arm.disasmExecutionNotes = comment
-			return uint16(v)
-		}
-		if v, ok := arm.state.mam.read(addr); ok {
-			return uint16(v)
+		for _, p := range arm.state.peripheralsMemory {
+			if v, ok, comment := p.Read(addr); ok {
+				arm.disasmExecutionNotes = comment
+				return uint16(v)
+			}
 		}
 
 		arm.memoryError = arm.abortOnIllegalMem
@@ -164,16 +151,11 @@ func (arm *ARM) write16bit(addr uint32, val uint16, requiresAlignment bool) {
 
 	mem, addr = arm.mem.MapAddress(addr, true)
 	if mem == nil {
-		if ok, comment := arm.state.timer2.write(addr, uint32(val)); ok {
-			arm.disasmExecutionNotes = comment
-			return
-		}
-		if ok, comment := arm.state.timer.write(addr, uint32(val)); ok {
-			arm.disasmExecutionNotes = comment
-			return
-		}
-		if ok := arm.state.mam.write(addr, uint32(val)); ok {
-			return
+		for _, p := range arm.state.peripheralsMemory {
+			if ok, comment := p.Write(addr, uint32(val)); ok {
+				arm.disasmExecutionNotes = comment
+				return
+			}
 		}
 
 		arm.memoryError = arm.abortOnIllegalMem
@@ -205,19 +187,11 @@ func (arm *ARM) read32bit(addr uint32, requiresAlignment bool) uint32 {
 
 	mem, addr = arm.mem.MapAddress(addr, false)
 	if mem == nil {
-		if v, ok, comment := arm.state.timer2.read(addr); ok {
-			arm.disasmExecutionNotes = comment
-			return v
-		}
-		if v, ok, comment := arm.state.timer.read(addr); ok {
-			arm.disasmExecutionNotes = comment
-			return v
-		}
-		if v, ok := arm.state.rng.read(addr); ok {
-			return v
-		}
-		if v, ok := arm.state.mam.read(addr); ok {
-			return v
+		for _, p := range arm.state.peripheralsMemory {
+			if v, ok, comment := p.Read(addr); ok {
+				arm.disasmExecutionNotes = comment
+				return uint32(v)
+			}
 		}
 
 		arm.memoryError = arm.abortOnIllegalMem
@@ -248,16 +222,11 @@ func (arm *ARM) write32bit(addr uint32, val uint32, requiresAlignment bool) {
 
 	mem, addr = arm.mem.MapAddress(addr, true)
 	if mem == nil {
-		if ok, comment := arm.state.timer2.write(addr, val); ok {
-			arm.disasmExecutionNotes = comment
-			return
-		}
-		if ok, comment := arm.state.timer.write(addr, val); ok {
-			arm.disasmExecutionNotes = comment
-			return
-		}
-		if ok := arm.state.mam.write(addr, val); ok {
-			return
+		for _, p := range arm.state.peripheralsMemory {
+			if ok, comment := p.Write(addr, uint32(val)); ok {
+				arm.disasmExecutionNotes = comment
+				return
+			}
 		}
 
 		arm.memoryError = arm.abortOnIllegalMem

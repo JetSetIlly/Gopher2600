@@ -21,17 +21,21 @@ import (
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
+// MAMCR defines the state of the MAM.
 type MAMCR uint32
 
+// List of valid MAMCR values.
 const (
 	MAMdisabled MAMCR = iota
 	MAMpartial
 	MAMfull
 )
 
-// memory addressing module. not fully implemented.
+// MAM implements the memory addressing module as found in the LPC20000. Not
+// fully implemented but good enough for most Harmony games
 type mam struct {
-	mmap memorymodel.Map
+	prefs *preferences.ARMPreferences
+	mmap  memorymodel.Map
 
 	// valid values for mamcr are 0, 1 or 2 are valid. we can think of these
 	// respectively, as "disable", "partial" and "full"
@@ -61,7 +65,29 @@ type mam struct {
 	prefectchAborted bool
 }
 
-func (m *mam) write(addr uint32, val uint32) bool {
+func newMam(prefs *preferences.ARMPreferences, mmap memorymodel.Map, preferredMAMCR MAMCR) *mam {
+	return &mam{
+		prefs:          prefs,
+		mmap:           mmap,
+		preferredMAMCR: preferredMAMCR,
+	}
+}
+
+func (m *mam) Reset() {
+}
+
+func (m *mam) updatePrefs() {
+	m.pref = m.prefs.MAM.Get().(int)
+	if m.pref == preferences.MAMDriver {
+		m.mamcr = m.preferredMAMCR
+		m.mamtim = 4.0
+	} else {
+		m.setMAMCR(MAMCR(m.pref))
+		m.mamtim = 4.0
+	}
+}
+
+func (m *mam) Write(addr uint32, val uint32) (bool, string) {
 	switch addr {
 	case m.mmap.MAMCR:
 		if m.pref == preferences.MAMDriver {
@@ -76,13 +102,13 @@ func (m *mam) write(addr uint32, val uint32) bool {
 			}
 		}
 	default:
-		return false
+		return false, ""
 	}
 
-	return true
+	return true, ""
 }
 
-func (m *mam) read(addr uint32) (uint32, bool) {
+func (m *mam) Read(addr uint32) (uint32, bool, string) {
 	var val uint32
 
 	switch addr {
@@ -91,10 +117,10 @@ func (m *mam) read(addr uint32) (uint32, bool) {
 	case m.mmap.MAMTIM:
 		val = m.mamtim
 	default:
-		return 0, false
+		return 0, false, ""
 	}
 
-	return val, true
+	return val, true, ""
 }
 
 func (m *mam) setMAMCR(val MAMCR) {
@@ -102,8 +128,4 @@ func (m *mam) setMAMCR(val MAMCR) {
 	if m.mamcr > 2 {
 		logger.Logf("ARM7", "setting MAMCR to a value greater than 2 (%#08x)", m.mamcr)
 	}
-}
-
-func (m *mam) setPreferredMamcr() {
-	m.mamcr = m.preferredMAMCR
 }

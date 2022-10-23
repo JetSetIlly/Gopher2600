@@ -13,7 +13,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-package arm
+package peripherals
 
 import (
 	"fmt"
@@ -21,41 +21,40 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm/memorymodel"
 )
 
-type timer struct {
+// Timer implements a simple timer as used in the LCP2000.
+type Timer struct {
 	mmap    memorymodel.Map
-	active  bool
+	enabled bool
 	control uint32
 	counter float32
 }
 
-func (t *timer) stepFromVCS(armClock float32, vcsClock float32) {
-	if !t.active {
-		return
+func NewTimer(mmap memorymodel.Map) *Timer {
+	return &Timer{
+		mmap: mmap,
 	}
+}
 
-	// the ARM timer ticks forward once every ARM cycle. the best we can do to
-	// accommodate this is to tick the counter forward by the the appropriate
-	// fraction every VCS cycle. Put another way: an NTSC spec VCS, for
-	// example, will tick forward every 58-59 ARM cycles.
-	t.counter += armClock / vcsClock
+func (t *Timer) Reset() {
+	t.counter = 0.0
 }
 
 // stepping of timer assumes an APB divider value of one.
-func (t *timer) step(cycles float32) {
-	if !t.active {
+func (t *Timer) Step(cycles float32) {
+	if !t.enabled {
 		return
 	}
 	t.counter += cycles
 }
 
-func (t *timer) write(addr uint32, val uint32) (bool, string) {
+func (t *Timer) Write(addr uint32, val uint32) (bool, string) {
 	var comment string
 
 	switch addr {
 	case t.mmap.TIMERcontrol:
 		t.control = val
-		t.active = t.control&0x01 == 0x01
-		if t.active {
+		t.enabled = t.control&0x01 == 0x01
+		if t.enabled {
 			comment = "timer on"
 		} else {
 			comment = "timer off"
@@ -70,7 +69,7 @@ func (t *timer) write(addr uint32, val uint32) (bool, string) {
 	return true, comment
 }
 
-func (t *timer) read(addr uint32) (uint32, bool, string) {
+func (t *Timer) Read(addr uint32) (uint32, bool, string) {
 	var val uint32
 	var comment string
 

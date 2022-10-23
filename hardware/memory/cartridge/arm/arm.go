@@ -80,20 +80,13 @@ type ARMState struct {
 	registers [NumRegisters]uint32
 	status    Status
 
+	mam               *mam
+	peripherals       []peripheral
+	peripheralsMemory []peripheralMemory
+	timers            []timer
+
 	// CCR register. currently we're only need the CCR register for memory alignment
 	unalignTrap bool
-
-	// "peripherals" connected to the variety of ARM7TDMI-S used in the Harmony
-	// cartridge.
-	timer timer
-	mam   mam
-
-	// "peripherals" connected to the ARMv7-M. for simplicity these these are
-	// currently attached and ticked for both ARM architectures. if it turns
-	// out that this has an impact performance we can handle separatation
-	// according to architecture then
-	timer2 timer2
-	rng    rng
 
 	// the PC of the opcode being processed and the PC of the instruction being
 	// executed
@@ -290,7 +283,7 @@ type ARM struct {
 }
 
 // NewARM is the preferred method of initialisation for the ARM type.
-func NewARM(arch Architecture, mamcr MAMCR, mmap memorymodel.Map, prefs *preferences.ARMPreferences, mem SharedMemory, hook CartridgeHook) *ARM {
+func NewARM(arch Architecture, preferredMAMCR MAMCR, mmap memorymodel.Map, prefs *preferences.ARMPreferences, mem SharedMemory, hook CartridgeHook) *ARM {
 	arm := &ARM{
 		arch:         arch,
 		prefs:        prefs,
@@ -310,9 +303,6 @@ func NewARM(arch Architecture, mamcr MAMCR, mmap memorymodel.Map, prefs *prefere
 	// slow prefs update by 100ms
 	arm.prefsPulse = time.NewTicker(time.Millisecond * 100)
 
-	// the mamcr to use as a preference
-	arm.state.mam.preferredMAMCR = mamcr
-
 	switch arm.arch {
 	case ARM7TDMI:
 		arm.nullAccessBoundary = nullAccessBoundaryARM7TDMI
@@ -324,14 +314,15 @@ func NewARM(arch Architecture, mamcr MAMCR, mmap memorymodel.Map, prefs *prefere
 		panic(fmt.Sprintf("unhandled ARM architecture: cannot set %s", arm.arch))
 	}
 
-	arm.state.mam.mmap = mmap
-	arm.state.timer.mmap = mmap
+	arm.state.mam = newMam(arm.prefs, arm.mmap, preferredMAMCR)
+	if arm.mmap.HasMAM {
+		arm.state.peripherals = append(arm.state.peripherals, arm.state.mam)
+		arm.state.peripheralsMemory = append(arm.state.peripheralsMemory, arm.state.mam)
+	}
+	arm.addPeripherals()
 
-	// reset peripherals. deliberately not calling them as part of arm.reset()
-	arm.state.timer2.reset()
-	arm.state.rng.reset()
-
-	arm.reset()
+	arm.resetPeripherals()
+	arm.resetRegisters()
 	arm.updatePrefs()
 
 	return arm
@@ -395,8 +386,15 @@ func (arm *ARM) ClearCaches() {
 	arm.disasmCache = make(map[uint32]DisasmEntry)
 }
 
-// reset ARM registers.
-func (arm *ARM) reset() {
+// resetPeripherals in the ARM package.
+func (arm *ARM) resetPeripherals() {
+	for _, p := range arm.state.peripherals {
+		p.Reset()
+	}
+}
+
+// resetRegisters of ARM. does not reset peripherals.
+func (arm *ARM) resetRegisters() {
 	arm.state.status.reset()
 
 	for i := 0; i < rSP; i++ {
@@ -419,15 +417,7 @@ func (arm *ARM) updatePrefs() {
 	latencyInMhz := (1 / (arm.prefs.FlashLatency.Get().(float64) / 1000000000)) / 1000000
 	arm.clklenFlash = float32(math.Ceil(float64(arm.Clk) / latencyInMhz))
 
-	// set mamcr on startup
-	arm.state.mam.pref = arm.prefs.MAM.Get().(int)
-	if arm.state.mam.pref == preferences.MAMDriver {
-		arm.state.mam.setPreferredMamcr()
-		arm.state.mam.mamtim = 4.0
-	} else {
-		arm.state.mam.setMAMCR(MAMCR(arm.state.mam.pref))
-		arm.state.mam.mamtim = 4.0
-	}
+	arm.state.mam.updatePrefs()
 
 	// set cycle counting functions
 	arm.immediateMode = arm.prefs.Immediate.Get().(bool)
@@ -491,8 +481,15 @@ func (arm *ARM) String() string {
 // when Step() is called and not during the Run() process. This might cause
 // problems in some instances with some ARM programs.
 func (arm *ARM) Step(vcsClock float32) {
-	arm.state.timer.stepFromVCS(arm.Clk, vcsClock)
-	arm.state.timer2.stepFromVCS(arm.Clk, vcsClock)
+	// the ARM timer ticks forward once every ARM cycle. the best we can do to
+	// accommodate this is to tick the counter forward by the the appropriate
+	// fraction every VCS cycle. Put another way: an NTSC spec VCS, for
+	// example, will tick forward every 58-59 ARM cycles.
+	cycles := arm.Clk / vcsClock
+
+	for _, t := range arm.state.timers {
+		t.Step(cycles)
+	}
 }
 
 // SetInitialRegisters is intended to be called after creation but before the
@@ -508,7 +505,7 @@ func (arm *ARM) Step(vcsClock float32) {
 // SharedMemory interface. The function will return with an error if those
 // registers are attempted to be initialised.
 func (arm *ARM) SetInitialRegisters(args ...uint32) error {
-	arm.reset()
+	arm.resetRegisters()
 
 	if len(args) >= rSP {
 		return curated.Errorf("ARM7: trying to set registers SP, LR or PC")
@@ -539,7 +536,7 @@ func (arm *ARM) SetInitialRegisters(args ...uint32) error {
 // Returns the number of ARM cycles consumed and any errors.
 func (arm *ARM) Run() (float32, error) {
 	if !arm.state.yield && !arm.state.breakpoint {
-		arm.reset()
+		arm.resetRegisters()
 	}
 
 	// reset cycles count
@@ -859,9 +856,10 @@ func (arm *ARM) run() (float32, error) {
 			// increases total number of program cycles by the stretched cycles for this instruction
 			arm.state.cyclesTotal += arm.state.stretchedCycles
 
-			// update timer
-			arm.state.timer.step(arm.state.stretchedCycles)
-			arm.state.timer2.step(arm.state.stretchedCycles)
+			// update timers
+			for _, t := range arm.state.timers {
+				t.Step(arm.state.stretchedCycles)
+			}
 		}
 
 		// send disasm information to disassembler

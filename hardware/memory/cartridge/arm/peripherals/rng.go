@@ -13,11 +13,12 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-package arm
+package peripherals
 
 import (
 	"math/rand"
 
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm/memorymodel"
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
@@ -26,10 +27,14 @@ import (
 //
 // https://www.st.com/resource/en/reference_manual/dm00031020-stm32f405-415-stm32f407-417-stm32f427-437-and-stm32f429-439-advanced-arm-based-32-bit-mcus-stmicroelectronics.pdf
 
-// this RNG is just a sketch of the real RNG unit but for our purposes it's
-// probably okay. this implementation basically returns a random 32bit number
+// RNG implements the RNG found in STM32 packages.
+//
+// The implementation is just a sketch of the real RNG unit but for our
+// purposes it's probably okay. It  basically returns a random 32bit number
 // whenever the data register is read
-type rng struct {
+type RNG struct {
+	mmap memorymodel.Map
+
 	// control register value
 	control uint32
 
@@ -43,48 +48,54 @@ type rng struct {
 	interruptEnabled bool
 }
 
-func (r *rng) reset() {
+func NewRNG(mmap memorymodel.Map) *RNG {
+	return &RNG{
+		mmap: mmap,
+	}
+}
+
+func (r *RNG) Reset() {
 	r.control = 0x0
 }
 
-func (r *rng) write(addr uint32, val uint32) bool {
+func (r *RNG) Write(addr uint32, val uint32) (bool, string) {
 	switch addr {
-	case 0x50060800:
+	case r.mmap.RNGCR:
 		// control register
 		r.control = val
 		r.enabled = r.control&0b0100 == 0b0100
 		r.interruptEnabled = r.control&0b1000 == 0b1000
-	case 0x50060804:
+	case r.mmap.RNGSR:
 		// status register
 		logger.Logf("ARM7", "ignoring write to RNG status register (value of %08x)", val)
-	case 0x50060808:
+	case r.mmap.RNGDR:
 		// data register
 		logger.Logf("ARM7", "ignoring write to RNG data register (value of %08x)", val)
 	default:
-		return false
+		return false, ""
 	}
 
-	return true
+	return true, ""
 }
 
-func (r *rng) read(addr uint32) (uint32, bool) {
+func (r *RNG) Read(addr uint32) (uint32, bool, string) {
 	var val uint32
 
 	switch addr {
-	case 0x50060800:
+	case r.mmap.RNGCR:
 		// control register
 		val = r.control
-	case 0x50060804:
+	case r.mmap.RNGSR:
 		// status register. the low bit indicates that a random number is
 		// ready. we're always ready to return a random number so we always
 		// return 0b1
 		val = 0b1
-	case 0x50060808:
+	case r.mmap.RNGDR:
 		// data register
 		val = rand.Uint32()
 	default:
-		return 0, false
+		return 0, false, ""
 	}
 
-	return val, true
+	return val, true, ""
 }

@@ -13,32 +13,35 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-package arm
+package peripherals
 
 import (
-	"github.com/jetsetilly/gopher2600/logger"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm/memorymodel"
 )
 
 // the operation of the TIMx units in STM32 ARM packages can be found in the
-// STM32 reference manual:
+// STM32 reference manual (referred to as STM32 in comments below this one):
 //
 // https://www.st.com/resource/en/reference_manual/dm00031020-stm32f405-415-stm32f407-417-stm32f427-437-and-stm32f429-439-advanced-arm-based-32-bit-mcus-stmicroelectronics.pdf
 
-type timer2 struct {
+// Timer2 implements the TIM2 timer found in STM32 processors.
+type Timer2 struct {
+	mmap memorymodel.Map
+
 	// current register values
-	control    uint16
-	prescaler  uint16
+	control    uint32
+	prescaler  uint32
 	autoreload uint32
 	counter    uint32
-	status     uint16
+	status     uint32
 
 	// extracted control register flags
-	active              bool    // CEN
-	downcounting        bool    // DIR
-	updateEventDisabled bool    // UDIS
-	updateRequestSource bool    // URS - not a flag but only two options for the "source"
-	autoReloadBuffered  bool    // ARPE
-	clockDivision       float32 // CKD
+	enable              bool   // CEN
+	downcounting        bool   // DIR
+	updateEventDisabled bool   // UDIS
+	updateRequestSource bool   // URS - not a flag but only two options for the "source"
+	autoReloadBuffered  bool   // ARPE
+	clockDivision       uint32 // CKD
 
 	// the autoreload shadow register is updated from the autoreload register
 	// when:
@@ -49,22 +52,41 @@ type timer2 struct {
 	// prescalarShadow is the prescaler register value that is being used
 	// currently. the prescaler register can change but the prescalerCounter
 	// will still be ticking towards the prescalarShadow value
-	prescalarShadow  uint16
-	prescalerCounter uint16
-
-	fractionalCounter float32
+	prescalarShadow  uint32
+	prescalerCounter uint32
 }
 
-func (t *timer2) reset() {
-	t.setControlRegister(0x00000000)
+func NewTimer2(mmap memorymodel.Map) *Timer2 {
+	return &Timer2{
+		mmap: mmap,
+	}
+}
+
+func (t *Timer2) Reset() {
+	_ = t.setControlRegister(0x00000000)
 	t.prescaler = 0x0
 	t.autoreload = 0xffffffff
 	t.counter = 0.0
 }
 
-func (t *timer2) setControlRegister(val uint32) {
-	t.control = uint16(val)
-	t.active = val&0x0001 == 0x0001
+func (t *Timer2) setControlRegister(val uint32) string {
+	var comment string
+
+	// control value
+	t.control = val
+
+	// "Note that the actual counter enable signal CNT_EN is set 1 clock cycle
+	// after CEN." page 591 of STM32
+	enabled := t.enable
+	t.enable = val&0x0001 == 0x0001
+	if t.enable != enabled {
+		if t.enable {
+			comment = "TIM2 enabled"
+		} else {
+			comment = "TIM2 disabled"
+		}
+	}
+
 	t.updateEventDisabled = val&0x0002 == 0x0002
 	t.updateRequestSource = val&0x0004 == 0x0004
 	t.downcounting = val&0x0010 == 0x0010
@@ -72,11 +94,11 @@ func (t *timer2) setControlRegister(val uint32) {
 
 	switch (val & 0x300) >> 8 {
 	case 0b00:
-		t.clockDivision = 1.0
+		t.clockDivision = 1
 	case 0b01:
-		t.clockDivision = 2.0
+		t.clockDivision = 2
 	case 0b10:
-		t.clockDivision = 4.0
+		t.clockDivision = 4
 	case 0b11:
 		panic("ARM TIM2_CR1: CLK bits of 11 (reserved bit pattern)")
 	}
@@ -90,63 +112,59 @@ func (t *timer2) setControlRegister(val uint32) {
 	if val&0xfc00 != 0x0000 {
 		panic("ARM TIM2_CR1: reserved bits are not zero")
 	}
+
+	return comment
 }
 
-func (t *timer2) stepFromVCS(armClock float32, vcsClock float32) {
-	// the ARM timer ticks forward once every ARM cycle. the best we can do to
-	// accommodate this is to tick the counter forward by the the appropriate
-	// fraction every VCS cycle. Put another way: an NTSC spec VCS, for
-	// example, will tick forward every 58-59 ARM cycles.
-
-	t.step(armClock / vcsClock)
-}
-
-func (t *timer2) step(cycles float32) {
-	if !t.active {
+func (t *Timer2) Step(c float32) {
+	if !t.enable {
 		return
 	}
+
+	// incoming clock for TIM2 is half the frequency of the processor
+	c *= t.mmap.ClkDiv
+
+	cycles := uint32(c)
 
 	// adjust for clock division value
 	cycles /= t.clockDivision
 
-	// accumulate remaining fractions of previous step and note the new
-	// remaining fractions value
-	cycles += t.fractionalCounter
-	t.fractionalCounter = cycles - float32(int(cycles))
-
 	// number of counter ticks required
-	t.prescalerCounter += uint16(cycles)
+	t.prescalerCounter += cycles
 
-	// adjust prescaler and number of ticks to accumulate counter by
-	counterTicks := t.prescalerCounter / t.prescalarShadow
-	t.prescalerCounter = t.prescalerCounter % t.prescalarShadow
+	// adjust prescaler and find number of ticks to accumulate counter by
+	var counterTicks uint32
+	for t.prescalerCounter >= t.prescalarShadow {
+		counterTicks++
+		t.prescalerCounter -= t.prescalarShadow
+	}
 
 	if counterTicks == 0 {
 		return
 	}
 
 	if t.downcounting {
-		c := t.counter - uint32(counterTicks)
+		c := t.counter - counterTicks
 
 		if c == 0 || c > t.counter {
-			// counter overflow
-			t.updateEvent(true)
+			// counter underflow
+			t.updateEvent()
 		} else {
 			t.counter = c
 		}
 	} else {
-		c := t.counter + uint32(counterTicks)
+		c := t.counter + counterTicks
 
-		if c >= t.autoreload || c < t.counter {
+		if c >= t.autoreloadShadow || c < t.counter {
 			// counter overflow
-			t.updateEvent(true)
+			t.updateEvent()
 		} else {
 			t.counter = c
 		}
 	}
 }
 
-func (t *timer2) updateEvent(fromCounter bool) {
+func (t *Timer2) updateEvent() {
 	if !t.updateEventDisabled {
 		t.prescalarShadow = t.prescaler
 		t.autoreloadShadow = t.autoreload
@@ -162,34 +180,35 @@ func (t *timer2) updateEvent(fromCounter bool) {
 	// "... no update event occurs until the UDIS bit has been written to 0. However,
 	// the counter restarts from 0 ..."
 	//
-	// but this is in the context of explaining what happens when a counter
-	// expires, so we limit the reset to when the update events is generated by
-	// a counter tick
-	if fromCounter {
-		if t.downcounting {
-			t.counter = t.autoreloadShadow
-		} else {
-			t.counter = 0
-		}
-		t.prescalerCounter = 0
+	// it is unclear if this applies to all update events or only to update
+	// events generated as a result of timer expiry. until we see contradictory
+	// information we wll treat all update events the same
+	if t.downcounting {
+		t.counter = t.autoreloadShadow
+	} else {
+		t.counter = 0
 	}
+	t.prescalerCounter = 0
 }
 
 // "18.4.21 TIMx register map" of "RM0090 reference"
 
-func (t *timer2) write(addr uint32, val uint32) (bool, string) {
+func (t *Timer2) Write(addr uint32, val uint32) (bool, string) {
+	var comment string
+
 	switch addr {
-	case 0x40000000:
+	case t.mmap.TIM2CR1:
 		// TIMx Control
-		t.setControlRegister(val)
-	case 0x40000014:
+		comment = t.setControlRegister(val)
+	case t.mmap.TIM2EGR:
 		// TIMx Event Generation
-		v := uint16(val)
+		v := val
 
 		// Bit 0 UG Update Generation
 		if v&0x0001 == 0x0001 {
 			if !t.updateRequestSource {
-				t.updateEvent(false)
+				t.updateEvent()
+				comment = "TIM2 EGR update event"
 			}
 		}
 		if v&0x005e != 0x0000 {
@@ -198,13 +217,13 @@ func (t *timer2) write(addr uint32, val uint32) (bool, string) {
 		if val&0xffa0 != 0x0000 {
 			panic("ARM TIM2_EGR: reserved bits are not zero")
 		}
-	case 0x40000024:
+	case t.mmap.TIM2CNT:
 		// TIMx Counter
 		t.counter = val
-	case 0x40000028:
+	case t.mmap.TIM2PSC:
 		// TIMx Prescalar
-		t.prescaler = uint16(val)
-	case 0x4000002c:
+		t.prescaler = val & 0x0000ffff
+	case t.mmap.TIM2ARR:
 		// TIMx Autoload
 		t.autoreload = val
 
@@ -212,24 +231,21 @@ func (t *timer2) write(addr uint32, val uint32) (bool, string) {
 		if !t.autoReloadBuffered {
 			t.autoreloadShadow = t.autoreload
 		}
-	case 0x40000030:
-		// reserved
-		logger.Logf("ARM7", "TIM2 reserved address (%#08x) written with value (%08x)", addr, val)
 	default:
 		return false, ""
 	}
 
-	return true, ""
+	return true, comment
 }
 
-func (t *timer2) read(addr uint32) (uint32, bool, string) {
+func (t *Timer2) Read(addr uint32) (uint32, bool, string) {
 	var val uint32
 
 	switch addr {
-	case 0x40000000:
+	case t.mmap.TIM2CR1:
 		// TIMx Control register
-		val = uint32(t.control)
-	case 0x40000024:
+		val = t.control
+	case t.mmap.TIM2CNT:
 		// TIMx Counter
 		val = t.counter
 	default:
