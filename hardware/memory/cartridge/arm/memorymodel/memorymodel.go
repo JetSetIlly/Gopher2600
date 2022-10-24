@@ -53,8 +53,14 @@ type Map struct {
 	RNGSR  uint32
 	RNGDR  uint32
 
+	// the address below which a null access is considered to have happened
+	NullAccessBoundary uint32
+
 	// the divisor to apply to the main clock when ticking the timers
 	ClkDiv float32
+
+	// whether to the processor to trap (or log) a disallowed unaligned memory access
+	UnalignTrap bool
 }
 
 const (
@@ -87,7 +93,11 @@ func NewMap(model string) Map {
 		mmap.TIMERcontrol = 0xe0008004
 		mmap.TIMERvalue = 0xe0008008
 
+		// value is arbitrary and was suggested by John Champeau (09/04/2022)
+		mmap.NullAccessBoundary = 0x00000751
+
 		mmap.ClkDiv = 1.0
+		mmap.UnalignTrap = true
 
 	case PlusCart:
 		mmap.FlashOrigin = 0x20000000
@@ -109,6 +119,7 @@ func NewMap(model string) Map {
 		mmap.RNGDR = 0x50060808
 
 		mmap.ClkDiv = 0.5
+		mmap.UnalignTrap = false
 	}
 
 	logger.Logf("ARM Mem Model", "using %s", mmap.Model)

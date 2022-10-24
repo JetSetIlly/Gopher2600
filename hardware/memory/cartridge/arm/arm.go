@@ -66,14 +66,8 @@ const (
 	ARMv7_M  Architecture = "ARMv7-M"
 )
 
-const (
-	// accesses below this address are deemed to be probably null accesses. value
-	// is arbitrary and was suggested by John Champeau (09/04/2022)
-	nullAccessBoundaryARM7TDMI = 0x751
-
-	// writing to GPIO "addresses" is allowed
-	nullAccessBoundaryARMv7_m = 0x00
-)
+// stepFunction variations are a result of different ARM architectures
+type stepFunction func(opcode uint16, memIdx int)
 
 type ARMState struct {
 	// ARM registers
@@ -84,9 +78,6 @@ type ARMState struct {
 	peripherals       []peripheral
 	peripheralsMemory []peripheralMemory
 	timers            []timer
-
-	// CCR register. currently we're only need the CCR register for memory alignment
-	unalignTrap bool
 
 	// the PC of the opcode being processed and the PC of the instruction being
 	// executed
@@ -178,6 +169,10 @@ type ARM struct {
 	mem   SharedMemory
 	hook  CartridgeHook
 
+	// the function that is called on every step of the cycle. can change
+	// depending on the architecture
+	stepFunction stepFunction
+
 	// state of the ARM. saveable and restorable
 	state *ARMState
 
@@ -193,9 +188,6 @@ type ARM struct {
 	// whether to foce an error on illegal memory access. set from ARM.prefs at
 	// the start of every arm.Run()
 	abortOnStackCollision bool
-
-	// nullAccessBoundary differs depending on the architecture
-	nullAccessBoundary uint32
 
 	// execution flags. set to false and/or error when Run() function should end
 	continueExecution bool
@@ -305,11 +297,9 @@ func NewARM(arch Architecture, preferredMAMCR MAMCR, mmap memorymodel.Map, prefs
 
 	switch arm.arch {
 	case ARM7TDMI:
-		arm.nullAccessBoundary = nullAccessBoundaryARM7TDMI
-		arm.state.unalignTrap = true
+		arm.stepFunction = arm.stepARM7TDMI
 	case ARMv7_M:
-		arm.nullAccessBoundary = nullAccessBoundaryARMv7_m
-		arm.state.unalignTrap = false
+		arm.stepFunction = arm.stepARM7_M
 	default:
 		panic(fmt.Sprintf("unhandled ARM architecture: cannot set %s", arm.arch))
 	}
@@ -691,148 +681,7 @@ func (arm *ARM) run() (float32, error) {
 		// collided with variables memory
 		stackPointerBeforeExecution := arm.state.registers[rSP]
 
-		// run from functionMap if possible
-		switch arm.arch {
-		case ARM7TDMI:
-			arm.state.instructionPC = arm.state.executingPC
-			f := arm.state.functionMap[memIdx]
-			if f == nil {
-				f = arm.decodeThumb(opcode)
-				arm.state.functionMap[memIdx] = f
-			}
-			f(opcode)
-		case ARMv7_M:
-			var f func(uint16)
-
-			// taking a note of whether this is a resolution of a 32bit
-			// instruction. we use this later during the fudge_disassembling
-			// printing
-			fudge_resolving32bitInstruction := arm.state.function32bit
-
-			// process a 32 bit or 16 bit instruction as appropriate
-			if arm.state.function32bit {
-				arm.state.function32bit = false
-				f = arm.state.functionMap[memIdx]
-				if f == nil {
-					f = arm.decode32bitThumb2(arm.state.function32bitOpcode)
-					arm.state.functionMap[memIdx] = f
-				}
-			} else {
-				// the opcode is either a 16bit instruction or the first
-				// halfword for a 32bit instruction
-				arm.state.instructionPC = arm.state.executingPC
-
-				if arm.is32BitThumb2(opcode) {
-					arm.state.function32bit = true
-					arm.state.function32bitOpcode = opcode
-
-					// we need something for the emulation to run. this is a
-					// clearer alternative to having a flag
-					f = func(_ uint16) {}
-				} else {
-					f = arm.state.functionMap[memIdx]
-					if f == nil {
-						f = arm.decodeThumb2(opcode)
-						arm.state.functionMap[memIdx] = f
-					}
-				}
-			}
-
-			// whether instruction was prevented from executing by IT block. we
-			// use this later during the fudge_ disassembly printing
-			fudge_notExecuted := false
-
-			// new 32bit functions always execute
-			// if the opcode indicates that this is a 32bit thumb instruction
-			// then we need to resolve that regardless of any IT block
-			if arm.state.status.itMask != 0b0000 && !arm.state.function32bit {
-				r := arm.state.status.condition(arm.state.status.itCond)
-
-				if r {
-					f(opcode)
-				} else {
-					// "A7.3.2: Conditional execution of undefined instructions
-					//
-					// If an undefined instruction fails a condition check in Armv7-M, the instruction
-					// behaves as a NOP and does not cause an exception"
-					//
-					// page A7-179 of the "ARMv7-M Architecture Reference Manual"
-					fudge_notExecuted = true
-				}
-
-				// update IT conditions only if the opcode is not a 32bit opcode
-				// update LSB of IT condition by copying the MSB of the IT mask
-				arm.state.status.itCond &= 0b1110
-				arm.state.status.itCond |= (arm.state.status.itMask >> 3)
-
-				// shift IT mask
-				arm.state.status.itMask = (arm.state.status.itMask << 1) & 0b1111
-			} else {
-				f(opcode)
-			}
-
-			// if arm.state.fudge_disassembling {
-			// 	arm.state.fudge_disassembling = opcode != 0x4a7e
-			// 	if !arm.state.fudge_disassembling {
-			// 		fmt.Println("---------------------\n\n")
-			// 	}
-			// } else {
-			// 	arm.state.fudge_disassembling = arm.state.function32bitOpcode == 0xf858 && opcode == 0x3c5c
-			// }
-
-			// arm.state.fudge_disassembling = true
-
-			// uzlib decompressing map data into memory
-			// if arm.state.executingPC == 0x280236ce {
-			// 	arm.state.fudge_disassembling = true
-			// 	defer func() {
-			// 		fmt.Println("---------------")
-			// 		arm.state.fudge_disassembling = false
-			// 	}()
-			// }
-
-			// decompressing script into memory
-			// if arm.state.executingPC == 0x28024dcc {
-			// 	arm.state.fudge_disassembling = true
-			// 	defer func() {
-			// 		fmt.Println("---------------")
-			// 		arm.state.fudge_disassembling = false
-			// 	}()
-			// }
-
-			// when the block condition below is true, a lot of debugging data
-			// will be printed to stdout. a good way of keeping this under
-			// control is to pipe the output to tail before redirecting to a
-			// file. For example:
-			//
-			// ./gopher2600 rom.bin | tail -c 10M > out
-			if arm.state.fudge_disassembling {
-				if fudge_notExecuted {
-					fmt.Print("*** ")
-				}
-				if fudge_resolving32bitInstruction {
-					fmt.Printf("%08x %04x %04x :: %s\n", arm.state.instructionPC, arm.state.function32bitOpcode, opcode, arm.state.fudge_thumb2disassemble32bit)
-					fmt.Println(arm.String())
-					fmt.Println(arm.state.status.String())
-					fmt.Println("====================")
-				} else if !arm.state.function32bit {
-					if arm.state.fudge_thumb2disassemble16bit != "" {
-						fmt.Printf("%08x %04x :: %s\n", arm.state.instructionPC, opcode, arm.state.fudge_thumb2disassemble16bit)
-					} else {
-						fmt.Printf("%08x %04x :: %s\n", arm.state.instructionPC, opcode, thumbDisassemble(opcode).String())
-					}
-					fmt.Println(arm.String())
-					fmt.Println(arm.state.status.String())
-					fmt.Println("====================")
-				}
-			}
-
-			arm.state.fudge_thumb2disassemble32bit = ""
-			arm.state.fudge_thumb2disassemble16bit = ""
-
-		default:
-			panic("unsupported ARM architecture")
-		}
+		arm.stepFunction(opcode, memIdx)
 
 		if !arm.immediateMode {
 			// add additional cycles required to fill pipeline before next iteration
@@ -988,4 +837,144 @@ func (arm *ARM) run() (float32, error) {
 	}
 
 	return arm.state.cyclesTotal, nil
+}
+
+func (arm *ARM) stepARM7TDMI(opcode uint16, memIdx int) {
+	arm.state.instructionPC = arm.state.executingPC
+	f := arm.state.functionMap[memIdx]
+	if f == nil {
+		f = arm.decodeThumb(opcode)
+		arm.state.functionMap[memIdx] = f
+	}
+	f(opcode)
+}
+
+func (arm *ARM) stepARM7_M(opcode uint16, memIdx int) {
+	var f func(uint16)
+
+	// taking a note of whether this is a resolution of a 32bit
+	// instruction. we use this later during the fudge_disassembling
+	// printing
+	fudge_resolving32bitInstruction := arm.state.function32bit
+
+	// process a 32 bit or 16 bit instruction as appropriate
+	if arm.state.function32bit {
+		arm.state.function32bit = false
+		f = arm.state.functionMap[memIdx]
+		if f == nil {
+			f = arm.decode32bitThumb2(arm.state.function32bitOpcode)
+			arm.state.functionMap[memIdx] = f
+		}
+	} else {
+		// the opcode is either a 16bit instruction or the first
+		// halfword for a 32bit instruction
+		arm.state.instructionPC = arm.state.executingPC
+
+		if arm.is32BitThumb2(opcode) {
+			arm.state.function32bit = true
+			arm.state.function32bitOpcode = opcode
+
+			// we need something for the emulation to run. this is a
+			// clearer alternative to having a flag
+			f = func(_ uint16) {}
+		} else {
+			f = arm.state.functionMap[memIdx]
+			if f == nil {
+				f = arm.decodeThumb2(opcode)
+				arm.state.functionMap[memIdx] = f
+			}
+		}
+	}
+
+	// whether instruction was prevented from executing by IT block. we
+	// use this later during the fudge_ disassembly printing
+	fudge_notExecuted := false
+
+	// new 32bit functions always execute
+	// if the opcode indicates that this is a 32bit thumb instruction
+	// then we need to resolve that regardless of any IT block
+	if arm.state.status.itMask != 0b0000 && !arm.state.function32bit {
+		r := arm.state.status.condition(arm.state.status.itCond)
+
+		if r {
+			f(opcode)
+		} else {
+			// "A7.3.2: Conditional execution of undefined instructions
+			//
+			// If an undefined instruction fails a condition check in Armv7-M, the instruction
+			// behaves as a NOP and does not cause an exception"
+			//
+			// page A7-179 of the "ARMv7-M Architecture Reference Manual"
+			fudge_notExecuted = true
+		}
+
+		// update IT conditions only if the opcode is not a 32bit opcode
+		// update LSB of IT condition by copying the MSB of the IT mask
+		arm.state.status.itCond &= 0b1110
+		arm.state.status.itCond |= (arm.state.status.itMask >> 3)
+
+		// shift IT mask
+		arm.state.status.itMask = (arm.state.status.itMask << 1) & 0b1111
+	} else {
+		f(opcode)
+	}
+
+	// if arm.state.fudge_disassembling {
+	// 	arm.state.fudge_disassembling = opcode != 0x4a7e
+	// 	if !arm.state.fudge_disassembling {
+	// 		fmt.Println("---------------------\n\n")
+	// 	}
+	// } else {
+	// 	arm.state.fudge_disassembling = arm.state.function32bitOpcode == 0xf858 && opcode == 0x3c5c
+	// }
+
+	// arm.state.fudge_disassembling = true
+
+	// uzlib decompressing map data into memory
+	// if arm.state.executingPC == 0x280236ce {
+	// 	arm.state.fudge_disassembling = true
+	// 	defer func() {
+	// 		fmt.Println("---------------")
+	// 		arm.state.fudge_disassembling = false
+	// 	}()
+	// }
+
+	// decompressing script into memory
+	// if arm.state.executingPC == 0x28024dcc {
+	// 	arm.state.fudge_disassembling = true
+	// 	defer func() {
+	// 		fmt.Println("---------------")
+	// 		arm.state.fudge_disassembling = false
+	// 	}()
+	// }
+
+	// when the block condition below is true, a lot of debugging data
+	// will be printed to stdout. a good way of keeping this under
+	// control is to pipe the output to tail before redirecting to a
+	// file. For example:
+	//
+	// ./gopher2600 rom.bin | tail -c 10M > out
+	if arm.state.fudge_disassembling {
+		if fudge_notExecuted {
+			fmt.Print("*** ")
+		}
+		if fudge_resolving32bitInstruction {
+			fmt.Printf("%08x %04x %04x :: %s\n", arm.state.instructionPC, arm.state.function32bitOpcode, opcode, arm.state.fudge_thumb2disassemble32bit)
+			fmt.Println(arm.String())
+			fmt.Println(arm.state.status.String())
+			fmt.Println("====================")
+		} else if !arm.state.function32bit {
+			if arm.state.fudge_thumb2disassemble16bit != "" {
+				fmt.Printf("%08x %04x :: %s\n", arm.state.instructionPC, opcode, arm.state.fudge_thumb2disassemble16bit)
+			} else {
+				fmt.Printf("%08x %04x :: %s\n", arm.state.instructionPC, opcode, thumbDisassemble(opcode).String())
+			}
+			fmt.Println(arm.String())
+			fmt.Println(arm.state.status.String())
+			fmt.Println("====================")
+		}
+	}
+
+	arm.state.fudge_thumb2disassemble32bit = ""
+	arm.state.fudge_thumb2disassemble16bit = ""
 }

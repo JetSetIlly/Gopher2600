@@ -45,7 +45,7 @@ func (arm *ARM) nullAccess(event string, addr uint32) {
 }
 
 func (arm *ARM) read8bit(addr uint32) uint8 {
-	if !arm.stackHasCollided && addr < arm.nullAccessBoundary {
+	if !arm.stackHasCollided && addr < arm.mmap.NullAccessBoundary {
 		arm.nullAccess("Read 8bit", addr)
 	}
 
@@ -73,7 +73,7 @@ func (arm *ARM) read8bit(addr uint32) uint8 {
 }
 
 func (arm *ARM) write8bit(addr uint32, val uint8) {
-	if !arm.stackHasCollided && addr < arm.nullAccessBoundary {
+	if !arm.stackHasCollided && addr < arm.mmap.NullAccessBoundary {
 		arm.nullAccess("Write 8bit", addr)
 	}
 
@@ -101,13 +101,13 @@ func (arm *ARM) write8bit(addr uint32, val uint8) {
 }
 
 func (arm *ARM) read16bit(addr uint32, requiresAlignment bool) uint16 {
-	if !arm.stackHasCollided && addr < arm.nullAccessBoundary {
+	if !arm.stackHasCollided && addr < arm.mmap.NullAccessBoundary {
 		arm.nullAccess("Read 16bit", addr)
 	}
 
 	// check 16 bit alignment
 	misaligned := addr&0x01 != 0x00
-	if misaligned && (requiresAlignment || arm.state.unalignTrap) {
+	if misaligned && (requiresAlignment || arm.mmap.UnalignTrap) {
 		logger.Logf("ARM7", "misaligned 16 bit read (%08x) (PC: %08x)", addr, arm.state.registers[rPC])
 		return 0
 	}
@@ -136,13 +136,13 @@ func (arm *ARM) read16bit(addr uint32, requiresAlignment bool) uint16 {
 }
 
 func (arm *ARM) write16bit(addr uint32, val uint16, requiresAlignment bool) {
-	if !arm.stackHasCollided && addr < arm.nullAccessBoundary {
+	if !arm.stackHasCollided && addr < arm.mmap.NullAccessBoundary {
 		arm.nullAccess("Write 16bit", addr)
 	}
 
 	// check 16 bit alignment
 	misaligned := addr&0x01 != 0x00
-	if misaligned && (requiresAlignment || arm.state.unalignTrap) {
+	if misaligned && (requiresAlignment || arm.mmap.UnalignTrap) {
 		logger.Logf("ARM7", "misaligned 16 bit write (%08x) (PC: %08x)", addr, arm.state.registers[rPC])
 		return
 	}
@@ -172,13 +172,13 @@ func (arm *ARM) write16bit(addr uint32, val uint16, requiresAlignment bool) {
 }
 
 func (arm *ARM) read32bit(addr uint32, requiresAlignment bool) uint32 {
-	if !arm.stackHasCollided && addr < arm.nullAccessBoundary {
+	if !arm.stackHasCollided && addr < arm.mmap.NullAccessBoundary {
 		arm.nullAccess("Read 32bit", addr)
 	}
 
 	// check 32 bit alignment
 	misaligned := addr&0x03 != 0x00
-	if misaligned && (requiresAlignment || arm.state.unalignTrap) {
+	if misaligned && (requiresAlignment || arm.mmap.UnalignTrap) {
 		logger.Logf("ARM7", "misaligned 32 bit read (%08x) (PC: %08x)", addr, arm.state.registers[rPC])
 		return 0
 	}
@@ -207,13 +207,13 @@ func (arm *ARM) read32bit(addr uint32, requiresAlignment bool) uint32 {
 }
 
 func (arm *ARM) write32bit(addr uint32, val uint32, requiresAlignment bool) {
-	if !arm.stackHasCollided && addr < arm.nullAccessBoundary {
+	if !arm.stackHasCollided && addr < arm.mmap.NullAccessBoundary {
 		arm.nullAccess("Write 32bit", addr)
 	}
 
 	// check 32 bit alignment
 	misaligned := addr&0x03 != 0x00
-	if misaligned && (requiresAlignment || arm.state.unalignTrap) {
+	if misaligned && (requiresAlignment || arm.mmap.UnalignTrap) {
 		logger.Logf("ARM7", "misaligned 32 bit write (%08x) (PC: %08x)", addr, arm.state.registers[rPC])
 		return
 	}
