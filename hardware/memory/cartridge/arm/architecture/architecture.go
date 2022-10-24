@@ -13,16 +13,37 @@
 // You should have received a copy of the GNU General Public License
 // along with Gopher2600.  If not, see <https://www.gnu.org/licenses/>.
 
-// Package memorymodel handles differences in memory addressing For example,
-// the Harmony family is different to the PlusCart family.
-package memorymodel
+// Package architecture defines the Map type that is used to specify the
+// differences in cartridge and ARM archtectures.
+package architecture
 
 import (
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
+// CartArchitecture defines the memory map for the ARM.
+type CartArchitecture string
+
+// List of valid CartArchitecture values.
+const (
+	Harmony  CartArchitecture = "LPC2000"
+	PlusCart CartArchitecture = "STM32F407VGT6"
+)
+
+// ARMArchitecture defines the features of the ARM core.
+type ARMArchitecture string
+
+// List of valid ARMArchitecture values.
+const (
+	ARM7TDMI ARMArchitecture = "ARM7TDMI"
+	ARMv7_M  ARMArchitecture = "ARMv7-M"
+)
+
+// Map of the differences between architectures. The differences are led by the
+// cartridge architecture.
 type Map struct {
-	Model string
+	CartArchitecture CartArchitecture
+	ARMArchitecture  ARMArchitecture
 
 	FlashOrigin    uint32
 	Flash32kMemtop uint32
@@ -63,23 +84,21 @@ type Map struct {
 	UnalignTrap bool
 }
 
-const (
-	Harmony  = "LPC2000"
-	PlusCart = "STM32F407VGT6"
-)
-
 // NewMap is the preferred method of initialisation for the Map type.
-func NewMap(model string) Map {
+func NewMap(cart CartArchitecture) Map {
 	mmap := Map{
-		Model: model,
+		CartArchitecture: cart,
 	}
 
-	switch mmap.Model {
+	switch mmap.CartArchitecture {
 	default:
-		logger.Logf("ARM Mem Model", "unknown ARM memory model (%s) defaulting to Harmony", mmap.Model)
+		logger.Logf("ARM Architecture", "unknown cartridge architecture (%s) defaulting to Harmony", cart)
+		mmap.CartArchitecture = Harmony
 		fallthrough
 
 	case Harmony:
+		mmap.ARMArchitecture = ARM7TDMI
+
 		mmap.FlashOrigin = 0x00000000
 		mmap.Flash32kMemtop = 0x00007fff
 		mmap.Flash64kMemtop = 0x000fffff
@@ -100,6 +119,8 @@ func NewMap(model string) Map {
 		mmap.UnalignTrap = true
 
 	case PlusCart:
+		mmap.ARMArchitecture = ARMv7_M
+
 		mmap.FlashOrigin = 0x20000000
 		mmap.Flash32kMemtop = 0x20007fff
 		mmap.Flash64kMemtop = 0x200fffff
@@ -122,9 +143,9 @@ func NewMap(model string) Map {
 		mmap.UnalignTrap = false
 	}
 
-	logger.Logf("ARM Mem Model", "using %s", mmap.Model)
-	logger.Logf("ARM Mem Model", "flash origin: %#08x", mmap.FlashOrigin)
-	logger.Logf("ARM Mem Model", "sram origin: %#08x", mmap.SRAMOrigin)
+	logger.Logf("ARM Architecture", "using %s/%s", mmap.CartArchitecture, mmap.ARMArchitecture)
+	logger.Logf("ARM Architecture", "flash origin: %#08x", mmap.FlashOrigin)
+	logger.Logf("ARM Architecture", "sram origin: %#08x", mmap.SRAMOrigin)
 
 	return mmap
 }

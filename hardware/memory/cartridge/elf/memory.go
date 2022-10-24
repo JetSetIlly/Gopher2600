@@ -22,7 +22,7 @@ import (
 
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm/memorymodel"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm/architecture"
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
@@ -50,7 +50,7 @@ func (s *elfSection) Snapshot() *elfSection {
 }
 
 type elfMemory struct {
-	model   memorymodel.Map
+	model   architecture.Map
 	resetSP uint32
 	resetLR uint32
 	resetPC uint32
@@ -108,7 +108,7 @@ func newElfMemory(ef *elf.File) (*elfMemory, error) {
 	}
 
 	// always using PlusCart model for now
-	mem.model = memorymodel.NewMap(memorymodel.PlusCart)
+	mem.model = architecture.NewMap(architecture.PlusCart)
 
 	// load sections
 	origin := mem.model.FlashOrigin

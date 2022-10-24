@@ -24,6 +24,7 @@ import (
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/gui/fonts"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm/architecture"
 )
 
 // in this case of the coprocessor disassmebly window the actual window title
@@ -74,8 +75,8 @@ func (win *winCoProcDisasm) debuggerDraw() {
 	title := fmt.Sprintf("%s %s", win.img.lz.Cart.CoProcID, winCoProcDisasmID)
 	if imgui.BeginV(win.debuggerID(title), &win.debuggerOpen, imgui.WindowFlagsNone) {
 		// only support specific ARM architectures
-		arch := arm.Architecture(win.img.lz.Cart.CoProcID)
-		if arch == arm.ARM7TDMI || arch == arm.ARMv7_M {
+		arch := architecture.ARMArchitecture(win.img.lz.Cart.CoProcID)
+		if arch == architecture.ARM7TDMI || arch == architecture.ARMv7_M {
 			win.draw()
 		} else {
 			imgui.Text(fmt.Sprintf("%s is an unsupported architecture", arch))

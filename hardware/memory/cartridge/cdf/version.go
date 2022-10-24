@@ -17,17 +17,15 @@ package cdf
 
 import (
 	"bytes"
-	"fmt"
 
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm/memorymodel"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm/architecture"
 )
 
 // versions contains the information that can differ between CDF versions.
 type version struct {
-	arch arm.Architecture
-	mmap memorymodel.Map
+	mmap architecture.Map
 
 	// mappingID depends on the version
 	submapping string
@@ -88,17 +86,14 @@ type version struct {
 }
 
 func newVersion(memModel string, v string, data []uint8) (version, error) {
-	var arch arm.Architecture
-	var mmap memorymodel.Map
+	var mmap architecture.Map
 
 	switch memModel {
 	case "AUTO":
 		if data[0x863]&0x20 == 0x20 && data[0x867]&0x20 == 0x20 {
-			arch = arm.ARMv7_M
-			mmap = memorymodel.NewMap(memorymodel.PlusCart)
+			mmap = architecture.NewMap(architecture.PlusCart)
 		} else {
-			arch = arm.ARM7TDMI
-			mmap = memorymodel.NewMap(memorymodel.Harmony)
+			mmap = architecture.NewMap(architecture.Harmony)
 		}
 
 	case "LPC2000":
@@ -107,8 +102,7 @@ func newVersion(memModel string, v string, data []uint8) (version, error) {
 	case "ARM7TDMI":
 		// old value used to indicate ARM7TDMI architecture. easiest to support
 		// it here in this manner
-		arch = arm.ARM7TDMI
-		mmap = memorymodel.NewMap(memorymodel.Harmony)
+		mmap = architecture.NewMap(architecture.Harmony)
 
 	case "STM32F407VGT6":
 		// older preference value. deprecated.
@@ -116,17 +110,10 @@ func newVersion(memModel string, v string, data []uint8) (version, error) {
 	case "ARMv7_M":
 		// old value used to indicate ARM7TDMI architecture. easiest to support
 		// it here in this manner
-		arch = arm.ARM7TDMI
-		mmap = memorymodel.NewMap(memorymodel.Harmony)
-	}
-
-	// check architecture has been assigned
-	if arch == "" {
-		return version{}, fmt.Errorf("unsupported ARM architecture: %s", memModel)
+		mmap = architecture.NewMap(architecture.Harmony)
 	}
 
 	ver := version{
-		arch: arch,
 		mmap: mmap,
 
 		// addresses (driver is always in the same location)

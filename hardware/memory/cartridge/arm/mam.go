@@ -16,7 +16,7 @@
 package arm
 
 import (
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm/memorymodel"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm/architecture"
 	"github.com/jetsetilly/gopher2600/hardware/preferences"
 	"github.com/jetsetilly/gopher2600/logger"
 )
@@ -35,7 +35,7 @@ const (
 // fully implemented but good enough for most Harmony games
 type mam struct {
 	prefs *preferences.ARMPreferences
-	mmap  memorymodel.Map
+	mmap  architecture.Map
 
 	// valid values for mamcr are 0, 1 or 2 are valid. we can think of these
 	// respectively, as "disable", "partial" and "full"
@@ -65,7 +65,7 @@ type mam struct {
 	prefectchAborted bool
 }
 
-func newMam(prefs *preferences.ARMPreferences, mmap memorymodel.Map, preferredMAMCR MAMCR) *mam {
+func newMam(prefs *preferences.ARMPreferences, mmap architecture.Map, preferredMAMCR MAMCR) *mam {
 	return &mam{
 		prefs:          prefs,
 		mmap:           mmap,

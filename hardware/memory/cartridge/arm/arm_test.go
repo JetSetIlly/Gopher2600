@@ -17,7 +17,7 @@ package arm_test
 
 import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm/memorymodel"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm/architecture"
 	"github.com/jetsetilly/gopher2600/hardware/preferences"
 )
 
@@ -58,15 +58,16 @@ func prepareTestARM() (*arm.ARM, *testMemory) {
 
 	prefs := &preferences.ARMPreferences{}
 
-	memModel := memorymodel.Map{
-		Model:          "test",
-		FlashOrigin:    0,
-		Flash32kMemtop: 511,
-		Flash64kMemtop: 511,
-		SRAMOrigin:     512,
+	memModel := architecture.Map{
+		CartArchitecture: "test",
+		ARMArchitecture:  architecture.ARMv7_M,
+		FlashOrigin:      0,
+		Flash32kMemtop:   511,
+		Flash64kMemtop:   511,
+		SRAMOrigin:       512,
 	}
 
 	testMem := prepareTestMemory(memModel.SRAMOrigin + 100)
 	hook := &hook{}
-	return arm.NewARM(arm.ARMv7_M, arm.MAMdisabled, memModel, prefs, testMem, hook), testMem
+	return arm.NewARM(arm.MAMdisabled, memModel, prefs, testMem, hook), testMem
 }

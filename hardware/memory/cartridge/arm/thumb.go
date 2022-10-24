@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"math/bits"
 
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm/architecture"
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
@@ -653,8 +654,8 @@ func (arm *ARM) thumbHiRegisterOps(opcode uint16) {
 
 		return
 	case 0b11:
-		switch arm.arch {
-		case ARMv7_M:
+		switch arm.mmap.ARMArchitecture {
+		case architecture.ARMv7_M:
 			// register to use is expressed slightly differently
 			Rm := (opcode & 0x78) >> 3
 
@@ -683,7 +684,7 @@ func (arm *ARM) thumbHiRegisterOps(opcode uint16) {
 			// "7.6 Data Operations" in "ARM7TDMI-S Technical Reference Manual r4p3"
 			// - fillPipeline() will be called if necessary
 			return
-		case ARM7TDMI:
+		case architecture.ARM7TDMI:
 			thumbMode := arm.state.registers[srcReg]&0x01 == 0x01
 
 			var newPC uint32

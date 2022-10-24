@@ -17,7 +17,7 @@ package ace
 
 import (
 	"github.com/jetsetilly/gopher2600/curated"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm/memorymodel"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm/architecture"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 )
 
@@ -26,7 +26,7 @@ type yieldARM interface {
 }
 
 type aceMemory struct {
-	model   memorymodel.Map
+	model   architecture.Map
 	resetSP uint32
 	resetLR uint32
 	resetPC uint32
@@ -83,7 +83,7 @@ func newAceMemory(version string, data []byte) (*aceMemory, error) {
 	case "ACE-2600":
 		return nil, curated.Errorf("ACE: unocart not yet supported")
 	case "ACE-PC00":
-		mem.model = memorymodel.NewMap(memorymodel.PlusCart)
+		mem.model = architecture.NewMap(architecture.PlusCart)
 	default:
 		return nil, curated.Errorf("ACE: unrecognised version (%s)", version)
 	}

@@ -18,7 +18,7 @@ package peripherals
 import (
 	"math/rand"
 
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm/memorymodel"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm/architecture"
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
@@ -30,10 +30,10 @@ import (
 // RNG implements the RNG found in STM32 packages.
 //
 // The implementation is just a sketch of the real RNG unit but for our
-// purposes it's probably okay. It  basically returns a random 32bit number
+// purposes it's probably okay. It basically returns a random 32bit number
 // whenever the data register is read
 type RNG struct {
-	mmap memorymodel.Map
+	mmap architecture.Map
 
 	// control register value
 	control uint32
@@ -48,7 +48,7 @@ type RNG struct {
 	interruptEnabled bool
 }
 
-func NewRNG(mmap memorymodel.Map) *RNG {
+func NewRNG(mmap architecture.Map) *RNG {
 	return &RNG{
 		mmap: mmap,
 	}

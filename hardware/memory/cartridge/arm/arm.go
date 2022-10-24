@@ -22,7 +22,7 @@ import (
 	"time"
 
 	"github.com/jetsetilly/gopher2600/curated"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm/memorymodel"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm/architecture"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/preferences"
 	"github.com/jetsetilly/gopher2600/logger"
@@ -55,16 +55,6 @@ const raisedCycleLimit = cycleLimit + 1000
 // the maximum number of instructions to execute. like cycleLimit but for when
 // running in immediate mode
 const instructionsLimit = 1300000
-
-// Architecture defines the features of the ARM core.
-type Architecture string
-
-// List of defined Architecture values. Not all features of the listed
-// architectures may be implemented.
-const (
-	ARM7TDMI Architecture = "ARM7TDMI"
-	ARMv7_M  Architecture = "ARMv7-M"
-)
 
 // stepFunction variations are a result of different ARM architectures
 type stepFunction func(opcode uint16, memIdx int)
@@ -164,8 +154,7 @@ func (s *ARMState) Snapshot() *ARMState {
 // ARM implements the ARM7TDMI-S LPC2103 processor.
 type ARM struct {
 	prefs *preferences.ARMPreferences
-	arch  Architecture
-	mmap  memorymodel.Map
+	mmap  architecture.Map
 	mem   SharedMemory
 	hook  CartridgeHook
 
@@ -275,9 +264,8 @@ type ARM struct {
 }
 
 // NewARM is the preferred method of initialisation for the ARM type.
-func NewARM(arch Architecture, preferredMAMCR MAMCR, mmap memorymodel.Map, prefs *preferences.ARMPreferences, mem SharedMemory, hook CartridgeHook) *ARM {
+func NewARM(preferredMAMCR MAMCR, mmap architecture.Map, prefs *preferences.ARMPreferences, mem SharedMemory, hook CartridgeHook) *ARM {
 	arm := &ARM{
-		arch:         arch,
 		prefs:        prefs,
 		mmap:         mmap,
 		mem:          mem,
@@ -295,13 +283,13 @@ func NewARM(arch Architecture, preferredMAMCR MAMCR, mmap memorymodel.Map, prefs
 	// slow prefs update by 100ms
 	arm.prefsPulse = time.NewTicker(time.Millisecond * 100)
 
-	switch arm.arch {
-	case ARM7TDMI:
+	switch arm.mmap.ARMArchitecture {
+	case architecture.ARM7TDMI:
 		arm.stepFunction = arm.stepARM7TDMI
-	case ARMv7_M:
+	case architecture.ARMv7_M:
 		arm.stepFunction = arm.stepARM7_M
 	default:
-		panic(fmt.Sprintf("unhandled ARM architecture: cannot set %s", arm.arch))
+		panic(fmt.Sprintf("unhandled ARM architecture: cannot set %s", arm.mmap.ARMArchitecture))
 	}
 
 	arm.state.mam = newMam(arm.prefs, arm.mmap, preferredMAMCR)
@@ -324,7 +312,7 @@ func NewARM(arch Architecture, preferredMAMCR MAMCR, mmap memorymodel.Map, prefs
 // for comparison purposes to check if a mapper.CartCoProc instance is of
 // the ARM type.
 func (arm *ARM) CoProcID() string {
-	return string(arm.arch)
+	return string(arm.mmap.ARMArchitecture)
 }
 
 // SetDisassembler implements the mapper.CartCoProc interface.

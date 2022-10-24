@@ -18,18 +18,18 @@ package peripherals
 import (
 	"fmt"
 
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm/memorymodel"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm/architecture"
 )
 
 // Timer implements a simple timer as used in the LCP2000.
 type Timer struct {
-	mmap    memorymodel.Map
+	mmap    architecture.Map
 	enabled bool
 	control uint32
 	counter float32
 }
 
-func NewTimer(mmap memorymodel.Map) *Timer {
+func NewTimer(mmap architecture.Map) *Timer {
 	return &Timer{
 		mmap: mmap,
 	}

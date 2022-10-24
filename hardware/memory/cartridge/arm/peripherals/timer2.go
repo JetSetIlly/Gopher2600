@@ -16,7 +16,7 @@
 package peripherals
 
 import (
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm/memorymodel"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm/architecture"
 )
 
 // the operation of the TIMx units in STM32 ARM packages can be found in the
@@ -26,7 +26,7 @@ import (
 
 // Timer2 implements the TIM2 timer found in STM32 processors.
 type Timer2 struct {
-	mmap memorymodel.Map
+	mmap architecture.Map
 
 	// current register values
 	control    uint32
@@ -56,7 +56,7 @@ type Timer2 struct {
 	prescalerCounter uint32
 }
 
-func NewTimer2(mmap memorymodel.Map) *Timer2 {
+func NewTimer2(mmap architecture.Map) *Timer2 {
 	return &Timer2{
 		mmap: mmap,
 	}
