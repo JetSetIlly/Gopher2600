@@ -56,8 +56,8 @@ type Timer2 struct {
 	prescalerCounter uint32
 }
 
-func NewTimer2(mmap architecture.Map) *Timer2 {
-	return &Timer2{
+func NewTimer2(mmap architecture.Map) Timer2 {
+	return Timer2{
 		mmap: mmap,
 	}
 }

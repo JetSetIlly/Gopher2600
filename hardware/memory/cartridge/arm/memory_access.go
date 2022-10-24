@@ -53,8 +53,26 @@ func (arm *ARM) read8bit(addr uint32) uint8 {
 
 	mem, addr = arm.mem.MapAddress(addr, false)
 	if mem == nil {
-		for _, p := range arm.state.peripheralsMemory {
-			if v, ok, comment := p.Read(addr); ok {
+		if arm.mmap.HasMAM {
+			if v, ok, comment := arm.state.mam.Read(addr); ok {
+				arm.disasmExecutionNotes = comment
+				return uint8(v)
+			}
+		}
+		if arm.mmap.HasRNG {
+			if v, ok, comment := arm.state.rng.Read(addr); ok {
+				arm.disasmExecutionNotes = comment
+				return uint8(v)
+			}
+		}
+		if arm.mmap.HasTIMER {
+			if v, ok, comment := arm.state.timer.Read(addr); ok {
+				arm.disasmExecutionNotes = comment
+				return uint8(v)
+			}
+		}
+		if arm.mmap.HasTIM2 {
+			if v, ok, comment := arm.state.timer2.Read(addr); ok {
 				arm.disasmExecutionNotes = comment
 				return uint8(v)
 			}
@@ -81,8 +99,26 @@ func (arm *ARM) write8bit(addr uint32, val uint8) {
 
 	mem, addr = arm.mem.MapAddress(addr, true)
 	if mem == nil {
-		for _, p := range arm.state.peripheralsMemory {
-			if ok, comment := p.Write(addr, uint32(val)); ok {
+		if arm.mmap.HasMAM {
+			if ok, comment := arm.state.mam.Write(addr, uint32(val)); ok {
+				arm.disasmExecutionNotes = comment
+				return
+			}
+		}
+		if arm.mmap.HasRNG {
+			if ok, comment := arm.state.rng.Write(addr, uint32(val)); ok {
+				arm.disasmExecutionNotes = comment
+				return
+			}
+		}
+		if arm.mmap.HasTIMER {
+			if ok, comment := arm.state.timer.Write(addr, uint32(val)); ok {
+				arm.disasmExecutionNotes = comment
+				return
+			}
+		}
+		if arm.mmap.HasTIM2 {
+			if ok, comment := arm.state.timer2.Write(addr, uint32(val)); ok {
 				arm.disasmExecutionNotes = comment
 				return
 			}
@@ -116,8 +152,26 @@ func (arm *ARM) read16bit(addr uint32, requiresAlignment bool) uint16 {
 
 	mem, addr = arm.mem.MapAddress(addr, false)
 	if mem == nil {
-		for _, p := range arm.state.peripheralsMemory {
-			if v, ok, comment := p.Read(addr); ok {
+		if arm.mmap.HasMAM {
+			if v, ok, comment := arm.state.mam.Read(addr); ok {
+				arm.disasmExecutionNotes = comment
+				return uint16(v)
+			}
+		}
+		if arm.mmap.HasRNG {
+			if v, ok, comment := arm.state.rng.Read(addr); ok {
+				arm.disasmExecutionNotes = comment
+				return uint16(v)
+			}
+		}
+		if arm.mmap.HasTIMER {
+			if v, ok, comment := arm.state.timer.Read(addr); ok {
+				arm.disasmExecutionNotes = comment
+				return uint16(v)
+			}
+		}
+		if arm.mmap.HasTIM2 {
+			if v, ok, comment := arm.state.timer2.Read(addr); ok {
 				arm.disasmExecutionNotes = comment
 				return uint16(v)
 			}
@@ -151,8 +205,26 @@ func (arm *ARM) write16bit(addr uint32, val uint16, requiresAlignment bool) {
 
 	mem, addr = arm.mem.MapAddress(addr, true)
 	if mem == nil {
-		for _, p := range arm.state.peripheralsMemory {
-			if ok, comment := p.Write(addr, uint32(val)); ok {
+		if arm.mmap.HasMAM {
+			if ok, comment := arm.state.mam.Write(addr, uint32(val)); ok {
+				arm.disasmExecutionNotes = comment
+				return
+			}
+		}
+		if arm.mmap.HasRNG {
+			if ok, comment := arm.state.rng.Write(addr, uint32(val)); ok {
+				arm.disasmExecutionNotes = comment
+				return
+			}
+		}
+		if arm.mmap.HasTIMER {
+			if ok, comment := arm.state.timer.Write(addr, uint32(val)); ok {
+				arm.disasmExecutionNotes = comment
+				return
+			}
+		}
+		if arm.mmap.HasTIM2 {
+			if ok, comment := arm.state.timer2.Write(addr, uint32(val)); ok {
 				arm.disasmExecutionNotes = comment
 				return
 			}
@@ -187,8 +259,26 @@ func (arm *ARM) read32bit(addr uint32, requiresAlignment bool) uint32 {
 
 	mem, addr = arm.mem.MapAddress(addr, false)
 	if mem == nil {
-		for _, p := range arm.state.peripheralsMemory {
-			if v, ok, comment := p.Read(addr); ok {
+		if arm.mmap.HasMAM {
+			if v, ok, comment := arm.state.mam.Read(addr); ok {
+				arm.disasmExecutionNotes = comment
+				return uint32(v)
+			}
+		}
+		if arm.mmap.HasRNG {
+			if v, ok, comment := arm.state.rng.Read(addr); ok {
+				arm.disasmExecutionNotes = comment
+				return uint32(v)
+			}
+		}
+		if arm.mmap.HasTIMER {
+			if v, ok, comment := arm.state.timer.Read(addr); ok {
+				arm.disasmExecutionNotes = comment
+				return uint32(v)
+			}
+		}
+		if arm.mmap.HasTIM2 {
+			if v, ok, comment := arm.state.timer2.Read(addr); ok {
 				arm.disasmExecutionNotes = comment
 				return uint32(v)
 			}
@@ -222,8 +312,26 @@ func (arm *ARM) write32bit(addr uint32, val uint32, requiresAlignment bool) {
 
 	mem, addr = arm.mem.MapAddress(addr, true)
 	if mem == nil {
-		for _, p := range arm.state.peripheralsMemory {
-			if ok, comment := p.Write(addr, uint32(val)); ok {
+		if arm.mmap.HasMAM {
+			if ok, comment := arm.state.mam.Write(addr, uint32(val)); ok {
+				arm.disasmExecutionNotes = comment
+				return
+			}
+		}
+		if arm.mmap.HasRNG {
+			if ok, comment := arm.state.rng.Write(addr, uint32(val)); ok {
+				arm.disasmExecutionNotes = comment
+				return
+			}
+		}
+		if arm.mmap.HasTIMER {
+			if ok, comment := arm.state.timer.Write(addr, uint32(val)); ok {
+				arm.disasmExecutionNotes = comment
+				return
+			}
+		}
+		if arm.mmap.HasTIM2 {
+			if ok, comment := arm.state.timer2.Write(addr, uint32(val)); ok {
 				arm.disasmExecutionNotes = comment
 				return
 			}

@@ -48,8 +48,8 @@ type RNG struct {
 	interruptEnabled bool
 }
 
-func NewRNG(mmap architecture.Map) *RNG {
-	return &RNG{
+func NewRNG(mmap architecture.Map) RNG {
+	return RNG{
 		mmap: mmap,
 	}
 }

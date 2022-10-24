@@ -51,8 +51,8 @@ type mam struct {
 	prefectchAborted bool
 }
 
-func newMam(prefs *preferences.ARMPreferences, mmap architecture.Map) *mam {
-	return &mam{
+func newMam(prefs *preferences.ARMPreferences, mmap architecture.Map) mam {
+	return mam{
 		prefs: prefs,
 		mmap:  mmap,
 	}

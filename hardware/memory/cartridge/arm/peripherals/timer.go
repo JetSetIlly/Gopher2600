@@ -29,8 +29,8 @@ type Timer struct {
 	counter uint32
 }
 
-func NewTimer(mmap architecture.Map) *Timer {
-	return &Timer{
+func NewTimer(mmap architecture.Map) Timer {
+	return Timer{
 		mmap: mmap,
 	}
 }

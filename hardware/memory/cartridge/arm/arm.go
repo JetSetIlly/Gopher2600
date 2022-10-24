@@ -23,6 +23,7 @@ import (
 
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm/architecture"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm/peripherals"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/preferences"
 	"github.com/jetsetilly/gopher2600/logger"
@@ -64,10 +65,10 @@ type ARMState struct {
 	registers [NumRegisters]uint32
 	status    Status
 
-	mam               *mam
-	peripherals       []peripheral
-	peripheralsMemory []peripheralMemory
-	timers            []timer
+	mam    mam
+	rng    peripherals.RNG
+	timer  peripherals.Timer
+	timer2 peripherals.Timer2
 
 	// the PC of the opcode being processed and the PC of the instruction being
 	// executed
@@ -298,11 +299,9 @@ func NewARM(mmap architecture.Map, prefs *preferences.ARMPreferences, mem Shared
 	}
 
 	arm.state.mam = newMam(arm.prefs, arm.mmap)
-	if arm.mmap.HasMAM {
-		arm.state.peripherals = append(arm.state.peripherals, arm.state.mam)
-		arm.state.peripheralsMemory = append(arm.state.peripheralsMemory, arm.state.mam)
-	}
-	arm.addPeripherals()
+	arm.state.rng = peripherals.NewRNG(arm.mmap)
+	arm.state.timer = peripherals.NewTimer(arm.mmap)
+	arm.state.timer2 = peripherals.NewTimer2(arm.mmap)
 
 	arm.resetPeripherals()
 	arm.resetRegisters()
@@ -371,8 +370,14 @@ func (arm *ARM) ClearCaches() {
 
 // resetPeripherals in the ARM package.
 func (arm *ARM) resetPeripherals() {
-	for _, p := range arm.state.peripherals {
-		p.Reset()
+	if arm.mmap.HasRNG {
+		arm.state.rng.Reset()
+	}
+	if arm.mmap.HasTIMER {
+		arm.state.timer.Reset()
+	}
+	if arm.mmap.HasTIM2 {
+		arm.state.timer2.Reset()
 	}
 }
 
@@ -483,8 +488,11 @@ func (arm *ARM) clock(cycles float32) {
 	c := uint32(cycles)
 	arm.state.accumulatedClocks = cycles - float32(c)
 
-	for _, t := range arm.state.timers {
-		t.Step(c)
+	if arm.mmap.HasTIMER {
+		arm.state.timer.Step(c)
+	}
+	if arm.mmap.HasTIM2 {
+		arm.state.timer2.Step(c)
 	}
 }
 
