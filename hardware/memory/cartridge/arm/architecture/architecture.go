@@ -169,6 +169,6 @@ func NewMap(cart CartArchitecture) Map {
 }
 
 // IsFlash returns true if address is in flash memory range.
-func (mmap Map) IsFlash(addr uint32) bool {
+func (mmap *Map) IsFlash(addr uint32) bool {
 	return addr >= mmap.FlashOrigin && addr <= mmap.Flash64kMemtop
 }
