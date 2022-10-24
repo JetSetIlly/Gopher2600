@@ -27,7 +27,7 @@ type peripheralMemory interface {
 }
 
 type timer interface {
-	Step(float32)
+	Step(cycles uint32)
 }
 
 func (arm *ARM) addPeripherals() {

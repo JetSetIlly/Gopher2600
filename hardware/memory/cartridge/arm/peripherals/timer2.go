@@ -116,15 +116,10 @@ func (t *Timer2) setControlRegister(val uint32) string {
 	return comment
 }
 
-func (t *Timer2) Step(c float32) {
+func (t *Timer2) Step(cycles uint32) {
 	if !t.enable {
 		return
 	}
-
-	// incoming clock for TIM2 is half the frequency of the processor
-	c *= t.mmap.ClkDiv
-
-	cycles := uint32(c)
 
 	// adjust for clock division value
 	cycles /= t.clockDivision

@@ -26,7 +26,7 @@ type Timer struct {
 	mmap    architecture.Map
 	enabled bool
 	control uint32
-	counter float32
+	counter uint32
 }
 
 func NewTimer(mmap architecture.Map) *Timer {
@@ -36,11 +36,11 @@ func NewTimer(mmap architecture.Map) *Timer {
 }
 
 func (t *Timer) Reset() {
-	t.counter = 0.0
+	t.counter = 0
 }
 
 // stepping of timer assumes an APB divider value of one.
-func (t *Timer) Step(cycles float32) {
+func (t *Timer) Step(cycles uint32) {
 	if !t.enabled {
 		return
 	}
@@ -60,7 +60,7 @@ func (t *Timer) Write(addr uint32, val uint32) (bool, string) {
 			comment = "timer off"
 		}
 	case t.mmap.TIMERvalue:
-		t.counter = float32(val)
+		t.counter = val
 		comment = fmt.Sprintf("timer = %d", val)
 	default:
 		return false, comment
@@ -77,7 +77,7 @@ func (t *Timer) Read(addr uint32) (uint32, bool, string) {
 	case t.mmap.TIMERcontrol:
 		val = t.control
 	case t.mmap.TIMERvalue:
-		val = uint32(t.counter)
+		val = t.counter
 		comment = fmt.Sprintf("timer read = %d", val)
 	default:
 		return 0, false, comment

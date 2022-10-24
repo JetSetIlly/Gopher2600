@@ -128,6 +128,11 @@ type ARMState struct {
 	// - required for disasm only
 	mergedIS bool
 
+	// clocks
+
+	// the number of cycles left over from the previous clock tick
+	accumulatedClocks float32
+
 	// 32bit instructions
 
 	function32bit       bool
@@ -463,10 +468,23 @@ func (arm *ARM) Step(vcsClock float32) {
 	// accommodate this is to tick the counter forward by the the appropriate
 	// fraction every VCS cycle. Put another way: an NTSC spec VCS, for
 	// example, will tick forward every 58-59 ARM cycles.
-	cycles := arm.Clk / vcsClock
+	arm.clock(arm.Clk / vcsClock)
+}
+
+func (arm *ARM) clock(cycles float32) {
+	// incoming clock for TIM2 is half the frequency of the processor
+	cycles *= arm.mmap.ClkDiv
+
+	// add accumulated cycles (ClkDiv has already been applied to this
+	// additional value)
+	cycles += arm.state.accumulatedClocks
+
+	// isolate integer and fractional part and save fraction for next clock()
+	c := uint32(cycles)
+	arm.state.accumulatedClocks = cycles - float32(c)
 
 	for _, t := range arm.state.timers {
-		t.Step(cycles)
+		t.Step(c)
 	}
 }
 
@@ -693,10 +711,11 @@ func (arm *ARM) run() (float32, error) {
 			// increases total number of program cycles by the stretched cycles for this instruction
 			arm.state.cyclesTotal += arm.state.stretchedCycles
 
-			// update timers
-			for _, t := range arm.state.timers {
-				t.Step(arm.state.stretchedCycles)
-			}
+			// update clock
+			arm.clock(arm.state.stretchedCycles)
+		} else {
+			// update clock with nominal number of cycles
+			arm.clock(1.1)
 		}
 
 		// send disasm information to disassembler
