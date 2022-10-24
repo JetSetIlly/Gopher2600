@@ -58,7 +58,7 @@ func NewAce(instance *instance.Instance, version string, data []byte) (mapper.Ca
 		return nil, err
 	}
 
-	cart.arm = arm.NewARM(arm.MAMfull, cart.mem.model, cart.instance.Prefs.ARM, cart.mem, cart)
+	cart.arm = arm.NewARM(cart.mem.model, cart.instance.Prefs.ARM, cart.mem, cart)
 	cart.mem.Plumb(cart.arm)
 
 	logger.Logf("ACE", "vcs program: %08x to %08x", cart.mem.vcsOrigin, cart.mem.vcsMemtop)
@@ -102,7 +102,7 @@ func (cart *Ace) PlumbFromDifferentEmulation() {
 	if cart.armState == nil {
 		panic("cannot plumb this ACE instance because the ARM state is nil")
 	}
-	cart.arm = arm.NewARM(arm.MAMfull, cart.mem.model, cart.instance.Prefs.ARM, cart.mem, cart)
+	cart.arm = arm.NewARM(cart.mem.model, cart.instance.Prefs.ARM, cart.mem, cart)
 	cart.mem.Plumb(cart.arm)
 	cart.arm.Plumb(cart.armState, cart.mem, cart)
 	cart.armState = nil

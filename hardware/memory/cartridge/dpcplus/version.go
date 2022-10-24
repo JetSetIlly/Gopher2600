@@ -16,7 +16,6 @@
 package dpcplus
 
 import (
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm/architecture"
 )
 
@@ -24,8 +23,6 @@ import (
 // addresses mirrors how we do it in the CDF type.
 type version struct {
 	mmap architecture.Map
-
-	mamcr arm.MAMCR
 
 	driverOriginROM uint32
 	driverMemtopROM uint32
@@ -76,7 +73,6 @@ func newVersion(memModel string, data []uint8) (version, error) {
 
 	return version{
 		mmap:            mmap,
-		mamcr:           arm.MAMfull,
 		driverOriginROM: mmap.FlashOrigin,
 		driverMemtopROM: mmap.FlashOrigin | 0x00000bff,
 		customOriginROM: mmap.FlashOrigin | 0x00000c00,

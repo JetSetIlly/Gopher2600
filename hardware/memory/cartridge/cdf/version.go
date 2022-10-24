@@ -19,7 +19,6 @@ import (
 	"bytes"
 
 	"github.com/jetsetilly/gopher2600/curated"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm/architecture"
 )
 
@@ -72,9 +71,6 @@ type version struct {
 	entrySP uint32
 	entryLR uint32
 	entryPC uint32
-
-	// mam state on thumb program start
-	mamcr arm.MAMCR
 
 	// fast fetch modes. these are always disabled except for some versions of CDFJ+
 	fastLDX bool
@@ -149,7 +145,6 @@ func newVersion(memModel string, v string, data []uint8) (version, error) {
 		ver.incrementShift = 12
 		ver.musicFetcherShift = 20
 		ver.fetcherMask = 0xf0000000
-		ver.mamcr = 1
 
 	case "CDFJ+":
 		ver.submapping = "CDFJ+"
@@ -162,7 +157,9 @@ func newVersion(memModel string, v string, data []uint8) (version, error) {
 		ver.incrementShift = 8
 		ver.musicFetcherShift = 12
 		ver.fetcherMask = 0xff000000
-		ver.mamcr = 2
+
+		// CDFJ+ sets the MAMCR to full in the driver
+		ver.mmap.PreferredMAMCR = architecture.MAMfull
 
 		idx := 0x17f8
 		ver.entryLR = uint32(data[idx])
@@ -214,7 +211,6 @@ func newVersion(memModel string, v string, data []uint8) (version, error) {
 		ver.incrementShift = 12
 		ver.musicFetcherShift = 20
 		ver.fetcherMask = 0xf0000000
-		ver.mamcr = 1
 
 	case "CDF1":
 		ver.submapping = "CDF1"
@@ -227,7 +223,6 @@ func newVersion(memModel string, v string, data []uint8) (version, error) {
 		ver.incrementShift = 12
 		ver.musicFetcherShift = 20
 		ver.fetcherMask = 0xf0000000
-		ver.mamcr = 1
 
 	default:
 		return version{}, curated.Errorf("unknown version: %s", v)

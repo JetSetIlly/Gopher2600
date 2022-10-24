@@ -55,7 +55,6 @@ func (_ *hook) ARMinterrupt(addr uint32, val1 uint32, val2 uint32) (arm.ARMinter
 }
 
 func prepareTestARM() (*arm.ARM, *testMemory) {
-
 	prefs := &preferences.ARMPreferences{}
 
 	memModel := architecture.Map{
@@ -69,5 +68,5 @@ func prepareTestARM() (*arm.ARM, *testMemory) {
 
 	testMem := prepareTestMemory(memModel.SRAMOrigin + 100)
 	hook := &hook{}
-	return arm.NewARM(arm.MAMdisabled, memModel, prefs, testMem, hook), testMem
+	return arm.NewARM(memModel, prefs, testMem, hook), testMem
 }

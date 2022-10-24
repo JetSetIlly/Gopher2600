@@ -39,6 +39,16 @@ const (
 	ARMv7_M  ARMArchitecture = "ARMv7-M"
 )
 
+// MAMCR defines the state of the MAM.
+type MAMCR uint32
+
+// List of valid MAMCR values.
+const (
+	MAMdisabled MAMCR = iota
+	MAMpartial
+	MAMfull
+)
+
 // Map of the differences between architectures. The differences are led by the
 // cartridge architecture.
 type Map struct {
@@ -57,6 +67,11 @@ type Map struct {
 	HasMAM bool
 	MAMCR  uint32
 	MAMTIM uint32
+
+	// PreferredMAMCR is the value that will be used when ARM MAM preferences
+	// is set to driver. defaults to MAMfull and is intended to be altered by
+	// the cartridge implementation before creating the ARM emulation
+	PreferredMAMCR MAMCR
 
 	HasTIMER     bool
 	TIMERcontrol uint32
@@ -107,6 +122,7 @@ func NewMap(cart CartArchitecture) Map {
 
 		mmap.MAMCR = 0x001fc000
 		mmap.MAMTIM = 0x001fc004
+		mmap.PreferredMAMCR = MAMpartial
 
 		mmap.HasTIMER = true
 		mmap.TIMERcontrol = 0xe0008004
@@ -126,6 +142,8 @@ func NewMap(cart CartArchitecture) Map {
 		mmap.Flash64kMemtop = 0x200fffff
 		mmap.FlashMaxMemtop = 0x2fffffff
 		mmap.SRAMOrigin = 0x10000000
+
+		mmap.PreferredMAMCR = MAMfull
 
 		mmap.HasTIM2 = true
 		mmap.TIM2CR1 = 0x40000000

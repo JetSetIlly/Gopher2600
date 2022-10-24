@@ -112,7 +112,7 @@ func NewCDF(instance *instance.Instance, version string, data []byte) (mapper.Ca
 	//
 	// if bank0 has any ARM code then it will start at offset 0x08. first eight
 	// bytes are the ARM header
-	cart.arm = arm.NewARM(cart.version.mamcr, cart.version.mmap, cart.instance.Prefs.ARM, cart.state.static, cart)
+	cart.arm = arm.NewARM(cart.version.mmap, cart.instance.Prefs.ARM, cart.state.static, cart)
 
 	return cart, nil
 }
@@ -157,7 +157,7 @@ func (cart *cdf) Plumb() {
 
 // Plumb implements the mapper.CartMapper interface.
 func (cart *cdf) PlumbFromDifferentEmulation() {
-	cart.arm = arm.NewARM(cart.version.mamcr, cart.version.mmap, cart.instance.Prefs.ARM, cart.state.static, cart)
+	cart.arm = arm.NewARM(cart.version.mmap, cart.instance.Prefs.ARM, cart.state.static, cart)
 }
 
 // Reset implements the mapper.CartMapper interface.

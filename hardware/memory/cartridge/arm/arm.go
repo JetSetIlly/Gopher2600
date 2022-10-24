@@ -264,7 +264,7 @@ type ARM struct {
 }
 
 // NewARM is the preferred method of initialisation for the ARM type.
-func NewARM(preferredMAMCR MAMCR, mmap architecture.Map, prefs *preferences.ARMPreferences, mem SharedMemory, hook CartridgeHook) *ARM {
+func NewARM(mmap architecture.Map, prefs *preferences.ARMPreferences, mem SharedMemory, hook CartridgeHook) *ARM {
 	arm := &ARM{
 		prefs:        prefs,
 		mmap:         mmap,
@@ -292,7 +292,7 @@ func NewARM(preferredMAMCR MAMCR, mmap architecture.Map, prefs *preferences.ARMP
 		panic(fmt.Sprintf("unhandled ARM architecture: cannot set %s", arm.mmap.ARMArchitecture))
 	}
 
-	arm.state.mam = newMam(arm.prefs, arm.mmap, preferredMAMCR)
+	arm.state.mam = newMam(arm.prefs, arm.mmap)
 	if arm.mmap.HasMAM {
 		arm.state.peripherals = append(arm.state.peripherals, arm.state.mam)
 		arm.state.peripheralsMemory = append(arm.state.peripheralsMemory, arm.state.mam)
