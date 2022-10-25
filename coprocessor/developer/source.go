@@ -659,8 +659,10 @@ func (src *Source) addStubEntries() {
 			}
 
 			if addFunction {
-				src.Functions[stubFn.Name] = stubFn
-				src.FunctionNames = append(src.FunctionNames, stubFn.Name)
+				if _, ok := src.Functions[stubFn.Name]; !ok {
+					src.Functions[stubFn.Name] = stubFn
+					src.FunctionNames = append(src.FunctionNames, stubFn.Name)
+				}
 			}
 		}
 	}
@@ -735,7 +737,7 @@ func readSourceFile(filename string, pathToROM_nosymlinks string) (*SourceFile, 
 			File:         &fl,
 			LineNumber:   i + 1,
 			Function:     &SourceFunction{Name: UnknownFunction},
-			PlainContent: strings.TrimSpace(s),
+			PlainContent: s,
 		}
 		fl.Lines = append(fl.Lines, l)
 		fp.parseLine(l)
