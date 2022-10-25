@@ -65,6 +65,9 @@ type Source struct {
 	Functions     map[string]*SourceFunction
 	FunctionNames []string
 
+	// best guess at what the entry function is the program
+	EntryFunction *SourceFunction
+
 	// special purpose line used to collate instructions in entry function in
 	// one place. the actual entry function is in the Functions map as normal,
 	// under the name given in "const entryFunction"
@@ -473,6 +476,9 @@ func NewSource(romFile string, cart mapper.CartCoProc, elfFile string) (*Source,
 
 							// associate the address with the workingSourceLine
 							src.linesByAddress[addr] = workingSourceLine
+
+							// source file for this source line one executable instruction
+							workingSourceLine.File.HasExecutableLines = true
 						}
 					}
 				}
@@ -561,6 +567,18 @@ func NewSource(romFile string, cart mapper.CartCoProc, elfFile string) (*Source,
 
 	// sorted functions
 	sort.Sort(src.SortedGlobals)
+
+	// best guess at the entry function
+	if fn, ok := src.Functions["main"]; ok {
+		src.EntryFunction = fn
+	} else {
+		for _, ln := range src.SortedLines.Lines {
+			if len(ln.Disassembly) > 0 {
+				src.EntryFunction = ln.Function
+				break
+			}
+		}
+	}
 
 	// log summary
 	logger.Logf("dwarf", "identified %d functions in %d compile units", len(src.Functions), len(src.compileUnits))

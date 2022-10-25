@@ -25,6 +25,10 @@ type SourceFile struct {
 
 	// the source file has at least one global variable if HasGlobals is true
 	HasGlobals bool
+
+	// the source file has at least one executable line of source code if
+	// HasExecutableLines is true
+	HasExecutableLines bool
 }
 
 // SourceDisasm is a single disassembled intruction from the ELF binary. Not to

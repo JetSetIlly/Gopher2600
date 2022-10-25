@@ -180,18 +180,10 @@ func (win *winCoProcSource) draw() {
 		}
 
 		if win.firstOpen {
-			// assume source entry point is a function called "main"
-			if m, ok := src.Functions["main"]; ok {
-				win.scrollToFile = m.DeclLine.File.Filename
-				win.selectedLine.single(m.DeclLine.LineNumber)
-				win.scrollTo = true
-			} else {
-				// if main does not exists then open at the first file in the list
-				if len(src.Filenames) > 0 {
-					win.scrollToFile = src.Filenames[0]
-					win.selectedLine.single(0)
-				}
-			}
+			fn := src.EntryFunction
+			win.scrollToFile = fn.DeclLine.File.Filename
+			win.selectedLine.single(fn.DeclLine.LineNumber)
+			win.scrollTo = true
 
 			win.firstOpen = false
 		}
@@ -208,13 +200,15 @@ func (win *winCoProcSource) draw() {
 		imgui.PushItemWidth(imgui.ContentRegionAvail().X)
 		if imgui.BeginComboV("##selectedFile", win.selectedFile.ShortFilename, imgui.ComboFlagsHeightRegular) {
 			for _, fn := range src.Filenames {
-				if imgui.Selectable(src.Files[fn].ShortFilename) {
-					win.selectedFile = src.Files[fn]
-				}
+				if src.Files[fn].HasExecutableLines {
+					if imgui.Selectable(src.Files[fn].ShortFilename) {
+						win.selectedFile = src.Files[fn]
+					}
 
-				// set scroll on the first frame that the combo is open
-				if !win.selectedFileComboOpen && fn == win.selectedFile.Filename {
-					imgui.SetScrollHereY(0.0)
+					// set scroll on the first frame that the combo is open
+					if !win.selectedFileComboOpen && fn == win.selectedFile.Filename {
+						imgui.SetScrollHereY(0.0)
+					}
 				}
 			}
 
