@@ -20,11 +20,11 @@ import (
 )
 
 func (arm *ARM) illegalAccess(event string, addr uint32) {
-	logger.Logf("ARM7", "%s: unrecognised address %08x (PC: %08x)", event, addr, arm.state.executingPC)
+	logger.Logf("ARM7", "%s: unrecognised address %08x (PC: %08x)", event, addr, arm.state.instructionPC)
 	if arm.dev == nil {
 		return
 	}
-	log := arm.dev.IllegalAccess(event, arm.state.executingPC, addr)
+	log := arm.dev.IllegalAccess(event, arm.state.instructionPC, addr)
 	if log == "" {
 		return
 	}
@@ -33,11 +33,11 @@ func (arm *ARM) illegalAccess(event string, addr uint32) {
 
 // nullAccess is a special condition of illegalAccess()
 func (arm *ARM) nullAccess(event string, addr uint32) {
-	logger.Logf("ARM7", "%s: probable null pointer dereference of %08x (PC: %08x)", event, addr, arm.state.executingPC)
+	logger.Logf("ARM7", "%s: probable null pointer dereference of %08x (PC: %08x)", event, addr, arm.state.instructionPC)
 	if arm.dev == nil {
 		return
 	}
-	log := arm.dev.NullAccess(event, arm.state.executingPC, addr)
+	log := arm.dev.NullAccess(event, arm.state.instructionPC, addr)
 	if log == "" {
 		return
 	}

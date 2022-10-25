@@ -18,7 +18,6 @@ package developer
 import (
 	"debug/dwarf"
 	"debug/elf"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"path/filepath"
@@ -668,43 +667,6 @@ func (src *Source) addStubEntries() {
 		Function: entryFn,
 	}
 	src.linesByAddress[0] = src.entryLine
-}
-
-// find source line for program counter. shouldn't be called too often because
-// it's expensive.
-//
-// the src.LinesByAddress is an alternative source of this information but this
-// function is good in cases where LinesByAddress won't have been initialised
-// yet.
-func (src *Source) findSourceLine(addr uint32) (*SourceLine, error) {
-	for _, e := range src.compileUnits {
-		r, err := src.dwrf.LineReader(e.unit)
-		if err != nil {
-			return nil, err
-		}
-
-		var entry dwarf.LineEntry
-
-		err = r.SeekPC(uint64(addr), &entry)
-		if err != nil {
-			if err == dwarf.ErrUnknownPC {
-				// not in this compile unit
-				continue // for loop
-			}
-			if err == io.EOF {
-				return nil, nil
-			}
-			return nil, err
-		}
-
-		if src.Files[entry.File.Name] == nil {
-			return nil, fmt.Errorf("%s not in list of files", entry.File.Name)
-		}
-
-		return src.Files[entry.File.Name].Lines[entry.Line-1], nil
-	}
-
-	return nil, nil
 }
 
 func (src *Source) newFrame() {

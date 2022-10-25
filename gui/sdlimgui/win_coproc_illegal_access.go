@@ -130,22 +130,6 @@ func (win *winCoProcIllegalAccess) draw() {
 
 			// source on tooltip
 			imguiTooltip(func() {
-				if win.showSrcInTooltip && lg.SrcLine != nil {
-					imgui.Text(lg.SrcLine.File.ShortFilename)
-					imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLineNumber)
-					imgui.Text(fmt.Sprintf("Line: %d", lg.SrcLine.LineNumber))
-					imgui.PopStyleColor()
-
-					imgui.Spacing()
-					imgui.Separator()
-					imgui.Spacing()
-					displaySourceFragments(lg.SrcLine, win.img.cols, true)
-
-					imgui.Spacing()
-					imgui.Separator()
-					imgui.Spacing()
-				}
-
 				imgui.Text("Executing PC:")
 				imgui.SameLine()
 				imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcIllegalAccessAddress)
@@ -163,6 +147,27 @@ func (win *winCoProcIllegalAccess) draw() {
 				imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcIllegalAccessFrequency)
 				imgui.Text(fmt.Sprintf("%d", lg.Count))
 				imgui.PopStyleColor()
+
+				if win.showSrcInTooltip {
+					imgui.Spacing()
+					imgui.Separator()
+					imgui.Spacing()
+
+					if lg.SrcLine != nil {
+						imgui.Text(lg.SrcLine.File.ShortFilename)
+						imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLineNumber)
+						imgui.Text(fmt.Sprintf("Line: %d", lg.SrcLine.LineNumber))
+						imgui.PopStyleColor()
+
+						imgui.Spacing()
+						imgui.Separator()
+						imgui.Spacing()
+
+						displaySourceFragments(lg.SrcLine, win.img.cols, true)
+					} else {
+						imgui.Text("no source for this instruction")
+					}
+				}
 			}, true)
 
 			// open source window on click

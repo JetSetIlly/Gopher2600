@@ -88,8 +88,11 @@ func NewDeveloper(romFile string, cart mapper.CartCoProc, tv TV, elfFile string)
 	if dev.source != nil {
 		dev.source.SortedLines.SortByLineAndFunction(false)
 		dev.source.SortedFunctions.SortByFunction(false)
-		dev.cart.SetDeveloper(dev)
 	}
+
+	// we always set the devloper for the cartridge even if we have no source.
+	// some developer functions don't require source code to be useful
+	dev.cart.SetDeveloper(dev)
 
 	return dev
 }
@@ -100,42 +103,30 @@ const (
 	UnknownSourceLine = "<unknown source line>"
 )
 
-// Enable or disable the CartCoProcDeveloper interface.
-func (dev *Developer) Disable(disable bool) {
+// DisableExpensive prevents the computationaly expensive developer functions
+// from running.
+func (dev *Developer) DisableExpensive(disable bool) {
 	dev.disabled = disable
 }
 
 // IllegalAccess implements the CartCoProcDeveloper interface.
 func (dev *Developer) NullAccess(event string, pc uint32, addr uint32) string {
-	if dev.disabled {
-		return ""
-	}
 	return dev.logAccess(event, pc, addr, true)
 }
 
 // IllegalAccess implements the CartCoProcDeveloper interface.
 func (dev *Developer) IllegalAccess(event string, pc uint32, addr uint32) string {
-	if dev.disabled {
-		return ""
-	}
 	return dev.logAccess(event, pc, addr, false)
 }
 
 // IllegalAccess implements the CartCoProcDeveloper interface.
 func (dev *Developer) StackCollision(pc uint32, addr uint32) string {
-	if dev.disabled {
-		return ""
-	}
 	dev.illegalAccess.HasStackCollision = true
 	return dev.logAccess("Stack Collision", pc, addr, false)
 }
 
 // VariableMemtop implements the CartCoProcDeveloper interface.
 func (dev *Developer) VariableMemtop() uint32 {
-	if dev.disabled {
-		return 0
-	}
-
 	dev.sourceLock.Lock()
 	defer dev.sourceLock.Unlock()
 
@@ -187,13 +178,7 @@ func (dev *Developer) logAccess(event string, pc uint32, addr uint32, isNullAcce
 		// we always log illegal accesses even if we don't have any source
 		// information
 		if dev.source != nil {
-			var err error
-
-			e.SrcLine, err = dev.source.findSourceLine(pc)
-			if err != nil {
-				logger.Logf("developer", "%v", err)
-				return ""
-			}
+			e.SrcLine = dev.source.linesByAddress[uint64(pc)]
 
 			// inidcate that the source line has been responsble for an illegal access
 			if e.SrcLine != nil {

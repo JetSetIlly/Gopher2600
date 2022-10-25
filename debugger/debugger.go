@@ -509,7 +509,7 @@ func (dbg *Debugger) setStateQuiet(state govern.State, quiet bool) {
 		// the rewind state. note that they are enabled when entering another
 		// state and also at the beginning of catch-up
 		if dbg.CoProcDev != nil {
-			dbg.CoProcDev.Disable(true)
+			dbg.CoProcDev.DisableExpensive(true)
 		}
 
 		// coprocessor disassembly is an inherently slow operation particuarly
@@ -526,7 +526,7 @@ func (dbg *Debugger) setStateQuiet(state govern.State, quiet bool) {
 		// note that in the event that a catch-up loop is run, the dev features
 		// will already have been enabled
 		if dbg.CoProcDev != nil {
-			dbg.CoProcDev.Disable(false)
+			dbg.CoProcDev.DisableExpensive(false)
 		}
 
 		// uninhibit coprocessor disassembly
