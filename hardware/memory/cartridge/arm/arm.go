@@ -803,23 +803,30 @@ func (arm *ARM) run() (float32, error) {
 
 		// check stack pointer before iterating loop again
 		if arm.dev != nil && stackPointerBeforeExecution != arm.state.registers[rSP] {
-			if !arm.stackHasCollided && arm.state.registers[rSP] <= arm.variableMemtop {
-				event := "Stack"
-				logger.Logf("ARM7", "%s: collision with program memory (%08x)", event, arm.state.registers[rSP])
+			if !arm.stackHasCollided {
+				// check if stack point and memtop are in the same memory block
+				sm, _ := arm.mem.MapAddress(arm.state.registers[rSP], true)
+				vm, _ := arm.mem.MapAddress(arm.variableMemtop, true)
 
-				log := arm.dev.StackCollision(arm.state.executingPC, arm.state.registers[rSP])
-				if log != "" {
-					logger.Logf("ARM7", "%s: %s", event, log)
+				// check if stack pointer is below the top of variable memory
+				if sm == vm && arm.state.registers[rSP] <= arm.variableMemtop {
+					event := "Stack"
+					logger.Logf("ARM7", "%s: collision with program memory (%08x)", event, arm.state.registers[rSP])
+
+					log := arm.dev.StackCollision(arm.state.executingPC, arm.state.registers[rSP])
+					if log != "" {
+						logger.Logf("ARM7", "%s: %s", event, log)
+					}
+
+					if arm.abortOnStackCollision {
+						logger.Logf("ARM7", "aborting thumb program early")
+						break
+					}
+
+					// set stackHasCollided flag. this means that memory accesses
+					// will no longer be checked for legality
+					arm.stackHasCollided = true
 				}
-
-				if arm.abortOnStackCollision {
-					logger.Logf("ARM7", "aborting thumb program early")
-					break
-				}
-
-				// set stackHasCollided flag. this means that memory accesses
-				// will no longer be checked for legality
-				arm.stackHasCollided = true
 			}
 		}
 
