@@ -191,9 +191,9 @@ func NewSource(romFile string, cart mapper.CartCoProc, elfFile string) (*Source,
 	var executableSectionFound bool
 
 	// get executable origin for non-relocatable cartridges
-	if _, ok := cart.(mapper.CartCoProcNonRelocatable); ok {
-		executableOrigin = 0x28021200
-	}
+	// if c, ok := cart.(mapper.CartCoProcNonRelocatable); ok {
+	// 	executableOrigin = uint64(c.ExecutableOrigin())
+	// }
 
 	// disassemble every word in the ELF file
 	//

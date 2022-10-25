@@ -240,7 +240,7 @@ func (cart *Ace) SetDeveloper(dev mapper.CartCoProcDeveloper) {
 
 // ExecutableOrigin implements the mapper.CartCoProcNonRelocatable interface.
 func (cart *Ace) ExecutableOrigin() uint32 {
-	return 0x28020200
+	return cart.mem.resetPC
 }
 
 // CoProcState implements the mapper.CartCoProc interface.
