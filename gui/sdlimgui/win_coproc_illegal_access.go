@@ -149,23 +149,28 @@ func (win *winCoProcIllegalAccess) draw() {
 				imgui.PopStyleColor()
 
 				if win.showSrcInTooltip {
-					imgui.Spacing()
-					imgui.Separator()
-					imgui.Spacing()
-
 					if lg.SrcLine != nil {
-						imgui.Text(lg.SrcLine.File.ShortFilename)
-						imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLineNumber)
-						imgui.Text(fmt.Sprintf("Line: %d", lg.SrcLine.LineNumber))
-						imgui.PopStyleColor()
-
 						imgui.Spacing()
 						imgui.Separator()
 						imgui.Spacing()
 
-						displaySourceFragments(lg.SrcLine, win.img.cols, true)
+						win.img.drawFilenameAndLineNumber(lg.SrcLine.File.Filename, lg.SrcLine.LineNumber, -1)
+
+						imgui.Spacing()
+						imgui.Separator()
+						imgui.Spacing()
+						win.img.drawSourceLine(lg.SrcLine, true)
+						if len(lg.SrcLine.Disassembly) > 0 {
+							imgui.Spacing()
+							imgui.Separator()
+							imgui.Spacing()
+							win.img.drawDisasmForCoProc(lg.SrcLine.Disassembly, lg.SrcLine, false)
+						}
 					} else {
-						imgui.Text("no source for this instruction")
+						imgui.Spacing()
+						imgui.Separator()
+						imgui.Spacing()
+						imgui.Text("No source for this instruction")
 					}
 				}
 			}, true)

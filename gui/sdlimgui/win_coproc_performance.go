@@ -41,7 +41,7 @@ type winCoProcPerformance struct {
 	img *SdlImgui
 
 	// source shown in tooltip
-	showSrcAsmInTooltip bool
+	showTooltip bool
 
 	// which kernel to focus on
 	kernelFocus         developer.KernelVCS
@@ -111,10 +111,10 @@ func (tv *coProcPerformanceTV) NewFrame(_ television.FrameInfo) error {
 
 func newWinCoProcPerformance(img *SdlImgui) (window, error) {
 	win := &winCoProcPerformance{
-		img:                 img,
-		showSrcAsmInTooltip: true,
-		kernelFocus:         developer.KernelAny,
-		percentileFigures:   true,
+		img:               img,
+		showTooltip:       true,
+		kernelFocus:       developer.KernelAny,
+		percentileFigures: true,
 	}
 
 	win.tv.initialise(img)
@@ -268,7 +268,7 @@ func (win *winCoProcPerformance) draw() {
 
 			// scale statistics to function is in drawFunctionFilter()
 			imgui.Spacing()
-			imgui.Checkbox("Show Source in Tooltip", &win.showSrcAsmInTooltip)
+			imgui.Checkbox("Show Tooltip", &win.showTooltip)
 
 			// reset statistics
 			if win.img.dbg.State() == govern.Paused {
@@ -516,11 +516,8 @@ func (win *winCoProcPerformance) drawFunctions(src *developer.Source) {
 		optimisedWarning := win.cumulative && fn.OptimisedCallStack
 
 		// tooltip
-		if isStub {
-			imguiTooltipSimple("Function has no underlying source code")
-		} else {
-			win.tooltip(fn.FlatStats.Overall.OverSource, fn.DeclLine, false)
-		}
+		win.tooltip(fn.FlatStats.Overall.OverSource, fn, fn.DeclLine, false)
+
 		if optimisedWarning {
 			imguiTooltip(func() {
 				imgui.Spacing()
@@ -733,7 +730,7 @@ func (win *winCoProcPerformance) drawSourceLines(src *developer.Source) {
 		if isStub {
 			imguiTooltipSimple(fmt.Sprintf("This entry represent all lines of code in %s", ln.Function.Name))
 		} else {
-			win.tooltip(ln.Stats.Overall.OverSource, ln, true)
+			win.tooltip(ln.Stats.Overall.OverSource, ln.Function, ln, true)
 		}
 
 		// open source window on click
@@ -752,7 +749,7 @@ func (win *winCoProcPerformance) drawSourceLines(src *developer.Source) {
 		imgui.PopStyleColor()
 
 		imgui.TableNextColumn()
-		displaySourceFragments(ln, win.img.cols, true)
+		win.img.drawSourceLine(ln, true)
 
 		imgui.TableNextColumn()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLoad)
@@ -960,9 +957,9 @@ thean to the program as a whole.`)
 
 		// source on tooltip
 		if win.functionTabScale {
-			win.tooltip(ln.Stats.Overall.OverFunction, ln, true)
+			win.tooltip(ln.Stats.Overall.OverFunction, ln.Function, ln, true)
 		} else {
-			win.tooltip(ln.Stats.Overall.OverSource, ln, true)
+			win.tooltip(ln.Stats.Overall.OverSource, ln.Function, ln, true)
 		}
 
 		// open source window on click
@@ -972,7 +969,7 @@ thean to the program as a whole.`)
 		}
 
 		imgui.TableNextColumn()
-		displaySourceFragments(ln, win.img.cols, true)
+		win.img.drawSourceLine(ln, true)
 
 		imgui.TableNextColumn()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLoad)
@@ -1071,63 +1068,53 @@ thean to the program as a whole.`)
 	imgui.EndTable()
 }
 
-func (win *winCoProcPerformance) tooltip(load developer.Load, ln *developer.SourceLine, withAsm bool) {
-	imguiTooltip(func() {
-		imgui.Text(ln.File.ShortFilename)
-		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLineNumber)
-		imgui.Text(fmt.Sprintf("Line: %d", ln.LineNumber))
-		imgui.PopStyleColor()
+// single tooltip for all the differnt contexts in the performance window
+//
+// the load and fn arguments should never be nil. the ln argument can be nil if
+// the function is a stub function
+//
+// showDisasm should be false if the context doesn't require disassembly detail
+func (win *winCoProcPerformance) tooltip(load developer.Load,
+	fn *developer.SourceFunction, ln *developer.SourceLine,
+	showDisasm bool) {
 
-		if win.showSrcAsmInTooltip {
-			imgui.Spacing()
-			imgui.Separator()
-			imgui.Spacing()
-			displaySourceFragments(ln, win.img.cols, true)
+	if !win.showTooltip {
+		return
+	}
+
+	imguiTooltip(func() {
+		if ln == nil {
+			imgui.Text("Function has no source code")
+		} else {
+			win.img.drawFilenameAndLineNumber(ln.File.Filename, ln.LineNumber, -1)
 		}
 
-		if ln.Kernel != developer.KernelAny {
+		if fn.Kernel != developer.KernelAny {
 			imgui.Spacing()
 			imgui.Separator()
 			imgui.Spacing()
 
-			imgui.Text("Executed in: ")
-			if ln.Kernel == developer.KernelUnstable {
+			imgui.Text(fmt.Sprintf("%c Executed in: ", fonts.CoProcKernel))
+			if fn.Kernel == developer.KernelUnstable {
 				imgui.Text("   ROM Setup only")
 			} else {
-				if ln.Kernel&developer.KernelVBLANK == developer.KernelVBLANK {
+				if fn.Kernel&developer.KernelVBLANK == developer.KernelVBLANK {
 					imgui.Text("   VBLANK")
 				}
-				if ln.Kernel&developer.KernelScreen == developer.KernelScreen {
+				if fn.Kernel&developer.KernelScreen == developer.KernelScreen {
 					imgui.Text("   Visible Screen")
 				}
-				if ln.Kernel&developer.KernelOverscan == developer.KernelOverscan {
+				if fn.Kernel&developer.KernelOverscan == developer.KernelOverscan {
 					imgui.Text("   Overscan")
 				}
 			}
 		}
 
-		if win.showSrcAsmInTooltip && withAsm && len(ln.Disassembly) > 0 {
+		if showDisasm && len(ln.Disassembly) > 0 {
 			imgui.Spacing()
 			imgui.Separator()
 			imgui.Spacing()
-			imgui.BeginTable("##disasmTable", 3)
-			for _, d := range ln.Disassembly {
-				imgui.TableNextRow()
-
-				imgui.TableNextColumn()
-				imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmAddress)
-				imgui.Text(fmt.Sprintf("%08x", d.Addr))
-				imgui.PopStyleColor()
-
-				imgui.TableNextColumn()
-				imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceDisasmOpcode)
-				imgui.Text(d.Opcode())
-				imgui.PopStyleColor()
-
-				imgui.TableNextColumn()
-				imgui.Text(d.Instruction)
-			}
-			imgui.EndTable()
+			win.img.drawDisasmForCoProc(ln.Disassembly, ln, false)
 		}
 
 	}, true)
