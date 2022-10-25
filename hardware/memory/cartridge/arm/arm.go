@@ -27,6 +27,7 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/preferences"
 	"github.com/jetsetilly/gopher2600/logger"
+	"github.com/jetsetilly/gopher2600/test"
 )
 
 // register names.
@@ -267,6 +268,9 @@ type ARM struct {
 
 	// disabled breakpoint checking
 	breakpointsDisabled bool
+
+	// the io.Writer for fudge debugging output
+	fudge_writer *test.RingWriter
 }
 
 // NewARM is the preferred method of initialisation for the ARM type.
@@ -284,6 +288,14 @@ func NewARM(mmap architecture.Map, prefs *preferences.ARMPreferences, mem Shared
 		clklenFlash: 4.0,
 
 		state: &ARMState{},
+	}
+
+	var err error
+
+	// fudge disassembly writer
+	arm.fudge_writer, err = test.NewRingWriter(10485760) // 10MB
+	if err != nil {
+		logger.Logf("ARM7", "no fudge debugger: %s", err.Error())
 	}
 
 	// slow prefs update by 100ms
@@ -943,8 +955,8 @@ func (arm *ARM) stepARM7_M(opcode uint16, memIdx int) {
 
 	// if arm.state.fudge_disassembling {
 	// 	arm.state.fudge_disassembling = opcode != 0x4a7e
-	// 	if !arm.state.fudge_disassembling {
-	// 		fmt.Println("---------------------\n\n")
+	// 	if !arm.state.fudge_disassembling && arm.fudge_writer != nil {
+	// 		arm.fudge_writer.Write([]byte("---------------------\n\n"))
 	// 	}
 	// } else {
 	// 	arm.state.fudge_disassembling = arm.state.function32bitOpcode == 0xf858 && opcode == 0x3c5c
@@ -956,7 +968,9 @@ func (arm *ARM) stepARM7_M(opcode uint16, memIdx int) {
 	// if arm.state.executingPC == 0x280236ce {
 	// 	arm.state.fudge_disassembling = true
 	// 	defer func() {
-	// 		fmt.Println("---------------")
+	// 		if !arm.state.fudge_disassembling && arm.fudge_writer != nil {
+	// 			arm.fudge_writer.Write([]byte("---------------------\n\n"))
+	// 		}
 	// 		arm.state.fudge_disassembling = false
 	// 	}()
 	// }
@@ -965,35 +979,32 @@ func (arm *ARM) stepARM7_M(opcode uint16, memIdx int) {
 	// if arm.state.executingPC == 0x28024dcc {
 	// 	arm.state.fudge_disassembling = true
 	// 	defer func() {
-	// 		fmt.Println("---------------")
+	// 		if !arm.state.fudge_disassembling && arm.fudge_writer != nil {
+	// 			arm.fudge_writer.Write([]byte("---------------------\n\n"))
+	// 		}
 	// 		arm.state.fudge_disassembling = false
 	// 	}()
 	// }
 
-	// when the block condition below is true, a lot of debugging data
-	// will be printed to stdout. a good way of keeping this under
-	// control is to pipe the output to tail before redirecting to a
-	// file. For example:
-	//
-	// ./gopher2600 rom.bin | tail -c 10M > out
-	if arm.state.fudge_disassembling {
+	// when the condition below is true, disassembly is output to fudge_writer.
+	if arm.state.fudge_disassembling && arm.fudge_writer != nil {
 		if fudge_notExecuted {
-			fmt.Print("*** ")
+			arm.fudge_writer.Write([]byte("*** "))
 		}
 		if fudge_resolving32bitInstruction {
-			fmt.Printf("%08x %04x %04x :: %s\n", arm.state.instructionPC, arm.state.function32bitOpcode, opcode, arm.state.fudge_thumb2disassemble32bit)
-			fmt.Println(arm.String())
-			fmt.Println(arm.state.status.String())
-			fmt.Println("====================")
+			arm.fudge_writer.Write([]byte(fmt.Sprintf("%08x %04x %04x :: %s\n", arm.state.instructionPC, arm.state.function32bitOpcode, opcode, arm.state.fudge_thumb2disassemble32bit)))
+			arm.fudge_writer.Write([]byte(arm.String()))
+			arm.fudge_writer.Write([]byte(arm.state.status.String()))
+			arm.fudge_writer.Write([]byte("===================="))
 		} else if !arm.state.function32bit {
 			if arm.state.fudge_thumb2disassemble16bit != "" {
-				fmt.Printf("%08x %04x :: %s\n", arm.state.instructionPC, opcode, arm.state.fudge_thumb2disassemble16bit)
+				arm.fudge_writer.Write([]byte(fmt.Sprintf("%08x %04x :: %s\n", arm.state.instructionPC, opcode, arm.state.fudge_thumb2disassemble16bit)))
 			} else {
-				fmt.Printf("%08x %04x :: %s\n", arm.state.instructionPC, opcode, thumbDisassemble(opcode).String())
+				arm.fudge_writer.Write([]byte(fmt.Sprintf("%08x %04x :: %s\n", arm.state.instructionPC, opcode, thumbDisassemble(opcode).String())))
 			}
-			fmt.Println(arm.String())
-			fmt.Println(arm.state.status.String())
-			fmt.Println("====================")
+			arm.fudge_writer.Write([]byte(arm.String()))
+			arm.fudge_writer.Write([]byte(arm.state.status.String()))
+			arm.fudge_writer.Write([]byte("===================="))
 		}
 	}
 
