@@ -587,7 +587,7 @@ func (src *Source) addStubEntries() {
 		memtop uint64
 	}
 
-	var fns []fn
+	var symbolTableFunctions []fn
 
 	// the functions from the symbol table
 	for _, s := range src.syms {
@@ -596,18 +596,23 @@ func (src *Source) addStubEntries() {
 			// align address
 			// TODO: this is a bit of ARM specific knowledge that should be removed
 			a := uint64(s.Value & 0xfffffffe)
-			fns = append(fns, fn{
+			symbolTableFunctions = append(symbolTableFunctions, fn{
 				name:   s.Name,
 				origin: a,
-				memtop: a + uint64(s.Size),
+				memtop: a + uint64(s.Size) - 1,
 			})
 		}
 	}
 
 	// proces all functions, skipping any that we already know about from the
 	// DWARF data
-	for _, fn := range fns {
+	for _, fn := range symbolTableFunctions {
 		if _, ok := src.Functions[fn.name]; !ok {
+			// chop off suffix from symbol table name if there is one. not sure
+			// about this but it neatens things up for the cases I've seen so
+			// far
+			fn.name = strings.Split(fn.name, ".")[0]
+
 			// the DeclLine field must definitely be nil for a stubFn function
 			stubFn := &SourceFunction{
 				Name:     fn.name,
@@ -615,43 +620,29 @@ func (src *Source) addStubEntries() {
 				DeclLine: nil,
 			}
 
+			// each address in the stub function shares the same stub line
+			stubLn := &SourceLine{
+				Function: stubFn,
+			}
+
 			// add stub function to list of functions but not if the function
 			// covers an area that has already been seen
 			addFunction := true
 
-			// check that no instructions in the address range have been seen
-			// before
+			// process all addresses in range of origin and memtop, skipping
+			// any addresses that we already know about from the DWARF data
 			for a := fn.origin; a <= fn.memtop; a++ {
-				if _, ok := src.linesByAddress[a]; ok {
-					// this address has been seen, indicate that the function
-					// should not be added
+				if _, ok := src.linesByAddress[a]; !ok {
+					src.linesByAddress[a] = stubLn
+				} else {
 					addFunction = false
 					break
 				}
 			}
 
-			// proceed to add function
 			if addFunction {
-				// each address in the stub function shares the same stub line
-				stubLn := &SourceLine{
-					Function: stubFn,
-				}
-
-				// process all addresses in range of origin and memtop, skipping
-				// any addresses that we already know about from the DWARF data
-				for a := fn.origin; a <= fn.memtop; a++ {
-					if _, ok := src.linesByAddress[a]; !ok {
-						src.linesByAddress[a] = stubLn
-					} else {
-						addFunction = false
-						break
-					}
-				}
-
 				src.Functions[stubFn.Name] = stubFn
 				src.FunctionNames = append(src.FunctionNames, stubFn.Name)
-			} else {
-				logger.Logf("dwarf", "dropping stub function %s", stubFn.Name)
 			}
 		}
 	}
