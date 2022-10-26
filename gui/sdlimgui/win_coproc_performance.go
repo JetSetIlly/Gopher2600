@@ -1084,7 +1084,12 @@ func (win *winCoProcPerformance) tooltip(load developer.Load,
 
 	imguiTooltip(func() {
 		if ln == nil {
-			imgui.Text("Function has no source code")
+			if fn.Name == developer.DriverFunctionName {
+				imgui.Text("Instructions that are executed")
+				imgui.Text("outside of the ROM and in the driver")
+			} else {
+				imgui.Text("Function has no source code")
+			}
 		} else {
 			win.img.drawFilenameAndLineNumber(ln.File.Filename, ln.LineNumber, -1)
 		}

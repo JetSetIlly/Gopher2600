@@ -60,7 +60,7 @@ func (dev *Developer) StartProfiling() {
 	dev.source.CallStack.functions = dev.source.CallStack.functions[:0]
 
 	// first entry in the callstack is always the entry function
-	dev.source.CallStack.functions = append(dev.source.CallStack.functions, dev.source.Functions[entryFunction])
+	dev.source.CallStack.functions = append(dev.source.CallStack.functions, dev.source.Functions[DriverFunctionName])
 }
 
 // ProcessProfiling implements the mapper.CartCoProcDeveloper interface.
@@ -87,7 +87,7 @@ func (dev *Developer) profileProcess() {
 			// the entry function
 			ln, ok := dev.source.linesByAddress[uint64(p.Addr)]
 			if !ok {
-				ln = dev.source.entryLine
+				ln = dev.source.driverSourceLine
 				dev.source.linesByAddress[uint64(p.Addr)] = ln
 			}
 

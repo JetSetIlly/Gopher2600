@@ -65,13 +65,17 @@ type Source struct {
 	Functions     map[string]*SourceFunction
 	FunctionNames []string
 
-	// best guess at what the entry function is the program
-	EntryFunction *SourceFunction
+	// best guess at what the "main" function is in the program. very often
+	// this function will be called "main" and will be easy to discern but
+	// sometimes it is named something else and we must figure out as best we
+	// can which function it is
+	MainFunction *SourceFunction
 
-	// special purpose line used to collate instructions in entry function in
-	// one place. the actual entry function is in the Functions map as normal,
-	// under the name given in "const entryFunction"
-	entryLine *SourceLine
+	// special purpose line used to collate instructions that are outside the
+	// loaded ROM and are very likely instructions handled by the "driver". the
+	// actual driver function is in the Functions map as normal, under the name
+	// given in "const driverFunction"
+	driverSourceLine *SourceLine
 
 	// sorted list of every function in all compile unit
 	SortedFunctions SortedFunctions
@@ -570,11 +574,11 @@ func NewSource(romFile string, cart mapper.CartCoProc, elfFile string) (*Source,
 
 	// best guess at the entry function
 	if fn, ok := src.Functions["main"]; ok {
-		src.EntryFunction = fn
+		src.MainFunction = fn
 	} else {
 		for _, ln := range src.SortedLines.Lines {
 			if len(ln.Disassembly) > 0 {
-				src.EntryFunction = ln.Function
+				src.MainFunction = ln.Function
 				break
 			}
 		}
@@ -592,9 +596,9 @@ func NewSource(romFile string, cart mapper.CartCoProc, elfFile string) (*Source,
 	return src, nil
 }
 
-// name of entry function into the program. any executed address that is no
-// recognised (see linesByFunction) will assume to be in this group
-const entryFunction = "<entry>"
+// DriverFunctionName is the name given to a function that represents all the
+// instructions that fall outside of the ROM and are in fact in the "driver".
+const DriverFunctionName = "<driver>"
 
 // add function stubs for functions without DWARF data. also adds stub line
 // entries for all addresses in the stub function
@@ -667,17 +671,17 @@ func (src *Source) addStubEntries() {
 		}
 	}
 
-	// add entry function
-	entryFn := &SourceFunction{
-		Name:     entryFunction,
+	// add driver function
+	driverFn := &SourceFunction{
+		Name:     DriverFunctionName,
 		DeclLine: nil,
 	}
-	src.Functions[entryFunction] = entryFn
-	src.FunctionNames = append(src.FunctionNames, entryFunction)
-	src.entryLine = &SourceLine{
-		Function: entryFn,
+	src.Functions[DriverFunctionName] = driverFn
+	src.FunctionNames = append(src.FunctionNames, DriverFunctionName)
+	src.driverSourceLine = &SourceLine{
+		Function: driverFn,
 	}
-	src.linesByAddress[0] = src.entryLine
+	src.linesByAddress[0] = src.driverSourceLine
 }
 
 func (src *Source) newFrame() {

@@ -180,7 +180,7 @@ func (win *winCoProcSource) draw() {
 		}
 
 		if win.firstOpen {
-			fn := src.EntryFunction
+			fn := src.MainFunction
 			win.scrollToFile = fn.DeclLine.File.Filename
 			win.selectedLine.single(fn.DeclLine.LineNumber)
 			win.scrollTo = true
