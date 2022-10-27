@@ -42,6 +42,10 @@ type Developer struct {
 	illegalAccess     IllegalAccess
 	illegalAccessLock sync.Mutex
 
+	// the current yield information
+	yieldState     YieldState
+	yieldStateLock sync.Mutex
+
 	framesSinceLastUpdate int
 
 	// profiler instance. measures cycles counts for executed address
@@ -206,26 +210,6 @@ func (dev *Developer) HasSource() bool {
 	dev.sourceLock.Lock()
 	defer dev.sourceLock.Unlock()
 	return dev.source != nil
-}
-
-// BorrowSource will lock the source code structure for the durction of the
-// supplied function, which will be executed with the source code structure as
-// an argument.
-//
-// May return nil.
-func (dev *Developer) BorrowSource(f func(*Source)) {
-	dev.sourceLock.Lock()
-	defer dev.sourceLock.Unlock()
-	f(dev.source)
-}
-
-// BorrowIllegalAccess will lock the illegal access log for the duration of the
-// supplied fucntion, which will be executed with the illegal access log as an
-// argument.
-func (dev *Developer) BorrowIllegalAccess(f func(*IllegalAccess)) {
-	dev.illegalAccessLock.Lock()
-	defer dev.illegalAccessLock.Unlock()
-	f(&dev.illegalAccess)
 }
 
 const maxWaitUpdateTime = 60 // in frames

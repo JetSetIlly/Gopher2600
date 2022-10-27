@@ -35,6 +35,9 @@ type Ace struct {
 	arm     *arm.ARM
 	mem     *aceMemory
 
+	// the hook that handles cartridge breakpoints
+	breakpointHook mapper.CartBreakpointHook
+
 	// parallelARM is true whenever the address bus is not a cartridge address (ie.
 	// a TIA or RIOT address). this means that the arm is running unhindered
 	// and will not have yielded for that colour clock
@@ -165,36 +168,49 @@ func (cart *Ace) Listen(addr uint16, data uint8) {
 	// then the ARM is running in parallel (ie. no synchronisation)
 	cart.parallelARM = (addr&memorymap.OriginCart != memorymap.OriginCart)
 
+	// start profiling before the run sequence
 	if cart.dev != nil {
 		cart.dev.StartProfiling()
 		defer cart.dev.ProcessProfiling()
 	}
 
-	// from dpc example:
-	// reading of addresses is
-	//		ldr	r2, [r1, #16] (opcode 690a)
-	// r1 contains 0x40020c00 which is an address in gpioA
-	//
-	// reading of data is
-	//		ldr.w	r0, [lr, #16] (opcode f8de 0010)
-	// lr contains 0x40020800 which is an address in gpioB
-
 	// set data first and continue once. this seems to be necessary to allow
-	// the PlusROM exit rountine to work correctly
+	// the PlusROM exit routine to work correctly
 	cart.mem.gpioB[toArm_data] = data
+
 	cart.arm.Run()
+	for cart.arm.BreakpointHasTriggered() {
+		cart.breakpointHook.CartReachedBreakpoint()
+		cart.arm.Run()
+	}
 
 	// set address and continue x4
 	cart.mem.gpioA[toArm_address] = uint8(addr)
 	cart.mem.gpioA[toArm_address+1] = uint8(addr >> 8)
-	cart.arm.Run()
-	cart.arm.Run()
-	cart.arm.Run()
-	cart.arm.Run()
 
-	// we must understand that the above synchronisation is almost certainly
-	// "wrong" in the general sense. it works for the examples seen so far but
-	// that means nothing
+	cart.arm.Run()
+	for cart.arm.BreakpointHasTriggered() {
+		cart.breakpointHook.CartReachedBreakpoint()
+		cart.arm.Run()
+	}
+
+	cart.arm.Run()
+	for cart.arm.BreakpointHasTriggered() {
+		cart.breakpointHook.CartReachedBreakpoint()
+		cart.arm.Run()
+	}
+
+	cart.arm.Run()
+	for cart.arm.BreakpointHasTriggered() {
+		cart.breakpointHook.CartReachedBreakpoint()
+		cart.arm.Run()
+	}
+
+	cart.arm.Run()
+	for cart.arm.BreakpointHasTriggered() {
+		cart.breakpointHook.CartReachedBreakpoint()
+		cart.arm.Run()
+	}
 }
 
 // Step implements the mapper.CartMapper interface.
@@ -251,17 +267,12 @@ func (cart *Ace) CoProcState() mapper.CoProcState {
 	return mapper.CoProcStrongARMFeed
 }
 
-// BreakpointHasTriggered implements the mapper.CartCoProc interface.
-func (cart *Ace) BreakpointHasTriggered() bool {
-	return false
-}
-
-// ResumeAfterBreakpoint implements the mapper.CartCoProc interface.
-func (cart *Ace) ResumeAfterBreakpoint() error {
-	return nil
-}
-
 // BreakpointsDisable implements the mapper.CartCoProc interface.
 func (cart *Ace) BreakpointsDisable(disable bool) {
 	cart.arm.BreakpointsDisable(disable)
+}
+
+// BreakpointsHook implements the mapper.CartCoProc interface.
+func (cart *Ace) SetBreakpointHook(hook mapper.CartBreakpointHook) {
+	cart.breakpointHook = hook
 }

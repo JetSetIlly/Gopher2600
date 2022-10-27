@@ -340,17 +340,11 @@ func (cart *Elf) CoProcState() mapper.CoProcState {
 	return mapper.CoProcStrongARMFeed
 }
 
-// BreakpointHasTriggered implements the mapper.CartCoProc interface.
-func (cart *Elf) BreakpointHasTriggered() bool {
-	return false
-}
-
-// ResumeAfterBreakpoint implements the mapper.CartCoProc interface.
-func (cart *Elf) ResumeAfterBreakpoint() error {
-	return nil
-}
-
 // BreakpointsDisable implements the mapper.CartCoProc interface.
 func (cart *Elf) BreakpointsDisable(disable bool) {
 	cart.arm.BreakpointsDisable(disable)
+}
+
+// BreakpointsHook implements the mapper.CartCoProc interface.
+func (cart *Elf) SetBreakpointHook(hook mapper.CartBreakpointHook) {
 }

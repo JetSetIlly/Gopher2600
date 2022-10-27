@@ -53,6 +53,12 @@ const (
 	CoProcParallel
 )
 
+// CartBreakpointHook allows a cartridge to halt execution if the cartridge
+// coprocessor has reached a breakpoint
+type CartBreakpointHook interface {
+	CartReachedBreakpoint()
+}
+
 // CartCoProc is implemented by cartridge mappers that have a coprocessor that
 // functions independently from the VCS.
 type CartCoProc interface {
@@ -66,9 +72,8 @@ type CartCoProc interface {
 	CoProcState() CoProcState
 
 	// breakpoint control of coprocessor
-	BreakpointHasTriggered() bool
-	ResumeAfterBreakpoint() error
 	BreakpointsDisable(bool)
+	SetBreakpointHook(CartBreakpointHook)
 }
 
 // CartCoProcDWARF is implemented by cartridge mappers that want to supply
@@ -137,6 +142,11 @@ type CartCoProcDeveloper interface {
 	// can be many calls to profiling profiling for every call to start
 	// profiling
 	ProcessProfiling()
+
+	// OnYield is called whenever the ARM yields to the VCS. It communicates
+	// the PC of the most recent instruction and whether the yield is due to a
+	// breakpoint
+	OnYield(instructionPC uint32, breakpoint bool)
 }
 
 // CartCoProcDisasmSummary represents a summary of a coprocessor execution.

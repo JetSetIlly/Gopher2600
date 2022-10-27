@@ -137,8 +137,8 @@ type ARMState struct {
 
 	// 32bit instructions
 
-	function32bit       bool
-	function32bitOpcode uint16
+	function32bitDecoding bool
+	function32bitOpcode   uint16
 
 	// disassembly of 32bit thumb-2
 	// * temporary construct until thumb2Disassemble() is written
@@ -551,7 +551,7 @@ func (arm *ARM) SetInitialRegisters(args ...uint32) error {
 //
 // Returns the number of ARM cycles consumed and any errors.
 func (arm *ARM) Run() (float32, error) {
-	if !arm.state.yield && !arm.state.breakpoint {
+	if !arm.state.yield {
 		arm.resetRegisters()
 	}
 
@@ -573,7 +573,7 @@ func (arm *ARM) Run() (float32, error) {
 	}
 
 	// fill pipeline must happen after resetExecution()
-	if !arm.state.yield && !arm.state.breakpoint {
+	if !arm.state.yield {
 		err := arm.findProgramMemory()
 		if err != nil {
 			return 0, err
@@ -582,7 +582,7 @@ func (arm *ARM) Run() (float32, error) {
 		arm.state.registers[rPC] += 2
 	}
 
-	// reset yield flag
+	// reset yield and breakpoint flags
 	arm.state.yield = false
 	arm.state.breakpoint = false
 
@@ -842,20 +842,22 @@ func (arm *ARM) run() (float32, error) {
 			}
 		}
 
-		// abort if a watch has been triggered
-		if arm.state.yield {
-			if arm.state.function32bit {
-				panic("attempted to yield during 32bit instruction decoding")
+		// check breakpoints unless they are disabled. we also don't want to
+		// match an instructionPC if we're in the middle of decoding a 32bit
+		// instruction
+		if arm.dev != nil && !arm.breakpointsDisabled && !arm.state.function32bitDecoding {
+			if arm.dev.CheckBreakpoint(arm.state.instructionPC) {
+				arm.state.breakpoint = true
+				arm.state.yield = true
 			}
-			break
 		}
 
-		// check breakpoints
-		if arm.dev != nil && !arm.breakpointsDisabled {
-			if arm.dev.CheckBreakpoint(arm.state.registers[rPC]) {
-				arm.state.breakpoint = true
-				break
+		// check that yielding is okay and discontinue execution
+		if arm.state.yield {
+			if arm.state.function32bitDecoding {
+				panic("attempted to yield during 32bit instruction decoding")
 			}
+			arm.continueExecution = false
 		}
 	}
 
@@ -868,6 +870,11 @@ func (arm *ARM) run() (float32, error) {
 
 	if arm.executionError != nil {
 		return 0, curated.Errorf("ARM7: %v", arm.executionError)
+	}
+
+	// update yield information
+	if arm.dev != nil {
+		arm.dev.OnYield(arm.state.instructionPC, arm.state.breakpoint)
 	}
 
 	return arm.state.cyclesTotal, nil
@@ -889,11 +896,11 @@ func (arm *ARM) stepARM7_M(opcode uint16, memIdx int) {
 	// taking a note of whether this is a resolution of a 32bit
 	// instruction. we use this later during the fudge_disassembling
 	// printing
-	fudge_resolving32bitInstruction := arm.state.function32bit
+	fudge_resolving32bitInstruction := arm.state.function32bitDecoding
 
 	// process a 32 bit or 16 bit instruction as appropriate
-	if arm.state.function32bit {
-		arm.state.function32bit = false
+	if arm.state.function32bitDecoding {
+		arm.state.function32bitDecoding = false
 		f = arm.state.functionMap[memIdx]
 		if f == nil {
 			f = arm.decode32bitThumb2(arm.state.function32bitOpcode)
@@ -905,7 +912,7 @@ func (arm *ARM) stepARM7_M(opcode uint16, memIdx int) {
 		arm.state.instructionPC = arm.state.executingPC
 
 		if arm.is32BitThumb2(opcode) {
-			arm.state.function32bit = true
+			arm.state.function32bitDecoding = true
 			arm.state.function32bitOpcode = opcode
 
 			// we need something for the emulation to run. this is a
@@ -927,7 +934,7 @@ func (arm *ARM) stepARM7_M(opcode uint16, memIdx int) {
 	// new 32bit functions always execute
 	// if the opcode indicates that this is a 32bit thumb instruction
 	// then we need to resolve that regardless of any IT block
-	if arm.state.status.itMask != 0b0000 && !arm.state.function32bit {
+	if arm.state.status.itMask != 0b0000 && !arm.state.function32bitDecoding {
 		r := arm.state.status.condition(arm.state.status.itCond)
 
 		if r {
@@ -996,7 +1003,7 @@ func (arm *ARM) stepARM7_M(opcode uint16, memIdx int) {
 			arm.fudge_writer.Write([]byte(arm.String()))
 			arm.fudge_writer.Write([]byte(arm.state.status.String()))
 			arm.fudge_writer.Write([]byte("===================="))
-		} else if !arm.state.function32bit {
+		} else if !arm.state.function32bitDecoding {
 			if arm.state.fudge_thumb2disassemble16bit != "" {
 				arm.fudge_writer.Write([]byte(fmt.Sprintf("%08x %04x :: %s\n", arm.state.instructionPC, opcode, arm.state.fudge_thumb2disassemble16bit)))
 			} else {

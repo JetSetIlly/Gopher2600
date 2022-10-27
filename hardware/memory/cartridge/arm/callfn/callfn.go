@@ -71,18 +71,13 @@ const (
 // If CallFn is active then the the value to put on the data bus is also
 // returned. If CallFn is not active then the data bus value should be
 // determined in the normal way (most probably by reading the cartridge ROM).
-func (cf *CallFn) Check(addr uint16, noResume bool) (uint8, bool) {
+func (cf *CallFn) Check(addr uint16) (uint8, bool) {
 	if cf.IsActive() {
 		cf.phantomOnResume = !cf.phantomOnResume
 		if cf.phantomOnResume {
 			return nop, true
 		}
 		return 0x00, true
-	}
-
-	if noResume {
-		cf.resumeCount = 0
-		return 0, false
 	}
 
 	switch cf.resumeCount {

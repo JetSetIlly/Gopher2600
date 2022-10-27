@@ -847,6 +847,13 @@ func (dbg *Debugger) StartInPlayMode(filename string) error {
 	return nil
 }
 
+// CartReachedBreapoint implements the mapper.CartBreakpointHook interface
+func (dbg *Debugger) CartReachedBreakpoint() {
+	dbg.halting.cartridgeBreakpoint = true
+	dbg.continueEmulation = dbg.halting.check()
+	dbg.inputLoop(dbg.term, true)
+}
+
 func (dbg *Debugger) run() error {
 	// end script recording gracefully. this way we don't have to worry too
 	// hard about script scribes
@@ -1115,6 +1122,9 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) 
 	if dbg.CoProcDev != nil {
 		dbg.vcs.TV.AddFrameTrigger(dbg.CoProcDev)
 	}
+
+	// attach current debugger as the breakpoint hook for cartridge
+	dbg.vcs.Mem.Cart.SetBreakpointHook(dbg)
 
 	// make sure everything is reset after disassembly (including breakpoints, etc.)
 	dbg.reset(newCartridge)

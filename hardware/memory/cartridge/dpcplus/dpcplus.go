@@ -158,7 +158,7 @@ func (cart *dpcPlus) Reset() {
 
 // Read implements the mapper.CartMapper interface.
 func (cart *dpcPlus) Read(addr uint16, passive bool) (uint8, error) {
-	if b, ok := cart.state.callfn.Check(addr, cart.arm.BreakpointHasTriggered()); ok {
+	if b, ok := cart.state.callfn.Check(addr); ok {
 		return b, nil
 	}
 
@@ -925,22 +925,13 @@ func (cart *dpcPlus) CoProcState() mapper.CoProcState {
 	return mapper.CoProcIdle
 }
 
-// BreakpointHasTriggered implements the mapper.CartCoprocExecution interface.
-func (cart *dpcPlus) BreakpointHasTriggered() bool {
-	return cart.arm.BreakpointHasTriggered()
-}
-
-// ResumeAfterBreakpoint implements the mapper.CartCoprocExecution interface.
-func (cart *dpcPlus) ResumeAfterBreakpoint() error {
-	if cart.arm.BreakpointHasTriggered() {
-		return cart.runArm()
-	}
-	return nil
-}
-
 // BreakpointsDisable implements the mapper.CartCoprocExecution interface.
 func (cart *dpcPlus) BreakpointsDisable(disable bool) {
 	cart.arm.BreakpointsDisable(disable)
+}
+
+// BreakpointsHook implements the mapper.CartCoProc interface.
+func (cart *dpcPlus) SetBreakpointHook(hook mapper.CartBreakpointHook) {
 }
 
 func (cart *dpcPlus) runArm() error {

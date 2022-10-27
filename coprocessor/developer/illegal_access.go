@@ -46,3 +46,12 @@ type IllegalAccess struct {
 	// likely not be logged
 	HasStackCollision bool
 }
+
+// BorrowIllegalAccess will lock the illegal access log for the duration of the
+// supplied fucntion, which will be executed with the illegal access log as an
+// argument.
+func (dev *Developer) BorrowIllegalAccess(f func(*IllegalAccess)) {
+	dev.illegalAccessLock.Lock()
+	defer dev.illegalAccessLock.Unlock()
+	f(&dev.illegalAccess)
+}

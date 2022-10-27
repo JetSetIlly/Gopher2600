@@ -32,6 +32,11 @@ type haltCoordination struct {
 	// (via reset())
 	halt bool
 
+	// flag explicitely stating that the cartridge has encountered a
+	// breakpoint. set externally and the first thing to be checked by the
+	// check() function
+	cartridgeBreakpoint bool
+
 	// halt conditions
 	breakpoints *breakpoints
 	traps       *traps
@@ -71,13 +76,15 @@ func newHaltCoordination(dbg *Debugger) (*haltCoordination, error) {
 // reset halt condition.
 func (h *haltCoordination) reset() {
 	h.halt = false
+	h.cartridgeBreakpoint = false
 }
 
-// check for a halt condition and set the halt flag if found.
-func (h *haltCoordination) check() {
-	if h.dbg.vcs.Mem.Cart.BreakpointHasTriggered() {
+// check for a halt condition and set the halt flag if found. returns true if
+// emulation should continue and false if the emulation should halt
+func (h *haltCoordination) check() bool {
+	if h.cartridgeBreakpoint {
 		h.halt = true
-		return
+		return !h.halt
 	}
 
 	// we don't check for regular break/trap/wathes if there are volatileTraps in place
@@ -101,13 +108,15 @@ func (h *haltCoordination) check() {
 			h.halt = true
 		}
 
-		return
+		return !h.halt
 	}
 
 	// check volatile conditions
 	breakMessage := h.volatileBreakpoints.check()
 	trapMessage := h.volatileTraps.check()
 	h.halt = h.halt || breakMessage != "" || trapMessage != ""
+
+	return !h.halt
 }
 
 // returns false if a breakpoint or trap target has the notInPlaymode flag set

@@ -35,6 +35,9 @@ type cdf struct {
 	// additional CPU - used by some ROMs
 	arm *arm.ARM
 
+	// the hook that handles cartridge breakpoints
+	breakpointHook mapper.CartBreakpointHook
+
 	// cdf comes in several different versions
 	version version
 
@@ -178,7 +181,7 @@ const (
 
 // Read implements the mapper.CartMapper interface.
 func (cart *cdf) Read(addr uint16, passive bool) (uint8, error) {
-	if b, ok := cart.state.callfn.Check(addr, cart.arm.BreakpointHasTriggered()); ok {
+	if b, ok := cart.state.callfn.Check(addr); ok {
 		return b, nil
 	}
 
@@ -354,11 +357,28 @@ func (cart *cdf) Write(addr uint16, data uint8, passive bool, poke bool) error {
 			fallthrough
 		case 0xff:
 			if cart.dev != nil {
+				// StartProfiling() only at the start of the CALLFN.
+				// ProcessProfiling() won't happen until all cycles have been
+				// accounted for
+				//
+				// * maybe this should be different in the case of a breakpoint
+				// being triggered but I'm not sure yet
 				cart.dev.StartProfiling()
 			}
+
+			// call runArm() once and then check for breakpoints
 			err := cart.runArm()
 			if err != nil {
 				return err
+			}
+
+			// keep calling runArm() for as long as breakpoints are being triggered
+			for cart.arm.BreakpointHasTriggered() {
+				cart.breakpointHook.CartReachedBreakpoint()
+				err = cart.runArm()
+				if err != nil {
+					return err
+				}
 			}
 		}
 
@@ -644,22 +664,14 @@ func (cart *cdf) CoProcState() mapper.CoProcState {
 	return mapper.CoProcIdle
 }
 
-// BreakpointHasTriggered implements the mapper.CartCoProc interface.
-func (cart *cdf) BreakpointHasTriggered() bool {
-	return cart.arm.BreakpointHasTriggered()
-}
-
-// ResumeAfterBreakpoint implements the mapper.CartCoProc interface.
-func (cart *cdf) ResumeAfterBreakpoint() error {
-	if cart.arm.BreakpointHasTriggered() {
-		return cart.runArm()
-	}
-	return nil
-}
-
 // BreakpointsDisable implements the mapper.CartCoProc interface.
 func (cart *cdf) BreakpointsDisable(disable bool) {
 	cart.arm.BreakpointsDisable(disable)
+}
+
+// BreakpointsHook implements the mapper.CartCoProc interface.
+func (cart *cdf) SetBreakpointHook(hook mapper.CartBreakpointHook) {
+	cart.breakpointHook = hook
 }
 
 func (cart *cdf) runArm() error {

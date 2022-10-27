@@ -852,37 +852,19 @@ func (src *Source) ResetStatistics() {
 	src.Stats.ROMSetup.reset()
 }
 
-// AddBreakpoint adds an address to the list of addresses that will be checked
-// each PC iteration.
-func (src *Source) AddBreakpoint(addr uint32) {
-	src.Breakpoints[addr] = true
-}
-
-// AddBreakpoint removes an address from the list of breakpoint addresses.
-func (src *Source) RemoveBreakpoint(addr uint32) {
-	delete(src.Breakpoints, addr)
-}
-
-// ToggleBreakpoint adds or removes a breakpoint depending on whether the
-// breakpoint already exists.
-func (src *Source) ToggleBreakpoint(addr uint32) {
-	if src.CheckBreakpoint(addr) {
-		src.RemoveBreakpoint(addr)
-	} else {
-		src.AddBreakpoint(addr)
-	}
-}
-
-// CheckBreakpoint compares an address to the list of breakpoints.
-func (src *Source) CheckBreakpoint(addr uint32) bool {
-	if _, ok := src.Breakpoints[addr]; ok {
-		return true
-	}
-	return false
-}
-
 // FindSourceLine returns line entry for the address. Returns nil if the
 // address has no source line.
 func (src *Source) FindSourceLine(addr uint32) *SourceLine {
 	return src.linesByAddress[uint64(addr)]
+}
+
+// BorrowSource will lock the source code structure for the durction of the
+// supplied function, which will be executed with the source code structure as
+// an argument.
+//
+// May return nil.
+func (dev *Developer) BorrowSource(f func(*Source)) {
+	dev.sourceLock.Lock()
+	defer dev.sourceLock.Unlock()
+	f(dev.source)
 }

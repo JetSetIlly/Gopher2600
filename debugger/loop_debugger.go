@@ -64,13 +64,13 @@ func (dbg *Debugger) catchupLoop(inputter terminal.Input) error {
 		if ended {
 			if !dbg.vcs.CPU.LastResult.Final {
 				// if we're in the rewinding state then a new rewind event has
-				// started and we must return immediately so that it can continue
+				// started and we must return immediately so that it can continue...
 				if dbg.State() == govern.Rewinding {
 					return nil
 				}
 
-				// otherwise catchup has ended but we've not reached a CPU
-				// instruction boundary then continue with video-step loop
+				// ...otherwise catchup has ended but we've not reached a CPU
+				// instruction boundary then continue with nonInstructionQuantum loop
 				return dbg.inputLoop(inputter, true)
 			}
 		} else if dbg.catchupContinue != nil && !dbg.catchupContinue() {
@@ -133,10 +133,8 @@ func (dbg *Debugger) catchupLoop(inputter terminal.Input) error {
 	return nil
 }
 
-// inputLoop has two modes, defined by the clockCycle argument. when clockCycle
-// is true then user will be prompted every video cycle; when false the user
-// is prompted every cpu instruction.
-func (dbg *Debugger) inputLoop(inputter terminal.Input, isVideoStep bool) error {
+// inputLoop has two modes, defined by the nonInstructionQuantum argument.
+func (dbg *Debugger) inputLoop(inputter terminal.Input, nonInstructionQuantum bool) error {
 	var err error
 
 	for dbg.running {
@@ -145,8 +143,8 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, isVideoStep bool) error 
 		}
 
 		if dbg.catchupContinue != nil {
-			if isVideoStep {
-				panic("refusing to run catchup loop inside a color clock cycle")
+			if nonInstructionQuantum {
+				panic("refusing to run catchup loop inside a nonInstructionQuantum step")
 			}
 
 			err = dbg.catchupLoop(inputter)
@@ -211,25 +209,25 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, isVideoStep bool) error 
 		default:
 		}
 
-		// return immediately if this inputLoop() is a clockCycle AND the
-		// current quantum mode has been changed to instruction AND the
-		// emulation has been asked to continue (eg. with STEP)
+		// return immediately if this inputLoop() is a nonInstructionQuantum
+		// AND the prevailing quantum mode has been changed to instruction AND
+		// the emulation has been asked to continue (eg. with STEP)
 		//
 		// this is important in a very specific situation:
 		//
-		// a) the emulation has been in CLOCK quantum mode
+		// a) the emulation has been in nonInstrucution quantum mode (eg. CLOCK)
 		// b) it is mid-way through a single CPU instruction
 		// c) the debugger has been changed to INSTRUCTION quantum mode
 		//
 		// if we don't do this then debugging output will be wrong and confusing.
-		if isVideoStep && dbg.continueEmulation && dbg.stepQuantum == QuantumInstruction {
+		if nonInstructionQuantum && dbg.continueEmulation && dbg.stepQuantum == QuantumInstruction {
 			return nil
 		}
 
 		// check trace and output in context of last CPU result
 		//
 		// unlike halt conditions, I don't believe there is any need to do
-		// check every video cycle
+		// check every color clock
 		trace := dbg.traces.check()
 		if trace != "" {
 			if dbg.commandOnTrace != nil {
@@ -257,9 +255,9 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, isVideoStep bool) error 
 				break // dbg.running loop
 			}
 
-			// if this is a video step and we reach this stage then we need to
+			// if this is a nonInstructionQuantum step and we've reach this stage then we need to
 			// update the disassembly. we do not update the nextAddr however
-			if isVideoStep {
+			if nonInstructionQuantum {
 				dbg.liveBankInfo = dbg.vcs.Mem.Cart.GetBank(dbg.vcs.CPU.PC.Address())
 				dbg.liveDisasmEntry = dbg.Disasm.ExecutedEntry(dbg.liveBankInfo, dbg.vcs.CPU.LastResult, false, 0)
 			}
@@ -286,7 +284,7 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, isVideoStep bool) error 
 				dbg.Rewind.RecordExecutionCoords()
 			}
 
-			// reset halting flag before we resume execution
+			// reset halting flag before we resume execution.
 			dbg.halting.reset()
 
 			// reset run until halt flag - it will be set again if the parsed
@@ -301,15 +299,14 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, isVideoStep bool) error 
 			// HALT command
 			dbg.haltImmediately = false
 
-			// we've been instructed to abandon this inputLoop() if we're in a
-			// video step. we forget about the instruction immediately but only
-			// return if we really are in a video step
+			// we've been instructed to abandon this inputLoop().
 			if dbg.stepOutOfVideoStepInputLoop {
 				dbg.stepOutOfVideoStepInputLoop = false
-				if isVideoStep {
+				// check that we really are in a nonInstructionQuantum
+				if nonInstructionQuantum {
 					return nil
 				} else {
-					logger.Log("debugger", "asked to 'step out of video step input loop' inappropriately")
+					logger.Log("debugger", "asked to 'step out of nonInstructionQuantum step input loop' inappropriately")
 				}
 			}
 
@@ -358,7 +355,7 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, isVideoStep bool) error 
 				}
 
 				// update comparison point before execution continues
-				if !isVideoStep {
+				if !nonInstructionQuantum {
 					dbg.Rewind.SetComparison()
 				}
 			} else if inputter.IsInteractive() {
@@ -382,40 +379,37 @@ func (dbg *Debugger) inputLoop(inputter terminal.Input, isVideoStep bool) error 
 		}
 
 		if dbg.continueEmulation {
-			// attempt to resume cartridge after a breakpoint
-			err = dbg.vcs.Mem.Cart.ResumeAfterBreakpoint()
-			if err != nil {
-				return err
-			}
+			// make sure we still want to continue after the call to resumAfterHalt()
+			if dbg.continueEmulation {
+				// input loops with the isVideoStep flag must never execute another
+				// call to vcs.Step() under any circumstances
+				//
+				// we also don't allow this call to inputLoop() to loop. if there
+				// is any more nonInstructionQuantum steps to handle, the function will be called
+				// again
+				if nonInstructionQuantum {
+					return nil
+				}
 
-			// input loops with the isVideoStep flag must never execute another
-			// call to vcs.Step() under any circumstances
-			//
-			// we also don't allow this call to inputLoop() to loop. if there
-			// is any more video steps to handle, the function will be called
-			// again
-			if isVideoStep {
-				return nil
-			}
+				err = dbg.step(inputter, false)
+				if err != nil {
+					return err
+				}
 
-			err = dbg.step(inputter, false)
-			if err != nil {
-				return err
-			}
-
-			// skip over WSYNC (CPU RDY flag is false) only if we're in instruction quantum
-			if dbg.stepQuantum == QuantumInstruction {
-				for !dbg.vcs.CPU.RdyFlg {
-					err = dbg.step(inputter, false)
-					if err != nil {
-						return err
+				// skip over WSYNC (CPU RDY flag is false) only if we're in instruction quantum
+				if dbg.stepQuantum == QuantumInstruction {
+					for !dbg.vcs.CPU.RdyFlg {
+						err = dbg.step(inputter, false)
+						if err != nil {
+							return err
+						}
 					}
 				}
-			}
 
-			// check exit video loop
-			if dbg.unwindLoopRestart != nil {
-				return nil
+				// check for unwind loop
+				if dbg.unwindLoopRestart != nil {
+					return nil
+				}
 			}
 		}
 	}
@@ -427,6 +421,7 @@ func (dbg *Debugger) step(inputter terminal.Input, catchup bool) error {
 	callback := func() error {
 		var err error
 
+		// check for unwind loop
 		if dbg.unwindLoopRestart != nil {
 			return nil
 		}
@@ -452,8 +447,7 @@ func (dbg *Debugger) step(inputter terminal.Input, catchup bool) error {
 
 		// check halt condition. a second check is made after vcs.Step()
 		// returns below
-		dbg.halting.check()
-		dbg.continueEmulation = !dbg.halting.halt
+		dbg.continueEmulation = dbg.halting.check()
 
 		if dbg.stepQuantum == QuantumClock || !dbg.continueEmulation {
 			// start another inputLoop() with the clockCycle boolean set to true

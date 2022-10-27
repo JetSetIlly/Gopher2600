@@ -22,6 +22,7 @@ import (
 
 	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/coprocessor/developer"
+	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/gui/fonts"
 	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/resources/unique"
@@ -90,10 +91,19 @@ type winCoProcSource struct {
 	selectedLine lineRange
 	selecting    bool
 
-	firstOpen bool
-
 	selectedFile          *developer.SourceFile
 	selectedFileComboOpen bool
+
+	// yield state is checked on every draw whether window is open or not. the
+	// window will open if the yield state is new
+	yieldState developer.YieldState
+	yieldLine  *developer.SourceLine
+
+	// focus source view on current yield line
+	focusYieldLine bool
+
+	// the first time the source window is opened
+	firstOpen bool
 
 	// we pay special attention to the collapsed state of this window. this is
 	// because we want the gotoSourceLine() function to uncollapse the window
@@ -111,6 +121,8 @@ type winCoProcSource struct {
 	widthIcon  float32
 	widthStats float32
 	widthLine  float32
+
+	isPaused bool
 }
 
 func newWinCoProcSource(img *SdlImgui) (window, error) {
@@ -134,11 +146,28 @@ func (win *winCoProcSource) id() string {
 }
 
 func (win *winCoProcSource) debuggerDraw() {
-	if !win.debuggerOpen {
+	if !win.img.lz.Cart.HasCoProcBus || win.img.dbg.CoProcDev == nil {
 		return
 	}
 
-	if !win.img.lz.Cart.HasCoProcBus || win.img.dbg.CoProcDev == nil {
+	// check yield state and open the window if necessary
+	win.img.dbg.CoProcDev.BorrowYieldState(func(yield *developer.YieldState) {
+		if yield.TimeStamp != win.yieldState.TimeStamp {
+			win.yieldState = *yield
+
+			win.img.dbg.CoProcDev.BorrowSource(func(src *developer.Source) {
+				win.yieldLine = src.FindSourceLine(win.yieldState.InstructionPC)
+			})
+
+			// open window and focus on yield line if the yield is a breakpoint
+			if yield.Breakpoint {
+				win.debuggerOpen = true
+				win.focusYieldLine = true
+			}
+		}
+	})
+
+	if !win.debuggerOpen {
 		return
 	}
 
@@ -179,13 +208,38 @@ func (win *winCoProcSource) draw() {
 			return
 		}
 
+		// focuse on main function if this is the first time the window has
+		// been opened.
 		if win.firstOpen {
-			fn := src.MainFunction
-			win.scrollToFile = fn.DeclLine.File.Filename
-			win.selectedLine.single(fn.DeclLine.LineNumber)
+			ln := src.MainFunction.DeclLine
+			win.scrollToFile = ln.File.Filename
+			win.selectedLine.single(ln.LineNumber)
 			win.scrollTo = true
-
 			win.firstOpen = false
+		}
+
+		// focus on yield line (or main function if we don't have a yield line)
+		// but only if emulation is paused
+		if win.focusYieldLine {
+			if win.img.dbg.State() == govern.Paused {
+				focusLine := win.yieldLine
+
+				// focusLine is the same as yieldLine. if yieldLine is invalid
+				// we instead focus on the main function
+				if focusLine == nil || focusLine.File == nil {
+					focusLine = src.MainFunction.DeclLine
+				}
+
+				// double check validity of focusLine
+				if focusLine != nil && focusLine.File != nil {
+					win.scrollToFile = focusLine.File.Filename
+					win.selectedLine.single(focusLine.LineNumber)
+					win.scrollTo = true
+				}
+			}
+
+			// focus has been dealt with
+			win.focusYieldLine = false
 		}
 
 		if win.scrollTo && (win.selectedFile == nil || win.scrollToFile != win.selectedFile.Filename) {
@@ -195,7 +249,7 @@ func (win *winCoProcSource) draw() {
 		}
 
 		imgui.AlignTextToFramePadding()
-		imgui.Text("Filename")
+		imgui.Text(string(fonts.Disk))
 		imgui.SameLine()
 		imgui.PushItemWidth(imgui.ContentRegionAvail().X)
 		if imgui.BeginComboV("##selectedFile", win.selectedFile.ShortFilename, imgui.ComboFlagsHeightRegular) {
@@ -267,13 +321,20 @@ func (win *winCoProcSource) draw() {
 						imgui.TableSetBgColor(imgui.TableBgTargetRowBg0, win.img.cols.CoProcSourceSelected)
 					}
 
-					// show chip icon and also tooltip if mouse is hovered on selectable
+					// highlight yield line
+					if win.yieldLine != nil && win.yieldLine.File != nil {
+						if win.yieldLine.LineNumber == ln.LineNumber && win.yieldLine.File == win.selectedFile {
+							imgui.TableSetBgColor(imgui.TableBgTargetRowBg0, win.img.cols.CoProcSourceYieldLine)
+						}
+					}
+
 					imgui.TableNextColumn()
 					imgui.PushStyleColor(imgui.StyleColorHeaderHovered, win.img.cols.CoProcSourceHover)
 					imgui.PushStyleColor(imgui.StyleColorHeaderActive, win.img.cols.CoProcSourceHover)
+
+					// show appropriate icon in the gutter
 					if len(ln.Disassembly) > 0 {
-						addr := ln.Disassembly[0].Addr
-						if src.CheckBreakpoint(addr) {
+						if src.CheckBreakpointBySourceLine(ln) {
 							imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmBreakAddress)
 							imgui.SelectableV(string(fonts.Breakpoint), false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{0, 0})
 							imgui.PopStyleColor()
@@ -285,11 +346,10 @@ func (win *winCoProcSource) draw() {
 							imgui.SelectableV(string(fonts.Chip), false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{0, 0})
 						}
 
-						// allow breakpoint toggling only for executable lines of source
+						// allow breakpoint toggle for lines with executable entries
 						if imgui.IsItemHovered() && imgui.IsMouseDoubleClicked(0) {
-							src.ToggleBreakpoint(addr)
+							src.ToggleBreakpoint(ln)
 						}
-
 					} else {
 						imgui.SelectableV("", false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{0, 0})
 					}
@@ -430,6 +490,10 @@ func (win *winCoProcSource) draw() {
 			imgui.Separator()
 			imgui.Spacing()
 
+			if imgui.Button(fmt.Sprintf("%c Focus Yield Line", fonts.DisasmGotoCurrent)) {
+				win.focusYieldLine = true
+			}
+			imgui.SameLineV(0, 20)
 			imgui.Checkbox("Highlight Comments & String Literals", &win.syntaxHighlighting)
 			imgui.SameLineV(0, 20)
 			imgui.Checkbox("Show Tooltip", &win.showTooltip)
@@ -451,9 +515,6 @@ func (win *winCoProcSource) gotoSourceLine(ln *developer.SourceLine) {
 	win.scrollToFile = ln.File.Filename
 	win.selectedLine.single(ln.LineNumber)
 	win.uncollapseNext = true
-
-	// if we haven't opened the window before we don't want the firstOpen procedure to run
-	win.firstOpen = false
 }
 
 func (win *winCoProcSource) saveToCSV(src *developer.Source) {
