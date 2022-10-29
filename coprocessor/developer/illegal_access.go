@@ -15,14 +15,19 @@
 
 package developer
 
+import "fmt"
+
 // IllegalAccessEntry is a single entry in the illegal access log.
 type IllegalAccessEntry struct {
 	Event      string
 	PC         uint32
 	AccessAddr uint32
 
+	// number of times this specific illegal access has been seen
+	Count int
+
+	// the source line of the PC address. field can be nil
 	SrcLine *SourceLine
-	Count   int
 
 	// whether access address was reported as being a "null access". when this
 	// is true the illegal access is very likely because of a null pointer
@@ -54,4 +59,76 @@ func (dev *Developer) BorrowIllegalAccess(f func(*IllegalAccess)) {
 	dev.illegalAccessLock.Lock()
 	defer dev.illegalAccessLock.Unlock()
 	f(&dev.illegalAccess)
+}
+
+// IllegalAccess implements the CartCoProcDeveloper interface.
+func (dev *Developer) NullAccess(event string, pc uint32, addr uint32) string {
+	return dev.logAccess(event, pc, addr, true)
+}
+
+// IllegalAccess implements the CartCoProcDeveloper interface.
+func (dev *Developer) IllegalAccess(event string, pc uint32, addr uint32) string {
+	return dev.logAccess(event, pc, addr, false)
+}
+
+// IllegalAccess implements the CartCoProcDeveloper interface.
+func (dev *Developer) StackCollision(pc uint32, addr uint32) string {
+	dev.illegalAccess.HasStackCollision = true
+	return dev.logAccess("Stack Collision", pc, addr, false)
+}
+
+// logAccess adds an illegal or null access event to the log. includes source code lookup
+func (dev *Developer) logAccess(event string, pc uint32, addr uint32, isNullAccess bool) string {
+	dev.sourceLock.Lock()
+	defer dev.sourceLock.Unlock()
+
+	// get/create illegal access entry
+	accessKey := fmt.Sprintf("%08x%08x", addr, pc)
+	e, ok := dev.illegalAccess.entries[accessKey]
+	if ok {
+		// we seen the illegal access before - increase count
+		e.Count++
+	} else {
+		e = &IllegalAccessEntry{
+			Event:        event,
+			PC:           pc,
+			AccessAddr:   addr,
+			Count:        1,
+			IsNullAccess: isNullAccess,
+		}
+
+		dev.illegalAccess.entries[accessKey] = e
+
+		// if we have source code available we assign the source line to the
+		// illegal access entry. it's possible for the source line to be a
+		// "stub" source line
+		if dev.source != nil {
+			e.SrcLine = dev.source.linesByAddress[uint64(pc)]
+
+			// it shouldn't be possible to get no source line at all from the source
+			if e.SrcLine == nil {
+				panic("source line is invalid for illegal access")
+			}
+
+			// inidcate that the source line has been responsble for an illegal access
+			e.SrcLine.IllegalAccess = true
+		}
+
+		// if we do not have source code available then the entry will have a
+		// nil SrcLine field. this is fine
+
+		// record entry
+		dev.illegalAccess.entries[accessKey] = e
+
+		// update log
+		dev.illegalAccess.Log = append(dev.illegalAccess.Log, e)
+	}
+
+	// no source line information so return empty line
+	if e.SrcLine == nil {
+		return ""
+	}
+
+	// return formatted information about the illegal access using the source line for information
+	return fmt.Sprintf("%s %s\n%s", e.SrcLine.String(), e.SrcLine.Function.Name, e.SrcLine.PlainContent)
 }

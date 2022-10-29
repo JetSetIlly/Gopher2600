@@ -31,6 +31,11 @@ type SourceFile struct {
 	HasExecutableLines bool
 }
 
+// IsStub returns true if the SourceFile is just a stub.
+func (f *SourceFile) IsStub() bool {
+	return f.Filename == stubIndicator
+}
+
 // SourceDisasm is a single disassembled intruction from the ELF binary. Not to
 // be confused with the coprocessor.disassembly package. SourceDisasm instances
 // are intended to be used by static disasemblers.
@@ -94,17 +99,20 @@ type SourceLine struct {
 }
 
 func (ln *SourceLine) String() string {
+	if ln.IsStub() {
+		return fmt.Sprintf("(stub)")
+	}
 	return fmt.Sprintf("%s:%d", ln.File.Filename, ln.LineNumber)
 }
 
-// IsStub returns true if thre is no DWARF data for this function.
+// IsStub returns true if the SourceLine is just a stub.
 func (ln *SourceLine) IsStub() bool {
-	// field File will be nil for stub line entries
-	return ln.File == nil
-
-	// other properties of a stub line entry will be an empty PlainContent,
-	// Fragments and Disassembly fields
+	return ln.PlainContent == stubIndicator
 }
+
+// DriverFunctionName is the name given to a function that represents all the
+// instructions that fall outside of the ROM and are in fact in the "driver".
+const DriverFunctionName = "<driver>"
 
 // SourceFunction is a single function identified by the DWARF data or by the
 // ELF symbol table in the case of no DWARF information being available for the
@@ -133,10 +141,9 @@ type SourceFunction struct {
 	OptimisedCallStack bool
 }
 
-// IsStub returns true if thre is no DWARF data for this function.
+// IsStub returns true if the SourceFunction is just a stub.
 func (fn *SourceFunction) IsStub() bool {
-	// field DeclLine will be nil for stub function entries
-	return fn.DeclLine == nil
+	return fn.DeclLine.IsStub()
 }
 
 // SourceType is a single type identified by the DWARF data. Composite types
@@ -262,4 +269,45 @@ func (varb *SourceVariable) AddressIsOffset() bool {
 
 func (varb *SourceVariable) String() string {
 	return fmt.Sprintf("%s %s => %#08x", varb.Type.Name, varb.Name, varb.Address)
+}
+
+// stubIndicator is allocated to key fields in SourceFile and SourceLine to
+// indicate that they are not "real" files or lines and only exist to avoid nil
+// pointers.
+//
+// Values of type SourceFunction can also be stubs. Although do note that in
+// all instances the name of the function is always known (or can be assumed,
+// see DriverFunctionName). Whether a SourceFunction is a stub therefore, is
+// decided by whether the DeclLine is a stub.
+//
+// The IsStub() functions for the SourceFile, SourceFunction and SourceLine
+// types codify stub detection.
+const stubIndicator = "not in source"
+
+// createStubLine returns an instance of SourceLine with the specified
+// SourceFunction assigned to it. The SourceFunction argument should not be
+// nil.
+//
+// A stub SourceFile will be created for assignment to the SourceLine.File
+// field
+func createStubLine(stubFn *SourceFunction) *SourceLine {
+	if stubFn == nil {
+		panic("stub function required for createStubLine()")
+	}
+
+	// the DeclLine field must definitely be nil for a stubFn function
+	stubFile := &SourceFile{
+		Filename:      stubIndicator,
+		ShortFilename: stubIndicator,
+	}
+
+	// each address in the stub function shares the same stub line
+	stubLn := &SourceLine{
+		File:         stubFile,
+		Function:     stubFn,
+		PlainContent: stubIndicator,
+	}
+
+	stubFn.DeclLine = stubLn
+	return stubLn
 }

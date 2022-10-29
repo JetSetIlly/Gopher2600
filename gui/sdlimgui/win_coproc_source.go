@@ -85,14 +85,15 @@ type winCoProcSource struct {
 	syntaxHighlighting bool
 	optionsHeight      float32
 
-	scrollTo bool
-
 	selectedLine lineRange
 	selecting    bool
 
-	selectedFileFuzzy fuzzyMatcher
-	selectedFileName  string
-	selectedFile      *developer.SourceFile
+	selectedFileFuzzy     fuzzyMatcher
+	selectedShortFileName string
+
+	// selectedFile will change whenever updateSelectedFile is true
+	updateSelectedFile bool
+	selectedFile       *developer.SourceFile
 
 	// yield state is checked on every draw whether window is open or not. the
 	// window will open if the yield state is new
@@ -156,6 +157,11 @@ func (win *winCoProcSource) debuggerDraw() {
 			win.yieldState = *yield
 
 			win.img.dbg.CoProcDev.BorrowSource(func(src *developer.Source) {
+				// we need a check for src validity here. when we borrow the
+				// source again later we check it for a second time
+				if src == nil {
+					return
+				}
 				win.yieldLine = src.FindSourceLine(win.yieldState.InstructionPC)
 			})
 
@@ -212,9 +218,9 @@ func (win *winCoProcSource) draw() {
 		// been opened.
 		if win.firstOpen {
 			ln := src.MainFunction.DeclLine
-			win.selectedFileName = ln.File.ShortFilename
+			win.selectedShortFileName = ln.File.ShortFilename
 			win.selectedLine.single(ln.LineNumber)
-			win.scrollTo = true
+			win.updateSelectedFile = true
 			win.firstOpen = false
 		}
 
@@ -232,9 +238,9 @@ func (win *winCoProcSource) draw() {
 
 				// double check validity of focusLine
 				if focusLine != nil && focusLine.File != nil {
-					win.selectedFileName = focusLine.File.ShortFilename
+					win.selectedShortFileName = focusLine.File.ShortFilename
 					win.selectedLine.single(focusLine.LineNumber)
-					win.scrollTo = true
+					win.updateSelectedFile = true
 				}
 			}
 
@@ -242,18 +248,19 @@ func (win *winCoProcSource) draw() {
 			win.focusYieldLine = false
 		}
 
-		if win.scrollTo && (win.selectedFile == nil || win.selectedFileName != win.selectedFile.Filename) {
-			win.selectedFile = src.FilesByShortname[win.selectedFileName]
-		} else if win.selectedFile == nil {
-			win.selectedFile = src.FilesByShortname[src.ShortFilenames[0]]
+		// change selectedFile
+		if win.updateSelectedFile {
+			win.selectedFile = src.FilesByShortname[win.selectedShortFileName]
+			// updateSelectFile is reset to false below (because we need to check it again)
 		}
 
+		// fuzzy file selector
 		fuzzyFileHook := func(s string) {
-			win.selectedFileName = s
+			win.selectedShortFileName = s
 			win.selectedLine.single(0)
-			win.scrollTo = true
+			win.updateSelectedFile = true
 		}
-		win.selectedFileFuzzy.textInput("##selectedFile", win.selectedFileName, src.ShortFilenames, fuzzyFileHook)
+		win.selectedFileFuzzy.textInput("##selectedFile", win.selectedShortFileName, src.ShortFilenames, fuzzyFileHook)
 
 		imgui.Spacing()
 		imgui.Separator()
@@ -451,10 +458,11 @@ func (win *winCoProcSource) draw() {
 			}
 
 			// scroll to correct line
-			if win.scrollTo {
+			if win.updateSelectedFile {
 				imgui.SetScrollY(clipper.ItemsHeight * float32(win.selectedLine.start-10))
-				win.scrollTo = false
-				win.uncollapseNext = false
+
+				// we can reset updateSelectedFile here (because we don't need it again)
+				win.updateSelectedFile = false
 			}
 
 			imgui.EndTable()
@@ -486,15 +494,20 @@ func (win *winCoProcSource) draw() {
 }
 
 func (win *winCoProcSource) gotoSourceLine(ln *developer.SourceLine) {
-	if ln.File == nil {
+	if ln.IsStub() {
 		return
 	}
 
 	win.debuggerSetOpen(true)
-	win.scrollTo = true
-	win.selectedFileName = ln.File.Filename
+	win.selectedShortFileName = ln.File.ShortFilename
 	win.selectedLine.single(ln.LineNumber)
 	win.uncollapseNext = true
+	win.updateSelectedFile = true
+
+	// force firstOpen to false. sometimes gotoSourceLine() is called before
+	// the source window is ever opened. in these instances the firstOpen
+	// procedure will run and supercede the values set above
+	win.firstOpen = false
 }
 
 func (win *winCoProcSource) saveToCSV(src *developer.Source) {

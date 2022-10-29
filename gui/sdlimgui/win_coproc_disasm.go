@@ -383,7 +383,7 @@ func (win *winCoProcDisasm) drawEntryTooltip(e arm.DisasmEntry, ln *developer.So
 			imgui.Separator()
 			imgui.Spacing()
 
-			if ln.File == nil {
+			if ln.IsStub() {
 				imgui.Text("No sourcecode available")
 			} else {
 				imgui.Text(ln.File.ShortFilename)

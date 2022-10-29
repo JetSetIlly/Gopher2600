@@ -1083,7 +1083,7 @@ func (win *winCoProcPerformance) tooltip(load developer.Load,
 	}
 
 	imguiTooltip(func() {
-		if ln == nil {
+		if fn.IsStub() {
 			if fn.Name == developer.DriverFunctionName {
 				imgui.Text("Instructions that are executed")
 				imgui.Text("outside of the ROM and in the driver")

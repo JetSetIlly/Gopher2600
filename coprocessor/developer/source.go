@@ -606,10 +606,6 @@ func NewSource(romFile string, cart mapper.CartCoProc, elfFile string) (*Source,
 	return src, nil
 }
 
-// DriverFunctionName is the name given to a function that represents all the
-// instructions that fall outside of the ROM and are in fact in the "driver".
-const DriverFunctionName = "<driver>"
-
 // add function stubs for functions without DWARF data. also adds stub line
 // entries for all addresses in the stub function
 func (src *Source) addStubEntries() {
@@ -645,16 +641,9 @@ func (src *Source) addStubEntries() {
 			// far
 			fn.name = strings.Split(fn.name, ".")[0]
 
-			// the DeclLine field must definitely be nil for a stubFn function
 			stubFn := &SourceFunction{
-				Name:     fn.name,
-				Address:  [2]uint64{fn.origin, fn.memtop},
-				DeclLine: nil,
-			}
-
-			// each address in the stub function shares the same stub line
-			stubLn := &SourceLine{
-				Function: stubFn,
+				Name:    fn.name,
+				Address: [2]uint64{fn.origin, fn.memtop},
 			}
 
 			// add stub function to list of functions but not if the function
@@ -665,7 +654,7 @@ func (src *Source) addStubEntries() {
 			// any addresses that we already know about from the DWARF data
 			for a := fn.origin; a <= fn.memtop; a++ {
 				if _, ok := src.linesByAddress[a]; !ok {
-					src.linesByAddress[a] = stubLn
+					src.linesByAddress[a] = createStubLine(stubFn)
 				} else {
 					addFunction = false
 					break
@@ -683,15 +672,11 @@ func (src *Source) addStubEntries() {
 
 	// add driver function
 	driverFn := &SourceFunction{
-		Name:     DriverFunctionName,
-		DeclLine: nil,
+		Name: DriverFunctionName,
 	}
 	src.Functions[DriverFunctionName] = driverFn
 	src.FunctionNames = append(src.FunctionNames, DriverFunctionName)
-	src.driverSourceLine = &SourceLine{
-		Function: driverFn,
-	}
-	src.linesByAddress[0] = src.driverSourceLine
+	src.driverSourceLine = createStubLine(driverFn)
 }
 
 func (src *Source) newFrame() {

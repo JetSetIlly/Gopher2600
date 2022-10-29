@@ -16,7 +16,6 @@
 package developer
 
 import (
-	"fmt"
 	"sync"
 	"time"
 
@@ -113,22 +112,6 @@ func (dev *Developer) DisableExpensive(disable bool) {
 	dev.disabled = disable
 }
 
-// IllegalAccess implements the CartCoProcDeveloper interface.
-func (dev *Developer) NullAccess(event string, pc uint32, addr uint32) string {
-	return dev.logAccess(event, pc, addr, true)
-}
-
-// IllegalAccess implements the CartCoProcDeveloper interface.
-func (dev *Developer) IllegalAccess(event string, pc uint32, addr uint32) string {
-	return dev.logAccess(event, pc, addr, false)
-}
-
-// IllegalAccess implements the CartCoProcDeveloper interface.
-func (dev *Developer) StackCollision(pc uint32, addr uint32) string {
-	dev.illegalAccess.HasStackCollision = true
-	return dev.logAccess("Stack Collision", pc, addr, false)
-}
-
 // VariableMemtop implements the CartCoProcDeveloper interface.
 func (dev *Developer) VariableMemtop() uint32 {
 	dev.sourceLock.Lock()
@@ -155,54 +138,6 @@ func (dev *Developer) CheckBreakpoint(addr uint32) bool {
 	}
 
 	return dev.source.CheckBreakpoint(addr)
-}
-
-// logAccess adds an illegal or null access event to the log. includes source code lookup
-func (dev *Developer) logAccess(event string, pc uint32, addr uint32, isNullAccess bool) string {
-	dev.sourceLock.Lock()
-	defer dev.sourceLock.Unlock()
-
-	// get/create illegal access entry
-	accessKey := fmt.Sprintf("%08x%08x", addr, pc)
-	e, ok := dev.illegalAccess.entries[accessKey]
-	if ok {
-		// we seen the illegal access before - increase count
-		e.Count++
-	} else {
-		e = &IllegalAccessEntry{
-			Event:        event,
-			PC:           pc,
-			AccessAddr:   addr,
-			Count:        1,
-			IsNullAccess: isNullAccess,
-		}
-
-		dev.illegalAccess.entries[accessKey] = e
-
-		// we always log illegal accesses even if we don't have any source
-		// information
-		if dev.source != nil {
-			e.SrcLine = dev.source.linesByAddress[uint64(pc)]
-
-			// inidcate that the source line has been responsble for an illegal access
-			if e.SrcLine != nil {
-				e.SrcLine.IllegalAccess = true
-			}
-		}
-
-		// record access
-		dev.illegalAccess.entries[accessKey] = e
-
-		// update log
-		dev.illegalAccess.Log = append(dev.illegalAccess.Log, e)
-	}
-
-	// no source line information so return empty line
-	if e.SrcLine == nil {
-		return ""
-	}
-
-	return fmt.Sprintf("%s %s\n%s", e.SrcLine.String(), e.SrcLine.Function.Name, e.SrcLine.PlainContent)
 }
 
 // HasSource returns true if source information has been found.
