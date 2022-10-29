@@ -85,14 +85,14 @@ type winCoProcSource struct {
 	syntaxHighlighting bool
 	optionsHeight      float32
 
-	scrollToFile string
-	scrollTo     bool
+	scrollTo bool
 
 	selectedLine lineRange
 	selecting    bool
 
-	selectedFile          *developer.SourceFile
-	selectedFileComboOpen bool
+	selectedFileFuzzy fuzzyMatcher
+	selectedFileName  string
+	selectedFile      *developer.SourceFile
 
 	// yield state is checked on every draw whether window is open or not. the
 	// window will open if the yield state is new
@@ -212,7 +212,7 @@ func (win *winCoProcSource) draw() {
 		// been opened.
 		if win.firstOpen {
 			ln := src.MainFunction.DeclLine
-			win.scrollToFile = ln.File.Filename
+			win.selectedFileName = ln.File.ShortFilename
 			win.selectedLine.single(ln.LineNumber)
 			win.scrollTo = true
 			win.firstOpen = false
@@ -232,7 +232,7 @@ func (win *winCoProcSource) draw() {
 
 				// double check validity of focusLine
 				if focusLine != nil && focusLine.File != nil {
-					win.scrollToFile = focusLine.File.Filename
+					win.selectedFileName = focusLine.File.ShortFilename
 					win.selectedLine.single(focusLine.LineNumber)
 					win.scrollTo = true
 				}
@@ -242,38 +242,18 @@ func (win *winCoProcSource) draw() {
 			win.focusYieldLine = false
 		}
 
-		if win.scrollTo && (win.selectedFile == nil || win.scrollToFile != win.selectedFile.Filename) {
-			win.selectedFile = src.Files[win.scrollToFile]
+		if win.scrollTo && (win.selectedFile == nil || win.selectedFileName != win.selectedFile.Filename) {
+			win.selectedFile = src.FilesByShortname[win.selectedFileName]
 		} else if win.selectedFile == nil {
-			win.selectedFile = src.Files[src.Filenames[0]]
+			win.selectedFile = src.FilesByShortname[src.ShortFilenames[0]]
 		}
 
-		imgui.AlignTextToFramePadding()
-		imgui.Text(string(fonts.Disk))
-		imgui.SameLine()
-		imgui.PushItemWidth(imgui.ContentRegionAvail().X)
-		if imgui.BeginComboV("##selectedFile", win.selectedFile.ShortFilename, imgui.ComboFlagsHeightRegular) {
-			for _, fn := range src.Filenames {
-				if src.Files[fn].HasExecutableLines {
-					if imgui.Selectable(src.Files[fn].ShortFilename) {
-						win.selectedFile = src.Files[fn]
-					}
-
-					// set scroll on the first frame that the combo is open
-					if !win.selectedFileComboOpen && fn == win.selectedFile.Filename {
-						imgui.SetScrollHereY(0.0)
-					}
-				}
-			}
-
-			imgui.EndCombo()
-
-			// note that combo is open *after* it has been drawn
-			win.selectedFileComboOpen = true
-		} else {
-			win.selectedFileComboOpen = false
+		fuzzyFileHook := func(s string) {
+			win.selectedFileName = s
+			win.selectedLine.single(0)
+			win.scrollTo = true
 		}
-		imgui.PopItemWidth()
+		win.selectedFileFuzzy.textInput("##selectedFile", win.selectedFileName, src.ShortFilenames, fuzzyFileHook)
 
 		imgui.Spacing()
 		imgui.Separator()
@@ -512,7 +492,7 @@ func (win *winCoProcSource) gotoSourceLine(ln *developer.SourceLine) {
 
 	win.debuggerSetOpen(true)
 	win.scrollTo = true
-	win.scrollToFile = ln.File.Filename
+	win.selectedFileName = ln.File.Filename
 	win.selectedLine.single(ln.LineNumber)
 	win.uncollapseNext = true
 }

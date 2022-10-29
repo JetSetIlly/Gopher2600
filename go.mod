@@ -14,4 +14,7 @@ require (
 	golang.org/x/sys v0.0.0-20220520151302-bc2c85ada10a
 )
 
-require github.com/go-audio/riff v1.0.0 // indirect
+require (
+	github.com/go-audio/riff v1.0.0 // indirect
+	github.com/sahilm/fuzzy v0.1.0 // indirect
+)

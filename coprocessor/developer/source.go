@@ -61,6 +61,11 @@ type Source struct {
 	Files     map[string]*SourceFile
 	Filenames []string
 
+	// as above but indexed by the file's short filename, which is sometimes
+	// more useful than the full name
+	FilesByShortname map[string]*SourceFile
+	ShortFilenames   []string
+
 	// functions found in the compile units
 	Functions     map[string]*SourceFunction
 	FunctionNames []string
@@ -140,6 +145,8 @@ func NewSource(romFile string, cart mapper.CartCoProc, elfFile string) (*Source,
 		Disassembly:      make(map[uint64]*SourceDisasm),
 		Files:            make(map[string]*SourceFile),
 		Filenames:        make([]string, 0, 10),
+		FilesByShortname: make(map[string]*SourceFile),
+		ShortFilenames:   make([]string, 0, 10),
 		Functions:        make(map[string]*SourceFunction),
 		FunctionNames:    make([]string, 0, 10),
 		Types:            make(map[dwarf.Offset]*SourceType),
@@ -361,6 +368,9 @@ func NewSource(romFile string, cart mapper.CartCoProc, elfFile string) (*Source,
 					if _, ok := src.Files[sf.Filename]; !ok {
 						src.Files[sf.Filename] = sf
 						src.Filenames = append(src.Filenames, sf.Filename)
+
+						src.FilesByShortname[sf.ShortFilename] = sf
+						src.ShortFilenames = append(src.ShortFilenames, sf.ShortFilename)
 					}
 				}
 			}
