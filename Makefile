@@ -7,7 +7,7 @@ profilingRom = roms/Homebrew/CDF/zookeeper_20200308_demo2_NTSC.bin
 # profilingRom = roms/Pitfall.bin
 # profilingRom = test_roms/ELF/raycaster/raycaster.bin
 
-.PHONY: all clean tidy generate check_lint lint lint_fix check_glsl glsl_validate check_pandoc readme_spell test race race_debug profile profile_cpu profile_cpu_play profile_cpu_debug profile_mem_play profile_mem_debug profile_trace build_assertions build check_upx release chec_rswc windows_manifest cross_windows cross_windows_development cross_windows_dynamic
+.PHONY: all clean tidy generate check_glsl glsl_validate check_pandoc readme_spell test race race_debug profile profile_cpu profile_cpu_play profile_cpu_debug profile_mem_play profile_mem_debug profile_trace build_assertions build release windows_manifest cross_windows cross_windows_development cross_winconsole_development cross_windows_dynamic
 
 goBinary = go
 
@@ -26,19 +26,6 @@ tidy:
 
 generate:
 	@$(goBinary) generate ./...
-
-check_lint:
-ifeq (, $(shell which golangci-lint))
-	$(error "golanci-lint not installed")
-endif
-
-lint: check_lint
-# uses .golangci.yml configuration file
-	golangci-lint run --sort-results
-
-lint_fix: check_lint
-# uses .golangci.yml configuration file
-	golangci-lint run --fix --sort-results
 
 check_glsl:
 ifeq (, $(shell which glslangValidator))
@@ -147,6 +134,10 @@ cross_windows: generate windows_manifest
 
 cross_windows_development: generate windows_manifest
 	CGO_ENABLED="1" CC="/usr/bin/x86_64-w64-mingw32-gcc" CXX="/usr/bin/x86_64-w64-mingw32-g++" GOOS="windows" GOARCH="amd64" CGO_LDFLAGS="-static -static-libgcc -static-libstdc++ -L/usr/local/x86_64-w64-mingw32/lib" $(goBinary) build -tags "static imguifreetype release" -gcflags $(compileFlags) -ldflags "-s -w -H=windowsgui" -o gopher2600_windows_amd64_$(shell git rev-parse --short HEAD).exe .
+	rm rsrc_windows_amd64.syso
+
+cross_winconsole_development: generate windows_manifest
+	CGO_ENABLED="1" CC="/usr/bin/x86_64-w64-mingw32-gcc" CXX="/usr/bin/x86_64-w64-mingw32-g++" GOOS="windows" GOARCH="amd64" CGO_LDFLAGS="-static -static-libgcc -static-libstdc++ -L/usr/local/x86_64-w64-mingw32/lib" $(goBinary) build -tags "static imguifreetype release" -gcflags $(compileFlags) -ldflags "-s -w -H=windows" -o gopher2600_winconsole_amd64_$(shell git rev-parse --short HEAD).exe .
 	rm rsrc_windows_amd64.syso
 
 # cross_windows_dynamic: generate windows_manifest
