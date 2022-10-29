@@ -20,6 +20,11 @@ package arm
 type SharedMemory interface {
 	// Return memory block and array offset for the requested address. Memory
 	// blocks mays be different for read and write operations.
+	//
+	// Note that there is no indication of how the memory will be access. For
+	// instance whether it's for a 32bit or an 8bit access. For this reason the
+	// implemention can assume that the access is 8bit and that the user of the
+	// result will make further boundary checks as appropriate.
 	MapAddress(addr uint32, write bool) (*[]byte, uint32)
 
 	// Return reset addreses for the Stack Pointer register; the Link Register;
