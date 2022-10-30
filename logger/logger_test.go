@@ -24,7 +24,7 @@ import (
 )
 
 func TestLogger(t *testing.T) {
-	tw := &test.Writer{}
+	tw := &test.CompareWriter{}
 
 	logger.Write(tw)
 	test.Equate(t, tw.Compare(""), true)

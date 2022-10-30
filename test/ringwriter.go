@@ -20,6 +20,9 @@ import (
 	"strings"
 )
 
+// RingWriter is an implementation of io.Writer that will keep the buffer to a
+// predefined size, keeping the most recent writes and dropping the earlier
+// writes as appropriate.
 type RingWriter struct {
 	buffer  []byte
 	size    int
@@ -27,6 +30,8 @@ type RingWriter struct {
 	wrapped bool
 }
 
+// NewRingWriter is the preferred method of initialisation for the CappedWriter
+// type.
 func NewRingWriter(size int) (*RingWriter, error) {
 	if size <= 0 {
 		return nil, fmt.Errorf("invalid size for RingWriter (%d)", size)
@@ -50,6 +55,7 @@ func (r *RingWriter) String() string {
 	return s.String()
 }
 
+// Reset empties the ring writer's buffer
 func (r *RingWriter) Reset() {
 	r.cursor = 0
 	r.wrapped = false
@@ -77,5 +83,8 @@ func (r *RingWriter) Write(p []byte) (n int, err error) {
 	// adjust cursor
 	r.cursor = ((r.cursor + len(p)) % r.size)
 
+	if len(p) > r.size {
+		return r.size, nil
+	}
 	return len(p), nil
 }

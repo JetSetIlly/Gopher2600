@@ -32,7 +32,7 @@ func TestDefaultSymbols(t *testing.T) {
 	if err != nil {
 		t.Errorf("unexpected error (%s)", err)
 	}
-	tw := &test.Writer{}
+	tw := &test.CompareWriter{}
 
 	sym.ListSymbols(os.Stdout)
 	sym.ListSymbols(tw)
@@ -55,7 +55,7 @@ func TestFlappySymbols(t *testing.T) {
 		t.Errorf("unexpected error (%s)", err)
 	}
 
-	tw := &test.Writer{}
+	tw := &test.CompareWriter{}
 
 	sym.ListSymbols(os.Stdout)
 	sym.ListSymbols(tw)

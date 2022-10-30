@@ -17,6 +17,7 @@ package arm
 
 import (
 	"fmt"
+	"io"
 	"math"
 	"strings"
 	"time"
@@ -50,7 +51,7 @@ const (
 const cycleLimit = 1500000
 
 // when the cycle limit is reached we run the emulation for a little while
-// longer but with fudge_debugging turned on. this allow us to debug what
+// longer but with fudge_disassembling turned on. this allow us to debug what
 // instructions are causing the infinite loop (which it most probably will be)
 const raisedCycleLimit = cycleLimit + 1000
 
@@ -269,8 +270,13 @@ type ARM struct {
 	// disabled breakpoint checking
 	breakpointsDisabled bool
 
-	// the io.Writer for fudge debugging output
-	fudge_writer *test.RingWriter
+	// the io.Writer for fudge_disassembling output
+	fudge_writer fudgeWriter
+}
+
+type fudgeWriter interface {
+	io.Writer
+	fmt.Stringer
 }
 
 // NewARM is the preferred method of initialisation for the ARM type.
@@ -292,8 +298,9 @@ func NewARM(mmap architecture.Map, prefs *preferences.ARMPreferences, mem Shared
 
 	var err error
 
-	// fudge disassembly writer
-	arm.fudge_writer, err = test.NewRingWriter(10485760) // 10MB
+	// fudge_disassembling writer
+	// arm.fudge_writer, err = test.NewRingWriter(10485760) // 10MB
+	arm.fudge_writer, err = test.NewCappedWriter(1048576) // 1MB
 	if err != nil {
 		logger.Logf("ARM7", "no fudge debugger: %s", err.Error())
 	}
@@ -544,10 +551,10 @@ func (arm *ARM) SetInitialRegisters(args ...uint32) error {
 // Run will execute an ARM program until one of the following conditions has
 // ben met:
 //
-// 1) The number of cycles for the entire program is too great
-// 2) A yield condition has been met (eg. a watch address has been triggered or
-//    a breakpoint has been encountered)
-// 3) Execution mode has changed from Thumb to ARM (ARM7TDMI architecture only)
+//  1. The number of cycles for the entire program is too great
+//  2. A yield condition has been met (eg. a watch address has been triggered or
+//     a breakpoint has been encountered)
+//  3. Execution mode has changed from Thumb to ARM (ARM7TDMI architecture only)
 //
 // Returns the number of ARM cycles consumed and any errors.
 func (arm *ARM) Run() (float32, error) {
@@ -623,6 +630,13 @@ func (arm *ARM) BreakpointsDisable(disable bool) {
 }
 
 func (arm *ARM) run() (float32, error) {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Println(arm.fudge_writer.String())
+			panic(r)
+		}
+	}()
+
 	select {
 	case <-arm.prefsPulse.C:
 		arm.updatePrefs()
@@ -928,7 +942,7 @@ func (arm *ARM) stepARM7_M(opcode uint16, memIdx int) {
 	}
 
 	// whether instruction was prevented from executing by IT block. we
-	// use this later during the fudge_ disassembly printing
+	// use this later during the fudge_disassembling printing
 	fudge_notExecuted := false
 
 	// new 32bit functions always execute
@@ -1000,18 +1014,18 @@ func (arm *ARM) stepARM7_M(opcode uint16, memIdx int) {
 		}
 		if fudge_resolving32bitInstruction {
 			arm.fudge_writer.Write([]byte(fmt.Sprintf("%08x %04x %04x :: %s\n", arm.state.instructionPC, arm.state.function32bitOpcode, opcode, arm.state.fudge_thumb2disassemble32bit)))
-			arm.fudge_writer.Write([]byte(arm.String()))
-			arm.fudge_writer.Write([]byte(arm.state.status.String()))
-			arm.fudge_writer.Write([]byte("===================="))
+			arm.fudge_writer.Write([]byte(arm.String() + "\n"))
+			arm.fudge_writer.Write([]byte(arm.state.status.String() + "\n"))
+			arm.fudge_writer.Write([]byte("====================\n"))
 		} else if !arm.state.function32bitDecoding {
 			if arm.state.fudge_thumb2disassemble16bit != "" {
 				arm.fudge_writer.Write([]byte(fmt.Sprintf("%08x %04x :: %s\n", arm.state.instructionPC, opcode, arm.state.fudge_thumb2disassemble16bit)))
 			} else {
 				arm.fudge_writer.Write([]byte(fmt.Sprintf("%08x %04x :: %s\n", arm.state.instructionPC, opcode, thumbDisassemble(opcode).String())))
 			}
-			arm.fudge_writer.Write([]byte(arm.String()))
-			arm.fudge_writer.Write([]byte(arm.state.status.String()))
-			arm.fudge_writer.Write([]byte("===================="))
+			arm.fudge_writer.Write([]byte(arm.String() + "\n"))
+			arm.fudge_writer.Write([]byte(arm.state.status.String() + "\n"))
+			arm.fudge_writer.Write([]byte("====================\n"))
 		}
 	}
 
