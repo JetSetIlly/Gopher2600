@@ -42,7 +42,8 @@ ifeq (, $(shell which pandoc))
 endif
 
 readme_spell: check_pandoc
-	@pandoc README.md -t plain | aspell -a | cut -d ' ' -f 2 | awk 'length($0)>1' | sort | uniq
+	@pandoc README.md -t plain | aspell -a | sed '1d;$d' | cut -d ' ' -f 2 | awk 'length($0)>1' | sort | uniq
+# sed is used to chop off the first line of aspell output, which is a version banner
 
 test:
 # testing with shuffle on is good but it's only available in go 1.17 onwards

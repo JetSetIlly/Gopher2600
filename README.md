@@ -155,7 +155,7 @@ http://www.oxyron.de/html/opcodes02.html
 US Patent Number 4,644,495 was referenced for the implementation of the DPC cartridge format
 (the format used in Pitfall 2) https://patents.google.com/patent/US4644495/en
 
-US patent 4,485,457A was used to help emplement the CBS cartridge format
+US patent 4,485,457A was used to help implement the CBS cartridge format
 https://patents.google.com/patent/US4485457A/en
 
 DPC+ format implemented according to notes provided by Spiceware https://atariage.com/forums/topic/163495-harmony-dpc-programming
@@ -198,7 +198,7 @@ and the "ARMv7-M Architecture Reference Manual" can be found at:
 
 https://documentation-service.arm.com/static/606dc36485368c4c2b1bf62f
 
-Specific information about the STM32F407 used in the UnoCart and PlustCart can
+Specific information about the STM32F407 used in the UnoCart and PlusCart can
 be found at:
 
 https://www.st.com/resource/en/reference_manual/dm00031020-stm32f405-415-stm32f407-417-stm32f427-437-and-stm32f429-439-advanced-arm-based-32-bit-mcus-stmicroelectronics.pdf
@@ -221,6 +221,7 @@ The following projects are used in the `Gopher2600` project:
 * https://github.com/hajimehoshi/go-mp3
 * https://github.com/pkg/term
 * https://github.com/go-audio/wav
+* https://github.com/sahilm/fuzzy
 
 * FontAwesome
 	* https://fontawesome.com/
@@ -232,7 +233,7 @@ The following projects are used in the `Gopher2600` project:
 	* https://github.com/JetBrains/JetBrainsMono
 	* licensed under the OFL-1.1 License
 
-Bother 6502.ts and Stella were used as reference for the Audio implementation.
+Both 6502.ts and Stella were used as reference for the Audio implementation.
 
 Some ideas for the fragment shader taken from:
 
@@ -240,7 +241,7 @@ Some ideas for the fragment shader taken from:
 * https://www.shadertoy.com/view/ltB3zD
 * https://github.com/mattiasgustavsson/crtview
 
-The Festival Speech Synthsis System is an optional program that can be run
+The Festival Speech Synthesis System is an optional program that can be run
 alongside the emulator for [AtariVox](https://github.com/JetSetIlly/Gopher2600-Docs/wiki/AtariVox-and-SaveKey) support
 
 http://www.festvox.org/docs/manual-2.4.0/festival_toc.html
@@ -251,4 +252,5 @@ At various times during the development of this project, the following people
 have provided advice and encouragement: Andrew Rice, David Kelly. And those
 from AtariAge who have provided testing, advice and most importantly,
 encouragement (alphabetically): alex_79; Al Nafuur; Andrew Davie; DirtyHairy;
-John Champeau; MrSQL; Rob Bairos; Spiceware; Thomas Jenztsch; ZeroPageHomebrew
+John Champeau; MarcoJ; MrSQL; Rob Bairos; Spiceware; Thomas Jenztsch; Zachary
+Scolaro; ZeroPageHomebrew
