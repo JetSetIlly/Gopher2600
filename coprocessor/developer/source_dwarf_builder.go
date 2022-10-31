@@ -582,7 +582,7 @@ func (bld *build) resolveVariableDeclaration(v buildEntry, src *Source) (*Source
 	if file == nil {
 		return nil, nil
 	}
-	varb.DeclLine = file.Lines[declLine-1]
+	varb.DeclLine = file.Content.Lines[declLine-1]
 
 	return &varb, nil
 }

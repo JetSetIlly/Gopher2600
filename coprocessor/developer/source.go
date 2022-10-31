@@ -434,7 +434,7 @@ func NewSource(romFile string, cart mapper.CartCoProc, elfFile string) (*Source,
 				logger.Logf("dwarf", "file not available for linereader: %s", le.File.Name)
 				continue
 			}
-			if le.Line-1 > len(src.Files[le.File.Name].Lines) {
+			if le.Line-1 > src.Files[le.File.Name].Content.Len() {
 				return nil, curated.Errorf("dwarf: current source is unrelated to ELF/DWARF data (1)")
 			}
 
@@ -459,7 +459,7 @@ func NewSource(romFile string, cart mapper.CartCoProc, elfFile string) (*Source,
 					if src.Files[foundFunc.filename] == nil {
 						return nil, curated.Errorf("dwarf: current source is unrelated to ELF/DWARF data (2)")
 					}
-					if int(foundFunc.linenum-1) > len(src.Files[foundFunc.filename].Lines) {
+					if int(foundFunc.linenum-1) > src.Files[foundFunc.filename].Content.Len() {
 						return nil, curated.Errorf("dwarf: current source is unrelated to ELF/DWARF data (3)")
 					}
 
@@ -471,7 +471,7 @@ func NewSource(romFile string, cart mapper.CartCoProc, elfFile string) (*Source,
 						fn := &SourceFunction{
 							Name:     foundFunc.name,
 							Address:  [2]uint64{workingAddress, relocatedAddress - 1},
-							DeclLine: src.Files[foundFunc.filename].Lines[foundFunc.linenum-1],
+							DeclLine: src.Files[foundFunc.filename].Content.Lines[foundFunc.linenum-1],
 						}
 						src.Functions[foundFunc.name] = fn
 						src.FunctionNames = append(src.FunctionNames, foundFunc.name)
@@ -505,7 +505,7 @@ func NewSource(romFile string, cart mapper.CartCoProc, elfFile string) (*Source,
 			}
 
 			// defer current line entry
-			workingSourceLine = src.Files[le.File.Name].Lines[le.Line-1]
+			workingSourceLine = src.Files[le.File.Name].Content.Lines[le.Line-1]
 			workingAddress = relocatedAddress
 		}
 	}
@@ -738,7 +738,7 @@ func readSourceFile(filename string, pathToROM_nosymlinks string) (*SourceFile, 
 			Function:     &SourceFunction{Name: UnknownFunction},
 			PlainContent: s,
 		}
-		fl.Lines = append(fl.Lines, l)
+		fl.Content.Lines = append(fl.Content.Lines, l)
 		fp.parseLine(l)
 	}
 

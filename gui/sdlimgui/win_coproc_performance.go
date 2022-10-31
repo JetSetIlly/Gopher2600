@@ -175,7 +175,7 @@ func (win *winCoProcPerformance) draw() {
 		}
 
 		imgui.BeginChildV("##coprocPerformanceMain", imgui.Vec2{X: 0, Y: imguiRemainingWinHeight() - win.optionsHeight}, false, 0)
-		imgui.BeginTabBarV("##coprocSourceTabBar", imgui.TabBarFlagsAutoSelectNewTabs)
+		imgui.BeginTabBarV("##coprocPerformanceFunctions", imgui.TabBarFlagsAutoSelectNewTabs)
 
 		functionTab := "Functions"
 		if imgui.BeginTabItemV(functionTab, nil, imgui.TabItemFlagsNone) {

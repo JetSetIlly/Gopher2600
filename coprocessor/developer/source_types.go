@@ -17,11 +17,26 @@ package developer
 
 import "fmt"
 
+// SourceFileContent lists the lines in a source file
+type SourceFileContent struct {
+	Lines []*SourceLine
+}
+
+// String implements the fuzzy.Source interface
+func (s SourceFileContent) String(i int) string {
+	return s.Lines[i].PlainContent
+}
+
+// Len implements the fuzzy.Source interface
+func (s SourceFileContent) Len() int {
+	return len(s.Lines)
+}
+
 // SourceFile is a single source file indentified by the DWARF data.
 type SourceFile struct {
 	Filename      string
 	ShortFilename string
-	Lines         []*SourceLine
+	Content       SourceFileContent
 
 	// the source file has at least one global variable if HasGlobals is true
 	HasGlobals bool
