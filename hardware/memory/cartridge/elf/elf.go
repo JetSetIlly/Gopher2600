@@ -345,6 +345,6 @@ func (cart *Elf) BreakpointsDisable(disable bool) {
 	cart.arm.BreakpointsDisable(disable)
 }
 
-// BreakpointsHook implements the mapper.CartCoProc interface.
-func (cart *Elf) SetBreakpointHook(hook mapper.CartBreakpointHook) {
+// SetYieldHook implements the mapper.CartCoProc interface.
+func (cart *Elf) SetYieldHook(hook mapper.CartYieldHook) {
 }

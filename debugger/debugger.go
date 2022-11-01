@@ -847,11 +847,16 @@ func (dbg *Debugger) StartInPlayMode(filename string) error {
 	return nil
 }
 
-// CartReachedBreapoint implements the mapper.CartBreakpointHook interface
-func (dbg *Debugger) CartReachedBreakpoint() {
-	dbg.halting.cartridgeBreakpoint = true
-	dbg.continueEmulation = dbg.halting.check()
-	dbg.inputLoop(dbg.term, true)
+// CartYield implements the mapper.CartYieldHook interface
+func (dbg *Debugger) CartYield(reason mapper.YieldReason) {
+	switch reason {
+	case mapper.YieldForVCS:
+		return
+	default:
+		dbg.halting.cartridgeBreakpoint = true
+		dbg.continueEmulation = dbg.halting.check()
+		dbg.inputLoop(dbg.term, true)
+	}
 }
 
 func (dbg *Debugger) run() error {
@@ -1123,8 +1128,8 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) 
 		dbg.vcs.TV.AddFrameTrigger(dbg.CoProcDev)
 	}
 
-	// attach current debugger as the breakpoint hook for cartridge
-	dbg.vcs.Mem.Cart.SetBreakpointHook(dbg)
+	// attach current debugger as the yield hook for cartridge
+	dbg.vcs.Mem.Cart.SetYieldHook(dbg)
 
 	// make sure everything is reset after disassembly (including breakpoints, etc.)
 	dbg.reset(newCartridge)

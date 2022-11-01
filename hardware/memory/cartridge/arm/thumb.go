@@ -20,6 +20,7 @@ import (
 	"math/bits"
 
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm/architecture"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
@@ -665,14 +666,18 @@ func (arm *ARM) thumbHiRegisterOps(opcode uint16) {
 				nextPC := arm.state.registers[rPC] - 2
 				arm.state.registers[rLR] = nextPC | 0x01
 				if target&0x01 == 0x00 {
-					panic("cannot switch to ARM mode in the ARMv7-M architecture")
+					// cannot switch to ARM mode in the ARMv7-M architecture
+					arm.state.yield = true
+					arm.state.yieldReason = mapper.YieldUndefinedBehaviour
 				}
 				arm.state.registers[rPC] = (target + 2) & 0xfffffffe
 			} else {
 				// "A7.7.20 BX " in "ARMv7-M"
 				target := arm.state.registers[Rm]
 				if target&0x01 == 0x00 {
-					panic("cannot switch to ARM mode in the ARMv7-M architecture")
+					// cannot switch to ARM mode in the ARMv7-M architecture
+					arm.state.yield = true
+					arm.state.yieldReason = mapper.YieldUndefinedBehaviour
 				}
 				arm.state.registers[rPC] = (target + 2) & 0xfffffffe
 			}

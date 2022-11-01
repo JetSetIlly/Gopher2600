@@ -503,10 +503,10 @@ func (cart *Cartridge) BreakpointsDisable(disable bool) {
 	}
 }
 
-// SetBreakpointHook implements the mapper.CartCoProc interface.
-func (cart *Cartridge) SetBreakpointHook(hook mapper.CartBreakpointHook) {
+// SetYieldHook implements the mapper.CartCoProc interface.
+func (cart *Cartridge) SetYieldHook(hook mapper.CartYieldHook) {
 	if cart.hasCoProc {
-		cart.coproc.SetBreakpointHook(hook)
+		cart.coproc.SetYieldHook(hook)
 	}
 }
 

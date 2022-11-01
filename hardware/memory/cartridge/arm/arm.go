@@ -84,6 +84,14 @@ type ARMState struct {
 	executingPC   uint32
 	instructionPC uint32
 
+	// when the processor yields it returns control to the VCS but with the
+	// understanding that it must resume from where it left off
+	//
+	// an unyielded CPU can be reset and otherwise safely altered in between
+	// calls to Run()
+	yield       bool
+	yieldReason mapper.YieldReason
+
 	// the area the PC covers. once assigned we'll assume that the program
 	// never reads outside this area. the value is assigned on reset()
 	programMemory *[]uint8
@@ -146,11 +154,6 @@ type ARMState struct {
 	fudge_thumb2disassemble32bit string
 	fudge_thumb2disassemble16bit string
 	fudge_disassembling          bool
-
-	// whether the previous execution stopped because of a yield or a
-	// breakpoint.
-	breakpoint bool
-	yield      bool
 }
 
 // Snapshort makes a copy of the ARMState.
@@ -190,6 +193,13 @@ type ARM struct {
 	continueExecution bool
 	executionError    error
 
+	// is set to true when an access to memory using a read/write function used
+	// an unrecognised address. when this happens, the address is logged and
+	// the Thumb program aborted (ie returns early)
+	//
+	// note: it is only set to true if abortOnIllegalMem is true
+	memoryError bool
+
 	// the speed at which the arm is running at and the required stretching for
 	// access to flash memory. speed is in MHz. Access latency of Flash memory is
 	// 50ns which is 20MHz. Rounding up, this means that the clklen (clk stretching
@@ -207,13 +217,6 @@ type ARM struct {
 	// updated from prefs on every Run() invocation
 	Clk         float32
 	clklenFlash float32
-
-	// is set to true when an access to memory using a read/write function used
-	// an unrecognised address. when this happens, the address is logged and
-	// the Thumb program aborted (ie returns early)
-	//
-	// note: it is only set to true if abortOnIllegalMem is true
-	memoryError bool
 
 	// collection of functionMap instances. indexed by programMemoryOffset to
 	// retrieve a functionMap
@@ -370,14 +373,11 @@ func (arm *ARM) Plumb(state *ARMState, mem SharedMemory, hook CartridgeHook) {
 	// always clear caches on a plumb event
 	arm.ClearCaches()
 
-	// find program memory which might have changed location along with the new
-	// ARM instance
-	//
-	// more importantly the functionMap will be reset as part of this process
-	err := arm.findProgramMemory()
-	if err != nil {
-		panic(err)
-	}
+	// we should call findProgramMemory() at this point bcause memory will have
+	// changed location along with the new ARM instance. however, error
+	// handling in the Plumb() function is unsufficient currently and we can
+	// safely defer the call to the Run() function, where it is called in any
+	// case
 }
 
 // ClearCaches should be used very rarely. It empties the instruction and
@@ -527,6 +527,8 @@ func (arm *ARM) clock(cycles float32) {
 // PC. Those registers are initialised via the ResetVectors() function of the
 // SharedMemory interface. The function will return with an error if those
 // registers are attempted to be initialised.
+//
+// The emulated ARM will be left in a yielded state.
 func (arm *ARM) SetInitialRegisters(args ...uint32) error {
 	arm.resetRegisters()
 
@@ -548,16 +550,12 @@ func (arm *ARM) SetInitialRegisters(args ...uint32) error {
 	return nil
 }
 
-// Run will execute an ARM program until one of the following conditions has
-// ben met:
+// Run will execute an ARM program until a yield condition has been or a fatal
+// error has been encountered.
 //
-//  1. The number of cycles for the entire program is too great
-//  2. A yield condition has been met (eg. a watch address has been triggered or
-//     a breakpoint has been encountered)
-//  3. Execution mode has changed from Thumb to ARM (ARM7TDMI architecture only)
-//
-// Returns the number of ARM cycles consumed and any errors.
-func (arm *ARM) Run() (float32, error) {
+// Returns the yield reason, the number of ARM cycles consumed and any (fatal)
+// errors.
+func (arm *ARM) Run() (mapper.YieldReason, float32, error) {
 	if !arm.state.yield {
 		arm.resetRegisters()
 	}
@@ -579,19 +577,20 @@ func (arm *ARM) Run() (float32, error) {
 		arm.disasmUpdateNotes = false
 	}
 
+	// make sure we know where program memory is
+	err := arm.findProgramMemory()
+	if err != nil {
+		return mapper.YieldError, 0, err
+	}
+
 	// fill pipeline must happen after resetExecution()
 	if !arm.state.yield {
-		err := arm.findProgramMemory()
-		if err != nil {
-			return 0, err
-		}
-
 		arm.state.registers[rPC] += 2
 	}
 
-	// reset yield and breakpoint flags
+	// reset yield. reason defaults to YieldForVCS
 	arm.state.yield = false
-	arm.state.breakpoint = false
+	arm.state.yieldReason = mapper.YieldForVCS
 
 	return arm.run()
 }
@@ -617,19 +616,13 @@ func (arm *ARM) SetRegisters(registers [NumRegisters]uint32) {
 	arm.state.registers = registers
 }
 
-// BreakpointHasTriggered returns true if execution has not run to completion
-// because of a breakpoint.
-func (arm *ARM) BreakpointHasTriggered() bool {
-	return arm.state.breakpoint
-}
-
 // BreakpointsDisable turns of breakpoint checking for the duration that
 // disable is true.
 func (arm *ARM) BreakpointsDisable(disable bool) {
 	arm.breakpointsDisabled = disable
 }
 
-func (arm *ARM) run() (float32, error) {
+func (arm *ARM) run() (mapper.YieldReason, float32, error) {
 	defer func() {
 		if r := recover(); r != nil {
 			fmt.Println(arm.fudge_writer.String())
@@ -861,8 +854,8 @@ func (arm *ARM) run() (float32, error) {
 		// instruction
 		if arm.dev != nil && !arm.breakpointsDisabled && !arm.state.function32bitDecoding {
 			if arm.dev.CheckBreakpoint(arm.state.instructionPC) {
-				arm.state.breakpoint = true
 				arm.state.yield = true
+				arm.state.yieldReason = mapper.YieldBreakpoint
 			}
 		}
 
@@ -883,15 +876,15 @@ func (arm *ARM) run() (float32, error) {
 	// end of program execution
 
 	if arm.executionError != nil {
-		return 0, curated.Errorf("ARM7: %v", arm.executionError)
+		return mapper.YieldError, 0, curated.Errorf("ARM7: %v", arm.executionError)
 	}
 
 	// update yield information
 	if arm.dev != nil {
-		arm.dev.OnYield(arm.state.instructionPC, arm.state.breakpoint)
+		arm.dev.OnYield(arm.state.instructionPC, arm.state.yieldReason)
 	}
 
-	return arm.state.cyclesTotal, nil
+	return arm.state.yieldReason, arm.state.cyclesTotal, nil
 }
 
 func (arm *ARM) stepARM7TDMI(opcode uint16, memIdx int) {

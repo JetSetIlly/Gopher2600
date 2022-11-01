@@ -53,10 +53,11 @@ const (
 	CoProcParallel
 )
 
-// CartBreakpointHook allows a cartridge to halt execution if the cartridge
-// coprocessor has reached a breakpoint
-type CartBreakpointHook interface {
-	CartReachedBreakpoint()
+// CartYieldHook allows a cartridge to halt execution if the cartridge
+// coprocessor has reached a breakpoint or some other yield point (eg.
+// undefined behaviour)
+type CartYieldHook interface {
+	CartYield(YieldReason)
 }
 
 // CartCoProc is implemented by cartridge mappers that have a coprocessor that
@@ -73,7 +74,9 @@ type CartCoProc interface {
 
 	// breakpoint control of coprocessor
 	BreakpointsDisable(bool)
-	SetBreakpointHook(CartBreakpointHook)
+
+	// set interface for cartridge yields
+	SetYieldHook(CartYieldHook)
 }
 
 // CartCoProcDWARF is implemented by cartridge mappers that want to supply
@@ -146,8 +149,20 @@ type CartCoProcDeveloper interface {
 	// OnYield is called whenever the ARM yields to the VCS. It communicates
 	// the PC of the most recent instruction and whether the yield is due to a
 	// breakpoint
-	OnYield(instructionPC uint32, breakpoint bool)
+	OnYield(instructionPC uint32, reason YieldReason)
 }
+
+// YieldReason specifies the reason for a yield
+type YieldReason string
+
+// List of YieldReason values
+const (
+	YieldForVCS                   YieldReason = "Yield for VCS"
+	YieldBreakpoint               YieldReason = "Breakpoint"
+	YieldUndefinedBehaviour       YieldReason = "Undefined Behaviour"
+	YieldUnimplementedInstruction YieldReason = "Unimplemented Instruction"
+	YieldError                    YieldReason = "Error"
+)
 
 // CartCoProcDisasmSummary represents a summary of a coprocessor execution.
 type CartCoProcDisasmSummary interface {

@@ -24,6 +24,7 @@ import (
 	"github.com/jetsetilly/gopher2600/coprocessor/developer"
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/gui/fonts"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/logger"
 	"github.com/jetsetilly/gopher2600/resources/unique"
 )
@@ -168,7 +169,7 @@ func (win *winCoProcSource) debuggerDraw() {
 			})
 
 			// open window and focus on yield line if the yield is a breakpoint
-			if yield.Breakpoint {
+			if yield.Reason != mapper.YieldForVCS {
 				win.debuggerOpen = true
 				win.focusYieldLine = true
 			}

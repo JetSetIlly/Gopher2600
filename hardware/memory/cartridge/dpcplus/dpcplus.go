@@ -930,14 +930,14 @@ func (cart *dpcPlus) BreakpointsDisable(disable bool) {
 	cart.arm.BreakpointsDisable(disable)
 }
 
-// BreakpointsHook implements the mapper.CartCoProc interface.
-func (cart *dpcPlus) SetBreakpointHook(hook mapper.CartBreakpointHook) {
+// SetYieldHook implements the mapper.CartCoProc interface.
+func (cart *dpcPlus) SetYieldHook(hook mapper.CartYieldHook) {
 }
 
 func (cart *dpcPlus) runArm() error {
 	cart.state.immediateMode = cart.instance.Prefs.ARM.Immediate.Get().(bool)
 
-	cycles, err := cart.arm.Run()
+	_, cycles, err := cart.arm.Run()
 	if err != nil {
 		return curated.Errorf("DPC+: %v", err)
 	}

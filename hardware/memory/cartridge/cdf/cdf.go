@@ -35,8 +35,8 @@ type cdf struct {
 	// additional CPU - used by some ROMs
 	arm *arm.ARM
 
-	// the hook that handles cartridge breakpoints
-	breakpointHook mapper.CartBreakpointHook
+	// the hook that handles cartridge yields
+	yieldHook mapper.CartYieldHook
 
 	// cdf comes in several different versions
 	version version
@@ -367,15 +367,15 @@ func (cart *cdf) Write(addr uint16, data uint8, passive bool, poke bool) error {
 			}
 
 			// call runArm() once and then check for breakpoints
-			err := cart.runArm()
+			yld, err := cart.runArm()
 			if err != nil {
 				return err
 			}
 
 			// keep calling runArm() for as long as breakpoints are being triggered
-			for cart.arm.BreakpointHasTriggered() {
-				cart.breakpointHook.CartReachedBreakpoint()
-				err = cart.runArm()
+			for yld != mapper.YieldForVCS {
+				cart.yieldHook.CartYield(yld)
+				yld, err = cart.runArm()
 				if err != nil {
 					return err
 				}
@@ -669,17 +669,17 @@ func (cart *cdf) BreakpointsDisable(disable bool) {
 	cart.arm.BreakpointsDisable(disable)
 }
 
-// BreakpointsHook implements the mapper.CartCoProc interface.
-func (cart *cdf) SetBreakpointHook(hook mapper.CartBreakpointHook) {
-	cart.breakpointHook = hook
+// SetYieldHook implements the mapper.CartCoProc interface.
+func (cart *cdf) SetYieldHook(hook mapper.CartYieldHook) {
+	cart.yieldHook = hook
 }
 
-func (cart *cdf) runArm() error {
+func (cart *cdf) runArm() (mapper.YieldReason, error) {
 	cart.state.immediateMode = cart.instance.Prefs.ARM.Immediate.Get().(bool)
 
-	cycles, err := cart.arm.Run()
+	yld, cycles, err := cart.arm.Run()
 	if err != nil {
-		return curated.Errorf("CDF: %v", err)
+		return yld, curated.Errorf("CDF: %v", err)
 	}
 
 	cart.state.callfn.Start(cycles)
@@ -691,5 +691,5 @@ func (cart *cdf) runArm() error {
 		cart.state.registers.Datastream[i].AfterCALLFN = cart.readDatastreamPointer(i)
 	}
 
-	return nil
+	return yld, nil
 }

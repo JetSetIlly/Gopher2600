@@ -35,8 +35,8 @@ type Ace struct {
 	arm     *arm.ARM
 	mem     *aceMemory
 
-	// the hook that handles cartridge breakpoints
-	breakpointHook mapper.CartBreakpointHook
+	// the hook that handles cartridge yields
+	yieldHook mapper.CartYieldHook
 
 	// parallelARM is true whenever the address bus is not a cartridge address (ie.
 	// a TIA or RIOT address). this means that the arm is running unhindered
@@ -173,38 +173,38 @@ func (cart *Ace) Listen(addr uint16, data uint8) {
 	// the PlusROM exit routine to work correctly
 	cart.mem.gpioB[toArm_data] = data
 
-	cart.arm.Run()
-	for cart.arm.BreakpointHasTriggered() {
-		cart.breakpointHook.CartReachedBreakpoint()
-		cart.arm.Run()
+	yld, _, _ := cart.arm.Run()
+	for yld != mapper.YieldForVCS {
+		cart.yieldHook.CartYield(yld)
+		yld, _, _ = cart.arm.Run()
 	}
 
 	// set address and continue x4
 	cart.mem.gpioA[toArm_address] = uint8(addr)
 	cart.mem.gpioA[toArm_address+1] = uint8(addr >> 8)
 
-	cart.arm.Run()
-	for cart.arm.BreakpointHasTriggered() {
-		cart.breakpointHook.CartReachedBreakpoint()
-		cart.arm.Run()
+	yld, _, _ = cart.arm.Run()
+	for yld != mapper.YieldForVCS {
+		cart.yieldHook.CartYield(yld)
+		yld, _, _ = cart.arm.Run()
 	}
 
-	cart.arm.Run()
-	for cart.arm.BreakpointHasTriggered() {
-		cart.breakpointHook.CartReachedBreakpoint()
-		cart.arm.Run()
+	yld, _, _ = cart.arm.Run()
+	for yld != mapper.YieldForVCS {
+		cart.yieldHook.CartYield(yld)
+		yld, _, _ = cart.arm.Run()
 	}
 
-	cart.arm.Run()
-	for cart.arm.BreakpointHasTriggered() {
-		cart.breakpointHook.CartReachedBreakpoint()
-		cart.arm.Run()
+	yld, _, _ = cart.arm.Run()
+	for yld != mapper.YieldForVCS {
+		cart.yieldHook.CartYield(yld)
+		yld, _, _ = cart.arm.Run()
 	}
 
-	cart.arm.Run()
-	for cart.arm.BreakpointHasTriggered() {
-		cart.breakpointHook.CartReachedBreakpoint()
-		cart.arm.Run()
+	yld, _, _ = cart.arm.Run()
+	for yld != mapper.YieldForVCS {
+		cart.yieldHook.CartYield(yld)
+		yld, _, _ = cart.arm.Run()
 	}
 }
 
@@ -267,7 +267,7 @@ func (cart *Ace) BreakpointsDisable(disable bool) {
 	cart.arm.BreakpointsDisable(disable)
 }
 
-// BreakpointsHook implements the mapper.CartCoProc interface.
-func (cart *Ace) SetBreakpointHook(hook mapper.CartBreakpointHook) {
-	cart.breakpointHook = hook
+// SetYieldHook implements the mapper.CartCoProc interface.
+func (cart *Ace) SetYieldHook(hook mapper.CartYieldHook) {
+	cart.yieldHook = hook
 }

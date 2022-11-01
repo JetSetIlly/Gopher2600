@@ -15,19 +15,39 @@
 
 package developer
 
-import "time"
+import (
+	"time"
 
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
+)
+
+// YieldState records the most recent yield.
 type YieldState struct {
 	InstructionPC uint32
-	Breakpoint    bool
+	Reason        mapper.YieldReason
 	TimeStamp     time.Time
 }
 
 // OnYield implements the mapper.CartCoProcDeveloper interface.
-func (dev *Developer) OnYield(instructionPC uint32, breakpoint bool) {
+func (dev *Developer) OnYield(instructionPC uint32, reason mapper.YieldReason) {
+	dev.yieldStateLock.Lock()
+	defer dev.yieldStateLock.Unlock()
+
 	dev.yieldState.InstructionPC = instructionPC
-	dev.yieldState.Breakpoint = breakpoint
+	dev.yieldState.Reason = reason
 	dev.yieldState.TimeStamp = time.Now()
+
+	switch reason {
+	case mapper.YieldUnimplementedInstruction:
+		fallthrough
+	case mapper.YieldUndefinedBehaviour:
+		if dev.source != nil {
+			dev.sourceLock.Lock()
+			ln := dev.source.linesByAddress[uint64(instructionPC)]
+			ln.Bug = true
+			dev.sourceLock.Unlock()
+		}
+	}
 }
 
 // BorrowYieldState will lock the illegal access log for the duration of the
