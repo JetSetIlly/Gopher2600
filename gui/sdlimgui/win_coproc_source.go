@@ -232,12 +232,12 @@ func (win *winCoProcSource) draw() {
 
 				// focusLine is the same as yieldLine. if yieldLine is invalid
 				// we instead focus on the main function
-				if focusLine == nil || focusLine.File == nil {
+				if focusLine == nil || focusLine.IsStub() {
 					focusLine = src.MainFunction.DeclLine
 				}
 
 				// double check validity of focusLine
-				if focusLine != nil && focusLine.File != nil {
+				if focusLine != nil && !focusLine.IsStub() {
 					win.selectedShortFileName = focusLine.File.ShortFilename
 					win.selectedLine.single(focusLine.LineNumber)
 					win.updateSelectedFile = true
