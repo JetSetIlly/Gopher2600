@@ -88,6 +88,24 @@ func newAceMemory(version string, data []byte) (*aceMemory, error) {
 		return nil, curated.Errorf("ACE: unrecognised version (%s)", version)
 	}
 
+	// flash creation
+	flashSize := 0x0001f400 // 128k
+	mem.flash = make([]byte, flashSize)
+	mem.flashOrigin = mem.model.FlashOrigin
+	mem.flashMemtop = mem.flashOrigin + uint32(len(mem.flash)) - 1
+
+	// copy vcs program
+	mem.vcsProgram = make([]byte, len(data))
+	copy(mem.vcsProgram, data)
+	mem.vcsOrigin = mem.flashMemtop + 1
+	mem.vcsMemtop = mem.vcsOrigin + uint32(len(mem.vcsProgram)) - 1
+
+	// SRAM creation
+	sramSize := 0x0000fa00 // 64k
+	mem.sram = make([]byte, sramSize)
+	mem.sramOrigin = mem.model.SRAMOrigin
+	mem.sramMemtop = mem.sramOrigin + uint32(len(mem.sram)) - 1
+
 	romSize := (uint32(data[aceHeaderROMSize])) |
 		(uint32(data[aceHeaderROMSize+1]) << 8) |
 		(uint32(data[aceHeaderROMSize+2]) << 16) |
@@ -100,7 +118,8 @@ func newAceMemory(version string, data []byte) (*aceMemory, error) {
 		(uint32(data[aceHeaderEntryPoint+2]) << 16) |
 		(uint32(data[aceHeaderEntryPoint+3]) << 24)
 
-	mem.resetSP = mem.model.SRAMOrigin | 0x0000ffdc
+	// reset values for SP, LR and PC
+	mem.resetSP = mem.model.FlashOrigin + uint32(flashSize) - 4
 	mem.resetLR = mem.model.FlashOrigin
 	mem.resetPC = mem.model.FlashOrigin + entryPoint
 
@@ -130,26 +149,9 @@ func newAceMemory(version string, data []byte) (*aceMemory, error) {
 
 	nullFunctionAddress := mem.resetPC + uint32(len(mem.armProgram)) + 2
 
-	// append function to end of flash
+	// append null function to end of arm program
 	mem.armProgram = append(mem.armProgram, nullFunction...)
 	mem.armMemtop += uint32(len(nullFunction))
-
-	// flash creation
-	flashSize := 0x18000 // 96k
-	mem.flash = make([]byte, flashSize)
-	mem.flashOrigin = mem.model.FlashOrigin
-	mem.flashMemtop = mem.flashOrigin + uint32(len(mem.flash)) - 1
-
-	// copy vcs program
-	mem.vcsProgram = make([]byte, len(data))
-	copy(mem.vcsProgram, data)
-	mem.vcsOrigin = mem.flashMemtop + 1
-	mem.vcsMemtop = mem.vcsOrigin + uint32(len(mem.vcsProgram)) - 1
-
-	// SRAM creation
-	mem.sram = make([]byte, mem.resetSP-mem.model.SRAMOrigin+1)
-	mem.sramOrigin = mem.model.SRAMOrigin
-	mem.sramMemtop = mem.sramOrigin + uint32(len(mem.sram)) - 1
 
 	// set virtual argument. detailed information in the PlusCart firmware
 	// source:

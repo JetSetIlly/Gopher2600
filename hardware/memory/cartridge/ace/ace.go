@@ -123,11 +123,6 @@ func (cart *Ace) Plumb() {
 
 // Reset implements the mapper.CartMapper interface.
 func (cart *Ace) Reset() {
-	if cart.dev != nil {
-		cart.dev.StartProfiling()
-		defer cart.dev.ProcessProfiling()
-	}
-	cart.arm.Run()
 }
 
 // Read implements the mapper.CartMapper interface.
