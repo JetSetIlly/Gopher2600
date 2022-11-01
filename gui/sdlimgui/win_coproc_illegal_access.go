@@ -149,7 +149,7 @@ func (win *winCoProcIllegalAccess) draw() {
 				imgui.PopStyleColor()
 
 				if win.showSrcInTooltip {
-					if lg.SrcLine != nil {
+					if !lg.SrcLine.IsStub() {
 						imgui.Spacing()
 						imgui.Separator()
 						imgui.Spacing()
@@ -176,7 +176,7 @@ func (win *winCoProcIllegalAccess) draw() {
 			}, true)
 
 			// open source window on click
-			if imgui.IsItemClicked() && lg.SrcLine != nil {
+			if imgui.IsItemClicked() && !lg.SrcLine.IsStub() {
 				srcWin := win.img.wm.debuggerWindows[winCoProcSourceID].(*winCoProcSource)
 				srcWin.gotoSourceLine(lg.SrcLine)
 			}
