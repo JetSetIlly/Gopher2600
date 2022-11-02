@@ -158,7 +158,9 @@ type SourceFunction struct {
 
 // IsStub returns true if the SourceFunction is just a stub.
 func (fn *SourceFunction) IsStub() bool {
-	return fn.DeclLine.IsStub()
+	// it's possible to have a stub function that has a name. because of this
+	// we check the DeclLine field in addition to the name field
+	return fn.DeclLine.IsStub() || fn.Name == stubIndicator
 }
 
 // SourceType is a single type identified by the DWARF data. Composite types
@@ -300,14 +302,17 @@ func (varb *SourceVariable) String() string {
 const stubIndicator = "not in source"
 
 // createStubLine returns an instance of SourceLine with the specified
-// SourceFunction assigned to it. The SourceFunction argument should not be
-// nil.
+// SourceFunction assigned to it.
+//
+// If stubFn is nil then a dummy function will be created.
 //
 // A stub SourceFile will be created for assignment to the SourceLine.File
-// field
+// field.
 func createStubLine(stubFn *SourceFunction) *SourceLine {
 	if stubFn == nil {
-		panic("stub function required for createStubLine()")
+		stubFn = &SourceFunction{
+			Name: stubIndicator,
+		}
 	}
 
 	// the DeclLine field must definitely be nil for a stubFn function
