@@ -467,7 +467,7 @@ func (win *winCoProcSource) drawSource(src *developer.Source) {
 						imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmBreakAddress)
 						imgui.SelectableV(string(fonts.Breakpoint), false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{0, 0})
 						imgui.PopStyleColor()
-					} else if ln.IllegalAccess {
+					} else if ln.Bug {
 						imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceBug)
 						imgui.SelectableV(string(fonts.CoProcBug), false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{0, 0})
 						imgui.PopStyleColor()

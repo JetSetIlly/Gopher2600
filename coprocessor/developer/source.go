@@ -512,23 +512,6 @@ func NewSource(romFile string, cart mapper.CartCoProc, elfFile string) (*Source,
 		}
 	}
 
-	// interleaved instructions check
-	disasmCt := 0.0
-	interleaveCt := 0.0
-	for _, ln := range src.linesByAddress {
-		if len(ln.Disassembly) > 0 {
-			disasmCt++
-			addr := ln.Disassembly[0].Addr
-			for _, d := range ln.Disassembly[1:] {
-				if d.Addr > addr+2 {
-					interleaveCt++
-					ln.Interleaved = true
-					break // disasm loop
-				}
-			}
-		}
-	}
-
 	// add stub functions to list of functions
 	src.addStubEntries()
 

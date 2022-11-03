@@ -113,7 +113,7 @@ func (dev *Developer) logAccess(event string, pc uint32, addr uint32, isNullAcce
 			}
 
 			// inidcate that the source line has been responsble for an illegal access
-			e.SrcLine.IllegalAccess = true
+			e.SrcLine.Bug = true
 		} else {
 			e.SrcLine = createStubLine(nil)
 		}

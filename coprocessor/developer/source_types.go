@@ -99,12 +99,8 @@ type SourceLine struct {
 	// the generated assembly for this line. will be empty if line is a comment or otherwise unsused
 	Disassembly []*SourceDisasm
 
-	// some source lines will interleave their coproc instructions
-	// (disassembly) with other source lines
-	Interleaved bool
-
-	// whether this source line has been responsible for an illegal access of memory
-	IllegalAccess bool
+	// whether this source line has been responsible for a likely bug (eg. illegal access of memory)
+	Bug bool
 
 	// statistics for the line
 	Stats StatsGroup
