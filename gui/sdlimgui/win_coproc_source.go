@@ -256,6 +256,13 @@ func (win *winCoProcSource) draw() {
 			// updateSelectFile is reset to false below (because we need to check it again)
 		}
 
+		// final check before continuing. if selectedFile is nil then exit with
+		// the no source message
+		if win.selectedFile == nil {
+			imgui.Text("No source files available")
+			return
+		}
+
 		// fuzzy file selector
 		win.drawFileSelection(src)
 		imgui.Separator()

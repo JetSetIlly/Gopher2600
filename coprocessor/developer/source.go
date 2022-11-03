@@ -74,6 +74,8 @@ type Source struct {
 	// this function will be called "main" and will be easy to discern but
 	// sometimes it is named something else and we must figure out as best we
 	// can which function it is
+	//
+	// if no function can be found at all, MainFunction will be a stub entry
 	MainFunction *SourceFunction
 
 	// special purpose line used to collate instructions that are outside the
@@ -592,6 +594,11 @@ func NewSource(romFile string, cart mapper.CartCoProc, elfFile string) (*Source,
 				break
 			}
 		}
+	}
+
+	// can't find a main function at all. create a stub entry
+	if src.MainFunction == nil {
+		src.MainFunction = createStubLine(nil).Function
 	}
 
 	// log summary
