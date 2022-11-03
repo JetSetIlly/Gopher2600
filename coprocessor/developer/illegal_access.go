@@ -105,9 +105,11 @@ func (dev *Developer) logAccess(event string, pc uint32, addr uint32, isNullAcce
 		if dev.source != nil {
 			e.SrcLine = dev.source.linesByAddress[uint64(pc)]
 
-			// it shouldn't be possible to get no source line at all from the source
+			// it is sometimes possible to have source (ie dev.source != nil)
+			// but for there to be no actual source files. in these instances
+			// we need to create the a stub entry for the line as we go along
 			if e.SrcLine == nil {
-				panic("source line is invalid for illegal access")
+				e.SrcLine = createStubLine(nil)
 			}
 
 			// inidcate that the source line has been responsble for an illegal access
