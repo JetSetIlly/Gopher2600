@@ -219,10 +219,7 @@ func (win *winCoProcSource) draw() {
 		// focuse on main function if this is the first time the window has
 		// been opened.
 		if win.firstOpen {
-			ln := src.MainFunction.DeclLine
-			win.selectedShortFileName = ln.File.ShortFilename
-			win.selectedLine.single(ln.LineNumber)
-			win.updateSelectedFile = true
+			win.focusYieldLine = true
 			win.firstOpen = false
 		}
 
