@@ -375,7 +375,10 @@ func (cart *cdf) Write(addr uint16, data uint8, passive bool, poke bool) error {
 
 			// keep calling runArm() for as long as breakpoints are being triggered
 			for yld != mapper.YieldForVCS {
-				cart.yieldHook.CartYield(yld)
+				if cart.yieldHook.CartYield(yld) {
+					break // for loop
+				}
+
 				yld, err = cart.runArm()
 				if err != nil {
 					return err

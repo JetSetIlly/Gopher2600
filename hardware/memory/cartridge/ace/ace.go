@@ -176,7 +176,9 @@ func (cart *Ace) Listen(addr uint16, data uint8) {
 
 	yld, _, _ := cart.arm.Run()
 	for yld != mapper.YieldForVCS {
-		cart.yieldHook.CartYield(yld)
+		if cart.yieldHook.CartYield(yld) {
+			return
+		}
 		yld, _, _ = cart.arm.Run()
 	}
 
@@ -184,29 +186,18 @@ func (cart *Ace) Listen(addr uint16, data uint8) {
 	cart.mem.gpioA[toArm_address] = uint8(addr)
 	cart.mem.gpioA[toArm_address+1] = uint8(addr >> 8)
 
-	yld, _, _ = cart.arm.Run()
-	for yld != mapper.YieldForVCS {
-		cart.yieldHook.CartYield(yld)
+	for i := 0; i < 4; i++ {
 		yld, _, _ = cart.arm.Run()
+		for yld != mapper.YieldForVCS {
+			if cart.yieldHook.CartYield(yld) {
+				return
+			}
+			yld, _, _ = cart.arm.Run()
+		}
 	}
 
-	yld, _, _ = cart.arm.Run()
-	for yld != mapper.YieldForVCS {
-		cart.yieldHook.CartYield(yld)
-		yld, _, _ = cart.arm.Run()
-	}
-
-	yld, _, _ = cart.arm.Run()
-	for yld != mapper.YieldForVCS {
-		cart.yieldHook.CartYield(yld)
-		yld, _, _ = cart.arm.Run()
-	}
-
-	yld, _, _ = cart.arm.Run()
-	for yld != mapper.YieldForVCS {
-		cart.yieldHook.CartYield(yld)
-		yld, _, _ = cart.arm.Run()
-	}
+	// there is a return from a double for loop above. we should be careful
+	// about added anything more here before considering that
 }
 
 // Step implements the mapper.CartMapper interface.

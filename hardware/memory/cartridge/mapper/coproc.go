@@ -57,14 +57,17 @@ const (
 // coprocessor has reached a breakpoint or some other yield point (eg.
 // undefined behaviour)
 type CartYieldHook interface {
-	CartYield(YieldReason)
+	// CartYield returns true if the YieldReason cannot be handled without
+	// breaking into a debugging loop
+	CartYield(YieldReason) bool
 }
 
 // StubCartYieldHook is a stub implementation for the CartYieldHook interface.
 type StubCartYieldHook struct{}
 
 // CartYield is a stub implementation for the CartYieldHook interface.
-func (_ StubCartYieldHook) CartYield(_ YieldReason) {
+func (_ StubCartYieldHook) CartYield(_ YieldReason) bool {
+	return true
 }
 
 // CartCoProc is implemented by cartridge mappers that have a coprocessor that

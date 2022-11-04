@@ -847,16 +847,33 @@ func (dbg *Debugger) StartInPlayMode(filename string) error {
 	return nil
 }
 
-// CartYield implements the mapper.CartYieldHook interface
-func (dbg *Debugger) CartYield(reason mapper.YieldReason) {
+// CartYield implements the mapper.CartYieldHook interface.
+//
+// A reason of YieldForVCS will always return false so for (small) performance
+// reasons cartridge mappers can simply not call CartYield unless the reason is
+// something different.
+//
+// All other reasons will return true. Mappers should exit the ARM loop as soon
+// as possible.
+func (dbg *Debugger) CartYield(reason mapper.YieldReason) bool {
 	switch reason {
 	case mapper.YieldForVCS:
-		return
+		return false
+
 	default:
 		dbg.halting.cartridgeBreakpoint = true
 		dbg.continueEmulation = dbg.halting.check()
-		dbg.inputLoop(dbg.term, true)
+
+		switch dbg.Mode() {
+		case govern.ModePlay:
+			dbg.setMode(govern.ModeDebugger)
+		case govern.ModeDebugger:
+			dbg.inputLoop(dbg.term, true)
+		}
+		return true
 	}
+
+	return false
 }
 
 func (dbg *Debugger) run() error {
