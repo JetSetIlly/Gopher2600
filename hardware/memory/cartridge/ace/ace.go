@@ -51,8 +51,9 @@ type Ace struct {
 // NewAce is the preferred method of initialisation for the Ace type.
 func NewAce(instance *instance.Instance, version string, data []byte) (mapper.CartMapper, error) {
 	cart := &Ace{
-		instance: instance,
-		version:  version,
+		instance:  instance,
+		version:   version,
+		yieldHook: mapper.StubCartYieldHook{},
 	}
 
 	var err error

@@ -60,6 +60,13 @@ type CartYieldHook interface {
 	CartYield(YieldReason)
 }
 
+// StubCartYieldHook is a stub implementation for the CartYieldHook interface.
+type StubCartYieldHook struct{}
+
+// CartYield is a stub implementation for the CartYieldHook interface.
+func (_ StubCartYieldHook) CartYield(_ YieldReason) {
+}
+
 // CartCoProc is implemented by cartridge mappers that have a coprocessor that
 // functions independently from the VCS.
 type CartCoProc interface {

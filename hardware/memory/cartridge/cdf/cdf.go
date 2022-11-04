@@ -78,6 +78,7 @@ func NewCDF(instance *instance.Instance, version string, data []byte) (mapper.Ca
 		mappingID: "CDF",
 		bankSize:  4096,
 		state:     newCDFstate(),
+		yieldHook: mapper.StubCartYieldHook{},
 	}
 
 	var err error
