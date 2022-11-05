@@ -154,6 +154,26 @@ func (arm *ARM) thumb2DataProcessingNonImmediate(opcode uint16) {
 					arm.state.status.setCarry(carry)
 					// overflow unchanged
 				}
+
+			case 0b01:
+				// with logical right shift
+
+				// carry bit
+				m := uint32(0x01) << (32 - imm5)
+				carry := arm.state.registers[Rm]&m == m
+
+				// perform shift
+				shifted := arm.state.registers[Rm] >> imm5
+
+				// perform bit clear
+				arm.state.registers[Rd] = arm.state.registers[Rn] & ^shifted
+
+				if setFlags {
+					arm.state.status.isNegative(arm.state.registers[Rd])
+					arm.state.status.isZero(arm.state.registers[Rd])
+					arm.state.status.setCarry(carry)
+					// overflow unchanged
+				}
 			case 0b10:
 				// with arithmetic right shift
 
