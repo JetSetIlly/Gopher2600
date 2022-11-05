@@ -267,7 +267,7 @@ func imguiSeparator() {
 
 // draw grid of bytes with before and after functions in addition to commit function.
 func drawByteGrid(id string, data []uint8, origin uint32,
-	before func(offset uint32), after func(offset uint32), commit func(addr uint32, value uint8)) {
+	before func(offset uint32), after func(offset uint32), commit func(idx int, value uint8)) {
 
 	// the origin and memtop as a string
 	originString := fmt.Sprintf("%08x", origin)
@@ -370,9 +370,9 @@ func drawByteGrid(id string, data []uint8, origin uint32,
 					b := data[offset]
 
 					s := fmt.Sprintf("%02x", b)
-					if imguiHexInput(fmt.Sprintf("##%x", addr), 2, &s) {
+					if imguiHexInput(fmt.Sprintf("%s##%08x", id, addr), 2, &s) {
 						if v, err := strconv.ParseUint(s, 16, 8); err == nil {
-							commit(addr, uint8(v))
+							commit(int(offset), uint8(v))
 						}
 					}
 

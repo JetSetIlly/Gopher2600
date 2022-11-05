@@ -21,7 +21,7 @@ import (
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
-// Static implements the bus.CartStatic interface.
+// Static implements the mapper.CartStatic interface.
 type Static struct {
 	version version
 
@@ -198,28 +198,28 @@ func (stc *Static) Read32bit(addr uint32) (uint32, bool) {
 		uint32((*mem)[addr+3])<<24, true
 }
 
-// GetStatic implements the bus.CartStaticBus interface.
+// GetStatic implements the mapper.CartStaticBus interface.
 func (cart *cdf) GetStatic() mapper.CartStatic {
 	return cart.state.static.Snapshot()
 }
 
-// StaticWrite implements the bus.CartStaticBus interface.
-func (cart *cdf) PutStatic(segment string, idx uint16, data uint8) bool {
+// StaticWrite implements the mapper.CartStaticBus interface.
+func (cart *cdf) PutStatic(segment string, idx int, data uint8) bool {
 	switch segment {
 	case "Driver":
-		if int(idx) >= len(cart.state.static.driverRAM) {
+		if idx >= len(cart.state.static.driverRAM) {
 			return false
 		}
 		cart.state.static.driverRAM[idx] = data
 
 	case "Data":
-		if int(idx) >= len(cart.state.static.dataRAM) {
+		if idx >= len(cart.state.static.dataRAM) {
 			return false
 		}
 		cart.state.static.dataRAM[idx] = data
 
 	case "Variables":
-		if int(idx) >= len(cart.state.static.variablesRAM) {
+		if idx >= len(cart.state.static.variablesRAM) {
 			return false
 		}
 		cart.state.static.variablesRAM[idx] = data

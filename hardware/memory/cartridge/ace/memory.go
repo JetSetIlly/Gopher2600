@@ -347,19 +347,19 @@ func (a *aceMemory) Read32bit(addr uint32) (uint32, bool) {
 		uint32((*mem)[addr+3])<<24, true
 }
 
-// GetStatic implements the bus.CartStaticBus interface.
+// GetStatic implements the mapper.CartStaticBus interface.
 func (cart *Ace) GetStatic() mapper.CartStatic {
 	return cart.mem.Snapshot()
 }
 
-// StaticWrite implements the bus.CartStaticBus interface.
-func (cart *Ace) PutStatic(segment string, idx uint16, data uint8) bool {
+// StaticWrite implements the mapper.CartStaticBus interface.
+func (cart *Ace) PutStatic(segment string, idx int, data uint8) bool {
 	mem, ok := cart.mem.Reference(segment)
 	if !ok {
 		return false
 	}
 
-	if int(idx) >= len(mem) {
+	if idx >= len(mem) {
 		return false
 	}
 	mem[idx] = data

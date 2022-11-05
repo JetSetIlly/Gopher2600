@@ -735,8 +735,8 @@ func (cart *dpc) GetStatic() mapper.CartStatic {
 }
 
 // PutStatic implements the mapper.CartStaticBus interface
-func (cart *dpc) PutStatic(segment string, idx uint16, data uint8) bool {
-	if int(idx) >= len(cart.static.data) {
+func (cart *dpc) PutStatic(segment string, idx int, data uint8) bool {
+	if idx >= len(cart.static.data) {
 		return false
 	}
 	cart.static.data[idx] = data

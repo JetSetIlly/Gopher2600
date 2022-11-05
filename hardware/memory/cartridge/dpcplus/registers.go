@@ -24,7 +24,7 @@ import (
 	"github.com/jetsetilly/gopher2600/random"
 )
 
-// Registers implements the bus.CartRegisters interface.
+// Registers implements the mapper.CartRegistersBus interface.
 type Registers struct {
 	Fetcher      [8]dataFetcher
 	FracFetcher  [8]fractionalDataFetcher
@@ -210,12 +210,12 @@ func (rng *randomNumberFetcher) prev() {
 	}
 }
 
-// GetRegisters implements the bus.CartRegistersBus interface.
+// GetRegisters implements the mapper.CartRegistersBus interface.
 func (cart *dpcPlus) GetRegisters() mapper.CartRegisters {
 	return cart.state.registers
 }
 
-// PutRegister implements the bus.CartRegistersBus interface
+// PutRegister implements the mapper.CartRegistersBus interface
 //
 // Register specification is divided with the "::" string. The following table
 // describes what the valid register strings and, after the = sign, the type to

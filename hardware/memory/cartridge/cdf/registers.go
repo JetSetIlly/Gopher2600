@@ -52,12 +52,12 @@ func (r Registers) String() string {
 	return s.String()
 }
 
-// GetRegisters implements the bus.CartRegistersBus interface.
+// GetRegisters implements the mapper.CartRegistersBus interface.
 func (cart *cdf) GetRegisters() mapper.CartRegisters {
 	return cart.state.registers
 }
 
-// PutRegister implements the bus.CartRegistersBus interface
+// PutRegister implements the mapper.CartRegistersBus interface
 //
 // Register specification is divided with the "::" string. The following table
 // describes what the valid register strings and, after the = sign, the type to

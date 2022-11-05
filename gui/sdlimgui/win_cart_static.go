@@ -212,14 +212,13 @@ func (win *winCartStatic) draw() {
 						}
 					}
 
-					commit := func(addr uint32, data uint8) {
+					commit := func(idx int, data uint8) {
 						win.img.dbg.PushFunction(func() {
-							idx := int(addr)
-							win.img.vcs.Mem.Cart.GetStaticBus().PutStatic(segname, uint16(idx), data)
+							win.img.vcs.Mem.Cart.GetStaticBus().PutStatic(segname, idx, data)
 						})
 					}
 
-					drawByteGrid("cartStaticByteGrid", currData, seg.Origin, before, after, commit)
+					drawByteGrid(fmt.Sprintf("##cartStatic##%s", segname), currData, seg.Origin, before, after, commit)
 				}
 			}
 

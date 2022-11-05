@@ -296,7 +296,7 @@ func (cart *PlusROM) GetStatic() mapper.CartStatic {
 }
 
 // PutStatic implements the mapper.CartStaticBus interface.
-func (cart *PlusROM) PutStatic(segment string, idx uint16, data uint8) bool {
+func (cart *PlusROM) PutStatic(segment string, idx int, data uint8) bool {
 	if sb, ok := cart.state.child.(mapper.CartStaticBus); ok {
 		return sb.PutStatic(segment, idx, data)
 	}

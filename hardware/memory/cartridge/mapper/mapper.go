@@ -191,7 +191,7 @@ type CartStaticBus interface {
 	//
 	// PutStatic() will be working on the original data so PutStatic should be run
 	// in the same goroutine as the main emulation.
-	PutStatic(segment string, idx uint16, data uint8) bool
+	PutStatic(segment string, idx int, data uint8) bool
 }
 
 // CartStaticSegment describes a single region of the underlying CartStatic
