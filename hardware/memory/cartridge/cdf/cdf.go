@@ -368,10 +368,7 @@ func (cart *cdf) Write(addr uint16, data uint8, passive bool, poke bool) error {
 			}
 
 			// call runArm() once and then check for breakpoints
-			yld, err := cart.runArm()
-			if err != nil {
-				return err
-			}
+			yld := cart.runArm()
 
 			// keep calling runArm() for as long as breakpoints are being triggered
 			for yld != mapper.YieldForVCS {
@@ -379,10 +376,7 @@ func (cart *cdf) Write(addr uint16, data uint8, passive bool, poke bool) error {
 					break // for loop
 				}
 
-				yld, err = cart.runArm()
-				if err != nil {
-					return err
-				}
+				yld = cart.runArm()
 			}
 		}
 
@@ -678,13 +672,10 @@ func (cart *cdf) SetYieldHook(hook mapper.CartYieldHook) {
 	cart.yieldHook = hook
 }
 
-func (cart *cdf) runArm() (mapper.YieldReason, error) {
+func (cart *cdf) runArm() mapper.YieldReason {
 	cart.state.immediateMode = cart.instance.Prefs.ARM.Immediate.Get().(bool)
 
-	yld, cycles, err := cart.arm.Run()
-	if err != nil {
-		return yld, curated.Errorf("CDF: %v", err)
-	}
+	yld, cycles := cart.arm.Run()
 
 	cart.state.callfn.Start(cycles)
 
@@ -695,5 +686,5 @@ func (cart *cdf) runArm() (mapper.YieldReason, error) {
 		cart.state.registers.Datastream[i].AfterCALLFN = cart.readDatastreamPointer(i)
 	}
 
-	return yld, nil
+	return yld
 }

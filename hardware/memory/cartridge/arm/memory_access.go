@@ -16,19 +16,61 @@
 package arm
 
 import (
+	"fmt"
+
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
 func (arm *ARM) illegalAccess(event string, addr uint32) {
-	logger.Logf("ARM7", "%s: unrecognised address %08x (PC: %08x)", event, addr, arm.state.instructionPC)
+	arm.memoryError = fmt.Errorf("%s: unrecognised address %08x (PC: %08x)", event, addr, arm.state.instructionPC)
+
 	if arm.dev == nil {
 		return
 	}
+
 	log := arm.dev.IllegalAccess(event, arm.state.instructionPC, addr)
 	if log == "" {
 		return
 	}
-	logger.Logf("ARM7", "%s: %s", event, log)
+
+	arm.memoryErrorDetail = fmt.Errorf("%s: %s", event, log)
+}
+
+// imperfect check of whether stack has collided with memtop
+func (arm *ARM) stackCollision(stackPointerBeforeExecution uint32) (err error, detail error) {
+	if arm.stackHasCollided || stackPointerBeforeExecution == arm.state.registers[rSP] {
+		return
+	}
+
+	// check if stackMemory point and memtop are in the same memory block
+	stackMemory, _ := arm.mem.MapAddress(arm.state.registers[rSP], true)
+	variableMemory, _ := arm.mem.MapAddress(arm.variableMemtop, true)
+
+	// check if the memory block and "variables" are in the same
+	// memory block and that the stack pointer is below the top of
+	// variable memory
+	if stackMemory != variableMemory || arm.state.registers[rSP] > arm.variableMemtop {
+		return
+	}
+
+	// set stackHasCollided flag. this means that memory accesses
+	// will no longer be checked for legality
+	arm.stackHasCollided = true
+
+	err = fmt.Errorf("stack: collision with program memory (%08x)", arm.state.registers[rSP])
+
+	if arm.dev != nil {
+		return
+	}
+
+	log := arm.dev.StackCollision(arm.state.executingPC, arm.state.registers[rSP])
+	if log == "" {
+		return
+	}
+
+	detail = fmt.Errorf("stack: %s", log)
+
+	return err, detail
 }
 
 // nullAccess is a special condition of illegalAccess()
@@ -78,8 +120,6 @@ func (arm *ARM) read8bit(addr uint32) uint8 {
 			}
 		}
 
-		arm.memoryError = arm.abortOnIllegalMem
-
 		if !arm.stackHasCollided {
 			arm.illegalAccess("Read 8bit", addr)
 		}
@@ -123,8 +163,6 @@ func (arm *ARM) write8bit(addr uint32, val uint8) {
 				return
 			}
 		}
-
-		arm.memoryError = arm.abortOnIllegalMem
 
 		if !arm.stackHasCollided {
 			arm.illegalAccess("Write 8bit", addr)
@@ -176,8 +214,6 @@ func (arm *ARM) read16bit(addr uint32, requiresAlignment bool) uint16 {
 				return uint16(v)
 			}
 		}
-
-		arm.memoryError = arm.abortOnIllegalMem
 
 		if !arm.stackHasCollided {
 			arm.illegalAccess("Read 16bit", addr)
@@ -235,8 +271,6 @@ func (arm *ARM) write16bit(addr uint32, val uint16, requiresAlignment bool) {
 				return
 			}
 		}
-
-		arm.memoryError = arm.abortOnIllegalMem
 
 		if !arm.stackHasCollided {
 			arm.illegalAccess("Write 16bit", addr)
@@ -296,8 +330,6 @@ func (arm *ARM) read32bit(addr uint32, requiresAlignment bool) uint32 {
 			}
 		}
 
-		arm.memoryError = arm.abortOnIllegalMem
-
 		if !arm.stackHasCollided {
 			arm.illegalAccess("Read 32bit", addr)
 		}
@@ -354,8 +386,6 @@ func (arm *ARM) write32bit(addr uint32, val uint32, requiresAlignment bool) {
 				return
 			}
 		}
-
-		arm.memoryError = arm.abortOnIllegalMem
 
 		if !arm.stackHasCollided {
 			arm.illegalAccess("Write 32bit", addr)

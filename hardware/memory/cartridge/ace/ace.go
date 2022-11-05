@@ -174,12 +174,12 @@ func (cart *Ace) Listen(addr uint16, data uint8) {
 	// the PlusROM exit routine to work correctly
 	cart.mem.gpioB[toArm_data] = data
 
-	yld, _, _ := cart.arm.Run()
+	yld, _ := cart.arm.Run()
 	for yld != mapper.YieldForVCS {
 		if cart.yieldHook.CartYield(yld) {
 			return
 		}
-		yld, _, _ = cart.arm.Run()
+		yld, _ = cart.arm.Run()
 	}
 
 	// set address and continue x4
@@ -187,12 +187,12 @@ func (cart *Ace) Listen(addr uint16, data uint8) {
 	cart.mem.gpioA[toArm_address+1] = uint8(addr >> 8)
 
 	for i := 0; i < 4; i++ {
-		yld, _, _ = cart.arm.Run()
+		yld, _ = cart.arm.Run()
 		for yld != mapper.YieldForVCS {
 			if cart.yieldHook.CartYield(yld) {
 				return
 			}
-			yld, _, _ = cart.arm.Run()
+			yld, _ = cart.arm.Run()
 		}
 	}
 

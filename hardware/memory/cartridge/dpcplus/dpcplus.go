@@ -507,10 +507,7 @@ func (cart *dpcPlus) Write(addr uint16, data uint8, passive bool, poke bool) err
 			if cart.dev != nil {
 				cart.dev.StartProfiling()
 			}
-			err := cart.runArm()
-			if err != nil {
-				return err
-			}
+			cart.runArm()
 		}
 
 	// reserved
@@ -934,15 +931,8 @@ func (cart *dpcPlus) BreakpointsDisable(disable bool) {
 func (cart *dpcPlus) SetYieldHook(hook mapper.CartYieldHook) {
 }
 
-func (cart *dpcPlus) runArm() error {
+func (cart *dpcPlus) runArm() {
 	cart.state.immediateMode = cart.instance.Prefs.ARM.Immediate.Get().(bool)
-
-	_, cycles, err := cart.arm.Run()
-	if err != nil {
-		return curated.Errorf("DPC+: %v", err)
-	}
-
+	_, cycles := cart.arm.Run()
 	cart.state.callfn.Start(cycles)
-
-	return nil
 }

@@ -721,7 +721,6 @@ func (arm *ARM) thumbHiRegisterOps(opcode uint16) {
 			// switch to ARM mode. emulate function call.
 			res, err := arm.hook.ARMinterrupt(arm.state.registers[rPC]-4, arm.state.registers[2], arm.state.registers[3])
 			if err != nil {
-				arm.continueExecution = false
 				arm.executionError = err
 				// "7.6 Data Operations" in "ARM7TDMI-S Technical Reference Manual r4p3"
 				//  - interrupted

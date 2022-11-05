@@ -89,7 +89,9 @@ type ARMState struct {
 	//
 	// an unyielded CPU can be reset and otherwise safely altered in between
 	// calls to Run()
-	yield       bool
+	yield bool
+
+	// the reason for the yield. is undefined if yield is false
 	yieldReason mapper.YieldReason
 
 	// the area the PC covers. once assigned we'll assume that the program
@@ -191,14 +193,17 @@ type ARM struct {
 
 	// execution flags. set to false and/or error when Run() function should end
 	continueExecution bool
-	executionError    error
+
+	// error seen during execution
+	executionError error
 
 	// is set to true when an access to memory using a read/write function used
 	// an unrecognised address. when this happens, the address is logged and
 	// the Thumb program aborted (ie returns early)
 	//
-	// note: it is only set to true if abortOnIllegalMem is true
-	memoryError bool
+	// note: it is only honoured if abortOnIllegalMem is true
+	memoryError       error
+	memoryErrorDetail error
 
 	// the speed at which the arm is running at and the required stretching for
 	// access to flash memory. speed is in MHz. Access latency of Flash memory is
@@ -305,7 +310,7 @@ func NewARM(mmap architecture.Map, prefs *preferences.ARMPreferences, mem Shared
 	// arm.fudge_writer, err = test.NewRingWriter(10485760) // 10MB
 	arm.fudge_writer, err = test.NewCappedWriter(1048576) // 1MB
 	if err != nil {
-		logger.Logf("ARM7", "no fudge debugger: %s", err.Error())
+		logger.Logf("ARM7", "no fudge disassembly: %s", err.Error())
 	}
 
 	// slow prefs update by 100ms
@@ -449,10 +454,10 @@ func (arm *ARM) updatePrefs() {
 func (arm *ARM) findProgramMemory() error {
 	arm.state.programMemory, arm.state.programMemoryOffset = arm.mem.MapAddress(arm.state.registers[rPC], false)
 	if arm.state.programMemory == nil {
-		return curated.Errorf("ARM7: can't find program memory (PC %08x)", arm.state.registers[rPC])
+		return curated.Errorf("can't find program memory (PC %08x)", arm.state.registers[rPC])
 	}
 	if !arm.mem.IsExecutable(arm.state.registers[rPC]) {
-		return curated.Errorf("ARM7: program memory is not executable (PC %08x)", arm.state.registers[rPC])
+		return curated.Errorf("program memory is not executable (PC %08x)", arm.state.registers[rPC])
 	}
 
 	arm.state.programMemoryOffset = arm.state.registers[rPC] - arm.state.programMemoryOffset
@@ -550,12 +555,11 @@ func (arm *ARM) SetInitialRegisters(args ...uint32) error {
 	return nil
 }
 
-// Run will execute an ARM program until a yield condition has been or a fatal
-// error has been encountered.
+// Run will execute an ARM program until a yield condition has been
+// encountered.
 //
-// Returns the yield reason, the number of ARM cycles consumed and any (fatal)
-// errors.
-func (arm *ARM) Run() (mapper.YieldReason, float32, error) {
+// Returns the yield reason, the number of ARM cycles consumed.
+func (arm *ARM) Run() (mapper.YieldReason, float32) {
 	if !arm.state.yield {
 		arm.resetRegisters()
 	}
@@ -566,10 +570,11 @@ func (arm *ARM) Run() (mapper.YieldReason, float32, error) {
 	// arm.staten.prefetchCycle reset in reset() function. we don't want to change
 	// the value if we're resuming from a yield
 
-	// reset execution flags
+	// reset continue flag and error conditions
 	arm.continueExecution = true
 	arm.executionError = nil
-	arm.memoryError = false
+	arm.memoryError = nil
+	arm.memoryErrorDetail = nil
 
 	// reset disasm notes/flags
 	if arm.disasm != nil {
@@ -580,7 +585,14 @@ func (arm *ARM) Run() (mapper.YieldReason, float32, error) {
 	// make sure we know where program memory is
 	err := arm.findProgramMemory()
 	if err != nil {
-		return mapper.YieldError, 0, err
+		logger.Logf("ARM7", err.Error())
+
+		// returing early so we must call OnYield here
+		if arm.dev != nil {
+			arm.dev.OnYield(arm.state.instructionPC, arm.state.yieldReason)
+		}
+
+		return mapper.YieldError, 0
 	}
 
 	// fill pipeline must happen after resetExecution()
@@ -622,7 +634,7 @@ func (arm *ARM) BreakpointsDisable(disable bool) {
 	arm.breakpointsDisabled = disable
 }
 
-func (arm *ARM) run() (mapper.YieldReason, float32, error) {
+func (arm *ARM) run() (mapper.YieldReason, float32) {
 	defer func() {
 		if r := recover(); r != nil {
 			fmt.Println(arm.fudge_writer.String())
@@ -667,7 +679,7 @@ func (arm *ARM) run() (mapper.YieldReason, float32, error) {
 	var iterations int
 
 	// loop through instructions until we reach an exit condition
-	for arm.continueExecution && !arm.memoryError {
+	for arm.continueExecution {
 		// program counter to execute:
 		//
 		// from "7.6 Data Operations" in "ARM7TDMI-S Technical Reference Manual r4p1", page 1-2
@@ -685,7 +697,7 @@ func (arm *ARM) run() (mapper.YieldReason, float32, error) {
 			err = arm.findProgramMemory()
 			if err != nil {
 				// can't find memory so we say the ARM program has finished inadvertently
-				logger.Logf("ARM7", "aborting thumb program early: %s", err.Error())
+				logger.Logf("ARM7", err.Error())
 				break // for loop
 			}
 
@@ -693,7 +705,7 @@ func (arm *ARM) run() (mapper.YieldReason, float32, error) {
 			memIdx = int(arm.state.executingPC) - int(arm.state.programMemoryOffset)
 			if memIdx < 0 || memIdx+1 >= arm.state.programMemoryLen {
 				// can't find memory so we say the ARM program has finished inadvertently
-				logger.Logf("ARM7", "aborting thumb program early: %s", err.Error())
+				logger.Logf("ARM7", err.Error())
 				break // for loop
 			}
 		}
@@ -805,7 +817,7 @@ func (arm *ARM) run() (mapper.YieldReason, float32, error) {
 			// limit the number of cycles used by the ARM program
 			if arm.state.cyclesTotal >= cycleLimit {
 				if arm.state.cyclesTotal >= raisedCycleLimit {
-					logger.Logf("ARM7", "reached cycle limit of %d. ending execution early", cycleLimit)
+					logger.Logf("ARM7", "reached cycle limit of %d", cycleLimit)
 					panic("cycle limit")
 					break
 				}
@@ -814,39 +826,46 @@ func (arm *ARM) run() (mapper.YieldReason, float32, error) {
 		} else {
 			iterations++
 			if iterations > instructionsLimit {
-				logger.Logf("ARM7", "reached instructions limit of %d. ending execution early", instructionsLimit)
+				logger.Logf("ARM7", "reached instructions limit of %d", instructionsLimit)
 				panic("instruction limit")
 				break
 			}
 		}
 
-		// check stack pointer before iterating loop again
-		if arm.dev != nil && stackPointerBeforeExecution != arm.state.registers[rSP] {
-			if !arm.stackHasCollided {
-				// check if stack point and memtop are in the same memory block
-				sm, _ := arm.mem.MapAddress(arm.state.registers[rSP], true)
-				vm, _ := arm.mem.MapAddress(arm.variableMemtop, true)
-
-				// check if stack pointer is below the top of variable memory
-				if sm == vm && arm.state.registers[rSP] <= arm.variableMemtop {
-					event := "Stack"
-					logger.Logf("ARM7", "%s: collision with program memory (%08x)", event, arm.state.registers[rSP])
-
-					log := arm.dev.StackCollision(arm.state.executingPC, arm.state.registers[rSP])
-					if log != "" {
-						logger.Logf("ARM7", "%s: %s", event, log)
-					}
-
-					if arm.abortOnStackCollision {
-						logger.Logf("ARM7", "aborting thumb program early")
-						break
-					}
-
-					// set stackHasCollided flag. this means that memory accesses
-					// will no longer be checked for legality
-					arm.stackHasCollided = true
-				}
+		// check stack for stack collision
+		if err, detail := arm.stackCollision(stackPointerBeforeExecution); err != nil {
+			logger.Logf("ARM7", arm.memoryError.Error())
+			if arm.memoryErrorDetail != nil {
+				logger.Logf("ARM7", detail.Error())
 			}
+
+			if arm.abortOnStackCollision {
+				return mapper.YieldError, 0
+			}
+		}
+
+		// handle memory access errors
+		if arm.memoryError != nil {
+			// not quiting so we log instead
+			logger.Logf("ARM7", arm.memoryError.Error())
+			if arm.memoryErrorDetail != nil {
+				logger.Logf("ARM7", arm.memoryErrorDetail.Error())
+			}
+
+			// we need to reset the memory error instances so that we don't end
+			// up printing the same message over and over
+			arm.memoryError = nil
+			arm.memoryErrorDetail = nil
+
+			if arm.abortOnIllegalMem {
+				return mapper.YieldError, 0
+			}
+		}
+
+		// handle execution errors
+		if arm.executionError != nil {
+			logger.Logf("ARM7", arm.executionError.Error())
+			return mapper.YieldError, 0
 		}
 
 		// check breakpoints unless they are disabled. we also don't want to
@@ -868,23 +887,12 @@ func (arm *ARM) run() (mapper.YieldReason, float32, error) {
 		}
 	}
 
-	// indicate that program abort was because of illegal memory access
-	if arm.memoryError {
-		logger.Logf("ARM7", "illegal memory access detected. aborting thumb program early")
-	}
-
-	// end of program execution
-
-	if arm.executionError != nil {
-		return mapper.YieldError, 0, curated.Errorf("ARM7: %v", arm.executionError)
-	}
-
 	// update yield information
 	if arm.dev != nil {
 		arm.dev.OnYield(arm.state.instructionPC, arm.state.yieldReason)
 	}
 
-	return arm.state.yieldReason, arm.state.cyclesTotal, nil
+	return arm.state.yieldReason, arm.state.cyclesTotal
 }
 
 func (arm *ARM) stepARM7TDMI(opcode uint16, memIdx int) {
