@@ -169,7 +169,7 @@ func (win *winCoProcSource) debuggerDraw() {
 			})
 
 			// open window and focus on yield line if the yield is a breakpoint
-			if yield.Reason != mapper.YieldForVCS {
+			if yield.Reason != mapper.YieldSyncWithVCS {
 				win.debuggerOpen = true
 				win.focusYieldLine = true
 			}

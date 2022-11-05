@@ -602,7 +602,7 @@ func (arm *ARM) Run() (mapper.YieldReason, float32) {
 
 	// reset yield. reason defaults to YieldForVCS
 	arm.state.yield = false
-	arm.state.yieldReason = mapper.YieldForVCS
+	arm.state.yieldReason = mapper.YieldSyncWithVCS
 
 	return arm.run()
 }

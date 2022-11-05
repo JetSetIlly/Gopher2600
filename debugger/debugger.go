@@ -857,7 +857,7 @@ func (dbg *Debugger) StartInPlayMode(filename string) error {
 // as possible.
 func (dbg *Debugger) CartYield(reason mapper.YieldReason) bool {
 	switch reason {
-	case mapper.YieldForVCS:
+	case mapper.YieldSyncWithVCS:
 		return false
 
 	default:

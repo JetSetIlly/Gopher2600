@@ -167,11 +167,26 @@ type YieldReason string
 
 // List of YieldReason values
 const (
-	YieldForVCS                   YieldReason = "Yield for VCS"
-	YieldBreakpoint               YieldReason = "Breakpoint"
-	YieldUndefinedBehaviour       YieldReason = "Undefined Behaviour"
-	YieldUnimplementedInstruction YieldReason = "Unimplemented Instruction"
-	YieldError                    YieldReason = "Error"
+	// the coprocessor has yielded because the program has ended. in this instance the
+	// CoProcessor is not considered to be in a "yielded" state and can be modified
+	YieldProgramEnded YieldReason = "Program Ended"
+
+	// the coprocessor has reached a synchronisation point in the program. it
+	// must wait for the VCS before continuing
+	YieldSyncWithVCS YieldReason = "Sync With VCS"
+
+	// a user supplied breakpoint has been encountered
+	YieldBreakpoint YieldReason = "Breakpoint"
+
+	// the program has triggered undefined behaviour in the coprocessor
+	YieldUndefinedBehaviour YieldReason = "Undefined Behaviour"
+
+	// the program has triggered an unimplemented feature in the coprocessor
+	YieldUnimplementedFeature YieldReason = "Unimplemented Feature"
+
+	// general purpose error that could indicate a memory access error or stack
+	// collision or some other error encountered during execution
+	YieldError YieldReason = "Error"
 )
 
 // CartCoProcDisasmSummary represents a summary of a coprocessor execution.

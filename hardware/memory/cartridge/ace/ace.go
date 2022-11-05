@@ -175,7 +175,7 @@ func (cart *Ace) Listen(addr uint16, data uint8) {
 	cart.mem.gpioB[toArm_data] = data
 
 	yld, _ := cart.arm.Run()
-	for yld != mapper.YieldForVCS {
+	for yld != mapper.YieldSyncWithVCS {
 		if cart.yieldHook.CartYield(yld) {
 			return
 		}
@@ -188,7 +188,7 @@ func (cart *Ace) Listen(addr uint16, data uint8) {
 
 	for i := 0; i < 4; i++ {
 		yld, _ = cart.arm.Run()
-		for yld != mapper.YieldForVCS {
+		for yld != mapper.YieldSyncWithVCS {
 			if cart.yieldHook.CartYield(yld) {
 				return
 			}
