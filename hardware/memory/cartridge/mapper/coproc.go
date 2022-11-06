@@ -83,7 +83,7 @@ type CartCoProc interface {
 	CoProcState() CoProcState
 
 	// breakpoint control of coprocessor
-	BreakpointsDisable(bool)
+	BreakpointsEnable(bool)
 
 	// set interface for cartridge yields
 	SetYieldHook(CartYieldHook)
@@ -169,10 +169,14 @@ type YieldReason string
 const (
 	// the coprocessor has yielded because the program has ended. in this instance the
 	// CoProcessor is not considered to be in a "yielded" state and can be modified
+	//
+	// Expected YieldReason for CDF and DPC+ type ROMs
 	YieldProgramEnded YieldReason = "Program Ended"
 
 	// the coprocessor has reached a synchronisation point in the program. it
 	// must wait for the VCS before continuing
+	//
+	// Expected YieldReason for ACE and ELF type ROMs
 	YieldSyncWithVCS YieldReason = "Sync With VCS"
 
 	// a user supplied breakpoint has been encountered
@@ -184,9 +188,13 @@ const (
 	// the program has triggered an unimplemented feature in the coprocessor
 	YieldUnimplementedFeature YieldReason = "Unimplemented Feature"
 
-	// general purpose error that could indicate a memory access error or stack
-	// collision or some other error encountered during execution
-	YieldError YieldReason = "Error"
+	// the program has tried to access memory illegally. details will have been
+	// communicated by the IllegalAccess() function of the CartCoProcDeveloper
+	// interface
+	YieldMemoryAccessError YieldReason = "Memory Access Error"
+
+	// execution error indicates that something has gone very wrong
+	YieldExecutionError YieldReason = "Execution Error"
 )
 
 // CartCoProcDisasmSummary represents a summary of a coprocessor execution.

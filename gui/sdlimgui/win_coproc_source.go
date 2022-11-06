@@ -221,7 +221,14 @@ func (win *winCoProcSource) draw() {
 		// been opened.
 		if win.firstOpen {
 			win.focusYieldLine = true
-			win.firstOpen = false
+
+			// indicate that we've handled firstOpen only if state is paused.
+			// this is a rough-and-ready solution to the problem of breaking
+			// into the debugger from playmode. without this condition, the
+			// focusYieldLine is lost in the transition
+			if win.img.dbg.State() == govern.Paused {
+				win.firstOpen = false
+			}
 		}
 
 		// focus on yield line (or main function if we don't have a yield line)
@@ -454,7 +461,11 @@ func (win *winCoProcSource) drawSource(src *developer.Source) {
 				// highlight yield line
 				if win.yieldLine != nil && win.yieldLine.File != nil {
 					if win.yieldLine.LineNumber == ln.LineNumber && win.yieldLine.File == win.selectedFile {
-						imgui.TableSetBgColor(imgui.TableBgTargetRowBg0, win.img.cols.CoProcSourceYieldLine)
+						if win.yieldLine.Bug {
+							imgui.TableSetBgColor(imgui.TableBgTargetRowBg0, win.img.cols.CoProcSourceYieldBug)
+						} else {
+							imgui.TableSetBgColor(imgui.TableBgTargetRowBg0, win.img.cols.CoProcSourceYield)
+						}
 					}
 				}
 

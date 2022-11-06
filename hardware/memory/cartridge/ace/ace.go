@@ -174,21 +174,27 @@ func (cart *Ace) Listen(addr uint16, data uint8) {
 	// the PlusROM exit routine to work correctly
 	cart.mem.gpioB[toArm_data] = data
 
+	// call arm once and then check for yield conditions
 	yld, _ := cart.arm.Run()
+
+	// keep calling runArm() for as long as program does not need to sync with the VCS...
 	for yld != mapper.YieldSyncWithVCS {
+		// ... or if the yield hook says to return to the VCS immediately
 		if cart.yieldHook.CartYield(yld) {
 			return
 		}
 		yld, _ = cart.arm.Run()
 	}
 
-	// set address and continue x4
+	// set address for ARM program
 	cart.mem.gpioA[toArm_address] = uint8(addr)
 	cart.mem.gpioA[toArm_address+1] = uint8(addr >> 8)
 
+	// continue and wait for the fourth YieldSyncWithVCS...
 	for i := 0; i < 4; i++ {
 		yld, _ = cart.arm.Run()
 		for yld != mapper.YieldSyncWithVCS {
+			// ... or until the yield hook says to return to the VCS immediately
 			if cart.yieldHook.CartYield(yld) {
 				return
 			}
@@ -254,9 +260,9 @@ func (cart *Ace) CoProcState() mapper.CoProcState {
 	return mapper.CoProcStrongARMFeed
 }
 
-// BreakpointsDisable implements the mapper.CartCoProc interface.
-func (cart *Ace) BreakpointsDisable(disable bool) {
-	cart.arm.BreakpointsDisable(disable)
+// BreakpointsEnable implements the mapper.CartCoProc interface.
+func (cart *Ace) BreakpointsEnable(enable bool) {
+	cart.arm.BreakpointsEnable(enable)
 }
 
 // SetYieldHook implements the mapper.CartCoProc interface.

@@ -340,9 +340,9 @@ func (cart *Elf) CoProcState() mapper.CoProcState {
 	return mapper.CoProcStrongARMFeed
 }
 
-// BreakpointsDisable implements the mapper.CartCoProc interface.
-func (cart *Elf) BreakpointsDisable(disable bool) {
-	cart.arm.BreakpointsDisable(disable)
+// BreakpointsEnable implements the mapper.CartCoProc interface.
+func (cart *Elf) BreakpointsEnable(enable bool) {
+	cart.arm.BreakpointsEnable(enable)
 }
 
 // SetYieldHook implements the mapper.CartCoProc interface.

@@ -21,8 +21,8 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 )
 
-type yieldARM interface {
-	Yield()
+type interruptARM interface {
+	Interrupt()
 }
 
 type aceMemory struct {
@@ -55,7 +55,7 @@ type aceMemory struct {
 	sramOrigin uint32
 	sramMemtop uint32
 
-	arm yieldARM
+	arm interruptARM
 }
 
 const (
@@ -232,7 +232,7 @@ func (mem *aceMemory) Snapshot() *aceMemory {
 }
 
 // Plumb implements the mapper.CartMapper interface.
-func (mem *aceMemory) Plumb(arm yieldARM) {
+func (mem *aceMemory) Plumb(arm interruptARM) {
 	mem.arm = arm
 }
 
@@ -240,7 +240,7 @@ func (mem *aceMemory) Plumb(arm yieldARM) {
 func (mem *aceMemory) MapAddress(addr uint32, write bool) (*[]byte, uint32) {
 	if addr >= mem.gpioAOrigin && addr <= mem.gpioAMemtop {
 		if !write && addr == mem.gpioAOrigin|toArm_address {
-			mem.arm.Yield()
+			mem.arm.Interrupt()
 		}
 		return &mem.gpioA, addr - mem.gpioAOrigin
 	}

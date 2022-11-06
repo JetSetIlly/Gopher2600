@@ -496,10 +496,10 @@ func (cart *Cartridge) ROMDump() (string, error) {
 	return "", curated.Errorf("cartridge: %s does not support ROM dumping", cart.mapper.ID())
 }
 
-// BreakpointsDisable implements the mapper.CartCoProc interface.
-func (cart *Cartridge) BreakpointsDisable(disable bool) {
+// BreakpointsEnable implements the mapper.CartCoProc interface.
+func (cart *Cartridge) BreakpointsEnable(enable bool) {
 	if cart.hasCoProc {
-		cart.coproc.BreakpointsDisable(disable)
+		cart.coproc.BreakpointsEnable(enable)
 	}
 }
 

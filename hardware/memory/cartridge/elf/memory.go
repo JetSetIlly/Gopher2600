@@ -26,8 +26,8 @@ import (
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
-type yieldARM interface {
-	Yield()
+type interruptARM interface {
+	Interrupt()
 	Registers() [arm.NumRegisters]uint32
 	SetRegisters([arm.NumRegisters]uint32)
 }
@@ -92,7 +92,7 @@ type elfMemory struct {
 	busStuffData uint8
 
 	// strongarm data and a small interface to the ARM
-	arm       yieldARM
+	arm       interruptARM
 	strongarm strongArmState
 
 	// args is a special memory area that is used for the arguments passed to
@@ -521,7 +521,7 @@ func (mem *elfMemory) Snapshot() *elfMemory {
 }
 
 // Plumb implements the mapper.CartMapper interface.
-func (mem *elfMemory) Plumb(arm yieldARM) {
+func (mem *elfMemory) Plumb(arm interruptARM) {
 	mem.arm = arm
 }
 
@@ -529,7 +529,7 @@ func (mem *elfMemory) Plumb(arm yieldARM) {
 func (mem *elfMemory) MapAddress(addr uint32, write bool) (*[]byte, uint32) {
 	if addr >= mem.gpio.AOrigin && addr <= mem.gpio.AMemtop {
 		if !write && addr == mem.gpio.AOrigin|toArm_address {
-			mem.arm.Yield()
+			mem.arm.Interrupt()
 		}
 		return &mem.gpio.A, addr - mem.gpio.AOrigin
 	}
@@ -555,7 +555,7 @@ func (mem *elfMemory) MapAddress(addr uint32, write bool) (*[]byte, uint32) {
 	if addr >= mem.strongArmOrigin && addr <= mem.strongArmMemtop {
 		if f, ok := mem.strongArmFunctions[addr+1]; ok {
 			mem.setStrongArmFunction(f)
-			mem.arm.Yield()
+			mem.arm.Interrupt()
 
 			mem.resumeARMimmediately = mem.strongArmResumeImmediately[addr+1]
 		}

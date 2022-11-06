@@ -32,10 +32,8 @@ type haltCoordination struct {
 	// (via reset())
 	halt bool
 
-	// flag explicitely stating that the cartridge has encountered a
-	// breakpoint. set externally and the first thing to be checked by the
-	// check() function
-	cartridgeBreakpoint bool
+	// the cartridge has issued a yield signal that we should stop the debugger for
+	cartridgeYield bool
 
 	// halt conditions
 	breakpoints *breakpoints
@@ -76,13 +74,13 @@ func newHaltCoordination(dbg *Debugger) (*haltCoordination, error) {
 // reset halt condition.
 func (h *haltCoordination) reset() {
 	h.halt = false
-	h.cartridgeBreakpoint = false
+	h.cartridgeYield = false
 }
 
 // check for a halt condition and set the halt flag if found. returns true if
 // emulation should continue and false if the emulation should halt
 func (h *haltCoordination) check() bool {
-	if h.cartridgeBreakpoint {
+	if h.cartridgeYield {
 		h.halt = true
 		return !h.halt
 	}

@@ -497,7 +497,7 @@ func (dbg *Debugger) setState(state govern.State) {
 // should not be issued to the gui.
 func (dbg *Debugger) setStateQuiet(state govern.State, quiet bool) {
 	if state == govern.Rewinding {
-		dbg.vcs.Mem.Cart.BreakpointsDisable(true)
+		dbg.vcs.Mem.Cart.BreakpointsEnable(false)
 		dbg.endPlayback()
 		dbg.endRecording()
 		dbg.endComparison()
@@ -518,7 +518,7 @@ func (dbg *Debugger) setStateQuiet(state govern.State, quiet bool) {
 			dbg.CoProcDisasm.Inhibit(true)
 		}
 	} else {
-		dbg.vcs.Mem.Cart.BreakpointsDisable(false)
+		dbg.vcs.Mem.Cart.BreakpointsEnable(true)
 
 		// enable coprocessor statistics and other developer features when not
 		// in the rewind state
@@ -849,28 +849,42 @@ func (dbg *Debugger) StartInPlayMode(filename string) error {
 
 // CartYield implements the mapper.CartYieldHook interface.
 //
-// A reason of YieldForVCS will always return false so for (small) performance
-// reasons cartridge mappers can simply not call CartYield unless the reason is
-// something different.
-//
-// All other reasons will return true. Mappers should exit the ARM loop as soon
-// as possible.
+// A reason of YieldForVCS or YieldProgramEnded will always return false so for
+// (small) performance reasons cartridge mappers can simply not call CartYield
+// unless the reason is something different.
 func (dbg *Debugger) CartYield(reason mapper.YieldReason) bool {
 	switch reason {
+	case mapper.YieldProgramEnded:
+		// expected reason for CDF and DPC+ cartridges
+		return false
+
 	case mapper.YieldSyncWithVCS:
+		// expected reason for ACE and ELF cartridges
 		return false
 
 	default:
-		dbg.halting.cartridgeBreakpoint = true
+		dbg.halting.cartridgeYield = true
 		dbg.continueEmulation = dbg.halting.check()
 
+		// how we handle it depends on the mode
+		//
+		// if we're in playmode we need to enter the debugger. to do this
+		// successfully the current ARM execution needs to exit and to allow
+		// the play loop to exit and the debugger loop to start
+		//
+		// if we're in the debugger mode already, we can simply instantiate
+		// another inputLoop()
 		switch dbg.Mode() {
 		case govern.ModePlay:
+			// this switch to the debugger needs refinement. currently this
+			// isn't likely to land on the correct yield point. it will instead
+			// land on the next natural yield point. we can probably get around
+			// this with clever use of the rewind system
 			dbg.setMode(govern.ModeDebugger)
+			return true
 		case govern.ModeDebugger:
 			dbg.inputLoop(dbg.term, true)
 		}
-		return true
 	}
 
 	return false

@@ -38,7 +38,9 @@ func (dev *Developer) OnYield(instructionPC uint32, reason mapper.YieldReason) {
 	dev.yieldState.TimeStamp = time.Now()
 
 	switch reason {
-	case mapper.YieldError:
+	case mapper.YieldMemoryAccessError:
+		fallthrough
+	case mapper.YieldExecutionError:
 		fallthrough
 	case mapper.YieldUnimplementedFeature:
 		fallthrough

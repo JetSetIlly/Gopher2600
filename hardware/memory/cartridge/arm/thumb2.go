@@ -32,6 +32,7 @@ package arm
 import (
 	"fmt"
 
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
@@ -147,6 +148,8 @@ func (arm *ARM) decodeThumb2Miscellaneous(opcode uint16) func(uint16) {
 			// software breakpoint
 			return func(_ uint16) {
 				arm.continueExecution = false
+				arm.state.interrupt = true
+				arm.state.yieldReason = mapper.YieldSyncWithVCS
 			}
 		} else if opcode&0xff00 == 0xba00 {
 			return arm.thumb2ReverseBytes

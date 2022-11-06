@@ -367,15 +367,15 @@ func (cart *cdf) Write(addr uint16, data uint8, passive bool, poke bool) error {
 				cart.dev.StartProfiling()
 			}
 
-			// call runArm() once and then check for breakpoints
+			// call runArm() once and then check for yield conditions
 			yld := cart.runArm()
 
-			// keep calling runArm() for as long as breakpoints are being triggered
-			for yld != mapper.YieldSyncWithVCS {
+			// keep calling runArm() for as long as program has not ended...
+			for yld != mapper.YieldProgramEnded {
+				// ... or if the yield hook says to return to the VCS immediately
 				if cart.yieldHook.CartYield(yld) {
 					break // for loop
 				}
-
 				yld = cart.runArm()
 			}
 		}
@@ -662,9 +662,9 @@ func (cart *cdf) CoProcState() mapper.CoProcState {
 	return mapper.CoProcIdle
 }
 
-// BreakpointsDisable implements the mapper.CartCoProc interface.
-func (cart *cdf) BreakpointsDisable(disable bool) {
-	cart.arm.BreakpointsDisable(disable)
+// BreakpointsEnable implements the mapper.CartCoProc interface.
+func (cart *cdf) BreakpointsEnable(enable bool) {
+	cart.arm.BreakpointsEnable(enable)
 }
 
 // SetYieldHook implements the mapper.CartCoProc interface.
@@ -677,9 +677,10 @@ func (cart *cdf) runArm() mapper.YieldReason {
 
 	yld, cycles := cart.arm.Run()
 
-	cart.state.callfn.Start(cycles)
+	cart.state.callfn.Accumulate(cycles)
 
-	// update the Register types after completion of each CALLFN
+	// update the Register types after each return from arm.Run() regardless of
+	// yield reason
 	for i := range cart.state.registers.Datastream {
 		cart.state.registers.Datastream[i].Pointer = cart.readDatastreamPointer(i)
 		cart.state.registers.Datastream[i].Increment = cart.readDatastreamIncrement(i)

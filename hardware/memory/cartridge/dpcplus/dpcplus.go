@@ -922,9 +922,9 @@ func (cart *dpcPlus) CoProcState() mapper.CoProcState {
 	return mapper.CoProcIdle
 }
 
-// BreakpointsDisable implements the mapper.CartCoprocExecution interface.
-func (cart *dpcPlus) BreakpointsDisable(disable bool) {
-	cart.arm.BreakpointsDisable(disable)
+// BreakpointsEnable implements the mapper.CartCoProc interface.
+func (cart *dpcPlus) BreakpointsEnable(enable bool) {
+	cart.arm.BreakpointsEnable(enable)
 }
 
 // SetYieldHook implements the mapper.CartCoProc interface.
@@ -934,5 +934,5 @@ func (cart *dpcPlus) SetYieldHook(hook mapper.CartYieldHook) {
 func (cart *dpcPlus) runArm() {
 	cart.state.immediateMode = cart.instance.Prefs.ARM.Immediate.Get().(bool)
 	_, cycles := cart.arm.Run()
-	cart.state.callfn.Start(cycles)
+	cart.state.callfn.Accumulate(cycles)
 }

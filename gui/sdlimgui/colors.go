@@ -94,7 +94,8 @@ type imguiColors struct {
 
 	// coprocessor source (and related) windows
 	CoProcSourceSelected         imgui.Vec4
-	CoProcSourceYieldLine        imgui.Vec4
+	CoProcSourceYield            imgui.Vec4
+	CoProcSourceYieldBug         imgui.Vec4
 	CoProcSourceHover            imgui.Vec4
 	CoProcSourceLineNumber       imgui.Vec4
 	CoProcSourceLoad             imgui.Vec4
@@ -278,7 +279,8 @@ func newColors() *imguiColors {
 
 		// coprocessor source (and related) windows
 		CoProcSourceSelected:         imgui.Vec4{1.0, 1.0, 1.0, 0.1},
-		CoProcSourceYieldLine:        imgui.Vec4{1.0, 0.5, 0.5, 0.1},
+		CoProcSourceYield:            imgui.Vec4{0.5, 1.0, 0.5, 0.2},
+		CoProcSourceYieldBug:         imgui.Vec4{1.0, 0.5, 0.5, 0.2},
 		CoProcSourceHover:            imgui.Vec4{0.5, 0.5, 0.5, 0.1},
 		CoProcSourceLineNumber:       imgui.Vec4{0.5, 0.8, 0.3, 1.0},
 		CoProcSourceLoad:             imgui.Vec4{0.9, 0.5, 0.5, 1.0},

@@ -84,15 +84,18 @@ type ARMState struct {
 	executingPC   uint32
 	instructionPC uint32
 
-	// when the processor yields it returns control to the VCS but with the
-	// understanding that it must resume from where it left off
+	// when the processor is interrupted it returns control to the VCS but with
+	// the understanding that it must resume from where it left off
 	//
-	// an unyielded CPU can be reset and otherwise safely altered in between
-	// calls to Run()
-	yield bool
+	// an uninterrupted CPU can be reset and otherwise safely altered in
+	// between calls to Run()
+	interrupt bool
 
-	// the reason for the yield. is undefined if yield is false
+	// the yield reason explains the reason for why the ARM execution ended
 	yieldReason mapper.YieldReason
+
+	// for clarity both the interrupt and yieldReason fields should be set at
+	// the same time wher possible
 
 	// the area the PC covers. once assigned we'll assume that the program
 	// never reads outside this area. the value is assigned on reset()
@@ -275,8 +278,8 @@ type ARM struct {
 	// profiler for executed instructions. measures cycles counts
 	profiler *mapper.CartCoProcProfiler
 
-	// disabled breakpoint checking
-	breakpointsDisabled bool
+	// enable breakpoint checking
+	breakpointsEnabled bool
 
 	// the io.Writer for fudge_disassembling output
 	fudge_writer fudgeWriter
@@ -533,7 +536,7 @@ func (arm *ARM) clock(cycles float32) {
 // SharedMemory interface. The function will return with an error if those
 // registers are attempted to be initialised.
 //
-// The emulated ARM will be left in a yielded state.
+// The emulated ARM will be left in an interrupted state.
 func (arm *ARM) SetInitialRegisters(args ...uint32) error {
 	arm.resetRegisters()
 
@@ -549,18 +552,21 @@ func (arm *ARM) SetInitialRegisters(args ...uint32) error {
 	// correct on the first call to Run()
 	arm.state.registers[rPC] += 2
 
-	// continue in a yielded state
-	arm.state.yield = true
+	// continue in an interrupted state. this prevents the ARM registers from
+	// being reset on the next call to Run()
+	arm.state.interrupt = true
+
+	// inentionally not setting yieldReason here
 
 	return nil
 }
 
-// Run will execute an ARM program until a yield condition has been
-// encountered.
+// Run will execute an ARM program from the current PC address, unless the
+// previous execution ran to completion (ie. was uninterrupted).
 //
 // Returns the yield reason, the number of ARM cycles consumed.
 func (arm *ARM) Run() (mapper.YieldReason, float32) {
-	if !arm.state.yield {
+	if !arm.state.interrupt {
 		arm.resetRegisters()
 	}
 
@@ -592,25 +598,26 @@ func (arm *ARM) Run() (mapper.YieldReason, float32) {
 			arm.dev.OnYield(arm.state.instructionPC, arm.state.yieldReason)
 		}
 
-		return mapper.YieldError, 0
+		return mapper.YieldMemoryAccessError, 0
 	}
 
 	// fill pipeline must happen after resetExecution()
-	if !arm.state.yield {
+	if !arm.state.interrupt {
 		arm.state.registers[rPC] += 2
 	}
 
-	// reset yield. reason defaults to YieldForVCS
-	arm.state.yield = false
+	// default to an uninterrupted state and a sync with VCS yield reason
+	arm.state.interrupt = false
 	arm.state.yieldReason = mapper.YieldSyncWithVCS
 
 	return arm.run()
 }
 
-// Yield indicates that the arm execution should cease after the next/current
-// instruction has been executed.
-func (arm *ARM) Yield() {
-	arm.state.yield = true
+// Interrupt indicates that the ARM execution should cease after the current
+// instruction has been executed. The ARM will then yield with the reson
+// YieldSyncWithVCS.
+func (arm *ARM) Interrupt() {
+	arm.state.interrupt = true
 }
 
 // Registers returns a copy of the current values in the ARM registers
@@ -628,10 +635,10 @@ func (arm *ARM) SetRegisters(registers [NumRegisters]uint32) {
 	arm.state.registers = registers
 }
 
-// BreakpointsDisable turns of breakpoint checking for the duration that
+// BreakpointsEnable turns of breakpoint checking for the duration that
 // disable is true.
-func (arm *ARM) BreakpointsDisable(disable bool) {
-	arm.breakpointsDisabled = disable
+func (arm *ARM) BreakpointsEnable(enable bool) {
+	arm.breakpointsEnabled = enable
 }
 
 func (arm *ARM) run() (mapper.YieldReason, float32) {
@@ -839,8 +846,8 @@ func (arm *ARM) run() (mapper.YieldReason, float32) {
 				logger.Logf("ARM7", detail.Error())
 			}
 
-			if arm.abortOnStackCollision {
-				return mapper.YieldError, 0
+			if arm.abortOnStackCollision && arm.breakpointsEnabled {
+				return mapper.YieldMemoryAccessError, 0
 			}
 		}
 
@@ -857,29 +864,34 @@ func (arm *ARM) run() (mapper.YieldReason, float32) {
 			arm.memoryError = nil
 			arm.memoryErrorDetail = nil
 
-			if arm.abortOnIllegalMem {
-				return mapper.YieldError, 0
+			if arm.abortOnIllegalMem && arm.breakpointsEnabled {
+				arm.state.interrupt = true
+				arm.state.yieldReason = mapper.YieldMemoryAccessError
 			}
 		}
 
 		// handle execution errors
 		if arm.executionError != nil {
 			logger.Logf("ARM7", arm.executionError.Error())
-			return mapper.YieldError, 0
+
+			if arm.breakpointsEnabled {
+				arm.state.interrupt = true
+				arm.state.yieldReason = mapper.YieldExecutionError
+			}
 		}
 
 		// check breakpoints unless they are disabled. we also don't want to
 		// match an instructionPC if we're in the middle of decoding a 32bit
 		// instruction
-		if arm.dev != nil && !arm.breakpointsDisabled && !arm.state.function32bitDecoding {
+		if arm.dev != nil && arm.breakpointsEnabled && !arm.state.function32bitDecoding {
 			if arm.dev.CheckBreakpoint(arm.state.instructionPC) {
-				arm.state.yield = true
+				arm.state.interrupt = true
 				arm.state.yieldReason = mapper.YieldBreakpoint
 			}
 		}
 
 		// check that yielding is okay and discontinue execution
-		if arm.state.yield {
+		if arm.state.interrupt {
 			if arm.state.function32bitDecoding {
 				panic("attempted to yield during 32bit instruction decoding")
 			}

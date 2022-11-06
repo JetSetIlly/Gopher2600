@@ -108,9 +108,9 @@ func (cf *CallFn) Check(addr uint16) (uint8, bool) {
 	return 0, false
 }
 
-// Start cycles to the account for. Is safe to call if callfn is already
+// Accumulate cycles to the account for. Is safe to call if callfn is already
 // active.
-func (cf *CallFn) Start(cycles float32) {
+func (cf *CallFn) Accumulate(cycles float32) {
 	// if the number of cycles is zero then the ARM program didn't take any
 	// time at all and there is no need to account for the phantom reads.
 	// return immediately

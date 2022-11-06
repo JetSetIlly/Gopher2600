@@ -667,7 +667,8 @@ func (arm *ARM) thumbHiRegisterOps(opcode uint16) {
 				arm.state.registers[rLR] = nextPC | 0x01
 				if target&0x01 == 0x00 {
 					// cannot switch to ARM mode in the ARMv7-M architecture
-					arm.state.yield = true
+					arm.continueExecution = false
+					arm.state.interrupt = true
 					arm.state.yieldReason = mapper.YieldUndefinedBehaviour
 				}
 				arm.state.registers[rPC] = (target + 2) & 0xfffffffe
@@ -676,7 +677,8 @@ func (arm *ARM) thumbHiRegisterOps(opcode uint16) {
 				target := arm.state.registers[Rm]
 				if target&0x01 == 0x00 {
 					// cannot switch to ARM mode in the ARMv7-M architecture
-					arm.state.yield = true
+					arm.continueExecution = false
+					arm.state.interrupt = true
 					arm.state.yieldReason = mapper.YieldUndefinedBehaviour
 				}
 				arm.state.registers[rPC] = (target + 2) & 0xfffffffe
@@ -743,6 +745,8 @@ func (arm *ARM) thumbHiRegisterOps(opcode uint16) {
 			// can return to the VCS emulation.
 			if !res.InterruptServiced {
 				arm.continueExecution = false
+				arm.state.interrupt = false
+				arm.state.yieldReason = mapper.YieldProgramEnded
 				// "7.6 Data Operations" in "ARM7TDMI-S Technical Reference Manual r4p3"
 				//  - interrupted
 				return
