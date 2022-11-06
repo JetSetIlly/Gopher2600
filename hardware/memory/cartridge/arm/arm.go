@@ -333,6 +333,10 @@ func NewARM(mmap architecture.Map, prefs *preferences.ARMPreferences, mem Shared
 	arm.state.timer = peripherals.NewTimer(arm.mmap)
 	arm.state.timer2 = peripherals.NewTimer2(arm.mmap)
 
+	// clklen for flash based on flash latency setting
+	latencyInMhz := (1 / (arm.mmap.FlashLatency / 1000000000)) / 1000000
+	arm.clklenFlash = float32(math.Ceil(float64(arm.Clk) / latencyInMhz))
+
 	arm.resetPeripherals()
 	arm.resetRegisters()
 	arm.updatePrefs()
@@ -427,10 +431,6 @@ func (arm *ARM) resetRegisters() {
 func (arm *ARM) updatePrefs() {
 	// update clock value from preferences
 	arm.Clk = float32(arm.prefs.Clock.Get().(float64))
-
-	// latency in megahertz
-	latencyInMhz := (1 / (arm.prefs.FlashLatency.Get().(float64) / 1000000000)) / 1000000
-	arm.clklenFlash = float32(math.Ceil(float64(arm.Clk) / latencyInMhz))
 
 	arm.state.mam.updatePrefs()
 

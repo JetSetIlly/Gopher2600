@@ -51,6 +51,7 @@ var defunct = []string{
 	"crt.syncSpeedScanlines",
 	"hiscore.authtoken",
 	"hiscore.server",
+	"hardware.arm7.flashLatency",
 
 	"plusrom.id", // replaced with plusrom.id_v2.1.1
 }

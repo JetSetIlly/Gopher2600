@@ -61,6 +61,9 @@ type Map struct {
 	FlashMaxMemtop uint32
 	SRAMOrigin     uint32
 
+	// the memory latency of the Flash memory block (in nanoseconds)
+	FlashLatency float64
+
 	// peripherals
 
 	// MAM
@@ -120,6 +123,8 @@ func NewMap(cart CartArchitecture) Map {
 		mmap.FlashMaxMemtop = 0x0fffffff
 		mmap.SRAMOrigin = 0x40000000
 
+		mmap.FlashLatency = 50.0
+
 		mmap.MAMCR = 0x001fc000
 		mmap.MAMTIM = 0x001fc004
 		mmap.PreferredMAMCR = MAMpartial
@@ -142,6 +147,8 @@ func NewMap(cart CartArchitecture) Map {
 		mmap.Flash64kMemtop = 0x200fffff
 		mmap.FlashMaxMemtop = 0x2fffffff
 		mmap.SRAMOrigin = 0x10000000
+
+		mmap.FlashLatency = 10.0
 
 		mmap.PreferredMAMCR = MAMfull
 
