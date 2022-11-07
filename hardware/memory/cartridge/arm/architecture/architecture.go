@@ -95,6 +95,9 @@ type Map struct {
 	// the address below which a null access is considered to have happened
 	NullAccessBoundary uint32
 
+	// the value the is returned when an illegal memory address is read
+	IllegalAccessValue uint32
+
 	// the divisor to apply to the main clock when ticking the timers
 	ClkDiv float32
 
@@ -133,8 +136,9 @@ func NewMap(cart CartArchitecture) Map {
 		mmap.TIMERcontrol = 0xe0008004
 		mmap.TIMERvalue = 0xe0008008
 
-		// value is arbitrary and was suggested by John Champeau (09/04/2022)
+		// boundary value is arbitrary and was suggested by John Champeau (09/04/2022)
 		mmap.NullAccessBoundary = 0x00000751
+		mmap.IllegalAccessValue = 0x00000000
 
 		mmap.ClkDiv = 1.0
 		mmap.UnalignTrap = true
@@ -163,6 +167,10 @@ func NewMap(cart CartArchitecture) Map {
 		mmap.RNGCR = 0x50060800
 		mmap.RNGSR = 0x50060804
 		mmap.RNGDR = 0x50060808
+
+		// boundary value is arbitrary and was suggested by John Champeau (09/04/2022)
+		mmap.NullAccessBoundary = 0x00000751
+		mmap.IllegalAccessValue = 0xffffffff
 
 		mmap.ClkDiv = 0.5
 		mmap.UnalignTrap = false
