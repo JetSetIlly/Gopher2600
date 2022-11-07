@@ -45,12 +45,15 @@ func (cs *CallStack) String() string {
 
 // Profiling implements the mapper.CartCoProcDeveloper interface.
 func (dev *Developer) Profiling() *mapper.CartCoProcProfiler {
+	if dev.source == nil {
+		return nil
+	}
 	return &dev.profiler
 }
 
 // StartProfiling implements the mapper.CartCoProcDeveloper interface.
 func (dev *Developer) StartProfiling() {
-	if dev.disabled || dev.source == nil {
+	if dev.disabledExpensive || dev.source == nil {
 		return
 	}
 
@@ -65,19 +68,21 @@ func (dev *Developer) StartProfiling() {
 
 // ProcessProfiling implements the mapper.CartCoProcDeveloper interface.
 func (dev *Developer) ProcessProfiling() {
-	if dev.disabled || dev.source == nil {
+	// not checking for whether dev.source == nil because we always want to
+	// empty the profiler.Entries slice
+	if dev.disabledExpensive {
 		return
 	}
 
-	dev.sourceLock.Lock()
-	defer dev.sourceLock.Unlock()
-
-	dev.profileProcess()
-}
-
-// process cycle counts for (non-zero) addresses in dev.profiledAddresses
-func (dev *Developer) profileProcess() {
+	// accumulate function will be called with the correct KernelVCS
 	accumulate := func(k KernelVCS) {
+		if dev.source == nil {
+			return
+		}
+
+		dev.sourceLock.Lock()
+		defer dev.sourceLock.Unlock()
+
 		for _, p := range dev.profiler.Entries {
 			l := len(dev.source.CallStack.functions)
 			lastFn := dev.source.CallStack.functions[l-1]
@@ -146,7 +151,7 @@ func (dev *Developer) profileProcess() {
 		accumulate(KernelUnstable)
 	}
 
-	// empty array
+	// empty slice
 	dev.profiler.Entries = dev.profiler.Entries[:0]
 }
 

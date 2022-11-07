@@ -31,7 +31,7 @@ type Developer struct {
 	tv   TV
 
 	// only respond on the CartCoProcDeveloper interface when enabled
-	disabled bool
+	disabledExpensive bool
 
 	// information about the source code to the program. can be nil
 	source     *Source
@@ -109,7 +109,7 @@ const (
 // DisableExpensive prevents the computationaly expensive developer functions
 // from running.
 func (dev *Developer) DisableExpensive(disable bool) {
-	dev.disabled = disable
+	dev.disabledExpensive = disable
 }
 
 // VariableMemtop implements the CartCoProcDeveloper interface.
@@ -126,7 +126,7 @@ func (dev *Developer) VariableMemtop() uint32 {
 
 // CheckBreakpoint implements the mapper.CartCoProcDeveloper interface.
 func (dev *Developer) CheckBreakpoint(addr uint32) bool {
-	if dev.disabled {
+	if dev.disabledExpensive {
 		return false
 	}
 

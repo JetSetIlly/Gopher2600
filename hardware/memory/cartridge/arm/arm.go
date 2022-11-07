@@ -807,7 +807,7 @@ func (arm *ARM) run() (mapper.YieldReason, float32) {
 		}
 
 		// accumulate cycle counts for profiling
-		if arm.dev != nil {
+		if arm.profiler != nil {
 			arm.profiler.Entries = append(arm.profiler.Entries, mapper.CartCoProcProfileEntry{
 				Addr:   arm.state.instructionPC,
 				Cycles: arm.state.stretchedCycles,
