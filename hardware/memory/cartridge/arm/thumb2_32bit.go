@@ -433,6 +433,7 @@ func (arm *ARM) thumb2DataProcessingNonImmediate(opcode uint16) {
 					// with logical right shift
 					shifted := arm.state.registers[Rm] >> imm5
 					result, carry, overflow := AddWithCarry(arm.state.registers[Rn], shifted, 0)
+					arm.state.registers[Rd] = result
 					if setFlags {
 						arm.state.status.isNegative(result)
 						arm.state.status.isZero(result)
