@@ -33,7 +33,11 @@ type Developer struct {
 	// only respond on the CartCoProcDeveloper interface when enabled
 	disabledExpensive bool
 
-	// information about the source code to the program. can be nil
+	// information about the source code to the program. can be nil.
+	// note that source is checked for nil outside the sourceLock. this is
+	// performance reasons (not need to acquire the lock if source is nil).
+	// however, this does mean we should be careful if reassigning the source
+	// field (but that doesn't happen)
 	source     *Source
 	sourceLock sync.Mutex
 
@@ -114,12 +118,12 @@ func (dev *Developer) DisableExpensive(disable bool) {
 
 // VariableMemtop implements the CartCoProcDeveloper interface.
 func (dev *Developer) VariableMemtop() uint32 {
-	dev.sourceLock.Lock()
-	defer dev.sourceLock.Unlock()
-
 	if dev.source == nil {
 		return 0
 	}
+
+	dev.sourceLock.Lock()
+	defer dev.sourceLock.Unlock()
 
 	return uint32(dev.source.VariableMemtop)
 }
@@ -130,20 +134,18 @@ func (dev *Developer) CheckBreakpoint(addr uint32) bool {
 		return false
 	}
 
-	dev.sourceLock.Lock()
-	defer dev.sourceLock.Unlock()
-
 	if dev.source == nil {
 		return false
 	}
+
+	dev.sourceLock.Lock()
+	defer dev.sourceLock.Unlock()
 
 	return dev.source.CheckBreakpoint(addr)
 }
 
 // HasSource returns true if source information has been found.
 func (dev *Developer) HasSource() bool {
-	dev.sourceLock.Lock()
-	defer dev.sourceLock.Unlock()
 	return dev.source != nil
 }
 
@@ -151,9 +153,6 @@ const maxWaitUpdateTime = 60 // in frames
 
 // NewFrame implements the television.FrameTrigger interface.
 func (dev *Developer) NewFrame(frameInfo television.FrameInfo) error {
-	dev.sourceLock.Lock()
-	defer dev.sourceLock.Unlock()
-
 	// only update FrameCycles if new frame was caused by a VSYNC or we've
 	// waited long enough since the last update
 	dev.framesSinceLastUpdate++
@@ -166,6 +165,9 @@ func (dev *Developer) NewFrame(frameInfo television.FrameInfo) error {
 	if dev.source == nil {
 		return nil
 	}
+
+	dev.sourceLock.Lock()
+	defer dev.sourceLock.Unlock()
 
 	dev.source.newFrame()
 	dev.frameInfo = frameInfo
