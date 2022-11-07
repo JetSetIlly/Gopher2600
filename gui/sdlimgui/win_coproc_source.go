@@ -106,6 +106,11 @@ type winCoProcSource struct {
 	// focus source view on current yield line
 	focusYieldLine bool
 
+	// focus source view has been requested by the user. normally
+	// focusYieldLine is ignore unless emulation is paused but this flag
+	// supercedes that condition
+	focusYieldLineManual bool
+
 	// we pay special attention to the collapsed state of this window. this is
 	// because we want the gotoSourceLine() function to uncollapse the window
 	// when selected
@@ -153,7 +158,7 @@ func (win *winCoProcSource) debuggerDraw() {
 
 	// check yield state and open the window if necessary
 	win.img.dbg.CoProcDev.BorrowYieldState(func(yield *developer.YieldState) {
-		if yield.TimeStamp != win.yieldState.TimeStamp {
+		if !yield.Cmp(&win.yieldState) {
 			win.yieldState = *yield
 
 			win.img.dbg.CoProcDev.BorrowSource(func(src *developer.Source) {
@@ -217,7 +222,7 @@ func (win *winCoProcSource) draw() {
 		// focus on yield line (or main function if we don't have a yield line)
 		// but only if emulation is paused
 		if win.focusYieldLine {
-			if win.img.dbg.State() == govern.Paused {
+			if win.img.dbg.State() == govern.Paused || win.focusYieldLineManual {
 				focusLine := win.yieldLine
 
 				// focusLine is the same as yieldLine. if yieldLine is invalid
@@ -235,6 +240,7 @@ func (win *winCoProcSource) draw() {
 
 				// focus has been dealt with
 				win.focusYieldLine = false
+				win.focusYieldLineManual = false
 			}
 		}
 
@@ -261,6 +267,7 @@ func (win *winCoProcSource) draw() {
 
 			if imgui.Button(fmt.Sprintf("%c Focus Yield Line", fonts.DisasmGotoCurrent)) {
 				win.focusYieldLine = true
+				win.focusYieldLineManual = true
 			}
 			imgui.SameLineV(0, 20)
 			imgui.Checkbox("Highlight Comments & String Literals", &win.syntaxHighlighting)

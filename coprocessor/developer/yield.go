@@ -16,8 +16,6 @@
 package developer
 
 import (
-	"time"
-
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 )
 
@@ -25,7 +23,11 @@ import (
 type YieldState struct {
 	InstructionPC uint32
 	Reason        mapper.YieldReason
-	TimeStamp     time.Time
+}
+
+// Cmp returns true if two YieldStates are equal.
+func (y *YieldState) Cmp(w *YieldState) bool {
+	return y.InstructionPC == w.InstructionPC && y.Reason == w.Reason
 }
 
 // OnYield implements the mapper.CartCoProcDeveloper interface.
@@ -35,7 +37,6 @@ func (dev *Developer) OnYield(instructionPC uint32, reason mapper.YieldReason) {
 
 	dev.yieldState.InstructionPC = instructionPC
 	dev.yieldState.Reason = reason
-	dev.yieldState.TimeStamp = time.Now()
 
 	switch reason {
 	case mapper.YieldMemoryAccessError:
