@@ -28,12 +28,28 @@ func (arm *ARM) illegalAccess(event string, addr uint32) {
 		return
 	}
 
-	log := arm.dev.IllegalAccess(event, arm.state.instructionPC, addr)
-	if log == "" {
+	detail := arm.dev.IllegalAccess(event, arm.state.instructionPC, addr)
+	if detail == "" {
 		return
 	}
 
-	arm.memoryErrorDetail = fmt.Errorf("%s: %s", event, log)
+	arm.memoryErrorDetail = fmt.Errorf("%s: %s", event, detail)
+}
+
+// nullAccess is a special condition of illegalAccess()
+func (arm *ARM) nullAccess(event string, addr uint32) {
+	arm.memoryError = fmt.Errorf("%s: probable null pointer dereference of %08x (PC: %08x)", event, addr, arm.state.instructionPC)
+
+	if arm.dev == nil {
+		return
+	}
+
+	detail := arm.dev.NullAccess(event, arm.state.instructionPC, addr)
+	if detail == "" {
+		return
+	}
+
+	arm.memoryErrorDetail = fmt.Errorf("%s: %s", event, detail)
 }
 
 // imperfect check of whether stack has collided with memtop
@@ -63,27 +79,14 @@ func (arm *ARM) stackCollision(stackPointerBeforeExecution uint32) (err error, d
 		return
 	}
 
-	log := arm.dev.StackCollision(arm.state.executingPC, arm.state.registers[rSP])
-	if log == "" {
+	detailStr := arm.dev.StackCollision(arm.state.executingPC, arm.state.registers[rSP])
+	if detailStr == "" {
 		return
 	}
 
-	detail = fmt.Errorf("stack: %s", log)
+	detail = fmt.Errorf("stack: %s", detailStr)
 
 	return err, detail
-}
-
-// nullAccess is a special condition of illegalAccess()
-func (arm *ARM) nullAccess(event string, addr uint32) {
-	logger.Logf("ARM7", "%s: probable null pointer dereference of %08x (PC: %08x)", event, addr, arm.state.instructionPC)
-	if arm.dev == nil {
-		return
-	}
-	log := arm.dev.NullAccess(event, arm.state.instructionPC, addr)
-	if log == "" {
-		return
-	}
-	logger.Logf("ARM7", "%s: %s", event, log)
 }
 
 func (arm *ARM) read8bit(addr uint32) uint8 {
