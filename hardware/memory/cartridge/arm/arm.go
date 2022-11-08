@@ -841,7 +841,7 @@ func (arm *ARM) run() (mapper.YieldReason, float32) {
 
 		// check stack for stack collision
 		if err, detail := arm.stackCollision(stackPointerBeforeExecution); err != nil {
-			logger.Logf("ARM7", arm.memoryError.Error())
+			logger.Logf("ARM7", err.Error())
 			if arm.memoryErrorDetail != nil {
 				logger.Logf("ARM7", detail.Error())
 			}
