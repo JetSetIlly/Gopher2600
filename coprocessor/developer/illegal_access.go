@@ -129,7 +129,7 @@ func (dev *Developer) logAccess(event string, pc uint32, addr uint32, isNullAcce
 	}
 
 	// no source line information so return empty line
-	if e.SrcLine == nil {
+	if e.SrcLine == nil || e.SrcLine.IsStub() {
 		return ""
 	}
 
