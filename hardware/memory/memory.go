@@ -206,9 +206,8 @@ func (mem *Memory) read(address uint16) (uint8, error) {
 		mem.LastCPUDrivenPins = 0xff
 	}
 
-	// drive pins from cartridge
 	if stuff, ok := mem.Cart.BusStuff(); ok {
-		data = (stuff & ^mem.LastCPUDrivenPins) | (data & mem.LastCPUDrivenPins)
+		data = stuff
 	}
 
 	// update data bus

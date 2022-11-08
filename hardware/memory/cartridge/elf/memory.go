@@ -91,6 +91,17 @@ type elfMemory struct {
 	busStuff     bool
 	busStuffData uint8
 
+	// solution to a timing problem with regards to bus stuff. when the
+	// busStuff field is true busStuffDelay is set to true until after the next
+	// call to BuStuff()
+	//
+	// to recap: my understanding is that when bus stuff is true the cartridge
+	// is actively driving the data bus. this will affect the next read as well
+	// as the next write. however, the bus stuffing instruction vcsWrite3()
+	// only wants to affect the next write cycle so we delay the stuffing by
+	// one cycle
+	busStuffDelay bool
+
 	// strongarm data and a small interface to the ARM
 	arm       interruptARM
 	strongarm strongArmState

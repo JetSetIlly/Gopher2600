@@ -172,6 +172,7 @@ func (cart *Elf) Read(addr uint16, passive bool) (uint8, error) {
 	if passive {
 		cart.Listen(addr|memorymap.OriginCart, 0x00)
 	}
+	cart.mem.busStuffDelay = true
 	return cart.mem.gpio.B[fromArm_Opcode], nil
 }
 
@@ -300,6 +301,10 @@ func (cart *Elf) ARMinterrupt(addr uint32, val1 uint32, val2 uint32) (arm.ARMint
 
 // BusStuff implements the mapper.CartBusStuff interface.
 func (cart *Elf) BusStuff() (uint8, bool) {
+	if cart.mem.busStuffDelay {
+		cart.mem.busStuffDelay = false
+		return cart.mem.busStuffData, false
+	}
 	return cart.mem.busStuffData, cart.mem.busStuff
 }
 
