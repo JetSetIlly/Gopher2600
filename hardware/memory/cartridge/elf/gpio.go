@@ -52,16 +52,16 @@ func (g *gpio) Snapshot() *gpio {
 func newGPIO() *gpio {
 	g := gpio{
 		A:       make([]byte, gpio_memtop),
-		AOrigin: 0x0000100,
-		AMemtop: 0x0000100 | gpio_memtop,
+		AOrigin: 0x40020c00,
+		AMemtop: 0x40020c00 | gpio_memtop,
 
 		B:       make([]byte, gpio_memtop),
-		BOrigin: 0x4000100,
-		BMemtop: 0x4000100 | gpio_memtop,
+		BOrigin: 0x40020800,
+		BMemtop: 0x40020800 | gpio_memtop,
 
 		lookup:       make([]byte, gpio_memtop),
-		lookupOrigin: 0x40000200,
-		lookupMemtop: 0x40000200 | gpio_memtop,
+		lookupOrigin: 0x40020000,
+		lookupMemtop: 0x40020000 | gpio_memtop,
 	}
 
 	offset := toArm_address
