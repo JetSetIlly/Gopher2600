@@ -20,6 +20,8 @@ import (
 	"debug/elf"
 	"encoding/binary"
 	"fmt"
+	"io"
+	"os"
 
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/instance"
@@ -54,9 +56,62 @@ type Elf struct {
 	armState *arm.ARMState
 }
 
+// elfReaderAt is an implementation of io.ReaderAt and is used with elf.NewFile()
+type elfReaderAt struct {
+	// data from the file being used as the source of ELF data
+	data []byte
+
+	// the offset into the data slice where the ELF file starts
+	offset int64
+}
+
+func (r *elfReaderAt) ReadAt(p []byte, start int64) (n int, err error) {
+	start += r.offset
+
+	end := start + int64(len(p))
+	if end > int64(len(r.data)) {
+		end = int64(len(r.data))
+	}
+	copy(p, r.data[start:end])
+
+	n = int(end - start)
+	if n < len(p) {
+		return n, fmt.Errorf("not enough bytes in the ELF data to fill the buffer")
+	}
+
+	return n, nil
+
+}
+
 // NewElf is the preferred method of initialisation for the Elf type.
-func NewElf(instance *instance.Instance, pathToROM string) (mapper.CartMapper, error) {
-	f, err := elf.Open(pathToROM)
+func NewElf(instance *instance.Instance, pathToROM string, inACE bool) (mapper.CartMapper, error) {
+	r := &elfReaderAt{}
+
+	// open file in the normal way and read all data. close the file
+	// immediately once all data is rad
+	o, err := os.Open(pathToROM)
+	if err != nil {
+		return nil, curated.Errorf("ELF: %v", err)
+	}
+	r.data, err = io.ReadAll(o)
+	if err != nil {
+		o.Close()
+		return nil, curated.Errorf("ELF: %v", err)
+	}
+	o.Close()
+
+	// if this is an embedded ELF file in an ACE container we need to extract
+	// the ELF contents. we do this by finding the offset of the ELF file. the
+	// offset is stored at initial offset 0x28
+	if inACE {
+		if len(r.data) < 0x30 {
+			return nil, curated.Errorf("ELF: this doesn't look like ELF data embedded in an ACE file")
+		}
+		r.offset = int64(r.data[0x28]) | (int64(r.data[0x29]) << 8)
+	}
+
+	// ELF file is read via our elfReaderAt instance
+	f, err := elf.NewFile(r)
 	if err != nil {
 		return nil, curated.Errorf("ELF: %v", err)
 	}

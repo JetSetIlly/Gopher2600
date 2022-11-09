@@ -30,28 +30,43 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/supercharger"
 )
 
-func fingerprintElf(b []byte) bool {
-	if bytes.HasPrefix(b, []byte{0x7f, 'E', 'L', 'F'}) {
+// if anwhere parameter is true then the ELF magic number can appear anywhere
+// in the data (the b parameter). otherwise it must appear at the beginning of
+// the data
+func fingerprintElf(b []byte, anywhere bool) bool {
+	if anywhere {
+		if bytes.Contains(b, []byte{0x7f, 'E', 'L', 'F'}) {
+			return true
+		}
+	} else if bytes.HasPrefix(b, []byte{0x7f, 'E', 'L', 'F'}) {
 		return true
 	}
 
 	return false
 }
 
-func fingerprintAce(b []byte) (bool, string) {
+func fingerprintAce(b []byte) (bool, string, bool) {
 	if len(b) < 144 {
-		return false, ""
+		return false, "", false
 	}
 
+	// some ACE files embed an ELF file inside the ACE data. these files are
+	// identified by the presence of "elf-relocatable" in the data premable
+	wrappedELF := bytes.Contains(b[:144], []byte("elf-relocatable"))
+
+	// make double sure this is actually an elf file. otherwise it's just an
+	// ACE file with elf-relocatable in the data preamble
+	wrappedELF = wrappedELF && fingerprintElf(b, true)
+
 	if bytes.Contains(b[:144], []byte("ACE-2600")) {
-		return true, "ACE-2600"
+		return true, "ACE-2600", wrappedELF
 	}
 
 	if bytes.Contains(b[:144], []byte("ACE-PC00")) {
-		return true, "ACE-PC00"
+		return true, "ACE-PC00", wrappedELF
 	}
 
-	return false, ""
+	return false, "", false
 }
 
 func fingerprint3e(b []byte) bool {
@@ -305,12 +320,16 @@ func fingerprint256k(data []byte) func(*instance.Instance, []byte) (mapper.CartM
 func (cart *Cartridge) fingerprint(cartload cartridgeloader.Loader) error {
 	var err error
 
-	if ok := fingerprintElf(*cartload.Data); ok {
-		cart.mapper, err = elf.NewElf(cart.instance, cart.Filename)
+	if ok := fingerprintElf(*cartload.Data, false); ok {
+		cart.mapper, err = elf.NewElf(cart.instance, cart.Filename, false)
 		return err
 	}
 
-	if ok, version := fingerprintAce(*cartload.Data); ok {
+	if ok, version, wrappedElf := fingerprintAce(*cartload.Data); ok {
+		if wrappedElf {
+			cart.mapper, err = elf.NewElf(cart.instance, cart.Filename, true)
+			return err
+		}
 		cart.mapper, err = ace.NewAce(cart.instance, version, *cartload.Data)
 		return err
 	}
