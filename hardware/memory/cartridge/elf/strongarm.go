@@ -94,6 +94,18 @@ func (mem *elfMemory) yieldDataBus(addr uint16) bool {
 	return true
 }
 
+func (mem *elfMemory) yieldDataBusToStack() bool {
+	addrIn := uint16(mem.gpio.A[toArm_address])
+	addrIn |= uint16(mem.gpio.A[toArm_address+1]) << 8
+	addrIn &= memorymap.Memtop
+
+	if addrIn & 0xfe00 != 0 {
+		return false
+	}
+
+	return true
+}
+
 // void vcsWrite3(uint8_t ZP, uint8_t data)
 func vcsWrite3(mem *elfMemory) {
 	zp := uint8(mem.strongarm.running.registers[0])
@@ -432,9 +444,30 @@ func vcsSty4(mem *elfMemory) {
 	}
 }
 
+// void vcsSax3(uint8_t ZP)
+func vcsSax3(mem *elfMemory) {
+	zp := uint8(mem.strongarm.running.registers[0])
+	switch mem.strongarm.running.state {
+	case 0:
+		if mem.injectRomByte(0x87) {
+			mem.strongarm.running.state++
+		}
+	case 1:
+		if mem.injectRomByte(zp) {
+			mem.strongarm.running.state++
+		}
+	case 2:
+		if mem.yieldDataBus(uint16(zp)) {
+			mem.endStrongArmFunction()
+		}
+	}
+}
+
 // void vcsTxs2()
 func vcsTxs2(mem *elfMemory) {
-	panic("vcsTxs2")
+	if mem.injectRomByte(0x9a) {
+		mem.endStrongArmFunction()
+	}
 }
 
 // void vcsJsr6(uint16_t target)
@@ -481,6 +514,87 @@ func vcsNop2n(mem *elfMemory) {
 	}
 }
 
+
+// void vcsPhp3()
+func vcsPhp3(mem *elfMemory) {
+	switch mem.strongarm.running.state {
+	case 0:
+		if mem.injectRomByte(0x08) {
+			mem.strongarm.running.state++
+		}	
+	case 1:
+		if mem.yieldDataBusToStack() {
+			mem.busStuff = false
+			mem.endStrongArmFunction()
+		}
+	}
+}
+
+// void vcsPlp4()
+func vcsPlp4(mem *elfMemory) {
+	switch mem.strongarm.running.state {
+	case 0:
+		if mem.injectRomByte(0x28) {
+			mem.strongarm.running.state++
+		}	
+	case 1:
+		if mem.yieldDataBusToStack() {
+			mem.busStuff = false
+			mem.endStrongArmFunction()
+		}
+	}
+}
+
+// void vcsPla4()
+func vcsPla4(mem *elfMemory) {
+	switch mem.strongarm.running.state {
+	case 0:
+		if mem.injectRomByte(0x68) {
+			mem.strongarm.running.state++
+		}	
+	case 1:
+		if mem.yieldDataBusToStack() {
+			mem.busStuff = false
+			mem.endStrongArmFunction()
+		}
+	}
+}
+
+// void vcsPlp4Ex(uint8_t data)
+func vcsPlp4Ex(mem *elfMemory) {
+	data := uint8(mem.strongarm.running.registers[0])
+	switch mem.strongarm.running.state {
+	case 0:
+		mem.busStuff = true
+		mem.busStuffData = data & 0x3f
+		if mem.injectRomByte(0x28) {
+			mem.strongarm.running.state++
+		}
+	case 1:
+		if mem.yieldDataBusToStack() {
+			mem.busStuff = false
+			mem.endStrongArmFunction()
+		}
+	}
+}
+
+// void vcsPla4Ex(uint8_t data)
+func vcsPla4Ex(mem *elfMemory) {
+	data := uint8(mem.strongarm.running.registers[0])
+	switch mem.strongarm.running.state {
+	case 0:
+		mem.busStuff = true
+		mem.busStuffData = data & 0x3f
+		if mem.injectRomByte(0x68) {
+			mem.strongarm.running.state++
+		}
+	case 1:
+		if mem.yieldDataBusToStack() {
+			mem.busStuff = false
+			mem.endStrongArmFunction()
+		}
+	}
+}
 // void vcsCopyOverblankToRiotRam()
 func vcsCopyOverblankToRiotRam(mem *elfMemory) {
 	switch mem.strongarm.running.state {

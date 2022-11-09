@@ -15,9 +15,19 @@
 
 package elf
 
+import ( 
+    "math/rand"
+)
+
 // these functions work like you might expect the standard C implementations of
 // these function to work except that they all end with a call to
 // endStrongArmFunction()
+
+func randint(mem *elfMemory) {
+	mem.strongarm.running.registers[0] = rand.Uint32()
+	mem.arm.SetRegisters(mem.strongarm.running.registers)
+	mem.endStrongArmFunction()
+}
 
 func memset(mem *elfMemory) {
 	set, origin := mem.MapAddress(mem.strongarm.running.registers[0], true)
