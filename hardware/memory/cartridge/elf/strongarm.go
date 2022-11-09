@@ -99,7 +99,7 @@ func (mem *elfMemory) yieldDataBusToStack() bool {
 	addrIn |= uint16(mem.gpio.A[toArm_address+1]) << 8
 	addrIn &= memorymap.Memtop
 
-	if addrIn & 0xfe00 != 0 {
+	if addrIn&0xfe00 != 0 {
 		return false
 	}
 
@@ -514,14 +514,13 @@ func vcsNop2n(mem *elfMemory) {
 	}
 }
 
-
 // void vcsPhp3()
 func vcsPhp3(mem *elfMemory) {
 	switch mem.strongarm.running.state {
 	case 0:
 		if mem.injectRomByte(0x08) {
 			mem.strongarm.running.state++
-		}	
+		}
 	case 1:
 		if mem.yieldDataBusToStack() {
 			mem.busStuff = false
@@ -536,7 +535,7 @@ func vcsPlp4(mem *elfMemory) {
 	case 0:
 		if mem.injectRomByte(0x28) {
 			mem.strongarm.running.state++
-		}	
+		}
 	case 1:
 		if mem.yieldDataBusToStack() {
 			mem.busStuff = false
@@ -551,7 +550,7 @@ func vcsPla4(mem *elfMemory) {
 	case 0:
 		if mem.injectRomByte(0x68) {
 			mem.strongarm.running.state++
-		}	
+		}
 	case 1:
 		if mem.yieldDataBusToStack() {
 			mem.busStuff = false
@@ -595,6 +594,7 @@ func vcsPla4Ex(mem *elfMemory) {
 		}
 	}
 }
+
 // void vcsCopyOverblankToRiotRam()
 func vcsCopyOverblankToRiotRam(mem *elfMemory) {
 	switch mem.strongarm.running.state {

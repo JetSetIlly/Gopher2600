@@ -15,8 +15,8 @@
 
 package elf
 
-import ( 
-    "math/rand"
+import (
+	"math/rand"
 )
 
 // these functions work like you might expect the standard C implementations of
