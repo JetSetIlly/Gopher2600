@@ -84,7 +84,7 @@ type elfMemory struct {
 	// elf.runStrongarm() function
 	resumeARMimmediately bool
 
-	// will be set to true if the vcsWrite3() function is used
+	// will be set to true if the vcsWrite3(), vcsPlp4Ex(), or vcsPla4Ex() function is used
 	usesBusStuffing bool
 
 	// whether bus stuff is active at the current moment and the data to stuff
@@ -270,6 +270,12 @@ func newElfMemory(ef *elf.File) (*elfMemory, error) {
 				case "vcsWrite3":
 					v = mem.relocateStrongArmFunction(vcsWrite3, false)
 					mem.usesBusStuffing = true
+				case "vcsPlp4Ex":
+					v = mem.relocateStrongArmFunction(vcsPlp4Ex, false)
+					mem.usesBusStuffing = true
+				case "vcsPla4Ex":
+					v = mem.relocateStrongArmFunction(vcsPla4Ex, false)
+					mem.usesBusStuffing = true
 				case "vcsJmp3":
 					v = mem.relocateStrongArmFunction(vcsJmp3, false)
 				case "vcsLda2":
@@ -306,6 +312,8 @@ func newElfMemory(ef *elf.File) (*elfMemory, error) {
 					v = mem.relocateStrongArmFunction(vcsSty3, false)
 				case "vcsSty4":
 					v = mem.relocateStrongArmFunction(vcsSty4, false)
+				case "vcsSax3":
+					v = mem.relocateStrongArmFunction(vcsSax3, false)
 				case "vcsTxs2":
 					v = mem.relocateStrongArmFunction(vcsTxs2, false)
 				case "vcsJsr6":
@@ -314,10 +322,18 @@ func newElfMemory(ef *elf.File) (*elfMemory, error) {
 					v = mem.relocateStrongArmFunction(vcsNop2, false)
 				case "vcsNop2n":
 					v = mem.relocateStrongArmFunction(vcsNop2n, false)
+				case "vcsPhp3":
+					v = mem.relocateStrongArmFunction(vcsPhp3, false)
+				case "vcsPlp4":
+					v = mem.relocateStrongArmFunction(vcsPlp4, false)
+				case "vcsPla4":
+					v = mem.relocateStrongArmFunction(vcsPla4, false)
 				case "vcsCopyOverblankToRiotRam":
 					v = mem.relocateStrongArmFunction(vcsCopyOverblankToRiotRam, false)
 
 				// C library functions that are often not linked but required
+				case "randint":
+					v = mem.relocateStrongArmFunction(randint, true)
 				case "memset":
 					v = mem.relocateStrongArmFunction(memset, true)
 				case "memcpy":

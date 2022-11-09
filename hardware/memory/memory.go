@@ -236,7 +236,7 @@ func (mem *Memory) Write(address uint16, data uint8) error {
 
 	// drive pins from cartridge
 	if stuff, ok := mem.Cart.BusStuff(); ok {
-		data &= stuff
+		data = stuff
 	}
 
 	// update data bus
