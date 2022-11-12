@@ -527,6 +527,7 @@ func NewSource(romFile string, cart mapper.CartCoProc, elfFile string) (*Source,
 
 	// sort list of filenames and functions. these wont' be sorted again
 	sort.Strings(src.Filenames)
+	sort.Strings(src.ShortFilenames)
 	sort.Strings(src.FunctionNames)
 
 	// assemble sorted source lines
@@ -730,6 +731,11 @@ func readSourceFile(filename string, pathToROM_nosymlinks string) (*SourceFile, 
 		}
 		fl.Content.Lines = append(fl.Content.Lines, l)
 		fp.parseLine(l)
+
+		// update max line width
+		if len(s) > fl.Content.MaxLineWidth {
+			fl.Content.MaxLineWidth = len(s)
+		}
 	}
 
 	// evaluate symbolic links for the source filenam. pathToROM_nosymlinks has

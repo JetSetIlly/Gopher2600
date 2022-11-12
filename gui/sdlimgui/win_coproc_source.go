@@ -123,7 +123,7 @@ type winCoProcSource struct {
 	isCollapsed    bool
 	uncollapseNext bool
 
-	// widths of columns in the disasm table
+	// widths of columns in the source view table
 	widthIcon  float32
 	widthStats float32
 	widthLine  float32
@@ -186,12 +186,11 @@ func (win *winCoProcSource) debuggerDraw() {
 	imgui.SetNextWindowSizeV(imgui.Vec2{641, 517}, imgui.ConditionFirstUseEver)
 	imgui.SetNextWindowSizeConstraints(imgui.Vec2{551, 300}, imgui.Vec2{2000, 1000})
 
-	var flgs imgui.WindowFlags
+	flgs := imgui.WindowFlagsNone
 	if win.uncollapseNext && win.isCollapsed {
-		flgs = imgui.WindowFlagsNoCollapse
-	} else {
-		flgs = imgui.WindowFlagsNone
+		flgs |= imgui.WindowFlagsNoCollapse
 	}
+	flgs |= imgui.WindowFlagsNoScrollWithMouse
 	win.uncollapseNext = false
 
 	title := fmt.Sprintf("%s %s", win.img.lz.Cart.CoProcID, winCoProcSourceID)
@@ -414,15 +413,33 @@ func (win *winCoProcSource) drawSource(src *developer.Source) {
 	rowSize.Y += lineSpacing
 	imgui.PushStyleVarVec2(imgui.StyleVarItemSpacing, rowSize) // affects selectable height
 
-	const numColumns = 4
+	const numColumns = 5
 	flgs := imgui.TableFlagsScrollY
+	flgs |= imgui.TableFlagsScrollX
 	flgs |= imgui.TableFlagsSizingFixedFit
-	flgs |= imgui.TableFlagsNoHostExtendX
+	flgs |= imgui.TableFlagsNoPadInnerX
 	if imgui.BeginTableV("##coprocSourceTable", numColumns, flgs, imgui.Vec2{}, 0.0) {
-		// first column is a dummy column so that Selectable (span all columns) works correctly
-		imgui.TableSetupColumnV("Icon", imgui.TableColumnFlagsNone, win.widthIcon, 0)
-		imgui.TableSetupColumnV("Load", imgui.TableColumnFlagsNone, win.widthStats, 1)
-		imgui.TableSetupColumnV("LineNumber", imgui.TableColumnFlagsNone, win.widthLine, 2)
+		// first column is a dummy column so that Selectable (span all columns)
+		// works correctly. if we drew the icon column for example, as a
+		// Selectable then the drag selection won't work correctly. this is
+		// because the icon can change and IsItemHovered() won't recognise a
+		// selectable if it has a different label. by using this dummy column
+		// we can ensure that every selectable has the same label
+		imgui.TableSetupColumnV("##selection", imgui.TableColumnFlagsNone, 0.0, 0)
+
+		// next three columns have fixed width
+		imgui.TableSetupColumnV("##icon", imgui.TableColumnFlagsNone, win.widthIcon, 1)
+		imgui.TableSetupColumnV("##load", imgui.TableColumnFlagsNone, win.widthStats, 2)
+		imgui.TableSetupColumnV("##number", imgui.TableColumnFlagsNone, win.widthLine, 3)
+
+		// content column width is set to the maximum line width for the
+		// selected file. this is so that the horizontal scroll bar doesn't
+		// change size as we scroll
+		var w float32
+		if win.selectedFile != nil {
+			w = imguiTextWidth(win.selectedFile.Content.MaxLineWidth)
+		}
+		imgui.TableSetupColumnV("Content", imgui.TableColumnFlagsNone, w, 4)
 
 		if win.selectedFile != nil {
 			var clipper imgui.ListClipper
@@ -455,32 +472,34 @@ func (win *winCoProcSource) drawSource(src *developer.Source) {
 					imgui.TableNextColumn()
 					imgui.PushStyleColor(imgui.StyleColorHeaderHovered, win.img.cols.CoProcSourceHover)
 					imgui.PushStyleColor(imgui.StyleColorHeaderActive, win.img.cols.CoProcSourceHover)
-
-					// show appropriate icon in the gutter
-					if len(ln.Disassembly) > 0 {
-						if src.CheckBreakpointBySourceLine(ln) {
-							imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmBreakAddress)
-							imgui.SelectableV(string(fonts.Breakpoint), false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{0, 0})
-							imgui.PopStyleColor()
-						} else if ln.Bug {
-							imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceBug)
-							imgui.SelectableV(string(fonts.CoProcBug), false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{0, 0})
-							imgui.PopStyleColor()
-						} else {
-							imgui.SelectableV(string(fonts.Chip), false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{0, 0})
-						}
-
-						// allow breakpoint toggle for lines with executable entries
-						if imgui.IsItemHovered() && imgui.IsMouseDoubleClicked(0) {
-							src.ToggleBreakpoint(ln)
-						}
-					} else {
-						imgui.SelectableV("", false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{0, 0})
-					}
+					imgui.SelectableV("", false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{0, 0})
 					imgui.PopStyleColorV(2)
 
+					// allow breakpoint toggle for lines with executable entries
+					if imgui.IsItemHovered() && imgui.IsMouseDoubleClicked(0) {
+						src.ToggleBreakpoint(ln)
+					}
+
 					// select source lines with mouse click and drag
-					if imgui.IsItemHoveredV(imgui.HoveredFlagsAllowWhenBlockedByActiveItem) {
+					if imgui.IsItemHovered() {
+
+						// add/remove lines before showing the tooltip. this
+						// produces better visual results
+						if imgui.IsMouseClicked(0) {
+							win.selectedLine.single(ln.LineNumber)
+							win.selecting = true
+						}
+						if imgui.IsMouseDragging(0, 0.0) && win.selecting {
+							win.selectedLine.end = ln.LineNumber
+							win.selectedLine.disasm.Clear()
+							s, e := win.selectedLine.ordered()
+							for i := s; i <= e; i++ {
+								win.selectedLine.disasm.Add(win.selectedFile.Content.Lines[i-1])
+							}
+						}
+						if imgui.IsMouseReleased(0) {
+							win.selecting = false
+						}
 
 						// asm tooltip
 						multiline := !win.selectedLine.isSingle() && win.selectedLine.inRange(ln.LineNumber)
@@ -536,22 +555,23 @@ func (win *winCoProcSource) drawSource(src *developer.Source) {
 								imgui.PushFont(win.img.glsl.fonts.code)
 							}
 						}
+					}
 
-						if imgui.IsMouseClicked(0) {
-							win.selectedLine.single(ln.LineNumber)
-							win.selecting = true
+					// show appropriate icon in the gutter
+					imgui.TableNextColumn()
+					if len(ln.Disassembly) > 0 {
+						if src.CheckBreakpointBySourceLine(ln) {
+							imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmBreakAddress)
+							imgui.Text(string(fonts.Breakpoint))
+							imgui.PopStyleColor()
+						} else if ln.Bug {
+							imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceBug)
+							imgui.Text(string(fonts.CoProcBug))
+							imgui.PopStyleColor()
+						} else {
+							imgui.Text(string(fonts.Chip))
 						}
-						if imgui.IsMouseDragging(0, 0.0) && win.selecting {
-							win.selectedLine.end = ln.LineNumber
-							win.selectedLine.disasm.Clear()
-							s, e := win.selectedLine.ordered()
-							for i := s; i <= e; i++ {
-								win.selectedLine.disasm.Add(win.selectedFile.Content.Lines[i-1])
-							}
-						}
-						if imgui.IsMouseReleased(0) {
-							win.selecting = false
-						}
+
 					}
 
 					// performance statistics

@@ -160,7 +160,7 @@ func (img *SdlImgui) Service() {
 			} else if ev.Y < 0 {
 				deltaY--
 			}
-			img.io.AddMouseWheelDelta(deltaX/4, deltaY/4)
+			img.io.AddMouseWheelDelta(-deltaX/4, deltaY/4)
 
 			if img.mode != govern.ModePlay || !img.wm.playmodeWindows[winSelectROMID].playmodeIsOpen() {
 				select {

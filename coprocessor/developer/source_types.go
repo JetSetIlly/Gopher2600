@@ -19,7 +19,8 @@ import "fmt"
 
 // SourceFileContent lists the lines in a source file
 type SourceFileContent struct {
-	Lines []*SourceLine
+	Lines        []*SourceLine
+	MaxLineWidth int
 }
 
 // String implements the fuzzy.Source interface
