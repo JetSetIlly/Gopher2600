@@ -88,9 +88,8 @@ func newPlatform(img *SdlImgui) (*platform, error) {
 		return nil, fmt.Errorf("sdl: %v", err)
 	}
 
-	if sdl.GLSetSwapInterval(1) != nil {
-		logger.Log("sdl", "cannot set GLSwapInterval() for SDL GUI")
-	}
+	// default to disabled vsync
+	plt.glSetSwapInterval(0)
 
 	// open all available gamepads
 	plt.gamepad = make([]*sdl.GameController, 0, maxGamepads)
@@ -108,6 +107,12 @@ func newPlatform(img *SdlImgui) (*platform, error) {
 	}
 
 	return plt, nil
+}
+
+func (plt *platform) glSetSwapInterval(i int) {
+	if sdl.GLSetSwapInterval(i) != nil {
+		logger.Log("sdl", "cannot set GLSwapInterval() for SDL GUI")
+	}
 }
 
 // destroy cleans up the resources.

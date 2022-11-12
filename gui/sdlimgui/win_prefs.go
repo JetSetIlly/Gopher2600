@@ -148,6 +148,38 @@ func (win *winPrefs) draw() {
 	}
 }
 
+func (win *winPrefs) drawGlSwapInterval() {
+	var glSwapInterval string
+
+	const (
+		sync0 = "Immediate updates"
+		sync1 = "Sync with vertical retrace"
+		sync2 = "Adaptive VSYNC"
+	)
+
+	switch win.img.prefs.glSwapInterval.Get().(int) {
+	default:
+		glSwapInterval = sync0
+	case 1:
+		glSwapInterval = sync1
+	case 2:
+		glSwapInterval = sync2
+	}
+
+	if imgui.BeginCombo("Swap Interval", glSwapInterval) {
+		if imgui.Selectable(sync0) {
+			win.img.prefs.glSwapInterval.Set(0)
+		}
+		if imgui.Selectable(sync1) {
+			win.img.prefs.glSwapInterval.Set(1)
+		}
+		if imgui.Selectable(sync2) {
+			win.img.prefs.glSwapInterval.Set(2)
+		}
+		imgui.EndCombo()
+	}
+}
+
 func (win *winPrefs) drawPlaymodeTab() {
 	imgui.Spacing()
 
@@ -181,6 +213,12 @@ of the ROM.`)
 	audioMuteNotification := win.img.prefs.audioMuteNotification.Get().(bool)
 	if imgui.Checkbox("Audio Mute Indicator", &audioMuteNotification) {
 		win.img.prefs.audioMuteNotification.Set(audioMuteNotification)
+	}
+
+	imgui.Spacing()
+	if imgui.CollapsingHeader("OpenGL Settings") {
+		imgui.Spacing()
+		win.drawGlSwapInterval()
 	}
 }
 
@@ -290,6 +328,12 @@ func (win *winPrefs) drawDebuggerTab() {
 				win.img.prefs.codeFontLineSpacing.Set(lineSpacing)
 			}
 		}
+	}
+
+	imgui.Spacing()
+	if imgui.CollapsingHeader("OpenGL Settings") {
+		imgui.Spacing()
+		win.drawGlSwapInterval()
 	}
 }
 
