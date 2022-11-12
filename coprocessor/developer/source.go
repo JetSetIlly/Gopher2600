@@ -547,6 +547,33 @@ func NewSource(romFile string, cart mapper.CartCoProc, elfFile string) (*Source,
 		}
 	}
 
+	// try to assign orphaned source lines to a function
+	//
+	// NOTE: this might not make sense for languages other than C. the
+	// assumption here is that global variables appear before any other
+	// function and that all lines after that are inside a function. for blank
+	// lines between functions this doesn't matter but any other variable
+	// declarations (outside of a function) will be wrongly allocated
+	//
+	// however, we need to do this because we need to be able to tell which
+	// function a local variable appears in. very often, the line that declares
+	// the variable will appear during the LineReader loop but sometimes it
+	// will not. moreover, we need to know which function it appears in in
+	// order to know what the frame base is for the variable.
+	//
+	// there may be a better way of doing this or maybe I'm just
+	// misunderstanding something but for now, we'll use this rough method
+	for _, sf := range src.Files {
+		fn := &SourceFunction{Name: UnknownFunction}
+		for _, ln := range sf.Content.Lines {
+			if ln.Function.Name == UnknownFunction {
+				ln.Function = fn
+			} else {
+				fn = ln.Function
+			}
+		}
+	}
+
 	// build types
 	err = bld.buildTypes(src)
 	if err != nil {
@@ -725,7 +752,7 @@ func readSourceFile(filename string, pathToROM_nosymlinks string) (*SourceFile, 
 	for i, s := range strings.Split(string(b), "\n") {
 		l := &SourceLine{
 			File:         &fl,
-			LineNumber:   i + 1,
+			LineNumber:   i + 1, // counting from one
 			Function:     &SourceFunction{Name: UnknownFunction},
 			PlainContent: s,
 		}

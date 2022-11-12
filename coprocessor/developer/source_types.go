@@ -84,7 +84,7 @@ func (d *SourceDisasm) String() string {
 // SourceLine is a single line of source in a source file, identified by the
 // DWARF data and loaded from the actual source file.
 type SourceLine struct {
-	// the actual file/line of the SourceLine
+	// the actual file/line of the SourceLine. line numbers are counted from one
 	File       *SourceFile
 	LineNumber int
 
