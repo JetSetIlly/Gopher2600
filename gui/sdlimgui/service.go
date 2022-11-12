@@ -53,6 +53,12 @@ func (img *SdlImgui) Service() {
 	// poll for sdl event or timeout
 	ev := img.polling.wait()
 
+	// whether a left mouse button down event has been polled. if it has and we
+	// poll an up event in the same PollEvent() loop below, then we need to
+	// "trickle" the up and down events over two frames. see commentary for
+	// trickleMouseButton type
+	leftMouseDownPolled := false
+
 	// some events we want to service even if an event channel has not been
 	// set. very few "modes" will not set a channel but we should be mindful of
 	// those events that we handle entirely within this GUI implementation
@@ -87,6 +93,14 @@ func (img *SdlImgui) Service() {
 			switch ev.Button {
 			case sdl.BUTTON_LEFT:
 				button = userinput.MouseButtonLeft
+				switch ev.Type {
+				case sdl.MOUSEBUTTONDOWN:
+					leftMouseDownPolled = true
+				case sdl.MOUSEBUTTONUP:
+					if leftMouseDownPolled {
+						img.plt.trickleLeftMouseButton = trickleMouseDown
+					}
+				}
 
 			case sdl.BUTTON_MIDDLE:
 				if img.isCaptured() {

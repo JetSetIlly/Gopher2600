@@ -34,7 +34,29 @@ type platform struct {
 	mode   sdl.DisplayMode
 
 	gamepad []*sdl.GameController
+
+	// trickle left mouse button
+	trickleLeftMouseButton trickleMouseButton
 }
+
+// trickle mouse button is a mechanism that allows a mouse button down/up event
+// that occurs in the same frame to be serviced by the dear imgui io system
+//
+// as of dear imgui version 1.87 this has been solved with the AddMouseButtonEvent()
+// function. we're not currently use version of dear imgui but we should
+// consider replacing this trickleMouseButton type if we ever move to the new
+// version
+//
+// the mechanism was added to mitigate a problem with Apple "touchpads" that
+// simulate mouse presses simply through touch (as opposed to clicking)
+type trickleMouseButton int
+
+// list of valid trickleMouseButton values
+const (
+	trickleMouseNone trickleMouseButton = 0
+	trickleMouseUp   trickleMouseButton = 1
+	trickleMouseDown trickleMouseButton = 2
+)
 
 // newPlatform is the preferred method of initialisation for the platform type.
 func newPlatform(img *SdlImgui) (*platform, error) {
@@ -160,6 +182,17 @@ func (plt *platform) newFrame() {
 		plt.img.io.SetMousePosition(imgui.Vec2{X: float32(x), Y: float32(y)})
 		for i, button := range []uint32{sdl.BUTTON_LEFT, sdl.BUTTON_RIGHT, sdl.BUTTON_MIDDLE} {
 			plt.img.io.SetMouseButtonDown(i, (state&sdl.Button(button)) != 0)
+		}
+
+		// trickle event supercedes previous SetMouseButtonDown() call
+		switch plt.trickleLeftMouseButton {
+		case trickleMouseDown:
+			plt.img.io.SetMouseButtonDown(0, true)
+			plt.trickleLeftMouseButton = trickleMouseUp
+		case trickleMouseUp:
+			plt.img.io.SetMouseButtonDown(0, false)
+			plt.trickleLeftMouseButton = trickleMouseNone
+		case trickleMouseNone:
 		}
 	}
 }
