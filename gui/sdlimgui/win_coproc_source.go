@@ -244,15 +244,15 @@ func (win *winCoProcSource) draw() {
 			}
 		}
 
+		// fuzzy file selector
+		win.drawFileSelection(src)
+		imgui.Separator()
+
 		// change selectedFile
 		if win.updateSelectedFile {
 			win.selectedFile = src.FilesByShortname[win.selectedShortFileName]
 			// updateSelectFile is reset to false below (because we need to check it again)
 		}
-
-		// fuzzy file selector
-		win.drawFileSelection(src)
-		imgui.Separator()
 
 		// source code view
 		win.drawSource(src)
