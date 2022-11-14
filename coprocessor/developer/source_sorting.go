@@ -437,9 +437,9 @@ func (v SortedVariables) Less(i int, j int) bool {
 		return strings.ToUpper(v.Variables[i].Name) < strings.ToUpper(v.Variables[j].Name)
 	case SortVariableByAddress:
 		if v.Descending {
-			return v.Variables[i].Address > v.Variables[j].Address
+			return v.Variables[i].Address() > v.Variables[j].Address()
 		}
-		return v.Variables[i].Address < v.Variables[j].Address
+		return v.Variables[i].Address() < v.Variables[j].Address()
 	}
 	return false
 }

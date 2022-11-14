@@ -17,6 +17,7 @@ package developer
 
 import (
 	"debug/dwarf"
+	"debug/elf"
 	"fmt"
 	"io"
 
@@ -37,6 +38,10 @@ type buildEntry struct {
 type build struct {
 	dwrf *dwarf.Data
 
+	// debug_loc is the .debug_loc ELF section. it's required by DWARF for
+	// finding local variables in memory
+	debug_loc *elf.Section
+
 	subprograms        map[dwarf.Offset]buildEntry
 	inlinedSubroutines map[dwarf.Offset]buildEntry
 	baseTypes          map[dwarf.Offset]buildEntry
@@ -56,9 +61,10 @@ type build struct {
 	order []dwarf.Offset
 }
 
-func newBuild(dwrf *dwarf.Data) (*build, error) {
+func newBuild(dwrf *dwarf.Data, debug_loc *elf.Section) (*build, error) {
 	bld := &build{
 		dwrf:               dwrf,
+		debug_loc:          debug_loc,
 		subprograms:        make(map[dwarf.Offset]buildEntry),
 		inlinedSubroutines: make(map[dwarf.Offset]buildEntry),
 		baseTypes:          make(map[dwarf.Offset]buildEntry),
@@ -376,9 +382,6 @@ func (bld *build) buildTypes(src *Source) error {
 					continue
 				}
 
-				// addresses of member variables are offsets from the "parent composite" type
-				memb.addressIsOffset = true
-
 				// look for data member location field. if it's not present
 				// then it doesn't matter, the member address will be kept at
 				// zero and will still be considered an offset address. absence
@@ -388,12 +391,9 @@ func (bld *build) buildTypes(src *Source) error {
 				if fld != nil {
 					switch fld.Class {
 					case dwarf.ClassConstant:
-						memb.Address = uint64(fld.Val.(int64))
+						memb.addressResolve = func(_ addressResolution) uint64 { return uint64(fld.Val.(int64)) }
 					case dwarf.ClassExprLoc:
-						var ok bool
-						if memb.Address, ok = bld.decodeLocationExpression(fld.Val.([]uint8)); !ok {
-							continue // for loop
-						}
+						memb.addressResolve, _ = bld.decodeSingleLocationDescription(fld.Val.([]uint8))
 					default:
 						continue
 					}
@@ -587,51 +587,85 @@ func (bld *build) resolveVariableDeclaration(v buildEntry, src *Source) (*Source
 	return &varb, nil
 }
 
+func (bld *build) resolveVariableChildren(varb *SourceVariable) {
+	if varb.Type.IsArray() {
+		for i := 0; i < varb.Type.ElementCount; i++ {
+			elem := &SourceVariable{
+				Cart:     varb.Cart,
+				Name:     fmt.Sprintf("%s[%d]", varb.Name, i),
+				Type:     varb.Type.ElementType,
+				DeclLine: varb.DeclLine,
+			}
+
+			o := i
+			elem.setAddress(func(_ addressResolution) uint64 {
+				return varb.Address() + uint64(o*varb.Type.ElementType.Size)
+			})
+
+			varb.children = append(varb.children, elem)
+			bld.resolveVariableChildren(elem)
+		}
+	}
+
+	if varb.Type.IsComposite() {
+		var offset uint64
+		for _, m := range varb.Type.Members {
+			memb := &SourceVariable{
+				Cart:     varb.Cart,
+				Name:     m.Name,
+				Type:     m.Type,
+				DeclLine: varb.DeclLine,
+			}
+
+			o := offset
+			memb.setAddress(func(_ addressResolution) uint64 {
+				return varb.Address() + o
+			})
+
+			varb.children = append(varb.children, memb)
+			bld.resolveVariableChildren(memb)
+
+			offset += uint64(m.Type.Size)
+		}
+	}
+
+	if varb.Type.IsPointer() {
+		deref := &SourceVariable{
+			Cart:     varb.Cart,
+			Name:     fmt.Sprintf("*%s", varb.Name),
+			Type:     varb.Type.PointerType,
+			DeclLine: varb.DeclLine,
+		}
+		deref.setAddress(func(_ addressResolution) uint64 {
+			v, ok := varb.Value()
+			if !ok {
+				return 0
+			}
+			return uint64(v)
+		})
+		varb.children = append(varb.children, deref)
+		bld.resolveVariableChildren(deref)
+	}
+}
+
 // buildVariables populates variables map in the *Source tree
 func (bld *build) buildVariables(src *Source, origin uint64) error {
+	// buffer for reading the .debug_log section. will be extended as required
+	b := make([]byte, 16)
+
 	for _, v := range bld.variables {
-		// as a starting point we're interested in variable entries that have
-		// the location attribute
-		var address uint64
-
-		fld := v.entry.AttrField(dwarf.AttrLocation)
-		if fld == nil {
-			continue // for loop
-		}
-
-		switch fld.Class {
-		case dwarf.ClassLocListPtr:
-			continue // for loop
-		case dwarf.ClassExprLoc:
-			var ok bool
-			if address, ok = bld.decodeLocationExpression(fld.Val.([]uint8)); !ok {
-				continue // for loop
-			}
-		default:
-			continue // for loop
-		}
-
-		// if address is zero after resolution than we should discard it. not
-		// sure why we get nil addresses like this but it seems to happen if a
-		// global is defined but never accessed. so maybe something to do with
-		// optimisation
-		if address == 0 {
-			continue // for loop
-		}
-
-		address += origin
-
+		// resolve name and type of variable
 		var varb *SourceVariable
 		var err error
 
 		// check for abstract origin field. if it is present we resolve the
 		// declartion using with the DWARF entry indicated by the field. otherwise
 		// we resolve using the current entry
-		fld = v.entry.AttrField(dwarf.AttrAbstractOrigin)
+		fld := v.entry.AttrField(dwarf.AttrAbstractOrigin)
 		if fld != nil {
 			abstract, ok := bld.variables[fld.Val.(dwarf.Offset)]
 			if !ok {
-				return curated.Errorf("found concrete variable without abstract: %08x", varb.Address)
+				return curated.Errorf("found concrete variable without abstract")
 			}
 
 			varb, err = bld.resolveVariableDeclaration(abstract, src)
@@ -650,7 +684,7 @@ func (bld *build) buildVariables(src *Source, origin uint64) error {
 			continue // for loop
 		}
 
-		// do not inclue variables of constant type
+		// do not include variables of constant type (pointers to constant type are fine)
 		if varb.Type.Constant {
 			continue // for loop
 		}
@@ -661,31 +695,127 @@ func (bld *build) buildVariables(src *Source, origin uint64) error {
 			continue // for loop
 		}
 
-		// pointers to constant type are fine
-
-		// add address found in the location attribute to the SourceVariable
-		// returned by the resolve() function
-		varb.Address = address
-
-		// determine highest address occupied by any variable in the program
-		hiAddress := varb.Address + uint64(varb.Type.Size)
-		if hiAddress > src.VariableMemtop {
-			src.VariableMemtop = hiAddress
+		fld = v.entry.AttrField(dwarf.AttrLocation)
+		if fld == nil {
+			continue // for loop
 		}
 
-		// add variable to list of global variables if there is no parent
-		// function to the declaration
-		if varb.DeclLine.Function.Name == UnknownFunction {
-			// list of global variables for all compile units
-			src.Globals[varb.Name] = varb
-			src.GlobalsByAddress[varb.Address] = varb
-			src.SortedGlobals.Variables = append(src.SortedGlobals.Variables, varb)
+		// assign address resolver memory to variable
+		varb.Cart = src.cart
 
-			// note that the file has at least one global variables
-			varb.DeclLine.File.HasGlobals = true
+		switch fld.Class {
+		case dwarf.ClassLocListPtr:
+			// "Location lists, which are used to describe objects that have a limited lifetime or change
+			// their location during their lifetime. Location lists are more completely described below."
+			// page 26 of "DWARF4 Standard"
+			//
+			// "Location lists are used in place of location expressions whenever the object whose location is
+			// being described can change location during its lifetime. Location lists are contained in a separate
+			// object file section called .debug_loc . A location list is indicated by a location attribute whose
+			// value is an offset from the beginning of the .debug_loc section to the first byte of the list for the
+			// object in question"
+			// page 30 of "DWARF4 Standard"
+			//
+			// "loclistptr: This is an offset into the .debug_loc section (DW_FORM_sec_offset). It consists
+			// of an offset from the beginning of the .debug_loc section to the first byte of the data making up
+			// the location list for the compilation unit. It is relocatable in a relocatable object file, and
+			// relocated in an executable or shared object. In the 32-bit DWARF format, this offset is a 4-
+			// byte unsigned value; in the 64-bit DWARF format, it is an 8-byte unsigned value (see
+			// Section 7.4)"
+			// page 148 of "DWARF4 Standard"
+			locOffset := fld.Val.(int64)
+
+			// "The applicable base address of a location list entry is determined by the closest preceding base
+			// address selection entry (see below) in the same location list. If there is no such selection entry,
+			// then the applicable base address defaults to the base address of the compilation unit (see
+			// Section 3.1.1)"
+			var baseAddress uint64
+
+			readStartAddress := func() uint64 {
+				bld.debug_loc.ReadAt(b[:4], locOffset)
+				a := uint64(b[0]) | uint64(b[1])<<8 | uint64(b[2])<<16 | uint64(b[3])<<24
+				locOffset += 4
+				return a + baseAddress + origin
+			}
+
+			readEndAddress := func() uint64 {
+				bld.debug_loc.ReadAt(b[:4], locOffset)
+				a := uint64(b[0]) | uint64(b[1])<<8 | uint64(b[2])<<16 | uint64(b[3])<<24
+				locOffset += 4
+				return a + baseAddress + origin
+			}
+
+			startAddress := readStartAddress()
+			endAddress := readEndAddress()
+
+			// "The end of any given location list is marked by an end of list entry, which consists of a 0 for the
+			// beginning address offset and a 0 for the ending address offset. A location list containing only an
+			// end of list entry describes an object that exists in the source code but not in the executable
+			// program". page 31 of "DWARF4 Standard"
+			for !(startAddress == 0x0 && endAddress == 0x0) {
+				// "A base address selection entry consists of:
+				// 1. The value of the largest representable address offset (for example, 0xffffffff when the size of
+				// an address is 32 bits).
+				// 2. An address, which defines the appropriate base address for use in interpreting the beginning
+				// and ending address offsets of subsequent entries of the location list"
+				// page 31 of "DWARF4 Standard"
+				if startAddress == 0xffffffff {
+					baseAddress = endAddress
+				} else {
+					// read single location description for this start/end address
+					bld.debug_loc.ReadAt(b, locOffset)
+					locOffset += 4
+				}
+
+				// read next address
+				startAddress = readStartAddress()
+				endAddress = readEndAddress()
+			}
+
+			bld.resolveVariableChildren(varb)
+
+			continue // for loop
+
+		case dwarf.ClassExprLoc:
+			// Single location description "They are sufficient for describing the location of any object
+			// as long as its lifetime is either static or the same as the lexical block that owns it,
+			// and it does not move during its lifetime"
+			// page 26 of "DWARF4 Standard"
+
+			// set origin address and address resolve function
+			varb.origin = origin
+			varb.addressResolve, _ = bld.decodeSingleLocationDescription(fld.Val.([]uint8))
+
+			// if address is zero after resolution than we should discard it. not
+			// sure why we get nil addresses like this but it seems to happen if a
+			// global is defined but never accessed. so maybe something to do with
+			// optimisation
+			if varb.address() == 0 {
+				continue // for loop
+			}
+
+			bld.resolveVariableChildren(varb)
+
+			// determine highest address occupied by any variable in the program
+			hiAddress := varb.address() + uint64(varb.Type.Size)
+			if hiAddress > src.VariableMemtop {
+				src.VariableMemtop = hiAddress
+			}
+
+			// add variable to list of global variables if there is no parent
+			// function to the declaration
+			if varb.DeclLine.Function.Name == UnknownFunction {
+				// list of global variables for all compile units
+				src.Globals[varb.Name] = varb
+				src.GlobalsByAddress[varb.address()] = varb
+				src.SortedGlobals.Variables = append(src.SortedGlobals.Variables, varb)
+
+				// note that the file has at least one global variables
+				varb.DeclLine.File.HasGlobals = true
+			}
+		default:
+			continue // for loop
 		}
-
-		// TODO: non-global variables
 	}
 
 	return nil
@@ -695,6 +825,9 @@ type foundFunction struct {
 	filename string
 	linenum  int64
 	name     string
+
+	// not all functions have a framebase
+	frameBase func(addressResolution) uint64
 }
 
 func (bld *build) findFunction(addr uint64) (*foundFunction, error) {
@@ -728,10 +861,17 @@ func (bld *build) findFunction(addr uint64) (*foundFunction, error) {
 		}
 		linenum := fld.Val.(int64)
 
+		var frameBase func(addressResolution) uint64
+		fld = b.entry.AttrField(dwarf.AttrFrameBase)
+		if fld != nil {
+			frameBase, _ = bld.decodeSingleLocationDescription(fld.Val.([]uint8))
+		}
+
 		return &foundFunction{
-			filename: files[filenum].Name,
-			linenum:  linenum,
-			name:     name,
+			filename:  files[filenum].Name,
+			linenum:   linenum,
+			name:      name,
+			frameBase: frameBase,
 		}, nil
 	}
 
@@ -877,27 +1017,45 @@ func (bld *build) findFunction(addr uint64) (*foundFunction, error) {
 // decode DWARF data of ClassExprLoc
 //
 // returns zero and false if expression cannot be handled
-func (bld *build) decodeLocationExpression(expr []uint8) (uint64, bool) {
-	// expression location operators reference. "DWARF Debugging Information
-	// Format Version 4", page 17, section 2.5.1.1
+func (bld *build) decodeSingleLocationDescription(expr []uint8) (func(addressResolution) uint64, int) {
+	// expression location operators reference
+	//
+	// "DWARF Debugging Information Format Version 4", page 17, section 2.5.1.1
+	// table of value on page 153, section 7.7.1 DWARF Expressions
 
 	switch expr[0] {
-	case 0x03: // constant address
-		if len(expr) != 5 {
-			return 0, false
-		}
-		address := uint64(expr[1])
-		address |= uint64(expr[2]) << 8
-		address |= uint64(expr[3]) << 16
-		address |= uint64(expr[4]) << 24
-		return address, true
-	case 0x23: // uleb128 to be added to previous value on the stack
-		return bld.decodeULEB128(expr[1:]), true
+	case 0x03:
+		return func(_ addressResolution) uint64 {
+			// DW_OP_addr
+			// constant address
+			if len(expr) != 5 {
+				return 0
+			}
+			address := uint64(expr[1])
+			address |= uint64(expr[2]) << 8
+			address |= uint64(expr[3]) << 16
+			address |= uint64(expr[4]) << 24
+			return address
+		}, 5
+	case 0x23:
+		// DW_OP_plus_uconst
+		// ULEB128 to be added to previous value on the stack
+		return func(_ addressResolution) uint64 {
+			return bld.decodeULEB128(expr[1:5])
+		}, 5
+	case 0x91:
+		return func(_ addressResolution) uint64 {
+			return bld.decodeSLEB128(expr[1:5])
+		}, 5
+	case 0x52:
+	default:
 	}
-	return 0, false
+
+	return nil, 0
 }
 
-// some ClassExprLoc operands are expressed as unsigned LEB128 values
+// some ClassExprLoc operands are expressed as unsigned LEB128 values.
+// algorithm taken from page 218 of "DWARF4 Standard", figure 46
 func (bld *build) decodeULEB128(encoded []uint8) uint64 {
 	var result uint64
 	var shift uint64
@@ -908,5 +1066,29 @@ func (bld *build) decodeULEB128(encoded []uint8) uint64 {
 		}
 		shift += 7
 	}
+	return result
+}
+
+// some ClassExprLoc operands are expressed as signed LEB128 values
+// algorithm taken from page 218 of "DWARF4 Standard", figure 47
+func (bld *build) decodeSLEB128(encoded []uint8) uint64 {
+	var result uint64
+	var shift uint64
+	const size = 32
+
+	var v uint8
+	for _, v = range encoded {
+		result |= (uint64(v & 0x7f)) << shift
+		shift += 7
+		if v&0x80 == 0x00 {
+			break
+		}
+	}
+
+	// sign extend last byte from the encoded slice
+	if (shift < size) && v&0x80 == 0x80 {
+		result |= ((^uint64(0)) >> shift) << shift
+	}
+
 	return result
 }

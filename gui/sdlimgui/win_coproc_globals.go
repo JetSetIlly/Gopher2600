@@ -48,6 +48,9 @@ type winCoProcGlobals struct {
 	showAllGlobals bool
 
 	openNodes map[string]bool
+
+	// saveToCSV on next frame
+	resolveSaveToCSV bool
 }
 
 func newWinCoProcGlobals(img *SdlImgui) (window, error) {
@@ -89,7 +92,18 @@ func (win *winCoProcGlobals) debuggerDraw() {
 }
 
 func (win *winCoProcGlobals) draw() {
+	if win.img.lz.Cart.Static == nil {
+		imgui.Text("No cartridge static memory available")
+		return
+	}
+
 	win.img.dbg.CoProcDev.BorrowSource(func(src *developer.Source) {
+		// complete "save to CSV" procedure
+		if win.resolveSaveToCSV {
+			win.saveToCSV(src)
+			win.resolveSaveToCSV = false
+		}
+
 		if src == nil {
 			imgui.Text("No source files available")
 			return
@@ -106,6 +120,9 @@ func (win *winCoProcGlobals) draw() {
 		}
 
 		if win.firstOpen {
+			// update all variables on first open
+			src.UpdateAllVariables()
+
 			// assume source entry point is a function called "main"
 			if m, ok := src.Functions["main"]; ok {
 				win.selectedFile = m.DeclLine.File
@@ -181,7 +198,7 @@ func (win *winCoProcGlobals) draw() {
 
 		for i, varb := range src.SortedGlobals.Variables {
 			if win.showAllGlobals || varb.DeclLine.File.Filename == win.selectedFile.Filename {
-				win.drawVariable(src, varb, 0, 0, false, fmt.Sprint(i))
+				win.drawVariable(src, varb, 0, false, fmt.Sprint(i))
 			}
 		}
 
@@ -207,21 +224,19 @@ func (win *winCoProcGlobals) draw() {
 			imgui.Checkbox("List all globals (in all files)", &win.showAllGlobals)
 			imgui.SameLineV(0, 20)
 			if imgui.Button(fmt.Sprintf("%c Save to CSV", fonts.Disk)) {
-				win.saveToCSV(src)
+				// make sure variables are as fresh as they can be
+				src.UpdateAllVariables()
+
+				// the actual saving to CSV file will happen next frame
+				win.resolveSaveToCSV = true
 			}
 		})
 	})
 }
 
-func (win *winCoProcGlobals) drawVariableTooltip(varb *developer.SourceVariable, value uint32) {
-	imguiTooltip(func() {
-		drawVariableTooltip(varb, value, win.img.cols)
-	}, true)
-}
-
 func drawVariableTooltip(varb *developer.SourceVariable, value uint32, cols *imguiColors) {
 	imgui.PushStyleColor(imgui.StyleColorText, cols.CoProcVariablesAddress)
-	imgui.Text(fmt.Sprintf("%08x", varb.Address))
+	imgui.Text(fmt.Sprintf("%08x", varb.Address()))
 	imgui.PopStyleColor()
 
 	imgui.Text(varb.Name)
@@ -234,12 +249,12 @@ func drawVariableTooltip(varb *developer.SourceVariable, value uint32, cols *img
 	imgui.Text(fmt.Sprintf("%d bytes", varb.Type.Size))
 	imgui.PopStyleColor()
 
-	if varb.IsArray() {
+	if varb.Type.IsArray() {
 		imgui.Spacing()
 		imgui.Separator()
 		imgui.Spacing()
 		imgui.Text(fmt.Sprintf("is an array of %d elements", varb.Type.ElementCount))
-	} else if varb.IsComposite() {
+	} else if varb.Type.IsComposite() {
 		imgui.Spacing()
 		imgui.Separator()
 		imgui.Spacing()
@@ -306,15 +321,8 @@ func drawVariableTooltip(varb *developer.SourceVariable, value uint32, cols *img
 	imgui.PopStyleColor()
 }
 
-func (win *winCoProcGlobals) drawVariable(src *developer.Source,
-	varb *developer.SourceVariable, baseAddress uint64,
+func (win *winCoProcGlobals) drawVariable(src *developer.Source, varb *developer.SourceVariable,
 	indentLevel int, unnamed bool, nodeID string) {
-
-	address := varb.Address
-	if varb.AddressIsOffset() {
-		// address of variable is an offset of parent address
-		address += baseAddress
-	}
 
 	const IndentDepth = 2
 
@@ -333,8 +341,10 @@ func (win *winCoProcGlobals) drawVariable(src *developer.Source,
 	imgui.SelectableV(name, false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{0, 0})
 	imgui.PopStyleColorV(2)
 
-	if varb.IsComposite() || varb.IsArray() {
-		win.drawVariableTooltip(varb, 0)
+	if varb.NumChildren() > 0 {
+		// we could show a tooltip for variables with children but this needs
+		// work. for instance, how do we illustrate a composite type or an
+		// array?
 
 		if imgui.IsItemClicked() {
 			win.openNodes[nodeID] = !win.openNodes[nodeID]
@@ -347,7 +357,7 @@ func (win *winCoProcGlobals) drawVariable(src *developer.Source,
 
 		imgui.TableNextColumn()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcVariablesAddress)
-		imgui.Text(fmt.Sprintf("%08x", address))
+		imgui.Text(fmt.Sprintf("%08x", varb.Address()))
 		imgui.PopStyleColor()
 
 		imgui.TableNextColumn()
@@ -358,77 +368,16 @@ func (win *winCoProcGlobals) drawVariable(src *developer.Source,
 		}
 
 		if win.openNodes[nodeID] {
-			if varb.IsComposite() {
-				for i, memb := range varb.Type.Members {
-					win.drawVariable(src, memb, address, indentLevel+1, false, fmt.Sprint(nodeID, i))
-				}
-			} else if varb.IsArray() {
-				for i := 0; i < varb.Type.ElementCount; i++ {
-					elem := &developer.SourceVariable{
-						Name:     fmt.Sprintf("%s[%d]", varb.Name, i),
-						Type:     varb.Type.ElementType,
-						DeclLine: varb.DeclLine,
-						Address:  address + uint64(i*varb.Type.ElementType.Size),
-					}
-					win.drawVariable(src, elem, elem.Address, indentLevel+1, false, fmt.Sprint(nodeID, i))
-				}
+			for i := 0; i < varb.NumChildren(); i++ {
+				win.drawVariable(src, varb.Child(i), indentLevel+1, false, fmt.Sprint(nodeID, i))
 			}
-		}
-	} else if varb.IsPointer() {
-		if imgui.IsItemClicked() {
-			win.openNodes[nodeID] = !win.openNodes[nodeID]
-		}
-
-		value, valueOk := win.readMemory(address)
-		value &= varb.Type.Mask()
-
-		if valueOk {
-			win.drawVariableTooltip(varb, value)
-		}
-
-		imgui.TableNextColumn()
-		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcVariablesType)
-		imgui.Text(varb.Type.Name)
-		imgui.PopStyleColor()
-
-		imgui.TableNextColumn()
-		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcVariablesAddress)
-		imgui.Text(fmt.Sprintf("%08x", address))
-		imgui.PopStyleColor()
-
-		imgui.TableNextColumn()
-
-		dereference := false
-		if win.openNodes[nodeID] {
-			imgui.Text(string(fonts.TreeOpen))
-			imgui.SameLine()
-			dereference = true
-		} else {
-			imgui.Text(string(fonts.TreeClosed))
-			imgui.SameLine()
-		}
-
-		if valueOk {
-			imgui.Text(fmt.Sprintf("*%s", fmt.Sprintf(varb.Type.Hex(), value)))
-		} else {
-			imgui.Text("-")
-		}
-
-		if dereference {
-			deref := &developer.SourceVariable{
-				Name:     varb.Name,
-				Type:     varb.Type.PointerType,
-				DeclLine: varb.DeclLine,
-				Address:  uint64(value),
-			}
-			win.drawVariable(src, deref, deref.Address, indentLevel+1, true, fmt.Sprint(nodeID, 1))
 		}
 	} else {
-		value, valueOk := win.readMemory(address)
-		value &= varb.Type.Mask()
-
+		value, valueOk := varb.Value()
 		if valueOk {
-			win.drawVariableTooltip(varb, value)
+			imguiTooltip(func() {
+				drawVariableTooltip(varb, value, win.img.cols)
+			}, true)
 		}
 
 		imgui.TableNextColumn()
@@ -438,7 +387,7 @@ func (win *winCoProcGlobals) drawVariable(src *developer.Source,
 
 		imgui.TableNextColumn()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcVariablesAddress)
-		imgui.Text(fmt.Sprintf("%08x", address))
+		imgui.Text(fmt.Sprintf("%08x", varb.Address()))
 		imgui.PopStyleColor()
 
 		imgui.TableNextColumn()
@@ -448,13 +397,6 @@ func (win *winCoProcGlobals) drawVariable(src *developer.Source,
 			imgui.Text("-")
 		}
 	}
-}
-
-func (win *winCoProcGlobals) readMemory(address uint64) (uint32, bool) {
-	if !win.img.lz.Cart.HasStaticBus {
-		return 0, false
-	}
-	return win.img.lz.Cart.Static.Read32bit(uint32(address))
 }
 
 // save all variables in the curent view to a CSV file in the working
@@ -480,96 +422,50 @@ func (win *winCoProcGlobals) saveToCSV(src *developer.Source) {
 		}
 	}()
 
-	// name of parent
-	parentName := func(parent, name string) string {
-		if parent == "" {
-			return name
-		}
-		return fmt.Sprintf("%s->%s", parent, name)
-	}
+	// write variable to file
+	writeVarb := func(varb *developer.SourceVariable) {
+		f.WriteString(fmt.Sprintf("%s,", varb.Name))
+		f.WriteString(fmt.Sprintf("%s,", varb.Type.Name))
+		f.WriteString(fmt.Sprintf("%08x,", varb.Address()))
 
-	// write string to CSV file
-	writeEntry := func(s string) {
-		f.WriteString(s)
+		value, valueOk := varb.Value()
+		if valueOk {
+			f.WriteString(fmt.Sprintf(varb.Type.Hex(), value))
+			f.WriteString(",")
+		}
+
 		f.WriteString("\n")
 	}
 
 	// the builEntry function is recursive and will is very similar in
 	// structure to the drawVariable() function above
-	var buildEntry func(*developer.SourceVariable, uint64, string)
-	buildEntry = func(varb *developer.SourceVariable, baseAddress uint64, parent string) {
-		if win.showAllGlobals || varb.DeclLine.File.Filename == win.selectedFile.Filename {
-			s := strings.Builder{}
+	var buildEntry func(*developer.SourceVariable, string)
+	buildEntry = func(varb *developer.SourceVariable, parent string) {
+		f.WriteString(fmt.Sprintf("%s,", parent))
 
-			address := varb.Address
-			if varb.AddressIsOffset() {
-				// address of variable is an offset of parent address
-				address += baseAddress
-			}
-
-			if varb.IsComposite() {
-				for _, memb := range varb.Type.Members {
-					buildEntry(memb, address, parentName(parent, varb.Name))
-				}
-			} else if varb.IsArray() {
-				for i := 0; i < varb.Type.ElementCount; i++ {
-					elem := &developer.SourceVariable{
-						Name:     fmt.Sprintf("%s[%d]", varb.Name, i),
-						Type:     varb.Type.ElementType,
-						DeclLine: varb.DeclLine,
-						Address:  address + uint64(i*varb.Type.ElementType.Size),
-					}
-					buildEntry(elem, elem.Address, parent)
-				}
-			} else if varb.IsPointer() {
-				value, valueOk := win.readMemory(address)
-				value &= varb.Type.Mask()
-
-				s.WriteString(fmt.Sprintf("%s,", parent))
-				s.WriteString(fmt.Sprintf("%s,", varb.Name))
-				s.WriteString(fmt.Sprintf("%s,", varb.Type.Name))
-				s.WriteString(fmt.Sprintf("%08x,", address))
-				if valueOk {
-					s.WriteString("*")
-					s.WriteString(fmt.Sprintf(varb.Type.Hex(), value))
-					s.WriteString(",")
-				} else {
-					s.WriteString("-,")
-				}
-				writeEntry(s.String())
-
-				deref := &developer.SourceVariable{
-					Name:     varb.Name,
-					Type:     varb.Type.PointerType,
-					DeclLine: varb.DeclLine,
-					Address:  uint64(value),
-				}
-
-				buildEntry(deref, deref.Address, parentName(parent, varb.Name))
+		// how we write the line differs depending on whether the variable has
+		// children or not
+		if varb.NumChildren() > 0 {
+			if parent != "" {
+				parent = fmt.Sprintf("%s->%s", parent, varb.Name)
 			} else {
-				value, valueOk := win.readMemory(address)
-				value &= varb.Type.Mask()
-
-				s.WriteString(fmt.Sprintf("%s,", parent))
-				s.WriteString(fmt.Sprintf("%s,", varb.Name))
-				s.WriteString(fmt.Sprintf("%s,", varb.Type.Name))
-				s.WriteString(fmt.Sprintf("%08x,", address))
-
-				if valueOk {
-					s.WriteString(fmt.Sprintf(varb.Type.Hex(), value))
-					s.WriteString(",")
-				}
-
-				writeEntry(s.String())
+				parent = varb.Name
+				writeVarb(varb)
 			}
+
+			for i := 0; i < varb.NumChildren(); i++ {
+				buildEntry(varb.Child(i), parent)
+			}
+		} else {
+			writeVarb(varb)
 		}
 	}
 
 	// write header to CSV file
-	writeEntry("Parent, Name, Type, Address, Value")
+	f.WriteString("Parent, Name, Type, Address, Value\n")
 
 	// process every variable in the current view
 	for _, varb := range src.SortedGlobals.Variables {
-		buildEntry(varb, 0, "")
+		buildEntry(varb, "")
 	}
 }

@@ -42,7 +42,14 @@ type compileUnit struct {
 //
 // It is possible for the arrays/map fields to be empty
 type Source struct {
+	// interface to coprocessor memory
+	cart CartCoProcDeveloper
+
 	syms []elf.Symbol
+
+	// debug_loc is the .debug_loc ELF section. it's required by DWARF for
+	// finding local variables in memory
+	debug_loc *elf.Section
 
 	// raw dwarf data. after NewSource() this data is only needed by the
 	// findSourceLine() function
@@ -142,8 +149,9 @@ type Source struct {
 //
 // Once the ELF and DWARF file has been identified then Source will always be
 // non-nil but with the understanding that the fields may be empty.
-func NewSource(romFile string, cart mapper.CartCoProc, elfFile string) (*Source, error) {
+func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Source, error) {
 	src := &Source{
+		cart:             cart,
 		Disassembly:      make(map[uint64]*SourceDisasm),
 		Files:            make(map[string]*SourceFile),
 		Filenames:        make([]string, 0, 10),
@@ -221,6 +229,12 @@ func NewSource(romFile string, cart mapper.CartCoProc, elfFile string) (*Source,
 
 		// ignore sections that do not have executable instructions
 		if sec.Flags&elf.SHF_EXECINSTR != elf.SHF_EXECINSTR {
+			if sec.Name == ".debug_loc" {
+				if src.debug_loc != nil {
+					logger.Logf("dwarf", "multiple .debug_loc sections found. using the first one encountered")
+				}
+				src.debug_loc = sec
+			}
 			continue
 		}
 
@@ -304,7 +318,7 @@ func NewSource(romFile string, cart mapper.CartCoProc, elfFile string) (*Source,
 		}
 	}
 
-	bld, err := newBuild(src.dwrf)
+	bld, err := newBuild(src.dwrf, src.debug_loc)
 	if err != nil {
 		return nil, curated.Errorf("dwarf: %v", err)
 	}
@@ -471,9 +485,11 @@ func NewSource(romFile string, cart mapper.CartCoProc, elfFile string) (*Source,
 						workingSourceLine.Function = f
 					} else {
 						fn := &SourceFunction{
-							Name:     foundFunc.name,
-							Address:  [2]uint64{workingAddress, relocatedAddress - 1},
-							DeclLine: src.Files[foundFunc.filename].Content.Lines[foundFunc.linenum-1],
+							Cart:      src.cart,
+							Name:      foundFunc.name,
+							Address:   [2]uint64{workingAddress, relocatedAddress - 1},
+							DeclLine:  src.Files[foundFunc.filename].Content.Lines[foundFunc.linenum-1],
+							frameBase: foundFunc.frameBase,
 						}
 						src.Functions[foundFunc.name] = fn
 						src.FunctionNames = append(src.FunctionNames, foundFunc.name)
@@ -660,6 +676,7 @@ func (src *Source) addStubEntries() {
 			fn.name = strings.Split(fn.name, ".")[0]
 
 			stubFn := &SourceFunction{
+				Cart:    src.cart,
 				Name:    fn.name,
 				Address: [2]uint64{fn.origin, fn.memtop},
 			}
@@ -874,6 +891,21 @@ func (src *Source) ResetStatistics() {
 // address has no source line.
 func (src *Source) FindSourceLine(addr uint32) *SourceLine {
 	return src.linesByAddress[uint64(addr)]
+}
+
+// UpdateAllVariables using the current state of the emulated coprocessor.
+func (src *Source) UpdateAllVariables() {
+	var touch func(varb *SourceVariable)
+	touch = func(varb *SourceVariable) {
+		varb.Address()
+		varb.Value()
+		for i := 0; i < varb.NumChildren(); i++ {
+			touch(varb.Child(i))
+		}
+	}
+	for _, varb := range src.SortedGlobals.Variables {
+		touch(varb)
+	}
 }
 
 // BorrowSource will lock the source code structure for the durction of the

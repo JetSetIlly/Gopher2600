@@ -24,8 +24,16 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/television/coords"
 )
 
+// TV defines the interface to the TV required by the coprocessor disassembly
+// package
 type TV interface {
 	AdjCoords(adj television.Adj, amount int) coords.TelevisionCoords
+}
+
+// CartCoProcDisassembly defines the interface to the cartridge required by the
+// coprocessor disassembly pacakge
+type CartCoProcDisassembly interface {
+	GetCoProc() mapper.CartCoProc
 }
 
 // Disassembly is used to handle the disassembly of instructions from an
@@ -34,7 +42,7 @@ type Disassembly struct {
 	crit sync.Mutex
 
 	tv   TV
-	cart mapper.CartCoProc
+	cart CartCoProcDisassembly
 
 	disasm DisasmEntries
 }
@@ -55,8 +63,8 @@ type DisasmEntries struct {
 
 // NewDisassembly returns a new Coprocessor instance if cartridge implements the
 // coprocessor bus.
-func NewDisassembly(tv TV, cart mapper.CartCoProc) *Disassembly {
-	if cart == nil {
+func NewDisassembly(tv TV, cart CartCoProcDisassembly) *Disassembly {
+	if cart == nil || cart.GetCoProc() == nil {
 		return nil
 	}
 
@@ -84,11 +92,11 @@ func (dsm *Disassembly) Inhibit(inhibit bool) {
 	defer dsm.crit.Unlock()
 
 	if inhibit {
-		dsm.cart.SetDisassembler(nil)
+		dsm.cart.GetCoProc().SetDisassembler(nil)
 		dsm.disasm.LastExecution = dsm.disasm.LastExecution[:0]
 	} else {
 		if dsm.disasm.Enabled {
-			dsm.cart.SetDisassembler(dsm)
+			dsm.cart.GetCoProc().SetDisassembler(dsm)
 		}
 	}
 }
@@ -110,9 +118,9 @@ func (dsm *Disassembly) Enable(enable bool) {
 	dsm.disasm.Enabled = enable
 
 	if dsm.disasm.Enabled {
-		dsm.cart.SetDisassembler(dsm)
+		dsm.cart.GetCoProc().SetDisassembler(dsm)
 	} else {
-		dsm.cart.SetDisassembler(nil)
+		dsm.cart.GetCoProc().SetDisassembler(nil)
 		dsm.disasm.LastExecution = dsm.disasm.LastExecution[:0]
 	}
 }

@@ -124,6 +124,9 @@ type Debugger struct {
 	CoProcDisasm *coprocDisasm.Disassembly
 	CoProcDev    *coprocDev.Developer
 
+	// coprocessor shim can be static for the duration of the debugger
+	coprocShim coprocShim
+
 	// the live disassembly entry. updated every CPU step or on halt (which may
 	// be mid instruction)
 	//
@@ -309,6 +312,9 @@ func NewDebugger(opts CommandLineOptions, create CreateUserInterface) (*Debugger
 		// the ticker to indicate whether we should check for events in the inputLoop
 		eventCheckPulse: time.NewTicker(50 * time.Millisecond),
 	}
+
+	// set up coprocessor developer shim
+	dbg.coprocShim.dbg = dbg
 
 	// emulator is starting in the "none" mode (the advangatge of this is that
 	// we get to set the underlying type of the atomic.Value early before
@@ -1152,9 +1158,8 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) 
 		logger.Logf("debugger", err.Error())
 	}
 
-	coproc := dbg.vcs.Mem.Cart.GetCoProc()
-	dbg.CoProcDisasm = coprocDisasm.NewDisassembly(dbg.vcs.TV, coproc)
-	dbg.CoProcDev = coprocDev.NewDeveloper(cartload.Filename, coproc, dbg.vcs.TV, *dbg.opts.ELF)
+	dbg.CoProcDisasm = coprocDisasm.NewDisassembly(dbg.vcs.TV, dbg.coprocShim)
+	dbg.CoProcDev = coprocDev.NewDeveloper(cartload.Filename, dbg.coprocShim, dbg.vcs.TV, *dbg.opts.ELF)
 	if dbg.CoProcDev != nil {
 		dbg.vcs.TV.AddFrameTrigger(dbg.CoProcDev)
 	}
@@ -1332,9 +1337,8 @@ func (dbg *Debugger) hotload() (e error) {
 
 	dbg.vcs.TV.RemoveFrameTrigger(dbg.CoProcDev)
 
-	coproc := dbg.vcs.Mem.Cart.GetCoProc()
-	dbg.CoProcDisasm = coprocDisasm.NewDisassembly(dbg.vcs.TV, coproc)
-	dbg.CoProcDev = coprocDev.NewDeveloper(cartload.Filename, coproc, dbg.vcs.TV, *dbg.opts.ELF)
+	dbg.CoProcDisasm = coprocDisasm.NewDisassembly(dbg.vcs.TV, dbg.coprocShim)
+	dbg.CoProcDev = coprocDev.NewDeveloper(cartload.Filename, dbg.coprocShim, dbg.vcs.TV, *dbg.opts.ELF)
 	if dbg.CoProcDev != nil {
 		dbg.vcs.TV.AddFrameTrigger(dbg.CoProcDev)
 	}

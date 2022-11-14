@@ -27,7 +27,7 @@ import (
 
 // Developer implements the CartCoProcDeveloper interface.
 type Developer struct {
-	cart mapper.CartCoProc
+	cart CartCoProcDeveloper
 	tv   TV
 
 	// only respond on the CartCoProcDeveloper interface when enabled
@@ -64,9 +64,17 @@ type TV interface {
 	GetCoords() coords.TelevisionCoords
 }
 
+// CartCoProcDeveloper defines the interface to the cartridge required by the
+// developer pacakge
+type CartCoProcDeveloper interface {
+	GetCoProc() mapper.CartCoProc
+	GetStaticBus() mapper.CartStaticBus
+	PushFunction(func())
+}
+
 // NewDeveloper is the preferred method of initialisation for the Developer type.
-func NewDeveloper(romFile string, cart mapper.CartCoProc, tv TV, elfFile string) *Developer {
-	if cart == nil {
+func NewDeveloper(romFile string, cart CartCoProcDeveloper, tv TV, elfFile string) *Developer {
+	if cart == nil || cart.GetCoProc() == nil || cart.GetStaticBus() == nil {
 		return nil
 	}
 
@@ -99,7 +107,7 @@ func NewDeveloper(romFile string, cart mapper.CartCoProc, tv TV, elfFile string)
 
 	// we always set the devloper for the cartridge even if we have no source.
 	// some developer functions don't require source code to be useful
-	dev.cart.SetDeveloper(dev)
+	dev.cart.GetCoProc().SetDeveloper(dev)
 
 	return dev
 }

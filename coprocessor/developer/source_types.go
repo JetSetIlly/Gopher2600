@@ -15,7 +15,9 @@
 
 package developer
 
-import "fmt"
+import (
+	"fmt"
+)
 
 // SourceFileContent lists the lines in a source file
 type SourceFileContent struct {
@@ -132,10 +134,16 @@ const DriverFunctionName = "<driver>"
 //
 // Use NoSource() to detect if function has no DWARF information.
 type SourceFunction struct {
+	Cart CartCoProcDeveloper
+
+	// name of function
 	Name string
 
 	// range of addresses in which function resides
 	Address [2]uint64
+
+	// frame base of function
+	frameBase func(addressResolution) uint64
 
 	// first source line for each instance of the function. note that the first
 	// line of a function may not have any code directly associated with it.
@@ -242,47 +250,6 @@ func (typ *SourceType) Mask() uint32 {
 		return 0xffffffff
 	}
 	return 0
-}
-
-// SourceVariable is a single variable identified by the DWARF data.
-type SourceVariable struct {
-	Name string
-
-	// variable type (int, char, etc.)
-	Type *SourceType
-
-	// first source line for each instance of the function
-	DeclLine *SourceLine
-
-	// address in memory of the variable. if the variable is a member of
-	// another type then the Address is an offset from the address of the
-	// parent variable
-	Address         uint64
-	addressIsOffset bool
-}
-
-// IsComposite returns true if SourceVariable is of a composite type.
-func (varb *SourceVariable) IsComposite() bool {
-	return varb.Type.IsComposite()
-}
-
-// IsArray returns true if SourceVariables of an array type.
-func (varb *SourceVariable) IsArray() bool {
-	return varb.Type.IsArray()
-}
-
-// IsPointer returns true if SourceVariables is a pointer type.
-func (varb *SourceVariable) IsPointer() bool {
-	return varb.Type.IsPointer()
-}
-
-// AddressIsOffset returns true if SourceVariable is member of another type
-func (varb *SourceVariable) AddressIsOffset() bool {
-	return varb.addressIsOffset
-}
-
-func (varb *SourceVariable) String() string {
-	return fmt.Sprintf("%s %s => %#08x", varb.Type.Name, varb.Name, varb.Address)
 }
 
 // stubIndicator is allocated to key fields in SourceFile and SourceLine to
