@@ -20,15 +20,25 @@ import (
 	"sync/atomic"
 )
 
-// addressResolution allows a SourceVariable instance to retrieve its own
+// coprocValues allows a SourceVariable instance to retrieve its own
 // value from a coprocessor's memory (including registers if necssary)
-type addressResolution interface {
-	// read 8, 16 or 32 bit values from the address. the address should be in
-	// the range given in one of the CartStaticSegment returned by the
-	// Segments() function.
-	Read8bit(addr uint32) (uint8, bool)
-	Read16bit(addr uint32) (uint16, bool)
-	Read32bit(addr uint32) (uint32, bool)
+//
+// the interface is a derivation of mapper.CartCoProc
+type coprocValues interface {
+	// the contents of register n
+	CoProcRegister(n int) uint32
+
+	// read coprocessor memory address for 8/16/32 bit values
+	CoProcRead8bit(addr uint32) (uint8, bool)
+	CoProcRead16bit(addr uint32) (uint16, bool)
+	CoProcRead32bit(addr uint32) (uint32, bool)
+}
+
+// SourceVariable is a single local variable identified by the DWARF data.
+type SourceVariableLocal struct {
+	*SourceVariable
+	StartAddress uint64
+	EndAddress   uint64
 }
 
 // SourceVariable is a single variable identified by the DWARF data.
@@ -46,7 +56,7 @@ type SourceVariable struct {
 
 	// if addressResolve is not nil then the result of the function is the
 	// address and not the address field
-	addressResolve func(addressResolution) uint64
+	addressResolve func(coprocValues, *SourceVariable) uint64
 
 	// origin address of variable
 	origin uint64
@@ -74,8 +84,7 @@ func (varb *SourceVariable) address() uint64 {
 		return 0
 	}
 
-	bus := varb.Cart.GetStaticBus()
-	return varb.addressResolve(bus.GetStatic()) + varb.origin
+	return varb.addressResolve(varb.Cart.GetCoProc(), varb) + varb.origin
 }
 
 // Address returns the location in memory of the variable referred to by
@@ -102,10 +111,10 @@ func (varb *SourceVariable) Address() uint64 {
 func (varb *SourceVariable) setAddress(address interface{}) {
 	switch a := address.(type) {
 	case uint64:
-		varb.addressResolve = func(_ addressResolution) uint64 {
+		varb.addressResolve = func(_ coprocValues, _ *SourceVariable) uint64 {
 			return a
 		}
-	case func(addressResolution) uint64:
+	case func(coprocValues, *SourceVariable) uint64:
 		varb.addressResolve = a
 	default:
 		panic(fmt.Sprintf("unsupported address argument %T", address))
@@ -131,23 +140,25 @@ func (varb *SourceVariable) Value() (uint32, bool) {
 
 		addr := uint32(varb.Address())
 
-		switch varb.Type.Size {
-		case 1:
-			var v uint8
-			bus := varb.Cart.GetStaticBus()
-			v, valOk = bus.GetStatic().Read8bit(addr)
-			val = uint32(v) & varb.Type.Mask()
-		case 2:
-			var v uint16
-			bus := varb.Cart.GetStaticBus()
-			v, valOk = bus.GetStatic().Read16bit(addr)
-			val = uint32(v) & varb.Type.Mask()
-		case 4:
-			var v uint32
-			bus := varb.Cart.GetStaticBus()
-			v, valOk = bus.GetStatic().Read32bit(addr)
-			val = uint32(v) & varb.Type.Mask()
-		default:
+		if addr < 16 {
+			val = varb.Cart.GetCoProc().CoProcRegister(int(addr))
+			valOk = true
+		} else {
+			switch varb.Type.Size {
+			case 1:
+				var v uint8
+				v, valOk = varb.Cart.GetCoProc().CoProcRead8bit(addr)
+				val = uint32(v) & varb.Type.Mask()
+			case 2:
+				var v uint16
+				v, valOk = varb.Cart.GetCoProc().CoProcRead16bit(addr)
+				val = uint32(v) & varb.Type.Mask()
+			case 4:
+				var v uint32
+				v, valOk = varb.Cart.GetCoProc().CoProcRead32bit(addr)
+				val = uint32(v) & varb.Type.Mask()
+			default:
+			}
 		}
 
 		varb.cachedValue.Store(val)

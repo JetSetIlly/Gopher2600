@@ -102,6 +102,9 @@ type Source struct {
 	GlobalsByAddress map[uint64]*SourceVariable
 	SortedGlobals    SortedVariables
 
+	// all local variables in all compile units
+	Locals []*SourceVariableLocal
+
 	// the highest address of any variable (not just global variables, any
 	// variable)
 	VariableMemtop uint64
@@ -234,6 +237,8 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 					logger.Logf("dwarf", "multiple .debug_loc sections found. using the first one encountered")
 				}
 				src.debug_loc = sec
+				// d, _ := src.debug_loc.Data()
+				// os.Stdout.Write(d)
 			}
 			continue
 		}

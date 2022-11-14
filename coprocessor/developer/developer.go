@@ -68,13 +68,12 @@ type TV interface {
 // developer pacakge
 type CartCoProcDeveloper interface {
 	GetCoProc() mapper.CartCoProc
-	GetStaticBus() mapper.CartStaticBus
 	PushFunction(func())
 }
 
 // NewDeveloper is the preferred method of initialisation for the Developer type.
 func NewDeveloper(romFile string, cart CartCoProcDeveloper, tv TV, elfFile string) *Developer {
-	if cart == nil || cart.GetCoProc() == nil || cart.GetStaticBus() == nil {
+	if cart == nil || cart.GetCoProc() == nil {
 		return nil
 	}
 

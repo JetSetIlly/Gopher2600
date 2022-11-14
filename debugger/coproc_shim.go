@@ -32,12 +32,6 @@ func (shim coprocShim) GetCoProc() mapper.CartCoProc {
 	return shim.dbg.vcs.Mem.Cart.GetCoProc()
 }
 
-// GetStaticBus implements the CartCoProcDeveloper interface in the coprocessor
-// developer package
-func (shim coprocShim) GetStaticBus() mapper.CartStaticBus {
-	return shim.dbg.vcs.Mem.Cart.GetStaticBus()
-}
-
 // PushFunction implements the CartCoProcDeveloper interface in the coprocessor
 // developer package
 func (shim coprocShim) PushFunction(f func()) {

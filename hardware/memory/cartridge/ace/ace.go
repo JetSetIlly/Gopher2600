@@ -260,6 +260,26 @@ func (cart *Ace) CoProcState() mapper.CoProcState {
 	return mapper.CoProcStrongARMFeed
 }
 
+// CoProcRegister implements the mapper.CartCoProc interface.
+func (cart *Ace) CoProcRegister(n int) uint32 {
+	return cart.arm.Registers()[n]
+}
+
+// CoProcRead8bit implements the mapper.CartCoProc interface.
+func (cart *Ace) CoProcRead8bit(addr uint32) (uint8, bool) {
+	return cart.mem.Read8bit(addr)
+}
+
+// CoProcRead16bit implements the mapper.CartCoProc interface.
+func (cart *Ace) CoProcRead16bit(addr uint32) (uint16, bool) {
+	return cart.mem.Read16bit(addr)
+}
+
+// CoProcRead32bit implements the mapper.CartCoProc interface.
+func (cart *Ace) CoProcRead32bit(addr uint32) (uint32, bool) {
+	return cart.mem.Read32bit(addr)
+}
+
 // BreakpointsEnable implements the mapper.CartCoProc interface.
 func (cart *Ace) BreakpointsEnable(enable bool) {
 	cart.arm.BreakpointsEnable(enable)

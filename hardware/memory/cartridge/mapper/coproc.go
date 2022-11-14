@@ -87,6 +87,14 @@ type CartCoProc interface {
 
 	// set interface for cartridge yields
 	SetYieldHook(CartYieldHook)
+
+	// the contents of register n
+	CoProcRegister(n int) uint32
+
+	// read coprocessor memory address for 8/16/32 bit values
+	CoProcRead8bit(addr uint32) (uint8, bool)
+	CoProcRead16bit(addr uint32) (uint16, bool)
+	CoProcRead32bit(addr uint32) (uint32, bool)
 }
 
 // CartCoProcDWARF is implemented by cartridge mappers that want to supply

@@ -400,6 +400,26 @@ func (cart *Elf) CoProcState() mapper.CoProcState {
 	return mapper.CoProcStrongARMFeed
 }
 
+// CoProcRegister implements the mapper.CartCoProc interface.
+func (cart *Elf) CoProcRegister(n int) uint32 {
+	return cart.arm.Registers()[n]
+}
+
+// CoProcRead8bit implements the mapper.CartCoProc interface.
+func (cart *Elf) CoProcRead8bit(addr uint32) (uint32, bool) {
+	return 0, false
+}
+
+// CoProcRead16bit implements the mapper.CartCoProc interface.
+func (cart *Elf) CoProcRead16bit(addr uint32) (uint32, bool) {
+	return 0, false
+}
+
+// CoProcRead32bit implements the mapper.CartCoProc interface.
+func (cart *Elf) CoProcRead32bit(addr uint32) (uint32, bool) {
+	return 0, false
+}
+
 // BreakpointsEnable implements the mapper.CartCoProc interface.
 func (cart *Elf) BreakpointsEnable(enable bool) {
 	cart.arm.BreakpointsEnable(enable)
