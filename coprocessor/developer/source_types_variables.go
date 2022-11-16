@@ -18,25 +18,15 @@ package developer
 import (
 	"fmt"
 	"sync/atomic"
+
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 )
-
-// coprocValues allows a SourceVariable instance to retrieve its own
-// value from a coprocessor's memory (including registers if necssary)
-//
-// the interface is a derivation of mapper.CartCoProc
-type coprocValues interface {
-	// the contents of register n
-	CoProcRegister(n int) uint32
-
-	// read coprocessor memory address for 8/16/32 bit values
-	CoProcRead8bit(addr uint32) (uint8, bool)
-	CoProcRead16bit(addr uint32) (uint16, bool)
-	CoProcRead32bit(addr uint32) (uint32, bool)
-}
 
 // SourceVariable is a single local variable identified by the DWARF data.
 type SourceVariableLocal struct {
 	*SourceVariable
+
+	// the address range for which the variable is valid
 	StartAddress uint64
 	EndAddress   uint64
 }
@@ -54,130 +44,58 @@ type SourceVariable struct {
 	// first source line for each instance of the function
 	DeclLine *SourceLine
 
-	// if addressResolve is not nil then the result of the function is the
-	// address and not the address field
-	addressResolve func(coprocValues, *SourceVariable) uint64
+	// DWARF expression resolver. see resolve(), addResolver() and
+	// lastResolved(). external packages use Address() or Value()
+	resolver     []resolver
+	resolvedLast Resolved
+
+	// most recent resolved value retrieved from emulation
+	cachedResolve atomic.Value // Resolved
 
 	// origin address of variable
 	origin uint64
-
-	// most recent values retreived from emulation
-	cachedValue   atomic.Value // uint32
-	cachedValueOk atomic.Value // bool
-	cachedAddress atomic.Value // uint64
 
 	// child variables of this variable. this includes array elements, struct
 	// members and dereferenced variables
 	children []*SourceVariable
 }
 
-// address differs from Address() in that the results from the emulation are
-// immediate
-//
-// only use this function when we sure that we are inside the emulation
-// goroutine
-func (varb *SourceVariable) address() uint64 {
-	if varb.addressResolve == nil {
-		return 0
-	}
-	if varb.Cart == nil {
-		return 0
-	}
-
-	return varb.addressResolve(varb.Cart.GetCoProc(), varb) + varb.origin
+func (varb *SourceVariable) String() string {
+	return fmt.Sprintf("%s %s", varb.Type.Name, varb.Name)
 }
 
 // Address returns the location in memory of the variable referred to by
 // SourceVariable
 func (varb *SourceVariable) Address() uint64 {
 	varb.Cart.PushFunction(func() {
-		varb.cachedAddress.Store(varb.address())
+		varb.cachedResolve.Store(varb.resolve())
 	})
 
-	var address uint64
-
+	var r Resolved
 	var ok bool
-	if address, ok = varb.cachedAddress.Load().(uint64); !ok {
+	if r, ok = varb.cachedResolve.Load().(Resolved); !ok {
 		return 0
 	}
 
-	return uint64(address)
-}
-
-// setAddress updates the SourceVariable to refer to the variable at the
-// specified address
-//
-// address argument should be type uint64 or "func(addressResolution) uint64"
-func (varb *SourceVariable) setAddress(address interface{}) {
-	switch a := address.(type) {
-	case uint64:
-		varb.addressResolve = func(_ coprocValues, _ *SourceVariable) uint64 {
-			return a
-		}
-	case func(coprocValues, *SourceVariable) uint64:
-		varb.addressResolve = a
-	default:
-		panic(fmt.Sprintf("unsupported address argument %T", address))
-	}
-}
-
-func (varb *SourceVariable) String() string {
-	return fmt.Sprintf("%s %s => %#08x", varb.Type.Name, varb.Name, varb.Address())
+	return r.address
 }
 
 // Value returns the current value of a SourceVariable. It's good practice to
-// use this function to read memory, rather than reading memory directly,
-// because it will handle any required address resolution before accessing the
-// memory.
+// use this function to read memory, rather than reading memory directly using
+// the result of Address(), because it will handle any required address
+// resolution before accessing the memory.
 func (varb *SourceVariable) Value() (uint32, bool) {
-	if varb.Cart == nil {
-		return 0, false
-	}
-
 	varb.Cart.PushFunction(func() {
-		var val uint32
-		var valOk bool
-
-		addr := uint32(varb.Address())
-
-		if addr < 16 {
-			val = varb.Cart.GetCoProc().CoProcRegister(int(addr))
-			valOk = true
-		} else {
-			switch varb.Type.Size {
-			case 1:
-				var v uint8
-				v, valOk = varb.Cart.GetCoProc().CoProcRead8bit(addr)
-				val = uint32(v) & varb.Type.Mask()
-			case 2:
-				var v uint16
-				v, valOk = varb.Cart.GetCoProc().CoProcRead16bit(addr)
-				val = uint32(v) & varb.Type.Mask()
-			case 4:
-				var v uint32
-				v, valOk = varb.Cart.GetCoProc().CoProcRead32bit(addr)
-				val = uint32(v) & varb.Type.Mask()
-			default:
-			}
-		}
-
-		varb.cachedValue.Store(val)
-		varb.cachedValueOk.Store(valOk)
+		varb.cachedResolve.Store(varb.resolve())
 	})
 
-	var val uint32
-	var valOk bool
-
+	var r Resolved
 	var ok bool
-	if val, ok = varb.cachedValue.Load().(uint32); !ok {
+	if r, ok = varb.cachedResolve.Load().(Resolved); !ok {
 		return 0, false
 	}
 
-	if valOk, ok = varb.cachedValueOk.Load().(bool); !ok {
-		return 0, false
-	}
-
-	return val, valOk
+	return r.value & varb.Type.Mask(), r.valueOk
 }
 
 // NumChildren returns the number of children for this variable
@@ -195,4 +113,36 @@ func (varb *SourceVariable) Child(i int) *SourceVariable {
 		return nil
 	}
 	return varb.children[i]
+}
+
+// coproc implements the resolver interface
+func (varb *SourceVariable) coproc() mapper.CartCoProc {
+	return varb.Cart.GetCoProc()
+}
+
+// coproc implements the resolver interface
+func (varb *SourceVariable) framebase() uint64 {
+	if varb.DeclLine == nil || varb.DeclLine.Function == nil || varb.DeclLine.Function.frameBase == nil {
+		return 0
+	}
+	return varb.DeclLine.Function.frameBase(varb).address
+}
+
+// lastResolved implements the resolver interface
+func (varb *SourceVariable) lastResolved() Resolved {
+	return varb.resolvedLast
+}
+
+// resolve address/value
+func (varb *SourceVariable) resolve() Resolved {
+	varb.resolvedLast = Resolved{}
+	for i := range varb.resolver {
+		varb.resolvedLast = varb.resolver[i](varb)
+	}
+	return varb.resolvedLast
+}
+
+// add another resolver to the desclaration expresion
+func (varb *SourceVariable) addResolver(r resolver) {
+	varb.resolver = append(varb.resolver, r)
 }

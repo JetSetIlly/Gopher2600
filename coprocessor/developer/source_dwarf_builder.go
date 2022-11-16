@@ -22,6 +22,7 @@ import (
 	"io"
 
 	"github.com/jetsetilly/gopher2600/curated"
+	"github.com/jetsetilly/gopher2600/logger"
 )
 
 // associates a compile unit with an individual entry. this is important
@@ -391,9 +392,18 @@ func (bld *build) buildTypes(src *Source) error {
 				if fld != nil {
 					switch fld.Class {
 					case dwarf.ClassConstant:
-						memb.addressResolve = func(_ coprocValues, _ *SourceVariable) uint64 { return uint64(fld.Val.(int64)) }
+						memb.addResolver(func(r resolveCoproc) Resolved {
+							address := uint64(fld.Val.(int64))
+							value, ok := r.coproc().CoProcRead32bit(uint32(address))
+							return Resolved{
+								address: address,
+								value:   value,
+								valueOk: ok,
+							}
+						})
 					case dwarf.ClassExprLoc:
-						memb.addressResolve, _ = bld.decodeSingleLocationDescription(fld.Val.([]uint8))
+						r, _ := decodeSingleLocationDescription(fld.Val.([]uint8))
+						memb.addResolver(r)
 					default:
 						continue
 					}
@@ -598,8 +608,14 @@ func (bld *build) resolveVariableChildren(varb *SourceVariable) {
 			}
 
 			o := i
-			elem.setAddress(func(_ coprocValues, _ *SourceVariable) uint64 {
-				return varb.Address() + uint64(o*varb.Type.ElementType.Size)
+			elem.addResolver(func(r resolveCoproc) Resolved {
+				address := varb.Address() + uint64(o*varb.Type.ElementType.Size)
+				value, ok := r.coproc().CoProcRead32bit(uint32(address))
+				return Resolved{
+					address: address,
+					value:   value,
+					valueOk: ok,
+				}
 			})
 
 			varb.children = append(varb.children, elem)
@@ -618,8 +634,14 @@ func (bld *build) resolveVariableChildren(varb *SourceVariable) {
 			}
 
 			o := offset
-			memb.setAddress(func(_ coprocValues, _ *SourceVariable) uint64 {
-				return varb.Address() + o
+			memb.addResolver(func(r resolveCoproc) Resolved {
+				address := varb.Address() + o
+				value, ok := r.coproc().CoProcRead32bit(uint32(address))
+				return Resolved{
+					address: address,
+					value:   value,
+					valueOk: ok,
+				}
 			})
 
 			varb.children = append(varb.children, memb)
@@ -636,12 +658,18 @@ func (bld *build) resolveVariableChildren(varb *SourceVariable) {
 			Type:     varb.Type.PointerType,
 			DeclLine: varb.DeclLine,
 		}
-		deref.setAddress(func(_ coprocValues, _ *SourceVariable) uint64 {
-			v, ok := varb.Value()
+		deref.addResolver(func(r resolveCoproc) Resolved {
+			a, ok := varb.Value()
 			if !ok {
-				return 0
+				return Resolved{}
 			}
-			return uint64(v)
+			address := uint64(a)
+			value, ok := r.coproc().CoProcRead32bit(uint32(address))
+			return Resolved{
+				address: address,
+				value:   value,
+				valueOk: ok,
+			}
 		})
 		varb.children = append(varb.children, deref)
 		bld.resolveVariableChildren(deref)
@@ -745,6 +773,8 @@ func (bld *build) buildVariables(src *Source, origin uint64) error {
 			// read single location description for this start/end address
 			bld.debug_loc.ReadAt(b, locOffset)
 
+			aborted := false
+
 			// "The end of any given location list is marked by an end of list entry, which consists of a 0 for the
 			// beginning address offset and a 0 for the ending address offset. A location list containing only an
 			// end of list entry describes an object that exists in the source code but not in the executable
@@ -774,45 +804,37 @@ func (bld *build) buildVariables(src *Source, origin uint64) error {
 					ln := b[0]
 					locOffset += 2
 
-					// 8<----------- temp --------
-					if ln == 1 {
+					for ln > 0 {
+						ln--
+
 						// read single location description for this start/end address
 						bld.debug_loc.ReadAt(b, locOffset)
+						r, n := decodeSingleLocationDescription(b)
 
-						var n int
-						varb.addressResolve, n = bld.decodeSingleLocationDescription(b)
-						if varb.addressResolve == nil || n > 1 {
-							break
+						// abort early if location description was not recongnised
+						if n == 0 {
+							logger.Logf("dwarf", "%s: rejected local variable: unrecognised expresion %02x", varb.Name, b[0])
+							aborted = true
+							break // for ln > 0
 						}
+
+						// add resolver and advance debug_loc pointer
+						varb.addResolver(r)
 						locOffset += int64(n)
-
-						local := &SourceVariableLocal{
-							SourceVariable: varb,
-							StartAddress:   startAddress + baseAddress + origin,
-							EndAddress:     endAddress + baseAddress + origin,
-						}
-						src.Locals = append(src.Locals, local)
 					}
-					break
-					// 8<----------- temp --------
 
-					// for ln > 0 {
-					// 	ln--
+					// abort early
+					if aborted {
+						break // for loop
+					}
 
-					// 	// read single location description for this start/end address
-					// 	bld.debug_loc.ReadAt(b, locOffset)
+					local := &SourceVariableLocal{
+						SourceVariable: varb,
+						StartAddress:   startAddress + baseAddress + origin,
+						EndAddress:     endAddress + baseAddress + origin,
+					}
+					src.Locals = append(src.Locals, local)
 
-					// 	var n int
-					// 	varb.addressResolve, n = bld.decodeSingleLocationDescription(b)
-					// 	locOffset += int64(n)
-					// }
-
-					// local := &SourceVariableLocal{
-					// 	SourceVariable: varb,
-					// 	StartAddress:   startAddress + baseAddress + origin,
-					// 	EndAddress:     endAddress + baseAddress + origin,
-					// }
-					// src.Locals = append(src.Locals, local)
 				}
 
 				// read next address range
@@ -820,7 +842,10 @@ func (bld *build) buildVariables(src *Source, origin uint64) error {
 				endAddress = readAddress()
 			}
 
-			bld.resolveVariableChildren(varb)
+			if !aborted {
+				bld.resolveVariableChildren(varb)
+				logger.Logf("dwarf", "%s: added local variable", varb.Name)
+			}
 
 			continue // for loop
 
@@ -831,20 +856,13 @@ func (bld *build) buildVariables(src *Source, origin uint64) error {
 			// page 26 of "DWARF4 Standard"
 
 			// set address resolve function
-			varb.addressResolve, _ = bld.decodeSingleLocationDescription(fld.Val.([]uint8))
-
-			// if address is zero after resolution than we should discard it. not
-			// sure why we get nil addresses like this but it seems to happen if a
-			// global is defined but never accessed. so maybe something to do with
-			// optimisation
-			if varb.address() == 0 {
-				continue // for loop
-			}
+			r, _ := decodeSingleLocationDescription(fld.Val.([]uint8))
+			varb.addResolver(r)
 
 			bld.resolveVariableChildren(varb)
 
 			// determine highest address occupied by any variable in the program
-			hiAddress := varb.address() + uint64(varb.Type.Size)
+			hiAddress := varb.resolve().address + uint64(varb.Type.Size)
 			if hiAddress > src.VariableMemtop {
 				src.VariableMemtop = hiAddress
 			}
@@ -854,7 +872,7 @@ func (bld *build) buildVariables(src *Source, origin uint64) error {
 			if varb.DeclLine.Function.Name == UnknownFunction {
 				// list of global variables for all compile units
 				src.Globals[varb.Name] = varb
-				src.GlobalsByAddress[varb.address()] = varb
+				src.GlobalsByAddress[varb.resolve().address] = varb
 				src.SortedGlobals.Variables = append(src.SortedGlobals.Variables, varb)
 
 				// note that the file has at least one global variables
@@ -874,7 +892,7 @@ type foundFunction struct {
 	name     string
 
 	// not all functions have a framebase
-	frameBase func(coprocValues, *SourceVariable) uint64
+	frameBase resolver
 }
 
 func (bld *build) findFunction(addr uint64) (*foundFunction, error) {
@@ -908,10 +926,10 @@ func (bld *build) findFunction(addr uint64) (*foundFunction, error) {
 		}
 		linenum := fld.Val.(int64)
 
-		var frameBase func(coprocValues, *SourceVariable) uint64
+		var frameBase resolver
 		fld = b.entry.AttrField(dwarf.AttrFrameBase)
 		if fld != nil {
-			frameBase, _ = bld.decodeSingleLocationDescription(fld.Val.([]uint8))
+			frameBase, _ = decodeSingleLocationDescription(fld.Val.([]uint8))
 		}
 
 		return &foundFunction{
@@ -1059,105 +1077,4 @@ func (bld *build) findFunction(addr uint64) (*foundFunction, error) {
 	}
 
 	return ret, nil
-}
-
-// decode DWARF data of ClassExprLoc
-//
-// returns zero and false if expression cannot be handled
-func (bld *build) decodeSingleLocationDescription(expr []uint8) (func(coprocValues, *SourceVariable) uint64, int) {
-	// expression location operators reference
-	//
-	// "DWARF Debugging Information Format Version 4", page 17, section 2.5.1.1
-	// table of value on page 153, section 7.7.1 DWARF Expressions
-
-	switch expr[0] {
-	case 0x03:
-		return func(_ coprocValues, _ *SourceVariable) uint64 {
-			// DW_OP_addr
-			// constant address
-			if len(expr) != 5 {
-				return 0
-			}
-			address := uint64(expr[1])
-			address |= uint64(expr[2]) << 8
-			address |= uint64(expr[3]) << 16
-			address |= uint64(expr[4]) << 24
-			return address
-		}, 5
-	case 0x23:
-		// DW_OP_plus_uconst
-		// ULEB128 to be added to previous value on the stack
-		return func(_ coprocValues, _ *SourceVariable) uint64 {
-			return bld.decodeULEB128(expr[1:5])
-		}, 5
-	case 0x91:
-		// DW_OP_fbreg
-		return func(cpv coprocValues, varb *SourceVariable) uint64 {
-			if varb == nil || varb.DeclLine == nil || varb.DeclLine.Function == nil || varb.DeclLine.Function.frameBase == nil {
-				return 0
-			}
-			return varb.DeclLine.Function.frameBase(cpv, varb) + bld.decodeSLEB128(expr[1:5])
-		}, 5
-	case 0x50:
-		// DW_OP_reg0
-		return func(cpv coprocValues, varb *SourceVariable) uint64 {
-			return 0
-		}, 1
-	case 0x51:
-		// DW_OP_reg1
-		return func(cpv coprocValues, varb *SourceVariable) uint64 {
-			return 1
-		}, 1
-	case 0x52:
-		// DW_OP_reg2
-		return func(cpv coprocValues, varb *SourceVariable) uint64 {
-			return 2
-		}, 1
-	case 0x53:
-		// DW_OP_reg3
-		return func(cpv coprocValues, varb *SourceVariable) uint64 {
-			return 3
-		}, 1
-	}
-
-	return nil, 1
-}
-
-// some ClassExprLoc operands are expressed as unsigned LEB128 values.
-// algorithm taken from page 218 of "DWARF4 Standard", figure 46
-func (bld *build) decodeULEB128(encoded []uint8) uint64 {
-	var result uint64
-	var shift uint64
-	for _, v := range encoded {
-		result |= (uint64(v & 0x7f)) << shift
-		if v&0x80 == 0x00 {
-			break
-		}
-		shift += 7
-	}
-	return result
-}
-
-// some ClassExprLoc operands are expressed as signed LEB128 values
-// algorithm taken from page 218 of "DWARF4 Standard", figure 47
-func (bld *build) decodeSLEB128(encoded []uint8) uint64 {
-	var result uint64
-	var shift uint64
-	const size = 32
-
-	var v uint8
-	for _, v = range encoded {
-		result |= (uint64(v & 0x7f)) << shift
-		shift += 7
-		if v&0x80 == 0x00 {
-			break
-		}
-	}
-
-	// sign extend last byte from the encoded slice
-	if (shift < size) && v&0x80 == 0x80 {
-		result |= ((^uint64(0)) >> shift) << shift
-	}
-
-	return result
 }
