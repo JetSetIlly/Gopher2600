@@ -380,8 +380,8 @@ func NewDebugger(opts CommandLineOptions, create CreateUserInterface) (*Debugger
 		UserInput:                make(chan userinput.Event, 10),
 		UserInputHandler:         dbg.userInputHandler,
 		IntEvents:                make(chan os.Signal, 1),
-		PushedFunctions:          make(chan func(), 1024),
-		PushedFunctionsImmediate: make(chan func(), 1024),
+		PushedFunctions:          make(chan func(), 4096),
+		PushedFunctionsImmediate: make(chan func(), 4096),
 	}
 
 	// connect Interrupt signal to dbg.events.intChan
