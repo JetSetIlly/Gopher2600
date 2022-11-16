@@ -152,7 +152,17 @@ func (fz *fuzzyFilter) draw(label string, choices interface{}, onChange func(int
 				fz.scrollToSelected = false
 			}
 			if imgui.SelectableV(s, i == fz.selected, imgui.SelectableFlagsNone, imgui.Vec2{}) {
-				onChange(i)
+				// similar logic to when InputTextV() returns true. however,
+				// rather than using the fz.selected value we use i which
+				// represents the value under the mouse
+				if len(fz.matches) == 0 {
+					if allowEmptyFilter {
+						onChange(i)
+					}
+				} else {
+					onChange(fz.matches[i].Index)
+				}
+
 				fz.deactivate()
 			}
 		}
