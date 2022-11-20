@@ -651,7 +651,7 @@ func decodeDWARFoperation(expr []uint8, simpleLocDesc bool) (resolver, int) {
 		return func(r resolveCoproc) Resolved {
 			value, ok := r.coproc().CoProcRegister(int(reg))
 			if !ok {
-				logger.Logf("DWARF", "unknown register: %d", reg)
+				logger.Logf("DWARF", "local variable: unknown register: %d", reg)
 				return Resolved{}
 			}
 			return Resolved{
@@ -732,7 +732,7 @@ func decodeDWARFoperation(expr []uint8, simpleLocDesc bool) (resolver, int) {
 		return func(r resolveCoproc) Resolved {
 			regVal, ok := r.coproc().CoProcRegister(int(reg))
 			if !ok {
-				logger.Logf("DWARF", "unknown register: %d", reg)
+				logger.Logf("DWARF", "local variable: unknown register: %d", reg)
 				return Resolved{}
 			}
 
@@ -755,7 +755,7 @@ func decodeDWARFoperation(expr []uint8, simpleLocDesc bool) (resolver, int) {
 		return func(r resolveCoproc) Resolved {
 			value, ok := r.coproc().CoProcRegister(int(reg))
 			if !ok {
-				logger.Logf("DWARF", "unknown register: %d", reg)
+				logger.Logf("DWARF", "local variable: unknown register: %d", reg)
 				return Resolved{}
 			}
 			return Resolved{
@@ -780,7 +780,7 @@ func decodeDWARFoperation(expr []uint8, simpleLocDesc bool) (resolver, int) {
 
 			value, ok := r.coproc().CoProcRead32bit(uint32(address))
 			if !ok {
-				logger.Logf("DWARF", "unknown address: %08x", address)
+				logger.Logf("DWARF", "local variable: unknown address: %08x", address)
 				return Resolved{}
 			}
 
@@ -815,7 +815,7 @@ func decodeDWARFoperation(expr []uint8, simpleLocDesc bool) (resolver, int) {
 
 			value, ok := r.coproc().CoProcRead32bit(uint32(address))
 			if !ok {
-				logger.Logf("DWARF", "unknown address: %08x", address)
+				logger.Logf("DWARF", "local variable: unknown address: %08x", address)
 				return Resolved{}
 			}
 

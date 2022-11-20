@@ -883,7 +883,18 @@ func (bld *build) findFunction(addr uint64) (*foundFunction, error) {
 		var frameBase resolver
 		fld = b.entry.AttrField(dwarf.AttrFrameBase)
 		if fld != nil {
-			frameBase, _ = decodeDWARFoperation(fld.Val.([]uint8), true)
+			switch fld.Val.(type) {
+			case []uint8:
+				frameBase, _ = decodeDWARFoperation(fld.Val.([]uint8), true)
+			case int64:
+				v := fld.Val.(int64)
+				frameBase = func(_ resolveCoproc) Resolved {
+					return Resolved{
+						value:   uint32(v),
+						valueOk: true,
+					}
+				}
+			}
 		}
 
 		return &foundFunction{
