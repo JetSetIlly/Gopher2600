@@ -648,7 +648,7 @@ func (e *elfMemory) Read8bit(addr uint32) (uint8, bool) {
 // Read16bit implements the mapper.CartStatic interface
 func (e *elfMemory) Read16bit(addr uint32) (uint16, bool) {
 	mem, addr := e.MapAddress(addr, false)
-	if mem == nil || addr >= uint32(len(*mem)) {
+	if mem == nil || addr >= uint32(len(*mem)-1) {
 		return 0, false
 	}
 	return uint16((*mem)[addr]) |
@@ -658,7 +658,7 @@ func (e *elfMemory) Read16bit(addr uint32) (uint16, bool) {
 // Read32bit implements the mapper.CartStatic interface
 func (e *elfMemory) Read32bit(addr uint32) (uint32, bool) {
 	mem, addr := e.MapAddress(addr, false)
-	if mem == nil || addr >= uint32(len(*mem)) {
+	if mem == nil || addr >= uint32(len(*mem)-3) {
 		return 0, false
 	}
 	return uint32((*mem)[addr]) |

@@ -329,7 +329,7 @@ func (a *aceMemory) Read8bit(addr uint32) (uint8, bool) {
 
 func (a *aceMemory) Read16bit(addr uint32) (uint16, bool) {
 	mem, addr := a.MapAddress(addr, false)
-	if mem == nil || addr >= uint32(len(*mem)) {
+	if mem == nil || addr >= uint32(len(*mem)-1) {
 		return 0, false
 	}
 	return uint16((*mem)[addr]) |
@@ -338,7 +338,7 @@ func (a *aceMemory) Read16bit(addr uint32) (uint16, bool) {
 
 func (a *aceMemory) Read32bit(addr uint32) (uint32, bool) {
 	mem, addr := a.MapAddress(addr, false)
-	if mem == nil || addr >= uint32(len(*mem)) {
+	if mem == nil || addr >= uint32(len(*mem)-3) {
 		return 0, false
 	}
 	return uint32((*mem)[addr]) |
