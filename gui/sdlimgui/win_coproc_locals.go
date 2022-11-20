@@ -99,7 +99,7 @@ func (win *winCoProcLocals) draw() {
 			win.firstOpen = false
 		}
 
-		const numColumns = 4
+		const numColumns = 3
 
 		flgs := imgui.TableFlagsScrollY
 		flgs |= imgui.TableFlagsSizingStretchProp
@@ -113,9 +113,8 @@ func (win *winCoProcLocals) draw() {
 		// development instance has source available to it
 		width := imgui.ContentRegionAvail().X
 		imgui.TableSetupColumnV("Name", imgui.TableColumnFlagsPreferSortDescending|imgui.TableColumnFlagsDefaultSort, width*0.40, 0)
-		imgui.TableSetupColumnV("Type", imgui.TableColumnFlagsNoSort, width*0.20, 1)
-		imgui.TableSetupColumnV("Address", imgui.TableColumnFlagsPreferSortDescending, width*0.15, 2)
-		imgui.TableSetupColumnV("Value", imgui.TableColumnFlagsNoSort, width*0.20, 3)
+		imgui.TableSetupColumnV("Type", imgui.TableColumnFlagsNoSort, width*0.30, 1)
+		imgui.TableSetupColumnV("Value", imgui.TableColumnFlagsNoSort, width*0.30, 3)
 
 		imgui.TableSetupScrollFreeze(0, 1)
 		imgui.TableHeadersRow()
@@ -167,15 +166,6 @@ func (win *winCoProcLocals) drawVariable(src *developer.Source, varb *developer.
 		imgui.PopStyleColor()
 
 		imgui.TableNextColumn()
-		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcVariablesAddress)
-		if a, ok := varb.Address(); ok {
-			imgui.Text(fmt.Sprintf("%08x", a))
-		} else {
-			imgui.Text("-")
-		}
-		imgui.PopStyleColor()
-
-		imgui.TableNextColumn()
 		if win.openNodes[nodeID] {
 			imgui.Text(string(fonts.TreeOpen))
 		} else {
@@ -198,15 +188,6 @@ func (win *winCoProcLocals) drawVariable(src *developer.Source, varb *developer.
 		imgui.TableNextColumn()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcVariablesType)
 		imgui.Text(varb.Type.Name)
-		imgui.PopStyleColor()
-
-		imgui.TableNextColumn()
-		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcVariablesAddress)
-		if a, ok := varb.Address(); ok {
-			imgui.Text(fmt.Sprintf("%08x", a))
-		} else {
-			imgui.Text("-")
-		}
 		imgui.PopStyleColor()
 
 		imgui.TableNextColumn()

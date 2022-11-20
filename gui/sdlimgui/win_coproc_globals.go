@@ -41,8 +41,10 @@ type winCoProcGlobals struct {
 
 	firstOpen bool
 
+	selectedFileFuzzy     fuzzyFilter
+	selectedShortFileName string
 	selectedFile          *developer.SourceFile
-	selectedFileComboOpen bool
+	updateSelectedFile    bool
 
 	optionsHeight  float32
 	showAllGlobals bool
@@ -55,9 +57,10 @@ type winCoProcGlobals struct {
 
 func newWinCoProcGlobals(img *SdlImgui) (window, error) {
 	win := &winCoProcGlobals{
-		img:       img,
-		firstOpen: true,
-		openNodes: make(map[string]bool),
+		img:            img,
+		firstOpen:      true,
+		showAllGlobals: true,
+		openNodes:      make(map[string]bool),
 	}
 	return win, nil
 }
@@ -89,6 +92,42 @@ func (win *winCoProcGlobals) debuggerDraw() {
 
 	win.debuggerGeom.update()
 	imgui.End()
+}
+
+func (win *winCoProcGlobals) drawFileSelection(src *developer.Source) {
+	if imgui.Button(string(fonts.Disk)) {
+		mp := imgui.MousePos()
+		mp.X += imgui.FontSize()
+		mp.Y -= imgui.FontSize() * 2
+		imgui.SetNextWindowPos(mp)
+		imgui.OpenPopup("##filefuzzyPopup")
+	}
+
+	imgui.SameLineV(0, 15)
+	imgui.AlignTextToFramePadding()
+	if win.selectedShortFileName == "" {
+		imgui.Text("No File Selected")
+	} else {
+		imgui.Text(win.selectedShortFileName)
+	}
+
+	w := imgui.WindowWidth()
+
+	if imgui.BeginPopup("##filefuzzyPopup") {
+		imgui.PushItemWidth(w)
+
+		fuzzyFileHook := func(i int) {
+			win.selectedShortFileName = src.ShortFilenames[i]
+			win.updateSelectedFile = true
+		}
+
+		if !win.selectedFileFuzzy.draw("##selectedFileFuzzy", src.ShortFilenames, fuzzyFileHook, true) {
+			imgui.CloseCurrentPopup()
+		}
+
+		imgui.PopItemWidth()
+		imgui.EndPopup()
+	}
 }
 
 func (win *winCoProcGlobals) draw() {
@@ -126,11 +165,13 @@ func (win *winCoProcGlobals) draw() {
 			// assume source entry point is a function called "main"
 			if m, ok := src.Functions["main"]; ok {
 				win.selectedFile = m.DeclLine.File
+				win.selectedShortFileName = win.selectedFile.ShortFilename
 			} else {
 				// if main does not exists then open at the first file in the list
 				for _, fn := range src.Filenames {
 					if src.Files[fn].HasGlobals {
 						win.selectedFile = src.Files[fn]
+						win.selectedShortFileName = win.selectedFile.ShortFilename
 						break // for loop
 					}
 				}
@@ -140,37 +181,13 @@ func (win *winCoProcGlobals) draw() {
 		}
 
 		if !win.showAllGlobals {
-			imgui.AlignTextToFramePadding()
-			imgui.Text("Filename")
-			imgui.SameLine()
-			imgui.PushItemWidth(imgui.ContentRegionAvail().X)
-			if imgui.BeginComboV("##selectedFile", win.selectedFile.ShortFilename, imgui.ComboFlagsHeightRegular) {
-				for _, fn := range src.Filenames {
-					// skip files that have no global variables
-					if !src.Files[fn].HasGlobals {
-						continue
-					}
+			win.drawFileSelection(src)
+			imgui.Separator()
+		}
 
-					if imgui.Selectable(src.Files[fn].ShortFilename) {
-						win.selectedFile = src.Files[fn]
-					}
-
-					// set scroll on the first frame that the combo is open
-					if !win.selectedFileComboOpen && fn == win.selectedFile.Filename {
-						imgui.SetScrollHereY(0.0)
-					}
-				}
-
-				imgui.EndCombo()
-
-				// note that combo is open *after* it has been drawn
-				win.selectedFileComboOpen = true
-			} else {
-				win.selectedFileComboOpen = false
-			}
-			imgui.PopItemWidth()
-
-			imgui.Spacing()
+		// change selectedFile
+		if win.updateSelectedFile {
+			win.selectedFile = src.FilesByShortname[win.selectedShortFileName]
 		}
 
 		// global variable table for the selected file
