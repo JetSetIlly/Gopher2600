@@ -17,7 +17,6 @@ package elf
 
 import (
 	"debug/elf"
-	"fmt"
 	"strings"
 
 	"github.com/jetsetilly/gopher2600/curated"
@@ -370,35 +369,12 @@ func newElfMemory(ef *elf.File) (*elfMemory, error) {
 				v += addend
 
 				// check address is recognised
-				mappedData, mappedOffset := mem.MapAddress(v, false)
-				if mappedData == nil {
+				if mappedData, _ := mem.MapAddress(v, false); mappedData == nil {
 					continue
-					// return nil, curated.Errorf("ELF: illegal relocation address (%08x) for %s", v, sym.Name)
-				}
-
-				// peep hole data (for logging output)
-				const peepHoleLen = 10
-				var mappedDataPeepHole string
-				if len(*mappedData) > int(mappedOffset+peepHoleLen) {
-					mappedDataPeepHole = fmt.Sprintf("[% 02x...]", (*mappedData)[mappedOffset:mappedOffset+peepHoleLen])
 				}
 
 				// commit write
 				ef.ByteOrder.PutUint32(secBeingRelocated.data[offset:offset+4], v)
-
-				// what we log depends on the info field. for info of type 0x03
-				// (lower nibble) then the relocation is of a entire section.
-				// in this case the symbol will not have a name so we use the
-				// section name instead
-				if relsec.Info&0x03 == 0x03 {
-					logger.Logf("ELF", "relocate %s %08x => %08x %s", ef.Sections[sym.Section].Name, secBeingRelocated.origin+offset, v, mappedDataPeepHole)
-				} else {
-					n := ""
-					if sym.Name != "" {
-						n = fmt.Sprintf(" %s", sym.Name)
-					}
-					logger.Logf("ELF", "relocate%s %08x => %08x %s", n, secBeingRelocated.origin+offset, v, mappedDataPeepHole)
-				}
 
 			case elf.R_ARM_THM_PC22:
 				// this value is labelled R_ARM_THM_CALL in objdump output
