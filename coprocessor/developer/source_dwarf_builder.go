@@ -745,7 +745,7 @@ func (bld *build) buildVariables(src *Source, origin uint64) error {
 
 						// enountered error
 						if n == 0 {
-							logger.Logf("dwarf", "%s: error in opcode %02x", varb.Name, b[0])
+							logger.Logf("dwarf", "local variable: dropping %s because of unknown expression operator %02x", varb.Name, b[0])
 							encounteredError = true
 							break
 						}

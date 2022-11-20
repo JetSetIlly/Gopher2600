@@ -637,12 +637,9 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 
 	// log summary
 	logger.Logf("dwarf", "identified %d functions in %d compile units", len(src.Functions), len(src.compileUnits))
-	logger.Logf("dwarf", "highest memory address occupied by a variable (%08x)", src.VariableMemtop)
-
-	for _, fn := range src.FunctionNames {
-		f := src.Functions[fn]
-		logger.Logf("dwarf", "%s %#08x -> %#08x\n", f.Name, f.Address[0], f.Address[1])
-	}
+	logger.Logf("dwarf", "%d global variables", len(src.Globals))
+	logger.Logf("dwarf", "%d local variable (loclists)", len(src.Locals))
+	logger.Logf("dwarf", "highest memory address occupied by a global variable (%08x)", src.VariableMemtop)
 
 	return src, nil
 }
