@@ -44,6 +44,26 @@ func Equate(t *testing.T, value, expectedValue interface{}) {
 			t.Errorf("equation of type %T failed (%d  - wanted nil)", v, v)
 		}
 
+	case int64:
+		switch ev := expectedValue.(type) {
+		case int64:
+			if v != ev {
+				t.Errorf("equation of type %T failed (%d  - wanted %d)", v, v, expectedValue.(int64))
+			}
+		default:
+			t.Fatalf("values for Equate() are not the same type (%T and %T)", v, expectedValue)
+		}
+
+	case uint64:
+		switch ev := expectedValue.(type) {
+		case uint64:
+			if v != ev {
+				t.Errorf("equation of type %T failed (%d  - wanted %d)", v, v, expectedValue.(uint64))
+			}
+		default:
+			t.Fatalf("values for Equate() are not the same type (%T and %T)", v, expectedValue)
+		}
+
 	case int:
 		switch ev := expectedValue.(type) {
 		case int:

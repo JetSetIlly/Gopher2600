@@ -16,6 +16,7 @@
 package developer
 
 import (
+	"github.com/jetsetilly/gopher2600/coprocessor/developer/leb128"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/logger"
 )
@@ -198,7 +199,7 @@ func decodeDWARFoperation(expr []uint8, simpleLocDesc bool) (resolver, int) {
 		// (literal encoding)
 		// "The single operand of the DW_OP_constu operation provides an unsigned
 		// LEB128 integer constant"
-		value, n := decodeULEB128(expr[1:])
+		value, n := leb128.DecodeULEB128(expr[1:])
 		return func(r resolveCoproc) Resolved {
 			return Resolved{
 				value:   uint32(value),
@@ -211,7 +212,7 @@ func decodeDWARFoperation(expr []uint8, simpleLocDesc bool) (resolver, int) {
 		// (literal encoding)
 		// "The single operand of the DW_OP_constu operation provides an signed
 		// LEB128 integer constant"
-		value, n := decodeSLEB128(expr[1:])
+		value, n := leb128.DecodeSLEB128(expr[1:])
 		return func(r resolveCoproc) Resolved {
 			return Resolved{
 				value:   uint32(value),
@@ -402,7 +403,7 @@ func decodeDWARFoperation(expr []uint8, simpleLocDesc bool) (resolver, int) {
 		// (arithmetic and logic operations)
 		// "The DW_OP_plus_uconst operation pops the top stack entry, adds it
 		// to the unsigned LEB128 constant operand and pushes the result"
-		value, n := decodeULEB128(expr[1:])
+		value, n := leb128.DecodeULEB128(expr[1:])
 		return func(r resolveCoproc) Resolved {
 			a, _ := r.pop()
 			value += uint64(a.value)
@@ -727,7 +728,7 @@ func decodeDWARFoperation(expr []uint8, simpleLocDesc bool) (resolver, int) {
 		// "The single operand of the DW_OP_bregn operations provides a signed
 		// LEB128 offset from the specified register"
 		reg := expr[0] - 0x70
-		offset, n := decodeSLEB128(expr[1:])
+		offset, n := leb128.DecodeSLEB128(expr[1:])
 		return func(r resolveCoproc) Resolved {
 			regVal, ok := r.coproc().CoProcRegister(int(reg))
 			if !ok {
@@ -750,7 +751,7 @@ func decodeDWARFoperation(expr []uint8, simpleLocDesc bool) (resolver, int) {
 	case 0x90:
 		// DW_OP_regx
 		// (register location description)
-		reg, n := decodeSLEB128(expr[1:])
+		reg, n := leb128.DecodeSLEB128(expr[1:])
 		return func(r resolveCoproc) Resolved {
 			value, ok := r.coproc().CoProcRegister(int(reg))
 			if !ok {
@@ -773,7 +774,7 @@ func decodeDWARFoperation(expr []uint8, simpleLocDesc bool) (resolver, int) {
 		// more sophisticated systems it might be a location list that adjusts
 		// the offset according to changes in the stack pointer as the PC
 		// changes)"
-		offset, n := decodeSLEB128(expr[1:])
+		offset, n := leb128.DecodeSLEB128(expr[1:])
 		return func(r resolveCoproc) Resolved {
 			address := uint64(int64(r.framebase()) + offset)
 
@@ -859,51 +860,4 @@ func decodeDWARFoperation(expr []uint8, simpleLocDesc bool) (resolver, int) {
 	}
 
 	return nil, 0
-}
-
-// ULEB128 decoding algorithm taken from page 218 of "DWARF4 Standard", figure 46
-//
-// returns decoded value and the number of bytes consumed from the encoded array
-func decodeULEB128(encoded []uint8) (uint64, int) {
-	var result uint32
-	var shift uint32
-
-	var n int
-	for _, v := range encoded {
-		n++
-		result |= (uint32(v & 0x7f)) << shift
-		if v&0x80 == 0x00 {
-			break
-		}
-		shift += 7
-	}
-	return uint64(result), n
-}
-
-// LEB128 decoding algorithm taken from page 218 of "DWARF4 Standard", figure 47
-//
-// returns decoded value and the number of bytes consumed from the encoded array
-func decodeSLEB128(encoded []uint8) (int64, int) {
-	var result int32
-	var shift int32
-	const size = 32
-
-	var v uint8
-	var n int
-	for _, v = range encoded {
-		n++
-		result |= (int32(v & 0x7f)) << shift
-		shift += 7
-		if v&0x80 == 0x00 {
-			break
-		}
-	}
-
-	// sign extend last byte from the encoded slice
-	if shift < size && v&0x40 != 0x40 {
-		mask := (^int32(0)) << shift
-		result |= mask
-	}
-
-	return int64(result), n
 }
