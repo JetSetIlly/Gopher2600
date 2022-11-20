@@ -43,6 +43,9 @@ type Elf struct {
 	arm *arm.ARM
 	mem *elfMemory
 
+	// the hook that handles cartridge yields
+	yieldHook mapper.CartYieldHook
+
 	// the relocated dwarf data
 	dwarf *dwarf.Data
 
@@ -134,6 +137,7 @@ func NewElf(instance *instance.Instance, pathToROM string, inACE bool) (mapper.C
 	cart := &Elf{
 		instance:  instance,
 		pathToROM: pathToROM,
+		yieldHook: mapper.StubCartYieldHook{},
 	}
 
 	cart.mem, err = newElfMemory(f)
@@ -260,7 +264,18 @@ func (cart *Elf) runARM() {
 		cart.dev.StartProfiling()
 		defer cart.dev.ProcessProfiling()
 	}
-	cart.arm.Run()
+
+	// call arm once and then check for yield conditions
+	yld, _ := cart.arm.Run()
+
+	// keep calling runArm() for as long as program does not need to sync with the VCS...
+	for yld != mapper.YieldSyncWithVCS {
+		// ... or if the yield hook says to return to the VCS immediately
+		if cart.yieldHook.CartYield(yld) {
+			return
+		}
+		yld, _ = cart.arm.Run()
+	}
 }
 
 // try to run strongarm function. returns success.
@@ -401,23 +416,26 @@ func (cart *Elf) CoProcState() mapper.CoProcState {
 }
 
 // CoProcRegister implements the mapper.CartCoProc interface.
-func (cart *Elf) CoProcRegister(n int) uint32 {
-	return cart.arm.Registers()[n]
+func (cart *Elf) CoProcRegister(n int) (uint32, bool) {
+	if n > 15 {
+		return 0, false
+	}
+	return cart.arm.Registers()[n], true
 }
 
 // CoProcRead8bit implements the mapper.CartCoProc interface.
-func (cart *Elf) CoProcRead8bit(addr uint32) (uint32, bool) {
-	return 0, false
+func (cart *Elf) CoProcRead8bit(addr uint32) (uint8, bool) {
+	return cart.mem.Read8bit(addr)
 }
 
 // CoProcRead16bit implements the mapper.CartCoProc interface.
-func (cart *Elf) CoProcRead16bit(addr uint32) (uint32, bool) {
-	return 0, false
+func (cart *Elf) CoProcRead16bit(addr uint32) (uint16, bool) {
+	return cart.mem.Read16bit(addr)
 }
 
 // CoProcRead32bit implements the mapper.CartCoProc interface.
 func (cart *Elf) CoProcRead32bit(addr uint32) (uint32, bool) {
-	return 0, false
+	return cart.mem.Read32bit(addr)
 }
 
 // BreakpointsEnable implements the mapper.CartCoProc interface.
@@ -427,4 +445,5 @@ func (cart *Elf) BreakpointsEnable(enable bool) {
 
 // SetYieldHook implements the mapper.CartCoProc interface.
 func (cart *Elf) SetYieldHook(hook mapper.CartYieldHook) {
+	cart.yieldHook = hook
 }

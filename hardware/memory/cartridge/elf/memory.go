@@ -23,6 +23,7 @@ import (
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm/architecture"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
@@ -605,5 +606,83 @@ func (mem *elfMemory) ResetVectors() (uint32, uint32, uint32) {
 // IsExecutable implements the arm.SharedMemory interface.
 func (mem *elfMemory) IsExecutable(addr uint32) bool {
 	// TODO: check executable flag for address
+	return true
+}
+
+// Segments implements the mapper.CartStatic interface
+func (e *elfMemory) Segments() []mapper.CartStaticSegment {
+	return []mapper.CartStaticSegment{
+		mapper.CartStaticSegment{
+			Name:   "SRAM",
+			Origin: e.sramOrigin,
+			Memtop: e.sramMemtop,
+		},
+		mapper.CartStaticSegment{
+			Name:   "StrongARM Program",
+			Origin: e.strongArmOrigin,
+			Memtop: e.strongArmMemtop,
+		},
+	}
+}
+
+// Reference implements the mapper.CartStatic interface
+func (e *elfMemory) Reference(segment string) ([]uint8, bool) {
+	switch segment {
+	case "SRAM":
+		return e.sram, true
+	case "StrongARM Program":
+		return e.strongArmProgram, true
+	}
+	return []uint8{}, false
+}
+
+// Read8bit implements the mapper.CartStatic interface
+func (e *elfMemory) Read8bit(addr uint32) (uint8, bool) {
+	mem, addr := e.MapAddress(addr, false)
+	if mem == nil || addr >= uint32(len(*mem)) {
+		return 0, false
+	}
+	return (*mem)[addr], true
+}
+
+// Read16bit implements the mapper.CartStatic interface
+func (e *elfMemory) Read16bit(addr uint32) (uint16, bool) {
+	mem, addr := e.MapAddress(addr, false)
+	if mem == nil || addr >= uint32(len(*mem)) {
+		return 0, false
+	}
+	return uint16((*mem)[addr]) |
+		uint16((*mem)[addr+1])<<8, true
+}
+
+// Read32bit implements the mapper.CartStatic interface
+func (e *elfMemory) Read32bit(addr uint32) (uint32, bool) {
+	mem, addr := e.MapAddress(addr, false)
+	if mem == nil || addr >= uint32(len(*mem)) {
+		return 0, false
+	}
+	return uint32((*mem)[addr]) |
+		uint32((*mem)[addr+1])<<8 |
+		uint32((*mem)[addr+2])<<16 |
+		uint32((*mem)[addr+3])<<24, true
+}
+
+// GetStatic implements the mapper.CartStaticBus interface.
+func (cart *Elf) GetStatic() mapper.CartStatic {
+	return cart.mem.Snapshot()
+}
+
+// StaticWrite implements the mapper.CartStaticBus interface.
+func (cart *Elf) PutStatic(segment string, idx int, data uint8) bool {
+	mem, ok := cart.mem.Reference(segment)
+	if !ok {
+		return false
+	}
+
+	if idx >= len(mem) {
+		return false
+	}
+	mem[idx] = data
+
 	return true
 }

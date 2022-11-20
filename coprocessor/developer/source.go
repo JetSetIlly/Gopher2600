@@ -253,7 +253,7 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 			executableSectionFound = true
 
 			// get executable origin for relocatable ROMs
-			if c, ok := cart.(mapper.CartCoProcDWARF); ok {
+			if c, ok := cart.GetCoProc().(mapper.CartCoProcDWARF); ok {
 				if o, ok := c.ELFSection(sec.Name); ok {
 					executableOrigin = uint64(o)
 				}
@@ -312,7 +312,7 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 	}
 
 	// load DWARF data from the mapper if possible
-	if c, ok := cart.(mapper.CartCoProcDWARF); ok {
+	if c, ok := cart.GetCoProc().(mapper.CartCoProcDWARF); ok {
 		src.dwrf = c.DWARF()
 	}
 

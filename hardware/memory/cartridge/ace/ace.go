@@ -179,7 +179,7 @@ func (cart *Ace) Listen(addr uint16, data uint8) {
 
 	// keep calling runArm() for as long as program does not need to sync with the VCS...
 	for yld != mapper.YieldSyncWithVCS {
-		// ... or if the yield hook says to return to the VCS immediately
+		// ... or if the yield hook says to return to the VCS immedtiately
 		if cart.yieldHook.CartYield(yld) {
 			return
 		}
