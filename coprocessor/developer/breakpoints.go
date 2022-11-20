@@ -32,7 +32,7 @@ func (src *Source) ToggleBreakpoint(ln *SourceLine) {
 	if len(ln.Disassembly) == 0 {
 		return
 	}
-	addr := ln.Disassembly[0].Addr
+	addr := ln.Disassembly[len(ln.Disassembly)-1].Addr
 	if src.CheckBreakpoint(addr) {
 		src.removeBreakpoint(addr)
 	} else {
@@ -46,7 +46,7 @@ func (src *Source) CheckBreakpointBySourceLine(ln *SourceLine) bool {
 	if len(ln.Disassembly) == 0 {
 		return false
 	}
-	return src.CheckBreakpoint(ln.Disassembly[0].Addr)
+	return src.CheckBreakpoint(ln.Disassembly[len(ln.Disassembly)-1].Addr)
 }
 
 // CheckBreakpoint returns true if there is a breakpoint on the
