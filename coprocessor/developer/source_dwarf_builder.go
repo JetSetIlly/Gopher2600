@@ -402,7 +402,7 @@ func (bld *build) buildTypes(src *Source) error {
 							}
 						})
 					case dwarf.ClassExprLoc:
-						r, _ := decodeDWARFoperation(fld.Val.([]uint8), true)
+						r, _ := decodeDWARFoperation(fld.Val.([]uint8), 0, true)
 						memb.addResolver(r)
 					default:
 						continue
@@ -654,7 +654,6 @@ func (bld *build) buildVariables(src *Source, origin uint64) error {
 
 		// assign address resolver memory to variable
 		varb.Cart = src.cart
-		varb.origin = origin
 
 		switch fld.Class {
 		case dwarf.ClassLocListPtr:
@@ -738,7 +737,7 @@ func (bld *build) buildVariables(src *Source, origin uint64) error {
 					for length > 0 {
 						// read single location description for this start/end address
 						bld.debug_loc.ReadAt(b, locOffset)
-						r, n := decodeDWARFoperation(b, length <= 5)
+						r, n := decodeDWARFoperation(b, 0, length <= 5)
 
 						// DEBUGGING
 						// fmt.Printf("%02x ", b[0])
@@ -808,7 +807,7 @@ func (bld *build) buildVariables(src *Source, origin uint64) error {
 			// page 26 of "DWARF4 Standard"
 
 			// set address resolve function
-			r, n := decodeDWARFoperation(fld.Val.([]uint8), true)
+			r, n := decodeDWARFoperation(fld.Val.([]uint8), origin, true)
 			if n != 0 {
 				varb.addResolver(r)
 
@@ -885,7 +884,7 @@ func (bld *build) findFunction(addr uint64) (*foundFunction, error) {
 		if fld != nil {
 			switch fld.Val.(type) {
 			case []uint8:
-				frameBase, _ = decodeDWARFoperation(fld.Val.([]uint8), true)
+				frameBase, _ = decodeDWARFoperation(fld.Val.([]uint8), 0, true)
 			case int64:
 				v := fld.Val.(int64)
 				frameBase = func(_ resolveCoproc) Resolved {

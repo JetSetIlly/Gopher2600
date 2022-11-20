@@ -52,9 +52,6 @@ type SourceVariable struct {
 	// most recent resolved value retrieved from emulation
 	cachedResolve atomic.Value // Resolved
 
-	// origin address of variable
-	origin uint64
-
 	// child variables of this variable. this includes array elements, struct
 	// members and dereferenced variables
 	children []*SourceVariable

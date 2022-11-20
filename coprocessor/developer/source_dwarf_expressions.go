@@ -50,7 +50,7 @@ type resolver func(resolveCoproc) Resolved
 // the expr slice
 //
 // returns nil, zero, if expression cannot be handled.
-func decodeDWARFoperation(expr []uint8, simpleLocDesc bool) (resolver, int) {
+func decodeDWARFoperation(expr []uint8, origin uint64, simpleLocDesc bool) (resolver, int) {
 	// expression location operators reference
 	//
 	// "DWARF Debugging Information Format Version 4", page 17 to 24
@@ -67,6 +67,7 @@ func decodeDWARFoperation(expr []uint8, simpleLocDesc bool) (resolver, int) {
 		address |= uint64(expr[2]) << 8
 		address |= uint64(expr[3]) << 16
 		address |= uint64(expr[4]) << 24
+		address += origin
 		if simpleLocDesc {
 			return func(r resolveCoproc) Resolved {
 				value, ok := r.coproc().CoProcRead32bit(uint32(address))
