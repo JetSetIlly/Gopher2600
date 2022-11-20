@@ -850,14 +850,6 @@ func decodeDWARFoperation(expr []uint8, origin uint64, simpleLocDesc bool) (reso
 			res.valueOk = true
 			return res
 		}, 1
-
-	case 0xf3:
-		// DW_OP_GNU_entry_value
-
-		// I don't know much about this so I'm treating it the same as DW_OP_nop
-		return func(_ resolveCoproc) Resolved {
-			return Resolved{valueOk: true}
-		}, 2
 	}
 
 	return nil, 0
