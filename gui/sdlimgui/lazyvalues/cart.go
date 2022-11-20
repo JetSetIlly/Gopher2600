@@ -168,7 +168,8 @@ func (lz *LazyCart) push() {
 	if cp != nil {
 		lz.coProcBus.Store(container{v: cp})
 		lz.coprocID.Store(cp.CoProcID())
-		lz.coprocPC.Store(cp.CoProcRegister(15))
+		pc, _ := cp.CoProcRegister(15)
+		lz.coprocPC.Store(pc)
 	} else {
 		lz.coProcBus.Store(container{v: nil})
 	}

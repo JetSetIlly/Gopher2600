@@ -88,10 +88,12 @@ type CartCoProc interface {
 	// set interface for cartridge yields
 	SetYieldHook(CartYieldHook)
 
-	// the contents of register n
-	CoProcRegister(n int) uint32
+	// the contents of register n. returns false if specified register is out
+	// of range
+	CoProcRegister(n int) (uint32, bool)
 
-	// read coprocessor memory address for 8/16/32 bit values
+	// read coprocessor memory address for 8/16/32 bit values. return false if
+	// address is out of range
 	CoProcRead8bit(addr uint32) (uint8, bool)
 	CoProcRead16bit(addr uint32) (uint16, bool)
 	CoProcRead32bit(addr uint32) (uint32, bool)

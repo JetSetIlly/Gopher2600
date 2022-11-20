@@ -235,9 +235,11 @@ func (win *winCoProcGlobals) draw() {
 }
 
 func drawVariableTooltip(varb *developer.SourceVariable, value uint32, cols *imguiColors) {
-	imgui.PushStyleColor(imgui.StyleColorText, cols.CoProcVariablesAddress)
-	imgui.Text(fmt.Sprintf("%08x", varb.Address()))
-	imgui.PopStyleColor()
+	if a, ok := varb.Address(); ok {
+		imgui.PushStyleColor(imgui.StyleColorText, cols.CoProcVariablesAddress)
+		imgui.Text(fmt.Sprintf("%08x", a))
+		imgui.PopStyleColor()
+	}
 
 	imgui.Text(varb.Name)
 	imgui.SameLine()
@@ -357,7 +359,11 @@ func (win *winCoProcGlobals) drawVariable(src *developer.Source, varb *developer
 
 		imgui.TableNextColumn()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcVariablesAddress)
-		imgui.Text(fmt.Sprintf("%08x", varb.Address()))
+		if a, ok := varb.Address(); ok {
+			imgui.Text(fmt.Sprintf("%08x", a))
+		} else {
+			imgui.Text("-")
+		}
 		imgui.PopStyleColor()
 
 		imgui.TableNextColumn()
@@ -387,7 +393,11 @@ func (win *winCoProcGlobals) drawVariable(src *developer.Source, varb *developer
 
 		imgui.TableNextColumn()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcVariablesAddress)
-		imgui.Text(fmt.Sprintf("%08x", varb.Address()))
+		if a, ok := varb.Address(); ok {
+			imgui.Text(fmt.Sprintf("%08x", a))
+		} else {
+			imgui.Text("-")
+		}
 		imgui.PopStyleColor()
 
 		imgui.TableNextColumn()
@@ -426,7 +436,11 @@ func (win *winCoProcGlobals) saveToCSV(src *developer.Source) {
 	writeVarb := func(varb *developer.SourceVariable) {
 		f.WriteString(fmt.Sprintf("%s,", varb.Name))
 		f.WriteString(fmt.Sprintf("%s,", varb.Type.Name))
-		f.WriteString(fmt.Sprintf("%08x,", varb.Address()))
+		if a, ok := varb.Address(); ok {
+			f.WriteString(fmt.Sprintf("%08x,", a))
+		} else {
+			f.WriteString(",")
+		}
 
 		value, valueOk := varb.Value()
 		if valueOk {

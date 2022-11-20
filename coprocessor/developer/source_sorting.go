@@ -436,14 +436,63 @@ func (v SortedVariables) Less(i int, j int) bool {
 		}
 		return strings.ToUpper(v.Variables[i].Name) < strings.ToUpper(v.Variables[j].Name)
 	case SortVariableByAddress:
+		ia, _ := v.Variables[i].Address()
+		ja, _ := v.Variables[j].Address()
 		if v.Descending {
-			return v.Variables[i].Address() > v.Variables[j].Address()
+			return ia > ja
 		}
-		return v.Variables[i].Address() < v.Variables[j].Address()
+		return ia < ja
 	}
 	return false
 }
 
 func (v SortedVariables) Swap(i int, j int) {
+	v.Variables[i], v.Variables[j] = v.Variables[j], v.Variables[i]
+}
+
+// SortedVariabelsLocal is exactly the same as the SortedVariables type except
+// for the type of the Variables field. this is a good candidate for replacing
+// with a Go1.19 generic solution
+type SortedVariablesLocal struct {
+	Variables  []*SourceVariableLocal
+	Method     SortedVariableMethod
+	Descending bool
+}
+
+func (e *SortedVariablesLocal) SortByName(descending bool) {
+	e.Descending = descending
+	e.Method = SortVariableByName
+	sort.Stable(e)
+}
+
+func (e *SortedVariablesLocal) SortByAddress(descending bool) {
+	e.Descending = descending
+	e.Method = SortVariableByAddress
+	sort.Stable(e)
+}
+
+func (v SortedVariablesLocal) Len() int {
+	return len(v.Variables)
+}
+
+func (v SortedVariablesLocal) Less(i int, j int) bool {
+	switch v.Method {
+	case SortVariableByName:
+		if v.Descending {
+			return strings.ToUpper(v.Variables[i].Name) > strings.ToUpper(v.Variables[j].Name)
+		}
+		return strings.ToUpper(v.Variables[i].Name) < strings.ToUpper(v.Variables[j].Name)
+	case SortVariableByAddress:
+		ia, _ := v.Variables[i].Address()
+		ja, _ := v.Variables[j].Address()
+		if v.Descending {
+			return ia > ja
+		}
+		return ia < ja
+	}
+	return false
+}
+
+func (v SortedVariablesLocal) Swap(i int, j int) {
 	v.Variables[i], v.Variables[j] = v.Variables[j], v.Variables[i]
 }

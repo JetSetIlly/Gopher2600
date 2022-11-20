@@ -261,8 +261,11 @@ func (cart *Ace) CoProcState() mapper.CoProcState {
 }
 
 // CoProcRegister implements the mapper.CartCoProc interface.
-func (cart *Ace) CoProcRegister(n int) uint32 {
-	return cart.arm.Registers()[n]
+func (cart *Ace) CoProcRegister(n int) (uint32, bool) {
+	if n > 15 {
+		return 0, false
+	}
+	return cart.arm.Registers()[n], true
 }
 
 // CoProcRead8bit implements the mapper.CartCoProc interface.

@@ -99,16 +99,15 @@ func (win *winCoProcLocals) draw() {
 			win.firstOpen = false
 		}
 
-		// global variable table for the selected file
-
 		const numColumns = 4
 
 		flgs := imgui.TableFlagsScrollY
 		flgs |= imgui.TableFlagsSizingStretchProp
 		flgs |= imgui.TableFlagsNoHostExtendX
 		flgs |= imgui.TableFlagsResizable
+		flgs |= imgui.TableFlagsHideable
 
-		imgui.BeginTableV("##globalsTable", numColumns, flgs, imgui.Vec2{Y: imguiRemainingWinHeight()}, 0.0)
+		imgui.BeginTableV("##localsTable", numColumns, flgs, imgui.Vec2{Y: imguiRemainingWinHeight()}, 0.0)
 
 		// setup columns. the labelling column 2 depends on whether the coprocessor
 		// development instance has source available to it
@@ -121,12 +120,13 @@ func (win *winCoProcLocals) draw() {
 		imgui.TableSetupScrollFreeze(0, 1)
 		imgui.TableHeadersRow()
 
-		pc := uint64(win.img.lz.Cart.CoProcPC)
-		for i, varb := range src.Locals {
-			if pc >= varb.StartAddress && pc <= varb.EndAddress {
-				win.drawVariable(src, varb.SourceVariable, 0, false, fmt.Sprint(i))
+		win.img.dbg.CoProcDev.BorrowYieldState(func(yld *developer.YieldState) {
+			for i, varb := range src.SortedLocals.Variables {
+				if yld.InstructionPC >= uint32(varb.StartAddress) && yld.InstructionPC <= uint32(varb.EndAddress) {
+					win.drawVariable(src, varb.SourceVariable, 0, false, fmt.Sprint(i))
+				}
 			}
-		}
+		})
 
 		imgui.EndTable()
 	})
@@ -168,7 +168,11 @@ func (win *winCoProcLocals) drawVariable(src *developer.Source, varb *developer.
 
 		imgui.TableNextColumn()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcVariablesAddress)
-		imgui.Text(fmt.Sprintf("%08x", varb.Address()))
+		if a, ok := varb.Address(); ok {
+			imgui.Text(fmt.Sprintf("%08x", a))
+		} else {
+			imgui.Text("-")
+		}
 		imgui.PopStyleColor()
 
 		imgui.TableNextColumn()
@@ -198,7 +202,11 @@ func (win *winCoProcLocals) drawVariable(src *developer.Source, varb *developer.
 
 		imgui.TableNextColumn()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcVariablesAddress)
-		imgui.Text(fmt.Sprintf("%08x", varb.Address()))
+		if a, ok := varb.Address(); ok {
+			imgui.Text(fmt.Sprintf("%08x", a))
+		} else {
+			imgui.Text("-")
+		}
 		imgui.PopStyleColor()
 
 		imgui.TableNextColumn()

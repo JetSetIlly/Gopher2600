@@ -402,7 +402,7 @@ func (bld *build) buildTypes(src *Source) error {
 							}
 						})
 					case dwarf.ClassExprLoc:
-						r, _ := decodeSingleLocationDescription(fld.Val.([]uint8))
+						r, _ := decodeDWARFoperation(fld.Val.([]uint8), true)
 						memb.addResolver(r)
 					default:
 						continue
@@ -597,89 +597,13 @@ func (bld *build) resolveVariableDeclaration(v buildEntry, src *Source) (*Source
 	return &varb, nil
 }
 
-func (bld *build) resolveVariableChildren(varb *SourceVariable) {
-	if varb.Type.IsArray() {
-		for i := 0; i < varb.Type.ElementCount; i++ {
-			elem := &SourceVariable{
-				Cart:     varb.Cart,
-				Name:     fmt.Sprintf("%s[%d]", varb.Name, i),
-				Type:     varb.Type.ElementType,
-				DeclLine: varb.DeclLine,
-			}
-
-			o := i
-			elem.addResolver(func(r resolveCoproc) Resolved {
-				address := varb.Address() + uint64(o*varb.Type.ElementType.Size)
-				value, ok := r.coproc().CoProcRead32bit(uint32(address))
-				return Resolved{
-					address: address,
-					value:   value,
-					valueOk: ok,
-				}
-			})
-
-			varb.children = append(varb.children, elem)
-			bld.resolveVariableChildren(elem)
-		}
-	}
-
-	if varb.Type.IsComposite() {
-		var offset uint64
-		for _, m := range varb.Type.Members {
-			memb := &SourceVariable{
-				Cart:     varb.Cart,
-				Name:     m.Name,
-				Type:     m.Type,
-				DeclLine: varb.DeclLine,
-			}
-
-			o := offset
-			memb.addResolver(func(r resolveCoproc) Resolved {
-				address := varb.Address() + o
-				value, ok := r.coproc().CoProcRead32bit(uint32(address))
-				return Resolved{
-					address: address,
-					value:   value,
-					valueOk: ok,
-				}
-			})
-
-			varb.children = append(varb.children, memb)
-			bld.resolveVariableChildren(memb)
-
-			offset += uint64(m.Type.Size)
-		}
-	}
-
-	if varb.Type.IsPointer() {
-		deref := &SourceVariable{
-			Cart:     varb.Cart,
-			Name:     fmt.Sprintf("*%s", varb.Name),
-			Type:     varb.Type.PointerType,
-			DeclLine: varb.DeclLine,
-		}
-		deref.addResolver(func(r resolveCoproc) Resolved {
-			a, ok := varb.Value()
-			if !ok {
-				return Resolved{}
-			}
-			address := uint64(a)
-			value, ok := r.coproc().CoProcRead32bit(uint32(address))
-			return Resolved{
-				address: address,
-				value:   value,
-				valueOk: ok,
-			}
-		})
-		varb.children = append(varb.children, deref)
-		bld.resolveVariableChildren(deref)
-	}
-}
-
 // buildVariables populates variables map in the *Source tree
 func (bld *build) buildVariables(src *Source, origin uint64) error {
 	// buffer for reading the .debug_log section. will be extended as required
 	b := make([]byte, 16)
+
+	// d, _ := src.debug_loc.Data()
+	// os.Stdout.Write(d)
 
 	for _, v := range bld.variables {
 		// resolve name and type of variable
@@ -754,12 +678,20 @@ func (bld *build) buildVariables(src *Source, origin uint64) error {
 			// page 148 of "DWARF4 Standard"
 			locOffset := fld.Val.(int64)
 
+			// DEBUGGING
+			// the original locOffset before we modify it
+			// locOffsetOriginal := locOffset
+
 			// "The applicable base address of a location list entry is determined by the closest preceding base
 			// address selection entry (see below) in the same location list. If there is no such selection entry,
 			// then the applicable base address defaults to the base address of the compilation unit (see
 			// Section 3.1.1)"
+			//
+			// "A base address selection entry affects only the list in which it
+			// is contained" page 31 of "DWARF4 Standard"
 			var baseAddress uint64
 
+			// function to read an address from the debug_loc data
 			readAddress := func() uint64 {
 				bld.debug_loc.ReadAt(b[:4], locOffset)
 				a := uint64(b[0]) | uint64(b[1])<<8 | uint64(b[2])<<16 | uint64(b[3])<<24
@@ -772,8 +704,6 @@ func (bld *build) buildVariables(src *Source, origin uint64) error {
 
 			// read single location description for this start/end address
 			bld.debug_loc.ReadAt(b, locOffset)
-
-			aborted := false
 
 			// "The end of any given location list is marked by an end of list entry, which consists of a 0 for the
 			// beginning address offset and a 0 for the ending address offset. A location list containing only an
@@ -789,63 +719,85 @@ func (bld *build) buildVariables(src *Source, origin uint64) error {
 				if startAddress == 0xffffffff {
 					baseAddress = endAddress
 				} else {
+					// reduce end address by one. this is because the value we've read "marks the
+					// first address past the end of the address range over which the location is
+					// valid" (page 30 of "DWARF4 Standard")
+					endAddress -= 1
+
+					// length of expression
+					bld.debug_loc.ReadAt(b, locOffset)
+					length := int(b[0])
+					length |= int(b[1]) << 8
+					locOffset += 2
+
+					// DEBUGGING
+					// fmt.Printf("%04x (%d): %s: %08x -> %08x ", locOffsetOriginal, length, varb.Name, startAddress, endAddress)
+
+					// loop through stack operations
+					var encounteredError bool
+					for length > 0 {
+						// read single location description for this start/end address
+						bld.debug_loc.ReadAt(b, locOffset)
+						r, n := decodeDWARFoperation(b, length <= 5)
+
+						// DEBUGGING
+						// fmt.Printf("%02x ", b[0])
+
+						// enountered error
+						if n == 0 {
+							logger.Logf("dwarf", "%s: error in opcode %02x", varb.Name, b[0])
+							encounteredError = true
+							break
+						}
+
+						// add resolver to variable
+						varb.addResolver(r)
+
+						// reduce length value
+						length -= n
+
+						// advance debug_loc pointer by length value
+						locOffset += int64(n)
+					}
+
+					if encounteredError {
+						// DEBUGGING
+						// fmt.Println(" !!")
+						break // for loop (start/end address)
+					}
+
 					// "A location list entry (but not a base address selection or end of list entry) whose beginning
 					// and ending addresses are equal has no effect because the size of the range covered by such
 					// an entry is zero". page 31 of "DWARF4 Standard"
 					//
 					// "The ending address must be greater than or equal to the beginning address"
 					// page 30 of "DWARF4 Standard"
-					if endAddress <= startAddress {
-						break
-					}
-
-					// number of location operations in expression
-					bld.debug_loc.ReadAt(b, locOffset)
-					ln := b[0]
-					locOffset += 2
-
-					for ln > 0 {
-						ln--
-
-						// read single location description for this start/end address
-						bld.debug_loc.ReadAt(b, locOffset)
-						r, n := decodeSingleLocationDescription(b)
-
-						// abort early if location description was not recongnised
-						if n == 0 {
-							logger.Logf("dwarf", "%s: rejected local variable: unrecognised expresion %02x", varb.Name, b[0])
-							aborted = true
-							break // for ln > 0
+					if startAddress < endAddress {
+						local := &SourceVariableLocal{
+							SourceVariable: varb,
+							StartAddress:   startAddress + baseAddress + origin,
+							EndAddress:     endAddress + baseAddress + origin,
 						}
-
-						// add resolver and advance debug_loc pointer
-						varb.addResolver(r)
-						locOffset += int64(n)
+						src.Locals = append(src.Locals, local)
+						src.SortedLocals.Variables = append(src.SortedLocals.Variables, local)
+					} else {
+						// DEBUGGING
+						// fmt.Printf(" ??")
 					}
 
-					// abort early
-					if aborted {
-						break // for loop
-					}
-
-					local := &SourceVariableLocal{
-						SourceVariable: varb,
-						StartAddress:   startAddress + baseAddress + origin,
-						EndAddress:     endAddress + baseAddress + origin,
-					}
-					src.Locals = append(src.Locals, local)
-
+					// DEBUGGING
+					// fmt.Printf("  %s", varb.DeclLine)
 				}
 
 				// read next address range
 				startAddress = readAddress()
 				endAddress = readAddress()
+
+				// DEBUGGING
+				// fmt.Printf("\n")
 			}
 
-			if !aborted {
-				bld.resolveVariableChildren(varb)
-				logger.Logf("dwarf", "%s: added local variable", varb.Name)
-			}
+			varb.addVariableChildren()
 
 			continue // for loop
 
@@ -856,27 +808,29 @@ func (bld *build) buildVariables(src *Source, origin uint64) error {
 			// page 26 of "DWARF4 Standard"
 
 			// set address resolve function
-			r, _ := decodeSingleLocationDescription(fld.Val.([]uint8))
-			varb.addResolver(r)
+			r, n := decodeDWARFoperation(fld.Val.([]uint8), true)
+			if n != 0 {
+				varb.addResolver(r)
 
-			bld.resolveVariableChildren(varb)
+				varb.addVariableChildren()
 
-			// determine highest address occupied by any variable in the program
-			hiAddress := varb.resolve().address + uint64(varb.Type.Size)
-			if hiAddress > src.VariableMemtop {
-				src.VariableMemtop = hiAddress
-			}
+				// determine highest address occupied by any variable in the program
+				hiAddress := varb.resolve().address + uint64(varb.Type.Size)
+				if hiAddress > src.VariableMemtop {
+					src.VariableMemtop = hiAddress
+				}
 
-			// add variable to list of global variables if there is no parent
-			// function to the declaration
-			if varb.DeclLine.Function.Name == UnknownFunction {
-				// list of global variables for all compile units
-				src.Globals[varb.Name] = varb
-				src.GlobalsByAddress[varb.resolve().address] = varb
-				src.SortedGlobals.Variables = append(src.SortedGlobals.Variables, varb)
+				// add variable to list of global variables if there is no parent
+				// function to the declaration
+				if varb.DeclLine.Function.Name == UnknownFunction {
+					// list of global variables for all compile units
+					src.Globals[varb.Name] = varb
+					src.GlobalsByAddress[varb.resolve().address] = varb
+					src.SortedGlobals.Variables = append(src.SortedGlobals.Variables, varb)
 
-				// note that the file has at least one global variables
-				varb.DeclLine.File.HasGlobals = true
+					// note that the file has at least one global variables
+					varb.DeclLine.File.HasGlobals = true
+				}
 			}
 		default:
 			continue // for loop
@@ -929,7 +883,7 @@ func (bld *build) findFunction(addr uint64) (*foundFunction, error) {
 		var frameBase resolver
 		fld = b.entry.AttrField(dwarf.AttrFrameBase)
 		if fld != nil {
-			frameBase, _ = decodeSingleLocationDescription(fld.Val.([]uint8))
+			frameBase, _ = decodeDWARFoperation(fld.Val.([]uint8), true)
 		}
 
 		return &foundFunction{

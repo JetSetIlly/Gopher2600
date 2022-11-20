@@ -103,7 +103,8 @@ type Source struct {
 	SortedGlobals    SortedVariables
 
 	// all local variables in all compile units
-	Locals []*SourceVariableLocal
+	Locals       []*SourceVariableLocal
+	SortedLocals SortedVariablesLocal
 
 	// the highest address of any variable (not just global variables, any
 	// variable)
@@ -613,8 +614,9 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 	// sorted functions
 	sort.Sort(src.SortedFunctions)
 
-	// sorted functions
+	// sorted variables
 	sort.Sort(src.SortedGlobals)
+	sort.Sort(src.SortedLocals)
 
 	// best guess at the entry function
 	if fn, ok := src.Functions["main"]; ok {
