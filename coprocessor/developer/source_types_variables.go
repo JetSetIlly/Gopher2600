@@ -20,6 +20,7 @@ import (
 	"sync/atomic"
 
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
+	"github.com/jetsetilly/gopher2600/logger"
 )
 
 // SourceVariable is a single local variable identified by the DWARF data.
@@ -44,13 +45,16 @@ type SourceVariable struct {
 	// first source line for each instance of the function
 	DeclLine *SourceLine
 
-	// DWARF expression resolver. see resolve(), addResolver() and
-	// lastResolved(). external packages use Address() or Value()
-	resolver     []resolver
-	resolveStack []Resolved
+	// if unresolvable is true then an error was enounterd during a resolve()
+	// sequence. when setting to the error will be logged and all future
+	// attempts at resolution will silently fail
+	unresolvable bool
+
+	// location list resolves a Location
+	loclist *loclist
 
 	// most recent resolved value retrieved from emulation
-	cachedResolve atomic.Value // Resolved
+	cachedLocation atomic.Value // Location
 
 	// child variables of this variable. this includes array elements, struct
 	// members and dereferenced variables
@@ -65,12 +69,12 @@ func (varb *SourceVariable) String() string {
 // SourceVariable
 func (varb *SourceVariable) Address() (uint64, bool) {
 	varb.Cart.PushFunction(func() {
-		varb.cachedResolve.Store(varb.resolve())
+		varb.cachedLocation.Store(varb.resolve())
 	})
 
-	var r Resolved
+	var r location
 	var ok bool
-	if r, ok = varb.cachedResolve.Load().(Resolved); !ok {
+	if r, ok = varb.cachedLocation.Load().(location); !ok {
 		return 0, false
 	}
 
@@ -83,12 +87,12 @@ func (varb *SourceVariable) Address() (uint64, bool) {
 // resolution before accessing the memory.
 func (varb *SourceVariable) Value() (uint32, bool) {
 	varb.Cart.PushFunction(func() {
-		varb.cachedResolve.Store(varb.resolve())
+		varb.cachedLocation.Store(varb.resolve())
 	})
 
-	var r Resolved
+	var r location
 	var ok bool
-	if r, ok = varb.cachedResolve.Load().(Resolved); !ok {
+	if r, ok = varb.cachedLocation.Load().(location); !ok {
 		return 0, false
 	}
 
@@ -118,51 +122,33 @@ func (varb *SourceVariable) coproc() mapper.CartCoProc {
 }
 
 // coproc implements the resolver interface
-func (varb *SourceVariable) framebase() uint64 {
-	if varb.DeclLine == nil || varb.DeclLine.Function == nil || varb.DeclLine.Function.frameBase == nil {
-		return 0
+func (varb *SourceVariable) framebase() (uint64, error) {
+	if varb.DeclLine == nil || varb.DeclLine.Function == nil {
+		return 0, fmt.Errorf("no framebase")
 	}
-	return varb.DeclLine.Function.frameBase(varb).address
-}
 
-// lastResolved implements the resolver interface
-func (varb *SourceVariable) lastResolved() Resolved {
-	if len(varb.resolveStack) == 0 {
-		return Resolved{}
+	location, err := varb.DeclLine.Function.framebase.resolve()
+	if err != nil {
+		return 0, fmt.Errorf("framebase for function %s: %v", varb.DeclLine.Function.Name, err)
 	}
-	return varb.resolveStack[len(varb.resolveStack)-1]
-}
 
-func (varb *SourceVariable) pop() (Resolved, bool) {
-	l := len(varb.resolveStack)
-	if l == 0 {
-		return Resolved{}, false
-	}
-	r := varb.resolveStack[l-1]
-	varb.resolveStack = varb.resolveStack[:l-1]
-	return r, true
+	return location.address, nil
 }
 
 // resolve address/value
-func (varb *SourceVariable) resolve() Resolved {
-	varb.resolveStack = varb.resolveStack[:0]
-	for i := range varb.resolver {
-		r := varb.resolver[i](varb)
-		if r.addressOk || r.valueOk {
-			varb.resolveStack = append(varb.resolveStack, r)
-		}
+func (varb *SourceVariable) resolve() location {
+	if varb.unresolvable {
+		return location{}
 	}
 
-	if len(varb.resolveStack) == 0 {
-		return Resolved{}
+	loc, err := varb.loclist.resolve()
+	if err != nil {
+		varb.unresolvable = true
+		logger.Logf("dwarf", "%s: unresolvable: %v", varb.Name, err)
+		return location{}
 	}
 
-	return varb.resolveStack[len(varb.resolveStack)-1]
-}
-
-// add another resolver to the desclaration expresion
-func (varb *SourceVariable) addResolver(r resolver) {
-	varb.resolver = append(varb.resolver, r)
+	return loc
 }
 
 // addVariableChildren populates the variable child array with SourceVariable
@@ -176,17 +162,19 @@ func (varb *SourceVariable) addVariableChildren() {
 				Type:     varb.Type.ElementType,
 				DeclLine: varb.DeclLine,
 			}
+			elem.loclist = newLoclistJustContext(varb)
 
 			o := i
-			elem.addResolver(func(r resolveCoproc) Resolved {
-				address := varb.lastResolved().address + uint64(o*varb.Type.ElementType.Size)
-				value, ok := r.coproc().CoProcRead32bit(uint32(address))
-				return Resolved{
+			elem.loclist.addOperator(func(_ *loclist) (location, error) {
+				r := varb.loclist.lastResolved()
+				address := r.address + uint64(o*varb.Type.ElementType.Size)
+				value, ok := varb.Cart.GetCoProc().CoProcRead32bit(uint32(address))
+				return location{
 					address:   address,
-					addressOk: true,
+					addressOk: r.addressOk, // address is a derivative of lastResolved().address
 					value:     value,
 					valueOk:   ok,
-				}
+				}, nil
 			})
 
 			varb.children = append(varb.children, elem)
@@ -203,17 +191,19 @@ func (varb *SourceVariable) addVariableChildren() {
 				Type:     m.Type,
 				DeclLine: varb.DeclLine,
 			}
+			memb.loclist = newLoclistJustContext(varb)
 
 			o := offset
-			memb.addResolver(func(r resolveCoproc) Resolved {
-				address := varb.lastResolved().address + o
-				value, ok := r.coproc().CoProcRead32bit(uint32(address))
-				return Resolved{
+			memb.loclist.addOperator(func(_ *loclist) (location, error) {
+				r := varb.loclist.lastResolved()
+				address := r.address + o
+				value, ok := varb.Cart.GetCoProc().CoProcRead32bit(uint32(address))
+				return location{
 					address:   address,
-					addressOk: true,
+					addressOk: r.addressOk, // address is a derivative of lastResolved().address
 					value:     value,
 					valueOk:   ok,
-				}
+				}, nil
 			})
 
 			varb.children = append(varb.children, memb)
@@ -230,16 +220,18 @@ func (varb *SourceVariable) addVariableChildren() {
 			Type:     varb.Type.PointerType,
 			DeclLine: varb.DeclLine,
 		}
-		deref.addResolver(func(r resolveCoproc) Resolved {
-			a := varb.lastResolved().value
-			address := uint64(a)
-			value, ok := r.coproc().CoProcRead32bit(uint32(address))
-			return Resolved{
+		deref.loclist = newLoclistJustContext(varb)
+
+		deref.loclist.addOperator(func(_ *loclist) (location, error) {
+			r := varb.loclist.lastResolved()
+			address := uint64(r.value)
+			value, ok := varb.Cart.GetCoProc().CoProcRead32bit(uint32(address))
+			return location{
 				address:   address,
-				addressOk: true,
+				addressOk: r.valueOk, // address is a derivative of lastResolved().value
 				value:     value,
 				valueOk:   ok,
-			}
+			}, nil
 		})
 		varb.children = append(varb.children, deref)
 		deref.addVariableChildren()

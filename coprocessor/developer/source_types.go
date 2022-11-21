@@ -143,7 +143,7 @@ type SourceFunction struct {
 	Address [2]uint64
 
 	// frame base of function
-	frameBase resolver
+	framebase loclist
 
 	// first source line for each instance of the function. note that the first
 	// line of a function may not have any code directly associated with it.

@@ -32,8 +32,46 @@ type buildEntry struct {
 	compileUnit *dwarf.Entry
 	entry       *dwarf.Entry
 
+	// lexblock information
+	lexblock *dwarf.Entry
+
 	// additional information. context sensitive according to the entry type
 	information string
+}
+
+type lexBlocks struct {
+	blocks  []*dwarf.Entry
+	sibling dwarf.Offset
+}
+
+func (lex *lexBlocks) top() *dwarf.Entry {
+	if len(lex.blocks) > 0 {
+		return lex.blocks[len(lex.blocks)-1]
+	}
+	return nil
+}
+
+func (lex *lexBlocks) reset() {
+	lex.blocks = lex.blocks[:0]
+	lex.sibling = 0
+}
+
+func (lex *lexBlocks) check(entry *dwarf.Entry) {
+	if entry.Offset == lex.sibling {
+		if len(lex.blocks) > 0 {
+			lex.blocks = lex.blocks[:len(lex.blocks)-1]
+		}
+	}
+}
+
+func (lex *lexBlocks) add(entry *dwarf.Entry) {
+	fld := entry.AttrField(dwarf.AttrSibling)
+	if fld != nil {
+		lex.sibling = fld.Val.(dwarf.Offset)
+	} else {
+		lex.sibling = 0
+	}
+	lex.blocks = append(lex.blocks, entry)
 }
 
 type build struct {
@@ -81,6 +119,7 @@ func newBuild(dwrf *dwarf.Data, debug_loc *elf.Section) (*build, error) {
 	}
 
 	var compileUnit *dwarf.Entry
+	var lexblocks lexBlocks
 
 	r := bld.dwrf.Reader()
 	for {
@@ -98,9 +137,12 @@ func newBuild(dwrf *dwarf.Data, debug_loc *elf.Section) (*build, error) {
 			continue // for loop
 		}
 
+		lexblocks.check(entry)
+
 		switch entry.Tag {
 		case dwarf.TagCompileUnit:
 			compileUnit = entry
+			lexblocks.reset()
 
 		case dwarf.TagInlinedSubroutine:
 			if compileUnit == nil {
@@ -111,6 +153,7 @@ func newBuild(dwrf *dwarf.Data, debug_loc *elf.Section) (*build, error) {
 					entry:       entry,
 				}
 				bld.order = append(bld.order, entry.Offset)
+				lexblocks.add(entry)
 			}
 
 		case dwarf.TagSubprogram:
@@ -122,6 +165,14 @@ func newBuild(dwrf *dwarf.Data, debug_loc *elf.Section) (*build, error) {
 					entry:       entry,
 				}
 				bld.order = append(bld.order, entry.Offset)
+				lexblocks.add(entry)
+			}
+
+		case dwarf.TagLexDwarfBlock:
+			if compileUnit == nil {
+				return nil, curated.Errorf("found lexical block tag without compile unit")
+			} else {
+				lexblocks.add(entry)
 			}
 
 		case dwarf.TagTypedef:
@@ -210,6 +261,7 @@ func newBuild(dwrf *dwarf.Data, debug_loc *elf.Section) (*build, error) {
 				bld.variables[entry.Offset] = buildEntry{
 					compileUnit: compileUnit,
 					entry:       entry,
+					lexblock:    lexblocks.top(),
 				}
 				bld.order = append(bld.order, entry.Offset)
 			}
@@ -392,18 +444,20 @@ func (bld *build) buildTypes(src *Source) error {
 				if fld != nil {
 					switch fld.Class {
 					case dwarf.ClassConstant:
-						memb.addResolver(func(r resolveCoproc) Resolved {
+						memb.loclist = newLoclistJustContext(memb)
+						memb.loclist.addOperator(func(loc *loclist) (location, error) {
 							address := uint64(fld.Val.(int64))
-							value, ok := r.coproc().CoProcRead32bit(uint32(address))
-							return Resolved{
+							value, ok := loc.ctx.coproc().CoProcRead32bit(uint32(address))
+							return location{
 								address: address,
 								value:   value,
 								valueOk: ok,
-							}
+							}, nil
 						})
 					case dwarf.ClassExprLoc:
+						memb.loclist = newLoclistJustContext(memb)
 						r, _ := decodeDWARFoperation(fld.Val.([]uint8), 0, true)
-						memb.addResolver(r)
+						memb.loclist.addOperator(r)
 					default:
 						continue
 					}
@@ -599,19 +653,13 @@ func (bld *build) resolveVariableDeclaration(v buildEntry, src *Source) (*Source
 
 // buildVariables populates variables map in the *Source tree
 func (bld *build) buildVariables(src *Source, origin uint64) error {
-	// buffer for reading the .debug_log section. will be extended as required
-	b := make([]byte, 16)
-
-	// d, _ := src.debug_loc.Data()
-	// os.Stdout.Write(d)
-
 	for _, v := range bld.variables {
 		// resolve name and type of variable
 		var varb *SourceVariable
 		var err error
 
 		// check for abstract origin field. if it is present we resolve the
-		// declartion using with the DWARF entry indicated by the field. otherwise
+		// declartion using the DWARF entry indicated by the field. otherwise
 		// we resolve using the current entry
 		fld := v.entry.AttrField(dwarf.AttrAbstractOrigin)
 		if fld != nil {
@@ -657,143 +705,20 @@ func (bld *build) buildVariables(src *Source, origin uint64) error {
 
 		switch fld.Class {
 		case dwarf.ClassLocListPtr:
-			// "Location lists, which are used to describe objects that have a limited lifetime or change
-			// their location during their lifetime. Location lists are more completely described below."
-			// page 26 of "DWARF4 Standard"
-			//
-			// "Location lists are used in place of location expressions whenever the object whose location is
-			// being described can change location during its lifetime. Location lists are contained in a separate
-			// object file section called .debug_loc . A location list is indicated by a location attribute whose
-			// value is an offset from the beginning of the .debug_loc section to the first byte of the list for the
-			// object in question"
-			// page 30 of "DWARF4 Standard"
-			//
-			// "loclistptr: This is an offset into the .debug_loc section (DW_FORM_sec_offset). It consists
-			// of an offset from the beginning of the .debug_loc section to the first byte of the data making up
-			// the location list for the compilation unit. It is relocatable in a relocatable object file, and
-			// relocated in an executable or shared object. In the 32-bit DWARF format, this offset is a 4-
-			// byte unsigned value; in the 64-bit DWARF format, it is an 8-byte unsigned value (see
-			// Section 7.4)"
-			// page 148 of "DWARF4 Standard"
-			locOffset := fld.Val.(int64)
-
-			// DEBUGGING
-			// the original locOffset before we modify it
-			// locOffsetOriginal := locOffset
-
-			// "The applicable base address of a location list entry is determined by the closest preceding base
-			// address selection entry (see below) in the same location list. If there is no such selection entry,
-			// then the applicable base address defaults to the base address of the compilation unit (see
-			// Section 3.1.1)"
-			//
-			// "A base address selection entry affects only the list in which it
-			// is contained" page 31 of "DWARF4 Standard"
-			var baseAddress uint64
-
-			// function to read an address from the debug_loc data
-			readAddress := func() uint64 {
-				bld.debug_loc.ReadAt(b[:4], locOffset)
-				a := uint64(b[0]) | uint64(b[1])<<8 | uint64(b[2])<<16 | uint64(b[3])<<24
-				locOffset += 4
-				return a
+			commit := func(start, end uint64) {
+				local := &SourceVariableLocal{
+					SourceVariable: varb,
+					StartAddress:   start + origin,
+					EndAddress:     end + origin,
+				}
+				src.Locals = append(src.Locals, local)
+				src.SortedLocals.Variables = append(src.SortedLocals.Variables, local)
 			}
 
-			startAddress := readAddress()
-			endAddress := readAddress()
-
-			// read single location description for this start/end address
-			bld.debug_loc.ReadAt(b, locOffset)
-
-			// "The end of any given location list is marked by an end of list entry, which consists of a 0 for the
-			// beginning address offset and a 0 for the ending address offset. A location list containing only an
-			// end of list entry describes an object that exists in the source code but not in the executable
-			// program". page 31 of "DWARF4 Standard"
-			for !(startAddress == 0x0 && endAddress == 0x0) {
-				// "A base address selection entry consists of:
-				// 1. The value of the largest representable address offset (for example, 0xffffffff when the size of
-				// an address is 32 bits).
-				// 2. An address, which defines the appropriate base address for use in interpreting the beginning
-				// and ending address offsets of subsequent entries of the location list"
-				// page 31 of "DWARF4 Standard"
-				if startAddress == 0xffffffff {
-					baseAddress = endAddress
-				} else {
-					// reduce end address by one. this is because the value we've read "marks the
-					// first address past the end of the address range over which the location is
-					// valid" (page 30 of "DWARF4 Standard")
-					endAddress -= 1
-
-					// length of expression
-					bld.debug_loc.ReadAt(b, locOffset)
-					length := int(b[0])
-					length |= int(b[1]) << 8
-					locOffset += 2
-
-					// DEBUGGING
-					// fmt.Printf("%04x (%d): %s: %08x -> %08x ", locOffsetOriginal, length, varb.Name, startAddress, endAddress)
-
-					// loop through stack operations
-					var encounteredError bool
-					for length > 0 {
-						// read single location description for this start/end address
-						bld.debug_loc.ReadAt(b, locOffset)
-						r, n := decodeDWARFoperation(b, 0, length <= 5)
-
-						// DEBUGGING
-						// fmt.Printf("%02x ", b[0])
-
-						// enountered error
-						if n == 0 {
-							logger.Logf("dwarf", "local variable: dropping %s because of unknown expression operator %02x", varb.Name, b[0])
-							encounteredError = true
-							break
-						}
-
-						// add resolver to variable
-						varb.addResolver(r)
-
-						// reduce length value
-						length -= n
-
-						// advance debug_loc pointer by length value
-						locOffset += int64(n)
-					}
-
-					if encounteredError {
-						// DEBUGGING
-						// fmt.Println(" !!")
-						break // for loop (start/end address)
-					}
-
-					// "A location list entry (but not a base address selection or end of list entry) whose beginning
-					// and ending addresses are equal has no effect because the size of the range covered by such
-					// an entry is zero". page 31 of "DWARF4 Standard"
-					//
-					// "The ending address must be greater than or equal to the beginning address"
-					// page 30 of "DWARF4 Standard"
-					if startAddress < endAddress {
-						local := &SourceVariableLocal{
-							SourceVariable: varb,
-							StartAddress:   startAddress + baseAddress + origin,
-							EndAddress:     endAddress + baseAddress + origin,
-						}
-						src.Locals = append(src.Locals, local)
-						src.SortedLocals.Variables = append(src.SortedLocals.Variables, local)
-					} else {
-						// DEBUGGING
-						// fmt.Printf(" ??")
-					}
-
-					// DEBUGGING
-					// fmt.Printf("  %s", varb.DeclLine)
-				}
-
-				// read next address range
-				startAddress = readAddress()
-				endAddress = readAddress()
-
-				// DEBUGGING
-				// fmt.Printf("\n")
+			var err error
+			varb.loclist, err = newLoclist(varb, bld.debug_loc, fld.Val.(int64), commit)
+			if err != nil {
+				logger.Logf("dwarf", "%s: %v", varb.Name, err)
 			}
 
 			varb.addVariableChildren()
@@ -809,8 +734,8 @@ func (bld *build) buildVariables(src *Source, origin uint64) error {
 			// set address resolve function
 			r, n := decodeDWARFoperation(fld.Val.([]uint8), origin, true)
 			if n != 0 {
-				varb.addResolver(r)
-
+				varb.loclist = newLoclistJustContext(varb)
+				varb.loclist.addOperator(r)
 				varb.addVariableChildren()
 
 				// determine highest address occupied by any variable in the program
@@ -845,10 +770,10 @@ type foundFunction struct {
 	name     string
 
 	// not all functions have a framebase
-	frameBase resolver
+	framebase *loclist
 }
 
-func (bld *build) findFunction(addr uint64) (*foundFunction, error) {
+func (bld *build) findFunction(src *Source, addr uint64) (*foundFunction, error) {
 	var ret *foundFunction
 
 	resolve := func(b buildEntry) (*foundFunction, error) {
@@ -879,19 +804,21 @@ func (bld *build) findFunction(addr uint64) (*foundFunction, error) {
 		}
 		linenum := fld.Val.(int64)
 
-		var frameBase resolver
+		var framebase *loclist
 		fld = b.entry.AttrField(dwarf.AttrFrameBase)
 		if fld != nil {
-			switch fld.Val.(type) {
-			case []uint8:
-				frameBase, _ = decodeDWARFoperation(fld.Val.([]uint8), 0, true)
-			case int64:
-				v := fld.Val.(int64)
-				frameBase = func(_ resolveCoproc) Resolved {
-					return Resolved{
-						value:   uint32(v),
-						valueOk: true,
-					}
+			switch fld.Class {
+			case dwarf.ClassExprLoc:
+				var err error
+				framebase, err = newLoclistFromSingleOperator(nil, fld.Val.([]uint8))
+				if err != nil {
+					logger.Logf("dwarf", "framebase for %s: %v", files[filenum].Name, err)
+				}
+			case dwarf.ClassLocListPtr:
+				var err error
+				framebase, err = newLoclist(nil, bld.debug_loc, fld.Val.(int64), nil)
+				if err != nil {
+					logger.Logf("dwarf", "framebase for %s: %v", files[filenum].Name, err)
 				}
 			}
 		}
@@ -900,7 +827,7 @@ func (bld *build) findFunction(addr uint64) (*foundFunction, error) {
 			filename:  files[filenum].Name,
 			linenum:   linenum,
 			name:      name,
-			frameBase: frameBase,
+			framebase: framebase,
 		}, nil
 	}
 

@@ -18,6 +18,7 @@ package developer
 import (
 	"debug/dwarf"
 	"debug/elf"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"path/filepath"
@@ -187,7 +188,7 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 	if elfFile != "" {
 		ef, err = elf.Open(elfFile)
 		if err != nil {
-			return nil, curated.Errorf("dwarf: %s", err.Error())
+			return nil, curated.Errorf("dwarf: %v", err)
 		}
 	} else {
 		ef = findELF(romFile)
@@ -200,7 +201,7 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 	// all the symbols in the ELF file
 	src.syms, err = ef.Symbols()
 	if err != nil {
-		return nil, curated.Errorf("dwarf: %s", err.Error())
+		return nil, curated.Errorf("dwarf: %v", err)
 	}
 
 	// origin of the executable ELF section. will be zero if ELF file is not
@@ -467,7 +468,7 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 				// ... and there are addresses to process ...
 				if relocatedAddress-workingAddress > 0 {
 					// ... then find the function for the working address
-					foundFunc, err := bld.findFunction(workingAddress - executableOrigin)
+					foundFunc, err := bld.findFunction(src, workingAddress-executableOrigin)
 					if err != nil {
 						return nil, curated.Errorf("dwarf: %v", err)
 					}
@@ -491,11 +492,11 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 						workingSourceLine.Function = f
 					} else {
 						fn := &SourceFunction{
-							Cart:      src.cart,
-							Name:      foundFunc.name,
-							Address:   [2]uint64{workingAddress, relocatedAddress - 1},
-							DeclLine:  src.Files[foundFunc.filename].Content.Lines[foundFunc.linenum-1],
-							frameBase: foundFunc.frameBase,
+							Cart:     src.cart,
+							Name:     foundFunc.name,
+							Address:  [2]uint64{workingAddress, relocatedAddress - 1},
+							DeclLine: src.Files[foundFunc.filename].Content.Lines[foundFunc.linenum-1],
+							// framebase: foundFunc.framebase,
 						}
 						src.Functions[foundFunc.name] = fn
 						src.FunctionNames = append(src.FunctionNames, foundFunc.name)
@@ -617,6 +618,12 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 	// sorted variables
 	sort.Sort(src.SortedGlobals)
 	sort.Sort(src.SortedLocals)
+
+	for _, v := range src.Locals {
+		if v.loclist == nil {
+			fmt.Println(v.Name)
+		}
+	}
 
 	// best guess at the entry function
 	if fn, ok := src.Functions["main"]; ok {

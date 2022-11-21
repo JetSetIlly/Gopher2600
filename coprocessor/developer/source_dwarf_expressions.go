@@ -16,26 +16,10 @@
 package developer
 
 import (
+	"fmt"
+
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/leb128"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
-	"github.com/jetsetilly/gopher2600/logger"
 )
-
-type resolveCoproc interface {
-	coproc() mapper.CartCoProc
-	framebase() uint64
-	lastResolved() Resolved
-	pop() (Resolved, bool)
-}
-
-type Resolved struct {
-	address   uint64
-	addressOk bool
-	value     uint32
-	valueOk   bool
-}
-
-type resolver func(resolveCoproc) Resolved
 
 // decode DWARF expression operation. the expr argument is the operation
 // stream. the first entry in the slice is the operator, remaining entries in
@@ -50,7 +34,7 @@ type resolver func(resolveCoproc) Resolved
 // the expr slice
 //
 // returns nil, zero, if expression cannot be handled.
-func decodeDWARFoperation(expr []uint8, origin uint64, simpleLocDesc bool) (resolver, int) {
+func decodeDWARFoperation(expr []uint8, origin uint64, simpleLocDesc bool) (dwarfOperator, int) {
 	// expression location operators reference
 	//
 	// "DWARF Debugging Information Format Version 4", page 17 to 24
@@ -69,23 +53,23 @@ func decodeDWARFoperation(expr []uint8, origin uint64, simpleLocDesc bool) (reso
 		address |= uint64(expr[4]) << 24
 		address += origin
 		if simpleLocDesc {
-			return func(r resolveCoproc) Resolved {
-				value, ok := r.coproc().CoProcRead32bit(uint32(address))
-				return Resolved{
+			return func(loc *loclist) (location, error) {
+				value, ok := loc.ctx.coproc().CoProcRead32bit(uint32(address))
+				return location{
 					address:   address,
 					addressOk: true,
 					value:     value,
 					valueOk:   ok,
-				}
+				}, nil
 			}, 5
 		} else {
-			return func(r resolveCoproc) Resolved {
-				return Resolved{
+			return func(loc *loclist) (location, error) {
+				return location{
 					address:   address,
 					addressOk: true,
 					value:     uint32(address),
 					valueOk:   false,
-				}
+				}, nil
 			}, 5
 		}
 
@@ -96,16 +80,16 @@ func decodeDWARFoperation(expr []uint8, origin uint64, simpleLocDesc bool) (reso
 		// address. The value retrieved from that address is pushed. The size of the
 		// data retrieved from the dereferenced address is the size of an address on
 		// the target machine"
-		return func(r resolveCoproc) Resolved {
-			a, _ := r.pop()
+		return func(loc *loclist) (location, error) {
+			a, _ := loc.pop()
 			address := uint64(a.value)
-			value, ok := r.coproc().CoProcRead32bit(uint32(address))
-			return Resolved{
+			value, ok := loc.ctx.coproc().CoProcRead32bit(uint32(address))
+			return location{
 				address:   address,
 				addressOk: true,
 				value:     value,
 				valueOk:   ok,
-			}
+			}, nil
 		}, 1
 
 	case 0x08:
@@ -114,11 +98,11 @@ func decodeDWARFoperation(expr []uint8, origin uint64, simpleLocDesc bool) (reso
 		// "The single operand of a DW_OP_constnu operation provides a 1, 2, 4,
 		// or 8-byte unsigned integer constant, respectively"
 		cons := uint64(expr[1])
-		return func(r resolveCoproc) Resolved {
-			return Resolved{
+		return func(loc *loclist) (location, error) {
+			return location{
 				value:   uint32(cons),
 				valueOk: true,
-			}
+			}, nil
 		}, 2
 
 	case 0x09:
@@ -130,11 +114,11 @@ func decodeDWARFoperation(expr []uint8, origin uint64, simpleLocDesc bool) (reso
 		if cons&0x80 == 0x80 {
 			cons |= 0xffffffffffffff00
 		}
-		return func(r resolveCoproc) Resolved {
-			return Resolved{
+		return func(loc *loclist) (location, error) {
+			return location{
 				value:   uint32(cons),
 				valueOk: true,
-			}
+			}, nil
 		}, 2
 
 	case 0x0a:
@@ -142,11 +126,11 @@ func decodeDWARFoperation(expr []uint8, origin uint64, simpleLocDesc bool) (reso
 		// (literal encoding)
 		cons := uint64(expr[1])
 		cons |= uint64(expr[2]) << 8
-		return func(r resolveCoproc) Resolved {
-			return Resolved{
+		return func(loc *loclist) (location, error) {
+			return location{
 				value:   uint32(cons),
 				valueOk: true,
-			}
+			}, nil
 		}, 3
 
 	case 0x0b:
@@ -157,11 +141,11 @@ func decodeDWARFoperation(expr []uint8, origin uint64, simpleLocDesc bool) (reso
 		if cons&0x8000 == 0x8000 {
 			cons |= 0xffffffffffff0000
 		}
-		return func(r resolveCoproc) Resolved {
-			return Resolved{
+		return func(loc *loclist) (location, error) {
+			return location{
 				value:   uint32(cons),
 				valueOk: true,
-			}
+			}, nil
 		}, 3
 
 	case 0x0c:
@@ -171,11 +155,11 @@ func decodeDWARFoperation(expr []uint8, origin uint64, simpleLocDesc bool) (reso
 		cons |= uint64(expr[2]) << 8
 		cons |= uint64(expr[3]) << 16
 		cons |= uint64(expr[4]) << 24
-		return func(r resolveCoproc) Resolved {
-			return Resolved{
+		return func(loc *loclist) (location, error) {
+			return location{
 				value:   uint32(cons),
 				valueOk: true,
-			}
+			}, nil
 		}, 5
 
 	case 0x0d:
@@ -188,11 +172,11 @@ func decodeDWARFoperation(expr []uint8, origin uint64, simpleLocDesc bool) (reso
 		if cons&0x80000000 == 0x80000000 {
 			cons |= 0xffffffff00000000
 		}
-		return func(r resolveCoproc) Resolved {
-			return Resolved{
+		return func(loc *loclist) (location, error) {
+			return location{
 				value:   uint32(cons),
 				valueOk: true,
-			}
+			}, nil
 		}, 5
 
 	case 0x10:
@@ -201,11 +185,11 @@ func decodeDWARFoperation(expr []uint8, origin uint64, simpleLocDesc bool) (reso
 		// "The single operand of the DW_OP_constu operation provides an unsigned
 		// LEB128 integer constant"
 		value, n := leb128.DecodeULEB128(expr[1:])
-		return func(r resolveCoproc) Resolved {
-			return Resolved{
+		return func(loc *loclist) (location, error) {
+			return location{
 				value:   uint32(value),
 				valueOk: true,
-			}
+			}, nil
 		}, n + 1
 
 	case 0x11:
@@ -214,11 +198,11 @@ func decodeDWARFoperation(expr []uint8, origin uint64, simpleLocDesc bool) (reso
 		// "The single operand of the DW_OP_constu operation provides an signed
 		// LEB128 integer constant"
 		value, n := leb128.DecodeSLEB128(expr[1:])
-		return func(r resolveCoproc) Resolved {
-			return Resolved{
+		return func(loc *loclist) (location, error) {
+			return location{
 				value:   uint32(value),
 				valueOk: true,
-			}
+			}, nil
 		}, n + 1
 
 	case 0x12:
@@ -252,13 +236,13 @@ func decodeDWARFoperation(expr []uint8, origin uint64, simpleLocDesc bool) (reso
 		// "The DW_OP_abs operation pops the top stack entry, interprets it as a signed
 		// value and pushes its absolute value. If the absolute value cannot be
 		// represented, the result is undefined"
-		return func(r resolveCoproc) Resolved {
-			a, _ := r.pop()
+		return func(loc *loclist) (location, error) {
+			a, _ := loc.pop()
 			value := a.value & 0x7fffffff
-			return Resolved{
+			return location{
 				value:   value,
 				valueOk: true,
-			}
+			}, nil
 		}, 1
 
 	case 0x1a:
@@ -266,14 +250,14 @@ func decodeDWARFoperation(expr []uint8, origin uint64, simpleLocDesc bool) (reso
 		// (arithmetic and logic operations)
 		// "The DW_OP_and operation pops the top two stack values, performs a
 		// bitwise and operation"
-		return func(r resolveCoproc) Resolved {
-			a, _ := r.pop()
-			b, _ := r.pop()
+		return func(loc *loclist) (location, error) {
+			a, _ := loc.pop()
+			b, _ := loc.pop()
 			value := b.value & a.value
-			return Resolved{
+			return location{
 				value:   value,
 				valueOk: true,
-			}
+			}, nil
 		}, 1
 
 	case 0x1b:
@@ -282,14 +266,14 @@ func decodeDWARFoperation(expr []uint8, origin uint64, simpleLocDesc bool) (reso
 		// "The DW_OP_div operation pops the top two stack values, divides the former
 		// second entry by the former top of the stack using signed division, and
 		// pushes the result"
-		return func(r resolveCoproc) Resolved {
-			a, _ := r.pop()
-			b, _ := r.pop()
+		return func(loc *loclist) (location, error) {
+			a, _ := loc.pop()
+			b, _ := loc.pop()
 			value := b.value / a.value
-			return Resolved{
+			return location{
 				value:   value,
 				valueOk: true,
-			}
+			}, nil
 		}, 1
 
 	case 0x1c:
@@ -298,14 +282,14 @@ func decodeDWARFoperation(expr []uint8, origin uint64, simpleLocDesc bool) (reso
 		// "The DW_OP_minus operation pops the top two stack values, subtracts
 		// the former top of the stack from the former second entry, and pushes
 		// the result"
-		return func(r resolveCoproc) Resolved {
-			a, _ := r.pop()
-			b, _ := r.pop()
+		return func(loc *loclist) (location, error) {
+			a, _ := loc.pop()
+			b, _ := loc.pop()
 			value := b.value - a.value
-			return Resolved{
+			return location{
 				value:   value,
 				valueOk: true,
-			}
+			}, nil
 		}, 1
 
 	case 0x1d:
@@ -314,14 +298,14 @@ func decodeDWARFoperation(expr []uint8, origin uint64, simpleLocDesc bool) (reso
 		// "The DW_OP_mod operation pops the top two stack values and pushes the result
 		// of the calculation: former second stack entry modulo the former top of the
 		// stack"
-		return func(r resolveCoproc) Resolved {
-			a, _ := r.pop()
-			b, _ := r.pop()
+		return func(loc *loclist) (location, error) {
+			a, _ := loc.pop()
+			b, _ := loc.pop()
 			value := b.value % a.value
-			return Resolved{
+			return location{
 				value:   value,
 				valueOk: true,
-			}
+			}, nil
 		}, 1
 
 	case 0x1e:
@@ -329,14 +313,14 @@ func decodeDWARFoperation(expr []uint8, origin uint64, simpleLocDesc bool) (reso
 		// (arithmetic and logic operations)
 		// "The DW_OP_mul operation pops the top two stack entries, multiplies them
 		// together, and pushes the result"
-		return func(r resolveCoproc) Resolved {
-			a, _ := r.pop()
-			b, _ := r.pop()
+		return func(loc *loclist) (location, error) {
+			a, _ := loc.pop()
+			b, _ := loc.pop()
 			value := b.value * a.value
-			return Resolved{
+			return location{
 				value:   value,
 				valueOk: true,
-			}
+			}, nil
 		}, 1
 
 	case 0x1f:
@@ -345,13 +329,13 @@ func decodeDWARFoperation(expr []uint8, origin uint64, simpleLocDesc bool) (reso
 		// "The DW_OP_neg operation pops the top stack entry, interprets it as a signed
 		// value and pushes its negation. If the negation cannot be represented, the
 		// result is undefined"
-		return func(r resolveCoproc) Resolved {
-			a, _ := r.pop()
+		return func(loc *loclist) (location, error) {
+			a, _ := loc.pop()
 			value := uint32(-int32(a.value))
-			return Resolved{
+			return location{
 				value:   value,
 				valueOk: true,
-			}
+			}, nil
 		}, 1
 
 	case 0x20:
@@ -359,13 +343,13 @@ func decodeDWARFoperation(expr []uint8, origin uint64, simpleLocDesc bool) (reso
 		// (arithmetic and logic operations)
 		// "The DW_OP_not operation pops the top stack entry, and pushes its bitwise
 		// complement"
-		return func(r resolveCoproc) Resolved {
-			a, _ := r.pop()
+		return func(loc *loclist) (location, error) {
+			a, _ := loc.pop()
 			value := ^a.value
-			return Resolved{
+			return location{
 				value:   value,
 				valueOk: true,
-			}
+			}, nil
 		}, 1
 
 	case 0x21:
@@ -374,14 +358,14 @@ func decodeDWARFoperation(expr []uint8, origin uint64, simpleLocDesc bool) (reso
 		// "The DW_OP_or operation pops the top two stack entries, performs a
 		// bitwise or operation on the two, and pushes the result"
 		// "DWARF4 Standard
-		return func(r resolveCoproc) Resolved {
-			a, _ := r.pop()
-			b, _ := r.pop()
+		return func(loc *loclist) (location, error) {
+			a, _ := loc.pop()
+			b, _ := loc.pop()
 			value := b.value | a.value
-			return Resolved{
+			return location{
 				value:   value,
 				valueOk: true,
-			}
+			}, nil
 		}, 1
 
 	case 0x22:
@@ -389,14 +373,14 @@ func decodeDWARFoperation(expr []uint8, origin uint64, simpleLocDesc bool) (reso
 		// (arithmetic and logic operations)
 		// "The DW_OP_plus operation pops the top two stack entries, adds them
 		// together, and pushes"
-		return func(r resolveCoproc) Resolved {
-			a, _ := r.pop()
-			b, _ := r.pop()
+		return func(loc *loclist) (location, error) {
+			a, _ := loc.pop()
+			b, _ := loc.pop()
 			value := b.value + a.value
-			return Resolved{
+			return location{
 				value:   value,
 				valueOk: true,
-			}
+			}, nil
 		}, 1
 
 	case 0x23:
@@ -405,13 +389,13 @@ func decodeDWARFoperation(expr []uint8, origin uint64, simpleLocDesc bool) (reso
 		// "The DW_OP_plus_uconst operation pops the top stack entry, adds it
 		// to the unsigned LEB128 constant operand and pushes the result"
 		value, n := leb128.DecodeULEB128(expr[1:])
-		return func(r resolveCoproc) Resolved {
-			a, _ := r.pop()
+		return func(loc *loclist) (location, error) {
+			a, _ := loc.pop()
 			value += uint64(a.value)
-			return Resolved{
+			return location{
 				value:   uint32(value),
 				valueOk: true,
-			}
+			}, nil
 		}, n + 1
 
 	case 0x24:
@@ -419,14 +403,14 @@ func decodeDWARFoperation(expr []uint8, origin uint64, simpleLocDesc bool) (reso
 		// (arithmetic and logic operations)
 		// "The DW_OP_shl operation pops the top two stack entries, shifts the former
 		// second entry left"
-		return func(r resolveCoproc) Resolved {
-			a, _ := r.pop()
-			b, _ := r.pop()
+		return func(loc *loclist) (location, error) {
+			a, _ := loc.pop()
+			b, _ := loc.pop()
 			value := b.value << a.value
-			return Resolved{
+			return location{
 				value:   value,
 				valueOk: true,
-			}
+			}, nil
 		}, 1
 
 	case 0x25:
@@ -435,14 +419,14 @@ func decodeDWARFoperation(expr []uint8, origin uint64, simpleLocDesc bool) (reso
 		// "The DW_OP_shr operation pops the top two stack entries, shifts the former
 		// second entry right logically (filling with zero bits) by the number of bits
 		// specified by the former top of the stack, and pushes the result"
-		return func(r resolveCoproc) Resolved {
-			a, _ := r.pop()
-			b, _ := r.pop()
+		return func(loc *loclist) (location, error) {
+			a, _ := loc.pop()
+			b, _ := loc.pop()
 			value := b.value >> a.value
-			return Resolved{
+			return location{
 				value:   value,
 				valueOk: true,
-			}
+			}, nil
 		}, 1
 
 	case 0x26:
@@ -453,32 +437,32 @@ func decodeDWARFoperation(expr []uint8, origin uint64, simpleLocDesc bool) (reso
 		// keep the same sign for the result) by the number of bits specified
 		// by the former top of the stack, and pushes the result"
 		// "DWARF4 Standard"
-		return func(r resolveCoproc) Resolved {
-			a, _ := r.pop()
-			b, _ := r.pop()
+		return func(loc *loclist) (location, error) {
+			a, _ := loc.pop()
+			b, _ := loc.pop()
 			signExtend := (b.value & 0x80000000) >> 31
 			value := b.value >> a.value
 			if signExtend == 0x01 {
 				value |= ^uint32(0) << (32 - a.value)
 			}
-			return Resolved{
+			return location{
 				value:   value,
 				valueOk: true,
-			}
+			}, nil
 		}, 1
 
 	case 0x27:
 		// DW_OP_xor
 		// (arithmetic and logic operations)
 		// "The DW_OP_xor operation pops the top two stack entries, performs a bitwise
-		return func(r resolveCoproc) Resolved {
-			a, _ := r.pop()
-			b, _ := r.pop()
+		return func(loc *loclist) (location, error) {
+			a, _ := loc.pop()
+			b, _ := loc.pop()
 			value := b.value ^ a.value
-			return Resolved{
+			return location{
 				value:   value,
 				valueOk: true,
-			}
+			}, nil
 		}, 1
 
 	case 0x28:
@@ -574,11 +558,11 @@ func decodeDWARFoperation(expr []uint8, origin uint64, simpleLocDesc bool) (reso
 		// "The DW_OP_litn operations encode the unsigned literal values from 0 through
 		// 31, inclusive"
 		lit := expr[0] - 0x30
-		return func(r resolveCoproc) Resolved {
-			return Resolved{
+		return func(loc *loclist) (location, error) {
+			return location{
 				value:   uint32(lit),
 				valueOk: true,
-			}
+			}, nil
 		}, 1
 
 	case 0x50:
@@ -649,16 +633,15 @@ func decodeDWARFoperation(expr []uint8, origin uint64, simpleLocDesc bool) (reso
 		// "The DW_OP_regn operations encode the names of up to 32 registers, numbered from 0
 		// through 31, inclusive. The object addressed is in register n"
 		reg := expr[0] - 0x50
-		return func(r resolveCoproc) Resolved {
-			value, ok := r.coproc().CoProcRegister(int(reg))
+		return func(loc *loclist) (location, error) {
+			value, ok := loc.ctx.coproc().CoProcRegister(int(reg))
 			if !ok {
-				logger.Logf("DWARF", "local variable: unknown register: %d", reg)
-				return Resolved{}
+				return location{}, fmt.Errorf("unknown register: %d", reg)
 			}
-			return Resolved{
+			return location{
 				value:   value,
 				valueOk: true,
-			}
+			}, nil
 		}, 1
 
 	case 0x70:
@@ -730,11 +713,10 @@ func decodeDWARFoperation(expr []uint8, origin uint64, simpleLocDesc bool) (reso
 		// LEB128 offset from the specified register"
 		reg := expr[0] - 0x70
 		offset, n := leb128.DecodeSLEB128(expr[1:])
-		return func(r resolveCoproc) Resolved {
-			regVal, ok := r.coproc().CoProcRegister(int(reg))
+		return func(loc *loclist) (location, error) {
+			regVal, ok := loc.ctx.coproc().CoProcRegister(int(reg))
 			if !ok {
-				logger.Logf("DWARF", "local variable: unknown register: %d", reg)
-				return Resolved{}
+				return location{}, fmt.Errorf("unknown register: %d", reg)
 			}
 
 			// the general description for "register based addressing" says
@@ -743,26 +725,25 @@ func decodeDWARFoperation(expr []uint8, origin uint64, simpleLocDesc bool) (reso
 			// signed offset"
 			address := int64(regVal) + offset
 
-			return Resolved{
+			return location{
 				value:   uint32(address),
 				valueOk: true,
-			}
+			}, nil
 		}, n + 1
 
 	case 0x90:
 		// DW_OP_regx
 		// (register location description)
 		reg, n := leb128.DecodeSLEB128(expr[1:])
-		return func(r resolveCoproc) Resolved {
-			value, ok := r.coproc().CoProcRegister(int(reg))
+		return func(loc *loclist) (location, error) {
+			value, ok := loc.ctx.coproc().CoProcRegister(int(reg))
 			if !ok {
-				logger.Logf("DWARF", "local variable: unknown register: %d", reg)
-				return Resolved{}
+				return location{}, fmt.Errorf("unknown register: %d", reg)
 			}
-			return Resolved{
+			return location{
 				value:   value,
 				valueOk: true,
-			}
+			}, nil
 		}, n + 1
 
 	case 0x91:
@@ -776,21 +757,24 @@ func decodeDWARFoperation(expr []uint8, origin uint64, simpleLocDesc bool) (reso
 		// the offset according to changes in the stack pointer as the PC
 		// changes)"
 		offset, n := leb128.DecodeSLEB128(expr[1:])
-		return func(r resolveCoproc) Resolved {
-			address := uint64(int64(r.framebase()) + offset)
+		return func(loc *loclist) (location, error) {
+			fb, err := loc.ctx.framebase()
+			if err != nil {
+				return location{}, err
+			}
+			address := uint64(int64(fb) + offset)
 
-			value, ok := r.coproc().CoProcRead32bit(uint32(address))
+			value, ok := loc.ctx.coproc().CoProcRead32bit(uint32(address))
 			if !ok {
-				logger.Logf("DWARF", "local variable: unknown address: %08x", address)
-				return Resolved{}
+				return location{}, fmt.Errorf("unknown address: %08x", address)
 			}
 
-			return Resolved{
+			return location{
 				address:   address,
 				addressOk: ok,
 				value:     value,
 				valueOk:   true,
-			}
+			}, nil
 		}, n + 1
 
 	case 0x93:
@@ -810,25 +794,24 @@ func decodeDWARFoperation(expr []uint8, origin uint64, simpleLocDesc bool) (reso
 		// address on the target machine before being pushed onto the expression
 		// stack."
 		size := expr[1] // in bytes
-		return func(r resolveCoproc) Resolved {
-			a, _ := r.pop()
+		return func(loc *loclist) (location, error) {
+			a, _ := loc.pop()
 			address := uint64(a.value)
 
-			value, ok := r.coproc().CoProcRead32bit(uint32(address))
+			value, ok := loc.ctx.coproc().CoProcRead32bit(uint32(address))
 			if !ok {
-				logger.Logf("DWARF", "local variable: unknown address: %08x", address)
-				return Resolved{}
+				return location{}, fmt.Errorf("unknown address: %08x", address)
 			}
 
 			mask := ^((^int32(0)) << (size * 8))
 			value &= uint32(mask)
 
-			return Resolved{
+			return location{
 				address:   address,
 				addressOk: true,
 				value:     value,
 				valueOk:   true,
-			}
+			}, nil
 		}, 2
 
 	case 0x95:
@@ -839,16 +822,16 @@ func decodeDWARFoperation(expr []uint8, origin uint64, simpleLocDesc bool) (reso
 		// DW_OP_nop
 		// "The DW_OP_nop operation is a place holder. It has no effect on the
 		// location stack or any of its values"
-		return func(r resolveCoproc) Resolved {
-			return Resolved{valueOk: true}
+		return func(loc *loclist) (location, error) {
+			return location{valueOk: true}, nil
 		}, 1
 
 	case 0x9f:
 		// DW_OP_stack_value
-		return func(r resolveCoproc) Resolved {
-			res := r.lastResolved()
+		return func(loc *loclist) (location, error) {
+			res := loc.lastResolved()
 			res.valueOk = true
-			return res
+			return res, nil
 		}, 1
 	}
 
