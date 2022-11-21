@@ -1332,27 +1332,14 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 				}
 
 				for i := 0; i < top; i++ {
-					l := src.SortedLines.Lines[i]
-					dbg.printLine(terminal.StyleFeedback, fmt.Sprintf("%02d: %s", i, l.String()))
+					f := src.SortedFunctions.Functions[i]
+					dbg.printLine(terminal.StyleFeedback, fmt.Sprintf("%02d: %s", i, f.Name))
 				}
 			})
 
 		case "LIST":
 			arg, _ := tokens.Get()
 			switch arg {
-			case "REGS":
-				coproc := dbg.vcs.Mem.Cart.GetCoProc()
-
-				// list registers in order until we get a not-ok reply
-				reg := 0
-				for {
-					if n, ok := coproc.CoProcRegister(reg); !ok {
-						break
-					} else {
-						dbg.printLine(terminal.StyleFeedback, fmt.Sprintf("R%d: %08x\n", reg, n))
-					}
-					reg++
-				}
 
 			case "ILLEGAL":
 				dbg.CoProcDev.BorrowIllegalAccess(func(log *developer.IllegalAccess) {
@@ -1379,6 +1366,48 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 				})
 			default:
 			}
+
+		case "REGS":
+			coproc := dbg.vcs.Mem.Cart.GetCoProc()
+
+			// list registers in order until we get a not-ok reply
+			reg := 0
+			for {
+				if n, ok := coproc.CoProcRegister(reg); !ok {
+					break
+				} else {
+					dbg.printLine(terminal.StyleFeedback, fmt.Sprintf("R%d: %08x\n", reg, n))
+				}
+				reg++
+			}
+
+		case "SET":
+			var reg int
+			var value uint32
+			arg, ok := tokens.Get()
+			if ok {
+				n, err := strconv.ParseInt(arg, 0, 32)
+				if err != nil {
+					dbg.printLine(terminal.StyleError, err.Error())
+					return nil
+				}
+				reg = int(n)
+			}
+			arg, ok = tokens.Get()
+			if ok {
+				n, err := strconv.ParseInt(arg, 0, 32)
+				if err != nil {
+					dbg.printLine(terminal.StyleError, err.Error())
+					return nil
+				}
+				value = uint32(n)
+			}
+			if dbg.vcs.Mem.Cart.GetCoProc().CoProcRegisterSet(reg, value) {
+				dbg.printLine(terminal.StyleFeedback, fmt.Sprintf("setting coproc register %d to %08x\n", reg, value))
+			} else {
+				dbg.printLine(terminal.StyleError, fmt.Sprintf("cannot set coproc register %d to %08x\n", reg, value))
+			}
+
 		case "ID":
 			fallthrough
 		default:

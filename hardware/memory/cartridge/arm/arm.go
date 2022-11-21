@@ -639,6 +639,15 @@ func (arm *ARM) Registers() [NumRegisters]uint32 {
 	return arm.state.registers
 }
 
+// SetRegister sets an ARM register to the specified value
+func (arm *ARM) SetRegister(reg int, value uint32) bool {
+	if reg >= NumRegisters {
+		return false
+	}
+	arm.state.registers[reg] = value
+	return true
+}
+
 // Status returns a copy of the current status register.
 func (arm *ARM) Status() Status {
 	return arm.state.status

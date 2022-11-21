@@ -268,6 +268,11 @@ func (cart *Ace) CoProcRegister(n int) (uint32, bool) {
 	return cart.arm.Registers()[n], true
 }
 
+// CoProcRegister implements the mapper.CartCoProc interface.
+func (cart *Ace) CoProcRegisterSet(n int, value uint32) bool {
+	return cart.arm.SetRegister(n, value)
+}
+
 // CoProcRead8bit implements the mapper.CartCoProc interface.
 func (cart *Ace) CoProcRead8bit(addr uint32) (uint8, bool) {
 	return cart.mem.Read8bit(addr)

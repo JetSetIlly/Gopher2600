@@ -91,6 +91,7 @@ type CartCoProc interface {
 	// the contents of register n. returns false if specified register is out
 	// of range
 	CoProcRegister(n int) (uint32, bool)
+	CoProcRegisterSet(n int, value uint32) bool
 
 	// read coprocessor memory address for 8/16/32 bit values. return false if
 	// address is out of range

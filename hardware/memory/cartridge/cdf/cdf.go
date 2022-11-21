@@ -670,6 +670,11 @@ func (cart *cdf) CoProcRegister(n int) (uint32, bool) {
 	return cart.arm.Registers()[n], true
 }
 
+// CoProcRegister implements the mapper.CartCoProc interface.
+func (cart *cdf) CoProcRegisterSet(n int, value uint32) bool {
+	return cart.arm.SetRegister(n, value)
+}
+
 // CoProcRead8bit implements the mapper.CartCoProc interface.
 func (cart *cdf) CoProcRead8bit(addr uint32) (uint8, bool) {
 	return cart.state.static.Read8bit(addr)
