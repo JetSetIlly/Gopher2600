@@ -1340,6 +1340,20 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		case "LIST":
 			arg, _ := tokens.Get()
 			switch arg {
+			case "REGS":
+				coproc := dbg.vcs.Mem.Cart.GetCoProc()
+
+				// list registers in order until we get a not-ok reply
+				reg := 0
+				for {
+					if n, ok := coproc.CoProcRegister(reg); !ok {
+						break
+					} else {
+						dbg.printLine(terminal.StyleFeedback, fmt.Sprintf("R%d: %08x\n", reg, n))
+					}
+					reg++
+				}
+
 			case "ILLEGAL":
 				dbg.CoProcDev.BorrowIllegalAccess(func(log *developer.IllegalAccess) {
 					for _, e := range log.Log {
