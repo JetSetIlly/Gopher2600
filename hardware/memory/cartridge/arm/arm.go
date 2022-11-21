@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"os"
 	"strings"
 	"time"
 
@@ -28,7 +29,6 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/preferences"
 	"github.com/jetsetilly/gopher2600/logger"
-	"github.com/jetsetilly/gopher2600/test"
 )
 
 // register names.
@@ -285,9 +285,23 @@ type ARM struct {
 	fudge_writer fudgeWriter
 }
 
+// fudgeWriter aids in the output of the temporary fudge disassembly system
 type fudgeWriter interface {
 	io.Writer
 	fmt.Stringer
+}
+
+// basic writer is a very straightforward implementation of the fudgeWriter
+// interface
+type basicWriter struct{}
+
+func (b *basicWriter) String() string {
+	return ""
+}
+
+func (b *basicWriter) Write(p []byte) (n int, err error) {
+	os.Stdout.Write(p)
+	return len(p), nil
 }
 
 // NewARM is the preferred method of initialisation for the ARM type.
@@ -307,14 +321,14 @@ func NewARM(mmap architecture.Map, prefs *preferences.ARMPreferences, mem Shared
 		state: &ARMState{},
 	}
 
-	var err error
-
 	// fudge_disassembling writer
+	// var err error
 	// arm.fudge_writer, err = test.NewRingWriter(10485760) // 10MB
-	arm.fudge_writer, err = test.NewCappedWriter(1048576) // 1MB
-	if err != nil {
-		logger.Logf("ARM7", "no fudge disassembly: %s", err.Error())
-	}
+	// arm.fudge_writer, err = test.NewCappedWriter(1048576) // 1MB
+	// if err != nil {
+	// 	logger.Logf("ARM7", "no fudge disassembly: %s", err.Error())
+	// }
+	arm.fudge_writer = &basicWriter{}
 
 	// slow prefs update by 100ms
 	arm.prefsPulse = time.NewTicker(time.Millisecond * 100)
@@ -996,7 +1010,9 @@ func (arm *ARM) stepARM7_M(opcode uint16, memIdx int) {
 	// 	arm.state.fudge_disassembling = arm.state.function32bitOpcode == 0xf858 && opcode == 0x3c5c
 	// }
 
-	// arm.state.fudge_disassembling = true
+	// if arm.state.registers[rPC] == 0x20000d50 {
+	// 	arm.state.fudge_disassembling = true
+	// }
 
 	// uzlib decompressing map data into memory
 	// if arm.state.executingPC == 0x280236ce {
