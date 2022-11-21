@@ -48,9 +48,11 @@ func (dev *Developer) OnYield(instructionPC uint32, reason mapper.YieldReason) {
 	case mapper.YieldUndefinedBehaviour:
 		if dev.source != nil {
 			dev.sourceLock.Lock()
+			defer dev.sourceLock.Unlock()
 			ln := dev.source.linesByAddress[uint64(instructionPC)]
-			ln.Bug = true
-			dev.sourceLock.Unlock()
+			if ln != nil {
+				ln.Bug = true
+			}
 		}
 	}
 }

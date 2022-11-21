@@ -859,6 +859,12 @@ func (dbg *Debugger) StartInPlayMode(filename string) error {
 // (small) performance reasons cartridge mappers can simply not call CartYield
 // unless the reason is something different.
 func (dbg *Debugger) CartYield(reason mapper.YieldReason) bool {
+	// if the emulator wants to quit we need to return true to instruct the
+	// cartridge to return to the main loop immediately
+	if !dbg.running {
+		return true
+	}
+
 	switch reason {
 	case mapper.YieldProgramEnded:
 		// expected reason for CDF and DPC+ cartridges
