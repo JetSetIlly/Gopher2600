@@ -544,13 +544,30 @@ func disasmPushPopRegisters(opcode uint16) DisasmEntry {
 	pclr := opcode&0x0100 == 0x0100
 	regList := uint8(opcode & 0x00ff)
 
+	// converts reglist to a string of register names separated by commas
+	mnemonicFromBits := func(regList uint8) string {
+		s := strings.Builder{}
+		comma := false
+		for i := 0; i <= 7; i++ {
+			if regList&0x01 == 0x01 {
+				if comma {
+					s.WriteString(",")
+				}
+				s.WriteString(fmt.Sprintf("R%d", i))
+				comma = true
+			}
+			regList >>= 1
+		}
+		return s.String()
+	}
+
 	if load {
 		if pclr {
 			entry.Operator = "POP"
-			entry.Operand = fmt.Sprintf("{%#08b, LR}", regList)
+			entry.Operand = fmt.Sprintf("{%s,PC}", mnemonicFromBits(regList))
 		} else {
 			entry.Operator = "POP"
-			entry.Operand = fmt.Sprintf("{%#08b}", regList)
+			entry.Operand = fmt.Sprintf("{%s}", mnemonicFromBits(regList))
 		}
 
 		return entry
@@ -558,10 +575,10 @@ func disasmPushPopRegisters(opcode uint16) DisasmEntry {
 
 	if pclr {
 		entry.Operator = "PUSH"
-		entry.Operand = fmt.Sprintf("{%#08b, LR}", regList)
+		entry.Operand = fmt.Sprintf("{%s,LR}", mnemonicFromBits(regList))
 	} else {
 		entry.Operator = "PUSH"
-		entry.Operand = fmt.Sprintf("{%#08b}", regList)
+		entry.Operand = fmt.Sprintf("{%s}", mnemonicFromBits(regList))
 	}
 
 	return entry
