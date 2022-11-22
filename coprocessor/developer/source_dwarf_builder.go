@@ -821,7 +821,7 @@ func (bld *build) buildVariables(src *Source, origin uint64) error {
 
 				// add variable to list of global variables if there is no parent
 				// function to the declaration
-				if varb.DeclLine.Function.Name == UnknownFunction {
+				if varb.DeclLine.Function.Name == stubIndicator {
 					// list of global variables for all compile units
 					src.Globals[varb.Name] = varb
 					src.GlobalsByAddress[varb.resolve().address] = varb

@@ -165,7 +165,7 @@ type SourceFunction struct {
 func (fn *SourceFunction) IsStub() bool {
 	// it's possible to have a stub function that has a name. because of this
 	// we check the DeclLine field in addition to the name field
-	return fn.DeclLine.IsStub() || fn.Name == stubIndicator
+	return fn.Name == stubIndicator || fn.DeclLine.IsStub()
 }
 
 // SourceType is a single type identified by the DWARF data. Composite types

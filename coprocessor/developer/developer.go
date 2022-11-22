@@ -111,12 +111,6 @@ func NewDeveloper(romFile string, cart CartCoProcDeveloper, tv TV, elfFile strin
 	return dev
 }
 
-// Strings used to indicate unknown values.
-const (
-	UnknownFunction   = "<unknown function>"
-	UnknownSourceLine = "<unknown source line>"
-)
-
 // DisableExpensive prevents the computationaly expensive developer functions
 // from running.
 func (dev *Developer) DisableExpensive(disable bool) {

@@ -586,9 +586,9 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 	// there may be a better way of doing this or maybe I'm just
 	// misunderstanding something but for now, we'll use this rough method
 	for _, sf := range src.Files {
-		fn := &SourceFunction{Name: UnknownFunction}
+		fn := &SourceFunction{Name: stubIndicator}
 		for _, ln := range sf.Content.Lines {
-			if ln.Function.Name == UnknownFunction {
+			if ln.Function.Name == stubIndicator {
 				ln.Function = fn
 			} else {
 				fn = ln.Function
@@ -684,6 +684,7 @@ func (src *Source) addStubEntries() {
 				Name:    fn.name,
 				Address: [2]uint64{fn.origin, fn.memtop},
 			}
+			stubFn.DeclLine = createStubLine(stubFn)
 
 			// add stub function to list of functions but not if the function
 			// covers an area that has already been seen
@@ -774,7 +775,7 @@ func readSourceFile(filename string, pathToROM_nosymlinks string) (*SourceFile, 
 		l := &SourceLine{
 			File:         &fl,
 			LineNumber:   i + 1, // counting from one
-			Function:     &SourceFunction{Name: UnknownFunction},
+			Function:     &SourceFunction{Name: stubIndicator},
 			PlainContent: s,
 		}
 		fl.Content.Lines = append(fl.Content.Lines, l)
