@@ -587,18 +587,29 @@ func (mem *elfMemory) IsExecutable(addr uint32) bool {
 
 // Segments implements the mapper.CartStatic interface
 func (e *elfMemory) Segments() []mapper.CartStaticSegment {
-	return []mapper.CartStaticSegment{
+	segments := []mapper.CartStaticSegment{
 		mapper.CartStaticSegment{
 			Name:   "SRAM",
 			Origin: e.sramOrigin,
 			Memtop: e.sramMemtop,
 		},
-		mapper.CartStaticSegment{
-			Name:   "StrongARM Program",
-			Origin: e.strongArmOrigin,
-			Memtop: e.strongArmMemtop,
-		},
 	}
+
+	if s, ok := e.sections[".text"]; ok {
+		segments = append(segments, mapper.CartStaticSegment{
+			Name:   "ARM Program",
+			Origin: s.origin,
+			Memtop: s.memtop,
+		})
+	}
+
+	segments = append(segments, mapper.CartStaticSegment{
+		Name:   "StrongARM Program",
+		Origin: e.strongArmOrigin,
+		Memtop: e.strongArmMemtop,
+	})
+
+	return segments
 }
 
 // Reference implements the mapper.CartStatic interface
@@ -606,6 +617,10 @@ func (e *elfMemory) Reference(segment string) ([]uint8, bool) {
 	switch segment {
 	case "SRAM":
 		return e.sram, true
+	case "ARM Program":
+		if s, ok := e.sections[".text"]; ok {
+			return s.data, true
+		}
 	case "StrongARM Program":
 		return e.strongArmProgram, true
 	}
