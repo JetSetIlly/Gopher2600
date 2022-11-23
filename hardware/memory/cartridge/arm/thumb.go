@@ -618,6 +618,19 @@ func (arm *ARM) thumbHiRegisterOps(opcode uint16) {
 		// not two's complement
 		arm.state.registers[destReg] += arm.state.registers[srcReg]
 
+		// "5.5.5 Using R15 as an operand If R15 is used as an operand, the
+		//   value will be the address of the instruction + 4 with bit 0
+		//   cleared. Executing a BX PC in THUMB state from a non-word aligned
+		//   address will result in unpredictable execution"
+		//
+		//   "ARM7TDMI-S Technical Reference Manual r4p3"
+		if destReg == rPC {
+			// adding 2 to PC and not 4 because the PC has already been
+			// advanced on from the "address of the instruction"
+			arm.state.registers[destReg] += 2
+			arm.state.registers[destReg] &= 0xfffffffe
+		}
+
 		// status register not changed
 
 		// "7.6 Data Operations" in "ARM7TDMI-S Technical Reference Manual r4p3"
@@ -638,14 +651,24 @@ func (arm *ARM) thumbHiRegisterOps(opcode uint16) {
 		arm.state.status.isZero(cmp)
 		arm.state.status.isNegative(cmp)
 
+		// it's not clear to whether section 5.5 of the "ARM7TDMI-S Technical
+		// Reference Manual r4p3" applies to the CMP instruction
+
 		return
 	case 0b10:
-		// check to see if we're copying the LR to the PC. if we are than adjust
-		// the PC by 2 (as though the prefetch has occurred)
-		if srcReg == rLR && destReg == rPC {
-			arm.state.registers[destReg] = arm.state.registers[srcReg] + 2
-		} else {
-			arm.state.registers[destReg] = arm.state.registers[srcReg]
+		arm.state.registers[destReg] = arm.state.registers[srcReg]
+
+		// "5.5.5 Using R15 as an operand If R15 is used as an operand, the
+		//   value will be the address of the instruction + 4 with bit 0
+		//   cleared. Executing a BX PC in THUMB state from a non-word aligned
+		//   address will result in unpredictable execution"
+		//
+		//   "ARM7TDMI-S Technical Reference Manual r4p3"
+		if destReg == rPC {
+			// adding 2 to PC and not 4 because the PC has already been
+			// advanced on from the "address of the instruction"
+			arm.state.registers[destReg] += 2
+			arm.state.registers[destReg] &= 0xfffffffe
 		}
 
 		// status register not changed
