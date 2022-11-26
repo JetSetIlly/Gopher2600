@@ -584,6 +584,18 @@ func (arm *ARM) thumb2DataProcessingNonImmediate(opcode uint16) {
 					arm.state.status.setCarry(carry)
 					arm.state.status.setOverflow(overflow)
 				}
+
+			case 0b01:
+				// with logical right shift
+				shifted := arm.state.registers[Rm] << imm5
+				result, carry, overflow := AddWithCarry(arm.state.registers[Rn], shifted, 1)
+				arm.state.registers[Rd] = result
+				if setFlags {
+					arm.state.status.isNegative(arm.state.registers[Rd])
+					arm.state.status.isZero(arm.state.registers[Rd])
+					arm.state.status.setCarry(carry)
+					arm.state.status.setOverflow(overflow)
+				}
 			default:
 				panic(fmt.Sprintf("unhandled data processing instructions, non immediate (data processing, constant shift) (%04b) (%02b) RSB", op, typ))
 			}
