@@ -185,19 +185,18 @@ func newAceMemory(version string, data []byte) (*aceMemory, error) {
 	mem.flash[14] = uint8(nullFunctionAddress >> 16)
 	mem.flash[15] = uint8(nullFunctionAddress >> 24)
 
-	// not setting system clock or version arguments
-
 	// system clock argument
-	copy(mem.vcsProgram[16:20], []byte{0x00, 0x00, 0x00, 0x01})
+	// copy(mem.flash[16:20], []byte{0x00, 0x60, 0xfe, 0xcd})
+	copy(mem.flash[16:20], []byte{0x80, 0x1d, 0x2c, 0x04})
 
 	// ACE version number
-	copy(mem.vcsProgram[20:24], []byte{0x00, 0x00, 0x00, 0x02})
+	copy(mem.flash[20:24], []byte{0x00, 0x00, 0x00, 0x02})
 
 	// pluscart revision number
-	copy(mem.vcsProgram[24:28], []byte{0x00, 0x00, 0x00, 0x03})
+	copy(mem.flash[24:28], []byte{0x00, 0x00, 0x00, 0x03})
 
 	// end of argument indicator
-	copy(mem.vcsProgram[28:32], []byte{0x00, 0x26, 0xe4, 0xac})
+	copy(mem.flash[28:32], []byte{0x00, 0x26, 0xe4, 0xac})
 
 	// GPIO pins
 	mem.gpioA = make([]byte, gpio_memtop)
