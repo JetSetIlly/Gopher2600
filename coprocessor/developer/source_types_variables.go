@@ -32,6 +32,21 @@ type SourceVariableLocal struct {
 	EndAddress   uint64
 }
 
+func (varb *SourceVariableLocal) String() string {
+	return fmt.Sprintf("%s %08x -> %08x", varb.Name, varb.StartAddress, varb.EndAddress)
+}
+
+// In returns true if the address of any of the instructions associated with
+// the SourceLine are within the address range of the variable.
+func (varb *SourceVariableLocal) In(ln *SourceLine) bool {
+	for _, d := range ln.Disassembly {
+		if d.Addr >= uint32(varb.StartAddress) && d.Addr <= uint32(varb.EndAddress) {
+			return true
+		}
+	}
+	return false
+}
+
 // SourceVariable is a single variable identified by the DWARF data.
 type SourceVariable struct {
 	Cart CartCoProcDeveloper

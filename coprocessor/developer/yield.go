@@ -21,8 +21,11 @@ import (
 
 // YieldState records the most recent yield.
 type YieldState struct {
-	InstructionPC uint32
-	Reason        mapper.YieldReason
+	InstructionPC   uint32
+	InstructionLine *SourceLine
+	Reason          mapper.YieldReason
+
+	LocalVariables []*SourceVariableLocal
 }
 
 // Cmp returns true if two YieldStates are equal.
@@ -32,29 +35,63 @@ func (y *YieldState) Cmp(w *YieldState) bool {
 
 // OnYield implements the mapper.CartCoProcDeveloper interface.
 func (dev *Developer) OnYield(instructionPC uint32, reason mapper.YieldReason) {
+	var ln *SourceLine
+	var locals []*SourceVariableLocal
+
+	// using BorrowSource because we want to make sure the source lock is
+	// released if there is an error and the code panics
+	dev.BorrowSource(func(src *Source) {
+		ln = src.FindSourceLine(instructionPC)
+		if ln == nil {
+			ln = createStubLine(nil)
+		}
+
+		// log a bug for any of these reasons
+		switch reason {
+		case mapper.YieldMemoryAccessError:
+			fallthrough
+		case mapper.YieldExecutionError:
+			fallthrough
+		case mapper.YieldUnimplementedFeature:
+			fallthrough
+		case mapper.YieldUndefinedBehaviour:
+			if src != nil {
+				if ln != nil {
+					ln.Bug = true
+				}
+			}
+		}
+
+		// match local variables for any reason other than VCS synchronisation
+		//
+		// yielding for this reason is likely to be followed by another yield
+		// very soon after so there is no point garthing this information
+		if reason != mapper.YieldSyncWithVCS {
+			// there's an assumption here that SortedLocals is sorted by variable name
+			var prev string
+			for _, varb := range src.SortedLocals.Variables {
+				if prev == varb.Name {
+					continue
+				}
+				if varb.In(ln) {
+					locals = append(locals, varb)
+					prev = varb.Name
+				}
+			}
+		}
+	})
+
 	dev.yieldStateLock.Lock()
 	defer dev.yieldStateLock.Unlock()
 
 	dev.yieldState.InstructionPC = instructionPC
+	dev.yieldState.InstructionLine = ln
 	dev.yieldState.Reason = reason
 
-	switch reason {
-	case mapper.YieldMemoryAccessError:
-		fallthrough
-	case mapper.YieldExecutionError:
-		fallthrough
-	case mapper.YieldUnimplementedFeature:
-		fallthrough
-	case mapper.YieldUndefinedBehaviour:
-		if dev.source != nil {
-			dev.sourceLock.Lock()
-			defer dev.sourceLock.Unlock()
-			ln := dev.source.linesByAddress[uint64(instructionPC)]
-			if ln != nil {
-				ln.Bug = true
-			}
-		}
-	}
+	// clear list of local variables from previous yield and extend with new
+	// list of locals
+	dev.yieldState.LocalVariables = dev.yieldState.LocalVariables[:0]
+	dev.yieldState.LocalVariables = append(dev.yieldState.LocalVariables, locals...)
 }
 
 // BorrowYieldState will lock the illegal access log for the duration of the

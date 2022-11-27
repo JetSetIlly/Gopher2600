@@ -120,10 +120,8 @@ func (win *winCoProcLocals) draw() {
 		imgui.TableHeadersRow()
 
 		win.img.dbg.CoProcDev.BorrowYieldState(func(yld *developer.YieldState) {
-			for i, varb := range src.SortedLocals.Variables {
-				if yld.InstructionPC >= uint32(varb.StartAddress) && yld.InstructionPC <= uint32(varb.EndAddress) {
-					win.drawVariable(src, varb.SourceVariable, 0, false, fmt.Sprint(i))
-				}
+			for i, varb := range yld.LocalVariables {
+				win.drawVariable(src, varb.SourceVariable, 0, false, fmt.Sprint(i))
 			}
 		})
 

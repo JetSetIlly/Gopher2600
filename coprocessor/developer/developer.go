@@ -108,6 +108,9 @@ func NewDeveloper(romFile string, cart CartCoProcDeveloper, tv TV, elfFile strin
 	// some developer functions don't require source code to be useful
 	dev.cart.GetCoProc().SetDeveloper(dev)
 
+	// initialise YieldState
+	dev.yieldState.InstructionLine = createStubLine(nil)
+
 	return dev
 }
 
