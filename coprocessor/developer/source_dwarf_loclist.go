@@ -50,11 +50,28 @@ func newLoclistJustContext(ctx loclistContext) *loclist {
 
 type commitLoclist func(start, end uint64)
 
+func newLoclistFromSingleValue(ctx loclistContext, addr uint64) (*loclist, error) {
+	loc := &loclist{
+		ctx: ctx,
+	}
+	op := func(loc *loclist) (location, error) {
+		return location{
+			value:   uint32(addr),
+			valueOk: true,
+		}, nil
+	}
+	loc.sequence = append(loc.sequence, op)
+	return loc, nil
+}
+
 func newLoclistFromSingleOperator(ctx loclistContext, expr []uint8) (*loclist, error) {
 	loc := &loclist{
 		ctx: ctx,
 	}
-	op, _ := decodeDWARFoperation(expr, 0, true)
+	op, n := decodeDWARFoperation(expr, 0, true)
+	if n == 0 {
+		return nil, fmt.Errorf("unknown expression operator %02x", expr[0])
+	}
 	loc.sequence = append(loc.sequence, op)
 	return loc, nil
 }
@@ -139,10 +156,8 @@ func newLoclist(ctx loclistContext, debug_loc *elf.Section, ptr int64, commit co
 				// read single location description for this start/end address
 				debug_loc.ReadAt(b, ptr)
 				r, n := decodeDWARFoperation(b, 0, length <= 5)
-
-				// enountered error
 				if n == 0 {
-					return loc, fmt.Errorf("unknown expression operator %02x", b[0])
+					return nil, fmt.Errorf("unknown expression operator %02x", b[0])
 				}
 
 				// add resolver to variable

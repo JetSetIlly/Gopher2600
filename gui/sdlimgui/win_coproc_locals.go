@@ -88,7 +88,7 @@ func (win *winCoProcLocals) draw() {
 			return
 		}
 
-		if len(src.Locals) == 0 {
+		if len(src.SortedLocals.Variables) == 0 {
 			imgui.Text("No local variables in the source")
 			return
 		}
@@ -98,39 +98,44 @@ func (win *winCoProcLocals) draw() {
 			src.UpdateAllVariables()
 			win.firstOpen = false
 		}
-
-		const numColumns = 3
-
-		flgs := imgui.TableFlagsScrollY
-		flgs |= imgui.TableFlagsSizingStretchProp
-		flgs |= imgui.TableFlagsNoHostExtendX
-		flgs |= imgui.TableFlagsResizable
-		flgs |= imgui.TableFlagsHideable
-
-		imgui.BeginTableV("##localsTable", numColumns, flgs, imgui.Vec2{Y: imguiRemainingWinHeight()}, 0.0)
-
-		// setup columns. the labelling column 2 depends on whether the coprocessor
-		// development instance has source available to it
-		width := imgui.ContentRegionAvail().X
-		imgui.TableSetupColumnV("Name", imgui.TableColumnFlagsPreferSortDescending|imgui.TableColumnFlagsDefaultSort, width*0.40, 0)
-		imgui.TableSetupColumnV("Type", imgui.TableColumnFlagsNoSort, width*0.30, 1)
-		imgui.TableSetupColumnV("Value", imgui.TableColumnFlagsNoSort, width*0.30, 3)
-
-		imgui.TableSetupScrollFreeze(0, 1)
-		imgui.TableHeadersRow()
-
-		win.img.dbg.CoProcDev.BorrowYieldState(func(yld *developer.YieldState) {
-			for i, varb := range yld.LocalVariables {
-				win.drawVariable(src, varb.SourceVariable, 0, false, fmt.Sprint(i))
-			}
-		})
-
-		imgui.EndTable()
 	})
+
+	const numColumns = 3
+
+	flgs := imgui.TableFlagsScrollY
+	flgs |= imgui.TableFlagsSizingStretchProp
+	flgs |= imgui.TableFlagsNoHostExtendX
+	flgs |= imgui.TableFlagsResizable
+	flgs |= imgui.TableFlagsHideable
+
+	imgui.BeginTableV("##localsTable", numColumns, flgs, imgui.Vec2{Y: imguiRemainingWinHeight()}, 0.0)
+
+	// setup columns. the labelling column 2 depends on whether the coprocessor
+	// development instance has source available to it
+	width := imgui.ContentRegionAvail().X
+	imgui.TableSetupColumnV("Name", imgui.TableColumnFlagsPreferSortDescending|imgui.TableColumnFlagsDefaultSort, width*0.40, 0)
+	imgui.TableSetupColumnV("Type", imgui.TableColumnFlagsNoSort, width*0.30, 1)
+	imgui.TableSetupColumnV("Value", imgui.TableColumnFlagsNoSort, width*0.30, 3)
+
+	imgui.TableSetupScrollFreeze(0, 1)
+	imgui.TableHeadersRow()
+
+	win.img.dbg.CoProcDev.BorrowYieldState(func(yld *developer.YieldState) {
+		for i, varb := range yld.LocalVariables {
+			win.drawVariable(varb.SourceVariable, 0, false, fmt.Sprint(i))
+		}
+	})
+
+	imgui.EndTable()
 }
 
-func (win *winCoProcLocals) drawVariable(src *developer.Source, varb *developer.SourceVariable,
+func (win *winCoProcLocals) drawVariable(varb *developer.SourceVariable,
 	indentLevel int, unnamed bool, nodeID string) {
+
+	if _, ok := varb.Value(); !ok || varb.Unresolvable {
+		imgui.PushStyleVarFloat(imgui.StyleVarAlpha, disabledAlpha)
+		defer imgui.PopStyleVar()
+	}
 
 	const IndentDepth = 2
 
@@ -172,7 +177,7 @@ func (win *winCoProcLocals) drawVariable(src *developer.Source, varb *developer.
 
 		if win.openNodes[nodeID] {
 			for i := 0; i < varb.NumChildren(); i++ {
-				win.drawVariable(src, varb.Child(i), indentLevel+1, false, fmt.Sprint(nodeID, i))
+				win.drawVariable(varb.Child(i), indentLevel+1, false, fmt.Sprint(nodeID, i))
 			}
 		}
 	} else {

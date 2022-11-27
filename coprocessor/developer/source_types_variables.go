@@ -27,20 +27,26 @@ import (
 type SourceVariableLocal struct {
 	*SourceVariable
 
+	LexStart uint64
+	LexEnd   uint64
+
 	// the address range for which the variable is valid
-	StartAddress uint64
-	EndAddress   uint64
+	ResolvableStart uint64
+	ResolvableEnd   uint64
 }
 
 func (varb *SourceVariableLocal) String() string {
-	return fmt.Sprintf("%s %08x -> %08x", varb.Name, varb.StartAddress, varb.EndAddress)
+	return fmt.Sprintf("%s %08x -> %08x", varb.Name, varb.ResolvableStart, varb.ResolvableEnd)
 }
 
 // In returns true if the address of any of the instructions associated with
-// the SourceLine are within the address range of the variable.
+// the SourceLine are within the lexical address range of the variable.
 func (varb *SourceVariableLocal) In(ln *SourceLine) bool {
 	for _, d := range ln.Disassembly {
-		if d.Addr >= uint32(varb.StartAddress) && d.Addr <= uint32(varb.EndAddress) {
+		if d.Addr >= uint32(varb.LexStart) && d.Addr <= uint32(varb.LexEnd) {
+			return true
+		}
+		if d.Addr >= uint32(varb.ResolvableStart) && d.Addr <= uint32(varb.ResolvableEnd) {
 			return true
 		}
 	}
@@ -60,13 +66,13 @@ type SourceVariable struct {
 	// first source line for each instance of the function
 	DeclLine *SourceLine
 
-	// if unresolvable is true then an error was enounterd during a resolve()
+	// location list resolves a Location. may be nil
+	loclist *loclist
+
+	// if Unresolvable is true then an error was enounterd during a resolve()
 	// sequence. when setting to the error will be logged and all future
 	// attempts at resolution will silently fail
-	unresolvable bool
-
-	// location list resolves a Location
-	loclist *loclist
+	Unresolvable bool
 
 	// most recent resolved value retrieved from emulation
 	cachedLocation atomic.Value // Location
@@ -142,23 +148,27 @@ func (varb *SourceVariable) framebase() (uint64, error) {
 		return 0, fmt.Errorf("no framebase")
 	}
 
-	location, err := varb.DeclLine.Function.framebase.resolve()
+	if varb.DeclLine.Function.framebaseList == nil {
+		return 0, fmt.Errorf("no framebase for function %s", varb.DeclLine.Function.Name)
+	}
+
+	location, err := varb.DeclLine.Function.framebaseList.resolve()
 	if err != nil {
 		return 0, fmt.Errorf("framebase for function %s: %v", varb.DeclLine.Function.Name, err)
 	}
 
-	return location.address, nil
+	return uint64(location.value), nil
 }
 
 // resolve address/value
 func (varb *SourceVariable) resolve() location {
-	if varb.unresolvable {
+	if varb.Unresolvable || varb.loclist == nil {
 		return location{}
 	}
 
 	loc, err := varb.loclist.resolve()
 	if err != nil {
-		varb.unresolvable = true
+		varb.Unresolvable = true
 		logger.Logf("dwarf", "%s: unresolvable: %v", varb.Name, err)
 		return location{}
 	}
@@ -179,18 +189,20 @@ func (varb *SourceVariable) addVariableChildren() {
 			}
 			elem.loclist = newLoclistJustContext(varb)
 
-			o := i
-			elem.loclist.addOperator(func(_ *loclist) (location, error) {
-				r := varb.loclist.lastResolved()
-				address := r.address + uint64(o*varb.Type.ElementType.Size)
-				value, ok := varb.Cart.GetCoProc().CoProcRead32bit(uint32(address))
-				return location{
-					address:   address,
-					addressOk: r.addressOk, // address is a derivative of lastResolved().address
-					value:     value,
-					valueOk:   ok,
-				}, nil
-			})
+			if varb.loclist != nil {
+				o := i
+				elem.loclist.addOperator(func(_ *loclist) (location, error) {
+					r := varb.loclist.lastResolved()
+					address := r.address + uint64(o*varb.Type.ElementType.Size)
+					value, ok := varb.Cart.GetCoProc().CoProcRead32bit(uint32(address))
+					return location{
+						address:   address,
+						addressOk: r.addressOk, // address is a derivative of lastResolved().address
+						value:     value,
+						valueOk:   ok,
+					}, nil
+				})
+			}
 
 			varb.children = append(varb.children, elem)
 			elem.addVariableChildren()
@@ -208,18 +220,20 @@ func (varb *SourceVariable) addVariableChildren() {
 			}
 			memb.loclist = newLoclistJustContext(varb)
 
-			o := offset
-			memb.loclist.addOperator(func(_ *loclist) (location, error) {
-				r := varb.loclist.lastResolved()
-				address := r.address + o
-				value, ok := varb.Cart.GetCoProc().CoProcRead32bit(uint32(address))
-				return location{
-					address:   address,
-					addressOk: r.addressOk, // address is a derivative of lastResolved().address
-					value:     value,
-					valueOk:   ok,
-				}, nil
-			})
+			if varb.loclist != nil {
+				o := offset
+				memb.loclist.addOperator(func(_ *loclist) (location, error) {
+					r := varb.loclist.lastResolved()
+					address := r.address + o
+					value, ok := varb.Cart.GetCoProc().CoProcRead32bit(uint32(address))
+					return location{
+						address:   address,
+						addressOk: r.addressOk, // address is a derivative of lastResolved().address
+						value:     value,
+						valueOk:   ok,
+					}, nil
+				})
+			}
 
 			varb.children = append(varb.children, memb)
 			memb.addVariableChildren()
@@ -237,17 +251,20 @@ func (varb *SourceVariable) addVariableChildren() {
 		}
 		deref.loclist = newLoclistJustContext(varb)
 
-		deref.loclist.addOperator(func(_ *loclist) (location, error) {
-			r := varb.loclist.lastResolved()
-			address := uint64(r.value)
-			value, ok := varb.Cart.GetCoProc().CoProcRead32bit(uint32(address))
-			return location{
-				address:   address,
-				addressOk: r.valueOk, // address is a derivative of lastResolved().value
-				value:     value,
-				valueOk:   ok,
-			}, nil
-		})
+		if varb.loclist != nil {
+			deref.loclist.addOperator(func(_ *loclist) (location, error) {
+				r := varb.loclist.lastResolved()
+				address := uint64(r.value)
+				value, ok := varb.Cart.GetCoProc().CoProcRead32bit(uint32(address))
+				return location{
+					address:   address,
+					addressOk: r.valueOk, // address is a derivative of lastResolved().value
+					value:     value,
+					valueOk:   ok,
+				}, nil
+			})
+		}
+
 		varb.children = append(varb.children, deref)
 		deref.addVariableChildren()
 	}

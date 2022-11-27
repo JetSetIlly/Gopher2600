@@ -17,6 +17,8 @@ package developer
 
 import (
 	"fmt"
+
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 )
 
 // SourceFileContent lists the lines in a source file
@@ -143,7 +145,7 @@ type SourceFunction struct {
 	Address [2]uint64
 
 	// frame base of function
-	framebase loclist
+	framebaseList *loclist
 
 	// first source line for each instance of the function. note that the first
 	// line of a function may not have any code directly associated with it.
@@ -159,6 +161,14 @@ type SourceFunction struct {
 
 	// whether the call stack involving this function is likely inaccurate
 	OptimisedCallStack bool
+}
+
+func (fn *SourceFunction) coproc() mapper.CartCoProc {
+	return fn.Cart.GetCoProc()
+}
+
+func (fn *SourceFunction) framebase() (uint64, error) {
+	return 0, fmt.Errorf("no framebase for function")
 }
 
 // IsStub returns true if the SourceFunction is just a stub.

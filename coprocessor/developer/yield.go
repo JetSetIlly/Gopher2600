@@ -41,6 +41,11 @@ func (dev *Developer) OnYield(instructionPC uint32, reason mapper.YieldReason) {
 	// using BorrowSource because we want to make sure the source lock is
 	// released if there is an error and the code panics
 	dev.BorrowSource(func(src *Source) {
+		// make sure that src is valid
+		if src == nil {
+			return
+		}
+
 		ln = src.FindSourceLine(instructionPC)
 		if ln == nil {
 			ln = createStubLine(nil)

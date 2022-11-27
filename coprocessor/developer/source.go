@@ -18,7 +18,6 @@ package developer
 import (
 	"debug/dwarf"
 	"debug/elf"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"path/filepath"
@@ -496,11 +495,16 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 							Name:     foundFunc.name,
 							Address:  [2]uint64{workingAddress, relocatedAddress - 1},
 							DeclLine: src.Files[foundFunc.filename].Content.Lines[foundFunc.linenum-1],
-							// framebase: foundFunc.framebase,
 						}
 						src.Functions[foundFunc.name] = fn
 						src.FunctionNames = append(src.FunctionNames, foundFunc.name)
 						workingSourceLine.Function = src.Functions[foundFunc.name]
+					}
+
+					// add/update framebase information
+					if foundFunc.framebaseList != nil {
+						workingSourceLine.Function.framebaseList = foundFunc.framebaseList
+						workingSourceLine.Function.framebaseList.ctx = workingSourceLine.Function
 					}
 
 					// add disassembly to source line and build a linesByAddress map
@@ -618,12 +622,6 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 	// sorted variables
 	sort.Sort(src.SortedGlobals)
 	sort.Sort(src.SortedLocals)
-
-	for _, v := range src.Locals {
-		if v.loclist == nil {
-			fmt.Println(v.Name)
-		}
-	}
 
 	// best guess at the entry function
 	if fn, ok := src.Functions["main"]; ok {

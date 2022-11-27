@@ -266,6 +266,18 @@ func newBuild(dwrf *dwarf.Data, debug_loc *elf.Section) (*build, error) {
 				bld.order = append(bld.order, entry.Offset)
 			}
 
+		case dwarf.TagFormalParameter:
+			if compileUnit == nil {
+				return nil, curated.Errorf("found formal parameter tag without compile unit")
+			} else {
+				bld.variables[entry.Offset] = buildEntry{
+					compileUnit: compileUnit,
+					entry:       entry,
+					lexblock:    lexblocks.top(),
+				}
+				bld.order = append(bld.order, entry.Offset)
+			}
+
 		case dwarf.TagPointerType:
 			if compileUnit == nil {
 				return nil, curated.Errorf("found pointer type tag without compile unit")
@@ -695,69 +707,91 @@ func (bld *build) buildVariables(src *Source, origin uint64) error {
 			continue // for loop
 		}
 
-		fld = v.entry.AttrField(dwarf.AttrLocation)
-		if fld == nil {
-			continue // for loop
-		}
-
-		// assign address resolver memory to variable
+		// point variable to CartCoProcDeveloper
 		varb.Cart = src.cart
 
-		switch fld.Class {
-		case dwarf.ClassLocListPtr:
-			commit := func(start, end uint64) {
+		// address range for variable
+		var lexstart uint64
+		var lexend uint64
+		if v.lexblock != nil {
+			fld := v.lexblock.AttrField(dwarf.AttrLowpc)
+			if fld != nil {
+				lexstart = uint64(fld.Val.(uint64))
+
+				fld = v.lexblock.AttrField(dwarf.AttrHighpc)
+				if fld != nil {
+					switch fld.Class {
+					case dwarf.ClassConstant:
+						lexend = lexstart + uint64(fld.Val.(int64))
+					case dwarf.ClassAddress:
+						lexend = uint64(fld.Val.(uint64))
+					default:
+					}
+				}
+			}
+		}
+
+		// variable actually exists in memory if it has an location attribute
+		fld = v.entry.AttrField(dwarf.AttrLocation)
+		if fld != nil {
+			switch fld.Class {
+			case dwarf.ClassLocListPtr:
 				local := &SourceVariableLocal{
 					SourceVariable: varb,
-					StartAddress:   start + origin,
-					EndAddress:     end + origin,
+					LexStart:       lexstart + origin,
+					LexEnd:         lexend + origin,
 				}
-				src.Locals = append(src.Locals, local)
-				src.SortedLocals.Variables = append(src.SortedLocals.Variables, local)
-			}
 
-			var err error
-			varb.loclist, err = newLoclist(varb, bld.debug_loc, fld.Val.(int64), commit)
-			if err != nil {
-				logger.Logf("dwarf", "%s: %v", varb.Name, err)
-			}
+				var err error
+				varb.loclist, err = newLoclist(varb, bld.debug_loc, fld.Val.(int64), func(start, end uint64) {
+					local.ResolvableStart = start + origin
+					local.ResolvableEnd = end + origin
+				})
+				if err != nil {
+					logger.Logf("dwarf", "%s: %v", varb.Name, err)
+				}
 
-			varb.addVariableChildren()
-
-			continue // for loop
-
-		case dwarf.ClassExprLoc:
-			// Single location description "They are sufficient for describing the location of any object
-			// as long as its lifetime is either static or the same as the lexical block that owns it,
-			// and it does not move during its lifetime"
-			// page 26 of "DWARF4 Standard"
-
-			// set address resolve function
-			r, n := decodeDWARFoperation(fld.Val.([]uint8), origin, true)
-			if n != 0 {
-				varb.loclist = newLoclistJustContext(varb)
-				varb.loclist.addOperator(r)
 				varb.addVariableChildren()
 
-				// determine highest address occupied by any variable in the program
-				hiAddress := varb.resolve().address + uint64(varb.Type.Size)
-				if hiAddress > src.VariableMemtop {
-					src.VariableMemtop = hiAddress
-				}
+				src.Locals = append(src.Locals, local)
+				src.SortedLocals.Variables = append(src.SortedLocals.Variables, local)
 
-				// add variable to list of global variables if there is no parent
-				// function to the declaration
-				if varb.DeclLine.Function.Name == stubIndicator {
-					// list of global variables for all compile units
-					src.Globals[varb.Name] = varb
-					src.GlobalsByAddress[varb.resolve().address] = varb
-					src.SortedGlobals.Variables = append(src.SortedGlobals.Variables, varb)
+				continue // for loop
 
-					// note that the file has at least one global variables
-					varb.DeclLine.File.HasGlobals = true
+			case dwarf.ClassExprLoc:
+				// Single location description "They are sufficient for describing the location of any object
+				// as long as its lifetime is either static or the same as the lexical block that owns it,
+				// and it does not move during its lifetime"
+				// page 26 of "DWARF4 Standard"
+
+				// set address resolve function
+				r, n := decodeDWARFoperation(fld.Val.([]uint8), origin, true)
+				if n != 0 {
+					varb.loclist = newLoclistJustContext(varb)
+					varb.loclist.addOperator(r)
+					varb.addVariableChildren()
+
+					// determine highest address occupied by any variable in the program
+					hiAddress := varb.resolve().address + uint64(varb.Type.Size)
+					if hiAddress > src.VariableMemtop {
+						src.VariableMemtop = hiAddress
+					}
+
+					// add variable to list of global variables if there is no parent
+					// function to the declaration
+					if varb.DeclLine.Function.Name == stubIndicator {
+						// list of global variables for all compile units
+						src.Globals[varb.Name] = varb
+						src.GlobalsByAddress[varb.resolve().address] = varb
+						src.SortedGlobals.Variables = append(src.SortedGlobals.Variables, varb)
+
+						// note that the file has at least one global variables
+						varb.DeclLine.File.HasGlobals = true
+					}
 				}
+			default:
+				continue // for loop
 			}
-		default:
-			continue // for loop
 		}
 	}
 
@@ -769,12 +803,39 @@ type foundFunction struct {
 	linenum  int64
 	name     string
 
-	// not all functions have a framebase
-	framebase *loclist
+	// not all functions have a framebaseList
+	//
+	// the loclist will have been built without a context it must be manually
+	// added before use
+	framebaseList *loclist
 }
 
 func (bld *build) findFunction(src *Source, addr uint64) (*foundFunction, error) {
 	var ret *foundFunction
+
+	resolveFramebase := func(b buildEntry) (*loclist, error) {
+		var framebase *loclist
+
+		fld := b.entry.AttrField(dwarf.AttrFrameBase)
+		if fld != nil {
+			switch fld.Class {
+			case dwarf.ClassExprLoc:
+				var err error
+				framebase, err = newLoclistFromSingleOperator(nil, fld.Val.([]uint8))
+				if err != nil {
+					return nil, err
+				}
+			case dwarf.ClassLocListPtr:
+				var err error
+				framebase, err = newLoclist(nil, bld.debug_loc, fld.Val.(int64), nil)
+				if err != nil {
+					return nil, err
+				}
+			}
+		}
+
+		return framebase, nil
+	}
 
 	resolve := func(b buildEntry) (*foundFunction, error) {
 		lr, err := bld.dwrf.LineReader(b.compileUnit)
@@ -804,34 +865,25 @@ func (bld *build) findFunction(src *Source, addr uint64) (*foundFunction, error)
 		}
 		linenum := fld.Val.(int64)
 
-		var framebase *loclist
-		fld = b.entry.AttrField(dwarf.AttrFrameBase)
-		if fld != nil {
-			switch fld.Class {
-			case dwarf.ClassExprLoc:
-				var err error
-				framebase, err = newLoclistFromSingleOperator(nil, fld.Val.([]uint8))
-				if err != nil {
-					logger.Logf("dwarf", "framebase for %s: %v", files[filenum].Name, err)
-				}
-			case dwarf.ClassLocListPtr:
-				var err error
-				framebase, err = newLoclist(nil, bld.debug_loc, fld.Val.(int64), nil)
-				if err != nil {
-					logger.Logf("dwarf", "framebase for %s: %v", files[filenum].Name, err)
-				}
-			}
+		// framebase. non-abstract functions will not have a framebase
+		// attribute. for those functions we can resolve it later
+		framebase, err := resolveFramebase(b)
+		if err != nil {
+			logger.Logf("dwarf", "framebase for %s will be unreliable: %v", name, err)
 		}
 
 		return &foundFunction{
-			filename:  files[filenum].Name,
-			linenum:   linenum,
-			name:      name,
-			framebase: framebase,
+			filename:      files[filenum].Name,
+			linenum:       linenum,
+			name:          name,
+			framebaseList: framebase,
 		}, nil
 	}
 
 	for _, off := range bld.order {
+		var low uint64
+		var high uint64
+
 		if subp, ok := bld.subprograms[off]; ok {
 			entry := subp.entry
 
@@ -839,9 +891,6 @@ func (bld *build) findFunction(src *Source, addr uint64) (*foundFunction, error)
 			// InlinedSubroutines where address range can be given by either
 			// low/high fields OR a Range field. for Subprograms, there is
 			// never a Range field.
-
-			var low uint64
-			var high uint64
 
 			fld := entry.AttrField(dwarf.AttrLowpc)
 			if fld == nil {
@@ -886,6 +935,19 @@ func (bld *build) findFunction(src *Source, addr uint64) (*foundFunction, error)
 				if r != nil {
 					ret = r
 				}
+
+				// try to acquire framebase for concrete subroutine. we don't expect
+				// for the framebase to have been found already but we'll check it
+				// to make sure in any case
+				if ret.framebaseList == nil {
+					framebase, err := resolveFramebase(subp)
+					if err != nil {
+						logger.Logf("dwarf", "framebase for %s will be unreliable: %v", ret.name, err)
+					}
+					ret.framebaseList = framebase
+				} else {
+					logger.Logf("dwarf", "%s: concrete defintion for abstract function already has a framebase defintion!?", ret.name)
+				}
 			} else {
 				r, err := resolve(subp)
 				if err != nil {
@@ -895,13 +957,11 @@ func (bld *build) findFunction(src *Source, addr uint64) (*foundFunction, error)
 					ret = r
 				}
 			}
+
 		} else if inl, ok := bld.inlinedSubroutines[off]; ok {
 			entry := inl.entry
 			fld := entry.AttrField(dwarf.AttrLowpc)
 			if fld != nil {
-				var low uint64
-				var high uint64
-
 				low = uint64(fld.Val.(uint64))
 
 				// high PC
@@ -938,6 +998,8 @@ func (bld *build) findFunction(src *Source, addr uint64) (*foundFunction, error)
 				match := false
 				for _, r := range rngs {
 					if addr >= r[0] && addr < r[1] {
+						low = r[0]
+						high = r[1]
 						match = true
 						break
 					}
@@ -963,6 +1025,19 @@ func (bld *build) findFunction(src *Source, addr uint64) (*foundFunction, error)
 			}
 			if r != nil {
 				ret = r
+			}
+
+			// try to acquire framebase for inline subroutine. we don't expect
+			// for the framebase to have been found already but we'll check it
+			// to make sure in any case
+			if ret.framebaseList == nil {
+				framebase, err := resolveFramebase(inl)
+				if err != nil {
+					logger.Logf("dwarf", "framebase for %s will be unreliable: %v", ret.name, err)
+				}
+				ret.framebaseList = framebase
+			} else {
+				logger.Logf("dwarf", "%s: concrete defintion for abstract function already has a framebase defintion!?", ret.name)
 			}
 		}
 	}
