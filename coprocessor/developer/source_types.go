@@ -152,6 +152,9 @@ type SourceFunction struct {
 	// the Disassembly and Stats fields therefore should not be relied upon.
 	DeclLine *SourceLine
 
+	// all lines in the function
+	Lines []*SourceLine
+
 	// stats for the function
 	FlatStats       StatsGroup
 	CumulativeStats StatsGroup
@@ -161,6 +164,10 @@ type SourceFunction struct {
 
 	// whether the call stack involving this function is likely inaccurate
 	OptimisedCallStack bool
+}
+
+func (fn *SourceFunction) String() string {
+	return fmt.Sprintf("%s %08x -> %08x", fn.Name, fn.Address[0], fn.Address[1])
 }
 
 func (fn *SourceFunction) coproc() mapper.CartCoProc {

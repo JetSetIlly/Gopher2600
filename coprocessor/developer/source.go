@@ -103,7 +103,7 @@ type Source struct {
 	SortedGlobals    SortedVariables
 
 	// all local variables in all compile units
-	locals       []*SourceVariableLocal
+	locals       []*sourceVariableLocal
 	SortedLocals SortedVariablesLocal
 
 	// the highest address of any variable (not just global variables, any
@@ -114,7 +114,7 @@ type Source struct {
 	// coverage of the total address space: for functions that are covered by
 	// DWARF data then lines exists only for DWARF line entries. for functions
 	// that are know about only through ELF symbols, every address in the
-	// function range has a SourceLine entry - see addStubEntries()
+	// function range has a SourceLine entry - see addFunctionStubs()
 	//
 	// on the occasions when an instruction at an address is encountered that
 	// we've not seen before, a stub entry is added as required
@@ -493,13 +493,15 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 						fn := &SourceFunction{
 							Cart:     src.cart,
 							Name:     foundFunc.name,
-							Address:  [2]uint64{workingAddress, relocatedAddress - 1},
 							DeclLine: src.Files[foundFunc.filename].Content.Lines[foundFunc.linenum-1],
 						}
 						src.Functions[foundFunc.name] = fn
 						src.FunctionNames = append(src.FunctionNames, foundFunc.name)
 						workingSourceLine.Function = src.Functions[foundFunc.name]
 					}
+
+					// add line to list of lines for the function
+					workingSourceLine.Function.Lines = append(workingSourceLine.Function.Lines, workingSourceLine)
 
 					// add/update framebase information
 					if foundFunc.framebaseList != nil {
@@ -539,8 +541,26 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 		}
 	}
 
+	// set address range for every function
+	for _, fn := range src.Functions {
+		low := ^uint32(0)
+		hi := uint32(0)
+
+		for _, ln := range fn.Lines {
+			for _, d := range ln.Disassembly {
+				if d.Addr < low {
+					low = d.Addr
+				} else if d.Addr > hi {
+					hi = d.Addr
+				}
+			}
+		}
+		fn.Address[0] = uint64(low)
+		fn.Address[1] = uint64(hi)
+	}
+
 	// add stub functions to list of functions
-	src.addStubEntries()
+	src.addFunctionStubs()
 
 	// sanity check of functions list
 	if len(src.Functions) != len(src.FunctionNames) {
@@ -651,7 +671,7 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 
 // add function stubs for functions without DWARF data. also adds stub line
 // entries for all addresses in the stub function
-func (src *Source) addStubEntries() {
+func (src *Source) addFunctionStubs() {
 	type fn struct {
 		name   string
 		origin uint64

@@ -454,7 +454,7 @@ func (v SortedVariables) Swap(i int, j int) {
 // for the type of the Variables field. this is a good candidate for replacing
 // with a Go1.19 generic solution
 type SortedVariablesLocal struct {
-	Variables  []*SourceVariableLocal
+	Variables  []*sourceVariableLocal
 	Method     SortedVariableMethod
 	Descending bool
 }

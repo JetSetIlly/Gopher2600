@@ -25,7 +25,7 @@ type YieldState struct {
 	InstructionLine *SourceLine
 	Reason          mapper.YieldReason
 
-	LocalVariables []*SourceVariableLocal
+	LocalVariables []*SourceVariable
 }
 
 // Cmp returns true if two YieldStates are equal.
@@ -36,7 +36,7 @@ func (y *YieldState) Cmp(w *YieldState) bool {
 // OnYield implements the mapper.CartCoProcDeveloper interface.
 func (dev *Developer) OnYield(instructionPC uint32, reason mapper.YieldReason) {
 	var ln *SourceLine
-	var locals []*SourceVariableLocal
+	var locals []*SourceVariable
 
 	// using BorrowSource because we want to make sure the source lock is
 	// released if there is an error and the code panics
@@ -78,8 +78,8 @@ func (dev *Developer) OnYield(instructionPC uint32, reason mapper.YieldReason) {
 				if prev == varb.Name {
 					continue
 				}
-				if varb.In(ln) {
-					locals = append(locals, varb)
+				if varb.find(ln) {
+					locals = append(locals, varb.SourceVariable)
 					prev = varb.Name
 				}
 			}

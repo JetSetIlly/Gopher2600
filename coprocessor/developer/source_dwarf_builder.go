@@ -32,46 +32,8 @@ type buildEntry struct {
 	compileUnit *dwarf.Entry
 	entry       *dwarf.Entry
 
-	// lexblock information
-	lexblock *dwarf.Entry
-
 	// additional information. context sensitive according to the entry type
 	information string
-}
-
-type lexBlocks struct {
-	blocks  []*dwarf.Entry
-	sibling dwarf.Offset
-}
-
-func (lex *lexBlocks) top() *dwarf.Entry {
-	if len(lex.blocks) > 0 {
-		return lex.blocks[len(lex.blocks)-1]
-	}
-	return nil
-}
-
-func (lex *lexBlocks) reset() {
-	lex.blocks = lex.blocks[:0]
-	lex.sibling = 0
-}
-
-func (lex *lexBlocks) check(entry *dwarf.Entry) {
-	if entry.Offset == lex.sibling {
-		if len(lex.blocks) > 0 {
-			lex.blocks = lex.blocks[:len(lex.blocks)-1]
-		}
-	}
-}
-
-func (lex *lexBlocks) add(entry *dwarf.Entry) {
-	fld := entry.AttrField(dwarf.AttrSibling)
-	if fld != nil {
-		lex.sibling = fld.Val.(dwarf.Offset)
-	} else {
-		lex.sibling = 0
-	}
-	lex.blocks = append(lex.blocks, entry)
 }
 
 type build struct {
@@ -119,7 +81,6 @@ func newBuild(dwrf *dwarf.Data, debug_loc *elf.Section) (*build, error) {
 	}
 
 	var compileUnit *dwarf.Entry
-	var lexblocks lexBlocks
 
 	r := bld.dwrf.Reader()
 	for {
@@ -137,12 +98,9 @@ func newBuild(dwrf *dwarf.Data, debug_loc *elf.Section) (*build, error) {
 			continue // for loop
 		}
 
-		lexblocks.check(entry)
-
 		switch entry.Tag {
 		case dwarf.TagCompileUnit:
 			compileUnit = entry
-			lexblocks.reset()
 
 		case dwarf.TagInlinedSubroutine:
 			if compileUnit == nil {
@@ -153,7 +111,6 @@ func newBuild(dwrf *dwarf.Data, debug_loc *elf.Section) (*build, error) {
 					entry:       entry,
 				}
 				bld.order = append(bld.order, entry.Offset)
-				lexblocks.add(entry)
 			}
 
 		case dwarf.TagSubprogram:
@@ -165,15 +122,10 @@ func newBuild(dwrf *dwarf.Data, debug_loc *elf.Section) (*build, error) {
 					entry:       entry,
 				}
 				bld.order = append(bld.order, entry.Offset)
-				lexblocks.add(entry)
 			}
 
 		case dwarf.TagLexDwarfBlock:
-			if compileUnit == nil {
-				return nil, curated.Errorf("found lexical block tag without compile unit")
-			} else {
-				lexblocks.add(entry)
-			}
+			// do nothing with lexical blocks
 
 		case dwarf.TagTypedef:
 			if compileUnit == nil {
@@ -261,7 +213,6 @@ func newBuild(dwrf *dwarf.Data, debug_loc *elf.Section) (*build, error) {
 				bld.variables[entry.Offset] = buildEntry{
 					compileUnit: compileUnit,
 					entry:       entry,
-					lexblock:    lexblocks.top(),
 				}
 				bld.order = append(bld.order, entry.Offset)
 			}
@@ -273,7 +224,6 @@ func newBuild(dwrf *dwarf.Data, debug_loc *elf.Section) (*build, error) {
 				bld.variables[entry.Offset] = buildEntry{
 					compileUnit: compileUnit,
 					entry:       entry,
-					lexblock:    lexblocks.top(),
 				}
 				bld.order = append(bld.order, entry.Offset)
 			}
@@ -710,53 +660,25 @@ func (bld *build) buildVariables(src *Source, origin uint64) error {
 		// point variable to CartCoProcDeveloper
 		varb.Cart = src.cart
 
-		// address range for variable
-		var lexstart uint64
-		var lexend uint64
-		if v.lexblock != nil {
-			fld := v.lexblock.AttrField(dwarf.AttrLowpc)
-			if fld != nil {
-				lexstart = uint64(fld.Val.(uint64))
-
-				fld = v.lexblock.AttrField(dwarf.AttrHighpc)
-				if fld != nil {
-					switch fld.Class {
-					case dwarf.ClassConstant:
-						lexend = lexstart + uint64(fld.Val.(int64))
-					case dwarf.ClassAddress:
-						lexend = uint64(fld.Val.(uint64))
-					default:
-					}
-				}
-			}
-		}
-
 		// variable actually exists in memory if it has a location attribute
 		fld = v.entry.AttrField(dwarf.AttrLocation)
 		if fld != nil {
 			switch fld.Class {
 			case dwarf.ClassLocListPtr:
-				local := &SourceVariableLocal{
-					SourceVariable: varb,
-					LexStart:       lexstart + origin,
-					LexEnd:         lexend + origin,
-				}
-
 				var err error
 				varb.loclist, err = newLoclist(varb, bld.debug_loc, fld.Val.(int64), func(start, end uint64) {
-					local.ResolvableStart = start + origin
-					local.ResolvableEnd = end + origin
+					local := &sourceVariableLocal{
+						SourceVariable:  varb,
+						resolvableStart: start,
+						resolvableEnd:   end,
+					}
+
+					src.locals = append(src.locals, local)
+					src.SortedLocals.Variables = append(src.SortedLocals.Variables, local)
 				})
 				if err != nil {
 					logger.Logf("dwarf", "%s: %v", varb.Name, err)
 				}
-
-				varb.addVariableChildren()
-
-				src.locals = append(src.locals, local)
-				src.SortedLocals.Variables = append(src.SortedLocals.Variables, local)
-
-				continue // for loop
 
 			case dwarf.ClassExprLoc:
 				// Single location description "They are sufficient for describing the location of any object
@@ -769,7 +691,6 @@ func (bld *build) buildVariables(src *Source, origin uint64) error {
 				if n != 0 {
 					varb.loclist = newLoclistJustContext(varb)
 					varb.loclist.addOperator(r)
-					varb.addVariableChildren()
 
 					// determine highest address occupied by any variable in the program
 					hiAddress := varb.resolve().address + uint64(varb.Type.Size)
@@ -777,8 +698,9 @@ func (bld *build) buildVariables(src *Source, origin uint64) error {
 						src.VariableMemtop = hiAddress
 					}
 
-					// add variable to list of global variables if there is no parent
-					// function to the declaration
+					// add variable to list of global variables if there is no
+					// parent function otherwise we treat the variable as a
+					// local variable
 					if varb.DeclLine.Function.Name == stubIndicator {
 						// list of global variables for all compile units
 						src.globals[varb.Name] = varb
@@ -787,11 +709,24 @@ func (bld *build) buildVariables(src *Source, origin uint64) error {
 
 						// note that the file has at least one global variables
 						varb.DeclLine.File.HasGlobals = true
+					} else {
+						varb.loclist = newLoclistJustContext(varb)
+						varb.loclist.addOperator(r)
+
+						local := &sourceVariableLocal{
+							SourceVariable:  varb,
+							resolvableStart: varb.DeclLine.Function.Address[0],
+							resolvableEnd:   varb.DeclLine.Function.Address[1],
+						}
+
+						src.locals = append(src.locals, local)
+						src.SortedLocals.Variables = append(src.SortedLocals.Variables, local)
 					}
 				}
-			default:
-				continue // for loop
 			}
+
+			// add children (array elements etc.)
+			varb.addVariableChildren()
 		}
 	}
 

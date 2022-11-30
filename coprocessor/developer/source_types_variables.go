@@ -24,30 +24,20 @@ import (
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
-// SourceVariable is a single local variable identified by the DWARF data.
-type SourceVariableLocal struct {
+// sourceVariableLocal is a single local variable identified by the DWARF data.
+type sourceVariableLocal struct {
 	*SourceVariable
 
-	LexStart uint64
-	LexEnd   uint64
-
 	// the address range for which the variable is valid
-	ResolvableStart uint64
-	ResolvableEnd   uint64
+	resolvableStart uint64
+	resolvableEnd   uint64
 }
 
-func (varb *SourceVariableLocal) String() string {
-	return varb.SourceVariable.String()
-}
-
-// In returns true if the address of any of the instructions associated with
+// find returns true if the address of any of the instructions associated with
 // the SourceLine are within the lexical address range of the variable.
-func (varb *SourceVariableLocal) In(ln *SourceLine) bool {
+func (varb *sourceVariableLocal) find(ln *SourceLine) bool {
 	for _, d := range ln.Disassembly {
-		if d.Addr >= uint32(varb.LexStart) && d.Addr <= uint32(varb.LexEnd) {
-			return true
-		}
-		if d.Addr >= uint32(varb.ResolvableStart) && d.Addr <= uint32(varb.ResolvableEnd) {
+		if d.Addr >= uint32(varb.resolvableStart) && d.Addr <= uint32(varb.resolvableEnd) {
 			return true
 		}
 	}
@@ -70,9 +60,8 @@ type SourceVariable struct {
 	// location list resolves a Location. may be nil
 	loclist *loclist
 
-	// if Unresolvable is true then an error was enounterd during a resolve()
-	// sequence. when setting to the error will be logged and all future
-	// attempts at resolution will silently fail
+	// if Unresolvable is true then an error was enountered during a resolve()
+	// sequence. the error will be logged when the field is first set to true
 	Unresolvable bool
 
 	// most recent resolved value retrieved from emulation

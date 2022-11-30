@@ -122,7 +122,7 @@ func (win *winCoProcLocals) draw() {
 
 	win.img.dbg.CoProcDev.BorrowYieldState(func(yld *developer.YieldState) {
 		for i, varb := range yld.LocalVariables {
-			win.drawVariable(varb.SourceVariable, 0, false, fmt.Sprint(i))
+			win.drawVariable(varb, 0, false, fmt.Sprint(i))
 		}
 	})
 
