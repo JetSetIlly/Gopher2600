@@ -1414,6 +1414,30 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 			dbg.printLine(terminal.StyleFeedback, coproc.CoProcID())
 		}
 
+	case cmdDWARF:
+		coproc := dbg.vcs.Mem.Cart.GetCoProc()
+		if coproc == nil {
+			dbg.printLine(terminal.StyleError, "cartridge does not have a coprocessor")
+			return nil
+		}
+
+		option, _ := tokens.Get()
+
+		switch option {
+		case "GLOBALS":
+			dbg.CoProcDev.BorrowSource(func(src *developer.Source) {
+				for _, g := range src.SortedGlobals.Variables {
+					dbg.printLine(terminal.StyleFeedback, g.String())
+				}
+			})
+		case "LOCALS":
+			dbg.CoProcDev.BorrowYieldState(func(yld *developer.YieldState) {
+				for _, l := range yld.LocalVariables {
+					dbg.printLine(terminal.StyleFeedback, l.String())
+				}
+			})
+		}
+
 	case cmdPeripheral:
 		player, _ := tokens.Get()
 

@@ -17,6 +17,7 @@ package developer
 
 import (
 	"fmt"
+	"strings"
 	"sync/atomic"
 
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
@@ -36,7 +37,7 @@ type SourceVariableLocal struct {
 }
 
 func (varb *SourceVariableLocal) String() string {
-	return fmt.Sprintf("%s %08x -> %08x", varb.Name, varb.ResolvableStart, varb.ResolvableEnd)
+	return varb.SourceVariable.String()
 }
 
 // In returns true if the address of any of the instructions associated with
@@ -83,7 +84,14 @@ type SourceVariable struct {
 }
 
 func (varb *SourceVariable) String() string {
-	return fmt.Sprintf("%s %s", varb.Type.Name, varb.Name)
+	var s strings.Builder
+	s.WriteString(fmt.Sprintf("%s %s = ", varb.Type.Name, varb.Name))
+	if v, ok := varb.Value(); ok {
+		s.WriteString(fmt.Sprintf(varb.Type.Hex(), v))
+	} else {
+		s.WriteString("unresolvable")
+	}
+	return s.String()
 }
 
 // Address returns the location in memory of the variable referred to by

@@ -95,15 +95,15 @@ type Source struct {
 	SortedFunctions SortedFunctions
 
 	// types used in the source
-	Types map[dwarf.Offset]*SourceType
+	types map[dwarf.Offset]*SourceType
 
 	// all global variables in all compile units
-	Globals          map[string]*SourceVariable
+	globals          map[string]*SourceVariable
 	GlobalsByAddress map[uint64]*SourceVariable
 	SortedGlobals    SortedVariables
 
 	// all local variables in all compile units
-	Locals       []*SourceVariableLocal
+	locals       []*SourceVariableLocal
 	SortedLocals SortedVariablesLocal
 
 	// the highest address of any variable (not just global variables, any
@@ -163,8 +163,8 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 		ShortFilenames:   make([]string, 0, 10),
 		Functions:        make(map[string]*SourceFunction),
 		FunctionNames:    make([]string, 0, 10),
-		Types:            make(map[dwarf.Offset]*SourceType),
-		Globals:          make(map[string]*SourceVariable),
+		types:            make(map[dwarf.Offset]*SourceType),
+		globals:          make(map[string]*SourceVariable),
 		GlobalsByAddress: make(map[uint64]*SourceVariable),
 		SortedGlobals: SortedVariables{
 			Variables: make([]*SourceVariable, 0, 100),
@@ -642,8 +642,8 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 
 	// log summary
 	logger.Logf("dwarf", "identified %d functions in %d compile units", len(src.Functions), len(src.compileUnits))
-	logger.Logf("dwarf", "%d global variables", len(src.Globals))
-	logger.Logf("dwarf", "%d local variable (loclists)", len(src.Locals))
+	logger.Logf("dwarf", "%d global variables", len(src.globals))
+	logger.Logf("dwarf", "%d local variable (loclists)", len(src.locals))
 	logger.Logf("dwarf", "highest memory address occupied by a global variable (%08x)", src.VariableMemtop)
 
 	return src, nil

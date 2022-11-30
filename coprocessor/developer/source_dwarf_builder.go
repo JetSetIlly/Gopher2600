@@ -331,7 +331,7 @@ func (bld *build) buildTypes(src *Source) error {
 			}
 			typ.Name = fld.Val.(string)
 
-			src.Types[v.entry.Offset] = typ
+			src.types[v.entry.Offset] = typ
 		}
 
 		return nil
@@ -353,7 +353,7 @@ func (bld *build) buildTypes(src *Source) error {
 		}
 		typ.Size = int(fld.Val.(int64))
 
-		src.Types[v.entry.Offset] = &typ
+		src.types[v.entry.Offset] = &typ
 	}
 
 	// typedefs of basic types
@@ -384,7 +384,7 @@ func (bld *build) buildTypes(src *Source) error {
 			}
 			typ.Size = int(fld.Val.(int64))
 
-			src.Types[v.entry.Offset] = &typ
+			src.types[v.entry.Offset] = &typ
 		}
 
 		// typedefs of pointer types
@@ -413,7 +413,7 @@ func (bld *build) buildTypes(src *Source) error {
 			}
 			typ.Size = int(fld.Val.(int64))
 
-			src.Types[v.entry.Offset] = &typ
+			src.types[v.entry.Offset] = &typ
 
 			// the name we store in the type is annotated with the composite
 			// category.
@@ -426,7 +426,7 @@ func (bld *build) buildTypes(src *Source) error {
 		var composite *SourceType
 		for _, off := range bld.order {
 			if v, ok := bld.compositeTypes[off]; ok {
-				composite = src.Types[v.entry.Offset]
+				composite = src.types[v.entry.Offset]
 			} else if v, ok := bld.compositeMembers[off]; ok {
 				if composite == nil {
 					// found a member without first finding a composite type. this
@@ -483,8 +483,8 @@ func (bld *build) buildTypes(src *Source) error {
 
 		// remove any composites that have no members
 		for off := range bld.compositeTypes {
-			if src.Types[off] != nil && len(src.Types[off].Members) == 0 {
-				delete(src.Types, off)
+			if src.types[off] != nil && len(src.types[off].Members) == 0 {
+				delete(src.types, off)
 			}
 		}
 
@@ -518,7 +518,7 @@ func (bld *build) buildTypes(src *Source) error {
 				}
 				num := fld.Val.(int64) + 1
 
-				src.Types[baseTypeOffset] = &SourceType{
+				src.types[baseTypeOffset] = &SourceType{
 					Name:         fmt.Sprintf("[%d] %s", num, arrayBaseType.Name),
 					Size:         arrayBaseType.Size * int(num),
 					ElementType:  arrayBaseType,
@@ -549,7 +549,7 @@ func (bld *build) buildTypes(src *Source) error {
 			typ.Constant = true
 			typ.Name = fmt.Sprintf("const %s", baseType.Name)
 
-			src.Types[v.entry.Offset] = &typ
+			src.types[v.entry.Offset] = &typ
 		}
 
 		// typedefs of const types
@@ -568,7 +568,7 @@ func (bld *build) resolveType(v buildEntry, src *Source) (*SourceType, error) {
 		return nil, nil
 	}
 
-	typ, ok := src.Types[fld.Val.(dwarf.Offset)]
+	typ, ok := src.types[fld.Val.(dwarf.Offset)]
 	if !ok {
 		return nil, nil
 	}
@@ -731,7 +731,7 @@ func (bld *build) buildVariables(src *Source, origin uint64) error {
 			}
 		}
 
-		// variable actually exists in memory if it has an location attribute
+		// variable actually exists in memory if it has a location attribute
 		fld = v.entry.AttrField(dwarf.AttrLocation)
 		if fld != nil {
 			switch fld.Class {
@@ -753,7 +753,7 @@ func (bld *build) buildVariables(src *Source, origin uint64) error {
 
 				varb.addVariableChildren()
 
-				src.Locals = append(src.Locals, local)
+				src.locals = append(src.locals, local)
 				src.SortedLocals.Variables = append(src.SortedLocals.Variables, local)
 
 				continue // for loop
@@ -781,7 +781,7 @@ func (bld *build) buildVariables(src *Source, origin uint64) error {
 					// function to the declaration
 					if varb.DeclLine.Function.Name == stubIndicator {
 						// list of global variables for all compile units
-						src.Globals[varb.Name] = varb
+						src.globals[varb.Name] = varb
 						src.GlobalsByAddress[varb.resolve().address] = varb
 						src.SortedGlobals.Variables = append(src.SortedGlobals.Variables, varb)
 

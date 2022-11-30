@@ -204,6 +204,10 @@ type SourceType struct {
 	ElementType *SourceType
 }
 
+func (typ *SourceType) String() string {
+	return typ.Name
+}
+
 // IsComposite returns true if SourceType is a composite type.
 func (typ *SourceType) IsComposite() bool {
 	return len(typ.Members) > 0

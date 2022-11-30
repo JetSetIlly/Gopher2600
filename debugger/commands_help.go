@@ -355,6 +355,8 @@ all PlusROM cartridges.`,
 
 	cmdCoProc: `Returns information about any coprocessor in the inserted cartridge.`,
 
+	cmdDWARF: `Debugging information for cartridge types that support DWARF debugging.`,
+
 	// user input
 	cmdPeripheral: `Change the current peripheral for the specified player port.`,
 
