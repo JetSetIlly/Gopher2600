@@ -454,7 +454,7 @@ func (v SortedVariables) Swap(i int, j int) {
 // for the type of the Variables field. this is a good candidate for replacing
 // with a Go1.19 generic solution
 type SortedVariablesLocal struct {
-	Variables  []*sourceVariableLocal
+	Locals     []*SourceVariableLocal
 	Method     SortedVariableMethod
 	Descending bool
 }
@@ -472,19 +472,19 @@ func (e *SortedVariablesLocal) SortByAddress(descending bool) {
 }
 
 func (v SortedVariablesLocal) Len() int {
-	return len(v.Variables)
+	return len(v.Locals)
 }
 
 func (v SortedVariablesLocal) Less(i int, j int) bool {
 	switch v.Method {
 	case SortVariableByName:
 		if v.Descending {
-			return strings.ToUpper(v.Variables[i].Name) > strings.ToUpper(v.Variables[j].Name)
+			return strings.ToUpper(v.Locals[i].Name) > strings.ToUpper(v.Locals[j].Name)
 		}
-		return strings.ToUpper(v.Variables[i].Name) < strings.ToUpper(v.Variables[j].Name)
+		return strings.ToUpper(v.Locals[i].Name) < strings.ToUpper(v.Locals[j].Name)
 	case SortVariableByAddress:
-		ia, _ := v.Variables[i].Address()
-		ja, _ := v.Variables[j].Address()
+		ia, _ := v.Locals[i].Address()
+		ja, _ := v.Locals[j].Address()
 		if v.Descending {
 			return ia > ja
 		}
@@ -494,5 +494,5 @@ func (v SortedVariablesLocal) Less(i int, j int) bool {
 }
 
 func (v SortedVariablesLocal) Swap(i int, j int) {
-	v.Variables[i], v.Variables[j] = v.Variables[j], v.Variables[i]
+	v.Locals[i], v.Locals[j] = v.Locals[j], v.Locals[i]
 }

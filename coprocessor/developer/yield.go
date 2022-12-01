@@ -25,7 +25,7 @@ type YieldState struct {
 	InstructionLine *SourceLine
 	Reason          mapper.YieldReason
 
-	LocalVariables []*SourceVariable
+	LocalVariables []*SourceVariableLocal
 }
 
 // Cmp returns true if two YieldStates are equal.
@@ -36,7 +36,7 @@ func (y *YieldState) Cmp(w *YieldState) bool {
 // OnYield implements the mapper.CartCoProcDeveloper interface.
 func (dev *Developer) OnYield(instructionPC uint32, reason mapper.YieldReason) {
 	var ln *SourceLine
-	var locals []*SourceVariable
+	var locals []*SourceVariableLocal
 
 	// using BorrowSource because we want to make sure the source lock is
 	// released if there is an error and the code panics
@@ -48,7 +48,7 @@ func (dev *Developer) OnYield(instructionPC uint32, reason mapper.YieldReason) {
 
 		ln = src.FindSourceLine(instructionPC)
 		if ln == nil {
-			ln = createStubLine(nil)
+			return
 		}
 
 		// log a bug for any of these reasons
@@ -74,15 +74,48 @@ func (dev *Developer) OnYield(instructionPC uint32, reason mapper.YieldReason) {
 		if reason != mapper.YieldSyncWithVCS {
 			// there's an assumption here that SortedLocals is sorted by variable name
 			var prev string
-			for _, varb := range src.SortedLocals.Variables {
-				if prev == varb.Name {
-					continue
+
+			var candidateFound bool
+			var candidates []*SourceVariableLocal
+			processCandidates := func() {
+				if !candidateFound {
+					if len(candidates) > 0 {
+						locals = append(locals, candidates[0])
+					}
 				}
-				if varb.find(ln) {
-					locals = append(locals, varb.SourceVariable)
-					prev = varb.Name
+				candidateFound = false
+				candidates = candidates[:0]
+			}
+
+			var id string
+			for _, local := range src.SortedLocals.Locals {
+				inFunction, resolving := local.find(ln)
+				if inFunction {
+					id = local.id()
+					if prev != id {
+						processCandidates()
+					}
+					prev = id
+
+					if candidateFound {
+						continue
+					}
+
+					if resolving {
+						locals = append(locals, local)
+						candidateFound = true
+						local.NotResolving = false
+					} else {
+						candidates = append(candidates, local)
+						local.NotResolving = true
+					}
+				} else if resolving {
+					// this shouldn't be possible. if this happens then
+					// something has gone wrong with the DWARF parsing
 				}
 			}
+
+			processCandidates()
 		}
 	})
 

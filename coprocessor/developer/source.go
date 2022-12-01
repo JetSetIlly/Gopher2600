@@ -103,7 +103,7 @@ type Source struct {
 	SortedGlobals    SortedVariables
 
 	// all local variables in all compile units
-	locals       []*sourceVariableLocal
+	locals       []*SourceVariableLocal
 	SortedLocals SortedVariablesLocal
 
 	// the highest address of any variable (not just global variables, any

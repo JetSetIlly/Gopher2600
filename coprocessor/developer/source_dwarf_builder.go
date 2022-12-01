@@ -667,14 +667,14 @@ func (bld *build) buildVariables(src *Source, origin uint64) error {
 			case dwarf.ClassLocListPtr:
 				var err error
 				varb.loclist, err = newLoclist(varb, bld.debug_loc, fld.Val.(int64), func(start, end uint64) {
-					local := &sourceVariableLocal{
+					local := &SourceVariableLocal{
 						SourceVariable:  varb,
 						resolvableStart: start,
 						resolvableEnd:   end,
 					}
 
 					src.locals = append(src.locals, local)
-					src.SortedLocals.Variables = append(src.SortedLocals.Variables, local)
+					src.SortedLocals.Locals = append(src.SortedLocals.Locals, local)
 				})
 				if err != nil {
 					logger.Logf("dwarf", "%s: %v", varb.Name, err)
@@ -713,21 +713,31 @@ func (bld *build) buildVariables(src *Source, origin uint64) error {
 						varb.loclist = newLoclistJustContext(varb)
 						varb.loclist.addOperator(r)
 
-						local := &sourceVariableLocal{
-							SourceVariable:  varb,
-							resolvableStart: varb.DeclLine.Function.Address[0],
-							resolvableEnd:   varb.DeclLine.Function.Address[1],
+						local := &SourceVariableLocal{
+							SourceVariable: varb,
 						}
 
 						src.locals = append(src.locals, local)
-						src.SortedLocals.Variables = append(src.SortedLocals.Variables, local)
+						src.SortedLocals.Locals = append(src.SortedLocals.Locals, local)
 					}
 				}
 			}
 
-			// add children (array elements etc.)
-			varb.addVariableChildren()
+		} else {
+			// add local variable without any loclist. this enables the user to
+			// see that the variable exists for a function even though we don't
+			// know how to locate it in memory
+			if varb.DeclLine.Function.Name != stubIndicator {
+				local := &SourceVariableLocal{
+					SourceVariable: varb,
+				}
+				src.locals = append(src.locals, local)
+				src.SortedLocals.Locals = append(src.SortedLocals.Locals, local)
+			}
 		}
+
+		// add children (array elements etc.)
+		varb.addVariableChildren()
 	}
 
 	return nil

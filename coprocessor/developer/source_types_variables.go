@@ -24,24 +24,41 @@ import (
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
-// sourceVariableLocal is a single local variable identified by the DWARF data.
-type sourceVariableLocal struct {
+// SourceVariableLocal represents a single local variable identified by the
+// DWARF data.
+type SourceVariableLocal struct {
 	*SourceVariable
 
 	// the address range for which the variable is valid
 	resolvableStart uint64
 	resolvableEnd   uint64
+
+	// whether this specific local variable is/was in resolvable range at the
+	// most recent yield
+	NotResolving bool
 }
 
-// find returns true if the address of any of the instructions associated with
-// the SourceLine are within the lexical address range of the variable.
-func (varb *sourceVariableLocal) find(ln *SourceLine) bool {
+// the set of local variables can share a name but they cannot share a name and
+// a declaration line. id() returns an identifier for the local variable
+//
+// note however that there may be multiple variables with the same id, these
+// are the same variable but with different resolution information (resolve
+// start/end and loclist)
+func (local *SourceVariableLocal) id() string {
+	return fmt.Sprintf("%s %s", local.Name, local.DeclLine)
+}
+
+// find returns whether variables is in the function and whether it is
+// resolvable at the current source line.
+func (local *SourceVariableLocal) find(ln *SourceLine) (bool, bool) {
+	inFunction := false
 	for _, d := range ln.Disassembly {
-		if d.Addr >= uint32(varb.resolvableStart) && d.Addr <= uint32(varb.resolvableEnd) {
-			return true
+		inFunction = inFunction || ln.Function == local.DeclLine.Function
+		if d.Addr >= uint32(local.resolvableStart) && d.Addr <= uint32(local.resolvableEnd) {
+			return inFunction, true
 		}
 	}
-	return false
+	return inFunction, false
 }
 
 // SourceVariable is a single variable identified by the DWARF data.
@@ -60,9 +77,9 @@ type SourceVariable struct {
 	// location list resolves a Location. may be nil
 	loclist *loclist
 
-	// if Unresolvable is true then an error was enountered during a resolve()
+	// if errorOnResolve is true then an error was enountered during a resolve()
 	// sequence. the error will be logged when the field is first set to true
-	Unresolvable bool
+	errorOnResolve bool
 
 	// most recent resolved value retrieved from emulation
 	cachedLocation atomic.Value // Location
@@ -159,13 +176,18 @@ func (varb *SourceVariable) framebase() (uint64, error) {
 
 // resolve address/value
 func (varb *SourceVariable) resolve() location {
-	if varb.Unresolvable || varb.loclist == nil {
+	if varb.errorOnResolve {
+		return location{}
+	}
+
+	if varb.loclist == nil {
+		varb.errorOnResolve = true
 		return location{}
 	}
 
 	loc, err := varb.loclist.resolve()
 	if err != nil {
-		varb.Unresolvable = true
+		varb.errorOnResolve = true
 		logger.Logf("dwarf", "%s: unresolvable: %v", varb.Name, err)
 		return location{}
 	}
