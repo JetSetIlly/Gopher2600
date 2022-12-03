@@ -19,13 +19,27 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 )
 
+type YieldedLocal struct {
+	*SourceVariableLocal
+
+	// whether this specific local variable is in resolvable range. when this
+	// value is true, results from Address() and Value() can be used
+	IsResolving bool
+
+	// whether the location of the variable can ever be resolved
+	CanResolve bool
+
+	// whether the location cannot be found because of an error
+	ErrorOnResolve bool
+}
+
 // YieldState records the most recent yield.
 type YieldState struct {
 	InstructionPC   uint32
 	InstructionLine *SourceLine
 	Reason          mapper.YieldReason
 
-	LocalVariables []*SourceVariableLocal
+	LocalVariables []*YieldedLocal
 }
 
 // Cmp returns true if two YieldStates are equal.
@@ -36,7 +50,7 @@ func (y *YieldState) Cmp(w *YieldState) bool {
 // OnYield implements the mapper.CartCoProcDeveloper interface.
 func (dev *Developer) OnYield(instructionPC uint32, reason mapper.YieldReason) {
 	var ln *SourceLine
-	var locals []*SourceVariableLocal
+	var locals []*YieldedLocal
 
 	// using BorrowSource because we want to make sure the source lock is
 	// released if there is an error and the code panics
@@ -80,7 +94,13 @@ func (dev *Developer) OnYield(instructionPC uint32, reason mapper.YieldReason) {
 			processCandidates := func() {
 				if !candidateFound {
 					if len(candidates) > 0 {
-						locals = append(locals, candidates[0])
+						l := &YieldedLocal{
+							SourceVariableLocal: candidates[0],
+							IsResolving:         false && candidates[0].errorOnResolve == nil,
+							CanResolve:          candidates[0].loclist != nil && candidates[0].errorOnResolve == nil,
+							ErrorOnResolve:      candidates[0].errorOnResolve != nil,
+						}
+						locals = append(locals, l)
 					}
 				}
 				candidateFound = false
@@ -102,12 +122,16 @@ func (dev *Developer) OnYield(instructionPC uint32, reason mapper.YieldReason) {
 					}
 
 					if resolving {
-						locals = append(locals, local)
+						l := &YieldedLocal{
+							SourceVariableLocal: local,
+							IsResolving:         true && local.errorOnResolve == nil,
+							CanResolve:          local.loclist != nil && local.errorOnResolve == nil,
+							ErrorOnResolve:      local.errorOnResolve != nil,
+						}
+						locals = append(locals, l)
 						candidateFound = true
-						local.NotResolving = false
 					} else {
 						candidates = append(candidates, local)
-						local.NotResolving = true
 					}
 				} else if resolving {
 					// this shouldn't be possible. if this happens then
@@ -117,6 +141,9 @@ func (dev *Developer) OnYield(instructionPC uint32, reason mapper.YieldReason) {
 
 			processCandidates()
 		}
+
+		// update all globals (locals are updated below)
+		src.UpdateGlobalVariables()
 	})
 
 	dev.yieldStateLock.Lock()
@@ -130,6 +157,11 @@ func (dev *Developer) OnYield(instructionPC uint32, reason mapper.YieldReason) {
 	// list of locals
 	dev.yieldState.LocalVariables = dev.yieldState.LocalVariables[:0]
 	dev.yieldState.LocalVariables = append(dev.yieldState.LocalVariables, locals...)
+
+	// update all locals (globals are updated above)
+	for _, local := range dev.yieldState.LocalVariables {
+		local.update()
+	}
 }
 
 // BorrowYieldState will lock the illegal access log for the duration of the

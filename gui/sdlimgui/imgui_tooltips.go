@@ -23,10 +23,15 @@ import (
 
 var tooltipColor = imgui.Vec4{0.08, 0.08, 0.08, 1.0}
 var tooltipBorder = imgui.Vec4{0.03, 0.03, 0.03, 1.0}
+var tooltipAlpha = 1.0
 
 // shows tooltip on hover of the previous imgui digest/group. useful for simple
 // tooltips.
 func imguiTooltipSimple(tooltip string) {
+	// we always want to draw tooltips with the tooltip alpha
+	imgui.PushStyleVarFloat(imgui.StyleVarAlpha, float32(tooltipAlpha))
+	defer imgui.PopStyleVar()
+
 	// split string on newline and display with separate calls to imgui.Text()
 	tooltip = strings.TrimSpace(tooltip)
 	if tooltip != "" && imgui.IsItemHovered() {
@@ -49,6 +54,10 @@ func imguiTooltipSimple(tooltip string) {
 // this argument is false then it implies that the decision to show the tooltip
 // has already been made by the calling function.
 func imguiTooltip(f func(), hoverTest bool) {
+	// we always want to draw tooltips with the tooltip alpha
+	imgui.PushStyleVarFloat(imgui.StyleVarAlpha, float32(tooltipAlpha))
+	defer imgui.PopStyleVar()
+
 	if !hoverTest || imgui.IsItemHovered() {
 		imgui.PushStyleColor(imgui.StyleColorPopupBg, tooltipColor)
 		imgui.PushStyleColor(imgui.StyleColorBorder, tooltipBorder)
@@ -57,4 +66,10 @@ func imguiTooltip(f func(), hoverTest bool) {
 		imgui.EndTooltip()
 		imgui.PopStyleColorV(2)
 	}
+}
+
+func imguiTooltipAdd(f func(), hoverTest bool) {
+	imgui.BeginTooltip()
+	f()
+	imgui.EndTooltip()
 }

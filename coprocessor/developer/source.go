@@ -643,6 +643,9 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 	sort.Sort(src.SortedGlobals)
 	sort.Sort(src.SortedLocals)
 
+	// update all variables
+	src.UpdateGlobalVariables()
+
 	// best guess at the entry function
 	if fn, ok := src.Functions["main"]; ok {
 		src.MainFunction = fn
@@ -923,12 +926,12 @@ func (src *Source) FindSourceLine(addr uint32) *SourceLine {
 	return src.linesByAddress[uint64(addr)]
 }
 
-// UpdateAllVariables using the current state of the emulated coprocessor.
-func (src *Source) UpdateAllVariables() {
+// UpdateGlobalVariables using the current state of the emulated coprocessor.
+// Local variables are updated when coprocessor yields (see OnYield() function)
+func (src *Source) UpdateGlobalVariables() {
 	var touch func(varb *SourceVariable)
 	touch = func(varb *SourceVariable) {
-		varb.Address()
-		varb.Value()
+		varb.update()
 		for i := 0; i < varb.NumChildren(); i++ {
 			touch(varb.Child(i))
 		}

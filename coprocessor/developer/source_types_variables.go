@@ -74,12 +74,13 @@ type SourceVariable struct {
 	// first source line for each instance of the function
 	DeclLine *SourceLine
 
-	// location list resolves a Location. may be nil
+	// location list resolves a Location. may be nil which indicates that the
+	// variable can never be located
 	loclist *loclist
 
 	// if errorOnResolve is true then an error was enountered during a resolve()
 	// sequence. the error will be logged when the field is first set to true
-	errorOnResolve bool
+	errorOnResolve error
 
 	// most recent resolved value retrieved from emulation
 	cachedLocation atomic.Value // Location
@@ -103,10 +104,6 @@ func (varb *SourceVariable) String() string {
 // Address returns the location in memory of the variable referred to by
 // SourceVariable
 func (varb *SourceVariable) Address() (uint64, bool) {
-	varb.Cart.PushFunction(func() {
-		varb.cachedLocation.Store(varb.resolve())
-	})
-
 	var r location
 	var ok bool
 	if r, ok = varb.cachedLocation.Load().(location); !ok {
@@ -121,10 +118,6 @@ func (varb *SourceVariable) Address() (uint64, bool) {
 // the result of Address(), because it will handle any required address
 // resolution before accessing the memory.
 func (varb *SourceVariable) Value() (uint32, bool) {
-	varb.Cart.PushFunction(func() {
-		varb.cachedLocation.Store(varb.resolve())
-	})
-
 	var r location
 	var ok bool
 	if r, ok = varb.cachedLocation.Load().(location); !ok {
@@ -174,20 +167,23 @@ func (varb *SourceVariable) framebase() (uint64, error) {
 	return uint64(location.value), nil
 }
 
+func (varb *SourceVariable) update() {
+	varb.cachedLocation.Store(varb.resolve())
+}
+
 // resolve address/value
 func (varb *SourceVariable) resolve() location {
-	if varb.errorOnResolve {
+	if varb.errorOnResolve != nil {
 		return location{}
 	}
 
 	if varb.loclist == nil {
-		varb.errorOnResolve = true
 		return location{}
 	}
 
 	loc, err := varb.loclist.resolve()
 	if err != nil {
-		varb.errorOnResolve = true
+		varb.errorOnResolve = err
 		logger.Logf("dwarf", "%s: unresolvable: %v", varb.Name, err)
 		return location{}
 	}

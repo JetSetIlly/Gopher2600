@@ -33,11 +33,10 @@ const winCoProcLocalsMenu = "Locals"
 
 type winCoProcLocals struct {
 	debuggerWin
-	img       *SdlImgui
-	firstOpen bool
+	img *SdlImgui
 
-	optionsHeight      float32
-	showOnlyResolvable bool
+	optionsHeight   float32
+	showVisibleOnly bool
 
 	openNodes map[string]bool
 }
@@ -45,7 +44,6 @@ type winCoProcLocals struct {
 func newWinCoProcLocals(img *SdlImgui) (window, error) {
 	win := &winCoProcLocals{
 		img:       img,
-		firstOpen: true,
 		openNodes: make(map[string]bool),
 	}
 	return win, nil
@@ -96,12 +94,6 @@ func (win *winCoProcLocals) draw() {
 			imgui.Text("No local variables in the source")
 			return
 		}
-
-		if win.firstOpen {
-			// update all variables on first open
-			src.UpdateAllVariables()
-			win.firstOpen = false
-		}
 	})
 
 	const numColumns = 3
@@ -117,8 +109,8 @@ func (win *winCoProcLocals) draw() {
 	// setup columns. the labelling column 2 depends on whether the coprocessor
 	// development instance has source available to it
 	width := imgui.ContentRegionAvail().X
-	imgui.TableSetupColumnV("Name", imgui.TableColumnFlagsPreferSortDescending|imgui.TableColumnFlagsDefaultSort, width*0.40, 0)
-	imgui.TableSetupColumnV("Type", imgui.TableColumnFlagsNoSort, width*0.30, 1)
+	imgui.TableSetupColumnV("Name", imgui.TableColumnFlagsNoSort, width*0.40, 1)
+	imgui.TableSetupColumnV("Type", imgui.TableColumnFlagsNoSort, width*0.30, 2)
 	imgui.TableSetupColumnV("Value", imgui.TableColumnFlagsNoSort, width*0.30, 3)
 
 	imgui.TableSetupScrollFreeze(0, 1)
@@ -126,7 +118,7 @@ func (win *winCoProcLocals) draw() {
 
 	win.img.dbg.CoProcDev.BorrowYieldState(func(yld *developer.YieldState) {
 		for i, varb := range yld.LocalVariables {
-			win.drawVariableLocal(varb, false, fmt.Sprint(i))
+			win.drawVariableLocal(varb, fmt.Sprint(i))
 		}
 	})
 
@@ -136,37 +128,36 @@ func (win *winCoProcLocals) draw() {
 		imgui.Spacing()
 		imgui.Separator()
 		imgui.Spacing()
-		imgui.Checkbox("Only show resolvable variables", &win.showOnlyResolvable)
+		imgui.Checkbox("Only show visible variables", &win.showVisibleOnly)
 	})
 }
 
-func (win *winCoProcLocals) drawVariableLocal(local *developer.SourceVariableLocal, unnamed bool, nodeID string) {
-	if local.NotResolving && win.showOnlyResolvable {
+func (win *winCoProcLocals) drawVariableLocal(local *developer.YieldedLocal, nodeID string) {
+	if !local.IsResolving && win.showVisibleOnly {
 		return
 	}
 
-	if local.NotResolving {
+	if !local.IsResolving {
 		imgui.PushStyleVarFloat(imgui.StyleVarAlpha, disabledAlpha)
 		defer imgui.PopStyleVar()
+
 	}
 
-	win.drawVariable(local.SourceVariable, 0, unnamed, nodeID, local.NotResolving)
+	win.drawVariable(local.SourceVariable, 0, nodeID, local.IsResolving, local.ErrorOnResolve)
 }
 
 func (win *winCoProcLocals) drawVariable(varb *developer.SourceVariable, indentLevel int,
-	unnamed bool, nodeID string, notResolving bool) {
+	nodeID string, isResolving bool, bugged bool) {
 
 	const IndentDepth = 2
 
-	var name string
-	if unnamed {
-		name = fmt.Sprintf("%s%s", strings.Repeat(" ", IndentDepth*indentLevel), string(fonts.Pointer))
-	} else {
-		name = fmt.Sprintf("%s%s", strings.Repeat(" ", IndentDepth*indentLevel), varb.Name)
+	// name of variable as presented. added bug icon as appropriate
+	name := fmt.Sprintf("%s%s", strings.Repeat(" ", IndentDepth*indentLevel), varb.Name)
+	if bugged {
+		name = fmt.Sprintf("%s %c", name, fonts.CoProcBug)
 	}
 
 	imgui.TableNextRow()
-
 	imgui.TableNextColumn()
 	imgui.PushStyleColor(imgui.StyleColorHeaderHovered, win.img.cols.CoProcSourceHover)
 	imgui.PushStyleColor(imgui.StyleColorHeaderActive, win.img.cols.CoProcSourceHover)
@@ -177,6 +168,9 @@ func (win *winCoProcLocals) drawVariable(varb *developer.SourceVariable, indentL
 		// we could show a tooltip for variables with children but this needs
 		// work. for instance, how do we illustrate a composite type or an
 		// array?
+		imguiTooltip(func() {
+			drawVariableTooltipShort(varb, win.img.cols)
+		}, true)
 
 		if imgui.IsItemClicked() {
 			win.openNodes[nodeID] = !win.openNodes[nodeID]
@@ -187,25 +181,28 @@ func (win *winCoProcLocals) drawVariable(varb *developer.SourceVariable, indentL
 		imgui.Text(varb.Type.Name)
 		imgui.PopStyleColor()
 
-		if !notResolving {
-			imgui.TableNextColumn()
-			if win.openNodes[nodeID] {
-				imgui.Text(string(fonts.TreeOpen))
-			} else {
-				imgui.Text(string(fonts.TreeClosed))
-			}
+		imgui.TableNextColumn()
+		if win.openNodes[nodeID] {
+			imgui.Text(string(fonts.TreeOpen))
+		} else {
+			imgui.Text(string(fonts.TreeClosed))
+		}
 
-			if win.openNodes[nodeID] {
-				for i := 0; i < varb.NumChildren(); i++ {
-					win.drawVariable(varb.Child(i), indentLevel+1, false, fmt.Sprint(nodeID, i), notResolving)
-				}
+		if win.openNodes[nodeID] {
+			for i := 0; i < varb.NumChildren(); i++ {
+				win.drawVariable(varb.Child(i), indentLevel+1, fmt.Sprint(nodeID, i), isResolving, bugged)
 			}
 		}
+
 	} else {
 		value, valueOk := varb.Value()
-		if valueOk && !notResolving {
+		if valueOk && isResolving {
 			imguiTooltip(func() {
 				drawVariableTooltip(varb, value, win.img.cols)
+			}, true)
+		} else {
+			imguiTooltip(func() {
+				drawVariableTooltipShort(varb, win.img.cols)
 			}, true)
 		}
 
@@ -214,7 +211,7 @@ func (win *winCoProcLocals) drawVariable(varb *developer.SourceVariable, indentL
 		imgui.Text(varb.Type.Name)
 		imgui.PopStyleColor()
 
-		if !notResolving {
+		if isResolving {
 			imgui.TableNextColumn()
 			if valueOk {
 				imgui.Text(fmt.Sprintf(varb.Type.Hex(), value))

@@ -50,9 +50,6 @@ type winCoProcGlobals struct {
 	showAllGlobals bool
 
 	openNodes map[string]bool
-
-	// saveToCSV on next frame
-	resolveSaveToCSV bool
 }
 
 func newWinCoProcGlobals(img *SdlImgui) (window, error) {
@@ -137,12 +134,6 @@ func (win *winCoProcGlobals) draw() {
 	}
 
 	win.img.dbg.CoProcDev.BorrowSource(func(src *developer.Source) {
-		// complete "save to CSV" procedure
-		if win.resolveSaveToCSV {
-			win.saveToCSV(src)
-			win.resolveSaveToCSV = false
-		}
-
 		if src == nil {
 			imgui.Text("No source files available")
 			return
@@ -159,9 +150,6 @@ func (win *winCoProcGlobals) draw() {
 		}
 
 		if win.firstOpen {
-			// update all variables on first open
-			src.UpdateAllVariables()
-
 			// assume source entry point is a function called "main"
 			if m, ok := src.Functions["main"]; ok {
 				win.selectedFile = m.DeclLine.File
@@ -241,14 +229,17 @@ func (win *winCoProcGlobals) draw() {
 			imgui.Checkbox("List all globals (in all files)", &win.showAllGlobals)
 			imgui.SameLineV(0, 20)
 			if imgui.Button(fmt.Sprintf("%c Save to CSV", fonts.Disk)) {
-				// make sure variables are as fresh as they can be
-				src.UpdateAllVariables()
-
-				// the actual saving to CSV file will happen next frame
-				win.resolveSaveToCSV = true
+				win.saveToCSV(src)
 			}
 		})
 	})
+}
+
+func drawVariableTooltipShort(varb *developer.SourceVariable, cols *imguiColors) {
+	imgui.Text(varb.DeclLine.File.ShortFilename)
+	imgui.PushStyleColor(imgui.StyleColorText, cols.CoProcSourceLineNumber)
+	imgui.Text(fmt.Sprintf("Line: %d", varb.DeclLine.LineNumber))
+	imgui.PopStyleColor()
 }
 
 func drawVariableTooltip(varb *developer.SourceVariable, value uint32, cols *imguiColors) {
