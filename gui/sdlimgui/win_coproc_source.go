@@ -560,7 +560,7 @@ func (win *winCoProcSource) drawSource(src *developer.Source) {
 					// show appropriate icon in the gutter
 					imgui.TableNextColumn()
 					if len(ln.Disassembly) > 0 {
-						if src.CheckBreakpointBySourceLine(ln) {
+						if src.CheckBreakpoint(ln) {
 							imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmBreakAddress)
 							imgui.Text(string(fonts.Breakpoint))
 							imgui.PopStyleColor()

@@ -17,13 +17,13 @@ package developer
 
 // addBreakpoint adds an address to the list of addresses that will be checked
 // each PC iteration.
-func (src *Source) addBreakpoint(addr uint32) {
-	src.Breakpoints[addr] = true
+func (src *Source) addBreakpoint(ln *SourceLine) {
+	src.Breakpoints[ln] = true
 }
 
 // removeBreakpoint removes an address from the list of breakpoint addresses.
-func (src *Source) removeBreakpoint(addr uint32) {
-	delete(src.Breakpoints, addr)
+func (src *Source) removeBreakpoint(ln *SourceLine) {
+	delete(src.Breakpoints, ln)
 }
 
 // ToggleBreakpoint adds or removes a breakpoint depending on whether the
@@ -32,28 +32,29 @@ func (src *Source) ToggleBreakpoint(ln *SourceLine) {
 	if len(ln.Disassembly) == 0 {
 		return
 	}
-	addr := ln.Disassembly[0].Addr
-	if src.CheckBreakpoint(addr) {
-		src.removeBreakpoint(addr)
+	if src.CheckBreakpoint(ln) {
+		src.removeBreakpoint(ln)
 	} else {
-		src.addBreakpoint(addr)
+		src.addBreakpoint(ln)
 	}
 }
 
-// CheckBreakpointBySourceLine returns true if there is a breakpoint on the
-// specified SourceLine
-func (src *Source) CheckBreakpointBySourceLine(ln *SourceLine) bool {
-	if len(ln.Disassembly) == 0 {
-		return false
-	}
-	return src.CheckBreakpoint(ln.Disassembly[0].Addr)
-}
-
-// CheckBreakpoint returns true if there is a breakpoint on the
-// specified address
-func (src *Source) CheckBreakpoint(addr uint32) bool {
-	if _, ok := src.Breakpoints[addr]; ok {
+// CheckBreakpoint returns true if there is a breakpoint on the specified line.
+func (src *Source) CheckBreakpoint(ln *SourceLine) bool {
+	if _, ok := src.Breakpoints[ln]; ok {
 		return true
 	}
 	return false
+}
+
+// checkBreapointByAddr handles the situation where an address is on the same
+// line as the previous breakpoint check. we need this because we don't want to
+// repeatedly break on the same line when nothing has really changed.
+func (src *Source) checkBreakpointByAddr(addr uint64) bool {
+	ln := src.linesByAddress[uint64(addr)]
+	if ln == src.prevBreakpointCheck {
+		return false
+	}
+	src.prevBreakpointCheck = ln
+	return src.CheckBreakpoint(ln)
 }
