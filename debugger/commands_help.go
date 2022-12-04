@@ -355,7 +355,14 @@ all PlusROM cartridges.`,
 
 	cmdCoProc: `Returns information about any coprocessor in the inserted cartridge.`,
 
-	cmdDWARF: `Debugging information for cartridge types that support DWARF debugging.`,
+	cmdDWARF: `Debugging information for cartridge types that support DWARF debugging.
+
+GLOBALS prints the list of global variables and LOCALS prints the list of local variables that
+is in scope at the current breakpoint. Note that the list of local variables will usually be empty
+if execution has not broken inside the coprocessor program.
+
+The optional DERIVATION switch to the LOCAL argument prints out the location list derivation for that
+variable. Normal Atari 2600 developers do not need to worry about location lists.`,
 
 	// user input
 	cmdPeripheral: `Change the current peripheral for the specified player port.`,

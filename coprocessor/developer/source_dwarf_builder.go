@@ -666,7 +666,8 @@ func (bld *build) buildVariables(src *Source, origin uint64) error {
 			switch fld.Class {
 			case dwarf.ClassLocListPtr:
 				var err error
-				varb.loclist, err = newLoclist(varb, bld.debug_loc, fld.Val.(int64), func(start, end uint64) {
+				err = newLoclist(varb, bld.debug_loc, fld.Val.(int64), func(start, end uint64, loc *loclist) {
+					varb.loclist = loc
 					local := &SourceVariableLocal{
 						SourceVariable:  varb,
 						resolvableStart: start,
@@ -748,11 +749,11 @@ type foundFunction struct {
 	linenum  int64
 	name     string
 
-	// not all functions have a framebaseList
+	// not all functions have a framebase
 	//
 	// the loclist will have been built without a context it must be manually
 	// added before use
-	framebaseList *loclist
+	framebase *loclist
 }
 
 func (bld *build) findFunction(src *Source, addr uint64) (*foundFunction, error) {
@@ -771,8 +772,9 @@ func (bld *build) findFunction(src *Source, addr uint64) (*foundFunction, error)
 					return nil, err
 				}
 			case dwarf.ClassLocListPtr:
-				var err error
-				framebase, err = newLoclist(nil, bld.debug_loc, fld.Val.(int64), nil)
+				err := newLoclist(nil, bld.debug_loc, fld.Val.(int64), func(_, _ uint64, loc *loclist) {
+					framebase = loc
+				})
 				if err != nil {
 					return nil, err
 				}
@@ -818,10 +820,10 @@ func (bld *build) findFunction(src *Source, addr uint64) (*foundFunction, error)
 		}
 
 		return &foundFunction{
-			filename:      files[filenum].Name,
-			linenum:       linenum,
-			name:          name,
-			framebaseList: framebase,
+			filename:  files[filenum].Name,
+			linenum:   linenum,
+			name:      name,
+			framebase: framebase,
 		}, nil
 	}
 
@@ -884,12 +886,12 @@ func (bld *build) findFunction(src *Source, addr uint64) (*foundFunction, error)
 				// try to acquire framebase for concrete subroutine. we don't expect
 				// for the framebase to have been found already but we'll check it
 				// to make sure in any case
-				if ret.framebaseList == nil {
+				if ret.framebase == nil {
 					framebase, err := resolveFramebase(subp)
 					if err != nil {
 						logger.Logf("dwarf", "framebase for %s will be unreliable: %v", ret.name, err)
 					}
-					ret.framebaseList = framebase
+					ret.framebase = framebase
 				} else {
 					logger.Logf("dwarf", "%s: concrete defintion for abstract function already has a framebase defintion!?", ret.name)
 				}
@@ -975,12 +977,12 @@ func (bld *build) findFunction(src *Source, addr uint64) (*foundFunction, error)
 			// try to acquire framebase for inline subroutine. we don't expect
 			// for the framebase to have been found already but we'll check it
 			// to make sure in any case
-			if ret.framebaseList == nil {
+			if ret.framebase == nil {
 				framebase, err := resolveFramebase(inl)
 				if err != nil {
 					logger.Logf("dwarf", "framebase for %s will be unreliable: %v", ret.name, err)
 				}
-				ret.framebaseList = framebase
+				ret.framebase = framebase
 			} else {
 				logger.Logf("dwarf", "%s: concrete defintion for abstract function already has a framebase defintion!?", ret.name)
 			}

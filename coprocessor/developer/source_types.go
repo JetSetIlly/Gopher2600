@@ -175,7 +175,7 @@ func (fn *SourceFunction) coproc() mapper.CartCoProc {
 }
 
 func (fn *SourceFunction) framebase() (uint64, error) {
-	return 0, fmt.Errorf("no framebase for function")
+	return fn.Address[0], nil
 }
 
 // IsStub returns true if the SourceFunction is just a stub.

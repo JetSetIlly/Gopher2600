@@ -1431,9 +1431,16 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 				}
 			})
 		case "LOCALS":
+			option, _ := tokens.Get()
+			showLoclist := option == "DERIVATION"
 			dbg.CoProcDev.BorrowYieldState(func(yld *developer.YieldState) {
 				for _, l := range yld.LocalVariables {
 					dbg.printLine(terminal.StyleFeedback, l.String())
+					if showLoclist {
+						for _, d := range l.Derivation() {
+							dbg.printLine(terminal.StyleFeedback, fmt.Sprintf("    %s\n", d.String()))
+						}
+					}
 				}
 			})
 		}

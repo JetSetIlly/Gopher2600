@@ -127,6 +127,14 @@ func (varb *SourceVariable) Value() (uint32, bool) {
 	return r.value & varb.Type.Mask(), r.valueOk
 }
 
+// Derivation returns the sequence of results that led to the most recent value.
+func (varb *SourceVariable) Derivation() []location {
+	if varb.loclist == nil {
+		return []location{}
+	}
+	return varb.loclist.derivation
+}
+
 // NumChildren returns the number of children for this variable
 func (varb *SourceVariable) NumChildren() int {
 	return len(varb.children)
@@ -162,6 +170,9 @@ func (varb *SourceVariable) framebase() (uint64, error) {
 	location, err := varb.DeclLine.Function.framebaseList.resolve()
 	if err != nil {
 		return 0, fmt.Errorf("framebase for function %s: %v", varb.DeclLine.Function.Name, err)
+	}
+	if !location.valueOk {
+		return 0, fmt.Errorf("no framebase for function %s", varb.DeclLine.Function.Name)
 	}
 
 	return uint64(location.value), nil

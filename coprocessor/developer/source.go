@@ -47,8 +47,7 @@ type Source struct {
 
 	syms []elf.Symbol
 
-	// debug_loc is the .debug_loc ELF section. it's required by DWARF for
-	// finding local variables in memory
+	// see build type for explanation of this section
 	debug_loc *elf.Section
 
 	// raw dwarf data. after NewSource() this data is only needed by the
@@ -241,8 +240,6 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 					logger.Logf("dwarf", "multiple .debug_loc sections found. using the first one encountered")
 				}
 				src.debug_loc = sec
-				// d, _ := src.debug_loc.Data()
-				// os.Stdout.Write(d)
 			}
 			continue
 		}
@@ -507,8 +504,8 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 					workingSourceLine.Function.Lines = append(workingSourceLine.Function.Lines, workingSourceLine)
 
 					// add/update framebase information
-					if foundFunc.framebaseList != nil {
-						workingSourceLine.Function.framebaseList = foundFunc.framebaseList
+					if foundFunc.framebase != nil {
+						workingSourceLine.Function.framebaseList = foundFunc.framebase
 						workingSourceLine.Function.framebaseList.ctx = workingSourceLine.Function
 					}
 

@@ -32,14 +32,22 @@ type location struct {
 	addressOk bool
 	value     uint32
 	valueOk   bool
+
+	// the operator that created this value
+	operator string
+}
+
+func (l *location) String() string {
+	return fmt.Sprintf("%s %08x", l.operator, l.value)
 }
 
 type dwarfOperator func(*loclist) (location, error)
 
 type loclist struct {
-	ctx      loclistContext
-	sequence []dwarfOperator
-	stack    []location
+	ctx        loclistContext
+	list       []dwarfOperator
+	stack      []location
+	derivation []location
 }
 
 func newLoclistJustContext(ctx loclistContext) *loclist {
@@ -48,7 +56,7 @@ func newLoclistJustContext(ctx loclistContext) *loclist {
 	}
 }
 
-type commitLoclist func(start, end uint64)
+type commitLoclist func(start, end uint64, loc *loclist)
 
 func newLoclistFromSingleValue(ctx loclistContext, addr uint64) (*loclist, error) {
 	loc := &loclist{
@@ -60,7 +68,7 @@ func newLoclistFromSingleValue(ctx loclistContext, addr uint64) (*loclist, error
 			valueOk: true,
 		}, nil
 	}
-	loc.sequence = append(loc.sequence, op)
+	loc.list = append(loc.list, op)
 	return loc, nil
 }
 
@@ -72,15 +80,11 @@ func newLoclistFromSingleOperator(ctx loclistContext, expr []uint8) (*loclist, e
 	if n == 0 {
 		return nil, fmt.Errorf("unknown expression operator %02x", expr[0])
 	}
-	loc.sequence = append(loc.sequence, op)
+	loc.list = append(loc.list, op)
 	return loc, nil
 }
 
-func newLoclist(ctx loclistContext, debug_loc *elf.Section, ptr int64, commit commitLoclist) (*loclist, error) {
-	loc := &loclist{
-		ctx: ctx,
-	}
-
+func newLoclist(ctx loclistContext, debug_loc *elf.Section, ptr int64, commit commitLoclist) error {
 	// buffer for reading the .debug_log section
 	b := make([]byte, 16)
 
@@ -131,6 +135,10 @@ func newLoclist(ctx loclistContext, debug_loc *elf.Section, ptr int64, commit co
 	// end of list entry describes an object that exists in the source code but not in the executable
 	// program". page 31 of "DWARF4 Standard"
 	for !(startAddress == 0x0 && endAddress == 0x0) {
+		loc := &loclist{
+			ctx: ctx,
+		}
+
 		// "A base address selection entry consists of:
 		// 1. The value of the largest representable address offset (for example, 0xffffffff when the size of
 		// an address is 32 bits).
@@ -157,7 +165,7 @@ func newLoclist(ctx loclistContext, debug_loc *elf.Section, ptr int64, commit co
 				debug_loc.ReadAt(b, ptr)
 				r, n := decodeDWARFoperation(b, 0, length <= 5)
 				if n == 0 {
-					return nil, fmt.Errorf("unknown expression operator %02x", b[0])
+					return fmt.Errorf("unknown expression operator %02x", b[0])
 				}
 
 				// add resolver to variable
@@ -178,7 +186,7 @@ func newLoclist(ctx loclistContext, debug_loc *elf.Section, ptr int64, commit co
 			// page 30 of "DWARF4 Standard"
 			if startAddress < endAddress {
 				if commit != nil {
-					commit(startAddress+baseAddress, endAddress+baseAddress)
+					commit(startAddress+baseAddress, endAddress+baseAddress, loc)
 				}
 			}
 		}
@@ -188,11 +196,11 @@ func newLoclist(ctx loclistContext, debug_loc *elf.Section, ptr int64, commit co
 		endAddress = readAddress()
 	}
 
-	return loc, nil
+	return nil
 }
 
 func (loc *loclist) addOperator(r dwarfOperator) {
-	loc.sequence = append(loc.sequence, r)
+	loc.list = append(loc.list, r)
 }
 
 func (loc *loclist) resolve() (location, error) {
@@ -201,14 +209,17 @@ func (loc *loclist) resolve() (location, error) {
 	}
 
 	loc.stack = loc.stack[:0]
-	for i := range loc.sequence {
-		r, err := loc.sequence[i](loc)
+	loc.derivation = loc.derivation[:0]
+
+	for i := range loc.list {
+		r, err := loc.list[i](loc)
 		if err != nil {
 			return location{}, err
 		}
 		if r.addressOk || r.valueOk {
 			loc.stack = append(loc.stack, r)
 		}
+		loc.derivation = append(loc.derivation, r)
 	}
 
 	if len(loc.stack) == 0 {

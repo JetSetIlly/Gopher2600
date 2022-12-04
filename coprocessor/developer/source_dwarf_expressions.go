@@ -60,6 +60,7 @@ func decodeDWARFoperation(expr []uint8, origin uint64, simpleLocDesc bool) (dwar
 					addressOk: true,
 					value:     value,
 					valueOk:   ok,
+					operator:  "DW_OP_addr",
 				}, nil
 			}, 5
 		} else {
@@ -69,6 +70,7 @@ func decodeDWARFoperation(expr []uint8, origin uint64, simpleLocDesc bool) (dwar
 					addressOk: true,
 					value:     uint32(address),
 					valueOk:   false,
+					operator:  "DW_OP_addr",
 				}, nil
 			}, 5
 		}
@@ -89,6 +91,7 @@ func decodeDWARFoperation(expr []uint8, origin uint64, simpleLocDesc bool) (dwar
 				addressOk: true,
 				value:     value,
 				valueOk:   ok,
+				operator:  "DW_OP_deref",
 			}, nil
 		}, 1
 
@@ -100,8 +103,9 @@ func decodeDWARFoperation(expr []uint8, origin uint64, simpleLocDesc bool) (dwar
 		cons := uint64(expr[1])
 		return func(loc *loclist) (location, error) {
 			return location{
-				value:   uint32(cons),
-				valueOk: true,
+				value:    uint32(cons),
+				valueOk:  true,
+				operator: "DW_OP_const1u",
 			}, nil
 		}, 2
 
@@ -116,8 +120,9 @@ func decodeDWARFoperation(expr []uint8, origin uint64, simpleLocDesc bool) (dwar
 		}
 		return func(loc *loclist) (location, error) {
 			return location{
-				value:   uint32(cons),
-				valueOk: true,
+				value:    uint32(cons),
+				valueOk:  true,
+				operator: "DW_OP_const1s",
 			}, nil
 		}, 2
 
@@ -128,8 +133,9 @@ func decodeDWARFoperation(expr []uint8, origin uint64, simpleLocDesc bool) (dwar
 		cons |= uint64(expr[2]) << 8
 		return func(loc *loclist) (location, error) {
 			return location{
-				value:   uint32(cons),
-				valueOk: true,
+				value:    uint32(cons),
+				valueOk:  true,
+				operator: "DW_OP_const2u",
 			}, nil
 		}, 3
 
@@ -143,8 +149,9 @@ func decodeDWARFoperation(expr []uint8, origin uint64, simpleLocDesc bool) (dwar
 		}
 		return func(loc *loclist) (location, error) {
 			return location{
-				value:   uint32(cons),
-				valueOk: true,
+				value:    uint32(cons),
+				valueOk:  true,
+				operator: "DW_OP_const2s",
 			}, nil
 		}, 3
 
@@ -157,8 +164,9 @@ func decodeDWARFoperation(expr []uint8, origin uint64, simpleLocDesc bool) (dwar
 		cons |= uint64(expr[4]) << 24
 		return func(loc *loclist) (location, error) {
 			return location{
-				value:   uint32(cons),
-				valueOk: true,
+				value:    uint32(cons),
+				valueOk:  true,
+				operator: "DW_OP_const4u",
 			}, nil
 		}, 5
 
@@ -174,8 +182,9 @@ func decodeDWARFoperation(expr []uint8, origin uint64, simpleLocDesc bool) (dwar
 		}
 		return func(loc *loclist) (location, error) {
 			return location{
-				value:   uint32(cons),
-				valueOk: true,
+				value:    uint32(cons),
+				valueOk:  true,
+				operator: "DW_OP_const4s",
 			}, nil
 		}, 5
 
@@ -187,8 +196,9 @@ func decodeDWARFoperation(expr []uint8, origin uint64, simpleLocDesc bool) (dwar
 		value, n := leb128.DecodeULEB128(expr[1:])
 		return func(loc *loclist) (location, error) {
 			return location{
-				value:   uint32(value),
-				valueOk: true,
+				value:    uint32(value),
+				valueOk:  true,
+				operator: "DW_OP_constu",
 			}, nil
 		}, n + 1
 
@@ -200,8 +210,9 @@ func decodeDWARFoperation(expr []uint8, origin uint64, simpleLocDesc bool) (dwar
 		value, n := leb128.DecodeSLEB128(expr[1:])
 		return func(loc *loclist) (location, error) {
 			return location{
-				value:   uint32(value),
-				valueOk: true,
+				value:    uint32(value),
+				valueOk:  true,
+				operator: "DW_OP_consts",
 			}, nil
 		}, n + 1
 
@@ -240,8 +251,9 @@ func decodeDWARFoperation(expr []uint8, origin uint64, simpleLocDesc bool) (dwar
 			a, _ := loc.pop()
 			value := a.value & 0x7fffffff
 			return location{
-				value:   value,
-				valueOk: true,
+				value:    value,
+				valueOk:  true,
+				operator: "DW_OP_abs",
 			}, nil
 		}, 1
 
@@ -255,8 +267,9 @@ func decodeDWARFoperation(expr []uint8, origin uint64, simpleLocDesc bool) (dwar
 			b, _ := loc.pop()
 			value := b.value & a.value
 			return location{
-				value:   value,
-				valueOk: true,
+				value:    value,
+				valueOk:  true,
+				operator: "DW_OP_and",
 			}, nil
 		}, 1
 
@@ -271,8 +284,9 @@ func decodeDWARFoperation(expr []uint8, origin uint64, simpleLocDesc bool) (dwar
 			b, _ := loc.pop()
 			value := b.value / a.value
 			return location{
-				value:   value,
-				valueOk: true,
+				value:    value,
+				valueOk:  true,
+				operator: "DW_OP_div",
 			}, nil
 		}, 1
 
@@ -287,8 +301,9 @@ func decodeDWARFoperation(expr []uint8, origin uint64, simpleLocDesc bool) (dwar
 			b, _ := loc.pop()
 			value := b.value - a.value
 			return location{
-				value:   value,
-				valueOk: true,
+				value:    value,
+				valueOk:  true,
+				operator: "DW_OP_minus",
 			}, nil
 		}, 1
 
@@ -303,8 +318,9 @@ func decodeDWARFoperation(expr []uint8, origin uint64, simpleLocDesc bool) (dwar
 			b, _ := loc.pop()
 			value := b.value % a.value
 			return location{
-				value:   value,
-				valueOk: true,
+				value:    value,
+				valueOk:  true,
+				operator: "DW_OP_mod",
 			}, nil
 		}, 1
 
@@ -318,8 +334,9 @@ func decodeDWARFoperation(expr []uint8, origin uint64, simpleLocDesc bool) (dwar
 			b, _ := loc.pop()
 			value := b.value * a.value
 			return location{
-				value:   value,
-				valueOk: true,
+				value:    value,
+				valueOk:  true,
+				operator: "DW_OP_mul",
 			}, nil
 		}, 1
 
@@ -333,8 +350,9 @@ func decodeDWARFoperation(expr []uint8, origin uint64, simpleLocDesc bool) (dwar
 			a, _ := loc.pop()
 			value := uint32(-int32(a.value))
 			return location{
-				value:   value,
-				valueOk: true,
+				value:    value,
+				valueOk:  true,
+				operator: "DW_OP_neg",
 			}, nil
 		}, 1
 
@@ -347,8 +365,9 @@ func decodeDWARFoperation(expr []uint8, origin uint64, simpleLocDesc bool) (dwar
 			a, _ := loc.pop()
 			value := ^a.value
 			return location{
-				value:   value,
-				valueOk: true,
+				value:    value,
+				valueOk:  true,
+				operator: "DW_OP_not",
 			}, nil
 		}, 1
 
@@ -363,8 +382,9 @@ func decodeDWARFoperation(expr []uint8, origin uint64, simpleLocDesc bool) (dwar
 			b, _ := loc.pop()
 			value := b.value | a.value
 			return location{
-				value:   value,
-				valueOk: true,
+				value:    value,
+				valueOk:  true,
+				operator: "DW_OP_or",
 			}, nil
 		}, 1
 
@@ -378,8 +398,9 @@ func decodeDWARFoperation(expr []uint8, origin uint64, simpleLocDesc bool) (dwar
 			b, _ := loc.pop()
 			value := b.value + a.value
 			return location{
-				value:   value,
-				valueOk: true,
+				value:    value,
+				valueOk:  true,
+				operator: "DW_OP_plus",
 			}, nil
 		}, 1
 
@@ -393,8 +414,9 @@ func decodeDWARFoperation(expr []uint8, origin uint64, simpleLocDesc bool) (dwar
 			a, _ := loc.pop()
 			value += uint64(a.value)
 			return location{
-				value:   uint32(value),
-				valueOk: true,
+				value:    uint32(value),
+				valueOk:  true,
+				operator: "DW_OP_plus_uconst",
 			}, nil
 		}, n + 1
 
@@ -408,8 +430,9 @@ func decodeDWARFoperation(expr []uint8, origin uint64, simpleLocDesc bool) (dwar
 			b, _ := loc.pop()
 			value := b.value << a.value
 			return location{
-				value:   value,
-				valueOk: true,
+				value:    value,
+				valueOk:  true,
+				operator: "DW_OP_shl",
 			}, nil
 		}, 1
 
@@ -424,8 +447,9 @@ func decodeDWARFoperation(expr []uint8, origin uint64, simpleLocDesc bool) (dwar
 			b, _ := loc.pop()
 			value := b.value >> a.value
 			return location{
-				value:   value,
-				valueOk: true,
+				value:    value,
+				valueOk:  true,
+				operator: "DW_OP_shr",
 			}, nil
 		}, 1
 
@@ -446,8 +470,9 @@ func decodeDWARFoperation(expr []uint8, origin uint64, simpleLocDesc bool) (dwar
 				value |= ^uint32(0) << (32 - a.value)
 			}
 			return location{
-				value:   value,
-				valueOk: true,
+				value:    value,
+				valueOk:  true,
+				operator: "DW_OP_shra",
 			}, nil
 		}, 1
 
@@ -460,8 +485,9 @@ func decodeDWARFoperation(expr []uint8, origin uint64, simpleLocDesc bool) (dwar
 			b, _ := loc.pop()
 			value := b.value ^ a.value
 			return location{
-				value:   value,
-				valueOk: true,
+				value:    value,
+				valueOk:  true,
+				operator: "DW_OP_xor",
 			}, nil
 		}, 1
 
@@ -560,8 +586,9 @@ func decodeDWARFoperation(expr []uint8, origin uint64, simpleLocDesc bool) (dwar
 		lit := expr[0] - 0x30
 		return func(loc *loclist) (location, error) {
 			return location{
-				value:   uint32(lit),
-				valueOk: true,
+				value:    uint32(lit),
+				valueOk:  true,
+				operator: fmt.Sprintf("DW_OP_lit%d", lit),
 			}, nil
 		}, 1
 
@@ -639,8 +666,9 @@ func decodeDWARFoperation(expr []uint8, origin uint64, simpleLocDesc bool) (dwar
 				return location{}, fmt.Errorf("unknown register: %d", reg)
 			}
 			return location{
-				value:   value,
-				valueOk: true,
+				value:    value,
+				valueOk:  true,
+				operator: fmt.Sprintf("DW_OP_reg%d", reg),
 			}, nil
 		}, 1
 
@@ -726,8 +754,9 @@ func decodeDWARFoperation(expr []uint8, origin uint64, simpleLocDesc bool) (dwar
 			address := int64(regVal) + offset
 
 			return location{
-				value:   uint32(address),
-				valueOk: true,
+				value:    uint32(address),
+				valueOk:  true,
+				operator: fmt.Sprintf("DW_OP_breg%d", reg),
 			}, nil
 		}, n + 1
 
@@ -741,21 +770,21 @@ func decodeDWARFoperation(expr []uint8, origin uint64, simpleLocDesc bool) (dwar
 				return location{}, fmt.Errorf("unknown register: %d", reg)
 			}
 			return location{
-				value:   value,
-				valueOk: true,
+				value:    value,
+				valueOk:  true,
+				operator: "DW_OP_regx",
 			}, nil
 		}, n + 1
 
 	case 0x91:
 		// DW_OP_fbreg
 		// (register based addressing)
-		// " The DW_OP_fbreg operation provides a signed LEB128 offset from the
-		// address specified by the location description in the
-		// DW_AT_frame_base attribute of the current function. (This is
-		// typically a “stack pointer” register plus or minus some offset. On
-		// more sophisticated systems it might be a location list that adjusts
-		// the offset according to changes in the stack pointer as the PC
-		// changes)"
+		// "The DW_OP_fbreg operation provides a signed LEB128 offset from the
+		// address specified by the location description in the DW_AT_frame_base
+		// attribute of the current function. (This is typically a “stack pointer”
+		// register plus or minus some offset. On more sophisticated systems it
+		// might be a location list that adjusts the offset according to changes
+		// in the stack pointer as the PC changes)"
 		offset, n := leb128.DecodeSLEB128(expr[1:])
 		return func(loc *loclist) (location, error) {
 			fb, err := loc.ctx.framebase()
@@ -774,6 +803,7 @@ func decodeDWARFoperation(expr []uint8, origin uint64, simpleLocDesc bool) (dwar
 				addressOk: ok,
 				value:     value,
 				valueOk:   true,
+				operator:  "DW_OP_fbreg",
 			}, nil
 		}, n + 1
 
@@ -811,6 +841,7 @@ func decodeDWARFoperation(expr []uint8, origin uint64, simpleLocDesc bool) (dwar
 				addressOk: true,
 				value:     value,
 				valueOk:   true,
+				operator:  "DW_OP_deref_size",
 			}, nil
 		}, 2
 
@@ -823,7 +854,28 @@ func decodeDWARFoperation(expr []uint8, origin uint64, simpleLocDesc bool) (dwar
 		// "The DW_OP_nop operation is a place holder. It has no effect on the
 		// location stack or any of its values"
 		return func(loc *loclist) (location, error) {
-			return location{valueOk: true}, nil
+			return location{
+				operator: "DW_OP_nop",
+			}, nil
+		}, 1
+
+	case 0x9c:
+		// DW_OP_call_frame_cfa
+		// "The DW_OP_call_frame_cfa operation pushes the value of the CFA,
+		// obtained from the Call Frame Information"
+		//
+		// NOTE: massively simplifying how this should work but for our
+		// purposes it seems okay
+		return func(loc *loclist) (location, error) {
+			fb, err := loc.ctx.framebase()
+			if err != nil {
+				return location{}, err
+			}
+			return location{
+				value:    uint32(fb),
+				valueOk:  true,
+				operator: "DW_OP_call_frame_cfa",
+			}, nil
 		}, 1
 
 	case 0x9f:
@@ -831,6 +883,7 @@ func decodeDWARFoperation(expr []uint8, origin uint64, simpleLocDesc bool) (dwar
 		return func(loc *loclist) (location, error) {
 			res := loc.lastResolved()
 			res.valueOk = true
+			res.operator = "DW_OP_stack_value"
 			return res, nil
 		}, 1
 	}
