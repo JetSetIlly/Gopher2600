@@ -84,7 +84,7 @@ func (dev *Developer) OnYield(instructionPC uint32, reason mapper.YieldReason) {
 		// match local variables for any reason other than VCS synchronisation
 		//
 		// yielding for this reason is likely to be followed by another yield
-		// very soon after so there is no point garthing this information
+		// very soon after so there is no point gathering this information
 		if reason != mapper.YieldSyncWithVCS {
 			// there's an assumption here that SortedLocals is sorted by variable name
 			var prev string

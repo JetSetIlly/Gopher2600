@@ -32,10 +32,6 @@ type SourceVariableLocal struct {
 	// the address range for which the variable is valid
 	resolvableStart uint64
 	resolvableEnd   uint64
-
-	// whether this specific local variable is/was in resolvable range at the
-	// most recent yield
-	NotResolving bool
 }
 
 // the set of local variables can share a name but they cannot share a name and
@@ -185,6 +181,9 @@ func (varb *SourceVariable) framebase() (uint64, error) {
 
 func (varb *SourceVariable) update() {
 	varb.cachedLocation.Store(varb.resolve())
+	for _, c := range varb.children {
+		c.update()
+	}
 }
 
 // resolve address/value
@@ -223,12 +222,12 @@ func (varb *SourceVariable) addVariableChildren() {
 			if varb.loclist != nil {
 				o := i
 				elem.loclist.addOperator(func(_ *loclist) (location, error) {
-					r := varb.loclist.lastResolved()
-					address := r.address + uint64(o*varb.Type.ElementType.Size)
+					address, addressOk := varb.Address()
+					address += uint64(o * varb.Type.ElementType.Size)
 					value, ok := varb.Cart.GetCoProc().CoProcRead32bit(uint32(address))
 					return location{
 						address:   address,
-						addressOk: r.addressOk, // address is a derivative of lastResolved().address
+						addressOk: addressOk,
 						value:     value,
 						valueOk:   ok,
 					}, nil
@@ -254,12 +253,12 @@ func (varb *SourceVariable) addVariableChildren() {
 			if varb.loclist != nil {
 				o := offset
 				memb.loclist.addOperator(func(_ *loclist) (location, error) {
-					r := varb.loclist.lastResolved()
-					address := r.address + o
+					address, addressOk := varb.Address()
+					address += o
 					value, ok := varb.Cart.GetCoProc().CoProcRead32bit(uint32(address))
 					return location{
 						address:   address,
-						addressOk: r.addressOk, // address is a derivative of lastResolved().address
+						addressOk: addressOk,
 						value:     value,
 						valueOk:   ok,
 					}, nil
@@ -284,12 +283,11 @@ func (varb *SourceVariable) addVariableChildren() {
 
 		if varb.loclist != nil {
 			deref.loclist.addOperator(func(_ *loclist) (location, error) {
-				r := varb.loclist.lastResolved()
-				address := uint64(r.value)
-				value, ok := varb.Cart.GetCoProc().CoProcRead32bit(uint32(address))
+				address, addressOk := varb.Value()
+				value, ok := varb.Cart.GetCoProc().CoProcRead32bit(address)
 				return location{
-					address:   address,
-					addressOk: r.valueOk, // address is a derivative of lastResolved().value
+					address:   uint64(address),
+					addressOk: addressOk,
 					value:     value,
 					valueOk:   ok,
 				}, nil
