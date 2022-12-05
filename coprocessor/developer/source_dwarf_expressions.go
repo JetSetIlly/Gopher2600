@@ -202,7 +202,13 @@ func decodeDWARFoperation(expr []uint8, origin uint64) (dwarfOperator, int) {
 		}, n + 1
 
 	case 0x12:
-		fallthrough
+		// DW_OP_dup
+		// (stack operations)
+		// "The DW_OP_dup operation duplicates the value at the top of the stack"
+		return func(loc *loclist) (location, error) {
+			return loc.lastResolved(), nil
+		}, 1
+
 	case 0x13:
 		fallthrough
 	case 0x14:
@@ -212,7 +218,6 @@ func decodeDWARFoperation(expr []uint8, origin uint64) (dwarfOperator, int) {
 	case 0x16:
 		fallthrough
 	case 0x17:
-		// logic operations require more refined handling
 		return nil, 0
 
 	case 0x18:

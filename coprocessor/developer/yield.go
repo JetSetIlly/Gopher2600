@@ -109,7 +109,7 @@ func (dev *Developer) OnYield(instructionPC uint32, reason mapper.YieldReason) {
 
 			var id string
 			for _, local := range src.SortedLocals.Locals {
-				inFunction, resolving := local.find(ln)
+				inFunction, resolving := local.match(ln.Function, uint32(instructionPC))
 				if inFunction {
 					id = local.id()
 					if prev != id {

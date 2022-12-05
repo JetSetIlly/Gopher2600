@@ -48,17 +48,16 @@ func (local *SourceVariableLocal) id() string {
 	return fmt.Sprintf("%s %s", local.Name, local.DeclLine)
 }
 
-// find returns whether variables is in the function and whether it is
-// resolvable at the current source line.
-func (local *SourceVariableLocal) find(ln *SourceLine) (bool, bool) {
-	inFunction := false
-	for _, d := range ln.Disassembly {
-		inFunction = inFunction || ln.Function == local.DeclLine.Function
-		if d.Addr >= uint32(local.resolvableStart) && d.Addr <= uint32(local.resolvableEnd) {
-			return inFunction, true
-		}
-	}
-	return inFunction, false
+// match returns whether variables is in the function and whether it is
+// resolvable at the beginning of the current source line
+//
+// previous versions of this function (called "find") attempted to match a
+// local variables with a specific source line. however, that didn't work
+// because the variable may not be valid/resolvable until an instruction after
+// the first of the line - and there's no good way of deciding which instruction
+// to break on except to say the first assoicated with the line
+func (local *SourceVariableLocal) match(fn *SourceFunction, addr uint32) (bool, bool) {
+	return fn == local.DeclLine.Function, addr >= uint32(local.resolvableStart) && addr <= uint32(local.resolvableEnd)
 }
 
 // SourceVariable is a single variable identified by the DWARF data.

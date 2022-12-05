@@ -139,7 +139,7 @@ type Source struct {
 	ExecutionProfileChanged bool
 
 	// list of breakpoints on ARM program
-	Breakpoints map[*SourceLine]bool
+	Breakpoints map[uint32]bool
 
 	// keeps track of the previous breakpoint check. see checkBreakPointByAddr()
 	prevBreakpointCheck *SourceLine
@@ -179,7 +179,7 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 			Lines: make([]*SourceLine, 0, 100),
 		},
 		ExecutionProfileChanged: true,
-		Breakpoints:             make(map[*SourceLine]bool),
+		Breakpoints:             make(map[uint32]bool),
 	}
 
 	var err error
