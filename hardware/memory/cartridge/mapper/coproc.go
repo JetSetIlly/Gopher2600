@@ -93,6 +93,9 @@ type CartCoProc interface {
 	CoProcRegister(n int) (uint32, bool)
 	CoProcRegisterSet(n int, value uint32) bool
 
+	// returns the current stack frame
+	CoProcStackFrame() uint32
+
 	// read coprocessor memory address for 8/16/32 bit values. return false if
 	// address is out of range
 	CoProcRead8bit(addr uint32) (uint8, bool)

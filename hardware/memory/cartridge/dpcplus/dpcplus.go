@@ -935,6 +935,11 @@ func (cart *dpcPlus) CoProcRegisterSet(n int, value uint32) bool {
 	return cart.arm.SetRegister(n, value)
 }
 
+// CoProcStackFrame implements the mapper.CartCoProc interface.
+func (cart *dpcPlus) CoProcStackFrame() uint32 {
+	return cart.arm.StackFrame()
+}
+
 // CoProcRead8bit implements the mapper.CartCoProc interface.
 func (cart *dpcPlus) CoProcRead8bit(addr uint32) (uint8, bool) {
 	return cart.state.static.Read8bit(addr)

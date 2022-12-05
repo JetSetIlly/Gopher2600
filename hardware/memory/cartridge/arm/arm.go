@@ -84,6 +84,9 @@ type ARMState struct {
 	executingPC   uint32
 	instructionPC uint32
 
+	// the current stack frame of the execution
+	stackFrame uint32
+
 	// when the processor is interrupted it returns control to the VCS but with
 	// the understanding that it must resume from where it left off
 	//
@@ -435,6 +438,7 @@ func (arm *ARM) resetRegisters() {
 	}
 
 	arm.state.registers[rSP], arm.state.registers[rLR], arm.state.registers[rPC] = arm.mem.ResetVectors()
+	arm.state.stackFrame = arm.state.registers[rSP]
 
 	arm.state.prefetchCycle = S
 }
@@ -648,6 +652,11 @@ func (arm *ARM) SetRegister(reg int, value uint32) bool {
 	return true
 }
 
+// StackFrame returns the current stack reference for the execution.
+func (arm *ARM) StackFrame() uint32 {
+	return arm.state.stackFrame
+}
+
 // Status returns a copy of the current status register.
 func (arm *ARM) Status() Status {
 	return arm.state.status
@@ -705,6 +714,10 @@ func (arm *ARM) run() (mapper.YieldReason, float32) {
 	// arm.immediateMode is true)
 	var expectedPC uint32
 
+	// used to detect changes in the stack frame
+	var expectedLR uint32
+	var candidateStackFrame uint32
+
 	// number of iterations. only used when in immediate mode
 	var iterations int
 
@@ -752,6 +765,11 @@ func (arm *ARM) run() (mapper.YieldReason, float32) {
 			expectedPC = arm.state.registers[rPC]
 		}
 
+		// the expected link register of the execution. if the SP register does
+		// not match this value then the stack frame is said to have changed
+		expectedLR = arm.state.registers[rLR]
+		candidateStackFrame = arm.state.registers[rSP]
+
 		// note stack pointer. we'll use this to check if stack pointer has
 		// collided with variables memory
 		stackPointerBeforeExecution := arm.state.registers[rSP]
@@ -785,6 +803,11 @@ func (arm *ARM) run() (mapper.YieldReason, float32) {
 		} else {
 			// update clock with nominal number of cycles
 			arm.clock(1.1)
+		}
+
+		// stack frame has changed if LR register has changed
+		if expectedLR != arm.state.registers[rLR] {
+			arm.state.stackFrame = candidateStackFrame
 		}
 
 		// send disasm information to disassembler

@@ -791,19 +791,12 @@ func decodeDWARFoperation(expr []uint8, origin uint64, simpleLocDesc bool) (dwar
 			if err != nil {
 				return location{}, err
 			}
-			address := uint64(int64(fb) + offset)
-
-			value, ok := loc.ctx.coproc().CoProcRead32bit(uint32(address))
-			if !ok {
-				return location{}, fmt.Errorf("unknown address: %08x", address)
-			}
+			address := int64(fb) + offset
 
 			return location{
-				address:   address,
-				addressOk: ok,
-				value:     value,
-				valueOk:   true,
-				operator:  "DW_OP_fbreg",
+				value:    uint32(address),
+				valueOk:  true,
+				operator: "DW_OP_fbreg",
 			}, nil
 		}, n + 1
 

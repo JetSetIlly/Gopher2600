@@ -163,8 +163,14 @@ func (varb *SourceVariable) framebase() (uint64, error) {
 		return 0, fmt.Errorf("no framebase")
 	}
 
+	// if there is no framebase loclist for the function we'll just use the
+	// plain framebase() value for the function
 	if varb.DeclLine.Function.framebaseList == nil {
-		return 0, fmt.Errorf("no framebase for function %s", varb.DeclLine.Function.Name)
+		fb, err := varb.DeclLine.Function.framebase()
+		if err != nil {
+			return 0, fmt.Errorf("framebase for function %s: %v", varb.DeclLine.Function.Name, err)
+		}
+		return fb, nil
 	}
 
 	location, err := varb.DeclLine.Function.framebaseList.resolve()

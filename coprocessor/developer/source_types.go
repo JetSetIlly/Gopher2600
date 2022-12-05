@@ -174,8 +174,22 @@ func (fn *SourceFunction) coproc() mapper.CartCoProc {
 	return fn.Cart.GetCoProc()
 }
 
+// the framebase for a SourceFunction can be obtained by the framebaseList
+// field unless it is nil. if it is nil then this framebase() function will
+// simply be the result of the CoProcStackFrame() function.
+//
+// the intention is for a SourceVariable type to check framebaseList and
+// resolve that for a framebase value and to use this function only if
+// framebaseList is nil
+//
+// when the framebaseList field itself is being resolved, then the
+// SourceFunction is used as the loclistContext. in that situation, the
+// framebase of the function (if it is requested) is taken to be the value
+// returned by the this function.
+//
+// confusing and probably wrong.
 func (fn *SourceFunction) framebase() (uint64, error) {
-	return fn.Address[0], nil
+	return uint64(fn.Cart.GetCoProc().CoProcStackFrame()), nil
 }
 
 // IsStub returns true if the SourceFunction is just a stub.
