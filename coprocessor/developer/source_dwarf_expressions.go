@@ -34,7 +34,7 @@ import (
 // the expr slice
 //
 // returns nil, zero, if expression cannot be handled.
-func decodeDWARFoperation(expr []uint8, origin uint64, simpleLocDesc bool) (dwarfOperator, int) {
+func decodeDWARFoperation(expr []uint8, origin uint64) (dwarfOperator, int) {
 	// expression location operators reference
 	//
 	// "DWARF Debugging Information Format Version 4", page 17 to 24
@@ -52,28 +52,13 @@ func decodeDWARFoperation(expr []uint8, origin uint64, simpleLocDesc bool) (dwar
 		address |= uint64(expr[3]) << 16
 		address |= uint64(expr[4]) << 24
 		address += origin
-		if simpleLocDesc {
-			return func(loc *loclist) (location, error) {
-				value, ok := loc.ctx.coproc().CoProcRead32bit(uint32(address))
-				return location{
-					address:   address,
-					addressOk: true,
-					value:     value,
-					valueOk:   ok,
-					operator:  "DW_OP_addr",
-				}, nil
-			}, 5
-		} else {
-			return func(loc *loclist) (location, error) {
-				return location{
-					address:   address,
-					addressOk: true,
-					value:     uint32(address),
-					valueOk:   false,
-					operator:  "DW_OP_addr",
-				}, nil
-			}, 5
-		}
+		return func(loc *loclist) (location, error) {
+			return location{
+				value:    uint32(address),
+				valueOk:  false,
+				operator: "DW_OP_addr",
+			}, nil
+		}, 5
 
 	case 0x06:
 		// DW_OP_deref
@@ -755,7 +740,7 @@ func decodeDWARFoperation(expr []uint8, origin uint64, simpleLocDesc bool) (dwar
 
 			return location{
 				value:    uint32(address),
-				valueOk:  true,
+				valueOk:  false,
 				operator: fmt.Sprintf("DW_OP_breg%d", reg),
 			}, nil
 		}, n + 1
@@ -771,7 +756,7 @@ func decodeDWARFoperation(expr []uint8, origin uint64, simpleLocDesc bool) (dwar
 			}
 			return location{
 				value:    value,
-				valueOk:  true,
+				valueOk:  false,
 				operator: "DW_OP_regx",
 			}, nil
 		}, n + 1
@@ -795,7 +780,7 @@ func decodeDWARFoperation(expr []uint8, origin uint64, simpleLocDesc bool) (dwar
 
 			return location{
 				value:    uint32(address),
-				valueOk:  true,
+				valueOk:  false,
 				operator: "DW_OP_fbreg",
 			}, nil
 		}, n + 1

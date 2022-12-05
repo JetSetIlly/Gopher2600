@@ -418,7 +418,7 @@ func (bld *build) buildTypes(src *Source) error {
 						})
 					case dwarf.ClassExprLoc:
 						memb.loclist = newLoclistJustContext(memb)
-						r, _ := decodeDWARFoperation(fld.Val.([]uint8), 0, true)
+						r, _ := decodeDWARFoperation(fld.Val.([]uint8), 0)
 						memb.loclist.addOperator(r)
 					default:
 						continue
@@ -688,7 +688,7 @@ func (bld *build) buildVariables(src *Source, origin uint64) error {
 				// page 26 of "DWARF4 Standard"
 
 				// set address resolve function
-				r, n := decodeDWARFoperation(fld.Val.([]uint8), origin, true)
+				r, n := decodeDWARFoperation(fld.Val.([]uint8), origin)
 				if n != 0 {
 					varb.loclist = newLoclistJustContext(varb)
 					varb.loclist.addOperator(r)

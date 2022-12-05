@@ -27,6 +27,22 @@ type loclistContext interface {
 	framebase() (uint64, error)
 }
 
+// the location type is used in two ways. (1) as a way of encoding the
+// current address/value of a variables; and (2) as a interim value on the
+// stack
+//
+// with regard to point (2) the valueOk field is used to control how the value
+// should be interpreted. if the field is true then the value should be
+// considered a value that can potentially be used as a result and presented to
+// the user of the debugger. however, if it is false then it is an interim
+// value and should be considered to be an address
+//
+// similarly, if addressOk is false then the address field should be considered
+// unusable
+//
+// the operator field indicates the most recent DWARF operator that led to the
+// value. when viewed in the context of the stack field in the loclist type, it
+// can be used to help describe the process by which the value was derived.
 type location struct {
 	address   uint64
 	addressOk bool
@@ -76,7 +92,7 @@ func newLoclistFromSingleOperator(ctx loclistContext, expr []uint8) (*loclist, e
 	loc := &loclist{
 		ctx: ctx,
 	}
-	op, n := decodeDWARFoperation(expr, 0, true)
+	op, n := decodeDWARFoperation(expr, 0)
 	if n == 0 {
 		return nil, fmt.Errorf("unknown expression operator %02x", expr[0])
 	}
@@ -163,7 +179,7 @@ func newLoclist(ctx loclistContext, debug_loc *elf.Section, ptr int64, commit co
 			for length > 0 {
 				// read single location description for this start/end address
 				debug_loc.ReadAt(b, ptr)
-				r, n := decodeDWARFoperation(b, 0, length <= 5)
+				r, n := decodeDWARFoperation(b, 0)
 				if n == 0 {
 					return fmt.Errorf("unknown expression operator %02x", b[0])
 				}
@@ -216,9 +232,8 @@ func (loc *loclist) resolve() (location, error) {
 		if err != nil {
 			return location{}, err
 		}
-		if r.addressOk || r.valueOk {
-			loc.stack = append(loc.stack, r)
-		}
+
+		loc.stack = append(loc.stack, r)
 		loc.derivation = append(loc.derivation, r)
 	}
 
@@ -226,7 +241,23 @@ func (loc *loclist) resolve() (location, error) {
 		return location{}, fmt.Errorf("stack is empty")
 	}
 
-	return loc.stack[len(loc.stack)-1], nil
+	// if top of stack does not have a valid value then we treat it as an
+	// address and dereference it. put the changed location back on the stack
+	// and on the derivation list
+	//
+	// we tend to see this when DW_OP_fbreg is the only instruction in the
+	// loclist and also more commonly with DW_OP_addr in context of global
+	// variables
+	r := loc.stack[len(loc.stack)-1]
+	if !r.valueOk {
+		r.address = uint64(r.value)
+		r.addressOk = true
+		r.value, r.valueOk = loc.ctx.coproc().CoProcRead32bit(r.value)
+		loc.stack[len(loc.stack)-1] = r
+		loc.derivation[len(loc.stack)-1] = r
+	}
+
+	return r, nil
 }
 
 // lastResolved implements the resolver interface
