@@ -208,19 +208,14 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 	// origin of the executable ELF section. will be zero if ELF file is not
 	// reloctable
 	//
-	// the executableSectionFound flag is to prevent accepting relocatable
-	// files with multiple executable sections - I don't know how to handle
-	// that because we need at most one executableOrigin value when completing
-	// the relocation of DWARF sections
-	//
-	// NOTE: this is likely to change once I understand DWARF relocation better
+	// the isReloctable flag indicates that a relocatble execution section has
+	// been found. it is also used to prevent accepting relocatable files with
+	// multiple executable sections - I don't know how to handle that because
+	// we need at most one executableOrigin value when completing the
+	// relocation of DWARF sections (probably straight-forward but leave it for
+	// now until we see an example of it)
 	var executableOrigin uint64
-	var executableSectionFound bool
-
-	// get executable origin for non-relocatable cartridges
-	// if c, ok := cart.(mapper.CartCoProcNonRelocatable); ok {
-	// 	executableOrigin = uint64(c.ExecutableOrigin())
-	// }
+	var isReloctable bool
 
 	// disassemble every word in the ELF file
 	//
@@ -238,8 +233,9 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 			if sec.Name == ".debug_loc" {
 				if src.debug_loc != nil {
 					logger.Logf("dwarf", "multiple .debug_loc sections found. using the first one encountered")
+				} else {
+					src.debug_loc = sec
 				}
-				src.debug_loc = sec
 			}
 			continue
 		}
@@ -247,10 +243,10 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 		// if file is relocatable then get executable origin address (see
 		// comment for executableOrigin type above)
 		if ef.Type&elf.ET_REL == elf.ET_REL {
-			if executableSectionFound {
+			if isReloctable {
 				return nil, curated.Errorf("dwarf: can't handle multiple executable sections")
 			}
-			executableSectionFound = true
+			isReloctable = true
 
 			// get executable origin for relocatable ROMs
 			if c, ok := cart.GetCoProc().(mapper.CartCoProcDWARF); ok {
@@ -261,9 +257,7 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 		}
 
 		addr := sec.Addr + executableOrigin
-
 		o := sec.Open()
-
 		b := make([]byte, 2)
 
 		// 32bit instruction handling (see comment below)
@@ -308,6 +302,13 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 			}
 
 			addr += 2
+		}
+	}
+
+	// get executable origin for non-relocatable cartridges
+	if !isReloctable {
+		if c, ok := cart.(mapper.CartCoProcNonRelocatable); ok {
+			executableOrigin = uint64(c.ExecutableOrigin())
 		}
 	}
 
@@ -631,6 +632,15 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 	err = bld.buildVariables(src, executableOrigin)
 	if err != nil {
 		return nil, curated.Errorf("dwarf: %v", err)
+	}
+
+	// relocate local variables if necessary
+	if isReloctable {
+		for _, l := range src.locals {
+			offset := l.DeclLine.Function.Address[0]
+			l.ResolvableStart += offset
+			l.ResolvableEnd += offset
+		}
 	}
 
 	// sort sorted lines

@@ -119,7 +119,7 @@ var commandTemplate = []string{
 	// peripherals (components that might not be present)
 	cmdPlusROM + " (NICK [%<name>S]|ID [%<id>S]|HOST [%<host>S]|PATH [%<path>S])",
 	cmdCoProc + " (ID|LIST [ILLEGAL|SOURCEFILES]|TOP (%<top>N)|REGS|SET %<register>N %<value>N)",
-	cmdDWARF + " [GLOBALS|LOCALS (DERIVATION)]",
+	cmdDWARF + " [GLOBALS|LOCALS {DERIVATION|RANGES}]",
 
 	// user input
 	cmdPeripheral + " [LEFT|RIGHT] (AUTO|STICK|PADDLE|KEYPAD|GAMEPAD|SAVEKEY|ATARIVOX)",

@@ -101,6 +101,10 @@ func newLoclistFromSingleOperator(ctx loclistContext, expr []uint8) (*loclist, e
 }
 
 func newLoclist(ctx loclistContext, debug_loc *elf.Section, ptr int64, commit commitLoclist) error {
+	if debug_loc == nil {
+		return fmt.Errorf("no location list information")
+	}
+
 	// buffer for reading the .debug_log section
 	b := make([]byte, 16)
 

@@ -1431,12 +1431,23 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 				}
 			})
 		case "LOCALS":
-			option, _ := tokens.Get()
-			showLoclist := option == "DERIVATION"
+			var derivation bool
+			var ranges bool
+
+			option, ok := tokens.Get()
+			for ok {
+				derivation = derivation || option == "DERIVATION"
+				ranges = ranges || option == "RANGES"
+				option, ok = tokens.Get()
+			}
+
 			dbg.CoProcDev.BorrowYieldState(func(yld *developer.YieldState) {
 				for _, l := range yld.LocalVariables {
 					dbg.printLine(terminal.StyleFeedback, l.String())
-					if showLoclist {
+					if ranges {
+						dbg.printLine(terminal.StyleFeedback, fmt.Sprintf("  (%#08x to %#08x)", l.ResolvableStart, l.ResolvableEnd))
+					}
+					if derivation {
 						for _, d := range l.Derivation() {
 							dbg.printLine(terminal.StyleFeedback, fmt.Sprintf("    %s\n", d.String()))
 						}

@@ -16,6 +16,8 @@
 package developer
 
 import (
+	"fmt"
+
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 )
 
@@ -27,10 +29,23 @@ type YieldedLocal struct {
 	IsResolving bool
 
 	// whether the location of the variable can ever be resolved
-	CanResolve bool
+	CanNeverResolve bool
 
 	// whether the location cannot be found because of an error
 	ErrorOnResolve bool
+}
+
+func (local *YieldedLocal) String() string {
+	if local.ErrorOnResolve {
+		return fmt.Sprintf("%s = error during resolving", local.Name)
+	}
+	if local.CanNeverResolve {
+		return fmt.Sprintf("%s = can never resolve", local.Name)
+	}
+	if local.IsResolving {
+		return local.SourceVariableLocal.String()
+	}
+	return fmt.Sprintf("%s = out of scope", local.Name)
 }
 
 // YieldState records the most recent yield.
@@ -97,7 +112,7 @@ func (dev *Developer) OnYield(instructionPC uint32, reason mapper.YieldReason) {
 						l := &YieldedLocal{
 							SourceVariableLocal: candidates[0],
 							IsResolving:         false && candidates[0].errorOnResolve == nil,
-							CanResolve:          candidates[0].loclist != nil && candidates[0].errorOnResolve == nil,
+							CanNeverResolve:     candidates[0].loclist == nil || candidates[0].errorOnResolve != nil,
 							ErrorOnResolve:      candidates[0].errorOnResolve != nil,
 						}
 						locals = append(locals, l)
@@ -125,7 +140,7 @@ func (dev *Developer) OnYield(instructionPC uint32, reason mapper.YieldReason) {
 						l := &YieldedLocal{
 							SourceVariableLocal: local,
 							IsResolving:         true && local.errorOnResolve == nil,
-							CanResolve:          local.loclist != nil && local.errorOnResolve == nil,
+							CanNeverResolve:     local.loclist == nil || local.errorOnResolve != nil,
 							ErrorOnResolve:      local.errorOnResolve != nil,
 						}
 						locals = append(locals, l)

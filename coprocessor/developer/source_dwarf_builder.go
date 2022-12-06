@@ -613,7 +613,8 @@ func (bld *build) resolveVariableDeclaration(v buildEntry, src *Source) (*Source
 	return &varb, nil
 }
 
-// buildVariables populates variables map in the *Source tree
+// buildVariables populates variables map in the *Source tree. local variables
+// will need to be relocated for relocatable ELF files
 func (bld *build) buildVariables(src *Source, origin uint64) error {
 	for _, v := range bld.variables {
 		// resolve name and type of variable
@@ -668,10 +669,15 @@ func (bld *build) buildVariables(src *Source, origin uint64) error {
 				var err error
 				err = newLoclist(varb, bld.debug_loc, fld.Val.(int64), func(start, end uint64, loc *loclist) {
 					varb.loclist = loc
+
+					// if the ELF file we are loading is a relocatable ELF file
+					// then the ResolvableStart and ResolvableEnd values will
+					// need adjusting
+
 					local := &SourceVariableLocal{
 						SourceVariable:  varb,
-						resolvableStart: start,
-						resolvableEnd:   end,
+						ResolvableStart: start,
+						ResolvableEnd:   end,
 					}
 
 					src.locals = append(src.locals, local)
@@ -745,9 +751,9 @@ func (bld *build) buildVariables(src *Source, origin uint64) error {
 }
 
 type foundFunction struct {
+	name     string
 	filename string
 	linenum  int64
-	name     string
 
 	// not all functions have a framebase
 	//
@@ -820,9 +826,9 @@ func (bld *build) findFunction(src *Source, addr uint64) (*foundFunction, error)
 		}
 
 		return &foundFunction{
+			name:      name,
 			filename:  files[filenum].Name,
 			linenum:   linenum,
-			name:      name,
 			framebase: framebase,
 		}, nil
 	}
