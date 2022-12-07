@@ -1427,6 +1427,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		case "GLOBALS":
 			dbg.CoProcDev.BorrowSource(func(src *developer.Source) {
 				for _, g := range src.SortedGlobals.Variables {
+					g.Update()
 					dbg.printLine(terminal.StyleFeedback, g.String())
 				}
 			})
@@ -1443,6 +1444,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 
 			dbg.CoProcDev.BorrowYieldState(func(yld *developer.YieldState) {
 				for _, l := range yld.LocalVariables {
+					l.Update()
 					dbg.printLine(terminal.StyleFeedback, l.String())
 					if ranges {
 						dbg.printLine(terminal.StyleFeedback, fmt.Sprintf("  (%#08x to %#08x)", l.ResolvableStart, l.ResolvableEnd))

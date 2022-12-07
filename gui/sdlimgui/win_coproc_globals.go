@@ -128,6 +128,7 @@ func (win *winCoProcGlobals) drawFileSelection(src *developer.Source) {
 }
 
 func (win *winCoProcGlobals) draw() {
+
 	if win.img.lz.Cart.Static == nil {
 		imgui.Text("No cartridge static memory available")
 		return
@@ -148,6 +149,9 @@ func (win *winCoProcGlobals) draw() {
 			imgui.Text("No global variable in the source")
 			return
 		}
+
+		// update all global variables on every frame
+		win.img.dbg.PushFunction(src.UpdateGlobalVariables)
 
 		if win.firstOpen {
 			// assume source entry point is a function called "main"
@@ -424,7 +428,6 @@ func (win *winCoProcGlobals) drawVariable(src *developer.Source, varb *developer
 //
 // all entries in the current view are saved, including closed nodes.
 func (win *winCoProcGlobals) saveToCSV(src *developer.Source) {
-
 	// open unique file
 	fn := unique.Filename("globals", win.img.lz.Cart.Shortname)
 	fn = fmt.Sprintf("%s.csv", fn)

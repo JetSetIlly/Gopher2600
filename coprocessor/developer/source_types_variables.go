@@ -179,10 +179,14 @@ func (varb *SourceVariable) framebase() (uint64, error) {
 	return uint64(location.value), nil
 }
 
-func (varb *SourceVariable) update() {
+// Update variable. It should be called periodically before using the return
+// value from Address() or Value()
+//
+// Be careful to only call this from the emulation goroutine.
+func (varb *SourceVariable) Update() {
 	varb.cachedLocation.Store(varb.resolve())
 	for _, c := range varb.children {
-		c.update()
+		c.Update()
 	}
 }
 

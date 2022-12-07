@@ -149,6 +149,9 @@ func (win *winCoProcLocals) drawVariableLocal(local *developer.YieldedLocal, nod
 func (win *winCoProcLocals) drawVariable(varb *developer.SourceVariable, indentLevel int,
 	nodeID string, isResolving bool, bugged bool) {
 
+	// update variable
+	win.img.dbg.PushFunction(varb.Update)
+
 	const IndentDepth = 2
 
 	// name of variable as presented. added bug icon as appropriate

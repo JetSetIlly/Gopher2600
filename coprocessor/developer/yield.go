@@ -64,6 +64,14 @@ func (y *YieldState) Cmp(w *YieldState) bool {
 
 // OnYield implements the mapper.CartCoProcDeveloper interface.
 func (dev *Developer) OnYield(instructionPC uint32, reason mapper.YieldReason) {
+	// do nothing if yield reason is YieldSyncWithVCS
+	//
+	// yielding for this reason is likely to be followed by another yield
+	// very soon after so there is no point gathering this information
+	if reason == mapper.YieldSyncWithVCS {
+		return
+	}
+
 	var ln *SourceLine
 	var locals []*YieldedLocal
 
@@ -97,65 +105,61 @@ func (dev *Developer) OnYield(instructionPC uint32, reason mapper.YieldReason) {
 		}
 
 		// match local variables for any reason other than VCS synchronisation
-		//
-		// yielding for this reason is likely to be followed by another yield
-		// very soon after so there is no point gathering this information
-		if reason != mapper.YieldSyncWithVCS {
-			// there's an assumption here that SortedLocals is sorted by variable name
-			var prev string
 
-			var candidateFound bool
-			var candidates []*SourceVariableLocal
-			processCandidates := func() {
-				if !candidateFound {
-					if len(candidates) > 0 {
-						l := &YieldedLocal{
-							SourceVariableLocal: candidates[0],
-							IsResolving:         false && candidates[0].errorOnResolve == nil,
-							CanNeverResolve:     candidates[0].loclist == nil || candidates[0].errorOnResolve != nil,
-							ErrorOnResolve:      candidates[0].errorOnResolve != nil,
-						}
-						locals = append(locals, l)
+		var candidateFound bool
+		var candidates []*SourceVariableLocal
+		processCandidates := func() {
+			if !candidateFound {
+				if len(candidates) > 0 {
+					l := &YieldedLocal{
+						SourceVariableLocal: candidates[0],
+						IsResolving:         false && candidates[0].errorOnResolve == nil,
+						CanNeverResolve:     candidates[0].loclist == nil || candidates[0].errorOnResolve != nil,
+						ErrorOnResolve:      candidates[0].errorOnResolve != nil,
 					}
-				}
-				candidateFound = false
-				candidates = candidates[:0]
-			}
-
-			var id string
-			for _, local := range src.SortedLocals.Locals {
-				inFunction, resolving := local.match(ln.Function, uint32(instructionPC))
-				if inFunction {
-					id = local.id()
-					if prev != id {
-						processCandidates()
-					}
-					prev = id
-
-					if candidateFound {
-						continue
-					}
-
-					if resolving {
-						l := &YieldedLocal{
-							SourceVariableLocal: local,
-							IsResolving:         true && local.errorOnResolve == nil,
-							CanNeverResolve:     local.loclist == nil || local.errorOnResolve != nil,
-							ErrorOnResolve:      local.errorOnResolve != nil,
-						}
-						locals = append(locals, l)
-						candidateFound = true
-					} else {
-						candidates = append(candidates, local)
-					}
-				} else if resolving {
-					// this shouldn't be possible. if this happens then
-					// something has gone wrong with the DWARF parsing
+					locals = append(locals, l)
 				}
 			}
-
-			processCandidates()
+			candidateFound = false
+			candidates = candidates[:0]
 		}
+
+		// there's an assumption here that SortedLocals is sorted by variable name
+		var id string
+		var prevId string
+
+		for _, local := range src.SortedLocals.Locals {
+			inFunction, resolving := local.match(ln.Function, uint32(instructionPC))
+			if inFunction {
+				id = local.id()
+				if prevId != id {
+					processCandidates()
+				}
+				prevId = id
+
+				if candidateFound {
+					continue
+				}
+
+				if resolving {
+					l := &YieldedLocal{
+						SourceVariableLocal: local,
+						IsResolving:         true && local.errorOnResolve == nil,
+						CanNeverResolve:     local.loclist == nil || local.errorOnResolve != nil,
+						ErrorOnResolve:      local.errorOnResolve != nil,
+					}
+					locals = append(locals, l)
+					candidateFound = true
+				} else {
+					candidates = append(candidates, local)
+				}
+			} else if resolving {
+				// this shouldn't be possible. if this happens then
+				// something has gone wrong with the DWARF parsing
+			}
+		}
+
+		processCandidates()
 
 		// update all globals (locals are updated below)
 		src.UpdateGlobalVariables()
@@ -175,7 +179,7 @@ func (dev *Developer) OnYield(instructionPC uint32, reason mapper.YieldReason) {
 
 	// update all locals (globals are updated above)
 	for _, local := range dev.yieldState.LocalVariables {
-		local.update()
+		local.Update()
 	}
 }
 

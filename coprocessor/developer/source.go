@@ -941,7 +941,7 @@ func (src *Source) FindSourceLine(addr uint32) *SourceLine {
 func (src *Source) UpdateGlobalVariables() {
 	var touch func(varb *SourceVariable)
 	touch = func(varb *SourceVariable) {
-		varb.update()
+		varb.Update()
 		for i := 0; i < varb.NumChildren(); i++ {
 			touch(varb.Child(i))
 		}
