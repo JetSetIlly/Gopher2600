@@ -383,7 +383,7 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 
 			// loop through files in the compilation unit. entry 0 is always nil
 			for _, f := range r.Files()[1:] {
-				sf, err := readSourceFile(f.Name, pathToROM_nosymlinks)
+				sf, err := readSourceFile(src.cart, f.Name, pathToROM_nosymlinks)
 				if err != nil {
 					logger.Logf("dwarf", "%v", err)
 				} else {
@@ -612,7 +612,10 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 	// there may be a better way of doing this or maybe I'm just
 	// misunderstanding something but for now, we'll use this rough method
 	for _, sf := range src.Files {
-		fn := &SourceFunction{Name: stubIndicator}
+		fn := &SourceFunction{
+			Cart: src.cart,
+			Name: stubIndicator,
+		}
 		for _, ln := range sf.Content.Lines {
 			if ln.Function.Name == stubIndicator {
 				ln.Function = fn
@@ -750,6 +753,7 @@ func (src *Source) addFunctionStubs() {
 
 	// add driver function
 	driverFn := &SourceFunction{
+		Cart: src.cart,
 		Name: DriverFunctionName,
 	}
 	src.Functions[DriverFunctionName] = driverFn
@@ -794,7 +798,7 @@ func (src *Source) newFrame() {
 	}
 }
 
-func readSourceFile(filename string, pathToROM_nosymlinks string) (*SourceFile, error) {
+func readSourceFile(cart CartCoProcDeveloper, filename string, pathToROM_nosymlinks string) (*SourceFile, error) {
 	var err error
 
 	fl := SourceFile{
@@ -811,9 +815,12 @@ func readSourceFile(filename string, pathToROM_nosymlinks string) (*SourceFile, 
 	var fp fragmentParser
 	for i, s := range strings.Split(string(b), "\n") {
 		l := &SourceLine{
-			File:         &fl,
-			LineNumber:   i + 1, // counting from one
-			Function:     &SourceFunction{Name: stubIndicator},
+			File:       &fl,
+			LineNumber: i + 1, // counting from one
+			Function: &SourceFunction{
+				Cart: cart,
+				Name: stubIndicator,
+			},
 			PlainContent: s,
 		}
 		fl.Content.Lines = append(fl.Content.Lines, l)
