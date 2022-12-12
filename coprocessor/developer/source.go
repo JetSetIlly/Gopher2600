@@ -496,8 +496,19 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 							Name:     foundFunc.name,
 							DeclLine: src.Files[foundFunc.filename].Content.Lines[foundFunc.linenum-1],
 						}
+
+						// assign function to declaration line
+						if !fn.DeclLine.Function.IsStub() {
+							logger.Logf("dwarf", "contention function ownership for source line (%s)", fn.DeclLine)
+							logger.Logf("dwarf", "%s and %s", fn.DeclLine.Function.Name, fn.Name)
+						}
+						fn.DeclLine.Function = fn
+
+						// add to list of functions
 						src.Functions[foundFunc.name] = fn
 						src.FunctionNames = append(src.FunctionNames, foundFunc.name)
+
+						// update workingSourceLine with newly created SourceFunction
 						workingSourceLine.Function = src.Functions[foundFunc.name]
 					}
 
