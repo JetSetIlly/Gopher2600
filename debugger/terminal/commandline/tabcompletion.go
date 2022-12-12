@@ -129,6 +129,10 @@ func (tc *TabCompletion) Reset() {
 }
 
 func (tc *TabCompletion) buildMatches(n *node, tokens *Tokens) {
+	// note the current state of tokens. we use this to make sure we don't
+	// continuously attempt to call buildMatches with the same token state
+	remainder := tokens.Remainder()
+
 	// if there is no more input then return true (validation has passed) if
 	// the node is optional, false if it is required
 	tok, ok := tokens.Get()
@@ -246,7 +250,11 @@ func (tc *TabCompletion) buildMatches(n *node, tokens *Tokens) {
 	}
 
 	// no more nodes in the next array. move to the repeat node if there is one
+	// making sure not to enter an infinite regression
 	if n.repeat != nil {
+		if remainder == tokens.Remainder() {
+			return
+		}
 		tc.buildMatches(n.repeat, tokens)
 	}
 }
