@@ -157,21 +157,12 @@ func (win *winCoProcSource) debuggerDraw() {
 	}
 
 	// check yield state and open the window if necessary
-	win.img.dbg.CoProcDev.BorrowYieldState(func(yield *developer.YieldState) {
-		if !yield.Cmp(&win.yieldState) {
-			win.yieldState = *yield
-
-			win.img.dbg.CoProcDev.BorrowSource(func(src *developer.Source) {
-				// we need a check for src validity here. when we borrow the
-				// source again later we check it for a second time
-				if src == nil {
-					return
-				}
-				win.yieldLine = src.FindSourceLine(win.yieldState.InstructionPC)
-			})
+	win.img.dbg.CoProcDev.BorrowYieldState(func(yld *developer.YieldState) {
+		if !yld.Cmp(&win.yieldState) {
+			win.yieldState = *yld
 
 			// open window and focus on yield line if the yield is a breakpoint
-			if yield.Reason != mapper.YieldSyncWithVCS && yield.Reason != mapper.YieldProgramEnded {
+			if yld.Reason != mapper.YieldSyncWithVCS && yld.Reason != mapper.YieldProgramEnded {
 				win.debuggerOpen = true
 				win.focusYieldLine = true
 			}
@@ -217,6 +208,9 @@ func (win *winCoProcSource) draw() {
 			imgui.Text("No source files available")
 			return
 		}
+
+		// find yield line
+		win.yieldLine = src.FindSourceLine(win.yieldState.InstructionPC)
 
 		// focus on yield line (or main function if we don't have a yield line)
 		// but only if emulation is paused

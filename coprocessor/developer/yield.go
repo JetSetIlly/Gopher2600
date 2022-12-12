@@ -21,6 +21,8 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 )
 
+// YieldedLocal supplements a SourceVariableLocal with additional information
+// about the variable under current yield conditions.
 type YieldedLocal struct {
 	*SourceVariableLocal
 
@@ -50,10 +52,8 @@ func (local *YieldedLocal) String() string {
 
 // YieldState records the most recent yield.
 type YieldState struct {
-	InstructionPC   uint32
-	InstructionLine *SourceLine
-	Reason          mapper.YieldReason
-
+	InstructionPC  uint32
+	Reason         mapper.YieldReason
 	LocalVariables []*YieldedLocal
 }
 
@@ -69,6 +69,12 @@ func (dev *Developer) OnYield(instructionPC uint32, reason mapper.YieldReason) {
 	// yielding for this reason is likely to be followed by another yield
 	// very soon after so there is no point gathering this information
 	if reason == mapper.YieldSyncWithVCS {
+		dev.BorrowYieldState(func(yld *YieldState) {
+			yld.InstructionPC = instructionPC
+			yld.Reason = reason
+			yld.LocalVariables = yld.LocalVariables[:0]
+		})
+
 		return
 	}
 
@@ -154,8 +160,9 @@ func (dev *Developer) OnYield(instructionPC uint32, reason mapper.YieldReason) {
 					candidates = append(candidates, local)
 				}
 			} else if resolving {
-				// this shouldn't be possible. if this happens then
-				// something has gone wrong with the DWARF parsing
+				// for C like languages this shouldn't be possible. if
+				// this happens then something has gone wrong with the
+				// DWARF parsing
 			}
 		}
 
@@ -165,22 +172,40 @@ func (dev *Developer) OnYield(instructionPC uint32, reason mapper.YieldReason) {
 		src.UpdateGlobalVariables()
 	})
 
-	dev.yieldStateLock.Lock()
-	defer dev.yieldStateLock.Unlock()
+	dev.BorrowYieldState(func(yld *YieldState) {
+		yld.InstructionPC = instructionPC
+		yld.Reason = reason
 
-	dev.yieldState.InstructionPC = instructionPC
-	dev.yieldState.InstructionLine = ln
-	dev.yieldState.Reason = reason
+		// clear list of local variables from previous yield
+		yld.LocalVariables = yld.LocalVariables[:0]
 
-	// clear list of local variables from previous yield and extend with new
-	// list of locals
-	dev.yieldState.LocalVariables = dev.yieldState.LocalVariables[:0]
-	dev.yieldState.LocalVariables = append(dev.yieldState.LocalVariables, locals...)
+		// filter new list of local variables for duplicates
+		if len(locals) > 0 {
+			yld.LocalVariables = append(yld.LocalVariables, locals[0])
+			for _, local := range locals[1:] {
+				prev := yld.LocalVariables[len(yld.LocalVariables)-1]
+				if prev.Name == local.Name {
+					// replace previous appended local variable with new local
+					// variable if the new variable is resolving and the
+					// previous varaible is not
+					//
+					// note that we're not checking for the case were two
+					// locals with the same name are resolving because that
+					// should not be possible with C like languages
+					if !prev.IsResolving && local.IsResolving {
+						yld.LocalVariables[len(yld.LocalVariables)-1] = local
+					}
+				} else {
+					yld.LocalVariables = append(yld.LocalVariables, local)
+				}
+			}
+		}
 
-	// update all locals (globals are updated above)
-	for _, local := range dev.yieldState.LocalVariables {
-		local.Update()
-	}
+		// update all locals (globals are updated above)
+		for _, local := range yld.LocalVariables {
+			local.Update()
+		}
+	})
 }
 
 // BorrowYieldState will lock the illegal access log for the duration of the

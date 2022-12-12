@@ -87,13 +87,18 @@ type SourceVariable struct {
 
 func (varb *SourceVariable) String() string {
 	var s strings.Builder
-	s.WriteString(fmt.Sprintf("%s %s = ", varb.Type.Name, varb.Name))
+	s.WriteString(fmt.Sprintf("%s = ", varb.decl()))
 	if v, ok := varb.Value(); ok {
 		s.WriteString(fmt.Sprintf(varb.Type.Hex(), v))
 	} else {
 		s.WriteString("unresolvable")
 	}
 	return s.String()
+}
+
+// decl returns the type-name and name pair
+func (varb *SourceVariable) decl() string {
+	return fmt.Sprintf("%s %s", varb.Type.Name, varb.Name)
 }
 
 // Address returns the location in memory of the variable referred to by
