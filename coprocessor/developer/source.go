@@ -619,9 +619,6 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 	// the variable will appear during the LineReader loop but sometimes it
 	// will not. moreover, we need to know which function it appears in in
 	// order to know what the frame base is for the variable.
-	//
-	// there may be a better way of doing this or maybe I'm just
-	// misunderstanding something but for now, we'll use this rough method
 	for _, sf := range src.Files {
 		fn := &SourceFunction{
 			Cart: src.cart,

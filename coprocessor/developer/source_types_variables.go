@@ -173,7 +173,7 @@ func (varb *SourceVariable) framebase() (uint64, error) {
 		return 0, fmt.Errorf("framebase for function %s: %v", varb.DeclLine.Function.Name, err)
 	}
 	if !location.valueOk {
-		return 0, fmt.Errorf("no framebase for function %s", varb.DeclLine.Function.Name)
+		return 0, fmt.Errorf("no framebase value for function %s", varb.DeclLine.Function.Name)
 	}
 
 	return uint64(location.value), nil

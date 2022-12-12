@@ -43,23 +43,22 @@ type build struct {
 	// finding local variables in memory
 	debug_loc *elf.Section
 
+	// the order in which we encountered the subprograms and inlined
+	// subroutines is important
+	order []*dwarf.Entry
+
+	// quick access to entries in dwarf data
 	subprograms        map[dwarf.Offset]buildEntry
 	inlinedSubroutines map[dwarf.Offset]buildEntry
 	baseTypes          map[dwarf.Offset]buildEntry
-
-	typedefs         map[dwarf.Offset]buildEntry
-	compositeTypes   map[dwarf.Offset]buildEntry
-	compositeMembers map[dwarf.Offset]buildEntry
-	arrayTypes       map[dwarf.Offset]buildEntry
-	arraySubranges   map[dwarf.Offset]buildEntry
-
-	variables map[dwarf.Offset]buildEntry
-	pointers  map[dwarf.Offset]buildEntry
-	consts    map[dwarf.Offset]buildEntry
-
-	// the order in which we encountered the subprograms and inlined
-	// subroutines is important
-	order []dwarf.Offset
+	typedefs           map[dwarf.Offset]buildEntry
+	compositeTypes     map[dwarf.Offset]buildEntry
+	compositeMembers   map[dwarf.Offset]buildEntry
+	arrayTypes         map[dwarf.Offset]buildEntry
+	arraySubranges     map[dwarf.Offset]buildEntry
+	variables          map[dwarf.Offset]buildEntry
+	pointers           map[dwarf.Offset]buildEntry
+	consts             map[dwarf.Offset]buildEntry
 }
 
 func newBuild(dwrf *dwarf.Data, debug_loc *elf.Section) (*build, error) {
@@ -77,7 +76,6 @@ func newBuild(dwrf *dwarf.Data, debug_loc *elf.Section) (*build, error) {
 		variables:          make(map[dwarf.Offset]buildEntry),
 		pointers:           make(map[dwarf.Offset]buildEntry),
 		consts:             make(map[dwarf.Offset]buildEntry),
-		order:              make([]dwarf.Offset, 0, 100),
 	}
 
 	var compileUnit *dwarf.Entry
@@ -110,7 +108,7 @@ func newBuild(dwrf *dwarf.Data, debug_loc *elf.Section) (*build, error) {
 					compileUnit: compileUnit,
 					entry:       entry,
 				}
-				bld.order = append(bld.order, entry.Offset)
+				bld.order = append(bld.order, entry)
 			}
 
 		case dwarf.TagSubprogram:
@@ -121,11 +119,15 @@ func newBuild(dwrf *dwarf.Data, debug_loc *elf.Section) (*build, error) {
 					compileUnit: compileUnit,
 					entry:       entry,
 				}
-				bld.order = append(bld.order, entry.Offset)
+				bld.order = append(bld.order, entry)
 			}
 
 		case dwarf.TagLexDwarfBlock:
-			// do nothing with lexical blocks
+			if compileUnit == nil {
+				return nil, curated.Errorf("found lex block tag without compile unit")
+			} else {
+				bld.order = append(bld.order, entry)
+			}
 
 		case dwarf.TagTypedef:
 			if compileUnit == nil {
@@ -135,7 +137,7 @@ func newBuild(dwrf *dwarf.Data, debug_loc *elf.Section) (*build, error) {
 					compileUnit: compileUnit,
 					entry:       entry,
 				}
-				bld.order = append(bld.order, entry.Offset)
+				bld.order = append(bld.order, entry)
 			}
 
 		case dwarf.TagBaseType:
@@ -146,7 +148,7 @@ func newBuild(dwrf *dwarf.Data, debug_loc *elf.Section) (*build, error) {
 					compileUnit: compileUnit,
 					entry:       entry,
 				}
-				bld.order = append(bld.order, entry.Offset)
+				bld.order = append(bld.order, entry)
 			}
 
 		case dwarf.TagUnionType:
@@ -158,7 +160,7 @@ func newBuild(dwrf *dwarf.Data, debug_loc *elf.Section) (*build, error) {
 					entry:       entry,
 					information: "union",
 				}
-				bld.order = append(bld.order, entry.Offset)
+				bld.order = append(bld.order, entry)
 			}
 
 		case dwarf.TagStructType:
@@ -170,7 +172,7 @@ func newBuild(dwrf *dwarf.Data, debug_loc *elf.Section) (*build, error) {
 					entry:       entry,
 					information: "struct",
 				}
-				bld.order = append(bld.order, entry.Offset)
+				bld.order = append(bld.order, entry)
 			}
 
 		case dwarf.TagMember:
@@ -181,7 +183,7 @@ func newBuild(dwrf *dwarf.Data, debug_loc *elf.Section) (*build, error) {
 					compileUnit: compileUnit,
 					entry:       entry,
 				}
-				bld.order = append(bld.order, entry.Offset)
+				bld.order = append(bld.order, entry)
 			}
 
 		case dwarf.TagArrayType:
@@ -192,7 +194,7 @@ func newBuild(dwrf *dwarf.Data, debug_loc *elf.Section) (*build, error) {
 					compileUnit: compileUnit,
 					entry:       entry,
 				}
-				bld.order = append(bld.order, entry.Offset)
+				bld.order = append(bld.order, entry)
 			}
 
 		case dwarf.TagSubrangeType:
@@ -203,7 +205,7 @@ func newBuild(dwrf *dwarf.Data, debug_loc *elf.Section) (*build, error) {
 					compileUnit: compileUnit,
 					entry:       entry,
 				}
-				bld.order = append(bld.order, entry.Offset)
+				bld.order = append(bld.order, entry)
 			}
 
 		case dwarf.TagVariable:
@@ -214,7 +216,7 @@ func newBuild(dwrf *dwarf.Data, debug_loc *elf.Section) (*build, error) {
 					compileUnit: compileUnit,
 					entry:       entry,
 				}
-				bld.order = append(bld.order, entry.Offset)
+				bld.order = append(bld.order, entry)
 			}
 
 		case dwarf.TagFormalParameter:
@@ -225,7 +227,7 @@ func newBuild(dwrf *dwarf.Data, debug_loc *elf.Section) (*build, error) {
 					compileUnit: compileUnit,
 					entry:       entry,
 				}
-				bld.order = append(bld.order, entry.Offset)
+				bld.order = append(bld.order, entry)
 			}
 
 		case dwarf.TagPointerType:
@@ -236,7 +238,7 @@ func newBuild(dwrf *dwarf.Data, debug_loc *elf.Section) (*build, error) {
 					compileUnit: compileUnit,
 					entry:       entry,
 				}
-				bld.order = append(bld.order, entry.Offset)
+				bld.order = append(bld.order, entry)
 			}
 
 		case dwarf.TagConstType:
@@ -247,7 +249,7 @@ func newBuild(dwrf *dwarf.Data, debug_loc *elf.Section) (*build, error) {
 					compileUnit: compileUnit,
 					entry:       entry,
 				}
-				bld.order = append(bld.order, entry.Offset)
+				bld.order = append(bld.order, entry)
 			}
 		}
 	}
@@ -374,10 +376,10 @@ func (bld *build) buildTypes(src *Source) error {
 
 		// allocate members to composite types
 		var composite *SourceType
-		for _, off := range bld.order {
-			if v, ok := bld.compositeTypes[off]; ok {
+		for _, e := range bld.order {
+			if v, ok := bld.compositeTypes[e.Offset]; ok {
 				composite = src.types[v.entry.Offset]
-			} else if v, ok := bld.compositeMembers[off]; ok {
+			} else if v, ok := bld.compositeMembers[e.Offset]; ok {
 				if composite == nil {
 					// found a member without first finding a composite type. this
 					// shouldn't happen
@@ -447,15 +449,15 @@ func (bld *build) buildTypes(src *Source) error {
 		// build array types
 		var arrayBaseType *SourceType
 		var baseTypeOffset dwarf.Offset
-		for _, off := range bld.order {
-			if v, ok := bld.arrayTypes[off]; ok {
+		for _, e := range bld.order {
+			if v, ok := bld.arrayTypes[e.Offset]; ok {
 				var err error
 				arrayBaseType, err = bld.resolveType(v, src)
 				if err != nil {
 					return err
 				}
 				baseTypeOffset = v.entry.Offset
-			} else if v, ok := bld.arraySubranges[off]; ok {
+			} else if v, ok := bld.arraySubranges[e.Offset]; ok {
 				if arrayBaseType == nil {
 					// found a subrange without first finding an array type. this
 					// shouldn't happen
@@ -616,7 +618,105 @@ func (bld *build) resolveVariableDeclaration(v buildEntry, src *Source) (*Source
 // buildVariables populates variables map in the *Source tree. local variables
 // will need to be relocated for relocatable ELF files
 func (bld *build) buildVariables(src *Source, origin uint64) error {
-	for _, v := range bld.variables {
+	// keep track of the lexical range as we walk through the DWARF data in
+	// order. if we need to add a variable to the list of locals and the DWARF
+	// entry has a location attribute of class ExprLoc, then we use the most
+	// recent lexical range as the resolvable range
+	var lexStart []uint64
+	var lexEnd []uint64
+	var lexIdx int
+	var lexSibling dwarf.Offset
+
+	// default to zero for start/end addresses. this means we can access the
+	// arrays without any special conditions
+	lexStart = append(lexStart, 0)
+	lexEnd = append(lexEnd, 0)
+
+	// walk through the entire DWARF sequence in order. we'll only deal with
+	// the entries that are of interest to us
+	for _, e := range bld.order {
+		// reset lexical block stack
+		if e.Offset == lexSibling {
+			if lexIdx > 0 {
+				lexIdx--
+			} else {
+				// this should never happen unless the DWARF file is corrupt in some way
+				logger.Logf("dwarf", "trying to end a lexical block without one being opened?")
+			}
+		}
+
+		switch e.Tag {
+		case dwarf.TagCompileUnit:
+			// the sibling entry indicates when a lexical block ends. if an
+			// entry we're interested in (subprogram etc.) does not have a
+			// sibling however, then that indicates that the lexical block is
+			// at the end of the compilation unit and that the sibling is
+			// implied
+			//
+			// when we encounter a compile unit tag therefore, we reset the
+			// lexical block stack
+			lexIdx = 0
+			lexSibling = 0
+			continue // for loop
+
+		case dwarf.TagSubprogram:
+			fallthrough
+		case dwarf.TagInlinedSubroutine:
+			fallthrough
+		case dwarf.TagLexDwarfBlock:
+			var l, h uint64
+
+			// low address
+			fld := e.AttrField(dwarf.AttrLowpc)
+			if fld == nil {
+				continue // for loop
+			}
+
+			l = uint64(fld.Val.(uint64))
+
+			// high address
+			fld = e.AttrField(dwarf.AttrHighpc)
+			if fld == nil {
+				continue // for loop
+			}
+
+			switch fld.Class {
+			case dwarf.ClassConstant:
+				// dwarf-4
+				h = l + uint64(fld.Val.(int64))
+			case dwarf.ClassAddress:
+				// dwarf-2
+				h = uint64(fld.Val.(uint64))
+			default:
+			}
+
+			// sibling. if there is no sibling then that seems to indicate the
+			// end block will end with the compilation unit and therefore there
+			// is no sibling to indicate explicitely
+			fld = e.AttrField(dwarf.AttrSibling)
+			if fld != nil {
+				lexSibling = fld.Val.(dwarf.Offset)
+			}
+
+			lexIdx++
+			lexStart = append(lexStart[:lexIdx], l)
+			lexEnd = append(lexEnd[:lexIdx], h)
+
+			continue // for loop
+
+		case dwarf.TagFormalParameter:
+			fallthrough
+		case dwarf.TagVariable:
+			// execute reset of for block
+
+		default:
+			// ignore all other DWARF tags
+			continue // for loop
+		}
+
+		// get variable build entry
+		v := bld.variables[e.Offset]
+
 		// resolve name and type of variable
 		var varb *SourceVariable
 		var err error
@@ -670,14 +770,10 @@ func (bld *build) buildVariables(src *Source, origin uint64) error {
 				err = newLoclist(varb, bld.debug_loc, fld.Val.(int64), func(start, end uint64, loc *loclist) {
 					varb.loclist = loc
 
-					// if the ELF file we are loading is a relocatable ELF file
-					// then the ResolvableStart and ResolvableEnd values will
-					// need adjusting
-
 					local := &SourceVariableLocal{
 						SourceVariable:  varb,
-						ResolvableStart: start,
-						ResolvableEnd:   end,
+						ResolvableStart: start + origin,
+						ResolvableEnd:   end + origin,
 					}
 
 					src.locals = append(src.locals, local)
@@ -715,7 +811,9 @@ func (bld *build) buildVariables(src *Source, origin uint64) error {
 						varb.loclist.addOperator(r)
 
 						local := &SourceVariableLocal{
-							SourceVariable: varb,
+							SourceVariable:  varb,
+							ResolvableStart: lexStart[lexIdx] + origin,
+							ResolvableEnd:   lexEnd[lexIdx] + origin,
 						}
 
 						src.locals = append(src.locals, local)
@@ -725,12 +823,12 @@ func (bld *build) buildVariables(src *Source, origin uint64) error {
 			}
 
 		} else {
-			// add local variable without any loclist. this enables the user to
-			// see that the variable exists for a function even though we don't
-			// know how to locate it in memory
+			// add local variable even if it has no location attribute
 			if varb.DeclLine.Function.Name != stubIndicator {
 				local := &SourceVariableLocal{
-					SourceVariable: varb,
+					SourceVariable:  varb,
+					ResolvableStart: lexStart[lexIdx] + origin,
+					ResolvableEnd:   lexEnd[lexIdx] + origin,
 				}
 				src.locals = append(src.locals, local)
 				src.SortedLocals.Locals = append(src.SortedLocals.Locals, local)
@@ -827,11 +925,11 @@ func (bld *build) findFunction(src *Source, addr uint64) (*foundFunction, error)
 		}, nil
 	}
 
-	for _, off := range bld.order {
+	for _, e := range bld.order {
 		var low uint64
 		var high uint64
 
-		if subp, ok := bld.subprograms[off]; ok {
+		if subp, ok := bld.subprograms[e.Offset]; ok {
 			entry := subp.entry
 
 			// check address against low/high fields. compare to
@@ -905,7 +1003,7 @@ func (bld *build) findFunction(src *Source, addr uint64) (*foundFunction, error)
 				}
 			}
 
-		} else if inl, ok := bld.inlinedSubroutines[off]; ok {
+		} else if inl, ok := bld.inlinedSubroutines[e.Offset]; ok {
 			entry := inl.entry
 			fld := entry.AttrField(dwarf.AttrLowpc)
 			if fld != nil {
