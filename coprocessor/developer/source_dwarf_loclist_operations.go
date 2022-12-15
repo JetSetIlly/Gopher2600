@@ -847,8 +847,8 @@ func decodeDWARFoperation(expr []uint8, origin uint64) (dwarfOperator, int) {
 		// "The DW_OP_call_frame_cfa operation pushes the value of the CFA,
 		// obtained from the Call Frame Information"
 		//
-		// NOTE: massively simplifying how this should work but for our
-		// purposes it seems okay
+		// NOTE: the context for the framebase function should hopefully point
+		// to a frameSection instance
 		return func(loc *loclist) (location, error) {
 			fb, err := loc.ctx.framebase()
 			if err != nil {

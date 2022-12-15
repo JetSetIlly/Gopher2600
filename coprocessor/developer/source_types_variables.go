@@ -73,8 +73,9 @@ type SourceVariable struct {
 	// variable can never be located
 	loclist *loclist
 
-	// if errorOnResolve is true then an error was enountered during a resolve()
-	// sequence. the error will be logged when the field is first set to true
+	// if errorOnResolve is not nil then an error was enountered during a
+	// resolve() sequence. the error will be logged when the field is first set
+	// to true
 	errorOnResolve error
 
 	// most recent resolved value retrieved from emulation
@@ -152,36 +153,23 @@ func (varb *SourceVariable) Child(i int) *SourceVariable {
 	return varb.children[i]
 }
 
-// coproc implements the resolver interface
+// coproc implements the loclistContext interface
 func (varb *SourceVariable) coproc() mapper.CartCoProc {
 	return varb.Cart.GetCoProc()
 }
 
-// coproc implements the resolver interface
+// framebase implements the loclistContext interface
 func (varb *SourceVariable) framebase() (uint64, error) {
 	if varb.DeclLine == nil || varb.DeclLine.Function == nil {
 		return 0, fmt.Errorf("no framebase")
 	}
 
-	// if there is no framebase loclist for the function we'll just use the
-	// plain framebase() value for the function
-	if varb.DeclLine.Function.framebaseList == nil {
-		fb, err := varb.DeclLine.Function.framebase()
-		if err != nil {
-			return 0, fmt.Errorf("framebase for function %s: %v", varb.DeclLine.Function.Name, err)
-		}
-		return fb, nil
-	}
-
-	location, err := varb.DeclLine.Function.framebaseList.resolve()
+	fb, err := varb.DeclLine.Function.framebase()
 	if err != nil {
 		return 0, fmt.Errorf("framebase for function %s: %v", varb.DeclLine.Function.Name, err)
 	}
-	if !location.valueOk {
-		return 0, fmt.Errorf("no framebase value for function %s", varb.DeclLine.Function.Name)
-	}
 
-	return uint64(location.value), nil
+	return fb, nil
 }
 
 // Update variable. It should be called periodically before using the return

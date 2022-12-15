@@ -142,10 +142,11 @@ type SourceFunction struct {
 	Name string
 
 	// range of addresses in which function resides
-	Address [2]uint64
+	AddressStart uint64
+	AddressEnd   uint64
 
-	// frame base of function
-	framebaseList *loclist
+	// location list. used to identify the frame base of a function
+	loclist *loclist
 
 	// first source line for each instance of the function. note that the first
 	// line of a function may not have any code directly associated with it.
@@ -167,32 +168,29 @@ type SourceFunction struct {
 }
 
 func (fn *SourceFunction) String() string {
-	return fmt.Sprintf("%s %08x -> %08x", fn.Name, fn.Address[0], fn.Address[1])
+	return fmt.Sprintf("%s %08x -> %08x", fn.Name, fn.AddressStart, fn.AddressEnd)
 }
 
+// coproc implements the loclistContext interface
 func (fn *SourceFunction) coproc() mapper.CartCoProc {
 	return fn.Cart.GetCoProc()
 }
 
-// the framebase for a SourceFunction can be obtained by the framebaseList
-// field unless it is nil. if it is nil then this framebase() function will
-// simply be the result of the CoProcStackFrame() function.
-//
-// the intention is for a SourceVariable type to check framebaseList and
-// resolve that for a framebase value and to use this function only if
-// framebaseList is nil
-//
-// when the framebaseList field itself is being resolved, then the
-// SourceFunction is used as the loclistContext. in that situation, the
-// framebase of the function (if it is requested) is taken to be the value
-// returned by the this function.
-//
-// confusing and probably wrong.
+// framebase implements the loclistContext interface
 func (fn *SourceFunction) framebase() (uint64, error) {
-	return uint64(fn.Cart.GetCoProc().CoProcStackFrame()), nil
+	if fn.loclist == nil {
+		return 0, fmt.Errorf("no framebase loclist for %s", fn.Name)
+	}
+
+	loc, err := fn.loclist.resolve()
+	if err != nil {
+		return 0, fmt.Errorf("error resolving framebase loclist: %s", err.Error())
+	}
+
+	return uint64(loc.value), nil
 }
 
-// IsStub returns true if the SourceFunction is just a stub.
+// IsStub returns true if the SourceFunction is just a stub
 func (fn *SourceFunction) IsStub() bool {
 	// it's possible to have a stub function that has a name. because of this
 	// we check the DeclLine field in addition to the name field
@@ -200,7 +198,7 @@ func (fn *SourceFunction) IsStub() bool {
 }
 
 // SourceType is a single type identified by the DWARF data. Composite types
-// are differentiated by the existance of member fields.
+// are differentiated by the existance of member fields
 type SourceType struct {
 	Name string
 

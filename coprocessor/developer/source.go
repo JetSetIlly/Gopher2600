@@ -47,8 +47,9 @@ type Source struct {
 
 	syms []elf.Symbol
 
-	// see build type for explanation of this section
-	debug_loc *elf.Section
+	// ELF sections that help DWARF locate local variables in memory
+	debug_loc   *elf.Section
+	debug_frame *frameSection
 
 	// raw dwarf data. after NewSource() this data is only needed by the
 	// findSourceLine() function
@@ -217,6 +218,10 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 	var executableOrigin uint64
 	var isReloctable bool
 
+	// the debug_frame section will be created from the raw elf.Section if it
+	// is found. we delay the creation because we need an executable value
+	var debug_frame *elf.Section
+
 	// disassemble every word in the ELF file
 	//
 	// we could traverse of the Progs array of the file here but some ELF files
@@ -235,6 +240,13 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 					logger.Logf("dwarf", "multiple .debug_loc sections found. using the first one encountered")
 				} else {
 					src.debug_loc = sec
+				}
+			}
+			if sec.Name == ".debug_frame" {
+				if debug_frame != nil {
+					logger.Logf("dwarf", "multiple .debug_frame sections found. using the first one encountered")
+				} else {
+					debug_frame = sec
 				}
 			}
 			continue
@@ -312,6 +324,14 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 		}
 	}
 
+	// create frame section from the raw ELF section
+	if debug_frame != nil {
+		src.debug_frame, err = newFrameSection(cart, debug_frame, executableOrigin)
+		if err != nil {
+			logger.Logf("dwarf", err.Error())
+		}
+	}
+
 	// load DWARF data from the mapper if possible
 	if c, ok := cart.GetCoProc().(mapper.CartCoProcDWARF); ok {
 		src.dwrf = c.DWARF()
@@ -325,7 +345,7 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 		}
 	}
 
-	bld, err := newBuild(src.dwrf, src.debug_loc)
+	bld, err := newBuild(src.dwrf, src.debug_loc, src.debug_frame)
 	if err != nil {
 		return nil, curated.Errorf("dwarf: %v", err)
 	}
@@ -347,7 +367,7 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 	// the fields below
 	r := src.dwrf.Reader()
 
-	// most recent compile unit we've seen
+	// most recent compile unit we've seen. used exclusively in the for loop below
 	var unit *compileUnit
 
 	// loop through file and collate compile units
@@ -499,7 +519,7 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 
 						// assign function to declaration line
 						if !fn.DeclLine.Function.IsStub() {
-							logger.Logf("dwarf", "contention function ownership for source line (%s)", fn.DeclLine)
+							logger.Logf("dwarf", "contentious function ownership for source line (%s)", fn.DeclLine)
 							logger.Logf("dwarf", "%s and %s", fn.DeclLine.Function.Name, fn.Name)
 						}
 						fn.DeclLine.Function = fn
@@ -517,8 +537,8 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 
 					// add/update framebase information
 					if foundFunc.framebase != nil {
-						workingSourceLine.Function.framebaseList = foundFunc.framebase
-						workingSourceLine.Function.framebaseList.ctx = workingSourceLine.Function
+						workingSourceLine.Function.loclist = foundFunc.framebase
+						workingSourceLine.Function.loclist.ctx = src.debug_frame
 					}
 
 					// add disassembly to source line and build a linesByAddress map
@@ -555,20 +575,20 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 
 	// set address range for every function
 	for _, fn := range src.Functions {
-		low := ^uint32(0)
-		hi := uint32(0)
+		start := ^uint32(0)
+		end := uint32(0)
 
 		for _, ln := range fn.Lines {
 			for _, d := range ln.Disassembly {
-				if d.Addr < low {
-					low = d.Addr
-				} else if d.Addr > hi {
-					hi = d.Addr
+				if d.Addr < start {
+					start = d.Addr
+				} else if d.Addr > end {
+					end = d.Addr
 				}
 			}
 		}
-		fn.Address[0] = uint64(low)
-		fn.Address[1] = uint64(hi)
+		fn.AddressStart = uint64(start)
+		fn.AddressEnd = uint64(end)
 	}
 
 	// add stub functions to list of functions
@@ -699,8 +719,8 @@ func (src Source) findHighAddress() uint64 {
 	}
 
 	for _, f := range src.Functions {
-		if f.Address[1] > high {
-			high = f.Address[1]
+		if f.AddressEnd > high {
+			high = f.AddressEnd
 		}
 	}
 
@@ -711,9 +731,9 @@ func (src Source) findHighAddress() uint64 {
 // entries for all addresses in the stub function
 func (src *Source) addFunctionStubs() {
 	type fn struct {
-		name   string
-		origin uint64
-		memtop uint64
+		name         string
+		addressStart uint64
+		addressEnd   uint64
 	}
 
 	var symbolTableFunctions []fn
@@ -726,9 +746,9 @@ func (src *Source) addFunctionStubs() {
 			// TODO: this is a bit of ARM specific knowledge that should be removed
 			a := uint64(s.Value & 0xfffffffe)
 			symbolTableFunctions = append(symbolTableFunctions, fn{
-				name:   s.Name,
-				origin: a,
-				memtop: a + uint64(s.Size) - 1,
+				name:         s.Name,
+				addressStart: a,
+				addressEnd:   a + uint64(s.Size) - 1,
 			})
 		}
 	}
@@ -743,9 +763,10 @@ func (src *Source) addFunctionStubs() {
 			fn.name = strings.Split(fn.name, ".")[0]
 
 			stubFn := &SourceFunction{
-				Cart:    src.cart,
-				Name:    fn.name,
-				Address: [2]uint64{fn.origin, fn.memtop},
+				Cart:         src.cart,
+				Name:         fn.name,
+				AddressStart: fn.addressStart,
+				AddressEnd:   fn.addressEnd,
 			}
 			stubFn.DeclLine = createStubLine(stubFn)
 
@@ -755,7 +776,7 @@ func (src *Source) addFunctionStubs() {
 
 			// process all addresses in range of origin and memtop, skipping
 			// any addresses that we already know about from the DWARF data
-			for a := fn.origin; a <= fn.memtop; a++ {
+			for a := fn.addressStart; a <= fn.addressEnd; a++ {
 				if _, ok := src.linesByAddress[a]; !ok {
 					src.linesByAddress[a] = createStubLine(stubFn)
 				} else {

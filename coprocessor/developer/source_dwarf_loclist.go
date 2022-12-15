@@ -100,7 +100,7 @@ func newLoclistFromSingleOperator(ctx loclistContext, expr []uint8) (*loclist, e
 	return loc, nil
 }
 
-func newLoclist(ctx loclistContext, debug_loc *elf.Section, ptr int64, commit commitLoclist) error {
+func newLoclist(ctx loclistContext, debug_loc *elf.Section, debug_frame *frameSection, ptr int64, commit commitLoclist) error {
 	if debug_loc == nil {
 		return fmt.Errorf("no location list information")
 	}
@@ -132,8 +132,8 @@ func newLoclist(ctx loclistContext, debug_loc *elf.Section, ptr int64, commit co
 	// then the applicable base address defaults to the base address of the compilation unit (see
 	// Section 3.1.1)"
 	//
-	// "A base address selection entry affects only the list in which it
-	// is contained" page 31 of "DWARF4 Standard"
+	// "A base address selection entry affects only the list in which it is contained"
+	// page 31 of "DWARF4 Standard"
 	var baseAddress uint64
 
 	// function to read an address from the debug_loc data
@@ -175,8 +175,7 @@ func newLoclist(ctx loclistContext, debug_loc *elf.Section, ptr int64, commit co
 
 			// length of expression
 			debug_loc.ReadAt(b, ptr)
-			length := int(b[0])
-			length |= int(b[1]) << 8
+			length := int(b[1])<<8 | int(b[0])
 			ptr += 2
 
 			// loop through stack operations

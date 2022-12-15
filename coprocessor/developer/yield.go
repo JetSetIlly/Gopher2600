@@ -110,24 +110,12 @@ func (dev *Developer) OnYield(instructionPC uint32, reason mapper.YieldReason) {
 			}
 		}
 
-		// match local variables for any reason other than VCS synchronisation
-
-		var candidateFound bool
-		var candidates []*SourceVariableLocal
-		processCandidates := func() {
-			if !candidateFound {
-				if len(candidates) > 0 {
-					l := &YieldedLocal{
-						SourceVariableLocal: candidates[0],
-						IsResolving:         false && candidates[0].errorOnResolve == nil,
-						CanNeverResolve:     candidates[0].loclist == nil || candidates[0].errorOnResolve != nil,
-						ErrorOnResolve:      candidates[0].errorOnResolve != nil,
-					}
-					locals = append(locals, l)
-				}
+		var candidate *YieldedLocal
+		commitCandidate := func() {
+			if candidate != nil {
+				locals = append(locals, candidate)
+				candidate = nil
 			}
-			candidateFound = false
-			candidates = candidates[:0]
 		}
 
 		// there's an assumption here that SortedLocals is sorted by variable name
@@ -136,37 +124,41 @@ func (dev *Developer) OnYield(instructionPC uint32, reason mapper.YieldReason) {
 
 		for _, local := range src.SortedLocals.Locals {
 			inFunction, resolving := local.match(ln.Function, uint32(instructionPC))
+
+			// if the variable is in the current function then we always add it
+			// to the list of local variables, even if it's not resolvable. in
+			// those cases adding it to the list tells the user that the
+			// debugger knows about the variable but that it can't be resolved.
+			// dividing all local variables by function like this is better
+			// than being strict about scoping rules - if a variable is out of
+			// scope then it is not resolvable
 			if inFunction {
 				id = local.id()
 				if prevId != id {
-					processCandidates()
+					commitCandidate()
 				}
 				prevId = id
 
-				if candidateFound {
-					continue
-				}
-
-				if resolving {
+				// add new YieldedLocal if it's not been added to list of locals already
+				if len(locals) == 0 || id != locals[len(locals)-1].Name {
 					l := &YieldedLocal{
 						SourceVariableLocal: local,
-						IsResolving:         true && local.errorOnResolve == nil,
+						IsResolving:         resolving && local.errorOnResolve == nil,
 						CanNeverResolve:     local.loclist == nil || local.errorOnResolve != nil,
 						ErrorOnResolve:      local.errorOnResolve != nil,
 					}
-					locals = append(locals, l)
-					candidateFound = true
-				} else {
-					candidates = append(candidates, local)
+
+					if resolving {
+						locals = append(locals, l)
+						candidate = nil
+					} else {
+						candidate = l
+					}
 				}
-			} else if resolving {
-				// for C like languages this shouldn't be possible. if
-				// this happens then something has gone wrong with the
-				// DWARF parsing
 			}
 		}
 
-		processCandidates()
+		commitCandidate()
 
 		// update all globals (locals are updated below)
 		src.UpdateGlobalVariables()

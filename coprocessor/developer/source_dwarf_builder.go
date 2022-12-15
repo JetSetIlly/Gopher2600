@@ -39,9 +39,9 @@ type buildEntry struct {
 type build struct {
 	dwrf *dwarf.Data
 
-	// debug_loc is the .debug_loc ELF section. it's required by DWARF for
-	// finding local variables in memory
-	debug_loc *elf.Section
+	// ELF sections that help DWARF locate local variables in memory
+	debug_loc   *elf.Section
+	debug_frame *frameSection
 
 	// the order in which we encountered the subprograms and inlined
 	// subroutines is important
@@ -61,10 +61,11 @@ type build struct {
 	consts             map[dwarf.Offset]buildEntry
 }
 
-func newBuild(dwrf *dwarf.Data, debug_loc *elf.Section) (*build, error) {
+func newBuild(dwrf *dwarf.Data, debug_loc *elf.Section, debug_frame *frameSection) (*build, error) {
 	bld := &build{
 		dwrf:               dwrf,
 		debug_loc:          debug_loc,
+		debug_frame:        debug_frame,
 		subprograms:        make(map[dwarf.Offset]buildEntry),
 		inlinedSubroutines: make(map[dwarf.Offset]buildEntry),
 		baseTypes:          make(map[dwarf.Offset]buildEntry),
@@ -622,15 +623,15 @@ func (bld *build) buildVariables(src *Source, origin uint64) error {
 	// order. if we need to add a variable to the list of locals and the DWARF
 	// entry has a location attribute of class ExprLoc, then we use the most
 	// recent lexical range as the resolvable range
-	var lexStart []uint64
-	var lexEnd []uint64
+	var lexStart [][]uint64
+	var lexEnd [][]uint64
 	var lexIdx int
 	var lexSibling dwarf.Offset
 
 	// default to zero for start/end addresses. this means we can access the
 	// arrays without any special conditions
-	lexStart = append(lexStart, 0)
-	lexEnd = append(lexEnd, 0)
+	lexStart = append(lexStart, []uint64{0})
+	lexEnd = append(lexEnd, []uint64{0})
 
 	// walk through the entire DWARF sequence in order. we'll only deal with
 	// the entries that are of interest to us
@@ -666,28 +667,48 @@ func (bld *build) buildVariables(src *Source, origin uint64) error {
 		case dwarf.TagLexDwarfBlock:
 			var l, h uint64
 
-			// low address
 			fld := e.AttrField(dwarf.AttrLowpc)
-			if fld == nil {
-				continue // for loop
-			}
+			if fld != nil {
+				l = uint64(fld.Val.(uint64))
 
-			l = uint64(fld.Val.(uint64))
+				fld = e.AttrField(dwarf.AttrHighpc)
+				if fld == nil {
+					continue // for loop
+				}
 
-			// high address
-			fld = e.AttrField(dwarf.AttrHighpc)
-			if fld == nil {
-				continue // for loop
-			}
+				switch fld.Class {
+				case dwarf.ClassConstant:
+					// dwarf-4
+					h = l + uint64(fld.Val.(int64))
+				case dwarf.ClassAddress:
+					// dwarf-2
+					h = uint64(fld.Val.(uint64))
+				default:
+				}
 
-			switch fld.Class {
-			case dwarf.ClassConstant:
-				// dwarf-4
-				h = l + uint64(fld.Val.(int64))
-			case dwarf.ClassAddress:
-				// dwarf-2
-				h = uint64(fld.Val.(uint64))
-			default:
+				lexIdx++
+				lexStart = append(lexStart[:lexIdx], []uint64{l})
+				lexEnd = append(lexEnd[:lexIdx], []uint64{h})
+			} else {
+				fld = e.AttrField(dwarf.AttrRanges)
+				if fld == nil {
+					continue // for loop
+				}
+
+				rngs, err := bld.dwrf.Ranges(e)
+				if err != nil {
+					return err
+				}
+
+				var start []uint64
+				var end []uint64
+				for _, r := range rngs {
+					start = append(start, r[0])
+					end = append(end, r[1])
+				}
+				lexIdx++
+				lexStart = append(lexStart[:lexIdx], start)
+				lexEnd = append(lexEnd[:lexIdx], end)
 			}
 
 			// sibling. if there is no sibling then that seems to indicate the
@@ -697,10 +718,6 @@ func (bld *build) buildVariables(src *Source, origin uint64) error {
 			if fld != nil {
 				lexSibling = fld.Val.(dwarf.Offset)
 			}
-
-			lexIdx++
-			lexStart = append(lexStart[:lexIdx], l)
-			lexEnd = append(lexEnd[:lexIdx], h)
 
 			continue // for loop
 
@@ -767,7 +784,7 @@ func (bld *build) buildVariables(src *Source, origin uint64) error {
 			switch fld.Class {
 			case dwarf.ClassLocListPtr:
 				var err error
-				err = newLoclist(varb, bld.debug_loc, fld.Val.(int64), func(start, end uint64, loc *loclist) {
+				err = newLoclist(varb, bld.debug_loc, bld.debug_frame, fld.Val.(int64), func(start, end uint64, loc *loclist) {
 					varb.loclist = loc
 
 					local := &SourceVariableLocal{
@@ -810,14 +827,16 @@ func (bld *build) buildVariables(src *Source, origin uint64) error {
 						varb.loclist = newLoclistJustContext(varb)
 						varb.loclist.addOperator(r)
 
-						local := &SourceVariableLocal{
-							SourceVariable:  varb,
-							ResolvableStart: lexStart[lexIdx] + origin,
-							ResolvableEnd:   lexEnd[lexIdx] + origin,
-						}
+						for i := range lexStart[lexIdx] {
+							local := &SourceVariableLocal{
+								SourceVariable:  varb,
+								ResolvableStart: lexStart[lexIdx][i] + origin,
+								ResolvableEnd:   lexEnd[lexIdx][i] + origin,
+							}
 
-						src.locals = append(src.locals, local)
-						src.SortedLocals.Locals = append(src.SortedLocals.Locals, local)
+							src.locals = append(src.locals, local)
+							src.SortedLocals.Locals = append(src.SortedLocals.Locals, local)
+						}
 					}
 				}
 			}
@@ -825,13 +844,15 @@ func (bld *build) buildVariables(src *Source, origin uint64) error {
 		} else {
 			// add local variable even if it has no location attribute
 			if varb.DeclLine.Function.Name != stubIndicator {
-				local := &SourceVariableLocal{
-					SourceVariable:  varb,
-					ResolvableStart: lexStart[lexIdx] + origin,
-					ResolvableEnd:   lexEnd[lexIdx] + origin,
+				for i := range lexStart[lexIdx] {
+					local := &SourceVariableLocal{
+						SourceVariable:  varb,
+						ResolvableStart: lexStart[lexIdx][i] + origin,
+						ResolvableEnd:   lexEnd[lexIdx][i] + origin,
+					}
+					src.locals = append(src.locals, local)
+					src.SortedLocals.Locals = append(src.SortedLocals.Locals, local)
 				}
-				src.locals = append(src.locals, local)
-				src.SortedLocals.Locals = append(src.SortedLocals.Locals, local)
 			}
 		}
 
@@ -870,7 +891,7 @@ func (bld *build) findFunction(src *Source, addr uint64) (*foundFunction, error)
 					return nil, err
 				}
 			case dwarf.ClassLocListPtr:
-				err := newLoclist(nil, bld.debug_loc, fld.Val.(int64), func(_, _ uint64, loc *loclist) {
+				err := newLoclist(nil, bld.debug_loc, bld.debug_frame, fld.Val.(int64), func(_, _ uint64, loc *loclist) {
 					framebase = loc
 				})
 				if err != nil {
