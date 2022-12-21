@@ -71,6 +71,7 @@ func NewAudio() (*Audio, error) {
 		return nil, curated.Errorf("sdlaudio: %v", err)
 	}
 	aud.stereo = aud.Prefs.Stereo.Get().(bool)
+	aud.separation = aud.Prefs.Separation.Get().(int)
 
 	spec := &sdl.AudioSpec{
 		Freq:     audio.SampleFreq,

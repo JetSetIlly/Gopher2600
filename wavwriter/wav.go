@@ -35,13 +35,12 @@ type WavWriter struct {
 	buffer   []int16
 }
 
-// New is the preferred method of initialisation for the Audio2Wav type
+// New is the preferred method of initialisation for the WavWriter type
 func NewWavWriter(filename string) (*WavWriter, error) {
 	aw := &WavWriter{
 		filename: fmt.Sprintf("%s.wav", filename),
 		buffer:   make([]int16, 0, 0),
 	}
-
 	return aw, nil
 }
 
@@ -55,11 +54,15 @@ func (aw *WavWriter) SetAudio(sig []signal.SignalAttributes) error {
 		v0 := uint8((s & signal.AudioChannel0) >> signal.AudioChannel0Shift)
 		v1 := uint8((s & signal.AudioChannel1) >> signal.AudioChannel1Shift)
 
-		aw.buffer = append(aw.buffer, mix.Mono(v0, v1))
+		m := mix.Mono(v0, v1)
+		aw.buffer = append(aw.buffer, m)
 	}
 
 	return nil
 }
+
+const numChannels = 1
+const bitDepth = 16
 
 // EndMixing implements the television.AudioMixer interface
 func (aw *WavWriter) EndMixing() error {
@@ -69,9 +72,7 @@ func (aw *WavWriter) EndMixing() error {
 	}
 	defer f.Close()
 
-	// see audio commentary in sdlplay package for thinking around sample rates
-
-	enc := wav.NewEncoder(f, tia.SampleFreq, 8, 1, 1)
+	enc := wav.NewEncoder(f, tia.SampleFreq, bitDepth, numChannels, 1)
 	if enc == nil {
 		return curated.Errorf("wavwriter: bad parameters for wav encoding")
 	}
@@ -79,12 +80,12 @@ func (aw *WavWriter) EndMixing() error {
 
 	buf := audio.PCMBuffer{
 		Format: &audio.Format{
-			NumChannels: 1,
+			NumChannels: numChannels,
 			SampleRate:  tia.SampleFreq,
 		},
 		I16:            aw.buffer,
 		DataType:       audio.DataTypeI16,
-		SourceBitDepth: 16,
+		SourceBitDepth: bitDepth,
 	}
 
 	err = enc.Write(buf.AsIntBuffer())
@@ -95,6 +96,6 @@ func (aw *WavWriter) EndMixing() error {
 	return nil
 }
 
-// keset implements the television.AudioMixer interface
+// Reset implements the television.AudioMixer interface
 func (aw *WavWriter) Reset() {
 }
