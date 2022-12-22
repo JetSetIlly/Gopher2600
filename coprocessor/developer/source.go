@@ -107,7 +107,7 @@ type Source struct {
 
 	// the highest address of any variable (not just global variables, any
 	// variable)
-	VariableMemtop uint64
+	HighAddress uint64
 
 	// lines of source code found in the compile units. this is a sparse
 	// coverage of the total address space: for functions that are covered by
@@ -648,14 +648,8 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 		return nil, curated.Errorf("dwarf: %v", err)
 	}
 
-	// relocate local variables if necessary
-	if isReloctable {
-		for _, l := range src.locals {
-			offset := l.DeclLine.Function.Address[0]
-			l.ResolvableStart += offset
-			l.ResolvableEnd += offset
-		}
-	}
+	// determine highest address occupied by the program
+	src.HighAddress = src.findHighAddress()
 
 	// sort sorted lines
 	sort.Sort(src.SortedLines)
@@ -691,9 +685,29 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 	logger.Logf("dwarf", "identified %d functions in %d compile units", len(src.Functions), len(src.compileUnits))
 	logger.Logf("dwarf", "%d global variables", len(src.globals))
 	logger.Logf("dwarf", "%d local variable (loclists)", len(src.locals))
-	logger.Logf("dwarf", "highest memory address occupied by a global variable (%08x)", src.VariableMemtop)
+	logger.Logf("dwarf", "high address (%08x)", src.HighAddress)
 
 	return src, nil
+}
+
+// determine highest address occupied by the program
+func (src Source) findHighAddress() uint64 {
+	var high uint64
+
+	for _, varb := range src.globals {
+		a := varb.resolve().address + uint64(varb.Type.Size)
+		if a > high {
+			high = a
+		}
+	}
+
+	for _, f := range src.Functions {
+		if f.Address[1] > high {
+			high = f.Address[1]
+		}
+	}
+
+	return high
 }
 
 // add function stubs for functions without DWARF data. also adds stub line

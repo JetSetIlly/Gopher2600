@@ -151,10 +151,9 @@ type CartCoProcDeveloper interface {
 	// stack has collided with variable memtop
 	StackCollision(pc uint32, sp uint32) string
 
-	// returns the highest address utilised by program memory. the coprocessor
-	// uses this value to detect stack collisions. should return zero if no
-	// variables information is available
-	VariableMemtop() uint32
+	// returns the highest address used by the program. the coprocessor uses
+	// this value to detect stack collisions
+	HighAddress() uint32
 
 	// checks if address has a breakpoint assigned to it
 	CheckBreakpoint(addr uint32) bool

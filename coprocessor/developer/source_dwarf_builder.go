@@ -699,12 +699,6 @@ func (bld *build) buildVariables(src *Source, origin uint64) error {
 					varb.loclist = newLoclistJustContext(varb)
 					varb.loclist.addOperator(r)
 
-					// determine highest address occupied by any variable in the program
-					hiAddress := varb.resolve().address + uint64(varb.Type.Size)
-					if hiAddress > src.VariableMemtop {
-						src.VariableMemtop = hiAddress
-					}
-
 					// add variable to list of global variables if there is no
 					// parent function otherwise we treat the variable as a
 					// local variable

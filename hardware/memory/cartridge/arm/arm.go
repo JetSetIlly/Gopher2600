@@ -689,7 +689,7 @@ func (arm *ARM) run() (mapper.YieldReason, float32) {
 
 	if arm.dev != nil {
 		// update variableMemtop - probably hasn't changed but you never know
-		arm.variableMemtop = arm.dev.VariableMemtop()
+		arm.variableMemtop = arm.dev.HighAddress()
 		arm.profiler = arm.dev.Profiling()
 	}
 

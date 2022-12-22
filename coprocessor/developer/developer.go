@@ -120,8 +120,8 @@ func (dev *Developer) DisableExpensive(disable bool) {
 	dev.disabledExpensive = disable
 }
 
-// VariableMemtop implements the CartCoProcDeveloper interface.
-func (dev *Developer) VariableMemtop() uint32 {
+// HighAddress implements the CartCoProcDeveloper interface.
+func (dev *Developer) HighAddress() uint32 {
 	if dev.source == nil {
 		return 0
 	}
@@ -129,7 +129,7 @@ func (dev *Developer) VariableMemtop() uint32 {
 	dev.sourceLock.Lock()
 	defer dev.sourceLock.Unlock()
 
-	return uint32(dev.source.VariableMemtop)
+	return uint32(dev.source.HighAddress)
 }
 
 // CheckBreakpoint implements the mapper.CartCoProcDeveloper interface.

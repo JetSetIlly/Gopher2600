@@ -1367,6 +1367,29 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 			default:
 			}
 
+		case "MEM":
+			bus := dbg.vcs.Mem.Cart.GetStaticBus()
+			if bus == nil {
+				dbg.printLine(terminal.StyleError, "cartridge does not have static memory")
+				return nil
+			}
+
+			static := bus.GetStatic()
+			if static == nil {
+				dbg.printLine(terminal.StyleError, "cartridge does not have static memory")
+				return nil
+			}
+
+			high := dbg.CoProcDev.HighAddress()
+
+			for _, seg := range static.Segments() {
+				s := fmt.Sprintf("%s: %08x to %08x", seg.Name, seg.Origin, seg.Memtop)
+				if high >= seg.Origin && high <= seg.Memtop {
+					s = fmt.Sprintf("%s (high: %08x)", s, high)
+				}
+				dbg.printLine(terminal.StyleFeedback, s)
+			}
+
 		case "REGS":
 			coproc := dbg.vcs.Mem.Cart.GetCoProc()
 
