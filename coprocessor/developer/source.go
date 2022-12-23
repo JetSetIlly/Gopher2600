@@ -626,32 +626,8 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 		}
 	}
 
-	// try to assign orphaned source lines to a function
-	//
-	// NOTE: this might not make sense for languages other than C. the
-	// assumption here is that global variables appear before any other
-	// function and that all lines after that are inside a function. for blank
-	// lines between functions this doesn't matter but any other variable
-	// declarations (outside of a function) will be wrongly allocated
-	//
-	// however, we need to do this because we need to be able to tell which
-	// function a local variable appears in. very often, the line that declares
-	// the variable will appear during the LineReader loop but sometimes it
-	// will not. moreover, we need to know which function it appears in in
-	// order to know what the frame base is for the variable.
-	for _, sf := range src.Files {
-		fn := &SourceFunction{
-			Cart: src.cart,
-			Name: stubIndicator,
-		}
-		for _, ln := range sf.Content.Lines {
-			if ln.Function.Name == stubIndicator {
-				ln.Function = fn
-			} else {
-				fn = ln.Function
-			}
-		}
-	}
+	// assign orphaned source lines to a function
+	src.allocateOrphanedSourceLines()
 
 	// build types
 	err = bld.buildTypes(src)
@@ -681,22 +657,8 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 	// update all variables
 	src.UpdateGlobalVariables()
 
-	// best guess at the entry function
-	if fn, ok := src.Functions["main"]; ok {
-		src.MainFunction = fn
-	} else {
-		for _, ln := range src.SortedLines.Lines {
-			if len(ln.Disassembly) > 0 {
-				src.MainFunction = ln.Function
-				break
-			}
-		}
-	}
-
-	// can't find a main function at all. create a stub entry
-	if src.MainFunction == nil {
-		src.MainFunction = createStubLine(nil).Function
-	}
+	// find entry function to the program
+	src.findEntryFunction()
 
 	// log summary
 	logger.Logf("dwarf", "identified %d functions in %d compile units", len(src.Functions), len(src.compileUnits))
@@ -707,8 +669,62 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 	return src, nil
 }
 
+// assign orphaned source lines to a function
+func (src *Source) allocateOrphanedSourceLines() {
+	// NOTE: this might not make sense for languages other than C. the
+	// assumption here is that global variables appear before any other
+	// function and that all lines after that are inside a function. for blank
+	// lines between functions this doesn't matter but any other variable
+	// declarations (outside of a function) will be wrongly allocated
+	//
+	// however, we need to do this because we need to be able to tell which
+	// function a local variable appears in. very often, the line that declares
+	// the variable will appear during the LineReader loop but sometimes it
+	// will not. moreover, we need to know which function it appears in in
+	// order to know what the frame base is for the variable.
+	for _, sf := range src.Files {
+		fn := &SourceFunction{
+			Cart: src.cart,
+			Name: stubIndicator,
+		}
+		for _, ln := range sf.Content.Lines {
+			if ln.Function.Name == stubIndicator {
+				ln.Function = fn
+			} else {
+				fn = ln.Function
+			}
+		}
+	}
+}
+
+// find entry function to the program
+func (src *Source) findEntryFunction() {
+	// use function called "main" if it's present. we could add to this list
+	// other likely names but this would depend on convention, which doesn't
+	// exist yet (eg. elf_main)
+	if fn, ok := src.Functions["main"]; ok {
+		src.MainFunction = fn
+		return
+	}
+
+	// assume the function of the first line in the source is the entry
+	// function
+	for _, ln := range src.SortedLines.Lines {
+		if len(ln.Disassembly) > 0 {
+			src.MainFunction = ln.Function
+			break
+		}
+	}
+	if src.MainFunction != nil {
+		return
+	}
+
+	// if no function can be found for some reason then a stub entry is created
+	src.MainFunction = createStubLine(nil).Function
+}
+
 // determine highest address occupied by the program
-func (src Source) findHighAddress() uint64 {
+func (src *Source) findHighAddress() uint64 {
 	var high uint64
 
 	for _, varb := range src.globals {
