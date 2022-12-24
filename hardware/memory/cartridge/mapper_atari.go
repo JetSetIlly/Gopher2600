@@ -17,6 +17,7 @@ package cartridge
 
 import (
 	"fmt"
+	"math/bits"
 	"os"
 
 	"github.com/jetsetilly/gopher2600/curated"
@@ -356,22 +357,29 @@ func (cart *atari4k) Write(addr uint16, data uint8, passive bool, poke bool) err
 //  - Outlaw
 //	- Surround
 //  - early cartridges
+//
+// it also supports other cartridge sizes less than 4096 bytes
 type atari2k struct {
 	atari
+	mask uint16
 }
 
 func newAtari2k(instance *instance.Instance, data []byte) (mapper.CartMapper, error) {
+	sz := len(data)
+
+	// support any size less than 4096 bytes that is a power of two
+	if sz >= 4096 || bits.OnesCount(uint(sz)) != 1 {
+		return nil, curated.Errorf("unsupported cartridge size")
+	}
+
 	cart := &atari2k{}
 	cart.instance = instance
-	cart.bankSize = 2048
+	cart.bankSize = sz
 	cart.mappingID = "2k"
 	cart.banks = make([][]uint8, 1)
 	cart.needsSuperchip = hasEmptyArea(data)
 	cart.state = newAtariState()
-
-	if len(data) != cart.bankSize*cart.NumBanks() {
-		return nil, curated.Errorf("2k: %v", "wrong number of bytes in the cartridge data")
-	}
+	cart.mask = uint16(sz - 1)
 
 	cart.banks[0] = make([]uint8, cart.bankSize)
 	copy(cart.banks[0], data)
@@ -400,7 +408,7 @@ func (cart *atari2k) Read(addr uint16, passive bool) (uint8, error) {
 	if data, ok := cart.atari.Read(addr, passive); ok {
 		return data, nil
 	}
-	return cart.banks[0][addr&0x07ff], nil
+	return cart.banks[0][addr&cart.mask], nil
 }
 
 // IterateBank implements the mapper.CartMapper interface.
@@ -415,72 +423,6 @@ func (cart *atari2k) CopyBanks() []mapper.BankContent {
 
 // Write implements the mapper.CartMapper interface.
 func (cart *atari2k) Write(addr uint16, data uint8, passive bool, poke bool) error {
-	if passive {
-		return nil
-	}
-	return cart.atari.Write(addr, data, passive, poke)
-}
-
-// atari1k is the quarter-size cartridge of 1024 bytes:
-type atari1k struct {
-	atari
-}
-
-func newAtari1k(instance *instance.Instance, data []byte) (mapper.CartMapper, error) {
-	cart := &atari1k{}
-	cart.instance = instance
-	cart.bankSize = 1024
-	cart.mappingID = "1k"
-	cart.banks = make([][]uint8, 1)
-	cart.needsSuperchip = hasEmptyArea(data)
-	cart.state = newAtariState()
-
-	if len(data) != cart.bankSize*cart.NumBanks() {
-		return nil, curated.Errorf("1k: %v", "wrong number of bytes in the cartridge data")
-	}
-
-	cart.banks[0] = make([]uint8, cart.bankSize)
-	copy(cart.banks[0], data)
-
-	return cart, nil
-}
-
-// Snapshot implements the mapper.CartMapper interface.
-func (cart *atari1k) Snapshot() mapper.CartMapper {
-	n := *cart
-	n.state = cart.state.Snapshot()
-	return &n
-}
-
-// Plumb implements the mapper.CartMapper interface.
-func (cart *atari1k) Plumb() {
-}
-
-// NumBanks implements the mapper.CartMapper interface.
-func (cart *atari1k) NumBanks() int {
-	return 1
-}
-
-// Read implements the mapper.CartMapper interface.
-func (cart *atari1k) Read(addr uint16, passive bool) (uint8, error) {
-	if data, ok := cart.atari.Read(addr, passive); ok {
-		return data, nil
-	}
-	return cart.banks[0][addr&0x03ff], nil
-}
-
-// IterateBank implements the mapper.CartMapper interface.
-func (cart *atari1k) CopyBanks() []mapper.BankContent {
-	c := make([]mapper.BankContent, 1)
-	c[0] = mapper.BankContent{Number: 0,
-		Data:    cart.banks[0],
-		Origins: []uint16{memorymap.OriginCart, memorymap.OriginCart + uint16(cart.bankSize)},
-	}
-	return c
-}
-
-// Write implements the mapper.CartMapper interface.
-func (cart *atari1k) Write(addr uint16, data uint8, passive bool, poke bool) error {
 	if passive {
 		return nil
 	}

@@ -158,8 +158,6 @@ func NewLoader(filename string, mapping string) (Loader, error) {
 			fallthrough
 		case ".A26":
 			cl.Mapping = "AUTO"
-		case ".1K":
-			fallthrough
 		case ".2K":
 			fallthrough
 		case ".4K":

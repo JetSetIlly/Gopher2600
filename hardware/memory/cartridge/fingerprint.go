@@ -364,19 +364,8 @@ func (cart *Cartridge) fingerprint(cartload cartridgeloader.Loader) error {
 		return err
 	}
 
-	switch len(*cartload.Data) {
-	case 1024:
-		cart.mapper, err = newAtari1k(cart.instance, *cartload.Data)
-		if err != nil {
-			return err
-		}
-
-	case 2048:
-		cart.mapper, err = newAtari2k(cart.instance, *cartload.Data)
-		if err != nil {
-			return err
-		}
-
+	sz := len(*cartload.Data)
+	switch sz {
 	case 4096:
 		cart.mapper, err = newAtari4k(cart.instance, *cartload.Data)
 		if err != nil {
@@ -435,7 +424,15 @@ func (cart *Cartridge) fingerprint(cartload cartridgeloader.Loader) error {
 		}
 
 	default:
-		return curated.Errorf("unrecognised size (%d bytes)", len(*cartload.Data))
+		if sz >= 4096 {
+			return curated.Errorf("unrecognised size (%d bytes)", len(*cartload.Data))
+		}
+
+		cart.mapper, err = newAtari2k(cart.instance, *cartload.Data)
+		if err != nil {
+			return err
+		}
+
 	}
 
 	// if cartridge mapper implements the optionalSuperChip interface then try

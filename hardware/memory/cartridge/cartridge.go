@@ -256,8 +256,6 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 	trySuperchip := false
 
 	switch strings.ToUpper(cartload.Mapping) {
-	case "1K":
-		cart.mapper, err = newAtari1k(cart.instance, *cartload.Data)
 	case "2K":
 		cart.mapper, err = newAtari2k(cart.instance, *cartload.Data)
 	case "4K":
