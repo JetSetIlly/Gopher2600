@@ -1014,6 +1014,9 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) 
 	// is this a new cartridge we're loading. value is used for dbg.reset()
 	newCartridge := dbg.loader == nil || cartload.Filename != dbg.loader.Filename
 
+	// remove existing coproc frame trigger from TV
+	dbg.vcs.TV.RemoveFrameTrigger(dbg.CoProcDev)
+
 	// stop optional sub-systems that shouldn't survive a new cartridge insertion
 	dbg.endPlayback()
 	dbg.endRecording()
