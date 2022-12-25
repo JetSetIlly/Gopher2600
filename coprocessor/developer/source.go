@@ -206,21 +206,67 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 		return nil, curated.Errorf("dwarf: %v", err)
 	}
 
-	// origin of the executable ELF section. will be zero if ELF file is not
-	// reloctable
-	//
-	// the isReloctable flag indicates that a relocatble execution section has
-	// been found. it is also used to prevent accepting relocatable files with
-	// multiple executable sections - I don't know how to handle that because
-	// we need at most one executableOrigin value when completing the
-	// relocation of DWARF sections (probably straight-forward but leave it for
-	// now until we see an example of it)
+	// origin of the executable ELF section. will be zero if ELF file is not reloctable
 	var executableOrigin uint64
-	var isReloctable bool
 
-	// the debug_frame section will be created from the raw elf.Section if it
-	// is found. we delay the creation because we need an executable value
+	// if file is relocatable then get executable origin address (see
+	// comment for executableOrigin type above)
+	if ef.Type&elf.ET_REL == elf.ET_REL {
+		if c, ok := cart.(mapper.CartCoProcNonRelocatable); ok {
+			executableOrigin = uint64(c.ExecutableOrigin())
+		} else if c, ok := cart.GetCoProc().(mapper.CartCoProcDWARF); ok {
+			if o, ok := c.ELFSection(".text"); ok {
+				executableOrigin = uint64(o)
+			}
+		}
+	}
+
+	// sections picked out from ELF file
 	var debug_frame *elf.Section
+	var debug_loc *elf.Section
+	var debug_frame_rel *elf.Section
+	var debug_loc_rel *elf.Section
+
+	// pick out section from ELF file that we need in order to help with DWARF parsing
+	for _, sec := range ef.Sections {
+		if sec.Flags&elf.SHF_EXECINSTR != elf.SHF_EXECINSTR {
+			switch sec.Type {
+			case elf.SHT_REL:
+				if _, name, ok := strings.Cut(sec.Name, "rel."); ok {
+					switch name {
+					case "debug_loc":
+						debug_loc_rel = sec
+					case "debug_frame":
+						debug_frame_rel = sec
+					}
+				}
+			default:
+				switch sec.Name {
+				case ".debug_loc":
+					debug_loc = sec
+				case ".debug_frame":
+					debug_frame = sec
+				}
+			}
+
+			continue
+		}
+	}
+
+	// perform relocation
+	relocateELFSection(debug_frame, debug_frame_rel)
+	relocateELFSection(debug_loc, debug_loc_rel)
+
+	// create frame section from the raw ELF section
+	if debug_frame != nil {
+		src.debug_frame, err = newFrameSection(cart, debug_frame, executableOrigin)
+		if err != nil {
+			logger.Logf("dwarf", err.Error())
+		}
+	}
+
+	// loc section can just be assigned
+	src.debug_loc = debug_loc
 
 	// disassemble every word in the ELF file
 	//
@@ -229,43 +275,8 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 	// effect by traversing the Sections array and ignoring any section not of
 	// the correct type/flags
 	for _, sec := range ef.Sections {
-		if sec.Type != elf.SHT_PROGBITS {
-			continue
-		}
-
-		// ignore sections that do not have executable instructions
 		if sec.Flags&elf.SHF_EXECINSTR != elf.SHF_EXECINSTR {
-			if sec.Name == ".debug_loc" {
-				if src.debug_loc != nil {
-					logger.Logf("dwarf", "multiple .debug_loc sections found. using the first one encountered")
-				} else {
-					src.debug_loc = sec
-				}
-			}
-			if sec.Name == ".debug_frame" {
-				if debug_frame != nil {
-					logger.Logf("dwarf", "multiple .debug_frame sections found. using the first one encountered")
-				} else {
-					debug_frame = sec
-				}
-			}
 			continue
-		}
-
-		// if file is relocatable then get executable origin address (see
-		// comment for executableOrigin type above)
-		if ef.Type&elf.ET_REL == elf.ET_REL {
-			if isReloctable {
-				return nil, curated.Errorf("dwarf: can't handle multiple executable sections")
-			}
-			isReloctable = true
-
-			// get executable origin for relocatable ROMs
-			if c, ok := cart.GetCoProc().(mapper.CartCoProcDWARF); ok {
-				if o, ok := c.ELFSection(sec.Name); ok {
-					executableOrigin = uint64(o)
-				}
-			}
 		}
 
 		addr := sec.Addr + executableOrigin
@@ -314,21 +325,6 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 			}
 
 			addr += 2
-		}
-	}
-
-	// get executable origin for non-relocatable cartridges
-	if !isReloctable {
-		if c, ok := cart.(mapper.CartCoProcNonRelocatable); ok {
-			executableOrigin = uint64(c.ExecutableOrigin())
-		}
-	}
-
-	// create frame section from the raw ELF section
-	if debug_frame != nil {
-		src.debug_frame, err = newFrameSection(cart, debug_frame, executableOrigin)
-		if err != nil {
-			logger.Logf("dwarf", err.Error())
 		}
 	}
 
