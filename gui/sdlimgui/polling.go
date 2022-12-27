@@ -26,17 +26,16 @@ import (
 // service() call. this changes depending primarily on whether we're in debug
 // or play mode.
 const (
+	// no sleep period if emulator is in play state
 	playSleepPeriod = 0
 
-	// settling on 10ms sleep period for debugger. this strikes a balance
-	// between responsiveness and CPU usage.
-	//
-	// it was set at 50ms for a while but this felt too sluggish. I think when
-	// combined with the lazyupdate system, which happens in two half (refresh
-	// and update) the delay is visually a lot longer in some situations (for
-	// example, when editing the PC value and seeing the change in the disasm
-	// window).
+	// a small sleep if emulator is in the debugger. this strikes a nice
+	// balance between CPU usage and responsiveness
 	debugSleepPeriod = 40
+
+	// if emulator is actually running however then there should be hardly any
+	// sleep period at all
+	debugSleepPeriodRunning = 1
 
 	// idleSleepPeriod should not be too long because the sleep is not preempted.
 	idleSleepPeriod = 500
@@ -76,10 +75,10 @@ type polling struct {
 	// explanation).
 	alerted bool
 
-	// the awake flag is set to true for a short time (defined by
+	// the keepAwake flag is set to true for a short time (defined by
 	// wakefullnessPeriod) after the last event was received. this improves
 	// responsiveness for certain GUI operations.
-	awake     bool
+	keepAwake bool
 	lastEvent time.Time
 
 	lastThmbTime   time.Time
@@ -126,12 +125,9 @@ func (pol *polling) wait() sdl.Event {
 	if pol.alerted {
 		pol.alerted = false
 	} else {
-		working := pol.awake ||
-			pol.img.lz.Debugger.HasChanged ||
-			pol.img.dbg.State() != govern.Paused ||
-			pol.img.wm.dbgScr.crtPreview
-
-		if working {
+		if pol.img.dbg.State() == govern.Running {
+			timeout = debugSleepPeriodRunning
+		} else if pol.keepAwake || pol.img.lz.Debugger.HasChanged {
 			timeout = debugSleepPeriod
 		} else {
 			timeout = idleSleepPeriod
@@ -141,12 +137,12 @@ func (pol *polling) wait() sdl.Event {
 	ev := sdl.WaitEventTimeout(timeout)
 
 	if ev != nil {
-		// an event has been received so set awake flag and note time of event
-		pol.awake = true
+		// an event has been received so set keepAwake flag and note time of event
+		pol.keepAwake = true
 		pol.lastEvent = time.Now()
-	} else if pol.awake {
-		// keep awake flag set for wakefullnessPeriod milliseconds
-		pol.awake = time.Since(pol.lastEvent).Milliseconds() < wakefullnessPeriod
+	} else if pol.keepAwake {
+		// keepAwake flag set for wakefullnessPeriod milliseconds
+		pol.keepAwake = time.Since(pol.lastEvent).Milliseconds() < wakefullnessPeriod
 	}
 
 	return ev
