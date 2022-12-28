@@ -402,12 +402,7 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 				handled = false
 			} else {
 				if ctrl {
-					img.dbg.PushFunction(func() {
-						err := img.dbg.ReloadCartridge()
-						if err != nil {
-							logger.Logf("sdlimgui", err.Error())
-						}
-					})
+					img.dbg.ReloadCartridge()
 				} else {
 					// only open ROM selector if window has been focused for a
 					// while. see windowFocusedTime declaration for an explanation
@@ -479,12 +474,7 @@ func (img *SdlImgui) serviceKeyboard(ev *sdl.KeyboardEvent) {
 
 		case sdl.SCANCODE_R:
 			if ctrl {
-				img.dbg.PushFunction(func() {
-					err := img.dbg.ReloadCartridge()
-					if err != nil {
-						logger.Logf("sdlimgui", err.Error())
-					}
-				})
+				img.dbg.ReloadCartridge()
 			} else {
 				handled = false
 			}

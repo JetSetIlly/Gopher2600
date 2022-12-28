@@ -1403,11 +1403,10 @@ func (dbg *Debugger) Plugged(port plugging.PortID, peripheral plugging.Periphera
 	}
 }
 
-// ReloadCartridge inserts the current cartridge and states the emulation over
-func (dbg *Debugger) ReloadCartridge() error {
+func (dbg *Debugger) reloadCartridge() error {
 	spec := dbg.vcs.TV.GetFrameInfo().Spec.ID
 
-	err := dbg.InsertCartridge("")
+	err := dbg.insertCartridge("")
 	if err != nil {
 		return curated.Errorf("debugger: %v", err)
 	}
@@ -1421,9 +1420,18 @@ func (dbg *Debugger) ReloadCartridge() error {
 	return nil
 }
 
-// InsertCartridge into running emulation. If filename argument is empty the
-// currently inserted cartridge will be reinserted.
-func (dbg *Debugger) InsertCartridge(filename string) error {
+// ReloadCartridge inserts the current cartridge and states the emulation over.
+//
+// It should not be run directly from the emulation/debugger goroutine, use
+// reloadCartridge() for that
+func (dbg *Debugger) ReloadCartridge() {
+	dbg.PushFunctionImmediate(func() {
+		dbg.setState(govern.Initialising)
+		dbg.unwindLoop(dbg.reloadCartridge)
+	})
+}
+
+func (dbg *Debugger) insertCartridge(filename string) error {
 	if filename == "" {
 		filename = dbg.loader.Filename
 	}
@@ -1443,4 +1451,18 @@ func (dbg *Debugger) InsertCartridge(filename string) error {
 	}
 
 	return nil
+}
+
+// InsertCartridge into running emulation. If filename argument is empty the
+// currently inserted cartridge will be reinserted.
+//
+// It should not be run directly from the emulation/debugger goroutine, use
+// insertCartridge() for that
+func (dbg *Debugger) InsertCartridge(filename string) {
+	dbg.PushFunctionImmediate(func() {
+		dbg.setState(govern.Initialising)
+		dbg.unwindLoop(func() error {
+			return dbg.insertCartridge(filename)
+		})
+	})
 }
