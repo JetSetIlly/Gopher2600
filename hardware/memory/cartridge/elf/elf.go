@@ -16,7 +16,6 @@
 package elf
 
 import (
-	"debug/dwarf"
 	"debug/elf"
 	"encoding/binary"
 	"fmt"
@@ -29,7 +28,6 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
-	"github.com/jetsetilly/gopher2600/logger"
 )
 
 // Elf implements the mapper.CartMapper interface.
@@ -45,9 +43,6 @@ type Elf struct {
 
 	// the hook that handles cartridge yields
 	yieldHook mapper.CartYieldHook
-
-	// the relocated dwarf data
-	dwarf *dwarf.Data
 
 	// parallelARM is true whenever the address bus is not a cartridge address (ie.
 	// a TIA or RIOT address). this means that the arm is running unhindered
@@ -151,11 +146,6 @@ func NewElf(instance *instance.Instance, pathToROM string, inACE bool) (mapper.C
 	cart.mem.busStuffingInit()
 
 	// defer reset until the VCS tries to read the cpubus.Reset address
-
-	cart.dwarf, err = f.DWARF()
-	if err != nil {
-		logger.Logf("ELF", "error retrieving DWARF data: %s", err.Error())
-	}
 
 	return cart, nil
 }
@@ -394,12 +384,7 @@ func (cart *Elf) SetDeveloper(dev mapper.CartCoProcDeveloper) {
 	cart.arm.SetDeveloper(dev)
 }
 
-// DWARF implements the mapper.CartCoProcDWARF interface.
-func (cart *Elf) DWARF() *dwarf.Data {
-	return cart.dwarf
-}
-
-// ELFSection implements the mapper.CartCoProcDWARF interface.
+// ELFSection implements the mapper.CartCoProcELF interface.
 func (cart *Elf) ELFSection(name string) (uint32, bool) {
 	if sec, ok := cart.mem.sections[name]; ok {
 		return sec.origin, true

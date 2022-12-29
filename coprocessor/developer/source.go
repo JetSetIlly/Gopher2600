@@ -18,6 +18,7 @@ package developer
 import (
 	"debug/dwarf"
 	"debug/elf"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"path/filepath"
@@ -48,7 +49,7 @@ type Source struct {
 	syms []elf.Symbol
 
 	// ELF sections that help DWARF locate local variables in memory
-	debug_loc   *elf.Section
+	debug_loc   *loclistSection
 	debug_frame *frameSection
 
 	// raw dwarf data. after NewSource() this data is only needed by the
@@ -111,13 +112,7 @@ type Source struct {
 	HighAddress uint64
 
 	// lines of source code found in the compile units. this is a sparse
-	// coverage of the total address space: for functions that are covered by
-	// DWARF data then lines exists only for DWARF line entries. for functions
-	// that are know about only through ELF symbols, every address in the
-	// function range has a SourceLine entry - see addFunctionStubs()
-	//
-	// on the occasions when an instruction at an address is encountered that
-	// we've not seen before, a stub entry is added as required
+	// coverage of the total address space
 	linesByAddress map[uint64]*SourceLine
 
 	// sorted list of every source line in all compile units
@@ -200,6 +195,12 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 	}
 	defer ef.Close()
 
+	// no need to continue if ELF file does not have any DWARF data
+	src.dwrf, err = ef.DWARF()
+	if err != nil {
+		return nil, curated.Errorf("dwarf: no DWARF data in ELF file")
+	}
+
 	// all the symbols in the ELF file
 	src.syms, err = ef.Symbols()
 	if err != nil {
@@ -207,104 +208,62 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 	}
 
 	// origin of the executable ELF section. will be zero if ELF file is not reloctable
-	var executableOrigin uint64
+	var origin uint64
 
-	// if file is relocatable then get executable origin address (see
-	// comment for executableOrigin type above)
+	// if file is relocatable then get executable origin address
 	if ef.Type&elf.ET_REL == elf.ET_REL {
 		if c, ok := cart.(mapper.CartCoProcNonRelocatable); ok {
-			executableOrigin = uint64(c.ExecutableOrigin())
-		} else if c, ok := cart.GetCoProc().(mapper.CartCoProcDWARF); ok {
+			origin = uint64(c.ExecutableOrigin())
+		} else if c, ok := cart.GetCoProc().(mapper.CartCoProcELF); ok {
 			if o, ok := c.ELFSection(".text"); ok {
-				executableOrigin = uint64(o)
+				origin = uint64(o)
 			}
 		}
 	}
-
-	// sections picked out from ELF file
-	var debug_frame *elf.Section
-	var debug_loc *elf.Section
-	var debug_frame_rel *elf.Section
-	var debug_loc_rel *elf.Section
-
-	// pick out section from ELF file that we need in order to help with DWARF parsing
-	for _, sec := range ef.Sections {
-		if sec.Flags&elf.SHF_EXECINSTR != elf.SHF_EXECINSTR {
-			switch sec.Type {
-			case elf.SHT_REL:
-				if _, name, ok := strings.Cut(sec.Name, "rel."); ok {
-					switch name {
-					case "debug_loc":
-						debug_loc_rel = sec
-					case "debug_frame":
-						debug_frame_rel = sec
-					}
-				}
-			default:
-				switch sec.Name {
-				case ".debug_loc":
-					debug_loc = sec
-				case ".debug_frame":
-					debug_frame = sec
-				}
-			}
-
-			continue
-		}
-	}
-
-	// perform relocation
-	relocateELFSection(debug_frame, debug_frame_rel)
-	relocateELFSection(debug_loc, debug_loc_rel)
 
 	// create frame section from the raw ELF section
-	if debug_frame != nil {
-		src.debug_frame, err = newFrameSection(cart, debug_frame, executableOrigin)
-		if err != nil {
-			logger.Logf("dwarf", err.Error())
-		}
+	src.debug_frame, err = newFrameSection(ef, cart, origin)
+	if err != nil {
+		logger.Logf("dwarf", err.Error())
 	}
 
-	// loc section can just be assigned
-	src.debug_loc = debug_loc
+	// create loclist section from the raw ELF section
+	src.debug_loc, err = newLoclistSection(ef)
+	if err != nil {
+		logger.Logf("dwarf", err.Error())
+	}
 
 	// disassemble every word in the ELF file
 	//
-	// we could traverse of the Progs array of the file here but some ELF files
+	// we could traverse of the progs array of the file here but some ELF files
 	// that we want to support do not have any program headers. we get the same
-	// effect by traversing the Sections array and ignoring any section not of
-	// the correct type/flags
+	// effect by traversing the Sections array and ignoring any section that
+	// does not have the EXECINSTR flag
 	for _, sec := range ef.Sections {
 		if sec.Flags&elf.SHF_EXECINSTR != elf.SHF_EXECINSTR {
 			continue
 		}
 
-		addr := sec.Addr + executableOrigin
-		o := sec.Open()
-		b := make([]byte, 2)
+		// section data
+		var data []byte
+		var ptr int
 
-		// 32bit instruction handling (see comment below)
+		data, err = sec.Data()
+		if err != nil {
+			return nil, fmt.Errorf("dwarf: %v", err)
+		}
+
+		// 32bit instruction handling
 		var is32Bit bool
 		var addr32Bit uint64
 
-		for {
-			n, err := o.Read(b)
-			if n != 2 {
-				break
-			}
-			if err != nil {
-				if err == io.EOF {
-					break
-				}
-				return nil, curated.Errorf("dwarf: compiled ELF file not found")
-			}
+		// address of instruction
+		addr := sec.Addr + origin
 
-			opcode := ef.ByteOrder.Uint16(b)
+		for ptr < len(data) {
+			opcode := ef.ByteOrder.Uint16(data[ptr:])
+			ptr += 2
 
-			// handle 32bit instructions by queueing up reads
-			//
-			// this should eventually be replaced with a more flexible
-			// arm.Disassemble() function and arm.DisasmEntry type
 			if is32Bit {
 				is32Bit = false
 				src.Disassembly[addr32Bit].opcode <<= 16
@@ -325,19 +284,6 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 			}
 
 			addr += 2
-		}
-	}
-
-	// load DWARF data from the mapper if possible
-	if c, ok := cart.GetCoProc().(mapper.CartCoProcDWARF); ok {
-		src.dwrf = c.DWARF()
-	}
-
-	// if no DWARF data is available from the mapper itself get it from the ELF file
-	if src.dwrf == nil {
-		src.dwrf, err = ef.DWARF()
-		if err != nil {
-			return nil, curated.Errorf("dwarf: no DWARF data in ELF file")
 		}
 	}
 
@@ -363,9 +309,6 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 	// the fields below
 	r := src.dwrf.Reader()
 
-	// most recent compile unit we've seen. used exclusively in the for loop below
-	var unit *compileUnit
-
 	// loop through file and collate compile units
 	for {
 		entry, err := r.Next()
@@ -384,7 +327,7 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 
 		switch entry.Tag {
 		case dwarf.TagCompileUnit:
-			unit = &compileUnit{
+			unit := &compileUnit{
 				unit:     entry,
 				children: make(map[dwarf.Offset]*dwarf.Entry),
 			}
@@ -427,7 +370,10 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 			}
 
 		default:
-			unit.children[entry.Offset] = entry
+			if len(src.compileUnits) == 0 {
+				return nil, curated.Errorf("dwarf: bad data: no compile unit tag")
+			}
+			src.compileUnits[len(src.compileUnits)-1].children[entry.Offset] = entry
 		}
 	}
 
@@ -436,159 +382,122 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 		logger.Logf("dwarf", "source compiled with optimisation")
 	}
 
+	// build functions from DWARF data
+	err = bld.buildFunctions(src, origin)
+	if err != nil {
+		return nil, curated.Errorf("dwarf: %v", err)
+	}
+
+	// complete function list with stubs for functions where we don't have any
+	// DWARF data (but do have symbol data)
+	addFunctionStubs(src)
+
 	// find reference for every meaningful source line and link to disassembly
 	for _, e := range src.compileUnits {
+		var sl *SourceLine
+
+		// start of address range to add
+		startAddr := origin
+
 		// read every line in the compile unit
 		r, err := src.dwrf.LineReader(e.unit)
 		if err != nil {
-			continue // for loop
+			return nil, curated.Errorf("dwarf: %v", err)
 		}
 
-		// allocation of asm entries to a SourceLine is a step behind the
-		// dwarf.LineEntry. this is because of how dwarf data is stored
-		//
-		// the instructions associated with a source line include those at
-		// addresses between the address given in an dwarf.LineEntry and the
-		// address in the next entry
-		var workingSourceLine *SourceLine
-		var workingAddress uint64
-
-		// origin of relocated section
-		workingAddress = executableOrigin
-
+		var le dwarf.LineEntry
 		for {
-			var le dwarf.LineEntry
-
 			err := r.Next(&le)
 			if err != nil {
 				if err == io.EOF {
 					break // for loop
 				}
 				logger.Logf("dwarf", "%v", err)
-				workingSourceLine = nil
+				sl = nil
 			}
 
-			// check source matches what is in the DWARF data
+			// make sure we have loaded the file previously
 			if src.Files[le.File.Name] == nil {
 				logger.Logf("dwarf", "file not available for linereader: %s", le.File.Name)
 				continue
 			}
+
+			// make sure the number of lines in the file is sufficient for the line entry
 			if le.Line-1 > src.Files[le.File.Name].Content.Len() {
-				return nil, curated.Errorf("dwarf: current source is unrelated to ELF/DWARF data (1)")
+				return nil, curated.Errorf("dwarf: current source is unrelated to ELF/DWARF data (number of lines)")
 			}
 
-			relocatedAddress := le.Address + executableOrigin
+			// adjust address by executable origin
+			endAddr := le.Address + origin
 
-			// if workingSourceLine is valid ...
-			if workingSourceLine != nil {
-				// ... and there are addresses to process ...
-				if relocatedAddress-workingAddress > 0 {
-					// ... then find the function for the working address
-					foundFunc, err := bld.findFunction(src, workingAddress-executableOrigin)
-					if err != nil {
-						return nil, curated.Errorf("dwarf: %v", err)
-					}
+			// if workingSourceLine is valid and there are addresses to process
+			if sl != nil && endAddr-startAddr > 0 {
+				// find function for working address
+				var fn *SourceFunction
 
-					if foundFunc == nil {
-						logger.Logf("dwarf", "cannot find function for address: %08x", workingAddress)
-						continue // for loop
-					}
+				// choose function that covers the smallest (most specific)
+				// range in which startAddr appears
+				sz := ^uint64(0)
 
-					// check source matches what is in the DWARF data
-					if src.Files[foundFunc.filename] == nil {
-						return nil, curated.Errorf("dwarf: current source is unrelated to ELF/DWARF data (2)")
-					}
-					if int(foundFunc.linenum-1) > src.Files[foundFunc.filename].Content.Len() {
-						return nil, curated.Errorf("dwarf: current source is unrelated to ELF/DWARF data (3)")
-					}
-
-					// associate function with workingSourceLine making sure we
-					// use the existing function if it exists
-					if f, ok := src.Functions[foundFunc.name]; ok {
-						workingSourceLine.Function = f
-					} else {
-						fn := &SourceFunction{
-							Cart:     src.cart,
-							Name:     foundFunc.name,
-							DeclLine: src.Files[foundFunc.filename].Content.Lines[foundFunc.linenum-1],
-						}
-
-						// assign function to declaration line
-						if !fn.DeclLine.Function.IsStub() {
-							logger.Logf("dwarf", "contentious function ownership for source line (%s)", fn.DeclLine)
-							logger.Logf("dwarf", "%s and %s", fn.DeclLine.Function.Name, fn.Name)
-						}
-						fn.DeclLine.Function = fn
-
-						// add to list of functions
-						src.Functions[foundFunc.name] = fn
-						src.FunctionNames = append(src.FunctionNames, foundFunc.name)
-
-						// update workingSourceLine with newly created SourceFunction
-						workingSourceLine.Function = src.Functions[foundFunc.name]
-					}
-
-					// add line to list of lines for the function
-					workingSourceLine.Function.Lines = append(workingSourceLine.Function.Lines, workingSourceLine)
-
-					// add/update framebase information
-					if foundFunc.framebase != nil {
-						workingSourceLine.Function.loclist = foundFunc.framebase
-						workingSourceLine.Function.loclist.ctx = src.debug_frame
-					}
-
-					// add disassembly to source line and build a linesByAddress map
-					for addr := workingAddress; addr < relocatedAddress; addr += 2 {
-						// look for address in disassembly
-						if d, ok := src.Disassembly[addr]; ok {
-							// add disassembly to the list of instructions for the workingSourceLine
-							workingSourceLine.Disassembly = append(workingSourceLine.Disassembly, d)
-
-							// link diassembly back to source line
-							d.Line = workingSourceLine
-
-							// associate the address with the workingSourceLine
-							src.linesByAddress[addr] = workingSourceLine
-
-							// source file for this source line one executable instruction
-							workingSourceLine.File.HasExecutableLines = true
+				for _, f := range src.Functions {
+					for _, r := range f.Range {
+						// using endAddr to identify the parent function. this
+						// seems to produce better results than startAddr (when
+						// identifying inlined functions)
+						if r.InRange(endAddr) {
+							if r.Size() < sz {
+								fn = f
+								sz = r.Size()
+							}
 						}
 					}
 				}
 
-				// if the entry is the end of a sequence then assign nil to workingSourceLine
-				if le.EndSequence {
-					workingSourceLine = nil
-					continue // for loop
+				// the function should exist and if it doesn't we exit with an error
+				if fn == nil {
+					return nil, curated.Errorf("dwarf: cannot find function for source line: %v", sl)
+				}
+
+				// update workingSourceLine with newly created SourceFunction
+				sl.Function = fn
+
+				// add line to list of lines for the function
+				sl.Function.Lines = append(sl.Function.Lines, sl)
+
+				// add disassembly to source line and build a linesByAddress map
+				for addr := startAddr; addr < endAddr; addr += 2 {
+					// look for address in disassembly
+					if d, ok := src.Disassembly[addr]; ok {
+						// add disassembly to the list of instructions for the workingSourceLine
+						sl.Disassembly = append(sl.Disassembly, d)
+
+						// link disassembly back to source line
+						d.Line = sl
+
+						// associate the address with the workingSourceLine
+						src.linesByAddress[addr] = sl
+
+						// disassembled instruction is a 32bit instruction
+						// so we need add another
+						if d.is32Bit {
+							addr += 2
+						}
+					}
 				}
 			}
 
-			// defer current line entry
-			workingSourceLine = src.Files[le.File.Name].Content.Lines[le.Line-1]
-			workingAddress = relocatedAddress
+			// if the entry is the end of a sequence then assign nil to workingSourceLine
+			if le.EndSequence {
+				sl = nil
+				continue // for loop
+			}
+
+			// note line entry. once we know the end address we can assign a
+			// function to it etc.
+			sl = src.Files[le.File.Name].Content.Lines[le.Line-1]
+			startAddr = endAddr
 		}
 	}
-
-	// set address range for every function
-	for _, fn := range src.Functions {
-		start := ^uint32(0)
-		end := uint32(0)
-
-		for _, ln := range fn.Lines {
-			for _, d := range ln.Disassembly {
-				if d.Addr < start {
-					start = d.Addr
-				} else if d.Addr > end {
-					end = d.Addr
-				}
-			}
-		}
-		fn.AddressStart = uint64(start)
-		fn.AddressEnd = uint64(end)
-	}
-
-	// add stub functions to list of functions
-	src.addFunctionStubs()
 
 	// sanity check of functions list
 	if len(src.Functions) != len(src.FunctionNames) {
@@ -623,7 +532,7 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 	}
 
 	// assign orphaned source lines to a function
-	src.allocateOrphanedSourceLines()
+	allocateOrphanedSourceLines(src)
 
 	// build types
 	err = bld.buildTypes(src)
@@ -632,13 +541,13 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 	}
 
 	// build variables
-	err = bld.buildVariables(src, executableOrigin)
+	err = bld.buildVariables(src, origin)
 	if err != nil {
 		return nil, curated.Errorf("dwarf: %v", err)
 	}
 
 	// determine highest address occupied by the program
-	src.HighAddress = src.findHighAddress()
+	findHighAddress(src)
 
 	// sort sorted lines
 	sort.Sort(src.SortedLines)
@@ -654,7 +563,7 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 	src.UpdateGlobalVariables()
 
 	// find entry function to the program
-	src.findEntryFunction()
+	findEntryFunction(src)
 
 	// log summary
 	logger.Logf("dwarf", "identified %d functions in %d compile units", len(src.Functions), len(src.compileUnits))
@@ -666,7 +575,7 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 }
 
 // assign orphaned source lines to a function
-func (src *Source) allocateOrphanedSourceLines() {
+func allocateOrphanedSourceLines(src *Source) {
 	// NOTE: this might not make sense for languages other than C. the
 	// assumption here is that global variables appear before any other
 	// function and that all lines after that are inside a function. for blank
@@ -694,7 +603,7 @@ func (src *Source) allocateOrphanedSourceLines() {
 }
 
 // find entry function to the program
-func (src *Source) findEntryFunction() {
+func findEntryFunction(src *Source) {
 	// use function called "main" if it's present. we could add to this list
 	// other likely names but this would depend on convention, which doesn't
 	// exist yet (eg. elf_main)
@@ -720,32 +629,34 @@ func (src *Source) findEntryFunction() {
 }
 
 // determine highest address occupied by the program
-func (src *Source) findHighAddress() uint64 {
-	var high uint64
+func findHighAddress(src *Source) {
+	src.HighAddress = 0
 
 	for _, varb := range src.globals {
 		a := varb.resolve().address + uint64(varb.Type.Size)
-		if a > high {
-			high = a
+		if a > src.HighAddress {
+			src.HighAddress = a
 		}
 	}
 
 	for _, f := range src.Functions {
-		if f.AddressEnd > high {
-			high = f.AddressEnd
+		for _, r := range f.Range {
+			if r.End > src.HighAddress {
+				src.HighAddress = r.End
+			}
 		}
 	}
-
-	return high
 }
 
-// add function stubs for functions without DWARF data. also adds stub line
-// entries for all addresses in the stub function
-func (src *Source) addFunctionStubs() {
+// add function stubs for functions without DWARF data. we do this *after*
+// we've looked for functions in the DWARF data (via the line reader) because
+// it appears that not every function will necessarily have a symbol and it's
+// easier to handle the adding of stubs *after* the the line reader. it does
+// mean though that we need to check that a function has not already been added
+func addFunctionStubs(src *Source) {
 	type fn struct {
-		name         string
-		addressStart uint64
-		addressEnd   uint64
+		name string
+		rng  SourceRange
 	}
 
 	var symbolTableFunctions []fn
@@ -758,15 +669,15 @@ func (src *Source) addFunctionStubs() {
 			// TODO: this is a bit of ARM specific knowledge that should be removed
 			a := uint64(s.Value & 0xfffffffe)
 			symbolTableFunctions = append(symbolTableFunctions, fn{
-				name:         s.Name,
-				addressStart: a,
-				addressEnd:   a + uint64(s.Size) - 1,
+				name: s.Name,
+				rng: SourceRange{
+					Start: a,
+					End:   a + uint64(s.Size) - 1,
+				},
 			})
 		}
 	}
 
-	// proces all functions, skipping any that we already know about from the
-	// DWARF data
 	for _, fn := range symbolTableFunctions {
 		if _, ok := src.Functions[fn.name]; !ok {
 			// chop off suffix from symbol table name if there is one. not sure
@@ -775,11 +686,10 @@ func (src *Source) addFunctionStubs() {
 			fn.name = strings.Split(fn.name, ".")[0]
 
 			stubFn := &SourceFunction{
-				Cart:         src.cart,
-				Name:         fn.name,
-				AddressStart: fn.addressStart,
-				AddressEnd:   fn.addressEnd,
+				Cart: src.cart,
+				Name: fn.name,
 			}
+			stubFn.Range = append(stubFn.Range, fn.rng)
 			stubFn.DeclLine = createStubLine(stubFn)
 
 			// add stub function to list of functions but not if the function
@@ -788,7 +698,7 @@ func (src *Source) addFunctionStubs() {
 
 			// process all addresses in range of origin and memtop, skipping
 			// any addresses that we already know about from the DWARF data
-			for a := fn.addressStart; a <= fn.addressEnd; a++ {
+			for a := fn.rng.Start; a <= fn.rng.End; a++ {
 				if _, ok := src.linesByAddress[a]; !ok {
 					src.linesByAddress[a] = createStubLine(stubFn)
 				} else {

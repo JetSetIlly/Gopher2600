@@ -16,7 +16,6 @@
 package mapper
 
 import (
-	"debug/dwarf"
 	"fmt"
 )
 
@@ -103,16 +102,9 @@ type CartCoProc interface {
 	CoProcRead32bit(addr uint32) (uint32, bool)
 }
 
-// CartCoProcDWARF is implemented by cartridge mappers that want to supply
-// their won ELF/DWARF information.
-type CartCoProcDWARF interface {
-	// returns any DWARF data for the cartridge. not all cartridges that
-	// implement the CartCoProc interface will be able to meaningfully
-	// return any data but none-the-less would benefit from DWARF debugging
-	// information. in those instances, the DWARF data must be retreived
-	// elsewhere
-	DWARF() *dwarf.Data
-
+// CartCoProcELF is implemented by cartridge mappers that want to supply
+// their own ELF information.
+type CartCoProcELF interface {
 	// returns the offset of the named ELF section and whether the named
 	// section exists. not all cartridges that implement this interface will be
 	// able to meaningfully answer this function call

@@ -45,10 +45,6 @@ type SourceFile struct {
 
 	// the source file has at least one global variable if HasGlobals is true
 	HasGlobals bool
-
-	// the source file has at least one executable line of source code if
-	// HasExecutableLines is true
-	HasExecutableLines bool
 }
 
 // IsStub returns true if the SourceFile is just a stub.
@@ -126,6 +122,25 @@ func (ln *SourceLine) IsStub() bool {
 	return ln.PlainContent == stubIndicator
 }
 
+type SourceRange struct {
+	Start uint64
+	End   uint64
+}
+
+func (r SourceRange) String() string {
+	return fmt.Sprintf("%08x -> %08x", r.Start, r.End)
+}
+
+// InRange returns true if address is in range of start and end addresses
+func (r SourceRange) InRange(addr uint64) bool {
+	return addr >= r.Start && addr <= r.End
+}
+
+// Size returns the size of the range
+func (r SourceRange) Size() uint64 {
+	return r.End - r.Start
+}
+
 // DriverFunctionName is the name given to a function that represents all the
 // instructions that fall outside of the ROM and are in fact in the "driver".
 const DriverFunctionName = "<driver>"
@@ -142,8 +157,7 @@ type SourceFunction struct {
 	Name string
 
 	// range of addresses in which function resides
-	AddressStart uint64
-	AddressEnd   uint64
+	Range []SourceRange
 
 	// location list. used to identify the frame base of a function
 	loclist *loclist
@@ -168,7 +182,7 @@ type SourceFunction struct {
 }
 
 func (fn *SourceFunction) String() string {
-	return fmt.Sprintf("%s %08x -> %08x", fn.Name, fn.AddressStart, fn.AddressEnd)
+	return fmt.Sprintf("%s %s", fn.Name, fn.Range)
 }
 
 // coproc implements the loclistContext interface

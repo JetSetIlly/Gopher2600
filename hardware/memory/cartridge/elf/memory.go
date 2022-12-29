@@ -200,21 +200,21 @@ func newElfMemory(ef *elf.File) (*elfMemory, error) {
 	}
 
 	// relocate all sections
-	for _, relsec := range ef.Sections {
+	for _, rel := range ef.Sections {
 		// ignore non-relocation sections for now
-		if relsec.Type != elf.SHT_REL {
+		if rel.Type != elf.SHT_REL {
 			continue
 		}
 
 		// ignore debug sections
-		if strings.Contains(relsec.Name, ".debug") {
+		if strings.Contains(rel.Name, ".debug") {
 			continue
 		}
 
 		// section being relocated
 		var secBeingRelocated *elfSection
-		if s, ok := mem.sections[relsec.Name[4:]]; !ok {
-			return nil, curated.Errorf("ELF: could not find section corresponding to %s", relsec.Name)
+		if s, ok := mem.sections[rel.Name[4:]]; !ok {
+			return nil, curated.Errorf("ELF: could not find section corresponding to %s", rel.Name)
 		} else {
 			secBeingRelocated = s
 		}
@@ -233,18 +233,18 @@ func newElfMemory(ef *elf.File) (*elfMemory, error) {
 		// relocation data. we walk over the data and extract the relocation
 		// entry manually. there is no explicit entry type in the Go library
 		// (for some reason)
-		relsecData, err := relsec.Data()
+		relData, err := rel.Data()
 		if err != nil {
 			return nil, curated.Errorf("ELF: %v", err)
 		}
 
 		// every relocation entry
-		for i := 0; i < len(relsecData); i += 8 {
+		for i := 0; i < len(relData); i += 8 {
 			var v uint32
 
 			// the relocation entry fields
-			offset := ef.ByteOrder.Uint32(relsecData[i : i+4])
-			info := ef.ByteOrder.Uint32(relsecData[i+4 : i+8])
+			offset := ef.ByteOrder.Uint32(relData[i : i+4])
+			info := ef.ByteOrder.Uint32(relData[i+4 : i+8])
 
 			// symbol is encoded in the info value
 			symbolIdx := info >> 8

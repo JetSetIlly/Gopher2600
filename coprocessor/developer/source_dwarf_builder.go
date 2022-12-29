@@ -17,7 +17,6 @@ package developer
 
 import (
 	"debug/dwarf"
-	"debug/elf"
 	"fmt"
 	"io"
 
@@ -25,58 +24,57 @@ import (
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
-// associates a compile unit with an individual entry. this is important
-// because retreiving the file list for an entry depends very much on the
-// compile unit - we need to make sure we're using the correct compile unit.
-type buildEntry struct {
-	compileUnit *dwarf.Entry
-	entry       *dwarf.Entry
-
-	// additional information. context sensitive according to the entry type
-	information string
-}
-
+// the build struct is only used during construction of the debugging
+// information to help the NewSource() function
 type build struct {
 	dwrf *dwarf.Data
 
 	// ELF sections that help DWARF locate local variables in memory
-	debug_loc   *elf.Section
+	debug_loc   *loclistSection
 	debug_frame *frameSection
 
 	// the order in which we encountered the subprograms and inlined
 	// subroutines is important
 	order []*dwarf.Entry
 
+	// all entries in the DWARF data
+	entries map[dwarf.Offset]*dwarf.Entry
+
+	// the parent compile unit for every dwarf offset. we record this because
+	// sometimes a DWARF entry will reference another DWARF entry in a
+	// different compile unit. this is important because acquiring a line
+	// reader depends on the compile unit and the reason we need a line reader
+	// is in order to match an AttrDeclFile with a file name
+	compileUnits map[dwarf.Offset]*dwarf.Entry
+
 	// quick access to entries in dwarf data
-	subprograms        map[dwarf.Offset]buildEntry
-	inlinedSubroutines map[dwarf.Offset]buildEntry
-	baseTypes          map[dwarf.Offset]buildEntry
-	typedefs           map[dwarf.Offset]buildEntry
-	compositeTypes     map[dwarf.Offset]buildEntry
-	compositeMembers   map[dwarf.Offset]buildEntry
-	arrayTypes         map[dwarf.Offset]buildEntry
-	arraySubranges     map[dwarf.Offset]buildEntry
-	variables          map[dwarf.Offset]buildEntry
-	pointers           map[dwarf.Offset]buildEntry
-	consts             map[dwarf.Offset]buildEntry
+	baseTypes        map[dwarf.Offset]*dwarf.Entry
+	typedefs         map[dwarf.Offset]*dwarf.Entry
+	compositeTypes   map[dwarf.Offset]*dwarf.Entry
+	compositeMembers map[dwarf.Offset]*dwarf.Entry
+	arrayTypes       map[dwarf.Offset]*dwarf.Entry
+	arraySubranges   map[dwarf.Offset]*dwarf.Entry
+	variables        map[dwarf.Offset]*dwarf.Entry
+	pointers         map[dwarf.Offset]*dwarf.Entry
+	consts           map[dwarf.Offset]*dwarf.Entry
 }
 
-func newBuild(dwrf *dwarf.Data, debug_loc *elf.Section, debug_frame *frameSection) (*build, error) {
+func newBuild(dwrf *dwarf.Data, debug_loc *loclistSection, debug_frame *frameSection) (*build, error) {
 	bld := &build{
-		dwrf:               dwrf,
-		debug_loc:          debug_loc,
-		debug_frame:        debug_frame,
-		subprograms:        make(map[dwarf.Offset]buildEntry),
-		inlinedSubroutines: make(map[dwarf.Offset]buildEntry),
-		baseTypes:          make(map[dwarf.Offset]buildEntry),
-		typedefs:           make(map[dwarf.Offset]buildEntry),
-		compositeTypes:     make(map[dwarf.Offset]buildEntry),
-		compositeMembers:   make(map[dwarf.Offset]buildEntry),
-		arrayTypes:         make(map[dwarf.Offset]buildEntry),
-		arraySubranges:     make(map[dwarf.Offset]buildEntry),
-		variables:          make(map[dwarf.Offset]buildEntry),
-		pointers:           make(map[dwarf.Offset]buildEntry),
-		consts:             make(map[dwarf.Offset]buildEntry),
+		dwrf:             dwrf,
+		debug_loc:        debug_loc,
+		debug_frame:      debug_frame,
+		entries:          make(map[dwarf.Offset]*dwarf.Entry),
+		compileUnits:     make(map[dwarf.Offset]*dwarf.Entry),
+		baseTypes:        make(map[dwarf.Offset]*dwarf.Entry),
+		typedefs:         make(map[dwarf.Offset]*dwarf.Entry),
+		compositeTypes:   make(map[dwarf.Offset]*dwarf.Entry),
+		compositeMembers: make(map[dwarf.Offset]*dwarf.Entry),
+		arrayTypes:       make(map[dwarf.Offset]*dwarf.Entry),
+		arraySubranges:   make(map[dwarf.Offset]*dwarf.Entry),
+		variables:        make(map[dwarf.Offset]*dwarf.Entry),
+		pointers:         make(map[dwarf.Offset]*dwarf.Entry),
+		consts:           make(map[dwarf.Offset]*dwarf.Entry),
 	}
 
 	var compileUnit *dwarf.Entry
@@ -97,161 +95,46 @@ func newBuild(dwrf *dwarf.Data, debug_loc *elf.Section, debug_frame *frameSectio
 			continue // for loop
 		}
 
+		bld.order = append(bld.order, entry)
+		bld.entries[entry.Offset] = entry
+		bld.compileUnits[entry.Offset] = compileUnit
+
 		switch entry.Tag {
 		case dwarf.TagCompileUnit:
 			compileUnit = entry
 
-		case dwarf.TagInlinedSubroutine:
-			if compileUnit == nil {
-				return nil, curated.Errorf("found inlined subroutine tag without compile unit")
-			} else {
-				bld.inlinedSubroutines[entry.Offset] = buildEntry{
-					compileUnit: compileUnit,
-					entry:       entry,
-				}
-				bld.order = append(bld.order, entry)
-			}
-
-		case dwarf.TagSubprogram:
-			if compileUnit == nil {
-				return nil, curated.Errorf("found subprogram tag without compile unit")
-			} else {
-				bld.subprograms[entry.Offset] = buildEntry{
-					compileUnit: compileUnit,
-					entry:       entry,
-				}
-				bld.order = append(bld.order, entry)
-			}
-
-		case dwarf.TagLexDwarfBlock:
-			if compileUnit == nil {
-				return nil, curated.Errorf("found lex block tag without compile unit")
-			} else {
-				bld.order = append(bld.order, entry)
-			}
-
 		case dwarf.TagTypedef:
-			if compileUnit == nil {
-				return nil, curated.Errorf("found base/pointer type tag without compile unit")
-			} else {
-				bld.typedefs[entry.Offset] = buildEntry{
-					compileUnit: compileUnit,
-					entry:       entry,
-				}
-				bld.order = append(bld.order, entry)
-			}
+			bld.typedefs[entry.Offset] = entry
 
 		case dwarf.TagBaseType:
-			if compileUnit == nil {
-				return nil, curated.Errorf("found base/pointer type tag without compile unit")
-			} else {
-				bld.baseTypes[entry.Offset] = buildEntry{
-					compileUnit: compileUnit,
-					entry:       entry,
-				}
-				bld.order = append(bld.order, entry)
-			}
+			bld.baseTypes[entry.Offset] = entry
 
 		case dwarf.TagUnionType:
-			if compileUnit == nil {
-				return nil, curated.Errorf("found union type tag without compile unit")
-			} else {
-				bld.compositeTypes[entry.Offset] = buildEntry{
-					compileUnit: compileUnit,
-					entry:       entry,
-					information: "union",
-				}
-				bld.order = append(bld.order, entry)
-			}
+			bld.compositeTypes[entry.Offset] = entry
 
 		case dwarf.TagStructType:
-			if compileUnit == nil {
-				return nil, curated.Errorf("found struct type tag without compile unit")
-			} else {
-				bld.compositeTypes[entry.Offset] = buildEntry{
-					compileUnit: compileUnit,
-					entry:       entry,
-					information: "struct",
-				}
-				bld.order = append(bld.order, entry)
-			}
+			bld.compositeTypes[entry.Offset] = entry
 
 		case dwarf.TagMember:
-			if compileUnit == nil {
-				return nil, curated.Errorf("found member tag without compile unit")
-			} else {
-				bld.compositeMembers[entry.Offset] = buildEntry{
-					compileUnit: compileUnit,
-					entry:       entry,
-				}
-				bld.order = append(bld.order, entry)
-			}
+			bld.compositeMembers[entry.Offset] = entry
 
 		case dwarf.TagArrayType:
-			if compileUnit == nil {
-				return nil, curated.Errorf("found array type tag without compile unit")
-			} else {
-				bld.arrayTypes[entry.Offset] = buildEntry{
-					compileUnit: compileUnit,
-					entry:       entry,
-				}
-				bld.order = append(bld.order, entry)
-			}
+			bld.arrayTypes[entry.Offset] = entry
 
 		case dwarf.TagSubrangeType:
-			if compileUnit == nil {
-				return nil, curated.Errorf("found subrange type tag without compile unit")
-			} else {
-				bld.arraySubranges[entry.Offset] = buildEntry{
-					compileUnit: compileUnit,
-					entry:       entry,
-				}
-				bld.order = append(bld.order, entry)
-			}
+			bld.arraySubranges[entry.Offset] = entry
 
 		case dwarf.TagVariable:
-			if compileUnit == nil {
-				return nil, curated.Errorf("found variable tag without compile unit")
-			} else {
-				bld.variables[entry.Offset] = buildEntry{
-					compileUnit: compileUnit,
-					entry:       entry,
-				}
-				bld.order = append(bld.order, entry)
-			}
+			bld.variables[entry.Offset] = entry
 
 		case dwarf.TagFormalParameter:
-			if compileUnit == nil {
-				return nil, curated.Errorf("found formal parameter tag without compile unit")
-			} else {
-				bld.variables[entry.Offset] = buildEntry{
-					compileUnit: compileUnit,
-					entry:       entry,
-				}
-				bld.order = append(bld.order, entry)
-			}
+			bld.variables[entry.Offset] = entry
 
 		case dwarf.TagPointerType:
-			if compileUnit == nil {
-				return nil, curated.Errorf("found pointer type tag without compile unit")
-			} else {
-				bld.pointers[entry.Offset] = buildEntry{
-					compileUnit: compileUnit,
-					entry:       entry,
-				}
-				bld.order = append(bld.order, entry)
-			}
+			bld.pointers[entry.Offset] = entry
 
 		case dwarf.TagConstType:
-			if compileUnit == nil {
-				return nil, curated.Errorf("found const type tag without compile unit")
-			} else {
-				bld.consts[entry.Offset] = buildEntry{
-					compileUnit: compileUnit,
-					entry:       entry,
-				}
-				bld.order = append(bld.order, entry)
-			}
+			bld.consts[entry.Offset] = entry
 		}
 	}
 
@@ -278,13 +161,13 @@ func (bld *build) buildTypes(src *Source) error {
 			}(baseType)
 
 			// override the name field
-			fld := v.entry.AttrField(dwarf.AttrName)
+			fld := v.AttrField(dwarf.AttrName)
 			if fld == nil {
 				continue
 			}
 			typ.Name = fld.Val.(string)
 
-			src.types[v.entry.Offset] = typ
+			src.types[v.Offset] = typ
 		}
 
 		return nil
@@ -294,19 +177,19 @@ func (bld *build) buildTypes(src *Source) error {
 	for _, v := range bld.baseTypes {
 		var typ SourceType
 
-		fld := v.entry.AttrField(dwarf.AttrName)
+		fld := v.AttrField(dwarf.AttrName)
 		if fld == nil {
 			continue
 		}
 		typ.Name = fld.Val.(string)
 
-		fld = v.entry.AttrField(dwarf.AttrByteSize)
+		fld = v.AttrField(dwarf.AttrByteSize)
 		if fld == nil {
 			continue
 		}
 		typ.Size = int(fld.Val.(int64))
 
-		src.types[v.entry.Offset] = &typ
+		src.types[v.Offset] = &typ
 	}
 
 	// typedefs of basic types
@@ -331,13 +214,13 @@ func (bld *build) buildTypes(src *Source) error {
 
 			typ.Name = fmt.Sprintf("%s *", typ.PointerType.Name)
 
-			fld := v.entry.AttrField(dwarf.AttrByteSize)
+			fld := v.AttrField(dwarf.AttrByteSize)
 			if fld == nil {
 				continue
 			}
 			typ.Size = int(fld.Val.(int64))
 
-			src.types[v.entry.Offset] = &typ
+			src.types[v.Offset] = &typ
 		}
 
 		// typedefs of pointer types
@@ -351,43 +234,44 @@ func (bld *build) buildTypes(src *Source) error {
 			var typ SourceType
 			var name string
 
-			fld := v.entry.AttrField(dwarf.AttrName)
+			fld := v.AttrField(dwarf.AttrName)
 			if fld == nil {
 				// allow anonymous structures. we sometimes see this when
 				// structs are defined with typedef
-				name = fmt.Sprintf("%x", v.entry.Offset)
+				name = fmt.Sprintf("%x", v.Offset)
 			} else {
 				name = fld.Val.(string)
 			}
 
-			fld = v.entry.AttrField(dwarf.AttrByteSize)
+			fld = v.AttrField(dwarf.AttrByteSize)
 			if fld == nil {
 				continue
 			}
 			typ.Size = int(fld.Val.(int64))
 
-			src.types[v.entry.Offset] = &typ
+			src.types[v.Offset] = &typ
 
-			// the name we store in the type is annotated with the composite
-			// category.
-			//
-			// this may be language sensitive but we're assuming the use of C for now
-			typ.Name = fmt.Sprintf("%s %s", v.information, name)
+			// the name we store in the type is annotated with the composite category
+			switch v.Tag {
+			case dwarf.TagUnionType:
+				typ.Name = fmt.Sprintf("union %s", name)
+			case dwarf.TagStructType:
+				typ.Name = fmt.Sprintf("struct %s", name)
+			default:
+				typ.Name = fmt.Sprintf("%s", name)
+			}
 		}
 
 		// allocate members to composite types
 		var composite *SourceType
 		for _, e := range bld.order {
 			if v, ok := bld.compositeTypes[e.Offset]; ok {
-				composite = src.types[v.entry.Offset]
+				composite = src.types[v.Offset]
 			} else if v, ok := bld.compositeMembers[e.Offset]; ok {
 				if composite == nil {
 					// found a member without first finding a composite type. this
 					// shouldn't happen
 					continue
-				}
-
-				if v.entry.Offset == 0x274 {
 				}
 
 				// members are basically like variables but with special address
@@ -405,7 +289,7 @@ func (bld *build) buildTypes(src *Source) error {
 				// zero and will still be considered an offset address. absence
 				// of the data member location field is the case with union
 				// types
-				fld := v.entry.AttrField(dwarf.AttrDataMemberLoc)
+				fld := v.AttrField(dwarf.AttrDataMemberLoc)
 				if fld != nil {
 					switch fld.Class {
 					case dwarf.ClassConstant:
@@ -457,7 +341,7 @@ func (bld *build) buildTypes(src *Source) error {
 				if err != nil {
 					return err
 				}
-				baseTypeOffset = v.entry.Offset
+				baseTypeOffset = v.Offset
 			} else if v, ok := bld.arraySubranges[e.Offset]; ok {
 				if arrayBaseType == nil {
 					// found a subrange without first finding an array type. this
@@ -465,7 +349,7 @@ func (bld *build) buildTypes(src *Source) error {
 					continue
 				}
 
-				fld := v.entry.AttrField(dwarf.AttrUpperBound)
+				fld := v.AttrField(dwarf.AttrUpperBound)
 				if fld == nil {
 					continue
 				}
@@ -502,7 +386,7 @@ func (bld *build) buildTypes(src *Source) error {
 			typ.Constant = true
 			typ.Name = fmt.Sprintf("const %s", baseType.Name)
 
-			src.types[v.entry.Offset] = &typ
+			src.types[v.Offset] = &typ
 		}
 
 		// typedefs of const types
@@ -515,8 +399,8 @@ func (bld *build) buildTypes(src *Source) error {
 	return nil
 }
 
-func (bld *build) resolveType(v buildEntry, src *Source) (*SourceType, error) {
-	fld := v.entry.AttrField(dwarf.AttrType)
+func (bld *build) resolveType(v *dwarf.Entry, src *Source) (*SourceType, error) {
+	fld := v.AttrField(dwarf.AttrType)
 	if fld == nil {
 		return nil, nil
 	}
@@ -529,12 +413,12 @@ func (bld *build) resolveType(v buildEntry, src *Source) (*SourceType, error) {
 	return typ, nil
 }
 
-func (bld *build) resolveVariableDeclaration(v buildEntry, src *Source) (*SourceVariable, error) {
-	resolveSpec := func(v buildEntry) (*SourceVariable, error) {
+func (bld *build) resolveVariableDeclaration(v *dwarf.Entry, src *Source) (*SourceVariable, error) {
+	resolveSpec := func(v *dwarf.Entry) (*SourceVariable, error) {
 		var varb SourceVariable
 
 		// variable name
-		fld := v.entry.AttrField(dwarf.AttrName)
+		fld := v.AttrField(dwarf.AttrName)
 		if fld == nil {
 			return nil, nil
 		}
@@ -558,7 +442,7 @@ func (bld *build) resolveVariableDeclaration(v buildEntry, src *Source) (*Source
 	// check for specification field. if it is present we resolve the
 	// specification using with the DWARF entry indicated by the field.
 	// otherwise we resolve using the current entry
-	fld := v.entry.AttrField(dwarf.AttrSpecification)
+	fld := v.AttrField(dwarf.AttrSpecification)
 	if fld != nil {
 		var ok bool
 
@@ -589,19 +473,19 @@ func (bld *build) resolveVariableDeclaration(v buildEntry, src *Source) (*Source
 	}
 
 	// variable location in the source
-	fld = v.entry.AttrField(dwarf.AttrDeclFile)
+	fld = v.AttrField(dwarf.AttrDeclFile)
 	if fld == nil {
 		return nil, nil
 	}
 	declFile := fld.Val.(int64)
 
-	fld = v.entry.AttrField(dwarf.AttrDeclLine)
+	fld = v.AttrField(dwarf.AttrDeclLine)
 	if fld == nil {
 		return nil, nil
 	}
 	declLine := fld.Val.(int64)
 
-	lr, err := bld.dwrf.LineReader(v.compileUnit)
+	lr, err := bld.dwrf.LineReader(bld.compileUnits[v.Offset])
 	if err != nil {
 		return nil, err
 	}
@@ -633,6 +517,10 @@ func (bld *build) buildVariables(src *Source, origin uint64) error {
 	lexStart = append(lexStart, []uint64{0})
 	lexEnd = append(lexEnd, []uint64{0})
 
+	// location lists use a base address of the current compilation unit when
+	// constructing address ranges
+	var compilationUnitAddress uint64
+
 	// walk through the entire DWARF sequence in order. we'll only deal with
 	// the entries that are of interest to us
 	for _, e := range bld.order {
@@ -642,7 +530,7 @@ func (bld *build) buildVariables(src *Source, origin uint64) error {
 				lexIdx--
 			} else {
 				// this should never happen unless the DWARF file is corrupt in some way
-				logger.Logf("dwarf", "trying to end a lexical block without one being opened?")
+				logger.Logf("dwarf", "trying to end a lexical block without one being opened")
 			}
 		}
 
@@ -658,6 +546,44 @@ func (bld *build) buildVariables(src *Source, origin uint64) error {
 			// lexical block stack
 			lexIdx = 0
 			lexSibling = 0
+
+			var l, h uint64
+
+			fld := e.AttrField(dwarf.AttrLowpc)
+			if fld != nil {
+				l = origin + uint64(fld.Val.(uint64))
+
+				fld = e.AttrField(dwarf.AttrHighpc)
+				if fld == nil {
+					continue // for loop
+				}
+
+				switch fld.Class {
+				case dwarf.ClassConstant:
+					// dwarf-4
+					h = l + uint64(fld.Val.(int64))
+				case dwarf.ClassAddress:
+					// dwarf-2
+					h = uint64(fld.Val.(uint64))
+				default:
+				}
+
+				lexIdx++
+				lexStart = append(lexStart[:lexIdx], []uint64{l})
+				lexEnd = append(lexEnd[:lexIdx], []uint64{h})
+
+				// we can think of the compilationUnitAddress as a special form
+				// of the lexical block and is used for location lists. we're
+				// not interested in the high address in that context
+				compilationUnitAddress = l
+
+			} else {
+				// not sure if compile units ever use ranges to specify low and
+				// high addresses
+				logger.Logf("dwarf", "no LowPC attribute for compilation unit")
+				compilationUnitAddress = origin
+			}
+
 			continue // for loop
 
 		case dwarf.TagSubprogram:
@@ -669,7 +595,7 @@ func (bld *build) buildVariables(src *Source, origin uint64) error {
 
 			fld := e.AttrField(dwarf.AttrLowpc)
 			if fld != nil {
-				l = uint64(fld.Val.(uint64))
+				l = origin + uint64(fld.Val.(uint64))
 
 				fld = e.AttrField(dwarf.AttrHighpc)
 				if fld == nil {
@@ -711,9 +637,8 @@ func (bld *build) buildVariables(src *Source, origin uint64) error {
 				lexEnd = append(lexEnd[:lexIdx], end)
 			}
 
-			// sibling. if there is no sibling then that seems to indicate the
-			// end block will end with the compilation unit and therefore there
-			// is no sibling to indicate explicitely
+			// if there is no sibling for the lexical block then that indicates
+			// that the block will end with the compilation unit
 			fld = e.AttrField(dwarf.AttrSibling)
 			if fld != nil {
 				lexSibling = fld.Val.(dwarf.Offset)
@@ -741,7 +666,7 @@ func (bld *build) buildVariables(src *Source, origin uint64) error {
 		// check for abstract origin field. if it is present we resolve the
 		// declartion using the DWARF entry indicated by the field. otherwise
 		// we resolve using the current entry
-		fld := v.entry.AttrField(dwarf.AttrAbstractOrigin)
+		fld := v.AttrField(dwarf.AttrAbstractOrigin)
 		if fld != nil {
 			abstract, ok := bld.variables[fld.Val.(dwarf.Offset)]
 			if !ok {
@@ -779,23 +704,24 @@ func (bld *build) buildVariables(src *Source, origin uint64) error {
 		varb.Cart = src.cart
 
 		// variable actually exists in memory if it has a location attribute
-		fld = v.entry.AttrField(dwarf.AttrLocation)
+		fld = v.AttrField(dwarf.AttrLocation)
 		if fld != nil {
 			switch fld.Class {
 			case dwarf.ClassLocListPtr:
 				var err error
-				err = newLoclist(varb, bld.debug_loc, bld.debug_frame, fld.Val.(int64), func(start, end uint64, loc *loclist) {
-					varb.loclist = loc
+				err = newLoclist(varb, bld.debug_loc, bld.debug_frame, fld.Val.(int64), compilationUnitAddress,
+					func(start, end uint64, loc *loclist) {
+						varb.loclist = loc
 
-					local := &SourceVariableLocal{
-						SourceVariable:  varb,
-						ResolvableStart: start + origin,
-						ResolvableEnd:   end + origin,
-					}
+						local := &SourceVariableLocal{
+							SourceVariable:  varb,
+							ResolvableStart: start,
+							ResolvableEnd:   end,
+						}
 
-					src.locals = append(src.locals, local)
-					src.SortedLocals.Locals = append(src.SortedLocals.Locals, local)
-				})
+						src.locals = append(src.locals, local)
+						src.SortedLocals.Locals = append(src.SortedLocals.Locals, local)
+					})
 				if err != nil {
 					logger.Logf("dwarf", "%s: %v", varb.Name, err)
 				}
@@ -830,8 +756,8 @@ func (bld *build) buildVariables(src *Source, origin uint64) error {
 						for i := range lexStart[lexIdx] {
 							local := &SourceVariableLocal{
 								SourceVariable:  varb,
-								ResolvableStart: lexStart[lexIdx][i] + origin,
-								ResolvableEnd:   lexEnd[lexIdx][i] + origin,
+								ResolvableStart: lexStart[lexIdx][i],
+								ResolvableEnd:   lexEnd[lexIdx][i],
 							}
 
 							src.locals = append(src.locals, local)
@@ -847,8 +773,8 @@ func (bld *build) buildVariables(src *Source, origin uint64) error {
 				for i := range lexStart[lexIdx] {
 					local := &SourceVariableLocal{
 						SourceVariable:  varb,
-						ResolvableStart: lexStart[lexIdx][i] + origin,
-						ResolvableEnd:   lexEnd[lexIdx][i] + origin,
+						ResolvableStart: lexStart[lexIdx][i],
+						ResolvableEnd:   lexEnd[lexIdx][i],
 					}
 					src.locals = append(src.locals, local)
 					src.SortedLocals.Locals = append(src.SortedLocals.Locals, local)
@@ -863,25 +789,11 @@ func (bld *build) buildVariables(src *Source, origin uint64) error {
 	return nil
 }
 
-type foundFunction struct {
-	name     string
-	filename string
-	linenum  int64
-
-	// not all functions have a framebase
-	//
-	// the loclist will have been built without a context it must be manually
-	// added before use
-	framebase *loclist
-}
-
-func (bld *build) findFunction(src *Source, addr uint64) (*foundFunction, error) {
-	var ret *foundFunction
-
-	resolveFramebase := func(b buildEntry) (*loclist, error) {
+func (bld *build) buildFunctions(src *Source, origin uint64) error {
+	resolveFramebase := func(e *dwarf.Entry) (*loclist, error) {
 		var framebase *loclist
 
-		fld := b.entry.AttrField(dwarf.AttrFrameBase)
+		fld := e.AttrField(dwarf.AttrFrameBase)
 		if fld != nil {
 			switch fld.Class {
 			case dwarf.ClassExprLoc:
@@ -891,9 +803,10 @@ func (bld *build) findFunction(src *Source, addr uint64) (*foundFunction, error)
 					return nil, err
 				}
 			case dwarf.ClassLocListPtr:
-				err := newLoclist(nil, bld.debug_loc, bld.debug_frame, fld.Val.(int64), func(_, _ uint64, loc *loclist) {
-					framebase = loc
-				})
+				err := newLoclist(nil, bld.debug_loc, bld.debug_frame, fld.Val.(int64), origin,
+					func(_, _ uint64, loc *loclist) {
+						framebase = loc
+					})
 				if err != nil {
 					return nil, err
 				}
@@ -903,29 +816,30 @@ func (bld *build) findFunction(src *Source, addr uint64) (*foundFunction, error)
 		return framebase, nil
 	}
 
-	resolve := func(b buildEntry) (*foundFunction, error) {
-		lr, err := bld.dwrf.LineReader(b.compileUnit)
+	// resolve sets the return fn value for the entire function
+	resolve := func(e *dwarf.Entry) (*SourceFunction, error) {
+		lr, err := bld.dwrf.LineReader(bld.compileUnits[e.Offset])
 		if err != nil {
 			return nil, err
 		}
 		files := lr.Files()
 
 		// name of entry
-		fld := b.entry.AttrField(dwarf.AttrName)
+		fld := e.AttrField(dwarf.AttrName)
 		if fld == nil {
 			return nil, nil
 		}
 		name := fld.Val.(string)
 
 		// declaration file
-		fld = b.entry.AttrField(dwarf.AttrDeclFile)
+		fld = e.AttrField(dwarf.AttrDeclFile)
 		if fld == nil {
 			return nil, nil
 		}
 		filenum := fld.Val.(int64)
 
 		// declaration line
-		fld = b.entry.AttrField(dwarf.AttrDeclLine)
+		fld = e.AttrField(dwarf.AttrDeclLine)
 		if fld == nil {
 			return nil, nil
 		}
@@ -933,32 +847,53 @@ func (bld *build) findFunction(src *Source, addr uint64) (*foundFunction, error)
 
 		// framebase. non-abstract functions will not have a framebase
 		// attribute. for those functions we can resolve it later
-		framebase, err := resolveFramebase(b)
+		framebase, err := resolveFramebase(e)
 		if err != nil {
 			logger.Logf("dwarf", "framebase for %s will be unreliable: %v", name, err)
 		}
 
-		return &foundFunction{
-			name:      name,
-			filename:  files[filenum].Name,
-			linenum:   linenum,
-			framebase: framebase,
-		}, nil
+		// filename from file number
+		filename := files[filenum].Name
+
+		fn := &SourceFunction{
+			Cart:     src.cart,
+			Name:     name,
+			DeclLine: src.Files[filename].Content.Lines[linenum-1],
+		}
+
+		// add framebase information
+		if framebase != nil {
+			fn.loclist = framebase
+			fn.loclist.ctx = src.debug_frame
+		}
+
+		// assign function to declaration line
+		if !fn.DeclLine.Function.IsStub() && fn.DeclLine.Function.Name != fn.Name {
+			logger.Logf("dwarf", "contentious function ownership for source line (%s)", fn.DeclLine)
+			logger.Logf("dwarf", "%s and %s", fn.DeclLine.Function.Name, fn.Name)
+		}
+		fn.DeclLine.Function = fn
+
+		return fn, nil
+	}
+
+	commit := func(fn *SourceFunction) {
+		if _, ok := src.Functions[fn.Name]; !ok {
+			src.Functions[fn.Name] = fn
+			src.FunctionNames = append(src.FunctionNames, fn.Name)
+		} else {
+			src.Functions[fn.Name].Range = append(src.Functions[fn.Name].Range, fn.Range...)
+		}
 	}
 
 	for _, e := range bld.order {
-		var low uint64
-		var high uint64
+		switch e.Tag {
+		case dwarf.TagSubprogram:
+			// check address against low/high fields
+			var low uint64
+			var high uint64
 
-		if subp, ok := bld.subprograms[e.Offset]; ok {
-			entry := subp.entry
-
-			// check address against low/high fields. compare to
-			// InlinedSubroutines where address range can be given by either
-			// low/high fields OR a Range field. for Subprograms, there is
-			// never a Range field.
-
-			fld := entry.AttrField(dwarf.AttrLowpc)
+			fld := e.AttrField(dwarf.AttrLowpc)
 			if fld == nil {
 				// it is possible for Subprograms to have no address fields.
 				// the Subprograms are abstract and will be referred to by
@@ -967,9 +902,9 @@ func (bld *build) findFunction(src *Source, addr uint64) (*foundFunction, error)
 			}
 			low = uint64(fld.Val.(uint64))
 
-			fld = entry.AttrField(dwarf.AttrHighpc)
+			fld = e.AttrField(dwarf.AttrHighpc)
 			if fld == nil {
-				return nil, curated.Errorf("AttrLowpc without AttrHighpc for InlinedSubroutine: %08x", addr)
+				return curated.Errorf("AttrLowpc without AttrHighpc for InlinedSubroutine")
 			}
 
 			switch fld.Class {
@@ -980,60 +915,118 @@ func (bld *build) findFunction(src *Source, addr uint64) (*foundFunction, error)
 				// dwarf-2
 				high = uint64(fld.Val.(uint64))
 			default:
-				return nil, curated.Errorf("AttrLowpc without AttrHighpc for InlinedSubroutine: %08x", addr)
+				return curated.Errorf("AttrLowpc without AttrHighpc for InlinedSubroutine")
 			}
 
-			if addr < low || addr >= high {
-				continue // for loop
-			}
+			// subprograms don't seem to ever have a range field (unlike
+			// inlined subprograms)
 
-			fld = entry.AttrField(dwarf.AttrAbstractOrigin)
+			fld = e.AttrField(dwarf.AttrAbstractOrigin)
 			if fld != nil {
-				abstract, ok := bld.subprograms[fld.Val.(dwarf.Offset)]
+				abstract, ok := bld.entries[fld.Val.(dwarf.Offset)]
 				if !ok {
-					return nil, curated.Errorf("found inlined subroutine without abstract: %08x", addr)
+					return curated.Errorf("found inlined subroutine without abstract")
 				}
 
-				r, err := resolve(abstract)
+				fn, err := resolve(abstract)
 				if err != nil {
-					return nil, err
+					return err
 				}
-				if r != nil {
-					ret = r
-				}
+
+				// start/end address of function
+				fn.Range = append(fn.Range, SourceRange{
+					Start: low + origin,
+					End:   high + origin,
+				})
 
 				// try to acquire framebase for concrete subroutine. we don't expect
 				// for the framebase to have been found already but we'll check it
 				// to make sure in any case
-				if ret.framebase == nil {
-					framebase, err := resolveFramebase(subp)
+				if fn.loclist == nil {
+					framebase, err := resolveFramebase(e)
 					if err != nil {
-						logger.Logf("dwarf", "framebase for %s will be unreliable: %v", ret.name, err)
+						logger.Logf("dwarf", "framebase for %s will be unreliable: %v", fn.Name, err)
 					}
-					ret.framebase = framebase
+					if framebase != nil {
+						fn.loclist = framebase
+						fn.loclist.ctx = src.debug_frame
+					}
 				} else {
-					logger.Logf("dwarf", "%s: concrete defintion for abstract function already has a framebase defintion!?", ret.name)
+					logger.Logf("dwarf", "%s: concrete defintion for abstract function already has a framebase defintion!?", fn.Name)
 				}
+
+				commit(fn)
 			} else {
-				r, err := resolve(subp)
+				fn, err := resolve(e)
 				if err != nil {
-					return nil, err
+					return err
 				}
-				if r != nil {
-					ret = r
-				}
+
+				// start/end address of function
+				fn.Range = append(fn.Range, SourceRange{
+					Start: low + origin,
+					End:   high + origin,
+				})
+
+				commit(fn)
 			}
 
-		} else if inl, ok := bld.inlinedSubroutines[e.Offset]; ok {
-			entry := inl.entry
-			fld := entry.AttrField(dwarf.AttrLowpc)
+		case dwarf.TagInlinedSubroutine:
+			// inlined subroutines have more complex memory placement
+			commitInlinedSubroutine := func(low uint64, high uint64) error {
+				fld := e.AttrField(dwarf.AttrAbstractOrigin)
+				if fld == nil {
+					return curated.Errorf("missing abstract origin for inlined subroutine")
+				}
+
+				abstract, ok := bld.entries[fld.Val.(dwarf.Offset)]
+				if !ok {
+					return curated.Errorf("found inlined subroutine without abstract")
+				}
+
+				fn, err := resolve(abstract)
+				if err != nil {
+					return err
+				}
+
+				// start/end address of function
+				fn.Range = append(fn.Range, SourceRange{
+					Start: low + origin,
+					End:   high + origin,
+				})
+
+				// try to acquire framebase for inline subroutine. we don't expect
+				// for the framebase to have been found already but we'll check it
+				// to make sure in any case
+				if fn.loclist == nil {
+					framebase, err := resolveFramebase(e)
+					if err != nil {
+						logger.Logf("dwarf", "framebase for %s will be unreliable: %v", fn.Name, err)
+					}
+					if framebase != nil {
+						fn.loclist = framebase
+						fn.loclist.ctx = src.debug_frame
+					}
+				} else {
+					logger.Logf("dwarf", "%s: concrete defintion for abstract function already has a framebase defintion!?", fn.Name)
+				}
+
+				commit(fn)
+
+				return nil
+			}
+
+			var low uint64
+			var high uint64
+
+			fld := e.AttrField(dwarf.AttrLowpc)
 			if fld != nil {
 				low = uint64(fld.Val.(uint64))
 
 				// high PC
-				fld = entry.AttrField(dwarf.AttrHighpc)
+				fld = e.AttrField(dwarf.AttrHighpc)
 				if fld == nil {
-					return nil, curated.Errorf("AttrLowpc without AttrHighpc for InlinedSubroutine: %08x", addr)
+					return curated.Errorf("AttrLowpc without AttrHighpc for InlinedSubroutine")
 				}
 
 				switch fld.Class {
@@ -1044,69 +1037,34 @@ func (bld *build) findFunction(src *Source, addr uint64) (*foundFunction, error)
 					// dwarf-2
 					high = uint64(fld.Val.(uint64))
 				default:
-					return nil, curated.Errorf("AttrLowpc without AttrHighpc for InlinedSubroutine: %08x", addr)
+					return curated.Errorf("AttrLowpc without AttrHighpc for InlinedSubroutine")
 				}
 
-				if addr < low || addr >= high {
-					continue // for loop
+				err := commitInlinedSubroutine(low, high)
+				if err != nil {
+					return err
 				}
+
 			} else {
-				fld = entry.AttrField(dwarf.AttrRanges)
+				fld = e.AttrField(dwarf.AttrRanges)
 				if fld == nil {
 					continue // for loop
 				}
 
-				rngs, err := bld.dwrf.Ranges(entry)
+				rngs, err := bld.dwrf.Ranges(e)
 				if err != nil {
-					return nil, err
+					return err
 				}
 
-				match := false
 				for _, r := range rngs {
-					if addr >= r[0] && addr < r[1] {
-						low = r[0]
-						high = r[1]
-						match = true
-						break
+					err := commitInlinedSubroutine(r[0], r[1])
+					if err != nil {
+						return err
 					}
 				}
-				if !match {
-					continue // for loop
-				}
-			}
-
-			fld = entry.AttrField(dwarf.AttrAbstractOrigin)
-			if fld == nil {
-				return nil, curated.Errorf("missing AttrAbstractOrigin: %08x", addr)
-			}
-
-			abstract, ok := bld.subprograms[fld.Val.(dwarf.Offset)]
-			if !ok {
-				return nil, curated.Errorf("found inlined subroutine without abstract: %08x", addr)
-			}
-
-			r, err := resolve(abstract)
-			if err != nil {
-				return nil, err
-			}
-			if r != nil {
-				ret = r
-			}
-
-			// try to acquire framebase for inline subroutine. we don't expect
-			// for the framebase to have been found already but we'll check it
-			// to make sure in any case
-			if ret.framebase == nil {
-				framebase, err := resolveFramebase(inl)
-				if err != nil {
-					logger.Logf("dwarf", "framebase for %s will be unreliable: %v", ret.name, err)
-				}
-				ret.framebase = framebase
-			} else {
-				logger.Logf("dwarf", "%s: concrete defintion for abstract function already has a framebase defintion!?", ret.name)
 			}
 		}
 	}
 
-	return ret, nil
+	return nil
 }

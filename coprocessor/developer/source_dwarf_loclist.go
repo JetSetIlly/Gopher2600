@@ -17,10 +17,31 @@ package developer
 
 import (
 	"debug/elf"
+	"encoding/binary"
 	"fmt"
 
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 )
+
+type loclistSection struct {
+	ByteOrder binary.ByteOrder
+	data      []uint8
+}
+
+func newLoclistSection(ef *elf.File) (*loclistSection, error) {
+	loc := &loclistSection{
+		ByteOrder: ef.ByteOrder,
+	}
+
+	var err error
+
+	loc.data, err = relocateELFSection(ef, ".debug_loc")
+	if err != nil {
+		return nil, err
+	}
+
+	return loc, nil
+}
 
 type loclistContext interface {
 	coproc() mapper.CartCoProc
@@ -100,13 +121,13 @@ func newLoclistFromSingleOperator(ctx loclistContext, expr []uint8) (*loclist, e
 	return loc, nil
 }
 
-func newLoclist(ctx loclistContext, debug_loc *elf.Section, debug_frame *frameSection, ptr int64, commit commitLoclist) error {
+func newLoclist(ctx loclistContext, debug_loc *loclistSection, debug_frame *frameSection,
+	ptr int64, compilationUnitAddress uint64,
+	commit commitLoclist) error {
+
 	if debug_loc == nil {
 		return fmt.Errorf("no location list information")
 	}
-
-	// buffer for reading the .debug_log section
-	b := make([]byte, 16)
 
 	// "Location lists, which are used to describe objects that have a limited lifetime or change
 	// their location during their lifetime. Location lists are more completely described below."
@@ -134,21 +155,13 @@ func newLoclist(ctx loclistContext, debug_loc *elf.Section, debug_frame *frameSe
 	//
 	// "A base address selection entry affects only the list in which it is contained"
 	// page 31 of "DWARF4 Standard"
-	var baseAddress uint64
+	baseAddress := compilationUnitAddress
 
-	// function to read an address from the debug_loc data
-	readAddress := func() uint64 {
-		debug_loc.ReadAt(b[:4], ptr)
-		a := uint64(b[0]) | uint64(b[1])<<8 | uint64(b[2])<<16 | uint64(b[3])<<24
-		ptr += 4
-		return a
-	}
-
-	startAddress := readAddress()
-	endAddress := readAddress()
-
-	// read single location description for this start/end address
-	debug_loc.ReadAt(b, ptr)
+	// start and end address. this will be updated at the end of every for loop iteration
+	startAddress := uint64(debug_loc.ByteOrder.Uint32(debug_loc.data[ptr:]))
+	ptr += 4
+	endAddress := uint64(debug_loc.ByteOrder.Uint32(debug_loc.data[ptr:]))
+	ptr += 4
 
 	// "The end of any given location list is marked by an end of list entry, which consists of a 0 for the
 	// beginning address offset and a 0 for the ending address offset. A location list containing only an
@@ -174,17 +187,14 @@ func newLoclist(ctx loclistContext, debug_loc *elf.Section, debug_frame *frameSe
 			endAddress -= 1
 
 			// length of expression
-			debug_loc.ReadAt(b, ptr)
-			length := int(b[1])<<8 | int(b[0])
+			length := int(debug_loc.ByteOrder.Uint16(debug_loc.data[ptr:]))
 			ptr += 2
 
 			// loop through stack operations
 			for length > 0 {
-				// read single location description for this start/end address
-				debug_loc.ReadAt(b, ptr)
-				r, n := decodeDWARFoperation(b, 0)
+				r, n := decodeDWARFoperation(debug_loc.data[ptr:], 0)
 				if n == 0 {
-					return fmt.Errorf("unknown expression operator %02x", b[0])
+					return fmt.Errorf("unknown expression operator %02x", debug_loc.data[ptr])
 				}
 
 				// add resolver to variable
@@ -211,8 +221,10 @@ func newLoclist(ctx loclistContext, debug_loc *elf.Section, debug_frame *frameSe
 		}
 
 		// read next address range
-		startAddress = readAddress()
-		endAddress = readAddress()
+		startAddress = uint64(debug_loc.ByteOrder.Uint32(debug_loc.data[ptr:]))
+		ptr += 4
+		endAddress = uint64(debug_loc.ByteOrder.Uint32(debug_loc.data[ptr:]))
+		ptr += 4
 	}
 
 	return nil

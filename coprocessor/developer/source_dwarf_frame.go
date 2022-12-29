@@ -66,39 +66,36 @@ type frameSection struct {
 	fde  []*frameSectionFDE
 }
 
-func newFrameSection(cart CartCoProcDeveloper, debug_frame *elf.Section, origin uint64) (*frameSection, error) {
+func newFrameSection(ef *elf.File, cart CartCoProcDeveloper, origin uint64) (*frameSection, error) {
 	frm := &frameSection{
 		cart: cart,
 		cie:  make(map[uint32]*frameSectionCIE),
 	}
 
-	// buffer for reading the .debug_frame section
-	b := make([]byte, 255)
+	data, err := relocateELFSection(ef, ".debug_frame")
+	if err != nil {
+		return nil, err
+	}
 
-	// current index into the frame section. ptr is advanced after every call
-	// to frame.ReadAt()
-	ptr := int64(0)
+	// index into the data
+	var idx int
 
 	// while there is data to be read
-	for ptr < int64(debug_frame.Size) {
-		debug_frame.ReadAt(b[:4], ptr)
-		ptr += 4
-
+	for idx < len(data) {
 		// length of next block (either a CIA or FDE)
-		// read buffer is expanded if necessary
-		l := uint32(b[0]) | uint32(b[1])<<8 | uint32(b[2])<<16 | uint32(b[3])<<24
-		if l > uint32(len(b)) {
-			b = make([]byte, l)
-		}
+		l := int(ef.ByteOrder.Uint32(data[idx:]))
+		idx += 4
 
-		debug_frame.ReadAt(b[:l], ptr)
-		ptr += int64(l)
+		// take a slice of the data block for further processing (it's just
+		// easier to think about working with a smaller slice)
+		b := data[idx : idx+l]
+		idx += l
 
 		// step through buffer according to whether the id indicates whether
 		// the block is a CIE or an FDE
-		n := uint32(0)
-		id := uint32(b[n]) | uint32(b[n+1])<<8 | uint32(b[n+2])<<16 | uint32(b[n+3])<<24
-		n += 4
+		id := ef.ByteOrder.Uint32(b)
+		n := 4
+
 		if id == 0xffffffff {
 			// Common Information Entry (CIE)
 			cie := &frameSectionCIE{}
@@ -130,11 +127,11 @@ func newFrameSection(cart CartCoProcDeveloper, debug_frame *elf.Section, origin 
 			// the following fields are LEB128 encoded
 			var m int
 			cie.codeAlignment, m = leb128.DecodeULEB128(b[n:])
-			n += uint32(m)
+			n += m
 			cie.dataAlignment, m = leb128.DecodeSLEB128(b[n:])
-			n += uint32(m)
+			n += m
 			cie.returnAddressReg, m = leb128.DecodeULEB128(b[n:])
-			n += uint32(m)
+			n += m
 
 			// instructions form the remainder of the CIE block
 			cie.instructions = append(cie.instructions, b[n:l]...)
@@ -142,7 +139,7 @@ func newFrameSection(cart CartCoProcDeveloper, debug_frame *elf.Section, origin 
 			// the real id of the CIE is the current offset into the
 			// debug_frame section. we can calculate this with a bit of
 			// subtraction
-			id = uint32(ptr) - l - 4
+			id = uint32(idx - l - 4)
 
 			// CIE is complete so we can add it to the CIE collection for
 			// future reference
