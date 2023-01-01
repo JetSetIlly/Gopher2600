@@ -46,35 +46,15 @@ type build struct {
 	// reader depends on the compile unit and the reason we need a line reader
 	// is in order to match an AttrDeclFile with a file name
 	compileUnits map[dwarf.Offset]*dwarf.Entry
-
-	// quick access to entries in dwarf data
-	baseTypes        map[dwarf.Offset]*dwarf.Entry
-	typedefs         map[dwarf.Offset]*dwarf.Entry
-	compositeTypes   map[dwarf.Offset]*dwarf.Entry
-	compositeMembers map[dwarf.Offset]*dwarf.Entry
-	arrayTypes       map[dwarf.Offset]*dwarf.Entry
-	arraySubranges   map[dwarf.Offset]*dwarf.Entry
-	variables        map[dwarf.Offset]*dwarf.Entry
-	pointers         map[dwarf.Offset]*dwarf.Entry
-	consts           map[dwarf.Offset]*dwarf.Entry
 }
 
 func newBuild(dwrf *dwarf.Data, debug_loc *loclistSection, debug_frame *frameSection) (*build, error) {
 	bld := &build{
-		dwrf:             dwrf,
-		debug_loc:        debug_loc,
-		debug_frame:      debug_frame,
-		entries:          make(map[dwarf.Offset]*dwarf.Entry),
-		compileUnits:     make(map[dwarf.Offset]*dwarf.Entry),
-		baseTypes:        make(map[dwarf.Offset]*dwarf.Entry),
-		typedefs:         make(map[dwarf.Offset]*dwarf.Entry),
-		compositeTypes:   make(map[dwarf.Offset]*dwarf.Entry),
-		compositeMembers: make(map[dwarf.Offset]*dwarf.Entry),
-		arrayTypes:       make(map[dwarf.Offset]*dwarf.Entry),
-		arraySubranges:   make(map[dwarf.Offset]*dwarf.Entry),
-		variables:        make(map[dwarf.Offset]*dwarf.Entry),
-		pointers:         make(map[dwarf.Offset]*dwarf.Entry),
-		consts:           make(map[dwarf.Offset]*dwarf.Entry),
+		dwrf:         dwrf,
+		debug_loc:    debug_loc,
+		debug_frame:  debug_frame,
+		entries:      make(map[dwarf.Offset]*dwarf.Entry),
+		compileUnits: make(map[dwarf.Offset]*dwarf.Entry),
 	}
 
 	var compileUnit *dwarf.Entry
@@ -102,39 +82,6 @@ func newBuild(dwrf *dwarf.Data, debug_loc *loclistSection, debug_frame *frameSec
 		switch entry.Tag {
 		case dwarf.TagCompileUnit:
 			compileUnit = entry
-
-		case dwarf.TagTypedef:
-			bld.typedefs[entry.Offset] = entry
-
-		case dwarf.TagBaseType:
-			bld.baseTypes[entry.Offset] = entry
-
-		case dwarf.TagUnionType:
-			bld.compositeTypes[entry.Offset] = entry
-
-		case dwarf.TagStructType:
-			bld.compositeTypes[entry.Offset] = entry
-
-		case dwarf.TagMember:
-			bld.compositeMembers[entry.Offset] = entry
-
-		case dwarf.TagArrayType:
-			bld.arrayTypes[entry.Offset] = entry
-
-		case dwarf.TagSubrangeType:
-			bld.arraySubranges[entry.Offset] = entry
-
-		case dwarf.TagVariable:
-			bld.variables[entry.Offset] = entry
-
-		case dwarf.TagFormalParameter:
-			bld.variables[entry.Offset] = entry
-
-		case dwarf.TagPointerType:
-			bld.pointers[entry.Offset] = entry
-
-		case dwarf.TagConstType:
-			bld.consts[entry.Offset] = entry
 		}
 	}
 
@@ -145,51 +92,57 @@ func newBuild(dwrf *dwarf.Data, debug_loc *loclistSection, debug_frame *frameSec
 // parituclar allocation of members to the "parent" composite type
 func (bld *build) buildTypes(src *Source) error {
 	resolveTypeDefs := func() error {
-		for _, v := range bld.typedefs {
-			baseType, err := bld.resolveType(v, src)
-			if err != nil {
-				return err
-			}
-			if baseType == nil {
-				continue
-			}
+		for _, e := range bld.order {
+			switch e.Tag {
+			case dwarf.TagTypedef:
+				baseType, err := bld.resolveType(e, src)
+				if err != nil {
+					return err
+				}
+				if baseType == nil {
+					continue
+				}
 
-			// make a copy of the named type
-			typ := func(btyp *SourceType) *SourceType {
-				typ := *btyp
-				return &typ
-			}(baseType)
+				// make a copy of the named type
+				typ := func(b *SourceType) *SourceType {
+					typ := *b
+					return &typ
+				}(baseType)
 
-			// override the name field
-			fld := v.AttrField(dwarf.AttrName)
-			if fld == nil {
-				continue
+				// override the name field
+				fld := e.AttrField(dwarf.AttrName)
+				if fld == nil {
+					continue
+				}
+				typ.Name = fld.Val.(string)
+
+				src.types[e.Offset] = typ
 			}
-			typ.Name = fld.Val.(string)
-
-			src.types[v.Offset] = typ
 		}
 
 		return nil
 	}
 
 	// basic types first because everything else is built on basic types
-	for _, v := range bld.baseTypes {
-		var typ SourceType
+	for _, e := range bld.order {
+		switch e.Tag {
+		case dwarf.TagBaseType:
+			var typ SourceType
 
-		fld := v.AttrField(dwarf.AttrName)
-		if fld == nil {
-			continue
+			fld := e.AttrField(dwarf.AttrName)
+			if fld == nil {
+				continue
+			}
+			typ.Name = fld.Val.(string)
+
+			fld = e.AttrField(dwarf.AttrByteSize)
+			if fld == nil {
+				continue
+			}
+			typ.Size = int(fld.Val.(int64))
+
+			src.types[e.Offset] = &typ
 		}
-		typ.Name = fld.Val.(string)
-
-		fld = v.AttrField(dwarf.AttrByteSize)
-		if fld == nil {
-			continue
-		}
-		typ.Size = int(fld.Val.(int64))
-
-		src.types[v.Offset] = &typ
 	}
 
 	// typedefs of basic types
@@ -201,26 +154,29 @@ func (bld *build) buildTypes(src *Source) error {
 	// two passes over pointer types, const types, and composite types
 	for pass := 0; pass < 2; pass++ {
 		// pointer types
-		for _, v := range bld.pointers {
-			var typ SourceType
+		for _, e := range bld.order {
+			switch e.Tag {
+			case dwarf.TagPointerType:
+				var typ SourceType
 
-			typ.PointerType, err = bld.resolveType(v, src)
-			if err != nil {
-				return err
+				typ.PointerType, err = bld.resolveType(e, src)
+				if err != nil {
+					return err
+				}
+				if typ.PointerType == nil {
+					continue
+				}
+
+				typ.Name = fmt.Sprintf("%s *", typ.PointerType.Name)
+
+				fld := e.AttrField(dwarf.AttrByteSize)
+				if fld == nil {
+					continue
+				}
+				typ.Size = int(fld.Val.(int64))
+
+				src.types[e.Offset] = &typ
 			}
-			if typ.PointerType == nil {
-				continue
-			}
-
-			typ.Name = fmt.Sprintf("%s *", typ.PointerType.Name)
-
-			fld := v.AttrField(dwarf.AttrByteSize)
-			if fld == nil {
-				continue
-			}
-			typ.Size = int(fld.Val.(int64))
-
-			src.types[v.Offset] = &typ
 		}
 
 		// typedefs of pointer types
@@ -230,44 +186,53 @@ func (bld *build) buildTypes(src *Source) error {
 		}
 
 		// resolve composite types
-		for _, v := range bld.compositeTypes {
-			var typ SourceType
-			var name string
-
-			fld := v.AttrField(dwarf.AttrName)
-			if fld == nil {
-				// allow anonymous structures. we sometimes see this when
-				// structs are defined with typedef
-				name = fmt.Sprintf("%x", v.Offset)
-			} else {
-				name = fld.Val.(string)
-			}
-
-			fld = v.AttrField(dwarf.AttrByteSize)
-			if fld == nil {
-				continue
-			}
-			typ.Size = int(fld.Val.(int64))
-
-			src.types[v.Offset] = &typ
-
-			// the name we store in the type is annotated with the composite category
-			switch v.Tag {
+		for _, e := range bld.order {
+			switch e.Tag {
 			case dwarf.TagUnionType:
-				typ.Name = fmt.Sprintf("union %s", name)
+				fallthrough
 			case dwarf.TagStructType:
-				typ.Name = fmt.Sprintf("struct %s", name)
-			default:
-				typ.Name = fmt.Sprintf("%s", name)
+				var typ SourceType
+				var name string
+
+				fld := e.AttrField(dwarf.AttrName)
+				if fld == nil {
+					// allow anonymous structures. we sometimes see this when
+					// structs are defined with typedef
+					name = fmt.Sprintf("%x", e.Offset)
+				} else {
+					name = fld.Val.(string)
+				}
+
+				fld = e.AttrField(dwarf.AttrByteSize)
+				if fld == nil {
+					continue
+				}
+				typ.Size = int(fld.Val.(int64))
+
+				src.types[e.Offset] = &typ
+
+				// the name we store in the type is annotated with the composite category
+				switch e.Tag {
+				case dwarf.TagUnionType:
+					typ.Name = fmt.Sprintf("union %s", name)
+				case dwarf.TagStructType:
+					typ.Name = fmt.Sprintf("struct %s", name)
+				default:
+					typ.Name = fmt.Sprintf("%s", name)
+				}
 			}
 		}
 
 		// allocate members to composite types
 		var composite *SourceType
 		for _, e := range bld.order {
-			if v, ok := bld.compositeTypes[e.Offset]; ok {
-				composite = src.types[v.Offset]
-			} else if v, ok := bld.compositeMembers[e.Offset]; ok {
+			switch e.Tag {
+			case dwarf.TagUnionType:
+				fallthrough
+			case dwarf.TagStructType:
+				composite = src.types[e.Offset]
+
+			case dwarf.TagMember:
 				if composite == nil {
 					// found a member without first finding a composite type. this
 					// shouldn't happen
@@ -276,7 +241,7 @@ func (bld *build) buildTypes(src *Source) error {
 
 				// members are basically like variables but with special address
 				// handling
-				memb, err := bld.resolveVariableDeclaration(v, src)
+				memb, err := bld.resolveVariableDeclaration(e, src)
 				if err != nil {
 					return err
 				}
@@ -289,7 +254,7 @@ func (bld *build) buildTypes(src *Source) error {
 				// zero and will still be considered an offset address. absence
 				// of the data member location field is the case with union
 				// types
-				fld := v.AttrField(dwarf.AttrDataMemberLoc)
+				fld := e.AttrField(dwarf.AttrDataMemberLoc)
 				if fld != nil {
 					switch fld.Class {
 					case dwarf.ClassConstant:
@@ -313,15 +278,21 @@ func (bld *build) buildTypes(src *Source) error {
 				}
 
 				composite.Members = append(composite.Members, memb)
-			} else {
+
+			default:
 				composite = nil
 			}
 		}
 
 		// remove any composites that have no members
-		for off := range bld.compositeTypes {
-			if src.types[off] != nil && len(src.types[off].Members) == 0 {
-				delete(src.types, off)
+		for _, e := range bld.order {
+			switch e.Tag {
+			case dwarf.TagUnionType:
+				fallthrough
+			case dwarf.TagStructType:
+				if src.types[e.Offset] != nil && len(src.types[e.Offset].Members) == 0 {
+					delete(src.types, e.Offset)
+				}
 			}
 		}
 
@@ -335,21 +306,23 @@ func (bld *build) buildTypes(src *Source) error {
 		var arrayBaseType *SourceType
 		var baseTypeOffset dwarf.Offset
 		for _, e := range bld.order {
-			if v, ok := bld.arrayTypes[e.Offset]; ok {
+			switch e.Tag {
+			case dwarf.TagArrayType:
 				var err error
-				arrayBaseType, err = bld.resolveType(v, src)
+				arrayBaseType, err = bld.resolveType(e, src)
 				if err != nil {
 					return err
 				}
-				baseTypeOffset = v.Offset
-			} else if v, ok := bld.arraySubranges[e.Offset]; ok {
+				baseTypeOffset = e.Offset
+
+			case dwarf.TagSubrangeType:
 				if arrayBaseType == nil {
 					// found a subrange without first finding an array type. this
 					// shouldn't happen
 					continue
 				}
 
-				fld := v.AttrField(dwarf.AttrUpperBound)
+				fld := e.AttrField(dwarf.AttrUpperBound)
 				if fld == nil {
 					continue
 				}
@@ -361,7 +334,8 @@ func (bld *build) buildTypes(src *Source) error {
 					ElementType:  arrayBaseType,
 					ElementCount: int(num),
 				}
-			} else {
+
+			default:
 				arrayBaseType = nil
 			}
 		}
@@ -373,20 +347,23 @@ func (bld *build) buildTypes(src *Source) error {
 		}
 
 		// const types
-		for _, v := range bld.consts {
-			baseType, err := bld.resolveType(v, src)
-			if err != nil {
-				return err
-			}
-			if baseType == nil {
-				continue
-			}
+		for _, e := range bld.order {
+			switch e.Tag {
+			case dwarf.TagConstType:
+				baseType, err := bld.resolveType(e, src)
+				if err != nil {
+					return err
+				}
+				if baseType == nil {
+					continue
+				}
 
-			typ := *baseType
-			typ.Constant = true
-			typ.Name = fmt.Sprintf("const %s", baseType.Name)
+				typ := *baseType
+				typ.Constant = true
+				typ.Name = fmt.Sprintf("const %s", baseType.Name)
 
-			src.types[v.Offset] = &typ
+				src.types[e.Offset] = &typ
+			}
 		}
 
 		// typedefs of const types
@@ -446,7 +423,7 @@ func (bld *build) resolveVariableDeclaration(v *dwarf.Entry, src *Source) (*Sour
 	if fld != nil {
 		var ok bool
 
-		spec, ok := bld.variables[fld.Val.(dwarf.Offset)]
+		spec, ok := bld.entries[fld.Val.(dwarf.Offset)]
 		if !ok {
 			return nil, nil
 		}
@@ -578,8 +555,6 @@ func (bld *build) buildVariables(src *Source, origin uint64) error {
 				compilationUnitAddress = l
 
 			} else {
-				// not sure if compile units ever use ranges to specify low and
-				// high addresses
 				logger.Logf("dwarf", "no LowPC attribute for compilation unit")
 				compilationUnitAddress = origin
 			}
@@ -657,7 +632,7 @@ func (bld *build) buildVariables(src *Source, origin uint64) error {
 		}
 
 		// get variable build entry
-		v := bld.variables[e.Offset]
+		v := bld.entries[e.Offset]
 
 		// resolve name and type of variable
 		var varb *SourceVariable
@@ -668,7 +643,7 @@ func (bld *build) buildVariables(src *Source, origin uint64) error {
 		// we resolve using the current entry
 		fld := v.AttrField(dwarf.AttrAbstractOrigin)
 		if fld != nil {
-			abstract, ok := bld.variables[fld.Val.(dwarf.Offset)]
+			abstract, ok := bld.entries[fld.Val.(dwarf.Offset)]
 			if !ok {
 				return curated.Errorf("found concrete variable without abstract")
 			}
@@ -714,9 +689,11 @@ func (bld *build) buildVariables(src *Source, origin uint64) error {
 						varb.loclist = loc
 
 						local := &SourceVariableLocal{
-							SourceVariable:  varb,
-							ResolvableStart: start,
-							ResolvableEnd:   end,
+							SourceVariable: varb,
+							ResolvableRange: SourceRange{
+								Start: start,
+								End:   end,
+							},
 						}
 
 						src.locals = append(src.locals, local)
@@ -755,9 +732,11 @@ func (bld *build) buildVariables(src *Source, origin uint64) error {
 
 						for i := range lexStart[lexIdx] {
 							local := &SourceVariableLocal{
-								SourceVariable:  varb,
-								ResolvableStart: lexStart[lexIdx][i],
-								ResolvableEnd:   lexEnd[lexIdx][i],
+								SourceVariable: varb,
+								ResolvableRange: SourceRange{
+									Start: lexStart[lexIdx][i],
+									End:   lexEnd[lexIdx][i],
+								},
 							}
 
 							src.locals = append(src.locals, local)
@@ -772,9 +751,11 @@ func (bld *build) buildVariables(src *Source, origin uint64) error {
 			if varb.DeclLine.Function.Name != stubIndicator {
 				for i := range lexStart[lexIdx] {
 					local := &SourceVariableLocal{
-						SourceVariable:  varb,
-						ResolvableStart: lexStart[lexIdx][i],
-						ResolvableEnd:   lexEnd[lexIdx][i],
+						SourceVariable: varb,
+						ResolvableRange: SourceRange{
+							Start: lexStart[lexIdx][i],
+							End:   lexEnd[lexIdx][i],
+						},
 					}
 					src.locals = append(src.locals, local)
 					src.SortedLocals.Locals = append(src.SortedLocals.Locals, local)

@@ -122,13 +122,15 @@ func (ln *SourceLine) IsStub() bool {
 	return ln.PlainContent == stubIndicator
 }
 
+// SourceRange is used to specify the effective start and end addresses of a
+// function or a variable
 type SourceRange struct {
 	Start uint64
 	End   uint64
 }
 
 func (r SourceRange) String() string {
-	return fmt.Sprintf("%08x -> %08x", r.Start, r.End)
+	return fmt.Sprintf("%08x to %08x", r.Start, r.End)
 }
 
 // InRange returns true if address is in range of start and end addresses

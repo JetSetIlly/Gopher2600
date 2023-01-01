@@ -52,10 +52,6 @@ type Source struct {
 	debug_loc   *loclistSection
 	debug_frame *frameSection
 
-	// raw dwarf data. after NewSource() this data is only needed by the
-	// findSourceLine() function
-	dwrf *dwarf.Data
-
 	// source is compiled with optimisation
 	Optimised bool
 
@@ -196,7 +192,7 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 	defer ef.Close()
 
 	// no need to continue if ELF file does not have any DWARF data
-	src.dwrf, err = ef.DWARF()
+	dwrf, err := ef.DWARF()
 	if err != nil {
 		return nil, curated.Errorf("dwarf: no DWARF data in ELF file")
 	}
@@ -287,7 +283,7 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 		}
 	}
 
-	bld, err := newBuild(src.dwrf, src.debug_loc, src.debug_frame)
+	bld, err := newBuild(dwrf, src.debug_loc, src.debug_frame)
 	if err != nil {
 		return nil, curated.Errorf("dwarf: %v", err)
 	}
@@ -307,7 +303,7 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 
 	// compile units are made up of many files. the files and filenames are in
 	// the fields below
-	r := src.dwrf.Reader()
+	r := dwrf.Reader()
 
 	// loop through file and collate compile units
 	for {
@@ -335,7 +331,7 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 			// assuming DWARF never has duplicate compile unit entries
 			src.compileUnits = append(src.compileUnits, unit)
 
-			r, err := src.dwrf.LineReader(entry)
+			r, err := dwrf.LineReader(entry)
 			if err != nil {
 				return nil, curated.Errorf("dwarf: %v", err)
 			}
@@ -400,7 +396,7 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 		startAddr := origin
 
 		// read every line in the compile unit
-		r, err := src.dwrf.LineReader(e.unit)
+		r, err := dwrf.LineReader(e.unit)
 		if err != nil {
 			return nil, curated.Errorf("dwarf: %v", err)
 		}
@@ -509,11 +505,6 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 		src.SortedFunctions.Functions = append(src.SortedFunctions.Functions, fn)
 	}
 
-	// sort list of filenames and functions. these wont' be sorted again
-	sort.Strings(src.Filenames)
-	sort.Strings(src.ShortFilenames)
-	sort.Strings(src.FunctionNames)
-
 	// assemble sorted source lines
 	//
 	// we must make sure that we don't duplicate a source line entry: src.Lines
@@ -546,14 +537,16 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 		return nil, curated.Errorf("dwarf: %v", err)
 	}
 
-	// determine highest address occupied by the program
-	findHighAddress(src)
+	// sort list of filenames and functions
+	sort.Strings(src.Filenames)
+	sort.Strings(src.ShortFilenames)
 
 	// sort sorted lines
 	sort.Sort(src.SortedLines)
 
 	// sorted functions
 	sort.Sort(src.SortedFunctions)
+	sort.Strings(src.FunctionNames)
 
 	// sorted variables
 	sort.Sort(src.SortedGlobals)
@@ -561,6 +554,9 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 
 	// update all variables
 	src.UpdateGlobalVariables()
+
+	// determine highest address occupied by the program
+	findHighAddress(src)
 
 	// find entry function to the program
 	findEntryFunction(src)

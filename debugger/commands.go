@@ -1470,7 +1470,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 					l.Update()
 					dbg.printLine(terminal.StyleFeedback, l.String())
 					if ranges {
-						dbg.printLine(terminal.StyleFeedback, fmt.Sprintf("  (%#08x to %#08x)", l.ResolvableStart, l.ResolvableEnd))
+						dbg.printLine(terminal.StyleFeedback, fmt.Sprintf("  %s", l.ResolvableRange))
 					}
 					if derivation {
 						for _, d := range l.Derivation() {

@@ -49,6 +49,7 @@ type Developer struct {
 	yieldState     YieldState
 	yieldStateLock sync.Mutex
 
+	// slow down rate of NewFrame()
 	framesSinceLastUpdate int
 
 	// profiler instance. measures cycles counts for executed address
