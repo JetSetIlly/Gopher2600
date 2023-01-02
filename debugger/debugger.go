@@ -929,6 +929,7 @@ func (dbg *Debugger) run() error {
 					return curated.Errorf("debugger: %v", err)
 				}
 			}
+
 		case govern.ModeDebugger:
 			switch dbg.State() {
 			case govern.Running:
@@ -946,18 +947,19 @@ func (dbg *Debugger) run() error {
 				return curated.Errorf("debugger: %v", err)
 			}
 
-			// handle inputLoopRestart and any on-restart function
-			if dbg.unwindLoopRestart != nil {
-				err := dbg.unwindLoopRestart()
-				if err != nil {
-					return curated.Errorf("debugger: %v", err)
-				}
-				dbg.unwindLoopRestart = nil
-			} else if dbg.State() == govern.Ending {
-				dbg.running = false
-			}
 		default:
 			return curated.Errorf("emulation mode not supported: %s", dbg.mode)
+		}
+
+		// handle inputLoopRestart and any on-restart function
+		if dbg.unwindLoopRestart != nil {
+			err := dbg.unwindLoopRestart()
+			if err != nil {
+				return curated.Errorf("debugger: %v", err)
+			}
+			dbg.unwindLoopRestart = nil
+		} else if dbg.State() == govern.Ending {
+			dbg.running = false
 		}
 	}
 

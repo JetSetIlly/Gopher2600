@@ -39,9 +39,7 @@ import (
 //
 const PerformanceBrake = 100
 
-// Run sets the emulation running as quickly as possible. continuteCheck()
-// should return false when an external event (eg. a GUI event) indicates that
-// the emulation should stop.
+// Run sets the emulation running as quickly as possible
 func (vcs *VCS) Run(continueCheck func() (govern.State, error)) error {
 	if continueCheck == nil {
 		continueCheck = func() (govern.State, error) { return govern.Running, nil }
@@ -85,7 +83,7 @@ func (vcs *VCS) Run(continueCheck func() (govern.State, error)) error {
 
 	state := govern.Running
 
-	for state != govern.Ending {
+	for state != govern.Ending && state != govern.Initialising {
 		switch state {
 		case govern.Running:
 			err := vcs.CPU.ExecuteInstruction(videoCycle)
