@@ -152,7 +152,7 @@ func (win *winCoProcSource) id() string {
 }
 
 func (win *winCoProcSource) debuggerDraw() {
-	if !win.img.lz.Cart.HasCoProcBus || win.img.dbg.CoProcDev == nil {
+	if !win.img.lz.Cart.HasCoProcBus {
 		return
 	}
 

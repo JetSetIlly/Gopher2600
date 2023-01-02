@@ -73,8 +73,8 @@ type CartCoProcDeveloper interface {
 }
 
 // NewDeveloper is the preferred method of initialisation for the Developer type.
-func NewDeveloper(tv TV) *Developer {
-	return &Developer{
+func NewDeveloper(tv TV) Developer {
+	return Developer{
 		tv: tv,
 	}
 }

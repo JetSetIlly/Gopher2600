@@ -63,12 +63,10 @@ type DisasmEntries struct {
 
 // NewDisassembly returns a new Coprocessor instance if cartridge implements the
 // coprocessor bus.
-func NewDisassembly(tv TV) *Disassembly {
-	dsm := &Disassembly{
+func NewDisassembly(tv TV) Disassembly {
+	return Disassembly{
 		tv: tv,
 	}
-
-	return dsm
 }
 
 func (dsm *Disassembly) AttachCartridge(cart CartCoProcDisassembly) {

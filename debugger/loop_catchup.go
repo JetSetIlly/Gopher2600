@@ -61,9 +61,7 @@ func (dbg *Debugger) CatchUpLoop(tgt coords.TelevisionCoords) error {
 		// state and will be enabled when entering other states. however we do
 		// what the features enabled during the catch-up state so we enable
 		// them early here
-		if dbg.CoProcDev != nil {
-			dbg.CoProcDev.DisableExpensive(false)
-		}
+		dbg.CoProcDev.DisableExpensive(false)
 
 		// we are *not* uninhibiting coprocessor disassembly. the performance
 		// loss is still too great to do so

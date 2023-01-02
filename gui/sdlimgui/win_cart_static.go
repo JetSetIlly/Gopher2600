@@ -134,82 +134,80 @@ func (win *winCartStatic) draw() {
 						imgui.PopStyleColorV(popColor)
 						popColor = 0
 
-						if win.img.dbg.CoProcDev != nil {
-							win.img.dbg.CoProcDev.BorrowSource(func(src *developer.Source) {
-								if src == nil {
-									return
-								}
+						win.img.dbg.CoProcDev.BorrowSource(func(src *developer.Source) {
+							if src == nil {
+								return
+							}
 
-								// offset is based on original values of type uint16 so the type conversion is safe
-								addr := seg.Origin + offset
+							// offset is based on original values of type uint16 so the type conversion is safe
+							addr := seg.Origin + offset
 
-								dl := imgui.WindowDrawList()
-								if varb, ok := src.GlobalsByAddress[uint64(addr)]; ok {
-									sz := imgui.FontSize() * 0.4
-									pos.X += 1.0
-									pos.Y += 1.0
-									p1 := pos
-									p1.Y += sz
-									p2 := pos
-									p2.X += sz
-									dl.AddTriangleFilled(pos, p1, p2, imgui.PackedColorFromVec4(win.img.cols.ValueSymbol))
+							dl := imgui.WindowDrawList()
+							if varb, ok := src.GlobalsByAddress[uint64(addr)]; ok {
+								sz := imgui.FontSize() * 0.4
+								pos.X += 1.0
+								pos.Y += 1.0
+								p1 := pos
+								p1.Y += sz
+								p2 := pos
+								p2.X += sz
+								dl.AddTriangleFilled(pos, p1, p2, imgui.PackedColorFromVec4(win.img.cols.ValueSymbol))
 
-									imguiTooltip(func() {
-										var value uint32
-										currValue := "??"
-										compValue := "??"
+								imguiTooltip(func() {
+									var value uint32
+									currValue := "??"
+									compValue := "??"
 
-										switch varb.Type.Size {
-										case 4:
-											if d, ok := currStatic.Read32bit(addr); ok {
-												value = uint32(d)
-												currValue = fmt.Sprintf("%08x", d)
-											}
-											if d, ok := compStatic.Read32bit(addr); ok {
-												compValue = fmt.Sprintf("%08x", d)
-											}
-										case 2:
-											if d, ok := currStatic.Read16bit(addr); ok {
-												value = uint32(d)
-												currValue = fmt.Sprintf("%04x", d)
-											}
-											if d, ok := compStatic.Read16bit(addr); ok {
-												compValue = fmt.Sprintf("%04x", d)
-											}
-										default:
-											if d, ok := currStatic.Read8bit(addr); ok {
-												value = uint32(d)
-												currValue = fmt.Sprintf("%02x", d)
-											}
-											if d, ok := compStatic.Read8bit(addr); ok {
-												compValue = fmt.Sprintf("%02x", d)
-											}
+									switch varb.Type.Size {
+									case 4:
+										if d, ok := currStatic.Read32bit(addr); ok {
+											value = uint32(d)
+											currValue = fmt.Sprintf("%08x", d)
 										}
-
-										// wrap drawVariableTooltip() in a cellpadding style. see comment for
-										// cellPadding declartion above
-										imgui.PushStyleVarVec2(imgui.StyleVarCellPadding, cellPadding)
-										drawVariableTooltip(varb, value, win.img.cols)
-										imgui.PopStyleVar()
-
-										if currValue != compValue {
-											imgui.Spacing()
-											imgui.Separator()
-											imgui.Spacing()
-											imguiColorLabelSimple(fmt.Sprintf("%s %c %s", compValue, fonts.ByteChange, currValue), win.img.cols.ValueDiff)
+										if d, ok := compStatic.Read32bit(addr); ok {
+											compValue = fmt.Sprintf("%08x", d)
 										}
-									}, true)
-								} else {
-									a := compData[offset]
-									b := currData[offset]
-									if a != b {
-										imguiTooltip(func() {
-											imguiColorLabelSimple(fmt.Sprintf("%02x %c %02x", a, fonts.ByteChange, b), win.img.cols.ValueDiff)
-										}, true)
+									case 2:
+										if d, ok := currStatic.Read16bit(addr); ok {
+											value = uint32(d)
+											currValue = fmt.Sprintf("%04x", d)
+										}
+										if d, ok := compStatic.Read16bit(addr); ok {
+											compValue = fmt.Sprintf("%04x", d)
+										}
+									default:
+										if d, ok := currStatic.Read8bit(addr); ok {
+											value = uint32(d)
+											currValue = fmt.Sprintf("%02x", d)
+										}
+										if d, ok := compStatic.Read8bit(addr); ok {
+											compValue = fmt.Sprintf("%02x", d)
+										}
 									}
+
+									// wrap drawVariableTooltip() in a cellpadding style. see comment for
+									// cellPadding declartion above
+									imgui.PushStyleVarVec2(imgui.StyleVarCellPadding, cellPadding)
+									drawVariableTooltip(varb, value, win.img.cols)
+									imgui.PopStyleVar()
+
+									if currValue != compValue {
+										imgui.Spacing()
+										imgui.Separator()
+										imgui.Spacing()
+										imguiColorLabelSimple(fmt.Sprintf("%s %c %s", compValue, fonts.ByteChange, currValue), win.img.cols.ValueDiff)
+									}
+								}, true)
+							} else {
+								a := compData[offset]
+								b := currData[offset]
+								if a != b {
+									imguiTooltip(func() {
+										imguiColorLabelSimple(fmt.Sprintf("%02x %c %02x", a, fonts.ByteChange, b), win.img.cols.ValueDiff)
+									}, true)
 								}
-							})
-						}
+							}
+						})
 					}
 
 					commit := func(idx int, data uint8) {

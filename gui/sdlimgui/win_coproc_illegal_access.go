@@ -59,7 +59,7 @@ func (win *winCoProcIllegalAccess) debuggerDraw() {
 		return
 	}
 
-	if !win.img.lz.Cart.HasCoProcBus || win.img.dbg.CoProcDev == nil {
+	if !win.img.lz.Cart.HasCoProcBus {
 		return
 	}
 

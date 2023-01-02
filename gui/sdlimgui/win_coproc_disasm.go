@@ -64,7 +64,7 @@ func (win *winCoProcDisasm) debuggerDraw() {
 		return
 	}
 
-	if !win.img.lz.Cart.HasCoProcBus || win.img.dbg.CoProcDisasm == nil {
+	if !win.img.lz.Cart.HasCoProcBus {
 		return
 	}
 

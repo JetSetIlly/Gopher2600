@@ -121,8 +121,8 @@ type Debugger struct {
 	//
 	// * allocated when entering debugger mode
 	Disasm       *disassembly.Disassembly
-	CoProcDisasm *coprocDisasm.Disassembly
-	CoProcDev    *coprocDev.Developer
+	CoProcDisasm coprocDisasm.Disassembly
+	CoProcDev    coprocDev.Developer
 
 	// coprocessor shim can be static for the duration of the debugger
 	coprocShim coprocShim
@@ -364,7 +364,7 @@ func NewDebugger(opts CommandLineOptions, create CreateUserInterface) (*Debugger
 	// create new coprocessor developer/disassembly instances
 	dbg.CoProcDisasm = coprocDisasm.NewDisassembly(dbg.vcs.TV)
 	dbg.CoProcDev = coprocDev.NewDeveloper(dbg.vcs.TV)
-	dbg.vcs.TV.AddFrameTrigger(dbg.CoProcDev)
+	dbg.vcs.TV.AddFrameTrigger(&dbg.CoProcDev)
 
 	// create a minimal lastResult for initialisation
 	dbg.liveDisasmEntry = &disassembly.Entry{Result: execution.Result{Final: true}}
