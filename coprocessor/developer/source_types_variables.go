@@ -30,7 +30,7 @@ type SourceVariableLocal struct {
 	*SourceVariable
 
 	// the address range for which the variable is valid
-	ResolvableRange SourceRange
+	Range SourceRange
 }
 
 // the set of local variables can share a name but they cannot share a name and
@@ -52,7 +52,7 @@ func (local *SourceVariableLocal) id() string {
 // the first of the line - and there's no good way of deciding which instruction
 // to break on except to say the first assoicated with the line
 func (local *SourceVariableLocal) match(fn *SourceFunction, addr uint32) (bool, bool) {
-	return fn == local.DeclLine.Function, local.ResolvableRange.InRange(uint64(addr))
+	return fn == local.DeclLine.Function, local.Range.InRange(uint64(addr))
 }
 
 // SourceVariable is a single variable identified by the DWARF data.

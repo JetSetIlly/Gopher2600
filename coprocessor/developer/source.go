@@ -537,6 +537,9 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 		return nil, curated.Errorf("dwarf: %v", err)
 	}
 
+	// add children to global and local variables
+	addVariableChildren(src)
+
 	// sort list of filenames and functions
 	sort.Strings(src.Filenames)
 	sort.Strings(src.ShortFilenames)
@@ -568,6 +571,17 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 	logger.Logf("dwarf", "high address (%08x)", src.HighAddress)
 
 	return src, nil
+}
+
+// add children to global and local variables
+func addVariableChildren(src *Source) {
+	for _, g := range src.globals {
+		g.addVariableChildren()
+	}
+
+	for _, l := range src.locals {
+		l.addVariableChildren()
+	}
 }
 
 // assign orphaned source lines to a function

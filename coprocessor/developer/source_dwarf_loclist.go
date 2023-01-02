@@ -214,9 +214,7 @@ func newLoclist(ctx loclistContext, debug_loc *loclistSection, debug_frame *fram
 			// "The ending address must be greater than or equal to the beginning address"
 			// page 30 of "DWARF4 Standard"
 			if startAddress < endAddress {
-				if commit != nil {
-					commit(startAddress+baseAddress, endAddress+baseAddress, loc)
-				}
+				commit(startAddress+baseAddress, endAddress+baseAddress, loc)
 			}
 		}
 

@@ -678,6 +678,9 @@ func (bld *build) buildVariables(src *Source, origin uint64) error {
 		// point variable to CartCoProcDeveloper
 		varb.Cart = src.cart
 
+		// adding children to the variable instance is done once all basic variables
+		// have been added
+
 		// variable actually exists in memory if it has a location attribute
 		fld = v.AttrField(dwarf.AttrLocation)
 		if fld != nil {
@@ -686,11 +689,11 @@ func (bld *build) buildVariables(src *Source, origin uint64) error {
 				var err error
 				err = newLoclist(varb, bld.debug_loc, bld.debug_frame, fld.Val.(int64), compilationUnitAddress,
 					func(start, end uint64, loc *loclist) {
-						varb.loclist = loc
-
+						v := *varb
+						v.loclist = loc
 						local := &SourceVariableLocal{
-							SourceVariable: varb,
-							ResolvableRange: SourceRange{
+							SourceVariable: &v,
+							Range: SourceRange{
 								Start: start,
 								End:   end,
 							},
@@ -731,9 +734,10 @@ func (bld *build) buildVariables(src *Source, origin uint64) error {
 						varb.loclist.addOperator(r)
 
 						for i := range lexStart[lexIdx] {
+							v := *varb
 							local := &SourceVariableLocal{
-								SourceVariable: varb,
-								ResolvableRange: SourceRange{
+								SourceVariable: &v,
+								Range: SourceRange{
 									Start: lexStart[lexIdx][i],
 									End:   lexEnd[lexIdx][i],
 								},
@@ -750,9 +754,10 @@ func (bld *build) buildVariables(src *Source, origin uint64) error {
 			// add local variable even if it has no location attribute
 			if varb.DeclLine.Function.Name != stubIndicator {
 				for i := range lexStart[lexIdx] {
+					v := *varb
 					local := &SourceVariableLocal{
-						SourceVariable: varb,
-						ResolvableRange: SourceRange{
+						SourceVariable: &v,
+						Range: SourceRange{
 							Start: lexStart[lexIdx][i],
 							End:   lexEnd[lexIdx][i],
 						},
@@ -762,9 +767,6 @@ func (bld *build) buildVariables(src *Source, origin uint64) error {
 				}
 			}
 		}
-
-		// add children (array elements etc.)
-		varb.addVariableChildren()
 	}
 
 	return nil
