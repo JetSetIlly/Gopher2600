@@ -542,10 +542,10 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 	sort.Strings(src.ShortFilenames)
 
 	// sort sorted lines
-	sort.Sort(src.SortedLines)
+	src.SortedLines.SortByLineAndFunction(false)
 
 	// sorted functions
-	sort.Sort(src.SortedFunctions)
+	src.SortedFunctions.SortByFunction(false)
 	sort.Strings(src.FunctionNames)
 
 	// sorted variables

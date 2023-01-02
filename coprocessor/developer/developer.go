@@ -73,43 +73,59 @@ type CartCoProcDeveloper interface {
 }
 
 // NewDeveloper is the preferred method of initialisation for the Developer type.
-func NewDeveloper(romFile string, cart CartCoProcDeveloper, tv TV, elfFile string) *Developer {
-	if cart == nil || cart.GetCoProc() == nil {
-		return nil
+func NewDeveloper(tv TV) *Developer {
+	return &Developer{
+		tv: tv,
 	}
+}
+
+func (dev *Developer) AttachCartridge(cart CartCoProcDeveloper, romFile string, elfFile string) {
+	dev.cart = nil
+
+	dev.sourceLock.Lock()
+	dev.source = nil
+	dev.sourceLock.Unlock()
+
+	dev.disabledExpensive = false
+
+	dev.illegalAccessLock.Lock()
+	dev.illegalAccess = IllegalAccess{
+		entries: make(map[string]*IllegalAccessEntry),
+	}
+	dev.illegalAccessLock.Unlock()
+
+	dev.yieldStateLock.Lock()
+	dev.yieldState = YieldState{}
+	dev.yieldStateLock.Unlock()
+
+	dev.framesSinceLastUpdate = 0
+
+	dev.profiler = mapper.CartCoProcProfiler{
+		Entries: make([]mapper.CartCoProcProfileEntry, 0, 1000),
+	}
+
+	if cart == nil || cart.GetCoProc() == nil {
+		return
+	}
+	dev.cart = cart
 
 	var err error
 
-	dev := &Developer{
-		cart: cart,
-		tv:   tv,
-		illegalAccess: IllegalAccess{
-			entries: make(map[string]*IllegalAccessEntry),
-			Log:     make([]*IllegalAccessEntry, 0),
-		},
-		profiler: mapper.CartCoProcProfiler{
-			Entries: make([]mapper.CartCoProcProfileEntry, 0, 1000),
-		},
-	}
-
 	t := time.Now()
+
+	dev.sourceLock.Lock()
 	dev.source, err = NewSource(romFile, cart, elfFile)
+	dev.sourceLock.Unlock()
+
 	if err != nil {
 		logger.Logf("developer", err.Error())
 	} else {
 		logger.Logf("developer", "DWARF loaded in %s", time.Since(t))
 	}
 
-	if dev.source != nil {
-		dev.source.SortedLines.SortByLineAndFunction(false)
-		dev.source.SortedFunctions.SortByFunction(false)
-	}
-
-	// we always set the devloper for the cartridge even if we have no source.
+	// we always set the developer for the cartridge even if we have no source.
 	// some developer functions don't require source code to be useful
 	dev.cart.GetCoProc().SetDeveloper(dev)
-
-	return dev
 }
 
 // DisableExpensive prevents the computationaly expensive developer functions

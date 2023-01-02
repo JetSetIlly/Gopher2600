@@ -361,6 +361,11 @@ func NewDebugger(opts CommandLineOptions, create CreateUserInterface) (*Debugger
 		return nil, curated.Errorf("debugger: %v", err)
 	}
 
+	// create new coprocessor developer/disassembly instances
+	dbg.CoProcDisasm = coprocDisasm.NewDisassembly(dbg.vcs.TV)
+	dbg.CoProcDev = coprocDev.NewDeveloper(dbg.vcs.TV)
+	dbg.vcs.TV.AddFrameTrigger(dbg.CoProcDev)
+
 	// create a minimal lastResult for initialisation
 	dbg.liveDisasmEntry = &disassembly.Entry{Result: execution.Result{Final: true}}
 
@@ -514,15 +519,11 @@ func (dbg *Debugger) setStateQuiet(state govern.State, quiet bool) {
 		// coprocessor statistics can be misleading if they're collated during
 		// the rewind state. note that they are enabled when entering another
 		// state and also at the beginning of catch-up
-		if dbg.CoProcDev != nil {
-			dbg.CoProcDev.DisableExpensive(true)
-		}
+		dbg.CoProcDev.DisableExpensive(true)
 
 		// coprocessor disassembly is an inherently slow operation particuarly
 		// for StrongARM type ROMs
-		if dbg.CoProcDisasm != nil {
-			dbg.CoProcDisasm.Inhibit(true)
-		}
+		dbg.CoProcDisasm.Inhibit(true)
 	} else {
 		dbg.vcs.Mem.Cart.BreakpointsEnable(true)
 
@@ -531,14 +532,10 @@ func (dbg *Debugger) setStateQuiet(state govern.State, quiet bool) {
 		//
 		// note that in the event that a catch-up loop is run, the dev features
 		// will already have been enabled
-		if dbg.CoProcDev != nil {
-			dbg.CoProcDev.DisableExpensive(false)
-		}
+		dbg.CoProcDev.DisableExpensive(false)
 
 		// uninhibit coprocessor disassembly
-		if dbg.CoProcDisasm != nil {
-			dbg.CoProcDisasm.Inhibit(false)
-		}
+		dbg.CoProcDisasm.Inhibit(false)
 	}
 
 	err := dbg.vcs.TV.SetEmulationState(state)
@@ -1016,9 +1013,6 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) 
 	// is this a new cartridge we're loading. value is used for dbg.reset()
 	newCartridge := dbg.loader == nil || cartload.Filename != dbg.loader.Filename
 
-	// remove existing coproc frame trigger from TV
-	dbg.vcs.TV.RemoveFrameTrigger(dbg.CoProcDev)
-
 	// stop optional sub-systems that shouldn't survive a new cartridge insertion
 	dbg.endPlayback()
 	dbg.endRecording()
@@ -1169,11 +1163,8 @@ func (dbg *Debugger) attachCartridge(cartload cartridgeloader.Loader) (e error) 
 		logger.Logf("debugger", err.Error())
 	}
 
-	dbg.CoProcDisasm = coprocDisasm.NewDisassembly(dbg.vcs.TV, dbg.coprocShim)
-	dbg.CoProcDev = coprocDev.NewDeveloper(cartload.Filename, dbg.coprocShim, dbg.vcs.TV, *dbg.opts.ELF)
-	if dbg.CoProcDev != nil {
-		dbg.vcs.TV.AddFrameTrigger(dbg.CoProcDev)
-	}
+	dbg.CoProcDisasm.AttachCartridge(dbg.coprocShim)
+	dbg.CoProcDev.AttachCartridge(dbg.coprocShim, cartload.Filename, *dbg.opts.ELF)
 
 	// attach current debugger as the yield hook for cartridge
 	dbg.vcs.Mem.Cart.SetYieldHook(dbg)
@@ -1346,13 +1337,8 @@ func (dbg *Debugger) hotload() (e error) {
 		return err
 	}
 
-	dbg.vcs.TV.RemoveFrameTrigger(dbg.CoProcDev)
-
-	dbg.CoProcDisasm = coprocDisasm.NewDisassembly(dbg.vcs.TV, dbg.coprocShim)
-	dbg.CoProcDev = coprocDev.NewDeveloper(cartload.Filename, dbg.coprocShim, dbg.vcs.TV, *dbg.opts.ELF)
-	if dbg.CoProcDev != nil {
-		dbg.vcs.TV.AddFrameTrigger(dbg.CoProcDev)
-	}
+	dbg.CoProcDisasm.AttachCartridge(dbg.coprocShim)
+	dbg.CoProcDev.AttachCartridge(dbg.coprocShim, cartload.Filename, *dbg.opts.ELF)
 
 	return nil
 }

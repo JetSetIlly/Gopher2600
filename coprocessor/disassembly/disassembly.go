@@ -63,25 +63,29 @@ type DisasmEntries struct {
 
 // NewDisassembly returns a new Coprocessor instance if cartridge implements the
 // coprocessor bus.
-func NewDisassembly(tv TV, cart CartCoProcDisassembly) *Disassembly {
-	if cart == nil || cart.GetCoProc() == nil {
-		return nil
-	}
-
+func NewDisassembly(tv TV) *Disassembly {
 	dsm := &Disassembly{
-		tv:   tv,
-		cart: cart,
-		disasm: DisasmEntries{
-			LastExecution: make([]mapper.CartCoProcDisasmEntry, 0, 1024),
-		},
+		tv: tv,
 	}
-
-	dsm.disasm.Entries = make(map[string]mapper.CartCoProcDisasmEntry)
-	dsm.disasm.Keys = make([]string, 0, 1024)
-
-	dsm.Enable(false)
 
 	return dsm
+}
+
+func (dsm *Disassembly) AttachCartridge(cart CartCoProcDisassembly) {
+	dsm.crit.Lock()
+	defer dsm.crit.Unlock()
+
+	dsm.cart = nil
+
+	dsm.disasm = DisasmEntries{
+		LastExecution: make([]mapper.CartCoProcDisasmEntry, 0, 1024),
+		Entries:       make(map[string]mapper.CartCoProcDisasmEntry),
+		Keys:          make([]string, 0, 1024),
+	}
+
+	if cart != nil && cart.GetCoProc() != nil {
+		dsm.cart = cart
+	}
 }
 
 // Inhibit should be used to temporarily disable disassembly functionality.
