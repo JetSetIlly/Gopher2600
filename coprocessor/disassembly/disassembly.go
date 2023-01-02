@@ -93,6 +93,10 @@ func (dsm *Disassembly) Inhibit(inhibit bool) {
 	dsm.crit.Lock()
 	defer dsm.crit.Unlock()
 
+	if dsm.cart == nil {
+		return
+	}
+
 	if inhibit {
 		dsm.cart.GetCoProc().SetDisassembler(nil)
 		dsm.disasm.LastExecution = dsm.disasm.LastExecution[:0]
@@ -116,6 +120,10 @@ func (dsm *Disassembly) IsEnabled() bool {
 func (dsm *Disassembly) Enable(enable bool) {
 	dsm.crit.Lock()
 	defer dsm.crit.Unlock()
+
+	if dsm.cart == nil {
+		return
+	}
 
 	dsm.disasm.Enabled = enable
 
