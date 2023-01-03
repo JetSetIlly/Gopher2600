@@ -1447,6 +1447,13 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		option, _ := tokens.Get()
 
 		switch option {
+		case "FUNCTIONS":
+			dbg.CoProcDev.BorrowSource(func(src *developer.Source) {
+				for _, n := range src.FunctionNames {
+					f := src.Functions[n]
+					dbg.printLine(terminal.StyleFeedback, f.String())
+				}
+			})
 		case "GLOBALS":
 			dbg.CoProcDev.BorrowSource(func(src *developer.Source) {
 				for _, g := range src.SortedGlobals.Variables {

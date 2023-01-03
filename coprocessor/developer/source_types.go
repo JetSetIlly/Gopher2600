@@ -17,6 +17,7 @@ package developer
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 )
@@ -184,7 +185,12 @@ type SourceFunction struct {
 }
 
 func (fn *SourceFunction) String() string {
-	return fmt.Sprintf("%s %s", fn.Name, fn.Range)
+	s := strings.Builder{}
+	s.WriteString(fn.Name)
+	for _, r := range fn.Range {
+		s.WriteString(fmt.Sprintf(" (%s)", r))
+	}
+	return s.String()
 }
 
 // coproc implements the loclistContext interface
