@@ -1449,6 +1449,11 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		switch option {
 		case "FUNCTIONS":
 			dbg.CoProcDev.BorrowSource(func(src *developer.Source) {
+				if src == nil {
+					dbg.printLine(terminal.StyleError, "no source available")
+					return
+				}
+
 				for _, n := range src.FunctionNames {
 					f := src.Functions[n]
 					dbg.printLine(terminal.StyleFeedback, f.String())
@@ -1456,6 +1461,11 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 			})
 		case "GLOBALS":
 			dbg.CoProcDev.BorrowSource(func(src *developer.Source) {
+				if src == nil {
+					dbg.printLine(terminal.StyleError, "no source available")
+					return
+				}
+
 				for _, g := range src.SortedGlobals.Variables {
 					g.Update()
 					dbg.printLine(terminal.StyleFeedback, g.String())
@@ -1471,6 +1481,12 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 				ranges = ranges || option == "RANGES"
 				option, ok = tokens.Get()
 			}
+
+			dbg.CoProcDev.BorrowSource(func(src *developer.Source) {
+				if src == nil {
+					dbg.printLine(terminal.StyleError, "no source available")
+				}
+			})
 
 			dbg.CoProcDev.BorrowYieldState(func(yld *developer.YieldState) {
 				for _, l := range yld.LocalVariables {
