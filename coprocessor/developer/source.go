@@ -43,9 +43,6 @@ type compileUnit struct {
 //
 // It is possible for the arrays/map fields to be empty
 type Source struct {
-	// interface to coprocessor memory
-	cart CartCoProcDeveloper
-
 	syms []elf.Symbol
 
 	// ELF sections that help DWARF locate local variables in memory
@@ -149,7 +146,6 @@ type Source struct {
 // non-nil but with the understanding that the fields may be empty.
 func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Source, error) {
 	src := &Source{
-		cart:             cart,
 		Disassembly:      make(map[uint64]*SourceDisasm),
 		Files:            make(map[string]*SourceFile),
 		Filenames:        make([]string, 0, 10),
@@ -218,16 +214,13 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 	}
 
 	// create frame section from the raw ELF section
-	src.debug_frame, err = newFrameSection(ef, cart, origin)
+	src.debug_frame, err = newFrameSection(ef, cart.GetCoProc(), origin)
 	if err != nil {
 		logger.Logf("dwarf", err.Error())
 	}
 
 	// create loclist section from the raw ELF section
-	src.debug_loc, err = newLoclistSection(ef)
-	if err != nil {
-		logger.Logf("dwarf", err.Error())
-	}
+	src.debug_loc = newLoclistSection(ef, cart.GetCoProc())
 
 	// disassemble every word in the ELF file
 	//
@@ -338,7 +331,7 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 
 			// loop through files in the compilation unit. entry 0 is always nil
 			for _, f := range r.Files()[1:] {
-				sf, err := readSourceFile(src.cart, f.Name, pathToROM_nosymlinks)
+				sf, err := readSourceFile(f.Name, pathToROM_nosymlinks)
 				if err != nil {
 					logger.Logf("dwarf", "%v", err)
 				} else {
@@ -431,36 +424,37 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 				// find function for working address
 				var fn *SourceFunction
 
-				// choose function that covers the smallest (most specific)
-				// range in which startAddr appears
+				// choose function that covers the smallest (most specific) range in which startAddr
+				// appears. note that because we're ignoring inlined ranges in the loop below there
+				// should only ever be one match per line (I think)
 				sz := ^uint64(0)
 
 				for _, f := range src.Functions {
 					for _, r := range f.Range {
-						// using endAddr to identify the parent function. this
-						// seems to produce better results than startAddr (when
-						// identifying inlined functions)
-						if r.InRange(endAddr) {
-							if r.Size() < sz {
-								fn = f
-								sz = r.Size()
+						// ignore inlined ranges
+						if !r.Inline {
+							if r.InRange(startAddr) {
+								if r.Size() < sz {
+									fn = f
+									sz = r.Size()
+								}
 							}
 						}
 					}
 				}
 
-				// the function should exist and if it doesn't we exit with an error
+				// if the function cannot be found then exit with an error
 				if fn == nil {
 					return nil, curated.Errorf("dwarf: cannot find function for source line: %v", sl)
 				}
 
-				// update workingSourceLine with newly created SourceFunction
+				// update source line with newly identified SourceFunction
 				sl.Function = fn
 
 				// add line to list of lines for the function
 				sl.Function.Lines = append(sl.Function.Lines, sl)
 
-				// add disassembly to source line and build a linesByAddress map
+				// add disassembly to source line and add source line to linesByAddress
 				for addr := startAddr; addr < endAddr; addr += 2 {
 					// look for address in disassembly
 					if d, ok := src.Disassembly[addr]; ok {
@@ -576,11 +570,11 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 // add children to global and local variables
 func addVariableChildren(src *Source) {
 	for _, g := range src.globals {
-		g.addVariableChildren()
+		g.addVariableChildren(src.debug_loc)
 	}
 
 	for _, l := range src.locals {
-		l.addVariableChildren()
+		l.addVariableChildren(src.debug_loc)
 	}
 }
 
@@ -599,7 +593,6 @@ func allocateOrphanedSourceLines(src *Source) {
 	// order to know what the frame base is for the variable.
 	for _, sf := range src.Files {
 		fn := &SourceFunction{
-			Cart: src.cart,
 			Name: stubIndicator,
 		}
 		for _, ln := range sf.Content.Lines {
@@ -696,7 +689,6 @@ func addFunctionStubs(src *Source) {
 			fn.name = strings.Split(fn.name, ".")[0]
 
 			stubFn := &SourceFunction{
-				Cart: src.cart,
 				Name: fn.name,
 			}
 			stubFn.Range = append(stubFn.Range, fn.rng)
@@ -728,7 +720,6 @@ func addFunctionStubs(src *Source) {
 
 	// add driver function
 	driverFn := &SourceFunction{
-		Cart: src.cart,
 		Name: DriverFunctionName,
 	}
 	src.Functions[DriverFunctionName] = driverFn
@@ -773,7 +764,7 @@ func (src *Source) newFrame() {
 	}
 }
 
-func readSourceFile(cart CartCoProcDeveloper, filename string, pathToROM_nosymlinks string) (*SourceFile, error) {
+func readSourceFile(filename string, pathToROM_nosymlinks string) (*SourceFile, error) {
 	var err error
 
 	fl := SourceFile{
@@ -793,7 +784,6 @@ func readSourceFile(cart CartCoProcDeveloper, filename string, pathToROM_nosymli
 			File:       &fl,
 			LineNumber: i + 1, // counting from one
 			Function: &SourceFunction{
-				Cart: cart,
 				Name: stubIndicator,
 			},
 			PlainContent: s,

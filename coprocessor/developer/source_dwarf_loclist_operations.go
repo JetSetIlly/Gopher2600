@@ -21,26 +21,10 @@ import (
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/leb128"
 )
 
-// decode DWARF expression operation. the expr argument is the operation
-// stream. the first entry in the slice is the operator, remaining entries in
-// the slice contain the operands for the operator. entries in the slice may be
-// unused.
-//
-// the simpleLocDesc argument indicates that the operator is expected to be
-// used in a context of being a single location description. the function will
-// resolve the stack as appropriate if this argument is true.
-//
-// the function returns a resolver function and the number of bytes consumed in
-// the expr slice
-//
-// returns nil, zero, if expression cannot be handled.
-func decodeDWARFoperation(expr []uint8, origin uint64) (dwarfOperator, int) {
-	// expression location operators reference
-	//
-	// "DWARF Debugging Information Format Version 4", page 17 to 24
-	//
-	// also the table of values on page 153, "section 7.7.1 DWARF Expressions"
-
+// decode loclist DWARF operation but adjust decoding addresses with an origin value.
+// there's only one operator (DW_OP_addr) that needs this special handling and
+// only then when the expression appears outside of a location list
+func (sec *loclistSection) decodeLoclistOperationWithOrigin(expr []uint8, origin uint64) (loclistOperator, int) {
 	switch expr[0] {
 	case 0x03:
 		// DW_OP_addr
@@ -59,18 +43,60 @@ func decodeDWARFoperation(expr []uint8, origin uint64) (dwarfOperator, int) {
 				operator: "DW_OP_addr",
 			}, nil
 		}, 5
+	}
+
+	// other operators do not need the special handling
+	return sec.decodeLoclistOperation(expr)
+}
+
+// decode loclist DWARF expression operation. the expr argument is the operation
+// stream. the first entry in the slice is the operator, remaining entries in
+// the slice contain the operands for the operator. entries in the slice may be
+// unused.
+//
+// the simpleLocDesc argument indicates that the operator is expected to be
+// used in a context of being a single location description. the function will
+// resolve the stack as appropriate if this argument is true.
+//
+// the function returns a resolver function and the number of bytes consumed in
+// the expr slice
+//
+// returns nil, zero, if expression cannot be handled.
+func (sec *loclistSection) decodeLoclistOperation(expr []uint8) (loclistOperator, int) {
+	// expression location operators reference
+	//
+	// "DWARF Debugging Information Format Version 4", page 17 to 24
+	//
+	// also the table of values on page 153, "section 7.7.1 DWARF Expressions"
+
+	switch expr[0] {
+	case 0x03:
+		// DW_OP_addr
+		// (literal encoding)
+		// "The DW_OP_addr operation has a single operand that encodes a machine address and whose
+		// size is the size of an address on the target machine."
+		address := uint64(expr[1])
+		address |= uint64(expr[2]) << 8
+		address |= uint64(expr[3]) << 16
+		address |= uint64(expr[4]) << 24
+		return func(loc *loclist) (location, error) {
+			return location{
+				value:    uint32(address),
+				valueOk:  false,
+				operator: "DW_OP_addr",
+			}, nil
+		}, 5
 
 	case 0x06:
 		// DW_OP_deref
 		// (stack operations)
-		// "The DW_OP_deref operation pops the top stack entry and treats it as an
-		// address. The value retrieved from that address is pushed. The size of the
-		// data retrieved from the dereferenced address is the size of an address on
-		// the target machine"
+		// "The DW_OP_deref operation pops the top stack entry and treats it as an address. The
+		// value retrieved from that address is pushed. The size of the data retrieved from the
+		// dereferenced address is the size of an address on the target machine"
 		return func(loc *loclist) (location, error) {
 			a, _ := loc.pop()
 			address := uint64(a.value)
-			value, ok := loc.ctx.coproc().CoProcRead32bit(uint32(address))
+			value, ok := sec.coproc.CoProcRead32bit(uint32(address))
 			return location{
 				address:   address,
 				addressOk: true,
@@ -83,8 +109,8 @@ func decodeDWARFoperation(expr []uint8, origin uint64) (dwarfOperator, int) {
 	case 0x08:
 		// DW_OP_const1u
 		// (literal encoding)
-		// "The single operand of a DW_OP_constnu operation provides a 1, 2, 4,
-		// or 8-byte unsigned integer constant, respectively"
+		// "The single operand of a DW_OP_constnu operation provides a 1, 2, 4, or 8-byte unsigned
+		// integer constant, respectively"
 		cons := uint64(expr[1])
 		return func(loc *loclist) (location, error) {
 			return location{
@@ -97,8 +123,8 @@ func decodeDWARFoperation(expr []uint8, origin uint64) (dwarfOperator, int) {
 	case 0x09:
 		// DW_OP_const1s
 		// (literal encoding)
-		// "The single operand of a DW_OP_constns operation provides a 1, 2, 4,
-		// or 8-byte signed integer constant, respectively"
+		// "The single operand of a DW_OP_constns operation provides a 1, 2, 4, or 8-byte signed
+		// integer constant, respectively"
 		cons := uint64(expr[1])
 		if cons&0x80 == 0x80 {
 			cons |= 0xffffffffffffff00
@@ -176,8 +202,8 @@ func decodeDWARFoperation(expr []uint8, origin uint64) (dwarfOperator, int) {
 	case 0x10:
 		// DW_OP_constu
 		// (literal encoding)
-		// "The single operand of the DW_OP_constu operation provides an unsigned
-		// LEB128 integer constant"
+		// "The single operand of the DW_OP_constu operation provides an unsigned LEB128 integer
+		// constant"
 		value, n := leb128.DecodeULEB128(expr[1:])
 		return func(loc *loclist) (location, error) {
 			return location{
@@ -190,8 +216,8 @@ func decodeDWARFoperation(expr []uint8, origin uint64) (dwarfOperator, int) {
 	case 0x11:
 		// DW_OP_consts
 		// (literal encoding)
-		// "The single operand of the DW_OP_constu operation provides an signed
-		// LEB128 integer constant"
+		// "The single operand of the DW_OP_constu operation provides an signed LEB128 integer
+		// constant"
 		value, n := leb128.DecodeSLEB128(expr[1:])
 		return func(loc *loclist) (location, error) {
 			return location{
@@ -223,20 +249,21 @@ func decodeDWARFoperation(expr []uint8, origin uint64) (dwarfOperator, int) {
 	case 0x18:
 		// DW_OP_xderef
 		// (stack operations)
-		// "The DW_OP_xderef operation provides an extended dereference mechanism. The entry at
-		// the top of the stack is treated as an address. The second stack entry is treated as an “address
-		// space identifier” for those architectures that support multiple address spaces. The top two
-		// stack elements are popped, and a data item is retrieved through an implementation-defined
-		// address calculation and pushed as the new stack top. The size of the data retrieved from the
-		// dereferenced address is the size of an address on the target machine"
+		// "The DW_OP_xderef operation provides an extended dereference mechanism. The entry at the
+		// top of the stack is treated as an address. The second stack entry is treated as an
+		// “address space identifier” for those architectures that support multiple address spaces.
+		// The top two stack elements are popped, and a data item is retrieved through an
+		// implementation-defined address calculation and pushed as the new stack top. The size of
+		// the data retrieved from the dereferenced address is the size of an address on the target
+		// machine"
 		return nil, 0
 
 	case 0x19:
 		// DW_OP_abs
 		// (arithmetic and logic operations)
-		// "The DW_OP_abs operation pops the top stack entry, interprets it as a signed
-		// value and pushes its absolute value. If the absolute value cannot be
-		// represented, the result is undefined"
+		// "The DW_OP_abs operation pops the top stack entry, interprets it as a signed value and
+		// pushes its absolute value. If the absolute value cannot be represented, the result is
+		// undefined"
 		return func(loc *loclist) (location, error) {
 			a, _ := loc.pop()
 			value := a.value & 0x7fffffff
@@ -250,8 +277,7 @@ func decodeDWARFoperation(expr []uint8, origin uint64) (dwarfOperator, int) {
 	case 0x1a:
 		// DW_OP_and
 		// (arithmetic and logic operations)
-		// "The DW_OP_and operation pops the top two stack values, performs a
-		// bitwise and operation"
+		// "The DW_OP_and operation pops the top two stack values, performs a bitwise and operation"
 		return func(loc *loclist) (location, error) {
 			a, _ := loc.pop()
 			b, _ := loc.pop()
@@ -266,9 +292,8 @@ func decodeDWARFoperation(expr []uint8, origin uint64) (dwarfOperator, int) {
 	case 0x1b:
 		// DW_OP_div
 		// (arithmetic and logic operations)
-		// "The DW_OP_div operation pops the top two stack values, divides the former
-		// second entry by the former top of the stack using signed division, and
-		// pushes the result"
+		// "The DW_OP_div operation pops the top two stack values, divides the former second entry
+		// by the former top of the stack using signed division, and pushes the result"
 		return func(loc *loclist) (location, error) {
 			a, _ := loc.pop()
 			b, _ := loc.pop()
@@ -283,9 +308,8 @@ func decodeDWARFoperation(expr []uint8, origin uint64) (dwarfOperator, int) {
 	case 0x1c:
 		// DW_OP_minus
 		// (arithmetic and logic operations)
-		// "The DW_OP_minus operation pops the top two stack values, subtracts
-		// the former top of the stack from the former second entry, and pushes
-		// the result"
+		// "The DW_OP_minus operation pops the top two stack values, subtracts the former top of the
+		// stack from the former second entry, and pushes the result"
 		return func(loc *loclist) (location, error) {
 			a, _ := loc.pop()
 			b, _ := loc.pop()
@@ -300,9 +324,8 @@ func decodeDWARFoperation(expr []uint8, origin uint64) (dwarfOperator, int) {
 	case 0x1d:
 		// DW_OP_mod
 		// (arithmetic and logic operations)
-		// "The DW_OP_mod operation pops the top two stack values and pushes the result
-		// of the calculation: former second stack entry modulo the former top of the
-		// stack"
+		// "The DW_OP_mod operation pops the top two stack values and pushes the result of the
+		// calculation: former second stack entry modulo the former top of the stack"
 		return func(loc *loclist) (location, error) {
 			a, _ := loc.pop()
 			b, _ := loc.pop()
@@ -317,8 +340,8 @@ func decodeDWARFoperation(expr []uint8, origin uint64) (dwarfOperator, int) {
 	case 0x1e:
 		// DW_OP_mul
 		// (arithmetic and logic operations)
-		// "The DW_OP_mul operation pops the top two stack entries, multiplies them
-		// together, and pushes the result"
+		// "The DW_OP_mul operation pops the top two stack entries, multiplies them together, and
+		// pushes the result"
 		return func(loc *loclist) (location, error) {
 			a, _ := loc.pop()
 			b, _ := loc.pop()
@@ -333,9 +356,8 @@ func decodeDWARFoperation(expr []uint8, origin uint64) (dwarfOperator, int) {
 	case 0x1f:
 		// DW_OP_neg
 		// (arithmetic and logic operations)
-		// "The DW_OP_neg operation pops the top stack entry, interprets it as a signed
-		// value and pushes its negation. If the negation cannot be represented, the
-		// result is undefined"
+		// "The DW_OP_neg operation pops the top stack entry, interprets it as a signed value and
+		// pushes its negation. If the negation cannot be represented, the result is undefined"
 		return func(loc *loclist) (location, error) {
 			a, _ := loc.pop()
 			value := uint32(-int32(a.value))
@@ -349,8 +371,7 @@ func decodeDWARFoperation(expr []uint8, origin uint64) (dwarfOperator, int) {
 	case 0x20:
 		// DW_OP_not
 		// (arithmetic and logic operations)
-		// "The DW_OP_not operation pops the top stack entry, and pushes its bitwise
-		// complement"
+		// "The DW_OP_not operation pops the top stack entry, and pushes its bitwise complement"
 		return func(loc *loclist) (location, error) {
 			a, _ := loc.pop()
 			value := ^a.value
@@ -364,9 +385,8 @@ func decodeDWARFoperation(expr []uint8, origin uint64) (dwarfOperator, int) {
 	case 0x21:
 		// DW_OP_or
 		// (arithmetic and logic operations)
-		// "The DW_OP_or operation pops the top two stack entries, performs a
-		// bitwise or operation on the two, and pushes the result"
-		// "DWARF4 Standard
+		// "The DW_OP_or operation pops the top two stack entries, performs a bitwise or operation
+		// on the two, and pushes the result"
 		return func(loc *loclist) (location, error) {
 			a, _ := loc.pop()
 			b, _ := loc.pop()
@@ -381,8 +401,7 @@ func decodeDWARFoperation(expr []uint8, origin uint64) (dwarfOperator, int) {
 	case 0x22:
 		// DW_OP_plus
 		// (arithmetic and logic operations)
-		// "The DW_OP_plus operation pops the top two stack entries, adds them
-		// together, and pushes"
+		// "The DW_OP_plus operation pops the top two stack entries, adds them together, and pushes"
 		return func(loc *loclist) (location, error) {
 			a, _ := loc.pop()
 			b, _ := loc.pop()
@@ -397,8 +416,8 @@ func decodeDWARFoperation(expr []uint8, origin uint64) (dwarfOperator, int) {
 	case 0x23:
 		// DW_OP_plus_uconst
 		// (arithmetic and logic operations)
-		// "The DW_OP_plus_uconst operation pops the top stack entry, adds it
-		// to the unsigned LEB128 constant operand and pushes the result"
+		// "The DW_OP_plus_uconst operation pops the top stack entry, adds it to the unsigned LEB128
+		// constant operand and pushes the result"
 		value, n := leb128.DecodeULEB128(expr[1:])
 		return func(loc *loclist) (location, error) {
 			a, _ := loc.pop()
@@ -413,8 +432,8 @@ func decodeDWARFoperation(expr []uint8, origin uint64) (dwarfOperator, int) {
 	case 0x24:
 		// DW_OP_shl
 		// (arithmetic and logic operations)
-		// "The DW_OP_shl operation pops the top two stack entries, shifts the former
-		// second entry left"
+		// "The DW_OP_shl operation pops the top two stack entries, shifts the former second entry
+		// left"
 		return func(loc *loclist) (location, error) {
 			a, _ := loc.pop()
 			b, _ := loc.pop()
@@ -429,9 +448,9 @@ func decodeDWARFoperation(expr []uint8, origin uint64) (dwarfOperator, int) {
 	case 0x25:
 		// DW_OP_shr
 		// (arithmetic and logic operations)
-		// "The DW_OP_shr operation pops the top two stack entries, shifts the former
-		// second entry right logically (filling with zero bits) by the number of bits
-		// specified by the former top of the stack, and pushes the result"
+		// "The DW_OP_shr operation pops the top two stack entries, shifts the former second entry
+		// right logically (filling with zero bits) by the number of bits specified by the former
+		// top of the stack, and pushes the result"
 		return func(loc *loclist) (location, error) {
 			a, _ := loc.pop()
 			b, _ := loc.pop()
@@ -446,10 +465,9 @@ func decodeDWARFoperation(expr []uint8, origin uint64) (dwarfOperator, int) {
 	case 0x26:
 		// DW_OP_shra
 		// (arithmetic and logic operations)
-		// "The DW_OP_shra operation pops the top two stack entries, shifts the
-		// former second entry right arithmetically (divide the magnitude by 2,
-		// keep the same sign for the result) by the number of bits specified
-		// by the former top of the stack, and pushes the result"
+		// "The DW_OP_shra operation pops the top two stack entries, shifts the former second entry
+		// right arithmetically (divide the magnitude by 2, keep the same sign for the result) by
+		// the number of bits specified by the former top of the stack, and pushes the result"
 		// "DWARF4 Standard"
 		return func(loc *loclist) (location, error) {
 			a, _ := loc.pop()
@@ -469,7 +487,8 @@ func decodeDWARFoperation(expr []uint8, origin uint64) (dwarfOperator, int) {
 	case 0x27:
 		// DW_OP_xor
 		// (arithmetic and logic operations)
-		// "The DW_OP_xor operation pops the top two stack entries, performs a bitwise
+		// "The DW_OP_xor operation pops the top two stack entries, performs a bitwise exclusive-or
+		// operation on the two, and pushes the result"
 		return func(loc *loclist) (location, error) {
 			a, _ := loc.pop()
 			b, _ := loc.pop()
@@ -571,8 +590,8 @@ func decodeDWARFoperation(expr []uint8, origin uint64) (dwarfOperator, int) {
 	case 0x4f:
 		// DW_OP_lit0, DW_OP_lit1, ..., DW_OP_lit31
 		// (literal encoding)
-		// "The DW_OP_litn operations encode the unsigned literal values from 0 through
-		// 31, inclusive"
+		// "The DW_OP_litn operations encode the unsigned literal values from 0 through 31,
+		// inclusive"
 		lit := expr[0] - 0x30
 		return func(loc *loclist) (location, error) {
 			return location{
@@ -651,7 +670,7 @@ func decodeDWARFoperation(expr []uint8, origin uint64) (dwarfOperator, int) {
 		// through 31, inclusive. The object addressed is in register n"
 		reg := expr[0] - 0x50
 		return func(loc *loclist) (location, error) {
-			value, ok := loc.ctx.coproc().CoProcRegister(int(reg))
+			value, ok := sec.coproc.CoProcRegister(int(reg))
 			if !ok {
 				return location{}, fmt.Errorf("unknown register: %d", reg)
 			}
@@ -727,20 +746,19 @@ func decodeDWARFoperation(expr []uint8, origin uint64) (dwarfOperator, int) {
 	case 0x8f:
 		// DW_OP_breg0, DW_OP_breg1, ..., DW_OP_breg31
 		// (register based addressing)
-		// "The single operand of the DW_OP_bregn operations provides a signed
-		// LEB128 offset from the specified register"
+		// "The single operand of the DW_OP_bregn operations provides a signed LEB128 offset from
+		// the specified register"
 		reg := expr[0] - 0x70
 		offset, n := leb128.DecodeSLEB128(expr[1:])
 		return func(loc *loclist) (location, error) {
-			regVal, ok := loc.ctx.coproc().CoProcRegister(int(reg))
+			regVal, ok := sec.coproc.CoProcRegister(int(reg))
 			if !ok {
 				return location{}, fmt.Errorf("unknown register: %d", reg)
 			}
 
-			// the general description for "register based addressing" says
-			// that "the following operations push a value onto the stack that
-			// is the result of adding the contents of a register to a given
-			// signed offset"
+			// the general description for "register based addressing" says that "the following
+			// operations push a value onto the stack that is the result of adding the contents of a
+			// register to a given signed offset"
 			address := int64(regVal) + offset
 
 			return location{
@@ -755,7 +773,7 @@ func decodeDWARFoperation(expr []uint8, origin uint64) (dwarfOperator, int) {
 		// (register location description)
 		reg, n := leb128.DecodeSLEB128(expr[1:])
 		return func(loc *loclist) (location, error) {
-			value, ok := loc.ctx.coproc().CoProcRegister(int(reg))
+			value, ok := sec.coproc.CoProcRegister(int(reg))
 			if !ok {
 				return location{}, fmt.Errorf("unknown register: %d", reg)
 			}
@@ -769,12 +787,11 @@ func decodeDWARFoperation(expr []uint8, origin uint64) (dwarfOperator, int) {
 	case 0x91:
 		// DW_OP_fbreg
 		// (register based addressing)
-		// "The DW_OP_fbreg operation provides a signed LEB128 offset from the
-		// address specified by the location description in the DW_AT_frame_base
-		// attribute of the current function. (This is typically a “stack pointer”
-		// register plus or minus some offset. On more sophisticated systems it
-		// might be a location list that adjusts the offset according to changes
-		// in the stack pointer as the PC changes)"
+		// "The DW_OP_fbreg operation provides a signed LEB128 offset from the address specified by
+		// the location description in the DW_AT_frame_base attribute of the current function. (This
+		// is typically a “stack pointer” register plus or minus some offset. On more sophisticated
+		// systems it might be a location list that adjusts the offset according to changes in the
+		// stack pointer as the PC changes)"
 		offset, n := leb128.DecodeSLEB128(expr[1:])
 		return func(loc *loclist) (location, error) {
 			fb, err := loc.ctx.framebase()
@@ -792,26 +809,58 @@ func decodeDWARFoperation(expr []uint8, origin uint64) (dwarfOperator, int) {
 
 	case 0x93:
 		// DW_OP_piece
-		return nil, 0
+		// (composite location descriptions)
+		// "The DW_OP_piece operation takes a single operand, which is an unsigned LEB128 number.
+		// The number describes the size in bytes of the piece of the object referenced by the preceding
+		// simple location description. If the piece is located in a register, but does not occupy the entire
+		// register, the placement of the piece within that register is defined by the ABI"
+		size, n := leb128.DecodeULEB128(expr[1:])
+		return func(loc *loclist) (location, error) {
+			a, _ := loc.pop()
+			v := a.value
+			if !a.valueOk {
+				var ok bool
+				v, ok = loc.coproc.CoProcRead32bit(a.value)
+				if !ok {
+					return location{}, fmt.Errorf("unknown address: %08x", a.value)
+				}
+			}
+			switch size {
+			case 1:
+				v &= 0x000000ff
+			case 2:
+				v &= 0x0000ffff
+			case 3:
+				v &= 0x00ffffff
+			case 4:
+				v &= 0xffffffff
+			default:
+				return location{}, fmt.Errorf("unknown piece size: %d", size)
+			}
+
+			return location{
+				value:    v,
+				valueOk:  false,
+				operator: "DW_OP_piece",
+			}, nil
+		}, n + 1
 
 	case 0x94:
 		// DW_OP_deref_size
 		// (stack operations)
-		// "The DW_OP_deref_size operation behaves like the DW_OP_deref operation: it
-		// pops the top stack entry and treats it as an address. The value retrieved
-		// from that address is pushed. In the DW_OP_deref_size operation, however, the
-		// size in bytes of the data retrieved from the dereferenced address is
-		// specified by the single operand. This operand is a 1-byte unsigned integral
-		// constant whose value may not be larger than the size of an address on the
-		// target machine. The data retrieved is zero extended to the size of an
-		// address on the target machine before being pushed onto the expression
-		// stack."
+		// "The DW_OP_deref_size operation behaves like the DW_OP_deref operation: it pops the top
+		// stack entry and treats it as an address. The value retrieved from that address is pushed.
+		// In the DW_OP_deref_size operation, however, the size in bytes of the data retrieved from
+		// the dereferenced address is specified by the single operand. This operand is a 1-byte
+		// unsigned integral constant whose value may not be larger than the size of an address on
+		// the target machine. The data retrieved is zero extended to the size of an address on the
+		// target machine before being pushed onto the expression stack."
 		size := expr[1] // in bytes
 		return func(loc *loclist) (location, error) {
 			a, _ := loc.pop()
 			address := uint64(a.value)
 
-			value, ok := loc.ctx.coproc().CoProcRead32bit(uint32(address))
+			value, ok := sec.coproc.CoProcRead32bit(uint32(address))
 			if !ok {
 				return location{}, fmt.Errorf("unknown address: %08x", address)
 			}
@@ -834,8 +883,8 @@ func decodeDWARFoperation(expr []uint8, origin uint64) (dwarfOperator, int) {
 
 	case 0x96:
 		// DW_OP_nop
-		// "The DW_OP_nop operation is a place holder. It has no effect on the
-		// location stack or any of its values"
+		// "The DW_OP_nop operation is a place holder. It has no effect on the location stack or any
+		// of its values"
 		return func(loc *loclist) (location, error) {
 			return location{
 				operator: "DW_OP_nop",
@@ -844,8 +893,8 @@ func decodeDWARFoperation(expr []uint8, origin uint64) (dwarfOperator, int) {
 
 	case 0x9c:
 		// DW_OP_call_frame_cfa
-		// "The DW_OP_call_frame_cfa operation pushes the value of the CFA,
-		// obtained from the Call Frame Information"
+		// "The DW_OP_call_frame_cfa operation pushes the value of the CFA, obtained from the Call
+		// Frame Information"
 		//
 		// NOTE: the context for the framebase function should hopefully point
 		// to a frameSection instance
@@ -863,6 +912,12 @@ func decodeDWARFoperation(expr []uint8, origin uint64) (dwarfOperator, int) {
 
 	case 0x9f:
 		// DW_OP_stack_value
+		// (implicit location descriptions)
+		// "The DW_OP_stack_value operation specifies that the object does not exist in memory but
+		// its value is nonetheless known and is at the top of the DWARF expression stack. In this
+		// form of location description, the DWARF expression represents the actual value of the
+		// object, rather than its location. The DW_OP_stack_value operation terminates the
+		// expression"
 		return func(loc *loclist) (location, error) {
 			res := loc.lastResolved()
 			res.valueOk = true

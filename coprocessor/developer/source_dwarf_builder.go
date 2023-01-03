@@ -258,10 +258,10 @@ func (bld *build) buildTypes(src *Source) error {
 				if fld != nil {
 					switch fld.Class {
 					case dwarf.ClassConstant:
-						memb.loclist = newLoclistJustContext(memb)
+						memb.loclist = bld.debug_loc.newLoclistJustContext(memb)
 						memb.loclist.addOperator(func(loc *loclist) (location, error) {
 							address := uint64(fld.Val.(int64))
-							value, ok := loc.ctx.coproc().CoProcRead32bit(uint32(address))
+							value, ok := bld.debug_loc.coproc.CoProcRead32bit(uint32(address))
 							return location{
 								address: address,
 								value:   value,
@@ -269,8 +269,8 @@ func (bld *build) buildTypes(src *Source) error {
 							}, nil
 						})
 					case dwarf.ClassExprLoc:
-						memb.loclist = newLoclistJustContext(memb)
-						r, _ := decodeDWARFoperation(fld.Val.([]uint8), 0)
+						memb.loclist = bld.debug_loc.newLoclistJustContext(memb)
+						r, _ := bld.debug_loc.decodeLoclistOperation(fld.Val.([]uint8))
 						memb.loclist.addOperator(r)
 					default:
 						continue
@@ -624,7 +624,7 @@ func (bld *build) buildVariables(src *Source, origin uint64) error {
 		case dwarf.TagFormalParameter:
 			fallthrough
 		case dwarf.TagVariable:
-			// execute reset of for block
+			// execute rest of for block
 
 		default:
 			// ignore all other DWARF tags
@@ -675,9 +675,6 @@ func (bld *build) buildVariables(src *Source, origin uint64) error {
 			continue // for loop
 		}
 
-		// point variable to CartCoProcDeveloper
-		varb.Cart = src.cart
-
 		// adding children to the variable instance is done once all basic variables
 		// have been added
 
@@ -687,7 +684,7 @@ func (bld *build) buildVariables(src *Source, origin uint64) error {
 			switch fld.Class {
 			case dwarf.ClassLocListPtr:
 				var err error
-				err = newLoclist(varb, bld.debug_loc, bld.debug_frame, fld.Val.(int64), compilationUnitAddress,
+				err = bld.debug_loc.newLoclist(varb, fld.Val.(int64), compilationUnitAddress,
 					func(start, end uint64, loc *loclist) {
 						v := *varb
 						v.loclist = loc
@@ -712,10 +709,8 @@ func (bld *build) buildVariables(src *Source, origin uint64) error {
 				// and it does not move during its lifetime"
 				// page 26 of "DWARF4 Standard"
 
-				// set address resolve function
-				r, n := decodeDWARFoperation(fld.Val.([]uint8), origin)
-				if n != 0 {
-					varb.loclist = newLoclistJustContext(varb)
+				if r, _ := bld.debug_loc.decodeLoclistOperationWithOrigin(fld.Val.([]uint8), origin); r != nil {
+					varb.loclist = bld.debug_loc.newLoclistJustContext(varb)
 					varb.loclist.addOperator(r)
 
 					// add variable to list of global variables if there is no
@@ -730,9 +725,6 @@ func (bld *build) buildVariables(src *Source, origin uint64) error {
 						// note that the file has at least one global variables
 						varb.DeclLine.File.HasGlobals = true
 					} else {
-						varb.loclist = newLoclistJustContext(varb)
-						varb.loclist.addOperator(r)
-
 						for i := range lexStart[lexIdx] {
 							v := *varb
 							local := &SourceVariableLocal{
@@ -781,12 +773,12 @@ func (bld *build) buildFunctions(src *Source, origin uint64) error {
 			switch fld.Class {
 			case dwarf.ClassExprLoc:
 				var err error
-				framebase, err = newLoclistFromSingleOperator(nil, fld.Val.([]uint8))
+				framebase, err = bld.debug_loc.newLoclistFromSingleOperator(src.debug_frame, fld.Val.([]uint8))
 				if err != nil {
 					return nil, err
 				}
 			case dwarf.ClassLocListPtr:
-				err := newLoclist(nil, bld.debug_loc, bld.debug_frame, fld.Val.(int64), origin,
+				err := bld.debug_loc.newLoclist(src.debug_frame, fld.Val.(int64), origin,
 					func(_, _ uint64, loc *loclist) {
 						framebase = loc
 					})
@@ -839,15 +831,9 @@ func (bld *build) buildFunctions(src *Source, origin uint64) error {
 		filename := files[filenum].Name
 
 		fn := &SourceFunction{
-			Cart:     src.cart,
-			Name:     name,
-			DeclLine: src.Files[filename].Content.Lines[linenum-1],
-		}
-
-		// add framebase information
-		if framebase != nil {
-			fn.loclist = framebase
-			fn.loclist.ctx = src.debug_frame
+			Name:             name,
+			DeclLine:         src.Files[filename].Content.Lines[linenum-1],
+			framebaseLoclist: framebase,
 		}
 
 		// assign function to declaration line
@@ -865,9 +851,13 @@ func (bld *build) buildFunctions(src *Source, origin uint64) error {
 			src.Functions[fn.Name] = fn
 			src.FunctionNames = append(src.FunctionNames, fn.Name)
 		} else {
+			// if function with the name already exists we simply add the Range
+			// field to the existing function
 			src.Functions[fn.Name].Range = append(src.Functions[fn.Name].Range, fn.Range...)
 		}
 	}
+
+	var currentFrameBase *loclist
 
 	for _, e := range bld.order {
 		switch e.Tag {
@@ -901,6 +891,10 @@ func (bld *build) buildFunctions(src *Source, origin uint64) error {
 				return curated.Errorf("AttrLowpc without AttrHighpc for InlinedSubroutine")
 			}
 
+			// reduce high value by one (otherwise the function reports as
+			// sharing an address with an adjacent function)
+			high -= 1
+
 			// subprograms don't seem to ever have a range field (unlike
 			// inlined subprograms)
 
@@ -925,20 +919,20 @@ func (bld *build) buildFunctions(src *Source, origin uint64) error {
 				// try to acquire framebase for concrete subroutine. we don't expect
 				// for the framebase to have been found already but we'll check it
 				// to make sure in any case
-				if fn.loclist == nil {
-					framebase, err := resolveFramebase(e)
+				if fn.framebaseLoclist == nil {
+					fn.framebaseLoclist, err = resolveFramebase(e)
 					if err != nil {
 						logger.Logf("dwarf", "framebase for %s will be unreliable: %v", fn.Name, err)
-					}
-					if framebase != nil {
-						fn.loclist = framebase
-						fn.loclist.ctx = src.debug_frame
 					}
 				} else {
 					logger.Logf("dwarf", "%s: concrete defintion for abstract function already has a framebase defintion!?", fn.Name)
 				}
 
+				// note framebase so that we can use it for inlined functions
+				currentFrameBase = fn.framebaseLoclist
+
 				commit(fn)
+
 			} else {
 				fn, err := resolve(e)
 				if err != nil {
@@ -950,6 +944,9 @@ func (bld *build) buildFunctions(src *Source, origin uint64) error {
 					Start: low + origin,
 					End:   high + origin,
 				})
+
+				// note framebase so that we can use it for inlined functions
+				currentFrameBase = fn.framebaseLoclist
 
 				commit(fn)
 			}
@@ -974,25 +971,14 @@ func (bld *build) buildFunctions(src *Source, origin uint64) error {
 
 				// start/end address of function
 				fn.Range = append(fn.Range, SourceRange{
-					Start: low + origin,
-					End:   high + origin,
+					Start:  low + origin,
+					End:    high + origin,
+					Inline: true,
 				})
 
-				// try to acquire framebase for inline subroutine. we don't expect
-				// for the framebase to have been found already but we'll check it
-				// to make sure in any case
-				if fn.loclist == nil {
-					framebase, err := resolveFramebase(e)
-					if err != nil {
-						logger.Logf("dwarf", "framebase for %s will be unreliable: %v", fn.Name, err)
-					}
-					if framebase != nil {
-						fn.loclist = framebase
-						fn.loclist.ctx = src.debug_frame
-					}
-				} else {
-					logger.Logf("dwarf", "%s: concrete defintion for abstract function already has a framebase defintion!?", fn.Name)
-				}
+				// inlined functions will not have a framebase attribute so we
+				// use the most recent one found
+				fn.framebaseLoclist = currentFrameBase
 
 				commit(fn)
 

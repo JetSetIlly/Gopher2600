@@ -20,31 +20,39 @@ import (
 	"encoding/binary"
 	"fmt"
 
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
+	"github.com/jetsetilly/gopher2600/logger"
 )
 
+// the coprocessor interface required by the loclist operators
+type loclistCoproc interface {
+	CoProcRegister(n int) (uint32, bool)
+	CoProcRead32bit(addr uint32) (uint32, bool)
+}
+
 type loclistSection struct {
-	ByteOrder binary.ByteOrder
+	coproc    loclistCoproc
+	byteOrder binary.ByteOrder
 	data      []uint8
 }
 
-func newLoclistSection(ef *elf.File) (*loclistSection, error) {
+func newLoclistSection(ef *elf.File, coproc loclistCoproc) *loclistSection {
 	loc := &loclistSection{
-		ByteOrder: ef.ByteOrder,
+		coproc:    coproc,
+		byteOrder: ef.ByteOrder,
 	}
 
 	var err error
-
 	loc.data, err = relocateELFSection(ef, ".debug_loc")
 	if err != nil {
-		return nil, err
+		logger.Logf("dwarf", err.Error())
 	}
 
-	return loc, nil
+	return loc
 }
 
-type loclistContext interface {
-	coproc() mapper.CartCoProc
+// loclistFramebase provides context to the location list. implemented by
+// SourceVariable, SourceFunction and the frame section.
+type loclistFramebase interface {
 	framebase() (uint64, error)
 }
 
@@ -67,8 +75,9 @@ type loclistContext interface {
 type location struct {
 	address   uint64
 	addressOk bool
-	value     uint32
-	valueOk   bool
+
+	value   uint32
+	valueOk bool
 
 	// the operator that created this value
 	operator string
@@ -78,42 +87,30 @@ func (l *location) String() string {
 	return fmt.Sprintf("%s %08x", l.operator, l.value)
 }
 
-type dwarfOperator func(*loclist) (location, error)
+type loclistOperator func(*loclist) (location, error)
 
 type loclist struct {
-	ctx        loclistContext
-	list       []dwarfOperator
+	coproc loclistCoproc
+	ctx    loclistFramebase
+
+	list       []loclistOperator
 	stack      []location
 	derivation []location
 }
 
-func newLoclistJustContext(ctx loclistContext) *loclist {
+func (sec *loclistSection) newLoclistJustContext(ctx loclistFramebase) *loclist {
 	return &loclist{
-		ctx: ctx,
+		coproc: sec.coproc,
+		ctx:    ctx,
 	}
 }
 
-type commitLoclist func(start, end uint64, loc *loclist)
-
-func newLoclistFromSingleValue(ctx loclistContext, addr uint64) (*loclist, error) {
+func (sec *loclistSection) newLoclistFromSingleOperator(ctx loclistFramebase, expr []uint8) (*loclist, error) {
 	loc := &loclist{
-		ctx: ctx,
+		coproc: sec.coproc,
+		ctx:    ctx,
 	}
-	op := func(loc *loclist) (location, error) {
-		return location{
-			value:   uint32(addr),
-			valueOk: true,
-		}, nil
-	}
-	loc.list = append(loc.list, op)
-	return loc, nil
-}
-
-func newLoclistFromSingleOperator(ctx loclistContext, expr []uint8) (*loclist, error) {
-	loc := &loclist{
-		ctx: ctx,
-	}
-	op, n := decodeDWARFoperation(expr, 0)
+	op, n := sec.decodeLoclistOperation(expr)
 	if n == 0 {
 		return nil, fmt.Errorf("unknown expression operator %02x", expr[0])
 	}
@@ -121,13 +118,10 @@ func newLoclistFromSingleOperator(ctx loclistContext, expr []uint8) (*loclist, e
 	return loc, nil
 }
 
-func newLoclist(ctx loclistContext, debug_loc *loclistSection, debug_frame *frameSection,
-	ptr int64, compilationUnitAddress uint64,
-	commit commitLoclist) error {
+type commitLoclist func(start, end uint64, loc *loclist)
 
-	if debug_loc == nil {
-		return fmt.Errorf("no location list information")
-	}
+func (sec *loclistSection) newLoclist(ctx loclistFramebase, ptr int64,
+	compilationUnitAddress uint64, commit commitLoclist) error {
 
 	// "Location lists, which are used to describe objects that have a limited lifetime or change
 	// their location during their lifetime. Location lists are more completely described below."
@@ -158,9 +152,9 @@ func newLoclist(ctx loclistContext, debug_loc *loclistSection, debug_frame *fram
 	baseAddress := compilationUnitAddress
 
 	// start and end address. this will be updated at the end of every for loop iteration
-	startAddress := uint64(debug_loc.ByteOrder.Uint32(debug_loc.data[ptr:]))
+	startAddress := uint64(sec.byteOrder.Uint32(sec.data[ptr:]))
 	ptr += 4
-	endAddress := uint64(debug_loc.ByteOrder.Uint32(debug_loc.data[ptr:]))
+	endAddress := uint64(sec.byteOrder.Uint32(sec.data[ptr:]))
 	ptr += 4
 
 	// "The end of any given location list is marked by an end of list entry, which consists of a 0 for the
@@ -169,7 +163,8 @@ func newLoclist(ctx loclistContext, debug_loc *loclistSection, debug_frame *fram
 	// program". page 31 of "DWARF4 Standard"
 	for !(startAddress == 0x0 && endAddress == 0x0) {
 		loc := &loclist{
-			ctx: ctx,
+			coproc: sec.coproc,
+			ctx:    ctx,
 		}
 
 		// "A base address selection entry consists of:
@@ -187,14 +182,14 @@ func newLoclist(ctx loclistContext, debug_loc *loclistSection, debug_frame *fram
 			endAddress -= 1
 
 			// length of expression
-			length := int(debug_loc.ByteOrder.Uint16(debug_loc.data[ptr:]))
+			length := int(sec.byteOrder.Uint16(sec.data[ptr:]))
 			ptr += 2
 
 			// loop through stack operations
 			for length > 0 {
-				r, n := decodeDWARFoperation(debug_loc.data[ptr:], 0)
+				r, n := sec.decodeLoclistOperation(sec.data[ptr:])
 				if n == 0 {
-					return fmt.Errorf("unknown expression operator %02x", debug_loc.data[ptr])
+					return fmt.Errorf("unknown expression operator %02x", sec.data[ptr])
 				}
 
 				// add resolver to variable
@@ -203,7 +198,7 @@ func newLoclist(ctx loclistContext, debug_loc *loclistSection, debug_frame *fram
 				// reduce length value
 				length -= n
 
-				// advance debug_loc pointer by length value
+				// advance sec pointer by length value
 				ptr += int64(n)
 			}
 
@@ -219,22 +214,26 @@ func newLoclist(ctx loclistContext, debug_loc *loclistSection, debug_frame *fram
 		}
 
 		// read next address range
-		startAddress = uint64(debug_loc.ByteOrder.Uint32(debug_loc.data[ptr:]))
+		startAddress = uint64(sec.byteOrder.Uint32(sec.data[ptr:]))
 		ptr += 4
-		endAddress = uint64(debug_loc.ByteOrder.Uint32(debug_loc.data[ptr:]))
+		endAddress = uint64(sec.byteOrder.Uint32(sec.data[ptr:]))
 		ptr += 4
 	}
 
 	return nil
 }
 
-func (loc *loclist) addOperator(r dwarfOperator) {
+func (loc *loclist) addOperator(r loclistOperator) {
 	loc.list = append(loc.list, r)
 }
 
 func (loc *loclist) resolve() (location, error) {
 	if loc.ctx == nil {
 		return location{}, fmt.Errorf("no context")
+	}
+
+	if len(loc.list) == 0 {
+		return location{}, fmt.Errorf("no loclist operations defined")
 	}
 
 	loc.stack = loc.stack[:0]
@@ -265,7 +264,7 @@ func (loc *loclist) resolve() (location, error) {
 	if !r.valueOk {
 		r.address = uint64(r.value)
 		r.addressOk = true
-		r.value, r.valueOk = loc.ctx.coproc().CoProcRead32bit(r.value)
+		r.value, r.valueOk = loc.coproc.CoProcRead32bit(r.value)
 		loc.stack[len(loc.stack)-1] = r
 		loc.derivation[len(loc.stack)-1] = r
 	}

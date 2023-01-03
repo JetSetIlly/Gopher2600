@@ -21,7 +21,6 @@ import (
 	"strings"
 
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/leb128"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
@@ -58,18 +57,23 @@ func (c *frameSectionCIE) String() string {
 	return s.String()
 }
 
+// the coprocessor interface required by the frame section
+type frameCoproc interface {
+	CoProcRegister(n int) (uint32, bool)
+}
+
 // information about the structure of call frame information can be found in
 // the "DWARF-4 Specification" in section 6.4
 type frameSection struct {
-	cart CartCoProcDeveloper
-	cie  map[uint32]*frameSectionCIE
-	fde  []*frameSectionFDE
+	coproc frameCoproc
+	cie    map[uint32]*frameSectionCIE
+	fde    []*frameSectionFDE
 }
 
-func newFrameSection(ef *elf.File, cart CartCoProcDeveloper, origin uint64) (*frameSection, error) {
+func newFrameSection(ef *elf.File, coproc frameCoproc, origin uint64) (*frameSection, error) {
 	frm := &frameSection{
-		cart: cart,
-		cie:  make(map[uint32]*frameSectionCIE),
+		coproc: coproc,
+		cie:    make(map[uint32]*frameSectionCIE),
 	}
 
 	data, err := relocateELFSection(ef, ".debug_frame")
@@ -187,14 +191,12 @@ func newFrameSection(ef *elf.File, cart CartCoProcDeveloper, origin uint64) (*fr
 	return frm, nil
 }
 
-// coproc implements the loclistContext interface
+// coproc implements the loclistFramebase interface
 func (fr *frameSection) framebase() (uint64, error) {
-	coproc := fr.coproc()
-
 	// TODO: replace magic number with a PC mnemonic. the mnemonic can then
 	// refer to appropriate register for the coprocessor. the value of 15 is
 	// fine for the ARM coprocessor
-	addr, ok := coproc.CoProcRegister(15)
+	addr, ok := fr.coproc.CoProcRegister(15)
 	if !ok {
 		return 0, fmt.Errorf("cannot retrieve value from PC of coprocessor")
 	}
@@ -240,16 +242,11 @@ func (fr *frameSection) framebase() (uint64, error) {
 	}
 
 	var framebase uint32
-	framebase, ok = coproc.CoProcRegister(tab.rows[1].cfaRegister)
+	framebase, ok = fr.coproc.CoProcRegister(tab.rows[1].cfaRegister)
 	if !ok {
 		return 0, fmt.Errorf("error retreiving framebase from register %d", tab.rows[1].cfaRegister)
 	}
 	framebase += tab.rows[1].cfaOffset
 
 	return uint64(framebase), nil
-}
-
-// coproc implements the loclistContext interface
-func (fr *frameSection) coproc() mapper.CartCoProc {
-	return fr.cart.GetCoProc()
 }

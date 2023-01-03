@@ -18,8 +18,6 @@ package developer
 import (
 	"fmt"
 	"strings"
-
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 )
 
 // SourceFileContent lists the lines in a source file
@@ -124,14 +122,20 @@ func (ln *SourceLine) IsStub() bool {
 }
 
 // SourceRange is used to specify the effective start and end addresses of a
-// function or a variable
+// function or a variable.
 type SourceRange struct {
-	Start uint64
-	End   uint64
+	Start  uint64
+	End    uint64
+	Inline bool
 }
 
+// String returns the start/end addresses of the range. If the range is inlined
+// then the addresses are printed with square brackets.
 func (r SourceRange) String() string {
-	return fmt.Sprintf("%08x to %08x", r.Start, r.End)
+	if r.Inline {
+		return fmt.Sprintf("[%08x to %08x]", r.Start, r.End)
+	}
+	return fmt.Sprintf("(%08x to %08x)", r.Start, r.End)
 }
 
 // InRange returns true if address is in range of start and end addresses
@@ -151,11 +155,7 @@ const DriverFunctionName = "<driver>"
 // SourceFunction is a single function identified by the DWARF data or by the
 // ELF symbol table in the case of no DWARF information being available for the
 // function.
-//
-// Use NoSource() to detect if function has no DWARF information.
 type SourceFunction struct {
-	Cart CartCoProcDeveloper
-
 	// name of function
 	Name string
 
@@ -163,7 +163,7 @@ type SourceFunction struct {
 	Range []SourceRange
 
 	// location list. used to identify the frame base of a function
-	loclist *loclist
+	framebaseLoclist *loclist
 
 	// first source line for each instance of the function. note that the first
 	// line of a function may not have any code directly associated with it.
@@ -188,23 +188,18 @@ func (fn *SourceFunction) String() string {
 	s := strings.Builder{}
 	s.WriteString(fn.Name)
 	for _, r := range fn.Range {
-		s.WriteString(fmt.Sprintf(" (%s)", r))
+		s.WriteString(fmt.Sprintf(" %s", r))
 	}
 	return s.String()
 }
 
-// coproc implements the loclistContext interface
-func (fn *SourceFunction) coproc() mapper.CartCoProc {
-	return fn.Cart.GetCoProc()
-}
-
-// framebase implements the loclistContext interface
+// framebase implements the loclistFramebase interface
 func (fn *SourceFunction) framebase() (uint64, error) {
-	if fn.loclist == nil {
+	if fn.framebaseLoclist == nil {
 		return 0, fmt.Errorf("no framebase loclist for %s", fn.Name)
 	}
 
-	loc, err := fn.loclist.resolve()
+	loc, err := fn.framebaseLoclist.resolve()
 	if err != nil {
 		return 0, fmt.Errorf("error resolving framebase loclist: %s", err.Error())
 	}

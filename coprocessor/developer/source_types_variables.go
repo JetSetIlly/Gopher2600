@@ -20,7 +20,6 @@ import (
 	"strings"
 	"sync/atomic"
 
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
@@ -57,8 +56,6 @@ func (local *SourceVariableLocal) match(fn *SourceFunction, addr uint32) (bool, 
 
 // SourceVariable is a single variable identified by the DWARF data.
 type SourceVariable struct {
-	Cart CartCoProcDeveloper
-
 	// name of variable
 	Name string
 
@@ -152,25 +149,6 @@ func (varb *SourceVariable) Child(i int) *SourceVariable {
 	return varb.children[i]
 }
 
-// coproc implements the loclistContext interface
-func (varb *SourceVariable) coproc() mapper.CartCoProc {
-	return varb.Cart.GetCoProc()
-}
-
-// framebase implements the loclistContext interface
-func (varb *SourceVariable) framebase() (uint64, error) {
-	if varb.DeclLine == nil || varb.DeclLine.Function == nil {
-		return 0, fmt.Errorf("no framebase")
-	}
-
-	fb, err := varb.DeclLine.Function.framebase()
-	if err != nil {
-		return 0, fmt.Errorf("framebase for function %s: %v", varb.DeclLine.Function.Name, err)
-	}
-
-	return fb, nil
-}
-
 // Update variable. It should be called periodically before using the return
 // value from Address() or Value()
 //
@@ -204,23 +182,22 @@ func (varb *SourceVariable) resolve() location {
 
 // addVariableChildren populates the variable child array with SourceVariable
 // instances that describe areas of memory related to the parent variable.
-func (varb *SourceVariable) addVariableChildren() {
+func (varb *SourceVariable) addVariableChildren(debug_loc *loclistSection) {
 	if varb.Type.IsArray() {
 		for i := 0; i < varb.Type.ElementCount; i++ {
 			elem := &SourceVariable{
-				Cart:     varb.Cart,
 				Name:     fmt.Sprintf("%s[%d]", varb.Name, i),
 				Type:     varb.Type.ElementType,
 				DeclLine: varb.DeclLine,
 			}
-			elem.loclist = newLoclistJustContext(varb)
+			elem.loclist = debug_loc.newLoclistJustContext(varb)
 
 			if varb.loclist != nil {
 				o := i
 				elem.loclist.addOperator(func(_ *loclist) (location, error) {
 					address, addressOk := varb.Address()
 					address += uint64(o * varb.Type.ElementType.Size)
-					value, ok := varb.Cart.GetCoProc().CoProcRead32bit(uint32(address))
+					value, ok := varb.loclist.coproc.CoProcRead32bit(uint32(address))
 					return location{
 						address:   address,
 						addressOk: addressOk,
@@ -231,7 +208,7 @@ func (varb *SourceVariable) addVariableChildren() {
 			}
 
 			varb.children = append(varb.children, elem)
-			elem.addVariableChildren()
+			elem.addVariableChildren(debug_loc)
 		}
 	}
 
@@ -239,19 +216,18 @@ func (varb *SourceVariable) addVariableChildren() {
 		var offset uint64
 		for _, m := range varb.Type.Members {
 			memb := &SourceVariable{
-				Cart:     varb.Cart,
 				Name:     m.Name,
 				Type:     m.Type,
 				DeclLine: varb.DeclLine,
 			}
-			memb.loclist = newLoclistJustContext(varb)
+			memb.loclist = debug_loc.newLoclistJustContext(varb)
 
 			if varb.loclist != nil {
 				o := offset
 				memb.loclist.addOperator(func(_ *loclist) (location, error) {
 					address, addressOk := varb.Address()
 					address += o
-					value, ok := varb.Cart.GetCoProc().CoProcRead32bit(uint32(address))
+					value, ok := varb.loclist.coproc.CoProcRead32bit(uint32(address))
 					return location{
 						address:   address,
 						addressOk: addressOk,
@@ -262,7 +238,7 @@ func (varb *SourceVariable) addVariableChildren() {
 			}
 
 			varb.children = append(varb.children, memb)
-			memb.addVariableChildren()
+			memb.addVariableChildren(debug_loc)
 
 			offset += uint64(m.Type.Size)
 		}
@@ -270,17 +246,16 @@ func (varb *SourceVariable) addVariableChildren() {
 
 	if varb.Type.IsPointer() {
 		deref := &SourceVariable{
-			Cart:     varb.Cart,
 			Name:     fmt.Sprintf("*%s", varb.Name),
 			Type:     varb.Type.PointerType,
 			DeclLine: varb.DeclLine,
 		}
-		deref.loclist = newLoclistJustContext(varb)
+		deref.loclist = debug_loc.newLoclistJustContext(varb)
 
 		if varb.loclist != nil {
 			deref.loclist.addOperator(func(_ *loclist) (location, error) {
 				address, addressOk := varb.Value()
-				value, ok := varb.Cart.GetCoProc().CoProcRead32bit(address)
+				value, ok := varb.loclist.coproc.CoProcRead32bit(address)
 				return location{
 					address:   uint64(address),
 					addressOk: addressOk,
@@ -291,6 +266,20 @@ func (varb *SourceVariable) addVariableChildren() {
 		}
 
 		varb.children = append(varb.children, deref)
-		deref.addVariableChildren()
+		deref.addVariableChildren(debug_loc)
 	}
+}
+
+// framebase implements the loclistFramebase interface
+func (varb *SourceVariable) framebase() (uint64, error) {
+	if varb.DeclLine == nil || varb.DeclLine.Function == nil {
+		return 0, fmt.Errorf("no framebase")
+	}
+
+	fb, err := varb.DeclLine.Function.framebase()
+	if err != nil {
+		return 0, fmt.Errorf("framebase for function %s: %v", varb.DeclLine.Function.Name, err)
+	}
+
+	return fb, nil
 }
