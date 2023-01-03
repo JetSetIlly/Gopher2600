@@ -79,22 +79,19 @@ func (win *winCoProcLocals) debuggerDraw() {
 }
 
 func (win *winCoProcLocals) draw() {
+	var noSource bool
+
+	// borrow source only so that we can check if whether to draw the window fully
 	win.img.dbg.CoProcDev.BorrowSource(func(src *developer.Source) {
-		if src == nil {
-			imgui.Text("No source files available")
-			return
-		}
-
-		if len(src.Filenames) == 0 {
-			imgui.Text("No source files available")
-			return
-		}
-
-		if len(src.SortedLocals.Locals) == 0 {
-			imgui.Text("No local variables in the source")
-			return
-		}
+		noSource = src == nil || len(src.Filenames) == 0 || len(src.SortedLocals.Locals) == 0
 	})
+
+	// exit draw early leaving a message to indicate that there are no local
+	// variables available to display
+	if noSource {
+		imgui.Text("No local variables in the source")
+		return
+	}
 
 	const numColumns = 3
 
