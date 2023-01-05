@@ -167,8 +167,12 @@ func (win *winTimeline) drawTimeline() {
 		rewindOffset += timeline.FrameNum[0]
 	}
 
-	// scanline trace
-	traceSize = imgui.Vec2{X: availableWidth, Y: 50}
+	// list of scanline jitter points to indicate
+	var scanlineJitter []int
+	scanlineJitter = append(scanlineJitter, 0)
+
+	// scanline/coproc/WSYNC trace
+	traceSize = imgui.Vec2{X: availableWidth, Y: 75}
 	imgui.BeginChildV("##timelinetrace", traceSize, false, imgui.WindowFlagsNoMove)
 	pos = imgui.CursorScreenPos()
 
@@ -184,10 +188,20 @@ func (win *winTimeline) drawTimeline() {
 
 		// add jitter to trace to indicate changes in value through exaggeration
 		if i > 0 {
-			if timeline.TotalScanlines[i] < timeline.TotalScanlines[i-1] {
-				y++
-			} else if timeline.TotalScanlines[i] > timeline.TotalScanlines[i-1] {
-				y--
+			if timeline.TotalScanlines[i] != timeline.TotalScanlines[i-1] {
+
+				// add to jitter history if it hasn't been updated for a while
+				prev := scanlineJitter[len(scanlineJitter)-1]
+				j := i - traceOffset
+				if j-prev > 3 {
+					scanlineJitter = append(scanlineJitter, j)
+				}
+
+				if timeline.TotalScanlines[i] < timeline.TotalScanlines[i-1] {
+					y++
+				} else if timeline.TotalScanlines[i] > timeline.TotalScanlines[i-1] {
+					y--
+				}
 			}
 		}
 
@@ -195,7 +209,7 @@ func (win *winTimeline) drawTimeline() {
 			imgui.Vec2{X: x + traceWidth, Y: y + traceHeight},
 			win.img.cols.timelineScanlines)
 
-		// plottin timeline counts only if the counts entry is valid
+		// plotting timeline counts only if the counts entry is valid
 
 		// plot WSYNC from the bottom
 		y = pos.Y + traceSize.Y
@@ -277,6 +291,23 @@ func (win *winTimeline) drawTimeline() {
 	traceSize = imgui.Vec2{X: availableWidth, Y: frameIndicatorRadius}
 	imgui.BeginChildV("##timelinetrace_current", traceSize, false, imgui.WindowFlagsNoMove)
 	pos = imgui.CursorScreenPos()
+
+	for _, i := range scanlineJitter[1:] {
+		dl.AddTriangleFilled(
+			imgui.Vec2{
+				X: pos.X + float32(i*traceWidth) - frameIndicatorRadius,
+				Y: pos.Y + frameIndicatorRadius*2,
+			},
+			imgui.Vec2{
+				X: pos.X + float32(i*traceWidth),
+				Y: pos.Y,
+			},
+			imgui.Vec2{
+				X: pos.X + float32(i*traceWidth) + frameIndicatorRadius,
+				Y: pos.Y + frameIndicatorRadius*2,
+			},
+			win.img.cols.timelineScanlines)
+	}
 
 	// comparison frame indicator
 	if win.img.lz.Rewind.Comparison != nil {
