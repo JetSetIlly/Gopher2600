@@ -96,6 +96,7 @@ func (l *logger) log(tag, detail string) {
 
 	if l.echo != nil {
 		l.echo.Write([]byte(e.String()))
+		l.echo.Write([]byte("\n"))
 	}
 }
 
@@ -112,6 +113,10 @@ func (l *logger) clear() {
 }
 
 func (l *logger) write(output io.Writer) {
+	if output == nil {
+		return
+	}
+
 	l.crit.Lock()
 	defer l.crit.Unlock()
 
@@ -125,34 +130,45 @@ func (l *logger) writeRecent(output io.Writer) {
 	l.crit.Lock()
 	defer l.crit.Unlock()
 
-	for _, e := range l.entries[l.recentStart:] {
-		io.WriteString(output, e.String())
-		io.WriteString(output, "\n")
+	if output != nil {
+		for _, e := range l.entries[l.recentStart:] {
+			io.WriteString(output, e.String())
+			io.WriteString(output, "\n")
+		}
 	}
 
 	l.recentStart = len(l.entries)
 }
 
 func (l *logger) tail(output io.Writer, number int) {
+	if output == nil {
+		return
+	}
+
 	l.crit.Lock()
 	defer l.crit.Unlock()
 
-	s := len(l.entries) - number
-	if s < 0 {
-		s = 0
+	var n int
+
+	n = len(l.entries) - number
+	if n < 0 {
+		n = 0
 	}
 
-	for _, e := range l.entries[s:] {
+	for _, e := range l.entries[n:] {
 		io.WriteString(output, e.String())
 		io.WriteString(output, "\n")
 	}
 }
 
-func (l *logger) setEcho(output io.Writer) {
+func (l *logger) setEcho(output io.Writer, writeRecent bool) {
 	l.crit.Lock()
-	defer l.crit.Unlock()
-
 	l.echo = output
+	l.crit.Unlock()
+
+	if writeRecent {
+		l.writeRecent(output)
+	}
 }
 
 func (l *logger) borrowLog(f func([]Entry)) {

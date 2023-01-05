@@ -60,9 +60,9 @@ func Tail(output io.Writer, number int) {
 	central.tail(output, number)
 }
 
-// SetEcho to print new entries to os.Stdout.
-func SetEcho(output io.Writer) {
-	central.setEcho(output)
+// SetEcho prints log entries to io.Writer.
+func SetEcho(output io.Writer, writeRecent bool) {
+	central.setEcho(output, writeRecent)
 }
 
 // BorrowLog gives the provided function the critial section and access to the

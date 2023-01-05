@@ -21,6 +21,7 @@ import (
 	"math/rand"
 	"os"
 	"os/signal"
+	"runtime"
 	"strings"
 	"time"
 
@@ -210,6 +211,8 @@ func main() {
 // launch is called from main() as a goroutine. uses mainSync instance to
 // indicate gui creation and to quit.
 func launch(sync *mainSync) {
+	logger.Log("runtime", fmt.Sprintf("number of cores being used: %d", runtime.NumCPU()))
+
 	// we generate random numbers in some places. seed the generator with the
 	// current time
 	rand.Seed(int64(time.Now().Nanosecond()))
@@ -334,9 +337,9 @@ func emulate(emulationMode govern.Mode, md *modalflag.Modes, sync *mainSync) err
 	// and available via the debugger but will not be "echoed" to the terminal,
 	// unless this option is on
 	if *opts.Log {
-		logger.SetEcho(logger.NewColorizer(os.Stdout))
+		logger.SetEcho(os.Stdout, true)
 	} else {
-		logger.SetEcho(nil)
+		logger.SetEcho(nil, false)
 	}
 
 	// turn off fallback ctrl-c handling. this so that the debugger can handle
@@ -525,9 +528,9 @@ func perform(md *modalflag.Modes, sync *mainSync) error {
 
 	// set debugging log echo
 	if *log {
-		logger.SetEcho(logger.NewColorizer(os.Stdout))
+		logger.SetEcho(os.Stdout, true)
 	} else {
-		logger.SetEcho(nil)
+		logger.SetEcho(nil, false)
 	}
 
 	switch len(md.RemainingArgs()) {
@@ -716,10 +719,10 @@ with the LOG mode. Note that asking for log output will suppress regression prog
 
 	// set debugging log echo
 	if *log {
-		logger.SetEcho(logger.NewColorizer(os.Stdout))
+		logger.SetEcho(os.Stdout, true)
 		md.Output = &nopWriter{}
 	} else {
-		logger.SetEcho(nil)
+		logger.SetEcho(nil, false)
 	}
 
 	switch len(md.RemainingArgs()) {
