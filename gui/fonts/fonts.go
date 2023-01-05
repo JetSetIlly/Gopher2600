@@ -81,6 +81,8 @@ const (
 	Pencil                 = '\uf303'
 	NoVSYNC                = '\uf188'
 	Cancel                 = '\uf057'
+	TV                     = '\uf108'
+	Geometry               = '\uf568'
 )
 
 // The first and last unicode points used in the application. We use this to

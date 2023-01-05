@@ -23,6 +23,7 @@ import (
 	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/disassembly"
+	"github.com/jetsetilly/gopher2600/gui/fonts"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/vcs"
 	"github.com/jetsetilly/gopher2600/hardware/television/coords"
@@ -295,6 +296,8 @@ func (win *winDbgScr) draw() {
 	win.toolbarHeight = imguiMeasureHeight(func() {
 		// status line
 		imgui.Spacing()
+
+		imgui.SetCursorPos(imgui.CursorPos().Plus(imgui.Vec2{win.imagePadding.X, 0.0}))
 		win.drawCoordsLine()
 
 		// options line
@@ -354,20 +357,81 @@ func (win *winDbgScr) drawSpecCombo() {
 }
 
 func (win *winDbgScr) drawCoordsLine() {
-	imgui.Text("")
-	imgui.SameLineV(0, 15)
+	flgs := imgui.TableFlagsSizingFixedFit
+	flgs |= imgui.TableFlagsBordersInnerV
+	if imgui.BeginTableV("tvcoords", 5, imgui.TableFlagsSizingFixedFit, imgui.Vec2{0.0, 0.0}, 0.0) {
+		imgui.TableSetupColumnV("##tvcoords_icon", imgui.TableColumnFlagsNone, imguiTextWidth(2), 0)
+		imgui.TableSetupColumnV("##tvcoords_frame", imgui.TableColumnFlagsNone, imguiTextWidth(10), 1)
+		imgui.TableSetupColumnV("##tvcoords_scanline", imgui.TableColumnFlagsNone, imguiTextWidth(13), 2)
+		imgui.TableSetupColumnV("##tvcoords_clock", imgui.TableColumnFlagsNone, imguiTextWidth(10), 3)
 
-	// TV coordinates
-	imgui.Text(win.img.lz.TV.Coords.String())
+		imgui.TableNextRow()
 
-	// tv signal information
-	imgui.SameLineV(0, 20)
-	imgui.Text(win.img.lz.TV.LastSignal.String())
+		imgui.TableNextColumn()
+		imgui.Text(string(fonts.TV))
 
-	// unsynced indicator
-	if !win.scr.crit.frameInfo.VSync {
-		imgui.SameLineV(0, 20)
-		imgui.Text("UNSYNCED")
+		// show geometry tooltip if this isn't frame zero
+		frameInfo := win.img.screen.crit.frameInfo
+		if frameInfo.FrameNum != 0 || win.img.lz.TV.Coords.Frame != 0 {
+			imguiTooltip(func() {
+				frameInfo := win.img.screen.crit.frameInfo
+				flgs := imgui.TableFlagsSizingFixedFit
+
+				imgui.Text("TV Screen Geometry")
+				imgui.Spacing()
+				imgui.Separator()
+				imgui.Spacing()
+
+				if imgui.BeginTableV("geometry_tooltip", 2, flgs, imgui.Vec2{0.0, 0.0}, 0.0) {
+					imgui.TableSetupColumnV("##geometry_tooltip_desc", imgui.TableColumnFlagsNone, imguiTextWidth(9), 0)
+					imgui.TableSetupColumnV("##geometry_tooltip_val", imgui.TableColumnFlagsNone, imguiTextWidth(3), 1)
+
+					imgui.TableNextRow()
+					imgui.TableNextColumn()
+					imgui.Text("Scanlines")
+					imgui.TableNextColumn()
+					imgui.Text(fmt.Sprintf("%d", frameInfo.TotalScanlines))
+
+					imgui.TableNextRow()
+					imgui.TableNextColumn()
+					imgui.Text("Top")
+					imgui.TableNextColumn()
+					imgui.Text(fmt.Sprintf("%d", frameInfo.VisibleTop))
+
+					imgui.TableNextRow()
+					imgui.TableNextColumn()
+					imgui.Text("Bottom")
+					imgui.TableNextColumn()
+					imgui.Text(fmt.Sprintf("%d", frameInfo.VisibleBottom))
+
+					imgui.EndTable()
+				}
+
+				imgui.Spacing()
+				imgui.Separator()
+				imgui.Spacing()
+
+				imgui.Text(fmt.Sprintf("for Frame %d", frameInfo.FrameNum))
+			}, true)
+		}
+
+		imgui.TableNextColumn()
+		imgui.Text(fmt.Sprintf("Frame: %d", win.img.lz.TV.Coords.Frame))
+
+		imgui.TableNextColumn()
+		imgui.Text(fmt.Sprintf("Scanline: %d", win.img.lz.TV.Coords.Scanline))
+
+		imgui.TableNextColumn()
+		imgui.Text(fmt.Sprintf("Clock: %d", win.img.lz.TV.Coords.Clock))
+
+		imgui.TableNextColumn()
+		imgui.Text(win.img.lz.TV.LastSignal.String())
+		if !win.scr.crit.frameInfo.VSync {
+			imgui.SameLineV(10, 0)
+			imgui.Text("UNSYNCED")
+		}
+
+		imgui.EndTable()
 	}
 }
 

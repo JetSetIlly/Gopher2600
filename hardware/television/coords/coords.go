@@ -41,8 +41,7 @@ type TelevisionCoords struct {
 }
 
 func (c TelevisionCoords) String() string {
-	return fmt.Sprintf("Frame: %-4d  Scanline: %-3d    Clock: %-3d",
-		c.Frame, c.Scanline, c.Clock)
+	return fmt.Sprintf("Frame: %d  Scanline: %03d  Clock: %03d", c.Frame, c.Scanline, c.Clock)
 }
 
 // Equal compares two instances of TelevisionCoords and return true if
