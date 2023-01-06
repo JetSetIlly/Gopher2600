@@ -151,6 +151,8 @@ func (win *winCoProcSource) id() string {
 	return winCoProcSourceID
 }
 
+const sourcePopupID = "sourcePopupID"
+
 func (win *winCoProcSource) debuggerDraw() {
 	if !win.img.lz.Cart.HasCoProcBus {
 		return
@@ -248,7 +250,13 @@ func (win *winCoProcSource) draw() {
 		}
 
 		// source code view
+		imgui.BeginGroup()
 		win.drawSource(src)
+		imgui.EndGroup()
+
+		if imgui.IsMouseDown(1) && imgui.IsItemHovered() {
+			imgui.OpenPopup(sourcePopupID)
+		}
 
 		// options toolbar at foot of window
 		win.optionsHeight = imguiMeasureHeight(func() {
@@ -266,11 +274,14 @@ func (win *winCoProcSource) draw() {
 			imgui.Checkbox("Highlight Comments & String Literals", &win.syntaxHighlighting)
 			imgui.SameLineV(0, 20)
 			imgui.Checkbox("Show Tooltip", &win.showTooltip)
-			imgui.SameLineV(0, 20)
-			if imgui.Button(fmt.Sprintf("%c Save to CSV", fonts.Disk)) {
+		})
+
+		if imgui.BeginPopup(sourcePopupID) {
+			if imgui.Selectable(fmt.Sprintf("%c Save Source to CSV", fonts.Disk)) {
 				win.saveToCSV(src)
 			}
-		})
+			imgui.EndPopup()
+		}
 	})
 }
 

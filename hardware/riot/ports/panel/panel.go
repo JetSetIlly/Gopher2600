@@ -37,6 +37,8 @@ type Panel struct {
 	color         bool
 	selectPressed bool
 	resetPressed  bool
+
+	active int
 }
 
 // NewPanel is the preferred method of initialisation for the Panel type.
@@ -213,9 +215,13 @@ func (pan *Panel) Update(data chipbus.ChangedRegister) bool {
 
 // Step implements the Peripheral interface.
 func (pan *Panel) Step() {
+	if pan.active > 0 {
+		pan.active--
+	}
 }
 
-// IsActive implements the ports.Peripheral interface.
+// IsActive implements the ports.Peripheral interface. Note that it only
+// responds to the select and reset buttons being pressed/held.
 func (pan *Panel) IsActive() bool {
-	return false
+	return pan.selectPressed || pan.resetPressed
 }

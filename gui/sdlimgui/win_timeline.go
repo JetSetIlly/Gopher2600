@@ -17,11 +17,15 @@ package sdlimgui
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/go-gl/gl/v3.2-core/gl"
 	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/curated"
+	"github.com/jetsetilly/gopher2600/gui/fonts"
 	"github.com/jetsetilly/gopher2600/hardware/television/specification"
+	"github.com/jetsetilly/gopher2600/logger"
+	"github.com/jetsetilly/gopher2600/resources/unique"
 	"github.com/jetsetilly/gopher2600/thumbnailer"
 )
 
@@ -68,6 +72,8 @@ func (win *winTimeline) init() {
 func (win *winTimeline) id() string {
 	return winTimelineID
 }
+
+const timelinePopupID = "timelinePopupID"
 
 func (win *winTimeline) debuggerDraw() {
 	// receive new thumbnail data and copy to texture
@@ -343,7 +349,10 @@ func (win *winTimeline) drawTimeline() {
 
 	// hover and clicking works on the group
 
-	if imgui.IsMouseDown(0) && (hovered || win.rewindingActive) {
+	if imgui.IsMouseDown(1) && hovered {
+		imgui.OpenPopup(timelinePopupID)
+
+	} else if imgui.IsMouseDown(0) && (hovered || win.rewindingActive) {
 		win.rewindingActive = true
 
 		// making sure we only call PushRewind() when we need to. also,
@@ -432,5 +441,50 @@ func (win *winTimeline) drawTimeline() {
 				}, false)
 			}
 		}
+	}
+
+	if imgui.BeginPopup(timelinePopupID) {
+		if imgui.Selectable(fmt.Sprintf("%c Save Timeline to CSV", fonts.Disk)) {
+			win.saveToCSV()
+		}
+		imgui.EndPopup()
+	}
+}
+
+func (win *winTimeline) saveToCSV() {
+	// open unique file
+	fn := unique.Filename("timeline", win.img.lz.Cart.Shortname)
+	fn = fmt.Sprintf("%s.csv", fn)
+	f, err := os.Create(fn)
+	if err != nil {
+		logger.Logf("sdlimgui", "could not save timeline CSV: %v", err)
+		return
+	}
+	defer func() {
+		err := f.Close()
+		if err != nil {
+			logger.Logf("sdlimgui", "error saving timeline CSV: %v", err)
+		}
+	}()
+
+	f.WriteString("Frame Num,")
+	f.WriteString("Scanlines,")
+	f.WriteString("CoProc,")
+	f.WriteString("WSYNC,")
+	f.WriteString("Left Player,")
+	f.WriteString("Right Player,")
+	f.WriteString("Panel")
+	f.WriteString("\n")
+
+	timeline := win.img.lz.Rewind.Timeline
+	for i, n := range timeline.FrameNum {
+		f.WriteString(fmt.Sprintf("%d,", n))
+		f.WriteString(fmt.Sprintf("%d,", timeline.TotalScanlines[i]))
+		f.WriteString(fmt.Sprintf("%d,", timeline.Counts[i].CoProc))
+		f.WriteString(fmt.Sprintf("%d,", timeline.Counts[i].WSYNC))
+		f.WriteString(fmt.Sprintf("%v,", timeline.LeftPlayerInput[i]))
+		f.WriteString(fmt.Sprintf("%v,", timeline.RightPlayerInput[i]))
+		f.WriteString(fmt.Sprintf("%v,", timeline.PanelInput[i]))
+		f.WriteString("\n")
 	}
 }

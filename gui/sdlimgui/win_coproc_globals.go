@@ -69,6 +69,8 @@ func (win *winCoProcGlobals) id() string {
 	return winCoProcGlobalsID
 }
 
+const globalsPopupID = "globalsPopupID"
+
 func (win *winCoProcGlobals) debuggerDraw() {
 	if !win.debuggerOpen {
 		return
@@ -226,16 +228,23 @@ func (win *winCoProcGlobals) draw() {
 
 		imgui.EndTable()
 
+		if imgui.IsMouseDown(1) && imgui.IsItemHovered() {
+			imgui.OpenPopup(globalsPopupID)
+		}
+
 		win.optionsHeight = imguiMeasureHeight(func() {
 			imgui.Spacing()
 			imgui.Separator()
 			imgui.Spacing()
 			imgui.Checkbox("List all globals (in all files)", &win.showAllGlobals)
-			imgui.SameLineV(0, 20)
-			if imgui.Button(fmt.Sprintf("%c Save to CSV", fonts.Disk)) {
+		})
+
+		if imgui.BeginPopup(globalsPopupID) {
+			if imgui.Selectable(fmt.Sprintf("%c Save Globals to CSV", fonts.Disk)) {
 				win.saveToCSV(src)
 			}
-		})
+			imgui.EndPopup()
+		}
 	})
 }
 
