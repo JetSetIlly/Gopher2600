@@ -35,8 +35,9 @@ type platform struct {
 
 	gamepad []*sdl.GameController
 
-	// trickle left mouse button
-	trickleLeftMouseButton trickleMouseButton
+	// trickle mouse buttons
+	trickleMouseButtonLeft  trickleMouseButton
+	trickleMouseButtonRight trickleMouseButton
 }
 
 // trickle mouse button is a mechanism that allows a mouse button down/up event
@@ -184,14 +185,25 @@ func (plt *platform) newFrame() {
 			plt.img.io.SetMouseButtonDown(i, (state&sdl.Button(button)) != 0)
 		}
 
-		// trickle event supercedes previous SetMouseButtonDown() call
-		switch plt.trickleLeftMouseButton {
+		// trickle event handling will supercede any previous SetMouseButtonDown() calls
+
+		switch plt.trickleMouseButtonLeft {
 		case trickleMouseDown:
 			plt.img.io.SetMouseButtonDown(0, true)
-			plt.trickleLeftMouseButton = trickleMouseUp
+			plt.trickleMouseButtonLeft = trickleMouseUp
 		case trickleMouseUp:
 			plt.img.io.SetMouseButtonDown(0, false)
-			plt.trickleLeftMouseButton = trickleMouseNone
+			plt.trickleMouseButtonLeft = trickleMouseNone
+		case trickleMouseNone:
+		}
+
+		switch plt.trickleMouseButtonRight {
+		case trickleMouseDown:
+			plt.img.io.SetMouseButtonDown(1, true)
+			plt.trickleMouseButtonRight = trickleMouseUp
+		case trickleMouseUp:
+			plt.img.io.SetMouseButtonDown(1, false)
+			plt.trickleMouseButtonRight = trickleMouseNone
 		case trickleMouseNone:
 		}
 	}

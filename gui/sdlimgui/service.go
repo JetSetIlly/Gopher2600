@@ -53,11 +53,12 @@ func (img *SdlImgui) Service() {
 	// poll for sdl event or timeout
 	ev := img.polling.wait()
 
-	// whether a left mouse button down event has been polled. if it has and we
-	// poll an up event in the same PollEvent() loop below, then we need to
+	// whether mouse button down event have been polled. if it has and we poll
+	// an up event in the same PollEvent() loop below, then we need to
 	// "trickle" the up and down events over two frames. see commentary for
 	// trickleMouseButton type
 	leftMouseDownPolled := false
+	rightMouseDownPolled := false
 
 	// some events we want to service even if an event channel has not been
 	// set. very few "modes" will not set a channel but we should be mindful of
@@ -98,7 +99,7 @@ func (img *SdlImgui) Service() {
 					leftMouseDownPolled = true
 				case sdl.MOUSEBUTTONUP:
 					if leftMouseDownPolled {
-						img.plt.trickleLeftMouseButton = trickleMouseDown
+						img.plt.trickleMouseButtonLeft = trickleMouseDown
 					}
 				}
 
@@ -109,8 +110,19 @@ func (img *SdlImgui) Service() {
 
 			case sdl.BUTTON_RIGHT:
 				button = userinput.MouseButtonRight
+				switch ev.Type {
+				case sdl.MOUSEBUTTONDOWN:
+					rightMouseDownPolled = true
+				case sdl.MOUSEBUTTONUP:
+					if rightMouseDownPolled {
+						img.plt.trickleMouseButtonRight = trickleMouseDown
+					}
 
-				if ev.Type == sdl.MOUSEBUTTONUP {
+					// handling of mouse capture/release is done outside of the outside of trickle
+					// mouse polling this means that capturing the mouse requires a physical click
+					// on the macintosh touchpad. I think this is okay but if it's not, the
+					// following code will need to be called during trickle resolution (probably
+					// just a function pointer)
 					if img.isCaptured() {
 						img.setCapture(false)
 						if !img.isPlaymode() {
