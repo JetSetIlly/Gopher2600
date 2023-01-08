@@ -88,7 +88,7 @@ func newWinDisasm(img *SdlImgui) (window, error) {
 }
 
 func (win *winDisasm) init() {
-	win.widthBreak = imgui.CalcTextSize("! ", true, 0).X
+	win.widthBreak = imgui.CalcTextSize(string(fonts.Breakpoint)+" ", true, 0).X
 	win.widthAddr = imgui.CalcTextSize("$FFFF ", true, 0).X
 	win.widthOperator = imgui.CalcTextSize("AND ", true, 0).X
 	win.widthCycles = imgui.CalcTextSize("2/3 ", true, 0).X
@@ -326,12 +326,12 @@ func (win *winDisasm) startTable() {
 	operandWidth := imgui.ContentRegionAvail().X - imgui.CurrentStyle().ItemSpacing().X*float32(numColumns)
 	operandWidth -= win.widthSum
 
-	imgui.TableSetupColumnV("break", imgui.TableColumnFlagsNone, win.widthBreak, 0)
-	imgui.TableSetupColumnV("address", imgui.TableColumnFlagsNone, win.widthAddr, 1)
-	imgui.TableSetupColumnV("operator", imgui.TableColumnFlagsNone, win.widthOperator, 2)
-	imgui.TableSetupColumnV("operand", imgui.TableColumnFlagsNone, operandWidth, 3)
-	imgui.TableSetupColumnV("cycles", imgui.TableColumnFlagsNone, win.widthCycles, 4)
-	imgui.TableSetupColumnV("notes", imgui.TableColumnFlagsNone, win.widthNotes, 5)
+	imgui.TableSetupColumnV("##break", imgui.TableColumnFlagsNone, win.widthBreak, 0)
+	imgui.TableSetupColumnV("##address", imgui.TableColumnFlagsNone, win.widthAddr, 1)
+	imgui.TableSetupColumnV("##operator", imgui.TableColumnFlagsNone, win.widthOperator, 2)
+	imgui.TableSetupColumnV("##operand", imgui.TableColumnFlagsNone, operandWidth, 3)
+	imgui.TableSetupColumnV("##cycles", imgui.TableColumnFlagsNone, win.widthCycles, 4)
+	imgui.TableSetupColumnV("##notes", imgui.TableColumnFlagsNone, win.widthNotes, 5)
 }
 
 // drawBank specified by bank argument.
@@ -644,7 +644,14 @@ func (win *winDisasm) drawEntry(e *disassembly.Entry, focusAddr uint16, onBank b
 	imgui.PushStyleColor(imgui.StyleColorHeaderActive, win.img.cols.DisasmHover)
 	defer imgui.PopStyleColorV(2)
 
-	imgui.SelectableV("", false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{0, 0})
+	// first column contains the breakpoint indicator and is also the selectable for the entire row
+	if hasPCbreak {
+		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmBreakAddress)
+		imgui.SelectableV(string(fonts.Breakpoint), false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{0, 0})
+		imgui.PopStyleColor()
+	} else {
+		imgui.SelectableV("", false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{0, 0})
+	}
 
 	// single click on the address entry toggles a PC breakpoint
 	if imgui.IsItemHovered() && imgui.IsMouseDoubleClicked(0) {
@@ -706,16 +713,6 @@ func (win *winDisasm) drawEntry(e *disassembly.Entry, focusAddr uint16, onBank b
 		}, true)
 	}
 
-	// breakpoint indicator column. using the same column as the selectable
-	// above (which spans all columns)
-	imgui.SameLine()
-	if win.usingColor {
-		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmBreakAddress)
-	}
-	if hasPCbreak {
-		imgui.Text(fmt.Sprintf("%c", fonts.Breakpoint))
-	}
-
 	// address column
 	imgui.TableNextColumn()
 	if win.usingColor {
@@ -750,7 +747,6 @@ func (win *winDisasm) drawEntry(e *disassembly.Entry, focusAddr uint16, onBank b
 	// 3) the coprocessor is not being executed
 	// 4) the entry to be displayed is the same as the one in the CPU bank
 	//		and address
-	//
 	cyclingIcon := false
 	if !win.img.lz.CPU.LastResult.Final && !win.img.lz.CPU.HasReset && !win.img.lz.Cart.CurrBank.ExecutingCoprocessor {
 		exeAddress := win.img.lz.CPU.LastResult.Address & memorymap.CartridgeBits
@@ -780,6 +776,6 @@ func (win *winDisasm) drawEntry(e *disassembly.Entry, focusAddr uint16, onBank b
 
 	// undo color if necessary
 	if win.usingColor {
-		imgui.PopStyleColorV(5)
+		imgui.PopStyleColorV(4)
 	}
 }

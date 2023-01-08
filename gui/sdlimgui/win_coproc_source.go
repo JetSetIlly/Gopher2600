@@ -142,7 +142,7 @@ func newWinCoProcSource(img *SdlImgui) (window, error) {
 }
 
 func (win *winCoProcSource) init() {
-	win.widthIcon = imgui.CalcTextSize(fmt.Sprintf("%c ", fonts.Chip), true, 0).X
+	win.widthIcon = imgui.CalcTextSize(fmt.Sprintf("%c", fonts.Chip), true, 0).X
 	win.widthStats = imgui.CalcTextSize("00.0% ", true, 0).X
 	win.widthLine = imgui.CalcTextSize("9999 ", true, 0).X
 }
@@ -433,7 +433,7 @@ func (win *winCoProcSource) drawSource(src *developer.Source) {
 		imgui.TableSetupColumnV("##selection", imgui.TableColumnFlagsNone, 0.0, 0)
 
 		// next three columns have fixed width
-		imgui.TableSetupColumnV("##icon", imgui.TableColumnFlagsNone, win.widthIcon, 1)
+		imgui.TableSetupColumnV("##icon", imgui.TableColumnFlagsNone, win.widthIcon*1.5, 1)
 		imgui.TableSetupColumnV("##load", imgui.TableColumnFlagsNone, win.widthStats, 2)
 		imgui.TableSetupColumnV("##number", imgui.TableColumnFlagsNone, win.widthLine, 3)
 
@@ -564,19 +564,16 @@ func (win *winCoProcSource) drawSource(src *developer.Source) {
 
 					// show appropriate icon in the gutter
 					imgui.TableNextColumn()
-					if len(ln.Disassembly) > 0 {
-						if src.CheckBreakpoint(ln) {
-							imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmBreakAddress)
-							imgui.Text(string(fonts.Breakpoint))
-							imgui.PopStyleColor()
-						} else if ln.Bug {
-							imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceBug)
-							imgui.Text(string(fonts.CoProcBug))
-							imgui.PopStyleColor()
-						} else {
-							imgui.Text(string(fonts.Chip))
-						}
-
+					if src.CheckBreakpoint(ln) {
+						imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmBreakAddress)
+						imgui.Text(string(fonts.Breakpoint))
+						imgui.PopStyleColor()
+					} else if ln.Bug {
+						imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceBug)
+						imgui.Text(string(fonts.CoProcBug))
+						imgui.PopStyleColor()
+					} else if len(ln.Disassembly) > 0 {
+						imgui.Text(string(fonts.Chip))
 					}
 
 					// performance statistics

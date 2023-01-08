@@ -454,6 +454,10 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 				// add line to list of lines for the function
 				sl.Function.Lines = append(sl.Function.Lines, sl)
 
+				// breakpoint information
+				sl.Breakable = le.IsStmt
+				sl.BreakAddress = startAddr
+
 				// add disassembly to source line and add source line to linesByAddress
 				for addr := startAddr; addr < endAddr; addr += 2 {
 					// look for address in disassembly

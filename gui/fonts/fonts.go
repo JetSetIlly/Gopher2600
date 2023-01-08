@@ -33,7 +33,7 @@ const (
 	Mouse                  = '\uf8cc'
 	GoingForward           = '\uf01e'
 	Persist                = '\uf021'
-	Breakpoint             = '\uf12a'
+	Breakpoint             = '\uf06a'
 	AudioMute              = '\uf1f6'
 	AudioUnmute            = '\uf0f3'
 	TermPrompt             = '\uf105'

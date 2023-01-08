@@ -90,6 +90,11 @@ type SourceLine struct {
 	// the function the line of source can be found within
 	Function *SourceFunction
 
+	// whether this line can have a breakpoint on it as recommended by the DWARF data. BreakAddress
+	// is meaningless if Breakable is false
+	Breakable    bool
+	BreakAddress uint64
+
 	// plain string of line
 	PlainContent string
 
