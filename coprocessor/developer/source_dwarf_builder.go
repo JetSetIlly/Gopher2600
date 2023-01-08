@@ -555,7 +555,6 @@ func (bld *build) buildVariables(src *Source, origin uint64) error {
 				compilationUnitAddress = l
 
 			} else {
-				logger.Logf("dwarf", "no LowPC attribute for compilation unit")
 				compilationUnitAddress = origin
 			}
 

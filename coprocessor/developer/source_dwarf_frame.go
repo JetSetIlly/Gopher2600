@@ -21,7 +21,6 @@ import (
 	"strings"
 
 	"github.com/jetsetilly/gopher2600/coprocessor/developer/leb128"
-	"github.com/jetsetilly/gopher2600/logger"
 )
 
 type frameSectionFDE struct {
@@ -149,9 +148,6 @@ func newFrameSection(ef *elf.File, coproc frameCoproc, origin uint64) (*frameSec
 			// future reference
 			frm.cie[id] = cie
 
-			// log our finding
-			logger.Logf("dwarf", "frame: CIE: %s", cie.String())
-
 		} else {
 			// Frame Description Entry (FDE)
 			fde := &frameSectionFDE{}
@@ -182,9 +178,6 @@ func newFrameSection(ef *elf.File, coproc frameCoproc, origin uint64) (*frameSec
 			// FDE is complete so we can add it to the FDE collection for
 			// future reference
 			frm.fde = append(frm.fde, fde)
-
-			// log our finding
-			logger.Logf("dwarf", "frame: FDE: %s", fde.String())
 		}
 	}
 
