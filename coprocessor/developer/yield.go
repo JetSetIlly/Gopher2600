@@ -26,25 +26,15 @@ import (
 type YieldedLocal struct {
 	*SourceVariableLocal
 
-	// whether this specific local variable is in resolvable range. when this
-	// value is true, results from Address() and Value() can be used
-	IsResolving bool
-
-	// whether the location of the variable can ever be resolved
-	CanNeverResolve bool
-
-	// whether the location cannot be found because of an error
-	ErrorOnResolve bool
+	// whether this specific local variable is in resolvable range
+	InRange bool
 }
 
 func (local *YieldedLocal) String() string {
-	if local.ErrorOnResolve {
-		return fmt.Sprintf("%s = error during resolving", local.Name)
+	if local.ErrorOnResolve != nil {
+		return fmt.Sprintf("%s = %s", local.Name, local.ErrorOnResolve)
 	}
-	if local.CanNeverResolve {
-		return fmt.Sprintf("%s = can never resolve", local.Name)
-	}
-	if local.IsResolving {
+	if local.InRange {
 		return local.SourceVariableLocal.String()
 	}
 	return fmt.Sprintf("%s = out of scope", local.Name)
@@ -123,7 +113,7 @@ func (dev *Developer) OnYield(instructionPC uint32, reason mapper.YieldReason) {
 		var prevId string
 
 		for _, local := range src.SortedLocals.Locals {
-			inFunction, resolving := local.match(ln.Function, uint32(instructionPC))
+			inFunction, inRange := local.match(ln.Function, uint32(instructionPC))
 
 			// if the variable is in the current function then we always add it
 			// to the list of local variables, even if it's not resolvable. in
@@ -143,12 +133,10 @@ func (dev *Developer) OnYield(instructionPC uint32, reason mapper.YieldReason) {
 				if len(locals) == 0 || id != locals[len(locals)-1].Name {
 					l := &YieldedLocal{
 						SourceVariableLocal: local,
-						IsResolving:         resolving && local.errorOnResolve == nil,
-						CanNeverResolve:     local.loclist == nil || local.errorOnResolve != nil,
-						ErrorOnResolve:      local.errorOnResolve != nil,
+						InRange:             inRange,
 					}
 
-					if resolving {
+					if inRange {
 						locals = append(locals, l)
 						candidate = nil
 					} else {
@@ -184,7 +172,7 @@ func (dev *Developer) OnYield(instructionPC uint32, reason mapper.YieldReason) {
 					// note that we're not checking for the case were two
 					// locals with the same name are resolving because that
 					// should not be possible with C like languages
-					if !prev.IsResolving && local.IsResolving {
+					if !prev.InRange && local.InRange {
 						yld.LocalVariables[len(yld.LocalVariables)-1] = local
 					}
 				} else {

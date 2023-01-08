@@ -43,13 +43,7 @@ func (local *SourceVariableLocal) id() string {
 }
 
 // match returns whether variables is in the function and whether it is
-// resolvable at the beginning of the current source line
-//
-// previous versions of this function (called "find") attempted to match a
-// local variables with a specific source line. however, that didn't work
-// because the variable may not be valid/resolvable until an instruction after
-// the first of the line - and there's no good way of deciding which instruction
-// to break on except to say the first assoicated with the line
+// in range of the specified address
 func (local *SourceVariableLocal) match(fn *SourceFunction, addr uint32) (bool, bool) {
 	return fn == local.DeclLine.Function, local.Range.InRange(uint64(addr))
 }
@@ -69,10 +63,10 @@ type SourceVariable struct {
 	// variable can never be located
 	loclist *loclist
 
-	// if errorOnResolve is not nil then an error was enountered during a
+	// if ErrorOnResolve is not nil then an error was enountered during a
 	// resolve() sequence. the error will be logged when the field is first set
 	// to true
-	errorOnResolve error
+	ErrorOnResolve error
 
 	// most recent resolved value retrieved from emulation
 	cachedLocation atomic.Value // Location
@@ -120,7 +114,6 @@ func (varb *SourceVariable) Value() (uint32, bool) {
 	if r, ok = varb.cachedLocation.Load().(location); !ok {
 		return 0, false
 	}
-
 	return r.value & varb.Type.Mask(), r.valueOk
 }
 
@@ -162,17 +155,19 @@ func (varb *SourceVariable) Update() {
 
 // resolve address/value
 func (varb *SourceVariable) resolve() location {
-	if varb.errorOnResolve != nil {
+	if varb.ErrorOnResolve != nil {
 		return location{}
 	}
 
 	if varb.loclist == nil {
+		varb.ErrorOnResolve = fmt.Errorf("there is no location to resolve")
+		logger.Logf("dwarf", "%s: unresolvable: %v", varb.Name, varb.ErrorOnResolve)
 		return location{}
 	}
 
 	loc, err := varb.loclist.resolve()
 	if err != nil {
-		varb.errorOnResolve = err
+		varb.ErrorOnResolve = err
 		logger.Logf("dwarf", "%s: unresolvable: %v", varb.Name, err)
 		return location{}
 	}

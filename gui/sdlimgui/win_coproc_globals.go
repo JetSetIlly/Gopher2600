@@ -342,6 +342,15 @@ func drawVariableTooltip(varb *developer.SourceVariable, value uint32, cols *img
 	imgui.PushStyleColor(imgui.StyleColorText, cols.CoProcSourceLineNumber)
 	imgui.Text(fmt.Sprintf("Line: %d", varb.DeclLine.LineNumber))
 	imgui.PopStyleColor()
+
+	if varb.ErrorOnResolve != nil {
+		imgui.Spacing()
+		imgui.Separator()
+		imgui.Spacing()
+		imgui.Text(string(fonts.CoProcBug))
+		imgui.SameLine()
+		imgui.Text(varb.ErrorOnResolve.Error())
+	}
 }
 
 func (win *winCoProcGlobals) drawVariable(src *developer.Source, varb *developer.SourceVariable,

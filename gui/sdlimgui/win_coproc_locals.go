@@ -130,22 +130,20 @@ func (win *winCoProcLocals) draw() {
 }
 
 func (win *winCoProcLocals) drawVariableLocal(local *developer.YieldedLocal, nodeID string) {
-	if !local.IsResolving && win.showVisibleOnly {
+	if !local.InRange && win.showVisibleOnly {
 		return
 	}
 
-	if !local.IsResolving {
+	if !local.InRange {
 		imgui.PushStyleVarFloat(imgui.StyleVarAlpha, disabledAlpha)
 		defer imgui.PopStyleVar()
 
 	}
 
-	win.drawVariable(local.SourceVariable, 0, nodeID, local.IsResolving, local.ErrorOnResolve)
+	win.drawVariable(local.SourceVariable, 0, nodeID, local.InRange)
 }
 
-func (win *winCoProcLocals) drawVariable(varb *developer.SourceVariable, indentLevel int,
-	nodeID string, isResolving bool, bugged bool) {
-
+func (win *winCoProcLocals) drawVariable(varb *developer.SourceVariable, indentLevel int, nodeID string, inRange bool) {
 	// update variable
 	win.img.dbg.PushFunction(varb.Update)
 
@@ -153,7 +151,7 @@ func (win *winCoProcLocals) drawVariable(varb *developer.SourceVariable, indentL
 
 	// name of variable as presented. added bug icon as appropriate
 	name := fmt.Sprintf("%s%s", strings.Repeat(" ", IndentDepth*indentLevel), varb.Name)
-	if bugged {
+	if varb.ErrorOnResolve != nil {
 		name = fmt.Sprintf("%s %c", name, fonts.CoProcBug)
 	}
 
@@ -190,13 +188,13 @@ func (win *winCoProcLocals) drawVariable(varb *developer.SourceVariable, indentL
 
 		if win.openNodes[nodeID] {
 			for i := 0; i < varb.NumChildren(); i++ {
-				win.drawVariable(varb.Child(i), indentLevel+1, fmt.Sprint(nodeID, i), isResolving, bugged)
+				win.drawVariable(varb.Child(i), indentLevel+1, fmt.Sprint(nodeID, i), inRange)
 			}
 		}
 
 	} else {
 		value, valueOk := varb.Value()
-		if valueOk && isResolving {
+		if valueOk && inRange {
 			imguiTooltip(func() {
 				drawVariableTooltip(varb, value, win.img.cols)
 			}, true)
@@ -211,7 +209,7 @@ func (win *winCoProcLocals) drawVariable(varb *developer.SourceVariable, indentL
 		imgui.Text(varb.Type.Name)
 		imgui.PopStyleColor()
 
-		if isResolving {
+		if inRange {
 			imgui.TableNextColumn()
 			if valueOk {
 				imgui.Text(fmt.Sprintf(varb.Type.Hex(), value))
