@@ -613,7 +613,7 @@ func (arm *ARM) Run() (mapper.YieldReason, float32) {
 
 		// returing early so we must call OnYield here
 		if arm.dev != nil {
-			arm.dev.OnYield(arm.state.instructionPC, arm.state.yieldReason)
+			arm.dev.OnYield(arm.state.instructionPC, arm.state.registers[rPC], arm.state.yieldReason)
 		}
 
 		return mapper.YieldMemoryAccessError, 0
@@ -947,7 +947,7 @@ func (arm *ARM) run() (mapper.YieldReason, float32) {
 
 	// update yield information
 	if arm.dev != nil {
-		arm.dev.OnYield(arm.state.instructionPC, arm.state.yieldReason)
+		arm.dev.OnYield(arm.state.instructionPC, arm.state.registers[rPC], arm.state.yieldReason)
 	}
 
 	return arm.state.yieldReason, arm.state.cyclesTotal

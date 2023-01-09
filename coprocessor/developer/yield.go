@@ -53,7 +53,7 @@ func (y *YieldState) Cmp(w *YieldState) bool {
 }
 
 // OnYield implements the mapper.CartCoProcDeveloper interface.
-func (dev *Developer) OnYield(instructionPC uint32, reason mapper.YieldReason) {
+func (dev *Developer) OnYield(instructionPC uint32, currentPC uint32, reason mapper.YieldReason) {
 	// do nothing if yield reason is YieldSyncWithVCS
 	//
 	// yielding for this reason is likely to be followed by another yield
@@ -71,8 +71,8 @@ func (dev *Developer) OnYield(instructionPC uint32, reason mapper.YieldReason) {
 	var ln *SourceLine
 	var locals []*YieldedLocal
 
-	// using BorrowSource because we want to make sure the source lock is
-	// released if there is an error and the code panics
+	// using BorrowSource (this is better than just acquiring the lock because we want to make sure
+	// the lock is released if there is an error and the code panics)
 	dev.BorrowSource(func(src *Source) {
 		// make sure that src is valid
 		if src == nil {
@@ -100,6 +100,8 @@ func (dev *Developer) OnYield(instructionPC uint32, reason mapper.YieldReason) {
 			}
 		}
 
+		// candidate is the variable that we want to add but are not sure if
+		// there's a better candidate later in the sorted list
 		var candidate *YieldedLocal
 		commitCandidate := func() {
 			if candidate != nil {
@@ -113,8 +115,6 @@ func (dev *Developer) OnYield(instructionPC uint32, reason mapper.YieldReason) {
 		var prevId string
 
 		for _, local := range src.SortedLocals.Locals {
-			inFunction, inRange := local.match(ln.Function, uint32(instructionPC))
-
 			// if the variable is in the current function then we always add it
 			// to the list of local variables, even if it's not resolvable. in
 			// those cases adding it to the list tells the user that the
@@ -122,25 +122,31 @@ func (dev *Developer) OnYield(instructionPC uint32, reason mapper.YieldReason) {
 			// dividing all local variables by function like this is better
 			// than being strict about scoping rules - if a variable is out of
 			// scope then it is not resolvable
-			if inFunction {
+			if ln.Function == local.DeclLine.Function {
 				id = local.id()
 				if prevId != id {
 					commitCandidate()
 				}
 				prevId = id
 
-				// add new YieldedLocal if it's not been added to list of locals already
+				// we must use currentPC to test whether a local variable is in
+				// range because although we're reporting that the instructionPC is
+				// the breakpoint the machine is in the state defined by currentPC
+				inRange := local.Range.InRange(uint64(currentPC))
+
+				// add new YieldedLocal if a variable of this name has not been
+				// added to list of locals already
+				//
+				// (assumes a list sorted by name, which it should be because
+				// we are inserting from a sorted list)
 				if len(locals) == 0 || id != locals[len(locals)-1].Name {
-					l := &YieldedLocal{
+					candidate = &YieldedLocal{
 						SourceVariableLocal: local,
 						InRange:             inRange,
 					}
 
 					if inRange {
-						locals = append(locals, l)
-						candidate = nil
-					} else {
-						candidate = l
+						commitCandidate()
 					}
 				}
 			}

@@ -42,12 +42,6 @@ func (local *SourceVariableLocal) id() string {
 	return fmt.Sprintf("%s %s", local.Name, local.DeclLine)
 }
 
-// match returns whether variables is in the function and whether it is
-// in range of the specified address
-func (local *SourceVariableLocal) match(fn *SourceFunction, addr uint32) (bool, bool) {
-	return fn == local.DeclLine.Function, local.Range.InRange(uint64(addr))
-}
-
 // SourceVariable is a single variable identified by the DWARF data.
 type SourceVariable struct {
 	// name of variable

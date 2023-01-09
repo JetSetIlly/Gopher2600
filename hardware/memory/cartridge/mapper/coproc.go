@@ -161,10 +161,9 @@ type CartCoProcDeveloper interface {
 	// profiling
 	ProcessProfiling()
 
-	// OnYield is called whenever the ARM yields to the VCS. It communicates
-	// the PC of the most recent instruction and whether the yield is due to a
-	// breakpoint
-	OnYield(instructionPC uint32, reason YieldReason)
+	// OnYield is called whenever the ARM yields to the VCS. It communicates the PC of the most
+	// recent instruction, the current PC (as it is now), and the reason for the yield
+	OnYield(instructionPC uint32, currentPC uint32, reason YieldReason)
 }
 
 // YieldReason specifies the reason for a yield
