@@ -146,8 +146,9 @@ func (mem *Memory) GetArea(area memorymap.Area) DebugBus {
 	panic("memory areas are not mapped correctly")
 }
 
-// read maps an address to the normalised for all memory areas.
-func (mem *Memory) read(address uint16) (uint8, error) {
+// Read is an implementation of CPUBus. Address will be normalised and processed by the correct
+// memory areas.
+func (mem *Memory) Read(address uint16) (uint8, error) {
 	// the address bus value is the literal address masked to the 13 bits
 	// available to the 6507
 	addressBus := address & memorymap.Memtop
@@ -221,14 +222,8 @@ func (mem *Memory) read(address uint16) (uint8, error) {
 	return data, err
 }
 
-// Read is an implementation of CPUBus. Address will be normalised and
-// processed by the correct memory area.
-func (mem *Memory) Read(address uint16) (uint8, error) {
-	return mem.read(address)
-}
-
-// Write is an implementation of CPUBus Address will be normalised and
-// processed by the correct memory areas.
+// Write is an implementation of CPUBus. Address will be normalised and processed by the correct
+// memory areas.
 func (mem *Memory) Write(address uint16, data uint8) error {
 	ma, ar := memorymap.MapAddress(address, false)
 	area := mem.GetArea(ar)
