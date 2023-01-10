@@ -154,8 +154,9 @@ func (cart *Cartridge) Patch(offset int, data uint8) error {
 }
 
 // Read is an implementation of memory.CPUBus.
-func (cart *Cartridge) Read(addr uint16) (uint8, error) {
-	return cart.mapper.Read(addr&memorymap.CartridgeBits, false)
+func (cart *Cartridge) Read(addr uint16) (uint8, uint8, error) {
+	v, err := cart.mapper.Read(addr&memorymap.CartridgeBits, false)
+	return v, 0xff, err
 }
 
 // Write is an implementation of memory.CPUBus.

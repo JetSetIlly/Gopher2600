@@ -193,13 +193,13 @@ func (mem *TIAMemory) LastReadAddress() (bool, uint16) {
 //
 // Returned data should be masked and randomised as appropriate according to
 // the TIADrivenPins mask.
-func (mem *TIAMemory) Read(address uint16) (uint8, error) {
+func (mem *TIAMemory) Read(address uint16) (uint8, uint8, error) {
 	// do not allow reads from memory that do not have symbol name
 	if _, ok := cpubus.TIAReadSymbols[address]; !ok {
-		return 0, curated.Errorf(cpubus.AddressError, address)
+		return 0, TIADrivenPins, curated.Errorf(cpubus.AddressError, address)
 	}
 
-	return mem.memory[address^mem.origin], nil
+	return mem.memory[address^mem.origin], TIADrivenPins, nil
 }
 
 // Write is an implementation of memory.CPUBus. Address must be mapped.

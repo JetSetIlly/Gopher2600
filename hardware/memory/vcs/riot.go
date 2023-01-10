@@ -122,16 +122,16 @@ func (mem *RIOTMemory) LastReadAddress() (bool, uint16) {
 }
 
 // Read is an implementation of memory.CPUBus. Address must be normalised.
-func (mem *RIOTMemory) Read(address uint16) (uint8, error) {
+func (mem *RIOTMemory) Read(address uint16) (uint8, uint8, error) {
 	mem.readAddress = address
 	mem.readSignal = true
 
 	// do not allow reads from memory that do not have symbol name
 	if _, ok := cpubus.RIOTReadSymbols[address]; !ok {
-		return 0, curated.Errorf(cpubus.AddressError, address)
+		return 0, 0, curated.Errorf(cpubus.AddressError, address)
 	}
 
-	return mem.memory[address^mem.origin], nil
+	return mem.memory[address^mem.origin], 0xff, nil
 }
 
 // Write is an implementation of memory.CPUBus. Address must be normalised.

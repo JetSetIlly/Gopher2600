@@ -28,7 +28,8 @@ import (
 // functions as "debugging" functions, that is operations outside of the normal
 // operation of the machine.
 type DebugBus interface {
-	cpubus.Memory
+	Read(address uint16) (uint8, uint8, error)
+	Write(address uint16, data uint8) error
 	Peek(address uint16) (uint8, error)
 	Poke(address uint16, value uint8) error
 }
@@ -187,23 +188,21 @@ func (mem *Memory) read(address uint16) (uint8, error) {
 	area := mem.GetArea(ar)
 
 	// read data from area
-	data, err := area.Read(ma)
+	var data uint8
+	var err error
+	data, mem.LastCPUDrivenPins, err = area.Read(ma)
 
-	// TIA addresses do not drive all the pins on the data bus, leaving
-	// some bits of the previous value on the data bus in the result.
+	// the data bus is not always completely driven. ie. some pins are not powered and are left
+	// floating
 	//
-	// see commentary for TIADriverPins for extensive explanation
-	if ar == memorymap.TIA {
-		data &= vcs.TIADrivenPins
+	// a good example of this are the TIA addresses. see commentary for TIADriverPins for extensive
+	// explanation
+	if mem.LastCPUDrivenPins != 0xff {
 		if mem.instance != nil && mem.instance.Prefs.RandomPins.Get().(bool) {
-			data |= uint8(mem.instance.Random.Rewindable(0xff)) & ^vcs.TIADrivenPins
+			data |= uint8(mem.instance.Random.Rewindable(0xff)) & ^mem.LastCPUDrivenPins
 		} else {
-			data |= mem.LastCPUData & ^vcs.TIADrivenPins
+			data |= mem.LastCPUData & ^mem.LastCPUDrivenPins
 		}
-
-		mem.LastCPUDrivenPins = vcs.TIADrivenPins
-	} else {
-		mem.LastCPUDrivenPins = 0xff
 	}
 
 	if stuff, ok := mem.Cart.BusStuff(); ok {
