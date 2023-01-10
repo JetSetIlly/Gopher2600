@@ -253,7 +253,7 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 
 	// a specific cartridge mapper was specified
 
-	trySuperchip := false
+	forceSuperchip := false
 
 	switch strings.ToUpper(cartload.Mapping) {
 	case "2K":
@@ -268,19 +268,19 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 		cart.mapper, err = newAtari32k(cart.instance, *cartload.Data)
 	case "2KSC":
 		cart.mapper, err = newAtari2k(cart.instance, *cartload.Data)
-		trySuperchip = true
+		forceSuperchip = true
 	case "4KSC":
 		cart.mapper, err = newAtari4k(cart.instance, *cartload.Data)
-		trySuperchip = true
+		forceSuperchip = true
 	case "F8SC":
 		cart.mapper, err = newAtari8k(cart.instance, *cartload.Data)
-		trySuperchip = true
+		forceSuperchip = true
 	case "F6SC":
 		cart.mapper, err = newAtari16k(cart.instance, *cartload.Data)
-		trySuperchip = true
+		forceSuperchip = true
 	case "F4SC":
 		cart.mapper, err = newAtari32k(cart.instance, *cartload.Data)
-		trySuperchip = true
+		forceSuperchip = true
 	case "CV":
 		cart.mapper, err = newCommaVid(cart.instance, *cartload.Data)
 	case "FA":
@@ -311,7 +311,7 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 		cart.mapper, err = newEF(cart.instance, *cartload.Data)
 	case "EFSC":
 		cart.mapper, err = newEF(cart.instance, *cartload.Data)
-		trySuperchip = true
+		forceSuperchip = true
 	case "SB":
 		cart.mapper, err = newSuperbank(cart.instance, *cartload.Data)
 	case "DPC":
@@ -329,9 +329,9 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 		return curated.Errorf("cartridge: %v", err)
 	}
 
-	if trySuperchip {
+	if forceSuperchip {
 		if superchip, ok := cart.mapper.(mapper.OptionalSuperchip); ok {
-			superchip.AddSuperchip()
+			superchip.AddSuperchip(true)
 		} else {
 			logger.Logf("cartridge", "cannot add superchip to %s mapper", cart.ID())
 		}

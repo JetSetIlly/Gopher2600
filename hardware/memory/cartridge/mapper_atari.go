@@ -284,8 +284,8 @@ func (cart *atari) CopyBanks() []mapper.BankContent {
 }
 
 // AddSuperchip implements the mapper.OptionalSuperchip interface.
-func (cart *atari) AddSuperchip() {
-	if cart.needsSuperchip && cart.state.ram == nil {
+func (cart *atari) AddSuperchip(force bool) {
+	if force || cart.needsSuperchip {
 		cart.mappingID = fmt.Sprintf("%s (SC)", cart.mappingID)
 		cart.state.ram = make([]uint8, superchipRAMsize)
 	}

@@ -81,7 +81,8 @@ type PlumbFromDifferentEmulation interface {
 // an optional superchip. This shouldn't be used to decide if a cartridge has
 // additional RAM or not. Use the CartRAMbus interface for that.
 type OptionalSuperchip interface {
-	AddSuperchip()
+	// the force argument causes the superchip to be added whether it needs it or not
+	AddSuperchip(force bool)
 }
 
 // CartRAMbus is implemented for catridge mappers that have an addressable RAM

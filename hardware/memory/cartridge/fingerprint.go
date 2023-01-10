@@ -299,9 +299,6 @@ func fingerprint32k(data []byte) func(*instance.Instance, []byte) (mapper.CartMa
 }
 
 func fingerprint64k(data []byte) func(*instance.Instance, []byte) (mapper.CartMapper, error) {
-	// some EF cartridges have EFEF embedded as a string but this isn't a
-	// requirement. for now, because only EF cartridges are 64k, we'll just
-	// assume the data should be treated as EF
 	return newEF
 }
 
@@ -438,7 +435,7 @@ func (cart *Cartridge) fingerprint(cartload cartridgeloader.Loader) error {
 	// if cartridge mapper implements the optionalSuperChip interface then try
 	// to add the additional RAM
 	if superchip, ok := cart.mapper.(mapper.OptionalSuperchip); ok {
-		superchip.AddSuperchip()
+		superchip.AddSuperchip(false)
 	}
 
 	return nil

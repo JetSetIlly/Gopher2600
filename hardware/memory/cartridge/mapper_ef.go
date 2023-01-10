@@ -16,49 +16,30 @@
 package cartridge
 
 import (
-	"fmt"
-	"strings"
-
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/instance"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
-	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
+// the EF mapper is really just a 64k standard atari cartridge
 type ef struct {
-	instance *instance.Instance
-
-	mappingID string
-
-	// ef cartridges have 3 banks of 4096 bytes
-	bankSize int
-	banks    [][]uint8
-
-	// rewindable state
-	state *efState
-
-	// superchip signature ID has been detected. we use this to decide whether
-	// the cartridge RAM should be allocated
-	//
-	// the superchip is not added automatically
-	needsSuperchip bool
+	atari
 }
 
-// returns new ef type, whether a superchip is required, and any errors
+// newEF is the preferred method of initialisation for the ef type
 func newEF(instance *instance.Instance, data []byte) (mapper.CartMapper, error) {
-	cart := &ef{
-		instance:  instance,
-		mappingID: "EF",
-		bankSize:  4096,
-		state:     newEFstate(),
-	}
+	cart := &ef{}
+	cart.instance = instance
+	cart.bankSize = 4096
+	cart.mappingID = "EF"
+	cart.banks = make([][]uint8, cart.NumBanks())
+	cart.needsSuperchip = hasEmptyArea(data)
+	cart.state = newAtariState()
 
 	if len(data) != cart.bankSize*cart.NumBanks() {
 		return nil, curated.Errorf("EF: %v", "wrong number of bytes in the cartridge data")
 	}
-
-	cart.banks = make([][]uint8, cart.NumBanks())
 
 	for k := 0; k < cart.NumBanks(); k++ {
 		cart.banks[k] = make([]uint8, cart.bankSize)
@@ -66,21 +47,7 @@ func newEF(instance *instance.Instance, data []byte) (mapper.CartMapper, error) 
 		copy(cart.banks[k], data[offset:offset+cart.bankSize])
 	}
 
-	// EF cartridge is a superchip cartridge if the string EFSC appears in the
-	// data somewhere
-	cart.needsSuperchip = strings.Index(string(data), "EFSC") != -1
-
 	return cart, nil
-}
-
-// MappedBanks implements the mapper.CartMapper interface.
-func (cart *ef) MappedBanks() string {
-	return fmt.Sprintf("Bank: %d", cart.state.bank)
-}
-
-// ID implements the mapper.CartMapper interface.
-func (cart *ef) ID() string {
-	return cart.mappingID
 }
 
 // Snapshot implements the mapper.CartMapper interface.
@@ -92,11 +59,6 @@ func (cart *ef) Snapshot() mapper.CartMapper {
 
 // Plumb implements the mapper.CartMapper interface.
 func (cart *ef) Plumb() {
-}
-
-// Reset implements the mapper.CartMapper interface.
-func (cart *ef) Reset() {
-	cart.state.bank = 0 //len(cart.banks) - 1
 }
 
 // Read implements the mapper.CartMapper interface.
@@ -150,61 +112,6 @@ func (cart *ef) NumBanks() int {
 	return 16
 }
 
-// GetBank implements the mapper.CartMapper interface.
-func (cart *ef) GetBank(addr uint16) mapper.BankInfo {
-	// ef cartridges are like atari cartridges in that the entire address
-	// space points to the selected bank
-	return mapper.BankInfo{Number: cart.state.bank, IsRAM: addr <= 0x00ff}
-}
-
-// Patch implements the mapper.CartMapper interface.
-func (cart *ef) Patch(offset int, data uint8) error {
-	if offset >= cart.bankSize*len(cart.banks) {
-		return curated.Errorf("EF: %v", fmt.Errorf("patch offset too high (%v)", offset))
-	}
-
-	bank := offset / cart.bankSize
-	offset %= cart.bankSize
-	cart.banks[bank][offset] = data
-	return nil
-}
-
-// Listen implements the mapper.CartMapper interface.
-func (cart *ef) Listen(addr uint16, data uint8) {
-	// Sometimes, cartridge addresses can be accessed inadvertently. in most
-	// instances, there are no consequences but in the case of the Superchip,
-	// the write addresses can be accessed and the RAM data changed. we handle
-	// that here.
-	//
-	// https://atariage.com/forums/topic/329888-indexed-read-page-crossing-and-sc-ram/
-	if cart.state.ram != nil {
-		if addr&memorymap.OriginCart == memorymap.OriginCart {
-			addr &= memorymap.MaskCart
-			addr ^= memorymap.OriginCart
-			// EF Superchip is 128 bytes
-			if addr&0xff80 == 0x0000 {
-				cart.state.ram[addr&0x7f] = data
-			}
-		}
-	}
-}
-
-// Step implements the mapper.CartMapper interface.
-func (cart *ef) Step(_ float32) {
-}
-
-// IterateBank implements the mapper.CartMapper interface.
-func (cart *ef) CopyBanks() []mapper.BankContent {
-	c := make([]mapper.BankContent, len(cart.banks))
-	for b := 0; b < len(cart.banks); b++ {
-		c[b] = mapper.BankContent{Number: b,
-			Data:    cart.banks[b],
-			Origins: []uint16{memorymap.OriginCart},
-		}
-	}
-	return c
-}
-
 // ReadHotspots implements the mapper.CartHotspotsBus interface.
 func (cart *ef) ReadHotspots() map[uint16]mapper.CartHotspotInfo {
 	return map[uint16]mapper.CartHotspotInfo{
@@ -230,63 +137,4 @@ func (cart *ef) ReadHotspots() map[uint16]mapper.CartHotspotInfo {
 // WriteHotspots implements the mapper.CartHotspotsBus interface.
 func (cart *ef) WriteHotspots() map[uint16]mapper.CartHotspotInfo {
 	return cart.ReadHotspots()
-}
-
-// AddSuperchip implements the mapper.OptionalSuperchip interface.
-func (cart *ef) AddSuperchip() {
-	if cart.needsSuperchip && cart.state.ram == nil {
-		cart.mappingID = fmt.Sprintf("%s (SC)", cart.mappingID)
-		cart.state.ram = make([]uint8, superchipRAMsize)
-	}
-}
-
-// GetRAM implements the mapper.CartRAMBus interface.
-func (cart *ef) GetRAM() []mapper.CartRAM {
-	if cart.state.ram == nil {
-		return nil
-	}
-
-	r := make([]mapper.CartRAM, 1)
-	r[0] = mapper.CartRAM{
-		Label:  "Superchip",
-		Origin: 0x1080,
-		Data:   make([]uint8, len(cart.state.ram)),
-		Mapped: true,
-	}
-
-	copy(r[0].Data, cart.state.ram)
-	return r
-}
-
-// PutRAM implements the mapper.CartRAMBus interface.
-func (cart *ef) PutRAM(_ int, idx int, data uint8) {
-	if cart.state.ram == nil {
-		return
-	}
-
-	cart.state.ram[idx] = data
-}
-
-// rewindable state for the CBS cartridge.
-type efState struct {
-	// identifies the currently selected bank
-	bank int
-
-	// some atari ROMs support aditional RAM. this is sometimes referred to as
-	// the superchip. ram is only added when it is detected
-	ram []uint8
-}
-
-func newEFstate() *efState {
-	return &efState{}
-}
-
-// Snapshot implements the mapper.CartMapper interface.
-func (s *efState) Snapshot() *efState {
-	n := *s
-	if s.ram != nil {
-		n.ram = make([]uint8, len(s.ram))
-		copy(n.ram, s.ram)
-	}
-	return &n
 }

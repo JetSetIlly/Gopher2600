@@ -15,15 +15,16 @@
 
 package cpubus
 
-// Memory defines the operations for the memory system when accessed from the CPU
-// All memory areas implement this interface because they are all accessible
-// from the CPU (compare to ChipBus). The VCSMemory type also implements this
-// interface and maps the read/write address to the correct memory area --
-// meaning that CPU access need not care which part of memory it is writing to
+// Memory defines the operations for the memory system when accessed from the CPU All memory areas
+// implement this interface because they are all accessible from the CPU (compare to ChipBus). The
+// VCSMemory type also implements this interface and maps the read/write address to the correct
+// memory area -- meaning that CPU access need not care which part of memory it is writing to
 //
-// Addresses should be mapped to their primary mirror when accesses the RIOT,
-// TIA or RAM; and should be unmapped when accessing cartridge memory (some
-// cartridge mappers are sensitive to which cartridge mirror is being used).
+// Addresses should be mapped to their primary mirror in all cases.
+//
+// In the case of cartridge implementations there should be no real distinction between Read and
+// Write. This is because there is no R/W line to the cartridge. In the event that a cartridge has a
+// RAM area, writing to the RAM is usually done through specific addreses.
 type Memory interface {
 	Read(address uint16) (uint8, error)
 	Write(address uint16, data uint8) error
