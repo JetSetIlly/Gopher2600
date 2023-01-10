@@ -115,7 +115,7 @@ func (cart *cbs) Reset() {
 }
 
 // Read implements the mapper.CartMapper interface.
-func (cart *cbs) Read(addr uint16, passive bool) (uint8, error) {
+func (cart *cbs) Read(addr uint16, _ bool) (uint8, error) {
 	if addr >= 0x0100 && addr <= 0x01ff {
 		return cart.state.ram[addr-0x100], nil
 	}
@@ -124,7 +124,7 @@ func (cart *cbs) Read(addr uint16, passive bool) (uint8, error) {
 }
 
 // Write implements the mapper.CartMapper interface.
-func (cart *cbs) Write(addr uint16, data uint8, passive bool, poke bool) error {
+func (cart *cbs) Write(addr uint16, data uint8, poke bool) error {
 	if addr <= 0x00ff {
 		cart.state.ram[addr] = data
 		return nil

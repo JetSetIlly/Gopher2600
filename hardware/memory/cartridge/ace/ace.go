@@ -127,19 +127,12 @@ func (cart *Ace) Reset() {
 }
 
 // Read implements the mapper.CartMapper interface.
-func (cart *Ace) Read(addr uint16, passive bool) (uint8, error) {
-	if passive {
-		cart.Listen(addr|memorymap.OriginCart, 0x00)
-	}
+func (cart *Ace) Read(addr uint16, _ bool) (uint8, error) {
 	return cart.mem.gpioB[fromArm_data], nil
 }
 
 // Write implements the mapper.CartMapper interface.
-func (cart *Ace) Write(addr uint16, data uint8, passive bool, poke bool) error {
-	if passive || poke {
-		return nil
-	}
-
+func (cart *Ace) Write(addr uint16, data uint8, _ bool) error {
 	return nil
 }
 

@@ -40,8 +40,8 @@ type CartMapper interface {
 
 	// the addr parameter for Read() and Write() will be *just* the cartridge
 	// bits. there is no mirror information in the addr value
-	Read(addr uint16, passive bool) (data uint8, err error)
-	Write(addr uint16, data uint8, passive bool, poke bool) error
+	Read(addr uint16, peek bool) (data uint8, err error)
+	Write(addr uint16, data uint8, poke bool) error
 
 	NumBanks() int
 	GetBank(addr uint16) BankInfo

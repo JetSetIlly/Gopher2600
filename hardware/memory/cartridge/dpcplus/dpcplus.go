@@ -157,14 +157,16 @@ func (cart *dpcPlus) Reset() {
 }
 
 // Read implements the mapper.CartMapper interface.
-func (cart *dpcPlus) Read(addr uint16, passive bool) (uint8, error) {
+func (cart *dpcPlus) Read(addr uint16, peek bool) (uint8, error) {
 	if b, ok := cart.state.callfn.Check(addr); ok {
 		return b, nil
 	}
 
-	if cart.bankswitch(addr, passive) {
-		// always return zero on hotspot - unlike the Atari multi-bank carts for example
-		return 0, nil
+	if !peek {
+		if cart.bankswitch(addr) {
+			// always return zero on hotspot - unlike the Atari multi-bank carts for example
+			return 0, nil
+		}
 	}
 
 	var data uint8
@@ -183,7 +185,7 @@ func (cart *dpcPlus) Read(addr uint16, passive bool) (uint8, error) {
 		// place)
 		if cart.state.registers.FastFetch && cart.state.lda && data < 0x28 {
 			cart.state.lda = false
-			return cart.Read(uint16(data), passive)
+			return cart.Read(uint16(data), peek)
 		}
 
 		cart.state.lda = cart.state.registers.FastFetch && data == 0xa9
@@ -239,7 +241,7 @@ func (cart *dpcPlus) Read(addr uint16, passive bool) (uint8, error) {
 		dataAddr := uint16(cart.state.registers.Fetcher[f].Hi)<<8 | uint16(cart.state.registers.Fetcher[f].Low)
 		dataAddr &= 0x0fff
 		data = cart.state.static.dataRAM[dataAddr]
-		if !passive {
+		if !peek {
 			cart.state.registers.Fetcher[f].inc()
 		}
 
@@ -265,7 +267,7 @@ func (cart *dpcPlus) Read(addr uint16, passive bool) (uint8, error) {
 		if cart.state.registers.Fetcher[f].isWindow() {
 			data = cart.state.static.dataRAM[dataAddr]
 		}
-		if !passive {
+		if !peek {
 			cart.state.registers.Fetcher[f].inc()
 		}
 
@@ -289,7 +291,7 @@ func (cart *dpcPlus) Read(addr uint16, passive bool) (uint8, error) {
 		dataAddr := uint16(cart.state.registers.FracFetcher[f].Hi)<<8 | uint16(cart.state.registers.FracFetcher[f].Low)
 		dataAddr &= 0x0fff
 		data = cart.state.static.dataRAM[dataAddr]
-		if !passive {
+		if !peek {
 			cart.state.registers.FracFetcher[f].inc()
 		}
 
@@ -317,14 +319,16 @@ func (cart *dpcPlus) Read(addr uint16, passive bool) (uint8, error) {
 }
 
 // Write implements the mapper.CartMapper interface.
-func (cart *dpcPlus) Write(addr uint16, data uint8, passive bool, poke bool) error {
+func (cart *dpcPlus) Write(addr uint16, data uint8, poke bool) error {
 	// bank switches can not take place if coprocessor is active
 	if cart.state.callfn.IsActive() {
 		return nil
 	}
 
-	if cart.bankswitch(addr, passive) {
-		return nil
+	if !poke {
+		if cart.bankswitch(addr) {
+			return nil
+		}
 	}
 
 	if addr < 0x0028 || addr > 0x007f {
@@ -656,11 +660,8 @@ func (cart *dpcPlus) Write(addr uint16, data uint8, passive bool, poke bool) err
 }
 
 // bankswitch on hotspot access.
-func (cart *dpcPlus) bankswitch(addr uint16, passive bool) bool {
+func (cart *dpcPlus) bankswitch(addr uint16) bool {
 	if addr >= 0x0ff6 && addr <= 0x0ffb {
-		if passive {
-			return true
-		}
 		if addr == 0x0ff6 {
 			cart.state.bank = 0
 		} else if addr == 0x0ff7 {

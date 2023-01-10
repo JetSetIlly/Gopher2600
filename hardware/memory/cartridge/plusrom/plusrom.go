@@ -181,7 +181,7 @@ func (cart *PlusROM) Reset() {
 }
 
 // READ implements the mapper.CartMapper interface.
-func (cart *PlusROM) Read(addr uint16, active bool) (data uint8, err error) {
+func (cart *PlusROM) Read(addr uint16, peek bool) (data uint8, err error) {
 	switch addr {
 	case 0x0ff2:
 		// 1FF2 contains the next byte of the response from the host, every
@@ -196,11 +196,11 @@ func (cart *PlusROM) Read(addr uint16, active bool) (data uint8, err error) {
 		return uint8(cart.net.recvRemaining()), nil
 	}
 
-	return cart.state.child.Read(addr, active)
+	return cart.state.child.Read(addr, peek)
 }
 
 // Write implements the mapper.CartMapper interface.
-func (cart *PlusROM) Write(addr uint16, data uint8, active bool, poke bool) error {
+func (cart *PlusROM) Write(addr uint16, data uint8, poke bool) error {
 	switch addr {
 	case 0x0ff0:
 		// 1FF0 is for writing a byte to the send buffer (max 256 bytes)
@@ -224,7 +224,7 @@ func (cart *PlusROM) Write(addr uint16, data uint8, active bool, poke bool) erro
 		return nil
 	}
 
-	return cart.state.child.Write(addr, data, active, poke)
+	return cart.state.child.Write(addr, data, poke)
 }
 
 // NumBanks implements the mapper.CartMapper interface.

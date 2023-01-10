@@ -58,7 +58,7 @@ func (cart *ejected) Read(_ uint16, _ bool) (uint8, error) {
 }
 
 // Write implements the mapper.CartMapper interface.
-func (cart *ejected) Write(_ uint16, _ uint8, _, _ bool) error {
+func (cart *ejected) Write(_ uint16, _ uint8, _ bool) error {
 	return nil
 }
 

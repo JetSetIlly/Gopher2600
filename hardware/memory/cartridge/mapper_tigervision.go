@@ -125,7 +125,7 @@ func (cart *tigervision) Read(addr uint16, _ bool) (uint8, error) {
 }
 
 // Write implements the mapper.CartMapper interface.
-func (cart *tigervision) Write(addr uint16, data uint8, _ bool, poke bool) error {
+func (cart *tigervision) Write(addr uint16, data uint8, poke bool) error {
 	if poke {
 		if addr >= 0x0000 && addr <= 0x07ff {
 			cart.banks[cart.state.segment[0]][addr&0x07ff] = data

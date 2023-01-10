@@ -165,7 +165,7 @@ func (cart *mnetwork) Reset() {
 }
 
 // Read implements the mapper.CartMapper interface.
-func (cart *mnetwork) Read(addr uint16, passive bool) (uint8, error) {
+func (cart *mnetwork) Read(addr uint16, peek bool) (uint8, error) {
 	var data uint8
 
 	if addr >= 0x0000 && addr <= 0x07ff {
@@ -187,15 +187,19 @@ func (cart *mnetwork) Read(addr uint16, passive bool) (uint8, error) {
 		return 0, curated.Errorf("E7: %v", curated.Errorf(cpubus.AddressError, addr))
 	}
 
-	cart.bankswitch(addr, passive)
+	if !peek {
+		cart.bankswitch(addr)
+	}
 
 	return data, nil
 }
 
 // Write implements the mapper.CartMapper interface.
-func (cart *mnetwork) Write(addr uint16, data uint8, passive bool, poke bool) error {
-	if cart.bankswitch(addr, passive) {
-		return nil
+func (cart *mnetwork) Write(addr uint16, data uint8, poke bool) error {
+	if !poke {
+		if cart.bankswitch(addr) {
+			return nil
+		}
 	}
 
 	if addr >= 0x0000 && addr <= 0x07ff {
@@ -217,12 +221,8 @@ func (cart *mnetwork) Write(addr uint16, data uint8, passive bool, poke bool) er
 }
 
 // bankswitch on hotspot access.
-func (cart *mnetwork) bankswitch(addr uint16, passive bool) bool {
+func (cart *mnetwork) bankswitch(addr uint16) bool {
 	if addr >= 0xfe0 && addr <= 0xfeb {
-		if passive {
-			return true
-		}
-
 		switch addr {
 		case 0x0fe0:
 			cart.state.bank = 0

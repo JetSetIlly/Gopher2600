@@ -108,7 +108,7 @@ func (cart *dpc) Reset() {
 }
 
 // Read implements the mapper.CartMapper interface.
-func (cart *dpc) Read(addr uint16, passive bool) (uint8, error) {
+func (cart *dpc) Read(addr uint16, peek bool) (uint8, error) {
 	var data uint8
 
 	// chip select is active by definition when read() is called. pump RNG [col 7, ln 58-62, fig 8]
@@ -116,9 +116,11 @@ func (cart *dpc) Read(addr uint16, passive bool) (uint8, error) {
 	cart.state.registers.RNG <<= 1
 
 	// bankswitch on hotspot access
-	if cart.bankswitch(addr, passive) {
-		// always return zero on hotspot - unlike the Atari multi-bank carts for example
-		return 0, nil
+	if !peek {
+		if cart.bankswitch(addr) {
+			// always return zero on hotspot - unlike the Atari multi-bank carts for example
+			return 0, nil
+		}
 	}
 
 	// if address is above register space then we only need to check for bank
@@ -212,7 +214,7 @@ func (cart *dpc) Read(addr uint16, passive bool) (uint8, error) {
 	}
 
 	// clock signal is active whenever data fetcher is used
-	if !passive {
+	if !peek {
 		cart.state.registers.Fetcher[f].clk()
 	}
 
@@ -220,9 +222,11 @@ func (cart *dpc) Read(addr uint16, passive bool) (uint8, error) {
 }
 
 // Write implements the mapper.CartMapper interface.
-func (cart *dpc) Write(addr uint16, data uint8, passive bool, poke bool) error {
-	if cart.bankswitch(addr, passive) {
-		return nil
+func (cart *dpc) Write(addr uint16, data uint8, poke bool) error {
+	if !poke {
+		if cart.bankswitch(addr) {
+			return nil
+		}
 	}
 
 	// if the write address if a write address then the effect is on a
@@ -275,11 +279,8 @@ func (cart *dpc) Write(addr uint16, data uint8, passive bool, poke bool) error {
 }
 
 // bank switch on hotspot access.
-func (cart *dpc) bankswitch(addr uint16, passive bool) bool {
+func (cart *dpc) bankswitch(addr uint16) bool {
 	if addr >= 0x0ff8 && addr <= 0x0ff9 {
-		if passive {
-			return true
-		}
 		if addr == 0x0ff8 {
 			cart.state.bank = 0
 		} else if addr == 0x0ff9 {

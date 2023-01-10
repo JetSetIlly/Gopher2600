@@ -307,12 +307,12 @@ func (cart *Moviecart) Reset() {
 }
 
 // Read implements the mapper.CartMapper interface.
-func (cart *Moviecart) Read(addr uint16, active bool) (data uint8, err error) {
+func (cart *Moviecart) Read(addr uint16, _ bool) (data uint8, err error) {
 	return cart.state.sram[addr&0x3ff], nil
 }
 
 // Write implements the mapper.CartMapper interface.
-func (cart *Moviecart) Write(addr uint16, data uint8, active bool, poke bool) error {
+func (cart *Moviecart) Write(addr uint16, data uint8, _ bool) error {
 	return nil
 }
 

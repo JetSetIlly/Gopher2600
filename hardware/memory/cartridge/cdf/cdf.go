@@ -181,14 +181,16 @@ const (
 )
 
 // Read implements the mapper.CartMapper interface.
-func (cart *cdf) Read(addr uint16, passive bool) (uint8, error) {
+func (cart *cdf) Read(addr uint16, peek bool) (uint8, error) {
 	if b, ok := cart.state.callfn.Check(addr); ok {
 		return b, nil
 	}
 
-	if cart.bankswitch(addr, passive) {
-		// always return zero on hotspot - unlike the Atari multi-bank carts for example
-		return 0, nil
+	if !peek {
+		if cart.bankswitch(addr) {
+			// always return zero on hotspot - unlike the Atari multi-bank carts for example
+			return 0, nil
+		}
 	}
 
 	data := cart.banks[cart.state.bank][addr]
@@ -300,14 +302,16 @@ func (cart *cdf) Read(addr uint16, passive bool) (uint8, error) {
 }
 
 // Write implements the mapper.CartMapper interface.
-func (cart *cdf) Write(addr uint16, data uint8, passive bool, poke bool) error {
+func (cart *cdf) Write(addr uint16, data uint8, poke bool) error {
 	// bank switches can not take place if coprocessor is active
 	if cart.state.callfn.IsActive() {
 		return nil
 	}
 
-	if cart.bankswitch(addr, passive) {
-		return nil
+	if !poke {
+		if cart.bankswitch(addr) {
+			return nil
+		}
 	}
 
 	switch addr {
@@ -393,12 +397,8 @@ func (cart *cdf) Write(addr uint16, data uint8, passive bool, poke bool) error {
 }
 
 // bankswitch on hotspot access.
-func (cart *cdf) bankswitch(addr uint16, passive bool) bool {
+func (cart *cdf) bankswitch(addr uint16) bool {
 	if addr >= 0x0ff4 && addr <= 0x0ffb {
-		if passive {
-			return true
-		}
-
 		if addr == 0x0ff4 {
 			cart.state.bank = 6
 		} else if addr == 0x0ff5 {

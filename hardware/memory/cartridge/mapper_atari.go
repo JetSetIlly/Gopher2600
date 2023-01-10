@@ -182,7 +182,7 @@ func (cart *atari) GetBank(addr uint16) mapper.BankInfo {
 }
 
 // Read implements the mapper.CartMapper interface.
-func (cart *atari) Read(addr uint16, passive bool) (uint8, bool) {
+func (cart *atari) Read(addr uint16, _ bool) (uint8, bool) {
 	if cart.state.ram != nil {
 		if addr >= 0x80 && addr <= 0xff {
 			return cart.state.ram[addr-superchipRAMsize], true
@@ -192,7 +192,7 @@ func (cart *atari) Read(addr uint16, passive bool) (uint8, bool) {
 }
 
 // Write implements the mapper.CartMapper interface.
-func (cart *atari) Write(addr uint16, data uint8, passive bool, poke bool) error {
+func (cart *atari) Write(addr uint16, data uint8, poke bool) error {
 	if cart.state.ram != nil {
 		if addr <= 0x7f {
 			cart.state.ram[addr] = data
@@ -336,19 +336,16 @@ func (cart *atari4k) NumBanks() int {
 }
 
 // Read implements the mapper.CartMapper interface.
-func (cart *atari4k) Read(addr uint16, passive bool) (uint8, error) {
-	if data, ok := cart.atari.Read(addr, passive); ok {
+func (cart *atari4k) Read(addr uint16, peek bool) (uint8, error) {
+	if data, ok := cart.atari.Read(addr, peek); ok {
 		return data, nil
 	}
 	return cart.banks[0][addr], nil
 }
 
 // Write implements the mapper.CartMapper interface.
-func (cart *atari4k) Write(addr uint16, data uint8, passive bool, poke bool) error {
-	if passive {
-		return nil
-	}
-	return cart.atari.Write(addr, data, passive, poke)
+func (cart *atari4k) Write(addr uint16, data uint8, poke bool) error {
+	return cart.atari.Write(addr, data, poke)
 }
 
 // atari2k is the half-size cartridge of 2048 bytes:
@@ -404,8 +401,8 @@ func (cart *atari2k) NumBanks() int {
 }
 
 // Read implements the mapper.CartMapper interface.
-func (cart *atari2k) Read(addr uint16, passive bool) (uint8, error) {
-	if data, ok := cart.atari.Read(addr, passive); ok {
+func (cart *atari2k) Read(addr uint16, peek bool) (uint8, error) {
+	if data, ok := cart.atari.Read(addr, peek); ok {
 		return data, nil
 	}
 	return cart.banks[0][addr&cart.mask], nil
@@ -422,11 +419,8 @@ func (cart *atari2k) CopyBanks() []mapper.BankContent {
 }
 
 // Write implements the mapper.CartMapper interface.
-func (cart *atari2k) Write(addr uint16, data uint8, passive bool, poke bool) error {
-	if passive {
-		return nil
-	}
-	return cart.atari.Write(addr, data, passive, poke)
+func (cart *atari2k) Write(addr uint16, data uint8, poke bool) error {
+	return cart.atari.Write(addr, data, poke)
 }
 
 // atari8k (F8):
@@ -476,35 +470,32 @@ func (cart *atari8k) NumBanks() int {
 }
 
 // Read implements the mapper.CartMapper interface.
-func (cart *atari8k) Read(addr uint16, passive bool) (uint8, error) {
-	if data, ok := cart.atari.Read(addr, passive); ok {
+func (cart *atari8k) Read(addr uint16, peek bool) (uint8, error) {
+	if data, ok := cart.atari.Read(addr, peek); ok {
 		return data, nil
 	}
 
-	cart.bankswitch(addr, passive)
+	if !peek {
+		cart.bankswitch(addr)
+	}
 
 	return cart.banks[cart.state.bank][addr], nil
 }
 
 // Write implements the mapper.CartMapper interface.
-func (cart *atari8k) Write(addr uint16, data uint8, passive bool, poke bool) error {
-	if passive {
-		return nil
+func (cart *atari8k) Write(addr uint16, data uint8, poke bool) error {
+	if !poke {
+		if cart.bankswitch(addr) {
+			return nil
+		}
 	}
 
-	if cart.bankswitch(addr, passive) {
-		return nil
-	}
-
-	return cart.atari.Write(addr, data, passive, poke)
+	return cart.atari.Write(addr, data, poke)
 }
 
 // bankswitch on hotspot access.
-func (cart *atari8k) bankswitch(addr uint16, passive bool) bool {
+func (cart *atari8k) bankswitch(addr uint16) bool {
 	if addr >= 0x0ff8 && addr <= 0x0ff9 {
-		if passive {
-			return true
-		}
 		if addr == 0x0ff8 {
 			cart.state.bank = 0
 		} else if addr == 0x0ff9 {
@@ -576,35 +567,32 @@ func (cart *atari16k) NumBanks() int {
 }
 
 // Read implements the mapper.CartMapper interface.
-func (cart *atari16k) Read(addr uint16, passive bool) (uint8, error) {
-	if data, ok := cart.atari.Read(addr, passive); ok {
+func (cart *atari16k) Read(addr uint16, peek bool) (uint8, error) {
+	if data, ok := cart.atari.Read(addr, peek); ok {
 		return data, nil
 	}
 
-	cart.bankswitch(addr, passive)
+	if !peek {
+		cart.bankswitch(addr)
+	}
 
 	return cart.banks[cart.state.bank][addr], nil
 }
 
 // Write implements the mapper.CartMapper interface.
-func (cart *atari16k) Write(addr uint16, data uint8, passive bool, poke bool) error {
-	if passive {
-		return nil
+func (cart *atari16k) Write(addr uint16, data uint8, poke bool) error {
+	if !poke {
+		if cart.bankswitch(addr) {
+			return nil
+		}
 	}
 
-	if cart.bankswitch(addr, passive) {
-		return nil
-	}
-
-	return cart.atari.Write(addr, data, passive, poke)
+	return cart.atari.Write(addr, data, poke)
 }
 
 // bankswitch on hotspot access.
-func (cart *atari16k) bankswitch(addr uint16, passive bool) bool {
+func (cart *atari16k) bankswitch(addr uint16) bool {
 	if addr >= 0x0ff6 && addr <= 0x0ff9 {
-		if passive {
-			return true
-		}
 		if addr == 0x0ff6 {
 			cart.state.bank = 0
 		} else if addr == 0x0ff7 {
@@ -682,35 +670,33 @@ func (cart *atari32k) NumBanks() int {
 }
 
 // Read implements the mapper.CartMapper interface.
-func (cart *atari32k) Read(addr uint16, passive bool) (uint8, error) {
-	if data, ok := cart.atari.Read(addr, passive); ok {
+func (cart *atari32k) Read(addr uint16, peek bool) (uint8, error) {
+	if data, ok := cart.atari.Read(addr, peek); ok {
 		return data, nil
 	}
 
-	cart.bankswitch(addr, passive)
+	if !peek {
+		cart.bankswitch(addr)
+	}
 
 	return cart.banks[cart.state.bank][addr], nil
 }
 
 // Write implements the mapper.CartMapper interface.
-func (cart *atari32k) Write(addr uint16, data uint8, passive bool, poke bool) error {
-	if passive {
-		return nil
+func (cart *atari32k) Write(addr uint16, data uint8, poke bool) error {
+
+	if !poke {
+		if cart.bankswitch(addr) {
+			return nil
+		}
 	}
 
-	if cart.bankswitch(addr, passive) {
-		return nil
-	}
-
-	return cart.atari.Write(addr, data, passive, poke)
+	return cart.atari.Write(addr, data, poke)
 }
 
 // bankswitch on hotspot access.
-func (cart *atari32k) bankswitch(addr uint16, passive bool) bool {
+func (cart *atari32k) bankswitch(addr uint16) bool {
 	if addr >= 0x0ff4 && addr <= 0xffb {
-		if passive {
-			return true
-		}
 		if addr == 0x0ff4 {
 			cart.state.bank = 0
 		} else if addr == 0x0ff5 {

@@ -97,20 +97,24 @@ func (cart *df) Reset() {
 }
 
 // Read implements the mapper.CartMapper interface.
-func (cart *df) Read(addr uint16, passive bool) (uint8, error) {
+func (cart *df) Read(addr uint16, peek bool) (uint8, error) {
 	if addr >= 0x0080 && addr <= 0x00ff {
 		return cart.state.ram[addr-0x80], nil
 	}
 
-	cart.bankswitch(addr, passive)
+	if !peek {
+		cart.bankswitch(addr)
+	}
 
 	return cart.banks[cart.state.bank][addr], nil
 }
 
 // Write implements the mapper.CartMapper interface.
-func (cart *df) Write(addr uint16, data uint8, passive bool, poke bool) error {
-	if cart.bankswitch(addr, passive) {
-		return nil
+func (cart *df) Write(addr uint16, data uint8, poke bool) error {
+	if !poke {
+		if cart.bankswitch(addr) {
+			return nil
+		}
 	}
 
 	if addr <= 0x007f {
@@ -127,12 +131,8 @@ func (cart *df) Write(addr uint16, data uint8, passive bool, poke bool) error {
 }
 
 // bankswitch on hotspot access.
-func (cart *df) bankswitch(addr uint16, passive bool) bool {
+func (cart *df) bankswitch(addr uint16) bool {
 	if addr >= 0x0fc0 && addr <= 0xfdf {
-		if passive {
-			return true
-		}
-
 		// looking at this switch, I'm now thinking hotspots could be done
 		// programmatically. for now though, we'll keep it like this.
 		if addr == 0x0fc0 {

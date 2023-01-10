@@ -62,8 +62,10 @@ func (cart *ef) Plumb() {
 }
 
 // Read implements the mapper.CartMapper interface.
-func (cart *ef) Read(addr uint16, passive bool) (uint8, error) {
-	cart.bankswitch(addr, passive)
+func (cart *ef) Read(addr uint16, peek bool) (uint8, error) {
+	if !peek {
+		cart.bankswitch(addr)
+	}
 
 	if cart.state.ram != nil {
 		if addr >= 0x80 && addr <= 0xff {
@@ -75,9 +77,11 @@ func (cart *ef) Read(addr uint16, passive bool) (uint8, error) {
 }
 
 // Write implements the mapper.CartMapper interface.
-func (cart *ef) Write(addr uint16, data uint8, passive bool, poke bool) error {
-	if cart.bankswitch(addr, passive) {
-		return nil
+func (cart *ef) Write(addr uint16, data uint8, poke bool) error {
+	if !poke {
+		if cart.bankswitch(addr) {
+			return nil
+		}
 	}
 
 	if cart.state.ram != nil {
@@ -96,11 +100,8 @@ func (cart *ef) Write(addr uint16, data uint8, passive bool, poke bool) error {
 }
 
 // bankswitch on hotspot access.
-func (cart *ef) bankswitch(addr uint16, passive bool) bool {
+func (cart *ef) bankswitch(addr uint16) bool {
 	if addr >= 0x0fe0 && addr <= 0x0fef {
-		if passive {
-			return true
-		}
 		cart.state.bank = int(addr & 0x000f)
 		return true
 	}

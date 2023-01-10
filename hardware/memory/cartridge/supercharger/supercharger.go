@@ -127,7 +127,7 @@ func (cart *Supercharger) Reset() {
 }
 
 // Read implements the mapper.CartMapper interface.
-func (cart *Supercharger) Read(addr uint16, passive bool) (uint8, error) {
+func (cart *Supercharger) Read(addr uint16, peek bool) (uint8, error) {
 	// what bank to read. bank zero refers to the BIOS. bank 1 to 3 refer to
 	// one of the RAM banks
 	bank := cart.GetBank(addr).Number
@@ -153,7 +153,7 @@ func (cart *Supercharger) Read(addr uint16, passive bool) (uint8, error) {
 
 		// call load() whenever address is touched, although do not allow
 		// it if RAMwrite is false
-		if passive || !cart.state.registers.RAMwrite {
+		if peek || !cart.state.registers.RAMwrite {
 			return 0, nil
 		}
 
@@ -165,7 +165,7 @@ func (cart *Supercharger) Read(addr uint16, passive bool) (uint8, error) {
 	// sure.
 	if addr == 0x0ff8 {
 		b := cart.state.ram[bank][addr&0x07ff]
-		if !passive {
+		if !peek {
 			cart.state.registers.setConfigByte(cart.state.registers.Value)
 			cart.state.registers.Delay = 0
 		}
@@ -173,7 +173,7 @@ func (cart *Supercharger) Read(addr uint16, passive bool) (uint8, error) {
 	}
 
 	// note address to be used as the next value in the control register
-	if !passive {
+	if !peek {
 		if addr <= 0x00ff {
 			if cart.state.registers.Delay == 0 {
 				cart.state.registers.Value = uint8(addr)
@@ -204,7 +204,7 @@ func (cart *Supercharger) Read(addr uint16, passive bool) (uint8, error) {
 		return 0, curated.Errorf("supercharger: %v", "ROM is powered off")
 	}
 
-	if !passive && cart.state.registers.Delay == 1 {
+	if !peek && cart.state.registers.Delay == 1 {
 		if cart.state.registers.RAMwrite {
 			cart.state.ram[bank][addr&0x07ff] = cart.state.registers.Value
 			cart.state.registers.LastWriteAddress = memorymap.OriginCart | addr
@@ -216,7 +216,7 @@ func (cart *Supercharger) Read(addr uint16, passive bool) (uint8, error) {
 }
 
 // Write implements the mapper.CartMapper interface.
-func (cart *Supercharger) Write(addr uint16, data uint8, passive bool, poke bool) error {
+func (cart *Supercharger) Write(addr uint16, data uint8, _ bool) error {
 	return nil
 }
 

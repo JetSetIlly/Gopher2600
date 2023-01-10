@@ -146,7 +146,7 @@ func (mem *Memory) GetArea(area memorymap.Area) DebugBus {
 	panic("memory areas are not mapped correctly")
 }
 
-// Read is an implementation of CPUBus. Address will be normalised and processed by the correct
+// Readt is an implementation of CPUBus. Address will be normalised and processed by the correct
 // memory areas.
 func (mem *Memory) Read(address uint16) (uint8, error) {
 	// the address bus value is the literal address masked to the 13 bits

@@ -106,7 +106,7 @@ func (cart *parkerBros) Reset() {
 }
 
 // Read implements the mapper.CartMapper interface.
-func (cart *parkerBros) Read(addr uint16, passive bool) (uint8, error) {
+func (cart *parkerBros) Read(addr uint16, peek bool) (uint8, error) {
 	var data uint8
 	if addr >= 0x0000 && addr <= 0x03ff {
 		data = cart.banks[cart.state.segment[0]][addr&0x03ff]
@@ -118,15 +118,19 @@ func (cart *parkerBros) Read(addr uint16, passive bool) (uint8, error) {
 		data = cart.banks[cart.state.segment[3]][addr&0x03ff]
 	}
 
-	cart.bankswitch(addr, passive)
+	if !peek {
+		cart.bankswitch(addr)
+	}
 
 	return data, nil
 }
 
 // Write implements the mapper.CartMapper interface.
-func (cart *parkerBros) Write(addr uint16, data uint8, passive bool, poke bool) error {
-	if cart.bankswitch(addr, passive) {
-		return nil
+func (cart *parkerBros) Write(addr uint16, data uint8, poke bool) error {
+	if !poke {
+		if cart.bankswitch(addr) {
+			return nil
+		}
 	}
 
 	if poke {
@@ -146,12 +150,8 @@ func (cart *parkerBros) Write(addr uint16, data uint8, passive bool, poke bool) 
 }
 
 // bankswitch on hotspot access. returns false if address wasn't recognised
-func (cart *parkerBros) bankswitch(addr uint16, passive bool) bool {
+func (cart *parkerBros) bankswitch(addr uint16) bool {
 	if addr >= 0xfe0 && addr <= 0xff7 {
-		if passive {
-			return true
-		}
-
 		switch addr {
 		// segment 0
 		case 0x0fe0:

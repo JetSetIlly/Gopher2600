@@ -140,11 +140,7 @@ func (cart *m3e) Read(addr uint16, _ bool) (uint8, error) {
 }
 
 // Write implements the mapper.CartMapper interface.
-func (cart *m3e) Write(addr uint16, data uint8, passive bool, poke bool) error {
-	if passive {
-		return nil
-	}
-
+func (cart *m3e) Write(addr uint16, data uint8, poke bool) error {
 	var segment int
 
 	if addr >= 0x0000 && addr <= 0x07ff {

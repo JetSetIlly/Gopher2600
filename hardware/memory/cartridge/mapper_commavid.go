@@ -110,7 +110,7 @@ func (cart *commavid) Reset() {
 }
 
 // Read implements the mapper.CartMapper interface.
-func (cart *commavid) Read(addr uint16, passive bool) (uint8, error) {
+func (cart *commavid) Read(addr uint16, _ bool) (uint8, error) {
 	if addr >= 0x0000 && addr <= 0x03ff {
 		return cart.state.ram[addr], nil
 	}
@@ -119,7 +119,7 @@ func (cart *commavid) Read(addr uint16, passive bool) (uint8, error) {
 }
 
 // Write implements the mapper.CartMapper interface.
-func (cart *commavid) Write(addr uint16, data uint8, passive bool, poke bool) error {
+func (cart *commavid) Write(addr uint16, data uint8, poke bool) error {
 	if addr >= 0x0400 && addr <= 0x07ff {
 		cart.state.ram[addr&0x03ff] = data
 		return nil
