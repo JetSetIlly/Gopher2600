@@ -116,7 +116,7 @@ func (cart *m3e) Reset() {
 }
 
 // Read implements the mapper.CartMapper interface.
-func (cart *m3e) Read(addr uint16, _ bool) (uint8, error) {
+func (cart *m3e) Read(addr uint16, _ bool) (uint8, uint8, error) {
 	var segment int
 
 	if addr >= 0x0000 && addr <= 0x07ff {
@@ -136,7 +136,7 @@ func (cart *m3e) Read(addr uint16, _ bool) (uint8, error) {
 		}
 	}
 
-	return data, nil
+	return data, mapper.CartDrivenPins, nil
 }
 
 // Write implements the mapper.CartMapper interface.

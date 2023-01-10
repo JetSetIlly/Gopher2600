@@ -157,15 +157,14 @@ func (cart *dpcPlus) Reset() {
 }
 
 // Read implements the mapper.CartMapper interface.
-func (cart *dpcPlus) Read(addr uint16, peek bool) (uint8, error) {
+func (cart *dpcPlus) Read(addr uint16, peek bool) (uint8, uint8, error) {
 	if b, ok := cart.state.callfn.Check(addr); ok {
-		return b, nil
+		return b, mapper.CartDrivenPins, nil
 	}
 
 	if !peek {
 		if cart.bankswitch(addr) {
-			// always return zero on hotspot - unlike the Atari multi-bank carts for example
-			return 0, nil
+			return 0, mapper.CartDrivenPins, nil
 		}
 	}
 
@@ -189,11 +188,11 @@ func (cart *dpcPlus) Read(addr uint16, peek bool) (uint8, error) {
 		}
 
 		cart.state.lda = cart.state.registers.FastFetch && data == 0xa9
-		return data, nil
+		return data, mapper.CartDrivenPins, nil
 	}
 
 	if addr > 0x0027 {
-		return 0, curated.Errorf("DPC+: %v", curated.Errorf(cpubus.AddressError, addr))
+		return 0, 0, curated.Errorf("DPC+: %v", curated.Errorf(cpubus.AddressError, addr))
 	}
 
 	switch addr {
@@ -315,7 +314,7 @@ func (cart *dpcPlus) Read(addr uint16, peek bool) (uint8, error) {
 	case 0x27:
 	}
 
-	return data, nil
+	return data, mapper.CartDrivenPins, nil
 }
 
 // Write implements the mapper.CartMapper interface.

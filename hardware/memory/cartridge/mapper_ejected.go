@@ -52,9 +52,9 @@ func (cart *ejected) Reset() {
 }
 
 // Read implements the mapper.CartMapper interface.
-func (cart *ejected) Read(_ uint16, _ bool) (uint8, error) {
-	// return NOP. this is almost certainly not correct but it's good enough for now
-	return 0xea, nil
+func (cart *ejected) Read(_ uint16, _ bool) (uint8, uint8, error) {
+	// return undriven pins
+	return 0, 0, nil
 }
 
 // Write implements the mapper.CartMapper interface.

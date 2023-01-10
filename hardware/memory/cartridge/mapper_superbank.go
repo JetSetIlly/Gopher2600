@@ -96,8 +96,8 @@ func (cart *superbank) Reset() {
 }
 
 // Read implements the mapper.CartMapper interface.
-func (cart *superbank) Read(addr uint16, _ bool) (uint8, error) {
-	return cart.banks[cart.state.bank][addr], nil
+func (cart *superbank) Read(addr uint16, _ bool) (uint8, uint8, error) {
+	return cart.banks[cart.state.bank][addr], mapper.CartDrivenPins, nil
 }
 
 // Write implements the mapper.CartMapper interface.

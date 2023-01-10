@@ -127,8 +127,8 @@ func (cart *Ace) Reset() {
 }
 
 // Read implements the mapper.CartMapper interface.
-func (cart *Ace) Read(addr uint16, _ bool) (uint8, error) {
-	return cart.mem.gpioB[fromArm_data], nil
+func (cart *Ace) Read(addr uint16, _ bool) (uint8, uint8, error) {
+	return cart.mem.gpioB[fromArm_data], mapper.CartDrivenPins, nil
 }
 
 // Write implements the mapper.CartMapper interface.

@@ -108,7 +108,7 @@ func (cart *dpc) Reset() {
 }
 
 // Read implements the mapper.CartMapper interface.
-func (cart *dpc) Read(addr uint16, peek bool) (uint8, error) {
+func (cart *dpc) Read(addr uint16, peek bool) (uint8, uint8, error) {
 	var data uint8
 
 	// chip select is active by definition when read() is called. pump RNG [col 7, ln 58-62, fig 8]
@@ -118,15 +118,14 @@ func (cart *dpc) Read(addr uint16, peek bool) (uint8, error) {
 	// bankswitch on hotspot access
 	if !peek {
 		if cart.bankswitch(addr) {
-			// always return zero on hotspot - unlike the Atari multi-bank carts for example
-			return 0, nil
+			return 0, mapper.CartDrivenPins, nil
 		}
 	}
 
 	// if address is above register space then we only need to check for bank
 	// switching before returning data at the quoted address
 	if addr > 0x003f {
-		return cart.banks[cart.state.bank][addr], nil
+		return cart.banks[cart.state.bank][addr], mapper.CartDrivenPins, nil
 	}
 
 	// * the remaining addresses are function registers [col 4, ln 10-20]
@@ -136,7 +135,7 @@ func (cart *dpc) Read(addr uint16, peek bool) (uint8, error) {
 	// registers [see below]
 	if addr >= 0x0000 && addr <= 0x0003 {
 		// RNG value
-		return cart.state.registers.RNG, nil
+		return cart.state.registers.RNG, mapper.CartDrivenPins, nil
 	} else if addr >= 0x0004 && addr <= 0x0007 {
 		// music value. mix music data-fetchers:
 
@@ -157,7 +156,7 @@ func (cart *dpc) Read(addr uint16, peek bool) (uint8, error) {
 			data += 6
 		}
 
-		return data, nil
+		return data, mapper.CartDrivenPins, nil
 	}
 
 	// * the remaining functions all work on specific data fetchers
@@ -218,7 +217,7 @@ func (cart *dpc) Read(addr uint16, peek bool) (uint8, error) {
 		cart.state.registers.Fetcher[f].clk()
 	}
 
-	return data, nil
+	return data, mapper.CartDrivenPins, nil
 }
 
 // Write implements the mapper.CartMapper interface.

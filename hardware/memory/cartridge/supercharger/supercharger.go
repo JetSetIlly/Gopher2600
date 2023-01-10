@@ -127,7 +127,7 @@ func (cart *Supercharger) Reset() {
 }
 
 // Read implements the mapper.CartMapper interface.
-func (cart *Supercharger) Read(addr uint16, peek bool) (uint8, error) {
+func (cart *Supercharger) Read(addr uint16, peek bool) (uint8, uint8, error) {
 	// what bank to read. bank zero refers to the BIOS. bank 1 to 3 refer to
 	// one of the RAM banks
 	bank := cart.GetBank(addr).Number
@@ -154,10 +154,11 @@ func (cart *Supercharger) Read(addr uint16, peek bool) (uint8, error) {
 		// call load() whenever address is touched, although do not allow
 		// it if RAMwrite is false
 		if peek || !cart.state.registers.RAMwrite {
-			return 0, nil
+			return 0, 0, nil
 		}
 
-		return cart.state.tape.load()
+		v, err := cart.state.tape.load()
+		return v, mapper.CartDrivenPins, err
 	}
 
 	// control register has been read. I've opted to return the value at the
@@ -169,7 +170,7 @@ func (cart *Supercharger) Read(addr uint16, peek bool) (uint8, error) {
 			cart.state.registers.setConfigByte(cart.state.registers.Value)
 			cart.state.registers.Delay = 0
 		}
-		return b, nil
+		return b, mapper.CartDrivenPins, nil
 	}
 
 	// note address to be used as the next value in the control register
@@ -194,14 +195,14 @@ func (cart *Supercharger) Read(addr uint16, peek bool) (uint8, error) {
 
 				err := cart.notificationHook(cart, notifications.NotifySuperchargerSoundloadEnded)
 				if err != nil {
-					return 0, curated.Errorf("supercharger: %v", err)
+					return 0, 0, curated.Errorf("supercharger: %v", err)
 				}
 			}
 
-			return cart.bios[addr&0x07ff], nil
+			return cart.bios[addr&0x07ff], mapper.CartDrivenPins, nil
 		}
 
-		return 0, curated.Errorf("supercharger: %v", "ROM is powered off")
+		return 0, 0, curated.Errorf("supercharger: %v", "ROM is powered off")
 	}
 
 	if !peek && cart.state.registers.Delay == 1 {
@@ -212,7 +213,7 @@ func (cart *Supercharger) Read(addr uint16, peek bool) (uint8, error) {
 		}
 	}
 
-	return cart.state.ram[bank][addr&0x07ff], nil
+	return cart.state.ram[bank][addr&0x07ff], mapper.CartDrivenPins, nil
 }
 
 // Write implements the mapper.CartMapper interface.

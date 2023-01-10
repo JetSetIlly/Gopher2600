@@ -22,6 +22,14 @@ type CartContainer interface {
 	ContainerID() string
 }
 
+// CartDrivenPins is included for clarity. In the vast majority of cases a cartridge mapper
+// will drive all pins on the data bus during a read. Use CartDrivenPins rather than 0xff.
+//
+// In the case where the data bus pins are not driven a 0 will suffice.
+//
+// For any cases where the databus is partially driven, the appropriate value can be used.
+const CartDrivenPins = 0xff
+
 // CartMapper implementations hold the actual data from the loaded ROM and
 // keeps track of which banks are mapped to individual addresses. for
 // convenience, functions with an address argument receive that address
@@ -40,7 +48,7 @@ type CartMapper interface {
 
 	// the addr parameter for Read() and Write() will be *just* the cartridge
 	// bits. there is no mirror information in the addr value
-	Read(addr uint16, peek bool) (data uint8, err error)
+	Read(addr uint16, peek bool) (data uint8, mask uint8, err error)
 	Write(addr uint16, data uint8, poke bool) error
 
 	NumBanks() int

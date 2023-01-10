@@ -181,15 +181,14 @@ const (
 )
 
 // Read implements the mapper.CartMapper interface.
-func (cart *cdf) Read(addr uint16, peek bool) (uint8, error) {
+func (cart *cdf) Read(addr uint16, peek bool) (uint8, uint8, error) {
 	if b, ok := cart.state.callfn.Check(addr); ok {
-		return b, nil
+		return b, mapper.CartDrivenPins, nil
 	}
 
 	if !peek {
 		if cart.bankswitch(addr) {
-			// always return zero on hotspot - unlike the Atari multi-bank carts for example
-			return 0, nil
+			return 0, mapper.CartDrivenPins, nil
 		}
 	}
 
@@ -226,7 +225,7 @@ func (cart *cdf) Read(addr uint16, peek bool) (uint8, error) {
 			jmp += 1 << cart.version.fetcherShift
 			cart.updateDatastreamPointer(reg, jmp)
 
-			return data, nil
+			return data, mapper.CartDrivenPins, nil
 		}
 	}
 
@@ -239,7 +238,7 @@ func (cart *cdf) Read(addr uint16, peek bool) (uint8, error) {
 
 		// data fetchers
 		if data >= cart.version.datastreamOffset && data <= cart.version.datastreamOffset+DSCOMM {
-			return cart.streamData(int(data - cart.version.datastreamOffset)), nil
+			return cart.streamData(int(data - cart.version.datastreamOffset)), mapper.CartDrivenPins, nil
 		}
 
 		// music fetchers
@@ -256,7 +255,7 @@ func (cart *cdf) Read(addr uint16, peek bool) (uint8, error) {
 					data >>= 4
 				}
 
-				return data, nil
+				return data, mapper.CartDrivenPins, nil
 			}
 
 			// data retrieval for non-SampleMode uses all three music fetchers
@@ -268,7 +267,7 @@ func (cart *cdf) Read(addr uint16, peek bool) (uint8, error) {
 				data += v
 			}
 
-			return data, nil
+			return data, mapper.CartDrivenPins, nil
 		}
 
 		// if data is higher than AMPLITUDE then the 0xa9 we detected in the
@@ -298,7 +297,7 @@ func (cart *cdf) Read(addr uint16, peek bool) (uint8, error) {
 		}
 	}
 
-	return data, nil
+	return data, mapper.CartDrivenPins, nil
 }
 
 // Write implements the mapper.CartMapper interface.

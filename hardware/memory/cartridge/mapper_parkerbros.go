@@ -106,7 +106,7 @@ func (cart *parkerBros) Reset() {
 }
 
 // Read implements the mapper.CartMapper interface.
-func (cart *parkerBros) Read(addr uint16, peek bool) (uint8, error) {
+func (cart *parkerBros) Read(addr uint16, peek bool) (uint8, uint8, error) {
 	var data uint8
 	if addr >= 0x0000 && addr <= 0x03ff {
 		data = cart.banks[cart.state.segment[0]][addr&0x03ff]
@@ -122,7 +122,7 @@ func (cart *parkerBros) Read(addr uint16, peek bool) (uint8, error) {
 		cart.bankswitch(addr)
 	}
 
-	return data, nil
+	return data, mapper.CartDrivenPins, nil
 }
 
 // Write implements the mapper.CartMapper interface.

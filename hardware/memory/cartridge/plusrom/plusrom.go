@@ -181,19 +181,19 @@ func (cart *PlusROM) Reset() {
 }
 
 // READ implements the mapper.CartMapper interface.
-func (cart *PlusROM) Read(addr uint16, peek bool) (data uint8, err error) {
+func (cart *PlusROM) Read(addr uint16, peek bool) (data uint8, mask uint8, err error) {
 	switch addr {
 	case 0x0ff2:
 		// 1FF2 contains the next byte of the response from the host, every
 		// read will increment the receive buffer pointer (receive buffer is
 		// max 256 bytes also!)
 		cart.rewindBoundary = true
-		return cart.net.recv(), nil
+		return cart.net.recv(), mapper.CartDrivenPins, nil
 
 	case 0x0ff3:
 		// 1FF3 contains the number of (unread) bytes left in the receive buffer
 		// (these bytes can be from multiple responses)
-		return uint8(cart.net.recvRemaining()), nil
+		return uint8(cart.net.recvRemaining()), mapper.CartDrivenPins, nil
 	}
 
 	return cart.state.child.Read(addr, peek)

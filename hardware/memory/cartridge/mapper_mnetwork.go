@@ -165,16 +165,22 @@ func (cart *mnetwork) Reset() {
 }
 
 // Read implements the mapper.CartMapper interface.
-func (cart *mnetwork) Read(addr uint16, peek bool) (uint8, error) {
+func (cart *mnetwork) Read(addr uint16, peek bool) (uint8, uint8, error) {
 	var data uint8
 
 	if addr >= 0x0000 && addr <= 0x07ff {
+		if addr <= 0x03ff && cart.state.use1kRAM {
+			return 0, 0, nil
+		}
 		if cart.state.use1kRAM && addr >= 0x0400 {
 			data = cart.state.ram1k[addr&0x03ff]
 		} else {
 			data = cart.banks[cart.state.bank][addr&0x07ff]
 		}
 	} else if addr >= 0x0800 && addr <= 0x0fff {
+		if addr <= 0x08ff {
+			return 0, 0, nil
+		}
 		if addr >= 0x0900 && addr <= 0x09ff {
 			// access upper 1k of ram if cart.segment is pointing to ram and
 			// the address is in the write range
@@ -184,14 +190,16 @@ func (cart *mnetwork) Read(addr uint16, peek bool) (uint8, error) {
 			data = cart.banks[cart.NumBanks()-1][addr&0x07ff]
 		}
 	} else {
-		return 0, curated.Errorf("E7: %v", curated.Errorf(cpubus.AddressError, addr))
+		return 0, 0, curated.Errorf("E7: %v", curated.Errorf(cpubus.AddressError, addr))
 	}
 
 	if !peek {
+		// even if bankswitch is sucessful the data at that address still needs to
+		// be returned. PitKat for example, is sensitive to this
 		cart.bankswitch(addr)
 	}
 
-	return data, nil
+	return data, mapper.CartDrivenPins, nil
 }
 
 // Write implements the mapper.CartMapper interface.

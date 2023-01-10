@@ -97,16 +97,19 @@ func (cart *df) Reset() {
 }
 
 // Read implements the mapper.CartMapper interface.
-func (cart *df) Read(addr uint16, peek bool) (uint8, error) {
+func (cart *df) Read(addr uint16, peek bool) (uint8, uint8, error) {
+	if addr <= 0x007f {
+		return 0, 0, nil
+	}
 	if addr >= 0x0080 && addr <= 0x00ff {
-		return cart.state.ram[addr-0x80], nil
+		return cart.state.ram[addr-0x80], mapper.CartDrivenPins, nil
 	}
 
 	if !peek {
 		cart.bankswitch(addr)
 	}
 
-	return cart.banks[cart.state.bank][addr], nil
+	return cart.banks[cart.state.bank][addr], mapper.CartDrivenPins, nil
 }
 
 // Write implements the mapper.CartMapper interface.

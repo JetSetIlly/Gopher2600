@@ -62,18 +62,16 @@ func (cart *ef) Plumb() {
 }
 
 // Read implements the mapper.CartMapper interface.
-func (cart *ef) Read(addr uint16, peek bool) (uint8, error) {
+func (cart *ef) Read(addr uint16, peek bool) (uint8, uint8, error) {
+	if data, mask, ok := cart.atari.Read(addr, peek); ok {
+		return data, mask, nil
+	}
+
 	if !peek {
 		cart.bankswitch(addr)
 	}
 
-	if cart.state.ram != nil {
-		if addr >= 0x80 && addr <= 0xff {
-			return cart.state.ram[addr-superchipRAMsize], nil
-		}
-	}
-
-	return cart.banks[cart.state.bank][addr], nil
+	return cart.banks[cart.state.bank][addr], mapper.CartDrivenPins, nil
 }
 
 // Write implements the mapper.CartMapper interface.

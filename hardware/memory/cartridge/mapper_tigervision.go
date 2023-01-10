@@ -114,14 +114,14 @@ func (cart *tigervision) Reset() {
 }
 
 // Read implements the mapper.CartMapper interface.
-func (cart *tigervision) Read(addr uint16, _ bool) (uint8, error) {
+func (cart *tigervision) Read(addr uint16, _ bool) (uint8, uint8, error) {
 	var data uint8
 	if addr >= 0x0000 && addr <= 0x07ff {
 		data = cart.banks[cart.state.segment[0]][addr&0x07ff]
 	} else if addr >= 0x0800 && addr <= 0x0fff {
 		data = cart.banks[cart.state.segment[1]][addr&0x07ff]
 	}
-	return data, nil
+	return data, mapper.CartDrivenPins, nil
 }
 
 // Write implements the mapper.CartMapper interface.

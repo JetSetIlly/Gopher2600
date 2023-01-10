@@ -217,9 +217,9 @@ func (cart *Elf) reset() {
 }
 
 // Read implements the mapper.CartMapper interface.
-func (cart *Elf) Read(addr uint16, _ bool) (uint8, error) {
+func (cart *Elf) Read(addr uint16, _ bool) (uint8, uint8, error) {
 	cart.mem.busStuffDelay = true
-	return cart.mem.gpio.B[fromArm_Opcode], nil
+	return cart.mem.gpio.B[fromArm_Opcode], mapper.CartDrivenPins, nil
 }
 
 // Write implements the mapper.CartMapper interface.
