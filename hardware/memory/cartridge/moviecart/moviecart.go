@@ -306,13 +306,13 @@ func (cart *Moviecart) Plumb() {
 func (cart *Moviecart) Reset() {
 }
 
-// Read implements the mapper.CartMapper interface.
-func (cart *Moviecart) Read(addr uint16, _ bool) (data uint8, mask uint8, err error) {
+// Access implements the mapper.CartMapper interface.
+func (cart *Moviecart) Access(addr uint16, _ bool) (data uint8, mask uint8, err error) {
 	return cart.state.sram[addr&0x3ff], mapper.CartDrivenPins, nil
 }
 
-// Write implements the mapper.CartMapper interface.
-func (cart *Moviecart) Write(addr uint16, data uint8, _ bool) error {
+// AccessDriven implements the mapper.CartMapper interface.
+func (cart *Moviecart) AccessDriven(addr uint16, data uint8, _ bool) error {
 	return nil
 }
 
@@ -326,8 +326,8 @@ func (cart *Moviecart) GetBank(addr uint16) mapper.BankInfo {
 	return mapper.BankInfo{}
 }
 
-// Listen implements the mapper.CartMapper interface.
-func (cart *Moviecart) Listen(addr uint16, data uint8) {
+// AccessPassive implements the mapper.CartMapper interface.
+func (cart *Moviecart) AccessPassive(addr uint16, data uint8) {
 	cart.processAddress(addr)
 }
 

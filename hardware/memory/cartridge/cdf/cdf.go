@@ -180,8 +180,8 @@ const (
 	ldyImmediate = 0xa0
 )
 
-// Read implements the mapper.CartMapper interface.
-func (cart *cdf) Read(addr uint16, peek bool) (uint8, uint8, error) {
+// Access implements the mapper.CartMapper interface.
+func (cart *cdf) Access(addr uint16, peek bool) (uint8, uint8, error) {
 	if b, ok := cart.state.callfn.Check(addr); ok {
 		return b, mapper.CartDrivenPins, nil
 	}
@@ -300,8 +300,8 @@ func (cart *cdf) Read(addr uint16, peek bool) (uint8, uint8, error) {
 	return data, mapper.CartDrivenPins, nil
 }
 
-// Write implements the mapper.CartMapper interface.
-func (cart *cdf) Write(addr uint16, data uint8, poke bool) error {
+// AccessDriven implements the mapper.CartMapper interface.
+func (cart *cdf) AccessDriven(addr uint16, data uint8, poke bool) error {
 	// bank switches can not take place if coprocessor is active
 	if cart.state.callfn.IsActive() {
 		return nil
@@ -446,8 +446,8 @@ func (cart *cdf) Patch(offset int, data uint8) error {
 	return curated.Errorf("CDF: patching unsupported")
 }
 
-// Listen implements the mapper.CartMapper interface.
-func (cart *cdf) Listen(addr uint16, data uint8) {
+// AccessPassive implements the mapper.CartMapper interface.
+func (cart *cdf) AccessPassive(addr uint16, data uint8) {
 }
 
 // Step implements the mapper.CartMapper interface.

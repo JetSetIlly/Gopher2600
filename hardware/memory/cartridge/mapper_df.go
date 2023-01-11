@@ -96,8 +96,8 @@ func (cart *df) Reset() {
 	cart.state.bank = 15
 }
 
-// Read implements the mapper.CartMapper interface.
-func (cart *df) Read(addr uint16, peek bool) (uint8, uint8, error) {
+// Access implements the mapper.CartMapper interface.
+func (cart *df) Access(addr uint16, peek bool) (uint8, uint8, error) {
 	if addr <= 0x007f {
 		return 0, 0, nil
 	}
@@ -112,8 +112,8 @@ func (cart *df) Read(addr uint16, peek bool) (uint8, uint8, error) {
 	return cart.banks[cart.state.bank][addr], mapper.CartDrivenPins, nil
 }
 
-// Write implements the mapper.CartMapper interface.
-func (cart *df) Write(addr uint16, data uint8, poke bool) error {
+// AccessDriven implements the mapper.CartMapper interface.
+func (cart *df) AccessDriven(addr uint16, data uint8, poke bool) error {
 	if !poke {
 		if cart.bankswitch(addr) {
 			return nil
@@ -232,8 +232,8 @@ func (cart *df) Patch(offset int, data uint8) error {
 	return nil
 }
 
-// Listen implements the mapper.CartMapper interface.
-func (cart *df) Listen(addr uint16, data uint8) {
+// AccessPassive implements the mapper.CartMapper interface.
+func (cart *df) AccessPassive(addr uint16, data uint8) {
 	if cart.state.ram != nil {
 		if addr&memorymap.OriginCart == memorymap.OriginCart {
 			addr &= memorymap.MaskCart

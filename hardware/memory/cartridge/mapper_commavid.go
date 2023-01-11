@@ -109,8 +109,8 @@ func (cart *commavid) Reset() {
 	}
 }
 
-// Read implements the mapper.CartMapper interface.
-func (cart *commavid) Read(addr uint16, _ bool) (uint8, uint8, error) {
+// Access implements the mapper.CartMapper interface.
+func (cart *commavid) Access(addr uint16, _ bool) (uint8, uint8, error) {
 	if addr >= 0x0000 && addr <= 0x03ff {
 		return cart.state.ram[addr], mapper.CartDrivenPins, nil
 	}
@@ -121,8 +121,8 @@ func (cart *commavid) Read(addr uint16, _ bool) (uint8, uint8, error) {
 	return cart.bankData[addr], mapper.CartDrivenPins, nil
 }
 
-// Write implements the mapper.CartMapper interface.
-func (cart *commavid) Write(addr uint16, data uint8, poke bool) error {
+// AccessDriven implements the mapper.CartMapper interface.
+func (cart *commavid) AccessDriven(addr uint16, data uint8, poke bool) error {
 	if addr >= 0x0400 && addr <= 0x07ff {
 		cart.state.ram[addr&0x03ff] = data
 		return nil
@@ -157,8 +157,8 @@ func (cart *commavid) Patch(offset int, data uint8) error {
 	return nil
 }
 
-// Listen implements the mapper.CartMapper interface.
-func (cart *commavid) Listen(addr uint16, data uint8) {
+// AccessPassive implements the mapper.CartMapper interface.
+func (cart *commavid) AccessPassive(addr uint16, data uint8) {
 	// Sometimes, cartridge addresses can be accessed inadvertently. but unlike
 	// the Atari Superchip or CBS RAM I don't believe this can happen with
 	// CommaVid RAM

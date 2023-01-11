@@ -126,13 +126,13 @@ func (cart *Ace) Plumb() {
 func (cart *Ace) Reset() {
 }
 
-// Read implements the mapper.CartMapper interface.
-func (cart *Ace) Read(addr uint16, _ bool) (uint8, uint8, error) {
+// Access implements the mapper.CartMapper interface.
+func (cart *Ace) Access(addr uint16, _ bool) (uint8, uint8, error) {
 	return cart.mem.gpioB[fromArm_data], mapper.CartDrivenPins, nil
 }
 
-// Write implements the mapper.CartMapper interface.
-func (cart *Ace) Write(addr uint16, data uint8, _ bool) error {
+// AccessDriven implements the mapper.CartMapper interface.
+func (cart *Ace) AccessDriven(addr uint16, data uint8, _ bool) error {
 	return nil
 }
 
@@ -151,8 +151,8 @@ func (cart *Ace) Patch(_ int, _ uint8) error {
 	return curated.Errorf("ACE: patching unsupported")
 }
 
-// Listen implements the mapper.CartMapper interface.
-func (cart *Ace) Listen(addr uint16, data uint8) {
+// AccessPassive implements the mapper.CartMapper interface.
+func (cart *Ace) AccessPassive(addr uint16, data uint8) {
 	// if memory access is not a cartridge address (ie. a TIA or RIOT address)
 	// then the ARM is running in parallel (ie. no synchronisation)
 	cart.parallelARM = (addr&memorymap.OriginCart != memorymap.OriginCart)

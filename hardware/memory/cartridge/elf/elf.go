@@ -216,14 +216,14 @@ func (cart *Elf) reset() {
 	cart.arm.SetInitialRegisters(argOrigin)
 }
 
-// Read implements the mapper.CartMapper interface.
-func (cart *Elf) Read(addr uint16, _ bool) (uint8, uint8, error) {
+// Access implements the mapper.CartMapper interface.
+func (cart *Elf) Access(addr uint16, _ bool) (uint8, uint8, error) {
 	cart.mem.busStuffDelay = true
 	return cart.mem.gpio.B[fromArm_Opcode], mapper.CartDrivenPins, nil
 }
 
-// Write implements the mapper.CartMapper interface.
-func (cart *Elf) Write(addr uint16, data uint8, _ bool) error {
+// AccessDriven implements the mapper.CartMapper interface.
+func (cart *Elf) AccessDriven(addr uint16, data uint8, _ bool) error {
 	return nil
 }
 
@@ -292,8 +292,8 @@ func (cart *Elf) runStrongarm(addr uint16, data uint8) bool {
 	return false
 }
 
-// Listen implements the mapper.CartMapper interface.
-func (cart *Elf) Listen(addr uint16, data uint8) {
+// AccessPassive implements the mapper.CartMapper interface.
+func (cart *Elf) AccessPassive(addr uint16, data uint8) {
 	// if memory access is not a cartridge address (ie. a TIA or RIOT address)
 	// then the ARM is running in parallel (ie. no synchronisation)
 	cart.parallelARM = (addr&memorymap.OriginCart != memorymap.OriginCart)

@@ -128,8 +128,8 @@ func (cart *m3ePlus) Reset() {
 	}
 }
 
-// Read implements the mapper.CartMapper interface.
-func (cart *m3ePlus) Read(addr uint16, _ bool) (uint8, uint8, error) {
+// Access implements the mapper.CartMapper interface.
+func (cart *m3ePlus) Access(addr uint16, _ bool) (uint8, uint8, error) {
 	var segment int
 
 	if addr >= 0x0000 && addr <= 0x03ff {
@@ -156,8 +156,8 @@ func (cart *m3ePlus) Read(addr uint16, _ bool) (uint8, uint8, error) {
 	return data, mapper.CartDrivenPins, nil
 }
 
-// Write implements the mapper.CartMapper interface.
-func (cart *m3ePlus) Write(addr uint16, data uint8, poke bool) error {
+// AccessDriven implements the mapper.CartMapper interface.
+func (cart *m3ePlus) AccessDriven(addr uint16, data uint8, poke bool) error {
 	var segment int
 
 	if addr >= 0x0000 && addr <= 0x03ff {
@@ -217,10 +217,10 @@ func (cart *m3ePlus) Patch(offset int, data uint8) error {
 	return nil
 }
 
-// Listen implements the mapper.CartMapper interface.
-func (cart *m3ePlus) Listen(addr uint16, data uint8) {
-	// mapper 3e+ is a derivative of tigervision and so uses the same Listen()
-	// mechanism. see the tigervision commentary for details
+// AccessPassive implements the mapper.CartMapper interface.
+func (cart *m3ePlus) AccessPassive(addr uint16, data uint8) {
+	// mapper 3e+ is a derivative of tigervision and so uses the same
+	// AccessPassive() mechanism. see the tigervision commentary for details
 
 	// bankswitch on hotspot access
 	if addr == 0x3f {
@@ -307,7 +307,7 @@ type m3ePlusState struct {
 	// refers to these as slots. we prefer the segment terminology for
 	// consistency.
 	//
-	// hotspots are provided by the Listen() function
+	// hotspots are provided by the AccessPassive() function
 	segment      [4]int
 	segmentIsRAM [4]bool
 }

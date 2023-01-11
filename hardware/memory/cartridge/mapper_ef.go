@@ -19,7 +19,6 @@ import (
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/instance"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
 )
 
 // the EF mapper is really just a 64k standard atari cartridge
@@ -61,9 +60,9 @@ func (cart *ef) Snapshot() mapper.CartMapper {
 func (cart *ef) Plumb() {
 }
 
-// Read implements the mapper.CartMapper interface.
-func (cart *ef) Read(addr uint16, peek bool) (uint8, uint8, error) {
-	if data, mask, ok := cart.atari.Read(addr, peek); ok {
+// Access implements the mapper.CartMapper interface.
+func (cart *ef) Access(addr uint16, peek bool) (uint8, uint8, error) {
+	if data, mask, ok := cart.atari.access(addr); ok {
 		return data, mask, nil
 	}
 
@@ -74,27 +73,15 @@ func (cart *ef) Read(addr uint16, peek bool) (uint8, uint8, error) {
 	return cart.banks[cart.state.bank][addr], mapper.CartDrivenPins, nil
 }
 
-// Write implements the mapper.CartMapper interface.
-func (cart *ef) Write(addr uint16, data uint8, poke bool) error {
+// AccessDriven implements the mapper.CartMapper interface.
+func (cart *ef) AccessDriven(addr uint16, data uint8, poke bool) error {
 	if !poke {
 		if cart.bankswitch(addr) {
 			return nil
 		}
 	}
 
-	if cart.state.ram != nil {
-		if addr <= 0x7f {
-			cart.state.ram[addr] = data
-			return nil
-		}
-	}
-
-	if poke {
-		cart.banks[cart.state.bank][addr] = data
-		return nil
-	}
-
-	return curated.Errorf("EF: %v", curated.Errorf(cpubus.AddressError, addr))
+	return cart.accessDriven(addr, data, poke)
 }
 
 // bankswitch on hotspot access.

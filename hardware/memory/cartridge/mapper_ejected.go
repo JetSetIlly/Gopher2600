@@ -51,14 +51,14 @@ func (cart *ejected) Plumb() {
 func (cart *ejected) Reset() {
 }
 
-// Read implements the mapper.CartMapper interface.
-func (cart *ejected) Read(_ uint16, _ bool) (uint8, uint8, error) {
+// Access implements the mapper.CartMapper interface.
+func (cart *ejected) Access(_ uint16, _ bool) (uint8, uint8, error) {
 	// return undriven pins
 	return 0, 0, nil
 }
 
-// Write implements the mapper.CartMapper interface.
-func (cart *ejected) Write(_ uint16, _ uint8, _ bool) error {
+// AccessDriven implements the mapper.CartMapper interface.
+func (cart *ejected) AccessDriven(_ uint16, _ uint8, _ bool) error {
 	return nil
 }
 
@@ -77,8 +77,8 @@ func (cart *ejected) Patch(_ int, _ uint8) error {
 	return curated.Errorf(Ejected)
 }
 
-// Listen implements the mapper.CartMapper interface.
-func (cart *ejected) Listen(_ uint16, _ uint8) {
+// AccessPassive implements the mapper.CartMapper interface.
+func (cart *ejected) AccessPassive(_ uint16, _ uint8) {
 }
 
 // Step implements the mapper.CartMapper interface.

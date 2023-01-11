@@ -156,8 +156,8 @@ func (cart *dpcPlus) Reset() {
 	cart.state.initialise(cart.instance.Random, len(cart.banks)-1)
 }
 
-// Read implements the mapper.CartMapper interface.
-func (cart *dpcPlus) Read(addr uint16, peek bool) (uint8, uint8, error) {
+// Access implements the mapper.CartMapper interface.
+func (cart *dpcPlus) Access(addr uint16, peek bool) (uint8, uint8, error) {
 	if b, ok := cart.state.callfn.Check(addr); ok {
 		return b, mapper.CartDrivenPins, nil
 	}
@@ -184,7 +184,7 @@ func (cart *dpcPlus) Read(addr uint16, peek bool) (uint8, uint8, error) {
 		// place)
 		if cart.state.registers.FastFetch && cart.state.lda && data < 0x28 {
 			cart.state.lda = false
-			return cart.Read(uint16(data), peek)
+			return cart.Access(uint16(data), peek)
 		}
 
 		cart.state.lda = cart.state.registers.FastFetch && data == 0xa9
@@ -317,8 +317,8 @@ func (cart *dpcPlus) Read(addr uint16, peek bool) (uint8, uint8, error) {
 	return data, mapper.CartDrivenPins, nil
 }
 
-// Write implements the mapper.CartMapper interface.
-func (cart *dpcPlus) Write(addr uint16, data uint8, poke bool) error {
+// AccessDriven implements the mapper.CartMapper interface.
+func (cart *dpcPlus) AccessDriven(addr uint16, data uint8, poke bool) error {
 	// bank switches can not take place if coprocessor is active
 	if cart.state.callfn.IsActive() {
 		return nil
@@ -699,8 +699,8 @@ func (cart *dpcPlus) Patch(offset int, data uint8) error {
 	return curated.Errorf("DPC+: patching unsupported")
 }
 
-// Listen implements the mapper.CartMapper interface.
-func (cart *dpcPlus) Listen(addr uint16, data uint8) {
+// AccessPassive implements the mapper.CartMapper interface.
+func (cart *dpcPlus) AccessPassive(addr uint16, data uint8) {
 }
 
 // Step implements the mapper.CartMapper interface.

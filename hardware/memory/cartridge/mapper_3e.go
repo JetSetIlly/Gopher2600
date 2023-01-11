@@ -115,8 +115,8 @@ func (cart *m3e) Reset() {
 	cart.state.segment[1] = cart.NumBanks() - 1
 }
 
-// Read implements the mapper.CartMapper interface.
-func (cart *m3e) Read(addr uint16, _ bool) (uint8, uint8, error) {
+// Access implements the mapper.CartMapper interface.
+func (cart *m3e) Access(addr uint16, _ bool) (uint8, uint8, error) {
 	var segment int
 
 	if addr >= 0x0000 && addr <= 0x07ff {
@@ -139,8 +139,8 @@ func (cart *m3e) Read(addr uint16, _ bool) (uint8, uint8, error) {
 	return data, mapper.CartDrivenPins, nil
 }
 
-// Write implements the mapper.CartMapper interface.
-func (cart *m3e) Write(addr uint16, data uint8, poke bool) error {
+// AccessDriven implements the mapper.CartMapper interface.
+func (cart *m3e) AccessDriven(addr uint16, data uint8, poke bool) error {
 	var segment int
 
 	if addr >= 0x0000 && addr <= 0x07ff {
@@ -185,10 +185,10 @@ func (cart *m3e) Patch(offset int, data uint8) error {
 	return nil
 }
 
-// Listen implements the mapper.CartMapper interface.
-func (cart *m3e) Listen(addr uint16, data uint8) {
-	// mapper 3e is a derivative of tigervision and so uses the same Listen()
-	// mechanism. see the tigervision commentary for details
+// AccessPassive implements the mapper.CartMapper interface.
+func (cart *m3e) AccessPassive(addr uint16, data uint8) {
+	// mapper 3e is a derivative of tigervision and so uses the same
+	// AccessPassive() mechanism. see the tigervision commentary for details
 
 	// bankswitch on hotspot access
 	if addr == 0x3f {

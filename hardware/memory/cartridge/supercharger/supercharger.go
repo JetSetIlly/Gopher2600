@@ -126,8 +126,8 @@ func (cart *Supercharger) Reset() {
 	cart.state.registers.RAMwrite = true
 }
 
-// Read implements the mapper.CartMapper interface.
-func (cart *Supercharger) Read(addr uint16, peek bool) (uint8, uint8, error) {
+// Access implements the mapper.CartMapper interface.
+func (cart *Supercharger) Access(addr uint16, peek bool) (uint8, uint8, error) {
 	// what bank to read. bank zero refers to the BIOS. bank 1 to 3 refer to
 	// one of the RAM banks
 	bank := cart.GetBank(addr).Number
@@ -216,8 +216,8 @@ func (cart *Supercharger) Read(addr uint16, peek bool) (uint8, uint8, error) {
 	return cart.state.ram[bank][addr&0x07ff], mapper.CartDrivenPins, nil
 }
 
-// Write implements the mapper.CartMapper interface.
-func (cart *Supercharger) Write(addr uint16, data uint8, _ bool) error {
+// AccessDriven implements the mapper.CartMapper interface.
+func (cart *Supercharger) AccessDriven(addr uint16, data uint8, _ bool) error {
 	return nil
 }
 
@@ -285,8 +285,8 @@ func (cart *Supercharger) Patch(_ int, _ uint8) error {
 	return curated.Errorf("supercharger: %v", "not patchable")
 }
 
-// Listen implements the mapper.CartMapper interface.
-func (cart *Supercharger) Listen(addr uint16, _ uint8) {
+// AccessPassive implements the mapper.CartMapper interface.
+func (cart *Supercharger) AccessPassive(addr uint16, _ uint8) {
 	cart.state.registers.transitionCount(addr)
 }
 

@@ -170,6 +170,8 @@ func (cart *atari) Reset() {
 		cart.state.bank = 1
 	case "F4": // 32k (8 banks)
 		cart.state.bank = 0
+	default:
+		cart.state.bank = 0
 	}
 }
 
@@ -181,8 +183,9 @@ func (cart *atari) GetBank(addr uint16) mapper.BankInfo {
 	return mapper.BankInfo{Number: cart.state.bank, IsRAM: cart.state.ram != nil && addr >= 0x80 && addr <= 0xff}
 }
 
-// Read implements the mapper.CartMapper interface.
-func (cart *atari) Read(addr uint16, _ bool) (uint8, uint8, bool) {
+// access implements the mapper.CartMapper interface. the bool return value is true if the address
+// has been recognised and serviced.
+func (cart *atari) access(addr uint16) (uint8, uint8, bool) {
 	if cart.state.ram != nil {
 		if addr <= 0x7f {
 			return 0, 0, true
@@ -194,8 +197,8 @@ func (cart *atari) Read(addr uint16, _ bool) (uint8, uint8, bool) {
 	return 0, mapper.CartDrivenPins, false
 }
 
-// Write implements the mapper.CartMapper interface.
-func (cart *atari) Write(addr uint16, data uint8, poke bool) error {
+// accessDriven implements the mapper.CartMapper interface.
+func (cart *atari) accessDriven(addr uint16, data uint8, poke bool) error {
 	if cart.state.ram != nil {
 		if addr <= 0x7f {
 			cart.state.ram[addr] = data
@@ -223,8 +226,8 @@ func (cart *atari) Patch(offset int, data uint8) error {
 	return nil
 }
 
-// Listen implements the mapper.CartMapper interface.
-func (cart *atari) Listen(addr uint16, data uint8) {
+// AccessPassive implements the mapper.CartMapper interface.
+func (cart *atari) AccessPassive(addr uint16, data uint8) {
 	// Sometimes, cartridge addresses can be accessed inadvertently. in most
 	// instances, there are no consequences but in the case of the Superchip,
 	// the write addresses can be accessed and the RAM data changed. we handle
@@ -235,6 +238,7 @@ func (cart *atari) Listen(addr uint16, data uint8) {
 		if addr&memorymap.OriginCart == memorymap.OriginCart {
 			addr &= memorymap.MaskCart
 			addr ^= memorymap.OriginCart
+
 			// Atari Superchip is 128 bytes
 			if addr&0xff80 == 0x0000 {
 				cart.state.ram[addr&0x7f] = data
@@ -338,17 +342,17 @@ func (cart *atari4k) NumBanks() int {
 	return 1
 }
 
-// Read implements the mapper.CartMapper interface.
-func (cart *atari4k) Read(addr uint16, peek bool) (uint8, uint8, error) {
-	if data, mask, ok := cart.atari.Read(addr, peek); ok {
+// Access implements the mapper.CartMapper interface.
+func (cart *atari4k) Access(addr uint16, peek bool) (uint8, uint8, error) {
+	if data, mask, ok := cart.atari.access(addr); ok {
 		return data, mask, nil
 	}
 	return cart.banks[0][addr], mapper.CartDrivenPins, nil
 }
 
-// Write implements the mapper.CartMapper interface.
-func (cart *atari4k) Write(addr uint16, data uint8, poke bool) error {
-	return cart.atari.Write(addr, data, poke)
+// AccessDriven implements the mapper.CartMapper interface.
+func (cart *atari4k) AccessDriven(addr uint16, data uint8, poke bool) error {
+	return cart.atari.accessDriven(addr, data, poke)
 }
 
 // atari2k is the half-size cartridge of 2048 bytes:
@@ -403,9 +407,9 @@ func (cart *atari2k) NumBanks() int {
 	return 1
 }
 
-// Read implements the mapper.CartMapper interface.
-func (cart *atari2k) Read(addr uint16, peek bool) (uint8, uint8, error) {
-	if data, mask, ok := cart.atari.Read(addr, peek); ok {
+// Access implements the mapper.CartMapper interface.
+func (cart *atari2k) Access(addr uint16, peek bool) (uint8, uint8, error) {
+	if data, mask, ok := cart.atari.access(addr); ok {
 		return data, mask, nil
 	}
 	return cart.banks[0][addr&cart.mask], mapper.CartDrivenPins, nil
@@ -421,9 +425,9 @@ func (cart *atari2k) CopyBanks() []mapper.BankContent {
 	return c
 }
 
-// Write implements the mapper.CartMapper interface.
-func (cart *atari2k) Write(addr uint16, data uint8, poke bool) error {
-	return cart.atari.Write(addr, data, poke)
+// AccessDriven implements the mapper.CartMapper interface.
+func (cart *atari2k) AccessDriven(addr uint16, data uint8, poke bool) error {
+	return cart.atari.accessDriven(addr, data, poke)
 }
 
 // atari8k (F8):
@@ -472,9 +476,9 @@ func (cart *atari8k) NumBanks() int {
 	return 2
 }
 
-// Read implements the mapper.CartMapper interface.
-func (cart *atari8k) Read(addr uint16, peek bool) (uint8, uint8, error) {
-	if data, mask, ok := cart.atari.Read(addr, peek); ok {
+// Access implements the mapper.CartMapper interface.
+func (cart *atari8k) Access(addr uint16, peek bool) (uint8, uint8, error) {
+	if data, mask, ok := cart.atari.access(addr); ok {
 		return data, mask, nil
 	}
 
@@ -485,15 +489,15 @@ func (cart *atari8k) Read(addr uint16, peek bool) (uint8, uint8, error) {
 	return cart.banks[cart.state.bank][addr], mapper.CartDrivenPins, nil
 }
 
-// Write implements the mapper.CartMapper interface.
-func (cart *atari8k) Write(addr uint16, data uint8, poke bool) error {
+// AccessDriven implements the mapper.CartMapper interface.
+func (cart *atari8k) AccessDriven(addr uint16, data uint8, poke bool) error {
 	if !poke {
 		if cart.bankswitch(addr) {
 			return nil
 		}
 	}
 
-	return cart.atari.Write(addr, data, poke)
+	return cart.atari.accessDriven(addr, data, poke)
 }
 
 // bankswitch on hotspot access.
@@ -569,9 +573,9 @@ func (cart *atari16k) NumBanks() int {
 	return 4
 }
 
-// Read implements the mapper.CartMapper interface.
-func (cart *atari16k) Read(addr uint16, peek bool) (uint8, uint8, error) {
-	if data, mask, ok := cart.atari.Read(addr, peek); ok {
+// Access implements the mapper.CartMapper interface.
+func (cart *atari16k) Access(addr uint16, peek bool) (uint8, uint8, error) {
+	if data, mask, ok := cart.atari.access(addr); ok {
 		return data, mask, nil
 	}
 
@@ -582,15 +586,15 @@ func (cart *atari16k) Read(addr uint16, peek bool) (uint8, uint8, error) {
 	return cart.banks[cart.state.bank][addr], mapper.CartDrivenPins, nil
 }
 
-// Write implements the mapper.CartMapper interface.
-func (cart *atari16k) Write(addr uint16, data uint8, poke bool) error {
+// AccessDriven implements the mapper.CartMapper interface.
+func (cart *atari16k) AccessDriven(addr uint16, data uint8, poke bool) error {
 	if !poke {
 		if cart.bankswitch(addr) {
 			return nil
 		}
 	}
 
-	return cart.atari.Write(addr, data, poke)
+	return cart.atari.accessDriven(addr, data, poke)
 }
 
 // bankswitch on hotspot access.
@@ -672,9 +676,9 @@ func (cart *atari32k) NumBanks() int {
 	return 8
 }
 
-// Read implements the mapper.CartMapper interface.
-func (cart *atari32k) Read(addr uint16, peek bool) (uint8, uint8, error) {
-	if data, mask, ok := cart.atari.Read(addr, peek); ok {
+// Access implements the mapper.CartMapper interface.
+func (cart *atari32k) Access(addr uint16, peek bool) (uint8, uint8, error) {
+	if data, mask, ok := cart.atari.access(addr); ok {
 		return data, mask, nil
 	}
 
@@ -685,15 +689,15 @@ func (cart *atari32k) Read(addr uint16, peek bool) (uint8, uint8, error) {
 	return cart.banks[cart.state.bank][addr], mapper.CartDrivenPins, nil
 }
 
-// Write implements the mapper.CartMapper interface.
-func (cart *atari32k) Write(addr uint16, data uint8, poke bool) error {
+// AccessDriven implements the mapper.CartMapper interface.
+func (cart *atari32k) AccessDriven(addr uint16, data uint8, poke bool) error {
 	if !poke {
 		if cart.bankswitch(addr) {
 			return nil
 		}
 	}
 
-	return cart.atari.Write(addr, data, poke)
+	return cart.atari.accessDriven(addr, data, poke)
 }
 
 // bankswitch on hotspot access.

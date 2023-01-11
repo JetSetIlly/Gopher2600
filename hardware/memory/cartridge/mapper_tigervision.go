@@ -113,8 +113,8 @@ func (cart *tigervision) Reset() {
 	cart.state.segment[1] = cart.NumBanks() - 1
 }
 
-// Read implements the mapper.CartMapper interface.
-func (cart *tigervision) Read(addr uint16, _ bool) (uint8, uint8, error) {
+// Access implements the mapper.CartMapper interface.
+func (cart *tigervision) Access(addr uint16, _ bool) (uint8, uint8, error) {
 	var data uint8
 	if addr >= 0x0000 && addr <= 0x07ff {
 		data = cart.banks[cart.state.segment[0]][addr&0x07ff]
@@ -124,8 +124,8 @@ func (cart *tigervision) Read(addr uint16, _ bool) (uint8, uint8, error) {
 	return data, mapper.CartDrivenPins, nil
 }
 
-// Write implements the mapper.CartMapper interface.
-func (cart *tigervision) Write(addr uint16, data uint8, poke bool) error {
+// AccessDriven implements the mapper.CartMapper interface.
+func (cart *tigervision) AccessDriven(addr uint16, data uint8, poke bool) error {
 	if poke {
 		if addr >= 0x0000 && addr <= 0x07ff {
 			cart.banks[cart.state.segment[0]][addr&0x07ff] = data
@@ -161,8 +161,8 @@ func (cart *tigervision) Patch(offset int, data uint8) error {
 	return nil
 }
 
-// Listen implements the mapper.CartMapper interface.
-func (cart *tigervision) Listen(addr uint16, data uint8) {
+// AccessPassive implements the mapper.CartMapper interface.
+func (cart *tigervision) AccessPassive(addr uint16, data uint8) {
 	// tigervision is seemingly unique in that it bank switches when an address
 	// outside of cartridge space is written to. for this to work, we need the
 	// listen() function.

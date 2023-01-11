@@ -139,13 +139,13 @@ func (cart *Cartridge) ContainerID() string {
 
 // Peek is an implementation of memory.DebugBus. Address must be normalised.
 func (cart *Cartridge) Peek(addr uint16) (uint8, error) {
-	v, _, err := cart.mapper.Read(addr&memorymap.CartridgeBits, true)
+	v, _, err := cart.mapper.Access(addr&memorymap.CartridgeBits, true)
 	return v, err
 }
 
 // Poke is an implementation of memory.DebugBus. Address must be normalised.
 func (cart *Cartridge) Poke(addr uint16, data uint8) error {
-	return cart.mapper.Write(addr&memorymap.CartridgeBits, data, true)
+	return cart.mapper.AccessDriven(addr&memorymap.CartridgeBits, data, true)
 }
 
 // Patch writes to cartridge memory. Offset is measured from the start of
@@ -156,12 +156,12 @@ func (cart *Cartridge) Patch(offset int, data uint8) error {
 
 // Read is an implementation of memory.CPUBus.
 func (cart *Cartridge) Read(addr uint16) (uint8, uint8, error) {
-	return cart.mapper.Read(addr&memorymap.CartridgeBits, false)
+	return cart.mapper.Access(addr&memorymap.CartridgeBits, false)
 }
 
 // Write is an implementation of memory.CPUBus.
 func (cart *Cartridge) Write(addr uint16, data uint8) error {
-	return cart.mapper.Write(addr&memorymap.CartridgeBits, data, false)
+	return cart.mapper.AccessDriven(addr&memorymap.CartridgeBits, data, false)
 }
 
 // Eject removes memory from cartridge space and unlike the real hardware,
@@ -354,7 +354,8 @@ func (cart *Cartridge) GetBank(addr uint16) mapper.BankInfo {
 	return bank
 }
 
-// Listen for data at the specified address.
+// AccessPassive is called so that the cartridge can respond to changes to the
+// address and data bus even when the data bus is not addressed to the cartridge.
 //
 // The VCS cartridge port is wired up to all 13 address lines of the 6507.
 // Under normal operation, the chip-select line is used by the cartridge to
@@ -370,8 +371,8 @@ func (cart *Cartridge) GetBank(addr uint16) mapper.BankInfo {
 //
 // Similarly, the CBS (FA) mapper will switch banks on cartridge addresses 1ff8
 // to 1ffa (and mirrors) but only if the data bus has the low bit set to one.
-func (cart *Cartridge) Listen(addr uint16, data uint8) {
-	cart.mapper.Listen(addr, data)
+func (cart *Cartridge) AccessPassive(addr uint16, data uint8) {
+	cart.mapper.AccessPassive(addr, data)
 }
 
 // Step should be called every CPU cycle. The attached cartridge may or may not

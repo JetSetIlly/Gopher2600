@@ -23,7 +23,7 @@ type CartContainer interface {
 }
 
 // CartDrivenPins is included for clarity. In the vast majority of cases a cartridge mapper
-// will drive all pins on the data bus during a read. Use CartDrivenPins rather than 0xff.
+// will drive all pins on the data bus during access. Use CartDrivenPins rather than 0xff.
 //
 // In the case where the data bus pins are not driven a 0 will suffice.
 //
@@ -46,17 +46,32 @@ type CartMapper interface {
 	// explicit reset (possibly with randomisation)
 	Reset()
 
-	// the addr parameter for Read() and Write() will be *just* the cartridge
-	// bits. there is no mirror information in the addr value
-	Read(addr uint16, peek bool) (data uint8, mask uint8, err error)
-	Write(addr uint16, data uint8, poke bool) error
+	// access the cartridge at the specified address. the cartridge is expected to
+	// drive the data bus and so this can be thought of as a "read" operation
+	//
+	// the mask return value allows the mapper to identify which data pins which are
+	// being driven (1 bits) by the cartridge. in most cases, the mask should be the
+	// CartDrivenPins value
+	//
+	// the address parameter should be normalised. ie. no mirror information
+	Access(addr uint16, peek bool) (data uint8, mask uint8, err error)
+
+	// access the cartridge at the specified address. the data bus is being driven
+	// by the CPU so we can think of this as a "write" operation. whether the data
+	// is actually "written" or otherwise used is down to the mapper itself
+	//
+	// the address parameter should be normalised. ie. no mirror information
+	AccessDriven(addr uint16, data uint8, poke bool) error
 
 	NumBanks() int
 	GetBank(addr uint16) BankInfo
 
-	// see the commentary for the Listen() function in the Cartridge type for
-	// an explanation for what this does
-	Listen(addr uint16, data uint8)
+	// AccessPassive is called so that the cartridge can respond to changes to the
+	// address and data bus even when the data bus is not addressed to the cartridge.
+	//
+	// see the commentary for the AccessPassive() function in the Cartridge type
+	// for an explanation for why this is needed
+	AccessPassive(addr uint16, data uint8)
 
 	// some cartridge mappings have independent clocks that tick and change
 	// internal cartridge state. the step() function is called every cpu cycle

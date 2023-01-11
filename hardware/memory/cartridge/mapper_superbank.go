@@ -95,13 +95,13 @@ func (cart *superbank) Reset() {
 	cart.state.bank = len(cart.banks) - 1
 }
 
-// Read implements the mapper.CartMapper interface.
-func (cart *superbank) Read(addr uint16, _ bool) (uint8, uint8, error) {
+// Access implements the mapper.CartMapper interface.
+func (cart *superbank) Access(addr uint16, _ bool) (uint8, uint8, error) {
 	return cart.banks[cart.state.bank][addr], mapper.CartDrivenPins, nil
 }
 
-// Write implements the mapper.CartMapper interface.
-func (cart *superbank) Write(addr uint16, data uint8, poke bool) error {
+// AccessDriven implements the mapper.CartMapper interface.
+func (cart *superbank) AccessDriven(addr uint16, data uint8, poke bool) error {
 	if poke {
 		cart.banks[cart.state.bank][addr] = data
 		return nil
@@ -134,8 +134,8 @@ func (cart *superbank) Patch(offset int, data uint8) error {
 	return nil
 }
 
-// Listen implements the mapper.CartMapper interface.
-func (cart *superbank) Listen(addr uint16, data uint8) {
+// AccessPassive implements the mapper.CartMapper interface.
+func (cart *superbank) AccessPassive(addr uint16, data uint8) {
 	// return with no side effect if address is not a TIA mirror
 	if addr&0x1800 != 0x0800 {
 		return

@@ -69,10 +69,6 @@ type Memory struct {
 	//  . as above but the mapped address
 	//  . the value that was written/read from the last address accessed
 	//  . whether the last address accessed was written or read
-	//  . the pins that were driven during the last read access by the CPU
-	//
-	// Users of this fields should also consider the possibility that the
-	// access was a phantom access (PhantomAccess flag in CPU type)
 	//
 	// * the literal address is the address as it appears in the 6507 program.
 	// and therefore it might be more than 13 bits wide. as such it is not
@@ -84,11 +80,14 @@ type Memory struct {
 	LastCPUAddressMapped  uint16
 	LastCPUData           uint8
 	LastCPUWrite          bool
-	LastCPUDrivenPins     uint8
 
 	// the actual values that have been put on the address and data buses.
 	AddressBus uint16
 	DataBus    uint8
+
+	// not all pins of the databus are driven at all times. bits set in
+	// the DataBusDriven field indicate the pins that are being driven
+	DataBusDriven uint8
 }
 
 // NewMemory is the preferred method of initialisation for Memory.
@@ -182,7 +181,7 @@ func (mem *Memory) Read(address uint16) (uint8, error) {
 		// UnoCart/PlusCart  |  mem.DataBus
 		// Harmony           |  mem.DataBus | 0b01000000
 		//
-		mem.Cart.Listen(mem.AddressBus, mem.DataBus)
+		mem.Cart.AccessPassive(mem.AddressBus, mem.DataBus)
 	}
 
 	ma, ar := memorymap.MapAddress(address, true)
@@ -191,18 +190,18 @@ func (mem *Memory) Read(address uint16) (uint8, error) {
 	// read data from area
 	var data uint8
 	var err error
-	data, mem.LastCPUDrivenPins, err = area.Read(ma)
+	data, mem.DataBusDriven, err = area.Read(ma)
 
 	// the data bus is not always completely driven. ie. some pins are not powered and are left
 	// floating
 	//
 	// a good example of this are the TIA addresses. see commentary for TIADriverPins for extensive
 	// explanation
-	if mem.LastCPUDrivenPins != 0xff {
+	if mem.DataBusDriven != 0xff {
 		if mem.instance != nil && mem.instance.Prefs.RandomPins.Get().(bool) {
-			data |= uint8(mem.instance.Random.Rewindable(0xff)) & ^mem.LastCPUDrivenPins
+			data |= uint8(mem.instance.Random.Rewindable(0xff)) & ^mem.DataBusDriven
 		} else {
-			data |= mem.LastCPUData & ^mem.LastCPUDrivenPins
+			data |= mem.LastCPUData & ^mem.DataBusDriven
 		}
 	}
 
@@ -240,12 +239,10 @@ func (mem *Memory) Write(address uint16, data uint8) error {
 	// available to the 6507
 	addressBus := address & memorymap.Memtop
 
-	// the cartridge can respond to an address transition
+	// service changes to address bus
 	if addressBus != mem.AddressBus {
-		// update address bus
 		mem.AddressBus = addressBus
-
-		mem.Cart.Listen(mem.AddressBus, mem.DataBus)
+		mem.Cart.AccessPassive(mem.AddressBus, mem.DataBus)
 	}
 
 	// update debugging information

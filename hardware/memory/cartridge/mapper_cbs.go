@@ -114,8 +114,8 @@ func (cart *cbs) Reset() {
 	cart.state.bank = len(cart.banks) - 1
 }
 
-// Read implements the mapper.CartMapper interface.
-func (cart *cbs) Read(addr uint16, _ bool) (uint8, uint8, error) {
+// Access implements the mapper.CartMapper interface.
+func (cart *cbs) Access(addr uint16, _ bool) (uint8, uint8, error) {
 	if addr <= 0x00ff {
 		return 0, 0, nil
 	}
@@ -126,8 +126,8 @@ func (cart *cbs) Read(addr uint16, _ bool) (uint8, uint8, error) {
 	return cart.banks[cart.state.bank][addr], mapper.CartDrivenPins, nil
 }
 
-// Write implements the mapper.CartMapper interface.
-func (cart *cbs) Write(addr uint16, data uint8, poke bool) error {
+// AccessDriven implements the mapper.CartMapper interface.
+func (cart *cbs) AccessDriven(addr uint16, data uint8, poke bool) error {
 	if addr <= 0x00ff {
 		cart.state.ram[addr] = data
 		return nil
@@ -203,8 +203,8 @@ func (cart *cbs) Patch(offset int, data uint8) error {
 	return nil
 }
 
-// Listen implements the mapper.CartMapper interface.
-func (cart *cbs) Listen(addr uint16, data uint8) {
+// AccessPassive implements the mapper.CartMapper interface.
+func (cart *cbs) AccessPassive(addr uint16, data uint8) {
 	// Sometimes, cartridge addresses can be accessed inadvertently. in most
 	// instances, there are no consequences but in the case of CBS RAM, the
 	// write addresses can be accessed and the RAM data changed. we handle

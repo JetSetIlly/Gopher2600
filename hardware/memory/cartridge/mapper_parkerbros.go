@@ -105,8 +105,8 @@ func (cart *parkerBros) Reset() {
 	cart.state.segment[3] = cart.NumBanks() - 1
 }
 
-// Read implements the mapper.CartMapper interface.
-func (cart *parkerBros) Read(addr uint16, peek bool) (uint8, uint8, error) {
+// Access implements the mapper.CartMapper interface.
+func (cart *parkerBros) Access(addr uint16, peek bool) (uint8, uint8, error) {
 	var data uint8
 	if addr >= 0x0000 && addr <= 0x03ff {
 		data = cart.banks[cart.state.segment[0]][addr&0x03ff]
@@ -125,8 +125,8 @@ func (cart *parkerBros) Read(addr uint16, peek bool) (uint8, uint8, error) {
 	return data, mapper.CartDrivenPins, nil
 }
 
-// Write implements the mapper.CartMapper interface.
-func (cart *parkerBros) Write(addr uint16, data uint8, poke bool) error {
+// AccessDriven implements the mapper.CartMapper interface.
+func (cart *parkerBros) AccessDriven(addr uint16, data uint8, poke bool) error {
 	if !poke {
 		if cart.bankswitch(addr) {
 			return nil
@@ -247,8 +247,8 @@ func (cart *parkerBros) Patch(offset int, data uint8) error {
 	return nil
 }
 
-// Listen implements the mapper.CartMapper interface.
-func (cart *parkerBros) Listen(_ uint16, _ uint8) {
+// AccessPassive implements the mapper.CartMapper interface.
+func (cart *parkerBros) AccessPassive(_ uint16, _ uint8) {
 }
 
 // Step implements the mapper.CartMapper interface.

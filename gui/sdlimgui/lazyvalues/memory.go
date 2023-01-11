@@ -43,7 +43,7 @@ func (lz *LazyMem) push() {
 	lz.addressBus.Store(lz.val.vcs.Mem.AddressBus)
 	lz.lastAccessData.Store(lz.val.vcs.Mem.DataBus)
 	lz.lastAccessWrite.Store(lz.val.vcs.Mem.LastCPUWrite)
-	lz.lastAccessMask.Store(lz.val.vcs.Mem.LastCPUDrivenPins)
+	lz.lastAccessMask.Store(lz.val.vcs.Mem.DataBusDriven)
 }
 
 func (lz *LazyMem) update() {

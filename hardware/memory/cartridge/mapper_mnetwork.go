@@ -164,8 +164,8 @@ func (cart *mnetwork) Reset() {
 	cart.state.ram256byteIdx = 0
 }
 
-// Read implements the mapper.CartMapper interface.
-func (cart *mnetwork) Read(addr uint16, peek bool) (uint8, uint8, error) {
+// Access implements the mapper.CartMapper interface.
+func (cart *mnetwork) Access(addr uint16, peek bool) (uint8, uint8, error) {
 	var data uint8
 
 	if addr >= 0x0000 && addr <= 0x07ff {
@@ -202,8 +202,8 @@ func (cart *mnetwork) Read(addr uint16, peek bool) (uint8, uint8, error) {
 	return data, mapper.CartDrivenPins, nil
 }
 
-// Write implements the mapper.CartMapper interface.
-func (cart *mnetwork) Write(addr uint16, data uint8, poke bool) error {
+// AccessDriven implements the mapper.CartMapper interface.
+func (cart *mnetwork) AccessDriven(addr uint16, data uint8, poke bool) error {
 	if !poke {
 		if cart.bankswitch(addr) {
 			return nil
@@ -323,8 +323,8 @@ func (cart *mnetwork) Patch(offset int, data uint8) error {
 	return nil
 }
 
-// Listen implements the mapper.CartMapper interface.
-func (cart *mnetwork) Listen(_ uint16, _ uint8) {
+// AccessPassive implements the mapper.CartMapper interface.
+func (cart *mnetwork) AccessPassive(_ uint16, _ uint8) {
 }
 
 // Step implements the mapper.CartMapper interface.
