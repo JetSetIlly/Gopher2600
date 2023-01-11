@@ -103,11 +103,16 @@ a comment in the fingerprint.go file says I did.
 * As a reference for the audio implementation (the 6502.ts project was also
   referenced for this reason).
 
-* The EF cartridge format.
-
 * Fingerprint patterns for automated controller/peripheral selection.
 
 In all these instances, primary sources of information could not be found.
+
+(Earlier revision of Gopher2600 used Stella a reference for the EF cartridge
+format. However, the implementation has been vastly simplified by declaring EF
+to be a nothing more than a 64k Atari ROM. The discussion that led to this
+revelation can be found in the link below.)
+
+https://forums.atariage.com/topic/346341-64ksc-multi-sprite-roms-error-out-in-stella-for-me/page/2/#comment-5188396
 
 Many notes and clues from the AtariAge message boards. Most significantly the
 following threads proved very useful indeed:
