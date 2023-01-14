@@ -129,21 +129,11 @@ func (win *winCoProcLocals) draw() {
 	})
 }
 
-func (win *winCoProcLocals) drawVariableLocal(local *developer.YieldedLocal, nodeID string) {
-	if !local.InRange && win.showVisibleOnly {
-		return
-	}
-
-	if !local.InRange {
-		imgui.PushStyleVarFloat(imgui.StyleVarAlpha, disabledAlpha)
-		defer imgui.PopStyleVar()
-
-	}
-
-	win.drawVariable(local.SourceVariable, 0, nodeID, local.InRange)
+func (win *winCoProcLocals) drawVariableLocal(local *developer.SourceVariableLocal, nodeID string) {
+	win.drawVariable(local.SourceVariable, 0, nodeID)
 }
 
-func (win *winCoProcLocals) drawVariable(varb *developer.SourceVariable, indentLevel int, nodeID string, inRange bool) {
+func (win *winCoProcLocals) drawVariable(varb *developer.SourceVariable, indentLevel int, nodeID string) {
 	// update variable
 	win.img.dbg.PushFunction(varb.Update)
 
@@ -188,34 +178,26 @@ func (win *winCoProcLocals) drawVariable(varb *developer.SourceVariable, indentL
 
 		if win.openNodes[nodeID] {
 			for i := 0; i < varb.NumChildren(); i++ {
-				win.drawVariable(varb.Child(i), indentLevel+1, fmt.Sprint(nodeID, i), inRange)
+				win.drawVariable(varb.Child(i), indentLevel+1, fmt.Sprint(nodeID, i))
 			}
 		}
 
 	} else {
 		value, valueOk := varb.Value()
-		if valueOk && inRange {
-			imguiTooltip(func() {
-				drawVariableTooltip(varb, value, win.img.cols)
-			}, true)
-		} else {
-			imguiTooltip(func() {
-				drawVariableTooltipShort(varb, win.img.cols)
-			}, true)
-		}
+		imguiTooltip(func() {
+			drawVariableTooltip(varb, value, win.img.cols)
+		}, true)
 
 		imgui.TableNextColumn()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcVariablesType)
 		imgui.Text(varb.Type.Name)
 		imgui.PopStyleColor()
 
-		if inRange {
-			imgui.TableNextColumn()
-			if valueOk {
-				imgui.Text(fmt.Sprintf(varb.Type.Hex(), value))
-			} else {
-				imgui.Text("-")
-			}
+		imgui.TableNextColumn()
+		if valueOk {
+			imgui.Text(fmt.Sprintf(varb.Type.Hex(), value))
+		} else {
+			imgui.Text("-")
 		}
 	}
 }

@@ -381,116 +381,15 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 	// DWARF data (but do have symbol data)
 	addFunctionStubs(src)
 
-	// find reference for every meaningful source line and link to disassembly
-	for _, e := range src.compileUnits {
-		var sl *SourceLine
-
-		// start of address range to add
-		startAddr := origin
-
-		// read every line in the compile unit
-		r, err := dwrf.LineReader(e.unit)
-		if err != nil {
-			return nil, curated.Errorf("dwarf: %v", err)
-		}
-
-		var le dwarf.LineEntry
-		for {
-			err := r.Next(&le)
-			if err != nil {
-				if err == io.EOF {
-					break // for loop
-				}
-				logger.Logf("dwarf", "%v", err)
-				sl = nil
-			}
-
-			// make sure we have loaded the file previously
-			if src.Files[le.File.Name] == nil {
-				logger.Logf("dwarf", "file not available for linereader: %s", le.File.Name)
-				continue
-			}
-
-			// make sure the number of lines in the file is sufficient for the line entry
-			if le.Line-1 > src.Files[le.File.Name].Content.Len() {
-				return nil, curated.Errorf("dwarf: current source is unrelated to ELF/DWARF data (number of lines)")
-			}
-
-			// adjust address by executable origin
-			endAddr := le.Address + origin
-
-			// if workingSourceLine is valid and there are addresses to process
-			if sl != nil && endAddr-startAddr > 0 {
-				// find function for working address
-				var fn *SourceFunction
-
-				// choose function that covers the smallest (most specific) range in which startAddr
-				// appears. note that because we're ignoring inlined ranges in the loop below there
-				// should only ever be one match per line (I think)
-				sz := ^uint64(0)
-
-				for _, f := range src.Functions {
-					for _, r := range f.Range {
-						// ignore inlined ranges
-						if !r.Inline {
-							if r.InRange(startAddr) {
-								if r.Size() < sz {
-									fn = f
-									sz = r.Size()
-								}
-							}
-						}
-					}
-				}
-
-				// if the function cannot be found then exit with an error
-				if fn == nil {
-					return nil, curated.Errorf("dwarf: cannot find function for source line: %v", sl)
-				}
-
-				// update source line with newly identified SourceFunction
-				sl.Function = fn
-
-				// add line to list of lines for the function
-				sl.Function.Lines = append(sl.Function.Lines, sl)
-
-				// breakpoint information
-				sl.Breakable = le.IsStmt
-				sl.BreakAddress = startAddr
-
-				// add disassembly to source line and add source line to linesByAddress
-				for addr := startAddr; addr < endAddr; addr += 2 {
-					// look for address in disassembly
-					if d, ok := src.Disassembly[addr]; ok {
-						// add disassembly to the list of instructions for the workingSourceLine
-						sl.Disassembly = append(sl.Disassembly, d)
-
-						// link disassembly back to source line
-						d.Line = sl
-
-						// associate the address with the workingSourceLine
-						src.linesByAddress[addr] = sl
-
-						// disassembled instruction is a 32bit instruction
-						// so we need add another
-						if d.is32Bit {
-							addr += 2
-						}
-					}
-				}
-			}
-
-			// if the entry is the end of a sequence then assign nil to workingSourceLine
-			if le.EndSequence {
-				sl = nil
-				continue // for loop
-			}
-
-			// note line entry. once we know the end address we can assign a
-			// function to it etc.
-			sl = src.Files[le.File.Name].Content.Lines[le.Line-1]
-			startAddr = endAddr
-		}
+	// read source lines twice. the first pass looking for lines not in inlined
+	// functions and the second time for lines that are in inlined functions
+	err = readSourceLines(src, dwrf, origin, false)
+	if err != nil {
+		return nil, curated.Errorf("dwarf: %v", err)
+	}
+	err = readSourceLines(src, dwrf, origin, true)
+	if err != nil {
+		return nil, curated.Errorf("dwarf: %v", err)
 	}
 
 	// sanity check of functions list
@@ -571,6 +470,129 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 	return src, nil
 }
 
+func readSourceLines(src *Source, dwrf *dwarf.Data, origin uint64, inlined bool) error {
+	// find reference for every meaningful source line and link to disassembly
+	for _, e := range src.compileUnits {
+		var sl *SourceLine
+
+		// start of address range to add
+		startAddr := origin
+
+		// read every line in the compile unit
+		r, err := dwrf.LineReader(e.unit)
+		if err != nil {
+			return err
+		}
+
+		var le dwarf.LineEntry
+		for {
+			err := r.Next(&le)
+			if err != nil {
+				if err == io.EOF {
+					break // for loop
+				}
+				logger.Logf("dwarf", "%v", err)
+				sl = nil
+			}
+
+			// make sure we have loaded the file previously
+			if src.Files[le.File.Name] == nil {
+				logger.Logf("dwarf", "file not available for linereader: %s", le.File.Name)
+				continue
+			}
+
+			// make sure the number of lines in the file is sufficient for the line entry
+			if le.Line-1 > src.Files[le.File.Name].Content.Len() {
+				return fmt.Errorf("current source is unrelated to ELF/DWARF data (number of lines)")
+			}
+
+			// adjust address by executable origin
+			endAddr := le.Address + origin
+
+			// if workingSourceLine is valid and there are addresses to process
+			if sl != nil && endAddr-startAddr > 0 {
+				// find function for working address
+				var fn *SourceFunction
+
+				// choose function that covers the smallest (most specific) range in which startAddr
+				// appears
+				sz := ^uint64(0)
+
+				for _, f := range src.Functions {
+					for _, r := range f.Range {
+						// ignore inlined ranges
+						if !r.Inline {
+							if r.InRange(startAddr) {
+								if r.Size() < sz {
+									fn = f
+									sz = r.Size()
+								}
+							}
+						}
+					}
+				}
+
+				// if the function cannot be found then exit with an error
+				if fn == nil {
+					return fmt.Errorf("cannot find function for source line: %v", sl)
+				}
+
+				// matching of inlining of function (and hence the source line)
+				// with the inlined argument
+				if fn.IsInlined() == inlined {
+					// update source line with newly identified SourceFunction.
+					sl.Function = fn
+
+					// whether line can have a breakpoint on it
+					sl.Breakable = sl.Breakable || le.IsStmt
+
+					// add address to list of break addresses (assume the
+					// address won't be repeated)
+					sl.BreakAddress = append(sl.BreakAddress, startAddr)
+
+					// add disassembly to source line and add source line to linesByAddress
+					for addr := startAddr; addr < endAddr; addr += 2 {
+						// look for address in disassembly
+						if d, ok := src.Disassembly[addr]; ok {
+							// add disassembly to the list of instructions for
+							// the source line and link disassembly back to
+							// source line. we only need to do this non-inlined
+							// functions
+							if !inlined {
+								sl.Disassembly = append(sl.Disassembly, d)
+								d.Line = sl
+							}
+
+							// add source line to list of lines by address
+							src.linesByAddress[addr] = sl
+
+							// disassembled instruction is a 32bit instruction so
+							// address must advance by an additional 2 bytes (for a
+							// total of 4 bytes)
+							if d.is32Bit {
+								addr += 2
+							}
+						}
+					}
+				}
+			}
+
+			// if the entry is the end of a sequence then assign nil to workingSourceLine
+			if le.EndSequence {
+				sl = nil
+				continue // for loop
+			}
+
+			// note line entry. once we know the end address we can assign a
+			// function to it etc.
+			sl = src.Files[le.File.Name].Content.Lines[le.Line-1]
+			startAddr = endAddr
+		}
+	}
+
+	return nil
+}
+
 // add children to global and local variables
 func addVariableChildren(src *Source) {
 	for _, g := range src.globals {
@@ -595,10 +617,13 @@ func allocateOrphanedSourceLines(src *Source) {
 	// the variable will appear during the LineReader loop but sometimes it
 	// will not. moreover, we need to know which function it appears in in
 	// order to know what the frame base is for the variable.
+
+	stub := &SourceFunction{
+		Name: stubIndicator,
+	}
+
 	for _, sf := range src.Files {
-		fn := &SourceFunction{
-			Name: stubIndicator,
-		}
+		fn := stub
 		for _, ln := range sf.Content.Lines {
 			if ln.Function.Name == stubIndicator {
 				ln.Function = fn

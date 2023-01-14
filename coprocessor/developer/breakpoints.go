@@ -35,11 +35,13 @@ func (src *Source) ToggleBreakpoint(ln *SourceLine) {
 	// even if breakAnywhere is true we still need to restrict it to lines
 	// which are executable
 	if (breakAnywhere && len(ln.Disassembly) > 0) || ln.Breakable {
-		addr := uint32(ln.BreakAddress)
-		if src.checkBreakpointByAddr(addr) {
-			src.removeBreakpoint(addr)
-		} else {
-			src.addBreakpoint(addr)
+		for i := range ln.BreakAddress {
+			addr := uint32(ln.BreakAddress[i])
+			if src.checkBreakpointByAddr(addr) {
+				src.removeBreakpoint(addr)
+			} else {
+				src.addBreakpoint(addr)
+			}
 		}
 	}
 }
@@ -49,7 +51,10 @@ func (src *Source) CheckBreakpoint(ln *SourceLine) bool {
 	// even if breakAnywhere is true we still need to restrict it to lines
 	// which are executable
 	if (breakAnywhere && len(ln.Disassembly) > 0) || ln.Breakable {
-		return src.checkBreakpointByAddr(uint32(ln.BreakAddress))
+		for i := range ln.BreakAddress {
+			addr := uint32(ln.BreakAddress[i])
+			return src.checkBreakpointByAddr(addr)
+		}
 	}
 	return false
 }

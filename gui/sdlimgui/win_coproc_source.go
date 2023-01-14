@@ -555,9 +555,17 @@ func (win *winCoProcSource) drawSource(src *developer.Source) {
 									}
 
 									win.img.drawDisasmForCoProc(disasm, ln, multiline)
+
+									if ln.Function.IsInlined() {
+										imgui.Spacing()
+										imgui.Separator()
+										imgui.Spacing()
+										imgui.Text(fmt.Sprintf("%c This function is inlined", fonts.Inlined))
+									}
 								}, false)
 
 								imgui.PushFont(win.img.glsl.fonts.code)
+
 							}
 						}
 					}
@@ -573,7 +581,11 @@ func (win *winCoProcSource) drawSource(src *developer.Source) {
 						imgui.Text(string(fonts.CoProcBug))
 						imgui.PopStyleColor()
 					} else if len(ln.Disassembly) > 0 {
-						imgui.Text(string(fonts.Chip))
+						if ln.Function.IsInlined() {
+							imgui.Text(string(fonts.Inlined))
+						} else {
+							imgui.Text(string(fonts.Chip))
+						}
 					}
 
 					// performance statistics

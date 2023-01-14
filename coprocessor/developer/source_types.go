@@ -93,7 +93,7 @@ type SourceLine struct {
 	// whether this line can have a breakpoint on it as recommended by the DWARF data. BreakAddress
 	// is meaningless if Breakable is false
 	Breakable    bool
-	BreakAddress uint64
+	BreakAddress []uint64
 
 	// plain string of line
 	PlainContent string
@@ -175,9 +175,6 @@ type SourceFunction struct {
 	// the Disassembly and Stats fields therefore should not be relied upon.
 	DeclLine *SourceLine
 
-	// all lines in the function
-	Lines []*SourceLine
-
 	// stats for the function
 	FlatStats       StatsGroup
 	CumulativeStats StatsGroup
@@ -196,6 +193,16 @@ func (fn *SourceFunction) String() string {
 		s.WriteString(fmt.Sprintf(" %s", r))
 	}
 	return s.String()
+}
+
+// IsInlined returns true if the function has at least one inlined instance
+func (fn *SourceFunction) IsInlined() bool {
+	for _, r := range fn.Range {
+		if r.Inline {
+			return true
+		}
+	}
+	return false
 }
 
 // framebase implements the loclistFramebase interface

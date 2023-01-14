@@ -73,7 +73,9 @@ type SourceVariable struct {
 func (varb *SourceVariable) String() string {
 	var s strings.Builder
 	s.WriteString(fmt.Sprintf("%s = ", varb.decl()))
-	if v, ok := varb.Value(); ok {
+	if varb.ErrorOnResolve != nil {
+		s.WriteString(varb.ErrorOnResolve.Error())
+	} else if v, ok := varb.Value(); ok {
 		s.WriteString(fmt.Sprintf(varb.Type.Hex(), v))
 	} else {
 		s.WriteString("unresolvable")

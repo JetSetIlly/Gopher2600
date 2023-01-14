@@ -638,13 +638,8 @@ func (bld *build) buildVariables(src *Source, origin uint64) error {
 		var varb *SourceVariable
 		var err error
 
-		// location field is taken from either the abstract or build entry. if the field cannot
-		// be retrieved from either entry we can continue and handle the error later
-		var locfld *dwarf.Field
-
 		// check for abstract origin field. if it is present we resolve the
-		// declartion using the DWARF entry indicated by the field. otherwise
-		// we resolve using the current entry
+		// abstract declartion otherwise we resolve using the current entry
 		fld := v.AttrField(dwarf.AttrAbstractOrigin)
 		if fld != nil {
 			av, ok := bld.entries[fld.Val.(dwarf.Offset)]
@@ -656,18 +651,11 @@ func (bld *build) buildVariables(src *Source, origin uint64) error {
 			if err != nil {
 				return err
 			}
-
-			locfld = av.AttrField(dwarf.AttrLocation)
-			if locfld == nil {
-				locfld = v.AttrField(dwarf.AttrLocation)
-			}
 		} else {
 			varb, err = bld.resolveVariableDeclaration(v, src)
 			if err != nil {
 				return err
 			}
-
-			locfld = v.AttrField(dwarf.AttrLocation)
 		}
 
 		// nothing found when resolving the declaration
@@ -690,16 +678,17 @@ func (bld *build) buildVariables(src *Source, origin uint64) error {
 		// have been added
 
 		// variable actually exists in memory if it has a location attribute
+		locfld := v.AttrField(dwarf.AttrLocation)
 		if locfld != nil {
 			switch locfld.Class {
 			case dwarf.ClassLocListPtr:
 				var err error
 				err = bld.debug_loc.newLoclist(varb, locfld.Val.(int64), compilationUnitAddress,
 					func(start, end uint64, loc *loclist) {
-						v := *varb
-						v.loclist = loc
+						cp := *varb
+						cp.loclist = loc
 						local := &SourceVariableLocal{
-							SourceVariable: &v,
+							SourceVariable: &cp,
 							Range: SourceRange{
 								Start: start,
 								End:   end,
@@ -736,9 +725,9 @@ func (bld *build) buildVariables(src *Source, origin uint64) error {
 						varb.DeclLine.File.HasGlobals = true
 					} else {
 						for i := range lexStart[lexIdx] {
-							v := *varb
+							cp := *varb
 							local := &SourceVariableLocal{
-								SourceVariable: &v,
+								SourceVariable: &cp,
 								Range: SourceRange{
 									Start: lexStart[lexIdx][i],
 									End:   lexEnd[lexIdx][i],

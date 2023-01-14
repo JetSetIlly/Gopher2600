@@ -83,6 +83,7 @@ const (
 	Cancel                 = '\uf057'
 	TV                     = '\uf108'
 	Geometry               = '\uf568'
+	Inlined                = '\uf03c'
 )
 
 // The first and last unicode points used in the application. We use this to
