@@ -1364,6 +1364,17 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 						dbg.printLine(terminal.StyleFeedback, fn.Filename)
 					}
 				})
+			case "FUNCTIONS":
+				dbg.CoProcDev.BorrowSource(func(src *developer.Source) {
+					if src == nil {
+						dbg.printLine(terminal.StyleError, "no source files found")
+						return
+					}
+					for _, n := range src.FunctionNames {
+						fn := src.Functions[n]
+						dbg.printLine(terminal.StyleFeedback, fn.String())
+					}
+				})
 			default:
 			}
 
