@@ -520,13 +520,10 @@ func readSourceLines(src *Source, dwrf *dwarf.Data, origin uint64, inlined bool)
 
 				for _, f := range src.Functions {
 					for _, r := range f.Range {
-						// ignore inlined ranges
-						if !r.Inline {
-							if r.InRange(startAddr) {
-								if r.Size() < sz {
-									fn = f
-									sz = r.Size()
-								}
+						if r.InRange(startAddr) {
+							if r.Size() < sz {
+								fn = f
+								sz = r.Size()
 							}
 						}
 					}
