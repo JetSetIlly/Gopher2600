@@ -213,7 +213,7 @@ func (fn *SourceFunction) framebase() (uint64, error) {
 
 	loc, err := fn.framebaseLoclist.resolve()
 	if err != nil {
-		return 0, fmt.Errorf("error resolving framebase loclist: %s", err.Error())
+		return 0, err
 	}
 
 	return uint64(loc.value), nil

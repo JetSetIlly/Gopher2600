@@ -267,6 +267,9 @@ func (loc *loclist) resolve() (location, error) {
 		r.value, r.valueOk = loc.coproc.CoProcRead32bit(r.value)
 		loc.stack[len(loc.stack)-1] = r
 		loc.derivation[len(loc.stack)-1] = r
+		if !r.valueOk {
+			return r, fmt.Errorf("error resolving address %08x", r.address)
+		}
 	}
 
 	return r, nil

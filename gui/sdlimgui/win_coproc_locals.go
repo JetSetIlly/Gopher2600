@@ -141,9 +141,6 @@ func (win *winCoProcLocals) drawVariable(varb *developer.SourceVariable, indentL
 
 	// name of variable as presented. added bug icon as appropriate
 	name := fmt.Sprintf("%s%s", strings.Repeat(" ", IndentDepth*indentLevel), varb.Name)
-	if varb.ErrorOnResolve != nil {
-		name = fmt.Sprintf("%s %c", name, fonts.CoProcBug)
-	}
 
 	imgui.TableNextRow()
 	imgui.TableNextColumn()
@@ -169,23 +166,33 @@ func (win *winCoProcLocals) drawVariable(varb *developer.SourceVariable, indentL
 		imgui.Text(varb.Type.Name)
 		imgui.PopStyleColor()
 
+		// value column shows tree open/close icon unless there was an error
+		// during variable resolution
 		imgui.TableNextColumn()
-		if win.openNodes[nodeID] {
-			imgui.Text(string(fonts.TreeOpen))
+		if varb.ErrorOnResolve != nil {
+			imgui.Text(string(fonts.CoProcBug))
 		} else {
-			imgui.Text(string(fonts.TreeClosed))
-		}
+			if win.openNodes[nodeID] {
+				imgui.Text(string(fonts.TreeOpen))
+			} else {
+				imgui.Text(string(fonts.TreeClosed))
+			}
 
-		if win.openNodes[nodeID] {
-			for i := 0; i < varb.NumChildren(); i++ {
-				win.drawVariable(varb.Child(i), indentLevel+1, fmt.Sprint(nodeID, i))
+			if win.openNodes[nodeID] {
+				for i := 0; i < varb.NumChildren(); i++ {
+					win.drawVariable(varb.Child(i), indentLevel+1, fmt.Sprint(nodeID, i))
+				}
 			}
 		}
 
 	} else {
 		value, valueOk := varb.Value()
 		imguiTooltip(func() {
-			drawVariableTooltip(varb, value, win.img.cols)
+			if varb.ErrorOnResolve != nil {
+				drawVariableTooltipShort(varb, win.img.cols)
+			} else {
+				drawVariableTooltip(varb, value, win.img.cols)
+			}
 		}, true)
 
 		imgui.TableNextColumn()
@@ -194,7 +201,9 @@ func (win *winCoProcLocals) drawVariable(varb *developer.SourceVariable, indentL
 		imgui.PopStyleColor()
 
 		imgui.TableNextColumn()
-		if valueOk {
+		if varb.ErrorOnResolve != nil {
+			imgui.Text(string(fonts.CoProcBug))
+		} else if valueOk {
 			imgui.Text(fmt.Sprintf(varb.Type.Hex(), value))
 		} else {
 			imgui.Text("-")

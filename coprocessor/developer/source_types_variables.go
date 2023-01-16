@@ -96,7 +96,6 @@ func (varb *SourceVariable) Address() (uint64, bool) {
 	if r, ok = varb.cachedLocation.Load().(location); !ok {
 		return 0, false
 	}
-
 	return r.address, r.addressOk
 }
 
@@ -269,7 +268,7 @@ func (varb *SourceVariable) framebase() (uint64, error) {
 
 	fb, err := varb.DeclLine.Function.framebase()
 	if err != nil {
-		return 0, fmt.Errorf("framebase for function %s: %v", varb.DeclLine.Function.Name, err)
+		return 0, fmt.Errorf("framebase for %s: %v", varb.DeclLine.Function.Name, err)
 	}
 
 	return fb, nil

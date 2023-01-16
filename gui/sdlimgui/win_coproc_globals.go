@@ -253,6 +253,15 @@ func drawVariableTooltipShort(varb *developer.SourceVariable, cols *imguiColors)
 	imgui.PushStyleColor(imgui.StyleColorText, cols.CoProcSourceLineNumber)
 	imgui.Text(fmt.Sprintf("Line: %d", varb.DeclLine.LineNumber))
 	imgui.PopStyleColor()
+
+	if varb.ErrorOnResolve != nil {
+		imgui.Spacing()
+		imgui.Separator()
+		imgui.Spacing()
+		imgui.Text(string(fonts.CoProcBug))
+		imgui.SameLine()
+		imgui.Text(varb.ErrorOnResolve.Error())
+	}
 }
 
 func drawVariableTooltip(varb *developer.SourceVariable, value uint32, cols *imguiColors) {
@@ -377,6 +386,9 @@ func (win *winCoProcGlobals) drawVariable(src *developer.Source, varb *developer
 		// we could show a tooltip for variables with children but this needs
 		// work. for instance, how do we illustrate a composite type or an
 		// array?
+		imguiTooltip(func() {
+			drawVariableTooltipShort(varb, win.img.cols)
+		}, true)
 
 		if imgui.IsItemClicked() {
 			win.openNodes[nodeID] = !win.openNodes[nodeID]
@@ -396,23 +408,33 @@ func (win *winCoProcGlobals) drawVariable(src *developer.Source, varb *developer
 		}
 		imgui.PopStyleColor()
 
+		// value column shows tree open/close icon unless there was an error
+		// during variable resolution
 		imgui.TableNextColumn()
-		if win.openNodes[nodeID] {
-			imgui.Text(string(fonts.TreeOpen))
+		if varb.ErrorOnResolve != nil {
+			imgui.Text(string(fonts.CoProcBug))
 		} else {
-			imgui.Text(string(fonts.TreeClosed))
-		}
+			if win.openNodes[nodeID] {
+				imgui.Text(string(fonts.TreeOpen))
+			} else {
+				imgui.Text(string(fonts.TreeClosed))
+			}
 
-		if win.openNodes[nodeID] {
-			for i := 0; i < varb.NumChildren(); i++ {
-				win.drawVariable(src, varb.Child(i), indentLevel+1, false, fmt.Sprint(nodeID, i))
+			if win.openNodes[nodeID] {
+				for i := 0; i < varb.NumChildren(); i++ {
+					win.drawVariable(src, varb.Child(i), indentLevel+1, false, fmt.Sprint(nodeID, i))
+				}
 			}
 		}
 	} else {
 		value, valueOk := varb.Value()
 		if valueOk {
 			imguiTooltip(func() {
-				drawVariableTooltip(varb, value, win.img.cols)
+				if varb.ErrorOnResolve != nil {
+					drawVariableTooltipShort(varb, win.img.cols)
+				} else {
+					drawVariableTooltip(varb, value, win.img.cols)
+				}
 			}, true)
 		}
 
@@ -431,7 +453,9 @@ func (win *winCoProcGlobals) drawVariable(src *developer.Source, varb *developer
 		imgui.PopStyleColor()
 
 		imgui.TableNextColumn()
-		if valueOk {
+		if varb.ErrorOnResolve != nil {
+			imgui.Text(string(fonts.CoProcBug))
+		} else if valueOk {
 			imgui.Text(fmt.Sprintf(varb.Type.Hex(), value))
 		} else {
 			imgui.Text("-")
