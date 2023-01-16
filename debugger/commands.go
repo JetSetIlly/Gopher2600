@@ -1319,7 +1319,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 			if ok {
 				n, err := strconv.ParseInt(arg, 0, 32)
 				if err != nil {
-					dbg.printLine(terminal.StyleError, err.Error())
+					dbg.printLine(terminal.StyleError, fmt.Sprintf("%s is not a number", arg))
 					return nil
 				}
 				top = int(n)
@@ -1422,7 +1422,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 			if ok {
 				n, err := strconv.ParseInt(arg, 0, 32)
 				if err != nil {
-					dbg.printLine(terminal.StyleError, err.Error())
+					dbg.printLine(terminal.StyleError, fmt.Sprintf("%s is not a number", arg))
 					return nil
 				}
 				reg = int(n)
@@ -1431,7 +1431,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 			if ok {
 				n, err := strconv.ParseInt(arg, 0, 32)
 				if err != nil {
-					dbg.printLine(terminal.StyleError, err.Error())
+					dbg.printLine(terminal.StyleError, fmt.Sprintf("%s is not a number", arg))
 					return nil
 				}
 				value = uint32(n)
@@ -1512,6 +1512,58 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 						}
 					}
 				}
+			})
+		case "LINE":
+			arg, ok := tokens.Get()
+			if !ok {
+				dbg.printLine(terminal.StyleError, "command requires argument file:line")
+				return nil
+			}
+
+			// option is divided by a maximum of one colon, meaning the split
+			// array should be a length of two
+			s := strings.Split(arg, ":")
+			if len(s) != 2 {
+				dbg.printLine(terminal.StyleError, "command requires argument file:line")
+				return nil
+			}
+
+			// filename and line number
+			fn := s[0]
+			n, err := strconv.ParseInt(s[1], 0, 32)
+			if err != nil {
+				dbg.printLine(terminal.StyleError, fmt.Sprintf("%s is not a number", s[1]))
+				return nil
+			}
+			ln := int(n)
+
+			dbg.CoProcDev.BorrowSource(func(src *developer.Source) {
+				if src == nil {
+					dbg.printLine(terminal.StyleError, "no source available")
+				}
+
+				// check file by shortname and then by full name
+				f, ok := src.FilesByShortname[fn]
+				if !ok {
+					f, ok = src.Files[fn]
+					if !ok {
+						dbg.printLine(terminal.StyleError, fmt.Sprintf("no file named %s", fn))
+						return
+					}
+				}
+
+				// line numbers are counted from one
+				if ln < 1 {
+					ln = 1
+				}
+				if ln > len(f.Content.Lines) {
+					dbg.printLine(terminal.StyleError, fmt.Sprintf("%s only has %d lines", fn, len(f.Content.Lines)))
+					return
+				}
+				l := f.Content.Lines[ln-1]
+
+				// display what we know about line
+				dbg.printLine(terminal.StyleFeedback, l.String())
 			})
 		}
 

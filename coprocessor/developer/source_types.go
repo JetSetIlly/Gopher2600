@@ -118,7 +118,12 @@ func (ln *SourceLine) String() string {
 	if ln.IsStub() {
 		return fmt.Sprintf("(stub)")
 	}
-	return fmt.Sprintf("%s:%d", ln.File.Filename, ln.LineNumber)
+	s := strings.Builder{}
+	s.WriteString(fmt.Sprintf("%s:%d", ln.File.ShortFilename, ln.LineNumber))
+	if !ln.Function.IsStub() {
+		s.WriteString(fmt.Sprintf(" in function %s", ln.Function.Name))
+	}
+	return s.String()
 }
 
 // IsStub returns true if the SourceLine is just a stub.
