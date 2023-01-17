@@ -18,7 +18,6 @@ package cdf
 import (
 	"github.com/jetsetilly/gopher2600/hardware/instance"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
-	"github.com/jetsetilly/gopher2600/logger"
 )
 
 // Static implements the mapper.CartStatic interface.
@@ -110,7 +109,6 @@ func (stc *Static) MapAddress(addr uint32, write bool) (*[]byte, uint32) {
 	// custom ARM code (ROM)
 	if addr >= stc.version.customOriginROM && addr <= stc.version.customMemtopROM {
 		if write {
-			logger.Logf("CDF", "ARM trying to write to custom ROM address (%08x)", addr)
 			return nil, addr
 		}
 		return &stc.customROM, addr - stc.version.customOriginROM
@@ -124,7 +122,6 @@ func (stc *Static) MapAddress(addr uint32, write bool) (*[]byte, uint32) {
 	// driver ARM code (ROM)
 	if addr >= stc.version.driverOriginROM && addr <= stc.version.driverMemtopROM {
 		if write {
-			logger.Logf("CDF", "ARM trying to write to driver ROM address (%08x)", addr)
 			return nil, addr
 		}
 		return &stc.driverROM, addr - stc.version.driverOriginROM

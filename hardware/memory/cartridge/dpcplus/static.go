@@ -17,7 +17,6 @@ package dpcplus
 
 import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
-	"github.com/jetsetilly/gopher2600/logger"
 )
 
 // Static implements the mapper.CartStatic interface.
@@ -102,7 +101,6 @@ func (stc *Static) MapAddress(addr uint32, write bool) (*[]byte, uint32) {
 	// custom ARM code (ROM)
 	if addr >= stc.version.customOriginROM && addr <= stc.version.customMemtopROM {
 		if write {
-			logger.Logf("DPC+", "ARM trying to write to ROM address (%08x)", addr)
 			return nil, addr
 		}
 		return &stc.customROM, addr - stc.version.customOriginROM
@@ -121,7 +119,6 @@ func (stc *Static) MapAddress(addr uint32, write bool) (*[]byte, uint32) {
 	// driver ARM code (ROM)
 	if addr >= stc.version.driverOriginROM && addr <= stc.version.driverMemtopROM {
 		if write {
-			logger.Logf("DPC+", "ARM trying to write to ROM address (%08x)", addr)
 			return nil, addr
 		}
 		return &stc.driverROM, addr - stc.version.driverOriginROM
@@ -130,7 +127,6 @@ func (stc *Static) MapAddress(addr uint32, write bool) (*[]byte, uint32) {
 	// data (ROM)
 	if addr >= stc.version.dataOriginROM && addr <= stc.version.dataMemtopROM {
 		if write {
-			logger.Logf("DPC+", "ARM trying to write to ROM address (%08x)", addr)
 			return nil, addr
 		}
 		return &stc.dataROM, addr - stc.version.dataOriginROM
@@ -139,7 +135,6 @@ func (stc *Static) MapAddress(addr uint32, write bool) (*[]byte, uint32) {
 	// frequency table (ROM)
 	if addr >= stc.version.freqOriginROM && addr <= stc.version.freqMemtopROM {
 		if write {
-			logger.Logf("DPC+", "ARM trying to write to ROM address (%08x)", addr)
 			return nil, addr
 		}
 		return &stc.freqROM, addr - stc.version.freqOriginROM
