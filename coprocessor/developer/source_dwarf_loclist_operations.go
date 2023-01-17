@@ -421,9 +421,8 @@ func (sec *loclistSection) decodeLoclistOperation(expr []uint8) (loclistOperator
 		value, n := leb128.DecodeULEB128(expr[1:])
 		return func(loc *loclist) (location, error) {
 			a, _ := loc.pop()
-			value += uint64(a.value)
 			return location{
-				value:    uint32(value),
+				value:    uint32(value) + a.value,
 				valueOk:  true,
 				operator: "DW_OP_plus_uconst",
 			}, nil
