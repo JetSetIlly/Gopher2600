@@ -253,6 +253,14 @@ func (loc *loclist) resolve() (location, error) {
 		return location{}, fmt.Errorf("stack is empty")
 	}
 
+	// stack should only have one entry in it
+	if len(loc.stack) > 1 {
+		logger.Logf("dwarf", "loclist stack has more than one entry after resolve")
+	}
+
+	// top of stack is the result
+	r := loc.stack[len(loc.stack)-1]
+
 	// if top of stack does not have a valid value then we treat it as an
 	// address and dereference it. put the changed location back on the stack
 	// and on the derivation list
@@ -260,7 +268,6 @@ func (loc *loclist) resolve() (location, error) {
 	// we tend to see this when DW_OP_fbreg is the only instruction in the
 	// loclist and also more commonly with DW_OP_addr in context of global
 	// variables
-	r := loc.stack[len(loc.stack)-1]
 	if !r.valueOk {
 		r.address = uint64(r.value)
 		r.addressOk = true
@@ -275,8 +282,7 @@ func (loc *loclist) resolve() (location, error) {
 	return r, nil
 }
 
-// lastResolved implements the resolver interface
-func (loc *loclist) lastResolved() location {
+func (loc *loclist) peek() location {
 	if len(loc.stack) == 0 {
 		return location{}
 	}

@@ -232,7 +232,7 @@ func (sec *loclistSection) decodeLoclistOperation(expr []uint8) (loclistOperator
 		// (stack operations)
 		// "The DW_OP_dup operation duplicates the value at the top of the stack"
 		return func(loc *loclist) (location, error) {
-			return loc.lastResolved(), nil
+			return loc.peek(), nil
 		}, 1
 
 	case 0x13:
@@ -918,7 +918,10 @@ func (sec *loclistSection) decodeLoclistOperation(expr []uint8) (loclistOperator
 		// object, rather than its location. The DW_OP_stack_value operation terminates the
 		// expression"
 		return func(loc *loclist) (location, error) {
-			res := loc.lastResolved()
+			res, ok := loc.pop()
+			if !ok {
+				return location{}, fmt.Errorf("stack empty")
+			}
 			res.valueOk = true
 			res.operator = "DW_OP_stack_value"
 			return res, nil
