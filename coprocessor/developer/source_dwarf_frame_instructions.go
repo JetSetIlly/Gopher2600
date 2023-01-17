@@ -185,14 +185,18 @@ func decodeFrameInstruction(instructions []byte, tab *frameTable) (int, error) {
 			// (row state instructions)
 			// "The DW_CFA_remember_state instruction takes no operands. The required action is to push
 			// the set of rules for every register onto an implicit stack", page 136
-			return 0, fmt.Errorf("DW_CFA_remember_state not implemented")
+
+			// unimplemented
+			return 1, nil
 
 		case 0x0b:
 			// DW_CFA_restore_state
 			// (row state instructions)
 			// "The DW_CFA_restore_state instruction takes no operands. The required action is to pop the
 			// set of rules off the implicit stack and place them in the current row", page 136
-			return 0, fmt.Errorf("DW_CFA_restore_state not implemented")
+
+			// unimplemented
+			return 1, nil
 
 		case 0x0c:
 			// DW_CFA_def_cfa
