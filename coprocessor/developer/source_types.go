@@ -90,6 +90,9 @@ type SourceLine struct {
 	// the function the line of source can be found within
 	Function *SourceFunction
 
+	// whether this line is to be found inlined elsewhere in the program
+	Inlined bool
+
 	// whether this line can have a breakpoint on it as recommended by the DWARF data. BreakAddress
 	// is meaningless if Breakable is false
 	Breakable    bool
@@ -101,7 +104,10 @@ type SourceLine struct {
 	// line divided into parts
 	Fragments []SourceLineFragment
 
-	// the generated assembly for this line. will be empty if line is a comment or otherwise unsused
+	// the generated assembly for this line. will be empty if line is a comment
+	// or otherwise unsused.
+	//
+	// note that only disassembly for non-linined ranges will be collated
 	Disassembly []*SourceDisasm
 
 	// whether this source line has been responsible for a likely bug (eg. illegal access of memory)

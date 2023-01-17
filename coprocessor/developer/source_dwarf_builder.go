@@ -524,11 +524,11 @@ func (bld *build) buildVariables(src *Source, origin uint64) error {
 			lexIdx = 0
 			lexSibling = 0
 
-			var l, h uint64
+			var low, high uint64
 
 			fld := e.AttrField(dwarf.AttrLowpc)
 			if fld != nil {
-				l = origin + uint64(fld.Val.(uint64))
+				low = origin + uint64(fld.Val.(uint64))
 
 				fld = e.AttrField(dwarf.AttrHighpc)
 				if fld == nil {
@@ -538,21 +538,26 @@ func (bld *build) buildVariables(src *Source, origin uint64) error {
 				switch fld.Class {
 				case dwarf.ClassConstant:
 					// dwarf-4
-					h = l + uint64(fld.Val.(int64))
+					high = low + uint64(fld.Val.(int64))
 				case dwarf.ClassAddress:
 					// dwarf-2
-					h = uint64(fld.Val.(uint64))
+					high = uint64(fld.Val.(uint64))
 				default:
 				}
 
+				// "high address is the first location past the last instruction
+				// associated with the entity"
+				// page 34 of "DWARF4 Standard"
+				high--
+
 				lexIdx++
-				lexStart = append(lexStart[:lexIdx], []uint64{l})
-				lexEnd = append(lexEnd[:lexIdx], []uint64{h})
+				lexStart = append(lexStart[:lexIdx], []uint64{low})
+				lexEnd = append(lexEnd[:lexIdx], []uint64{high})
 
 				// we can think of the compilationUnitAddress as a special form
 				// of the lexical block and is used for location lists. we're
 				// not interested in the high address in that context
-				compilationUnitAddress = l
+				compilationUnitAddress = low
 
 			} else {
 				compilationUnitAddress = origin
@@ -565,11 +570,11 @@ func (bld *build) buildVariables(src *Source, origin uint64) error {
 		case dwarf.TagInlinedSubroutine:
 			fallthrough
 		case dwarf.TagLexDwarfBlock:
-			var l, h uint64
+			var low, high uint64
 
 			fld := e.AttrField(dwarf.AttrLowpc)
 			if fld != nil {
-				l = origin + uint64(fld.Val.(uint64))
+				low = origin + uint64(fld.Val.(uint64))
 
 				fld = e.AttrField(dwarf.AttrHighpc)
 				if fld == nil {
@@ -579,16 +584,21 @@ func (bld *build) buildVariables(src *Source, origin uint64) error {
 				switch fld.Class {
 				case dwarf.ClassConstant:
 					// dwarf-4
-					h = l + uint64(fld.Val.(int64))
+					high = low + uint64(fld.Val.(int64))
 				case dwarf.ClassAddress:
 					// dwarf-2
-					h = uint64(fld.Val.(uint64))
+					high = uint64(fld.Val.(uint64))
 				default:
 				}
 
+				// "high address is the first location past the last instruction
+				// associated with the entity"
+				// page 34 of "DWARF4 Standard"
+				high--
+
 				lexIdx++
-				lexStart = append(lexStart[:lexIdx], []uint64{l})
-				lexEnd = append(lexEnd[:lexIdx], []uint64{h})
+				lexStart = append(lexStart[:lexIdx], []uint64{low})
+				lexEnd = append(lexEnd[:lexIdx], []uint64{high})
 			} else {
 				fld = e.AttrField(dwarf.AttrRanges)
 				if fld == nil {
@@ -602,9 +612,41 @@ func (bld *build) buildVariables(src *Source, origin uint64) error {
 
 				var start []uint64
 				var end []uint64
+
+				// "The applicable base address of a range list entry is determined by the closest
+				// preceding base address selection entry (see below) in the same range list. If
+				// there is no such selection entry, then the applicable base address defaults to
+				// the base address of the compilation unit"
+				// page 39 of "DWARF4 Standard"
+				baseAddress := compilationUnitAddress
+
 				for _, r := range rngs {
-					start = append(start, r[0])
-					end = append(end, r[1])
+					// "A base address selection entry consists of:
+					// 1. The value of the largest representable address offset (for example, 0xffffffff when the size of
+					// an address is 32 bits).
+					// 2. An address, which defines the appropriate base address for use in interpreting the beginning
+					// and ending address offsets of subsequent entries of the location list."
+					// page 39 of "DWARF4 Standard"
+					if r[0] == 0xffffffff {
+						baseAddress = origin + r[1]
+						continue
+					}
+
+					// ignore range entries which are empty
+					if r[0] == r[1] {
+						continue
+					}
+
+					low := baseAddress + r[0]
+					high := baseAddress + r[1]
+
+					// "[high address] marks the first address past the end of the address range.The ending address
+					// must be greater than or equal to the beginning address"
+					// page 39 of "DWARF4 Standard"
+					high--
+
+					start = append(start, low)
+					end = append(end, high)
 				}
 				lexIdx++
 				lexStart = append(lexStart[:lexIdx], start)
@@ -844,10 +886,22 @@ func (bld *build) buildFunctions(src *Source, origin uint64) error {
 		}
 	}
 
+	// the framebase location list to use when preparing inline functions
 	var currentFrameBase *loclist
+
+	// location lists use a base address of the current compilation unit when
+	// constructing address ranges
+	var compilationUnitAddress uint64
 
 	for _, e := range bld.order {
 		switch e.Tag {
+		case dwarf.TagCompileUnit:
+			fld := e.AttrField(dwarf.AttrLowpc)
+			if fld != nil {
+				compilationUnitAddress = origin + uint64(fld.Val.(uint64))
+			} else {
+				compilationUnitAddress = origin
+			}
 		case dwarf.TagSubprogram:
 			// check address against low/high fields
 			var low uint64
@@ -860,11 +914,11 @@ func (bld *build) buildFunctions(src *Source, origin uint64) error {
 				// either concrete Subprograms or concrete InlinedSubroutines
 				continue // for loop
 			}
-			low = uint64(fld.Val.(uint64))
+			low = origin + uint64(fld.Val.(uint64))
 
 			fld = e.AttrField(dwarf.AttrHighpc)
 			if fld == nil {
-				return curated.Errorf("AttrLowpc without AttrHighpc for InlinedSubroutine")
+				return curated.Errorf("AttrLowpc without AttrHighpc for Subprogram")
 			}
 
 			switch fld.Class {
@@ -875,12 +929,13 @@ func (bld *build) buildFunctions(src *Source, origin uint64) error {
 				// dwarf-2
 				high = uint64(fld.Val.(uint64))
 			default:
-				return curated.Errorf("AttrLowpc without AttrHighpc for InlinedSubroutine")
+				return curated.Errorf("AttrLowpc without AttrHighpc for Subprogram")
 			}
 
-			// reduce high value by one (otherwise the function reports as
-			// sharing an address with an adjacent function)
-			high -= 1
+			// "high address is the first location past the last instruction
+			// associated with the entity"
+			// page 34 of "DWARF4 Standard"
+			high--
 
 			// subprograms don't seem to ever have a range field (unlike
 			// inlined subprograms)
@@ -899,8 +954,8 @@ func (bld *build) buildFunctions(src *Source, origin uint64) error {
 
 				// start/end address of function
 				fn.Range = append(fn.Range, SourceRange{
-					Start: low + origin,
-					End:   high + origin,
+					Start: low,
+					End:   high,
 				})
 
 				// try to acquire framebase for concrete subroutine. we don't expect
@@ -928,8 +983,8 @@ func (bld *build) buildFunctions(src *Source, origin uint64) error {
 
 				// start/end address of function
 				fn.Range = append(fn.Range, SourceRange{
-					Start: low + origin,
-					End:   high + origin,
+					Start: low,
+					End:   high,
 				})
 
 				// note framebase so that we can use it for inlined functions
@@ -958,8 +1013,8 @@ func (bld *build) buildFunctions(src *Source, origin uint64) error {
 
 				// start/end address of function
 				fn.Range = append(fn.Range, SourceRange{
-					Start:  low + origin,
-					End:    high + origin,
+					Start:  low,
+					End:    high,
 					Inline: true,
 				})
 
@@ -977,7 +1032,7 @@ func (bld *build) buildFunctions(src *Source, origin uint64) error {
 
 			fld := e.AttrField(dwarf.AttrLowpc)
 			if fld != nil {
-				low = uint64(fld.Val.(uint64))
+				low = origin + uint64(fld.Val.(uint64))
 
 				// high PC
 				fld = e.AttrField(dwarf.AttrHighpc)
@@ -996,6 +1051,11 @@ func (bld *build) buildFunctions(src *Source, origin uint64) error {
 					return curated.Errorf("AttrLowpc without AttrHighpc for InlinedSubroutine")
 				}
 
+				// "high address is the first location past the last instruction
+				// associated with the entity"
+				// page 34 of "DWARF4 Standard"
+				high--
+
 				err := commitInlinedSubroutine(low, high)
 				if err != nil {
 					return err
@@ -1012,8 +1072,39 @@ func (bld *build) buildFunctions(src *Source, origin uint64) error {
 					return err
 				}
 
+				// "The applicable base address of a range list entry is determined by the closest
+				// preceding base address selection entry (see below) in the same range list. If
+				// there is no such selection entry, then the applicable base address defaults to
+				// the base address of the compilation unit"
+				// page 39 of "DWARF4 Standard"
+				baseAddress := compilationUnitAddress
+
 				for _, r := range rngs {
-					err := commitInlinedSubroutine(r[0], r[1])
+					// "A base address selection entry consists of:
+					// 1. The value of the largest representable address offset (for example, 0xffffffff when the size of
+					// an address is 32 bits).
+					// 2. An address, which defines the appropriate base address for use in interpreting the beginning
+					// and ending address offsets of subsequent entries of the location list."
+					// page 39 of "DWARF4 Standard"
+					if r[0] == 0xffffffff {
+						baseAddress = origin + r[1]
+						continue
+					}
+
+					// ignore range entries which are empty
+					if r[0] == r[1] {
+						continue
+					}
+
+					low = baseAddress + r[0]
+					high = baseAddress + r[1]
+
+					// "[high address] marks the first address past the end of the address range.The ending address
+					// must be greater than or equal to the beginning address"
+					// page 39 of "DWARF4 Standard"
+					high--
+
+					err := commitInlinedSubroutine(low, high)
 					if err != nil {
 						return err
 					}

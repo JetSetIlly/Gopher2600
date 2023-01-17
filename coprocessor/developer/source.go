@@ -381,13 +381,8 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 	// DWARF data (but do have symbol data)
 	addFunctionStubs(src)
 
-	// read source lines twice. the first pass looking for lines not in inlined
-	// functions and the second time for lines that are in inlined functions
-	err = readSourceLines(src, dwrf, origin, false)
-	if err != nil {
-		return nil, curated.Errorf("dwarf: %v", err)
-	}
-	err = readSourceLines(src, dwrf, origin, true)
+	// read source lines
+	err = readSourceLines(src, dwrf, origin)
 	if err != nil {
 		return nil, curated.Errorf("dwarf: %v", err)
 	}
@@ -470,9 +465,10 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 	return src, nil
 }
 
-func readSourceLines(src *Source, dwrf *dwarf.Data, origin uint64, inlined bool) error {
+func readSourceLines(src *Source, dwrf *dwarf.Data, origin uint64) error {
 	// find reference for every meaningful source line and link to disassembly
 	for _, e := range src.compileUnits {
+		// the source line we're working on
 		var sl *SourceLine
 
 		// start of address range to add
@@ -511,64 +507,70 @@ func readSourceLines(src *Source, dwrf *dwarf.Data, origin uint64, inlined bool)
 
 			// if workingSourceLine is valid and there are addresses to process
 			if sl != nil && endAddr-startAddr > 0 {
-				// find function for working address
-				var fn *SourceFunction
+				// function to work with for this group of addresses
+				var chosenFunction *SourceFunction
 
 				// choose function that covers the smallest (most specific) range in which startAddr
 				// appears
-				sz := ^uint64(0)
+				chosenSize := ^uint64(0)
 
+				// whether the chosen selected range is chosenInlined or not
+				var chosenInlined bool
+
+				// choose which function to associate the line with
 				for _, f := range src.Functions {
 					for _, r := range f.Range {
 						if r.InRange(startAddr) {
-							if r.Size() < sz {
-								fn = f
-								sz = r.Size()
+							if r.Size() < chosenSize {
+								chosenFunction = f
+								chosenSize = r.Size()
+								chosenInlined = r.Inline
 							}
 						}
 					}
 				}
 
 				// if the function cannot be found then exit with an error
-				if fn == nil {
+				if chosenFunction == nil {
 					return fmt.Errorf("cannot find function for source line: %v", sl)
 				}
 
 				// matching of inlining of function (and hence the source line)
 				// with the inlined argument
-				if fn.IsInlined() == inlined {
-					// update source line with newly identified SourceFunction.
-					sl.Function = fn
+				// update source line with newly identified SourceFunction.
+				sl.Function = chosenFunction
 
-					// whether line can have a breakpoint on it
-					sl.Breakable = sl.Breakable || le.IsStmt
+				// the source line is inlined at least once
+				sl.Inlined = sl.Inlined || chosenInlined
 
-					// add address to list of break addresses (assume the
-					// address won't be repeated)
-					sl.BreakAddress = append(sl.BreakAddress, startAddr)
+				// whether line can have a breakpoint on it
+				sl.Breakable = sl.Breakable || le.IsStmt
 
-					// add disassembly to source line and add source line to linesByAddress
-					for addr := startAddr; addr < endAddr; addr += 2 {
-						// look for address in disassembly
-						if d, ok := src.Disassembly[addr]; ok {
-							// add disassembly to the list of instructions for
-							// the source line and link disassembly back to
-							// source line. we only need to do this non-inlined
-							// functions
-							if !inlined {
-								sl.Disassembly = append(sl.Disassembly, d)
-								d.Line = sl
-							}
+				// add address to list of break addresses (assume the
+				// address won't be repeated)
+				sl.BreakAddress = append(sl.BreakAddress, startAddr)
 
-							// add source line to list of lines by address
-							src.linesByAddress[addr] = sl
+				// add disassembly to source line and add source line to linesByAddress
+				for addr := startAddr; addr < endAddr; addr += 2 {
+					// look for address in disassembly
+					if d, ok := src.Disassembly[addr]; ok {
+						// add disassembly to the list of instructions for
+						// the source line
+						if !chosenInlined {
+							sl.Disassembly = append(sl.Disassembly, d)
+						}
 
-							// disassembled instruction is a 32bit instruction so
-							// address must advance by an additional 2 bytes (for a
-							// total of 4 bytes)
-							if d.is32Bit {
-								addr += 2
-							}
+						// always link source line to disassembly
+						d.Line = sl
+
+						// add source line to list of lines by address
+						src.linesByAddress[addr] = sl
+
+						// disassembled instruction is a 32bit instruction so
+						// address must advance by an additional 2 bytes (for a
+						// total of 4 bytes)
+						if d.is32Bit {
+							addr += 2
 						}
 					}
 				}
