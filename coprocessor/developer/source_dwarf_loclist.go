@@ -121,7 +121,7 @@ func (sec *loclistSection) newLoclistFromSingleOperator(ctx loclistFramebase, ex
 type commitLoclist func(start, end uint64, loc *loclist)
 
 func (sec *loclistSection) newLoclist(ctx loclistFramebase, ptr int64,
-	compilationUnitAddress uint64, rangeOffset uint64, commit commitLoclist) error {
+	compilationUnitAddress uint64, commit commitLoclist) error {
 
 	// "Location lists, which are used to describe objects that have a limited lifetime or change
 	// their location during their lifetime. Location lists are more completely described below."
@@ -152,9 +152,9 @@ func (sec *loclistSection) newLoclist(ctx loclistFramebase, ptr int64,
 	baseAddress := compilationUnitAddress
 
 	// start and end address. this will be updated at the end of every for loop iteration
-	startAddress := uint64(sec.byteOrder.Uint32(sec.data[ptr:])) + rangeOffset
+	startAddress := uint64(sec.byteOrder.Uint32(sec.data[ptr:]))
 	ptr += 4
-	endAddress := uint64(sec.byteOrder.Uint32(sec.data[ptr:])) + rangeOffset
+	endAddress := uint64(sec.byteOrder.Uint32(sec.data[ptr:]))
 	ptr += 4
 
 	// "The end of any given location list is marked by an end of list entry, which consists of a 0 for the

@@ -725,8 +725,7 @@ func (bld *build) buildVariables(src *Source, origin uint64) error {
 			switch locfld.Class {
 			case dwarf.ClassLocListPtr:
 				var err error
-				err = bld.debug_loc.newLoclist(varb, locfld.Val.(int64),
-					compilationUnitAddress, compilationUnitAddress-origin,
+				err = bld.debug_loc.newLoclist(varb, locfld.Val.(int64), compilationUnitAddress,
 					func(start, end uint64, loc *loclist) {
 						cp := *varb
 						cp.loclist = loc
@@ -803,7 +802,7 @@ func (bld *build) buildFunctions(src *Source, origin uint64) error {
 					return nil, err
 				}
 			case dwarf.ClassLocListPtr:
-				err := bld.debug_loc.newLoclist(src.debug_frame, fld.Val.(int64), origin, 0,
+				err := bld.debug_loc.newLoclist(src.debug_frame, fld.Val.(int64), origin,
 					func(_, _ uint64, loc *loclist) {
 						framebase = loc
 					})
