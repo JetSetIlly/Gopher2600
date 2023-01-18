@@ -79,14 +79,46 @@ func (dev *Developer) OnYield(instructionPC uint32, currentPC uint32, reason map
 			}
 		}
 
+		// the chosen local variable
+		var chosenLocal *SourceVariableLocal
+
+		// choose function that covers the smallest (most specific) range in which startAddr
+		// appears
+		chosenSize := ^uint64(0)
+
+		// function to add chosen local variable to the yield
+		commitChosen := func() {
+			locals = append(locals, chosenLocal)
+			chosenLocal = nil
+			chosenSize = ^uint64(0)
+		}
+
 		// there's an assumption here that SortedLocals is sorted by variable name
 		for _, local := range src.SortedLocals.Locals {
-			// we must use currentPC to test whether a local variable is in
-			// range because, although we're reporting that the instructionPC is
-			// the breakpoint, the machine is in the state defined by currentPC
-			if local.Range.InRange(uint64(currentPC)) {
-				locals = append(locals, local)
+			// append chosen local variable
+			if chosenLocal != nil && chosenLocal.Name != local.Name {
+				commitChosen()
 			}
+
+			// ignore variables that are not declared to be in the same
+			// function as the break line. this can happen for inlined
+			// functions when function ranges overlap
+			if local.DeclLine.Function.DeclLine == ln.Function.DeclLine {
+				// we must use currentPC to test whether a local variable is in
+				// range because, although we're reporting that the instructionPC is
+				// the breakpoint, the machine is in the state defined by currentPC
+				if local.Range.InRange(uint64(currentPC)) {
+					if local.Range.Size() < chosenSize {
+						chosenLocal = local
+						chosenSize = local.Range.Size()
+					}
+				}
+			}
+		}
+
+		// append chosen local variable
+		if chosenLocal != nil {
+			commitChosen()
 		}
 
 		// update all globals (locals are updated below)
