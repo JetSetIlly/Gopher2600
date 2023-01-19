@@ -864,13 +864,6 @@ func (bld *build) buildFunctions(src *Source, origin uint64) error {
 			framebaseLoclist: framebase,
 		}
 
-		// assign function to declaration line
-		if !fn.DeclLine.Function.IsStub() && fn.DeclLine.Function.Name != fn.Name {
-			logger.Logf("dwarf", "contentious function ownership for source line (%s)", fn.DeclLine)
-			logger.Logf("dwarf", "%s and %s", fn.DeclLine.Function.Name, fn.Name)
-		}
-		fn.DeclLine.Function = fn
-
 		return fn, nil
 	}
 
@@ -882,7 +875,15 @@ func (bld *build) buildFunctions(src *Source, origin uint64) error {
 			// if function with the name already exists we simply add the Range
 			// field to the existing function
 			src.Functions[fn.Name].Range = append(src.Functions[fn.Name].Range, fn.Range...)
+			fn = src.Functions[fn.Name]
 		}
+
+		// assign function to declaration line
+		if !fn.DeclLine.Function.IsStub() && fn.DeclLine.Function.Name != fn.Name {
+			logger.Logf("dwarf", "contentious function ownership for source line (%s)", fn.DeclLine)
+			logger.Logf("dwarf", "%s and %s", fn.DeclLine.Function.Name, fn.Name)
+		}
+		fn.DeclLine.Function = fn
 	}
 
 	// the framebase location list to use when preparing inline functions

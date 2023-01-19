@@ -103,7 +103,7 @@ func (dev *Developer) OnYield(instructionPC uint32, currentPC uint32, reason map
 			// ignore variables that are not declared to be in the same
 			// function as the break line. this can happen for inlined
 			// functions when function ranges overlap
-			if local.DeclLine.Function.DeclLine == ln.Function.DeclLine {
+			if local.DeclLine.Function == ln.Function {
 				// we must use currentPC to test whether a local variable is in
 				// range because, although we're reporting that the instructionPC is
 				// the breakpoint, the machine is in the state defined by currentPC

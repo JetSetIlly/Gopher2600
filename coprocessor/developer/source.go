@@ -388,6 +388,11 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 	// DWARF data (but do have symbol data)
 	addFunctionStubs(src)
 
+	// sanity check of functions list
+	if len(src.Functions) != len(src.FunctionNames) {
+		return nil, curated.Errorf("dwarf: unmatched function definitions")
+	}
+
 	// read source lines
 	err = allocateInstructionsToSourceLines(src, dwrf, origin)
 	if err != nil {
@@ -396,11 +401,6 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 
 	// assign functions to every source line
 	allocateFunctionsToSourceLines(src)
-
-	// sanity check of functions list
-	if len(src.Functions) != len(src.FunctionNames) {
-		return nil, curated.Errorf("dwarf: unmatched function definitions")
-	}
 
 	// assemble sorted functions list
 	for _, fn := range src.Functions {
