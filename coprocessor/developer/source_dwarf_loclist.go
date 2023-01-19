@@ -96,19 +96,24 @@ type loclist struct {
 	list       []loclistOperator
 	stack      []location
 	derivation []location
+
+	singleLoc  bool
+	loclistPtr int64
 }
 
 func (sec *loclistSection) newLoclistJustContext(ctx loclistFramebase) *loclist {
 	return &loclist{
-		coproc: sec.coproc,
-		ctx:    ctx,
+		coproc:    sec.coproc,
+		ctx:       ctx,
+		singleLoc: true,
 	}
 }
 
 func (sec *loclistSection) newLoclistFromSingleOperator(ctx loclistFramebase, expr []uint8) (*loclist, error) {
 	loc := &loclist{
-		coproc: sec.coproc,
-		ctx:    ctx,
+		coproc:    sec.coproc,
+		ctx:       ctx,
+		singleLoc: true,
 	}
 	op, n := sec.decodeLoclistOperation(expr)
 	if n == 0 {
@@ -151,6 +156,8 @@ func (sec *loclistSection) newLoclist(ctx loclistFramebase, ptr int64,
 	// page 31 of "DWARF4 Standard"
 	baseAddress := compilationUnitAddress
 
+	loclistNumber := ptr
+
 	// start and end address. this will be updated at the end of every for loop iteration
 	startAddress := uint64(sec.byteOrder.Uint32(sec.data[ptr:]))
 	ptr += 4
@@ -163,8 +170,9 @@ func (sec *loclistSection) newLoclist(ctx loclistFramebase, ptr int64,
 	// program". page 31 of "DWARF4 Standard"
 	for !(startAddress == 0x0 && endAddress == 0x0) {
 		loc := &loclist{
-			coproc: sec.coproc,
-			ctx:    ctx,
+			coproc:     sec.coproc,
+			ctx:        ctx,
+			loclistPtr: loclistNumber,
 		}
 
 		// "A base address selection entry consists of:
@@ -212,6 +220,9 @@ func (sec *loclistSection) newLoclist(ctx loclistFramebase, ptr int64,
 				commit(startAddress+baseAddress, endAddress+baseAddress, loc)
 			}
 		}
+
+		// update loclist number
+		loclistNumber = ptr
 
 		// read next address range
 		startAddress = uint64(sec.byteOrder.Uint32(sec.data[ptr:]))

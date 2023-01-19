@@ -72,6 +72,9 @@ type SourceVariable struct {
 
 func (varb *SourceVariable) String() string {
 	var s strings.Builder
+	if !varb.loclist.singleLoc {
+		s.WriteString(fmt.Sprintf("[%04x] ", varb.loclist.loclistPtr))
+	}
 	s.WriteString(fmt.Sprintf("%s = ", varb.decl()))
 	if varb.ErrorOnResolve != nil {
 		s.WriteString(varb.ErrorOnResolve.Error())
