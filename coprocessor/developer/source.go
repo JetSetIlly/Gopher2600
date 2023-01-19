@@ -36,6 +36,7 @@ import (
 type compileUnit struct {
 	unit     *dwarf.Entry
 	children map[dwarf.Offset]*dwarf.Entry
+	address  uint64
 }
 
 // Source is created from available DWARF data that has been found in relation
@@ -300,31 +301,37 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 
 	// loop through file and collate compile units
 	for {
-		entry, err := r.Next()
+		e, err := r.Next()
 		if err != nil {
 			if err == io.EOF {
 				break // for loop
 			}
 			return nil, curated.Errorf("dwarf: %v", err)
 		}
-		if entry == nil {
+		if e == nil {
 			break // for loop
 		}
-		if entry.Offset == 0 {
+		if e.Offset == 0 {
 			continue // for loop
 		}
 
-		switch entry.Tag {
+		switch e.Tag {
 		case dwarf.TagCompileUnit:
 			unit := &compileUnit{
-				unit:     entry,
+				unit:     e,
 				children: make(map[dwarf.Offset]*dwarf.Entry),
+				address:  origin,
+			}
+
+			fld := e.AttrField(dwarf.AttrLowpc)
+			if fld != nil {
+				unit.address = origin + uint64(fld.Val.(uint64))
 			}
 
 			// assuming DWARF never has duplicate compile unit entries
 			src.compileUnits = append(src.compileUnits, unit)
 
-			r, err := dwrf.LineReader(entry)
+			r, err := dwrf.LineReader(e)
 			if err != nil {
 				return nil, curated.Errorf("dwarf: %v", err)
 			}
@@ -347,7 +354,7 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 			}
 
 			// check optimisation directive
-			fld := entry.AttrField(dwarf.AttrProducer)
+			fld = e.AttrField(dwarf.AttrProducer)
 			if fld != nil {
 				producer := fld.Val.(string)
 				if strings.HasPrefix(producer, "GNU") {
@@ -362,7 +369,7 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 			if len(src.compileUnits) == 0 {
 				return nil, curated.Errorf("dwarf: bad data: no compile unit tag")
 			}
-			src.compileUnits[len(src.compileUnits)-1].children[entry.Offset] = entry
+			src.compileUnits[len(src.compileUnits)-1].children[e.Offset] = e
 		}
 	}
 
@@ -382,10 +389,13 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 	addFunctionStubs(src)
 
 	// read source lines
-	err = readSourceLines(src, dwrf, origin)
+	err = allocateInstructionsToSourceLines(src, dwrf, origin)
 	if err != nil {
 		return nil, curated.Errorf("dwarf: %v", err)
 	}
+
+	// assign functions to every source line
+	allocateFunctionsToSourceLines(src)
 
 	// sanity check of functions list
 	if len(src.Functions) != len(src.FunctionNames) {
@@ -413,9 +423,6 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 			src.SortedLines.Lines = append(src.SortedLines.Lines, ln)
 		}
 	}
-
-	// assign orphaned source lines to a function
-	allocateOrphanedSourceLines(src)
 
 	// build types
 	err = bld.buildTypes(src)
@@ -465,13 +472,13 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 	return src, nil
 }
 
-func readSourceLines(src *Source, dwrf *dwarf.Data, origin uint64) error {
+func allocateInstructionsToSourceLines(src *Source, dwrf *dwarf.Data, origin uint64) error {
 	// find reference for every meaningful source line and link to disassembly
 	for _, e := range src.compileUnits {
 		// the source line we're working on
-		var sl *SourceLine
+		var ln *SourceLine
 
-		// start of address range to add
+		// start of address range
 		startAddr := origin
 
 		// read every line in the compile unit
@@ -488,7 +495,7 @@ func readSourceLines(src *Source, dwrf *dwarf.Data, origin uint64) error {
 					break // for loop
 				}
 				logger.Logf("dwarf", "%v", err)
-				sl = nil
+				ln = nil
 			}
 
 			// make sure we have loaded the file previously
@@ -506,65 +513,26 @@ func readSourceLines(src *Source, dwrf *dwarf.Data, origin uint64) error {
 			endAddr := le.Address + origin
 
 			// if workingSourceLine is valid and there are addresses to process
-			if sl != nil && endAddr-startAddr > 0 {
-				// function to work with for this group of addresses
-				var chosenFunction *SourceFunction
-
-				// choose function that covers the smallest (most specific) range in which startAddr
-				// appears
-				chosenSize := ^uint64(0)
-
-				// whether the chosen selected range is chosenInlined or not
-				var chosenInlined bool
-
-				// choose which function to associate the line with
-				for _, f := range src.Functions {
-					for _, r := range f.Range {
-						if r.InRange(startAddr) {
-							if r.Size() < chosenSize {
-								chosenFunction = f
-								chosenSize = r.Size()
-								chosenInlined = r.Inline
-							}
-						}
-					}
-				}
-
-				// if the function cannot be found then exit with an error
-				if chosenFunction == nil {
-					return fmt.Errorf("cannot find function for source line: %v", sl)
-				}
-
-				// matching of inlining of function (and hence the source line)
-				// with the inlined argument
-				// update source line with newly identified SourceFunction.
-				sl.Function = chosenFunction
-
-				// the source line is inlined at least once
-				sl.Inlined = sl.Inlined || chosenInlined
-
+			if ln != nil && endAddr-startAddr > 0 {
 				// whether line can have a breakpoint on it
-				sl.Breakable = sl.Breakable || le.IsStmt
+				ln.Breakable = ln.Breakable || le.IsStmt
 
 				// add address to list of break addresses (assume the
 				// address won't be repeated)
-				sl.BreakAddress = append(sl.BreakAddress, startAddr)
+				ln.BreakAddress = append(ln.BreakAddress, startAddr)
 
 				// add disassembly to source line and add source line to linesByAddress
 				for addr := startAddr; addr < endAddr; addr += 2 {
 					// look for address in disassembly
 					if d, ok := src.Disassembly[addr]; ok {
-						// add disassembly to the list of instructions for
-						// the source line
-						if !chosenInlined {
-							sl.Disassembly = append(sl.Disassembly, d)
-						}
+						// add disassembly to the list of instructions for the source line
+						ln.Disassembly = append(ln.Disassembly, d)
 
-						// always link source line to disassembly
-						d.Line = sl
+						// link source line to disassembly
+						d.Line = ln
 
 						// add source line to list of lines by address
-						src.linesByAddress[addr] = sl
+						src.linesByAddress[addr] = ln
 
 						// disassembled instruction is a 32bit instruction so
 						// address must advance by an additional 2 bytes (for a
@@ -576,15 +544,9 @@ func readSourceLines(src *Source, dwrf *dwarf.Data, origin uint64) error {
 				}
 			}
 
-			// if the entry is the end of a sequence then assign nil to workingSourceLine
-			if le.EndSequence {
-				sl = nil
-				continue // for loop
-			}
-
 			// note line entry. once we know the end address we can assign a
 			// function to it etc.
-			sl = src.Files[le.File.Name].Content.Lines[le.Line-1]
+			ln = src.Files[le.File.Name].Content.Lines[le.Line-1]
 			startAddr = endAddr
 		}
 	}
@@ -603,19 +565,21 @@ func addVariableChildren(src *Source) {
 	}
 }
 
-// assign orphaned source lines to a function
-func allocateOrphanedSourceLines(src *Source) {
+// assign source lines to a function
+func allocateFunctionsToSourceLines(src *Source) {
+	// this is a simple, maybe naive way of assigning lines to a function. the
+	// alternative is to look up the function by seaching the ranges in all the
+	// identified functions. however, this does not work well when functions
+	// have been inlined. maybe I'm just misunderstanding something in how
+	// ranges work
+	//
+	// it depends on functions being built with the DeclLine pointing to itself
+
 	// NOTE: this might not make sense for languages other than C. the
 	// assumption here is that global variables appear before any other
 	// function and that all lines after that are inside a function. for blank
 	// lines between functions this doesn't matter but any other variable
 	// declarations (outside of a function) will be wrongly allocated
-	//
-	// however, we need to do this because we need to be able to tell which
-	// function a local variable appears in. very often, the line that declares
-	// the variable will appear during the LineReader loop but sometimes it
-	// will not. moreover, we need to know which function it appears in in
-	// order to know what the frame base is for the variable.
 
 	stub := &SourceFunction{
 		Name: stubIndicator,
