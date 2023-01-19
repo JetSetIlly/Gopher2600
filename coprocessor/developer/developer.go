@@ -159,7 +159,12 @@ func (dev *Developer) CheckBreakpoint(addr uint32) bool {
 	dev.sourceLock.Lock()
 	defer dev.sourceLock.Unlock()
 
-	return dev.source.checkBreakpointByAddr(addr)
+	ln := dev.source.linesByAddress[uint64(addr)]
+	if ln == dev.source.prevBreakpointCheck {
+		return false
+	}
+	dev.source.prevBreakpointCheck = ln
+	return dev.source.Breakpoints[addr]
 }
 
 // HasSource returns true if source information has been found.

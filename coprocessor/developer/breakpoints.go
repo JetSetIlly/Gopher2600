@@ -26,18 +26,13 @@ func (src *Source) removeBreakpoint(addr uint32) {
 	delete(src.Breakpoints, addr)
 }
 
-// breakAnywhere indicates that a breakpoint can be placed on any executable line.
-const breakAnywhere = true
-
 // ToggleBreakpoint adds or removes a breakpoint depending on whether the
 // breakpoint already exists.
 func (src *Source) ToggleBreakpoint(ln *SourceLine) {
-	// even if breakAnywhere is true we still need to restrict it to lines
-	// which are executable
-	if (breakAnywhere && len(ln.Disassembly) > 0) || ln.Breakable {
+	if ln.Breakable {
 		for i := range ln.BreakAddress {
 			addr := uint32(ln.BreakAddress[i])
-			if src.checkBreakpointByAddr(addr) {
+			if src.Breakpoints[addr] {
 				src.removeBreakpoint(addr)
 			} else {
 				src.addBreakpoint(addr)
@@ -48,20 +43,13 @@ func (src *Source) ToggleBreakpoint(ln *SourceLine) {
 
 // CheckBreakpoint returns true if there is a breakpoint on the specified line.
 func (src *Source) CheckBreakpoint(ln *SourceLine) bool {
-	// even if breakAnywhere is true we still need to restrict it to lines
-	// which are executable
-	if (breakAnywhere && len(ln.Disassembly) > 0) || ln.Breakable {
+	if ln.Breakable {
 		for i := range ln.BreakAddress {
 			addr := uint32(ln.BreakAddress[i])
-			return src.checkBreakpointByAddr(addr)
+			if src.Breakpoints[addr] {
+				return true
+			}
 		}
 	}
 	return false
-}
-
-// checkBreapointByAddr handles the situation where an address is on the same
-// line as the previous breakpoint check. we need this because we don't want to
-// repeatedly break on the same line when nothing has really changed.
-func (src *Source) checkBreakpointByAddr(addr uint32) bool {
-	return src.Breakpoints[addr]
 }

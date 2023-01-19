@@ -512,13 +512,12 @@ func allocateInstructionsToSourceLines(src *Source, dwrf *dwarf.Data, origin uin
 			// adjust address by executable origin
 			endAddr := le.Address + origin
 
-			// if workingSourceLine is valid and there are addresses to process
+			// add breakpoint and disasm information to the source line
 			if ln != nil && endAddr-startAddr > 0 {
 				// whether line can have a breakpoint on it
 				ln.Breakable = ln.Breakable || le.IsStmt
 
-				// add address to list of break addresses (assume the
-				// address won't be repeated)
+				// add address to list of break addresses
 				ln.BreakAddress = append(ln.BreakAddress, startAddr)
 
 				// add disassembly to source line and add source line to linesByAddress
