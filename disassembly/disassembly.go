@@ -187,6 +187,7 @@ func (dsm *Disassembly) GetEntryByAddress(address uint16) *Entry {
 
 	if bank.NonCart {
 		// !!TODO: attempt to decode instructions not in cartridge
+		// when implemented, ammend comment for the STEP OVER command
 		return nil
 	}
 

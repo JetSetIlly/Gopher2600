@@ -211,10 +211,13 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 				adjAmount *= -1
 
 			case "OVER":
-				// if next expected opcode is JSR then add a volatile breakpoint to the
-				// return address
+				// if next expected opcode is JSR then add a volatile breakpoint to the return address
+				//
+				// at the time of writing this comment, if execution is currently in RAM then
+				// GetEntryByAddress() will return nil. this means that if "JSR" is encounterd during
+				// that time, the STEP OVER command will not work as expected
 				e := dbg.Disasm.GetEntryByAddress(dbg.vcs.CPU.PC.Address())
-				if e.Operator == "jsr" {
+				if e != nil && e.Operator == "jsr" {
 					brk := commandline.TokeniseInput(fmt.Sprintf("%#4x", dbg.vcs.CPU.PC.Address()+3))
 					dbg.halting.volatileBreakpoints.parseCommand(brk)
 
