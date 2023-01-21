@@ -17,6 +17,7 @@ package sdlimgui
 
 import (
 	"io"
+	"sync/atomic"
 	"time"
 
 	"github.com/jetsetilly/gopher2600/curated"
@@ -65,7 +66,7 @@ type SdlImgui struct {
 	resetFonts int
 
 	// the current mode of the underlying
-	mode govern.Mode
+	mode atomic.Value // govern.Mode
 
 	// taken from the emulation field and assigned in the setEmulation() function
 	dbg       *debugger.Debugger
@@ -137,6 +138,7 @@ func NewSdlImgui(dbg *debugger.Debugger) (*SdlImgui, error) {
 	img.tv = img.dbg.TV()
 	img.vcs = img.dbg.VCS()
 	img.userinput = img.dbg.UserInput()
+	img.mode.Store(govern.ModeNone)
 
 	// path to dear imgui ini file
 	iniPath, err := resources.JoinPath(imguiIniFile)
@@ -293,7 +295,9 @@ func (img *SdlImgui) end() {
 
 // draw gui. called from service loop.
 func (img *SdlImgui) draw() {
-	if img.mode == govern.ModeNone {
+	mode := img.mode.Load().(govern.Mode)
+
+	if mode == govern.ModeNone {
 		return
 	}
 
@@ -304,7 +308,7 @@ func (img *SdlImgui) draw() {
 	imgui.PushFont(img.glsl.fonts.defaultFont)
 	defer imgui.PopFont()
 
-	if img.mode == govern.ModePlay {
+	if mode == govern.ModePlay {
 		img.playScr.draw()
 	}
 
@@ -315,7 +319,7 @@ func (img *SdlImgui) draw() {
 // is the gui in playmode or not. thread safe. called from emulation thread
 // and gui thread.
 func (img *SdlImgui) isPlaymode() bool {
-	return img.mode == govern.ModePlay
+	return img.mode.Load().(govern.Mode) == govern.ModePlay
 }
 
 // set emulation and handle the changeover gracefully. this includes the saving
@@ -328,7 +332,7 @@ func (img *SdlImgui) setEmulationMode(mode govern.Mode) error {
 	// mode later. at this point the captured mouse can cause confusion
 	img.setCapture(false)
 
-	img.mode = mode
+	img.mode.Store(mode)
 	img.prefs.loadWindowPreferences()
 
 	switch mode {

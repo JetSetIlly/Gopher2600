@@ -248,24 +248,13 @@ func (p *preferences) loadWindowPreferences() error {
 		return err
 	}
 
-	var group string
-
-	switch p.img.mode {
-	case govern.ModeNone:
-		p.img.plt.window.Hide()
-	case govern.ModeDebugger:
-		group = "sdlimgui.debugger"
-	case govern.ModePlay:
-		group = "sdlimgui.playmode"
-	default:
-		panic(fmt.Sprintf("cannot set window mode for unsupported emulation mode (%v)", p.img.mode))
-	}
-
-	// setup preferences
-	pth, err := resources.JoinPath(prefs.DefaultPrefsFile)
-	if err != nil {
-		return err
-	}
+	// hide window for duration of loading
+	p.img.plt.window.Hide()
+	defer func() {
+		if p.img.mode.Load().(govern.Mode) != govern.ModeNone {
+			p.img.plt.window.Show()
+		}
+	}()
 
 	// force window out of fullscreen. if we don't we can't guarantee that the
 	// positioning of the window occurs before the full screen setting is
@@ -276,6 +265,23 @@ func (p *preferences) loadWindowPreferences() error {
 	// to a small window
 	p.img.plt.setFullScreen(false)
 
+	// define preferences group for the mode
+	var group string
+
+	switch p.img.mode.Load().(govern.Mode) {
+	case govern.ModeDebugger:
+		group = "sdlimgui.debugger"
+	case govern.ModePlay:
+		group = "sdlimgui.playmode"
+	default:
+		panic(fmt.Sprintf("cannot set window mode for unsupported emulation mode (%v)", p.img.mode))
+	}
+
+	pth, err := resources.JoinPath(prefs.DefaultPrefsFile)
+	if err != nil {
+		return err
+	}
+
 	// full screen preferences
 	p.dskWinFullScreen, err = prefs.NewDisk(pth)
 	if err != nil {
@@ -283,6 +289,11 @@ func (p *preferences) loadWindowPreferences() error {
 	}
 
 	p.fullScreen.SetHookPre(func(v prefs.Value) error {
+		// do nothing if value isn't changing
+		if v.(bool) == p.fullScreen.Get().(bool) {
+			return nil
+		}
+
 		// save window geometry if we're not *currently* in fullscreen mode
 		// (this is a pre hook)
 		//
@@ -297,6 +308,7 @@ func (p *preferences) loadWindowPreferences() error {
 			}
 		}
 		p.img.plt.setFullScreen(v.(bool))
+
 		return nil
 	})
 	err = p.dskWinFullScreen.Add(fmt.Sprintf("%s.fullscreen", group), &p.fullScreen)
@@ -330,10 +342,8 @@ func (p *preferences) loadWindowPreferences() error {
 			//
 			// (bug seen in X11 with the cinnamon desktop. might no be present
 			// in other environments)
-			p.img.plt.window.Hide()
 			p.img.plt.window.SetSize(w, h)
 			p.img.plt.window.SetPosition(x, y)
-			p.img.plt.window.Show()
 
 			return nil
 		},

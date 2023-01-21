@@ -18,6 +18,7 @@ package sdlimgui
 import (
 	"fmt"
 	"runtime"
+	"time"
 
 	"github.com/inkyblackness/imgui-go/v4"
 	"github.com/jetsetilly/gopher2600/logger"
@@ -221,4 +222,8 @@ func (plt *platform) setFullScreen(fullScreen bool) {
 	} else {
 		plt.window.SetFullscreen(0)
 	}
+
+	// a short delay seems to smooth things out by giving time for the system
+	// to make the changes to the full screen state
+	<-time.After(100 * time.Millisecond)
 }

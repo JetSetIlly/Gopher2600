@@ -43,7 +43,7 @@ func (img *SdlImgui) Service() {
 	}
 
 	// refresh lazy values
-	switch img.mode {
+	switch img.mode.Load().(govern.Mode) {
 	case govern.ModeDebugger:
 		img.lz.Refresh()
 	case govern.ModePlay:
@@ -174,7 +174,7 @@ func (img *SdlImgui) Service() {
 			}
 			img.io.AddMouseWheelDelta(-deltaX/4, deltaY/4)
 
-			if img.mode != govern.ModePlay || !img.wm.playmodeWindows[winSelectROMID].playmodeIsOpen() {
+			if img.mode.Load().(govern.Mode) != govern.ModePlay || !img.wm.playmodeWindows[winSelectROMID].playmodeIsOpen() {
 				select {
 				case img.userinput <- userinput.EventMouseWheel{Delta: deltaY}:
 				default:

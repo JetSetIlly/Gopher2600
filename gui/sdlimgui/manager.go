@@ -209,7 +209,7 @@ func (wm *manager) draw() {
 		wm.hasInitialised = true
 	}
 
-	switch wm.img.mode {
+	switch wm.img.mode.Load().(govern.Mode) {
 	case govern.ModePlay:
 		// playmode draws the screen and other windows that have been listed
 		// as being safe to draw in playmode

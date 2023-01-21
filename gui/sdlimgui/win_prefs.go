@@ -106,7 +106,7 @@ func (win *winPrefs) draw() {
 		imgui.EndTabItem()
 	}
 
-	if win.img.mode == govern.ModeDebugger {
+	if win.img.mode.Load().(govern.Mode) == govern.ModeDebugger {
 		if imgui.BeginTabItem("Debugger") {
 			win.drawDebuggerTab()
 			imgui.EndTabItem()
@@ -461,7 +461,7 @@ func (win *winPrefs) drawVCS() {
 
 		var warning bool
 
-		switch win.img.mode {
+		switch win.img.mode.Load().(govern.Mode) {
 		case govern.ModePlay:
 			warning = win.img.prefs.audioMutePlaymode.Get().(bool)
 		case govern.ModeDebugger:
@@ -631,7 +631,7 @@ func (win *winPrefs) drawDiskButtons() {
 				logger.Logf("sdlimgui", "could not save (rewind) preferences: %v", err)
 			}
 
-			if win.img.mode == govern.ModeDebugger {
+			if win.img.mode.Load().(govern.Mode) == govern.ModeDebugger {
 				err = win.img.dbg.Disasm.Prefs.Save()
 				if err != nil {
 					logger.Logf("sdlimgui", "could not save (disasm) preferences: %v", err)
@@ -680,7 +680,7 @@ func (win *winPrefs) drawDiskButtons() {
 				logger.Logf("sdlimgui", "could not restore (rewind) preferences: %v", err)
 			}
 
-			if win.img.mode == govern.ModeDebugger {
+			if win.img.mode.Load().(govern.Mode) == govern.ModeDebugger {
 				err = win.img.dbg.Disasm.Prefs.Load()
 				if err != nil {
 					logger.Logf("sdlimgui", "could not restore (disasm) preferences: %v", err)
