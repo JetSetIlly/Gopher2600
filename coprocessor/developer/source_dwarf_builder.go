@@ -813,6 +813,10 @@ func (bld *build) buildFunctions(src *Source, origin uint64) error {
 		// filename from file number
 		filename := files[filenum].Name
 
+		if src.Files[filename] == nil {
+			return nil, fmt.Errorf("no file named %s", filename)
+		}
+
 		fn := &SourceFunction{
 			Name:             name,
 			DeclLine:         src.Files[filename].Content.Lines[linenum-1],
