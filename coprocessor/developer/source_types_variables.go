@@ -63,7 +63,7 @@ type SourceVariable struct {
 	ErrorOnResolve error
 
 	// most recent resolved value retrieved from emulation
-	cachedLocation atomic.Value // Location
+	cachedLocation atomic.Value // loclistResult
 
 	// child variables of this variable. this includes array elements, struct
 	// members and dereferenced variables
@@ -78,10 +78,8 @@ func (varb *SourceVariable) String() string {
 	s.WriteString(fmt.Sprintf("%s = ", varb.decl()))
 	if varb.ErrorOnResolve != nil {
 		s.WriteString(varb.ErrorOnResolve.Error())
-	} else if v, ok := varb.Value(); ok {
-		s.WriteString(fmt.Sprintf(varb.Type.Hex(), v))
 	} else {
-		s.WriteString("unresolvable")
+		s.WriteString(fmt.Sprintf(varb.Type.Hex(), varb.Value()))
 	}
 	return s.String()
 }
@@ -94,31 +92,55 @@ func (varb *SourceVariable) decl() string {
 // Address returns the location in memory of the variable referred to by
 // SourceVariable
 func (varb *SourceVariable) Address() (uint64, bool) {
-	var r location
+	var r loclistResult
 	var ok bool
-	if r, ok = varb.cachedLocation.Load().(location); !ok {
+	if r, ok = varb.cachedLocation.Load().(loclistResult); !ok {
 		return 0, false
 	}
-	return r.address, r.addressOk
+	return r.address, r.hasAddress
 }
 
-// Value returns the current value of a SourceVariable. It's good practice to
-// use this function to read memory, rather than reading memory directly using
-// the result of Address(), because it will handle any required address
-// resolution before accessing the memory.
-func (varb *SourceVariable) Value() (uint32, bool) {
-	var r location
+// Value returns the current value of a SourceVariable
+func (varb *SourceVariable) Value() uint32 {
+	var r loclistResult
 	var ok bool
-	if r, ok = varb.cachedLocation.Load().(location); !ok {
-		return 0, false
+	if r, ok = varb.cachedLocation.Load().(loclistResult); !ok {
+		return 0
 	}
-	return r.value & varb.Type.Mask(), r.valueOk
+	return r.value & varb.Type.Mask()
+}
+
+// hasPieces returns the number of pieces, if any, in the resolved variable.
+func (varb *SourceVariable) hasPieces() int {
+	var r loclistResult
+	var ok bool
+	if r, ok = varb.cachedLocation.Load().(loclistResult); !ok {
+		return 0
+	}
+	return len(r.pieces)
+}
+
+// piece returns a loclistPiece at the index specified. returns true if
+// loclistPiece is value and false if not
+//
+// use this and hasPieces when resolving members of a composite variable
+// (structs, etc.)
+func (varb *SourceVariable) piece(idx int) (loclistPiece, bool) {
+	var r loclistResult
+	var ok bool
+	if r, ok = varb.cachedLocation.Load().(loclistResult); !ok {
+		return loclistPiece{}, false
+	}
+	if idx >= len(r.pieces) {
+		return loclistPiece{}, false
+	}
+	return r.pieces[idx], true
 }
 
 // Derivation returns the sequence of results that led to the most recent value.
-func (varb *SourceVariable) Derivation() []location {
+func (varb *SourceVariable) Derivation() []loclistDerivation {
 	if varb.loclist == nil {
-		return []location{}
+		return []loclistDerivation{}
 	}
 	return varb.loclist.derivation
 }
@@ -152,25 +174,34 @@ func (varb *SourceVariable) Update() {
 }
 
 // resolve address/value
-func (varb *SourceVariable) resolve() location {
+func (varb *SourceVariable) resolve() loclistResult {
 	if varb.ErrorOnResolve != nil {
-		return location{}
+		return loclistResult{}
 	}
 
 	if varb.loclist == nil {
 		varb.ErrorOnResolve = fmt.Errorf("there is no location to resolve")
 		logger.Logf("dwarf", "%s: unresolvable: %v", varb.Name, varb.ErrorOnResolve)
-		return location{}
+		return loclistResult{}
 	}
 
-	loc, err := varb.loclist.resolve()
+	r, err := varb.loclist.resolve()
 	if err != nil {
 		varb.ErrorOnResolve = err
 		logger.Logf("dwarf", "%s: unresolvable: %v", varb.Name, err)
-		return location{}
+		return loclistResult{}
 	}
 
-	return loc
+	if r.hasAddress {
+		v, ok := varb.loclist.coproc.CoProcRead32bit(uint32(r.address))
+		if !ok {
+			logger.Logf("dwarf", "error resolving address %08x", r.address)
+			return loclistResult{}
+		}
+		r.value = v
+	}
+
+	return r
 }
 
 // addVariableChildren populates the variable child array with SourceVariable
@@ -187,16 +218,19 @@ func (varb *SourceVariable) addVariableChildren(debug_loc *loclistSection) {
 
 			if varb.loclist != nil {
 				o := i
-				elem.loclist.addOperator(func(_ *loclist) (location, error) {
-					address, addressOk := varb.Address()
-					address += uint64(o * varb.Type.ElementType.Size)
-					value, ok := varb.loclist.coproc.CoProcRead32bit(uint32(address))
-					return location{
-						address:   address,
-						addressOk: addressOk,
-						value:     value,
-						valueOk:   ok,
-					}, nil
+				elem.loclist.addOperator(loclistOperator{
+					resolve: func(_ *loclist) (loclistStack, error) {
+						address, ok := varb.Address()
+						if !ok {
+							return loclistStack{}, fmt.Errorf("no base address for array")
+						}
+						address += uint64(o * varb.Type.ElementType.Size)
+						return loclistStack{
+							class: stackClassSingleAddress,
+							value: uint32(address),
+						}, nil
+					},
+					operator: "array offset",
 				})
 			}
 
@@ -207,7 +241,7 @@ func (varb *SourceVariable) addVariableChildren(debug_loc *loclistSection) {
 
 	if varb.Type.IsComposite() {
 		var offset uint64
-		for _, m := range varb.Type.Members {
+		for i, m := range varb.Type.Members {
 			memb := &SourceVariable{
 				Name:     m.Name,
 				Type:     m.Type,
@@ -217,16 +251,40 @@ func (varb *SourceVariable) addVariableChildren(debug_loc *loclistSection) {
 
 			if varb.loclist != nil {
 				o := offset
-				memb.loclist.addOperator(func(_ *loclist) (location, error) {
-					address, addressOk := varb.Address()
-					address += o
-					value, ok := varb.loclist.coproc.CoProcRead32bit(uint32(address))
-					return location{
-						address:   address,
-						addressOk: addressOk,
-						value:     value,
-						valueOk:   ok,
-					}, nil
+				idx := i
+				memb.loclist.addOperator(loclistOperator{
+					resolve: func(_ *loclist) (loclistStack, error) {
+						np := varb.hasPieces()
+						if np == 0 {
+							address, ok := varb.Address()
+							if !ok {
+								return loclistStack{}, fmt.Errorf("no base address for composite variable")
+							}
+							address += o
+							return loclistStack{
+								class: stackClassSingleAddress,
+								value: uint32(address),
+							}, nil
+						}
+
+						p, ok := varb.piece(idx)
+						if !ok {
+							return loclistStack{}, fmt.Errorf("no piece information for this member")
+						}
+
+						if p.isAddress {
+							return loclistStack{
+								class: stackClassSingleAddress,
+								value: p.value,
+							}, nil
+						}
+
+						return loclistStack{
+							class: stackClassIsValue,
+							value: p.value,
+						}, nil
+					},
+					operator: "member offset",
 				})
 			}
 
@@ -246,15 +304,14 @@ func (varb *SourceVariable) addVariableChildren(debug_loc *loclistSection) {
 		deref.loclist = debug_loc.newLoclistJustContext(varb)
 
 		if varb.loclist != nil {
-			deref.loclist.addOperator(func(_ *loclist) (location, error) {
-				address, addressOk := varb.Value()
-				value, ok := varb.loclist.coproc.CoProcRead32bit(address)
-				return location{
-					address:   uint64(address),
-					addressOk: addressOk,
-					value:     value,
-					valueOk:   ok,
-				}, nil
+			deref.loclist.addOperator(loclistOperator{
+				resolve: func(_ *loclist) (loclistStack, error) {
+					return loclistStack{
+						class: stackClassSingleAddress,
+						value: varb.Value(),
+					}, nil
+				},
+				operator: "pointer dereference",
 			})
 		}
 

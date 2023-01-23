@@ -427,16 +427,13 @@ func (win *winCoProcGlobals) drawVariable(src *developer.Source, varb *developer
 			}
 		}
 	} else {
-		value, valueOk := varb.Value()
-		if valueOk {
-			imguiTooltip(func() {
-				if varb.ErrorOnResolve != nil {
-					drawVariableTooltipShort(varb, win.img.cols)
-				} else {
-					drawVariableTooltip(varb, value, win.img.cols)
-				}
-			}, true)
-		}
+		imguiTooltip(func() {
+			if varb.ErrorOnResolve != nil {
+				drawVariableTooltipShort(varb, win.img.cols)
+			} else {
+				drawVariableTooltip(varb, varb.Value(), win.img.cols)
+			}
+		}, true)
 
 		imgui.TableNextColumn()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcVariablesType)
@@ -455,10 +452,8 @@ func (win *winCoProcGlobals) drawVariable(src *developer.Source, varb *developer
 		imgui.TableNextColumn()
 		if varb.ErrorOnResolve != nil {
 			imgui.Text(string(fonts.CoProcBug))
-		} else if valueOk {
-			imgui.Text(fmt.Sprintf(varb.Type.Hex(), value))
 		} else {
-			imgui.Text("-")
+			imgui.Text(fmt.Sprintf(varb.Type.Hex(), varb.Value()))
 		}
 	}
 }
@@ -495,12 +490,7 @@ func (win *winCoProcGlobals) saveToCSV(src *developer.Source) {
 			f.WriteString(",")
 		}
 
-		value, valueOk := varb.Value()
-		if valueOk {
-			f.WriteString(fmt.Sprintf(varb.Type.Hex(), value))
-			f.WriteString(",")
-		}
-
+		f.WriteString(fmt.Sprintf(varb.Type.Hex(), varb.Value()))
 		f.WriteString("\n")
 	}
 

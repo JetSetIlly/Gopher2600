@@ -56,46 +56,59 @@ type loclistFramebase interface {
 	framebase() (uint64, error)
 }
 
-// the location type is used in two ways. (1) as a way of encoding the
-// current address/value of a variables; and (2) as a interim value on the
-// stack
-//
-// with regard to point (2) the valueOk field is used to control how the value
-// should be interpreted. if the field is true then the value should be
-// considered a value that can potentially be used as a result and presented to
-// the user of the debugger. however, if it is false then it is an interim
-// value and should be considered to be an address
-//
-// similarly, if addressOk is false then the address field should be considered
-// unusable
-//
-// the operator field indicates the most recent DWARF operator that led to the
-// value. when viewed in the context of the stack field in the loclist type, it
-// can be used to help describe the process by which the value was derived.
-type location struct {
-	address   uint64
-	addressOk bool
+type loclistStackClass int
 
-	value   uint32
-	valueOk bool
+const (
+	stackClassNOP loclistStackClass = iota
+	stackClassPush
+	stackClassIsValue
+	stackClassSingleAddress
+	stackClassPiece
+)
 
-	// the operator that created this value
-	operator string
+type loclistStack struct {
+	class loclistStackClass
+	value uint32
 }
 
-func (l *location) String() string {
+type loclistPiece struct {
+	value     uint32
+	isAddress bool
+	size      uint32
+}
+
+type loclistOperator struct {
+	operator string
+	resolve  func(*loclist) (loclistStack, error)
+}
+
+type loclistDerivation struct {
+	operator string
+	value    uint32
+}
+
+type loclistResult struct {
+	address    uint64
+	hasAddress bool
+	value      uint32
+
+	// the result only has pieces for composite variable types (ie. structs, etc.)
+	pieces []loclistPiece
+}
+
+func (l *loclistDerivation) String() string {
 	return fmt.Sprintf("%s %08x", l.operator, l.value)
 }
-
-type loclistOperator func(*loclist) (location, error)
 
 type loclist struct {
 	coproc loclistCoproc
 	ctx    loclistFramebase
 
-	list       []loclistOperator
-	stack      []location
-	derivation []location
+	list []loclistOperator
+
+	derivation []loclistDerivation
+	stack      []loclistStack
+	pieces     []loclistPiece
 
 	singleLoc  bool
 	loclistPtr int64
@@ -238,74 +251,113 @@ func (loc *loclist) addOperator(r loclistOperator) {
 	loc.list = append(loc.list, r)
 }
 
-func (loc *loclist) resolve() (location, error) {
+func (loc *loclist) resolve() (loclistResult, error) {
 	if loc.ctx == nil {
-		return location{}, fmt.Errorf("no context")
+		return loclistResult{}, fmt.Errorf("no context [%x]", loc.loclistPtr)
 	}
 
 	if len(loc.list) == 0 {
-		return location{}, fmt.Errorf("no loclist operations defined")
+		return loclistResult{}, fmt.Errorf("no loclist operations defined [%x]", loc.loclistPtr)
 	}
 
-	loc.stack = loc.stack[:0]
+	// clear lists
 	loc.derivation = loc.derivation[:0]
+	loc.stack = loc.stack[:0]
+	loc.pieces = loc.pieces[:0]
 
+	// whether the top of the stack is a value or an address
+	var isValue bool
+
+	// resolve every entry in the loclist
 	for i := range loc.list {
-		r, err := loc.list[i](loc)
+		s, err := loc.list[i].resolve(loc)
 		if err != nil {
-			return location{}, err
+			return loclistResult{}, fmt.Errorf("%s: %v", loc.list[i].operator, err)
 		}
 
-		loc.stack = append(loc.stack, r)
-		loc.derivation = append(loc.derivation, r)
+		// process result according to the result class
+		switch s.class {
+		case stackClassNOP:
+			// do nothing
+		case stackClassPush:
+			loc.stack = append(loc.stack, s)
+		case stackClassIsValue:
+			loc.stack = append(loc.stack, s)
+			isValue = true
+		case stackClassSingleAddress:
+			r := loclistResult{
+				address:    uint64(s.value),
+				hasAddress: true,
+			}
+
+			var ok bool
+			r.value, ok = loc.coproc.CoProcRead32bit(s.value)
+			if !ok {
+				return loclistResult{}, fmt.Errorf("%s: error resolving address %08x", loc.list[i].operator, s.value)
+			}
+
+			return r, nil
+		case stackClassPiece:
+			// all functionality of a piece operation is contained in the actual loclistOperator implementation
+		}
+
+		// always add result value to derivation list
+		loc.derivation = append(loc.derivation, loclistDerivation{
+			operator: loc.list[i].operator,
+			value:    s.value,
+		})
 	}
 
+	// return assembled pieces
+	if len(loc.pieces) > 0 {
+		var r loclistResult
+		r.pieces = append(r.pieces, loc.pieces...)
+		return r, nil
+	}
+
+	// no pieces so just use top of stack
+
 	if len(loc.stack) == 0 {
-		return location{}, fmt.Errorf("stack is empty")
+		return loclistResult{}, fmt.Errorf("stack is empty [%x]", loc.loclistPtr)
 	}
 
 	// stack should only have one entry in it
 	if len(loc.stack) > 1 {
-		logger.Logf("dwarf", "loclist stack has more than one entry after resolve")
+		logger.Logf("dwarf", "loclist stack has more than one entry after resolve [%x]", loc.loclistPtr)
 	}
 
 	// top of stack is the result
-	r := loc.stack[len(loc.stack)-1]
+	s := loc.stack[len(loc.stack)-1]
 
-	// if top of stack does not have a valid value then we treat it as an
-	// address and dereference it. put the changed location back on the stack
-	// and on the derivation list
-	//
-	// we tend to see this when DW_OP_fbreg is the only instruction in the
-	// loclist and also more commonly with DW_OP_addr in context of global
-	// variables
-	if !r.valueOk {
-		r.address = uint64(r.value)
-		r.addressOk = true
-		r.value, r.valueOk = loc.coproc.CoProcRead32bit(r.value)
-		loc.stack[len(loc.stack)-1] = r
-		loc.derivation[len(loc.derivation)-1] = r
-		if !r.valueOk {
-			return r, fmt.Errorf("error resolving address %08x", r.address)
+	// is the top of the stack a valid value or is it an address
+	if isValue {
+		r := loclistResult{
+			value: s.value,
 		}
+		return r, nil
 	}
 
-	return r, nil
+	// top of the stack is an address. how this address is interpreted depends
+	// on context
+	return loclistResult{
+		address:    uint64(s.value),
+		hasAddress: true,
+	}, nil
 }
 
-func (loc *loclist) peek() location {
+func (loc *loclist) peek() loclistStack {
 	if len(loc.stack) == 0 {
-		return location{}
+		return loclistStack{}
 	}
 	return loc.stack[len(loc.stack)-1]
 }
 
-func (loc *loclist) pop() (location, bool) {
+func (loc *loclist) pop() (loclistStack, bool) {
 	l := len(loc.stack)
 	if l == 0 {
-		return location{}, false
+		return loclistStack{}, false
 	}
-	r := loc.stack[l-1]
+	s := loc.stack[l-1]
 	loc.stack = loc.stack[:l-1]
-	return r, true
+	return s, true
 }

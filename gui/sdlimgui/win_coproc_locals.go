@@ -186,12 +186,11 @@ func (win *winCoProcLocals) drawVariable(varb *developer.SourceVariable, indentL
 		}
 
 	} else {
-		value, valueOk := varb.Value()
 		imguiTooltip(func() {
 			if varb.ErrorOnResolve != nil {
 				drawVariableTooltipShort(varb, win.img.cols)
 			} else {
-				drawVariableTooltip(varb, value, win.img.cols)
+				drawVariableTooltip(varb, varb.Value(), win.img.cols)
 			}
 		}, true)
 
@@ -203,10 +202,8 @@ func (win *winCoProcLocals) drawVariable(varb *developer.SourceVariable, indentL
 		imgui.TableNextColumn()
 		if varb.ErrorOnResolve != nil {
 			imgui.Text(string(fonts.CoProcBug))
-		} else if valueOk {
-			imgui.Text(fmt.Sprintf(varb.Type.Hex(), value))
 		} else {
-			imgui.Text("-")
+			imgui.Text(fmt.Sprintf(varb.Type.Hex(), varb.Value()))
 		}
 	}
 }

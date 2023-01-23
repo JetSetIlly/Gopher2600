@@ -222,12 +222,19 @@ func (fn *SourceFunction) framebase() (uint64, error) {
 		return 0, fmt.Errorf("no framebase loclist for %s", fn.Name)
 	}
 
-	loc, err := fn.framebaseLoclist.resolve()
+	r, err := fn.framebaseLoclist.resolve()
 	if err != nil {
 		return 0, err
 	}
 
-	return uint64(loc.value), nil
+	// framebase loclist will almost certainly be flagged as having an address
+	// but in case it does not we do the test and return value as appropriate
+
+	if r.hasAddress {
+		return r.address, nil
+	}
+
+	return uint64(r.value), nil
 }
 
 // IsStub returns true if the SourceFunction is just a stub

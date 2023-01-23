@@ -259,14 +259,14 @@ func (bld *build) buildTypes(src *Source) error {
 					switch fld.Class {
 					case dwarf.ClassConstant:
 						memb.loclist = bld.debug_loc.newLoclistJustContext(memb)
-						memb.loclist.addOperator(func(loc *loclist) (location, error) {
-							address := uint64(fld.Val.(int64))
-							value, ok := bld.debug_loc.coproc.CoProcRead32bit(uint32(address))
-							return location{
-								address: address,
-								value:   value,
-								valueOk: ok,
-							}, nil
+						memb.loclist.addOperator(loclistOperator{
+							resolve: func(loc *loclist) (loclistStack, error) {
+								return loclistStack{
+									class: stackClassSingleAddress,
+									value: uint32(fld.Val.(int64)),
+								}, nil
+							},
+							operator: "member offset",
 						})
 					case dwarf.ClassExprLoc:
 						memb.loclist = bld.debug_loc.newLoclistJustContext(memb)
@@ -750,7 +750,7 @@ func (bld *build) buildVariables(src *Source, origin uint64) error {
 				// and it does not move during its lifetime"
 				// page 26 of "DWARF4 Standard"
 
-				if r, _ := bld.debug_loc.decodeLoclistOperationWithOrigin(locfld.Val.([]uint8), origin); r != nil {
+				if r, o := bld.debug_loc.decodeLoclistOperationWithOrigin(locfld.Val.([]uint8), origin); o > 0 {
 					varb.loclist = bld.debug_loc.newLoclistJustContext(varb)
 					varb.loclist.addOperator(r)
 
