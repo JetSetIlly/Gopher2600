@@ -219,7 +219,7 @@ func (cart *Elf) reset() {
 // Access implements the mapper.CartMapper interface.
 func (cart *Elf) Access(addr uint16, _ bool) (uint8, uint8, error) {
 	cart.mem.busStuffDelay = true
-	return cart.mem.gpio.B[fromArm_Opcode], mapper.CartDrivenPins, nil
+	return cart.mem.gpio.data[DATA_ODR], mapper.CartDrivenPins, nil
 }
 
 // AccessDriven implements the mapper.CartMapper interface.
@@ -264,9 +264,9 @@ func (cart *Elf) runARM() {
 // try to run strongarm function. returns success.
 func (cart *Elf) runStrongarm(addr uint16, data uint8) bool {
 	if cart.mem.strongarm.running.function != nil {
-		cart.mem.gpio.B[toArm_data] = data
-		cart.mem.gpio.A[toArm_address] = uint8(addr)
-		cart.mem.gpio.A[toArm_address+1] = uint8(addr >> 8)
+		cart.mem.gpio.data[DATA_IDR] = data
+		cart.mem.gpio.data[ADDR_IDR] = uint8(addr)
+		cart.mem.gpio.data[ADDR_IDR+1] = uint8(addr >> 8)
 		cart.mem.strongarm.running.function(cart.mem)
 
 		if cart.mem.strongarm.running.function == nil {
@@ -309,7 +309,7 @@ func (cart *Elf) AccessPassive(addr uint16, data uint8) {
 
 	// set data first and continue once. this seems to be necessary to allow
 	// the PlusROM exit rountine to work correctly
-	cart.mem.gpio.B[toArm_data] = data
+	cart.mem.gpio.data[DATA_IDR] = data
 
 	cart.runARM()
 	if cart.runStrongarm(addr, data) {
@@ -317,8 +317,8 @@ func (cart *Elf) AccessPassive(addr uint16, data uint8) {
 	}
 
 	// set address and continue
-	cart.mem.gpio.A[toArm_address] = uint8(addr)
-	cart.mem.gpio.A[toArm_address+1] = uint8(addr >> 8)
+	cart.mem.gpio.data[ADDR_IDR] = uint8(addr)
+	cart.mem.gpio.data[ADDR_IDR+1] = uint8(addr >> 8)
 
 	cart.runARM()
 	if cart.runStrongarm(addr, data) {

@@ -68,23 +68,23 @@ func (mem *elfMemory) setNextRomAddress(addr uint16) {
 }
 
 func (mem *elfMemory) injectRomByte(v uint8) bool {
-	addrIn := uint16(mem.gpio.A[toArm_address])
-	addrIn |= uint16(mem.gpio.A[toArm_address+1]) << 8
+	addrIn := uint16(mem.gpio.data[ADDR_IDR])
+	addrIn |= uint16(mem.gpio.data[ADDR_IDR+1]) << 8
 	addrIn &= memorymap.Memtop
 
 	if addrIn != mem.strongarm.nextRomAddress {
 		return false
 	}
 
-	mem.gpio.B[fromArm_Opcode] = v
+	mem.gpio.data[DATA_ODR] = v
 	mem.strongarm.nextRomAddress++
 
 	return true
 }
 
 func (mem *elfMemory) yieldDataBus(addr uint16) bool {
-	addrIn := uint16(mem.gpio.A[toArm_address])
-	addrIn |= uint16(mem.gpio.A[toArm_address+1]) << 8
+	addrIn := uint16(mem.gpio.data[ADDR_IDR])
+	addrIn |= uint16(mem.gpio.data[ADDR_IDR+1]) << 8
 	addrIn &= memorymap.Memtop
 
 	if addrIn != addr {
@@ -95,8 +95,8 @@ func (mem *elfMemory) yieldDataBus(addr uint16) bool {
 }
 
 func (mem *elfMemory) yieldDataBusToStack() bool {
-	addrIn := uint16(mem.gpio.A[toArm_address])
-	addrIn |= uint16(mem.gpio.A[toArm_address+1]) << 8
+	addrIn := uint16(mem.gpio.data[ADDR_IDR])
+	addrIn |= uint16(mem.gpio.data[ADDR_IDR+1]) << 8
 	addrIn &= memorymap.Memtop
 
 	if addrIn&0xfe00 != 0 {
@@ -184,14 +184,14 @@ func vcsSta3(mem *elfMemory) {
 
 // uint8_t snoopDataBus(uint16_t address)
 func snoopDataBus(mem *elfMemory) {
-	addrIn := uint16(mem.gpio.A[toArm_address])
-	addrIn |= uint16(mem.gpio.A[toArm_address+1]) << 8
+	addrIn := uint16(mem.gpio.data[ADDR_IDR])
+	addrIn |= uint16(mem.gpio.data[ADDR_IDR+1]) << 8
 	addrIn &= memorymap.Memtop
 
 	switch mem.strongarm.running.state {
 	case 0:
 		if addrIn == mem.strongarm.nextRomAddress {
-			mem.strongarm.running.registers[0] = uint32(mem.gpio.B[toArm_data])
+			mem.strongarm.running.registers[0] = uint32(mem.gpio.data[DATA_IDR])
 			mem.arm.SetRegisters(mem.strongarm.running.registers)
 			mem.endStrongArmFunction()
 		}
@@ -483,10 +483,10 @@ func vcsJsr6(mem *elfMemory) {
 		}
 	case 2:
 		if mem.injectRomByte(uint8(mem.strongarm.running.registers[0] >> 8)) {
-			mem.gpio.A[toArm_address] = uint8(mem.strongarm.running.registers[0])
-			mem.gpio.A[toArm_address+1] = uint8(mem.strongarm.running.registers[0] >> 8)
-			mem.gpio.A[toArm_address+2] = uint8(mem.strongarm.running.registers[0] >> 16)
-			mem.gpio.A[toArm_address+3] = uint8(mem.strongarm.running.registers[0] >> 24)
+			mem.gpio.data[ADDR_IDR] = uint8(mem.strongarm.running.registers[0])
+			mem.gpio.data[ADDR_IDR+1] = uint8(mem.strongarm.running.registers[0] >> 8)
+			mem.gpio.data[ADDR_IDR+2] = uint8(mem.strongarm.running.registers[0] >> 16)
+			mem.gpio.data[ADDR_IDR+3] = uint8(mem.strongarm.running.registers[0] >> 24)
 
 			mem.endStrongArmFunction()
 		}
@@ -639,10 +639,10 @@ func vcsCopyOverblankToRiotRam(mem *elfMemory) {
 func vcsEmulationInit(mem *elfMemory) {
 	switch mem.strongarm.running.state {
 	case 0:
-		mem.gpio.B[fromArm_Opcode] = 0x00
+		mem.gpio.data[DATA_ODR] = 0x00
 		mem.strongarm.running.state++
 	case 1:
-		mem.gpio.B[fromArm_Opcode] = 0x10
+		mem.gpio.data[DATA_ODR] = 0x10
 		mem.setNextRomAddress(0x1000)
 		mem.endStrongArmFunction()
 	}

@@ -16,21 +16,17 @@
 package elf
 
 const (
-	gpio_mode      = 0x00 // gpioB
-	toArm_address  = 0x10 // gpioA
-	toArm_data     = 0x10 // gpioB
-	fromArm_Opcode = 0x14 // gpioB
-	gpio_memtop    = 0x18
+	ADDR_IDR    = 0x10 // gpioA
+	DATA_IDR    = 0x20 // gpioB
+	DATA_ODR    = 0x30 // gpioB
+	DATA_MODER  = 0x40 // gpioB
+	GPIO_MEMTOP = 0x50
 )
 
 type gpio struct {
-	A       []byte
-	AOrigin uint32
-	AMemtop uint32
-
-	B       []byte
-	BOrigin uint32
-	BMemtop uint32
+	data       []byte
+	dataOrigin uint32
+	dataMemtop uint32
 
 	lookup       []byte
 	lookupOrigin uint32
@@ -40,46 +36,54 @@ type gpio struct {
 // Snapshot implements the mapper.CartMapper interface.
 func (g *gpio) Snapshot() *gpio {
 	n := *g
-	n.A = make([]byte, gpio_memtop)
-	n.B = make([]byte, gpio_memtop)
-	n.lookup = make([]byte, gpio_memtop)
-	copy(n.A, g.A)
-	copy(n.B, g.B)
+	n.data = make([]byte, GPIO_MEMTOP)
+	n.lookup = make([]byte, GPIO_MEMTOP)
+	copy(n.data, g.data)
 	copy(n.lookup, g.lookup)
 	return &n
 }
 
 func newGPIO() *gpio {
 	g := gpio{
-		A:       make([]byte, gpio_memtop),
-		AOrigin: 0x40020c00,
-		AMemtop: 0x40020c00 | gpio_memtop,
+		data:       make([]byte, GPIO_MEMTOP),
+		dataOrigin: 0x40000000,
+		dataMemtop: 0x40000000 | GPIO_MEMTOP,
 
-		B:       make([]byte, gpio_memtop),
-		BOrigin: 0x40020800,
-		BMemtop: 0x40020800 | gpio_memtop,
-
-		lookup:       make([]byte, gpio_memtop),
+		lookup:       make([]byte, GPIO_MEMTOP),
 		lookupOrigin: 0x40020000,
-		lookupMemtop: 0x40020000 | gpio_memtop,
+		lookupMemtop: 0x40020000 | GPIO_MEMTOP,
 	}
 
-	offset := toArm_address
-	val := g.AOrigin | toArm_address
+	offset := ADDR_IDR
+	val := g.dataOrigin | ADDR_IDR
 	g.lookup[offset] = uint8(val)
 	g.lookup[offset+1] = uint8(val >> 8)
 	g.lookup[offset+2] = uint8(val >> 16)
 	g.lookup[offset+3] = uint8(val >> 24)
 
-	offset = fromArm_Opcode
-	val = g.BOrigin | fromArm_Opcode
+	offset = DATA_IDR
+	val = g.dataOrigin | DATA_IDR
+	g.lookup[offset] = uint8(val)
+	g.lookup[offset+1] = uint8(val >> 8)
+	g.lookup[offset+2] = uint8(val >> 16)
+	g.lookup[offset+3] = uint8(val >> 24)
+
+	offset = DATA_ODR
+	val = g.dataOrigin | DATA_ODR
+	g.lookup[offset] = uint8(val)
+	g.lookup[offset+1] = uint8(val >> 8)
+	g.lookup[offset+2] = uint8(val >> 16)
+	g.lookup[offset+3] = uint8(val >> 24)
+
+	offset = DATA_MODER
+	val = g.dataOrigin | DATA_MODER
 	g.lookup[offset] = uint8(val)
 	g.lookup[offset+1] = uint8(val >> 8)
 	g.lookup[offset+2] = uint8(val >> 16)
 	g.lookup[offset+3] = uint8(val >> 24)
 
 	// default NOP instruction for opcode
-	g.B[fromArm_Opcode] = 0xea
+	g.data[DATA_ODR] = 0xea
 
 	return &g
 }

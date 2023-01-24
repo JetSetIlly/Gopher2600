@@ -162,11 +162,11 @@ func newElfMemory(ef *elf.File) (*elfMemory, error) {
 			origin = (section.memtop + 4) & 0xfffffffc
 
 			// extend memtop so that it is continuous with the following section
-			gap := origin - section.memtop - 1
+			gap := origin - section.memtop
 			if gap > 0 {
 				extend := make([]byte, gap)
 				section.data = append(section.data, extend...)
-				section.memtop += gap
+				section.memtop += gap - 1
 			}
 
 			mem.sections[section.name] = section
@@ -260,11 +260,13 @@ func newElfMemory(ef *elf.File) (*elfMemory, error) {
 				switch sym.Name {
 				// GPIO pins
 				case "ADDR_IDR":
-					v = uint32(mem.gpio.lookupOrigin | toArm_address)
+					v = uint32(mem.gpio.lookupOrigin | ADDR_IDR)
 				case "DATA_ODR":
-					v = uint32(mem.gpio.lookupOrigin | fromArm_Opcode)
+					v = uint32(mem.gpio.lookupOrigin | DATA_ODR)
 				case "DATA_MODER":
-					v = uint32(mem.gpio.BOrigin | gpio_mode)
+					v = uint32(mem.gpio.dataOrigin | DATA_MODER)
+				case "DATA_IDR":
+					v = uint32(mem.gpio.lookupOrigin | DATA_IDR)
 
 				// strongARM functions
 				case "vcsWrite3":
@@ -531,14 +533,11 @@ func (mem *elfMemory) Plumb(arm interruptARM) {
 
 // MapAddress implements the arm.SharedMemory interface.
 func (mem *elfMemory) MapAddress(addr uint32, write bool) (*[]byte, uint32) {
-	if addr >= mem.gpio.AOrigin && addr <= mem.gpio.AMemtop {
-		if !write && addr == mem.gpio.AOrigin|toArm_address {
+	if addr >= mem.gpio.dataOrigin && addr <= mem.gpio.dataMemtop {
+		if !write && addr == mem.gpio.dataOrigin|ADDR_IDR {
 			mem.arm.Interrupt()
 		}
-		return &mem.gpio.A, addr - mem.gpio.AOrigin
-	}
-	if addr >= mem.gpio.BOrigin && addr <= mem.gpio.BMemtop {
-		return &mem.gpio.B, addr - mem.gpio.BOrigin
+		return &mem.gpio.data, addr - mem.gpio.dataOrigin
 	}
 	if addr >= mem.gpio.lookupOrigin && addr <= mem.gpio.lookupMemtop {
 		return &mem.gpio.lookup, addr - mem.gpio.lookupOrigin
@@ -588,16 +587,16 @@ func (mem *elfMemory) IsExecutable(addr uint32) bool {
 // Segments implements the mapper.CartStatic interface
 func (e *elfMemory) Segments() []mapper.CartStaticSegment {
 	segments := []mapper.CartStaticSegment{
-		mapper.CartStaticSegment{
+		{
 			Name:   "SRAM",
 			Origin: e.sramOrigin,
 			Memtop: e.sramMemtop,
 		},
 	}
 
-	if s, ok := e.sections[".text"]; ok {
+	for _, s := range e.sections {
 		segments = append(segments, mapper.CartStaticSegment{
-			Name:   "ARM Program",
+			Name:   s.name,
 			Origin: s.origin,
 			Memtop: s.memtop,
 		})
@@ -617,12 +616,12 @@ func (e *elfMemory) Reference(segment string) ([]uint8, bool) {
 	switch segment {
 	case "SRAM":
 		return e.sram, true
-	case "ARM Program":
-		if s, ok := e.sections[".text"]; ok {
-			return s.data, true
-		}
 	case "StrongARM Program":
 		return e.strongArmProgram, true
+	default:
+		if s, ok := e.sections[segment]; ok {
+			return s.data, true
+		}
 	}
 	return []uint8{}, false
 }
