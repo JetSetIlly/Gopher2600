@@ -70,29 +70,29 @@ func (win *winRAM) draw() {
 	// number of colors to pop in afer()
 	popColor := 0
 
-	before := func(offset uint32) {
+	before := func(idx int) {
 		pos = imgui.CursorScreenPos()
 
-		a := diff[offset]
-		b := win.img.lz.RAM.RAM[offset]
+		a := diff[idx]
+		b := win.img.lz.RAM.RAM[idx]
 		if a != b {
 			imgui.PushStyleColor(imgui.StyleColorFrameBg, win.img.cols.ValueDiff)
 			popColor++
 		}
 
-		// offset is based on original values of type uint16 so the type conversion is safe
-		if uint16(win.img.lz.CPU.SP.Value())-memorymap.OriginRAM < uint16(offset) {
+		// idx is based on original values of type uint16 so the type conversion is safe
+		if uint16(win.img.lz.CPU.SP.Value())-memorymap.OriginRAM < uint16(idx) {
 			imgui.PushStyleColor(imgui.StyleColorFrameBg, win.img.cols.ValueStack)
 			popColor++
 		}
 	}
 
-	after := func(offset uint32) {
+	after := func(idx int) {
 		imgui.PopStyleColorV(popColor)
 		popColor = 0
 
-		// offset is based on original values of type uint16 so the type conversion is safe
-		addr := memorymap.OriginRAM + uint16(offset)
+		// idx is based on original values of type uint16 so the type conversion is safe
+		addr := memorymap.OriginRAM + uint16(idx)
 
 		dl := imgui.WindowDrawList()
 		read, okr := win.img.dbg.Disasm.Sym.GetSymbol(addr, true)
@@ -125,8 +125,8 @@ func (win *winRAM) draw() {
 			}
 		}
 
-		a := diff[offset]
-		b := win.img.lz.RAM.RAM[offset]
+		a := diff[idx]
+		b := win.img.lz.RAM.RAM[idx]
 		if a != b {
 			imguiTooltip(func() {
 				imguiColorLabelSimple(fmt.Sprintf("%02x %c %02x", a, fonts.ByteChange, b), win.img.cols.ValueDiff)
@@ -135,8 +135,8 @@ func (win *winRAM) draw() {
 
 		sp := win.img.lz.CPU.SP.Address()
 
-		// offset is based on original values of type uint16 so the type conversion is safe
-		if sp-memorymap.OriginRAM < uint16(offset) {
+		// idx is based on original values of type uint16 so the type conversion is safe
+		if sp-memorymap.OriginRAM < uint16(idx) {
 			imguiTooltip(func() {
 				imguiColorLabelSimple("in stack", win.img.cols.ValueStack)
 				if win.img.lz.CPU.RTSPredictionValid {

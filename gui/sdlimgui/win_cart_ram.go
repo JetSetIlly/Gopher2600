@@ -97,25 +97,25 @@ func (win *winCartRAM) draw() {
 			// number of colors to pop in afer()
 			popColor := 0
 
-			before := func(offset uint32) {
+			before := func(idx int) {
 				pos = imgui.CursorScreenPos()
 
-				a := diff.Data[offset]
-				b := current.Data[offset]
+				a := diff.Data[idx]
+				b := current.Data[idx]
 				if a != b {
 					imgui.PushStyleColor(imgui.StyleColorFrameBg, win.img.cols.ValueDiff)
 					popColor++
 				}
 			}
 
-			after := func(offset uint32) {
+			after := func(idx int) {
 				imgui.PopStyleColorV(popColor)
 				popColor = 0
 
 				dl := imgui.WindowDrawList()
 
-				// offset is based on original values of type uint16 so the type conversion is safe
-				addr := memorymap.OriginCart + uint16(offset)
+				// idx is based on original values of type uint16 so the type conversion is safe
+				addr := memorymap.OriginCart + uint16(idx)
 
 				read, okr := win.img.dbg.Disasm.Sym.GetSymbol(addr, true)
 				write, okw := win.img.dbg.Disasm.Sym.GetSymbol(addr, false)
@@ -147,8 +147,8 @@ func (win *winCartRAM) draw() {
 					}
 				}
 
-				a := diff.Data[offset]
-				b := current.Data[offset]
+				a := diff.Data[idx]
+				b := current.Data[idx]
 				if a != b {
 					imguiTooltip(func() {
 						imguiColorLabelSimple(fmt.Sprintf("%02x %c %02x", a, fonts.ByteChange, b), win.img.cols.ValueDiff)

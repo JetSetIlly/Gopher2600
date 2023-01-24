@@ -69,23 +69,22 @@ func (win *winSaveKeyEEPROM) debuggerDraw() {
 func (win *winSaveKeyEEPROM) draw() {
 	imgui.BeginChildV("eepromData", imgui.Vec2{X: 0, Y: imguiRemainingWinHeight() - win.statusHeight}, false, 0)
 
-	drawByteGridSimple("eepromByteGrid", win.img.lz.SaveKey.EEPROMdata, win.img.lz.SaveKey.EEPROMdiskData, win.img.cols.ValueDiff, 0x00,
-		func(addr uint32, data uint8) {
-			win.img.dbg.PushFunction(func() {
-				var sk *savekey.SaveKey
+	drawByteGridSimple("eepromByteGrid", win.img.lz.SaveKey.EEPROMdata, win.img.lz.SaveKey.EEPROMdiskData, win.img.cols.ValueDiff, 0x00, func(idx int, data uint8) {
+		win.img.dbg.PushFunction(func() {
+			var sk *savekey.SaveKey
 
-				if av, ok := win.img.vcs.RIOT.Ports.RightPlayer.(*atarivox.AtariVox); ok {
-					sk = av.SaveKey.(*savekey.SaveKey)
-				} else {
-					sk = win.img.vcs.RIOT.Ports.RightPlayer.(*savekey.SaveKey)
-				}
+			if av, ok := win.img.vcs.RIOT.Ports.RightPlayer.(*atarivox.AtariVox); ok {
+				sk = av.SaveKey.(*savekey.SaveKey)
+			} else {
+				sk = win.img.vcs.RIOT.Ports.RightPlayer.(*savekey.SaveKey)
+			}
 
-				if sk != nil {
-					// eeprom space is maximum of uint16 so the type conversion is safe
-					sk.EEPROM.Poke(uint16(addr), data)
-				}
-			})
+			if sk != nil {
+				// eeprom space is maximum of uint16 so the type conversion is safe
+				sk.EEPROM.Poke(uint16(idx), data)
+			}
 		})
+	})
 
 	imgui.EndChild()
 
