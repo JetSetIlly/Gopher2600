@@ -102,17 +102,17 @@ type CartCoProc interface {
 	CoProcRead32bit(addr uint32) (uint32, bool)
 }
 
-// CartCoProcELF is implemented by cartridge mappers that want to supply
-// their own ELF information.
-type CartCoProcELF interface {
+// CartCoProcRelocatable is implemented by cartridge mappers that are
+// relocatable in coprocessor memory.
+type CartCoProcRelocatable interface {
 	// returns the offset of the named ELF section and whether the named
 	// section exists. not all cartridges that implement this interface will be
 	// able to meaningfully answer this function call
-	ELFSection(string) (uint32, bool)
+	ELFSection(string) ([]uint8, uint32, bool)
 }
 
 // CartCoProcNonRelocatable is implemented by cartridge mappers that are loaded
-// into a specific memory address.
+// into a specific coprocessor memory address.
 type CartCoProcNonRelocatable interface {
 	ExecutableOrigin() uint32
 }

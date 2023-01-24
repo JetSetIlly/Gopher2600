@@ -18,6 +18,7 @@ package developer
 import (
 	"debug/dwarf"
 	"debug/elf"
+	"encoding/binary"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -44,8 +45,6 @@ type compileUnit struct {
 //
 // It is possible for the arrays/map fields to be empty
 type Source struct {
-	syms []elf.Symbol
-
 	// ELF sections that help DWARF locate local variables in memory
 	debug_loc   *loclistSection
 	debug_frame *frameSection
@@ -178,20 +177,49 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 
 	// open ELF file
 	var ef *elf.File
+	var fromCartridge bool
 	if elfFile != "" {
 		ef, err = elf.Open(elfFile)
 		if err != nil {
 			return nil, curated.Errorf("dwarf: %v", err)
 		}
+
 	} else {
-		ef = findELF(romFile)
+		ef, fromCartridge = findELF(romFile)
 		if ef == nil {
 			return nil, curated.Errorf("dwarf: compiled ELF file not found")
 		}
 	}
 	defer ef.Close()
 
-	// keeping things simple. only 32bit ELF files supported
+	// whether ELF file is relocatable or not
+	relocatable := ef.Type&elf.ET_REL == elf.ET_REL
+
+	// sanity checks on ELF data only if we've loaded the file ourselves and
+	// it's not from the cartridge.
+	if !fromCartridge {
+		if ef.FileHeader.Machine != elf.EM_ARM {
+			return nil, curated.Errorf("dwarf: elf file is not ARM")
+		}
+		if ef.FileHeader.Version != elf.EV_CURRENT {
+			return nil, curated.Errorf("dwarf: elf file is of unknown version")
+		}
+
+		// big endian byte order is probably fine but we've not tested it
+		if ef.FileHeader.ByteOrder != binary.LittleEndian {
+			return nil, curated.Errorf("dwarf: elf file is not little-endian")
+		}
+
+		// we do not permit relocatable ELF files unless it's been supplied by
+		// the cartridge. it's not clear what a relocatable ELF file would mean
+		// in this context so we just disallow it
+		if relocatable {
+			return nil, curated.Errorf("dwarf: elf file is relocatable. not permitted for non-ELF cartridges")
+		}
+	}
+
+	// keeping things simple. only 32bit ELF files supported. 64bit files are
+	// probably fine but we've not tested them
 	if ef.Class != elf.ELFCLASS32 {
 		return nil, curated.Errorf("dwarf: only 32bit ELF files are supported")
 	}
@@ -202,34 +230,58 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 		return nil, curated.Errorf("dwarf: no DWARF data in ELF file")
 	}
 
-	// all the symbols in the ELF file
-	src.syms, err = ef.Symbols()
-	if err != nil {
-		return nil, curated.Errorf("dwarf: %v", err)
+	// origin address of the ELF .text section
+	var executableOrigin uint64
+
+	// cartridge coprocessor
+	coproc := cart.GetCoProc()
+	if coproc == nil {
+		return nil, curated.Errorf("dwarf: cartridge has no coprocessor to work with")
 	}
 
-	// origin of the executable ELF section. will be zero if ELF file is not reloctable
-	var origin uint64
+	// acquire origin addresses and debugging sections according to whether the
+	// cartridge is relocatable or not
+	if relocatable {
+		c, ok := coproc.(mapper.CartCoProcRelocatable)
+		if !ok {
+			return nil, curated.Errorf("dwarf: ELF file is reloctable but the cartridge mapper does not support that")
+		}
+		if _, o, ok := c.ELFSection(".text"); ok {
+			executableOrigin = uint64(o)
+		} else {
+			return nil, curated.Errorf("dwarf: no .text section in ELF file")
+		}
 
-	// if file is relocatable then get executable origin address
-	if ef.Type&elf.ET_REL == elf.ET_REL {
-		if c, ok := cart.(mapper.CartCoProcNonRelocatable); ok {
-			origin = uint64(c.ExecutableOrigin())
-		} else if c, ok := cart.GetCoProc().(mapper.CartCoProcELF); ok {
-			if o, ok := c.ELFSection(".text"); ok {
-				origin = uint64(o)
+		if data, _, ok := c.ELFSection(".debug_frame"); ok {
+			src.debug_frame, err = newFrameSection(data, ef.ByteOrder, coproc, executableOrigin)
+			if err != nil {
+				logger.Logf("dwarf", err.Error())
 			}
 		}
-	}
 
-	// create frame section from the raw ELF section
-	src.debug_frame, err = newFrameSection(ef, cart.GetCoProc(), origin)
-	if err != nil {
-		logger.Logf("dwarf", err.Error())
-	}
+		if data, _, ok := c.ELFSection(".debug_loc"); ok {
+			src.debug_loc, err = newLoclistSection(data, ef.ByteOrder, coproc)
+			if err != nil {
+				logger.Logf("dwarf", err.Error())
+			}
+		}
+	} else {
+		if c, ok := coproc.(mapper.CartCoProcNonRelocatable); ok {
+			executableOrigin = uint64(c.ExecutableOrigin())
+		}
 
-	// create loclist section from the raw ELF section
-	src.debug_loc = newLoclistSection(ef, cart.GetCoProc())
+		// create frame section from the raw ELF section
+		src.debug_frame, err = newFrameSectionFromFile(ef, coproc, executableOrigin)
+		if err != nil {
+			logger.Logf("dwarf", err.Error())
+		}
+
+		// create loclist section from the raw ELF section
+		src.debug_loc, err = newLoclistSectionFromFile(ef, coproc)
+		if err != nil {
+			logger.Logf("dwarf", err.Error())
+		}
+	}
 
 	// disassemble every word in the ELF file
 	//
@@ -256,7 +308,7 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 		var addr32Bit uint64
 
 		// address of instruction
-		addr := sec.Addr + origin
+		addr := sec.Addr + executableOrigin
 
 		for ptr < len(data) {
 			opcode := ef.ByteOrder.Uint16(data[ptr:])
@@ -328,12 +380,12 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 			unit := &compileUnit{
 				unit:     e,
 				children: make(map[dwarf.Offset]*dwarf.Entry),
-				address:  origin,
+				address:  executableOrigin,
 			}
 
 			fld := e.AttrField(dwarf.AttrLowpc)
 			if fld != nil {
-				unit.address = origin + uint64(fld.Val.(uint64))
+				unit.address = executableOrigin + uint64(fld.Val.(uint64))
 			}
 
 			// assuming DWARF never has duplicate compile unit entries
@@ -386,14 +438,14 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 	}
 
 	// build functions from DWARF data
-	err = bld.buildFunctions(src, origin)
+	err = bld.buildFunctions(src, executableOrigin)
 	if err != nil {
 		return nil, curated.Errorf("dwarf: %v", err)
 	}
 
 	// complete function list with stubs for functions where we don't have any
 	// DWARF data (but do have symbol data)
-	addFunctionStubs(src)
+	addFunctionStubs(src, ef)
 
 	// sanity check of functions list
 	if len(src.Functions) != len(src.FunctionNames) {
@@ -401,7 +453,7 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 	}
 
 	// read source lines
-	err = allocateInstructionsToSourceLines(src, dwrf, origin)
+	err = allocateInstructionsToSourceLines(src, dwrf, executableOrigin)
 	if err != nil {
 		return nil, curated.Errorf("dwarf: %v", err)
 	}
@@ -438,7 +490,11 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 	}
 
 	// build variables
-	err = bld.buildVariables(src, origin)
+	if c, ok := coproc.(mapper.CartCoProcRelocatable); ok {
+		err = bld.buildVariables(src, ef, c, executableOrigin)
+	} else {
+		err = bld.buildVariables(src, ef, nil, executableOrigin)
+	}
 	if err != nil {
 		return nil, curated.Errorf("dwarf: %v", err)
 	}
@@ -479,14 +535,14 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 	return src, nil
 }
 
-func allocateInstructionsToSourceLines(src *Source, dwrf *dwarf.Data, origin uint64) error {
+func allocateInstructionsToSourceLines(src *Source, dwrf *dwarf.Data, executableOrigin uint64) error {
 	// find reference for every meaningful source line and link to disassembly
 	for _, e := range src.compileUnits {
 		// the source line we're working on
 		var ln *SourceLine
 
 		// start of address range
-		startAddr := origin
+		startAddr := executableOrigin
 
 		// read every line in the compile unit
 		r, err := dwrf.LineReader(e.unit)
@@ -517,7 +573,7 @@ func allocateInstructionsToSourceLines(src *Source, dwrf *dwarf.Data, origin uin
 			}
 
 			// adjust address by executable origin
-			endAddr := le.Address + origin
+			endAddr := le.Address + executableOrigin
 
 			// add breakpoint and disasm information to the source line
 			if ln != nil && endAddr-startAddr > 0 {
@@ -654,7 +710,13 @@ func findHighAddress(src *Source) {
 // it appears that not every function will necessarily have a symbol and it's
 // easier to handle the adding of stubs *after* the the line reader. it does
 // mean though that we need to check that a function has not already been added
-func addFunctionStubs(src *Source) {
+func addFunctionStubs(src *Source, ef *elf.File) error {
+	// all the symbols in the ELF file
+	syms, err := ef.Symbols()
+	if err != nil {
+		return err
+	}
+
 	type fn struct {
 		name string
 		rng  SourceRange
@@ -663,7 +725,7 @@ func addFunctionStubs(src *Source) {
 	var symbolTableFunctions []fn
 
 	// the functions from the symbol table
-	for _, s := range src.syms {
+	for _, s := range syms {
 		typ := s.Info & 0x0f
 		if typ == 0x02 {
 			// align address
@@ -696,8 +758,8 @@ func addFunctionStubs(src *Source) {
 			// covers an area that has already been seen
 			addFunction := true
 
-			// process all addresses in range of origin and memtop, skipping
-			// any addresses that we already know about from the DWARF data
+			// process all addresses in range, skipping any addresses that we
+			// already know about from the DWARF data
 			for a := fn.rng.Start; a <= fn.rng.End; a++ {
 				if _, ok := src.LinesByAddress[a]; !ok {
 					src.LinesByAddress[a] = createStubLine(stubFn)
@@ -723,6 +785,8 @@ func addFunctionStubs(src *Source) {
 	src.Functions[DriverFunctionName] = driverFn
 	src.FunctionNames = append(src.FunctionNames, DriverFunctionName)
 	src.driverSourceLine = createStubLine(driverFn)
+
+	return nil
 }
 
 func (src *Source) newFrame() {
@@ -817,11 +881,11 @@ func readSourceFile(filename string, pathToROM_nosymlinks string, all *AllSource
 	return &fl, nil
 }
 
-func findELF(romFile string) *elf.File {
+func findELF(romFile string) (*elf.File, bool) {
 	// try the ROM file itself. it might be an ELF file
 	ef, err := elf.Open(romFile)
 	if err == nil {
-		return ef
+		return ef, true
 	}
 
 	// the file is not an ELF file so the remainder of the function will work
@@ -837,40 +901,40 @@ func findELF(romFile string) *elf.File {
 	// current working directory
 	ef, err = elf.Open(elfFile)
 	if err == nil {
-		return ef
+		return ef, false
 	}
 
 	// same directory as binary
 	ef, err = elf.Open(filepath.Join(pathToROM, elfFile))
 	if err == nil {
-		return ef
+		return ef, false
 	}
 
 	// main sub-directory
 	ef, err = elf.Open(filepath.Join(pathToROM, "main", elfFile))
 	if err == nil {
-		return ef
+		return ef, false
 	}
 
 	// main/bin sub-directory
 	ef, err = elf.Open(filepath.Join(pathToROM, "main", "bin", elfFile))
 	if err == nil {
-		return ef
+		return ef, false
 	}
 
 	// custom/bin sub-directory. some older DPC+ sources uses this layout
 	ef, err = elf.Open(filepath.Join(pathToROM, "custom", "bin", elfFile_older))
 	if err == nil {
-		return ef
+		return ef, false
 	}
 
 	// jetsetilly source tree
 	ef, err = elf.Open(filepath.Join(pathToROM, "arm", elfFile_jetsetilly))
 	if err == nil {
-		return ef
+		return ef, false
 	}
 
-	return nil
+	return nil, false
 }
 
 // ResetStatistics resets all performance statistics.

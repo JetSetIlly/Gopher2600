@@ -17,10 +17,12 @@ package developer
 
 import (
 	"debug/dwarf"
+	"debug/elf"
 	"fmt"
 	"io"
 
 	"github.com/jetsetilly/gopher2600/curated"
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
@@ -479,7 +481,7 @@ func (bld *build) resolveVariableDeclaration(v *dwarf.Entry, src *Source) (*Sour
 
 // buildVariables populates variables map in the *Source tree. local variables
 // will need to be relocated for relocatable ELF files
-func (bld *build) buildVariables(src *Source, origin uint64) error {
+func (bld *build) buildVariables(src *Source, ef *elf.File, coproc mapper.CartCoProcRelocatable, executableOrigin uint64) error {
 	// keep track of the lexical range as we walk through the DWARF data in
 	// order. if we need to add a variable to the list of locals and the DWARF
 	// entry has a location attribute of class ExprLoc, then we use the most
@@ -528,7 +530,7 @@ func (bld *build) buildVariables(src *Source, origin uint64) error {
 
 			fld := e.AttrField(dwarf.AttrLowpc)
 			if fld != nil {
-				low = origin + uint64(fld.Val.(uint64))
+				low = executableOrigin + uint64(fld.Val.(uint64))
 
 				fld = e.AttrField(dwarf.AttrHighpc)
 				if fld == nil {
@@ -560,7 +562,7 @@ func (bld *build) buildVariables(src *Source, origin uint64) error {
 				compilationUnitAddress = low
 
 			} else {
-				compilationUnitAddress = origin
+				compilationUnitAddress = executableOrigin
 			}
 
 			continue // for loop
@@ -574,7 +576,7 @@ func (bld *build) buildVariables(src *Source, origin uint64) error {
 
 			fld := e.AttrField(dwarf.AttrLowpc)
 			if fld != nil {
-				low = origin + uint64(fld.Val.(uint64))
+				low = executableOrigin + uint64(fld.Val.(uint64))
 
 				fld = e.AttrField(dwarf.AttrHighpc)
 				if fld == nil {
@@ -628,7 +630,7 @@ func (bld *build) buildVariables(src *Source, origin uint64) error {
 					// and ending address offsets of subsequent entries of the location list."
 					// page 39 of "DWARF4 Standard"
 					if r[0] == 0xffffffff {
-						baseAddress = origin + r[1]
+						baseAddress = executableOrigin + r[1]
 						continue
 					}
 
@@ -750,7 +752,32 @@ func (bld *build) buildVariables(src *Source, origin uint64) error {
 				// and it does not move during its lifetime"
 				// page 26 of "DWARF4 Standard"
 
-				if r, o := bld.debug_loc.decodeLoclistOperationWithOrigin(locfld.Val.([]uint8), origin); o > 0 {
+				// the origin address from which the loclist address is set is
+				// dependent on which section the symbol appears in
+				var globalOrigin uint64
+
+				// this is a slow solution and should be replaced with a
+				// preprocessed symbol-to-section map
+				if coproc == nil {
+					globalOrigin = executableOrigin
+				} else {
+					syms, err := ef.Symbols()
+					if err != nil {
+						return err
+					}
+					for _, s := range syms {
+						if s.Name == varb.Name {
+							section := ef.Sections[s.Section]
+							if _, o, ok := coproc.ELFSection(section.Name); !ok {
+								continue // for loop
+							} else {
+								globalOrigin = uint64(o)
+							}
+						}
+					}
+				}
+
+				if r, o := bld.debug_loc.decodeLoclistOperationWithOrigin(locfld.Val.([]uint8), globalOrigin); o > 0 {
 					varb.loclist = bld.debug_loc.newLoclistJustContext(varb)
 					varb.loclist.addOperator(r)
 
@@ -789,7 +816,7 @@ func (bld *build) buildVariables(src *Source, origin uint64) error {
 	return nil
 }
 
-func (bld *build) buildFunctions(src *Source, origin uint64) error {
+func (bld *build) buildFunctions(src *Source, executableOrigin uint64) error {
 	resolveFramebase := func(e *dwarf.Entry) (*loclist, error) {
 		var framebase *loclist
 
@@ -803,7 +830,7 @@ func (bld *build) buildFunctions(src *Source, origin uint64) error {
 					return nil, err
 				}
 			case dwarf.ClassLocListPtr:
-				err := bld.debug_loc.newLoclist(src.debug_frame, fld.Val.(int64), origin,
+				err := bld.debug_loc.newLoclist(src.debug_frame, fld.Val.(int64), executableOrigin,
 					func(_, _ uint64, loc *loclist) {
 						framebase = loc
 					})
@@ -903,9 +930,9 @@ func (bld *build) buildFunctions(src *Source, origin uint64) error {
 		case dwarf.TagCompileUnit:
 			fld := e.AttrField(dwarf.AttrLowpc)
 			if fld != nil {
-				compilationUnitAddress = origin + uint64(fld.Val.(uint64))
+				compilationUnitAddress = executableOrigin + uint64(fld.Val.(uint64))
 			} else {
-				compilationUnitAddress = origin
+				compilationUnitAddress = executableOrigin
 			}
 		case dwarf.TagSubprogram:
 			// check address against low/high fields
@@ -919,7 +946,7 @@ func (bld *build) buildFunctions(src *Source, origin uint64) error {
 				// either concrete Subprograms or concrete InlinedSubroutines
 				continue // for loop
 			}
-			low = origin + uint64(fld.Val.(uint64))
+			low = executableOrigin + uint64(fld.Val.(uint64))
 
 			fld = e.AttrField(dwarf.AttrHighpc)
 			if fld == nil {
@@ -1037,7 +1064,7 @@ func (bld *build) buildFunctions(src *Source, origin uint64) error {
 
 			fld := e.AttrField(dwarf.AttrLowpc)
 			if fld != nil {
-				low = origin + uint64(fld.Val.(uint64))
+				low = executableOrigin + uint64(fld.Val.(uint64))
 
 				// high PC
 				fld = e.AttrField(dwarf.AttrHighpc)
@@ -1092,7 +1119,7 @@ func (bld *build) buildFunctions(src *Source, origin uint64) error {
 					// and ending address offsets of subsequent entries of the location list."
 					// page 39 of "DWARF4 Standard"
 					if r[0] == 0xffffffff {
-						baseAddress = origin + r[1]
+						baseAddress = executableOrigin + r[1]
 						continue
 					}
 

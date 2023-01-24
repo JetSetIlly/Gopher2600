@@ -33,10 +33,13 @@ type interruptARM interface {
 }
 
 type elfSection struct {
-	name       string
-	data       []byte
-	origin     uint32
-	memtop     uint32
+	name string
+	data []byte
+
+	inMemory bool
+	origin   uint32
+	memtop   uint32
+
 	readOnly   bool
 	executable bool
 }
@@ -124,39 +127,25 @@ func newElfMemory(ef *elf.File) (*elfMemory, error) {
 	// load sections
 	origin := mem.model.FlashOrigin
 	for _, sec := range ef.Sections {
-		// ignore debug sections
-		if strings.Contains(sec.Name, ".debug") {
-			continue
+		section := &elfSection{
+			name:       sec.Name,
+			readOnly:   sec.Flags&elf.SHF_WRITE != elf.SHF_WRITE,
+			executable: sec.Flags&elf.SHF_EXECINSTR == elf.SHF_EXECINSTR,
+			inMemory: (sec.Type == elf.SHT_INIT_ARRAY ||
+				sec.Type == elf.SHT_NOBITS ||
+				sec.Type == elf.SHT_PROGBITS) &&
+				!strings.Contains(sec.Name, ".debug"),
 		}
 
-		switch sec.Type {
-		case elf.SHT_REL:
-			// ignore relocation sections for now
-			continue
+		var err error
 
-		case elf.SHT_INIT_ARRAY:
-			fallthrough
-		case elf.SHT_NOBITS:
-			fallthrough
-		case elf.SHT_PROGBITS:
-			section := &elfSection{
-				name:       sec.Name,
-				readOnly:   sec.Flags&elf.SHF_WRITE != elf.SHF_WRITE,
-				executable: sec.Flags&elf.SHF_EXECINSTR == elf.SHF_EXECINSTR,
-			}
+		section.data, err = sec.Data()
+		if err != nil {
+			return nil, curated.Errorf("ELF: %v", err)
+		}
 
-			var err error
-
-			section.data, err = sec.Data()
-			if err != nil {
-				return nil, curated.Errorf("ELF: %v", err)
-			}
-
-			// ignore empty sections
-			if len(section.data) == 0 {
-				continue
-			}
-
+		// we know about and record data for all sections but we don't load all of them into the corprocessor's memory
+		if section.inMemory {
 			section.origin = origin
 			section.memtop = section.origin + uint32(len(section.data))
 			origin = (section.memtop + 4) & 0xfffffffc
@@ -169,8 +158,6 @@ func newElfMemory(ef *elf.File) (*elfMemory, error) {
 				section.memtop += gap - 1
 			}
 
-			mem.sections[section.name] = section
-
 			logger.Logf("ELF", "%s: %08x to %08x (%d)", section.name, section.origin, section.memtop, len(section.data))
 			if section.readOnly {
 				logger.Logf("ELF", "%s: is readonly", section.name)
@@ -178,9 +165,9 @@ func newElfMemory(ef *elf.File) (*elfMemory, error) {
 			if section.executable {
 				logger.Logf("ELF", "%s: is executable", section.name)
 			}
-		default:
-			logger.Logf("ELF", "ignoring section %s (%s)", sec.Name, sec.Type)
 		}
+
+		mem.sections[section.name] = section
 	}
 
 	// strongArm functions are added during relocation
@@ -203,11 +190,6 @@ func newElfMemory(ef *elf.File) (*elfMemory, error) {
 	for _, rel := range ef.Sections {
 		// ignore non-relocation sections for now
 		if rel.Type != elf.SHT_REL {
-			continue
-		}
-
-		// ignore debug sections
-		if strings.Contains(rel.Name, ".debug") {
 			continue
 		}
 
@@ -351,19 +333,15 @@ func newElfMemory(ef *elf.File) (*elfMemory, error) {
 					v = mem.relocateStrongArmTable(ntscColorTable)
 
 				default:
-					if sym.Section == elf.SHN_UNDEF {
-						return nil, curated.Errorf("ELF: %s is undefined", sym.Name)
+					if sym.Section != elf.SHN_UNDEF {
+						n := ef.Sections[sym.Section].Name
+						if p, ok := mem.sections[n]; !ok {
+							logger.Logf("ELF", "can not find section (%s) while relocating %s", n, sym.Name)
+						} else {
+							v = p.origin
+							v += uint32(sym.Value)
+						}
 					}
-
-					n := ef.Sections[sym.Section].Name
-					if p, ok := mem.sections[n]; !ok {
-						// ignore unknown sections
-						logger.Logf("ELF", "can not find section (%s) while relocating %s", n, sym.Name)
-						continue // for loop
-					} else {
-						v = p.origin
-					}
-					v += uint32(sym.Value)
 				}
 
 				// add placeholder value to relocation address
@@ -377,6 +355,8 @@ func newElfMemory(ef *elf.File) (*elfMemory, error) {
 
 				// commit write
 				ef.ByteOrder.PutUint32(secBeingRelocated.data[offset:], v)
+
+				logger.Logf("ELF", "relocate %s (%08x) => %08x", sym.Name, secBeingRelocated.origin+offset, v)
 
 			case elf.R_ARM_THM_PC22:
 				// this value is labelled R_ARM_THM_CALL in objdump output
@@ -595,11 +575,13 @@ func (e *elfMemory) Segments() []mapper.CartStaticSegment {
 	}
 
 	for _, s := range e.sections {
-		segments = append(segments, mapper.CartStaticSegment{
-			Name:   s.name,
-			Origin: s.origin,
-			Memtop: s.memtop,
-		})
+		if s.inMemory {
+			segments = append(segments, mapper.CartStaticSegment{
+				Name:   s.name,
+				Origin: s.origin,
+				Memtop: s.memtop,
+			})
+		}
 	}
 
 	segments = append(segments, mapper.CartStaticSegment{
@@ -638,7 +620,7 @@ func (e *elfMemory) Read8bit(addr uint32) (uint8, bool) {
 // Read16bit implements the mapper.CartStatic interface
 func (e *elfMemory) Read16bit(addr uint32) (uint16, bool) {
 	mem, addr := e.MapAddress(addr, false)
-	if mem == nil || addr >= uint32(len(*mem)-1) {
+	if mem == nil || len(*mem) < 2 || addr >= uint32(len(*mem)-1) {
 		return 0, false
 	}
 	return uint16((*mem)[addr]) |
@@ -648,7 +630,7 @@ func (e *elfMemory) Read16bit(addr uint32) (uint16, bool) {
 // Read32bit implements the mapper.CartStatic interface
 func (e *elfMemory) Read32bit(addr uint32) (uint32, bool) {
 	mem, addr := e.MapAddress(addr, false)
-	if mem == nil || addr >= uint32(len(*mem)-3) {
+	if mem == nil || len(*mem) < 4 || addr >= uint32(len(*mem)-3) {
 		return 0, false
 	}
 	return uint32((*mem)[addr]) |

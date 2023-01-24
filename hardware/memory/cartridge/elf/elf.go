@@ -124,14 +124,16 @@ func NewElf(instance *instance.Instance, pathToROM string, inACE bool) (mapper.C
 	if ef.FileHeader.Machine != elf.EM_ARM {
 		return nil, curated.Errorf("ELF: is not ARM")
 	}
-	if ef.FileHeader.ByteOrder != binary.LittleEndian {
-		return nil, curated.Errorf("ELF: is not little-endian")
-	}
 	if ef.FileHeader.Version != elf.EV_CURRENT {
 		return nil, curated.Errorf("ELF: unknown version")
 	}
 	if ef.FileHeader.Type != elf.ET_REL {
 		return nil, curated.Errorf("ELF: is not relocatable")
+	}
+
+	// big endian byte order is probably fine but we've not tested it
+	if ef.FileHeader.ByteOrder != binary.LittleEndian {
+		return nil, curated.Errorf("ELF: is not little-endian")
 	}
 
 	cart := &Elf{
@@ -393,11 +395,11 @@ func (cart *Elf) SetDeveloper(dev mapper.CartCoProcDeveloper) {
 }
 
 // ELFSection implements the mapper.CartCoProcELF interface.
-func (cart *Elf) ELFSection(name string) (uint32, bool) {
+func (cart *Elf) ELFSection(name string) ([]uint8, uint32, bool) {
 	if sec, ok := cart.mem.sections[name]; ok {
-		return sec.origin, true
+		return sec.data, sec.origin, true
 	}
-	return 0, false
+	return nil, 0, false
 }
 
 // CoProcState implements the mapper.CartCoProc interface.

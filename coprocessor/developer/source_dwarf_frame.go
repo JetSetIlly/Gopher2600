@@ -17,6 +17,7 @@ package developer
 
 import (
 	"debug/elf"
+	"encoding/binary"
 	"fmt"
 	"strings"
 
@@ -69,15 +70,22 @@ type frameSection struct {
 	fde    []*frameSectionFDE
 }
 
-func newFrameSection(ef *elf.File, coproc frameCoproc, origin uint64) (*frameSection, error) {
+func newFrameSectionFromFile(ef *elf.File, coproc frameCoproc, executableOrigin uint64) (*frameSection, error) {
+	sec := ef.Section(".debug_frame")
+	if sec == nil {
+		return nil, nil
+	}
+	data, err := sec.Data()
+	if err != nil {
+		return nil, err
+	}
+	return newFrameSection(data, ef.ByteOrder, coproc, executableOrigin)
+}
+
+func newFrameSection(data []uint8, byteOrder binary.ByteOrder, coproc frameCoproc, exectuableOrigin uint64) (*frameSection, error) {
 	frm := &frameSection{
 		coproc: coproc,
 		cie:    make(map[uint32]*frameSectionCIE),
-	}
-
-	data, err := relocateELFSection(ef, ".debug_frame")
-	if err != nil {
-		return nil, err
 	}
 
 	// index into the data
@@ -86,7 +94,7 @@ func newFrameSection(ef *elf.File, coproc frameCoproc, origin uint64) (*frameSec
 	// while there is data to be read
 	for idx < len(data) {
 		// length of next block (either a CIA or FDE)
-		l := int(ef.ByteOrder.Uint32(data[idx:]))
+		l := int(byteOrder.Uint32(data[idx:]))
 		idx += 4
 
 		// take a slice of the data block for further processing (it's just
@@ -96,7 +104,7 @@ func newFrameSection(ef *elf.File, coproc frameCoproc, origin uint64) (*frameSec
 
 		// step through buffer according to whether the id indicates whether
 		// the block is a CIE or an FDE
-		id := ef.ByteOrder.Uint32(b)
+		id := byteOrder.Uint32(b)
 		n := 4
 
 		if id == 0xffffffff {
@@ -163,7 +171,7 @@ func newFrameSection(ef *elf.File, coproc frameCoproc, origin uint64) (*frameSec
 			// specification) is the lower instruction address for which this
 			// FDE applies
 			fde.startAddress = uint32(b[n]) | uint32(b[n+1])<<8 | uint32(b[n+2])<<16 | uint32(b[n+3])<<24
-			fde.startAddress += uint32(origin)
+			fde.startAddress += uint32(exectuableOrigin)
 			n += 4
 
 			// end address (named "address range" in the DWARF-4 specification)

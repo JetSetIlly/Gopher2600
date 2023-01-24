@@ -20,6 +20,7 @@ import (
 	"encoding/binary"
 	"fmt"
 
+	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
@@ -35,19 +36,26 @@ type loclistSection struct {
 	data      []uint8
 }
 
-func newLoclistSection(ef *elf.File, coproc loclistCoproc) *loclistSection {
-	loc := &loclistSection{
-		coproc:    coproc,
-		byteOrder: ef.ByteOrder,
+func newLoclistSectionFromFile(ef *elf.File, coproc mapper.CartCoProc) (*loclistSection, error) {
+	sec := ef.Section(".debug_loc")
+	if sec == nil {
+		return nil, nil
 	}
-
-	var err error
-	loc.data, err = relocateELFSection(ef, ".debug_loc")
+	data, err := sec.Data()
 	if err != nil {
-		logger.Logf("dwarf", err.Error())
+		return nil, err
+	}
+	return newLoclistSection(data, ef.ByteOrder, coproc)
+}
+
+func newLoclistSection(data []uint8, byteOrder binary.ByteOrder, coproc loclistCoproc) (*loclistSection, error) {
+	loc := &loclistSection{
+		data:      data,
+		coproc:    coproc,
+		byteOrder: byteOrder,
 	}
 
-	return loc
+	return loc, nil
 }
 
 // loclistFramebase provides context to the location list. implemented by
