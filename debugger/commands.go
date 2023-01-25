@@ -592,9 +592,32 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 
 	case cmdGrep:
 		scope := disassembly.GrepAll
+		output := &strings.Builder{}
 
 		s, _ := tokens.Get()
 		switch strings.ToUpper(s) {
+		case "COPROC":
+			search, _ := tokens.Get()
+
+			addr, err := strconv.ParseUint(search, 0, 16)
+			if err != nil {
+				dbg.printLine(terminal.StyleError, "search term for COPROC must be a 32bit address")
+				return nil
+			}
+			dbg.CoProcDev.BorrowSource(func(src *developer.Source) {
+				if src == nil {
+					dbg.printLine(terminal.StyleError, "no source files found")
+					return
+				}
+				ln, ok := src.LinesByAddress[uint64(addr)]
+				if !ok {
+					dbg.printLine(terminal.StyleError, fmt.Sprintf("address %x does not correspond to a source line", addr))
+				} else {
+					dbg.printLine(terminal.StyleFeedback, ln.String())
+				}
+			})
+			return nil
+
 		case "OPERATOR":
 			scope = disassembly.GrepOperator
 		case "OPERAND":
@@ -604,7 +627,6 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		}
 
 		search, _ := tokens.Get()
-		output := &strings.Builder{}
 		err := dbg.Disasm.Grep(output, scope, search, false)
 		if err != nil {
 			return err
@@ -1018,7 +1040,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 				target = strings.ToUpper(target)
 				if target == "PC" {
 					// program counter is a 16 bit number
-					v, err := strconv.ParseUint(value, 16, 16)
+					v, err := strconv.ParseUint(value, 0, 16)
 					if err != nil {
 						dbg.printLine(terminal.StyleError, "value must be a positive 16 bit number")
 					}
@@ -1026,7 +1048,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 					dbg.vcs.CPU.PC.Load(uint16(v))
 				} else {
 					// 6507 registers are 8 bit
-					v, err := strconv.ParseUint(value, 16, 8)
+					v, err := strconv.ParseUint(value, 0, 8)
 					if err != nil {
 						dbg.printLine(terminal.StyleError, "value must be a positive 8 bit number")
 					}

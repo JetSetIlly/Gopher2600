@@ -159,7 +159,7 @@ func (dev *Developer) CheckBreakpoint(addr uint32) bool {
 	dev.sourceLock.Lock()
 	defer dev.sourceLock.Unlock()
 
-	ln := dev.source.linesByAddress[uint64(addr)]
+	ln := dev.source.LinesByAddress[uint64(addr)]
 	if ln == dev.source.prevBreakpointCheck {
 		return false
 	}

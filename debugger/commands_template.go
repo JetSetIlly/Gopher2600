@@ -95,7 +95,7 @@ var commandTemplate = []string{
 	cmdCartridge + " (PATH|NAME|MAPPER|CONTAINER|MAPPEDBANKS|HASH|STATIC|REGISTERS|RAM|HOTLOAD|DUMP)",
 	cmdPatch + " %<patch file>S",
 	cmdDisasm + " (BYTECODE|REDUX)",
-	cmdGrep + " (OPERATOR|OPERAND) %<search>S",
+	cmdGrep + " (OPERATOR|OPERAND|COPROC) %<search>S",
 	cmdSymbol + " [LIST (LABELS|READ|WRITE)|%<symbol>S]",
 	cmdOnHalt + " (OFF|ON|%<command>S {%<commands>S})",
 	cmdOnStep + " (OFF|ON|%<command>S {%<commands>S})",

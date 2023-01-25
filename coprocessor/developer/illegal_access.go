@@ -103,7 +103,7 @@ func (dev *Developer) logAccess(event string, pc uint32, addr uint32, isNullAcce
 		// illegal access entry. it's possible for the source line to be a
 		// "stub" source line
 		if dev.source != nil {
-			e.SrcLine = dev.source.linesByAddress[uint64(pc)]
+			e.SrcLine = dev.source.LinesByAddress[uint64(pc)]
 
 			// it is sometimes possible to have source (ie dev.source != nil)
 			// but for there to be no actual source files. in these instances

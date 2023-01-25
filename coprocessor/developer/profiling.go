@@ -90,10 +90,10 @@ func (dev *Developer) ProcessProfiling() {
 			// line of executed instruction. every instruction should have an
 			// associated line/function. if it does not then we assume it is in
 			// the entry function
-			ln, ok := dev.source.linesByAddress[uint64(p.Addr)]
+			ln, ok := dev.source.LinesByAddress[uint64(p.Addr)]
 			if !ok {
 				ln = dev.source.driverSourceLine
-				dev.source.linesByAddress[uint64(p.Addr)] = ln
+				dev.source.LinesByAddress[uint64(p.Addr)] = ln
 			}
 
 			// if function has changed

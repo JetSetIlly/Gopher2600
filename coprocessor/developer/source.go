@@ -107,7 +107,7 @@ type Source struct {
 
 	// lines of source code found in the compile units. this is a sparse
 	// coverage of the total address space
-	linesByAddress map[uint64]*SourceLine
+	LinesByAddress map[uint64]*SourceLine
 
 	// sorted list of every source line in all compile units
 	SortedLines SortedLines
@@ -166,7 +166,7 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 		SortedFunctions: SortedFunctions{
 			Functions: make([]*SourceFunction, 0, 100),
 		},
-		linesByAddress: make(map[uint64]*SourceLine),
+		LinesByAddress: make(map[uint64]*SourceLine),
 		SortedLines: SortedLines{
 			Lines: make([]*SourceLine, 0, 100),
 		},
@@ -419,7 +419,7 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 	// indexed by (and this is important) the pointer address of the SourceLine
 	// and not the execution address
 	observed := make(map[*SourceLine]bool)
-	for _, ln := range src.linesByAddress {
+	for _, ln := range src.LinesByAddress {
 		if _, ok := observed[ln]; !ok {
 			observed[ln] = true
 			src.SortedLines.Lines = append(src.SortedLines.Lines, ln)
@@ -533,7 +533,7 @@ func allocateInstructionsToSourceLines(src *Source, dwrf *dwarf.Data, origin uin
 						d.Line = ln
 
 						// add source line to list of lines by address
-						src.linesByAddress[addr] = ln
+						src.LinesByAddress[addr] = ln
 
 						// disassembled instruction is a 32bit instruction so
 						// address must advance by an additional 2 bytes (for a
@@ -694,8 +694,8 @@ func addFunctionStubs(src *Source) {
 			// process all addresses in range of origin and memtop, skipping
 			// any addresses that we already know about from the DWARF data
 			for a := fn.rng.Start; a <= fn.rng.End; a++ {
-				if _, ok := src.linesByAddress[a]; !ok {
-					src.linesByAddress[a] = createStubLine(stubFn)
+				if _, ok := src.LinesByAddress[a]; !ok {
+					src.LinesByAddress[a] = createStubLine(stubFn)
 				} else {
 					addFunction = false
 					break
@@ -884,13 +884,13 @@ func (src *Source) ResetStatistics() {
 		src.Functions[i].CumulativeStats.ROMSetup.reset()
 		src.Functions[i].OptimisedCallStack = false
 	}
-	for i := range src.linesByAddress {
-		src.linesByAddress[i].Kernel = KernelAny
-		src.linesByAddress[i].Stats.Overall.reset()
-		src.linesByAddress[i].Stats.VBLANK.reset()
-		src.linesByAddress[i].Stats.Screen.reset()
-		src.linesByAddress[i].Stats.Overscan.reset()
-		src.linesByAddress[i].Stats.ROMSetup.reset()
+	for i := range src.LinesByAddress {
+		src.LinesByAddress[i].Kernel = KernelAny
+		src.LinesByAddress[i].Stats.Overall.reset()
+		src.LinesByAddress[i].Stats.VBLANK.reset()
+		src.LinesByAddress[i].Stats.Screen.reset()
+		src.LinesByAddress[i].Stats.Overscan.reset()
+		src.LinesByAddress[i].Stats.ROMSetup.reset()
 	}
 	src.Stats.Overall.reset()
 	src.Stats.VBLANK.reset()
@@ -902,7 +902,7 @@ func (src *Source) ResetStatistics() {
 // FindSourceLine returns line entry for the address. Returns nil if the
 // address has no source line.
 func (src *Source) FindSourceLine(addr uint32) *SourceLine {
-	return src.linesByAddress[uint64(addr)]
+	return src.LinesByAddress[uint64(addr)]
 }
 
 // UpdateGlobalVariables using the current state of the emulated coprocessor.
