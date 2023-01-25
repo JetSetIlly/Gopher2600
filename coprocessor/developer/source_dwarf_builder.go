@@ -815,7 +815,11 @@ func (bld *build) buildFunctions(src *Source, origin uint64) error {
 		return framebase, nil
 	}
 
-	// resolve sets the return fn value for the entire function
+	// resolve sets the return fn value for the entire function.
+	//
+	// may return nil for both error and SourceFunction value. therefore, the
+	// caller should check for an error first and if that is nil, check the
+	// SourceFunction value before working with it
 	resolve := func(e *dwarf.Entry) (*SourceFunction, error) {
 		lr, err := bld.dwrf.LineReader(bld.compileUnits[e.Offset])
 		if err != nil {
@@ -826,21 +830,21 @@ func (bld *build) buildFunctions(src *Source, origin uint64) error {
 		// name of entry
 		fld := e.AttrField(dwarf.AttrName)
 		if fld == nil {
-			return nil, nil
+			return nil, fmt.Errorf("no function name")
 		}
 		name := fld.Val.(string)
 
 		// declaration file
 		fld = e.AttrField(dwarf.AttrDeclFile)
 		if fld == nil {
-			return nil, nil
+			return nil, fmt.Errorf("no source file for %s", name)
 		}
 		filenum := fld.Val.(int64)
 
 		// declaration line
 		fld = e.AttrField(dwarf.AttrDeclLine)
 		if fld == nil {
-			return nil, nil
+			return nil, fmt.Errorf("no line number for %s", name)
 		}
 		linenum := fld.Val.(int64)
 
