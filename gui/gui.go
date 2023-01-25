@@ -72,4 +72,7 @@ const (
 	// request for bot features to be enabled. a nil argument will cause the
 	// bot features to be removed.
 	ReqBotFeedback FeatureReq = "ReqBotFeedback" // *bots.Feedback
+
+	// request for the coprocess source window to open at the specified line
+	ReqCoProcSourceLine FeatureReq = "ReqCoProcSourceLine" // *developer.SourceLine
 )

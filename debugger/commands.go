@@ -33,6 +33,7 @@ import (
 	"github.com/jetsetilly/gopher2600/debugger/terminal/commandline"
 	"github.com/jetsetilly/gopher2600/disassembly"
 	"github.com/jetsetilly/gopher2600/disassembly/symbols"
+	"github.com/jetsetilly/gopher2600/gui"
 	"github.com/jetsetilly/gopher2600/hardware/cpu/registers"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/plusrom"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
@@ -604,18 +605,26 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 				dbg.printLine(terminal.StyleError, "search term for COPROC must be a 32bit address")
 				return nil
 			}
+
+			var ln *developer.SourceLine
+
 			dbg.CoProcDev.BorrowSource(func(src *developer.Source) {
 				if src == nil {
 					dbg.printLine(terminal.StyleError, "no source files found")
 					return
 				}
-				ln, ok := src.LinesByAddress[uint64(addr)]
+
+				var ok bool
+
+				ln, ok = src.LinesByAddress[uint64(addr)]
 				if !ok {
 					dbg.printLine(terminal.StyleError, fmt.Sprintf("address %x does not correspond to a source line", addr))
 				} else {
 					dbg.printLine(terminal.StyleFeedback, ln.String())
 				}
 			})
+
+			_ = dbg.gui.SetFeature(gui.ReqCoProcSourceLine, ln)
 			return nil
 
 		case "OPERATOR":

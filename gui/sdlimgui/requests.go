@@ -19,6 +19,7 @@ import (
 	"image"
 
 	"github.com/jetsetilly/gopher2600/bots"
+	"github.com/jetsetilly/gopher2600/coprocessor/developer"
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/debugger/govern"
 	"github.com/jetsetilly/gopher2600/gui"
@@ -142,6 +143,14 @@ func (img *SdlImgui) serviceSetFeature(request featureRequest) {
 		if err == nil {
 			f := request.args[0].(*bots.Feedback)
 			img.wm.playmodeWindows[winBotID].(*winBot).startBotSession(f)
+		}
+
+	case gui.ReqCoProcSourceLine:
+		err = argLen(request.args, 1)
+		if err == nil {
+			ln := request.args[0].(*developer.SourceLine)
+			srcWin := img.wm.debuggerWindows[winCoProcSourceID].(*winCoProcSource)
+			srcWin.gotoSourceLine(ln)
 		}
 
 	default:
