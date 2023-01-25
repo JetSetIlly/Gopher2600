@@ -263,7 +263,7 @@ func (win *winCoProcSource) draw() {
 			imgui.Separator()
 			imgui.Spacing()
 
-			win.drawLineSearch()
+			win.drawLineSearch(src)
 			imgui.SameLineV(0, 10)
 
 			if imgui.Button(fmt.Sprintf("%c Focus Yield Line", fonts.DisasmGotoCurrent)) {
@@ -322,7 +322,7 @@ func (win *winCoProcSource) drawFileSelection(src *developer.Source) {
 	}
 }
 
-func (win *winCoProcSource) drawLineSearch() {
+func (win *winCoProcSource) drawLineSearch(src *developer.Source) {
 	if imgui.Button(string(fonts.MagnifyingGlass)) {
 		mp := imgui.MousePos()
 		mp.X += imgui.FontSize()
@@ -337,10 +337,10 @@ func (win *winCoProcSource) drawLineSearch() {
 		imgui.PushItemWidth(w)
 
 		lineFuzzyHook := func(i int) {
-			win.gotoSourceLine(win.selectedFile.Content.Lines[i])
+			win.gotoSourceLine(src.AllLines.Get(i))
 		}
 
-		if !win.lineFuzzy.draw("##linefuzzy", win.selectedFile.Content, lineFuzzyHook, false) {
+		if !win.lineFuzzy.draw("##linefuzzy", src.AllLines, lineFuzzyHook, false) {
 			imgui.CloseCurrentPopup()
 		}
 
@@ -350,6 +350,9 @@ func (win *winCoProcSource) drawLineSearch() {
 }
 
 func (win *winCoProcSource) gotoSourceLine(ln *developer.SourceLine) {
+	if ln == nil {
+		return
+	}
 	win.debuggerSetOpen(true)
 	win.selectedShortFileName = ln.File.ShortFilename
 	win.selectedLine.single(ln.LineNumber)

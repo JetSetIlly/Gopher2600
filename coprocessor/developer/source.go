@@ -112,6 +112,9 @@ type Source struct {
 	// sorted list of every source line in all compile units
 	SortedLines SortedLines
 
+	// every non-blank line of source code in all compile units
+	AllLines AllSourceLines
+
 	// sorted lines filtered by function name
 	FunctionFilters []*FunctionFilter
 
@@ -338,12 +341,11 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 
 			// loop through files in the compilation unit. entry 0 is always nil
 			for _, f := range r.Files()[1:] {
-				sf, err := readSourceFile(f.Name, pathToROM_nosymlinks)
-				if err != nil {
-					logger.Logf("dwarf", "%v", err)
-				} else {
-					// add file to list if we've not see it already
-					if _, ok := src.Files[sf.Filename]; !ok {
+				if _, ok := src.Files[f.Name]; !ok {
+					sf, err := readSourceFile(f.Name, pathToROM_nosymlinks, &src.AllLines)
+					if err != nil {
+						logger.Logf("dwarf", "%v", err)
+					} else {
 						src.Files[sf.Filename] = sf
 						src.Filenames = append(src.Filenames, sf.Filename)
 
@@ -755,7 +757,7 @@ func (src *Source) newFrame() {
 	}
 }
 
-func readSourceFile(filename string, pathToROM_nosymlinks string) (*SourceFile, error) {
+func readSourceFile(filename string, pathToROM_nosymlinks string, all *AllSourceLines) (*SourceFile, error) {
 	var err error
 
 	fl := SourceFile{
@@ -771,7 +773,7 @@ func readSourceFile(filename string, pathToROM_nosymlinks string) (*SourceFile, 
 	// split files into lines and parse into fragments
 	var fp fragmentParser
 	for i, s := range strings.Split(string(b), "\n") {
-		l := &SourceLine{
+		ln := &SourceLine{
 			File:       &fl,
 			LineNumber: i + 1, // counting from one
 			Function: &SourceFunction{
@@ -779,12 +781,16 @@ func readSourceFile(filename string, pathToROM_nosymlinks string) (*SourceFile, 
 			},
 			PlainContent: s,
 		}
-		fl.Content.Lines = append(fl.Content.Lines, l)
-		fp.parseLine(l)
+		fl.Content.Lines = append(fl.Content.Lines, ln)
+		fp.parseLine(ln)
 
 		// update max line width
 		if len(s) > fl.Content.MaxLineWidth {
 			fl.Content.MaxLineWidth = len(s)
+		}
+
+		if len(strings.TrimSpace(s)) > 0 {
+			all.lines = append(all.lines, ln)
 		}
 	}
 

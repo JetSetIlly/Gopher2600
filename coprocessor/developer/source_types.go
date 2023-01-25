@@ -80,6 +80,28 @@ func (d *SourceDisasm) String() string {
 	return fmt.Sprintf("%#08x %04x %s", d.Addr, uint16(d.opcode), d.Instruction)
 }
 
+type AllSourceLines struct {
+	lines []*SourceLine
+}
+
+func (a AllSourceLines) Get(i int) *SourceLine {
+	if i >= len(a.lines) {
+		return nil
+	}
+	return a.lines[i]
+}
+
+func (a AllSourceLines) Len() int {
+	return len(a.lines)
+}
+
+func (a AllSourceLines) String(i int) string {
+	if i >= len(a.lines) {
+		return ""
+	}
+	return a.lines[i].PlainContent
+}
+
 // SourceLine is a single line of source in a source file, identified by the
 // DWARF data and loaded from the actual source file.
 type SourceLine struct {
