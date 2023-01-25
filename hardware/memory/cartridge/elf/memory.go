@@ -264,7 +264,7 @@ func newElfMemory(ef *elf.File) (*elfMemory, error) {
 				case "DATA_ODR":
 					v = uint32(mem.gpio.lookupOrigin | DATA_ODR)
 				case "DATA_MODER":
-					v = uint32(mem.gpio.dataOrigin | DATA_MODER)
+					v = uint32(mem.gpio.lookupOrigin | DATA_MODER)
 				case "DATA_IDR":
 					v = uint32(mem.gpio.lookupOrigin | DATA_IDR)
 

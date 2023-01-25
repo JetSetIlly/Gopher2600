@@ -331,6 +331,16 @@ func (cart *Elf) AccessPassive(addr uint16, data uint8) {
 	}
 
 	cart.runARM()
+	if cart.runStrongarm(addr, data) {
+		return
+	}
+
+	cart.runARM()
+	if cart.runStrongarm(addr, data) {
+		return
+	}
+
+	cart.runARM()
 
 	// we must understand that the above synchronisation is almost certainly
 	// "wrong" in the general sense. it works for the examples seen so far but
