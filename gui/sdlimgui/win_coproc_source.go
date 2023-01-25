@@ -354,6 +354,7 @@ func (win *winCoProcSource) gotoSourceLine(ln *developer.SourceLine) {
 		return
 	}
 	win.debuggerSetOpen(true)
+	win.focusYieldLine = false
 	win.selectedShortFileName = ln.File.ShortFilename
 	win.selectedLine.single(ln.LineNumber)
 	win.uncollapseNext = true
