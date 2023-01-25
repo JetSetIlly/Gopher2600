@@ -600,7 +600,7 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 		case "COPROC":
 			search, _ := tokens.Get()
 
-			addr, err := strconv.ParseUint(search, 0, 16)
+			addr, err := strconv.ParseUint(search, 0, 32)
 			if err != nil {
 				dbg.printLine(terminal.StyleError, "search term for COPROC must be a 32bit address")
 				return nil
