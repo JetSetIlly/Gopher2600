@@ -281,6 +281,25 @@ func (arm *ARM) thumb2DataProcessingNonImmediate(opcode uint16) {
 						arm.state.status.setCarry(carry)
 						// overflow unchanged
 					}
+				case 0b11:
+					if imm5 == 0b00000 {
+						// 4.6.117 RRX Rotate Right
+						// T1 encoding
+						arm.state.fudge_thumb2disassemble32bit = "RRX"
+					} else {
+						// 4.6.115 ROR (immediate)
+						// T1 encoding
+						arm.state.fudge_thumb2disassemble32bit = "ROR (immediate)"
+
+						result, carry := ROR_C(arm.state.registers[Rm], uint32(imm5))
+						arm.state.registers[Rd] = result
+						if setFlags {
+							arm.state.status.isNegative(arm.state.registers[Rd])
+							arm.state.status.isZero(arm.state.registers[Rd])
+							arm.state.status.setCarry(carry)
+							// overflow unchanged
+						}
+					}
 				default:
 					panic(fmt.Sprintf("unhandled data processing instructions, non immediate (data processing, constant shift) (%04b) (%02b)", op, typ))
 				}
@@ -391,6 +410,13 @@ func (arm *ARM) thumb2DataProcessingNonImmediate(opcode uint16) {
 				m := uint32(0x01) << (imm5 - 1)
 				carry = arm.state.registers[Rm]&m == m
 				result = arm.state.registers[Rn] ^ (arm.state.registers[Rm] >> imm5)
+			case 0b11:
+				// with arithmetic right shift
+				signExtend := (arm.state.registers[Rm] & 0x80000000) >> 31
+				result = arm.state.registers[Rn] ^ (arm.state.registers[Rm] >> imm5)
+				if signExtend == 0x01 {
+					result |= ^uint32(0) << (32 - imm5)
+				}
 			default:
 				panic(fmt.Sprintf("unhandled data processing instructions, non immediate (data processing, constant shift) (%04b) (%02b)", op, typ))
 			}
@@ -1692,6 +1718,10 @@ func (arm *ARM) thumb2LoadStoreSingle(opcode uint16) {
 				// "4.6.45 LDR (register)" of "Thumb-2 Supplement"
 				arm.state.fudge_thumb2disassemble32bit = "LDR (register shifted)"
 				arm.state.registers[Rt] = arm.read32bit(addr, false)
+				if Rt == rPC {
+					arm.state.registers[rPC] += 2
+					arm.state.registers[rPC] &= 0xfffffffe
+				}
 			default:
 				panic(fmt.Sprintf("unhandled size (%02b) for 'Rn + shifted register' (load)", size))
 			}
