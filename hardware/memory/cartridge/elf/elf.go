@@ -109,23 +109,28 @@ func NewElf(instance *instance.Instance, pathToROM string, inACE bool) (mapper.C
 	}
 
 	// ELF file is read via our elfReaderAt instance
-	f, err := elf.NewFile(r)
+	ef, err := elf.NewFile(r)
 	if err != nil {
 		return nil, curated.Errorf("ELF: %v", err)
 	}
-	defer f.Close()
+	defer ef.Close()
+
+	// keeping things simple. only 32bit ELF files supported
+	if ef.Class != elf.ELFCLASS32 {
+		return nil, curated.Errorf("ELF: only 32bit ELF files are supported")
+	}
 
 	// sanity checks on ELF data
-	if f.FileHeader.Machine != elf.EM_ARM {
+	if ef.FileHeader.Machine != elf.EM_ARM {
 		return nil, curated.Errorf("ELF: is not ARM")
 	}
-	if f.FileHeader.ByteOrder != binary.LittleEndian {
+	if ef.FileHeader.ByteOrder != binary.LittleEndian {
 		return nil, curated.Errorf("ELF: is not little-endian")
 	}
-	if f.FileHeader.Version != elf.EV_CURRENT {
+	if ef.FileHeader.Version != elf.EV_CURRENT {
 		return nil, curated.Errorf("ELF: unknown version")
 	}
-	if f.FileHeader.Type != elf.ET_REL {
+	if ef.FileHeader.Type != elf.ET_REL {
 		return nil, curated.Errorf("ELF: is not relocatable")
 	}
 
@@ -135,7 +140,7 @@ func NewElf(instance *instance.Instance, pathToROM string, inACE bool) (mapper.C
 		yieldHook: mapper.StubCartYieldHook{},
 	}
 
-	cart.mem, err = newElfMemory(f)
+	cart.mem, err = newElfMemory(ef)
 	if err != nil {
 		return nil, err
 	}

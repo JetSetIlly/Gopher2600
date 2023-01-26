@@ -191,6 +191,11 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 	}
 	defer ef.Close()
 
+	// keeping things simple. only 32bit ELF files supported
+	if ef.Class != elf.ELFCLASS32 {
+		return nil, curated.Errorf("dwarf: only 32bit ELF files are supported")
+	}
+
 	// no need to continue if ELF file does not have any DWARF data
 	dwrf, err := ef.DWARF()
 	if err != nil {
