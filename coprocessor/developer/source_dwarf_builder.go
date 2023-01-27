@@ -765,6 +765,7 @@ func (bld *build) buildVariables(src *Source, origin uint64) error {
 
 						// note that the file has at least one global variables
 						varb.DeclLine.File.HasGlobals = true
+
 					} else {
 						for i := range lexStart[lexIdx] {
 							cp := *varb

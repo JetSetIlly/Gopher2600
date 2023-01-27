@@ -33,10 +33,7 @@ func (sec *loclistSection) decodeLoclistOperationWithOrigin(expr []uint8, origin
 		// (literal encoding)
 		// "The DW_OP_addr operation has a single operand that encodes a machine address and whose
 		// size is the size of an address on the target machine."
-		address := uint32(expr[1])
-		address |= uint32(expr[2]) << 8
-		address |= uint32(expr[3]) << 16
-		address |= uint32(expr[4]) << 24
+		address := sec.byteOrder.Uint32(expr[1:])
 		address += uint32(origin)
 		return loclistOperator{
 			resolve: func(loc *loclist) (loclistStack, error) {
@@ -79,15 +76,12 @@ func (sec *loclistSection) decodeLoclistOperation(expr []uint8) (loclistOperator
 		// (literal encoding)
 		// "The DW_OP_addr operation has a single operand that encodes a machine address and whose
 		// size is the size of an address on the target machine."
-		address := uint64(expr[1])
-		address |= uint64(expr[2]) << 8
-		address |= uint64(expr[3]) << 16
-		address |= uint64(expr[4]) << 24
+		address := sec.byteOrder.Uint32(expr[1:])
 		return loclistOperator{
 			resolve: func(loc *loclist) (loclistStack, error) {
 				return loclistStack{
 					class: stackClassPush,
-					value: uint32(address),
+					value: address,
 				}, nil
 			},
 			operator: "DW_OP_addr",
@@ -102,10 +96,9 @@ func (sec *loclistSection) decodeLoclistOperation(expr []uint8) (loclistOperator
 		return loclistOperator{
 			resolve: func(loc *loclist) (loclistStack, error) {
 				a, _ := loc.pop()
-				address := uint64(a.value)
-				value, ok := sec.coproc.CoProcRead32bit(uint32(address))
+				value, ok := sec.coproc.CoProcRead32bit(a.value)
 				if !ok {
-					return loclistStack{}, fmt.Errorf("unknown address: %08x", address)
+					return loclistStack{}, fmt.Errorf("unknown address: %08x", a.value)
 				}
 				return loclistStack{
 					class: stackClassPush,
@@ -120,12 +113,12 @@ func (sec *loclistSection) decodeLoclistOperation(expr []uint8) (loclistOperator
 		// (literal encoding)
 		// "The single operand of a DW_OP_constnu operation provides a 1, 2, 4, or 8-byte unsigned
 		// integer constant, respectively"
-		cons := uint64(expr[1])
+		cons := uint32(expr[1])
 		return loclistOperator{
 			resolve: func(loc *loclist) (loclistStack, error) {
 				return loclistStack{
 					class: stackClassPush,
-					value: uint32(cons),
+					value: cons,
 				}, nil
 			},
 			operator: "DW_OP_const1u",
@@ -136,15 +129,15 @@ func (sec *loclistSection) decodeLoclistOperation(expr []uint8) (loclistOperator
 		// (literal encoding)
 		// "The single operand of a DW_OP_constns operation provides a 1, 2, 4, or 8-byte signed
 		// integer constant, respectively"
-		cons := uint64(expr[1])
+		cons := uint32(expr[1])
 		if cons&0x80 == 0x80 {
-			cons |= 0xffffffffffffff00
+			cons |= 0xffffff00
 		}
 		return loclistOperator{
 			resolve: func(loc *loclist) (loclistStack, error) {
 				return loclistStack{
 					class: stackClassPush,
-					value: uint32(cons),
+					value: cons,
 				}, nil
 			},
 			operator: "DW_OP_const1s",
@@ -153,13 +146,12 @@ func (sec *loclistSection) decodeLoclistOperation(expr []uint8) (loclistOperator
 	case 0x0a:
 		// DW_OP_const2u
 		// (literal encoding)
-		cons := uint64(expr[1])
-		cons |= uint64(expr[2]) << 8
+		cons := uint32(sec.byteOrder.Uint16(expr[1:]))
 		return loclistOperator{
 			resolve: func(loc *loclist) (loclistStack, error) {
 				return loclistStack{
 					class: stackClassPush,
-					value: uint32(cons),
+					value: cons,
 				}, nil
 			},
 			operator: "DW_OP_const2u",
@@ -168,16 +160,15 @@ func (sec *loclistSection) decodeLoclistOperation(expr []uint8) (loclistOperator
 	case 0x0b:
 		// DW_OP_const2s
 		// (literal encoding)
-		cons := uint64(expr[1])
-		cons |= uint64(expr[2]) << 8
+		cons := uint32(sec.byteOrder.Uint16(expr[1:]))
 		if cons&0x8000 == 0x8000 {
-			cons |= 0xffffffffffff0000
+			cons |= 0xffff0000
 		}
 		return loclistOperator{
 			resolve: func(loc *loclist) (loclistStack, error) {
 				return loclistStack{
 					class: stackClassPush,
-					value: uint32(cons),
+					value: cons,
 				}, nil
 			},
 			operator: "DW_OP_const2s",
@@ -186,15 +177,12 @@ func (sec *loclistSection) decodeLoclistOperation(expr []uint8) (loclistOperator
 	case 0x0c:
 		// DW_OP_const4u
 		// (literal encoding)
-		cons := uint64(expr[1])
-		cons |= uint64(expr[2]) << 8
-		cons |= uint64(expr[3]) << 16
-		cons |= uint64(expr[4]) << 24
+		cons := sec.byteOrder.Uint32(expr[1:])
 		return loclistOperator{
 			resolve: func(loc *loclist) (loclistStack, error) {
 				return loclistStack{
 					class: stackClassPush,
-					value: uint32(cons),
+					value: cons,
 				}, nil
 			},
 			operator: "DW_OP_const4u",
@@ -203,18 +191,12 @@ func (sec *loclistSection) decodeLoclistOperation(expr []uint8) (loclistOperator
 	case 0x0d:
 		// DW_OP_const4s
 		// (literal encoding)
-		cons := uint64(expr[1])
-		cons |= uint64(expr[2]) << 8
-		cons |= uint64(expr[3]) << 16
-		cons |= uint64(expr[4]) << 24
-		if cons&0x80000000 == 0x80000000 {
-			cons |= 0xffffffff00000000
-		}
+		cons := sec.byteOrder.Uint32(expr[1:])
 		return loclistOperator{
 			resolve: func(loc *loclist) (loclistStack, error) {
 				return loclistStack{
 					class: stackClassPush,
-					value: uint32(cons),
+					value: cons,
 				}, nil
 			},
 			operator: "DW_OP_const4s",
@@ -655,12 +637,12 @@ func (sec *loclistSection) decodeLoclistOperation(expr []uint8) (loclistOperator
 		// (literal encoding)
 		// "The DW_OP_litn operations encode the unsigned literal values from 0 through 31,
 		// inclusive"
-		lit := expr[0] - 0x30
+		lit := uint32(expr[0] - 0x30)
 		return loclistOperator{
 			resolve: func(loc *loclist) (loclistStack, error) {
 				return loclistStack{
 					class: stackClassPush,
-					value: uint32(lit),
+					value: lit,
 				}, nil
 			},
 			operator: fmt.Sprintf("DW_OP_lit%d", lit),
@@ -823,11 +805,11 @@ func (sec *loclistSection) decodeLoclistOperation(expr []uint8) (loclistOperator
 				if !ok {
 					return loclistStack{}, fmt.Errorf("unknown register: %d", reg)
 				}
-				address := int64(regVal) + offset
+				address := uint32(int64(regVal) + offset)
 
 				return loclistStack{
 					class: stackClassPush,
-					value: uint32(address),
+					value: address,
 				}, nil
 			},
 			operator: fmt.Sprintf("DW_OP_breg%d", reg),

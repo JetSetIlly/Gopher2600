@@ -243,8 +243,8 @@ func newElfMemory(ef *elf.File) (*elfMemory, error) {
 			var v uint32
 
 			// the relocation entry fields
-			offset := ef.ByteOrder.Uint32(relData[i : i+4])
-			info := ef.ByteOrder.Uint32(relData[i+4 : i+8])
+			offset := ef.ByteOrder.Uint32(relData[i:])
+			info := ef.ByteOrder.Uint32(relData[i+4:])
 
 			// symbol is encoded in the info value
 			symbolIdx := info >> 8
@@ -367,7 +367,7 @@ func newElfMemory(ef *elf.File) (*elfMemory, error) {
 				}
 
 				// add placeholder value to relocation address
-				addend := ef.ByteOrder.Uint32(secBeingRelocated.data[offset : offset+4])
+				addend := ef.ByteOrder.Uint32(secBeingRelocated.data[offset:])
 				v += addend
 
 				// check address is recognised
@@ -376,7 +376,7 @@ func newElfMemory(ef *elf.File) (*elfMemory, error) {
 				}
 
 				// commit write
-				ef.ByteOrder.PutUint32(secBeingRelocated.data[offset:offset+4], v)
+				ef.ByteOrder.PutUint32(secBeingRelocated.data[offset:], v)
 
 			case elf.R_ARM_THM_PC22:
 				// this value is labelled R_ARM_THM_CALL in objdump output
@@ -423,7 +423,7 @@ func newElfMemory(ef *elf.File) (*elfMemory, error) {
 				opcode := uint32(lo) | (uint32(hi) << 16)
 
 				// commit write
-				ef.ByteOrder.PutUint32(secBeingRelocated.data[offset:offset+4], opcode)
+				ef.ByteOrder.PutUint32(secBeingRelocated.data[offset:], opcode)
 
 				logger.Logf("ELF", "relocate %s (%08x) => %08x", n, secBeingRelocated.origin+offset, opcode)
 
