@@ -825,12 +825,12 @@ func (bld *build) buildFunctions(src *Source, executableOrigin uint64) error {
 			switch fld.Class {
 			case dwarf.ClassExprLoc:
 				var err error
-				framebase, err = bld.debug_loc.newLoclistFromSingleOperator(src.debug_frame, fld.Val.([]uint8))
+				framebase, err = bld.debug_loc.newLoclistFromSingleOperator(src.debugFrame, fld.Val.([]uint8))
 				if err != nil {
 					return nil, err
 				}
 			case dwarf.ClassLocListPtr:
-				err := bld.debug_loc.newLoclist(src.debug_frame, fld.Val.(int64), executableOrigin,
+				err := bld.debug_loc.newLoclist(src.debugFrame, fld.Val.(int64), executableOrigin,
 					func(_, _ uint64, loc *loclist) {
 						framebase = loc
 					})

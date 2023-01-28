@@ -74,8 +74,8 @@ type Source struct {
 	coprocShim coprocShim
 
 	// ELF sections that help DWARF locate local variables in memory
-	debug_loc   *loclistSection
-	debug_frame *frameSection
+	debugLoc   *loclistSection
+	debugFrame *frameSection
 
 	// source is compiled with optimisation
 	Optimised bool
@@ -283,18 +283,22 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 			return nil, curated.Errorf("dwarf: no .text section in ELF file")
 		}
 
-		if data, _, ok := c.ELFSection(".debug_frame"); ok {
-			src.debug_frame, err = newFrameSection(data, ef.ByteOrder, src.coprocShim)
-			if err != nil {
-				logger.Logf("dwarf", err.Error())
-			}
+		// always create debugFrame and debugLoc sections even when the
+		// cartridge doesn't have the corresponding sections. in the case of
+		// the loclist section this is definitely needed because even without
+		// .debug_loc data we use the loclistSection to help decode single
+		// address descriptions (which will definitely be present)
+
+		data, _, _ := c.ELFSection(".debug_frame")
+		src.debugFrame, err = newFrameSection(data, ef.ByteOrder, src.coprocShim)
+		if err != nil {
+			logger.Logf("dwarf", err.Error())
 		}
 
-		if data, _, ok := c.ELFSection(".debug_loc"); ok {
-			src.debug_loc, err = newLoclistSection(data, ef.ByteOrder, src.coprocShim)
-			if err != nil {
-				logger.Logf("dwarf", err.Error())
-			}
+		data, _, _ = c.ELFSection(".debug_loc")
+		src.debugLoc, err = newLoclistSection(data, ef.ByteOrder, src.coprocShim)
+		if err != nil {
+			logger.Logf("dwarf", err.Error())
 		}
 	} else {
 		if c, ok := coproc.(mapper.CartCoProcNonRelocatable); ok {
@@ -302,13 +306,13 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 		}
 
 		// create frame section from the raw ELF section
-		src.debug_frame, err = newFrameSectionFromFile(ef, src.coprocShim)
+		src.debugFrame, err = newFrameSectionFromFile(ef, src.coprocShim)
 		if err != nil {
 			logger.Logf("dwarf", err.Error())
 		}
 
 		// create loclist section from the raw ELF section
-		src.debug_loc, err = newLoclistSectionFromFile(ef, src.coprocShim)
+		src.debugLoc, err = newLoclistSectionFromFile(ef, src.coprocShim)
 		if err != nil {
 			logger.Logf("dwarf", err.Error())
 		}
@@ -368,7 +372,7 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 		}
 	}
 
-	bld, err := newBuild(dwrf, src.debug_loc, src.debug_frame)
+	bld, err := newBuild(dwrf, src.debugLoc, src.debugFrame)
 	if err != nil {
 		return nil, curated.Errorf("dwarf: %v", err)
 	}
@@ -650,11 +654,11 @@ func allocateInstructionsToSourceLines(src *Source, dwrf *dwarf.Data, executable
 // add children to global and local variables
 func addVariableChildren(src *Source) {
 	for _, g := range src.globals {
-		g.addVariableChildren(src.debug_loc)
+		g.addVariableChildren(src.debugLoc)
 	}
 
 	for _, l := range src.locals {
-		l.addVariableChildren(src.debug_loc)
+		l.addVariableChildren(src.debugLoc)
 	}
 }
 
