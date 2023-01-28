@@ -40,11 +40,39 @@ type compileUnit struct {
 	address  uint64
 }
 
+// coproc shim makes sure that loclist and framebase resolution is always using
+// the current cartridge coprocessor instance. the instance can change after a
+// rewind event
+type coprocShim struct {
+	cart CartCoProcDeveloper
+}
+
+// CoProcRegister implements the loclistCoproc and frameCoproc interfaces
+func (shim coprocShim) CoProcRegister(n int) (uint32, bool) {
+	coproc := shim.cart.GetCoProc()
+	if coproc == nil {
+		return 0, false
+	}
+	return coproc.CoProcRegister(n)
+}
+
+// CoProcRegister implements the loclistCoproc interface
+func (shim coprocShim) CoProcRead32bit(addr uint32) (uint32, bool) {
+	coproc := shim.cart.GetCoProc()
+	if coproc == nil {
+		return 0, false
+	}
+	return coproc.CoProcRead32bit(addr)
+}
+
 // Source is created from available DWARF data that has been found in relation
 // to and ELF file that looks to be related to the specified ROM.
 //
 // It is possible for the arrays/map fields to be empty
 type Source struct {
+	// shim to the cartridge coprocessor
+	coprocShim coprocShim
+
 	// ELF sections that help DWARF locate local variables in memory
 	debug_loc   *loclistSection
 	debug_frame *frameSection
@@ -149,6 +177,9 @@ type Source struct {
 // non-nil but with the understanding that the fields may be empty.
 func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Source, error) {
 	src := &Source{
+		coprocShim: coprocShim{
+			cart: cart,
+		},
 		Disassembly:      make(map[uint64]*SourceDisasm),
 		Files:            make(map[string]*SourceFile),
 		Filenames:        make([]string, 0, 10),
@@ -253,14 +284,14 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 		}
 
 		if data, _, ok := c.ELFSection(".debug_frame"); ok {
-			src.debug_frame, err = newFrameSection(data, ef.ByteOrder, coproc, executableOrigin)
+			src.debug_frame, err = newFrameSection(data, ef.ByteOrder, src.coprocShim, executableOrigin)
 			if err != nil {
 				logger.Logf("dwarf", err.Error())
 			}
 		}
 
 		if data, _, ok := c.ELFSection(".debug_loc"); ok {
-			src.debug_loc, err = newLoclistSection(data, ef.ByteOrder, coproc)
+			src.debug_loc, err = newLoclistSection(data, ef.ByteOrder, src.coprocShim)
 			if err != nil {
 				logger.Logf("dwarf", err.Error())
 			}
@@ -271,13 +302,13 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 		}
 
 		// create frame section from the raw ELF section
-		src.debug_frame, err = newFrameSectionFromFile(ef, coproc, executableOrigin)
+		src.debug_frame, err = newFrameSectionFromFile(ef, src.coprocShim, executableOrigin)
 		if err != nil {
 			logger.Logf("dwarf", err.Error())
 		}
 
 		// create loclist section from the raw ELF section
-		src.debug_loc, err = newLoclistSectionFromFile(ef, coproc)
+		src.debug_loc, err = newLoclistSectionFromFile(ef, src.coprocShim)
 		if err != nil {
 			logger.Logf("dwarf", err.Error())
 		}

@@ -20,7 +20,6 @@ import (
 	"encoding/binary"
 	"fmt"
 
-	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
 	"github.com/jetsetilly/gopher2600/logger"
 )
 
@@ -36,7 +35,7 @@ type loclistSection struct {
 	data      []uint8
 }
 
-func newLoclistSectionFromFile(ef *elf.File, coproc mapper.CartCoProc) (*loclistSection, error) {
+func newLoclistSectionFromFile(ef *elf.File, coproc loclistCoproc) (*loclistSection, error) {
 	sec := ef.Section(".debug_loc")
 	if sec == nil {
 		return nil, nil
