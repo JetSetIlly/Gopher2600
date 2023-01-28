@@ -284,7 +284,7 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 		}
 
 		if data, _, ok := c.ELFSection(".debug_frame"); ok {
-			src.debug_frame, err = newFrameSection(data, ef.ByteOrder, src.coprocShim, executableOrigin)
+			src.debug_frame, err = newFrameSection(data, ef.ByteOrder, src.coprocShim)
 			if err != nil {
 				logger.Logf("dwarf", err.Error())
 			}
@@ -302,7 +302,7 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 		}
 
 		// create frame section from the raw ELF section
-		src.debug_frame, err = newFrameSectionFromFile(ef, src.coprocShim, executableOrigin)
+		src.debug_frame, err = newFrameSectionFromFile(ef, src.coprocShim)
 		if err != nil {
 			logger.Logf("dwarf", err.Error())
 		}

@@ -70,7 +70,7 @@ type frameSection struct {
 	fde    []*frameSectionFDE
 }
 
-func newFrameSectionFromFile(ef *elf.File, coproc frameCoproc, executableOrigin uint64) (*frameSection, error) {
+func newFrameSectionFromFile(ef *elf.File, coproc frameCoproc) (*frameSection, error) {
 	sec := ef.Section(".debug_frame")
 	if sec == nil {
 		return nil, nil
@@ -79,10 +79,10 @@ func newFrameSectionFromFile(ef *elf.File, coproc frameCoproc, executableOrigin 
 	if err != nil {
 		return nil, err
 	}
-	return newFrameSection(data, ef.ByteOrder, coproc, executableOrigin)
+	return newFrameSection(data, ef.ByteOrder, coproc)
 }
 
-func newFrameSection(data []uint8, byteOrder binary.ByteOrder, coproc frameCoproc, exectuableOrigin uint64) (*frameSection, error) {
+func newFrameSection(data []uint8, byteOrder binary.ByteOrder, coproc frameCoproc) (*frameSection, error) {
 	frm := &frameSection{
 		coproc: coproc,
 		cie:    make(map[uint32]*frameSectionCIE),
@@ -171,7 +171,6 @@ func newFrameSection(data []uint8, byteOrder binary.ByteOrder, coproc frameCopro
 			// specification) is the lower instruction address for which this
 			// FDE applies
 			fde.startAddress = uint32(b[n]) | uint32(b[n+1])<<8 | uint32(b[n+2])<<16 | uint32(b[n+3])<<24
-			fde.startAddress += uint32(exectuableOrigin)
 			n += 4
 
 			// end address (named "address range" in the DWARF-4 specification)
