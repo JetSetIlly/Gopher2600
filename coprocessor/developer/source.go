@@ -353,7 +353,6 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 				is32Bit = false
 				src.Disassembly[addr32Bit].opcode <<= 16
 				src.Disassembly[addr32Bit].opcode |= uint32(opcode)
-				src.Disassembly[addr32Bit].Instruction = "-"
 			} else {
 				var disasm arm.DisasmEntry
 				disasm, is32Bit = arm.Disassemble(opcode)

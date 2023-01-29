@@ -154,8 +154,14 @@ type ARMState struct {
 
 	// 32bit instructions
 
-	function32bitDecoding bool
-	function32bitOpcode   uint16
+	// these two flags work as a pair:
+	// . is the current instruction a 32bit instruction
+	// . was the most recent instruction decoded a 32bit instruction
+	function32bitDecoding  bool
+	function32bitResolving bool
+
+	// the first 16bits of the most recent 32bit instruction
+	function32bitOpcode uint16
 
 	// disassembly of 32bit thumb-2
 	// * temporary construct until thumb2Disassemble() is written
@@ -811,44 +817,60 @@ func (arm *ARM) run() (mapper.YieldReason, float32) {
 
 		// send disasm information to disassembler
 		if arm.disasm != nil {
-			var cached bool
-			var d DisasmEntry
+			if !arm.state.function32bitDecoding {
+				var cached bool
+				var d DisasmEntry
 
-			d, cached = arm.disasmCache[arm.state.instructionPC]
-			if !cached {
-				d, _ = Disassemble(opcode)
-				d.Address = fmt.Sprintf("%08x", arm.state.instructionPC)
-				d.Addr = arm.state.instructionPC
+				// which opcode to use for the disassembly
+				disasmOpcode := opcode
+				if arm.state.function32bitResolving {
+					disasmOpcode = arm.state.function32bitOpcode
+				}
+
+				d, cached = arm.disasmCache[arm.state.instructionPC]
+				if !cached {
+					d, _ = Disassemble(disasmOpcode)
+
+					if arm.state.function32bitResolving {
+						d.Is32bit = true
+						d.OpcodeLo = opcode
+					}
+
+					d.Address = fmt.Sprintf("%08x", arm.state.instructionPC)
+					d.Addr = arm.state.instructionPC
+
+				}
+
+				// basic notes about the last execution of the entry
+				d.ExecutionNotes = arm.disasmExecutionNotes
+
+				// basic cycle information. this relies on cycleOrder not being
+				// reset during 32bit instruction decoding
+				d.Cycles = arm.state.cycleOrder.len()
+				d.CyclesSequence = arm.state.cycleOrder.String()
+
+				// cycle details
+				d.MAMCR = int(arm.state.mam.mamcr)
+				d.BranchTrail = arm.state.branchTrail
+				d.MergedIS = arm.state.mergedIS
+
+				// note immediate mode
+				d.ImmediateMode = arm.disasmSummary.ImmediateMode
+
+				// update cache if necessary
+				if !cached || arm.disasmUpdateNotes {
+					arm.disasmCache[arm.state.instructionPC] = d
+				}
+
+				arm.disasmExecutionNotes = ""
+				arm.disasmUpdateNotes = false
+
+				// update program cycles
+				arm.disasmSummary.add(arm.state.cycleOrder)
+
+				// we always send the instruction to the disasm interface
+				arm.disasm.Step(d)
 			}
-
-			// update cycle information
-			d.Cycles = arm.state.cycleOrder.len()
-
-			// execution note
-			d.ExecutionNotes = arm.disasmExecutionNotes
-
-			// cycle details
-			d.MAMCR = int(arm.state.mam.mamcr)
-			d.BranchTrail = arm.state.branchTrail
-			d.MergedIS = arm.state.mergedIS
-			d.CyclesSequence = arm.state.cycleOrder.String()
-
-			// note immediate mode
-			d.ImmediateMode = arm.disasmSummary.ImmediateMode
-
-			// update cache if necessary
-			if !cached || arm.disasmUpdateNotes {
-				arm.disasmCache[arm.state.instructionPC] = d
-			}
-
-			arm.disasmExecutionNotes = ""
-			arm.disasmUpdateNotes = false
-
-			// update program cycles
-			arm.disasmSummary.add(arm.state.cycleOrder)
-
-			// we always send the instruction to the disasm interface
-			arm.disasm.Step(d)
 		}
 
 		// accumulate cycle counts for profiling
@@ -864,7 +886,12 @@ func (arm *ARM) run() (mapper.YieldReason, float32) {
 			arm.state.branchTrail = BranchTrailNotUsed
 			arm.state.mergedIS = false
 			arm.state.stretchedCycles = 0
-			arm.state.cycleOrder.reset()
+
+			// reset cycle order if we're not currently decoding a 32bit
+			// instruction
+			if !arm.state.function32bitDecoding {
+				arm.state.cycleOrder.reset()
+			}
 
 			// limit the number of cycles used by the ARM program
 			if arm.state.cyclesTotal >= cycleLimit {
@@ -973,17 +1000,21 @@ func (arm *ARM) stepARM7_M(opcode uint16, memIdx int) {
 	// process a 32 bit or 16 bit instruction as appropriate
 	if arm.state.function32bitDecoding {
 		arm.state.function32bitDecoding = false
+		arm.state.function32bitResolving = true
 		f = arm.state.functionMap[memIdx]
 		if f == nil {
 			f = arm.decode32bitThumb2(arm.state.function32bitOpcode)
 			arm.state.functionMap[memIdx] = f
 		}
 	} else {
-		// the opcode is either a 16bit instruction or the first
-		// halfword for a 32bit instruction
+		// the opcode is either a 16bit instruction or the first halfword for a
+		// 32bit instruction. either way we're not resolving a 32bit
+		// instruction, by defintion
+		arm.state.function32bitResolving = false
+
 		arm.state.instructionPC = arm.state.executingPC
 
-		if arm.is32BitThumb2(opcode) {
+		if is32BitThumb2(opcode) {
 			arm.state.function32bitDecoding = true
 			arm.state.function32bitOpcode = opcode
 
@@ -997,6 +1028,7 @@ func (arm *ARM) stepARM7_M(opcode uint16, memIdx int) {
 				arm.state.functionMap[memIdx] = f
 			}
 		}
+
 	}
 
 	// whether instruction was prevented from executing by IT block. we
@@ -1081,7 +1113,7 @@ func (arm *ARM) stepARM7_M(opcode uint16, memIdx int) {
 			if arm.state.fudge_thumb2disassemble16bit != "" {
 				arm.fudge_writer.Write([]byte(fmt.Sprintf("%08x %04x :: %s\n", arm.state.instructionPC, opcode, arm.state.fudge_thumb2disassemble16bit)))
 			} else {
-				arm.fudge_writer.Write([]byte(fmt.Sprintf("%08x %04x :: %s\n", arm.state.instructionPC, opcode, thumbDisassemble(opcode).String())))
+				arm.fudge_writer.Write([]byte(fmt.Sprintf("%08x %04x :: %s\n", arm.state.instructionPC, opcode, disassemble(opcode).String())))
 			}
 			arm.fudge_writer.Write([]byte(arm.String() + "\n"))
 			arm.fudge_writer.Write([]byte(arm.state.status.String() + "\n"))

@@ -257,7 +257,7 @@ func (win *winCoProcDisasm) drawEntry(src *developer.Source, e arm.DisasmEntry) 
 		srcWin.gotoSourceLine(ln)
 	}
 
-	if imgui.IsItemHovered() && e.Operator != "" {
+	if imgui.IsItemHovered() {
 		win.drawEntryTooltip(e, ln)
 	}
 
@@ -327,14 +327,20 @@ func (win *winCoProcDisasm) drawEntryTooltip(e arm.DisasmEntry, ln *developer.So
 		imgui.SameLine()
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmByteCode)
 		imgui.Text(fmt.Sprintf("%04x", e.Opcode))
+		if e.Is32bit {
+			imgui.SameLine()
+			imgui.Text(fmt.Sprintf("%04x", e.OpcodeLo))
+		}
 		imgui.PopStyleColor()
 
 		imgui.Text("Instruction:")
 		imgui.SameLine()
-		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmOperator)
-		imgui.Text(e.Operator)
-		imgui.PopStyleColor()
-		imgui.SameLine()
+		if e.Operator != "" {
+			imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmOperator)
+			imgui.Text(e.Operator)
+			imgui.PopStyleColor()
+			imgui.SameLine()
+		}
 		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmOperand)
 		imgui.Text(e.Operand)
 		imgui.PopStyleColor()

@@ -22,7 +22,7 @@ import (
 	"math/bits"
 )
 
-func (arm *ARM) is32BitThumb2(opcode uint16) bool {
+func is32BitThumb2(opcode uint16) bool {
 	return opcode&0xf800 == 0xe800 || opcode&0xf000 == 0xf000
 }
 
