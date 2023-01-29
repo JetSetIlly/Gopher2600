@@ -225,7 +225,7 @@ func (arm *ARM) read16bit(addr uint32, requiresAlignment bool) uint16 {
 	}
 
 	// ensure we're not accessing past the end of memory
-	if addr > uint32(len(*mem)-2) {
+	if len(*mem) < 2 || addr >= uint32(len(*mem)-1) {
 		arm.illegalAccess("Read 16bit", addr)
 		return uint16(arm.mmap.IllegalAccessValue)
 	}
@@ -281,7 +281,7 @@ func (arm *ARM) write16bit(addr uint32, val uint16, requiresAlignment bool) {
 	}
 
 	// ensure we're not accessing past the end of memory
-	if addr > uint32(len(*mem)-2) {
+	if len(*mem) < 2 || addr >= uint32(len(*mem)-1) {
 		arm.illegalAccess("Write 16bit", addr)
 		return
 	}
@@ -338,7 +338,7 @@ func (arm *ARM) read32bit(addr uint32, requiresAlignment bool) uint32 {
 	}
 
 	// ensure we're not accessing past the end of memory
-	if addr > uint32(len(*mem)-4) {
+	if len(*mem) < 4 || addr >= uint32(len(*mem)-3) {
 		arm.illegalAccess("Read 32bit", addr)
 		return arm.mmap.IllegalAccessValue
 	}
@@ -394,7 +394,7 @@ func (arm *ARM) write32bit(addr uint32, val uint32, requiresAlignment bool) {
 	}
 
 	// ensure we're not accessing past the end of memory
-	if addr > uint32(len(*mem)-4) {
+	if len(*mem) < 4 || addr >= uint32(len(*mem)-3) {
 		arm.illegalAccess("Write 32bit", addr)
 		return
 	}
