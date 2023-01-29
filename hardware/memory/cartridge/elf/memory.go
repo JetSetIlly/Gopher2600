@@ -17,6 +17,7 @@ package elf
 
 import (
 	"debug/elf"
+	"sort"
 	"strings"
 
 	"github.com/jetsetilly/gopher2600/curated"
@@ -62,7 +63,8 @@ type elfMemory struct {
 	gpio *gpio
 
 	// the different sections of the loaded ELF binary
-	sections map[string]*elfSection
+	sections       map[string]*elfSection
+	sectionsByName []string
 
 	// RAM memory for the ARM
 	sram       []byte
@@ -168,7 +170,11 @@ func newElfMemory(ef *elf.File) (*elfMemory, error) {
 		}
 
 		mem.sections[section.name] = section
+		mem.sectionsByName = append(mem.sectionsByName, section.name)
 	}
+
+	// sort section names
+	sort.Strings(mem.sectionsByName)
 
 	// strongArm functions are added during relocation
 	mem.strongArmFunctions = make(map[uint32]strongArmFunction)
@@ -565,16 +571,17 @@ func (mem *elfMemory) IsExecutable(addr uint32) bool {
 }
 
 // Segments implements the mapper.CartStatic interface
-func (e *elfMemory) Segments() []mapper.CartStaticSegment {
+func (mem *elfMemory) Segments() []mapper.CartStaticSegment {
 	segments := []mapper.CartStaticSegment{
 		{
 			Name:   "SRAM",
-			Origin: e.sramOrigin,
-			Memtop: e.sramMemtop,
+			Origin: mem.sramOrigin,
+			Memtop: mem.sramMemtop,
 		},
 	}
 
-	for _, s := range e.sections {
+	for _, n := range mem.sectionsByName {
+		s := mem.sections[n]
 		if s.inMemory {
 			segments = append(segments, mapper.CartStaticSegment{
 				Name:   s.name,
@@ -586,22 +593,22 @@ func (e *elfMemory) Segments() []mapper.CartStaticSegment {
 
 	segments = append(segments, mapper.CartStaticSegment{
 		Name:   "StrongARM Program",
-		Origin: e.strongArmOrigin,
-		Memtop: e.strongArmMemtop,
+		Origin: mem.strongArmOrigin,
+		Memtop: mem.strongArmMemtop,
 	})
 
 	return segments
 }
 
 // Reference implements the mapper.CartStatic interface
-func (e *elfMemory) Reference(segment string) ([]uint8, bool) {
+func (mem *elfMemory) Reference(segment string) ([]uint8, bool) {
 	switch segment {
 	case "SRAM":
-		return e.sram, true
+		return mem.sram, true
 	case "StrongARM Program":
-		return e.strongArmProgram, true
+		return mem.strongArmProgram, true
 	default:
-		if s, ok := e.sections[segment]; ok {
+		if s, ok := mem.sections[segment]; ok {
 			return s.data, true
 		}
 	}
@@ -609,8 +616,8 @@ func (e *elfMemory) Reference(segment string) ([]uint8, bool) {
 }
 
 // Read8bit implements the mapper.CartStatic interface
-func (e *elfMemory) Read8bit(addr uint32) (uint8, bool) {
-	mem, addr := e.MapAddress(addr, false)
+func (m *elfMemory) Read8bit(addr uint32) (uint8, bool) {
+	mem, addr := m.MapAddress(addr, false)
 	if mem == nil || addr >= uint32(len(*mem)) {
 		return 0, false
 	}
@@ -618,8 +625,8 @@ func (e *elfMemory) Read8bit(addr uint32) (uint8, bool) {
 }
 
 // Read16bit implements the mapper.CartStatic interface
-func (e *elfMemory) Read16bit(addr uint32) (uint16, bool) {
-	mem, addr := e.MapAddress(addr, false)
+func (m *elfMemory) Read16bit(addr uint32) (uint16, bool) {
+	mem, addr := m.MapAddress(addr, false)
 	if mem == nil || len(*mem) < 2 || addr >= uint32(len(*mem)-1) {
 		return 0, false
 	}
@@ -628,8 +635,8 @@ func (e *elfMemory) Read16bit(addr uint32) (uint16, bool) {
 }
 
 // Read32bit implements the mapper.CartStatic interface
-func (e *elfMemory) Read32bit(addr uint32) (uint32, bool) {
-	mem, addr := e.MapAddress(addr, false)
+func (m *elfMemory) Read32bit(addr uint32) (uint32, bool) {
+	mem, addr := m.MapAddress(addr, false)
 	if mem == nil || len(*mem) < 4 || addr >= uint32(len(*mem)-3) {
 		return 0, false
 	}
