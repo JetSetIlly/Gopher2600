@@ -92,6 +92,9 @@ type Source struct {
 
 	// as above but indexed by the file's short filename, which is sometimes
 	// more useful than the full name
+	//
+	// short filenames also only include files that are in the same path as the
+	// ROM file
 	FilesByShortname map[string]*SourceFile
 	ShortFilenames   []string
 
@@ -431,6 +434,7 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 			}
 
 			// loop through files in the compilation unit. entry 0 is always nil
+			pathToRom := filepath.Dir(romFile)
 			for _, f := range r.Files()[1:] {
 				if _, ok := src.Files[f.Name]; !ok {
 					sf, err := readSourceFile(f.Name, pathToROM_nosymlinks, &src.AllLines)
@@ -440,8 +444,10 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 						src.Files[sf.Filename] = sf
 						src.Filenames = append(src.Filenames, sf.Filename)
 
-						src.FilesByShortname[sf.ShortFilename] = sf
-						src.ShortFilenames = append(src.ShortFilenames, sf.ShortFilename)
+						if strings.HasPrefix(sf.Filename, pathToRom) {
+							src.FilesByShortname[sf.ShortFilename] = sf
+							src.ShortFilenames = append(src.ShortFilenames, sf.ShortFilename)
+						}
 					}
 				}
 			}
