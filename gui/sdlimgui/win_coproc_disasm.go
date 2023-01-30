@@ -27,10 +27,6 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm/architecture"
 )
 
-// in this case of the coprocessor disassmebly window the actual window title
-// is prepended with the actual coprocessor ID (eg. ARM7TDMI). The ID constant
-// below is used in the normal way however.
-
 const winCoProcDisasmID = "Coprocessor Disassembly"
 const winCoProcDisasmMenu = "Disassembly"
 

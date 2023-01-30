@@ -128,6 +128,7 @@ var windowDefs = [...]windowDef{
 	{create: newWinCoProcDisasm, menu: menuEntry{group: menuCoProc, restrictBus: menuRestrictCoProc, label: winCoProcDisasmMenu}},
 	{create: newWinCoProcIllegalAccess, menu: menuEntry{group: menuCoProc, restrictBus: menuRestrictCoProc, label: winCoProcIllegalAccessMenu}},
 	{create: newWinCoProcPerformance, menu: menuEntry{group: menuCoProc, restrictBus: menuRestrictCoProc, label: winCoProcPerformanceMenu}},
+	{create: newWinCoProcFunctions, menu: menuEntry{group: menuCoProc, restrictBus: menuRestrictCoProc, label: winCoProcFunctionsMenu}},
 	{create: newWinCoProcGlobals, menu: menuEntry{group: menuCoProc, restrictBus: menuRestrictCoProc, label: winCoProcGlobalsMenu}},
 	{create: newWinCoProcLocals, menu: menuEntry{group: menuCoProc, restrictBus: menuRestrictCoProc, label: winCoProcLocalsMenu}},
 	{create: newWinCoProcSource, menu: menuEntry{group: menuCoProc, restrictBus: menuRestrictCoProc, label: winCoProcSourceMenu}},

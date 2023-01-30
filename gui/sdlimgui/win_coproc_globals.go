@@ -27,10 +27,6 @@ import (
 	"github.com/jetsetilly/gopher2600/resources/unique"
 )
 
-// in this case of the coprocessor disassmebly window the actual window title
-// is prepended with the actual coprocessor ID (eg. ARM7TDMI). The ID constant
-// below is used in the normal way however.
-
 const winCoProcGlobalsID = "Coprocessor Global Variables"
 const winCoProcGlobalsMenu = "Globals"
 
