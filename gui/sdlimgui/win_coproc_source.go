@@ -124,9 +124,9 @@ type winCoProcSource struct {
 	uncollapseNext bool
 
 	// widths of columns in the source view table
-	widthIcon  float32
-	widthStats float32
-	widthLine  float32
+	widthGutter float32
+	widthStats  float32
+	widthLine   float32
 
 	isPaused bool
 }
@@ -142,7 +142,7 @@ func newWinCoProcSource(img *SdlImgui) (window, error) {
 }
 
 func (win *winCoProcSource) init() {
-	win.widthIcon = imgui.CalcTextSize(fmt.Sprintf("%c", fonts.Chip), true, 0).X
+	win.widthGutter = imgui.CalcTextSize(fmt.Sprintf("%c", fonts.Breakpoint), true, 0).X
 	win.widthStats = imgui.CalcTextSize("00.0% ", true, 0).X
 	win.widthLine = imgui.CalcTextSize("9999 ", true, 0).X
 }
@@ -434,10 +434,10 @@ func (win *winCoProcSource) drawSource(src *developer.Source) {
 		// because the icon can change and IsItemHovered() won't recognise a
 		// selectable if it has a different label. by using this dummy column
 		// we can ensure that every selectable has the same label
-		imgui.TableSetupColumnV("##selection", imgui.TableColumnFlagsNone, 0.0, 0)
+		imgui.TableSetupColumnV("##selection", imgui.TableColumnFlagsNone, win.widthGutter*0.75, 0)
 
 		// next three columns have fixed width
-		imgui.TableSetupColumnV("##icon", imgui.TableColumnFlagsNone, win.widthIcon*1.5, 1)
+		imgui.TableSetupColumnV("##gutter", imgui.TableColumnFlagsNone, win.widthGutter*1.5, 1)
 		imgui.TableSetupColumnV("##load", imgui.TableColumnFlagsNone, win.widthStats, 2)
 		imgui.TableSetupColumnV("##number", imgui.TableColumnFlagsNone, win.widthLine, 3)
 
@@ -449,6 +449,22 @@ func (win *winCoProcSource) drawSource(src *developer.Source) {
 			w = imguiTextWidth(win.selectedFile.Content.MaxLineWidth)
 		}
 		imgui.TableSetupColumnV("Content", imgui.TableColumnFlagsNone, w, 4)
+
+		// draw execution indicator
+		executionIndicatorStart := imgui.CursorScreenPos()
+		executionIndicatorCol := win.img.cols.windowBg
+		executionIndicatorAdj := imgui.CurrentStyle().FramePadding()
+		drawExecutionIndicator := func(col imgui.PackedColor) {
+			executionIndicatorEnd := imgui.CursorScreenPos()
+			executionIndicatorEnd.X = executionIndicatorStart.X
+			executionIndicatorEnd.Y -= executionIndicatorAdj.Y
+
+			dl := imgui.WindowDrawList()
+			dl.AddLineV(executionIndicatorStart, executionIndicatorEnd, executionIndicatorCol, 5.0)
+
+			executionIndicatorStart = executionIndicatorEnd
+			executionIndicatorCol = col
+		}
 
 		if win.selectedFile != nil {
 			var clipper imgui.ListClipper
@@ -593,31 +609,32 @@ func (win *winCoProcSource) drawSource(src *developer.Source) {
 						imgui.PopStyleColor()
 					}
 
-					// performance statistics
+					// execution state
 					imgui.TableNextColumn()
-					imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLoad)
 					if ln.Stats.Overall.HasExecuted() {
 						if ln.Stats.Overall.OverSource.FrameValid {
+							drawExecutionIndicator(win.img.cols.coProcSourceLoad)
+							imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceLoad)
 							imgui.Text(fmt.Sprintf("%.02f", ln.Stats.Overall.OverSource.Frame))
+							imgui.PopStyleColor()
 						} else if ln.Stats.Overall.OverSource.AverageValid {
+							drawExecutionIndicator(win.img.cols.coProcSourceAvgLoad)
 							imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceAvgLoad)
 							imgui.Text(fmt.Sprintf("%.02f", ln.Stats.Overall.OverSource.Average))
 							imgui.PopStyleColor()
 						} else if ln.Stats.Overall.OverSource.MaxValid {
+							drawExecutionIndicator(win.img.cols.coProcSourceMaxLoad)
 							imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceMaxLoad)
 							imgui.Text(fmt.Sprintf("%.02f", ln.Stats.Overall.OverSource.Max))
 							imgui.PopStyleColor()
 						} else {
-							imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceChip)
-							imgui.Text(string(fonts.Chip))
-							imgui.PopStyleColor()
+							drawExecutionIndicator(win.img.cols.coProcSourceNoLoad)
 						}
 					} else if len(ln.Disassembly) > 0 {
-						imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceChip)
-						imgui.Text(string(fonts.Chip))
-						imgui.PopStyleColor()
+						drawExecutionIndicator(win.img.cols.coProcSourceNoLoad)
+					} else {
+						drawExecutionIndicator(win.img.cols.windowBg)
 					}
-					imgui.PopStyleColor()
 
 					// line numbering
 					imgui.TableNextColumn()
@@ -633,7 +650,9 @@ func (win *winCoProcSource) drawSource(src *developer.Source) {
 					} else {
 						imgui.Text(ln.PlainContent)
 					}
+
 				}
+				drawExecutionIndicator(win.img.cols.windowBg)
 			}
 
 			// scroll to correct line

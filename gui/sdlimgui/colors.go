@@ -101,6 +101,7 @@ type imguiColors struct {
 	CoProcSourceLoad             imgui.Vec4
 	CoProcSourceAvgLoad          imgui.Vec4
 	CoProcSourceMaxLoad          imgui.Vec4
+	CoProcSourceNoLoad           imgui.Vec4
 	CoProcSourceBug              imgui.Vec4
 	CoProcSourceChip             imgui.Vec4
 	CoProcSourceDisasmOpcode     imgui.Vec4
@@ -193,6 +194,7 @@ type imguiColors struct {
 	LogMultilineEmphasis imgui.Vec4
 
 	// packed equivalents of the above colors (where appropriate)
+	windowBg               imgui.PackedColor
 	tiaPointer             imgui.PackedColor
 	collisionBit           imgui.PackedColor
 	portsBit               imgui.PackedColor
@@ -207,6 +209,10 @@ type imguiColors struct {
 	timelineCurrentPointer imgui.PackedColor
 	timelineCmpPointer     imgui.PackedColor
 	timelineLeftPlayer     imgui.PackedColor
+	coProcSourceLoad       imgui.PackedColor
+	coProcSourceAvgLoad    imgui.PackedColor
+	coProcSourceMaxLoad    imgui.PackedColor
+	coProcSourceNoLoad     imgui.PackedColor
 
 	// reflection colors
 	reflectionColors []imgui.Vec4
@@ -280,13 +286,14 @@ func newColors() *imguiColors {
 
 		// coprocessor source (and related) windows
 		CoProcSourceSelected:         imgui.Vec4{1.0, 1.0, 1.0, 0.1},
-		CoProcSourceYield:            imgui.Vec4{0.5, 1.0, 0.5, 0.2},
-		CoProcSourceYieldBug:         imgui.Vec4{1.0, 0.5, 0.5, 0.2},
+		CoProcSourceYield:            imgui.Vec4{0.5, 1.0, 0.5, 0.1},
+		CoProcSourceYieldBug:         imgui.Vec4{1.0, 0.5, 0.5, 0.1},
 		CoProcSourceHover:            imgui.Vec4{0.5, 0.5, 0.5, 0.1},
-		CoProcSourceLineNumber:       imgui.Vec4{0.5, 0.8, 0.3, 1.0},
-		CoProcSourceLoad:             imgui.Vec4{0.9, 0.5, 0.5, 1.0},
-		CoProcSourceAvgLoad:          imgui.Vec4{0.6, 0.6, 0.9, 1.0},
-		CoProcSourceMaxLoad:          imgui.Vec4{0.6, 0.9, 0.9, 1.0},
+		CoProcSourceLineNumber:       imgui.Vec4{0.5, 0.5, 0.8, 1.0},
+		CoProcSourceLoad:             imgui.Vec4{0.8, 0.5, 0.5, 1.0},
+		CoProcSourceAvgLoad:          imgui.Vec4{0.5, 0.5, 0.8, 1.0},
+		CoProcSourceMaxLoad:          imgui.Vec4{0.8, 0.5, 0.7, 1.0},
+		CoProcSourceNoLoad:           imgui.Vec4{0.5, 0.5, 0.5, 1.0},
 		CoProcSourceBug:              imgui.Vec4{0.5, 0.5, 0.8, 1.0},
 		CoProcSourceChip:             imgui.Vec4{0.5, 0.5, 0.5, 1.0},
 		CoProcSourceDisasmOpcode:     imgui.Vec4{0.5, 0.5, 0.6, 1.0},
@@ -399,6 +406,7 @@ func newColors() *imguiColors {
 	cols.TimelineCoProc = cols.reflectionColors[reflection.CoProcActive]
 
 	// colors that are used in context where an imgui.PackedColor is required
+	cols.windowBg = imgui.PackedColorFromVec4(cols.WindowBg)
 	cols.tiaPointer = imgui.PackedColorFromVec4(cols.TIApointer)
 	cols.collisionBit = imgui.PackedColorFromVec4(cols.CollisionBit)
 	cols.portsBit = imgui.PackedColorFromVec4(cols.PortsBit)
@@ -413,6 +421,10 @@ func newColors() *imguiColors {
 	cols.timelineCurrentPointer = imgui.PackedColorFromVec4(cols.TimelineCurrentPointer)
 	cols.timelineCmpPointer = imgui.PackedColorFromVec4(cols.TimelineCmpPointer)
 	cols.timelineLeftPlayer = imgui.PackedColorFromVec4(cols.TimelineLeftPlayer)
+	cols.coProcSourceLoad = imgui.PackedColorFromVec4(cols.CoProcSourceLoad)
+	cols.coProcSourceAvgLoad = imgui.PackedColorFromVec4(cols.CoProcSourceAvgLoad)
+	cols.coProcSourceMaxLoad = imgui.PackedColorFromVec4(cols.CoProcSourceMaxLoad)
+	cols.coProcSourceNoLoad = imgui.PackedColorFromVec4(cols.CoProcSourceNoLoad)
 
 	// convert 2600 colours to format usable by imgui
 
