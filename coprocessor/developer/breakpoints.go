@@ -26,12 +26,16 @@ func (src *Source) removeBreakpoint(addr uint32) {
 	delete(src.Breakpoints, addr)
 }
 
+func (src *Source) CanBreakpoint(ln *SourceLine) bool {
+	return ln.breakable
+}
+
 // ToggleBreakpoint adds or removes a breakpoint depending on whether the
 // breakpoint already exists.
 func (src *Source) ToggleBreakpoint(ln *SourceLine) {
-	if ln.Breakable {
-		for i := range ln.BreakAddress {
-			addr := uint32(ln.BreakAddress[i])
+	if ln.breakable {
+		for i := range ln.breakAddress {
+			addr := uint32(ln.breakAddress[i])
 			if src.Breakpoints[addr] {
 				src.removeBreakpoint(addr)
 			} else {
@@ -43,9 +47,9 @@ func (src *Source) ToggleBreakpoint(ln *SourceLine) {
 
 // CheckBreakpoint returns true if there is a breakpoint on the specified line.
 func (src *Source) CheckBreakpoint(ln *SourceLine) bool {
-	if ln.Breakable {
-		for i := range ln.BreakAddress {
-			addr := uint32(ln.BreakAddress[i])
+	if ln.breakable {
+		for i := range ln.breakAddress {
+			addr := uint32(ln.breakAddress[i])
 			if src.Breakpoints[addr] {
 				return true
 			}

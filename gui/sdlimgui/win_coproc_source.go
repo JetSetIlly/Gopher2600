@@ -489,9 +489,11 @@ func (win *winCoProcSource) drawSource(src *developer.Source) {
 						src.ToggleBreakpoint(ln)
 					}
 
+					// is the sourceline an executable line
+					var hoverExecutableLine bool
+
 					// select source lines with mouse click and drag
 					if imgui.IsItemHovered() {
-
 						// add/remove lines before showing the tooltip. this
 						// produces better visual results
 						if imgui.IsMouseClicked(0) {
@@ -510,8 +512,10 @@ func (win *winCoProcSource) drawSource(src *developer.Source) {
 							win.selecting = false
 						}
 
-						// asm tooltip
 						multiline := !win.selectedLine.isSingle() && win.selectedLine.inRange(ln.LineNumber)
+						hoverExecutableLine = (!multiline && len(ln.Disassembly) > 0) ||
+							((multiline || win.selecting) && !win.selectedLine.disasm.IsEmpty())
+
 						if win.showTooltip {
 							// how we show the asm depends on whether there are
 							// multiple lines selected and whether there is any
@@ -526,9 +530,7 @@ func (win *winCoProcSource) drawSource(src *developer.Source) {
 							// by time difference of the mouse running out of range
 							// of the multiline and the new range being setup (see
 							// IsMouseDragging() below)
-							if (!multiline && len(ln.Disassembly) > 0) ||
-								((multiline || win.selecting) && !win.selectedLine.disasm.IsEmpty()) {
-
+							if hoverExecutableLine {
 								imgui.PopFont()
 
 								imguiTooltip(func() {
@@ -569,7 +571,6 @@ func (win *winCoProcSource) drawSource(src *developer.Source) {
 								}, false)
 
 								imgui.PushFont(win.img.glsl.fonts.code)
-
 							}
 						}
 					}
@@ -577,19 +578,19 @@ func (win *winCoProcSource) drawSource(src *developer.Source) {
 					// show appropriate icon in the gutter
 					imgui.TableNextColumn()
 					if src.CheckBreakpoint(ln) {
+						// the presence of a breakpoint is the most important information
 						imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmBreakAddress)
+						imgui.Text(string(fonts.Breakpoint))
+						imgui.PopStyleColor()
+					} else if hoverExecutableLine && src.CanBreakpoint(ln) {
+						// prioritise showing the breakpoint indicator over the bug symbol
+						imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.DisasmBreakAddress.Times(0.6))
 						imgui.Text(string(fonts.Breakpoint))
 						imgui.PopStyleColor()
 					} else if ln.Bug {
 						imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceBug)
 						imgui.Text(string(fonts.CoProcBug))
 						imgui.PopStyleColor()
-					} else if len(ln.Disassembly) > 0 {
-						if ln.Function.IsInlined() {
-							imgui.Text(string(fonts.Inlined))
-						} else {
-							imgui.Text(string(fonts.Chip))
-						}
 					}
 
 					// performance statistics
@@ -607,11 +608,14 @@ func (win *winCoProcSource) drawSource(src *developer.Source) {
 							imgui.Text(fmt.Sprintf("%.02f", ln.Stats.Overall.OverSource.Max))
 							imgui.PopStyleColor()
 						} else {
-							imgui.Text(" -")
+							imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceChip)
+							imgui.Text(string(fonts.Chip))
+							imgui.PopStyleColor()
 						}
 					} else if len(ln.Disassembly) > 0 {
-						// line has never been executed
-						imgui.Text(" -")
+						imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceChip)
+						imgui.Text(string(fonts.Chip))
+						imgui.PopStyleColor()
 					}
 					imgui.PopStyleColor()
 

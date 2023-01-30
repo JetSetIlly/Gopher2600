@@ -612,10 +612,10 @@ func allocateInstructionsToSourceLines(src *Source, dwrf *dwarf.Data, executable
 			// add breakpoint and disasm information to the source line
 			if ln != nil && endAddr-startAddr > 0 {
 				// whether line can have a breakpoint on it
-				ln.Breakable = ln.Breakable || le.IsStmt
+				ln.breakable = ln.breakable || le.IsStmt
 
 				// add address to list of break addresses
-				ln.BreakAddress = append(ln.BreakAddress, startAddr)
+				ln.breakAddress = append(ln.breakAddress, startAddr)
 
 				// add disassembly to source line and add source line to linesByAddress
 				for addr := startAddr; addr < endAddr; addr += 2 {
