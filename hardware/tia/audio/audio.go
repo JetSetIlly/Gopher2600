@@ -88,11 +88,6 @@ func (au *Audio) String() string {
 	return s.String()
 }
 
-// RSYNC resets clock228 to zero.
-func (au *Audio) RSYNC() {
-	au.clock228 = 0
-}
-
 // UpdateTracker changes the state of the attached tracker. Should be called
 // whenever any of the audio registers have changed.
 func (au *Audio) UpdateTracker() {
