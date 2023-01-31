@@ -170,8 +170,7 @@ func (win *winOscilloscope) SetAudio(sig []signal.SignalAttributes) error {
 		v1 := uint8((s & signal.AudioChannel1) >> signal.AudioChannel1Shift)
 		m := mix.Mono(v0, v1)
 
-		sep := win.img.audio.Prefs.Separation.Get().(int)
-		s0, s1 := mix.Stereo(v0, v1, sep)
+		s0, s1 := mix.Stereo(v0, v1)
 
 		nd := oscilloscopeData{
 			mono:    float32(m) / 256,

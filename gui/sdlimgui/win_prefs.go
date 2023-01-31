@@ -411,20 +411,36 @@ func (win *winPrefs) drawVCS() {
 			imgui.PushStyleVarFloat(imgui.StyleVarAlpha, disabledAlpha)
 		}
 
-		separation := int32(win.img.audio.Prefs.Separation.Get().(int))
-
-		label := ""
-		switch separation {
-		case 1:
-			label = "Narrow"
-		case 2:
-			label = "Wide"
-		case 3:
-			label = "Discrete"
+		imgui.SameLineV(0, 15)
+		discrete := win.img.audio.Prefs.Discrete.Get().(bool)
+		if imgui.Checkbox("Discrete Channels", &discrete) {
+			win.img.audio.Prefs.Discrete.Set(discrete)
 		}
 
-		if imgui.SliderIntV("Separation", &separation, 1, 3, label, 1.0) {
+		if discrete {
+			imgui.PushItemFlag(imgui.ItemFlagsDisabled, true)
+			imgui.PushStyleVarFloat(imgui.StyleVarAlpha, disabledAlpha)
+		}
+
+		// seperation values assume that there are three levels of effect
+		// support by sdlaudio
+		separation := int32(win.img.audio.Prefs.Separation.Get().(int))
+		seperationLabel := ""
+		switch separation {
+		case 1:
+			seperationLabel = "Narrow"
+		case 2:
+			seperationLabel = "Wide"
+		case 3:
+			seperationLabel = "Very Wide"
+		}
+		if imgui.SliderIntV("Separation", &separation, 1, 3, seperationLabel, 1.0) {
 			win.img.audio.Prefs.Separation.Set(separation)
+		}
+
+		if discrete {
+			imgui.PopStyleVar()
+			imgui.PopItemFlag()
 		}
 
 		if !stereo {

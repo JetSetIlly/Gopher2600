@@ -57,12 +57,21 @@ type Audio struct {
 	// for the preferences system every time SetAudio() is called) . we'll
 	// update these on every call to queueAudio()
 	stereo     bool
+	discrete   bool
 	separation int
+
+	stereoCh0Buffer []uint8
+	stereoCh1Buffer []uint8
 }
+
+const stereoBufferLen = 1024
 
 // NewAudio is the preferred method of initialisation for the Audio Type.
 func NewAudio() (*Audio, error) {
-	aud := &Audio{}
+	aud := &Audio{
+		stereoCh0Buffer: make([]uint8, stereoBufferLen),
+		stereoCh1Buffer: make([]uint8, stereoBufferLen),
+	}
 
 	var err error
 
@@ -71,6 +80,7 @@ func NewAudio() (*Audio, error) {
 		return nil, curated.Errorf("sdlaudio: %v", err)
 	}
 	aud.stereo = aud.Prefs.Stereo.Get().(bool)
+	aud.discrete = aud.Prefs.Discrete.Get().(bool)
 	aud.separation = aud.Prefs.Separation.Get().(int)
 
 	spec := &sdl.AudioSpec{
@@ -119,8 +129,33 @@ func (aud *Audio) SetAudio(sig []signal.SignalAttributes) error {
 		v0 := uint8((s & signal.AudioChannel0) >> signal.AudioChannel0Shift)
 		v1 := uint8((s & signal.AudioChannel1) >> signal.AudioChannel1Shift)
 
+		aud.stereoCh0Buffer = aud.stereoCh0Buffer[1:]
+		aud.stereoCh0Buffer = append(aud.stereoCh0Buffer, v0)
+		aud.stereoCh1Buffer = aud.stereoCh1Buffer[1:]
+		aud.stereoCh1Buffer = append(aud.stereoCh1Buffer, v1)
+
 		if aud.stereo {
-			s0, s1 := mix.Stereo(v0, v1, aud.separation)
+			var s0, s1 int16
+
+			if aud.discrete {
+				// discrete stereo channels
+				s0, s1 = mix.Stereo(v0, v1)
+			} else {
+				// reverb mix
+				var idx int
+				switch aud.separation {
+				case 1:
+					idx = stereoBufferLen - 256
+				case 2:
+					idx = stereoBufferLen - 512
+				case 3:
+					idx = 0
+				default:
+					idx = stereoBufferLen
+				}
+				s0, s1 = mix.Stereo(v0+(aud.stereoCh1Buffer[idx]>>1), v1+(aud.stereoCh0Buffer[idx]>>1))
+			}
+
 			aud.buffer[aud.bufferCt] = uint8(s0>>8) + aud.spec.Silence
 			aud.bufferCt++
 			aud.buffer[aud.bufferCt] = uint8(s0) + aud.spec.Silence
@@ -176,6 +211,7 @@ func (aud *Audio) queueBuffer() error {
 
 	// update local preference values
 	aud.stereo = aud.Prefs.Stereo.Get().(bool)
+	aud.discrete = aud.Prefs.Discrete.Get().(bool)
 	aud.separation = aud.Prefs.Separation.Get().(int)
 
 	return nil

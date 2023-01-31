@@ -23,6 +23,7 @@ import (
 type Preferences struct {
 	dsk        *prefs.Disk
 	Stereo     prefs.Bool
+	Discrete   prefs.Bool
 	Separation prefs.Int
 }
 
@@ -49,6 +50,10 @@ func NewPreferences() (*Preferences, error) {
 	if err != nil {
 		return nil, err
 	}
+	err = p.dsk.Add("sdlaudio.discrete", &p.Discrete)
+	if err != nil {
+		return nil, err
+	}
 	err = p.dsk.Add("sdlaudio.separation", &p.Separation)
 	if err != nil {
 		return nil, err
@@ -65,6 +70,7 @@ func NewPreferences() (*Preferences, error) {
 // SetDefaults reverts all audio settings to default values.
 func (p *Preferences) SetDefaults() {
 	p.Stereo.Set(false)
+	p.Discrete.Set(false)
 	p.Separation.Set(1)
 }
 
