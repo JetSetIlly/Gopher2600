@@ -63,6 +63,9 @@ type ReflectedVideoStep struct {
 	IsHblank     bool
 	RSYNCalign   bool
 	RSYNCreset   bool
+	AudioPhase0  bool
+	AudioPhase1  bool
+	AudioChanged bool
 
 	// All the fields in this struct are copy()able. An array of this type
 	// therefore should also be copyable and safe to use in other goroutines.

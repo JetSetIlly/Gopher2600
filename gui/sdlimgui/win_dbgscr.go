@@ -18,6 +18,7 @@ package sdlimgui
 import (
 	"fmt"
 	"image"
+	"strings"
 
 	"github.com/go-gl/gl/v3.2-core/gl"
 	"github.com/inkyblackness/imgui-go/v4"
@@ -499,6 +500,13 @@ func (win *winDbgScr) drawOverlayColorKey() {
 		imguiColorLabelSimple("Align", win.img.cols.reflectionColors[reflection.RSYNCalign])
 		imgui.SameLineV(0, 15)
 		imguiColorLabelSimple("Reset", win.img.cols.reflectionColors[reflection.RSYNCreset])
+	case reflection.OverlayLabels[reflection.OverlayAudio]:
+		imgui.SameLineV(0, 20)
+		imguiColorLabelSimple("Phase 0", win.img.cols.reflectionColors[reflection.AudioPhase0])
+		imgui.SameLineV(0, 15)
+		imguiColorLabelSimple("Phase 1", win.img.cols.reflectionColors[reflection.AudioPhase1])
+		imgui.SameLineV(0, 15)
+		imguiColorLabelSimple("Change", win.img.cols.reflectionColors[reflection.AudioChanged])
 	case reflection.OverlayLabels[reflection.OverlayCoproc]:
 		imgui.SameLineV(0, 20)
 		key := fmt.Sprintf("parallel %s", win.img.lz.Cart.CoProcID)
@@ -634,6 +642,21 @@ func (win *winDbgScr) drawReflectionTooltip() {
 			}
 		case reflection.OverlayLabels[reflection.OverlayRSYNC]:
 			// no RSYNC specific hover information
+		case reflection.OverlayLabels[reflection.OverlayAudio]:
+			imguiSeparator()
+			if ref.AudioPhase0 || ref.AudioPhase1 || ref.AudioChanged {
+				if ref.AudioPhase0 {
+					imguiColorLabelSimple("Audio phase 0", win.img.cols.reflectionColors[reflection.AudioPhase0])
+				} else if ref.AudioPhase1 {
+					imguiColorLabelSimple("Audio phase 1", win.img.cols.reflectionColors[reflection.AudioPhase1])
+				}
+				if ref.AudioChanged {
+					reg := strings.Split(e.Operand.String(), ",")[0]
+					imguiColorLabelSimple(fmt.Sprintf("%s updated", reg), win.img.cols.reflectionColors[reflection.AudioChanged])
+				}
+			} else {
+				imgui.Text("Audio unchanged")
+			}
 		case reflection.OverlayLabels[reflection.OverlayCoproc]:
 			imguiSeparator()
 			switch ref.CoProcState {

@@ -111,6 +111,7 @@ func (ref *Reflector) Step(bank mapper.BankInfo) error {
 	}
 
 	h[0].RSYNCalign, h[0].RSYNCreset = ref.vcs.TIA.RSYNCstate()
+	h[0].AudioPhase0, h[0].AudioPhase1, h[0].AudioChanged = ref.vcs.TIA.Audio.HasTicked()
 
 	// nullify entries at the head of the array that do not have a
 	// corresponding signal. we do this because the first index of a signal

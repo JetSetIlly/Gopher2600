@@ -140,133 +140,131 @@ func (win *winTracker) draw() {
 	imgui.EndTable()
 
 	// new child that contains the main scrollable table
-	imgui.BeginChildV("##trackerscroller", imgui.Vec2{X: 0, Y: imguiRemainingWinHeight() - win.pianoKeysHeight}, false, 0)
+	if imgui.BeginChildV("##trackerscroller", imgui.Vec2{X: 0, Y: imguiRemainingWinHeight() - win.pianoKeysHeight}, false, 0) {
+		numEntries := len(win.img.lz.Tracker.Entries)
+		if numEntries == 0 {
+			imgui.Spacing()
+			imgui.Text("No audio output/changes yet")
+		} else {
+			if imgui.BeginTableV("tracker", tableColumns, tableFlags, imgui.Vec2{}, 0) {
+				tableSetupColumns()
 
-	numEntries := len(win.img.lz.Tracker.Entries)
-	if numEntries == 0 {
-		imgui.Spacing()
-		imgui.Text("No audio output/changes yet")
-	} else {
-		if !imgui.BeginTableV("tracker", tableColumns, tableFlags, imgui.Vec2{}, 0) {
-			return
-		}
+				// altenate row colors at change of frame number
+				var lastEntry tracker.Entry
+				var lastEntryChan0 tracker.Entry
+				var lastEntryChan1 tracker.Entry
+				var altRowCol bool
 
-		tableSetupColumns()
+				var clipper imgui.ListClipper
+				clipper.Begin(numEntries)
+				for clipper.Step() {
+					for i := clipper.DisplayStart; i < clipper.DisplayEnd; i++ {
+						entry := win.img.lz.Tracker.Entries[i]
 
-		// altenate row colors at change of frame number
-		var lastEntry tracker.Entry
-		var lastEntryChan0 tracker.Entry
-		var lastEntryChan1 tracker.Entry
-		var altRowCol bool
+						imgui.TableNextRow()
 
-		var clipper imgui.ListClipper
-		clipper.Begin(numEntries)
-		for clipper.Step() {
-			for i := clipper.DisplayStart; i < clipper.DisplayEnd; i++ {
-				entry := win.img.lz.Tracker.Entries[i]
-
-				imgui.TableNextRow()
-
-				// flip row color
-				if entry.Coords.Frame != lastEntry.Coords.Frame {
-					altRowCol = !altRowCol
-				}
-
-				if altRowCol {
-					imgui.TableSetBgColor(imgui.TableBgTargetRowBg0, win.img.cols.AudioTrackerRowAlt)
-					imgui.TableSetBgColor(imgui.TableBgTargetRowBg1, win.img.cols.AudioTrackerRowAlt)
-				} else {
-					imgui.TableSetBgColor(imgui.TableBgTargetRowBg0, win.img.cols.AudioTrackerRow)
-					imgui.TableSetBgColor(imgui.TableBgTargetRowBg1, win.img.cols.AudioTrackerRow)
-				}
-
-				imgui.TableNextColumn()
-				imgui.SelectableV("", false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{0, 0})
-				imguiTooltip(func() {
-					imgui.Text(fmt.Sprintf("Frame: %d", entry.Coords.Frame))
-					imgui.Text(fmt.Sprintf("Scanline: %d", entry.Coords.Scanline))
-					imgui.Text(fmt.Sprintf("Clock: %d", entry.Coords.Clock))
-				}, true)
-
-				// context menu on right mouse button
-				if imgui.IsItemHovered() && imgui.IsMouseDown(1) {
-					imgui.OpenPopup(trackerContextMenuID)
-					win.contextMenu = entry.Coords
-				}
-				if entry.Coords == win.contextMenu {
-					if imgui.BeginPopup(trackerContextMenuID) {
-						if imgui.Selectable("Rewind to") {
-							win.img.dbg.GotoCoords(entry.Coords)
+						// flip row color
+						if entry.Coords.Frame != lastEntry.Coords.Frame {
+							altRowCol = !altRowCol
 						}
-						imgui.EndPopup()
+
+						if altRowCol {
+							imgui.TableSetBgColor(imgui.TableBgTargetRowBg0, win.img.cols.AudioTrackerRowAlt)
+							imgui.TableSetBgColor(imgui.TableBgTargetRowBg1, win.img.cols.AudioTrackerRowAlt)
+						} else {
+							imgui.TableSetBgColor(imgui.TableBgTargetRowBg0, win.img.cols.AudioTrackerRow)
+							imgui.TableSetBgColor(imgui.TableBgTargetRowBg1, win.img.cols.AudioTrackerRow)
+						}
+
+						imgui.TableNextColumn()
+						imgui.SelectableV("", false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{0, 0})
+						imguiTooltip(func() {
+							imgui.Text(fmt.Sprintf("Frame: %d", entry.Coords.Frame))
+							imgui.Text(fmt.Sprintf("Scanline: %d", entry.Coords.Scanline))
+							imgui.Text(fmt.Sprintf("Clock: %d", entry.Coords.Clock))
+						}, true)
+
+						// context menu on right mouse button
+						if imgui.IsItemHovered() && imgui.IsMouseDown(1) {
+							imgui.OpenPopup(trackerContextMenuID)
+							win.contextMenu = entry.Coords
+						}
+						if entry.Coords == win.contextMenu {
+							if imgui.BeginPopup(trackerContextMenuID) {
+								if imgui.Selectable("Rewind to") {
+									win.img.dbg.GotoCoords(entry.Coords)
+								}
+								imgui.EndPopup()
+							}
+						}
+
+						if entry.Channel == 1 {
+							imgui.TableNextColumn()
+							imgui.TableNextColumn()
+							imgui.TableNextColumn()
+							imgui.TableNextColumn()
+							imgui.TableNextColumn()
+							imgui.TableNextColumn()
+							imgui.TableNextColumn()
+						}
+
+						// convert musical note into something worth showing
+						musicalNote := string(entry.MusicalNote)
+						imgui.TableNextColumn()
+						switch entry.MusicalNote {
+						case tracker.Noise:
+							musicalNote = ""
+						case tracker.Low:
+							musicalNote = ""
+						case tracker.Silence:
+							musicalNote = ""
+						default:
+							imgui.Text(fmt.Sprintf("%c", fonts.MusicNote))
+						}
+
+						imgui.TableNextColumn()
+						imgui.Text(fmt.Sprintf("%04b", entry.Registers.Control&0x0f))
+						imgui.TableNextColumn()
+						imgui.Text(fmt.Sprintf("%s", entry.Distortion))
+						imgui.TableNextColumn()
+						imgui.Text(fmt.Sprintf("%05b", entry.Registers.Freq&0x1f))
+						imgui.TableNextColumn()
+						imgui.Text(musicalNote)
+						imgui.TableNextColumn()
+
+						// volum column
+						var volumeArrow rune
+
+						// compare with previous entry for the channel
+						if entry.Channel == 0 {
+							if entry.Registers.Volume > lastEntryChan0.Registers.Volume {
+								volumeArrow = fonts.VolumeUp
+							} else if entry.Registers.Volume < lastEntryChan0.Registers.Volume {
+								volumeArrow = fonts.VolumeDown
+							}
+							lastEntryChan0 = entry
+						} else {
+							if entry.Registers.Volume > lastEntryChan1.Registers.Volume {
+								volumeArrow = fonts.VolumeUp
+							} else if entry.Registers.Volume < lastEntryChan1.Registers.Volume {
+								volumeArrow = fonts.VolumeDown
+							}
+							lastEntryChan1 = entry
+						}
+
+						imgui.Text(fmt.Sprintf("%02d %c", entry.Registers.Volume&0x4b, volumeArrow))
+
+						// record last entry for comparison purposes next iteration
+						lastEntry = entry
 					}
 				}
 
-				if entry.Channel == 1 {
-					imgui.TableNextColumn()
-					imgui.TableNextColumn()
-					imgui.TableNextColumn()
-					imgui.TableNextColumn()
-					imgui.TableNextColumn()
-					imgui.TableNextColumn()
-					imgui.TableNextColumn()
-				}
-
-				// convert musical note into something worth showing
-				musicalNote := string(entry.MusicalNote)
-				imgui.TableNextColumn()
-				switch entry.MusicalNote {
-				case tracker.Noise:
-					musicalNote = ""
-				case tracker.Low:
-					musicalNote = ""
-				case tracker.Silence:
-					musicalNote = ""
-				default:
-					imgui.Text(fmt.Sprintf("%c", fonts.MusicNote))
-				}
-
-				imgui.TableNextColumn()
-				imgui.Text(fmt.Sprintf("%04b", entry.Registers.Control&0x0f))
-				imgui.TableNextColumn()
-				imgui.Text(fmt.Sprintf("%s", entry.Distortion))
-				imgui.TableNextColumn()
-				imgui.Text(fmt.Sprintf("%05b", entry.Registers.Freq&0x1f))
-				imgui.TableNextColumn()
-				imgui.Text(musicalNote)
-				imgui.TableNextColumn()
-
-				// volum column
-				var volumeArrow rune
-
-				// compare with previous entry for the channel
-				if entry.Channel == 0 {
-					if entry.Registers.Volume > lastEntryChan0.Registers.Volume {
-						volumeArrow = fonts.VolumeUp
-					} else if entry.Registers.Volume < lastEntryChan0.Registers.Volume {
-						volumeArrow = fonts.VolumeDown
-					}
-					lastEntryChan0 = entry
-				} else {
-					if entry.Registers.Volume > lastEntryChan1.Registers.Volume {
-						volumeArrow = fonts.VolumeUp
-					} else if entry.Registers.Volume < lastEntryChan1.Registers.Volume {
-						volumeArrow = fonts.VolumeDown
-					}
-					lastEntryChan1 = entry
-				}
-
-				imgui.Text(fmt.Sprintf("%02d %c", entry.Registers.Volume&0x4b, volumeArrow))
-
-				// record last entry for comparison purposes next iteration
-				lastEntry = entry
+				imgui.EndTable()
 			}
-		}
 
-		imgui.EndTable()
-
-		if win.img.dbg.State() == govern.Running {
-			imgui.SetScrollHereY(1.0)
+			if win.img.dbg.State() == govern.Running {
+				imgui.SetScrollHereY(1.0)
+			}
 		}
 	}
 	imgui.EndChild()

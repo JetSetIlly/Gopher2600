@@ -475,6 +475,9 @@ var reflectionColors = []color.RGBA{
 	reflection.HMOVElatched: {R: 50, G: 50, B: 150, A: 255},
 	reflection.RSYNCalign:   {R: 50, G: 50, B: 200, A: 255},
 	reflection.RSYNCreset:   {R: 50, G: 200, B: 200, A: 255},
+	reflection.AudioPhase0:  {R: 250, G: 100, B: 100, A: 255},
+	reflection.AudioPhase1:  {R: 100, G: 250, B: 100, A: 255},
+	reflection.AudioChanged: {R: 150, G: 150, B: 250, A: 255},
 
 	reflection.CoProcInactive: {R: 0, G: 0, B: 0, A: 0},
 	reflection.CoProcActive:   {R: 200, G: 50, B: 200, A: 255},

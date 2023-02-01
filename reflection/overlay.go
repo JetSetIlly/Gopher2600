@@ -33,6 +33,9 @@ const (
 	HMOVElatched
 	RSYNCalign
 	RSYNCreset
+	AudioPhase0
+	AudioPhase1
+	AudioChanged
 
 	// for graphical purposes we only distinguish between active and inactive
 	// coprocessor states. the underlying states as defined in the mapper
@@ -57,8 +60,9 @@ const (
 	OverlayCollision
 	OverlayHMOVE
 	OverlayRSYNC
+	OverlayAudio
 	OverlayCoproc
 )
 
 // OverlayLabels are names/labels for the the Policy type values.
-var OverlayLabels = []string{"No overlay", "WSYNC", "Collisions", "HMOVE", "RSYNC", "Coprocessor"}
+var OverlayLabels = []string{"No overlay", "WSYNC", "Collisions", "HMOVE", "RSYNC", "Audio", "Coprocessor"}

@@ -52,7 +52,8 @@ type Audio struct {
 	Vol0 uint8
 	Vol1 uint8
 
-	tracker Tracker
+	tracker          Tracker
+	registersChanged bool
 }
 
 // NewAudio is the preferred method of initialisation for the Audio sub-system.
@@ -91,23 +92,25 @@ func (au *Audio) String() string {
 // UpdateTracker changes the state of the attached tracker. Should be called
 // whenever any of the audio registers have changed.
 func (au *Audio) UpdateTracker() {
-	if au.tracker == nil {
-		return
-	}
-
-	// it's impossible for both channels to have changed in a single video cycle
-	if au.channel0.registersChanged {
-		au.tracker.Tick(0, au.channel0.registers)
-	} else if au.channel1.registersChanged {
-		au.tracker.Tick(1, au.channel1.registers)
-	}
-	au.channel0.registersChanged = false
-	au.channel1.registersChanged = false
 }
 
 // Step the audio on one TIA clock. The step will be filtered to produce a
 // 30Khz clock.
 func (au *Audio) Step() bool {
+	au.registersChanged = false
+	if au.tracker != nil {
+		// it's impossible for both channels to have changed in a single video cycle
+		if au.channel0.registersChanged {
+			au.tracker.Tick(0, au.channel0.registers)
+			au.channel0.registersChanged = false
+			au.registersChanged = true
+		} else if au.channel1.registersChanged {
+			au.tracker.Tick(1, au.channel1.registers)
+			au.channel1.registersChanged = false
+			au.registersChanged = true
+		}
+	}
+
 	au.clock228++
 	if au.clock228 >= 228 {
 		au.clock228 = 0
@@ -137,4 +140,23 @@ func (au *Audio) Step() bool {
 	au.Vol1 = au.channel1.actualVol
 
 	return true
+}
+
+// HasTicked returns whether the audio channels were ticked on the previous
+// video cycle. The return values indicate the ticking for phase 0 & phase 1;
+// and whether an audio register has changed. Can never return three true values
+//
+// The function is only useful for emulator reflection.
+func (au *Audio) HasTicked() (bool, bool, bool) {
+	switch au.clock228 {
+	case 10:
+		return true, false, au.registersChanged
+	case 82:
+		return true, false, au.registersChanged
+	case 38:
+		return false, true, au.registersChanged
+	case 150:
+		return false, true, au.registersChanged
+	}
+	return false, false, au.registersChanged
 }
