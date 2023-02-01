@@ -227,6 +227,6 @@ func (win *winCPU) drawRegister(reg registers.Generic) {
 	bitwidth := reg.BitWidth()
 
 	if imguiHexInput(fmt.Sprintf("##%s", label), bitwidth/4, &content) {
-		win.img.term.pushCommand(fmt.Sprintf("CPU SET %s %s", reg.Label(), content))
+		win.img.term.pushCommand(fmt.Sprintf("CPU SET %s 0x%s", reg.Label(), content))
 	}
 }
