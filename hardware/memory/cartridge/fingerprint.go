@@ -188,6 +188,11 @@ func fingerprintDF(b []byte) bool {
 	return b[0xff8] == 'D' && b[0xff9] == 'F' && b[0xffa] == 'S' && b[0xffb] == 'C'
 }
 
+func fingerprintWickstead(b []byte) bool {
+	// wickstead design fingerprint taken from Stella
+	return bytes.Contains(b, []byte{0xa5, 0x39, 0x4c})
+}
+
 func fingerprintDPCplus(b []byte) bool {
 	if len(b) < 0x23 {
 		return false
@@ -273,6 +278,10 @@ func fingerprint8k(data []byte) func(*instance.Instance, []byte) (mapper.CartMap
 	// mnetwork has the lowest threshold so place it at the end
 	if fingerprintMnetwork(data) {
 		return newMnetwork
+	}
+
+	if fingerprintWickstead(data) {
+		return newWicksteadDesign
 	}
 
 	return newAtari8k
@@ -368,6 +377,13 @@ func (cart *Cartridge) fingerprint(cartload cartridgeloader.Loader) error {
 		if err != nil {
 			return err
 		}
+
+	case 8195:
+		// a widely distributed bad ROM dump of the Pink Panther prototype is
+		// 8195 bytes long. we'll treat it like an 8k ROM and see if it's
+		// recognised as a Wickstead Design ROM. if it's not then it's just a
+		// file that's 8195 bytes long and will be rejected
+		fallthrough
 
 	case 8192:
 		cart.mapper, err = fingerprint8k(*cartload.Data)(cart.instance, *cartload.Data)

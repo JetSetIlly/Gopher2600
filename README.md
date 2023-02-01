@@ -105,6 +105,9 @@ a comment in the fingerprint.go file says I did.
 
 * Fingerprint patterns for automated controller/peripheral selection.
 
+* As a reference for the Wickstead Design bankswitching protocol. Only one ROM
+  of this type exists (the `Pursuit of the Pink Panther`).
+
 In all these instances, primary sources of information could not be found.
 
 (Earlier revision of Gopher2600 used Stella a reference for the EF cartridge

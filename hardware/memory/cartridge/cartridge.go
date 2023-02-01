@@ -315,6 +315,8 @@ func (cart *Cartridge) Attach(cartload cartridgeloader.Loader) error {
 		forceSuperchip = true
 	case "SB":
 		cart.mapper, err = newSuperbank(cart.instance, *cartload.Data)
+	case "WD":
+		cart.mapper, err = newWicksteadDesign(cart.instance, *cartload.Data)
 	case "DPC":
 		cart.mapper, err = newDPC(cart.instance, *cartload.Data)
 	case "DPC+":

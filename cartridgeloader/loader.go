@@ -218,6 +218,8 @@ func NewLoader(filename string, mapping string) (Loader, error) {
 			fallthrough
 		case ".SB":
 			fallthrough
+		case ".WD":
+			fallthrough
 		case ".DPC":
 			cl.Mapping = ext[1:]
 		case ".DP+":
