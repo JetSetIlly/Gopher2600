@@ -68,8 +68,6 @@ func NewAce(instance *instance.Instance, version string, data []byte) (mapper.Ca
 	logger.Logf("ACE", "vcs program: %08x to %08x", cart.mem.vcsOrigin, cart.mem.vcsMemtop)
 	logger.Logf("ACE", "arm program: %08x to %08x", cart.mem.armOrigin, cart.mem.armMemtop)
 	logger.Logf("ACE", "sram: %08x to %08x (%dbytes)", cart.mem.sramOrigin, cart.mem.sramMemtop, len(cart.mem.sram))
-	logger.Logf("ACE", "GPIO IN: %08x to %08x", cart.mem.gpioAOrigin, cart.mem.gpioAMemtop)
-	logger.Logf("ACE", "GPIO OUT: %08x to %08x", cart.mem.gpioBOrigin, cart.mem.gpioBMemtop)
 
 	return cart, nil
 }
@@ -128,7 +126,10 @@ func (cart *Ace) Reset() {
 
 // Access implements the mapper.CartMapper interface.
 func (cart *Ace) Access(addr uint16, _ bool) (uint8, uint8, error) {
-	return cart.mem.gpioB[fromArm_data], mapper.CartDrivenPins, nil
+	if cart.mem.isDataModeOut() {
+		return cart.mem.gpio[DATA_ODR_idx], mapper.CartDrivenPins, nil
+	}
+	return 0, 0, nil
 }
 
 // AccessDriven implements the mapper.CartMapper interface.
@@ -151,6 +152,20 @@ func (cart *Ace) Patch(_ int, _ uint8) error {
 	return curated.Errorf("ACE: patching unsupported")
 }
 
+func (cart *Ace) runARM() {
+	// call arm once and then check for yield conditions
+	yld, _ := cart.arm.Run()
+
+	// keep calling runArm() for as long as program does not need to sync with the VCS...
+	for yld != mapper.YieldSyncWithVCS {
+		// ... or if the yield hook says to return to the VCS immedtiately
+		if cart.yieldHook.CartYield(yld) {
+			return
+		}
+		yld, _ = cart.arm.Run()
+	}
+}
+
 // AccessPassive implements the mapper.CartMapper interface.
 func (cart *Ace) AccessPassive(addr uint16, data uint8) {
 	// if memory access is not a cartridge address (ie. a TIA or RIOT address)
@@ -165,38 +180,20 @@ func (cart *Ace) AccessPassive(addr uint16, data uint8) {
 
 	// set data first and continue once. this seems to be necessary to allow
 	// the PlusROM exit routine to work correctly
-	cart.mem.gpioB[toArm_data] = data
-
-	// call arm once and then check for yield conditions
-	yld, _ := cart.arm.Run()
-
-	// keep calling runArm() for as long as program does not need to sync with the VCS...
-	for yld != mapper.YieldSyncWithVCS {
-		// ... or if the yield hook says to return to the VCS immedtiately
-		if cart.yieldHook.CartYield(yld) {
-			return
-		}
-		yld, _ = cart.arm.Run()
+	if !cart.mem.isDataModeOut() {
+		cart.mem.gpio[DATA_IDR_idx] = data
 	}
 
+	cart.runARM()
+
 	// set address for ARM program
-	cart.mem.gpioA[toArm_address] = uint8(addr)
-	cart.mem.gpioA[toArm_address+1] = uint8(addr >> 8)
+	cart.mem.gpio[ADDR_IDR_idx] = uint8(addr)
+	cart.mem.gpio[ADDR_IDR_idx+1] = uint8(addr >> 8)
 
 	// continue and wait for the fourth YieldSyncWithVCS...
 	for i := 0; i < 4; i++ {
-		yld, _ = cart.arm.Run()
-		for yld != mapper.YieldSyncWithVCS {
-			// ... or until the yield hook says to return to the VCS immediately
-			if cart.yieldHook.CartYield(yld) {
-				return
-			}
-			yld, _ = cart.arm.Run()
-		}
+		cart.runARM()
 	}
-
-	// there is a return from a double for loop above. we should be careful
-	// about added anything more here before considering that
 }
 
 // Step implements the mapper.CartMapper interface.
@@ -216,10 +213,10 @@ func (cart *Ace) ARMinterrupt(addr uint32, val1 uint32, val2 uint32) (arm.ARMint
 
 // BusStuff implements the mapper.CartBusStuff interface.
 func (cart *Ace) BusStuff() (uint8, bool) {
-	if cart.mem.gpioB[gpio_mode] == 0x55 && cart.mem.gpioB[gpio_mode+1] == 0x55 {
-		cart.mem.gpioB[gpio_mode] = 0x00
-		cart.mem.gpioB[gpio_mode+1] = 0x00
-		return cart.mem.gpioB[fromArm_data], true
+	if cart.mem.isDataModeOut() {
+		cart.mem.gpio[DATA_MODER_idx] = 0x00
+		cart.mem.gpio[DATA_MODER_idx+1] = 0x00
+		return cart.mem.gpio[DATA_ODR_idx], true
 	}
 	return 0, false
 }

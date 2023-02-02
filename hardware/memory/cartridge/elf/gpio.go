@@ -16,10 +16,10 @@
 package elf
 
 const (
-	ADDR_IDR    = 0x10 // gpioA
-	DATA_IDR    = 0x20 // gpioB
-	DATA_ODR    = 0x30 // gpioB
-	DATA_MODER  = 0x40 // gpioB
+	ADDR_IDR    = 0x10
+	DATA_IDR    = 0x20
+	DATA_ODR    = 0x30
+	DATA_MODER  = 0x40
 	GPIO_MEMTOP = 0x50
 )
 

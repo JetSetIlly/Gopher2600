@@ -31,6 +31,8 @@ type aceMemory struct {
 	resetLR uint32
 	resetPC uint32
 
+	gpio []byte
+
 	armProgram []byte
 	armOrigin  uint32
 	armMemtop  uint32
@@ -38,14 +40,6 @@ type aceMemory struct {
 	vcsProgram []byte // including virtual arguments
 	vcsOrigin  uint32
 	vcsMemtop  uint32
-
-	gpioA       []byte
-	gpioAOrigin uint32
-	gpioAMemtop uint32
-
-	gpioB       []byte
-	gpioBOrigin uint32
-	gpioBMemtop uint32
 
 	flash       []byte
 	flashOrigin uint32
@@ -69,12 +63,31 @@ const (
 )
 
 const (
-	gpio_mode     = 0x00 // gpioB
-	toArm_address = 0x10 // gpioA
-	toArm_data    = 0x10 // gpioB
-	fromArm_data  = 0x14 // gpioB
-	gpio_memtop   = 0x18
+	DATA_MODER = 0x40020800
+	ADDR_IDR   = 0x40020c10
+	DATA_IDR   = 0x40020810
+	DATA_ODR   = 0x40020814
+
+	DATA_MODER_idx = 0
+	ADDR_IDR_idx   = 4
+	DATA_IDR_idx   = 8
+	DATA_ODR_idx   = 12
+	GPIO_SIZE      = 16
 )
+
+func (mem *aceMemory) isDataModeOut() bool {
+	return mem.gpio[DATA_MODER_idx] == 0x55 && mem.gpio[DATA_MODER_idx+1] == 0x55
+}
+
+func (mem *aceMemory) setDataMode(out bool) {
+	if out {
+		mem.gpio[DATA_MODER_idx] = 0x55
+		mem.gpio[DATA_MODER_idx+1] = 0x55
+	} else {
+		mem.gpio[DATA_MODER_idx] = 0x00
+		mem.gpio[DATA_MODER_idx+1] = 0x00
+	}
+}
 
 func newAceMemory(version string, data []byte) (*aceMemory, error) {
 	mem := &aceMemory{}
@@ -199,30 +212,22 @@ func newAceMemory(version string, data []byte) (*aceMemory, error) {
 	copy(mem.flash[28:32], []byte{0x00, 0x26, 0xe4, 0xac})
 
 	// GPIO pins
-	mem.gpioA = make([]byte, gpio_memtop)
-	mem.gpioAOrigin = 0x40020c00
-	mem.gpioAMemtop = mem.gpioAOrigin | gpio_memtop
-
-	mem.gpioB = make([]byte, gpio_memtop)
-	mem.gpioBOrigin = 0x40020800
-	mem.gpioBMemtop = mem.gpioBOrigin | gpio_memtop
+	mem.gpio = make([]byte, GPIO_SIZE)
 
 	// default NOP instruction for opcode
-	mem.gpioB[fromArm_data] = 0xea
+	mem.gpio[DATA_ODR_idx] = 0xea
 
 	return mem, nil
 }
 
 func (mem *aceMemory) Snapshot() *aceMemory {
 	m := *mem
+	m.gpio = make([]byte, len(mem.gpio))
+	copy(m.gpio, mem.gpio)
 	m.armProgram = make([]byte, len(mem.armProgram))
 	copy(m.armProgram, mem.armProgram)
 	m.vcsProgram = make([]byte, len(mem.vcsProgram))
 	copy(m.vcsProgram, mem.vcsProgram)
-	m.gpioA = make([]byte, len(mem.gpioA))
-	copy(m.gpioA, mem.gpioA)
-	m.gpioB = make([]byte, len(mem.gpioB))
-	copy(m.gpioB, mem.gpioB)
 	m.flash = make([]byte, len(mem.flash))
 	copy(m.flash, mem.flash)
 	m.sram = make([]byte, len(mem.sram))
@@ -237,15 +242,20 @@ func (mem *aceMemory) Plumb(arm interruptARM) {
 
 // MapAddress implements the arm.SharedMemory interface.
 func (mem *aceMemory) MapAddress(addr uint32, write bool) (*[]byte, uint32) {
-	if addr >= mem.gpioAOrigin && addr <= mem.gpioAMemtop {
-		if !write && addr == mem.gpioAOrigin|toArm_address {
+	switch addr {
+	case DATA_MODER:
+		return &mem.gpio, DATA_MODER_idx
+	case ADDR_IDR:
+		if !write {
 			mem.arm.Interrupt()
 		}
-		return &mem.gpioA, addr - mem.gpioAOrigin
+		return &mem.gpio, ADDR_IDR_idx
+	case DATA_IDR:
+		return &mem.gpio, DATA_IDR_idx
+	case DATA_ODR:
+		return &mem.gpio, DATA_ODR_idx
 	}
-	if addr >= mem.gpioBOrigin && addr <= mem.gpioBMemtop {
-		return &mem.gpioB, addr - mem.gpioBOrigin
-	}
+
 	if addr >= mem.armOrigin && addr <= mem.armMemtop {
 		return &mem.armProgram, addr - mem.armOrigin
 	}
@@ -275,22 +285,22 @@ func (mem *aceMemory) IsExecutable(addr uint32) bool {
 // returns a list of memory areas in the cartridge's static memory
 func (a *aceMemory) Segments() []mapper.CartStaticSegment {
 	return []mapper.CartStaticSegment{
-		mapper.CartStaticSegment{
+		{
 			Name:   "Flash",
 			Origin: a.flashOrigin,
 			Memtop: a.flashMemtop,
 		},
-		mapper.CartStaticSegment{
+		{
 			Name:   "SRAM",
 			Origin: a.sramOrigin,
 			Memtop: a.sramMemtop,
 		},
-		mapper.CartStaticSegment{
+		{
 			Name:   "ARM Program",
 			Origin: a.armOrigin,
 			Memtop: a.armMemtop,
 		},
-		mapper.CartStaticSegment{
+		{
 			Name:   "VCS Program",
 			Origin: a.vcsOrigin,
 			Memtop: a.vcsMemtop,
