@@ -851,10 +851,6 @@ func (dbg *Debugger) StartInPlayMode(filename string) error {
 }
 
 // CartYield implements the mapper.CartYieldHook interface.
-//
-// A reason of YieldForVCS or YieldProgramEnded will always return false so for
-// (small) performance reasons cartridge mappers can simply not call CartYield
-// unless the reason is something different.
 func (dbg *Debugger) CartYield(reason mapper.YieldReason) bool {
 	// if the emulator wants to quit we need to return true to instruct the
 	// cartridge to return to the main loop immediately
@@ -870,30 +866,16 @@ func (dbg *Debugger) CartYield(reason mapper.YieldReason) bool {
 	case mapper.YieldSyncWithVCS:
 		// expected reason for ACE and ELF cartridges
 		return false
+	}
 
-	default:
-		dbg.halting.cartridgeYield = true
-		dbg.continueEmulation = dbg.halting.check()
+	dbg.halting.cartridgeYield = true
+	dbg.continueEmulation = dbg.halting.check()
 
-		// how we handle it depends on the mode
-		//
-		// if we're in playmode we need to enter the debugger. to do this
-		// successfully the current ARM execution needs to exit and to allow
-		// the play loop to exit and the debugger loop to start
-		//
-		// if we're in the debugger mode already, we can simply instantiate
-		// another inputLoop()
-		switch dbg.Mode() {
-		case govern.ModePlay:
-			// this switch to the debugger needs refinement. currently this
-			// isn't likely to land on the correct yield point. it will instead
-			// land on the next natural yield point. we can probably get around
-			// this with clever use of the rewind system
-			dbg.setMode(govern.ModeDebugger)
-			return true
-		case govern.ModeDebugger:
-			dbg.inputLoop(dbg.term, true)
-		}
+	switch dbg.Mode() {
+	case govern.ModePlay:
+		dbg.setMode(govern.ModeDebugger)
+	case govern.ModeDebugger:
+		dbg.inputLoop(dbg.term, true)
 	}
 
 	return false

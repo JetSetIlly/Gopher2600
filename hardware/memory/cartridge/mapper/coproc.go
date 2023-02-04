@@ -58,6 +58,11 @@ const (
 type CartYieldHook interface {
 	// CartYield returns true if the YieldReason cannot be handled without
 	// breaking into a debugging loop
+	//
+	// CartYield will return true if the cartridge mapper should cancel
+	// coprocessing immediately
+	//
+	// all other yield reasons will return false
 	CartYield(YieldReason) bool
 }
 
