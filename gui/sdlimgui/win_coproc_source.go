@@ -239,16 +239,21 @@ func (win *winCoProcSource) draw() {
 		win.drawFileSelection(src)
 		imgui.Separator()
 
-		// change selectedFile
+		// change selectedFile if update flag is set
 		if win.updateSelectedFile {
 			win.selectedFile = src.FilesByShortname[win.selectedShortFileName]
-			// updateSelectFile is reset to false below (because we need to check it again)
 		}
 
 		// source code view
 		imgui.BeginGroup()
 		win.drawSource(src)
 		imgui.EndGroup()
+
+		// we don't need updateSelectedFile after the call to drawSource() so
+		// it is safe to reset
+		if win.updateSelectedFile {
+			win.updateSelectedFile = false
+		}
 
 		if imgui.IsMouseDown(1) && imgui.IsItemHovered() {
 			imgui.OpenPopup(sourcePopupID)
@@ -404,6 +409,12 @@ func (win *winCoProcSource) saveToCSV(src *developer.Source) {
 func (win *winCoProcSource) drawSource(src *developer.Source) {
 	// new child that contains the main scrollable table
 	imgui.BeginChildV("##coprocSourceMain", imgui.Vec2{X: 0, Y: imguiRemainingWinHeight() - win.optionsHeight}, false, 0)
+	defer imgui.EndChild()
+
+	if win.selectedFile == nil {
+		imgui.Text("No source file selected")
+		return
+	}
 
 	imgui.PushFont(win.img.glsl.fonts.code)
 	lineSpacing := float32(win.img.prefs.codeFontLineSpacing.Get().(int))
@@ -654,9 +665,6 @@ func (win *winCoProcSource) drawSource(src *developer.Source) {
 			// scroll to correct line
 			if win.updateSelectedFile {
 				imgui.SetScrollY(clipper.ItemsHeight * float32(win.selectedLine.start-10))
-
-				// we can reset updateSelectedFile here (because we don't need it again)
-				win.updateSelectedFile = false
 			}
 		}
 
@@ -665,6 +673,4 @@ func (win *winCoProcSource) drawSource(src *developer.Source) {
 
 	imgui.PopStyleVarV(2)
 	imgui.PopFont()
-
-	imgui.EndChild()
 }

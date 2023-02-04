@@ -209,6 +209,19 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 
 	var err error
 
+	// the path component of the romFile
+	pathToROM := filepath.Dir(romFile)
+
+	// readSourceFile() will shorten the filepath of a source file using the
+	// pathToROM string. however, symbolic links can confuse this so we expand
+	// all symbolic links in readSourceFile() and need to do the same with the
+	// pathToROM value
+	var pathToROM_nosymlinks string
+	pathToROM_nosymlinks, err = filepath.EvalSymlinks(pathToROM)
+	if err != nil {
+		pathToROM_nosymlinks = pathToROM
+	}
+
 	// open ELF file
 	var ef *elf.File
 	var fromCartridge bool
@@ -379,19 +392,6 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 		return nil, curated.Errorf("dwarf: %v", err)
 	}
 
-	// the path component of the romFile
-	pathToROM := filepath.Dir(romFile)
-
-	// readSourceFile() will shorten the filepath of a source file using the
-	// pathToROM string. however, symbolic links can confuse this so we expand
-	// all symbolic links in readSourceFile() and need to do the same with the
-	// pathToROM value
-	var pathToROM_nosymlinks string
-	pathToROM_nosymlinks, err = filepath.EvalSymlinks(pathToROM)
-	if err != nil {
-		pathToROM_nosymlinks = pathToROM
-	}
-
 	// compile units are made up of many files. the files and filenames are in
 	// the fields below
 	r := dwrf.Reader()
@@ -434,7 +434,6 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 			}
 
 			// loop through files in the compilation unit. entry 0 is always nil
-			pathToRom := filepath.Dir(romFile)
 			for _, f := range r.Files()[1:] {
 				if _, ok := src.Files[f.Name]; !ok {
 					sf, err := readSourceFile(f.Name, pathToROM_nosymlinks, &src.AllLines)
@@ -444,7 +443,7 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 						src.Files[sf.Filename] = sf
 						src.Filenames = append(src.Filenames, sf.Filename)
 
-						if strings.HasPrefix(sf.Filename, pathToRom) {
+						if strings.HasPrefix(sf.Filename, pathToROM) {
 							src.FilesByShortname[sf.ShortFilename] = sf
 							src.ShortFilenames = append(src.ShortFilenames, sf.ShortFilename)
 						}
@@ -469,6 +468,27 @@ func NewSource(romFile string, cart CartCoProcDeveloper, elfFile string) (*Sourc
 				return nil, curated.Errorf("dwarf: bad data: no compile unit tag")
 			}
 			src.compileUnits[len(src.compileUnits)-1].children[e.Offset] = e
+		}
+	}
+
+	// if no list of "short" filenames has been created then we default using
+	// regular filenames
+	if len(src.ShortFilenames) == 0 {
+		// if there are no regular filenames either then there's nothing
+		// meaningful we can do
+		if len(src.Filenames) == 0 {
+			return nil, curated.Errorf("dwarf: no source files loaded")
+		}
+
+		// copy filenames to the shortfilename field
+		src.ShortFilenames = append(src.ShortFilenames, src.Filenames...)
+		for k, v := range src.Files {
+			src.FilesByShortname[k] = v
+		}
+
+		// we also need to change the filename references in the files themselves
+		for _, f := range src.Files {
+			f.ShortFilename = f.Filename
 		}
 	}
 
@@ -903,7 +923,7 @@ func readSourceFile(filename string, pathToROM_nosymlinks string, all *AllSource
 		}
 	}
 
-	// evaluate symbolic links for the source filenam. pathToROM_nosymlinks has
+	// evaluate symbolic links for the source filename. pathToROM_nosymlinks has
 	// already been processed so the comparison later should work in all
 	// instance
 	var filename_nosymlinks string
