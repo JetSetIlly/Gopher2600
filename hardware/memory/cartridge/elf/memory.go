@@ -62,9 +62,10 @@ type elfMemory struct {
 	// input/output pins
 	gpio *gpio
 
-	// the different sections of the loaded ELF binary
-	sections       map[string]*elfSection
-	sectionsByName []string
+	// the different sectionsByName of the loaded ELF binary
+	sections       []*elfSection
+	sectionNames   []string
+	sectionsByName map[string]int
 
 	// RAM memory for the ARM
 	sram       []byte
@@ -118,9 +119,9 @@ type elfMemory struct {
 
 func newElfMemory(ef *elf.File) (*elfMemory, error) {
 	mem := &elfMemory{
-		gpio:     newGPIO(),
-		sections: make(map[string]*elfSection),
-		args:     make([]byte, argMemtop-argOrigin),
+		gpio:           newGPIO(),
+		sectionsByName: make(map[string]int),
+		args:           make([]byte, argMemtop-argOrigin),
 	}
 
 	// always using PlusCart model for now
@@ -169,12 +170,13 @@ func newElfMemory(ef *elf.File) (*elfMemory, error) {
 			}
 		}
 
-		mem.sections[section.name] = section
-		mem.sectionsByName = append(mem.sectionsByName, section.name)
+		mem.sections = append(mem.sections, section)
+		mem.sectionNames = append(mem.sectionNames, section.name)
+		mem.sectionsByName[section.name] = len(mem.sectionNames) - 1
 	}
 
 	// sort section names
-	sort.Strings(mem.sectionsByName)
+	sort.Strings(mem.sectionNames)
 
 	// strongArm functions are added during relocation
 	mem.strongArmFunctions = make(map[uint32]strongArmFunction)
@@ -201,10 +203,10 @@ func newElfMemory(ef *elf.File) (*elfMemory, error) {
 
 		// section being relocated
 		var secBeingRelocated *elfSection
-		if s, ok := mem.sections[rel.Name[4:]]; !ok {
+		if idx, ok := mem.sectionsByName[rel.Name[4:]]; !ok {
 			return nil, curated.Errorf("ELF: could not find section corresponding to %s", rel.Name)
 		} else {
-			secBeingRelocated = s
+			secBeingRelocated = mem.sections[idx]
 		}
 
 		// I'm not sure how to handle .debug_macro. it seems to be very
@@ -341,10 +343,10 @@ func newElfMemory(ef *elf.File) (*elfMemory, error) {
 				default:
 					if sym.Section != elf.SHN_UNDEF {
 						n := ef.Sections[sym.Section].Name
-						if p, ok := mem.sections[n]; !ok {
+						if idx, ok := mem.sectionsByName[n]; !ok {
 							logger.Logf("ELF", "can not find section (%s) while relocating %s", n, sym.Name)
 						} else {
-							v = p.origin
+							v = mem.sections[idx].origin
 							v += uint32(sym.Value)
 						}
 					}
@@ -377,10 +379,10 @@ func newElfMemory(ef *elf.File) (*elfMemory, error) {
 				}
 
 				n := ef.Sections[sym.Section].Name
-				if p, ok := mem.sections[n]; !ok {
+				if idx, ok := mem.sectionsByName[n]; !ok {
 					return nil, curated.Errorf("ELF: can not find section (%s)", n)
 				} else {
-					v = p.origin
+					v = mem.sections[idx].origin
 				}
 				v += uint32(sym.Value)
 				v &= 0xfffffffe
@@ -423,7 +425,8 @@ func newElfMemory(ef *elf.File) (*elfMemory, error) {
 	// the elf.File structure is no good for our purposes
 	for _, s := range symbols {
 		if s.Name == "main" || s.Name == "elf_main" {
-			mem.resetPC = mem.sections[".text"].origin + uint32(s.Value)
+			idx := mem.sectionsByName[".text"]
+			mem.resetPC = mem.sections[idx].origin + uint32(s.Value)
 			break // for loop
 		}
 	}
@@ -487,9 +490,9 @@ func (mem *elfMemory) Snapshot() *elfMemory {
 
 	m.gpio = mem.gpio.Snapshot()
 
-	m.sections = make(map[string]*elfSection)
-	for k := range mem.sections {
-		m.sections[k] = mem.sections[k].Snapshot()
+	m.sections = make([]*elfSection, len(mem.sections))
+	for i := range mem.sections {
+		m.sections[i] = mem.sections[i].Snapshot()
 	}
 
 	m.sram = make([]byte, len(mem.sram))
@@ -529,15 +532,6 @@ func (mem *elfMemory) MapAddress(addr uint32, write bool) (*[]byte, uint32) {
 		return &mem.gpio.lookup, addr - mem.gpio.lookupOrigin
 	}
 
-	for _, s := range mem.sections {
-		if addr >= s.origin && addr <= s.memtop {
-			if write && s.readOnly {
-				return nil, addr
-			}
-			return &s.data, addr - s.origin
-		}
-	}
-
 	if addr >= mem.sramOrigin && addr <= mem.sramMemtop {
 		return &mem.sram, addr - mem.sramOrigin
 	}
@@ -551,9 +545,18 @@ func (mem *elfMemory) MapAddress(addr uint32, write bool) (*[]byte, uint32) {
 		return &mem.strongArmProgram, addr - mem.strongArmOrigin
 	}
 
-	// check argument memory last
 	if addr >= argOrigin && addr <= argMemtop {
 		return &mem.args, addr - argOrigin
+	}
+
+	// accessing ELF sections is very unlikely so do this last
+	for _, s := range mem.sections {
+		if addr >= s.origin && addr <= s.memtop {
+			if write && s.readOnly {
+				return nil, addr
+			}
+			return &s.data, addr - s.origin
+		}
 	}
 
 	return nil, addr
@@ -580,8 +583,9 @@ func (mem *elfMemory) Segments() []mapper.CartStaticSegment {
 		},
 	}
 
-	for _, n := range mem.sectionsByName {
-		s := mem.sections[n]
+	for _, n := range mem.sectionNames {
+		idx := mem.sectionsByName[n]
+		s := mem.sections[idx]
 		if s.inMemory {
 			segments = append(segments, mapper.CartStaticSegment{
 				Name:   s.name,
@@ -608,8 +612,8 @@ func (mem *elfMemory) Reference(segment string) ([]uint8, bool) {
 	case "StrongARM Program":
 		return mem.strongArmProgram, true
 	default:
-		if s, ok := mem.sections[segment]; ok {
-			return s.data, true
+		if idx, ok := mem.sectionsByName[segment]; ok {
+			return mem.sections[idx].data, true
 		}
 	}
 	return []uint8{}, false

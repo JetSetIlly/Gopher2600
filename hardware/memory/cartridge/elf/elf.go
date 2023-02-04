@@ -396,8 +396,9 @@ func (cart *Elf) SetDeveloper(dev mapper.CartCoProcDeveloper) {
 
 // ELFSection implements the mapper.CartCoProcELF interface.
 func (cart *Elf) ELFSection(name string) ([]uint8, uint32, bool) {
-	if sec, ok := cart.mem.sections[name]; ok {
-		return sec.data, sec.origin, true
+	if idx, ok := cart.mem.sectionsByName[name]; ok {
+		s := cart.mem.sections[idx]
+		return s.data, s.origin, true
 	}
 	return nil, 0, false
 }
