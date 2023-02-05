@@ -37,6 +37,9 @@ type watcher struct {
 	// whether the address should be interpreted strictly or whether mirrors
 	// should be considered too
 	strict bool
+
+	// whether the watcher should match phantom accesses too
+	phantom bool
 }
 
 func (w watcher) String() string {
@@ -100,11 +103,6 @@ func (wtc *watches) check() string {
 		return ""
 	}
 
-	// no check for phantom access
-	if wtc.dbg.vcs.CPU.PhantomMemAccess {
-		return ""
-	}
-
 	// no check if access address & write flag haven't changed
 	//
 	// note that the write flag comparison is required otherwise RMW
@@ -117,6 +115,11 @@ func (wtc *watches) check() string {
 	checkString := strings.Builder{}
 
 	for _, w := range wtc.watches {
+		// filter phantom accesses
+		if !w.phantom && wtc.dbg.vcs.CPU.PhantomMemAccess {
+			return ""
+		}
+
 		// pick which addresses to compare depending on whether watch is strict
 		if w.strict {
 			if wtc.dbg.vcs.Mem.LastCPUAddressLiteral != w.ai.Address {
@@ -136,13 +139,18 @@ func (wtc *watches) check() string {
 
 		if w.ai.Read {
 			if !wtc.dbg.vcs.Mem.LastCPUWrite {
-				checkString.WriteString(fmt.Sprintf("watch at %s (read value %#02x)\n", lai, wtc.dbg.vcs.Mem.LastCPUData))
+				checkString.WriteString(fmt.Sprintf("watch at %s (read value %#02x)", lai, wtc.dbg.vcs.Mem.LastCPUData))
 			}
 		} else {
 			if wtc.dbg.vcs.Mem.LastCPUWrite {
-				checkString.WriteString(fmt.Sprintf("watch at %s (written value %#02x)\n", lai, wtc.dbg.vcs.Mem.LastCPUData))
+				checkString.WriteString(fmt.Sprintf("watch at %s (written value %#02x)", lai, wtc.dbg.vcs.Mem.LastCPUData))
 			}
 		}
+
+		if wtc.dbg.vcs.CPU.PhantomMemAccess {
+			checkString.WriteString(" phantom")
+		}
+		checkString.WriteRune('\n')
 	}
 
 	// note what the last address accessed was
@@ -169,6 +177,7 @@ func (wtc *watches) list() {
 func (wtc *watches) parseCommand(tokens *commandline.Tokens) error {
 	var read bool
 	var strict bool
+	var phantom bool
 
 	// event type
 	arg, _ := tokens.Get()
@@ -192,6 +201,19 @@ func (wtc *watches) parseCommand(tokens *commandline.Tokens) error {
 		strict = true
 	default:
 		strict = false
+		tokens.Unget()
+	}
+
+	// strict addressing or not
+	arg, _ = tokens.Get()
+	arg = strings.ToUpper(arg)
+	switch arg {
+	case "PHANTOM":
+		fallthrough
+	case "GHOST":
+		phantom = true
+	default:
+		phantom = false
 		tokens.Unget()
 	}
 
@@ -231,6 +253,7 @@ func (wtc *watches) parseCommand(tokens *commandline.Tokens) error {
 		matchValue: useVal,
 		value:      uint8(val),
 		strict:     strict,
+		phantom:    phantom,
 	}
 
 	// check to see if watch already exists

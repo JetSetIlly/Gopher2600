@@ -484,6 +484,10 @@ is read.
 
 	WATCH STRICT 0xf000
 
+The PHANTOM argument will halt execution if the address is unintentionally touched by the CPU during
+instruction decoding. This is sometimes useful to understand why cartridge RAM is being written too
+or why a cartridge hotspot is being triggered.
+
 Existing watches can be reviewed with the LIST command and deleted with the DROP or CLEAR commands`,
 
 	cmdTrace: `Trace activity on the specied memory address. This means any activity, read or write.
