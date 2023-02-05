@@ -292,10 +292,8 @@ func drawByteGrid(id string, data []uint8, origin uint32,
 	const numColumns = 16
 
 	flgs := imgui.TableFlagsSizingFixedFit
-	flgs |= imgui.TableFlagsScrollY
 
 	if imgui.BeginTableV(id, numColumns+1, flgs, imgui.Vec2{}, 0.0) {
-
 		// in some situations we will return early from the drawByteGrid()
 		// function so we want to make sure that EndTable() is called
 		defer imgui.EndTable()
