@@ -146,7 +146,7 @@ func (cart *m3e) AccessDriven(addr uint16, data uint8, poke bool) error {
 	if addr >= 0x0000 && addr <= 0x07ff {
 		segment = 0
 	} else if addr >= 0x0c00 && addr <= 0x0fff {
-		segment = 3
+		segment = 1
 	}
 
 	if cart.state.segmentIsRAM[segment] {
