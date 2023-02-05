@@ -70,8 +70,7 @@ const httpLogging = false
 // over the network. the function will not wait for the network activity.
 func (n *network) send(data uint8, send bool) {
 	if n.sendBuffer.Len() >= sendBufferCap {
-		logger.Log("plusrom", "send buffer is full")
-		return
+		n.sendBuffer = *bytes.NewBuffer([]byte{})
 	}
 	n.sendBuffer.WriteByte(data)
 

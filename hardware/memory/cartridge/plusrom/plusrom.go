@@ -204,12 +204,7 @@ func (cart *PlusROM) AccessDriven(addr uint16, data uint8, poke bool) error {
 	switch addr {
 	case 0x0ff0:
 		// 1FF0 is for writing a byte to the send buffer (max 256 bytes)
-		cart.rewindBoundary = true
 		cart.net.send(data, false)
-		err := cart.notificationHook(cart, notifications.NotifyPlusROMNetwork)
-		if err != nil {
-			return curated.Errorf("plusrom %v:", err)
-		}
 		return nil
 
 	case 0x0ff1:
