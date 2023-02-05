@@ -151,6 +151,11 @@ func (reg *PlaybackRegression) regress(newRegression bool, output io.Writer, msg
 
 	// run emulation
 	err = vcs.Run(func() (govern.State, error) {
+		// if the CPU is in the KIL state then the test will never end normally
+		if vcs.CPU.Killed {
+			return govern.Ending, fmt.Errorf("CPU in KIL state")
+		}
+
 		hasEnded, err := plb.EndFrame()
 		if err != nil {
 			return govern.Ending, curated.Errorf("playback: %v", err)

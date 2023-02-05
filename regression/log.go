@@ -161,6 +161,11 @@ func (reg *LogRegression) regress(newRegression bool, output io.Writer, msg stri
 
 	// run emulation
 	err = vcs.RunForFrameCount(reg.NumFrames, func(frame int) (govern.State, error) {
+		// if the CPU is in the KIL state then the test will never end normally
+		if vcs.CPU.Killed {
+			return govern.Ending, fmt.Errorf("CPU in KIL state")
+		}
+
 		// display progress meter every 1 second
 		select {
 		case <-tck.C:
