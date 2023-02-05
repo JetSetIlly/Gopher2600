@@ -49,12 +49,9 @@ type LazyCart struct {
 	coprocID  atomic.Value // string
 	coprocPC  atomic.Value // uint32
 
-	plusROM         atomic.Value // plusrom.PlusROM (in container)
-	plusROMAddrInfo atomic.Value // plusrom.AddrInfo
-	plusROMNick     atomic.Value // string (from prefs.String.Get())
-	plusROMID       atomic.Value // string (from prefs.String.Get())
-	plusROMRecvBuff atomic.Value // []uint8
-	plusROMSendBuff atomic.Value // []uint8
+	plusROM          atomic.Value // plusrom.PlusROM (in container)
+	plusROMAddrInfo  atomic.Value // plusrom.AddrInfo
+	plusROMSendState atomic.Value // plusrom.SendState
 
 	ID        string
 	Mapping   string
@@ -80,10 +77,9 @@ type LazyCart struct {
 	CoProcID     string
 	CoProcPC     uint32
 
-	IsPlusROM       bool
-	PlusROMAddrInfo plusrom.AddrInfo
-	PlusROMRecvBuff []uint8
-	PlusROMSendBuff []uint8
+	IsPlusROM        bool
+	PlusROMAddrInfo  plusrom.AddrInfo
+	PlusROMSendState plusrom.SendState
 }
 
 func newLazyCart(val *LazyValues) *LazyCart {
@@ -155,8 +151,7 @@ func (lz *LazyCart) push() {
 		if pr, ok := c.(*plusrom.PlusROM); ok {
 			lz.plusROM.Store(container{v: pr})
 			lz.plusROMAddrInfo.Store(pr.CopyAddrInfo())
-			lz.plusROMRecvBuff.Store(pr.CopyRecvBuffer())
-			lz.plusROMSendBuff.Store(pr.CopySendBuffer())
+			lz.plusROMSendState.Store(pr.GetSendState())
 		} else {
 			lz.plusROM.Store(nil)
 		}
@@ -229,8 +224,7 @@ func (lz *LazyCart) update() {
 	_, lz.IsPlusROM = lz.plusROM.Load().(container).v.(*plusrom.PlusROM)
 	if lz.IsPlusROM {
 		lz.PlusROMAddrInfo, _ = lz.plusROMAddrInfo.Load().(plusrom.AddrInfo)
-		lz.PlusROMRecvBuff, _ = lz.plusROMRecvBuff.Load().([]uint8)
-		lz.PlusROMSendBuff, _ = lz.plusROMSendBuff.Load().([]uint8)
+		lz.PlusROMSendState, _ = lz.plusROMSendState.Load().(plusrom.SendState)
 	}
 
 	_, lz.HasCoProcBus = lz.coProcBus.Load().(container).v.(mapper.CartCoProc)

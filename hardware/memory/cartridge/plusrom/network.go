@@ -31,13 +31,30 @@ const (
 	recvBufferCap = 256
 )
 
+type SendState struct {
+	// the data that will be sent to the PlusROM network
+	Buffer [sendBufferCap]uint8
+
+	// the send buffer entry which will (over-)written next
+	WritePtr uint8
+
+	// the number of cpu clocks before the send buffer is transmitted over the
+	// network. the value assigned to this field is not accurate with regards
+	// to the baud rate of the PlusCart or the VCS system clock
+	//
+	// if the timeout value is zero then there is no pending transmission
+	Cycles int
+
+	// the amount of data to be transmitted when Cycles reaches zero. has no
+	// meaning if Cycles equals zero. not the same as WritePtr
+	SendLen uint8
+}
+
 type network struct {
 	instance *instance.Instance
 	ai       AddrInfo
 
-	// these buffers should only be accessed directly by the emulator goroutine
-	// (ie. not from the send() goroutine or by any UI goroutine come to that)
-	sendBuffer bytes.Buffer
+	send       SendState
 	recvBuffer bytes.Buffer
 
 	// shared between emulator goroutine and send() goroutine
@@ -68,95 +85,119 @@ const httpLogging = false
 // add a single byte to the send buffer, capping the length of the buffer at
 // the sendBufferCap value. if the "send" flag is true then the buffer is sent
 // over the network. the function will not wait for the network activity.
-func (n *network) send(data uint8, send bool) {
-	if n.sendBuffer.Len() >= sendBufferCap {
-		n.sendBuffer = *bytes.NewBuffer([]byte{})
+func (n *network) buffer(data uint8) {
+	n.send.Buffer[n.send.WritePtr] = data
+	n.send.WritePtr++
+}
+
+func (n *network) commit() {
+	n.send.SendLen = n.send.WritePtr
+	n.send.WritePtr--
+
+	// the figure of 1024 is not accurate but it is sufficient to emulate the
+	// observed behaviour in the hardware. a realistic figure will be based on
+	// the system clock of the VCS and the baudrate of the PlusCart (which is
+	// 115200)
+	n.send.Cycles = int(n.send.WritePtr) * 1024
+}
+
+func (n *network) transmitWait() {
+	if n.send.Cycles > 0 {
+		n.send.Cycles--
+		if n.send.Cycles == 0 {
+			n.transmit()
+		}
 	}
-	n.sendBuffer.WriteByte(data)
+}
 
-	if send {
-		go func(send bytes.Buffer, addr AddrInfo) {
-			n.sendLock.Lock()
-			defer n.sendLock.Unlock()
+func (n *network) transmit() {
+	var sendBuffer bytes.Buffer
+	sendBuffer.Write(n.send.Buffer[:n.send.SendLen])
 
-			logger.Logf("plusrom [net]", "sending to %s", addr.String())
+	go func(send bytes.Buffer, addr AddrInfo) {
+		n.sendLock.Lock()
+		defer n.sendLock.Unlock()
 
-			req, err := http.NewRequest("POST", addr.String(), &send)
-			if err != nil {
-				logger.Log("plusrom [net]", err.Error())
-				return
-			}
+		logger.Logf("plusrom [net]", "sending to %s", addr.String())
 
-			// content length HTTP header is the length of the send buffer
-			req.Header.Set("Content-Length", fmt.Sprintf("%d", send.Len()))
+		req, err := http.NewRequest("POST", addr.String(), &send)
+		if err != nil {
+			logger.Log("plusrom [net]", err.Error())
+			return
+		}
 
-			// from http://pluscart.firmaplus.de/pico/?PlusROM
-			//
-			// "The bytes are send to the back end as content of an HTTP 1.0
-			// POST request with "Content-Type: application/octet-stream"."
-			req.Header.Set("Content-Type", "application/octet-stream")
+		// content length HTTP header is the length of the send buffer
+		req.Header.Set("Content-Length", fmt.Sprintf("%d", send.Len()))
 
-			// from http://pluscart.firmaplus.de/pico/?PlusROM
-			//
-			// "PlusCarts with firmware versions newer than v2.1.1 are sending a "PlusROM-Info" http header.
-			//
-			// The new "PlusROM-Info" header is discussed/explained in this AtariAge thread:
-			// https://atariage.com/forums/topic/324456-redesign-plusrom-request-http-header"
-			//
-			id := fmt.Sprintf("agent=Gopher2600; ver=0.17.0; id=%s; nick=%s",
-				// whether or not ID and Nick are valid has been handled in the preferences system
-				n.instance.Prefs.PlusROM.ID.String(),
-				n.instance.Prefs.PlusROM.Nick.String(),
-			)
-			req.Header.Set("PlusROM-Info", id)
-			logger.Logf("plusrom [net]", "PlusROM-Info: %s", id)
+		// from http://pluscart.firmaplus.de/pico/?PlusROM
+		//
+		// "The bytes are send to the back end as content of an HTTP 1.0
+		// POST request with "Content-Type: application/octet-stream"."
+		req.Header.Set("Content-Type", "application/octet-stream")
 
-			// -----------------------------------------------
-			// PlusCart firmware earlier han v2.1.1
-			//
-			// "Emulators should generate a "PlusStore-ID" http-header with
-			// their request, that consists of a nickname given by the user and
-			// a generated uuid (starting with "WE") separated by a space
-			// character."
-			//
-			// id := fmt.Sprintf("%s WE%s", n.instance.Prefs.PlusROM.Nick.String(), n.instance.Prefs.PlusROM.ID.String())
-			// req.Header.Set("PlusStore-ID", id)
-			// logger.Logf("plusrom [net]", "PlusStore-ID: %s", id)
-			// -----------------------------------------------
+		// from http://pluscart.firmaplus.de/pico/?PlusROM
+		//
+		// "PlusCarts with firmware versions newer than v2.1.1 are sending a "PlusROM-Info" http header.
+		//
+		// The new "PlusROM-Info" header is discussed/explained in this AtariAge thread:
+		// https://atariage.com/forums/topic/324456-redesign-plusrom-request-http-header"
+		//
+		id := fmt.Sprintf("agent=Gopher2600; ver=0.17.0; id=%s; nick=%s",
+			// whether or not ID and Nick are valid has been handled in the preferences system
+			n.instance.Prefs.PlusROM.ID.String(),
+			n.instance.Prefs.PlusROM.Nick.String(),
+		)
+		req.Header.Set("PlusROM-Info", id)
+		logger.Logf("plusrom [net]", "PlusROM-Info: %s", id)
 
-			// log of complete request
-			if httpLogging {
-				s, _ := httputil.DumpRequest(req, true)
-				logger.Logf("plusrom [net]", "request: %q", s)
-			}
+		// -----------------------------------------------
+		// PlusCart firmware earlier han v2.1.1
+		//
+		// "Emulators should generate a "PlusStore-ID" http-header with
+		// their request, that consists of a nickname given by the user and
+		// a generated uuid (starting with "WE") separated by a space
+		// character."
+		//
+		// id := fmt.Sprintf("%s WE%s", n.instance.Prefs.PlusROM.Nick.String(), n.instance.Prefs.PlusROM.ID.String())
+		// req.Header.Set("PlusStore-ID", id)
+		// logger.Logf("plusrom [net]", "PlusStore-ID: %s", id)
+		// -----------------------------------------------
 
-			// send response over network
-			resp, err := http.DefaultClient.Do(req)
-			if err != nil {
-				logger.Log("plusrom [net]", err.Error())
-				return
-			}
-			defer resp.Body.Close()
+		// log of complete request
+		if httpLogging {
+			s, _ := httputil.DumpRequest(req, true)
+			logger.Logf("plusrom [net]", "request: %q", s)
+		}
 
-			// log of complete response
-			if httpLogging {
-				s, _ := httputil.DumpResponse(resp, true)
-				logger.Logf("plusrom [net]", "response: %q", s)
-			}
+		// send response over network
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			logger.Log("plusrom [net]", err.Error())
+			return
+		}
+		defer resp.Body.Close()
 
-			// pass response to main goroutine
-			var r bytes.Buffer
-			_, err = r.ReadFrom(resp.Body)
-			if err != nil {
-				logger.Logf("plusrom [net]", "response: %v", err)
-			}
-			n.respChan <- r
-		}(n.sendBuffer, n.ai)
+		// log of complete response
+		if httpLogging {
+			s, _ := httputil.DumpResponse(resp, true)
+			logger.Logf("plusrom [net]", "response: %q", s)
+		}
 
-		// a copy of the sendBuffer has been passed to the new goroutine so we
-		// can now clear the references buffer
-		n.sendBuffer = *bytes.NewBuffer([]byte{})
-	}
+		// pass response to main goroutine
+		var r bytes.Buffer
+		_, err = r.ReadFrom(resp.Body)
+		if err != nil {
+			logger.Logf("plusrom [net]", "response: %v", err)
+		}
+		n.respChan <- r
+	}(sendBuffer, n.ai)
+
+	// log send buffer
+	logger.Log("plusrom [net] sent", fmt.Sprintf("% 02x", n.send.Buffer[:n.send.SendLen]))
+
+	// a copy of the sendBuffer has been passed to the new goroutine so we
+	// can now clear the references buffer
+	n.send.WritePtr = 0
 }
 
 // getResponse is called whenever recv() and recvRemaining() is called. it
@@ -220,28 +261,13 @@ func (n *network) recv() uint8 {
 	return b
 }
 
-// CopyRecvBuffer makes a copy of the bytes in the receive buffer.
-func (cart *PlusROM) CopyRecvBuffer() []uint8 {
-	return cart.net.recvBuffer.Bytes()
-}
-
-// CopySendBuffer makes a copy of the bytes in the send buffer.
-func (cart *PlusROM) CopySendBuffer() []uint8 {
-	return cart.net.sendBuffer.Bytes()
-}
-
-// SetRecvBuffer sets the entry that is idx places from the front with the
-// specified value.
-func (cart *PlusROM) SetRecvBuffer(idx int, data uint8) {
-	c := cart.CopyRecvBuffer()
-	c[idx] = data
-	cart.net.recvBuffer = *bytes.NewBuffer(c)
+// GetSendState returns the current state of the network
+func (cart *PlusROM) GetSendState() SendState {
+	return cart.net.send
 }
 
 // SetSendBuffer sets the entry that is idx places from the front with the
 // specified value.
 func (cart *PlusROM) SetSendBuffer(idx int, data uint8) {
-	c := cart.CopySendBuffer()
-	c[idx] = data
-	cart.net.sendBuffer = *bytes.NewBuffer(c)
+	cart.net.send.Buffer[idx] = data
 }

@@ -204,14 +204,15 @@ func (cart *PlusROM) AccessVolatile(addr uint16, data uint8, poke bool) error {
 	switch addr {
 	case 0x0ff0:
 		// 1FF0 is for writing a byte to the send buffer (max 256 bytes)
-		cart.net.send(data, false)
+		cart.net.buffer(data)
 		return nil
 
 	case 0x0ff1:
 		// 1FF1 is for writing a byte to the send buffer and submit the buffer
 		// to the back end API
 		cart.rewindBoundary = true
-		cart.net.send(data, true)
+		cart.net.buffer(data)
+		cart.net.commit()
 		err := cart.notificationHook(cart, notifications.NotifyPlusROMNetwork)
 		if err != nil {
 			return curated.Errorf("plusrom %v:", err)
@@ -244,6 +245,7 @@ func (cart *PlusROM) AccessPassive(addr uint16, data uint8) {
 
 // Step implements the mapper.CartMapper interface.
 func (cart *PlusROM) Step(clock float32) {
+	cart.net.transmitWait()
 	cart.state.child.Step(clock)
 }
 
