@@ -311,8 +311,8 @@ func (cart *Moviecart) Access(addr uint16, _ bool) (data uint8, mask uint8, err 
 	return cart.state.sram[addr&0x3ff], mapper.CartDrivenPins, nil
 }
 
-// AccessDriven implements the mapper.CartMapper interface.
-func (cart *Moviecart) AccessDriven(addr uint16, data uint8, _ bool) error {
+// AccessVolatile implements the mapper.CartMapper interface.
+func (cart *Moviecart) AccessVolatile(addr uint16, data uint8, _ bool) error {
 	return nil
 }
 

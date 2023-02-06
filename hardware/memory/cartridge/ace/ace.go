@@ -132,8 +132,8 @@ func (cart *Ace) Access(addr uint16, _ bool) (uint8, uint8, error) {
 	return 0, 0, nil
 }
 
-// AccessDriven implements the mapper.CartMapper interface.
-func (cart *Ace) AccessDriven(addr uint16, data uint8, _ bool) error {
+// AccessVolatile implements the mapper.CartMapper interface.
+func (cart *Ace) AccessVolatile(addr uint16, data uint8, _ bool) error {
 	return nil
 }
 

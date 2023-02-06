@@ -23,7 +23,6 @@ import (
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/instance"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 	"github.com/jetsetilly/gopher2600/logger"
 )
@@ -211,7 +210,7 @@ func (cart *atari) accessDriven(addr uint16, data uint8, poke bool) error {
 		return nil
 	}
 
-	return curated.Errorf("atari: %v", curated.Errorf(cpubus.AddressError, addr))
+	return nil
 }
 
 // Patch implements the mapper.CartMapper interface.
@@ -228,23 +227,6 @@ func (cart *atari) Patch(offset int, data uint8) error {
 
 // AccessPassive implements the mapper.CartMapper interface.
 func (cart *atari) AccessPassive(addr uint16, data uint8) {
-	// Sometimes, cartridge addresses can be accessed inadvertently. in most
-	// instances, there are no consequences but in the case of the Superchip,
-	// the write addresses can be accessed and the RAM data changed. we handle
-	// that here.
-	//
-	// https://atariage.com/forums/topic/329888-indexed-read-page-crossing-and-sc-ram/
-	if cart.state.ram != nil {
-		if addr&memorymap.OriginCart == memorymap.OriginCart {
-			addr &= memorymap.MaskCart
-			addr ^= memorymap.OriginCart
-
-			// Atari Superchip is 128 bytes
-			if addr&0xff80 == 0x0000 {
-				cart.state.ram[addr&0x7f] = data
-			}
-		}
-	}
 }
 
 // Step implements the mapper.CartMapper interface.
@@ -350,8 +332,8 @@ func (cart *atari4k) Access(addr uint16, peek bool) (uint8, uint8, error) {
 	return cart.banks[0][addr], mapper.CartDrivenPins, nil
 }
 
-// AccessDriven implements the mapper.CartMapper interface.
-func (cart *atari4k) AccessDriven(addr uint16, data uint8, poke bool) error {
+// AccessVolatile implements the mapper.CartMapper interface.
+func (cart *atari4k) AccessVolatile(addr uint16, data uint8, poke bool) error {
 	return cart.atari.accessDriven(addr, data, poke)
 }
 
@@ -425,8 +407,8 @@ func (cart *atari2k) CopyBanks() []mapper.BankContent {
 	return c
 }
 
-// AccessDriven implements the mapper.CartMapper interface.
-func (cart *atari2k) AccessDriven(addr uint16, data uint8, poke bool) error {
+// AccessVolatile implements the mapper.CartMapper interface.
+func (cart *atari2k) AccessVolatile(addr uint16, data uint8, poke bool) error {
 	return cart.atari.accessDriven(addr, data, poke)
 }
 
@@ -489,8 +471,8 @@ func (cart *atari8k) Access(addr uint16, peek bool) (uint8, uint8, error) {
 	return cart.banks[cart.state.bank][addr], mapper.CartDrivenPins, nil
 }
 
-// AccessDriven implements the mapper.CartMapper interface.
-func (cart *atari8k) AccessDriven(addr uint16, data uint8, poke bool) error {
+// AccessVolatile implements the mapper.CartMapper interface.
+func (cart *atari8k) AccessVolatile(addr uint16, data uint8, poke bool) error {
 	if !poke {
 		if cart.bankswitch(addr) {
 			return nil
@@ -586,8 +568,8 @@ func (cart *atari16k) Access(addr uint16, peek bool) (uint8, uint8, error) {
 	return cart.banks[cart.state.bank][addr], mapper.CartDrivenPins, nil
 }
 
-// AccessDriven implements the mapper.CartMapper interface.
-func (cart *atari16k) AccessDriven(addr uint16, data uint8, poke bool) error {
+// AccessVolatile implements the mapper.CartMapper interface.
+func (cart *atari16k) AccessVolatile(addr uint16, data uint8, poke bool) error {
 	if !poke {
 		if cart.bankswitch(addr) {
 			return nil
@@ -689,8 +671,8 @@ func (cart *atari32k) Access(addr uint16, peek bool) (uint8, uint8, error) {
 	return cart.banks[cart.state.bank][addr], mapper.CartDrivenPins, nil
 }
 
-// AccessDriven implements the mapper.CartMapper interface.
-func (cart *atari32k) AccessDriven(addr uint16, data uint8, poke bool) error {
+// AccessVolatile implements the mapper.CartMapper interface.
+func (cart *atari32k) AccessVolatile(addr uint16, data uint8, poke bool) error {
 	if !poke {
 		if cart.bankswitch(addr) {
 			return nil

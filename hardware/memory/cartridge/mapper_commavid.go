@@ -21,7 +21,6 @@ import (
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/instance"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 	"github.com/jetsetilly/gopher2600/logger"
 )
@@ -121,8 +120,8 @@ func (cart *commavid) Access(addr uint16, _ bool) (uint8, uint8, error) {
 	return cart.bankData[addr], mapper.CartDrivenPins, nil
 }
 
-// AccessDriven implements the mapper.CartMapper interface.
-func (cart *commavid) AccessDriven(addr uint16, data uint8, poke bool) error {
+// AccessVolatile implements the mapper.CartMapper interface.
+func (cart *commavid) AccessVolatile(addr uint16, data uint8, poke bool) error {
 	if addr >= 0x0400 && addr <= 0x07ff {
 		cart.state.ram[addr&0x03ff] = data
 		return nil
@@ -133,7 +132,7 @@ func (cart *commavid) AccessDriven(addr uint16, data uint8, poke bool) error {
 		return nil
 	}
 
-	return curated.Errorf("CV: %v", curated.Errorf(cpubus.AddressError, addr))
+	return nil
 }
 
 // NumBanks implements the mapper.CartMapper interface.
@@ -159,9 +158,6 @@ func (cart *commavid) Patch(offset int, data uint8) error {
 
 // AccessPassive implements the mapper.CartMapper interface.
 func (cart *commavid) AccessPassive(addr uint16, data uint8) {
-	// Sometimes, cartridge addresses can be accessed inadvertently. but unlike
-	// the Atari Superchip or CBS RAM I don't believe this can happen with
-	// CommaVid RAM
 }
 
 // Step implements the mapper.CartMapper interface.

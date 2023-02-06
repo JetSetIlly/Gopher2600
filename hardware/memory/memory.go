@@ -148,9 +148,14 @@ func (mem *Memory) GetArea(area memorymap.Area) DebugBus {
 // Readt is an implementation of CPUBus. Address will be normalised and processed by the correct
 // memory areas.
 func (mem *Memory) Read(address uint16) (uint8, error) {
+	var err error
+
 	// the address bus value is the literal address masked to the 13 bits
 	// available to the 6507
 	addressBus := address & memorymap.Memtop
+
+	ma, ar := memorymap.MapAddress(addressBus, true)
+	area := mem.GetArea(ar)
 
 	// the cartridge can respond to an address transition
 	if mem.AddressBus != addressBus {
@@ -158,38 +163,25 @@ func (mem *Memory) Read(address uint16) (uint8, error) {
 		mem.AddressBus = addressBus
 
 		// note that we're using the previous data bus value not the new data bus
-		// value. this matches observations made by Al_Nafuur with the following
-		// binary:
-		//
-		// https://atariage.com/forums/topic/329888-indexed-read-page-crossing-and-sc-ram/
-		//
-		// we can think of this as the new address being put on the bus before the
-		// data bus is changed. the cartridge responds to the address change
-		// immediately, before the new data has been put on the bus
-		//
-		// this behaviour seems to be dependent on the host cartridge. the
-		// current behaviour reflects what happens on the PlusCart (and
-		// probably the UnoCart). original cartridge hardware and Harmony are
-		// different:
-		//
-		// https://atariage.com/forums/topic/285759-stella-getting-into-details-help-wanted/
-		//
-		// TODO: emulate what happens to the DataBus when it's not being explicitely driven
-		//
-		// To summarise what I know so far:
-		//
-		// UnoCart/PlusCart  |  mem.DataBus
-		// Harmony           |  mem.DataBus | 0b01000000
-		//
+		// value
 		mem.Cart.AccessPassive(mem.AddressBus, mem.DataBus)
 	}
 
-	ma, ar := memorymap.MapAddress(address, true)
-	area := mem.GetArea(ar)
+	// if the area is cartridge then we need to consider what happens to
+	// cartridge addresses that are volatile. ie. RAM locations and "hotspots".
+	//
+	// what is happening here is probably not an intentional act by the 6507
+	// program but it still needs to be accounted for
+	//
+	// note that we're using the previous value on the databus. this is because
+	// the 6507 is not driving the data bus
+	if ar == memorymap.Cartridge {
+		err = mem.Cart.Write(mem.AddressBus, mem.DataBus)
+	}
 
-	// read data from area
+	// read data from area. if there is an error, we can just ignore it until
+	// we get to the end of the function
 	var data uint8
-	var err error
 	data, mem.DataBusDriven, err = area.Read(ma)
 
 	// the data bus is not always completely driven. ie. some pins are not powered and are left
@@ -198,13 +190,26 @@ func (mem *Memory) Read(address uint16) (uint8, error) {
 	// a good example of this are the TIA addresses. see commentary for TIADriverPins for extensive
 	// explanation
 	if mem.DataBusDriven != 0xff {
+		// this pattern is good for replicating what we see on the pluscart
+		// this matches observations made by Al_Nafuur with the following
+		// binary:
+		//
+		// https://atariage.com/forums/topic/329888-indexed-read-page-crossing-and-sc-ram/
+		//
+		// a different bit pattern can be seen on the Harmony
+		//
+		// https://atariage.com/forums/topic/285759-stella-getting-into-details-help-wanted/
+		data |= mem.LastCPUData & ^mem.DataBusDriven
+
+		// on a real superchip the pins are more indeterminate. for now,
+		// applying an addition random pattern is a good enough emulation for this
 		if mem.instance != nil && mem.instance.Prefs.RandomPins.Get().(bool) {
-			data |= uint8(mem.instance.Random.Rewindable(0xff)) & ^mem.DataBusDriven
-		} else {
-			data |= mem.LastCPUData & ^mem.DataBusDriven
+			data |= uint8(mem.instance.Random.Rewindable(0xff))
 		}
 	}
 
+	// we also need to consider what happens when a cartridge is forcefully
+	// driving the data bus
 	if stuff, ok := mem.Cart.BusStuff(); ok {
 		data = stuff
 	}
@@ -224,7 +229,11 @@ func (mem *Memory) Read(address uint16) (uint8, error) {
 // Write is an implementation of CPUBus. Address will be normalised and processed by the correct
 // memory areas.
 func (mem *Memory) Write(address uint16, data uint8) error {
-	ma, ar := memorymap.MapAddress(address, false)
+	// the address bus value is the literal address masked to the 13 bits
+	// available to the 6507
+	addressBus := address & memorymap.Memtop
+
+	ma, ar := memorymap.MapAddress(addressBus, false)
 	area := mem.GetArea(ar)
 
 	// drive pins from cartridge
@@ -234,10 +243,6 @@ func (mem *Memory) Write(address uint16, data uint8) error {
 
 	// update data bus
 	mem.DataBus = data
-
-	// the address bus value is the literal address masked to the 13 bits
-	// available to the 6507
-	addressBus := address & memorymap.Memtop
 
 	// service changes to address bus
 	if addressBus != mem.AddressBus {

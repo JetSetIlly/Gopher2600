@@ -199,8 +199,8 @@ func (cart *PlusROM) Access(addr uint16, peek bool) (data uint8, mask uint8, err
 	return cart.state.child.Access(addr, peek)
 }
 
-// AccessDriven implements the mapper.CartMapper interface.
-func (cart *PlusROM) AccessDriven(addr uint16, data uint8, poke bool) error {
+// AccessVolatile implements the mapper.CartMapper interface.
+func (cart *PlusROM) AccessVolatile(addr uint16, data uint8, poke bool) error {
 	switch addr {
 	case 0x0ff0:
 		// 1FF0 is for writing a byte to the send buffer (max 256 bytes)
@@ -219,7 +219,7 @@ func (cart *PlusROM) AccessDriven(addr uint16, data uint8, poke bool) error {
 		return nil
 	}
 
-	return cart.state.child.AccessDriven(addr, data, poke)
+	return cart.state.child.AccessVolatile(addr, data, poke)
 }
 
 // NumBanks implements the mapper.CartMapper interface.

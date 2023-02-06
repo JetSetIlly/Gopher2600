@@ -229,8 +229,8 @@ func (cart *Elf) Access(addr uint16, _ bool) (uint8, uint8, error) {
 	return cart.mem.gpio.data[DATA_ODR], mapper.CartDrivenPins, nil
 }
 
-// AccessDriven implements the mapper.CartMapper interface.
-func (cart *Elf) AccessDriven(addr uint16, data uint8, _ bool) error {
+// AccessVolatile implements the mapper.CartMapper interface.
+func (cart *Elf) AccessVolatile(addr uint16, data uint8, _ bool) error {
 	return nil
 }
 

@@ -22,7 +22,6 @@ import (
 	"github.com/jetsetilly/gopher2600/hardware/instance"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/arm"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
@@ -300,8 +299,8 @@ func (cart *cdf) Access(addr uint16, peek bool) (uint8, uint8, error) {
 	return data, mapper.CartDrivenPins, nil
 }
 
-// AccessDriven implements the mapper.CartMapper interface.
-func (cart *cdf) AccessDriven(addr uint16, data uint8, poke bool) error {
+// AccessVolatile implements the mapper.CartMapper interface.
+func (cart *cdf) AccessVolatile(addr uint16, data uint8, poke bool) error {
 	// bank switches can not take place if coprocessor is active
 	if cart.state.callfn.IsActive() {
 		return nil
@@ -386,10 +385,7 @@ func (cart *cdf) AccessDriven(addr uint16, data uint8, poke bool) error {
 	default:
 		if poke {
 			cart.banks[cart.state.bank][addr] = data
-			return nil
 		}
-
-		return curated.Errorf("CDF: %v", curated.Errorf(cpubus.AddressError, addr))
 	}
 
 	return nil

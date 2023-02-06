@@ -21,7 +21,6 @@ import (
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/instance"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
@@ -158,8 +157,8 @@ func (cart *wicksteadDesign) Access(addr uint16, _ bool) (uint8, uint8, error) {
 	return cart.banks[bank][idx], mapper.CartDrivenPins, nil
 }
 
-// AccessDriven implements the mapper.CartMapper interface.
-func (cart *wicksteadDesign) AccessDriven(addr uint16, data uint8, poke bool) error {
+// AccessVolatile implements the mapper.CartMapper interface.
+func (cart *wicksteadDesign) AccessVolatile(addr uint16, data uint8, poke bool) error {
 	if addr >= 0x0040 && addr <= 0x007f {
 		cart.state.ram[addr-0x0040] = data
 		return nil
@@ -172,7 +171,7 @@ func (cart *wicksteadDesign) AccessDriven(addr uint16, data uint8, poke bool) er
 		return nil
 	}
 
-	return curated.Errorf("WD: %v", curated.Errorf(cpubus.AddressError, addr))
+	return nil
 }
 
 // NumBanks implements the mapper.CartMapper interface.
@@ -258,9 +257,6 @@ func (cart *wicksteadDesign) segmentPattern(pattern int) [4]int {
 
 // AccessPassive implements the mapper.CartMapper interface.
 func (cart *wicksteadDesign) AccessPassive(addr uint16, data uint8) {
-	// can cartridge RAM be inadvertently written to, like with the
-	// supercharger chip?
-
 	// switch bank pattern
 	if addr&0xfff0 == 0x0030 {
 		pattern := int(addr & 0x0007)

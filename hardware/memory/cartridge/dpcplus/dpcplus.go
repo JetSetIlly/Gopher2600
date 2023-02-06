@@ -317,8 +317,8 @@ func (cart *dpcPlus) Access(addr uint16, peek bool) (uint8, uint8, error) {
 	return data, mapper.CartDrivenPins, nil
 }
 
-// AccessDriven implements the mapper.CartMapper interface.
-func (cart *dpcPlus) AccessDriven(addr uint16, data uint8, poke bool) error {
+// AccessVolatile implements the mapper.CartMapper interface.
+func (cart *dpcPlus) AccessVolatile(addr uint16, data uint8, poke bool) error {
 	// bank switches can not take place if coprocessor is active
 	if cart.state.callfn.IsActive() {
 		return nil
@@ -649,10 +649,7 @@ func (cart *dpcPlus) AccessDriven(addr uint16, data uint8, poke bool) error {
 	default:
 		if poke {
 			cart.banks[cart.state.bank][addr] = data
-			return nil
 		}
-
-		return curated.Errorf("DPC+: %v", curated.Errorf(cpubus.AddressError, addr))
 	}
 
 	return nil

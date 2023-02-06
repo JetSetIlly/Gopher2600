@@ -216,8 +216,8 @@ func (cart *Supercharger) Access(addr uint16, peek bool) (uint8, uint8, error) {
 	return cart.state.ram[bank][addr&0x07ff], mapper.CartDrivenPins, nil
 }
 
-// AccessDriven implements the mapper.CartMapper interface.
-func (cart *Supercharger) AccessDriven(addr uint16, data uint8, _ bool) error {
+// AccessVolatile implements the mapper.CartMapper interface.
+func (cart *Supercharger) AccessVolatile(addr uint16, data uint8, _ bool) error {
 	return nil
 }
 

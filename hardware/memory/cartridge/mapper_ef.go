@@ -73,8 +73,8 @@ func (cart *ef) Access(addr uint16, peek bool) (uint8, uint8, error) {
 	return cart.banks[cart.state.bank][addr], mapper.CartDrivenPins, nil
 }
 
-// AccessDriven implements the mapper.CartMapper interface.
-func (cart *ef) AccessDriven(addr uint16, data uint8, poke bool) error {
+// AccessVolatile implements the mapper.CartMapper interface.
+func (cart *ef) AccessVolatile(addr uint16, data uint8, poke bool) error {
 	if !poke {
 		if cart.bankswitch(addr) {
 			return nil

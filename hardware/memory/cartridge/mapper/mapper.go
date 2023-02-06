@@ -49,19 +49,22 @@ type CartMapper interface {
 	// access the cartridge at the specified address. the cartridge is expected to
 	// drive the data bus and so this can be thought of as a "read" operation
 	//
-	// the mask return value allows the mapper to identify which data pins which are
-	// being driven (1 bits) by the cartridge. in most cases, the mask should be the
-	// CartDrivenPins value
+	// the mask return value allows the mapper to identify which data pins
+	// which are being driven by the cartridge. in most cases, the mask should
+	// be the CartDrivenPins value
 	//
 	// the address parameter should be normalised. ie. no mirror information
 	Access(addr uint16, peek bool) (data uint8, mask uint8, err error)
 
-	// access the cartridge at the specified address. the data bus is being driven
-	// by the CPU so we can think of this as a "write" operation. whether the data
-	// is actually "written" or otherwise used is down to the mapper itself
+	// access the cartridge at the specified volatile address. if the location
+	// at that address is not volatile, the data value can be ignored
+	//
+	// we can think of this as a write operation but it will be called during a
+	// read operation too. this is because the cartidge cannot distinguish read
+	// and write operations and any access of a volatile address will affect it
 	//
 	// the address parameter should be normalised. ie. no mirror information
-	AccessDriven(addr uint16, data uint8, poke bool) error
+	AccessVolatile(addr uint16, data uint8, poke bool) error
 
 	NumBanks() int
 	GetBank(addr uint16) BankInfo

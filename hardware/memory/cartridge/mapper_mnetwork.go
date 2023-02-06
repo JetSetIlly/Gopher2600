@@ -202,8 +202,8 @@ func (cart *mnetwork) Access(addr uint16, peek bool) (uint8, uint8, error) {
 	return data, mapper.CartDrivenPins, nil
 }
 
-// AccessDriven implements the mapper.CartMapper interface.
-func (cart *mnetwork) AccessDriven(addr uint16, data uint8, poke bool) error {
+// AccessVolatile implements the mapper.CartMapper interface.
+func (cart *mnetwork) AccessVolatile(addr uint16, data uint8, poke bool) error {
 	if !poke {
 		if cart.bankswitch(addr) {
 			return nil
@@ -225,7 +225,7 @@ func (cart *mnetwork) AccessDriven(addr uint16, data uint8, poke bool) error {
 		return nil
 	}
 
-	return curated.Errorf("E7: %v", curated.Errorf(cpubus.AddressError, addr))
+	return nil
 }
 
 // bankswitch on hotspot access.

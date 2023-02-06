@@ -57,8 +57,8 @@ func (cart *ejected) Access(_ uint16, _ bool) (uint8, uint8, error) {
 	return 0, 0, nil
 }
 
-// AccessDriven implements the mapper.CartMapper interface.
-func (cart *ejected) AccessDriven(_ uint16, _ uint8, _ bool) error {
+// AccessVolatile implements the mapper.CartMapper interface.
+func (cart *ejected) AccessVolatile(_ uint16, _ uint8, _ bool) error {
 	return nil
 }
 

@@ -21,7 +21,6 @@ import (
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/instance"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
@@ -125,8 +124,8 @@ func (cart *parkerBros) Access(addr uint16, peek bool) (uint8, uint8, error) {
 	return data, mapper.CartDrivenPins, nil
 }
 
-// AccessDriven implements the mapper.CartMapper interface.
-func (cart *parkerBros) AccessDriven(addr uint16, data uint8, poke bool) error {
+// AccessVolatile implements the mapper.CartMapper interface.
+func (cart *parkerBros) AccessVolatile(addr uint16, data uint8, poke bool) error {
 	if !poke {
 		if cart.bankswitch(addr) {
 			return nil
@@ -146,7 +145,7 @@ func (cart *parkerBros) AccessDriven(addr uint16, data uint8, poke bool) error {
 		return nil
 	}
 
-	return curated.Errorf("E0: %v", curated.Errorf(cpubus.AddressError, addr))
+	return nil
 }
 
 // bankswitch on hotspot access. returns false if address wasn't recognised

@@ -22,7 +22,6 @@ import (
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/instance"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
@@ -139,8 +138,8 @@ func (cart *m3e) Access(addr uint16, _ bool) (uint8, uint8, error) {
 	return data, mapper.CartDrivenPins, nil
 }
 
-// AccessDriven implements the mapper.CartMapper interface.
-func (cart *m3e) AccessDriven(addr uint16, data uint8, poke bool) error {
+// AccessVolatile implements the mapper.CartMapper interface.
+func (cart *m3e) AccessVolatile(addr uint16, data uint8, poke bool) error {
 	var segment int
 
 	if addr >= 0x0000 && addr <= 0x07ff {
@@ -151,13 +150,11 @@ func (cart *m3e) AccessDriven(addr uint16, data uint8, poke bool) error {
 
 	if cart.state.segmentIsRAM[segment] {
 		cart.state.ram[cart.state.segment[segment]][addr&0x03ff] = data
-		return nil
 	} else if poke {
 		cart.banks[cart.state.segment[segment]][addr&0x07ff] = data
-		return nil
 	}
 
-	return curated.Errorf("3E: %v", curated.Errorf(cpubus.AddressError, addr))
+	return nil
 }
 
 // NumBanks implements the mapper.CartMapper interface.

@@ -21,7 +21,6 @@ import (
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/instance"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge/mapper"
-	"github.com/jetsetilly/gopher2600/hardware/memory/cpubus"
 	"github.com/jetsetilly/gopher2600/hardware/memory/memorymap"
 )
 
@@ -112,8 +111,8 @@ func (cart *df) Access(addr uint16, peek bool) (uint8, uint8, error) {
 	return cart.banks[cart.state.bank][addr], mapper.CartDrivenPins, nil
 }
 
-// AccessDriven implements the mapper.CartMapper interface.
-func (cart *df) AccessDriven(addr uint16, data uint8, poke bool) error {
+// AccessVolatile implements the mapper.CartMapper interface.
+func (cart *df) AccessVolatile(addr uint16, data uint8, poke bool) error {
 	if !poke {
 		if cart.bankswitch(addr) {
 			return nil
@@ -130,7 +129,7 @@ func (cart *df) AccessDriven(addr uint16, data uint8, poke bool) error {
 		return nil
 	}
 
-	return curated.Errorf("DF: %v", curated.Errorf(cpubus.AddressError, addr))
+	return nil
 }
 
 // bankswitch on hotspot access.
@@ -234,16 +233,6 @@ func (cart *df) Patch(offset int, data uint8) error {
 
 // AccessPassive implements the mapper.CartMapper interface.
 func (cart *df) AccessPassive(addr uint16, data uint8) {
-	if cart.state.ram != nil {
-		if addr&memorymap.OriginCart == memorymap.OriginCart {
-			addr &= memorymap.MaskCart
-			addr ^= memorymap.OriginCart
-			// DF RAM is 128 bytes
-			if addr&0xff80 == 0x0000 {
-				cart.state.ram[addr&0x7f] = data
-			}
-		}
-	}
 }
 
 // Step implements the mapper.CartMapper interface.
