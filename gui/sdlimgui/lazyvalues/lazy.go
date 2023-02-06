@@ -35,7 +35,7 @@ type LazyValues struct {
 	// detector for some reason.
 	Debugger    *LazyDebugger
 	CPU         *LazyCPU
-	Mem         *LazyMem
+	Bus         *LazyBus
 	Phaseclock  *LazyPhaseClock
 	RAM         *LazyRAM
 	Timer       *LazyTimer
@@ -72,7 +72,7 @@ func NewLazyValues(dbg *debugger.Debugger) *LazyValues {
 
 	val.Debugger = newLazyDebugger(val)
 	val.CPU = newLazyCPU(val)
-	val.Mem = newLazyMem(val)
+	val.Bus = newLazyBus(val)
 	val.Phaseclock = newLazyPhaseClock(val)
 	val.RAM = newLazyRAM(val)
 	val.Timer = newLazyTimer(val)
@@ -108,7 +108,7 @@ func (val *LazyValues) Refresh() {
 
 		val.Debugger.update()
 		val.CPU.update()
-		val.Mem.update()
+		val.Bus.update()
 		val.Phaseclock.update()
 		val.RAM.update()
 		val.Timer.update()
@@ -136,7 +136,7 @@ func (val *LazyValues) Refresh() {
 	val.dbg.PushFunction(func() {
 		val.Debugger.push()
 		val.CPU.push()
-		val.Mem.push()
+		val.Bus.push()
 		val.Phaseclock.push()
 		val.RAM.push()
 		val.Timer.push()

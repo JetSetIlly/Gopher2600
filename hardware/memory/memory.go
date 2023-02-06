@@ -16,6 +16,8 @@
 package memory
 
 import (
+	"fmt"
+
 	"github.com/jetsetilly/gopher2600/curated"
 	"github.com/jetsetilly/gopher2600/hardware/instance"
 	"github.com/jetsetilly/gopher2600/hardware/memory/cartridge"
@@ -101,6 +103,10 @@ func NewMemory(instance *instance.Instance) *Memory {
 	}
 	mem.Reset()
 	return mem
+}
+
+func (mem *Memory) String() string {
+	return fmt.Sprintf("Address: %016b [%04x]   Data: %08b [%04x]", mem.AddressBus, mem.AddressBus, mem.DataBus, mem.DataBus)
 }
 
 // Snapshot creates a copy of the current memory state.

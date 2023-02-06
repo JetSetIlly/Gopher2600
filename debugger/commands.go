@@ -1084,6 +1084,23 @@ func (dbg *Debugger) processTokens(tokens *commandline.Tokens) error {
 			dbg.printLine(terminal.StyleInstrument, dbg.vcs.CPU.String())
 		}
 
+	case cmdBus:
+		dbg.printLine(terminal.StyleInstrument, dbg.vcs.Mem.String())
+		action, ok := tokens.Get()
+		if ok {
+			switch strings.ToUpper(action) {
+			case "DETAIL":
+				_, area := memorymap.MapAddress(dbg.vcs.Mem.AddressBus, !dbg.vcs.Mem.LastCPUWrite)
+				access := "reading"
+				if dbg.vcs.Mem.LastCPUWrite {
+					access = "writing"
+				}
+				dbg.printLine(terminal.StyleInstrument, fmt.Sprintf("%s (%s)", area.String(), access))
+			default:
+				// already caught by command line ValidateTokens()
+			}
+		}
+
 	case cmdPeek:
 		// get first address token
 		a, ok := tokens.Get()

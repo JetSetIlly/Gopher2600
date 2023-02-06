@@ -40,6 +40,7 @@ const (
 	cmdLast      = "LAST"
 	cmdMemMap    = "MEMMAP"
 	cmdCPU       = "CPU"
+	cmdBus       = "BUS"
 	cmdPeek      = "PEEK"
 	cmdPoke      = "POKE"
 	cmdSwap      = "SWAP"
@@ -103,6 +104,7 @@ var commandTemplate = []string{
 	cmdLast + " (DEFN|BYTECODE)",
 	cmdMemMap + " (%<address>S)",
 	cmdCPU + " (STATUS ([SET|UNSET|TOGGLE] [S|O|B|D|I|Z|C])|(SET [PC|A|X|Y|SP] [%<register value>S]))",
+	cmdBus + " (DETAIL)",
 	cmdPeek + " [%<address>S] {%<addresses>S}",
 	cmdPoke + " %<address>S [%<value>N] {%<values>N}",
 	cmdSwap + " %<address>S %<address>S",

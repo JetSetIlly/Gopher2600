@@ -149,6 +149,8 @@ about the address will be displayed.`,
 	cmdCPU: `Display the current state of the CPU. The SET argument can be used to change the
 contents of the CPU registers.`,
 
+	cmdBus: `Display the state of the address and data bus.`,
+
 	cmdPeek: `Inspect memory addresses for content. Addresses can be specified by symbolically
 or numerically.
 
