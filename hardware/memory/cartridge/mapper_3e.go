@@ -116,23 +116,23 @@ func (cart *m3e) Reset() {
 
 // Access implements the mapper.CartMapper interface.
 func (cart *m3e) Access(addr uint16, _ bool) (uint8, uint8, error) {
-	var segment int
-
-	if addr >= 0x0000 && addr <= 0x07ff {
-		segment = 0
-	} else if addr >= 0x0800 && addr <= 0x0fff {
-		segment = 1
-	}
-
 	var data uint8
 
-	if cart.state.segmentIsRAM[segment] {
-		data = cart.state.ram[cart.state.segment[segment]][addr&0x03ff]
-	} else {
-		bank := cart.state.segment[segment]
-		if bank < len(cart.banks) {
+	if addr >= 0x0000 && addr <= 0x07ff {
+		if cart.state.segmentIsRAM[0] {
+			if addr <= 0x3ff {
+				bank := cart.state.segment[0]
+				data = cart.state.ram[bank][addr&0x03ff]
+			} else {
+				return 0, 0, nil
+			}
+		} else {
+			bank := cart.state.segment[0]
 			data = cart.banks[bank][addr&0x07ff]
 		}
+	} else if addr >= 0x0800 && addr <= 0x0fff {
+		bank := cart.state.segment[1]
+		data = cart.banks[bank][addr&0x07ff]
 	}
 
 	return data, mapper.CartDrivenPins, nil
@@ -140,18 +140,17 @@ func (cart *m3e) Access(addr uint16, _ bool) (uint8, uint8, error) {
 
 // AccessVolatile implements the mapper.CartMapper interface.
 func (cart *m3e) AccessVolatile(addr uint16, data uint8, poke bool) error {
-	var segment int
-
 	if addr >= 0x0000 && addr <= 0x07ff {
-		segment = 0
-	} else if addr >= 0x0c00 && addr <= 0x0fff {
-		segment = 1
-	}
-
-	if cart.state.segmentIsRAM[segment] {
-		cart.state.ram[cart.state.segment[segment]][addr&0x03ff] = data
-	} else if poke {
-		cart.banks[cart.state.segment[segment]][addr&0x07ff] = data
+		bank := cart.state.segment[0]
+		if cart.state.segmentIsRAM[0] == false {
+			if poke {
+				cart.banks[bank][addr&0x07ff] = data
+			}
+			return nil
+		}
+		if addr >= 0x400 {
+			cart.state.ram[bank][addr&0x03ff] = data
+		}
 	}
 
 	return nil
@@ -165,9 +164,9 @@ func (cart *m3e) NumBanks() int {
 // GetBank implements the mapper.CartMapper interface.
 func (cart *m3e) GetBank(addr uint16) mapper.BankInfo {
 	if addr >= 0x0000 && addr <= 0x07ff {
-		return mapper.BankInfo{Number: cart.state.segment[0], IsRAM: false, IsSegmented: true, Segment: 0}
+		return mapper.BankInfo{Number: cart.state.segment[0], IsRAM: cart.state.segmentIsRAM[0], IsSegmented: true, Segment: 0}
 	}
-	return mapper.BankInfo{Number: cart.state.segment[1], IsRAM: false, IsSegmented: true, Segment: 1}
+	return mapper.BankInfo{Number: cart.state.segment[1], IsRAM: cart.state.segmentIsRAM[1], IsSegmented: true, Segment: 1}
 }
 
 // Patch implements the mapper.CartMapper interface.
@@ -189,15 +188,13 @@ func (cart *m3e) AccessPassive(addr uint16, data uint8) {
 
 	// bankswitch on hotspot access
 	if addr == 0x3f {
-		segment := data >> 6
-		bank := data & 0x3f
-		cart.state.segment[segment] = int(bank)
-		cart.state.segmentIsRAM[segment] = false
+		romBank := (data & 0x3f) % uint8(cart.NumBanks())
+		cart.state.segment[0] = int(romBank)
+		cart.state.segmentIsRAM[0] = false
 	} else if addr == 0x3e {
-		segment := data >> 6
-		bank := data & 0x3f
-		cart.state.segment[segment] = int(bank)
-		cart.state.segmentIsRAM[segment] = true
+		ramBank := (data & 0x3f) % uint8(len(cart.state.ram))
+		cart.state.segment[0] = int(ramBank)
+		cart.state.segmentIsRAM[0] = true
 	}
 }
 
