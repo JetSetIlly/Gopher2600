@@ -118,17 +118,6 @@ var TIAReadSymbols = map[uint16]Register{
 	0x0d: INPT5,
 }
 
-// RIOTReadSymbols indexes all RIOT read symbols by normalised address.
-var RIOTReadSymbols = map[uint16]Register{
-	// RIOT
-	0x0280: SWCHA,
-	0x0281: SWACNT,
-	0x0282: SWCHB,
-	0x0283: SWBCNT,
-	0x0284: INTIM,
-	0x0285: TIMINT,
-}
-
 // TIAWriteSymbols indexes all TIA write symbols by normalised address.
 var TIAWriteSymbols = map[uint16]Register{
 	0x00: VSYNC,
@@ -178,12 +167,27 @@ var TIAWriteSymbols = map[uint16]Register{
 	0x2c: CXCLR,
 }
 
+// RIOTReadSymbols indexes all RIOT read symbols by normalised address.
+var RIOTReadSymbols = map[uint16]Register{
+	// RIOT
+	0x0280: SWCHA,
+	0x0281: SWACNT,
+	0x0282: SWCHB,
+	0x0283: SWBCNT,
+	0x0284: INTIM,
+	0x0285: TIMINT,
+}
+
 // RIOTWriteSymbols indexes all RIOT write symbols by normalised address.
 var RIOTWriteSymbols = map[uint16]Register{
 	0x0280: SWCHA,
 	0x0281: SWACNT,
 	0x0282: SWCHB,
 	0x0283: SWBCNT,
+
+	// standard documentation for the 2600 claim that the write addresses for
+	// TIM1T etc. begin at 0x0294. but these addresses are in fact mirrors of
+	// 0x0284 etc.
 	0x0294: TIM1T,
 	0x0295: TIM8T,
 	0x0296: TIM64T,
@@ -212,12 +216,7 @@ const NotACPUBusRegister Register = ""
 // this init() function create the Read/Write arrays using the read/write maps
 // as a source.
 func init() {
-	// we know that the maximum address either chip can read or write to is
-	// 0x297, in RIOT memory space. we can say this is the extent of our Read
-	// and Write sparse arrays
-	const chipTop = memorymap.MemtopRIOT
-
-	Read = make([]Register, chipTop+1)
+	Read = make([]Register, memorymap.MemtopChipRegisters+1)
 	for k, v := range TIAReadSymbols {
 		Read[k] = v
 		ReadAddress[v] = k
@@ -227,7 +226,7 @@ func init() {
 		ReadAddress[v] = k
 	}
 
-	Write = make([]Register, chipTop+1)
+	Write = make([]Register, memorymap.MemtopChipRegisters+1)
 	for k, v := range TIAWriteSymbols {
 		Write[k] = v
 		WriteAddress[v] = k

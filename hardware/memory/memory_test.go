@@ -64,3 +64,25 @@ func TestTIADrivenPins(t *testing.T) {
 	readDataNotTested(t, mem, 0x82)
 	readData(t, mem, 0x171, 0x3e)
 }
+
+func TestAddressComplete(t *testing.T) {
+	// this is a very simple test to make sure the memory system is okay with
+	// every address. we're not interested in results and we don't expect any
+	// errors
+
+	mem := memory.NewMemory(nil)
+
+	for a := 0; a <= 0xffff; a++ {
+		_, err := mem.Read(uint16(a))
+		if err != nil {
+			t.Fail()
+		}
+	}
+
+	for a := 0; a <= 0xffff; a++ {
+		err := mem.Write(uint16(a), 0)
+		if err != nil {
+			t.Fail()
+		}
+	}
+}

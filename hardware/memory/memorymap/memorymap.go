@@ -50,12 +50,16 @@ const (
 // down further into the the range of the memory array. This is best done with
 // (address^origin) rather than subtraction.
 const (
-	OriginTIA      = uint16(0x0000)
-	MemtopTIA      = uint16(0x003f)
-	OriginRAM      = uint16(0x0080)
-	MemtopRAM      = uint16(0x00ff)
-	OriginRIOT     = uint16(0x0280)
-	MemtopRIOT     = uint16(0x0297)
+	OriginTIA = uint16(0x0000)
+	MemtopTIA = uint16(0x003f)
+	OriginRAM = uint16(0x0080)
+	MemtopRAM = uint16(0x00ff)
+
+	OriginRIOT = uint16(0x0280)
+	MemtopRIOT = uint16(0x0297)
+
+	MemtopChipRegisters = MemtopRIOT
+
 	OriginCart     = uint16(0x1000)
 	MemtopCart     = uint16(0x1fff)
 	OriginAbsolute = uint16(0x0000)
@@ -98,12 +102,20 @@ const (
 // The masks to apply to an address to bring any address into the primary
 // range. Prefer to use MapAddress() for ease of use.
 const (
-	MaskCart      = MemtopCart
-	MaskReadRIOT  = uint16(0x0287)
-	MaskWriteRIOT = MemtopRIOT
-	MaskRAM       = MemtopRAM
-	MaskReadTIA   = uint16(0x000f)
-	MaskWriteTIA  = MemtopTIA
+	maskCart = MemtopCart
+	maskRAM  = MemtopRAM
+
+	maskWriteTIA = MemtopTIA
+	maskReadTIA  = uint16(0x000f)
+
+	maskWriteRIOT = MemtopRIOT
+	maskReadRIOT  = uint16(0x0287)
+
+	// read registers specific to the RIOT timer start at 0x284. the two bit of
+	// the address is masked out leaving 4 addresses mapping to just two
+	// registers - INTIM and TIMINT
+	maskReadRIOT_timer            = uint16(0x284)
+	maskReadRIOT_timer_correction = uint16(0x285)
 )
 
 // MapAddress translates the address argument from mirror space to primary
@@ -114,28 +126,32 @@ func MapAddress(address uint16, read bool) (uint16, Area) {
 
 	// cartridge addresses
 	if address&OriginCart == OriginCart {
-		return address & MaskCart, Cartridge
+		return address & maskCart, Cartridge
 	}
 
 	// RIOT addresses
 	if address&OriginRIOT == OriginRIOT {
 		if read {
-			return address & MaskReadRIOT, RIOT
+			if address&maskReadRIOT_timer == maskReadRIOT_timer {
+				// additional masking for RIOT timer addresses
+				return address & maskReadRIOT_timer_correction, RIOT
+			}
+			return address & maskReadRIOT, RIOT
 		}
-		return address & MaskWriteRIOT, RIOT
+		return address & maskWriteRIOT, RIOT
 	}
 
 	// RAM addresses
 	if address&OriginRAM == OriginRAM {
-		return address & MaskRAM, RAM
+		return address & maskRAM, RAM
 	}
 
 	// everything else is in TIA space
 	if read {
-		return address & MaskReadTIA, TIA
+		return address & maskReadTIA, TIA
 	}
 
-	return address & MaskWriteTIA, TIA
+	return address & maskWriteTIA, TIA
 }
 
 // IsArea returns true if the address is in the specificied area.

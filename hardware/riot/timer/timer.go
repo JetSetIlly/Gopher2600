@@ -66,7 +66,7 @@ type Timer struct {
 	// the divider value most recently requested by the CPU
 	divider Divider
 
-	// the state of TIMINT. use timintValue() when writing to register
+	// the state of TIMINT. use updateTIMINT()
 	expired bool
 	pa7     bool
 
@@ -108,7 +108,7 @@ func (tmr *Timer) Reset() {
 		tmr.mem.ChipWrite(chipbus.INTIM, 0)
 	}
 
-	tmr.mem.ChipWrite(chipbus.TIMINT, tmr.timintValue())
+	tmr.updateTIMINT()
 }
 
 // Snapshot creates a copy of the RIOT Timer in its current state.
@@ -140,17 +140,6 @@ const (
 	timintPA7     = 0b01000000
 )
 
-func (tmr *Timer) timintValue() uint8 {
-	v := uint8(0)
-	if tmr.expired {
-		v |= timintExpired
-	}
-	if tmr.pa7 {
-		v |= timintPA7
-	}
-	return v
-}
-
 // Update checks to see if ChipData applies to the Timer type and updates the
 // internal timer state accordingly.
 //
@@ -174,11 +163,10 @@ func (tmr *Timer) Update(data chipbus.ChangedRegister) bool {
 	// TIMINT register as reading. See commentary in the Step() function
 	if tmr.ticksRemaining == 0 && tmr.mem.ChipRefer(chipbus.INTIM) == 0xff {
 		tmr.expired = true
-		tmr.mem.ChipWrite(chipbus.TIMINT, tmr.timintValue())
 	} else {
 		tmr.expired = false
-		tmr.mem.ChipWrite(chipbus.TIMINT, tmr.timintValue())
 	}
+	tmr.updateTIMINT()
 
 	// the ticks remaining value should be zero or one for accurate timing (as
 	// tested with these test ROMs https://github.com/stella-emu/stella/issues/108).
@@ -196,6 +184,17 @@ func (tmr *Timer) Update(data chipbus.ChangedRegister) bool {
 
 	return false
 
+}
+
+func (tmr *Timer) updateTIMINT() {
+	v := uint8(0)
+	if tmr.expired {
+		v |= timintExpired
+	}
+	if tmr.pa7 {
+		v |= timintPA7
+	}
+	tmr.mem.ChipWrite(chipbus.TIMINT, v)
 }
 
 // Step timer forward one cycle.
@@ -217,7 +216,7 @@ func (tmr *Timer) Step() {
 			// https://atariage.com/forums/topic/133686-please-explain-riot-timmers/?do=findComment&comment=1617207
 			if tmr.ticksRemaining != 0 || intim != 0xff {
 				tmr.expired = false
-				tmr.mem.ChipWrite(chipbus.TIMINT, tmr.timintValue())
+				tmr.updateTIMINT()
 			}
 		case cpubus.TIMINT:
 			// from the NMOS 6532:
@@ -238,7 +237,7 @@ func (tmr *Timer) Step() {
 			// expired (see below).
 			if tmr.pa7 {
 				tmr.pa7 = false
-				tmr.mem.ChipWrite(chipbus.TIMINT, tmr.timintValue())
+				tmr.updateTIMINT()
 			}
 		}
 	}
@@ -248,7 +247,7 @@ func (tmr *Timer) Step() {
 		intim--
 		if intim == 0xff {
 			tmr.expired = true
-			tmr.mem.ChipWrite(chipbus.TIMINT, tmr.timintValue())
+			tmr.updateTIMINT()
 		}
 
 		// copy value to INTIM memory register
@@ -295,7 +294,7 @@ func (tmr *Timer) PokeField(fld string, v interface{}) {
 	case "timint":
 		tmr.expired = v.(uint8)&timintExpired == timintExpired
 		tmr.pa7 = v.(uint8)&timintPA7 == timintPA7
-		tmr.mem.ChipWrite(chipbus.TIMINT, tmr.timintValue())
+		tmr.updateTIMINT()
 	case "ticksRemaining":
 		tmr.ticksRemaining = v.(int)
 	case "divider":

@@ -194,27 +194,11 @@ func (mem *TIAMemory) LastReadAddress() (bool, uint16) {
 // Returned data should be masked and randomised as appropriate according to
 // the TIADrivenPins mask.
 func (mem *TIAMemory) Read(address uint16) (uint8, uint8, error) {
-	// do not allow reads from memory that do not have symbol name
-	if _, ok := cpubus.TIAReadSymbols[address]; !ok {
-		return 0, TIADrivenPins, curated.Errorf(cpubus.AddressError, address)
-	}
-
 	return mem.memory[address^mem.origin], TIADrivenPins, nil
 }
 
 // Write is an implementation of memory.CPUBus. Address must be mapped.
 func (mem *TIAMemory) Write(address uint16, data uint8) error {
-	// check that the last write to this memory mem has been serviced. this
-	// shouldn't ever happen.
-	//
-	// NOTE: this is a protection against an imcomplete TIA implementation. it
-	// is complete and this code path has never run to my knowledge. removing
-	// for performance reasons (23/05/2022)
-	//
-	// if mem.writeSignal {
-	// 	panic(fmt.Sprintf("unserviced write to TIA memory (%#04x)", mem.writeAddress))
-	// }
-
 	// signal that chip memory has been changed. see ChipHasChanged() function
 	mem.writeAddress = address
 	mem.writeSignal = true
