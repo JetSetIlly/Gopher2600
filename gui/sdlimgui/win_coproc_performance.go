@@ -434,7 +434,7 @@ func (win *winCoProcPerformance) drawFunctions(src *developer.Source) {
 	// first column is a dummy column so that Selectable (span all columns) works correctly
 	width := imgui.ContentRegionAvail().X
 	imgui.TableSetupColumnV("File", imgui.TableColumnFlagsPreferSortDescending, width*0.275, 0)
-	imgui.TableSetupColumnV("Lines", imgui.TableColumnFlagsNoSort, width*0.05, 1)
+	imgui.TableSetupColumnV("Line", imgui.TableColumnFlagsNoSort, width*0.05, 1)
 	imgui.TableSetupColumnV("Function", imgui.TableColumnFlagsPreferSortDescending, width*0.320, 2)
 	imgui.TableSetupColumnV("Frame", imgui.TableColumnFlagsNoSortAscending|imgui.TableColumnFlagsDefaultSort, width*0.1, 3)
 	imgui.TableSetupColumnV("Avg", imgui.TableColumnFlagsNoSortAscending, width*0.1, 4)
@@ -501,12 +501,13 @@ func (win *winCoProcPerformance) drawFunctions(src *developer.Source) {
 		imgui.TableNextColumn()
 		imgui.PushStyleColor(imgui.StyleColorHeaderHovered, win.img.cols.CoProcSourceHover)
 		imgui.PushStyleColor(imgui.StyleColorHeaderActive, win.img.cols.CoProcSourceHover)
+		imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceFilename)
 		if isStub {
 			imgui.SelectableV("-", false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{0, 0})
 		} else {
 			imgui.SelectableV(fn.DeclLine.File.ShortFilename, false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{0, 0})
 		}
-		imgui.PopStyleColorV(2)
+		imgui.PopStyleColorV(3)
 
 		// whether to show the optimisation warning for a function
 		optimisedWarning := win.cumulative && fn.OptimisedCallStack
@@ -652,7 +653,6 @@ func (win *winCoProcPerformance) drawSourceLines(src *developer.Source) {
 	flgs := imgui.TableFlagsScrollY
 	flgs |= imgui.TableFlagsSizingStretchProp
 	flgs |= imgui.TableFlagsSortable
-	flgs |= imgui.TableFlagsNoHostExtendX
 	flgs |= imgui.TableFlagsResizable
 	flgs |= imgui.TableFlagsHideable
 

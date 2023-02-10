@@ -82,14 +82,39 @@ func (win *winCoProcFunctions) draw() {
 			return
 		}
 
+		const numColumns = 2
+
+		flgs := imgui.TableFlagsScrollY
+		flgs |= imgui.TableFlagsSizingStretchProp
+		flgs |= imgui.TableFlagsResizable
+		flgs |= imgui.TableFlagsHideable
+		imgui.BeginTableV("##coprocFunctionsTable", numColumns, flgs, imgui.Vec2{}, 0.0)
+
+		width := imgui.ContentRegionAvail().X
+		imgui.TableSetupColumnV("Name", imgui.TableColumnFlagsPreferSortDescending|imgui.TableColumnFlagsNoHide, width*0.5, 0)
+		imgui.TableSetupColumnV("File", imgui.TableColumnFlagsNoSort, width*0.5, 1)
+
+		imgui.TableSetupScrollFreeze(0, 1)
+		imgui.TableHeadersRow()
+
 		for _, n := range src.FunctionNames {
 			fn := src.Functions[n]
 			if !fn.IsStub() {
-				if imgui.Selectable(n) {
+				imgui.TableNextRow()
+				imgui.TableNextColumn()
+
+				if imgui.SelectableV(n, false, imgui.SelectableFlagsSpanAllColumns, imgui.Vec2{}) {
 					srcWin := win.img.wm.debuggerWindows[winCoProcSourceID].(*winCoProcSource)
 					srcWin.gotoSourceLine(fn.DeclLine)
 				}
+
+				imgui.TableNextColumn()
+				imgui.PushStyleColor(imgui.StyleColorText, win.img.cols.CoProcSourceFilename)
+				imgui.Text(fn.DeclLine.File.ShortFilename)
+				imgui.PopStyleColor()
 			}
 		}
+
+		imgui.EndTable()
 	})
 }

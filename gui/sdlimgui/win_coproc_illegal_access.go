@@ -95,7 +95,6 @@ func (win *winCoProcIllegalAccess) draw() {
 
 		flgs := imgui.TableFlagsScrollY
 		flgs |= imgui.TableFlagsSizingStretchProp
-		flgs |= imgui.TableFlagsNoHostExtendX
 		flgs |= imgui.TableFlagsResizable
 
 		imgui.BeginTableV("##coprocIllegalAccessTable", numColumns, flgs, imgui.Vec2{X: 0, Y: imguiRemainingWinHeight() - win.optionsHeight}, 0.0)

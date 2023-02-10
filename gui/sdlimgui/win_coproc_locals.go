@@ -93,7 +93,6 @@ func (win *winCoProcLocals) draw() {
 
 	flgs := imgui.TableFlagsScrollY
 	flgs |= imgui.TableFlagsSizingStretchProp
-	flgs |= imgui.TableFlagsNoHostExtendX
 	flgs |= imgui.TableFlagsResizable
 	flgs |= imgui.TableFlagsHideable
 

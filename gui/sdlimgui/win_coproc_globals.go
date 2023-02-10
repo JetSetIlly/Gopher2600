@@ -187,7 +187,6 @@ func (win *winCoProcGlobals) draw() {
 		flgs := imgui.TableFlagsScrollY
 		flgs |= imgui.TableFlagsSizingStretchProp
 		flgs |= imgui.TableFlagsSortable
-		flgs |= imgui.TableFlagsNoHostExtendX
 		flgs |= imgui.TableFlagsResizable
 
 		imgui.BeginTableV("##globalsTable", numColumns, flgs, imgui.Vec2{Y: imguiRemainingWinHeight() - win.optionsHeight}, 0.0)
