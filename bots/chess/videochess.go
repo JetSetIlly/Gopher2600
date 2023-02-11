@@ -545,16 +545,22 @@ func NewVideoChess(vcs bots.Input, tv bots.TV, specID string) (bots.Bot, error) 
 	tv.AddPixelRenderer(bot.obs)
 	tv.AddAudioMixer(bot.obs)
 
-	uci, err := uci.NewUCI("/usr/local/bin/stockfish", bot.feedback.Diagnostic)
+	ucii, err := uci.NewUCI("/usr/local/bin/stockfish", bot.feedback.Diagnostic)
 	if err != nil {
-		return nil, curated.Errorf("videochess: %v", err)
+		ucii, err = uci.NewUCI("/usr/bin/stockfish", bot.feedback.Diagnostic)
+		if err != nil {
+			ucii, err = uci.NewUCI("/usr/games/stockfish", bot.feedback.Diagnostic)
+			if err != nil {
+				return nil, curated.Errorf("videochess: %v", err)
+			}
+		}
 	}
 
-	uci.Start()
+	ucii.Start()
 
 	go func() {
 		defer func() {
-			uci.Quit <- true
+			ucii.Quit <- true
 		}()
 
 		started := false
@@ -574,7 +580,7 @@ func NewVideoChess(vcs bots.Input, tv bots.TV, specID string) (bots.Bot, error) 
 		}
 
 		// bot is playing white so ask for first move by submitting an empty move
-		uci.SubmitMove <- ""
+		ucii.SubmitMove <- ""
 
 		for {
 			var cursorCol, cursorRow int
@@ -594,7 +600,7 @@ func NewVideoChess(vcs bots.Input, tv bots.TV, specID string) (bots.Bot, error) 
 			// wait for move from UCI engine
 			var move string
 			select {
-			case move = <-uci.GetMove:
+			case move = <-ucii.GetMove:
 				bot.feedback.Diagnostic <- bots.Diagnostic{
 					Group:      "VideoChess",
 					Diagnostic: fmt.Sprintf("playing move %s\n", move),
@@ -701,7 +707,7 @@ func NewVideoChess(vcs bots.Input, tv bots.TV, specID string) (bots.Bot, error) 
 			}
 
 			// submit to UCI engine
-			uci.SubmitMove <- move
+			ucii.SubmitMove <- move
 
 			// draw move just made by the VCS
 			bot.moveFrom = bot.getRect(fromCol, 8-fromRow)
