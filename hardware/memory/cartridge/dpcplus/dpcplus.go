@@ -40,6 +40,9 @@ type dpcPlus struct {
 	// additional CPU - used by some ROMs
 	arm *arm.ARM
 
+	// the hook that handles cartridge yields
+	yieldHook mapper.CartYieldHook
+
 	// there is only one version of DPC+ currently but this method of
 	// specifying addresses mirrors how we do it in the CDF type
 	version version
@@ -67,6 +70,7 @@ func NewDPCplus(instance *instance.Instance, data []byte) (mapper.CartMapper, er
 		mappingID: "DPC+",
 		bankSize:  4096,
 		state:     newDPCPlusState(),
+		yieldHook: mapper.StubCartYieldHook{},
 	}
 
 	var err error
@@ -510,7 +514,17 @@ func (cart *dpcPlus) AccessVolatile(addr uint16, data uint8, poke bool) error {
 			if cart.dev != nil {
 				cart.dev.StartProfiling()
 			}
-			cart.runArm()
+
+			yld := cart.runArm()
+
+			// keep calling runArm() for as long as program has not ended...
+			for yld != mapper.YieldProgramEnded {
+				// ... or if the yield hook says to return to the VCS immediately
+				if cart.yieldHook.CartYield(yld) {
+					break // for loop
+				}
+				yld = cart.runArm()
+			}
 		}
 
 	// reserved
@@ -959,10 +973,12 @@ func (cart *dpcPlus) BreakpointsEnable(enable bool) {
 
 // SetYieldHook implements the mapper.CartCoProc interface.
 func (cart *dpcPlus) SetYieldHook(hook mapper.CartYieldHook) {
+	cart.yieldHook = hook
 }
 
-func (cart *dpcPlus) runArm() {
+func (cart *dpcPlus) runArm() mapper.YieldReason {
 	cart.state.immediateMode = cart.instance.Prefs.ARM.Immediate.Get().(bool)
-	_, cycles := cart.arm.Run()
+	yld, cycles := cart.arm.Run()
 	cart.state.callfn.Accumulate(cycles)
+	return yld
 }
