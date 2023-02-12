@@ -23,9 +23,9 @@
 // As well as the filename, the Loader type allows the cartridge mapping to be
 // specified, if required. The simplest instantiation therefore is:
 //
-//     cl := cartridgeloader.Loader{
-//             Filename: "roms/Pitfall.bin",
-//     }
+//	cl := cartridgeloader.Loader{
+//	        Filename: "roms/Pitfall.bin",
+//	}
 //
 // It is stronly preferred however, that the NewLoader() function is used to
 // initialise the Loader or important fields risk being initialised
@@ -36,7 +36,7 @@
 // cases the mapper will be "AUTO" to indicate that we don't know (or
 // particular care) what the mapping format is.
 //
-// File Extensions
+// # File Extensions
 //
 // The file extension of a file will specify the cartridge mapping and will
 // cause the emulation to use that mapping. Most 2600 ROM files have the
@@ -85,7 +85,7 @@
 //
 // Fingerprinting is not handled by the cartridlgeloader package.
 //
-// Hash
+// # Hash
 //
 // The Hash field of the Loader type contains the SHA1 value of the loaded
 // data. It is valid after the Load() function has completed successfully. If
@@ -99,7 +99,7 @@
 //
 // The hash value is invalid/unused in the case of streamed data
 //
-// Streaming
+// # Streaming
 //
 // For some cartridge types it is necessary to stream bytes from the file
 // rather than load them all at once. For these types of cartridges the Load()
@@ -111,21 +111,20 @@
 // For streaming to work NewLoader() must have been used to instantiate the
 // Loader type.
 //
-// Closing
+// # Closing
 //
 // Instances of Loader must be closed with Close() when it is no longer
 // required.
 //
-// OnInserted
+// # OnInserted
 //
 // The OnInserted field is used by some cartridges to indicate when the
 // cartridge data has been loaded into memory and something else needs to
 // happen that is outside of the scope of the cartridge package. Currently,
 // this is used by the Supercharder and PlusROM.
 //
-// Notification Hook
+// # Notification Hook
 //
 // Some cartridge mappers will generate notifications (see notification.Notify type). The
 // NotifcationHook can be specified in order to respond to those events.
-//
 package cartridgeloader

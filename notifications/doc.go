@@ -17,8 +17,8 @@
 // that type. These values represent the different notifications that be sent
 // to the GUI.
 //
-//      hardware  ---->  emulation  ---->  GUI
-//      (eg. cartridge)  (eg. debugger)
+//	hardware  ---->  emulation  ---->  GUI
+//	(eg. cartridge)  (eg. debugger)
 //
 // Notifications flow in one direction only and can be generated and terminate
 // at any of the points in the chart above.

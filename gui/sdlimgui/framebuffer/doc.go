@@ -23,13 +23,13 @@
 //
 // For example, to create a framebuffer sequence with two textures:
 //
-//		seq := NewSequence(2)
+//	seq := NewSequence(2)
 //
 // The Setup() function must be called at least once after NewSequence() and
 // called as often as necessary to ensure the dimensions (width and height) are
 // correct.
 //
-//		hasChanged := seq.Setup(800, 600)
+//	hasChanged := seq.Setup(800, 600)
 //
 // Setup() returns true if the texture data has been recreated in accordance
 // with the new dimensions.
@@ -39,13 +39,12 @@
 // returned and can be used for presentation of as the input for the next call
 // to Process() (via the draw() function).
 //
-//		texture := seq.Process(0, func() {
-//			// 1. set up shader
-//			// 2. OpenGL draw (eg. gl.DrawElements()
-//		})
+//	texture := seq.Process(0, func() {
+//		// 1. set up shader
+//		// 2. OpenGL draw (eg. gl.DrawElements()
+//	})
 //
 // Note that much of the work of chaning a sequence of shaders must be
 // performed by the user of the package. The package does however, hide a lot
 // of detail behind the Process() and Setup() functions.
-//
 package framebuffer

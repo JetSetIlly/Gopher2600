@@ -25,13 +25,12 @@
 // pixel width; Converted to SVG with the help of Inkscape's Trace Bitmap
 // function; and finally imported into an empty TTF file using FontForge.
 //
-// Licencing
+// # Licencing
 //
 // Gopher2600-Icons.ttf is licenced by Stephen Illingworth, under the Creative
 // Commons Attribution 4.0 International licence.
 //
 // https://creativecommons.org/licenses/by/4.0/legalcode
-//
 //
 // The FontAwesome font (fa-solid-900.ttf) was downloaded on 18th March 2020
 // from https://fontawesome.com/download using the "Free for Web" button. Full
@@ -41,13 +40,11 @@
 //
 // FontAwesome is licenced under the Font Awesome Free License.
 //
-//
 // Hack-Regular was downloaded on 20th December 2021 from permalink URL:
 //
 // https://github.com/source-foundry/Hack/blob/a737c121cabb337fdfe655d8c7304729f351e30f/build/ttf/Hack-Regular.ttf
 //
 // Hack-Regular is licenced under the MIT License.
-//
 //
 // JetBrainsMono-Regular is licenced under the OFL-1.1 License
 package fonts

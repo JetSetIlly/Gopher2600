@@ -34,11 +34,10 @@ import (
 // for the third 1K.  The last 1K always points to the last 1K of the ROM image
 // so that the cart always starts up in the exact same place.
 //
-//
 // cartridges:
-//  - Montezuma's Revenge
-//  - Lord of the Rings
-//  - etc.
+//   - Montezuma's Revenge
+//   - Lord of the Rings
+//   - etc.
 type parkerBros struct {
 	instance *instance.Instance
 

@@ -211,8 +211,8 @@ func imguiBooleanButton(trueCol imgui.Vec4, falseCol imgui.Vec4, state bool, tex
 // imguiLabel(), you can use the empty string or use the double hash construct.
 // For example
 //
-//		imgui.SliderInt("##foo", &v, s, e)
-//		imguiLabel("My Slider")
+//	imgui.SliderInt("##foo", &v, s, e)
+//	imguiLabel("My Slider")
 func imguiLabel(text string) {
 	imgui.AlignTextToFramePadding()
 	imgui.Text(text)

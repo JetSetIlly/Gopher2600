@@ -28,21 +28,18 @@
 // be used. There is currently no way of pushing events onto the emulator
 // unless the debugging loop is in use.
 //
-//
 // Example
 // -------
 //
 // Retrieving the foreground color of the playfield:
 //
-//  col := lazyval.Playfield.ForegroundColor
-//
+//	col := lazyval.Playfield.ForegroundColor
 //
 // Writing the playfield values is done thought debugger's "raw event" system:
 //
 //	lazyval.Dbg.PushFunction(func() {
 //		lazyval.VCS.TIA.Video.Playfield.ForegroundColor = col
 //	})
-//
 //
 // Implementation
 // --------------
@@ -69,16 +66,16 @@
 // The pseudocode below shows how the Refresh() updates the values in every
 // type in the lazyvalues system, at the same time as requesting new values.
 //
-//	func Refresh() {                        .------------------.
-//		debugger.PushFunction()   ----->	| CPU.push()       |
-//											| RAM.push()       |
-//      CPU.update()						| Playfield.push() |
-//		RAM.update()						|   .              |
-//			.								|   .              |
-//			.								|   .              |
-//			.								| Log.push()       |
-//		Log.update()						 ------------------
-//	}
+//		func Refresh() {                        .------------------.
+//			debugger.PushFunction()   ----->	| CPU.push()       |
+//												| RAM.push()       |
+//	     CPU.update()						| Playfield.push() |
+//			RAM.update()						|   .              |
+//				.								|   .              |
+//				.								|   .              |
+//				.								| Log.push()       |
+//			Log.update()						 ------------------
+//		}
 //
 // The update() and push() functions (not visible from outside the lazyvalues
 // package) of each type handle the retreiving and updating of emulation
@@ -102,8 +99,8 @@
 // the array. For example, the RAM package has code equivalent to this; an
 // array of atomic.Value stored as an atomic value:
 //
-//	 var ram atomic.Value
-//   ram.Store(make([]atomic.Value, size)
+//		 var ram atomic.Value
+//	  ram.Store(make([]atomic.Value, size)
 //
 // The exception to all the rules is the LazyBreakpoints type. Like LazyRAM it
 // employs an array of atomic.Values storied as an atomic Value but unlike
@@ -115,7 +112,6 @@
 // disassembly.Entry and probe the debugger's breakpoints with that. There may
 // be other ways of achieving the same effect, but whatever way we do it the
 // additional context provided by the disassembly.Entry is required.
-//
 //
 // Ensuring Up-To-Date Information
 // -------------------------------
@@ -131,5 +127,4 @@
 // setting the Wait flag to true.
 //
 // Use of "wait" should be kept to a minimum to ensure system responsiveness.
-//
 package lazyvalues

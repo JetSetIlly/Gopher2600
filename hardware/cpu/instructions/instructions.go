@@ -95,7 +95,7 @@ const (
 // the Value field formatted as a string with the condition that branch instructions
 // are formatted as:
 //
-//		Value/Value+1
+//	Value/Value+1
 //
 // We do not format any potential PageSensitive cycle.
 type Cycles struct {

@@ -244,8 +244,8 @@ func (bp breakpoints) list() {
 
 // parse token and add new breakpoint. for example:
 //
-//	PC 0xf000
-//  adds a new breakpoint to the PC
+//		PC 0xf000
+//	 adds a new breakpoint to the PC
 //
 // in addition to the description in the HELP file, the breakpoint parser has
 // some additional features which should probably be removed. if only because

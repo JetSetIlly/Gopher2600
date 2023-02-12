@@ -63,10 +63,9 @@ type PlugMonitor interface {
 // Implementations of Monitorable should also test peripherals that are
 // daisy-chained and call AttachPlusMonitor() as appropriate.
 //
-//		if a, ok := periph.daisychain.(pluggin.Monitorable); ok {
-//			a.AttachPlugMonitor(m)
-//		}
-//
+//	if a, ok := periph.daisychain.(pluggin.Monitorable); ok {
+//		a.AttachPlugMonitor(m)
+//	}
 type Monitorable interface {
 	AttachPlugMonitor(m PlugMonitor)
 }

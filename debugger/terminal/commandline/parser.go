@@ -39,23 +39,25 @@ import (
 // into a machine friendly representation
 //
 // Syntax
-//   [ a ]	required keyword
-//   ( a )	optional keyword
-//   [ a | b | ... ]	required selection
-//   ( a | b | ... )	optional selection
+//
+//	[ a ]	required keyword
+//	( a )	optional keyword
+//	[ a | b | ... ]	required selection
+//	( a | b | ... )	optional selection
 //
 // groups can be embedded in one another
 //
 // Placeholders
-//   %N		numeric value
-//   %P		irrational number value
-//   %S     string (numbers can be strings too)
-//   %F     file name
+//
+//	%N		numeric value
+//	%P		irrational number value
+//	%S     string (numbers can be strings too)
+//	%F     file name
 //
 // Placeholders can be labelled. For example:
 //
-//   %<first name>S
-//   %<age>N
+//	%<first name>S
+//	%<age>N
 func ParseCommandTemplate(template []string) (*Commands, error) {
 	cmds := &Commands{
 		cmds:  make([]*node, 0, 10),

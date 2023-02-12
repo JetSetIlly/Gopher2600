@@ -45,7 +45,7 @@
 //
 // Adding flags is similar to the flag package. Adding a boolean flag:
 //
-// 	verbose := md.AddBool("verbose", false, "print additional log messages")
+//	verbose := md.AddBool("verbose", false, "print additional log messages")
 //
 // These flag functions return a pointer to a variable of the specified type. The
 // initial value of these variables if the default value, the second argument in
@@ -132,5 +132,4 @@
 //		default:
 //			fmt.Printf("%s not yet implemented", md.Mode())
 //	}
-//
 package modalflag

@@ -20,8 +20,8 @@ import "testing"
 // ExpectedFailure tests argument v for a failure condition suitable for it's
 // type. Currentlly support types:
 //
-//		bool -> bool == false
-//		error -> error != nil
+//	bool -> bool == false
+//	error -> error != nil
 //
 // If type is nil then the test will fail.
 func ExpectedFailure(t *testing.T, v interface{}) bool {
@@ -55,8 +55,8 @@ func ExpectedFailure(t *testing.T, v interface{}) bool {
 // ExpectedSuccess tests argument v for a success condition suitable for it's
 // type. Currentlly support types:
 //
-//		bool -> bool == true
-//		error -> error == nil
+//	bool -> bool == true
+//	error -> error == nil
 //
 // If type is nil then the test will succeed.
 func ExpectedSuccess(t *testing.T, v interface{}) bool {

@@ -28,17 +28,16 @@ import (
 //
 // 12K:
 //
-//  -FA: Used only by CBS.  Similar to F8, except you have three 4K banks
-//  instead of two.  You select the desired bank via 1FF8, 1FF9, and 1FFA.
-//  These carts also have 256 bytes of RAM mapped in at 1000-11FF.  1000-10FF
-//  is the write port while 1100-11FF is the read port.
-//
+//	-FA: Used only by CBS.  Similar to F8, except you have three 4K banks
+//	instead of two.  You select the desired bank via 1FF8, 1FF9, and 1FFA.
+//	These carts also have 256 bytes of RAM mapped in at 1000-11FF.  1000-10FF
+//	is the write port while 1100-11FF is the read port.
 //
 // cartridges:
-//	- Omega Race
-//	- Mountain King
-//	- Tunnel Runner
-//	- Noice (scene demo)
+//   - Omega Race
+//   - Mountain King
+//   - Tunnel Runner
+//   - Noice (scene demo)
 //
 // US patent 4,485,457A describes the format in detail:
 //

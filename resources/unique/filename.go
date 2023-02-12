@@ -27,12 +27,12 @@ import (
 //
 // Format of returned string is:
 //
-//     filetype_cartname_YYYYMMDD_HHMMSS
+//	filetype_cartname_YYYYMMDD_HHMMSS
 //
 // Where cartname is the string returned by cartload.ShortName(). If the
 // cartname argument is empty the returned string will be of the format:
 //
-//     filetype_YYYYMMDD_HHMMSS
+//	filetype_YYYYMMDD_HHMMSS
 //
 // The filetype argument is simply another way of identifying the file
 // uniquely. For example, if saving a screenshot the filetype might simply be
@@ -40,7 +40,7 @@ import (
 //
 // If the filetype argument is empty the returned string will be of the format:
 //
-//   cartname_YYYYMMDD_HHMMSS
+//	cartname_YYYYMMDD_HHMMSS
 //
 // If both filetype and cartname arguments are empty then the returned string
 // will be the timestamp only.

@@ -26,5 +26,4 @@
 //
 // Currently supported cartridge types are listed in the cartridgeloader
 // package.
-//
 package cartridge

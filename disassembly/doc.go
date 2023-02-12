@@ -51,7 +51,7 @@
 // of the Disassembly instance and will "survive" calls to the FromMemory() and
 // FromCartridge() functions.
 //
-// Segmented Cartridges
+// # Segmented Cartridges
 //
 // The disassembly package treats small bank sized (those less than 4k) by
 // performing the disassembly with the cartridge rooted at each origin point -

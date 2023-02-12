@@ -66,8 +66,8 @@ const (
 // NotificationHook is used for direct communication between a the hardware and
 // the emulation package. Not often used but necessary for (currently):
 //
-//		. Supercharger (eg. tape start/end)
-//		. PlusROM (eg. new installation)
+//	. Supercharger (eg. tape start/end)
+//	. PlusROM (eg. new installation)
 //
 // The emulation understands how to interpret the event and forward the
 // notification to the GUI using the gui.FeatureReq mechanism.

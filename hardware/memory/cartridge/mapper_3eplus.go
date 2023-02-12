@@ -41,15 +41,16 @@ type m3ePlus struct {
 }
 
 // should work with any size cartridge that is a multiple of 1024:
-//  - tested with chess3E+20200519_3PQ6_SQ.bin
-//	https://atariage.com/forums/topic/299157-chess/?do=findComment&comment=4541517
 //
-//	- specifciation:
-//	https://atariage.com/forums/topic/307914-3e-and-macros-are-your-friend/?tab=comments#comment-4561287
+//   - tested with chess3E+20200519_3PQ6_SQ.bin
+//     https://atariage.com/forums/topic/299157-chess/?do=findComment&comment=4541517
 //
+//   - specifciation:
+//     https://atariage.com/forums/topic/307914-3e-and-macros-are-your-friend/?tab=comments#comment-4561287
 //
-//	cartridges:
-//		- chess (Andrew Davie)
+//     cartridges:
+//
+//   - chess (Andrew Davie)
 func new3ePlus(instance *instance.Instance, data []byte) (mapper.CartMapper, error) {
 	cart := &m3ePlus{
 		instance:  instance,

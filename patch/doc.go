@@ -24,13 +24,13 @@
 // The first format is simplt the output of "cmp -l <old_file> <new_file>", an
 // example of which is shown below:
 //
-//		 862  22 200
-//		 863 360 376
-//		3713 377 242
-//		3715 377 232
-//		3716 377 114
-//		3717 377  22
-//		3718 377 360
+//	 862  22 200
+//	 863 360 376
+//	3713 377 242
+//	3715 377 232
+//	3716 377 114
+//	3717 377  22
+//	3718 377 360
 //
 // The first column is the offset, expressed as a decimal number and measure
 // from one. The second column is the current value of the offset being
@@ -47,19 +47,19 @@
 //
 // The following extract illustrates the format:
 //
-//		-------------------------------------------
-//		- E.T. is Not Green
-//		-------------------------------------------
-//		17FA: FE FC F8 F8 F8
-//		1DE8: 04
+//	-------------------------------------------
+//	- E.T. is Not Green
+//	-------------------------------------------
+//	17FA: FE FC F8 F8 F8
+//	1DE8: 04
 //
 // Rules:
 //
-//	1. Lines beginning with a hyphen or white space are ignored
-//	2. Offset and values are expressed in hex (case-insensitive)
-//	3. Values and offsets are separated by a colon
-//	4. Multiple values on a line are poked into consecutive offsets, starting
-//	    from the offset value
+//  1. Lines beginning with a hyphen or white space are ignored
+//  2. Offset and values are expressed in hex (case-insensitive)
+//  3. Values and offsets are separated by a colon
+//  4. Multiple values on a line are poked into consecutive offsets, starting
+//     from the offset value
 //
 // Note that offsets are expressed with origin zero and have no relationship
 // to how memory is mapped inside the VCS. Imagine that the patches are being

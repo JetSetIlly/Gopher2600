@@ -25,12 +25,12 @@ import (
 
 // Divider indicates how often (in CPU cycles) the timer value decreases.
 // the following rules apply:
-//		* set to 1, 8, 64 or 1024 depending on which address has been
-//			written to by the CPU
-//		* is used to reset the cyclesRemaining
-//		* is changed to 1 once value reaches 0
-//		* is reset to its initial value of 1, 8, 64, or 1024 whenever INTIM
-//			is read by the CPU
+//   - set to 1, 8, 64 or 1024 depending on which address has been
+//     written to by the CPU
+//   - is used to reset the cyclesRemaining
+//   - is changed to 1 once value reaches 0
+//   - is reset to its initial value of 1, 8, 64, or 1024 whenever INTIM
+//     is read by the CPU
 type Divider int
 
 // List of valid Divider values.
@@ -265,10 +265,11 @@ func (tmr *Timer) Step() {
 // INTIM register on the cpubus - provided here for convenience.
 //
 // Supported fields:
-//  intim (uint8)
-//  timint (uint8)
-//  ticksRemainging (int)
-//  divider (timer.Divider)
+//
+//	intim (uint8)
+//	timint (uint8)
+//	ticksRemainging (int)
+//	divider (timer.Divider)
 func (tmr *Timer) PeekField(fld string) interface{} {
 	switch fld {
 	case "intim":

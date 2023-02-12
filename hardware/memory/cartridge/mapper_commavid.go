@@ -37,8 +37,8 @@ import (
 // from bankswitch_sizes.txt:
 //
 // cartridges:
-//	- MagiCard
-//	- Video Lfe
+//   - MagiCard
+//   - Video Lfe
 //
 // and the reason why I implemented this format for Gopher2600:
 //

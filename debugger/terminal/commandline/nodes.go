@@ -85,11 +85,11 @@ func (n node) usageString() string {
 // optimised in this case means the absence of superfluous group indicators.
 // for example:
 //
-//		TEST [1 [2] [3] [4] [5]]
+//	TEST [1 [2] [3] [4] [5]]
 //
 // is the same as:
 //
-//		TEST [1 2 3 4 5]
+//	TEST [1 2 3 4 5]
 //
 // note: string should not be called directly except as a recursive call
 // or as an initial call from String() and usageString().

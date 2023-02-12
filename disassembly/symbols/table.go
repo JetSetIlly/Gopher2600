@@ -68,6 +68,7 @@ func (t table) String() string {
 }
 
 // make sure symbols is normalised:
+//
 //	no leading or trailing space
 //	internal space compressed and replaced with underscores
 func (t *table) normaliseSymbol(symbol string) string {

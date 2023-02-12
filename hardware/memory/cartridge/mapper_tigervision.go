@@ -39,8 +39,8 @@ import (
 // since you can implement this with only one chip! (a 74LS173).
 //
 // cartridges:
-//	- Miner2049
-//	- River Patrol
+//   - Miner2049
+//   - River Patrol
 type tigervision struct {
 	instance *instance.Instance
 
@@ -58,7 +58,7 @@ type tigervision struct {
 }
 
 // should work with any size cartridge that is a multiple of 2048:
-//  - tested with 8k (Miner2049 etc.) and 32k (Genesis_Egypt demo).
+//   - tested with 8k (Miner2049 etc.) and 32k (Genesis_Egypt demo).
 func newTigervision(instance *instance.Instance, data []byte) (mapper.CartMapper, error) {
 	cart := &tigervision{
 		instance:  instance,

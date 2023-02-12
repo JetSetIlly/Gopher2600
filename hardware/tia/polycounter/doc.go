@@ -23,23 +23,23 @@
 // the TIA loop (HSYNC counter) we'd still like to know what the equivalent
 // polycounter value is. We use a 6-bit polycounter for this.
 //
-//		hsync := polycounter.New(6)
+//	hsync := polycounter.New(6)
 //
 // As the emulated polycounter is just an integer we can "tick" it along in the
 // obvious way. We should take care to make sure it doesn't run past the end of
 // the polycounter however. The accepted pattern is:
 //
-//		p++
-//		if p >= polycounter.LenTable6Bit {
-//			p = 0
-//		}
+//	p++
+//	if p >= polycounter.LenTable6Bit {
+//		p = 0
+//	}
 //
 // Whenever the polycounter is to be reset set it it polycounter.ResetValue.
 //
 // The polycounter bit pattern can be retrieved at any time with the ToBinary()
 // function.
 //
-// Additional Note
+// # Additional Note
 //
 // In the 2600, polycounter logic is also used to generate the bit sequences
 // required for TIA audio emulation. A real TIA variously uses 4-bit, 5-bit and

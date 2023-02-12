@@ -91,8 +91,8 @@ const Memtop = uint16(0x1fff)
 //
 // Alternatively, the following is an effective way to index an array:
 //
-//  addr := 0xf000
-//  mem[addr & CartridgeBits] = 0xff
+//	addr := 0xf000
+//	mem[addr & CartridgeBits] = 0xff
 //
 // In the example, index zero of the mem array is assigned the value 0xff.
 const (

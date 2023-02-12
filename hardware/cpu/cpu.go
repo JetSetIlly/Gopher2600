@@ -202,7 +202,7 @@ func (mc *CPU) LoadPC(directAddress uint16) error {
 // read8Bit returns 8bit value from the specified address
 //
 // side-effects:
-//	* calls cycleCallback after memory read
+//   - calls cycleCallback after memory read
 func (mc *CPU) read8Bit(address uint16, phantom bool) (uint8, error) {
 	mc.PhantomMemAccess = phantom
 
@@ -227,7 +227,7 @@ func (mc *CPU) read8Bit(address uint16, phantom bool) (uint8, error) {
 // read8BitZero returns 8bit value from the specified zero-page address
 //
 // side-effects:
-//	* calls cycleCallback after memory read
+//   - calls cycleCallback after memory read
 func (mc *CPU) read8BitZeroPage(address uint8) (uint8, error) {
 	mc.PhantomMemAccess = false
 
@@ -269,7 +269,7 @@ func (mc *CPU) write8Bit(address uint16, value uint8, phantom bool) error {
 // read16Bit returns 16bit value from the specified address
 //
 // side-effects:
-//	* calls cycleCallback after each 8bit read
+//   - calls cycleCallback after each 8bit read
 func (mc *CPU) read16Bit(address uint16) (uint16, error) {
 	mc.PhantomMemAccess = false
 
@@ -320,10 +320,10 @@ const (
 // read8BitPC reads 8 bits from the memory location pointed to by PC
 //
 // side-effects:
-//     * updates program counter
-//     * calls cycleCallback at end of function
-//     * updates LastResult.ByteCount
-//     * additional side effect updates LastResult as appropriate
+//   - updates program counter
+//   - calls cycleCallback at end of function
+//   - updates LastResult.ByteCount
+//   - additional side effect updates LastResult as appropriate
 func (mc *CPU) read8BitPC(effect read8BitPCeffect) error {
 	v, err := mc.mem.Read(mc.PC.Address())
 
@@ -381,12 +381,12 @@ func (mc *CPU) read8BitPC(effect read8BitPCeffect) error {
 // read16BitPC reads 16 bits from the memory location pointed to by PC
 //
 // side-effects:
-//	* updates program counter
-//	* calls cycleCallback after each 8 bit read
-//	* updates LastResult.ByteCount
-//	* updates InstructionData field, once before each call to cycleCallback
-//		- no callback function because this function is only ever used
-//	 	to read operands
+//   - updates program counter
+//   - calls cycleCallback after each 8 bit read
+//   - updates LastResult.ByteCount
+//   - updates InstructionData field, once before each call to cycleCallback
+//   - no callback function because this function is only ever used
+//     to read operands
 func (mc *CPU) read16BitPC() error {
 	lo, err := mc.mem.Read(mc.PC.Address())
 	if err != nil {
@@ -518,9 +518,9 @@ const (
 // ExecuteInstruction steps CPU forward one instruction. The basic process when
 // executing an instruction is this:
 //
-//	1. read opcode and look up instruction definition
-//	2. read operands (if any) according to the addressing mode of the instruction
-//	3. using the operator as a guide, perform the instruction on the data
+//  1. read opcode and look up instruction definition
+//  2. read operands (if any) according to the addressing mode of the instruction
+//  3. using the operator as a guide, perform the instruction on the data
 //
 // All instructions take at least 2 cycle. After each cycle, the
 // cycleCallback() function is run, thereby allowing the rest of the VCS

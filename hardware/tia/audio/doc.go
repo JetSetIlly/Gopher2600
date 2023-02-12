@@ -21,11 +21,11 @@
 // from both projects was used as reference. Both projects are exactly
 // equivalent.
 //
-//   6502.ts (published under the MIT licence)
-//		https://github.com/6502ts/6502.ts/blob/6f923e5fe693b82a2448ffac1f85aea9693cacff/src/machine/stella/tia/PCMAudio.ts
-//		https://github.com/6502ts/6502.ts/blob/6f923e5fe693b82a2448ffac1f85aea9693cacff/src/machine/stella/tia/PCMChannel.ts
+//	  6502.ts (published under the MIT licence)
+//			https://github.com/6502ts/6502.ts/blob/6f923e5fe693b82a2448ffac1f85aea9693cacff/src/machine/stella/tia/PCMAudio.ts
+//			https://github.com/6502ts/6502.ts/blob/6f923e5fe693b82a2448ffac1f85aea9693cacff/src/machine/stella/tia/PCMChannel.ts
 //
-//  Stella (published under the GNU GPL v2.0 licence)
-//		https://github.com/stella-emu/stella/blob/e6af23d6c12893dd17711002971087f28f87c31f/src/emucore/tia/Audio.cxx
-//		https://github.com/stella-emu/stella/blob/e6af23d6c12893dd17711002971087f28f87c31f/src/emucore/tia/AudioChannel.cxx
+//	 Stella (published under the GNU GPL v2.0 licence)
+//			https://github.com/stella-emu/stella/blob/e6af23d6c12893dd17711002971087f28f87c31f/src/emucore/tia/Audio.cxx
+//			https://github.com/stella-emu/stella/blob/e6af23d6c12893dd17711002971087f28f87c31f/src/emucore/tia/AudioChannel.cxx
 package audio

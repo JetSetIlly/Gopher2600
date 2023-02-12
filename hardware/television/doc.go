@@ -51,17 +51,17 @@
 // information about the frame can be acquired with GetFrameInfo(). FrameInfo
 // will also be sent to the PixelRenderers as appropriate.
 //
-// Screen Rolling
+// # Screen Rolling
 //
 // Screen rolling is not handled by the television package. However, the synced
 // argument of the NewFrame() function in the PixelRenderer and FrameTrigger
 // interfaces can be used to implement it if required. Something like this:
 //
-//    1) If Synced is false, note scanline of last plot (unsynedScanline)
-//    2) For every SetPixel() add unsyncedScanline to the Scanline value in
-//       the SignalAttributes struct (adjustedScanline)
-//    3) Bring adjustedScanline into range by modulo ScanlinesTotal of the
-//       current TV specification.
+//  1. If Synced is false, note scanline of last plot (unsynedScanline)
+//  2. For every SetPixel() add unsyncedScanline to the Scanline value in
+//     the SignalAttributes struct (adjustedScanline)
+//  3. Bring adjustedScanline into range by modulo ScanlinesTotal of the
+//     current TV specification.
 //
 // Recovery from a screen roll should also be emulated. A good way of doing
 // this is to reduce unsyncedScanline by a percentage (80% say) on synced
@@ -70,12 +70,12 @@
 // A good additionl policy would be to only roll if several, consecutive
 // unsynced frames are indicated.
 //
-// Concurrency
+// # Concurrency
 //
 // None of the functions in the Television type are safe to be called from
 // goroutines other than the one the type was created in.
 //
-// Logging
+// # Logging
 //
 // The television does no logging. This is because the television can be used
 // ephemerally and logging would be noisy. Callers of television package

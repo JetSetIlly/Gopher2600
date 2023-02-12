@@ -281,10 +281,10 @@ func (cart *atari) AddSuperchip(force bool) {
 }
 
 // atari4k is the original and most straightforward format:
-//  - Pitfall
-//  - River Raid
-//  - Barnstormer
-//  - etc.
+//   - Pitfall
+//   - River Raid
+//   - Barnstormer
+//   - etc.
 type atari4k struct {
 	atari
 }
@@ -338,11 +338,11 @@ func (cart *atari4k) AccessVolatile(addr uint16, data uint8, poke bool) error {
 }
 
 // atari2k is the half-size cartridge of 2048 bytes:
-//	- Combat
-//  - Dragster
-//  - Outlaw
-//	- Surround
-//  - early cartridges
+//   - Combat
+//   - Dragster
+//   - Outlaw
+//   - Surround
+//   - early cartridges
 //
 // it also supports other cartridge sizes less than 4096 bytes
 type atari2k struct {
@@ -413,9 +413,9 @@ func (cart *atari2k) AccessVolatile(addr uint16, data uint8, poke bool) error {
 }
 
 // atari8k (F8):
-//	- ET
-//  - Krull
-//  - etc.
+//   - ET
+//   - Krull
+//   - etc.
 type atari8k struct {
 	atari
 }
@@ -509,10 +509,10 @@ func (cart *atari8k) WriteHotspots() map[uint16]mapper.CartHotspotInfo {
 }
 
 // atari16k (F6):
-//	- Crystal Castle
-//	- RS Boxing
-//  - Midnite Magic
-//  - etc.
+//   - Crystal Castle
+//   - RS Boxing
+//   - Midnite Magic
+//   - etc.
 type atari16k struct {
 	atari
 }

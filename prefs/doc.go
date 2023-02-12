@@ -41,7 +41,7 @@
 // program in the normal way. Changes can be committed to disk with the
 // Disk.Save() function and restored with Disk.Load().
 //
-//Prefs valus and Multiple Disk Instances
+// # Prefs valus and Multiple Disk Instances
 //
 // A prefs values can be added to more than one disk intance at once. Moreover,
 // more than disk instance can point to the same file on disk.
@@ -51,19 +51,19 @@
 // saved. Values that exist on the physical disk but which are missing from the
 // limited disk object will be preserved.
 //
-//Concurrency
+// # Concurrency
 //
 // Generally, it is safe to access a prefs value from any goroutine. However,
 // Set() should be used with care *if* SetHookPost() or SetHookPre() has been
 // set for that value.
 //
-//Command Line Support
+// # Command Line Support
 //
 // The *CommandLine*() functions are designed to help with the overriding of
 // disk values with a value given on the command line. These values are added
 // as a group with AddCommandLineGroup(). For example
 //
-//   AddCommandLineGroup("foo::bar; baz::qux")
+//	AddCommandLineGroup("foo::bar; baz::qux")
 //
 // (see below for more detail about the format of the prefs string)
 //
@@ -83,17 +83,17 @@
 //
 // For example, if the preferences file has the following entries:
 //
-//		a.b.c :: 100
-//		d.e.f.g :: false
-//		h.i :: wibble
+//	a.b.c :: 100
+//	d.e.f.g :: false
+//	h.i :: wibble
 //
 // A valid string to use with AddCommandLineGroup() might be:
 //
-//		a.b.c::100; h.i::wibble
+//	a.b.c::100; h.i::wibble
 //
 // Leading and trailing spaces around the key and value are stripped.
 //
-//Note
+// # Note
 //
 // While saved preference files are stored in UTF-8 it is not a good idea for
 // the files to be edited by hand. As such, manual editing is discorouaged with

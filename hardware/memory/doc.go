@@ -26,45 +26,41 @@
 // is that the peripheral bus only ever writes to memory. The other buses are
 // bidirectional.
 //
+//	                    PERIPHERALS
 //
-//	                        PERIPHERALS
+//	                         |
+//	                         |
+//	                         \/
 //
-//	                             |
-//	                             |
-//	                             \/
+//	                     periph bus
 //
-//	                         periph bus
+//	                         |
+//	                         |
+//	                         \/
 //
-//	                             |
-//	                             |
-//	                             \/
+//	CPU ---- cpu bus ---- MEMORY ---- chip bus ---- TIA
+//	                                            \
+//	                         |                   \
+//	                         |                    \---- RIOT
 //
-//	    CPU ---- cpu bus ---- MEMORY ---- chip bus ---- TIA
-//	                                                \
-//	                             |                   \
-//	                             |                    \---- RIOT
+//	                    debugger bus
 //
-//	                        debugger bus
+//	                         |
+//	                         |
 //
-//	                             |
-//	                             |
-//
-//	                          DEBUGGER
-//
+//	                      DEBUGGER
 //
 // The memory itself is divided into areas, defined in the memorymap package.
 // Removing the periph bus and debugger bus from the picture, the above diagram
 // with memory areas added is as follows:
 //
-//
-//	                           ===* TIA ---- chip bus ---- TIA
-//	                          |
-//	                          |===* RIOT ---- chip bus ---- RIOT
-//	    CPU ---- cpu bus -----
-//	                          |===* PIA RAM
-//	                          |
-//	                           ==== Cartridge
-//
+//	                       ===* TIA ---- chip bus ---- TIA
+//	                      |
+//	                      |===* RIOT ---- chip bus ---- RIOT
+//	CPU ---- cpu bus -----
+//	                      |===* PIA RAM
+//	                      |
+//	                       ==== Cartridge
 //
 // The asterisk indicates that addresses used by the CPU are mapped to the
 // primary mirror address. The memorymap package contains more detail on this.

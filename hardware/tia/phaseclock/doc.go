@@ -34,10 +34,10 @@
 // The phaseclock can be "ticked" along by incrementing the integer and making
 // sure it doesn't exceed the possible values: The accepted pattern is:
 //
-//		p++
-//		if p >= phaseclock.NumStates {
-//			p = 0
-//		}
+//	p++
+//	if p >= phaseclock.NumStates {
+//		p = 0
+//	}
 //
 // Resetting and aligning the phase clock can be done by simply assigning the
 // correct value to the PhaseClock instance. Use ResetValue and AlignValue for

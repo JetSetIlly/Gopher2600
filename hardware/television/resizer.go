@@ -23,40 +23,54 @@ import (
 // resizer handles the expansion of the visible area of the TV screen
 //
 // ROMs used to test resizing:
-//  * good base cases
-//		- Pitfall
-//		- Hero
 //
-//  * needs an additional (or two) scanlines to accommodate full screen
-//		- Ladybug
-//		- Man Goes Down
+//   - good base cases
 //
-//  * frame that needs to be resized after startup period
-//		- Hack Em Hanglyman (pre-release)
+//   - Pitfall
 //
-//  * the occasional unsynced frame
-//		- Hack Em Hanglyman (pre-release)
+//   - Hero
 //
-//  * lots of unsynced frames (during computer "thinking" period)
-//		- Andrew Davies' Chess
+//   - needs an additional (or two) scanlines to accommodate full screen
 //
-//  * does not set VBLANK for pixels that are clearly not meant to be seen
-//  these ROMs rely on the SafeTop and SafeBottom values being correct
-//		- Communist Mutants From Space
-//		- Tapper
-//		- Spike's Peak
+//   - Ladybug
 //
-//	* ROMs that do not set VBLANK *at all*. in these cases the commit()
-//	function uses the black top/bottom values rather than vblank top/bottom
-//	values.
-//		- Hack Em Hanglyman (release and pre-release)
-//		- Legacy of the Beast
+//   - Man Goes Down
 //
-//	* ROMs that *do* set VBLANK but might be caught by the black top/bottom
-//	rule if frameHasVBlank was incorrectly set
-//		- aTaRSI (demo)
-//		- Supercharger "rewind tape" screen
+//   - frame that needs to be resized after startup period
 //
+//   - Hack Em Hanglyman (pre-release)
+//
+//   - the occasional unsynced frame
+//
+//   - Hack Em Hanglyman (pre-release)
+//
+//   - lots of unsynced frames (during computer "thinking" period)
+//
+//   - Andrew Davies' Chess
+//
+//   - does not set VBLANK for pixels that are clearly not meant to be seen
+//     these ROMs rely on the SafeTop and SafeBottom values being correct
+//
+//   - Communist Mutants From Space
+//
+//   - Tapper
+//
+//   - Spike's Peak
+//
+//   - ROMs that do not set VBLANK *at all*. in these cases the commit()
+//     function uses the black top/bottom values rather than vblank top/bottom
+//     values.
+//
+//   - Hack Em Hanglyman (release and pre-release)
+//
+//   - Legacy of the Beast
+//
+//   - ROMs that *do* set VBLANK but might be caught by the black top/bottom
+//     rule if frameHasVBlank was incorrectly set
+//
+//   - aTaRSI (demo)
+//
+//   - Supercharger "rewind tape" screen
 type resizer struct {
 	// candidate top/bottom values for an actual resize.
 	//

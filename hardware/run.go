@@ -28,15 +28,14 @@ import (
 // a standard value that can be used to filter out expensive code paths within
 // a continueCheck() implementation. For example:
 //
-//		performanceFilter++
-//		if performanceFilter >= hardware.PerfomrmanceBrake {
-//			performanceFilter = 0
-//			if end_condition == true {
-//				return govern.Ending, nill
-//			}
+//	performanceFilter++
+//	if performanceFilter >= hardware.PerfomrmanceBrake {
+//		performanceFilter = 0
+//		if end_condition == true {
+//			return govern.Ending, nill
 //		}
-//		return govern.Running, nill
-//
+//	}
+//	return govern.Running, nill
 const PerformanceBrake = 100
 
 // Run sets the emulation running as quickly as possible

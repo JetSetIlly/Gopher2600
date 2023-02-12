@@ -30,9 +30,9 @@ const activityLength = 64
 // deriving conditions from two traces is convenient. for example, give two
 // traces A and B, a condition for event E might be:
 //
-//  if A.hi() && B.lo2hi() {
-//		E()
-//  }
+//	 if A.hi() && B.lo2hi() {
+//			E()
+//	 }
 type Trace struct {
 	// a recent history of the i2c trace. wraps around at activityLength
 	activity []float32

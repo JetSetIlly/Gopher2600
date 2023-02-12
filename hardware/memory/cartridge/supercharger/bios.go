@@ -36,9 +36,9 @@ var biosFile = [...]string{
 const biosLogTag = "supercharger: bios"
 
 // loadBIOS attempts to load BIOS from (in order of priority):
-//	- current working directory
-//	- the same directory as the tape/bin file
-//	- the emulator's resource path
+//   - current working directory
+//   - the same directory as the tape/bin file
+//   - the emulator's resource path
 func loadBIOS(path string) ([]uint8, error) {
 	// current working directory
 	for _, b := range biosFile {

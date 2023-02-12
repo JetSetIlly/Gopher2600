@@ -143,15 +143,15 @@ const (
 // Parse the top level layer of arguments. Returns a value of ParseResult.
 // The idiomatic usage is as follows:
 //
-//		p, err := md.Parse()
-//		switch p {
-//		case modalflag.ParseHelp:
-//			// help message has already been printed
-//			return
-//		case modalflag.ParseError:
-//			printError(err)
-//			return
-//		}
+//	p, err := md.Parse()
+//	switch p {
+//	case modalflag.ParseHelp:
+//		// help message has already been printed
+//		return
+//	case modalflag.ParseError:
+//		printError(err)
+//		return
+//	}
 //
 // Help messages are handled automatically by the function. The return value
 // ParseHelp is to help you guide your program appropriately. The above pattern

@@ -40,7 +40,7 @@ type m3e struct {
 }
 
 // cartridges:
-//	- Sokoboo
+//   - Sokoboo
 func new3e(instance *instance.Instance, data []byte) (mapper.CartMapper, error) {
 	cart := &m3e{
 		instance:  instance,

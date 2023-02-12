@@ -37,14 +37,13 @@ import (
 // "Stella Programmer's Guide" but they are readable anyway and are wired the
 // same as the collision and INPTx registers.
 //
-//
 // Explanation of how the TIADrivenPins mask affects the read value
 // ----------------------------------------------------------------
 //
 // If the CPU wants to read the contents of the CXM1P register, it can use the
 // address 0x0d to do so.
 //
-//		LDA 0x01
+//	LDA 0x01
 //
 // If there are no collisions (between missile 1 and either player, in this
 // case) than the value of the most significant bits are zero. The lower six
@@ -52,13 +51,13 @@ import (
 // when the data is put on the bus. The lower bits of the LDA operation are in
 // fact "left over" from the address. In our example, the lowest six bits are
 //
-//		0bxx000001
+//	0bxx000001
 //
 // meaning the the returned data is in fact 0x01 and not 0x00, as you might
 // expect.  Things get interesting when we use mirrored addresses. If instead
 // of 0x01 we used the mirror address 0x11, the lowest six bits are:
 //
-//		0bxx01001
+//	0bxx01001
 //
 // meaning that the returned value is 0x11 and not (again, as you might expect)
 // 0x00 or even 0x01.
@@ -67,12 +66,12 @@ import (
 // Meaning that the top bits are not necessarily zero. Let's say there is a
 // collusion between missile 1 and player 0, the data before masking will be
 //
-//		0b01000000
+//	0b01000000
 //
 // If we used address 0x11 to load this value, we would in fact, get this
 // pattern (0x51 in hex):
 //
-//		0b01010001
+//	0b01010001
 //
 // Now, if all ROMs read and interpreted chip registers only as they're
 // supposed to (defails in the 2600 programmer's guide) then none of this would
@@ -86,7 +85,7 @@ import (
 // most-significant byte. So, if the requested address is 0x171, the bit
 // pattern for the address is:
 //
-//		0x0000000101110001
+//	0x0000000101110001
 //
 // the most significant byte in this pattern is 0x00000001 and so the data
 // retreived is AND-ed with that. The mapped address for 0x171 incidentally, is
