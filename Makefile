@@ -113,10 +113,10 @@ fontrendering=imguifreetype
 endif
 
 build: fontrendering generate 
-	$(goBinary) build -gcflags $(compileFlags) -tags="$(fontrendering)"
+	$(goBinary) build -pgo=auto -gcflags $(compileFlags) -tags="$(fontrendering)"
 
 release: fontrendering generate 
-	$(goBinary) build -gcflags $(compileFlags) -ldflags="-s -w" -tags="$(fontrendering) release"
+	$(goBinary) build -pgo=auto -gcflags $(compileFlags) -ldflags="-s -w" -tags="$(fontrendering) release"
 	mv gopher2600 gopher2600_$(shell go env GOHOSTOS)_$(shell go env GOHOSTARCH)
 
 ## windows cross compilation (tested when cross compiling from Linux)
@@ -130,16 +130,16 @@ windows_manifest: check_rscr
 	rsrc -ico .resources/256x256.ico,.resources/48x48.ico,.resources/32x32.ico,.resources/16x16.ico
 
 cross_windows: generate windows_manifest
-	CGO_ENABLED="1" CC="/usr/bin/x86_64-w64-mingw32-gcc" CXX="/usr/bin/x86_64-w64-mingw32-g++" GOOS="windows" GOARCH="amd64" CGO_LDFLAGS="-static -static-libgcc -static-libstdc++ -L/usr/local/x86_64-w64-mingw32/lib" $(goBinary) build -tags "static imguifreetype release" -gcflags $(compileFlags) -ldflags "-s -w -H=windowsgui" -o gopher2600_windows_amd64.exe .
+	CGO_ENABLED="1" CC="/usr/bin/x86_64-w64-mingw32-gcc" CXX="/usr/bin/x86_64-w64-mingw32-g++" GOOS="windows" GOARCH="amd64" CGO_LDFLAGS="-static -static-libgcc -static-libstdc++ -L/usr/local/x86_64-w64-mingw32/lib" $(goBinary) build -pgo=auto -tags "static imguifreetype release" -gcflags $(compileFlags) -ldflags "-s -w -H=windowsgui" -o gopher2600_windows_amd64.exe .
 	rm rsrc_windows_amd64.syso
 
 cross_windows_development: generate windows_manifest
-	CGO_ENABLED="1" CC="/usr/bin/x86_64-w64-mingw32-gcc" CXX="/usr/bin/x86_64-w64-mingw32-g++" GOOS="windows" GOARCH="amd64" CGO_LDFLAGS="-static -static-libgcc -static-libstdc++ -L/usr/local/x86_64-w64-mingw32/lib" $(goBinary) build -tags "static imguifreetype release" -gcflags $(compileFlags) -ldflags "-s -w -H=windowsgui" -o gopher2600_windows_amd64_$(shell git rev-parse --short HEAD).exe .
+	CGO_ENABLED="1" CC="/usr/bin/x86_64-w64-mingw32-gcc" CXX="/usr/bin/x86_64-w64-mingw32-g++" GOOS="windows" GOARCH="amd64" CGO_LDFLAGS="-static -static-libgcc -static-libstdc++ -L/usr/local/x86_64-w64-mingw32/lib" $(goBinary) build -pgo=auto -tags "static imguifreetype release" -gcflags $(compileFlags) -ldflags "-s -w -H=windowsgui" -o gopher2600_windows_amd64_$(shell git rev-parse --short HEAD).exe .
 	rm rsrc_windows_amd64.syso
 
 cross_winconsole_development: generate windows_manifest
-	CGO_ENABLED="1" CC="/usr/bin/x86_64-w64-mingw32-gcc" CXX="/usr/bin/x86_64-w64-mingw32-g++" GOOS="windows" GOARCH="amd64" CGO_LDFLAGS="-static -static-libgcc -static-libstdc++ -L/usr/local/x86_64-w64-mingw32/lib" $(goBinary) build -tags "static imguifreetype release" -gcflags $(compileFlags) -ldflags "-s -w -H=windows" -o gopher2600_winconsole_amd64_$(shell git rev-parse --short HEAD).exe .
+	CGO_ENABLED="1" CC="/usr/bin/x86_64-w64-mingw32-gcc" CXX="/usr/bin/x86_64-w64-mingw32-g++" GOOS="windows" GOARCH="amd64" CGO_LDFLAGS="-static -static-libgcc -static-libstdc++ -L/usr/local/x86_64-w64-mingw32/lib" $(goBinary) build -pgo=auto -tags "static imguifreetype release" -gcflags $(compileFlags) -ldflags "-s -w -H=windows" -o gopher2600_winconsole_amd64_$(shell git rev-parse --short HEAD).exe .
 	rm rsrc_windows_amd64.syso
 
 # cross_windows_dynamic: generate windows_manifest
-# 	CGO_ENABLED="1" CC="/usr/bin/x86_64-w64-mingw32-gcc" CXX="/usr/bin/x86_64-w64-mingw32-g++" GOOS="windows" GOARCH="amd64" CGO_LDFLAGS="-lmingw32 -lSDL2" CGO_CFLAGS="-D_REENTRANT" go build -tags "release" -gcflags $(compileFlags) -ldflags="-s -w -H=windowsgui" -o gopher2600_windows_amd64.exe .
+# 	CGO_ENABLED="1" CC="/usr/bin/x86_64-w64-mingw32-gcc" CXX="/usr/bin/x86_64-w64-mingw32-g++" GOOS="windows" GOARCH="amd64" CGO_LDFLAGS="-lmingw32 -lSDL2" CGO_CFLAGS="-D_REENTRANT" go build -pgo=auto -tags "release" -gcflags $(compileFlags) -ldflags="-s -w -H=windowsgui" -o gopher2600_windows_amd64.exe .
